@@ -1,0 +1,160 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="graphicsutilities">
+      <UniqueIdentifier>{861cfdaf-d9a1-44cd-b7f1-435f08a1127b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="graphicsutilities\headers">
+      <UniqueIdentifier>{c0abb0f0-faa0-48bd-af96-2fdeea83dfc6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="graphicsutilities\source">
+      <UniqueIdentifier>{7adec518-fcad-456b-8b48-824a8bc28d2c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="headers">
+      <UniqueIdentifier>{8648758b-e068-4609-ae8e-180c926ce6b5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="coreutilities">
+      <UniqueIdentifier>{fa2013f5-26e7-404f-9cd4-cd29b7cf4bcc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="coreutilities\source">
+      <UniqueIdentifier>{703700ec-d0d5-4a9e-997e-4b1c9328949d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="coreutilities\headers">
+      <UniqueIdentifier>{9d5847be-ed7e-4ffd-b7ef-6a2163185a7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{10851d44-e24c-45a9-be9e-563ee0de74a2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Physics">
+      <UniqueIdentifier>{17be3a6d-8dc9-46cd-bfb3-ff32c7a0147e}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="graphicsutilities\graphics.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="buildsettings.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\containers.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Events.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Handle.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Input.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\MathUtils.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\memoryutilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Signal.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\ThreadUtilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\timeutilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\type.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\intersection.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\TerrainRendering.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\DungeonGen.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\static_vector.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\AnimationUtilities.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\fixed_vector.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\MeshUtils.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Resources.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GraphicScene.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsUtilities\physicsutilities.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="graphicsutilities\graphics.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Handle.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\MathUtils.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\memoryutilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\signal.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\ThreadUtilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\timeutilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\type.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\TerrainRendering.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\DungeonGen.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\AnimationUtilities.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\meshutils.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Resources.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GraphicScene.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Intersection.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\AllSourceFiles.cpp">
+      <Filter>source</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsUtilities\physicsutilities.cpp">
+      <Filter>Physics</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

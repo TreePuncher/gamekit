@@ -1,0 +1,826 @@
+/**********************************************************************
+
+Copyright (c) 2015 - 2016 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+
+// Todos
+// TODO(RM) World utilities
+// TODO(RM) Depth Sorting
+// TODO(RM) Material Sorting
+// TODO(RM) Different Rendering Modes
+// TODO(RM) Add Profiling of some sort
+
+#include "stdafx.h"
+#include "TestMode.h"
+#include "CommonStructs.h"
+#include "GameUtilities.h"
+#include "ResourceUtilities.h"
+
+#include "..\coreutilities\DungeonGen.h"
+#include "..\coreutilities\intersection.h"
+#include "..\graphicsutilities\AnimationUtilities.h"
+#include "..\graphicsutilities\TerrainRendering.h"
+
+#include <DirectXMath.h>
+#include <functional>
+
+// Usings
+using namespace FlexKit;
+using FlexKit::Quaternion;
+using FlexKit::TranslateLocal;
+using FlexKit::UpdateInput;
+using FlexKit::Yaw;
+
+// DirectX Usings
+using DirectX::XMMATRIX;
+
+#define SKINLOADING ON
+#define ANIMATIOLOADING ON
+#define SKELETONLOADING ON
+
+/************************************************************************************************/
+
+
+void TestMode_HandleEvents(const FlexKit::Event& in, void* _ptr)
+{
+	auto Engine = reinterpret_cast<EngineMemory*>(_ptr);
+	
+	switch (in.mType)
+	{
+	case FlexKit::Event::Input:
+		switch(in.InputSource)
+		{
+			case FlexKit::Event::Keyboard:
+			switch (in.Action)
+			{
+				case FlexKit::Event::Release:
+					switch (in.mData1.mKC[0])
+					{
+						case FlexKit::KC_Y:
+							Engine->ToggleMouse = !Engine->ToggleMouse;
+							if (Engine->ToggleMouse )
+							{
+								auto POS = Engine->Window.WindowCenterPosition;
+								POINT CENTER = { ( long )POS[ 0 ], ( long )POS[ 1 ] };
+								ClientToScreen(Engine->Window.hWindow, &CENTER );
+								SetCursorPos( CENTER.x, CENTER.y );
+								ShowCursor( FALSE );
+							} else
+								ShowCursor( TRUE );
+							break;
+						default:
+							break;
+					}
+					break;
+				case FlexKit::Event::Pressed:
+					switch (in.mData1.mKC[0])
+					{
+					case FlexKit::KC_T:
+						//std::cout << "W KEY PRESSED\n";
+						Engine->SplitCount = ++Engine->SplitCount % 5;
+						std::cout << "SplitCount: " << Engine->SplitCount << "\n";
+						break;
+					case FlexKit::KC_L:
+					{
+	#if USING( EDITSHADERCONTINUE )
+						// Reload Compute Shader
+						bool res = false;
+						{
+							FlexKit::ShaderDesc SDesc;
+							strcpy(SDesc.entry, "cmain");
+							strcpy(SDesc.ID, "DeferredShader");
+							strcpy(SDesc.shaderVersion, "cs_5_0");
+							Shader CShader;
+
+							{
+								printf("LoadingShader - Compute Shader Deferred Shader -\n");
+								res = FlexKit::LoadComputeShaderFromFile(Engine->RenderSystem, "assets\\cshader.hlsl", &SDesc, &CShader);
+								if (!res)
+								{
+									std::cout << "Failed to Load\n try again\n";
+								}
+								else
+								{
+									std::cout << "Swapping Shader\n";
+									FlexKit::Destroy(Engine->GB.Shade);
+									Engine->GB.Shade = CShader;
+								}
+							}
+						}
+					}
+	#endif
+					break;
+					case FlexKit::KC_U:
+					{
+						ProfilingUtilities::TogglePrintStats();
+					}
+					break;
+					case FlexKit::KC_P:
+					{
+	#if USING( EDITSHADERCONTINUE )
+						// Reload Compute Shader
+						bool res = false;
+						{
+							FlexKit::ShaderDesc SDesc;
+							strcpy(SDesc.entry,			"VMainVertexPallet");
+							strcpy(SDesc.shaderVersion, "vs_5_0");
+							FlexKit::Shader NewShader;
+
+							{
+								printf("LoadingShader - Vertex Shader Deferred Shader -\n");
+								res = FlexKit::LoadVertexShaderFromFile(Engine->RenderSystem, "assets\\vshader.hlsl", &SDesc, &NewShader);
+								if (!res)
+								{
+									std::cout << "Failed to Load\n try again\n";
+								}
+								else
+								{
+									std::cout << "Swapping Shader\n";
+									FlexKit::Destroy(Engine->Materials.GetShader(Engine->ShaderHandles.VertexPaletteSkinning));
+									Engine->Materials.SetShader(Engine->ShaderHandles.VertexPaletteSkinning, NewShader);
+									Engine->VertexPalletSkinning = Engine->Materials.GetShader(Engine->ShaderHandles.VertexPaletteSkinning);
+								}
+							}
+						}
+					}
+	#endif
+					break;
+					default:
+						break;
+					}
+				default:
+					break;
+			}
+			break;
+			case FlexKit::Event::Mouse:
+				if (Engine->Level && Engine->MouseHandler)
+					Engine->MouseHandler(Engine, in);
+			break;
+		}
+	default:
+		break;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+struct FrameStats
+{
+	double T		= 0;
+	double FPSTimer	= 0;
+
+	size_t FrameCount	= 0;
+	size_t FPScounter	= 0;
+	size_t LastFPSCount	= 0;
+};
+
+
+/************************************************************************************************/
+
+
+void UpdateFrameStats(FrameStats* fs, double dt)
+{
+	fs->T += dt;
+	fs->FPSTimer += dt;
+	fs->FrameCount++;
+	fs->FPScounter++;
+
+	if (fs->FPSTimer >= 1.0f)
+	{
+		fs->FPSTimer = 0;
+		fs->LastFPSCount = fs->FPScounter;
+		fs->FPScounter = 0;
+
+		//printf("FPS: %u\n", fs->LastFPSCount);
+	}
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::float4x4 QuaternionToMatrix(Quaternion q)
+{// TODO: test this
+	float4x4 m1, m2;
+
+	// Assign m1
+	// Assign W Component
+	m1[0][0] = q[3];
+	m1[1][1] = q[3];
+	m1[2][2] = q[3];
+	m1[3][3] = q[3];
+	// Assign x
+	m1[0][3] =  q[0];
+	m1[1][2] =  q[0];
+	m1[2][1] = -q[0];
+	m1[3][0] = -q[0];
+	// Assign y
+	m1[0][3] = -q[1];
+	m1[1][2] =  q[1];
+	m1[2][1] =  q[1];
+	m1[3][0] = -q[1];
+	// Assign z
+	m1[0][1] =  q[2];
+	m1[1][0] = -q[2];
+	m1[2][3] =  q[2];
+	m1[3][2] = -q[2];
+
+	// Assign m2
+	// Assign W Component
+	// Does this need to be transposed first?
+
+	m1[0][0] =  q[3];
+	m1[1][1] =  q[3];
+	m1[2][2] =  q[3];
+	m1[3][3] =  q[3];
+	// Assign x
+	m1[0][3] = -q[0];
+	m1[1][2] =  q[0];
+	m1[2][1] = -q[0];
+	m1[3][0] =  q[0];
+	// Assign y
+	m1[0][3] = -q[1];
+	m1[1][2] = -q[1];
+	m1[2][1] =  q[1];
+	m1[3][0] =  q[1];
+	// Assign z
+	m1[0][1] =  q[2];
+	m1[1][0] = -q[2];
+	m1[2][3] = -q[2];
+	m1[3][2] =  q[2];
+
+	return m1 * m2;
+}
+
+
+/************************************************************************************************/
+
+
+struct DebugStructs
+{
+	double		ta = 0;
+	FrameStats	fs = {};
+
+	void Update(EngineMemory* Game, double dt){UpdateFrameStats(&fs, dt);}
+};
+
+
+
+/************************************************************************************************/
+
+namespace FontUtilities
+{
+	struct FontAsset
+	{
+		size_t	FontSize = 0;;
+		bool	Unicode = false;
+
+		Texture2D	Text;
+		uint4		Padding = 0;// Ordering { Top, Left, Bottom, Right }
+
+		size_t	KerningTableSize = 0;
+		struct Kerning
+		{
+			char	ID[2];
+			float   Offset;
+		}*KerningTable;
+
+		struct Glyph
+		{
+			float2		WH;
+			float2		XY;
+			float2		Offsets;
+			float		Xadvance;
+			uint32_t	Channel;
+		}GlyphTable[256];
+
+		char	FontName[128];
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct INFOBLOCK
+	{
+		int32_t		BlockSize;
+		int16_t		FontSize;
+		uint8_t		BitField;
+		uint8_t		CharSet;
+		uint16_t	stretchH;
+		uint8_t		AA;
+		uint8_t		PaddingUp;
+		uint8_t		PaddingRight;
+		uint8_t		PaddingDown;
+		uint8_t		PaddingLeft;
+		uint8_t		SpacingHoriz;
+		uint8_t		SpacingVert;
+		uint8_t		Outline;
+		char		fontName;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct COMMONBLOCK
+	{
+		int32_t		BlockSize;
+		uint16_t	lineHeight;
+		uint16_t	Base;
+		uint16_t	ScaleW;
+		uint16_t	ScaleH;
+		uint16_t	Pages;
+		uint8_t		BitField;
+		uint8_t		alphaChannel;
+		uint8_t		RedChannel;
+		uint8_t		GreenChannel;
+		uint8_t		BlueChannel;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct CHARBLOCK
+	{
+		int32_t		BlockSize;
+		uint32_t	id;
+		uint16_t	x;
+		uint16_t	y;
+		uint16_t	width;
+		uint16_t	height;
+		uint16_t	xoffset;
+		uint16_t	yoffset;
+		uint16_t	xadvance;
+		uint8_t		page;
+		uint8_t		chnl;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct KERNINGBLOCK
+	{
+		int32_t	 BlockSize;
+		uint32_t First;
+		uint32_t Second;
+		uint16_t Amount;
+	};
+
+
+	/************************************************************************************************/
+
+	template<typename TY_A1, typename TY_A2>
+	Pair<bool, FontAsset>	LoadFontAsset(char* file, char* dir, RenderSystem* RS, TY_A1* tempMem, TY_A2* outMem)
+	{
+		char TEMP[256];
+		strcpy_s(TEMP, file);
+		strcat(TEMP, dir);
+
+		size_t Size = 1 + GetFileSize(TEMP);
+		char* mem = tempMem->malloc(Size);
+		FlexKit::LoadFileIntoBuffer(TEMP, mem, Size);
+
+		char*	FontPath;
+
+		FontAsset	Asset;
+		INFOBLOCK	Info;
+		COMMONBLOCK	CB;
+
+		FontAsset*		Fonts		= nullptr;
+		size_t			FontCount	= 0;
+
+		KERNINGBLOCK*	KBlocks		= nullptr;
+		size_t			KBlockUsed	= 0;
+
+		for (auto& K : Asset.GlyphTable )
+		{
+			K.Channel	=   0;
+			K.Offsets	= { 0,0 };
+			K.WH		= { 0.0f, 0.0f };
+			K.Xadvance	=   0;
+			K.XY		= { 0.0, 0.0 };
+		}
+
+		if (mem[0] == 'B' &&
+			mem[1] == 'M' &&
+			mem[2] == 'F' &&
+			mem[3] == 0x03)
+		{
+			size_t Position = 4;
+			while (Position < Size)
+			{
+				char* INFOTAG = (mem + Position);
+				switch (*INFOTAG)
+				{
+				case 0x01:
+				{
+					INFOBLOCK* IB = (INFOBLOCK*)(mem + ++Position);
+					char* FontName = &IB->fontName;
+					strcpy_s(Asset.FontName, FontName);
+
+					Asset.Padding[0] = IB->PaddingUp;
+					Asset.Padding[1] = IB->PaddingLeft;
+					Asset.Padding[2] = IB->PaddingDown;
+					Asset.Padding[3] = IB->PaddingRight;
+
+					Info = *IB;
+
+					Position = Position + IB->BlockSize + 4;
+				}break;
+				case 0x02:
+				{
+					COMMONBLOCK* pCB	= (COMMONBLOCK*)(mem + ++Position);
+					Position			= Position + pCB->BlockSize + 4;
+
+					FontCount	= pCB->Pages;
+					Fonts		= (FontAsset*)outMem->malloc(sizeof(FontAsset) * FontCount);
+					FontPath	= tempMem->malloc(sizeof(char[128]) * FontCount);
+
+					for (size_t I	= 0; I < FontCount; ++I)
+						Fonts[I]	= Asset;
+
+					CB = *pCB;
+				}break;
+				case 0x03:
+				{
+					int32_t BlockSize	= *(int32_t*)(mem + ++Position);
+					char*	FONTPATH	= 4 + (mem + Position);
+					size_t	PathLen		= strnlen_s(FONTPATH, BlockSize);
+
+					Position = Position + BlockSize + 4;
+
+					for (size_t I = 0; I < FontCount; ++I)
+						strcpy(FontPath + FontCount + I * PathLen, FONTPATH + I * PathLen);
+
+				}break;
+				case 0x04:
+				{
+					CHARBLOCK* pCB = (CHARBLOCK*)(mem + ++Position);
+					Asset.GlyphTable[pCB->id].Channel  = pCB->chnl;
+					Asset.GlyphTable[pCB->id].Offsets  = { float(pCB->xoffset),	float(pCB->yoffset) };
+					Asset.GlyphTable[pCB->id].WH       = { float(pCB->width),	float(pCB->height) };
+					Asset.GlyphTable[pCB->id].Xadvance = pCB->xadvance;
+					Asset.GlyphTable[pCB->id].XY       = { float(pCB->x),		float(pCB->y) };
+					Position = Position + sizeof(CHARBLOCK);
+				}break;
+				case 0x05:
+				{
+					KERNINGBLOCK* pKB = (KERNINGBLOCK*)(mem + ++Position);
+					if (KBlocks) {
+
+					}
+					else {
+
+					}
+					Position = Position + pKB->BlockSize + 4;
+				}break;
+				default:
+					break;
+				}
+			}
+		}
+
+		//LoadTextureFromFile();
+		return{ false, FontAsset() };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FreeFontAsset(FontAsset* asset)
+	{
+		FreeTexture(&asset->Text);
+	}
+
+
+	/************************************************************************************************/
+}// namespace FontUtilities
+using FontUtilities::FontAsset;
+
+void HandleMouseInput( EngineMemory* memory );
+
+struct LevelLayout
+{
+	ID3D11ShaderResourceView*	PointLights;
+	size_t						PointLightCount;
+
+
+	FrameStats T;
+	SceneNodes*	Nodes;
+
+	Player		Player1;
+	int2		MouseMove;
+
+	Scene* Scene;
+
+	Texture2D	Image;
+	FontAsset	Font;
+	SceneHandle	Geo;
+
+	FlexKit::EventNotifier<>::Subscriber sub;
+
+	struct HZB
+	{
+		typedef Handle_t<16> VisibilityHandle;
+
+		void Initiate(RenderSystem* RS, size_t x, size_t y)
+		{
+		}
+
+		void AddOccluderGeometry(TriMesh* mesh)
+		{
+		}
+
+		VisibilityHandle AddOccluder(NodeHandle, size_t meshID)
+		{
+		}
+
+		void DownSample(RenderSystem* RS)
+		{
+		}
+
+		void DrawOccluder(RenderSystem* RS)
+		{
+		}
+
+		void SampleBuffer(RenderSystem* RS)
+		{
+		}
+
+		void Draw(RenderSystem* RS)
+		{
+			DrawOccluder(RS);
+			DownSample(RS);
+			SampleBuffer(RS);
+		}
+
+		void PullResults()
+		{
+		}
+
+		bool isVisiable(VisibilityHandle hndl)
+		{
+
+		}
+		
+		ID3D11Buffer*				DepthBuffer;
+		ID3D11ShaderResourceView*	DepthRV;
+		ID3D11SamplerState*			DepthSampler;
+		ID3D11RenderTargetView*		DepthRTV;
+
+		struct GeometryTable
+		{
+			size_t			meshID;
+			ID3D11Buffer*	Transforms;
+			NodeHandle*		Handles;
+			TriMesh*		OccluderGeometry;
+		}Table;
+
+		ShaderSetHandle	FillDepthBufferShaderSet;
+		ShaderHandle	Sample;
+		//ShaderHandle	DownSample;
+	}OcclusionCuller;
+
+	DungeonGenerator		Dungeon;// = Game->TempAllocator.allocate<DungeonGenerator>();
+
+	struct DebugDrawSkeleton
+	{
+		VertexBuffer			VB;
+		FlexKit::ConstantBuffer	CB;
+		ShaderSetHandle			SSHndl;
+
+		struct VBLayout
+		{
+
+		};
+
+		struct CBLayout
+		{
+
+		};
+	};
+
+	DebugDrawSkeleton	DDSkel;
+
+	void PushSkeleton( DebugDrawSkeleton* SK, FlexKit::Skeleton* S, FlexKit::NodeHandle hndl )
+	{
+	}
+
+	void DrawSkeleton_DEBUG( DebugDrawSkeleton * SK, RenderSystem* RS)
+	{
+	}
+
+	void Update(EngineMemory* Engine, double dt)
+	{
+		UpdateFrameStats(&T, dt);
+		UpdatePlayerMovement(&Player1, Engine->KeyState, Engine->Nodes, dt);
+
+		int2 MouseMove = Engine->dMousePOS;
+		Yaw		(Engine->Nodes, Player1.Node,		Engine->MouseMovementFactor * dt * MouseMove[0]);
+		Pitch	(Engine->Nodes, Player1.PitchNode,	Engine->MouseMovementFactor * dt * MouseMove[1]);
+		MouseMove = {0, 0};
+
+		UpdateScene (Scene, Engine->RenderSystem, Engine->Nodes);
+		UpdateAnimation(Engine->RenderSystem, Scene->GetEntity(Geo), dt, &Engine->TempAllocator);
+
+		//RotateJoint(Scene->GetEntity(Geo)->PoseState, 1, Quaternion(90 * pi, 0, 0));
+		auto E = Scene->GetEntity(Geo);
+		//Yaw(Engine->Nodes, Scene->GetEntity(Geo)->Node, pi * dt * 1/2);
+		//RotateJoint(E->PoseState, E->Mesh->Skeleton->FindJoint("Root"), Quaternion( 0, dt * 180, 0));
+
+		//if (T.T > 10.0f)
+		//	StopAnimation(Scene->GetEntity(Geo), "ANIMATION");
+
+		PointLightCount	= Scene->PLightBuffer.PLightUsed;
+	}
+	
+	void Update_PreDraw(EngineMemory* Engine, double dt)
+	{
+	}
+
+	void Draw(RenderSystem* RS, Camera* C, FlexKit::ShaderTable* M)
+	{
+		DrawSkeleton_DEBUG(&DDSkel, RS);
+	}
+
+	void Cleanup(EngineMemory* Engine)
+	{
+		CleanUpScene(Scene, Engine);
+	}
+
+};
+
+#pragma comment(lib, "User32.lib")
+
+void HandleMouseInput(EngineMemory* memory, const FlexKit::Event& in)
+{
+}
+
+
+
+/************************************************************************************************/
+
+
+void ProcessDungeonBlock(void* _ptr, DungeonGenerator::Tile in[3][3], uint2 POS, uint2 BPOS, DungeonGenerator* D)
+{
+	LevelLayout* level = (LevelLayout*)_ptr;
+	if (in[1][1] == DungeonGenerator::FLOOR_Dungeon || in[1][1] == DungeonGenerator::Corridor)
+	{
+		//auto node = FlexKit::GetZeroedNode(level->Nodes);
+		//SetPositionW(level->Nodes, node, DungeonCordToTranslatePosition(D, POS, 2));
+		//level->Scene.CreateEntity(node, 0);
+		//printf("Floor Found: Position %u, %u\n", POS[0], POS[1]);
+	}
+}
+
+
+/************************************************************************************************/
+
+
+struct FontRender
+{
+	FontAsset*	Font;
+};
+
+
+/************************************************************************************************/
+
+
+void MoveFontAsset(FontAsset* S, FontAsset* D, BlockAllocator* Mem)
+{
+	*D = *S;
+	if (S->KerningTableSize && Mem)
+	{
+		// TODO(RM): HANDLE THIS CASE
+	} else {
+		D->KerningTable		= nullptr;
+		D->KerningTableSize = 0;
+	}
+}
+
+
+
+/************************************************************************************************/
+
+
+LevelLayout* CreateTestLevel(EngineMemory* Engine)
+{
+	// level Initiation
+	LevelLayout* level	= (LevelLayout*)Engine->LevelAllocator._aligned_malloc(sizeof(LevelLayout), 64);
+	level->Nodes		= Engine->Nodes;
+
+	{
+		//auto Font = FontUtilities::LoadFontAsset( "assets\\textures\\", "fontTest.fnt", Game->RenderSystem, &Game->TempAllocator, &Game->LevelAllocator );
+		//MoveFontAsset( &GetByType<FontAsset>( Font ), &level->Font, &Game->BlockAllocator );
+		//auto &F = Game->LevelAllocator.allocate<FontAsset>() = Font;
+		//Game->TempAllocator.clear();
+	}
+
+	// Setup Player
+	InitialisePlayer(&level->Player1, Engine->Nodes);
+	Engine->PlayerCam.Node	= level->Player1.PitchNode;
+
+	//SetPositionW	(Engine->Nodes, Engine->PlayerCam.Node,		{ 0.0f,		10.0f,	20.0f	});
+	SetPositionW	(Engine->Nodes, level->Player1.Node,		{ 0.0f,		10.0f,	50.0f	});
+
+	LoadSceneFromFBXFile_DESC	Desc;
+	Desc.BlockMemory	= &Engine->BlockAllocator;
+	Desc.LevelMem		= &Engine->LevelAllocator;
+	Desc.TempMem		= &Engine->TempAllocator;
+	Desc.Engine			= Engine;
+	Desc.RS				= Engine->RenderSystem;
+	Desc.SceneRoot		= Engine->RootSN;
+	Desc.ST				= &Engine->Materials;
+
+	auto Dir = SelectFile();
+	if (Dir.Valid || true)
+	{
+		//level->Scene = LoadSceneFromFBXFile("assets\\rig_asset.fbx", &Desc);
+		level->Scene = LoadSceneFromFBXFile(Dir.str, &Desc);
+		level->PointLights = level->Scene->PLightBuffer.SRV;
+		level->PointLightCount = level->Scene->PLightBuffer.PLightUsed;
+
+		for (size_t I = 0; I < level->Scene->EntitiesUsed; ++I)
+			PushPV( level->Scene->Entities + I, &Engine->PVS_ );
+
+		auto Geohndl = SearchForEntity(level->Scene, "AS");
+		if (Geohndl)
+		{
+			level->Geo = Geohndl;
+			auto pGeo = level->Scene->GetEntity(Geohndl);
+			PlayAnimation(pGeo, "ANIMATION", &Engine->BlockAllocator);
+				FlexKit::PrintSkeletonBones(pGeo->Mesh->Skeleton);
+		}
+		else
+		{
+			Geohndl = SearchForEntity(level->Scene, "Geo");
+			if (Geohndl)
+			{
+				level->Geo = Geohndl;
+				auto pGeo = level->Scene->GetEntity(Geohndl);
+				PlayAnimation(pGeo, "ANIMATION", &Engine->BlockAllocator);
+				FlexKit::PrintSkeletonBones(pGeo->Mesh->Skeleton);
+			}
+		}
+	}
+
+
+#if(0)
+	//level->Dungeon.Generate();
+	//level->Dungeon.PrintDungeon();
+
+	level->Dungeon.DungeonScanCallBack(&ProcessDungeonBlock, level);
+	level->Skeleton.InitiateSkeleton(&Game->LevelAllocator, 64);
+	level->Pose.InitiatePose(&Game->LevelAllocator, &level->Skeleton);
+	level->AnimationTest.InitiateAnimationController(&Game->LevelAllocator, &level->Skeleton, &level->Pose);
+#endif
+
+	// Hook Input
+	level->sub.Notify	= &TestMode_HandleEvents;
+	level->sub._ptr		= Engine;
+
+	Engine->Window.Handler.Subscribe(level->sub);
+	Engine->MouseHandler	= &HandleMouseInput;
+	Engine->Level			= level;
+
+	return level;
+}
+
+
+/************************************************************************************************/
+
+#include "..\coreutilities\Signal.h"
+
+void TestMode( EngineMemory* Engine )
+{
+	InitEngine( Engine );
+	GameLoop( Engine, CreateTestLevel( Engine ) );
+}
+
+
+/************************************************************************************************/

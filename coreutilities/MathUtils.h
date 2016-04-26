@@ -1,0 +1,1529 @@
+/**********************************************************************
+
+Copyright (c) 2015 - 2016 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+
+#ifdef _WIN32
+#pragma once
+#endif
+
+#ifndef cMyMath_H_INCLUDED
+#define cMyMath_H_INCLUDED
+
+#pragma warning ( disable : 4244 )
+
+// Includes
+#include "..\buildsettings.h"
+#include "containers.h"
+#include <math.h>
+#include <stdint.h>
+#include <string>
+#include <emmintrin.h>
+#include <xmmintrin.h>
+#include <initializer_list>
+
+using namespace std;
+
+namespace FlexKit
+{
+	/************************************************************************************************/
+	
+	template<typename TY_1, typename TY_2> auto floor(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x); }
+	template<typename TY_1, typename TY_2> auto min  (TY_1 x, TY_2 y)	{ return ((x > y) ? y : x); }
+	template<typename TY_1, typename TY_2> auto max  (TY_1 x, TY_2 y)	{ return ((x > y) ? x : y); }
+	template<typename TY_1, typename TY_2> auto fmod (TY_1 x, TY_2 y)	{ return ((x < y) ? x : x%y); }
+
+	/************************************************************************************************/
+
+	static const double	pi = 3.141592653589793;
+	static const unsigned int Matrix_Size = 16;
+
+	static const size_t X = 0;
+	static const size_t Y = 1;
+	static const size_t Z = 2;
+
+	template<size_t N>	inline int Factorial	() { return N * Factorial<N-1>(); }
+	template<>			inline int Factorial<1>	() { return 1; }
+
+	template<typename Ty> static Ty DegreetoRad( Ty deg ) { return (Ty)(deg * pi ) /180; }
+	template<typename Ty> static Ty RadToDegree( Ty deg ) { return (Ty)(deg * 180) / pi; }
+
+	template<typename TY, typename TY_C, typename FN>
+	inline TY GetMax(TY_C C, FN READ)
+	{
+		TY M = 0;
+		for (auto& c : C)
+			M = MAX(M, READ(c));
+
+		return M;
+	}
+
+	template<typename TY, typename TY_C, typename FN>
+	inline TY GetMin(TY_C C, FN READ)
+	{
+		TY M = 0;
+		for (auto& c : C)
+			M = MIN(M, READ(c));
+
+		return M;
+	}
+
+	template<typename TY, typename FN>
+	inline TY Simpson_Integrator( TY A, TY B, int N, FN F_X)
+	{
+		TY Acc   = 0;
+		TY S	 = (B - A) / N;
+
+		double S_1 = 0;
+		double S_2 = 0;
+
+		for ( int I = 1; I < N; I += 2 )
+			S_1 += F_X( A + I * S );
+		for ( int I = 2; I < N; I += 2 )
+			S_2 += F_X( A + I * S );
+
+		Acc = F_X(A) + F_X(B) + (S_1 * 4) + (S_2 * 2);
+		return Acc / 3 * S;
+	}
+
+	typedef float FxDef(float);
+
+	template<size_t Iterations>
+	float newtonmethod( FxDef fX, FxDef fprimeX, float initial )
+	{
+		float V = 0;
+
+		for (unsigned int i = 0; i < Iterations; ++i)
+			V = (V - (fx(V) / fpx(V)));
+
+		return V;
+	}
+
+	/************************************************************************************************/
+
+	template< unsigned int SIZE, typename TY = float >
+	class Vect
+	{
+		typedef Vect<SIZE, TY> THISTYPE;
+	public:
+		Vect()
+		{
+		}
+
+		Vect( TY n )
+		{
+			for( auto e : Vector )
+				e = n;
+		}
+		template<typename TY_2>
+		Vect( Vect<SIZE, TY_2> in)
+		{
+			for (size_t I=0; I<SIZE; ++I)
+				Vector[I] = in[I];
+		}
+
+		Vect( std::initializer_list<TY> il )
+		{
+			size_t itr = 0;
+			for( auto n : il )
+			{
+				Vector[itr++] = n;
+				if( itr > SIZE )
+					return;
+			}
+		}
+
+		template< typename TY_i >
+		Vect<SIZE, TY>	operator *( TY_i scaler )
+		{
+			Vect<SIZE, TY>	out;
+			size_t i = 0;
+			for( auto element : Vector )
+			{
+				out[i] = element * scaler;
+				++i;
+			}
+			return out;
+		}
+
+		template< typename TY_i >
+		Vect<SIZE, TY>	operator *( Vect<SIZE, TY_i> rhs )
+		{
+			Vect<SIZE, TY>	out;
+			for (auto i = 0; i < SIZE; ++i)
+				out[i]= Vector[i] * rhs[i];
+			return out;
+		}
+
+		template< typename TY_i >
+		Vect<3, TY>	Cross( Vect<3, TY_i> rhs )
+		{
+			Vect<SIZE, TY> out;
+			for( size_t i = 0; i < SIZE; ++i )
+				out[i] = ( Vector[(1+i)%SIZE] * rhs[(2+i)%SIZE] ) - ( rhs[(1+i)%SIZE] * Vector[(2+i)%SIZE] );
+			return out;
+		}
+
+		template< typename TY_i >
+		TY Dot( const Vect<SIZE, TY_i>& rhs ) const
+		{
+			TY dotproduct = 0;
+			for( size_t i = 0; i < SIZE; ++i )
+				dotproduct += rhs[i] * Vector[i];
+
+			return dotproduct;
+		}
+
+		template< typename TY_i >
+		TY Dot( const Vect<SIZE, TY_i>* rhs_ptr )
+		{
+			auto& rhs = *rhs_ptr;
+			Vect<SIZE> products;
+			for( size_t i = 0; i < SIZE; ++i )
+				products[i] += rhs[i] * Vector[i];
+
+			return products.Sum();
+		}
+
+		TY Norm( unsigned int exp = 2 )
+		{
+			TY sum = 0;
+			for( auto element : Vector )
+			{
+				TY product = 0;
+				for( size_t i = 0; i < SIZE; i++ )
+					product *= element;
+				sum += product;	
+			}
+
+			return pow( sum, 1/SIZE );
+		}
+
+		TY Magnitude()
+		{
+			TY sum = 0;
+			for( auto element : Vector )
+			{
+				sum += element * element;	
+			}
+
+			return sqrt( sum );
+		}
+
+		TY& operator []( size_t index )
+		{
+			return Vector[index];
+		}
+
+		const TY& operator []( size_t index ) const
+		{
+			return Vector[index];
+		}
+
+		TY Sum() const
+		{
+			TY sum = 0;
+			for( auto element : Vector )
+				sum += element;
+			return sum;
+		}
+
+		TY Product() const
+		{
+			TY Product = 1;
+			for( auto element : Vector )
+				Product *= element;
+			return Product;
+		}
+
+		template<typename TY_2>
+		THISTYPE operator + (const Vect<SIZE, TY_2>& in)
+		{
+			THISTYPE temp = *this;
+			for (auto I = 0; I < SIZE; ++I)
+				temp[I] += in[I];
+			
+			return temp;
+		}
+
+		template<typename TY_2>
+		THISTYPE& operator += (const Vect<SIZE, TY_2>& in)
+		{
+			for (auto I = 0; I < SIZE; ++I)
+				Vector[I] += in[I];
+			
+			return *this;
+		}
+
+		template<typename TY_2>
+		THISTYPE operator - (const Vect<SIZE, TY_2>& in)
+		{
+			THISTYPE temp = *this;
+			for (auto I = 0; I < SIZE; ++I)
+				temp[I] -= in[I];
+			
+			return temp;
+		}
+
+		template<typename TY_2>
+		THISTYPE& operator -= ( const Vect<SIZE, TY_2>& in )
+		{
+			for (auto I = 0; I < SIZE; ++I)
+				Vector[I] -= in[I];
+			
+			return *this;
+		}
+
+		template<typename TY_2>
+		THISTYPE& operator = (const Vect<SIZE, TY_2>& in)
+		{
+			for (auto I = 0; I < SIZE; ++I)
+				Vector[I] = in[I];
+			
+			return *this;
+		}
+
+		template<typename TY_2>
+		THISTYPE& operator = ( const std::initializer_list<TY_2>& il )
+		{
+			size_t itr = 0;
+			for( auto n : il )
+			{
+				Vector[itr++] = n;
+				if( itr > SIZE )
+					break;
+			}
+			return *this;
+		}
+
+		static THISTYPE Zero()
+		{
+			THISTYPE zero;
+			for( auto element : zero.Vector )
+				element = 0;
+
+			return zero;
+		}
+
+		TY Vector[SIZE];
+	};
+
+	/************************************************************************************************/
+
+	typedef Vect<2> Vect2;
+	typedef Vect<3> Vect3;
+	typedef Vect<4> Vect4;
+	
+	typedef Vect<3, double> double3;
+	typedef Vect<4, double> double4;
+	
+	typedef Vect<2, size_t> uint2;
+	typedef Vect<3, size_t> uint3;
+	typedef Vect<4, size_t> uint4;
+	typedef Vect<4, uint16_t> uint4_16;
+	typedef Vect<4, uint32_t> uint4_32;
+
+	typedef Vect<2, int> int2;
+	typedef Vect<3, int> int3;
+	typedef Vect<4, int> int4;
+
+	/************************************************************************************************/
+
+	union float2
+	{
+	public:
+		float2() : x(0), y(0) {}
+		float2( float X, float Y )
+		{
+			x = X;
+			y = Y;
+		}
+
+		inline bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
+
+		inline float&	operator[] ( size_t i )
+		{	
+		#ifdef _DEBUG
+			FK_ASSERT( i < 2 );
+		#endif
+			return i ? y : x;
+		}
+
+		inline float operator[] ( size_t i ) const
+		{
+#ifdef _DEBUG
+			FK_ASSERT( i < 2 );
+#endif
+			return i ? y : x;
+		}
+
+		inline float2 operator + ( const float2& a ) const { return float2( this->x + a.x, this->y + a.y );				}
+		inline float2 operator + ( const float   a ) const { return float2( x + a, y + a );								}
+		inline float2 operator - ( const float2& a ) const { return float2( x - a.x, y - a.y );							}
+		inline float2 operator - ( const float   a ) const { return float2( this->x - a, this->y - a );					}
+		inline float2 operator * ( const float2& a ) const { return float2( this->x * a.x, this->y * a.y );				}
+		inline float2 operator * ( const float   a ) const { return float2( this->x * a, this->y * a );					}
+		inline float2 operator +=( const float2& a ) const { return float2( this->x + a.x, this->y + a.y );				}
+		inline float2 operator / ( const float2& a ) const { return float2( this->x / a.x, this->y / a.y );				}
+		inline float2 operator / ( const float   a ) const { return float2( this->x / a, this->y / a );					}
+		inline float2 operator % ( const float2& a ) const { return float2( std::fmodf(x, a.x), std::fmodf(y, a.y));	}
+
+		inline void Add( const float2& lhs, const float2& rhs )
+		{
+			x = lhs.x + rhs.x;
+			y = lhs.y + rhs.y;
+		}
+
+		struct
+		{
+			float x, y;
+		};
+
+		float XY[2];
+
+	};
+
+	template<typename TY_> float2 operator + (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x + RHS[0], LHS.y + RHS[1] };}
+	template<typename TY_> float2 operator - (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x - RHS[0], LHS.y - RHS[1] };}
+	template<typename TY_> float2 operator * (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x * RHS[0], LHS.y * RHS[1] };}
+	template<typename TY_> float2 operator / (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x / RHS[0], LHS.y / RHS[1] };}
+
+	/************************************************************************************************/
+
+	inline float DotProduct3(const __m128& lhs, const __m128& rhs)
+	{
+#if USING(FASTMATH)
+		__m128 res = _mm_dp_ps(lhs, rhs, 0xFF);
+		return res.m128_f32[3];
+#else
+		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
+#endif
+	}
+	
+	inline float DotProduct4(const __m128& lhs, const __m128& rhs)
+	{
+#if USING(FASTMATH)
+		__m128 res = _mm_dp_ps(lhs, rhs, 0xFF);
+		return res.m128_f32[0];
+#else
+		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
+#endif
+	}
+
+	inline __m128 CrossProductSlow(const __m128 lhs, const __m128 rhs)
+	{
+		__m128 out = _mm_set1_ps(0);
+		out.m128_f32[0] = ( lhs.m128_f32[1] * rhs.m128_f32[2] ) - ( lhs.m128_f32[2] * rhs.m128_f32[1] );
+		out.m128_f32[1] = ( lhs.m128_f32[2] * rhs.m128_f32[0] ) - ( lhs.m128_f32[0] * rhs.m128_f32[2] );
+		out.m128_f32[2] = ( lhs.m128_f32[0] * rhs.m128_f32[1] ) - ( lhs.m128_f32[1] * rhs.m128_f32[0] );
+		return out;
+	}
+	
+
+	inline __m128 CrossProduct( __m128& a, __m128& b )
+	{
+#if USING(FASTMATH)
+		__m128 temp1 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6));
+		__m128 temp2 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6));
+		__m128 res	 = _mm_sub_ps(temp1, temp2);
+		res.m128_f32[3] = 0;
+		return res;
+#else
+		return CrossProductSlow(a, b);
+#endif
+	}
+
+	union Quaternion;
+	FLEXKITAPI Quaternion GrassManProduct( Quaternion& lhs, Quaternion& rhs );
+
+	/************************************************************************************************/
+
+	__declspec( align( 16 ) ) union float3
+	{
+	public:
+		float3() {}
+
+		template<class TY>
+		float3(std::initializer_list<TY> il)
+		{
+			__m128 V = _mm_set1_ps(0.0f);
+			auto n = il.begin();
+			for( size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n )
+				V.m128_f32[itr] = *n;
+
+			pfloats = V;
+		}
+
+#if USING( FASTMATH )
+
+		inline float3 ( float val )						{ pfloats = _mm_set_ps1(val);					}
+		inline float3 ( float X, float Y, float Z )		{ pfloats = _mm_set_ps(0.0f, Z, Y, X);			}
+		inline float3 ( const float2 in )				{ pfloats = _mm_set_ps(in.x, in.y, 0.0f, 0.0f);	}
+		inline float3 ( const float3& a )				{ _mm_store_ps(pfloats.m128_f32, a.pfloats); 	}
+		inline float3 ( const __m128& in )				{ _mm_store_ps(pfloats.m128_f32, in);			}
+
+#else
+
+		inline float3 ( float val )						{ x = y = z = val;								}
+		inline float3 ( float X, float Y, float Z )		{ x = X, y = Y, z = Z;							}
+		inline float3 ( const float3& a )				{ x = a.x, y = a.y, z = a.z;					}
+		inline float3 ( const __m128& in )				{ pfloats = in;									}
+		inline float3 ( const float2 in )				{ x = in.x, y = in.y;							}
+
+#endif
+
+		inline float3 xy() { return float3(x, y, 0.0f); }
+		inline float3 xz() { return float3(x, 0.0f, z); }
+		inline float3 yz() { return float3(0.0f, y, z); }
+
+		
+		inline float3( std::initializer_list<float> il )
+		{
+			auto n  = il.begin();
+			pfloats = _mm_set_ps1(0);
+
+			for (size_t itr = 0; n != il.end() && itr < 3; ++itr, ++n)
+				pfloats.m128_f32[itr] = *n;
+
+		}
+
+		
+		inline float& operator[] ( const size_t index )		  { return pfloats.m128_f32[index]; }
+		inline float operator[]  ( const size_t index )	const { return pfloats.m128_f32[index]; }
+		// Operator Overloads
+		inline float3 operator - ()							  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+		inline float3 operator - ()	const					  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
+		inline float3 operator + ( const float& rhs )	const { return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
+		inline float3 operator + ( const float3& rhs )	const { return _mm_add_ps(pfloats, rhs); }
+
+
+		inline float3& operator += ( const float3& rhs )
+		{
+#if USING(FASTMATH)
+			pfloats = _mm_add_ps(pfloats, rhs);
+#else
+			x += rhs.x;
+			y += rhs.y;
+			z += rhs.z;
+#endif
+			return *this;
+		}
+
+
+		inline float3 operator - ( const float rhs ) const
+		{
+#if USING(FASTMATH)
+			return _mm_sub_ps(pfloats, _mm_set1_ps(rhs));
+#else
+			return float3( x - rhs, y - rhs, z - rhs );
+#endif
+		}
+
+		
+		inline float3& operator -= ( const float3& rhs )
+		{
+#if USING(FASTMATH)
+			pfloats = _mm_sub_ps(pfloats, rhs.pfloats);
+#else
+			x -= rhs.x;
+			y -= rhs.y;
+			z -= rhs.z;
+#endif
+			return *this;
+		}
+
+		
+		inline bool operator == ( const float3& rhs ) const
+		{
+			if( rhs.x == x )
+				if( rhs.y == y )
+					if( rhs.z == z )
+						return true;
+			return false;
+		}
+
+		
+		inline float3 operator - ( const float3& a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_sub_ps(pfloats, a);
+#else
+			return float3( x - a.x, y - a.y, z - a.z );
+#endif
+		}
+		
+		static inline bool Compare(const float3& lhs, const float3& rhs, float ep = .001)
+		{
+			float3 temp = lhs - rhs;
+			return (temp.x < ep) && (temp.y < ep)  && (temp.z < ep);
+		}
+		
+		inline float3 operator *	( const float3& a )		const { return float3( x * a.x, y * a.y, z * a.z );	}
+		inline float3 operator *	( const float a )		const {	return float3( x * a, y * a, z * a );		}
+		
+		inline float3& operator *=	( const float3& a )		
+		{
+			x *= a.x;
+			y *= a.y;
+			z *= a.z;
+			return *this;
+		}
+
+		inline float3& operator *= ( float a )
+		{
+			x *= a;
+			y *= a;
+			z *= a;
+			return *this;
+		}
+
+		inline float3 operator / ( const float& a ) const
+		{
+			return float3( x / a, y / a, z / a );
+		}
+
+		inline float3& Scale( float S )
+		{
+#if USING(FASTMATH)
+			pfloats = _mm_mul_ps(pfloats, _mm_set1_ps(S));
+#else
+			(*this)[0] *= S;
+			(*this)[1] *= S;
+			(*this)[2] *= S;
+			return *this;
+#endif
+		}
+
+		inline float3 inverse()
+		{
+			return float3( -x, -y, -z );
+		}
+
+		// Identities
+		inline float3 cross( float3& rhs ) 
+		{
+			return CrossProduct( pfloats, rhs.pfloats );
+		}
+		 
+
+		inline float3 distance( float3 &b )
+		{
+			return b.magnitude() - magnitude();
+		}
+
+		//inline float dot( const float3 &b ) {
+		//	return ( x * b.x )+( y * b.y )+( z * b.z );
+		//}
+
+		inline float dot( const float3 &b ) const 
+		{
+			return DotProduct3(pfloats, b.pfloats);
+		}
+
+
+		// Slow due to the use of a square root
+		inline float magnitude() const 
+		{
+#if USING(FASTMATH)
+			__m128 r = _mm_mul_ps(pfloats, pfloats);
+			r = _mm_hadd_ps(r, r);
+			r = _mm_hadd_ps(r, r);
+			return _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(r.m128_f32[0])).m128_f32[0];
+#else
+			return ::std::sqrt( ( x*x ) + ( y*y ) + ( z*z ) );
+#endif
+		}
+
+
+		inline float magnitudesquared() const 
+		{
+#if USING(FASTMATH)
+			__m128 r = _mm_mul_ps(pfloats, pfloats);
+			r = _mm_hadd_ps(r, r);
+			r = _mm_hadd_ps(r, r);
+			return r.m128_f32[0];
+#else		
+			return ( x*x ) + ( y*y ) + ( z*z );
+#endif
+		}
+
+		// Slow uses Square roots
+		inline void normalize() 
+		{
+#if USING(FASTMATH)
+			//pfloats.m128_f32[3] = 0;
+			__m128 sq = _mm_mul_ps(pfloats, pfloats);
+			sq = _mm_hadd_ps(sq, sq);
+			sq = _mm_hadd_ps(sq, sq);
+			sq = _mm_mul_ps(_mm_rsqrt_ps(sq), pfloats);
+			pfloats = sq;
+#else
+			float3 temp = *this;
+			pfloats = temp / magnitude();
+#endif
+		}
+
+		inline float3 normal() 
+		{
+#if USING(FASTMATH)
+			//pfloats.m128_f32[3] = 0;
+			__m128 sq = _mm_mul_ps(pfloats, pfloats);
+			sq = _mm_hadd_ps(sq, sq);
+			sq = _mm_hadd_ps(sq, sq);
+			sq = _mm_mul_ps(_mm_rsqrt_ps(sq), pfloats);
+			return sq;
+#else
+			float3 temp = *this;
+			pfloats = temp / magnitude();
+#endif
+		}
+
+
+		operator __m128 () const	 {return pfloats;}
+		inline float* toFloat3_ptr() {return reinterpret_cast<float*>( &pfloats );}
+
+		operator Vect3 () const		 {return{ x, y, z };};
+
+		struct
+		{
+			float x, y, z, PAD;
+		};
+
+		__m128	pfloats;
+
+		private:
+		static float3 SetVector(float in)
+		{
+			float3 V;
+			V.x = in;
+			V.y = in;
+			V.z = in;
+			return V;
+		}
+	};
+
+	/************************************************************************************************/
+
+//#if USING(X64EXE)
+	inline float3 operator* ( float s, float3 V )
+//#else
+//#if USING(X86EXE)
+//	inline float3 operator* ( float s, float3& V )
+//#endif
+//#endif
+	{
+#if USING(FASTMATH)
+		return _mm_mul_ps(V, _mm_set1_ps(s));
+#else
+		return V*s;
+#endif
+	}
+
+	inline float3 RotateVectorAxisAngle( float3 N, float a, float3 V ) { return V*cos(a) + (V.dot(N) * N * (1-cos(a)) + (N.cross(V)*sin(a)));	}
+	
+	__declspec( align( 16 ) ) union float4
+	{
+	public:
+		float4() {}
+
+		inline float4( float r ) 
+		{
+#if USING(FASTMATH)
+			pFloats = _mm_set1_ps(r);
+#else
+			x = r;
+			y = r;
+			z = r;
+			w = r;
+#endif
+		}
+
+		inline float4( float X, float Y, float Z, float W  ) 
+		{
+#if USING(FASTMATH)
+			pFloats = _mm_set_ps(W, Z, Y, X);
+#else
+			x = X;
+			y = Y;
+			z = Z;
+			w = W;
+#endif
+		}
+
+		inline float4( const float3& V, float W  ) 
+		{
+			x = V[0];
+			y = V[1];
+			z = V[2];
+			w = W;
+		}
+
+		inline float4( __m128 in ) : pFloats(in){}
+
+		inline float4( const float2& V1, const float2& V2  ) 
+		{
+			x = V1[0];
+			y = V1[1];
+			z = V2[0];
+			w = V2[1];
+		}
+
+		inline float4( std::initializer_list<float> il )
+		{
+			auto n = il.begin();
+			for (size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n)
+				pFloats.m128_f32[itr] = *n;
+		}
+
+		inline operator float*	 ()								{ return pFloats.m128_f32;} 
+		inline float& operator[] ( const size_t index )			{ return pFloats.m128_f32[index]; }
+		inline float operator[]  ( const size_t index )	const	{ return pFloats.m128_f32[index]; }
+		inline operator __m128	 ()						const	{ return pFloats;} 
+
+		inline float4 operator+ ( const float4& a ) const 
+		{
+#if USING(FASTMATH)
+			return _mm_add_ps(pFloats, a.pFloats);
+#else
+			return float4(	x + a.x, 
+							y + a.y, 
+							z + a.z, 
+							w + a.w );
+#endif
+		}
+
+		inline float4 operator+ ( const float a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_add_ps(pFloats, _mm_set1_ps(a));
+#else
+			return float4(	x + a, 
+							y + a, 
+							z + a, 
+							w + a );
+#endif
+		}
+
+		inline float4 operator- ( const float4& a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_sub_ps(pFloats, a);
+#else
+			return float4(	x - a.x, 
+							y - a.y, 
+							z - a.z, 
+							w - a.w );
+#endif
+		}
+		inline float4 operator- ( const float a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_sub_ps(pFloats, _mm_set1_ps(a));
+#else
+			return float4(	x - a, 
+							y - a, 
+							z - a, 
+							w - a );
+#endif
+		}
+
+		inline float4 operator* ( const float4 a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_mul_ps(pFloats, a);
+#else
+			return float4(	x * a.x, 
+							y * a.y, 
+							z * a.z, 
+							w * a.w );
+#endif
+		}
+
+		inline float4 operator* ( const float a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_mul_ps(pFloats, _mm_set1_ps(a));
+#else
+			return float4(	x * a, 
+							y * a, 
+							z * a, 
+							w * a );
+#endif
+		}
+
+		inline float4 operator += ( const float4& a )
+		{
+#if USING(FASTMATH)
+			_mm_store_ps(pFloats.m128_f32, _mm_mul_ps(pFloats, a));
+#else
+			return float4(	x + a.x, 
+							y + a.y, 
+							z + a.z, 
+							w + a.w );
+#endif
+			return pFloats;
+		}
+
+		inline float4 operator / ( const float4& a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_div_ps(pFloats, a);
+#else
+			return float4(	x / a.x, 
+							y / a.y, 
+							z / a.z, 
+							w / a.w );
+#endif
+		}
+
+		inline float4 operator / ( const float a ) const
+		{
+#if USING(FASTMATH)
+			return _mm_div_ps(pFloats, _mm_set1_ps(a));
+#else
+			return float4(	x / a, 
+							y / a, 
+							z / a, 
+							w / a );
+#endif
+		}
+
+		inline float4 operator % ( const float4& a ) const
+		{
+			return float4(	std::fmodf( x, a.x ), 
+							std::fmodf( y, a.y ),
+							std::fmodf( z, a.z ),
+							std::fmodf( w, a.w ) );
+		}
+
+		struct
+		{
+			float x, y, z, w;
+		};
+
+		float3 xyz()
+		{
+			return{ x, y, z, 0 };
+		}
+
+		operator Vect4 ()		{ return{ x, y, z }; };
+		operator Vect4 () const { return{ x, y, z }; };
+
+		__m128 pFloats;
+	};
+
+	inline float F4Dot(float4 rhs, float4 lhs)	{ return DotProduct4(lhs, rhs); }
+
+	/************************************************************************************************/
+
+	__declspec( align( 16 ) ) union Quaternion
+	{
+	public:
+		inline Quaternion() {}
+		
+		inline explicit Quaternion( const float3& vector, float scaler )
+		{
+#if USING(FASTMATH)
+			floats = _mm_set_ps(scaler, vector[2], vector[1],vector[0]);
+#else
+			x = vector[0];
+			y = vector[1];
+			z = vector[2];
+			w = scaler;
+#endif
+		}
+
+		inline Quaternion( float X, float Y, float Z, float W )
+		{
+#if USING(FASTMATH)
+			floats = _mm_set_ps(W, Z, Y, X);
+#else
+			x = X;
+			y = Y;
+			z = Z;
+			w = W;
+#endif
+		}
+
+		inline Quaternion( std::initializer_list<float> il )
+		{
+			auto n = il.begin();
+			for (size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n)
+				floats.m128_f32[itr] = *n;
+		}
+
+		inline Quaternion( __m128 in )
+		{
+			floats = in;
+		}
+
+		inline Quaternion( float* in )
+		{
+			memcpy( floats.m128_f32, in, sizeof( floats ) );
+		}
+
+		inline Quaternion( const Quaternion& in ) : 
+			floats( in.floats )
+		{
+		}
+
+		template<typename TY>
+		Quaternion( std::initializer_list<TY> il )
+		{
+			auto IV = il.begin();
+			floats = _mm_set_ps(0.0f, 0.0f, 0.0f, 0.0f);
+			for( size_t I = 0; I < FlexKit::min(il.size(), 4); ++I  )
+			{
+				float V = *IV;
+				floats.m128_f32[I] = V;
+				IV++;
+			}
+		}
+
+		inline explicit Quaternion( float dX, float dY, float dZ ) // Degrees to Quat
+		{
+			FlexKit::Quaternion X, Y, Z;
+			X.Zero();
+			Y.Zero();
+			Z.Zero();;
+			
+			float dX1_2 = FlexKit::DegreetoRad( dX / 2 );
+			float dY1_2 = FlexKit::DegreetoRad( dY / 2 );
+			float dZ1_2 = FlexKit::DegreetoRad( dZ / 2 );
+
+			X.x = std::sin( dX1_2 );
+			X.w = std::cos( dX1_2 );
+			Y.y = std::sin( dY1_2 );
+			Y.w = std::cos( dY1_2 );
+			Z.z = std::sin( dZ1_2 );
+			Z.w = std::cos( dZ1_2 );
+
+			( *this ) = X * Y * Z;
+		}
+
+		inline Quaternion	operator * ( Quaternion& q ) {return GrassManProduct(*this, q);}
+
+		inline float3		operator * ( float3& V )
+		{
+			auto v = XYZ() * -1;
+			auto vXV = v.cross(V);
+			auto test = v.cross(vXV);
+			auto ret = float3(V + (vXV * (2 * w)) + (v.cross(vXV) * 2));
+
+			return ret;
+		}
+
+		inline Quaternion operator * ( float scaler )
+		{
+			__m128 r = floats; 
+			__m128 s = _mm_set1_ps(scaler); 
+			return _mm_mul_ps(r, s);
+		}
+
+		inline Quaternion& operator *= ( Quaternion& rhs )
+		{
+			return (*this)*rhs;
+		}
+
+		inline Quaternion& operator = ( Quaternion& rhs )
+		{
+			floats = rhs.floats;
+			return (*this);
+		}
+
+		inline Quaternion& operator = ( __m128 rhs )
+		{
+			floats = rhs;
+			return (*this);
+		}
+
+		inline float& operator [] ( const size_t index )		{ return floats.m128_f32[index]; }
+		inline float operator  [] ( const size_t index ) const	{ return floats.m128_f32[index]; }
+
+		inline operator		  float* ()			{ return floats.m128_f32; }
+		inline operator const float* () const	{ return floats.m128_f32; }
+		inline operator		  __m128 ()			{ return floats; }
+		inline operator const __m128 () const	{ return floats; }
+
+		template< typename Ty_2 >
+		inline Quaternion& operator = ( const float4& rhs )
+		{
+			x = rhs.x;
+			y = rhs.y;
+			z = rhs.z;
+			w = rhs.w;
+
+			return (*this);
+		}
+
+		inline Quaternion Conjugate() 
+		{
+			Quaternion Conjugate;
+#if USING(FASTMATH)
+			Conjugate = _mm_mul_ps(_mm_set_ps(1, -1, -1, -1), floats);
+#else
+			Conjugate.x = -x;
+			Conjugate.y = -y;
+			Conjugate.z = -z;
+			Conjugate.w = w;
+#endif
+			return Conjugate;
+		}
+		inline Quaternion Inverse() { return  Conjugate(); }
+
+		inline float3 XYZ() const { return float3(x, y, z); }
+		inline float3 V()   const { return float3(x, y, z); }
+
+		inline float Magnitude()
+		{
+#if USING( FASTMATH )
+			__m128 q2 = _mm_mul_ps(floats, floats);
+			q2 = _mm_hadd_ps(q2, q2);
+			q2 = _mm_hadd_ps(q2, q2);
+			return q2.m128_f32[0];
+#else
+			return x * x + y * y + z * z + w * w;
+#endif
+		}
+
+		inline Quaternion normalize() 
+		{
+			float mag2 = Magnitude();
+			if( mag2 != 0 && ( fabs( mag2 - 1.0f ) > .00001f ) )
+			{
+#if USING(FASTMATH)
+
+				__m128 rsq = _mm_rsqrt_ps(_mm_set1_ps(mag2));
+				floats = _mm_mul_ps(rsq, floats);
+#else
+				float mag  = sqrt( mag2 );
+				w = w / mag;
+				x = x / mag;
+				y = y / mag;
+				z = z / mag;
+#endif
+			}
+			return *this;
+		}
+
+		inline void Zero() 
+		{
+#if USING(FASTMATH)
+			floats = _mm_set1_ps(0);
+#else
+			x = 0;
+			y = 0;
+			z = 0;
+			w = 0;
+#endif
+		}
+
+		static Quaternion Identity()
+		{
+			Quaternion Q(0.0f, 0.0f, 0.0f, 1.0f);
+			return Q;
+		}
+
+		struct
+		{
+			float x, y, z, w;
+		};
+
+		 __m128	floats;
+	};
+
+	enum XYZ
+	{
+		x = 0,
+		y = 0,
+		z = 0
+	};
+
+
+	/************************************************************************************************/
+	
+
+	inline float3	Vect3ToFloat3(Vect3 R3) {return {R3[0], R3[1], R3[2]};}
+	inline Vect3	Float3ToVect3(float3 R3){return {R3[0], R3[1], R3[2]};}
+	
+	inline float4	Vect4ToFloat4(Vect4  R4){return {R4[0], R4[1], R4[2], R4[3]};}
+	inline Vect4	Float4ToVect4(float3 R4){return {R4[0], R4[1], R4[2], R4[3]};}
+
+
+	/************************************************************************************************/
+
+
+	inline float Vect4FDot( const Vect4& lhs, const Vect4& rhs )
+	{
+		auto temp1 = _mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
+		auto temp2 = _mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
+
+		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
+
+		return res.m128_f32[3];
+	}
+
+
+	/************************************************************************************************/
+
+	// Row Major
+	template< const int ROW, const int COL, typename Ty = float >
+	class __declspec( align( 64 ) ) Matrix
+	{
+	public:
+		Matrix(){}
+
+		template< const int RHS_COL >
+		Matrix<ROW, RHS_COL>	operator*( const Matrix<ROW, RHS_COL>& rhs )
+		{
+			static_assert( ROW == RHS_COL, "ROW AND RHS COLS DO NOT MATCH" );
+			Matrix<ROW, RHS_COL> out;
+			auto transposed = rhs.Transpose();
+
+			for( size_t i = 0; i < ROW; ++i )
+			{
+				const auto v = *((Vect<4>*)matrix[i]);
+				for( size_t i2 = 0; i2 < COL; ++i2 )
+				{
+					const auto v2 = *((Vect<4>*)transposed[i2]);
+					out[i][i2] = v.Dot(v2);
+				}
+			}
+			return out;
+		}
+
+		Vect<COL, Ty> operator*( const Vect<COL, Ty>& rhs )
+		{// TODO: FAST PATH
+			Vect<COL, Ty> out;
+			auto T = Transpose();
+			for( size_t i = 0; i < ROW; ++i )
+			{
+				const auto v = T[i];
+				out[i] = v.Dot(rhs);
+			}
+			return out;
+		}
+
+		template<>
+		Matrix<4, 4> operator*( const Matrix<4, 4>& rhs )
+		{
+			Matrix<4, 4> out;
+			auto transposed = rhs.Transpose();
+
+			for( size_t i = 0; i < ROW; ++i )
+			{
+				const auto v = *((Vect<4>*)matrix[i]);
+				for( size_t i2 = 0; i2 < COL; ++i2 )
+				{
+					const auto v2 = transposed[i2];
+					out[i][i2] = Vect4FDot(v, v2);
+				}
+			}
+			return out;
+		}
+
+		Vect<ROW>& operator[] ( size_t i )
+		{
+			return *((Vect<ROW>*)matrix[i]);
+		}
+
+		const float* operator[] ( size_t i ) const
+		{
+			return matrix[i];
+		}
+
+		static inline Matrix<ROW, COL> Identity()
+		{
+			Matrix<ROW, COL> m = Zero();
+
+			for( size_t i = 0; i < ROW; i++ )
+				m[i][i] = 1;
+
+			return m;
+		}
+
+		static inline Matrix<ROW, COL> Zero()
+		{
+			Matrix<ROW, COL> m;
+			for (size_t I = 0; I < ROW; ++I)
+				for (size_t II = 0; II < COL; II++)
+					m[I][II] = 0.0;
+
+			return m;
+		}
+
+		Matrix<ROW, COL> Transpose() const
+		{
+			Matrix<ROW, COL> m_transposed;
+
+			for( size_t col = 0; col < COL; ++col )
+				for( size_t row = 0; row < ROW; ++row )
+					m_transposed[col][row] = matrix[row][col];
+
+			return m_transposed;
+		}
+
+	private:
+		Ty matrix[COL][ROW];
+	};
+
+
+	/************************************************************************************************/
+
+	typedef FlexKit::Matrix<4,4> float4x4;
+
+	FLEXKITAPI inline float CalcMatrixTrace( float in[Matrix_Size] )
+	{
+		float sum = 0.0f;
+		for( size_t itr = 0; itr < Matrix_Size; itr++ )
+			for( size_t itr_2 = 0;itr_2 < 3; itr_2+= 4, itr + itr_2 )
+				sum += in[itr];
+		return sum;
+	}
+
+	template<typename TY>
+	inline TY Lerp(TY& A, TY& B, float t)
+	{
+		return A(1.0f - t) + t*B;
+	}
+
+	namespace Conversion
+	{
+		template< typename Ty >
+		static float3 toVector3( Ty& Convert )
+		{
+			return Vect3( Convert.x, Convert.y, Convert.z );
+		}
+
+		template< typename Ty > Ty Vect3To( const Vect3& Convert )	{ return {Convert[0], Convert[1], Convert[2]}; }
+		template< typename Ty >	Ty Vect4To( const Vect4& Convert )	{ return {Convert[0], Convert[1], Convert[2], Convert[3]}; }
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI int			Exp( int32_t Number, uint32_t exp );
+	FLEXKITAPI Quaternion	MatrixToQuat( Matrix<4,4>& );
+	FLEXKITAPI void			NumberToString( int32_t n, string& _Dest );
+	FLEXKITAPI int			Testing();
+
+	FLEXKITAPI void printfloat2(const float2& in);
+	FLEXKITAPI void printfloat3(const float3& in);
+	FLEXKITAPI void printfloat4(const float4& in);
+	
+
+	/************************************************************************************************/
+
+
+	inline FlexKit::float4x4 TranslationMatrix(float3 XYZ)
+	{
+		FlexKit::float4x4 out(float4x4::Identity());
+		out[3][0] = XYZ.x;
+		out[3][1] = XYZ.y;
+		out[3][2] = XYZ.z;
+
+		return out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline FlexKit::float4x4 Quaternion2Matrix(Quaternion q)
+	{
+		float4x4 m1, m2;
+
+		// Assign m1
+		m1[0][0] =  q[3];
+		m1[0][1] =  q[2];
+		m1[0][2] = -q[1];
+		m1[0][3] =  q[0];
+
+		m1[1][0] = -q[2];
+		m1[1][1] =  q[3];
+		m1[1][2] =  q[0];
+		m1[1][3] =  q[1];
+
+		m1[2][0] =  q[1];
+		m1[2][1] = -q[0];
+		m1[2][2] =  q[3];
+		m1[2][3] =  q[2];
+		
+		m1[3][0] = -q[0];
+		m1[3][1] = -q[1];
+		m1[3][2] = -q[2];
+		m1[3][3] =  q[3];
+
+		// Assign m2
+		m2[0][0] =  q[3];
+		m2[0][1] =  q[2];
+		m2[0][2] = -q[1];
+		m2[0][3] = -q[0];
+		
+		m2[1][0] = -q[2];
+		m2[1][1] =  q[3];
+		m2[1][2] =  q[0];
+		m2[1][3] = -q[1];
+		
+		m2[2][0] =  q[1];
+		m2[2][1] = -q[0];
+		m2[2][2] =  q[3];
+		m2[2][3] = -q[2];
+		
+		m2[3][0] =  q[0];
+		m2[3][1] =  q[1];
+		m2[3][2] =  q[2];
+		m2[3][3] =  q[3];
+
+		return m1 * m2;
+	}
+
+	
+	/************************************************************************************************/
+
+	inline __m128 SSE_CopySign(__m128 sign, __m128 abs)
+	{
+		const uint32_t M1 = (1 << 31);
+		const uint32_t M2 =~(1 << 31);
+
+		__m128 Sgn = _mm_and_ps(sign, _mm_castsi128_ps(_mm_set1_epi32(M1)));
+		__m128 Abs = _mm_and_ps(abs, _mm_castsi128_ps(_mm_set1_epi32(M2)));
+
+		__m128 res = _mm_or_ps(Sgn, Abs);
+		return res;
+	}
+
+	/************************************************************************************************/
+	
+	inline Quaternion Matrix2Quat(const float4x4& M)
+	{
+#if USING(FASTMATH)
+		Quaternion Q
+		(
+			1.0f + M[0][0] - M[1][1] - M[2][2], 
+			1.0f - M[0][0] + M[1][1] - M[2][2], 
+			1.0f - M[0][0] - M[1][1] + M[2][2], 
+			1.0f + M[0][0] + M[1][1] + M[2][2]
+		);
+
+		__m128 Temp1 = _mm_max_ps(Q, _mm_set1_ps(0.0f));
+		Temp1 = _mm_sqrt_ps(Temp1);
+		Temp1 = _mm_mul_ps(Temp1, _mm_set1_ps(0.5f));
+
+		// Copy Sign
+		__m128 Temp3 = _mm_set_ps(Temp1.m128_f32[3],	M[0][1], M[2][0], M[1][2]);
+		__m128 Temp4 = _mm_set_ps(0.0f,					M[1][0], M[0][2], M[2][1]);
+		__m128 Temp5 = _mm_sub_ps(Temp3, Temp4);
+		__m128 res = SSE_CopySign(Temp5, Temp1);
+
+		return res;
+#else 
+
+		Quaternion Q
+		{
+			sqrtf( max(1.0f + M[0][0] - M[1][1] - M[2][2], 0.0f))/2, 
+			sqrtf( max(1.0f - M[0][0] + M[1][1] - M[2][2], 0.0f))/2, 
+			sqrtf( max(1.0f - M[0][0] - M[1][1] + M[2][2], 0.0f))/2, 
+			sqrtf( max(1.0f + M[0][0] + M[1][1] + M[2][2], 0.0f))/2
+		};
+		return Quaternion
+		{
+			_copysignf(Q.x, M[1][2] - M[2][1]),
+			_copysignf(Q.y, M[2][0] - M[0][2]),
+			_copysignf(Q.z, M[0][1] - M[1][0]),
+			Q.w
+		};
+#endif
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline float4x4 Vector2RotationMatrix(const float3& Forward, const float3& Up, const float3 &Right)
+	{
+		float4x4 Out = float4x4::Identity();
+		Out[0][0] = Forward.x;
+		Out[0][1] = Forward.y;
+		Out[0][2] = Forward.z;
+		Out[0][3] = 0;
+
+		Out[1][0] = Up.x;
+		Out[1][1] = Up.y;
+		Out[1][2] = Up.z;
+		Out[1][3] = 0;
+
+		Out[2][0] = Right.x;
+		Out[2][1] = Right.y;
+		Out[2][2] = Right.z;
+		Out[2][3] = 0;
+
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline Quaternion Vector2Quaternion(const float3& Forward, const float3& Up, const float3& Right)
+	{
+		return Matrix2Quat(Vector2RotationMatrix(Forward, Up, Right));
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline float4x4 Q2M(Quaternion Q)
+	{
+		float4x4 out;
+		out[0] = float4{ 1 - Q.y*Q.y - 2 * Q.z*Q.z, 2 * Q.x*Q.y + 2 * Q.z*Q.w, 2 * Q.x * Q.z - 2 * Q.y * Q.w, 0  };
+		out[1] = float4{ 2 * Q.x*Q.y - 2 * Q.z*Q.w, 1 - Q.x*Q.x - 2 * Q.z*Q.z, 2 * Q.y * Q.z - 2 * Q.x * Q.w, 0  };
+		out[2] = float4{ 2*Q.x*Q.z + 2*Q.y*Q.w, 2*Q.y*Q.z - 2*Q.x*Q.w, 1 - 2 * Q.x * Q.x - 2 * Q.y*Q.y,		 0	 };
+		out[3] = float4{ 0,						0,						0,								1		 };
+
+		return out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline Quaternion PointAt(float3 A, float3 B)
+	{
+		float3 Dir		= float3{ B - A }.magnitude();
+		Dir = {Dir.z, Dir.y, -Dir.x};
+
+		float3 UpV		= float3{0, 1, 0};
+		float3 DirXUpV	= Dir.cross(UpV);
+
+		return Vector2Quaternion(Dir, DirXUpV.cross(Dir), DirXUpV);
+	}
+
+
+	/************************************************************************************************/
+
+}
+
+#endif
