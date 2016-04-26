@@ -1,0 +1,7 @@
+Tools/
+assets/
+builds/
+Dependencies/
+*.tlog
+/FlexKit.VC.VC.opendb
+/FlexKit.VC.db
