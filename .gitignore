@@ -5,3 +5,5 @@ Dependencies/
 *.tlog
 /FlexKit.VC.VC.opendb
 /FlexKit.VC.db
+*.idb
+*.ipch

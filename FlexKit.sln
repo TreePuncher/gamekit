@@ -28,8 +28,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKitMetaCompiler", "Flex
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestGameState", "TestGameState\TestGameState.vcxproj", "{1123F4F5-7268-435E-BE98-B95C51D0C664}"
 EndProject
-Project("{002A2DE9-8BB6-484D-9802-7E4AD4084715}") = "MD_Tool", "Tools\MD_Tool\MD_Tool.visualdproj", "{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -98,15 +96,6 @@ Global
 		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Release|x64.Build.0 = Release|x64
 		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Release|x86.ActiveCfg = Release|Win32
 		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Release|x86.Build.0 = Release|Win32
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Debug|x64.ActiveCfg = Debug|x64
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Debug|x64.Build.0 = Debug|x64
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Debug|x86.ActiveCfg = Debug|Win32
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Debug|x86.Build.0 = Debug|Win32
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Release|Any CPU.ActiveCfg = Release|Win32
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Release|x64.ActiveCfg = Release|Win32
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Release|x86.ActiveCfg = Release|Win32
-		{A04CCD84-9448-4C39-8F06-3EB95D2F05BB}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

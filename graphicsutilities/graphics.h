@@ -260,9 +260,13 @@ namespace FlexKit
 	{
 		Tex2DDesc()
 		{
-			Height		= 0;
-			Width		= 0;
-
+			Height		 = 0;
+			Width		 = 0;
+			Write        = true;
+			Read         = true;
+			RenderTarget = false;
+			UAV          = false;
+			CV           = true;
 			Format	= FORMAT_2D::D24_UNORM_S8_UINT;
 			FLAGS	= SPECIALFLAGS::NONE;
 		}
@@ -272,14 +276,12 @@ namespace FlexKit
 			size_t			in_width,
 			FORMAT_2D		in_format,
 			CPUACCESSMODE	in_Mode,
-			SPECIALFLAGS	in_FLAGS )
+			SPECIALFLAGS	in_FLAGS ) : Tex2DDesc()
 		{
-			Height = in_height;
-			Width  = in_width;
-			Format = in_format;
-			Write  = true;
-			Read   = true;
-			FLAGS  = in_FLAGS;
+			Height	     = in_height;
+			Width	     = in_width;
+			Format	     = in_format;
+			FLAGS	     = in_FLAGS;
 		}
 
 		size_t			Height, Width;
@@ -288,6 +290,8 @@ namespace FlexKit
 		bool			Write;
 		bool			Read;
 		bool			RenderTarget;
+		bool			UAV;
+		bool			CV;
 		byte*			initialData;
 		SPECIALFLAGS	FLAGS;
 
@@ -875,10 +879,13 @@ namespace FlexKit
 
 		ID3D12CommandAllocator*		GraphicsCLAllocator;
 		ID3D12CommandAllocator*		UploadCLAllocator;
+		ID3D12CommandAllocator*		ComputeCLAllocator;
 		ID3D12GraphicsCommandList*	CommandList;
 		ID3D12GraphicsCommandList*	UploadList;
-		ID3D12CommandQueue*			CommandQueue;
+		ID3D12GraphicsCommandList*	ComputeList;
+		ID3D12CommandQueue*			GraphicsQueue;
 		ID3D12CommandQueue*			UploadQueue;
+		ID3D12CommandQueue*			ComputeQueue;
 		ID3D12Fence*				Fence;
 		size_t						FenceValue;
 		HANDLE						FenceHandle;
@@ -899,6 +906,11 @@ namespace FlexKit
 		}Settings;
 
 		size_t	MeshLoadedCount;
+
+		struct RootSigLibrary
+		{
+			ID3D12RootSignature* PixelProcessor;// 4CBVs on Pixel Shader, 4 SRV On PixelShader
+		};
 
 		operator RenderSystem* ( ) { return this; }
 		operator Context*() { return &ContextState; }
@@ -1085,22 +1097,30 @@ namespace FlexKit
 		//char padding[1019];
 	};
 
+	enum DeferredShadingRootParam
+	{
+		DSRP_DescriptorTable  = 0,
+		DSRP_CameraConstants  = 1,
+		DSRP_ShadingConstants = 2,
+		DSRP_COUNT,
+	};
 
 	struct DeferredPass
 	{
-
 		// GBuffer
 		Texture2D ColorTex;
 		Texture2D SpecularTex;
 		Texture2D NormalTex;
 		Texture2D PositionTex;
+		Texture2D OutputBuffer;
 
-		ID3D12DescriptorHeap* CBVDescHeap;
+		ID3D12DescriptorHeap* SRVDescHeap;
 		ID3D12DescriptorHeap* RTVDescHeap;
 
 		// Shading
 		struct ShadingSetup
 		{
+			ID3D12PipelineState*	ShadingPSO;
 			ConstantBuffer			ShaderConstants;
 			ID3D12RootSignature*	ShadingRTSig;
 			Shader					Shade;		// Compute Shader
@@ -1881,7 +1901,17 @@ namespace FlexKit
 
 	/************************************************************************************************/
 	
+	FLEXKITAPI Texture2D GetRenderTarget(RenderWindow* in);
 
+	struct PIXELPROCESS_DESC
+	{
+
+	};
+
+	FLEXKITAPI void	DoPixelProcessor(RenderSystem* RS, PIXELPROCESS_DESC* DESC_in, Texture2D* out);
+
+	// ALL THESE ARE OBSOLETE!!!
+	// NEED SOME SORT OF REPLACEMENT API!!
 	FLEXKITAPI void	Draw				( Context&, size_t count, size_t offset = 0 );
 	FLEXKITAPI void	DrawAuto			( Context& );
 	FLEXKITAPI void	DrawIndexed			( Context*, size_t begin, size_t end, size_t vboffset = 0 );
@@ -2021,12 +2051,11 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem*	RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, RenderWindow* Target, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB);
+	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb );
 	FLEXKITAPI void ShadeGBuffer			( RenderSystem* RS, DeferredPass* gb, Camera* cam, PointLightBuffer* PL, SpotLightBuffer* SL, FlexKit::DepthBuffer* DBuff,FlexKit::RenderWindow* out);
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
-
 
 
 	/************************************************************************************************/
@@ -2037,6 +2066,14 @@ namespace FlexKit
 		RenderWindow*	OutputTarget;
 	};
 
+	FLEXKITAPI	ID3D12GraphicsCommandList*	GetCurrentCommandList(RenderSystem* RS);
+	FLEXKITAPI Texture2D					GetRenderTarget(RenderWindow* RW);
+
+	FLEXKITAPI void BeginPass				( ID3D12GraphicsCommandList* CL, RenderWindow* Window);
+	FLEXKITAPI void EndPass					( ID3D12GraphicsCommandList* CL, RenderSystem* RS);
+
+	FLEXKITAPI void ClearBackBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor);
+	FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* RW, float ClearValue = 1.0f, int Stencil = 0);
 	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardPass* out);
 	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB);
 	FLEXKITAPI void CleanupForwardPass		( ForwardPass* FP );

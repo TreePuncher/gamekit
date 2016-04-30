@@ -44,28 +44,27 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define USINGMETACOMP	OFF
 #define DLLEXPORT		OFF
 #ifdef _DEBUG
-#define USESTL			ON
-#define PHYSX			ON
-#define PHYSXREMOTEDB	ON
-#define DEBUGALLOCATOR	OFF
-#define DEBUGGRAPHICS	ON
-#define DEBUGHANDLES	ON
-#define FATALERROR		OFF
-#define EDITSHADERCONTINUE ON
-#define STL				OFF
-#define DEBUG_PROFILING ON
+#define USESTL				ON
+#define PHYSX				ON
+#define PHYSXREMOTEDB		ON
+#define DEBUGALLOCATOR		OFF
+#define DEBUGGRAPHICS		ON
+#define DEBUGHANDLES		ON
+#define FATALERROR			OFF
+#define EDITSHADERCONTINUE	ON
+#define STL					OFF
+#define DEBUG_PROFILING 	ON
 #else
 #define USESTL ON
-#define PHYSX			ON
-#define PHYSXREMOTEDB	ON
-#define DEBUGALLOCATOR	OFF
-#define DEBUGGRAPHICS	OFF
-#define DEBUGHANDLES	OFF
-#define FATALERROR		ON
-#define EDITSHADERCONTINUE ON
-#define STL				OFF
-#define DEBUG_PROFILING ON
-
+#define PHYSX				ON
+#define PHYSXREMOTEDB		ON
+#define DEBUGALLOCATOR		OFF
+#define DEBUGGRAPHICS		OFF
+#define DEBUGHANDLES		OFF
+#define FATALERROR			ON
+#define EDITSHADERCONTINUE 	ON
+#define STL					OFF
+#define DEBUG_PROFILING 	ON
 #endif
 
 #define ROUT		 &
@@ -88,6 +87,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include <assert.h>
+#include <functional>
+
 #ifdef _DEBUG
 
 #define FK_ASSERT1(A) assert(A)
@@ -106,7 +107,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MERGECOUNT_(a,b)  a##b
 #define FINALLABEL_(a) MERGECOUNT_(unique_name_, a)
 #define FINALLABEL FINALLABEL_(__LINE__)
-#include <functional>
 
 struct _FINALLY
 {

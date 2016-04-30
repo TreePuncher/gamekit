@@ -441,6 +441,7 @@ struct GameState
 
 	Camera*			ActiveCamera;
 	RenderWindow*	ActiveWindow;
+	DepthBuffer*	DepthBuffer;
 	float4			ClearColor;
 		
 	SceneNodes*		Nodes;
@@ -504,6 +505,7 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 
 	default:
 		break;
+
 	}
 }
 
@@ -518,7 +520,9 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	auto PlayerModel = State->GScene.CreateEntityAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
 	State->GScene.Yaw(PlayerModel, pi / 2);
 	State->GScene.CreateEntityAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Floor");
-		
+	State->GScene.SetMaterialParams(PlayerModel, {0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
+	State->DepthBuffer	= &Engine->DepthBuffer;
+
 	auto	WindowRect	= Engine->Window.WH;
 	float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
 	InitiateCamera	(Engine->RenderSystem, State->Nodes, &Out->PlayerCam, Aspect, 0.01f, 10000.0f, true);
@@ -534,10 +538,10 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 20.0f, 00.0f});
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 00.0f, 40.0f});
 
-	State->GScene.AddPointLight({ 0, 20, 0 }, { 1, 1, 1 }, 100, 100);
+	State->GScene.AddPointLight({ 0, 200, 0 }, { 1, 1, 1 }, 10000, 10000);
 
-	Out->PlayerInertia.Drag = 0.1f;
-	Out->PlayerInertia.Inertia	= float3(0);
+	Out->PlayerInertia.Drag					= 0.1f;
+	Out->PlayerInertia.Inertia				= float3(0);
 	Out->PlayerCameraController.Camera		= &Out->PlayerCam;
 	Out->PlayerCameraController.Pitch		= 0;
 	Out->PlayerCameraController.Yaw			= 0;
@@ -586,7 +590,7 @@ extern "C"
 		State.Quit		         = false;
 		State.PhysicsUpdateTimer = 0.0f;
 		State.Mouse				 = MouseInputState();
-		State.DoDeferredShading  = false;
+		State.DoDeferredShading  = true;
 		State.ActiveWindow		 = &Engine->Window;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
@@ -651,10 +655,18 @@ extern "C"
 		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
 		SortPVSTransparent(State->Nodes, &PVS, State->ActiveCamera);
 
+		auto CL = GetCurrentCommandList(RS);
+		BeginPass(CL, State->ActiveWindow);
+
+		ClearBackBuffer	(RS, CL, State->ActiveWindow, {0, 0, 0, 0});
+		ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0);
+
 		if (State->DoDeferredShading)
-			DoDeferredPass(&PVS, &State->DeferredPass, State->ActiveWindow, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
+			DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
 		else
 			DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
+
+		EndPass(CL, RS);
 	}
 
 
