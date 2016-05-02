@@ -95,14 +95,14 @@ namespace FlexKit
 #endif
 
 		Pair<bool, MeshBuildInfo>
-		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, StackAllocator ROUT LevelSpace, StackAllocator ROUT ScratchSpace, bool DoWeights )
+		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool DoWeights )
 		{
 			
-			auto& position		= fixed_vector<float3>::Create_Aligned(128000, &ScratchSpace);
-			auto& normal		= fixed_vector<float3>::Create_Aligned(128000, &ScratchSpace);
-			auto& UV			= fixed_vector<float2>::Create_Aligned(128000, &ScratchSpace);
-			auto* Weights		= (DoWeights) ? &fixed_vector<float3>::Create_Aligned(128000,   &ScratchSpace) : nullptr;
-			auto* WIndexes		= (DoWeights) ? &fixed_vector<uint4_32>::Create_Aligned(128000, &ScratchSpace) : nullptr;
+			auto& position		= fixed_vector<float3>::Create_Aligned(128000, ScratchSpace);
+			auto& normal		= fixed_vector<float3>::Create_Aligned(128000, ScratchSpace);
+			auto& UV			= fixed_vector<float2>::Create_Aligned(128000, ScratchSpace);
+			auto* Weights		= (DoWeights) ? &fixed_vector<float3>::Create_Aligned(128000,   ScratchSpace) : nullptr;
+			auto* WIndexes		= (DoWeights) ? &fixed_vector<uint4_32>::Create_Aligned(128000, ScratchSpace) : nullptr;
 
 			IndexList&	Indexes	= out_indexes;
 			MeshBuildInfo MBI	= {0};

@@ -124,7 +124,7 @@ namespace FlexKit
 	FLEXKITAPI void	CleanUpScene	(PScene* mat);
 
 	FLEXKITAPI void	InitiatePhysics	(PhysicsSystem* Physics, uint32_t CoreCount);
-	FLEXKITAPI void	MakeCube		(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Entity* E, NodeHandle node, float3 initialP ={ 0, 0, 0 }, FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity());
+	FLEXKITAPI void	MakeCube		(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Drawable* E, NodeHandle node, float3 initialP ={ 0, 0, 0 }, FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity());
 
 	typedef void	(*FNPSCENECALLBACK_POSTUPDATE)(void*);
 	typedef void	(*FNPSCENECALLBACK_PREUPDATE) (void*);

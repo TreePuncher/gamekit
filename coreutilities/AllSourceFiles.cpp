@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\type.cpp"
 
 #include "..\graphicsutilities\AnimationUtilities.cpp"
+#include "..\graphicsutilities\DDSUtilities.cpp"
 #include "..\graphicsutilities\graphics.cpp"
 #include "..\graphicsutilities\Meshutils.cpp"
 #include "..\graphicsutilities\TerrainRendering.h"

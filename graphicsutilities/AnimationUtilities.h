@@ -104,8 +104,7 @@ namespace FlexKit
 		Joint&			operator [] (JointHandle hndl);
 
 		JointHandle		AddJoint(Joint J, XMMATRIX& I);
-		void			InitiateSkeleton(BlockAllocator* Allocator, size_t jointcount = 64);
-		void			InitiateSkeleton(StackAllocator* Allocator, size_t jointcount = 64);
+		void			InitiateSkeleton(iAllocator* Allocator, size_t jointcount = 64);
 		XMMATRIX		GetInversePose(JointHandle H);
 		JointHandle		FindJoint( const char*);
 
@@ -125,8 +124,7 @@ namespace FlexKit
 		AnimationList* Animations;
 	};
 
-	FLEXKITAPI void Skeleton_PushAnimation(Skeleton* S, StackAllocator* Allocator, AnimationClip AC);
-	FLEXKITAPI void Skeleton_PushAnimation(Skeleton* S, BlockAllocator* Allocator, AnimationClip AC);
+	FLEXKITAPI void Skeleton_PushAnimation(Skeleton* S, iAllocator* Allocator, AnimationClip AC);
 
 
 	/************************************************************************************************/
@@ -147,7 +145,7 @@ namespace FlexKit
 			}
 		}
 
-		void InitiatePose(StackAllocator* Allocator, Skeleton* s)
+		void InitiatePose(iAllocator* Allocator, Skeleton* s)
 		{
 			JointPoses = (JointPose*)Allocator->_aligned_malloc(sizeof(JointPose) * s->JointCount, 16);
 			S = s;
@@ -160,7 +158,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct EntityAnimationState
+	struct DrawableAnimationState
 	{
 		struct AnimationStateEntry
 		{
@@ -180,19 +178,18 @@ namespace FlexKit
 		size_t JointCount;
 	};
 
-	struct EntityPoseState
+	struct DrawablePoseState
 	{
-		ID3D11Buffer*				StateBuffer		= nullptr;
-		ID3D11ShaderResourceView*	ShaderResource	= nullptr;
-		DirectX::XMMATRIX*			Joints			= nullptr;
-		DirectX::XMMATRIX*			CurrentPose		= nullptr;
-		Skeleton*					Sk				= nullptr;
-		size_t						JointCount		= 0;
-		size_t						Dirty			= 0;
-		size_t						padding[2];
+		ID3D12Resource*		Resource		= nullptr;
+		DirectX::XMMATRIX*	Joints			= nullptr;
+		DirectX::XMMATRIX*	CurrentPose		= nullptr;
+		Skeleton*			Sk				= nullptr;
+		size_t				JointCount		= 0;
+		size_t				Dirty			= 0;
+		size_t				padding[2];
 	};
 
-	inline void RotateJoint(EntityPoseState* E, JointHandle J, Quaternion Q)
+	inline void RotateJoint(DrawablePoseState* E, JointHandle J, Quaternion Q)
 	{
 		if (!E)
 			return;
@@ -202,7 +199,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void TranslateJoint(EntityPoseState* E, JointHandle J, float3 xyz)
+	inline void TranslateJoint(DrawablePoseState* E, JointHandle J, float3 xyz)
 	{
 		if (!E)
 			return;
@@ -212,7 +209,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void SetJointTranslation(EntityPoseState* E, JointHandle J, float3 xyz)
+	inline void SetJointTranslation(DrawablePoseState* E, JointHandle J, float3 xyz)
 	{
 		if (!E)
 			return;
@@ -222,7 +219,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void ScaleJoint(EntityPoseState* E, JointHandle J, float S)
+	inline void ScaleJoint(DrawablePoseState* E, JointHandle J, float S)
 	{
 		if (!E)
 			return;
@@ -232,10 +229,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	FLEXKITAPI EntityPoseState* CreatePoseState(Entity* E, FlexKit::BlockAllocator* MEM);
-	FLEXKITAPI bool				InitiatePoseState(RenderSystem* RS, EntityPoseState* EAS, PoseState_DESC& Desc, DirectX::XMMATRIX* Initial);
+	FLEXKITAPI DrawablePoseState*	CreatePoseState(Drawable* E, iAllocator* MEM);
+	FLEXKITAPI bool					InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, DirectX::XMMATRIX* Initial);
 
-	FLEXKITAPI void				Destroy(EntityPoseState* EAS);
+	FLEXKITAPI void				Destroy(DrawablePoseState* EAS);
 
 	/************************************************************************************************/
 
@@ -247,11 +244,11 @@ namespace FlexKit
 		EPLAY_SUCCESS
 	};
 
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation	(FlexKit::Entity* E, const char* AnimationID, FlexKit::BlockAllocator* MEM, bool ForceLoop = false);
-	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed(FlexKit::Entity* E, const char* AnimationID, double Speed = false);
-	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation	(FlexKit::Entity* E, const char* AnimationID);
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation	(FlexKit::Drawable* E, const char* AnimationID, iAllocator* MEM, bool ForceLoop = false);
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed(FlexKit::Drawable* E, const char* AnimationID, double Speed = false);
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation	(FlexKit::Drawable* E, const char* AnimationID);
 
-	FLEXKITAPI void UpdateAnimation(RenderSystem* RS, FlexKit::Entity* E, double dT, StackAllocator* TEMP);
+	FLEXKITAPI void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP);
 
 	FLEXKITAPI void PrintSkeletonHierarchy(FlexKit::Skeleton* S);
 }

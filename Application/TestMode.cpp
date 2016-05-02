@@ -691,7 +691,7 @@
 //		}
 //
 //		sprintf_s(STR, 1024,
-//				  "Draw Call Last Second: %i\nAve Draw Calls Per Second: %i\nAve FrameTime: %fms\nAve Sorting Time: %fms\nAve Entity Update Time: %fms\nAve Present Time: %fms\nAve Animation UpdateTime: %fms\nUpdateTime: %fms\n"
+//				  "Draw Call Last Second: %i\nAve Draw Calls Per Second: %i\nAve FrameTime: %fms\nAve Sorting Time: %fms\nAve Drawable Update Time: %fms\nAve Present Time: %fms\nAve Animation UpdateTime: %fms\nUpdateTime: %fms\n"
 //				  "PlayerPOS{%f, %f, %f}\n",
 //				    (int)ProfilingUtilities::GetCounter(ProfilingUtilities::COUNTER_INDEXEDDRAWCALL_LASTSECOND),
 //				    (int)ProfilingUtilities::GetCounter(ProfilingUtilities::COUNTER_INDEXEDDRAWCALL_LASTSECOND) / 60,
@@ -750,19 +750,19 @@
 //		Yaw(Nodes, TestCamera.Node, pi/4);
 //
 //		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &S);
-//		P1 = SM.CreateEntityAndSetMesh(defaultMat, "PlayerMesh");
-//		auto Floor = SM.CreateEntityAndSetMesh(defaultMat, "Floor");
+//		P1 = SM.CreateDrawableAndSetMesh(defaultMat, "PlayerMesh");
+//		auto Floor = SM.CreateDrawableAndSetMesh(defaultMat, "Floor");
 //		//SM.EntityEnablePosing(P1);
 //		//SM.EntityPlayAnimation(P1, "ANIMATION");
 //		SM.SetNode(P1, Player1.ModelNode).SetAlbedo({ 0.5f, 0.75f, 10.0f, 0.05f }).SetSpecular({1, 1, .5, 0});
 //
 //		SM.GetEntity(Floor).SetAlbedo({ 1.0f, 0.25f, 0.25f, 0.2f }).SetSpecular({1.0f, 1.0f, 1.0f, 0});
 //		
-//		Arrow = SM.CreateEntityAndSetMesh(defaultMat, "Arrow");
+//		Arrow = SM.CreateDrawableAndSetMesh(defaultMat, "Arrow");
 //		
-//		auto Light1	= SM.CreateEntityAndSetMesh(defaultMat, "Light");
-//		auto Light2	= SM.CreateEntityAndSetMesh(defaultMat, "Light");
-//		auto Light3	= SM.CreateEntityAndSetMesh(defaultMat, "Light");
+//		auto Light1	= SM.CreateDrawableAndSetMesh(defaultMat, "Light");
+//		auto Light2	= SM.CreateDrawableAndSetMesh(defaultMat, "Light");
+//		auto Light3	= SM.CreateDrawableAndSetMesh(defaultMat, "Light");
 //
 //		SM.TranslateEntity_WT(Arrow,  {   0, 20, 0});
 //		SM.TranslateEntity_WT(Light1, {   0, 50, 0});
@@ -873,7 +873,7 @@
 //	{
 //		//auto node = FlexKit::GetZeroedNode(level->Nodes);
 //		//SetPositionW(level->Nodes, node, DungeonCordToTranslatePosition(D, POS, 2));
-//		//level->Scene.CreateEntity(node, 0);
+//		//level->Scene.CreateDrawable(node, 0);
 //		//printf("Floor Found: Position %u, %u\n", POS[0], POS[1]);
 //	}
 //}

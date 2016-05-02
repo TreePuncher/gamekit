@@ -286,14 +286,12 @@ namespace FlexKit
 			return *newVector;
 		}
 
-		template<typename ALLOC>
-		static fixed_vector& Create_Aligned(size_t size, ALLOC* Allocator, size_t A = 0x10)
+		static fixed_vector& Create_Aligned(size_t size, iAllocator* Allocator, size_t A = 0x10)
 		{
 			char* Buffer = (char*)Allocator->_aligned_malloc(sizeof(THIS_TYPE) + sizeof(TY_) * size);
 			fixed_vector<TY_>* newVector = new(Buffer) fixed_vector<TY_>(size);
 			return *newVector;
 		}
-
 
 	private:
 		

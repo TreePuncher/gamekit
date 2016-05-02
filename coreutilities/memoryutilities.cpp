@@ -36,6 +36,8 @@ namespace FlexKit
 		used   = 0;
 		size   = s;
 		Buffer = _ptr;
+
+		new(&AllocatorInterface) iStackAllocator(this);
 	}
 	
 	/************************************************************************************************/

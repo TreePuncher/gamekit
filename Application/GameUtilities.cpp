@@ -72,7 +72,7 @@ void InitiateEngineMemory( EngineMemory* Game )
 	Game->TempAllocator. Init(Game->TempMem,	TEMPBUFFERSIZE);
 
 	FlexKit::Graphics_Desc	desc	= { 0 };
-	desc.Memory = &Game->BlockAllocator;
+	desc.Memory = Game->BlockAllocator;
 	InitiateRenderSystem(&desc, Game->RenderSystem);
 
 	// Initate SceneGraph

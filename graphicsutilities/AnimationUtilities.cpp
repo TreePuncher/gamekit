@@ -56,7 +56,7 @@ namespace FlexKit
 		return (H != 0XFFFF)? IPose[H] : DirectX::XMMatrixIdentity();
 	}
 
-	EntityPoseState* CreatePoseState(Entity* E, FlexKit::BlockAllocator* MEM)
+	DrawablePoseState* CreatePoseState(Drawable* E, iAllocator* MEM)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
@@ -66,9 +66,8 @@ namespace FlexKit
 
 		size_t JointCount = E->Mesh->Skeleton->JointCount;
 
-		auto New_EAS = (EntityPoseState*)MEM->_aligned_malloc(sizeof(EntityPoseState));
-		New_EAS->ShaderResource = nullptr;
-		New_EAS->StateBuffer	= nullptr;
+		auto New_EAS = (DrawablePoseState*)MEM->_aligned_malloc(sizeof(DrawablePoseState));
+		New_EAS->Resource		= nullptr;
 		New_EAS->Joints			= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->CurrentPose	= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->JointCount		= JointCount;
@@ -84,75 +83,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool InitiatePoseState(RenderSystem* RS, EntityPoseState* EAS, PoseState_DESC& Desc, VShaderJoint* M)
+	bool InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* M)
 	{
-		D3D11_SUBRESOURCE_DATA	SR;
-		SR.pSysMem = M;
-
-		ID3D11Buffer* Buffer = nullptr;
-		D3D11_BUFFER_DESC B_DESC;
-		B_DESC.BindFlags			= D3D11_BIND_SHADER_RESOURCE;
-		B_DESC.ByteWidth			= Desc.JointCount * sizeof(VShaderJoint);
-		B_DESC.CPUAccessFlags		= D3D11_CPU_ACCESS_WRITE;
-		B_DESC.MiscFlags			= D3D11_RESOURCE_MISC_FLAG::D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-		B_DESC.StructureByteStride	= sizeof(VShaderJoint);
-		B_DESC.Usage				= D3D11_USAGE_DYNAMIC;
-
-		FK_ASSERT(0);
-		//auto RES = RS->pDevice->CreateBuffer(&B_DESC, &SR, &Buffer);
-		//FK_ASSERT(SUCCEEDED(RES), "BUFFER FAILED TO CREATE!");
-
-		ID3D11ShaderResourceView* SRV = nullptr;
-		D3D11_SHADER_RESOURCE_VIEW_DESC	SRV_DESC = {};
-		SRV_DESC.Format					= DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
-		SRV_DESC.ViewDimension			= D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_BUFFER;
-		SRV_DESC.Buffer.ElementOffset	= 0;
-		SRV_DESC.Buffer.ElementWidth	= Desc.JointCount;
-		//RES = RS->pDevice->CreateShaderResourceView(Buffer, &SRV_DESC, &SRV);
-		//FK_ASSERT(SUCCEEDED(RES), "SRV FAILED TO CREATE!");
-	
-		EAS->ShaderResource = SRV;
-		EAS->StateBuffer	= Buffer;
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Destroy(EntityPoseState* EPS)
-	{
-		if(EPS->ShaderResource) EPS->ShaderResource->Release();
-		if(EPS->StateBuffer)	EPS->StateBuffer->Release();
-
-		EPS->ShaderResource = nullptr;
-		EPS->StateBuffer	= nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Skeleton::InitiateSkeleton(BlockAllocator* Allocator, size_t JC)
-	{
-		auto test = sizeof(Skeleton);
-		Animations	= nullptr;
-		JointCount	= 0;
-		Joints		= (Joint*)		Allocator->_aligned_malloc(sizeof(Joint)	 * JC, 0x40);
-		IPose		= (XMMATRIX*)	Allocator->_aligned_malloc(sizeof(XMMATRIX)  * JC, 0x40); // Inverse Global Space Pose
-		JointPoses	= (JointPose*)	Allocator->_aligned_malloc(sizeof(JointPose) * JC, 0x40); // Local Space Pose
-		FK_ASSERT(Joints);
-
-		for (auto I = 0; I < JointCount; I++)
+		bool ReturnState = false;
+		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint);
+		ShaderResourceBuffer NewResource = CreateShaderResource(RS, ResourceSize);
+		if (NewResource)
 		{
-			IPose[I]			= DirectX::XMMatrixIdentity();
-			Joints[I].mID		= nullptr;
-			Joints[I].mParent	= JointHandle();
+			ReturnState = true;
+			UpdateResourceByTemp(RS, NewResource, M, ResourceSize, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			EAS->Resource = NewResource;
 		}
+
+		return (ReturnState);
 	}
 
-	void Skeleton::InitiateSkeleton(StackAllocator* Allocator, size_t JC)
+
+	/************************************************************************************************/
+
+
+	void Destroy(DrawablePoseState* EPS)
+	{
+		if(EPS->Resource) EPS->Resource->Release();
+		EPS->Resource = nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Skeleton::InitiateSkeleton(iAllocator* Allocator, size_t JC)
 	{
 		auto test = sizeof(Skeleton);
 		Animations	= nullptr;
@@ -188,21 +148,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Skeleton_PushAnimation(Skeleton* S, StackAllocator* Allocator, AnimationClip AC)
-	{
-		auto& AL	= Allocator->allocate_aligned<Skeleton::AnimationList>();
-		AL.Next		= nullptr;
-		AL.Clip		= AC;
-
-		auto I		= &S->Animations;
-
-		while (*I != nullptr)
-			I = &(*I)->Next;
-
-		(*I) = &AL;
-	}
-
-	void Skeleton_PushAnimation(Skeleton* S, BlockAllocator* Allocator, AnimationClip AC)
+	void Skeleton_PushAnimation(Skeleton* S, iAllocator* Allocator, AnimationClip AC)
 	{
 		auto& AL	= Allocator->allocate_aligned<Skeleton::AnimationList>();
 		AL.Next		= nullptr;
@@ -220,9 +166,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(FlexKit::Entity* E, const char* Animation, FlexKit::BlockAllocator* MEM, bool ForceLoop)
+	EPLAY_ANIMATION_RES PlayAnimation(FlexKit::Drawable* E, const char* Animation, iAllocator* MEM, bool ForceLoop)
 	{
-		using FlexKit::EntityPoseState;
+		using FlexKit::DrawablePoseState;
 		if (!E || !E->Mesh)
 			return EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM;
 		if (!E->Mesh->Skeleton)
@@ -231,7 +177,7 @@ namespace FlexKit
 		if (!E->PoseState)
 		{
 			Skeleton*	S		= (Skeleton*)E->Mesh->Skeleton;
-			auto NewPoseState	= FlexKit::CreatePoseState(E, MEM);
+			auto NewPoseState	= CreatePoseState(E, MEM);
 
 			if (!NewPoseState)
 				return EPLAY_NOT_ANIMATABLE;
@@ -241,7 +187,7 @@ namespace FlexKit
 
 		if (!E->AnimationState)
 		{
-			auto New_EAS = (EntityAnimationState*)MEM->_aligned_malloc(sizeof(EntityAnimationState));
+			auto New_EAS = (DrawableAnimationState*)MEM->_aligned_malloc(sizeof(DrawableAnimationState));
 			E->AnimationState	= New_EAS;
 			New_EAS->Clips		={};
 		}
@@ -256,7 +202,7 @@ namespace FlexKit
 		{
 			if (!strcmp(I->Clip.mID, Animation))
 			{
-				EntityAnimationState::AnimationStateEntry AS;
+				DrawableAnimationState::AnimationStateEntry AS;
 				AS.Clip		 = &I->Clip;
 				AS.T		 = 0;
 				AS.Playing	 = true;
@@ -278,9 +224,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES SetAnimationSpeed(EntityAnimationState* AE, const char* AnimationID, double Speed)
+	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, const char* AnimationID, double Speed)
 	{
-		using FlexKit::EntityPoseState;
+		using FlexKit::DrawablePoseState;
 
 		for(auto& C : AE->Clips)
 		{
@@ -297,7 +243,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES StopAnimation(FlexKit::Entity* E, const char* Animation)
+	EPLAY_ANIMATION_RES StopAnimation(FlexKit::Drawable* E, const char* Animation)
 	{
 		if (!E)
 			return EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM;
@@ -326,7 +272,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateAnimation(RenderSystem* RS, FlexKit::Entity* E, double dT, StackAllocator* TEMP)
+	void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP)
 	{
 		using DirectX::XMMatrixIdentity;
 		using DirectX::XMMatrixInverse;
@@ -391,14 +337,12 @@ namespace FlexKit
 				
 				PS->Dirty = false;
 				
-				if (!PS->ShaderResource | !PS->StateBuffer)
+				if (!PS->Resource)
 				{	// Create Animation State with Data as Initial
 					FlexKit::PoseState_DESC	Desc ={ S->JointCount };
-					auto RES = FlexKit::InitiatePoseState(RS, PS, Desc, Out);
-					FK_ASSERT(RES, "ANIMATION STATE FAILED TO CREATE!");
+					auto RES = InitiatePoseState(RS, PS, Desc, Out);
 				} else {
-					FK_ASSERT(0);
-					//FlexKit::MapWriteDiscard(RS, (char*)Out, sizeof(VShaderJoint) * S->JointCount, PS->StateBuffer);
+					UpdateResourceByTemp(RS, PS->Resource, Out, sizeof(VShaderJoint) * S->JointCount, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 				}
 			}
 		}

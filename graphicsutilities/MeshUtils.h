@@ -147,7 +147,7 @@ namespace FlexKit
 		};
 
 		// This Function is AWFUL!!! ITS SLOW AND SUCKS AND IS ASHAMED OF ITSELF!
-		FLEXKITAPI FlexKit::Pair<bool, MeshBuildInfo>	BuildVertexBuffer(const TokenList&, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, StackAllocator& LevelSpace, StackAllocator& ScratchSpace, bool weights = false );
+		FLEXKITAPI FlexKit::Pair<bool, MeshBuildInfo>	BuildVertexBuffer(const TokenList&, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool weights = false );
 		FLEXKITAPI char*								ScrubLine( char* inLine, size_t RINOUT lineLength );
 
 		namespace OBJ_Tools

@@ -97,9 +97,6 @@ namespace FlexKit
 		ResourceEntry	Entries[];
 	};
 
-	typedef size_t ResourceHandle;
-
-
 	/************************************************************************************************/
 
 	
@@ -260,9 +257,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI AnimationClip	Resource2AnimationClip(Resource* R, BlockAllocator* Memory);
-	FLEXKITAPI Skeleton*		Resource2Skeleton(Resources* RM, ResourceHandle RHandle, BlockAllocator* Memory);
-	FLEXKITAPI TriMesh*			Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, BlockAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers = true);
+	FLEXKITAPI AnimationClip	Resource2AnimationClip(Resource* R, iAllocator* Memory);
+	FLEXKITAPI Skeleton*		Resource2Skeleton(Resources* RM, ResourceHandle RHandle, iAllocator* Memory);
+	FLEXKITAPI TriMesh*			Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers = true);
 
 
 	/************************************************************************************************/

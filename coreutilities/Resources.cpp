@@ -312,7 +312,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMesh* Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, BlockAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers)
+	TriMesh* Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers)
 	{
 		Resource* R = FlexKit::GetResource(RM, RHandle);
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
@@ -385,7 +385,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Skeleton* Resource2Skeleton(Resources* RM, ResourceHandle RHandle, BlockAllocator* Memory)
+	Skeleton* Resource2Skeleton(Resources* RM, ResourceHandle RHandle, iAllocator* Memory)
 	{
 		SkeletonResourceBlob* Blob = (SkeletonResourceBlob*)FlexKit::GetResource(RM, RHandle);
 		Skeleton*	S = &Memory->allocate_aligned<Skeleton, 0x40>();
@@ -416,7 +416,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	AnimationClip Resource2AnimationClip(Resource* R, BlockAllocator* Memory)
+	AnimationClip Resource2AnimationClip(Resource* R, iAllocator* Memory)
 	{
 		AnimationResourceBlob* Anim = (AnimationResourceBlob*)R;
 		AnimationClip	AC;// = &Memory->allocate_aligned<AnimationClip, 0x10>();

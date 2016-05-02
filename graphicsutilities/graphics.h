@@ -327,7 +327,7 @@ namespace FlexKit
 
 	typedef ID3D11Buffer*				IndexBuffer;
 	typedef ID3D12Resource*				ConstantBuffer;
-	typedef ID3D12DescriptorHeap*		ConstantBufferList;
+	typedef ID3D12Resource*				ShaderResourceBuffer;
 	typedef ID3D11Buffer*				StreamOut;
 
 
@@ -643,7 +643,7 @@ namespace FlexKit
 
 	struct Graphics_Desc
 	{
-		BlockAllocator*	Memory;
+		iAllocator*		Memory;
 		bool			DebugRenderMode;
 		bool			Fullscreen;
 		uint32_t		SlaveThreadCount; 
@@ -868,7 +868,7 @@ namespace FlexKit
 
 	struct RenderSystem
 	{
-		BlockAllocator*			Memory;
+		iAllocator*				Memory;
 		TempResourceList*		TempBuffers;
 
 		// TODO: Add Asset Manager _ptr Here
@@ -890,15 +890,15 @@ namespace FlexKit
 		size_t						FenceValue;
 		HANDLE						FenceHandle;
 
-		IDXGIFactory4*			pGIFactory;
-		
-		size_t					DescriptorRTVSize;
-		size_t					DescriptorDSVSize;
-		size_t					DescriptorCBVSRVUAVSize;
+		IDXGIFactory4*	pGIFactory;
 
-		DescriptorHeaps			DefaultDescriptorHeaps;
+		size_t			DescriptorRTVSize;
+		size_t			DescriptorDSVSize;
+		size_t			DescriptorCBVSRVUAVSize;
 
-		Context					ContextState;
+		DescriptorHeaps	DefaultDescriptorHeaps;
+
+		Context			ContextState;
 		struct
 		{
 			size_t	AASamples;
@@ -910,7 +910,7 @@ namespace FlexKit
 		struct RootSigLibrary
 		{
 			ID3D12RootSignature* PixelProcessor;// 4CBVs on Pixel Shader, 4 SRV On PixelShader
-		};
+		}Library;
 
 		operator RenderSystem* ( ) { return this; }
 		operator Context*() { return &ContextState; }
@@ -1078,6 +1078,16 @@ namespace FlexKit
 		#pragma pack(pop)
 	};
 
+	
+	/************************************************************************************************/
+
+
+	struct DeferredPass_Parameters
+	{
+		float4x4 InverseZ;
+		uint64_t PointLightCount;
+		uint64_t SpotLightCount;
+	};
 
 	struct DeferredPassDesc
 	{
@@ -1105,6 +1115,14 @@ namespace FlexKit
 		DSRP_COUNT,
 	};
 
+	enum DeferredFillingRootParam
+	{
+		DFRP_CameraConstants = 0,
+		DFRP_ShadingConstants = 1,
+		DFRP_AnimationResources = 2,
+		DFRP_COUNT,
+
+	};
 	struct DeferredPass
 	{
 		// GBuffer
@@ -1118,7 +1136,7 @@ namespace FlexKit
 		ID3D12DescriptorHeap* RTVDescHeap;
 
 		// Shading
-		struct ShadingSetup
+		struct
 		{
 			ID3D12PipelineState*	ShadingPSO;
 			ConstantBuffer			ShaderConstants;
@@ -1127,7 +1145,7 @@ namespace FlexKit
 		}Shading;
 
 		// GBuffer Filling
-		struct Filling
+		struct
 		{
 			ID3D12PipelineState*	PSO;
 			ID3D12PipelineState*	PSOAnimated;
@@ -1136,6 +1154,12 @@ namespace FlexKit
 			Shader					AnimatedMesh;
 			Shader					NoTexture;
 		}Filling;
+
+		struct
+		{
+			ID3D12DescriptorHeap* SRVDescHeap;
+			size_t				  MaxDescriptors;
+		}AnimationHeap;
 	};
 
 
@@ -1329,8 +1353,8 @@ namespace FlexKit
 			float3			  WPOS;
 			float			  MinZ;
 			float			  MaxZ;
-			int				  PointLightCount;
-			int				  SpotLightCount;
+			uint32_t			PointLightCount;
+			uint32_t			SpotLightCount;
 			static const size_t GetBufferSize(){return 1024;}
 		};
 
@@ -1594,17 +1618,17 @@ namespace FlexKit
 		FlexKit::HandleUtilities::HandleTable<ShaderHandle>		ShaderHandles;
 	};
 
-	struct EntityDesc
+	struct DrawableDesc
 	{
 		ShaderSetHandle Material;
 	};
 
-	struct EntityAnimationState;
-	struct EntityPoseState;
+	struct DrawableAnimationState;
+	struct DrawablePoseState;
 
-	struct Entity
+	struct Drawable
 	{
-		Entity() 
+		Drawable() 
 		{
 			Visable                    = true; 
 			OverrideMaterialProperties = false;
@@ -1618,14 +1642,14 @@ namespace FlexKit
 		
 		TriMesh*				Mesh;
 		TriMesh*				Occluder;
-		EntityPoseState*		PoseState;
-		EntityAnimationState*	AnimationState;
+		DrawablePoseState*		PoseState;
+		DrawableAnimationState*	AnimationState;
 		ConstantBuffer			VConstants;	// 32 Byte Lines
 		NodeHandle				Node;
 
-		Entity&	SetAlbedo	(float4 RGBA ){ OverrideMaterialProperties = true; MatProperties.Albedo = RGBA; return *this; }
-		Entity&	SetSpecular	(float4 RGBA ){ OverrideMaterialProperties = true; MatProperties.Spec   = RGBA; return *this; }
-		Entity&	SetNode		(NodeHandle H){ Node = H; return *this; }
+		Drawable&	SetAlbedo	(float4 RGBA ){ OverrideMaterialProperties = true; MatProperties.Albedo = RGBA; return *this; }
+		Drawable&	SetSpecular	(float4 RGBA ){ OverrideMaterialProperties = true; MatProperties.Spec   = RGBA; return *this; }
+		Drawable&	SetNode		(NodeHandle H){ Node = H; return *this; }
 
 		ShaderSetHandle		Material;
 		bool				Visable;
@@ -1663,11 +1687,18 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct SortingField
+	{
+		unsigned int Animation		: 1;
+		unsigned int MaterialID		: 7;
+		unsigned int InvertDepth	: 1;
+		uint64_t	 Depth			: 55;
+	};
 
-	typedef Pair<size_t, Entity*> PV;
+	typedef Pair<size_t, Drawable*> PV;
 	typedef static_vector<PV, 16000> PVS;
 
-	inline void PushPV(Entity* e, PVS* pvs)
+	inline void PushPV(Drawable* e, PVS* pvs)
 	{
 	#ifdef _DEBUG
 		if (e)
@@ -1677,7 +1708,7 @@ namespace FlexKit
 			pvs->push_back({ 0, e });
 	}
 
-	FLEXKITAPI void UpdateEntities		(RenderSystem* RS, SceneNodes* Nodes, FlexKit::ShaderTable* M, PVS* PVS_);
+	FLEXKITAPI void UpdateDrawables		(RenderSystem* RS, SceneNodes* Nodes, FlexKit::ShaderTable* M, PVS* PVS_);
 	FLEXKITAPI void SortPVS				(SceneNodes* Nodes, PVS* PVS_, Camera* C);
 	FLEXKITAPI void SortPVSTransparent	(SceneNodes* Nodes, PVS* PVS_, Camera* C);
 
@@ -1724,7 +1755,7 @@ namespace FlexKit
 		void Update_PreDraw		( RenderSystem* RS, SceneNodes* Nodes );
 		void BuildGeometryTable ( FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, StackAllocator* TempMemory );
 		
-		SceneObjectHandle CreateEntity( NodeHandle node, size_t GeometryIndex = 0 );
+		SceneObjectHandle CreateDrawable( NodeHandle node, size_t GeometryIndex = 0 );
 
 		void Draw( FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, Camera* C );
 
@@ -1834,7 +1865,10 @@ namespace FlexKit
 	FLEXKITAPI bool					CreateInputLayout			( RenderSystem* RS, VertexBufferView**,  size_t count, Shader*, VertexBuffer* OUT );		// Expects Index buffer in index 15
 	FLEXKITAPI Texture2D			CreateTexture2D				( RenderSystem* RS, Tex2DDesc* desc_in );
 	FLEXKITAPI void					CreateVertexBuffer			( RenderSystem* RS, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
+	FLEXKITAPI ShaderResourceBuffer CreateShaderResource		( RenderSystem* RS, size_t ResourceSize);
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );
+
+	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 
 
 
@@ -1953,10 +1987,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	FLEXKITAPI void	UpdateConstantBuffer( Context*, char*, size_t, ConstantBuffer );
 	FLEXKITAPI void	MapTo               ( Context*, Texture2D, char* );
-	FLEXKITAPI void	MapTo               ( RenderSystem*, RenderWindow*, char* );
-	FLEXKITAPI void	MapWriteDiscard		( RenderSystem*, char* _ptr, size_t size, ConstantBuffer CB);
 	FLEXKITAPI void	Unmap               ( Context*, ConstantBuffer );
 	FLEXKITAPI void	Unmap               ( RenderSystem*, RenderWindow* );
 	FLEXKITAPI void	Unmap               ( RenderSystem*, Texture2D );
@@ -2013,6 +2044,45 @@ namespace FlexKit
 		SceneNodes*	SceneNodes;
 	};
 
+	enum class DRAWCALLTYPE
+	{
+		DCT_2DRECT,
+		DCT_2DRECTTEXTURED,
+		DCT_3DMesh,
+		DCT_3DMeshAnimated,
+		DCT_TextBox,
+	};
+
+	struct DrawCall
+	{
+		DRAWCALLTYPE Type;
+		union
+		{
+			struct MeshDraw
+			{
+				Drawable* Ent;
+				Camera*	C;
+			}MeshDraw;
+
+			struct Rect_Draw
+			{
+				float2		TLeft;
+				float2		BRight;
+				uint32_t	ZOrder;
+			}Rect_Draw;
+
+			struct Rect_Draw_TEXTURED
+			{
+				float2			TLeft;
+				float2			BRight;
+				float2			TLeft_UVOffset;
+				float2			BRight_UVOffset;
+				uint32_t		ZOrder;
+				ResourceHandle	TextureHandle;
+			}Rect_Draw_TEXTURED;
+		
+		}Params;
+	};
 
 	/************************************************************************************************/
 
@@ -2028,17 +2098,17 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, BlockAllocator* Mem );
-	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, BlockAllocator* Memory, size_t Max = 512 );
+	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
+	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
 
-	FLEXKITAPI void CleanUp(PointLightBuffer* out, BlockAllocator* Memory);
-	FLEXKITAPI void CleanUp(SpotLightBuffer* out,  BlockAllocator* Memory);
+	FLEXKITAPI void CleanUp(PointLightBuffer* out, iAllocator* Memory);
+	FLEXKITAPI void CleanUp(SpotLightBuffer* out, iAllocator* Memory);
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
 	
-	FLEXKITAPI void UpdateSpotLightBuffer	( RenderSystem& RS, SceneNodes* nodes, SpotLightBuffer* out, StackAllocator* TempMemory );
-	FLEXKITAPI void UpdatePointLightBuffer	( RenderSystem& RS, SceneNodes* nodes, PointLightBuffer* out, StackAllocator* TempMemory );
+	FLEXKITAPI void UpdateSpotLightBuffer	( RenderSystem& RS, SceneNodes* nodes, SpotLightBuffer* out, iAllocator* TempMemory );
+	FLEXKITAPI void UpdatePointLightBuffer	( RenderSystem& RS, SceneNodes* nodes, PointLightBuffer* out, iAllocator* TempMemory );
 
 
 	/************************************************************************************************/
@@ -2051,7 +2121,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem*	RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB);
+	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, PVS* _PVSAnimated, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, SpotLightBuffer* SPLB, size_t AnimationCount = 0);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb );
 	FLEXKITAPI void ShadeGBuffer			( RenderSystem* RS, DeferredPass* gb, Camera* cam, PointLightBuffer* PL, SpotLightBuffer* SL, FlexKit::DepthBuffer* DBuff,FlexKit::RenderWindow* out);
@@ -2141,16 +2211,16 @@ namespace FlexKit
 
 	FLEXKITAPI void CreateCubeMesh		( RenderSystem* RS, TriMesh* r,		StackAllocator* mem, CubeDesc& desc );
 	FLEXKITAPI void CreatePlaneMesh		( RenderSystem* RS, TriMesh* out,	StackAllocator* mem, PlaneDesc desc );
-	FLEXKITAPI void CreateEntity		( RenderSystem* RS, Entity* e,		EntityDesc&		desc );
+	FLEXKITAPI void CreateDrawable		( RenderSystem* RS, Drawable* e,		DrawableDesc&		desc );
 
 	FLEXKITAPI bool LoadObjMesh			( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
-	FLEXKITAPI void UpdateEntity		( RenderSystem* RS, SceneNodes* Nodes, const ShaderTable* M, Entity* E );
+	FLEXKITAPI void UpdateDrawable		( RenderSystem* RS, SceneNodes* Nodes, const ShaderTable* M, Drawable* E );
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void CleanUpEntity		( Entity*	p );
+	FLEXKITAPI void CleanUpDrawable		( Drawable*	p );
 	FLEXKITAPI void CleanUpTriMesh		( TriMesh*	p );
 
 
@@ -2251,11 +2321,11 @@ namespace FontUtilities
 		char*	FontDir;// Texture Directory
 	};
 
-	FLEXKITAPI void DrawTextArea			(FontUtilities::FontAsset* F, TextArea* TA, StackAllocator* Temp, RenderSystem* RS, FlexKit::Context* Ctx, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out);
+	FLEXKITAPI void DrawTextArea			(FontUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::Context* Ctx, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out);
 	FLEXKITAPI void ClearText				(TextArea* TA);
-	FLEXKITAPI void CleanUpTextArea			(TextArea* TA, FlexKit::BlockAllocator* BA);
+	FLEXKITAPI void CleanUpTextArea			(TextArea* TA, FlexKit::iAllocator* BA);
 	FLEXKITAPI void PrintText				(TextArea* Area, const char* text);
-	FLEXKITAPI TextArea CreateTextObject	(FlexKit::RenderSystem* RS, FlexKit::BlockAllocator* Mem, TextArea_Desc* D, FlexKit::ShaderTable* ST);// Setups a 2D Surface for Drawing Text into
+	FLEXKITAPI TextArea CreateTextObject	(FlexKit::RenderSystem* RS, FlexKit::iAllocator* Mem, TextArea_Desc* D, FlexKit::ShaderTable* ST);// Setups a 2D Surface for Drawing Text into
 	FLEXKITAPI void		InitiateTextRender	(FlexKit::RenderSystem* RS, TextRender*	out);
 }
 

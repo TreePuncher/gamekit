@@ -37,38 +37,38 @@ namespace FlexKit
 
 	struct FLEXKITAPI GraphicScene
 	{
-		EntityHandle CreateEntity();
+		EntityHandle CreateDrawable();
 		void		 RemoveEntity(EntityHandle E);
 
-		inline Entity&		GetEntity			(EntityHandle EHandle) {return Entities->at(EHandle);						}
-		inline float4		GetMaterialColour	(EntityHandle EHandle) {return Entities->at(EHandle).MatProperties.Albedo;	}
-		inline float4		GetMaterialSpec		(EntityHandle EHandle) {return Entities->at(EHandle).MatProperties.Spec;	}
-		inline NodeHandle	GetNode				(EntityHandle EHandle) {return Entities->at(EHandle).Node;					}
-		inline float3		GetEntityPosition	(EntityHandle EHandle) {return GetPositionW(SN, Entities->at(EHandle).Node);}
+		inline Drawable&	GetEntity			(EntityHandle EHandle) {return Drawables->at(EHandle);						}
+		inline float4		GetMaterialColour	(EntityHandle EHandle) {return Drawables->at(EHandle).MatProperties.Albedo;	}
+		inline float4		GetMaterialSpec		(EntityHandle EHandle) {return Drawables->at(EHandle).MatProperties.Spec;	}
+		inline NodeHandle	GetNode				(EntityHandle EHandle) {return Drawables->at(EHandle).Node;					}
+		inline float3		GetEntityPosition	(EntityHandle EHandle) {return GetPositionW(SN, Drawables->at(EHandle).Node);}
 
 		bool isEntitySkeletonAvailable	(EntityHandle EHandle);
 		bool EntityEnablePosing			(EntityHandle EHandle);
 		bool EntityPlayAnimation		(EntityHandle EHandle, const char* Animation);
 
-		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{Entities->at(EHandle).Visable = Visable; }
-		inline void SetMesh				(EntityHandle EHandle, TriMesh* M)			{Entities->at(EHandle).Mesh = M;		  }
-		inline void SetMaterial			(EntityHandle EHandle, ShaderSetHandle M)	{Entities->at(EHandle).Material = M;	  }
+		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{Drawables->at(EHandle).Visable = Visable; }
+		inline void SetMesh				(EntityHandle EHandle, TriMesh* M)			{Drawables->at(EHandle).Mesh = M;		  }
+		inline void SetMaterial			(EntityHandle EHandle, ShaderSetHandle M)	{Drawables->at(EHandle).Material = M;	  }
 		inline void SetMaterialParams	(EntityHandle EHandle, float4 RGBA = float4(1.0f, 1.0f, 1.0f, 0.5f), float4 Spec = float4(1.0f, 1.0f, 1.0f, 0.5f))
 		{
-			Entities->at(EHandle).OverrideMaterialProperties = true;
-			Entities->at(EHandle).MatProperties.Albedo		 = RGBA;
-			Entities->at(EHandle).MatProperties.Spec		 = Spec;
+			Drawables->at(EHandle).OverrideMaterialProperties = true;
+			Drawables->at(EHandle).MatProperties.Albedo		 = RGBA;
+			Drawables->at(EHandle).MatProperties.Spec		 = Spec;
 		}
 
-		Entity& SetNode(EntityHandle EHandle, NodeHandle Node);
+		Drawable& SetNode(EntityHandle EHandle, NodeHandle Node);
 
-		EntityHandle CreateEntityAndSetMesh(ShaderSetHandle M, GUID_t Mesh);
-		EntityHandle CreateEntityAndSetMesh(ShaderSetHandle M, char* Mesh);
+		EntityHandle CreateDrawableAndSetMesh(ShaderSetHandle M, GUID_t Mesh);
+		EntityHandle CreateDrawableAndSetMesh(ShaderSetHandle M, char* Mesh);
 		
 		LightHandle		AddPointLight(float3 POS, float3 Color, float I = 10, float R = 10);
 		SpotLightHandle AddSpotLight(float3 POS, float3 Color, float3 Dir, float t = pi / 4, float I = 10, float R = 10);
 
-		void _PushEntity(Entity E);
+		void _PushEntity(Drawable E);
 		void PushMesh	(TriMesh* M);
 
 		inline void Yaw					(EntityHandle Handle, float a)			{ FlexKit::Yaw	(SN, GetEntity(Handle).Node, a); }
@@ -89,11 +89,11 @@ namespace FlexKit
 		TriMesh* LoadMesh(GUID_t ID, ShaderSetHandle M);
 		TriMesh* LoadMesh(const char* ID, ShaderSetHandle M);
 
-		fixed_vector<Entity>*	Entities;
+		fixed_vector<Drawable>*	Drawables;
 		fixed_vector<TriMesh*>*	Geo;
 		fixed_vector<size_t>*	FreeEntityList;
-		StackAllocator*			TempMem;
-		BlockAllocator*			Memory;
+		iAllocator*				TempMem;
+		iAllocator*				Memory;
 		RenderSystem*			RS;
 		ShaderTable*			ST;
 		Resources*				RM;
@@ -105,7 +105,7 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI void InitiateGraphicScene			(GraphicScene* Out, RenderSystem* in_RS, ShaderTable* in_ST, Resources* in_RM, SceneNodes* in_SN, BlockAllocator* Memory, StackAllocator* TempMemory);
+	FLEXKITAPI void InitiateGraphicScene			(GraphicScene* Out, RenderSystem* in_RS, ShaderTable* in_ST, Resources* in_RM, SceneNodes* in_SN, iAllocator* Memory, iAllocator* TempMemory);
 
 	FLEXKITAPI void UpdateGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void UpdateAnimationsGraphicScene	(GraphicScene* SM);
@@ -113,10 +113,10 @@ namespace FlexKit
 	FLEXKITAPI void UpdateGraphicScene_PreDraw		(GraphicScene* SM);
 
 	FLEXKITAPI void CleanUpGraphicScene				(GraphicScene* SM);
-	FLEXKITAPI void CleanUpSceneSkeleton			(Skeleton* S, BlockAllocator* Mem);
+	FLEXKITAPI void CleanUpSceneSkeleton			(Skeleton* S, iAllocator* Mem);
 
 	template<typename ALLOC_T>
-	void CleanUp(EntityPoseState* EPS, ALLOC_T* Mem)
+	void CleanUp(DrawablePoseState* EPS, ALLOC_T* Mem)
 	{
 		if(EPS->Joints)			Mem->free(EPS->Joints);
 		if(EPS->CurrentPose)	Mem->free(EPS->CurrentPose);

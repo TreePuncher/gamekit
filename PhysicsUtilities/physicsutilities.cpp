@@ -276,7 +276,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void MakeCube(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Entity* E, NodeHandle node, float3 initialP, FlexKit::Quaternion initialQ)
+	void MakeCube(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Drawable* E, NodeHandle node, float3 initialP, FlexKit::Quaternion initialQ)
 	{
 		auto index                                 = CreateCubeActor(Material, scene, cdesc.r, initialP, initialQ);
 		scene->Colliders[index].Node               = node;

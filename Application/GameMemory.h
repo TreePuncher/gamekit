@@ -97,22 +97,22 @@ static const size_t BLOCKALLOCSIZE	= MEGABYTE * 512;
 
 struct EngineMemory
 {
-	BlockAllocator		BlockAllocator;
-	StackAllocator		TempAllocator;
-	StackAllocator		LevelAllocator;
+	BlockAllocator	BlockAllocator;
+	StackAllocator	TempAllocator;
+	StackAllocator	LevelAllocator;
 
-	bool				End;
-	RenderSystem		RenderSystem;
+	bool			End;
+	RenderSystem	RenderSystem;
 
-	RenderWindow		Window;
-	DepthBuffer			DepthBuffer;
-	Time				Time;
-	Resources			Assets;
+	RenderWindow	Window;
+	DepthBuffer		DepthBuffer;
+	Time			Time;
+	Resources		Assets;
 
-	PhysicsSystem		Physics;
-	PScene*				CurrentScene;
+	PhysicsSystem	Physics;
+	PScene*			CurrentScene;
 
-	NodeHandle			RootSN;
+	NodeHandle		RootSN;
 
 	FlexKit::PVS			PVS_;
 	FlexKit::ShaderTable	Materials;

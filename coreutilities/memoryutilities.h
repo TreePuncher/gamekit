@@ -35,6 +35,35 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
+	struct iAllocator
+	{
+		virtual void* malloc(size_t) = 0;
+		virtual void  free(void* _ptr) = 0;
+		virtual void*  _aligned_malloc(size_t, size_t A = 0x10) = 0;
+		virtual void  _aligned_free(void* _ptr) = 0;
+		virtual void  clear(void) {};
+
+
+		template<typename T>
+		T& allocate()
+		{
+			auto mem = malloc(sizeof(T));
+
+			auto t = new (mem) T();
+			return *t;
+		}
+
+		template<typename T, size_t a = 16>
+		T& allocate_aligned()
+		{
+			auto mem = _aligned_malloc(sizeof(T), a);
+
+			auto t = new (mem) T();
+			return *t;
+		}
+	};
+
+
 	struct FLEXKITAPI StackAllocator
 	{
 		StackAllocator()
@@ -84,6 +113,35 @@ namespace FlexKit
 		size_t size		= 0;
 		byte*  Buffer	= 0;
 
+		struct iStackAllocator : public iAllocator
+		{	
+			iStackAllocator(StackAllocator* Allocator = nullptr) : ParentAllocator(Allocator){}
+
+			void* malloc(size_t size)
+			{
+				return ParentAllocator->malloc(size);
+			}
+
+			void free(void* _ptr)
+			{
+			}
+
+			void* _aligned_malloc(size_t size, size_t A)
+			{
+				return ParentAllocator->_aligned_malloc(size, A);
+			}
+
+			void _aligned_free(void* _ptr){}
+			void clear(void* _ptr) { ParentAllocator->clear();}
+
+
+			StackAllocator*	ParentAllocator;
+		}AllocatorInterface;
+
+		operator iAllocator* ()
+		{
+			return &AllocatorInterface;
+		}
 		std::mutex	critsection;
 	};
 
@@ -439,6 +497,8 @@ namespace FlexKit
 
 			_ptr = (char*)in._ptr;
 			in.PoolSize = Small + Medium + Large;
+
+			new(&AllocatorInterface) iBlockAllocator(this);
 		}
 
 		byte* malloc(size_t size, bool MarkAllocated = false)
@@ -504,7 +564,6 @@ namespace FlexKit
 			return *t;
 		}
 
-
 		template<typename T>
 		T& allocate()
 		{
@@ -550,6 +609,38 @@ namespace FlexKit
 			byte* top    = ((byte*)LargeBlockAlloc.Blocks) + Large;
 
 			return(bottom <= a_ptr && a_ptr < top);
+		}
+
+		struct iBlockAllocator : public iAllocator
+		{
+			iBlockAllocator(BlockAllocator* parent = nullptr) : ParentAllocator(parent){}
+
+			void* malloc(size_t size)
+			{
+				return ParentAllocator->malloc(size);
+			}
+
+			void free(void* _ptr)
+			{
+				ParentAllocator->free(_ptr);
+			}
+
+			void* _aligned_malloc(size_t size, size_t A)
+			{
+				return ParentAllocator->_aligned_malloc(size, A);
+			}
+
+			void _aligned_free(void* _ptr)
+			{
+				ParentAllocator->_aligned_free(_ptr);
+			}
+
+			BlockAllocator* ParentAllocator;
+		}AllocatorInterface;
+
+		operator iAllocator* ()
+		{
+			return &AllocatorInterface;
 		}
 	};
 

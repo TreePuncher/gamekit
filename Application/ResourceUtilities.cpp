@@ -52,23 +52,23 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-void InitiateScene( Scene* out, RenderSystem* RS, BlockAllocator* memory, Scene_Desc* desc )
+void InitiateScene( Scene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc )
 {
 	desc->MaxPointLightCount = FlexKit::max(1, desc->MaxPointLightCount);
 
 	out->Root			= desc->Root;
-	out->MaxEntities	= desc->MaxEntityCount;
+	out->MaxDrawables	= desc->MaxEntityCount;
 	out->MaxObjects		= desc->MaxTriMeshCount;
-	out->Entities		= (Entity*)memory->_aligned_malloc( sizeof(Entity)  * desc->MaxEntityCount	);
+	out->Drawables		= (Drawable*)memory->_aligned_malloc( sizeof(Drawable)  * desc->MaxEntityCount	);
 
 	if(desc->MaxTriMeshCount)
 		out->Geometry = (TriMesh*)memory->_aligned_malloc( sizeof(TriMesh) * desc->MaxTriMeshCount	);
 	
-	char*  IDs		   = (char*)memory->_aligned_malloc (out->MaxEntities * 64);
+	char*  IDs		   = (char*)memory->_aligned_malloc (out->MaxDrawables * 64);
 	out->EntityIDs	   = IDs;
-	memset( IDs, 0x00, out->MaxEntities * 64 );
+	memset( IDs, 0x00, out->MaxDrawables * 64 );
 
-	byte*  LightBuffer = (byte*)memory->_aligned_malloc (( sizeof(Entity) + 9 ) * desc->MaxPointLightCount );
+	byte*  LightBuffer = (byte*)memory->_aligned_malloc (( sizeof(Drawable) + 9 ) * desc->MaxPointLightCount );
 	CreatePointLightBuffer(		
 		RS, 
 		&out->PLightBuffer, 
@@ -95,19 +95,19 @@ void CleanUpScene( Scene* scn, EngineMemory* memory )
 	if (!scn)
 		return;
 
-	for( size_t itr = 0; itr < scn->EntitiesUsed; ++itr)
-		CleanUpEntity(scn->Entities + itr);
+	for( size_t itr = 0; itr < scn->DrawablesUsed; ++itr)
+		CleanUpDrawable(scn->Drawables + itr);
 	for( size_t itr = 0; itr < scn->GeometryUsed; ++itr)
 		CleanUpTriMesh( scn->Geometry + itr );
 
-	CleanUp( &scn->PLightBuffer, &memory->BlockAllocator );
+	CleanUp( &scn->PLightBuffer, memory->BlockAllocator );
 
-	if(scn->Entities)				scn->Alloc->_aligned_free(scn->Entities);
+	if(scn->Drawables)				scn->Alloc->_aligned_free(scn->Drawables);
 	if(scn->PLightBuffer.Lights)	scn->Alloc->_aligned_free(scn->PLightBuffer.Lights);
 	if(scn->Geometry)				scn->Alloc->_aligned_free(scn->Geometry);
 	if(scn->EntityIDs)				scn->Alloc->_aligned_free(scn->EntityIDs);
 
-	scn->Entities				= nullptr;
+	scn->Drawables				= nullptr;
 	scn->PLightBuffer.Lights	= nullptr;
 	scn->Geometry				= nullptr;
 	scn->EntityIDs				= nullptr;
@@ -130,7 +130,7 @@ SearchForMesh(Scene* Scn, size_t TriMeshID)
 Pair<bool, SceneHandle>	
 SearchForEntity( Scene* Scn, char* ID )
 {
-	for( size_t itr = 0; itr < Scn->EntitiesUsed; ++itr )
+	for( size_t itr = 0; itr < Scn->DrawablesUsed; ++itr )
 		if( strcmp( Scn->EntityIDs + itr * 64, ID ) == 0 )
 			return{true, SceneHandle( itr ) };
 
@@ -294,9 +294,9 @@ FbxAMatrix XMMATRIX_2_FBXMATRIX(XMMATRIX& M)
 
 struct Engine
 {
-	BlockAllocator* MemoryOut;
-	StackAllocator* TempMem;
-	StackAllocator* LevelMem;
+	iAllocator*		MemoryOut;
+	iAllocator*		TempMem;
+	iAllocator*		LevelMem;
 	RenderSystem*	RS;
 	ShaderTable*	Materials;
 };
@@ -578,7 +578,7 @@ struct FBXMeshDesc
 	FBXSkinDeformer Skin;
 };
 
-FBXSkinDeformer CreateSkin(fbxsdk::FbxMesh* Mesh, StackAllocator* TempMem)
+FBXSkinDeformer CreateSkin(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem)
 {	// Get Weights
 	FBXSkinDeformer	Out = {};
 
@@ -636,7 +636,7 @@ FBXSkinDeformer CreateSkin(fbxsdk::FbxMesh* Mesh, StackAllocator* TempMem)
 /************************************************************************************************/
 
 
-FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, StackAllocator* TempMem, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false)
+FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false)
 {
 	using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
 	using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddIndexToken;
@@ -1024,7 +1024,7 @@ FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
 /************************************************************************************************/
 
 
-void GetJointTransforms(static_vector<JointInfo, 1024>& Out, FbxMesh* M, StackAllocator* MEM)
+void GetJointTransforms(static_vector<JointInfo, 1024>& Out, FbxMesh* M, iAllocator* MEM)
 {
 	auto DeformerCount = M->GetDeformerCount();
 	for (size_t I = 0; I < DeformerCount; ++I)
@@ -1116,7 +1116,7 @@ void GetAnimationCuts(CutList* out, MetaData_list* MD, const char* ID)
 /************************************************************************************************/
 
 
-FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, BlockAllocator* Mem, StackAllocator* Temp, const char* ID = nullptr, MetaData_list* MD = nullptr)
+FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, const char* ID = nullptr, MetaData_list* MD = nullptr)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
@@ -1200,7 +1200,7 @@ struct CompileMeshInfo
 	size_t BuffersFound;
 };
 
-CompileMeshInfo CompileMeshResource(TriMesh& out, StackAllocator* TempMem, BlockAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MetaData_list* MD = nullptr)
+CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MetaData_list* MD = nullptr)
 {
 	using FlexKit::FillBuffer;
 	using FlexKit::AnimationClip;
@@ -1218,7 +1218,7 @@ CompileMeshInfo CompileMeshResource(TriMesh& out, StackAllocator* TempMem, Block
 	CombinedVertexBuffer& CVB = CombinedVertexBuffer::Create_Aligned(128000, TempMem);
 	IndexList& IB			  = IndexList::Create_Aligned(128000, TempMem);
 
-	auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, *TempMem, *TempMem, MeshInfo.Weights);
+	auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, TempMem, TempMem, MeshInfo.Weights);
 	FK_ASSERT(BuildRes.V1 == true, "Mesh Failed to Build");
 
 	size_t IndexCount  = GetByType<MeshBuildInfo>(BuildRes).IndexCount;
@@ -1407,14 +1407,13 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 
 				TriMesh	out;
 				memset(&out, 0, sizeof(out));
-
+				char* ID = nullptr;
 				if ( NameLen++ ) {
-					out.ID = (char*)Memory->malloc( NameLen );
-					strcpy_s( (char*)out.ID, NameLen, Name );
+					ID = (char*)Memory->malloc( NameLen );
+					strcpy_s( (char*)ID, NameLen, Name );
 				}
 
-				auto Res = CompileMeshResource(out, TempMem, Memory, Mesh);
-
+				auto Res = CompileMeshResource(out, *TempMem, *Memory, Mesh, false, ID, MD);
 				PushGeo(GL, out, Memory);
 			}
 		}	break;
@@ -1443,7 +1442,7 @@ TY& _AlignedAllocate()
 /************************************************************************************************/
 
 
-Pair<bool, GBAPair> LoadFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, StackAllocator* MemoryTemp, StackAllocator* LevelMem, RenderSystem* RS, ShaderTable* MT,bool LoadSkeletalData = false, bool SUBDIV = false)
+Pair<bool, GBAPair> LoadFBXGeometry(fbxsdk::FbxScene* S, iAllocator* MemoryOut, iAllocator* MemoryTemp, iAllocator* LevelMem, RenderSystem* RS, ShaderTable* MT,bool LoadSkeletalData = false, bool SUBDIV = false)
 {
 	Engine E = { MemoryOut, MemoryTemp, LevelMem, RS, MT };
 	auto Res = FindAllGeometry(S->GetRootNode(), &E);
@@ -1656,7 +1655,7 @@ ResourceList CompileFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, 
 
 	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, &TempMemory);
 
-	ResourceList	ResourcesFound;
+	ResourceList ResourcesFound;
 	if ((size_t)Res > 0)
 	{
 		auto G = (GeometryBlock*)(GBAPair)Res;
@@ -1753,7 +1752,7 @@ LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, CompileScene
 using FlexKit::ShaderTable;
 using FlexKit::ShaderSetHandle;
 
-SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, Scene* SceneOut, fbxsdk::FbxNode* Node, NodeHandle ParentNode, SceneNodes* Nodes, ShaderSetHandle DefaultMaterial, RenderSystem* RS, bool CreateEntities = true)
+SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, Scene* SceneOut, fbxsdk::FbxNode* Node, NodeHandle ParentNode, SceneNodes* Nodes, ShaderSetHandle DefaultMaterial, RenderSystem* RS, bool CreateDrawables = true)
 {
 	using FlexKit::SetParentNode;
 	SceneStats Stats = {};
@@ -1784,26 +1783,26 @@ SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, Scene* SceneOut, fbxsdk::F
 				{
 				case FbxNodeAttribute::eMesh:
 				{
-					std::cout << "Entity Found: " << Node->GetName() << "\n";
+					std::cout << "Drawable Found: " << Node->GetName() << "\n";
 					
 					auto EntityHandle = SceneOut->GetFreeEntity();
 					if (EntityHandle) {
 						auto NodeName	 = Node->GetName();
-						auto Entity		 = SceneOut->GetEntity(EntityHandle);
-						Entity->Posed = false;
+						auto Drawable		 = SceneOut->GetEntity(EntityHandle);
+						Drawable->Posed = false;
 
 						if ( NodeName ){
 							size_t NodeStrLen = strnlen( NodeName, 0x40 );
 							strncpy_s( SceneOut->GetEntityID( EntityHandle ), 64, NodeName, NodeStrLen);
 						}
 						
-						if (CreateEntities)
+						if (CreateDrawables)
 						{
-							CreateEntity(RS, Entity, EntityDesc{ DefaultMaterial });
+							CreateDrawable(RS, Drawable, DrawableDesc{ DefaultMaterial });
 							auto TriHandle = SearchForMesh(SceneOut, Attr->GetUniqueID());
 							if ( TriHandle ) {
-								Entity->Node		= Nodehndl;
-								Entity->Mesh		= SceneOut->GetTriMesh(TriHandle);
+								Drawable->Node		= Nodehndl;
+								Drawable->Mesh		= SceneOut->GetTriMesh(TriHandle);
 							}
 						}
 
@@ -1846,7 +1845,7 @@ SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, Scene* SceneOut, fbxsdk::F
 			}
 
 			for (size_t itr = 0; itr < ChildCount; ++itr)
-				Stats += ProcessSceneNodes(scene, SceneOut, Node->GetChild(itr), Nodehndl, Nodes, DefaultMaterial, RS, CreateEntities);
+				Stats += ProcessSceneNodes(scene, SceneOut, Node->GetChild(itr), Nodehndl, Nodes, DefaultMaterial, RS, CreateDrawables);
 
 		}
 	}
@@ -1917,7 +1916,7 @@ TranslateFBXScene(fbxsdk::FbxScene* S, Scene* SceneOut, NodeHandle SceneRoot, Sc
 
 void CleanUp(Scene* Scene)
 {
-	for (size_t I = 0; I < Scene->EntitiesUsed; ++I) CleanUpEntity(Scene->Entities + I);
+	for (size_t I = 0; I < Scene->DrawablesUsed; ++I) CleanUpDrawable(Scene->Drawables + I);
 	for (size_t I = 0; I < Scene->GeometryUsed; ++I) CleanUpTriMesh(Scene->Geometry + I);
 }
 

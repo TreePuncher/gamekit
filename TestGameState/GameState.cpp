@@ -152,7 +152,7 @@ struct KeyState
 
 struct GameActor
 {
-	EntityHandle				Entity;
+	EntityHandle				Drawable;
 	float						Health;
 
 	CapsuleCharacterController	BPC;
@@ -209,9 +209,9 @@ struct MouseCameraController
 /************************************************************************************************/
 
 
-void InitiateGameActor(float r, float h, float3 InitialPosition,  FlexKit::PScene* S, FlexKit::PhysicsSystem* PS, EntityHandle Entity, GameActor* out)
+void InitiateGameActor(float r, float h, float3 InitialPosition,  FlexKit::PScene* S, FlexKit::PhysicsSystem* PS, EntityHandle Drawable, GameActor* out)
 {
-	out->Entity			= Entity;
+	out->Drawable			= Drawable;
 	Initiate(&out->BPC, S, PS, CapsuleCharacterController_DESC{r, h, InitialPosition});
 }
 
@@ -221,7 +221,7 @@ void InitiateGameActor(float r, float h, float3 InitialPosition,  FlexKit::PScen
 
 void BindActorToPlayerController(GameActor* Actor, PlayerController* Controller, GraphicScene* GS )
 {
-	GS->SetNode(Actor->Entity, Controller->ModelNode);
+	GS->SetNode(Actor->Drawable, Controller->ModelNode);
 }
 
 
@@ -371,7 +371,7 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 		Q2.x = 0;
 		Q2.z = 0;
 	
-		SetOrientation(Scene->SN, Scene->GetNode(ActorState->Entity), Q2);
+		SetOrientation(Scene->SN, Scene->GetNode(ActorState->Drawable), Q2);
 
 		return (NewP - OldP);
 	}
@@ -517,10 +517,13 @@ void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
-	auto PlayerModel = State->GScene.CreateEntityAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
+	auto PlayerModel = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
+	auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Floor");
 	State->GScene.Yaw(PlayerModel, pi / 2);
-	State->GScene.CreateEntityAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Floor");
-	State->GScene.SetMaterialParams(PlayerModel, {0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
+	State->GScene.EntityEnablePosing(PlayerModel);
+	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION");
+	State->GScene.SetMaterialParams(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
+	State->GScene.SetMaterialParams(Floor,		 { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
 	auto	WindowRect	= Engine->Window.WH;
@@ -538,7 +541,13 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 20.0f, 00.0f});
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 00.0f, 40.0f});
 
-	State->GScene.AddPointLight({ 0, 200, 0 }, { 1, 1, 1 }, 10000, 10000);
+	State->GScene.AddPointLight({ 0, 10, 0 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({ 40, 10, 0 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({-40, 10, 0 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({ 40, 10, 40 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({ 40, 10,-40 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({-40, 10, 40 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({-40, 10,-40 }, { 1, 1, 1 }, 1000, 1000);
 
 	Out->PlayerInertia.Drag					= 0.1f;
 	Out->PlayerInertia.Inertia				= float3(0);
@@ -592,15 +601,15 @@ extern "C"
 		State.Mouse				 = MouseInputState();
 		State.DoDeferredShading  = true;
 		State.ActiveWindow		 = &Engine->Window;
-
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
+
 
 		InitiateForwardPass		(Engine->RenderSystem, &FP_Desc, &State.ForwardPass);
 		InitiateDeferredPass	(Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
 		InitiateScene			(&Engine->Physics, &State.PScene);
-		InitiateGraphicScene	(&State.GScene, Engine->RenderSystem, &Engine->Materials, &Engine->Assets, &Engine->Nodes, &Engine->BlockAllocator, &Engine->TempAllocator);
-		InitiateTextRender		(Engine->RenderSystem, &State.TextRender);
+		InitiateGraphicScene	(&State.GScene, Engine->RenderSystem, &Engine->Materials, &Engine->Assets, &Engine->Nodes, Engine->BlockAllocator, Engine->TempAllocator);
+		//InitiateTextRender		(Engine->RenderSystem, &State.TextRender);
 
 		CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
 		CreateTestScene			(Engine, &State, &State.TestScene);
@@ -609,7 +618,6 @@ extern "C"
 		sub.Notify = &KeyEventsWrapper;
 		sub._ptr   = &State;
 		Engine->Window.Handler.Subscribe(sub);
-
 		return &State;
 	}
 
@@ -633,7 +641,7 @@ extern "C"
 
 	GAMESTATEAPI void UpdateAnimations(RenderSystem* RS, StackAllocator* TempMemory, double dt, GameState* _ptr)
 	{
-
+		UpdateAnimationsGraphicScene(&_ptr->GScene, dt);
 	}
 
 
@@ -641,7 +649,13 @@ extern "C"
 	{
 		UpdateTransforms(State->Nodes);
 		UpdateGraphicScene_PreDraw(&State->GScene);
-		UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.PLights.size(), dt);
+
+		DeferredPass_Parameters	DPP;
+		DPP.PointLightCount = State->GScene.PLights.size();
+		DPP.SpotLightCount = State->GScene.SPLights.size();
+
+		UpdateDeferredPassConstants(Engine->RenderSystem, &DPP, &State->DeferredPass);
+		UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), dt);
 	}
 
 
@@ -662,7 +676,7 @@ extern "C"
 		ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0);
 
 		if (State->DoDeferredShading)
-			DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
+			DoDeferredPass(&PVS, nullptr, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
 		else
 			DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
 
@@ -678,12 +692,16 @@ extern "C"
 
 	GAMESTATEAPI void CleanUp(EngineMemory* Engine, GameState* _ptr)
 	{
+		WaitforGPU(&Engine->RenderSystem, Engine->RenderSystem.FenceValue);
+
 		Engine->BlockAllocator.free(_ptr);
 		
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);
 
+		CleanupCamera			(_ptr->Nodes, _ptr->ActiveCamera);
 		CleanupForwardPass		(&_ptr->ForwardPass);
+		CleanupDeferredPass		(&_ptr->DeferredPass);
 		CleanUpGraphicScene		(&_ptr->GScene);
 		CleanUpScene			(&_ptr->PScene);
 		CleanUpEngine			(Engine);

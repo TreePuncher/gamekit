@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 
+using FlexKit::iAllocator;
 using FlexKit::BlockAllocator;
 using FlexKit::StackAllocator;
 using FlexKit::static_vector;
@@ -45,7 +46,7 @@ using FlexKit::float2;
 using FlexKit::float3;
 using FlexKit::GUID_t;
 using FlexKit::ID_LENGTH;
-using FlexKit::Entity;
+using FlexKit::Drawable;
 using FlexKit::NodeHandle;
 using FlexKit::Pair;
 using FlexKit::PointLight;
@@ -73,8 +74,8 @@ struct Scene_Desc
 	size_t			MaxEntityCount		= 0;
 	size_t			MaxPointLightCount	= 0;
 	size_t			MaxSkeletonCount	= 0;
-	BlockAllocator*	SceneMemory			= nullptr;
-	BlockAllocator*	AssetMemory			= nullptr;
+	iAllocator*		SceneMemory			= nullptr;
+	iAllocator*		AssetMemory			= nullptr;
 	NodeHandle		Root;
 	ShaderSetHandle DefaultMaterial;
 };
@@ -98,27 +99,27 @@ struct Scene
 	size_t				MaxObjects		= 0;
 	size_t				GeometryUsed	= 0;
 	TriMesh*			Geometry		= nullptr;
-	size_t				MaxEntities		= 0;
-	size_t				EntitiesUsed	= 0;
-	Entity*				Entities		= nullptr;
+	size_t				MaxDrawables	= 0;
+	size_t				DrawablesUsed	= 0;
+	Drawable*			Drawables		= nullptr;
 	size_t				AnimationCount	= 0;
 	char*				EntityIDs		= nullptr;
 
 	PointLightBuffer	PLightBuffer;
 	NodeHandle			Root;		
 
-	BlockAllocator*		Alloc;
+	iAllocator*		Alloc;
 	// TODO: DEBUG VERSIONS WITH CHECKS
 	inline TriMesh*		GetTriMesh	( SceneHandle handle )	{ return Geometry	+ handle.INDEX;		 }
-	inline Entity*		GetEntity	( SceneHandle handle )	{ return Entities	+ handle.INDEX;		 }
+	inline Drawable*	GetEntity	( SceneHandle handle )	{ return Drawables	+ handle.INDEX;		 }
 	inline PointLight*	GetPLight	( SceneHandle handle )	{ return &PLightBuffer[handle.INDEX];	 }
 	inline char*		GetEntityID ( SceneHandle handle )  { return EntityIDs	+ handle.INDEX * 64; }
 
 	Pair<bool, SceneHandle>
 	GetFreeEntity()
 	{
-		if (EntitiesUsed < MaxEntities)
-			return{ true, SceneHandle(EntitiesUsed++) };
+		if (DrawablesUsed < MaxDrawables)
+			return{ true, SceneHandle(DrawablesUsed++) };
 		return{ false };
 	}
 
@@ -139,7 +140,7 @@ struct Scene
 };
 
 
-void InitiateScene	(Scene* out, RenderSystem* RS, BlockAllocator* memory, Scene_Desc* desc );
+void InitiateScene	(Scene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc );
 void UpdateScene	(Scene* In, RenderSystem* RS, SceneNodes* Nodes	);
 void CleanUpScene	(Scene* scn, EngineMemory* memory );
 //void AddSkeleton	(Scene* scn, Skeleton*, EngineMemory* engine			);
@@ -153,10 +154,10 @@ Pair<bool, SceneHandle>	SearchForEntity (Scene* Scn, char* ID );
 
 struct LoadSceneFromFBXFile_DESC
 {
-	FlexKit::BlockAllocator* BlockMemory;
-	FlexKit::BlockAllocator* AssetMemory; 
-	FlexKit::StackAllocator* TempMem; 
-	FlexKit::StackAllocator* LevelMem; 
+	FlexKit::iAllocator*	 BlockMemory;
+	FlexKit::iAllocator*	 AssetMemory; 
+	FlexKit::iAllocator*	 TempMem; 
+	FlexKit::iAllocator*	 LevelMem; 
 	FlexKit::RenderSystem*	 RS; 
 	FlexKit::ShaderTable*	 ST;
 	FlexKit::NodeHandle		 SceneRoot;
@@ -256,7 +257,7 @@ namespace FontUtilities
 {
 	typedef Pair<size_t, FontAsset*> LoadFontResult;
 
-	LoadFontResult	LoadFontAsset(char* file, char* dir, RenderSystem* RS, StackAllocator* tempMem, StackAllocator* outMem);
+	LoadFontResult	LoadFontAsset(char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem);
 	void			FreeFontAsset(FontAsset* asset);
 }
 

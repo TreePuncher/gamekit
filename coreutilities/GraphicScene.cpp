@@ -30,17 +30,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateEntity()
+	EntityHandle GraphicScene::CreateDrawable()
 	{
 		if (FreeEntityList&& FreeEntityList->size())
 		{
 			auto E = FreeEntityList->back();
 			FreeEntityList->pop_back();
-			Entity& e = GetEntity(E);
+			Drawable& e = GetEntity(E);
 
-			EntityDesc	Desc;
+			DrawableDesc	Desc;
 			NodeHandle N  = GetZeroedNode(SN);
-			FlexKit::CreateEntity(RS, &e, Desc);
+			FlexKit::CreateDrawable(RS, &e, Desc);
 
 			e.Visable  = false;
 			e.Node	   = N;
@@ -48,15 +48,15 @@ namespace FlexKit
 		}
 		else
 		{
-			Entity		e;
-			EntityDesc	Desc;
+			Drawable		e;
+			DrawableDesc	Desc;
 			NodeHandle N  = GetZeroedNode(SN);
-			FlexKit::CreateEntity(RS, &e, Desc);
+			FlexKit::CreateDrawable(RS, &e, Desc);
 
 			e.Visable  = false;
 			e.Node	   = N;
 			_PushEntity(e);
-			return Entities->size() - 1;
+			return Drawables->size() - 1;
 		}
 		return -1;
 	}
@@ -67,11 +67,11 @@ namespace FlexKit
 
 	void GraphicScene::RemoveEntity(EntityHandle E)
 	{
-		if (E + 1 == Entities->size())
+		if (E + 1 == Drawables->size())
 		{
 			FreeHandle(SN, GetEntity(E).Node);
-			CleanUpEntity(&GetEntity(E));
-			Entities->pop_back();
+			CleanUpDrawable(&GetEntity(E));
+			Drawables->pop_back();
 		}
 		else
 		{
@@ -88,7 +88,7 @@ namespace FlexKit
 
 			FreeEntityList->push_back(E);
 			FreeHandle(SN, GetEntity(E).Node);
-			CleanUpEntity(&GetEntity(E));
+			CleanUpDrawable(&GetEntity(E));
 			GetEntity(E).VConstants = nullptr;
 			GetEntity(E).Visable	= false;
 			GetEntity(E).Mesh		= nullptr;
@@ -101,9 +101,9 @@ namespace FlexKit
 
 	bool GraphicScene::isEntitySkeletonAvailable(EntityHandle EHandle)
 	{
-		if (Entities->at(EHandle).Mesh)
+		if (Drawables->at(EHandle).Mesh)
 		{
-			auto ID = Entities->at(EHandle).Mesh->TriMeshID;
+			auto ID = Drawables->at(EHandle).Mesh->TriMeshID;
 			bool Available = isResourceAvailable(RM, ID, EResourceType::EResource_Skeleton);
 			return Available;
 		}
@@ -193,20 +193,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Entity& GraphicScene::SetNode(EntityHandle EHandle, NodeHandle Node) 
+	Drawable& GraphicScene::SetNode(EntityHandle EHandle, NodeHandle Node) 
 	{
 		FlexKit::FreeHandle(SN, GetNode(EHandle));
-		Entities->at(EHandle).Node = Node;
-		return Entities->at(EHandle);
+		Drawables->at(EHandle).Node = Node;
+		return Drawables->at(EHandle);
 	}
 
 
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateEntityAndSetMesh(ShaderSetHandle M, GUID_t Mesh)
+	EntityHandle GraphicScene::CreateDrawableAndSetMesh(ShaderSetHandle M, GUID_t Mesh)
 	{
-		auto EHandle = CreateEntity();
+		auto EHandle = CreateDrawable();
 
 		TriMesh*  Geo = FindMesh(Mesh);
 		if (!Geo) Geo = LoadMesh(Mesh, M);
@@ -223,9 +223,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateEntityAndSetMesh(ShaderSetHandle M, char* Mesh)
+	EntityHandle GraphicScene::CreateDrawableAndSetMesh(ShaderSetHandle M, char* Mesh)
 	{
-		auto EHandle = CreateEntity();
+		auto EHandle = CreateDrawable();
 
 		TriMesh* Geo = FindMesh(Mesh);
 		if(!Geo) Geo = LoadMesh(Mesh, M);
@@ -266,27 +266,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::_PushEntity(Entity E)
+	void GraphicScene::_PushEntity(Drawable E)
 	{
-		if (!Entities)
-			Entities = new(Memory->_aligned_malloc(sizeof(Entity) * 64)) fixed_vector<Entity>(64);
+		if (!Drawables)
+			Drawables = new(Memory->_aligned_malloc(sizeof(Drawable) * 64)) fixed_vector<Drawable>(64);
 
-		if (Entities->full())
+		if (Drawables->full())
 		{
-			auto Temp		= new(TempMem->_aligned_malloc(sizeof(Entity)*Entities->size())) fixed_vector<Entity>(Entities->size());
-			for (auto e : *Entities)
+			auto Temp		= new(TempMem->_aligned_malloc(sizeof(Drawable)*Drawables->size())) fixed_vector<Drawable>(Drawables->size());
+			for (auto e : *Drawables)
 				Temp->push_back(e);
 
-			size_t NewSize  = Entities->size() * 2;
-			auto NewArray	= new(Memory->_aligned_malloc(sizeof(Entity)*NewSize)) fixed_vector<Entity>(NewSize);
+			size_t NewSize  = Drawables->size() * 2;
+			auto NewArray	= new(Memory->_aligned_malloc(sizeof(Drawable)*NewSize)) fixed_vector<Drawable>(NewSize);
 			for (auto e : *Temp)
 				NewArray->push_back(e);
 
-			Memory->_aligned_free(Entities);
-			Entities = NewArray;
+			Memory->_aligned_free(Drawables);
+			Drawables = NewArray;
 		}
 
-		Entities->push_back(E);
+		Drawables->push_back(E);
 	}
 
 
@@ -378,7 +378,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, ShaderTable* in_ST, Resources* in_RM, SceneNodes* in_SN, BlockAllocator* Memory, StackAllocator* TempMemory)
+	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, ShaderTable* in_ST, Resources* in_RM, SceneNodes* in_SN, iAllocator* Memory, iAllocator* TempMemory)
 	{
 		using FlexKit::CreateSpotLightBuffer;
 		using FlexKit::CreatePointLightBuffer;
@@ -389,7 +389,7 @@ namespace FlexKit
 		Out->RM = in_RM;
 		Out->SN = in_SN;
 
-		Out->Entities	= nullptr;
+		Out->Drawables	= nullptr;
 		Out->Geo		= nullptr;
 
 		Out->Memory		= Memory;
@@ -397,6 +397,7 @@ namespace FlexKit
 
 		FlexKit::PointLightBufferDesc Desc;
 		Desc.MaxLightCount	= 512;
+
 
 		CreatePointLightBuffer(in_RS, &Out->PLights, Desc, Memory);
 		CreateSpotLightBuffer(in_RS,  &Out->SPLights, Memory);
@@ -412,9 +413,9 @@ namespace FlexKit
 
 	void UpdateAnimationsGraphicScene(GraphicScene* SM, double dt)
 	{
-		if (SM->Entities)
+		if (SM->Drawables)
 		{
-			for (auto E : *SM->Entities)
+			for (auto E : *SM->Drawables)
 			{
 				if (E.AnimationState)
 					UpdateAnimation(SM->RS, &E, dt, SM->TempMem);
@@ -427,8 +428,8 @@ namespace FlexKit
 
 	void UpdateGraphicScene(GraphicScene* SM)
 	{
-		for(auto& E : *SM->Entities)
-			UpdateEntity(SM->RS, SM->SN, SM->ST, &E);
+		for(auto& E : *SM->Drawables)
+			UpdateDrawable(SM->RS, SM->SN, SM->ST, &E);
 	}
 
 
@@ -443,13 +444,19 @@ namespace FlexKit
 		FlexKit::GetOrientation(SM->SN, C->Node, &Q);
 		auto F = GetFrustum(C, FlexKit::GetPositionW(SM->SN, C->Node), Q);
 
-		if (SM->Entities)
-			for (auto &E : *SM->Entities)
+		if (SM->Drawables)
+		{
+			for (auto &E : *SM->Drawables)
+			{
 				if (E.Mesh && CompareAgainstFrustum(&F, FlexKit::GetPositionW(SM->SN, E.Node), E.Mesh->Info.r))
+				{
 					if (!E.Transparent)
 						PushPV(&E, out);
 					else
 						PushPV(&E, T_out);
+				}
+			}	
+		}
 	}
 
 
@@ -459,13 +466,13 @@ namespace FlexKit
 	void UpdateGraphicScene_PreDraw(GraphicScene* SM)
 	{
 		UpdatePointLightBuffer	(*SM->RS, SM->SN, &SM->PLights, SM->TempMem);
-		//UpdateSpotLightBuffer	(*SM->RS, SM->SN, &SM->SPLights, SM->TempMem);
+		UpdateSpotLightBuffer	(*SM->RS, SM->SN, &SM->SPLights, SM->TempMem);
 	}
 
 
 	/************************************************************************************************/
 
-	void CleanUpSceneSkeleton(Skeleton* S, BlockAllocator* Mem)
+	void CleanUpSceneSkeleton(Skeleton* S, iAllocator* Mem)
 	{
 		for (size_t I = 0; I < S->JointCount; ++I)
 			if(S->Joints[I].mID) Mem->free((void*)S->Joints[I].mID);
@@ -479,7 +486,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpSceneAnimation(AnimationClip* AC, BlockAllocator* Memory)
+	void CleanUpSceneAnimation(AnimationClip* AC, iAllocator* Memory)
 	{
 		for (size_t II = 0; II < AC->FrameCount; ++II) 
 		{
@@ -497,11 +504,11 @@ namespace FlexKit
 
 	void CleanUpGraphicScene(GraphicScene* SM)
 	{
-		if (SM->Entities) 
+		if (SM->Drawables) 
 		{
-			for (auto E : *SM->Entities)
+			for (auto E : *SM->Drawables)
 			{
-				CleanUpEntity(&E);
+				CleanUpDrawable(&E);
 				if (E.PoseState) 
 				{
 					Destroy(E.PoseState);
@@ -510,7 +517,7 @@ namespace FlexKit
 					SM->Memory->_aligned_free(E.AnimationState);
 				}
 			}
-			SM->Memory->_aligned_free(SM->Entities);
+			SM->Memory->_aligned_free(SM->Drawables);
 		}
 
 		if (SM->Geo) 
@@ -546,7 +553,7 @@ namespace FlexKit
 
 		SM->Memory->_aligned_free(SM->PLights.Lights);
 		SM->PLights.Lights	= nullptr;
-		SM->Entities		= nullptr;
+		SM->Drawables		= nullptr;
 		SM->Geo				= nullptr;
 	}
 
