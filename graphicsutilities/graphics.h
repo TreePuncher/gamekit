@@ -843,6 +843,15 @@ namespace FlexKit
 			size_t  AAQuality;
 		}Settings;
 
+		struct
+		{
+			ID3D12Resource* TempBuffer;
+			size_t			Position;
+			size_t			Last;
+			size_t			Size;
+			char*			Buffer;
+		}CopyEngine;
+
 		size_t	MeshLoadedCount;
 
 		struct RootSigLibrary

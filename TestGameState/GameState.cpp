@@ -560,6 +560,15 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	State->GScene.SetMaterialParams		(Floor,		 { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
+	for (uint32_t I = 0; I < 100; ++I)
+	{
+		for (uint32_t II = 0; II < 20; ++II)
+		{
+			auto Flower = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
+			State->GScene.TranslateEntity_WT(Flower, { 5.0f * I, 0, 5.0f * II });
+		}
+	}
+
 	auto	WindowRect	= Engine->Window.WH;
 	float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
 	InitiateCamera	(Engine->RenderSystem, State->Nodes, &Out->PlayerCam, Aspect, 0.01f, 10000.0f, true);

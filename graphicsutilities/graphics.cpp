@@ -508,6 +508,91 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void InitiateCopyEngine(RenderSystem* RS)
+	{
+		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(MEGABYTE * 16);
+		D3D12_HEAP_PROPERTIES HEAP_Props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+		ID3D12Resource* TempBuffer;
+		HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE,
+			&Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr, IID_PPV_ARGS(&TempBuffer));
+
+		RS->CopyEngine.Position	    = 0;
+		RS->CopyEngine.Last			= 0;
+		RS->CopyEngine.Size		    = MEGABYTE * 16;
+		RS->CopyEngine.TempBuffer   = TempBuffer;
+
+		CD3DX12_RANGE Range(0, 0);
+		HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
+	}
+
+
+	/************************************************************************************************/
+
+
+	void UpdateGPUResource(RenderSystem* RS, void* Data, size_t Size, ID3D12Resource* Dest)
+	{
+		auto& CopyEngine = RS->CopyEngine;
+
+		// Not enough remaining Space in Buffer GOTO Beginning
+		if	(CopyEngine.Position + Size > CopyEngine.Size)
+			CopyEngine.Position = 0;
+
+		if(CopyEngine.Last <= CopyEngine.Position + Size)
+		{// Safe, Do Upload
+			memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
+			RS->CommandList->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
+			CopyEngine.Position += Size;
+		}
+		else if (CopyEngine.Last > CopyEngine.Position)
+		{// Potential Overlap condition
+			if(CopyEngine.Position + Size  < CopyEngine.Last)
+			{// Safe, Do Upload
+				memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
+				RS->CommandList->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
+				CopyEngine.Position += Size;
+			}
+			else
+			{// Resize Buffer and Try again
+				AddTempBuffer(CopyEngine.TempBuffer, RS);
+
+				D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(CopyEngine.Size * 2);
+				D3D12_HEAP_PROPERTIES HEAP_Props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+				ID3D12Resource* TempBuffer;
+				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE,
+					&Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
+					nullptr, IID_PPV_ARGS(&TempBuffer));
+
+				RS->CopyEngine.Position   = 0;
+				RS->CopyEngine.Last		  = 0;
+				RS->CopyEngine.Size       = CopyEngine.Size * 2;
+				RS->CopyEngine.TempBuffer = TempBuffer;
+				SETDEBUGNAME(TempBuffer, "TEMPORARY");
+
+				CD3DX12_RANGE Range(0, 0);
+				HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
+
+				return UpdateGPUResource(RS, Data, Size, Dest);
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CopyEnginePostFrameUpdate(RenderSystem* RS)
+	{
+		auto& CopyEngine = RS->CopyEngine;
+		CopyEngine.Last  = CopyEngine.Position;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void InitiateRenderSystem( Graphics_Desc* in, RenderSystem* out )
 	{
 #if USING( DEBUGGRAPHICS )
@@ -614,7 +699,7 @@ namespace FlexKit
 		CreateDescriptorHeaps(out, &out->DefaultDescriptorHeaps);
 		CreateRootSignatureLibrary(out);
 
-		return;
+		InitiateCopyEngine(out);
 	}
 
 
@@ -649,6 +734,7 @@ namespace FlexKit
 		System->DefaultDescriptorHeaps.DSVDescHeap->Release();
 		System->DefaultDescriptorHeaps.RTVDescHeap->Release();
 		System->DefaultDescriptorHeaps.SRVDescHeap->Release();
+		System->CopyEngine.TempBuffer->Release();
 
 #if USING(DEBUGGRAPHICS)
 		// Prints Detailed Report
@@ -981,6 +1067,7 @@ namespace FlexKit
 	{ 
 		WaitForFrameCompletetion(RS);
 		ReleaseTempResources(RS);
+		CopyEnginePostFrameUpdate(RS);
 
 		HRESULT HR;
 		HR = RS->GraphicsCLAllocator->Reset();							FK_ASSERT(SUCCEEDED(HR));
@@ -1248,44 +1335,10 @@ namespace FlexKit
 
 	void UpdateResourceByTemp( RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
 	{
-		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(128);
-		Resource_DESC.Alignment				= 0;
-		Resource_DESC.DepthOrArraySize		= 1;
-		Resource_DESC.Dimension				= D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
-		Resource_DESC.Layout				= D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Resource_DESC.Width					= 0;
-		Resource_DESC.Height				= 1;
-		Resource_DESC.Format				= DXGI_FORMAT_UNKNOWN;
-		Resource_DESC.SampleDesc.Count		= 1;
-		Resource_DESC.SampleDesc.Quality	= 0;
-		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-
-		D3D12_HEAP_PROPERTIES HEAP_Props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-
-		ID3D12Resource* TempBuffer;
-		HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE, 
-											 &CD3DX12_RESOURCE_DESC::Buffer(SourceSize), D3D12_RESOURCE_STATE_GENERIC_READ, 
-											 nullptr, IID_PPV_ARGS(&TempBuffer));
-
-		CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR Vertex Buffer"));
-
-		void* Temp = nullptr;
-		D3D12_SUBRESOURCE_DATA SRD;
-		SRD.pData      = Data;
-		SRD.RowPitch   = SourceSize;
-		SRD.SlicePitch = SRD.RowPitch;
-
-		TempBuffer->Map(0, &CD3DX12_RANGE(0, 0), &Temp);
-		memcpy(Temp, Data, SourceSize);
-		TempBuffer->Unmap(0, &CD3DX12_RANGE(0, SourceSize));
-
-		RS->CommandList->CopyResource(Dest, TempBuffer);
+		UpdateGPUResource(RS, Data, SourceSize, Dest);
 		RS->CommandList->ResourceBarrier(1, 
 				&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
-
-		SETDEBUGNAME(TempBuffer, "TEMPORARY");
-		AddTempBuffer(TempBuffer, RS);
 	}
 
 
