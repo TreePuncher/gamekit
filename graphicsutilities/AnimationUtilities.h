@@ -58,8 +58,8 @@ namespace FlexKit
 	
 	struct VShaderJoint
 	{
-		XMMATRIX	I;
-		XMMATRIX	T;
+		XMMATRIX I;
+		XMMATRIX T;
 	};
 
 	struct JointPose
@@ -180,12 +180,12 @@ namespace FlexKit
 
 	struct DrawablePoseState
 	{
-		ID3D12Resource*		Resource		= nullptr;
-		DirectX::XMMATRIX*	Joints			= nullptr;
-		DirectX::XMMATRIX*	CurrentPose		= nullptr;
-		Skeleton*			Sk				= nullptr;
-		size_t				JointCount		= 0;
-		size_t				Dirty			= 0;
+		ID3D12Resource*		Resource	= nullptr;
+		DirectX::XMMATRIX*	Joints		= nullptr;
+		DirectX::XMMATRIX*	CurrentPose	= nullptr;
+		Skeleton*			Sk			= nullptr;
+		size_t				JointCount	= 0;
+		size_t				Dirty		= 0;
 		size_t				padding[2];
 	};
 
@@ -230,9 +230,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	FLEXKITAPI DrawablePoseState*	CreatePoseState(Drawable* E, iAllocator* MEM);
-	FLEXKITAPI bool					InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, DirectX::XMMATRIX* Initial);
+	FLEXKITAPI bool					InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial);
 
-	FLEXKITAPI void				Destroy(DrawablePoseState* EAS);
+	FLEXKITAPI void					Destroy(DrawablePoseState* EAS);
 
 	/************************************************************************************************/
 

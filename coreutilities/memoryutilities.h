@@ -117,22 +117,23 @@ namespace FlexKit
 		{	
 			iStackAllocator(StackAllocator* Allocator = nullptr) : ParentAllocator(Allocator){}
 
-			void* malloc(size_t size)
-			{
+			void* malloc(size_t size){
 				return ParentAllocator->malloc(size);
 			}
 
-			void free(void* _ptr)
-			{
+			void free(void* _ptr){
 			}
 
-			void* _aligned_malloc(size_t size, size_t A)
-			{
+			void* _aligned_malloc(size_t size, size_t A){
 				return ParentAllocator->_aligned_malloc(size, A);
 			}
 
-			void _aligned_free(void* _ptr){}
-			void clear(void* _ptr) { ParentAllocator->clear();}
+			void _aligned_free(void* _ptr){
+			}
+
+			void clear(void){ 
+				ParentAllocator->clear();
+			}
 
 
 			StackAllocator*	ParentAllocator;

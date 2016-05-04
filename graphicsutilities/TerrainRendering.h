@@ -39,8 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	typedef void (*FINALPASSDRAWFN)(FlexKit::Context* ctx, void* _ptr);
-
 	struct Landscape
 	{
 		struct ViewableRegion
@@ -57,7 +55,6 @@ namespace FlexKit
 			DirectX::XMMATRIX WT;
 		};
 
-		ID3D11InputLayout*	IL_ptr;
 		char				SplitCount;
 		size_t				OutputBuffer;
 
@@ -77,8 +74,8 @@ namespace FlexKit
 		StreamOut RegionBuffers[2];
 
 		size_t				InputCount;
-		ID3D11Buffer*		InputBuffer;
-		ID3D11Query*		Query;
+		ID3D12Resource*		InputBuffer;
+		ID3D12Resource*		UAVCounter;
 		ConstantBuffer		ConstantBuffer;
 		static_vector<UINT>	Strides;
 		static_vector<UINT>	Offsets;
@@ -98,7 +95,7 @@ namespace FlexKit
 	FLEXKITAPI void CreateTerrain		(RenderSystem* RS, FlexKit::Landscape* out, NodeHandle node);
 	FLEXKITAPI void CleanUpTerrain		(SceneNodes* Nodes, Landscape* ls);
 
-	FLEXKITAPI void DrawLandscape		(Context& ctx, Landscape* ls, Camera* c, size_t splitcount, FINALPASSDRAWFN Draw, void* _ptr);
+	FLEXKITAPI void DrawLandscape		(RenderSystem* RS,  Landscape* ls, Camera* c, size_t splitcount, void* _ptr);
 	FLEXKITAPI void UpdateLandscape		(RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* Camera);
 
 

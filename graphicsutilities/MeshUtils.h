@@ -154,12 +154,12 @@ namespace FlexKit
 		{
 			struct LoaderState
 			{
-				LoaderState()
-				{
+				LoaderState(){
 					Color_1	= false;
 					Normals	= false;
 					UV_1	= false;
 				}
+
 				bool Color_1;
 				bool Normals;
 				bool UV_1;

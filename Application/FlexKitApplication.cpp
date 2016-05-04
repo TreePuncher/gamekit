@@ -104,7 +104,6 @@ void UnloadGameCode(GameCode& Code)
 
 void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode* Code)
 {
-	using FlexKit::SetDepthStencil;
 	using FlexKit::UpdateTransforms;
 	using FlexKit::UpdateInput;
 	using FlexKit::UpdatePointLightBuffer;

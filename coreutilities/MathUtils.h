@@ -339,7 +339,7 @@ namespace FlexKit
 	typedef Vect<2, size_t> uint2;
 	typedef Vect<3, size_t> uint3;
 	typedef Vect<4, size_t> uint4;
-	typedef Vect<4, uint16_t> uint4_16;
+	typedef Vect<4, unsigned short> uint4_16;
 	typedef Vect<4, uint32_t> uint4_32;
 
 	typedef Vect<2, int> int2;
@@ -794,7 +794,8 @@ namespace FlexKit
 				pFloats.m128_f32[itr] = *n;
 		}
 
-		inline operator float*	 ()								{ return pFloats.m128_f32;} 
+		inline operator float*				()					{ return pFloats.m128_f32;} 
+		inline operator const float* const	()	const			{ return pFloats.m128_f32;} 
 		inline float& operator[] ( const size_t index )			{ return pFloats.m128_f32[index]; }
 		inline float operator[]  ( const size_t index )	const	{ return pFloats.m128_f32[index]; }
 		inline operator __m128	 ()						const	{ return pFloats;} 

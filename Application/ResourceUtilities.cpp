@@ -319,130 +319,38 @@ struct FBXVertexLayout
 /************************************************************************************************/
 
 
-uint32_t FetchIndex(size_t itr, fbxsdk::FbxMesh* Mesh)
+using FlexKit::MeshUtilityFunctions::IndexList;
+using FlexKit::MeshUtilityFunctions::CombinedVertexBuffer;
+// Simple Buffer Filling Utility Functions
+uint32_t	FetchIndex			(size_t itr, fbxsdk::FbxMesh* Mesh)		{return Mesh->GetPolygonVertex(itr/3, itr % 3);}
+uint32_t	FetchIndex2			(size_t itr, IndexList* IL)				{return IL->at(itr);}
+float3		FetchVertexPOS		(size_t itr, CombinedVertexBuffer* Buff){return Buff->at(itr).POS;}
+float3		FetchWeights		(size_t itr, CombinedVertexBuffer* Buff){return Buff->at(itr).WEIGHTS;}
+float3		FetchVertexNormal	(size_t itr, CombinedVertexBuffer* Buff){return Buff->at(itr).NORMAL;}
+float3		FetchFloat3ZERO		(size_t itr, CombinedVertexBuffer* Buff){return{ 0.0f, 0.0f, 0.0f };}
+float2		FetchVertexUV		(size_t itr, CombinedVertexBuffer* Buff){auto temp = Buff->at(itr).TEXCOORD.xy();return {temp.x, temp.y};}
+uint4_16	FetchWeightIndices	(size_t itr, CombinedVertexBuffer* Buff){return Buff->at(itr).WIndices;}
+uint32_t	WriteIndex			(uint32_t in)	{return in;}
+float3		WriteVertex			(float3 in)		{return in;}
+float2		WriteUV				(float2 in)		{return in;}
+
+/************************************************************************************************/
+// Complexe Buffer Filling Utility Functions
+
+uint4_16	Writeuint4			(uint4_16 in)
 {
-#ifdef _DEBUG 
-	int PolygonID	= itr / 3;
-	int IndexID		= itr % 3;
-	
-	size_t VI = Mesh->GetPolygonVertex(itr / 3, itr % 3);
-#endif
-
-	return Mesh->GetPolygonVertex(itr/3, itr % 3);
+	return uint4_16{ 
+		(unsigned short)((in[0] == -1) ? 0 : in[0]), 
+		(unsigned short)((in[1] == -1) ? 0 : in[1]), 
+		(unsigned short)((in[2] == -1) ? 0 : in[2]), 
+		(unsigned short)((in[3] == -1) ? 0 : in[3]) };
 }
 
 
 /************************************************************************************************/
 
 
-uint32_t FetchIndex2(size_t itr, FlexKit::MeshUtilityFunctions::IndexList* IL)
-{
-	return IL->operator[](itr);
-}
-
-
-/************************************************************************************************/
-
-
-float3 FetchVertexPOS(size_t itr, FlexKit::MeshUtilityFunctions::CombinedVertexBuffer* Buff)
-{ 
-	return Buff->operator[](itr).POS;
-}
-
-
-/************************************************************************************************/
-
-
-float3 FetchWeights(size_t itr, FlexKit::MeshUtilityFunctions::CombinedVertexBuffer* Buff)
-{ 
-	return Buff->operator[](itr).WEIGHTS;
-}
-
-
-/************************************************************************************************/
-
-
-uint4_32 FetchWeightIndices( size_t itr, FlexKit::MeshUtilityFunctions::CombinedVertexBuffer* Buff )
-{
-	return Buff->operator[](itr).WIndices;
-}
-
-
-/************************************************************************************************/
-
-
-float3 FetchVertexNormal(size_t itr, FlexKit::MeshUtilityFunctions::CombinedVertexBuffer* Buff)
-{
-	return Buff->operator[](itr).NORMAL;
-}
-
-
-/************************************************************************************************/
-
-
-float3 FetchFloat3ZERO(size_t itr, FlexKit::MeshUtilityFunctions::CombinedVertexBuffer* Buff)
-{
-	return{ 0.0f, 0.0f, 0.0f };
-}
-
-
-/************************************************************************************************/
-
-
-float2 FetchVertexUV(size_t itr, FlexKit::MeshUtilityFunctions::CombinedVertexBuffer* Buff)
-{
-	auto temp = Buff->operator[](itr).TEXCOORD.xy();
-	return {temp.x, temp.y};
-}
-
-
-/************************************************************************************************/
-
-
-uint32_t WriteIndex(uint32_t in)
-{
-	return in;
-}
-
-
-/************************************************************************************************/
-
-
-float3 WriteVertex(float3 in)
-{
-	return in;
-}
-
-
-/************************************************************************************************/
- 
-
-float2 WriteUV(float2 in)
-{
-	return in;
-}
-
-
-/************************************************************************************************/
-
-
-uint4_32 Writeuint4(uint4_32 in)
-{
-	return uint4_32{ 
-		(in[0] == -1) ? 0 : in[0], 
-		(in[1] == -1) ? 0 : in[1], 
-		(in[2] == -1) ? 0 : in[2], 
-		(in[3] == -1) ? 0 : in[3] };
-}
-
-
-/************************************************************************************************/
-
-
-size_t GetVertexIndex(size_t pIndex, size_t vIndex, size_t vID, fbxsdk::FbxMesh* Mesh)	
-{ 
-	return Mesh->GetPolygonVertex(pIndex, vIndex);
-}
+size_t		GetVertexIndex(size_t pIndex, size_t vIndex, size_t vID, fbxsdk::FbxMesh* Mesh) { return Mesh->GetPolygonVertex(pIndex, vIndex); }
 
 
 /************************************************************************************************/
@@ -725,8 +633,8 @@ FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUt
 				}
 
 				if (III != 4) {
-					Weights		[Skin.Bones[I].WeightIndices[II]][III] = Skin.Bones[I].Weights[II];
-					BoneIndices	[Skin.Bones[I].WeightIndices[II]][III] = Handle;
+					Weights[Skin.Bones[I].WeightIndices[II]][III] = Skin.Bones[I].Weights[II];
+					BoneIndices[Skin.Bones[I].WeightIndices[II]][III] = Handle;
 				}
 			}
 		}
@@ -1049,7 +957,6 @@ void GetJointTransforms(static_vector<JointInfo, 1024>& Out, FbxMesh* M, iAlloca
 
 				globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
 				Out[Handle].Inverse			= FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
-				//Out[Handle].Animation		= ;
 			}
 		}
 	}
@@ -1151,7 +1058,9 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 		AnimationCut Cut;
 		Cut.T_Start	= 0;
 		Cut.T_End	= Joints.front().Animation.FrameCount * 1.0/Joints.front().Animation.FPS;
-		Cut.ID		= "ANIMATION";
+		Cut.ID		= (char*)Mem->malloc(64);
+		strcpy_s(Cut.ID, 64, ID);
+		strcat_s(Cut.ID, 64,":ANIMATION");
 		Cuts.push_back(Cut);
 	}
 
@@ -1166,21 +1075,18 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 		Clip.FrameCount	= End - Begin;
 		Clip.mID		= Cut.ID;
 		Clip.isLooping	= true;
+		Clip.Frames		= (AnimationClip::KeyFrame*)Mem->_aligned_malloc(Clip.FrameCount * sizeof(AnimationClip::KeyFrame));
 
-		{// Single Clips for Now
-			Clip.Frames	= (AnimationClip::KeyFrame*)Mem->_aligned_malloc(Clip.FrameCount * sizeof(AnimationClip::KeyFrame));
+		for (size_t I = 0; I < Clip.FrameCount; ++I)
+		{
+			Clip.Frames[I].Joints		= (JointHandle*)Mem->_aligned_malloc(sizeof(JointHandle) * Joints.size());
+			Clip.Frames[I].Poses		=   (JointPose*)Mem->_aligned_malloc(sizeof(JointPose)	 * Joints.size());
+			Clip.Frames[I].JointCount	= Joints.size();
 
-			for (size_t I = 0; I < Clip.FrameCount; ++I)
+			for (size_t II = 0; II < Joints.size(); ++II)
 			{
-				Clip.Frames[I].Joints		= (JointHandle*)Mem->_aligned_malloc(sizeof(JointHandle) * Joints.size());
-				Clip.Frames[I].Poses		=   (JointPose*)Mem->_aligned_malloc(sizeof(JointPose)	 * Joints.size());
-				Clip.Frames[I].JointCount	= Joints.size();
-
-				for (size_t II = 0; II < Joints.size(); ++II)
-				{
-					Clip.Frames[I].Joints[II]	= JointHandle(II);
-					Clip.Frames[I].Poses[II]	= Joints[II].Animation.Poses[I + Begin].JPose;
-				}
+				Clip.Frames[I].Joints[II]	= JointHandle(II);
+				Clip.Frames[I].Poses[II]	= Joints[II].Animation.Poses[I + Begin].JPose;
 			}
 		}
 
@@ -1236,7 +1142,7 @@ CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocato
 
 	if ((MeshInfo.Weights)) {
 		BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 });
-		BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32A32 });
+		BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16 });
 	}
 
 	for (size_t i = 0; i < BuffersFound.size(); ++i) {
@@ -1267,7 +1173,6 @@ CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocato
 	
 	if (EnableSubDiv)
 	{
-
 	}
 
 	TempMem->clear();
@@ -1735,7 +1640,7 @@ LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, CompileScene
 			ResourceCount++;
 			FileSize += G->ResourceSize;
 		}
-		//{ Manager, Settings, Scene, std::move(LoadRes) }
+
 		auto G = &Desc->BlockMemory->allocate_aligned<LoadGeometry_RES>();
 		G->Manager = Manager;
 		G->INScene = Scene;

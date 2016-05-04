@@ -126,8 +126,7 @@ void Initiate(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS,
 	CCDesc.height	      = Desc.h;
 	CCDesc.contactOffset  = 0.1f;
 	CCDesc.position       = { 0.0f, Desc.h / 2, 0.0f };
-	//CCDesc.reportCallback = &out->ReportCallback;
-	CCDesc.climbingMode			= PxCapsuleClimbingMode::eEASY;
+	CCDesc.climbingMode	  = PxCapsuleClimbingMode::eEASY;
 
 	auto NewCharacterController = Scene->ControllerManager->createController(CCDesc);
 	out->Controller				= NewCharacterController;
@@ -355,7 +354,6 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 	float3 FinalDelta = dV;
 	FinalDelta *= ActorState->BPC.FloorContact ? float3(1, 0, 1) : float3(1);
 
-
 	if (FinalDelta.magnitude() > 0)
 	{
 		float3 OldP = GetActorPosition(ActorState);
@@ -382,6 +380,41 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 
 /************************************************************************************************/
 
+int2 GetMousedp(RenderWindow* Window)
+{
+	auto POS = Window->WindowCenterPosition;
+	POINT CENTER = { (long)POS[0], (long)POS[1] };
+	POINT P;
+
+	GetCursorPos(&P);
+	ScreenToClient(Window->hWindow, &P);
+
+	int2 dMouse = { CENTER.x - (int)P.x , CENTER.y - (int)P.y };
+	return dMouse;
+}
+
+void SetCursorToWindowCenter(RenderWindow* Window)
+{
+	auto POS = Window->WindowCenterPosition;
+	POINT CENTER = { (long)POS[0], (long)POS[1] };
+	POINT P;
+
+	GetCursorPos(&P);
+	ScreenToClient(Window->hWindow, &P);
+
+	ClientToScreen(Window->hWindow, &CENTER);
+	SetCursorPos(CENTER.x, CENTER.y);
+}
+
+void ShowCursor(RenderWindow* Window)
+{
+	ShowCursor(true);
+}
+
+void HideCursor(RenderWindow* Window)
+{
+	ShowCursor(false);
+}
 
 void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 {
@@ -392,19 +425,8 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 
 	if ( GetForegroundWindow() == Window->hWindow )
 	{
-		auto POS = Window->WindowCenterPosition;
-		POINT CENTER = { ( long )POS[ 0 ], ( long )POS[ 1 ] };
-		POINT P;
-
-		GetCursorPos( &P );
-		ScreenToClient( Window->hWindow, &P );
-		int2 dMouse = { CENTER.x - ( int )P.x , CENTER.y - ( int )P.y };
-
-		State->dPos = dMouse;
-
-		ClientToScreen( Window->hWindow, &CENTER );
-		SetCursorPos( CENTER.x, CENTER.y );
-		ShowCursor( false );
+		State->dPos = GetMousedp(Window);
+		SetCursorToWindowCenter(Window);
 	}
 	else
 	{
@@ -481,7 +503,15 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 			case FlexKit::KC_D:
 				GS->Keys.Right    = false; break;
 			case FlexKit::KC_M:
-				GS->Keys.MouseEnable = !GS->Keys.MouseEnable; break;
+			{
+				SetCursorToWindowCenter(GS->ActiveWindow);
+				if(GS->Keys.MouseEnable)
+					ShowCursor(GS->ActiveWindow);
+					else
+					HideCursor(GS->ActiveWindow);
+
+				GS->Keys.MouseEnable = !GS->Keys.MouseEnable; 
+			}	break;
 			default:
 				break;
 			}
@@ -518,12 +548,16 @@ void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
 	auto PlayerModel = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
+	auto TestAnimation = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
 	auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Floor");
-	State->GScene.Yaw(PlayerModel, pi / 2);
-	State->GScene.EntityEnablePosing(PlayerModel);
-	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION");
-	State->GScene.SetMaterialParams(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
-	State->GScene.SetMaterialParams(Floor,		 { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
+	State->GScene.Yaw					(PlayerModel, pi / 2);
+	State->GScene.EntityEnablePosing	(PlayerModel);
+	State->GScene.EntityEnablePosing	(TestAnimation);
+	State->GScene.EntityPlayAnimation	(PlayerModel,	"PlayerMesh:ANIMATION");
+	State->GScene.EntityPlayAnimation	(TestAnimation, "BoxRigTest:ANIMATION");
+	State->GScene.TranslateEntity_WT	(TestAnimation, {0, 0, 10});
+	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
+	State->GScene.SetMaterialParams		(Floor,		 { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
 	auto	WindowRect	= Engine->Window.WH;
@@ -667,7 +701,7 @@ extern "C"
 		GetGraphicScenePVS(&State->GScene, State->ActiveCamera, &PVS, &Transparent);
 
 		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
-		SortPVSTransparent(State->Nodes, &PVS, State->ActiveCamera);
+		SortPVSTransparent(State->Nodes, &Transparent, State->ActiveCamera);
 
 		auto CL = GetCurrentCommandList(RS);
 		BeginPass(CL, State->ActiveWindow);
@@ -676,7 +710,7 @@ extern "C"
 		ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0);
 
 		if (State->DoDeferredShading)
-			DoDeferredPass(&PVS, nullptr, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
+			DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
 		else
 			DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
 

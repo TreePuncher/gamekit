@@ -83,16 +83,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* M)
+	bool InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState)
 	{
 		bool ReturnState = false;
-		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint);
+		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint) * 2;
 		ShaderResourceBuffer NewResource = CreateShaderResource(RS, ResourceSize);
+		SETDEBUGNAME(NewResource, "POSESTATE");
+
 		if (NewResource)
 		{
 			ReturnState = true;
-			UpdateResourceByTemp(RS, NewResource, M, ResourceSize, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			UpdateResourceByTemp(RS, NewResource, InitialState, ResourceSize, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			EAS->Resource = NewResource;
+		}
+		else
+		{
+			if(NewResource) NewResource->Release();
 		}
 
 		return (ReturnState);
@@ -279,50 +285,48 @@ namespace FlexKit
 
 		if (E && E->Posed)
 		{
-			if (!E->PoseState || !E->AnimationState){
+			if (!E->PoseState || !E->AnimationState) {
 				E->Posed = false;
 				return;
 			}
 
 			auto PS = E->PoseState;
 			auto AS = E->AnimationState;
-			auto S  = E->Mesh->Skeleton;
+			auto S = E->Mesh->Skeleton;
 
 			size_t BufferSize = S->JointCount * sizeof(DirectX::XMMATRIX);
-			DirectX::XMMATRIX*	M    = (DirectX::XMMATRIX*)	TEMP->_aligned_malloc(BufferSize);
-			VShaderJoint*		Out  = (VShaderJoint*)		TEMP->_aligned_malloc(sizeof(VShaderJoint) * BufferSize);
+			DirectX::XMMATRIX*	M = (DirectX::XMMATRIX*)TEMP->_aligned_malloc(BufferSize);
+			VShaderJoint*		Out = (VShaderJoint*)TEMP->_aligned_malloc(sizeof(VShaderJoint) * S->JointCount);
 
 			for (size_t I = 0; I < S->JointCount; ++I)
-				M[I]  = PS->Joints[I] * GetTransform(S->JointPoses + I);
+				M[I] = PS->Joints[I] * GetTransform(S->JointPoses + I);
 
 			bool AnimationPlayed = false;
 			for (auto& C : AS->Clips)
 			{
 				if (C.Playing && C.Clip->FrameCount)
 				{
-					auto Clip					= C.Clip;
-					auto T						= C.T;
-					auto Loop					= Clip->isLooping;
-					double FrameDuration		=  (1.0f / Clip->FPS)/C.Speed;
-					double AnimationDuration	=  FrameDuration * Clip->FrameCount;
-					size_t FrameIndex			= size_t(T / FrameDuration) % Clip->FrameCount;
-					auto& CurrentFrame			= Clip->Frames[FrameIndex];
+					auto Clip = C.Clip;
+					auto T = C.T;
+					auto Loop = Clip->isLooping;
+					double FrameDuration = (1.0f / Clip->FPS) / C.Speed;
+					double AnimationDuration = FrameDuration * Clip->FrameCount;
+					size_t FrameIndex = size_t(T / FrameDuration) % Clip->FrameCount;
+					auto& CurrentFrame = Clip->Frames[FrameIndex];
 
 					if (!(Loop | C.ForceLoop) && C.T > AnimationDuration)
 						C.Playing = false;
-					else if(C.T > AnimationDuration)
+					else if (C.T > AnimationDuration)
 						C.T = 0.0f;
 					else {
 						C.T += dT;
 					}
 
-					for (size_t I = 0; I < CurrentFrame.JointCount; ++I) 
+					for (size_t I = 0; I < CurrentFrame.JointCount; ++I)
 						M[I] = M[I] * XMMatrixInverse(nullptr, GetTransform(S->JointPoses + I)) * GetTransform(CurrentFrame.Poses + I);
-						//M[I] = M[I] * GetTransform(CurrentFrame.Poses + I);
-					
+
 					AnimationPlayed = true;
 				}
-
 			}
 
 			if (AnimationPlayed || PS->Dirty)
@@ -331,8 +335,8 @@ namespace FlexKit
 				{
 					auto temp = GetTransform(&S->JointPoses[I]);
 					auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
-					M[I]   = M [I] * P;
-					Out[I] = {S->IPose[I], M[I]};
+					M[I] = M[I] * P;
+					Out[I] = { S->IPose[I], M[I] };
 				}
 				
 				PS->Dirty = false;

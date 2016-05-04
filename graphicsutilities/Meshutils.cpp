@@ -32,67 +32,14 @@ namespace FlexKit
 {
 	bool operator < ( const CombinedVertex::IndexBitlayout lhs, const CombinedVertex::IndexBitlayout rhs )
 	{
-		/*
-		if( lhs.p_Index < rhs.p_Index )
-		{
-			return true;
-		} else if( lhs.p_Index == rhs.p_Index )
-		{
-			if( lhs.n_Index < rhs.n_Index )
-			{
-				return true;
-			} else if( lhs.n_Index == rhs.n_Index )
-			{
-				if( lhs.t_Index < rhs.t_Index )
-				{
-					return true;
-				} else if( lhs.t_Index == rhs.t_Index )
-				{
-					return false;
-				}
-			}
-		}
-		*/
 		return lhs.Hash() > rhs.Hash();
 	}
 
 
 	namespace MeshUtilityFunctions
 	{
+		/************************************************************************************************/
 
-#define VECTORSTORE OFF
-#define SORTEDSTORE OFF
-#if		USING(VECTORSTORE)
-
-		struct sIndex
-		{
-			CombinedVertex::IndexBitlayout	Layout;
-			uint32_t						Index;
-
-			operator size_t() {return Layout.Hash(); }
-			bool operator == (const FlexKit::MeshUtilityFunctions::sIndex rhs) const { return Layout.Hash() == rhs.Layout.Hash(); }
-		};
-		template<typename TY_C>
-		size_t RSearch(TY_C& in, CombinedVertex::IndexBitlayout Layout)
-		{
-			//if (!in.size())
-			//	return -1;
-#if USING(SORTEDSTORE)
-#else
-			auto itr = in.rbegin();
-			auto end = in.rend();
-			auto H	 = Layout.Hash();
-
-			while( itr != end)
-			{
-				if( itr->Layout.Hash() == H )
-					return itr->Index;
-				itr++;
-			}
-#endif
-			return -1;
-		}
-#endif
 
 		Pair<bool, MeshBuildInfo>
 		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool DoWeights )
@@ -102,18 +49,13 @@ namespace FlexKit
 			auto& normal		= fixed_vector<float3>::Create_Aligned(128000, ScratchSpace);
 			auto& UV			= fixed_vector<float2>::Create_Aligned(128000, ScratchSpace);
 			auto* Weights		= (DoWeights) ? &fixed_vector<float3>::Create_Aligned(128000,   ScratchSpace) : nullptr;
-			auto* WIndexes		= (DoWeights) ? &fixed_vector<uint4_32>::Create_Aligned(128000, ScratchSpace) : nullptr;
+			auto* WIndexes		= (DoWeights) ? &fixed_vector<uint4_16>::Create_Aligned(128000, ScratchSpace) : nullptr;
 
 			IndexList&	Indexes	= out_indexes;
 			MeshBuildInfo MBI	= {0};
 			std::vector<size_t>	NormalTable;
 
-#if USING(VECTORSTORE)
-			typedef CombinedVertex::IndexBitlayout IBL;
-			auto& IndexMap = ScratchSpace.allocate_aligned<static_vector<sIndex, 712000>>();
-#else
 			map_t<CombinedVertex::IndexBitlayout, unsigned int>	IndexMap;
-#endif
 			auto& FinalVerts = out_buffer;
 
 			// Temps
@@ -146,8 +88,8 @@ namespace FlexKit
 
 
 					if (DoWeights) {
-						memcpy( &TempFVert.WEIGHTS,  &( *Weights )[ TempFVert.index.p_Index ], sizeof( TempFVert.POS	) );
-						memcpy( &TempFVert.WIndices, &( *WIndexes)[ TempFVert.index.p_Index ], sizeof( uint4_16			) );
+						memcpy(&TempFVert.WEIGHTS,  &(*Weights )[TempFVert.index.p_Index], sizeof(TempFVert.POS));
+						memcpy(&TempFVert.WIndices, &(*WIndexes)[TempFVert.index.p_Index], sizeof(uint4_16));
 					}
 					if (normal.size() != 0)
 						memcpy(&TempFVert.NORMAL, &normal[TempFVert.index.n_Index], sizeof(TempFVert.NORMAL));
@@ -159,30 +101,7 @@ namespace FlexKit
 					else
 						memcpy(&TempFVert.TEXCOORD, &float2(), sizeof(TempFVert.TEXCOORD));
 
-					//( UV.size()			!= 0 ) ?  TempFVert.TEXCOORD = UV	[TempFVert.index.t_Index] : float2();
 					{
-#if USING(VECTORSTORE)
-						auto res = RSearch(IndexMap, TempFVert.index);
-						if (res == -1)
-						{
-							Indexes.push_back(static_cast<uint16_t>(FinalVerts.size()));
-							IndexMap.push_back({ TempFVert.index, (uint32_t)FinalVerts.size() });
-							FinalVerts.push_back(TempFVert);
-#if USING(SORTEDSTORE)
-							std::sort( IndexMap.front(), IndexMap.back(), [] (sIndex RHS, sIndex LHS)-> bool
-							{
-								return RHS.Layout.Hash() > LHS.Layout.Hash();
-							} );
-#endif
-							++MBI.VertexCount;
-							count++;
-						}
-						else
-						{
-							Indexes.push_back((uint32_t)res);
-							count2++;
-						}
-#else
 						if (IndexMap.find(TempFVert.index) == IndexMap.end())
 						{
 							Indexes.push_back(static_cast< uint16_t >(FinalVerts.size()));
@@ -195,7 +114,6 @@ namespace FlexKit
 							Indexes.push_back(IndexMap[TempFVert.index]);
 							count2++;
 						}
-#endif
 					}
 					++MBI.IndexCount;
 
@@ -233,8 +151,13 @@ namespace FlexKit
 				}	break;
 				case WEIGHTINDEX:
 				{
-					if (DoWeights)
-						WIndexes->push_back(*(uint4_32*)itr.buffer);
+					if (DoWeights){
+						auto Indexes = *(uint4_32*)itr.buffer;
+						for(size_t itr = 0; itr < 4; ++itr)
+							Indexes[itr] = (Indexes[itr] == -1) ? 0 : Indexes[itr];
+
+						WIndexes->push_back(Indexes);
+						}
 				}	break;
 				case UV_COORD:
 					UV.push_back( *(float2*)itr.buffer );
@@ -250,11 +173,19 @@ namespace FlexKit
 			return{ true, MBI };
 		}
 
+
+		/************************************************************************************************/
+
+
 		void SkipSpaces( std::string::iterator& POSITION, std::string& line )
 		{
 			while( POSITION != line.end() && *POSITION == ' '  )
 				POSITION++;
 		}
+
+		
+		/************************************************************************************************/
+
 
 		void RemoveSpaces(char* inLine, size_t RINOUT linelength) // moves all characters found after it finds first character, Sets line Length to exclude Spaces off of end
 		{
@@ -305,43 +236,13 @@ namespace FlexKit
 				memcpy(inLine, temp, linelength);
 				return inLine;
 			}
-			/*
-			// Take Spaces and End Lines off end.  String will end up backwards
-			std::string::reverse_iterator	ritr = temp1.rbegin();
-			temp2.reserve( temp1.size() );
 
-			SkipSpaces = true;
-			while( ritr != temp1.rend() )
-			{
-				switch( *ritr )
-				{
-				case 0x00:
-				case 0x0a:
-					break;
-				case 0x20:
-					if( !SkipSpaces )
-						temp2.push_back( *ritr );
-					break;
-				default:
-					SkipSpaces = false;
-					temp2.push_back( *ritr );
-					break;
-				}
-				ritr++;
-			}
-			// Reverse String
-			clean.reserve( temp2.size() );
-
-			ritr = temp2.rbegin();
-			auto rend2 = temp2.rend();
-			while( ritr != rend2 )
-			{
-				clean.push_back( *ritr );
-				++ritr;
-			}
-			*/
 			return inLine;
 		}
+
+
+		/************************************************************************************************/
+
 
 		namespace OBJ_Tools
 		{
@@ -370,6 +271,10 @@ namespace FlexKit
 					}
 				}
 			}
+
+
+			/************************************************************************************************/
+
 
 			void ExtractFloat( size_t RINOUT itr, const char* in_str, const size_t LineLength, float* __restrict out )
 			{
@@ -403,6 +308,10 @@ namespace FlexKit
 				((float*)out)[0] = atof( c_str );
 			}
 
+
+			/************************************************************************************************/
+
+
 			void ExtractFloats_3( const char* in, size_t LineLength, byte* out )
 			{
 				// Skip token plus spaces
@@ -423,6 +332,10 @@ namespace FlexKit
 				//Done!
 			}
 
+
+			/************************************************************************************************/
+
+
 			void ExtractFloats_2( const char* in, size_t LineLength, byte* out )
 			{
 				// Skip token plus spaces
@@ -439,6 +352,10 @@ namespace FlexKit
 				ExtractFloat( itr, in, LineLength, &((float*)out)[1] );
 				//Done!
 			}
+
+
+			/************************************************************************************************/
+
 
 			int GetSlashCount( const char* in_str, const size_t lineLength )
 			{
@@ -458,6 +375,10 @@ namespace FlexKit
 				return slashcount;
 			}
 
+
+			/************************************************************************************************/
+
+
 			int GetIndiceCount( const char* in_str, const size_t lineLength )
 			{
 				int spacecount = 0;
@@ -474,6 +395,10 @@ namespace FlexKit
 				}
 				return spacecount;
 			}
+
+
+			/************************************************************************************************/
+
 
 			void ExtractIndice( size_t RINOUT itr, const char* in_str, size_t LineLength, CombinedVertex::IndexBitlayout* __restrict out, int ITYPE )
 			{
@@ -531,6 +456,10 @@ namespace FlexKit
 				}
 			}
 
+
+			/************************************************************************************************/
+
+
 			void ExtractFace( const char* str, size_t LineLength, CombinedVertex::IndexBitlayout* __restrict out, int index, int slashcount )
 			{
 				// Skip token plus spaces
@@ -578,6 +507,10 @@ namespace FlexKit
 				//Done!
 			}
 
+
+			/************************************************************************************************/
+
+
 			std::string GetNextLine( const char* File_Position, const char* File_Buffer )
 			{
 				char CurrentLine[256];
@@ -592,6 +525,10 @@ namespace FlexKit
 				return CurrentLine;
 			}
 			
+
+			/************************************************************************************************/
+
+
 			void AddVertexToken(float3 in, TokenList& out)
 			{
 				s_TokenValue T;
@@ -603,6 +540,9 @@ namespace FlexKit
 				out.push_back(T);
 			}
 			
+
+			/************************************************************************************************/
+
 
 			void AddWeightToken(WeightIndexPair in, TokenList& out)
 			{
@@ -623,6 +563,10 @@ namespace FlexKit
 				out.push_back(T);
 			}
 
+
+			/************************************************************************************************/
+
+
 			void AddNormalToken(float3 in, TokenList& out)
 			{
 				s_TokenValue T;
@@ -634,6 +578,10 @@ namespace FlexKit
 				out.push_back(T);
 			}
 
+
+			/************************************************************************************************/
+
+
 			void AddTexCordToken(float3 in, TokenList& out)
 			{
 				s_TokenValue T;
@@ -644,6 +592,10 @@ namespace FlexKit
 				V->f[2] = 0.0;
 				out.push_back(T);
 			}
+
+
+			/************************************************************************************************/
+
 
 			void AddIndexToken(size_t V, size_t N, size_t T, TokenList& out)
 			{
@@ -659,6 +611,10 @@ namespace FlexKit
 				out.push_back(Token);
 			}
 
+
+			/************************************************************************************************/
+
+
 			void AddPatchBeginToken(TokenList& out)
 			{
 				s_TokenValue Token;
@@ -666,12 +622,20 @@ namespace FlexKit
 				out.push_back(Token);
 			}
 
+
+			/************************************************************************************************/
+
+
 			void AddPatchEndToken(TokenList& out)
 			{
 				s_TokenValue Token;
 				Token.token = Token::PATCHEND;
 				out.push_back(Token);
 			}
+
+
+			/************************************************************************************************/
+
 
 			void CStrToToken( const char* in_Line, size_t LineLength, TokenList ROUT TL, LoaderState ROUT S)
 			{
@@ -750,7 +714,9 @@ namespace FlexKit
 				default:
 					break;
 				}
-			}
 		}
+
+			/************************************************************************************************/
+	}
 	}
 }

@@ -67,20 +67,15 @@ namespace FlexKit
 	#define PRINTERRORBLOB(Blob) [&](){std::cout << Blob->GetBufferPointer();}
 	#define ASSERTONFAIL(ERRORMESSAGE)[&](){FK_ASSERT(0, ERRORMESSAGE);}
 
-	void SetDebugName( ID3D12Object* Obj, char* cstr, size_t size )
+	void SetDebugName(ID3D12Object* Obj, char* cstr, size_t size)
 	{
-	#if USING(DEBUGGRAPHICS)
+#if USING(DEBUGGRAPHICS)
 		wchar_t WString[128];
 		mbstowcs(WString, cstr, 128);
 		Obj->SetName(WString);
-	#endif
-	}
+#endif
 
-	#ifdef _DEBUG
-	#define SETDEBUGNAME(RES, ID) char* NAME = ID; SetDebugName(RES, ID, strnlen(ID, 64))
-	#else
-	#define SETDEBUGNAME(RES, ID) 
-	#endif
+	}
 	// Globals
 	HWND			gWindowHandle	= 0;
 	HINSTANCE		gInstance		= 0;
@@ -623,15 +618,6 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-
-
-	void Destroy( Context* ctx )
-	{
-		//ClearContext( ctx );
-		//ctx->DeviceContext->Release();
-	}
-
 
 	/************************************************************************************************/
 
@@ -985,24 +971,6 @@ namespace FlexKit
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ClearDepthStencil(RenderSystem* RS, ID3D11DepthStencilView* _ptr, float D) // Clears to black and max Depth
-	{
-		RS->ContextState.DeviceContext->ClearDepthStencilView(_ptr, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, D, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ClearRenderTargetView(Context*ctx, ID3D11RenderTargetView* rtv, FlexKit::float4& k)
-	{
-		ctx->DeviceContext->ClearRenderTargetView( rtv, k.pFloats.m128_f32);
 	}
 
 
@@ -1447,7 +1415,10 @@ namespace FlexKit
 				FK_ASSERT(Buffers[itr]->GetBufferSizeRaw());// ERROR BUFFER EMPTY;
 				Resource_DESC.Width	= Buffers[itr]->GetBufferSizeRaw();
 
-				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, &Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&NewBuffer));
+				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, 
+									D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, &Resource_DESC, 
+									D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, 
+									nullptr, IID_PPV_ARGS(&NewBuffer));
 
 				if (FAILED(HR))
 				{// TODO!
@@ -1467,9 +1438,9 @@ namespace FlexKit
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
 					{SETDEBUGNAME(NewBuffer, "TEXCOORD BUFFER"); break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
-					{SETDEBUGNAME(NewBuffer, "AnimationData1"); break;}
+					{SETDEBUGNAME(NewBuffer, "AnimationWeights"); break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
-					{SETDEBUGNAME(NewBuffer, "AnimationData2"); break;}
+					{SETDEBUGNAME(NewBuffer, "AnimationIndices"); break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_PACKED:
 					{SETDEBUGNAME(NewBuffer, "PACKED_BUFFER");break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR:
@@ -1580,7 +1551,7 @@ namespace FlexKit
 		Resource_DESC.SampleDesc.Quality	= 0;
 		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 		
-		D3D12_HEAP_PROPERTIES HEAP_Props ={};
+		D3D12_HEAP_PROPERTIES HEAP_Props = {};
 		HEAP_Props.CPUPageProperty	     = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 		HEAP_Props.Type				     = D3D12_HEAP_TYPE_DEFAULT;
 		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
@@ -1638,10 +1609,10 @@ namespace FlexKit
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
 						InputElementDesc.Format               = ::DXGI_FORMAT_R32G32B32_FLOAT;
-						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
+						InputElementDesc.InputSlot            = static_cast<UINT>(++InputSlot);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
-						InputElementDesc.SemanticIndex        = POS_Buffer_Counter++;
+						InputElementDesc.SemanticIndex        = ++POS_Buffer_Counter;
 						InputElementDesc.SemanticName         = "POSITION";
 
 						Input_Desc.push_back(InputElementDesc);
@@ -1780,6 +1751,19 @@ namespace FlexKit
 						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
 						InputElementDesc.AlignedByteOffset    = 0;
 						InputElementDesc.Format               = ::DXGI_FORMAT_R32G32B32A32_UINT;
+						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
+						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+						InputElementDesc.InstanceDataStepRate = 0;
+						InputElementDesc.SemanticIndex        = WINDICES_Buffer_Counter++;
+						InputElementDesc.SemanticName         = "WEIGHTINDICES";
+
+						Input_Desc.push_back(InputElementDesc);
+					}
+					case VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16:
+					{
+						D3D12_INPUT_ELEMENT_DESC InputElementDesc;
+						InputElementDesc.AlignedByteOffset    = 0;
+						InputElementDesc.Format               = ::DXGI_FORMAT_R16G16B16A16_UINT;
 						InputElementDesc.InputSlot            = static_cast<UINT>(InputSlot++);
 						InputElementDesc.InputSlotClass       = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 						InputElementDesc.InstanceDataStepRate = 0;
@@ -2175,537 +2159,6 @@ namespace FlexKit
 	void DestroyShader( Shader* releaseme )
 	{
 		releaseme->Blob->Release();
-	}
-
-
-	/************************************************************************************************/
-	
-
-	void UpdateState(Context* ctx)
-	{
-		/*
-		FK_ASSERT(0);
-		if (ctx->IAState & IAFlags::VBufferChanged)	ctx->DeviceContext->IASetVertexBuffers(0, ctx->VertexBuffers.GetBufferSize(), ctx->VertexBuffers.GetBuffers(), ctx->Strides.begin(), ctx->Offsets.begin());
-
-		if (ctx->CSState & Flags::CBChanged)	ctx->DeviceContext->CSSetConstantBuffers(0, ctx->CSBuffers.GetBufferSize(), ctx->CSBuffers.GetBuffers());
-		if (ctx->DSState & Flags::CBChanged)	ctx->DeviceContext->DSSetConstantBuffers(0, ctx->DSBuffers.GetBufferSize(), ctx->DSBuffers.GetBuffers());
-		if (ctx->GSState & Flags::CBChanged)	ctx->DeviceContext->GSSetConstantBuffers(0, ctx->GSBuffers.GetBufferSize(), ctx->GSBuffers.GetBuffers());
-		if (ctx->HSState & Flags::CBChanged)	ctx->DeviceContext->HSSetConstantBuffers(0, ctx->HSBuffers.GetBufferSize(), ctx->HSBuffers.GetBuffers());
-		if (ctx->VSState & Flags::CBChanged)	ctx->DeviceContext->VSSetConstantBuffers(0, ctx->VSBuffers.GetBufferSize(), ctx->VSBuffers.GetBuffers());
-		if (ctx->PSState & Flags::CBChanged)	ctx->DeviceContext->PSSetConstantBuffers(0, ctx->PSBuffers.GetBufferSize(), ctx->PSBuffers.GetBuffers());
-
-		if (ctx->CSState & Flags::UAVChanged)	ctx->DeviceContext->CSSetUnorderedAccessViews(0, ctx->CSUAV.size(), ctx->CSUAV.begin(), ctx->CSUAVInitialCounts.begin());
-
-		auto test = ctx->VSSRResource.size();
-		if (ctx->VSState & Flags::SRChanged)	
-			ctx->DeviceContext->VSSetShaderResources(0, ctx->VSSRResource.size(), ctx->VSSRResource.begin());
-
-		ctx->IAState = Flags::StateGood;
-		ctx->CSState = Flags::StateGood;
-		ctx->DSState = Flags::StateGood;
-		ctx->GSState = Flags::StateGood;
-		ctx->HSState = Flags::StateGood;
-		ctx->PSState = Flags::StateGood;
-		ctx->VSState = Flags::StateGood;
-		ctx->OMState = Flags::StateGood;
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ClearContext( Context* ctx )
-	{
-		/*
-		FK_ASSERT(0);
-		ctx->IAState = Flags::StateGood;
-		ctx->CSState = Flags::StateGood;
-		ctx->DSState = Flags::StateGood;
-		ctx->GSState = Flags::StateGood;
-		ctx->HSState = Flags::StateGood;
-		ctx->PSState = Flags::StateGood;
-		ctx->VSState = Flags::StateGood;
-		ctx->OMState = Flags::StateGood;
-
-		ctx->CSBuffers       .clear();
-		ctx->DSBuffers       .clear();
-		ctx->GSBuffers       .clear();
-		ctx->GSSamplers      .clear();
-		ctx->HSBuffers       .clear();
-		ctx->HSSamplers      .clear();
-		ctx->IndexBuffers    .clear();
-		ctx->InputLayoutStack.clear();
-		ctx->PSBuffers       .clear();
-		ctx->PSResource      .clear();
-		ctx->PSSamplers      .clear();
-		ctx->RenderTargets   .clear();
-		ctx->Viewports       .clear();
-		ctx->VSBuffers       .clear();
-		ctx->VSResource      .clear();
-		ctx->VSSamplers      .clear();
-		ctx->Offsets		 .clear();
-		ctx->Strides		 .clear();
-		ctx->VertexBuffers   .clear();
-		ctx->VSSRResource	 .clear();
-
-		ctx->DepthBufferView = nullptr;
-		ctx->DeviceContext->Flush();
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Draw(Context& ctx, size_t count, size_t offset)
-	{
-		//FK_ASSERT(0);
-		//UpdateState(ctx);
-		//ctx->Draw(count, offset);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void DrawAuto(Context& ctx)
-	{
-		//FK_ASSERT(0);
-		//UpdateState(ctx);
-		//ctx->DrawAuto();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void DrawIndexed( Context* ctx, size_t begin, size_t end, size_t vboffset )
-	{
-		//FK_ASSERT(0);
-		//UpdateState(ctx);
-		//ctx->DeviceContext->DrawIndexed( end-begin, begin, vboffset );
-	}
-
-
-	/************************************************************************************************/
-
-
-	void DrawIndexedInstanced(Context* ctx, size_t begin, size_t end, size_t instancecount, size_t vboffset, size_t instancestart)
-	{
-		//FK_ASSERT(0);
-		//UpdateState(ctx);
-		//ctx->DeviceContext->DrawIndexedInstanced(begin-end, instancecount, begin, vboffset, instancestart );
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddViewport( Context* ctx, Viewport VP )
-	{
-		//FK_ASSERT(0);
-		/*
-		D3D11_VIEWPORT DVP;
-		DVP.Height   = VP.Height;
-		DVP.Width    = VP.Width;
-		DVP.MinDepth = VP.Min;
-		DVP.MaxDepth = VP.Max;
-		DVP.TopLeftX = VP.X;
-		DVP.TopLeftY = VP.Y;
-		ctx->Viewports.push_back( DVP );
-		ctx->DeviceContext->RSSetViewports( ctx->Viewports.size(), ctx->Viewports.begin());
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddRenderTarget( Context* ctx, ID3D11RenderTargetView* VP )
-	{
-		//FK_ASSERT(0);
-		//ctx->RenderTargets.push_back( VP );
-		//ctx->DeviceContext->OMSetRenderTargets( ctx->RenderTargets.size(), ctx->RenderTargets.begin(), ctx->DepthBufferView );
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddVertexBuffer(Context* ctx, VertexBuffer* vertexbuffs)
-	{
-		//FK_ASSERT(0);
-		/*
-		for (size_t itr = 0; itr < 15; ++itr)
-		{
-			if (vertexbuffs->VertexBuffers[itr].Buffer != nullptr)
-			{
-				ctx->VertexBuffers.push_back(vertexbuffs->VertexBuffers[itr].Buffer);
-				ctx->Offsets.push_back(vertexbuffs->MD.Offsets[itr]);
-				ctx->Strides.push_back(vertexbuffs->MD.Strides[itr]);
-			}
-		}
-		ctx->IAState = ctx->IAState | IAFlags::VBufferChanged;
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PopVertexBuffer(Context* ctx, VertexBuffer* vertexbuffs)
-	{
-		//FK_ASSERT(0);
-		/*
-		for (size_t itr = 0; itr < vertexbuffs->VertexBuffers.size() && (vertexbuffs->VertexBuffers[itr].Buffer != nullptr); ++itr)
-		{
-			if (vertexbuffs->VertexBuffers[itr].Buffer != nullptr)
-			{
-				ctx->VertexBuffers.pop_back();
-				ctx->Offsets.pop_back();
-				ctx->Strides.pop_back();
-			}
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void VSPushShaderResource(Context* ctx, ID3D11ShaderResourceView* View)
-	{
-		//FK_ASSERT(0);
-		/*
-		if (ctx->VSSRResource[ctx->VSBuffers.GetBufferSize()] != View )
-			ctx->VSState = ctx->VSState | Flags::SRChanged;
-		ctx->VSSRResource.push_back(View);
-		*/
-	}
-
-	void VSPopShaderResource(Context* ctx)
-	{
-		//ctx->VSSRResource.pop_back();
-	}
-
-	/************************************************************************************************/
-
-
-	void VSPushConstantBuffer(Context* ctx, ConstantBuffer buffer)
-	{
-		/*
-		if (ctx->VSBuffers[ctx->VSBuffers.GetBufferSize()] != buffer )
-			ctx->VSState = ctx->VSState | Flags::CBChanged;
-		ctx->VSBuffers.push_back(buffer);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void VSPopConstantBuffer(Context* ctx)
-	{
-		//FK_ASSERT(0);
-		//ctx->VSBuffers.pop_back();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GSPushConstantBuffer(Context* ctx, ConstantBuffer buffer)
-	{
-		//FK_ASSERT(0);
-		/*
-		if (ctx->GSBuffers[ctx->GSBuffers.GetBufferSize()] != buffer )
-			ctx->GSState = ctx->GSState | Flags::CBChanged;
-		ctx->GSBuffers.push_back(buffer);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GSPopConstantBuffer(Context* ctx)
-	{
-		//FK_ASSERT(0);
-		//ctx->GSBuffers.pop_back();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PSPushConstantBuffer(Context* ctx, ConstantBuffer buffer)
-	{
-		//FK_ASSERT(0);
-		/*
-		if (ctx->PSBuffers[ctx->PSBuffers.GetBufferSize()] != buffer )
-			ctx->PSState = ctx->PSState | Flags::CBChanged;
-		ctx->PSBuffers.push_back(buffer);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PSPopConstantBuffer(Context* ctx)
-	{
-		//FK_ASSERT(0);
-		//ctx->PSBuffers.pop_back();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetIndexBuffer(Context* ctx, VertexBuffer* buffer)
-	{
-		//FK_ASSERT(0);
-		//ctx->DeviceContext->IASetIndexBuffer(buffer->VertexBuffers[buffer->MD.IndexBuffer_Index].Buffer, DXGI_FORMAT::DXGI_FORMAT_R32_UINT, 0 );
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetInputLayout(Context* ctx, VertexBuffer* buffer)
-	{
-		//FK_ASSERT(0);
-		//ctx->DeviceContext->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		//ctx->DeviceContext->IASetInputLayout(buffer->MD.InputLayout_ptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetTopology(Context* ctx, EInputTopology Topology)
-	{
-		//FK_ASSERT(0);
-		/*
-		switch (Topology)
-		{
-		case FlexKit::EIT_TRIANGLELIST:
-			ctx->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			break;
-		case FlexKit::EIT_TRIANGLE:
-			ctx->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-			break;
-		case FlexKit::EIT_POINT:
-			ctx->DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-			break;
-		default:
-			break;
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetShader(Context* ctx, Shader* shader)
-	{
-		//FK_ASSERT(0);
-		/*
-		switch (shader->Type)
-		{
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Compute:		ctx->DeviceContext->CSSetShader((ID3D11ComputeShader*)	shader->DXShader, nullptr,	0);	break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Geometry:	ctx->DeviceContext->GSSetShader((ID3D11GeometryShader*)	shader->DXShader, nullptr,	0);	break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Hull:		ctx->DeviceContext->HSSetShader((ID3D11HullShader*)		shader->DXShader, nullptr,	0);	break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Domain:		ctx->DeviceContext->DSSetShader((ID3D11DomainShader*)	shader->DXShader, nullptr,	0);	break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Pixel:		ctx->DeviceContext->PSSetShader((ID3D11PixelShader*)	shader->DXShader, nullptr,	0); break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Vertex:		ctx->DeviceContext->VSSetShader((ID3D11VertexShader*)	shader->DXShader, nullptr,	0);	break;
-		default:
-			break;
-		}
-		*/
-	}
-	
-
-	/************************************************************************************************/
-
-
-	void SetShader(Context* ctx, SHADER_TYPE t) // Clears Shader
-	{
-		//FK_ASSERT(0);
-		/*
-		switch (t)
-		{
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Compute:			(*ctx)->CSSetShader(nullptr, nullptr, 0); break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Domain:			(*ctx)->DSSetShader(nullptr, nullptr, 0); break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Geometry:		(*ctx)->GSSetShader(nullptr, nullptr, 0); break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Hull:			(*ctx)->HSSetShader(nullptr, nullptr, 0); break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Pixel:			(*ctx)->PSSetShader(nullptr, nullptr, 0); break;
-			case FlexKit::SHADER_TYPE::SHADER_TYPE_Vertex:			(*ctx)->VSSetShader(nullptr, nullptr, 0); break;
-		default:
-			break;
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetDepthStencil(Context* ctx, ID3D11DepthStencilView* DSV)
-	{
-		//FK_ASSERT(0);
-		//ctx->DepthBufferView = DSV;
-		//ctx->DeviceContext->OMSetRenderTargets( ctx->RenderTargets.size(), ctx->RenderTargets.begin(), DSV );
-	}
-
-	
-	/************************************************************************************************/
-
-
-	void SetDepthStencilState(Context* ctx, DepthBuffer* DSV)
-	{
-		//FK_ASSERT(0);
-		//ctx->DeviceContext->OMSetDepthStencilState(DSV->DepthState, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddOutput( Context* ctx, RenderWindow* RW )
-	{
-		//FK_ASSERT(0);
-		/*
-		ID3D11RenderTargetView* RTV = RW->RenderTarget;
-		AddRenderTarget(ctx, RW->RenderTarget );
-		AddViewport( ctx, RW->VP );
-		ctx->DeviceContext->OMSetRenderTargets(ctx->RenderTargets.size(), ctx->RenderTargets.begin(), ctx->DepthBufferView);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddOutput(Context* ctx, ID3D11RenderTargetView* RTV)
-	{
-		//FK_ASSERT(0);
-		//AddRenderTarget(ctx, RTV );
-		//ctx->DeviceContext->OMSetRenderTargets(ctx->RenderTargets.size(), ctx->RenderTargets.begin(), ctx->DepthBufferView);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PopOutput(Context* ctx)
-	{
-		//FK_ASSERT(0);
-		//ctx->RenderTargets.pop_back();
-		//ctx->DeviceContext->OMSetRenderTargets(ctx->RenderTargets.size(), ctx->RenderTargets.begin(), ctx->DepthBufferView);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ClearOutputs(Context* ctx)
-	{
-		//FK_ASSERT(0);
-		/*
-		ID3D11RenderTargetView*	NULLTARGETS[] = 
-		{
-			nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-		};
-
-		size_t t = ctx->RenderTargets.size();
-		ctx->RenderTargets.clear();
-
-		ctx->DeviceContext->RSSetViewports(0, nullptr);
-		ctx->DeviceContext->OMSetRenderTargets( t, NULLTARGETS, nullptr);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CSAddUAV(Context* ctx, ID3D11UnorderedAccessView* RTV, UINT u)
-	{
-		//FK_ASSERT(0);
-		/*
-		if (ctx->CSUAV[ctx->CSUAV.size()] == RTV)
-			ctx->CSState = ctx->CSState | Flags::CBChanged;
-		ctx->CSUAV.push_back(RTV);
-		ctx->CSUAVInitialCounts.push_back(u);
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CSPopUAV(Context* ctx)
-	{
-		//FK_ASSERT(0);
-		//ctx->CSUAV.pop_back();
-		//ctx->CSUAVInitialCounts.pop_back();
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	void AddStreamOut(Context* ctx, StreamOut SO, UINT* offsets)
-	{
-		//FK_ASSERT(0);
-		//ctx->StreamOut.push_back(SO);
-		//ctx->DeviceContext->SOSetTargets(ctx->StreamOut.size(), ctx->StreamOut.begin(), offsets);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PopStreamOut(Context* ctx)
-	{
-		//FK_ASSERT(0);
-		//ctx->StreamOut.pop_back();
-		//ctx->DeviceContext->SOSetTargets(ctx->StreamOut.size(), ctx->StreamOut.begin(), nullptr);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Unmap(Context* ctx, ConstantBuffer Srce)
-	{
-		FK_ASSERT(0);
-		//ctx->DeviceContext->Unmap(Srce, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Unmap( Context* ctx, Texture2D Srce)
-	{
-		FK_ASSERT(0);
-		//ctx->DeviceContext->Unmap( Srce.Texture, 0 );
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Unmap( Context* ctx, RenderWindow* RW )
-	{
-		FK_ASSERT(0);
-
-		//ctx->DeviceContext->Unmap( RW->BackBuffer, 0 );
 	}
 
 
@@ -3460,12 +2913,12 @@ namespace FlexKit
 			// Create Constant Buffers
 			{
 				FlexKit::GBufferConstantsLayout initial;
-				initial.DLightCount          = 0;
-				initial.PLightCount          = 0;
-				initial.SLightCount          = 0;
-				initial.Width				 = GBdesc->RenderWindow->WH[0];
-				initial.Height				 = GBdesc->RenderWindow->WH[1];
-				initial.SLightCount          = 0;
+				initial.DLightCount = 0;
+				initial.PLightCount = 0;
+				initial.SLightCount = 0;
+				initial.Width	    = GBdesc->RenderWindow->WH[0];
+				initial.Height	    = GBdesc->RenderWindow->WH[1];
+				initial.SLightCount = 0;
 
 				FlexKit::ConstantBuffer_desc CB_Desc;
 				CB_Desc.InitialSize		= sizeof(initial);
@@ -3490,8 +2943,8 @@ namespace FlexKit
 			
 			ID3DBlob* Signature	= nullptr;
 			ID3DBlob* ErrorBlob	= nullptr;
-			CD3DX12_STATIC_SAMPLER_DESC	 Default(0);
-			CD3DX12_ROOT_SIGNATURE_DESC  RootSignatureDesc;
+			CD3DX12_STATIC_SAMPLER_DESC Default(0);
+			CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
 
 			RootSignatureDesc.Init(1, Parameters, 1, &Default);
 			HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob);
@@ -3514,13 +2967,6 @@ namespace FlexKit
 			HR = RS->pDevice->CreateDescriptorHeap(&Heap_Desc, IID_PPV_ARGS(&SRVHeap));
 			FK_ASSERT(SUCCEEDED(HR));
 			
-			Heap_Desc.NumDescriptors = 16;
-			ID3D12DescriptorHeap* AnimationHeap = nullptr;
-			HR = RS->pDevice->CreateDescriptorHeap(&Heap_Desc, IID_PPV_ARGS(&AnimationHeap));
-
-			out->AnimationHeap.SRVDescHeap		= AnimationHeap;
-			out->AnimationHeap.MaxDescriptors	= Heap_Desc.NumDescriptors;
-
 			D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC;
 			SRV_DESC.Format                        = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
 			SRV_DESC.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -3651,7 +3097,7 @@ namespace FlexKit
 			}
 			// Setup Pipeline State
 			{
-				CD3DX12_ROOT_PARAMETER Parameters[3];
+				CD3DX12_ROOT_PARAMETER Parameters[DFRP_COUNT];
 				Parameters[DFRP_CameraConstants].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 				Parameters[DFRP_ShadingConstants].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
 				Parameters[DFRP_AnimationResources].InitAsShaderResourceView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
@@ -3662,7 +3108,7 @@ namespace FlexKit
 				CD3DX12_ROOT_SIGNATURE_DESC  RootSignatureDesc ={};
 				CD3DX12_STATIC_SAMPLER_DESC	 Default(0);
 
-				RootSignatureDesc.Init(RootSignatureDesc, DSRP_COUNT, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+				RootSignatureDesc.Init(RootSignatureDesc, DFRP_COUNT, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 				HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &SignatureDescBlob, &ErrorBlob);
 
 				FK_ASSERT(SUCCEEDED(HR));
@@ -3676,12 +3122,11 @@ namespace FlexKit
 				out->Filling.FillRTSig = RootSig;
 
 				D3D12_INPUT_ELEMENT_DESC InputElements[5] =
-				{
-					{"POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{	{"POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 					{"TEXCOORD",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	    1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 					{"NORMAL",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-					{"WEIGHTS",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-					{"WEIGHTINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_UINT,  4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+					{"WEIGHTS",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+					{"WEIGHTINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 				};
 
 				D3D12_RASTERIZER_DESC		Rast_Desc  = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -3835,25 +3280,15 @@ namespace FlexKit
 
 
 	void 
-	DoDeferredPass(PVS* _PVS,	PVS* _PVSAnimated, 
-		DeferredPass* Pass,		Texture2D Target, 
-		RenderSystem* RS,		Camera* C, float4& ClearColor, 
-		PointLightBuffer* PLB,	SpotLightBuffer* SPLB, 
-		size_t AnimationCount)
+	DoDeferredPass(
+		PVS* _PVS,	DeferredPass* Pass,	Texture2D Target, 
+		RenderSystem* RS,		const Camera* C, const float4& ClearColor, 
+		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
 	{
 		auto CL = RS->CommandList;
 		{	// Clear Targets
 			float4	Clear = {0.0f, 0.0f, 0.0f, 0.0f};
-			CD3DX12_CPU_DESCRIPTOR_HANDLE RT(Pass->RTVDescHeap->GetCPUDescriptorHandleForHeapStart());
-			CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
-			RT.Offset(RS->DescriptorCBVSRVUAVSize);
-			CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
-			RT.Offset(RS->DescriptorCBVSRVUAVSize);
-			CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
-			RT.Offset(RS->DescriptorCBVSRVUAVSize);
-			CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
-			RT.Offset(RS->DescriptorCBVSRVUAVSize);
-			CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
+			ClearGBuffer(RS, Pass, Clear);
 		}
 		{	// Setup State
 			D3D12_RECT		RECT = D3D12_RECT();
@@ -3865,8 +3300,8 @@ namespace FlexKit
 			VP.Width    = (UINT)Target.WH[0];
 			VP.MaxDepth = 1;
 			VP.MinDepth = 0;
-			VP.TopLeftX = -1;
-			VP.TopLeftY = -1;
+			VP.TopLeftX = 0;
+			VP.TopLeftY = 0;
 
 			D3D12_VIEWPORT	VPs[]	= { VP, VP, VP, VP, };
 			D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT,};
@@ -3897,23 +3332,6 @@ namespace FlexKit
 			CBV_DESC.SizeInBytes	= CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout);
 			RS->pDevice->CreateConstantBufferView(&CBV_DESC, CD3DX12_CPU_DESCRIPTOR_HANDLE(Pass->SRVDescHeap->GetCPUDescriptorHandleForHeapStart(), 8, RS->DescriptorRTVSize));
 		}
-		if (Pass->AnimationHeap.MaxDescriptors < AnimationCount)
-		{
-			Pass->AnimationHeap.MaxDescriptors *= 2;
-				
-			D3D12_DESCRIPTOR_HEAP_DESC	Heap_Desc;
-			Heap_Desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			Heap_Desc.NodeMask       = 0;
-			Heap_Desc.NumDescriptors = Pass->AnimationHeap.MaxDescriptors;
-			Heap_Desc.Type			 = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-
-			Pass->AnimationHeap.SRVDescHeap->Release();
-			ID3D12DescriptorHeap* NewDescHeap = nullptr;
-			HRESULT HR = RS->pDevice->CreateDescriptorHeap(&Heap_Desc, IID_PPV_ARGS(&NewDescHeap));
-			CheckHR(HR, ASSERTONFAIL("FAILED TO RESIZE DESCRIPTOR HEAP"));
-
-			Pass->AnimationHeap.SRVDescHeap = NewDescHeap;
-		}
 		{
 			D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC;
 			SRV_DESC.Format                        = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
@@ -3931,7 +3349,6 @@ namespace FlexKit
 			ID3D12DescriptorHeap* Heaps[] = 
 			{
 				Pass->SRVDescHeap,
-				Pass->AnimationHeap.SRVDescHeap,
 			};
 			CL->SetDescriptorHeaps(1, Heaps);
 		}
@@ -3975,10 +3392,6 @@ namespace FlexKit
 		Desc.Buffer.FirstElement = 0;
 		Desc.Buffer.Flags        = D3D12_BUFFER_SRV_FLAG_NONE;
 
-		auto AnimationHeap = Pass->AnimationHeap.SRVDescHeap;
-		CD3DX12_CPU_DESCRIPTOR_HANDLE AnimationResources(Pass->AnimationHeap.SRVDescHeap->GetCPUDescriptorHandleForHeapStart());
-		auto INC_RT = [&]() {AnimationResources.Offset(RS->DescriptorRTVSize); };
-
 		for (; itr != end; ++itr)
 		{
 			Drawable* E = *itr;
@@ -3992,20 +3405,19 @@ namespace FlexKit
 
 			size_t IBIndex = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
 			size_t ICount = CurrentMesh->IndexCount;
-
-
 			
-			D3D12_INDEX_BUFFER_VIEW		IndexView;
-			IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
-			IndexView.Format         = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+			D3D12_INDEX_BUFFER_VIEW	IndexView;
+			IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress(),
 			IndexView.SizeInBytes    = ICount * 32;
+			IndexView.Format         = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 
 			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,	CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,	CurrentMesh, VBViews));
+			{	FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,	CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,	CurrentMesh, VBViews));
+			}
 
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
 			CL->SetGraphicsRootShaderResourceView(DFRP_AnimationResources, AnimationState->Resource->GetGPUVirtualAddress());
@@ -4014,37 +3426,81 @@ namespace FlexKit
 			CL->DrawIndexedInstanced(ICount, 1, 0, 0, 0);
 		}
 
-		CD3DX12_RESOURCE_BARRIER Barrier1[] ={
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->ColorTex,	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->SpecularTex, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->NormalTex,	D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->PositionTex, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->OutputBuffer,D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,			-1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
-		CL->ResourceBarrier(4, Barrier1);
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier1[] ={
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->ColorTex,	
+					D3D12_RESOURCE_STATE_RENDER_TARGET, 
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->SpecularTex, 
+					D3D12_RESOURCE_STATE_RENDER_TARGET, 
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->NormalTex,	
+					D3D12_RESOURCE_STATE_RENDER_TARGET, 
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->PositionTex, 
+					D3D12_RESOURCE_STATE_RENDER_TARGET, 
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->OutputBuffer,
+					D3D12_RESOURCE_STATE_RENDER_TARGET, 
+					D3D12_RESOURCE_STATE_UNORDERED_ACCESS, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
 
+			CL->ResourceBarrier(4, Barrier1);
+		}
 		// Do Shading Here
 		CL->SetPipelineState				(Pass->Shading.ShadingPSO);
 		CL->SetComputeRootSignature			(Pass->Shading.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable,	Pass->SRVDescHeap->GetGPUDescriptorHandleForHeapStart());
 		CL->Dispatch(Target.WH[0]/20, Target.WH[1] / 20, 1);
 
-		CD3DX12_RESOURCE_BARRIER Barrier2[] ={
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->ColorTex,		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->SpecularTex,		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->NormalTex,		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->PositionTex,		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->OutputBuffer,	D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE,			-1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Target,				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST,					-1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE)	};
-		CL->ResourceBarrier(6, Barrier2);
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier2[] ={
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->ColorTex,		
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 
+					D3D12_RESOURCE_STATE_RENDER_TARGET, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->SpecularTex,		
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 
+					D3D12_RESOURCE_STATE_RENDER_TARGET, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->NormalTex,		
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 
+					D3D12_RESOURCE_STATE_RENDER_TARGET, -1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->PositionTex,		
+					D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, 
+					D3D12_RESOURCE_STATE_RENDER_TARGET, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->OutputBuffer,	
+					D3D12_RESOURCE_STATE_UNORDERED_ACCESS, 
+					D3D12_RESOURCE_STATE_COPY_SOURCE, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Target,				
+					D3D12_RESOURCE_STATE_RENDER_TARGET, 
+					D3D12_RESOURCE_STATE_COPY_DEST,	-1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE)};
+
+			CL->ResourceBarrier(6, Barrier2);
+		}
 
 		CL->CopyResource(Target, Pass->OutputBuffer);
 
-		CD3DX12_RESOURCE_BARRIER Barrier3[] = {
-			CD3DX12_RESOURCE_BARRIER::Transition(Pass->OutputBuffer,	D3D12_RESOURCE_STATE_COPY_SOURCE,	D3D12_RESOURCE_STATE_UNORDERED_ACCESS,	-1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-			CD3DX12_RESOURCE_BARRIER::Transition(Target,				D3D12_RESOURCE_STATE_COPY_DEST,		D3D12_RESOURCE_STATE_PRESENT,			-1, D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-		};
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier3[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(Pass->OutputBuffer,	
+					D3D12_RESOURCE_STATE_COPY_SOURCE,	
+					D3D12_RESOURCE_STATE_UNORDERED_ACCESS, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Target,				
+					D3D12_RESOURCE_STATE_COPY_DEST,		
+					D3D12_RESOURCE_STATE_PRESENT, -1, 
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE)};
 
-		CL->ResourceBarrier(2, Barrier3);
+			CL->ResourceBarrier(2, Barrier3);
+		}
 	}
 
 
@@ -4348,16 +3804,19 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void ClearGBuffer(RenderSystem* RS, DeferredPass* gb)
+	void ClearGBuffer(RenderSystem* RS, DeferredPass* Pass, const float4& Clear)
 	{
-		/*
-		FK_ASSERT(0);
-		ClearRenderTargetView(*RS, gb->BufferView,	float4{0, 0, 0, 0});
-		ClearRenderTargetView(*RS, gb->Colour,		float4{0, 0, 0, 0});
-		ClearRenderTargetView(*RS, gb->Specular,	float4{0, 0, 0, 0});
-		ClearRenderTargetView(*RS, gb->Normal,		float4{0, 0, 0, 0});
-		ClearRenderTargetView(*RS, gb->Position,	float4{0, 0, 0, 0});
-		*/
+		auto CL = RS->CommandList;
+		CD3DX12_CPU_DESCRIPTOR_HANDLE RT(Pass->RTVDescHeap->GetCPUDescriptorHandleForHeapStart());
+		CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
+		RT.Offset(RS->DescriptorCBVSRVUAVSize);
+		CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
+		RT.Offset(RS->DescriptorCBVSRVUAVSize);
+		CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
+		RT.Offset(RS->DescriptorCBVSRVUAVSize);
+		CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
+		RT.Offset(RS->DescriptorCBVSRVUAVSize);
+		CL->ClearRenderTargetView(RT, Clear, 0, nullptr);
 	}
 	
 
@@ -5322,7 +4781,7 @@ namespace FlexKit
 			SortingField D;
 			D.Animation   = E->Posed;
 			D.InvertDepth = E->DrawLast;
-			D.Depth		  = float3( CP - P ).magnitudesquared() * 100000;
+			D.Depth		  = abs( float3( CP - P ).magnitudesquared() * 10000 );
 			v.GetByType<size_t>() = *(size_t*)&D;
 		}
 
@@ -5505,7 +4964,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::Update_PreDraw(RenderSystem* RS, SceneNodes* nodes)
+	void StaticMeshBatcher::Update_PreDraw(RenderSystem* RS, SceneNodes* nodes, iAllocator* Temp, Camera* C)
 	{
 		FK_ASSERT(0);
 
@@ -5976,7 +5435,6 @@ namespace FlexKit
 				GeometryTable[0].VertexCount,
 				0, 
 				0);
-				*/
 		
 		for (auto I = 0; I < TriMeshCount; ++I)
 		{
@@ -5998,6 +5456,7 @@ namespace FlexKit
 			nullptr
 		};
 		//RS->ContextState->VSSetShaderResources(0, 6, NULLSRVs);
+		*/
 	}
 
 
@@ -6011,14 +5470,6 @@ namespace FlexKit
 		constants.PLightCount = PLightCount;
 		constants.SLightCount = SLightCount;
 		UpdateResourceByTemp(RS, gb->Shading.ShaderConstants, &constants, sizeof(constants), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ShadeGBuffer(RenderSystem* RS, DeferredPass* gb, Camera* cam, PointLightBuffer* PL, SpotLightBuffer* SL, FlexKit::DepthBuffer* DBuff,FlexKit::RenderWindow* out)
-	{
 	}
 
 
@@ -6076,7 +5527,7 @@ namespace FontUtilities
 	/************************************************************************************************/
 
 
-	void DrawTextArea(FontUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::Context* Ctx, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out)
+	void DrawTextArea(FontUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out)
 	{
 		using FontUtilities::TextEntry;
 		using FlexKit::uint2;
@@ -6284,7 +5735,6 @@ namespace FontUtilities
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS	 |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
 		}
-		// Create 
 	}
 
 

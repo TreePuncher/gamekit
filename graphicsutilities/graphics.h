@@ -86,6 +86,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FLEXKITAPI void SetDebugName(ID3D12Object* Obj, char* cstr, size_t size);
+
+#ifdef _DEBUG
+#define SETDEBUGNAME(RES, ID) {char* NAME = ID; SetDebugName(RES, ID, strnlen(ID, 64));}
+#else
+#define SETDEBUGNAME(RES, ID) 
+#endif
+
+
+	/************************************************************************************************/
+
+
 	enum KEYCODES
 	{
 		KC_ERROR,
@@ -679,7 +691,6 @@ namespace FlexKit
 	
 	struct Buffer;
 	struct ShaderResource;
-	struct Context;
 	struct Shader;
 	struct Texture2D;
 	struct RenderSystem;
@@ -774,79 +785,7 @@ namespace FlexKit
 		EIT_POINT,
 	};
 
-	enum Flags : char
-	{
-		StateGood   = 0x00,
-		CBChanged	= 0x01,
-		OMVPChanged = 0x0F,
-		VSChanged	= 0x10,
-		PSChanged	= 0x20,
-		CSChanged	= 0x30,
-		UAVChanged	= 0x40,
-		SRChanged	= 0x50
-	};
 
-	enum IAFlags : char
-	{
-		VBufferChanged = 0x01,
-		IBufferChanged = 0x02
-	};
-
-	enum OMFlags : char
-	{
-		RTChanged
-	};
-
-	struct Context
-	{
-		operator Context* ()								{ return this; }
-		ID3D11DeviceContext* operator ->()					{ return DeviceContext; }
-
-		ID3D11DeviceContext*								DeviceContext;
-
-		char												IAState;												
-		char												CSState;
-		char												DSState;
-		char												GSState;
-		char												HSState;
-		char												PSState;
-		char												VSState;
-		char												OMState;
-
-		BufferArray											VSBuffers;
-		BufferArray											PSBuffers;
-		BufferArray											CSBuffers;
-		BufferArray											GSBuffers;
-		BufferArray											HSBuffers;
-		BufferArray											DSBuffers;
-
-		sampler_vector										GSSamplers;
-		sampler_vector										HSSamplers;
-		sampler_vector										PSSamplers;
-		sampler_vector										VSSamplers;
-
-		static_vector<ID3D11View*>							PSResource;
-		static_vector<ID3D11View*>							VSResource;
-		static_vector<ID3D11ShaderResourceView*>			VSSRResource;
-
-		BufferArray											VertexBuffers;
-		static_vector<IndexBuffer>							IndexBuffers;
-		static_vector<StreamOut>							StreamOut;
-		static_vector<ID3D11InputLayout*>					InputLayoutStack;
-		static_vector<D3D11_VIEWPORT>						Viewports;
-		
-		static_vector<UINT>									Offsets;
-		static_vector<UINT>									Strides;
-
-		ID3D11DepthStencilView*								DepthBufferView;
-		static_vector<ID3D11RenderTargetView*, 16>			RenderTargets;
-
-		static_vector<ID3D11UnorderedAccessView*, 16>		CSUAV;
-		static_vector<UINT, 16>								CSUAVInitialCounts;
-		static_vector<ID3D11RenderTargetView*, 16>			CSRenderTargets;
-	};
-
-	
 	/************************************************************************************************/
 
 		
@@ -898,7 +837,6 @@ namespace FlexKit
 
 		DescriptorHeaps	DefaultDescriptorHeaps;
 
-		Context			ContextState;
 		struct
 		{
 			size_t	AASamples;
@@ -913,7 +851,6 @@ namespace FlexKit
 		}Library;
 
 		operator RenderSystem* ( ) { return this; }
-		operator Context*() { return &ContextState; }
 	};
 
 
@@ -1117,8 +1054,8 @@ namespace FlexKit
 
 	enum DeferredFillingRootParam
 	{
-		DFRP_CameraConstants = 0,
-		DFRP_ShadingConstants = 1,
+		DFRP_CameraConstants	= 0,
+		DFRP_ShadingConstants	= 1,
 		DFRP_AnimationResources = 2,
 		DFRP_COUNT,
 
@@ -1154,12 +1091,6 @@ namespace FlexKit
 			Shader					AnimatedMesh;
 			Shader					NoTexture;
 		}Filling;
-
-		struct
-		{
-			ID3D12DescriptorHeap* SRVDescHeap;
-			size_t				  MaxDescriptors;
-		}AnimationHeap;
 	};
 
 
@@ -1752,7 +1683,7 @@ namespace FlexKit
 		}
 
 		void PrintFrameStats();
-		void Update_PreDraw		( RenderSystem* RS, SceneNodes* Nodes );
+		void Update_PreDraw		( RenderSystem* RS, SceneNodes* Nodes, iAllocator* Temp, Camera* C );
 		void BuildGeometryTable ( FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, StackAllocator* TempMemory );
 		
 		SceneObjectHandle CreateDrawable( NodeHandle node, size_t GeometryIndex = 0 );
@@ -1828,32 +1759,30 @@ namespace FlexKit
 
 	FLEXKITAPI VertexBuffer::BuffEntry* GetBuffer( VertexBuffer*, VERTEXBUFFER_TYPE ); // return Nullptr if not found
 	
-	FLEXKITAPI void					InitiateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* out, float AspectRatio = 1.0f, float Near = 0.01, float Far = 10000.0f, bool invert = false );
-	FLEXKITAPI void					InitiateRenderSystem( Graphics_Desc* desc_in, RenderSystem* );
+	FLEXKITAPI void	InitiateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* out, float AspectRatio = 1.0f, float Near = 0.01, float Far = 10000.0f, bool invert = false );
+	FLEXKITAPI void	InitiateRenderSystem( Graphics_Desc* desc_in, RenderSystem* );
 
-	FLEXKITAPI void					CleanUp			( RenderSystem* System );
-	FLEXKITAPI void					CleanupCamera	( SceneNodes* Nodes, Camera* camera );
-
-	
-	/************************************************************************************************/
-
-	
-	FLEXKITAPI bool					CreateRenderWindow	( RenderSystem*, RenderWindowDesc* desc_in, RenderWindow* );
-	FLEXKITAPI bool					ResizeRenderWindow	( RenderSystem*, RenderWindow* Window, uint2 HW );
-	FLEXKITAPI void					SetInputWIndow		( RenderWindow* );
-	FLEXKITAPI void					UpdateInput			( void );
-	FLEXKITAPI void					UpdateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, int PointLightCount, int SpotLightCount, double dt);
+	FLEXKITAPI void	CleanUp			( RenderSystem* System );
+	FLEXKITAPI void	CleanupCamera	( SceneNodes* Nodes, Camera* camera );
 
 	
 	/************************************************************************************************/
 
 	
-	FLEXKITAPI void					ClearRenderTargetView	 ( Context*, ID3D11RenderTargetView*, FlexKit::float4& k );
-	FLEXKITAPI void					ClearWindow				 ( Context*, RenderWindow*, float* );
-	FLEXKITAPI void					ClearDepthStencil		 ( RenderSystem* RS, ID3D11DepthStencilView*, float D = 1.0 ); // Clears to back and max Depth
-	FLEXKITAPI void					PresentWindow			 ( RenderWindow* RW, RenderSystem* RS );
-	FLEXKITAPI void					WaitForFrameCompletetion ( RenderSystem* RS );
-	FLEXKITAPI void					WaitforGPU				 ( RenderSystem* RS, size_t FenceValue );
+	FLEXKITAPI bool	CreateRenderWindow	( RenderSystem*, RenderWindowDesc* desc_in, RenderWindow* );
+	FLEXKITAPI bool	ResizeRenderWindow	( RenderSystem*, RenderWindow* Window, uint2 HW );
+	FLEXKITAPI void	SetInputWIndow		( RenderWindow* );
+	FLEXKITAPI void	UpdateInput			( void );
+	FLEXKITAPI void	UpdateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, int PointLightCount, int SpotLightCount, double dt);
+
+	
+	/************************************************************************************************/
+
+	
+	FLEXKITAPI void	ClearDepthStencil		 ( RenderSystem* RS, ID3D11DepthStencilView*, float D = 1.0 ); // Clears to back and max Depth
+	FLEXKITAPI void	PresentWindow			 ( RenderWindow* RW, RenderSystem* RS );
+	FLEXKITAPI void	WaitForFrameCompletetion ( RenderSystem* RS );
+	FLEXKITAPI void	WaitforGPU				 ( RenderSystem* RS, size_t FenceValue );
 
 	
 	/************************************************************************************************/
@@ -1943,55 +1872,6 @@ namespace FlexKit
 	};
 
 	FLEXKITAPI void	DoPixelProcessor(RenderSystem* RS, PIXELPROCESS_DESC* DESC_in, Texture2D* out);
-
-	// ALL THESE ARE OBSOLETE!!!
-	// NEED SOME SORT OF REPLACEMENT API!!
-	FLEXKITAPI void	Draw				( Context&, size_t count, size_t offset = 0 );
-	FLEXKITAPI void	DrawAuto			( Context& );
-	FLEXKITAPI void	DrawIndexed			( Context*, size_t begin, size_t end, size_t vboffset = 0 );
-	FLEXKITAPI void	DrawIndexedInstanced( Context*, size_t begin, size_t end, size_t instancecount, size_t vboffset, size_t instancestart);
-	FLEXKITAPI void	ClearContext		( Context* );
-	FLEXKITAPI void	AddVertexBuffer		( Context*, VertexBuffer* );
-	FLEXKITAPI void	PopVertexBuffer		( Context*, VertexBuffer* );
-
-	FLEXKITAPI void	VSPushShaderResource( Context*, ID3D11ShaderResourceView* View);
-	FLEXKITAPI void	VSPopShaderResource ( Context* );
-
-	FLEXKITAPI void	VSPushConstantBuffer( Context*, ConstantBuffer );
-	FLEXKITAPI void	VSPopConstantBuffer	( Context* );
-
-	FLEXKITAPI void	GSPushConstantBuffer( Context*, ConstantBuffer );
-	FLEXKITAPI void	GSPopConstantBuffer	( Context* );
-
-	FLEXKITAPI void	PSPushConstantBuffer( Context*, ConstantBuffer );
-	FLEXKITAPI void	PSPopConstantBuffer	( Context* );
-
-	FLEXKITAPI void	AddViewport         ( Context*, Viewport vp );
-	FLEXKITAPI void	AddOutput           ( Context*, RenderWindow*  );
-	FLEXKITAPI void	AddOutput           ( Context*, ID3D11RenderTargetView*  );
-	FLEXKITAPI void	ClearOutputs        ( Context* );
-	FLEXKITAPI void	PopOutput           ( Context* );
-	FLEXKITAPI void	SetIndexBuffer      ( Context*, VertexBuffer*  );
-	FLEXKITAPI void	SetInputLayout      ( Context*, VertexBuffer*  );
-	FLEXKITAPI void	SetTopology		    ( Context*, EInputTopology );
-
-	FLEXKITAPI void	AddStreamOut		( Context*, StreamOut, UINT* );
-	FLEXKITAPI void	PopStreamOut		( Context* );
-
-	FLEXKITAPI void	SetDepthStencil     ( Context*, ID3D11DepthStencilView* );
-	FLEXKITAPI void	SetDepthStencilState( Context*, DepthBuffer* );
-	FLEXKITAPI void	SetShader           ( Context*, Shader* );
-	FLEXKITAPI void	SetShader           ( Context*, SHADER_TYPE t ); // Clears Shader
-	
-
-	/************************************************************************************************/
-	
-
-	FLEXKITAPI void	MapTo               ( Context*, Texture2D, char* );
-	FLEXKITAPI void	Unmap               ( Context*, ConstantBuffer );
-	FLEXKITAPI void	Unmap               ( RenderSystem*, RenderWindow* );
-	FLEXKITAPI void	Unmap               ( RenderSystem*, Texture2D );
-	
 
 	/************************************************************************************************/
 	
@@ -2121,10 +2001,9 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem*	RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, PVS* _PVSAnimated, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, SpotLightBuffer* SPLB, size_t AnimationCount = 0);
+	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
-	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb );
-	FLEXKITAPI void ShadeGBuffer			( RenderSystem* RS, DeferredPass* gb, Camera* cam, PointLightBuffer* PL, SpotLightBuffer* SL, FlexKit::DepthBuffer* DBuff,FlexKit::RenderWindow* out);
+	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
 
 
@@ -2200,14 +2079,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 	
-	FLEXKITAPI void SetDebugName(ID3D11DeviceChild* Obj, char* cstr, size_t size);
-
-	inline void ClearDepthBuffer	(RenderSystem* RS, DepthBuffer* DepthBuffer, float D )	{ return;FK_ASSERT(0);/*RS->ContextState.DeviceContext->ClearDepthStencilView(DepthBuffer->DSView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, DepthBuffer->Inverted ? 1 - D : D, 0);*/ }
-	inline void SetDepthBuffer		(Context* ctx, DepthBuffer* Buffer)						{ return;FK_ASSERT(0);/*SetDepthStencil(ctx, Buffer->DSView); SetDepthStencilState(ctx, Buffer);*/ }
-
-
-	/************************************************************************************************/
-
 
 	FLEXKITAPI void CreateCubeMesh		( RenderSystem* RS, TriMesh* r,		StackAllocator* mem, CubeDesc& desc );
 	FLEXKITAPI void CreatePlaneMesh		( RenderSystem* RS, TriMesh* out,	StackAllocator* mem, PlaneDesc desc );
@@ -2321,7 +2192,7 @@ namespace FontUtilities
 		char*	FontDir;// Texture Directory
 	};
 
-	FLEXKITAPI void DrawTextArea			(FontUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::Context* Ctx, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out);
+	FLEXKITAPI void DrawTextArea			(FontUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out);
 	FLEXKITAPI void ClearText				(TextArea* TA);
 	FLEXKITAPI void CleanUpTextArea			(TextArea* TA, FlexKit::iAllocator* BA);
 	FLEXKITAPI void PrintText				(TextArea* Area, const char* text);

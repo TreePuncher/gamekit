@@ -194,7 +194,7 @@ namespace FlexKit
 					}
 					else
 					{
-						NewResource->State		= Resource::EResourceState_UNLOADED;
+						NewResource->State		= Resource::EResourceState_LOADED;
 						NewResource->RefCount	= 0;
 						RHandle					= RM->ResourcesLoaded.size();
 						RM->ResourcesLoaded.push_back(NewResource);
