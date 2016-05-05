@@ -86,10 +86,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void SetDebugName(ID3D12Object* Obj, char* cstr, size_t size);
+	FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 #ifdef _DEBUG
-#define SETDEBUGNAME(RES, ID) {char* NAME = ID; SetDebugName(RES, ID, strnlen(ID, 64));}
+#define SETDEBUGNAME(RES, ID) {const char* NAME = ID; SetDebugName(RES, ID, strnlen(ID, 64));}
 #else
 #define SETDEBUGNAME(RES, ID) 
 #endif
@@ -335,12 +335,42 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-	
 
-	typedef ID3D11Buffer*				IndexBuffer;
-	typedef ID3D12Resource*				ConstantBuffer;
-	typedef ID3D12Resource*				ShaderResourceBuffer;
-	typedef ID3D11Buffer*				StreamOut;
+
+	const static size_t MaxBufferedSize = 3;
+	struct FrameBufferedResource
+	{
+		FrameBufferedResource(){ Idx = 0; for(auto& r : Resources) r = nullptr;}
+
+		size_t			Idx;
+		size_t			BufferCount;
+		ID3D12Resource*	Resources[MaxBufferedSize];
+		size_t	operator ++()					{ IncrementCounter(); return (Idx); }			// Post Increment
+		size_t	operator ++(int)				{ size_t T = Idx; IncrementCounter(); return T; }// Pre Increment
+		//operator ID3D12Resource*()				{ return Get(); }
+		ID3D12Resource* operator -> ()			{ return Get(); }
+		ID3D12Resource* operator -> () const	{ return Get(); }
+		operator bool()							{ return (Resources[0]!= nullptr); }
+		size_t	size()							{ return BufferCount; }
+		ID3D12Resource*	Get()					{ return Resources[Idx]; }
+		ID3D12Resource*	Get() const				{ return Resources[Idx]; }
+
+		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
+		void Release(){for( auto& r : Resources) {if(r) r->Release(); r = nullptr;};}
+
+		void _SetDebugName(const char* _str)
+		{
+			size_t Str_len = strnlen_s(_str, 64);
+			for (auto& r : Resources) {
+				SetDebugName(r, _str, Str_len);
+			}
+		}
+	};
+
+	typedef FrameBufferedResource IndexBuffer;
+	typedef FrameBufferedResource ConstantBuffer;
+	typedef FrameBufferedResource ShaderResourceBuffer;
+	typedef FrameBufferedResource StreamOut;
 
 
 	/************************************************************************************************/
@@ -762,14 +792,14 @@ namespace FlexKit
 
 	struct DepthBuffer
 	{
-		FlexKit::Texture2D			Buffer;
+		Texture2D					Buffer;
 		D3D12_CPU_DESCRIPTOR_HANDLE	View;
 		bool						Inverted;
 	};
 
 	struct InverseFloatDepthBuffer
 	{
-		FlexKit::Texture2D			DepthBuffer;
+		Texture2D					DepthBuffer;
 		ID3D11DepthStencilView*		DSView;
 		ID3D11ShaderResourceView*	DSRV;
 		ID3D11DepthStencilState*	DepthState;
@@ -831,6 +861,7 @@ namespace FlexKit
 
 		IDXGIFactory4*	pGIFactory;
 
+		size_t			BufferCount;
 		size_t			DescriptorRTVSize;
 		size_t			DescriptorDSVSize;
 		size_t			DescriptorCBVSRVUAVSize;
@@ -861,12 +892,6 @@ namespace FlexKit
 
 		operator RenderSystem* ( ) { return this; }
 	};
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI void AddTempBuffer(ID3D12Resource* _ptr, RenderSystem* RS);
 
 
 	/************************************************************************************************/
@@ -1266,8 +1291,8 @@ namespace FlexKit
 
 	struct Camera
 	{
-		FlexKit::ConstantBuffer Buffer;
-		NodeHandle				Node;
+		ConstantBuffer	Buffer;
+		NodeHandle		Node;
 
 		float FOV;
 		float AspectRatio;
@@ -1787,7 +1812,7 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
-	
+	FLEXKITAPI void AddTempBuffer			 ( ID3D12Resource* _ptr, RenderSystem* RS);
 	FLEXKITAPI void	ClearDepthStencil		 ( RenderSystem* RS, ID3D11DepthStencilView*, float D = 1.0 ); // Clears to back and max Depth
 	FLEXKITAPI void	PresentWindow			 ( RenderWindow* RW, RenderSystem* RS );
 	FLEXKITAPI void	WaitForFrameCompletetion ( RenderSystem* RS );
@@ -1807,6 +1832,7 @@ namespace FlexKit
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );
 
 	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
+	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 
 
 
@@ -1814,7 +1840,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	template<typename Ty>
-	void CreateBuffer(size_t size, Ty* memory, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F)
+	void CreateBufferView(size_t size, Ty* memory, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F)
 	{
 		size_t VertexBufferSize = size * (size_t)F + sizeof(VertexBufferView);
 		View = FlexKit::CreateVertexBufferView((byte*)memory->_aligned_malloc(VertexBufferSize), VertexBufferSize);
@@ -1826,7 +1852,7 @@ namespace FlexKit
 
 
 	template<typename Ty_Container, typename FetchFN, typename TranslateFN>
-	bool FillBuffer(Ty_Container* Container, size_t vertexCount, VertexBufferView* out, TranslateFN Translate, FetchFN Fetch)
+	bool FillBufferView(Ty_Container* Container, size_t vertexCount, VertexBufferView* out, TranslateFN Translate, FetchFN Fetch)
 	{
 		for (size_t itr = 0; itr < vertexCount; ++itr)
 		{

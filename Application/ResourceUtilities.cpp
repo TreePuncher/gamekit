@@ -1108,7 +1108,7 @@ struct CompileMeshInfo
 
 CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MetaData_list* MD = nullptr)
 {
-	using FlexKit::FillBuffer;
+	using FlexKit::FillBufferView;
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
 	using MeshUtilityFunctions::BuildVertexBuffer;
@@ -1146,29 +1146,29 @@ CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocato
 	}
 
 	for (size_t i = 0; i < BuffersFound.size(); ++i) {
-		CreateBuffer(VertexCount, Memory, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
+		CreateBufferView(VertexCount, Memory, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
 
 		switch ((VERTEXBUFFER_TYPE)BuffersFound[i])
 		{
 		case  VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
-			FillBuffer(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexPOS);		break;
+			FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexPOS);		break;
 		case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
-			FillBuffer(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexNormal);	break;
+			FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexNormal);	break;
 		case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
-			FillBuffer(&CVB, CVB.size(), out.Buffers[i], WriteUV, FetchVertexUV);			break;
+			FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteUV, FetchVertexUV);			break;
 		case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
-			FillBuffer(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchFloat3ZERO);		break;
+			FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchFloat3ZERO);		break;
 		case  VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
-			FillBuffer(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchWeights);		break;
+			FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchWeights);		break;
 		case  VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
-			FillBuffer(&CVB, CVB.size(), out.Buffers[i], Writeuint4, FetchWeightIndices);	break;
+			FillBufferView(&CVB, CVB.size(), out.Buffers[i], Writeuint4, FetchWeightIndices);	break;
 		default:
 			break;
 		}
 	}
 
-	CreateBuffer(IB.size(), Memory, out.Buffers[15], VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32);
-	FillBuffer(&IB, IB.size(), out.Buffers[15], WriteIndex, FetchIndex2);
+	CreateBufferView(IB.size(), Memory, out.Buffers[15], VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32);
+	FillBufferView(&IB, IB.size(), out.Buffers[15], WriteIndex, FetchIndex2);
 
 	
 	if (EnableSubDiv)
@@ -1197,7 +1197,7 @@ typedef Pair<GeometryBlock*, StackAllocator*> GBAPair;
 Pair<size_t, GBAPair> 
 FindAllGeometry(fbxsdk::FbxNode* node, Engine* E, GeometryBlock* GL = nullptr, StackAllocator* GLAlloc = nullptr, bool SubDiv = false)
 {
-	using FlexKit::FillBuffer;
+	using FlexKit::FillBufferView;
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
 	using MeshUtilityFunctions::BuildVertexBuffer;
@@ -1276,7 +1276,6 @@ struct CompiledMeshInfo
 Pair<size_t, GBAPair> 
 CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock* GL, StackAllocator* TempMem, MetaData_list* MD = nullptr, bool SubDiv = false)
 {
-	using FlexKit::FillBuffer;
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
 	using MeshUtilityFunctions::BuildVertexBuffer;

@@ -33,6 +33,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	/*
 	void DrawLandscape(Context& ctx, Landscape* ls, Camera* c, size_t splitcount, FINALPASSDRAWFN FinalDraw, void* _ptr)
 	{
 		UINT Offsets[] =
@@ -87,6 +88,7 @@ namespace FlexKit
 		SetShader(ctx, SHADER_TYPE::SHADER_TYPE_Pixel);
 		SetShader(ctx, SHADER_TYPE::SHADER_TYPE_Vertex);
 	}
+	*/
 
 
 	/************************************************************************************************/

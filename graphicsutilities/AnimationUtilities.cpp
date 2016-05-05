@@ -67,7 +67,7 @@ namespace FlexKit
 		size_t JointCount = E->Mesh->Skeleton->JointCount;
 
 		auto New_EAS = (DrawablePoseState*)MEM->_aligned_malloc(sizeof(DrawablePoseState));
-		New_EAS->Resource		= nullptr;
+		New_EAS->Resource.Release();
 		New_EAS->Joints			= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->CurrentPose	= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->JointCount		= JointCount;
@@ -88,17 +88,17 @@ namespace FlexKit
 		bool ReturnState = false;
 		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint) * 2;
 		ShaderResourceBuffer NewResource = CreateShaderResource(RS, ResourceSize);
-		SETDEBUGNAME(NewResource, "POSESTATE");
+		//SETDEBUGNAME(NewResource, "POSESTATE");
 
 		if (NewResource)
 		{
 			ReturnState = true;
-			UpdateResourceByTemp(RS, NewResource, InitialState, ResourceSize, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			UpdateResourceByTemp(RS, &NewResource, InitialState, ResourceSize, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			EAS->Resource = NewResource;
 		}
 		else
 		{
-			if(NewResource) NewResource->Release();
+			NewResource.Release();
 		}
 
 		return (ReturnState);
@@ -110,8 +110,7 @@ namespace FlexKit
 
 	void Destroy(DrawablePoseState* EPS)
 	{
-		if(EPS->Resource) EPS->Resource->Release();
-		EPS->Resource = nullptr;
+		EPS->Resource.Release();
 	}
 
 
@@ -346,7 +345,7 @@ namespace FlexKit
 					FlexKit::PoseState_DESC	Desc ={ S->JointCount };
 					auto RES = InitiatePoseState(RS, PS, Desc, Out);
 				} else {
-					UpdateResourceByTemp(RS, PS->Resource, Out, sizeof(VShaderJoint) * S->JointCount, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+					UpdateResourceByTemp(RS, &PS->Resource, Out, sizeof(VShaderJoint) * S->JointCount, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 				}
 			}
 		}

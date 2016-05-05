@@ -67,7 +67,7 @@ namespace FlexKit
 	#define PRINTERRORBLOB(Blob) [&](){std::cout << Blob->GetBufferPointer();}
 	#define ASSERTONFAIL(ERRORMESSAGE)[&](){FK_ASSERT(0, ERRORMESSAGE);}
 
-	void SetDebugName(ID3D12Object* Obj, char* cstr, size_t size)
+	void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size)
 	{
 #if USING(DEBUGGRAPHICS)
 		wchar_t WString[128];
@@ -694,6 +694,7 @@ namespace FlexKit
 		NewRenderSystem.FenceValue		    = 1;
 		NewRenderSystem.pDebugDevice	    = DebugDevice;
 		NewRenderSystem.pDebug			    = Debug;
+		NewRenderSystem.BufferCount			= 3;
 
 		*out = NewRenderSystem;
 		CreateDescriptorHeaps(out, &out->DefaultDescriptorHeaps);
@@ -1332,13 +1333,23 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
-
-	void UpdateResourceByTemp( RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
+	void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
 	{
 		UpdateGPUResource(RS, Data, SourceSize, Dest);
-		RS->CommandList->ResourceBarrier(1, 
-				&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
+		// NOT SURE IF NEEDED, RUNS CORRECTLY WITHOUT FOR THE MOMENT
+		//RS->CommandList->ResourceBarrier(1, 
+		//		&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
+		//		D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
+	}
+
+	void UpdateResourceByTemp( RenderSystem* RS,  FrameBufferedResource*  Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
+	{
+		Dest->IncrementCounter();
+		UpdateGPUResource(RS, Data, SourceSize, Dest->Get());
+		// NOT SURE IF NEEDED, RUNS CORRECTLY WITHOUT FOR THE MOMENT
+		//RS->CommandList->ResourceBarrier(1, 
+		//		&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
+		//		D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
 	}
 
 
@@ -1572,18 +1583,22 @@ namespace FlexKit
 		HEAP_Props.CreationNodeMask	     = 0;
 		HEAP_Props.VisibleNodeMask		 = 0;
 
-		ID3D12Resource* NewResource = nullptr;
-		HRESULT HR = RS->pDevice->CreateCommittedResource(
-						&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES, 
-						&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr, 
-						IID_PPV_ARGS(&NewResource));
+		size_t BufferCount = RS->BufferCount;
+		FrameBufferedResource NewResource;
+		NewResource.BufferCount = BufferCount;
 
-#ifdef _DEBUG
-		if (FAILED(HR))
+		for(size_t I = 0; I < BufferCount; ++I)
 		{
-			FK_ASSERT(0);
+			ID3D12Resource* Resource = nullptr;
+			HRESULT HR = RS->pDevice->CreateCommittedResource(
+							&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES, 
+							&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr, 
+							IID_PPV_ARGS(&Resource));
+
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
+			NewResource.Resources[I] = Resource;
 		}
-#endif
+
 		return NewResource;
 	}
 
@@ -1611,14 +1626,21 @@ namespace FlexKit
 		HEAP_Props.CreationNodeMask	     = 0;
 		HEAP_Props.VisibleNodeMask		 = 0;
 
-		ID3D12Resource* NewResource = nullptr;
-		HRESULT HR = RS->pDevice->CreateCommittedResource(
-						&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES, 
-						&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr, 
-						IID_PPV_ARGS(&NewResource));
+		size_t BufferCount = RS->BufferCount;
+		FrameBufferedResource NewResource;
+		NewResource.BufferCount = BufferCount;
 
-		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
+		for (size_t I = 0; I < BufferCount; ++I)
+		{
+			ID3D12Resource* Resource = nullptr;
+			HRESULT HR = RS->pDevice->CreateCommittedResource(
+							&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES, 
+							&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr, 
+							IID_PPV_ARGS(&Resource));
 
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
+			NewResource.Resources[I] = Resource;
+		}
 		return NewResource;
 	}
 	
@@ -1907,8 +1929,7 @@ namespace FlexKit
 
 	void Destroy( ConstantBuffer buffer )
 	{
-		if(buffer)
-			buffer->Release();
+		buffer.Release();
 	}
 	
 
@@ -2981,8 +3002,7 @@ namespace FlexKit
 
 				auto NewConstantBuffer		 = CreateConstantBuffer(RS, &CB_Desc);
 				out->Shading.ShaderConstants = NewConstantBuffer;
-
-				SETDEBUGNAME(NewConstantBuffer, "GBufferPass Constants");
+				NewConstantBuffer._SetDebugName("GBufferPass Constants");
 			}
 
 			// Shading Signature Setup
@@ -3324,7 +3344,7 @@ namespace FlexKit
 		Update.PLightCount = in->PointLightCount;
 		Update.SLightCount = in->SpotLightCount;
 
-		UpdateResourceByTemp(RS, Pass->Shading.ShaderConstants, &Update, sizeof(Update), 1, 
+		UpdateResourceByTemp(RS, &Pass->Shading.ShaderConstants, &Update, sizeof(Update), 1, 
 							D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 
@@ -3941,7 +3961,7 @@ namespace FlexKit
 			FK_ASSERT(0); // Failed to initialise Constant Buffer
 
 		char* DebugName = "CAMERA BUFFER";
-		SetDebugName(NewBuffer, DebugName, strlen(DebugName));
+		NewBuffer._SetDebugName(DebugName);
 
 		out->Buffer = NewBuffer;
 	}
@@ -3975,7 +3995,7 @@ namespace FlexKit
 		NewData.PointLightCount		= Pointlightcount;
 		NewData.SpotLightCount		= SpotLightCount;
 
-		UpdateResourceByTemp(RS, camera->Buffer, &NewData, sizeof(Camera::BufferLayout), 1,
+		UpdateResourceByTemp(RS, &camera->Buffer, &NewData, sizeof(Camera::BufferLayout), 1,
 			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
 		camera->WT	 = XMMatrixToFloat4x4(&WT);
@@ -4799,7 +4819,7 @@ namespace FlexKit
 			NewData.MP.Spec = E->OverrideMaterialProperties ? E->MatProperties.Spec : M->GetMetal( E->Material );
 			NewData.Transform = DirectX::XMMatrixTranspose( WT );
 
-			UpdateResourceByTemp(RS, E->VConstants, &NewData, sizeof(NewData), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+			UpdateResourceByTemp(RS, &E->VConstants, &NewData, sizeof(NewData), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 			E->Dirty = false;
 		}
 	}
@@ -5522,7 +5542,7 @@ namespace FlexKit
 		constants.DLightCount = 0;
 		constants.PLightCount = PLightCount;
 		constants.SLightCount = SLightCount;
-		UpdateResourceByTemp(RS, gb->Shading.ShaderConstants, &constants, sizeof(constants), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		UpdateResourceByTemp(RS, &gb->Shading.ShaderConstants, &constants, sizeof(constants), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 
 

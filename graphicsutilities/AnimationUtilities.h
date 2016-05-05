@@ -180,13 +180,13 @@ namespace FlexKit
 
 	struct DrawablePoseState
 	{
-		ID3D12Resource*		Resource	= nullptr;
-		DirectX::XMMATRIX*	Joints		= nullptr;
-		DirectX::XMMATRIX*	CurrentPose	= nullptr;
-		Skeleton*			Sk			= nullptr;
-		size_t				JointCount	= 0;
-		size_t				Dirty		= 0;
-		size_t				padding[2];
+		FrameBufferedResource	Resource;
+		DirectX::XMMATRIX*		Joints		= nullptr;
+		DirectX::XMMATRIX*		CurrentPose	= nullptr;
+		Skeleton*				Sk			= nullptr;
+		size_t					JointCount	= 0;
+		size_t					Dirty		= 0;
+		size_t					padding[2];
 	};
 
 	inline void RotateJoint(DrawablePoseState* E, JointHandle J, Quaternion Q)

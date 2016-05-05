@@ -564,7 +564,9 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	{
 		for (uint32_t II = 0; II < 20; ++II)
 		{
-			auto Flower = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
+			auto Flower = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Flower");
+			//State->GScene.EntityEnablePosing(Flower);
+			//State->GScene.EntityPlayAnimation(Flower, "BoxRigTest:ANIMATION");
 			State->GScene.TranslateEntity_WT(Flower, { 5.0f * I, 0, 5.0f * II });
 		}
 	}

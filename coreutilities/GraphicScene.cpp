@@ -89,7 +89,7 @@ namespace FlexKit
 			FreeEntityList->push_back(E);
 			FreeHandle(SN, GetEntity(E).Node);
 			CleanUpDrawable(&GetEntity(E));
-			GetEntity(E).VConstants = nullptr;
+			GetEntity(E).VConstants.Release();
 			GetEntity(E).Visable	= false;
 			GetEntity(E).Mesh		= nullptr;
 		}
