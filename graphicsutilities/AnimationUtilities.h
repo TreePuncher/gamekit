@@ -249,6 +249,10 @@ namespace FlexKit
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation	(FlexKit::Drawable* E, const char* AnimationID);
 
 	FLEXKITAPI void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP);
+	FLEXKITAPI void UploadAnimation(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP);
+
+	FLEXKITAPI void UploadAnimations(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
+
 
 	FLEXKITAPI void PrintSkeletonHierarchy(FlexKit::Skeleton* S);
 }

@@ -110,7 +110,7 @@ namespace FlexKit
 	FLEXKITAPI void UpdateGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void UpdateAnimationsGraphicScene	(GraphicScene* SM);
 	FLEXKITAPI void GetGraphicScenePVS				(GraphicScene* SM, Camera* C, PVS* __restrict out, PVS* __restrict T_out);
-	FLEXKITAPI void UpdateGraphicScene_PreDraw		(GraphicScene* SM);
+	FLEXKITAPI void UploadGraphicScene				(GraphicScene* SM, PVS* , PVS* );
 
 	FLEXKITAPI void CleanUpGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void CleanUpSceneSkeleton			(Skeleton* S, iAllocator* Mem);

@@ -423,13 +423,12 @@ namespace FlexKit
 		}
 	}
 
+
 	/************************************************************************************************/
 
 
 	void UpdateGraphicScene(GraphicScene* SM)
 	{
-		for(auto& E : *SM->Drawables)
-			UpdateDrawable(SM->RS, SM->SN, SM->ST, &E);
 	}
 
 
@@ -463,10 +462,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateGraphicScene_PreDraw(GraphicScene* SM)
+	void UploadGraphicScene(GraphicScene* SM, PVS* Dawables, PVS* Transparent_PVS)
 	{
 		UpdatePointLightBuffer	(*SM->RS, SM->SN, &SM->PLights, SM->TempMem);
 		UpdateSpotLightBuffer	(*SM->RS, SM->SN, &SM->SPLights, SM->TempMem);
+
+		for (Drawable* d : *Dawables)
+			UpdateDrawable(SM->RS, SM->SN, SM->ST, d);
+
+		for (Drawable* t : *Transparent_PVS)
+			UpdateDrawable(SM->RS, SM->SN, SM->ST, t);
+
 	}
 
 

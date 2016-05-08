@@ -834,6 +834,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	typedef	fixed_vector<ID3D12Resource*> TempResourceList;
+	const static int QueueSize		= 3;
+	const static int MaxThreadCount = 4;
 
 	struct RenderSystem
 	{
@@ -842,36 +844,48 @@ namespace FlexKit
 
 		// TODO: Add Asset Manager _ptr Here
 
-		ID3D12Device*			pDevice;
-		ID3D12Debug*			pDebug;
-		ID3D12DebugDevice*		pDebugDevice;
+		ID3D12Device*		pDevice;
+		ID3D12Debug*		pDebug;
+		ID3D12DebugDevice*	pDebugDevice;
 
-		ID3D12CommandAllocator*		GraphicsCLAllocator;
-		ID3D12CommandAllocator*		UploadCLAllocator;
-		ID3D12CommandAllocator*		ComputeCLAllocator;
-		ID3D12GraphicsCommandList*	CommandList;
-		ID3D12GraphicsCommandList*	UploadList;
-		ID3D12GraphicsCommandList*	ComputeList;
-		ID3D12CommandQueue*			GraphicsQueue;
-		ID3D12CommandQueue*			UploadQueue;
-		ID3D12CommandQueue*			ComputeQueue;
-		ID3D12Fence*				Fence;
-		size_t						FenceValue;
-		HANDLE						FenceHandle;
+		struct FrameResource
+		{
+			ID3D12GraphicsCommandList*	CommandLists		[MaxThreadCount];
+			ID3D12CommandAllocator*		GraphicsCLAllocator	[MaxThreadCount];
+			ID3D12CommandAllocator*		UploadCLAllocator	[MaxThreadCount];
+			ID3D12CommandAllocator*		ComputeCLAllocator	[MaxThreadCount];
+			ID3D12GraphicsCommandList*	UploadList			[MaxThreadCount];
+			ID3D12GraphicsCommandList*	ComputeList			[MaxThreadCount];
+			size_t						ThreadsIssued;
+		}FrameResources[QueueSize];
 
-		IDXGIFactory4*	pGIFactory;
+		IDXGIFactory4*		pGIFactory;
+		ID3D12CommandQueue*	GraphicsQueue;
+		ID3D12CommandQueue*	UploadQueue;
+		ID3D12CommandQueue*	ComputeQueue;
 
-		size_t			BufferCount;
-		size_t			DescriptorRTVSize;
-		size_t			DescriptorDSVSize;
-		size_t			DescriptorCBVSRVUAVSize;
+		size_t CurrentIndex;
+		size_t FenceCounter;
+
+		ID3D12Fence* Fence;
+
+		struct
+		{
+			size_t			FenceValue;
+			HANDLE			FenceHandle;
+		}Fences[QueueSize];
+
+		size_t BufferCount;
+		size_t DescriptorRTVSize;
+		size_t DescriptorDSVSize;
+		size_t DescriptorCBVSRVUAVSize;
 
 		DescriptorHeaps	DefaultDescriptorHeaps;
 
 		struct
 		{
-			size_t	AASamples;
-			size_t  AAQuality;
+			size_t AASamples;
+			size_t AAQuality;
 		}Settings;
 
 		struct
@@ -882,8 +896,6 @@ namespace FlexKit
 			size_t			Size;
 			char*			Buffer;
 		}CopyEngine;
-
-		size_t	MeshLoadedCount;
 
 		struct RootSigLibrary
 		{
@@ -1005,9 +1017,14 @@ namespace FlexKit
 		float4x4 Mout;
 		Mout = *(float4x4*)M;
 		return Mout;
-
 	}
 
+	inline DirectX::XMMATRIX Float4x4ToXMMATIRX(float4x4* M)
+	{
+		DirectX::XMMATRIX Mout;
+		Mout = *(DirectX::XMMATRIX*)M;
+		return Mout;
+	}
 
 	/************************************************************************************************/
 
@@ -1097,14 +1114,18 @@ namespace FlexKit
 	struct DeferredPass
 	{
 		// GBuffer
-		Texture2D ColorTex;
-		Texture2D SpecularTex;
-		Texture2D NormalTex;
-		Texture2D PositionTex;
-		Texture2D OutputBuffer;
+		struct GBuffer
+		{
+			Texture2D ColorTex;
+			Texture2D SpecularTex;
+			Texture2D NormalTex;
+			Texture2D PositionTex;
+			Texture2D OutputBuffer;
 
-		ID3D12DescriptorHeap* SRVDescHeap;
-		ID3D12DescriptorHeap* RTVDescHeap;
+			ID3D12DescriptorHeap* SRVDescHeap;
+			ID3D12DescriptorHeap* RTVDescHeap;
+		}GBuffers[3];
+		size_t CurrentBuffer;
 
 		// Shading
 		struct
@@ -1807,16 +1828,17 @@ namespace FlexKit
 	FLEXKITAPI bool	ResizeRenderWindow	( RenderSystem*, RenderWindow* Window, uint2 HW );
 	FLEXKITAPI void	SetInputWIndow		( RenderWindow* );
 	FLEXKITAPI void	UpdateInput			( void );
-	FLEXKITAPI void	UpdateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, int PointLightCount, int SpotLightCount, double dt);
+	FLEXKITAPI void	UpdateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, double dt);
+	FLEXKITAPI void	UploadCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, int PointLightCount, int SpotLightCount, double dt);
 
 	
 	/************************************************************************************************/
 
-	FLEXKITAPI void AddTempBuffer			 ( ID3D12Resource* _ptr, RenderSystem* RS);
-	FLEXKITAPI void	ClearDepthStencil		 ( RenderSystem* RS, ID3D11DepthStencilView*, float D = 1.0 ); // Clears to back and max Depth
-	FLEXKITAPI void	PresentWindow			 ( RenderWindow* RW, RenderSystem* RS );
-	FLEXKITAPI void	WaitForFrameCompletetion ( RenderSystem* RS );
-	FLEXKITAPI void	WaitforGPU				 ( RenderSystem* RS, size_t FenceValue );
+	FLEXKITAPI void AddTempBuffer		  ( ID3D12Resource* _ptr, RenderSystem* RS);
+	FLEXKITAPI void	ClearDepthStencil	  ( RenderSystem* RS, ID3D11DepthStencilView*, float D = 1.0 ); // Clears to back and max Depth
+	FLEXKITAPI void	PresentWindow		  ( RenderWindow* RW, RenderSystem* RS );
+	FLEXKITAPI void	WaitForFrameCompletion( RenderSystem* RS );
+	FLEXKITAPI void	WaitforGPU			  ( RenderSystem* RS );
 
 	
 	/************************************************************************************************/
@@ -1831,10 +1853,10 @@ namespace FlexKit
 	FLEXKITAPI ShaderResourceBuffer CreateShaderResource		( RenderSystem* RS, size_t ResourceSize);
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );
 
+	FLEXKITAPI void UploadResources(RenderSystem* RS);
+
 	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
-
-
 
 
 	/************************************************************************************************/
@@ -2038,7 +2060,7 @@ namespace FlexKit
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem*	RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
 	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
-	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor );
+	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
 
 
@@ -2050,10 +2072,11 @@ namespace FlexKit
 		RenderWindow*	OutputTarget;
 	};
 
-	FLEXKITAPI	ID3D12GraphicsCommandList*	GetCurrentCommandList(RenderSystem* RS);
+	FLEXKITAPI ID3D12CommandAllocator*		GetCurrentCommandAllocator(RenderSystem* RS);
+	FLEXKITAPI ID3D12GraphicsCommandList*	GetCurrentCommandList(RenderSystem* RS);
 	FLEXKITAPI Texture2D					GetRenderTarget(RenderWindow* RW);
 
-	FLEXKITAPI void BeginPass				( ID3D12GraphicsCommandList* CL, RenderWindow* Window);
+	FLEXKITAPI void BeginPass				( RenderSystem* RS, RenderWindow* Window);
 	FLEXKITAPI void EndPass					( ID3D12GraphicsCommandList* CL, RenderSystem* RS);
 
 	FLEXKITAPI void ClearBackBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor);

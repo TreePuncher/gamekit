@@ -360,7 +360,8 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 		TranslateActor(FinalDelta, ActorState, dt);
 		float3 NewP = GetActorPosition(ActorState);
 		SetPositionW( Scene->SN, Target, NewP);
-		
+		Scene->GetEntity(ActorState->Drawable).Dirty = true;
+
 		float3 Dir  = Quaternion(0, 90, 0) * (float3(1, 0, 1) * FinalDelta * float3(-1, 0, -1)).normal();
 		float3 SV   = Dir.cross(float3{0, 1, 0});
 		float3 UpV	= SV.cross(Dir);
@@ -547,24 +548,27 @@ void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
-	auto PlayerModel = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
+	auto PlayerModel   = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
 	auto TestAnimation = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
-	auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Floor");
+	auto Floor         = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Floor");
+
 	State->GScene.Yaw					(PlayerModel, pi / 2);
 	State->GScene.EntityEnablePosing	(PlayerModel);
-	State->GScene.EntityEnablePosing	(TestAnimation);
+	//State->GScene.EntityEnablePosing	(TestAnimation);
 	State->GScene.EntityPlayAnimation	(PlayerModel,	"PlayerMesh:ANIMATION");
-	State->GScene.EntityPlayAnimation	(TestAnimation, "BoxRigTest:ANIMATION");
+	//State->GScene.EntityPlayAnimation	(TestAniasmation, "BoxRigTest:ANIMATION");
 	State->GScene.TranslateEntity_WT	(TestAnimation, {0, 0, 10});
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->GScene.SetMaterialParams		(Floor,		 { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
-	for (uint32_t I = 0; I < 100; ++I)
+	PrintSkeletonHierarchy(State->GScene.GetEntity(PlayerModel).Mesh->Skeleton);
+
+	for (uint32_t I = 0; I < 10; ++I)
 	{
-		for (uint32_t II = 0; II < 20; ++II)
+		for (uint32_t II = 0; II < 200; ++II)
 		{
-			auto Flower = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Flower");
+			auto Flower = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
 			//State->GScene.EntityEnablePosing(Flower);
 			//State->GScene.EntityPlayAnimation(Flower, "BoxRigTest:ANIMATION");
 			State->GScene.TranslateEntity_WT(Flower, { 5.0f * I, 0, 5.0f * II });
@@ -663,6 +667,9 @@ extern "C"
 		sub.Notify = &KeyEventsWrapper;
 		sub._ptr   = &State;
 		Engine->Window.Handler.Subscribe(sub);
+
+		UploadResources(&Engine->RenderSystem);
+
 		return &State;
 	}
 
@@ -671,8 +678,11 @@ extern "C"
 	{
 		Engine->End = State->Quit;
 		State->Mouse.Enabled = State->Keys.MouseEnable;
-		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
-		UpdateColliders	(&State->PScene, &Engine->Nodes);
+
+		{
+			UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
+			UpdateColliders	(&State->PScene, &Engine->Nodes);
+		}
 	}
 
 
@@ -684,27 +694,22 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void UpdateAnimations(RenderSystem* RS, StackAllocator* TempMemory, double dt, GameState* _ptr)
+	GAMESTATEAPI void UpdateAnimations(RenderSystem* RS, iAllocator* TempMemory, double dt, GameState* _ptr)
 	{
 		UpdateAnimationsGraphicScene(&_ptr->GScene, dt);
 	}
 
 
-	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, StackAllocator* TempMemory, double dt, GameState* State)
+	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameState* State)
 	{
-		UpdateTransforms(State->Nodes);
-		UpdateGraphicScene_PreDraw(&State->GScene);
-
-		DeferredPass_Parameters	DPP;
-		DPP.PointLightCount = State->GScene.PLights.size();
-		DPP.SpotLightCount = State->GScene.SPLights.size();
-
-		UpdateDeferredPassConstants(Engine->RenderSystem, &DPP, &State->DeferredPass);
-		UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), dt);
+		{
+			UpdateTransforms(State->Nodes);
+			UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
+		}
 	}
 
 
-	GAMESTATEAPI void Draw(RenderSystem* RS, StackAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* State)
+	GAMESTATEAPI void Draw(RenderSystem* RS, iAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* State)
 	{
 		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 		auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
@@ -714,22 +719,37 @@ extern "C"
 		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
 		SortPVSTransparent(State->Nodes, &Transparent, State->ActiveCamera);
 
+		BeginPass(RS, State->ActiveWindow);
 		auto CL = GetCurrentCommandList(RS);
-		BeginPass(CL, State->ActiveWindow);
 
-		ClearBackBuffer	(RS, CL, State->ActiveWindow, {0, 0, 0, 0});
-		ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0);
+		// Do Uploads
+		{
+			DeferredPass_Parameters	DPP;
+			DPP.PointLightCount = State->GScene.PLights.size();
+			DPP.SpotLightCount  = State->GScene.SPLights.size();
 
-		if (State->DoDeferredShading)
-			DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
-		else
-			DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
+			UploadAnimations(RS, &PVS, TempMemory);
+			UploadDeferredPassConstants(RS, &DPP, &State->DeferredPass);
+			UploadCamera(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
+			UploadGraphicScene(&State->GScene, &PVS, &Transparent);
+		}
+
+		// Submission
+		{
+			ClearBackBuffer	(RS, CL, State->ActiveWindow, {0, 0, 0, 0});
+			ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0);
+
+			if (State->DoDeferredShading)
+				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
+			else
+				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
+		}
 
 		EndPass(CL, RS);
 	}
 
 
-	GAMESTATEAPI void PostDraw(EngineMemory* Engine, StackAllocator* TempMemory, double dt, GameState* _ptr)
+	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameState* _ptr)
 	{
 		PresentWindow(&Engine->Window, Engine->RenderSystem);
 	}
@@ -737,7 +757,7 @@ extern "C"
 
 	GAMESTATEAPI void CleanUp(EngineMemory* Engine, GameState* _ptr)
 	{
-		WaitforGPU(&Engine->RenderSystem, Engine->RenderSystem.FenceValue);
+		WaitforGPU(&Engine->RenderSystem);
 
 		Engine->BlockAllocator.free(_ptr);
 		
@@ -769,10 +789,10 @@ extern "C"
 		typedef GameState*	(*InitiateGameStateFN)	(EngineMemory* Engine);
 		typedef void		(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, GameState* _ptr);
 		typedef void		(*UpdateIMPL)			(EngineMemory* Engine,	GameState* _ptr, double dt);
-		typedef void		(*UpdateAnimationsFN)	(RenderSystem* RS,		StackAllocator* TempMemory, double dt, GameState* _ptr);
-		typedef void		(*UpdatePreDrawFN)		(EngineMemory* Engine,	StackAllocator* TempMemory, double dt, GameState* _ptr);
-		typedef void		(*DrawFN)				(RenderSystem* RS,		StackAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* _ptr);
-		typedef void		(*PostDrawFN)			(EngineMemory* Engine,	StackAllocator* TempMemory, double dt, GameState* _ptr);
+		typedef void		(*UpdateAnimationsFN)	(RenderSystem* RS,		iAllocator* TempMemory, double dt, GameState* _ptr);
+		typedef void		(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameState* _ptr);
+		typedef void		(*DrawFN)				(RenderSystem* RS,		iAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* _ptr);
+		typedef void		(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameState* _ptr);
 		typedef void		(*CleanUpFN)			(EngineMemory* Engine,	GameState* _ptr);
 		typedef void		(*PostPhysicsUpdate)	(GameState*);
 		typedef void		(*PrePhysicsUpdate)		(GameState*);

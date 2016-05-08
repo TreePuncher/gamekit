@@ -129,9 +129,9 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			UpdateInput();
 
 			FNTable->UpdateFixed		(Engine, dt, State);
-			FNTable->UpdateAnimations	(Engine->RenderSystem,	&Engine->TempAllocator, dt,					State);
-			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator, dt,					State);
-			FNTable->Draw				(Engine->RenderSystem,	&Engine->TempAllocator, &Engine->Materials, State);
+			FNTable->UpdateAnimations	(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, dt,					State);
+			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,					State);
+			FNTable->Draw				(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, &Engine->Materials, State);
 			FNTable->PostDraw			(Engine,										dt,					State);
 
 			if (CodeCheckTimer > 2.0)
