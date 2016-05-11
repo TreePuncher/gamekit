@@ -52,15 +52,13 @@ namespace FlexKit
 	template<typename Ty, size_t SIZE = 16>
 	struct RingBuffer
 	{
-		RingBuffer()
-		{
+		RingBuffer(){
 			head	= 0;
 			end		= 0;
 			count	= 0;
 		}
 
-		void push_back(const Ty& in)
-		{
+		void push_back(const Ty& in){
 			_t[end++] = in;
 			end = end % SIZE;
 			++count;
@@ -69,11 +67,9 @@ namespace FlexKit
 				head++;
 		}
 
-		Ty pop_front()
-		{
+		Ty pop_front(){
 			size_t i = end;
-			if (count)
-			{
+			if (count){
 				--count;
 				count = count % SIZE;
 
@@ -83,31 +79,23 @@ namespace FlexKit
 			return _t[i];
 		}
 
-		Ty& back()
-		{
+		Ty& back(){
 			return _t[end];
 		}
 
-		Ty& front()
-		{
+		Ty& front(){
 			return _t[head];
 		}
 
-		Ty& operator[] (uint32_t i)
-		{
+		Ty& operator[] (uint32_t i)	{return _t[i];}
 
-			return _t[i];
-		}
-
-		void clear()
-		{
+		void clear(){
 			count = 0;
-			head = 0;
-			end = 0;
+			head  = 0;
+			end   = 0;
 		}
 
-		uint32_t size()
-		{
+		uint32_t size(){
 			return count;
 		}
 
@@ -117,64 +105,137 @@ namespace FlexKit
 		size_t	count;
 	};
 
-	template<typename Ty, typename Ty_Allocator>
+
+	/************************************************************************************************/
+
+
+	template<typename Ty>
 	struct DynArray
 	{
-		inline DynArray(Ty_Allocator& Alloc = Ty_Allocator) : Allocator(Alloc) {}
-				
+		typedef DynArray<Ty> THISTYPE;
+		inline  DynArray(iAllocator* Alloc) : Allocator(Alloc), Max(0), Size(0), A(nullptr) {}
+
+		inline  DynArray(THISTYPE&& MOVEIN) : 
+			Allocator	(MOVEIN.Alloc), 
+			Max			(MOVEIN.Max), 
+			Size		(MOVEIN.Size)
+		{
+			MOVEIN.A	= nullptr;
+			MOVEIN.Max  = 0;
+			MOVEIN.Size = 0;
+		}
+
+		inline ~DynArray(){if(A)Allocator->_aligned_free(A);}
+
 		inline Ty& operator [](size_t index) {return A[index];}
-		Ty*	A;
+
+
+		/************************************************************************************************/
+
+
+		template<typename Ty, typename ALLOC>
+		Ty PopVect(){
+			FK_ASSERT(C->Size > 1);
+			return C->A[--C->Size];
+		}
+
+
+		/************************************************************************************************/
+
+
+		void push_back(Ty& in){
+			if (Size + 1 > Max)
+			{// Increase Size
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * C->Max);
+				FK_ASSERT(NewMem);
+
+				{
+					size_t itr = 0;
+					size_t End = Size + 1;
+					while (itr < End) new(NewMem + itr) ();
+				}
+				{
+					size_t itr = 0;
+					size_t End = Size;
+					while (itr < End) NewMem[itr] = A[itr];
+				}
+
+				mem->_aligned_free(A);
+				Size++;
+				A    = NewMem;
+				Max *= 2;
+			}
+
+			A[Size++] = in;
+		}
+
+		void push_back(Ty in) {
+			if (Size + 1 > Max)
+			{// Increase Size
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * Max);
+				FK_ASSERT(NewMem);
+
+				if(A)
+				{
+					size_t itr = 0;
+					size_t End = Size;
+					for (;itr < End; ++itr) NewMem[itr] = A[itr];
+					Allocator->_aligned_free(A);
+				}
+
+				A	  = NewMem;
+				Max   = (Max) ? Max * 2 : 1;
+			}
+
+			A[Size++] = in;
+		}
+
+		void reserve(size_t NewSize)
+		{
+			if (Max < NewSize)
+			{// Increase Size
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
+				FK_ASSERT(NewMem);
+
+				if (A)
+				{
+					size_t itr = 0;
+					size_t End = Size + 1;
+					for (; itr < End;) NewMem[itr] = A[itr];
+					Allocator->_aligned_free(A);
+				}
+
+				A = NewMem;
+				Max = NewSize;
+			}
+		}
+
+		Ty& at(size_t index) { return C->A[index]; }
 
 		typedef Ty* Iterator; 
 
 		Iterator begin()	{ return A;			}
 		Iterator end()		{ return A + Size;	}
 
+		size_t size(){return Size;}
+
+		/************************************************************************************************/
+		
+		
+		Ty*	A;
+
 		size_t Size;
 		size_t Max;
 
-		Ty_Allocator Allocator;
+		iAllocator* Allocator;
+
+
+		/************************************************************************************************/
 	};
 
-	template<typename Ty, typename ALLOC>
-	void PushVectCM(DynArray<Ty, ALLOC>* C, Ty& in, FlexKit::BlockAllocator* mem)
-	{
-		if (C->Size + 1 > C->Max)
-		{// Increase Size
-			Ty* NewMem = (Ty*)mem->malloc(sizeof(Ty) * 2 * C->Max);
-			
-			FK_ASSERT(NewMem);
 
-			{
-				size_t itr = 0;
-				size_t End = C->Max * 2;
-				while (itr < End) new(NewMem + itr) ();
-			}
-			{
-				size_t itr = 0;
-				size_t End = C->Size;
-				while (itr < End) NewMem[itr] = C->A[itr];
-			}
+	/************************************************************************************************/
 
-			mem->free(C->A);
-			C->A = NewMem;
-			C->Size *= 2;
-		}
-
-		C->A[Size++] = in;
-	}
-
-	template<typename Ty, typename ALLOC>
-	Ty PopVect(DynArray<Ty, ALLOC>* C)
-	{
-#ifdef _DEBUG
-		FK_ASSERT(C->Size > 1);
-#endif
-		return C->A[--C->Size];
-	}
-
-	template<typename Ty, typename ALLOC>
-	Ty& GetAt(DynArray<Ty, ALLOC>* C, size_t index){ return C->A[index]; }
 
 	template< typename Ty_Get, template<typename Ty, typename... Ty_V> class TC, typename Ty_, typename... TV2> Ty_Get GetByType(TC<Ty_, TV2...>& in)	{ return in.GetByType<Ty_Get>(); }
 
@@ -196,9 +257,38 @@ namespace FlexKit
 		Ty_1 V1;
 		Ty_2 V2;
 	};
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY_C, typename TY_K, typename TY_PRED>
+	auto find(const TY_C& C, TY_K K, TY_PRED _Pred) noexcept
+	{
+		auto itr = C.begin();
+		auto end = C.end();
+		for (; itr != end; ++itr)
+			if (_Pred(*itr, K))
+				break;
+
+		return itr;
+	}
+
+
+	template<typename TY_C, typename TY_PRED>
+	auto find(const TY_C& C, TY_PRED _Pred) noexcept
+	{
+		auto itr = C.begin();
+		auto end = C.end();
+		for (; itr != end; ++itr)
+			if (_Pred(*itr))
+				break;
+
+		return itr;
+	}
+
+
+	/************************************************************************************************/
 }
-
-/************************************************************************************************/
-
 #endif
 #endif

@@ -192,6 +192,7 @@
     <ClInclude Include="coreutilities\timeutilities.h" />
     <ClInclude Include="coreutilities\type.h" />
     <ClInclude Include="graphicsutilities\AnimationUtilities.h" />
+    <ClInclude Include="graphicsutilities\DDSUtilities.h" />
     <ClInclude Include="graphicsutilities\graphics.h" />
     <ClInclude Include="graphicsutilities\TerrainRendering.h" />
     <ClInclude Include="pch.h" />
@@ -250,6 +251,9 @@
     <ClCompile Include="graphicsutilities\AnimationUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\DDSUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="graphicsutilities\graphics.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

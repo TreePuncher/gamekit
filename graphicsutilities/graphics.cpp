@@ -70,11 +70,13 @@ namespace FlexKit
 	void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size)
 	{
 #if USING(DEBUGGRAPHICS)
+		if (!Obj)
+			return;
+
 		wchar_t WString[128];
 		mbstowcs(WString, cstr, 128);
 		Obj->SetName(WString);
 #endif
-
 	}
 	// Globals
 	HWND			gWindowHandle	= 0;
@@ -86,130 +88,6 @@ namespace FlexKit
 	char* DEBUGSWAPCHAINID	= "MainSwapChain";
 
 	#define CALCULATECONSTANTBUFFERSIZE(TYPE) (sizeof(TYPE)/1024 + 1024)
-
-
-	/************************************************************************************************/
-
-
-	BufferArray::BufferArray( void )
-	{
-		m_size = 0;
-	}
-
-
-	/************************************************************************************************/
-
-
-	BufferArray::BufferArray( const BufferArray& in )
-	{
-		auto _ptr = in.GetBuffers();
-		m_size = in.GetBufferSize();
-		for( size_t II = 0; II < m_size; II++ )
-		{
-			mBuffers[II] = _ptr[II];
-			mBuffers[II]->AddRef();
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	BufferArray::~BufferArray( void )
-	{
-		for( uint32_t itr = 0; itr < m_size; itr++ )
-			mBuffers[itr]->Release();
-	}
-
-
-	/************************************************************************************************/
-
-
-	ID3D11Buffer* BufferArray::operator [] ( uint32_t index )
-	{
-		return mBuffers[index];
-	}
-
-
-	/************************************************************************************************/
-
-
-	const BufferArray& BufferArray::operator += (const BufferArray& rhs)
-	{
-#ifdef _DEBUG
-		// Segfault detection
-		FK_ASSERT( m_size < 16 );
-		FK_ASSERT( rhs.GetBufferSize() < 16 );
-#endif
-		for( size_t ii = m_size, iii = 0; iii < rhs.GetBufferSize() && ii < 16; ii++, iii++ )
-			push_back( rhs.GetBuffers()[iii] );
-
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	const BufferArray&	BufferArray::operator += (ID3D11Buffer* rhs)
-	{
-		push_back( rhs );
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void BufferArray::clear()
-	{
-		for( auto itr = 0; itr < m_size; itr++ )
-			if( mBuffers[itr] ) mBuffers[itr]->Release();
-		m_size = 0;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void BufferArray::push_back( ID3D11Buffer* _ptr )
-	{
-		_ptr->AddRef();
-		mBuffers[m_size] = _ptr;
-		m_size++;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void BufferArray::pop_back()
-	{
-		m_size--;
-#ifdef _DEBUG
-		FK_ASSERT( m_size < 16 );
-#endif
-		mBuffers[m_size]->Release();
-		mBuffers[m_size] = nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	uint8_t BufferArray::GetBufferSize() const
-	{
-		return m_size;
-	}
-
-
-	/************************************************************************************************/
-
-
-	ID3D11Buffer*const* BufferArray::GetBuffers() const
-	{
-		return mBuffers;
-	}
 
 
 	/************************************************************************************************/
@@ -438,7 +316,7 @@ namespace FlexKit
 		FK_ASSERT(FAILED(HR), "ERROR!");
 
 		DH_Desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-		DH_Desc.NumDescriptors	= 1;
+		DH_Desc.NumDescriptors	= 10;
 		HR = RS->pDevice->CreateDescriptorHeap(&DH_Desc, IID_PPV_ARGS(&DSVDescHeap));
 		FK_ASSERT(FAILED(HR), "ERROR!");
 
@@ -472,6 +350,7 @@ namespace FlexKit
 	void CreateRootSignatureLibrary(RenderSystem* out)
 	{
 		ID3D12Device* Device = out->pDevice;
+		CD3DX12_STATIC_SAMPLER_DESC	 Default(0);
 
 		{
 			// Pixel Processor Root Sig
@@ -489,18 +368,17 @@ namespace FlexKit
 			ID3DBlob* Signature = nullptr;
 			ID3DBlob* ErrorBlob = nullptr;
 			CD3DX12_STATIC_SAMPLER_DESC	Default(0);
-			CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
+			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
 
-			RootSignatureDesc.Init(5, Parameters, 0, nullptr);
-			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, 
-												&Signature, &ErrorBlob),
+			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob),
 												PRINTERRORBLOB(ErrorBlob));
 
 			ID3D12RootSignature* NewRootSig = nullptr;
 			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
 												ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
 
-			out->Library.PixelProcessor = NewRootSig;
+			out->Library.RS4CBVs4SRVs = NewRootSig;
 		}
 	}
 
@@ -645,8 +523,7 @@ namespace FlexKit
 			NewRenderSystem.Fence = NewFence;
 		}
 
-		for(size_t I = 0; I < 3; ++I)
-		{
+		for(size_t I = 0; I < 3; ++I){
 			NewRenderSystem.Fences[I].FenceHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 			NewRenderSystem.Fences[I].FenceValue  = 0;
 		}
@@ -690,6 +567,7 @@ namespace FlexKit
 					CommandList->Close();
 					GraphicsAllocator->Reset();
 
+					NewRenderSystem.FrameResources[I].TempBuffers				= nullptr;
 					NewRenderSystem.FrameResources[I].UploadList[II]			= static_cast<ID3D12GraphicsCommandList*>(UploadList);
 					NewRenderSystem.FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
 					NewRenderSystem.FrameResources[I].UploadCLAllocator[II]		= UploadAllocator;
@@ -738,7 +616,7 @@ namespace FlexKit
 
 	void Destroy(DepthBuffer* DB)
 	{
-		if(DB->Buffer)		DB->Buffer->Release();
+		for(auto R : DB->Buffer)if(R) R->Release();
 	}
 
 
@@ -766,12 +644,15 @@ namespace FlexKit
 
 			for (auto alloc : FR.UploadCLAllocator)
 				if (alloc)alloc->Release();
+
+			if(FR.TempBuffers)
+				System->Memory->_aligned_free(FR.TempBuffers);
 		}
 
 		System->GraphicsQueue->Release();
 		System->UploadQueue->Release();
 		System->ComputeQueue->Release();
-		System->Library.PixelProcessor->Release();
+		System->Library.RS4CBVs4SRVs->Release();
 		System->pGIFactory->Release();
 		System->pDevice->Release();
 		System->DefaultDescriptorHeaps.DSVDescHeap->Release();
@@ -809,9 +690,7 @@ namespace FlexKit
 		Clear.DepthStencil.Depth = 0.0f;
 		Clear.DepthStencil.Stencil = 0;
 
-		if (Float32)
-		{
-		
+		if (Float32){
 			Resource_DESC.Width					= desc_in->Width;
 			Resource_DESC.Height				= desc_in->Height;
 
@@ -832,8 +711,7 @@ namespace FlexKit
 
 			Clear.Format = DXGI_FORMAT_D32_FLOAT;
 		}
-		else
-		{
+		else{
 			Resource_DESC.Alignment				= 0;
 			Resource_DESC.DepthOrArraySize		= 1;
 			Resource_DESC.Dimension				= D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_TEXTURE2D;
@@ -879,10 +757,6 @@ namespace FlexKit
 		desc.Width       = Dimensions[0];
 		desc.initialData = InitialData;
 
-		auto DB = FlexKit::CreateDepthBufferResource(RS, &desc, DepthDesc.Float32);
-		if (!DB)
-			FK_ASSERT(0);
-
 		D3D12_DEPTH_STENCIL_VIEW_DESC DepthStencilDesc = {};
 		DepthStencilDesc.Format        =  DepthDesc.Float32 ? DXGI_FORMAT_D32_FLOAT : DXGI_FORMAT_D24_UNORM_S8_UINT;
 		DepthStencilDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
@@ -893,12 +767,23 @@ namespace FlexKit
 		DepthOptimizedClearValue.DepthStencil.Depth = 1.0f;
 		DepthOptimizedClearValue.DepthStencil.Stencil = 0;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE		DepthBufferHandle	={};
+		
+		CD3DX12_CPU_DESCRIPTOR_HANDLE DepthBufferHandle	= CD3DX12_CPU_DESCRIPTOR_HANDLE (RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
 
-		RS->pDevice->CreateDepthStencilView(DB.Texture, &DepthStencilDesc,  RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart() );
+		for(size_t I = 0; I < DepthDesc.BufferCount; ++I){
+			auto DB = FlexKit::CreateDepthBufferResource(RS, &desc, DepthDesc.Float32);
+			if (!DB)
+				FK_ASSERT(0);
 
-		out->Buffer		 = DB;
-		out->Inverted	 = DepthDesc.InverseDepth;
+			RS->pDevice->CreateDepthStencilView(DB.Texture, &DepthStencilDesc, DepthBufferHandle);
+			out->Buffer[I]	= DB;
+			out->View[I]	= DepthBufferHandle;
+			DepthBufferHandle.Offset(RS->DescriptorDSVSize);
+		}
+
+		out->Inverted	   = DepthDesc.InverseDepth;
+		out->BufferCount   = DepthDesc.BufferCount;
+		out->CurrentBuffer = 0;
 	}
 
 
@@ -1065,12 +950,12 @@ namespace FlexKit
 
 	void ReleaseTempResources(RenderSystem* RS)
 	{
-		if (RS->TempBuffers)
-		{
-			for (auto r : *RS->TempBuffers)
+		auto TempBuffer = RS->FrameResources[RS->CurrentIndex].TempBuffers;
+		if (TempBuffer)	{
+			for (auto r : *TempBuffer)
 				r->Release();
 
-			RS->TempBuffers->clear();
+			TempBuffer->clear();
 		}
 	}
 
@@ -1103,7 +988,6 @@ namespace FlexKit
 
 	void PresentWindow( RenderWindow* Window, RenderSystem* RS )									
 	{ 
-		ReleaseTempResources(RS);
 		CopyEnginePostFrameUpdate(RS);
 
 		Window->SwapChain_ptr->Present(1, 0);
@@ -1377,7 +1261,7 @@ namespace FlexKit
 		//		D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
 	}
 
-	void UpdateResourceByTemp( RenderSystem* RS,  FrameBufferedResource*  Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
+	void UpdateResourceByTemp( RenderSystem* RS,  FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
 	{
 		Dest->IncrementCounter();
 		UpdateGPUResource(RS, Data, SourceSize, Dest->Get());
@@ -1390,25 +1274,18 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	template<typename TY_Allocator, typename TY_>
-	fixed_vector<TY_>* ExpandFixedBuffer(TY_Allocator* Memory, fixed_vector<TY_>* in)
-	{
-		auto NewBuffer = &TempResourceList::Create_Aligned(in->size() * 2, Memory);
-		RawMove(*NewBuffer, *in);
-		Memory->free(in);
-
-		return NewBuffer;
-	}
 	
 	void AddTempBuffer(ID3D12Resource* _ptr, RenderSystem* RS)
 	{
-		if (!RS->TempBuffers)
-			RS->TempBuffers = &TempResourceList::Create_Aligned(128, RS->Memory);
+		auto& TempBuffers = RS->FrameResources[RS->CurrentIndex].TempBuffers;
 
-		if (RS->TempBuffers->full())
-			RS->TempBuffers = ExpandFixedBuffer(RS->Memory, RS->TempBuffers);
+		if (!TempBuffers)
+			TempBuffers = &TempResourceList::Create_Aligned(128, RS->Memory);
 
-		RS->TempBuffers->push_back(_ptr);
+		if (TempBuffers->full())
+			TempBuffers = ExpandFixedBuffer(RS->Memory, TempBuffers);
+
+		TempBuffers->push_back(_ptr);
 	}
 
 
@@ -2141,6 +2018,7 @@ namespace FlexKit
 		HRESULT HR = D3DCompileFromFile(WString, nullptr, nullptr, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
 		if (FAILED(HR))
 		{
+			printf((char*)Errors->GetBufferPointer());
 			return false;
 		}
 
@@ -2169,6 +2047,7 @@ namespace FlexKit
 		HRESULT HR = D3DCompileFromFile(WString, nullptr, nullptr, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
 		if (FAILED(HR))
 		{
+			printf((char*)Errors->GetBufferPointer());
 			return false;
 		}
 
@@ -2959,39 +2838,41 @@ namespace FlexKit
 				desc.RenderTarget = true;
 				desc.MipLevels    = 1;
 
-				{	// Alebdo Buffer
-					out->GBuffers[I].ColorTex = CreateTexture2D(RS, &desc);
-					FK_ASSERT(out->GBuffers[I].ColorTex);
-					SETDEBUGNAME(out->GBuffers[I].ColorTex.Texture, "Albedo Buffer");
-				}
 				{
-					// Create Specular Buffer
-					out->GBuffers[I].SpecularTex = CreateTexture2D(RS, &desc);
-					FK_ASSERT(out->GBuffers[I].SpecularTex);
-					SETDEBUGNAME(out->GBuffers[I].SpecularTex.Texture, "Specular Buffer");
-				}
-				{
-					// Create Normal Buffer
-					desc.Format = FlexKit::FORMAT_2D::R32G32B32A32_FLOAT;
-					out->GBuffers[I].NormalTex = CreateTexture2D(RS, &desc);
-					FK_ASSERT(out->GBuffers[I].NormalTex);
-					SETDEBUGNAME(out->GBuffers[I].NormalTex.Texture, "Normal Buffer");
-				}
-				{
-					desc.Format = FlexKit::FORMAT_2D::R32G32B32A32_FLOAT;
-					out->GBuffers[I].PositionTex = CreateTexture2D(RS, &desc);
-					FK_ASSERT(out->GBuffers[I].PositionTex);
-					SETDEBUGNAME(out->GBuffers[I].PositionTex.Texture, "WorldCord Texture");
-				}
-				{ // Create Output Byffer
-					desc.Format			= FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
-					desc.UAV			= true;
-					desc.CV				= false;
-					desc.RenderTarget	= true;
+					{	// Alebdo Buffer
+						out->GBuffers[I].ColorTex = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].ColorTex);
+						SETDEBUGNAME(out->GBuffers[I].ColorTex.Texture, "Albedo Buffer");
+					}
+					{
+						// Create Specular Buffer
+						out->GBuffers[I].SpecularTex = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].SpecularTex);
+						SETDEBUGNAME(out->GBuffers[I].SpecularTex.Texture, "Specular Buffer");
+					}
+					{
+						// Create Normal Buffer
+						desc.Format = FlexKit::FORMAT_2D::R32G32B32A32_FLOAT;
+						out->GBuffers[I].NormalTex = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].NormalTex);
+						SETDEBUGNAME(out->GBuffers[I].NormalTex.Texture, "Normal Buffer");
+					}
+					{
+						desc.Format = FlexKit::FORMAT_2D::R32G32B32A32_FLOAT;
+						out->GBuffers[I].PositionTex = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].PositionTex);
+						SETDEBUGNAME(out->GBuffers[I].PositionTex.Texture, "WorldCord Texture");
+					}
+					{ // Create Output Byffer
+						desc.Format			= FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
+						desc.UAV			= true;
+						desc.CV				= false;
+						desc.RenderTarget	= true;
 
-					out->GBuffers[I].OutputBuffer = CreateTexture2D(RS, &desc);
-					FK_ASSERT(out->GBuffers[I].OutputBuffer);
-					SETDEBUGNAME(out->GBuffers[I].OutputBuffer.Texture, "Output Buffer");
+						out->GBuffers[I].OutputBuffer = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].OutputBuffer);
+						SETDEBUGNAME(out->GBuffers[I].OutputBuffer.Texture, "Output Buffer");
+					}
 				}
 			}
 			{// LoadShaders
@@ -3085,6 +2966,7 @@ namespace FlexKit
 				CBV_DESC.SizeInBytes	= CALCULATECONSTANTBUFFERSIZE(FlexKit::GBufferConstantsLayout);
 				RS->pDevice->CreateConstantBufferView(&CBV_DESC, TableEntry); TableEntry.Offset(RS->DescriptorCBVSRVUAVSize);
 
+				out->GBuffers[I].DepthBuffer = GBdesc->DepthBuffer->View[I];
 				SETDEBUGNAME(SRVHeap, "GBuffer Input Heap Descriptor Head");
 			}
 
@@ -3205,8 +3087,7 @@ namespace FlexKit
 			}
 			// Setup Pipeline State
 			{
-				CD3DX12_ROOT_PARAMETER Parameters[DFRP_COUNT];
-				{
+				CD3DX12_ROOT_PARAMETER Parameters[DFRP_COUNT];{
 					Parameters[DFRP_CameraConstants].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 					Parameters[DFRP_ShadingConstants].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
 					Parameters[DFRP_AnimationResources].InitAsShaderResourceView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
@@ -3214,8 +3095,8 @@ namespace FlexKit
 
 				ID3DBlob* SignatureDescBlob                    = nullptr;
 				ID3DBlob* ErrorBlob		                       = nullptr;
-				D3D12_ROOT_SIGNATURE_DESC	 Desc              ={};
-				CD3DX12_ROOT_SIGNATURE_DESC  RootSignatureDesc ={};
+				D3D12_ROOT_SIGNATURE_DESC	 Desc              = {};
+				CD3DX12_ROOT_SIGNATURE_DESC  RootSignatureDesc = {};
 				CD3DX12_STATIC_SAMPLER_DESC	 Default(0);
 
 				RootSignatureDesc.Init(RootSignatureDesc, DFRP_COUNT, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
@@ -3231,8 +3112,8 @@ namespace FlexKit
 				FK_ASSERT(SUCCEEDED(HR));
 				out->Filling.FillRTSig = RootSig;
 
-				D3D12_INPUT_ELEMENT_DESC InputElements[5] =
-				{	{"POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				D3D12_INPUT_ELEMENT_DESC InputElements[5] = {	
+					{"POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 					{"TEXCOORD",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	    1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 					{"NORMAL",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 					{"WEIGHTS",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
@@ -3243,8 +3124,7 @@ namespace FlexKit
 				D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 				Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
-				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc ={};
-				{
+				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {};{
 					PSO_Desc.pRootSignature			= RootSig;
 					PSO_Desc.VS						={ (BYTE*)out->Filling.NormalMesh.Blob->GetBufferPointer(), out->Filling.NormalMesh.Blob->GetBufferSize() };
 					PSO_Desc.PS						={ (BYTE*)out->Filling.NoTexture.Blob->GetBufferPointer(), out->Filling.NoTexture.Blob->GetBufferSize() };
@@ -3275,24 +3155,21 @@ namespace FlexKit
 				FK_ASSERT(SUCCEEDED(HR));
 				out->Filling.PSOAnimated = PSO;
 
-				D3D12_DESCRIPTOR_HEAP_DESC	Heap_Desc;
-				{
+				D3D12_DESCRIPTOR_HEAP_DESC Heap_Desc;{
 					Heap_Desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 					Heap_Desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 					Heap_Desc.NumDescriptors = 15;
 					Heap_Desc.NodeMask		 = 0;
 				}
 
-				D3D12_RENDER_TARGET_VIEW_DESC	RTV_Desc;
-				{
+				D3D12_RENDER_TARGET_VIEW_DESC RTV_Desc;{
 					RTV_Desc.Format               = DXGI_FORMAT_R8G8B8A8_UNORM;
 					RTV_Desc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
 					RTV_Desc.Texture2D.MipSlice   = 0;
 					RTV_Desc.Texture2D.PlaneSlice = 0;
 				}
 
-				for(size_t I = 0; I < 3; ++I)
-				{
+				for(size_t I = 0; I < 3; ++I){
 					ID3D12DescriptorHeap* RTVHeap = nullptr;
 					HR = RS->pDevice->CreateDescriptorHeap(&Heap_Desc, IID_PPV_ARGS(&RTVHeap));
 
@@ -3339,8 +3216,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void EndPass(ID3D12GraphicsCommandList* CL, RenderSystem* RS)
+	void EndPass(ID3D12GraphicsCommandList* CL, RenderSystem* RS, RenderWindow* Window)
 	{
+		CD3DX12_RESOURCE_BARRIER Barrier[] = {
+			CD3DX12_RESOURCE_BARRIER::Transition(GetRenderTarget(Window),
+			D3D12_RESOURCE_STATE_RENDER_TARGET,
+			D3D12_RESOURCE_STATE_PRESENT, -1,
+			D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
+
+		GetCurrentCommandList(RS)->ResourceBarrier(1, Barrier);
+
 		HRESULT HR;
 		HR = CL->Close();	FK_ASSERT(SUCCEEDED(HR));
 
@@ -3354,8 +3239,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearBackBuffer(RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor)
-	{
+	void ClearBackBuffer(RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor){
 		CL->ClearRenderTargetView(GetCurrentBackBufferHandle(&RS->DefaultDescriptorHeaps, RW), ClearColor, 0, nullptr);
 	}
 
@@ -3363,9 +3247,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearDepthBuffer(RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* DB, float ClearValue, int Stencil)
-	{
-		CL->ClearDepthStencilView(RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart(),
+	void ClearDepthBuffer(RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* DB, float ClearValue, int Stencil, size_t Index){
+		CL->ClearDepthStencilView(DB->View[Index],
 			D3D12_CLEAR_FLAG_DEPTH, ClearValue, Stencil, 0, nullptr);
 	}
 
@@ -3373,13 +3256,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12CommandAllocator*		GetCurrentCommandAllocator(RenderSystem* RS) 
-	{
+	ID3D12CommandAllocator*		GetCurrentCommandAllocator(RenderSystem* RS){
 		return RS->FrameResources[RS->CurrentIndex].GraphicsCLAllocator[0]; 
 	}
 
-	ID3D12GraphicsCommandList*	GetCurrentCommandList(RenderSystem* RS) 
-	{
+	ID3D12GraphicsCommandList*	GetCurrentCommandList(RenderSystem* RS){
 		return RS->FrameResources[RS->CurrentIndex].CommandLists[0];
 	}
 
@@ -3393,13 +3274,12 @@ namespace FlexKit
 		auto Fence = RS->Fence;
 		size_t CompleteValue = Fence->GetCompletedValue();
 		
-		if (RS->Fences[Index].FenceValue != 0 && CompleteValue < RS->Fences[Index].FenceValue)
-		{
-			//std::cout << "WAITING FOR GPU!\n";
+		if (RS->Fences[Index].FenceValue != 0 && CompleteValue < RS->Fences[Index].FenceValue){
 			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
 			Fence->SetEventOnCompletion(RS->Fences[Index].FenceValue, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
+			ReleaseTempResources(RS);
 		}
 	}
 
@@ -3454,7 +3334,7 @@ namespace FlexKit
 
 			CL->SetGraphicsRootSignature(Pass->Filling.FillRTSig);
 			CL->SetPipelineState(Pass->Filling.PSO);
-			CL->OMSetRenderTargets(4, &Pass->GBuffers[BufferIndex].RTVDescHeap->GetCPUDescriptorHandleForHeapStart(), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
+			CL->OMSetRenderTargets(4, &Pass->GBuffers[BufferIndex].RTVDescHeap->GetCPUDescriptorHandleForHeapStart(), true, &Pass->GBuffers[BufferIndex].DepthBuffer);
 			CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
 			CL->RSSetViewports(4, VPs);
 			CL->RSSetScissorRects(4, RECTs);
@@ -3571,7 +3451,6 @@ namespace FlexKit
 			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
 			CL->DrawIndexedInstanced(ICount, 1, 0, 0, 0);
 		}
-
 		{
 			CD3DX12_RESOURCE_BARRIER Barrier1[] ={
 				CD3DX12_RESOURCE_BARRIER::Transition(Pass->GBuffers[BufferIndex].ColorTex,
@@ -3642,7 +3521,7 @@ namespace FlexKit
 					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
 				CD3DX12_RESOURCE_BARRIER::Transition(Target,				
 					D3D12_RESOURCE_STATE_COPY_DEST,		
-					D3D12_RESOURCE_STATE_PRESENT, -1, 
+					D3D12_RESOURCE_STATE_RENDER_TARGET, -1, 
 					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE)};
 
 			CL->ResourceBarrier(2, Barrier3);
@@ -3776,10 +3655,13 @@ namespace FlexKit
 			{"NORMAL",	 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 		};
 
-		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-		//Depth_Desc.DepthEnable	= false;
+		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
+		}
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);{
+			Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			//Depth_Desc.DepthEnable	= false;
+		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {};
 		PSO_Desc.pRootSignature                      = RootSig;
@@ -3793,7 +3675,7 @@ namespace FlexKit
 		PSO_Desc.RTVFormats[0]		                 = out->RenderTarget->Format;
 		PSO_Desc.SampleDesc.Count	                 = 1;
 		PSO_Desc.SampleDesc.Quality	                 = 0;
-		PSO_Desc.DSVFormat			                 = out->DepthTarget->Buffer.Format;
+		PSO_Desc.DSVFormat			                 = out->DepthTarget->Buffer[out->DepthTarget->CurrentBuffer].Format;
 		PSO_Desc.InputLayout		                 ={ InputElements, 3 };
 		PSO_Desc.DepthStencilState					 = Depth_Desc;
 
@@ -3948,7 +3830,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanupCamera(SceneNodes* Nodes, Camera* camera)
+	void CleanUpCamera(SceneNodes* Nodes, Camera* camera)
 	{
 		if(camera->Buffer)
 			FlexKit::Destroy(camera->Buffer);
@@ -4245,7 +4127,6 @@ namespace FlexKit
 
 	LightHandle CreateLight(SpotLightBuffer* SL, LightDesc& in, float3 Dir, float p)
 	{
-		return Handle(0);
 		auto HandleIndex = SL->size();
 		SL->push_back({in.K, Dir, in.I, in.R, in.Hndl});
 
@@ -4886,8 +4767,7 @@ namespace FlexKit
 
 	void UpdateDrawable(RenderSystem* RS, SceneNodes* Nodes, const ShaderTable* M, Drawable* E)
 	{
-		if ( E->Dirty && ( E->Visable && E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED)))
-		{
+		if ( E->Dirty && ( E->Visable && E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
 			DirectX::XMMATRIX WT;
 			FlexKit::GetWT( Nodes, E->Node, &WT );
 
@@ -4907,8 +4787,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateDrawables( RenderSystem* RS, SceneNodes* Nodes, FlexKit::ShaderTable* M, PVS* PVS_ )
-	{
+	void UpdateDrawables( RenderSystem* RS, SceneNodes* Nodes, FlexKit::ShaderTable* M, PVS* PVS_ ){
 		for ( auto v : *PVS_ ) {
 			auto E = ( Drawable* )v;
 			UpdateDrawable( RS, Nodes, M, v.V2 );
@@ -4931,7 +4810,7 @@ namespace FlexKit
 			auto P = FlexKit::GetPositionW( Nodes, E->Node );
 			SortingField D;
 			D.Animation   = E->Posed;
-			D.InvertDepth = E->DrawLast;
+			D.InvertDepth = false;
 			D.Depth		  = abs( float3( CP - P ).magnitudesquared() * 10000 );
 			v.GetByType<size_t>() = *(size_t*)&D;
 		}
@@ -5034,7 +4913,7 @@ namespace FlexKit
 	{
 		for (auto G : Geometry)
 			G = nullptr;
-
+		/*
 		NormalBuffer     = nullptr;
 		IndexBuffer      = nullptr;
 		TangentBuffer    = nullptr;
@@ -5059,6 +4938,7 @@ namespace FlexKit
 
 		TotalInstanceCount   = 0;
 		MaxVertexPerInstance = 0;
+		*/
 	}
 
 
@@ -5067,6 +4947,7 @@ namespace FlexKit
 
 	void StaticMeshBatcher::CleanUp()
 	{
+		/*
 		if (NormalBuffer)		NormalBuffer->Release();
 		if (TangentBuffer)		TangentBuffer->Release();
 		if (IndexBuffer)		IndexBuffer->Release();
@@ -5109,6 +4990,7 @@ namespace FlexKit
 
 		TotalInstanceCount   = 0;
 		MaxVertexPerInstance = 0;
+		*/
 	}
 
 
@@ -5158,6 +5040,7 @@ namespace FlexKit
 
 	void StaticMeshBatcher::BuildGeometryTable(FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, StackAllocator* TempMemory)
 	{
+		/*
 		using DirectX::XMMATRIX;
 		{	// Create Vertex Buffer
 			size_t	BufferSize = 0;
@@ -5473,10 +5356,9 @@ namespace FlexKit
 			SD.Buffer.Flags			= 0;
 
 			if (FAILED(RS->pDevice->CreateUnorderedAccessView(TransformsBuffer, &SD, &RenderARGs))) FK_ASSERT(0);
-			*/
 
-			D3D11_INPUT_ELEMENT_DESC InputLayout[] =
-			{ {
+			D3D11_INPUT_ELEMENT_DESC InputLayout[] ={ 
+				{
 					"POSITION", 0,
 					DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
 					0,
@@ -5505,14 +5387,14 @@ namespace FlexKit
 			FK_ASSERT(0);
 			//if (FAILED(RS->pDevice->CreateInputLayout(InputLayout, 3, VShader.Blob->GetBufferPointer(), VShader.Blob->GetBufferSize(), &IL))) FK_ASSERT(0);
 		}
+		*/
 	}
 
 
 	/************************************************************************************************/
 
 
-	StaticMeshBatcher::SceneObjectHandle StaticMeshBatcher::CreateDrawable(NodeHandle node, size_t gi)
-	{
+	StaticMeshBatcher::SceneObjectHandle StaticMeshBatcher::CreateDrawable(NodeHandle node, size_t gi){
 		size_t index = TotalInstanceCount++;
 		InstanceCount[gi]++;
 		SceneObjectHandle hndl = ObjectTable.GetNewHandle();
@@ -5529,8 +5411,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::PrintFrameStats()
-	{
+	void StaticMeshBatcher::PrintFrameStats(){
 		for (auto I = 0; I < TriMeshCount; ++I)
 			printf("Tris per Instance Type: %u\nInstances: %u\nTotal Tris in Batch count: %u \n\n\n\n", GeometryTable[I].VertexCount, uint32_t(InstanceCount[I]), uint32_t(GeometryTable[I].VertexCount * InstanceCount[I]));
 
@@ -5627,16 +5508,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	// assumes File str should be at least 256 bytes
-	Texture2D LoadTextureFromFile(char* file, RenderSystem* RS)
+	Texture2D LoadTextureFromFile(char* file, RenderSystem* RS, iAllocator* MemoryOut)
 	{
 		Texture2D tex = {};
 		wchar_t	wfile[256];
 		size_t	ConvertedSize = 0;
 		mbstowcs_s(&ConvertedSize, wfile, file, 256);
+		auto RESULT = LoadDDSTexture2DFromFile(file, MemoryOut, RS);
 
-		FK_ASSERT(0);
-		//HRESULT HR = DirectX::CreateDDSTextureFromFile(RS->pDevice, RS->ContextState.DeviceContext, wfile, (ID3D11Resource**)&tex.Texture, &tex.View, 1024);
-		//FK_ASSERT(SUCCEEDED(HR), "Failed to Create Texture!");
+		FK_ASSERT(RESULT, "Failed to Create Texture!");
+		DDSTexture2D* Texture = RESULT;
+		tex.Texture = Texture->Texture;
+		tex.WH		= Texture->WH;
+		tex.Format	= Texture->Format;
+
+		MemoryOut->free(Texture);
 
 		return tex;
 	}
@@ -5645,26 +5531,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FreeTexture(Texture2D* Tex)
-	{
-		//Tex->Texture->Release();
-		//if(Tex->Texture) Tex->Texture->Release();
-		//if(Tex->View)	 Tex->View->Release();
+	void FreeTexture(Texture2D* Tex){
+		if(!Tex) return;
+		if(Tex->Texture)Tex->Texture->Release();
 	}
 
 
 	/************************************************************************************************/
 }
 
-namespace FontUtilities
+namespace TextUtilities
 {
 	/************************************************************************************************/
 
 
-	void CleanUpTextArea(TextArea* TA, FlexKit::BlockAllocator* BA)
+	void CleanUpTextArea(TextArea* TA, FlexKit::iAllocator* BA)
 	{
 		BA->free(TA->TextBuffer);
-		TA->Buffer->Release();
+		if(TA->Buffer) TA->Buffer.Release();
 	}
 
 	void ClearText(TextArea* TA)
@@ -5678,10 +5562,11 @@ namespace FontUtilities
 	/************************************************************************************************/
 
 
-	void DrawTextArea(FontUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out)
+	void DrawTextArea(TextUtilities::TextRender* TR, TextUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::RenderWindow* Target)
 	{
-		using FontUtilities::TextEntry;
+		using TextUtilities::TextEntry;
 		using FlexKit::uint2;
+
 
 		if (TA->Dirty)
 		{
@@ -5691,10 +5576,10 @@ namespace FontUtilities
 
 			uint2 I = { 0, 0 };
 			size_t CharactersFound = 0;
-			float AspectRatio = Out->WH[0]/ Out->WH[1];
-			float TextScale = 0.5f;
+			float AspectRatio	= Target->WH[0] / Target->WH[1];
+			float TextScale		= 0.5f;
 
-			float2 PositionOffset	= float2(float(TA->Position[0]) / Out->WH[0], -float(TA->Position[1]) / Out->WH[1]);
+			float2 PositionOffset	= float2(float(TA->Position[0]) / Target->WH[0], -float(TA->Position[1]) / Target->WH[1]);
 			float2 StartPOS			= float2{ -1.0f, 1.0f };
 			float2 Scale			= float2( 1.0f, 1.0f ) / F->TextSheetDimensions;
 			float2 Normlizer		= float2(1.0f/AspectRatio, 1.0f);
@@ -5739,7 +5624,54 @@ namespace FontUtilities
 				++I[1];
 			}
 			TA->CharacterCount = CharactersFound;
-			//MapWriteDiscard(RS, (char*)NewTextBuffer.begin().I, sizeof(TextEntry) * NewTextBuffer.size(), TA->Buffer);
+			
+			UpdateResourceByTemp(RS, &TA->Buffer, (void*)NewTextBuffer.begin(), sizeof(TextEntry) * NewTextBuffer.size(), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		}
+
+		auto CL = GetCurrentCommandList(RS);
+
+		if(TA->CharacterCount)
+		{
+			D3D12_RECT		RECT = D3D12_RECT();
+			D3D12_VIEWPORT	VP = D3D12_VIEWPORT();
+
+			RECT.right	= (UINT)Target->WH[0];
+			RECT.bottom = (UINT)Target->WH[1];
+			VP.Height	= (UINT)Target->WH[1];
+			VP.Width	= (UINT)Target->WH[0];
+			VP.MaxDepth = 1;
+			VP.MinDepth = 0;
+			VP.TopLeftX = -1;
+			VP.TopLeftY = -1;
+
+			D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC = {};
+			SRV_DESC.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+			SRV_DESC.Texture2D.MipLevels           = 1;
+			SRV_DESC.Texture2D.MostDetailedMip     = 0;
+			SRV_DESC.Texture2D.PlaneSlice          = 0;
+			SRV_DESC.Texture2D.ResourceMinLODClamp = 0;
+			SRV_DESC.Shader4ComponentMapping	   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; 
+
+
+			D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
+				{ TA->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * TA->CharacterCount), sizeof(TextEntry) },
+			};
+			
+
+			RS->pDevice->CreateShaderResourceView(F->Text, &SRV_DESC, TR->Textures->GetCPUDescriptorHandleForHeapStart());
+			
+			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
+			CL->SetPipelineState(TR->PSO);
+
+			CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+			CL->IASetVertexBuffers(0, 1, VBuffers);
+			CL->SetDescriptorHeaps(1, &TR->Textures);
+			CL->SetGraphicsRootDescriptorTable(0, TR->Textures->GetGPUDescriptorHandleForHeapStart());
+			CL->OMSetRenderTargets(1, &GetBackBufferView(Target), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
+			CL->OMSetBlendFactor(float4(1.0f, 1.0f, 1.0f, 1.0f));
+			CL->RSSetViewports(1, &VP);
+			CL->RSSetScissorRects(1, &RECT);
+			CL->DrawInstanced(TA->CharacterCount, 1, 0, 0);
 		}
 
 	}
@@ -5792,7 +5724,7 @@ namespace FontUtilities
 	/************************************************************************************************/
 
 	
-	void InitiateTextRender(FlexKit::RenderSystem* RS, TextRender*	out)
+	void InitiateTextRender(FlexKit::RenderSystem* RS, TextRender* out)
 	{
 		using FlexKit::Shader;
 		using FlexKit::ShaderDesc;
@@ -5822,17 +5754,16 @@ namespace FontUtilities
 			out->VShader = VShader;
 		}
 		{
-			FlexKit::ShaderDesc SDesc;
-			strcpy_s(SDesc.entry, "GTextMain");
-			strcpy_s(SDesc.ID,	"TextGeometrySubmission");
-			strcpy_s(SDesc.shaderVersion, "gs_5_0");
-			Shader PShader;
-
 			bool res = false;
+			FlexKit::ShaderDesc SDesc;
+			strcpy(SDesc.entry, "GTextMain");
+			strcpy(SDesc.ID, "GTextMain");
+			strcpy(SDesc.shaderVersion, "gs_5_0");
+			Shader GShader;
 			do
 			{
-				printf("LoadingShader - Compute Shader Deferred Shader -\n");
-				res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\TextRendering.hlsl", &SDesc, &PShader);
+				printf("LoadingShader - GShader - \n");
+				res = FlexKit::LoadGeometryShaderFromFile(RS, "assets\\TextRendering.hlsl", &SDesc, &GShader);
 #if USING( EDITSHADERCONTINUE )
 				if (!res)
 				{
@@ -5843,8 +5774,8 @@ namespace FontUtilities
 #else
 				FK_ASSERT(res);
 #endif
+				out->GShader = GShader;
 			} while (!res);
-			out->PShader = PShader;
 		}
 		{
 			FlexKit::ShaderDesc SDesc;
@@ -5873,25 +5804,90 @@ namespace FontUtilities
 		}
 		// Create Root Signature
 		{
-			ID3DBlob* SignatureDescBlob                   = nullptr;
-			ID3DBlob* ErrorBlob		                      = nullptr;
+			HRESULT HR;
+			ID3D12PipelineState* PSO = nullptr;
 
-			CD3DX12_ROOT_PARAMETER Parameters[1];
-			Parameters[3].InitAsShaderResourceView(0, 0, D3D12_SHADER_VISIBILITY_PIXEL);
+			/*
+			struct TextEntry
+			{
+				float2 POS;
+				float2 Size;
+				float2 TopLeftUV;
+				float2 BottomRightUV;
+				float4 Color;
+			};
+			*/
 
-			D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-				D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS		 |
-				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS	 | 
-				D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS	 |
-				D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+			D3D12_INPUT_ELEMENT_DESC InputElements[5] =
+			{
+				{ "POS",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "WH",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "UVTL",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "UVBL",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 24, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "COLOR",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+			};
+
+			D3D12_RASTERIZER_DESC Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);	{
+			}
+
+			D3D12_DEPTH_STENCIL_DESC Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);{
+				Depth_Desc.DepthEnable	 = false;
+				Depth_Desc.StencilEnable = false;
+			}
+
+			D3D12_RENDER_TARGET_BLEND_DESC TransparencyBlend_Desc;{
+				TransparencyBlend_Desc.BlendEnable           = true;
+				TransparencyBlend_Desc.LogicOpEnable         = false;
+				TransparencyBlend_Desc.SrcBlend              = D3D12_BLEND_SRC_ALPHA;
+				TransparencyBlend_Desc.DestBlend             = D3D12_BLEND_INV_SRC_ALPHA;
+				TransparencyBlend_Desc.BlendOp               = D3D12_BLEND_OP_ADD;
+				TransparencyBlend_Desc.SrcBlendAlpha         = D3D12_BLEND_ZERO;
+				TransparencyBlend_Desc.DestBlendAlpha        = D3D12_BLEND_ZERO;
+				TransparencyBlend_Desc.BlendOpAlpha          = D3D12_BLEND_OP_ADD;
+				TransparencyBlend_Desc.LogicOp               = D3D12_LOGIC_OP_NOOP;
+				TransparencyBlend_Desc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+			}
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_Desc = {};{
+				PSO_Desc.pRootSignature             = RS->Library.RS4CBVs4SRVs;
+				PSO_Desc.VS                         = { (BYTE*)out->VShader.Blob->GetBufferPointer(), out->VShader.Blob->GetBufferSize() };
+				PSO_Desc.GS                         = { (BYTE*)out->GShader.Blob->GetBufferPointer(), out->GShader.Blob->GetBufferSize() };
+				PSO_Desc.PS                         = { (BYTE*)out->PShader.Blob->GetBufferPointer(), out->PShader.Blob->GetBufferSize() };
+				PSO_Desc.RasterizerState            = Rast_Desc;
+				PSO_Desc.BlendState                 = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.SampleMask                 = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType      = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+				PSO_Desc.NumRenderTargets           = 1;
+				PSO_Desc.RTVFormats[0]              = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.BlendState.RenderTarget[0] = TransparencyBlend_Desc;
+				PSO_Desc.SampleDesc.Count           = 1;
+				PSO_Desc.SampleDesc.Quality         = 0;
+				PSO_Desc.DSVFormat                  = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout                = { InputElements, 5 };
+				PSO_Desc.DepthStencilState          = Depth_Desc;
+			}
+
+			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			FlexKit::CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
+
+			ID3D12DescriptorHeap* TextureHeap = nullptr;
+			D3D12_DESCRIPTOR_HEAP_DESC	Heap_Desc;
+			Heap_Desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			Heap_Desc.NodeMask       = 0;
+			Heap_Desc.NumDescriptors = 20;
+			Heap_Desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
+			HR = RS->pDevice->CreateDescriptorHeap(&Heap_Desc, IID_PPV_ARGS(&TextureHeap));
+			out->Textures = TextureHeap;
+			out->PSO      = PSO;
 		}
 	}
 
 
 	/************************************************************************************************/
 
-	TextArea CreateTextObject(FlexKit::RenderSystem* RS, FlexKit::BlockAllocator* Mem, TextArea_Desc* D, FlexKit::ShaderTable* ST)// Setups a 2D Surface for Drawing Text into
+
+	TextArea CreateTextObject(FlexKit::RenderSystem* RS, FlexKit::iAllocator* Mem, TextArea_Desc* D)// Setups a 2D Surface for Drawing Text into
 	{
 		size_t C = D->WH.x/D->TextWH.x;
 		size_t R = D->WH.y/D->TextWH.y;
@@ -5899,9 +5895,36 @@ namespace FontUtilities
 		char* TextBuffer = (char*)Mem->malloc(C * R);
 		memset(TextBuffer, '\0', C * R);
 
-		ID3D12Resource* Buffer = nullptr;
+		HRESULT	HR = ERROR;
+		D3D12_RESOURCE_DESC Resource_DESC	= CD3DX12_RESOURCE_DESC::Buffer(C * R);
+		Resource_DESC.Height			= 1;
+		Resource_DESC.Width				= C * R;
+		Resource_DESC.DepthOrArraySize	= 1;
 
-		return{ TextBuffer, C * R, {C, R},  {0, 0}, Buffer, 0, false};
+		D3D12_HEAP_PROPERTIES HEAP_Props ={};
+		HEAP_Props.CPUPageProperty	    = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type				    = D3D12_HEAP_TYPE_DEFAULT;
+		HEAP_Props.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask	    = 0;
+		HEAP_Props.VisibleNodeMask		= 0;
+
+		auto NewResource = FlexKit::CreateShaderResource(RS, C * R * sizeof(TextEntry));
+		NewResource._SetDebugName("TEXTOBJECT");
+
+		return{ TextBuffer, C * R, {C, R},  {0, 0}, NewResource, 0, false};
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CleanUpTextRender(TextRender* out)
+	{
+		out->GShader.Blob->Release();
+		out->PShader.Blob->Release();
+		out->VShader.Blob->Release();
+		out->Textures->Release();
+		out->PSO->Release();
 	}
 
 }

@@ -118,8 +118,8 @@ private:
 	_FINALLY(const _FINALLY& INFN) {}
 };
 
-#define FINALLY _FINALLY FINALLABEL([&]()->void
-#define FINALLYOVER );
+#define FINALLY _FINALLY FINALLABEL([&]()->void {
+#define FINALLYOVER });
 
 static const size_t gCORECOUNT	= 4;
 static const size_t KILOBYTE	= 1024; 

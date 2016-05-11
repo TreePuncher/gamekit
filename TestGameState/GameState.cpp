@@ -32,11 +32,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\Resources.h"
 
+#include "..\Application\ResourceUtilities.h"
 #include "..\Application\GameUtilities.cpp"
 #include <iostream>
 
 
 #include "..\coreutilities\AllSourceFiles.cpp"
+#include "..\Application\ResourceUtilities.cpp"
 
 /*
 #ifdef _DEBUG
@@ -204,6 +206,25 @@ struct MouseCameraController
 	float		PitchMax;
 	Camera*		Camera;
 };
+
+
+/************************************************************************************************/
+
+
+void InitateMouseCameraController(
+	float P, float Y, float P_Max, 
+	Camera* Cam, 
+	NodeHandle PN, NodeHandle YN, 
+	MouseCameraController* MCC)
+{
+	MCC->Camera   = Cam;
+	MCC->Pitch    = 0;
+	MCC->Yaw      = 0;
+	MCC->PitchOut = PN;
+	MCC->YawOut   = YN;
+	MCC->PitchMax = 75.0f;
+}
+
 
 /************************************************************************************************/
 
@@ -453,13 +474,15 @@ struct GameState
 {
 	Scene TestScene;
 
-	FontUtilities::TextRender	TextRender;
+	TextUtilities::TextRender	TextRender;
+	TextUtilities::FontAsset*	Font;
+	TextUtilities::TextArea		Text;
+
 	DeferredPass				DeferredPass;
 	ForwardPass					ForwardPass;
 
 	MouseInputState	Mouse;
 	float			MouseMovementFactor;
-
 	double			PhysicsUpdateTimer;
 
 	Camera*			ActiveCamera;
@@ -550,28 +573,24 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
 	auto PlayerModel   = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
 	auto TestAnimation = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
-	auto Floor         = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Floor");
+
+	FlexKit::DynArray<int> intArray(Engine->BlockAllocator);
+	intArray.push_back(1);
+	intArray.push_back(2);
+
+	int a = intArray[0];
+	int b = intArray[1];
 
 	State->GScene.Yaw					(PlayerModel, pi / 2);
-	State->GScene.EntityEnablePosing	(PlayerModel);
-	//State->GScene.EntityEnablePosing	(TestAnimation);
-	State->GScene.EntityPlayAnimation	(PlayerModel,	"PlayerMesh:ANIMATION");
-	//State->GScene.EntityPlayAnimation	(TestAniasmation, "BoxRigTest:ANIMATION");
 	State->GScene.TranslateEntity_WT	(TestAnimation, {0, 0, 10});
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
-	State->GScene.SetMaterialParams		(Floor,		 { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
-	PrintSkeletonHierarchy(State->GScene.GetEntity(PlayerModel).Mesh->Skeleton);
-
-	for (uint32_t I = 0; I < 10; ++I)
-	{
-		for (uint32_t II = 0; II < 200; ++II)
-		{
-			auto Flower = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
-			//State->GScene.EntityEnablePosing(Flower);
-			//State->GScene.EntityPlayAnimation(Flower, "BoxRigTest:ANIMATION");
-			State->GScene.TranslateEntity_WT(Flower, { 5.0f * I, 0, 5.0f * II });
+	for (uint32_t I = 0; I < 20; ++I) {
+		for (uint32_t II = 0; II < 20; ++II) {
+			auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "FloorTile");
+			State->GScene.TranslateEntity_WT(Floor, { 10 * 40 - 40.0f * I, 0, 10 * 40 -  40.0f * II });
+			State->GScene.SetMaterialParams(Floor,  { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
 		}
 	}
 
@@ -590,22 +609,23 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 20.0f, 00.0f});
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 00.0f, 40.0f});
 
-	State->GScene.AddPointLight({ 0, 10, 0 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({ 40, 10, 0 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({-40, 10, 0 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({  0, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({ 40, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
+	State->GScene.AddPointLight({-40, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
 	State->GScene.AddPointLight({ 40, 10, 40 }, { 1, 1, 1 }, 1000, 1000);
 	State->GScene.AddPointLight({ 40, 10,-40 }, { 1, 1, 1 }, 1000, 1000);
 	State->GScene.AddPointLight({-40, 10, 40 }, { 1, 1, 1 }, 1000, 1000);
 	State->GScene.AddPointLight({-40, 10,-40 }, { 1, 1, 1 }, 1000, 1000);
 
-	Out->PlayerInertia.Drag					= 0.1f;
-	Out->PlayerInertia.Inertia				= float3(0);
-	Out->PlayerCameraController.Camera		= &Out->PlayerCam;
-	Out->PlayerCameraController.Pitch		= 0;
-	Out->PlayerCameraController.Yaw			= 0;
-	Out->PlayerCameraController.PitchOut	= Out->PlayerController.PitchNode;
-	Out->PlayerCameraController.YawOut		= Out->PlayerController.YawNode;
-	Out->PlayerCameraController.PitchMax	= 75.0f;
+	InitateMouseCameraController(
+		0, 0, 75.0f, 
+		&Out->PlayerCam, 
+		Out->PlayerController.PitchNode, 
+		Out->PlayerController.YawNode, 
+		&Out->PlayerCameraController);
+
+	Out->PlayerInertia.Drag = 0.1f;
+	Out->PlayerInertia.Inertia = float3(0);
 }
 
 
@@ -653,12 +673,19 @@ extern "C"
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-
 		InitiateForwardPass		(Engine->RenderSystem, &FP_Desc, &State.ForwardPass);
 		InitiateDeferredPass	(Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
 		InitiateScene			(&Engine->Physics, &State.PScene);
 		InitiateGraphicScene	(&State.GScene, Engine->RenderSystem, &Engine->Materials, &Engine->Assets, &Engine->Nodes, Engine->BlockAllocator, Engine->TempAllocator);
-		//InitiateTextRender		(Engine->RenderSystem, &State.TextRender);
+		InitiateTextRender		(Engine->RenderSystem, &State.TextRender);
+
+		auto WH = State.ActiveWindow->WH;
+		TextUtilities::TextArea_Desc TA_Desc = { { 0, 0 },{ float(WH[0]), float(WH[1]) },{ 32, 32 } };
+
+		State.Font = TextUtilities::LoadFontAsset("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+		State.Text = TextUtilities::CreateTextObject(&Engine->RenderSystem, Engine->BlockAllocator, &TA_Desc);
+
+		TextUtilities::PrintText(&State.Text, "AMERICA WINS AGAIN!\n");
 
 		CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
 		CreateTestScene			(Engine, &State, &State.TestScene);
@@ -668,9 +695,16 @@ extern "C"
 		sub._ptr   = &State;
 		Engine->Window.Handler.Subscribe(sub);
 
-		UploadResources(&Engine->RenderSystem);
+		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
 
 		return &State;
+	}
+
+	void CleanUpState(GameState* Scene, EngineMemory* Engine)
+	{
+		TextUtilities::FreeFontAsset(Scene->Font);
+		TextUtilities::CleanUpTextArea(&Scene->Text, Engine->BlockAllocator);
+		Engine->BlockAllocator.free(Scene->Font);
 	}
 
 
@@ -702,10 +736,8 @@ extern "C"
 
 	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameState* State)
 	{
-		{
-			UpdateTransforms(State->Nodes);
-			UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
-		}
+		UpdateTransforms(State->Nodes);
+		UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
 	}
 
 
@@ -737,7 +769,7 @@ extern "C"
 		// Submission
 		{
 			ClearBackBuffer	(RS, CL, State->ActiveWindow, {0, 0, 0, 0});
-			ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0);
+			ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0, State->DeferredPass.CurrentBuffer);
 
 			if (State->DoDeferredShading)
 				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
@@ -745,7 +777,9 @@ extern "C"
 				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
 		}
 
-		EndPass(CL, RS);
+		TextUtilities::DrawTextArea(&State->TextRender, State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);
+		
+		EndPass(CL, RS, State->ActiveWindow);
 	}
 
 
@@ -764,7 +798,9 @@ extern "C"
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);
 
-		CleanupCamera			(_ptr->Nodes, _ptr->ActiveCamera);
+		CleanUpState			(_ptr, Engine);
+		CleanUpCamera			(_ptr->Nodes, _ptr->ActiveCamera);
+		CleanUpTextRender		(&_ptr->TextRender);
 		CleanupForwardPass		(&_ptr->ForwardPass);
 		CleanupDeferredPass		(&_ptr->DeferredPass);
 		CleanUpGraphicScene		(&_ptr->GScene);

@@ -51,7 +51,11 @@ namespace FlexKit
 
 	struct DDSTexture2D
 	{
-
+		uint32_t		MipMapLevels;
+		uint2			WH;
+		DDS_ALPHA_MODE	Alpha;
+		DXGI_FORMAT		Format;
+		ID3D12Resource* Texture;
 	};
 
 	struct DDSTexture3D
@@ -62,7 +66,7 @@ namespace FlexKit
 	typedef FlexKit::Pair<DDSTexture2D*, bool> DDSTexture2DLoad_RES;
 	typedef FlexKit::Pair<DDSTexture3D*, bool> DDSTexture3DLoad_RES;
 
-	FLEXKITAPI DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(const char* File, iAllocator* In);
+	FLEXKITAPI DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS);
 	FLEXKITAPI DDSTexture3DLoad_RES LoadDDSTexture3DFromFile();
 
 	FLEXKITAPI Texture2D LoadDDSIntoResource();

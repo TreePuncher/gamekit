@@ -48,7 +48,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //#include <opensubdiv/far/topologyDescriptor.h>
 //#include <opensubdiv/far/primvarRefiner.h>
 #include <string>
-#include <d3d11.h>
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
 #include <d3d12shader.h>
@@ -89,7 +88,7 @@ namespace FlexKit
 	FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
 #ifdef _DEBUG
-#define SETDEBUGNAME(RES, ID) {const char* NAME = ID; SetDebugName(RES, ID, strnlen(ID, 64));}
+#define SETDEBUGNAME(RES, ID) {const char* NAME = ID; FlexKit::SetDebugName(RES, ID, strnlen(ID, 64));}
 #else
 #define SETDEBUGNAME(RES, ID) 
 #endif
@@ -347,6 +346,7 @@ namespace FlexKit
 		ID3D12Resource*	Resources[MaxBufferedSize];
 		size_t	operator ++()					{ IncrementCounter(); return (Idx); }			// Post Increment
 		size_t	operator ++(int)				{ size_t T = Idx; IncrementCounter(); return T; }// Pre Increment
+		
 		//operator ID3D12Resource*()				{ return Get(); }
 		ID3D12Resource* operator -> ()			{ return Get(); }
 		ID3D12Resource* operator -> () const	{ return Get(); }
@@ -392,35 +392,6 @@ namespace FlexKit
 		void*	pInital;
 		size_t	InitialSize;
 
-	};
-
-
-	/************************************************************************************************/
-
-
-	typedef static_vector<ID3D11SamplerState*>		sampler_vector;
-	class FLEXKITAPI BufferArray
-	{
-	public:
-		BufferArray( void );
-		BufferArray( const BufferArray& in );
-
-		~BufferArray( void );
-
-		ID3D11Buffer*		operator [] ( uint32_t index );
-		const BufferArray&	operator += (const BufferArray& rhs);
-		const BufferArray&	operator += (ID3D11Buffer* rhs);
-
-		void clear();
-		void push_back( ID3D11Buffer* v );
-		void pop_back();
-
-		uint8_t					GetBufferSize()		const;
-		ID3D11Buffer*const*		GetBuffers()		const;
-
-	private:
-		ID3D11Buffer*	mBuffers[16];
-		uint8_t			m_size;
 	};
 
 
@@ -712,7 +683,7 @@ namespace FlexKit
 
 	struct SODesc
 	{
-		D3D11_SO_DECLARATION_ENTRY*		Descs;
+		D3D12_SO_DECLARATION_ENTRY*		Descs;
 		size_t							Element_Count;
 		size_t							SO_Count;
 		size_t							Flags;
@@ -786,25 +757,19 @@ namespace FlexKit
 
 	struct DepthBuffer_Desc
 	{
+		size_t BufferCount;
 		bool InverseDepth;
 		bool Float32;	// When True stores as float
 	};
 
 	struct DepthBuffer
 	{
-		Texture2D					Buffer;
-		D3D12_CPU_DESCRIPTOR_HANDLE	View;
+		Texture2D					Buffer	[MaxBufferedSize];
+		D3D12_CPU_DESCRIPTOR_HANDLE	View	[MaxBufferedSize];
+		size_t						CurrentBuffer;
+		size_t						BufferCount;
 		bool						Inverted;
 	};
-
-	struct InverseFloatDepthBuffer
-	{
-		Texture2D					DepthBuffer;
-		ID3D11DepthStencilView*		DSView;
-		ID3D11ShaderResourceView*	DSRV;
-		ID3D11DepthStencilState*	DepthState;
-	};
-
 
 	/************************************************************************************************/
 
@@ -840,7 +805,6 @@ namespace FlexKit
 	struct RenderSystem
 	{
 		iAllocator*				Memory;
-		TempResourceList*		TempBuffers;
 
 		// TODO: Add Asset Manager _ptr Here
 
@@ -850,6 +814,7 @@ namespace FlexKit
 
 		struct FrameResource
 		{
+			TempResourceList*			TempBuffers;
 			ID3D12GraphicsCommandList*	CommandLists		[MaxThreadCount];
 			ID3D12CommandAllocator*		GraphicsCLAllocator	[MaxThreadCount];
 			ID3D12CommandAllocator*		UploadCLAllocator	[MaxThreadCount];
@@ -899,7 +864,7 @@ namespace FlexKit
 
 		struct RootSigLibrary
 		{
-			ID3D12RootSignature* PixelProcessor;// 4CBVs on Pixel Shader, 4 SRV On PixelShader
+			ID3D12RootSignature* RS4CBVs4SRVs;// 4CBVs On all Stages, 4 SRV On all Stages
 		}Library;
 
 		operator RenderSystem* ( ) { return this; }
@@ -1109,21 +1074,22 @@ namespace FlexKit
 		DFRP_ShadingConstants	= 1,
 		DFRP_AnimationResources = 2,
 		DFRP_COUNT,
-
 	};
+
 	struct DeferredPass
 	{
 		// GBuffer
 		struct GBuffer
 		{
+			D3D12_CPU_DESCRIPTOR_HANDLE	DepthBuffer;
+			ID3D12DescriptorHeap* SRVDescHeap;
+			ID3D12DescriptorHeap* RTVDescHeap;
+
 			Texture2D ColorTex;
 			Texture2D SpecularTex;
 			Texture2D NormalTex;
 			Texture2D PositionTex;
 			Texture2D OutputBuffer;
-
-			ID3D12DescriptorHeap* SRVDescHeap;
-			ID3D12DescriptorHeap* RTVDescHeap;
 		}GBuffers[3];
 		size_t CurrentBuffer;
 
@@ -1165,7 +1131,6 @@ namespace FlexKit
 		Shader VShader;
 		Shader PShader;
 	};
-
 
 
 	/************************************************************************************************/
@@ -1238,17 +1203,13 @@ namespace FlexKit
 
 		PointLight&	operator []( size_t index )
 		{
-#if _DEBUG 
 			FK_ASSERT (!Lights->full());
-#endif
 			return Lights->at(index);
 		}
 
 		void push_back( PointLight PL )
 		{
-#if _DEBUG 
 			FK_ASSERT (!Lights->full());
-#endif
 			Lights->push_back(PL);
 		}
 
@@ -1259,13 +1220,9 @@ namespace FlexKit
 			Lights->at(i2) = Temp;
 		}
 
-		size_t size(){return Lights->size();}
-		size_t max(){return Lights->max_length();}
-
-		void CleanUp()
-		{
-			Resource->Release();
-		}
+		size_t	size()	{return Lights->size();}
+		size_t	max()	{return Lights->max_length();}
+		void CleanUp()	{Resource->Release();}
 	};
 
 	struct SpotLightBuffer
@@ -1277,17 +1234,13 @@ namespace FlexKit
 
 		SpotLight&	operator []( size_t index )
 		{
-#if _DEBUG 
 			FK_ASSERT (index < Lights->size());
-#endif
 			return Lights->at(index);
 		}
 
 		void push_back( SpotLight PL )
 		{
-#if _DEBUG 
 			FK_ASSERT (!Lights->full());
-#endif
 			Lights->push_back(PL);
 		}
 
@@ -1300,10 +1253,7 @@ namespace FlexKit
 
 		size_t size(){return Lights->size();}
 
-		void CleanUp()
-		{
-			Resource->Release();
-		}
+		void CleanUp(){Resource->Release();}
 	};
 
 
@@ -1325,9 +1275,9 @@ namespace FlexKit
 
 		float4x4 View;
 		float4x4 Proj;
-		float4x4 WT;			// World Transform
-		float4x4 PV;			// Projection x View
-		float4x4 IV;			// Inverse Transform
+		float4x4 WT;	// World Transform
+		float4x4 PV;	// Projection x View
+		float4x4 IV;	// Inverse Transform
 
 		struct __declspec(align(16)) BufferLayout
 		{
@@ -1440,32 +1390,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-		
-	template<typename TY_C, typename TY_K, typename TY_PRED>
-	auto find(const TY_C& C, TY_K K, TY_PRED _Pred) noexcept
-	{
-		auto itr = C.begin();
-		auto end = C.end();
-		for (; itr != end; ++itr)
-			if (_Pred(*itr, K))
-				break;
-
-		return itr;
-	}
-
-
-	template<typename TY_C, typename TY_PRED>
-	auto find(const TY_C& C, TY_PRED _Pred) noexcept
-	{
-		auto itr = C.begin();
-		auto end = C.end();
-		for (; itr != end; ++itr)
-			if (_Pred(*itr))
-				break;
-
-		return itr;
-	}
-
 
 	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t Buffer)
 	{
@@ -1519,8 +1443,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef FlexKit::Handle_t<8> ShaderHandle;
-	typedef FlexKit::Handle_t<8> ShaderSetHandle;
+	typedef Handle_t<8> ShaderHandle;
+	typedef Handle_t<8> ShaderSetHandle;
 
 	struct Material
 	{
@@ -1782,6 +1706,7 @@ namespace FlexKit
 		size_t											InstanceCount[MAXTRIMESHES];
 		size_t											TotalInstanceCount;
 
+		/*
 		ID3D11Buffer*									Instances;
 		ID3D11Buffer*									TransformsBuffer;
 		ID3D11ShaderResourceView*						TransformSRV;
@@ -1804,6 +1729,7 @@ namespace FlexKit
 		ShaderHandle	VPShader;
 		ShaderHandle	PShader;
 		ShaderSetHandle	Material;
+		*/
 	};
 
 	
@@ -1818,7 +1744,7 @@ namespace FlexKit
 	FLEXKITAPI void	InitiateRenderSystem( Graphics_Desc* desc_in, RenderSystem* );
 
 	FLEXKITAPI void	CleanUp			( RenderSystem* System );
-	FLEXKITAPI void	CleanupCamera	( SceneNodes* Nodes, Camera* camera );
+	FLEXKITAPI void	CleanUpCamera	( SceneNodes* Nodes, Camera* camera );
 
 	
 	/************************************************************************************************/
@@ -1835,7 +1761,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	FLEXKITAPI void AddTempBuffer		  ( ID3D12Resource* _ptr, RenderSystem* RS);
-	FLEXKITAPI void	ClearDepthStencil	  ( RenderSystem* RS, ID3D11DepthStencilView*, float D = 1.0 ); // Clears to back and max Depth
 	FLEXKITAPI void	PresentWindow		  ( RenderWindow* RW, RenderSystem* RS );
 	FLEXKITAPI void	WaitForFrameCompletion( RenderSystem* RS );
 	FLEXKITAPI void	WaitforGPU			  ( RenderSystem* RS );
@@ -1890,7 +1815,6 @@ namespace FlexKit
 
 
 	FLEXKITAPI void	Destroy( ConstantBuffer		);
-	FLEXKITAPI void	Destroy( ID3D11View*		);
 	FLEXKITAPI void	Destroy( Texture2D			);
 	FLEXKITAPI void	Destroy( RenderWindow*		);
 	FLEXKITAPI void	Destroy( VertexBuffer*		);
@@ -1916,7 +1840,7 @@ namespace FlexKit
 	FLEXKITAPI bool	LoadVertexShaderFromString	( RenderSystem* RS, char*, size_t, ShaderDesc*, Shader* OUT );
 	
 
-	FLEXKITAPI Texture2D LoadTextureFromFile(char* file, RenderSystem* RS);
+	FLEXKITAPI Texture2D LoadTextureFromFile(char* file, RenderSystem* RS, iAllocator* Memout);
 	FLEXKITAPI void FreeTexture(Texture2D* Tex);
 
 	/************************************************************************************************/
@@ -2025,7 +1949,6 @@ namespace FlexKit
 
 
 	typedef FlexKit::Handle								LightHandle;
-	typedef static_vector<ID3D11ShaderResourceView*>	LightSRs;
 
 	struct LightDesc{
 		NodeHandle	Hndl;
@@ -2038,8 +1961,8 @@ namespace FlexKit
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
 
-	FLEXKITAPI void CleanUp(PointLightBuffer* out, iAllocator* Memory);
-	FLEXKITAPI void CleanUp(SpotLightBuffer* out, iAllocator* Memory);
+	FLEXKITAPI void CleanUp	( PointLightBuffer* out,	iAllocator* Memory );
+	FLEXKITAPI void CleanUp	( SpotLightBuffer* out,		iAllocator* Memory );
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
@@ -2072,17 +1995,18 @@ namespace FlexKit
 		RenderWindow*	OutputTarget;
 	};
 
-	FLEXKITAPI ID3D12CommandAllocator*		GetCurrentCommandAllocator(RenderSystem* RS);
-	FLEXKITAPI ID3D12GraphicsCommandList*	GetCurrentCommandList(RenderSystem* RS);
-	FLEXKITAPI Texture2D					GetRenderTarget(RenderWindow* RW);
+	FLEXKITAPI ID3D12CommandAllocator*		GetCurrentCommandAllocator	( RenderSystem* RS );
+	FLEXKITAPI ID3D12GraphicsCommandList*	GetCurrentCommandList		( RenderSystem* RS );
+	FLEXKITAPI Texture2D					GetRenderTarget				( RenderWindow* RW );
 
-	FLEXKITAPI void BeginPass				( RenderSystem* RS, RenderWindow* Window);
-	FLEXKITAPI void EndPass					( ID3D12GraphicsCommandList* CL, RenderSystem* RS);
+	FLEXKITAPI void BeginPass				( RenderSystem* RS, RenderWindow* Window );
+	FLEXKITAPI void EndPass					( ID3D12GraphicsCommandList* CL, RenderSystem* RS, RenderWindow* Window);
 
-	FLEXKITAPI void ClearBackBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor);
-	FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* RW, float ClearValue = 1.0f, int Stencil = 0);
-	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardPass* out);
-	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB);
+	FLEXKITAPI void ClearBackBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor );
+	FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* RW, float ClearValue = 1.0f, int Stencil = 0 );
+	
+	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardPass* out );
+	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB );
 	FLEXKITAPI void CleanupForwardPass		( ForwardPass* FP );
 
 
@@ -2162,16 +2086,19 @@ namespace FlexKit
 	/************************************************************************************************/
 }
 
-namespace FontUtilities
+namespace TextUtilities
 {
 	using FlexKit::float2;
 	using FlexKit::float3;
 	using FlexKit::float4;
-	using FlexKit::Pair;
+	using FlexKit::iAllocator;
 	using FlexKit::RenderSystem;
+	using FlexKit::RenderWindow;
 	using FlexKit::StackAllocator;
+	using FlexKit::Pair;
+	using FlexKit::ShaderResourceBuffer;
+	using FlexKit::Texture2D;
 
-	
 	struct TextEntry
 	{
 		float2 POS;
@@ -2183,23 +2110,21 @@ namespace FontUtilities
 
 	struct TextArea
 	{
-		char*				TextBuffer;
-		size_t				BufferSize;
-		FlexKit::uint2		BufferDimensions;
-		FlexKit::uint2		Position;
+		char*				 TextBuffer;
+		size_t				 BufferSize;
+		FlexKit::uint2		 BufferDimensions;
+		FlexKit::uint2		 Position;
 
-		ID3D12Resource*		Buffer;
+		ShaderResourceBuffer Buffer;
 	
-		size_t				CharacterCount;
-		size_t				Dirty;
-
-
+		size_t				 CharacterCount;
+		size_t				 Dirty;
 	};
 
 	struct TextRender
 	{
-		ID3D12PipelineState* PSO;
-		ID3D12RootSignature* RootSig;
+		ID3D12PipelineState*	PSO;
+		ID3D12DescriptorHeap*	Textures;
 
 		FlexKit::Shader	VShader;
 		FlexKit::Shader	GShader;
@@ -2208,13 +2133,9 @@ namespace FontUtilities
 
 	struct TextArea_Desc
 	{
-
-		float2					POS;	// Screen Space Cord
-		float2					WH;
-		float2					TextWH;	// Text Size, Can be gotton From Font Object
-		FlexKit::ShaderHandle	VShader;
-		FlexKit::ShaderHandle	GShader;
-		FlexKit::ShaderHandle	PShader;
+		float2 POS;	// Screen Space Cord
+		float2 WH;
+		float2 TextWH;	// Text Size
 	};
 
 	struct FontAsset
@@ -2222,13 +2143,10 @@ namespace FontUtilities
 		size_t	FontSize = 0;;
 		bool	Unicode = false;
 
-		FlexKit::uint2				TextSheetDimensions;
-		FlexKit::Texture2D			Text;
-		FlexKit::uint4				Padding = 0; // Ordering { Top, Left, Bottom, Right }
-
-		ID3D11SamplerState*			Sampler;
-		ID3D11ShaderResourceView*	Resource;
-
+		FlexKit::uint2			TextSheetDimensions;
+		FlexKit::Texture2D		Text;
+		FlexKit::uint4			Padding = 0; // Ordering { Top, Left, Bottom, Right }
+		FlexKit::iAllocator*	Memory;
 		struct Glyph
 		{
 			float2		WH;
@@ -2250,12 +2168,14 @@ namespace FontUtilities
 		char*	FontDir;// Texture Directory
 	};
 
-	FLEXKITAPI void DrawTextArea			(FontUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::ShaderTable* ST, FlexKit::RenderWindow* Out);
+	FLEXKITAPI void DrawTextArea			(TextRender* TR, FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, FlexKit::RenderWindow* Out);
 	FLEXKITAPI void ClearText				(TextArea* TA);
-	FLEXKITAPI void CleanUpTextArea			(TextArea* TA, FlexKit::iAllocator* BA);
+	FLEXKITAPI void CleanUpTextArea			(TextArea* TA, iAllocator* BA);
 	FLEXKITAPI void PrintText				(TextArea* Area, const char* text);
-	FLEXKITAPI TextArea CreateTextObject	(FlexKit::RenderSystem* RS, FlexKit::iAllocator* Mem, TextArea_Desc* D, FlexKit::ShaderTable* ST);// Setups a 2D Surface for Drawing Text into
-	FLEXKITAPI void		InitiateTextRender	(FlexKit::RenderSystem* RS, TextRender*	out);
+
+	FLEXKITAPI TextArea CreateTextObject	(RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
+	FLEXKITAPI void		InitiateTextRender	(RenderSystem* RS, TextRender*	out);
+	FLEXKITAPI void		CleanUpTextRender	(TextRender* out);
 }
 
 #endif

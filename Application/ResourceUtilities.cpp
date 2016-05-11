@@ -52,7 +52,7 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-void InitiateScene( Scene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc )
+void InitiateScene(ResourceScene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc )
 {
 	desc->MaxPointLightCount = FlexKit::max(1, desc->MaxPointLightCount);
 
@@ -81,7 +81,7 @@ void InitiateScene( Scene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc
 /************************************************************************************************/
 
 
-void UpdateScene( Scene* In, RenderSystem* RS, SceneNodes* Nodes )	
+void UpdateScene(ResourceScene* In, RenderSystem* RS, SceneNodes* Nodes )
 { 
 	//UpdatePointLightBuffer( *RS, Nodes, &In->PLightBuffer ); 
 }
@@ -90,7 +90,7 @@ void UpdateScene( Scene* In, RenderSystem* RS, SceneNodes* Nodes )
 /************************************************************************************************/
 
 
-void CleanUpScene( Scene* scn, EngineMemory* memory )
+void CleanUpScene(ResourceScene* scn, EngineMemory* memory )
 {
 	if (!scn)
 		return;
@@ -118,7 +118,7 @@ void CleanUpScene( Scene* scn, EngineMemory* memory )
 
 
 Pair<bool, SceneHandle> 
-SearchForMesh(Scene* Scn, size_t TriMeshID)
+SearchForMesh(ResourceScene* Scn, size_t TriMeshID)
 {
 	for ( size_t itr = 0; itr < Scn->GeometryUsed; ++itr )
 		if ( Scn->Geometry[ itr ].TriMeshID == TriMeshID )
@@ -128,7 +128,7 @@ SearchForMesh(Scene* Scn, size_t TriMeshID)
 }
 
 Pair<bool, SceneHandle>	
-SearchForEntity( Scene* Scn, char* ID )
+SearchForEntity(ResourceScene* Scn, char* ID )
 {
 	for( size_t itr = 0; itr < Scn->DrawablesUsed; ++itr )
 		if( strcmp( Scn->EntityIDs + itr * 64, ID ) == 0 )
@@ -141,7 +141,7 @@ SearchForEntity( Scene* Scn, char* ID )
 /************************************************************************************************/
 
 
-TriMesh* SearchForMesh(Scene* Scene, const char* str)
+TriMesh* SearchForMesh(ResourceScene* Scene, const char* str)
 {
 	for (int I = 0; I < Scene->GeometryUsed; ++I)
 	{
@@ -652,11 +652,13 @@ FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUt
 		size_t NormalCount = Mesh->GetElementNormalCount();
 		size_t TriCount	   = Mesh->GetPolygonCount();
 		size_t IndexCount  = 0;
+		size_t FaceCount   = 0;
 
 		// Iterate through each Tri
 		for (size_t I = 0; I < TriCount; ++I)
 		{	// Process each Vertex in tri
 			unsigned int size = Mesh->GetPolygonSize( I );
+			++FaceCount;
 
 			size_t	NC = Mesh->GetElementNormal()->GetDirectArray().GetCount();
 			if (SubDiv_Enabled)	AddPatchBeginToken(TokensOut);
@@ -710,12 +712,13 @@ FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUt
 
 			if (SubDiv_Enabled)	AddPatchEndToken(TokensOut);
 		} 
+
+		out.FaceCount = FaceCount;
 	}
 
 	out.MinV = MinV;
 	out.MaxV = MaxV;
 	out.R	 = R;
-
 	return out;
 }
 
@@ -1118,11 +1121,11 @@ CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocato
 	using MeshUtilityFunctions::MeshBuildInfo;
 
 	Skeleton*	S		= LoadSkeleton(Mesh, Memory, TempMem, ID, MD);
-	TokenList& Tokens	= TokenList::Create_Aligned(256000, TempMem);
+	TokenList& Tokens	= TokenList::Create_Aligned(2048000, TempMem);
 	auto MeshInfo		= TranslateToTokens(Mesh, TempMem, Tokens, S);
 
-	CombinedVertexBuffer& CVB = CombinedVertexBuffer::Create_Aligned(128000, TempMem);
-	IndexList& IB			  = IndexList::Create_Aligned(128000, TempMem);
+	CombinedVertexBuffer& CVB = CombinedVertexBuffer::Create_Aligned(1024000, TempMem);
+	IndexList& IB			  = IndexList::Create_Aligned(MeshInfo.FaceCount * 8, TempMem);
 
 	auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, TempMem, TempMem, MeshInfo.Weights);
 	FK_ASSERT(BuildRes.V1 == true, "Mesh Failed to Build");
@@ -1553,7 +1556,7 @@ Resource* CreateSkeletalAnimationResourceBlob(AnimationClip* AC, GUID_t Skeleton
 
 ResourceList CompileFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, bool LoadSkeletalData = false, MetaData_list* MD = nullptr, bool SUBDIV = false)
 {
-	size_t TempMemorySize = MEGABYTE * 32;
+	size_t TempMemorySize = MEGABYTE * 256;
 	StackAllocator TempMemory;
 	TempMemory.Init((byte*)_aligned_malloc(TempMemorySize, 0x40), TempMemorySize);
 
@@ -1656,7 +1659,7 @@ LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, CompileScene
 using FlexKit::ShaderTable;
 using FlexKit::ShaderSetHandle;
 
-SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, Scene* SceneOut, fbxsdk::FbxNode* Node, NodeHandle ParentNode, SceneNodes* Nodes, ShaderSetHandle DefaultMaterial, RenderSystem* RS, bool CreateDrawables = true)
+SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, ResourceScene* SceneOut, fbxsdk::FbxNode* Node, NodeHandle ParentNode, SceneNodes* Nodes, ShaderSetHandle DefaultMaterial, RenderSystem* RS, bool CreateDrawables = true)
 {
 	using FlexKit::SetParentNode;
 	SceneStats Stats = {};
@@ -1807,7 +1810,7 @@ Scene_Desc CountSceneContents(fbxsdk::FbxScene* S)
 
 
 Pair<bool, SceneStats>
-TranslateFBXScene(fbxsdk::FbxScene* S, Scene* SceneOut, NodeHandle SceneRoot, SceneNodes* Nodes, ShaderSetHandle DefaultMat, RenderSystem* RS)
+TranslateFBXScene(fbxsdk::FbxScene* S, ResourceScene* SceneOut, NodeHandle SceneRoot, SceneNodes* Nodes, ShaderSetHandle DefaultMat, RenderSystem* RS)
 {
 	fbxsdk::FbxNode* node = S->GetRootNode();
 	auto SceneInfo = ProcessSceneNodes(S, SceneOut, node, SceneRoot,  Nodes, DefaultMat, RS, true);
@@ -1818,7 +1821,7 @@ TranslateFBXScene(fbxsdk::FbxScene* S, Scene* SceneOut, NodeHandle SceneRoot, Sc
 /************************************************************************************************/
 
 
-void CleanUp(Scene* Scene)
+void CleanUp(ResourceScene* Scene)
 {
 	for (size_t I = 0; I < Scene->DrawablesUsed; ++I) CleanUpDrawable(Scene->Drawables + I);
 	for (size_t I = 0; I < Scene->GeometryUsed; ++I) CleanUpTriMesh(Scene->Geometry + I);
@@ -1828,7 +1831,7 @@ void CleanUp(Scene* Scene)
 /************************************************************************************************/
 
 
-Scene* LoadSceneFromFBXFile(char* AssetLocation, SceneNodes* Nodes, RenderSystem* RS, LoadSceneFromFBXFile_DESC* Desc)
+ResourceScene* LoadSceneFromFBXFile(char* AssetLocation, SceneNodes* Nodes, RenderSystem* RS, LoadSceneFromFBXFile_DESC* Desc)
 {
 	size_t MaxMeshCount					= 10;
 	fbxsdk::FbxManager*		Manager     = fbxsdk::FbxManager::Create();
@@ -1840,7 +1843,7 @@ Scene* LoadSceneFromFBXFile(char* AssetLocation, SceneNodes* Nodes, RenderSystem
 	auto res = LoadFBXScene( AssetLocation, Manager, Settings );
 	if (res)
 	{
-		Scene* NewScene = &Desc->LevelMem->allocate_aligned<Scene>();
+		ResourceScene* NewScene = &Desc->LevelMem->allocate_aligned<ResourceScene>();
 		auto LoadRes = LoadFBXGeometry((FbxScene*)res, Desc->BlockMemory, Desc->TempMem, Desc->LevelMem, Desc->RS, Desc->ST);
 
 		Scene_Desc desc = CountSceneContents(res);
@@ -1948,7 +1951,7 @@ FileDir SelectFile()
 /************************************************************************************************/
 
 
-namespace FontUtilities
+namespace TextUtilities
 {
 	/************************************************************************************************/
 
@@ -2030,7 +2033,7 @@ namespace FontUtilities
 	/************************************************************************************************/
 
 
-	LoadFontResult LoadFontAsset(char* dir, char* file, RenderSystem* RS, StackAllocator* tempMem, StackAllocator* outMem)
+	LoadFontResult LoadFontAsset(char* dir, char* file, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem)
 	{
 		char TEMP[256];
 		strcpy_s(TEMP, dir);
@@ -2097,6 +2100,7 @@ namespace FontUtilities
 
 					for (size_t I = 0; I < FontCount; ++I) {
 						Fonts[I].Padding = Padding;
+						Fonts[I].Memory  = outMem;
 						strcpy_s(Fonts[I].FontName, ID);
 					}
 
@@ -2115,7 +2119,7 @@ namespace FontUtilities
 						strcpy_s(Fonts[I].FontDir, BufferSize, dir);
 						strcat_s(Fonts[I].FontDir, BufferSize, FONTPATH + I * FontPathLen);
 
-						auto res = LoadTextureFromFile(Fonts[I].FontDir, RS);
+						auto res = LoadTextureFromFile(Fonts[I].FontDir, RS, outMem);
 						Fonts[I].Text = res;
 						Fonts[I].TextSheetDimensions = {CB.ScaleW, CB.ScaleH};
 					}
@@ -2147,7 +2151,6 @@ namespace FontUtilities
 			}
 		}
 
-		//LoadTextureFromFile();
 		return{ FontCount, Fonts };
 	}
 
@@ -2158,8 +2161,9 @@ namespace FontUtilities
 	void FreeFontAsset(FontAsset* asset)
 	{
 		FreeTexture(&asset->Text);
+		asset->Memory->free(asset->FontDir);
 	}
 
 
 	/************************************************************************************************/
-}// namespace FontUtilities
+}// namespace TextUtilities

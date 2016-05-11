@@ -95,7 +95,7 @@ int main(int argc, char* argv[])
 			std::cout << "Compiling File: " << Target << "\n";
 
 			FlexKit::BlockAllocator_desc BlockDesc;
-			BlockDesc.LargeBlock  = MEGABYTE * 200;
+			BlockDesc.LargeBlock  = MEGABYTE * 400;
 			BlockDesc.MediumBlock = MEGABYTE * 100;
 			BlockDesc.SmallBlock  = MEGABYTE * 50;
 			BlockDesc.PoolSize	  = BlockDesc.LargeBlock + BlockDesc.MediumBlock + BlockDesc.SmallBlock;

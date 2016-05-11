@@ -300,9 +300,17 @@ namespace FlexKit
 		TY_      Elements[];
 	};
 
+	template<typename TY_Allocator, typename TY_>
+	fixed_vector<TY_>* ExpandFixedBuffer(TY_Allocator* Memory, fixed_vector<TY_>* in) {
+		auto NewBuffer = &TempResourceList::Create_Aligned(in->size() * 2, Memory);
+		RawMove(*NewBuffer, *in);
+		Memory->free(in);
+
+		return NewBuffer;
+	}
+
 	template<typename TY_>
-	static void RawMove(fixed_vector<TY_>& lhs, fixed_vector<TY_>& rhs)
-	{
+	static void RawMove(fixed_vector<TY_>& lhs, fixed_vector<TY_>& rhs)	{
 		if (rhs.size() < lhs.max_length())
 			memcpy(lhs.begin(), rhs.begin(), sizeof(TY_) * rhs.size());
 	}

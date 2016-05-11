@@ -139,10 +139,8 @@ namespace FlexKit
 			StackAllocator*	ParentAllocator;
 		}AllocatorInterface;
 
-		operator iAllocator* ()
-		{
-			return &AllocatorInterface;
-		}
+		operator iAllocator* (){return &AllocatorInterface;}
+
 		std::mutex	critsection;
 	};
 
@@ -639,10 +637,7 @@ namespace FlexKit
 			BlockAllocator* ParentAllocator;
 		}AllocatorInterface;
 
-		operator iAllocator* ()
-		{
-			return &AllocatorInterface;
-		}
+		operator iAllocator* (){ return &AllocatorInterface; }
 	};
 
 	/************************************************************************************************/

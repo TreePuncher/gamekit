@@ -94,7 +94,7 @@ struct SceneStats
 };
 
 // TODO: add Resource System instead of referencing Geometry Directly 
-struct Scene
+struct ResourceScene
 {
 	size_t				MaxObjects		= 0;
 	size_t				GeometryUsed	= 0;
@@ -140,14 +140,14 @@ struct Scene
 };
 
 
-void InitiateScene	(Scene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc );
-void UpdateScene	(Scene* In, RenderSystem* RS, SceneNodes* Nodes	);
-void CleanUpScene	(Scene* scn, EngineMemory* memory );
+void InitiateScene	(ResourceScene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc );
+void UpdateScene	(ResourceScene* In, RenderSystem* RS, SceneNodes* Nodes	);
+void CleanUpScene	(ResourceScene* scn, EngineMemory* memory );
 //void AddSkeleton	(Scene* scn, Skeleton*, EngineMemory* engine			);
 
-Pair<bool, SceneHandle>	SearchForMesh	(Scene* Scn, size_t TriMeshID );
-TriMesh*				SearchForMesh	(Scene* Scene, const char* str);
-Pair<bool, SceneHandle>	SearchForEntity (Scene* Scn, char* ID );
+Pair<bool, SceneHandle>	SearchForMesh	(ResourceScene* Scn, size_t TriMeshID );
+TriMesh*				SearchForMesh	(ResourceScene* Scene, const char* str);
+Pair<bool, SceneHandle>	SearchForEntity (ResourceScene* Scn, char* ID );
 
 /************************************************************************************************/
 
@@ -191,7 +191,7 @@ typedef LoadGeometry_RES* LoadGeometryRES_ptr;
 FileDir SelectFile();
 
 // RunTime Functions
-Scene* LoadSceneFromFBXFile(char* AssetLocation, FlexKit::SceneNodes* Nodes, FlexKit::RenderSystem* RS, LoadSceneFromFBXFile_DESC* Desc);
+ResourceScene* LoadSceneFromFBXFile(char* AssetLocation, FlexKit::SceneNodes* Nodes, FlexKit::RenderSystem* RS, LoadSceneFromFBXFile_DESC* Desc);
 
 
 /************************************************************************************************/
@@ -253,7 +253,7 @@ typedef fixed_vector<Meta_data*> MetaData_list;
 
 LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, LoadSceneFromFBXFile_DESC* Desc, MetaData_list* METAINFO = nullptr);
 
-namespace FontUtilities
+namespace TextUtilities
 {
 	typedef Pair<size_t, FontAsset*> LoadFontResult;
 

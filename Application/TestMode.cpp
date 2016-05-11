@@ -468,11 +468,11 @@
 ///************************************************************************************************/
 //
 //
-//using FontUtilities::ClearText;
-//using FontUtilities::CreateTextObject;
-//using FontUtilities::FontAsset;
-//using FontUtilities::PrintText;
-//using FontUtilities::TextArea;
+//using TextUtilities::ClearText;
+//using TextUtilities::CreateTextObject;
+//using TextUtilities::FontAsset;
+//using TextUtilities::PrintText;
+//using TextUtilities::TextArea;
 //
 //void HandleMouseInput( EngineMemory* memory );
 //
@@ -933,7 +933,7 @@
 //	InitiateScene(&Engine->Physics, &level->S);
 //
 //	/*
-//	auto Font = FontUtilities::LoadFontAsset( "assets\\textures\\", "fontTest.fnt", Engine->RenderSystem, &Engine->TempAllocator, &Engine->LevelAllocator );
+//	auto Font = TextUtilities::LoadFontAsset( "assets\\textures\\", "fontTest.fnt", Engine->RenderSystem, &Engine->TempAllocator, &Engine->LevelAllocator );
 //	if ((size_t)Font > 0) {
 //		MoveFontAsset(GetByType<FontAsset*>(Font), &level->Font, &Engine->BlockAllocator);
 //		Engine->TempAllocator.clear();
@@ -950,7 +950,7 @@
 //	{
 //		float2 ScreenPOS;// 0 - 1 Space
 //		float2 WH; // Text Width Height
-//		FontUtilities::TextArea_Desc Desc;
+//		TextUtilities::TextArea_Desc Desc;
 //		Desc.GShader	= Engine->ShaderHandles.GTextRendering;
 //		Desc.PShader	= Engine->ShaderHandles.PTextRendering;
 //		Desc.VShader	= Engine->ShaderHandles.VTextRendering;

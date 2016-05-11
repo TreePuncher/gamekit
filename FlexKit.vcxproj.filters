@@ -103,6 +103,9 @@
     <ClInclude Include="PhysicsUtilities\physicsutilities.h">
       <Filter>Physics</Filter>
     </ClInclude>
+    <ClInclude Include="graphicsutilities\DDSUtilities.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -155,6 +158,9 @@
     </ClCompile>
     <ClCompile Include="PhysicsUtilities\physicsutilities.cpp">
       <Filter>Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\DDSUtilities.cpp">
+      <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

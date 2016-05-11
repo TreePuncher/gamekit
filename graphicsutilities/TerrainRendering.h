@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\MathUtils.h"
 #include "..\graphicsutilities\graphics.h"
 
-#include <d3d11.h>
 #include <DirectXMath.h>
 
 

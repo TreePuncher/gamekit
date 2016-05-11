@@ -404,14 +404,14 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass;
 	using FlexKit::ForwardPass_DESC;
 	using FlexKit::CreateDepthBuffer;
-	using FontUtilities::InitiateTextRender;
+	using TextUtilities::InitiateTextRender;
 
 	uint32_t width	 = 1600;
 	uint32_t height	 = 1000;
 	bool InvertDepth = true;
 
 	CreateRenderWindow(Engine, height, width, false);
-	CreateDepthBuffer(Engine->RenderSystem, { width, height }, Engine->TempMem, DepthBuffer_Desc{InvertDepth, InvertDepth}, &Engine->DepthBuffer);
+	CreateDepthBuffer(Engine->RenderSystem, { width, height }, Engine->TempMem, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer);
 	SetInputWIndow(&Engine->Window);
 	InitiatePhysics(&Engine->Physics, gCORECOUNT);
 
