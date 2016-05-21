@@ -38,6 +38,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	struct Landscape_Desc
+	{
+		void*	PShaderCode;
+		size_t	PShaderSize;
+	};
+
 	struct Landscape
 	{
 		struct ViewableRegion
@@ -54,10 +60,39 @@ namespace FlexKit
 			DirectX::XMMATRIX WT;
 		};
 
-		char				SplitCount;
-		size_t				OutputBuffer;
+		uint16_t			  SplitCount;
+		size_t				  OutputBuffer;
+		ID3D12PipelineState*  SplitState;
+		ID3D12PipelineState*  GenerateState;
+		ID3D12PipelineState*  TessellateState;
 
-		bool				Dirty;
+		StreamOutBuffer			RegionBuffers[2];// Ping Pongs Back and forth
+		SOQuery					SOQuery1;
+		SOQuery					SOQuery2;
+		SOQuery					SOQueryFinalBuffer;
+
+		size_t					InputCount;
+		ID3D12Resource*			InputBuffer;
+		ID3D12CommandSignature*	CommandSignature;
+		ID3D12Resource*			ZeroValues;
+
+		StreamOutBuffer	FinalBuffer;
+		StreamOutBuffer	TriBuffer;
+		StreamOutBuffer	IndirectOptions1;
+		StreamOutBuffer	IndirectOptions2;
+		StreamOutBuffer	SOCounter_1;
+		StreamOutBuffer	SOCounter_2;
+		StreamOutBuffer	FB_Counter;
+
+		ConstantBuffer	ConstantBuffer;
+
+		DynArray<ViewableRegion> Regions;
+
+		float4 Albedo;
+		float4 Specular;
+
+		NodeHandle Node;
+
 		// V Shaders
 		Shader PassThroughShader;
 		Shader VShader;
@@ -69,33 +104,17 @@ namespace FlexKit
 
 		// P Shaders
 		Shader PShader;
-
-		StreamOut RegionBuffers[2];
-
-		size_t				InputCount;
-		ID3D12Resource*		InputBuffer;
-		ID3D12Resource*		UAVCounter;
-		ConstantBuffer		ConstantBuffer;
-		static_vector<UINT>	Strides;
-		static_vector<UINT>	Offsets;
-
-		fixed_vector<ViewableRegion>* Regions;
-
-		float4		Albedo;
-		float4		Specular;
-
-		NodeHandle Node;
 	};
 
 
 	/************************************************************************************************/
 	
 
-	FLEXKITAPI void CreateTerrain		(RenderSystem* RS, FlexKit::Landscape* out, NodeHandle node);
-	FLEXKITAPI void CleanUpTerrain		(SceneNodes* Nodes, Landscape* ls);
-
-	FLEXKITAPI void DrawLandscape		(RenderSystem* RS,  Landscape* ls, Camera* c, size_t splitcount, void* _ptr);
-	FLEXKITAPI void UpdateLandscape		(RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* Camera);
+	FLEXKITAPI void InitiateLandscape	( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* ls );
+	FLEXKITAPI void CleanUpTerrain		( SceneNodes* Nodes, Landscape* ls );
+	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
+	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true );
+	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, size_t splitcount, Camera* C );
 
 
 	/************************************************************************************************/

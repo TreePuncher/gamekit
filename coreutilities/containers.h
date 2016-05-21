@@ -113,7 +113,7 @@ namespace FlexKit
 	struct DynArray
 	{
 		typedef DynArray<Ty> THISTYPE;
-		inline  DynArray(iAllocator* Alloc) : Allocator(Alloc), Max(0), Size(0), A(nullptr) {}
+		inline  DynArray(iAllocator* Alloc = nullptr) : Allocator(Alloc), Max(0), Size(0), A(nullptr) {}
 
 		inline  DynArray(THISTYPE&& MOVEIN) : 
 			Allocator	(MOVEIN.Alloc), 
@@ -133,19 +133,41 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		template<typename Ty, typename ALLOC>
 		Ty PopVect(){
-			FK_ASSERT(C->Size > 1);
-			return C->A[--C->Size];
+			FK_ASSERT(C->Size >= 1);
+			auto temp = C->A[--C->Size];
+			A[C->Size].~Ty();
+			return temp;
+		}
+
+
+		/************************************************************************************************/
+		
+		
+		Ty& front()	{
+			FK_ASSERT(Size > 0);
+			return A[0];
 		}
 
 
 		/************************************************************************************************/
 
 
-		void push_back(Ty& in){
+		Ty& back()
+		{
+			FK_ASSERT(C->Size > 0);
+			return A[Size - 1];
+		}
+
+
+		/************************************************************************************************/
+
+
+		/*
+		void push_back(Ty&& in){
 			if (Size + 1 > Max)
 			{// Increase Size
+				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * C->Max);
 				FK_ASSERT(NewMem);
 
@@ -168,10 +190,16 @@ namespace FlexKit
 
 			A[Size++] = in;
 		}
+		*/
+
+
+		/************************************************************************************************/
+
 
 		void push_back(Ty in) {
 			if (Size + 1 > Max)
 			{// Increase Size
+				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * Max);
 				FK_ASSERT(NewMem);
 
@@ -190,10 +218,15 @@ namespace FlexKit
 			A[Size++] = in;
 		}
 
+
+		/************************************************************************************************/
+
+
 		void reserve(size_t NewSize)
 		{
 			if (Max < NewSize)
 			{// Increase Size
+				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
 				FK_ASSERT(NewMem);
 
@@ -209,6 +242,37 @@ namespace FlexKit
 				Max = NewSize;
 			}
 		}
+
+
+		/************************************************************************************************/
+
+
+		void clear()
+		{
+			for (size_t i = 0; i < size(); ++i){
+				(A + i)->~Ty();
+			}
+			Size = 0;
+		}
+
+
+		/************************************************************************************************/
+
+
+		void Release()
+		{
+			clear();
+
+			if(A)
+				Allocator->_aligned_free(A);
+
+			A	= nullptr;
+			Max = 0;
+		}
+
+
+		/************************************************************************************************/
+
 
 		Ty& at(size_t index) { return C->A[index]; }
 

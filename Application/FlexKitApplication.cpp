@@ -74,9 +74,9 @@ struct GameCode
 void LoadGameCode(GameCode& Code, CodeTable* out)
 {
 	wchar_t DefaultGameState[] = L"TestGameState.dll";
-	DeleteFile(L"TestGameStateTemp.dll");
-	CopyFile(L"TestGameState.dll", L"TestGameStateTemp.dll", FALSE);
-	Code.Lib = LoadLibrary(L"TestGameStateTemp.dll");
+	//DeleteFile(L"TestGameStateTemp.dll");
+	//CopyFile(L"TestGameState.dll", L"TestGameStateTemp.dll", FALSE);
+	Code.Lib = LoadLibrary(L"TestGameState.dll");
 
 	auto GetStateTable	= reinterpret_cast<GetStateTableFN>(GetProcAddress(Code.Lib,	"GetStateTable"));
 	GetStateTable(out);

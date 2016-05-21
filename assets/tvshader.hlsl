@@ -24,10 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // Defines
 #define MinSpan = 10;
-#define LeftSide	0
-#define TopSide		1
-#define RightSide	2
-#define BottomSide	3
+#define TopLeft		0
+#define TopRight	1
+#define BottomRight	2
+#define BottomLeft	3
 
 // ---------------------------------------------------------------------------
 
@@ -118,15 +118,15 @@ bool CompareAgainstFrustum(float3 V, float r)
 // Structs
 struct VertexIn
 {
-	int4 POS 		  : POSITION0;
-	int4 ParentRegion : TEXCOORD0;
+	int4 POS 		  : REGION;
+	//int4 ParentRegion : TEXCOORD0;
 
 };
 
 struct Region_CP
 {
-	int4 POS     		: POSITION0;
-	int4 ParentRegion	: TEXCOORD0;
+	int4 POS     		: REGION;
+	//int4 ParentRegion	: TEXCOORD0;
 };
 
 struct GeometryOut
@@ -154,8 +154,22 @@ Region_CP VPassThrough( VertexIn IN )
 {
 	Region_CP OUT;
 	OUT.POS 			= IN.POS;
-	OUT.ParentRegion	= IN.ParentRegion;
+	//OUT.ParentRegion	= IN.ParentRegion;
 	return OUT;
+}
+
+
+// ---------------------------------------------------------------------------
+
+
+bool SplitRegion(Region_CP R)
+{
+	float3 POS = CameraPOS.xyz  * float3(1, 0, 1);
+	float3 A = float3(R.POS.xyz) - POS;
+	float  L = length(A) / 10;
+	float  D = R.POS.w;
+
+	return (D > 4 && L < D * 1.41); // TEMP;
 }
 
 
@@ -178,12 +192,12 @@ Region_CP MakeTopLeft(Region_CP IN)
 	Region_CP R;
 	int offset = uint(IN.POS.w)/2;
 
-	R.ParentRegion 		= IN.POS;
-	R.ParentRegion.w 	= TopSide;
+	//R.ParentRegion 		= IN.POS;
+	//R.ParentRegion.w 	= TopSide;
 
 	R.POS 	= IN.POS;
 	R.POS.x = R.POS.x - offset;
-	R.POS.y = 0;
+	R.POS.y = TopLeft;
 	R.POS.z = R.POS.z + offset;
 	R.POS.w = offset;
 	return R;
@@ -198,12 +212,12 @@ Region_CP MakeTopRight(Region_CP IN)
 	Region_CP R;
 	int offset = uint(IN.POS.w)/2;
 
-	R.ParentRegion 		= IN.POS;
-	R.ParentRegion.w 	= TopSide;
+	//R.ParentRegion 		= IN.POS;
+	//R.ParentRegion.w 	= TopSide;
 
 	R.POS 	= IN.POS;
 	R.POS.x = R.POS.x + offset;
-	R.POS.y = 0;
+	R.POS.y = TopRight;
 	R.POS.z = R.POS.z + offset;
 	R.POS.w = offset;
 	return R;
@@ -218,12 +232,12 @@ Region_CP MakeBottomRight(Region_CP IN)
 	Region_CP R;
 	int offset = uint(IN.POS.w)/2;
 
-	R.ParentRegion 		= IN.POS;
-	R.ParentRegion.w 	= TopSide;
+	//R.ParentRegion 		= IN.POS;
+	//R.ParentRegion.w 	= TopSide;
 
 	R.POS 	= IN.POS;
 	R.POS.x = R.POS.x + offset;
-	R.POS.y = 0;
+	R.POS.y = BottomRight;
 	R.POS.z = R.POS.z - offset;
 	R.POS.w = offset;
 	return R;
@@ -238,14 +252,15 @@ Region_CP MakeBottomLeft(Region_CP IN)
 	Region_CP R;
 	int offset = uint(IN.POS.w)/2;
 
-	R.ParentRegion 		= IN.POS;
-	R.ParentRegion.w 	= TopSide;
+	//R.ParentRegion 		= IN.POS;
+	//R.ParentRegion.w 	= TopSide;
 
 	R.POS 	= IN.POS;
 	R.POS.x = R.POS.x - offset;
-	R.POS.y = 0;
+	R.POS.y = BottomLeft;
 	R.POS.z = R.POS.z - offset;
 	R.POS.w = offset;
+
 	return R;
 }
 
@@ -253,25 +268,14 @@ Region_CP MakeBottomLeft(Region_CP IN)
 // ---------------------------------------------------------------------------
 
 
-bool SplitRegion(Region_CP R)
-{
-	float3 POS	= CameraPOS.xyz  * float3(1, 0, 1);
-	float3 A	= float3(R.POS.xyz) - POS;
-	float L		= length(A);
-
-	return (L <= R.POS.w * 30); // TEMP;
-}
-
-
 bool CullRegion(Region_CP R){ 
-	return !CompareAgainstFrustum(R.POS.xyz, R.POS.w * 2);
+	return CompareAgainstFrustum(R.POS.xyz, R.POS.w * 2);
 }
 
 
 struct SO_OUT
 {
-	int4 POS 	: POSITION0;
-	int4 offset	: TEXCOORD0;
+	int4 POS 	: REGION;
 };
 
 
@@ -285,21 +289,88 @@ void GS_Split(
 	inout PointStream<SO_OUT> RegionBuffer,
 	inout PointStream<SO_OUT> FinalBuffer)
 {	// TODO: Visibility Determination
-	if(CullRegion(IN[0]))
-	if (SplitRegion(IN[0]))
+	if(!CullRegion(IN[0]))
 	{
-		RegionBuffer.Append(MakeTopLeft(IN[0]));
-		RegionBuffer.Append(MakeTopRight(IN[0]));
-		RegionBuffer.Append(MakeBottomRight(IN[0]));
-		RegionBuffer.Append(MakeBottomLeft(IN[0]));
-	} else {
-		FinalBuffer.Append(IN[0]);
+		if (SplitRegion(IN[0]))
+		{
+			RegionBuffer.Append(MakeTopLeft(IN[0]));
+			RegionBuffer.Append(MakeTopRight(IN[0]));
+			RegionBuffer.Append(MakeBottomRight(IN[0]));
+			RegionBuffer.Append(MakeBottomLeft(IN[0]));
+			RegionBuffer.RestartStrip();
+		} else {
+			FinalBuffer.Append(IN[0]);
+			FinalBuffer.RestartStrip();
+		}
 	}
-	RegionBuffer.RestartStrip();
 }
 
 
 // ---------------------------------------------------------------------------
+
+
+struct HS_RQuad
+{
+	float3 Corners[4];
+	float3 Normals[4];
+	float2 UVs[4];
+};
+
+struct RegionTessFactors
+{
+	float EdgeTess[4]   : SV_TessFactor;
+	float InsideTess[2] : SV_InsideTessFactor;
+};
+
+RegionTessFactors ConstantFactors(
+	InputPatch<Region_CP, 1>, 
+	uint patchID : SV_PrimitiveID)
+{
+	RegionTessFactors factors;
+	factors.EdgeTess[0] = 0.5f;
+	factors.EdgeTess[0] = 0.5f;
+	factors.EdgeTess[0] = 0.5f;
+	factors.EdgeTess[0] = 0.5f;
+
+	factors.InsideTess[0] = 0.5f;
+	factors.InsideTess[1] = 0.5f;
+
+	return factors;
+}
+
+[domain("quad")]
+[partitioning("integer")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(4)]
+[patchconstantfunc("ConstantFactors")]
+[maxtessfactor(32.0f)]
+HS_RQuad RegionToQuad(
+	InputPatch<Region_CP, 1> ip,
+	uint i			: SV_OutputControlPointID,
+	uint PatchID	: SV_PrimitiveID)
+{
+	HS_RQuad Output;
+
+	Output.Corners[TopLeft]		= MakeTopLeft(ip[0]);
+	Output.Corners[TopRight]	= MakeTopRight(ip[0]);
+	Output.Corners[BottomRight]	= MakeBottomRight(ip[0])
+	Output.Corners[BottomLeft]	= MakeBottomLeft(ip[0]);
+
+	return Output;
+}
+
+
+// ---------------------------------------------------------------------------
+
+/*
+[domain("quad")]
+PS_IN HullShader()
+{
+	PS_IN Point;
+
+	return Point;
+}
+*/
 
 
 [maxvertexcount(6)]

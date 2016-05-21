@@ -30,23 +30,28 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	Timer::Timer( TIMER_CALLBACKFN* Callback, int64_t Duration, bool repeat )
+	Timer::Timer( TIMER_CALLBACKFN* Callback, void* _ptr , int64_t Duration, bool repeat )
 	{
-		mCallback = Callback;
-		mDuration = Duration;
-		mRepeat = repeat;
+		mCallback	= Callback;
+		mDuration	= Duration;
+		mRepeat		= repeat;
+		mArgs		= _ptr;
 		mTimeElapsed = 0;
 	}
+
 	//**********************************************************************
+
 	Timer::~Timer()
 	{}
+
 	//**********************************************************************
+
 	bool Timer::Update( int64_t mdT )
 	{
 		mTimeElapsed += mdT;
 		if( mTimeElapsed >= mDuration )
 		{
-			mCallback( this );
+			mCallback( this, mArgs );
 
 			if( mRepeat )
 			{
@@ -57,35 +62,43 @@ namespace FlexKit
 		}
 		return false;
 	}
+
 	//**********************************************************************
+
 	void Timer::reset()
 	{
 		mTimeElapsed = 0;
 	}
+
 	//**********************************************************************
+
 	void Timer::SetDuration( int64_t Duration )
 	{
 		mDuration = Duration;
 	}
+
 	//**********************************************************************
-	Time::Time( void )
+
+	Time::Time(iAllocator* Alloc) : mTimers(Alloc)
 	{
 		QueryPerformanceFrequency((LARGE_INTEGER*)&mFrequency);
-		mStartCount			= 0;
-		mEndCount			= 0;
-		mdT				= 0;
-		mSampleCount		= 0;
-		mTimeSinceLastFrame	= 0;
-		mIndex				= 0;
-		mdAverage			= 0;
+		mStartCount				= 0;
+		mEndCount				= 0;
+		mdT						= 0;
+		mSampleCount			= 0;
+		mTimeSinceLastFrame		= 0;
+		mIndex					= 0;
+		mdAverage				= 0;
 
-		mFrameStart		= 0;
-		mFrameEnd		= 0;
+		mFrameStart				= 0;
+		mFrameEnd				= 0;
 
 		for( auto& sample : mTimesamples )
 			sample = 0;
 	}
-//**********************************************************************
+
+	//**********************************************************************
+
 	void Time::AddTimer( Timer* Timer_ptr )
 	{
 		auto itr = mTimers.begin();
@@ -97,7 +110,9 @@ namespace FlexKit
 		}
 		mTimers.push_back( Timer_ptr );
 	}
-//**********************************************************************
+
+	//**********************************************************************
+	
 	void Time::RemoveTimer( Timer* Timer_ptr )
 	{
 		auto itr = mTimers.begin();
@@ -110,7 +125,9 @@ namespace FlexKit
 			itr++;
 		}
 	}
-//**********************************************************************
+
+	//**********************************************************************
+	
 	void Time::Update()
 	{
 		QueryPerformanceFrequency((LARGE_INTEGER*)&mFrequency);
@@ -133,15 +150,18 @@ namespace FlexKit
 
 		mdAverage = (total_Time / (mSampleCount) )/mFrequency;
 	}
-//**********************************************************************
+
+	//**********************************************************************
+	
 	void Time::UpdateTimers()
 	{
 		auto itr = mTimers.begin();
-		while( mTimers.size() > 0 && itr != mTimers.end() )
+		auto end = mTimers.end();
+		while( mTimers.size() > 0 && itr != end )
 		{
 			bool skipIncrement = false;
 
-			// return true if it loops else it deletes the Timer
+			// return true if it loops else it removes time from list
 			if( !(*itr)->Update( mdT ) )
 			{
 				auto _ptr = *itr;
@@ -149,8 +169,7 @@ namespace FlexKit
 				if( *itr == mTimers.front() )
 					skipIncrement = true;
 
-				*itr = 0;
-				delete _ptr;
+				*itr = nullptr;
 
 				if( !skipIncrement )
 					itr = mTimers.begin();
@@ -160,17 +179,21 @@ namespace FlexKit
 		}
 	}
 
-//**********************************************************************
+	//**********************************************************************
+
 	inline void Time::PrimeLoop() 
 	{
 		QueryPerformanceCounter((LARGE_INTEGER*)&mStartCount);
 	}
+
 	//**********************************************************************
+
 	inline void Time::Before()
 	{
 		QueryPerformanceCounter((LARGE_INTEGER*)&mStartCount);
 		mFrameStart = mStartCount;
 	}
+
 	//**********************************************************************
 
 	inline void Time::After() 
@@ -178,7 +201,9 @@ namespace FlexKit
 		QueryPerformanceCounter((LARGE_INTEGER*)&mEndCount);
 		mFrameEnd = mEndCount;
 	}
+
 	//**********************************************************************
+
 	double Time::GetTimeSinceLastFrame()
 	{
 		QueryPerformanceFrequency((LARGE_INTEGER*)&mFrequency);
@@ -187,33 +212,45 @@ namespace FlexKit
 		auto Temp = ((double)delta2) / ((double)mFrequency);
 		return Temp;
 	}
+
 	//**********************************************************************
+
 	int64_t Time::GetTimeSinceLastFrame64()
 	{
 		return mdT;
 	}
+
 	//**********************************************************************
+
 	int64_t Time::GetTimeResolution()
 	{
 		return mFrequency;
 	}
+
 	//**********************************************************************
+
 	float Time::GetSystemTime()
 	{
 		return (float)GetTickCount64();
 	}
+
 	//**********************************************************************
+
 	double Time::GetAveragedFrameTime()
 	{
 		return mdAverage;
 	}
+
 	//**********************************************************************
+
 	int64_t Time::DoubletoUINT64( double Seconds )
 	{
 		int64_t intSeconds = Seconds;
 		return intSeconds * mFrequency;
 	}
+
 	//**********************************************************************
+
 	void Time::Clear()
 	{
 		memset(mTimesamples, 0,		sizeof(mTimesamples));

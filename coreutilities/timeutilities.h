@@ -40,21 +40,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 	class Timer;
-	typedef void TIMER_CALLBACKFN (Timer*);
+	typedef void TIMER_CALLBACKFN (Timer*, void* args);
 
 	class FLEXKITAPI Timer
 	{
 	public:
-		Timer( TIMER_CALLBACKFN Callback, int64_t Duration, bool repeat );
+		Timer( TIMER_CALLBACKFN Callback, void*, int64_t Duration, bool repeat );
 		virtual ~Timer();
 
 		inline	void	SetDuration( int64_t Duration );
 		inline	void	reset();
 
-		virtual bool Update( int64_t mdT );
+		bool Update( int64_t mdT );
 
 		TIMER_CALLBACKFN* mCallback;
 
+		void*	mArgs;
 		bool	mRepeat;
 		int64_t	mTimeElapsed;
 		int64_t	mDuration;
@@ -64,7 +65,7 @@ namespace FlexKit
 	{
 	public:
 
-		Time( void );
+		Time( iAllocator* Alloc );
 
 		inline void PrimeLoop();
 		inline void Before();
@@ -97,15 +98,14 @@ namespace FlexKit
 		uint64_t mFrequency;
 		uint64_t mdT;
 
-		uint64_t	mTimesamples[TimeSampleCount];
-		size_t		mSampleCount;
-		size_t		mIndex;
+		uint64_t mTimesamples[TimeSampleCount];
+		size_t	 mSampleCount;
+		size_t	 mIndex;
 
 		double	mdAverage;
 		double	mTimeSinceLastFrame;
 
-		static_vector<Timer*, 64> mTimers;
-
+		DynArray<Timer*> mTimers;
 	};
 }
 

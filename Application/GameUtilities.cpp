@@ -411,7 +411,7 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	bool InvertDepth = true;
 
 	CreateRenderWindow(Engine, height, width, false);
-	CreateDepthBuffer(Engine->RenderSystem, { width, height }, Engine->TempMem, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer);
+	CreateDepthBuffer(Engine->RenderSystem, { width, height }, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer);
 	SetInputWIndow(&Engine->Window);
 	InitiatePhysics(&Engine->Physics, gCORECOUNT);
 

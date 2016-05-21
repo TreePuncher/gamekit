@@ -22,6 +22,46 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+// TODO's
+//	Gameplay:
+//		Entity Model
+//	Sound:
+//	
+//	Generic:
+//		Scene Loading
+//		Config loading system?
+//
+//	Graphics:
+//		Basic Gui rendering methods (Draw Rect, Draw Line, etc)
+//		Texture Loading
+//		Terrain Rendering
+//			Texture Splatting
+//			Height Mapping
+//			Geometry Generation - partially complete
+//		Occlusion Culling
+//		Animation State Machine
+//		3rd Person Camera Handler
+//		Object -> Bone Attachment
+//		Particles
+//
+//		Bugs:
+//			TextRendering Bug, Certain Characters do not get Spaces Correctly
+//
+//	AI:
+//		Path Finding
+//		State Handling
+//
+//	Physics:
+//		Statics
+// 
+//	Network:
+//		Client:
+//		Server:
+//
+//	Tools:
+//		Meta-Data for Resource Compiling
+//
+
 #ifdef COMPILE_GAMESTATE
 #define GAMESTATEAPI __declspec(dllexport)
 #else
@@ -29,16 +69,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "..\Application\GameMemory.h"
+#include "..\Application\ResourceUtilities.h"
+#include "..\Application\ResourceUtilities.cpp"
+#include "..\Application\GameUtilities.cpp"
+#include "..\graphicsutilities\TerrainRendering.h"
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\Resources.h"
-
-#include "..\Application\ResourceUtilities.h"
-#include "..\Application\GameUtilities.cpp"
-#include <iostream>
-
-
 #include "..\coreutilities\AllSourceFiles.cpp"
-#include "..\Application\ResourceUtilities.cpp"
+
+#include <iostream>
 
 /*
 #ifdef _DEBUG
@@ -319,29 +358,25 @@ float3 UpdateController(PlayerController p, KeyState k, SceneNodes* Nodes)
 
 	float3 dm(0);
 
-	if (k.Forward)
-	{
+	if (k.Forward){
 		float3 forward ={ 0, 0,  -1 };
 		float3 d = forward;
 		dm += d;
 	}
 
-	if (k.Backward)
-	{
+	if (k.Backward){
 		float3 backward ={ 0, 0, 1 };
 		float3 d = backward;
 		dm += d;
 	}
 
-	if (k.Left)
-	{
+	if (k.Left){
 		float3 Left ={ -1, 0, 0 };
 		float3 d = Left;
 		dm += d;
 	}
 
-	if (k.Right)
-	{
+	if (k.Right){
 		float3 Right ={ 1, 0, 0 };
 		float3 d = Right;
 		dm += d;
@@ -481,18 +516,19 @@ struct GameState
 	DeferredPass				DeferredPass;
 	ForwardPass					ForwardPass;
 
-	MouseInputState	Mouse;
-	float			MouseMovementFactor;
-	double			PhysicsUpdateTimer;
+	MouseInputState		Mouse;
+	float				MouseMovementFactor;
+	double				PhysicsUpdateTimer;
 
-	Camera*			ActiveCamera;
-	RenderWindow*	ActiveWindow;
-	DepthBuffer*	DepthBuffer;
-	float4			ClearColor;
+	Landscape			Landscape;
+	Camera*				ActiveCamera;
+	RenderWindow*		ActiveWindow;
+	DepthBuffer*		DepthBuffer;
+	float4				ClearColor;
 		
-	SceneNodes*		Nodes;
-	PScene			PScene;
-	GraphicScene	GScene;
+	SceneNodes*			Nodes;
+	PScene				PScene;
+	GraphicScene		GScene;
 
 	KeyState	Keys;
 	bool		Quit;
@@ -502,9 +538,10 @@ struct GameState
 
 /************************************************************************************************/
 
+#include "..\Application\GameUtilities.h"
+#include "..\graphicsutilities\TerrainRendering.h"
 #include "..\graphicsutilities\graphics.h"
 #include "..\PhysicsUtilities\physicsutilities.h"
-#include "..\Application\GameUtilities.h"
 
 /************************************************************************************************/
 using namespace FlexKit;
@@ -574,23 +611,16 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	auto PlayerModel   = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
 	auto TestAnimation = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
 
-	FlexKit::DynArray<int> intArray(Engine->BlockAllocator);
-	intArray.push_back(1);
-	intArray.push_back(2);
-
-	int a = intArray[0];
-	int b = intArray[1];
-
 	State->GScene.Yaw					(PlayerModel, pi / 2);
 	State->GScene.TranslateEntity_WT	(TestAnimation, {0, 0, 10});
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
-	for (uint32_t I = 0; I < 20; ++I) {
-		for (uint32_t II = 0; II < 20; ++II) {
+	for (uint32_t I = 0; I < 50; ++I) {
+		for (uint32_t II = 0; II < 50; ++II) {
 			auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "FloorTile");
 			State->GScene.TranslateEntity_WT(Floor, { 10 * 40 - 40.0f * I, 0, 10 * 40 -  40.0f * II });
-			State->GScene.SetMaterialParams(Floor,  { 0.1f, 0.2f, 0.5f , 0.9f }, { 0.5f, 0.5f, 0.5f , 1.0f });
+			State->GScene.SetMaterialParams(Floor,  { 0.3f, 0.3f, 0.3f , 0.2f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 		}
 	}
 
@@ -606,8 +636,8 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	State->GScene.Yaw(PlayerModel, pi );
 
 	SetParentNode	(State->Nodes,	Out->PlayerController.PitchNode, Out->PlayerCam.Node);
-	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 20.0f, 00.0f});
-	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {00.0f, 00.0f, 40.0f});
+	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 20.0f, 00.0f});
+	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 40.0f});
 
 	State->GScene.AddPointLight({  0, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
 	State->GScene.AddPointLight({ 40, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
@@ -670,6 +700,7 @@ extern "C"
 		State.Mouse				 = MouseInputState();
 		State.DoDeferredShading  = true;
 		State.ActiveWindow		 = &Engine->Window;
+
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
@@ -678,6 +709,17 @@ extern "C"
 		InitiateScene			(&Engine->Physics, &State.PScene);
 		InitiateGraphicScene	(&State.GScene, Engine->RenderSystem, &Engine->Materials, &Engine->Assets, &Engine->Nodes, Engine->BlockAllocator, Engine->TempAllocator);
 		InitiateTextRender		(Engine->RenderSystem, &State.TextRender);
+		
+		{
+			Landscape_Desc Land_Desc = { 
+				State.DeferredPass.Filling.NoTexture.Blob->GetBufferPointer(), 
+				State.DeferredPass.Filling.NoTexture.Blob->GetBufferSize() 
+			};
+
+			InitiateLandscape		(Engine->RenderSystem, GetZeroedNode(&Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
+			PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0});
+			UploadLandscape			(Engine->RenderSystem, &State.Landscape, nullptr, nullptr, true, false);
+		}
 
 		auto WH = State.ActiveWindow->WH;
 		TextUtilities::TextArea_Desc TA_Desc = { { 0, 0 },{ float(WH[0]), float(WH[1]) },{ 32, 32 } };
@@ -685,7 +727,7 @@ extern "C"
 		State.Font = TextUtilities::LoadFontAsset("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
 		State.Text = TextUtilities::CreateTextObject(&Engine->RenderSystem, Engine->BlockAllocator, &TA_Desc);
 
-		TextUtilities::PrintText(&State.Text, "AMERICA WINS AGAIN!\n");
+		TextUtilities::PrintText(&State.Text, "TESTING!\n");
 
 		CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
 		CreateTestScene			(Engine, &State, &State.TestScene);
@@ -704,6 +746,8 @@ extern "C"
 	{
 		TextUtilities::FreeFontAsset(Scene->Font);
 		TextUtilities::CleanUpTextArea(&Scene->Text, Engine->BlockAllocator);
+
+		CleanUpTerrain(Scene->Nodes, &Scene->Landscape);
 		Engine->BlockAllocator.free(Scene->Font);
 	}
 
@@ -761,9 +805,10 @@ extern "C"
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 
 			UploadAnimations(RS, &PVS, TempMemory);
-			UploadDeferredPassConstants(RS, &DPP, &State->DeferredPass);
+			UploadDeferredPassConstants(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
 			UploadCamera(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
 			UploadGraphicScene(&State->GScene, &PVS, &Transparent);
+			UploadLandscape(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true);
 		}
 
 		// Submission
@@ -772,9 +817,16 @@ extern "C"
 			ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0, State->DeferredPass.CurrentBuffer);
 
 			if (State->DoDeferredShading)
+			{
 				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
+				DrawLandscape(RS, &State->Landscape, 10, State->ActiveCamera);
+				ShadeDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
+				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);// Transparent Objects
+			}
 			else
+			{
 				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
+			}
 		}
 
 		TextUtilities::DrawTextArea(&State->TextRender, State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);

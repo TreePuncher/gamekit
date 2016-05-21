@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CGRAPHICSMANAGER_H_INCLUDED
 #define CGRAPHICSMANAGER_H_INCLUDED
 
-#pragma comment( lib, "DirectXTK.lib")
+//#pragma comment( lib, "DirectXTK.lib")
 #pragma comment( lib, "D3D12.lib")
 #pragma comment( lib, "d3dcompiler.lib")
 #pragma comment( lib, "dxgi.lib")
@@ -54,8 +54,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <DirectXMath.h>
 #include <dxgi1_5.h>
 
-#pragma comment(lib, "osdCPU.lib" )
-#pragma comment(lib, "osdGPU.lib" )
+//#pragma comment(lib, "osdCPU.lib" )
+//#pragma comment(lib, "osdGPU.lib" )
 
 namespace FlexKit
 {
@@ -337,29 +337,33 @@ namespace FlexKit
 
 
 	const static size_t MaxBufferedSize = 3;
-	struct FrameBufferedResource
+
+	template<typename TY_>
+	struct FrameBufferedObject
 	{
-		FrameBufferedResource(){ Idx = 0; for(auto& r : Resources) r = nullptr;}
+		FrameBufferedObject(){ BufferCount = MaxBufferedSize; Idx = 0; for(auto& r : Resources) r = nullptr;}
 
 		size_t			Idx;
 		size_t			BufferCount;
-		ID3D12Resource*	Resources[MaxBufferedSize];
+		TY_*			Resources[MaxBufferedSize];
+
 		size_t	operator ++()					{ IncrementCounter(); return (Idx); }			// Post Increment
 		size_t	operator ++(int)				{ size_t T = Idx; IncrementCounter(); return T; }// Pre Increment
 		
+		TY_*& operator [] (size_t Index){	return Resources[Index]; }
+
 		//operator ID3D12Resource*()				{ return Get(); }
-		ID3D12Resource* operator -> ()			{ return Get(); }
-		ID3D12Resource* operator -> () const	{ return Get(); }
+		TY_* operator -> ()			{ return Get(); }
+		TY_* operator -> () const	{ return Get(); }
 		operator bool()							{ return (Resources[0]!= nullptr); }
 		size_t	size()							{ return BufferCount; }
-		ID3D12Resource*	Get()					{ return Resources[Idx]; }
-		ID3D12Resource*	Get() const				{ return Resources[Idx]; }
+		TY_*	Get()					{ return Resources[Idx]; }
+		TY_*	Get() const				{ return Resources[Idx]; }
 
 		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
 		void Release(){for( auto& r : Resources) {if(r) r->Release(); r = nullptr;};}
 
-		void _SetDebugName(const char* _str)
-		{
+		void _SetDebugName(const char* _str) {
 			size_t Str_len = strnlen_s(_str, 64);
 			for (auto& r : Resources) {
 				SetDebugName(r, _str, Str_len);
@@ -367,11 +371,13 @@ namespace FlexKit
 		}
 	};
 
-	typedef FrameBufferedResource IndexBuffer;
-	typedef FrameBufferedResource ConstantBuffer;
-	typedef FrameBufferedResource ShaderResourceBuffer;
-	typedef FrameBufferedResource StreamOut;
-
+	typedef FrameBufferedObject<ID3D12Resource>	FrameBufferedResource;
+	typedef FrameBufferedResource	IndexBuffer;
+	typedef FrameBufferedResource	ConstantBuffer;
+	typedef FrameBufferedResource	ShaderResourceBuffer;
+	typedef FrameBufferedResource	StreamOutBuffer;
+	typedef ID3D12Resource*			VertexResourceBuffer;
+	typedef	FrameBufferedObject<ID3D12QueryHeap> SOQuery;
 
 	/************************************************************************************************/
 
@@ -865,6 +871,7 @@ namespace FlexKit
 		struct RootSigLibrary
 		{
 			ID3D12RootSignature* RS4CBVs4SRVs;// 4CBVs On all Stages, 4 SRV On all Stages
+			ID3D12RootSignature* RS4CBVs_SO;// Stream Out Enabled
 		}Library;
 
 		operator RenderSystem* ( ) { return this; }
@@ -903,23 +910,19 @@ namespace FlexKit
 	
 	struct Shader
 	{
-		Shader()
-		{
-			Blob		= nullptr;
+		Shader() {
+			Blob = nullptr;
 		}
 
-		operator bool()
-		{
+		operator bool() {
 			return ( Blob != nullptr );
 		}
 
-		operator Shader*()
-		{
+		operator Shader*() {
 			return this;
 		}
 
-		Shader& operator = (const Shader& in)
-		{
+		Shader& operator = (const Shader& in) {
 			Blob     = in.Blob;
 			Type     = in.Type;
 
@@ -933,6 +936,7 @@ namespace FlexKit
 	const size_t NodeHandleSize = 16;
 	typedef Handle_t<NodeHandleSize>		NodeHandle;
 	typedef static_vector<NodeHandle, 32>	ChildrenVector;
+
 
 	struct Node
 	{
@@ -961,6 +965,7 @@ namespace FlexKit
 		}
 	};
 
+
 	__declspec(align(16))  struct WT_Entry
 	{
 		//LT_Entry			World;
@@ -984,12 +989,14 @@ namespace FlexKit
 		return Mout;
 	}
 
+
 	inline DirectX::XMMATRIX Float4x4ToXMMATIRX(float4x4* M)
 	{
 		DirectX::XMMATRIX Mout;
 		Mout = *(DirectX::XMMATRIX*)M;
 		return Mout;
 	}
+
 
 	/************************************************************************************************/
 
@@ -1042,6 +1049,7 @@ namespace FlexKit
 		uint64_t SpotLightCount;
 	};
 
+
 	struct DeferredPassDesc
 	{
 		DepthBuffer*	DepthBuffer;
@@ -1057,8 +1065,10 @@ namespace FlexKit
 		uint32_t SLightCount;
 		uint32_t Height;
 		uint32_t Width;
+		float4	 AmbientLight;
 		//char padding[1019];
 	};
+
 
 	enum DeferredShadingRootParam
 	{
@@ -1068,6 +1078,7 @@ namespace FlexKit
 		DSRP_COUNT,
 	};
 
+
 	enum DeferredFillingRootParam
 	{
 		DFRP_CameraConstants	= 0,
@@ -1075,6 +1086,7 @@ namespace FlexKit
 		DFRP_AnimationResources = 2,
 		DFRP_COUNT,
 	};
+
 
 	struct DeferredPass
 	{
@@ -1194,6 +1206,7 @@ namespace FlexKit
 		size_t	MaxLightCount;
 	};
 
+
 	struct PointLightBuffer
 	{
 		ID3D12Resource*				Resource;
@@ -1201,20 +1214,17 @@ namespace FlexKit
 		LightFlags*					Flags;
 		LightIDs*					IDs;
 
-		PointLight&	operator []( size_t index )
-		{
+		PointLight&	operator []( size_t index )	{
 			FK_ASSERT (!Lights->full());
 			return Lights->at(index);
 		}
 
-		void push_back( PointLight PL )
-		{
+		void push_back( PointLight PL )	{
 			FK_ASSERT (!Lights->full());
 			Lights->push_back(PL);
 		}
 
-		void Swap( size_t i1, size_t i2 )
-		{
+		void Swap( size_t i1, size_t i2 ) {
 			auto Temp = Lights->at(i1);
 			Lights->at(i1) = Lights->at(i2);
 			Lights->at(i2) = Temp;
@@ -1224,6 +1234,10 @@ namespace FlexKit
 		size_t	max()	{return Lights->max_length();}
 		void CleanUp()	{Resource->Release();}
 	};
+
+
+	/************************************************************************************************/
+
 
 	struct SpotLightBuffer
 	{
@@ -1306,6 +1320,7 @@ namespace FlexKit
 		size_t		BoneCount;
 	};
 
+
 	union BoundingVolume
 	{
 		BoundingVolume() {}
@@ -1321,6 +1336,7 @@ namespace FlexKit
 		}BoundingSphere;
 	};
 	
+
 	struct Vertex 
 	{
 		void Clear() { xyz ={0.0f, 0.0f, 0.0f}; }
@@ -1334,6 +1350,7 @@ namespace FlexKit
 
 		float3 xyz;
 	};
+
 
 	struct TriMesh
 	{
@@ -1391,14 +1408,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t Buffer)
-	{
+	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t Buffer)	{
 		return Mesh->VertexBuffer[Buffer];
 	}
 
 
-	inline ID3D12Resource* FindBuffer(TriMesh* Mesh, VERTEXBUFFER_TYPE Type)
-	{
+	inline ID3D12Resource* FindBuffer(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) {
 		ID3D12Resource* Buffer = nullptr;
 		auto& VertexBuffers = Mesh->VertexBuffer.VertexBuffers;
 		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
@@ -1410,8 +1425,7 @@ namespace FlexKit
 	}
 
 
-	inline VertexBuffer::BuffEntry* FindBufferEntry(TriMesh* Mesh, VERTEXBUFFER_TYPE Type)
-	{
+	inline VertexBuffer::BuffEntry* FindBufferEntry(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) {
 		ID3D12Resource* Buffer = nullptr;
 		auto& VertexBuffers = Mesh->VertexBuffer.VertexBuffers;
 		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
@@ -1423,8 +1437,7 @@ namespace FlexKit
 	}
 
 
-	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out)
-	{
+	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) {
 		auto* VB = FindBufferEntry(Mesh, Type);
 		if (VB == Mesh->VertexBuffer.VertexBuffers.end())
 			return false;
@@ -1474,17 +1487,17 @@ namespace FlexKit
 		void	SetMetal	(ShaderSetHandle hndl, float4);
 
 
-		ShaderHandle	AddShader	(Shader);
-		Shader			GetShader	(ShaderHandle hndl);
-		void			SetShader	(ShaderHandle hndl, Shader);
-		void			FreeShader	(ShaderHandle hndl);
+		ShaderHandle	AddShader	 (Shader);
+		Shader			GetShader	 (ShaderHandle hndl);
+		void			SetShader	 (ShaderHandle hndl, Shader);
+		void			FreeShader	 (ShaderHandle hndl);
 
-		DirtFlag		GetDirtyFlag(ShaderSetHandle hndl);
+		DirtFlag		GetDirtyFlag (ShaderSetHandle hndl);
 
-		Shader			GetPixelShader			(ShaderSetHandle hndl);
-		Shader			GetVertexShader			(ShaderSetHandle hndl);
-		Shader			GetVertexShader_Animated(ShaderSetHandle hndl);
-		Shader			GetGeometryShader		(ShaderSetHandle hndl);
+		Shader			GetPixelShader			 (ShaderSetHandle hndl);
+		Shader			GetVertexShader			 (ShaderSetHandle hndl);
+		Shader			GetVertexShader_Animated (ShaderSetHandle hndl);
+		Shader			GetGeometryShader		 (ShaderSetHandle hndl);
 
 		ShaderSetHandle	GetNewShaderSet();
 		ShaderHandle	GetNewShaderHandle();
@@ -1627,6 +1640,9 @@ namespace FlexKit
 
 	struct FLEXKITAPI StaticMeshBatcher
 	{
+		const static size_t MAXINSTANCES = 1024 * 1;
+		const static size_t MAXTRIMESHES = 16;
+
 		StaticMeshBatcher() : ObjectTable(GetTypeID<StaticMeshBatcher>()) {}
 
 		typedef FlexKit::Handle_t<16> SceneObjectHandle;
@@ -1642,8 +1658,7 @@ namespace FlexKit
 		void Initiate(FlexKit::RenderSystem* RS, ShaderHandle StaticMeshBatcher, ShaderHandle pshade);
 		void CleanUp();
 
-		inline size_t AddTriMesh(FlexKit::TriMesh* NewMesh)
-		{
+		inline size_t AddTriMesh(FlexKit::TriMesh* NewMesh){
 			size_t itr = 0;
 			for (auto& G : Geometry)
 			{	
@@ -1662,21 +1677,18 @@ namespace FlexKit
 		}
 
 		void PrintFrameStats();
-		void Update_PreDraw		( RenderSystem* RS, SceneNodes* Nodes, iAllocator* Temp, Camera* C );
+		void Upload				( RenderSystem* RS, SceneNodes* Nodes, iAllocator* Temp, Camera* C );
 		void BuildGeometryTable ( FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, StackAllocator* TempMemory );
 		
 		SceneObjectHandle CreateDrawable( NodeHandle node, size_t GeometryIndex = 0 );
 
 		void Draw( FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, Camera* C );
 
-		inline void SetDirtyFlag( DirtyFlag Flag, SceneObjectHandle hndl )
-		{
+		inline void SetDirtyFlag( DirtyFlag Flag, SceneObjectHandle hndl ){
 			auto CFlag = DirtyFlags[ObjectTable[hndl]];
 			CFlag |= Flag;
 		}
 
-		const static size_t MAXINSTANCES = 1024 * 1;
-		const static size_t MAXTRIMESHES = 16;
 
 		struct
 		{
@@ -1685,7 +1697,7 @@ namespace FlexKit
 			uint32_t IndexOffset;
 		}GeometryTable[MAXTRIMESHES];
 
-		TriMesh*	Geometry[MAXTRIMESHES];
+		TriMesh* Geometry[MAXTRIMESHES];
 
 		struct InstanceIOLayout
 		{
@@ -1694,11 +1706,11 @@ namespace FlexKit
 			uint32_t StartIndexLocation;
 			int32_t	 BaseVertexLocation;
 			uint32_t StartInstanceLocation;
-		}							InstanceInformation	[MAXINSTANCES];
-		DirectX::XMMATRIX			Transforms			[MAXINSTANCES];
-		char						GeometryIndex		[MAXINSTANCES];
-		DirtyFlag					DirtyFlags			[MAXINSTANCES];
-		NodeHandle					NodeHandles			[MAXINSTANCES];
+		}								InstanceInformation	[MAXINSTANCES];
+		DynArray<DirectX::XMMATRIX>		Transforms			[MAXINSTANCES];
+		char							GeometryIndex		[MAXINSTANCES];
+		DirtyFlag						DirtyFlags			[MAXINSTANCES];
+		NodeHandle						NodeHandles			[MAXINSTANCES];
 
 		HandleUtilities::HandleTable<SceneObjectHandle>	ObjectTable;
 		size_t											TriMeshCount;
@@ -1706,39 +1718,29 @@ namespace FlexKit
 		size_t											InstanceCount[MAXTRIMESHES];
 		size_t											TotalInstanceCount;
 
-		/*
-		ID3D11Buffer*									Instances;
-		ID3D11Buffer*									TransformsBuffer;
-		ID3D11ShaderResourceView*						TransformSRV;
-		ID3D11UnorderedAccessView*						RenderARGs;
+		ID3D12Resource*				Instances;
+		FrameBufferedResource		TransformsBuffer;
+		FrameBufferedResource		RenderARGs;
 
-		ID3D11InputLayout*	IL;
+		ID3D12Resource* NormalBuffer;
+		ID3D12Resource* TangentBuffer;
+		ID3D12Resource* IndexBuffer;
+		ID3D12Resource* VertexBuffer;
+		ID3D12Resource* UVBuffer;
+		ID3D12Resource* GTBuffer;
 
-		ID3D11Buffer* NormalBuffer;
-		ID3D11Buffer* TangentBuffer;
-		ID3D11Buffer* IndexBuffer;
-		ID3D11Buffer* VertexBuffer;
-		ID3D11Buffer* GTBuffer;
-
-		ID3D11ShaderResourceView* NormalSRV;
-		ID3D11ShaderResourceView* TangentSRV;
-		ID3D11ShaderResourceView* IndexSRV;
-		ID3D11ShaderResourceView* VertexSRV;
-		ID3D11ShaderResourceView* GTSRV;
-
-		ShaderHandle	VPShader;
-		ShaderHandle	PShader;
-		ShaderSetHandle	Material;
-		*/
+		ID3D12DescriptorHeap*	SRVHeap;
+		Shader VShader;
+		Shader PShader;
 	};
 
 	
 	/************************************************************************************************/
 
 	
-	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + (float(X) / Dimensions[x]), 1.0f -  (float(Y) / Dimensions[y])	}; } // Assumes screen boundries is -1 and 1
+	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + (float(X) / Dimensions[x]), 1.0f -  (float(Y) / Dimensions[y])	}; } // Assumes screen boundaries are -1 and 1
 
-	FLEXKITAPI VertexBuffer::BuffEntry* GetBuffer( VertexBuffer*, VERTEXBUFFER_TYPE ); // return Nullptr if not found
+	FLEXKITAPI VertexBuffer::BuffEntry* GetBuffer( VertexBuffer*, VERTEXBUFFER_TYPE ); // return nullptr if not found
 	
 	FLEXKITAPI void	InitiateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* out, float AspectRatio = 1.0f, float Near = 0.01, float Far = 10000.0f, bool invert = false );
 	FLEXKITAPI void	InitiateRenderSystem( Graphics_Desc* desc_in, RenderSystem* );
@@ -1762,7 +1764,6 @@ namespace FlexKit
 
 	FLEXKITAPI void AddTempBuffer		  ( ID3D12Resource* _ptr, RenderSystem* RS);
 	FLEXKITAPI void	PresentWindow		  ( RenderWindow* RW, RenderSystem* RS );
-	FLEXKITAPI void	WaitForFrameCompletion( RenderSystem* RS );
 	FLEXKITAPI void	WaitforGPU			  ( RenderSystem* RS );
 
 	
@@ -1770,16 +1771,17 @@ namespace FlexKit
 
 
 	FLEXKITAPI ConstantBuffer		CreateConstantBuffer		( RenderSystem* RS, ConstantBuffer_desc* );
-	FLEXKITAPI void					CreateDepthBuffer			( RenderSystem* RS, uint2 Dimensions, byte* InitialData, DepthBuffer_Desc& DepthDesc, DepthBuffer* out );
-	FLEXKITAPI Texture2D			CreateDepthBufferResource	( RenderSystem* RS, Tex2DDesc* desc_in, DepthBuffer_Desc* DepthDesc );
+	FLEXKITAPI void					CreateDepthBuffer			( RenderSystem* RS, uint2 Dimensions, DepthBuffer_Desc& DepthDesc, DepthBuffer* out );
+	FLEXKITAPI Texture2D			CreateDepthBufferResource	( RenderSystem* RS, Tex2DDesc* desc_in, bool Float32);
 	FLEXKITAPI bool					CreateInputLayout			( RenderSystem* RS, VertexBufferView**,  size_t count, Shader*, VertexBuffer* OUT );		// Expects Index buffer in index 15
 	FLEXKITAPI Texture2D			CreateTexture2D				( RenderSystem* RS, Tex2DDesc* desc_in );
 	FLEXKITAPI void					CreateVertexBuffer			( RenderSystem* RS, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
-	FLEXKITAPI ShaderResourceBuffer CreateShaderResource		( RenderSystem* RS, size_t ResourceSize);
+	FLEXKITAPI ShaderResourceBuffer CreateShaderResource		( RenderSystem* RS, size_t ResourceSize );
+	FLEXKITAPI StreamOutBuffer		CreateStreamOut				( RenderSystem* RS, size_t ResourceSize );
+	FLEXKITAPI VertexResourceBuffer CreateVertexBufferResource	( RenderSystem* RS, size_t ResourceSize );
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );
 
 	FLEXKITAPI void UploadResources(RenderSystem* RS);
-
 	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 
@@ -1914,41 +1916,38 @@ namespace FlexKit
 		DCT_TextBox,
 	};
 
-	struct DrawCall
+	struct Draw_RECT
 	{
-		DRAWCALLTYPE Type;
-		union
-		{
-			struct MeshDraw
-			{
-				Drawable* Ent;
-				Camera*	C;
-			}MeshDraw;
-
-			struct Rect_Draw
-			{
-				float2		TLeft;
-				float2		BRight;
-				uint32_t	ZOrder;
-			}Rect_Draw;
-
-			struct Rect_Draw_TEXTURED
-			{
-				float2			TLeft;
-				float2			BRight;
-				float2			TLeft_UVOffset;
-				float2			BRight_UVOffset;
-				uint32_t		ZOrder;
-				ResourceHandle	TextureHandle;
-			}Rect_Draw_TEXTURED;
-		
-		}Params;
+		float2		TLeft;
+		float2		BRight;
+		uint32_t	ZOrder;
 	};
+
+	struct Draw_Textured_RECT
+	{
+		float2			TLeft;
+		float2			BRight;
+		float2			TLeft_UVOffset;
+		float2			BRight_UVOffset;
+		uint32_t		ZOrder;
+		ResourceHandle	TextureHandle;
+	};
+
+	struct GUIRender
+	{
+		DynArray<Draw_RECT>				Rects;
+		DynArray<Draw_Textured_RECT>	TexturedRects;
+
+		FrameBufferedResource	RectBuffer;
+		ID3D12DescriptorHeap*	Textures;
+		ID3D12PipelineState*	DrawRectState;
+	};
+
 
 	/************************************************************************************************/
 
 
-	typedef FlexKit::Handle								LightHandle;
+	typedef FlexKit::Handle	LightHandle;
 
 	struct LightDesc{
 		NodeHandle	Hndl;
@@ -1957,6 +1956,18 @@ namespace FlexKit
 		float		R;
 	};
 
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT );
+	FLEXKITAPI void PushRect( GUIRender* RG, Draw_Textured_RECT );
+	
+	FLEXKITAPI void InitiateRenderGUI( RenderSystem* RS, GUIRender* RG);
+	FLEXKITAPI void CleanUpRenderGUI( RenderSystem* RS, GUIRender* RG);
+
+	FLEXKITAPI void Clear	 ( GUIRender* RG );
+	FLEXKITAPI void DrawRects( RenderSystem* RS, GUIRender* RG, RenderWindow* Target);// TODO: RENDER TARGET VERSION
 
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
@@ -1980,8 +1991,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem*	RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
+	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
 	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
+	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );

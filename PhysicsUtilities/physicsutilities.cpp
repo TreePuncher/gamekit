@@ -158,7 +158,7 @@ namespace FlexKit
 	size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene)
 	{
 		//physx::PxRigidStatic* plane = physx::PxCreatePlane(scene->Scene->getPhysics(), physx::PxPlane(0, 1, 0, 0), *material);
-		auto Static = physx::PxCreateStatic(scene->Scene->getPhysics(), { 0, -0.5f, 0 }, PxBoxGeometry(500.0f, 1.0f, 500.0f), *material);
+		auto Static = physx::PxCreateStatic(scene->Scene->getPhysics(), { 0, -0.5f, 0 }, PxBoxGeometry(50000.0f, 1.0f, 50000.0f), *material);
 
 		//Static->createShape(PxPlaneGeometry(), *material, {0, 0, 0});
 		//plane->setOwnerClient(scene->CID);

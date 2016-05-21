@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 
-#include "..\coreutilities\DungeonGen.cpp"
+//#include "..\coreutilities\DungeonGen.cpp"
 #include "..\coreutilities\GraphicScene.cpp"
 #include "..\coreutilities\Handle.cpp"
 #include "..\coreutilities\intersection.cpp"
@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\memoryutilities.cpp"
 #include "..\coreutilities\ProfilingUtilities.cpp"
 #include "..\coreutilities\Resources.cpp"
-#include "..\coreutilities\signal.cpp"
+//#include "..\coreutilities\signal.cpp"
 #include "..\coreutilities\ThreadUtilities.cpp"
 #include "..\coreutilities\timeutilities.cpp"
 #include "..\coreutilities\type.cpp"
@@ -41,6 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\DDSUtilities.cpp"
 #include "..\graphicsutilities\graphics.cpp"
 #include "..\graphicsutilities\Meshutils.cpp"
-#include "..\graphicsutilities\TerrainRendering.h"
+#include "..\graphicsutilities\TerrainRendering.cpp"
 
 #include "..\PhysicsUtilities\physicsutilities.cpp"
