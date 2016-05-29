@@ -63,6 +63,13 @@ struct PS_IN
 	float3 N 		: TEXCOORD1;
 };
 
+struct PS_Colour_IN
+{
+	float3 WPOS 	: TEXCOORD0;
+	float3 Colour	: TEXCOORD1;
+	float3 N 		: TEXCOORD2;
+};
+
 struct NormalMapped_IN
 {
 	float3 WPOS 	: TEXCOORD0;
@@ -112,6 +119,19 @@ GBuffer DebugPaint(PS_IN IN)
 	Out.Specular 	= Albedo;
 	Out.WPOS 		= float4(IN.WPOS,	0.0f);
 	Out.NORMAL 		= float4(IN.N, 0);		// Pack W depth here?
+	return Out;
+}
+
+
+GBuffer DebugTerrainPaint(PS_Colour_IN IN)
+{
+	GBuffer Out;
+	float l			= length(CameraPOS - IN.WPOS);
+	Out.Albedo		= float4(IN.Colour, 0.5f);	// Last Float is Roughness
+	Out.NORMAL		= float4(IN.N, 0);			// Pack W depth here?
+	Out.WPOS		= float4(IN.WPOS, l);		// last Float is Unused
+	Out.Specular	= Specular;					// Last Float is Metal Factor
+
 	return Out;
 }
 

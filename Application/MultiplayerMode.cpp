@@ -22,8 +22,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "stdafx.h"
 #include "MultiplayerMode.h"
+
+#if USING(RACKNET)
+
+#include "stdafx.h"
 #include "CommonStructs.h"
 #include "GameUtilities.h"
 
@@ -763,3 +766,5 @@ void MultiplayerMode(EngineMemory* Game, bool isServer)
 }
 
 /************************************************************************************************/
+
+#endif

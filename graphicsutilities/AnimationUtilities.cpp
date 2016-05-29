@@ -67,14 +67,26 @@ namespace FlexKit
 		size_t JointCount = E->Mesh->Skeleton->JointCount;
 
 		auto New_EAS = (DrawablePoseState*)MEM->_aligned_malloc(sizeof(DrawablePoseState));
-		New_EAS->Resource.Release();
+		New_EAS->Resource		= FrameBufferedResource();
 		New_EAS->Joints			= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->CurrentPose	= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->JointCount		= JointCount;
 		New_EAS->Sk				= E->Mesh->Skeleton;
+		New_EAS->Dirty			= true; // Forces First Upload
 
+		auto S = New_EAS->Sk;
+		
 		for (size_t I = 0; I < JointCount; ++I)
 			New_EAS->Joints[I] = XMMatrixIdentity();
+		
+		for (size_t I = 0; I < New_EAS->JointCount; ++I) 
+		{
+			auto P = (S->Joints[I].mParent != 0xFFFF) ? New_EAS->CurrentPose[S->Joints[I].mParent] : XMMatrixIdentity();
+			New_EAS->CurrentPose[I] = New_EAS->CurrentPose[I] * P;
+		}
+
+		for (size_t I = 0; I < S->JointCount; ++I)
+			New_EAS->CurrentPose[I] = New_EAS->Joints[I] * GetTransform(S->JointPoses + I);
 
 		return New_EAS;
 	}
@@ -93,6 +105,7 @@ namespace FlexKit
 		if (NewResource)
 		{
 			ReturnState = true;
+
 			UpdateResourceByTemp(RS, &NewResource, InitialState, ResourceSize, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 			EAS->Resource = NewResource;
 		}
@@ -275,7 +288,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadAnimation(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP)
+	void UploadPose(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
@@ -296,7 +309,8 @@ namespace FlexKit
 			FlexKit::PoseState_DESC	Desc = { S->JointCount };
 			auto RES = InitiatePoseState(RS, PS, Desc, Out);
 		}
-		else {
+		else
+		{
 			UpdateResourceByTemp(RS, &PS->Resource, Out, sizeof(VShaderJoint) * S->JointCount, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 	}
@@ -305,12 +319,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadAnimations(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP)
+	void UploadPoses(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP)
 	{
 		for (Drawable* d : *Drawables)
 		{
 			if(d->PoseState && d->PoseState->Dirty)
-				UploadAnimation(RS, d, TEMP);
+				UploadPose(RS, d, TEMP);
 		}
 	}
 
@@ -335,7 +349,7 @@ namespace FlexKit
 			auto AS = E->AnimationState;
 			auto S  = E->Mesh->Skeleton;
 
-			XMMATRIX*	M	  = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(XMMATRIX));
+			XMMATRIX*	M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(XMMATRIX));
 
 			for (size_t I = 0; I < S->JointCount; ++I)
 				M[I] = PS->Joints[I] * GetTransform(S->JointPoses + I);
@@ -345,21 +359,20 @@ namespace FlexKit
 			{
 				if (C.Playing && C.Clip->FrameCount)
 				{
-					auto Clip                = C.Clip;
-					auto T                   = C.T;
-					auto Loop                = Clip->isLooping;
-					double FrameDuration     = (1.0f / Clip->FPS) / C.Speed;
-					double AnimationDuration = FrameDuration * Clip->FrameCount;
-					size_t FrameIndex        = size_t(T / FrameDuration) % Clip->FrameCount;
-					auto& CurrentFrame       = Clip->Frames[FrameIndex];
+					const AnimationClip* Clip	= C.Clip;
+					bool Loop					= Clip->isLooping;
+					double T					= C.T;
+					double FrameDuration		= (1.0f / Clip->FPS) / C.Speed;
+					double AnimationDuration	= FrameDuration * Clip->FrameCount;
+					size_t FrameIndex			= size_t(T / FrameDuration) % Clip->FrameCount;
+					auto& CurrentFrame			= Clip->Frames[FrameIndex];
 
 					if (!(Loop | C.ForceLoop) && C.T > AnimationDuration)
 						C.Playing = false;
 					else if (C.T > AnimationDuration)
 						C.T = 0.0f;
-					else {
+					else
 						C.T += dT;
-					}
 
 					for (size_t I = 0; I < CurrentFrame.JointCount; ++I)
 						M[I] = M[I] * XMMatrixInverse(nullptr, GetTransform(S->JointPoses + I)) * GetTransform(CurrentFrame.Poses + I);
@@ -373,7 +386,6 @@ namespace FlexKit
 			{
 				for (size_t I = 0; I < S->JointCount; ++I)
 				{
-					auto temp = GetTransform(&S->JointPoses[I]);
 					auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
 					M[I] = M[I] * P;
 				}

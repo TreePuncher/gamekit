@@ -130,6 +130,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<size_t StateCount = 1>
+	struct AnimationStateMachine
+	{
+		struct AnimationState
+		{	
+			bool Active;
+		}State[StateCount];
+	};
+
+
+	/************************************************************************************************/
+
+
 	struct FLEXKITAPI SkeletonPose
 	{
 		Skeleton*	S			= nullptr;
@@ -251,7 +264,7 @@ namespace FlexKit
 	FLEXKITAPI void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP);
 	FLEXKITAPI void UploadAnimation(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP);
 
-	FLEXKITAPI void UploadAnimations(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
+	FLEXKITAPI void UploadPoses(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
 
 
 	FLEXKITAPI void PrintSkeletonHierarchy(FlexKit::Skeleton* S);

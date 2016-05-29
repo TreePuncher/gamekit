@@ -437,41 +437,6 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 
 /************************************************************************************************/
 
-int2 GetMousedp(RenderWindow* Window)
-{
-	auto POS = Window->WindowCenterPosition;
-	POINT CENTER = { (long)POS[0], (long)POS[1] };
-	POINT P;
-
-	GetCursorPos(&P);
-	ScreenToClient(Window->hWindow, &P);
-
-	int2 dMouse = { CENTER.x - (int)P.x , CENTER.y - (int)P.y };
-	return dMouse;
-}
-
-void SetCursorToWindowCenter(RenderWindow* Window)
-{
-	auto POS = Window->WindowCenterPosition;
-	POINT CENTER = { (long)POS[0], (long)POS[1] };
-	POINT P;
-
-	GetCursorPos(&P);
-	ScreenToClient(Window->hWindow, &P);
-
-	ClientToScreen(Window->hWindow, &CENTER);
-	SetCursorPos(CENTER.x, CENTER.y);
-}
-
-void ShowCursor(RenderWindow* Window)
-{
-	ShowCursor(true);
-}
-
-void HideCursor(RenderWindow* Window)
-{
-	ShowCursor(false);
-}
 
 void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 {
@@ -482,8 +447,8 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 
 	if ( GetForegroundWindow() == Window->hWindow )
 	{
-		State->dPos = GetMousedp(Window);
-		SetCursorToWindowCenter(Window);
+		State->dPos = GetMousedPos(Window);
+		SetSystemCursorToWindowCenter(Window);
 	}
 	else
 	{
@@ -565,11 +530,11 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 				GS->Keys.Right    = false; break;
 			case FlexKit::KC_M:
 			{
-				SetCursorToWindowCenter(GS->ActiveWindow);
+				SetSystemCursorToWindowCenter(GS->ActiveWindow);
 				if(GS->Keys.MouseEnable)
-					ShowCursor(GS->ActiveWindow);
+					ShowSystemCursor(GS->ActiveWindow);
 					else
-					HideCursor(GS->ActiveWindow);
+					HideSystemCursor(GS->ActiveWindow);
 
 				GS->Keys.MouseEnable = !GS->Keys.MouseEnable; 
 			}	break;
@@ -610,14 +575,16 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
 	auto PlayerModel   = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
 	auto TestAnimation = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
+	State->GScene.EntityEnablePosing(PlayerModel);
+	State->GScene.EntityPlayAnimation(PlayerModel, "PlayerMesh:ANIMATION");
 
 	State->GScene.Yaw					(PlayerModel, pi / 2);
 	State->GScene.TranslateEntity_WT	(TestAnimation, {0, 0, 10});
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
-	for (uint32_t I = 0; I < 50; ++I) {
-		for (uint32_t II = 0; II < 50; ++II) {
+	for (uint32_t I = 0; I < 0; ++I) {
+		for (uint32_t II = 0; II < 100; ++II) {
 			auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "FloorTile");
 			State->GScene.TranslateEntity_WT(Floor, { 10 * 40 - 40.0f * I, 0, 10 * 40 -  40.0f * II });
 			State->GScene.SetMaterialParams(Floor,  { 0.3f, 0.3f, 0.3f , 0.2f }, { 0.5f, 0.5f, 0.5f , 0.0f });
@@ -804,7 +771,7 @@ extern "C"
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 
-			UploadAnimations(RS, &PVS, TempMemory);
+			UploadPoses(RS, &PVS, TempMemory);
 			UploadDeferredPassConstants(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
 			UploadCamera(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
 			UploadGraphicScene(&State->GScene, &PVS, &Transparent);
@@ -819,7 +786,7 @@ extern "C"
 			if (State->DoDeferredShading)
 			{
 				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
-				DrawLandscape(RS, &State->Landscape, 10, State->ActiveCamera);
+				DrawLandscape(RS, &State->Landscape, 15, State->ActiveCamera);
 				ShadeDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);// Transparent Objects
 			}

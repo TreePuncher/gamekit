@@ -1001,10 +1001,10 @@ struct AnimationCut
 	char*  ID;
 };
 
-typedef static_vector<AnimationCut> CutList;
+typedef DynArray<AnimationCut> CutList;
 
 
-void GetAnimationCuts(CutList* out, MetaData_list* MD, const char* ID)
+void GetAnimationCuts(CutList* out, MD_Vector* MD, const char* ID)
 {
 	if (MD)
 	{
@@ -1026,7 +1026,7 @@ void GetAnimationCuts(CutList* out, MetaData_list* MD, const char* ID)
 /************************************************************************************************/
 
 
-FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, const char* ID = nullptr, MetaData_list* MD = nullptr)
+FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, const char* ID = nullptr, MD_Vector* MD = nullptr)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
@@ -1053,7 +1053,7 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 		strcpy_s(ID, ID_Length, S->Joints[I].mID);
 		S->Joints[I].mID = ID;
 	}
-	static_vector<AnimationCut> Cuts;
+	CutList Cuts(Mem);
 	GetAnimationCuts(&Cuts, MD, ID);
 
 	if (!Cuts.size())
@@ -1109,7 +1109,7 @@ struct CompileMeshInfo
 	size_t BuffersFound;
 };
 
-CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MetaData_list* MD = nullptr)
+CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MD_Vector* MD = nullptr)
 {
 	using FlexKit::FillBufferView;
 	using FlexKit::AnimationClip;
@@ -1277,7 +1277,7 @@ struct CompiledMeshInfo
 };
 
 Pair<size_t, GBAPair> 
-CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock* GL, StackAllocator* TempMem, MetaData_list* MD = nullptr, bool SubDiv = false)
+CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock* GL, StackAllocator* TempMem, MD_Vector* MD = nullptr, bool SubDiv = false)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
@@ -1554,13 +1554,13 @@ Resource* CreateSkeletalAnimationResourceBlob(AnimationClip* AC, GUID_t Skeleton
 /************************************************************************************************/
 
 
-ResourceList CompileFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, bool LoadSkeletalData = false, MetaData_list* MD = nullptr, bool SUBDIV = false)
+ResourceList CompileFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, bool LoadSkeletalData = false, MD_Vector* MD = nullptr, bool SUBDIV = false)
 {
 	size_t TempMemorySize = MEGABYTE * 256;
 	StackAllocator TempMemory;
 	TempMemory.Init((byte*)_aligned_malloc(TempMemorySize, 0x40), TempMemorySize);
 
-	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, &TempMemory);
+	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, &TempMemory, MD);
 
 	ResourceList ResourcesFound;
 	if ((size_t)Res > 0)
@@ -1618,7 +1618,7 @@ struct LoadGeometry_RES
 };
 
 
-LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, CompileSceneFromFBXFile_DESC* Desc, MetaData_list* METAINFO)
+LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, CompileSceneFromFBXFile_DESC* Desc, MD_Vector* METAINFO)
 {
 	size_t MaxMeshCount					= 100;
 	fbxsdk::FbxManager*		Manager     = fbxsdk::FbxManager::Create();
@@ -1867,6 +1867,326 @@ ResourceScene* LoadSceneFromFBXFile(char* AssetLocation, SceneNodes* Nodes, Rend
 		return NewScene;
 	}
 	return nullptr;
+}
+
+
+/************************************************************************************************/
+
+
+struct MD_Token
+{
+	char*	SubStr;
+	size_t	size;
+};
+
+
+typedef DynArray<MD_Token> TokenList;
+
+
+/************************************************************************************************/
+
+
+TokenList* GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
+{
+	DynArray<MD_Token>* Tokens = &Memory->allocate_aligned<DynArray<MD_Token>>(Memory);
+
+	size_t StartPos = 0;
+	size_t CurrentPos = 0;
+
+	auto RemoveWhiteSpaces = [&]()
+	{
+		bool WhitespaceSkipped = false;
+		while (CurrentPos < BufferSize && !WhitespaceSkipped)
+		{
+			char CurrentChar = Buffer[CurrentPos];
+			switch (CurrentChar)
+			{
+			case 0x20:
+			case 0x00:
+			case '\t':
+			case '\n':
+				++CurrentPos;
+				break;
+			default:
+				WhitespaceSkipped = true;
+				break;
+			}
+		}
+	};
+
+	while (CurrentPos < BufferSize)
+	{
+		if (Buffer[CurrentPos] == ' ' || Buffer[CurrentPos] == '\n' || Buffer[CurrentPos] == '\t')
+		{
+			RemoveWhiteSpaces();
+
+			char CurrentChar = Buffer[CurrentPos];
+
+			MD_Token NewToken = { Buffer + StartPos, CurrentPos - StartPos - 1 }; // -1 to remove Whitespace at end
+
+			if (NewToken.size)
+				Tokens->push_back(NewToken);
+
+			StartPos = CurrentPos;
+
+			RemoveWhiteSpaces();
+		}
+		else if (Buffer[CurrentPos] == '\0')
+			break;
+		else
+			++CurrentPos;
+	}
+
+	return Tokens;
+}
+
+
+/************************************************************************************************/
+
+
+struct Value
+{
+	enum TYPE
+	{
+		INT,
+		STRING,
+		FLOAT,
+	}Type;
+
+	union
+	{
+		float	F;
+		int		I;
+		struct
+		{
+			char*	S;
+			size_t	size;
+		}S;
+	}Data;
+
+	char*	ID;
+	size_t	ID_Size;
+};
+
+typedef static_vector<Value> ValueList;
+
+
+/************************************************************************************************/
+
+
+void MoveTokenStr(MD_Token T, char* out)
+{
+	size_t i = 0;
+	for (; i < T.size; ++i)
+		out[i] = T.SubStr[i];
+
+	out[i] = '\0';
+}
+
+
+/************************************************************************************************/
+
+
+FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens, size_t StartingPosition)
+{
+	ValueList Values;
+	size_t itr2 = StartingPosition = 0;
+
+	for (; itr2 < Tokens->size(); ++itr2)
+	{
+		auto T = Tokens->at(itr2);
+
+		if (T.size)
+			if (!strncmp(T.SubStr, "int", 3))
+			{
+				Value NewValue;
+				NewValue.Type = Value::INT;
+
+				auto IDToken    = Tokens->at(itr2 - 2);
+				auto ValueToken = Tokens->at(itr2 + 2);
+
+				char ValueBuffer[16];
+				MoveTokenStr(ValueToken, ValueBuffer);
+				int V           = atoi(ValueBuffer);
+				NewValue.Data.I = V;
+
+				NewValue.ID			= (char*)TempMemory->malloc(ValueToken.size + 1); // 1 Extra for the Null Terminator
+				NewValue.ID_Size	= ValueToken.size;
+				MoveTokenStr(IDToken, NewValue.ID);
+
+				Values.push_back(NewValue);
+			}
+			else if (!strncmp(T.SubStr, "string", 6))
+			{
+				Value NewValue;
+				NewValue.Type = Value::STRING;
+
+				auto IDToken    = Tokens->at(itr2 - 2);
+				auto ValueToken = Tokens->at(itr2 + 2);
+
+				size_t IDSize    = ValueToken.size + 1;
+				NewValue.ID      = (char*)TempMemory->malloc(IDSize); // 
+				NewValue.ID_Size = IDSize;
+				MoveTokenStr(IDToken, NewValue.ID);
+
+				size_t StrSize       = ValueToken.size + 1;
+				NewValue.Data.S.S    = (char*)TempMemory->malloc(StrSize); // 
+				NewValue.Data.S.size = StrSize;
+				MoveTokenStr(ValueToken, NewValue.Data.S.S);
+
+				Values.push_back(NewValue);
+			}
+			else if (!strncmp(T.SubStr, "float", 5))
+			{
+				Value NewValue;
+				NewValue.Type = Value::INT;
+
+				auto IDToken = Tokens->at(itr2 - 2);
+				auto ValueToken = Tokens->at(itr2 + 2);
+
+				char ValueBuffer[16];
+				MoveTokenStr(ValueToken, ValueBuffer);
+				float V         = atof(ValueBuffer);
+				NewValue.Data.F = V;
+
+				NewValue.ID = (char*)TempMemory->malloc(ValueToken.size + 1); // 
+				MoveTokenStr(IDToken, NewValue.ID);
+
+				Values.push_back(NewValue);
+			}
+			else if (!strncmp(T.SubStr, "};", min(T.size, 2)))
+				return{ Values, itr2 };
+	}
+
+	// Should Be UnReachable
+	return{ Values, itr2 };
+}
+
+
+/************************************************************************************************/
+
+
+Value* FindValue(static_vector<Value>& Values, char* ValueID)
+{
+	auto res = FlexKit::find(Values, [&](Value& V) {
+		return (!strncmp(V.ID, ValueID, strlen(ValueID))); });
+
+	return (res == Values.end()) ? nullptr : res;
+}
+
+
+/************************************************************************************************/
+
+
+bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens, MD_Vector& MD_Out)
+{
+	struct Value
+	{
+		enum TYPE
+		{
+			INT,
+			STRING,
+			FLOAT,
+		}Type;
+
+		Token T;
+	};
+
+	// Metadata Format
+	// {Identifier} : {type} = {Value(s)};
+
+
+	ValueList Values;
+	for (size_t itr = 0; itr < Tokens->size(); ++itr)
+	{
+		auto T = Tokens->at(itr);
+
+		if (T.size && !strncmp(T.SubStr, "AnimationClip", min(strlen("AnimationClip"), T.size)))
+		{
+			auto res    = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+			auto Values = res.V1;
+			auto ID     = FindValue(Values, "ID");			FK_ASSERT((ID    != nullptr), "MISSING ID TAG!");
+			auto begin  = FindValue(Values, "Begin");		FK_ASSERT((begin != nullptr), "MISSING Begin Value!");
+			auto end    = FindValue(Values, "End");			FK_ASSERT((end   != nullptr), "MISSING End Value!");
+			auto GUID   = FindValue(Values, "AssetGUID");	FK_ASSERT((end   != nullptr), "MISSING GUID!");
+
+#if _DEBUG
+			FK_ASSERT((ID->Type    == Value::STRING));
+			FK_ASSERT((begin->Type == Value::FLOAT));
+			FK_ASSERT((end->Type   == Value::FLOAT));
+			FK_ASSERT((GUID->Type  == Value::INT));
+#else
+			if ((!ID	|| ID->Type != Value::STRING) ||
+				(!begin || begin->Type != Value::FLOAT) ||
+				(!end	|| end->Type != Value::FLOAT) ||
+				(!GUID	|| GUID->Type != Value::INT))
+				return false;
+#endif
+
+			Animation_Clip* NewAnimationClip = &Memory->allocate_aligned<Animation_Clip>();
+
+			auto Target = Tokens->at(itr - 2);
+
+			strncpy(NewAnimationClip->ClipID, ID->Data.S.S, ID->Data.S.size);
+			strncpy(NewAnimationClip->ID, Target.SubStr, Target.size);
+
+			NewAnimationClip->T_Start = begin->Data.F;
+			NewAnimationClip->T_End = end->Data.F;
+
+			NewAnimationClip->type = Meta_data::EMETAINFOTYPE::EMI_ANIMATION_CLIP;
+			NewAnimationClip->UserType = Meta_data::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
+
+			MD_Out.push_back(NewAnimationClip);
+
+			itr = res;
+		}
+		else if (T.size && !strncmp(T.SubStr, "Skeleton", min(strlen("Skeleton"), T.size)))
+		{
+			auto res = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+			auto Values = res.V1;
+			auto AssetID = FindValue(Values, "AssetID");		FK_ASSERT((AssetID	 != nullptr), "MISSING ID!");
+			auto AssetGUID = FindValue(Values, "AssetGUID");	FK_ASSERT((AssetGUID != nullptr), "MISSING GUID!");
+
+#if _DEBUG
+			FK_ASSERT((AssetID->Type == Value::STRING));
+			FK_ASSERT((AssetGUID->Type == Value::INT));
+#else
+			if ((!AssetID || AssetID->Type != Value::STRING) || (!AssetGUID || AssetGUID->Type != Value::INT))
+				return false;
+#endif
+
+			Mesh_Skeleton* Skeleton = &Memory->allocate_aligned<Mesh_Skeleton>();
+
+			auto Target = Tokens->at(itr - 2);
+
+			strncpy(Skeleton->SkeletonID, AssetID->Data.S.S, AssetID->Data.S.size);
+			strncpy(Skeleton->ID, Target.SubStr, Target.size);
+
+			Skeleton->SkeletonGUID = AssetGUID->Data.I;
+
+			MD_Out.push_back(Skeleton);
+
+			itr = res;
+		}
+	}
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool ReadMetaData(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out)
+{
+	size_t BufferSize = FlexKit::GetFileSize(Location);
+	char* Buffer = (char*)TempMemory->malloc(BufferSize);
+	LoadFileIntoBuffer(Location, (byte*)Buffer, BufferSize);
+
+	auto Tokens = GetMetaDataTokens(Buffer, BufferSize, TempMemory);
+	auto res = ProcessTokens(Memory, TempMemory, Tokens, MD_Out);
+
+	return res;
 }
 
 

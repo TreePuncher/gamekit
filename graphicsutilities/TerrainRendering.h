@@ -66,10 +66,8 @@ namespace FlexKit
 		ID3D12PipelineState*  GenerateState;
 		ID3D12PipelineState*  TessellateState;
 
-		StreamOutBuffer			RegionBuffers[2];// Ping Pongs Back and forth
-		SOQuery					SOQuery1;
-		SOQuery					SOQuery2;
-		SOQuery					SOQueryFinalBuffer;
+		StreamOutBuffer			RegionBuffers[2];// Ping Pongs Back and Forth
+		QueryResource			SOQuery;
 
 		size_t					InputCount;
 		ID3D12Resource*			InputBuffer;
@@ -104,6 +102,11 @@ namespace FlexKit
 
 		// P Shaders
 		Shader PShader;
+
+		// Tessellation Related Shaders
+		Shader HullShader;
+		Shader DomainShader;
+
 	};
 
 

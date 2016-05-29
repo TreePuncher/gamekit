@@ -274,7 +274,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		Ty& at(size_t index) { return C->A[index]; }
+		Ty& at(size_t index) { return A[index]; }
 
 		typedef Ty* Iterator; 
 
@@ -341,6 +341,18 @@ namespace FlexKit
 
 	template<typename TY_C, typename TY_PRED>
 	auto find(const TY_C& C, TY_PRED _Pred) noexcept
+	{
+		auto itr = C.begin();
+		auto end = C.end();
+		for (; itr != end; ++itr)
+			if (_Pred(*itr))
+				break;
+
+		return itr;
+	}
+
+	template<typename TY_C, typename TY_PRED>
+	auto find(TY_C& C, TY_PRED _Pred) noexcept
 	{
 		auto itr = C.begin();
 		auto end = C.end();

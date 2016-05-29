@@ -229,7 +229,7 @@ namespace FlexKit
 			return Elements[0];
 		}
  
-		size_t size()
+		size_t size() const
 		{
 			return Size;
 		}

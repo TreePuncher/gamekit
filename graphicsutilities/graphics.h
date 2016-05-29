@@ -355,10 +355,10 @@ namespace FlexKit
 		//operator ID3D12Resource*()				{ return Get(); }
 		TY_* operator -> ()			{ return Get(); }
 		TY_* operator -> () const	{ return Get(); }
-		operator bool()							{ return (Resources[0]!= nullptr); }
-		size_t	size()							{ return BufferCount; }
-		TY_*	Get()					{ return Resources[Idx]; }
-		TY_*	Get() const				{ return Resources[Idx]; }
+		operator bool()				{ return (Resources[0]!= nullptr); }
+		size_t	size()				{ return BufferCount; }
+		TY_*	Get()				{ return Resources[Idx]; }
+		TY_*	Get() const			{ return Resources[Idx]; }
 
 		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
 		void Release(){for( auto& r : Resources) {if(r) r->Release(); r = nullptr;};}
@@ -371,13 +371,14 @@ namespace FlexKit
 		}
 	};
 
-	typedef FrameBufferedObject<ID3D12Resource>	FrameBufferedResource;
-	typedef FrameBufferedResource	IndexBuffer;
-	typedef FrameBufferedResource	ConstantBuffer;
-	typedef FrameBufferedResource	ShaderResourceBuffer;
-	typedef FrameBufferedResource	StreamOutBuffer;
-	typedef ID3D12Resource*			VertexResourceBuffer;
-	typedef	FrameBufferedObject<ID3D12QueryHeap> SOQuery;
+	typedef FrameBufferedObject<ID3D12Resource>	 FrameBufferedResource;
+	typedef FrameBufferedResource				 IndexBuffer;
+	typedef FrameBufferedResource				 ConstantBuffer;
+	typedef FrameBufferedResource				 ShaderResourceBuffer;
+	typedef FrameBufferedResource				 StreamOutBuffer;
+	typedef	FrameBufferedObject<ID3D12QueryHeap> QueryResource;
+
+	typedef ID3D12Resource*						VertexResourceBuffer;
 
 	/************************************************************************************************/
 
@@ -1612,7 +1613,7 @@ namespace FlexKit
 
 	struct SortingField
 	{
-		unsigned int Animation		: 1;
+		unsigned int Posed			: 1;
 		unsigned int MaterialID		: 7;
 		unsigned int InvertDepth	: 1;
 		uint64_t	 Depth			: 55;
@@ -1780,6 +1781,8 @@ namespace FlexKit
 	FLEXKITAPI StreamOutBuffer		CreateStreamOut				( RenderSystem* RS, size_t ResourceSize );
 	FLEXKITAPI VertexResourceBuffer CreateVertexBufferResource	( RenderSystem* RS, size_t ResourceSize );
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );
+	FLEXKITAPI QueryResource		CreateSOQuery(RenderSystem* RS, D3D12_QUERY_HEAP_TYPE Type = D3D12_QUERY_HEAP_TYPE_SO_STATISTICS);
+
 
 	FLEXKITAPI void UploadResources(RenderSystem* RS);
 	FLEXKITAPI void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
@@ -1956,9 +1959,17 @@ namespace FlexKit
 		float		R;
 	};
 
-
+	
 	/************************************************************************************************/
 
+
+	FLEXKITAPI int2 GetMousedPos(RenderWindow* Window);
+	FLEXKITAPI void HideSystemCursor(RenderWindow* Window);
+	FLEXKITAPI void SetSystemCursorToWindowCenter(RenderWindow* Window);
+	FLEXKITAPI void ShowSystemCursor(RenderWindow* Window);
+
+	
+	/************************************************************************************************/
 
 	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT );
 	FLEXKITAPI void PushRect( GUIRender* RG, Draw_Textured_RECT );

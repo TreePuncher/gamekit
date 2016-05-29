@@ -3610,6 +3610,7 @@ namespace FlexKit
 			Drawable* E = *itr;
 			TriMesh* CurrentMesh = E->Mesh;
 			auto AnimationState = E->PoseState;
+			
 			if(!AnimationState || !AnimationState->Resource)
 				continue;
 
@@ -4890,7 +4891,9 @@ namespace FlexKit
 			NewData.MP.Albedo = E->OverrideMaterialProperties ? E->MatProperties.Albedo : M->GetAlbedo( E->Material );
 			NewData.MP.Spec = E->OverrideMaterialProperties ? E->MatProperties.Spec : M->GetMetal( E->Material );
 			NewData.Transform = DirectX::XMMatrixTranspose( WT );
-
+			if(E->AnimationState)
+			{
+			}
 			UpdateResourceByTemp(RS, &E->VConstants, &NewData, sizeof(NewData), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 			E->Dirty = false;
 		}
@@ -4923,7 +4926,7 @@ namespace FlexKit
 			auto E = ( (Drawable*)v );
 			auto P = FlexKit::GetPositionW( Nodes, E->Node );
 			SortingField D;
-			D.Animation   = E->Posed;
+			D.Posed		  = E->Posed;
 			D.InvertDepth = false;
 			D.Depth		  = abs( float3( CP - P ).magnitudesquared() * 10000 );
 			v.GetByType<size_t>() = *(size_t*)&D;
@@ -5017,6 +5020,84 @@ namespace FlexKit
 	void CleanUpTriMesh(TriMesh* T)
 	{
 		FlexKit::Destroy(&T->VertexBuffer);
+	}
+
+
+	/************************************************************************************************/
+
+
+	QueryResource CreateSOQuery(RenderSystem* RS, D3D12_QUERY_HEAP_TYPE Type)
+	{
+		QueryResource NewQuery;
+
+		for (size_t itr = 0; itr < MaxBufferedSize; ++itr)
+		{
+			ID3D12QueryHeap* Query = nullptr;
+			D3D12_QUERY_HEAP_DESC QHeap_Desc;
+			QHeap_Desc.Count = 3;
+			QHeap_Desc.NodeMask = 0;
+			QHeap_Desc.Type = Type;
+
+			HRESULT HR = RS->pDevice->CreateQueryHeap(&QHeap_Desc, IID_PPV_ARGS(&Query));
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE QUERY HEAP!"));
+			SETDEBUGNAME(Query, "SO STREAM OUT QUERY");
+
+			NewQuery[itr] = Query;
+		}
+
+		return NewQuery;
+	}
+
+
+	/************************************************************************************************/
+
+
+	int2 GetMousedPos(RenderWindow* Window)
+	{
+		auto POS = Window->WindowCenterPosition;
+		POINT CENTER = { (long)POS[0], (long)POS[1] };
+		POINT P;
+
+		GetCursorPos(&P);
+		ScreenToClient(Window->hWindow, &P);
+
+		int2 dMouse = { CENTER.x - (int)P.x , CENTER.y - (int)P.y };
+		return dMouse;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetSystemCursorToWindowCenter(RenderWindow* Window)
+	{
+		auto POS = Window->WindowCenterPosition;
+		POINT CENTER = { (long)POS[0], (long)POS[1] };
+		POINT P;
+
+		GetCursorPos(&P);
+		ScreenToClient(Window->hWindow, &P);
+
+		ClientToScreen(Window->hWindow, &CENTER);
+		SetCursorPos(CENTER.x, CENTER.y);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ShowSystemCursor(RenderWindow* Window)
+	{
+		ShowCursor(true);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void HideSystemCursor(RenderWindow* Window)
+	{
+		ShowCursor(false);
 	}
 
 

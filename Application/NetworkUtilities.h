@@ -25,6 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef NETWORKUTILITIES_H
 #define NETWORKUTILITIES_H
 
+#if USING(RACKNET)
+
 #include <WindowsIncludes.h>
 #include "MessageIdentifiers.h"
 #include "RakPeerInterface.h"
@@ -143,4 +145,5 @@ void InitiateNetwork(Network* Net, FlexKit::StackAllocator* alloc, bool isServer
 
 /************************************************************************************************/
 
+#endif
 #endif

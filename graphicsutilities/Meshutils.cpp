@@ -124,6 +124,7 @@ namespace FlexKit
 				{
 					bool unqiue = true;
 					float3 newNormal = *(float3*)itr.buffer;
+					newNormal[3] = 0.0f;
 					newNormal = newNormal.normal();
 					for (size_t I= 0; I < normal.size(); ++I)
 					{

@@ -118,7 +118,7 @@ namespace FlexKit
 	{
 		bool Available			= isEntitySkeletonAvailable(EHandle);
 		bool SkeletonAvailable	= isResourceAvailable(RM, GetEntity(EHandle).Mesh->TriMeshID, EResource_Skeleton);
-
+		bool ret = false;
 		if (Available && SkeletonAvailable)
 		{
 			if(!GetEntity(EHandle).Mesh->Skeleton)
@@ -130,8 +130,10 @@ namespace FlexKit
 
 			GetEntity(EHandle).PoseState	= CreatePoseState(&GetEntity(EHandle), Memory);
 			GetEntity(EHandle).Posed		= true;
+			ret = true;
 		}
-		return Available;
+
+		return ret;
 	}
 
 

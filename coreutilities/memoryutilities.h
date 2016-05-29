@@ -53,12 +53,12 @@ namespace FlexKit
 			return *t;
 		}
 
-		template<typename T, size_t a = 16>
-		T& allocate_aligned()
+		template<typename T, size_t a = 16, typename ... Params>
+		T& allocate_aligned(Params ... Args)
 		{
 			auto mem = _aligned_malloc(sizeof(T), a);
 
-			auto t = new (mem) T();
+			auto t = new (mem) T(Args...);
 			return *t;
 		}
 	};
@@ -483,6 +483,8 @@ namespace FlexKit
 
 	struct BlockAllocator
 	{
+		BlockAllocator(){}
+
 		void Init( BlockAllocator_desc& in )
 		{
 			char* Position = (char*)in._ptr;
@@ -643,9 +645,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	FLEXKITAPI void		PrintBlockStatus	(FlexKit::BlockAllocator* BlockAlloc);
-	FLEXKITAPI bool		LoadFileIntoBuffer	(char* strLoc, byte* out, size_t strlenmax);
-	FLEXKITAPI size_t	GetFileSize			(char* strLoc);
-	FLEXKITAPI size_t	GetLineToBuffer		(char* Buffer, size_t position, char* out, size_t OutBuffSize);
+	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, byte* out, size_t strlenmax);
+	FLEXKITAPI size_t	GetFileSize			(const char* strLoc);
+	FLEXKITAPI size_t	GetLineToBuffer		(const char* Buffer, size_t position, char* out, size_t OutBuffSize);
 
 	/************************************************************************************************/
 

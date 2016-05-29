@@ -217,27 +217,32 @@ struct Meta_data
 	};
 
 	size_t					size;
-	EMETA_RECIPIENT_TYPE	type;
-	char					ID[FlexKit::ID_LENGTH];
+	EMETA_RECIPIENT_TYPE	UserType;
+	EMETAINFOTYPE			type;
+	char					ID[FlexKit::ID_LENGTH];	// Specifies the Asset that uses the meta data
 };
+
+typedef FlexKit::DynArray<Meta_data*> MD_Vector;
 
 struct Mesh_Skeleton : public Meta_data
 {
-	char	SkeletonID[ID_LENGTH];// Specifies a Mesh to use a Specific Skeleton
+	char	SkeletonID[ID_LENGTH];
+	GUID_t	SkeletonGUID;			
 };
 
 struct Animation_Clip : public Meta_data
 {
-	char	MeshID[ID_LENGTH];// Mesh Name
 	char	ClipID[ID_LENGTH];// Mesh Name
 	double	T_Start;
 	double	T_End;
+	GUID_t	guid;
 };
 
 struct Animation_Event : public Meta_data
 {
-	char	ClipID[ID_LENGTH];//
-	double	EventT;// Location of Event relative to Beginning of Clip
+	char		ClipID[ID_LENGTH];//
+	uint32_t	EventID;//
+	double		EventT;// Location of Event relative to Beginning of Clip
 };
 
 // Replaces provided GUID with a specific one
@@ -246,12 +251,11 @@ struct Mesh_GUID : public Meta_data
 	GUID_t	ID;
 };
 
-typedef fixed_vector<Meta_data*> MetaData_list;
-
+bool ReadMetaData	(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
 
 /************************************************************************************************/
 
-LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, LoadSceneFromFBXFile_DESC* Desc, MetaData_list* METAINFO = nullptr);
+LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, LoadSceneFromFBXFile_DESC* Desc, MD_Vector* METAINFO = nullptr);
 
 namespace TextUtilities
 {

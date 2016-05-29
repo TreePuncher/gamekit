@@ -104,7 +104,7 @@ namespace FlexKit
 /************************************************************************************************/
 	
 // Generic Utiliteies
-	bool LoadFileIntoBuffer( char* strLoc, byte* out, size_t strlen )
+	bool LoadFileIntoBuffer(const char* strLoc, byte* out, size_t strlen )
 	{
 		std::fstream File(strLoc);
 		if( File.is_open() )
@@ -131,7 +131,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetFileSize(char* strLoc)
+	size_t GetFileSize(const char* strLoc)
 	{
 		std::fstream File(strLoc);
 		if (File.is_open())
@@ -142,7 +142,7 @@ namespace FlexKit
 			size = File.tellg();
 			File.seekg(std::ios::beg);
 			File.close();
-			return size;
+			return size + 1;
 		}
 		return 0;
 	}
@@ -151,7 +151,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t	GetLineToBuffer(char* Buffer, size_t position, char* out, size_t OutBuffSize)
+	size_t	GetLineToBuffer(const char* Buffer, size_t position, char* out, size_t OutBuffSize)
 	{
 
 		for (int I = 0; I < OutBuffSize; ++I)

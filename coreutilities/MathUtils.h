@@ -93,8 +93,8 @@ namespace FlexKit
 		TY Acc   = 0;
 		TY S	 = (B - A) / N;
 
-		double S_1 = 0;
-		double S_2 = 0;
+		TY S_1 = 0;
+		TY S_2 = 0;
 
 		for ( int I = 1; I < N; I += 2 )
 			S_1 += F_X( A + I * S );
