@@ -23,35 +23,31 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 # gamekit
-A Very Simple Game Engine, very WIP
+A Very Simple Game Engine, very WIP, has a Deferred Render, Does skeletal Animation, has a mesh file format
 
-Current Dependencies 
-  FBX SDK
-  Physx
-  RakNet
-  DirectX 12
+Current Dependencies
+  * FBX SDK
+  * Physx
+  * RakNet
+  * DirectX 12
   
 Directory Layout
-gamekit
-  Application
-  assets
-  Builds
-    Debug_x64
-    Release_x64
-  coreutilities
-  dependencies
-    include
-    lib
-      debug_x64
-      release_x64
-      
-    sdks
-      physx
-      raknet
-      fbxsdk
-      
-  FlexKitResourceCompiler
-  graphicsutilities
-  physicsUtilities
-  TestGameState
-  
+  - Application
+  - assets
+  - Builds
+    - Debug_x64
+    - Release_x64
+  - coreutilities
+  - dependencies
+    - include
+    - lib
+      - debug_x64
+      - release_x64
+    - sdks
+      - physx
+      - raknet
+      - fbxsdk
+  - FlexKitResourceCompiler
+  - graphicsutilities
+  - physicsUtilities
+  - TestGameState
