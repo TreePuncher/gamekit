@@ -116,7 +116,7 @@ namespace FlexKit
 		inline  DynArray(iAllocator* Alloc = nullptr) : Allocator(Alloc), Max(0), Size(0), A(nullptr) {}
 
 		inline  DynArray(THISTYPE&& MOVEIN) : 
-			Allocator	(MOVEIN.Alloc), 
+			Allocator	(MOVEIN.Allocator),
 			Max			(MOVEIN.Max), 
 			Size		(MOVEIN.Size)
 		{
@@ -296,6 +296,22 @@ namespace FlexKit
 
 		/************************************************************************************************/
 	};
+
+	template<typename Ty>
+	void MoveDynArray(DynArray<Ty>& Dest, DynArray<Ty>& Source)
+	{
+		FK_ASSERT(&Dest != &Source);
+		Dest.Release();
+
+		Dest.A			= Source.A;
+		Dest.Allocator	= Source.Allocator;
+		Dest.Size		= Source.Size;
+		Dest.Max		= Source.Max;
+
+		Source.A    = nullptr;
+		Source.Size = 0;
+		Source.Max  = 0;
+	}
 
 
 	/************************************************************************************************/

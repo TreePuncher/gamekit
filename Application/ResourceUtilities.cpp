@@ -1276,6 +1276,21 @@ struct CompiledMeshInfo
 	Skeleton*	S;
 };
 
+DynArray<size_t> FindRelatedGeometryMetaData(MD_Vector* MetaData, Meta_data::EMETA_RECIPIENT_TYPE Type, const char* ID, StackAllocator* TempMem)
+{
+	DynArray<size_t> RelatedData(*TempMem);
+
+	for (size_t I = 0; I < MetaData->size(); ++I)
+	{
+		auto& MD = (*MetaData)[I];
+		if (MD->UserType == Type)
+			if (!strncmp(MD->ID, ID, MD->size))
+				RelatedData.push_back(I);
+	}
+
+	return RelatedData;
+}
+
 Pair<size_t, GBAPair> 
 CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock* GL, StackAllocator* TempMem, MD_Vector* MD = nullptr, bool SubDiv = false)
 {
@@ -1300,10 +1315,22 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 			auto test   = Attr->GetUniqueID();
 			auto Mesh	= (fbxsdk::FbxMesh*)Attr;
 			bool found	= false;
+			bool LoadMesh = false;
 			size_t ID	= (size_t)Mesh->GetUniqueID();
 			auto Geo	= FindGeoByID( GL, ID );
 
-			if ( !Geo )
+			DynArray<size_t> RelatedMetaData;
+
+			if (MD)
+			{
+				MoveDynArray(	
+					RelatedMetaData, 
+					FindRelatedGeometryMetaData(MD, Meta_data::EMETA_RECIPIENT_TYPE::EMR_MESH, Mesh->GetName(), TempMem ));
+			}
+			else
+				LoadMesh = true;
+
+			if ( !Geo && LoadMesh)
 			{
 				auto Name		= Mesh->GetName();
 				size_t NameLen	= strlen( Name );
@@ -1329,7 +1356,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 
 	size_t NodeCount = node->GetChildCount();
 	for(int itr = 0; itr < NodeCount; ++itr)
-		CompileAllGeometry(node->GetChild(itr), Memory, GL, TempMem);
+		CompileAllGeometry(node->GetChild(itr), Memory, GL, TempMem, MD);
 
 	return{ GetGeoCount(GL), {GL, TempMem} };
 }
@@ -1990,7 +2017,7 @@ void MoveTokenStr(MD_Token T, char* out)
 FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens, size_t StartingPosition)
 {
 	ValueList Values;
-	size_t itr2 = StartingPosition = 0;
+	size_t itr2 = StartingPosition;
 
 	for (; itr2 < Tokens->size(); ++itr2)
 	{
@@ -2010,7 +2037,7 @@ FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocat
 				int V           = atoi(ValueBuffer);
 				NewValue.Data.I = V;
 
-				NewValue.ID			= (char*)TempMemory->malloc(ValueToken.size + 1); // 1 Extra for the Null Terminator
+				NewValue.ID			= (char*)TempMemory->malloc(IDToken.size + 1); // 1 Extra for the Null Terminator
 				NewValue.ID_Size	= ValueToken.size;
 				MoveTokenStr(IDToken, NewValue.ID);
 
@@ -2039,7 +2066,7 @@ FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocat
 			else if (!strncmp(T.SubStr, "float", 5))
 			{
 				Value NewValue;
-				NewValue.Type = Value::INT;
+				NewValue.Type = Value::FLOAT;
 
 				auto IDToken = Tokens->at(itr2 - 2);
 				auto ValueToken = Tokens->at(itr2 + 2);
@@ -2049,7 +2076,7 @@ FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocat
 				float V         = atof(ValueBuffer);
 				NewValue.Data.F = V;
 
-				NewValue.ID = (char*)TempMemory->malloc(ValueToken.size + 1); // 
+				NewValue.ID = (char*)TempMemory->malloc(IDToken.size + 1); // 
 				MoveTokenStr(IDToken, NewValue.ID);
 
 				Values.push_back(NewValue);
@@ -2108,7 +2135,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 			auto ID     = FindValue(Values, "ID");			FK_ASSERT((ID    != nullptr), "MISSING ID TAG!");
 			auto begin  = FindValue(Values, "Begin");		FK_ASSERT((begin != nullptr), "MISSING Begin Value!");
 			auto end    = FindValue(Values, "End");			FK_ASSERT((end   != nullptr), "MISSING End Value!");
-			auto GUID   = FindValue(Values, "AssetGUID");	FK_ASSERT((end   != nullptr), "MISSING GUID!");
+			auto GUID   = FindValue(Values, "AssetGUID");	FK_ASSERT((GUID  != nullptr), "MISSING GUID!");
 
 #if _DEBUG
 			FK_ASSERT((ID->Type    == Value::STRING));
@@ -2142,10 +2169,10 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 		}
 		else if (T.size && !strncmp(T.SubStr, "Skeleton", min(strlen("Skeleton"), T.size)))
 		{
-			auto res = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-			auto Values = res.V1;
-			auto AssetID = FindValue(Values, "AssetID");		FK_ASSERT((AssetID	 != nullptr), "MISSING ID!");
-			auto AssetGUID = FindValue(Values, "AssetGUID");	FK_ASSERT((AssetGUID != nullptr), "MISSING GUID!");
+			auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+			auto Values		= res.V1;
+			auto AssetID	= FindValue(Values, "AssetID");		FK_ASSERT((AssetID	 != nullptr), "MISSING ID!");
+			auto AssetGUID	= FindValue(Values, "AssetGUID");	FK_ASSERT((AssetGUID != nullptr), "MISSING GUID!");
 
 #if _DEBUG
 			FK_ASSERT((AssetID->Type == Value::STRING));
