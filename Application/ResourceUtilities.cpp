@@ -1122,8 +1122,9 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 			{
 				Clip.Frames[I].Joints[II]	= JointHandle(II);
 				
+				auto DEBUGVIEW = Joints[II].Animation.Poses[I + Begin].JPose;
 				auto Pose					= GetTransform(&Joints[II].Animation.Poses[I + Begin].JPose);
-				auto LocalPose				= GetPose(XMMatrixInverse(nullptr, GetTransform(S->JointPoses + II)) * Pose);
+				auto LocalPose				= GetPose(Joints[II].Inverse * Pose);
 				Clip.Frames[I].Poses[II]	= LocalPose;
 			}
 		}

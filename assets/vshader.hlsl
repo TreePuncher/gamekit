@@ -84,6 +84,11 @@ VOUT VMain( VIN In )
 }
 
 
+float4 VSegmentPassthrough(VIN In) : SV_POSITION
+{
+	return mul(PV, In.POS);
+}
+
 /************************************************************************************************/
 
 

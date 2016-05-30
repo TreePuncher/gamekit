@@ -385,7 +385,7 @@ namespace FlexKit
 			XMMATRIX*	M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(XMMATRIX));
 
 			for (size_t I = 0; I < S->JointCount; ++I)
-				M[I] = PS->Joints[I] * GetTransform(S->JointPoses + I);
+				M[I] = PS->Joints[I];
 
 			bool AnimationPlayed = false;
 			for (auto& C : AS->Clips)
@@ -409,8 +409,10 @@ namespace FlexKit
 						C.T += dT;
 
 					for (size_t I = 0; I < CurrentFrame.JointCount; ++I){
+					
 						auto	Pose	= CurrentFrame.Poses[I];
-
+						
+						/*
 						float3	xyz		= Pose.ts.xyz() * Weight;
 						float	s		= Lerp(1.0f, Pose.ts.w, Weight);
 						Quaternion	Q   = Pose.r;
@@ -419,8 +421,11 @@ namespace FlexKit
 						Pose.ts[1]		= xyz[1];
 						Pose.ts[2]		= xyz[2];
 						Pose.ts[3]		= s;
-
-						M[I] = M[I] * GetTransform(&CurrentFrame.Poses[I]);
+						auto temp = CurrentFrame.Poses[I];
+						temp.ts = {0, 0, 0, 1};
+						temp.r = { (float)sin(pi * T / 8.0f), 0, 0, (float)cos(pi * T / 8.0f) };
+						M[I] = GetTransform(&S->JointPoses[I]) * GetTransform(&temp);
+						*/
 					}
 					
 					AnimationPlayed = true;
@@ -432,8 +437,9 @@ namespace FlexKit
 			{
 				for (size_t I = 0; I < S->JointCount; ++I)
 				{
-					auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
-					M[I] = M[I] * P;
+					
+					auto P		= (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
+					M[I]		= P * GetTransform(S->JointPoses + I);
 				}
 
 				for (size_t I = 0; I < PS->JointCount; ++I)

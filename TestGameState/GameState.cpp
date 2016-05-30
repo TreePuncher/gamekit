@@ -91,7 +91,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using FlexKit::float3;
 using FlexKit::Quaternion;
-
+using FlexKit::Line3DPass;
 
 /************************************************************************************************/
 
@@ -463,11 +463,15 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 
 struct Scene
 {
+	EntityHandle			PlayerModel;
+	JointHandle				Joint;
 	Camera					PlayerCam;
 	MouseCameraController	PlayerCameraController;
 	GameActor				PlayerActor;
 	PlayerController		PlayerController;
 	InertiaState			PlayerInertia;
+
+	float T;
 };
 
 struct GameState
@@ -478,8 +482,9 @@ struct GameState
 	TextUtilities::FontAsset*	Font;
 	TextUtilities::TextArea		Text;
 
-	DeferredPass				DeferredPass;
-	ForwardPass					ForwardPass;
+	DeferredPass		DeferredPass;
+	ForwardPass			ForwardPass;
+	Line3DPass			LineDrawPass;
 
 	MouseInputState		Mouse;
 	float				MouseMovementFactor;
@@ -573,10 +578,14 @@ void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
-	auto PlayerModel   = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerModel");
+	auto PlayerModel	= State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerModel");
+	Out->PlayerModel	= PlayerModel;
 
 	State->GScene.EntityEnablePosing(PlayerModel);
 	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION1", 0.5f);
+	Out->Joint = State->GScene.GetEntity(PlayerModel).PoseState->Sk->FindJoint("Chest");
+
+	PrintSkeletonHierarchy(State->GScene.GetEntity(PlayerModel).Mesh->Skeleton);
 
 	State->GScene.Yaw					(PlayerModel, pi / 2);
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
@@ -622,6 +631,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 
 	Out->PlayerInertia.Drag = 0.1f;
 	Out->PlayerInertia.Inertia = float3(0);
+	Out->T = 0;
 }
 
 
@@ -629,6 +639,16 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt)
 {
 	float3 InputMovement	= UpdateController(TestScene->PlayerController, State->Keys, State->Nodes);
 	float3 Inertia			= UpdateActorInertia(&TestScene->PlayerInertia, dt, &TestScene->PlayerActor, InputMovement);
+
+	auto PoseState = State->GScene.GetEntity(TestScene->PlayerModel).PoseState;
+	//TranslateJoint(PoseState, TestScene->Joint, {0, 0, (float)dt });
+	TestScene->T += dt;
+
+	AddLineSegment(&State->LineDrawPass, {{0, 0,  0}, { 0, 50, 0}});
+	AddLineSegment(&State->LineDrawPass, {{10, 0, 0}, {10, 50, 0}});
+	AddLineSegment(&State->LineDrawPass, {{20, 0, 0}, {20, 50, 0}});
+	AddLineSegment(&State->LineDrawPass, {{30, 0, 0}, {30, 50, 0}});
+	AddLineSegment(&State->LineDrawPass, {{40, 0, 0}, {40, 50, 0}});
 
 	UpdateGameActor(Inertia, &State->GScene, dt, &TestScene->PlayerActor, TestScene->PlayerController.Node);
 	UpdateMouseCameraController(&TestScene->PlayerCameraController, State->Nodes, State->Mouse.dPos);
@@ -675,7 +695,8 @@ extern "C"
 		InitiateScene			(&Engine->Physics, &State.PScene);
 		InitiateGraphicScene	(&State.GScene, Engine->RenderSystem, &Engine->Materials, &Engine->Assets, &Engine->Nodes, Engine->BlockAllocator, Engine->TempAllocator);
 		InitiateTextRender		(Engine->RenderSystem, &State.TextRender);
-		
+		InitiateSegmentPass		(Engine->RenderSystem, Engine->BlockAllocator, &State.LineDrawPass);
+
 		{
 			Landscape_Desc Land_Desc = { 
 				State.DeferredPass.Filling.NoTexture.Blob->GetBufferPointer(), 
@@ -753,6 +774,8 @@ extern "C"
 
 	GAMESTATEAPI void Draw(RenderSystem* RS, iAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* State)
 	{
+		using TextUtilities::DrawTextArea;
+
 		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 		auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
 
@@ -771,6 +794,7 @@ extern "C"
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 
 			UploadPoses(RS, &PVS, TempMemory);
+			UploadLineSegments(RS, &State->LineDrawPass);
 			UploadDeferredPassConstants(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
 			UploadCamera(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
 			UploadGraphicScene(&State->GScene, &PVS, &Transparent);
@@ -795,7 +819,8 @@ extern "C"
 			}
 		}
 
-		TextUtilities::DrawTextArea(&State->TextRender, State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);
+		Draw3DLineSegments(RS, &State->LineDrawPass, State->ActiveCamera, State->ActiveWindow);
+		DrawTextArea(&State->TextRender, State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);
 		
 		EndPass(CL, RS, State->ActiveWindow);
 	}
@@ -816,6 +841,7 @@ extern "C"
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);
 
+		CleanUpLineDrawPass		(&_ptr->LineDrawPass);
 		CleanUpState			(_ptr, Engine);
 		CleanUpCamera			(_ptr->Nodes, _ptr->ActiveCamera);
 		CleanUpTextRender		(&_ptr->TextRender);

@@ -122,6 +122,10 @@ GBuffer DebugPaint(PS_IN IN)
 	return Out;
 }
 
+float4 DrawLine() : SV_TARGET
+{
+	return float4(1, 1, 1, 1);
+}
 
 GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 {

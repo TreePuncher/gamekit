@@ -2036,6 +2036,34 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct LineSegment
+	{
+		float3 A, B;
+	};
+
+	typedef DynArray<LineSegment> LineSegements;
+
+	struct Line3DPass
+	{
+		ID3D12PipelineState*	PSO;
+		LineSegements			LineSegments;
+		FrameBufferedResource	GPUResource;
+
+		Shader PShader;
+		Shader VShader;
+	};
+
+
+	FLEXKITAPI void InitiateSegmentPass	(RenderSystem* RS, iAllocator* Mem, Line3DPass* out);
+	FLEXKITAPI void CleanUpLineDrawPass	(Line3DPass* out);
+	FLEXKITAPI void AddLineSegment		(Line3DPass* Pass, LineSegment in);
+	FLEXKITAPI void UploadLineSegments	(RenderSystem* RS, Line3DPass* Pass);
+	FLEXKITAPI void Draw3DLineSegments	(RenderSystem* RS, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow);
+	
+
+	/************************************************************************************************/
+
+
 	struct CubeDesc
 	{
 		float r;

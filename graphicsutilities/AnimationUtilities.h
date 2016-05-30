@@ -35,6 +35,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <DirectXMath.h>
 #include <functional>
 
+// TODOs:
+//	Additive Animation
+//	Curve Driven Animation
+
 
 namespace FlexKit
 {
@@ -68,6 +72,12 @@ namespace FlexKit
 		float4		ts;
 	};
 
+	struct JointPoseCurve
+	{
+		float4 Rotation;
+		float4 Transform;
+		float4 Scale;
+	};
 
 	struct JointAndPose
 	{
@@ -107,7 +117,7 @@ namespace FlexKit
 		JointHandle		AddJoint(Joint J, XMMATRIX& I);
 		void			InitiateSkeleton(iAllocator* Allocator, size_t jointcount = 64);
 		XMMATRIX		GetInversePose(JointHandle H);
-		JointHandle		FindJoint( const char*);
+		JointHandle		FindJoint(const char*);
 
 		DirectX::XMMATRIX*	IPose; // Global Inverse Space Pose
 		Joint*				Joints;
@@ -241,6 +251,7 @@ namespace FlexKit
 		if (J!= -1)
 			E->Joints[J] = E->Joints[J] * DirectX::XMMatrixScaling(S, S, S);
 	}
+
 
 	/************************************************************************************************/
 

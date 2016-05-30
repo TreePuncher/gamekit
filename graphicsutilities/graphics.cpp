@@ -5775,6 +5775,203 @@ namespace FlexKit
 	void DrawRects(RenderSystem* RS, GUIRender* RG, RenderWindow* Target) {
 	}
 
+	FLEXKITAPI void UploadLineSegments(RenderSystem* RS, Line3DPass* Pass)
+	{
+		if(Pass->LineSegments.size())
+		{
+			UpdateResourceByTemp(RS, &Pass->GPUResource, 
+						Pass->LineSegments.begin(), 
+						Pass->LineSegments.size() * sizeof(LineSegment), 1, 
+						D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		}
+	}
+
+	void InitiateSegmentPass(RenderSystem* RS, iAllocator* Mem, Line3DPass* out)
+	{
+		Shader PShader;
+		Shader VShader;
+
+		// Load Shaders
+		{
+			// Load VShader
+			{
+				bool res = false;
+				FlexKit::ShaderDesc SDesc;
+				strcpy(SDesc.entry, "VSegmentPassthrough");
+				strcpy(SDesc.ID,	"VSegmentPassthrough");
+				strcpy(SDesc.shaderVersion, "vs_5_0");
+				do
+				{
+					printf("LoadingShader - VShader Shader - Deferred\n");
+					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\vshader.hlsl", &SDesc, &VShader);
+#if USING( EDITSHADERCONTINUE )
+					if (!res)
+					{
+						std::cout << "Failed to Load\n Press Enter to try again\n";
+						char str[100];
+						std::cin >> str;
+					}
+#else
+					FK_ASSERT(res);
+#endif
+				} while (!res);
+			}
+
+			// Load PShader
+			{
+				bool res = false;
+				FlexKit::ShaderDesc SDesc;
+				strcpy(SDesc.entry, "DrawLine");
+				strcpy(SDesc.ID,	"DrawLine");
+				strcpy(SDesc.shaderVersion, "ps_5_0");
+				do
+				{
+					printf("LoadingShader - PShader Shader - Deferred\n");
+					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\pshader.hlsl", &SDesc, &PShader);
+#if USING( EDITSHADERCONTINUE )
+					if (!res)
+					{
+						std::cout << "Failed to Load\n Press Enter to try again\n";
+						char str[100];
+						std::cin >> str;
+					}
+#else
+					FK_ASSERT(res);
+#endif
+				} while (!res);
+			}
+
+			out->PShader = PShader;
+			out->VShader = VShader;
+		}
+		// Create Pipeline StateObject
+		{	
+			out->LineSegments.Release();
+			out->LineSegments.Allocator = Mem;
+
+			auto RootSig = RS->Library.RS4CBVs4SRVs;
+
+			D3D12_INPUT_ELEMENT_DESC InputElements[5] = {
+				{ "POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+
+			D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			Depth_Desc.DepthFunc		= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			Depth_Desc.DepthEnable		= false;
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+				PSO_Desc.pRootSignature        = RootSig;
+				PSO_Desc.VS                    = { (BYTE*)VShader.Blob->GetBufferPointer(), VShader.Blob->GetBufferSize() };
+				PSO_Desc.PS                    = { (BYTE*)PShader.Blob->GetBufferPointer(), PShader.Blob->GetBufferSize() };
+				PSO_Desc.RasterizerState       = Rast_Desc;
+				PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.SampleMask            = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+				PSO_Desc.NumRenderTargets      = 1;
+				PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.SampleDesc.Count      = 1;
+				PSO_Desc.SampleDesc.Quality    = 0;
+				PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout           = { InputElements, 1 };
+				PSO_Desc.DepthStencilState     = Depth_Desc;
+			}
+
+			ID3D12PipelineState* PSO = nullptr;
+			HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			FK_ASSERT(SUCCEEDED(HR));
+			out->PSO = PSO;
+		}
+
+		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 2);
+		out->GPUResource._SetDebugName("LINE SEGMENTS");
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CleanUpLineDrawPass(Line3DPass* pass)
+	{
+		pass->LineSegments.Release();
+		pass->PSO->Release();
+		pass->GPUResource.Release();
+
+		Destroy(pass->VShader);
+		Destroy(pass->PShader);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void AddLineSegment(Line3DPass* Pass, LineSegment in)
+	{
+		Pass->LineSegments.push_back(in);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Draw3DLineSegments(RenderSystem* RS, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow)
+	{
+		if(!Pass->LineSegments.size())
+			return;
+
+		auto CL = GetCurrentCommandList(RS);
+
+		/*
+		typedef struct D3D12_VERTEX_BUFFER_VIEW
+		{
+		D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
+		UINT SizeInBytes;
+		UINT StrideInBytes;
+		} 	D3D12_VERTEX_BUFFER_VIEW;
+		*/
+		
+		D3D12_VERTEX_BUFFER_VIEW Views[] = {
+			{	Pass->GPUResource->GetGPUVirtualAddress() ,
+				(UINT)Pass->LineSegments.size() * sizeof(LineSegment),
+				(UINT)sizeof(float3)
+			},
+		};
+
+		D3D12_RECT		RECT = D3D12_RECT();
+		D3D12_VIEWPORT	VP = D3D12_VIEWPORT();
+
+		RECT.right  = (UINT)TargetWindow->WH[0];
+		RECT.bottom = (UINT)TargetWindow->WH[1];
+		VP.Height   = (UINT)TargetWindow->WH[1];
+		VP.Width    = (UINT)TargetWindow->WH[0];
+		VP.MaxDepth = 1;
+		VP.MinDepth = 0;
+		VP.TopLeftX = 0;
+		VP.TopLeftY = 0;
+
+		CL->SetPipelineState(Pass->PSO);
+
+
+		CL->RSSetViewports(1, &VP);
+		CL->RSSetScissorRects(1, &RECT);
+
+		// Set Pipeline State
+		{
+			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
+			CL->SetPipelineState(Pass->PSO);
+			CL->IASetVertexBuffers(0, 1, Views);
+			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
+			CL->SetGraphicsRootConstantBufferView(1, Camera->Buffer.Get()->GetGPUVirtualAddress());
+			
+			CL->OMSetRenderTargets(1, &GetBackBufferView(TargetWindow), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
+		}
+
+		CL->DrawInstanced(2 * Pass->LineSegments.size(), 1, 0, 0);
+
+		Pass->LineSegments.clear();
+		Pass->GPUResource.IncrementCounter();
+	}
+
 
 	/************************************************************************************************/
 }
