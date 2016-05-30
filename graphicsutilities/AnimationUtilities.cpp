@@ -182,7 +182,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(FlexKit::Drawable* E, const char* Animation, iAllocator* MEM, bool ForceLoop)
+	EPLAY_ANIMATION_RES PlayAnimation(FlexKit::Drawable* E, const char* Animation, iAllocator* MEM, bool ForceLoop, float Weight)
 	{
 		using FlexKit::DrawablePoseState;
 		if (!E || !E->Mesh)
@@ -218,13 +218,14 @@ namespace FlexKit
 		{
 			if (!strcmp(I->Clip.mID, Animation))
 			{
-				DrawableAnimationState::AnimationStateEntry AS;
-				AS.Clip		 = &I->Clip;
-				AS.T		 = 0;
-				AS.Playing	 = true;
-				AS.Speed	 = 1.0f;
-				AS.ForceLoop = ForceLoop;
-				EAS->Clips.push_back(AS);
+				DrawableAnimationState::AnimationStateEntry ASE;
+				ASE.Clip	  = &I->Clip;
+				ASE.T		  = 0;
+				ASE.Playing	  = true;
+				ASE.Speed	  = 1.0f;
+				ASE.ForceLoop = ForceLoop;
+				ASE.Weight	  = Weight;
+				EAS->Clips.push_back(ASE);
 
 				E->Posed = true; // Enable Posing or Animation won't do anything
 				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
@@ -331,6 +332,38 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	#if 0
+	Quaternion Slerp(Quaternion P, Quaternion Q, float W)
+	{
+		Quaternion Qout;
+		
+		float dot = P.V().dot(Q.V());
+		if (dot < 0)
+		{
+			dot = -dot;
+		}else Qout = Q;
+
+		if (dot < 0.95f)
+		{
+			float Angle = acosf(dot);
+			return (P * 
+				sinf(Angle * (1 - W)) + 
+				Qout * sinf(Angle * W) / sinf(Angle));
+		}
+
+		return Qout;
+	}
+	#endif
+
+	Quaternion Qlerp(Quaternion P, Quaternion Q, float W)
+	{
+		float W_Inverse = 1 - W;
+		Quaternion Qout = P * W_Inverse + Q * W;
+		Qout.normalize();
+
+		return Qout;
+	}
+
 
 	void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP)
 	{
@@ -361,6 +394,7 @@ namespace FlexKit
 				{
 					const AnimationClip* Clip	= C.Clip;
 					bool Loop					= Clip->isLooping;
+					float  Weight				= C.Weight;
 					double T					= C.T;
 					double FrameDuration		= (1.0f / Clip->FPS) / C.Speed;
 					double AnimationDuration	= FrameDuration * Clip->FrameCount;
@@ -374,8 +408,20 @@ namespace FlexKit
 					else
 						C.T += dT;
 
-					for (size_t I = 0; I < CurrentFrame.JointCount; ++I)
-						M[I] = M[I] * XMMatrixInverse(nullptr, GetTransform(S->JointPoses + I)) * GetTransform(CurrentFrame.Poses + I);
+					for (size_t I = 0; I < CurrentFrame.JointCount; ++I){
+						auto	Pose	= CurrentFrame.Poses[I];
+
+						float3	xyz		= Pose.ts.xyz() * Weight;
+						float	s		= Lerp(1.0f, Pose.ts.w, Weight);
+						Quaternion	Q   = Pose.r;
+						Pose.r			= Qlerp(Quaternion(0, 0, 0, 1), Q, Weight);
+						Pose.ts[0]		= xyz[0];
+						Pose.ts[1]		= xyz[1];
+						Pose.ts[2]		= xyz[2];
+						Pose.ts[3]		= s;
+
+						M[I] = M[I] * GetTransform(&CurrentFrame.Poses[I]);
+					}
 					
 					AnimationPlayed = true;
 				}

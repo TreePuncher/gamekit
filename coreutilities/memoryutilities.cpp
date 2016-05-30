@@ -56,7 +56,7 @@ namespace FlexKit
 		if (!memory)
 			printf("Memory Failed to Allocate\n");
 #ifdef _DEBUG
-		memset(memory, 0, s);
+		//memset(memory, 0, s);
 #endif
 		return memory;
 	}

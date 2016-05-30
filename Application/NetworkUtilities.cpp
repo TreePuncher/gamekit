@@ -25,7 +25,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "stdafx.h"
 #include "NetworkUtilities.h"
 
+#if USING(RACKNET)
+
+
 /************************************************************************************************/
+
 
 void CleanupNetwork(Network* Net)
 {
@@ -67,3 +71,5 @@ void InitiateNetwork(Network* Net, FlexKit::StackAllocator* alloc, bool isServer
 		Net->ClientState->CurrentState = Network::sClientState::ClientEstablishingConnection;
 	}
 }
+
+#endif

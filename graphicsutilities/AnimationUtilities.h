@@ -93,6 +93,7 @@ namespace FlexKit
 		Skeleton*		Skeleton		= nullptr;
 		size_t			FrameCount		= 0;
 		KeyFrame*		Frames			= 0;
+		size_t			guid			= 0;
 		char*			mID				= nullptr;
 		bool			isLooping		= false;
 	};
@@ -178,9 +179,10 @@ namespace FlexKit
 			AnimationClip*	Clip;
 			double			T;
 			double			Speed;
+			float			Weight;
 			bool			Playing;
 			bool			ForceLoop;
-			char			_p[6];
+			char			_p[2];
 		};
 
 		static_vector<AnimationStateEntry> Clips; // Animations in
@@ -257,7 +259,7 @@ namespace FlexKit
 		EPLAY_SUCCESS
 	};
 
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation	(FlexKit::Drawable* E, const char* AnimationID, iAllocator* MEM, bool ForceLoop = false);
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation	(FlexKit::Drawable* E, const char* AnimationID, iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f);
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed(FlexKit::Drawable* E, const char* AnimationID, double Speed = false);
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation	(FlexKit::Drawable* E, const char* AnimationID);
 

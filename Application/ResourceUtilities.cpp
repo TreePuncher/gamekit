@@ -982,8 +982,9 @@ void FindAllJoints(TY_Out& Out, FbxNode* N, TY_MEM* MEM, size_t Parent = 0xFFFF 
 		Joint NewJoint;
 		NewJoint.mID		= N->GetName();
 		NewJoint.mParent	= JointHandle(Parent);
+		JointAnimation& Animations = GetJointAnimation(N, MEM);
 
-		Out.push_back({ {NewJoint}, GetJointAnimation(N, MEM), DirectX::XMMatrixIdentity() });
+		Out.push_back({ {NewJoint}, Animations, DirectX::XMMatrixIdentity() });
 
 		for ( size_t I = 0; I < ChildCount; ++I )
 			FindAllJoints(Out, N->GetChild( I ), MEM, JointIndex);
@@ -996,28 +997,42 @@ void FindAllJoints(TY_Out& Out, FbxNode* N, TY_MEM* MEM, size_t Parent = 0xFFFF 
 
 struct AnimationCut
 {
-	double T_Start;
-	double T_End;
-	char*  ID;
+	double	T_Start;
+	double	T_End;
+	char*	ID;
+	GUID_t	guid;
 };
 
 typedef DynArray<AnimationCut> CutList;
 
 
-void GetAnimationCuts(CutList* out, MD_Vector* MD, const char* ID)
+RelatedMetaData GetAllAnimationClipMetaData(MD_Vector* MD, RelatedMetaData* RD, iAllocator* Memory)
+{
+	RelatedMetaData Out(Memory);
+
+	for (auto I : *RD)
+		if (MD->at(I)->type == MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP)
+			Out.push_back(I);
+
+	return Out;
+}
+
+void GetAnimationCuts(CutList* out, MD_Vector* MD, const char* ID, iAllocator* Mem)
 {
 	if (MD)
 	{
-		for (auto e : *MD)
+		auto Related		= FindRelatedGeometryMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION, ID, Mem);
+		auto AnimationClips = GetAllAnimationClipMetaData(MD, &Related, Mem);
+
+		for (auto I : AnimationClips)
 		{
-			if (!strncmp(e->ID, ID, 64))
-			{
-				auto Clip = (Animation_Clip*)e;
-				AnimationCut NewCut;
-				NewCut.T_Start	= Clip->T_Start;
-				NewCut.T_End	= Clip->T_End;
-				NewCut.ID		= Clip->ClipID;
-			}
+			AnimationClip_MetaData* Clip = (AnimationClip_MetaData*)MD->at(I);
+			AnimationCut	NewCut = {};
+			NewCut.ID		= Clip->ClipID;
+			NewCut.T_Start	= Clip->T_Start;
+			NewCut.T_End	= Clip->T_End;
+			NewCut.guid		= Clip->guid;
+			out->push_back(NewCut);
 		}
 	}
 }
@@ -1026,13 +1041,26 @@ void GetAnimationCuts(CutList* out, MD_Vector* MD, const char* ID)
 /************************************************************************************************/
 
 
-FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, const char* ID = nullptr, MD_Vector* MD = nullptr)
+Skeleton_MetaData* GetSkeletonMetaData(MD_Vector* MD, RelatedMetaData* RD)
+{
+	for (auto I : *RD)
+		if (MD->at(I)->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL)
+			return (Skeleton_MetaData*)MD->at(I);
+
+	return nullptr;
+}
+
+FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, const char* ParentID = nullptr, MD_Vector* MD = nullptr)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
 
+	// Gather MetaData
+	auto Related		= FindRelatedGeometryMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, ParentID, Temp);
+	auto SkeletonInfo	= GetSkeletonMetaData(MD, &Related);
+
 	auto Root	= FindSkeletonRoot(M);
-	if (!Root)
+	if (!Root || !SkeletonInfo)
 		return nullptr;
 
 	auto& Joints = Mem->allocate_aligned<static_vector<JointInfo, 1024>>();
@@ -1045,6 +1073,8 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 	for (auto J : Joints)
 		S->AddJoint(J.Joint.Linkage, J.Inverse);
 	
+	char* ID = SkeletonInfo->SkeletonID;
+
 	for (size_t I = 0; I < Joints.size(); ++I)
 	{
 		size_t ID_Length = strnlen_s(S->Joints[I].mID, 64) + 1;
@@ -1053,8 +1083,9 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 		strcpy_s(ID, ID_Length, S->Joints[I].mID);
 		S->Joints[I].mID = ID;
 	}
+
 	CutList Cuts(Mem);
-	GetAnimationCuts(&Cuts, MD, ID);
+	GetAnimationCuts(&Cuts, MD, ID, Mem);
 
 	if (!Cuts.size())
 	{
@@ -1077,6 +1108,7 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 		Clip.FPS		= 60;
 		Clip.FrameCount	= End - Begin;
 		Clip.mID		= Cut.ID;
+		Clip.guid		= Cut.guid;
 		Clip.isLooping	= true;
 		Clip.Frames		= (AnimationClip::KeyFrame*)Mem->_aligned_malloc(Clip.FrameCount * sizeof(AnimationClip::KeyFrame));
 
@@ -1089,7 +1121,10 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 			for (size_t II = 0; II < Joints.size(); ++II)
 			{
 				Clip.Frames[I].Joints[II]	= JointHandle(II);
-				Clip.Frames[I].Poses[II]	= Joints[II].Animation.Poses[I + Begin].JPose;
+				
+				auto Pose					= GetTransform(&Joints[II].Animation.Poses[I + Begin].JPose);
+				auto LocalPose				= GetPose(XMMatrixInverse(nullptr, GetTransform(S->JointPoses + II)) * Pose);
+				Clip.Frames[I].Poses[II]	= LocalPose;
 			}
 		}
 
@@ -1102,6 +1137,7 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 
 
 /************************************************************************************************/
+
 
 struct CompileMeshInfo
 {
@@ -1276,19 +1312,30 @@ struct CompiledMeshInfo
 	Skeleton*	S;
 };
 
-DynArray<size_t> FindRelatedGeometryMetaData(MD_Vector* MetaData, Meta_data::EMETA_RECIPIENT_TYPE Type, const char* ID, StackAllocator* TempMem)
+DynArray<size_t> FindRelatedGeometryMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem)
 {
-	DynArray<size_t> RelatedData(*TempMem);
+	DynArray<size_t> RelatedData(TempMem);
+	size_t IDLength = strlen(ID);
 
 	for (size_t I = 0; I < MetaData->size(); ++I)
 	{
 		auto& MD = (*MetaData)[I];
 		if (MD->UserType == Type)
-			if (!strncmp(MD->ID, ID, MD->size))
+			if (!strncmp(MD->ID, ID, IDLength) )
 				RelatedData.push_back(I);
 	}
 
 	return RelatedData;
+}
+
+Mesh_MetaData* GetMeshMetaData(MD_Vector* MetaData, DynArray<size_t>& related)
+{
+	for (auto i : related)
+	{
+		if(MetaData->at(i)->type == MetaData::EMETAINFOTYPE::EMI_MESH)
+			return (Mesh_MetaData*)MetaData->at(i);
+	}
+	return nullptr;
 }
 
 Pair<size_t, GBAPair> 
@@ -1325,15 +1372,19 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 			{
 				MoveDynArray(	
 					RelatedMetaData, 
-					FindRelatedGeometryMetaData(MD, Meta_data::EMETA_RECIPIENT_TYPE::EMR_MESH, Mesh->GetName(), TempMem ));
+					FindRelatedGeometryMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName, *TempMem ));
 			}
 			else
 				LoadMesh = true;
 
+			auto MeshInfo = GetMeshMetaData(MD, RelatedMetaData);
+			LoadMesh = MeshInfo != nullptr;
+
 			if ( !Geo && LoadMesh)
 			{
-				auto Name		= Mesh->GetName();
+				auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
 				size_t NameLen	= strlen( Name );
+
 				if (!NameLen) {
 					Name = node->GetName();
 					NameLen	= strlen( Name );
@@ -1348,6 +1399,13 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 				}
 
 				auto Res = CompileMeshResource(out, *TempMem, *Memory, Mesh, false, ID, MD);
+				
+				if(MeshInfo){
+					auto Info = MeshInfo;
+					out.TriMeshID	= Info->guid;
+					out.ID			= Info->MeshID;
+				}
+
 				PushGeo(GL, out, Memory);
 			}
 		}	break;
@@ -1549,7 +1607,7 @@ Resource* CreateSkeletalAnimationResourceBlob(AnimationClip* AC, GUID_t Skeleton
 	R->FrameCount	= AC->FrameCount;
 	R->FPS			= AC->FPS;
 	R->ResourceSize = Size;
-	R->GUID			= 0x0123;
+	R->GUID			= AC->guid;
 	R->IsLooping	= AC->isLooping;
 	R->Type			= EResourceType::EResource_SkeletalAnimation;
 	strcpy_s(R->ID, AC->mID);
@@ -1604,8 +1662,8 @@ ResourceList CompileFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, 
 					ResourcesFound.push_back(Res);
 
 					auto CurrentClip = G->Meshes[I].Skeleton->Animations;
-					auto SkeletonID = ResourcesFound.back()->GUID;
-
+					auto SkeletonID = Res->GUID;
+					
 					while (true)
 					{
 						if (CurrentClip)
@@ -1943,6 +2001,7 @@ TokenList* GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory
 
 	while (CurrentPos < BufferSize)
 	{
+		auto C = Buffer[CurrentPos];
 		if (Buffer[CurrentPos] == ' ' || Buffer[CurrentPos] == '\n' || Buffer[CurrentPos] == '\t')
 		{
 			RemoveWhiteSpaces();
@@ -2003,11 +2062,19 @@ typedef static_vector<Value> ValueList;
 
 void MoveTokenStr(MD_Token T, char* out)
 {
-	size_t i = 0;
-	for (; i < T.size; ++i)
-		out[i] = T.SubStr[i];
+	memset(out, 0x00, T.size + 1);
+	strncpy(out, T.SubStr, T.size);
 
-	out[i] = '\0';
+	for (size_t I = T.size; I > 0; --I)
+	{
+		switch (out[I])
+		{
+		case '\n':
+		case ' ':
+			out[I] = '\0';
+			T.size--;
+		}
+	}
 }
 
 
@@ -2051,13 +2118,13 @@ FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocat
 				auto IDToken    = Tokens->at(itr2 - 2);
 				auto ValueToken = Tokens->at(itr2 + 2);
 
-				size_t IDSize    = ValueToken.size + 1;
-				NewValue.ID      = (char*)TempMemory->malloc(IDSize); // 
+				size_t IDSize    = IDToken.size;
+				NewValue.ID      = (char*)TempMemory->malloc(IDSize + 1); // 
 				NewValue.ID_Size = IDSize;
 				MoveTokenStr(IDToken, NewValue.ID);
 
-				size_t StrSize       = ValueToken.size + 1;
-				NewValue.Data.S.S    = (char*)TempMemory->malloc(StrSize); // 
+				size_t StrSize       = ValueToken.size;
+				NewValue.Data.S.S    = (char*)TempMemory->malloc(StrSize + 1); // 
 				NewValue.Data.S.size = StrSize;
 				MoveTokenStr(ValueToken, NewValue.Data.S.S);
 
@@ -2132,66 +2199,115 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 		{
 			auto res    = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values = res.V1;
-			auto ID     = FindValue(Values, "ID");			FK_ASSERT((ID    != nullptr), "MISSING ID TAG!");
-			auto begin  = FindValue(Values, "Begin");		FK_ASSERT((begin != nullptr), "MISSING Begin Value!");
-			auto end    = FindValue(Values, "End");			FK_ASSERT((end   != nullptr), "MISSING End Value!");
-			auto GUID   = FindValue(Values, "AssetGUID");	FK_ASSERT((GUID  != nullptr), "MISSING GUID!");
+			auto ID     = FindValue(Values, "ID");			
+			auto begin  = FindValue(Values, "Begin");		
+			auto end    = FindValue(Values, "End");			
+			auto GUID   = FindValue(Values, "AssetGUID");	
 
+			// Check for ill formed data
 #if _DEBUG
+			FK_ASSERT((ID != nullptr),		"MISSING ID		TAG!");
+			FK_ASSERT((begin != nullptr),	"MISSING Begin	Value!");
+			FK_ASSERT((end != nullptr),		"MISSING End	Value!");
+			FK_ASSERT((GUID != nullptr),	"MISSING GUID!");
 			FK_ASSERT((ID->Type    == Value::STRING));
 			FK_ASSERT((begin->Type == Value::FLOAT));
 			FK_ASSERT((end->Type   == Value::FLOAT));
 			FK_ASSERT((GUID->Type  == Value::INT));
-#else
-			if ((!ID	|| ID->Type != Value::STRING) ||
-				(!begin || begin->Type != Value::FLOAT) ||
-				(!end	|| end->Type != Value::FLOAT) ||
-				(!GUID	|| GUID->Type != Value::INT))
+#else	
+			if ((!ID	|| ID->Type		!= Value::STRING) ||
+				(!begin || begin->Type	!= Value::FLOAT)  ||
+				(!end	|| end->Type	!= Value::FLOAT)  ||
+				(!GUID	|| GUID->Type	!= Value::INT))
 				return false;
 #endif
 
-			Animation_Clip* NewAnimationClip = &Memory->allocate_aligned<Animation_Clip>();
+			AnimationClip_MetaData* NewAnimationClip = &Memory->allocate_aligned<AnimationClip_MetaData>();
 
 			auto Target = Tokens->at(itr - 2);
 
 			strncpy(NewAnimationClip->ClipID, ID->Data.S.S, ID->Data.S.size);
-			strncpy(NewAnimationClip->ID, Target.SubStr, Target.size);
 
-			NewAnimationClip->T_Start = begin->Data.F;
-			NewAnimationClip->T_End = end->Data.F;
-
-			NewAnimationClip->type = Meta_data::EMETAINFOTYPE::EMI_ANIMATION_CLIP;
-			NewAnimationClip->UserType = Meta_data::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
+			NewAnimationClip->SetID(Target.SubStr, Target.size);
+			NewAnimationClip->T_Start	= begin->Data.F;
+			NewAnimationClip->T_End		= end->Data.F;
+			NewAnimationClip->guid		= GUID->Data.I;
 
 			MD_Out.push_back(NewAnimationClip);
 
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "Skeleton", min(strlen("Skeleton"), T.size)))
+		else if (T.size && !strncmp(T.SubStr, "Skeleton", max(strlen("Skeleton"), T.size)))
 		{
 			auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values		= res.V1;
-			auto AssetID	= FindValue(Values, "AssetID");		FK_ASSERT((AssetID	 != nullptr), "MISSING ID!");
-			auto AssetGUID	= FindValue(Values, "AssetGUID");	FK_ASSERT((AssetGUID != nullptr), "MISSING GUID!");
+			auto AssetID	= FindValue(Values, "AssetID");		
+			auto AssetGUID	= FindValue(Values, "AssetGUID");	
 
 #if _DEBUG
+			FK_ASSERT((AssetID			!= nullptr), "MISSING ID!");
+			FK_ASSERT((AssetID->Type	== Value::STRING));
+
+			FK_ASSERT((AssetGUID		!= nullptr), "MISSING GUID!");
+			FK_ASSERT((AssetGUID->Type	== Value::INT));
+#else
+			if ((!AssetID || AssetID->Type != Value::STRING) || (!AssetGUID || AssetGUID->Type != Value::INT))
+				return false;
+#endif
+
+			Skeleton_MetaData* Skeleton = &Memory->allocate_aligned<Skeleton_MetaData>();
+
+			auto Target = Tokens->at(itr - 2);
+
+			strncpy(Skeleton->SkeletonID, AssetID->Data.S.S, AssetID->Data.S.size);
+
+
+			Skeleton->SetID(Target.SubStr, Target.size);
+			Skeleton->SkeletonGUID	= AssetGUID->Data.I;
+
+			MD_Out.push_back(Skeleton);
+
+			itr = res;
+		}
+		else if (T.size && !strncmp(T.SubStr, "Model", min(strlen("Model"), T.size)))
+		{
+			auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+			auto Values		= res.V1;
+			auto AssetID	= FindValue(Values, "AssetID");
+			auto AssetGUID	= FindValue(Values, "AssetGUID");
+
+#if _DEBUG
+			FK_ASSERT((AssetID != nullptr), "MISSING ID!");
 			FK_ASSERT((AssetID->Type == Value::STRING));
+
+			FK_ASSERT((AssetGUID != nullptr), "MISSING GUID!");
 			FK_ASSERT((AssetGUID->Type == Value::INT));
 #else
 			if ((!AssetID || AssetID->Type != Value::STRING) || (!AssetGUID || AssetGUID->Type != Value::INT))
 				return false;
 #endif
 
-			Mesh_Skeleton* Skeleton = &Memory->allocate_aligned<Mesh_Skeleton>();
+			Mesh_MetaData* Model = &Memory->allocate_aligned<Mesh_MetaData>();
 
 			auto Target = Tokens->at(itr - 2);
 
-			strncpy(Skeleton->SkeletonID, AssetID->Data.S.S, AssetID->Data.S.size);
-			strncpy(Skeleton->ID, Target.SubStr, Target.size);
+			strncpy(Model->MeshID, AssetID->Data.S.S, AssetID->Data.S.size);
 
-			Skeleton->SkeletonGUID = AssetGUID->Data.I;
+			for (size_t I = AssetID->Data.S.size; I > 0; --I)
+			{
+				switch (Model->MeshID[I])
+				{
+					case '\n':
+					case ' ':
+						Model->MeshID[I] = '\0';
+						AssetID->Data.S.size--;
+				}
+			}
 
-			MD_Out.push_back(Skeleton);
+			Model->SetID(Target.SubStr, Target.size + 1);
+			Model->guid = AssetGUID->Data.I;
+
+			MD_Out.push_back(Model);
 
 			itr = res;
 		}

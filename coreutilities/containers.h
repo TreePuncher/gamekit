@@ -115,14 +115,15 @@ namespace FlexKit
 		typedef DynArray<Ty> THISTYPE;
 		inline  DynArray(iAllocator* Alloc = nullptr) : Allocator(Alloc), Max(0), Size(0), A(nullptr) {}
 
-		inline  DynArray(THISTYPE&& MOVEIN) : 
-			Allocator	(MOVEIN.Allocator),
-			Max			(MOVEIN.Max), 
-			Size		(MOVEIN.Size)
+		inline  DynArray(THISTYPE&& RHS) : 
+			A			(RHS.A),
+			Allocator	(RHS.Allocator),
+			Max			(RHS.Max),
+			Size		(RHS.Size)
 		{
-			MOVEIN.A	= nullptr;
-			MOVEIN.Max  = 0;
-			MOVEIN.Size = 0;
+			RHS.A	 = nullptr;
+			RHS.Max  = 0;
+			RHS.Size = 0;
 		}
 
 		inline ~DynArray(){if(A)Allocator->_aligned_free(A);}
@@ -201,13 +202,17 @@ namespace FlexKit
 			{// Increase Size
 				FK_ASSERT(Allocator);
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * Max);
+				
 				FK_ASSERT(NewMem);
+				FK_ASSERT(NewMem != A);
 
 				if(A)
 				{
 					size_t itr = 0;
 					size_t End = Size;
-					for (;itr < End; ++itr) NewMem[itr] = A[itr];
+					for (;itr < End; ++itr) 
+						NewMem[itr] = A[itr];
+
 					Allocator->_aligned_free(A);
 				}
 

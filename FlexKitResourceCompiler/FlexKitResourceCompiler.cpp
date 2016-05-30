@@ -117,63 +117,65 @@ int main(int argc, char* argv[])
 			FlexKit::StackAllocator TempMemory;
 			TempMemory.Init((byte*)_aligned_malloc(MEGABYTE, 0x40), MEGABYTE);
 
-			static_vector<LoadGeometryRES_ptr, 16>	Resources;
-
-			MD_Vector MetaData(BlockMemory);
-			for (auto MD_Location : MetaDataFiles)
-				ReadMetaData(MD_Location, BlockMemory, TempMemory, MetaData);
-
-			// Scan Input Files for Resources
-			for (auto Input : Inputs)
 			{
-				CompileSceneFromFBXFile_DESC Desc;
-				Desc.BlockMemory	= &BlockMemory;
-				Desc.CloseFBX		= true;
-				Desc.IncludeShaders = false;
+				static_vector<LoadGeometryRES_ptr, 16>	Resources;
 
-				std::cout << "Compiling File: " << Input << "\n";
-				Resources.push_back(CompileGeometryFromFBXFile(Input, &Desc, &MetaData));
-			}
+				MD_Vector MetaData(BlockMemory);
+				for (auto MD_Location : MetaDataFiles)
+					ReadMetaData(MD_Location, BlockMemory, TempMemory, MetaData);
 
-			size_t ResourceCount = 0;
-			for(const auto& R : Resources)
-				ResourceCount += R->Resources.size();
-
-			size_t ResourceSize  = 0;
-			size_t TableSize     = sizeof(ResourceEntry) * ResourceCount + sizeof(ResourceTable);
-			ResourceTable* Table = (ResourceTable*)malloc(TableSize);
-			memset(Table, 0, TableSize);
-			Table->MagicNumber	 = 0xF4F3F2F1F4F3F2F1;
-			Table->Version		 = 0x0000000000000001;
-			Table->ResourceCount = ResourceCount;
-
-			std::cout << "Resources Found: " << ResourceCount << "\n";
-
-			size_t Position = TableSize;
-
-			for(auto& res : Resources)
-			{
-				for (size_t I = 0; I < Table->ResourceCount; ++I)
+				// Scan Input Files for Resources
+				for (auto Input : Inputs)
 				{
-					Table->Entries[I].ResourcePosition = Position;
-					Table->Entries[I].GUID = res->Resources[I]->GUID;
-					Table->Entries[I].Type = res->Resources[I]->Type;
-					memcpy(Table->Entries[I].ID, res->Resources[I]->ID, ID_LENGTH);
-					Position += res->Resources[I]->ResourceSize;
-					std::cout << "Resource Found: " << res->Resources[I]->ID << " ID: " << Table->Entries[I].GUID << "\n";
-				}
-			}
+					CompileSceneFromFBXFile_DESC Desc;
+					Desc.BlockMemory	= &BlockMemory;
+					Desc.CloseFBX		= true;
+					Desc.IncludeShaders = false;
 
-			for (auto& res : Resources)
-			{
-				FILE* F = nullptr;
-				auto openRes = fopen_s(&F, Out, "wb");
-				fwrite(Table, sizeof(char), TableSize, F);
-				for (size_t I = 0; I < Table->ResourceCount; ++I)
-					fwrite(res->Resources[I], sizeof(char), res->Resources[I]->ResourceSize, F);
-				fclose(F);
+					std::cout << "Compiling File: " << Input << "\n";
+					Resources.push_back(CompileGeometryFromFBXFile(Input, &Desc, &MetaData));
+				}
+
+				size_t ResourceCount = 0;
+				for(const auto& R : Resources)
+					ResourceCount += R->Resources.size();
+
+				size_t ResourceSize  = 0;
+				size_t TableSize     = sizeof(ResourceEntry) * ResourceCount + sizeof(ResourceTable);
+				ResourceTable* Table = (ResourceTable*)malloc(TableSize);
+				memset(Table, 0, TableSize);
+				Table->MagicNumber	 = 0xF4F3F2F1F4F3F2F1;
+				Table->Version		 = 0x0000000000000001;
+				Table->ResourceCount = ResourceCount;
+
+				std::cout << "Resources Found: " << ResourceCount << "\n";
+
+				size_t Position = TableSize;
+
+				for(auto& res : Resources)
+				{
+					for (size_t I = 0; I < Table->ResourceCount; ++I)
+					{
+						Table->Entries[I].ResourcePosition = Position;
+						Table->Entries[I].GUID = res->Resources[I]->GUID;
+						Table->Entries[I].Type = res->Resources[I]->Type;
+						memcpy(Table->Entries[I].ID, res->Resources[I]->ID, ID_LENGTH);
+						Position += res->Resources[I]->ResourceSize;
+						std::cout << "Resource Found: " << res->Resources[I]->ID << " ID: " << Table->Entries[I].GUID << "\n";
+					}
+				}
+
+				for (auto& res : Resources)
+				{
+					FILE* F = nullptr;
+					auto openRes = fopen_s(&F, Out, "wb");
+					fwrite(Table, sizeof(char), TableSize, F);
+					for (size_t I = 0; I < Table->ResourceCount; ++I)
+						fwrite(res->Resources[I], sizeof(char), res->Resources[I]->ResourceSize, F);
+					fclose(F);
+				}
+				free(Table);
 			}
-			free(Table);
 			_aligned_free(BlockDesc._ptr);
 	}	break;
 	case TOOL_MODE::ETOOLMODE_LISTCONTENTS:

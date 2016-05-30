@@ -48,7 +48,7 @@ namespace FlexKit
 
 		bool isEntitySkeletonAvailable	(EntityHandle EHandle);
 		bool EntityEnablePosing			(EntityHandle EHandle);
-		bool EntityPlayAnimation		(EntityHandle EHandle, const char* Animation);
+		bool EntityPlayAnimation		(EntityHandle EHandle, const char* Animation, float w = 1.0f);
 
 		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{Drawables->at(EHandle).Visable = Visable; }
 		inline void SetMesh				(EntityHandle EHandle, TriMesh* M)			{Drawables->at(EHandle).Mesh = M;		  }

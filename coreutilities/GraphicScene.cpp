@@ -140,7 +140,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation)
+	bool GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation, float W)
 	{
 		if (!GetEntity(EHandle).Mesh->Skeleton)
 			return false; 
@@ -183,7 +183,7 @@ namespace FlexKit
 					AC.Skeleton->Animations->Next = nullptr;
 				}
 
-				PlayAnimation(&GetEntity(EHandle), Animation, Memory, true);
+				PlayAnimation(&GetEntity(EHandle), Animation, Memory, true, W);
 
 				return true;
 			}

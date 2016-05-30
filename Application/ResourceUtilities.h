@@ -41,6 +41,7 @@ using FlexKit::fixed_vector;
 struct Scene;
 struct EngineMemory;
 
+using FlexKit::DynArray;
 using FlexKit::EResourceType;
 using FlexKit::float2;
 using FlexKit::float3;
@@ -197,7 +198,7 @@ ResourceScene* LoadSceneFromFBXFile(char* AssetLocation, FlexKit::SceneNodes* No
 /************************************************************************************************/
 
 // Resource Compiler Functions
-struct Meta_data
+struct MetaData
 {
 	enum class EMETAINFOTYPE
 	{
@@ -206,7 +207,11 @@ struct Meta_data
 		EMI_GUID,
 		EMI_FLOAT,
 		EMI_DOUBLE,
-		EMI_ANIMATION_CLIP
+		EMI_MESH,
+		EMI_SKELETAL,
+		EMI_SKELETALANIMATION,
+		EMI_ANIMATIONCLIP,
+		EMI_ANIMATIONEVENT,
 	};
 
 	enum class EMETA_RECIPIENT_TYPE
@@ -216,44 +221,98 @@ struct Meta_data
 		EMR_SKELETALANIMATION,
 	};
 
+	void SetID(char* Str, size_t StrSize)
+	{
+		memset(ID, 0x00, ID_LENGTH);
+
+		
+		strncpy(ID, Str, StrSize);
+
+		for (auto I = StrSize; I > 0; --I)
+		{
+			if (ID[I] == ' ')
+			{
+				ID[I] = '\0';
+				StrSize--;
+			}
+			else if (ID[I] == '\n')
+			{
+				ID[I] = '\0';
+				StrSize--;
+			}
+		}
+		ID[StrSize] = '\0';
+		size = StrSize;
+	}
+
 	size_t					size;
 	EMETA_RECIPIENT_TYPE	UserType;
 	EMETAINFOTYPE			type;
-	char					ID[FlexKit::ID_LENGTH];	// Specifies the Asset that uses the meta data
+	char					ID[ID_LENGTH];	// Specifies the Asset that uses the meta data
 };
 
-typedef FlexKit::DynArray<Meta_data*> MD_Vector;
+typedef FlexKit::DynArray<MetaData*> MD_Vector;
 
-struct Mesh_Skeleton : public Meta_data
+struct Skeleton_MetaData : public MetaData
 {
+	Skeleton_MetaData(){
+		UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON;
+		type		= MetaData::EMETAINFOTYPE::EMI_SKELETAL;
+		size		= 0;
+	}
+
 	char	SkeletonID[ID_LENGTH];
 	GUID_t	SkeletonGUID;			
 };
 
-struct Animation_Clip : public Meta_data
+struct AnimationClip_MetaData : public MetaData
 {
+	AnimationClip_MetaData() {
+		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
+		type	 = MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP;
+		size	 = 0;
+	}
+
 	char	ClipID[ID_LENGTH];// Mesh Name
 	double	T_Start;
 	double	T_End;
 	GUID_t	guid;
 };
 
-struct Animation_Event : public Meta_data
+struct AnimationEvent_MetaData : public MetaData
 {
+	AnimationEvent_MetaData() {
+		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
+		type	 = MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT;
+		size	 = 0;
+	}
+
 	char		ClipID[ID_LENGTH];//
 	uint32_t	EventID;//
 	double		EventT;// Location of Event relative to Beginning of Clip
 };
 
 // Replaces provided GUID with a specific one
-struct Mesh_GUID : public Meta_data
+struct Mesh_MetaData : public MetaData
 {
-	GUID_t	ID;
+	Mesh_MetaData(){
+		UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH;
+		type		= MetaData::EMETAINFOTYPE::EMI_MESH;
+		size		= 0;
+	}
+
+	char	MeshID[ID_LENGTH];//
+	GUID_t	guid;
 };
 
-bool ReadMetaData	(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
+typedef DynArray<size_t> RelatedMetaData;
+
+bool			ReadMetaData				(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
+RelatedMetaData	FindRelatedGeometryMetaData	(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem);
+
 
 /************************************************************************************************/
+
 
 LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, LoadSceneFromFBXFile_DESC* Desc, MD_Vector* METAINFO = nullptr);
 

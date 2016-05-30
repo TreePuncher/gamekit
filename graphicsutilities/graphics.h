@@ -1378,8 +1378,8 @@ namespace FlexKit
 		};
 
 		size_t AnimationData;
-		size_t TriMeshID;
 		size_t IndexCount;
+		size_t TriMeshID;
 
 		struct SubDivInfo
 		{

@@ -1090,6 +1090,14 @@ namespace FlexKit
 			return Conjugate;
 		}
 		inline Quaternion Inverse() { return  Conjugate(); }
+		
+		inline float dot(Quaternion rhs) 
+		{ 
+			return V().dot(rhs.V()) + w * rhs.w; 
+		}
+
+		inline Quaternion operator / (float denom)		{return { x / denom , y / denom , z / denom , w / denom };}
+		inline Quaternion operator + (Quaternion RHS)	{return { x + RHS.x, y + RHS.y, z + RHS.z, w + RHS.w }; }
 
 		inline float3 XYZ() const { return float3(x, y, z); }
 		inline float3 V()   const { return float3(x, y, z); }
@@ -1302,9 +1310,9 @@ namespace FlexKit
 	}
 
 	template<typename TY>
-	inline TY Lerp(TY& A, TY& B, float t)
+	inline TY Lerp(TY A, TY B, float t)
 	{
-		return A(1.0f - t) + t*B;
+		return A * (1.0f - t) + t*B;
 	}
 
 	namespace Conversion

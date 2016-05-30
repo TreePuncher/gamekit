@@ -573,13 +573,12 @@ void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
-	auto PlayerModel   = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerMesh");
-	auto TestAnimation = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "BoxRigTest");
+	auto PlayerModel   = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerModel");
+
 	State->GScene.EntityEnablePosing(PlayerModel);
-	State->GScene.EntityPlayAnimation(PlayerModel, "PlayerMesh:ANIMATION");
+	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION1", 0.5f);
 
 	State->GScene.Yaw					(PlayerModel, pi / 2);
-	State->GScene.TranslateEntity_WT	(TestAnimation, {0, 0, 10});
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
