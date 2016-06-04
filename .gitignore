@@ -7,3 +7,5 @@ Dependencies/
 /FlexKit.VC.db
 *.idb
 *.ipch
+*.iobj
+*.ipdb

@@ -570,11 +570,9 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 	}
 }
 
-void HandleMouseEvents(const Event& e, GameState* GS)
-{
-}
-
+void HandleMouseEvents(const Event& e, GameState* GS){}
 void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;}
+
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
@@ -585,11 +583,14 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION1", 0.5f);
 	Out->Joint = State->GScene.GetEntity(PlayerModel).PoseState->Sk->FindJoint("Chest");
 
-	PrintSkeletonHierarchy(State->GScene.GetEntity(PlayerModel).Mesh->Skeleton);
+	DEBUG_PrintSkeletonHierarchy(State->GScene.GetEntity(PlayerModel).Mesh->Skeleton);
 
 	State->GScene.Yaw					(PlayerModel, pi / 2);
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
+
+	auto AKModel = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "AKModel");
+
 
 	for (uint32_t I = 0; I < 0; ++I) {
 		for (uint32_t II = 0; II < 100; ++II) {
@@ -612,7 +613,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 
 	SetParentNode	(State->Nodes,	Out->PlayerController.PitchNode, Out->PlayerCam.Node);
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 20.0f, 00.0f});
-	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 40.0f});
+	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 80.0f});
 
 	State->GScene.AddPointLight({  0, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
 	State->GScene.AddPointLight({ 40, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
@@ -635,24 +636,27 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 }
 
 
-void UpdateTestScene(Scene* TestScene,  GameState* State, double dt)
+void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator* TempMem)
 {
 	float3 InputMovement	= UpdateController(TestScene->PlayerController, State->Keys, State->Nodes);
 	float3 Inertia			= UpdateActorInertia(&TestScene->PlayerInertia, dt, &TestScene->PlayerActor, InputMovement);
 
 	auto PoseState = State->GScene.GetEntity(TestScene->PlayerModel).PoseState;
-	//TranslateJoint(PoseState, TestScene->Joint, {0, 0, (float)dt });
-	TestScene->T += dt;
+	//TranslateJoint(PoseState, 20, { 0, (float)dt * 10, 0 });
 
-	AddLineSegment(&State->LineDrawPass, {{0, 0,  0}, { 0, 50, 0}});
-	AddLineSegment(&State->LineDrawPass, {{10, 0, 0}, {10, 50, 0}});
-	AddLineSegment(&State->LineDrawPass, {{20, 0, 0}, {20, 50, 0}});
-	AddLineSegment(&State->LineDrawPass, {{30, 0, 0}, {30, 50, 0}});
-	AddLineSegment(&State->LineDrawPass, {{40, 0, 0}, {40, 50, 0}});
+	TestScene->T += dt;
 
 	UpdateGameActor(Inertia, &State->GScene, dt, &TestScene->PlayerActor, TestScene->PlayerController.Node);
 	UpdateMouseCameraController(&TestScene->PlayerCameraController, State->Nodes, State->Mouse.dPos);
 }
+
+
+void UpdateTestScene_PostTransformUpdate(Scene* TestScene, GameState* State, double dt, iAllocator* TempMem)
+{
+	auto Entity = State->GScene.GetEntity(TestScene->PlayerModel);
+	DEBUG_DrawPoseState(Entity.Mesh->Skeleton, Entity.PoseState, State->Nodes, Entity.Node, &State->LineDrawPass);
+}
+
 
 void KeyEventsWrapper(const Event& in, void* _ptr)
 { 
@@ -663,6 +667,7 @@ void KeyEventsWrapper(const Event& in, void* _ptr)
 	}
 }
 
+
 void MouseEventsWrapper(const Event& in, void* _ptr)
 { 
 	switch (in.InputSource)
@@ -672,12 +677,13 @@ void MouseEventsWrapper(const Event& in, void* _ptr)
 	}
 }
 
+
 extern "C"
 {
 	GAMESTATEAPI GameState* InitiateGameState(EngineMemory* Engine)
 	{
 		GameState& State = Engine->BlockAllocator.allocate_aligned<GameState>();
-
+		
 		FlexKit::AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		State.ClearColor         = { 0.0f, 0.2f, 0.4f, 1.0f };
 		State.Nodes		         = &Engine->Nodes;
@@ -754,7 +760,7 @@ extern "C"
 	GAMESTATEAPI void UpdateFixed(EngineMemory* Engine, double dt, GameState* State)
 	{
 		UpdateMouseInput(&State->Mouse, &Engine->Window);
-		UpdateTestScene(&State->TestScene, State, dt);
+		UpdateTestScene(&State->TestScene, State, dt, Engine->TempAllocator);
 		UpdateGraphicScene(&State->GScene);
 	}
 
@@ -769,6 +775,7 @@ extern "C"
 	{
 		UpdateTransforms(State->Nodes);
 		UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
+		UpdateTestScene_PostTransformUpdate(&State->TestScene, State, dt, TempMemory);
 	}
 
 
@@ -808,7 +815,7 @@ extern "C"
 
 			if (State->DoDeferredShading)
 			{
-				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
+				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights, nullptr);
 				DrawLandscape(RS, &State->Landscape, 15, State->ActiveCamera);
 				ShadeDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);// Transparent Objects
@@ -834,7 +841,10 @@ extern "C"
 
 	GAMESTATEAPI void CleanUp(EngineMemory* Engine, GameState* _ptr)
 	{
-		WaitforGPU(&Engine->RenderSystem);
+		for (size_t I = 0; I < 3; ++I) {
+			WaitforGPU(&Engine->RenderSystem);
+			IncrementRSIndex(Engine->RenderSystem);
+		}
 
 		Engine->BlockAllocator.free(_ptr);
 		

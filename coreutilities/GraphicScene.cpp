@@ -123,7 +123,8 @@ namespace FlexKit
 		{
 			if(!GetEntity(EHandle).Mesh->Skeleton)
 			{
-				auto Handle	= LoadGameResource(RM, GetEntity(EHandle).Mesh->TriMeshID, EResource_Skeleton);
+				auto SkeletonGUID = GetEntity(EHandle).Mesh->SkeletonGUID;
+				auto Handle	= LoadGameResource(RM, SkeletonGUID, EResource_Skeleton);
 				auto S		= Resource2Skeleton(RM, Handle, Memory);
 				GetEntity(EHandle).Mesh->Skeleton = S;
 			}
@@ -152,6 +153,7 @@ namespace FlexKit
 				return true;
 			}
 		}
+
 		// Search Resources for Animation
 		if(isResourceAvailable(RM, Animation))
 		{
@@ -474,7 +476,6 @@ namespace FlexKit
 
 		for (Drawable* t : *Transparent_PVS)
 			UpdateDrawable(SM->RS, SM->SN, SM->ST, t);
-
 	}
 
 

@@ -410,6 +410,7 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	uint32_t height	 = 1000;
 	bool InvertDepth = true;
 
+	Engine->Window.Close = false;
 	CreateRenderWindow(Engine, height, width, false);
 	CreateDepthBuffer(Engine->RenderSystem, { width, height }, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer);
 	SetInputWIndow(&Engine->Window);
@@ -426,11 +427,11 @@ void InitiateCoreSystems(EngineMemory* Engine)
 /************************************************************************************************/
 
 
-void InitEngine( EngineMemory* Game )
+void InitEngine( EngineMemory* Engine )
 {
-	memset( Game, 0, PRE_ALLOC_SIZE );
+	memset(Engine, 0, PRE_ALLOC_SIZE );
 
-	InitiateEngineMemory( Game );
-	InitiateCoreSystems ( Game );
-	LoadShaders			( Game );
+	InitiateEngineMemory(Engine);
+	InitiateCoreSystems (Engine);
+	LoadShaders			(Engine);
 }

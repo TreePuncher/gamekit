@@ -160,7 +160,8 @@ namespace FlexKit
 		bool HasIndexBuffer;
 		size_t BufferCount;
 		size_t IndexCount;
-		
+		size_t SkeletonGuid;
+
 		struct RInfo
 		{
 			float minx; 
@@ -173,7 +174,6 @@ namespace FlexKit
 			byte   _PAD[12];
 		}Info;
 
-		uint32_t	Pad_2;
 
 		struct Buffer
 		{

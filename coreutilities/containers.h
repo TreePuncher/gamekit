@@ -200,11 +200,15 @@ namespace FlexKit
 		void push_back(Ty in) {
 			if (Size + 1 > Max)
 			{// Increase Size
+#ifdef _DEBUG
 				FK_ASSERT(Allocator);
+#endif
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * Max);
 				
+#ifdef _DEBUG
 				FK_ASSERT(NewMem);
 				FK_ASSERT(NewMem != A);
+#endif
 
 				if(A)
 				{

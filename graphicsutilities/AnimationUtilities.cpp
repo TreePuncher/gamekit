@@ -68,7 +68,7 @@ namespace FlexKit
 
 		auto New_EAS = (DrawablePoseState*)MEM->_aligned_malloc(sizeof(DrawablePoseState));
 		New_EAS->Resource		= FrameBufferedResource();
-		New_EAS->Joints			= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
+		New_EAS->Joints			= (JointPose*)MEM->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
 		New_EAS->CurrentPose	= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->JointCount		= JointCount;
 		New_EAS->Sk				= E->Mesh->Skeleton;
@@ -77,16 +77,13 @@ namespace FlexKit
 		auto S = New_EAS->Sk;
 		
 		for (size_t I = 0; I < JointCount; ++I)
-			New_EAS->Joints[I] = XMMatrixIdentity();
+			New_EAS->Joints[I] = JointPose(Quaternion{ 0, 0, 0, 1 },float4{0, 0, 0, 1});
 		
 		for (size_t I = 0; I < New_EAS->JointCount; ++I) 
 		{
 			auto P = (S->Joints[I].mParent != 0xFFFF) ? New_EAS->CurrentPose[S->Joints[I].mParent] : XMMatrixIdentity();
 			New_EAS->CurrentPose[I] = New_EAS->CurrentPose[I] * P;
 		}
-
-		for (size_t I = 0; I < S->JointCount; ++I)
-			New_EAS->CurrentPose[I] = New_EAS->Joints[I] * GetTransform(S->JointPoses + I);
 
 		return New_EAS;
 	}
@@ -382,10 +379,20 @@ namespace FlexKit
 			auto AS = E->AnimationState;
 			auto S  = E->Mesh->Skeleton;
 
-			XMMATRIX*	M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(XMMATRIX));
+			float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
 
-			for (size_t I = 0; I < S->JointCount; ++I)
-				M[I] = PS->Joints[I];
+			for (size_t I = 0; I < S->JointCount; ++I) {
+				auto Pose		= S->JointPoses[I];
+				auto JointPose	= PS->Joints[I];
+				
+				auto Scale  = Pose.ts.w   * JointPose.ts.w;
+				Pose.r		= JointPose.r * Pose.r;
+				Pose.ts	    = Pose.ts + JointPose.ts;
+				Pose.ts.w	= Scale;
+
+				M[I] = XMMatrixToFloat4x4(&GetTransform(&Pose));
+			}
+
 
 			bool AnimationPlayed = false;
 			for (auto& C : AS->Clips)
@@ -409,23 +416,8 @@ namespace FlexKit
 						C.T += dT;
 
 					for (size_t I = 0; I < CurrentFrame.JointCount; ++I){
-					
-						auto	Pose	= CurrentFrame.Poses[I];
-						
-						/*
-						float3	xyz		= Pose.ts.xyz() * Weight;
-						float	s		= Lerp(1.0f, Pose.ts.w, Weight);
-						Quaternion	Q   = Pose.r;
-						Pose.r			= Qlerp(Quaternion(0, 0, 0, 1), Q, Weight);
-						Pose.ts[0]		= xyz[0];
-						Pose.ts[1]		= xyz[1];
-						Pose.ts[2]		= xyz[2];
-						Pose.ts[3]		= s;
-						auto temp = CurrentFrame.Poses[I];
-						temp.ts = {0, 0, 0, 1};
-						temp.r = { (float)sin(pi * T / 8.0f), 0, 0, (float)cos(pi * T / 8.0f) };
-						M[I] = GetTransform(&S->JointPoses[I]) * GetTransform(&temp);
-						*/
+						auto Pose	= CurrentFrame.Poses[I];
+						//M[I] = XMMatrixToFloat4x4(E->PoseState->Joints + I) * M[I];
 					}
 					
 					AnimationPlayed = true;
@@ -437,13 +429,12 @@ namespace FlexKit
 			{
 				for (size_t I = 0; I < S->JointCount; ++I)
 				{
-					
-					auto P		= (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
-					M[I]		= P * GetTransform(S->JointPoses + I);
+					auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : float4x4::Identity();
+					M[I] = P * M[I];
 				}
 
 				for (size_t I = 0; I < PS->JointCount; ++I)
-					PS->CurrentPose[I] = M[I];
+					PS->CurrentPose[I] = Float4x4ToXMMATIRX(M + I);
 
 				PS->Dirty = true;
 			}
@@ -461,6 +452,7 @@ namespace FlexKit
 			DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P->ts[0], P->ts[1], P->ts[2], 0.0f));
 	}
 
+
 	JointPose GetPose(DirectX::XMMATRIX& M)
 	{
 		auto Q = DirectX::XMQuaternionRotationMatrix(M);
@@ -468,6 +460,10 @@ namespace FlexKit
 
 		return{ Q, float4(P, 1) };
 	}
+
+
+	/************************************************************************************************/
+
 
 	void PrintChildren(FlexKit::Skeleton* S, JointHandle J, size_t Depth = 0)
 	{
@@ -482,7 +478,8 @@ namespace FlexKit
 		}
 	}
 
-	void PrintSkeletonHierarchy(FlexKit::Skeleton* S)
+
+	void DEBUG_PrintSkeletonHierarchy(FlexKit::Skeleton* S)
 	{
 		for (size_t I = 0; I < S->JointCount; I++)
 		{
@@ -494,5 +491,65 @@ namespace FlexKit
 		}
 	}
 
+
 	/************************************************************************************************/
-}
+
+
+	void DEBUG_DrawSkeleton(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, Line3DPass* Out)
+	{
+		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
+		float4x4 WT; GetWT(Nodes, Node, &WT);
+
+		float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
+
+		for (size_t I = 0; I < S->JointCount; ++I)
+		{
+			float3 A, B;
+			
+			float4x4 PT;
+			if (S->Joints[I].mParent != 0XFFFF)
+				PT = M[S->Joints[I].mParent];
+			else
+				PT = float4x4::Identity();
+
+			auto J  = S->JointPoses[I];
+			auto JT = PT * XMMatrixToFloat4x4(&GetTransform(&J));
+
+			A = (WT * (JT * Zero)).xyz();
+			B = (WT * (PT * Zero)).xyz();
+			M[I] = JT;
+
+			AddLineSegment(Out, {A,B});
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DEBUG_DrawPoseState(Skeleton* S, DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out)
+	{
+		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
+		float4x4 WT; GetWT(Nodes, Node, &WT);
+
+		for (size_t I = 0; I < S->JointCount; ++I)
+		{
+			float3 A, B;
+
+			float4x4 PT;
+			if (S->Joints[I].mParent != 0XFFFF)
+				PT = XMMatrixToFloat4x4(DPS->CurrentPose + S->Joints[I].mParent);
+			else
+				PT = float4x4::Identity();
+
+			auto JT = XMMatrixToFloat4x4(DPS->CurrentPose + I);
+
+			A = (WT * (JT * Zero)).xyz();
+			B = (WT * (PT * Zero)).xyz();
+
+			AddLineSegment(Out, { A,B });
+		}
+	}
+
+
+}	/************************************************************************************************/

@@ -322,14 +322,15 @@ namespace FlexKit
 			size_t BufferCount        = 0;
 			size_t Index              = 0; 
 
-			Out->Info.min.x = Blob->Info.maxx;
-			Out->Info.min.y = Blob->Info.maxy;
-			Out->Info.min.z = Blob->Info.maxz;
-			Out->Info.max.x = Blob->Info.minx;
-			Out->Info.max.y = Blob->Info.miny;
-			Out->Info.max.z = Blob->Info.minz;
-			Out->IndexCount	= Blob->IndexCount;
-			Out->Info.r		= Blob->Info.r;
+			Out->SkeletonGUID = Blob->SkeletonGuid;
+			Out->Info.min.x   = Blob->Info.maxx;
+			Out->Info.min.y   = Blob->Info.maxy;
+			Out->Info.min.z   = Blob->Info.maxz;
+			Out->Info.max.x   = Blob->Info.minx;
+			Out->Info.max.y   = Blob->Info.miny;
+			Out->Info.max.z   = Blob->Info.minz;
+			Out->IndexCount	  = Blob->IndexCount;
+			Out->Info.r		  = Blob->Info.r;
 
 			if (strlen(Blob->ID))
 			{

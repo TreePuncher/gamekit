@@ -134,6 +134,7 @@ namespace FlexKit
 			for( auto e : Vector )
 				e = n;
 		}
+
 		template<typename TY_2>
 		Vect( Vect<SIZE, TY_2> in)
 		{
@@ -926,8 +927,8 @@ namespace FlexKit
 			return{ x, y, z, 0 };
 		}
 
-		operator Vect4 ()		{ return{ x, y, z }; };
-		operator Vect4 () const { return{ x, y, z }; };
+		operator Vect4 ()		{ return{ x, y, z, w }; };
+		operator Vect4 () const { return{ x, y, z, w }; };
 
 		__m128 pFloats;
 	};
@@ -940,7 +941,9 @@ namespace FlexKit
 	{
 	public:
 		inline Quaternion() {}
-		
+		inline Quaternion(__m128 in) { floats = in; }
+
+
 		inline explicit Quaternion( const float3& vector, float scaler )
 		{
 #if USING(FASTMATH)
@@ -952,6 +955,7 @@ namespace FlexKit
 			w = scaler;
 #endif
 		}
+
 
 		inline Quaternion( float X, float Y, float Z, float W )
 		{
@@ -965,6 +969,7 @@ namespace FlexKit
 #endif
 		}
 
+
 		inline Quaternion( std::initializer_list<float> il )
 		{
 			auto n = il.begin();
@@ -972,20 +977,16 @@ namespace FlexKit
 				floats.m128_f32[itr] = *n;
 		}
 
-		inline Quaternion( __m128 in )
-		{
-			floats = in;
-		}
 
 		inline Quaternion( float* in )
 		{
 			memcpy( floats.m128_f32, in, sizeof( floats ) );
 		}
 
+
 		inline Quaternion( const Quaternion& in ) : 
-			floats( in.floats )
-		{
-		}
+			floats( in.floats )	{}
+
 
 		template<typename TY>
 		Quaternion( std::initializer_list<TY> il )
@@ -1220,6 +1221,7 @@ namespace FlexKit
 			return out;
 		}
 
+		/*
 		Vect<COL, Ty> operator*( const Vect<COL, Ty>& rhs )
 		{// TODO: FAST PATH
 			Vect<COL, Ty> out;
@@ -1231,6 +1233,7 @@ namespace FlexKit
 			}
 			return out;
 		}
+		*/
 
 		template<>
 		Matrix<4, 4> operator*( const Matrix<4, 4>& rhs )
@@ -1250,15 +1253,8 @@ namespace FlexKit
 			return out;
 		}
 
-		Vect<ROW>& operator[] ( size_t i )
-		{
-			return *((Vect<ROW>*)matrix[i]);
-		}
-
-		const float* operator[] ( size_t i ) const
-		{
-			return matrix[i];
-		}
+		Vect<ROW>&		operator[] ( size_t i )			{ return *((Vect<ROW>*)matrix[i]); }
+		const float*	operator[] ( size_t i ) const	{ return matrix[i]; }
 
 		static inline Matrix<ROW, COL> Identity()
 		{
@@ -1298,6 +1294,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	typedef FlexKit::Matrix<4,4> float4x4;
 
 	FLEXKITAPI inline float CalcMatrixTrace( float in[Matrix_Size] )
@@ -1309,23 +1306,40 @@ namespace FlexKit
 		return sum;
 	}
 
+
+
+	/************************************************************************************************/
+
+
 	template<typename TY>
-	inline TY Lerp(TY A, TY B, float t)
-	{
-		return A * (1.0f - t) + t*B;
-	}
+	inline TY Lerp(TY A, TY B, float t){ return A * (1.0f - t) + t*B; }
 
 	namespace Conversion
 	{
 		template< typename Ty >
-		static float3 toVector3( Ty& Convert )
-		{
-			return Vect3( Convert.x, Convert.y, Convert.z );
-		}
+		static float3 toVector3( Ty& Convert ) { return Vect3( Convert.x, Convert.y, Convert.z ); }
 
 		template< typename Ty > Ty Vect3To( const Vect3& Convert )	{ return {Convert[0], Convert[1], Convert[2]}; }
 		template< typename Ty >	Ty Vect4To( const Vect4& Convert )	{ return {Convert[0], Convert[1], Convert[2], Convert[3]}; }
+	}
 
+
+	/************************************************************************************************/
+
+
+	inline float4 operator * (const float4x4& LHS, const float4 rhs)
+	{// TODO: FAST PATH
+		Vect<4, float> out;
+		Vect4 Temp = rhs;
+
+		auto T = LHS.Transpose();
+		for (size_t i = 0; i < 4; ++i)
+		{
+			const auto v = T[i];
+			out[i] = v.Dot(Temp);
+		}
+
+		return Conversion::Vect4To<float4>(out);
 	}
 
 
@@ -1411,6 +1425,7 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
+
 	inline __m128 SSE_CopySign(__m128 sign, __m128 abs)
 	{
 		const uint32_t M1 = (1 << 31);
@@ -1423,8 +1438,10 @@ namespace FlexKit
 		return res;
 	}
 
+
 	/************************************************************************************************/
 	
+
 	inline Quaternion Matrix2Quat(const float4x4& M)
 	{
 #if USING(FASTMATH)

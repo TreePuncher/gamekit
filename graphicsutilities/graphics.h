@@ -195,6 +195,7 @@ namespace FlexKit
 		VERTEXBUFFER_TYPE_ERROR
 	};
 
+
 	/************************************************************************************************/
 
 
@@ -398,7 +399,6 @@ namespace FlexKit
 
 		void*	pInital;
 		size_t	InitialSize;
-
 	};
 
 
@@ -431,34 +431,28 @@ namespace FlexKit
 				Typed_iterator( Ty* _ptr ) : m_position(_ptr){}
 				Typed_iterator( const Typed_iterator& rhs ) : m_position( rhs.m_position ) {}
 
-				inline void operator ++ ( ) { m_position += sizeof( Ty ); }
+				inline void operator ++ ( )		{ m_position += sizeof( Ty ); }
 				inline void operator ++ ( int ) { m_position += sizeof( Ty ); }
-				inline void operator -- ( ) { m_position -= sizeof( Ty ); }
+				inline void operator -- ( )		{ m_position -= sizeof( Ty ); }
 				inline void operator -- ( int ) { m_position -= sizeof( Ty ); }
 
 				inline Typed_iterator	operator =	( const Typed_iterator& rhs ) {}
+				
+				inline bool				operator == ( const Typed_iterator& rhs ) {	return  ( m_position == &*rhs ); }
+				inline bool				operator != ( const Typed_iterator& rhs ) { return !( m_position == &*rhs ); }
 
-				inline bool				operator == ( const Typed_iterator& rhs ) 
-				{ 
-					return  ( m_position == &*rhs ); }
-				inline bool				operator != ( const Typed_iterator& rhs ) 
-				{ 
-					return !( m_position == &*rhs ); }
-				inline Ty&				operator *( ) const { return *m_position; }
+				inline Ty&				operator * ()	const { return *m_position; }
 
-				inline const Ty&		peek_forward() const { return *( m_position + sizeof( Ty ) ); }
+				inline const Ty&		peek_forward()	const { return *( m_position + sizeof( Ty ) ); }
 
 			private:
 
 				Ty*	m_position;
 			};
 
-			Ty&	operator [] ( size_t index )
-			{
-				return m_position[index];
-			}
-			Typed_iterator begin()	{ return Typed_iterator(  m_position ); }
-			Typed_iterator end()	{ return Typed_iterator( &m_position[m_size]); }
+			Ty&	operator [] ( size_t index )	{ return m_position[index]; }
+			Typed_iterator begin()				{ return Typed_iterator(  m_position ); }
+			Typed_iterator end()				{ return Typed_iterator( &m_position[m_size]); }
 
 			inline const size_t	size() { return m_size / sizeof( Ty ); }
 
@@ -552,6 +546,7 @@ namespace FlexKit
 			return Typed_Iteration<Ty>( GetBuffer(), GetBufferSizeUsed() );
 		}
 
+
 		template<typename Ty>
 		inline bool Push( vector_t<Ty> static_vector )
 		{
@@ -564,6 +559,7 @@ namespace FlexKit
 			return true;
 		}
 
+
 		template<typename Ty, size_t count>
 		inline bool Push( static_vector<Ty, count>& static_vector )
 		{
@@ -575,6 +571,7 @@ namespace FlexKit
 
 			return true;
 		}
+
 
 		void Begin( VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT );
 		bool End();
@@ -697,6 +694,10 @@ namespace FlexKit
 		UINT							Strides[16];
 	};
 	
+
+	/************************************************************************************************/
+
+
 	struct Buffer;
 	struct ShaderResource;
 	struct Shader;
@@ -715,6 +716,27 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	struct Texture2D
+	{
+		ID3D12Resource* operator ->()
+		{
+			return Texture;
+		}
+
+		operator ID3D12Resource*() { return Texture; }
+		operator bool() { return Texture != nullptr; }
+
+
+		ID3D12Resource*		Texture;
+		uint2				WH;
+		DXGI_FORMAT			Format;
+	};
+
+
+	/************************************************************************************************/
+
 
 	struct RenderWindow
 	{
@@ -743,25 +765,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct Texture2D
-	{
-		ID3D12Resource* operator ->( )
-		{
-			return Texture;
-		}
-
-		operator ID3D12Resource*(){	return Texture;	}
-		operator bool() { return Texture != nullptr; }
-
-
-		ID3D12Resource*		Texture;
-		uint2				WH;
-		DXGI_FORMAT			Format;
-	};
-
-
-	/************************************************************************************************/
-
 	struct DepthBuffer_Desc
 	{
 		size_t BufferCount;
@@ -778,7 +781,9 @@ namespace FlexKit
 		bool						Inverted;
 	};
 
+
 	/************************************************************************************************/
+
 
 	enum EInputTopology
 	{
@@ -793,7 +798,6 @@ namespace FlexKit
 		
 	struct DescriptorHeaps
 	{
-		ID3D12DescriptorHeap*	SRVDescHeap;
 		ID3D12DescriptorHeap*	RTVDescHeap;
 		ID3D12DescriptorHeap*	DSVDescHeap;
 
@@ -809,6 +813,23 @@ namespace FlexKit
 	const static int QueueSize		= 3;
 	const static int MaxThreadCount = 4;
 
+	struct PerFrameResources
+	{
+		TempResourceList*			TempBuffers;
+		ID3D12GraphicsCommandList*	CommandLists[MaxThreadCount];
+		ID3D12CommandAllocator*		GraphicsCLAllocator[MaxThreadCount];
+		ID3D12CommandAllocator*		UploadCLAllocator[MaxThreadCount];
+		ID3D12CommandAllocator*		ComputeCLAllocator[MaxThreadCount];
+		ID3D12GraphicsCommandList*	UploadList[MaxThreadCount];
+		ID3D12GraphicsCommandList*	ComputeList[MaxThreadCount];
+		ID3D12DescriptorHeap*		SRVDescHeap; // Texture List
+
+		D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
+		D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
+
+		size_t						ThreadsIssued;
+	};
+
 	struct RenderSystem
 	{
 		iAllocator*				Memory;
@@ -819,17 +840,7 @@ namespace FlexKit
 		ID3D12Debug*		pDebug;
 		ID3D12DebugDevice*	pDebugDevice;
 
-		struct FrameResource
-		{
-			TempResourceList*			TempBuffers;
-			ID3D12GraphicsCommandList*	CommandLists		[MaxThreadCount];
-			ID3D12CommandAllocator*		GraphicsCLAllocator	[MaxThreadCount];
-			ID3D12CommandAllocator*		UploadCLAllocator	[MaxThreadCount];
-			ID3D12CommandAllocator*		ComputeCLAllocator	[MaxThreadCount];
-			ID3D12GraphicsCommandList*	UploadList			[MaxThreadCount];
-			ID3D12GraphicsCommandList*	ComputeList			[MaxThreadCount];
-			size_t						ThreadsIssued;
-		}FrameResources[QueueSize];
+		PerFrameResources FrameResources[QueueSize];
 
 		IDXGIFactory4*		pGIFactory;
 		ID3D12CommandQueue*	GraphicsQueue;
@@ -891,6 +902,7 @@ namespace FlexKit
 		size_t						IndexBuffer_Index;
 	};
 
+
 	struct VertexBuffer
 	{
 		struct BuffEntry
@@ -909,6 +921,7 @@ namespace FlexKit
 		TriangleMeshMetaData			MD;
 	};
 	
+
 	struct Shader
 	{
 		Shader() {
@@ -934,8 +947,10 @@ namespace FlexKit
 		SHADER_TYPE			Type;
 	};
 
-	const size_t NodeHandleSize = 16;
+
+	const	size_t							NodeHandleSize = 16;
 	typedef Handle_t<NodeHandleSize>		NodeHandle;
+	typedef Handle_t<16>					TextureSetHandle;
 	typedef static_vector<NodeHandle, 32>	ChildrenVector;
 
 
@@ -1095,7 +1110,6 @@ namespace FlexKit
 		struct GBuffer
 		{
 			D3D12_CPU_DESCRIPTOR_HANDLE	DepthBuffer;
-			ID3D12DescriptorHeap* SRVDescHeap;
 			ID3D12DescriptorHeap* RTVDescHeap;
 
 			Texture2D ColorTex;
@@ -1188,6 +1202,10 @@ namespace FlexKit
 	};
 
 
+	const size_t PLB_Stride  = sizeof(float[8]);
+	const size_t SPLB_Stride = sizeof(float[8]);
+
+
 	/************************************************************************************************/
 
 
@@ -1206,7 +1224,6 @@ namespace FlexKit
 	{
 		size_t	MaxLightCount;
 	};
-
 
 	struct PointLightBuffer
 	{
@@ -1231,8 +1248,8 @@ namespace FlexKit
 			Lights->at(i2) = Temp;
 		}
 
-		size_t	size()	{return Lights->size();}
-		size_t	max()	{return Lights->max_length();}
+		size_t	size()	const {return Lights->size();}
+		size_t	max()	const {return Lights->max_length();}
 		void CleanUp()	{Resource->Release();}
 	};
 
@@ -1266,7 +1283,7 @@ namespace FlexKit
 			Lights->at(i2) = Temp;
 		}
 
-		size_t size(){return Lights->size();}
+		size_t size() const {return Lights->size();}
 
 		void CleanUp(){Resource->Release();}
 	};
@@ -1403,6 +1420,8 @@ namespace FlexKit
 
 		Occlusion_Volume EOV_type;
 		BoundingVolume	 Bounding;
+
+		size_t SkeletonGUID;
 	};
 
 
@@ -1470,6 +1489,29 @@ namespace FlexKit
 		float4	Colour;
 		float4	Metal;
 	};
+
+	enum TEXTURETYPE
+	{
+		ETT_ALBEDO,
+		ETT_ROUGHNESS,
+		ETT_NORMAL,
+		ETT_BUMB,
+		ETT_COUNT,
+	};
+
+	struct TextureSet
+	{
+		size_t	Textures[16];
+	};
+
+
+	struct TextureManager
+	{
+		DynArray<TextureSet>	Textures;
+		DynArray<uint32_t>		FreeList;
+	};
+
+
 
 	class FLEXKITAPI ShaderTable
 	{
@@ -1576,6 +1618,7 @@ namespace FlexKit
 		Drawable&	SetNode		(NodeHandle H){ Node = H; return *this; }
 
 		ShaderSetHandle		Material;
+		TextureSetHandle	Textures;
 		bool				Visable;
 		bool				OverrideMaterialProperties;
 		bool				DrawLast;
@@ -1872,6 +1915,7 @@ namespace FlexKit
 	inline	   LT_Entry		GetLocal					( SceneNodes* Nodes, NodeHandle Node)											{return Nodes->LT[_SNHandleToIndex(Nodes, Node)];}
 	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
 	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	WT_Entry* __restrict out );		
+	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle node,	float4x4* __restrict out );
 	FLEXKITAPI void			GetOrientation				( SceneNodes* Nodes, NodeHandle Node,	Quaternion* Out );
 	FLEXKITAPI float3		GetPositionW				( SceneNodes* Nodes, NodeHandle Node );
 	FLEXKITAPI NodeHandle	GetNewNode					( SceneNodes* Nodes );
@@ -2003,7 +2047,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
+	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, TextureManager* TM);
 	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
@@ -2020,6 +2064,7 @@ namespace FlexKit
 
 	FLEXKITAPI ID3D12CommandAllocator*		GetCurrentCommandAllocator	( RenderSystem* RS );
 	FLEXKITAPI ID3D12GraphicsCommandList*	GetCurrentCommandList		( RenderSystem* RS );
+	FLEXKITAPI PerFrameResources*			GetCurrentFrameResources	( RenderSystem* RS );
 	FLEXKITAPI Texture2D					GetRenderTarget				( RenderWindow* RW );
 
 	FLEXKITAPI void BeginPass				( RenderSystem* RS, RenderWindow* Window );
@@ -2032,7 +2077,25 @@ namespace FlexKit
 	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB );
 	FLEXKITAPI void CleanupForwardPass		( ForwardPass* FP );
 
+	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DHeapPOS;
 
+	inline DHeapPOS IncrementHeapPOS(DHeapPOS POS, size_t Size, size_t INC)
+	{
+		size_t Offset = Size * INC;
+		return {POS.V1.ptr + Offset , POS.V2.ptr + Offset};
+	}
+
+	FLEXKITAPI void		ResetDHeap			( RenderSystem* RS);
+	FLEXKITAPI DHeapPOS	ReserveDHeap		( RenderSystem* RS, size_t SlotCount = 1);
+	FLEXKITAPI DHeapPOS PushCBToDHeap		( RenderSystem* RS, ID3D12Resource* Buffer,			DHeapPOS POS, size_t BufferSize);
+	FLEXKITAPI DHeapPOS PushSRVBufferToDHeap( RenderSystem* RS, ID3D12Resource* Buffer,			DHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE);
+	FLEXKITAPI DHeapPOS PushTextureToDHeap	( ID3D12GraphicsCommandList* CL, RenderSystem* RS,	DHeapPOS POS, Texture2D tex);
+	FLEXKITAPI DHeapPOS PushUAV2DToDHeap	( RenderSystem* RS, Texture2D tex,					DHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM);
+	FLEXKITAPI DHeapPOS PushAndSetSRV		( RenderSystem* RS, ID3D12GraphicsCommandList* CL,  ID3D12Resource* Buffer, DHeapPOS POS, size_t ElementCount, size_t Stride, UINT RootIndex, D3D12_BUFFER_SRV_FLAGS F = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE);
+
+	FLEXKITAPI void		SetWindowRect			( ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I = 0u);
+	
+	
 	/************************************************************************************************/
 
 

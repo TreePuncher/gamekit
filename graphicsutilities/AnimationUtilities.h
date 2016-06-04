@@ -68,6 +68,9 @@ namespace FlexKit
 
 	struct JointPose
 	{
+		JointPose() {}
+		JointPose(Quaternion Q, float4 TS) : r(Q), ts(TS) {}
+
 		Quaternion	r;
 		float4		ts;
 	};
@@ -123,6 +126,7 @@ namespace FlexKit
 		Joint*				Joints;
 		JointPose*			JointPoses;
 		size_t				JointCount;
+		size_t				guid;
 
 		//JointHandle			Root;
 
@@ -206,7 +210,7 @@ namespace FlexKit
 	struct DrawablePoseState
 	{
 		FrameBufferedResource	Resource;
-		DirectX::XMMATRIX*		Joints		= nullptr;
+		JointPose*				Joints		= nullptr;
 		DirectX::XMMATRIX*		CurrentPose	= nullptr;
 		Skeleton*				Sk			= nullptr;
 		size_t					JointCount	= 0;
@@ -218,8 +222,9 @@ namespace FlexKit
 	{
 		if (!E)
 			return;
+
 		if (J != -1) {
-			E->Joints[J] = DirectX::XMMatrixRotationQuaternion(Q) * E->Joints[J];
+			E->Joints[J].r = Q * E->Joints[J].r;
 			E->Dirty = true;
 		}
 	}
@@ -228,8 +233,10 @@ namespace FlexKit
 	{
 		if (!E)
 			return;
+
 		if (J != -1) {
-			E->Joints[J] = E->Joints[J] * DirectX::XMMatrixTranslation(xyz.x, xyz.y, xyz.z);
+			float4 xyz(xyz, 0);
+			E->Joints[J].ts = E->Joints[J].ts + xyz;
 			E->Dirty = true;
 		}
 	}
@@ -238,8 +245,10 @@ namespace FlexKit
 	{
 		if (!E)
 			return;
+
 		if (J != -1) {
-			E->Joints[J].r[3] = float4( xyz.x, xyz.y, xyz.z, 1);
+			float s = E->Joints[J].ts.w;
+			E->Joints[J].ts = float4( xyz.x, xyz.y, xyz.z, s);
 			E->Dirty = true;
 		}
 	}
@@ -248,8 +257,9 @@ namespace FlexKit
 	{
 		if (!E)
 			return;
+
 		if (J!= -1)
-			E->Joints[J] = E->Joints[J] * DirectX::XMMatrixScaling(S, S, S);
+			E->Joints[J].ts.w *= S;
 	}
 
 
@@ -274,12 +284,12 @@ namespace FlexKit
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed(FlexKit::Drawable* E, const char* AnimationID, double Speed = false);
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation	(FlexKit::Drawable* E, const char* AnimationID);
 
-	FLEXKITAPI void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP);
-	FLEXKITAPI void UploadAnimation(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP);
+	FLEXKITAPI void UpdateAnimation	(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP);
+	FLEXKITAPI void UploadAnimation	(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP);
+	FLEXKITAPI void UploadPoses		(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
 
-	FLEXKITAPI void UploadPoses(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
-
-
-	FLEXKITAPI void PrintSkeletonHierarchy(FlexKit::Skeleton* S);
+	FLEXKITAPI void DEBUG_DrawSkeleton				(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out);
+	FLEXKITAPI void DEBUG_DrawPoseState				(Skeleton* S, DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out);
+	FLEXKITAPI void DEBUG_PrintSkeletonHierarchy	(Skeleton* S);
 }
 #endif

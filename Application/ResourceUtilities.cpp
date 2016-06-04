@@ -1074,6 +1074,7 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 		S->AddJoint(J.Joint.Linkage, J.Inverse);
 	
 	char* ID = SkeletonInfo->SkeletonID;
+	S->guid  = SkeletonInfo->SkeletonGUID;
 
 	for (size_t I = 0; I < Joints.size(); ++I)
 	{
@@ -1086,17 +1087,6 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 
 	CutList Cuts(Mem);
 	GetAnimationCuts(&Cuts, MD, ID, Mem);
-
-	if (!Cuts.size())
-	{
-		AnimationCut Cut;
-		Cut.T_Start	= 0;
-		Cut.T_End	= Joints.front().Animation.FrameCount * 1.0/Joints.front().Animation.FPS;
-		Cut.ID		= (char*)Mem->malloc(64);
-		strcpy_s(Cut.ID, 64, ID);
-		strcat_s(Cut.ID, 64,":ANIMATION");
-		Cuts.push_back(Cut);
-	}
 
 	for(auto Cut : Cuts)
 	{
@@ -1225,6 +1215,7 @@ CompileMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocato
 	out.Info.r		  = MeshInfo.R;
 	out.TriMeshID	  = Mesh->GetUniqueID();
 	out.ID			  = ID;
+	out.SkeletonGUID  = S ? S->guid : -1;
 
 	return {true, BuffersFound.size()};
 }
@@ -1463,10 +1454,11 @@ size_t CalculateTriMeshSize(TriMesh* TriMesh)
 void FillTriMeshBlob(TriMeshResourceBlob* out, TriMesh* Mesh)
 {
 	size_t BufferPosition = 0;
-	out->GUID = Mesh->TriMeshID;
-	out->HasAnimation = Mesh->AnimationData > 0;
+	out->GUID			= Mesh->TriMeshID;
+	out->HasAnimation	= Mesh->AnimationData > 0;
 	out->HasIndexBuffer = true;
-	out->BufferCount = 0;
+	out->BufferCount	= 0;
+	out->SkeletonGuid	= Mesh->SkeletonGUID;
 
 	out->IndexCount = Mesh->IndexCount;
 	out->Info.minx  = Mesh->Info.min.x;
@@ -1555,13 +1547,13 @@ size_t CalculateSkeletonSize(Skeleton* S)
 	return Size;
 }
 
-Resource* CreateSkeletonResourceBlob(Skeleton* S, BlockAllocator* MemoryOut, size_t GUID)
+Resource* CreateSkeletonResourceBlob(Skeleton* S, BlockAllocator* MemoryOut)
 {
 	size_t Size = CalculateSkeletonSize(S);
 	Size += sizeof(SkeletonResourceBlob);
 
 	SkeletonResourceBlob* R = (SkeletonResourceBlob*)MemoryOut->_aligned_malloc(Size);
-	R->GUID					= GUID;
+	R->GUID					= S->guid;
 	R->ResourceSize			= Size;
 	R->Type					= EResource_Skeleton;
 	R->JointCount			= S->JointCount;
@@ -1607,10 +1599,10 @@ Resource* CreateSkeletalAnimationResourceBlob(AnimationClip* AC, GUID_t Skeleton
 	R->Skeleton		= Skeleton;
 	R->FrameCount	= AC->FrameCount;
 	R->FPS			= AC->FPS;
-	R->ResourceSize = Size;
 	R->GUID			= AC->guid;
 	R->IsLooping	= AC->isLooping;
 	R->Type			= EResourceType::EResource_SkeletalAnimation;
+	R->ResourceSize = Size;
 	strcpy_s(R->ID, AC->mID);
 
 	AnimationResourceBlob::FrameEntry*	Frames = (AnimationResourceBlob::FrameEntry*)R->Buffer;
@@ -1659,7 +1651,7 @@ ResourceList CompileFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, 
 				ResourcesFound.push_back(CreateTriMeshResourceBlob(G->Meshes + I, MemoryOut));
 
 				if (G->Meshes[I].Skeleton) {
-					auto Res = CreateSkeletonResourceBlob(G->Meshes[I].Skeleton, MemoryOut, G->Meshes[I].TriMeshID);
+					auto Res = CreateSkeletonResourceBlob(G->Meshes[I].Skeleton, MemoryOut);
 					ResourcesFound.push_back(Res);
 
 					auto CurrentClip = G->Meshes[I].Skeleton->Animations;
