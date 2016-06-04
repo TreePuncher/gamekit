@@ -677,9 +677,9 @@ FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUt
 				auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
 				auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
 				
-				AddIndexToken(VertexIndex1, NormalIndex1, 0, TokensOut);
-				AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
-				AddIndexToken(VertexIndex2, NormalIndex2, 0, TokensOut);
+				AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, TokensOut);
+				AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, TokensOut);
+				AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, TokensOut);
 
 				IndexCount += 3;
 			} else if (size == 4)
@@ -1459,6 +1459,7 @@ void FillTriMeshBlob(TriMeshResourceBlob* out, TriMesh* Mesh)
 	out->HasIndexBuffer = true;
 	out->BufferCount	= 0;
 	out->SkeletonGuid	= Mesh->SkeletonGUID;
+	out->Type			= EResourceType::EResource_TriMesh;
 
 	out->IndexCount = Mesh->IndexCount;
 	out->Info.minx  = Mesh->Info.min.x;
@@ -1503,7 +1504,6 @@ Resource* CreateTriMeshResourceBlob(TriMesh* Mesh, BlockAllocator* MemoryOut)
 
 
 	memset(Blob, 0, BlobSize);
-	Res->Type         = EResource_TriMesh;
 	Res->ResourceSize = BlobSize;
 
 	FillTriMeshBlob(Res, Mesh);
@@ -2188,7 +2188,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 	{
 		auto T = Tokens->at(itr);
 
-		if (T.size && !strncmp(T.SubStr, "AnimationClip", min(strlen("AnimationClip"), T.size)))
+		if (T.size && !strncmp(T.SubStr, "AnimationClip", max(strlen("AnimationClip"), T.size)))
 		{
 			auto res    = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values = res.V1;
@@ -2262,7 +2262,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "Model", min(strlen("Model"), T.size)))
+		else if (T.size && !strncmp(T.SubStr, "Model", max(strlen("Model"), T.size)))
 		{
 			auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values		= res.V1;
@@ -2304,6 +2304,47 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 
 			itr = res;
 		}
+		else if (T.size && !strncmp(T.SubStr, "TextureSet", max(strlen("TextureSet"), T.size)))
+		{
+			auto res		  = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+			auto Values		  = res.V1;
+			auto AssetID	  = Tokens->at(itr - 2);
+			auto AssetGUID	  = FindValue(Values, "AssetGUID");
+			auto Albedo		  = FindValue(Values, "Albedo");
+			auto AlbedoID	  = FindValue(Values, "AlbedoGUID");
+			auto RoughMetal	  = FindValue(Values, "RoughMetal");
+			auto RoughMetalID = FindValue(Values, "RoughMetalGUID");
+
+			TextureSet_MetaData* TextureSet_Meta = &Memory->allocate_aligned<TextureSet_MetaData>();
+
+			if (AssetGUID && AssetGUID->Type == Value::INT) 
+				TextureSet_Meta->Guid = AssetGUID->Data.I;
+
+			if (Albedo && Albedo->Type == Value::STRING){
+				auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ALBEDO].Directory;
+				strncpy(dest, Albedo->Data.S.S, Albedo->Data.S.size);
+			}
+
+			if (AlbedoID && AlbedoID->Type == Value::INT) {
+				TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = AlbedoID->Data.I;
+			} else {
+				TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = -1;
+			}
+
+			if (RoughMetal && RoughMetal->Type == Value::STRING){
+				auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ROUGHSMOOTH].Directory;
+				strncpy(dest, RoughMetal->Data.S.S, RoughMetal->Data.S.size);
+			}
+
+			if (RoughMetalID && RoughMetalID->Type == Value::INT) {
+				TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = RoughMetalID->Data.I;
+			} else {
+				TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = -1;
+			}
+
+			MD_Out.push_back(TextureSet_Meta);
+			itr = res;
+		}
 	}
 
 	return true;
@@ -2323,6 +2364,37 @@ bool ReadMetaData(const char* Location, iAllocator* Memory, iAllocator* TempMemo
 	auto res = ProcessTokens(Memory, TempMemory, Tokens, MD_Out);
 
 	return res;
+}
+
+
+/************************************************************************************************/
+
+
+Resource* MetaDataToBlob(MetaData* Meta, iAllocator* Mem)
+{
+	Resource* Result = nullptr;
+	switch (Meta->type)
+	{
+	case MetaData::EMETAINFOTYPE::EMI_TEXTURESET:
+	{
+		TextureSet_MetaData* TextureSet = (TextureSet_MetaData*)Meta;
+		auto& NewTextureSet = Mem->allocate<TextureSetBlob>();
+
+		NewTextureSet.GUID			= TextureSet->Guid;
+		NewTextureSet.ResourceSize	= sizeof(TextureSetBlob);
+
+		for (size_t I = 0; I < 2; ++I) {
+			memcpy(NewTextureSet.Textures[I].Directory, TextureSet->Textures.TextureLocation[I].Directory, 64);
+			NewTextureSet.Textures[I].guid = TextureSet->Textures.TextureID[I];
+		}
+
+		Result = (Resource*)&NewTextureSet;
+		break;
+	}
+	default:
+		break;
+	}
+	return Result;
 }
 
 

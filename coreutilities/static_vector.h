@@ -133,8 +133,8 @@ namespace FlexKit
 		{
 			for (const auto& i : in)
 			{
-				if (!full())
-					return this;
+				if (full())
+					return *this;
  
 				push_back(i);
 			}

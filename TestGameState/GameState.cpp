@@ -32,8 +32,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		Config loading system?
 //
 //	Graphics:
-//		Basic Gui rendering methods (Draw Rect, Draw Line, etc)
-//		Texture Loading
+//		Basic Gui rendering methods (Draw Rect, etc)
+//		Multi-threaded Texture Uploads
 //		Terrain Rendering
 //			Texture Splatting
 //			Height Mapping
@@ -495,10 +495,12 @@ struct GameState
 	RenderWindow*		ActiveWindow;
 	DepthBuffer*		DepthBuffer;
 	float4				ClearColor;
-		
+	
 	SceneNodes*			Nodes;
 	PScene				PScene;
 	GraphicScene		GScene;
+
+	Texture2D			Albedo;
 
 	KeyState	Keys;
 	bool		Quit;
@@ -579,24 +581,31 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	auto PlayerModel	= State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerModel");
 	Out->PlayerModel	= PlayerModel;
 
+#if 0
 	State->GScene.EntityEnablePosing(PlayerModel);
 	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION1", 0.5f);
 	Out->Joint = State->GScene.GetEntity(PlayerModel).PoseState->Sk->FindJoint("Chest");
-
 	DEBUG_PrintSkeletonHierarchy(State->GScene.GetEntity(PlayerModel).Mesh->Skeleton);
+#endif
 
 	State->GScene.Yaw					(PlayerModel, pi / 2);
 	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
-	auto AKModel = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "AKModel");
+	auto Textures = LoadTextureSet(&Engine->Assets, 100, Engine->BlockAllocator);
+	UploadTextureSet(Engine->RenderSystem, Textures, Engine->BlockAllocator);
 
+	auto AKModel	= State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "UVCube");
+	auto Hallway	= State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Hallway");
+	State->GScene.GetEntity(AKModel).Textured = true;
+	State->GScene.GetEntity(AKModel).Textures = Textures;
+	State->GScene.SetMaterialParams(AKModel, float4(0.1f, 0.1f, 0.1f, 0.5f), { 1, 1, 1, 0 });
 
 	for (uint32_t I = 0; I < 0; ++I) {
 		for (uint32_t II = 0; II < 100; ++II) {
 			auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "FloorTile");
 			State->GScene.TranslateEntity_WT(Floor, { 10 * 40 - 40.0f * I, 0, 10 * 40 -  40.0f * II });
-			State->GScene.SetMaterialParams(Floor,  { 0.3f, 0.3f, 0.3f , 0.2f }, { 0.5f, 0.5f, 0.5f , 0.0f });
+			State->GScene.SetMaterialParams(Floor,  { 0.3f, 0.3f, 0.3f , 0.2f }, { 0.5f, 1.0f, 0.5f , 1.0f });
 		}
 	}
 
@@ -710,7 +719,7 @@ extern "C"
 			};
 
 			InitiateLandscape		(Engine->RenderSystem, GetZeroedNode(&Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
-			PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0});
+			//PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0});
 			UploadLandscape			(Engine->RenderSystem, &State.Landscape, nullptr, nullptr, true, false);
 		}
 

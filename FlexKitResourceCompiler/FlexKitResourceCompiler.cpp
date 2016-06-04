@@ -124,6 +124,16 @@ int main(int argc, char* argv[])
 				for (auto MD_Location : MetaDataFiles)
 					ReadMetaData(MD_Location, BlockMemory, TempMemory, MetaData);
 
+				ResourceList ResourcesFound;
+
+				for (auto MD : MetaData)
+				{
+					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMI_None) {
+						auto NewResource = MetaDataToBlob(MD, BlockMemory);
+						ResourcesFound.push_back(NewResource);
+					}
+				}
+
 				// Scan Input Files for Resources
 				for (auto Input : Inputs)
 				{
@@ -134,12 +144,10 @@ int main(int argc, char* argv[])
 
 					std::cout << "Compiling File: " << Input << "\n";
 					Resources.push_back(CompileGeometryFromFBXFile(Input, &Desc, &MetaData));
+					ResourcesFound += Resources.back()->Resources;
 				}
 
-				size_t ResourceCount = 0;
-				for(const auto& R : Resources)
-					ResourceCount += R->Resources.size();
-
+				size_t ResourceCount = ResourcesFound.size();
 				size_t ResourceSize  = 0;
 				size_t TableSize     = sizeof(ResourceEntry) * ResourceCount + sizeof(ResourceTable);
 				ResourceTable* Table = (ResourceTable*)malloc(TableSize);
@@ -152,28 +160,27 @@ int main(int argc, char* argv[])
 
 				size_t Position = TableSize;
 
-				for(auto& res : Resources)
+				for(size_t I = 0; I < ResourcesFound.size(); ++I)
 				{
-					for (size_t I = 0; I < Table->ResourceCount; ++I)
-					{
-						Table->Entries[I].ResourcePosition = Position;
-						Table->Entries[I].GUID = res->Resources[I]->GUID;
-						Table->Entries[I].Type = res->Resources[I]->Type;
-						memcpy(Table->Entries[I].ID, res->Resources[I]->ID, ID_LENGTH);
-						Position += res->Resources[I]->ResourceSize;
-						std::cout << "Resource Found: " << res->Resources[I]->ID << " ID: " << Table->Entries[I].GUID << "\n";
-					}
+					auto& res = ResourcesFound[I];
+					Table->Entries[I].ResourcePosition = Position;
+					Table->Entries[I].GUID				= res->GUID;
+					Table->Entries[I].Type				= res->Type;
+					memcpy(Table->Entries[I].ID, res->ID, ID_LENGTH);
+
+					Position += res->ResourceSize;
+					std::cout << "Resource Found: " << res->ID << " ID: " << Table->Entries[I].GUID << "\n";
 				}
 
-				for (auto& res : Resources)
-				{
-					FILE* F = nullptr;
-					auto openRes = fopen_s(&F, Out, "wb");
-					fwrite(Table, sizeof(char), TableSize, F);
-					for (size_t I = 0; I < Table->ResourceCount; ++I)
-						fwrite(res->Resources[I], sizeof(char), res->Resources[I]->ResourceSize, F);
-					fclose(F);
-				}
+				FILE* F = nullptr;
+				auto openRes = fopen_s(&F, Out, "wb");
+				fwrite(Table, sizeof(char), TableSize, F);
+
+				for (auto& res : ResourcesFound)
+					fwrite(res, sizeof(char), res->ResourceSize, F);
+
+
+				fclose(F);
 				free(Table);
 			}
 			_aligned_free(BlockDesc._ptr);

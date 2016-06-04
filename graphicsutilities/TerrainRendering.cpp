@@ -669,6 +669,9 @@ namespace FlexKit
 
 	void UploadLandscape(RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* Camera, bool UploadRegions, bool UploadConstants)
 	{
+		if (!ls->Regions.size())
+			return;
+
 		if(UploadConstants)
 		{
 			struct BufferLayout

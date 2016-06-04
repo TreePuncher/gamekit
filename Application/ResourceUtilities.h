@@ -212,6 +212,7 @@ struct MetaData
 		EMI_SKELETALANIMATION,
 		EMI_ANIMATIONCLIP,
 		EMI_ANIMATIONEVENT,
+		EMI_TEXTURESET,
 	};
 
 	enum class EMETA_RECIPIENT_TYPE
@@ -219,6 +220,7 @@ struct MetaData
 		EMR_MESH,
 		EMR_SKELETON,
 		EMR_SKELETALANIMATION,
+		EMI_None,
 	};
 
 	void SetID(char* Str, size_t StrSize)
@@ -305,10 +307,25 @@ struct Mesh_MetaData : public MetaData
 	GUID_t	guid;
 };
 
+struct TextureSet_MetaData : public MetaData
+{
+	TextureSet_MetaData() {
+		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMI_None;
+		type = MetaData::EMETAINFOTYPE::EMI_TEXTURESET;
+		size = 0;
+		Guid = 0;
+		memset(&Textures, 0, sizeof(Textures));
+	}
+
+	GUID_t Guid;
+	FlexKit::TextureSet_Locations Textures;
+};
+
 typedef DynArray<size_t> RelatedMetaData;
 
 bool			ReadMetaData				(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
 RelatedMetaData	FindRelatedGeometryMetaData	(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem);
+Resource*		MetaDataToBlob				(MetaData* Meta, iAllocator* Mem);
 
 
 /************************************************************************************************/

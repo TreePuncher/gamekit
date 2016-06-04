@@ -50,6 +50,7 @@ namespace FlexKit
 		EResource_Scene,
 		EResource_TriMesh,
 		EResource_Texture,
+		EResource_TextureSet,
 	};
 
 	struct Resource
@@ -193,10 +194,11 @@ namespace FlexKit
 	{
 		#pragma warning(disable:4200)
 
-		size_t ResourceSize;
-		EResourceType Type;
-		size_t GUID;
-		size_t Pad;
+		size_t			ResourceSize;
+		EResourceType	Type;
+		size_t			GUID;
+		size_t			Pad;
+
 		char ID[FlexKit::ID_LENGTH];
 
 		struct JointEntry
@@ -223,17 +225,9 @@ namespace FlexKit
 
 	#pragma warning(disable:4200)
 
-		GUID_t	GUID;
-		enum	ResourceState : uint32_t
-		{
-			EResourceState_UNLOADED,
-			EResourceState_LOADING,
-			EResourceState_LOADED,
-			EResourceState_EVICTED,
-		};
-
-		ResourceState	State;
-		uint32_t		RefCount;
+		GUID_t					GUID;
+		Resource::ResourceState	State;
+		uint32_t				RefCount;
 
 		char   ID[FlexKit::ID_LENGTH];
 
@@ -253,13 +247,48 @@ namespace FlexKit
 		char	Buffer[];
 	};
 
+	struct TextureSet_Locations
+	{
+		GUID_t TextureID[16];
+		struct {
+			char Directory[64];
+		}TextureLocation[16];
+	};
+
+	struct TextureSetBlob
+	{
+		TextureSetBlob()
+		{
+			ResourceSize	= sizeof(TextureSetBlob);
+			Type			= EResourceType::EResource_TextureSet;
+			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
+		}
+
+	#pragma warning(disable:4200)
+
+		size_t					ResourceSize;
+		EResourceType			Type;
+		GUID_t					GUID;
+		Resource::ResourceState	State;		// Runtime Member
+		uint32_t				RefCount;	// Runtime Member
+
+		char	ID[ID_LENGTH];
+		struct TextureEntry
+		{
+			GUID_t	guid;
+			char	Directory[64];
+		}Textures[16];
+	};
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI AnimationClip	Resource2AnimationClip(Resource* R, iAllocator* Memory);
-	FLEXKITAPI Skeleton*		Resource2Skeleton(Resources* RM, ResourceHandle RHandle, iAllocator* Memory);
-	FLEXKITAPI TriMesh*			Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers = true);
+	FLEXKITAPI AnimationClip	Resource2AnimationClip	(Resource* R, iAllocator* Memory);
+	FLEXKITAPI Skeleton*		Resource2Skeleton		(Resources* RM, ResourceHandle RHandle, iAllocator* Memory);
+	FLEXKITAPI TriMesh*			Resource2TriMesh		(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers = true);
+	FLEXKITAPI TextureSet*		Resource2TextureSet		(Resources* RM, ResourceHandle RHandle, iAllocator* Memory);
+
+	FLEXKITAPI TextureSet*		LoadTextureSet(Resources* RM, GUID_t ID, iAllocator* Memory);
 
 
 	/************************************************************************************************/

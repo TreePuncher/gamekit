@@ -529,6 +529,9 @@ namespace FlexKit
 
 	void DEBUG_DrawPoseState(Skeleton* S, DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out)
 	{
+		if (!S || !DPS)
+			return;
+
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
 		float4x4 WT; GetWT(Nodes, Node, &WT);
 

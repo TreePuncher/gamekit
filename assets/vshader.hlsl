@@ -95,6 +95,7 @@ float4 VSegmentPassthrough(VIN In) : SV_POSITION
 struct VIN2
 {
 	float4 POS 		: POSITION;
+	float2 UV		: TEXCOORD;
 	float4 N	 	: NORMAL;
 };
 
@@ -102,6 +103,7 @@ struct PS_IN
 {
 	float3 WPOS 	: TEXCOORD0;
 	float3 N 		: TEXCOORD1;
+	float2 UV 		: TEXCOORD2;
 	float4 POS 	 	: SV_POSITION;
 };
 
@@ -116,7 +118,7 @@ PS_IN V2Main( VIN2 In )
 	Out.WPOS 	= mul(WT, In.POS);
 	Out.POS 	= mul(PV, mul(WT, In.POS));
 	Out.N   	= normalize(mul(rot, In.N.xyz));
-	
+	Out.UV		= In.UV;
 	return Out;
 }
 
@@ -173,6 +175,7 @@ struct VIN4
 	float3 POS 		: POSITION;
 	float3 N	 	: NORMAL;
 	float3 W		: WEIGHTS;
+	float3 UV		: TEXCOORD;
 	uint4  I		: WEIGHTINDICES;
 };
 
@@ -210,6 +213,8 @@ PS_IN VMainVertexPallet(VIN4 In)
 	Out.WPOS = mul(WT, V2);
 	Out.POS  = mul(PV, mul(WT, V2));
 	Out.N    = mul(WT, N);
+	Out.UV	 = In.UV;
+
 	return Out;
 }
 

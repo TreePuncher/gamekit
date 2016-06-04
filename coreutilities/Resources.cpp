@@ -72,15 +72,16 @@ namespace FlexKit
 
 	bool ReadResource(FILE* F, ResourceTable* Table, size_t Index, Resource* out)
 	{
-		byte Buffer[8];
-		Resource* R = (Resource*)Buffer;
+		size_t ResourceSize = 0;
+		size_t Position = Table->Entries[Index].ResourcePosition;
 
-		int s = fseek(F, Table->Entries[Index].ResourcePosition, SEEK_SET);
-		s = fread(Buffer, 1, 8, F);
-		s = fseek(F, Table->Entries[Index].ResourcePosition, SEEK_SET);
-		s = fread(out, 1, R->ResourceSize, F);
+		int s = fseek(F, Position, SEEK_SET);
+		s = fread(&ResourceSize, 1, 8, F);
 
-		return (s == R->ResourceSize);
+		s = fseek(F, Position, SEEK_SET);
+		s = fread(out, 1, ResourceSize, F);
+
+		return (s == out->ResourceSize);
 	}
 
 
@@ -446,4 +447,46 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	TextureSet* Resource2TextureSet(Resources* RM, ResourceHandle RHandle, iAllocator* Memory)
+	{	
+		using FlexKit::TextureSet;
+
+		TextureSet* NewTextureSet	= &Memory->allocate<TextureSet>();
+		TextureSetBlob* Blob		= (TextureSetBlob*)GetResource(RM, RHandle);
+
+		if (!Blob)
+			return nullptr;
+
+		for (size_t I = 0; I < 2; ++I) {
+			memcpy(NewTextureSet->TextureLocations[I].Directory, Blob->Textures[I].Directory, 64);
+			NewTextureSet->TextureGuids[I] = Blob->Textures[I].guid;
+		}
+
+		FreeResource(RM, RHandle);
+		return NewTextureSet;
+	}
+
+	
+	/************************************************************************************************/
+
+
+	TextureSet* LoadTextureSet(Resources* RM, GUID_t ID, iAllocator* Memory)
+	{
+		bool Available = isResourceAvailable(RM, ID, EResourceType::EResource_TextureSet);
+		TextureSet* Set = nullptr;
+
+		if (Available)
+		{
+			auto Handle = LoadGameResource(RM, ID, EResourceType::EResource_TextureSet);
+			if (Handle != INVALIDHANDLE) {
+				Set = Resource2TextureSet(RM, Handle, Memory);
+			}
+		}
+
+		return Set;
+	}
+
+
+	/************************************************************************************************/
 }

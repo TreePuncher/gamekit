@@ -42,8 +42,10 @@ namespace FlexKit
 			NodeHandle N  = GetZeroedNode(SN);
 			FlexKit::CreateDrawable(RS, &e, Desc);
 
-			e.Visable  = false;
-			e.Node	   = N;
+			e.Visable	= false;
+			e.Posed		= false;
+			e.Textured	= false;
+			e.Node		= N;
 			return E;
 		}
 		else
@@ -234,10 +236,16 @@ namespace FlexKit
 		TriMesh* Geo = FindMesh(Mesh);
 		if(!Geo) Geo = LoadMesh(Mesh, M);
 
+#ifdef _DEBUG
+		FK_ASSERT(Geo, "FAILED TO FIND MESH IN RESOURCES!");
+#endif
+
 		GetEntity(EHandle).Material = M;
 		GetEntity(EHandle).Mesh		= Geo;
 		GetEntity(EHandle).Dirty	= true;
 		GetEntity(EHandle).Visable	= true;
+		GetEntity(EHandle).Textured = false;
+		GetEntity(EHandle).Posed	= false;
 
 		return EHandle;
 	}

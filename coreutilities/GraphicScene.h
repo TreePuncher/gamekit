@@ -53,6 +53,7 @@ namespace FlexKit
 		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{Drawables->at(EHandle).Visable = Visable; }
 		inline void SetMesh				(EntityHandle EHandle, TriMesh* M)			{Drawables->at(EHandle).Mesh = M;		  }
 		inline void SetMaterial			(EntityHandle EHandle, ShaderSetHandle M)	{Drawables->at(EHandle).Material = M;	  }
+		inline void SetTextureSet		(EntityHandle EHandle, TextureSet* Set)		{Drawables->at(EHandle).Textures = Set; Drawables->at(EHandle).Textured = true;}
 		inline void SetMaterialParams	(EntityHandle EHandle, float4 RGBA = float4(1.0f, 1.0f, 1.0f, 0.5f), float4 Spec = float4(1.0f, 1.0f, 1.0f, 0.5f))
 		{
 			Drawables->at(EHandle).OverrideMaterialProperties = true;

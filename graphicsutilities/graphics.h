@@ -347,6 +347,7 @@ namespace FlexKit
 		size_t			Idx;
 		size_t			BufferCount;
 		TY_*			Resources[MaxBufferedSize];
+		size_t			_Pad;
 
 		size_t	operator ++()					{ IncrementCounter(); return (Idx); }			// Post Increment
 		size_t	operator ++(int)				{ size_t T = Idx; IncrementCounter(); return T; }// Pre Increment
@@ -1100,6 +1101,7 @@ namespace FlexKit
 		DFRP_CameraConstants	= 0,
 		DFRP_ShadingConstants	= 1,
 		DFRP_AnimationResources = 2,
+		DFRP_Textures = 3,
 		DFRP_COUNT,
 	};
 
@@ -1133,11 +1135,15 @@ namespace FlexKit
 		struct
 		{
 			ID3D12PipelineState*	PSO;
+			ID3D12PipelineState*	PSOTextured;
 			ID3D12PipelineState*	PSOAnimated;
+			ID3D12PipelineState*	PSOAnimatedTextured;
+
 			ID3D12RootSignature*	FillRTSig;
 			Shader					NormalMesh;
 			Shader					AnimatedMesh;
 			Shader					NoTexture;
+			Shader					Textured;
 		}Filling;
 	};
 
@@ -1459,8 +1465,20 @@ namespace FlexKit
 
 	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) {
 		auto* VB = FindBufferEntry(Mesh, Type);
-		if (VB == Mesh->VertexBuffer.VertexBuffers.end())
+		if (VB == Mesh->VertexBuffer.VertexBuffers.end()) {
+#ifdef _DBUG
 			return false;
+#else 
+			D3D12_VERTEX_BUFFER_VIEW VBView;
+
+			VBView.BufferLocation	= 0;
+			VBView.SizeInBytes		= 0;
+			VBView.StrideInBytes	= 0;
+			out.push_back(VBView);
+
+			return true;
+#endif
+		}
 
 		D3D12_VERTEX_BUFFER_VIEW VBView;
 
@@ -1493,17 +1511,23 @@ namespace FlexKit
 	enum TEXTURETYPE
 	{
 		ETT_ALBEDO,
-		ETT_ROUGHNESS,
+		ETT_ROUGHSMOOTH,
 		ETT_NORMAL,
-		ETT_BUMB,
+		ETT_BUMP,
 		ETT_COUNT,
 	};
 
 	struct TextureSet
 	{
-		size_t	Textures[16];
-	};
+		struct {
+			char	Directory[64];
+		}TextureLocations[16];
 
+		size_t		TextureGuids[16];
+
+		Texture2D	Textures[16];
+		bool		Loaded[16];
+	};
 
 	struct TextureManager
 	{
@@ -1511,7 +1535,8 @@ namespace FlexKit
 		DynArray<uint32_t>		FreeList;
 	};
 
-
+	FLEXKITAPI void UploadTextureSet	(RenderSystem* RS, TextureSet* TS, iAllocator* Memory);
+	FLEXKITAPI void ReleaseTextureSet	(RenderSystem* RS, TextureSet* TS, iAllocator* Memory);
 
 	class FLEXKITAPI ShaderTable
 	{
@@ -1594,6 +1619,7 @@ namespace FlexKit
 
 	struct Drawable
 	{
+		// TODO: move state flags into a single byte 
 		Drawable() 
 		{
 			Visable                    = true; 
@@ -1606,27 +1632,36 @@ namespace FlexKit
 			AnimationState			   = nullptr;
 		}
 		
-		TriMesh*				Mesh;
-		TriMesh*				Occluder;
+		TriMesh*				Mesh;						// 8
+		bool					Visable;					// 1
+		bool					OverrideMaterialProperties; // 1
+		bool					DrawLast;					// 1
+		bool					Transparent;				// 1
+		bool					Textured;					// 1
+		bool					Posed;						// 1
+		byte					Dirty;						// 1
+		byte					Padding_0;
+
 		DrawablePoseState*		PoseState;
 		DrawableAnimationState*	AnimationState;
-		ConstantBuffer			VConstants;	// 32 Byte Lines
-		NodeHandle				Node;
+		ConstantBuffer			VConstants;	
 
-		Drawable&	SetAlbedo	(float4 RGBA ){ OverrideMaterialProperties = true; MatProperties.Albedo = RGBA; return *this; }
-		Drawable&	SetSpecular	(float4 RGBA ){ OverrideMaterialProperties = true; MatProperties.Spec   = RGBA; return *this; }
-		Drawable&	SetNode		(NodeHandle H){ Node = H; return *this; }
+		// --------------------------------------------- 64 Byte Line
+		NodeHandle			Node;						// 2
+		ShaderSetHandle		Material;					// 1
+		TriMesh*			Occluder;
 
-		ShaderSetHandle		Material;
-		TextureSetHandle	Textures;
-		bool				Visable;
-		bool				OverrideMaterialProperties;
-		bool				DrawLast;
-		bool				Transparent;
-		bool				Posed;
-		byte				Dirty;
 
-		char Padding_1[21];
+		// 76 Byte Line
+		TextureSet* Textures;
+		byte Padding_1[52];
+
+		// --------------------------------------------- 128 Byte Line
+
+		Drawable&	SetAlbedo(float4 RGBA)		{ OverrideMaterialProperties = true; MatProperties.Albedo = RGBA; return *this; }
+		Drawable&	SetSpecular(float4 RGBA)	{ OverrideMaterialProperties = true; MatProperties.Spec = RGBA; return *this; }
+		Drawable&	SetNode(NodeHandle H)		{ Node = H; return *this; }
+
 
 		struct MaterialProperties
 		{
@@ -1657,9 +1692,10 @@ namespace FlexKit
 	struct SortingField
 	{
 		unsigned int Posed			: 1;
+		unsigned int Textured		: 1;
 		unsigned int MaterialID		: 7;
 		unsigned int InvertDepth	: 1;
-		uint64_t	 Depth			: 55;
+		uint64_t	 Depth			: 54;
 	};
 
 	typedef Pair<size_t, Drawable*> PV;

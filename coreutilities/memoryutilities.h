@@ -400,7 +400,7 @@ namespace FlexKit
 				}
 				I += LB[I].AllocationSize;
 			}
-			FK_ASSERT(0);
+			FK_ASSERT(0, "RAN OUT OF MEMORY!");
 #endif
 			return nullptr;
 		}

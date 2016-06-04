@@ -79,6 +79,8 @@ struct NormalMapped_IN
 };
 
 
+
+
 /************************************************************************************************/
 
 
@@ -138,5 +140,35 @@ GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 
 	return Out;
 }
+
+Texture2D AlbedoTexture : register(t0);
+Texture2D RandSTexture : register(t1);
+
+SamplerState DefaultSampler;
+
+
+struct PS_TEXURED_IN
+{
+	float3 WPOS 	: TEXCOORD0;
+	float3 N 		: TEXCOORD1;
+	float2 UV		: TEXCOORD2;
+};
+
+
+GBuffer PMain_TEXTURED(PS_TEXURED_IN IN )
+{
+	GBuffer Out;
+	float l 		= length(CameraPOS - IN.WPOS);
+	float3 A 		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Albedo;
+	float3 Spec		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Specular;
+	float2 RM		= RandSTexture.Sample(DefaultSampler, IN.UV);
+	Out.Albedo		= float4(A, RM.y * Albedo.w);			// Last Float is Roughness
+	Out.NORMAL 		= float4(IN.N, 0);						// 
+	Out.WPOS 		= float4(IN.WPOS, l);					// W is depth
+	Out.Specular 	= float4(Specular.rgb, RM.x * Specular.w);// Last Float is Metal Factor
+
+	return Out;
+}
+
 
 /************************************************************************************************/

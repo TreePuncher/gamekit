@@ -1384,6 +1384,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void UploadTextureSet(RenderSystem* RS, TextureSet* TS, iAllocator* Memory)
+	{
+		for (size_t I = 0; I < 16; ++I)
+		{
+			if (TS->TextureGuids[I]) {
+				TS->Loaded[I] = true;
+				TS->Textures[I] = LoadTextureFromFile(TS->TextureLocations[I].Directory, RS, Memory);
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ReleaseTextureSet(RenderSystem* RS, TextureSet* TS, iAllocator* Memory)
+	{
+		for (size_t I = 0; I < 16; ++I)
+		{
+			if (TS->TextureGuids[I]) {
+				TS->Loaded[I] = false;
+				TS->Textures[I]->Release();
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	void UploadResources(RenderSystem* RS)
 	{
 		ID3D12CommandList* CommandLists[] = {GetCurrentCommandList(RS)};
@@ -2970,6 +3000,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	ID3D12DescriptorHeap* GetCurrentDescriptorTable(RenderSystem* RS)
+	{
+		return GetCurrentFrameResources(RS)->SRVDescHeap;
+	}
 
 	D3D12_GPU_DESCRIPTOR_HANDLE GetDescTableCurrentPosition_GPU(RenderSystem* RS)
 	{
@@ -3272,7 +3306,7 @@ namespace FlexKit
 				bool res = false;
 				FlexKit::ShaderDesc SDesc;
 				strcpy(SDesc.entry, "PMain");
-				strcpy(SDesc.ID,	"DeferredShader");
+				strcpy(SDesc.ID,	"PShader");
 				strcpy(SDesc.shaderVersion, "ps_5_0");
 				Shader VShader;
 				do
@@ -3292,12 +3326,41 @@ namespace FlexKit
 				out->Filling.NoTexture = VShader;
 				} while (!res);
 			}
+			{
+				bool res = false;
+				FlexKit::ShaderDesc SDesc;
+				strcpy(SDesc.entry, "PMain_TEXTURED");
+				strcpy(SDesc.ID, "PMain_TEXTURED");
+				strcpy(SDesc.shaderVersion, "ps_5_0");
+				Shader PShader;
+				do
+				{
+					printf("LoadingShader - PShader No Texture Shader - Deferred\n");
+					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\pshader.hlsl", &SDesc, &PShader);
+#if USING( EDITSHADERCONTINUE )
+					if (!res)
+					{
+						std::cout << "Failed to Load\n Press Enter to try again\n";
+						char str[100];
+						std::cin >> str;
+					}
+#else
+					FK_ASSERT(res);
+#endif
+					out->Filling.Textured = PShader;
+				} while (!res);
+			}
 			// Setup Pipeline State
 			{
+				CD3DX12_DESCRIPTOR_RANGE ranges[1];	{
+					ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 0);
+				}
+
 				CD3DX12_ROOT_PARAMETER Parameters[DFRP_COUNT];{
 					Parameters[DFRP_CameraConstants].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 					Parameters[DFRP_ShadingConstants].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
 					Parameters[DFRP_AnimationResources].InitAsShaderResourceView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+					Parameters[DFRP_Textures].InitAsDescriptorTable(1, ranges, D3D12_SHADER_VISIBILITY_PIXEL);
 				}
 
 				ID3DBlob* SignatureDescBlob                    = nullptr;
@@ -3310,11 +3373,12 @@ namespace FlexKit
 				HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &SignatureDescBlob, &ErrorBlob);
 
 				FK_ASSERT(SUCCEEDED(HR));
-				SignatureDescBlob->Release();
 
 				ID3D12RootSignature* RootSig = nullptr;
 				HR = RS->pDevice->CreateRootSignature(0, SignatureDescBlob->GetBufferPointer(),
 													  SignatureDescBlob->GetBufferSize(), IID_PPV_ARGS(&RootSig));
+
+				SignatureDescBlob->Release();
 
 				FK_ASSERT(SUCCEEDED(HR));
 				out->Filling.FillRTSig = RootSig;
@@ -3357,11 +3421,24 @@ namespace FlexKit
 				FK_ASSERT(SUCCEEDED(HR));
 				out->Filling.PSO = PSO;
 
+				PSO_Desc.PS = { (BYTE*)out->Filling.Textured.Blob->GetBufferPointer(), out->Filling.Textured.Blob->GetBufferSize() };
+				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+				FK_ASSERT(SUCCEEDED(HR));
+				out->Filling.PSOTextured = PSO;
+
 				PSO_Desc.VS = { (BYTE*)out->Filling.AnimatedMesh.Blob->GetBufferPointer(), out->Filling.AnimatedMesh.Blob->GetBufferSize() };
+				PSO_Desc.PS = { (BYTE*)out->Filling.NoTexture.Blob->GetBufferPointer(), out->Filling.NoTexture.Blob->GetBufferSize() };
 				PSO_Desc.InputLayout = { InputElements, 5 };
 				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 				FK_ASSERT(SUCCEEDED(HR));
 				out->Filling.PSOAnimated = PSO;
+
+				PSO_Desc.PS = { (BYTE*)out->Filling.Textured.Blob->GetBufferPointer(), out->Filling.Textured.Blob->GetBufferSize() };
+				PSO_Desc.InputLayout = { InputElements, 5 };
+				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+				FK_ASSERT(SUCCEEDED(HR));
+				out->Filling.PSOAnimatedTextured = PSO;
+
 
 				D3D12_DESCRIPTOR_HEAP_DESC Heap_Desc;{
 					Heap_Desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -3557,8 +3634,9 @@ namespace FlexKit
 
 		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
 		auto TablePOS = ReserveDHeap(RS, 7);
-		TablePOS = PushSRVBufferToDHeap(RS, PLB->Resource, TablePOS, PLB->size(), PLB_Stride);
-		TablePOS = PushSRVBufferToDHeap(RS, SPLB->Resource, TablePOS, SPLB->size(), SPLB_Stride);
+		// The Max is to quiet a error if a no Lights are passed
+		TablePOS = PushSRVBufferToDHeap(RS, PLB->Resource, TablePOS, max(PLB->size(), 1), PLB_Stride);	
+		TablePOS = PushSRVBufferToDHeap(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride); 
 		TablePOS = PushTextureToDHeap(RS, CurrentGBuffer.ColorTex,		TablePOS);
 		TablePOS = PushTextureToDHeap(RS, CurrentGBuffer.SpecularTex,	TablePOS);
 		TablePOS = PushTextureToDHeap(RS, CurrentGBuffer.NormalTex,		TablePOS);
@@ -3637,6 +3715,9 @@ namespace FlexKit
 		auto FrameResources = GetCurrentFrameResources(RS);
 		auto DescPOSGPU		= GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
 		auto DescPOS		= ReserveDHeap(RS, 6);
+		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
+		CL->SetDescriptorHeaps(1, &DescriptorHeap);
+
 		size_t BufferIndex	= Pass->CurrentBuffer;
 
 		{	// Clear Targets
@@ -3676,7 +3757,7 @@ namespace FlexKit
 		{
 			Drawable* E = *itr;
 
-			if (E->Posed)
+			if (E->Posed || E->Textured)
 				break;
 
 			TriMesh* CurrentMesh = E->Mesh;
@@ -3714,6 +3795,9 @@ namespace FlexKit
 			TriMesh* CurrentMesh = E->Mesh;
 			auto AnimationState = E->PoseState;
 			
+			if (!E->Posed || E->Textured)
+				break;
+			
 			if(!AnimationState || !AnimationState->Resource)
 				continue;
 
@@ -3738,6 +3822,44 @@ namespace FlexKit
 
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
 			CL->SetGraphicsRootShaderResourceView(DFRP_AnimationResources, AnimationState->Resource->GetGPUVirtualAddress());
+			CL->IASetIndexBuffer(&IndexView);
+			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+			CL->DrawIndexedInstanced(ICount, 1, 0, 0, 0);
+		}
+
+		if (itr != end)
+			CL->SetPipelineState(Pass->Filling.PSOTextured);
+
+		for (; itr != end; ++itr)
+		{
+			Drawable* E = *itr;
+
+			if (E->Posed)
+				break;
+
+			TriMesh* CurrentMesh = E->Mesh;
+			size_t IBIndex	= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+			size_t ICount	= CurrentMesh->IndexCount;
+			CL->SetGraphicsRootConstantBufferView(1, E->VConstants->GetGPUVirtualAddress());
+
+			auto Textures	= GetDescTableCurrentPosition_GPU(RS);
+			auto TablePOS	= ReserveDHeap(RS, 2);
+
+			TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[0], TablePOS);
+			TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[1], TablePOS);
+
+			D3D12_INDEX_BUFFER_VIEW	IndexView;
+			IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
+			IndexView.Format         = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+			IndexView.SizeInBytes    = ICount * 32;
+
+			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
+			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
+			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
+
+			CL->SetGraphicsRootConstantBufferView	(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
+			CL->SetGraphicsRootDescriptorTable		(DFRP_Textures, Textures);
 			CL->IASetIndexBuffer(&IndexView);
 			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
 			CL->DrawIndexedInstanced(ICount, 1, 0, 0, 0);
@@ -4006,11 +4128,14 @@ namespace FlexKit
 		gb->Shading.Shade.Blob->Release();
 
 		gb->Filling.PSO->Release();
+		gb->Filling.PSOTextured->Release();
 		gb->Filling.PSOAnimated->Release();
+		gb->Filling.PSOAnimatedTextured->Release();
 		gb->Filling.FillRTSig->Release();
 		gb->Filling.NormalMesh.Blob->Release();
 		gb->Filling.AnimatedMesh.Blob->Release();
 		gb->Filling.NoTexture.Blob->Release();
+		gb->Filling.Textured.Blob->Release();
 	}
 	
 
@@ -5015,6 +5140,7 @@ namespace FlexKit
 			SortingField D;
 			D.Posed		  = E->Posed;
 			D.InvertDepth = false;
+			D.Textured	  = E->Textured;
 			D.Depth		  = abs( float3( CP - P ).magnitudesquared() * 10000 );
 			v.GetByType<size_t>() = *(size_t*)&D;
 		}
