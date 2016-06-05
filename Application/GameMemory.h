@@ -108,6 +108,7 @@ struct EngineMemory
 	DepthBuffer		DepthBuffer;
 	Time			Time;
 	Resources		Assets;
+	GeometryTable	Geometry;
 
 	PhysicsSystem	Physics;
 	PScene*			CurrentScene;

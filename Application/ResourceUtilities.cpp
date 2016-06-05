@@ -1787,7 +1787,7 @@ SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, ResourceScene* SceneOut, f
 							auto TriHandle = SearchForMesh(SceneOut, Attr->GetUniqueID());
 							if ( TriHandle ) {
 								Drawable->Node		= Nodehndl;
-								Drawable->Mesh		= SceneOut->GetTriMesh(TriHandle);
+								//Drawable->Mesh		= SceneOut->GetTriMesh(TriHandle);
 							}
 						}
 

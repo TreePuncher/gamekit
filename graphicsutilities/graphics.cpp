@@ -1407,6 +1407,7 @@ namespace FlexKit
 				TS->Textures[I]->Release();
 			}
 		}
+		Memory->free(TS);
 	}
 
 
@@ -1541,7 +1542,186 @@ namespace FlexKit
 	
 
 	/************************************************************************************************/
+
+
+	void InitiateGeometryTable(GeometryTable* GT, iAllocator* Memory)
+	{
+		GT->Memory						= Memory;
+		GT->Geometry.Allocator          = Memory;
+		GT->ReferenceCounts.Allocator	= Memory;
+		GT->Guids.Allocator				= Memory;
+		GT->GeometryIDs.Allocator		= Memory;
+		GT->Handles.FreeList.Allocator  = Memory;
+		GT->Handles.Indexes.Allocator   = Memory;
+		GT->Handles.Clear();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FreeGeometryTable(GeometryTable* GT)
+	{
+		GT->Geometry.Release();
+		GT->ReferenceCounts.Release();
+		GT->Guids.Release();
+		GT->GeometryIDs.Release();
+		GT->Handles.Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool IsMeshLoaded(GeometryTable* GT, GUID_t guid)
+	{
+		bool res = false;
+		for (auto Entry : GT->Guids)
+		{
+			if (Entry == guid){
+				res = true;
+				break;
+			}
+		}
+
+		return res;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ReleaseMesh(GeometryTable* GT, TriMeshHandle TMHandle)
+	{
+		// TODO: MAKE ATOMIC
+		auto Count = --GT->ReferenceCounts[GT->Handles[TMHandle]];
+
+		if (Count == 0) {
+			auto G = GetMesh(GT, TMHandle);
+
+			CleanUpTriMesh(G);
+			if (G->Skeleton)
+			{
+				auto I = G->Skeleton->Animations;
+				while (I != nullptr) {
+					CleanUpSceneAnimation(&I->Clip, I->Memory);
+					I->Memory->_aligned_free(I);
+					I = I->Next;
+				}
+
+				CleanUpSkeleton(G->Skeleton);
+			}
+
+			GT->Memory->free(const_cast<char*>(G->ID));
+			GT->Memory->free(G);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	TriMesh* GetMesh(GeometryTable* GT, TriMeshHandle TMHandle){
+		return GT->Geometry[GT->Handles[TMHandle]];
+	}
 	
+
+	/************************************************************************************************/
+
+
+	Skeleton* GetSkeleton(GeometryTable* GT, TriMeshHandle TMHandle){
+		return GetMesh(GT, TMHandle)->Skeleton;
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t	GetSkeletonGUID(GeometryTable* GT, TriMeshHandle TMHandle){
+		return GetMesh(GT, TMHandle)->SkeletonGUID;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetSkeleton(GeometryTable* GT, TriMeshHandle TMHandle, Skeleton* S){
+		GetMesh(GT, TMHandle)->Skeleton = S;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool IsSkeletonLoaded(GeometryTable* GT, TriMeshHandle guid){
+		return (GetMesh(GT, guid)->Skeleton != nullptr);
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool IsAnimationsLoaded(GeometryTable* GT, TriMeshHandle RMeshHandle){
+		return GetSkeleton(GT, RMeshHandle)->Animations != nullptr;
+	}
+
+	/************************************************************************************************/
+
+
+	Pair<TriMeshHandle, bool>	FindMesh(GeometryTable* GT, size_t guid)
+	{
+		TriMeshHandle HandleOut;
+		size_t location		= 0;
+		size_t HandleIndex	= 0;
+		for (auto Entry : GT->Guids)
+		{
+			if (Entry == guid) {
+				for ( auto index : GT->Handles.Indexes)
+				{
+					if (index == location) {
+						HandleOut.INDEX = HandleIndex;
+						break;
+					}
+					++HandleIndex;
+				}
+				break;
+			}
+			++location;
+		}
+
+		return { HandleOut, 0 };
+	}
+	
+	/************************************************************************************************/
+
+
+	Pair<TriMeshHandle, bool>	FindMesh(GeometryTable* GT, const char* ID)
+	{
+		TriMeshHandle HandleOut = INVALIDMESHHANDLE;
+		size_t location		= 0;
+		size_t HandleIndex	= 0;
+		for (auto Entry : GT->GeometryIDs)
+		{
+			if (!strncmp(Entry, ID, 64)) {
+				for (auto index : GT->Handles.Indexes)
+				{
+					if (index == location) {
+						HandleOut.INDEX = HandleIndex;
+						break;
+					}
+					++HandleIndex;
+				}
+				break;
+			}
+			++location;
+		}
+
+		return{ HandleOut, 0 };
+	}
+
+
+	/************************************************************************************************/
+
 
 	ConstantBuffer CreateConstantBuffer(RenderSystem* RS, ConstantBuffer_desc* desc)
 	{
@@ -2499,7 +2679,7 @@ namespace FlexKit
 		auto node = NodeHandle(HandleIndex);
 
 		Nodes->Indexes[HandleIndex] = NodeIndex;
-		Nodes->Nodes[node].TH		= node;
+		Nodes->Nodes[node.INDEX].TH	= node;
 		Nodes->used++;
 
 		return node;
@@ -3708,7 +3888,8 @@ namespace FlexKit
 		PVS* _PVS,	DeferredPass* Pass,	Texture2D Target, 
 		RenderSystem* RS,		const Camera* C, const float4& ClearColor, 
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB,
-		TextureManager* TM)
+		TextureManager* TM, 
+		GeometryTable*	GT)
 	{
 		auto CL				= GetCurrentCommandList(RS);
 		auto FrameResources = GetCurrentFrameResources(RS);
@@ -3759,9 +3940,9 @@ namespace FlexKit
 			if (E->Posed || E->Textured)
 				break;
 
-			TriMesh* CurrentMesh = E->Mesh;
-			size_t IBIndex = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t ICount  = CurrentMesh->IndexCount;
+			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+			size_t IBIndex			= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+			size_t ICount			= CurrentMesh->IndexCount;
 			CL->SetGraphicsRootConstantBufferView(1, E->VConstants->GetGPUVirtualAddress());
 
 			D3D12_INDEX_BUFFER_VIEW		IndexView;
@@ -3791,8 +3972,8 @@ namespace FlexKit
 		for (; itr != end; ++itr)
 		{
 			Drawable* E = *itr;
-			TriMesh* CurrentMesh = E->Mesh;
-			auto AnimationState = E->PoseState;
+			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+			auto AnimationState		= E->PoseState;
 			
 			if (!E->Posed || E->Textured)
 				break;
@@ -3836,7 +4017,7 @@ namespace FlexKit
 			if (E->Posed)
 				break;
 
-			TriMesh* CurrentMesh = E->Mesh;
+			TriMesh* CurrentMesh = GetMesh(GT, E->MeshHandle);
 			size_t IBIndex	= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
 			size_t ICount	= CurrentMesh->IndexCount;
 			CL->SetGraphicsRootConstantBufferView(1, E->VConstants->GetGPUVirtualAddress());
@@ -4051,7 +4232,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DoForwardPass(PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB)
+	void DoForwardPass(PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT)
 	{
 		auto CL = GetCurrentCommandList(RS);
 		if(!_PVS->size())
@@ -4070,11 +4251,12 @@ namespace FlexKit
 		for(auto& PV : *_PVS)
 		{
 			auto E                  = (Drawable*)PV;
-			size_t IBIndex          = E->Mesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t IndexCount       = E->Mesh->IndexCount;
+			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+			size_t IBIndex          =CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+			size_t IndexCount       =CurrentMesh->IndexCount;
 
 			D3D12_INDEX_BUFFER_VIEW		IndexView;
-			IndexView.BufferLocation	= E->Mesh->VertexBuffer.VertexBuffers[IBIndex].Buffer->GetGPUVirtualAddress();
+			IndexView.BufferLocation	= CurrentMesh->VertexBuffer.VertexBuffers[IBIndex].Buffer->GetGPUVirtualAddress();
 			IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 			IndexView.SizeInBytes		= IndexCount * 32;
 
@@ -4084,12 +4266,12 @@ namespace FlexKit
 
 			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 			D3D12_VERTEX_BUFFER_VIEW VBView;
-			for (size_t I = 0; I < E->Mesh->VertexBuffer.VertexBuffers.size(); ++I)
+			for (size_t I = 0; I < CurrentMesh->VertexBuffer.VertexBuffers.size(); ++I)
 			{
-				if (!E->Mesh->VertexBuffer.VertexBuffers[I].Buffer)
+				if (!CurrentMesh->VertexBuffer.VertexBuffers[I].Buffer)
 					continue;
 
-				auto& VB = E->Mesh->VertexBuffer.VertexBuffers[I];
+				auto& VB = CurrentMesh->VertexBuffer.VertexBuffers[I];
 				VBView.BufferLocation	= VB.Buffer->GetGPUVirtualAddress();
 				VBView.SizeInBytes		= VB.BufferSizeInBytes;
 				VBView.StrideInBytes	= VB.BufferStride;
@@ -4510,8 +4692,8 @@ namespace FlexKit
 	
 	
 	ShaderTable::ShaderTable() 
-		: ShaderSetHndls(FlexKit::GetTypeID<ShaderSetHandle>())
-		, ShaderHandles(FlexKit::GetTypeID<ShaderHandle>())
+		: ShaderSetHndls(FlexKit::GetTypeID<ShaderSetHandle>(), nullptr)
+		, ShaderHandles(FlexKit::GetTypeID<ShaderHandle>(), nullptr)
 	{
 
 	}
@@ -5099,9 +5281,10 @@ namespace FlexKit
 
 			Drawable::VConsantsLayout	NewData;
 
-			NewData.MP.Albedo = E->OverrideMaterialProperties ? E->MatProperties.Albedo : M->GetAlbedo( E->Material );
-			NewData.MP.Spec = E->OverrideMaterialProperties ? E->MatProperties.Spec : M->GetMetal( E->Material );
-			NewData.Transform = DirectX::XMMatrixTranspose( WT );
+			NewData.MP.Albedo	= E->MatProperties.Albedo;
+			NewData.MP.Spec		= E->MatProperties.Spec;
+			NewData.Transform	= DirectX::XMMatrixTranspose( WT );
+
 			if(E->AnimationState)
 			{
 			}
@@ -5180,8 +5363,6 @@ namespace FlexKit
 
 	void CreateDrawable( RenderSystem* RS, Drawable* e, DrawableDesc& desc )
 	{
-		e->Material = desc.Material;
-		
 		DirectX::XMMATRIX WT;
 		WT = DirectX::XMMatrixIdentity();
 
@@ -5200,10 +5381,9 @@ namespace FlexKit
 		CDesc.Freq        = FlexKit::ConstantBuffer_desc::PERFRAME;
 		CDesc.Structured  = false;
 
-		e->Mesh						  = nullptr;
+		e->MeshHandle				  = INVALIDMESHHANDLE;
+		e->Occluder                   = INVALIDMESHHANDLE;
 		e->Visable                    = true; 
-		e->OverrideMaterialProperties = false;
-		e->Occluder                   = nullptr;
 		e->DrawLast					  = false;
 		e->Transparent				  = false;
 		e->AnimationState			  = nullptr;
@@ -5316,98 +5496,62 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::Initiate(FlexKit::RenderSystem* RS, ShaderHandle StaticMeshBatcher, ShaderHandle pshade)
+	void LoadStaticMeshBatcherShaders(FlexKit::RenderSystem* RS, StaticMeshBatcher* Batcher)
 	{
-		for (auto G : Geometry)
+	}
+
+
+	/************************************************************************************************/
+
+
+	void InitiateStaticMeshBatcher(FlexKit::RenderSystem* RS, iAllocator* Memory, StaticMeshBatcher* out)
+	{
+		for (auto G : out->Geometry)
 			G = nullptr;
-		/*
-		NormalBuffer     = nullptr;
-		IndexBuffer      = nullptr;
-		TangentBuffer    = nullptr;
-		VertexBuffer     = nullptr;
-		GTBuffer         = nullptr;
 
-		NormalSRV        = nullptr;
-		IndexSRV         = nullptr;
-		TangentSRV       = nullptr;
-		VertexSRV        = nullptr;
-		GTSRV            = nullptr;
-
-		IL               = nullptr;
-		Instances        = nullptr;
-		TransformsBuffer = nullptr;
-		TransformSRV     = nullptr;
-		VPShader         = StaticMeshBatcher;
-		PShader          = pshade;
-
-		for ( auto& I : InstanceCount)
+		for (auto& I : out->InstanceCount)
 			I = 0;
 
-		TotalInstanceCount   = 0;
-		MaxVertexPerInstance = 0;
-		*/
+		out->NormalBuffer     = nullptr;
+		out->IndexBuffer      = nullptr;
+		out->TangentBuffer    = nullptr;
+		out->VertexBuffer     = nullptr;
+		out->GTBuffer         = nullptr;
+
+		out->Instances			= nullptr;
+		out->TransformsBuffer	= nullptr;
+
+		LoadStaticMeshBatcherShaders(RS, out);
+
+		out->TotalInstanceCount   = 0;
+		out->MaxVertexPerInstance = 0;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::CleanUp()
+	void CleanUpStaticBatcher(StaticMeshBatcher* Batcher)
 	{
-		/*
-		if (NormalBuffer)		NormalBuffer->Release();
-		if (TangentBuffer)		TangentBuffer->Release();
-		if (IndexBuffer)		IndexBuffer->Release();
-		if (VertexBuffer)		VertexBuffer->Release();
-		if (GTBuffer)			GTBuffer->Release();
+		if(Batcher->NormalBuffer)		Batcher->NormalBuffer->Release();
+		if(Batcher->IndexBuffer)		Batcher->IndexBuffer->Release();
+		if(Batcher->TangentBuffer)		Batcher->TangentBuffer->Release();
+		if(Batcher->VertexBuffer)		Batcher->VertexBuffer->Release();
+		if(Batcher->GTBuffer)			Batcher->GTBuffer->Release();
+		if(Batcher->Instances)			Batcher->Instances->Release();
+		if(Batcher->TransformsBuffer)	Batcher->TransformsBuffer->Release();
 
-		if (NormalSRV)			NormalSRV->Release();
-		if (TangentSRV)			TangentSRV->Release();
-		if (IndexSRV)			IndexSRV->Release();
-		if (VertexSRV)			VertexSRV->Release();
-		if (GTSRV)				GTSRV->Release();
-
-		if (IL)					IL->Release();
-		if (Instances)			Instances->Release();
-		if (TransformSRV)		TransformSRV->Release();
-		if (TransformsBuffer)	TransformsBuffer->Release();
-
-		NormalBuffer     = nullptr;
-		IndexBuffer      = nullptr;
-		TangentBuffer    = nullptr;
-		VertexBuffer     = nullptr;
-		GTBuffer         = nullptr;
-
-		NormalSRV        = nullptr;
-		IndexSRV         = nullptr;
-		TangentSRV       = nullptr;
-		VertexSRV        = nullptr;
-		GTSRV            = nullptr;
-
-		IL               = nullptr;
-		Instances        = nullptr;
-		TransformsBuffer = nullptr;
-		TransformSRV     = nullptr;
-
-		VPShader         = ShaderHandle();
-		PShader          = ShaderHandle();
-
-		for ( auto& I : InstanceCount)
-			I = 0;
-
-		TotalInstanceCount   = 0;
-		MaxVertexPerInstance = 0;
-		*/
+		Batcher->TotalInstanceCount = 0;
+		Batcher->MaxVertexPerInstance = 0;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::Upload(RenderSystem* RS, SceneNodes* nodes, iAllocator* Temp, Camera* C)
+	void Upload(RenderSystem* RS, SceneNodes* nodes, iAllocator* Temp, Camera* C)
 	{
-		FK_ASSERT(0);
-
+		/*
 		bool BufferDirty = false;
 		for (auto I = 0; I < TotalInstanceCount; ++I){
 			if (DirtyFlags[I] & DIRTY_ChangedMesh)
@@ -5420,6 +5564,7 @@ namespace FlexKit
 				DirtyFlags[I] = DirtyFlags[I] ^ DIRTY_ChangedMesh;
 			}
 		}
+		*/
 
 		/*
 		if (BufferDirty)
@@ -5445,20 +5590,52 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::BuildGeometryTable(FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, StackAllocator* TempMemory)
+	void BuildGeometryTable(FlexKit::RenderSystem* RS, iAllocator* TempMemory, StaticMeshBatcher* Batcher)
 	{
-		/*
+		// Create And Upload to Buffer
+		auto CreateBuffer = [](size_t BufferSize, char* Buffer, RenderSystem* RS) -> ID3D12Resource*
+		{
+			HRESULT	HR = ERROR;
+			D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(0);
+			Resource_DESC.Alignment           = 0;
+			Resource_DESC.DepthOrArraySize    = 1;
+			Resource_DESC.Dimension           = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
+			Resource_DESC.Layout              = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			Resource_DESC.Width               = 0;
+			Resource_DESC.Height              = 1;
+			Resource_DESC.Format              = DXGI_FORMAT_UNKNOWN;
+			Resource_DESC.SampleDesc.Count    = 1;
+			Resource_DESC.SampleDesc.Quality  = 0;
+			Resource_DESC.Flags               = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+			D3D12_HEAP_PROPERTIES HEAP_Props  = {};
+			HEAP_Props.CPUPageProperty        = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			HEAP_Props.Type                   = D3D12_HEAP_TYPE_DEFAULT;
+			HEAP_Props.MemoryPoolPreference   = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+			HEAP_Props.CreationNodeMask       = 0;
+			HEAP_Props.VisibleNodeMask        = 0;
+
+			ID3D12Resource* NewBuffer = nullptr;
+			HR = RS->pDevice->CreateCommittedResource(	&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
+														&Resource_DESC, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&NewBuffer));
+
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STATIC MESH BUFFER!"));
+
+			UpdateResourceByTemp(RS, NewBuffer, Buffer, BufferSize, 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+			return NewBuffer;
+		};
+
 		using DirectX::XMMATRIX;
 		{	// Create Vertex Buffer
 			size_t	BufferSize = 0;
 
 			char*	Vertices = nullptr;
-			for (auto G : Geometry)
+			for (auto G : Batcher->Geometry)
 			{
-				if (G){
+				if (G) {
 					for (auto B : G->Buffers)
 					{
-						if (B){
+						if (B) {
 							if (B->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION)
 							{
 								BufferSize += B->GetBufferSizeRaw();
@@ -5476,16 +5653,16 @@ namespace FlexKit
 			{
 				size_t offset = 0;
 				size_t GE = 0;
-				for (auto G : Geometry)
+				for (auto G : Batcher->Geometry)
 				{
-					if (G){
+					if (G) {
 						for (auto B : G->Buffers)
 						{
-							if (B){
+							if (B) {
 								if (B->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION)
 								{
 									memcpy(Vertices + offset, B->GetBuffer(), B->GetBufferSizeRaw());
-									GeometryTable[GE++].VertexOffset += offset/sizeof(float[3]);
+									Batcher->GeometryTable[GE++].VertexOffset += offset / sizeof(float[3]);
 									offset += B->GetBufferSizeRaw();
 
 									break;
@@ -5495,25 +5672,14 @@ namespace FlexKit
 					}
 					else break;
 				}
-
-				D3D11_BUFFER_DESC BD;
-				BD.BindFlags            = D3D11_BIND_FLAG::D3D11_BIND_VERTEX_BUFFER;
-				BD.ByteWidth            = BufferSize;
-				BD.CPUAccessFlags       = 0;
-				BD.Usage                = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
-				BD.MiscFlags            = 0;
-				BD.StructureByteStride  = 12;
-
-				D3D11_SUBRESOURCE_DATA	SR;
-				SR.pSysMem              = Vertices;
-				FK_ASSERT(0);
-				//if (FAILED(RS->pDevice->CreateBuffer(&BD, &SR, &VertexBuffer))) FK_ASSERT(0);
 			}
+
+			Batcher->VertexBuffer = CreateBuffer(BufferSize, Vertices, RS);
 		}
 		{	// Create Normals Buffer
 			size_t	BufferSize = 0;
 			char*	Vertices = nullptr;
-			for (auto G : Geometry)
+			for (auto G : Batcher->Geometry)
 			{
 				if (G){
 					for (auto B : G->Buffers)
@@ -5535,7 +5701,7 @@ namespace FlexKit
 			if (BufferSize)
 			{
 				size_t offset = 0;
-				for (auto G : Geometry)
+				for (auto G : Batcher->Geometry)
 				{
 					if (G){
 						for (auto B : G->Buffers)
@@ -5553,24 +5719,14 @@ namespace FlexKit
 					else break;
 				}
 
-				D3D11_BUFFER_DESC BD;
-				BD.BindFlags            = D3D11_BIND_FLAG::D3D11_BIND_VERTEX_BUFFER;
-				BD.ByteWidth            = BufferSize;
-				BD.CPUAccessFlags       = 0;
-				BD.Usage                = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
-				BD.MiscFlags            = 0;
-				BD.StructureByteStride  = sizeof(float[3]);
-
-				D3D11_SUBRESOURCE_DATA	SR;
-				SR.pSysMem              = Vertices;
-				FK_ASSERT(0);
-				//if (FAILED(RS->pDevice->CreateBuffer(&BD, &SR, &NormalBuffer))) FK_ASSERT(0);
+				Batcher->NormalBuffer = CreateBuffer(BufferSize, Vertices, RS);
 			}
+
 		}
 		{	// Create Tangent Buffer
 			size_t	BufferSize = 0;
 			char*	Vertices = nullptr;
-			for (auto G : Geometry)
+			for (auto G : Batcher->Geometry)
 			{
 				if (G){
 					for (auto B : G->Buffers)
@@ -5592,7 +5748,7 @@ namespace FlexKit
 			if (BufferSize)
 			{
 				size_t offset = 0;
-				for (auto G : Geometry)
+				for (auto G : Batcher->Geometry)
 				{
 					if (G){
 						for (auto B : G->Buffers)
@@ -5609,26 +5765,14 @@ namespace FlexKit
 					}
 					else break;
 				}
-
-				D3D11_BUFFER_DESC BD;
-				BD.BindFlags            = D3D11_BIND_FLAG::D3D11_BIND_VERTEX_BUFFER;
-				BD.ByteWidth            = BufferSize;
-				BD.CPUAccessFlags       = 0;
-				BD.Usage                = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
-				BD.MiscFlags            = 0;
-				BD.StructureByteStride  = sizeof(float[3]);
-
-				D3D11_SUBRESOURCE_DATA	SR;
-				SR.pSysMem              = Vertices;
-				FK_ASSERT(0);
-				//if (FAILED(RS->pDevice->CreateBuffer(&BD, &SR, &TangentBuffer))) FK_ASSERT(0);
+				Batcher->TangentBuffer = CreateBuffer(BufferSize, Vertices, RS);
 			}
 		}
 		{	// Create Index Buffer
-			size_t	BufferSize = 0;
-			byte*	Indices = nullptr;
+			size_t	BufferSize	= 0;
+			byte*	Indices		= nullptr;
 
-			for (auto G : Geometry)
+			for (auto G : Batcher->Geometry)
 			{
 				if (G){
 					for (auto B : G->Buffers)
@@ -5649,10 +5793,10 @@ namespace FlexKit
 
 			if (BufferSize)
 			{
-				size_t GE = 0;
-				size_t offset = 0;
+				size_t GE		= 0;
+				size_t offset	= 0;
 
-				for (auto G : Geometry)
+				for (auto G : Batcher->Geometry)
 				{
 					if (G){
 						for (auto B : G->Buffers)
@@ -5661,13 +5805,13 @@ namespace FlexKit
 								if (B->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
 								{
 									memcpy(Indices + offset, B->GetBuffer(), B->GetBufferSizeRaw());
-									GeometryTable[GE].	IndexOffset += offset/4;
-									GeometryTable[GE++].VertexCount += G->IndexCount;
+									Batcher->GeometryTable[GE].	IndexOffset += offset/4;
+									Batcher->GeometryTable[GE++].VertexCount += G->IndexCount;
 										
 									offset += B->GetBufferSizeRaw();
 
-									if ( G->IndexCount > MaxVertexPerInstance)
-										MaxVertexPerInstance = G->IndexCount;
+									if ( G->IndexCount > Batcher->MaxVertexPerInstance)
+										Batcher->MaxVertexPerInstance = G->IndexCount;
 									break;
 								}
 							}
@@ -5676,131 +5820,18 @@ namespace FlexKit
 					else break;
 				}
 
-				D3D11_BUFFER_DESC BD;
-				BD.BindFlags            = D3D11_BIND_INDEX_BUFFER;
-				BD.ByteWidth            = BufferSize;
-				BD.CPUAccessFlags       = 0;
-				BD.Usage                = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
-				BD.MiscFlags            = 0;
-				BD.StructureByteStride  = sizeof(uint32_t);
-
-				D3D11_SUBRESOURCE_DATA	SR;
-				SR.pSysMem              = Indices;
-
-				FK_ASSERT(0);
-				//if (FAILED(RS->pDevice->CreateBuffer(&BD, &SR, &IndexBuffer))) FK_ASSERT(0);
+				Batcher->IndexBuffer = CreateBuffer(BufferSize, (char*)Indices, RS);
 			}
 #if USING(DEBUGGRAPHICS)
 			else printf("Warning !! Index Buffer Not Found\n");
 #endif
 		}
-		{
-			D3D11_BUFFER_DESC BD;
-			BD.BindFlags            = D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
-			BD.ByteWidth            = sizeof(GeometryTable);
-			BD.CPUAccessFlags       = 0;
-			BD.Usage                = D3D11_USAGE::D3D11_USAGE_IMMUTABLE;
-			BD.MiscFlags            = D3D11_RESOURCE_MISC_FLAG::D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-			BD.StructureByteStride  = sizeof(uint32_t[3]);
-
-			D3D11_SUBRESOURCE_DATA	SR;
-			SR.pSysMem              = GeometryTable;
-
-			FK_ASSERT(0);
-			//if (FAILED(RS->pDevice->CreateBuffer(&BD, &SR, &GTBuffer))) FK_ASSERT(0);
-
-			D3D11_SHADER_RESOURCE_VIEW_DESC SD;
-			SD.Format               = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
-			SD.ViewDimension        = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_BUFFER;
-			SD.Buffer.ElementOffset = 0;
-			SD.Buffer.ElementWidth  = BD.ByteWidth / BD.StructureByteStride;
-
-			FK_ASSERT(0);
-			//if (FAILED(RS->pDevice->CreateShaderResourceView(GTBuffer, &SD, &GTSRV))) FK_ASSERT(0);
-		}
-		{
-			D3D11_BUFFER_DESC BD;
-			BD.BindFlags            = D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
-			BD.ByteWidth            = sizeof(XMMATRIX) * MAXINSTANCES;
-			BD.CPUAccessFlags       = D3D11_CPU_ACCESS_WRITE;
-			BD.Usage                = D3D11_USAGE::D3D11_USAGE_DYNAMIC;
-			BD.MiscFlags            = D3D11_RESOURCE_MISC_FLAG::D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
-			BD.StructureByteStride  = sizeof(XMMATRIX);
-
-			FK_ASSERT(0);
-			//if (FAILED(RS->pDevice->CreateBuffer(&BD, nullptr, &TransformsBuffer))) FK_ASSERT(0);
-
-			D3D11_SHADER_RESOURCE_VIEW_DESC SD;
-			SD.Format               = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
-			SD.ViewDimension        = D3D11_SRV_DIMENSION::D3D11_SRV_DIMENSION_BUFFER;
-			SD.Buffer.ElementOffset = 0;
-			SD.Buffer.ElementWidth  = BD.ByteWidth / BD.StructureByteStride;
-
-			FK_ASSERT(0);
-			//if (FAILED(RS->pDevice->CreateShaderResourceView(TransformsBuffer, &SD, &TransformSRV))) FK_ASSERT(0);
-		}
-		{
-			D3D11_BUFFER_DESC BD;
-			BD.BindFlags            = D3D11_BIND_FLAG::D3D11_BIND_SHADER_RESOURCE;
-			BD.ByteWidth            = sizeof(InstanceIOLayout) * MAXINSTANCES;
-			BD.CPUAccessFlags       = D3D11_CPU_ACCESS_WRITE;
-			BD.Usage                = D3D11_USAGE::D3D11_USAGE_DYNAMIC;
-			BD.MiscFlags            = D3D11_RESOURCE_MISC_FLAG::D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS;
-			BD.StructureByteStride  = sizeof(InstanceIOLayout);
-
-			D3D11_SUBRESOURCE_DATA	SR;
-			SR.pSysMem = InstanceInformation;
-
-			FK_ASSERT(0);
-			//if (FAILED(RS->pDevice->CreateBuffer(&BD, &SR, &Instances))) FK_ASSERT(0);
-
-			/*
-			D3D11_UNORDERED_ACCESS_VIEW_DESC SD;
-			SD.Format               = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
-			SD.ViewDimension        = D3D11_UAV_DIMENSION::D3D11_UAV_DIMENSION_BUFFER;
-			SD.Buffer.FirstElement	= 0;
-			SD.Buffer.NumElements	= BD.ByteWidth / BD.StructureByteStride;
-			SD.Buffer.Flags			= 0;
-
-			if (FAILED(RS->pDevice->CreateUnorderedAccessView(TransformsBuffer, &SD, &RenderARGs))) FK_ASSERT(0);
-
-			D3D11_INPUT_ELEMENT_DESC InputLayout[] ={ 
-				{
-					"POSITION", 0,
-					DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
-					0,
-					0,
-					D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
-					0
-				},
-				{
-					"NORMAL", 0,
-					DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
-					1,
-					0,
-					D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
-					0
-				},
-				{
-					"TANGENT", 0,
-					DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,
-					2,
-					0,
-					D3D11_INPUT_CLASSIFICATION::D3D11_INPUT_PER_VERTEX_DATA,
-					0
-				}};
-
-			Shader VShader = M->GetShader(VPShader);
-			FK_ASSERT(0);
-			//if (FAILED(RS->pDevice->CreateInputLayout(InputLayout, 3, VShader.Blob->GetBufferPointer(), VShader.Blob->GetBufferSize(), &IL))) FK_ASSERT(0);
-		}
-		*/
 	}
 
 
 	/************************************************************************************************/
 
-
+	/*
 	StaticMeshBatcher::SceneObjectHandle StaticMeshBatcher::CreateDrawable(NodeHandle node, size_t gi){
 		size_t index = TotalInstanceCount++;
 		InstanceCount[gi]++;
@@ -5813,24 +5844,23 @@ namespace FlexKit
 
 		return hndl;
 	}
-	
+	*/
 
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::PrintFrameStats(){
-		for (auto I = 0; I < TriMeshCount; ++I)
-			printf("Tris per Instance Type: %u\nInstances: %u\nTotal Tris in Batch count: %u \n\n\n\n", GeometryTable[I].VertexCount, uint32_t(InstanceCount[I]), uint32_t(GeometryTable[I].VertexCount * InstanceCount[I]));
+	//void StaticMeshBatcher::PrintFrameStats(){
+	//	for (auto I = 0; I < TriMeshCount; ++I)
+	//		printf("Tris per Instance Type: %u\nInstances: %u\nTotal Tris in Batch count: %u \n\n\n\n", GeometryTable[I].VertexCount, uint32_t(InstanceCount[I]), uint32_t(GeometryTable[I].VertexCount * InstanceCount[I]));
 
-	}
+	//}
 
 
 	/************************************************************************************************/
 
 
-	void StaticMeshBatcher::Draw(FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, Camera* C)
+	void Draw(FlexKit::RenderSystem* RS, StaticMeshBatcher* Batcher)
 	{
-		FK_ASSERT(0);
 		/*
 
 		SetShader(RS->ContextState, M->GetShader(VPShader));

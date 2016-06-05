@@ -126,21 +126,22 @@ namespace FlexKit
 		Joint*				Joints;
 		JointPose*			JointPoses;
 		size_t				JointCount;
-		size_t				guid;
-
+		GUID_t				guid;
+		iAllocator*			Memory;
 		//JointHandle			Root;
 
 		struct AnimationList
 		{
 			AnimationClip	Clip;
 			AnimationList*	Next;
+			iAllocator*		Memory;
 		};
 
 		AnimationList* Animations;
 	};
 
-	FLEXKITAPI void Skeleton_PushAnimation(Skeleton* S, iAllocator* Allocator, AnimationClip AC);
-
+	FLEXKITAPI void Skeleton_PushAnimation	(Skeleton* S, iAllocator* Allocator, AnimationClip AC);
+	FLEXKITAPI void CleanUpSkeleton			(Skeleton* S);
 
 	/************************************************************************************************/
 
@@ -265,7 +266,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	FLEXKITAPI DrawablePoseState*	CreatePoseState(Drawable* E, iAllocator* MEM);
+	FLEXKITAPI DrawablePoseState*	CreatePoseState(Drawable* E, GeometryTable* GT, iAllocator* MEM);
 	FLEXKITAPI bool					InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial);
 
 	FLEXKITAPI void					Destroy(DrawablePoseState* EAS);
@@ -280,13 +281,13 @@ namespace FlexKit
 		EPLAY_SUCCESS
 	};
 
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation	(FlexKit::Drawable* E, const char* AnimationID, iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f);
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation	(FlexKit::Drawable* E, GeometryTable* GT, const char* AnimationID, iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f);
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed(FlexKit::Drawable* E, const char* AnimationID, double Speed = false);
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation	(FlexKit::Drawable* E, const char* AnimationID);
 
-	FLEXKITAPI void UpdateAnimation	(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP);
+	FLEXKITAPI void UpdateAnimation	(RenderSystem* RS, FlexKit::Drawable* E, GeometryTable* GT, double dT, iAllocator* TEMP);
 	FLEXKITAPI void UploadAnimation	(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP);
-	FLEXKITAPI void UploadPoses		(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
+	FLEXKITAPI void UploadPoses		(RenderSystem* RS, GeometryTable* GT, PVS* Drawables, iAllocator* TEMP);
 
 	FLEXKITAPI void DEBUG_DrawSkeleton				(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out);
 	FLEXKITAPI void DEBUG_DrawPoseState				(Skeleton* S, DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out);

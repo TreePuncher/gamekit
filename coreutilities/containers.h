@@ -128,7 +128,8 @@ namespace FlexKit
 
 		inline ~DynArray(){if(A)Allocator->_aligned_free(A);}
 
-		inline Ty& operator [](size_t index) {return A[index];}
+		inline			Ty& operator [](size_t index)		{return A[index];}
+		inline const	Ty& operator [](size_t index) const {return A[index];}
 
 
 		/************************************************************************************************/
@@ -156,7 +157,7 @@ namespace FlexKit
 
 		Ty& back()
 		{
-			FK_ASSERT(C->Size > 0);
+			FK_ASSERT(Size > 0);
 			return A[Size - 1];
 		}
 
@@ -202,16 +203,15 @@ namespace FlexKit
 			{// Increase Size
 #ifdef _DEBUG
 				FK_ASSERT(Allocator);
-#endif
-				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * Max);
+#endif			
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * max(Max, 1));
 				
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
 				FK_ASSERT(NewMem != A);
 #endif
 
-				if(A)
-				{
+				if(A){
 					size_t itr = 0;
 					size_t End = Size;
 					for (;itr < End; ++itr) 
@@ -225,6 +225,15 @@ namespace FlexKit
 			}
 
 			A[Size++] = in;
+		}
+
+
+		/************************************************************************************************/
+
+
+		void pop_back()
+		{
+			A[Size--].~Ty();
 		}
 
 

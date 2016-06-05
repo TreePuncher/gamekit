@@ -73,6 +73,7 @@ namespace FlexKit
 			INDEX = in;
 		}
 
+		operator uint32_t&() { return INDEX; }
 		operator uint32_t() const { return this->to_uint(); }
 		bool				operator ==	(const Handle_t<HandleSize> in) const
 		{
@@ -86,10 +87,16 @@ namespace FlexKit
 			return false;
 		}
 
+		bool operator !=	(const Handle_t<HandleSize> in) const
+		{
+			return !(*this == in);
+		}
+
 		const uint32_t	to_uint() const
 		{
 			return INDEX;
 		}
+
 		operator uint32_t(){ return INDEX; }
 		unsigned int	INDEX		: HandleSize;
 #if USING( DEBUGHANDLES )
@@ -125,37 +132,36 @@ namespace FlexKit
 		// TODO RESORT HANDLES AFTER FREE LIST FILLS
 
 		template<typename HANDLE, size_t SIZE = 128>
-		class HandleTable
+		struct HandleTable
 		{
-		public:
-			HandleTable( Type_t type ) : mType( type ) {}
+			HandleTable( Type_t type, iAllocator* Memory ) : mType( type ), FreeList(Memory), Indexes(Memory) {}
 
 			inline index_t&	operator[] ( const HANDLE in )
 			{
 				#ifdef _DEBUG
 				FlexKit::HandleUtilities::CheckType( in, mType );
 				#endif
-				return m_indexes[ in.INDEX ];
+				return Indexes[ in.INDEX ];
 			}
 
-			inline index_t	operator[] ( const HANDLE in ) const	{	return m_indexes[ in.INDEX ];	}
+			inline index_t	operator[] ( const HANDLE in ) const	{return Indexes[ in.INDEX ];}
 
-			inline index_t&	Get( const HANDLE in )					{ return m_indexes[ in.INDEX ];	}
-			inline index_t	Get( const HANDLE in ) const			{ return m_indexes[ in.INDEX ]; }
+			inline index_t&	Get( const HANDLE in )					{return Indexes[ in.INDEX ];}
+			inline index_t	Get( const HANDLE in ) const			{return Indexes[ in.INDEX ];}
 
 			inline HANDLE	GetNewHandle()
 			{
 				HANDLE NewHandle( 0, mType, FlexKit::Handle::HF_USED );
 
-				if( mFreeIndexes.size() )
+				if( FreeList.size() )
 				{
-					NewHandle.INDEX = mFreeIndexes.back();
-					mFreeIndexes.pop_back();
+					NewHandle.INDEX = FreeList.back();
+					FreeList.pop_back();
 				}
 				else
 				{
-					NewHandle.INDEX = m_indexes.size();
-					m_indexes.push_back( 0 );
+					NewHandle.INDEX = Indexes.size();
+					Indexes.push_back( 0 );
 				}
 
 				return NewHandle;
@@ -163,53 +169,58 @@ namespace FlexKit
 
 			inline void	Clear()
 			{
-				mFreeIndexes.clear();
-				m_indexes.clear();
+				FreeList.clear();
+				Indexes.clear();
 			}
 
 			inline bool	Has( Handle find_this_Handle ) const
 			{
-				if( std::find( m_indexes.begin(), m_indexes.end(), find_this_Handle.INDEX ) !=
-					m_indexes.end() )
+				if( std::find( Indexes.begin(), Indexes.end(), find_this_Handle.INDEX ) !=
+					Indexes.end() )
 					return true;
 				return false;
 			}
 
 			inline void	RemoveHandle( HANDLE in )
 			{
-				if( in.INDEX < m_indexes.size() )
-					mFreeIndexes.push_back( m_indexes[in.INDEX] );
+				if( in.INDEX < Indexes.size() )
+					FreeList.push_back( Indexes[in.INDEX] );
 				else
 					FK_ASSERT( 0 );
 			}
 
 			inline size_t size()
 			{
-				return m_indexes.size();
+				return Indexes.size();
 			}
 
 			inline size_t size() const
 			{
-				return m_indexes.size();
+				return Indexes.size();
 			}
 
 			typedef typename static_vector<index_t, SIZE>::iterator iterator;
 			iterator	begin()
 			{
-				return m_indexes.begin();
+				return Indexes.begin();
 			}
 
 			iterator	end()
 			{
-				return m_indexes.end();
+				return Indexes.end();
 			}
 
-		private:
 			HandleTable( const HandleTable<HANDLE,SIZE>& in )	= delete;	// Do not allow Table copying
 			HandleTable& operator = ( const HandleTable& rhs )	= delete;	// Do not allow Table copying
 
-			static_vector<index_t, SIZE/2>	mFreeIndexes;
-			static_vector<index_t, SIZE>	m_indexes;
+			DynArray<index_t> FreeList;
+			DynArray<index_t> Indexes;
+
+			void Release()
+			{
+				FreeList.Release();
+				Indexes.Release();
+			}
 
 			const FlexKit::Type_t mType;
 		};

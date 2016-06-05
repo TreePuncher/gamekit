@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	typedef size_t GUID_t;
 	static const size_t ID_LENGTH = 64;
 
 	enum EResourceType : size_t
@@ -127,22 +126,22 @@ namespace FlexKit
 	FLEXKITAPI bool			ReadResourceTable	(FILE* F, ResourceTable* Out, size_t TableSize);
 	FLEXKITAPI bool			ReadResource		(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
 
-	FLEXKITAPI ResourceHandle LoadGameResource	(Resources* RM, const char* ID);
-	FLEXKITAPI ResourceHandle LoadGameResource	(Resources* RM, GUID_t GUID, EResourceType T);
+	FLEXKITAPI ResourceHandle LoadGameResource (Resources* RM, const char* ID);
+	FLEXKITAPI ResourceHandle LoadGameResource (Resources* RM, GUID_t GUID);
 
 	FLEXKITAPI void FreeResource			(Resources* RM, ResourceHandle RHandle);
 	FLEXKITAPI void FreeAllResources		(Resources* RM);
 	FLEXKITAPI void FreeAllResourceFiles	(Resources* RM);
 
-	FLEXKITAPI bool isResourceAvailable	(Resources* RM, GUID_t ID, EResourceType Type);
-	FLEXKITAPI bool isResourceAvailable	(Resources* RM, const char* ID);
+	FLEXKITAPI bool isResourceAvailable		(Resources* RM, GUID_t ID);
+	FLEXKITAPI bool isResourceAvailable		(Resources* RM, const char* ID);
 
 
 	/************************************************************************************************/
 
 
 	const size_t GUIDMASK		= 0x00000000FFFFFFFF;
-	const GUID_t INVALIDHANDLE	= 0xFFFFFFFFFFFFFFFF;
+
 
 	/************************************************************************************************/
 
@@ -285,10 +284,14 @@ namespace FlexKit
 
 	FLEXKITAPI AnimationClip	Resource2AnimationClip	(Resource* R, iAllocator* Memory);
 	FLEXKITAPI Skeleton*		Resource2Skeleton		(Resources* RM, ResourceHandle RHandle, iAllocator* Memory);
-	FLEXKITAPI TriMesh*			Resource2TriMesh		(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers = true);
+	FLEXKITAPI TriMesh*			Resource2TriMesh		(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, bool ClearBuffers = true);
 	FLEXKITAPI TextureSet*		Resource2TextureSet		(Resources* RM, ResourceHandle RHandle, iAllocator* Memory);
 
-	FLEXKITAPI TextureSet*		LoadTextureSet(Resources* RM, GUID_t ID, iAllocator* Memory);
+	FLEXKITAPI TextureSet*		LoadTextureSet	(Resources* RM, GUID_t ID, iAllocator* Memory);
+	FLEXKITAPI void				LoatTriangleMesh(Resources* RM, GUID_t ID, iAllocator* Memory, TriMesh* out);
+
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(RenderSystem* RS, Resources* RM, GeometryTable*, size_t guid);
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable(RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID);
 
 
 	/************************************************************************************************/

@@ -43,6 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		3rd Person Camera Handler
 //		Object -> Bone Attachment
 //		Particles
+//		Static Mesh Batcher
 //
 //		Bugs:
 //			TextRendering Bug, Certain Characters do not get Spaces Correctly
@@ -488,6 +489,8 @@ struct GameState
 	ForwardPass			ForwardPass;
 	Line3DPass			LineDrawPass;
 
+	StaticMeshBatcher	StaticMeshBatcher;
+
 	MouseInputState		Mouse;
 	float				MouseMovementFactor;
 	double				PhysicsUpdateTimer;
@@ -498,6 +501,7 @@ struct GameState
 	DepthBuffer*		DepthBuffer;
 	float4				ClearColor;
 	
+	GeometryTable*		GT;
 	SceneNodes*			Nodes;
 	PScene				PScene;
 	GraphicScene		GScene;
@@ -580,25 +584,25 @@ void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
-	auto PlayerModel	= State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "PlayerModel");
-	Out->PlayerModel	= PlayerModel;
+	auto PlayerModel = State->GScene.CreateDrawableAndSetMesh("PlayerModel");
+	Out->PlayerModel = PlayerModel;
 
 #if 0
 	State->GScene.EntityEnablePosing(PlayerModel);
 	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION1", 0.5f);
 	Out->Joint = State->GScene.GetEntity(PlayerModel).PoseState->Sk->FindJoint("Chest");
-	DEBUG_PrintSkeletonHierarchy(State->GScene.GetEntity(PlayerModel).Mesh->Skeleton);
+	DEBUG_PrintSkeletonHierarchy(State->GScene.GetEntitySkeleton(PlayerModel));
 #endif
 
-	State->GScene.Yaw					(PlayerModel, pi / 2);
-	State->GScene.SetMaterialParams		(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
+	State->GScene.Yaw				(PlayerModel, pi / 2);
+	State->GScene.SetMaterialParams	(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
 	auto Textures = LoadTextureSet(&Engine->Assets, 100, Engine->BlockAllocator);
 	UploadTextureSet(Engine->RenderSystem, Textures, Engine->BlockAllocator);
 
-	auto AKModel	= State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "UVCube");
-	auto Hallway	= State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "Hallway");
+	auto AKModel = State->GScene.CreateDrawableAndSetMesh("UVCube");
+	auto Hallway = State->GScene.CreateDrawableAndSetMesh("Hallway");
 	State->GScene.GetEntity(AKModel).Textured = true;
 	State->GScene.GetEntity(AKModel).Textures = Textures;
 	State->GScene.SetMaterialParams(AKModel, float4(0.1f, 0.1f, 0.1f, 0.5f), { 1, 1, 1, 0 });
@@ -606,7 +610,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 
 	for (uint32_t I = 0; I < 0; ++I) {
 		for (uint32_t II = 0; II < 100; ++II) {
-			auto Floor = State->GScene.CreateDrawableAndSetMesh(Engine->BuiltInMaterials.DefaultMaterial, "FloorTile");
+			auto Floor = State->GScene.CreateDrawableAndSetMesh("FloorTile");
 			State->GScene.TranslateEntity_WT(Floor, { 10 * 40 - 40.0f * I, 0, 10 * 40 -  40.0f * II });
 			State->GScene.SetMaterialParams(Floor,  { 0.3f, 0.3f, 0.3f , 0.2f }, { 0.5f, 1.0f, 0.5f , 1.0f });
 		}
@@ -665,8 +669,9 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 
 void UpdateTestScene_PostTransformUpdate(Scene* TestScene, GameState* State, double dt, iAllocator* TempMem)
 {
-	auto Entity = State->GScene.GetEntity(TestScene->PlayerModel);
-	DEBUG_DrawPoseState(Entity.Mesh->Skeleton, Entity.PoseState, State->Nodes, Entity.Node, &State->LineDrawPass);
+	auto Entity		= State->GScene.GetEntity(TestScene->PlayerModel);
+	auto Skeleton	= State->GScene.GetEntitySkeleton(TestScene->PlayerModel);
+	DEBUG_DrawPoseState(Skeleton, Entity.PoseState, State->Nodes, Entity.Node, &State->LineDrawPass);
 }
 
 
@@ -708,12 +713,16 @@ extern "C"
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-		InitiateForwardPass		(Engine->RenderSystem, &FP_Desc, &State.ForwardPass);
-		InitiateDeferredPass	(Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
-		InitiateScene			(&Engine->Physics, &State.PScene);
-		InitiateGraphicScene	(&State.GScene, Engine->RenderSystem, &Engine->Materials, &Engine->Assets, &Engine->Nodes, Engine->BlockAllocator, Engine->TempAllocator);
-		InitiateTextRender		(Engine->RenderSystem, &State.TextRender);
-		InitiateSegmentPass		(Engine->RenderSystem, Engine->BlockAllocator, &State.LineDrawPass);
+		State.GT = &Engine->Geometry;
+
+		InitiateForwardPass		  (Engine->RenderSystem, &FP_Desc, &State.ForwardPass);
+		InitiateDeferredPass	  (Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
+		InitiateScene			  (&Engine->Physics, &State.PScene);
+		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
+		InitiateTextRender		  (Engine->RenderSystem, &State.TextRender);
+		InitiateSegmentPass		  (Engine->RenderSystem, Engine->BlockAllocator, &State.LineDrawPass);
+
+		//InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
 
 		{
 			Landscape_Desc Land_Desc = { 
@@ -746,6 +755,7 @@ extern "C"
 
 		return &State;
 	}
+
 
 	void CleanUpState(GameState* Scene, EngineMemory* Engine)
 	{
@@ -813,7 +823,7 @@ extern "C"
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 
-			UploadPoses(RS, &PVS, TempMemory);
+			UploadPoses(RS, &PVS, State->GT, TempMemory);
 			UploadLineSegments(RS, &State->LineDrawPass);
 			UploadDeferredPassConstants(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
 			UploadCamera(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
@@ -828,14 +838,14 @@ extern "C"
 
 			if (State->DoDeferredShading)
 			{
-				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights, nullptr);
+				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights, nullptr, State->GT);
 				DrawLandscape(RS, &State->Landscape, 15, State->ActiveCamera);
 				ShadeDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
-				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);// Transparent Objects
+				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else
 			{
-				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights);
+				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
 			}
 		}
 

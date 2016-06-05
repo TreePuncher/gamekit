@@ -159,10 +159,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle LoadGameResource(Resources* RM, GUID_t guid, EResourceType T)
+	ResourceHandle LoadGameResource(Resources* RM, GUID_t guid)
 	{
 		for (size_t I = 0; I < RM->ResourcesLoaded.size(); ++I)
-			if (RM->ResourceGUIDs[I] == guid && RM->ResourcesLoaded[I]->Type == T)
+			if (RM->ResourceGUIDs[I] == guid)
 				return I;
 
 		ResourceHandle RHandle = INVALIDHANDLE;
@@ -171,7 +171,7 @@ namespace FlexKit
 			auto& t = RM->Tables[TI];
 			for (size_t I = 0; I < t->ResourceCount; ++I)
 			{
-				if (t->Entries[I].GUID == guid && t->Entries[I].Type == T)
+				if (t->Entries[I].GUID == guid)
 				{
 
 					FILE* F             = 0;
@@ -268,7 +268,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool isResourceAvailable(Resources* RM, GUID_t ID, EResourceType Type)
+	bool isResourceAvailable(Resources* RM, GUID_t ID)
 	{
 		for (size_t I = 0; I < RM->ResourcesLoaded.size(); ++I)
 			if (RM->ResourcesLoaded[I]->GUID == ID)
@@ -313,7 +313,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMesh* Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, ShaderSetHandle SH, ShaderTable* ST, bool ClearBuffers)
+	TriMesh* Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, bool ClearBuffers)
 	{
 		Resource* R = FlexKit::GetResource(RM, RHandle);
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
@@ -361,9 +361,7 @@ namespace FlexKit
 				Out->Buffers[15] = View;
 			}
 
-			Shader S = Blob->HasAnimation ? ST->GetVertexShader_Animated(SH) : ST->GetVertexShader(SH);
 			FlexKit::CreateVertexBuffer(RS, Out->Buffers, BufferCount, Out->VertexBuffer);
-			bool res = FlexKit::CreateInputLayout(RS, Out->Buffers, BufferCount, S, &Out->VertexBuffer);
 
 			if (ClearBuffers)
 			{
@@ -473,18 +471,98 @@ namespace FlexKit
 
 	TextureSet* LoadTextureSet(Resources* RM, GUID_t ID, iAllocator* Memory)
 	{
-		bool Available = isResourceAvailable(RM, ID, EResourceType::EResource_TextureSet);
+		bool Available = isResourceAvailable(RM, ID);
 		TextureSet* Set = nullptr;
 
 		if (Available)
 		{
-			auto Handle = LoadGameResource(RM, ID, EResourceType::EResource_TextureSet);
+			auto Handle = LoadGameResource(RM, ID);
 			if (Handle != INVALIDHANDLE) {
 				Set = Resource2TextureSet(RM, Handle, Memory);
 			}
 		}
 
 		return Set;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, Resources* RM, GeometryTable* GT, size_t GUID)
+	{	// Make this atomic
+		TriMeshHandle Handle;
+
+		if(!GT->FreeList.size())
+		{
+			auto Index	= GT->Geometry.size();
+			Handle		= GT->Handles.GetNewHandle();
+
+			GT->Geometry.push_back			(nullptr);
+			GT->GeometryIDs.push_back		(nullptr);
+			GT->Guids.push_back				(0);
+			GT->ReferenceCounts.push_back	(0);
+
+			auto Available = isResourceAvailable(RM, GUID);
+			FK_ASSERT(Available);
+
+			auto RHandle = LoadGameResource(RM, GUID);
+			auto GameRes = GetResource(RM, RHandle);
+			auto NewMesh = Resource2TriMesh(RS, RM, RHandle, GT->Memory);
+			FreeResource(RM, RHandle);
+
+			GT->Handles[Handle]			= Index;
+			GT->Geometry[Index]			= NewMesh;
+			GT->GeometryIDs[Index]		= GameRes->ID;
+			GT->Guids[Index]			= GUID;
+			GT->ReferenceCounts[Index]	= 1;
+		}
+		else
+		{
+			FK_ASSERT(0);
+		}
+
+		return Handle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, Resources* RM, GeometryTable* GT, const char* ID)
+	{	// Make this atomic
+		TriMeshHandle Handle;
+
+		if(!GT->FreeList.size())
+		{
+			auto Index	= GT->Geometry.size();
+			Handle		= GT->Handles.GetNewHandle();
+
+			GT->Geometry.push_back			(nullptr);
+			GT->GeometryIDs.push_back		(nullptr);
+			GT->Guids.push_back				(0);
+			GT->ReferenceCounts.push_back	(0);
+
+			auto Available = isResourceAvailable(RM, ID);
+			FK_ASSERT(Available);
+
+			auto RHandle = LoadGameResource(RM, ID);
+			auto GameRes = GetResource(RM, RHandle);
+			auto NewMesh = Resource2TriMesh(RS, RM, RHandle, GT->Memory);
+			FreeResource(RM, RHandle);
+
+			GT->Handles[Handle]			= Index;
+			GT->Geometry[Index]			= NewMesh;
+			GT->GeometryIDs[Index]		= ID;
+			GT->Guids[Index]			= GameRes->GUID;
+			GT->ReferenceCounts[Index]	= 1;
+		}
+		else
+		{
+			FK_ASSERT(0);
+		}
+
+		return Handle;
 	}
 
 

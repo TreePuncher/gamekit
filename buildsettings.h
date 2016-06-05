@@ -129,8 +129,11 @@ static const size_t KILOBYTE	= 1024;
 static const size_t MEGABYTE	= 1024 * KILOBYTE;
 static const size_t GIGABYTE	= 1024 * MEGABYTE;
 
-typedef uint8_t byte;
+const size_t INVALIDHANDLE = 0xFFFFFFFFFFFFFFFF;
+
+typedef uint8_t	 byte;
 typedef uint64_t ResourceHandle;
+typedef uint64_t GUID_t;
 
 #define NOMINMAX
 

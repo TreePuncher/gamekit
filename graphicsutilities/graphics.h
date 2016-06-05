@@ -1430,6 +1430,38 @@ namespace FlexKit
 		size_t SkeletonGUID;
 	};
 
+	/************************************************************************************************/
+
+
+	typedef FlexKit::Handle_t<16> TriMeshHandle;
+	const TriMeshHandle INVALIDMESHHANDLE = TriMeshHandle(-1);
+	struct GeometryTable
+	{
+		GeometryTable() : Handles(GetTypeID<GeometryTable>(), nullptr) {}
+
+		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
+		DynArray<TriMesh*>								Geometry;
+		DynArray<size_t>								ReferenceCounts;
+		DynArray<GUID_t>								Guids;
+		DynArray<const char*>							GeometryIDs;
+		DynArray<size_t>								FreeList;
+		iAllocator*										Memory;
+	};
+
+
+	FLEXKITAPI void							InitiateGeometryTable	(GeometryTable* GT, iAllocator* Memory);
+	FLEXKITAPI void							FreeGeometryTable		(GeometryTable* GT);
+	FLEXKITAPI void							AddRef					(GeometryTable* GT, TriMeshHandle TMHandle);
+	FLEXKITAPI void							ReleaseMesh				(GeometryTable* GT, TriMeshHandle TMHandle);
+	FLEXKITAPI TriMesh*						GetMesh					(GeometryTable* GT, TriMeshHandle TMHandle);
+	FLEXKITAPI Skeleton*					GetSkeleton				(GeometryTable* GT, TriMeshHandle TMHandle);
+	FLEXKITAPI size_t						GetSkeletonGUID			(GeometryTable* GT, TriMeshHandle TMHandle);
+	FLEXKITAPI void							SetSkeleton				(GeometryTable* GT, TriMeshHandle TMHandle, Skeleton* S);
+	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				(GeometryTable* GT, size_t guid);
+	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				(GeometryTable* GT, const char* ID);
+	FLEXKITAPI bool							IsMeshLoaded			(GeometryTable* GT, size_t guid);
+	FLEXKITAPI bool							IsSkeletonLoaded		(GeometryTable* GT, TriMeshHandle guid);
+	FLEXKITAPI bool							IsAnimationsLoaded		(GeometryTable* GT, TriMeshHandle guid);
 
 	/************************************************************************************************/
 
@@ -1575,8 +1607,7 @@ namespace FlexKit
 
 		struct ShaderSet
 		{
-			ShaderSet()
-			{
+			ShaderSet() {
 				inUse = false;
 			}
 
@@ -1622,25 +1653,23 @@ namespace FlexKit
 		// TODO: move state flags into a single byte 
 		Drawable() 
 		{
-			Visable                    = true; 
-			OverrideMaterialProperties = false;
-			Occluder                   = nullptr;
-			DrawLast				   = false;
-			Transparent				   = false;
-			Posed					   = false; // Use Vertex Palette Skinning
-			PoseState				   = nullptr;
-			AnimationState			   = nullptr;
+			Visable            = true; 
+			DrawLast		   = false;
+			Transparent		   = false;
+			Posed			   = false; // Use Vertex Palette Skinning
+			PoseState		   = nullptr;
+			AnimationState	   = nullptr;
 		}
 		
-		TriMesh*				Mesh;						// 8
-		bool					Visable;					// 1
-		bool					OverrideMaterialProperties; // 1
-		bool					DrawLast;					// 1
-		bool					Transparent;				// 1
-		bool					Textured;					// 1
-		bool					Posed;						// 1
-		byte					Dirty;						// 1
-		byte					Padding_0;
+		//TriMesh*				Mesh;			// 8
+		TriMeshHandle			MeshHandle;		// 2
+		bool					Visable;		// 1
+		bool					DrawLast;		// 1
+		bool					Transparent;	// 1
+		bool					Textured;		// 1
+		bool					Posed;			// 1
+		byte					Dirty;			// 1
+		byte					Padding_0;		// 1
 
 		DrawablePoseState*		PoseState;
 		DrawableAnimationState*	AnimationState;
@@ -1648,8 +1677,7 @@ namespace FlexKit
 
 		// --------------------------------------------- 64 Byte Line
 		NodeHandle			Node;						// 2
-		ShaderSetHandle		Material;					// 1
-		TriMesh*			Occluder;
+		TriMeshHandle		Occluder;		// 2
 
 
 		// 76 Byte Line
@@ -1658,8 +1686,8 @@ namespace FlexKit
 
 		// --------------------------------------------- 128 Byte Line
 
-		Drawable&	SetAlbedo(float4 RGBA)		{ OverrideMaterialProperties = true; MatProperties.Albedo = RGBA; return *this; }
-		Drawable&	SetSpecular(float4 RGBA)	{ OverrideMaterialProperties = true; MatProperties.Spec = RGBA; return *this; }
+		Drawable&	SetAlbedo(float4 RGBA)		{ MatProperties.Albedo	= RGBA; return *this; }
+		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }
 		Drawable&	SetNode(NodeHandle H)		{ Node = H; return *this; }
 
 
@@ -1707,7 +1735,7 @@ namespace FlexKit
 		if (e)
 	#endif
 
-		if (e->Visable && e->Mesh)
+		if (e->Visable && e->MeshHandle.to_uint() != INVALIDHANDLE)
 			pvs->push_back({ 0, e });
 	}
 
@@ -1716,27 +1744,31 @@ namespace FlexKit
 	FLEXKITAPI void SortPVSTransparent	(SceneNodes* Nodes, PVS* PVS_, Camera* C);
 
 	/************************************************************************************************/
+	
+	const size_t MAXINSTANCES = 1024 * 1;
+	const size_t MAXTRIMESHES = 16;
+
+	typedef FlexKit::Handle_t<16> StaticObjectHandle;
+
+
+	struct FLEXKITAPI StaticScene
+	{
+		StaticScene() : ObjectTable(GetTypeID<StaticScene>(), nullptr) {}
+		DynArray<DirectX::XMMATRIX>		Transforms		[MAXINSTANCES];
+		char							GeometryIndex	[MAXINSTANCES];
+		NodeHandle						NodeHandles		[MAXINSTANCES];
+
+		HandleUtilities::HandleTable<StaticObjectHandle>	ObjectTable;
+	};
+	
+	StaticObjectHandle CreateDrawable(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
 
 
 	struct FLEXKITAPI StaticMeshBatcher
 	{
-		const static size_t MAXINSTANCES = 1024 * 1;
-		const static size_t MAXTRIMESHES = 16;
-
-		StaticMeshBatcher() : ObjectTable(GetTypeID<StaticMeshBatcher>()) {}
-
-		typedef FlexKit::Handle_t<16> SceneObjectHandle;
 		typedef char DirtyFlag;
 
-		enum DirtyStates : char
-		{
-			CLEAN				= 0x02,
-			DIRTY_Transform		= 0x01,
-			DIRTY_ChangedMesh	= 0x02
-		};
-		
-		void Initiate(FlexKit::RenderSystem* RS, ShaderHandle StaticMeshBatcher, ShaderHandle pshade);
-		void CleanUp();
+		void Initiate(FlexKit::RenderSystem* RS, iAllocator* Memory);
 
 		inline size_t AddTriMesh(FlexKit::TriMesh* NewMesh){
 			size_t itr = 0;
@@ -1751,24 +1783,6 @@ namespace FlexKit
 			}
 			return itr;
 		}
-
-		void Update(SceneNodes* Nodes)
-		{
-		}
-
-		void PrintFrameStats();
-		void Upload				( RenderSystem* RS, SceneNodes* Nodes, iAllocator* Temp, Camera* C );
-		void BuildGeometryTable ( FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, StackAllocator* TempMemory );
-		
-		SceneObjectHandle CreateDrawable( NodeHandle node, size_t GeometryIndex = 0 );
-
-		void Draw( FlexKit::RenderSystem* RS, FlexKit::ShaderTable* M, Camera* C );
-
-		inline void SetDirtyFlag( DirtyFlag Flag, SceneObjectHandle hndl ){
-			auto CFlag = DirtyFlags[ObjectTable[hndl]];
-			CFlag |= Flag;
-		}
-
 
 		struct
 		{
@@ -1786,21 +1800,16 @@ namespace FlexKit
 			uint32_t StartIndexLocation;
 			int32_t	 BaseVertexLocation;
 			uint32_t StartInstanceLocation;
-		}								InstanceInformation	[MAXINSTANCES];
-		DynArray<DirectX::XMMATRIX>		Transforms			[MAXINSTANCES];
-		char							GeometryIndex		[MAXINSTANCES];
-		DirtyFlag						DirtyFlags			[MAXINSTANCES];
-		NodeHandle						NodeHandles			[MAXINSTANCES];
+		}InstanceInformation[MAXINSTANCES];
 
-		HandleUtilities::HandleTable<SceneObjectHandle>	ObjectTable;
-		size_t											TriMeshCount;
-		size_t											MaxVertexPerInstance;
-		size_t											InstanceCount[MAXTRIMESHES];
-		size_t											TotalInstanceCount;
+		size_t TriMeshCount;
+		size_t MaxVertexPerInstance;
+		size_t InstanceCount[MAXTRIMESHES];
+		size_t TotalInstanceCount;
 
-		ID3D12Resource*				Instances;
-		FrameBufferedResource		TransformsBuffer;
-		FrameBufferedResource		RenderARGs;
+		ID3D12Resource*			Instances;
+		ID3D12Resource*			TransformsBuffer;
+		FrameBufferedResource	RenderARGs;
 
 		ID3D12Resource* NormalBuffer;
 		ID3D12Resource* TangentBuffer;
@@ -1809,10 +1818,23 @@ namespace FlexKit
 		ID3D12Resource* UVBuffer;
 		ID3D12Resource* GTBuffer;
 
+		ID3D12CommandSignature*	CommandSignature;
 		ID3D12DescriptorHeap*	SRVHeap;
+
 		Shader VShader;
 		Shader PShader;
 	};
+
+
+	/************************************************************************************************/
+
+
+	void PrintFrameStats		();
+	void Update					(SceneNodes* Nodes);
+	void Upload					(RenderSystem* RS, SceneNodes* Nodes, iAllocator* Temp, Camera* C);
+	void BuildGeometryTable		(RenderSystem* RS, iAllocator* TempMemory, StaticMeshBatcher* Batcher);
+	void Draw					(RenderSystem* RS);
+	void CleanUpStaticBatcher	(StaticMeshBatcher* Batcher);
 
 	
 	/************************************************************************************************/
@@ -1927,8 +1949,10 @@ namespace FlexKit
 	FLEXKITAPI Texture2D LoadTextureFromFile(char* file, RenderSystem* RS, iAllocator* Memout);
 	FLEXKITAPI void FreeTexture(Texture2D* Tex);
 
+
 	/************************************************************************************************/
 	
+
 	FLEXKITAPI Texture2D GetRenderTarget(RenderWindow* in);
 
 	struct PIXELPROCESS_DESC
@@ -2076,15 +2100,15 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 	template<typename Ty>
-	void SetLightFlag( Ty* out, LightHandle light, LightBufferFlags flag )	{out->Flags->at(light) ^= flag;}
+	void SetLightFlag( Ty* out, LightHandle light, LightBufferFlags flag )	{out->Flags->at(light.INDEX) ^= flag;}
 
 
 	/************************************************************************************************/
 
 
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, TextureManager* TM);
-	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
+	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, TextureManager* TM, GeometryTable* GT);
+	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, GeometryTable* GT);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
@@ -2110,7 +2134,7 @@ namespace FlexKit
 	FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* RW, float ClearValue = 1.0f, int Stencil = 0 );
 	
 	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardPass* out );
-	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB );
+	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
 	FLEXKITAPI void CleanupForwardPass		( ForwardPass* FP );
 
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DHeapPOS;
@@ -2214,7 +2238,7 @@ namespace FlexKit
 
 	FLEXKITAPI void CreateCubeMesh		( RenderSystem* RS, TriMesh* r,		StackAllocator* mem, CubeDesc& desc );
 	FLEXKITAPI void CreatePlaneMesh		( RenderSystem* RS, TriMesh* out,	StackAllocator* mem, PlaneDesc desc );
-	FLEXKITAPI void CreateDrawable		( RenderSystem* RS, Drawable* e,		DrawableDesc&		desc );
+	FLEXKITAPI void CreateDrawable		( RenderSystem* RS, Drawable* e,	DrawableDesc& desc );
 
 	FLEXKITAPI bool LoadObjMesh			( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
 	FLEXKITAPI void UpdateDrawable		( RenderSystem* RS, SceneNodes* Nodes, const ShaderTable* M, Drawable* E );

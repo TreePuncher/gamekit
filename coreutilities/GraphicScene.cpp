@@ -93,7 +93,8 @@ namespace FlexKit
 			CleanUpDrawable(&GetEntity(E));
 			GetEntity(E).VConstants.Release();
 			GetEntity(E).Visable	= false;
-			GetEntity(E).Mesh		= nullptr;
+			ReleaseMesh(GT, GetEntity(E).MeshHandle);
+			GetEntity(E).MeshHandle = INVALIDMESHHANDLE;
 		}
 	}
 
@@ -103,10 +104,11 @@ namespace FlexKit
 
 	bool GraphicScene::isEntitySkeletonAvailable(EntityHandle EHandle)
 	{
-		if (Drawables->at(EHandle).Mesh)
+		if (Drawables->at(EHandle).MeshHandle != INVALIDMESHHANDLE)
 		{
-			auto ID = Drawables->at(EHandle).Mesh->TriMeshID;
-			bool Available = isResourceAvailable(RM, ID, EResourceType::EResource_Skeleton);
+			auto Mesh		= GetMesh(GT, Drawables->at(EHandle).MeshHandle);
+			auto ID			= Mesh->TriMeshID;
+			bool Available	= isResourceAvailable(RM, ID);
 			return Available;
 		}
 		return false;
@@ -119,19 +121,26 @@ namespace FlexKit
 	bool GraphicScene::EntityEnablePosing(EntityHandle EHandle)
 	{
 		bool Available			= isEntitySkeletonAvailable(EHandle);
-		bool SkeletonAvailable	= isResourceAvailable(RM, GetEntity(EHandle).Mesh->TriMeshID, EResource_Skeleton);
+		bool SkeletonAvailable  = false;
+		auto MeshHandle			= GetEntity(EHandle).MeshHandle;
+
+		if (Available) {
+			auto Mesh = GetMesh(GT, MeshHandle);
+			SkeletonAvailable = isResourceAvailable(RM, Mesh->TriMeshID);
+		}
+
 		bool ret = false;
 		if (Available && SkeletonAvailable)
 		{
-			if(!GetEntity(EHandle).Mesh->Skeleton)
+			if(!IsSkeletonLoaded(GT, MeshHandle))
 			{
-				auto SkeletonGUID = GetEntity(EHandle).Mesh->SkeletonGUID;
-				auto Handle	= LoadGameResource(RM, SkeletonGUID, EResource_Skeleton);
-				auto S		= Resource2Skeleton(RM, Handle, Memory);
-				GetEntity(EHandle).Mesh->Skeleton = S;
+				auto SkeletonGUID	= GetSkeletonGUID(GT, MeshHandle);
+				auto Handle			= LoadGameResource(RM, SkeletonGUID);
+				auto S				= Resource2Skeleton(RM, Handle, Memory);
+				SetSkeleton(GT, MeshHandle, S);
 			}
 
-			GetEntity(EHandle).PoseState	= CreatePoseState(&GetEntity(EHandle), Memory);
+			GetEntity(EHandle).PoseState	= CreatePoseState(&GetEntity(EHandle), GT, Memory);
 			GetEntity(EHandle).Posed		= true;
 			ret = true;
 		}
@@ -145,13 +154,18 @@ namespace FlexKit
 
 	bool GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation, float W)
 	{
-		if (!GetEntity(EHandle).Mesh->Skeleton)
+		auto MeshHandle = GetEntity(EHandle).MeshHandle;
+		bool SkeletonLoaded = IsSkeletonLoaded(GT, MeshHandle);
+		if (!SkeletonLoaded)
 			return false; 
-		if (GetEntity(EHandle).Mesh->Skeleton && GetEntity(EHandle).Mesh->Skeleton->Animations)
+
+		if (SkeletonLoaded && IsAnimationsLoaded(GT, MeshHandle))
 		{
-			if (!strcmp(GetEntity(EHandle).Mesh->Skeleton->Animations->Clip.mID, Animation))
+			// TODO: Needs to Iterate Over Clips
+			auto S = GetSkeleton(GT, MeshHandle);
+			if (!strcmp(S->Animations->Clip.mID, Animation))
 			{
-				PlayAnimation(&GetEntity(EHandle), Animation, Memory, true);
+				PlayAnimation(&GetEntity(EHandle), GT, Animation, Memory, true);
 				return true;
 			}
 		}
@@ -166,7 +180,7 @@ namespace FlexKit
 				auto AC = Resource2AnimationClip(Resource, Memory);
 				FreeResource(RM, RHndl);// No longer in memory once loaded
 
-				auto mesh			 = GetEntity(EHandle).Mesh;
+				auto mesh			 = GetMesh(GT, MeshHandle);
 				mesh->AnimationData |= FlexKit::TriMesh::AnimationData::EAD_Skin;
 				AC.Skeleton			 = mesh->Skeleton;
 
@@ -176,18 +190,20 @@ namespace FlexKit
 					while (I->Next)
 						I = I->Next;
 
-					I->Next = &Memory->allocate_aligned<Skeleton::AnimationList, 0x10>();
-					I->Next->Clip = AC;
-					I->Next->Next = nullptr;
+					I->Next			= &Memory->allocate_aligned<Skeleton::AnimationList, 0x10>();
+					I->Next->Clip	= AC;
+					I->Next->Memory = Memory;
+					I->Next->Next	= nullptr;
 				}
 				else
 				{
 					AC.Skeleton->Animations = &Memory->allocate_aligned<Skeleton::AnimationList, 0x10>();
 					AC.Skeleton->Animations->Clip = AC;
 					AC.Skeleton->Animations->Next = nullptr;
+					AC.Skeleton->Animations->Memory = Memory;
 				}
 
-				PlayAnimation(&GetEntity(EHandle), Animation, Memory, true, W);
+				PlayAnimation(&GetEntity(EHandle), GT, Animation, Memory, true, W);
 
 				return true;
 			}
@@ -210,15 +226,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateDrawableAndSetMesh(ShaderSetHandle M, GUID_t Mesh)
+	EntityHandle GraphicScene::CreateDrawableAndSetMesh(GUID_t Mesh)
 	{
 		auto EHandle = CreateDrawable();
 
-		TriMesh*  Geo = FindMesh(Mesh);
-		if (!Geo) Geo = LoadMesh(Mesh, M);
+		auto			Geo = FindMesh(GT, Mesh);
+		if (Geo == -1)	Geo = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
 
-		GetEntity(EHandle).Material		= M;
-		GetEntity(EHandle).Mesh			= Geo;
+		GetEntity(EHandle).MeshHandle	= Geo;
 		GetEntity(EHandle).Dirty		= true;
 		GetEntity(EHandle).Visable		= true;
 
@@ -229,23 +244,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateDrawableAndSetMesh(ShaderSetHandle M, char* Mesh)
+	EntityHandle GraphicScene::CreateDrawableAndSetMesh(char* Mesh)
 	{
 		auto EHandle = CreateDrawable();
 
-		TriMesh* Geo = FindMesh(Mesh);
-		if(!Geo) Geo = LoadMesh(Mesh, M);
+		TriMeshHandle MeshHandle = FindMesh(GT, Mesh);
+		if (MeshHandle == INVALIDMESHHANDLE)	
+			MeshHandle = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
 
 #ifdef _DEBUG
-		FK_ASSERT(Geo, "FAILED TO FIND MESH IN RESOURCES!");
+		FK_ASSERT(MeshHandle != INVALIDMESHHANDLE, "FAILED TO FIND MESH IN RESOURCES!");
 #endif
-
-		GetEntity(EHandle).Material = M;
-		GetEntity(EHandle).Mesh		= Geo;
-		GetEntity(EHandle).Dirty	= true;
-		GetEntity(EHandle).Visable	= true;
-		GetEntity(EHandle).Textured = false;
-		GetEntity(EHandle).Posed	= false;
+		GetEntity(EHandle).MeshHandle = MeshHandle;
+		GetEntity(EHandle).Dirty	  = true;
+		GetEntity(EHandle).Visable	  = true;
+		GetEntity(EHandle).Textured   = false;
+		GetEntity(EHandle).Posed	  = false;
 
 		return EHandle;
 	}
@@ -270,7 +284,7 @@ namespace FlexKit
 	{
 		auto Node = GetNewNode(SN);
 		SetPositionW(SN, Node, POS);
-		SPLights.push_back({Color, I, R, Node});
+		SPLights.push_back({Color, Dir, I, R, Node});
 		return PLights.size() - 1;
 	}
 
@@ -305,104 +319,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::PushMesh(TriMesh* M)
-	{
-		if (!Geo)
-			Geo = new(Memory->_aligned_malloc(sizeof(void*) * 64)) fixed_vector<TriMesh*>(64);
-
-		if (Geo->full())
-		{
-			auto Temp		= new(TempMem->_aligned_malloc(sizeof(void*)*Geo->size())) fixed_vector<TriMesh*>(Geo->size());
-			for (auto e : *Geo)
-				Temp->push_back(e);
-
-			size_t NewSize  = Geo->size() * 2;
-			auto NewArray	= new(TempMem->_aligned_malloc(sizeof(void*)*NewSize)) fixed_vector<TriMesh*>(NewSize);
-			for (auto e : *Temp)
-				NewArray->push_back(e);
-
-			Memory->_aligned_free(Geo);
-			Geo = NewArray;
-		}
-
-		Geo->push_back(M);
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMesh* GraphicScene::FindMesh(GUID_t ID)
-	{
-		if(Geo)
-		for (auto M : *Geo)
-			if (M->TriMeshID == ID)
-				return M;
-
-		return nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMesh* GraphicScene::FindMesh(const char* ID)
-	{
-		if(Geo)
-		for (auto M : *Geo)
-			if (M->ID && !strcmp(M->ID,ID))
-				return M;
-
-		return nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMesh* GraphicScene::LoadMesh(GUID_t ID, ShaderSetHandle M)
-	{
-		auto res = LoadGameResource(RM, ID, EResourceType::EResource_TriMesh);
-		if (res != INVALIDHANDLE) {
-			auto TriMesh = Resource2TriMesh(RS, RM, res, Memory, M, ST);
-			TriMesh->TriMeshID = ID;
-			PushMesh(TriMesh);
-			return Geo->back();
-		}
-		return nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	TriMesh* GraphicScene::LoadMesh(const char* ID, ShaderSetHandle M)
-	{
-		auto res = LoadGameResource(RM, ID);
-		if (res != INVALIDHANDLE) {
-			PushMesh(Resource2TriMesh(RS, RM, res, Memory, M, ST));
-			return Geo->back();
-		}
-		return nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, ShaderTable* in_ST, Resources* in_RM, SceneNodes* in_SN, iAllocator* Memory, iAllocator* TempMemory)
+	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodes* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory)
 	{
 		using FlexKit::CreateSpotLightBuffer;
 		using FlexKit::CreatePointLightBuffer;
 		using FlexKit::PointLightBufferDesc;
 
-		Out->ST = in_ST;
 		Out->RS = in_RS;
 		Out->RM = in_RM;
 		Out->SN = in_SN;
+		Out->GT = GT;
 
 		Out->Drawables	= nullptr;
-		Out->Geo		= nullptr;
 
 		Out->Memory		= Memory;
 		Out->TempMem	= TempMemory;
@@ -430,7 +358,7 @@ namespace FlexKit
 			for (auto E : *SM->Drawables)
 			{
 				if (E.AnimationState)
-					UpdateAnimation(SM->RS, &E, dt, SM->TempMem);
+					UpdateAnimation(SM->RS, &E, SM->GT, dt, SM->TempMem);
 			}
 		}
 	}
@@ -459,7 +387,8 @@ namespace FlexKit
 		{
 			for (auto &E : *SM->Drawables)
 			{
-				if (E.Mesh && CompareAgainstFrustum(&F, FlexKit::GetPositionW(SM->SN, E.Node), E.Mesh->Info.r))
+				auto Mesh = GetMesh(SM->GT, E.MeshHandle);
+				if (Mesh && CompareAgainstFrustum(&F, FlexKit::GetPositionW(SM->SN, E.Node), Mesh->Info.r))
 				{
 					if (!E.Transparent)
 						PushPV(&E, out);
@@ -489,19 +418,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void CleanUpSceneSkeleton(Skeleton* S, iAllocator* Mem)
-	{
-		for (size_t I = 0; I < S->JointCount; ++I)
-			if(S->Joints[I].mID) Mem->free((void*)S->Joints[I].mID);
-
-		Mem->free((void*)S->Joints);
-		Mem->free((void*)S->JointPoses);
-		Mem->free((void*)S->IPose);
-		Mem->free(S);
-	}
-
-	/************************************************************************************************/
-
 
 	void CleanUpSceneAnimation(AnimationClip* AC, iAllocator* Memory)
 	{
@@ -525,7 +441,9 @@ namespace FlexKit
 		{
 			for (auto E : *SM->Drawables)
 			{
+				ReleaseMesh(SM->GT, E.MeshHandle);
 				CleanUpDrawable(&E);
+
 				if (E.PoseState) 
 				{
 					Destroy(E.PoseState);
@@ -537,7 +455,8 @@ namespace FlexKit
 			SM->Memory->_aligned_free(SM->Drawables);
 		}
 
-		if (SM->Geo) 
+		/*
+		if (SM->Geo)
 		{
 			for (auto G : *SM->Geo) 
 			{
@@ -564,6 +483,7 @@ namespace FlexKit
 
 			SM->Memory->_aligned_free(SM->Geo);
 		}
+		*/
 
 		CleanUp(&SM->PLights, SM->Memory);
 		CleanUp(&SM->SPLights, SM->Memory);
@@ -571,7 +491,6 @@ namespace FlexKit
 		SM->Memory->_aligned_free(SM->PLights.Lights);
 		SM->PLights.Lights	= nullptr;
 		SM->Drawables		= nullptr;
-		SM->Geo				= nullptr;
 	}
 
 

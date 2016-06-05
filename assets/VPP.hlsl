@@ -93,8 +93,8 @@ VOUT VMain( VIN IN )
 	Out.N 		= mul(WT, IN.N);
 	Out.T 		= mul(WT, IN.T);
 	Out.B 		= cross(IN.N, IN.T);
-	/*
 
+	/*
 	if(IN.vertexID < IN.instanceData[0])
 	{
 		uint Index  = Indices	[IN.instanceData[2]  + IN.vertexID] + IN.instanceData[1];

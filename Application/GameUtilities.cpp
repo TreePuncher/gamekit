@@ -50,6 +50,8 @@ void CleanUpEngine(EngineMemory* Game)
 	FlexKit::Destroy(&Game->VTextRendering);
 	FlexKit::CleanUp(&Game->RenderSystem);
 
+	FreeGeometryTable(&Game->Geometry);
+
 #ifdef _DEBUG
 	FlexKit::PrintBlockStatus(&Game->BlockAllocator);
 #endif
@@ -345,6 +347,7 @@ void LoadShaders(EngineMemory* Game)
 	Shader NullGShader;
 	NullGShader.Type = FlexKit::SHADER_TYPE::SHADER_TYPE_Geometry;
 
+#if 0
 	auto GShader						= Game->Materials.AddShader(Game->GShader);
 	auto NGShader						= Game->Materials.AddShader(NullGShader);
 	auto TOGSHADER						= Game->Materials.AddShader(Game->VShader);
@@ -391,6 +394,8 @@ void LoadShaders(EngineMemory* Game)
 	Game->Materials.SetDefaultMaterial(Mat1);
 	Game->BuiltInMaterials.DefaultMaterial	= Mat1;
 	Game->BuiltInMaterials.GenerateNormal	= Mat2;
+#endif
+
 }
 
 
@@ -420,6 +425,7 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	fd.OutputTarget = &Engine->Window;
 	fd.DepthBuffer  = &Engine->DepthBuffer;
 
+	InitiateGeometryTable(&Engine->Geometry, Engine->BlockAllocator);
 	Engine->Assets.ResourceMemory = &Engine->BlockAllocator;
 }
 

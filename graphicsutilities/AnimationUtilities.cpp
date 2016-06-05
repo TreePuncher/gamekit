@@ -56,22 +56,23 @@ namespace FlexKit
 		return (H != 0XFFFF)? IPose[H] : DirectX::XMMatrixIdentity();
 	}
 
-	DrawablePoseState* CreatePoseState(Drawable* E, iAllocator* MEM)
+	DrawablePoseState* CreatePoseState(Drawable* E, GeometryTable* GT, iAllocator* MEM)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
+		auto Mesh = GetMesh(GT, E->MeshHandle);
 
-		if (!E->Mesh && !E->Mesh->Skeleton)
+		if (!Mesh && !Mesh->Skeleton)
 			return nullptr;
 
-		size_t JointCount = E->Mesh->Skeleton->JointCount;
+		size_t JointCount = Mesh->Skeleton->JointCount;
 
 		auto New_EAS = (DrawablePoseState*)MEM->_aligned_malloc(sizeof(DrawablePoseState));
 		New_EAS->Resource		= FrameBufferedResource();
 		New_EAS->Joints			= (JointPose*)MEM->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
 		New_EAS->CurrentPose	= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->JointCount		= JointCount;
-		New_EAS->Sk				= E->Mesh->Skeleton;
+		New_EAS->Sk				= Mesh->Skeleton;
 		New_EAS->Dirty			= true; // Forces First Upload
 
 		auto S = New_EAS->Sk;
@@ -133,6 +134,7 @@ namespace FlexKit
 		Joints		= (Joint*)		Allocator->_aligned_malloc(sizeof(Joint)	 * JC, 0x40);
 		IPose		= (XMMATRIX*)	Allocator->_aligned_malloc(sizeof(XMMATRIX)  * JC, 0x40); // Inverse Global Space Pose
 		JointPoses	= (JointPose*)	Allocator->_aligned_malloc(sizeof(JointPose) * JC, 0x40); // Local Space Pose
+		Memory		= Allocator;
 		FK_ASSERT(Joints);
 
 		for (auto I = 0; I < JointCount; I++)
@@ -141,6 +143,21 @@ namespace FlexKit
 			Joints[I].mID		= nullptr;
 			Joints[I].mParent	= JointHandle();
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CleanUpSkeleton(Skeleton* S)
+	{
+		for (size_t I = 0; I < S->JointCount; ++I)
+			if (S->Joints[I].mID) S->Memory->free((void*)S->Joints[I].mID);
+
+		S->Memory->free((void*)S->Joints);
+		S->Memory->free((void*)S->JointPoses);
+		S->Memory->free((void*)S->IPose);
+		S->Memory->free(S);
 	}
 
 
@@ -166,6 +183,7 @@ namespace FlexKit
 		auto& AL	= Allocator->allocate_aligned<Skeleton::AnimationList>();
 		AL.Next		= nullptr;
 		AL.Clip		= AC;
+		AL.Memory	= Allocator;
 
 		auto I		= &S->Animations;
 
@@ -179,18 +197,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(FlexKit::Drawable* E, const char* Animation, iAllocator* MEM, bool ForceLoop, float Weight)
+	EPLAY_ANIMATION_RES PlayAnimation(FlexKit::Drawable* E, GeometryTable* GT, const char* Animation, iAllocator* MEM, bool ForceLoop, float Weight)
 	{
 		using FlexKit::DrawablePoseState;
-		if (!E || !E->Mesh)
+		if (!E || !(E->MeshHandle != INVALIDMESHHANDLE))
 			return EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM;
-		if (!E->Mesh->Skeleton)
+
+		auto MeshHandle = E->MeshHandle;
+
+		if (!IsSkeletonLoaded(GT, MeshHandle))
 			return EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE;
+
+		auto Mesh = GetMesh(GT, MeshHandle);
 
 		if (!E->PoseState)
 		{
-			Skeleton*	S		= (Skeleton*)E->Mesh->Skeleton;
-			auto NewPoseState	= CreatePoseState(E, MEM);
+			Skeleton*	S		= (Skeleton*)Mesh->Skeleton;
+			auto NewPoseState	= CreatePoseState(E, GT, MEM);
 
 			if (!NewPoseState)
 				return EPLAY_NOT_ANIMATABLE;
@@ -207,7 +230,7 @@ namespace FlexKit
 
 		auto EPS	= E->PoseState;
 		auto EAS	= E->AnimationState;
-		auto S		= (Skeleton*)E->Mesh->Skeleton;
+		auto S		= Mesh->Skeleton;
 
 		Skeleton::AnimationList* I = S->Animations;
 
@@ -223,11 +246,10 @@ namespace FlexKit
 				ASE.ForceLoop = ForceLoop;
 				ASE.Weight	  = Weight;
 				EAS->Clips.push_back(ASE);
-
+				
 				E->Posed = true; // Enable Posing or Animation won't do anything
 				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 			}
-
 			I = I->Next;
 		}
 
@@ -257,11 +279,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES StopAnimation(FlexKit::Drawable* E, const char* Animation)
+	EPLAY_ANIMATION_RES StopAnimation(FlexKit::Drawable* E, GeometryTable* GT, const char* Animation)
 	{
 		if (!E)
 			return EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM;
-		if (!E->Mesh | !E->Mesh->Skeleton)
+
+
+		if (E->MeshHandle == INVALIDMESHHANDLE || !IsSkeletonLoaded(GT, E->MeshHandle))
 			return EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE;
 
 		if (!E->Posed)
@@ -269,8 +293,9 @@ namespace FlexKit
 			return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 		}
 
+		auto Mesh	= GetMesh(GT, E->MeshHandle);
 		auto EAS	= E->AnimationState;
-		auto S		= E->Mesh->Skeleton;
+		auto S		= Mesh->Skeleton;
 		
 		for (auto& C : EAS->Clips)
 		{
@@ -286,14 +311,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadPose(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP)
+	void UploadPose(RenderSystem* RS, GeometryTable* GT, FlexKit::Drawable* E, iAllocator* TEMP)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
 		using DirectX::XMMatrixInverse;
 
-		auto PS = E->PoseState;
-		auto S  = E->Mesh->Skeleton;
+		auto Mesh	= GetMesh(GT, E->MeshHandle);
+		auto PS		= E->PoseState;
+		auto S		= Mesh->Skeleton;
 
 		VShaderJoint* Out = (VShaderJoint*)TEMP->_aligned_malloc(sizeof(VShaderJoint) * S->JointCount);
 
@@ -317,12 +343,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadPoses(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP)
+	void UploadPoses(RenderSystem* RS, PVS* Drawables, GeometryTable* GT, iAllocator* TEMP)
 	{
 		for (Drawable* d : *Drawables)
 		{
 			if(d->PoseState && d->PoseState->Dirty)
-				UploadPose(RS, d, TEMP);
+				UploadPose(RS, GT, d, TEMP);
 		}
 	}
 
@@ -362,7 +388,7 @@ namespace FlexKit
 	}
 
 
-	void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, double dT, iAllocator* TEMP)
+	void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, GeometryTable* GT, double dT, iAllocator* TEMP)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
@@ -375,9 +401,10 @@ namespace FlexKit
 				return;
 			}
 
-			auto PS = E->PoseState;
-			auto AS = E->AnimationState;
-			auto S  = E->Mesh->Skeleton;
+			auto PS		= E->PoseState;
+			auto AS		= E->AnimationState;
+			auto Mesh	= GetMesh(GT, E->MeshHandle);
+			auto S		= Mesh->Skeleton;
 
 			float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
 
