@@ -319,14 +319,9 @@ namespace FlexKit
 		HR = RS->pDevice->CreateDescriptorHeap(&DH_Desc, IID_PPV_ARGS(&DSVDescHeap));
 		FK_ASSERT(FAILED(HR), "ERROR!");
 
-		//DH_Desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-		//HR = RS->pDevice->CreateDescriptorHeap(&DH_Desc, IID_PPV_ARGS(&SRVDescHeap));
-		//FK_ASSERT(FAILED(HR), "ERROR!");
-
 		out->DescriptorCBVSRVUAVSize = RS->DescriptorCBVSRVUAVSize;
 		out->DescriptorDSVSize       = RS->DescriptorDSVSize;
 		out->DescriptorRTVSize       = RS->DescriptorRTVSize;
-		//out->SRVDescHeap             = SRVDescHeap;
 		out->RTVDescHeap             = RTVDescHeap;
 		out->DSVDescHeap             = DSVDescHeap;
 	}
@@ -337,7 +332,6 @@ namespace FlexKit
 
 	void CleanUpDescriptorHeaps(DescriptorHeaps* DDH)
 	{
-		//DDH->SRVDescHeap->Release();
 		DDH->RTVDescHeap->Release();
 		DDH->DSVDescHeap->Release();
 	}
@@ -593,9 +587,7 @@ namespace FlexKit
 				{
 					ID3D12GraphicsCommandList*	CommandList		  = nullptr;
 					ID3D12CommandAllocator*		GraphicsAllocator = nullptr;
-					ID3D12DescriptorHeap*		SRVHeap			  = nullptr;
 
-					HR = Device->CreateDescriptorHeap	(&FrameTextureHeap_DESC, IID_PPV_ARGS(&SRVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,		__uuidof(ID3D12CommandAllocator), (void**)&GraphicsAllocator);						FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,			__uuidof(ID3D12CommandAllocator), (void**)&UploadAllocator);						FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,		__uuidof(ID3D12CommandAllocator), (void**)&ComputeAllocator);						FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
@@ -606,7 +598,6 @@ namespace FlexKit
 					CommandList->Close();
 					GraphicsAllocator->Reset();
 
-					NewRenderSystem.FrameResources[I].SRVDescHeap				= SRVHeap;
 					NewRenderSystem.FrameResources[I].TempBuffers				= nullptr;
 					NewRenderSystem.FrameResources[I].UploadList[II]			= static_cast<ID3D12GraphicsCommandList*>(UploadList);
 					NewRenderSystem.FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
@@ -614,7 +605,14 @@ namespace FlexKit
 					NewRenderSystem.FrameResources[I].ComputeCLAllocator[II]	= ComputeAllocator;
 					NewRenderSystem.FrameResources[I].GraphicsCLAllocator[II]	= GraphicsAllocator;
 					NewRenderSystem.FrameResources[I].CommandLists[II]			= static_cast<ID3D12GraphicsCommandList*>(CommandList);
+
 				}
+
+				ID3D12DescriptorHeap*		SRVHeap = nullptr;
+				HR = Device->CreateDescriptorHeap(&FrameTextureHeap_DESC, IID_PPV_ARGS(&SRVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
+				SETDEBUGNAME(SRVHeap, "TEXTUREHEAP");
+
+				NewRenderSystem.FrameResources[I].SRVDescHeap = SRVHeap;
 				NewRenderSystem.FrameResources[I].ThreadsIssued = 0;
 			}
 
@@ -667,6 +665,8 @@ namespace FlexKit
 	{
 		for(auto FR : System->FrameResources)
 		{
+			FR.SRVDescHeap->Release();
+
 			for (auto CL : FR.CommandLists)
 				if(CL)CL->Release();
 		
@@ -698,7 +698,6 @@ namespace FlexKit
 		System->pDevice->Release();
 		System->DefaultDescriptorHeaps.DSVDescHeap->Release();
 		System->DefaultDescriptorHeaps.RTVDescHeap->Release();
-		//System->DefaultDescriptorHeaps.SRVDescHeap->Release();
 		System->CopyEngine.TempBuffer->Release();
 		System->Fence->Release();
 

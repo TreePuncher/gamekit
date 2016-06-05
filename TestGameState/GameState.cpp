@@ -482,6 +482,8 @@ struct GameState
 	TextUtilities::FontAsset*	Font;
 	TextUtilities::TextArea		Text;
 
+	TextureSet*	Set1;
+
 	DeferredPass		DeferredPass;
 	ForwardPass			ForwardPass;
 	Line3DPass			LineDrawPass;
@@ -600,6 +602,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	State->GScene.GetEntity(AKModel).Textured = true;
 	State->GScene.GetEntity(AKModel).Textures = Textures;
 	State->GScene.SetMaterialParams(AKModel, float4(0.1f, 0.1f, 0.1f, 0.5f), { 1, 1, 1, 0 });
+	State->Set1 = Textures;
 
 	for (uint32_t I = 0; I < 0; ++I) {
 		for (uint32_t II = 0; II < 100; ++II) {
@@ -719,7 +722,7 @@ extern "C"
 			};
 
 			InitiateLandscape		(Engine->RenderSystem, GetZeroedNode(&Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
-			//PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0});
+			PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0});
 			UploadLandscape			(Engine->RenderSystem, &State.Landscape, nullptr, nullptr, true, false);
 		}
 
@@ -803,6 +806,7 @@ extern "C"
 		BeginPass(RS, State->ActiveWindow);
 		auto CL = GetCurrentCommandList(RS);
 
+		// TODO: multi Thread these
 		// Do Uploads
 		{
 			DeferredPass_Parameters	DPP;
@@ -859,6 +863,8 @@ extern "C"
 		
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);
+
+		ReleaseTextureSet(Engine->RenderSystem, _ptr->Set1, Engine->BlockAllocator);
 
 		CleanUpLineDrawPass		(&_ptr->LineDrawPass);
 		CleanUpState			(_ptr, Engine);

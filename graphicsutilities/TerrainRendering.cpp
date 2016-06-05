@@ -518,7 +518,6 @@ namespace FlexKit
 			bd.pInital          = &initial;
 
 			auto FinalBuffer	= CreateStreamOut(RS, SO_BUFFERSIZES);	FinalBuffer._SetDebugName("FinalBuffer");
-			auto RegionBuffer	= CreateStreamOut(RS, SO_BUFFERSIZES);	RegionBuffer._SetDebugName("RegionBuffer");
 			auto TriBuffer		= CreateStreamOut(RS, SO_BUFFERSIZES);	TriBuffer._SetDebugName("TriBuffer");
 
 			auto CounterBuffer1 = CreateStreamOut(RS, 512);	CounterBuffer1._SetDebugName("SO Counter 1");
@@ -635,22 +634,22 @@ namespace FlexKit
 		ls->RegionBuffers[1].Release();
 		ls->Regions.Release();
 
-		ls->CommandSignature->Release();
-		ls->ZeroValues->Release();
-		ls->ConstantBuffer.Release();
-		ls->FinalBuffer.Release();
-		ls->TriBuffer.Release();
-		ls->SOCounter_1.Release();
-		ls->SOCounter_2.Release();
-		ls->FB_Counter.Release();
+		if (ls->CommandSignature)	ls->CommandSignature->Release();	ls->CommandSignature = nullptr;
+		if (ls->ZeroValues)			ls->ZeroValues->Release();			ls->ZeroValues = nullptr;
+		if (ls->ConstantBuffer)		ls->ConstantBuffer.Release();
+		if (ls->FinalBuffer)		ls->FinalBuffer.Release(); 
+		if (ls->TriBuffer)			ls->TriBuffer.Release();
+		if (ls->SOCounter_1)		ls->SOCounter_1.Release();
+		if (ls->SOCounter_2)		ls->SOCounter_2.Release();
+		if (ls->FB_Counter)			ls->FB_Counter.Release();
 
-		ls->GenerateState->Release();
-		ls->SplitState->Release();
+		if (ls->GenerateState)	ls->GenerateState->Release();
+		if (ls->SplitState)		ls->SplitState->Release();
 
-		ls->SOQuery.Release();
+		if (ls->SOQuery) ls->SOQuery.Release();
 
-		ls->IndirectOptions1.Release();
-		ls->IndirectOptions2.Release();
+		if(ls->IndirectOptions1) ls->IndirectOptions1.Release();
+		if(ls->IndirectOptions2) ls->IndirectOptions2.Release();
 
 		if (ls->InputBuffer) ls->InputBuffer->Release();
 	}
