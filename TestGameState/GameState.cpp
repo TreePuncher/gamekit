@@ -584,6 +584,7 @@ void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
+
 	auto PlayerModel = State->GScene.CreateDrawableAndSetMesh("PlayerModel");
 	Out->PlayerModel = PlayerModel;
 
@@ -600,21 +601,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 
 	auto Textures = LoadTextureSet(&Engine->Assets, 100, Engine->BlockAllocator);
 	UploadTextureSet(Engine->RenderSystem, Textures, Engine->BlockAllocator);
-
-	auto AKModel = State->GScene.CreateDrawableAndSetMesh("UVCube");
-	auto Hallway = State->GScene.CreateDrawableAndSetMesh("Hallway");
-	State->GScene.GetEntity(AKModel).Textured = true;
-	State->GScene.GetEntity(AKModel).Textures = Textures;
-	State->GScene.SetMaterialParams(AKModel, float4(0.1f, 0.1f, 0.1f, 0.5f), { 1, 1, 1, 0 });
 	State->Set1 = Textures;
-
-	for (uint32_t I = 0; I < 0; ++I) {
-		for (uint32_t II = 0; II < 100; ++II) {
-			auto Floor = State->GScene.CreateDrawableAndSetMesh("FloorTile");
-			State->GScene.TranslateEntity_WT(Floor, { 10 * 40 - 40.0f * I, 0, 10 * 40 -  40.0f * II });
-			State->GScene.SetMaterialParams(Floor,  { 0.3f, 0.3f, 0.3f , 0.2f }, { 0.5f, 1.0f, 0.5f , 1.0f });
-		}
-	}
 
 	auto	WindowRect	= Engine->Window.WH;
 	float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
@@ -629,15 +616,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 
 	SetParentNode	(State->Nodes,	Out->PlayerController.PitchNode, Out->PlayerCam.Node);
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 20.0f, 00.0f});
-	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 80.0f});
-
-	State->GScene.AddPointLight({  0, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({ 40, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({-40, 10,  0 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({ 40, 10, 40 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({ 40, 10,-40 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({-40, 10, 40 }, { 1, 1, 1 }, 1000, 1000);
-	State->GScene.AddPointLight({-40, 10,-40 }, { 1, 1, 1 }, 1000, 1000);
+	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 40.0f});
 
 	InitateMouseCameraController(
 		0, 0, 75.0f, 
@@ -649,6 +628,8 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->PlayerInertia.Drag = 0.1f;
 	Out->PlayerInertia.Inertia = float3(0);
 	Out->T = 0;
+
+	LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
 }
 
 

@@ -162,10 +162,10 @@ GBuffer PMain_TEXTURED(PS_TEXURED_IN IN )
 	float3 A 		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Albedo;
 	float3 Spec		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Specular;
 	float2 RM		= RandSTexture.Sample(DefaultSampler, IN.UV);
-	Out.Albedo		= float4(A, RM.y * Albedo.w);			// Last Float is Roughness
+	Out.Albedo		= float4(A, RM.x * Albedo.w);			// Last Float is Roughness
 	Out.NORMAL 		= float4(IN.N, 0);						// 
 	Out.WPOS 		= float4(IN.WPOS, l);					// W is depth
-	Out.Specular 	= float4(Specular.rgb, RM.x * Specular.w);// Last Float is Metal Factor
+	Out.Specular 	= float4(Specular.rgb, RM.y * Specular.w);// Last Float is Metal Factor
 
 	return Out;
 }

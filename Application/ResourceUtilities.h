@@ -48,6 +48,7 @@ using FlexKit::float3;
 using FlexKit::ID_LENGTH;
 using FlexKit::Drawable;
 using FlexKit::NodeHandle;
+using FlexKit::Quaternion;
 using FlexKit::Pair;
 using FlexKit::PointLight;
 using FlexKit::PointLightBuffer;
@@ -181,12 +182,9 @@ struct CompileSceneFromFBXFile_DESC
 	bool					 IncludeShaders;
 };
 
-
+struct	LoadGeometry_RES;
+typedef LoadGeometry_RES*				LoadGeometryRES_ptr;
 typedef static_vector<Resource*, 256>	ResourceList;
-
-
-struct LoadGeometry_RES;
-typedef LoadGeometry_RES* LoadGeometryRES_ptr;
 
 FileDir SelectFile();
 
@@ -207,6 +205,7 @@ struct MetaData
 		EMI_FLOAT,
 		EMI_DOUBLE,
 		EMI_MESH,
+		EMI_SCENE,
 		EMI_SKELETAL,
 		EMI_SKELETALANIMATION,
 		EMI_ANIMATIONCLIP,
@@ -219,7 +218,8 @@ struct MetaData
 		EMR_MESH,
 		EMR_SKELETON,
 		EMR_SKELETALANIMATION,
-		EMI_None,
+		EMR_NODE,
+		EMR_None,
 	};
 
 	void SetID(char* Str, size_t StrSize)
@@ -306,10 +306,27 @@ struct Mesh_MetaData : public MetaData
 	GUID_t	guid;
 };
 
+
+struct Scene_MetaData : public MetaData
+{
+	Scene_MetaData(){
+		UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
+		type		= MetaData::EMETAINFOTYPE::EMI_SCENE;
+		size		= 0;
+		SceneIDSize = 0;
+		Guid		= INVALIDHANDLE;
+	}
+
+	GUID_t	Guid;
+	char	SceneID		[64];
+	size_t	SceneIDSize;
+};
+
+
 struct TextureSet_MetaData : public MetaData
 {
 	TextureSet_MetaData() {
-		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMI_None;
+		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_None;
 		type = MetaData::EMETAINFOTYPE::EMI_TEXTURESET;
 		size = 0;
 		Guid = 0;
@@ -322,15 +339,12 @@ struct TextureSet_MetaData : public MetaData
 
 typedef DynArray<size_t> RelatedMetaData;
 
-bool			ReadMetaData				(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
-RelatedMetaData	FindRelatedGeometryMetaData	(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem);
-Resource*		MetaDataToBlob				(MetaData* Meta, iAllocator* Mem);
+bool			ReadMetaData		(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
+RelatedMetaData	FindRelatedMetaData (MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem);
+Resource*		MetaDataToBlob		(MetaData* Meta, iAllocator* Mem);
 
 
 /************************************************************************************************/
-
-
-LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, LoadSceneFromFBXFile_DESC* Desc, MD_Vector* METAINFO = nullptr);
 
 namespace TextUtilities
 {

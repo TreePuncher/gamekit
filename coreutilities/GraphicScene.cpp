@@ -230,12 +230,14 @@ namespace FlexKit
 	{
 		auto EHandle = CreateDrawable();
 
-		auto			Geo = FindMesh(GT, Mesh);
-		if (Geo == -1)	Geo = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
+		auto		Geo = FindMesh(GT, Mesh);
+		if (!Geo)	Geo = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
 
 		GetEntity(EHandle).MeshHandle	= Geo;
 		GetEntity(EHandle).Dirty		= true;
 		GetEntity(EHandle).Visable		= true;
+		GetEntity(EHandle).Textured		= false;
+		GetEntity(EHandle).Textures		= nullptr;
 
 		return EHandle;
 	}
@@ -268,11 +270,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LightHandle GraphicScene::AddPointLight(float3 POS, float3 Color, float I, float R)
+	LightHandle GraphicScene::AddPointLight(float3 Color, NodeHandle Node, float I, float R)
+	{
+		PLights.push_back({Color, I, R, Node});
+		return LightHandle(PLights.size() - 1);
+	}
+
+
+	/************************************************************************************************/
+
+
+	LightHandle GraphicScene::AddPointLight(float3 Color, float3 POS, float I, float R)
 	{
 		auto Node = GetNewNode(SN);
 		SetPositionW(SN, Node, POS);
-		PLights.push_back({Color, I, R, Node});
+		PLights.push_back({ Color, I, R, Node });
 		return LightHandle(PLights.size() - 1);
 	}
 
@@ -409,10 +421,10 @@ namespace FlexKit
 		UpdateSpotLightBuffer	(*SM->RS, SM->SN, &SM->SPLights, SM->TempMem);
 
 		for (Drawable* d : *Dawables)
-			UpdateDrawable(SM->RS, SM->SN, SM->ST, d);
+			UpdateDrawable(SM->RS, SM->SN, d);
 
 		for (Drawable* t : *Transparent_PVS)
-			UpdateDrawable(SM->RS, SM->SN, SM->ST, t);
+			UpdateDrawable(SM->RS, SM->SN, t);
 	}
 
 
@@ -495,4 +507,72 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	//bool LoadScene(RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID, GraphicScene* GS_out)
+	//{
+	//	return false;
+	//}
+
+
+	/************************************************************************************************/
+
+
+	bool LoadScene(RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp)
+	{
+		bool Available = isResourceAvailable(RM, Guid);
+		if (Available)
+		{
+			auto RHandle = LoadGameResource(RM, Guid);
+			auto R		 = GetResource(RM, RHandle);
+
+			if (R != nullptr) {
+				SceneResourceBlob* SceneBlob = (SceneResourceBlob*)R;
+				auto& CreatedNodes = fixed_vector<NodeHandle>::Create(SceneBlob->SceneTable.NodeCount, Temp);
+
+				{
+					CompiledScene::SceneNode* Nodes = (CompiledScene::SceneNode*)(SceneBlob->Buffer + SceneBlob->SceneTable.NodeOffset);
+					for (size_t I = 0; I < SceneBlob->SceneTable.NodeCount; ++I)
+					{
+						auto Node = Nodes[I];
+						auto NewNode = GetNewNode(SN);
+
+						SetOrientationL(SN, NewNode, Node.Q);
+						SetPositionL(SN, NewNode, Node.TS.xyz());
+
+						if (Node.Parent != -1)
+							SetParentNode(SN, CreatedNodes[Node.Parent], NewNode);
+
+						CreatedNodes.push_back(NewNode);
+					}
+				}
+
+				{
+					auto Entities = (CompiledScene::Entity*)(SceneBlob->Buffer + SceneBlob->SceneTable.EntityOffset);
+					for (size_t I = 0; I < SceneBlob->SceneTable.EntityCount; ++I)
+					{
+						if (Entities[I].MeshGuid != INVALIDHANDLE) {
+							auto NewEntity = GS_out->CreateDrawableAndSetMesh(Entities[I].MeshGuid);
+							GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
+						}
+					}
+				}
+
+				{
+					auto Lights = (CompiledScene::PointLight*)(SceneBlob->Buffer + SceneBlob->SceneTable.LightOffset);
+					for (size_t I = 0; I < SceneBlob->SceneTable.LightCount; ++I)
+					{
+						auto Light		= Lights[I];
+						auto NewEntity	= GS_out->AddPointLight(Light.K, CreatedNodes[Light.Node], Light.I, Light.R * 10);
+					}
+				}
+			}
+		}
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
 }

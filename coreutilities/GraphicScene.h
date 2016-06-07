@@ -65,7 +65,8 @@ namespace FlexKit
 		EntityHandle CreateDrawableAndSetMesh(GUID_t Mesh);
 		EntityHandle CreateDrawableAndSetMesh(char* Mesh);
 		
-		LightHandle		AddPointLight(float3 POS, float3 Color, float I = 10, float R = 10);
+		LightHandle		AddPointLight(float3 Color, float3 POS, float I = 10, float R = 10);
+		LightHandle		AddPointLight(float3 Color, NodeHandle, float I = 10, float R = 10);
 		SpotLightHandle AddSpotLight(float3 POS, float3 Color, float3 Dir, float t = pi / 4, float I = 10, float R = 10);
 
 		void _PushEntity(Drawable E);
@@ -84,12 +85,10 @@ namespace FlexKit
 		inline void SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ FreeHandle(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
 
 		fixed_vector<Drawable>*		Drawables;
-		//fixed_vector<TriMesh*>*		Geo;
 		fixed_vector<size_t>*		FreeEntityList;
 		iAllocator*					TempMem;
 		iAllocator*					Memory;
 		RenderSystem*				RS;
-		ShaderTable*				ST;
 		Resources*					RM;
 		SceneNodes*					SN;
 		GeometryTable*				GT;
@@ -109,6 +108,9 @@ namespace FlexKit
 
 	FLEXKITAPI void CleanUpGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void CleanUpSceneSkeleton			(Skeleton* S, iAllocator* Mem);
+
+	//FLEXKITAPI bool	LoadScene(RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID, GraphicScene* GS_out);//
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp);
 
 	template<typename ALLOC_T>
 	void CleanUp(DrawablePoseState* EPS, ALLOC_T* Mem)

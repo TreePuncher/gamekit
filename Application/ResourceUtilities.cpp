@@ -52,6 +52,35 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
+struct FBXIDTranslation
+{
+	size_t	FBXID;
+	GUID_t	Guid;
+};
+typedef DynArray<FBXIDTranslation> FBXIDTranslationTable;
+
+
+GUID_t	TranslateID(size_t FBXID, FBXIDTranslationTable& Table)
+{
+	for (auto ID : Table)
+		if (ID.FBXID == FBXID)
+			return ID.Guid;
+
+	return INVALIDHANDLE;
+}
+
+bool FBXIDPresentInTable(size_t FBXID, FBXIDTranslationTable& Table)
+{
+	for (auto ID : Table)
+		if (ID.FBXID == FBXID)
+			return true;
+
+	return false;
+}
+
+/************************************************************************************************/
+
+
 void InitiateScene(ResourceScene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc )
 {
 	desc->MaxPointLightCount = FlexKit::max(1, desc->MaxPointLightCount);
@@ -1021,7 +1050,7 @@ void GetAnimationCuts(CutList* out, MD_Vector* MD, const char* ID, iAllocator* M
 {
 	if (MD)
 	{
-		auto Related		= FindRelatedGeometryMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION, ID, Mem);
+		auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION, ID, Mem);
 		auto AnimationClips = GetAllAnimationClipMetaData(MD, &Related, Mem);
 
 		for (auto I : AnimationClips)
@@ -1056,7 +1085,7 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 	using FlexKit::Skeleton;
 
 	// Gather MetaData
-	auto Related		= FindRelatedGeometryMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, ParentID, Temp);
+	auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, ParentID, Temp);
 	auto SkeletonInfo	= GetSkeletonMetaData(MD, &Related);
 
 	auto Root	= FindSkeletonRoot(M);
@@ -1304,7 +1333,7 @@ struct CompiledMeshInfo
 	Skeleton*	S;
 };
 
-DynArray<size_t> FindRelatedGeometryMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem)
+DynArray<size_t> FindRelatedMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem)
 {
 	DynArray<size_t> RelatedData(TempMem);
 	size_t IDLength = strlen(ID);
@@ -1331,7 +1360,7 @@ Mesh_MetaData* GetMeshMetaData(MD_Vector* MetaData, DynArray<size_t>& related)
 }
 
 Pair<size_t, GBAPair> 
-CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock* GL, StackAllocator* TempMem, MD_Vector* MD = nullptr, bool SubDiv = false)
+CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock* GL, StackAllocator* TempMem, FBXIDTranslationTable* Table, MD_Vector* MD = nullptr, bool SubDiv = false)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
@@ -1364,7 +1393,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 			{
 				MoveDynArray(	
 					RelatedMetaData, 
-					FindRelatedGeometryMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName, *TempMem ));
+					FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName, *TempMem ));
 			}
 			else
 				LoadMesh = true;
@@ -1398,6 +1427,9 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 					out.ID			= Info->MeshID;
 				}
 
+				if (!FBXIDPresentInTable(Mesh->GetUniqueID(), *Table))
+					Table->push_back({ Mesh->GetUniqueID(), out.TriMeshID });
+
 				PushGeo(GL, out, Memory);
 			}
 		}	break;
@@ -1406,7 +1438,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, BlockAllocator* Memory, GeometryBlock*
 
 	size_t NodeCount = node->GetChildCount();
 	for(int itr = 0; itr < NodeCount; ++itr)
-		CompileAllGeometry(node->GetChild(itr), Memory, GL, TempMem, MD);
+		CompileAllGeometry(node->GetChild(itr), Memory, GL, TempMem, Table, MD);
 
 	return{ GetGeoCount(GL), {GL, TempMem} };
 }
@@ -1632,13 +1664,13 @@ Resource* CreateSkeletalAnimationResourceBlob(AnimationClip* AC, GUID_t Skeleton
 /************************************************************************************************/
 
 
-ResourceList CompileFBXGeometry(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, bool LoadSkeletalData = false, MD_Vector* MD = nullptr, bool SUBDIV = false)
+ResourceList GatherSceneResources(fbxsdk::FbxScene* S, BlockAllocator* MemoryOut, FBXIDTranslationTable* Table, bool LoadSkeletalData = false, MD_Vector* MD = nullptr, bool SUBDIV = false)
 {
 	size_t TempMemorySize = MEGABYTE * 256;
 	StackAllocator TempMemory;
 	TempMemory.Init((byte*)_aligned_malloc(TempMemorySize, 0x40), TempMemorySize);
 
-	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, &TempMemory, MD);
+	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, &TempMemory, Table, MD);
 
 	ResourceList ResourcesFound;
 	if ((size_t)Res > 0)
@@ -1690,13 +1722,246 @@ struct LoadGeometry_RES
 {
 	fbxsdk::FbxManager*		Manager;
 	fbxsdk::FbxIOSettings*	Settings;
-	fbxsdk::FbxScene*		INScene;
+	fbxsdk::FbxScene*		LoadedFbxScene;
 
 	ResourceList Resources;
 };
 
 
-LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, CompileSceneFromFBXFile_DESC* Desc, MD_Vector* METAINFO)
+/************************************************************************************************/
+
+
+int	AddSceneNode(CompiledScene::SceneNode* Node, CompiledScene* Scene)
+{
+	auto index = Scene->Nodes.size();
+	return index;
+}
+
+
+/************************************************************************************************/
+
+
+void AddPointLight(CompiledScene::PointLight Light, CompiledScene* Scene)
+{
+	Scene->SceneLights.push_back(Light);
+}
+
+
+/************************************************************************************************/
+
+
+void AddEntity(CompiledScene::Entity Entity, CompiledScene* Scene)
+{
+	Scene->SceneEntities.push_back(Entity);
+}
+
+
+/************************************************************************************************/
+
+
+void AddStaticEntity(CompiledScene::Entity Static, CompiledScene* Scene)
+{
+	Scene->SceneStatics.push_back(Static);
+}
+
+
+/************************************************************************************************/
+
+
+void InitiateCompiledScene(CompiledScene* Scene, iAllocator* Memory)
+{
+	Scene->Nodes.Allocator			= Memory;
+	Scene->SceneEntities.Allocator	= Memory;
+	Scene->SceneGeometry.Allocator	= Memory;
+	Scene->SceneLights.Allocator	= Memory;
+}
+
+
+/************************************************************************************************/
+
+
+size_t CalculateSceneResourceSize(CompiledScene* SceneIn)
+{
+	size_t BlobSize = sizeof(SceneResourceBlob);
+
+	BlobSize += SceneIn->Nodes.size()			* sizeof(CompiledScene::SceneNode);
+	BlobSize += SceneIn->SceneEntities.size()	* sizeof(CompiledScene::Entity);
+	BlobSize += SceneIn->SceneGeometry.size()	* sizeof(CompiledScene::SceneGeometry);
+	BlobSize += SceneIn->SceneLights.size()		* sizeof(CompiledScene::PointLight);
+	BlobSize += SceneIn->SceneStatics.size()	* sizeof(CompiledScene::Entity);
+
+	return BlobSize;
+}
+
+
+/************************************************************************************************/
+
+
+Resource* CreateSceneResourceBlob(iAllocator* Memory, CompiledScene* SceneIn, FBXIDTranslationTable* Table)
+{
+	size_t ResourceSize = CalculateSceneResourceSize(SceneIn);
+	SceneResourceBlob* SceneBlob		= (SceneResourceBlob*)Memory->malloc(ResourceSize);
+	SceneBlob->SceneTable.EntityCount	= SceneIn->SceneEntities.size();
+	SceneBlob->SceneTable.NodeCount		= SceneIn->Nodes.size();
+	SceneBlob->SceneTable.LightCount	= SceneIn->SceneLights.size();
+	SceneBlob->ResourceSize				= ResourceSize;
+	SceneBlob->GUID						= SceneIn->Guid;
+	SceneBlob->RefCount					= 0;
+	SceneBlob->State					= Resource::EResourceState_UNLOADED;
+	SceneBlob->Type						= EResource_Scene;
+	
+
+	for (auto& A : SceneIn->SceneEntities)
+		A.MeshGuid = TranslateID(A.MeshGuid, *Table);
+
+	memset(SceneBlob->ID, 0, 64);
+	strncpy(SceneBlob->ID, SceneIn->ID, SceneIn->IDSize);
+	
+	size_t Offset = 0;
+	auto Data = SceneBlob->Buffer;
+
+	SceneBlob->SceneTable.EntityOffset = Offset;
+	memcpy(Data + Offset, SceneIn->SceneEntities.begin(), SceneIn->SceneEntities.size() * sizeof(CompiledScene::Entity));
+	Offset += SceneIn->SceneEntities.size() * sizeof(CompiledScene::Entity);
+
+	SceneBlob->SceneTable.LightOffset = Offset;
+	memcpy(Data + Offset, SceneIn->SceneLights.begin(), SceneIn->SceneLights.size() * sizeof(CompiledScene::PointLight));
+	Offset += SceneIn->SceneEntities.size() * sizeof(CompiledScene::PointLight);
+
+	SceneBlob->SceneTable.NodeOffset = Offset;
+	memcpy(Data + Offset, SceneIn->Nodes.begin(), SceneIn->Nodes.size() * sizeof(CompiledScene::SceneNode));
+	Offset += SceneIn->SceneEntities.size() * sizeof(CompiledScene::SceneNode);
+
+	return (Resource*)SceneBlob;
+}
+
+
+/************************************************************************************************/
+
+
+void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* SceneOut, size_t Parent = -1)
+{
+	bool SkipChildren = false;
+	size_t AttributeCount = Node->GetNodeAttributeCount();
+	CompiledScene::SceneNode NewNode;
+	
+	auto Position = Node->LclTranslation.	Get();
+	auto LclScale = Node->LclScaling.		Get();
+	auto rotation = Node->LclRotation.		Get();
+
+	NewNode.Parent	= Parent;
+	NewNode.TS		= float4(TranslateToFloat3(Position), LclScale.mData[0]);
+	NewNode.Q		= Quaternion{rotation.mData[0], rotation.mData[1], rotation.mData[2]};
+
+	size_t Nodehndl = AddSceneNode(&NewNode, SceneOut);
+	SceneOut->Nodes.push_back(NewNode);
+
+	for (size_t i= 0; i < AttributeCount; ++i)
+	{
+		auto Attr = Node->GetNodeAttributeByIndex(i);
+		auto AttrType = Attr->GetAttributeType();
+		switch (AttrType)
+		{
+		case FbxNodeAttribute::eMesh:
+		{
+			std::cout << "Entity Found: " << Node->GetName() << "\n";
+			auto FBXMesh = static_cast<fbxsdk::FbxMesh*>(Attr);
+			auto UniqueID = FBXMesh->GetUniqueID();
+
+			CompiledScene::Entity Entity;
+			Entity.MeshGuid	= UniqueID;
+			Entity.Node		= Nodehndl;
+
+			AddEntity(Entity, SceneOut);
+		}	break;
+		case FbxNodeAttribute::eLight:
+		{
+			std::cout << "Light Found: " << Node->GetName() << "\n";
+
+			auto FBXLight    = static_cast<fbxsdk::FbxLight*>(Attr);
+			auto Type        = FBXLight->LightType.Get();
+			auto Cast        = FBXLight->CastLight.Get();
+			auto I           = FBXLight->Intensity.Get();
+			auto K           = FBXLight->Color.Get();
+			auto R           = FBXLight->OuterAngle.Get();
+
+			CompiledScene::PointLight Light;
+			Light.K        = TranslateToFloat3(K);			// COLOR for the Confused
+			Light.I        = I;
+			Light.Node	   = Nodehndl;
+			Light.R        = I * 100;
+
+			AddPointLight(Light, SceneOut);
+		}	break;
+		case FbxNodeAttribute::eMarker:
+		case FbxNodeAttribute::eUnknown:
+		default:
+			break;
+		}
+	}
+
+	if (!SkipChildren)
+	{
+		size_t ChildCount = Node->GetChildCount();
+		for (size_t I = 0; I < ChildCount; ++I)
+			ProcessNodes(Node->GetChild(I), Memory, SceneOut, Nodehndl);
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void ScanChildrenNodesForScene(fbxsdk::FbxNode* Node, MD_Vector* MetaData, iAllocator* Temp, iAllocator* Memory, SceneList* Out)
+{
+	auto nodeName = Node->GetName();
+	auto RelatedMetaData	= FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName(), Temp);
+	auto NodeCount			= Node->GetChildCount();
+
+	if (RelatedMetaData.size())
+	{
+		for (auto& i : RelatedMetaData)
+		{
+			if (MetaData->at(i)->type == MetaData::EMETAINFOTYPE::EMI_SCENE)
+			{
+				Scene_MetaData* MD = (Scene_MetaData*)MetaData->at(i);
+				CompiledScene& Scene	= Memory->allocate<CompiledScene>();
+				InitiateCompiledScene(&Scene, Memory);
+				Scene.Guid = MD->Guid;
+				strncpy(Scene.ID, MD->SceneID, MD->SceneIDSize);
+				Scene.IDSize = MD->SceneIDSize;
+
+				ProcessNodes(Node, Temp, &Scene);
+				Out->push_back(&Scene);
+			}
+		}
+		// Get Scene
+	}
+	else
+	{
+		Temp->clear();
+		for (int itr = 0; itr < NodeCount; ++itr) {
+			auto Child = Node->GetChild(itr);
+			ScanChildrenNodesForScene(Child, MetaData, Temp, Memory, Out);
+		}
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void GetScenes(fbxsdk::FbxScene* S, iAllocator* MemoryOut, iAllocator* TempMemory, MD_Vector* MetaData, SceneList* Out)
+{
+	auto Root = S->GetRootNode();
+	ScanChildrenNodesForScene(Root, MetaData, TempMemory, MemoryOut, Out);
+}
+
+
+/************************************************************************************************/
+
+
+LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFromFBXFile_DESC* Desc, MD_Vector* METAINFO)
 {
 	size_t MaxMeshCount					= 100;
 	fbxsdk::FbxManager*		Manager     = fbxsdk::FbxManager::Create();
@@ -1711,21 +1976,30 @@ LoadGeometryRES_ptr CompileGeometryFromFBXFile(char* AssetLocation, CompileScene
 	auto res = LoadFBXScene( AssetLocation, Manager, Settings );
 	if (res)
 	{
-		auto LoadRes = CompileFBXGeometry((FbxScene*)res, Desc->BlockMemory,true, METAINFO);
+		SceneList Scenes;
+		FBXIDTranslationTable Table(*Desc->BlockMemory);
+		auto LoadRes = GatherSceneResources((FbxScene*)res, Desc->BlockMemory, &Table, true, METAINFO);
+		GetScenes(res, *Desc->BlockMemory, *Desc->BlockMemory, METAINFO, &Scenes);
+
+		for (auto Scene : Scenes)
+		{
+			auto res = CreateSceneResourceBlob(*Desc->BlockMemory, Scene, &Table);
+			LoadRes.push_back(res);
+		}
 
 		size_t ResourceCount = 0;
 		size_t FileSize		 = 0;
-		for (auto& G : LoadRes)
-		{
+
+		for (auto& G : LoadRes){
 			ResourceCount++;
 			FileSize += G->ResourceSize;
 		}
 
 		auto G = &Desc->BlockMemory->allocate_aligned<LoadGeometry_RES>();
-		G->Manager = Manager;
-		G->INScene = Scene;
-		G->Resources = LoadRes;
-		G->Settings = Settings;
+		G->Manager			= Manager;
+		G->LoadedFbxScene	= Scene;
+		G->Resources		= LoadRes;
+		G->Settings			= Settings;
 		return  LoadGeometryRES_ptr(G);
 	}
 	return LoadGeometryRES_ptr(nullptr);
@@ -1757,7 +2031,7 @@ SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, ResourceScene* SceneOut, f
 
 			TranslateWorld	(Nodes, Nodehndl,				{Position.mData[0], Position.mData[1], Position.mData[2]});
 			Scale			(Nodes, Nodehndl,				{LclScale.mData[0], LclScale.mData[1], LclScale.mData[2]});
-			SetOrientation(Nodes, Nodehndl,		Quaternion	{rotation.mData[0], rotation.mData[1], rotation.mData[2]});
+			SetOrientation	(Nodes, Nodehndl,	Quaternion	{rotation.mData[0], rotation.mData[1], rotation.mData[2]});
 
 			size_t itr = 0;
 			for (; itr < AttributeCount; ++itr)
@@ -1786,6 +2060,7 @@ SceneStats ProcessSceneNodes(fbxsdk::FbxScene* scene, ResourceScene* SceneOut, f
 							CreateDrawable(RS, Drawable, DrawableDesc{ DefaultMaterial });
 							auto TriHandle = SearchForMesh(SceneOut, Attr->GetUniqueID());
 							if ( TriHandle ) {
+								FK_ASSERT(0);
 								Drawable->Node		= Nodehndl;
 								//Drawable->Mesh		= SceneOut->GetTriMesh(TriHandle);
 							}
@@ -1901,8 +2176,8 @@ TranslateFBXScene(fbxsdk::FbxScene* S, ResourceScene* SceneOut, NodeHandle Scene
 
 void CleanUp(ResourceScene* Scene)
 {
-	for (size_t I = 0; I < Scene->DrawablesUsed; ++I) CleanUpDrawable(Scene->Drawables + I);
-	for (size_t I = 0; I < Scene->GeometryUsed; ++I) CleanUpTriMesh(Scene->Geometry + I);
+	for (size_t I = 0; I < Scene->DrawablesUsed; ++I)	CleanUpDrawable(Scene->Drawables + I);
+	for (size_t I = 0; I < Scene->GeometryUsed; ++I)	CleanUpTriMesh(Scene->Geometry + I);
 }
 
 
@@ -2094,9 +2369,8 @@ FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocat
 
 				char ValueBuffer[16];
 				MoveTokenStr(ValueToken, ValueBuffer);
-				int V           = atoi(ValueBuffer);
-				NewValue.Data.I = V;
-
+				int V				= atoi(ValueBuffer);
+				NewValue.Data.I		= V;
 				NewValue.ID			= (char*)TempMemory->malloc(IDToken.size + 1); // 1 Extra for the Null Terminator
 				NewValue.ID_Size	= ValueToken.size;
 				MoveTokenStr(IDToken, NewValue.ID);
@@ -2108,12 +2382,12 @@ FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocat
 				Value NewValue;
 				NewValue.Type = Value::STRING;
 
-				auto IDToken    = Tokens->at(itr2 - 2);
-				auto ValueToken = Tokens->at(itr2 + 2);
+				auto IDToken		= Tokens->at(itr2 - 2);
+				auto ValueToken		= Tokens->at(itr2 + 2);
 
-				size_t IDSize    = IDToken.size;
-				NewValue.ID      = (char*)TempMemory->malloc(IDSize + 1); // 
-				NewValue.ID_Size = IDSize;
+				size_t IDSize		= IDToken.size;
+				NewValue.ID			= (char*)TempMemory->malloc(IDSize + 1); // 
+				NewValue.ID_Size	= IDSize;
 				MoveTokenStr(IDToken, NewValue.ID);
 
 				size_t StrSize       = ValueToken.size;
@@ -2328,7 +2602,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 			if (AlbedoID && AlbedoID->Type == Value::INT) {
 				TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = AlbedoID->Data.I;
 			} else {
-				TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = -1;
+				TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = INVALIDHANDLE;
 			}
 
 			if (RoughMetal && RoughMetal->Type == Value::STRING){
@@ -2339,10 +2613,32 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 			if (RoughMetalID && RoughMetalID->Type == Value::INT) {
 				TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = RoughMetalID->Data.I;
 			} else {
-				TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = -1;
+				TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = INVALIDHANDLE;
 			}
 
 			MD_Out.push_back(TextureSet_Meta);
+			itr = res;
+		}
+		else if (T.size && !strncmp(T.SubStr, "Scene", max(strlen("Scene"), T.size)))
+		{
+			auto res        = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+			auto Values     = res.V1;
+			auto Target		= Tokens->at(itr - 2);
+			auto AssetGUID  = FindValue(Values, "AssetGUID");
+			auto AssetID	= FindValue(Values, "AssetID");
+
+			Scene_MetaData& Scene		= Memory->allocate<Scene_MetaData>();
+			Scene.SetID(Target.SubStr, Target.size);
+
+			if(AssetGUID != nullptr && AssetGUID->Type == Value::INT)
+				Scene.Guid = AssetGUID->Data.I;
+
+			if (AssetID != nullptr && AssetID->Type == Value::STRING) {
+				strncpy(Scene.SceneID, AssetID->Data.S.S, min(AssetID->Data.S.size, 64));
+				Scene.SceneIDSize = AssetID->Data.S.size;
+			}
+
+			MD_Out.push_back(&Scene);
 			itr = res;
 		}
 	}

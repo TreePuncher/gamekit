@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
 
 				for (auto MD : MetaData)
 				{
-					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMI_None) {
+					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_None) {
 						auto NewResource = MetaDataToBlob(MD, BlockMemory);
 						ResourcesFound.push_back(NewResource);
 					}
@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
 					Desc.IncludeShaders = false;
 
 					std::cout << "Compiling File: " << Input << "\n";
-					Resources.push_back(CompileGeometryFromFBXFile(Input, &Desc, &MetaData));
+					Resources.push_back(CompileSceneFromFBXFile(Input, &Desc, &MetaData));
 					ResourcesFound += Resources.back()->Resources;
 				}
 
@@ -217,7 +217,8 @@ int main(int argc, char* argv[])
 					std::cout << " Type: Texture" << "\n";				break;
 					case EResourceType::EResource_TriMesh:
 					std::cout << " Type: TriangleMesh" << "\n";			break;
-
+					case EResourceType::EResource_TextureSet:
+					std::cout << " Type: TextureSet" << "\n";			break;
 					default:
 						break;
 					}

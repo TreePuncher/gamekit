@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 
-
 /************************************************************************************************/
 
 
@@ -152,15 +151,15 @@ namespace FlexKit
 
 		size_t			ResourceSize;
 		EResourceType	Type;
-		GUID_t GUID;
-		size_t Pad;
+		GUID_t			GUID;
+		size_t			Pad;
 
-		char ID[FlexKit::ID_LENGTH];
-		bool HasAnimation;
-		bool HasIndexBuffer;
-		size_t BufferCount;
-		size_t IndexCount;
-		size_t SkeletonGuid;
+		char	ID[FlexKit::ID_LENGTH];
+		bool	HasAnimation;
+		bool	HasIndexBuffer;
+		size_t	BufferCount;
+		size_t	IndexCount;
+		size_t	SkeletonGuid;
 
 		struct RInfo
 		{
@@ -278,6 +277,91 @@ namespace FlexKit
 			char	Directory[64];
 		}Textures[16];
 	};
+
+
+	/************************************************************************************************/
+
+
+	struct CompiledScene
+	{
+		struct SceneNode
+		{
+			Quaternion	Q;
+			float4		TS;
+			size_t		Parent;
+			size_t		pad;
+		};
+
+		struct PointLight
+		{
+			float	I, R;
+			float3	K;
+			size_t	Node;
+		};
+
+		struct Entity
+		{
+			GUID_t MeshGuid;
+			GUID_t TextureSet;
+			size_t Node;
+			size_t pad;
+		};
+
+		struct SceneGeometryTable
+		{
+			size_t	FBXTriMeshID;
+			GUID_t	Guid;
+			char*	ID;
+		};
+
+		DynArray<SceneNode>				Nodes;
+		DynArray<PointLight>			SceneLights;
+		DynArray<SceneGeometryTable>	SceneGeometry;
+		DynArray<Entity>				SceneEntities;
+		DynArray<Entity>				SceneStatics;
+		GUID_t							Guid;
+		char							ID[64];
+		size_t							IDSize;
+	};
+
+	typedef static_vector<CompiledScene*> SceneList;
+
+	/************************************************************************************************/
+
+
+	struct SceneResourceBlob
+	{
+		SceneResourceBlob()
+		{
+			ResourceSize	= sizeof(TextureSetBlob);
+			Type			= EResourceType::EResource_Scene;
+			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
+		}
+
+#pragma warning(disable:4200)
+
+		size_t					ResourceSize;
+		EResourceType			Type;
+		GUID_t					GUID;
+		Resource::ResourceState	State;		// Runtime Member
+		uint32_t				RefCount;	// Runtime Member
+
+		char	ID[ID_LENGTH];
+
+		struct {
+			size_t EntityCount;
+			size_t EntityOffset;
+
+			size_t LightCount;
+			size_t LightOffset;
+
+			size_t NodeCount;
+			size_t NodeOffset;
+		}SceneTable;
+		
+		char Buffer[];
+	};
+
 
 	/************************************************************************************************/
 

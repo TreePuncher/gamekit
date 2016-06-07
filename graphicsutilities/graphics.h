@@ -1457,9 +1457,9 @@ namespace FlexKit
 	FLEXKITAPI Skeleton*					GetSkeleton				(GeometryTable* GT, TriMeshHandle TMHandle);
 	FLEXKITAPI size_t						GetSkeletonGUID			(GeometryTable* GT, TriMeshHandle TMHandle);
 	FLEXKITAPI void							SetSkeleton				(GeometryTable* GT, TriMeshHandle TMHandle, Skeleton* S);
-	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				(GeometryTable* GT, size_t guid);
+	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				(GeometryTable* GT, GUID_t guid);
 	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				(GeometryTable* GT, const char* ID);
-	FLEXKITAPI bool							IsMeshLoaded			(GeometryTable* GT, size_t guid);
+	FLEXKITAPI bool							IsMeshLoaded			(GeometryTable* GT, GUID_t guid);
 	FLEXKITAPI bool							IsSkeletonLoaded		(GeometryTable* GT, TriMeshHandle guid);
 	FLEXKITAPI bool							IsAnimationsLoaded		(GeometryTable* GT, TriMeshHandle guid);
 
@@ -1677,7 +1677,7 @@ namespace FlexKit
 
 		// --------------------------------------------- 64 Byte Line
 		NodeHandle			Node;						// 2
-		TriMeshHandle		Occluder;		// 2
+		TriMeshHandle		Occluder;					// 2
 
 
 		// 76 Byte Line
@@ -1739,7 +1739,7 @@ namespace FlexKit
 			pvs->push_back({ 0, e });
 	}
 
-	FLEXKITAPI void UpdateDrawables		(RenderSystem* RS, SceneNodes* Nodes, FlexKit::ShaderTable* M, PVS* PVS_);
+	FLEXKITAPI void UpdateDrawables		(RenderSystem* RS, SceneNodes* Nodes, PVS* PVS_);
 	FLEXKITAPI void SortPVS				(SceneNodes* Nodes, PVS* PVS_, Camera* C);
 	FLEXKITAPI void SortPVSTransparent	(SceneNodes* Nodes, PVS* PVS_, Camera* C);
 
@@ -2241,7 +2241,7 @@ namespace FlexKit
 	FLEXKITAPI void CreateDrawable		( RenderSystem* RS, Drawable* e,	DrawableDesc& desc );
 
 	FLEXKITAPI bool LoadObjMesh			( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
-	FLEXKITAPI void UpdateDrawable		( RenderSystem* RS, SceneNodes* Nodes, const ShaderTable* M, Drawable* E );
+	FLEXKITAPI void UpdateDrawable		( RenderSystem* RS, SceneNodes* Nodes, Drawable* E );
 
 
 	/************************************************************************************************/

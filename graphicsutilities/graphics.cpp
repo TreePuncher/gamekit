@@ -566,7 +566,7 @@ namespace FlexKit
 
 		D3D12_DESCRIPTOR_HEAP_DESC	FrameTextureHeap_DESC = {};
 		FrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		FrameTextureHeap_DESC.NumDescriptors	= 1024;
+		FrameTextureHeap_DESC.NumDescriptors	= 10240;
 		FrameTextureHeap_DESC.NodeMask			= 0;
 		FrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
@@ -1591,6 +1591,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void AddRef(GeometryTable* GT, TriMeshHandle TMHandle)
+	{
+		size_t Index = GT->Handles[TMHandle];
+
+#ifdef _DEBUG
+		if (Index != -1)
+			GT->ReferenceCounts[Index]++;
+#else
+		GT->ReferenceCounts[Index]++;
+#endif
+
+	}
+
+
+	/************************************************************************************************/
+
+
 	void ReleaseMesh(GeometryTable* GT, TriMeshHandle TMHandle)
 	{
 		// TODO: MAKE ATOMIC
@@ -1665,10 +1682,12 @@ namespace FlexKit
 		return GetSkeleton(GT, RMeshHandle)->Animations != nullptr;
 	}
 
+
+
 	/************************************************************************************************/
 
 
-	Pair<TriMeshHandle, bool>	FindMesh(GeometryTable* GT, size_t guid)
+	Pair<TriMeshHandle, bool>	FindMesh(GeometryTable* GT, GUID_t guid)
 	{
 		TriMeshHandle HandleOut;
 		size_t location		= 0;
@@ -1679,7 +1698,7 @@ namespace FlexKit
 				for ( auto index : GT->Handles.Indexes)
 				{
 					if (index == location) {
-						HandleOut.INDEX = HandleIndex;
+						HandleOut = TriMeshHandle(HandleIndex, GT->Handles.mType, 0x04);
 						break;
 					}
 					++HandleIndex;
@@ -1692,6 +1711,7 @@ namespace FlexKit
 		return { HandleOut, 0 };
 	}
 	
+
 	/************************************************************************************************/
 
 
@@ -3898,7 +3918,7 @@ namespace FlexKit
 		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
 		CL->SetDescriptorHeaps(1, &DescriptorHeap);
 
-		size_t BufferIndex	= Pass->CurrentBuffer;
+		size_t BufferIndex		 = Pass->CurrentBuffer;
 
 		{	// Clear Targets
 			float4	ClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -3930,6 +3950,10 @@ namespace FlexKit
 			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		}
 		
+		TriMeshHandle	LastHandle	= INVALIDMESHHANDLE;
+		TriMesh*		Mesh		= nullptr;
+		size_t			IndexCount  = 0;
+
 		auto itr = _PVS->begin();
 		auto end = _PVS->end();
 
@@ -3940,25 +3964,34 @@ namespace FlexKit
 			if (E->Posed || E->Textured)
 				break;
 
-			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
-			size_t IBIndex			= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t ICount			= CurrentMesh->IndexCount;
-			CL->SetGraphicsRootConstantBufferView(1, E->VConstants->GetGPUVirtualAddress());
+			TriMeshHandle CurrentHandle = E->MeshHandle;
+			if (CurrentHandle == INVALIDMESHHANDLE)
+				continue;
 
-			D3D12_INDEX_BUFFER_VIEW		IndexView;
-			IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
-			IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-			IndexView.SizeInBytes		= ICount * 32;
+			if(CurrentHandle != LastHandle)
+			{
+				TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
 
-			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,		 CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,	 CurrentMesh, VBViews));
+				IndexCount			= CurrentMesh->IndexCount;
+				size_t IBIndex		= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+
+				D3D12_INDEX_BUFFER_VIEW		IndexView;
+				IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
+				IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+				IndexView.SizeInBytes		= IndexCount * 32;
+
+				static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,		 CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,	 CurrentMesh, VBViews));
 			
+				CL->IASetIndexBuffer(&IndexView);
+				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin() );
+				LastHandle = CurrentHandle;
+			}
+
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
-			CL->IASetIndexBuffer(&IndexView);
-			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin() );
-			CL->DrawIndexedInstanced(ICount, 1, 0, 0, 0);
+			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
 
 		if(itr != end)
@@ -3984,31 +4017,43 @@ namespace FlexKit
 			Desc.Buffer.NumElements			= AnimationState->JointCount;
 			Desc.Buffer.StructureByteStride = sizeof(float4x4) * 2;
 
-			size_t IBIndex = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t ICount = CurrentMesh->IndexCount;
-			
-			D3D12_INDEX_BUFFER_VIEW	IndexView;
-			IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress(),
-			IndexView.SizeInBytes    = ICount * 32;
-			IndexView.Format         = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+			TriMeshHandle CurrentHandle = E->MeshHandle;
+			if (CurrentHandle == INVALIDMESHHANDLE)
+				continue;
 
-			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-			{	FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,	CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,	CurrentMesh, VBViews));
+			if (CurrentHandle != LastHandle)
+			{
+				size_t IBIndex = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+				IndexCount = CurrentMesh->IndexCount;
+
+				D3D12_INDEX_BUFFER_VIEW	IndexView;
+				IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress(),
+					IndexView.SizeInBytes = IndexCount * 32;
+
+				IndexView.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+
+				static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+				{	FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
+					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
+					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
+					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,	CurrentMesh, VBViews));
+					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,	CurrentMesh, VBViews));
+				}
+
+				CL->IASetIndexBuffer(&IndexView);
+				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+				LastHandle = CurrentHandle;
 			}
 
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
 			CL->SetGraphicsRootShaderResourceView(DFRP_AnimationResources, AnimationState->Resource->GetGPUVirtualAddress());
-			CL->IASetIndexBuffer(&IndexView);
-			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
-			CL->DrawIndexedInstanced(ICount, 1, 0, 0, 0);
+			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
 
 		if (itr != end)
 			CL->SetPipelineState(Pass->Filling.PSOTextured);
+
+		TextureSet*	LastTextureSet = nullptr;
 
 		for (; itr != end; ++itr)
 		{
@@ -4017,32 +4062,54 @@ namespace FlexKit
 			if (E->Posed)
 				break;
 
-			TriMesh* CurrentMesh = GetMesh(GT, E->MeshHandle);
+			TriMeshHandle CurrentHandle		= E->MeshHandle;
+
+			if (CurrentHandle == INVALIDMESHHANDLE)
+				continue;
+
+			TriMesh*	CurrentMesh			= GetMesh(GT, CurrentHandle);
+			TextureSet* CurrentTextureSet	= E->Textures;
+
 			size_t IBIndex	= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t ICount	= CurrentMesh->IndexCount;
-			CL->SetGraphicsRootConstantBufferView(1, E->VConstants->GetGPUVirtualAddress());
+			IndexCount		= CurrentMesh->IndexCount;
 
-			auto Textures	= GetDescTableCurrentPosition_GPU(RS);
-			auto TablePOS	= ReserveDHeap(RS, 2);
+			
+			if (CurrentTextureSet == nullptr)
+				continue;
 
-			TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[0], TablePOS);
-			TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[1], TablePOS);
+			if(LastTextureSet != CurrentTextureSet)
+			{
+				LastTextureSet	= CurrentTextureSet;
+				auto Textures	= GetDescTableCurrentPosition_GPU(RS);
+				auto TablePOS	= ReserveDHeap(RS, 2);
 
-			D3D12_INDEX_BUFFER_VIEW	IndexView;
-			IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
-			IndexView.Format         = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-			IndexView.SizeInBytes    = ICount * 32;
+				TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[0], TablePOS);
+				TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[1], TablePOS);
+				CL->SetGraphicsRootDescriptorTable(DFRP_Textures, Textures);
+			}
 
-			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
-			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
+			if(CurrentHandle != LastHandle)
+			{
+				D3D12_INDEX_BUFFER_VIEW	IndexView;{
+					IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
+					IndexView.Format         = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+					IndexView.SizeInBytes    = IndexCount * 32;
+				}
 
-			CL->SetGraphicsRootConstantBufferView	(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
-			CL->SetGraphicsRootDescriptorTable		(DFRP_Textures, Textures);
-			CL->IASetIndexBuffer(&IndexView);
-			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
-			CL->DrawIndexedInstanced(ICount, 1, 0, 0, 0);
+				LastHandle = CurrentHandle;
+				
+				static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
+				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
+
+				CL->SetGraphicsRootConstantBufferView	(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
+				CL->IASetIndexBuffer(&IndexView);
+				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+			}
+
+			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
+			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
 	}
 
@@ -5273,7 +5340,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateDrawable(RenderSystem* RS, SceneNodes* Nodes, const ShaderTable* M, Drawable* E)
+	void UpdateDrawable(RenderSystem* RS, SceneNodes* Nodes, Drawable* E)
 	{
 		if ( E->Dirty && ( E->Visable && E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
 			DirectX::XMMATRIX WT;
@@ -5298,10 +5365,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateDrawables( RenderSystem* RS, SceneNodes* Nodes, FlexKit::ShaderTable* M, PVS* PVS_ ){
+	void UpdateDrawables( RenderSystem* RS, SceneNodes* Nodes, PVS* PVS_ ){
 		for ( auto v : *PVS_ ) {
 			auto E = ( Drawable* )v;
-			UpdateDrawable( RS, Nodes, M, v.V2 );
+			UpdateDrawable( RS, Nodes, v.V2 );
 		}
 	}
 
