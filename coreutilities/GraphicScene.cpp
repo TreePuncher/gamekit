@@ -534,11 +534,11 @@ namespace FlexKit
 					CompiledScene::SceneNode* Nodes = (CompiledScene::SceneNode*)(SceneBlob->Buffer + SceneBlob->SceneTable.NodeOffset);
 					for (size_t I = 0; I < SceneBlob->SceneTable.NodeCount; ++I)
 					{
-						auto Node = Nodes[I];
-						auto NewNode = GetNewNode(SN);
+						auto Node		= Nodes[I];
+						auto NewNode	= GetNewNode(SN);
 
 						SetOrientationL(SN, NewNode, Node.Q);
-						SetPositionL(SN, NewNode, Node.TS.xyz());
+						SetPositionL(SN,	NewNode, Node.TS.xyz());
 
 						if (Node.Parent != -1)
 							SetParentNode(SN, CreatedNodes[Node.Parent], NewNode);
@@ -554,6 +554,8 @@ namespace FlexKit
 						if (Entities[I].MeshGuid != INVALIDHANDLE) {
 							auto NewEntity = GS_out->CreateDrawableAndSetMesh(Entities[I].MeshGuid);
 							GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
+							auto Position_DEBUG = GetPositionW(SN, CreatedNodes[Entities[I].Node]);
+							int x = 0;
 						}
 					}
 				}

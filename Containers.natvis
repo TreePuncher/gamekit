@@ -10,4 +10,15 @@
       <Item Name="Size">Size</Item>
     </Expand>
   </Type>
+
+  <Type Name="FlexKit::Static_Array&lt;*&gt;">
+    <Expand>
+      <ArrayItems>
+        <Size>Size</Size>
+        <ValuePointer>Elements</ValuePointer>
+      </ArrayItems>
+      <Item Name="Max">TSIZE</Item>
+      <Item Name="Size">Size</Item>
+    </Expand>
+  </Type>
 </AutoVisualizer>

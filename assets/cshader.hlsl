@@ -256,7 +256,7 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 
 	#if 1
 
-	float3 Color = AmbientLight.xyz * Kd.xyz;
+	float3 Color = float3(0, 0, 0);// AmbientLight.xyz * Kd.xyz;
 
 	for( int I = 0; I < PointLightCount; ++I)
 	{

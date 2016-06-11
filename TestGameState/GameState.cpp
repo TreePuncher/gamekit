@@ -581,6 +581,20 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 void HandleMouseEvents(const Event& e, GameState* GS){}
 void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;}
 
+struct TriMeshCollider
+{
+
+};
+
+void CreateTriMeshCollider(FlexKit::PhysicsSystem* PS, FlexKit::PScene* Scene, Resources* RM, GUID_t AssetGuid)
+{
+	//PS->Physx->createTriangleMesh();
+}
+
+void CreateTriMeshActor(FlexKit::PhysicsSystem* PS, FlexKit::PScene* Scene)
+{
+
+}
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {

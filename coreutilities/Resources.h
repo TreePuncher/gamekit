@@ -40,6 +40,7 @@ namespace FlexKit
 
 	enum EResourceType : size_t
 	{
+		EResource_Collider,
 		EResource_Font,
 		EResource_GameDB,
 		EResource_Skeleton,
@@ -160,6 +161,7 @@ namespace FlexKit
 		size_t	BufferCount;
 		size_t	IndexCount;
 		size_t	SkeletonGuid;
+		GUID_t	ColliderGuid;
 
 		struct RInfo
 		{
@@ -304,7 +306,7 @@ namespace FlexKit
 			GUID_t MeshGuid;
 			GUID_t TextureSet;
 			size_t Node;
-			size_t pad;
+			size_t Collider;
 		};
 
 		struct SceneGeometryTable
@@ -360,6 +362,23 @@ namespace FlexKit
 		}SceneTable;
 		
 		char Buffer[];
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct ColliderResourceBlob
+	{
+#pragma warning(disable:4200)
+		size_t					ResourceSize;
+		EResourceType			Type;
+		GUID_t					GUID;
+		Resource::ResourceState	State;		// Runtime Member
+		uint32_t				RefCount;	// Runtime Member
+
+		char ID[ID_LENGTH];
+		byte Buffer[];
 	};
 
 

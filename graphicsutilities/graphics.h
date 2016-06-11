@@ -2162,6 +2162,7 @@ namespace FlexKit
 	struct LineSegment
 	{
 		float3 A, B;
+		float3 Color;
 	};
 
 	typedef DynArray<LineSegment> LineSegements;
