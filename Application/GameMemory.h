@@ -196,7 +196,7 @@ struct CodeTable
 	UpdatePreDrawFN		UpdatePreDraw;
 	DrawFN				Draw;
 	PostDrawFN			PostDraw;
-	CleanUpFN			CleanUp;
+	CleanUpFN			Cleanup;
 };
 
 typedef void (*GetStateTableFN)(CodeTable* out);

@@ -1680,7 +1680,6 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 			for (size_t I = 0; I < G->MeshUsed; ++I)
 			{
 				ResourcesFound.push_back(CreateTriMeshResourceBlob(G->Meshes + I, MemoryOut));
-				std::cout << G->Meshes[I].ID << " ResourcesFound Count : " << ResourcesFound.size() << " DEBUGPOINT 1\n" ;
 
 				if (G->Meshes[I].Skeleton) {
 					auto Res = CreateSkeletonResourceBlob(G->Meshes[I].Skeleton, MemoryOut);
@@ -1720,13 +1719,34 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 						meshDesc.points.stride    = G->Meshes[I].Buffers[0]->GetElementSize();
 						meshDesc.points.data      = G->Meshes[I].Buffers[0]->GetBuffer();
 
+						uint32_t* Indexes = (uint32_t*)TempMemory._aligned_malloc(G->Meshes[I].Buffers[15]->GetBufferSizeRaw());
+
+						{
+							struct Tri {
+								uint32_t Indexes[3];
+							};
+
+							auto Proxy = G->Meshes[I].Buffers[15]->CreateTypedProxy<Tri>();
+							size_t Position = 0;
+							auto itr = Proxy.begin();
+							auto end = Proxy.end();
+							while(itr < end) {
+								Indexes[Position + 0] = (*itr).Indexes[1];
+								Indexes[Position + 2] = (*itr).Indexes[2];
+								Indexes[Position + 1] = (*itr).Indexes[0];
+								Position += 3;
+								itr++;
+							}
+						}
+
 						auto IndexBuffer		  = G->Meshes[I].VertexBuffer.MD.IndexBuffer_Index;
 						meshDesc.triangles.count  = G->Meshes[I].IndexCount / 3;
 						meshDesc.triangles.stride = G->Meshes[I].Buffers[15]->GetElementSize() * 3;
-						meshDesc.triangles.data   = G->Meshes[I].Buffers[15]->GetBuffer();
+						meshDesc.triangles.data   = Indexes;
 
+#if USING(RESCOMPILERVERBOSE)
 						printf("BEGINNING MODEL BAKING!\n");
-
+#endif
 						bool success = false;
 						if(Cooker) success = Cooker->cookTriangleMesh(meshDesc, Stream);
 

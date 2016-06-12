@@ -81,7 +81,6 @@ namespace FlexKit
 		inline void SetPositionEntity_LT (EntityHandle Handle, float3 V)		{ FlexKit::SetPositionL		(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
 		inline void SetOrientation		 (EntityHandle Handle, Quaternion Q)	{ FlexKit::SetOrientation	(SN, GetEntity(Handle).Node, Q);  GetEntity(Handle).Dirty = true;}
 		inline void SetOrientationL		 (EntityHandle Handle, Quaternion Q)	{ FlexKit::SetOrientationL	(SN, GetEntity(Handle).Node, Q);  GetEntity(Handle).Dirty = true;}
-
 		inline void SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ FreeHandle(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
 
 		fixed_vector<Drawable>*		Drawables;

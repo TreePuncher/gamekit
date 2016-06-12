@@ -89,6 +89,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FLEXKITAPI
 #endif
 
+#define FLEXKITINTERNAL
+
+
 
 #include <assert.h>
 #include <functional>

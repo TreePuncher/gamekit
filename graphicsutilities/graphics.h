@@ -432,17 +432,21 @@ namespace FlexKit
 				Typed_iterator( Ty* _ptr ) : m_position(_ptr){}
 				Typed_iterator( const Typed_iterator& rhs ) : m_position( rhs.m_position ) {}
 
-				inline void operator ++ ( )		{ m_position += sizeof( Ty ); }
-				inline void operator ++ ( int ) { m_position += sizeof( Ty ); }
-				inline void operator -- ( )		{ m_position -= sizeof( Ty ); }
-				inline void operator -- ( int ) { m_position -= sizeof( Ty ); }
+				inline void operator ++ ( )		{ m_position++;}
+				inline void operator ++ ( int ) { m_position++;}
+				inline void operator -- ( )		{ m_position--;}
+				inline void operator -- ( int ) { m_position--;}
 
 				inline Typed_iterator	operator =	( const Typed_iterator& rhs ) {}
 				
+				inline bool operator <	(const Typed_iterator& rhs) { return (this->m_position < rhs.m_position); }
+
+
 				inline bool				operator == ( const Typed_iterator& rhs ) {	return  ( m_position == &*rhs ); }
 				inline bool				operator != ( const Typed_iterator& rhs ) { return !( m_position == &*rhs ); }
 
-				inline Ty&				operator * ()	const { return *m_position; }
+				inline Ty&				operator * ()		  { return *m_position; }
+				inline Ty				operator * ()	const { return *m_position; }
 
 				inline const Ty&		peek_forward()	const { return *( m_position + sizeof( Ty ) ); }
 
@@ -452,8 +456,8 @@ namespace FlexKit
 			};
 
 			Ty&	operator [] ( size_t index )	{ return m_position[index]; }
-			Typed_iterator begin()				{ return Typed_iterator(  m_position ); }
-			Typed_iterator end()				{ return Typed_iterator( &m_position[m_size]); }
+			Typed_iterator begin()				{ return Typed_iterator( m_position ); }
+			Typed_iterator end()				{ return Typed_iterator( m_position + m_size); }
 
 			inline const size_t	size() { return m_size / sizeof( Ty ); }
 
