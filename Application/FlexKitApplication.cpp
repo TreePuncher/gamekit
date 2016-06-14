@@ -156,7 +156,7 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		// End Update  -----------------------------------------------------------------------------------------
 	}
 	// Clean-Up
-	FNTable->CleanUp( Engine, State );
+	FNTable->Cleanup( Engine, State );
 }
 
 

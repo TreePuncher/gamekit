@@ -578,8 +578,8 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 	}
 }
 
-void HandleMouseEvents(const Event& e, GameState* GS){}
-void SetActiveCamera(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;}
+void HandleMouseEvents	(const Event& e, GameState* GS){}
+void SetActiveCamera	(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;}
 
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
@@ -617,6 +617,13 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	SetParentNode	(State->Nodes,	Out->PlayerController.PitchNode, Out->PlayerCam.Node);
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 20.0f, 00.0f});
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 40.0f});
+
+	auto Collider = LoadTriMeshCollider(&Engine->Physics, &Engine->Assets, 42);
+	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, {   0, 0, 0});
+	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, { -30, 0, 0});
+	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, { -60, 0, 0});
+	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, { -90, 0, 0});
+	Release(&Engine->Physics, Collider);
 
 	InitateMouseCameraController(
 		0, 0, 75.0f, 
@@ -698,7 +705,7 @@ extern "C"
 
 		InitiateForwardPass		  (Engine->RenderSystem, &FP_Desc, &State.ForwardPass);
 		InitiateDeferredPass	  (Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
-		InitiateScene			  (&Engine->Physics, &State.PScene);
+		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		InitiateTextRender		  (Engine->RenderSystem, &State.TextRender);
 		InitiateSegmentPass		  (Engine->RenderSystem, Engine->BlockAllocator, &State.LineDrawPass);
@@ -724,7 +731,7 @@ extern "C"
 
 		TextUtilities::PrintText(&State.Text, "TESTING!\n");
 
-		CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
+		//CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
 		CreateTestScene			(Engine, &State, &State.TestScene);
 
 		FlexKit::EventNotifier<>::Subscriber sub;
@@ -843,7 +850,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void CleanUp(EngineMemory* Engine, GameState* _ptr)
+	GAMESTATEAPI void Cleanup(EngineMemory* Engine, GameState* _ptr)
 	{
 		for (size_t I = 0; I < 3; ++I) {
 			WaitforGPU(&Engine->RenderSystem);
@@ -864,7 +871,7 @@ extern "C"
 		CleanupForwardPass		(&_ptr->ForwardPass);
 		CleanupDeferredPass		(&_ptr->DeferredPass);
 		CleanUpGraphicScene		(&_ptr->GScene);
-		CleanUpScene			(&_ptr->PScene);
+		CleanUpScene			(&_ptr->PScene, &Engine->Physics);
 		CleanUpEngine			(Engine);
 	}
 
@@ -901,7 +908,7 @@ extern "C"
 		UpdatePreDrawFN			UpdatePreDraw;
 		DrawFN					Draw;
 		PostDrawFN				PostDraw;
-		CleanUpFN				CleanUp;
+		CleanUpFN				Cleanup;
 	}Table;
 
 
@@ -915,7 +922,7 @@ extern "C"
 		Table.UpdatePreDraw		= &UpdatePreDraw;
 		Table.Draw				= &Draw;
 		Table.PostDraw			= &PostDraw;
-		Table.CleanUp			= &CleanUp;
+		Table.Cleanup			= &Cleanup;
 
 		*out = *(CodeTable*)(&Table);
 	}

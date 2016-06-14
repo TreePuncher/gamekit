@@ -153,23 +153,6 @@ Pair<bool, SceneHandle>	SearchForEntity (ResourceScene* Scn, char* ID );
 /************************************************************************************************/
 
 
-struct LoadSceneFromFBXFile_DESC
-{
-	FlexKit::iAllocator*	 BlockMemory;
-	FlexKit::iAllocator*	 AssetMemory; 
-	FlexKit::iAllocator*	 TempMem; 
-	FlexKit::iAllocator*	 LevelMem; 
-	FlexKit::RenderSystem*	 RS; 
-	FlexKit::ShaderTable*	 ST;
-	FlexKit::NodeHandle		 SceneRoot;
-	FlexKit::ShaderSetHandle DefaultMaterial;
-	bool					 SUBDIVEnabled;
-	bool					 CloseFBX;
-
-	//EngineMemory*			 Engine;
-};
-
-
 struct CompileSceneFromFBXFile_DESC
 {
 	FlexKit::BlockAllocator* BlockMemory;
@@ -180,6 +163,7 @@ struct CompileSceneFromFBXFile_DESC
 	bool					 SUBDIVEnabled;
 	bool					 CloseFBX;
 	bool					 IncludeShaders;
+	bool					 CookingEnabled;
 };
 
 struct	LoadGeometry_RES;
@@ -187,10 +171,6 @@ typedef LoadGeometry_RES*				LoadGeometryRES_ptr;
 typedef static_vector<Resource*, 256>	ResourceList;
 
 FileDir SelectFile();
-
-// RunTime Functions
-ResourceScene* LoadSceneFromFBXFile(char* AssetLocation, FlexKit::SceneNodes* Nodes, FlexKit::RenderSystem* RS, LoadSceneFromFBXFile_DESC* Desc);
-
 
 /************************************************************************************************/
 
@@ -203,6 +183,7 @@ struct MetaData
 		EMI_INT,
 		EMI_GUID,
 		EMI_FLOAT,
+		EMI_COLLIDER,
 		EMI_DOUBLE,
 		EMI_MESH,
 		EMI_SCENE,
@@ -219,7 +200,7 @@ struct MetaData
 		EMR_SKELETON,
 		EMR_SKELETALANIMATION,
 		EMR_NODE,
-		EMR_None,
+		EMR_NONE,
 	};
 
 	void SetID(char* Str, size_t StrSize)
@@ -302,8 +283,9 @@ struct Mesh_MetaData : public MetaData
 		size		= 0;
 	}
 
-	char	MeshID[ID_LENGTH];//
 	GUID_t	guid;
+	GUID_t	ColliderGUID;
+	char	MeshID[ID_LENGTH];//
 };
 
 
@@ -323,10 +305,25 @@ struct Scene_MetaData : public MetaData
 };
 
 
+struct Collider_MetaData : public MetaData
+{
+	Collider_MetaData(){
+		UserType		= MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
+		type			= MetaData::EMETAINFOTYPE::EMI_COLLIDER;
+		size			= 0;
+		ColliderIDSize	= 0;
+		Guid			= INVALIDHANDLE;
+	}
+
+	GUID_t	Guid;
+	char	ColliderID		[64];
+	size_t	ColliderIDSize;
+};
+
 struct TextureSet_MetaData : public MetaData
 {
 	TextureSet_MetaData() {
-		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_None;
+		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
 		type = MetaData::EMETAINFOTYPE::EMI_TEXTURESET;
 		size = 0;
 		Guid = 0;

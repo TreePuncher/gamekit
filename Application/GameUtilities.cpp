@@ -419,7 +419,7 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	CreateRenderWindow(Engine, height, width, false);
 	CreateDepthBuffer(Engine->RenderSystem, { width, height }, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer);
 	SetInputWIndow(&Engine->Window);
-	InitiatePhysics(&Engine->Physics, gCORECOUNT);
+	InitiatePhysics(&Engine->Physics, gCORECOUNT, Engine->BlockAllocator);
 
 	ForwardPass_DESC fd;
 	fd.OutputTarget = &Engine->Window;

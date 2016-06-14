@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSICSUTILITIES_H
 
 #include "..\buildsettings.h"
+#include "..\coreutilities\containers.h"
+#include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\graphics.h"
 
 #include "PxPhysicsAPI.h"
@@ -64,7 +66,31 @@ namespace FlexKit
 	static physx::PxDefaultErrorCallback	gDefaultErrorCallback;
 	static physx::PxDefaultAllocator		gDefaultAllocatorCallback;
 
+	typedef void(*FNPSCENECALLBACK_POSTUPDATE)(void*);
+	typedef void(*FNPSCENECALLBACK_PREUPDATE) (void*);
+
+
 	/************************************************************************************************/
+
+
+	struct TriangleCollider
+	{
+		physx::PxTriangleMesh*	Mesh;
+		size_t					RefCount;
+	};
+
+
+	/************************************************************************************************/
+
+
+	typedef Handle_t<16>	 ColliderHandle;
+
+	struct TriMeshColliderList
+	{
+		DynArray<TriangleCollider>						TriMeshColliders;
+		DynArray<size_t>								FreeSlots;
+		HandleUtilities::HandleTable<ColliderHandle>	TriMeshColliderTable;
+	};
 
 	struct PhysicsSystem
 	{
@@ -75,16 +101,41 @@ namespace FlexKit
 
 		physx::PxDefaultCpuDispatcher*	CPUDispatcher;
 
-
 		bool								RemoteDebuggerEnabled;
 		physx::PxVisualDebugger*			VisualDebugger;
 		physx::PxVisualDebuggerConnection*	VisualDebuggerConnection;
 		physx::PxGpuDispatcher*				GPUDispatcher;
+		physx::PxMaterial*					DefaultMaterial;
 
-		physx::PxMaterial*			DefaultMaterial;
+		TriMeshColliderList Colliders;
 	};
 
+
+
 	/************************************************************************************************/
+
+
+	struct PActor
+	{
+		enum EACTORTYPE
+		{
+			EA_TRIMESH,
+			EA_PRIMITIVE
+		}type;
+
+		void*			_ptr;
+		ColliderHandle	CHandle;
+	};
+
+
+	struct Collider
+	{
+		physx::PxActor* Actor;
+		NodeHandle		Node;
+
+		PActor	ExtraData;
+	};
+
 
 	struct PScene
 	{
@@ -95,17 +146,9 @@ namespace FlexKit
 		double			T;
 		bool			UpdateColliders;
 
-		struct Collider
-		{
-			Collider() { collider = nullptr; }
-			Collider(physx::PxActor* c) { collider = c; }
-			physx::PxActor* collider;
-			NodeHandle		Node;
-		};
-		static_vector<Collider, 64> Colliders;
+		DynArray<Collider> Colliders;
 	};
 
-	/************************************************************************************************/
 
 	struct SceneDesc
 	{
@@ -113,24 +156,32 @@ namespace FlexKit
 		physx::PxDefaultCpuDispatcher*	CPUDispatcher;
 	};
 
+
 	/************************************************************************************************/
 
-	FLEXKITAPI size_t	CreateCubeActor		(physx::PxMaterial* material, PScene* scene, float l, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
-	FLEXKITAPI size_t	CreatePlaneCollider	(physx::PxMaterial* material, PScene* scene);
-	FLEXKITAPI void		InitiateScene		(PhysicsSystem* System, PScene* scn);
-	FLEXKITAPI size_t	CreateSphereActor	(physx::PxMaterial* material, PScene* scene, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
+
+	FLEXKITAPI void AddRef(PhysicsSystem* PS, ColliderHandle);
+	FLEXKITAPI void Release(PhysicsSystem* PS, ColliderHandle);
+
+	FLEXKITAPI size_t			CreateCubeActor			(physx::PxMaterial* material, PScene* scene, float l, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
+	FLEXKITAPI size_t			CreatePlaneCollider		(physx::PxMaterial* material, PScene* scene);
+	FLEXKITAPI size_t			CreateSphereActor		(physx::PxMaterial* material, PScene* scene, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
+	FLEXKITAPI ColliderHandle	LoadTriMeshCollider		(PhysicsSystem* PS, Resources* RM, GUID_t Guid);
+	FLEXKITAPI size_t			CreateStaticActor		(PhysicsSystem* PS, PScene* Scene, NodeHandle Node, float3 POS = { 0, 0, 0 }, Quaternion Q = Quaternion::Identity());
+
 
 	FLEXKITAPI void	CleanupPhysics	(PhysicsSystem* Physics);
 	FLEXKITAPI void	CleanUpScene	(PScene* mat);
 
-	FLEXKITAPI void	InitiatePhysics	(PhysicsSystem* Physics, uint32_t CoreCount);
+
+	FLEXKITAPI void	InitiateScene	(PhysicsSystem* System, PScene* scn, iAllocator* allocator);
+	FLEXKITAPI void	InitiatePhysics	(PhysicsSystem* Physics, uint32_t CoreCount, iAllocator* allocator);
 	FLEXKITAPI void	MakeCube		(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Drawable* E, NodeHandle node, float3 initialP ={ 0, 0, 0 }, FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity());
 
-	typedef void	(*FNPSCENECALLBACK_POSTUPDATE)(void*);
-	typedef void	(*FNPSCENECALLBACK_PREUPDATE) (void*);
 
 	FLEXKITAPI void	UpdateScene		(PScene* scn, double dt, FNPSCENECALLBACK_POSTUPDATE, FNPSCENECALLBACK_PREUPDATE, void* P);
 	FLEXKITAPI void	UpdateColliders	(PScene* scn, FlexKit::SceneNodes* nodes);
+
 
 	/************************************************************************************************/
 }

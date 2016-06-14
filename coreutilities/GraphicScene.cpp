@@ -554,6 +554,8 @@ namespace FlexKit
 						if (Entities[I].MeshGuid != INVALIDHANDLE) {
 							auto NewEntity = GS_out->CreateDrawableAndSetMesh(Entities[I].MeshGuid);
 							GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
+							auto Position_DEBUG = GetPositionW(SN, CreatedNodes[Entities[I].Node]);
+							int x = 0;
 						}
 					}
 				}

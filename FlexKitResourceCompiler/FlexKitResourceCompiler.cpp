@@ -105,9 +105,9 @@ int main(int argc, char* argv[])
 		if(FileChosen)
 		{
 			FlexKit::BlockAllocator_desc BlockDesc;
-			BlockDesc.LargeBlock  = MEGABYTE * 400;
-			BlockDesc.MediumBlock = MEGABYTE * 100;
-			BlockDesc.SmallBlock  = MEGABYTE * 50;
+			BlockDesc.LargeBlock  = MEGABYTE * 500;
+			BlockDesc.MediumBlock = MEGABYTE * 200;
+			BlockDesc.SmallBlock  = MEGABYTE * 150;
 			BlockDesc.PoolSize	  = BlockDesc.LargeBlock + BlockDesc.MediumBlock + BlockDesc.SmallBlock;
 			BlockDesc._ptr		  = (byte*)_aligned_malloc(BlockDesc.PoolSize + MEGABYTE, 0x40);
 
@@ -125,12 +125,12 @@ int main(int argc, char* argv[])
 					ReadMetaData(MD_Location, BlockMemory, TempMemory, MetaData);
 
 				ResourceList ResourcesFound;
-
 				for (auto MD : MetaData)
 				{
-					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_None) {
+					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE) {
 						auto NewResource = MetaDataToBlob(MD, BlockMemory);
-						ResourcesFound.push_back(NewResource);
+						if(NewResource)
+							ResourcesFound.push_back(NewResource);
 					}
 				}
 
@@ -141,10 +141,12 @@ int main(int argc, char* argv[])
 					Desc.BlockMemory	= &BlockMemory;
 					Desc.CloseFBX		= true;
 					Desc.IncludeShaders = false;
+					Desc.CookingEnabled = true;
 
 					std::cout << "Compiling File: " << Input << "\n";
 					Resources.push_back(CompileSceneFromFBXFile(Input, &Desc, &MetaData));
-					ResourcesFound += Resources.back()->Resources;
+					if(Resources.back())
+						ResourcesFound += Resources.back()->Resources;
 				}
 
 				size_t ResourceCount = ResourcesFound.size();
@@ -162,6 +164,9 @@ int main(int argc, char* argv[])
 
 				for(size_t I = 0; I < ResourcesFound.size(); ++I)
 				{
+					if (!ResourcesFound[I])
+						continue;
+
 					auto& res = ResourcesFound[I];
 					Table->Entries[I].ResourcePosition = Position;
 					Table->Entries[I].GUID				= res->GUID;
@@ -203,6 +208,8 @@ int main(int argc, char* argv[])
 					std::cout << "Resource Found: " << RT->Entries[I].ID << " ID: " << RT->Entries[I].GUID;
 					switch (RT->Entries[I].Type)
 					{
+					case EResourceType::EResource_Collider:
+					std::cout << "Type : Collider" << "\n";				break;
 					case EResourceType::EResource_Font:
 					std::cout << " Type: Font" << "\n";					break;
 					case EResourceType::EResource_Scene:
