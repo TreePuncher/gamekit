@@ -75,6 +75,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameUtilities.cpp"
 #include "..\graphicsutilities\TerrainRendering.h"
 #include "..\coreutilities\GraphicScene.h"
+#include "..\coreutilities\DungeonGen.h"
+#include "..\coreutilities\DungeonGen.cpp"
 #include "..\coreutilities\Resources.h"
 #include "..\coreutilities\AllSourceFiles.cpp"
 
@@ -473,7 +475,21 @@ struct Scene
 	InertiaState			PlayerInertia;
 
 	float T;
+
+	DungeonGenerator	Dungeon;
 };
+
+struct TestSceneStats
+{
+	float		T;
+	uint32_t	AvgObjectDrawnPerFrame;
+};
+
+void ResetStats(TestSceneStats* Stats)
+{
+	Stats->AvgObjectDrawnPerFrame = 0;
+	Stats->T = 0;
+}
 
 struct GameState
 {
@@ -511,6 +527,8 @@ struct GameState
 	KeyState	Keys;
 	bool		Quit;
 	bool		DoDeferredShading;
+
+	TestSceneStats	Stats;
 };
 
 
@@ -581,6 +599,243 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 void HandleMouseEvents	(const Event& e, GameState* GS){}
 void SetActiveCamera	(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;}
 
+enum ETILEASSET_GUIDS
+{
+	EAG_BEGIN = 500,
+	EAG_CORRIDOR_NS                 = 500,
+	EAG_CORRIDOR_NS_COLLIDER        = 501,
+	EAG_CORRIDOR_EW                 = 502,
+	EAG_CORRIDOR_EW_COLLIDER        = 503,
+	EAG_CORRIDOR_CORNER_NE          = 504,
+	EAG_CORRIDOR_CORNER_NE_COLLIDER = 505,
+	EAG_CORRIDOR_CORNER_NW          = 506,
+	EAG_CORRIDOR_CORNER_NW_COLLIDER = 507,
+	EAG_CORRIDOR_CORNER_SE          = 508,
+	EAG_CORRIDOR_CORNER_SE_COLLIDER = 509,
+	EAG_CORRIDOR_CORNER_SW          = 510,
+	EAG_CORRIDOR_CORNER_SW_COLLIDER = 511,
+
+	EAG_WALL_NS                     = 512,
+	EAG_WALL_NS_COLLIDER            = 513,
+	EAG_WALL_EW                     = 514,
+	EAG_WALL_EW_COLLIDER            = 515,
+
+	EAG_DOOR_N                  = 516,
+	EAG_DOOR_N_COLLIDER         = 517,
+	EAG_DOOR_S                  = 518,
+	EAG_DOOR_S_COLLIDER         = 519,
+	EAG_DOOR_E                  = 520,
+	EAG_DOOR_E_COLLIDER         = 521,
+	EAG_DOOR_W                  = 522,
+	EAG_DOOR_W_COLLIDER         = 523,
+
+	EAG_DEADEND_N					= 524,
+	EAG_DEADEND_N_COLLIDER			= 525,
+	EAG_DEADEND_S					= 526,
+	EAG_DEADEND_S_COLLIDER			= 527,
+	EAG_DEADEND_E					= 528,
+	EAG_DEADEND_E_COLLIDER			= 529,
+	EAG_DEADEND_W					= 530,
+	EAG_DEADEND_W_COLLIDER			= 531,
+
+	EAG_END
+};
+
+
+enum ECOLLIDERASSETS
+{
+	ECA_DEADEND_N_COLLIDER,
+	ECA_DEADEND_S_COLLIDER,
+	ECA_DEADEND_E_COLLIDER,
+	ECA_DEADEND_W_COLLIDER,
+
+	ECA_CORNER_NE_COLLIDER,
+	ECA_CORNER_NW_COLLIDER,
+	ECA_CORNER_SE_COLLIDER,
+	ECA_CORNER_SW_COLLIDER,
+
+	ECA_HALLWAY_NS_COLLIDER,
+	ECA_HALLWAY_EW_COLLIDER,
+
+	ECA_COUNT
+};
+
+
+enum ETILEASSET
+{
+	EAT_CORRIDOR_NS,
+	EAT_CORRIDOR_EW,
+	EAT_CORRIDOR_CORNER_NE,
+	EAT_CORRIDOR_CORNER_NW,
+	EAT_CORRIDOR_CORNER_SE,
+	EAT_CORRIDOR_CORNER_SW,
+
+	EAT_WALL_NS,
+	EAT_WALL_EW,
+
+	EAT_DOORWARD_N,
+	EAT_DOORWARD_S,
+	EAT_DOORWARD_E,
+	EAT_DOORWARD_W,
+
+	EAT_COUNT
+};
+
+
+struct ProcessDungonTileArgs
+{
+	GraphicScene*	GS;
+	PScene*			PS;
+	PhysicsSystem*	Physics;
+	RenderSystem*	RS;
+	GeometryTable*	GT;
+	Resources*		Assets;
+
+	ColliderHandle	Colliders[ECA_COUNT];
+};
+
+
+void LoadColliders(PhysicsSystem* PS, Resources* Assets, ProcessDungonTileArgs* Out)
+{
+	Out->Colliders[ECA_DEADEND_N_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_DEADEND_N_COLLIDER);
+	Out->Colliders[ECA_DEADEND_S_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_DEADEND_S_COLLIDER);
+	Out->Colliders[ECA_DEADEND_E_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_DEADEND_E_COLLIDER);
+	Out->Colliders[ECA_DEADEND_W_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_DEADEND_W_COLLIDER);
+	Out->Colliders[ECA_CORNER_NE_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_CORRIDOR_CORNER_NE_COLLIDER);
+	Out->Colliders[ECA_CORNER_NW_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_CORRIDOR_CORNER_NW_COLLIDER);
+	Out->Colliders[ECA_CORNER_SE_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_CORRIDOR_CORNER_SE_COLLIDER);
+	Out->Colliders[ECA_CORNER_SW_COLLIDER]  = LoadTriMeshCollider(PS, Assets, EAG_CORRIDOR_CORNER_SW_COLLIDER);
+	Out->Colliders[ECA_HALLWAY_NS_COLLIDER] = LoadTriMeshCollider(PS, Assets, EAG_CORRIDOR_NS_COLLIDER);
+	Out->Colliders[ECA_HALLWAY_EW_COLLIDER] = LoadTriMeshCollider(PS, Assets, EAG_CORRIDOR_EW_COLLIDER);
+}
+
+
+size_t CountNeighbor(DungeonGenerator::Tile in[3][3])
+{
+	int C = 0;
+
+	if (in[0][1] != DungeonGenerator::Empty) C++; // Top
+	if (in[2][1] != DungeonGenerator::Empty) C++; // Bottom
+	if (in[1][0] != DungeonGenerator::Empty) C++; // left
+	if (in[1][2] != DungeonGenerator::Empty) C++; // Right
+
+	return C;
+}
+
+
+void ProcessDungeonTile(byte* _ptr, DungeonGenerator::Tile in[3][3], uint2 POS, uint2 BPOS, DungeonGenerator* D)
+{
+	ProcessDungonTileArgs* args = (ProcessDungonTileArgs*)_ptr;
+
+	char NorthernBlock  = in[1][1];
+	char SouthernBlock  = in[2][1];
+	char EasternBlock   = in[1][2];
+	char WesternBlock   = in[1][0];
+	char CenterBlock    = in[1][1];
+	char NeighborCount	= CountNeighbor(in);
+
+	switch (in[1][1])
+	{
+		case DungeonGenerator::Tile::Connector:
+		{
+			int X = 0;
+		}	break;
+		case DungeonGenerator::Tile::Corridor:
+		{	
+			// Straight
+			ETILEASSET_GUIDS	Visual = EAG_END;
+			ColliderHandle		Collider = ColliderHandle(-1);
+
+			switch (NeighborCount)
+			{
+			case 1: // Dead End
+			{
+				{
+					ETILEASSET_GUIDS	Visual;
+					ColliderHandle		Collider;
+					if (NorthernBlock == DungeonGenerator::Tile::Corridor)
+					{
+						Visual		= ETILEASSET_GUIDS::EAG_DEADEND_N;
+						Collider	= args->Colliders[ECA_DEADEND_N_COLLIDER];
+					}
+					else if (SouthernBlock == DungeonGenerator::Tile::Corridor)
+					{
+						Visual		= ETILEASSET_GUIDS::EAG_DEADEND_S;
+						Collider	= args->Colliders[ECA_DEADEND_S_COLLIDER];
+					}
+					else if (EasternBlock == DungeonGenerator::Tile::Corridor)
+					{
+						Visual		= ETILEASSET_GUIDS::EAG_DEADEND_E;
+						Collider	= args->Colliders[ECA_DEADEND_E_COLLIDER];
+					}
+					else if (WesternBlock == DungeonGenerator::Tile::Corridor)
+					{
+						Visual		= ETILEASSET_GUIDS::EAG_DEADEND_W;
+						Collider	= args->Colliders[ECA_DEADEND_W_COLLIDER];
+					}
+				}	break;
+			}
+			case 2: // Straight or Corner
+			{
+				if (NorthernBlock == DungeonGenerator::Tile::Corridor && SouthernBlock == DungeonGenerator::Tile::Corridor)
+				{
+					Visual		= ETILEASSET_GUIDS::EAG_CORRIDOR_EW;
+					Collider	= args->Colliders[ECA_HALLWAY_EW_COLLIDER];
+				}
+				else if (WesternBlock == DungeonGenerator::Tile::Corridor && EasternBlock == DungeonGenerator::Tile::Corridor)
+				{
+					Visual		= ETILEASSET_GUIDS::EAG_CORRIDOR_NS;
+					Collider	= args->Colliders[ECA_HALLWAY_NS_COLLIDER];
+				}
+				// Corners
+				else if (NorthernBlock == DungeonGenerator::Tile::Corridor && EasternBlock == DungeonGenerator::Tile::Corridor)
+				{
+					Visual		= ETILEASSET_GUIDS::EAG_END;
+					Collider	= args->Colliders[ECA_HALLWAY_NS_COLLIDER];
+				}
+				else if (NorthernBlock == DungeonGenerator::Tile::Corridor && WesternBlock == DungeonGenerator::Tile::Corridor)
+				{
+					Visual		= ETILEASSET_GUIDS::EAG_END;
+					Collider	= args->Colliders[ECA_HALLWAY_NS_COLLIDER];
+				}
+				else if (SouthernBlock == DungeonGenerator::Tile::Corridor && EasternBlock== DungeonGenerator::Tile::Corridor)
+				{
+					Visual		= ETILEASSET_GUIDS::EAG_END;
+					Collider	= args->Colliders[ECA_HALLWAY_NS_COLLIDER];
+				}
+				else if (SouthernBlock == DungeonGenerator::Tile::Corridor && WesternBlock == DungeonGenerator::Tile::Corridor)
+				{
+					Visual		= ETILEASSET_GUIDS::EAG_END;
+					Collider	= args->Colliders[ECA_HALLWAY_NS_COLLIDER];
+				}
+
+				
+			}	break;
+			default:
+				return;
+			}
+
+			if (Visual == EAG_END)
+				return;
+
+			float3 Position = float3(40, 0, 40) * float3(POS[1], 0, POS[0]);
+			auto Model		= args->GS->CreateDrawableAndSetMesh(Visual);
+			args->GS->SetPositionEntity_WT(Model, Position);
+			CreateStaticActor(args->Physics, args->PS, Collider, Position);
+		}	break;
+		case DungeonGenerator::Tile::DoorWay:
+		{	
+			int X = 0;
+		}	break;
+		case DungeonGenerator::Tile::FLOOR_Dungeon:
+		{	
+			int X = 0;
+		}	break;
+		default:
+		break;
+	}
+}
+
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
@@ -599,11 +854,11 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	State->GScene.SetMaterialParams	(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
-	auto Textures = LoadTextureSet(&Engine->Assets, 100, Engine->BlockAllocator);
+	TextureSet* Textures = LoadTextureSet(&Engine->Assets, 100, Engine->BlockAllocator);
 	UploadTextureSet(Engine->RenderSystem, Textures, Engine->BlockAllocator);
 	State->Set1 = Textures;
 
-	auto	WindowRect	= Engine->Window.WH;
+	uint2	WindowRect	= Engine->Window.WH;
 	float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
 	InitiateCamera	(Engine->RenderSystem, State->Nodes, &Out->PlayerCam, Aspect, 0.01f, 10000.0f, true);
 	SetActiveCamera	(State, &Out->PlayerCam);
@@ -614,16 +869,14 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	BindActorToPlayerController(&Out->PlayerActor, &Out->PlayerController, &State->GScene);
 	State->GScene.Yaw(PlayerModel, pi );
 
+	NodeHandle LightNode = GetZeroedNode(&Engine->Nodes);
+
 	SetParentNode	(State->Nodes,	Out->PlayerController.PitchNode, Out->PlayerCam.Node);
+	SetParentNode	(State->Nodes,	Out->PlayerController.ModelNode, LightNode);
+
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 20.0f, 00.0f});
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 40.0f});
-
-	auto Collider = LoadTriMeshCollider(&Engine->Physics, &Engine->Assets, 42);
-	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, {   0, 0, 0});
-	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, { -30, 0, 0});
-	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, { -60, 0, 0});
-	CreateStaticActor(&Engine->Physics, &State->PScene, Collider, { -90, 0, 0});
-	Release(&Engine->Physics, Collider);
+	TranslateLocal	(Engine->Nodes, LightNode,			 {0.0f, 40.0f, 0.0f });
 
 	InitateMouseCameraController(
 		0, 0, 75.0f, 
@@ -636,7 +889,23 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->PlayerInertia.Inertia = float3(0);
 	Out->T = 0;
 
-	LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
+	State->GScene.AddPointLight({1, 1, 1}, LightNode, 1000, 1000);
+	//LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
+	srand(123);
+	Out->Dungeon.Generate();
+	auto temp = Out->Dungeon.Tiles;
+
+	ProcessDungonTileArgs Args;
+	Args.Assets  = &Engine->Assets;
+	Args.GS      = &State->GScene;
+	Args.GT      = &Engine->Geometry;
+	Args.RS      = &Engine->RenderSystem;
+	Args.PS		 = &State->PScene;
+	Args.Physics = &Engine->Physics;
+
+	LoadColliders(&Engine->Physics, &Engine->Assets, &Args);
+	Out->Dungeon.DungeonScanCallBack(ProcessDungeonTile, (byte*)&Args);
+	int x = 0;
 }
 
 
@@ -659,6 +928,7 @@ void UpdateTestScene_PostTransformUpdate(Scene* TestScene, GameState* State, dou
 {
 	auto Entity		= State->GScene.GetEntity(TestScene->PlayerModel);
 	auto Skeleton	= State->GScene.GetEntitySkeleton(TestScene->PlayerModel);
+
 	DEBUG_DrawPoseState(Skeleton, Entity.PoseState, State->Nodes, Entity.Node, &State->LineDrawPass);
 }
 
@@ -689,7 +959,7 @@ extern "C"
 	{
 		GameState& State = Engine->BlockAllocator.allocate_aligned<GameState>();
 		
-		FlexKit::AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
+		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		State.ClearColor         = { 0.0f, 0.2f, 0.4f, 1.0f };
 		State.Nodes		         = &Engine->Nodes;
 		State.Quit		         = false;
@@ -702,6 +972,7 @@ extern "C"
 		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
 		State.GT = &Engine->Geometry;
+		ResetStats(&State.Stats);
 
 		InitiateForwardPass		  (Engine->RenderSystem, &FP_Desc, &State.ForwardPass);
 		InitiateDeferredPass	  (Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
@@ -731,7 +1002,7 @@ extern "C"
 
 		TextUtilities::PrintText(&State.Text, "TESTING!\n");
 
-		//CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
+		CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
 		CreateTestScene			(Engine, &State, &State.TestScene);
 
 		FlexKit::EventNotifier<>::Subscriber sub;
@@ -804,6 +1075,20 @@ extern "C"
 		BeginPass(RS, State->ActiveWindow);
 		auto CL = GetCurrentCommandList(RS);
 
+		State->Stats.AvgObjectDrawnPerFrame += PVS.size();
+		State->Stats.AvgObjectDrawnPerFrame += Transparent.size();
+		State->Stats.T += 1.0f/60.0f;
+
+		if (State->Stats.T > 1.0f)
+		{
+			char	bar[256];
+			sprintf_s(bar, "Objects Drawn per frame: %u \n", State->Stats.AvgObjectDrawnPerFrame/60);
+			TextUtilities::ClearText(&State->Text);
+			TextUtilities::PrintText(&State->Text, bar);
+			ResetStats(&State->Stats);
+		}
+
+
 		// TODO: multi Thread these
 		// Do Uploads
 		{
@@ -826,9 +1111,9 @@ extern "C"
 
 			if (State->DoDeferredShading)
 			{
-				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights, nullptr, State->GT);
+				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
 				DrawLandscape(RS, &State->Landscape, 15, State->ActiveCamera);
-				ShadeDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &State->GScene.SPLights);
+				ShadeDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else

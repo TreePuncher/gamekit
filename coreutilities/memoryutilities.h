@@ -44,12 +44,12 @@ namespace FlexKit
 		virtual void  clear(void) {};
 
 
-		template<typename T>
-		T& allocate()
+		template<typename T, typename ... Params>
+		T& allocate(Params ... Args)
 		{
 			auto mem = malloc(sizeof(T));
 
-			auto t = new (mem) T();
+			auto t = new (mem) T(Args...);
 			return *t;
 		}
 
@@ -342,25 +342,28 @@ namespace FlexKit
 			FK_ASSERT(BufferSize < (size_t)uint32_t(-1));
 
 			size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
-			Size = BufferSize / AllocationFootPrint;
-			Blocks = (Block*)Buffer;
+			Size		= BufferSize / AllocationFootPrint;
+			Blocks		= (Block*)Buffer;
 			size_t temp = (size_t)(Blocks + Size);
 
-			BlockTable = (BlockData*)(temp + (temp && 0x3f));
+			BlockTable	= (BlockData*)(temp + (temp && 0x3f));
 
 			for (size_t itr = 0; itr < Size; ++itr)
 				BlockTable[itr] = { BlockData::UNUSED, 0 };
 
-			BlockTable[0] = { BlockData::Free, 0,uint16_t(BufferSize / AllocationFootPrint) };
+			BlockTable[0] = { BlockData::Free, 0, uint16_t(BufferSize / AllocationFootPrint) };
 		}
 
 		// TODO: maybe Multi-Thread?
 		byte* malloc(size_t requestsize, bool aligned = false)
 		{
 			size_t BlocksNeeded = requestsize / sizeof( Block ) + ( ( requestsize%sizeof( Block ) ) > 0 );
+			FK_ASSERT(BlocksNeeded);
 
 			for (size_t i = 0; i < Size;i += BlockTable[i].AllocationSize)
 			{
+				if (!BlockTable[i].AllocationSize)
+					break;
 				if (BlockTable[i].state == BlockData::Free && BlockTable[i].AllocationSize > BlocksNeeded)
 				{
 					BlockTable[i].state = (BlockData::Flags)(BlockData::Allocated | (aligned ? BlockData::Aligned : 0));
@@ -368,17 +371,19 @@ namespace FlexKit
 					{
 						size_t currentBlock  = i;
 						size_t NextBlockData = i + BlocksNeeded;
-						for ( size_t II = i + 1; II < NextBlockData; ++II )
+						for ( size_t II = i; II < NextBlockData; ++II )
 						{
-							BlockTable[II].state  = BlockData::Allocated;
+							BlockTable[II].state  = BlockTable[i].state;
 							BlockTable[II].Parent = currentBlock;
 						}
 						if(NextBlockData < Size && BlockTable[NextBlockData].state == BlockData::UNUSED)
-						{
+						{// Split Block
 							BlockTable[NextBlockData].state          = BlockData::Free;
 							BlockTable[NextBlockData].AllocationSize = BlockTable[currentBlock].AllocationSize - BlocksNeeded;
+							BlockTable[currentBlock].AllocationSize  = BlocksNeeded;
+
+							FK_ASSERT(BlockTable[NextBlockData].AllocationSize);
 						}
-						BlockTable[i].AllocationSize  = BlocksNeeded;
 					}
 
 					return (byte*)Blocks[i].data;
@@ -392,7 +397,7 @@ namespace FlexKit
 			{
 				if (LB[I].state != FlexKit::LargeBlockAllocator::BlockData::Free)
 				{
-					printf( "Block: %i ", (int)I);
+					printf( "Block: %i : %i : ", (int)I, (int)BlockTable[I].AllocationSize);
 					if (LB[I].state && FlexKit::MediumBlockAllocator::BlockData::Aligned)
 						printf("Aligned\n");
 					else
@@ -400,7 +405,7 @@ namespace FlexKit
 				}
 				I += LB[I].AllocationSize;
 			}
-			FK_ASSERT(0, "RAN OUT OF MEMORY!");
+			FK_ASSERT(0, "MEMORY ALLOCATION ERROR!");
 #endif
 			return nullptr;
 		}
@@ -431,22 +436,18 @@ namespace FlexKit
 
 		void Collapse(size_t itr = 0)
 		{
-			size_t NextBlock = itr + BlockTable[itr].AllocationSize;
-
-			while (NextBlock < Size)
+			while (true)
 			{
-				FK_ASSERT(BlockTable[itr].AllocationSize > 0);
-				if (BlockTable[itr].state == BlockData::Free && BlockTable[NextBlock].state == BlockData::Free)
-				{// CollapseBlock
-					BlockTable[itr].AllocationSize += BlockTable[NextBlock].AllocationSize;
-					BlockTable[NextBlock].state     = BlockData::UNUSED;
-					NextBlock                       = itr + BlockTable[itr].AllocationSize;
-				} else {
-					itr			= NextBlock;
-					NextBlock	= itr + BlockTable[itr].AllocationSize;
+				size_t next = itr + BlockTable[itr].AllocationSize;
+				if (BlockTable[next].state == BlockData::Free)
+				{
+					BlockTable[itr].AllocationSize += BlockTable[next].AllocationSize;
+					BlockTable[next].state			= BlockData::UNUSED;
 				}
+				else break;
 			}
 		}
+
 
 		struct Block
 		{
@@ -597,6 +598,7 @@ namespace FlexKit
 
 			return(bottom <= a_ptr && a_ptr < top);
 		}
+
 		bool InMediumRange(byte* a_ptr)
 		{
 			byte* bottom = ((byte*)MediumBlockAlloc.Blocks);
@@ -604,6 +606,7 @@ namespace FlexKit
 
 			return(bottom <= a_ptr && a_ptr < top);
 		}
+
 		bool InLargeRange(byte* a_ptr)
 		{
 			byte* bottom = ((byte*)LargeBlockAlloc.Blocks);

@@ -66,6 +66,7 @@ namespace FlexKit
 			WALL_Right	  = 'R',
 			WALL_BOTTOM	  = 'B',
 			*/
+			WALL		  = '-',
 			WALL_TOP      = '-',
 			WALL_Left     = '-',
 			WALL_Right    = '-',

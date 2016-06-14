@@ -306,7 +306,7 @@ namespace FlexKit
 			GUID_t MeshGuid;
 			GUID_t TextureSet;
 			size_t Node;
-			size_t Collider;
+			GUID_t Collider;
 		};
 
 		struct SceneGeometryTable
@@ -359,6 +359,9 @@ namespace FlexKit
 
 			size_t NodeCount;
 			size_t NodeOffset;
+
+			size_t StaticsCount;
+			size_t StaticsOffset;
 		}SceneTable;
 		
 		char Buffer[];

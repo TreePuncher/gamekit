@@ -79,16 +79,23 @@ namespace FlexKit
 				Physics->VisualDebuggerConnection = physx::PxVisualDebuggerExt::createConnection(Physics->Physx->getPvdConnectionManager(),
 																								 pvd_host_ip, port, timeout, connectionFlags);
 
-				if (!Physics->VisualDebuggerConnection)
+				if (!Physics->VisualDebuggerConnection) {
 					Physics->RemoteDebuggerEnabled = false; // No remote Debugger Available
+					std::cout << "PVD failed to Connect!\n";
+				}
 
 				Physics->Physx->getVisualDebugger()->setVisualizeConstraints(true);
 				Physics->Physx->getVisualDebugger()->setVisualDebuggerFlag(PxVisualDebuggerFlag::eTRANSMIT_CONTACTS, true);
 				Physics->Physx->getVisualDebugger()->setVisualDebuggerFlag(PxVisualDebuggerFlag::eTRANSMIT_SCENEQUERIES, true);
 			} else
 			{
+				std::cout << "PVD Disabled!\n";
 				Physics->RemoteDebuggerEnabled = false;
 			}
+		}
+		else
+		{
+			std::cout << "PVD Disabled!\n";
 		}
 
 		Physics->CPUDispatcher = physx::PxDefaultCpuDispatcherCreate(CoreCount);
@@ -421,16 +428,18 @@ namespace FlexKit
 	{
 		for (auto c : Scn->Colliders) {
 			auto SceneData = (PActor*)c.Actor->userData;
-			switch (SceneData->type)
+			if (SceneData)
 			{
-			case PActor::EA_PRIMITIVE:	
-				// NOTHING TO BE DONE
-				break;
-			case PActor::EA_TRIMESH:
-				Release(PS, SceneData->CHandle);
-				break;
+				switch (SceneData->type)
+				{
+				case PActor::EA_PRIMITIVE:
+					// NOTHING TO BE DONE
+					break;
+				case PActor::EA_TRIMESH:
+					Release(PS, SceneData->CHandle);
+					break;
+				}
 			}
-
 			c.Actor->release();
 		}
 		Scn->Scene->release();

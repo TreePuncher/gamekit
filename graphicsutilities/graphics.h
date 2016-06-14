@@ -1391,6 +1391,12 @@ namespace FlexKit
 			AnimationData	= EAD_None;
 		}
 
+
+		TriMesh( const TriMesh& rhs )
+		{
+			memcpy(this, &rhs, sizeof(TriMesh));
+		}
+
 		enum AnimationData
 		{
 			EAD_None	= 0,
@@ -1501,10 +1507,12 @@ namespace FlexKit
 
 	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) {
 		auto* VB = FindBufferEntry(Mesh, Type);
-		if (VB == Mesh->VertexBuffer.VertexBuffers.end()) {
+
+		if (VB == Mesh->VertexBuffer.VertexBuffers.end() || VB->Buffer == nullptr) {
 #ifdef _DBUG
 			return false;
 #else 
+
 			D3D12_VERTEX_BUFFER_VIEW VBView;
 
 			VBView.BufferLocation	= 0;
@@ -2111,8 +2119,8 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, TextureManager* TM, GeometryTable* GT);
-	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const float4& ClearColor, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, GeometryTable* GT);
+	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT);
+	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );

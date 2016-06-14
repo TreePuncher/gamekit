@@ -124,6 +124,9 @@ int main(int argc, char* argv[])
 				for (auto MD_Location : MetaDataFiles)
 					ReadMetaData(MD_Location, BlockMemory, TempMemory, MetaData);
 
+#if USING(RESCOMPILERVERBOSE)
+				PrintMetaDataList(MetaData);
+#endif
 				ResourceList ResourcesFound;
 				for (auto MD : MetaData)
 				{

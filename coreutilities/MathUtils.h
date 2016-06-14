@@ -47,9 +47,9 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 	
-	template<typename TY_1, typename TY_2> auto floor(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x); }
-	template<typename TY_1, typename TY_2> auto min  (TY_1 x, TY_2 y)	{ return ((x > y) ? y : x); }
-	template<typename TY_1, typename TY_2> auto max  (TY_1 x, TY_2 y)	{ return ((x > y) ? x : y); }
+	template<typename TY_1, typename TY_2> auto floor(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2> auto min  (TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2> auto max  (TY_1 x, TY_2 y)	{ return ((x > y) ? x : y);   }
 	template<typename TY_1, typename TY_2> auto fmod (TY_1 x, TY_2 y)	{ return ((x < y) ? x : x%y); }
 
 	/************************************************************************************************/

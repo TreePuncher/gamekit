@@ -3796,7 +3796,7 @@ namespace FlexKit
 	void
 	ShadeDeferredPass(
 		PVS* _PVS, DeferredPass* Pass, Texture2D Target,
-		RenderSystem* RS, const Camera* C, const float4& ClearColor,
+		RenderSystem* RS, const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
 	{
 		auto CL = GetCurrentCommandList(RS);
@@ -3906,10 +3906,8 @@ namespace FlexKit
 	void 
 	DoDeferredPass(
 		PVS* _PVS,	DeferredPass* Pass,	Texture2D Target, 
-		RenderSystem* RS,		const Camera* C, const float4& ClearColor, 
-		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB,
-		TextureManager* TM, 
-		GeometryTable*	GT)
+		RenderSystem* RS,		const Camera* C, 
+		TextureManager* TM, 	GeometryTable*	GT)
 	{
 		auto CL				= GetCurrentCommandList(RS);
 		auto FrameResources = GetCurrentFrameResources(RS);

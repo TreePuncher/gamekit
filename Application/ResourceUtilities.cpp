@@ -94,110 +94,6 @@ bool FBXIDPresentInTable(size_t FBXID, FBXIDTranslationTable& Table)
 /************************************************************************************************/
 
 
-void InitiateScene(ResourceScene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc )
-{
-	desc->MaxPointLightCount = FlexKit::max(1, desc->MaxPointLightCount);
-
-	out->Root			= desc->Root;
-	out->MaxDrawables	= desc->MaxEntityCount;
-	out->MaxObjects		= desc->MaxTriMeshCount;
-	out->Drawables		= (Drawable*)memory->_aligned_malloc( sizeof(Drawable)  * desc->MaxEntityCount	);
-
-	if(desc->MaxTriMeshCount)
-		out->Geometry = (TriMesh*)memory->_aligned_malloc( sizeof(TriMesh) * desc->MaxTriMeshCount	);
-	
-	char*  IDs		   = (char*)memory->_aligned_malloc (out->MaxDrawables * 64);
-	out->EntityIDs	   = IDs;
-	memset( IDs, 0x00, out->MaxDrawables * 64 );
-
-	byte*  LightBuffer = (byte*)memory->_aligned_malloc (( sizeof(Drawable) + 9 ) * desc->MaxPointLightCount );
-	CreatePointLightBuffer(		
-		RS, 
-		&out->PLightBuffer, 
-		{ desc->MaxPointLightCount }, memory);
-
-	out->Alloc = memory;
-}
-
-
-/************************************************************************************************/
-
-
-void UpdateScene(ResourceScene* In, RenderSystem* RS, SceneNodes* Nodes )
-{ 
-	//UpdatePointLightBuffer( *RS, Nodes, &In->PLightBuffer ); 
-}
-
-
-/************************************************************************************************/
-
-
-void CleanUpScene(ResourceScene* scn, EngineMemory* memory )
-{
-	if (!scn)
-		return;
-
-	for( size_t itr = 0; itr < scn->DrawablesUsed; ++itr)
-		CleanUpDrawable(scn->Drawables + itr);
-	for( size_t itr = 0; itr < scn->GeometryUsed; ++itr)
-		CleanUpTriMesh( scn->Geometry + itr );
-
-	CleanUp( &scn->PLightBuffer, memory->BlockAllocator );
-
-	if(scn->Drawables)				scn->Alloc->_aligned_free(scn->Drawables);
-	if(scn->PLightBuffer.Lights)	scn->Alloc->_aligned_free(scn->PLightBuffer.Lights);
-	if(scn->Geometry)				scn->Alloc->_aligned_free(scn->Geometry);
-	if(scn->EntityIDs)				scn->Alloc->_aligned_free(scn->EntityIDs);
-
-	scn->Drawables				= nullptr;
-	scn->PLightBuffer.Lights	= nullptr;
-	scn->Geometry				= nullptr;
-	scn->EntityIDs				= nullptr;
-}
-
-
-/************************************************************************************************/
-
-
-Pair<bool, SceneHandle> 
-SearchForMesh(ResourceScene* Scn, size_t TriMeshID)
-{
-	for ( size_t itr = 0; itr < Scn->GeometryUsed; ++itr )
-		if ( Scn->Geometry[ itr ].TriMeshID == TriMeshID )
-			return{ true, SceneHandle( itr ) };
-
-	return{ false, SceneHandle(0) };
-}
-
-Pair<bool, SceneHandle>	
-SearchForEntity(ResourceScene* Scn, char* ID )
-{
-	for( size_t itr = 0; itr < Scn->DrawablesUsed; ++itr )
-		if( strcmp( Scn->EntityIDs + itr * 64, ID ) == 0 )
-			return{true, SceneHandle( itr ) };
-
-	return {false, SceneHandle (-1)};
-}
-
-
-/************************************************************************************************/
-
-
-TriMesh* SearchForMesh(ResourceScene* Scene, const char* str)
-{
-	for (int I = 0; I < Scene->GeometryUsed; ++I)
-	{
-		if(Scene->Geometry[I].ID)
-			if( strcmp(Scene->Geometry[I].ID, str) == 0 )
-				return Scene->Geometry + I;
-	}
-	return nullptr;
-}
-
-
-/************************************************************************************************/
-
-
 Pair<bool, fbxsdk::FbxScene*>  
 LoadFBXScene(char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
 {
@@ -767,86 +663,21 @@ FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUt
 
 /************************************************************************************************/
 
-
-struct GeometryBlock
-{
-	static const size_t	BlockSize	= 10;
-	size_t				MeshUsed	= 0;
-	TriMesh				Meshes[BlockSize];
-
-	GeometryBlock*	Next	= nullptr;
-};
+typedef DynArray<TriMesh> GeometryList;
 
 
 /************************************************************************************************/
 
 
-template<typename TY_ALLOC>
-size_t PushGeo(GeometryBlock* GB, TriMesh& Mesh, TY_ALLOC Alloc)
+TriMesh* FindGeoByID(GeometryList* GB, size_t ID)
 {
-	if (GB->MeshUsed > GeometryBlock::BlockSize )
+	for (auto& I : *GB)
 	{
-		GB->Next = CreateGB( Alloc );
-		return PushGeo( GB->Next, Mesh, Alloc );
+		if (I.TriMeshID == ID)
+			return &I;
 	}
-	GB->Meshes[ GB->MeshUsed ] = Mesh;
-	return GB->MeshUsed++;
-};
 
-
-/************************************************************************************************/
-
-
-size_t GetGeoCount(GeometryBlock* GB)
-{
-	size_t Count = GB->MeshUsed;
-	if(Count > GeometryBlock::BlockSize)
-		Count += GetGeoCount(GB->Next);
-
-	return Count;
-};
-
-
-/************************************************************************************************/
-
-
-template<typename TY_ALLOC>
-GeometryBlock* CreateGB(TY_ALLOC* Alloc)
-{
-	auto GB = (GeometryBlock*)Alloc->_aligned_malloc(sizeof(GeometryBlock));
-	GB->MeshUsed	= 0;
-	GB->Next		= 0;
-	return GB;
-}
-
-
-/************************************************************************************************/
-
-
-TriMesh* FindGeoByID(GeometryBlock* GB, size_t ID)
-{
-	for(size_t i = 0; i < GB->MeshUsed; i++)
-	{
-		if(GB->Meshes[i].TriMeshID == ID)
-			return &GB->Meshes[i];
-	}
-	if(GB->MeshUsed > GB->BlockSize)
-		return FindGeoByID(GB->Next, ID);
-	else
-		return nullptr;
-}
-
-
-/************************************************************************************************/
-
-
-void MoveGeo(GeometryBlock* GB, TriMesh* out, size_t I = 0)
-{
-	for (;I < GB->MeshUsed; ++I)
-		out[I] = GB->Meshes[I%GeometryBlock::BlockSize];
-
-	if (GB->MeshUsed > GeometryBlock::BlockSize)
-		MoveGeo( GB, out, I );
+	return nullptr;
 }
 
 
@@ -1272,6 +1103,7 @@ struct CompiledMeshInfo
 	Skeleton*	S;
 };
 
+
 DynArray<size_t> FindRelatedMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem)
 {
 	DynArray<size_t> RelatedData(TempMem);
@@ -1288,20 +1120,37 @@ DynArray<size_t> FindRelatedMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPI
 	return RelatedData;
 }
 
+/************************************************************************************************/
+
+
 Mesh_MetaData* GetMeshMetaData(MD_Vector* MetaData, DynArray<size_t>& related)
 {
-	for (auto i : related)
-	{
-		if(MetaData->at(i)->type == MetaData::EMETAINFOTYPE::EMI_MESH)
-			return (Mesh_MetaData*)MetaData->at(i);
-	}
+	for (auto I : related)
+		if(MetaData->at(I)->type == MetaData::EMETAINFOTYPE::EMI_MESH)
+			return (Mesh_MetaData*)MetaData->at(I);
+
+	return nullptr;
+}
+
+/************************************************************************************************/
+
+
+MetaData* ScanRelatedFor(MD_Vector* MetaData, RelatedMetaData& Related, MetaData::EMETAINFOTYPE Type)
+{
+	for (auto I : Related)
+		if (MetaData->at(I)->type == Type)
+			return (Mesh_MetaData*)MetaData->at(I);
+
 	return nullptr;
 }
 
 
-typedef Pair<GeometryBlock*, iAllocator*> GBAPair;
+/************************************************************************************************/
+
+
+typedef Pair<GeometryList*, iAllocator*> GBAPair;
 Pair<size_t, GBAPair> 
-CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryBlock* GL, iAllocator* TempMem, FBXIDTranslationTable* Table, MD_Vector* MD = nullptr, bool SubDiv = false)
+CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, iAllocator* TempMem, FBXIDTranslationTable* Table, MD_Vector* MD = nullptr, bool SubDiv = false)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
@@ -1311,7 +1160,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryBlock* GL,
 	using MeshUtilityFunctions::TokenList;
 	using MeshUtilityFunctions::MeshBuildInfo;
 
-	if(!GL)	GL = CreateGB(Memory);
+	if (!GL) GL = &Memory->allocate<GeometryList>(Memory);
 
 	auto AttributeCount = node->GetNodeAttributeCount();
 	for (int itr = 0; itr < AttributeCount; ++itr){
@@ -1356,6 +1205,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryBlock* GL,
 				}
 
 				TriMesh	out;
+				TriMesh Test = out;
 				memset(&out, 0, sizeof(out));
 				char* ID = nullptr;
 				if ( NameLen++ ) {
@@ -1378,7 +1228,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryBlock* GL,
 				std::cout << "Compiled Resource: " << Name << "\n";
 #endif
 
-				PushGeo(GL, out, Memory);
+				GL->push_back(out);
 			}
 		}	break;
 		}
@@ -1388,7 +1238,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryBlock* GL,
 	for(int itr = 0; itr < NodeCount; ++itr)
 		CompileAllGeometry(node->GetChild(itr), Memory, GL, TempMem, Table, MD);
 
-	return{ GetGeoCount(GL), {GL, TempMem} };
+	return{ GL->size(), {GL, TempMem} };
 }
 
 
@@ -1674,107 +1524,103 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 	ResourceList ResourcesFound;
 	if ((size_t)Res > 0)
 	{
-		auto G = (GeometryBlock*)(GBAPair)Res;
-		while (G)
+		auto G = (GeometryList*)(GBAPair)Res;
+		for (size_t I = 0; I < G->size(); ++I)
 		{
-			for (size_t I = 0; I < G->MeshUsed; ++I)
-			{
-				ResourcesFound.push_back(CreateTriMeshResourceBlob(G->Meshes + I, MemoryOut));
+			ResourcesFound.push_back(CreateTriMeshResourceBlob(&G->at(I), MemoryOut));
 
-				if (G->Meshes[I].Skeleton) {
-					auto Res = CreateSkeletonResourceBlob(G->Meshes[I].Skeleton, MemoryOut);
-					ResourcesFound.push_back(Res);
+			if (G->at(I).Skeleton) {
+				auto Res = CreateSkeletonResourceBlob(G->at(I).Skeleton, MemoryOut);
+				ResourcesFound.push_back(Res);
 
-					auto CurrentClip = G->Meshes[I].Skeleton->Animations;
-					auto SkeletonID = Res->GUID;
+				auto CurrentClip	= G->at(I).Skeleton->Animations;
+				auto SkeletonID		= Res->GUID;
 					
-					while (true)
-					{
-						if (CurrentClip)
-						{
-							auto R = CreateSkeletalAnimationResourceBlob(&CurrentClip->Clip, SkeletonID, MemoryOut);
-							ResourcesFound.push_back(R);
-						} else
-							break;
-						CurrentClip = CurrentClip->Next;
-					}
-				}
-
-				auto RelatedMD = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, G->Meshes[I].ID, TempMemory);
-				for(size_t J = 0; J < RelatedMD.size(); ++J)
+				while (true)
 				{
-					switch (MD->at(RelatedMD[J])->type)
+					if (CurrentClip)
 					{
-					case MetaData::EMETAINFOTYPE::EMI_COLLIDER:
-					{
-						if (!Cooker)
-							continue;
-
-						Collider_MetaData* ColliderInfo = (Collider_MetaData*)MD->at(RelatedMD[J]);
-						ColliderStream Stream = ColliderStream(MemoryOut, 2048);
-
-						using physx::PxTriangleMeshDesc;
-						PxTriangleMeshDesc meshDesc;
-						meshDesc.points.count     = G->Meshes[I].Buffers[0]->GetBufferSizeUsed();
-						meshDesc.points.stride    = G->Meshes[I].Buffers[0]->GetElementSize();
-						meshDesc.points.data      = G->Meshes[I].Buffers[0]->GetBuffer();
-
-						uint32_t* Indexes = (uint32_t*)TempMemory._aligned_malloc(G->Meshes[I].Buffers[15]->GetBufferSizeRaw());
-
-						{
-							struct Tri {
-								uint32_t Indexes[3];
-							};
-
-							auto Proxy = G->Meshes[I].Buffers[15]->CreateTypedProxy<Tri>();
-							size_t Position = 0;
-							auto itr = Proxy.begin();
-							auto end = Proxy.end();
-							while(itr < end) {
-								Indexes[Position + 0] = (*itr).Indexes[1];
-								Indexes[Position + 2] = (*itr).Indexes[2];
-								Indexes[Position + 1] = (*itr).Indexes[0];
-								Position += 3;
-								itr++;
-							}
-						}
-
-						auto IndexBuffer		  = G->Meshes[I].VertexBuffer.MD.IndexBuffer_Index;
-						meshDesc.triangles.count  = G->Meshes[I].IndexCount / 3;
-						meshDesc.triangles.stride = G->Meshes[I].Buffers[15]->GetElementSize() * 3;
-						meshDesc.triangles.data   = Indexes;
-
-#if USING(RESCOMPILERVERBOSE)
-						printf("BEGINNING MODEL BAKING!\n");
-#endif
-						bool success = false;
-						if(Cooker) success = Cooker->cookTriangleMesh(meshDesc, Stream);
-
-#if USING(RESCOMPILERVERBOSE)
-						if(success)
-							printf("MODEL FINISHED BAKING!\n");
-						else
-							printf("MODEL FAILED BAKING!\n");
-
-#else
-						FK_ASSERT(success, "FAILED TO COOK MESH!");
-#endif
-
-						if(success)
-						{
-							auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, ColliderInfo->Guid, ColliderInfo->ColliderID, MemoryOut);
-							ResourcesFound.push_back(Blob);
-						}
-					}	break;
-					default:
+						auto R = CreateSkeletalAnimationResourceBlob(&CurrentClip->Clip, SkeletonID, MemoryOut);
+						ResourcesFound.push_back(R);
+					} else
 						break;
-					} 
+					CurrentClip = CurrentClip->Next;
 				}
 			}
-			if (G->MeshUsed == 10)
-				G = G->Next;
-			else
-				break;
+
+			auto& Mesh		= G->at(I);
+			auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, Mesh.ID, TempMemory);
+			for(size_t J = 0; J < RelatedMD.size(); ++J)
+			{
+				switch (MD->at(RelatedMD[J])->type)
+				{
+				case MetaData::EMETAINFOTYPE::EMI_COLLIDER:
+				{
+					if (!Cooker)
+						continue;
+
+					Collider_MetaData* ColliderInfo = (Collider_MetaData*)MD->at(RelatedMD[J]);
+					ColliderStream Stream = ColliderStream(MemoryOut, 2048);
+
+					using physx::PxTriangleMeshDesc;
+					PxTriangleMeshDesc meshDesc;
+					meshDesc.points.count     = Mesh.Buffers[0]->GetBufferSizeUsed();
+					meshDesc.points.stride    = Mesh.Buffers[0]->GetElementSize();
+					meshDesc.points.data      = Mesh.Buffers[0]->GetBuffer();
+
+					uint32_t* Indexes = (uint32_t*)TempMemory._aligned_malloc(Mesh.Buffers[15]->GetBufferSizeRaw());
+
+					{
+						struct Tri {
+							uint32_t Indexes[3];
+						};
+
+						auto Proxy		= Mesh.Buffers[15]->CreateTypedProxy<Tri>();
+						size_t Position = 0;
+						auto itr		= Proxy.begin();
+						auto end		= Proxy.end();
+
+						while(itr < end) {
+							Indexes[Position + 0] = (*itr).Indexes[1];
+							Indexes[Position + 2] = (*itr).Indexes[2];
+							Indexes[Position + 1] = (*itr).Indexes[0];
+							Position += 3;
+							itr++;
+						}
+					}
+
+					auto IndexBuffer		  = Mesh.VertexBuffer.MD.IndexBuffer_Index;
+					meshDesc.triangles.count  = Mesh.IndexCount / 3;
+					meshDesc.triangles.stride = Mesh.Buffers[15]->GetElementSize() * 3;
+					meshDesc.triangles.data   = Indexes;
+
+#if USING(RESCOMPILERVERBOSE)
+					printf("BEGINNING MODEL BAKING!\n");
+					std::cout << "Baking: " << Mesh.ID << "\n";
+#endif
+					bool success = false;
+					if(Cooker) success = Cooker->cookTriangleMesh(meshDesc, Stream);
+
+#if USING(RESCOMPILERVERBOSE)
+					if(success)
+						printf("MODEL FINISHED BAKING!\n");
+					else
+						printf("MODEL FAILED BAKING!\n");
+
+#else
+					FK_ASSERT(success, "FAILED TO COOK MESH!");
+#endif
+
+					if(success)
+					{
+						auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, ColliderInfo->Guid, ColliderInfo->ColliderID, MemoryOut);
+						ResourcesFound.push_back(Blob);
+					}
+				}	break;
+				default:
+					break;
+				} 
+			}
 		}
 	}
 
@@ -1902,6 +1748,10 @@ Resource* CreateSceneResourceBlob(iAllocator* Memory, CompiledScene* SceneIn, FB
 	memcpy(Data + Offset, SceneIn->Nodes.begin(), SceneIn->Nodes.size() * sizeof(CompiledScene::SceneNode));
 	Offset += SceneIn->Nodes.size() * sizeof(CompiledScene::SceneNode);
 
+	SceneBlob->SceneTable.StaticsOffset = Offset;
+	memcpy(Data + Offset, SceneIn->SceneStatics.begin(), SceneIn->SceneStatics.size() * sizeof(CompiledScene::Entity));
+	Offset += SceneIn->SceneStatics.size() * sizeof(CompiledScene::Entity);
+
 	return (Resource*)SceneBlob;
 }
 
@@ -1909,7 +1759,7 @@ Resource* CreateSceneResourceBlob(iAllocator* Memory, CompiledScene* SceneIn, FB
 /************************************************************************************************/
 
 
-void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* SceneOut, size_t Parent = -1)
+void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* SceneOut, MD_Vector* MD, size_t Parent = -1)
 {
 	bool SkipChildren = false;
 	size_t AttributeCount = Node->GetNodeAttributeCount();
@@ -1938,15 +1788,40 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 #if USING(RESCOMPILERVERBOSE)
 			std::cout << "Entity Found: " << Node->GetName() << "\n";
 #endif
-
-			auto FBXMesh = static_cast<fbxsdk::FbxMesh*>(Attr);
+			auto FBXMesh  = static_cast<fbxsdk::FbxMesh*>(Attr);
 			auto UniqueID = FBXMesh->GetUniqueID();
+			auto name     = Node->GetName();
+			auto name2    = FBXMesh->GetName();
+
+			auto Related	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, Node->GetName(), Memory);
+			auto MeshData	= (Mesh_MetaData*)ScanRelatedFor(MD, Related, MetaData::EMETAINFOTYPE::EMI_MESH);
+
+			/*
+			if (MeshData && MeshData->ColliderGUID != INVALIDHANDLE)
+			{
+				CompiledScene::Entity Entity;
+				Entity.MeshGuid		= UniqueID;
+				Entity.Collider		= MeshData->ColliderGUID;
+				Entity.Node			= Nodehndl;
+
+				AddEntity(Entity, SceneOut);
+			}
+			else
+			{
+				CompiledScene::Entity Entity;
+				Entity.MeshGuid		= UniqueID;
+				Entity.Node			= Nodehndl;
+
+				AddEntity(Entity, SceneOut);
+			}
+			*/
 
 			CompiledScene::Entity Entity;
-			Entity.MeshGuid	= UniqueID;
-			Entity.Node		= Nodehndl;
+			Entity.MeshGuid = UniqueID;
+			Entity.Node = Nodehndl;
 
 			AddEntity(Entity, SceneOut);
+
 		}	break;
 		case FbxNodeAttribute::eLight:
 		{
@@ -1979,7 +1854,7 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 	{
 		size_t ChildCount = Node->GetChildCount();
 		for (size_t I = 0; I < ChildCount; ++I)
-			ProcessNodes(Node->GetChild(I), Memory, SceneOut, Nodehndl);
+			ProcessNodes(Node->GetChild(I), Memory, SceneOut, MD, Nodehndl);
 	}
 }
 
@@ -2006,7 +1881,7 @@ void ScanChildrenNodesForScene(fbxsdk::FbxNode* Node, MD_Vector* MetaData, iAllo
 				strncpy(Scene.ID, MD->SceneID, MD->SceneIDSize);
 				Scene.IDSize = MD->SceneIDSize;
 
-				ProcessNodes(Node, Temp, &Scene);
+				ProcessNodes(Node, Temp, &Scene, MetaData);
 				Out->push_back(&Scene);
 			}
 		}
@@ -2149,16 +2024,6 @@ Scene_Desc CountSceneContents(fbxsdk::FbxScene* S)
 		CountNodeContents(S->GetNode(I), Desc);
 
 	return Desc;
-}
-
-
-/************************************************************************************************/
-
-
-void CleanUp(ResourceScene* Scene)
-{
-	for (size_t I = 0; I < Scene->DrawablesUsed; ++I)	CleanUpDrawable(Scene->Drawables + I);
-	for (size_t I = 0; I < Scene->GeometryUsed; ++I)	CleanUpTriMesh(Scene->Geometry + I);
 }
 
 
@@ -2664,21 +2529,21 @@ void PrintMetaDataList(MD_Vector& MD)
 		switch (MetaData->type)
 		{
 		case MetaData::EMETAINFOTYPE::EMI_COLLIDER:				
-			std::cout << MetaData->ID << "Collider";			break;
+			std::cout << "Collider\n";				break;
 		case MetaData::EMETAINFOTYPE::EMI_MESH:					
-			std::cout << MetaData->ID << "Mesh";				break;
+			std::cout << "Mesh\n";					break;
 		case MetaData::EMETAINFOTYPE::EMI_SCENE:				
-			std::cout << MetaData->ID << "Scene";				break;
+			std::cout << "Scene\n";					break;
 		case MetaData::EMETAINFOTYPE::EMI_SKELETAL:				
-			std::cout << MetaData->ID << "Skeletal";			break;
+			std::cout << "Skeletal\n";				break;
 		case MetaData::EMETAINFOTYPE::EMI_SKELETALANIMATION:	
-			std::cout << MetaData->ID << "Skeletal Animation ";	break;
+			std::cout << "Skeletal Animation\n";	break;
 		case MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP:		
-			std::cout << MetaData->ID << "Animation Clip";		break;
+			std::cout << "Animation Clip\n";		break;
 		case MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT:		
-			std::cout << MetaData->ID << "Animation Event";		break;
+			std::cout << "Animation Event\n";		break;
 		case MetaData::EMETAINFOTYPE::EMI_TEXTURESET:			
-			std::cout << MetaData->ID << "TexureSet";			break;
+			std::cout << "TexureSet\n";				break;
 		default:
 			break;
 		}

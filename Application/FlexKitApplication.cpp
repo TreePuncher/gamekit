@@ -140,11 +140,11 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 				CodeCheckTimer = 0;
 				//ReloadGameCode(*Code, FNTable);
 			}
-		}
 
-		// ClearMemory  -----------------------------------------------------------------------------------
-		Engine->BlockAllocator.LargeBlockAlloc.Collapse(); // Collapse Holes
-		Engine->TempAllocator.clear();
+			// Memory -----------------------------------------------------------------------------------
+			Engine->BlockAllocator.LargeBlockAlloc.Collapse(); // Coalesce blocks
+			Engine->TempAllocator.clear();
+		}
 
 		if ( dt < StepSize )
 			Sleep( 2 );

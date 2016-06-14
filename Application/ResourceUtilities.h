@@ -94,61 +94,7 @@ struct SceneStats
 	}
 };
 
-// TODO: add Resource System instead of referencing Geometry Directly 
-struct ResourceScene
-{
-	size_t				MaxObjects		= 0;
-	size_t				GeometryUsed	= 0;
-	TriMesh*			Geometry		= nullptr;
-	size_t				MaxDrawables	= 0;
-	size_t				DrawablesUsed	= 0;
-	Drawable*			Drawables		= nullptr;
-	size_t				AnimationCount	= 0;
-	char*				EntityIDs		= nullptr;
 
-	PointLightBuffer	PLightBuffer;
-	NodeHandle			Root;		
-
-	iAllocator*		Alloc;
-	// TODO: DEBUG VERSIONS WITH CHECKS
-	inline TriMesh*		GetTriMesh	( SceneHandle handle )	{ return Geometry	+ handle.INDEX;		 }
-	inline Drawable*	GetEntity	( SceneHandle handle )	{ return Drawables	+ handle.INDEX;		 }
-	inline PointLight*	GetPLight	( SceneHandle handle )	{ return &PLightBuffer[handle.INDEX];	 }
-	inline char*		GetEntityID ( SceneHandle handle )  { return EntityIDs	+ handle.INDEX * 64; }
-
-	Pair<bool, SceneHandle>
-	GetFreeEntity()
-	{
-		if (DrawablesUsed < MaxDrawables)
-			return{ true, SceneHandle(DrawablesUsed++) };
-		return{ false };
-	}
-
-	Pair<bool,SceneHandle>	
-	GetFreeLight()
-	{
-		size_t Handle = PLightBuffer.size();
-		if (PLightBuffer.max() > PLightBuffer.size())
-		{
-			PLightBuffer.push_back({float3(0, 0, 0), 0, 0});
-			return{ true, (SceneHandle)Handle };
-		}
-		return{ false };
-	}
-	
-	//bool			GetFreeTriMesh(SceneHandle&	out);
-
-};
-
-
-void InitiateScene	(ResourceScene* out, RenderSystem* RS, iAllocator* memory, Scene_Desc* desc );
-void UpdateScene	(ResourceScene* In, RenderSystem* RS, SceneNodes* Nodes	);
-void CleanUpScene	(ResourceScene* scn, EngineMemory* memory );
-//void AddSkeleton	(Scene* scn, Skeleton*, EngineMemory* engine			);
-
-Pair<bool, SceneHandle>	SearchForMesh	(ResourceScene* Scn, size_t TriMeshID );
-TriMesh*				SearchForMesh	(ResourceScene* Scene, const char* str);
-Pair<bool, SceneHandle>	SearchForEntity (ResourceScene* Scn, char* ID );
 
 /************************************************************************************************/
 
@@ -338,6 +284,7 @@ typedef DynArray<size_t> RelatedMetaData;
 
 bool			ReadMetaData		(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
 RelatedMetaData	FindRelatedMetaData (MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem);
+MetaData*		ScanRelatedFor		(MD_Vector* MetaData, RelatedMetaData& Related, MetaData::EMETAINFOTYPE Type);
 Resource*		MetaDataToBlob		(MetaData* Meta, iAllocator* Mem);
 
 
