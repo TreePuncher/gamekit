@@ -124,9 +124,14 @@ GBuffer DebugPaint(PS_IN IN)
 	return Out;
 }
 
-float4 DrawLine() : SV_TARGET
+struct LinePointPS
 {
-	return float4(1, 0, 1, 1);
+	float4 Colour	: COLOUR;
+};
+
+float4 DrawLine(LinePointPS IN) : SV_TARGET
+{
+	return float4(IN.Colour.xyz, 1);
 }
 
 GBuffer DebugTerrainPaint(PS_Colour_IN IN)

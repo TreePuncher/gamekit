@@ -534,11 +534,11 @@ namespace FlexKit
 					CompiledScene::SceneNode* Nodes = (CompiledScene::SceneNode*)(SceneBlob->Buffer + SceneBlob->SceneTable.NodeOffset);
 					for (size_t I = 0; I < SceneBlob->SceneTable.NodeCount; ++I)
 					{
-						auto Node = Nodes[I];
-						auto NewNode = GetNewNode(SN);
+						auto Node		= Nodes[I];
+						auto NewNode	= GetNewNode(SN);
 
 						SetOrientationL(SN, NewNode, Node.Q);
-						SetPositionL(SN, NewNode, Node.TS.xyz());
+						SetPositionL(SN,	NewNode, Node.TS.xyz());
 
 						if (Node.Parent != -1)
 							SetParentNode(SN, CreatedNodes[Node.Parent], NewNode);

@@ -963,9 +963,12 @@ FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
 
 /************************************************************************************************/
 
+typedef static_vector<JointInfo, 1024> JointList;
 
-void GetJointTransforms(static_vector<JointInfo, 1024>& Out, FbxMesh* M, iAllocator* MEM)
+void GetJointTransforms(JointList& Out, FbxMesh* M, iAllocator* MEM)
 {
+	using DirectX::XMMatrixRotationQuaternion;
+
 	auto DeformerCount = M->GetDeformerCount();
 	for (size_t I = 0; I < DeformerCount; ++I)
 	{
@@ -973,6 +976,7 @@ void GetJointTransforms(static_vector<JointInfo, 1024>& Out, FbxMesh* M, iAlloca
 		if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
 		{
 			auto Skin = (FbxSkin*)D;
+
 			for (size_t II = 0; Skin->GetClusterCount() > II; ++II)
 			{
 				auto Cluster = Skin->GetCluster(II);
@@ -982,13 +986,13 @@ void GetJointTransforms(static_vector<JointInfo, 1024>& Out, FbxMesh* M, iAlloca
 				FbxAMatrix G = GetGeometryTransformation(Cluster->GetLink());
 				FbxAMatrix transformMatrix;						
 				FbxAMatrix transformLinkMatrix;					
-				FbxAMatrix globalBindposeInverseMatrix;
 
 				Cluster->GetTransformMatrix(transformMatrix);			
 				Cluster->GetTransformLinkMatrix(transformLinkMatrix);
 
-				globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
-				Out[Handle].Inverse			= FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
+				FbxAMatrix globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
+				XMMATRIX Inverse	= FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
+				Out[Handle].Inverse = Inverse;
 			}
 		}
 	}
@@ -998,8 +1002,7 @@ void GetJointTransforms(static_vector<JointInfo, 1024>& Out, FbxMesh* M, iAlloca
 /************************************************************************************************/
 
 
-template<typename TY_Out, typename TY_MEM>
-void FindAllJoints(TY_Out& Out, FbxNode* N, TY_MEM* MEM, size_t Parent = 0xFFFF )
+void FindAllJoints(JointList& Out, FbxNode* N, iAllocator* MEM, size_t Parent = 0xFFFF )
 {
 	if (N->GetNodeAttribute() && N->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton )
 	{

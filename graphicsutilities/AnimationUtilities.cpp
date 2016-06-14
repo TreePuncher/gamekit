@@ -30,7 +30,17 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
+
+	using DirectX::XMMatrixRotationQuaternion;
+	using DirectX::XMMatrixScalingFromVector;
+	using DirectX::XMMatrixTranslationFromVector;
+
+
+	/************************************************************************************************/
+
+
 	Joint&	Skeleton::operator [] (JointHandle hndl){ return Joints[hndl]; }
+
 
 	/************************************************************************************************/
 
@@ -40,7 +50,7 @@ namespace FlexKit
 		Joints		[JointCount] = J;
 		IPose		[JointCount] = I;
 
-		auto Temp = GetInversePose(J.mParent) * DirectX::XMMatrixInverse(nullptr, I);
+		auto Temp = DirectX::XMMatrixInverse(nullptr, I) * GetInversePose(J.mParent);
 		auto Pose = GetPose(Temp);
 		JointPoses[JointCount] = Pose;
 
@@ -406,18 +416,17 @@ namespace FlexKit
 			auto Mesh	= GetMesh(GT, E->MeshHandle);
 			auto S		= Mesh->Skeleton;
 
-			float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
+			XMMATRIX* M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
 
 			for (size_t I = 0; I < S->JointCount; ++I) {
-				auto Pose		= S->JointPoses[I];
+				auto BasePose	= S->JointPoses[I];
 				auto JointPose	= PS->Joints[I];
 				
-				auto Scale  = Pose.ts.w   * JointPose.ts.w;
-				Pose.r		= JointPose.r * Pose.r;
-				Pose.ts	    = Pose.ts + JointPose.ts;
-				Pose.ts.w	= Scale;
+				auto Rotation		= DirectX::XMMatrixRotationQuaternion(BasePose.r);
+				auto Scaling		= DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(BasePose.ts[3], BasePose.ts[3], BasePose.ts[3], 1.0f));
+				auto Translation	= DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(BasePose.ts[0], BasePose.ts[1], BasePose.ts[2], 1.0f));
 
-				M[I] = XMMatrixToFloat4x4(&GetTransform(&Pose));
+				M[I] = GetTransform(&JointPose) * (Rotation * Translation);
 			}
 
 
@@ -456,12 +465,12 @@ namespace FlexKit
 			{
 				for (size_t I = 0; I < S->JointCount; ++I)
 				{
-					auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : float4x4::Identity();
-					M[I] = P * M[I];
+					auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
+					M[I] = M[I] * P;
 				}
 
 				for (size_t I = 0; I < PS->JointCount; ++I)
-					PS->CurrentPose[I] = Float4x4ToXMMATIRX(M + I);
+					PS->CurrentPose[I] = M[I];
 
 				PS->Dirty = true;
 			}
@@ -474,9 +483,11 @@ namespace FlexKit
 
 	DirectX::XMMATRIX GetTransform(JointPose* P)
 	{
-		return	DirectX::XMMatrixRotationQuaternion(P->r) *
-			DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P->ts[3], P->ts[3], P->ts[3], 0.0f)) *
-			DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P->ts[0], P->ts[1], P->ts[2], 0.0f));
+		auto Rotation		= DirectX::XMMatrixRotationQuaternion(P->r);
+		auto Scaling		= DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P->ts[3], P->ts[3], P->ts[3], 1.0f));
+		auto Translation	= DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P->ts[0], P->ts[1], P->ts[2], 1.0f));
+
+		return (Rotation * Scaling) * Translation;
 	}
 
 
@@ -506,6 +517,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void DEBUG_PrintSkeletonHierarchy(FlexKit::Skeleton* S)
 	{
 		for (size_t I = 0; I < S->JointCount; I++)
@@ -529,7 +543,7 @@ namespace FlexKit
 
 		float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
 
-		for (size_t I = 0; I < S->JointCount; ++I)
+		for (size_t I = 1; I < S->JointCount; ++I)
 		{
 			float3 A, B;
 			
@@ -572,12 +586,20 @@ namespace FlexKit
 			else
 				PT = float4x4::Identity();
 
+			auto JI = XMMatrixToFloat4x4(S->IPose + I);
 			auto JT = XMMatrixToFloat4x4(DPS->CurrentPose + I);
 
 			A = (WT * (JT * Zero)).xyz();
 			B = (WT * (PT * Zero)).xyz();
 
-			AddLineSegment(Out, { A,B });
+			float3 X = (WT * (JT * float4{ 1, 0, 0, 1 })).xyz();
+			float3 Y = (WT * (JT * float4{ 0, 1, 0, 1 })).xyz();
+			float3 Z = (WT * (JT * float4{ 0, 0, 1, 1 })).xyz();
+
+			AddLineSegment(Out, { A, WHITE, B, PURPLE});
+			AddLineSegment(Out, { A, RED,	X, RED	 });
+			AddLineSegment(Out, { A, GREEN, Y, GREEN });
+			AddLineSegment(Out, { A, BLUE,	Z, BLUE	 });
 		}
 	}
 

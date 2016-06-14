@@ -2945,6 +2945,13 @@ namespace FlexKit
 
 	bool UpdateTransforms(SceneNodes* Nodes)
 	{
+		using DirectX::XMMatrixIdentity;
+		using DirectX::XMMatrixMultiply;
+		using DirectX::XMMatrixTranspose;
+		using DirectX::XMMatrixTranslationFromVector;
+		using DirectX::XMMatrixScalingFromVector;
+		using DirectX::XMMatrixRotationQuaternion;
+
 		Nodes->WT[0].SetToIdentity();// Making sure root is Identity 
 #if 0
 		for (size_t itr = 1; itr < Nodes->used; ++itr)// Skip Root
@@ -2993,17 +3000,17 @@ namespace FlexKit
 				Nodes->Flags[itr] ^= SceneNodes::DIRTY;		
 				Nodes->Flags[itr] |= SceneNodes::UPDATED; // Propagates Dirty Status of Panret to Children to update
 
-				DirectX::XMMATRIX LT = DirectX::XMMatrixIdentity();
+				DirectX::XMMATRIX LT = XMMatrixIdentity();
 				LT_Entry TRS = GetLocal(Nodes, Nodes->Nodes[itr].TH);
 
 				bool sf = (Nodes->Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
-				LT =(	DirectX::XMMatrixRotationQuaternion(TRS.R) *
-						DirectX::XMMatrixScalingFromVector(sf ? TRS.S : float3(1.0f, 1.0f, 1.0f).pfloats)) *
-						DirectX::XMMatrixTranslationFromVector(TRS.T);
+				LT =(	XMMatrixRotationQuaternion(TRS.R) *
+						XMMatrixScalingFromVector(sf ? TRS.S : float3(1.0f, 1.0f, 1.0f).pfloats)) *
+						XMMatrixTranslationFromVector(TRS.T);
 
 				auto ParentIndex = _SNHandleToIndex(Nodes, Nodes->Nodes[itr].Parent);
 				auto PT = Nodes->WT[ParentIndex].m4x4;
-				auto WT = DirectX::XMMatrixTranspose(DirectX::XMMatrixMultiply(LT, DirectX::XMMatrixTranspose(PT)));
+				auto WT = XMMatrixTranspose(XMMatrixMultiply(LT, XMMatrixTranspose(PT)));
 
 				auto temp	= Nodes->WT[itr].m4x4;
 				Nodes->WT[itr].m4x4 = WT;
@@ -6160,8 +6167,22 @@ namespace FlexKit
 
 			auto RootSig = RS->Library.RS4CBVs4SRVs;
 
-			D3D12_INPUT_ELEMENT_DESC InputElements[5] = {
+			/*
+			typedef struct D3D12_INPUT_ELEMENT_DESC
+			{
+			LPCSTR SemanticName;
+			UINT SemanticIndex;
+			DXGI_FORMAT Format;
+			UINT InputSlot;
+			UINT AlignedByteOffset;
+			D3D12_INPUT_CLASSIFICATION InputSlotClass;
+			UINT InstanceDataStepRate;
+			} 	D3D12_INPUT_ELEMENT_DESC;
+			*/
+
+			D3D12_INPUT_ELEMENT_DESC InputElements[2] = {
 				{ "POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "COLOUR",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			};
 
 			D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -6182,7 +6203,7 @@ namespace FlexKit
 				PSO_Desc.SampleDesc.Count      = 1;
 				PSO_Desc.SampleDesc.Quality    = 0;
 				PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-				PSO_Desc.InputLayout           = { InputElements, 1 };
+				PSO_Desc.InputLayout           = { InputElements, 2 };
 				PSO_Desc.DepthStencilState     = Depth_Desc;
 			}
 
@@ -6192,7 +6213,7 @@ namespace FlexKit
 			out->PSO = PSO;
 		}
 
-		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 2);
+		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 16);
 		out->GPUResource._SetDebugName("LINE SEGMENTS");
 	}
 
@@ -6265,7 +6286,7 @@ namespace FlexKit
 		D3D12_VERTEX_BUFFER_VIEW Views[] = {
 			{ Pass->GPUResource->GetGPUVirtualAddress() ,
 			(UINT)Pass->LineSegments.size() * sizeof(LineSegment),
-			(UINT)sizeof(float3)
+			(UINT)sizeof(float3) * 2
 			},
 		};
 		
