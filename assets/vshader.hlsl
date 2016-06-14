@@ -83,10 +83,24 @@ VOUT VMain( VIN In )
 	return Out;
 }
 
-
-float4 VSegmentPassthrough(VIN In) : SV_POSITION
+struct LinePoint
 {
-	return mul(PV, In.POS);
+	float4 POS		: POSITION;
+	float4 Colour	: COLOUR;
+};
+
+struct LinePointPS
+{
+	float4 Colour	: COLOUR;
+	float4 POS		: SV_POSITION;
+};
+
+LinePointPS VSegmentPassthrough(LinePoint In)
+{
+	LinePointPS Out;
+	Out.POS		= mul(PV, In.POS);
+	Out.Colour	= In.Colour;
+	return Out;
 }
 
 /************************************************************************************************/

@@ -224,8 +224,8 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J != -1) {
-			E->Joints[J].r = Q * E->Joints[J].r;
+		if (J != -1 && J < E->JointCount) {
+			E->Joints[J].r = DirectX::XMQuaternionMultiply(E->Joints[J].r, Q);
 			E->Dirty = true;
 		}
 	}
