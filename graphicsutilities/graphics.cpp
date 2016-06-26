@@ -344,7 +344,6 @@ namespace FlexKit
 	{
 		ID3D12Device* Device = out->pDevice;
 		CD3DX12_STATIC_SAMPLER_DESC	 Default(0);
-
 		{
 			// Pixel Processor Root Sig
 			CD3DX12_DESCRIPTOR_RANGE ranges[2];
@@ -1646,16 +1645,7 @@ namespace FlexKit
 
 			CleanUpTriMesh(G);
 			if (G->Skeleton)
-			{
-				auto I = G->Skeleton->Animations;
-				while (I != nullptr) {
-					CleanUpSceneAnimation(&I->Clip, I->Memory);
-					I->Memory->_aligned_free(I);
-					I = I->Next;
-				}
-
 				CleanUpSkeleton(G->Skeleton);
-			}
 
 			GT->Memory->free(const_cast<char*>(G->ID));
 			GT->Memory->free(G);
@@ -5763,7 +5753,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	// assumes File str should be at least 256 bytes
+	// assumes File str should be at most 256 bytes
 	Texture2D LoadTextureFromFile(char* file, RenderSystem* RS, iAllocator* MemoryOut)
 	{
 		Texture2D tex = {};
@@ -5807,20 +5797,27 @@ namespace FlexKit
 		P.Color = F4MUL(Rect.Color, Rect.Color);
 
 		//
-		P.V = WStoSS({ Rect.TRight.x, Rect.BLeft.y });
-		RG->Rects.push_back(P);// Bottom Left
-		P.V = WStoSS(Rect.BLeft);
+		P.V  = WStoSS({ Rect.TRight.x, Rect.BLeft.y });
+		P.UV = { 1, 1 };
 		RG->Rects.push_back(P);// Bottom Right
-		P.V = WStoSS(Rect.TRight);
-		RG->Rects.push_back(P);// Top Left
+		P.V  = WStoSS(Rect.BLeft);
+		P.UV = { 0, 1 };
+		RG->Rects.push_back(P);// Bottom Left
+		P.V  = WStoSS(Rect.TRight);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+		//
 
 		//
-		P.V = WStoSS(Rect.TRight);
-		RG->Rects.push_back(P);// Bottom Right
-		P.V = WStoSS(Rect.BLeft);
-		RG->Rects.push_back(P);// Top Left
-		P.V = WStoSS({ Rect.BLeft.x, Rect.TRight.y });
+		P.V  = WStoSS(Rect.TRight);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+		P.V  = WStoSS(Rect.BLeft);
+		P.UV = { 0, 1 };
 		RG->Rects.push_back(P);// Bottom Left
+		P.V  = WStoSS({ Rect.BLeft.x, Rect.TRight.y });
+		P.UV = { 0, 0 };
+		RG->Rects.push_back(P);// Top Left
 		//
 	}
 
@@ -5830,7 +5827,34 @@ namespace FlexKit
 
 	void PushRect(GUIRender* RG, Draw_Textured_RECT Rect) {
 		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECTTEXTURED , RG->TexturedRects.size() });
-		RG->TexturedRects.push_back(Rect);
+		RG->Textures.push_back(Rect.TextureHandle);
+
+		Draw_RECTPoint P;
+		P.Color = F4MUL(Rect.Color, Rect.Color);
+
+		//
+		P.V = WStoSS({ Rect.TRight.x, Rect.BLeft.y });
+		P.UV = { 1, 1 };
+		RG->Rects.push_back(P);// Bottom Right
+		P.V = WStoSS(Rect.BLeft);
+		P.UV = { 0, 1 };
+		RG->Rects.push_back(P);// Bottom Left
+		P.V = WStoSS(Rect.TRight);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+		//
+
+		//
+		P.V = WStoSS(Rect.TRight);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+		P.V = WStoSS(Rect.BLeft);
+		P.UV = { 0, 1 };
+		RG->Rects.push_back(P);// Bottom Left
+		P.V = WStoSS({ Rect.BLeft.x, Rect.TRight.y });
+		P.UV = { 0, 0 };
+		RG->Rects.push_back(P);// Top Left
+							   //
 	}
 
 
@@ -5845,10 +5869,12 @@ namespace FlexKit
 		{
 			Shader DrawRectVShader;
 			Shader DrawRectPShader;
+			Shader DrawRectPSTexturedShader;
 
 			// Load Shaders
-			DrawRectVShader = LoadShader("DrawRect_VS", "DrawRect_VS",	"vs_5_0", "assets\\vshader.hlsl");
-			DrawRectPShader = LoadShader("DrawRect",	"DrawRect",		"ps_5_0", "assets\\pshader.hlsl");
+			DrawRectVShader			 = LoadShader("DrawRect_VS",		"DrawRect_VS",		"vs_5_0", "assets\\vshader.hlsl");
+			DrawRectPShader			 = LoadShader("DrawRect",			"DrawRect",			"ps_5_0", "assets\\pshader.hlsl");
+			DrawRectPSTexturedShader = LoadShader("DrawRectTextured",	"DrawRectTextured",	"ps_5_0", "assets\\pshader.hlsl");
 
 			// Create Pipeline StateObject
 			{	
@@ -5868,8 +5894,8 @@ namespace FlexKit
 				*/
 
 				D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-					{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, 0,		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-					{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, 8,		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+					{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+					{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 					{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				};
 
@@ -5881,7 +5907,6 @@ namespace FlexKit
 				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 					PSO_Desc.pRootSignature        = RootSig;
 					PSO_Desc.VS                    = DrawRectVShader;
-					PSO_Desc.PS                    = DrawRectPShader;
 					PSO_Desc.RasterizerState       = Rast_Desc;
 					PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 					PSO_Desc.SampleMask            = UINT_MAX;
@@ -5896,15 +5921,23 @@ namespace FlexKit
 				}
 
 				ID3D12PipelineState* PSO = nullptr;
-				HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+				HRESULT HR;
+				
+				PSO_Desc.PS = DrawRectPShader;
+				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 				FK_ASSERT(SUCCEEDED(HR));
 				RG->DrawStates[DCT_2DRECT] = PSO;
+
+				PSO_Desc.PS = DrawRectPSTexturedShader;
+				HR  = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+				FK_ASSERT(SUCCEEDED(HR));
+				RG->DrawStates[DCT_2DRECTTEXTURED] = PSO;
 			}
 
 			Destroy(&DrawRectVShader);
 			Destroy(&DrawRectPShader);
+			Destroy(&DrawRectPSTexturedShader);
 		}
-
 
 		ConstantBuffer_desc	Desc;
 		Desc.InitialSize = KILOBYTE * 16;
@@ -5916,7 +5949,8 @@ namespace FlexKit
 
 		RG->Rects.Allocator			= Memory;
 		RG->DrawCalls.Allocator		= Memory;
-		RG->TexturedRects.Allocator	= Memory;
+		RG->TexturedRects.Allocator = Memory;
+		RG->Textures.Allocator		= Memory;
 	}
 
 
@@ -5925,16 +5959,17 @@ namespace FlexKit
 
 	void DrawGUI(RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, RenderWindow* RenderTarget)
 	{
-		size_t			RectOffset			= 0;
-		size_t			TexturedRectOffset	= 0;
-		size_t			MeshOffset			= 0;
-		DRAWCALLTYPE	PrevState			= DCT_COUNT;
+		size_t			RectOffset		= 0;
+		size_t			TexturePosition = 0;
+		size_t			MeshOffset		= 0;
+		DRAWCALLTYPE	PrevState		= DCT_COUNT;
 
 		FINALLY
 		{
 			GUIStack->Rects.Release();
 			GUIStack->DrawCalls.Release();
 			GUIStack->TexturedRects.Release();
+			GUIStack->Textures.Release();
 		}
 		FINALLYOVER
 
@@ -5950,6 +5985,8 @@ namespace FlexKit
 		} 	D3D12_VERTEX_BUFFER_VIEW;
 		*/
 		
+		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
+
 		D3D12_VERTEX_BUFFER_VIEW View[] = {
 			{ GUIStack->RectBuffer->GetGPUVirtualAddress(),			(UINT)(sizeof(Draw_RECT)		  * GUIStack->Rects.size()),			(UINT)sizeof(Draw_RECT) },
 			{ GUIStack->TexturedRectBuffer->GetGPUVirtualAddress(),	(UINT)(sizeof(Draw_Textured_RECT) * GUIStack->TexturedRects.size()),	(UINT)sizeof(Draw_Textured_RECT) },
@@ -5958,6 +5995,7 @@ namespace FlexKit
 		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
 		CL->OMSetRenderTargets		(1, &GetBackBufferView(RenderTarget), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
 		CL->IASetPrimitiveTopology	(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		CL->SetDescriptorHeaps		(1, &DescriptorHeap);
 
 		for (auto D : GUIStack->DrawCalls)
 		{
@@ -5968,13 +6006,23 @@ namespace FlexKit
 					CL->SetPipelineState(GUIStack->DrawStates[DRAWCALLTYPE::DCT_2DRECT]);
 
 				CL->IASetVertexBuffers	( 0, 1, View + 0 );
-				CL->DrawInstanced		( 6, 1, 4 * RectOffset, 0 );
+				CL->DrawInstanced		( 6, 1, 6 * RectOffset, 0 );
 				RectOffset++;
 				break;
-			case DRAWCALLTYPE::DCT_2DRECTTEXTURED:
-				//CL->IASetVertexBuffers	( 0, 1, View + 1 );
-				//CL->DrawInstanced		( 4, 1, 4 * TexturedRectOffset, 0 );
-				break;
+			case DRAWCALLTYPE::DCT_2DRECTTEXTURED: {
+				if (PrevState != D.Type)
+					CL->SetPipelineState(GUIStack->DrawStates[DRAWCALLTYPE::DCT_2DRECTTEXTURED]);
+
+				auto DescPOS  = ReserveDescHeap(RS, 1);
+				PushTextureToDescHeap(RS, *GUIStack->Textures[TexturePosition], DescPOS);
+
+				CL->SetGraphicsRootDescriptorTable(0, DescPOS);
+				CL->IASetVertexBuffers	(0, 1, View + 0);
+				CL->DrawInstanced		(6, 1, 6 * RectOffset, 0);
+	
+				RectOffset++;
+				TexturePosition++;
+			}	break;
 			case DRAWCALLTYPE::DCT_3DMesh:
 				//CL->IASetVertexBuffers(0, 1, View + 1);
 				//CL->DrawInstanced(4, 1, 4 * TexturedRectOffset, 0);
@@ -5982,6 +6030,8 @@ namespace FlexKit
 			default:
 				break;
 			}
+
+			PrevState = D.Type;
 		}
 	}
 
@@ -5991,7 +6041,8 @@ namespace FlexKit
 	
 	void UploadGUI(RenderSystem* RS, GUIRender* RG)
 	{
-		UpdateResourceByTemp(RS, &RG->RectBuffer, RG->Rects.begin(), RG->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		if(RG->Rects.size())
+			UpdateResourceByTemp(RS, &RG->RectBuffer, RG->Rects.begin(), RG->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 
 

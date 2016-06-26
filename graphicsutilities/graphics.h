@@ -1471,6 +1471,7 @@ namespace FlexKit
 	FLEXKITAPI bool							IsSkeletonLoaded		(GeometryTable* GT, TriMeshHandle guid);
 	FLEXKITAPI bool							IsAnimationsLoaded		(GeometryTable* GT, TriMeshHandle guid);
 
+
 	/************************************************************************************************/
 
 
@@ -2041,12 +2042,13 @@ namespace FlexKit
 
 	struct Draw_Textured_RECT
 	{
-		float2			TLeft;
-		float2			BRight;
+		float2			TRight;
+		float2			BLeft;
 		float2			TLeft_UVOffset;
 		float2			BRight_UVOffset;
+		float4			Color;
 		uint32_t		ZOrder;
-		ResourceHandle	TextureHandle;
+		Texture2D*		TextureHandle;
 	};
 
 	struct DrawCall
@@ -2059,8 +2061,10 @@ namespace FlexKit
 	{
 		operator GUIRender* () { return this; }
 
-		DynArray<Draw_RECTPoint>			Rects;
-		DynArray<Draw_Textured_RECT>		TexturedRects;
+		DynArray<Draw_RECTPoint> Rects;
+		DynArray<Draw_RECTPoint> TexturedRects;
+		DynArray<Texture2D*>	 Textures;
+
 		//DynArray<TextUtilities::TextArea*>	Text;
 		DynArray<DrawCall>					DrawCalls;
 

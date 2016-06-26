@@ -46,11 +46,10 @@ TODOs
 
 #include "stdafx.h"
 
-#include "..\coreutilities\AllSourceFiles.cpp"
 #include "..\buildsettings.h"
-#include "..\coreutilities\ProfilingUtilities.h"
-#include "MultiplayerMode.h"
-//#include "TestMode.h"
+#include "..\coreutilities\memoryutilities.cpp"
+#include "..\coreutilities\timeutilities.cpp"
+
 #include "GameMemory.h"
 
 #include <Windows.h>
@@ -101,6 +100,16 @@ void UnloadGameCode(GameCode& Code)
 
 /************************************************************************************************/
 
+void UpdateInput()
+{
+	MSG  msg;
+	while (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
+
 
 void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode* Code)
 {
@@ -126,7 +135,7 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		FNTable->Update(Engine, State, dt);
 		if (T > StepSize)
 		{	// Game Tick  -----------------------------------------------------------------------------------
-			UpdateInput();
+			::UpdateInput();
 
 			FNTable->UpdateFixed		(Engine, StepSize, State);
 			FNTable->UpdateAnimations	(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, StepSize,			State);

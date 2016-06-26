@@ -168,6 +168,13 @@ namespace FlexKit
 		S->Memory->free((void*)S->JointPoses);
 		S->Memory->free((void*)S->IPose);
 		S->Memory->free(S);
+
+		auto I = S->Animations;
+		while (I != nullptr) {
+			CleanUpSceneAnimation(&I->Clip, I->Memory);
+			I->Memory->_aligned_free(I);
+			I = I->Next;
+		}
 	}
 
 

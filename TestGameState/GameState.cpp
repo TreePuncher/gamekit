@@ -505,13 +505,6 @@ struct HairRender
 	{
 		ID3D12PipelineState* PSO;
 	}Draw;
-
-	Shader VS;
-	Shader HS;
-	Shader DS;
-	Shader GS;
-	Shader PS;
-	Shader CS;
 };
 
 
@@ -566,22 +559,16 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 	Shader VS = LoadShader("VPassThrough",		"HairVPassThrough",		"vs_5_0", "assets\\HairRendering.hlsl");
 	Shader HS = LoadShader("HShader",			"HShader",				"hs_5_0", "assets\\HairRendering.hlsl");
 	Shader DS = LoadShader("DShader",			"DShader",				"ds_5_0", "assets\\HairRendering.hlsl");
-	Shader PS = LoadShader("DebugTerrainPaint",	"DebugTerrainPaint",	"ps_5_0", "assets\\Pshader.hlsl");
-
-	Out->CS = CS;
-	Out->VS = VS;
-	Out->HS = HS;
-	Out->DS = DS;
-	Out->PS = PS;
+	Shader PS = LoadShader("DebugTerrainPaint",	"DebugTerrainPaint",	"ps_5_0", "assets\\pshader.hlsl");
 
 	// Create Pipeline State Objects
 	{
 		// Simulation Step
 		{
 			D3D12_COMPUTE_PIPELINE_STATE_DESC Desc = {}; {
-				Desc.CS = { CS.Blob->GetBufferPointer(), CS.Blob->GetBufferSize() };
-				Desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-				Desc.NodeMask = 0;
+				Desc.CS				= CS;
+				Desc.Flags			= D3D12_PIPELINE_STATE_FLAG_NONE;
+				Desc.NodeMask		= 0;
 				Desc.pRootSignature = RS->Library.RS2UAVs4SRVs4CBs;
 			}
 
@@ -594,13 +581,12 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 
 		// Render Step
 		{
-
 			D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
 			}
 
 			D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); {
-				Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-				Depth_Desc.DepthEnable = false;
+				Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+				Depth_Desc.DepthEnable	= false;
 			}
 
 			static_vector<D3D12_INPUT_ELEMENT_DESC> InputElements = {
@@ -608,13 +594,14 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 			};
 
 
+
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC Desc = {}; {
 				Desc.pRootSignature = RS->Library.RS4CBVs4SRVs;
-				Desc.VS = { VS.Blob->GetBufferPointer(), VS.Blob->GetBufferSize() };
-				Desc.HS = { HS.Blob->GetBufferPointer(), HS.Blob->GetBufferSize() };
-				Desc.DS = { DS.Blob->GetBufferPointer(), DS.Blob->GetBufferSize() };
-				//Desc.GS						= { GeometryShader.Blob->GetBufferPointer(),	GeometryShader.Blob->GetBufferSize() }; // Skipping for Now
-				Desc.PS = { PS.Blob->GetBufferPointer(), PS.Blob->GetBufferSize() };
+				Desc.VS = VS;
+				Desc.HS = HS;
+				Desc.DS = DS;
+				//Desc.GS						= GS; // Skipping for Now
+				Desc.PS = PS;
 				Desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 
 				Desc.NodeMask              = 0;
@@ -632,6 +619,7 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 				Desc.DepthStencilState = Depth_Desc;
 			}
 
+
 			ID3D12PipelineState* PSO = nullptr;
 			HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&Desc, IID_PPV_ARGS(&PSO));
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE HAIR RENDERING STATE OBJECT!"));
@@ -640,6 +628,11 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 		}
 	}
 
+	Destroy(CS);
+	Destroy(VS);
+	Destroy(HS);
+	Destroy(DS);
+	Destroy(PS);
 }
 
 
@@ -648,13 +641,6 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 
 void CleanupHairRender(HairRender* Out)
 {
-	Out->CS.Blob->Release();
-	Out->DS.Blob->Release();
-	//Out->GS.Blob->Release();
-	Out->HS.Blob->Release();
-	Out->PS.Blob->Release();
-	Out->VS.Blob->Release();
-
 	Out->Draw.PSO->Release();
 	Out->Simulate.PSO->Release();
 }
@@ -676,7 +662,7 @@ struct Scene
 	Scalp					TestScalp;
 	float					T;
 
-
+	Texture2D			TestTexture;
 	DungeonGenerator	Dungeon;
 };
 
@@ -1080,6 +1066,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	SetParentNode	(State->Nodes,	Out->PlayerController.ModelNode, LightNode);
 
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 20.0f, 00.0f});
+
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 40.0f});
 	TranslateLocal	(Engine->Nodes, LightNode,			 {0.0f, 40.0f, 0.0f });
 
@@ -1095,6 +1082,9 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->T						= 0.0f;
 
 	State->GScene.AddPointLight({1, 1, 1}, LightNode, 1000, 1000);
+	auto Texture2D = LoadTextureFromFile("Assets//textures//agdg.dds", Engine->RenderSystem, Engine->BlockAllocator);
+	Out->TestTexture = Texture2D;
+
 	//LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
 	
 	/*
@@ -1114,7 +1104,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	//Out->Dungeon.DungeonScanCallBack(ProcessDungeonTile, (byte*)&Args);
 	*/
 
-	InitiateScalp(Engine->RenderSystem, &Engine->Assets, INVALIDHANDLE, &Out->TestScalp, Engine->BlockAllocator);
+	//InitiateScalp(Engine->RenderSystem, &Engine->Assets, INVALIDHANDLE, &Out->TestScalp, Engine->BlockAllocator);
 }
 
 
@@ -1126,11 +1116,17 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 	TestScene->T += dt;
 
 	Draw_RECT TestRect;
-	TestRect.BLeft  = { 0.0f, 0.5f	};
-	TestRect.TRight	= { 0.5, 0.9f };
+	TestRect.BLeft  = { 0.0f,  0.0f	};
+	TestRect.TRight	= { 0.5,   0.5f };
 	TestRect.Color  = float4(Gray((float)sin(TestScene->T * pi)), 1);
-
 	PushRect(State->GUIRender, TestRect);
+
+	Draw_Textured_RECT TexturedRect;
+	TexturedRect.BLeft	= { 0.4f, 0.4f };
+	TexturedRect.TRight = { 0.7f, 0.9f };
+	TexturedRect.Color = float4(BLUE, 1);
+	TexturedRect.TextureHandle = &TestScene->TestTexture;
+	PushRect(State->GUIRender, TexturedRect);
 
 	UpdateGameActor(Inertia, &State->GScene, dt, &TestScene->PlayerActor, TestScene->PlayerController.Node);
 	UpdateMouseCameraController(&TestScene->PlayerCameraController, State->Nodes, State->Mouse.dPos);
@@ -1194,7 +1190,7 @@ extern "C"
 		InitiateHairRender		  (Engine->RenderSystem, &Engine->DepthBuffer,   &State.HairRender);
 		Initiate3DLinePass		  (Engine->RenderSystem, Engine->BlockAllocator, &State.LinePass);
 		InitiateRenderGUI		  (Engine->RenderSystem, &State.GUIRender,		Engine->TempAllocator);
-		//InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
+		InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
 
 		{
 			Landscape_Desc Land_Desc = { 

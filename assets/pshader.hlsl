@@ -155,13 +155,14 @@ struct RectPoint_PS
 
 float4 DrawRect(RectPoint_PS IN) : SV_TARGET
 {
-	return float4(IN.Color.xyz , 1);
+	return IN.Color;
 }
 
 
 float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
 {
-	return IN.Color * AlbedoTexture.Sample(DefaultSampler, IN.UV);
+	float4 Sample = AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
+	return Sample;
 }
 
 
