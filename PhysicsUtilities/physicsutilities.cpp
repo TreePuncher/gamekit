@@ -41,6 +41,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	void InitiatePhysics(PhysicsSystem* Physics, uint32_t CoreCount, iAllocator* allocator)
 	{
 #ifdef _DEBUG
@@ -48,6 +49,7 @@ namespace FlexKit
 #else
 		bool recordMemoryAllocations = false;
 #endif
+
 
 		Physics->Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, gDefaultAllocatorCallback, gDefaultErrorCallback);
 		if (!Physics->Foundation)
@@ -61,11 +63,13 @@ namespace FlexKit
 		if (!PxInitExtensions(*Physics->Physx))
 			FK_ASSERT(0);
 
+
 #ifdef PHYSXREMOTEDB
 		Physics->RemoteDebuggerEnabled = true;
 #else
 		Physics->RemoteDebuggerEnabled = false;
 #endif
+
 
 		if (Physics->RemoteDebuggerEnabled)
 		{
@@ -105,7 +109,7 @@ namespace FlexKit
 		if (!DefaultMaterial)
 			assert(0);
 
-		Physics->DefaultMaterial = DefaultMaterial;
+		Physics->DefaultMaterial									= DefaultMaterial;
 
 		Physics->Colliders.FreeSlots.Allocator						= allocator;
 		Physics->Colliders.TriMeshColliders.Allocator				= allocator;
@@ -113,7 +117,9 @@ namespace FlexKit
 		Physics->Colliders.TriMeshColliderTable.Indexes.Allocator	= allocator;
 	}
 
+
 	/************************************************************************************************/
+
 
 	void UpdateColliders(PScene* scn, FlexKit::SceneNodes* nodes)
 	{
@@ -148,7 +154,9 @@ namespace FlexKit
 		}
 	}
 
+
 	/************************************************************************************************/
+
 
 	size_t CreateCubeActor(physx::PxMaterial* material, PScene* scene, float l, float3 initialP, FlexKit::Quaternion initialQ, float3 InitialV)
 	{
@@ -174,7 +182,9 @@ namespace FlexKit
 		return scene->Colliders.size() - 1;
 	}
 
+
 	/************************************************************************************************/
+
 
 	size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene, SceneNodes* SN, NodeHandle Nodes)
 	{
@@ -415,8 +425,8 @@ namespace FlexKit
 		Physics->DefaultMaterial->release();
 		if (Physics->RemoteDebuggerEnabled)	Physics->VisualDebuggerConnection->release();
 		PxCloseExtensions();
-		if (Physics->Physx)				Physics->Physx->release();
-		if (Physics->ProfileZoneManager) Physics->ProfileZoneManager->release();
+		if (Physics->Physx)					Physics->Physx->release();
+		if (Physics->ProfileZoneManager)	Physics->ProfileZoneManager->release();
 		if (Physics->Foundation)			Physics->Foundation->release();
 	}
 
@@ -440,8 +450,10 @@ namespace FlexKit
 					break;
 				}
 			}
-			c.Actor->release();
+			if(c.Actor) c.Actor->release();
 		}
+
+		Scn->Colliders.Release();
 		Scn->Scene->release();
 	}
 
@@ -456,7 +468,7 @@ namespace FlexKit
 		scene->Colliders[index].Actor->userData	   = E;
 		E->Node                                    = node;
 
-		FlexKit::ZeroNode(Nodes, node);
+		ZeroNode(Nodes, node);
 	}
 
 

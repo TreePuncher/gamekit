@@ -408,6 +408,7 @@ float3 UpdateActorInertia(InertiaState* IS, double dt, GameActor* Actor, float3 
 	return IS->Inertia;
 }
 
+
 float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* ActorState, NodeHandle Target)
 { 
 	float3 FinalDelta = dV;
@@ -463,22 +464,6 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 
 /************************************************************************************************/
 
-
-struct Scene
-{
-	EntityHandle			PlayerModel;
-	JointHandle				Joint;
-	Camera					PlayerCam;
-	MouseCameraController	PlayerCameraController;
-	GameActor				PlayerActor;
-	PlayerController		PlayerController;
-	InertiaState			PlayerInertia;
-
-	float T;
-
-	DungeonGenerator	Dungeon;
-};
-
 struct TestSceneStats
 {
 	float		T;
@@ -490,6 +475,214 @@ void ResetStats(TestSceneStats* Stats)
 	Stats->AvgObjectDrawnPerFrame = 0;
 	Stats->T = 0;
 }
+
+struct Scalp
+{
+	ID3D12Resource*			Constants;
+	FrameBufferedResource	State[2];
+
+	// Hair Initial State
+	struct Strand
+	{
+		struct{
+			float	xyz[3];
+		}Points[64];
+	};
+
+	size_t				CurrentBuffer;
+	DynArray<Strand>	Hairs;
+};
+
+
+struct HairRender
+{
+	struct
+	{
+		ID3D12PipelineState* PSO;
+	}Simulate;
+
+	struct
+	{
+		ID3D12PipelineState* PSO;
+	}Draw;
+
+	Shader VS;
+	Shader HS;
+	Shader DS;
+	Shader GS;
+	Shader PS;
+	Shader CS;
+};
+
+
+/************************************************************************************************/
+
+
+void AddTestStrand(Scalp* Out)
+{
+	Scalp::Strand TestStrand;
+	for (auto& p : TestStrand.Points)
+	{
+		p.xyz[0] = 0.0f;
+		p.xyz[1] = 1.0f;
+		p.xyz[2] = 0.0f;
+	}
+
+	Out->Hairs.push_back(TestStrand);
+}
+
+
+/************************************************************************************************/
+
+
+void InitiateScalp(RenderSystem* RS, Resources* Assets, ResourceHandle RHandle, Scalp* Out, iAllocator* allocator)
+{
+	/*
+	auto Resource1			= FlexKit::CreateShaderResource(RS, 2048);
+	auto Resource2			= FlexKit::CreateShaderResource(RS, 2048);
+	auto Resource3			= FlexKit::CreateShaderResource(RS, 2048);
+	*/
+	Out->Hairs.Allocator	= allocator;
+
+	//AddTestStrand(Out);
+}
+
+
+void CleanupScalp(Scalp* S)
+{
+	S->Constants->Release();
+	S->Hairs.Release();
+	S->State[0].Release();
+	S->State[1].Release();
+}
+
+
+/************************************************************************************************/
+
+
+void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
+{
+	Shader CS = LoadShader("ComputeMain",		"DeferredShader",		"cs_5_0", "assets\\HairSimulation.hlsl");
+	Shader VS = LoadShader("VPassThrough",		"HairVPassThrough",		"vs_5_0", "assets\\HairRendering.hlsl");
+	Shader HS = LoadShader("HShader",			"HShader",				"hs_5_0", "assets\\HairRendering.hlsl");
+	Shader DS = LoadShader("DShader",			"DShader",				"ds_5_0", "assets\\HairRendering.hlsl");
+	Shader PS = LoadShader("DebugTerrainPaint",	"DebugTerrainPaint",	"ps_5_0", "assets\\Pshader.hlsl");
+
+	Out->CS = CS;
+	Out->VS = VS;
+	Out->HS = HS;
+	Out->DS = DS;
+	Out->PS = PS;
+
+	// Create Pipeline State Objects
+	{
+		// Simulation Step
+		{
+			D3D12_COMPUTE_PIPELINE_STATE_DESC Desc = {}; {
+				Desc.CS = { CS.Blob->GetBufferPointer(), CS.Blob->GetBufferSize() };
+				Desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+				Desc.NodeMask = 0;
+				Desc.pRootSignature = RS->Library.RS2UAVs4SRVs4CBs;
+			}
+
+			ID3D12PipelineState* PSO = nullptr;
+			HRESULT HR = RS->pDevice->CreateComputePipelineState(&Desc, IID_PPV_ARGS(&PSO));
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE HAIR SIMULATION STATE OBJECT!"));
+
+			Out->Simulate.PSO = PSO;
+		}
+
+		// Render Step
+		{
+
+			D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
+			}
+
+			D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); {
+				Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+				Depth_Desc.DepthEnable = false;
+			}
+
+			static_vector<D3D12_INPUT_ELEMENT_DESC> InputElements = {
+				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC Desc = {}; {
+				Desc.pRootSignature = RS->Library.RS4CBVs4SRVs;
+				Desc.VS = { VS.Blob->GetBufferPointer(), VS.Blob->GetBufferSize() };
+				Desc.HS = { HS.Blob->GetBufferPointer(), HS.Blob->GetBufferSize() };
+				Desc.DS = { DS.Blob->GetBufferPointer(), DS.Blob->GetBufferSize() };
+				//Desc.GS						= { GeometryShader.Blob->GetBufferPointer(),	GeometryShader.Blob->GetBufferSize() }; // Skipping for Now
+				Desc.PS = { PS.Blob->GetBufferPointer(), PS.Blob->GetBufferSize() };
+				Desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+				Desc.NodeMask              = 0;
+				Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+				Desc.RasterizerState       = Rast_Desc;
+				Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				Desc.SampleMask            = UINT_MAX;
+				Desc.NumRenderTargets      = 1;
+				Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+				Desc.SampleDesc.Count      = 1;
+				Desc.SampleDesc.Quality    = 0;
+
+				Desc.DSVFormat         = DB->Buffer->Format;
+				Desc.InputLayout       = { InputElements.begin(), (UINT)InputElements.size() };
+				Desc.DepthStencilState = Depth_Desc;
+			}
+
+			ID3D12PipelineState* PSO = nullptr;
+			HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&Desc, IID_PPV_ARGS(&PSO));
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE HAIR RENDERING STATE OBJECT!"));
+
+			Out->Draw.PSO = PSO;
+		}
+	}
+
+}
+
+
+/************************************************************************************************/
+
+
+void CleanupHairRender(HairRender* Out)
+{
+	Out->CS.Blob->Release();
+	Out->DS.Blob->Release();
+	//Out->GS.Blob->Release();
+	Out->HS.Blob->Release();
+	Out->PS.Blob->Release();
+	Out->VS.Blob->Release();
+
+	Out->Draw.PSO->Release();
+	Out->Simulate.PSO->Release();
+}
+
+
+/************************************************************************************************/
+
+
+struct Scene
+{
+	EntityHandle			PlayerModel;
+	EntityHandle			TestModel;
+	JointHandle				Joint;
+	Camera					PlayerCam;
+	MouseCameraController	PlayerCameraController;
+	GameActor				PlayerActor;
+	PlayerController		PlayerController;
+	InertiaState			PlayerInertia;
+	Scalp					TestScalp;
+	float					T;
+
+
+	DungeonGenerator	Dungeon;
+};
+
+
+/************************************************************************************************/
+
 
 struct GameState
 {
@@ -503,7 +696,11 @@ struct GameState
 
 	DeferredPass		DeferredPass;
 	ForwardPass			ForwardPass;
-	Line3DPass			LineDrawPass;
+
+	GUIRender			GUIRender;
+
+	LineDrawState		LineDrawState;
+	Line3DPass			LinePass;
 
 	StaticMeshBatcher	StaticMeshBatcher;
 
@@ -528,6 +725,7 @@ struct GameState
 	bool		Quit;
 	bool		DoDeferredShading;
 
+	HairRender		HairRender;
 	TestSceneStats	Stats;
 };
 
@@ -839,15 +1037,22 @@ void ProcessDungeonTile(byte* _ptr, DungeonGenerator::Tile in[3][3], uint2 POS, 
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
+	auto Head			= State->GScene.CreateDrawableAndSetMesh("HeadModel");
+	auto PlayerModel	= State->GScene.CreateDrawableAndSetMesh("PlayerModel");
+	Out->TestModel		= State->GScene.CreateDrawableAndSetMesh("Flower");
+	Out->PlayerModel	= PlayerModel;
 
-	auto PlayerModel = State->GScene.CreateDrawableAndSetMesh("PlayerModel");
-	Out->PlayerModel = PlayerModel;
+	auto HeadNode = State->GScene.GetEntity(Head).Node;
+	SetFlag(State->Nodes, HeadNode, SceneNodes::StateFlags::SCALE);
+	Scale(State->Nodes, HeadNode, 10);
 
-#if 0
+#if 1
 	State->GScene.EntityEnablePosing(PlayerModel);
-	State->GScene.EntityPlayAnimation(PlayerModel, "ANIMATION1", 0.5f);
-	Out->Joint = State->GScene.GetEntity(PlayerModel).PoseState->Sk->FindJoint("Chest");
+	State->GScene.EntityPlayAnimation(PlayerModel, 3, 1.1f);
+	State->GScene.EntityPlayAnimation(PlayerModel, 4, 0.5f);
+	Out->Joint = State->GScene.GetEntity(PlayerModel).PoseState->Sk->FindJoint("wrist_R");
 	DEBUG_PrintSkeletonHierarchy(State->GScene.GetEntitySkeleton(PlayerModel));
+	TagJoint(&State->GScene, Out->Joint, PlayerModel, State->GScene.GetNode(Out->TestModel));
 #endif
 
 	State->GScene.Yaw				(PlayerModel, pi / 2);
@@ -885,15 +1090,17 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 		Out->PlayerController.YawNode, 
 		&Out->PlayerCameraController);
 
-	Out->PlayerInertia.Drag = 0.1f;
-	Out->PlayerInertia.Inertia = float3(0);
-	Out->T = 0;
+	Out->PlayerInertia.Drag		= 0.1f;
+	Out->PlayerInertia.Inertia	= float3(0);
+	Out->T						= 0.0f;
 
 	State->GScene.AddPointLight({1, 1, 1}, LightNode, 1000, 1000);
 	//LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
-	srand(123);
-	Out->Dungeon.Generate();
-	auto temp = Out->Dungeon.Tiles;
+	
+	/*
+	//srand(123);
+	//Out->Dungeon.Generate();
+	//auto temp = Out->Dungeon.Tiles;
 
 	ProcessDungonTileArgs Args;
 	Args.Assets  = &Engine->Assets;
@@ -903,9 +1110,11 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Args.PS		 = &State->PScene;
 	Args.Physics = &Engine->Physics;
 
-	LoadColliders(&Engine->Physics, &Engine->Assets, &Args);
-	Out->Dungeon.DungeonScanCallBack(ProcessDungeonTile, (byte*)&Args);
-	int x = 0;
+	//LoadColliders(&Engine->Physics, &Engine->Assets, &Args);
+	//Out->Dungeon.DungeonScanCallBack(ProcessDungeonTile, (byte*)&Args);
+	*/
+
+	InitiateScalp(Engine->RenderSystem, &Engine->Assets, INVALIDHANDLE, &Out->TestScalp, Engine->BlockAllocator);
 }
 
 
@@ -914,10 +1123,14 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 	float3 InputMovement	= UpdateController(TestScene->PlayerController, State->Keys, State->Nodes);
 	float3 Inertia			= UpdateActorInertia(&TestScene->PlayerInertia, dt, &TestScene->PlayerActor, InputMovement);
 
-	auto PoseState = State->GScene.GetEntity(TestScene->PlayerModel).PoseState;
-	//TranslateJoint(PoseState, 20, { 0, (float)dt * 10, 0 });
-
 	TestScene->T += dt;
+
+	Draw_RECT TestRect;
+	TestRect.BLeft  = { 0.0f, 0.5f	};
+	TestRect.TRight	= { 0.5, 0.9f };
+	TestRect.Color  = float4(Gray((float)sin(TestScene->T * pi)), 1);
+
+	PushRect(State->GUIRender, TestRect);
 
 	UpdateGameActor(Inertia, &State->GScene, dt, &TestScene->PlayerActor, TestScene->PlayerController.Node);
 	UpdateMouseCameraController(&TestScene->PlayerCameraController, State->Nodes, State->Mouse.dPos);
@@ -926,10 +1139,8 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 
 void UpdateTestScene_PostTransformUpdate(Scene* TestScene, GameState* State, double dt, iAllocator* TempMem)
 {
-	auto Entity		= State->GScene.GetEntity(TestScene->PlayerModel);
-	auto Skeleton	= State->GScene.GetEntitySkeleton(TestScene->PlayerModel);
-
-	DEBUG_DrawPoseState(Skeleton, Entity.PoseState, State->Nodes, Entity.Node, &State->LineDrawPass);
+	UpdateGraphicScenePoseTransform(&State->GScene);
+	//DEBUG_DrawPoseState(Entity.PoseState, State->Nodes, Entity.Node, &State->LineDrawPass);
 }
 
 
@@ -979,8 +1190,10 @@ extern "C"
 		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		InitiateTextRender		  (Engine->RenderSystem, &State.TextRender);
-		InitiateSegmentPass		  (Engine->RenderSystem, Engine->BlockAllocator, &State.LineDrawPass);
-
+		InitiateLineDrawState	  (Engine->RenderSystem, Engine->BlockAllocator, &State.LineDrawState);
+		InitiateHairRender		  (Engine->RenderSystem, &Engine->DepthBuffer,   &State.HairRender);
+		Initiate3DLinePass		  (Engine->RenderSystem, Engine->BlockAllocator, &State.LinePass);
+		InitiateRenderGUI		  (Engine->RenderSystem, &State.GUIRender,		Engine->TempAllocator);
 		//InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
 
 		{
@@ -1096,8 +1309,9 @@ extern "C"
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 
+			UploadGUI(RS, &State->GUIRender);
 			UploadPoses(RS, &PVS, State->GT, TempMemory);
-			UploadLineSegments(RS, &State->LineDrawPass);
+			UploadLineSegments(RS, &State->LinePass);
 			UploadDeferredPassConstants(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
 			UploadCamera(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
 			UploadGraphicScene(&State->GScene, &PVS, &Transparent);
@@ -1122,7 +1336,8 @@ extern "C"
 			}
 		}
 
-		Draw3DLineSegments(RS, &State->LineDrawPass, State->ActiveCamera, State->ActiveWindow);
+		DrawGUI(RS, CL, &State->GUIRender, State->ActiveWindow);
+		Draw3DLineSegments(RS, &State->LineDrawState , &State->LinePass, State->ActiveCamera, State->ActiveWindow);
 		DrawTextArea(&State->TextRender, State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);
 		
 		EndPass(CL, RS, State->ActiveWindow);
@@ -1149,13 +1364,16 @@ extern "C"
 
 		ReleaseTextureSet(Engine->RenderSystem, _ptr->Set1, Engine->BlockAllocator);
 
-		CleanUpLineDrawPass		(&_ptr->LineDrawPass);
+		CleanUpRenderGUI		(&_ptr->GUIRender);
+		CleanUpLineDrawPass		(&_ptr->LinePass);
+		CleanUpLineDrawState	(&_ptr->LineDrawState);
 		CleanUpState			(_ptr, Engine);
 		CleanUpCamera			(_ptr->Nodes, _ptr->ActiveCamera);
 		CleanUpTextRender		(&_ptr->TextRender);
 		CleanupForwardPass		(&_ptr->ForwardPass);
 		CleanupDeferredPass		(&_ptr->DeferredPass);
 		CleanUpGraphicScene		(&_ptr->GScene);
+		CleanupHairRender		(&_ptr->HairRender);
 		CleanUpScene			(&_ptr->PScene, &Engine->Physics);
 		CleanUpEngine			(Engine);
 	}

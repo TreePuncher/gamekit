@@ -79,7 +79,12 @@ struct NormalMapped_IN
 };
 
 
+/************************************************************************************************/
 
+Texture2D AlbedoTexture : register(t0);
+Texture2D RandSTexture	: register(t1);
+
+SamplerState DefaultSampler;
 
 /************************************************************************************************/
 
@@ -124,6 +129,10 @@ GBuffer DebugPaint(PS_IN IN)
 	return Out;
 }
 
+
+/************************************************************************************************/
+
+
 struct LinePointPS
 {
 	float4 Colour	: COLOUR;
@@ -133,6 +142,31 @@ float4 DrawLine(LinePointPS IN) : SV_TARGET
 {
 	return float4(IN.Colour.xyz, 1);
 }
+
+
+/************************************************************************************************/
+
+
+struct RectPoint_PS
+{
+	float4 Color	: COLOR;
+	float2 UV		: TEXCOORD;
+};
+
+float4 DrawRect(RectPoint_PS IN) : SV_TARGET
+{
+	return float4(IN.Color.xyz , 1);
+}
+
+
+float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
+{
+	return IN.Color * AlbedoTexture.Sample(DefaultSampler, IN.UV);
+}
+
+
+/************************************************************************************************/
+
 
 GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 {
@@ -145,11 +179,6 @@ GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 
 	return Out;
 }
-
-Texture2D AlbedoTexture : register(t0);
-Texture2D RandSTexture : register(t1);
-
-SamplerState DefaultSampler;
 
 
 struct PS_TEXURED_IN

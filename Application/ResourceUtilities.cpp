@@ -146,6 +146,10 @@ float4 TranslateToFloat4(FbxVector4& in)
 		in.mData[3]);
 }
 
+
+/************************************************************************************************/
+
+
 FbxVector4 ReadNormal(int index, fbxsdk::FbxMesh* Mesh)	
 { 
 	FbxVector4 out;
@@ -268,9 +272,9 @@ float3		FetchVertexNormal	(size_t itr, CombinedVertexBuffer* Buff){return Buff->
 float3		FetchFloat3ZERO		(size_t itr, CombinedVertexBuffer* Buff){return{ 0.0f, 0.0f, 0.0f };}
 float2		FetchVertexUV		(size_t itr, CombinedVertexBuffer* Buff){auto temp = Buff->at(itr).TEXCOORD.xy();return {temp.x, temp.y};}
 uint4_16	FetchWeightIndices	(size_t itr, CombinedVertexBuffer* Buff){return Buff->at(itr).WIndices;}
-uint32_t	WriteIndex			(uint32_t in)	{return in;}
-float3		WriteVertex			(float3 in)		{return in;}
-float2		WriteUV				(float2 in)		{return in;}
+uint32_t	WriteIndex			(uint32_t in)							{return in;}
+float3		WriteVertex			(float3 in)								{return in;}
+float2		WriteUV				(float2 in)								{return in;}
 
 /************************************************************************************************/
 // Complexe Buffer Filling Utility Functions
@@ -967,15 +971,15 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 	for(auto Cut : Cuts)
 	{
 		size_t Begin	= Cut.T_Start / (1.0f / 60.0f);
-		size_t End		= Cut.T_End / (1.0f / 60.0f) + 1;
-		size_t test		= Joints.front().Animation.FrameCount;
+		size_t End		= Cut.T_End / (1.0f / 60.0f);
+
 		AnimationClip Clip;
 		Clip.Skeleton	= S;
 		Clip.FPS		= 60;
 		Clip.FrameCount	= End - Begin;
 		Clip.mID		= Cut.ID;
 		Clip.guid		= Cut.guid;
-		Clip.isLooping	= true;
+		Clip.isLooping	= false;
 		Clip.Frames		= (AnimationClip::KeyFrame*)Mem->_aligned_malloc(Clip.FrameCount * sizeof(AnimationClip::KeyFrame));
 
 		for (size_t I = 0; I < Clip.FrameCount; ++I)
@@ -988,9 +992,9 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 			{
 				Clip.Frames[I].Joints[II]	= JointHandle(II);
 				
-				auto DEBUGVIEW = Joints[II].Animation.Poses[I + Begin].JPose;
-				auto Pose					= GetTransform(&Joints[II].Animation.Poses[I + Begin].JPose);
-				auto LocalPose				= GetPose(Joints[II].Inverse * Pose);
+				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetTransform(S->JointPoses[II]));
+				auto Pose					= GetTransform(Joints[II].Animation.Poses[I + Begin].JPose);
+				auto LocalPose				= GetPose(Pose * Inverse);
 				Clip.Frames[I].Poses[II]	= LocalPose;
 			}
 		}

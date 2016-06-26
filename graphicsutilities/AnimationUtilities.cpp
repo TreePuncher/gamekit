@@ -205,18 +205,18 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+	
 
-
-	EPLAY_ANIMATION_RES PlayAnimation(FlexKit::Drawable* E, GeometryTable* GT, const char* Animation, iAllocator* MEM, bool ForceLoop, float Weight)
+	Pair<EPLAY_ANIMATION_RES, bool> CheckState_PlayAnimation(Drawable* E, GeometryTable* GT, iAllocator* MEM)
 	{
 		using FlexKit::DrawablePoseState;
 		if (!E || !(E->MeshHandle != INVALIDMESHHANDLE))
-			return EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM;
+			return{ EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM, false };
 
 		auto MeshHandle = E->MeshHandle;
 
 		if (!IsSkeletonLoaded(GT, MeshHandle))
-			return EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE;
+			return{ EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
 
 		auto Mesh = GetMesh(GT, MeshHandle);
 
@@ -226,7 +226,7 @@ namespace FlexKit
 			auto NewPoseState	= CreatePoseState(E, GT, MEM);
 
 			if (!NewPoseState)
-				return EPLAY_NOT_ANIMATABLE;
+				return{ EPLAY_NOT_ANIMATABLE, false };
 
 			E->PoseState = NewPoseState;
 		}// Create Animation State
@@ -234,13 +234,75 @@ namespace FlexKit
 		if (!E->AnimationState)
 		{
 			auto New_EAS = (DrawableAnimationState*)MEM->_aligned_malloc(sizeof(DrawableAnimationState));
-			E->AnimationState	= New_EAS;
-			New_EAS->Clips		={};
+			E->AnimationState = New_EAS;
+			New_EAS->Clips = {};
 		}
 
-		auto EPS	= E->PoseState;
-		auto EAS	= E->AnimationState;
-		auto S		= Mesh->Skeleton;
+		return{ EPLAY_ANIMATION_RES::EPLAY_SUCCESS, true };
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight)
+	{
+		using FlexKit::DrawablePoseState;
+		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
+
+		if (!Res)
+			return Res;
+
+		auto MeshHandle = E->MeshHandle;
+		auto Mesh		= GetMesh(GT, MeshHandle);
+
+		auto EPS = E->PoseState;
+		auto EAS = E->AnimationState;
+		auto S	 = Mesh->Skeleton;
+
+		Skeleton::AnimationList* I = S->Animations;
+
+		while (I)
+		{
+			if (I->Clip.guid == Guid)
+			{
+				DrawableAnimationState::AnimationStateEntry ASE;
+				ASE.Clip      = &I->Clip;
+				ASE.order     = EAS->Clips.size();
+				ASE.T         = 0;
+				ASE.Playing   = true;
+				ASE.Speed     = 1.0f;
+				ASE.ForceLoop = ForceLoop;
+				ASE.Weight    = max(min(Weight, 1.0f), 0.0f);
+				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
+				EAS->Clips.push_back(ASE);
+				E->Posed = true; // Enable Posing or Animation won't do anything
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+			I = I->Next;
+		}
+
+		return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, const char* Animation, iAllocator* Allocator, bool ForceLoop, float Weight)
+	{
+		using FlexKit::DrawablePoseState;
+		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
+
+		if (!Res)
+			return Res;
+
+		auto MeshHandle = E->MeshHandle;
+		auto Mesh       = GetMesh(GT, MeshHandle);
+
+		auto EPS        = E->PoseState;
+		auto EAS        = E->AnimationState;
+		auto S          = Mesh->Skeleton;
 
 		Skeleton::AnimationList* I = S->Animations;
 
@@ -250,11 +312,13 @@ namespace FlexKit
 			{
 				DrawableAnimationState::AnimationStateEntry ASE;
 				ASE.Clip	  = &I->Clip;
+				ASE.order	  = EAS->Clips.size();
 				ASE.T		  = 0;
 				ASE.Playing	  = true;
 				ASE.Speed	  = 1.0f;
 				ASE.ForceLoop = ForceLoop;
-				ASE.Weight	  = Weight;
+				ASE.Weight	  = max(min(Weight, 1.0f), 0.0f);
+				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
 				EAS->Clips.push_back(ASE);
 				
 				E->Posed = true; // Enable Posing or Animation won't do anything
@@ -263,6 +327,91 @@ namespace FlexKit
 			I = I->Next;
 		}
 
+		return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, uint32_t& out)
+	{
+		using FlexKit::DrawablePoseState;
+		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
+
+		if (!Res)
+			return Res;
+
+		auto MeshHandle = E->MeshHandle;
+		auto Mesh       = GetMesh(GT, MeshHandle);
+
+		auto EPS        = E->PoseState;
+		auto EAS        = E->AnimationState;
+		auto S          = Mesh->Skeleton;
+
+		Skeleton::AnimationList* I = S->Animations;
+
+		while (I)
+		{
+			if (I->Clip.guid == Guid)
+			{
+				DrawableAnimationState::AnimationStateEntry ASE;
+				ASE.Clip	  = &I->Clip;
+				ASE.order	  = EAS->Clips.size();
+				ASE.T		  = 0;
+				ASE.Playing	  = true;
+				ASE.Speed	  = 1.0f;
+				ASE.ForceLoop = ForceLoop;
+				ASE.Weight	  = max(min(Weight, 1.0f), 0.0f);
+				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
+				EAS->Clips.push_back(ASE);
+				
+				out = ASE.ID;
+				E->Posed = true; // Enable Posing or Animation won't do anything
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+			I = I->Next;
+		}
+
+		return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, uint32_t ID, double Speed)
+	{
+		using FlexKit::DrawablePoseState;
+
+		for (auto& C : AE->Clips)
+		{
+			if (C.ID == ID)
+			{
+				C.Speed = Speed;
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+		}
+
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, GUID_t AnimationID, double Speed)
+	{
+		using FlexKit::DrawablePoseState;
+
+		for (auto& C : AE->Clips)
+		{
+			if (C.Clip->guid == AnimationID)
+			{
+				C.Speed = Speed;
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+		}
 		return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
 	}
 
@@ -288,28 +437,33 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	EPLAY_ANIMATION_RES StopAnimation(FlexKit::Drawable* E, GeometryTable* GT, const char* Animation)
+	Pair<EPLAY_ANIMATION_RES, bool> StopAnimation_CheckState(Drawable* E, GeometryTable* GT)
 	{
 		if (!E)
-			return EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM;
-
+			return { EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM, false };
 
 		if (E->MeshHandle == INVALIDMESHHANDLE || !IsSkeletonLoaded(GT, E->MeshHandle))
-			return EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE;
+			return { EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
 
 		if (!E->Posed)
-		{
-			return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
-		}
+			return { EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
+
+		return { EPLAY_ANIMATION_RES::EPLAY_SUCCESS, true };
+	}
+
+
+	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid)
+	{
+		auto Status = StopAnimation_CheckState(E, GT);
+		if (!Status)
+			return Status;
 
 		auto Mesh	= GetMesh(GT, E->MeshHandle);
 		auto EAS	= E->AnimationState;
-		auto S		= Mesh->Skeleton;
 		
 		for (auto& C : EAS->Clips)
 		{
-			if (!strcmp(C.Clip->mID, Animation)) {
+			if (C.Clip->guid == Guid) {
 				C.Playing = false;
 				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 			}
@@ -321,7 +475,55 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadPose(RenderSystem* RS, GeometryTable* GT, FlexKit::Drawable* E, iAllocator* TEMP)
+	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GeometryTable* GT, uint32_t ID)
+	{
+		auto Status = StopAnimation_CheckState(E, GT);
+		if (!Status)
+			return Status;
+
+		auto Mesh	= GetMesh(GT, E->MeshHandle);
+		auto EAS	= E->AnimationState;
+
+		for (auto& C : EAS->Clips)
+		{
+			if (C.ID == ID) {
+				C.Playing = false;
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+		}
+
+		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GeometryTable* GT, const char* Animation)
+	{
+		auto Status = StopAnimation_CheckState(E, GT);
+		if (!Status)
+			return Status;
+
+		auto Mesh	= GetMesh(GT, E->MeshHandle);
+		auto EAS	= E->AnimationState;
+
+		for (auto& C : EAS->Clips)
+		{
+			if (!strcmp(C.Clip->mID, Animation)) {
+				C.Playing = false;
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+		}
+
+		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void UploadPose(RenderSystem* RS, Drawable* E, GeometryTable* GT, iAllocator* TEMP)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
@@ -358,51 +560,74 @@ namespace FlexKit
 		for (Drawable* d : *Drawables)
 		{
 			if(d->PoseState && d->PoseState->Dirty)
-				UploadPose(RS, GT, d, TEMP);
+				UploadPose(RS, d, GT,TEMP);
 		}
 	}
 
 
 	/************************************************************************************************/
 
-	#if 0
-	Quaternion Slerp(Quaternion P, Quaternion Q, float W)
-	{
-		Quaternion Qout;
-		
-		float dot = P.V().dot(Q.V());
-		if (dot < 0)
-		{
-			dot = -dot;
-		}else Qout = Q;
 
-		if (dot < 0.95f)
-		{
-			float Angle = acosf(dot);
-			return (P * 
-				sinf(Angle * (1 - W)) + 
-				Qout * sinf(Angle * W) / sinf(Angle));
+	EPLAY_ANIMATION_RES ClearAnimationPose(DrawablePoseState* DPS, iAllocator* TEMP)
+	{
+		using DirectX::XMMatrixIdentity;
+		auto S = DPS->Sk;
+
+		XMMATRIX* M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
+
+		if (!M)
+			return EPLAY_ANIMATION_RES::EPLAY_FAILED;
+
+		for (size_t I = 0; I < S->JointCount; ++I) {
+			auto BasePose	= S->JointPoses[I];
+			auto JointPose	= DPS->Joints[I];
+
+			M[I] = GetTransform(JointPose) * GetTransform(BasePose);
 		}
 
-		return Qout;
-	}
-	#endif
 
-	Quaternion Qlerp(Quaternion P, Quaternion Q, float W)
+		{
+			for (size_t I = 0; I < S->JointCount; ++I) {
+				auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
+				M[I] = M[I] * P;
+			}
+
+			for (size_t I = 0; I < DPS->JointCount; ++I)
+				DPS->CurrentPose[I] = M[I];
+
+			DPS->Dirty = true;
+		}
+
+		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t GetAnimationPlayingCount(Drawable* E)
 	{
-		float W_Inverse = 1 - W;
-		Quaternion Qout = P * W_Inverse + Q * W;
-		Qout.normalize();
+		size_t Count = 0;
+		for (auto Clip : E->AnimationState->Clips)
+			if (Clip.Playing)
+				Count++;
 
-		return Qout;
+		return Count;
 	}
 
 
-	void UpdateAnimation(RenderSystem* RS, FlexKit::Drawable* E, GeometryTable* GT, double dT, iAllocator* TEMP)
+	/************************************************************************************************/
+
+
+	void UpdateAnimation(RenderSystem* RS, Drawable* E, GeometryTable* GT, double dT, iAllocator* TEMP, bool AdvanceOnly)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
 		using DirectX::XMMatrixInverse;
+		using DirectX::XMMatrixRotationQuaternion;
+		using DirectX::XMMatrixScalingFromVector;
+		using DirectX::XMMatrixTranslationFromVector;
+		using DirectX::XMVectorSet;
 
 		if (E && E->Posed)
 		{
@@ -422,15 +647,14 @@ namespace FlexKit
 				auto BasePose	= S->JointPoses[I];
 				auto JointPose	= PS->Joints[I];
 				
-				auto Rotation		= DirectX::XMMatrixRotationQuaternion(BasePose.r);
-				auto Scaling		= DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(BasePose.ts[3], BasePose.ts[3], BasePose.ts[3], 1.0f));
-				auto Translation	= DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(BasePose.ts[0], BasePose.ts[1], BasePose.ts[2], 1.0f));
-
-				M[I] = GetTransform(&JointPose) * (Rotation * Translation);
+				M[I] = GetTransform(JointPose) * GetTransform(BasePose);
 			}
 
-
 			bool AnimationPlayed = false;
+			std::sort(AS->Clips.begin().I, AS->Clips.end().I, 
+				[](const auto& LHS, const auto& RHS) -> bool { 
+					return	(LHS.Playing ? 0x00 : 1 << 31) || LHS.order <= (RHS.Playing ? 0x00 : 1 << 31) || RHS.order; });
+
 			for (auto& C : AS->Clips)
 			{
 				if (C.Playing && C.Clip->FrameCount)
@@ -439,32 +663,51 @@ namespace FlexKit
 					bool Loop					= Clip->isLooping;
 					float  Weight				= C.Weight;
 					double T					= C.T;
-					double FrameDuration		= (1.0f / Clip->FPS) / C.Speed;
+					double FrameDuration		= (1.0f / Clip->FPS) / abs(C.Speed);
 					double AnimationDuration	= FrameDuration * Clip->FrameCount;
-					size_t FrameIndex			= size_t(T / FrameDuration) % Clip->FrameCount;
-					auto& CurrentFrame			= Clip->Frames[FrameIndex];
 
 					if (!(Loop | C.ForceLoop) && C.T > AnimationDuration)
 						C.Playing = false;
 					else if (C.T > AnimationDuration)
 						C.T = 0.0f;
+					else if (C.T < 0.0f)
+						C.T = AnimationDuration;
 					else
-						C.T += dT;
+						C.T += dT * C.Speed;
 
-					for (size_t I = 0; I < CurrentFrame.JointCount; ++I){
-						auto Pose	= CurrentFrame.Poses[I];
-						//M[I] = XMMatrixToFloat4x4(E->PoseState->Joints + I) * M[I];
+					size_t FrameIndex	= size_t(T / FrameDuration) % Clip->FrameCount;
+					auto& CurrentFrame	= Clip->Frames[FrameIndex];
+
+					if(!AdvanceOnly){
+						for (size_t I = 0; I < CurrentFrame.JointCount; ++I){
+							auto JHndl	 = CurrentFrame.Joints[I];
+							auto Pose	 = CurrentFrame.Poses[JHndl];
+							// TODO: DECOMPRESS SAMPLE FROM A CURVE
+
+							Pose.r  = Slerp	(Quaternion(0, 0, 0, 1),	Pose.r.normalize(), Weight);
+							Pose.ts = Lerp	(float4(0, 0, 0, 1),		Pose.ts,			Weight);
+
+							auto Rotation		= XMMatrixRotationQuaternion	(Pose.r);
+							auto Scaling		= XMMatrixScalingFromVector		(XMVectorSet(Pose.ts[3], Pose.ts[3], Pose.ts[3], 1.0f));
+							auto Translation	= XMMatrixTranslationFromVector	(XMVectorSet(Pose.ts[0], Pose.ts[1], Pose.ts[2], 1.0f));
+
+							auto PoseT	= GetTransform(Pose);
+							M[JHndl]	= PoseT * M[JHndl];
+						}
+
+						AnimationPlayed = true;
 					}
-					
-					AnimationPlayed = true;
 				}
 			}
 
+			for (int I = AS->Clips.size() - 1; I >= 0; --I)
+				if (!AS->Clips[I].Playing) 
+					AS->Clips.pop_back();
 
+			// Palette Generation
 			if(AnimationPlayed)
 			{
-				for (size_t I = 0; I < S->JointCount; ++I)
-				{
+				for (size_t I = 0; I < S->JointCount; ++I){
 					auto P = (S->Joints[I].mParent != 0xFFFF) ? M[S->Joints[I].mParent] : XMMatrixIdentity();
 					M[I] = M[I] * P;
 				}
@@ -481,22 +724,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DirectX::XMMATRIX GetTransform(JointPose* P)
+	DirectX::XMMATRIX GetTransform(JointPose P)
 	{
-		auto Rotation		= DirectX::XMMatrixRotationQuaternion(P->r);
-		auto Scaling		= DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P->ts[3], P->ts[3], P->ts[3], 1.0f));
-		auto Translation	= DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P->ts[0], P->ts[1], P->ts[2], 1.0f));
+		auto Rotation		= DirectX::XMMatrixRotationQuaternion(P.r);
+		auto Scaling		= DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P.ts[3], P.ts[3], P.ts[3], 1.0f));
+		auto Translation	= DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P.ts[0], P.ts[1], P.ts[2], 1.0f));
 
 		return (Rotation * Scaling) * Translation;
 	}
 
 
-	JointPose GetPose(DirectX::XMMATRIX& M)
+	JointPose GetPose(DirectX::XMMATRIX M)
 	{
 		auto Q = DirectX::XMQuaternionRotationMatrix(M);
 		auto P = M.r[3];
 
 		return{ Q, float4(P, 1) };
+	}
+
+
+	/************************************************************************************************/
+
+
+	float4x4 GetJointPosed_WT(JointHandle Joint, NodeHandle Node, SceneNodes* Nodes, DrawablePoseState* DPS)
+	{
+		float4x4 WT; GetWT(Nodes, Node, &WT);
+		float4x4 JT = XMMatrixToFloat4x4(DPS->CurrentPose + Joint);
+		return	JT * WT;
 	}
 
 
@@ -554,13 +808,20 @@ namespace FlexKit
 				PT = float4x4::Identity();
 
 			auto J  = S->JointPoses[I];
-			auto JT = PT * XMMatrixToFloat4x4(&GetTransform(&J));
+			auto JT = PT * XMMatrixToFloat4x4(&GetTransform(J));
 
 			A = (WT * (JT * Zero)).xyz();
 			B = (WT * (PT * Zero)).xyz();
 			M[I] = JT;
 
-			AddLineSegment(Out, {A,B});
+			float3 X = (WT * (PT * float4{ 1, 0, 0, 1 })).xyz();
+			float3 Y = (WT * (PT * float4{ 0, 1, 0, 1 })).xyz();
+			float3 Z = (WT * (PT * float4{ 0, 0, 1, 1 })).xyz();
+
+			AddLineSegment(Out, { A, WHITE, B, PURPLE });
+			AddLineSegment(Out, { B, RED,	X, RED });
+			AddLineSegment(Out, { B, GREEN, Y, GREEN });
+			AddLineSegment(Out, { B, BLUE,	Z, BLUE });
 		}
 	}
 
@@ -568,15 +829,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawPoseState(Skeleton* S, DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out)
+	void DEBUG_DrawPoseState(DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out)
 	{
-		if (!S || !DPS)
+		if (!DPS)
 			return;
 
+		Skeleton* S = DPS->Sk;
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
 		float4x4 WT; GetWT(Nodes, Node, &WT);
 
-		for (size_t I = 0; I < S->JointCount; ++I)
+		for (size_t I = 1; I < S->JointCount; ++I)
 		{
 			float3 A, B;
 
@@ -586,20 +848,19 @@ namespace FlexKit
 			else
 				PT = float4x4::Identity();
 
-			auto JI = XMMatrixToFloat4x4(S->IPose + I);
 			auto JT = XMMatrixToFloat4x4(DPS->CurrentPose + I);
 
 			A = (WT * (JT * Zero)).xyz();
 			B = (WT * (PT * Zero)).xyz();
 
-			float3 X = (WT * (JT * float4{ 1, 0, 0, 1 })).xyz();
-			float3 Y = (WT * (JT * float4{ 0, 1, 0, 1 })).xyz();
-			float3 Z = (WT * (JT * float4{ 0, 0, 1, 1 })).xyz();
+			float3 X = (WT * (PT * float4{ 1, 0, 0, 1 })).xyz();
+			float3 Y = (WT * (PT * float4{ 0, 1, 0, 1 })).xyz();
+			float3 Z = (WT * (PT * float4{ 0, 0, 1, 1 })).xyz();
 
 			AddLineSegment(Out, { A, WHITE, B, PURPLE});
-			AddLineSegment(Out, { A, RED,	X, RED	 });
-			AddLineSegment(Out, { A, GREEN, Y, GREEN });
-			AddLineSegment(Out, { A, BLUE,	Z, BLUE	 });
+			AddLineSegment(Out, { B, RED,	X, RED	 });
+			AddLineSegment(Out, { B, GREEN, Y, GREEN });
+			AddLineSegment(Out, { B, BLUE,	Z, BLUE	 });
 		}
 	}
 

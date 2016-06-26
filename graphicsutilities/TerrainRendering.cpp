@@ -268,117 +268,13 @@ namespace FlexKit
 		out->Regions.Allocator	= alloc;
 
 		// Load Shaders
-		{
-			{
-				// Passthrough VShader
-				bool res = false;
-				Shader VShader;
-				do
-				{
-					ShaderDesc	VShaderDesc;
-					strcpy( VShaderDesc.ID, "PASSTHROUGH");
-					strcpy( VShaderDesc.entry, "VPassThrough");
-					strcpy( VShaderDesc.shaderVersion, "vs_5_0");
-					res = FlexKit::LoadVertexShaderFromFile(RS, "assets\\tvshader.hlsl", &VShaderDesc, &VShader);
+		out->VShader		= LoadShader("VPassThrough",		"VPassThrough",			"vs_5_0", "assets\\tvshader.hlsl");
+		out->GSubdivShader	= LoadShader("GS_Split",			"GS_Split",				"gs_5_0", "assets\\tvshader.hlsl");
+		out->RegionToTri	= LoadShader("RegionToTris",		"RegionToTris",			"gs_5_0", "assets\\tvshader.hlsl");
+		out->HullShader		= LoadShader("RegionToQuadPatch",	"RegionToQuadPatch",	"hs_5_0", "assets\\tvshader.hlsl");
+		out->DomainShader	= LoadShader("QuadPatchToTris",		"QuadPatchToTris",		"ds_5_0", "assets\\tvshader.hlsl");
+		out->PShader		= LoadShader("DebugTerrainPaint",	"DebugTerrainPaint",	"ps_5_0", "assets\\pshader.hlsl");
 
-					if (!res) {
-						char str[256];
-						std::cin >> str;
-					}
-				}while(!res);
-				out->VShader = VShader;
-			}
-			{
-				bool res = false;
-				Shader GShader;
-				do
-				{
-					ShaderDesc	GShaderDesc;
-					strcpy(GShaderDesc.ID, "GS_Split");
-					strcpy(GShaderDesc.entry, "GS_Split");
-					strcpy(GShaderDesc.shaderVersion, "gs_5_0");
-					res = FlexKit::LoadGeometryShaderFromFile(RS, "assets\\tvshader.hlsl", &GShaderDesc, &GShader);
-
-					if (!res) {
-						char str[256];
-						std::cin >> str;
-					}
-				} while (!res);
-				out->GSubdivShader = GShader;
-			}
-			{
-				bool res = false;
-				Shader GShader;
-				do
-				{
-					ShaderDesc	GShaderDesc;
-					strcpy(GShaderDesc.ID,		"RegionToTris");
-					strcpy(GShaderDesc.entry,	"RegionToTris");
-					strcpy(GShaderDesc.shaderVersion, "gs_5_0");
-					res = FlexKit::LoadGeometryShaderFromFile(RS, "assets\\tvshader.hlsl", &GShaderDesc, &GShader);
-
-					if (!res) {
-						char str[256];
-						std::cin >> str;
-					}
-				} while (!res);
-				out->RegionToTri = GShader;
-			}
-			{
-				bool res = false;
-				Shader HShader;
-				do
-				{
-					ShaderDesc	GShaderDesc;
-					strcpy(GShaderDesc.ID, "RegionToQuadPatch");
-					strcpy(GShaderDesc.entry, "RegionToQuadPatch");
-					strcpy(GShaderDesc.shaderVersion, "hs_5_0");
-					res = FlexKit::LoadGeometryShaderFromFile(RS, "assets\\tvshader.hlsl", &GShaderDesc, &HShader);
-
-					if (!res) {
-						char str[256];
-						std::cin >> str;
-					}
-				} while (!res);
-				out->HullShader = HShader;
-			}
-			{
-				bool res = false;
-				Shader DShader;
-				do
-				{
-					ShaderDesc	GShaderDesc;
-					strcpy(GShaderDesc.ID, "QuadPatchToTris");
-					strcpy(GShaderDesc.entry, "QuadPatchToTris");
-					strcpy(GShaderDesc.shaderVersion, "ds_5_0");
-					res = FlexKit::LoadGeometryShaderFromFile(RS, "assets\\tvshader.hlsl", &GShaderDesc, &DShader);
-
-					if (!res) {
-						char str[256];
-						std::cin >> str;
-					}
-				} while (!res);
-				out->DomainShader = DShader;
-			}
-			{
-				bool res = false;
-				Shader DShader;
-				do
-				{
-					ShaderDesc	GShaderDesc;
-					strcpy(GShaderDesc.ID, "DebugTerrainPaint");
-					strcpy(GShaderDesc.entry, "DebugTerrainPaint");
-					strcpy(GShaderDesc.shaderVersion, "ps_5_0");
-					res = FlexKit::LoadGeometryShaderFromFile(RS, "assets\\pshader.hlsl", &GShaderDesc, &DShader);
-
-					if (!res) {
-						char str[256];
-						std::cin >> str;
-					}
-				} while (!res);
-				out->PShader = DShader;
-			}
-		}
 		// PSO Creation
 		{
 			auto RootSig = RS->Library.RS4CBVs_SO;

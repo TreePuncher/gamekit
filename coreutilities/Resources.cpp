@@ -324,6 +324,7 @@ namespace FlexKit
 			size_t Index              = 0; 
 
 			Out->SkeletonGUID = Blob->SkeletonGuid;
+			Out->Skeleton	  = nullptr;
 			Out->Info.min.x   = Blob->Info.maxx;
 			Out->Info.min.y   = Blob->Info.maxy;
 			Out->Info.min.z   = Blob->Info.maxz;
@@ -420,13 +421,14 @@ namespace FlexKit
 	{
 		AnimationResourceBlob* Anim = (AnimationResourceBlob*)R;
 		AnimationClip	AC;// = &Memory->allocate_aligned<AnimationClip, 0x10>();
-		AC.FPS            = Anim->FPS;
-		AC.FrameCount     = Anim->FrameCount;
-		AC.isLooping      = Anim->IsLooping;
+		AC.FPS             = Anim->FPS;
+		AC.FrameCount      = Anim->FrameCount;
+		AC.isLooping       = Anim->IsLooping;
+		AC.guid			   = Anim->GUID;
 		size_t StrSize     = 1 + strlen(Anim->ID);
 		AC.mID	           = (char*)Memory->malloc(strlen(Anim->ID));
 		strcpy_s(AC.mID, StrSize, Anim->ID);
-		AC.Frames		  = (AnimationClip::KeyFrame*) Memory->_aligned_malloc(sizeof(AnimationClip::KeyFrame) * AC.FrameCount);
+		AC.Frames		   = (AnimationClip::KeyFrame*) Memory->_aligned_malloc(sizeof(AnimationClip::KeyFrame) * AC.FrameCount);
 		
 		AnimationResourceBlob::FrameEntry* Frames = (AnimationResourceBlob::FrameEntry*)(Anim->Buffer);
 		for (size_t I = 0; I < AC.FrameCount; ++I)

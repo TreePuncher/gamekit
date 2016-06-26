@@ -128,11 +128,11 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		{	// Game Tick  -----------------------------------------------------------------------------------
 			UpdateInput();
 
-			FNTable->UpdateFixed		(Engine, dt, State);
-			FNTable->UpdateAnimations	(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, dt,					State);
-			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,					State);
-			FNTable->Draw				(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, &Engine->Materials, State);
-			FNTable->PostDraw			(Engine,										dt,					State);
+			FNTable->UpdateFixed		(Engine, StepSize, State);
+			FNTable->UpdateAnimations	(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
+			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
+			FNTable->Draw				(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, &Engine->Materials,	State);
+			FNTable->PostDraw			(Engine,										StepSize,								State);
 
 			if (CodeCheckTimer > 2.0)
 			{

@@ -29,6 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	/************************************************************************************************/
+
+
 	struct Plane
 	{
 		Plane(float2 D = float2(0.0, 0.0), float3 P = {0.0f, 0.0f, 0.0f}, float3 UpV = { 0.0f, 1.0f, 0.0f }) :
@@ -42,7 +45,9 @@ namespace FlexKit
 		Quaternion	q;// Orientation
 	};
 
+
 	/************************************************************************************************/
+
 
 	struct Ray
 	{
@@ -61,20 +66,24 @@ namespace FlexKit
 		float3 operator * (float k) { return O + D*k; }
 	};
 
+
 	/************************************************************************************************/
 	// Intersection Distance from Origin to Plane Surface
+
 	inline float IntesectTestPR(Ray R, Plane P)
 	{
 		float3 N;
 		float3 w;
-		{
-			N = P.q * P.UpVector;
-			w = P.Position - R.O;
-		}
+
+		N = P.q * P.UpVector;
+		w = P.Position - R.O;
+
 		return w.dot(N) / R.D.dot(N);
 	}
 
+
 	/************************************************************************************************/
+
 
 	struct FrustumFPlane
 	{
@@ -99,18 +108,21 @@ namespace FlexKit
 		FrustumFPlane Planes[6];
 	};
 
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool CompareAgainstFrustum(Frustum* F, float3 V, float r);
-
 
 	/************************************************************************************************/
 
-	inline float3 DirectionVector(float3 A, float3 B) {return float3{ B - A }.normal();}
+
+	FLEXKITAPI bool CompareBSAgainstFrustum(Frustum* F, float3 V, float r, float s = 1);
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI inline float3 DirectionVector(float3 A, float3 B) {return float3{ B - A }.normal();}
 
 	struct Camera;
 	FLEXKITAPI Frustum GetFrustum(Camera* C, float3 Position, Quaternion Q);
+
 
 	/************************************************************************************************/
 

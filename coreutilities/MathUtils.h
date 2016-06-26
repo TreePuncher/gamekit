@@ -730,13 +730,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-//#if USING(X64EXE)
 	inline float3 operator* ( float s, float3 V )
-//#else
-//#if USING(X86EXE)
-//	inline float3 operator* ( float s, float3& V )
-//#endif
-//#endif
 	{
 #if USING(FASTMATH)
 		return _mm_mul_ps(V, _mm_set1_ps(s));
@@ -939,7 +933,10 @@ namespace FlexKit
 		__m128 pFloats;
 	};
 
-	inline float F4Dot(float4 rhs, float4 lhs)	{ return DotProduct4(lhs, rhs); }
+	inline float F4Dot(float4 rhs, float4 lhs)						{ return DotProduct4(lhs, rhs); }
+	inline float4 operator* (float4 lhs, float4 rhs)				{ return _mm_mul_ps(lhs, rhs); }
+	inline float4 F4MUL		(const float4 lhs, const float4 rhs)	{ return _mm_mul_ps(lhs, rhs); }
+
 
 	/************************************************************************************************/
 
@@ -1109,7 +1106,7 @@ namespace FlexKit
 		inline float3 XYZ() const { return float3(x, y, z); }
 		inline float3 V()   const { return float3(x, y, z); }
 
-		inline float Magnitude()
+		inline float Magnitude() const
 		{
 #if USING( FASTMATH )
 			__m128 q2 = _mm_mul_ps(floats, floats);
@@ -1141,6 +1138,29 @@ namespace FlexKit
 			return *this;
 		}
 
+
+		inline Quaternion normalized() const
+		{
+			float mag2 = Magnitude();
+			__m128 Res;
+			if (mag2 != 0 && (fabs(mag2 - 1.0f) > .00001f))
+			{
+#if USING(FASTMATH)
+
+				__m128 rsq = _mm_rsqrt_ps(_mm_set1_ps(mag2));
+				Res = _mm_mul_ps(rsq, floats);
+#else
+				float mag = sqrt(mag2);
+				w = w / mag;
+				x = x / mag;
+				y = y / mag;
+				z = z / mag;
+#endif
+			}
+			return Res;
+		}
+
+
 		inline void Zero() 
 		{
 #if USING(FASTMATH)
@@ -1166,6 +1186,49 @@ namespace FlexKit
 
 		 __m128	floats;
 	};
+
+
+	/************************************************************************************************/
+
+
+	inline Quaternion Qlerp(Quaternion P, Quaternion Q, float W)
+	{
+		float W_Inverse = 1 - W;
+		Quaternion Qout = P * W_Inverse + Q * W;
+		Qout.normalize();
+
+		return Qout;
+	}
+
+
+	inline Quaternion Slerp(Quaternion P, Quaternion Q, float W)
+	{
+		Quaternion Qout;
+
+		float dot = P.V().dot(Q.V());
+		if (dot < 0)
+		{
+			dot = -dot;
+		}
+		else
+			Qout = Q;
+
+		if (dot < 0.95f)
+		{
+			float Angle = acosf(dot);
+			Quaternion A = P * sinf((1 - W) * Angle);
+			Quaternion B = Q * sinf(W * Angle);
+			Qout = (A + B) / sinf(Angle);
+			return Qout.normalize();
+		}
+
+		Qout = Qlerp(P, Q, W);
+		return Qout;
+	}
+
+
+	/************************************************************************************************/
+
 
 	enum XYZ
 	{
@@ -1318,7 +1381,7 @@ namespace FlexKit
 
 
 	template<typename TY>
-	inline TY Lerp(TY A, TY B, float t){ return A * (1.0f - t) + t*B; }
+	inline TY Lerp(const TY A, const TY B, float t){ return A * (1.0f - t) + t*B; }
 
 	namespace Conversion
 	{

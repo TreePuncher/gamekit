@@ -387,14 +387,6 @@ namespace FlexKit
 
 	struct ConstantBuffer_desc
 	{
-		int Dest; // PIPELINE_DESTINATION
-		enum UDPATEFREQ
-		{
-			PERFRAME,
-			MULTIFRAME,
-			ONCE
-		} Freq;
-
 		bool	Structured;
 		size_t  StructureSize;
 
@@ -432,10 +424,6 @@ namespace FlexKit
 				Typed_iterator( Ty* _ptr ) : m_position(_ptr){}
 				Typed_iterator( const Typed_iterator& rhs ) : m_position( rhs.m_position ) {}
 
-				inline void operator ++ ( )		{ m_position += sizeof( Ty ); }
-				inline void operator ++ ( int ) { m_position += sizeof( Ty ); }
-				inline void operator -- ( )		{ m_position -= sizeof( Ty ); }
-				inline void operator -- ( int ) { m_position -= sizeof( Ty ); }
 				inline void operator ++ ( )		{ m_position++;}
 				inline void operator ++ ( int ) { m_position++;}
 				inline void operator -- ( )		{ m_position--;}
@@ -449,7 +437,6 @@ namespace FlexKit
 				inline bool				operator == ( const Typed_iterator& rhs ) {	return  ( m_position == &*rhs ); }
 				inline bool				operator != ( const Typed_iterator& rhs ) { return !( m_position == &*rhs ); }
 
-				inline Ty&				operator * ()	const { return *m_position; }
 				inline Ty&				operator * ()		  { return *m_position; }
 				inline Ty				operator * ()	const { return *m_position; }
 
@@ -461,8 +448,6 @@ namespace FlexKit
 			};
 
 			Ty&	operator [] ( size_t index )	{ return m_position[index]; }
-			Typed_iterator begin()				{ return Typed_iterator(  m_position ); }
-			Typed_iterator end()				{ return Typed_iterator( &m_position[m_size]); }
 			Typed_iterator begin()				{ return Typed_iterator( m_position ); }
 			Typed_iterator end()				{ return Typed_iterator( m_position + m_size); }
 
@@ -894,6 +879,7 @@ namespace FlexKit
 
 		struct RootSigLibrary
 		{
+			ID3D12RootSignature* RS2UAVs4SRVs4CBs;// 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs4SRVs;// 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs_SO;// Stream Out Enabled
 		}Library;
@@ -946,6 +932,10 @@ namespace FlexKit
 
 		operator Shader*() {
 			return this;
+		}
+		operator D3D12_SHADER_BYTECODE()
+		{
+			return{ (BYTE*)Blob->GetBufferPointer(), Blob->GetBufferSize() };
 		}
 
 		Shader& operator = (const Shader& in) {
@@ -1437,6 +1427,7 @@ namespace FlexKit
 
 		struct RInfo
 		{
+			float3 Offset;
 			float3 min, max;
 			float  r;
 		}Info;
@@ -1848,11 +1839,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PrintFrameStats		();
-	void Update					(SceneNodes* Nodes);
 	void Upload					(RenderSystem* RS, SceneNodes* Nodes, iAllocator* Temp, Camera* C);
 	void BuildGeometryTable		(RenderSystem* RS, iAllocator* TempMemory, StaticMeshBatcher* Batcher);
-	void Draw					(RenderSystem* RS);
 	void CleanUpStaticBatcher	(StaticMeshBatcher* Batcher);
 
 	
@@ -1926,8 +1914,7 @@ namespace FlexKit
 	template<typename Ty_Container, typename FetchFN, typename TranslateFN>
 	bool FillBufferView(Ty_Container* Container, size_t vertexCount, VertexBufferView* out, TranslateFN Translate, FetchFN Fetch)
 	{
-		for (size_t itr = 0; itr < vertexCount; ++itr)
-		{
+		for (size_t itr = 0; itr < vertexCount; ++itr) {
 			auto temp = Translate(Fetch(itr, Container));
 			out->Push(temp);
 		}
@@ -1952,21 +1939,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool	LoadComputeShaderFromFile			( RenderSystem* RS, char* FileLoc, ShaderDesc*, Shader* OUT );
-	FLEXKITAPI bool	LoadComputeShaderFromString			( RenderSystem* RS, char*, size_t, ShaderDesc*, Shader* OUT );
-	FLEXKITAPI bool	LoadPixelShaderFromFile				( RenderSystem* RS, char* FileLoc, ShaderDesc*, Shader* OUT );
-	FLEXKITAPI bool	LoadPixelShaderFromString			( RenderSystem* RS, char*, size_t, ShaderDesc*, Shader* OUT );
-	FLEXKITAPI bool	LoadGeometryShaderFromFile			( RenderSystem* RS, char* FileLoc, ShaderDesc*, Shader* OUT );
-	FLEXKITAPI bool	LoadGeometryWithSOShaderFromFile	( RenderSystem* RS, char* FileLoc, ShaderDesc* desc, SODesc* SOD,  Shader* OUT);
-	FLEXKITAPI bool	LoadGeometryShaderFromString		( RenderSystem* RS, char*, size_t, ShaderDesc*, Shader* OUT );
-	FLEXKITAPI bool	LoadGeometryShaderWithSOFromString	( RenderSystem* RS, char* str, size_t strlen, ShaderDesc* desc, SODesc* SOD, Shader* out);
-
-	FLEXKITAPI bool	LoadVertexShaderFromFile	( RenderSystem* RS, char* FileLoc, ShaderDesc*, Shader* OUT );
-	FLEXKITAPI bool	LoadVertexShaderFromString	( RenderSystem* RS, char*, size_t, ShaderDesc*, Shader* OUT );
-	
-
-	FLEXKITAPI Texture2D LoadTextureFromFile(char* file, RenderSystem* RS, iAllocator* Memout);
-	FLEXKITAPI void FreeTexture(Texture2D* Tex);
+	FLEXKITAPI bool			LoadAndCompileShaderFromFile	(const char* FileLoc, ShaderDesc* desc, Shader* out);
+	FLEXKITAPI Shader		LoadShader						(const char* Entry, const char* ID, const char* ShaderVersion, const char* File);
+	FLEXKITAPI Texture2D	LoadTextureFromFile				(char* file, RenderSystem* RS, iAllocator* Memout);
+	FLEXKITAPI void			FreeTexture						(Texture2D* Tex);
 
 
 	/************************************************************************************************/
@@ -1981,6 +1957,7 @@ namespace FlexKit
 
 	FLEXKITAPI void	DoPixelProcessor(RenderSystem* RS, PIXELPROCESS_DESC* DESC_in, Texture2D* out);
 
+
 	/************************************************************************************************/
 	
 
@@ -1991,7 +1968,11 @@ namespace FlexKit
 	FLEXKITAPI void			SortNodes					( SceneNodes* Nodes, StackAllocator* Temp );
 	FLEXKITAPI void			FreeHandle					( SceneNodes* Nodes, NodeHandle Node );
 
-	inline	   LT_Entry		GetLocal					( SceneNodes* Nodes, NodeHandle Node)											{return Nodes->LT[_SNHandleToIndex(Nodes, Node)];}
+	FLEXKITAPI float3		LocalToGlobal				( SceneNodes* Nodes, NodeHandle Node, float3 POS);
+
+
+	FLEXKITAPI LT_Entry		GetLocal					( SceneNodes* Nodes, NodeHandle Node );
+	FLEXKITAPI float3		GetLocalScale				( SceneNodes* Nodes, NodeHandle Node );
 	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
 	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	WT_Entry* __restrict out );		
 	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle node,	float4x4* __restrict out );
@@ -2020,6 +2001,7 @@ namespace FlexKit
 	FLEXKITAPI inline void Roll							( SceneNodes* Nodes, NodeHandle Node,	float r );
 	FLEXKITAPI inline void Pitch						( SceneNodes* Nodes, NodeHandle Node,	float r );
 
+
 	/************************************************************************************************/
 
 
@@ -2033,20 +2015,28 @@ namespace FlexKit
 		SceneNodes*	SceneNodes;
 	};
 
-	enum class DRAWCALLTYPE
+	enum DRAWCALLTYPE : size_t
 	{
 		DCT_2DRECT,
 		DCT_2DRECTTEXTURED,
 		DCT_3DMesh,
 		DCT_3DMeshAnimated,
 		DCT_TextBox,
+		DCT_COUNT,
 	};
 
 	struct Draw_RECT
 	{
-		float2		TLeft;
-		float2		BRight;
-		uint32_t	ZOrder;
+		float2 TRight;
+		float2 BLeft;
+		float4 Color;
+	};
+
+	struct Draw_RECTPoint
+	{
+		float2 V;
+		float2 UV;
+		float4 Color;
 	};
 
 	struct Draw_Textured_RECT
@@ -2059,14 +2049,24 @@ namespace FlexKit
 		ResourceHandle	TextureHandle;
 	};
 
+	struct DrawCall
+	{
+		DRAWCALLTYPE	Type;
+		size_t			Index;
+	};
+
 	struct GUIRender
 	{
-		DynArray<Draw_RECT>				Rects;
-		DynArray<Draw_Textured_RECT>	TexturedRects;
+		operator GUIRender* () { return this; }
+
+		DynArray<Draw_RECTPoint>			Rects;
+		DynArray<Draw_Textured_RECT>		TexturedRects;
+		//DynArray<TextUtilities::TextArea*>	Text;
+		DynArray<DrawCall>					DrawCalls;
 
 		FrameBufferedResource	RectBuffer;
-		ID3D12DescriptorHeap*	Textures;
-		ID3D12PipelineState*	DrawRectState;
+		FrameBufferedResource	TexturedRectBuffer;
+		ID3D12PipelineState*	DrawStates[DRAWCALLTYPE::DCT_COUNT];
 	};
 
 
@@ -2086,10 +2086,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI int2 GetMousedPos(RenderWindow* Window);
-	FLEXKITAPI void HideSystemCursor(RenderWindow* Window);
-	FLEXKITAPI void SetSystemCursorToWindowCenter(RenderWindow* Window);
-	FLEXKITAPI void ShowSystemCursor(RenderWindow* Window);
+	FLEXKITAPI int2 GetMousedPos					( RenderWindow* Window );
+	FLEXKITAPI void HideSystemCursor				( RenderWindow* Window );
+	FLEXKITAPI void SetSystemCursorToWindowCenter	( RenderWindow* Window );
+	FLEXKITAPI void ShowSystemCursor				( RenderWindow* Window );
 
 	
 	/************************************************************************************************/
@@ -2097,17 +2097,20 @@ namespace FlexKit
 	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT );
 	FLEXKITAPI void PushRect( GUIRender* RG, Draw_Textured_RECT );
 	
-	FLEXKITAPI void InitiateRenderGUI( RenderSystem* RS, GUIRender* RG);
-	FLEXKITAPI void CleanUpRenderGUI( RenderSystem* RS, GUIRender* RG);
+	FLEXKITAPI void InitiateRenderGUI	( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
+	FLEXKITAPI void CleanUpRenderGUI	( GUIRender* RG);
 
-	FLEXKITAPI void Clear	 ( GUIRender* RG );
-	FLEXKITAPI void DrawRects( RenderSystem* RS, GUIRender* RG, RenderWindow* Target);// TODO: RENDER TARGET VERSION
+	FLEXKITAPI void Clear	( GUIRender* RG );
+	FLEXKITAPI void Upload	( RenderSystem* RS, GUIRender* RG );
 
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
 
 	FLEXKITAPI void CleanUp	( PointLightBuffer* out,	iAllocator* Memory );
 	FLEXKITAPI void CleanUp	( SpotLightBuffer* out,		iAllocator* Memory );
+
+	FLEXKITAPI void DrawGUI	( RenderSystem* RS, GUIRender* GUIStack, RenderWindow* Out );
+
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
@@ -2156,25 +2159,25 @@ namespace FlexKit
 	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
 	FLEXKITAPI void CleanupForwardPass		( ForwardPass* FP );
 
-	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DHeapPOS;
+	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DescHeapPOS;
 
-	inline DHeapPOS IncrementHeapPOS(DHeapPOS POS, size_t Size, size_t INC)
-	{
-		size_t Offset = Size * INC;
+	inline DescHeapPOS IncrementHeapPOS(DescHeapPOS POS, size_t Size, size_t INC){
+		const size_t Offset = Size * INC;
 		return {POS.V1.ptr + Offset , POS.V2.ptr + Offset};
 	}
 
-	FLEXKITAPI void		ResetDHeap			( RenderSystem* RS);
-	FLEXKITAPI DHeapPOS	ReserveDHeap		( RenderSystem* RS, size_t SlotCount = 1);
-	FLEXKITAPI DHeapPOS PushCBToDHeap		( RenderSystem* RS, ID3D12Resource* Buffer,			DHeapPOS POS, size_t BufferSize);
-	FLEXKITAPI DHeapPOS PushSRVBufferToDHeap( RenderSystem* RS, ID3D12Resource* Buffer,			DHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE);
-	FLEXKITAPI DHeapPOS PushTextureToDHeap	( ID3D12GraphicsCommandList* CL, RenderSystem* RS,	DHeapPOS POS, Texture2D tex);
-	FLEXKITAPI DHeapPOS PushUAV2DToDHeap	( RenderSystem* RS, Texture2D tex,					DHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM);
-	FLEXKITAPI DHeapPOS PushAndSetSRV		( RenderSystem* RS, ID3D12GraphicsCommandList* CL,  ID3D12Resource* Buffer, DHeapPOS POS, size_t ElementCount, size_t Stride, UINT RootIndex, D3D12_BUFFER_SRV_FLAGS F = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE);
+	FLEXKITAPI void		   ResetDescHeap			( RenderSystem* RS );
+	FLEXKITAPI DescHeapPOS ReserveDescHeap			( RenderSystem* RS, size_t SlotCount = 1 );
+	FLEXKITAPI DescHeapPOS PushCBToDescHeap			( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t BufferSize);
+	FLEXKITAPI DescHeapPOS PushSRVBufferToDescHeap	( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE);
+	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	( RenderSystem* RS,	Texture2D tex,					DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		( RenderSystem* RS, Texture2D tex,					DescHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM);
 
-	FLEXKITAPI void		SetWindowRect			( ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I = 0u);
+	FLEXKITAPI void		SetWindowRect				( ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I = 0u);
 	
-	
+	inline float3	Gray(float P) { return float3(P, P, P); }
+
+
 	/************************************************************************************************/
 
 
@@ -2188,22 +2191,25 @@ namespace FlexKit
 
 	typedef DynArray<LineSegment> LineSegements;
 
-	struct Line3DPass
+	struct LineDrawState
 	{
 		ID3D12PipelineState*	PSO;
+	};
+
+	struct Line3DPass
+	{
 		LineSegements			LineSegments;
 		FrameBufferedResource	GPUResource;
-
-		Shader PShader;
-		Shader VShader;
 	};
 
 
-	FLEXKITAPI void InitiateSegmentPass	(RenderSystem* RS, iAllocator* Mem, Line3DPass* out);
-	FLEXKITAPI void CleanUpLineDrawPass	(Line3DPass* out);
-	FLEXKITAPI void AddLineSegment		(Line3DPass* Pass, LineSegment in);
-	FLEXKITAPI void UploadLineSegments	(RenderSystem* RS, Line3DPass* Pass);
-	FLEXKITAPI void Draw3DLineSegments	(RenderSystem* RS, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow);
+	FLEXKITAPI void InitiateLineDrawState	( RenderSystem* RS, iAllocator* Mem, LineDrawState* out );
+	FLEXKITAPI void Initiate3DLinePass		( RenderSystem* RS, iAllocator* Mem, Line3DPass* out );
+	FLEXKITAPI void CleanUpLineDrawState	( LineDrawState* State );
+	FLEXKITAPI void CleanUpLineDrawPass		( Line3DPass* Pass );
+	FLEXKITAPI void AddLineSegment			( Line3DPass* Pass, LineSegment in );
+	FLEXKITAPI void UploadLineSegments		( RenderSystem* RS, Line3DPass* Pass );
+	FLEXKITAPI void Draw3DLineSegments		( RenderSystem* RS, LineDrawState* State, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow );
 	
 
 	/************************************************************************************************/
@@ -2364,14 +2370,14 @@ namespace TextUtilities
 		char*	FontDir;// Texture Directory
 	};
 
-	FLEXKITAPI void DrawTextArea			(TextRender* TR, FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, FlexKit::RenderWindow* Out);
-	FLEXKITAPI void ClearText				(TextArea* TA);
-	FLEXKITAPI void CleanUpTextArea			(TextArea* TA, iAllocator* BA);
-	FLEXKITAPI void PrintText				(TextArea* Area, const char* text);
+	FLEXKITAPI void DrawTextArea			( TextRender* TR, FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, FlexKit::RenderWindow* Out);
+	FLEXKITAPI void ClearText				( TextArea* TA );
+	FLEXKITAPI void CleanUpTextArea			( TextArea* TA, iAllocator* BA);
+	FLEXKITAPI void PrintText				( TextArea* Area, const char* text);
 
-	FLEXKITAPI TextArea CreateTextObject	(RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
-	FLEXKITAPI void		InitiateTextRender	(RenderSystem* RS, TextRender*	out);
-	FLEXKITAPI void		CleanUpTextRender	(TextRender* out);
+	FLEXKITAPI TextArea CreateTextObject	( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
+	FLEXKITAPI void		InitiateTextRender	( RenderSystem* RS, TextRender*	out);
+	FLEXKITAPI void		CleanUpTextRender	( TextRender* TR);
 }
 
 #endif

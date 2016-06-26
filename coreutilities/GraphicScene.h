@@ -49,7 +49,8 @@ namespace FlexKit
 
 		bool isEntitySkeletonAvailable	(EntityHandle EHandle);
 		bool EntityEnablePosing			(EntityHandle EHandle);
-		bool EntityPlayAnimation		(EntityHandle EHandle, const char* Animation, float w = 1.0f);
+		bool EntityPlayAnimation		(EntityHandle EHandle, const char*	Animation,	float w = 1.0f, bool Loop = false);
+		bool EntityPlayAnimation		(EntityHandle EHandle, GUID_t		Guid,		float w = 1.0f, bool Loop = false);
 
 		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{Drawables->at(EHandle).Visable = Visable; }
 		inline void SetMesh				(EntityHandle EHandle, TriMeshHandle M)		{Drawables->at(EHandle).MeshHandle = M;		  }
@@ -70,7 +71,6 @@ namespace FlexKit
 		SpotLightHandle AddSpotLight(float3 POS, float3 Color, float3 Dir, float t = pi / 4, float I = 10, float R = 10);
 
 		void _PushEntity(Drawable E);
-		void PushMesh	(TriMesh* M);
 
 		inline void Yaw					 (EntityHandle Handle, float a)			{ FlexKit::Yaw	(SN, GetEntity(Handle).Node, a); }
 		inline void Pitch				 (EntityHandle Handle, float a)			{ FlexKit::Pitch(SN, GetEntity(Handle).Node, a); }
@@ -85,6 +85,16 @@ namespace FlexKit
 
 		fixed_vector<Drawable>*		Drawables;
 		fixed_vector<size_t>*		FreeEntityList;
+
+		struct TaggedJoint
+		{
+			EntityHandle	Source;
+			JointHandle		Joint;
+			NodeHandle		Target;
+		};
+
+		DynArray<TaggedJoint>		TaggedJoints;
+
 		iAllocator*					TempMem;
 		iAllocator*					Memory;
 		RenderSystem*				RS;
@@ -101,12 +111,13 @@ namespace FlexKit
 	FLEXKITAPI void InitiateGraphicScene			(GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodes* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory);
 
 	FLEXKITAPI void UpdateGraphicScene				(GraphicScene* SM);
-	FLEXKITAPI void UpdateAnimationsGraphicScene	(GraphicScene* SM);
+	FLEXKITAPI void UpdateAnimationsGraphicScene	(GraphicScene* SM, double dt);
+	FLEXKITAPI void UpdateGraphicScenePoseTransform	(GraphicScene* SM);
 	FLEXKITAPI void GetGraphicScenePVS				(GraphicScene* SM, Camera* C, PVS* __restrict out, PVS* __restrict T_out);
 	FLEXKITAPI void UploadGraphicScene				(GraphicScene* SM, PVS* , PVS* );
 
 	FLEXKITAPI void CleanUpGraphicScene				(GraphicScene* SM);
-	FLEXKITAPI void CleanUpSceneSkeleton			(Skeleton* S, iAllocator* Mem);
+	FLEXKITAPI void TagJoint						(GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode);
 
 	//FLEXKITAPI bool	LoadScene(RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID, GraphicScene* GS_out);//
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp);

@@ -88,8 +88,8 @@ namespace FlexKit
 		//JointPose	Pose;
 	};
 
-	FLEXKITAPI XMMATRIX		GetTransform(JointPose* P);
-	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX& M);
+	FLEXKITAPI XMMATRIX		GetTransform(JointPose P);
+	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX M);
 
 	/************************************************************************************************/
 
@@ -143,18 +143,6 @@ namespace FlexKit
 	FLEXKITAPI void Skeleton_PushAnimation	(Skeleton* S, iAllocator* Allocator, AnimationClip AC);
 	FLEXKITAPI void CleanUpSkeleton			(Skeleton* S);
 
-	/************************************************************************************************/
-
-
-	template<size_t StateCount = 1>
-	struct AnimationStateMachine
-	{
-		struct AnimationState
-		{	
-			bool Active;
-		}State[StateCount];
-	};
-
 
 	/************************************************************************************************/
 
@@ -187,22 +175,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct DrawableAnimationState
-	{
-		struct AnimationStateEntry
-		{
-			AnimationClip*	Clip;
-			double			T;
-			double			Speed;
-			float			Weight;
-			bool			Playing;
-			bool			ForceLoop;
-			char			_p[2];
-		};
-
-		static_vector<AnimationStateEntry> Clips; // Animations in
-	};
-
 	struct PoseState_DESC
 	{
 		size_t JointCount;
@@ -219,6 +191,105 @@ namespace FlexKit
 		size_t					padding[2];
 	};
 
+
+	typedef size_t DAStateHandle;
+	struct DrawableAnimationState
+	{
+		struct AnimationStateEntry
+		{
+			AnimationClip*	Clip;
+			double			T;
+			double			Speed;
+			float			Weight;
+			int32_t			order;
+			int32_t			ID;
+			uint8_t			Playing;
+			bool			ForceLoop;
+
+			enum
+			{
+				Skeletal,
+				Simulation, 
+				Vertex,
+			}TargetType;
+
+			byte			Pad[38];
+		};
+
+		static_vector<AnimationStateEntry>	Clips; // Animations in
+		DrawablePoseState*					Target;
+	};
+
+
+	FLEXKITAPI DAStateHandle	DASAddState();
+	FLEXKITAPI void				DASSetValue();
+	FLEXKITAPI void				DASUpdate();
+
+
+	/************************************************************************************************/
+
+
+	enum WeightFunction : byte
+	{
+		EWF_Power,
+		EWF_Sin,
+		EWF_Cos,
+		EWF_Log,
+	};
+
+	struct BlendLeaf
+	{
+		float		Weights[2];
+		uint32_t	IDs[2];
+		GUID_t		Animation[2];
+	};
+
+	struct BlendNode
+	{
+		bool		Leaf		[2];
+		union {
+			BlendLeaf	Leaf;
+			BlendNode*	Branch;
+		}Child1, Child2;
+	};
+
+	struct BlendTree
+	{
+		BlendNode*	Nodes;
+		size_t		NodeCount;
+	};
+
+	template<size_t StateCount = 16>
+	struct AnimationStateMachine
+	{
+		struct AnimationState
+		{
+			bool			Enabled;
+			bool			Active;
+			WeightFunction	In;
+			WeightFunction	Out;
+			byte			Pad;
+			float			Speed;
+			float			EaseOutDuration;
+			float			CrossOverDuration;
+			int32_t			ID;
+			GUID_t			Animation;
+		}State[StateCount];
+
+		size_t				StateCount;
+	};
+
+
+	struct AnimationController
+	{
+		AnimationStateMachine<16>*	ASM;
+		BlendTree*					BlendTree;
+		DrawablePoseState*			Target;
+	};
+
+	/************************************************************************************************/
+
+
 	inline void RotateJoint(DrawablePoseState* E, JointHandle J, Quaternion Q)
 	{
 		if (!E)
@@ -230,15 +301,15 @@ namespace FlexKit
 		}
 	}
 
-	inline void TranslateJoint(DrawablePoseState* E, JointHandle J, float3 xyz)
+	inline void TranslateJoint(DrawablePoseState* PS, JointHandle J, float3 xyz)
 	{
-		if (!E)
+		if (!PS)
 			return;
 
 		if (J != -1) {
 			float4 xyz(xyz, 0);
-			E->Joints[J].ts = E->Joints[J].ts + xyz;
-			E->Dirty = true;
+			PS->Joints[J].ts = PS->Joints[J].ts + xyz;
+			PS->Dirty = true;
 		}
 	}
 
@@ -266,31 +337,47 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	FLEXKITAPI DrawablePoseState*	CreatePoseState(Drawable* E, GeometryTable* GT, iAllocator* MEM);
-	FLEXKITAPI bool					InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial);
 
+	FLEXKITAPI DrawablePoseState*	CreatePoseState	(Drawable* E, GeometryTable* GT, iAllocator* MEM);
+	FLEXKITAPI bool					InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial);
 	FLEXKITAPI void					Destroy(DrawablePoseState* EAS);
+
 
 	/************************************************************************************************/
 
+
 	enum EPLAY_ANIMATION_RES
 	{
-		EPLAY_NOT_ANIMATABLE,
-		EPLAY_ANIMATION_NOT_FOUND,
-		EPLAY_INVALID_PARAM,
-		EPLAY_SUCCESS
+		EPLAY_SUCCESS				=  0,
+		EPLAY_FAILED				= -1,
+		EPLAY_NOT_ANIMATABLE		= -2,
+		EPLAY_ANIMATION_NOT_FOUND	= -3,
+		EPLAY_INVALID_PARAM			= -4,
 	};
 
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation	(FlexKit::Drawable* E, GeometryTable* GT, const char* AnimationID, iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f);
-	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed(FlexKit::Drawable* E, const char* AnimationID, double Speed = false);
-	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation	(FlexKit::Drawable* E, const char* AnimationID);
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,				iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	const char* AnimationID,	iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,				iAllocator* MEM, bool ForceLoop, float Weight, uint32_t& out );
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		uint32_t	ID,				double Speed = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		GUID_t		AnimationID,		double Speed = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		const char*	AnimationID,	double Speed = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid);
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	const char*	Animation);
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	uint32_t	ID);
+	FLEXKITAPI EPLAY_ANIMATION_RES ClearAnimationPose		( DrawablePoseState* DPS, iAllocator* TEMP );
+	
+	FLEXKITAPI size_t GetAnimationPlayingCount	( Drawable* E );
 
-	FLEXKITAPI void UpdateAnimation	(RenderSystem* RS, FlexKit::Drawable* E, GeometryTable* GT, double dT, iAllocator* TEMP);
-	FLEXKITAPI void UploadAnimation	(RenderSystem* RS, FlexKit::Drawable* E, iAllocator* TEMP);
-	FLEXKITAPI void UploadPoses		(RenderSystem* RS, GeometryTable* GT, PVS* Drawables, iAllocator* TEMP);
+	// Advance skip updating Joint, updates timers
+	FLEXKITAPI void UpdateAnimation	( RenderSystem* RS, Drawable* E,		GeometryTable* GT, double dT, iAllocator* TEMP, bool AdvanceOnly = false );
+	FLEXKITAPI void UploadPose		( RenderSystem* RS, Drawable* E,		GeometryTable* GT, iAllocator* TEMP);
+	FLEXKITAPI void UploadPoses		( RenderSystem* RS, PVS* Drawables,	GeometryTable* GT, iAllocator* TEMP);
 
-	FLEXKITAPI void DEBUG_DrawSkeleton				(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out);
-	FLEXKITAPI void DEBUG_DrawPoseState				(Skeleton* S, DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out);
-	FLEXKITAPI void DEBUG_PrintSkeletonHierarchy	(Skeleton* S);
+	//	Call After Updating PoseState
+	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, SceneNodes* Nodes, DrawablePoseState* DPS );
+
+	FLEXKITAPI void DEBUG_DrawSkeleton				( Skeleton* S,				SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, Line3DPass* Out );
+	FLEXKITAPI void DEBUG_DrawPoseState				( DrawablePoseState* DPS,	SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out ) ;
+	FLEXKITAPI void DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
 }
 #endif

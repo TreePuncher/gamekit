@@ -106,6 +106,35 @@ LinePointPS VSegmentPassthrough(LinePoint In)
 /************************************************************************************************/
 
 
+struct RectPoint_VS
+{
+	float2 POS 		: POSITION;
+	float2 UV		: TEXCOORD;
+	float4 Color 	: COLOR;
+};
+
+
+struct RectPoint_PS
+{
+	float4 Color	: Color;
+	float2 UV		: TEXCOORD;
+	float4 POS 		: SV_POSITION;
+};
+
+
+RectPoint_PS DrawRect_VS( RectPoint_VS In )
+{
+	RectPoint_PS Out;
+	Out.POS		= float4(In.POS, 1, 1);
+	Out.UV		= In.UV;
+	Out.Color	= In.Color;
+
+	return Out;
+}
+
+
+/************************************************************************************************/
+
 struct VIN2
 {
 	float4 POS 		: POSITION;
@@ -120,10 +149,6 @@ struct PS_IN
 	float2 UV 		: TEXCOORD2;
 	float4 POS 	 	: SV_POSITION;
 };
-
-
-/************************************************************************************************/
-
 
 PS_IN V2Main( VIN2 In )
 {

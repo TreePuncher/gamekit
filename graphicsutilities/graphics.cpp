@@ -402,6 +402,34 @@ namespace FlexKit
 
 			out->Library.RS4CBVs_SO = NewRootSig;
 		}
+		{
+			// Compute Processor Root Sig
+			CD3DX12_DESCRIPTOR_RANGE ranges[3];
+			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0);
+			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0);
+			ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 4, 4);
+
+			CD3DX12_ROOT_PARAMETER Parameters[5];
+			Parameters[0].InitAsDescriptorTable(sizeof(ranges)/sizeof(ranges[0]), ranges, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[1].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[2].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[3].InitAsConstantBufferView(2, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[4].InitAsConstantBufferView(3, 0, D3D12_SHADER_VISIBILITY_ALL);
+
+			ID3DBlob* Signature = nullptr;
+			ID3DBlob* ErrorBlob = nullptr;
+			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
+
+			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob),
+				PRINTERRORBLOB(ErrorBlob));
+
+			ID3D12RootSignature* NewRootSig = nullptr;
+			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
+				ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
+
+			out->Library.RS2UAVs4SRVs4CBs = NewRootSig;
+		}
 	}
 
 
@@ -694,6 +722,7 @@ namespace FlexKit
 		System->ComputeQueue->Release();
 		System->Library.RS4CBVs4SRVs->Release();
 		System->Library.RS4CBVs_SO->Release();
+		System->Library.RS2UAVs4SRVs4CBs->Release();
 		System->pGIFactory->Release();
 		System->pDevice->Release();
 		System->DefaultDescriptorHeaps.DSVDescHeap->Release();
@@ -1336,7 +1365,6 @@ namespace FlexKit
 
 	Texture2D CreateTexture2D( RenderSystem* RS, Tex2DDesc* desc_in )
 	{	
-
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormat2DXGIFormat(desc_in->Format), 
 																		   desc_in->Width, desc_in->Height, 1);
 
@@ -2259,7 +2287,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	bool LoadShader( char* shader, size_t length, ShaderDesc* desc, Shader* out )
+	bool CompileShader( char* shader, size_t length, ShaderDesc* desc, Shader* out )
 	{
 		ID3DBlob* ShaderBlob	= nullptr;
 		ID3DBlob* ErrorBlob		= nullptr;
@@ -2293,178 +2321,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const size_t BufferSize = 1024 * 1024;
-	FLEXKITAPI bool	LoadComputeShaderFromFile(RenderSystem* RS, char* FileLoc, ShaderDesc* desc, Shader* out)
-	{
-		wchar_t WString[256];
-		mbstowcs(WString, FileLoc, 128);
-		ID3DBlob* NewBlob = nullptr;
-		ID3DBlob* Errors = nullptr;
-
-		DWORD dwShaderFlags = 0;
-#if USING( DEBUGGRAPHICS )
-		dwShaderFlags |= D3DCOMPILE_PREFER_FLOW_CONTROL | D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
-#endif
-
-		HRESULT HR = D3DCompileFromFile(WString, nullptr, nullptr, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
-
-		if (FAILED(HR))
-		{
-			printf( (char*)Errors->GetBufferPointer() );
-			return false;
-		}
-
-		out->Blob = NewBlob;
-		out->Type = desc->ShaderType;
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool	LoadComputeShaderFromString(RenderSystem* RS, char* str, size_t strlen, ShaderDesc* desc, Shader* out)
-	{
-		FK_ASSERT(0);
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool LoadVertexShaderFromString( RenderSystem* RS, char* str, size_t strlen, ShaderDesc* desc, Shader* out )
-	{
-		FK_ASSERT(0);
-
-		return false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool LoadPixelShaderFromString( RenderSystem* RS, char* str, size_t strlen, ShaderDesc* desc, Shader* out )
-	{
-		FK_ASSERT(0);
-
-		return false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool	LoadGeometryShaderFromFile(RenderSystem* RS, char* FileLoc, ShaderDesc* desc, Shader* out)
-	{
-		wchar_t WString[256];
-		mbstowcs(WString, FileLoc, 128);
-		ID3DBlob* NewBlob   = nullptr;
-		ID3DBlob* Errors    = nullptr;
-		DWORD dwShaderFlags = 0;
-
-#if USING( DEBUGGRAPHICS )
-		dwShaderFlags |= D3DCOMPILE_PREFER_FLOW_CONTROL | D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
-#endif
-
-		HRESULT HR = D3DCompileFromFile(WString, nullptr, nullptr, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
-		if (FAILED(HR))
-		{
-			printf((char*)Errors->GetBufferPointer());
-			return false;
-		}
-
-		out->Blob = NewBlob;
-		out->Type = desc->ShaderType;
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool	LoadGeometryWithSOShaderFromFile(RenderSystem* RS, char* FileLoc, ShaderDesc* desc, SODesc* SOD,  Shader* out)
-	{
-		wchar_t WString[256];
-		mbstowcs(WString, FileLoc, 128);
-		ID3DBlob* NewBlob = nullptr;
-		ID3DBlob* Errors = nullptr;
-		DWORD dwShaderFlags = 0;
-
-#if USING( DEBUGGRAPHICS )
-		dwShaderFlags |= D3DCOMPILE_PREFER_FLOW_CONTROL | D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
-#endif
-
-		HRESULT HR = D3DCompileFromFile(WString, nullptr, nullptr, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
-		if (FAILED(HR)) {
-			printf((char*)Errors->GetBufferPointer());
-			return false;
-		}
-	
-
-		out->Blob = NewBlob;
-		out->Type = desc->ShaderType;
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool	LoadGeometryShaderWithSOFromString(RenderSystem* RS, char* str, size_t strlen, ShaderDesc* desc, SODesc* SOD, Shader* out)
-	{
-		FK_ASSERT(0);
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool	LoadGeometryShaderFromString(RenderSystem* RS, char* str, size_t strlen, ShaderDesc* desc, Shader* out)
-	{
-		FK_ASSERT(0);
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool	LoadPixelShaderFromFile(RenderSystem* RS, char* FileLoc, ShaderDesc* desc, Shader* out)
-	{
-		wchar_t WString[256];
-		mbstowcs(WString, FileLoc, 128);
-		ID3DBlob* NewBlob   = nullptr;
-		ID3DBlob* Errors    = nullptr;
-		DWORD dwShaderFlags = 0;
-
-#if USING( DEBUGGRAPHICS )
-		dwShaderFlags |= D3DCOMPILE_PREFER_FLOW_CONTROL | D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
-#endif
-
-		HRESULT HR = D3DCompileFromFile(WString, nullptr, nullptr, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
-		if (FAILED(HR)) {
-			printf((char*)Errors->GetBufferPointer());
-			return false;
-		}
-
-		out->Blob = NewBlob;
-		out->Type = desc->ShaderType;
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI bool LoadVertexShaderFromFile(RenderSystem* RS, char* FileLoc, ShaderDesc* desc, Shader* out )
+	bool LoadAndCompileShaderFromFile(const char* FileLoc, ShaderDesc* desc, Shader* out )
 	{
 		wchar_t WString[256];
 		mbstowcs(WString, FileLoc, 128);
@@ -2486,6 +2343,38 @@ namespace FlexKit
 		out->Type = desc->ShaderType;
 
 		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	Shader LoadShader(const char* Entry, const char* ID, const char* ShaderVersion, const char* File)
+	{
+		Shader Shader;
+
+		bool res = false;
+		FlexKit::ShaderDesc SDesc;
+		strcpy(SDesc.entry, Entry);
+		strcpy(SDesc.ID, ID);
+		strcpy(SDesc.shaderVersion, ShaderVersion);
+
+		do
+		{
+			printf("LoadingShader - %s - \n", Entry);
+			res = LoadAndCompileShaderFromFile(File, &SDesc, &Shader);
+#if USING( EDITSHADERCONTINUE )
+			if (!res)
+			{
+				std::cout << "Failed to Load\n Press Enter to try again\n";
+				char str[100];
+				std::cin >> str;
+			}
+#else
+			FK_ASSERT(res);
+#endif
+		} while (!res);
+		return Shader;
 	}
 
 
@@ -2821,6 +2710,34 @@ namespace FlexKit
 		Local.T = V;
 		SetLocal(Nodes, Node, &Local);
 		SetFlag(Nodes, Node, SceneNodes::DIRTY);
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 LocalToGlobal(SceneNodes* Nodes, NodeHandle Node, float3 POS)
+	{
+		float4x4 WT; GetWT(Nodes, Node, &WT);
+		return (WT * float4(POS, 1)).xyz();
+	}
+
+
+	/************************************************************************************************/
+
+
+	LT_Entry GetLocal(SceneNodes* Nodes, NodeHandle Node){ 
+		return Nodes->LT[_SNHandleToIndex(Nodes, Node)]; 
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 GetLocalScale(SceneNodes* Nodes, NodeHandle Node)
+	{
+		float3 L_s = GetLocal(Nodes, Node).S;
+		return L_s;
 	}
 
 
@@ -3192,7 +3109,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DHeapPOS ReserveDHeap(RenderSystem* RS, size_t SlotCount)
+	DescHeapPOS ReserveDescHeap(RenderSystem* RS, size_t SlotCount)
 	{	// Make This Atomic
 		auto FrameResources				= GetCurrentFrameResources(RS);
 		auto CPU						= FrameResources->CPU_HeapPOS;
@@ -3220,7 +3137,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DHeapPOS PushCBToDHeap(RenderSystem* RS, ID3D12Resource* Buffer, DHeapPOS POS, size_t BufferSize)
+	DescHeapPOS PushCBToDescHeap(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize)
 	{
 		D3D12_CONSTANT_BUFFER_VIEW_DESC CBV_DESC = {};
 		CBV_DESC.BufferLocation = Buffer->GetGPUVirtualAddress();
@@ -3234,7 +3151,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DHeapPOS PushSRVBufferToDHeap(RenderSystem* RS, ID3D12Resource* Buffer, DHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags)
+	DescHeapPOS PushSRVBufferToDescHeap(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC Desc; {
 			Desc.Format                     = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
@@ -3254,7 +3171,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DHeapPOS PushTextureToDHeap(RenderSystem* RS, Texture2D tex, DHeapPOS POS)
+	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
 			ViewDesc.Format                        = tex.Format;
@@ -3275,7 +3192,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DHeapPOS PushUAV2DToDHeap(RenderSystem* RS, Texture2D tex, DHeapPOS POS, DXGI_FORMAT F)
+	DescHeapPOS PushUAV2DToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS, DXGI_FORMAT F)
 	{
 		D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc;
 		UAVDesc.Format               = F;
@@ -3292,14 +3209,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateDeferredPass(FlexKit::RenderSystem* RS, DeferredPassDesc* GBdesc, DeferredPass* out)
+	void InitiateDeferredPass(RenderSystem* RS, DeferredPassDesc* GBdesc, DeferredPass* out)
 	{
 
 		{
 			// Create GBuffers
 			for(size_t I = 0; I < 3; ++I)
 			{
-				FlexKit::Tex2DDesc  desc;
+				Tex2DDesc  desc;
 				desc.Height = GBdesc->RenderWindow->WH[1];
 				desc.Width  = GBdesc->RenderWindow->WH[0];
 				desc.Read         = false;
@@ -3310,27 +3227,27 @@ namespace FlexKit
 
 				{
 					{	// Alebdo Buffer
-						desc.Format = FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
+						desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
 						out->GBuffers[I].ColorTex = CreateTexture2D(RS, &desc);
 						FK_ASSERT(out->GBuffers[I].ColorTex);
 						SETDEBUGNAME(out->GBuffers[I].ColorTex.Texture, "Albedo Buffer");
 					}
 					{
 						// Create Specular Buffer
-						desc.Format = FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
+						desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
 						out->GBuffers[I].SpecularTex = CreateTexture2D(RS, &desc);
 						FK_ASSERT(out->GBuffers[I].SpecularTex);
 						SETDEBUGNAME(out->GBuffers[I].SpecularTex.Texture, "Specular Buffer");
 					}
 					{
 						// Create Normal Buffer
-						desc.Format = FlexKit::FORMAT_2D::R32G32B32A32_FLOAT;
+						desc.Format = FORMAT_2D::R32G32B32A32_FLOAT;
 						out->GBuffers[I].NormalTex = CreateTexture2D(RS, &desc);
 						FK_ASSERT(out->GBuffers[I].NormalTex);
 						SETDEBUGNAME(out->GBuffers[I].NormalTex.Texture, "Normal Buffer");
 					}
 					{
-						desc.Format = FlexKit::FORMAT_2D::R32G32B32A32_FLOAT;
+						desc.Format = FORMAT_2D::R32G32B32A32_FLOAT;
 						out->GBuffers[I].PositionTex = CreateTexture2D(RS, &desc);
 						FK_ASSERT(out->GBuffers[I].PositionTex);
 						SETDEBUGNAME(out->GBuffers[I].PositionTex.Texture, "WorldCord Texture");
@@ -3347,30 +3264,8 @@ namespace FlexKit
 					}
 				}
 			}
-			{// LoadShaders
-				bool res = false;
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "cmain");
-				strcpy(SDesc.ID,	"DeferredShader");
-				strcpy(SDesc.shaderVersion, "cs_5_0");
-				Shader CShader;
-				do
-				{
-					printf("LoadingShader - Compute Shader Deferred Shader -\n");
-					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\cshader.hlsl", &SDesc, &CShader);
-	#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-	#else
-					FK_ASSERT(res);
-	#endif
-				} while (!res);
-				out->Shading.Shade = CShader;
-			}
+
+			out->Shading.Shade = LoadShader("cmain", "DeferredShader", "cs_5_0", "assets\\cshader.hlsl");
 
 			// Create Constant Buffers
 			{
@@ -3460,102 +3355,11 @@ namespace FlexKit
 		// GBuffer Fill Signature Setup
 		{
 			// LoadShaders
-			{
-				bool res = false;
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "V2Main");
-				strcpy(SDesc.ID,	"DeferredShader");
-				strcpy(SDesc.shaderVersion, "vs_5_0");
-				Shader VShader;
-				do
-				{
-					printf("LoadingShader - VShader Shader - Deferred\n");
-					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\vshader.hlsl", &SDesc, &VShader);
-	#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-	#else
-					FK_ASSERT(res);
-	#endif
-				out->Filling.NormalMesh = VShader;
-				} while (!res);
-			}
-			{
-				bool res = false;
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "VMainVertexPallet");
-				strcpy(SDesc.ID,	"DeferredShader");
-				strcpy(SDesc.shaderVersion, "vs_5_0");
-				Shader VShader;
-				do
-				{
-					printf("LoadingShader - VShader Animated Shader - Deferred\n");
-					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\vshader.hlsl", &SDesc, &VShader);
-	#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-	#else
-					FK_ASSERT(res);
-	#endif
-				out->Filling.AnimatedMesh = VShader;
-				} while (!res);
-			}
-			{
-				bool res = false;
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "PMain");
-				strcpy(SDesc.ID,	"PShader");
-				strcpy(SDesc.shaderVersion, "ps_5_0");
-				Shader VShader;
-				do
-				{
-					printf("LoadingShader - PShader No Texture Shader - Deferred\n");
-					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\pshader.hlsl", &SDesc, &VShader);
-	#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-	#else
-					FK_ASSERT(res);
-	#endif
-				out->Filling.NoTexture = VShader;
-				} while (!res);
-			}
-			{
-				bool res = false;
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "PMain_TEXTURED");
-				strcpy(SDesc.ID, "PMain_TEXTURED");
-				strcpy(SDesc.shaderVersion, "ps_5_0");
-				Shader PShader;
-				do
-				{
-					printf("LoadingShader - PShader No Texture Shader - Deferred\n");
-					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\pshader.hlsl", &SDesc, &PShader);
-#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-#else
-					FK_ASSERT(res);
-#endif
-					out->Filling.Textured = PShader;
-				} while (!res);
-			}
+			out->Filling.NormalMesh		= LoadShader( "V2Main",				"V2Main",				"vs_5_0", "assets\\vshader.hlsl" );
+			out->Filling.AnimatedMesh	= LoadShader( "VMainVertexPallet",	"VMainVertexPallet",	"vs_5_0", "assets\\vshader.hlsl");
+			out->Filling.NoTexture		= LoadShader( "PMain",				"PShader",				"ps_5_0", "assets\\pshader.hlsl");
+			out->Filling.Textured		= LoadShader( "PMain_TEXTURED",		"PMain_TEXTURED",		"ps_5_0", "assets\\pshader.hlsl");
+	
 			// Setup Pipeline State
 			{
 				CD3DX12_DESCRIPTOR_RANGE ranges[1];	{
@@ -3604,8 +3408,8 @@ namespace FlexKit
 
 				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {};{
 					PSO_Desc.pRootSignature			= RootSig;
-					PSO_Desc.VS						={ (BYTE*)out->Filling.NormalMesh.Blob->GetBufferPointer(), out->Filling.NormalMesh.Blob->GetBufferSize() };
-					PSO_Desc.PS						={ (BYTE*)out->Filling.NoTexture.Blob->GetBufferPointer(), out->Filling.NoTexture.Blob->GetBufferSize() };
+					PSO_Desc.VS						= out->Filling.NormalMesh;
+					PSO_Desc.PS						= out->Filling.NoTexture;
 					PSO_Desc.RasterizerState		= Rast_Desc;
 					PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 					PSO_Desc.SampleMask				= UINT_MAX;
@@ -3839,22 +3643,21 @@ namespace FlexKit
 		}
 
 		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS = ReserveDHeap(RS, 7);
+		auto TablePOS = ReserveDescHeap(RS, 7);
 		// The Max is to quiet a error if a no Lights are passed
-		TablePOS = PushSRVBufferToDHeap(RS, PLB->Resource, TablePOS, max(PLB->size(), 1), PLB_Stride);	
-		TablePOS = PushSRVBufferToDHeap(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride); 
-		TablePOS = PushTextureToDHeap(RS, CurrentGBuffer.ColorTex,		TablePOS);
-		TablePOS = PushTextureToDHeap(RS, CurrentGBuffer.SpecularTex,	TablePOS);
-		TablePOS = PushTextureToDHeap(RS, CurrentGBuffer.NormalTex,		TablePOS);
-		TablePOS = PushTextureToDHeap(RS, CurrentGBuffer.PositionTex,	TablePOS);
-		TablePOS = PushUAV2DToDHeap(RS, CurrentGBuffer.OutputBuffer,	TablePOS);
+		TablePOS = PushSRVBufferToDescHeap	(RS, PLB->Resource, TablePOS, max(PLB->size(), 1), PLB_Stride);	
+		TablePOS = PushSRVBufferToDescHeap	(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride);
 
-		TablePOS = PushCBToDHeap(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
-		TablePOS = PushCBToDHeap(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.SpecularTex,	TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.NormalTex,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.PositionTex,	TablePOS);
+		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,	TablePOS);
 
-		ID3D12DescriptorHeap* Heaps[] = {
-				FrameResources->SRVDescHeap };
+		TablePOS = PushCBToDescHeap			(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
+		TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
 
+		ID3D12DescriptorHeap* Heaps[] = { FrameResources->SRVDescHeap };
 		CL->SetDescriptorHeaps(1, Heaps);
 
 		// Do Shading Here
@@ -3919,7 +3722,7 @@ namespace FlexKit
 		auto CL				= GetCurrentCommandList(RS);
 		auto FrameResources = GetCurrentFrameResources(RS);
 		auto DescPOSGPU		= GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
-		auto DescPOS		= ReserveDHeap(RS, 6);
+		auto DescPOS		= ReserveDescHeap(RS, 6);
 		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
 		CL->SetDescriptorHeaps(1, &DescriptorHeap);
 
@@ -4086,10 +3889,10 @@ namespace FlexKit
 			{
 				LastTextureSet	= CurrentTextureSet;
 				auto Textures	= GetDescTableCurrentPosition_GPU(RS);
-				auto TablePOS	= ReserveDHeap(RS, 2);
+				auto TablePOS	= ReserveDescHeap(RS, 2);
 
-				TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[0], TablePOS);
-				TablePOS		= PushTextureToDHeap(RS, E->Textures->Textures[1], TablePOS);
+				TablePOS		= PushTextureToDescHeap(RS, E->Textures->Textures[0], TablePOS);
+				TablePOS		= PushTextureToDescHeap(RS, E->Textures->Textures[1], TablePOS);
 				CL->SetGraphicsRootDescriptorTable(DFRP_Textures, Textures);
 			}
 
@@ -4124,58 +3927,9 @@ namespace FlexKit
 
 	void InitiateForwardPass( FlexKit::RenderSystem* RS, ForwardPass_DESC* FBdesc, ForwardPass* out )
 	{
-		{
-			{
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "VMain");
-				strcpy(SDesc.ID,	"Forward");
-				strcpy(SDesc.shaderVersion, "vs_5_0");
-				Shader VShader;
-
-				bool res = false;
-				do
-				{
-					printf("LoadingShader - Compute Shader Deferred Shader -\n");
-					res = FlexKit::LoadVertexShaderFromFile(RS, "assets\\ForwardPassVShader.hlsl", &SDesc, &VShader);
-	#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-	#else
-					FK_ASSERT(res);
-	#endif
-				} while (!res);
-				out->VShader = VShader;
-			}
-			{
-			FlexKit::ShaderDesc SDesc;
-			strcpy(SDesc.entry, "PMain");
-			strcpy(SDesc.ID,	"Forward");
-			strcpy(SDesc.shaderVersion, "ps_5_0");
-			Shader PShader;
-
-			bool res = false;
-			do
-			{
-				printf("LoadingShader - Compute Shader Deferred Shader -\n");
-				res = FlexKit::LoadPixelShaderFromFile(RS, "assets\\ForwardPassPShader.hlsl", &SDesc, &PShader);
-#if USING( EDITSHADERCONTINUE )
-				if (!res)
-				{
-					std::cout << "Failed to Load\n Press Enter to try again\n";
-					char str[100];
-					std::cin >> str;
-				}
-#else
-				FK_ASSERT(res);
-#endif
-			} while (!res);
-			out->PShader = PShader;
-		}
-		}
+		// Load Shaders
+		out->VShader = LoadShader("VMain", "Forward", "vs_5_0", "assets\\ForwardPassVShader.hlsl");
+		out->PShader = LoadShader("PMain", "Forward", "ps_5_0", "assets\\ForwardPassPShader.hlsl");
 
 		ID3DBlob* SignatureDescBlob	= nullptr;
 		ID3DBlob* ErrorBlob			= nullptr;
@@ -4255,8 +4009,8 @@ namespace FlexKit
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {};
 		PSO_Desc.pRootSignature                      = RootSig;
-		PSO_Desc.VS                                  = {(BYTE*)out->VShader.Blob->GetBufferPointer(), out->VShader.Blob->GetBufferSize()};
-		PSO_Desc.PS                                  = {(BYTE*)out->PShader.Blob->GetBufferPointer(), out->PShader.Blob->GetBufferSize()};
+		PSO_Desc.VS                                  = out->VShader;
+		PSO_Desc.PS                                  = out->PShader;
 		PSO_Desc.RasterizerState                     = Rast_Desc;
 		PSO_Desc.BlendState		                     = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 		PSO_Desc.SampleMask		                     = UINT_MAX;
@@ -4463,8 +4217,6 @@ namespace FlexKit
 		InitialData.WT   = WT;
 
 		FlexKit::ConstantBuffer_desc desc;
-		desc.Dest          = FlexKit::PIPELINE_DEST_VS | FlexKit::PIPELINE_DEST_PS;
-		desc.Freq          = FlexKit::ConstantBuffer_desc::PERFRAME;
 		desc.InitialSize   = 2048;
 		desc.pInital       = &InitialData;
 		desc.Structured    = false;
@@ -5347,7 +5099,7 @@ namespace FlexKit
 
 	void UpdateDrawable(RenderSystem* RS, SceneNodes* Nodes, Drawable* E)
 	{
-		if ( E->Dirty && ( E->Visable && E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
+		if ( E->Dirty || ( E->Visable && E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
 			DirectX::XMMATRIX WT;
 			FlexKit::GetWT( Nodes, E->Node, &WT );
 
@@ -5357,9 +5109,6 @@ namespace FlexKit
 			NewData.MP.Spec		= E->MatProperties.Spec;
 			NewData.Transform	= DirectX::XMMatrixTranspose( WT );
 
-			if(E->AnimationState)
-			{
-			}
 			UpdateResourceByTemp(RS, &E->VConstants, &NewData, sizeof(NewData), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 			E->Dirty = false;
 		}
@@ -5449,8 +5198,6 @@ namespace FlexKit
 		FlexKit::ConstantBuffer_desc CDesc;
 		CDesc.InitialSize = 1024;
 		CDesc.pInital     = &VC;
-		CDesc.Dest        = FlexKit::PIPELINE_DEST_VS;
-		CDesc.Freq        = FlexKit::ConstantBuffer_desc::PERFRAME;
 		CDesc.Structured  = false;
 
 		e->MeshHandle				  = INVALIDMESHHANDLE;
@@ -6049,8 +5796,32 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	float2 WStoSS(float2 XY) {
+		return (XY * float2( 2, 2)) + float2( -1, -1);
+	}
 
-	void PushRect(GUIRender* RG, Draw_RECT Rect) {
+	void PushRect(GUIRender* RG, Draw_RECT Rect) 
+	{
+		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECT , RG->Rects.size()});
+		Draw_RECTPoint P;
+		P.Color = F4MUL(Rect.Color, Rect.Color);
+
+		//
+		P.V = WStoSS({ Rect.TRight.x, Rect.BLeft.y });
+		RG->Rects.push_back(P);// Bottom Left
+		P.V = WStoSS(Rect.BLeft);
+		RG->Rects.push_back(P);// Bottom Right
+		P.V = WStoSS(Rect.TRight);
+		RG->Rects.push_back(P);// Top Left
+
+		//
+		P.V = WStoSS(Rect.TRight);
+		RG->Rects.push_back(P);// Bottom Right
+		P.V = WStoSS(Rect.BLeft);
+		RG->Rects.push_back(P);// Top Left
+		P.V = WStoSS({ Rect.BLeft.x, Rect.TRight.y });
+		RG->Rects.push_back(P);// Bottom Left
+		//
 	}
 
 
@@ -6058,36 +5829,189 @@ namespace FlexKit
 
 
 	void PushRect(GUIRender* RG, Draw_Textured_RECT Rect) {
+		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECTTEXTURED , RG->TexturedRects.size() });
+		RG->TexturedRects.push_back(Rect);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void InitiateRenderGUI(RenderSystem* RS, GUIRender* RG) {
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC	StateDesc = {};
-		StateDesc.CachedPSO;
+	void InitiateRenderGUI(RenderSystem* RS, GUIRender* RG, iAllocator* Memory) 
+	{
+		for (size_t I = 0; I < DRAWCALLTYPE::DCT_COUNT; ++I)
+			RG->DrawStates[I] = nullptr;
+
+		{
+			Shader DrawRectVShader;
+			Shader DrawRectPShader;
+
+			// Load Shaders
+			DrawRectVShader = LoadShader("DrawRect_VS", "DrawRect_VS",	"vs_5_0", "assets\\vshader.hlsl");
+			DrawRectPShader = LoadShader("DrawRect",	"DrawRect",		"ps_5_0", "assets\\pshader.hlsl");
+
+			// Create Pipeline StateObject
+			{	
+				auto RootSig = RS->Library.RS4CBVs4SRVs;
+
+				/*
+				typedef struct D3D12_INPUT_ELEMENT_DESC
+				{
+					LPCSTR						SemanticName;
+					UINT						SemanticIndex;
+					DXGI_FORMAT					Format;
+					UINT						InputSlot;
+					UINT						AlignedByteOffset;
+					D3D12_INPUT_CLASSIFICATION	InputSlotClass;
+					UINT						InstanceDataStepRate;
+				} 	D3D12_INPUT_ELEMENT_DESC;
+				*/
+
+				D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+					{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, 0,		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+					{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT, 0, 8,		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+					{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				};
+
+				D3D12_RASTERIZER_DESC		Rast_Desc  = CD3DX12_RASTERIZER_DESC	(D3D12_DEFAULT);
+				D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC	(D3D12_DEFAULT);
+				Depth_Desc.DepthFunc		= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+				Depth_Desc.DepthEnable		= false;
+
+				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+					PSO_Desc.pRootSignature        = RootSig;
+					PSO_Desc.VS                    = DrawRectVShader;
+					PSO_Desc.PS                    = DrawRectPShader;
+					PSO_Desc.RasterizerState       = Rast_Desc;
+					PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+					PSO_Desc.SampleMask            = UINT_MAX;
+					PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+					PSO_Desc.NumRenderTargets      = 1;
+					PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+					PSO_Desc.SampleDesc.Count      = 1;
+					PSO_Desc.SampleDesc.Quality    = 0;
+					PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+					PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+					PSO_Desc.DepthStencilState     = Depth_Desc;
+				}
+
+				ID3D12PipelineState* PSO = nullptr;
+				HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+				FK_ASSERT(SUCCEEDED(HR));
+				RG->DrawStates[DCT_2DRECT] = PSO;
+			}
+
+			Destroy(&DrawRectVShader);
+			Destroy(&DrawRectPShader);
+		}
+
+
+		ConstantBuffer_desc	Desc;
+		Desc.InitialSize = KILOBYTE * 16;
+		Desc.pInital	 = nullptr;
+		Desc.Structured  = false;
+
+		RG->RectBuffer			= CreateConstantBuffer(RS, &Desc);
+		RG->TexturedRectBuffer	= CreateConstantBuffer(RS, &Desc);
+
+		RG->Rects.Allocator			= Memory;
+		RG->DrawCalls.Allocator		= Memory;
+		RG->TexturedRects.Allocator	= Memory;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void CleanUpRenderGUI(RenderSystem* RS, GUIRender* RG) {
+	void DrawGUI(RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, RenderWindow* RenderTarget)
+	{
+		size_t			RectOffset			= 0;
+		size_t			TexturedRectOffset	= 0;
+		size_t			MeshOffset			= 0;
+		DRAWCALLTYPE	PrevState			= DCT_COUNT;
+
+		FINALLY
+		{
+			GUIStack->Rects.Release();
+			GUIStack->DrawCalls.Release();
+			GUIStack->TexturedRects.Release();
+		}
+		FINALLYOVER
+
+		if (!GUIStack->DrawCalls.size())
+			return;
+
+		/*
+		typedef struct D3D12_VERTEX_BUFFER_VIEW
+		{
+			D3D12_GPU_VIRTUAL_ADDRESS	BufferLocation;
+			UINT						SizeInBytes;
+			UINT						StrideInBytes;
+		} 	D3D12_VERTEX_BUFFER_VIEW;
+		*/
+		
+		D3D12_VERTEX_BUFFER_VIEW View[] = {
+			{ GUIStack->RectBuffer->GetGPUVirtualAddress(),			(UINT)(sizeof(Draw_RECT)		  * GUIStack->Rects.size()),			(UINT)sizeof(Draw_RECT) },
+			{ GUIStack->TexturedRectBuffer->GetGPUVirtualAddress(),	(UINT)(sizeof(Draw_Textured_RECT) * GUIStack->TexturedRects.size()),	(UINT)sizeof(Draw_Textured_RECT) },
+		};
+
+		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
+		CL->OMSetRenderTargets		(1, &GetBackBufferView(RenderTarget), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
+		CL->IASetPrimitiveTopology	(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+		for (auto D : GUIStack->DrawCalls)
+		{
+			switch (D.Type)
+			{
+			case DRAWCALLTYPE::DCT_2DRECT:
+				if (PrevState != D.Type)
+					CL->SetPipelineState(GUIStack->DrawStates[DRAWCALLTYPE::DCT_2DRECT]);
+
+				CL->IASetVertexBuffers	( 0, 1, View + 0 );
+				CL->DrawInstanced		( 6, 1, 4 * RectOffset, 0 );
+				RectOffset++;
+				break;
+			case DRAWCALLTYPE::DCT_2DRECTTEXTURED:
+				//CL->IASetVertexBuffers	( 0, 1, View + 1 );
+				//CL->DrawInstanced		( 4, 1, 4 * TexturedRectOffset, 0 );
+				break;
+			case DRAWCALLTYPE::DCT_3DMesh:
+				//CL->IASetVertexBuffers(0, 1, View + 1);
+				//CL->DrawInstanced(4, 1, 4 * TexturedRectOffset, 0);
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+	
+	void UploadGUI(RenderSystem* RS, GUIRender* RG)
+	{
+		UpdateResourceByTemp(RS, &RG->RectBuffer, RG->Rects.begin(), RG->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CleanUpRenderGUI(GUIRender* RG) {
 		RG->Rects.Release();
 		RG->TexturedRects.Release();
 
-		if(RG->RectBuffer)		RG->RectBuffer.Release();
-		if(RG->Textures)		RG->Textures->Release();
-		if(RG->DrawRectState)	RG->DrawRectState->Release();
+		if(RG->RectBuffer)			RG->RectBuffer.Release();
+		if(RG->TexturedRectBuffer)	RG->TexturedRectBuffer.Release();
+
+		for (size_t I = 0; I < DRAWCALLTYPE::DCT_COUNT; ++I)
+			if (RG->DrawStates[I])	RG->DrawStates[I]->Release();
 	}
 
 
 	/************************************************************************************************/
 
-
-	void DrawRects(RenderSystem* RS, GUIRender* RG, RenderWindow* Target) {
-	}
 
 	FLEXKITAPI void UploadLineSegments(RenderSystem* RS, Line3DPass* Pass)
 	{
@@ -6100,81 +6024,35 @@ namespace FlexKit
 		}
 	}
 
-	void InitiateSegmentPass(RenderSystem* RS, iAllocator* Mem, Line3DPass* out)
+
+	/************************************************************************************************/
+
+
+	void InitiateLineDrawState(RenderSystem* RS, iAllocator* Mem, LineDrawState* out)
 	{
-		Shader PShader;
 		Shader VShader;
+		Shader PShader;
 
 		// Load Shaders
 		{
 			// Load VShader
-			{
-				bool res = false;
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "VSegmentPassthrough");
-				strcpy(SDesc.ID,	"VSegmentPassthrough");
-				strcpy(SDesc.shaderVersion, "vs_5_0");
-				do
-				{
-					printf("LoadingShader - VShader Shader - Deferred\n");
-					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\vshader.hlsl", &SDesc, &VShader);
-#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-#else
-					FK_ASSERT(res);
-#endif
-				} while (!res);
-			}
-
-			// Load PShader
-			{
-				bool res = false;
-				FlexKit::ShaderDesc SDesc;
-				strcpy(SDesc.entry, "DrawLine");
-				strcpy(SDesc.ID,	"DrawLine");
-				strcpy(SDesc.shaderVersion, "ps_5_0");
-				do
-				{
-					printf("LoadingShader - PShader Shader - Deferred\n");
-					res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\pshader.hlsl", &SDesc, &PShader);
-#if USING( EDITSHADERCONTINUE )
-					if (!res)
-					{
-						std::cout << "Failed to Load\n Press Enter to try again\n";
-						char str[100];
-						std::cin >> str;
-					}
-#else
-					FK_ASSERT(res);
-#endif
-				} while (!res);
-			}
-
-			out->PShader = PShader;
-			out->VShader = VShader;
+			VShader = LoadShader("VSegmentPassthrough", "VSegmentPassthrough",	"vs_5_0", "assets\\vshader.hlsl");
+			PShader = LoadShader("DrawLine",			"DrawLine",				"ps_5_0", "assets\\pshader.hlsl");
 		}
 		// Create Pipeline StateObject
 		{	
-			out->LineSegments.Release();
-			out->LineSegments.Allocator = Mem;
-
 			auto RootSig = RS->Library.RS4CBVs4SRVs;
 
 			/*
 			typedef struct D3D12_INPUT_ELEMENT_DESC
 			{
-			LPCSTR SemanticName;
-			UINT SemanticIndex;
-			DXGI_FORMAT Format;
-			UINT InputSlot;
-			UINT AlignedByteOffset;
-			D3D12_INPUT_CLASSIFICATION InputSlotClass;
-			UINT InstanceDataStepRate;
+				LPCSTR						SemanticName;
+				UINT						SemanticIndex;
+				DXGI_FORMAT					Format;
+				UINT						InputSlot;
+				UINT						AlignedByteOffset;
+				D3D12_INPUT_CLASSIFICATION	InputSlotClass;
+				UINT						InstanceDataStepRate;
 			} 	D3D12_INPUT_ELEMENT_DESC;
 			*/
 
@@ -6211,8 +6089,41 @@ namespace FlexKit
 			out->PSO = PSO;
 		}
 
+		Destroy(&VShader);
+		Destroy(&PShader);
+	}
+
+	
+	/************************************************************************************************/
+	
+
+	void Clear(GUIRender* RG)
+	{
+		RG->DrawCalls.clear();
+		RG->Rects.clear();
+		RG->TexturedRects.clear();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Initiate3DLinePass(RenderSystem* RS, iAllocator* Mem, Line3DPass* out)
+	{
+		out->LineSegments.Release();
+		out->LineSegments.Allocator = Mem;
+
 		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 16);
 		out->GPUResource._SetDebugName("LINE SEGMENTS");
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CleanUpLineDrawState(LineDrawState* drawer)
+	{
+		drawer->PSO->Release();
 	}
 
 
@@ -6222,11 +6133,7 @@ namespace FlexKit
 	void CleanUpLineDrawPass(Line3DPass* pass)
 	{
 		pass->LineSegments.Release();
-		pass->PSO->Release();
 		pass->GPUResource.Release();
-
-		Destroy(pass->VShader);
-		Destroy(pass->PShader);
 	}
 
 
@@ -6264,7 +6171,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Draw3DLineSegments(RenderSystem* RS, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow)
+	void Draw3DLineSegments(RenderSystem* RS, LineDrawState* State, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow)
 	{
 		if(!Pass->LineSegments.size())
 			return;
@@ -6275,9 +6182,9 @@ namespace FlexKit
 		/*
 		typedef struct D3D12_VERTEX_BUFFER_VIEW
 		{
-		D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
-		UINT SizeInBytes;
-		UINT StrideInBytes;
+			D3D12_GPU_VIRTUAL_ADDRESS	BufferLocation;
+			UINT						SizeInBytes;
+			UINT						StrideInBytes;
 		} 	D3D12_VERTEX_BUFFER_VIEW;
 		*/
 
@@ -6289,16 +6196,14 @@ namespace FlexKit
 		};
 		
 		SetWindowRect(CL, TargetWindow);
-		CL->SetPipelineState(Pass->PSO);
 
 		// Set Pipeline State
 		{
 			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
-			CL->SetPipelineState(Pass->PSO);
+			CL->SetPipelineState(State->PSO);
 			CL->IASetVertexBuffers(0, 1, Views);
 			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
 			CL->SetGraphicsRootConstantBufferView(1, Camera->Buffer.Get()->GetGPUVirtualAddress());
-			
 			CL->OMSetRenderTargets(1, &GetBackBufferView(TargetWindow), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
 		}
 
@@ -6499,80 +6404,11 @@ namespace TextUtilities
 	{
 		using FlexKit::Shader;
 		using FlexKit::ShaderDesc;
-		{
-			FlexKit::ShaderDesc SDesc;
-			strcpy(SDesc.entry, "VTextMain");
-			strcpy(SDesc.ID,	"TextPassThrough");
-			strcpy(SDesc.shaderVersion, "vs_5_0");
-			Shader VShader;
 
-			bool res = false;
-			do
-			{
-				printf("LoadingShader - Compute Shader Deferred Shader -\n");
-				res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\TextRendering.hlsl", &SDesc, &VShader);
-#if USING( EDITSHADERCONTINUE )
-				if (!res)
-				{
-					std::cout << "Failed to Load\n Press Enter to try again\n";
-					char str[100];
-					std::cin >> str;
-				}
-#else
-				FK_ASSERT(res);
-#endif
-			} while (!res);
-			out->VShader = VShader;
-		}
-		{
-			bool res = false;
-			FlexKit::ShaderDesc SDesc;
-			strcpy(SDesc.entry, "GTextMain");
-			strcpy(SDesc.ID, "GTextMain");
-			strcpy(SDesc.shaderVersion, "gs_5_0");
-			Shader GShader;
-			do
-			{
-				printf("LoadingShader - GShader - \n");
-				res = FlexKit::LoadGeometryShaderFromFile(RS, "assets\\TextRendering.hlsl", &SDesc, &GShader);
-#if USING( EDITSHADERCONTINUE )
-				if (!res)
-				{
-					std::cout << "Failed to Load\n Press Enter to try again\n";
-					char str[100];
-					std::cin >> str;
-				}
-#else
-				FK_ASSERT(res);
-#endif
-				out->GShader = GShader;
-			} while (!res);
-		}
-		{
-			FlexKit::ShaderDesc SDesc;
-			strcpy_s(SDesc.entry, "PTextMain");
-			strcpy_s(SDesc.ID,	"TextShading");
-			strcpy_s(SDesc.shaderVersion, "ps_5_0");
-			Shader PShader;
-
-			bool res = false;
-			do
-			{
-				printf("LoadingShader - Compute Shader Deferred Shader -\n");
-				res = FlexKit::LoadComputeShaderFromFile(RS, "assets\\TextRendering.hlsl", &SDesc, &PShader);
-#if USING( EDITSHADERCONTINUE )
-				if (!res)
-				{
-					std::cout << "Failed to Load\n Press Enter to try again\n";
-					char str[100];
-					std::cin >> str;
-				}
-#else
-				FK_ASSERT(res);
-#endif
-			} while (!res);
-			out->PShader = PShader;
-		}
+		out->VShader = LoadShader("VTextMain", "TextPassThrough",	"vs_5_0", "assets\\TextRendering.hlsl");
+		out->GShader = LoadShader("GTextMain", "GTextMain",			"gs_5_0", "assets\\TextRendering.hlsl");
+		out->PShader = LoadShader("PTextMain", "TextShading",		"ps_5_0", "assets\\TextRendering.hlsl");
+	
 		// Create Root Signature
 		{
 			HRESULT HR;
@@ -6620,9 +6456,9 @@ namespace TextUtilities
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_Desc = {};{
 				PSO_Desc.pRootSignature             = RS->Library.RS4CBVs4SRVs;
-				PSO_Desc.VS                         = { (BYTE*)out->VShader.Blob->GetBufferPointer(), out->VShader.Blob->GetBufferSize() };
-				PSO_Desc.GS                         = { (BYTE*)out->GShader.Blob->GetBufferPointer(), out->GShader.Blob->GetBufferSize() };
-				PSO_Desc.PS                         = { (BYTE*)out->PShader.Blob->GetBufferPointer(), out->PShader.Blob->GetBufferSize() };
+				PSO_Desc.VS                         = out->VShader;
+				PSO_Desc.GS                         = out->GShader;
+				PSO_Desc.PS                         = out->PShader;
 				PSO_Desc.RasterizerState            = Rast_Desc;
 				PSO_Desc.BlendState                 = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 				PSO_Desc.SampleMask                 = UINT_MAX;

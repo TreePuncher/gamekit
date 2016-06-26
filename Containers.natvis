@@ -2,23 +2,23 @@
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
   <Type Name="FlexKit::DynArray&lt;*&gt;">
     <Expand>
+      <Item Name="Max">Max</Item>
+      <Item Name="Size">Size</Item>
       <ArrayItems>
         <Size>Size</Size>
         <ValuePointer>A</ValuePointer>
       </ArrayItems>
-      <Item Name="Max">Max</Item>
-      <Item Name="Size">Size</Item>
     </Expand>
   </Type>
 
-  <Type Name="FlexKit::Static_Array&lt;*&gt;">
+  <Type Name="FlexKit::static_array&lt;*&gt;">
     <Expand>
+      <Item Name="Max">TSIZE</Item>
+      <Item Name="Size">Size</Item>
       <ArrayItems>
         <Size>Size</Size>
         <ValuePointer>Elements</ValuePointer>
       </ArrayItems>
-      <Item Name="Max">TSIZE</Item>
-      <Item Name="Size">Size</Item>
     </Expand>
   </Type>
 </AutoVisualizer>
