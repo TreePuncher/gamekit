@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /************************************************************************************************/
 
+
 cbuffer CameraConstants : register( b0 )
 {
 	float4x4 View;
@@ -57,12 +58,6 @@ struct GBuffer
 	float4 WPOS 	: SV_TARGET3;
 };
 
-struct PS_IN
-{
-	float3 WPOS 	: TEXCOORD0;
-	float3 N 		: TEXCOORD1;
-};
-
 struct PS_Colour_IN
 {
 	float3 WPOS 	: TEXCOORD0;
@@ -88,6 +83,12 @@ SamplerState DefaultSampler;
 
 /************************************************************************************************/
 
+
+struct PS_IN
+{
+	float3 WPOS 	: TEXCOORD0;
+	float3 N 		: TEXCOORD1;
+};
 
 GBuffer PMain(PS_IN IN)
 {
@@ -162,7 +163,7 @@ float4 DrawRect(RectPoint_PS IN) : SV_TARGET
 float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
 {
 	float4 Sample = AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
-	return Sample;
+	return Sample * IN.Color;
 }
 
 
@@ -181,14 +182,12 @@ GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 	return Out;
 }
 
-
 struct PS_TEXURED_IN
 {
 	float3 WPOS 	: TEXCOORD0;
 	float3 N 		: TEXCOORD1;
 	float2 UV		: TEXCOORD2;
 };
-
 
 GBuffer PMain_TEXTURED(PS_TEXURED_IN IN )
 {

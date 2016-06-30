@@ -288,6 +288,14 @@ namespace FlexKit
 	{
 		struct SceneNode
 		{
+			SceneNode& operator = (const SceneNode& RHS)
+			{
+				Q = RHS.Q;
+				TS = RHS.TS;
+				Parent = RHS.Parent;
+				return *this;
+			}
+
 			Quaternion	Q;
 			float4		TS;
 			size_t		Parent;

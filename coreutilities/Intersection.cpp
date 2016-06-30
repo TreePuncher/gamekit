@@ -10,7 +10,7 @@ namespace FlexKit
 	};
 
 
-	bool CompareBSAgainstFrustum(Frustum* F, float3 V, float r, float s)
+	bool CompareBSAgainstFrustum(Frustum* F, float3 V, float r)
 	{
 		bool Bottom = false;
 		bool Near	= false;

@@ -2670,219 +2670,214 @@ FileDir SelectFile()
 /************************************************************************************************/
 
 
-namespace TextUtilities
+struct INFOBLOCK
 {
-	/************************************************************************************************/
+	int16_t		FontSize;
+	uint8_t		BitField;
+	uint8_t		CharSet;
+	uint16_t	stretchH;
+	uint8_t		AA;
+	uint8_t		PaddingUp;
+	uint8_t		PaddingRight;
+	uint8_t		PaddingDown;
+	uint8_t		PaddingLeft;
+	uint8_t		SpacingHoriz;
+	uint8_t		SpacingVert;
+	uint8_t		Outline;
+	char		fontName;
+};
 
 
-	struct INFOBLOCK
+/************************************************************************************************/
+
+
+struct COMMONBLOCK
+{
+	uint16_t	lineHeight;
+	uint16_t	Base;
+	uint16_t	ScaleW;
+	uint16_t	ScaleH;
+	uint16_t	Pages;
+	uint8_t		BitField;
+	uint8_t		alphaChannel;
+	uint8_t		RedChannel;
+	uint8_t		GreenChannel;
+	uint8_t		BlueChannel;
+};
+
+
+/************************************************************************************************/
+
+
+struct CHARARRAYBLOCK
+{
+	#pragma pack(push, 1)
+	struct CHAR
 	{
-		int16_t		FontSize;
-		uint8_t		BitField;
-		uint8_t		CharSet;
-		uint16_t	stretchH;
-		uint8_t		AA;
-		uint8_t		PaddingUp;
-		uint8_t		PaddingRight;
-		uint8_t		PaddingDown;
-		uint8_t		PaddingLeft;
-		uint8_t		SpacingHoriz;
-		uint8_t		SpacingVert;
-		uint8_t		Outline;
-		char		fontName;
+		uint32_t	id;
+		uint16_t	x;
+		uint16_t	y;
+		uint16_t	width;
+		uint16_t	height;
+		uint16_t	xoffset;
+		uint16_t	yoffset;
+		uint16_t	xadvance;
+		uint8_t		page;
+		uint8_t		chnl;
+	}First;
+	#pragma pack(pop)
+};
+
+
+/************************************************************************************************/
+
+
+struct KERNINGENTRY
+{
+	uint32_t FirstChar;
+	uint32_t SecondChar;
+	uint16_t Amount;
+};
+
+struct KERNINGARRAYBLOCK
+{
+	KERNINGENTRY First;
+};
+
+
+/************************************************************************************************/
+
+
+LoadFontResult LoadFontAsset(char* dir, char* file, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem)
+{
+	char TEMP[256];
+	strcpy_s(TEMP, dir);
+	strcat_s(TEMP, file);
+
+	size_t Size = 1 + GetFileSize(TEMP);
+	byte* mem = (byte*)tempMem->malloc(Size);
+	FlexKit::LoadFileIntoBuffer(TEMP, mem, Size);
+
+	char*	FontPath	= nullptr;
+	size_t  PathLength	= strlen(dir);
+
+	INFOBLOCK	Info;
+	COMMONBLOCK	CB;
+
+	FontAsset*		Fonts		= nullptr;
+	size_t			FontCount	= 0;
+
+	KERNINGENTRY*	KBlocks		= nullptr;
+	size_t			KBlockUsed	= 0;
+
+	FlexKit::uint4	Padding = 0;// Ordering { Top, Left, Bottom, Right }
+
+	char ID[128];
+	#pragma pack(push, 1)
+	struct BlockDescriptor
+	{
+		char	 ID;
+		uint32_t BlockSize;
 	};
+	#pragma pack(pop)
 
-
-	/************************************************************************************************/
-
-
-	struct COMMONBLOCK
+	if (mem[0] == 'B' &&
+		mem[1] == 'M' &&
+		mem[2] == 'F' &&
+		mem[3] == 0x03)
 	{
-		uint16_t	lineHeight;
-		uint16_t	Base;
-		uint16_t	ScaleW;
-		uint16_t	ScaleH;
-		uint16_t	Pages;
-		uint8_t		BitField;
-		uint8_t		alphaChannel;
-		uint8_t		RedChannel;
-		uint8_t		GreenChannel;
-		uint8_t		BlueChannel;
-	};
-
-
-	/************************************************************************************************/
-
-	struct CHARARRAYBLOCK
-	{
-		#pragma pack(push, 1)
-		struct CHAR
+		size_t Position = 4;
+		while (Position < Size)
 		{
-			uint32_t	id;
-			uint16_t	x;
-			uint16_t	y;
-			uint16_t	width;
-			uint16_t	height;
-			uint16_t	xoffset;
-			uint16_t	yoffset;
-			uint16_t	xadvance;
-			uint8_t		page;
-			uint8_t		chnl;
-		}First;
-		#pragma pack(pop)
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct KERNINGENTRY
-	{
-		uint32_t FirstChar;
-		uint32_t SecondChar;
-		uint16_t Amount;
-	};
-
-	struct KERNINGARRAYBLOCK
-	{
-		KERNINGENTRY First;
-	};
-
-
-	/************************************************************************************************/
-
-
-	LoadFontResult LoadFontAsset(char* dir, char* file, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem)
-	{
-		char TEMP[256];
-		strcpy_s(TEMP, dir);
-		strcat_s(TEMP, file);
-
-		size_t Size = 1 + GetFileSize(TEMP);
-		byte* mem = (byte*)tempMem->malloc(Size);
-		FlexKit::LoadFileIntoBuffer(TEMP, mem, Size);
-
-		char*	FontPath	= nullptr;
-		size_t  PathLength	= strlen(dir);
-
-		INFOBLOCK	Info;
-		COMMONBLOCK	CB;
-
-		FontAsset*		Fonts		= nullptr;
-		size_t			FontCount	= 0;
-
-		KERNINGENTRY*	KBlocks		= nullptr;
-		size_t			KBlockUsed	= 0;
-
-		FlexKit::uint4	Padding = 0;// Ordering { Top, Left, Bottom, Right }
-
-		char ID[128];
-		#pragma pack(push, 1)
-		struct BlockDescriptor
-		{
-			char	 ID;
-			uint32_t BlockSize;
-		};
-		#pragma pack(pop)
-
-		if (mem[0] == 'B' &&
-			mem[1] == 'M' &&
-			mem[2] == 'F' &&
-			mem[3] == 0x03)
-		{
-			size_t Position = 4;
-			while (Position < Size)
+			BlockDescriptor* Desc = (BlockDescriptor*)(mem + Position);
+			switch (Desc->ID)
 			{
-				BlockDescriptor* Desc = (BlockDescriptor*)(mem + Position);
-				switch (Desc->ID)
-				{
-				case 0x01:
-				{
-					auto test = sizeof(BlockDescriptor);
-					INFOBLOCK* IB = (INFOBLOCK*)(mem + Position + sizeof(BlockDescriptor));
-					char* FontName = &IB->fontName;
-					strcpy_s(ID, FontName);
+			case 0x01:
+			{
+				auto test = sizeof(BlockDescriptor);
+				INFOBLOCK* IB = (INFOBLOCK*)(mem + Position + sizeof(BlockDescriptor));
+				char* FontName = &IB->fontName;
+				strcpy_s(ID, FontName);
 
-					Padding[0] = IB->PaddingUp;
-					Padding[1] = IB->PaddingLeft;
-					Padding[2] = IB->PaddingDown;
-					Padding[3] = IB->PaddingRight;
+				Padding[0] = IB->PaddingUp;
+				Padding[1] = IB->PaddingLeft;
+				Padding[2] = IB->PaddingDown;
+				Padding[3] = IB->PaddingRight;
 
-					Info = *IB;
-				}break;
-				case 0x02:
-				{
-					COMMONBLOCK* pCB	= (COMMONBLOCK*)(mem + Position + sizeof(BlockDescriptor));
+				Info = *IB;
+			}break;
+			case 0x02:
+			{
+				COMMONBLOCK* pCB	= (COMMONBLOCK*)(mem + Position + sizeof(BlockDescriptor));
 
-					FontCount	= pCB->Pages;
-					Fonts		= (FontAsset*)outMem->malloc(sizeof(FontAsset) * FontCount);
+				FontCount	= pCB->Pages;
+				Fonts		= (FontAsset*)outMem->malloc(sizeof(FontAsset) * FontCount);
 
-					for (size_t I = 0; I < FontCount; ++I) {
-						Fonts[I].Padding = Padding;
-						Fonts[I].Memory  = outMem;
-						strcpy_s(Fonts[I].FontName, ID);
-					}
-
-					CB = *pCB;
-				}break;
-				case 0x03:
-				{
-					int32_t BlockSize	= Desc->BlockSize;
-					char*	FONTPATH	= (char*)(mem + Position + sizeof(BlockDescriptor));
-					size_t	FontPathLen	= strnlen_s(FONTPATH, BlockSize);
-
-					for (size_t I = 0; I < FontCount; ++I) {
-						size_t BufferSize = FontPathLen + PathLength + 1;
-						Fonts[I].FontDir = (char*)outMem->malloc(BufferSize);
-
-						strcpy_s(Fonts[I].FontDir, BufferSize, dir);
-						strcat_s(Fonts[I].FontDir, BufferSize, FONTPATH + I * FontPathLen);
-
-						auto res = LoadTextureFromFile(Fonts[I].FontDir, RS, outMem);
-						Fonts[I].Text = res;
-						Fonts[I].TextSheetDimensions = {CB.ScaleW, CB.ScaleH};
-					}
-				}break;
-				case 0x04:
-				{
-					CHARARRAYBLOCK* pCAB = (CHARARRAYBLOCK*)(mem + Position + sizeof(BlockDescriptor));
-					size_t End = Desc->BlockSize / sizeof(CHARARRAYBLOCK::CHAR);
-					auto Begin = &pCAB->First;
-					for (size_t I = 0; I < End; ++I)
-					{
-						auto pCB = Begin + I;
-						Fonts[pCB->page].GlyphTable[pCB->id].Channel  = pCB->chnl;
-						Fonts[pCB->page].GlyphTable[pCB->id].Offsets  = { float(pCB->xoffset),	float(pCB->yoffset) };
-						Fonts[pCB->page].GlyphTable[pCB->id].WH       = { float(pCB->width),	float(pCB->height) };
-						Fonts[pCB->page].GlyphTable[pCB->id].XY       = { float(pCB->x),		float(pCB->y) };
-						Fonts[pCB->page].GlyphTable[pCB->id].Xadvance = pCB->xadvance;
-					}
-				}break;
-				case 0x05:
-				{
-					KERNINGARRAYBLOCK* pKAB = (KERNINGARRAYBLOCK*)(mem + Position + sizeof(BlockDescriptor));
-				}break;
-				default:
-					break;
+				for (size_t I = 0; I < FontCount; ++I) {
+					Fonts[I].Padding = Padding;
+					Fonts[I].Memory  = outMem;
+					strcpy_s(Fonts[I].FontName, ID);
 				}
-				Position = Position + sizeof(BlockDescriptor) + Desc->BlockSize;
 
+				CB = *pCB;
+			}break;
+			case 0x03:
+			{
+				int32_t BlockSize	= Desc->BlockSize;
+				char*	FONTPATH	= (char*)(mem + Position + sizeof(BlockDescriptor));
+				size_t	FontPathLen	= strnlen_s(FONTPATH, BlockSize);
+
+				for (size_t I = 0; I < FontCount; ++I) {
+					size_t BufferSize = FontPathLen + PathLength + 1;
+					Fonts[I].FontDir = (char*)outMem->malloc(BufferSize);
+
+					strcpy_s(Fonts[I].FontDir, BufferSize, dir);
+					strcat_s(Fonts[I].FontDir, BufferSize, FONTPATH + I * FontPathLen);
+
+					auto res = LoadTextureFromFile(Fonts[I].FontDir, RS, outMem);
+					Fonts[I].Texture = res;
+					Fonts[I].TextSheetDimensions = {CB.ScaleW, CB.ScaleH};
+				}
+			}break;
+			case 0x04:
+			{
+				CHARARRAYBLOCK* pCAB = (CHARARRAYBLOCK*)(mem + Position + sizeof(BlockDescriptor));
+				size_t End = Desc->BlockSize / sizeof(CHARARRAYBLOCK::CHAR);
+				auto Begin = &pCAB->First;
+				for (size_t I = 0; I < End; ++I)
+				{
+					auto pCB = Begin + I;
+					Fonts[pCB->page].GlyphTable[pCB->id].Channel  = pCB->chnl;
+					Fonts[pCB->page].GlyphTable[pCB->id].Offsets  = { float(pCB->xoffset),	float(pCB->yoffset) };
+					Fonts[pCB->page].GlyphTable[pCB->id].WH       = { float(pCB->width),	float(pCB->height) };
+					Fonts[pCB->page].GlyphTable[pCB->id].XY       = { float(pCB->x),		float(pCB->y) };
+					Fonts[pCB->page].GlyphTable[pCB->id].Xadvance = pCB->xadvance;
+				}
+			}break;
+			case 0x05:
+			{
+				KERNINGARRAYBLOCK* pKAB = (KERNINGARRAYBLOCK*)(mem + Position + sizeof(BlockDescriptor));
+			}break;
+			default:
+				break;
 			}
+			Position = Position + sizeof(BlockDescriptor) + Desc->BlockSize;
+
 		}
-
-		return{ FontCount, Fonts };
 	}
 
-
-	/************************************************************************************************/
-
-
-	void FreeFontAsset(FontAsset* asset)
-	{
-		FreeTexture(&asset->Text);
-		asset->Memory->free(asset->FontDir);
-	}
+	return{ FontCount, Fonts };
+}
 
 
-	/************************************************************************************************/
-}// namespace TextUtilities
+/************************************************************************************************/
+
+
+void FreeFontAsset(FontAsset* asset)
+{
+	FreeTexture(&asset->Texture);
+	asset->Memory->free(asset->FontDir);
+}
+
+
+/************************************************************************************************/

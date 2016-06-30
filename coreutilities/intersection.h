@@ -112,7 +112,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool CompareBSAgainstFrustum(Frustum* F, float3 V, float r, float s = 1);
+	FLEXKITAPI bool CompareBSAgainstFrustum(Frustum* F, float3 V, float r);
 
 
 	/************************************************************************************************/

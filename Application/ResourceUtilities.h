@@ -290,12 +290,13 @@ Resource*		MetaDataToBlob		(MetaData* Meta, iAllocator* Mem);
 
 /************************************************************************************************/
 
-namespace TextUtilities
-{
-	typedef Pair<size_t, FontAsset*> LoadFontResult;
 
-	LoadFontResult	LoadFontAsset(char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem);
-	void			FreeFontAsset(FontAsset* asset);
-}
+typedef Pair<size_t, FlexKit::FontAsset*> LoadFontResult;
+
+LoadFontResult	LoadFontAsset(char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem);
+void			FreeFontAsset(FlexKit::FontAsset* asset);
+
+
+/************************************************************************************************/
 
 #endif

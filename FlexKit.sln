@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.25123.0
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKit", "FlexKit.vcxproj", "{54DB6A2B-4E65-4379-AF8B-4245F63D6512}"
 EndProject
@@ -17,8 +17,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Performance5.psess = Performance5.psess
 		Performance6.psess = Performance6.psess
 	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test", "..\Test\Test.vcxproj", "{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKitResourceCompiler", "FlexKitResourceCompiler\FlexKitResourceCompiler.vcxproj", "{2994D4AB-F8E7-4617-909E-6BD87E211C6F}"
 EndProject
@@ -46,21 +44,13 @@ Global
 		{54DB6A2B-4E65-4379-AF8B-4245F63D6512}.Release|x86.Build.0 = Release|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x64.ActiveCfg = Debug|x64
+		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x64.Build.0 = Debug|x64
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x86.ActiveCfg = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x86.Build.0 = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|Any CPU.ActiveCfg = Release|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|x64.ActiveCfg = Release|x64
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|x86.ActiveCfg = Release|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|x86.Build.0 = Release|Win32
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Debug|x64.ActiveCfg = Debug|x64
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Debug|x64.Build.0 = Debug|x64
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Debug|x86.ActiveCfg = Debug|Win32
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Debug|x86.Build.0 = Debug|Win32
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Release|Any CPU.ActiveCfg = Release|Win32
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Release|x64.ActiveCfg = Release|Win32
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Release|x86.ActiveCfg = Release|Win32
-		{A9D1B65D-23C6-417C-81DB-5C66C01BCB4E}.Release|x86.Build.0 = Release|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|x64.ActiveCfg = Debug|x64
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|x86.ActiveCfg = Debug|Win32

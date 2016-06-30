@@ -797,7 +797,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawSkeleton(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, Line3DPass* Out)
+	void DEBUG_DrawSkeleton(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, LineSet* Out)
 	{
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
 		float4x4 WT; GetWT(Nodes, Node, &WT);
@@ -836,7 +836,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawPoseState(DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, Line3DPass* Out)
+	void DEBUG_DrawPoseState(DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, LineSet* Out)
 	{
 		if (!DPS)
 			return;

@@ -464,11 +464,11 @@ namespace FlexKit
 		{
 			for (auto &E : *SM->Drawables)
 			{
-				auto Mesh = GetMesh(SM->GT, E.MeshHandle);
-				auto L = GetLocalScale(SM->SN, C->Node);
-				
-				//Mesh->Info.Offset
-				if (Mesh && CompareBSAgainstFrustum(&F, LocalToGlobal(SM->SN, C->Node, {0, 0, 0}), Mesh->Info.r, GetLocalScale(SM->SN, C->Node).x))
+				auto Mesh	= GetMesh(SM->GT, E.MeshHandle);
+				auto Ls		= GetLocalScale(SM->SN, E.Node).x;
+				auto Pw		= GetPositionW(SM->SN, E.Node);
+
+				if (Mesh && CompareBSAgainstFrustum(&F, Pw, Mesh->Info.r * Ls))
 				{
 					if (!E.Transparent)
 						PushPV(&E, out);

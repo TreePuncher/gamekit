@@ -72,16 +72,16 @@ namespace FlexKit
 
 		void _PushEntity(Drawable E);
 
-		inline void Yaw					 (EntityHandle Handle, float a)			{ FlexKit::Yaw	(SN, GetEntity(Handle).Node, a); }
-		inline void Pitch				 (EntityHandle Handle, float a)			{ FlexKit::Pitch(SN, GetEntity(Handle).Node, a); }
-		inline void Roll				 (EntityHandle Handle, float a)			{ FlexKit::Roll	(SN, GetEntity(Handle).Node, a); }
-		inline void TranslateEntity_LT	 (EntityHandle Handle, float3 V)		{ FlexKit::TranslateLocal	(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
-		inline void TranslateEntity_WT	 (EntityHandle Handle, float3 V)		{ FlexKit::TranslateWorld	(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
-		inline void SetPositionEntity_WT (EntityHandle Handle, float3 V)		{ FlexKit::SetPositionW		(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
-		inline void SetPositionEntity_LT (EntityHandle Handle, float3 V)		{ FlexKit::SetPositionL		(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
-		inline void SetOrientation		 (EntityHandle Handle, Quaternion Q)	{ FlexKit::SetOrientation	(SN, GetEntity(Handle).Node, Q);  GetEntity(Handle).Dirty = true;}
-		inline void SetOrientationL		 (EntityHandle Handle, Quaternion Q)	{ FlexKit::SetOrientationL	(SN, GetEntity(Handle).Node, Q);  GetEntity(Handle).Dirty = true;}
-		inline void SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ FreeHandle(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
+		inline void Yaw					 (EntityHandle Handle, float a)				{ FlexKit::Yaw	(SN, GetEntity(Handle).Node, a); }
+		inline void Pitch				 (EntityHandle Handle, float a)				{ FlexKit::Pitch(SN, GetEntity(Handle).Node, a); }
+		inline void Roll				 (EntityHandle Handle, float a)				{ FlexKit::Roll	(SN, GetEntity(Handle).Node, a); }
+		inline void TranslateEntity_LT	 (EntityHandle Handle, float3 V)			{ FlexKit::TranslateLocal	(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
+		inline void TranslateEntity_WT	 (EntityHandle Handle, float3 V)			{ FlexKit::TranslateWorld	(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
+		inline void SetPositionEntity_WT (EntityHandle Handle, float3 V)			{ FlexKit::SetPositionW		(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
+		inline void SetPositionEntity_LT (EntityHandle Handle, float3 V)			{ FlexKit::SetPositionL		(SN, GetEntity(Handle).Node, V);  GetEntity(Handle).Dirty = true;}
+		inline void SetOrientation		 (EntityHandle Handle, Quaternion Q)		{ FlexKit::SetOrientation	(SN, GetEntity(Handle).Node, Q);  GetEntity(Handle).Dirty = true;}
+		inline void SetOrientationL		 (EntityHandle Handle, Quaternion Q)		{ FlexKit::SetOrientationL	(SN, GetEntity(Handle).Node, Q);  GetEntity(Handle).Dirty = true;}
+		inline void SetLightNodeHandle	 (SpotLightHandle Handle, NodeHandle Node)	{ FreeHandle(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
 
 		fixed_vector<Drawable>*		Drawables;
 		fixed_vector<size_t>*		FreeEntityList;

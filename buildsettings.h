@@ -43,7 +43,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define USINGMETACOMP	OFF
 #define DLLEXPORT		OFF
+
 #ifdef _DEBUG
+
 #define USESTL				ON
 #define PHYSX				ON
 #define PHYSXREMOTEDB		ON
@@ -56,12 +58,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUG_PROFILING 	ON
 #define RACKNET				OFF
 #define RESCOMPILERVERBOSE	ON
+
 #else
+
 #define USESTL ON
 #define PHYSX				ON
 #define PHYSXREMOTEDB		ON
 #define DEBUGALLOCATOR		OFF
-#define DEBUGGRAPHICS		OFF
+#define DEBUGGRAPHICS		ON
 #define DEBUGHANDLES		OFF
 #define FATALERROR			ON
 #define EDITSHADERCONTINUE 	ON
@@ -69,6 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define DEBUG_PROFILING 	ON
 #define RACKNET				OFF
 #define RESCOMPILERVERBOSE	ON
+
 #endif
 
 #define ROUT		 &
@@ -103,8 +108,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #else
 
-#define FK_ASSERT1(A) A
-#define FK_ASSERT2(A, B) A
+
+template<typename TY_1>					void Discard(TY_1) {}
+template<typename TY_1, typename TY_2>	void Discard(TY_1, TY_2) {}
+
+#define FK_ASSERT1(A) Discard(A)
+#define FK_ASSERT2(A, B) Discard(A)
 
 #endif
 

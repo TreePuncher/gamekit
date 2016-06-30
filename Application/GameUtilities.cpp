@@ -129,7 +129,6 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass;
 	using FlexKit::ForwardPass_DESC;
 	using FlexKit::CreateDepthBuffer;
-	using TextUtilities::InitiateTextRender;
 
 	uint32_t width	 = 1600;
 	uint32_t height	 = 1000;

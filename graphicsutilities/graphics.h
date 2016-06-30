@@ -57,6 +57,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //#pragma comment(lib, "osdCPU.lib" )
 //#pragma comment(lib, "osdGPU.lib" )
 
+
 namespace FlexKit
 {
 	// Forward Declarations
@@ -2016,14 +2017,130 @@ namespace FlexKit
 		SceneNodes*	SceneNodes;
 	};
 
+
+	/************************************************************************************************/
+
+
+	struct TextEntry
+	{
+		float2 POS;
+		float2 Size;
+		float2 TopLeftUV;
+		float2 BottomRightUV;
+		float4 Color;
+	};
+
+	struct TextArea
+	{
+		char*				 TextBuffer;
+		size_t				 BufferSize;
+		FlexKit::uint2		 BufferDimensions;
+		FlexKit::uint2		 Position;
+
+		ShaderResourceBuffer Buffer;
+
+		size_t				 CharacterCount;
+		size_t				 Dirty;
+
+		iAllocator*			Memory;
+	};
+
+	struct TextArea_Desc
+	{
+		float2 POS;		// Screen Space Cord
+		float2 WH;		// Width - Height
+		float2 TextWH;	// Text Size
+	};
+
+	struct FontAsset
+	{
+		size_t	FontSize = 0;;
+		bool	Unicode = false;
+
+		FlexKit::uint2			TextSheetDimensions;
+		FlexKit::Texture2D		Texture;
+		FlexKit::uint4			Padding = 0; // Ordering { Top, Left, Bottom, Right }
+		FlexKit::iAllocator*	Memory;
+
+		struct Glyph
+		{
+			float2		WH;
+			float2		XY;
+			float2		Offsets;
+			float		Xadvance;
+			uint32_t	Channel;
+		}GlyphTable[256];
+
+		size_t	KerningTableSize = 0;
+		struct Kerning
+		{
+			char	ID[2];
+			float   Offset;
+		}*KerningTable;
+
+
+		char	FontName[128];
+		char*	FontDir; // Texture Directory
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct LineSegment
+	{
+		float3 A;
+		float3 AColour;
+		float3 B;
+		float3 BColour;
+	};
+
+	typedef DynArray<LineSegment> LineSegements;
+
+	struct LineSet
+	{
+		LineSegements			LineSegments;
+		FrameBufferedResource	GPUResource;
+	};
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI void InitiateLineSet			( RenderSystem* RS, iAllocator* Mem, LineSet* out );
+	FLEXKITAPI void ClearLineSet			( LineSet* Pass	);
+	FLEXKITAPI void CleanUpLineSet			( LineSet* Pass	);
+	FLEXKITAPI void AddLineSegment			( LineSet* Pass, LineSegment in		);
+	FLEXKITAPI void UploadLineSegments		( RenderSystem* RS, LineSet* Pass	);
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI void ClearText		( TextArea* TA );
+	FLEXKITAPI void CleanUpTextArea	( TextArea* TA, iAllocator* BA );
+	FLEXKITAPI void PrintText		( TextArea* Area, const char* text );
+
+	FLEXKITAPI TextArea CreateTextArea( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
+
+
+	/************************************************************************************************/
+
+
 	enum DRAWCALLTYPE : size_t
 	{
 		DCT_2DRECT,
 		DCT_2DRECTTEXTURED,
-		DCT_3DMesh,
-		DCT_3DMeshAnimated,
-		DCT_TextBox,
+		DCT_2DRECT_CLIPPED,
+		DCT_DrawLines,
+		DCT_DrawText,
 		DCT_COUNT,
+	};
+
+	struct ClipArea
+	{
+		float2 CLIPAREA_BLEFT;
+		float2 CLIPAREA_TRIGHT;
 	};
 
 	struct Draw_RECT
@@ -2031,6 +2148,15 @@ namespace FlexKit
 		float2 TRight;
 		float2 BLeft;
 		float4 Color;
+	};
+
+	struct Draw_RECT_CLIPPED
+	{
+		float2 TRight;
+		float2 BLeft;
+		float4 Color;
+		float2 CLIPAREA_TRIGHT;
+		float2 CLIPAREA_BLEFT;
 	};
 
 	struct Draw_RECTPoint
@@ -2051,6 +2177,32 @@ namespace FlexKit
 		Texture2D*		TextureHandle;
 	};
 
+	struct Textured_Rect
+	{
+		Texture2D*	Texture;
+		float2		CLIPAREA_BLEFT;
+		float2		CLIPAREA_TRIGHT;
+		float4		Color;
+	};
+
+	
+	struct Draw_LineSet_3D
+	{
+		LineSet*	Lines;
+		Camera*		C;
+	};
+
+
+	struct Draw_Text
+	{
+		float2 CLIPAREA_BLEFT;
+		float2 CLIPAREA_TRIGHT;
+		float4 Color;
+
+		TextArea*	Text;
+		FontAsset*	Font;
+	};
+
 	struct DrawCall
 	{
 		DRAWCALLTYPE	Type;
@@ -2061,16 +2213,19 @@ namespace FlexKit
 	{
 		operator GUIRender* () { return this; }
 
-		DynArray<Draw_RECTPoint> Rects;
-		DynArray<Draw_RECTPoint> TexturedRects;
-		DynArray<Texture2D*>	 Textures;
+		DynArray<ClipArea>			ClipAreas;
+		DynArray<Draw_RECTPoint>	Rects;
+		DynArray<Textured_Rect>		TexturedRects;
+		DynArray<Draw_Text>			Text;
+		DynArray<Draw_LineSet_3D>	DrawLines3D;
 
-		//DynArray<TextUtilities::TextArea*>	Text;
-		DynArray<DrawCall>					DrawCalls;
+		DynArray<DrawCall>		DrawCalls;
 
 		FrameBufferedResource	RectBuffer;
 		FrameBufferedResource	TexturedRectBuffer;
 		ID3D12PipelineState*	DrawStates[DRAWCALLTYPE::DCT_COUNT];
+
+		//TextUtilities::TextRender*	DrawTextState;
 	};
 
 
@@ -2100,9 +2255,11 @@ namespace FlexKit
 
 	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT );
 	FLEXKITAPI void PushRect( GUIRender* RG, Draw_Textured_RECT );
+
+	FLEXKITAPI void PushLineSet( GUIRender* RG, Draw_LineSet_3D);
 	
-	FLEXKITAPI void InitiateRenderGUI	( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
-	FLEXKITAPI void CleanUpRenderGUI	( GUIRender* RG);
+	FLEXKITAPI void InitiateDrawGUI		( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
+	FLEXKITAPI void CleanUpDrawGUI		( GUIRender* RG);
 
 	FLEXKITAPI void Clear	( GUIRender* RG );
 	FLEXKITAPI void Upload	( RenderSystem* RS, GUIRender* RG );
@@ -2113,8 +2270,7 @@ namespace FlexKit
 	FLEXKITAPI void CleanUp	( PointLightBuffer* out,	iAllocator* Memory );
 	FLEXKITAPI void CleanUp	( SpotLightBuffer* out,		iAllocator* Memory );
 
-	FLEXKITAPI void DrawGUI	( RenderSystem* RS, GUIRender* GUIStack, RenderWindow* Out );
-
+	FLEXKITAPI void DrawGUI	( RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, RenderWindow* Out );
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
@@ -2180,40 +2336,6 @@ namespace FlexKit
 	FLEXKITAPI void		SetWindowRect				( ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I = 0u);
 	
 	inline float3	Gray(float P) { return float3(P, P, P); }
-
-
-	/************************************************************************************************/
-
-
-	struct LineSegment
-	{
-		float3 A;
-		float3 AColour;
-		float3 B;
-		float3 BColour;
-	};
-
-	typedef DynArray<LineSegment> LineSegements;
-
-	struct LineDrawState
-	{
-		ID3D12PipelineState*	PSO;
-	};
-
-	struct Line3DPass
-	{
-		LineSegements			LineSegments;
-		FrameBufferedResource	GPUResource;
-	};
-
-
-	FLEXKITAPI void InitiateLineDrawState	( RenderSystem* RS, iAllocator* Mem, LineDrawState* out );
-	FLEXKITAPI void Initiate3DLinePass		( RenderSystem* RS, iAllocator* Mem, Line3DPass* out );
-	FLEXKITAPI void CleanUpLineDrawState	( LineDrawState* State );
-	FLEXKITAPI void CleanUpLineDrawPass		( Line3DPass* Pass );
-	FLEXKITAPI void AddLineSegment			( Line3DPass* Pass, LineSegment in );
-	FLEXKITAPI void UploadLineSegments		( RenderSystem* RS, Line3DPass* Pass );
-	FLEXKITAPI void Draw3DLineSegments		( RenderSystem* RS, LineDrawState* State, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow );
 	
 
 	/************************************************************************************************/
@@ -2257,7 +2379,6 @@ namespace FlexKit
 
 
 		Shader	V;// Vertex Shader
-
 		float	S;
 
 		bool	LoadUVs;
@@ -2290,98 +2411,6 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-}
-
-namespace TextUtilities
-{
-	using FlexKit::float2;
-	using FlexKit::float3;
-	using FlexKit::float4;
-	using FlexKit::iAllocator;
-	using FlexKit::RenderSystem;
-	using FlexKit::RenderWindow;
-	using FlexKit::StackAllocator;
-	using FlexKit::Pair;
-	using FlexKit::ShaderResourceBuffer;
-	using FlexKit::Texture2D;
-
-	struct TextEntry
-	{
-		float2 POS;
-		float2 Size;
-		float2 TopLeftUV;
-		float2 BottomRightUV;
-		float4 Color;
-	};
-
-	struct TextArea
-	{
-		char*				 TextBuffer;
-		size_t				 BufferSize;
-		FlexKit::uint2		 BufferDimensions;
-		FlexKit::uint2		 Position;
-
-		ShaderResourceBuffer Buffer;
-	
-		size_t				 CharacterCount;
-		size_t				 Dirty;
-	};
-
-	struct TextRender
-	{
-		ID3D12PipelineState*	PSO;
-		ID3D12DescriptorHeap*	Textures;
-
-		FlexKit::Shader	VShader;
-		FlexKit::Shader	GShader;
-		FlexKit::Shader	PShader;
-	};
-
-	struct TextArea_Desc
-	{
-		float2 POS;	// Screen Space Cord
-		float2 WH;
-		float2 TextWH;	// Text Size
-	};
-
-	struct FontAsset
-	{
-		size_t	FontSize = 0;;
-		bool	Unicode = false;
-
-		FlexKit::uint2			TextSheetDimensions;
-		FlexKit::Texture2D		Text;
-		FlexKit::uint4			Padding = 0; // Ordering { Top, Left, Bottom, Right }
-		FlexKit::iAllocator*	Memory;
-		struct Glyph
-		{
-			float2		WH;
-			float2		XY;
-			float2		Offsets;
-			float		Xadvance;
-			uint32_t	Channel;
-		}GlyphTable[256];
-
-		size_t	KerningTableSize = 0;
-		struct Kerning
-		{
-			char	ID[2];
-			float   Offset;
-		}*KerningTable;
-
-
-		char	FontName[128];
-		char*	FontDir;// Texture Directory
-	};
-
-	FLEXKITAPI void DrawTextArea			( TextRender* TR, FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, FlexKit::RenderWindow* Out);
-	FLEXKITAPI void ClearText				( TextArea* TA );
-	FLEXKITAPI void CleanUpTextArea			( TextArea* TA, iAllocator* BA);
-	FLEXKITAPI void PrintText				( TextArea* Area, const char* text);
-
-	FLEXKITAPI TextArea CreateTextObject	( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
-	FLEXKITAPI void		InitiateTextRender	( RenderSystem* RS, TextRender*	out);
-	FLEXKITAPI void		CleanUpTextRender	( TextRender* TR);
 }
 
 #endif

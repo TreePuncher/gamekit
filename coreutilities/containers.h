@@ -134,6 +134,19 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
+		THISTYPE& operator =(const THISTYPE& RHS)
+		{
+			if (!Allocator) Allocator = RHS.Allocator;
+
+			Release();
+			reserve(RHS.size());
+
+			for (const auto& E : RHS)
+				push_back(E);
+
+			return *this;
+		}
+
 
 		Ty PopVect(){
 			FK_ASSERT(C->Size >= 1);
@@ -198,13 +211,15 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+#if 0
 		void push_back(Ty in) {
 			if (Size + 1 > Max)
 			{// Increase Size
 #ifdef _DEBUG
 				FK_ASSERT(Allocator);
 #endif			
-				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * 2 * max(Max, 1));
+				auto NewSize = sizeof(Ty) * 2 * (Max < 1)? 1 : Max;
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(NewSize);
 				
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
@@ -226,7 +241,39 @@ namespace FlexKit
 
 			A[Size++] = in;
 		}
+#else
 
+		void push_back(const Ty& in) {
+			if (Size + 1 > Max)
+			{// Increase Size
+#ifdef _DEBUG
+				FK_ASSERT(Allocator);
+#endif			
+				auto NewSize = ((Max < 1) ? 2 : (2 * Max));
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
+
+#ifdef _DEBUG
+				FK_ASSERT(NewMem);
+				FK_ASSERT(NewMem != A);
+#endif
+
+				if (A) {
+					size_t itr = 0;
+					size_t End = Size;
+					for (; itr < End; ++itr)
+						NewMem[itr] = A[itr];
+
+					Allocator->_aligned_free(A);
+				}
+
+				A = NewMem;
+				Max = NewSize;
+			}
+
+			new(A + Size++) Ty(in); // 
+		}
+
+#endif
 
 		/************************************************************************************************/
 
@@ -294,12 +341,17 @@ namespace FlexKit
 
 		Ty& at(size_t index) { return A[index]; }
 
-		typedef Ty* Iterator; 
+		typedef Ty*			Iterator; 
+		typedef const Ty*	Iterator_const;
+
 
 		Iterator begin()	{ return A;			}
 		Iterator end()		{ return A + Size;	}
 
-		size_t size(){return Size;}
+		Iterator_const begin() const { return A; }
+		Iterator_const end()   const { return A + Size; }
+
+		size_t size() const {return Size;}
 
 		/************************************************************************************************/
 		

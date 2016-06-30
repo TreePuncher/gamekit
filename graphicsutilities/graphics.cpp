@@ -3245,7 +3245,7 @@ namespace FlexKit
 					{ // Create Output Byffer
 						desc.Format			= FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
 						desc.UAV			= true;
-						desc.CV				= false;
+						desc.CV				= true;
 						desc.RenderTarget	= true;
 
 						out->GBuffers[I].OutputBuffer = CreateTexture2D(RS, &desc);
@@ -3709,12 +3709,13 @@ namespace FlexKit
 		RenderSystem* RS,		const Camera* C, 
 		TextureManager* TM, 	GeometryTable*	GT)
 	{
-		auto CL				= GetCurrentCommandList(RS);
-		auto FrameResources = GetCurrentFrameResources(RS);
-		auto DescPOSGPU		= GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
-		auto DescPOS		= ReserveDescHeap(RS, 6);
-		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
-		CL->SetDescriptorHeaps(1, &DescriptorHeap);
+		auto CL					= GetCurrentCommandList				(RS);
+		auto FrameResources		= GetCurrentFrameResources			(RS);
+		auto DescPOSGPU			= GetDescTableCurrentPosition_GPU	(RS); // _Ptr to Beginning of Heap On GPU
+		auto DescPOS			= ReserveDescHeap					(RS, 6);
+		auto DescriptorHeap		= GetCurrentDescriptorTable			(RS);
+
+		CL->SetDescriptorHeaps	(1, &DescriptorHeap);
 
 		size_t BufferIndex		 = Pass->CurrentBuffer;
 
@@ -3739,13 +3740,13 @@ namespace FlexKit
 			D3D12_VIEWPORT	VPs[]	= { VP, VP, VP, VP, };
 			D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT,};
 
-			CL->SetGraphicsRootSignature(Pass->Filling.FillRTSig);
-			CL->SetPipelineState(Pass->Filling.PSO);
-			CL->OMSetRenderTargets(4, &Pass->GBuffers[BufferIndex].RTVDescHeap->GetCPUDescriptorHandleForHeapStart(), true, &Pass->GBuffers[BufferIndex].DepthBuffer);
-			CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
-			CL->RSSetViewports(4, VPs);
-			CL->RSSetScissorRects(4, RECTs);
-			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			CL->SetGraphicsRootSignature			(Pass->Filling.FillRTSig);
+			CL->SetPipelineState					(Pass->Filling.PSO);
+			CL->OMSetRenderTargets					(4, &Pass->GBuffers[BufferIndex].RTVDescHeap->GetCPUDescriptorHandleForHeapStart(), true, &Pass->GBuffers[BufferIndex].DepthBuffer);
+			CL->SetGraphicsRootConstantBufferView	(0, C->Buffer->GetGPUVirtualAddress());
+			CL->RSSetViewports						(4, VPs);
+			CL->RSSetScissorRects					(4, RECTs);
+			CL->IASetPrimitiveTopology				(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		}
 		
 		TriMeshHandle	LastHandle	= INVALIDMESHHANDLE;
@@ -4148,6 +4149,8 @@ namespace FlexKit
 		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); RT.Offset(RS->DescriptorCBVSRVUAVSize);
 		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); RT.Offset(RS->DescriptorCBVSRVUAVSize);
 		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); 
+
+		Pass->GBuffers[Index].OutputBuffer[Index];
 	}
 	
 
@@ -5267,6 +5270,7 @@ namespace FlexKit
 	}
 
 
+
 	/************************************************************************************************/
 
 
@@ -5792,7 +5796,7 @@ namespace FlexKit
 
 	void PushRect(GUIRender* RG, Draw_RECT Rect) 
 	{
-		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECT , RG->Rects.size()});
+		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECT , 0 });
 		Draw_RECTPoint P;
 		P.Color = F4MUL(Rect.Color, Rect.Color);
 
@@ -5825,9 +5829,47 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PushRect(GUIRender* RG, Draw_Textured_RECT Rect) {
-		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECTTEXTURED , RG->TexturedRects.size() });
-		RG->Textures.push_back(Rect.TextureHandle);
+	void PushRect(GUIRender* RG, Draw_RECT_CLIPPED Rect)
+	{
+		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECT_CLIPPED , RG->ClipAreas.size() });
+		RG->ClipAreas.push_back({ Rect.CLIPAREA_BLEFT , Rect.CLIPAREA_TRIGHT });
+
+		Draw_RECTPoint P;
+		P.Color = F4MUL(Rect.Color, Rect.Color);
+
+		//
+		P.V = WStoSS({ Rect.TRight.x, Rect.BLeft.y });
+		P.UV = { 1, 1 };
+		RG->Rects.push_back(P);// Bottom Right
+		P.V = WStoSS(Rect.BLeft);
+		P.UV = { 0, 1 };
+		RG->Rects.push_back(P);// Bottom Left
+		P.V = WStoSS(Rect.TRight);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+	    //
+
+		//
+		P.V = WStoSS(Rect.TRight);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+		P.V = WStoSS(Rect.BLeft);
+		P.UV = { 0, 1 };
+		RG->Rects.push_back(P);// Bottom Left
+		P.V = WStoSS({ Rect.BLeft.x, Rect.TRight.y });
+		P.UV = { 0, 0 };
+		RG->Rects.push_back(P);// Top Left
+		//
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushRect(GUIRender* RG, Draw_Textured_RECT Rect)
+	{
+		RG->DrawCalls.push_back		({ DRAWCALLTYPE::DCT_2DRECTTEXTURED , RG->TexturedRects.size() });
+		RG->TexturedRects.push_back	({ Rect.TextureHandle, Rect.BLeft, Rect.TRight });
 
 		Draw_RECTPoint P;
 		P.Color = F4MUL(Rect.Color, Rect.Color);
@@ -5854,89 +5896,261 @@ namespace FlexKit
 		P.V = WStoSS({ Rect.BLeft.x, Rect.TRight.y });
 		P.UV = { 0, 0 };
 		RG->Rects.push_back(P);// Top Left
-							   //
+		//
 	}
 
 
 	/************************************************************************************************/
 
 
-	void InitiateRenderGUI(RenderSystem* RS, GUIRender* RG, iAllocator* Memory) 
+	void PushText(GUIRender* RG, Draw_Text Text)
+	{
+		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_DrawText, RG->Text.size() });
+		RG->Text.push_back(Text);
+
+		Draw_RECTPoint P;
+		P.Color = F4MUL(Text.Color, Text.Color);
+
+		//
+		P.V = WStoSS({ Text.CLIPAREA_TRIGHT.x, Text.CLIPAREA_BLEFT.y });
+		P.UV = { 1, 1 };
+		RG->Rects.push_back(P);// Bottom Right
+		P.V = WStoSS(Text.CLIPAREA_BLEFT);
+		P.UV = { 0, 1 };
+		RG->Rects.push_back(P);// Bottom Left
+		P.V = WStoSS(Text.CLIPAREA_TRIGHT);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+		//
+
+		//
+		P.V = WStoSS(Text.CLIPAREA_TRIGHT);
+		P.UV = { 1, 0 };
+		RG->Rects.push_back(P);// Top Right
+		P.V = WStoSS(Text.CLIPAREA_BLEFT);
+		P.UV = { 0, 1 };
+		RG->Rects.push_back(P);// Bottom Left
+		P.V = WStoSS({ Text.CLIPAREA_BLEFT.x, Text.CLIPAREA_TRIGHT.y });
+		P.UV = { 0, 0 };
+		RG->Rects.push_back(P);// Top Left
+		//
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushLineSet(GUIRender* RG, Draw_LineSet_3D LineSet)
+	{
+		RG->DrawCalls.push_back({DCT_DrawLines, RG->DrawLines3D.size()});
+		RG->DrawLines3D.push_back(LineSet);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void InitiateDrawGUI(RenderSystem* RS, GUIRender* RG, iAllocator* Memory) 
 	{
 		for (size_t I = 0; I < DRAWCALLTYPE::DCT_COUNT; ++I)
 			RG->DrawStates[I] = nullptr;
 
+		Shader DrawRectVShader;
+		Shader DrawRectPShader;
+		Shader DrawRectPSTexturedShader;
+		Shader DrawLineVShader;
+		Shader DrawLinePShader;
+
+		DrawRectVShader				= LoadShader("DrawRect_VS", "DrawRect_VS", "vs_5_0", "assets\\vshader.hlsl");
+		DrawRectPShader				= LoadShader("DrawRect", "DrawRect", "ps_5_0", "assets\\pshader.hlsl");
+		DrawRectPSTexturedShader	= LoadShader("DrawRectTextured", "DrawRectTextured", "ps_5_0", "assets\\pshader.hlsl");
+		DrawLineVShader				= LoadShader("VSegmentPassthrough", "VSegmentPassthrough", "vs_5_0", "assets\\vshader.hlsl");
+		DrawLinePShader				= LoadShader("DrawLine", "DrawLine", "ps_5_0", "assets\\pshader.hlsl");
+
 		{
-			Shader DrawRectVShader;
-			Shader DrawRectPShader;
-			Shader DrawRectPSTexturedShader;
+			// Draw Rect State Objects
+			auto RootSig = RS->Library.RS4CBVs4SRVs;
 
-			// Load Shaders
-			DrawRectVShader			 = LoadShader("DrawRect_VS",		"DrawRect_VS",		"vs_5_0", "assets\\vshader.hlsl");
-			DrawRectPShader			 = LoadShader("DrawRect",			"DrawRect",			"ps_5_0", "assets\\pshader.hlsl");
-			DrawRectPSTexturedShader = LoadShader("DrawRectTextured",	"DrawRectTextured",	"ps_5_0", "assets\\pshader.hlsl");
+			/*
+			typedef struct D3D12_INPUT_ELEMENT_DESC
+			{
+				LPCSTR						SemanticName;
+				UINT						SemanticIndex;
+				DXGI_FORMAT					Format;
+				UINT						InputSlot;
+				UINT						AlignedByteOffset;
+				D3D12_INPUT_CLASSIFICATION	InputSlotClass;
+				UINT						InstanceDataStepRate;
+			} 	D3D12_INPUT_ELEMENT_DESC;
+			*/
 
-			// Create Pipeline StateObject
-			{	
-				auto RootSig = RS->Library.RS4CBVs4SRVs;
+			D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
 
-				/*
-				typedef struct D3D12_INPUT_ELEMENT_DESC
-				{
-					LPCSTR						SemanticName;
-					UINT						SemanticIndex;
-					DXGI_FORMAT					Format;
-					UINT						InputSlot;
-					UINT						AlignedByteOffset;
-					D3D12_INPUT_CLASSIFICATION	InputSlotClass;
-					UINT						InstanceDataStepRate;
-				} 	D3D12_INPUT_ELEMENT_DESC;
-				*/
+			D3D12_RASTERIZER_DESC		Rast_Desc  = CD3DX12_RASTERIZER_DESC	(D3D12_DEFAULT);
+			D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC	(D3D12_DEFAULT);
+			Depth_Desc.DepthFunc		= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			Depth_Desc.DepthEnable		= false;
 
-				D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-					{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-					{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-					{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				};
-
-				D3D12_RASTERIZER_DESC		Rast_Desc  = CD3DX12_RASTERIZER_DESC	(D3D12_DEFAULT);
-				D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC	(D3D12_DEFAULT);
-				Depth_Desc.DepthFunc		= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-				Depth_Desc.DepthEnable		= false;
-
-				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-					PSO_Desc.pRootSignature        = RootSig;
-					PSO_Desc.VS                    = DrawRectVShader;
-					PSO_Desc.RasterizerState       = Rast_Desc;
-					PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-					PSO_Desc.SampleMask            = UINT_MAX;
-					PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-					PSO_Desc.NumRenderTargets      = 1;
-					PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
-					PSO_Desc.SampleDesc.Count      = 1;
-					PSO_Desc.SampleDesc.Quality    = 0;
-					PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-					PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-					PSO_Desc.DepthStencilState     = Depth_Desc;
-				}
-
-				ID3D12PipelineState* PSO = nullptr;
-				HRESULT HR;
-				
-				PSO_Desc.PS = DrawRectPShader;
-				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-				FK_ASSERT(SUCCEEDED(HR));
-				RG->DrawStates[DCT_2DRECT] = PSO;
-
-				PSO_Desc.PS = DrawRectPSTexturedShader;
-				HR  = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-				FK_ASSERT(SUCCEEDED(HR));
-				RG->DrawStates[DCT_2DRECTTEXTURED] = PSO;
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+				PSO_Desc.pRootSignature        = RootSig;
+				PSO_Desc.VS                    = DrawRectVShader;
+				PSO_Desc.RasterizerState       = Rast_Desc;
+				PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.SampleMask            = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+				PSO_Desc.NumRenderTargets      = 1;
+				PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.SampleDesc.Count      = 1;
+				PSO_Desc.SampleDesc.Quality    = 0;
+				PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+				PSO_Desc.DepthStencilState     = Depth_Desc;
 			}
 
-			Destroy(&DrawRectVShader);
-			Destroy(&DrawRectPShader);
-			Destroy(&DrawRectPSTexturedShader);
+			ID3D12PipelineState* PSO = nullptr;
+			HRESULT HR;
+				
+			PSO_Desc.PS = DrawRectPShader;
+			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			FK_ASSERT(SUCCEEDED(HR));
+			RG->DrawStates[DCT_2DRECT]			= PSO;
+			RG->DrawStates[DCT_2DRECT_CLIPPED]	= PSO; PSO->AddRef();
+
+			PSO_Desc.PS = DrawRectPSTexturedShader;
+			HR  = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			FK_ASSERT(SUCCEEDED(HR));
+			RG->DrawStates[DCT_2DRECTTEXTURED] = PSO;
+		}
+
+		{
+			// Draw Line State Objects
+			/*
+			typedef struct D3D12_INPUT_ELEMENT_DESC
+			{
+				LPCSTR						SemanticName;
+				UINT						SemanticIndex;
+				DXGI_FORMAT					Format;
+				UINT						InputSlot;
+				UINT						AlignedByteOffset;
+				D3D12_INPUT_CLASSIFICATION	InputSlotClass;
+				UINT						InstanceDataStepRate;
+			} 	D3D12_INPUT_ELEMENT_DESC;
+			*/
+
+			D3D12_INPUT_ELEMENT_DESC InputElements[2] = {
+				{ "POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "COLOUR",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+
+			D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			Depth_Desc.DepthFunc		= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			Depth_Desc.DepthEnable		= false;
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+				PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;;
+				PSO_Desc.VS                    = DrawLineVShader;
+				PSO_Desc.PS                    = DrawLinePShader;
+				PSO_Desc.RasterizerState       = Rast_Desc;
+				PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.SampleMask            = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+				PSO_Desc.NumRenderTargets      = 1;
+				PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.SampleDesc.Count      = 1;
+				PSO_Desc.SampleDesc.Quality    = 0;
+				PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout           = { InputElements, 2 };
+				PSO_Desc.DepthStencilState     = Depth_Desc;
+			}
+
+			ID3D12PipelineState* PSO = nullptr;
+			HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			FK_ASSERT(SUCCEEDED(HR));
+			RG->DrawStates[DCT_DrawLines] = PSO;
+		}
+
+		// Create/Load Text Rendering State
+		{
+			Shader DrawTextVShader = LoadShader("VTextMain", "TextPassThrough", "vs_5_0", "assets\\TextRendering.hlsl");
+			Shader DrawTextGShader = LoadShader("GTextMain", "GTextMain",		"gs_5_0", "assets\\TextRendering.hlsl");
+			Shader DrawTextPShader = LoadShader("PTextMain", "TextShading",		"ps_5_0", "assets\\TextRendering.hlsl");
+
+
+			HRESULT HR;
+			ID3D12PipelineState* PSO = nullptr;
+
+			/*
+			struct TextEntry
+			{
+				float2 POS;
+				float2 Size;
+				float2 TopLeftUV;
+				float2 BottomRightUV;
+				float4 Color;
+			};
+			*/
+
+			D3D12_INPUT_ELEMENT_DESC InputElements[5] =	{
+				{ "POS",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "WH",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "UVTL",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "UVBL",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 24, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+				{ "COLOR",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+			};
+
+			D3D12_RASTERIZER_DESC Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);{
+			}
+
+			D3D12_DEPTH_STENCIL_DESC Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);{
+				Depth_Desc.DepthEnable	 = false;
+				Depth_Desc.StencilEnable = false;
+			}
+
+			D3D12_RENDER_TARGET_BLEND_DESC TransparencyBlend_Desc;{
+				TransparencyBlend_Desc.BlendEnable           = true;
+				TransparencyBlend_Desc.LogicOpEnable         = false;
+				TransparencyBlend_Desc.SrcBlend              = D3D12_BLEND_SRC_ALPHA;
+				TransparencyBlend_Desc.DestBlend             = D3D12_BLEND_INV_SRC_ALPHA;
+				TransparencyBlend_Desc.BlendOp               = D3D12_BLEND_OP_ADD;
+				TransparencyBlend_Desc.SrcBlendAlpha         = D3D12_BLEND_ZERO;
+				TransparencyBlend_Desc.DestBlendAlpha        = D3D12_BLEND_ZERO;
+				TransparencyBlend_Desc.BlendOpAlpha          = D3D12_BLEND_OP_ADD;
+				TransparencyBlend_Desc.LogicOp               = D3D12_LOGIC_OP_NOOP;
+				TransparencyBlend_Desc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+			}
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_Desc = {};{
+				PSO_Desc.pRootSignature             = RS->Library.RS4CBVs4SRVs;
+				PSO_Desc.VS                         = DrawTextVShader;
+				PSO_Desc.GS                         = DrawTextGShader;
+				PSO_Desc.PS                         = DrawTextPShader;
+				PSO_Desc.RasterizerState            = Rast_Desc;
+				PSO_Desc.BlendState                 = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.SampleMask                 = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType      = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+				PSO_Desc.NumRenderTargets           = 1;
+				PSO_Desc.RTVFormats[0]              = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.BlendState.RenderTarget[0] = TransparencyBlend_Desc;
+				PSO_Desc.SampleDesc.Count           = 1;
+				PSO_Desc.SampleDesc.Quality         = 0;
+				PSO_Desc.DSVFormat                  = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout                = { InputElements, 5 };
+				PSO_Desc.DepthStencilState          = Depth_Desc;
+			}
+
+			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			FlexKit::CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
+
+			Destroy(&DrawTextVShader);
+			Destroy(&DrawTextGShader);
+			Destroy(&DrawTextPShader);
+
+			RG->DrawStates[DCT_DrawText] = PSO;
 		}
 
 		ConstantBuffer_desc	Desc;
@@ -5949,8 +6163,16 @@ namespace FlexKit
 
 		RG->Rects.Allocator			= Memory;
 		RG->DrawCalls.Allocator		= Memory;
+		RG->Text.Allocator			= Memory;
 		RG->TexturedRects.Allocator = Memory;
-		RG->Textures.Allocator		= Memory;
+		RG->ClipAreas.Allocator		= Memory;
+		RG->DrawLines3D.Allocator	= Memory;
+
+		Destroy(&DrawRectVShader);
+		Destroy(&DrawRectPShader);
+		Destroy(&DrawRectPSTexturedShader);
+		Destroy(&DrawLineVShader);
+		Destroy(&DrawLinePShader);
 	}
 
 
@@ -5961,7 +6183,6 @@ namespace FlexKit
 	{
 		size_t			RectOffset		= 0;
 		size_t			TexturePosition = 0;
-		size_t			MeshOffset		= 0;
 		DRAWCALLTYPE	PrevState		= DCT_COUNT;
 
 		FINALLY
@@ -5969,7 +6190,9 @@ namespace FlexKit
 			GUIStack->Rects.Release();
 			GUIStack->DrawCalls.Release();
 			GUIStack->TexturedRects.Release();
-			GUIStack->Textures.Release();
+			GUIStack->ClipAreas.Release();
+			GUIStack->Text.Release();
+			GUIStack->DrawLines3D.Release();
 		}
 		FINALLYOVER
 
@@ -5994,39 +6217,145 @@ namespace FlexKit
 
 		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
 		CL->OMSetRenderTargets		(1, &GetBackBufferView(RenderTarget), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
-		CL->IASetPrimitiveTopology	(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		CL->SetDescriptorHeaps		(1, &DescriptorHeap);
 
 		for (auto D : GUIStack->DrawCalls)
 		{
+			bool StateChanged = true;
+			if (PrevState != D.Type) {
+				CL->SetPipelineState(GUIStack->DrawStates[D.Type]);
+				StateChanged = true;
+			}
+			else
+				StateChanged = false;
+
 			switch (D.Type)
 			{
-			case DRAWCALLTYPE::DCT_2DRECT:
-				if (PrevState != D.Type)
-					CL->SetPipelineState(GUIStack->DrawStates[DRAWCALLTYPE::DCT_2DRECT]);
+			case DRAWCALLTYPE::DCT_2DRECT_CLIPPED: {
+				/*
+				LONG left;
+				LONG top;
+				LONG right;
+				LONG bottom;
+				*/
 
-				CL->IASetVertexBuffers	( 0, 1, View + 0 );
-				CL->DrawInstanced		( 6, 1, 6 * RectOffset, 0 );
-				RectOffset++;
-				break;
+				auto ClipArea	= GUIStack->ClipAreas[D.Index];
+				auto WH			= RenderTarget->WH;
+				
+				D3D12_RECT Rects[] = { {
+						(LONG)(WH[0] * ClipArea.CLIPAREA_BLEFT[0]),
+						(LONG)(WH[1] - WH[1] * ClipArea.CLIPAREA_TRIGHT[1]),
+						(LONG)(WH[0] * ClipArea.CLIPAREA_TRIGHT[0]),
+						(LONG)(WH[1] - WH[1] * ClipArea.CLIPAREA_BLEFT[1]),
+					}
+				};
+
+				CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				CL->RSSetScissorRects	(1, Rects);
+				CL->IASetVertexBuffers	(0, 1, View + 0);
+				CL->DrawInstanced		(6, 1, RectOffset, 0);
+				RectOffset += 6;
+			}	break;
+			case DRAWCALLTYPE::DCT_2DRECT:{
+				auto WH = RenderTarget->WH;
+				D3D12_RECT Rects[] = { {
+						0,
+						0,
+						(LONG)WH[0],
+						(LONG)WH[1],
+					}
+				};
+
+				CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				CL->RSSetScissorRects	(1, Rects);
+				CL->IASetVertexBuffers	(0, 1, View + 0);
+				CL->DrawInstanced		(6, 1, RectOffset, 0);
+				RectOffset+= 6;
+
+			}	break;
 			case DRAWCALLTYPE::DCT_2DRECTTEXTURED: {
-				if (PrevState != D.Type)
-					CL->SetPipelineState(GUIStack->DrawStates[DRAWCALLTYPE::DCT_2DRECTTEXTURED]);
+				auto WH		= RenderTarget->WH;
+				auto BLeft	= GUIStack->TexturedRects[D.Index].CLIPAREA_BLEFT;
+				auto TRight	= GUIStack->TexturedRects[D.Index].CLIPAREA_TRIGHT;
+
+				D3D12_RECT Rects[] = { {
+						(LONG)(WH[0] * BLeft[0]),
+						(LONG)(WH[1] - WH[1] * TRight[1]),
+						(LONG)(WH[0] * TRight[0]),
+						(LONG)(WH[1] - WH[1] * BLeft[1]),
+					}
+				};
 
 				auto DescPOS  = ReserveDescHeap(RS, 1);
-				PushTextureToDescHeap(RS, *GUIStack->Textures[TexturePosition], DescPOS);
+				PushTextureToDescHeap(RS, *GUIStack->TexturedRects[TexturePosition].Texture, DescPOS);
 
-				CL->SetGraphicsRootDescriptorTable(0, DescPOS);
-				CL->IASetVertexBuffers	(0, 1, View + 0);
-				CL->DrawInstanced		(6, 1, 6 * RectOffset, 0);
+				CL->IASetPrimitiveTopology			(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				CL->SetGraphicsRootDescriptorTable	(0, DescPOS);
+				CL->IASetVertexBuffers				(0, 1, View + 0);
+				CL->DrawInstanced					(6, 1, RectOffset, 0);
 	
-				RectOffset++;
+				RectOffset+= 6;
 				TexturePosition++;
 			}	break;
-			case DRAWCALLTYPE::DCT_3DMesh:
+			case DRAWCALLTYPE::DCT_DrawLines: {
+				LineSet* LineDrawCall = GUIStack->DrawLines3D[D.Index].Lines;
+				Camera* C = GUIStack->DrawLines3D[D.Index].C;
+				
+				D3D12_VERTEX_BUFFER_VIEW Views[] = {
+					{		  LineDrawCall->GPUResource->GetGPUVirtualAddress() ,
+						(UINT)LineDrawCall->LineSegments.size() * sizeof(LineSegment),
+						(UINT)sizeof(float3) * 2
+					},
+				};
+
+				CL->IASetVertexBuffers					(0, 1, Views);
+				CL->IASetPrimitiveTopology				(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
+				CL->SetGraphicsRootConstantBufferView	(1,  C->Buffer.Get()->GetGPUVirtualAddress());
+				CL->DrawInstanced						(2 * LineDrawCall->LineSegments.size(), 1, 0, 0);
+			}	break;
+
+			case DRAWCALLTYPE::DCT_DrawText: {
+				{
+					auto T = GUIStack->Text[D.Index];
+					auto Font = T.Font;
+					auto Text = T.Text;
+
+					D3D12_RECT RECT = D3D12_RECT();
+					RECT.right	= (UINT)RenderTarget->WH[0];
+					RECT.bottom = (UINT)RenderTarget->WH[1];
+
+					D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC = {};
+					SRV_DESC.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+					SRV_DESC.Texture2D.MipLevels           = 1;
+					SRV_DESC.Texture2D.MostDetailedMip     = 0;
+					SRV_DESC.Texture2D.PlaneSlice          = 0;
+					SRV_DESC.Texture2D.ResourceMinLODClamp = 0;
+					SRV_DESC.Shader4ComponentMapping	   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; 
+
+					D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
+						{ Text->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Text->CharacterCount), sizeof(TextEntry) },
+					};
+			
+					auto TextureView = ReserveDescHeap(RS, 1);
+					RS->pDevice->CreateShaderResourceView(Font->Texture, &SRV_DESC, TextureView);
+			
+
+					ID3D12DescriptorHeap* Heaps[] = { GetCurrentDescriptorTable(RS) };
+
+					CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+					CL->IASetVertexBuffers				(0, 1, VBuffers);
+					CL->SetDescriptorHeaps				(1, Heaps);
+					CL->SetGraphicsRootDescriptorTable	(0, TextureView);
+					CL->OMSetBlendFactor				(float4(1.0f, 1.0f, 1.0f, 1.0f));
+					CL->RSSetScissorRects				(1, &RECT);
+
+					CL->DrawInstanced					(Text->CharacterCount, 1, 0, 0);
+				}
+			}	break;
+			//case DRAWCALLTYPE::DCT_3DMesh:
 				//CL->IASetVertexBuffers(0, 1, View + 1);
 				//CL->DrawInstanced(4, 1, 4 * TexturedRectOffset, 0);
-				break;
+			//break;
 			default:
 				break;
 			}
@@ -6049,9 +6378,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpRenderGUI(GUIRender* RG) {
+	void CleanUpDrawGUI(GUIRender* RG) {
 		RG->Rects.Release();
 		RG->TexturedRects.Release();
+		RG->ClipAreas.Release();
 
 		if(RG->RectBuffer)			RG->RectBuffer.Release();
 		if(RG->TexturedRectBuffer)	RG->TexturedRectBuffer.Release();
@@ -6064,89 +6394,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void UploadLineSegments(RenderSystem* RS, Line3DPass* Pass)
+	void UploadLineSegments(RenderSystem* RS, LineSet* Pass)
 	{
 		if(Pass->LineSegments.size())
 		{
-			UpdateResourceByTemp(RS, &Pass->GPUResource, 
-						Pass->LineSegments.begin(), 
-						Pass->LineSegments.size() * sizeof(LineSegment), 1, 
-						D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+			UpdateResourceByTemp(
+					RS, &Pass->GPUResource, 
+					Pass->LineSegments.begin(), 
+					Pass->LineSegments.size() * sizeof(LineSegment), 1, 
+					D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 		}
 	}
 
 
 	/************************************************************************************************/
 
-
-	void InitiateLineDrawState(RenderSystem* RS, iAllocator* Mem, LineDrawState* out)
-	{
-		Shader VShader;
-		Shader PShader;
-
-		// Load Shaders
-		{
-			// Load VShader
-			VShader = LoadShader("VSegmentPassthrough", "VSegmentPassthrough",	"vs_5_0", "assets\\vshader.hlsl");
-			PShader = LoadShader("DrawLine",			"DrawLine",				"ps_5_0", "assets\\pshader.hlsl");
-		}
-		// Create Pipeline StateObject
-		{	
-			auto RootSig = RS->Library.RS4CBVs4SRVs;
-
-			/*
-			typedef struct D3D12_INPUT_ELEMENT_DESC
-			{
-				LPCSTR						SemanticName;
-				UINT						SemanticIndex;
-				DXGI_FORMAT					Format;
-				UINT						InputSlot;
-				UINT						AlignedByteOffset;
-				D3D12_INPUT_CLASSIFICATION	InputSlotClass;
-				UINT						InstanceDataStepRate;
-			} 	D3D12_INPUT_ELEMENT_DESC;
-			*/
-
-			D3D12_INPUT_ELEMENT_DESC InputElements[2] = {
-				{ "POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-				{ "COLOUR",			0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			};
-
-			D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-			Depth_Desc.DepthFunc		= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-			Depth_Desc.DepthEnable		= false;
-
-			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-				PSO_Desc.pRootSignature        = RootSig;
-				PSO_Desc.VS                    = { (BYTE*)VShader.Blob->GetBufferPointer(), VShader.Blob->GetBufferSize() };
-				PSO_Desc.PS                    = { (BYTE*)PShader.Blob->GetBufferPointer(), PShader.Blob->GetBufferSize() };
-				PSO_Desc.RasterizerState       = Rast_Desc;
-				PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-				PSO_Desc.SampleMask            = UINT_MAX;
-				PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
-				PSO_Desc.NumRenderTargets      = 1;
-				PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
-				PSO_Desc.SampleDesc.Count      = 1;
-				PSO_Desc.SampleDesc.Quality    = 0;
-				PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-				PSO_Desc.InputLayout           = { InputElements, 2 };
-				PSO_Desc.DepthStencilState     = Depth_Desc;
-			}
-
-			ID3D12PipelineState* PSO = nullptr;
-			HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-			FK_ASSERT(SUCCEEDED(HR));
-			out->PSO = PSO;
-		}
-
-		Destroy(&VShader);
-		Destroy(&PShader);
-	}
-
-	
-	/************************************************************************************************/
-	
 
 	void Clear(GUIRender* RG)
 	{
@@ -6159,7 +6421,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Initiate3DLinePass(RenderSystem* RS, iAllocator* Mem, Line3DPass* out)
+	void InitiateLineSet(RenderSystem* RS, iAllocator* Mem, LineSet* out)
 	{
 		out->LineSegments.Release();
 		out->LineSegments.Allocator = Mem;
@@ -6172,16 +6434,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpLineDrawState(LineDrawState* drawer)
+	void ClearLineSet(LineSet* Set)
 	{
-		drawer->PSO->Release();
+		Set->LineSegments.clear();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void CleanUpLineDrawPass(Line3DPass* pass)
+	void CleanUpLineSet(LineSet* pass)
 	{
 		pass->LineSegments.Release();
 		pass->GPUResource.Release();
@@ -6191,7 +6453,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void AddLineSegment(Line3DPass* Pass, LineSegment in)
+	void AddLineSegment(LineSet* Pass, LineSegment in)
 	{
 		Pass->LineSegments.push_back(in);
 	}
@@ -6222,63 +6484,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Draw3DLineSegments(RenderSystem* RS, LineDrawState* State, Line3DPass* Pass, Camera* Camera, RenderWindow* TargetWindow)
-	{
-		if(!Pass->LineSegments.size())
-			return;
-
-		auto CL = GetCurrentCommandList(RS);
-
-
-		/*
-		typedef struct D3D12_VERTEX_BUFFER_VIEW
-		{
-			D3D12_GPU_VIRTUAL_ADDRESS	BufferLocation;
-			UINT						SizeInBytes;
-			UINT						StrideInBytes;
-		} 	D3D12_VERTEX_BUFFER_VIEW;
-		*/
-
-		D3D12_VERTEX_BUFFER_VIEW Views[] = {
-			{ Pass->GPUResource->GetGPUVirtualAddress() ,
-			(UINT)Pass->LineSegments.size() * sizeof(LineSegment),
-			(UINT)sizeof(float3) * 2
-			},
-		};
-		
-		SetWindowRect(CL, TargetWindow);
-
-		// Set Pipeline State
-		{
-			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
-			CL->SetPipelineState(State->PSO);
-			CL->IASetVertexBuffers(0, 1, Views);
-			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
-			CL->SetGraphicsRootConstantBufferView(1, Camera->Buffer.Get()->GetGPUVirtualAddress());
-			CL->OMSetRenderTargets(1, &GetBackBufferView(TargetWindow), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
-		}
-
-		CL->DrawInstanced(2 * Pass->LineSegments.size(), 1, 0, 0);
-
-		Pass->LineSegments.clear();
-		Pass->GPUResource.IncrementCounter();
-	}
-
-
-}	/************************************************************************************************/
-
-
-namespace TextUtilities
-{
-	/************************************************************************************************/
-
-
-	void CleanUpTextArea(TextArea* TA, FlexKit::iAllocator* BA)
-	{
-		BA->free(TA->TextBuffer);
-		if(TA->Buffer) TA->Buffer.Release();
-	}
-
 	void ClearText(TextArea* TA)
 	{
 		memset(TA->TextBuffer, '\0', TA->BufferSize);
@@ -6290,12 +6495,18 @@ namespace TextUtilities
 	/************************************************************************************************/
 
 
-	void DrawTextArea(TextUtilities::TextRender* TR, TextUtilities::FontAsset* F, TextArea* TA, FlexKit::iAllocator* Temp, RenderSystem* RS, FlexKit::RenderWindow* Target)
+	void CleanUpTextArea(TextArea* TA, FlexKit::iAllocator* BA)
 	{
-		using TextUtilities::TextEntry;
-		using FlexKit::uint2;
+		BA->free(TA->TextBuffer);
+		if (TA->Buffer) TA->Buffer.Release();
+	}
 
 
+	/************************************************************************************************/
+
+
+	void UploadTextArea(FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, RenderWindow* Target)
+	{
 		if (TA->Dirty)
 		{
 			TA->Dirty = 0;
@@ -6303,9 +6514,9 @@ namespace TextUtilities
 			auto& NewTextBuffer = FlexKit::fixed_vector<TextEntry>::Create_Aligned(Size, Temp, 0x10);
 
 			uint2 I = { 0, 0 };
-			size_t CharactersFound = 0;
-			float AspectRatio	= Target->WH[0] / Target->WH[1];
-			float TextScale		= 0.5f;
+			size_t CharactersFound	= 0;
+			float AspectRatio		= Target->WH[0] / Target->WH[1];
+			float TextScale			= 0.5f;
 
 			float2 PositionOffset	= float2(float(TA->Position[0]) / Target->WH[0], -float(TA->Position[1]) / Target->WH[1]);
 			float2 StartPOS			= float2{ -1.0f, 1.0f };
@@ -6327,7 +6538,7 @@ namespace TextUtilities
 						break;
 					default:
 						{
-							auto G	= F->GlyphTable[C];
+							auto G		= F->GlyphTable[C];
 							float2 WH   = G.WH * Scale;
 							float2 XY   = G.XY * Scale;
 							float2 UVTL = XY;
@@ -6355,53 +6566,6 @@ namespace TextUtilities
 			
 			UpdateResourceByTemp(RS, &TA->Buffer, (void*)NewTextBuffer.begin(), sizeof(TextEntry) * NewTextBuffer.size(), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 		}
-
-		auto CL = GetCurrentCommandList(RS);
-
-		if(TA->CharacterCount)
-		{
-			D3D12_RECT		RECT = D3D12_RECT();
-			D3D12_VIEWPORT	VP = D3D12_VIEWPORT();
-
-			RECT.right	= (UINT)Target->WH[0];
-			RECT.bottom = (UINT)Target->WH[1];
-			VP.Height	= (UINT)Target->WH[1];
-			VP.Width	= (UINT)Target->WH[0];
-			VP.MaxDepth = 1;
-			VP.MinDepth = 0;
-			VP.TopLeftX = -1;
-			VP.TopLeftY = -1;
-
-			D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC = {};
-			SRV_DESC.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-			SRV_DESC.Texture2D.MipLevels           = 1;
-			SRV_DESC.Texture2D.MostDetailedMip     = 0;
-			SRV_DESC.Texture2D.PlaneSlice          = 0;
-			SRV_DESC.Texture2D.ResourceMinLODClamp = 0;
-			SRV_DESC.Shader4ComponentMapping	   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; 
-
-
-			D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
-				{ TA->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * TA->CharacterCount), sizeof(TextEntry) },
-			};
-			
-
-			RS->pDevice->CreateShaderResourceView(F->Text, &SRV_DESC, TR->Textures->GetCPUDescriptorHandleForHeapStart());
-			
-			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
-			CL->SetPipelineState(TR->PSO);
-
-			CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-			CL->IASetVertexBuffers(0, 1, VBuffers);
-			CL->SetDescriptorHeaps(1, &TR->Textures);
-			CL->SetGraphicsRootDescriptorTable(0, TR->Textures->GetGPUDescriptorHandleForHeapStart());
-			CL->OMSetRenderTargets(1, &GetBackBufferView(Target), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
-			CL->OMSetBlendFactor(float4(1.0f, 1.0f, 1.0f, 1.0f));
-			CL->RSSetViewports(1, &VP);
-			CL->RSSetScissorRects(1, &RECT);
-			CL->DrawInstanced(TA->CharacterCount, 1, 0, 0);
-		}
-
 	}
 
 
@@ -6450,101 +6614,8 @@ namespace TextUtilities
 
 	/************************************************************************************************/
 
-	
-	void InitiateTextRender(FlexKit::RenderSystem* RS, TextRender* out)
-	{
-		using FlexKit::Shader;
-		using FlexKit::ShaderDesc;
 
-		out->VShader = LoadShader("VTextMain", "TextPassThrough",	"vs_5_0", "assets\\TextRendering.hlsl");
-		out->GShader = LoadShader("GTextMain", "GTextMain",			"gs_5_0", "assets\\TextRendering.hlsl");
-		out->PShader = LoadShader("PTextMain", "TextShading",		"ps_5_0", "assets\\TextRendering.hlsl");
-	
-		// Create Root Signature
-		{
-			HRESULT HR;
-			ID3D12PipelineState* PSO = nullptr;
-
-			/*
-			struct TextEntry
-			{
-				float2 POS;
-				float2 Size;
-				float2 TopLeftUV;
-				float2 BottomRightUV;
-				float4 Color;
-			};
-			*/
-
-			D3D12_INPUT_ELEMENT_DESC InputElements[5] =	{
-				{ "POS",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-				{ "WH",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-				{ "UVTL",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-				{ "UVBL",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,			0, 24, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-				{ "COLOR",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,		0, 32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-			};
-
-			D3D12_RASTERIZER_DESC Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);{
-			}
-
-			D3D12_DEPTH_STENCIL_DESC Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);{
-				Depth_Desc.DepthEnable	 = false;
-				Depth_Desc.StencilEnable = false;
-			}
-
-			D3D12_RENDER_TARGET_BLEND_DESC TransparencyBlend_Desc;{
-				TransparencyBlend_Desc.BlendEnable           = true;
-				TransparencyBlend_Desc.LogicOpEnable         = false;
-				TransparencyBlend_Desc.SrcBlend              = D3D12_BLEND_SRC_ALPHA;
-				TransparencyBlend_Desc.DestBlend             = D3D12_BLEND_INV_SRC_ALPHA;
-				TransparencyBlend_Desc.BlendOp               = D3D12_BLEND_OP_ADD;
-				TransparencyBlend_Desc.SrcBlendAlpha         = D3D12_BLEND_ZERO;
-				TransparencyBlend_Desc.DestBlendAlpha        = D3D12_BLEND_ZERO;
-				TransparencyBlend_Desc.BlendOpAlpha          = D3D12_BLEND_OP_ADD;
-				TransparencyBlend_Desc.LogicOp               = D3D12_LOGIC_OP_NOOP;
-				TransparencyBlend_Desc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
-			}
-
-			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_Desc = {};{
-				PSO_Desc.pRootSignature             = RS->Library.RS4CBVs4SRVs;
-				PSO_Desc.VS                         = out->VShader;
-				PSO_Desc.GS                         = out->GShader;
-				PSO_Desc.PS                         = out->PShader;
-				PSO_Desc.RasterizerState            = Rast_Desc;
-				PSO_Desc.BlendState                 = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-				PSO_Desc.SampleMask                 = UINT_MAX;
-				PSO_Desc.PrimitiveTopologyType      = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-				PSO_Desc.NumRenderTargets           = 1;
-				PSO_Desc.RTVFormats[0]              = DXGI_FORMAT_R8G8B8A8_UNORM;
-				PSO_Desc.BlendState.RenderTarget[0] = TransparencyBlend_Desc;
-				PSO_Desc.SampleDesc.Count           = 1;
-				PSO_Desc.SampleDesc.Quality         = 0;
-				PSO_Desc.DSVFormat                  = DXGI_FORMAT_D32_FLOAT;
-				PSO_Desc.InputLayout                = { InputElements, 5 };
-				PSO_Desc.DepthStencilState          = Depth_Desc;
-			}
-
-			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-			FlexKit::CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
-
-			ID3D12DescriptorHeap* TextureHeap = nullptr;
-			D3D12_DESCRIPTOR_HEAP_DESC Heap_Desc;
-			Heap_Desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-			Heap_Desc.NodeMask       = 0;
-			Heap_Desc.NumDescriptors = 20;
-			Heap_Desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-
-			HR = RS->pDevice->CreateDescriptorHeap(&Heap_Desc, IID_PPV_ARGS(&TextureHeap));
-			out->Textures = TextureHeap;
-			out->PSO      = PSO;
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	TextArea CreateTextObject(FlexKit::RenderSystem* RS, FlexKit::iAllocator* Mem, TextArea_Desc* D)// Setups a 2D Surface for Drawing Text into
+	TextArea CreateTextArea(RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D)// Setups a 2D Surface for Drawing Text into
 	{
 		size_t C = D->WH.x/D->TextWH.x;
 		size_t R = D->WH.y/D->TextWH.y;
@@ -6558,7 +6629,7 @@ namespace TextUtilities
 		Resource_DESC.Width				= C * R;
 		Resource_DESC.DepthOrArraySize	= 1;
 
-		D3D12_HEAP_PROPERTIES HEAP_Props ={};
+		D3D12_HEAP_PROPERTIES HEAP_Props = {};
 		HEAP_Props.CPUPageProperty	     = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 		HEAP_Props.Type				     = D3D12_HEAP_TYPE_DEFAULT;
 		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
@@ -6568,20 +6639,8 @@ namespace TextUtilities
 		auto NewResource = FlexKit::CreateShaderResource(RS, C * R * sizeof(TextEntry));
 		NewResource._SetDebugName("TEXTOBJECT");
 
-		return{ TextBuffer, C * R, {C, R},  {0, 0}, NewResource, 0, false};
+		return{ TextBuffer, C * R, {C, R},  {0, 0}, NewResource, 0, false, Mem};
 	}
 
 
-	/************************************************************************************************/
-
-
-	void CleanUpTextRender(TextRender* out)
-	{
-		out->GShader.Blob->Release();
-		out->PShader.Blob->Release();
-		out->VShader.Blob->Release();
-		out->Textures->Release();
-		out->PSO->Release();
-	}
-
-}
+}//	Namespace FlexKit
