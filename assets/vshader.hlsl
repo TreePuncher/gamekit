@@ -225,8 +225,6 @@ struct VIN4
 StructuredBuffer<Joint> Bones : register(t0);
 
 
-/************************************************************************************************/
-
 
 PS_IN VMainVertexPallet(VIN4 In)
 {

@@ -106,6 +106,9 @@
     <ClInclude Include="graphicsutilities\DDSUtilities.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="graphicsutilities\GuiUtilities.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -160,6 +163,9 @@
       <Filter>Physics</Filter>
     </ClCompile>
     <ClCompile Include="graphicsutilities\DDSUtilities.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\GuiUtilities.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>

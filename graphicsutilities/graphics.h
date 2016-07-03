@@ -2032,23 +2032,24 @@ namespace FlexKit
 
 	struct TextArea
 	{
-		char*				 TextBuffer;
-		size_t				 BufferSize;
-		FlexKit::uint2		 BufferDimensions;
-		FlexKit::uint2		 Position;
+		char*		TextBuffer;
+		size_t		BufferSize;
+		uint2		BufferDimensions;
+		uint2		Position;
+		float2		ScreenPosition;
 
 		ShaderResourceBuffer Buffer;
 
 		size_t				 CharacterCount;
 		size_t				 Dirty;
 
-		iAllocator*			Memory;
+		iAllocator*			 Memory;
 	};
 
 	struct TextArea_Desc
 	{
 		float2 POS;		// Screen Space Cord
-		float2 WH;		// Width - Height
+		float2 WH;		// Width, Height
 		float2 TextWH;	// Text Size
 	};
 
@@ -2121,7 +2122,8 @@ namespace FlexKit
 	FLEXKITAPI void CleanUpTextArea	( TextArea* TA, iAllocator* BA );
 	FLEXKITAPI void PrintText		( TextArea* Area, const char* text );
 
-	FLEXKITAPI TextArea CreateTextArea( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
+	FLEXKITAPI TextArea CreateTextArea	( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
+	FLEXKITAPI void		UploadTextArea	( FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, RenderWindow* Target);
 
 
 	/************************************************************************************************/
@@ -2130,10 +2132,10 @@ namespace FlexKit
 	enum DRAWCALLTYPE : size_t
 	{
 		DCT_2DRECT,
-		DCT_2DRECTTEXTURED,
+		DCT_2DRECT_TEXTURED,
 		DCT_2DRECT_CLIPPED,
-		DCT_DrawLines,
-		DCT_DrawText,
+		DCT_LINES3D,
+		DCT_Text,
 		DCT_COUNT,
 	};
 
@@ -2166,7 +2168,7 @@ namespace FlexKit
 		float4 Color;
 	};
 
-	struct Draw_Textured_RECT
+	struct Draw_TEXTURED_RECT
 	{
 		float2			TRight;
 		float2			BLeft;
@@ -2193,7 +2195,7 @@ namespace FlexKit
 	};
 
 
-	struct Draw_Text
+	struct Draw_TEXT
 	{
 		float2 CLIPAREA_BLEFT;
 		float2 CLIPAREA_TRIGHT;
@@ -2216,16 +2218,13 @@ namespace FlexKit
 		DynArray<ClipArea>			ClipAreas;
 		DynArray<Draw_RECTPoint>	Rects;
 		DynArray<Textured_Rect>		TexturedRects;
-		DynArray<Draw_Text>			Text;
+		DynArray<Draw_TEXT>			Text;
 		DynArray<Draw_LineSet_3D>	DrawLines3D;
 
-		DynArray<DrawCall>		DrawCalls;
+		DynArray<DrawCall>			DrawCalls;
 
-		FrameBufferedResource	RectBuffer;
-		FrameBufferedResource	TexturedRectBuffer;
-		ID3D12PipelineState*	DrawStates[DRAWCALLTYPE::DCT_COUNT];
-
-		//TextUtilities::TextRender*	DrawTextState;
+		FrameBufferedResource		RectBuffer;
+		ID3D12PipelineState*		DrawStates[DRAWCALLTYPE::DCT_COUNT];
 	};
 
 
@@ -2250,19 +2249,24 @@ namespace FlexKit
 	FLEXKITAPI void SetSystemCursorToWindowCenter	( RenderWindow* Window );
 	FLEXKITAPI void ShowSystemCursor				( RenderWindow* Window );
 
+	FLEXKITAPI float2 GetPixelSize(RenderWindow* Window);
+
 	
 	/************************************************************************************************/
 
-	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT );
-	FLEXKITAPI void PushRect( GUIRender* RG, Draw_Textured_RECT );
+	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT Rect );
+	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT_CLIPPED Rect );
+	FLEXKITAPI void PushRect( GUIRender* RG, Draw_TEXTURED_RECT Rect );
+
+	FLEXKITAPI void PushText( GUIRender* RG, Draw_TEXT Text );
 
 	FLEXKITAPI void PushLineSet( GUIRender* RG, Draw_LineSet_3D);
 	
 	FLEXKITAPI void InitiateDrawGUI		( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
 	FLEXKITAPI void CleanUpDrawGUI		( GUIRender* RG);
 
-	FLEXKITAPI void Clear	( GUIRender* RG );
-	FLEXKITAPI void Upload	( RenderSystem* RS, GUIRender* RG );
+	FLEXKITAPI void Clear		( GUIRender* RG );
+	FLEXKITAPI void UploadGUI	( RenderSystem* RS, GUIRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);
 
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
@@ -2289,8 +2293,8 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT);
-	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB);
+	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT );
+	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
@@ -2313,7 +2317,7 @@ namespace FlexKit
 	FLEXKITAPI void EndPass					( ID3D12GraphicsCommandList* CL, RenderSystem* RS, RenderWindow* Window);
 
 	FLEXKITAPI void ClearBackBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor );
-	FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* RW, float ClearValue = 1.0f, int Stencil = 0 );
+	FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, DepthBuffer* DB, float ClearValue = 1.0f, int Stencil = 0, size_t Index = 0u );
 	
 	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardPass* out );
 	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
@@ -2328,14 +2332,14 @@ namespace FlexKit
 
 	FLEXKITAPI void		   ResetDescHeap			( RenderSystem* RS );
 	FLEXKITAPI DescHeapPOS ReserveDescHeap			( RenderSystem* RS, size_t SlotCount = 1 );
-	FLEXKITAPI DescHeapPOS PushCBToDescHeap			( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t BufferSize);
-	FLEXKITAPI DescHeapPOS PushSRVBufferToDescHeap	( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE);
-	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	( RenderSystem* RS,	Texture2D tex,					DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		( RenderSystem* RS, Texture2D tex,					DescHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM);
+	FLEXKITAPI DescHeapPOS PushCBToDescHeap			( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t BufferSize );
+	FLEXKITAPI DescHeapPOS PushSRVBufferToDescHeap	( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE );
+	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	( RenderSystem* RS,	Texture2D tex,					DescHeapPOS POS );
+	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		( RenderSystem* RS, Texture2D tex,					DescHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM );
 
-	FLEXKITAPI void		SetWindowRect				( ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I = 0u);
+	FLEXKITAPI void		   SetWindowRect			( ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I = 0u );
 	
-	inline float3	Gray(float P) { return float3(P, P, P); }
+	inline float3	Gray( float P ) { return float3(P, P, P); }
 	
 
 	/************************************************************************************************/
@@ -2407,7 +2411,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void ClearTriMeshVBVs(TriMesh* Mesh){ for (auto& buffer : Mesh->Buffers) buffer = nullptr; }
+	inline void ClearTriMeshVBVs(TriMesh* Mesh) { for (auto& buffer : Mesh->Buffers) buffer = nullptr; }
 
 
 	/************************************************************************************************/

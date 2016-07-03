@@ -383,13 +383,18 @@ namespace FlexKit
 		inline float2 operator - ( const float   a ) const { return float2( this->x - a, this->y - a );					}
 		inline float2 operator * ( const float2& a ) const { return float2( this->x * a.x, this->y * a.y );				}
 		inline float2 operator * ( const float   a ) const { return float2( this->x * a, this->y * a );					}
-		inline float2 operator +=( const float2& a ) const { return float2( this->x + a.x, this->y + a.y );				}
 		inline float2 operator / ( const float2& a ) const { return float2( this->x / a.x, this->y / a.y );				}
 		inline float2 operator / ( const float   a ) const { return float2( this->x / a, this->y / a );					}
 		inline float2 operator % ( const float2& a ) const { return float2( std::fmodf(x, a.x), std::fmodf(y, a.y));	}
 
 		inline float2 operator = (const float2& a) { x = a.x; y = a.y; return *this; }
 
+		inline float2 operator +=(const float2& a) 
+		{ 
+			x += a.x;
+			y += a.y;
+			return *this;
+		}
 
 		inline void Add( const float2& lhs, const float2& rhs )
 		{

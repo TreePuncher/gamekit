@@ -194,6 +194,7 @@
     <ClInclude Include="graphicsutilities\AnimationUtilities.h" />
     <ClInclude Include="graphicsutilities\DDSUtilities.h" />
     <ClInclude Include="graphicsutilities\graphics.h" />
+    <ClInclude Include="graphicsutilities\GuiUtilities.h" />
     <ClInclude Include="graphicsutilities\TerrainRendering.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PhysicsUtilities\physicsutilities.h" />
@@ -260,6 +261,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="graphicsutilities\GuiUtilities.cpp" />
     <ClCompile Include="graphicsutilities\TerrainRendering.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

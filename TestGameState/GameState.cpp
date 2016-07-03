@@ -73,6 +73,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\ResourceUtilities.h"
 #include "..\Application\ResourceUtilities.cpp"
 #include "..\Application\GameUtilities.cpp"
+#include "..\graphicsutilities\GuiUtilities.cpp"
 #include "..\graphicsutilities\TerrainRendering.h"
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\DungeonGen.h"
@@ -339,7 +340,8 @@ struct MouseInputState
 	float2	Position		= {0, 0};
 	float2	NormalizedPos	= {0, 0};
 
-	bool Enabled	= false;
+	bool LeftButtonPressed	= false;
+	bool Enabled			= false;
 };
 
 
@@ -443,6 +445,12 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 
 
 /************************************************************************************************/
+
+
+void ClearMouseButtonStates(MouseInputState* State)
+{
+	State->LeftButtonPressed = false;
+}
 
 
 void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
@@ -657,315 +665,6 @@ void CleanupHairRender(HairRender* Out)
 	Out->Simulate.PSO->Release();
 }
 
-
-/************************************************************************************************/
-
-enum EGUI_ELEMENT_TYPE
-{
-	EGE_PANEL,
-	EGE_BUTTON,
-};
-
-struct GUIElement
-{
-	EGUI_ELEMENT_TYPE	Type;
-	size_t				Index;
-	float2				Position;
-
-};
-
-typedef DynArray<size_t> GUIChildList;
-
-struct GUIElement_Panel {
-	GUIElement_Panel(GUIElement_Panel&& in) {
-		WH			= in.WH;
-		Color		= in.Color;
-		Children	= std::move(in.Children);
-	}
-
-	GUIElement_Panel& operator = (const GUIElement_Panel& in)
-	{
-		WH		 = in.WH;
-		Color	 = in.Color;
-		Children = in.Children;
-		return *this;
-	}
-
-	GUIElement_Panel(const GUIElement_Panel& in)	{
-		WH			= in.WH;
-		Color		= in.Color;
-		Children	= in.Children;
-	}
-
-	GUIElement_Panel() {}
-
-	float2			WH;
-	float4			Color;
-	GUIChildList	Children;
-};
-
-// CallBacks Definitions
-typedef void(*ButtonEventFN)	(void* _ptr, size_t GUIElement);
-typedef void(*TextInputEventFN)	(char*, size_t, void* _ptr, size_t GUIElement);
-typedef void(*SliderEventFN)	(float, void* _ptr, size_t GUIElement);
-
-struct GUIElement_TexuredButton
-{
-	float2				WH;
-	Texture2D&			Texture;
-	void*				_ptr;
-	ButtonEventFN		OnClicked_CB;
-	ButtonEventFN		OnEntered_CB;
-};
-
-struct GUIElement_TextInput
-{
-	float2				WH;
-	Texture2D&			Texture;
-	char*				Text;
-
-	size_t				TextLength;
-
-	void*				_ptr;
-	TextInputEventFN	OnTextEntered;
-	TextInputEventFN	OnTextChanged;
-
-	iAllocator*		Memory;
-};
-
-struct GUIElement_TextBox
-{
-	float2		WH;
-	Texture2D&	Texture;
-
-	char*		Text;
-	size_t		TextLength;
-
-	iAllocator*	Memory;
-};
-
-struct GUIElement_Slider
-{
-	float2			WH;
-
-	void* _ptr;
-	SliderEventFN	OnChanged;
-
-	float			SliderPosition;
-};
-
-struct GUIElement_RadioButton
-{
-	float2			WH;
-
-	void*			_ptr;
-	ButtonEventFN	OnChanged;
-	
-	bool Toggled;
-};
-
-struct GUIElement_Graph
-{
-};
-
-
-struct GUIElement_TextButton
-{
-	float2				WH;
-	Texture2D&			Texture;
-	void*				_ptr;
-	ButtonEventFN		OnClicked_CB;
-	ButtonEventFN		OnEntered_CB;
-};
-
-
-/************************************************************************************************/
-
-
-struct SimpleWindow
-{
-	GUIChildList						Root;
-	DynArray<GUIElement>				Elements;
-	DynArray<GUIElement_Panel>			Panels;
-	DynArray<GUIElement_TexuredButton>	TexturedButton;
-	DynArray<GUIElement_TextInput>		TextInputs;
-	DynArray<GUIElement_TextBox>		TextBoxes;
-	DynArray<GUIElement_Slider>			Slider;
-	DynArray<GUIElement_RadioButton>	RadioButton;
-	DynArray<GUIElement_Graph>			Graphs;
-
-	float2 TitleBarWH;
-	float2 Border;
-	float4 BorderColor;
-	float2 WH;
-	float2 Position;
-
-	iAllocator*	Memory;
-};
-
-
-/************************************************************************************************/
-
-
-void InitiateGameWindow(iAllocator* Memory, SimpleWindow* Out)
-{
-	Out->Elements.Allocator			= Memory;
-	Out->TexturedButton.Allocator	= Memory;
-	Out->Panels.Allocator			= Memory;
-	Out->Root.Allocator				= Memory;
-
-	Out->Position	= { 0.0f, 0.0f };
-	Out->WH			= { 0.3f, 0.3f };
-
-	Out->Memory = Memory;
-}
-
-
-/************************************************************************************************/
-
-
-struct ParentInfo {
-	float2 ClipArea_BL;
-	float2 ClipArea_TR;
-	float2 ParentPosition;
-};
-
-void ProcessElements(GUIChildList& Elements, SimpleWindow* Window, GUIRender* Out, ParentInfo& P)
-{
-	for (auto& I : Elements)
-	{
-		const auto& E = Window->Elements[I];
-
-		switch (E.Type) {
-		case EGE_PANEL: {
-			float2 Position  = E.Position + P.ParentPosition;
-			float2 WH		 = Window->Panels[E.Index].WH;
-			Draw_RECT_CLIPPED	Panel;
-
-			Panel.BLeft				= Position;
-			Panel.TRight			= Panel.BLeft + WH;
-			Panel.Color				= Window->Panels[E.Index].Color;
-			Panel.CLIPAREA_BLEFT	= P.ClipArea_BL;
-			Panel.CLIPAREA_TRIGHT	= P.ClipArea_TR;
-
-			PushRect(Out, Panel);
-
-			ParentInfo This;
-			This.ParentPosition		= P.ParentPosition	+ Position;
-			This.ClipArea_BL		= P.ClipArea_BL		+ Position;
-			This.ClipArea_TR		= This.ClipArea_BL	+ WH;
-			ProcessElements(Window->Panels[E.Index].Children, Window, Out, This);
-		}	break;
-		case EGE_BUTTON:{
-			float2		Position	=  E.Position + P.ParentPosition;
-			float2		WH			=  Window->TexturedButton[E.Index].WH;
-			Texture2D*	Texture		= &Window->TexturedButton[E.Index].Texture;
-
-			Draw_Textured_RECT Button;
-			Button.TextureHandle = Texture;
-			Button.BLeft		 = Position;
-			Button.Color		 = float4(WHITE, 1);
-			Button.TRight		 = WH;
-			
-			//PushRect(Out, Button);
-		}	break;
-		default:
-			break;
-		}
-	}
-}
-
-
-/************************************************************************************************/
-
-
-struct GUI_Panel_Desc
-{
-	float2 Position = {0.0f, 0.0f};// Relative To Parent
-	float2 WH		= {0.1f, 0.1f};
-	float4 Color	= float4(WHITE, 1);	// W Value will be alpha
-};
-
-
-/************************************************************************************************/
-
-
-struct GameWindowInput
-{
-	float2 MousePosition;
-};
-
-void RenderGameWindow(GameWindowInput Input, SimpleWindow* Window, GUIRender* Out)
-{
-	FlexKit::Draw_RECT	BackPanel;
-	BackPanel.BLeft		= Window->Position;
-	BackPanel.TRight    = Window->Position + Window->WH;
-	BackPanel.Color		= float4(Gray(0.5f), 1);
-
-	PushRect(Out, BackPanel);
-
-	ParentInfo P;
-	P.ClipArea_BL		= BackPanel.BLeft;
-	P.ClipArea_TR		= BackPanel.TRight;
-	P.ParentPosition	= BackPanel.BLeft;
-	ProcessElements(Window->Root, Window, Out, P);
-
-	float AspectRatio = Window->WH[0] / Window->WH[1];
-
-	FlexKit::Draw_RECT	TestCursor;
-	TestCursor.BLeft	= Input.MousePosition + float2{ 0.0f, -0.005f };
-	TestCursor.TRight	= Input.MousePosition + float2{ 0.005f / AspectRatio, 0.005f };
-	TestCursor.Color	= float4(GREEN, 1);
-	PushRect(Out, TestCursor);
-}
-
-
-/************************************************************************************************/
-
-
-bool GameWindow_PushElement(SimpleWindow* Window, size_t Target, GUIElement E)
-{
-	switch (Window->Elements[Target].Type)
-	{
-	case EGE_PANEL:
-		Window->Panels[Window->Elements[Target].Index].Children.push_back(Window->Elements.size());// > Window->Elements[Parent].Index Window -
-		return true;
-	default:
-		break;
-	}
-	return false;
-}
-
-size_t GameWindow_AddPanel(SimpleWindow* Window, GUI_Panel_Desc Desc = GUI_Panel_Desc(), size_t Parent = -1 )
-{
-	GUIElement			E;
-	GUIElement_Panel	P;
-
-	E.Type		= EGE_PANEL;
-	E.Position	= Desc.Position;
-	E.Index		= Window->Panels.size();
-
-	P.WH				 = Desc.WH;
-	P.Color				 = Desc.Color;
-	P.Children.Allocator = Window->Memory;
-
-	bool Push = false;
-	if (Parent == -1) {
-		Window->Root.push_back(Window->Elements.size());
-		Push = true;
-	}
-	else
-		Push = GameWindow_PushElement(Window, Parent, E);
-
-	if (Push) {
-		Window->Elements.push_back(E);
-		Window->Panels.push_back(P);
-	}
-
-	return Window->Elements.size() - 1;
-}
-
-
 /************************************************************************************************/
 
 
@@ -1044,64 +743,8 @@ struct GameState
 #include "..\PhysicsUtilities\physicsutilities.h"
 
 /************************************************************************************************/
+
 using namespace FlexKit;
-
-void HandleKeyEvents(const Event& e, GameState* GS)
-{
-	switch (e.Action)
-	{
-	case Event::Release:
-			switch (e.mData1.mKC[0])
-			{
-			case FlexKit::KC_ESC:
-				GS->Quit = true;
-			case FlexKit::KC_W:
-				GS->Keys.Forward  = false; break;
-			case FlexKit::KC_S:
-				GS->Keys.Backward = false; break;
-			case FlexKit::KC_A:
-				GS->Keys.Left     = false; break;
-			case FlexKit::KC_D:
-				GS->Keys.Right    = false; break;
-			case FlexKit::KC_M:
-			{
-				SetSystemCursorToWindowCenter(GS->ActiveWindow);
-				if(GS->Keys.MouseEnable)
-					ShowSystemCursor(GS->ActiveWindow);
-					else
-					HideSystemCursor(GS->ActiveWindow);
-
-				GS->Keys.MouseEnable = !GS->Keys.MouseEnable; 
-			}	break;
-			default:
-				break;
-			}
-		break;
-	case Event::Pressed:
-			switch (e.mData1.mKC[0])
-			{
-			case FlexKit::KC_W:
-				GS->Keys.Forward  = true; break;
-			case FlexKit::KC_S:
-				GS->Keys.Backward = true; break;
-			case FlexKit::KC_A:
-				GS->Keys.Left     = true; break;
-			case FlexKit::KC_D:
-				GS->Keys.Right    = true; break;
-			case FlexKit::KC_M:
-			default:
-				break;
-			}
-		break;
-
-	default:
-		break;
-
-	}
-}
-
-void HandleMouseEvents	(const Event& e, GameState* GS){}
-void SetActiveCamera	(GameState* State, Camera* _ptr){State->ActiveCamera = _ptr;}
 
 enum ETILEASSET_GUIDS
 {
@@ -1119,28 +762,28 @@ enum ETILEASSET_GUIDS
 	EAG_CORRIDOR_CORNER_SW          = 510,
 	EAG_CORRIDOR_CORNER_SW_COLLIDER = 511,
 
-	EAG_WALL_NS                     = 512,
-	EAG_WALL_NS_COLLIDER            = 513,
-	EAG_WALL_EW                     = 514,
-	EAG_WALL_EW_COLLIDER            = 515,
+	EAG_WALL_NS             = 512,
+	EAG_WALL_NS_COLLIDER    = 513,
+	EAG_WALL_EW             = 514,
+	EAG_WALL_EW_COLLIDER    = 515,
 
-	EAG_DOOR_N                  = 516,
-	EAG_DOOR_N_COLLIDER         = 517,
-	EAG_DOOR_S                  = 518,
-	EAG_DOOR_S_COLLIDER         = 519,
-	EAG_DOOR_E                  = 520,
-	EAG_DOOR_E_COLLIDER         = 521,
-	EAG_DOOR_W                  = 522,
-	EAG_DOOR_W_COLLIDER         = 523,
+	EAG_DOOR_N              = 516,
+	EAG_DOOR_N_COLLIDER     = 517,
+	EAG_DOOR_S              = 518,
+	EAG_DOOR_S_COLLIDER     = 519,
+	EAG_DOOR_E              = 520,
+	EAG_DOOR_E_COLLIDER     = 521,
+	EAG_DOOR_W              = 522,
+	EAG_DOOR_W_COLLIDER     = 523,
 
-	EAG_DEADEND_N					= 524,
-	EAG_DEADEND_N_COLLIDER			= 525,
-	EAG_DEADEND_S					= 526,
-	EAG_DEADEND_S_COLLIDER			= 527,
-	EAG_DEADEND_E					= 528,
-	EAG_DEADEND_E_COLLIDER			= 529,
-	EAG_DEADEND_W					= 530,
-	EAG_DEADEND_W_COLLIDER			= 531,
+	EAG_DEADEND_N			= 524,
+	EAG_DEADEND_N_COLLIDER	= 525,
+	EAG_DEADEND_S			= 526,
+	EAG_DEADEND_S_COLLIDER	= 527,
+	EAG_DEADEND_E			= 528,
+	EAG_DEADEND_E_COLLIDER	= 529,
+	EAG_DEADEND_W			= 530,
+	EAG_DEADEND_W_COLLIDER	= 531,
 
 	EAG_END
 };
@@ -1341,6 +984,100 @@ void ProcessDungeonTile(byte* _ptr, DungeonGenerator::Tile in[3][3], uint2 POS, 
 }
 
 
+
+void HandleKeyEvents(const Event& e, GameState* GS)
+{
+	switch (e.Action)
+	{
+	case Event::Release:
+		switch (e.mData1.mKC[0])
+		{
+		case FlexKit::KC_ESC:
+			GS->Quit = true;
+		case FlexKit::KC_W:
+			GS->Keys.Forward = false; break;
+		case FlexKit::KC_S:
+			GS->Keys.Backward = false; break;
+		case FlexKit::KC_A:
+			GS->Keys.Left = false; break;
+		case FlexKit::KC_D:
+			GS->Keys.Right = false; break;
+		case FlexKit::KC_M:
+		{
+			SetSystemCursorToWindowCenter(GS->ActiveWindow);
+			if (GS->Keys.MouseEnable)
+				ShowSystemCursor(GS->ActiveWindow);
+			else
+				HideSystemCursor(GS->ActiveWindow);
+
+			GS->Keys.MouseEnable = !GS->Keys.MouseEnable;
+		}	break;
+		default:
+			break;
+		}
+		break;
+	case Event::Pressed:
+		switch (e.mData1.mKC[0])
+		{
+		case FlexKit::KC_W:
+			GS->Keys.Forward = true; break;
+		case FlexKit::KC_S:
+			GS->Keys.Backward = true; break;
+		case FlexKit::KC_A:
+			GS->Keys.Left = true; break;
+		case FlexKit::KC_D:
+			GS->Keys.Right = true; break;
+		case FlexKit::KC_M:
+		default:
+			break;
+		}
+		break;
+
+	default:
+		break;
+
+	}
+}
+
+
+void HandleMouseEvents(const Event& e, GameState* GS) 
+{
+	switch (e.Action)
+	{
+	case Event::Moved:
+		break;
+	case Event::Pressed:
+		if (e.mData1.mKC[0] == KC_MOUSELEFT)
+			GS->Mouse.LeftButtonPressed = true;
+
+		break;
+	case Event::Release:
+		break;
+	case Event::Resized:
+		break;
+	default:
+		break;
+	}
+}
+
+
+void SetActiveCamera(GameState* State, Camera* _ptr) { State->ActiveCamera = _ptr; }
+
+void PrintOnClick(void* _ptr, size_t GUIElement)
+{
+	std::cout << "Clicked BUTTON\n";
+}
+
+void PrintOnEnter(void* _ptr, size_t GUIElement)
+{
+	std::cout << "ENTERED BUTTON\n";
+}
+
+void PrintOnExit(void* _ptr, size_t GUIElement)
+{
+	std::cout << "LEFT BUTTON\n";
+}
+
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
 	auto Head			= State->GScene.CreateDrawableAndSetMesh("HeadModel");
@@ -1402,21 +1139,79 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->T						= 0.0f;
 
 	State->GScene.AddPointLight({1, 1, 1}, LightNode, 1000, 1000);
-	auto Texture2D = LoadTextureFromFile("Assets//textures//agdg.dds", Engine->RenderSystem, Engine->BlockAllocator);
-	Out->TestTexture = Texture2D;
-
-	//LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
+	auto Texture2D		= LoadTextureFromFile("Assets//textures//agdg.dds", Engine->RenderSystem, Engine->BlockAllocator);
+	Out->TestTexture	= Texture2D;
 	
-	InitiateGameWindow(Engine->BlockAllocator, &Out->Window);
-	GUI_Panel_Desc Panel_Desc;
-	Panel_Desc.Color	= float4(WHITE, 1);
-	Panel_Desc.Position = float2(0.1f, 0.1f);
-	Panel_Desc.WH		= float2(0.2f, 0.2f);
-	size_t Panel1		= GameWindow_AddPanel(&Out->Window, Panel_Desc);
+	SimpleWindow_Desc Desc(0.5f, 0.5f, 3, 3, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
+	InitiateSimpleWindow(Engine->BlockAllocator, &Out->Window, Desc);
+
+	GUIList List_Desc;
+	List_Desc.Color		= float4(WHITE, 1);
+	List_Desc.Position	= { 0, 0 };
+	List_Desc.WH		= { 3, 2 };
+
+	auto Panel = SimpleWindowAddVerticalList(&Out->Window, List_Desc);
+
+	List_Desc.WH		= { 3, 1 };
+	List_Desc.Position	= { 0, 1 };
+	auto Row = SimpleWindowAddHorizonalList(&Out->Window, List_Desc, Panel);
+
+	float2 BorderSize = GetPixelSize(State->ActiveWindow) * float2{ 10.0f, 10.0f };
+
+	GUITexturedButton_Desc	TexturedButton;
+	TexturedButton.OnEntered_CB = PrintOnEnter;
+	TexturedButton.OnExit_CB	= PrintOnExit;
+	TexturedButton.OnClicked_CB	= PrintOnClick;
+
+	TexturedButton.SetButtonSizeByPixelSize(GetPixelSize(State->ActiveWindow), { 50, 50 });
+	TexturedButton.Texture_Active = TexturedButton.Texture_InActive = &Out->TestTexture;
+
+	GUITextButton_Desc	TextButton_Desc;
+	TextButton_Desc.OnEntered_CB = PrintOnEnter;
+	TextButton_Desc.OnExit_CB = PrintOnExit;
+	TextButton_Desc.OnClicked_CB = PrintOnClick;
+
+	TextButton_Desc.Text = "This is a Button!";
+	TextButton_Desc.Font = State->Font;
+	TextButton_Desc.WH = GetPixelSize(State->ActiveWindow) * float2 { 128.0f, 32.0f };
+	TextButton_Desc.WindowSize = float2{ float(State->ActiveWindow->WH[0]), float(State->ActiveWindow->WH[1]) };
+
+	SimpleWindowAddTextButton(&Out->Window, TextButton_Desc, Engine->RenderSystem, Row);
+	SimpleWindowAddDivider(&Out->Window, BorderSize, Row);
+
+#if 1
+	SimpleWindowAddDivider			(&Out->Window, BorderSize, Panel);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton, Panel);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize, Panel);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton, Panel);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize, Panel);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton, Panel);
+
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Row);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Row);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Row);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Row);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Row);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
+#endif
+
+
+
+
+#if 0
+	size_t Panel1		= GameWindowAddPanel(&Out->Window, Panel_Desc);
 	Panel_Desc.Color	= float4(GREEN, 1);
 	Panel_Desc.WH		= float2(0.2f, 0.2f);
 	Panel_Desc.Position = float2(0.1f, 0.1f);
-	GameWindow_AddPanel(&Out->Window, Panel_Desc, Panel1);
+	GameWindowAddPanel(&Out->Window, Panel_Desc, Panel1);
+#endif
+
+	//LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
 
 	/*
 	//srand(123);
@@ -1448,19 +1243,29 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 
 	TestScene->T += dt;
 
-	Draw_Textured_RECT TexturedRect;
-	TexturedRect.BLeft	       = { 0.9f, 0.86f };
+	Draw_TEXTURED_RECT TexturedRect;
+	TexturedRect.BLeft	       = { 0.9f, 0.9f - 0.05625f };
 	TexturedRect.TRight        = { 1.0f, 1.0f };
 	TexturedRect.Color         = float4(WHITE, 1.0f);
 	TexturedRect.TextureHandle = &TestScene->TestTexture;
+
 	PushRect(State->GUIRender, TexturedRect);
 
-	UpdateGameActor(Inertia, &State->GScene, dt, &TestScene->PlayerActor, TestScene->PlayerController.Node);
-	UpdateMouseCameraController(&TestScene->PlayerCameraController, State->Nodes, State->Mouse.dPos);
+	UpdateGameActor				(Inertia, &State->GScene, dt, &TestScene->PlayerActor, TestScene->PlayerController.Node);
+	UpdateMouseCameraController	(&TestScene->PlayerCameraController, State->Nodes, State->Mouse.dPos);
 
-	GameWindowInput Input;
-	Input.MousePosition = State->Mouse.NormalizedPos;
-	RenderGameWindow(Input, &TestScene->Window, &State->GUIRender);
+	PushLineSet(State->GUIRender, { &State->Lines, State->ActiveCamera });
+
+	SimpleWindowInput Input;
+	Input.MousePosition			 = State->Mouse.NormalizedPos;
+	Input.LeftMouseButtonPressed = State->Mouse.LeftButtonPressed;
+
+	if (Input.LeftMouseButtonPressed)
+		PrintText(&State->Text, "MouseButtonPressed!\n");
+
+	UpdateSimpleWindow(&Input, &TestScene->Window);
+
+	DrawSimpleWindow(Input, &TestScene->Window, &State->GUIRender);
 }
 
 
@@ -1479,6 +1284,8 @@ void KeyEventsWrapper(const Event& in, void* _ptr)
 	{
 	case Event::Keyboard:
 		HandleKeyEvents(in, reinterpret_cast<GameState*>(_ptr));
+	case Event::Mouse:
+		break;
 	}
 }
 
@@ -1534,13 +1341,14 @@ extern "C"
 			UploadLandscape			(Engine->RenderSystem, &State.Landscape, nullptr, nullptr, true, false);
 		}
 
+		State.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+
 		auto WH = State.ActiveWindow->WH;
-		TextArea_Desc TA_Desc = { { 0, 0 },{ float(WH[0]), float(WH[1]) },{ 32, 32 } };
+		TextArea_Desc TA_Desc = { { 0, 0 },{ float(WH[0]), float(WH[1]) }, { 32, 32 } };
 
-		State.Font = LoadFontAsset("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
-		State.Text = CreateTextArea(&Engine->RenderSystem, Engine->BlockAllocator, &TA_Desc);
+		State.Text = CreateTextArea	(&Engine->RenderSystem, Engine->BlockAllocator, &TA_Desc);
 
-		PrintText(&State.Text, "TESTING!\n");
+		PrintText(&State.Text, "TEST BUILD: COLLECTING STATS\n");
 
 		CreatePlaneCollider		(Engine->Physics.DefaultMaterial, &State.PScene);
 		CreateTestScene			(Engine, &State, &State.TestScene);
@@ -1548,6 +1356,8 @@ extern "C"
 		FlexKit::EventNotifier<>::Subscriber sub;
 		sub.Notify = &KeyEventsWrapper;
 		sub._ptr   = &State;
+		Engine->Window.Handler.Subscribe(sub);
+		sub.Notify = &MouseEventsWrapper;
 		Engine->Window.Handler.Subscribe(sub);
 
 		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
@@ -1571,10 +1381,8 @@ extern "C"
 		Engine->End = State->Quit;
 		State->Mouse.Enabled = State->Keys.MouseEnable;
 
-		{
-			UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
-			UpdateColliders	(&State->PScene, &Engine->Nodes);
-		}
+		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
+		UpdateColliders	(&State->PScene, &Engine->Nodes);
 	}
 
 
@@ -1583,6 +1391,8 @@ extern "C"
 		UpdateMouseInput(&State->Mouse, &Engine->Window);
 		UpdateTestScene(&State->TestScene, State, dt, Engine->TempAllocator);
 		UpdateGraphicScene(&State->GScene);
+
+		ClearMouseButtonStates(&State->Mouse);
 	}
 
 
@@ -1594,8 +1404,8 @@ extern "C"
 
 	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameState* State)
 	{
-		UpdateTransforms(State->Nodes);
-		UpdateCamera(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
+		UpdateTransforms	(State->Nodes);
+		UpdateCamera		(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
 		UpdateTestScene_PostTransformUpdate(&State->TestScene, State, dt, TempMemory);
 	}
 
@@ -1627,8 +1437,8 @@ extern "C"
 			ResetStats(&State->Stats);
 		}
 
-		UploadTextArea(State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);
-		PushText(State->GUIRender, { { 0.0f, 0.0f },{ 1.0f, 1.0f },{ WHITE, 1.0f }, &State->Text, State->Font });
+		//UploadTextArea	( State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);
+		PushText		( State->GUIRender, { { 0.0f, 0.0f },{ 1.0f, 1.0f },{ WHITE, 1.0f }, &State->Text, State->Font });
 
 		// TODO: multi Thread these
 		// Do Uploads
@@ -1637,14 +1447,17 @@ extern "C"
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 
-			UploadGUI(RS, &State->GUIRender);
-			UploadPoses(RS, &PVS, State->GT, TempMemory);
-			UploadLineSegments(RS, &State->Lines);
-			UploadDeferredPassConstants(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
-			UploadCamera(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
-			UploadGraphicScene(&State->GScene, &PVS, &Transparent);
-			UploadLandscape(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true);
+			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);
+			UploadPoses	(RS, &PVS, State->GT, TempMemory);
+
+			UploadLineSegments			(RS, &State->Lines);
+			UploadDeferredPassConstants	(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
+
+			UploadCamera		(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
+			UploadGraphicScene	(&State->GScene, &PVS, &Transparent);
+			UploadLandscape		(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true);
 		}
+
 
 		// Submission
 		{
@@ -1659,13 +1472,10 @@ extern "C"
 				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else
-			{
 				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
-			}
-		}
 
-		PushLineSet(State->GUIRender, { &State->Lines, State->ActiveCamera });
-		DrawGUI(RS, CL, &State->GUIRender, State->ActiveWindow);
+			DrawGUI(RS, CL, &State->GUIRender, State->ActiveWindow);
+		}
 		
 		EndPass(CL, RS, State->ActiveWindow);
 	}
@@ -1693,6 +1503,7 @@ extern "C"
 
 		ReleaseTextureSet(Engine->RenderSystem, _ptr->Set1, Engine->BlockAllocator);
 
+		CleanUpSimpleWindow		(&_ptr->TestScene.Window);
 		CleanUpDrawGUI			(&_ptr->GUIRender);
 		CleanUpLineSet			(&_ptr->Lines);
 		CleanUpState			(_ptr, Engine);
