@@ -35,7 +35,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	const static size_t SO_BUFFERSIZES = KILOBYTE * 512;
-	void DrawLandscape(RenderSystem* RS, Landscape* LS, size_t splitcount, Camera* C)
+	void DrawLandscape(RenderSystem* RS, Landscape* LS, DeferredPass* Pass, size_t splitcount, Camera* C)
 	{	
 		auto CL = GetCurrentCommandList(RS);
 		if(LS->Regions.size())
@@ -48,6 +48,26 @@ namespace FlexKit
 				UINT						StrideInBytes;
 			} 	D3D12_VERTEX_BUFFER_VIEW;
 			*/
+
+
+			auto CL					= GetCurrentCommandList				(RS);
+			auto FrameResources		= GetCurrentFrameResources			(RS);
+			auto DescPOSGPU			= GetDescTableCurrentPosition_GPU	(RS); // _Ptr to Beginning of Heap On GPU
+			auto DescPOS			= ReserveDescHeap					(RS, 6);
+			auto DescriptorHeap		= GetCurrentDescriptorTable			(RS);
+
+			auto RTVPOSCPU			= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
+			auto RTVPOS				= ReserveRTVHeap					(RS, 6);
+			auto RTVHeap			= GetCurrentRTVTable				(RS);
+
+			CL->SetDescriptorHeaps	(1, &DescriptorHeap);
+
+			size_t BufferIndex = Pass->CurrentBuffer;
+
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,	RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
 
 			D3D12_VERTEX_BUFFER_VIEW SO_1[] = { {
 					LS->RegionBuffers[0]->GetGPUVirtualAddress(),
@@ -103,6 +123,8 @@ namespace FlexKit
 			D3D12_STREAM_OUTPUT_BUFFER_VIEW*	Output[]			= { SOViews1, SOViews2 };
 			ID3D12Resource*						OutputCounters[]	= { LS->SOCounter_1.Get(), LS->SOCounter_2.Get() };
 
+
+			CL->OMSetRenderTargets(4, &RTVPOSCPU, true, &Pass->GBuffers[BufferIndex].DepthBuffer);
 
 			{
 				D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, };

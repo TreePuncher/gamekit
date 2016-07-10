@@ -117,7 +117,7 @@ namespace FlexKit
 	FLEXKITAPI void CleanUpTerrain		( SceneNodes* Nodes, Landscape* ls );
 	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
 	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true );
-	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, size_t splitcount, Camera* C );
+	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, DeferredPass* PS, size_t splitcount, Camera* C );
 
 
 	/************************************************************************************************/

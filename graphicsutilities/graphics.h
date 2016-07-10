@@ -2374,6 +2374,7 @@ namespace FlexKit
 		return {POS.V1.ptr + Offset , POS.V2.ptr + Offset};
 	}
 
+
 	FLEXKITAPI void		   ResetDescHeap			( RenderSystem* RS );
 	FLEXKITAPI void		   ResetRTVHeap				( RenderSystem* RS );
 
@@ -2387,8 +2388,11 @@ namespace FlexKit
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	( RenderSystem* RS,	Texture2D tex,					DescHeapPOS POS );
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		( RenderSystem* RS, Texture2D tex,					DescHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM );
 
-	FLEXKITAPI void		   SetWindowRect			( ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I = 0u );
-	
+
+	FLEXKITAPI void SetViewport	 ( ID3D12GraphicsCommandList* CL, Texture2D Targets, uint2 Offset = {0, 0});
+	FLEXKITAPI void SetViewports ( ID3D12GraphicsCommandList* CL, Texture2D* Targets, uint2* Offsets, UINT Count = 1u);
+
+
 	inline float3	Gray( float P ) { return float3(P, P, P); }
 	
 

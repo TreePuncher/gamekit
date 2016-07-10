@@ -1570,10 +1570,14 @@ extern "C"
 			ClearBackBuffer	(RS, CL, State->ActiveWindow, {0, 0, 0, 0});
 			ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0, State->DeferredPass.CurrentBuffer);
 
+			SetViewport(CL, GetBackBufferTexture(State->ActiveWindow));
+
 			if (State->DoDeferredShading)
 			{
+				IncrementDeferredPass(&State->DeferredPass);
+
 				//DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
-				//DrawLandscape		(RS, &State->Landscape, 15, State->ActiveCamera);
+				//DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera);
 				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}

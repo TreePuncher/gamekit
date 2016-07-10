@@ -3298,6 +3298,33 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	void SetViewport(ID3D12GraphicsCommandList* CL, Texture2D Target, uint2 Offsets) {
+		SetViewports(CL, &Target, &Offsets);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetViewports(ID3D12GraphicsCommandList* CL, Texture2D* Targets, uint2* Offsets, UINT Count)
+	{
+		D3D12_VIEWPORT VPs[16];
+		for (size_t I = 0; I < Count; ++I) {
+			VPs[I].Height	= Targets[0].WH[1];
+			VPs[I].Width	= Targets[0].WH[0];
+			VPs[I].MaxDepth = 1.0f;
+			VPs[I].MinDepth = 0.0f;
+			VPs[I].TopLeftX = Offsets[I][0];
+			VPs[I].TopLeftY = Offsets[I][1];
+		}
+
+		CL->RSSetViewports(Count, VPs);
+	}
+
+
+	/************************************************************************************************/
 	
 	
 	void InitiateShadowMapPass(RenderSystem* RenderSystem, ShadowMapPass* Out)
@@ -3725,6 +3752,23 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	void IncrementDeferredPass(DeferredPass* Pass) {
+		Pass->CurrentBuffer = ++Pass->CurrentBuffer % 3;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ClearDeferredPass(RenderSystem* RS, DeferredPass* Pass) {
+
+	}
+
+
+	/************************************************************************************************/
+
+
 	void
 	ShadeDeferredPass(
 		PVS* _PVS, DeferredPass* Pass, Texture2D Target,
@@ -3735,7 +3779,7 @@ namespace FlexKit
 		auto FrameResources  = GetCurrentFrameResources(RS);
 		auto BufferIndex	 = Pass->CurrentBuffer;
 		auto& CurrentGBuffer = Pass->GBuffers[BufferIndex];
-		Pass->CurrentBuffer = ++Pass->CurrentBuffer % 3;
+
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barrier1[] = {
@@ -3753,6 +3797,7 @@ namespace FlexKit
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.PositionTex,
 				D3D12_RESOURCE_STATE_RENDER_TARGET,
+
 				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
@@ -3852,7 +3897,12 @@ namespace FlexKit
 
 		CL->SetDescriptorHeaps	(1, &DescriptorHeap);
 
-		size_t BufferIndex		 = Pass->CurrentBuffer;
+		size_t BufferIndex = Pass->CurrentBuffer;
+
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,	RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
 
 		{	// Clear Targets
 			float4	ClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -3874,13 +3924,6 @@ namespace FlexKit
 
 			D3D12_VIEWPORT	VPs[]	= { VP, VP, VP, VP, };
 			D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT,};
-
-			{
-				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,	RTVPOS);
-				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
-				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
-				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex,	RTVPOS);
-			}
 
 			CL->SetGraphicsRootSignature			(Pass->Filling.FillRTSig);
 			CL->SetPipelineState					(Pass->Filling.PSO);
@@ -4201,7 +4244,7 @@ namespace FlexKit
 			CL->SetPipelineState(Pass->PSO);
 			CL->SetGraphicsRootSignature(Pass->PassRTSig);
 			CL->OMSetRenderTargets(1, &GetBackBufferView(Pass->RenderTarget), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
-			SetWindowRect(CL, Pass->RenderTarget);
+			SetViewport(CL, GetBackBufferTexture(Pass->RenderTarget));
 		}
 
 		CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -6408,17 +6451,16 @@ namespace FlexKit
 		PushRenderTarget(RS, &RenderTarget, RTVPOS);
 
 		D3D12_VERTEX_BUFFER_VIEW View[] = {
-			{ GUIStack->RectBuffer->GetGPUVirtualAddress(),			(UINT)(sizeof(Draw_RECT)  * GUIStack->Rects.size()),			(UINT)sizeof(Draw_RECT) },
+			{ GUIStack->RectBuffer->GetGPUVirtualAddress(), (UINT)(sizeof(Draw_RECT) * GUIStack->Rects.size()),	(UINT)sizeof(Draw_RECT) },
 		};
 
 		D3D12_VIEWPORT VP;
-		VP.Width  = RenderTarget.WH[0];
-		VP.Height = RenderTarget.WH[1];
+		VP.Width    = RenderTarget.WH[0];
+		VP.Height   = RenderTarget.WH[1];
 		VP.MaxDepth = 1.0f;
 		VP.MaxDepth = 0.0f;
 		VP.TopLeftX = 0;
 		VP.TopLeftY = 0;
-
 
 		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
 		CL->OMSetRenderTargets(1, &RTVs, true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
