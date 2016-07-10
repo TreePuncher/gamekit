@@ -1124,7 +1124,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	//Scale(State->Nodes, HeadNode, 10);
 
 
-#if 0
+#if 1
 	State->GScene.EntityEnablePosing(PlayerModel);
 	//int64_t ID = State->GScene.EntityPlayAnimation(PlayerModel, 3, 1.0f, true);
 	//SetAnimationWeight(State->GScene.GetEntityAnimationState(PlayerModel), ID, 0.5f);
@@ -1418,7 +1418,7 @@ extern "C"
 		InitiateLineSet			  (Engine->RenderSystem, Engine->BlockAllocator, &State.Lines);
 		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender,		Engine->TempAllocator);
 		InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
-		InitiateShadowMapPass	  (Engine->RenderSystem, &State.ShadowMapPass);
+		//InitiateShadowMapPass	  (Engine->RenderSystem, &State.ShadowMapPass);
 
 		{
 			Landscape_Desc Land_Desc = { 
@@ -1452,10 +1452,10 @@ extern "C"
 
 		{
 			FlexKit::Tex2DDesc Desc; {
-				Desc.Format			= FlexKit::FORMAT_2D::R32_FLOAT;
+				Desc.Format			= FlexKit::FORMAT_2D::D32_FLOAT;
 				Desc.Width			= 800;
 				Desc.Height			= 600;
-				Desc.RenderTarget	= true;
+				Desc.RenderTarget	= false;
 				Desc.FLAGS			= SPECIALFLAGS::DEPTHSTENCIL;
 				Desc.CV				= 0.0f;
 				Desc.initialData	= nullptr;
@@ -1572,16 +1572,15 @@ extern "C"
 
 			if (State->DoDeferredShading)
 			{
-				DoDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
-				DrawLandscape(RS, &State->Landscape, 15, State->ActiveCamera);
-				ShadeDeferredPass(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-				DoForwardPass(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
+				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
+				DrawLandscape		(RS, &State->Landscape, 15, State->ActiveCamera);
+				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else
 				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
 
 #if 0
-
 			// Do Shadowing
 			for (auto& Caster : State->GScene.SpotLightCasters) {
 				auto PVS = TempMemory->allocate_aligned<FlexKit::PVS>();
@@ -1619,7 +1618,7 @@ extern "C"
 
 		ReleaseTextureSet(Engine->RenderSystem, _ptr->Set1, Engine->BlockAllocator);
 
-		CleanUpShadowPass		(&_ptr->ShadowMapPass);
+		//CleanUpShadowPass		(&_ptr->ShadowMapPass);
 		CleanUpSimpleWindow		(&_ptr->TestScene.Window);
 		CleanUpDrawGUI			(&_ptr->GUIRender);
 		CleanUpLineSet			(&_ptr->Lines);
