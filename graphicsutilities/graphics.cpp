@@ -3879,6 +3879,12 @@ namespace FlexKit
 
 	}
 
+	void ClearDeferredBuffers(RenderSystem* RS, DeferredPass* Pass) {
+		size_t BufferIndex = Pass->CurrentBuffer;
+		float4	ClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
+		ClearGBuffer(RS, Pass, ClearValue, BufferIndex);
+	}
+
 	void 
 	DoDeferredPass(
 		PVS* _PVS,	DeferredPass* Pass,	Texture2D Target, 
@@ -3903,11 +3909,7 @@ namespace FlexKit
 		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
 		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
 		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
-
-		{	// Clear Targets
-			float4	ClearValue = {0.0f, 0.0f, 0.0f, 0.0f};
-			ClearGBuffer(RS, Pass, ClearValue, BufferIndex);
-		}
+		
 
 		{	// Setup State
 			D3D12_RECT		RECT = D3D12_RECT();
