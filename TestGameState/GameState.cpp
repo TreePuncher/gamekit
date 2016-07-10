@@ -1572,8 +1572,8 @@ extern "C"
 
 			if (State->DoDeferredShading)
 			{
-				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
-				DrawLandscape		(RS, &State->Landscape, 15, State->ActiveCamera);
+				//DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
+				//DrawLandscape		(RS, &State->Landscape, 15, State->ActiveCamera);
 				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
@@ -1589,7 +1589,7 @@ extern "C"
 			}
 #endif
 
-			DrawGUI(RS, CL, &State->GUIRender, State->ActiveWindow);
+			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));
 		}
 		
 		EndPass(CL, RS, State->ActiveWindow);

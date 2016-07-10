@@ -1011,7 +1011,21 @@ namespace FlexKit
 		return Window->BackBuffer[Window->BufferIndex];
 	}
 
+
+	/************************************************************************************************/
+
+
+	Texture2D GetBackBufferTexture(RenderWindow* Window)
+	{
+		Texture2D Texture;
+		Texture.Format = Window->Format;
+		Texture.WH = Window->WH;
+		Texture.Texture = GetBackBufferResource(Window);
+		Window->BackBuffer[Window->BufferIndex];
+		return Texture;
+	}
 	
+
 	/************************************************************************************************/
 
 
@@ -6355,7 +6369,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DrawGUI(RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, RenderWindow* RenderTarget)
+	void DrawGUI(RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, Texture2D RenderTarget)
 	{
 		size_t			RectOffset		= 0;
 		size_t			TexturePosition = 0;
@@ -6385,15 +6399,30 @@ namespace FlexKit
 		} 	D3D12_VERTEX_BUFFER_VIEW;
 		*/
 		
+		auto Resources		= GetCurrentFrameResources(RS);
+		auto RTVHeap		= Resources->RTVHeap.RTVDescHeap;
 		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
+		auto RTVs			= GetRTVTableCurrentPosition_CPU(RS);
+		auto RTVPOS			= ReserveRTVHeap(RS, 1);
+
+		PushRenderTarget(RS, &RenderTarget, RTVPOS);
 
 		D3D12_VERTEX_BUFFER_VIEW View[] = {
 			{ GUIStack->RectBuffer->GetGPUVirtualAddress(),			(UINT)(sizeof(Draw_RECT)  * GUIStack->Rects.size()),			(UINT)sizeof(Draw_RECT) },
 		};
 
+		D3D12_VIEWPORT VP;
+		VP.Width  = RenderTarget.WH[0];
+		VP.Height = RenderTarget.WH[1];
+		VP.MaxDepth = 1.0f;
+		VP.MaxDepth = 0.0f;
+		VP.TopLeftX = 0;
+		VP.TopLeftY = 0;
+
+
 		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
-		CL->OMSetRenderTargets		(1, &GetBackBufferView(RenderTarget), true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
-		CL->SetDescriptorHeaps		(1, &DescriptorHeap);
+		CL->OMSetRenderTargets(1, &RTVs, true, &RS->DefaultDescriptorHeaps.DSVDescHeap->GetCPUDescriptorHandleForHeapStart());
+		CL->RSSetViewports(1, &VP);
 
 		for (auto D : GUIStack->DrawCalls)
 		{
@@ -6416,7 +6445,7 @@ namespace FlexKit
 				*/
 
 				auto ClipArea	= GUIStack->ClipAreas[D.Index];
-				auto WH			= RenderTarget->WH;
+				auto WH			= RenderTarget.WH;
 				
 				D3D12_RECT Rects[] = { {
 						(LONG)(WH[0] * ClipArea.CLIPAREA_BLEFT[0]),
@@ -6433,7 +6462,7 @@ namespace FlexKit
 				RectOffset += 6;
 			}	break;
 			case DRAWCALLTYPE::DCT_2DRECT:{
-				auto WH = RenderTarget->WH;
+				auto WH = RenderTarget.WH;
 				D3D12_RECT Rects[] = { {
 						0,
 						0,
@@ -6450,7 +6479,7 @@ namespace FlexKit
 
 			}	break;
 			case DRAWCALLTYPE::DCT_2DRECT_TEXTURED: {
-				auto WH		= RenderTarget->WH;
+				auto WH		= RenderTarget.WH;
 				auto BLeft	= GUIStack->TexturedRects[D.Index].CLIPAREA_BLEFT;
 				auto TRight	= GUIStack->TexturedRects[D.Index].CLIPAREA_TRIGHT;
 
@@ -6497,8 +6526,8 @@ namespace FlexKit
 
 					if(Text->CharacterCount){
 						D3D12_RECT RECT = D3D12_RECT();
-						RECT.right	= (UINT)RenderTarget->WH[0];
-						RECT.bottom = (UINT)RenderTarget->WH[1];
+						RECT.right	= (UINT)RenderTarget.WH[0];
+						RECT.bottom = (UINT)RenderTarget.WH[1];
 
 						D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC = {};
 						SRV_DESC.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
