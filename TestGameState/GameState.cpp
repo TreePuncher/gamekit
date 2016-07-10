@@ -1570,7 +1570,9 @@ extern "C"
 			ClearBackBuffer	(RS, CL, State->ActiveWindow, {0, 0, 0, 0});
 			ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0, State->DeferredPass.CurrentBuffer);
 
-			SetViewport(CL, GetBackBufferTexture(State->ActiveWindow));
+			Texture2D BackBuffer = GetBackBufferTexture(State->ActiveWindow);
+			SetViewport	(CL, BackBuffer);
+			SetScissor	(CL, BackBuffer.WH);
 
 			if (State->DoDeferredShading)
 			{

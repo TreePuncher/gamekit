@@ -3308,6 +3308,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void SetScissors(ID3D12GraphicsCommandList* CL, uint2* WH, uint2* Offsets, UINT Count)
+	{
+		D3D12_RECT Rects[16];
+		for (size_t I = 0; I < Count; ++I) {
+			Rects[I].bottom = Offsets[I][1] + WH[I][1];
+			Rects[I].left	= Offsets[I][0];
+			Rects[I].right	= Offsets[I][0] + WH[I][0];
+			Rects[I].top	= Offsets[I][1];
+		}
+
+		CL->RSSetScissorRects(Count, Rects);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetScissor(ID3D12GraphicsCommandList* CL, uint2 WH, uint2 Offset) {
+		SetScissors(CL, &WH, &Offset, 1);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void SetViewports(ID3D12GraphicsCommandList* CL, Texture2D* Targets, uint2* Offsets, UINT Count)
 	{
 		D3D12_VIEWPORT VPs[16];
