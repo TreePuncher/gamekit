@@ -28,6 +28,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\graphics.h"
 
+#ifndef GUIUTILITIES_H
+#define GUIUTILITIES_H
+
 namespace FlexKit
 {
 
@@ -37,9 +40,12 @@ namespace FlexKit
 	{
 		EGE_VLIST,
 		EGE_HLIST,
+		EGE_HSLIDER,
+		EGE_VSLIDER,
 		EGE_DIVIDER,
 		EGE_BUTTON_TEXTURED,
 		EGE_BUTTON_TEXT,
+		EGE_TEXTINPUT,
 	};
 
 	struct Row
@@ -92,12 +98,21 @@ namespace FlexKit
 	typedef void(*TextInputEventFN)	( char*, size_t, void* _ptr, size_t GUIElement );
 	typedef void(*SliderEventFN)	( float,		 void* _ptr, size_t GUIElement );
 
+	struct TextInputState{
+		bool RemainActive = true;
+		bool TextChanged  = false;
+	};
+
+	typedef TextInputState (*TextInputUpdateFN) ( TextArea* TextArea, char* str, size_t strBufferSize, void* _ptr );
 
 	struct GUIElement_TexuredButton
 	{
 		bool				Active				= false;
 		bool				Entered				= false;
+
 		float2				WH					= {};
+		float4				ActiveColor			= {WHITE, 1.0f};
+		float4				InActiveColor		= {WHITE, 1.0f};
 		Texture2D*			Texture_InActive	= nullptr;
 		Texture2D*			Texture_Active		= nullptr;
 
@@ -115,6 +130,7 @@ namespace FlexKit
 		float2				WH;
 		TextArea			Text;
 		FontAsset*			Font;
+		Texture2D*			BackgroundTexture	= nullptr;
 
 		void*				CB_Args				= nullptr;
 		EnteredEventFN		OnClicked_CB		= nullptr;
@@ -124,13 +140,20 @@ namespace FlexKit
 
 	struct GUIElement_TextInput
 	{
+		bool				Active			= false;
+		float4				ActiveColor		= { Gray(0.35f), 1 };
+		float4				InActiveColor	= { Gray(0.5f), 1 };
 		float2				WH;
-		Texture2D&			Texture;
-		char*				Text;
 
-		size_t				TextLength;
+		Texture2D*			Texture;
+		char*				TextSTR;
 
-		void*				_ptr;
+		TextArea			TextGUI;
+		FontAsset*			Font;
+		size_t				MaxTextLength;
+
+		void*				CB_Args;
+		TextInputUpdateFN	OnTextUpdate;
 		TextInputEventFN	OnTextEntered;
 		TextInputEventFN	OnTextChanged;
 
@@ -151,11 +174,17 @@ namespace FlexKit
 	struct GUIElement_Slider
 	{
 		float2			WH;
-
-		void* _ptr;
-		SliderEventFN	OnChanged;
-
+		float			BarRatio;
 		float			SliderPosition;
+		bool			Active		= false;
+		bool			Entered		= false;
+
+		SliderEventFN OnClicked_CB = nullptr;
+		SliderEventFN OnMoved_CB   = nullptr;
+		SliderEventFN OnEntered_CB = nullptr;
+		SliderEventFN OnExit_CB	   = nullptr;
+		void*		  CB_Args	   = nullptr;
+
 	};
 
 	struct GUIElement_RadioButton
@@ -180,6 +209,8 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	typedef uint32_t GUIElementHandle;
 
 	struct SimpleWindow
 	{
@@ -276,6 +307,41 @@ namespace FlexKit
 	};
 
 
+	struct GUITextInput_Desc
+	{
+		float2		WH;
+
+		float2		WindowSize;
+		char*		Text;
+		FontAsset*	Font;
+
+		void*				CB_Args			= nullptr;
+		EnteredEventFN		OnClicked_CB	= nullptr;
+		ButtonEventFN		OnEntered_CB	= nullptr;
+		ButtonEventFN		OnExit_CB		= nullptr;
+		TextInputUpdateFN	OnTextUpdate	= nullptr;
+
+		GUITextInput_Desc& SetTextBoxSizeByPixelSize(float2 PixelSize, uint2 PixelWH) {
+			WH = PixelSize * PixelWH;
+			return *this;
+		}
+	};
+
+
+	struct GUISlider_Desc
+	{
+		SliderEventFN OnClicked_CB = nullptr;
+		SliderEventFN OnMoved_CB   = nullptr;
+		SliderEventFN OnEntered_CB = nullptr;
+		SliderEventFN OnExit_CB	   = nullptr;
+		void*		  CB_Args	   = nullptr;
+
+		float		InitialPosition	= 0.5f;
+		float		BarRatio;
+		float2		WH;
+	};
+
+
 	struct SimpleWindow_Desc
 	{
 		SimpleWindow_Desc(float width, float height, size_t ColumnCount, size_t RowCount = 1, size_t  = 1, float aspectratio = 1.0f) :
@@ -284,8 +350,6 @@ namespace FlexKit
 			Width			(width),
 			Height			(height),
 			AspectRatio		(aspectratio)
-			//RowHeights		({ Width  / RowCount	}),
-			//ColumnWidths	({ Height / ColumnCount	})
 		{}
 
 		float	Width;
@@ -296,8 +360,6 @@ namespace FlexKit
 		size_t	ColumnCount;
 
 		float2  CellDividerSize;
-		//static_vector<float, 16> RowHeights;
-		//static_vector<float, 16> ColumnWidths;
 	};
 
 	struct ParentInfo 
@@ -315,9 +377,19 @@ namespace FlexKit
 		DD_Grid,
 	};
 
+	enum EOverFlowOption
+	{
+		OF_DrawOutsize,
+		OF_DrawSlider,
+		OF_DrawClip,
+		OF_Exlude,
+	};
+
 	struct FormattingOptions
 	{
-		EDrawDirection	DrawDirection	= DD_Columns;
+		EDrawDirection	DrawDirection	 = DD_Columns;
+		EOverFlowOption	OverflowHandling = OF_Exlude;
+
 		float2			CellDividerSize	= float2(0.01f, 0.01f);
 	};
 
@@ -332,22 +404,31 @@ namespace FlexKit
 
 	FLEXKITAPI void		UpdateSimpleWindow		( SimpleWindowInput* Input, SimpleWindow* Window);
 
-	FLEXKITAPI size_t	SimpleWindowAddVerticalList		( SimpleWindow*	Window, GUIList& Desc, size_t Parent = -1 );
-	FLEXKITAPI size_t	SimpleWindowAddHorizonalList	( SimpleWindow*	Window, GUIList& Desc, size_t Parent = -1 );
+	FLEXKITAPI GUIElementHandle	SimpleWindowAddVerticalList		( SimpleWindow*	Window, GUIList& Desc, GUIElementHandle Parent = -1 );
+	FLEXKITAPI GUIElementHandle	SimpleWindowAddHorizonalList	( SimpleWindow*	Window, GUIList& Desc, GUIElementHandle Parent = -1 );
 
-	FLEXKITAPI size_t	SimpleWindowAddTexturedButton	( SimpleWindow*	Window, GUITexturedButton_Desc&	Desc,					size_t Parent = -1);
-	FLEXKITAPI size_t	SimpleWindowAddTextButton		( SimpleWindow*	Window, GUITextButton_Desc&		Desc, RenderSystem* RS, size_t Parent = -1);
+	FLEXKITAPI GUIElementHandle	SimpleWindowAddTexturedButton	( SimpleWindow*	Window, GUITexturedButton_Desc&	Desc,					GUIElementHandle Parent = -1);
+	FLEXKITAPI GUIElementHandle	SimpleWindowAddTextButton		( SimpleWindow*	Window, GUITextButton_Desc&		Desc, RenderSystem* RS, GUIElementHandle Parent = -1);
 
-	FLEXKITAPI void		SimpleWindowAddDivider			( SimpleWindow*	Window, float2 Size,				  size_t Parent );
+	FLEXKITAPI GUIElementHandle	SimpleWindowAddTextInput		( SimpleWindow*	Window, GUITextInput_Desc&		Desc, RenderSystem* RS, GUIElementHandle Parent = -1);
 
 
-	FLEXKITAPI bool		CursorInside	( float2 CursorPos, float2 POS, float2 WH );
-	FLEXKITAPI bool		CursorInsideCell(SimpleWindow* Window, float2 CursorPos, uint2 Cell);
+	FLEXKITAPI void				SimpleWindowAddDivider			( SimpleWindow*	Window, float2 Size,				  GUIElementHandle Parent );
 
-	FLEXKITAPI void		SetCellState ( uint2 Cell, int32_t S, SimpleWindow* W);
-	FLEXKITAPI void		SetCellState ( uint2 Cell, uint2 WH, int32_t S, SimpleWindow* W);
-	FLEXKITAPI int32_t	GetCellState ( uint2 Cell, SimpleWindow* W);
+	FLEXKITAPI GUIElementHandle	SimpleWindowAddHorizontalSlider ( SimpleWindow*	Window, GUISlider_Desc			Desc, GUIElementHandle Parent);
+
+
+	FLEXKITAPI bool	CursorInside	 ( float2 CursorPos, float2 POS, float2 WH );
+	FLEXKITAPI bool	CursorInsideCell ( SimpleWindow* Window, float2 CursorPos, uint2 Cell);
+
+	FLEXKITAPI void				SetCellState ( uint2 Cell, int32_t S, SimpleWindow* W);
+	FLEXKITAPI void				SetCellState ( uint2 Cell, uint2 WH, int32_t S, SimpleWindow* W);
+	FLEXKITAPI GUIElementHandle	GetCellState ( uint2 Cell, SimpleWindow* W);
+
+	FLEXKITAPI void SetSliderPosition(float R, GUIElementHandle, SimpleWindow* W);
 
 
 	/************************************************************************************************/
 }
+
+#endif

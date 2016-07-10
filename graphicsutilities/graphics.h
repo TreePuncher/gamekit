@@ -258,7 +258,7 @@ namespace FlexKit
 		WRITEONCE,
 		NONE = 0
 	};
-	enum class SPECIALFLAGS
+	enum SPECIALFLAGS
 	{
 		BACKBUFFER = 1,
 		DEPTHSTENCIL = 2,
@@ -279,7 +279,10 @@ namespace FlexKit
 			Read         = true;
 			RenderTarget = false;
 			UAV          = false;
+			MipLevels	 = 0;
 			CV           = true;
+			initialData	 = nullptr;
+
 			Format	= FORMAT_2D::D24_UNORM_S8_UINT;
 			FLAGS	= SPECIALFLAGS::NONE;
 		}
@@ -811,6 +814,21 @@ namespace FlexKit
 	const static int QueueSize		= 3;
 	const static int MaxThreadCount = 4;
 
+	struct RenderTargetHeap
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
+		D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
+		ID3D12DescriptorHeap*		RTVDescHeap;
+	};
+
+	struct DescriptorHeap
+	{
+		D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
+		D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
+		ID3D12DescriptorHeap*		SRVDescHeap; 
+	};
+
+
 	struct PerFrameResources
 	{
 		TempResourceList*			TempBuffers;
@@ -820,10 +838,9 @@ namespace FlexKit
 		ID3D12CommandAllocator*		ComputeCLAllocator[MaxThreadCount];
 		ID3D12GraphicsCommandList*	UploadList[MaxThreadCount];
 		ID3D12GraphicsCommandList*	ComputeList[MaxThreadCount];
-		ID3D12DescriptorHeap*		SRVDescHeap; // Texture List
 
-		D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
-		D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
+		RenderTargetHeap	RTVHeap;
+		DescriptorHeap		DescHeap;
 
 		size_t						ThreadsIssued;
 	};
@@ -1150,6 +1167,13 @@ namespace FlexKit
 	};
 
 
+	struct ShadowMapPass
+	{
+		ID3D12PipelineState* PSO_Animated;
+		ID3D12PipelineState* PSO_Static;
+	};
+
+
 	/************************************************************************************************/
 
 
@@ -1211,7 +1235,7 @@ namespace FlexKit
 
 
 	const size_t PLB_Stride  = sizeof(float[8]);
-	const size_t SPLB_Stride = sizeof(float[8]);
+	const size_t SPLB_Stride = sizeof(float[12]);
 
 
 	/************************************************************************************************/
@@ -1334,6 +1358,16 @@ namespace FlexKit
 			static const size_t GetBufferSize(){return 1024;}
 		};
 
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct SpotLightShadowCaster
+	{
+		Camera	C;
+		size_t	LightHandle;
 	};
 
 
@@ -2292,12 +2326,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void InitiateDeferredPass	( FlexKit::RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
+	FLEXKITAPI void InitiateShadowMapPass	( RenderSystem* RenderSystem, ShadowMapPass* out);
+	FLEXKITAPI void CleanUpShadowPass		( ShadowMapPass* Out );
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI void InitiateDeferredPass	( RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
 	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT );
 	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
 	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
+
+	FLEXKITAPI void RenderShadowMap(RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT);
 
 
 	/************************************************************************************************/
@@ -2331,7 +2374,13 @@ namespace FlexKit
 	}
 
 	FLEXKITAPI void		   ResetDescHeap			( RenderSystem* RS );
+	FLEXKITAPI void		   ResetRTVHeap				( RenderSystem* RS );
+
 	FLEXKITAPI DescHeapPOS ReserveDescHeap			( RenderSystem* RS, size_t SlotCount = 1 );
+	FLEXKITAPI DescHeapPOS ReserveRTVHeap			( RenderSystem* RS, size_t SlotCount );
+
+	FLEXKITAPI DescHeapPOS PushRenderTarget			( RenderSystem* RS, Texture2D* Target, DescHeapPOS POS );
+
 	FLEXKITAPI DescHeapPOS PushCBToDescHeap			( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t BufferSize );
 	FLEXKITAPI DescHeapPOS PushSRVBufferToDescHeap	( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE );
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	( RenderSystem* RS,	Texture2D tex,					DescHeapPOS POS );
@@ -2361,7 +2410,7 @@ namespace FlexKit
 		}
 
 		float r;
-		FlexKit::Shader	VertexShader;
+		Shader	VertexShader;
 	};
 
 

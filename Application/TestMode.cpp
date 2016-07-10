@@ -655,7 +655,7 @@
 //
 //	void Update(EngineMemory* Engine, double dt)
 //	{
-//		//Yaw(Nodes, SM.GetEntity(TestMesh).Node, pi/4 * dt);
+//		//Yaw(Nodes, SM.GetDrawable(TestMesh).Node, pi/4 * dt);
 //		FlexKit::WT_Entry WT;
 //		FlexKit::GetWT(Engine->Nodes, Engine->PlayerCam.Node, &WT);
 //
@@ -685,7 +685,7 @@
 //			if (Dir.magnitudesquared() > 1)
 //			{
 //				auto Q = PointAt2(float3(1, 0, 1) * ArrowPOS, float3(1, 0, 1) * P1POS);
-//				SetOrientation(Nodes, SM.GetEntity(Arrow).Node, Q);
+//				SetOrientation(Nodes, SM.GetDrawable(Arrow).Node, Q);
 //			}
 //
 //		}
@@ -756,7 +756,7 @@
 //		//SM.EntityPlayAnimation(P1, "ANIMATION");
 //		SM.SetNode(P1, Player1.ModelNode).SetAlbedo({ 0.5f, 0.75f, 10.0f, 0.05f }).SetSpecular({1, 1, .5, 0});
 //
-//		SM.GetEntity(Floor).SetAlbedo({ 1.0f, 0.25f, 0.25f, 0.2f }).SetSpecular({1.0f, 1.0f, 1.0f, 0});
+//		SM.GetDrawable(Floor).SetAlbedo({ 1.0f, 0.25f, 0.25f, 0.2f }).SetSpecular({1.0f, 1.0f, 1.0f, 0});
 //		
 //		Arrow = SM.CreateDrawableAndSetMesh(defaultMat, "Arrow");
 //		
@@ -775,9 +775,9 @@
 //		//auto PL3 = SM.AddPointLight({-100, 50, 0 }, { 1, 1, 1 }, I, I);
 //		//SM.AddPointLight({0, 500, 0 }, { 1, 1, 1 }, 1000, 1000);
 //
-//		//SM.SetLightNodeHandle(PL1, SM.GetEntity(Light1).Node);
-//		//SM.SetLightNodeHandle(PL2, SM.GetEntity(Light2).Node);
-//		//SM.SetLightNodeHandle(PL3, SM.GetEntity(Light3).Node);
+//		//SM.SetLightNodeHandle(PL1, SM.GetDrawable(Light1).Node);
+//		//SM.SetLightNodeHandle(PL2, SM.GetDrawable(Light2).Node);
+//		//SM.SetLightNodeHandle(PL3, SM.GetDrawable(Light3).Node);
 //
 //		lightEntity = Light1;
 //

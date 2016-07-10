@@ -257,3 +257,53 @@ PS_IN VMainVertexPallet(VIN4 In)
 
 
 /************************************************************************************************/
+
+
+struct DepthPass_IN {
+	float4 POS : SV_POSITION;
+};
+
+
+DepthPass_IN VMain_ShadowMapping(VIN In)
+{
+	DepthPass_IN Out;
+	Out.POS = mul(PV, mul(WT, In.POS));
+	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+struct VIN5
+{
+	float3 POS 		: POSITION;
+	float3 W		: WEIGHTS;
+	uint4  I		: WEIGHTINDICES;
+};
+
+DepthPass_IN VMainVertexPallet_ShadowMapping(VIN5 In)
+{
+	DepthPass_IN Out;
+	float3 V = float3(0.0f, 0.0f, 0.0f);
+	float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
+
+	[unroll(4)]
+	for (uint I = 0; I < 4; ++I)
+	{
+		float4x4 MT = Bones[In.I[I]].T;
+		float4x4 MI = Bones[In.I[I]].I;
+
+		float4 TP = mul(MI, float4(In.POS, 1));
+
+		V += mul(MT, TP) * W[I];
+	}
+
+	float4 V2 = float4(V, 1.0f);
+	Out.POS = mul(PV, mul(WT, V2));
+
+	return Out;
+}
+
+
+/************************************************************************************************/

@@ -282,19 +282,10 @@ struct TextureSet_MetaData : public MetaData
 
 typedef DynArray<size_t> RelatedMetaData;
 
-bool			ReadMetaData		(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out);
-RelatedMetaData	FindRelatedMetaData (MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem);
-MetaData*		ScanRelatedFor		(MD_Vector* MetaData, RelatedMetaData& Related, MetaData::EMETAINFOTYPE Type);
-Resource*		MetaDataToBlob		(MetaData* Meta, iAllocator* Mem);
-
-
-/************************************************************************************************/
-
-
-typedef Pair<size_t, FlexKit::FontAsset*> LoadFontResult;
-
-LoadFontResult	LoadFontAsset(char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem);
-void			FreeFontAsset(FlexKit::FontAsset* asset);
+bool			ReadMetaData		( const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out );
+RelatedMetaData	FindRelatedMetaData ( MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem );
+MetaData*		ScanRelatedFor		( MD_Vector* MetaData, RelatedMetaData& Related, MetaData::EMETAINFOTYPE Type );
+Resource*		MetaDataToBlob		( MetaData* Meta, iAllocator* Mem );
 
 
 /************************************************************************************************/

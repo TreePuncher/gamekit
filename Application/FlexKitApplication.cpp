@@ -48,7 +48,7 @@ TODOs
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\memoryutilities.cpp"
-#include "..\coreutilities\timeutilities.cpp"
+#include "..\coreutilities\timeutilities.cpp"	
 
 #include "GameMemory.h"
 

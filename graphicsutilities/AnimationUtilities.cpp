@@ -136,6 +136,293 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	AnimationStateMachine::AnimationState SetDefaultState()
+	{
+		AnimationStateMachine::AnimationState State;
+		State.Active			= false;
+		State.Animation			= INVALIDHANDLE;
+		State.EaseOutDuration	= 0;
+		State.Enabled			= false;
+		State.ID				= -1;
+		State.In				= WeightFunction::EWF_INVALID;
+		State.Out				= WeightFunction::EWF_INVALID;
+		State.Speed				= 1.0f;
+
+		return State;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void InitiateASM( AnimationStateMachine* ASM, iAllocator* Memory, size_t Target)
+	{
+		ASM->StateCount			= 0;
+		ASM->MaxConditionCount	= 16;
+		ASM->MaxStateCount		= 16;
+		ASM->TargetDrawable		= Target;
+
+		for (auto& S : ASM->States) {
+			S = SetDefaultState();
+		}
+
+		for (auto& C : ASM->Conditions) {
+			C.Enabled = false;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DASEnableCondition(DAConditionHandle H, AnimationStateMachine* ASM){
+		ASM->Conditions[H].Enabled = true;
+	}
+
+	void DASDisableCondition(DAConditionHandle H, AnimationStateMachine* ASM){
+		ASM->Conditions[H].Enabled = false;
+	}
+
+
+	/************************************************************************************************/
+
+	
+	DAStateHandle DASAddState( AnimationStateEntry_Desc& Desc, AnimationStateMachine* Out )
+	{
+		size_t Index = INVALIDHANDLE;
+		if (Out->StateCount < Out->MaxStateCount){
+			Index = Out->StateCount++;
+			auto& State = Out->States[Index];
+
+			State.Active			= false;
+			State.Enabled			= true;
+			State.ID				= -1;
+			State.EaseOutDuration	= Desc.EaseOutDuration;
+			State.In				= Desc.In;
+			State.Out				= Desc.Out;
+			State.Speed				= Desc.Speed;
+			State.Animation			= Desc.Animation;
+			State.Loop				= Desc.Loop;
+			State.ForceComplete		= Desc.ForceComplete;
+			State.EaseOut			= Desc.EaseOut;
+			State.TriggerOnExit		= Desc.OnExitTrigger;
+		}
+
+		return Index;
+	}
+
+
+	/************************************************************************************************/
+
+	DAConditionHandle	DASAddCondition(AnimationCondition_Desc& Desc, AnimationStateMachine* Out)
+	{
+		size_t Index = INVALIDHANDLE;
+		if (Out->ConditionCount < Out->MaxConditionCount) {
+			Index = Out->ConditionCount++;
+			auto& Condition			= Out->Conditions[Index];
+
+			Condition.Enabled		= true;
+			Condition.Operation		= Desc.Operation;
+			Condition.TargetState	= Desc.DrivenState;
+			Condition.Type			= Desc.InputType;
+			Condition.Inputs[0].B	= false;
+			Condition.Inputs[1].B	= false;
+			Condition.Inputs[2].B	= false;
+		}
+
+		return Index;
+	}
+
+
+	/************************************************************************************************/
+
+	
+	void ASSetBool(DAConditionHandle Condition, bool B, AnimationStateMachine* ASM, size_t index)
+	{
+		if(ASM->Conditions[Condition].Operation == EASO_TRUE || EASO_FALSE)
+			ASM->Conditions[Condition].Inputs[index].B = B;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void UpdateASM( double dt, AnimationStateMachine* ASM, iAllocator* TempMemory, iAllocator* Memory, GraphicScene* Scene)
+	{
+		// Set all States to False
+		for (auto& S : ASM->States) 
+			S.Active = true;
+
+		for (auto C : ASM->Conditions) {
+			if (C.Enabled) {
+				switch (C.Operation)
+				{
+				case EASO_TRUE:
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B);	break;
+				case EASO_FALSE:
+					ASM->States[C.TargetState].Active &= !(C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B); break;
+				case EASO_GREATERTHEN:
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I < C.Inputs[1].I); break;
+				case EASO_LESSTHEN:
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I > C.Inputs[1].I); break;
+				case EASO_WITHIN:
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I - C.Inputs[1].I) < C.Inputs[2].I; break;
+				case EASO_FARTHERTHEN:
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I - C.Inputs[1].I) > C.Inputs[2].I; break;
+				default:
+					break;
+				}
+			}
+		}
+
+		for (auto& S : ASM->States) {
+			if (S.Enabled) {
+				if (S.Active && S.ID == INVALIDHANDLE) {
+					ASM->TargetDrawable;
+
+					auto RES = Scene->EntityPlayAnimation(ASM->TargetDrawable, S.Animation, 1.0f, S.Loop);
+					if (!CompareFloats(1.0f, S.Speed, 0.001f))
+						SetAnimationSpeed(Scene->GetEntityAnimationState(ASM->TargetDrawable), (int64_t)RES, S.Speed);
+
+					if (RES != false)
+						S.ID = RES;
+
+					S.EaseOutProgress = 0.0f;
+				}
+				else if(S.ID != INVALIDHANDLE) // Animation In flight
+				{
+					auto AnimationState = Scene->GetEntityAnimationState(ASM->TargetDrawable);
+					if (AnimationState && isStillPlaying(AnimationState, S.ID))
+					{
+						if (S.Loop)
+						{
+							if (!S.Active) {
+								auto C = GetAnimation(AnimationState, S.ID);
+								if (S.ForceComplete)
+									GetAnimation(AnimationState, S.ID)->ForceLoop = false;
+								else {
+									C->Speed = 0.0f;
+								}
+							}
+						}
+
+						auto Animation	= GetAnimation(AnimationState, S.ID);
+						if (Animation) {
+#if 0
+							// Begin Animation exit / Transition
+							// Calculating animation Weighting here
+							double EaseOutProgress		= S.EaseOutProgress;
+							double AnimationProgress	= GetAnimation_Completed(Animation);
+							float EaseOutBegin			= 1 - S.EaseOutDuration;
+
+							float Weight = EaseOutProgress;
+							Weight = 1 - Weight;
+							if (!Animation->ForceLoop && 
+								!CompareFloats(S.EaseOutDuration, 0.0f, 0.00001f) && 
+								EaseOutBegin < AnimationProgress) {
+								// Ease Out Weighting
+								SetAnimationSpeed(AnimationState, S.ID, 0);
+
+								if(S.EaseOut)
+									Weight = S.EaseOut(Weight);
+
+								//SetAnimationWeight(AnimationState, S.ID, Weight);
+								S.EaseOutProgress += dt / S.EaseOutDuration;
+
+								if (S.EaseOutProgress > 1.0f) {
+									AnimationState->Clips.erase(Animation);
+									S.ID = INVALIDHANDLE;
+								}
+							}
+#endif
+
+							float EaseOutBegin		= 1 - S.EaseOutDuration;
+							float AnimationProgress = GetAnimation_Completed(Animation);
+
+							if (S.Active)
+							{
+								S.EaseOutProgress = 0.0f;
+							}
+							else
+							{
+								// TODO: Blend ease in
+
+								// Calculate ease out Animation Blend Weighting
+								if (S.ForceComplete)
+								{	// Blend Animation with next Animation
+									if (AnimationProgress > EaseOutBegin) {
+										if( CompareFloats( S.EaseOutProgress, 0.0f, 1.0f/60.0f) ) 
+											ASSetBool(S.TriggerOnExit, true, ASM); // Trigger next Animation
+
+										if (S.EaseOutDuration > 0.0f)
+											S.EaseOutProgress += dt / S.EaseOutDuration;
+										else
+											S.EaseOutProgress = 1.0f;
+
+										float W = AnimationProgress - EaseOutBegin;
+										Animation->Weight = S.EaseOut(W);
+									}
+								}
+								else if (!S.ForceComplete)
+								{	// Pause Animation + Transition to next Animation/Pose
+									if (S.EaseOutDuration > 0.0f)
+										S.EaseOutProgress += dt / S.EaseOutDuration;
+									else
+										S.EaseOutProgress = 1.0f;
+
+									float W = S.EaseOutProgress;
+									Animation->Weight = S.EaseOut(1 - W);
+
+									if (S.EaseOutProgress > 1.0f) {
+										AnimationState->Clips.erase(Animation);
+										S.ID = INVALIDHANDLE;
+
+										if (S.TriggerOnExit != INVALIDHANDLE)
+											ASSetBool(S.TriggerOnExit, true, ASM);
+									}
+								}
+							}
+						}
+					}
+					else
+					{
+						// Animation Ended
+						S.ID	 = INVALIDHANDLE;
+						S.Active = false;
+					}
+				}
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	float EaseOut_RAMP(float Weight)
+	{
+		return Weight;
+	}
+
+
+	float EaseOut_Square(float Weight)
+	{
+		return Weight * Weight;
+	}
+
+
+	bool isStillPlaying(DrawableAnimationState* AS, int64_t ID)
+	{
+		for (auto C : AS->Clips)
+			if (C.ID == ID && C.Playing)
+				return true;
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Skeleton::InitiateSkeleton(iAllocator* Allocator, size_t JC)
 	{
 		auto test = sizeof(Skeleton);
@@ -252,7 +539,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight)
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
 	{
 		using FlexKit::DrawablePoseState;
 		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
@@ -273,7 +560,7 @@ namespace FlexKit
 		{
 			if (I->Clip.guid == Guid)
 			{
-				DrawableAnimationState::AnimationStateEntry ASE;
+				AnimationStateEntry ASE;
 				ASE.Clip      = &I->Clip;
 				ASE.order     = EAS->Clips.size();
 				ASE.T         = 0;
@@ -283,7 +570,8 @@ namespace FlexKit
 				ASE.Weight    = max(min(Weight, 1.0f), 0.0f);
 				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
 				EAS->Clips.push_back(ASE);
-				E->Posed = true; // Enable Posing or Animation won't do anything
+				E->Posed	  = true; // Enable Posing or Animation won't do anything
+				if (OutID) *OutID = ASE.ID;
 				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 			}
 			I = I->Next;
@@ -296,7 +584,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, const char* Animation, iAllocator* Allocator, bool ForceLoop, float Weight)
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, const char* Animation, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
 	{
 		using FlexKit::DrawablePoseState;
 		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
@@ -317,7 +605,7 @@ namespace FlexKit
 		{
 			if (!strcmp(I->Clip.mID, Animation))
 			{
-				DrawableAnimationState::AnimationStateEntry ASE;
+				AnimationStateEntry ASE;
 				ASE.Clip	  = &I->Clip;
 				ASE.order	  = EAS->Clips.size();
 				ASE.T		  = 0;
@@ -328,7 +616,8 @@ namespace FlexKit
 				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
 				EAS->Clips.push_back(ASE);
 				
-				E->Posed = true; // Enable Posing or Animation won't do anything
+				if (OutID) *OutID = ASE.ID;
+				E->Posed	  = true; // Enable Posing or Animation won't do anything
 				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 			}
 			I = I->Next;
@@ -341,7 +630,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, uint32_t& out)
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t& out)
 	{
 		using FlexKit::DrawablePoseState;
 		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
@@ -362,7 +651,7 @@ namespace FlexKit
 		{
 			if (I->Clip.guid == Guid)
 			{
-				DrawableAnimationState::AnimationStateEntry ASE;
+				AnimationStateEntry ASE;
 				ASE.Clip	  = &I->Clip;
 				ASE.order	  = EAS->Clips.size();
 				ASE.T		  = 0;
@@ -387,7 +676,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, uint32_t ID, double Speed)
+	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, int64_t ID, double Speed)
 	{
 		using FlexKit::DrawablePoseState;
 
@@ -428,8 +717,6 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, const char* AnimationID, double Speed)
 	{
-		using FlexKit::DrawablePoseState;
-
 		for(auto& C : AE->Clips)
 		{
 			if (!strcmp(C.Clip->mID, AnimationID))
@@ -443,6 +730,58 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES SetAnimationWeight(DrawableAnimationState* AE, int64_t	ID, float Weight)
+	{
+		for(auto& C : AE->Clips)
+		{
+			if (C.ID == ID)
+			{
+				C.Weight = Weight;
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+		}
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES SetAnimationWeight(DrawableAnimationState* AE, const char*	AnimationID, float Weight)
+	{
+		for (auto& C : AE->Clips)
+		{
+			if (!strcmp(C.Clip->mID, AnimationID))
+			{
+				C.Weight = Weight;
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+		}
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
+	}
+
+
+	/************************************************************************************************/
+
+
+	EPLAY_ANIMATION_RES SetAnimationWeight(DrawableAnimationState* AE, GUID_t	Guid, float Weight)
+	{
+		for (auto& C : AE->Clips)
+		{
+			if (C.Clip->guid == Guid)
+			{
+				C.Weight = Weight;
+				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+			}
+		}
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
+	}
+
+
+	/************************************************************************************************/
+
 
 	Pair<EPLAY_ANIMATION_RES, bool> StopAnimation_CheckState(Drawable* E, GeometryTable* GT)
 	{
@@ -622,6 +961,23 @@ namespace FlexKit
 		return Count;
 	}
 
+	AnimationStateEntry* GetAnimation(DrawableAnimationState* AS, int64_t ID)
+	{
+		for (auto& C : AS->Clips)
+			if (C.ID == ID)
+				return &C;
+
+		return nullptr;
+	}
+
+
+	double GetAnimation_Completed(AnimationStateEntry* A)
+	{
+		double FrameDuration	= 1.0 / A->Clip->FPS;
+		double AnimationLength	= A->Clip->FrameCount * FrameDuration;
+		return A->T / AnimationLength;
+	}
+
 
 	/************************************************************************************************/
 
@@ -658,20 +1014,25 @@ namespace FlexKit
 			}
 
 			bool AnimationPlayed = false;
+			size_t size = AS->Clips.size();
+			int c = 0;
 			std::sort(AS->Clips.begin().I, AS->Clips.end().I, 
-				[](const auto& LHS, const auto& RHS) -> bool { 
-					return	(LHS.Playing ? 0x00 : 1 << 31) || LHS.order <= (RHS.Playing ? 0x00 : 1 << 31) || RHS.order; });
+				[](const AnimationStateEntry& LHS, const AnimationStateEntry& RHS) -> bool 
+			{
+					size_t W1 = (LHS.Playing ? 0x00 : 1 << 31) | LHS.order;
+					size_t W2 = (RHS.Playing ? 0x00 : 1 << 31) | RHS.order;
+					return W1 > W2; });
 
 			for (auto& C : AS->Clips)
 			{
 				if (C.Playing && C.Clip->FrameCount)
 				{
-					const AnimationClip* Clip	= C.Clip;
-					bool Loop					= Clip->isLooping;
-					float  Weight				= C.Weight;
-					double T					= C.T;
-					double FrameDuration		= (1.0f / Clip->FPS) / abs(C.Speed);
-					double AnimationDuration	= FrameDuration * Clip->FrameCount;
+					const AnimationClip* Clip = C.Clip;
+					bool Loop                = Clip->isLooping;
+					float  Weight            = Saturate(C.Weight);
+					double T                 = C.T;
+					double FrameDuration     = (1.0f / Clip->FPS);
+					double AnimationDuration = FrameDuration * Clip->FrameCount;
 
 					if (!(Loop | C.ForceLoop) && C.T > AnimationDuration)
 						C.Playing = false;
@@ -681,6 +1042,7 @@ namespace FlexKit
 						C.T = AnimationDuration;
 					else
 						C.T += dT * C.Speed;
+
 
 					size_t FrameIndex	= size_t(T / FrameDuration) % Clip->FrameCount;
 					auto& CurrentFrame	= Clip->Frames[FrameIndex];
@@ -708,7 +1070,7 @@ namespace FlexKit
 			}
 
 			for (int I = AS->Clips.size() - 1; I >= 0; --I)
-				if (!AS->Clips[I].Playing) 
+				if (!AS->Clips[I].Playing)
 					AS->Clips.pop_back();
 
 			// Palette Generation

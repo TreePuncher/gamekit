@@ -105,8 +105,6 @@ void CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, boo
 
 void LoadShaders(EngineMemory* Game)
 {
-	// TODO: use the Direct Load from File function instead so NSight can intercept and show the shader in the debugger
-			
 	Game->VShader				= LoadShader("VMain",				"VMain",				"vs_5_0", "assets\\vshader.hlsl");
 	Game->V2Shader				= LoadShader("V2Main",				"V2Main",				"vs_5_0", "assets\\vshader.hlsl");
 	Game->VPShader				= LoadShader("VMain",				"StaticMeshBatcher",	"vs_5_0", "assets\\StaticMeshBatcher.hlsl");
@@ -131,7 +129,7 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::CreateDepthBuffer;
 
 	uint32_t width	 = 1600;
-	uint32_t height	 = 1000;
+	uint32_t height	 = 1200;
 	bool InvertDepth = true;
 
 	Engine->Window.Close = false;

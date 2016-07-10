@@ -47,12 +47,15 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 	
-	template<typename TY_1, typename TY_2> auto floor(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
-	template<typename TY_1, typename TY_2> auto min  (TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
-	template<typename TY_1, typename TY_2> auto max  (TY_1 x, TY_2 y)	{ return ((x > y) ? x : y);   }
-	template<typename TY_1, typename TY_2> auto fmod (TY_1 x, TY_2 y)	{ return ((x < y) ? x : x%y); }
+
+	template<typename TY_1, typename TY_2> auto floor	(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2> auto min		(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2> auto max		(TY_1 x, TY_2 y)	{ return ((x > y) ? x : y);   }
+	template<typename TY_1, typename TY_2> auto fastmod (TY_1 x, TY_2 y)	{ return ((x < y) ? x : x%y); }
+
 
 	/************************************************************************************************/
+
 
 	static const double	pi = 3.141592653589793;
 	static const unsigned int Matrix_Size = 16;
@@ -118,16 +121,24 @@ namespace FlexKit
 		return V;
 	}
 
+	template<typename TY>
+	inline TY Saturate(TY A) { return max( 0.0f, min(1.0f, A)); }
+
+	template<typename TY>
+	inline bool CompareFloats(TY A, TY B, TY E) {
+		return fabs(A - B) <= E;
+	}
+
+
 	/************************************************************************************************/
+
 
 	template< unsigned int SIZE, typename TY = float >
 	class Vect
 	{
 		typedef Vect<SIZE, TY> THISTYPE;
 	public:
-		Vect()
-		{
-		}
+		Vect(){}
 
 		Vect( TY n )
 		{
@@ -377,15 +388,21 @@ namespace FlexKit
 			return i ? y : x;
 		}
 
-		inline float2 operator + ( const float2& a ) const { return float2( this->x + a.x, this->y + a.y );				}
+		inline float2 operator + ( const float2& a ) const { return float2( this->x + a.x,	this->y + a.y );				}
 		inline float2 operator + ( const float   a ) const { return float2( x + a, y + a );								}
 		inline float2 operator - ( const float2& a ) const { return float2( x - a.x, y - a.y );							}
-		inline float2 operator - ( const float   a ) const { return float2( this->x - a, this->y - a );					}
-		inline float2 operator * ( const float2& a ) const { return float2( this->x * a.x, this->y * a.y );				}
-		inline float2 operator * ( const float   a ) const { return float2( this->x * a, this->y * a );					}
-		inline float2 operator / ( const float2& a ) const { return float2( this->x / a.x, this->y / a.y );				}
-		inline float2 operator / ( const float   a ) const { return float2( this->x / a, this->y / a );					}
+		inline float2 operator - ( const float   a ) const { return float2( this->x - a,	this->y - a );					}
+		inline float2 operator * ( const float2& a ) const { return float2( this->x * a.x,	this->y * a.y );				}
+		inline float2 operator * ( const float   a ) const { return float2( this->x * a,	this->y * a );					}
+		inline float2 operator / ( const float2& a ) const { return float2( this->x / a.x,	this->y / a.y );				}
+		inline float2 operator / ( const float   a ) const { return float2( this->x / a,	this->y / a );					}
 		inline float2 operator % ( const float2& a ) const { return float2( std::fmodf(x, a.x), std::fmodf(y, a.y));	}
+
+		inline float2 operator *= (const float2& a) 
+		{ 
+			*this = *this * a;
+			return *this; 
+		}
 
 		inline float2 operator = (const float2& a) { x = a.x; y = a.y; return *this; }
 
@@ -844,6 +861,7 @@ namespace FlexKit
 							w - a.w );
 #endif
 		}
+
 		inline float4 operator- ( const float a ) const
 		{
 #if USING(FASTMATH)
@@ -928,6 +946,11 @@ namespace FlexKit
 		struct
 		{
 			float x, y, z, w;
+		};
+
+		struct
+		{
+			float r, g, b, a;
 		};
 
 		float3 xyz()

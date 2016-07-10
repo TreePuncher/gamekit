@@ -113,6 +113,10 @@ namespace FlexKit
 	struct DynArray
 	{
 		typedef DynArray<Ty> THISTYPE;
+
+		typedef Ty*			Iterator;
+		typedef const Ty*	Iterator_const;
+
 		inline  DynArray(iAllocator* Alloc = nullptr) : Allocator(Alloc), Max(0), Size(0), A(nullptr) {}
 
 		inline  DynArray(THISTYPE&& RHS) : 
@@ -278,6 +282,11 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+		void remove_unstable(Iterator I) {
+			*I = back();
+			pop_back();
+		}
+
 		void pop_back()
 		{
 			A[Size--].~Ty();
@@ -340,9 +349,6 @@ namespace FlexKit
 
 
 		Ty& at(size_t index) { return A[index]; }
-
-		typedef Ty*			Iterator; 
-		typedef const Ty*	Iterator_const;
 
 
 		Iterator begin()	{ return A;			}

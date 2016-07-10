@@ -31,13 +31,15 @@ namespace FlexKit
 
 	void InitiateSimpleWindow(iAllocator* Memory, SimpleWindow* Out, SimpleWindow_Desc& Desc)
 	{
+		Out->CellState.Allocator		= Memory;
+		Out->Dividers.Allocator			= Memory;
 		Out->Elements.Allocator			= Memory;
-		Out->TexturedButtons.Allocator	= Memory;
 		Out->Lists.Allocator			= Memory;
 		Out->Root.Allocator				= Memory;
-		Out->Dividers.Allocator			= Memory;
-		Out->CellState.Allocator		= Memory;
+		Out->Slider.Allocator			= Memory;
 		Out->TextButtons.Allocator		= Memory;
+		Out->TextInputs.Allocator		= Memory;
+		Out->TexturedButtons.Allocator	= Memory;
 		Out->Memory						= Memory;
 
 		Out->ColumnCount	= Desc.ColumnCount;
@@ -71,6 +73,9 @@ namespace FlexKit
 		for (auto TB : W->TextButtons)
 			CleanUpTextArea(&TB.Text, W->Memory);
 
+		for (auto TB : W->TextInputs)
+			CleanUpTextArea(&TB.TextGUI, W->Memory);
+
 		W->Elements.Release();
 		W->TexturedButtons.Release();
 		W->Lists.Release();
@@ -78,6 +83,8 @@ namespace FlexKit
 		W->Dividers.Release();
 		W->CellState.Release();
 		W->TextButtons.Release();
+		W->TextInputs.Release();
+		W->Slider.Release();
 	}
 
 
@@ -138,6 +145,7 @@ namespace FlexKit
 	struct FormattingState
 	{
 		float2	CurrentPosition;
+		float2	CurrentOffset;
 		float2	End;
 
 		float RowEnd;
@@ -148,7 +156,8 @@ namespace FlexKit
 	FormattingState InitiateFormattingState(FormattingOptions& Formatting, ParentInfo& P)
 	{
 		FormattingState	Out;
-		Out.CurrentPosition = P.ClipArea_BL + float2{0.0f, P.ClipArea_WH[1] } - Formatting.CellDividerSize * float2(0.0f, 1.0f);
+		Out.CurrentPosition = P.ClipArea_BL + float2{ 0.0f, P.ClipArea_WH[1] } -Formatting.CellDividerSize * float2(0.0f, 1.0f);
+		Out.CurrentOffset	= { 0.0f, 0.0f };
 		Out.RowEnd			= P.ClipArea_TR[0];
 		Out.ColumnBegin		= P.ClipArea_TR[1];
 		Out.End				= { Out.RowEnd, P.ClipArea_BL[1] };
@@ -170,18 +179,18 @@ namespace FlexKit
 		switch (Options.DrawDirection)
 		{
 		case DD_Rows:
-			State.CurrentPosition += (WH * float2(1.0f, 0.0f));
+			State.CurrentOffset += (WH * float2(1.0f, 0.0f));
 			break;
 		case DD_Columns:
-			State.CurrentPosition += (WH * float2(0.0f,-1.0f));
+			State.CurrentOffset += (WH * float2(0.0f,-1.0f));
 			break;
 		case DD_Grid: {
 			auto temp = State.CurrentPosition += (WH * float2(0.0f, 1.0f));
 
 			if (temp.x > State.End.x)
 			{
-				State.CurrentPosition.x = State.ColumnBegin;
-				State.CurrentPosition.y += WH[1];
+				State.CurrentOffset.x = State.ColumnBegin;
+				State.CurrentOffset.y += WH[1];
 			}
 			if (temp.y > State.End.y)
 				return true;
@@ -195,28 +204,15 @@ namespace FlexKit
 
 	float2 GetFormattedPosition(FormattingState& State, FormattingOptions& Options, float2 WH)
 	{
-		float2 Position = State.CurrentPosition;
+		float2 Position = State.CurrentPosition + State.CurrentOffset;
 		Position[1] -= WH[1];
-
-#if 0
-		switch (Options.DrawDirection)
-		{
-		case DD_Rows:
-			break;
-		case DD_Columns:
-			Position[1] -= WH[1];
-			break;
-		case DD_Grid:
-			Position[0] += WH[0];
-			Position[1] += WH[1];
-			break;
-		default:
-			break;
-		}
-#endif
 
 		return Position;
 	}
+
+
+	/************************************************************************************************/
+
 
 	void HandleWindowInput(SimpleWindowInput* Input, GUIChildList& Elements, SimpleWindow* Window, ParentInfo& P, FormattingOptions& Options = FormattingOptions())
 	{
@@ -225,16 +221,17 @@ namespace FlexKit
 		for (auto& I : Elements)
 		{
 			const auto& E = Window->Elements[I];
+			float2 WH;
 
 			switch (E.Type) {
 			case EGE_HLIST:
 			case EGE_VLIST: {
 				float2 Position = GetCellPosition(Window, E.Position);
-				float2 WH = GetCellDimension(Window, Window->Lists[E.Index].WH);
+					   WH		= GetCellDimension(Window, Window->Lists[E.Index].WH);
 
 				ParentInfo This;
-				This.ParentPosition = Position;
-				This.ClipArea_BL	= Position;
+				This.ParentPosition = Position + CurrentFormatting.CurrentOffset;
+				This.ClipArea_BL	= This.ParentPosition;
 				This.ClipArea_TR	= This.ClipArea_BL + WH;
 				This.ClipArea_WH	= WH;
 
@@ -248,15 +245,15 @@ namespace FlexKit
 
 					HandleWindowInput(Input, Window->Lists[E.Index].Children, Window, This, Formatting);
 				}
-
-				if (IncrementFormatingState(CurrentFormatting, Options, WH))
-					return;// Ran out of Space in Row/Column
 			}	break;
 			case EGE_BUTTON_TEXTURED: {
 				auto		CurrentButton	= &Window->TexturedButtons[E.Index];
 				float2		Position		= GetFormattedPosition(CurrentFormatting, Options, CurrentButton->WH);
-				float2		WH				= CurrentButton->WH;
+							WH				= CurrentButton->WH;
 				Texture2D*	Texture			= CurrentButton->Active ? CurrentButton->Texture_Active : CurrentButton->Texture_InActive;
+
+				if (!WillFit( Position, Position + WH,P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
+					return;
 
 				if (CursorInside(Input->MousePosition, Position, WH)) {
 
@@ -274,16 +271,16 @@ namespace FlexKit
 					CurrentButton->Entered = false;
 				}
 
-				if (!WillFit(Position, Position + WH, P.ClipArea_BL, P.ClipArea_TR))
+				if (!WillFit(Position, Position + WH, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
 					return;
-
-				if (IncrementFormatingState(CurrentFormatting, Options, WH))
-					return;// Ran out of Space in Row/Column
 			}	break;
 			case EGE_BUTTON_TEXT: {
 				auto		CurrentButton	= &Window->TextButtons[E.Index];
 				float2		Position		= GetFormattedPosition(CurrentFormatting, Options, CurrentButton->WH);
-				float2		WH				= CurrentButton->WH;
+							WH				= CurrentButton->WH;
+
+				if (!WillFit(Position, Position + WH, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
+					return;
 
 				if (CursorInside(Input->MousePosition, Position, WH)) {
 
@@ -300,23 +297,69 @@ namespace FlexKit
 						CurrentButton->OnExit_CB(CurrentButton->CB_Args, I);
 					CurrentButton->Entered = false;
 				}
+			}	break;
+			case EGE_HSLIDER:
+			case EGE_VSLIDER: {
+				auto& Slider = Window->Slider[E.Index];
 
-				if (!WillFit(Position, Position + WH, P.ClipArea_BL, P.ClipArea_TR))
+				WH				= Slider.WH;
+				float2 Position = GetFormattedPosition(CurrentFormatting, Options, Slider.WH);
+				
+				float  R = Saturate(Slider.BarRatio);
+
+				if (!WillFit(
+					Position,
+					Position + WH,
+					P.ClipArea_BL, P.ClipArea_TR)
+					&& Options.OverflowHandling == OF_Exlude)
 					return;
 
-				if (IncrementFormatingState(CurrentFormatting, Options, WH))
-					return;// Ran out of Space in Row/Column
+				float2 S  = (E.Type == EGE_HSLIDER) ? float2{R, 1.0f} : float2{ 1.0f, R};
+				float2 S2 = (E.Type == EGE_HSLIDER) ? float2{1.0f, 0.0f} : float2{ 0.0f, 1.0f };
+
+				float2 TravelDistance = WH * (1 - R);
+				TravelDistance *= S2;
+
+				Draw_RECT_CLIPPED Bar;
+				float2 BarPosition	= Position + TravelDistance * Saturate(Slider.SliderPosition);
+				float2 BarWH		= Bar.BLeft + WH * S;
+
+				if (CursorInside(Input->MousePosition, Position, WH)) {
+					if (!Slider.Entered)
+						if(Slider.OnEntered_CB)	Slider.OnEntered_CB(Slider.SliderPosition, Slider.CB_Args, I);
+
+					if (CursorInside(Input->MousePosition, BarPosition, BarWH) && Input->LeftMouseButtonPressed)
+						if(Slider.OnClicked_CB)	Slider.OnClicked_CB(Slider.SliderPosition, Slider.CB_Args, I);
+
+					Slider.Entered = true;
+				}
+				else
+					Slider.Entered = false;
+			}	break;
+			case EGE_TEXTINPUT: {
+				auto TextInput = Window->TextInputs[E.Index];
+
+				WH = TextInput.WH;
+				auto Position = GetFormattedPosition(CurrentFormatting, Options, WH);
+
+				if (!WillFit(Position, Position + WH, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
+					return;
 			}	break;
 			case EGE_DIVIDER: {
-				auto DivSize = Window->Dividers[E.Index].Size;
-				if (IncrementFormatingState(CurrentFormatting, Options, DivSize))
-					return;// Ran out of Space in Row/Column
+				WH = Window->Dividers[E.Index].Size;
 			}	break;
 			default:
 				break;
 			}
+
+			if (IncrementFormatingState(CurrentFormatting, Options, WH))
+				return;// Ran out of Space in Row/Column
 		}
 	}
+
+
+	/************************************************************************************************/
+
 
 	void DrawChildren(GUIChildList& Elements, SimpleWindow* Window, GUIRender* Out, ParentInfo& P, FormattingOptions& Options)
 	{
@@ -325,15 +368,16 @@ namespace FlexKit
 		for (auto& I : Elements)
 		{
 			const auto& E = Window->Elements[I];
+			float2 WH;
 
 			switch (E.Type) {
 			case EGE_HLIST:
 			case EGE_VLIST: {
-				float2 Position = GetCellPosition(Window, E.Position);
-				float2 WH       = GetCellDimension(Window, Window->Lists[E.Index].WH);
+				float2 Position = GetCellPosition		(Window, E.Position);
+				WH				= GetCellDimension		(Window, Window->Lists[E.Index].WH);
 
 				Draw_RECT_CLIPPED	Panel;
-				Panel.BLeft           = Position;
+				Panel.BLeft			  = Position + CurrentFormatting.CurrentOffset;
 				Panel.TRight          = Panel.BLeft + WH;
 				Panel.Color           = Window->Lists[E.Index].Color;
 				Panel.CLIPAREA_BLEFT  = P.ClipArea_BL;
@@ -342,8 +386,8 @@ namespace FlexKit
 				PushRect(Out, Panel);
 
 				ParentInfo This;
-				This.ParentPosition = Position;
-				This.ClipArea_BL	= Position;
+				This.ParentPosition = Position + CurrentFormatting.CurrentOffset;
+				This.ClipArea_BL	= This.ParentPosition;
 				This.ClipArea_TR	= This.ClipArea_BL + WH;// + Window->CellBorder;
 				This.ClipArea_WH	= WH;
 
@@ -356,14 +400,11 @@ namespace FlexKit
 					Formatting.DrawDirection = EDrawDirection::DD_Columns;
 
 				DrawChildren(Window->Lists[E.Index].Children, Window, Out, This, Formatting);
-
-				if (IncrementFormatingState(CurrentFormatting, Options, WH))
-					return;// Ran out of Space in Row/Column
 			}	break;
 			case EGE_BUTTON_TEXTURED: {
 				auto		CurrentButton	= &Window->TexturedButtons[E.Index];
 				float2		Position		= GetFormattedPosition(CurrentFormatting, Options, CurrentButton->WH);
-				float2		WH				= CurrentButton->WH;
+				WH							= CurrentButton->WH;
 				Texture2D*	Texture			= CurrentButton->Active ?  CurrentButton->Texture_Active : CurrentButton->Texture_InActive;
 
 				CurrentButton->Active		= false;
@@ -374,27 +415,18 @@ namespace FlexKit
 				NewButton.Color         = float4(WHITE, 1);
 				NewButton.TRight        = Position + WH;
 
-				if (!WillFit(NewButton.BLeft, NewButton.TRight, P.ClipArea_BL, P.ClipArea_TR))
+				if (!WillFit(NewButton.BLeft, NewButton.TRight, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
 					return;
 
 				PushRect(Out, NewButton);
-
-				if(IncrementFormatingState(CurrentFormatting, Options, WH))
-					return;// Ran out of Space in Row/Column
 			}	break;
 			case EGE_BUTTON_TEXT: {
 				auto		CurrentButton	= &Window->TextButtons[E.Index];
 				float2		Position		= GetFormattedPosition(CurrentFormatting, Options, CurrentButton->WH);
-				float2		WH				= CurrentButton->WH;
+							WH				= CurrentButton->WH;
 
-				//CurrentButton->Text.Position	= Position;
 				CurrentButton->Active				= false;
 				CurrentButton->Text.ScreenPosition	= Position + WH * float2{0, 1.0f};
-
-				Draw_RECT NewButton;
-				NewButton.BLeft     = Position;//Position;
-				NewButton.Color     = float4(RED, 1);
-				NewButton.TRight    = Position + WH;
 
 				Draw_TEXT Text;
 				Text.Font			 =  CurrentButton->Font;
@@ -403,23 +435,106 @@ namespace FlexKit
 				Text.CLIPAREA_TRIGHT =  Position + WH;
 				Text.Color			 =  float4(GREEN, 1);
 
-				if (!WillFit(Text.CLIPAREA_BLEFT, Text.CLIPAREA_TRIGHT, P.ClipArea_BL, P.ClipArea_TR))
+				if (!WillFit(Text.CLIPAREA_BLEFT, Text.CLIPAREA_TRIGHT, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
 					return;
 
-				PushRect(Out, NewButton);
-				PushText(Out, Text);
+				if(CurrentButton->BackgroundTexture)
+				{
+					Draw_TEXTURED_RECT NewButton;
+					NewButton.BLeft			= Position;
+					NewButton.Color			= float4(Gray(0.5f), 1);
+					NewButton.TRight		= Position + WH;
+					NewButton.TextureHandle = CurrentButton->BackgroundTexture;
+					PushRect(Out, NewButton);
+				}
+				else
+				{
+					Draw_RECT NewButton;
+					NewButton.BLeft			= Position;
+					NewButton.Color			= float4(Gray(0.5f), 1);
+					NewButton.TRight		= Position + WH;
+					PushRect(Out, NewButton);
+				}
 
-				if (IncrementFormatingState(CurrentFormatting, Options, WH))
-					return;// Ran out of Space in Row/Column
+				PushText(Out, Text);
+			}	break;
+			case EGE_TEXTINPUT: {
+				auto TextInput = Window->TextInputs[E.Index];
+
+				WH = TextInput.WH;
+				auto Position = GetFormattedPosition(CurrentFormatting, Options, WH);
+
+				if (!WillFit(Position, Position + WH, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
+					return;
+
+				Draw_RECT_CLIPPED Background;
+				Background.BLeft		   = Position;
+				Background.TRight          = Background.BLeft + WH;
+				Background.Color           = {Gray(0.5f), 1};
+				Background.CLIPAREA_BLEFT  = P.ClipArea_BL;
+				Background.CLIPAREA_TRIGHT = P.ClipArea_TR;
+				PushRect(Out, Background);
+
+				TextInput.TextGUI.ScreenPosition = Position + WH * float2{ 0, 1.0f };
+
+				Draw_TEXT Text;
+				Text.Font				=  TextInput.Font;
+				Text.Text				= &TextInput.TextGUI;
+				Text.CLIPAREA_BLEFT		= Position;
+				Text.CLIPAREA_TRIGHT	= Position + WH;
+				Text.Color				= float4(GREEN, 1);
+			}	break;
+			case EGE_HSLIDER: 
+			case EGE_VSLIDER: {
+				auto& Slider = Window->Slider[E.Index];
+
+				float2	Position	= GetFormattedPosition(CurrentFormatting, Options, Slider.WH);
+						WH			= Slider.WH;
+				float	R			= Saturate(Slider.BarRatio);
+
+				if (!WillFit(
+						Position, 
+						Position + WH, 
+						P.ClipArea_BL, P.ClipArea_TR) 
+					&& Options.OverflowHandling == OF_Exlude)
+					return;
+
+				// Bar Background
+				{
+					Draw_RECT_CLIPPED	Background;
+					Background.BLeft		   = Position;
+					Background.TRight          = Background.BLeft + WH;
+					Background.Color           = {Gray(0.5f), 1};
+					Background.CLIPAREA_BLEFT  = P.ClipArea_BL;
+					Background.CLIPAREA_TRIGHT = P.ClipArea_TR;
+					PushRect(Out, Background);
+				}
+				// Bar
+				{
+					float2 S  = (E.Type == EGE_HSLIDER) ? float2{R, 1.0f} : float2{ 1.0f, R};
+					float2 S2 = (E.Type == EGE_HSLIDER) ? float2{1.0f, 0.0f} : float2{ 0.0f, 1.0f };
+
+					float2 TravelDistance = WH * (1 - R);
+					TravelDistance *= S2;
+
+					Draw_RECT_CLIPPED Bar;
+					Bar.BLeft			= Position + TravelDistance * Saturate(Slider.SliderPosition);
+					Bar.TRight          = Bar.BLeft + WH * S;
+					Bar.Color           = {Gray(0.9f), 1};
+					Bar.CLIPAREA_BLEFT  = P.ClipArea_BL;
+					Bar.CLIPAREA_TRIGHT = P.ClipArea_TR;
+					PushRect(Out, Bar);
+				}
 			}	break;
 			case EGE_DIVIDER: {
-				auto DivSize = Window->Dividers[E.Index].Size;
-				if (IncrementFormatingState(CurrentFormatting, Options, DivSize))
-					return;// Ran out of Space in Row/Column
+				WH = Window->Dividers[E.Index].Size;
 			}	break;
 			default:
 				break;
 			}
+
+			if (IncrementFormatingState(CurrentFormatting, Options, WH))
+				return;// Ran out of Space in Row/Column
 		}
 	}
 
@@ -520,7 +635,7 @@ namespace FlexKit
 		{
 		case EGE_HLIST:
 		case EGE_VLIST:
-			Window->Lists[Window->Elements[Target].Index].Children.push_back(Window->Elements.size());// > Window->Elements[Parent].Index Window -
+			Window->Lists[Window->Elements[Target].Index].Children.push_back(Window->Elements.size());
 			return true;
 		default:
 			break;
@@ -532,7 +647,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	int32_t GetCellState(uint2 Cell, SimpleWindow* W)
+	GUIElementHandle GetCellState(uint2 Cell, SimpleWindow* W)
 	{
 		return W->CellState[Cell[0] * W->RowCount + Cell[1]];
 	}
@@ -564,7 +679,7 @@ namespace FlexKit
 		return true;
 	}
 
-	size_t SimpleWindowAddVerticalList(SimpleWindow* Window, GUIList& Desc, size_t Parent)
+	GUIElementHandle SimpleWindowAddVerticalList(SimpleWindow* Window, GUIList& Desc, GUIElementHandle Parent)
 	{
 		GUIElement		 E;
 		GUIElement_List  P;
@@ -601,7 +716,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t SimpleWindowAddHorizonalList(SimpleWindow* Window, GUIList& Desc, size_t Parent)
+	GUIElementHandle SimpleWindowAddHorizonalList(SimpleWindow* Window, GUIList& Desc, GUIElementHandle Parent)
 	{
 		GUIElement		E;
 		GUIElement_List P;
@@ -638,7 +753,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t SimpleWindowAddTexturedButton(SimpleWindow* Window, GUITexturedButton_Desc&	Desc, size_t Parent)
+	GUIElementHandle SimpleWindowAddTexturedButton(SimpleWindow* Window, GUITexturedButton_Desc&	Desc, GUIElementHandle Parent)
 	{
 		GUIElement					E;
 		GUIElement_TexuredButton	TB;
@@ -668,7 +783,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t SimpleWindowAddTextButton(SimpleWindow*	Window, GUITextButton_Desc& Desc, RenderSystem* RS, size_t Parent)
+	GUIElementHandle SimpleWindowAddTextButton(SimpleWindow*	Window, GUITextButton_Desc& Desc, RenderSystem* RS, GUIElementHandle Parent)
 	{
 		TextArea_Desc TA_Desc = { 
 			{ 0, 0 },	// Position Will be set later
@@ -705,7 +820,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SimpleWindowAddDivider(SimpleWindow* Window, float2 Size, size_t Parent)
+	void SimpleWindowAddDivider(SimpleWindow* Window, float2 Size, GUIElementHandle Parent)
 	{
 		GUIElement	   E;
 		GUIElement_Div D;
@@ -727,5 +842,109 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	GUIElementHandle SimpleWindowAddHorizontalSlider(SimpleWindow* Window, GUISlider_Desc Desc, GUIElementHandle Parent)
+	{
+		/*
+		struct GUIElement_Slider
+		{
+			float2			WH;
+			float			SliderPosition;
+
+			SliderEventFN OnClicked_CB = nullptr;
+			SliderEventFN OnMoved_CB   = nullptr;
+			SliderEventFN OnEntered_CB = nullptr;
+			SliderEventFN OnExit_CB	   = nullptr;
+			void*		  CB_Args	   = nullptr;
+		};
+		*/
+
+		GUIElement_Slider	NewSlider;
+		GUIElement			E;
+		E.Type		= EGE_HSLIDER;
+		E.Index		= Window->Slider.size();
+		E.Position	= 0;// Unused here
+
+		NewSlider.OnClicked_CB	= Desc.OnClicked_CB;
+		NewSlider.OnEntered_CB	= Desc.OnEntered_CB;
+		NewSlider.OnExit_CB		= Desc.OnExit_CB;
+		NewSlider.OnMoved_CB	= Desc.OnMoved_CB;
+		NewSlider.CB_Args		= Desc.CB_Args;
+
+		NewSlider.SliderPosition = Desc.InitialPosition;
+		NewSlider.WH			 = Desc.WH;
+		NewSlider.BarRatio		 = Desc.BarRatio;
+
+		GameWindow_PushElement(Window, Parent, E);
+
+		Window->Elements.push_back(E);
+		Window->Slider.push_back(NewSlider);
+
+		return Window->Elements.size() - 1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	GUIElementHandle SimpleWindowAddTextInput(SimpleWindow*	Window, GUITextInput_Desc& Desc, RenderSystem* RS, GUIElementHandle Parent)
+	{
+		/*
+		struct GUIElement_TextInput
+		{
+			float2				WH;
+			Texture2D*			Texture;
+			char*				Text;
+
+			size_t				MaxTextLength;
+
+			void*				_ptr;
+			TextInputEventFN	OnTextEntered;
+			TextInputEventFN	OnTextChanged;
+
+			iAllocator*		Memory;
+		};
+		*/
+
+		GUIElement				E;
+		GUIElement_TextInput	TI;
+
+		E.Type		= EGE_TEXTINPUT;
+		E.Index		= Window->TextInputs.size();
+		E.Position	= 0;
+
+		TextArea_Desc TA_Desc = {
+			{ 0, 0 },	// Position Will be set later
+			{ Desc.WindowSize * float2{ float(Desc.WH[0]), float(Desc.WH[1]) } },
+			{ 16, 16 }
+		};
+
+		TI.TextGUI			= CreateTextArea(RS, Window->Memory, &TA_Desc);
+		TI.Memory			= Window->Memory;
+		TI.WH				= Desc.WH;
+		TI.Font				= Desc.Font;
+		TI.MaxTextLength	= TI.TextGUI.BufferDimensions.Product();
+
+		if(Desc.Text)
+			PrintText(&TI.TextGUI, Desc.Text);
+
+		GameWindow_PushElement(Window, Parent, E);
+
+		Window->Elements.push_back(E);
+		Window->TextInputs.push_back(TI);
+
+		return Window->Elements.size() - 1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetSliderPosition(float R, GUIElementHandle Element, SimpleWindow* W) {
+		W->Slider[W->Elements[Element].Index].SliderPosition = R;
+	}
+
+
+	/************************************************************************************************/
 
 }// namespace FlexKit

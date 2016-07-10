@@ -32,11 +32,11 @@ namespace FlexKit
 
 	EntityHandle GraphicScene::CreateDrawable()
 	{
-		if (FreeEntityList&& FreeEntityList->size())
+		if (FreeEntityList.size())
 		{
-			auto E = FreeEntityList->back();
-			FreeEntityList->pop_back();
-			Drawable& e = GetEntity(E);
+			auto E = FreeEntityList.back();
+			FreeEntityList.pop_back();
+			Drawable& e = GetDrawable(E);
 
 			DrawableDesc	Desc;
 			NodeHandle N  = GetZeroedNode(SN);
@@ -58,7 +58,7 @@ namespace FlexKit
 			e.Visable  = false;
 			e.Node	   = N;
 			_PushEntity(e);
-			return Drawables->size() - 1;
+			return Drawables.size() - 1;
 		}
 		return -1;
 	}
@@ -69,32 +69,24 @@ namespace FlexKit
 
 	void GraphicScene::RemoveEntity(EntityHandle E)
 	{
-		if (E + 1 == Drawables->size())
+		if (E + 1 == Drawables.size())
 		{
-			FreeHandle(SN, GetEntity(E).Node);
-			CleanUpDrawable(&GetEntity(E));
-			Drawables->pop_back();
+			FreeHandle(SN, GetDrawable(E).Node);
+			CleanUpDrawable(&GetDrawable(E));
+			Drawables.pop_back();
 		}
 		else
 		{
-			if (!FreeEntityList)
-				FreeEntityList = &FreeEntityList->Create(64, Memory);
-			if (FreeEntityList->full())
-			{
-				auto NewList = &FreeEntityList->Create(FreeEntityList->size() * 2, Memory);
-				for (auto e : *FreeEntityList)
-					FreeEntityList->push_back(e);
-				Memory->free(FreeEntityList);
-				FreeEntityList = NewList;
-			}
+			FreeEntityList.push_back(E);
+			FreeHandle(SN, GetDrawable(E).Node);
 
-			FreeEntityList->push_back(E);
-			FreeHandle(SN, GetEntity(E).Node);
-			CleanUpDrawable(&GetEntity(E));
-			GetEntity(E).VConstants.Release();
-			GetEntity(E).Visable	= false;
-			ReleaseMesh(GT, GetEntity(E).MeshHandle);
-			GetEntity(E).MeshHandle = INVALIDMESHHANDLE;
+			auto& Entity = GetDrawable(E);
+			CleanUpDrawable(&Entity);
+
+			Entity.VConstants.Release();
+			Entity.Visable	= false;
+			ReleaseMesh(GT, Entity.MeshHandle);
+			Entity.MeshHandle = INVALIDMESHHANDLE;
 		}
 	}
 
@@ -104,9 +96,9 @@ namespace FlexKit
 
 	bool GraphicScene::isEntitySkeletonAvailable(EntityHandle EHandle)
 	{
-		if (Drawables->at(EHandle).MeshHandle != INVALIDMESHHANDLE)
+		if (Drawables.at(EHandle).MeshHandle != INVALIDMESHHANDLE)
 		{
-			auto Mesh		= GetMesh(GT, Drawables->at(EHandle).MeshHandle);
+			auto Mesh		= GetMesh(GT, Drawables.at(EHandle).MeshHandle);
 			auto ID			= Mesh->TriMeshID;
 			bool Available	= isResourceAvailable(RM, ID);
 			return Available;
@@ -122,7 +114,7 @@ namespace FlexKit
 	{
 		bool Available			= isEntitySkeletonAvailable(EHandle);
 		bool SkeletonAvailable  = false;
-		auto MeshHandle			= GetEntity(EHandle).MeshHandle;
+		auto MeshHandle			= GetDrawable(EHandle).MeshHandle;
 
 		if (Available) {
 			auto Mesh = GetMesh(GT, MeshHandle);
@@ -140,8 +132,9 @@ namespace FlexKit
 				SetSkeleton(GT, MeshHandle, S);
 			}
 
-			GetEntity(EHandle).PoseState	= CreatePoseState(&GetEntity(EHandle), GT, Memory);
-			GetEntity(EHandle).Posed		= true;
+			auto& E = GetDrawable(EHandle);
+			E.PoseState	= CreatePoseState(&E, GT, Memory);
+			E.Posed		= true;
 			ret = true;
 		}
 
@@ -188,12 +181,12 @@ namespace FlexKit
 	}
 
 
-	bool GraphicScene::EntityPlayAnimation(EntityHandle EHandle, GUID_t Guid, float W, bool Loop)
+	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, GUID_t Guid, float W, bool Loop)
 	{
-		auto MeshHandle		= GetEntity(EHandle).MeshHandle;
+		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
 		bool SkeletonLoaded = IsSkeletonLoaded(GT, MeshHandle);
 		if (!SkeletonLoaded)
-			return false; 
+			return { false, -1 };
 
 		if (SkeletonLoaded && IsAnimationsLoaded(GT, MeshHandle))
 		{
@@ -201,8 +194,12 @@ namespace FlexKit
 			auto S = GetSkeleton(GT, MeshHandle);
 			if (S->Animations->Clip.guid == Guid)
 			{
-				PlayAnimation(&GetEntity(EHandle), GT, Guid, Memory, Loop);
-				return true;
+				int64_t ID = INVALIDHANDLE;
+				auto Res = PlayAnimation(&GetDrawable(EHandle), GT, Guid, Memory, Loop, W, ID);
+				if(Res == EPLAY_ANIMATION_RES::EPLAY_SUCCESS)
+					return { true, ID };
+
+				return{ false, -1};
 			}
 		}
 
@@ -211,22 +208,25 @@ namespace FlexKit
 		{
 			auto RHndl = LoadGameResource(RM, Guid);
 			if (LoadAnimation(this, EHandle, RHndl, MeshHandle, W)) {
-				PlayAnimation(&GetEntity(EHandle), GT, Guid, Memory, Loop, W);
-				return true;
+				int64_t ID = -1;
+				if (PlayAnimation(&GetDrawable(EHandle), GT, Guid, Memory, Loop, W, &ID) == EPLAY_SUCCESS)
+					return { true, ID};
+
+				return { false, -1 };
 			}
 			else
-				return false;
+				return { false, -1 };
 		}
-		return false;
+		return { false, -1 };
 	}
 
 
-	bool GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation, float W, bool Loop)
+	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation, float W, bool Loop)
 	{
-		auto MeshHandle		= GetEntity(EHandle).MeshHandle;
+		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
 		bool SkeletonLoaded = IsSkeletonLoaded(GT, MeshHandle);
 		if (!SkeletonLoaded)
-			return false; 
+			return { false, -1 };
 
 		if (SkeletonLoaded && IsAnimationsLoaded(GT, MeshHandle))
 		{
@@ -234,8 +234,10 @@ namespace FlexKit
 			auto S = GetSkeleton(GT, MeshHandle);
 			if (!strcmp(S->Animations->Clip.mID, Animation))
 			{
-				PlayAnimation(&GetEntity(EHandle), GT, Animation, Memory, Loop);
-				return true;
+				int64_t AnimationID = -1;
+				if(PlayAnimation(&GetDrawable(EHandle), GT, Animation, Memory, Loop, W, &AnimationID))
+					return { true, AnimationID };
+				return{ false, -1 };
 			}
 		}
 
@@ -243,14 +245,16 @@ namespace FlexKit
 		if(isResourceAvailable(RM, Animation))
 		{
 			auto RHndl = LoadGameResource(RM, Animation);
+			int64_t AnimationID = -1;
 			if (LoadAnimation(this, EHandle, RHndl, MeshHandle, W)) {
-				PlayAnimation(&GetEntity(EHandle), GT, Animation, Memory, Loop, W);
-				return true;
+				if(PlayAnimation(&GetDrawable(EHandle), GT, Animation, Memory, Loop, W, &AnimationID) == EPLAY_SUCCESS)
+					return { true, AnimationID };
+				return{ false, -1};
 			}
 			else
-				return false;
+				return { false, -1 };
 		}
-		return false;
+		return { false, -1 };
 	}
 
 
@@ -260,8 +264,8 @@ namespace FlexKit
 	Drawable& GraphicScene::SetNode(EntityHandle EHandle, NodeHandle Node) 
 	{
 		FlexKit::FreeHandle(SN, GetNode(EHandle));
-		Drawables->at(EHandle).Node = Node;
-		return Drawables->at(EHandle);
+		Drawables.at(EHandle).Node = Node;
+		return Drawables.at(EHandle);
 	}
 
 
@@ -275,11 +279,11 @@ namespace FlexKit
 		auto		Geo = FindMesh(GT, Mesh);
 		if (!Geo)	Geo = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
 
-		GetEntity(EHandle).MeshHandle	= Geo;
-		GetEntity(EHandle).Dirty		= true;
-		GetEntity(EHandle).Visable		= true;
-		GetEntity(EHandle).Textured		= false;
-		GetEntity(EHandle).Textures		= nullptr;
+		GetDrawable(EHandle).MeshHandle	= Geo;
+		GetDrawable(EHandle).Dirty		= true;
+		GetDrawable(EHandle).Visable		= true;
+		GetDrawable(EHandle).Textured		= false;
+		GetDrawable(EHandle).Textures		= nullptr;
 
 		return EHandle;
 	}
@@ -299,12 +303,12 @@ namespace FlexKit
 #ifdef _DEBUG
 		FK_ASSERT(MeshHandle != INVALIDMESHHANDLE, "FAILED TO FIND MESH IN RESOURCES!");
 #endif
-		GetEntity(EHandle).MeshHandle = MeshHandle;
-		GetEntity(EHandle).Dirty	  = true;
-		GetEntity(EHandle).Visable	  = true;
-		GetEntity(EHandle).Textured   = false;
-		GetEntity(EHandle).Posed	  = false;
-		GetEntity(EHandle).PoseState  = nullptr;
+		GetDrawable(EHandle).MeshHandle = MeshHandle;
+		GetDrawable(EHandle).Dirty	  = true;
+		GetDrawable(EHandle).Visable	  = true;
+		GetDrawable(EHandle).Textured   = false;
+		GetDrawable(EHandle).Posed	  = false;
+		GetDrawable(EHandle).PoseState  = nullptr;
 
 
 		return EHandle;
@@ -318,6 +322,16 @@ namespace FlexKit
 	{
 		PLights.push_back({Color, I, R, Node});
 		return LightHandle(PLights.size() - 1);
+	}
+
+
+	/************************************************************************************************/
+
+
+	SpotLightHandle GraphicScene::AddSpotLight(NodeHandle Node, float3 Color, float3 Dir, float t, float I, float R )
+	{
+		SPLights.push_back({ Color, Dir, I, R, Node });
+		return PLights.size() - 1;
 	}
 
 
@@ -348,27 +362,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void GraphicScene::EnableShadowCasting(SpotLightHandle SpotLight)
+	{
+		SpotLightCasters.push_back({ Camera(), SpotLight});
+		InitiateCamera(RS, SN, &SpotLightCasters.back().C, 1.0f );
+	}
+
+
+	/************************************************************************************************/
+
+
 	void GraphicScene::_PushEntity(Drawable E)
 	{
-		if (!Drawables)
-			Drawables = new(Memory->_aligned_malloc(sizeof(Drawable) * 64)) fixed_vector<Drawable>(64);
-
-		if (Drawables->full())
-		{
-			auto Temp		= new(TempMem->_aligned_malloc(sizeof(Drawable)*Drawables->size())) fixed_vector<Drawable>(Drawables->size());
-			for (auto e : *Drawables)
-				Temp->push_back(e);
-
-			size_t NewSize  = Drawables->size() * 2;
-			auto NewArray	= new(Memory->_aligned_malloc(sizeof(Drawable)*NewSize)) fixed_vector<Drawable>(NewSize);
-			for (auto e : *Temp)
-				NewArray->push_back(e);
-
-			Memory->_aligned_free(Drawables);
-			Drawables = NewArray;
-		}
-
-		Drawables->push_back(E);
+		Drawables.push_back(E);
 	}
 
 
@@ -380,6 +386,8 @@ namespace FlexKit
 		using FlexKit::CreateSpotLightBuffer;
 		using FlexKit::CreatePointLightBuffer;
 		using FlexKit::PointLightBufferDesc;
+
+		Out->Drawables.Allocator = Memory;
 
 		Out->RS = in_RS;
 		Out->RM = in_RM;
@@ -408,16 +416,13 @@ namespace FlexKit
 
 	void UpdateAnimationsGraphicScene(GraphicScene* SM, double dt)
 	{
-		if (SM->Drawables)
+		for (auto E : SM->Drawables)
 		{
-			for (auto E : *SM->Drawables)
-			{
-				if (E.AnimationState) {
-					if (GetAnimationPlayingCount(&E))
-						UpdateAnimation(SM->RS, &E, SM->GT, dt, SM->TempMem);
-					else
-						ClearAnimationPose(E.PoseState, SM->TempMem);
-				}
+			if (E.Posed) {
+				if (E.AnimationState && GetAnimationPlayingCount(&E))
+					UpdateAnimation(SM->RS, &E, SM->GT, dt, SM->TempMem);
+				else
+					ClearAnimationPose(E.PoseState, SM->TempMem);
 			}
 		}
 	}
@@ -430,7 +435,7 @@ namespace FlexKit
 	{
 		for(auto Tag : SM->TaggedJoints)
 		{
-			auto Entity = SM->GetEntity(Tag.Source);
+			auto Entity = SM->GetDrawable(Tag.Source);
 
 			auto WT = GetJointPosed_WT(Tag.Joint, Entity.Node, SM->SN, Entity.PoseState);
 			auto WT_t = Float4x4ToXMMATIRX(&WT.Transpose());
@@ -444,8 +449,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void UpdateShadowCasters(GraphicScene* GS)
+	{
+		for (auto& Caster : GS->SpotLightCasters)
+		{
+			UpdateCamera(GS->RS, GS->SN, &Caster.C, 0.00f);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	void UpdateGraphicScene(GraphicScene* SM)
 	{
+		UpdateShadowCasters(SM);
 	}
 
 
@@ -460,23 +478,20 @@ namespace FlexKit
 		FlexKit::GetOrientation(SM->SN, C->Node, &Q);
 		auto F = GetFrustum(C, GetPositionW(SM->SN, C->Node), Q);
 
-		if (SM->Drawables)
+		for (auto &E : SM->Drawables)
 		{
-			for (auto &E : *SM->Drawables)
-			{
-				auto Mesh	= GetMesh(SM->GT, E.MeshHandle);
-				auto Ls		= GetLocalScale(SM->SN, E.Node).x;
-				auto Pw		= GetPositionW(SM->SN, E.Node);
+			auto Mesh	= GetMesh(SM->GT, E.MeshHandle);
+			auto Ls		= GetLocalScale(SM->SN, E.Node).x;
+			auto Pw		= GetPositionW(SM->SN, E.Node);
 
-				if (Mesh && CompareBSAgainstFrustum(&F, Pw, Mesh->Info.r * Ls))
-				{
-					if (!E.Transparent)
-						PushPV(&E, out);
-					else
-						PushPV(&E, T_out);
-				}
-			}	
-		}
+			if (Mesh && CompareBSAgainstFrustum(&F, Pw, Mesh->Info.r * Ls))
+			{
+				if (!E.Transparent)
+					PushPV(&E, out);
+				else
+					PushPV(&E, T_out);
+			}
+		}	
 	}
 
 
@@ -517,24 +532,21 @@ namespace FlexKit
 
 	void CleanUpGraphicScene(GraphicScene* SM)
 	{
-		if (SM->Drawables) 
+		for (auto E : SM->Drawables)
 		{
-			for (auto E : *SM->Drawables)
-			{
-				ReleaseMesh(SM->GT, E.MeshHandle);
-				CleanUpDrawable(&E);
+			ReleaseMesh(SM->GT, E.MeshHandle);
+			CleanUpDrawable(&E);
 
-				if (E.PoseState) 
-				{
-					Destroy(E.PoseState);
-					CleanUp(E.PoseState, SM->Memory);
-					SM->Memory->_aligned_free(E.PoseState);
-					SM->Memory->_aligned_free(E.AnimationState);
-				}
+			if (E.PoseState) 
+			{
+				Destroy(E.PoseState);
+				CleanUp(E.PoseState, SM->Memory);
+				SM->Memory->_aligned_free(E.PoseState);
+				SM->Memory->_aligned_free(E.AnimationState);
 			}
-			SM->Memory->_aligned_free(SM->Drawables);
 		}
 
+		SM->Drawables.Release();
 
 		CleanUp(&SM->PLights, SM->Memory);
 		CleanUp(&SM->SPLights, SM->Memory);
@@ -545,7 +557,7 @@ namespace FlexKit
 		SM->Drawables		= nullptr;
 	}
 
-	void TagJoint(GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode)
+	void BindJoint(GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode)
 	{
 		SM->TaggedJoints.push_back({ Entity, Joint, TargetNode });
 	}

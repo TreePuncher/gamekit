@@ -25,7 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 #include "targetver.h"
-#include "..\Application\ResourceUtilities.h"
+#include "ResourceUtilities.h"
+
 #include "..\graphicsutilities\AnimationUtilities.h"
 #include "..\graphicsutilities\graphics.h"
 #include "..\coreutilities\containers.h"

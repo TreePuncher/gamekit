@@ -137,6 +137,11 @@ namespace FlexKit
 	};
 
 
+	struct PRagdoll
+	{
+
+	};
+
 	struct PScene
 	{
 		physx::PxScene*				Scene;

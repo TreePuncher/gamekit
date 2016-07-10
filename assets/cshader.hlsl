@@ -75,8 +75,8 @@ struct PointLight
 struct SpotLight
 {
 	float4 P; // Position + R
-	float4 D; // Direction;
 	float4 K; // Color + I
+	float4 D; // Direction;
 };
 
 struct DirectionalLight
@@ -93,6 +93,7 @@ sampler Sampler : register(s0);
 
 StructuredBuffer<PointLight>	PointLights		: register(t0);
 StructuredBuffer<SpotLight>		SpotLights		: register(t1);
+
 Texture2D<float4>		 		Color			: register(t2);
 Texture2D<float4>	 			Specular		: register(t3);
 Texture2D<float4>	 			Normal			: register(t4);
@@ -272,21 +273,31 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 	}
 	#endif
 	#endif
-	#if 1
+
+
+	/*
+	struct SpotLightEntry
+	{
+		float4 P; // + Radius
+		float4 K; // + Intensity
+		float3 D;
+	};
+	*/
+
 	// Spot Lights
 	for( int I = 0; I < SpotLightCount; ++I)
 	{
 		//
-		float3  Lp  = PointLights[I].P;
-		float3  Ld  = float3(0, -1, 0);
-		Lp[1] = 10;
+		float3  Lp  = SpotLights[I].P;
+		float3  Ld  = SpotLights[I].D;
 		float3 	Lv 	= normalize(Lp-WPOS);
 		float   La  = pow(max(dot(-Ld, Lv), 0), 10);
-		float3  Lc  = PointLights[I].K;
+		float3  Lc  = SpotLights[I].K;
 		// TODO: Add in light Lists, buckets etc
-		Color += float4(Frd( Lv, Lc, vdir, WPOS, Kd, n, Ks, m ) * La * PIInverse, 0);
+
+		//Color += float4(0.0, 1.0f, 0.0, 0.0f);
+		Color += float4(Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m) * La * PIInverse, 0);
 	}
-	#endif
 
 	WriteOut(float4(pow(Color, 1/2.1), 1), ID.xy, uint2(0, 0));
 }

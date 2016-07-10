@@ -609,6 +609,12 @@ namespace FlexKit
 		FrameTextureHeap_DESC.NodeMask			= 0;
 		FrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
+		D3D12_DESCRIPTOR_HEAP_DESC	RenderTargetHeap_DESC = {};
+		RenderTargetHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		RenderTargetHeap_DESC.NumDescriptors	= 256;
+		RenderTargetHeap_DESC.NodeMask			= 0;
+		RenderTargetHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+
 		ID3D12CommandQueue*			GraphicsQueue		= nullptr;
 		ID3D12CommandQueue*			UploadQueue			= nullptr;
 		ID3D12CommandQueue*			ComputeQueue		= nullptr;
@@ -647,11 +653,16 @@ namespace FlexKit
 
 				}
 
-				ID3D12DescriptorHeap*		SRVHeap = nullptr;
+				ID3D12DescriptorHeap* SRVHeap = nullptr;
 				HR = Device->CreateDescriptorHeap(&FrameTextureHeap_DESC, IID_PPV_ARGS(&SRVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 				SETDEBUGNAME(SRVHeap, "TEXTUREHEAP");
 
-				NewRenderSystem.FrameResources[I].SRVDescHeap = SRVHeap;
+				ID3D12DescriptorHeap* RTVHeap = nullptr;
+				HR = Device->CreateDescriptorHeap(&RenderTargetHeap_DESC, IID_PPV_ARGS(&RTVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
+				SETDEBUGNAME(SRVHeap, "RENDERTARGETHEAP");
+
+				NewRenderSystem.FrameResources[I].DescHeap.SRVDescHeap	= SRVHeap;
+				NewRenderSystem.FrameResources[I].RTVHeap.RTVDescHeap	= RTVHeap;
 				NewRenderSystem.FrameResources[I].ThreadsIssued = 0;
 			}
 
@@ -704,7 +715,8 @@ namespace FlexKit
 	{
 		for(auto FR : System->FrameResources)
 		{
-			FR.SRVDescHeap->Release();
+			FR.DescHeap.SRVDescHeap->Release();
+			FR.RTVHeap.RTVDescHeap->Release();
 
 			for (auto CL : FR.CommandLists)
 				if(CL)CL->Release();
@@ -1324,7 +1336,8 @@ namespace FlexKit
 			break;
 		case FlexKit::FORMAT_2D::R32G32B32A32_FLOAT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-			break;
+		case FlexKit::FORMAT_2D::R32_FLOAT:
+			return DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT;
 		default:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UINT;
 			break;
@@ -1387,6 +1400,9 @@ namespace FlexKit
 			D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
 			D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 
+		Resource_DESC.Flags |=  (desc_in->FLAGS & SPECIALFLAGS::DEPTHSTENCIL) ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : 
+			D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
 		Resource_DESC.MipLevels	= desc_in->MipLevels;
 
 		D3D12_HEAP_PROPERTIES HEAP_Props	={};
@@ -1411,9 +1427,9 @@ namespace FlexKit
 
 		CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
 
-		FlexKit::Texture2D NewTexture = {NewResource, 
-										{desc_in->Height, desc_in->Height}, 
-										TextureFormat2DXGIFormat(desc_in->Format)};
+		Texture2D NewTexture = {NewResource, 
+								{desc_in->Height, desc_in->Height}, 
+								TextureFormat2DXGIFormat(desc_in->Format)};
 
 		return (NewTexture);
 	}
@@ -3103,8 +3119,19 @@ namespace FlexKit
 	void ResetDescHeap(RenderSystem* RS)
 	{
 		auto FrameResources = GetCurrentFrameResources(RS);
-		FrameResources->GPU_HeapPOS = FrameResources->SRVDescHeap->GetGPUDescriptorHandleForHeapStart();
-		FrameResources->CPU_HeapPOS = FrameResources->SRVDescHeap->GetCPUDescriptorHandleForHeapStart();
+		FrameResources->DescHeap.GPU_HeapPOS = FrameResources->DescHeap.SRVDescHeap->GetGPUDescriptorHandleForHeapStart();
+		FrameResources->DescHeap.CPU_HeapPOS = FrameResources->DescHeap.SRVDescHeap->GetCPUDescriptorHandleForHeapStart();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ResetRTVHeap(RenderSystem* RS)
+	{
+		auto FrameResources = GetCurrentFrameResources(RS);
+		FrameResources->RTVHeap.GPU_HeapPOS = FrameResources->RTVHeap.RTVDescHeap->GetGPUDescriptorHandleForHeapStart();
+		FrameResources->RTVHeap.CPU_HeapPOS = FrameResources->RTVHeap.RTVDescHeap->GetCPUDescriptorHandleForHeapStart();
 	}
 
 
@@ -3113,11 +3140,11 @@ namespace FlexKit
 
 	DescHeapPOS ReserveDescHeap(RenderSystem* RS, size_t SlotCount)
 	{	// Make This Atomic
-		auto FrameResources				= GetCurrentFrameResources(RS);
-		auto CPU						= FrameResources->CPU_HeapPOS;
-		auto GPU						= FrameResources->GPU_HeapPOS;
-		FrameResources->CPU_HeapPOS.ptr = FrameResources->CPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
-		FrameResources->GPU_HeapPOS.ptr = FrameResources->GPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
+		auto FrameResources						 = GetCurrentFrameResources(RS);
+		auto CPU								 = FrameResources->DescHeap.CPU_HeapPOS;
+		auto GPU								 = FrameResources->DescHeap.GPU_HeapPOS;
+		FrameResources->DescHeap.CPU_HeapPOS.ptr = FrameResources->DescHeap.CPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
+		FrameResources->DescHeap.GPU_HeapPOS.ptr = FrameResources->DescHeap.GPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
 
 		return { CPU , GPU };
 	}
@@ -3125,14 +3152,60 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	DescHeapPOS ReserveRTVHeap(RenderSystem* RS, size_t SlotCount)
+	{
+		auto FrameResources						 = GetCurrentFrameResources(RS);
+		auto CPU								 = FrameResources->RTVHeap.CPU_HeapPOS;
+		auto GPU								 = FrameResources->RTVHeap.GPU_HeapPOS;
+		FrameResources->RTVHeap.CPU_HeapPOS.ptr = FrameResources->RTVHeap.CPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
+		FrameResources->RTVHeap.GPU_HeapPOS.ptr = FrameResources->RTVHeap.GPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
+
+		return { CPU , GPU };
+	}
+
+
+	/************************************************************************************************/
+
+	ID3D12DescriptorHeap* GetCurrentRTVTable(RenderSystem* RS)
+	{
+		return GetCurrentFrameResources(RS)->RTVHeap.RTVDescHeap;
+	}
+
 	ID3D12DescriptorHeap* GetCurrentDescriptorTable(RenderSystem* RS)
 	{
-		return GetCurrentFrameResources(RS)->SRVDescHeap;
+		return GetCurrentFrameResources(RS)->DescHeap.SRVDescHeap;
 	}
 
 	D3D12_GPU_DESCRIPTOR_HANDLE GetDescTableCurrentPosition_GPU(RenderSystem* RS)
 	{
-		return GetCurrentFrameResources(RS)->GPU_HeapPOS;
+		return GetCurrentFrameResources(RS)->DescHeap.GPU_HeapPOS;
+	}
+
+	D3D12_GPU_DESCRIPTOR_HANDLE GetRTVTableCurrentPosition_GPU(RenderSystem* RS)
+	{
+		return GetCurrentFrameResources(RS)->RTVHeap.GPU_HeapPOS;
+	}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE GetRTVTableCurrentPosition_CPU(RenderSystem* RS)
+	{
+		return GetCurrentFrameResources(RS)->RTVHeap.CPU_HeapPOS;
+	}
+
+	/************************************************************************************************/
+
+
+	DescHeapPOS PushRenderTarget(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS)
+	{
+		D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
+		TargetDesc.Format				= Target->Format;
+		TargetDesc.Texture2D.MipSlice	= 0;
+		TargetDesc.Texture2D.PlaneSlice = 0;
+		TargetDesc.ViewDimension		= D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;
+
+		RS->pDevice->CreateRenderTargetView(*Target, &TargetDesc, POS);
+
+		return IncrementHeapPOS(POS, RS->DescriptorRTVSize, 1);
 	}
 
 
@@ -3205,6 +3278,73 @@ namespace FlexKit
 		RS->pDevice->CreateUnorderedAccessView(tex, nullptr, &UAVDesc, POS);
 		
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
+
+	/************************************************************************************************/
+	
+	
+	void InitiateShadowMapPass(RenderSystem* RenderSystem, ShadowMapPass* Out)
+	{
+		Shader VertexShader_Animated;
+		Shader VertexShader_Static;
+
+		// Load Shader
+		{
+			VertexShader_Animated	= LoadShader("VMainVertexPallet_ShadowMapping",	"ShadowMapping", "vs_5_0", "assets\\vshader.hlsl");
+			VertexShader_Static		= LoadShader("VMain_ShadowMapping",				"ShadowMapping", "vs_5_0", "assets\\vshader.hlsl");
+		}
+
+		// Create Pipelines State
+		{
+			D3D12_RASTERIZER_DESC			Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+				D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+				Depth_Desc.DepthFunc					= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+				Depth_Desc.DepthEnable					= true;
+
+
+			D3D12_INPUT_ELEMENT_DESC InputElements[5] = {
+				{ "POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "WEIGHTS",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,	3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "WEIGHTINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {};{
+				PSO_Desc.pRootSignature			= RenderSystem->Library.RS4CBVs4SRVs;
+				PSO_Desc.VS						= VertexShader_Static;
+				PSO_Desc.RasterizerState		= Rast_Desc;
+				PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.SampleMask				= UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+				PSO_Desc.NumRenderTargets		= 0;
+				PSO_Desc.SampleDesc.Count		= 1;
+				PSO_Desc.SampleDesc.Quality		= 0;
+				PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout			={ InputElements, 1 };
+				PSO_Desc.DepthStencilState		= Depth_Desc;
+			}
+
+			ID3D12PipelineState* PSO = nullptr;
+			HRESULT HR = RenderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADOW MAPPING PIPELINE STATE OBJECT!"));
+
+			Out->PSO_Static = PSO;
+
+			PSO_Desc.VS = VertexShader_Animated;
+			PSO_Desc.InputLayout = { InputElements, 3 };
+
+			HR = RenderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADOW MAPPING PIPELINE STATE OBJECT!"));
+
+			Out->PSO_Animated = PSO;
+		}
+	}
+
+
+	void CleanUpShadowPass(ShadowMapPass* Out)
+	{
+		Out->PSO_Animated->Release();
+		Out->PSO_Static->Release();
 	}
 
 
@@ -3450,44 +3590,6 @@ namespace FlexKit
 				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 				FK_ASSERT(SUCCEEDED(HR));
 				out->Filling.PSOAnimatedTextured = PSO;
-
-
-				D3D12_DESCRIPTOR_HEAP_DESC Heap_Desc;{
-					Heap_Desc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-					Heap_Desc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-					Heap_Desc.NumDescriptors = 15;
-					Heap_Desc.NodeMask		 = 0;
-				}
-
-				D3D12_RENDER_TARGET_VIEW_DESC RTV_Desc;{
-					RTV_Desc.Format               = DXGI_FORMAT_R8G8B8A8_UNORM;
-					RTV_Desc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
-					RTV_Desc.Texture2D.MipSlice   = 0;
-					RTV_Desc.Texture2D.PlaneSlice = 0;
-				}
-
-				for(size_t I = 0; I < 3; ++I){
-					ID3D12DescriptorHeap* RTVHeap = nullptr;
-					HR = RS->pDevice->CreateDescriptorHeap(&Heap_Desc, IID_PPV_ARGS(&RTVHeap));
-
-					FK_ASSERT(SUCCEEDED(HR));
-
-					out->GBuffers[I].RTVDescHeap = RTVHeap;
-					CD3DX12_CPU_DESCRIPTOR_HANDLE RenderTarget(RTVHeap->GetCPUDescriptorHandleForHeapStart());
-					auto INC_RT = [&](){RenderTarget.Offset(RS->DescriptorRTVSize); };
-
-					RS->pDevice->CreateRenderTargetView(out->GBuffers[I].ColorTex, &RTV_Desc,	 RenderTarget);	INC_RT();
-					RS->pDevice->CreateRenderTargetView(out->GBuffers[I].SpecularTex, &RTV_Desc, RenderTarget); INC_RT();
-
-					RTV_Desc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-					RS->pDevice->CreateRenderTargetView(out->GBuffers[I].NormalTex, &RTV_Desc,	 RenderTarget);	INC_RT();
-					RS->pDevice->CreateRenderTargetView(out->GBuffers[I].PositionTex, &RTV_Desc, RenderTarget);	INC_RT();
-
-					RTV_Desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-					RS->pDevice->CreateRenderTargetView(out->GBuffers[I].OutputBuffer, &RTV_Desc, RenderTarget);
-
-					SETDEBUGNAME(RTVHeap, "GBuffer RenderTarget Descriptor Head");
-				}
 			}
 		}
 	}
@@ -3507,6 +3609,7 @@ namespace FlexKit
 		HR = GetCurrentCommandAllocator(RS)->Reset();									FK_ASSERT(SUCCEEDED(HR));
 		HR = GetCurrentCommandList(RS)->Reset(GetCurrentCommandAllocator(RS), nullptr);	FK_ASSERT(SUCCEEDED(HR));
 
+		ResetRTVHeap(RS);
 		ResetDescHeap(RS);
 
 		GetCurrentCommandList(RS)->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBufferResource(Window),
@@ -3645,9 +3748,9 @@ namespace FlexKit
 		}
 
 		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS = ReserveDescHeap(RS, 7);
+		auto TablePOS  = ReserveDescHeap(RS, 8);
 		// The Max is to quiet a error if a no Lights are passed
-		TablePOS = PushSRVBufferToDescHeap	(RS, PLB->Resource, TablePOS, max(PLB->size(), 1), PLB_Stride);	
+		TablePOS = PushSRVBufferToDescHeap	(RS, PLB->Resource, TablePOS,  max(PLB->size(), 1),  PLB_Stride);	
 		TablePOS = PushSRVBufferToDescHeap	(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride);
 
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,		TablePOS);
@@ -3659,7 +3762,7 @@ namespace FlexKit
 		TablePOS = PushCBToDescHeap			(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
 		TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
 
-		ID3D12DescriptorHeap* Heaps[] = { FrameResources->SRVDescHeap };
+		ID3D12DescriptorHeap* Heaps[] = { FrameResources->DescHeap.SRVDescHeap };
 		CL->SetDescriptorHeaps(1, Heaps);
 
 		// Do Shading Here
@@ -3727,6 +3830,10 @@ namespace FlexKit
 		auto DescPOS			= ReserveDescHeap					(RS, 6);
 		auto DescriptorHeap		= GetCurrentDescriptorTable			(RS);
 
+		auto RTVPOSCPU			= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
+		auto RTVPOS				= ReserveRTVHeap					(RS, 6);
+		auto RTVHeap			= GetCurrentRTVTable				(RS);
+
 		CL->SetDescriptorHeaps	(1, &DescriptorHeap);
 
 		size_t BufferIndex		 = Pass->CurrentBuffer;
@@ -3752,9 +3859,16 @@ namespace FlexKit
 			D3D12_VIEWPORT	VPs[]	= { VP, VP, VP, VP, };
 			D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT,};
 
+			{
+				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,	RTVPOS);
+				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
+				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
+				RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex,	RTVPOS);
+			}
+
 			CL->SetGraphicsRootSignature			(Pass->Filling.FillRTSig);
 			CL->SetPipelineState					(Pass->Filling.PSO);
-			CL->OMSetRenderTargets					(4, &Pass->GBuffers[BufferIndex].RTVDescHeap->GetCPUDescriptorHandleForHeapStart(), true, &Pass->GBuffers[BufferIndex].DepthBuffer);
+			CL->OMSetRenderTargets					(4, &RTVPOSCPU, true, &Pass->GBuffers[BufferIndex].DepthBuffer);
 			CL->SetGraphicsRootConstantBufferView	(0, C->Buffer->GetGPUVirtualAddress());
 			CL->RSSetViewports						(4, VPs);
 			CL->RSSetScissorRects					(4, RECTs);
@@ -4129,7 +4243,6 @@ namespace FlexKit
 			gb->GBuffers[I].NormalTex->Release();
 			gb->GBuffers[I].PositionTex->Release();
 			gb->GBuffers[I].OutputBuffer->Release();
-			gb->GBuffers[I].RTVDescHeap->Release();
 		}
 
 		gb->Shading.ShaderConstants.Release();
@@ -4154,15 +4267,23 @@ namespace FlexKit
 
 	void ClearGBuffer(RenderSystem* RS, DeferredPass* Pass, const float4& Clear, size_t Index)
 	{
-		auto CL = GetCurrentCommandList(RS);
-		CD3DX12_CPU_DESCRIPTOR_HANDLE RT(Pass->GBuffers[Index].RTVDescHeap->GetCPUDescriptorHandleForHeapStart());
-		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); RT.Offset(RS->DescriptorCBVSRVUAVSize);
-		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); RT.Offset(RS->DescriptorCBVSRVUAVSize);
-		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); RT.Offset(RS->DescriptorCBVSRVUAVSize);
-		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); RT.Offset(RS->DescriptorCBVSRVUAVSize);
-		CL->ClearRenderTargetView(RT, Clear, 0, nullptr); 
+		auto CL			= GetCurrentCommandList(RS);
+		auto RTVPOSCPU	= GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
+		auto RTVPOS		= ReserveRTVHeap(RS, 6);
+		auto RTVHeap	= GetCurrentRTVTable(RS);
 
-		Pass->GBuffers[Index].OutputBuffer[Index];
+		size_t BufferIndex = Pass->CurrentBuffer;
+
+		auto ClearTarget = [&](DescHeapPOS POS, Texture2D& Texture) {
+			RTVPOS = PushRenderTarget(RS, &Texture, POS);
+			CL->ClearRenderTargetView(POS, Clear, 0, nullptr);
+		};
+		
+		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].ColorTex);
+		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].SpecularTex);
+		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].NormalTex);
+		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].PositionTex);
+		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].OutputBuffer);
 	}
 	
 
@@ -4346,12 +4467,11 @@ namespace FlexKit
 
 				Quaternion Q;
 				GetOrientation(nodes, L.Position, &Q);
-				SLs[itr].Direction		= Q * float3{ 0, 0, 1 };
-				SLs[itr].Direction[3]	= 1;
+				SLs[itr].Direction = Q *  L.Direction;
 				itr++;
 			}
 		}
-		UpdateResourceByTemp(RS, out->Resource, (char*)SLs, sizeof(PointLightEntry) * out->Lights->size());
+		UpdateResourceByTemp(RS, out->Resource, (char*)SLs, sizeof(SpotLightEntry) * out->Lights->size());
 	}
 
 
@@ -5773,6 +5893,39 @@ namespace FlexKit
 		constants.PLightCount = PLightCount;
 		constants.SLightCount = SLightCount;
 		UpdateResourceByTemp(RS, &gb->Shading.ShaderConstants, &constants, sizeof(constants), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderShadowMap(RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT)
+	{
+		auto CL             = GetCurrentCommandList(RS);
+		auto FrameResources = GetCurrentFrameResources(RS);
+		auto DescPOSGPU     = GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
+		auto DescPOS        = ReserveDescHeap(RS, 6);
+		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
+
+		auto RTVPOSCPU      = GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
+		auto RTVPOS         = ReserveRTVHeap(RS, 6);
+		auto RTVHeap        = GetCurrentRTVTable(RS);
+
+		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
+
+		auto itr = _PVS->begin();
+		auto end = _PVS->end();
+
+		for (; itr != end; ++itr)
+		{
+			Drawable* E = *itr;
+			if (E->Posed)
+				CL->SetPipelineState(PSOs->PSO_Animated);
+			else
+				CL->SetPipelineState(PSOs->PSO_Static);
+
+			E->VConstants;
+		}
 	}
 
 

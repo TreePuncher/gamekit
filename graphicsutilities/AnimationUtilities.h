@@ -27,8 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ANIMATION_UTILITIES_H
 
 #include "..\PCH.h"
-#include "..\\coreutilities\memoryutilities.h"
 #include "..\\coreutilities\MathUtils.h"
+#include "..\\coreutilities\memoryutilities.h"
+#include "..\\coreutilities\Resources.h"
 
 #include "graphics.h"
 
@@ -47,6 +48,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	typedef uint16_t	JointHandle;
+
+	struct Resources;
 	struct Skeleton;
 
 	struct Joint
@@ -75,23 +78,13 @@ namespace FlexKit
 		float4		ts;
 	};
 
-	struct JointPoseCurve
-	{
-		float4 Rotation;
-		float4 Transform;
-		float4 Scale;
-	};
-
-	struct JointAndPose
-	{
-		Joint		Linkage;
-		//JointPose	Pose;
-	};
 
 	FLEXKITAPI XMMATRIX		GetTransform(JointPose P);
 	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX M);
 
+
 	/************************************************************************************************/
+
 
 	struct AnimationClip
 	{
@@ -111,7 +104,9 @@ namespace FlexKit
 		bool			isLooping		= false;
 	};
 
+
 	/************************************************************************************************/
+
 
 	struct FLEXKITAPI Skeleton
 	{
@@ -128,7 +123,6 @@ namespace FlexKit
 		size_t				JointCount;
 		GUID_t				guid;
 		iAllocator*			Memory;
-		//JointHandle			Root;
 
 		struct AnimationList
 		{
@@ -140,8 +134,8 @@ namespace FlexKit
 		AnimationList* Animations;
 	};
 
-	FLEXKITAPI void Skeleton_PushAnimation	(Skeleton* S, iAllocator* Allocator, AnimationClip AC);
-	FLEXKITAPI void CleanUpSkeleton			(Skeleton* S);
+	FLEXKITAPI void Skeleton_PushAnimation	( Skeleton* S, iAllocator* Allocator, AnimationClip AC );
+	FLEXKITAPI void CleanUpSkeleton			( Skeleton* S );
 
 
 	/************************************************************************************************/
@@ -191,39 +185,32 @@ namespace FlexKit
 		size_t					padding[2];
 	};
 
+	struct AnimationStateEntry
+	{
+		AnimationClip*	Clip;
+		double			T;
+		double			Speed;
+		float			Weight;
+		int32_t			order;
+		int64_t			ID;
+		uint8_t			Playing;
+		bool			ForceLoop;
 
-	typedef size_t DAStateHandle;
+		enum
+		{
+			Skeletal,
+			Simulation,
+			Vertex,
+		}TargetType;
+
+		byte			Pad[38];
+
+	};
 	struct DrawableAnimationState
 	{
-		struct AnimationStateEntry
-		{
-			AnimationClip*	Clip;
-			double			T;
-			double			Speed;
-			float			Weight;
-			int32_t			order;
-			int32_t			ID;
-			uint8_t			Playing;
-			bool			ForceLoop;
-
-			enum
-			{
-				Skeletal,
-				Simulation, 
-				Vertex,
-			}TargetType;
-
-			byte			Pad[38];
-		};
-
 		static_vector<AnimationStateEntry>	Clips; // Animations in
 		DrawablePoseState*					Target;
 	};
-
-
-	FLEXKITAPI DAStateHandle	DASAddState();
-	FLEXKITAPI void				DASSetValue();
-	FLEXKITAPI void				DASUpdate();
 
 
 	/************************************************************************************************/
@@ -235,23 +222,30 @@ namespace FlexKit
 		EWF_Sin,
 		EWF_Cos,
 		EWF_Log,
+		EWF_Ramp,
+		EWF_Square,
+		EWF_INVALID,
 	};
+
 
 	struct BlendLeaf
 	{
-		float		Weights[2];
-		uint32_t	IDs[2];
-		GUID_t		Animation[2];
+		float		Weights		[2];
+		uint32_t	IDs			[2];
+		GUID_t		Animation	[2];
 	};
+
 
 	struct BlendNode
 	{
-		bool		Leaf		[2];
+		bool Leaf[2];
+
 		union {
 			BlendLeaf	Leaf;
 			BlendNode*	Branch;
 		}Child1, Child2;
 	};
+
 
 	struct BlendTree
 	{
@@ -259,38 +253,137 @@ namespace FlexKit
 		size_t		NodeCount;
 	};
 
-	template<size_t StateCount = 16>
+
+	enum ASCondition_OP
+	{
+		EASO_TRUE,
+		EASO_FALSE,
+		EASO_GREATERTHEN,
+		EASO_LESSTHEN,
+		EASO_WITHIN,
+		EASO_FARTHERTHEN,
+	};
+
+	enum ASCondition_InputType
+	{
+		ASC_BOOL,
+		ASC_INT,
+		ASC_FLOAT,
+	};
+
+	typedef float(*EASE_FN)(float Weight);
+
+	FLEXKITAPI float EaseOut_RAMP	(float Weight);
+	FLEXKITAPI float EaseOut_Square	(float Weight);
+
+	struct Pose {
+		size_t		JointCount;
+		float4x4*	JointPoses;
+
+		iAllocator* Memory;
+	};
+
+
+	typedef uint16_t DAStateHandle;
+	typedef uint16_t DAConditionHandle;
+
 	struct AnimationStateMachine
 	{
+		uint16_t StateCount;
+		uint16_t ConditionCount;
+
+		uint16_t MaxConditionCount;
+		uint16_t MaxStateCount;
+
+		size_t	TargetDrawable;
+
 		struct AnimationState
 		{
 			bool			Enabled;
 			bool			Active;
-			WeightFunction	In;
-			WeightFunction	Out;
-			byte			Pad;
-			float			Speed;
-			float			EaseOutDuration;
-			float			CrossOverDuration;
-			int32_t			ID;
-			GUID_t			Animation;
-		}State[StateCount];
+			bool			Loop;		// Loops Animation While Active
+			bool			ForceComplete;
 
-		size_t				StateCount;
+			EASE_FN			EaseOut;
+
+			WeightFunction		In;
+			WeightFunction		Out;
+			//byte				Pad;
+			float				Speed;
+			float				EaseOutDuration;	// ratio from the end
+			float				EaseOutProgress;
+			DAConditionHandle	TriggerOnExit;
+			int64_t				ID;
+			GUID_t				Animation;
+		}States[16];
+
+		struct StateCondition
+		{
+			ASCondition_OP			Operation;
+			DAStateHandle			TargetState;
+			ASCondition_InputType	Type;
+			bool					Enabled;
+
+			union Inputs
+			{
+				float F;
+				int   I;
+				bool  B;
+			}Inputs[3];
+		}Conditions[16];
 	};
 
 
 	struct AnimationController
 	{
-		AnimationStateMachine<16>*	ASM;
-		BlendTree*					BlendTree;
-		DrawablePoseState*			Target;
+		AnimationStateMachine*	ASM;
+		BlendTree*				BlendTree;
+		DrawablePoseState*		Target;
 	};
+
 
 	/************************************************************************************************/
 
 
-	inline void RotateJoint(DrawablePoseState* E, JointHandle J, Quaternion Q)
+	struct AnimationStateEntry_Desc
+	{
+		EASE_FN			EaseOut				= EaseOut_Square;
+
+		WeightFunction		In					= EWF_Ramp;
+		WeightFunction		Out					= EWF_Ramp;
+		float				Speed				= 1.0f;
+		float				EaseOutDuration		= 0.0f;
+		bool				Loop				= false;
+		bool				ForceComplete		= false;
+		DAConditionHandle	OnExitTrigger		= INVALIDHANDLE;
+		GUID_t				Animation			= INVALIDHANDLE;
+	};
+
+	struct AnimationCondition_Desc
+	{
+		ASCondition_InputType	InputType;
+		ASCondition_OP			Operation;
+		DAStateHandle			DrivenState;
+	};
+
+
+	FLEXKITAPI DAStateHandle		DASAddState		( AnimationStateEntry_Desc&, AnimationStateMachine* Out );
+	FLEXKITAPI DAConditionHandle	DASAddCondition	( AnimationCondition_Desc&,  AnimationStateMachine* Out );
+
+	FLEXKITAPI void	ASSetBool	( DAConditionHandle, bool	B, AnimationStateMachine* ASM, size_t index = 0 );
+	FLEXKITAPI void	ASSetFloat	( DAConditionHandle, float	F, AnimationStateMachine* ASM, size_t index = 0 );
+
+	FLEXKITAPI void ASEnableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
+	FLEXKITAPI void ASDisableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
+
+
+	struct GraphicScene;
+	FLEXKITAPI void UpdateASM(double dt, AnimationStateMachine* ASM, iAllocator* TempMemory, iAllocator* Memory, GraphicScene* Scene);
+
+	/************************************************************************************************/
+
+
+	inline void RotateJoint			( DrawablePoseState* E, JointHandle J, Quaternion Q )
 	{
 		if (!E)
 			return;
@@ -301,7 +394,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void TranslateJoint(DrawablePoseState* PS, JointHandle J, float3 xyz)
+	inline void TranslateJoint		( DrawablePoseState* PS, JointHandle J, float3 xyz )
 	{
 		if (!PS)
 			return;
@@ -313,7 +406,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void SetJointTranslation(DrawablePoseState* E, JointHandle J, float3 xyz)
+	inline void SetJointTranslation ( DrawablePoseState* E, JointHandle J, float3 xyz )
 	{
 		if (!E)
 			return;
@@ -325,7 +418,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void ScaleJoint(DrawablePoseState* E, JointHandle J, float S)
+	inline void ScaleJoint			( DrawablePoseState* E, JointHandle J, float S )
 	{
 		if (!E)
 			return;
@@ -338,9 +431,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI DrawablePoseState*	CreatePoseState	(Drawable* E, GeometryTable* GT, iAllocator* MEM);
-	FLEXKITAPI bool					InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial);
-	FLEXKITAPI void					Destroy(DrawablePoseState* EAS);
+	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* E, GeometryTable* GT, iAllocator* MEM );
+	FLEXKITAPI bool					InitiatePoseState	( RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
+	FLEXKITAPI void					InitiateASM			( AnimationStateMachine* AS, iAllocator*, size_t Target );
+	FLEXKITAPI void					Destroy				( DrawablePoseState* EAS );
 
 
 	/************************************************************************************************/
@@ -355,18 +449,30 @@ namespace FlexKit
 		EPLAY_INVALID_PARAM			= -4,
 	};
 
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,				iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f );
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	const char* AnimationID,	iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f );
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,				iAllocator* MEM, bool ForceLoop, float Weight, uint32_t& out );
-	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		uint32_t	ID,				double Speed = 1.0f );
-	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		GUID_t		AnimationID,		double Speed = 1.0f );
+
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,			iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f, int64_t* IDOut = nullptr );
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	const char* AnimationID,	iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f, int64_t* IDOut = nullptr );
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,			iAllocator* MEM, bool ForceLoop, float Weight,				  int64_t& out );
+
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		int64_t		ID,				double Speed = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		GUID_t		AnimationID,	double Speed = 1.0f );
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		const char*	AnimationID,	double Speed = 1.0f );
+
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationWeight		( DrawableAnimationState* AE,		int64_t		ID,				float Weight = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationWeight		( DrawableAnimationState* AE,		GUID_t		AnimationID,	float Weight = 1.0f );
+	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationWeight		( DrawableAnimationState* AE,		const char*	AnimationID,	float Weight = 1.0f );
+
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid);
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	const char*	Animation);
-	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	uint32_t	ID);
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	uint64_t	ID);
 	FLEXKITAPI EPLAY_ANIMATION_RES ClearAnimationPose		( DrawablePoseState* DPS, iAllocator* TEMP );
 	
-	FLEXKITAPI size_t GetAnimationPlayingCount	( Drawable* E );
+	FLEXKITAPI size_t				GetAnimationPlayingCount	( Drawable* E );
+	FLEXKITAPI AnimationStateEntry*	GetAnimation				( DrawableAnimationState* AS, int64_t ID );
+	FLEXKITAPI double				GetAnimation_Completed		( AnimationStateEntry* AS );
+
+	FLEXKITAPI bool isStillPlaying( DrawableAnimationState* AS, int64_t );
+
 
 	// Advance skip updating Joint, updates timers
 	FLEXKITAPI void UpdateAnimation	( RenderSystem* RS, Drawable* E,		GeometryTable* GT, double dT, iAllocator* TEMP, bool AdvanceOnly = false );

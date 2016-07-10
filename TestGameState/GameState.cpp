@@ -28,11 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //	Sound:
 //	
 //	Generic:
-//		Scene Loading
+//		(DONE) Scene Loading
 //		Config loading system?
 //
 //	Graphics:
-//		Basic Gui rendering methods (Draw Rect, etc)
+//		(DONE) Basic Gui rendering methods (Draw Rect, etc)
 //		Multi-threaded Texture Uploads
 //		Terrain Rendering
 //			Texture Splatting
@@ -40,8 +40,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //			Geometry Generation - partially complete
 //		Occlusion Culling
 //		Animation State Machine
-//		3rd Person Camera Handler
-//		Object -> Bone Attachment
+//		(DONE/PARTLY) 3rd Person Camera Handler
+//		(DONE) Object -> Bone Attachment
+//		(DONE) Texture Loading
+//		(DONE) Simple Window Utilities
+//		(DONE) Simple Window Elements
+//		(DONE) Deferred Rendering
+//		(DONE) Forward Rendering
 //		Particles
 //		Static Mesh Batcher
 //
@@ -53,14 +58,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		State Handling
 //
 //	Physics:
-//		Statics
-// 
+//		(DONE) Statics
+//		(DONE) TriMesh Statics
 //	Network:
 //		Client:
 //		Server:
 //
 //	Tools:
-//		Meta-Data for Resource Compiling
+//		(DONE) Meta-Data for Resource Compiling
 //
 
 #ifdef COMPILE_GAMESTATE
@@ -70,10 +75,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "..\Application\GameMemory.h"
-#include "..\Application\ResourceUtilities.h"
-#include "..\Application\ResourceUtilities.cpp"
 #include "..\Application\GameUtilities.cpp"
-#include "..\graphicsutilities\GuiUtilities.cpp"
 #include "..\graphicsutilities\TerrainRendering.h"
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\DungeonGen.h"
@@ -229,11 +231,11 @@ struct InertiaState
 
 struct TestPlayer_DESC
 {
-	float  dr	= FlexKit::pi/2;  // Rotation Rate;
-	float  dm	= 10;  // Movement Rate;
-	float  r	= 3;   // Radius
-	float  h	= 10;   // Height
-	float3 POS	= {0, 0, 0}; // Foot Position
+	float  dr	= FlexKit::pi/2;	// Rotation Rate;
+	float  dm	= 10;				// Movement Rate;
+	float  r	= 3;				// Radius
+	float  h	= 10;				// Height
+	float3 POS	= {0, 0, 0};		// Foot Position
 };
 
 
@@ -347,7 +349,7 @@ struct MouseInputState
 
 void UpdateMouseCameraController(MouseCameraController* out, SceneNodes* Nodes, int2 MouseState)
 {
-	out->Pitch	= max(min	(out->Pitch + float(MouseState[1]) / 2, 75), -45);
+	out->Pitch	= max	(min(out->Pitch + float(MouseState[1]) / 2, 25), -45);
 	out->Yaw	= fmodf	(out->Yaw + float(MouseState[0])/ 2, 360);
 
 	Quaternion Yaw(0, out->Yaw, 0);
@@ -403,14 +405,16 @@ float3 UpdateActorInertia(InertiaState* IS, double dt, GameActor* Actor, float3 
 {
 	IS->Inertia = (IS->Inertia - IS->Inertia * c) + D * dt * 10;
 
-	if (D.magnitude() < 0.001)
-		IS->Inertia = 0;
+
 	if (Actor->BPC.FloorContact)
 		IS->Inertia.y = 0;
 	else
 		IS->Inertia += dt * G;
 	
-	return IS->Inertia;
+	if (IS->Inertia.magnitudesquared() > 0.0001f)
+		return IS->Inertia;
+	else
+		return {0.0f, 0.0f, 0.0f};
 }
 
 
@@ -419,13 +423,13 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 	float3 FinalDelta = dV;
 	FinalDelta *= ActorState->BPC.FloorContact ? float3(1, 0, 1) : float3(1);
 
-	if (FinalDelta.magnitude() > 0)
+	if (FinalDelta.magnitude() > 0.01f)
 	{
 		float3 OldP = GetActorPosition(ActorState);
 		TranslateActor(FinalDelta, ActorState, dt);
 		float3 NewP = GetActorPosition(ActorState);
 		SetPositionW( Scene->SN, Target, NewP);
-		Scene->GetEntity(ActorState->Drawable).Dirty = true;
+		Scene->GetDrawable(ActorState->Drawable).Dirty = true;
 
 		float3 Dir  = Quaternion(0, 90, 0) * (float3(1, 0, 1) * FinalDelta * float3(-1, 0, -1)).normal();
 		float3 SV   = Dir.cross(float3{0, 1, 0});
@@ -668,6 +672,12 @@ void CleanupHairRender(HairRender* Out)
 /************************************************************************************************/
 
 
+struct GUICallbackArgs
+{
+	SimpleWindow*	Window;
+	TextArea*		Text;
+};
+
 struct Scene
 {
 	EntityHandle			PlayerModel;
@@ -680,11 +690,16 @@ struct Scene
 	InertiaState			PlayerInertia;
 	Scalp					TestScalp;
 	float					T;
+	GUIElementHandle		Slider;
+	DAConditionHandle		Condition1;
+	DAConditionHandle		Condition2;
 
 	Texture2D			TestTexture;
 	DungeonGenerator	Dungeon;
+	SimpleWindow		Window;
 
-	SimpleWindow	Window;
+	AnimationStateMachine	ASM;
+	GUICallbackArgs			SliderArgs;
 };
 
 
@@ -702,6 +717,7 @@ struct GameState
 
 	DeferredPass		DeferredPass;
 	ForwardPass			ForwardPass;
+	ShadowMapPass		ShadowMapPass;
 
 	GUIRender			GUIRender;
 
@@ -725,6 +741,7 @@ struct GameState
 	GraphicScene		GScene;
 
 	Texture2D			Albedo;
+	Texture2D			ShadowMap;
 
 	KeyState	Keys;
 	bool		Quit;
@@ -737,10 +754,12 @@ struct GameState
 
 /************************************************************************************************/
 
+
 #include "..\Application\GameUtilities.h"
 #include "..\graphicsutilities\TerrainRendering.h"
 #include "..\graphicsutilities\graphics.h"
 #include "..\PhysicsUtilities\physicsutilities.h"
+
 
 /************************************************************************************************/
 
@@ -955,9 +974,11 @@ void ProcessDungeonTile(byte* _ptr, DungeonGenerator::Tile in[3][3], uint2 POS, 
 					Visual		= ETILEASSET_GUIDS::EAG_END;
 					Collider	= args->Colliders[ECA_HALLWAY_NS_COLLIDER];
 				}
-
-				
 			}	break;
+			case 3: // T-Junction
+			{
+
+			}
 			default:
 				return;
 			}
@@ -982,7 +1003,6 @@ void ProcessDungeonTile(byte* _ptr, DungeonGenerator::Tile in[3][3], uint2 POS, 
 		break;
 	}
 }
-
 
 
 void HandleKeyEvents(const Event& e, GameState* GS)
@@ -1065,37 +1085,87 @@ void SetActiveCamera(GameState* State, Camera* _ptr) { State->ActiveCamera = _pt
 
 void PrintOnClick(void* _ptr, size_t GUIElement)
 {
+	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
+	PrintText(Args->Text, "Clicked BUTTON\n");
 	std::cout << "Clicked BUTTON\n";
 }
 
 void PrintOnEnter(void* _ptr, size_t GUIElement)
 {
+	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
+	PrintText(Args->Text, "ENTERED BUTTON\n");
 	std::cout << "ENTERED BUTTON\n";
 }
 
 void PrintOnExit(void* _ptr, size_t GUIElement)
 {
+	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
+	PrintText(Args->Text, "LEFT BUTTON\n");
 	std::cout << "LEFT BUTTON\n";
+}
+
+void SliderBarClicked(float r, void* _ptr, size_t GUIElement)
+{
+	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
+	PrintText(Args->Text, "Slider Clicked\n");
+	std::cout << "Slider Clicked\n";
 }
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 {
-	auto Head			= State->GScene.CreateDrawableAndSetMesh("HeadModel");
-	auto PlayerModel	= State->GScene.CreateDrawableAndSetMesh("PlayerModel");
-	Out->TestModel		= State->GScene.CreateDrawableAndSetMesh("Flower");
-	Out->PlayerModel	= PlayerModel;
+	//auto Head			 = State->GScene.CreateDrawableAndSetMesh("HeadModel");
+	auto PlayerModel	 = State->GScene.CreateDrawableAndSetMesh("PlayerModel");
+	Out->TestModel		 = State->GScene.CreateDrawableAndSetMesh("Flower");
+	Out->PlayerModel	 = PlayerModel;
+	Out->SliderArgs.Text = &State->Text;
 
-	auto HeadNode = State->GScene.GetEntity(Head).Node;
-	SetFlag(State->Nodes, HeadNode, SceneNodes::StateFlags::SCALE);
-	Scale(State->Nodes, HeadNode, 10);
+	//auto HeadNode = State->GScene.GetDrawable(Head).Node;
+	//SetFlag(State->Nodes, HeadNode, SceneNodes::StateFlags::SCALE);
+	//Scale(State->Nodes, HeadNode, 10);
 
-#if 1
+
+#if 0
 	State->GScene.EntityEnablePosing(PlayerModel);
-	State->GScene.EntityPlayAnimation(PlayerModel, 3, 1.1f);
-	State->GScene.EntityPlayAnimation(PlayerModel, 4, 0.5f);
-	Out->Joint = State->GScene.GetEntity(PlayerModel).PoseState->Sk->FindJoint("wrist_R");
+	//int64_t ID = State->GScene.EntityPlayAnimation(PlayerModel, 3, 1.0f, true);
+	//SetAnimationWeight(State->GScene.GetEntityAnimationState(PlayerModel), ID, 0.5f);
+	//State->GScene.EntityPlayAnimation(PlayerModel, 4, 0.5f);
+	Out->Joint = State->GScene.GetDrawable(PlayerModel).PoseState->Sk->FindJoint("wrist_R");
 	DEBUG_PrintSkeletonHierarchy(State->GScene.GetEntitySkeleton(PlayerModel));
-	TagJoint(&State->GScene, Out->Joint, PlayerModel, State->GScene.GetNode(Out->TestModel));
+	BindJoint(&State->GScene, Out->Joint, PlayerModel, State->GScene.GetNode(Out->TestModel));
+
+	{
+		InitiateASM(&Out->ASM, Engine->BlockAllocator, PlayerModel);
+
+		AnimationCondition_Desc  Condition_Desc; {
+			Condition_Desc.InputType = ASC_BOOL;
+			Condition_Desc.Operation = EASO_TRUE;
+		}
+
+		AnimationStateEntry_Desc Forward_Desc;{
+			Forward_Desc.Animation			= 3;
+			Forward_Desc.EaseOutDuration	= 0.2f;
+			Forward_Desc.Out				= EWF_Square;
+			Forward_Desc.Loop				= true;
+			Forward_Desc.ForceComplete		= false;
+		}
+
+		AnimationStateEntry_Desc Backward_Desc;{
+			Backward_Desc.Animation	= 3;
+			Backward_Desc.Loop		= false;
+		}
+
+		auto State1 = DASAddState(Forward_Desc, &Out->ASM);
+		auto State2 = DASAddState(Backward_Desc, &Out->ASM);
+
+		Condition_Desc.DrivenState = State1;
+		auto Condition1 = DASAddCondition(Condition_Desc, &Out->ASM);
+		Out->Condition1 = Condition1;
+
+		Condition_Desc.DrivenState = State2;
+		auto Condition2 = DASAddCondition(Condition_Desc, &Out->ASM);
+		Out->Condition2 = Condition2;
+	}
+
 #endif
 
 	State->GScene.Yaw				(PlayerModel, pi / 2);
@@ -1123,9 +1193,8 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	SetParentNode	(State->Nodes,	Out->PlayerController.ModelNode, LightNode);
 
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 20.0f, 00.0f});
-
 	TranslateLocal	(Engine->Nodes, Out->PlayerCam.Node, {0.0f, 00.0f, 40.0f});
-	TranslateLocal	(Engine->Nodes, LightNode,			 {0.0f, 40.0f, 0.0f });
+	TranslateLocal	(Engine->Nodes, LightNode,			 {0.0f, 80.0f,  0.0f});
 
 	InitateMouseCameraController(
 		0, 0, 75.0f, 
@@ -1138,54 +1207,78 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->PlayerInertia.Inertia	= float3(0);
 	Out->T						= 0.0f;
 
-	State->GScene.AddPointLight({1, 1, 1}, LightNode, 1000, 1000);
+	State->GScene.AddSpotLight(LightNode, { 1, 1, 1 }, {0.0f, -1.0f, 0.0f}, pi/4, 1000, 1000);
+
 	auto Texture2D		= LoadTextureFromFile("Assets//textures//agdg.dds", Engine->RenderSystem, Engine->BlockAllocator);
 	Out->TestTexture	= Texture2D;
 	
-	SimpleWindow_Desc Desc(0.5f, 0.5f, 3, 3, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
+	SimpleWindow_Desc Desc(0.3f, 0.3f, 3, 3, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
 	InitiateSimpleWindow(Engine->BlockAllocator, &Out->Window, Desc);
+
+#if 0
 
 	GUIList List_Desc;
 	List_Desc.Color		= float4(WHITE, 1);
 	List_Desc.Position	= { 0, 0 };
 	List_Desc.WH		= { 3, 2 };
 
-	auto Panel = SimpleWindowAddVerticalList(&Out->Window, List_Desc);
+	auto Column = SimpleWindowAddVerticalList(&Out->Window, List_Desc);
+
+	float2 BorderSize = GetPixelSize(State->ActiveWindow) * float2{ 10.0f, 10.0f };
+	SimpleWindowAddDivider(&Out->Window, BorderSize, Column);
 
 	List_Desc.WH		= { 3, 1 };
 	List_Desc.Position	= { 0, 1 };
-	auto Row = SimpleWindowAddHorizonalList(&Out->Window, List_Desc, Panel);
-
-	float2 BorderSize = GetPixelSize(State->ActiveWindow) * float2{ 10.0f, 10.0f };
+	auto Row = SimpleWindowAddHorizonalList(&Out->Window, List_Desc, Column);
 
 	GUITexturedButton_Desc	TexturedButton;
 	TexturedButton.OnEntered_CB = PrintOnEnter;
 	TexturedButton.OnExit_CB	= PrintOnExit;
 	TexturedButton.OnClicked_CB	= PrintOnClick;
+	TexturedButton.CB_Args		= &Out->SliderArgs;
 
 	TexturedButton.SetButtonSizeByPixelSize(GetPixelSize(State->ActiveWindow), { 50, 50 });
 	TexturedButton.Texture_Active = TexturedButton.Texture_InActive = &Out->TestTexture;
 
 	GUITextButton_Desc	TextButton_Desc;
 	TextButton_Desc.OnEntered_CB = PrintOnEnter;
-	TextButton_Desc.OnExit_CB = PrintOnExit;
+	TextButton_Desc.OnExit_CB	 = PrintOnExit;
 	TextButton_Desc.OnClicked_CB = PrintOnClick;
+	TextButton_Desc.CB_Args		 = &Out->SliderArgs;
+	TextButton_Desc.Text		 = "This is a Button!";
+	TextButton_Desc.Font		 = State->Font;
+	TextButton_Desc.WH			 = GetPixelSize(State->ActiveWindow) * float2 { 128.0f, 32.0f };
+	TextButton_Desc.WindowSize	 = float2{ float(State->ActiveWindow->WH[0]), float(State->ActiveWindow->WH[1]) };
 
-	TextButton_Desc.Text = "This is a Button!";
-	TextButton_Desc.Font = State->Font;
-	TextButton_Desc.WH = GetPixelSize(State->ActiveWindow) * float2 { 128.0f, 32.0f };
-	TextButton_Desc.WindowSize = float2{ float(State->ActiveWindow->WH[0]), float(State->ActiveWindow->WH[1]) };
+	GUITextInput_Desc TextInput_Desc;
+	TextInput_Desc.SetTextBoxSizeByPixelSize(GetPixelSize(State->ActiveWindow), { 128, 32 });
+	TextInput_Desc.Text = nullptr;		// Initial Text
+	TextInput_Desc.Font = State->Font;
 
-	SimpleWindowAddTextButton(&Out->Window, TextButton_Desc, Engine->RenderSystem, Row);
+
+	SimpleWindowAddTextInput(&Out->Window, TextInput_Desc, Engine->RenderSystem, Column);
+
+	GUISlider_Desc Slider_Desc;
+	Slider_Desc.BarRatio		= 0.3f;
+	Slider_Desc.WH				= GetPixelSize(State->ActiveWindow) * float2 { 256.0f, 10.0f };
+	Slider_Desc.InitialPosition = -10.0f;
+	Slider_Desc.OnClicked_CB	= SliderBarClicked;
+	Slider_Desc.CB_Args			= &Out->SliderArgs;
+
+	SimpleWindowAddDivider			(&Out->Window, BorderSize, Row);
+	
+	Out->Slider = SimpleWindowAddHorizontalSlider	(&Out->Window, Slider_Desc, Row);
+
 	SimpleWindowAddDivider(&Out->Window, BorderSize, Row);
+	SimpleWindowAddTextButton		(&Out->Window, TextButton_Desc, Engine->RenderSystem, Row);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize, Row);
 
-#if 1
-	SimpleWindowAddDivider			(&Out->Window, BorderSize, Panel);
-	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton, Panel);
-	SimpleWindowAddDivider			(&Out->Window, BorderSize, Panel);
-	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton, Panel);
-	SimpleWindowAddDivider			(&Out->Window, BorderSize, Panel);
-	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton, Panel);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Column);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Column);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Column);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Column);
+	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Column);
+	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Column);
 
 	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
 	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Row);
@@ -1198,25 +1291,15 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
 	SimpleWindowAddDivider			(&Out->Window, BorderSize,		Row);
 	SimpleWindowAddTexturedButton	(&Out->Window, TexturedButton,	Row);
-#endif
 
-
-
-
-#if 0
-	size_t Panel1		= GameWindowAddPanel(&Out->Window, Panel_Desc);
-	Panel_Desc.Color	= float4(GREEN, 1);
-	Panel_Desc.WH		= float2(0.2f, 0.2f);
-	Panel_Desc.Position = float2(0.1f, 0.1f);
-	GameWindowAddPanel(&Out->Window, Panel_Desc, Panel1);
 #endif
 
 	//LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 200, &State->GScene, Engine->TempAllocator);
 
-	/*
-	//srand(123);
-	//Out->Dungeon.Generate();
-	//auto temp = Out->Dungeon.Tiles;
+#if 0 
+	srand(123);
+	Out->Dungeon.Generate();
+	auto temp = Out->Dungeon.Tiles;
 
 	ProcessDungonTileArgs Args;
 	Args.Assets  = &Engine->Assets;
@@ -1226,10 +1309,9 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Args.PS		 = &State->PScene;
 	Args.Physics = &Engine->Physics;
 
-	//LoadColliders(&Engine->Physics, &Engine->Assets, &Args);
-	//Out->Dungeon.DungeonScanCallBack(ProcessDungeonTile, (byte*)&Args);
-	*/
-
+	LoadColliders(&Engine->Physics, &Engine->Assets, &Args);
+	Out->Dungeon.DungeonScanCallBack(ProcessDungeonTile, (byte*)&Args);
+#endif
 	//InitiateScalp(Engine->RenderSystem, &Engine->Assets, INVALIDHANDLE, &Out->TestScalp, Engine->BlockAllocator);
 }
 
@@ -1263,7 +1345,14 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 	if (Input.LeftMouseButtonPressed)
 		PrintText(&State->Text, "MouseButtonPressed!\n");
 
+	if (State->Keys.Forward || State->Keys.Backward || State->Keys.Left || State->Keys.Right)
+		ASSetBool(TestScene->Condition1, true, &TestScene->ASM);
+	else
+		ASSetBool(TestScene->Condition1, false, &TestScene->ASM);
+
 	UpdateSimpleWindow(&Input, &TestScene->Window);
+
+	//SetSliderPosition((1 + sin(TestScene->T)) / 2, TestScene->Slider, &TestScene->Window);
 
 	DrawSimpleWindow(Input, &TestScene->Window, &State->GUIRender);
 }
@@ -1273,7 +1362,7 @@ void UpdateTestScene_PostTransformUpdate(Scene* TestScene, GameState* State, dou
 {
 	UpdateGraphicScenePoseTransform(&State->GScene);
 
-	auto& Entity = State->GScene.GetEntity(TestScene->PlayerModel);
+	auto& Entity = State->GScene.GetDrawable(TestScene->PlayerModel);
 	DEBUG_DrawPoseState(Entity.PoseState, State->Nodes, Entity.Node, &State->Lines);
 }
 
@@ -1329,6 +1418,7 @@ extern "C"
 		InitiateLineSet			  (Engine->RenderSystem, Engine->BlockAllocator, &State.Lines);
 		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender,		Engine->TempAllocator);
 		InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
+		InitiateShadowMapPass	  (Engine->RenderSystem, &State.ShadowMapPass);
 
 		{
 			Landscape_Desc Land_Desc = { 
@@ -1359,6 +1449,20 @@ extern "C"
 		Engine->Window.Handler.Subscribe(sub);
 		sub.Notify = &MouseEventsWrapper;
 		Engine->Window.Handler.Subscribe(sub);
+
+		{
+			FlexKit::Tex2DDesc Desc; {
+				Desc.Format			= FlexKit::FORMAT_2D::R32_FLOAT;
+				Desc.Width			= 800;
+				Desc.Height			= 600;
+				Desc.RenderTarget	= true;
+				Desc.FLAGS			= SPECIALFLAGS::DEPTHSTENCIL;
+				Desc.CV				= 0.0f;
+				Desc.initialData	= nullptr;
+			}
+			State.ShadowMap = CreateTexture2D(Engine->RenderSystem, &Desc);
+			int c = 0;
+		}
 
 		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
 
@@ -1391,6 +1495,8 @@ extern "C"
 		UpdateMouseInput(&State->Mouse, &Engine->Window);
 		UpdateTestScene(&State->TestScene, State, dt, Engine->TempAllocator);
 		UpdateGraphicScene(&State->GScene);
+
+		UpdateASM(dt, &State->TestScene.ASM, Engine->TempAllocator, Engine->BlockAllocator, &State->GScene);
 
 		ClearMouseButtonStates(&State->Mouse);
 	}
@@ -1474,6 +1580,16 @@ extern "C"
 			else
 				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
 
+#if 0
+
+			// Do Shadowing
+			for (auto& Caster : State->GScene.SpotLightCasters) {
+				auto PVS = TempMemory->allocate_aligned<FlexKit::PVS>();
+				GetGraphicScenePVS(&State->GScene, &Caster.C, &PVS, &Transparent);
+				RenderShadowMap(RS, &PVS, &Caster, &State->ShadowMap, &State->ShadowMapPass, &State->GT);
+			}
+#endif
+
 			DrawGUI(RS, CL, &State->GUIRender, State->ActiveWindow);
 		}
 		
@@ -1503,6 +1619,7 @@ extern "C"
 
 		ReleaseTextureSet(Engine->RenderSystem, _ptr->Set1, Engine->BlockAllocator);
 
+		CleanUpShadowPass		(&_ptr->ShadowMapPass);
 		CleanUpSimpleWindow		(&_ptr->TestScene.Window);
 		CleanUpDrawGUI			(&_ptr->GUIRender);
 		CleanUpLineSet			(&_ptr->Lines);

@@ -21,4 +21,20 @@
       </ArrayItems>
     </Expand>
   </Type>
+
+  <Type Name="FlexKit::float2">
+    <Expand>
+      <Item Name="X">x</Item>
+      <Item Name="Y">y</Item>
+    </Expand>
+  </Type>
+
+  <Type Name="FlexKit::float3">
+    <Expand>
+      <Item Name="X">x</Item>
+      <Item Name="Y">y</Item>
+      <Item Name="Z">z</Item>
+    </Expand>
+  </Type>
+
 </AutoVisualizer>
