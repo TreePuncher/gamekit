@@ -665,8 +665,8 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 
 void CleanupHairRender(HairRender* Out)
 {
-	Out->Draw.PSO->Release();
-	Out->Simulate.PSO->Release();
+	//Out->Draw.PSO->Release();
+	//Out->Simulate.PSO->Release();
 }
 
 /************************************************************************************************/
@@ -1207,7 +1207,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->PlayerInertia.Inertia	= float3(0);
 	Out->T						= 0.0f;
 
-	State->GScene.AddSpotLight(LightNode, { 1, 1, 1 }, {0.0f, -1.0f, 0.0f}, pi/4, 1000, 1000);
+	State->GScene.AddSpotLight(float3{0, 80, 0}, { 1, 1, 1 }, { 0.0f, -1.0f, 0.0f }, pi / 4, 1000, 1000);
 
 	auto Texture2D		= LoadTextureFromFile("Assets//textures//agdg.dds", Engine->RenderSystem, Engine->BlockAllocator);
 	Out->TestTexture	= Texture2D;
@@ -1414,11 +1414,11 @@ extern "C"
 		InitiateDeferredPass	  (Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
 		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
-		InitiateHairRender		  (Engine->RenderSystem, &Engine->DepthBuffer,   &State.HairRender);
+		//InitiateHairRender		  (Engine->RenderSystem, &Engine->DepthBuffer,   &State.HairRender);
 		InitiateLineSet			  (Engine->RenderSystem, Engine->BlockAllocator, &State.Lines);
 		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender,		Engine->TempAllocator);
 		InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
-		//InitiateShadowMapPass	  (Engine->RenderSystem, &State.ShadowMapPass);
+		InitiateShadowMapPass	  (Engine->RenderSystem, &State.ShadowMapPass);
 
 		{
 			Landscape_Desc Land_Desc = { 
@@ -1579,7 +1579,7 @@ extern "C"
 				IncrementDeferredPass(&State->DeferredPass);
 				ClearDeferredBuffers(RS, &State->DeferredPass);
 
-				//DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
+				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
 				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera);
 				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
@@ -1587,12 +1587,12 @@ extern "C"
 			else
 				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
 
-#if 0
+#if 1
 			// Do Shadowing
 			for (auto& Caster : State->GScene.SpotLightCasters) {
 				auto PVS = TempMemory->allocate_aligned<FlexKit::PVS>();
 				GetGraphicScenePVS(&State->GScene, &Caster.C, &PVS, &Transparent);
-				RenderShadowMap(RS, &PVS, &Caster, &State->ShadowMap, &State->ShadowMapPass, &State->GT);
+				RenderShadowMap(RS, &PVS, &Caster, &State->ShadowMap, &State->ShadowMapPass, State->GT);
 			}
 #endif
 

@@ -124,7 +124,11 @@ namespace FlexKit
 			ID3D12Resource*						OutputCounters[]	= { LS->SOCounter_1.Get(), LS->SOCounter_2.Get() };
 
 
-			CL->OMSetRenderTargets(4, &RTVPOSCPU, true, &Pass->GBuffers[BufferIndex].DepthBuffer);
+			auto DSVPOSCPU = GetDSVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On DSV heap on CPU
+			auto POS = ReserveDSVHeap(RS, 1);
+			PushDepthStencil(RS, &Pass->GBuffers[Pass->CurrentBuffer].DepthBuffer, POS);
+
+			CL->OMSetRenderTargets(4, &RTVPOSCPU, true, &DSVPOSCPU);
 
 			{
 				D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, };
@@ -323,10 +327,11 @@ namespace FlexKit
 			// Generate Geometry State
 			{
 				auto Rast_State			= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-				Rast_State.FillMode		= D3D12_FILL_MODE_WIREFRAME;
+				Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
 				auto BlendState			= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 				auto DepthState			= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 				DepthState.DepthEnable	= true;
+
 				DepthState.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
 

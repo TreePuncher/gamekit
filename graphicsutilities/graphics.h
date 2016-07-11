@@ -745,7 +745,6 @@ namespace FlexKit
 		HWND						hWindow;
 		IDXGISwapChain3*			SwapChain_ptr;
 		ID3D12Resource*				BackBuffer[4];
-		D3D12_CPU_DESCRIPTOR_HANDLE View[4];
 		UINT						BufferIndex;
 		DXGI_FORMAT					Format;
 
@@ -777,7 +776,6 @@ namespace FlexKit
 	struct DepthBuffer
 	{
 		Texture2D					Buffer	[MaxBufferedSize];
-		D3D12_CPU_DESCRIPTOR_HANDLE	View	[MaxBufferedSize];
 		size_t						CurrentBuffer;
 		size_t						BufferCount;
 		bool						Inverted;
@@ -798,35 +796,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 		
-	struct DescriptorHeaps
-	{
-		ID3D12DescriptorHeap*	RTVDescHeap;
-		ID3D12DescriptorHeap*	DSVDescHeap;
-
-		size_t					DescriptorRTVSize;
-		size_t					DescriptorDSVSize;
-		size_t					DescriptorCBVSRVUAVSize;
-	};
-
-
-	/************************************************************************************************/
-
 	typedef	fixed_vector<ID3D12Resource*> TempResourceList;
 	const static int QueueSize		= 3;
 	const static int MaxThreadCount = 4;
 
-	struct RenderTargetHeap
+	struct DescHeapStack
 	{
 		D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
 		D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
-		ID3D12DescriptorHeap*		RTVDescHeap;
-	};
-
-	struct DescriptorHeap
-	{
-		D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
-		D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
-		ID3D12DescriptorHeap*		SRVDescHeap; 
+		ID3D12DescriptorHeap*		DescHeap;
 	};
 
 
@@ -840,8 +818,9 @@ namespace FlexKit
 		ID3D12GraphicsCommandList*	UploadList[MaxThreadCount];
 		ID3D12GraphicsCommandList*	ComputeList[MaxThreadCount];
 
-		RenderTargetHeap	RTVHeap;
-		DescriptorHeap		DescHeap;
+		DescHeapStack RTVHeap;
+		DescHeapStack DSVHeap;
+		DescHeapStack DescHeap;
 
 		size_t						ThreadsIssued;
 	};
@@ -878,8 +857,6 @@ namespace FlexKit
 		size_t DescriptorRTVSize;
 		size_t DescriptorDSVSize;
 		size_t DescriptorCBVSRVUAVSize;
-
-		DescriptorHeaps	DefaultDescriptorHeaps;
 
 		struct
 		{
@@ -1131,14 +1108,12 @@ namespace FlexKit
 		// GBuffer
 		struct GBuffer
 		{
-			D3D12_CPU_DESCRIPTOR_HANDLE	DepthBuffer;
-			ID3D12DescriptorHeap* RTVDescHeap;
-
 			Texture2D ColorTex;
 			Texture2D SpecularTex;
 			Texture2D NormalTex;
 			Texture2D PositionTex;
 			Texture2D OutputBuffer;
+			Texture2D DepthBuffer;
 		}GBuffers[3];
 		size_t CurrentBuffer;
 
