@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
 				ResourceTable* Table = (ResourceTable*)malloc(TableSize);
 				memset(Table, 0, TableSize);
 				Table->MagicNumber	 = 0xF4F3F2F1F4F3F2F1;
-				Table->Version		 = 0x0000000000000001;
+				Table->Version       = 0x0000000000000001;
 				Table->ResourceCount = ResourceCount;
 
 				std::cout << "Resources Found: " << ResourceCount << "\n";

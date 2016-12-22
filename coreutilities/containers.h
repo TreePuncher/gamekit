@@ -109,7 +109,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename Ty>
+	template<typename Ty, size_t MINSIZE = 0>
 	struct DynArray
 	{
 		typedef DynArray<Ty> THISTYPE;
@@ -117,7 +117,11 @@ namespace FlexKit
 		typedef Ty*			Iterator;
 		typedef const Ty*	Iterator_const;
 
-		inline  DynArray(iAllocator* Alloc = nullptr) : Allocator(Alloc), Max(0), Size(0), A(nullptr) {}
+		inline  DynArray(iAllocator* Alloc = nullptr) : Allocator(Alloc), Max(0), Size(0), A(nullptr) 
+		{
+			if (MINSIZE > 0)
+				reserve(MINSIZE);
+		}
 
 		inline  DynArray(THISTYPE&& RHS) : 
 			A			(RHS.A),
@@ -137,6 +141,7 @@ namespace FlexKit
 
 
 		/************************************************************************************************/
+
 
 		THISTYPE& operator =(const THISTYPE& RHS)
 		{
@@ -354,10 +359,10 @@ namespace FlexKit
 		Iterator begin()	{ return A;			}
 		Iterator end()		{ return A + Size;	}
 
-		Iterator_const begin() const { return A; }
-		Iterator_const end()   const { return A + Size; }
+		Iterator_const begin()	const { return A; }
+		Iterator_const end()	const { return A + Size; }
+		size_t size()			const { return Size; }
 
-		size_t size() const {return Size;}
 
 		/************************************************************************************************/
 		
@@ -373,6 +378,7 @@ namespace FlexKit
 		/************************************************************************************************/
 	};
 
+
 	template<typename Ty>
 	void MoveDynArray(DynArray<Ty>& Dest, DynArray<Ty>& Source)
 	{
@@ -387,6 +393,19 @@ namespace FlexKit
 		Source.A    = nullptr;
 		Source.Size = 0;
 		Source.Max  = 0;
+	}
+
+
+	template<typename Ty>
+	fixed_vector<Ty>* MakeStaticCopy(const DynArray<Ty>& Src)
+	{
+
+		fixed_vector<Ty>* Out = &fixed_vector<Ty>::Create(Src.size(), Src.Allocator);
+
+		for (auto e : Src)
+			Out->push_back(e);
+
+		return Out;
 	}
 
 

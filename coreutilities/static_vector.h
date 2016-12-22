@@ -259,6 +259,13 @@ namespace FlexKit
 			}
 		}
 		
+		// USE WITH CAUTION!
+		template<typename TY_OUT>
+		static_vector<TY_OUT*>& _PTR_Cast()
+		{
+			return *((static_vector<TY_OUT*>*)(this));
+		}
+
 		static void Sort(iterator begin, iterator end)
 		{
 			std::sort(begin.I, end.I);

@@ -163,7 +163,7 @@ namespace FlexKit
 	struct GUIElement_TextBox
 	{
 		float2		WH;
-		Texture2D&	Texture;
+		Texture2D*	Texture;
 
 		char*		Text;
 		size_t		TextLength;

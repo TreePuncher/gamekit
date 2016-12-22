@@ -281,9 +281,9 @@ namespace FlexKit
 
 		GetDrawable(EHandle).MeshHandle	= Geo;
 		GetDrawable(EHandle).Dirty		= true;
-		GetDrawable(EHandle).Visable		= true;
-		GetDrawable(EHandle).Textured		= false;
-		GetDrawable(EHandle).Textures		= nullptr;
+		GetDrawable(EHandle).Visable	= true;
+		GetDrawable(EHandle).Textured	= false;
+		GetDrawable(EHandle).Textures	= nullptr;
 
 		return EHandle;
 	}
@@ -304,10 +304,10 @@ namespace FlexKit
 		FK_ASSERT(MeshHandle != INVALIDMESHHANDLE, "FAILED TO FIND MESH IN RESOURCES!");
 #endif
 		GetDrawable(EHandle).MeshHandle = MeshHandle;
-		GetDrawable(EHandle).Dirty	  = true;
-		GetDrawable(EHandle).Visable	  = true;
+		GetDrawable(EHandle).Dirty		= true;
+		GetDrawable(EHandle).Visable	= true;
 		GetDrawable(EHandle).Textured   = false;
-		GetDrawable(EHandle).Posed	  = false;
+		GetDrawable(EHandle).Posed		= false;
 		GetDrawable(EHandle).PoseState  = nullptr;
 
 
@@ -330,7 +330,7 @@ namespace FlexKit
 
 	SpotLightHandle GraphicScene::AddSpotLight(NodeHandle Node, float3 Color, float3 Dir, float t, float I, float R )
 	{
-		SPLights.push_back({ Color, Dir, I, R, Node });
+		SPLights.push_back({ Color, Dir, I, R, t, Node });
 		return PLights.size() - 1;
 	}
 
@@ -354,7 +354,7 @@ namespace FlexKit
 	{
 		auto Node = GetNewNode(SN);
 		SetPositionW(SN, Node, POS);
-		SPLights.push_back({Color, Dir, I, R, Node});
+		SPLights.push_back({Color, Dir, I, R, t, Node});
 		return PLights.size() - 1;
 	}
 
@@ -364,8 +364,10 @@ namespace FlexKit
 
 	void GraphicScene::EnableShadowCasting(SpotLightHandle SpotLight)
 	{
+		auto Light = &SPLights[0];
 		SpotLightCasters.push_back({ Camera(), SpotLight});
-		InitiateCamera(RS, SN, &SpotLightCasters.back().C, 1.0f );
+		SpotLightCasters.back().C.FOV = RadToDegree(Light->t);
+		InitiateCamera(RS, SN, &SpotLightCasters.back().C, 1.0f, 15.0f, 100, false);
 	}
 
 
@@ -387,8 +389,8 @@ namespace FlexKit
 		using FlexKit::CreatePointLightBuffer;
 		using FlexKit::PointLightBufferDesc;
 
-		Out->Drawables.Allocator = Memory;
-
+		Out->Drawables.Allocator		= Memory;
+		Out->SpotLightCasters.Allocator  = Memory;
 		Out->RS = in_RS;
 		Out->RM = in_RM;
 		Out->SN = in_SN;
@@ -503,6 +505,9 @@ namespace FlexKit
 		UpdatePointLightBuffer	(*SM->RS, SM->SN, &SM->PLights, SM->TempMem);
 		UpdateSpotLightBuffer	(*SM->RS, SM->SN, &SM->SPLights, SM->TempMem);
 
+		for (auto& Caster : SM->SpotLightCasters)
+			UploadCamera(SM->RS, SM->SN, &Caster.C, 0, 0, 0.0f);
+
 		for (Drawable* d : *Dawables)
 			UpdateDrawable(SM->RS, SM->SN, d);
 
@@ -557,10 +562,15 @@ namespace FlexKit
 		SM->Drawables		= nullptr;
 	}
 
+
+	/************************************************************************************************/
+
+
 	void BindJoint(GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode)
 	{
 		SM->TaggedJoints.push_back({ Entity, Joint, TargetNode });
 	}
+
 
 	/************************************************************************************************/
 

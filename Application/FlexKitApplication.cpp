@@ -133,7 +133,7 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		CodeCheckTimer += dt;
 
 		FNTable->Update(Engine, State, dt);
-		if (T > StepSize)
+		//if (T > StepSize)
 		{	// Game Tick  -----------------------------------------------------------------------------------
 			::UpdateInput();
 
@@ -141,7 +141,7 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			FNTable->UpdateAnimations	(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
 			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
 			FNTable->Draw				(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, &Engine->Materials,	State);
-			FNTable->PostDraw			(Engine,										StepSize,								State);
+			FNTable->PostDraw			(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize, State);
 
 			if (CodeCheckTimer > 2.0)
 			{
@@ -155,8 +155,8 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			Engine->TempAllocator.clear();
 		}
 
-		if ( dt < StepSize )
-			Sleep( 2 );
+		//if ( dt < StepSize )
+		//	Sleep( 2 );
 
 		Engine->Time.After();
 		Engine->Time.Update();

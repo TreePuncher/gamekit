@@ -49,7 +49,6 @@ namespace FlexKit
 			} 	D3D12_VERTEX_BUFFER_VIEW;
 			*/
 
-
 			auto CL					= GetCurrentCommandList				(RS);
 			auto FrameResources		= GetCurrentFrameResources			(RS);
 			auto DescPOSGPU			= GetDescTableCurrentPosition_GPU	(RS); // _Ptr to Beginning of Heap On GPU
@@ -151,17 +150,18 @@ namespace FlexKit
 				CL->ResourceBarrier(4, Barrier);
 			}
 
-			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs_SO);
-			CL->SetPipelineState(LS->SplitState);
-			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+			CL->SetGraphicsRootSignature (RS->Library.RS4CBVs_SO);
+			CL->SetPipelineState		 (LS->SplitState);
+			CL->IASetPrimitiveTopology	 (D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-			CL->SetGraphicsRootConstantBufferView(1, C->Buffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView(2, LS->ConstantBuffer->GetGPUVirtualAddress());
+			CL->SetGraphicsRootDescriptorTable	  (0, DescPOSGPU);
+			CL->SetGraphicsRootConstantBufferView (1, C->Buffer->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView (2, LS->ConstantBuffer->GetGPUVirtualAddress());
 
 			// Prime System
-			CL->IASetVertexBuffers(0, 1, SO_Initial);
-			CL->BeginQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
-			CL->SOSetTargets(0, 2, Output[0]);
+			CL->IASetVertexBuffers	(0, 1, SO_Initial);
+			CL->BeginQuery			(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
+			CL->SOSetTargets		(0, 2, Output[0]);
 
 			size_t I = 0;
 			for(; I < splitcount; ++I)
@@ -335,11 +335,11 @@ namespace FlexKit
 				DepthState.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
 
-				D3D12_SHADER_BYTECODE GCode = { (BYTE*)out->RegionToTri.Blob->GetBufferPointer(),  out->RegionToTri.Blob->GetBufferSize() };
-				D3D12_SHADER_BYTECODE PCode = { (BYTE*)out->PShader.Blob->GetBufferPointer(), out->PShader.Blob->GetBufferSize() };
-				D3D12_SHADER_BYTECODE HCode = { (BYTE*)out->HullShader.Blob->GetBufferPointer(), out->HullShader.Blob->GetBufferSize() };
-				D3D12_SHADER_BYTECODE DCode = { (BYTE*)out->DomainShader.Blob->GetBufferPointer(), out->DomainShader.Blob->GetBufferSize() };
-				D3D12_SHADER_BYTECODE VCode = { (BYTE*)out->VShader.Blob->GetBufferPointer(), out->VShader.Blob->GetBufferSize() };
+				D3D12_SHADER_BYTECODE GCode = { (BYTE*)out->RegionToTri.Blob->GetBufferPointer(),	out->RegionToTri.Blob->GetBufferSize() };
+				D3D12_SHADER_BYTECODE PCode = { (BYTE*)out->PShader.Blob->GetBufferPointer(),		out->PShader.Blob->GetBufferSize() };
+				D3D12_SHADER_BYTECODE HCode = { (BYTE*)out->HullShader.Blob->GetBufferPointer(),	out->HullShader.Blob->GetBufferSize() };
+				D3D12_SHADER_BYTECODE DCode = { (BYTE*)out->DomainShader.Blob->GetBufferPointer(),	out->DomainShader.Blob->GetBufferSize() };
+				D3D12_SHADER_BYTECODE VCode = { (BYTE*)out->VShader.Blob->GetBufferPointer(),		out->VShader.Blob->GetBufferSize() };
 
 				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 					PSO_Desc.pRootSignature                = RootSig;
@@ -546,35 +546,35 @@ namespace FlexKit
 
 	void CleanUpTerrain(SceneNodes* Nodes, Landscape* ls)
 	{
-		Destroy(&ls->GSubdivShader);
-		Destroy(&ls->PassThroughShader);
-		Destroy(&ls->Visualiser);
-		Destroy(&ls->RegionToTri);
-		Destroy(&ls->HullShader);
-		Destroy(&ls->DomainShader);
+		Destroy( &ls->GSubdivShader );
+		Destroy( &ls->PassThroughShader );
+		Destroy( &ls->Visualiser );
+		Destroy( &ls->RegionToTri );
+		Destroy( &ls->HullShader );
+		Destroy( &ls->DomainShader );
 
 		ls->RegionBuffers[0].Release();
 		ls->RegionBuffers[1].Release();
 		ls->Regions.Release();
 
-		if (ls->CommandSignature)	ls->CommandSignature->Release();	ls->CommandSignature = nullptr;
-		if (ls->ZeroValues)			ls->ZeroValues->Release();			ls->ZeroValues = nullptr;
-		if (ls->ConstantBuffer)		ls->ConstantBuffer.Release();
-		if (ls->FinalBuffer)		ls->FinalBuffer.Release(); 
-		if (ls->TriBuffer)			ls->TriBuffer.Release();
-		if (ls->SOCounter_1)		ls->SOCounter_1.Release();
-		if (ls->SOCounter_2)		ls->SOCounter_2.Release();
-		if (ls->FB_Counter)			ls->FB_Counter.Release();
+		if ( ls->CommandSignature )	ls->CommandSignature->Release();	ls->CommandSignature = nullptr;
+		if ( ls->ZeroValues )		ls->ZeroValues->Release();			ls->ZeroValues		 = nullptr;
+		if ( ls->ConstantBuffer )	ls->ConstantBuffer.Release();
+		if ( ls->FinalBuffer )		ls->FinalBuffer.Release(); 
+		if ( ls->TriBuffer )		ls->TriBuffer.Release();
+		if ( ls->SOCounter_1 )		ls->SOCounter_1.Release();
+		if ( ls->SOCounter_2 )		ls->SOCounter_2.Release();
+		if ( ls->FB_Counter )		ls->FB_Counter.Release();
 
-		if (ls->GenerateState)	ls->GenerateState->Release();
-		if (ls->SplitState)		ls->SplitState->Release();
+		if ( ls->GenerateState )	ls->GenerateState->Release();
+		if ( ls->SplitState )		ls->SplitState->Release();
 
-		if (ls->SOQuery) ls->SOQuery.Release();
+		if ( ls->SOQuery ) ls->SOQuery.Release();
 
-		if(ls->IndirectOptions1) ls->IndirectOptions1.Release();
-		if(ls->IndirectOptions2) ls->IndirectOptions2.Release();
+		if( ls->IndirectOptions1 ) ls->IndirectOptions1.Release();
+		if( ls->IndirectOptions2 ) ls->IndirectOptions2.Release();
 
-		if (ls->InputBuffer) ls->InputBuffer->Release();
+		if( ls->InputBuffer ) ls->InputBuffer->Release();
 	}
 
 

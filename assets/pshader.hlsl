@@ -22,23 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-/************************************************************************************************/
-
-
-cbuffer CameraConstants : register( b0 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	uint  	 MinZ;
-	uint  	 MaxZ;
-	int 	 PointLightCount;
-	int 	 SpotLightCount;
-};
-
+#include "common.hlsl"
 
 /************************************************************************************************/
 
@@ -50,6 +34,12 @@ cbuffer LocalConstants : register( b1 )
 	float4x4 WT;
 }
 
+cbuffer LocalConstants : register(b2)
+{
+    uint2 PageDimension;
+    uint2 AtlasDimension;
+}
+
 struct GBuffer
 {
 	float4 Albedo	: SV_TARGET0;
@@ -58,37 +48,21 @@ struct GBuffer
 	float4 WPOS 	: SV_TARGET3;
 };
 
-struct PS_Colour_IN
-{
-	float3 WPOS 	: TEXCOORD0;
-	float3 Colour	: TEXCOORD1;
-	float3 N 		: TEXCOORD2;
-};
 
-struct NormalMapped_IN
-{
-	float3 WPOS 	: TEXCOORD0;
-	float4 N 		: TEXCOORD1;
-	float3 T 		: TEXCOORD2;
-	float3 B 		: TEXCOORD3;
-};
 
 
 /************************************************************************************************/
 
-Texture2D AlbedoTexture : register(t0);
-Texture2D RandSTexture	: register(t1);
+Texture2D AlbedoTexture      : register(t0);
+Texture2D RandSTexture	     : register(t1);
+Texture2D AlbedoPageTable    : register(t2); //
+Texture2D RoughnessPageTable : register(t3); //
+Texture2D TextureVAtlas      : register(t4); // Global Texture Resource
 
 SamplerState DefaultSampler;
 
 /************************************************************************************************/
 
-
-struct PS_IN
-{
-	float3 WPOS 	: TEXCOORD0;
-	float3 N 		: TEXCOORD1;
-};
 
 GBuffer PMain(PS_IN IN)
 {
@@ -111,6 +85,16 @@ GBuffer PMainNormalMapped(PS_IN IN)
 	Out.Specular 	= Specular;
 
 	return Out;
+}
+
+float4 DrawTextureCoordinates(PS_IN IN) : SV_Target
+{
+    float4 Out        = float4(1, 1, 1, 1);
+    float2 Coordinate = IN.UV * PageDimension * AtlasDimension;
+    float2 Offset     = frac(Coordinate) / PageDimension;
+    float2 Page       = (Coordinate - Offset) / (PageDimension * AtlasDimension);
+
+    return float4(Offset, Page);
 }
 
 GBuffer DebugPaint(PS_IN IN)
@@ -147,12 +131,6 @@ float4 DrawLine(LinePointPS IN) : SV_TARGET
 
 /************************************************************************************************/
 
-
-struct RectPoint_PS
-{
-	float4 Color	: COLOR;
-	float2 UV		: TEXCOORD;
-};
 
 float4 DrawRect(RectPoint_PS IN) : SV_TARGET
 {
@@ -196,12 +174,40 @@ GBuffer PMain_TEXTURED(PS_TEXURED_IN IN )
 	float3 A 		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Albedo;
 	float3 Spec		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Specular;
 	float2 RM		= RandSTexture.Sample(DefaultSampler, IN.UV);
+
 	Out.Albedo		= float4(A, RM.x * Albedo.w);			// Last Float is Roughness
 	Out.NORMAL 		= float4(IN.N, 0);						// 
 	Out.WPOS 		= float4(IN.WPOS, l);					// W is depth
 	Out.Specular 	= float4(Specular.rgb, RM.y * Specular.w);// Last Float is Metal Factor
 
+	return Out; 
+}
+
+
+/************************************************************************************************/
+
+
+struct PSIN_Shadow {
+	float4 POS_H	: Position;
+};
+
+struct ShadowSample {
+	float D         : SV_Depth;
+};
+
+ShadowSample PMain_ShadowMapping(PSIN_Shadow In) {
+	ShadowSample Out;
+    Out.D = In.POS_H.w;
 	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+void PMain_FindSamples(PS_TEXURED_IN IN)
+{
+    IN.UV * PageDimension;
 }
 
 

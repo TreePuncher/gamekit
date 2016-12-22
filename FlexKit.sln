@@ -44,7 +44,6 @@ Global
 		{54DB6A2B-4E65-4379-AF8B-4245F63D6512}.Release|x86.Build.0 = Release|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x64.ActiveCfg = Debug|x64
-		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x64.Build.0 = Debug|x64
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x86.ActiveCfg = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x86.Build.0 = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|Any CPU.ActiveCfg = Release|Win32
@@ -81,5 +80,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(CodealikeProperties) = postSolution
+		SolutionGuid = 0f9f0ac3-88b3-44af-9b06-55b9a6d7ad4d
 	EndGlobalSection
 EndGlobal

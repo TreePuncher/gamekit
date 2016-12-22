@@ -175,7 +175,7 @@ typedef void (*FixedUpdateFN)			(EngineMemory*, double dt, void* _ptr);
 typedef void (*UpdateAnimationsFN)		(RenderSystem* RS,		iAllocator* TempMemory, double dt, void* _ptr);
 typedef	void (*UpdatePreDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, void* _ptr); 
 typedef	void (*DrawFN)					(RenderSystem* RS,		iAllocator* TempMemory, FlexKit::ShaderTable* M, void* _ptr); 
-typedef void (*PostDrawFN)				(EngineMemory* Engine,	double dt,					void* _ptr);
+typedef void (*PostDrawFN)				(EngineMemory* Engine,	iAllocator* TempMemory, double dt,	void* _ptr);
 typedef void (*CleanUpFN)				(EngineMemory* Engine,	void* _ptr);
 
 typedef void (*PostPhysicsUpdateFN)	(void*);

@@ -106,6 +106,7 @@ namespace FlexKit
 		{
 			char str[256];
 		};
+
 		BlockAllocator*						ResourceMemory;
 		static_vector<ResourceTable*, 16>	Tables;
 		static_vector<DIR, 16>				ResourceFiles;

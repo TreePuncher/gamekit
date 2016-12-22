@@ -294,54 +294,31 @@ namespace FlexKit
 					auto AnimationState = Scene->GetEntityAnimationState(ASM->TargetDrawable);
 					if (AnimationState && isStillPlaying(AnimationState, S.ID))
 					{
+						auto C = GetAnimation(AnimationState, S.ID);
+						C->Speed = S.Speed;
+
 						if (S.Loop)
 						{
 							if (!S.Active) {
-								auto C = GetAnimation(AnimationState, S.ID);
-								if (S.ForceComplete)
-									GetAnimation(AnimationState, S.ID)->ForceLoop = false;
-								else {
+								if (S.ForceComplete) {
+									C->ForceLoop = false;
+								} else {
 									C->Speed = 0.0f;
 								}
 							}
+							else
+								C->ForceLoop = true;
 						}
 
 						auto Animation	= GetAnimation(AnimationState, S.ID);
 						if (Animation) {
-#if 0
-							// Begin Animation exit / Transition
-							// Calculating animation Weighting here
-							double EaseOutProgress		= S.EaseOutProgress;
-							double AnimationProgress	= GetAnimation_Completed(Animation);
-							float EaseOutBegin			= 1 - S.EaseOutDuration;
-
-							float Weight = EaseOutProgress;
-							Weight = 1 - Weight;
-							if (!Animation->ForceLoop && 
-								!CompareFloats(S.EaseOutDuration, 0.0f, 0.00001f) && 
-								EaseOutBegin < AnimationProgress) {
-								// Ease Out Weighting
-								SetAnimationSpeed(AnimationState, S.ID, 0);
-
-								if(S.EaseOut)
-									Weight = S.EaseOut(Weight);
-
-								//SetAnimationWeight(AnimationState, S.ID, Weight);
-								S.EaseOutProgress += dt / S.EaseOutDuration;
-
-								if (S.EaseOutProgress > 1.0f) {
-									AnimationState->Clips.erase(Animation);
-									S.ID = INVALIDHANDLE;
-								}
-							}
-#endif
-
 							float EaseOutBegin		= 1 - S.EaseOutDuration;
 							float AnimationProgress = GetAnimation_Completed(Animation);
 
 							if (S.Active)
 							{
 								S.EaseOutProgress = 0.0f;
+								Animation->Weight = 1.0f;
 							}
 							else
 							{

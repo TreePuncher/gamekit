@@ -9,3 +9,12 @@ Dependencies/
 *.ipch
 *.iobj
 *.ipdb
+*.amplxeproj
+*.log
+*.obj
+*.pch
+*.pdb
+/.vs/FlexKit/v14/(Desktop's conflicted copy 2016-05-02).suo
+/.vs/FlexKit/v14/ (WIN-IU8R7AI4A8V's conflicted copy 2016-07-02).suo
+*.flooignore
+*.floo

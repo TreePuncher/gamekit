@@ -26,27 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-struct Plane
-{
-	float4 Normal;
-	float4 Orgin;
-};
-
-
-cbuffer CameraConstants : register( b0 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	uint  	 MinZ;
-	uint  	 MaxZ;
-	int 	 PointLightCount;
-	int 	 SpotLightCount;
-};
-
+#include "common.hlsl"
 
 cbuffer LocalConstants : register( b1 )
 {
@@ -103,6 +83,7 @@ LinePointPS VSegmentPassthrough(LinePoint In)
 	return Out;
 }
 
+
 /************************************************************************************************/
 
 
@@ -112,15 +93,6 @@ struct RectPoint_VS
 	float2 UV		: TEXCOORD;
 	float4 Color 	: COLOR;
 };
-
-
-struct RectPoint_PS
-{
-	float4 Color	: Color;
-	float2 UV		: TEXCOORD;
-	float4 POS 		: SV_POSITION;
-};
-
 
 RectPoint_PS DrawRect_VS( RectPoint_VS In )
 {
@@ -135,6 +107,7 @@ RectPoint_PS DrawRect_VS( RectPoint_VS In )
 
 /************************************************************************************************/
 
+
 struct VIN2
 {
 	float4 POS 		: POSITION;
@@ -142,13 +115,6 @@ struct VIN2
 	float4 N	 	: NORMAL;
 };
 
-struct PS_IN
-{
-	float3 WPOS 	: TEXCOORD0;
-	float3 N 		: TEXCOORD1;
-	float2 UV 		: TEXCOORD2;
-	float4 POS 	 	: SV_POSITION;
-};
 
 PS_IN V2Main( VIN2 In )
 {
@@ -156,6 +122,8 @@ PS_IN V2Main( VIN2 In )
 	PS_IN Out;
 	Out.WPOS 	= mul(WT, In.POS);
 	Out.POS 	= mul(PV, mul(WT, In.POS));
+	//Out.POS 	= mul(mul(PV, WT), In.POS);
+
 	Out.N   	= normalize(mul(rot, In.N.xyz));
 	Out.UV		= In.UV;
 	return Out;
@@ -172,14 +140,6 @@ struct VIN3
 	float3 T 		: TANGENT;
 };
 
-struct PS_IN2
-{
-	float3 WPOS 	: TEXCOORD0;
-	float4 N 		: TEXCOORD1;
-	float3 T 		: TEXCOORD2;
-	float3 B 		: TEXCOORD3;
-	float4 POS 	 	: SV_POSITION;
-};
 
 
 /************************************************************************************************/
@@ -225,7 +185,6 @@ struct VIN4
 StructuredBuffer<Joint> Bones : register(t0);
 
 
-
 PS_IN VMainVertexPallet(VIN4 In)
 {
 	PS_IN Out;
@@ -260,14 +219,18 @@ PS_IN VMainVertexPallet(VIN4 In)
 
 
 struct DepthPass_IN {
-	float4 POS : SV_POSITION;
+	float4 POS_Normalized	: POSITION;
+	float4 POS				: SV_POSITION;
 };
 
 
 DepthPass_IN VMain_ShadowMapping(VIN In)
 {
 	DepthPass_IN Out;
-	Out.POS = mul(PV, mul(WT, In.POS));
+	Out.POS			   = mul(PV, mul(WT, In.POS));
+    Out.POS_Normalized = Out.POS;
+    //Out.POS_Normalized = float4(0, 0, 0,  4);//Out.POS; // Out.POS.w;
+
 	return Out;
 }
 
@@ -300,7 +263,8 @@ DepthPass_IN VMainVertexPallet_ShadowMapping(VIN5 In)
 	}
 
 	float4 V2 = float4(V, 1.0f);
-	Out.POS = mul(PV, mul(WT, V2));
+	Out.POS				= mul(PV, mul(WT, V2));
+    Out.POS_Normalized  = Out.POS;
 
 	return Out;
 }

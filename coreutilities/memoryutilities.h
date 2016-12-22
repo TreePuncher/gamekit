@@ -178,7 +178,7 @@ namespace FlexKit
 						auto state = Blocks[itr].state[itr2];
 						if (state == Block::Free)
 						{
-							Blocks[itr].state[itr2] = Block::Allocated | Aligned ? Block::Aligned : 0;
+							Blocks[itr].state[itr2] = (Block::Allocated | Aligned) ? Block::Aligned : 0;
 							//if(itr2 == Block::BlockCount) Blocks[itr].BlockFull = true;
 							return (byte*)&Blocks[itr].data[itr2];
 						}

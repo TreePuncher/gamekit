@@ -1621,6 +1621,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	// NEED TO OPTIMIZE THIS SOMEDAY
 	inline float4x4 Q2M(Quaternion Q)
 	{
 		float4x4 out;

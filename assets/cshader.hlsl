@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
+#include "common.hlsl"
+
 static const float PI		 = 3.14159265359f;
 static const float PIInverse = 1/PI;
 
@@ -42,21 +44,7 @@ void WriteOut( float4 C, uint2 PixelCord, uint2 offset ) {BB[PixelCord + offset]
 /************************************************************************************************/
 // INPUT STRUCTS
 
-cbuffer CameraConstants	: register( b1 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	float  	 MinZ;
-	float  	 MaxZ;
-	uint 	 PointLightCount;
-	uint 	 SpotLightCount;
-};
-
-cbuffer GBufferConstantsLayout		: register(b0)
+cbuffer GBufferConstantsLayout		: register(b1)
 {
 	uint DLightCount;
 	uint PLightCount;
@@ -229,35 +217,16 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 	float3 vdir = GetVectorToBack(WPOS);
 
 	#if 0
+	float D = Position.Load(int3(ID.xy, 0)).w;
 
-	float ProjectionA = MaxZ / (MaxZ - MinZ);
-	float ProjectionB = (-MaxZ * MinZ) / (MaxZ - MinZ);
-	
-/*
-	float3 	vdir 				= GetVectorToBack(WPOS);
-	float  	Z 					= DepthView.Load(int3(ID.xy, 0));
-	float  	LinearZ 			= ProjectionB / ((Z) - ProjectionA );
-	float2 	ScreenCord 			= float2(float(ID.x)/Width * 2 - 1, 1 + float(ID.y)/Height  * -2);
-	float3 	ReconstructedPOS 	= mul( CameraInverse, float3(ScreenCord.x, ScreenCord.y, Z));
-*/
+	float2 ScreenCord = (float2(ID.xy) / float2(WindowWidth, WindowHeight)) - float2(0.5f, 0.5f);
+	float3 Color	  = mul(CameraInverse, float4(ScreenCord, D, 1));
 
-	float4 Color 		= float4(WPOS, 0);
-	
-	//WPOS 			= float4(length(mul( CameraInverse, float4(ScreenCord.x, ScreenCord.y, Z,  1)).xyz - WPOS)/100, 0, 0, 0);
-	//float4 Color 		= float4(ID.x, ID.y, 0, 0);
-	//float4 Color 		= float4(DepthView.Load(int3(ID.xy, 0)), DepthView.Load(int3(ID.xy, 0)), DepthView.Load(int3(ID.xy, 0)), DepthView.Load(int3(ID.xy, 0)));
-	//float4 Color 		= float4(float(ID.x)/Width * 2 - 1, 1 + float(ID.y)/Height  * -2, 0, 0);
-	//float4 Color 		= float4(0.0, 0.0, 0.0, 0.0);
-	
 	#else
-	
-	#if 0
-	float3 Color = n;
-	#endif
 
 	#if 1
 
-	float3 Color = float3(0, 0, 0);// AmbientLight.xyz * Kd.xyz;
+	float3 Color = AmbientLight.xyz * Kd.xyz;
 
 	for( int I = 0; I < PointLightCount; ++I)
 	{
@@ -271,8 +240,6 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 		
 		Color += Frd( Lv, Lc, vdir, WPOS, Kd, n, Ks, m ) * La * PIInverse;
 	}
-	#endif
-	#endif
 
 
 	/*
@@ -291,13 +258,16 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 		float3  Lp  = SpotLights[I].P;
 		float3  Ld  = SpotLights[I].D;
 		float3 	Lv 	= normalize(Lp-WPOS);
+		float3  Lk  = SpotLights[I].K;
 		float   La  = pow(max(dot(-Ld, Lv), 0), 10);
-		float3  Lc  = SpotLights[I].K;
 		// TODO: Add in light Lists, buckets etc
 
 		//Color += float4(0.0, 1.0f, 0.0, 0.0f);
-		Color += float4(Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m) * La * PIInverse, 0);
+		Color += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m) * La * PIInverse, 0);
 	}
+
+	#endif
+	#endif
 
 	WriteOut(float4(pow(Color, 1/2.1), 1), ID.xy, uint2(0, 0));
 }

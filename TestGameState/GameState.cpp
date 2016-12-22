@@ -669,6 +669,208 @@ void CleanupHairRender(HairRender* Out)
 	//Out->Simulate.PSO->Release();
 }
 
+
+/************************************************************************************************/
+
+
+bool InitiateTextureVTable(RenderSystem* RS, TextureVTable_Desc Desc, TextureVTable* Out)
+{
+	FK_ASSERT(Out != nullptr ,				"INVALID ARGUEMENT!");
+	FK_ASSERT(RS != nullptr,				"INVALID ARGUEMENT!");
+	FK_ASSERT(Desc.Memory != nullptr,		"INVALID ARGUEMENT!");
+	FK_ASSERT(Desc.PageSize.Product() > 0,	"INVALID ARGUEMENT!");
+	FK_ASSERT(Desc.PageCount.Product() > 0, "INVALID ARGUEMENT!");
+	FK_ASSERT(Desc.Resources != nullptr,	"INVALID ARGUEMENT!");
+
+	D3D12_RESOURCE_DESC	Resource_DESC = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R8G8B8A8_UNORM, Desc.PageSize[0] * Desc.PageCount[0], Desc.PageSize[1] * Desc.PageCount[1]);
+
+	D3D12_HEAP_PROPERTIES HEAP_Props = {}; {
+		HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type						= D3D12_HEAP_TYPE_DEFAULT;
+		HEAP_Props.MemoryPoolPreference		= D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask			= 0;
+		HEAP_Props.VisibleNodeMask			= 0;
+	}
+
+	ID3D12Resource* Resource = nullptr;
+	HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE, &Resource_DESC, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&Resource));
+	// TODO: Resource Eviction on creation failure
+	CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE RESOURCE!"));
+
+	size_t PageCount = Desc.PageCount.Product();
+	Out->PageTable = (TextureVTable::TableEntry*)(Desc.Memory->_aligned_malloc( sizeof(TextureVTable::TableEntry) * PageCount) );
+	Out->PageTableDimensions = Desc.PageCount;
+
+	for (size_t I = 0; I < PageCount; ++I)
+		Out->PageTable[I] = { INVALIDHANDLE, { 0.0f, 0.0f } };
+
+	Texture2D_Desc TextureDesc = {};
+	TextureDesc.CV			   = false;
+	TextureDesc.MipLevels	   = 0;
+	TextureDesc.UAV			   = false;
+	TextureDesc.Read		   = false;
+	TextureDesc.Write		   = true;
+	TextureDesc.Width		   = Desc.PageCount[0] * Desc.PageSize[0];
+	TextureDesc.Height		   = Desc.PageCount[1] * Desc.PageSize[1];
+	TextureDesc.Format		   = FORMAT_2D::R8G8B8A8_UNORM;
+	
+	auto TextureMemory = CreateTexture2D(RS, &TextureDesc);
+	SETDEBUGNAME(TextureMemory, "TextureMemory");
+	
+	Out->Memory					= Desc.Memory;
+	Out->TextureMemory			= TextureMemory;
+	Out->TextureTable.Allocator	= Desc.Memory;
+	Out->TextureSets.Allocator	= Desc.Memory;
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+void CleanUpTextureVTable(TextureVTable* Table)
+{
+	Table->Constants.Release();
+	Table->ReadBackBuffer.Release();
+	Table->TextureMemory->Release();
+	Table->Memory->_aligned_free(Table->PageTable);
+
+	for (auto E : Table->TextureSets)
+		ReleaseTextureSet(E, Table->Memory);
+
+	Table->TextureTable.Release();
+
+	for (auto E : Table->PageTables)
+		E->Release();
+
+	Table->PageTables.Release();
+}
+
+
+/************************************************************************************************/
+
+
+bool isTextureSetLoaded(GUID_t ID, TextureVTable* Table) 
+{
+	for (auto I : Table->TextureTable) 
+		if (I.ResourceID == ID) 
+			return true;
+
+	return false;
+}
+
+
+/************************************************************************************************/
+
+
+void AddTextureResource(RenderSystem* RS, TextureVTable* Table, GUID_t TextureSet)
+{
+	if (!isTextureSetLoaded(TextureSet, Table)) 
+	{
+		auto Set = LoadTextureSet(Table->ResourceTable, TextureSet, Table->Memory);
+
+		for ( auto I : Set->TextureGuids) 
+			if(I != INVALIDHANDLE)
+				Table->TextureTable.push_back({INVALIDHANDLE, I});
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void FindUsedTexturePages(RenderSystem* RS, TextureVTable* Table, GeometryTable* GT, Camera* C, PVS* PVS) 
+{
+	// Setup Pipeline State
+	auto CL				= GetCommandList_1					(RS);
+	auto FrameResources	= GetCurrentFrameResources			(RS);
+
+	auto DescPOSGPU		= GetDescTableCurrentPosition_GPU	(RS); // _Ptr to Beginning of Heap On GPU
+	auto DescPOS		= ReserveDescHeap					(RS, 6);
+	auto DescriptorHeap	= GetCurrentDescriptorTable			(RS);
+
+	auto RTVPOSCPU		= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
+	auto RTVPOS			= ReserveRTVHeap					(RS, 6);
+	auto RTVHeap		= GetCurrentRTVTable				(RS);
+
+	auto DSVPOSCPU		= GetDSVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On DSV heap on CPU
+	auto DSVPOS			= ReserveDSVHeap					(RS, 1);
+	auto DSVHeap		= GetCurrentRTVTable				(RS);
+
+	CL->SetGraphicsRootSignature			(RS->Library.RS2UAVs4SRVs4CBs);
+	CL->SetPipelineState					(Table->UpdatePSO);
+	CL->SetGraphicsRootConstantBufferView	(VTP_CameraConstants, C->Buffer->GetGPUVirtualAddress());
+
+
+	for (auto P : *PVS)
+	{
+		Drawable* E = P;
+
+		if (E->Posed || !E->Textured)
+			continue;
+
+		TriMeshHandle CurrentHandle	= E->MeshHandle;
+
+		if (CurrentHandle == INVALIDMESHHANDLE)
+			continue;
+
+		TriMesh*	CurrentMesh			= GetMesh(GT, CurrentHandle);
+		TextureSet* CurrentTextureSet	= E->Textures;
+
+		size_t IBIndex	  = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+		size_t IndexCount = CurrentMesh->IndexCount;
+
+		if (CurrentTextureSet == nullptr)
+			continue;
+
+		/*
+			typedef struct D3D12_INDEX_BUFFER_VIEW
+			{
+			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
+			UINT SizeInBytes;
+			DXGI_FORMAT Format;
+			} 	D3D12_INDEX_BUFFER_VIEW;
+		*/
+
+		D3D12_INDEX_BUFFER_VIEW	IndexView = {
+			GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress(),
+			UINT(IndexCount * 32),
+			DXGI_FORMAT::DXGI_FORMAT_R32_UINT,
+		};
+
+		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+		FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
+		FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
+		FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
+
+		CL->SetGraphicsRootConstantBufferView	(VTP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
+		CL->IASetIndexBuffer					(&IndexView);
+		CL->IASetVertexBuffers					(0, VBViews.size(), VBViews.begin());
+		CL->DrawIndexedInstanced				(IndexCount, 1, 0, 0, 0);
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void UpdateTextureResources(RenderSystem* RS, TextureVTable* Table, GeometryTable* GT, Camera* C, PVS* PVS)
+{
+	FindUsedTexturePages(RS, Table, GT, C, PVS); // Queue for Next Frame
+}
+
+
+/************************************************************************************************/
+
+
+void UploadTextureResources(RenderSystem* RS, TextureVTable* Out)
+{
+	// ReadBack Results
+
+}
+
+
 /************************************************************************************************/
 
 
@@ -713,7 +915,8 @@ struct GameState
 	FontAsset*	Font;
 	TextArea	Text;
 
-	TextureSet*	Set1;
+	TextureSet*		Set1;
+	TextureVTable	TextureState;
 
 	DeferredPass		DeferredPass;
 	ForwardPass			ForwardPass;
@@ -1207,7 +1410,8 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->PlayerInertia.Inertia	= float3(0);
 	Out->T						= 0.0f;
 
-	State->GScene.AddSpotLight(float3{0, 80, 0}, { 1, 1, 1 }, { 0.0f, -1.0f, 0.0f }, pi / 4, 1000, 1000);
+	auto Light = State->GScene.AddSpotLight(float3{0, 80, 0}, { 1, 1, 1 }, { 0.0f, -1.0f, 0.0f }, pi/2, 1000, 1000);
+	State->GScene.EnableShadowCasting(Light);
 
 	auto Texture2D		= LoadTextureFromFile("Assets//textures//agdg.dds", Engine->RenderSystem, Engine->BlockAllocator);
 	Out->TestTexture	= Texture2D;
@@ -1363,7 +1567,13 @@ void UpdateTestScene_PostTransformUpdate(Scene* TestScene, GameState* State, dou
 	UpdateGraphicScenePoseTransform(&State->GScene);
 
 	auto& Entity = State->GScene.GetDrawable(TestScene->PlayerModel);
-	DEBUG_DrawPoseState(Entity.PoseState, State->Nodes, Entity.Node, &State->Lines);
+	DEBUG_DrawPoseState		(Entity.PoseState, State->Nodes, Entity.Node, &State->Lines);
+
+	auto C = &State->GScene.SpotLightCasters[0].C;
+	auto P = GetPositionW(State->Nodes, C->Node);
+	Quaternion Q;
+	GetOrientation(State->Nodes, C->Node, &Q);
+	DEBUG_DrawCameraFrustum	(&State->Lines, C, P, Q);
 }
 
 
@@ -1416,9 +1626,10 @@ extern "C"
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		//InitiateHairRender		  (Engine->RenderSystem, &Engine->DepthBuffer,   &State.HairRender);
 		InitiateLineSet			  (Engine->RenderSystem, Engine->BlockAllocator, &State.Lines);
-		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender,		Engine->TempAllocator);
+		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender,		  Engine->TempAllocator);
 		InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
 		InitiateShadowMapPass	  (Engine->RenderSystem, &State.ShadowMapPass);
+		InitiateTextureVTable	  (Engine->RenderSystem, {{128, 128}, {32, 32}, &Engine->Assets, Engine->BlockAllocator }, &State.TextureState);
 
 		{
 			Landscape_Desc Land_Desc = { 
@@ -1451,7 +1662,7 @@ extern "C"
 		Engine->Window.Handler.Subscribe(sub);
 
 		{
-			FlexKit::Tex2DDesc Desc; {
+			FlexKit::Texture2D_Desc Desc; {
 				Desc.Format			= FlexKit::FORMAT_2D::D32_FLOAT;
 				Desc.Width			= 800;
 				Desc.Height			= 600;
@@ -1518,16 +1729,17 @@ extern "C"
 
 	GAMESTATEAPI void Draw(RenderSystem* RS, iAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* State)
 	{
+		BeginSubmission(RS, State->ActiveWindow);
+
 		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 		auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
+		auto CL				= GetCurrentCommandList(RS);
 
 		GetGraphicScenePVS(&State->GScene, State->ActiveCamera, &PVS, &Transparent);
 
 		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
 		SortPVSTransparent(State->Nodes, &Transparent, State->ActiveCamera);
 
-		BeginPass(RS, State->ActiveWindow);
-		auto CL = GetCurrentCommandList(RS);
 
 		State->Stats.AvgObjectDrawnPerFrame += PVS.size();
 		State->Stats.AvgObjectDrawnPerFrame += Transparent.size();
@@ -1543,8 +1755,7 @@ extern "C"
 			ResetStats(&State->Stats);
 		}
 
-		//UploadTextArea	( State->Font, &State->Text, TempMemory, RS, State->ActiveWindow);
-		PushText		( State->GUIRender, { { 0.0f, 0.0f },{ 1.0f, 1.0f },{ WHITE, 1.0f }, &State->Text, State->Font });
+		PushText( State->GUIRender, { { 0.0f, 0.0f },{ 1.0f, 1.0f },{ WHITE, 1.0f }, &State->Text, State->Font });
 
 		// TODO: multi Thread these
 		// Do Uploads
@@ -1559,35 +1770,44 @@ extern "C"
 			UploadLineSegments			(RS, &State->Lines);
 			UploadDeferredPassConstants	(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
 
-			UploadCamera		(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f);
-			UploadGraphicScene	(&State->GScene, &PVS, &Transparent);
-			UploadLandscape		(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true);
+			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
+			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
+			UploadLandscape			(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true);
+			UploadTextureResources	(RS, &State->TextureState);
 		}
 
 
 		// Submission
 		{
-			ClearBackBuffer	(RS, CL, State->ActiveWindow, {0, 0, 0, 0});
-			ClearDepthBuffer(RS, CL, State->DepthBuffer, 0.0f, 0, State->DeferredPass.CurrentBuffer);
+			//SetDepthBuffersWrite(RS, CL, { GetCurrent(State->DepthBuffer) });
+
+			ClearBackBuffer		 (RS, CL, State->ActiveWindow, { 0, 0, 0, 0 });
+			ClearDepthBuffers	 (RS, CL, { GetCurrent(State->DepthBuffer) }, DefaultClearDepthValues_0);
+			//ClearDepthBuffer(RS, CL, &State->ShadowMap, 0.0f, 0);
 
 			Texture2D BackBuffer = GetBackBufferTexture(State->ActiveWindow);
 			SetViewport	(CL, BackBuffer);
 			SetScissor	(CL, BackBuffer.WH);
 
+			//UpdateTextureResources(RS, &State->TextureState, State->ActiveCamera, &PVS);
+			//UpdateTextureResources(RS, &State->TextureState, State->ActiveCamera, &SortPVSTransparent);
+
 			if (State->DoDeferredShading)
 			{
-				IncrementDeferredPass(&State->DeferredPass);
-				ClearDeferredBuffers(RS, &State->DeferredPass);
+				IncrementDeferredPass (&State->DeferredPass);
+				ClearDeferredBuffers  (RS, &State->DeferredPass);
 
-				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT);
-				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera);
+				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT, &State->TextureState);
+				//DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera);
+
 				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else
 				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
 
-#if 1
+
+#if 0
 			// Do Shadowing
 			for (auto& Caster : State->GScene.SpotLightCasters) {
 				auto PVS = TempMemory->allocate_aligned<FlexKit::PVS>();
@@ -1597,14 +1817,15 @@ extern "C"
 #endif
 
 			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));
+			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
-		
-		EndPass(CL, RS, State->ActiveWindow);
 	}
 
 
-	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameState* _ptr)
+	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameState* State)
 	{
+		IncrementCurrent(State->DepthBuffer);
+
 		PresentWindow(&Engine->Window, Engine->RenderSystem);
 	}
 
@@ -1623,9 +1844,10 @@ extern "C"
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);
 
-		ReleaseTextureSet(Engine->RenderSystem, _ptr->Set1, Engine->BlockAllocator);
+		ReleaseTextureSet(_ptr->Set1, Engine->BlockAllocator);
 
 		//CleanUpShadowPass		(&_ptr->ShadowMapPass);
+		CleanUpTextureVTable	(&_ptr->TextureState);
 		CleanUpSimpleWindow		(&_ptr->TestScene.Window);
 		CleanUpDrawGUI			(&_ptr->GUIRender);
 		CleanUpLineSet			(&_ptr->Lines);

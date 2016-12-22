@@ -211,7 +211,7 @@ FbxVector4 ReadNormal(int index, fbxsdk::FbxMesh* Mesh)
 
 XMMATRIX FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM)
 {
-	XMMATRIX M;
+	XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
 	for (size_t I = 0; I < 4; ++I)
 		for (size_t II = 0; II < 4; ++II)
 			M.r[I].m128_f32[II] = AM[I][II];
@@ -221,7 +221,7 @@ XMMATRIX FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM)
 
 FbxAMatrix XMMATRIX_2_FBXMATRIX(XMMATRIX& M)
 {
-	FbxAMatrix AM;
+	FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
 	for (size_t I = 0; I < 4; ++I)
 		for (size_t II = 0; II < 4; ++II)
 			AM[I][II] = M.r[I].m128_f32[II];

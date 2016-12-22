@@ -65,7 +65,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSX				ON
 #define PHYSXREMOTEDB		ON
 #define DEBUGALLOCATOR		OFF
-#define DEBUGGRAPHICS		ON
+#define DEBUGGRAPHICS		OFF
 #define DEBUGHANDLES		OFF
 #define FATALERROR			ON
 #define EDITSHADERCONTINUE 	ON
@@ -121,8 +121,11 @@ template<typename TY_1, typename TY_2>	void Discard(TY_1, TY_2) {}
 #define FK_ASSERT(...) GETASSERT(__VA_ARGS__, FK_ASSERT2, FK_ASSERT1)(__VA_ARGS__)
 
 #define MERGECOUNT_(a,b)  a##b
-#define FINALLABEL_(a) MERGECOUNT_(unique_name_, a)
+#define FINALLABEL_(a) MERGECOUNT_(Finally_ID_, a)
 #define FINALLABEL FINALLABEL_(__LINE__)
+
+
+#if 0
 
 struct _FINALLY
 {
@@ -136,6 +139,35 @@ private:
 
 #define FINALLY _FINALLY FINALLABEL([&]()->void {
 #define FINALLYOVER });
+
+#else
+
+template<typename TY>
+struct FINAL_CONTAINER
+{
+	template<typename TY_1>
+	FINAL_CONTAINER(TY_1 fn) : FN(fn) {}
+
+	~FINAL_CONTAINER()	{ FN();	}
+
+	const TY FN;
+};
+
+template<typename FN_TYPE>
+auto BuildFinal(FN_TYPE FN) -> FINAL_CONTAINER<decltype(FN)> { return FINAL_CONTAINER<decltype(FN)>(FN); }
+
+#define FINALLY auto FINALLABEL = BuildFinal([&]()->void {
+#define FINALLYOVER });
+
+#define FINALLYBLOCK(a) FINALLY{ a }FINALLYOVER
+
+#endif
+
+#ifdef _DEBUG
+#define DEBUGBLOCK(A) A;
+#else
+#define DEBUGBLOCK(A)
+#endif
 
 static const size_t gCORECOUNT	= 4;
 static const size_t KILOBYTE	= 1024; 

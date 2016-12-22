@@ -286,6 +286,7 @@ namespace FlexKit
 			return *newVector;
 		}
 
+
 		static fixed_vector& Create_Aligned(size_t size, iAllocator* Allocator, size_t A = 0x10)
 		{
 			char* Buffer = (char*)Allocator->_aligned_malloc(sizeof(THIS_TYPE) + sizeof(TY_) * size);
