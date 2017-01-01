@@ -509,7 +509,7 @@ struct Scalp
 	struct Strand
 	{
 		struct{
-			float	xyz[3];
+			float3	xyz;
 		}Points[64];
 	};
 
@@ -585,6 +585,14 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 	Shader DS = LoadShader("DShader",			"DShader",				"ds_5_0", "assets\\HairRendering.hlsl");
 	Shader PS = LoadShader("DebugTerrainPaint",	"DebugTerrainPaint",	"ps_5_0", "assets\\pshader.hlsl");
 
+	FINALLY	{
+		Destroy(CS);
+		Destroy(VS);
+		Destroy(HS);
+		Destroy(DS);
+		Destroy(PS);
+	} FINALLYOVER
+
 	// Create Pipeline State Objects
 	{
 		// Simulation Step
@@ -616,7 +624,6 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 			static_vector<D3D12_INPUT_ELEMENT_DESC> InputElements = {
 				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			};
-
 
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC Desc = {}; {
@@ -651,12 +658,6 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 			Out->Draw.PSO = PSO;
 		}
 	}
-
-	Destroy(CS);
-	Destroy(VS);
-	Destroy(HS);
-	Destroy(DS);
-	Destroy(PS);
 }
 
 
@@ -945,6 +946,7 @@ struct GameState
 
 	Texture2D			Albedo;
 	Texture2D			ShadowMap;
+	Texture2D			HeightMap;
 
 	KeyState	Keys;
 	bool		Quit;
@@ -1632,13 +1634,16 @@ extern "C"
 		InitiateTextureVTable	  (Engine->RenderSystem, {{128, 128}, {32, 32}, &Engine->Assets, Engine->BlockAllocator }, &State.TextureState);
 
 		{
+			State.HeightMap = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
+
 			Landscape_Desc Land_Desc = { 
+				State.HeightMap,
 				State.DeferredPass.Filling.NoTexture.Blob->GetBufferPointer(), 
 				State.DeferredPass.Filling.NoTexture.Blob->GetBufferSize() 
 			};
 
 			InitiateLandscape		(Engine->RenderSystem, GetZeroedNode(&Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
-			PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0});
+			PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0, {0.0f, 0.0f}, {1.0f, 1.0f}});
 			UploadLandscape			(Engine->RenderSystem, &State.Landscape, nullptr, nullptr, true, false);
 		}
 
@@ -1768,7 +1773,7 @@ extern "C"
 			UploadPoses	(RS, &PVS, State->GT, TempMemory);
 
 			UploadLineSegments			(RS, &State->Lines);
-			UploadDeferredPassConstants	(RS, &DPP, {0.1f, 0.1f, 0.1f, 0}, &State->DeferredPass);
+			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &State->DeferredPass);
 
 			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
@@ -1798,7 +1803,7 @@ extern "C"
 				ClearDeferredBuffers  (RS, &State->DeferredPass);
 
 				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT, &State->TextureState);
-				//DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera);
+				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera);
 
 				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects

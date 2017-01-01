@@ -314,7 +314,29 @@ namespace FlexKit
 	void CreateRootSignatureLibrary(RenderSystem* out)
 	{
 		ID3D12Device* Device = out->pDevice;
-		CD3DX12_STATIC_SAMPLER_DESC	 Default(0);
+
+		/*
+			CD3DX12_STATIC_SAMPLER_DESC(
+			UINT shaderRegister,
+			D3D12_FILTER filter                      = D3D12_FILTER_ANISOTROPIC,
+			D3D12_TEXTURE_ADDRESS_MODE addressU      = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+			D3D12_TEXTURE_ADDRESS_MODE addressV      = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+			D3D12_TEXTURE_ADDRESS_MODE addressW      = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
+			FLOAT mipLODBias                         = 0,
+			UINT maxAnisotropy                       = 16,
+			D3D12_COMPARISON_FUNC comparisonFunc     = D3D12_COMPARISON_FUNC_LESS_EQUAL,
+			D3D12_STATIC_BORDER_COLOR borderColor    = D3D12_STATIC_BORDER_COLOR_OPAQUE_WHITE,
+			FLOAT minLOD                             = 0.f,
+			FLOAT maxLOD                             = D3D12_FLOAT32_MAX,
+			D3D12_SHADER_VISIBILITY shaderVisibility = D3D12_SHADER_VISIBILITY_ALL,
+			UINT registerSpace                       = 0)
+		{
+		*/
+		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
+			CD3DX12_STATIC_SAMPLER_DESC(0),
+			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR },
+		};
+
 		{
 			// Pixel Processor Root Sig
 			CD3DX12_DESCRIPTOR_RANGE ranges[2];
@@ -323,16 +345,16 @@ namespace FlexKit
 
 			CD3DX12_ROOT_PARAMETER Parameters[5];
 			Parameters[0].InitAsDescriptorTable(2, ranges, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[1].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[2].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[3].InitAsConstantBufferView(2, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[4].InitAsConstantBufferView(3, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[1].InitAsConstantBufferView(0, 0,   D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[2].InitAsConstantBufferView(1, 0,   D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[3].InitAsConstantBufferView(2, 0,   D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[4].InitAsConstantBufferView(3, 0,   D3D12_SHADER_VISIBILITY_ALL);
 
 			ID3DBlob* Signature = nullptr;
 			ID3DBlob* ErrorBlob = nullptr;
 			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
 
-			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 2, Samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob),
 												PRINTERRORBLOB(ErrorBlob));
 
@@ -344,18 +366,22 @@ namespace FlexKit
 			SETDEBUGNAME(NewRootSig, "RS4CBVs4SRVs");
 		}
 		{
+			// Pixel Processor Root Sig
+			CD3DX12_DESCRIPTOR_RANGE ranges[1];
+			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 0);
+
 			CD3DX12_ROOT_PARAMETER Parameters[5];
 			Parameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 			Parameters[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
 			Parameters[2].InitAsConstantBufferView(2, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[3].InitAsConstantBufferView(3, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[3].InitAsUnorderedAccessView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[3].InitAsDescriptorTable(1, ranges, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[4].InitAsUnorderedAccessView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 
 			ID3DBlob* Signature = nullptr;
 			ID3DBlob* ErrorBlob = nullptr;
 			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
 
-			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 4, Parameters, 1, &Default, 
+			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 4, Parameters, 2, Samplers,
 												D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | 
 												D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT);
 
@@ -367,7 +393,7 @@ namespace FlexKit
 				ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
 
 			out->Library.RS4CBVs_SO = NewRootSig;
-			SETDEBUGNAME(NewRootSig, "RS3CBVs_SO");
+			SETDEBUGNAME(NewRootSig, "RS3CBV1DT_SO");
 		}
 		{
 			// Compute Processor Root Sig
@@ -387,7 +413,7 @@ namespace FlexKit
 			ID3DBlob* ErrorBlob = nullptr;
 			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
 
-			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 2, Samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob),
 				PRINTERRORBLOB(ErrorBlob));
 
@@ -1004,7 +1030,7 @@ namespace FlexKit
 		NewWindow.BufferIndex = 0;
 		// Create Swap Chain
 		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-		swapChainDesc.BufferCount		= 3;
+		swapChainDesc.BufferCount		= 2;
 		swapChainDesc.Width				= In_Desc->width;
 		swapChainDesc.Height			= In_Desc->height;
 		swapChainDesc.Format			= DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -3537,6 +3563,7 @@ namespace FlexKit
 				initial.Width	    = GBdesc->RenderWindow->WH[0];
 				initial.Height	    = GBdesc->RenderWindow->WH[1];
 				initial.SLightCount = 0;
+				initial.AmbientLight = float4(0, 0, 0, 0);
 
 				FlexKit::ConstantBuffer_desc CB_Desc;
 				CB_Desc.InitialSize		= sizeof(initial);
@@ -4938,94 +4965,123 @@ namespace FlexKit
 
 	void DEBUG_DrawCameraFrustum(LineSet* out, Camera* C, float3 Position, Quaternion Q)
 	{
-		float3 FTL(0);
-		float3 FTR(0);
-		float3 FBL(0);
-		float3 FBR(0);
-
-		FTL.z = -C->Far;
-		FTL.y = tan(C->FOV) * C->Far;
-		FTL.x = -FTL.y * C->AspectRatio;
-
-		FTR ={ -FTL.x,  FTL.y, FTL.z };
-		FBL ={  FTL.x, -FTL.y, FTL.z };
-		FBR ={ -FTL.x, -FTL.y, FTL.z };
-
-		float3 NTL(0);
-		float3 NTR(0);
-		float3 NBL(0);
-		float3 NBR(0);
-
-		NTL.z = -C->Near;
-		NTL.y = tan(C->FOV / 2) * C->Near;
-		NTL.x = NTL.y * C->AspectRatio;
-
-		NTR ={ -NTL.x,  NTL.y, NTL.z };
-		NBL ={ -NTL.x, -NTL.y, NTL.z };
-		NBR ={ NTL.x, -NTL.y, NTL.z };
-
-		FTL = Position + Q * FTL;
-		FTR = Position + Q * FTR;
-		FBL = Position + Q * FBL;
-		FBR = Position + Q * FBR;
-
-		NTL = Position + Q * NTL;
-		NTR = Position + Q * NTR;
-		NBL = Position + Q * NBL;
-		NBR = Position + Q * NBR;
+		auto Points = GetCameraFrustumPoints(C, Position, Q);
 
 		LineSegment Line;
 		Line.AColour = WHITE;
 		Line.BColour = WHITE;
-		Line.A = FTL;
-		Line.B = FTR;
+
+		Line.A = Points.FTL;
+		Line.B = Points.FTR;
 		out->LineSegments.push_back(Line);
 
-		Line.A = FTL;
-		Line.B = FBL;
+		Line.A = Points.FTL;
+		Line.B = Points.FBL;
 		out->LineSegments.push_back(Line);
 
-		Line.A = FTR;
-		Line.B = FBR;
+		Line.A = Points.FTR;
+		Line.B = Points.FBR;
 		out->LineSegments.push_back(Line);
 
-		Line.A = FBL;
-		Line.B = FBR;
+		Line.A = Points.FBL;
+		Line.B = Points.FBR;
 		out->LineSegments.push_back(Line);
 
-		Line.A = NTL;
-		Line.B = NTR;
+		Line.A = Points.NTL;
+		Line.B = Points.NTR;
 		out->LineSegments.push_back(Line);
 
-		Line.A = NTL;
-		Line.B = NBR;
+		Line.A = Points.NTL;
+		Line.B = Points.NBR;
 		out->LineSegments.push_back(Line);
 
-		Line.A = NTR;
-		Line.B = NBL;
+		Line.A = Points.NTR;
+		Line.B = Points.NBL;
 		out->LineSegments.push_back(Line);
 
-		Line.A = NBL;
-		Line.B = NBR;
+		Line.A = Points.NBL;
+		Line.B = Points.NBR;
 		out->LineSegments.push_back(Line);
 
 		//*****************************************
 
-		Line.A = NBR;
-		Line.B = FBR;
+		Line.A = Points.NBR;
+		Line.B = Points.FBR;
 		out->LineSegments.push_back(Line);
 
-		Line.A = NBL;
-		Line.B = FBL;
+		Line.A = Points.NBL;
+		Line.B = Points.FBL;
 		out->LineSegments.push_back(Line);
 
-		Line.A = NTR;
-		Line.B = FTL;
+		Line.A = Points.NTR;
+		Line.B = Points.FTL;
 		out->LineSegments.push_back(Line);
 
-		Line.A = NTL;
-		Line.B = FTR;
+		Line.A = Points.NTL;
+		Line.B = Points.FTR;
 		out->LineSegments.push_back(Line);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
+	{
+		// TODO(R.M): Optimize this maybe?
+		FustrumPoints Out;
+
+		Out.FTL.z = -C->Far;
+		Out.FTL.y = tan(C->FOV) * C->Far;
+		Out.FTL.x = -Out.FTL.y * C->AspectRatio;
+
+		Out.FTR = { -Out.FTL.x,  Out.FTL.y, Out.FTL.z };
+		Out.FBL = {  Out.FTL.x, -Out.FTL.y, Out.FTL.z };
+		Out.FBR = { -Out.FTL.x, -Out.FTL.y, Out.FTL.z };
+
+
+		Out.NTL.z = -C->Near;
+		Out.NTL.y = tan(C->FOV / 2) * C->Near;
+		Out.NTL.x = Out.NTL.y * C->AspectRatio;
+
+		Out.NTR = { -Out.NTL.x,  Out.NTL.y, Out.NTL.z };
+		Out.NBL = { -Out.NTL.x, -Out.NTL.y, Out.NTL.z };
+		Out.NBR = {  Out.NTL.x, -Out.NTL.y, Out.NTL.z };
+
+		Out.FTL = Position + Q * Out.FTL;
+		Out.FTR = Position + Q * Out.FTR;
+		Out.FBL = Position + Q * Out.FBL;
+		Out.FBR = Position + Q * Out.FBR;
+
+		Out.NTL = Position + Q * Out.NTL;
+		Out.NTR = Position + Q * Out.NTR;
+		Out.NBL = Position + Q * Out.NBL;
+
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	MinMax GetCameraAABS_XZ(FustrumPoints Frustum)
+	{
+		MinMax Out;
+		Out.Max = float3(0);
+		Out.Min = float3(0);
+
+		for (auto P : Frustum.Points)
+		{
+			Out.Min.x = min(Out.Min.x, P.x);
+			Out.Min.y = min(Out.Min.y, P.y);
+			Out.Min.z = min(Out.Min.z, P.z);
+
+			Out.Max.x = max(Out.Min.x, P.x);
+			Out.Max.y = max(Out.Min.y, P.y);
+			Out.Max.z = max(Out.Min.z, P.z);
+		}
+
+		return Out;
 	}
 
 
@@ -6539,7 +6595,7 @@ namespace FlexKit
 		mbstowcs_s(&ConvertedSize, wfile, file, 256);
 		auto RESULT = LoadDDSTexture2DFromFile(file, MemoryOut, RS);
 
-		FK_ASSERT(RESULT, "Failed to Create Texture!");
+		FK_ASSERT(RESULT != false, "Failed to Create Texture!");
 		DDSTexture2D* Texture = RESULT;
 		tex.Texture = Texture->Texture;
 		tex.WH		= Texture->WH;

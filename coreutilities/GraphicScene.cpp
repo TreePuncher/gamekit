@@ -383,6 +383,78 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void UpdateQuadTree(QuadTreeNode* Node, GraphicScene* Scene)
+	{
+		for (const auto D : Scene->Drawables) {
+			if (GetFlag(Scene->SN, D.Node, SceneNodes::StateFlags::UPDATED))
+			{
+				/*
+				if()
+				{	// Moved Branch
+					if()
+					{	// Space in Node Available
+					}
+					else
+					{	// Node Split Needed
+					}
+				}
+				*/
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QuadTree::Release()
+	{
+		FreeNode(FreeList, Memory, Root);
+
+		for (auto I : FreeList)
+			Memory->free(I);
+	}
+
+	/************************************************************************************************/
+
+
+	void FreeNode(NodeBlock& FreeList, iAllocator* Memory, QuadTreeNode* Node)
+	{
+		for (auto& I : Node->ChildNodes)
+			FreeNode(FreeList, Memory, I);
+
+		if (!FreeList.full())
+			FreeList.push_back(Node);
+		else
+			Memory->free(Node);
+
+		Node->Contents.clear();
+		Node->ChildNodes.clear();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QuadTree::Initiate(iAllocator* Memory)
+	{
+		Memory =  Memory;
+		Root   = &Memory->allocate_aligned<ScenePartitionTable::TY_NODE>();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void InitiateSceneMgr(ScenePartitionTable* SPT, iAllocator* Memory)
+	{
+		SPT->Initiate(Memory);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodes* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory)
 	{
 		using FlexKit::CreateSpotLightBuffer;
@@ -408,7 +480,9 @@ namespace FlexKit
 
 		CreatePointLightBuffer(in_RS, &Out->PLights, Desc, Memory);
 		CreateSpotLightBuffer(in_RS,  &Out->SPLights, Memory);
-	
+		
+		InitiateSceneMgr(&Out->SceneManagement, Out->Memory);
+
 		Out->_PVS.clear();
 	}
 

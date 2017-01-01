@@ -109,6 +109,40 @@ namespace FlexKit
 	};
 
 
+	struct MinMax
+	{
+		float3 Min, Max;
+	};
+
+	/************************************************************************************************/
+
+
+	union FustrumPoints
+	{
+		FustrumPoints() {}
+		FustrumPoints(const FustrumPoints& rhs)
+		{
+			for (size_t I = 0; I < 8; ++I) {
+				Points[I] = rhs.Points[I];
+			}
+		}
+
+		struct {
+			float3 NTL;
+			float3 NTR;
+			float3 NBL;
+			float3 NBR;
+
+			float3 FTL;
+			float3 FTR;
+			float3 FBL;
+			float3 FBR;
+		};
+
+		float3 Points[8];
+	};
+
+
 	/************************************************************************************************/
 
 

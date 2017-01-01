@@ -36,6 +36,66 @@ namespace FlexKit
 	typedef size_t SpotLightHandle;
 	typedef Pair<bool, int64_t> GSPlayAnimation_RES;
 
+	template<typename TY_SCHEME>
+	struct iScenePartitioner
+	{
+		typedef typename TY_SCHEME::TY_ENTRY TY_NODE;
+
+		void Initiate(iAllocator* Memory)
+		{
+			Scene.Initiate(Memory);
+		}
+
+
+		void TranslateEntity(float3 XYZ, float2 UV)
+		{
+
+		}
+
+		DynArray<EntityHandle>	GetViewables(Camera* C)
+		{
+			DynArray<EntityHandle> Out;
+			return Out;
+		}
+
+		void Update()
+		{
+
+		}
+
+		TY_SCHEME Scene;
+	};
+	
+
+	struct QuadTreeNode
+	{
+		float	r;
+		static_vector<EntityHandle, 64>	Contents;
+		static_vector<QuadTreeNode*,4>	ChildNodes;
+
+	};
+
+	typedef static_vector<QuadTreeNode*, 16> NodeBlock;
+
+	void FreeNode(NodeBlock& FreeList, iAllocator* Memory, QuadTreeNode* Node);
+
+	struct QuadTree
+	{
+		typedef QuadTreeNode TY_ENTRY;
+
+		void Initiate(iAllocator* Memory);
+		void Release();
+
+		TY_ENTRY*						Root;
+		iAllocator*						Memory;
+		static_vector<TY_ENTRY*, 16>	FreeList;
+	};
+
+	typedef iScenePartitioner<QuadTree>	ScenePartitionTable;
+
+	void UpdateQuadTree		(QuadTreeNode* Node, GraphicScene* Scene);
+	void InitiateSceneMgr	(ScenePartitionTable* SPT, iAllocator* Memory);
+
 	struct FLEXKITAPI GraphicScene
 	{
 		EntityHandle CreateDrawable();
@@ -70,8 +130,8 @@ namespace FlexKit
 		EntityHandle CreateDrawableAndSetMesh(GUID_t Mesh);
 		EntityHandle CreateDrawableAndSetMesh(char* Mesh);
 		
-		LightHandle		AddPointLight ( float3 Color, float3 POS, float I = 10, float R = 10);
-		LightHandle		AddPointLight ( float3 Color, NodeHandle, float I = 10, float R = 10);
+		LightHandle	AddPointLight ( float3 Color, float3 POS, float I = 10, float R = 10);
+		LightHandle	AddPointLight ( float3 Color, NodeHandle, float I = 10, float R = 10);
 
 		void EnableShadowCasting(SpotLightHandle SpotLight);
 
@@ -114,6 +174,8 @@ namespace FlexKit
 		PointLightBuffer	PLights;
 		SpotLightBuffer		SPLights;
 		PVS					_PVS;
+
+		ScenePartitionTable	SceneManagement;
 	};
 
 

@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\Events.h"
 #include "..\coreutilities\Handle.h"
+#include "..\coreutilities\intersection.h"
 #include "..\coreutilities\mathutils.h"
 #include "..\coreutilities\type.h"
 
@@ -1523,10 +1524,14 @@ namespace FlexKit
 	FLEXKITAPI void							SetSkeleton				( GeometryTable* GT, TriMeshHandle  TMHandle, Skeleton* S );
 
 	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GeometryTable* GT, GUID_t			guid );
-	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GeometryTable* GT, const char*	ID );
+	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GeometryTable* GT, const char*	ID   );
 	FLEXKITAPI bool							IsMeshLoaded			( GeometryTable* GT, GUID_t			guid );
 	FLEXKITAPI bool							IsSkeletonLoaded		( GeometryTable* GT, TriMeshHandle	guid );
 	FLEXKITAPI bool							IsAnimationsLoaded		( GeometryTable* GT, TriMeshHandle	guid );
+
+
+	FLEXKITAPI FustrumPoints	GetCameraFrustumPoints	(Camera* Camera, float3 XYZ, Quaternion Q);
+	FLEXKITAPI MinMax			GetCameraAABS_XZ		(FustrumPoints Points);
 
 
 	/************************************************************************************************/

@@ -100,8 +100,8 @@ void CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, boo
 
 	// Initiate Render Window
 	RenderWindowDesc	WinDesc = { 0 };
-	WinDesc.POS_X	   = 100;
-	WinDesc.POS_Y	   = 100;
+	WinDesc.POS_X	   = 0;
+	WinDesc.POS_Y	   = 0;
 	WinDesc.height	   = height;
 	WinDesc.width	   = width;
 	WinDesc.fullscreen = fullscreen;
@@ -136,8 +136,8 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass;
 	using FlexKit::ForwardPass_DESC;
 
-	uint32_t width	 = 800;
-	uint32_t height	 = 600;
+	uint32_t width	 = 1920;
+	uint32_t height	 = 1080;
 	bool InvertDepth = true;
 
 	Engine->Window.Close = false;

@@ -68,28 +68,32 @@ namespace FlexKit
 			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
 			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
 
+			DescPOS = PushTextureToDescHeap(RS, LS->HeightMap, DescPOS);
+
+			UINT Stride = sizeof(Landscape::ViewableRegion);
+
 			D3D12_VERTEX_BUFFER_VIEW SO_1[] = { {
 					LS->RegionBuffers[0]->GetGPUVirtualAddress(),
 					(UINT)SO_BUFFERSIZES,
-					(UINT)32,//sizeof(Landscape::ViewableRegion)
+					Stride,//sizeof(Landscape::ViewableRegion)
 				}, };
 
 			D3D12_VERTEX_BUFFER_VIEW SO_2[] = { {
 					LS->RegionBuffers[1]->GetGPUVirtualAddress(),
 					(UINT)SO_BUFFERSIZES,
-					(UINT)32,//sizeof(Landscape::ViewableRegion)
+					Stride,//sizeof(Landscape::ViewableRegion)
 				}, };
 
 			D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { {
 					LS->InputBuffer->GetGPUVirtualAddress(),
 					(UINT)LS->Regions.size() * sizeof(Landscape::ViewableRegion),
-					(UINT)32,//sizeof(Landscape::ViewableRegion)
+					Stride,//sizeof(Landscape::ViewableRegion)
 				}, };
 
 			D3D12_VERTEX_BUFFER_VIEW FinalBufferInput[] = { {
 					LS->FinalBuffer->GetGPUVirtualAddress(),
 					(UINT)SO_BUFFERSIZES,
-					(UINT)32,//(UINT)sizeof(Landscape::ViewableRegion)
+					Stride,//(UINT)sizeof(Landscape::ViewableRegion)
 				}, };
 
 			/*
@@ -154,9 +158,10 @@ namespace FlexKit
 			CL->SetPipelineState		 (LS->SplitState);
 			CL->IASetPrimitiveTopology	 (D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-			CL->SetGraphicsRootDescriptorTable	  (0, DescPOSGPU);
-			CL->SetGraphicsRootConstantBufferView (1, C->Buffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView (2, LS->ConstantBuffer->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView (0, C->Buffer->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView (1, LS->ConstantBuffer->GetGPUVirtualAddress());
+			//CL->SetGraphicsRootConstantBufferView (2, RS->NullConstantBuffer);
+			CL->SetGraphicsRootDescriptorTable	  (3, DescPOSGPU);
 
 			// Prime System
 			CL->IASetVertexBuffers	(0, 1, SO_Initial);
@@ -292,6 +297,7 @@ namespace FlexKit
 		out->SplitCount			= 4;
 		out->OutputBuffer		= 0;
 		out->Regions.Allocator	= alloc;
+		out->HeightMap			= desc->HeightMap;
 
 		// Load Shaders
 		out->VShader		= LoadShader("VPassThrough",		"VPassThrough",			"vs_5_0", "assets\\tvshader.hlsl");
@@ -320,14 +326,16 @@ namespace FlexKit
 
 			D3D12_INPUT_ELEMENT_DESC InputElements[] =
 			{
-				{ "REGION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,		0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 				{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 			};
 
 			// Generate Geometry State
 			{
 				auto Rast_State			= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-				Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
+				//Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
+				Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
 				auto BlendState			= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 				auto DepthState			= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 				DepthState.DepthEnable	= true;
@@ -335,11 +343,11 @@ namespace FlexKit
 				DepthState.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
 
-				D3D12_SHADER_BYTECODE GCode = { (BYTE*)out->RegionToTri.Blob->GetBufferPointer(),	out->RegionToTri.Blob->GetBufferSize() };
-				D3D12_SHADER_BYTECODE PCode = { (BYTE*)out->PShader.Blob->GetBufferPointer(),		out->PShader.Blob->GetBufferSize() };
-				D3D12_SHADER_BYTECODE HCode = { (BYTE*)out->HullShader.Blob->GetBufferPointer(),	out->HullShader.Blob->GetBufferSize() };
+				D3D12_SHADER_BYTECODE GCode = { (BYTE*)out->RegionToTri.Blob->GetBufferPointer(),	out->RegionToTri.Blob->GetBufferSize()	};
+				D3D12_SHADER_BYTECODE PCode = { (BYTE*)out->PShader.Blob->GetBufferPointer(),		out->PShader.Blob->GetBufferSize()		};
+				D3D12_SHADER_BYTECODE HCode = { (BYTE*)out->HullShader.Blob->GetBufferPointer(),	out->HullShader.Blob->GetBufferSize()	};
 				D3D12_SHADER_BYTECODE DCode = { (BYTE*)out->DomainShader.Blob->GetBufferPointer(),	out->DomainShader.Blob->GetBufferSize() };
-				D3D12_SHADER_BYTECODE VCode = { (BYTE*)out->VShader.Blob->GetBufferPointer(),		out->VShader.Blob->GetBufferSize() };
+				D3D12_SHADER_BYTECODE VCode = { (BYTE*)out->VShader.Blob->GetBufferPointer(),		out->VShader.Blob->GetBufferSize()		};
 
 				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 					PSO_Desc.pRootSignature                = RootSig;
@@ -388,18 +396,22 @@ namespace FlexKit
 				D3D12_SO_DECLARATION_ENTRY SO_Entries[] = {
 					{ 0, "REGION",		0, 0, 4, 0 },
 					{ 0, "TEXCOORD",	0, 0, 4, 0 },
+					{ 0, "TEXCOORD",	1, 0, 4, 0 },
 					{ 1, "REGION",		0, 0, 4, 1 },
 					{ 1, "TEXCOORD",	0, 0, 4, 1 },
+					{ 1, "TEXCOORD",	1, 0, 4, 1 },
 				};
 
+				UINT Strides = sizeof(Landscape::ViewableRegion);
 				UINT SO_Strides[] = {
-					32,
-					32,
+					Strides,
+					Strides,
+					Strides,
 				};
 
 				D3D12_STREAM_OUTPUT_DESC SO_Desc = {};{
-					SO_Desc.NumEntries		= 4;
-					SO_Desc.NumStrides		= 2;
+					SO_Desc.NumEntries		= 6;
+					SO_Desc.NumStrides		= 3;
 					SO_Desc.pBufferStrides	= SO_Strides;
 					SO_Desc.pSODeclaration	= SO_Entries;
 				}
@@ -417,7 +429,7 @@ namespace FlexKit
 					PSO_Desc.RasterizerState               = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 					PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 					PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
-					PSO_Desc.InputLayout                   = { InputElements, 2 };
+					PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements) / sizeof(InputElements[0]) };
 					PSO_Desc.DepthStencilState.DepthEnable = false;
 					PSO_Desc.StreamOutput				   = SO_Desc;
 				}
@@ -600,6 +612,7 @@ namespace FlexKit
 			{
 				float4	 Albedo;   // + roughness
 				float4	 Specular; // + metal factor
+				float2	 RegionDimensions;
 				Frustum	 Frustum;
 			}Buffer;
 
@@ -608,6 +621,8 @@ namespace FlexKit
 			GetOrientation(Nodes, Camera->Node, &Q);
 			Buffer.Albedo	= {1, 1, 1, 0.9f};
 			Buffer.Specular = {1, 1, 1, 1};
+
+			Buffer.RegionDimensions = {};
 			Buffer.Frustum  = GetFrustum(Camera, POS, Q);
 
 			UpdateResourceByTemp(RS, &ls->ConstantBuffer, &Buffer, sizeof(Buffer), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);

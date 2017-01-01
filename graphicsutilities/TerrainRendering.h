@@ -40,6 +40,8 @@ namespace FlexKit
 {
 	struct Landscape_Desc
 	{
+		Texture2D	HeightMap;
+
 		void*	PShaderCode;
 		size_t	PShaderSize;
 	};
@@ -51,12 +53,15 @@ namespace FlexKit
 			int32_t xyz[4];
 			int32_t unused[3];
 			int32_t BitID;
+			float2  UV_TR; // Top Right Corner
+			float2  UV_BL; // Bottom Left
 		};
 
 		struct ConstantBufferLayout
 		{
 			float4		Albedo;
 			float4		Specular;
+			float2		RegionDimensions;
 			DirectX::XMMATRIX WT;
 		};
 
@@ -73,6 +78,8 @@ namespace FlexKit
 		ID3D12Resource*			InputBuffer;
 		ID3D12CommandSignature*	CommandSignature;
 		ID3D12Resource*			ZeroValues;
+
+		Texture2D				HeightMap;
 
 		StreamOutBuffer	FinalBuffer;
 		StreamOutBuffer	TriBuffer;
