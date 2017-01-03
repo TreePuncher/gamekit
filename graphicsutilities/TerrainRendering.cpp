@@ -35,10 +35,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	const static size_t SO_BUFFERSIZES = KILOBYTE * 512;
-	void DrawLandscape(RenderSystem* RS, Landscape* LS, DeferredPass* Pass, size_t splitcount, Camera* C)
+	void DrawLandscape(RenderSystem* RS, Landscape* LS, DeferredPass* Pass, size_t splitcount, Camera* C, bool DrawWireframe)
 	{	
 		auto CL = GetCurrentCommandList(RS);
-		if(LS->Regions.size())
+		if (LS->Regions.size())
 		{
 			/*
 			typdef struct D3D12_VERTEX_BUFFER_VIEW Views
@@ -49,23 +49,23 @@ namespace FlexKit
 			} 	D3D12_VERTEX_BUFFER_VIEW;
 			*/
 
-			auto CL					= GetCurrentCommandList				(RS);
-			auto FrameResources		= GetCurrentFrameResources			(RS);
-			auto DescPOSGPU			= GetDescTableCurrentPosition_GPU	(RS); // _Ptr to Beginning of Heap On GPU
-			auto DescPOS			= ReserveDescHeap					(RS, 6);
-			auto DescriptorHeap		= GetCurrentDescriptorTable			(RS);
+			auto CL = GetCurrentCommandList(RS);
+			auto FrameResources = GetCurrentFrameResources(RS);
+			auto DescPOSGPU = GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
+			auto DescPOS = ReserveDescHeap(RS, 6);
+			auto DescriptorHeap = GetCurrentDescriptorTable(RS);
 
-			auto RTVPOSCPU			= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
-			auto RTVPOS				= ReserveRTVHeap					(RS, 6);
-			auto RTVHeap			= GetCurrentRTVTable				(RS);
+			auto RTVPOSCPU = GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
+			auto RTVPOS = ReserveRTVHeap(RS, 6);
+			auto RTVHeap = GetCurrentRTVTable(RS);
 
-			CL->SetDescriptorHeaps	(1, &DescriptorHeap);
+			CL->SetDescriptorHeaps(1, &DescriptorHeap);
 
 			size_t BufferIndex = Pass->CurrentBuffer;
 
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,	RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex, RTVPOS);
 			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex, RTVPOS);
 			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
 
 			DescPOS = PushTextureToDescHeap(RS, LS->HeightMap, DescPOS);
@@ -120,11 +120,11 @@ namespace FlexKit
 				{ LS->FinalBuffer->GetGPUVirtualAddress(),		SO_BUFFERSIZES, LS->FB_Counter->GetGPUVirtualAddress()  },
 			};
 
-			ID3D12Resource*				Buffers[]	= { LS->RegionBuffers[0].Get(), LS->RegionBuffers[1].Get() };
-			D3D12_VERTEX_BUFFER_VIEW*	Input[]		= { SO_1 , SO_2 };
-			
-			D3D12_STREAM_OUTPUT_BUFFER_VIEW*	Output[]			= { SOViews1, SOViews2 };
-			ID3D12Resource*						OutputCounters[]	= { LS->SOCounter_1.Get(), LS->SOCounter_2.Get() };
+			ID3D12Resource*				Buffers[] = { LS->RegionBuffers[0].Get(), LS->RegionBuffers[1].Get() };
+			D3D12_VERTEX_BUFFER_VIEW*	Input[] = { SO_1 , SO_2 };
+
+			D3D12_STREAM_OUTPUT_BUFFER_VIEW*	Output[] = { SOViews1, SOViews2 };
+			ID3D12Resource*						OutputCounters[] = { LS->SOCounter_1.Get(), LS->SOCounter_2.Get() };
 
 
 			auto DSVPOSCPU = GetDSVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On DSV heap on CPU
@@ -135,7 +135,7 @@ namespace FlexKit
 
 			{
 				D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, };
-				CL->IASetVertexBuffers(0, sizeof(SO_Initial)/sizeof(SO_Initial[0]), SO_Initial);
+				CL->IASetVertexBuffers(0, sizeof(SO_Initial) / sizeof(SO_Initial[0]), SO_Initial);
 			}
 
 			// Reset Stream Counters
@@ -154,29 +154,29 @@ namespace FlexKit
 				CL->ResourceBarrier(4, Barrier);
 			}
 
-			CL->SetGraphicsRootSignature (RS->Library.RS4CBVs_SO);
-			CL->SetPipelineState		 (LS->SplitState);
-			CL->IASetPrimitiveTopology	 (D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs_SO);
+			CL->SetPipelineState(LS->SplitState);
+			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 
-			CL->SetGraphicsRootConstantBufferView (0, C->Buffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView (1, LS->ConstantBuffer->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView(1, LS->ConstantBuffer->GetGPUVirtualAddress());
 			//CL->SetGraphicsRootConstantBufferView (2, RS->NullConstantBuffer);
-			CL->SetGraphicsRootDescriptorTable	  (3, DescPOSGPU);
+			CL->SetGraphicsRootDescriptorTable(3, DescPOSGPU);
 
 			// Prime System
-			CL->IASetVertexBuffers	(0, 1, SO_Initial);
-			CL->BeginQuery			(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
-			CL->SOSetTargets		(0, 2, Output[0]);
+			CL->IASetVertexBuffers(0, 1, SO_Initial);
+			CL->BeginQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
+			CL->SOSetTargets(0, 2, Output[0]);
 
 			size_t I = 0;
-			for(; I < splitcount; ++I)
-			{	
+			for (; I < splitcount; ++I)
+			{
 				bool Index = (I % 2) != 0;
 				bool NextIndex = Index ? 0 : 1;
 
 				CL->BeginQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1);
-				
-				if(I)
+
+				if (I)
 					CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 				else
 					CL->DrawInstanced(1, 1, 0, 0);
@@ -188,13 +188,13 @@ namespace FlexKit
 						CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[!Index],	D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_COPY_DEST),
 						CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_1.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST),
 						CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_2.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST),
-						
+
 					};
 
 					CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
 				}
 
-				CL->EndQuery		(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1);
+				CL->EndQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1);
 				CL->ResolveQueryData(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1, 1, IndirectBuffers[NextIndex], 0);
 				CL->CopyBufferRegion(IndirectBuffers[NextIndex], 4, LS->ZeroValues, 4, 12);
 
@@ -226,8 +226,8 @@ namespace FlexKit
 			}
 
 			// Do Draw Here
-			uint16_t Index		= I % 2;
-			uint16_t NextIndex	= Index ? 0 : 1;
+			uint16_t Index = I % 2;
+			uint16_t NextIndex = Index ? 0 : 1;
 
 			{
 				CD3DX12_RESOURCE_BARRIER Barrier[] = {
@@ -254,14 +254,19 @@ namespace FlexKit
 				CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
 			}
 
-			CL->SetPipelineState(LS->GenerateState);
 			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST);
 			CL->IASetVertexBuffers(0, 1, Input[Index]);
 			//CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 
 
 			CL->IASetVertexBuffers(0, 1, FinalBufferInput);
+			CL->SetPipelineState(LS->GenerateState);
 			CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
+
+			if (DrawWireframe){
+				CL->SetPipelineState(LS->WireFrameState);
+				CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
+			}
 
 			LS->RegionBuffers[0].IncrementCounter();
 			LS->RegionBuffers[1].IncrementCounter();
@@ -306,6 +311,8 @@ namespace FlexKit
 		out->HullShader		= LoadShader("RegionToQuadPatch",	"RegionToQuadPatch",	"hs_5_0", "assets\\tvshader.hlsl");
 		out->DomainShader	= LoadShader("QuadPatchToTris",		"QuadPatchToTris",		"ds_5_0", "assets\\tvshader.hlsl");
 		out->PShader		= LoadShader("DebugTerrainPaint",	"DebugTerrainPaint",	"ps_5_0", "assets\\pshader.hlsl");
+		out->PShaderWire    = LoadShader("DebugTerrainPaint_2", "DebugTerrainPaint_2",	"ps_5_0", "assets\\pshader.hlsl");
+
 
 		// PSO Creation
 		{
@@ -334,17 +341,16 @@ namespace FlexKit
 			// Generate Geometry State
 			{
 				auto Rast_State			= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-				//Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
-				Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
+				Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
 				auto BlendState			= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 				auto DepthState			= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 				DepthState.DepthEnable	= true;
-
 				DepthState.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 
 
 				D3D12_SHADER_BYTECODE GCode = { (BYTE*)out->RegionToTri.Blob->GetBufferPointer(),	out->RegionToTri.Blob->GetBufferSize()	};
 				D3D12_SHADER_BYTECODE PCode = { (BYTE*)out->PShader.Blob->GetBufferPointer(),		out->PShader.Blob->GetBufferSize()		};
+				D3D12_SHADER_BYTECODE PCode2= { (BYTE*)out->PShaderWire.Blob->GetBufferPointer(),	out->PShaderWire.Blob->GetBufferSize()	};
 				D3D12_SHADER_BYTECODE HCode = { (BYTE*)out->HullShader.Blob->GetBufferPointer(),	out->HullShader.Blob->GetBufferSize()	};
 				D3D12_SHADER_BYTECODE DCode = { (BYTE*)out->DomainShader.Blob->GetBufferPointer(),	out->DomainShader.Blob->GetBufferSize() };
 				D3D12_SHADER_BYTECODE VCode = { (BYTE*)out->VShader.Blob->GetBufferPointer(),		out->VShader.Blob->GetBufferSize()		};
@@ -376,8 +382,21 @@ namespace FlexKit
 				ID3D12PipelineState* PSO = nullptr;
 				auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE TERRAIN STATE!"));
-
 				out->GenerateState = PSO;
+
+
+				auto NoDepthState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+				NoDepthState.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+				PSO_Desc.PS = PCode2;
+				PSO_Desc.RasterizerState.FillMode = D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
+				PSO_Desc.DepthStencilState = NoDepthState;
+
+				ID3D12PipelineState* PSOWire = nullptr;
+				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSOWire));
+				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE TERRAIN STATE!"));
+				out->WireFrameState = PSOWire;
+
+
 			}
 			// GPU-Quad Tree expansion state
 			{
@@ -564,6 +583,8 @@ namespace FlexKit
 		Destroy( &ls->RegionToTri );
 		Destroy( &ls->HullShader );
 		Destroy( &ls->DomainShader );
+		Destroy( &ls->DomainShader);
+		Destroy( &ls->PShaderWire );
 
 		ls->RegionBuffers[0].Release();
 		ls->RegionBuffers[1].Release();
@@ -579,6 +600,7 @@ namespace FlexKit
 		if ( ls->FB_Counter )		ls->FB_Counter.Release();
 
 		if ( ls->GenerateState )	ls->GenerateState->Release();
+		if ( ls->WireFrameState)	ls->WireFrameState->Release();
 		if ( ls->SplitState )		ls->SplitState->Release();
 
 		if ( ls->SOQuery ) ls->SOQuery.Release();

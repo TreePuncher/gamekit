@@ -949,6 +949,7 @@ struct GameState
 	Texture2D			HeightMap;
 
 	KeyState	Keys;
+	bool		DrawLandScapewireframe;
 	bool		Quit;
 	bool		DoDeferredShading;
 
@@ -1227,6 +1228,10 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 			GS->Keys.Left = false; break;
 		case FlexKit::KC_D:
 			GS->Keys.Right = false; break;
+		case FlexKit::KC_P:
+		{
+			GS->DrawLandScapewireframe = !GS->DrawLandScapewireframe;
+		}	break;
 		case FlexKit::KC_M:
 		{
 			SetSystemCursorToWindowCenter(GS->ActiveWindow);
@@ -1608,13 +1613,14 @@ extern "C"
 		GameState& State = Engine->BlockAllocator.allocate_aligned<GameState>();
 		
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
-		State.ClearColor         = { 0.0f, 0.2f, 0.4f, 1.0f };
-		State.Nodes		         = &Engine->Nodes;
-		State.Quit		         = false;
-		State.PhysicsUpdateTimer = 0.0f;
-		State.Mouse				 = MouseInputState();
-		State.DoDeferredShading  = true;
-		State.ActiveWindow		 = &Engine->Window;
+		State.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
+		State.Nodes						= &Engine->Nodes;
+		State.Quit						= false;
+		State.PhysicsUpdateTimer		= 0.0f;
+		State.Mouse						= MouseInputState();
+		State.DoDeferredShading			= true;
+		State.DrawLandScapewireframe	= true;
+		State.ActiveWindow				= &Engine->Window;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
@@ -1643,7 +1649,7 @@ extern "C"
 			};
 
 			InitiateLandscape		(Engine->RenderSystem, GetZeroedNode(&Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
-			PushRegion				(&State.Landscape, {{0, 0, 0, 2048}, {}, 0, {0.0f, 0.0f}, {1.0f, 1.0f}});
+			PushRegion				(&State.Landscape, {{0, 0, 0, 16384 }, {}, 0, {0.0f, 0.0f}, {1.0f, 1.0f}});
 			UploadLandscape			(Engine->RenderSystem, &State.Landscape, nullptr, nullptr, true, false);
 		}
 
@@ -1803,7 +1809,7 @@ extern "C"
 				ClearDeferredBuffers  (RS, &State->DeferredPass);
 
 				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT, &State->TextureState);
-				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera);
+				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera, State->DrawLandScapewireframe);
 
 				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
@@ -1821,7 +1827,7 @@ extern "C"
 			}
 #endif
 
-			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));
+			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
 	}

@@ -69,6 +69,7 @@ namespace FlexKit
 		size_t				  OutputBuffer;
 		ID3D12PipelineState*  SplitState;
 		ID3D12PipelineState*  GenerateState;
+		ID3D12PipelineState*  WireFrameState;
 		ID3D12PipelineState*  TessellateState;
 
 		StreamOutBuffer			RegionBuffers[2];// Ping Pongs Back and Forth
@@ -109,6 +110,7 @@ namespace FlexKit
 
 		// P Shaders
 		Shader PShader;
+		Shader PShaderWire;
 
 		// Tessellation Related Shaders
 		Shader HullShader;
@@ -124,7 +126,7 @@ namespace FlexKit
 	FLEXKITAPI void CleanUpTerrain		( SceneNodes* Nodes, Landscape* ls );
 	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
 	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true );
-	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, DeferredPass* PS, size_t splitcount, Camera* C );
+	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, DeferredPass* PS, size_t splitcount, Camera* C, bool DrawWireframe = false);
 
 
 	/************************************************************************************************/

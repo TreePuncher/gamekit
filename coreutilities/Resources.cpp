@@ -75,6 +75,17 @@ namespace FlexKit
 		size_t ResourceSize = 0;
 		size_t Position = Table->Entries[Index].ResourcePosition;
 
+#if _DEBUG
+		std::chrono::system_clock Clock;
+		auto Before = Clock.now();
+		FINALLY
+			auto After = Clock.now();
+			auto Duration = chrono::duration_cast<chrono::microseconds>( After - Before );
+			std::cout << "Loading Resource: " << Table->Entries[Index].ID << "\n";
+			std::cout << "Resource Load Duration: " << Duration.count() << "us\n";
+		FINALLYOVER
+#endif
+
 		int s = fseek(F, Position, SEEK_SET);
 		s = fread(&ResourceSize, 1, 8, F);
 

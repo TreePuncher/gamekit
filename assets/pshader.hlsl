@@ -152,12 +152,24 @@ GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 {
 	GBuffer Out;
 	float l			= length(CameraPOS - IN.WPOS);
-	Out.Albedo		= float4(IN.Colour, 0.5f);	// Last Float is Roughness
+	Out.Albedo		= float4(IN.Colour, IN.Colour.y);	// Last Float is Roughness
 	Out.NORMAL		= float4(IN.N, 0);			// Pack W depth here?
 	Out.WPOS		= float4(IN.WPOS, l);		// last Float is Unused
 	Out.Specular	= Specular;					// Last Float is Metal Factor
 
 	return Out;
+}
+
+GBuffer DebugTerrainPaint_2(PS_Colour_IN IN)
+{
+    GBuffer Out;
+    float l = length(CameraPOS - IN.WPOS);
+    Out.Albedo = float4(1, 1, 1, 0); // Last Float is Roughness
+    Out.NORMAL = float4(IN.N, 0); // Pack W depth here?
+    Out.WPOS = float4(IN.WPOS, l); // last Float is Unused
+    Out.Specular = Specular; // Last Float is Metal Factor
+
+    return Out;
 }
 
 struct PS_TEXURED_IN

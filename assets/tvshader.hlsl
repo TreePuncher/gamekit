@@ -37,11 +37,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	EPlane_LEFT		4
 #define	EPlane_RIGHT	5
 
-#define MinScreenSpan 0.05f
+#define MinScreenSpan 0.025f
 #define MaxScreenSpan 0.1f
 
-#define MinSpan 32
-#define MaxSpan	512	  
+#define MinSpan 2
+#define MaxSpan	512
 	  
 // Constant Buffers
 // ---------------------------------------------------------------------------
@@ -205,7 +205,7 @@ float3 GetTopLeftPoint(int4 IN)
 	float offset = float(IN.w);
 
 	Out.x = IN.x - offset;
-	Out.y = 10 + sin(length(float2(IN.x + offset, IN.y + offset))/3.14);
+    Out.y = IN.y;
 	Out.z = IN.z + offset;
 
 	return Out;
@@ -217,7 +217,7 @@ float3 GetTopRightPoint(int4 IN)
 	float offset = float(IN.w);
 
 	Out.x = IN.x + offset;
-	Out.y = 10 + sin(length(float2(IN.x + offset, IN.y + offset))/3.14);
+    Out.y = IN.y;
 	Out.z = IN.z + offset;
 
 	return Out;
@@ -229,7 +229,7 @@ float3 GetBottomLeftPoint(int4 IN)
 	float offset = float(IN.w);
 
 	Out.x = IN.x - offset;
-	Out.y = 10 + sin(length(float2(IN.x + offset, IN.y + offset))/3.14);
+    Out.y = IN.y;
 	Out.z = IN.z - offset;
 
 	return Out;
@@ -241,7 +241,7 @@ float3 GetBottomRightPoint(int4 IN)
 	float offset = float(IN.w);
 
 	Out.x = IN.x + offset;
-	Out.y = 10 + sin(length(float2(IN.x + offset, IN.y + offset))/3.14);
+    Out.y = IN.y;
 	Out.z = IN.z - offset;
 
 	return Out;
@@ -273,20 +273,24 @@ float GetRegionSpan(int4 R)
 	float4 TR = mul(Proj, mul(View, float4(GetTopRightPoint(R), 1)));
 	float4 BL = mul(Proj, mul(View, float4(GetBottomLeftPoint(R), 1)));
 
-	float3 TLNormalized = TL.xyz / TL.w;
-	float3 BRNormalized = BR.xyz / BR.w;
-	float3 TRNormalized = TR.xyz / TR.w;
-	float3 BLNormalized = BL.xyz / BL.w;
+	float2 TLNormalized = (TL.xyz / TL.w).xy;
+	float2 BRNormalized = (BR.xyz / BR.w).xy;
+	float2 TRNormalized = (TR.xyz / TR.w).xy;
+	float2 BLNormalized = (BL.xyz / BL.w).xy;
 
-	float Span1 = length(TLNormalized - BRNormalized);
-	float Span2 = length(TRNormalized - BLNormalized);
+	float Span1 = length(TLNormalized - TRNormalized);
+    float Span2 = length(BLNormalized - BRNormalized);
+    float Span3 = length(TLNormalized - BLNormalized);
+	float Span4 = length(TRNormalized - BRNormalized);
 
-	return max(Span1, Span2);
+	return max(max(Span1, Span2), max(Span3, Span4));
 }
 
 
-bool SplitRegion(int4 R){
-	return (MinSpan <= R.w && GetRegionSpan(R) > .1) || (R.w >= MaxSpan);
+bool SplitRegion(int4 R)
+{
+    //return (GetRegionSpan(R) > MaxScreenSpan);
+	return (MinSpan < R.w && GetRegionSpan(R) > MaxScreenSpan) || (R.w > MaxSpan);
 }
 
 
@@ -314,15 +318,16 @@ Region_CP MakeTopLeft(Region_CP IN)
     float2 UVBR = IN.UVCords.zw;
 
 	R.Parent  = IN.POS;
-    R.UVCords = float4(UVTL, (UVBR + UVTL)/2); //  {{Top Left}, {Bottom Left}}
+    R.UVCords = float4(UVTL, float2(UVBR + UVTL)/2); //  {{Top Left}, {Bottom Left}}
 
 	R.POS 	= IN.POS;
 	R.POS.x = R.POS.x - offset;
 	R.POS.z = R.POS.z + offset;
 	R.POS.w = offset;
 
-	R.POS.y = TopLeft;
-
+    R.POS.y = TopLeft;
+    //R.POS.y = R.Parent.y + 1;
+   
 	return R;
 }
 
@@ -346,6 +351,7 @@ Region_CP MakeTopRight(Region_CP IN)
 	R.POS.w = offset;
 
 	R.POS.y = TopRight;
+    //R.POS.y = R.Parent.y + 1;
 
 	return R;
 }
@@ -368,6 +374,7 @@ Region_CP MakeBottomRight(Region_CP IN)
 	R.POS.w = offset;
 
 	R.POS.y = BottomRight;
+    //R.POS.y = R.Parent.y + 1;
 
 	return R;
 }
@@ -395,6 +402,7 @@ Region_CP MakeBottomLeft(Region_CP IN)
 	R.POS.w = offset;
 
 	R.POS.y = BottomLeft;
+    //R.POS.y = R.Parent.y + 1;
 
 	return R;
 }
@@ -498,10 +506,7 @@ float GetEdgeSpan_SS(float3 P1, float3 P2)
 	float3 SPC1Normalized = ScreenSpaceCoord_1.xyz / ScreenSpaceCoord_1.w;
 	float3 SPC2Normalized = ScreenSpaceCoord_2.xyz / ScreenSpaceCoord_2.w;
 
-	//SPC2Normalized *= float3(1, 1, 0);
-	//SPC2Normalized *= float3(1, 1, 0);
-
-	float Span = length(SPC2Normalized - SPC1Normalized);
+	float Span = length(abs(SPC2Normalized - SPC1Normalized))/2;
 
 	return Span;
 }
@@ -519,7 +524,7 @@ int4 GetLeftNeighbor( int4 Region )
 int4 GetTopNeighbor(int4 Region)
 {
 	int4 Neighbor = Region;
-	Neighbor.y += Region.w;
+	Neighbor.z += Region.w;
 
 	return Neighbor;
 }
@@ -542,7 +547,7 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
 	RegionTessFactors factors;
 
 	int4	Region  = ip[0].POS;
-	float	RegionWidth = Region.w; 
+	int	    RegionWidth = Region.w; 
 
 	const int MinDepth = log2(MaxSpan);
 	const int MaxDepth = log2(MinSpan);
@@ -551,7 +556,7 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
 	float	MaxFactor = pow(2, Depth - MaxDepth);
 	float	MinFactor = pow(2, Depth - MaxDepth);
 
-	// Get Regions Neighboring and Calculate Edge Factors
+	// Get Regions Points
 	float3 TopLeftPoint		= GetTopLeftPoint(Region);
 	float3 TopRightPoint	= GetTopRightPoint(Region);
 	float3 BottomLeftPoint	= GetBottomLeftPoint(Region);
@@ -563,47 +568,84 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
 	float Factor4 = 1; // Region Top Edge
 
     // Spans are Screen Space Relative
-    float EdgeSpan1 = GetEdgeSpan_SS(TopLeftPoint, BottomLeftPoint);    // Left Edge
-    float EdgeSpan2 = GetEdgeSpan_SS(TopLeftPoint, TopRightPoint);      // Bottom Edge
-    float EdgeSpan3 = GetEdgeSpan_SS(TopRightPoint, BottomRightPoint);  // Right Edge
-    float EdgeSpan4 = GetEdgeSpan_SS(BottomLeftPoint, BottomRightPoint);// Top Edge
+    float EdgeSpan1 = GetEdgeSpan_SS(TopLeftPoint,      BottomLeftPoint);   // Left Edge
+    float EdgeSpan2 = GetEdgeSpan_SS(TopLeftPoint,      TopRightPoint);     // Bottom Edge
+    float EdgeSpan3 = GetEdgeSpan_SS(TopRightPoint,     BottomRightPoint);  // Right Edge
+    float EdgeSpan4 = GetEdgeSpan_SS(BottomLeftPoint,   BottomRightPoint);  // Top Edge
 
-
+    Factor1 = (EdgeSpan1 / MinScreenSpan);
+    Factor2 = (EdgeSpan2 / MinScreenSpan);
+    Factor3 = (EdgeSpan3 / MinScreenSpan);
+    Factor4 = (EdgeSpan4 / MinScreenSpan);
+    
     while (EdgeSpan1 > MinScreenSpan)
     {
-        Factor1 *= 2;
-        EdgeSpan1 /= 2;
+        Factor1     *= 2;
+        EdgeSpan1    = float(int(EdgeSpan1) / 2);
     }
 
     while (EdgeSpan2 > MinScreenSpan)
     {
         Factor2     *= 2;
-        EdgeSpan2   /= 2;
+        EdgeSpan2    = float(int(EdgeSpan2) / 2);
     }
 
     while (EdgeSpan3 > MinScreenSpan)
     {
-        Factor3 *= 2;
-        EdgeSpan3 /= 2;
+        Factor3     *= 2;
+        EdgeSpan3    = float(int(EdgeSpan3) / 2);
     }
 
     while (EdgeSpan4 > MinScreenSpan)
     {
-        Factor4 *= 2;
-        EdgeSpan4 /= 2;
+        Factor4     *= 2;
+        EdgeSpan4    = float(int(EdgeSpan4) / 2);
     }
 
-	factors.EdgeTess[0] = Factor1; //pow(2, 12 - SubDivLevel); // Left
-	factors.EdgeTess[1] = Factor2; //pow(2, 12 - SubDivLevel); // Bottom
-	factors.EdgeTess[2] = Factor3; //pow(2, 12 - SubDivLevel); // Right
-	factors.EdgeTess[3] = Factor4; //pow(2, 12 - SubDivLevel); // Top
+    const float BoundaryFactor = 4;
 
+    if (ip[0].POS.y == TopRight || ip[0].POS.y == TopLeft) // Grey, Red
+    {
+        { // Check if Parent Region is Split
+            int4 Neighbor_Parent = ip[0].POS;
+            Neighbor_Parent.z += ip[0].Parent.w * 2;
 
-	float Inner = max(	max(Factor1, Factor3), 
-						max(Factor2, Factor4));
+            int4 Neighbor_Direct = Region;
+            Neighbor_Direct.z += Region.w * 2;
 
-	factors.InsideTess[0] = min(Factor2, Factor4); // North South
-	factors.InsideTess[1] = min(Factor1, Factor3); // East West
+            bool ParentNeighborSplit = SplitRegion(Neighbor_Parent);
+            bool NeighborSplit = SplitRegion(Neighbor_Direct);
+
+            if (ParentNeighborSplit)
+            {
+                if (NeighborSplit)
+                    Factor2 = 4;
+            }
+
+        }
+    }
+
+    if (ip[0].POS.y == BottomRight || ip[0].POS.y == BottomLeft) // Grey, Red
+    {
+        { // Check if Subdiv in Local Quad
+            int4 Neighbor_Direct = Region;
+            Neighbor_Direct.z += Region.w * 2;
+
+            bool NeighborSplit = SplitRegion(Neighbor_Direct);
+            if (NeighborSplit) // Neighbor is Half Size
+                Factor4 = 2;
+        }
+    }
+    
+    float MaxSubFactor = 64;
+
+    factors.EdgeTess[0] = max(1, min(MaxSubFactor, Factor1)); //pow(2, 12 - SubDivLevel); // Left
+    factors.EdgeTess[1] = max(1, min(MaxSubFactor, Factor2)); //pow(2, 12 - SubDivLevel); // Bottom
+    factors.EdgeTess[2] = max(1, min(MaxSubFactor, Factor3)); //pow(2, 12 - SubDivLevel); // Right
+    factors.EdgeTess[3] = max(1, min(MaxSubFactor, Factor4)); //pow(2, 12 - SubDivLevel); // Top
+
+    factors.InsideTess[0] = min((Factor2 + Factor4) / 2, MaxSubFactor); // North South
+    factors.InsideTess[1] = min((Factor1 + Factor3) / 2, MaxSubFactor); // North South
 
 	return factors;
 }
@@ -638,7 +680,7 @@ HS_Corner RegionToQuadPatch(
     else if (i == TopRight) 
     {
         Output.POS = Scale * GetTopRightPoint(ip[0].POS);
-        Output.UV = UV_TL + (UV_Span.x/2, 0);
+        Output.UV = UV_TL + float2(UV_Span.x, 0.0f);
     }
 	else if (i == BottomRight)
     {
@@ -648,11 +690,9 @@ HS_Corner RegionToQuadPatch(
 	else if (i == BottomLeft)
     {
         Output.POS = Scale * GetBottomLeftPoint(ip[0].POS);
-        Output.UV = UV_BR - float2(UV_Span.x, 0);
+        Output.UV = UV_BR - float2(UV_Span.x, 0.0f);
     }
 
-    float Bias = 0.1f;
-    Output.POS.y = HeightMap.Gather(NearestPoint, Output.UV + float2(Bias, Bias)) * -1000;
 	Output.R = ip[0].POS.w;
 
 	return Output;
@@ -693,6 +733,7 @@ PS_Colour_IN QuadPatchToTris(
 
 
     float y = 0;
+    /*
 	{
 		float y1 = bezPatch[TopLeft].POS.y;
 		float y2 = bezPatch[TopRight].POS.y;
@@ -700,15 +741,37 @@ PS_Colour_IN QuadPatchToTris(
 		float y4 = bezPatch[BottomRight].POS.y;
         y = lerp( lerp(y1, y2, uv[0]), lerp(y3, y4, uv[0]), uv[1]);
     }
+    */
+    {
+        float2 UV = float2(lerp(bezPatch[TopLeft].UV.x, bezPatch[BottomRight].UV.x, uv[0]),
+                     lerp(bezPatch[TopLeft].UV.y, bezPatch[BottomRight].UV.y, uv[1]));
 
-	float3 POS  = float3(x, y, z);
-	float4 WPOS = float4(POS, 1.0f);
+        y = HeightMap.Gather(NearestPoint, UV) * -500;
+    }
+
+    float4 WPOS = float4(x, y, z, 1.0f);
 
 	Point.WPOS	= WPOS.xyz;
 	Point.N		= float4(0,1,0, 0.0f);
 	Point.POS	= mul(Proj, mul(View, WPOS));
 
-    Point.Colour = float3(bezPatch[0].UV.x, bezPatch[0].UV.y, 0);
+    float t = y * 1/-1000;
+
+    #if 0
+    Point.Colour = float3(t, t, t);
+    #else
+    if (bezPatch[TopLeft].POS.y == TopLeft)
+        Point.Colour = float3(.5, .5, .5);
+
+    if (bezPatch[TopLeft].POS.y == TopRight)
+        Point.Colour = float3(1, 0, 0);
+
+    if (bezPatch[TopLeft].POS.y == BottomLeft)
+        Point.Colour = float3(0, 1, 0);
+
+    if (bezPatch[TopLeft].POS.y == BottomRight)
+        Point.Colour = float3(0, 0, 1);
+    #endif
 
 	return Point;
 }
