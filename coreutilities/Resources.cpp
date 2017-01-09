@@ -81,8 +81,8 @@ namespace FlexKit
 		FINALLY
 			auto After = Clock.now();
 			auto Duration = chrono::duration_cast<chrono::microseconds>( After - Before );
-			std::cout << "Loading Resource: " << Table->Entries[Index].ID << "\n";
-			std::cout << "Resource Load Duration: " << Duration.count() << "us\n";
+			std::cout << "Loading Resource: " << Table->Entries[Index].ID << " : ResourceID: "<< Table->Entries[Index].GUID << "\n";
+			std::cout << "Resource Load Duration: " << Duration.count() << "microseconds\n";
 		FINALLYOVER
 #endif
 
@@ -359,7 +359,7 @@ namespace FlexKit
 				if (b.size)
 				{
 					auto View = new(Memory->_aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)(Blob->Memory + b.Begin), b.size);
-					View->SetTypeFormatSize((FlexKit::VERTEXBUFFER_TYPE)b.Type, (FlexKit::VERTEXBUFFER_FORMAT)b.Format, b.size/b.Format );
+					View->SetTypeFormatSize((VERTEXBUFFER_TYPE)b.Type, (VERTEXBUFFER_FORMAT)b.Format, b.size/b.Format );
 					Out->Buffers[Index] = View;
 					BufferCount++;
 				}
@@ -370,7 +370,7 @@ namespace FlexKit
 			{
 				auto b = Blob->Buffers[15];
 				auto View = new(Memory->_aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)(Blob->Memory + b.Begin), b.size);
-				View->SetTypeFormatSize((FlexKit::VERTEXBUFFER_TYPE)b.Type, (FlexKit::VERTEXBUFFER_FORMAT)b.Format, b.size/b.Format );
+				View->SetTypeFormatSize((VERTEXBUFFER_TYPE)b.Type, (VERTEXBUFFER_FORMAT)b.Format, b.size/b.Format );
 				Out->Buffers[15] = View;
 			}
 
@@ -400,7 +400,7 @@ namespace FlexKit
 
 	Skeleton* Resource2Skeleton(Resources* RM, ResourceHandle RHandle, iAllocator* Memory)
 	{
-		SkeletonResourceBlob* Blob = (SkeletonResourceBlob*)FlexKit::GetResource(RM, RHandle);
+		SkeletonResourceBlob* Blob = (SkeletonResourceBlob*)GetResource(RM, RHandle);
 		Skeleton*	S = &Memory->allocate_aligned<Skeleton, 0x40>();
 		S->InitiateSkeleton(Memory, Blob->JointCount);
 
@@ -445,7 +445,7 @@ namespace FlexKit
 		AnimationResourceBlob::FrameEntry* Frames = (AnimationResourceBlob::FrameEntry*)(Anim->Buffer);
 		for (size_t I = 0; I < AC.FrameCount; ++I)
 		{
-			size_t jointcount        = Frames[I].JointCount;
+			size_t jointcount       = Frames[I].JointCount;
 			AC.Frames[I].JointCount = jointcount;
 			AC.Frames[I].Joints     = (JointHandle*)	Memory->_aligned_malloc(sizeof(JointHandle) * jointcount, 0x10);
 			AC.Frames[I].Poses      = (JointPose*)		Memory->_aligned_malloc(sizeof(JointPose)   * jointcount, 0x10);

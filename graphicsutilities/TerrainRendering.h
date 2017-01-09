@@ -53,24 +53,25 @@ namespace FlexKit
 			int32_t xyz[4];
 			int32_t unused[3];
 			int32_t BitID;
-			float2  UV_TR; // Top Right Corner
-			float2  UV_BL; // Bottom Left
+			float2  UV_TL; // Top	 Left
+			float2  UV_BR; // Bottom Right
 		};
 
 		struct ConstantBufferLayout
 		{
-			float4		Albedo;
-			float4		Specular;
-			float2		RegionDimensions;
-			DirectX::XMMATRIX WT;
+			float4	 Albedo;   // + roughness
+			float4	 Specular; // + metal factor
+			float2	 RegionDimensions;
+			Frustum	 Frustum;
+			int      PassCount;
 		};
 
 		uint16_t			  SplitCount;
 		size_t				  OutputBuffer;
 		ID3D12PipelineState*  SplitState;
 		ID3D12PipelineState*  GenerateState;
+		ID3D12PipelineState*  GenerateStateDebug;
 		ID3D12PipelineState*  WireFrameState;
-		ID3D12PipelineState*  TessellateState;
 
 		StreamOutBuffer			RegionBuffers[2];// Ping Pongs Back and Forth
 		QueryResource			SOQuery;
@@ -98,34 +99,18 @@ namespace FlexKit
 		float4 Specular;
 
 		NodeHandle Node;
-
-		// V Shaders
-		Shader PassThroughShader;
-		Shader VShader;
-		Shader Visualiser;
-
-		// G Shaders
-		Shader GSubdivShader;
-		Shader RegionToTri;
-
-		// P Shaders
-		Shader PShader;
-		Shader PShaderWire;
-
-		// Tessellation Related Shaders
-		Shader HullShader;
-		Shader DomainShader;
-
 	};
 
 
 	/************************************************************************************************/
 	
 
-	FLEXKITAPI void InitiateLandscape	( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* ls );
+	FLEXKITAPI void InitiateLandscape			( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* ls );
+	FLEXKITAPI void LoadTerrainPipelineStates	( RenderSystem* RS, Landscape* out, bool AssertOnFail = true);
+
 	FLEXKITAPI void CleanUpTerrain		( SceneNodes* Nodes, Landscape* ls );
 	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
-	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true );
+	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12);
 	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, DeferredPass* PS, size_t splitcount, Camera* C, bool DrawWireframe = false);
 
 

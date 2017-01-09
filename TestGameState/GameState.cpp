@@ -205,6 +205,11 @@ struct GameActor
 };
 typedef size_t ActorHandle;
 
+struct DebugCameraController
+{
+	NodeHandle			PositionNode;
+};
+
 struct PlayerController
 {
 	NodeHandle			PitchNode;
@@ -217,6 +222,7 @@ struct PlayerController
 	float				m;// Movement Rate;
 	float				HalfHeight;
 };
+
 
 struct InertiaState
 {
@@ -274,7 +280,7 @@ void InitateMouseCameraController(
 /************************************************************************************************/
 
 
-void InitiateGameActor(float r, float h, float3 InitialPosition,  FlexKit::PScene* S, FlexKit::PhysicsSystem* PS, EntityHandle Drawable, GameActor* out)
+void InitiateGameActor(float r, float h, float3 InitialPosition,  PScene* S, FlexKit::PhysicsSystem* PS, EntityHandle Drawable, GameActor* out)
 {
 	out->Drawable			= Drawable;
 	Initiate(&out->BPC, S, PS, CapsuleCharacterController_DESC{r, h, InitialPosition});
@@ -287,6 +293,11 @@ void InitiateGameActor(float r, float h, float3 InitialPosition,  FlexKit::PScen
 void BindActorToPlayerController(GameActor* Actor, PlayerController* Controller, GraphicScene* GS )
 {
 	GS->SetNode(Actor->Drawable, Controller->ModelNode);
+}
+
+void BindActorToPlayerController(GameActor* Actor, DebugCameraController* Controller, GraphicScene* GS)
+{
+	GS->SetNode(Actor->Drawable, Controller->PositionNode);
 }
 
 
@@ -313,6 +324,17 @@ void InitiateEntityController(PlayerController* p, SceneNodes* Nodes, TestPlayer
 	p->m			  = 10;
 
 	p->HalfHeight	  = Desc.h / 2 + Desc.r;
+}
+
+
+void InitiateDebugCameraController(SceneNodes* Nodes, float3 InitialPosition, DebugCameraController* out)
+{
+	NodeHandle PitchNode	= GetZeroedNode(Nodes);
+	NodeHandle Node			= GetZeroedNode(Nodes);
+	NodeHandle YawNode		= GetZeroedNode(Nodes);
+	NodeHandle ModelNode	= GetZeroedNode(Nodes);
+
+	SetPositionW(Nodes, YawNode, InitialPosition);
 }
 
 
@@ -343,6 +365,7 @@ struct MouseInputState
 	float2	NormalizedPos	= {0, 0};
 
 	bool LeftButtonPressed	= false;
+	bool RightButtonPressed	= false;
 	bool Enabled			= false;
 };
 
@@ -418,10 +441,25 @@ float3 UpdateActorInertia(InertiaState* IS, double dt, GameActor* Actor, float3 
 }
 
 
+float3 UpdateDebugCameraController(float3 dV, GraphicScene* Scene, double dt, DebugCameraController)
+{
+	return dV;
+}
+
 float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* ActorState, NodeHandle Target)
 { 
 	float3 FinalDelta = dV;
 	FinalDelta *= ActorState->BPC.FloorContact ? float3(1, 0, 1) : float3(1);
+
+	/*
+	FINAL(
+		float3 NewP = GetActorPosition(ActorState);
+
+		std::cout << "Player Position: ";
+		printfloat3(NewP);
+		std::cout << "\n";
+	);
+	*/
 
 	if (FinalDelta.magnitude() > 0.01f)
 	{
@@ -516,7 +554,6 @@ struct Scalp
 	size_t				CurrentBuffer;
 	DynArray<Strand>	Hairs;
 };
-
 
 struct HairRender
 {
@@ -891,6 +928,7 @@ struct Scene
 	GameActor				PlayerActor;
 	PlayerController		PlayerController;
 	InertiaState			PlayerInertia;
+	DebugCameraController	DebugCamera;
 	Scalp					TestScalp;
 	float					T;
 	GUIElementHandle		Slider;
@@ -952,6 +990,9 @@ struct GameState
 	bool		DrawLandScapewireframe;
 	bool		Quit;
 	bool		DoDeferredShading;
+
+	bool		ReloadTerrainShaders;
+	int			TerrainSplits;
 
 	HairRender		HairRender;
 	TestSceneStats	Stats;
@@ -1258,6 +1299,20 @@ void HandleKeyEvents(const Event& e, GameState* GS)
 		case FlexKit::KC_D:
 			GS->Keys.Right = true; break;
 		case FlexKit::KC_M:
+			break;
+		case FlexKit::KC_T:
+		{
+			GS->TerrainSplits++;
+			if (GS->TerrainSplits > 16)
+				GS->TerrainSplits = 8;
+
+			std::cout << "Terrain Subdivision Level: " << GS->TerrainSplits << "\n";
+		}	break;
+
+		case FlexKit::KC_Y:
+		{
+			GS->ReloadTerrainShaders = true;
+		}	break;
 		default:
 			break;
 		}
@@ -1279,7 +1334,8 @@ void HandleMouseEvents(const Event& e, GameState* GS)
 	case Event::Pressed:
 		if (e.mData1.mKC[0] == KC_MOUSELEFT)
 			GS->Mouse.LeftButtonPressed = true;
-
+		else if (e.mData1.mKC[0] == KC_MOUSERIGHT)
+			GS->Mouse.LeftButtonPressed = true;
 		break;
 	case Event::Release:
 		break;
@@ -1388,7 +1444,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 
 	uint2	WindowRect	= Engine->Window.WH;
 	float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
-	InitiateCamera	(Engine->RenderSystem, State->Nodes, &Out->PlayerCam, Aspect, 0.01f, 10000.0f, true);
+	InitiateCamera	(Engine->RenderSystem, State->Nodes, &Out->PlayerCam, Aspect, 0.01f, 100000.0f, true);
 	SetActiveCamera	(State, &Out->PlayerCam);
 
 	InitiateGameActor(5, 10, {0, 0, 0}, &State->PScene, &Engine->Physics, PlayerModel, &Out->PlayerActor);
@@ -1619,7 +1675,9 @@ extern "C"
 		State.PhysicsUpdateTimer		= 0.0f;
 		State.Mouse						= MouseInputState();
 		State.DoDeferredShading			= true;
-		State.DrawLandScapewireframe	= true;
+		State.DrawLandScapewireframe	= false;
+		State.ReloadTerrainShaders		= false;
+		State.TerrainSplits				= 1;
 		State.ActiveWindow				= &Engine->Window;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
@@ -1650,6 +1708,7 @@ extern "C"
 
 			InitiateLandscape		(Engine->RenderSystem, GetZeroedNode(&Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
 			PushRegion				(&State.Landscape, {{0, 0, 0, 16384 }, {}, 0, {0.0f, 0.0f}, {1.0f, 1.0f}});
+			//PushRegion				(&State.Landscape, {{0, 0, 0, 512}, {}, 0, {0.0f, 0.0f}, {1.0f, 1.0f}});
 			UploadLandscape			(Engine->RenderSystem, &State.Landscape, nullptr, nullptr, true, false);
 		}
 
@@ -1709,6 +1768,12 @@ extern "C"
 
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
 		UpdateColliders	(&State->PScene, &Engine->Nodes);
+
+		if (State->ReloadTerrainShaders) {
+			LoadTerrainPipelineStates(Engine->RenderSystem, &State->Landscape, false);
+			State->ReloadTerrainShaders = false;
+			std::cout << "Reloaded Terrain Shaders!\n";
+		}
 	}
 
 
@@ -1783,7 +1848,7 @@ extern "C"
 
 			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
-			UploadLandscape			(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true);
+			UploadLandscape			(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true, State->TerrainSplits + 1);
 			UploadTextureResources	(RS, &State->TextureState);
 		}
 
@@ -1809,7 +1874,7 @@ extern "C"
 				ClearDeferredBuffers  (RS, &State->DeferredPass);
 
 				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT, &State->TextureState);
-				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, 15, State->ActiveCamera, State->DrawLandScapewireframe);
+				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, State->TerrainSplits, State->ActiveCamera, State->DrawLandScapewireframe);
 
 				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects

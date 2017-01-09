@@ -900,7 +900,7 @@ namespace FlexKit
 
 		struct RootSigLibrary
 		{
-			ID3D12RootSignature* RS2UAVs4SRVs4CBs;// 4CBVs On all Stages, 4 SRV On all Stages
+			ID3D12RootSignature* RS2UAVs4SRVs4CBs;  // 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs4SRVs;		// 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs_SO;		// Stream Out Enabled
 		}Library;

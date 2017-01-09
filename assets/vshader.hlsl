@@ -185,34 +185,49 @@ struct VIN4
 StructuredBuffer<Joint> Bones : register(t0);
 
 
+
 PS_IN VMainVertexPallet(VIN4 In)
 {
-	PS_IN Out;
-	float3 N = float3(0.0f, 0.0f, 0.0f);
-	float3 V = float3(0.0f, 0.0f, 0.0f);
-	float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
+    PS_IN Out;
+    float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 V = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
+
+    float4x4 MTs[4] =
+    {
+        Bones[In.I[0]].T,
+        Bones[In.I[1]].T,
+        Bones[In.I[2]].T,
+        Bones[In.I[3]].T,
+    };
+
+    float4x4 MIs[4] = 
+    {
+        Bones[In.I[0]].I,
+        Bones[In.I[1]].I,
+        Bones[In.I[2]].I,
+        Bones[In.I[3]].I,
+    };
 
 	[unroll(4)]
-	for (uint I = 0; I < 4; ++I)
-	{
-		float4x4 MT = Bones[In.I[I]].T;
-		float4x4 MI = Bones[In.I[I]].I;
+    for (uint I = 0; I < 4; ++I)
+    {
+        float4 TP = mul(MIs[I], float4(In.POS, 1)); // Temp Position
+        float4 TN = mul(MIs[I], float4(In.N, 0));   // Temp Normal
 
-		float4 TP = mul(MI, float4(In.POS, 1));
-		float3 TN = mul(MI, In.N);
+        V += mul(MTs[I], TP) * W[I];
+        N += mul(MTs[I], TN) * W[I];
+    }
 
-		V += mul(MT, TP) * W[I];
-		N += mul(MT, TN) * W[I];
-	}
+    float4 V2   = V;
+    Out.WPOS    = mul(WT, V2);
+    Out.POS     = mul(PV, mul(WT, V2));
+    Out.N       = mul(WT, N).xyz;
+    Out.UV      = In.UV;
 
-	float4 V2 = float4(V, 1.0f);
-	Out.WPOS = mul(WT, V2);
-	Out.POS  = mul(PV, mul(WT, V2));
-	Out.N    = mul(WT, N);
-	Out.UV	 = In.UV;
-
-	return Out;
+    return Out;
 }
+
 
 
 /************************************************************************************************/

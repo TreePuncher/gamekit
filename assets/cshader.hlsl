@@ -198,7 +198,7 @@ float3 Frd(float3 l, float3 lc, float3 v, float3 WPOS, float4 Kd, float3 n, floa
 
 groupshared PointLight Lights[256];
 
-[numthreads(20, 20, 1)]
+[numthreads(64, 2, 1)]
 void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 {
 	uint ThreadID = TID.x * 20 + TID.y;

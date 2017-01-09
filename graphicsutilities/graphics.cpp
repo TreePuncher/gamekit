@@ -4086,7 +4086,7 @@ namespace FlexKit
 		CL->SetComputeRootSignature			(Pass->Shading.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
 
-		CL->Dispatch(Target.WH[0] / 20, Target.WH[1] / 20, 1);
+		CL->Dispatch(Target.WH[0] / 64, Target.WH[1] / 2, 1);
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barrier2[] = {
@@ -7025,6 +7025,7 @@ namespace FlexKit
 		}
 		FINALLYOVER
 
+		return;
 
 		if (!GUIStack->DrawCalls.size())
 			return;
