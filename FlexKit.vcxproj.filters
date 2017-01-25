@@ -109,6 +109,9 @@
     <ClInclude Include="graphicsutilities\GuiUtilities.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="graphicsutilities\PipelineState.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -166,6 +169,9 @@
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="graphicsutilities\GuiUtilities.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\PipelineState.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>

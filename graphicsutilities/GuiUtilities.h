@@ -48,6 +48,17 @@ namespace FlexKit
 		EGE_TEXTINPUT,
 	};
 
+	enum EGUI_FORMATTING
+	{
+		EGF_FORMAT_DEFAULT = 0,
+		EGF_FORMAT_CENTER  = 0x01,
+		EGF_FORMAT_LEFT	   = 0x02,
+		EGF_FORMAT_RIGHT   = 0x04,
+		EGF_FORMAT_TOP	   = 0x08,
+		EGF_FORMAT_BOTTOM  = 0x0F,
+	};
+
+
 	struct Row
 	{
 		size_t	MaxColumns;
@@ -93,10 +104,10 @@ namespace FlexKit
 	};
 
 	// CallBacks Definitions
-	typedef void(*EnteredEventFN)	( 				 void* _ptr, size_t GUIElement );
-	typedef void(*ButtonEventFN)	( 				 void* _ptr, size_t GUIElement );
-	typedef void(*TextInputEventFN)	( char*, size_t, void* _ptr, size_t GUIElement );
-	typedef void(*SliderEventFN)	( float,		 void* _ptr, size_t GUIElement );
+	typedef bool (*EnteredEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	typedef bool (*ButtonEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	typedef bool (*TextInputEventFN)( char*, size_t, void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	typedef bool (*SliderEventFN)	( float,		 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
 
 	struct TextInputState{
 		bool RemainActive = true;
@@ -128,6 +139,8 @@ namespace FlexKit
 		bool				Entered = false;
 
 		float2				WH;
+		float4				BackGroundColor;
+		float4				TextColor;
 		TextArea			Text;
 		FontAsset*			Font;
 		Texture2D*			BackgroundTexture	= nullptr;
@@ -136,13 +149,15 @@ namespace FlexKit
 		EnteredEventFN		OnClicked_CB		= nullptr;
 		ButtonEventFN		OnEntered_CB		= nullptr;
 		ButtonEventFN		OnExit_CB			= nullptr;
+
+		EGUI_FORMATTING		Formatting = EGF_FORMAT_DEFAULT;
 	};
 
 	struct GUIElement_TextInput
 	{
 		bool				Active			= false;
-		float4				ActiveColor		= { Gray(0.35f), 1 };
-		float4				InActiveColor	= { Gray(0.5f), 1 };
+		float4				ActiveColor		= { Grey(0.35f), 1 };
+		float4				InActiveColor	= { Grey(0.5f), 1 };
 		float2				WH;
 
 		Texture2D*			Texture;
@@ -255,12 +270,13 @@ namespace FlexKit
 	struct SimpleWindowInput
 	{
 		float2	MousePosition;
+		float2	CursorWH;
 		bool	LeftMouseButtonPressed;
 	};
 
 	struct GUIList
 	{
-		uint2  Position = { 0, 0 };			// Will Use Cell
+		uint2  Position = { 0, 0 };			// Cell Coordinate
 		uint2  WH		= { 1, 1 };			// Number of cells will occupy
 		float4 Color	= float4(WHITE, 1);	// W Value will be alpha
 	};
@@ -293,11 +309,15 @@ namespace FlexKit
 		ButtonEventFN OnExit_CB	   = nullptr;
 		void*		  CB_Args;
 
-		float2		WH;
-		float2		WindowSize;
-		char*		Text;
-		FontAsset*	Font;
+		float2			WH;				// Width Heigth of Button in Pixels
+		float2			WindowSize;		// RenderTarget Size
+		float4			BackGroundColor = float4(Grey(.5), 1);
+		float4			TextColor	    = float4(WHITE, 1);
+		char*			Text;			// Text To Be Displayed
+		FontAsset*		Font;			// Font to be used during Rendering
+		float2			CharacterScale   = {1.0f, 1.0f}; // Increase Size of Characters by this Factor	
 
+		EGUI_FORMATTING Placement = EGUI_FORMATTING::EGF_FORMAT_DEFAULT;
 
 		GUITextButton_Desc& SetButtonSizeByPixelSize(float2 PixelSize, uint2 PixelWH)
 		{
@@ -344,7 +364,7 @@ namespace FlexKit
 
 	struct SimpleWindow_Desc
 	{
-		SimpleWindow_Desc(float width, float height, size_t ColumnCount, size_t RowCount = 1, size_t  = 1, float aspectratio = 1.0f) :
+		SimpleWindow_Desc(float width, float height, size_t ColumnCount, size_t RowCount = 1, float aspectratio = 1.0f) :
 			RowCount		(RowCount),
 			ColumnCount		(ColumnCount),
 			Width			(width),
@@ -418,8 +438,8 @@ namespace FlexKit
 	FLEXKITAPI GUIElementHandle	SimpleWindowAddHorizontalSlider ( SimpleWindow*	Window, GUISlider_Desc			Desc, GUIElementHandle Parent);
 
 
-	FLEXKITAPI bool	CursorInside	 ( float2 CursorPos, float2 POS, float2 WH );
-	FLEXKITAPI bool	CursorInsideCell ( SimpleWindow* Window, float2 CursorPos, uint2 Cell);
+	FLEXKITAPI bool	CursorInside	 ( float2 CursorPos, float2 CursorWH, float2 POS, float2 WH );
+	FLEXKITAPI bool	CursorInsideCell ( SimpleWindow* Window, float2 CursorPos, float2 CursorWH, uint2 Cell);
 
 	FLEXKITAPI void				SetCellState ( uint2 Cell, int32_t S, SimpleWindow* W);
 	FLEXKITAPI void				SetCellState ( uint2 Cell, uint2 WH, int32_t S, SimpleWindow* W);

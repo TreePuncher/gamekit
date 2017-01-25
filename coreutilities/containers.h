@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <vector>
 #include <stdint.h>
+#include <atomic>
 
 template<typename Ty>					using deque_t	= std::deque<Ty>;
 template<typename Ty>					using vector_t	= std::vector<Ty>;
@@ -473,6 +474,201 @@ namespace FlexKit
 
 		return itr;
 	}
+
+
+	/************************************************************************************************/
+
+	// Whole Point of this single linked list is for communication multiple Threads (Producer Consumer Queues)
+	template<typename TY>
+	struct SL_list
+	{
+		typedef SL_list<TY>		This_Type;
+
+		SL_list(iAllocator* M = nullptr) : Memory(M)
+		{
+			FirstNode = nullptr;
+			LastNode  = nullptr;
+			Count     = 0;
+		}
+
+		~SL_list()
+		{
+			while (size())
+				pop_front();
+		}
+
+
+		struct Node
+		{
+			Node(const TY& Initial) : Data(Initial)
+			{
+			}
+
+			TY					Data;
+			std::atomic<Node*>	Next;
+
+			TY&	operator *()
+			{
+				return Data;
+			}
+
+			Node* GetNext()
+			{
+				return Next.load();
+			}
+		};
+
+		typedef std::atomic<Node*>	Node_ptr;
+
+		struct Iterator
+		{
+			Node* _ptr;
+			SL_list* Container;
+
+			Node* operator -> ()
+			{
+				return _ptr;
+			}
+
+			Node* Peek_Next()
+			{
+				return _ptr->GetNext();
+			}
+
+
+			bool operator == (Node* rhs)
+			{
+				return _ptr == rhs;
+			}
+
+
+			bool operator == (const Iterator& rhs)
+			{
+				FK_ASSERT(rhs.Container == Container);
+
+				return (_ptr == rhs._ptr);
+			}
+
+			bool operator != (const Iterator& rhs)
+			{
+				FK_ASSERT(rhs.Container == Container);
+
+				return (_ptr != rhs._ptr);
+			}
+
+			bool operator != (Node* rhs)
+			{
+				return _ptr != rhs;
+			}
+
+			void operator ++ (int)
+			{
+				_ptr = Peek_Next();
+			}
+
+			Iterator operator ++ ()
+			{
+				FINAL(_ptr = Peek_Next(););
+				return *this;
+			}
+
+		};
+
+		void Insert(Iterator Itr, TY)
+		{
+			Node* NewNode  = &Memory->allocate_aligned<Node>(e);
+
+			NullCheck(NewNode);
+
+			Node* PrevNext = Itr._ptr->Next;
+			Itr._ptr->Next = NewNode;
+			NewNode->Next  = PrevNext;
+
+			Itr->Container->Count++;
+		}
+
+		Iterator push_back(TY e)
+		{
+			Node* NewNode	= &Memory->allocate_aligned<Node>(e);
+
+			NullCheck(NewNode);
+
+			if (!Count)
+			{
+				FirstNode.store(NewNode);
+				LastNode.store(NewNode);
+			}
+			else
+			{
+				LastNode.load()->Next.store(NewNode);
+				LastNode.store(NewNode);
+			}
+
+			Count++;
+
+			return {NewNode, this};
+;		}
+
+		TY pop_front()
+		{
+			FK_ASSERT(Count != 0);
+
+			auto* First(FirstNode.load());
+
+			if (First)
+				FirstNode.store(First->Next);
+
+			if (First->Next.load() == nullptr)
+				LastNode.store(nullptr);
+
+			FINAL(Count--; Memory->free(First); );
+
+			return First->Data;
+		}
+
+		TY& first()
+		{
+			return FirstNode.load()->Data;
+		}
+
+		Iterator begin()
+		{
+			FK_ASSERT(Count != 0);
+			return {FirstNode, this};
+		}
+		
+		Iterator end()
+		{
+			return{ LastNode, this };
+		}
+
+		template<typename FN>
+		void For_Each(FN DoThis)
+		{
+			if (!Count)
+				return;
+
+			Iterator Itr = begin();
+			
+			while (size() && (Itr != nullptr))
+			{
+				if (!DoThis(Itr->Data))
+					break;
+				++Itr;
+			}
+		}
+
+		size_t size()
+		{
+			return Count;
+		}
+
+		Node_ptr FirstNode;
+		Node_ptr LastNode;
+
+		iAllocator* Memory;
+		std::atomic<size_t>	Count;
+	};
 
 
 	/************************************************************************************************/

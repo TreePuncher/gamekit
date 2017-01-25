@@ -28,12 +28,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /************************************************************************************************/
 
-void CleanUpEngine			( EngineMemory* Game );
-void LoadShaders			( EngineMemory* Game );
+void ReleaseEngine			( EngineMemory* Game );
 void InitiateEngineMemory	( EngineMemory* Game );
 void InitiateCoreSystems	( EngineMemory* Game );
 
 /************************************************************************************************/
+
+float GetWindowAspectRatio	( EngineMemory* Engine );
+uint2 GetWindowWH			( EngineMemory* Engine );
 
 
 void InitEngine(EngineMemory* Game);

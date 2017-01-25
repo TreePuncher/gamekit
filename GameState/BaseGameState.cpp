@@ -1,0 +1,496 @@
+/**********************************************************************
+
+Copyright (c) 2017 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+
+#include "ConsoleSubState.h"
+#include "BaseState.h"
+#include "MenuState.h"
+
+// TODO's
+//	Gameplay:
+//		Entity Model
+//	Sound:
+//	
+//	Generic:
+//		(DONE) Scene Loading
+//		Config loading system?
+//
+//	Graphics:
+//		(DONE) Basic Gui rendering methods (Draw Rect, etc)
+//		Multi-threaded Texture Uploads
+//		Terrain Rendering
+//			Texture Splatting
+//		Occlusion Culling
+//		Animation State Machine
+//		(DONE/PARTLY) 3rd Person Camera Handler
+//		(DONE) Object -> Bone Attachment
+//		(DONE) Texture Loading
+//		(DONE) Simple Window Utilities
+//		(DONE) Simple Window Elements
+//		(DONE) Deferred Rendering
+//		(DONE) Forward Rendering
+//		Particles
+//		Static Mesh Batcher
+//
+//		Bugs:
+//			TextRendering Bug, Certain Characters do not get Spaces Correctly
+//
+//	AI:
+//		Path Finding
+//		State Handling
+//
+//	Physics:
+//		(DONE) Statics
+//		(DONE) TriMesh Statics
+//	Network:
+//		Client:
+//		Server:
+//
+//	Tools:
+//		(DONE) Meta-Data for Resource Compiling
+//
+
+
+/************************************************************************************************/
+
+
+void HandleKeyEvents(const Event& in, BaseState* _ptr) {
+	//_ptr->Quit = true;
+
+	switch (in.Action)
+	{
+	case Event::InputAction::Pressed:
+	{
+		if (in.mData1.mKC[0] == KC_ESC)
+			_ptr->Quit = true;
+		if (in.mData1.mKC[0] == KC_M)
+			_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
+		if (in.mData1.mKC[0] == KC_Q)
+			PushSubState(_ptr, CreateConsoleSubState(_ptr->Engine, &_ptr->Console, _ptr));
+	}	break;
+	default:
+		break;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void HandleMouseEvents(const Event& in, BaseState* _ptr) {
+	switch (in.Action)
+	{
+	case Event::InputAction::Pressed:
+	{
+		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
+			_ptr->MouseState.LMB_Pressed = true;
+			std::cout << "KC_LMB PRESSED\n";
+		}
+	}	break;
+	case Event::InputAction::Release:
+	{
+		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
+			_ptr->MouseState.LMB_Pressed = false;
+			std::cout << "KC_LMB RELEASED\n";
+		}
+	}	break;
+	default:
+		break;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void EventsWrapper(const Event& evt, void* _ptr)
+{
+	auto* base = reinterpret_cast<BaseState*>(_ptr);
+	if (base->SubStates.back()->EventHandler)
+	{
+		base->SubStates.back()->EventHandler((SubState*)base->SubStates.back(), evt);
+	}
+	else
+	{
+		switch (evt.InputSource)
+		{
+		case Event::Keyboard:
+			HandleKeyEvents(evt, base);
+		case Event::Mouse:
+			HandleMouseEvents(evt, reinterpret_cast<BaseState*>(_ptr));
+			break;
+		}
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void DrawMouseCursor(EngineMemory* Engine, BaseState* State)
+{
+	using FlexKit::Conversion::Vect2TOfloat2;
+
+	FlexKit::Draw_RECT Cursor;
+	Cursor.BLeft  = State->MouseState.NormalizedPos + float2{ 0.0f, -0.005f };
+	Cursor.TRight = State->MouseState.NormalizedPos + float2{ 0.005f / GetWindowAspectRatio(Engine), 0.005f };
+	Cursor.Color  = float4(1, 1, 1, 1);
+
+	PushRect(State->GUIRender, Cursor);
+}
+
+
+/************************************************************************************************/
+
+
+void ReleaseBaseState(EngineMemory* Engine, BaseState* State)
+{
+	FreeFontAsset(State->DefaultAssets.Font);
+	Release(State->DefaultAssets.Terrain);
+
+	ReleaseTerrain(State->Nodes, &State->Landscape);
+	ReleaseCamera(State->Nodes, &State->DefaultCamera);
+
+	ReleaseGraphicScene(&State->GScene);
+	ReleaseDrawGUI(&State->GUIRender);
+
+	auto RItr = State->SubStates.rbegin();
+	auto REnd = State->SubStates.rend();
+	while (RItr != REnd)
+	{
+		auto VTable = *RItr;
+		if (VTable->Release)
+			VTable->Release(reinterpret_cast<SubState*>(VTable));
+
+		RItr++;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+inline void PushSubState(BaseState* _ptr, SubState* SS)
+{
+	_ptr->SubStates.push_back(GetStateVTable(SS));
+}
+
+
+/************************************************************************************************/
+
+
+void PopSubState(BaseState* State)
+{
+	auto Top = State->SubStates.back();
+	Top->Release(reinterpret_cast<SubState*>(Top));
+
+	State->SubStates.pop_back();
+}
+
+
+/************************************************************************************************/
+
+
+void UpdateBaseState(EngineMemory* Engine, BaseState* State, double dT)
+{
+	UpdateMouseInput(&State->MouseState, &Engine->Window);
+
+	if (!State->SubStates.size()) {
+		State->Quit = true;
+		return;
+	}
+
+	auto RItr = State->SubStates.rbegin();
+	auto REnd = State->SubStates.rend();
+
+	while (RItr != REnd)
+	{
+		auto VTable = *RItr;
+		if (VTable->Update && !VTable->Update(reinterpret_cast<SubState*>(VTable), Engine, dT))
+			break;
+
+		RItr++;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+void PreDrawBaseState(EngineMemory* Engine, BaseState* State, double dT)
+{
+	if (!State->SubStates.size()) {
+		State->Quit = true;
+		return;
+	}
+
+	auto RItr = State->SubStates.rbegin();
+	auto REnd = State->SubStates.rend();
+	while (RItr != REnd)
+	{
+		auto VTable = *RItr;
+		if (VTable->PreDrawUpdate && !VTable->PreDrawUpdate(reinterpret_cast<SubState*>(VTable), Engine, dT))
+			break;
+
+		RItr++;
+	}
+}
+
+
+/************************************************************************************************/
+
+
+SubStateVTable* GetStateVTable(SubState* _ptr)
+{
+	return &_ptr->VTable;
+}
+
+
+/************************************************************************************************/
+
+
+extern "C"
+{
+	GAMESTATEAPI BaseState* InitiateBaseGameState(EngineMemory* Engine)
+	{
+		BaseState& State = Engine->BlockAllocator.allocate_aligned<BaseState>();
+		
+		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
+		State.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
+		State.Nodes						= &Engine->Nodes;
+		State.Quit						= false;
+		State.PhysicsUpdateTimer		= 0.0f;
+		State.TerrainSplits				= 12;
+		State.ActiveWindow				= &Engine->Window;
+
+		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
+		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
+
+		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
+		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
+		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender, Engine->TempAllocator);
+		//InitateConsole			  (&State.Console, Engine);
+		
+		{
+			uint2	WindowRect	= Engine->Window.WH;
+			float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
+			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &State.DefaultCamera, Aspect, 0.01f, 100000.0f, true);
+			State.ActiveCamera = &State.DefaultCamera;
+		}
+
+		{
+			Landscape_Desc Land_Desc = { 
+				State.DefaultAssets.Terrain
+			};
+
+			State.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
+
+			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(State.Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
+		}
+
+		FlexKit::EventNotifier<>::Subscriber sub;
+		sub.Notify = &EventsWrapper;
+		sub._ptr   = &State;
+		Engine->Window.Handler.Subscribe(sub);
+
+		State.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
+
+		auto MenuSubState = CreateMenuState(&State, Engine);
+		PushSubState(&State, MenuSubState);
+
+		return &State;
+	}
+
+
+#include<thread>
+
+	GAMESTATEAPI void Update(EngineMemory* Engine, BaseState* State, double dt)
+	{
+		UpdateBaseState(Engine, State, dt);
+
+		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
+		UpdateColliders	(&State->PScene, &Engine->Nodes);
+
+		Engine->End = State->Quit;
+	}
+
+
+	GAMESTATEAPI void UpdateFixed(EngineMemory* Engine, double dt, BaseState* State)
+	{
+		UpdateMouseInput(&State->MouseState, &Engine->Window);
+		UpdateGraphicScene(&State->GScene);
+	}
+
+
+	GAMESTATEAPI void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, BaseState* _ptr)
+	{
+		UpdateAnimationsGraphicScene(&_ptr->GScene, dt);
+	}
+
+
+	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, BaseState* State)
+	{
+		PreDrawBaseState(Engine, State, dt);
+
+		UpdateTransforms	(State->Nodes);
+		UpdateCamera		(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
+	}
+
+
+	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, BaseState* State)
+	{
+
+		auto RS = &Engine->RenderSystem;
+
+		BeginSubmission(RS, State->ActiveWindow);
+
+		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
+		auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
+		auto CL				= GetCurrentCommandList(RS);
+
+		GetGraphicScenePVS(&State->GScene, State->ActiveCamera, &PVS, &Transparent);
+
+		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
+		SortPVSTransparent(State->Nodes, &Transparent, State->ActiveCamera);
+
+
+		// TODO: multi Thread these
+		// Do Uploads
+		{
+			DeferredPass_Parameters	DPP;
+			DPP.PointLightCount = State->GScene.PLights.size();
+			DPP.SpotLightCount  = State->GScene.SPLights.size();
+
+			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);
+			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
+
+			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->DeferredRender);
+
+			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
+			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
+			UploadLandscape			(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true, State->TerrainSplits + 1);
+		}
+
+		// Submission
+		{
+			//SetDepthBuffersWrite(RS, CL, { GetCurrent(State->DepthBuffer) });
+
+			ClearBackBuffer		 (RS, CL, State->ActiveWindow, { 0, 0, 0, 0 });
+			ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
+
+			Texture2D BackBuffer = GetBackBufferTexture(State->ActiveWindow);
+			SetViewport	(CL, BackBuffer);
+			SetScissor	(CL, BackBuffer.WH);
+
+			IncrementDeferredPass (&Engine->DeferredRender);
+			ClearDeferredBuffers  (RS, &Engine->DeferredRender);
+
+			DoDeferredPass		(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, &Engine->Geometry, nullptr);
+			DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, false);
+
+			ShadeDeferredPass	(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+			DoForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
+
+
+			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
+			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
+		}
+	}
+
+
+	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, BaseState* State)
+	{
+		PresentWindow(&Engine->Window, Engine->RenderSystem);
+	}
+
+
+	GAMESTATEAPI void Cleanup(EngineMemory* Engine, BaseState* State)
+	{
+		// wait for last Frame to finish Rendering
+		for (size_t I = 0; I < 3; ++I) {
+			WaitforGPU(&Engine->RenderSystem);
+			IncrementRSIndex(Engine->RenderSystem);
+		}
+
+		ReleaseBaseState(Engine, State);
+
+		Engine->BlockAllocator.free(State);
+		
+		FreeAllResourceFiles	(&Engine->Assets);
+		FreeAllResources		(&Engine->Assets);
+
+		ReleaseEngine			(Engine);
+	}
+
+
+	GAMESTATEAPI void PostPhysicsUpdate(BaseState*)
+	{
+
+	}
+
+
+	GAMESTATEAPI void PrePhysicsUpdate(BaseState*)
+	{
+
+	}
+
+	struct CodeExports
+	{
+		typedef BaseState*	(*InitiateGameStateFN)	(EngineMemory* Engine);
+		typedef void		(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, BaseState* _ptr);
+		typedef void		(*UpdateIMPL)			(EngineMemory* Engine,	BaseState* _ptr, double dt);
+		typedef void		(*UpdateAnimationsFN)	(EngineMemory* RS,		iAllocator* TempMemory, double dt, BaseState* _ptr);
+		typedef void		(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, BaseState* _ptr);
+		typedef void		(*DrawFN)				(EngineMemory* RS,		iAllocator* TempMemory,			   BaseState* _ptr);
+		typedef void		(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, BaseState* _ptr);
+		typedef void		(*CleanUpFN)			(EngineMemory* Engine,	BaseState* _ptr);
+		typedef void		(*PostPhysicsUpdate)	(BaseState*);
+		typedef void		(*PrePhysicsUpdate)		(BaseState*);
+
+		InitiateGameStateFN		Init;
+		InitiateEngineFN		InitEngine;
+		UpdateIMPL				Update;
+		UpdateFixedIMPL			UpdateFixed;
+		UpdateAnimationsFN		UpdateAnimations;
+		UpdatePreDrawFN			UpdatePreDraw;
+		DrawFN					Draw;
+		PostDrawFN				PostDraw;
+		CleanUpFN				Cleanup;
+	};
+
+	GAMESTATEAPI void GetStateTable(CodeTable* out)
+	{
+		CodeExports* Table = reinterpret_cast<CodeExports*>(out);
+
+		Table->Init				= &InitiateBaseGameState;
+		Table->InitEngine		= &InitEngine;
+		Table->Update			= &Update;
+		Table->UpdateFixed		= &UpdateFixed;
+		Table->UpdateAnimations	= &UpdateAnimations;
+		Table->UpdatePreDraw	= &UpdatePreDraw;
+		Table->Draw				= &Draw;
+		Table->PostDraw			= &PostDraw;
+		Table->Cleanup			= &Cleanup;
+	}
+}

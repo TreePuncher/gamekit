@@ -434,7 +434,7 @@ namespace FlexKit
 	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* E, GeometryTable* GT, iAllocator* MEM );
 	FLEXKITAPI bool					InitiatePoseState	( RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
 	FLEXKITAPI void					InitiateASM			( AnimationStateMachine* AS, iAllocator*, size_t Target );
-	FLEXKITAPI void					Destroy				( DrawablePoseState* EAS );
+	FLEXKITAPI void					Release				( DrawablePoseState* EAS );
 
 
 	/************************************************************************************************/

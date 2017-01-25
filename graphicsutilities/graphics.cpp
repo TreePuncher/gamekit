@@ -146,11 +146,43 @@ namespace FlexKit
 			ev.mType		 = Event::Input;
 			ev.Action		 = Event::InputAction::Pressed;
 
-			if (wParam == MK_LBUTTON)
-				ev.mData1.mKC[0] = KEYCODES::KC_MOUSELEFT;
+			ev.mData1.mKC[0] = KEYCODES::KC_MOUSELEFT;
 
 			gInputWindow->Handler.NotifyEvent(ev);
 		}	break;
+		case WM_LBUTTONUP:
+		{
+			Event ev;
+			ev.InputSource	= Event::Mouse;
+			ev.mType		= Event::Input;
+			ev.Action		= Event::InputAction::Release;
+
+			ev.mData1.mKC[0] = KEYCODES::KC_MOUSELEFT;
+
+			gInputWindow->Handler.NotifyEvent(ev);
+		}	break;
+
+		case WM_RBUTTONDOWN:
+		{
+			Event ev;
+			ev.InputSource   = Event::Mouse;
+			ev.mType         = Event::Input;
+			ev.Action        = Event::InputAction::Pressed;
+			ev.mData1.mKC[0] = KEYCODES::KC_MOUSERIGHT;
+
+			gInputWindow->Handler.NotifyEvent(ev);
+		}	break;
+		case WM_RBUTTONUP:
+		{
+			Event ev;
+			ev.InputSource   = Event::Mouse;
+			ev.mType         = Event::Input;
+			ev.Action        = Event::InputAction::Release;
+			ev.mData1.mKC[0] = KEYCODES::KC_MOUSERIGHT;
+
+			gInputWindow->Handler.NotifyEvent(ev);
+		}	break;
+
 		case WM_KEYUP:
 		case WM_KEYDOWN:
 		{
@@ -445,6 +477,8 @@ namespace FlexKit
 		RS->CopyEngine.Size		    = MEGABYTE * 16;
 		RS->CopyEngine.TempBuffer   = TempBuffer;
 
+		SETDEBUGNAME(TempBuffer, __func__);
+
 		CD3DX12_RANGE Range(0, 0);
 		HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
 	}
@@ -519,12 +553,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateRenderSystem( Graphics_Desc* in, RenderSystem* out )
+	bool InitiateRenderSystem( Graphics_Desc* in, RenderSystem* out )
 	{
 #if USING( DEBUGGRAPHICS )
 		gWindowHandle		= GetConsoleWindow();
 		gInstance			= GetModuleHandle( 0 );
 #endif
+
+		static_vector<ID3D12DeviceChild*, 256> ObjectsCreated;
 
 		RegisterWindowClass(gInstance);
 
@@ -547,14 +583,17 @@ namespace FlexKit
 		DebugDevice = nullptr;
 		#endif	
 		
+		bool InitiateComplete = false;
+
 		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
-		if( FAILED( HR ) )
+
+		if(FAILED(HR))
 		{
-		#ifdef _DEBUG
-			FK_ASSERT(0);
-		#endif
-			return;
+			MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
+			return false;
 		}
+
+		out->pDevice = Device;
 
 #if USING( DEBUGGRAPHICS )
 		HR =  Device->QueryInterface(__uuidof(ID3D12DebugDevice), (void**)&DebugDevice);
@@ -568,6 +607,7 @@ namespace FlexKit
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE FENCE!");
 
 			NewRenderSystem.Fence = NewFence;
+			ObjectsCreated.push_back(NewFence);
 		}
 
 		for(size_t I = 0; I < 3; ++I){
@@ -613,6 +653,15 @@ namespace FlexKit
 		ID3D12GraphicsCommandList*	ComputeList	        = nullptr;
 		IDXGIFactory4*				DXGIFactory         = nullptr;
 
+		FINALLY
+			if (!InitiateComplete)
+			{
+				for (auto O : ObjectsCreated)
+					O->Release();
+			}
+		FINALLYOVER;
+
+
 		// Create Resources
 		{
 			for(size_t I = 0; I < QueueSize; ++I)
@@ -628,6 +677,14 @@ namespace FlexKit
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,	ComputeAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&ComputeList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,	GraphicsAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&CommandList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,		UploadAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&UploadList);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+
+					ObjectsCreated.push_back(GraphicsAllocator);
+					ObjectsCreated.push_back(UploadAllocator);
+					ObjectsCreated.push_back(ComputeAllocator);
+
+					ObjectsCreated.push_back(ComputeList);
+					ObjectsCreated.push_back(CommandList);
+					ObjectsCreated.push_back(UploadList);
 
 					CommandList->Close();
 					GraphicsAllocator->Reset();
@@ -661,13 +718,23 @@ namespace FlexKit
 			}
 
 			NewRenderSystem.FrameResources[0].CommandLists[0]->Reset(NewRenderSystem.FrameResources[0].GraphicsCLAllocator[0], nullptr);
-			
 
 			HR = Device->CreateCommandQueue		(&CQD,		 __uuidof(ID3D12CommandQueue),		(void**)&GraphicsQueue);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
 			HR = Device->CreateCommandQueue		(&UploadCQD, __uuidof(ID3D12CommandQueue),		(void**)&UploadQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
 			HR = Device->CreateCommandQueue		(&ComputeCQD, __uuidof(ID3D12CommandQueue),		(void**)&ComputeQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
-			HR = CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));																FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
+			HR = CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));			
+			FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
+
+			ObjectsCreated.push_back(GraphicsQueue);
+			ObjectsCreated.push_back(UploadQueue);
+			ObjectsCreated.push_back(ComputeQueue);
 		}
+
+		FINALLY
+			if (!InitiateComplete)
+				DXGIFactory->Release();
+		FINALLYOVER
+
 		// Copy Resources Over
 		{
 			NewRenderSystem.pDevice					= Device;
@@ -695,6 +762,10 @@ namespace FlexKit
 
 			out->NullConstantBuffer = CreateConstantBuffer(out, &NullBuffer_Desc);
 			out->NullConstantBuffer._SetDebugName("NULL CONSTANT BUFFER");
+
+			ObjectsCreated.push_back(out->NullConstantBuffer[0]);
+			ObjectsCreated.push_back(out->NullConstantBuffer[1]);
+			ObjectsCreated.push_back(out->NullConstantBuffer[2]);
 		}
 		{
 			Texture2D_Desc NullUAV_Desc;
@@ -709,6 +780,8 @@ namespace FlexKit
 
 			out->NullUAV = CreateTexture2D(out, &NullUAV_Desc);
 			SETDEBUGNAME( out->NullUAV, "NULL UAV");
+
+			ObjectsCreated.push_back(out->NullUAV);
 		}
 		{
 			Texture2D_Desc NullSRV_Desc;
@@ -725,10 +798,18 @@ namespace FlexKit
 
 			out->NullSRV = CreateTexture2D(out, &NullSRV_Desc);
 			SETDEBUGNAME( out->NullSRV, "NULL SRV");
+			
+			ObjectsCreated.push_back(out->NullSRV);
 		}
+
+		InitiateComplete = true;
 
 		CreateRootSignatureLibrary(out);
 		InitiateCopyEngine(out);
+		
+		out->States = CreatePSOTable(out);
+
+		return InitiateComplete;
 	}
 
 
@@ -736,7 +817,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Destroy(DepthBuffer* DB)
+	void Release(DepthBuffer* DB)
 	{
 		for(auto R : DB->Buffer)if(R) R->Release();
 	}
@@ -775,7 +856,9 @@ namespace FlexKit
 				System->Memory->_aligned_free(FR.TempBuffers);
 		}
 
-		System->NullConstantBuffer->Release();
+		ReleasePipelineStates(System);
+
+		System->NullConstantBuffer.Release();
 		System->NullUAV->Release();
 		System->NullSRV->Release();
 
@@ -875,6 +958,8 @@ namespace FlexKit
 		NewTexture.Format		= Resource_DESC.Format;
 		NewTexture.Texture      = Resource;
 		NewTexture.WH			= {Resource_DESC.Width,Resource_DESC.Height};
+
+		SETDEBUGNAME(Resource, __func__);
 
 		return (NewTexture);
 	}
@@ -1102,7 +1187,7 @@ namespace FlexKit
 
 	bool ResizeRenderWindow	( RenderSystem* RS, RenderWindow* Window, uint2 HW )
 	{
-		Destroy(Window);
+		Release(Window);
 
 		RenderWindowDesc RW_Desc = {};
 
@@ -1196,7 +1281,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Destroy( RenderWindow* Window )
+	void Release( RenderWindow* Window )
 	{
 		Window->SwapChain_ptr->SetFullscreenState(false, nullptr);
 
@@ -1522,6 +1607,8 @@ namespace FlexKit
 								{desc_in->Height, desc_in->Height}, 
 								TextureFormat2DXGIFormat(desc_in->Format)};
 
+		SETDEBUGNAME(NewResource, __func__);
+
 		return (NewTexture);
 	}
 
@@ -1717,7 +1804,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FreeGeometryTable(GeometryTable* GT)
+	void ReleaseGeometryTable(GeometryTable* GT)
 	{
 		GT->Geometry.Release();
 		GT->ReferenceCounts.Release();
@@ -1926,6 +2013,8 @@ namespace FlexKit
 
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
 			NewResource.Resources[I] = Resource;
+
+			SETDEBUGNAME(Resource, __func__);
 		}
 
 		return NewResource;
@@ -1965,6 +2054,8 @@ namespace FlexKit
 			&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
 			&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
 			IID_PPV_ARGS(&Resource));
+
+		SETDEBUGNAME(Resource, __func__);
 
 		return Resource;
 	}
@@ -2008,6 +2099,8 @@ namespace FlexKit
 
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
 			NewResource.Resources[I] = Resource;
+
+			SETDEBUGNAME(Resource, __func__ );
 		}
 		return NewResource;
 	}
@@ -2050,6 +2143,8 @@ namespace FlexKit
 
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
 			NewResource.Resources[I] = Resource;
+
+			SETDEBUGNAME(Resource, __func__);
 		}
 		return NewResource;
 	}
@@ -2327,7 +2422,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Destroy( VertexBuffer* VertexBuffer )
+	void Release( VertexBuffer* VertexBuffer )
 	{	
 		for( auto Buffer : VertexBuffer->VertexBuffers )
 			if( Buffer.Buffer )Buffer.Buffer->Release();
@@ -2337,7 +2432,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Destroy( ConstantBuffer buffer )
+	void Release( ConstantBuffer buffer )
 	{
 		buffer.Release();
 	}
@@ -2346,7 +2441,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Destroy(ID3D11View* View)
+	void Release(ID3D11View* View)
 	{
 		if (View)
 			View->Release();
@@ -2356,7 +2451,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Destroy( Texture2D txt2d )
+	void Release( Texture2D txt2d )
 	{
 		if (txt2d)
 			txt2d->Release();
@@ -2366,7 +2461,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Destroy( Shader* shader)
+	void Release( Shader* shader)
 	{
 		if( shader->Blob )
 			shader->Blob->Release();
@@ -2375,7 +2470,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Destroy(SpotLightBuffer* SLB)
+	void Release(SpotLightBuffer* SLB)
 	{
 		SLB->Resource->Release();
 	}
@@ -2384,7 +2479,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Destroy(PointLightBuffer* SLB)
+	void Release(PointLightBuffer* SLB)
 	{
 		SLB->Resource->Release();
 	}
@@ -3785,8 +3880,8 @@ namespace FlexKit
 
 	void Submit(static_vector<ID3D12CommandList*>& CLs, RenderSystem* RS, RenderWindow* Window)
 	{
-		ID3D12CommandList* CommandLists[MaxThreadCount];
-		size_t	CommandListsUsed = 0;
+		//ID3D12CommandList* CommandLists[MaxThreadCount];
+		//size_t	CommandListsUsed = 0;
 
 		RS->GraphicsQueue->ExecuteCommandLists(CLs.size(), CLs.begin());
 	}
@@ -4501,7 +4596,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanupForwardPass(ForwardPass* FP)
+	void ReleaseForwardPass(ForwardPass* FP)
 	{
 		FP->CommandList->Release();
 		FP->CommandAllocator->Release();
@@ -4576,7 +4671,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 	
-	void CleanupDeferredPass(DeferredPass* gb)
+	void ReleaseDeferredPass(DeferredPass* gb)
 	{
 		// GBuffer
 		for(size_t I = 0; I < 3; ++I)
@@ -4698,10 +4793,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpCamera(SceneNodes* Nodes, Camera* camera)
+	void ReleaseCamera(SceneNodes* Nodes, Camera* camera)
 	{
 		if(camera->Buffer)
-			FlexKit::Destroy(camera->Buffer);
+			FlexKit::Release(camera->Buffer);
 
 		FlexKit::FreeHandle(Nodes, camera->Node);
 	}
@@ -4775,6 +4870,10 @@ namespace FlexKit
 
 	void UpdateCamera(RenderSystem* RS, SceneNodes* nodes, Camera* camera, double dt)
 	{
+		FK_ASSERT(RS);
+		FK_ASSERT(nodes);
+		FK_ASSERT(camera);
+
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixInverse;
 		using DirectX::XMMatrixTranspose;
@@ -4828,7 +4927,7 @@ namespace FlexKit
 		NewData.WPOS[2]         = WT.r[2].m128_f32[3];
 		NewData.WPOS[3]         = 0;
 		NewData.PointLightCount = PointLightCount;
-		NewData.SpotLightCount  = SpotLightCount;
+		NewData.SpotLightCount  = 0;
 		NewData.WindowWidth		= HW[0];
 		NewData.WindowHeight	= HW[1];
 		
@@ -5882,10 +5981,10 @@ namespace FlexKit
 	void CleanUpDrawable(Drawable* E)
 	{
 		if (E)
-			Destroy(E->VConstants);
+			Release(E->VConstants);
 
 		if (E->PoseState)
-			Destroy(E->PoseState);
+			Release(E->PoseState);
 	}
 	
 
@@ -5894,7 +5993,7 @@ namespace FlexKit
 
 	void CleanUpTriMesh(TriMesh* T)
 	{
-		FlexKit::Destroy(&T->VertexBuffer);
+		Release(&T->VertexBuffer);
 	}
 
 
@@ -6113,6 +6212,8 @@ namespace FlexKit
 														&Resource_DESC, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&NewBuffer));
 
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STATIC MESH BUFFER!"));
+
+			SETDEBUGNAME(NewBuffer, __func__);
 
 			UpdateResourceByTemp(RS, NewBuffer, Buffer, BufferSize, 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 			return NewBuffer;
@@ -6497,9 +6598,9 @@ namespace FlexKit
 			Out->PSO_Animated = PSO;
 		}
 
-		Destroy(&VertexShader_Animated);
-		Destroy(&VertexShader_Static);
-		Destroy(&PixelShader);
+		Release(&VertexShader_Animated);
+		Release(&VertexShader_Static);
+		Release(&PixelShader);
 	}
 
 
@@ -6976,9 +7077,9 @@ namespace FlexKit
 			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 			FlexKit::CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
 
-			Destroy(&DrawTextVShader);
-			Destroy(&DrawTextGShader);
-			Destroy(&DrawTextPShader);
+			Release(&DrawTextVShader);
+			Release(&DrawTextGShader);
+			Release(&DrawTextPShader);
 
 			RG->DrawStates[DCT_Text] = PSO;
 		}
@@ -6997,11 +7098,11 @@ namespace FlexKit
 		RG->ClipAreas.Allocator		= Memory;
 		RG->DrawLines3D.Allocator	= Memory;
 
-		Destroy(&DrawRectVShader);
-		Destroy(&DrawRectPShader);
-		Destroy(&DrawRectPSTexturedShader);
-		Destroy(&DrawLineVShader);
-		Destroy(&DrawLinePShader);
+		Release(&DrawRectVShader);
+		Release(&DrawRectPShader);
+		Release(&DrawRectPSTexturedShader);
+		Release(&DrawLineVShader);
+		Release(&DrawLinePShader);
 	}
 
 
@@ -7024,8 +7125,6 @@ namespace FlexKit
 			GUIStack->DrawCalls.Release();
 		}
 		FINALLYOVER
-
-		return;
 
 		if (!GUIStack->DrawCalls.size())
 			return;
@@ -7288,7 +7387,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpDrawGUI(GUIRender* RG) {
+	void ReleaseDrawGUI(GUIRender* RG) {
 		RG->Rects.Release();
 		RG->TexturedRects.Release();
 		RG->ClipAreas.Release();
@@ -7422,16 +7521,22 @@ namespace FlexKit
 			size_t Size =  TA->BufferDimensions.Product();
 			auto& NewTextBuffer = FlexKit::fixed_vector<TextEntry>::Create_Aligned(Size, Temp, 0x10);
 
+
+			float AreaWidth  = (float)TA->BufferDimensions[0] * F->FontSize[0];
+			float AreaHeight = (float)TA->BufferDimensions[1] * F->FontSize[1];
+
+			float CharacterWidth	= (float)F->FontSize[0] / Target->WH[0];
+			float CharacterHeight	= (float)F->FontSize[1] / Target->WH[1];
+
 			uint2 I = { 0, 0 };
 			size_t CharactersFound	= 0;
 			float AspectRatio		= Target->WH[0] / Target->WH[1];
-			float TextScale			= 0.5f;
 
 			float2 PositionOffset	= float2(float(TA->Position[0]) / Target->WH[0], -float(TA->Position[1]) / Target->WH[1]);
 			float2 StartPOS			= WStoSS(TA->ScreenPosition);
 			float2 Scale			= float2( 1.0f, 1.0f ) / F->TextSheetDimensions;
 			float2 Normlizer		= float2(1.0f/AspectRatio, 1.0f);
-			float2 CharacterScale	= { TextScale, TextScale };
+			float2 CharacterScale	= TA->CharacterScale;
 
 			while (I[1] <= TA->Position[1])
 			{
@@ -7525,8 +7630,9 @@ namespace FlexKit
 
 	TextArea CreateTextArea(RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D)// Setups a 2D Surface for Drawing Text into
 	{
-		size_t C = D->WH.x/D->TextWH.x;
-		size_t R = D->WH.y/D->TextWH.y;
+		size_t C = max(D->WH.x/D->CharWH.x, 1);
+		size_t R = max(D->WH.y/D->CharWH.y, 1);
+
 
 		char* TextBuffer = (char*)Mem->malloc(C * R);
 		memset(TextBuffer, '\0', C * R);
@@ -7544,10 +7650,25 @@ namespace FlexKit
 		HEAP_Props.CreationNodeMask	     = 0;
 		HEAP_Props.VisibleNodeMask		 = 0;
 
-		auto NewResource = FlexKit::CreateShaderResource(RS, C * R * sizeof(TextEntry));
+		auto NewResource = CreateShaderResource(RS, C * R * sizeof(TextEntry));
 		NewResource._SetDebugName("TEXTOBJECT");
 
-		return{ TextBuffer, C * R, {C, R},  {0, 0}, {0.0f, 1.0f}, NewResource, 0, false, Mem };
+		TextArea Out = 
+		{ 
+			TextBuffer, 
+			C * R, 
+			{ C, R }, 
+			{ 0, 0 }, 
+			{ 0.0f, 1.0f }, 
+			{ 1.0f, 1.0f },
+			{ (size_t)D->WH.x, (size_t)D->WH.y},
+			NewResource, 
+			0,
+			false, 
+			Mem 
+		};
+
+		return Out;
 	}
 
 

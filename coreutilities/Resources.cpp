@@ -757,6 +757,7 @@ namespace FlexKit
 					CHARARRAYBLOCK* pCAB = (CHARARRAYBLOCK*)(mem + Position + sizeof(BlockDescriptor));
 					size_t End = Desc->BlockSize / sizeof(CHARARRAYBLOCK::CHAR);
 					auto Begin = &pCAB->First;
+
 					for (size_t I = 0; I < End; ++I)
 					{
 						auto pCB                                      = Begin + I;
@@ -765,6 +766,8 @@ namespace FlexKit
 						Fonts[pCB->page].GlyphTable[pCB->id].WH       = { float(pCB->width),	float(pCB->height) };
 						Fonts[pCB->page].GlyphTable[pCB->id].XY       = { float(pCB->x),		float(pCB->y) };
 						Fonts[pCB->page].GlyphTable[pCB->id].Xadvance = pCB->xadvance;
+						Fonts[pCB->page].FontSize[0]				  = max(Fonts[pCB->page].FontSize[0], pCB->width);
+						Fonts[pCB->page].FontSize[1]				  = max(Fonts[pCB->page].FontSize[1], pCB->height);
 					}
 				}break;
 				case 0x05:

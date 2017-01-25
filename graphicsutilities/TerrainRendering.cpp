@@ -154,10 +154,12 @@ namespace FlexKit
 				CL->ResourceBarrier(4, Barrier);
 			}
 
-			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs_SO);
-			CL->SetPipelineState(LS->SplitState);
-			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-
+			{
+				auto PSO = GetPSO(RS, TERRAIN_CULL_PSO);
+				CL->SetGraphicsRootSignature(RS->Library.RS4CBVs_SO);
+				CL->SetPipelineState(PSO);
+				CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+			}
 			CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView(1, LS->ConstantBuffer->GetGPUVirtualAddress());
 			//CL->SetGraphicsRootConstantBufferView (2, RS->NullConstantBuffer);
@@ -265,23 +267,23 @@ namespace FlexKit
 
 				// Draw Final Buffer
 				CL->IASetVertexBuffers	(0, 1, FinalBufferInput);
-				CL->SetPipelineState	(LS->GenerateStateDebug);
+				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_PSO_DEBUG));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
 
-				CL->SetPipelineState	(LS->WireFrameState);
+				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_WIRE_PSO));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
 
 				// Draw Remainder
 				CL->IASetVertexBuffers	(0, 1, Input[NextIndex]);
-				CL->SetPipelineState	(LS->GenerateStateDebug);
+				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_PSO_DEBUG));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 
-				CL->SetPipelineState	(LS->WireFrameState);
+				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_WIRE_PSO));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 			}
 			else
 			{
-				CL->SetPipelineState	(LS->GenerateState);
+				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_PSO));
 				// Draw Final Buffer
 				CL->IASetVertexBuffers(0, 1, FinalBufferInput);
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
@@ -315,6 +317,329 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	ID3D12PipelineState* LoadTerrainPSO_Generate(RenderSystem* RS)
+	{
+		auto ShaderVS             = LoadShader("VPassThrough",			"VPassThrough",			 "vs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderGS             = LoadShader("GS_Split",				"GS_Split",			 	 "gs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderRegion2Tri     = LoadShader("RegionToTris",			"RegionToTris",	 		 "gs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderRegion2Quad    = LoadShader("RegionToQuadPatch",		"RegionToQuadPatch",	 "hs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderQuad2Tri       = LoadShader("QuadPatchToTris",		"QuadPatchToTris",		 "ds_5_0", "assets\\tvshader.hlsl");
+		auto ShaderPaint          = LoadShader("DebugTerrainPaint",		"TerrainPaint",			 "ps_5_0", "assets\\pshader.hlsl");
+
+		FINALLY
+			Release(&ShaderVS);
+			Release(&ShaderGS);
+			Release(&ShaderRegion2Tri);
+			Release(&ShaderRegion2Quad);
+			Release(&ShaderQuad2Tri);
+			Release(&ShaderPaint);
+		FINALLYOVER;
+
+		{
+			D3D12_INPUT_ELEMENT_DESC InputElements[] =
+			{
+				{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+
+			auto RootSig			= RS->Library.RS4CBVs_SO;
+			auto Rast_State			= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
+			auto BlendState			= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			auto DepthState			= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			DepthState.DepthEnable	= true;
+			DepthState.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+
+
+			D3D12_SHADER_BYTECODE GCode = { (BYTE*)ShaderRegion2Tri.Blob->GetBufferPointer(),	ShaderRegion2Tri.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE PCode = { (BYTE*)ShaderPaint.Blob->GetBufferPointer(),		ShaderPaint.Blob->GetBufferSize()		};
+			D3D12_SHADER_BYTECODE HCode = { (BYTE*)ShaderRegion2Quad.Blob->GetBufferPointer(),	ShaderRegion2Quad.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE DCode = { (BYTE*)ShaderQuad2Tri.Blob->GetBufferPointer(),		ShaderQuad2Tri.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE VCode = { (BYTE*)ShaderVS.Blob->GetBufferPointer(),			ShaderVS.Blob->GetBufferSize()			};
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+				PSO_Desc.pRootSignature                = RootSig;
+				PSO_Desc.VS                            = VCode;
+				PSO_Desc.HS							   = HCode;
+				PSO_Desc.DS                            = DCode;
+				PSO_Desc.PS                            = PCode;
+				PSO_Desc.SampleMask                    = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+				PSO_Desc.NumRenderTargets			   = 4;
+				PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.RTVFormats[1]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.RTVFormats[2]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
+				PSO_Desc.RTVFormats[3]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
+				PSO_Desc.SampleDesc.Count              = 1;
+				PSO_Desc.SampleDesc.Quality            = 0;
+				PSO_Desc.RasterizerState               = Rast_State;
+				PSO_Desc.DepthStencilState			   = DepthState;
+				PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements)/sizeof(InputElements[0]) };
+				PSO_Desc.DepthStencilState.DepthEnable = true;
+				PSO_Desc.DSVFormat					   = DXGI_FORMAT_D32_FLOAT;
+			}
+
+			ID3D12PipelineState* PSO = nullptr;
+			auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
+			return PSO;
+		}
+
+		return nullptr;
+	}
+
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* LoadTerrainPSO_GenerateDebug(RenderSystem* RS)
+	{
+		auto ShaderVS             = LoadShader("VPassThrough",			"VPassThrough",			 "vs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderRegion2Tri     = LoadShader("RegionToTris",			"RegionToTris",	 		 "gs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderRegion2Quad    = LoadShader("RegionToQuadPatch",		"RegionToQuadPatch",	 "hs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderQuad2Tri_Debug = LoadShader("QuadPatchToTris_DEBUG",	"QuadPatchToTris_DEBUG", "ds_5_0", "assets\\tvshader.hlsl");
+		auto ShaderPaint          = LoadShader("DebugTerrainPaint",		"TerrainPaint",			 "ps_5_0", "assets\\pshader.hlsl");
+		auto ShaderPaint_Wire     = LoadShader("DebugTerrainPaint_2",	"DebugTerrainPaint_2",	 "ps_5_0", "assets\\pshader.hlsl");
+
+		FINALLY
+			Release(&ShaderVS);
+			Release(&ShaderRegion2Tri);
+			Release(&ShaderRegion2Quad);
+			Release(&ShaderQuad2Tri_Debug);
+			Release(&ShaderPaint);
+			Release(&ShaderPaint_Wire);
+		FINALLYOVER;
+
+		{
+			D3D12_INPUT_ELEMENT_DESC InputElements[] =
+			{
+				{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+
+			auto RootSig			= RS->Library.RS4CBVs_SO;
+			auto Rast_State			= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
+			auto BlendState			= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			auto DepthState			= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			DepthState.DepthEnable	= true;
+			DepthState.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+
+
+			D3D12_SHADER_BYTECODE GCode = { (BYTE*)ShaderRegion2Tri.Blob->GetBufferPointer(),	ShaderRegion2Tri.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE PCode = { (BYTE*)ShaderPaint.Blob->GetBufferPointer(),		ShaderPaint.Blob->GetBufferSize()		};
+			D3D12_SHADER_BYTECODE PCode2= { (BYTE*)ShaderPaint_Wire.Blob->GetBufferPointer(),	ShaderPaint_Wire.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE HCode = { (BYTE*)ShaderRegion2Quad.Blob->GetBufferPointer(),	ShaderRegion2Quad.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE VCode = { (BYTE*)ShaderVS.Blob->GetBufferPointer(),			ShaderVS.Blob->GetBufferSize()			};
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+				PSO_Desc.pRootSignature                = RootSig;
+				PSO_Desc.VS                            = VCode;
+				PSO_Desc.HS							   = HCode;
+				PSO_Desc.DS                            = ShaderQuad2Tri_Debug;
+				PSO_Desc.PS                            = PCode;
+				PSO_Desc.SampleMask                    = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+				PSO_Desc.NumRenderTargets			   = 4;
+				PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.RTVFormats[1]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.RTVFormats[2]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
+				PSO_Desc.RTVFormats[3]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
+				PSO_Desc.SampleDesc.Count              = 1;
+				PSO_Desc.SampleDesc.Quality            = 0;
+				PSO_Desc.RasterizerState               = Rast_State;
+				PSO_Desc.DepthStencilState			   = DepthState;
+				PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements)/sizeof(InputElements[0]) };
+				PSO_Desc.DepthStencilState.DepthEnable = true;
+				PSO_Desc.DSVFormat					   = DXGI_FORMAT_D32_FLOAT;
+			}
+
+			ID3D12PipelineState* PSO = nullptr;
+			auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
+			return PSO;
+		}
+
+		return nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* LoadTerrainPSO_WireDebug(RenderSystem* RS)
+	{
+		auto ShaderVS             = LoadShader("VPassThrough",			"VPassThrough",			 "vs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderRegion2Tri     = LoadShader("RegionToTris",			"RegionToTris",	 		 "gs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderRegion2Quad    = LoadShader("RegionToQuadPatch",		"RegionToQuadPatch",	 "hs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderQuad2Tri		  = LoadShader("QuadPatchToTris", "QuadPatchToTris", "ds_5_0", "assets\\tvshader.hlsl");
+		auto ShaderQuad2Tri_Debug = LoadShader("QuadPatchToTris_DEBUG",	"QuadPatchToTris_DEBUG", "ds_5_0", "assets\\tvshader.hlsl");
+		auto ShaderPaint_Wire     = LoadShader("DebugTerrainPaint_2",	"DebugTerrainPaint_2",	 "ps_5_0", "assets\\pshader.hlsl");
+
+		
+		FINALLY
+			Release(&ShaderVS);
+			Release(&ShaderRegion2Tri);
+			Release(&ShaderRegion2Quad);
+			Release(&ShaderQuad2Tri_Debug);
+			Release(&ShaderPaint_Wire);
+		FINALLYOVER;
+
+		{
+			D3D12_INPUT_ELEMENT_DESC InputElements[] =
+			{
+				{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			};
+
+			auto RootSig			= RS->Library.RS4CBVs_SO;
+			auto Rast_State			= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
+			auto BlendState			= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			
+			auto NoDepthState					= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+			NoDepthState.DepthFunc				= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			NoDepthState.DepthEnable			= true;
+
+			D3D12_SHADER_BYTECODE DCode = { (BYTE*)ShaderQuad2Tri_Debug.Blob->GetBufferPointer(),	ShaderQuad2Tri_Debug.Blob->GetBufferSize() };
+			D3D12_SHADER_BYTECODE GCode = { (BYTE*)ShaderRegion2Tri.Blob->GetBufferPointer(),		ShaderRegion2Tri.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE PCode2= { (BYTE*)ShaderPaint_Wire.Blob->GetBufferPointer(),		ShaderPaint_Wire.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE HCode = { (BYTE*)ShaderRegion2Quad.Blob->GetBufferPointer(),		ShaderRegion2Quad.Blob->GetBufferSize()	};
+			D3D12_SHADER_BYTECODE VCode = { (BYTE*)ShaderVS.Blob->GetBufferPointer(),				ShaderVS.Blob->GetBufferSize()			};
+
+
+			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+				PSO_Desc.pRootSignature                = RootSig;
+				PSO_Desc.VS                            = VCode;
+				PSO_Desc.HS							   = HCode;
+				PSO_Desc.DS                            = DCode;
+				PSO_Desc.PS                            = PCode2;
+				PSO_Desc.SampleMask                    = UINT_MAX;
+				PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+				PSO_Desc.NumRenderTargets			   = 4;
+				PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.RTVFormats[1]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
+				PSO_Desc.RTVFormats[2]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
+				PSO_Desc.RTVFormats[3]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
+				PSO_Desc.SampleDesc.Count              = 1;
+				PSO_Desc.SampleDesc.Quality            = 0;
+				PSO_Desc.RasterizerState               = Rast_State;
+				PSO_Desc.DepthStencilState			   = NoDepthState;
+				PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+				PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements)/sizeof(InputElements[0]) };
+				PSO_Desc.DSVFormat					   = DXGI_FORMAT_D32_FLOAT;
+				PSO_Desc.RasterizerState.FillMode = D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
+			}
+
+
+			ID3D12PipelineState* PSO = nullptr;
+			auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
+			return PSO;
+		}
+
+		return nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* LoadTerrainPSO_CULL(RenderSystem* RS)
+	{
+		auto ShaderVS = LoadShader("VPassThrough", "VPassThrough", "vs_5_0", "assets\\tvshader.hlsl");
+		auto ShaderGS = LoadShader("GS_Split", "GS_Split", "gs_5_0", "assets\\tvshader.hlsl");
+		auto RootSig  = RS->Library.RS4CBVs_SO;
+
+
+		FINALLY
+			Release(&ShaderVS);
+			Release(&ShaderGS);
+		FINALLYOVER;
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] =
+		{
+			{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+		/*
+		typedef struct D3D12_SO_DECLARATION_ENTRY
+		{
+		UINT Stream;
+		LPCSTR SemanticName;
+		UINT SemanticIndex;
+		BYTE StartComponent;
+		BYTE ComponentCount;
+		BYTE OutputSlot;
+		} 	D3D12_SO_DECLARATION_ENTRY;
+		*/
+
+		D3D12_SO_DECLARATION_ENTRY SO_Entries[] = {
+			{ 0, "REGION",		0, 0, 4, 0 },
+			{ 0, "TEXCOORD",	0, 0, 4, 0 },
+			{ 0, "TEXCOORD",	1, 0, 4, 0 },
+			{ 0, "TEXCOORD",	2, 0, 4, 0 },
+			{ 1, "REGION",		0, 0, 4, 1 },
+			{ 1, "TEXCOORD",	0, 0, 4, 1 },
+			{ 1, "TEXCOORD",	1, 0, 4, 1 },
+			{ 1, "TEXCOORD",	2, 0, 4, 1 },
+		};
+
+		UINT Strides = sizeof(Landscape::ViewableRegion);
+		UINT SO_Strides[] = {
+			Strides,
+			Strides,
+			Strides,
+			Strides,
+		};
+
+		D3D12_STREAM_OUTPUT_DESC SO_Desc = {};{
+			SO_Desc.NumEntries		= 8;
+			SO_Desc.NumStrides		= 4;
+			SO_Desc.pBufferStrides	= SO_Strides;
+			SO_Desc.pSODeclaration	= SO_Entries;
+		}
+
+		D3D12_SHADER_BYTECODE GCode = { ShaderGS.Blob->GetBufferPointer(),  ShaderGS.Blob->GetBufferSize() };
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature                = RootSig;
+			PSO_Desc.VS                            = { (BYTE*)ShaderVS.Blob->GetBufferPointer(), ShaderVS.Blob->GetBufferSize() };
+			PSO_Desc.GS                            = GCode;
+			PSO_Desc.SampleMask                    = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+			PSO_Desc.NumRenderTargets              = 0;
+			PSO_Desc.SampleDesc.Count              = 1;
+			PSO_Desc.SampleDesc.Quality            = 0;
+			PSO_Desc.RasterizerState               = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+			PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements) / sizeof(InputElements[0]) };
+			PSO_Desc.DepthStencilState.DepthEnable = false;
+			PSO_Desc.StreamOutput				   = SO_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
+		return  PSO;
+	}
+
+	/************************************************************************************************/
+
+	// OLD
 	void LoadTerrainPipelineStates(RenderSystem* RS, Landscape* out, bool AssertOnFail)
 	{
 		auto ShaderVS             = LoadShader("VPassThrough",			"VPassThrough",			 "vs_5_0", "assets\\tvshader.hlsl");
@@ -341,15 +666,15 @@ namespace FlexKit
 		*/
 
 		FINALLY
-			Destroy(&ShaderVS);
-			Destroy(&ShaderGS);
-			Destroy(&ShaderRegion2Tri);
-			Destroy(&ShaderRegion2Quad);
-			Destroy(&ShaderQuad2Tri);
-			Destroy(&ShaderQuad2Tri_Debug);
-			Destroy(&ShaderPaint);
-			Destroy(&ShaderPaint_Debug);
-			Destroy(&ShaderPaint_Wire);
+			Release(&ShaderVS);
+			Release(&ShaderGS);
+			Release(&ShaderRegion2Tri);
+			Release(&ShaderRegion2Quad);
+			Release(&ShaderQuad2Tri);
+			Release(&ShaderQuad2Tri_Debug);
+			Release(&ShaderPaint);
+			Release(&ShaderPaint_Debug);
+			Release(&ShaderPaint_Wire);
 		FINALLYOVER;
 
 		// PSO Creation
@@ -513,6 +838,7 @@ namespace FlexKit
 			SplitState = PSO;
 		}
 
+		/*
 		if (SplitState && GenerateState &&  GenerateStateDebug && WireFrameState)
 		{	// All Loads Sucessfull
 			// Swap States
@@ -528,18 +854,18 @@ namespace FlexKit
 		}
 		else if (AssertOnFail)
 			FK_ASSERT(false, "FAILED TO CREATE TERRAIN STATE!");
-
-
+		*/
 	}
 
 
 	void InitiateLandscape( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* out )
 	{
+		/*
 		out->SplitState         = nullptr;
 		out->GenerateState      = nullptr;
 		out->GenerateStateDebug = nullptr;
 		out->WireFrameState     = nullptr;
-
+		*/
 
 		out->Albedo				= {1, 1, 1, .5};
 		out->Specular			= {1, 1, 1, 1};
@@ -550,7 +876,17 @@ namespace FlexKit
 		out->HeightMap			= desc->HeightMap;
 
 
-		LoadTerrainPipelineStates(RS, out);
+		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_PSO,		LoadTerrainPSO_Generate			);
+		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO,	LoadTerrainPSO_GenerateDebug	);
+		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG,	LoadTerrainPSO_WireDebug		);
+		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_CULL_PSO,		LoadTerrainPSO_CULL				);
+
+		QueuePSOLoad( RS, TERRAIN_DRAW_PSO );
+		QueuePSOLoad( RS, TERRAIN_DRAW_WIRE_PSO );
+		QueuePSOLoad( RS, TERRAIN_DRAW_PSO_DEBUG );
+		QueuePSOLoad( RS, TERRAIN_CULL_PSO );
+
+		GetPSO(RS, TERRAIN_DRAW_PSO);
 
 		// Create Resources
 		{
@@ -631,6 +967,8 @@ namespace FlexKit
 					&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
 					IID_PPV_ARGS(&Resource));
 
+				SETDEBUGNAME(Resource, "Landscape Rendering Constant Buffer");
+
 				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
 				out->ZeroValues = Resource;
 
@@ -668,11 +1006,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpTerrain(SceneNodes* Nodes, Landscape* ls)
+	void ReleaseTerrain(SceneNodes* Nodes, Landscape* ls)
 	{
 		ls->RegionBuffers[0].Release();
 		ls->RegionBuffers[1].Release();
 		ls->Regions.Release();
+
+		Release(ls->HeightMap);
 
 		if ( ls->CommandSignature )	 ls->CommandSignature->Release();	ls->CommandSignature = nullptr;
 		if ( ls->ZeroValues )		 ls->ZeroValues->Release();			ls->ZeroValues		 = nullptr;
@@ -683,10 +1023,12 @@ namespace FlexKit
 		if ( ls->SOCounter_2 )		 ls->SOCounter_2.Release();
 		if ( ls->FB_Counter )		 ls->FB_Counter.Release();
 
+		/*
 		if ( ls->GenerateStateDebug) ls->GenerateStateDebug->Release();
 		if ( ls->GenerateState )	 ls->GenerateState->Release();
 		if ( ls->WireFrameState)	 ls->WireFrameState->Release();
 		if ( ls->SplitState )		 ls->SplitState->Release();
+		*/
 
 		if ( ls->SOQuery ) ls->SOQuery.Release();
 

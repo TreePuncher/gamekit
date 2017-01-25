@@ -424,6 +424,8 @@ namespace FlexKit
 			float x, y;
 		};
 
+		float Product() { return x * y;	}
+
 		float XY[2];
 
 	};
@@ -1419,8 +1421,13 @@ namespace FlexKit
 		template< typename Ty >
 		static float3 toVector3( Ty& Convert ) { return Vect3( Convert.x, Convert.y, Convert.z ); }
 
-		template< typename Ty > Ty Vect3To( const Vect3& Convert )	{ return {Convert[0], Convert[1], Convert[2]}; }
-		template< typename Ty >	Ty Vect4To( const Vect4& Convert )	{ return {Convert[0], Convert[1], Convert[2], Convert[3]}; }
+		template< typename Ty > Ty Vect3To( const Vect3& Convert )	{ return Ty{Convert[0], Convert[1], Convert[2]}; }
+		template< typename Ty >	Ty Vect4To( const Vect4& Convert )	{ return Ty{Convert[0], Convert[1], Convert[2], Convert[3]}; }
+
+		template< typename Ty_Out, typename Ty_2>	Ty_Out Vect2To( const Ty_2& Convert) { return Ty_Out{ Convert[0], Convert[1] }; }
+
+		template<typename TY>
+		float2 Vect2TOfloat2(Vect<2, TY> Convert) { return float2{ (float)Convert[0], (float)Convert[1] }; }
 	}
 
 

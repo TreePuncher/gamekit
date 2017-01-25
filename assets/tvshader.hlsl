@@ -40,11 +40,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MinScreenSpan 0.005f
 #define MaxScreenSpan 0.05f
 
-#define MinSpan 8
-#define MaxSpan	512
+#define MinSpan 16
+#define MaxSpan	2048
 	  
 
-#define TerrainHeight 4096
+#define TerrainHeight 512
 
 // Constant Buffers
 // ---------------------------------------------------------------------------
@@ -103,17 +103,20 @@ sampler NearestPoint   : register(s1);
 
 struct VertexIn
 {
-	int4    POS 	: REGION;
-	int4    Parent	: TEXCOORD0;
-    float4  UVCords : TEXCOORD1;
+	int4    POS 	        : REGION;
+	int4    Parent	        : TEXCOORD0;
+    float4  UVCords         : TEXCOORD1;
+    float4  ParentUVCords   : TEXCOORD2;
 };
 
 
 struct Region_CP
 {
-	int4    POS     : REGION;
-	int4    Parent	: TEXCOORD0;
-    float4  UVCords : TEXCOORD1;
+	int4    POS             : REGION;
+	int4    Parent	        : TEXCOORD0;
+    float4  UVCords         : TEXCOORD1;
+    float4 ParentUVCords    : TEXCOORD2;
+
 };
 
 
@@ -147,9 +150,11 @@ struct PS_OUT
 
 struct SO_OUT
 {
-	int4 POS 	   : REGION;
-	int4 Parent	   : TEXCOORD;
-    float4 UVCords : TEXCOORD1;
+	int4 POS 	         : REGION;
+	int4 Parent	         : TEXCOORD;
+    float4 UVCords       : TEXCOORD1;
+    float4 ParentUVCords : TEXCOORD2;
+
 };
 
 
@@ -162,6 +167,9 @@ bool CompareAgainstFrustum(float3 V, float r)
 	bool Far	= false;
 	bool Left	= false;
 	bool Right	= false;
+    bool Top    = false;
+    bool Bottom = false;
+
 
 	{
 		float3 P = V -	Frustum[EPlane_NEAR].Orgin.xyz;
@@ -195,8 +203,23 @@ bool CompareAgainstFrustum(float3 V, float r)
 		float D		= NdP - r;
 		Right		= D <= 0;
 	}
+    {
+        float3 P = V - Frustum[EPlane_TOP].Orgin.xyz;
+        float3 N =     Frustum[EPlane_TOP].Normal.xyz;
 
-	return !(Near & Far & Left & Right);
+        float NdP = -dot(N, P);
+        float D = NdP - r;
+        Top = D <= 0;
+    }
+    {
+        float3 P = V - Frustum[EPlane_BOTTOM].Orgin.xyz;
+        float3 N =     Frustum[EPlane_BOTTOM].Normal.xyz;
+
+        float NdP = -dot(N, P);
+        float D = NdP - r;
+        Bottom  = D <= 0;
+    }
+	return !(Near & Far & Left & Right & Bottom);
 }
 
 
@@ -212,11 +235,14 @@ float3 GetTopLeftPoint(Region_CP CP)
     float2 UV_BR = CP.UVCords.zw;
     float2 UV_Span = UV_BR - UV_TL;
 
-    //float y = HeightMap.Gather(DefaultSampler, UV_TL) * TerrainHeight - 0.1f - TerrainHeight;
+    float2 UV = UV_TL;
+    float y = 0;
+    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
 
 	Out.x = CP.POS.x - offset;
-    Out.y = CP.POS.y;
+    Out.y = y;
 	Out.z = CP.POS.z + offset;
+
 
 	return Out;
 }
@@ -225,10 +251,19 @@ float3 GetTopRightPoint(Region_CP CP)
 {
 	float3 Out = float3(0, 0, 0);
 	float offset = float(CP.POS.w);
+    float2 UV_TL = CP.UVCords.xy;
+    float2 UV_BR = CP.UVCords.zw;
+    float2 UV_Span = UV_BR - UV_TL;
+
+    float2 UV = UV_TL + float2(UV_Span.x, 0.0f);
+    float y = 0;
+    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
 
 	Out.x = CP.POS.x + offset;
-    Out.y = CP.POS.y;
+    Out.y = y;
 	Out.z = CP.POS.z + offset;
+
+
 
 	return Out;
 }
@@ -237,10 +272,18 @@ float3 GetBottomLeftPoint(Region_CP CP)
 {
 	float3 Out = float3(0, 0, 0);
 	float offset = float(CP.POS.w);
+    float2 UV_TL = CP.UVCords.xy;
+    float2 UV_BR = CP.UVCords.zw;
+    float2 UV_Span = UV_BR - UV_TL;
+
+    float2 UV = UV_BR - float2(UV_Span.x, 0.0f);
+    float y = 0;
+    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
 
 	Out.x = CP.POS.x - offset;
-    Out.y = CP.POS.y;
+    Out.y = y;
 	Out.z = CP.POS.z - offset;
+
 
 	return Out;
 }
@@ -249,10 +292,18 @@ float3 GetBottomRightPoint(Region_CP CP)
 {
 	float3 Out = float3(0, 0, 0);
 	float offset = float(CP.POS.w);
+    float2 UV_TL = CP.UVCords.xy;
+    float2 UV_BR = CP.UVCords.zw;
+    float2 UV_Span = UV_BR - UV_TL;
+
+    float2 UV = UV_BR;
+    float y = 0;
+    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
 
 	Out.x = CP.POS.x + offset;
-    Out.y = CP.POS.y;
+    Out.y = y;
 	Out.z = CP.POS.z - offset;
+
 
 	return Out;
 }
@@ -264,9 +315,11 @@ float3 GetBottomRightPoint(Region_CP CP)
 Region_CP VPassThrough( VertexIn IN )
 {
 	Region_CP OUT;
-	OUT.POS 	= IN.POS;
-	OUT.Parent	= IN.Parent;
-    OUT.UVCords = IN.UVCords;
+	OUT.POS 	      = IN.POS;
+	OUT.Parent	      = IN.Parent;
+    OUT.UVCords       = IN.UVCords;
+    OUT.ParentUVCords = IN.ParentUVCords;
+
 
 	return OUT;
 }
@@ -277,10 +330,10 @@ Region_CP VPassThrough( VertexIn IN )
 
 float GetRegionSpan(Region_CP CP)
 {
-	float4 TL = mul(Proj, mul(View, float4(GetTopLeftPoint(CP) * float3(1, 0, 1), 1)));
-    float4 TR = mul(Proj, mul(View, float4(GetTopRightPoint(CP) * float3(1, 0, 1), 1)));
+	float4 TL = mul(Proj, mul(View, float4(GetTopLeftPoint(CP)     * float3(1, 0, 1), 1)));
+    float4 TR = mul(Proj, mul(View, float4(GetTopRightPoint(CP)    * float3(1, 0, 1), 1)));
 
-    float4 BL = mul(Proj, mul(View, float4(GetBottomLeftPoint(CP) * float3(1, 0, 1), 1)));
+    float4 BL = mul(Proj, mul(View, float4(GetBottomLeftPoint(CP)  * float3(1, 0, 1), 1)));
     float4 BR = mul(Proj, mul(View, float4(GetBottomRightPoint(CP) * float3(1, 0, 1), 1)));
 
 	float3 TLSS = (TL.xyz / TL.w);
@@ -299,7 +352,6 @@ float GetRegionSpan(Region_CP CP)
 
 bool SplitRegion(Region_CP CP)
 {
-    //return (GetRegionSpan(R) > MaxScreenSpan);
     return (CP.POS.w > MaxSpan) || (MinSpan < CP.POS.w && GetRegionSpan(CP) > MaxScreenSpan);
 }
 
@@ -328,8 +380,9 @@ Region_CP MakeTopLeft(Region_CP IN)
     float2 UVWH     = (UVBR - UVTL) / 2; // Width Height of New Tile UV
     float2 UVCenter = (UVBR + UVTL) / 2; // Center of Parent
 
-	R.Parent  = IN.POS;
-    R.UVCords = float4(UVCenter - UVWH, UVCenter); //  {{Top Left}, {Bottom Right}}
+	R.Parent        = IN.POS;
+    R.ParentUVCords = IN.UVCords;
+    R.UVCords       = float4(UVCenter - UVWH, UVCenter); //  {{Top Left}, {Bottom Right}}
 
 	R.POS 	= IN.POS;
 	R.POS.x = R.POS.x + offset;
@@ -350,8 +403,9 @@ Region_CP MakeTopRight(Region_CP IN)
     float2 UVBR     = IN.UVCords.zw;
     float2 UVWH     = (UVBR - UVTL)/2;
     float2 UVCenter = (UVBR + UVTL)/2;
-
-	R.Parent  = IN.POS;
+    
+	R.Parent        = IN.POS;
+    R.ParentUVCords = IN.UVCords;
     R.UVCords = float4(UVCenter + UVWH * float2(0, -1), UVCenter + UVWH * float2(1, 0)); //  {{Top Left}, {Bottom Right}}
 
 	R.POS 	= IN.POS;
@@ -374,8 +428,9 @@ Region_CP MakeBottomLeft(Region_CP IN)
     float2 UVWH     = (UVBR - UVTL)/2;
     float2 UVCenter = (UVBR + UVTL)/2;
 
-    R.Parent  = IN.POS;
-    R.UVCords = float4(UVCenter - UVWH * float2(1, 0), UVCenter + UVWH * float2(0, 1));
+    R.Parent        = IN.POS;
+    R.ParentUVCords = IN.UVCords;
+    R.UVCords       = float4(UVCenter - UVWH * float2(1, 0), UVCenter + UVWH * float2(0, 1));
 
     R.POS   = IN.POS;
     R.POS.x = R.POS.x + offset;
@@ -397,8 +452,9 @@ Region_CP MakeBottomRight(Region_CP IN)
     float2 UVWH     = (UVBR - UVTL) / 2;
     float2 UVCenter = (UVBR + UVTL) / 2;
 
-	R.Parent  = IN.POS;
-    R.UVCords = float4(UVCenter, UVCenter + UVWH); //  {{Top Left}, {Bottom Right}}
+	R.Parent        = IN.POS;
+    R.ParentUVCords = IN.UVCords;
+    R.UVCords       = float4(UVCenter, UVCenter + UVWH); //  {{Top Left}, {Bottom Right}}
 
 	R.POS 	= IN.POS;
 	R.POS.x = R.POS.x - offset;
@@ -418,7 +474,9 @@ Region_CP MakeBottomRight(Region_CP IN)
 
 
 bool CullRegion(Region_CP R){ 
-	return CompareAgainstFrustum(R.POS.xyz, R.POS.w * 2);
+    float3 CenterPosition = R.POS.xyz;
+    CenterPosition.y = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + R.UVCords.zw) / 2);
+	return CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
 }
 
 
@@ -454,10 +512,10 @@ void GS_Split(
 
 struct HS_Corner
 {
-	float3 POS	  : POSITION;
-	float3 Normal : NORMAL;
-	float2 UV	  : TEXCOORD;
-	float  R	  : TEXCOORD1;
+	float3 POS	    : POSITION;
+	float3 Normal   : NORMAL;
+	float2 UV	    : TEXCOORD;
+	int    CornerID : TEXCOORD1;
 };
 
 
@@ -541,7 +599,7 @@ float   ExpansionRate   (float x)     { return pow(x, 1); }
 
 
 // Hull Shader - Per Control Point
-RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
+RegionTessFactors ScreenSpaceFactors(InputPatch<Region_CP, 1> ip)
 {
 	RegionTessFactors factors;
 
@@ -561,7 +619,8 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
 	float3 BottomLeftPoint	= GetBottomLeftPoint(ip[0]);
 	float3 BottomRightPoint = GetBottomRightPoint(ip[0]);
 
-    float4 Factors   = float4(8.0f, 8.0f, 8.0f, 8.0f); // {Right, Top, Left, Bottom}
+    float BaseFactor = 8;
+    float4 Factors   = float4(BaseFactor, BaseFactor, BaseFactor, BaseFactor); // {Right, Top, Left, Bottom}
     float4 EdgeSpans =
     {
         GetEdgeSpan_SS(TopLeftPoint, BottomLeftPoint),      // Left Edge
@@ -594,10 +653,14 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
     }
     */
 
+    float2 UVSpan       = ip[0].UVCords.zw - ip[0].UVCords.xy;
+    float2 ParentUVSpan = ip[0].ParentUVCords.zw - ip[0].ParentUVCords.xy;
+
     //if (RegionWidth > MaxSpan)
     //    Factors = float4(8, 8, 8, 8);
 
-    const float BoundaryFactor = 4;
+    const float BoundaryFactor = 2;
+
 
     if (ip[0].POS.y == TopRight || ip[0].POS.y == TopLeft) // Grey, Red
     {
@@ -608,12 +671,19 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
         Neighbor_Direct_1.POS.z += RegionWidth; // Northern Neighbor
         Neighbor_Direct_2.POS.z -= RegionWidth; // Southern Neighbor
 
+        //Neighbor_Parent.UVCords  = ip[0].ParentUVCords;
+        //Neighbor_Parent.UVCords += float4(ParentUVSpan, ParentUVSpan) * float4(0, -1, 0, -1);
+
+        //Neighbor_Direct_1.UVCords += float4(UVSpan, UVSpan) * float4(0,  1, 0,  1);
+        //Neighbor_Direct_2.UVCords += float4(UVSpan, UVSpan) * float4(0,  1, 0,  1);
+
+
         if (SplitRegion(Neighbor_Parent) && SplitRegion(Neighbor_Direct_1))
         {
-            Factors[1] *= 2;
+            Factors[1] *= BoundaryFactor;
         }
         if (SplitRegion(Neighbor_Direct_2))
-            Factors[3] *= 2;
+            Factors[3] *= BoundaryFactor;
     }
 
     if (ip[0].POS.y == BottomLeft || ip[0].POS.y == BottomRight) // Blue, Green
@@ -625,12 +695,18 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
         Neighbor_Direct_1.POS.z -= RegionWidth; // Southern Neighbor
         Neighbor_Direct_2.POS.z += RegionWidth; // Southern Neighbor
 
+        //Neighbor_Parent.UVCords  = ip[0].ParentUVCords;
+        //Neighbor_Parent.UVCords += float4(ParentUVSpan, ParentUVSpan) * float4(0, 1, 0, 1);
+
+        //Neighbor_Direct_1.UVCords += float4(UVSpan, UVSpan) * float4(0, -1, 0, -1);
+        //Neighbor_Direct_2.UVCords += float4(UVSpan, UVSpan) * float4(0, -1, 0, -1);
+
         if (SplitRegion(Neighbor_Parent) && SplitRegion(Neighbor_Direct_1))
         {
-            Factors[3] *= 2;
+            Factors[3] *= BoundaryFactor;
         } 
         if(SplitRegion(Neighbor_Direct_2))
-            Factors[1] *= 2;
+            Factors[1] *= BoundaryFactor;
     }
 
     if (ip[0].POS.y == TopRight || ip[0].POS.y == BottomRight) // Right Side
@@ -642,11 +718,17 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
         Neighbor_Direct_1.POS.x -= RegionWidth;
         Neighbor_Direct_2.POS.x += RegionWidth;
 
+        //Neighbor_Parent.UVCords  = ip[0].ParentUVCords;
+        //Neighbor_Parent.UVCords += float4(ParentUVSpan, ParentUVSpan) * float4(-1, 0, -1, 0);
+
+        //Neighbor_Direct_1.UVCords += float4(UVSpan, UVSpan) * float4(1, 0, 1, 0);
+        //Neighbor_Direct_2.UVCords += float4(UVSpan, UVSpan) * float4(1, 0, 1, 0);
+
         if (SplitRegion(Neighbor_Parent) && SplitRegion(Neighbor_Direct_1)){
-            Factors[0] *= 2;
+            Factors[0] *= BoundaryFactor;
         }
         if (SplitRegion(Neighbor_Direct_2))
-            Factors[2] *= 2;
+            Factors[2] *= BoundaryFactor;
     }
 
     if (ip[0].POS.y == TopLeft || ip[0].POS.y == BottomLeft) // Left
@@ -658,11 +740,17 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
         Neighbor_Direct_1.POS.x += RegionWidth;
         Neighbor_Direct_2.POS.x -= RegionWidth;
 
+        //Neighbor_Parent.UVCords  = ip[0].ParentUVCords;
+        //Neighbor_Parent.UVCords += float4(ParentUVSpan, ParentUVSpan) * float4( 1, 0, 1, 0);
+
+        //Neighbor_Direct_1.UVCords += float4(UVSpan, UVSpan) * float4(-1, 0, -1, 0);
+        //Neighbor_Direct_2.UVCords += float4(UVSpan, UVSpan) * float4(-1, 0, -1, 0);
+
         if (SplitRegion(Neighbor_Parent) && SplitRegion(Neighbor_Direct_1)){
-            Factors[2] *= 2;
+            Factors[2] *= BoundaryFactor;
         }
         if (SplitRegion(Neighbor_Direct_2))
-            Factors[0] *= 2;
+            Factors[0] *= BoundaryFactor;
     }
     
     float MaxSubFactor    = 32;
@@ -688,7 +776,7 @@ RegionTessFactors ConstantFactors(InputPatch<Region_CP, 1> ip)
 [partitioning("fractional_even")]
 [outputtopology("triangle_ccw")]
 [outputcontrolpoints(4)]
-[patchconstantfunc("ConstantFactors")]
+[patchconstantfunc("ScreenSpaceFactors")]
 [maxtessfactor(64.0f)]
 HS_Corner RegionToQuadPatch(
 	InputPatch<Region_CP, 1> ip,
@@ -723,7 +811,7 @@ HS_Corner RegionToQuadPatch(
         Output.UV = UV_BR - float2(UV_Span.x, 0.0f);
     }
 
-	Output.R = ip[0].POS.w;
+	Output.CornerID = ip[0].POS.y;
 
 	return Output;
 }
@@ -763,15 +851,14 @@ PS_Colour_IN QuadPatchToTris(
 
 
     float y = 0;
-    /*
-	{
-		float y1 = bezPatch[TopLeft].POS.y;
-		float y2 = bezPatch[TopRight].POS.y;
-		float y3 = bezPatch[BottomLeft].POS.y;
-		float y4 = bezPatch[BottomRight].POS.y;
-        y = lerp( lerp(y1, y2, uv[0]), lerp(y3, y4, uv[0]), uv[1]);
+    {
+        float y1 = bezPatch[TopLeft].POS.y;
+        float y2 = bezPatch[TopRight].POS.y;
+        float y3 = bezPatch[BottomLeft].POS.y;
+        float y4 = bezPatch[BottomRight].POS.y;
+        //y = lerp(lerp(y1, y2, 1 - uv[0]), lerp(y3, y4, 1 - uv[0]), uv[1]);
     }
-    */
+
     float2 UV = float2(lerp(bezPatch[TopLeft].UV.x, bezPatch[TopRight].UV.x,   1 - uv[0]),
                         lerp(bezPatch[TopLeft].UV.y, bezPatch[BottomLeft].UV.y, uv[1]));
 
@@ -805,29 +892,27 @@ PS_Colour_IN QuadPatchToTris_DEBUG(
 
     float x = lerp(LeftMostX, RightMostX, uv[0]);
     float z = lerp(Topz, Bottomz, uv[1]);
+    float y = 1.0f;
+    //bezPatch[TopLeft].POS.y;
 
-
-    float y = 0;
-    /*
 	{
 		float y1 = bezPatch[TopLeft].POS.y;
 		float y2 = bezPatch[TopRight].POS.y;
 		float y3 = bezPatch[BottomLeft].POS.y;
 		float y4 = bezPatch[BottomRight].POS.y;
-        y = lerp( lerp(y1, y2, uv[0]), lerp(y3, y4, uv[0]), uv[1]);
+        y = lerp( lerp(y1, y2, 1 - uv[0]), lerp(y3, y4, 1 - uv[0]), uv[1]) + 1.0f;
     }
-    */
 
-    float2 UV = float2(lerp(bezPatch[TopLeft].UV.x, bezPatch[TopRight].UV.x,   1 - uv[0]),
+    float2 UV = float2(lerp(bezPatch[TopLeft].UV.x, bezPatch[TopRight].UV.x, 1 - uv[0]),
                        lerp(bezPatch[TopLeft].UV.y, bezPatch[BottomLeft].UV.y, uv[1]));
 
     y = HeightMap.Gather(NearestPoint, UV) * TerrainHeight - 0.1f - TerrainHeight;
 
     float4 WPOS = float4(x, y, z, 1.0f);
 
-    Point.WPOS = WPOS.xyz;
-    Point.N = float4(0, 1, 0, 0.0f);
-    Point.POS = mul(Proj, mul(View, WPOS));
+    Point.WPOS  = WPOS.xyz;
+    Point.N     = float4(0, 1, 0, 0.0f);
+    Point.POS   = mul(Proj, mul(View, WPOS));
 
     float t = 1 - y * 1 / -TerrainHeight;
 
@@ -836,7 +921,7 @@ PS_Colour_IN QuadPatchToTris_DEBUG(
     //Point.Colour = float3(t, t, t);
     Point.Colour = float3(UV.x, UV.x, UV.x);
 #else
-    int TileID = bezPatch[TopLeft].POS.y;
+    int TileID = bezPatch[TopLeft].CornerID;
     if (TileID == TopLeft)
         Point.Colour = float3(.5, .5, .5);
 
@@ -849,7 +934,7 @@ PS_Colour_IN QuadPatchToTris_DEBUG(
     if (TileID == BottomRight)
         Point.Colour = float3(0, 0, 1);
 #endif
-    Point.Colour *= t * t;
+    //Point.Colour *= t * t;
 
     return Point;
 }

@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSX				ON
 #define PHYSXREMOTEDB		ON
 #define DEBUGALLOCATOR		OFF
-#define DEBUGGRAPHICS		OFF
+#define DEBUGGRAPHICS		ON
 #define DEBUGHANDLES		OFF
 #define FATALERROR			OFF
 #define EDITSHADERCONTINUE	ON
@@ -170,6 +170,14 @@ auto BuildFinal(FN_TYPE FN) -> FINAL_CONTAINER<decltype(FN)> { return FINAL_CONT
 #else
 #define DEBUGBLOCK(A)
 #endif
+
+template<typename TY>
+inline void NullCheck(TY* _ptr)
+{
+#ifdef _DEBUG
+	FK_ASSERT(_ptr != nullptr, "NULLCHECK FAILED!");
+#endif
+}
 
 static const size_t gCORECOUNT	= 4;
 static const size_t KILOBYTE	= 1024; 
