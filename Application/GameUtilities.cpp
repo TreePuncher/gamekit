@@ -30,33 +30,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace FlexKit;
 
-void CleanUpEngine(EngineMemory* Game)
+void ReleaseEngine(EngineMemory* Engine)
 {
-	using FlexKit::Destroy;
+	using FlexKit::Release;
 	using FlexKit::PrintBlockStatus;
 
 #if USING(PHYSX)
-	CleanupPhysics( &Game->Physics );
+	CleanupPhysics( &Engine->Physics );
 #endif
 	
+	ReleaseForwardPass	( &Engine->ForwardRender  );
+	ReleaseDeferredPass	( &Engine->DeferredRender );
 
-	Destroy( &Game->DepthBuffer );
-	Destroy( &Game->Window );
-	Destroy( &Game->GShader );
-	Destroy( &Game->PShader );
-	Destroy( &Game->NormalMappedPShader );
-	Destroy( &Game->VShader );
-	Destroy( &Game->V2Shader );
-	Destroy( &Game->VPShader );
-	Destroy( &Game->VertexPalletSkinning );
-	Destroy( &Game->GTextRendering );
-	Destroy( &Game->PTextRendering );
-	Destroy( &Game->VTextRendering );
-	CleanUp( &Game->RenderSystem );
+	Release( &Engine->DepthBuffer );
+	Release( &Engine->Window );
+	CleanUp( &Engine->RenderSystem );
 
-	FreeGeometryTable(&Game->Geometry);
 
-	DEBUGBLOCK(PrintBlockStatus(&Game->BlockAllocator));
+	ReleaseGeometryTable( &Engine->Geometry );
+
+	DEBUGBLOCK(PrintBlockStatus(&Engine->BlockAllocator));
 }
 
 
@@ -113,21 +106,6 @@ void CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, boo
 /************************************************************************************************/
 
 
-void LoadShaders(EngineMemory* Game)
-{
-	Game->VShader				= LoadShader( "VMain",				"VMain",				"vs_5_0", "assets\\vshader.hlsl" );
-	Game->V2Shader				= LoadShader( "V2Main",				"V2Main",				"vs_5_0", "assets\\vshader.hlsl" );
-	Game->VPShader				= LoadShader( "VMain",				"StaticMeshBatcher",	"vs_5_0", "assets\\StaticMeshBatcher.hlsl" );
-	Game->GShader				= LoadShader( "VMainVertexPallet",	"VMainVertexPallet",	"vs_5_0", "assets\\vshader.hlsl" );
-	Game->PShader				= LoadShader( "PMain",				"PMain",				"ps_5_0", "assets\\pshader.hlsl" );
-	Game->NormalMappedPShader	= LoadShader( "PMainNormalMapped",	"PMainNormalMapped",	"ps_5_0", "assets\\pshader.hlsl" );
-	Game->GShader				= LoadShader( "GSMain",				"GSMain",				"gs_5_0", "assets\\gshader.hlsl" );
-}
-
-
-/************************************************************************************************/
-
-
 void InitiateCoreSystems(EngineMemory* Engine)
 {
 	using FlexKit::CreateDepthBuffer;
@@ -136,22 +114,49 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass;
 	using FlexKit::ForwardPass_DESC;
 
-	uint32_t width	 = 1920;
-	uint32_t height	 = 1080;
+	uint32_t width	 = 1000;
+	uint32_t height	 = 800;
 	bool InvertDepth = true;
 
 	Engine->Window.Close = false;
 	CreateRenderWindow	(  Engine, height, width, false );
 	CreateDepthBuffer	(  Engine->RenderSystem, { width, height }, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer, GetCurrentCommandList(Engine->RenderSystem) );
+
 	SetInputWIndow		( &Engine->Window );
 	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->BlockAllocator );
 
-	ForwardPass_DESC fd;
-	fd.OutputTarget = &Engine->Window;
-	fd.DepthBuffer  = &Engine->DepthBuffer;
+	ForwardPass_DESC FP_Desc{ &Engine->DepthBuffer, &Engine->Window };
+	DeferredPassDesc DP_Desc{ &Engine->DepthBuffer, &Engine->Window, nullptr };
+
+	InitiateForwardPass(Engine->RenderSystem,	&FP_Desc, &Engine->ForwardRender);
+	InitiateDeferredPass(Engine->RenderSystem,	&DP_Desc, &Engine->DeferredRender);
 
 	InitiateGeometryTable	( &Engine->Geometry, Engine->BlockAllocator );
 	Engine->Assets.ResourceMemory = &Engine->BlockAllocator;
+}
+
+
+/************************************************************************************************/
+
+
+float GetWindowAspectRatio(EngineMemory* Engine)
+{
+	FK_ASSERT(Engine);
+
+	float out = (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1];
+
+	return out;
+}
+
+
+/************************************************************************************************/
+
+
+uint2 GetWindowWH(EngineMemory* Engine)
+{
+	FK_ASSERT(Engine);
+	
+	return Engine->Window.WH;
 }
 
 
@@ -164,5 +169,57 @@ void InitEngine( EngineMemory* Engine )
 
 	InitiateEngineMemory( Engine );
 	InitiateCoreSystems ( Engine );
-	LoadShaders			( Engine );
 }
+
+
+/************************************************************************************************/
+
+
+void ClearMouseButtonStates(MouseInputState* State)
+{
+	State->LMB_Duration = 0;
+	State->RMB_Duration = 0;
+
+	State->LMB_Pressed = false;
+	State->RMB_Pressed = false;
+}
+
+
+
+/************************************************************************************************/
+
+
+void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
+{
+	using FlexKit::int2;
+
+	if (!State->Enabled) {
+		State->dPos = { 0, 0 };
+		return;
+	}
+
+	if (GetForegroundWindow() == Window->hWindow)
+	{
+
+		State->dPos = GetMousedPos(Window);
+		State->Position.x -= State->dPos[0];
+		State->Position.y += State->dPos[1];
+
+		State->Position[0] = max(0, min(State->Position[0], Window->WH[0]));
+		State->Position[1] = max(0, min(State->Position[1], Window->WH[1]));
+
+		State->NormalizedPos[0] = max(0, min(State->Position[0] / Window->WH[0], 1));
+		State->NormalizedPos[1] = max(0, min(State->Position[1] / Window->WH[1], 1));
+
+		SetSystemCursorToWindowCenter(Window);
+		ShowCursor(false);
+	}
+	else
+	{
+		ShowCursor(true);
+		State->Enabled = false;
+	}
+}
+
+
+/************************************************************************************************/

@@ -475,6 +475,8 @@ namespace FlexKit
 		TextureOut->WH			 = WH;
 		TextureOut->MipMapLevels = MipLevels;
 		TextureOut->Format		 = Format;
+		SetDebugName(TextureOut->Texture, File, strnlen(File, 256));
+
 		AddTempBuffer(UploadHeap, RS);
 
 		return {TextureOut, res};

@@ -35,6 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment( lib, "dxgi.lib")
 #pragma comment( lib, "dxguid.lib")
 
+#include "PipelineState.h"
+
 #include "..\PCH.h"
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
@@ -95,6 +97,8 @@ namespace FlexKit
 #else
 #define SETDEBUGNAME(RES, ID) 
 #endif
+
+#define SAFERELEASE(RES) if(RES) { RES->Release(); RES = nullptr; }
 
 
 	/************************************************************************************************/
@@ -905,6 +909,8 @@ namespace FlexKit
 			ID3D12RootSignature* RS4CBVs_SO;		// Stream Out Enabled
 		}Library;
 
+		PipelineStateTable* States;
+
 		operator RenderSystem* ( ) { return this; }
 	};
 
@@ -1363,7 +1369,7 @@ namespace FlexKit
 			XMMATRIX	PV;			// Projection x View
 			XMMATRIX	PVW;		// Projection x View x World Transform
 			XMMATRIX	IV;			// Inverse Transform
-			float3		WPOS;
+			float4		WPOS;
 			float		MinZ;
 			float		MaxZ;
 			uint32_t	PointLightCount;
@@ -1421,7 +1427,7 @@ namespace FlexKit
 	struct Vertex 
 	{
 		void Clear() { xyz ={0.0f, 0.0f, 0.0f}; }
-    
+	
 		void AddWithWeight(Vertex const &src, float weight) 
 		{
 			xyz.x += weight * src.xyz.x;
@@ -1514,7 +1520,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void							InitiateGeometryTable	( GeometryTable* GT, iAllocator* Memory );
-	FLEXKITAPI void							FreeGeometryTable		( GeometryTable* GT );
+	FLEXKITAPI void							ReleaseGeometryTable	( GeometryTable* GT );
 
 	FLEXKITAPI void							AddRef					( GeometryTable* GT, TriMeshHandle  TMHandle );
 	FLEXKITAPI void							ReleaseMesh				( GeometryTable* GT, TriMeshHandle  TMHandle );
@@ -1991,15 +1997,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	
-	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + (float(X) / Dimensions[x]), 1.0f -  (float(Y) / Dimensions[y])	}; } // Assumes screen boundaries are -1 and 1
+	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + (float(X)	   / Dimensions[0]), 1.0f - (float(Y)	  / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
+	inline float2 PixelToSS(uint2 XY, uint2 Dimensions)			  { return { -1.0f + (float(XY[0]) / Dimensions[0]), 1.0f - (float(XY[1]) / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
 
 	FLEXKITAPI VertexBuffer::BuffEntry* GetBuffer( VertexBuffer*, VERTEXBUFFER_TYPE ); // return nullptr if not found
 	
 	FLEXKITAPI void	InitiateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* out, float AspectRatio = 1.0f, float Near = 0.01, float Far = 10000.0f, bool invert = false );
-	FLEXKITAPI void	InitiateRenderSystem( Graphics_Desc* desc_in, RenderSystem* );
+	FLEXKITAPI bool	InitiateRenderSystem( Graphics_Desc* desc_in, RenderSystem* );
 
 	FLEXKITAPI void	CleanUp			( RenderSystem* System );
-	FLEXKITAPI void	CleanUpCamera	( SceneNodes* Nodes, Camera* camera );
+	FLEXKITAPI void	ReleaseCamera	( SceneNodes* Nodes, Camera* camera );
 
 	
 	/************************************************************************************************/
@@ -2073,14 +2080,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void	Destroy( ConstantBuffer		);
-	FLEXKITAPI void	Destroy( Texture2D			);
-	FLEXKITAPI void	Destroy( RenderWindow*		);
-	FLEXKITAPI void	Destroy( VertexBuffer*		);
-	FLEXKITAPI void	Destroy( Shader*			);
-	FLEXKITAPI void	Destroy( SpotLightBuffer*	);
-	FLEXKITAPI void	Destroy( PointLightBuffer*	);
-	FLEXKITAPI void Destroy( DepthBuffer*		);
+	FLEXKITAPI void	Release( ConstantBuffer		);
+	FLEXKITAPI void	Release( Texture2D			);
+	FLEXKITAPI void	Release( RenderWindow*		);
+	FLEXKITAPI void	Release( VertexBuffer*		);
+	FLEXKITAPI void	Release( Shader*			);
+	FLEXKITAPI void	Release( SpotLightBuffer*	);
+	FLEXKITAPI void	Release( PointLightBuffer*	);
+	FLEXKITAPI void Release( DepthBuffer*		);
 
 
 	/************************************************************************************************/
@@ -2182,6 +2189,8 @@ namespace FlexKit
 		uint2		BufferDimensions;
 		uint2		Position;
 		float2		ScreenPosition;
+		float2		CharacterScale;
+		uint2		ScreenWH; // Screen Width - In Pixels
 
 		ShaderResourceBuffer Buffer;
 
@@ -2194,14 +2203,14 @@ namespace FlexKit
 	struct TextArea_Desc
 	{
 		float2 POS;		// Screen Space Cord
-		float2 WH;		// Width, Height
-		float2 TextWH;	// Text Size
+		float2 WH;		// WH of Area Being Rendered to,		Percent of Screen
+		float2 CharWH;	// Size of Characters Being Rendered,	Percent of Screen
 	};
 
 	struct FontAsset
 	{
-		size_t	FontSize = 0;;
-		bool	Unicode = false;
+		uint2	FontSize = { 0, 0 };
+		bool	Unicode	 = false;
 
 		uint2			TextSheetDimensions;
 		Texture2D		Texture;
@@ -2409,7 +2418,7 @@ namespace FlexKit
 	FLEXKITAPI void PushLineSet( GUIRender* RG, Draw_LineSet_3D);
 	
 	FLEXKITAPI void InitiateDrawGUI		( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
-	FLEXKITAPI void CleanUpDrawGUI		( GUIRender* RG);
+	FLEXKITAPI void ReleaseDrawGUI		( GUIRender* RG);
 
 	FLEXKITAPI void Clear		( GUIRender* RG );
 	FLEXKITAPI void UploadGUI	( RenderSystem* RS, GUIRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);
@@ -2449,7 +2458,7 @@ namespace FlexKit
 	FLEXKITAPI void InitiateDeferredPass	( RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
 	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture );
 	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
-	FLEXKITAPI void CleanupDeferredPass		( DeferredPass* gb );
+	FLEXKITAPI void ReleaseDeferredPass		( DeferredPass* gb );
 	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
 
@@ -2494,7 +2503,7 @@ namespace FlexKit
 	
 	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardPass* out );
 	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
-	FLEXKITAPI void CleanupForwardPass		( ForwardPass* FP );
+	FLEXKITAPI void ReleaseForwardPass		( ForwardPass* FP );
 
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DescHeapPOS;
 
@@ -2533,7 +2542,7 @@ namespace FlexKit
 	FLEXKITAPI void SetScissor	( ID3D12GraphicsCommandList* CL, uint2  WH, uint2  Offset = {0, 0} );
 
 
-	inline float3	Gray( float P ) { P = min(max(0, P), 1); return float3(P, P, P); }
+	inline float3	Grey( float P ) { P = min(max(0, P), 1); return float3(P, P, P); }
 	
 
 	/************************************************************************************************/

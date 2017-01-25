@@ -36,7 +36,7 @@ void CleanupNetwork(Network* Net)
 	if (Net->isServer)
 		Net->Peer->Shutdown(0);
 
-	RakNet::RakPeerInterface::DestroyInstance(Net->Peer);
+	RakNet::RakPeerInterface::ReleaseInstance(Net->Peer);
 }
 
 /************************************************************************************************/

@@ -740,7 +740,7 @@ void Client(EngineMemory* Game, Network* net )
 		PlayGame(Game, net);
 
 	CleanUpPlayer(&Game->Player1, &Game->Nodes);
-	CleanUpEngine(Game);
+	ReleaseEngine(Game);
 	*/
 }
 

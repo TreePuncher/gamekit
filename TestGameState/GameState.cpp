@@ -36,8 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		Multi-threaded Texture Uploads
 //		Terrain Rendering
 //			Texture Splatting
-//			Height Mapping
-//			Geometry Generation - partially complete
 //		Occlusion Culling
 //		Animation State Machine
 //		(DONE/PARTLY) 3rd Person Camera Handler
@@ -358,18 +356,6 @@ float3 GetActorPosition(GameActor* Actor)
 /************************************************************************************************/
 
 
-struct MouseInputState
-{
-	int2	dPos			= {0, 0};
-	float2	Position		= {0, 0};
-	float2	NormalizedPos	= {0, 0};
-
-	bool LeftButtonPressed	= false;
-	bool RightButtonPressed	= false;
-	bool Enabled			= false;
-};
-
-
 void UpdateMouseCameraController(MouseCameraController* out, SceneNodes* Nodes, int2 MouseState)
 {
 	out->Pitch	= max	(min(out->Pitch + float(MouseState[1]) / 2, 25), -45);
@@ -488,44 +474,6 @@ float3 UpdateGameActor(float3 dV, GraphicScene* Scene, double dt, GameActor* Act
 
 /************************************************************************************************/
 
-
-void ClearMouseButtonStates(MouseInputState* State)
-{
-	State->LeftButtonPressed = false;
-}
-
-
-void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
-{
-	using FlexKit::int2;
-
-	if ( !State->Enabled )
-		return;
-
-	if ( GetForegroundWindow() == Window->hWindow )
-	{
-		State->dPos		 = GetMousedPos(Window);
-		State->Position.x -= State->dPos[0];
-		State->Position.y += State->dPos[1];
-
-		State->Position[0] = max(0, min(State->Position[0], Window->WH[0]));
-		State->Position[1] = max(0, min(State->Position[1], Window->WH[1]));
-
-		State->NormalizedPos[0] = max(0, min(State->Position[0] / Window->WH[0], 1));
-		State->NormalizedPos[1] = max(0, min(State->Position[1] / Window->WH[1], 1));
-
-		SetSystemCursorToWindowCenter(Window);
-	}
-	else
-	{
-		ShowCursor( true );
-		State->Enabled = false;
-	}
-}
-
-
-/************************************************************************************************/
-
 struct TestSceneStats
 {
 	float		T;
@@ -623,11 +571,11 @@ void InitiateHairRender(RenderSystem* RS, DepthBuffer* DB, HairRender* Out)
 	Shader PS = LoadShader("DebugTerrainPaint",	"DebugTerrainPaint",	"ps_5_0", "assets\\pshader.hlsl");
 
 	FINALLY	{
-		Destroy(CS);
-		Destroy(VS);
-		Destroy(HS);
-		Destroy(DS);
-		Destroy(PS);
+		Release(CS);
+		Release(VS);
+		Release(HS);
+		Release(DS);
+		Release(PS);
 	} FINALLYOVER
 
 	// Create Pipeline State Objects
@@ -734,6 +682,7 @@ bool InitiateTextureVTable(RenderSystem* RS, TextureVTable_Desc Desc, TextureVTa
 	HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE, &Resource_DESC, D3D12_RESOURCE_STATE_COMMON, nullptr, IID_PPV_ARGS(&Resource));
 	// TODO: Resource Eviction on creation failure
 	CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE RESOURCE!"));
+	SETDEBUGNAME(Resource, __func__);
 
 	size_t PageCount = Desc.PageCount.Product();
 	Out->PageTable = (TextureVTable::TableEntry*)(Desc.Memory->_aligned_malloc( sizeof(TextureVTable::TableEntry) * PageCount) );
@@ -957,13 +906,11 @@ struct GameState
 	TextureSet*		Set1;
 	TextureVTable	TextureState;
 
-	DeferredPass		DeferredPass;
-	ForwardPass			ForwardPass;
 	ShadowMapPass		ShadowMapPass;
 
 	GUIRender			GUIRender;
 
-	LineSet	Lines;
+	LineSet				Lines;
 
 	StaticMeshBatcher	StaticMeshBatcher;
 
@@ -1333,9 +1280,9 @@ void HandleMouseEvents(const Event& e, GameState* GS)
 		break;
 	case Event::Pressed:
 		if (e.mData1.mKC[0] == KC_MOUSELEFT)
-			GS->Mouse.LeftButtonPressed = true;
+			GS->Mouse.LMB_Pressed = true;
 		else if (e.mData1.mKC[0] == KC_MOUSERIGHT)
-			GS->Mouse.LeftButtonPressed = true;
+			GS->Mouse.RMB_Pressed = true;
 		break;
 	case Event::Release:
 		break;
@@ -1473,8 +1420,10 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	Out->PlayerInertia.Inertia	= float3(0);
 	Out->T						= 0.0f;
 
-	auto Light = State->GScene.AddSpotLight(float3{0, 80, 0}, { 1, 1, 1 }, { 0.0f, -1.0f, 0.0f }, pi/2, 1000, 1000);
-	State->GScene.EnableShadowCasting(Light);
+	auto PointLight = State->GScene.AddPointLight(float3{1, 1, 1}, float3{ 0, 100, 0 }, 100000, 100000);
+
+	//auto Light = State->GScene.AddSpotLight(float3{0, 80, 0}, { 1, 1, 1 }, { 0.0f, -1.0f, 0.0f }, pi/2, 1000, 1000);
+	//State->GScene.EnableShadowCasting(Light);
 
 	auto Texture2D		= LoadTextureFromFile("Assets//textures//agdg.dds", Engine->RenderSystem, Engine->BlockAllocator);
 	Out->TestTexture	= Texture2D;
@@ -1482,7 +1431,7 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	SimpleWindow_Desc Desc(0.3f, 0.3f, 3, 3, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
 	InitiateSimpleWindow(Engine->BlockAllocator, &Out->Window, Desc);
 
-#if 0
+#if 1
 
 	GUIList List_Desc;
 	List_Desc.Color		= float4(WHITE, 1);
@@ -1607,7 +1556,7 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 
 	SimpleWindowInput Input;
 	Input.MousePosition			 = State->Mouse.NormalizedPos;
-	Input.LeftMouseButtonPressed = State->Mouse.LeftButtonPressed;
+	Input.LeftMouseButtonPressed = State->Mouse.LMB_Pressed;
 
 	if (Input.LeftMouseButtonPressed)
 		PrintText(&State->Text, "MouseButtonPressed!\n");
@@ -1632,11 +1581,14 @@ void UpdateTestScene_PostTransformUpdate(Scene* TestScene, GameState* State, dou
 	auto& Entity = State->GScene.GetDrawable(TestScene->PlayerModel);
 	DEBUG_DrawPoseState		(Entity.PoseState, State->Nodes, Entity.Node, &State->Lines);
 
-	auto C = &State->GScene.SpotLightCasters[0].C;
-	auto P = GetPositionW(State->Nodes, C->Node);
-	Quaternion Q;
-	GetOrientation(State->Nodes, C->Node, &Q);
-	DEBUG_DrawCameraFrustum	(&State->Lines, C, P, Q);
+	for ( auto& Caster : State->GScene.SpotLightCasters )
+	{
+		auto& Camera = Caster.C;
+		auto P = GetPositionW(State->Nodes, Camera.Node);
+		Quaternion Q;
+		GetOrientation(State->Nodes, Camera.Node, &Q);
+		DEBUG_DrawCameraFrustum(&State->Lines, &Camera, P, Q);
+	}
 }
 
 
@@ -1677,7 +1629,7 @@ extern "C"
 		State.DoDeferredShading			= true;
 		State.DrawLandScapewireframe	= false;
 		State.ReloadTerrainShaders		= false;
-		State.TerrainSplits				= 1;
+		State.TerrainSplits				= 12;
 		State.ActiveWindow				= &Engine->Window;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
@@ -1686,8 +1638,6 @@ extern "C"
 		State.GT = &Engine->Geometry;
 		ResetStats(&State.Stats);
 
-		InitiateForwardPass		  (Engine->RenderSystem, &FP_Desc, &State.ForwardPass);
-		InitiateDeferredPass	  (Engine->RenderSystem, &DP_Desc, &State.DeferredPass);
 		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		//InitiateHairRender		  (Engine->RenderSystem, &Engine->DepthBuffer,   &State.HairRender);
@@ -1701,9 +1651,7 @@ extern "C"
 			State.HeightMap = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
 
 			Landscape_Desc Land_Desc = { 
-				State.HeightMap,
-				State.DeferredPass.Filling.NoTexture.Blob->GetBufferPointer(), 
-				State.DeferredPass.Filling.NoTexture.Blob->GetBufferSize() 
+				State.HeightMap
 			};
 
 			InitiateLandscape		(Engine->RenderSystem, GetZeroedNode(&Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
@@ -1755,11 +1703,12 @@ extern "C"
 	{
 		FreeFontAsset(Scene->Font);
 		CleanUpTextArea(&Scene->Text, Engine->BlockAllocator);
-		CleanUpTerrain(Scene->Nodes, &Scene->Landscape);
+		ReleaseTerrain(Scene->Nodes, &Scene->Landscape);
 
 		Engine->BlockAllocator.free(Scene->Font);
 	}
 
+#include<thread>
 
 	GAMESTATEAPI void Update(EngineMemory* Engine, GameState* State, double dt)
 	{
@@ -1770,9 +1719,12 @@ extern "C"
 		UpdateColliders	(&State->PScene, &Engine->Nodes);
 
 		if (State->ReloadTerrainShaders) {
-			LoadTerrainPipelineStates(Engine->RenderSystem, &State->Landscape, false);
+			QueuePSOLoad(Engine->RenderSystem, TERRAIN_CULL_PSO);
+			QueuePSOLoad(Engine->RenderSystem, TERRAIN_DRAW_PSO);
+			QueuePSOLoad(Engine->RenderSystem, TERRAIN_DRAW_PSO_DEBUG);
+			QueuePSOLoad(Engine->RenderSystem, TERRAIN_DRAW_WIRE_PSO);
+
 			State->ReloadTerrainShaders = false;
-			std::cout << "Reloaded Terrain Shaders!\n";
 		}
 	}
 
@@ -1789,7 +1741,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void UpdateAnimations(RenderSystem* RS, iAllocator* TempMemory, double dt, GameState* _ptr)
+	GAMESTATEAPI void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameState* _ptr)
 	{
 		UpdateAnimationsGraphicScene(&_ptr->GScene, dt);
 	}
@@ -1803,13 +1755,14 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void Draw(RenderSystem* RS, iAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* State)
+	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameState* State)
 	{
-		BeginSubmission(RS, State->ActiveWindow);
+		BeginSubmission(Engine->RenderSystem, State->ActiveWindow);
 
+		auto RS				= &Engine->RenderSystem;
 		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 		auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
-		auto CL				= GetCurrentCommandList(RS);
+		auto CL				= GetCurrentCommandList(Engine->RenderSystem);
 
 		GetGraphicScenePVS(&State->GScene, State->ActiveCamera, &PVS, &Transparent);
 
@@ -1844,7 +1797,7 @@ extern "C"
 			UploadPoses	(RS, &PVS, State->GT, TempMemory);
 
 			UploadLineSegments			(RS, &State->Lines);
-			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &State->DeferredPass);
+			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->DeferredRender);
 
 			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
@@ -1870,17 +1823,17 @@ extern "C"
 
 			if (State->DoDeferredShading)
 			{
-				IncrementDeferredPass (&State->DeferredPass);
-				ClearDeferredBuffers  (RS, &State->DeferredPass);
+				IncrementDeferredPass (&Engine->DeferredRender);
+				ClearDeferredBuffers  (RS, &Engine->DeferredRender);
 
-				DoDeferredPass		(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT, &State->TextureState);
-				DrawLandscape		(RS, &State->Landscape, &State->DeferredPass, State->TerrainSplits, State->ActiveCamera, State->DrawLandScapewireframe);
+				DoDeferredPass		(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT, &State->TextureState);
+				DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, State->DrawLandScapewireframe);
 
-				ShadeDeferredPass	(&PVS, &State->DeferredPass, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-				DoForwardPass		(&Transparent, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
+				ShadeDeferredPass	(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+				DoForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else
-				DoForwardPass(&PVS, &State->ForwardPass, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
+				DoForwardPass(&PVS, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
 
 
 #if 0
@@ -1922,19 +1875,16 @@ extern "C"
 
 		ReleaseTextureSet(_ptr->Set1, Engine->BlockAllocator);
 
-		//CleanUpShadowPass		(&_ptr->ShadowMapPass);
 		CleanUpTextureVTable	(&_ptr->TextureState);
 		CleanUpSimpleWindow		(&_ptr->TestScene.Window);
-		CleanUpDrawGUI			(&_ptr->GUIRender);
+		ReleaseDrawGUI			(&_ptr->GUIRender);
 		CleanUpLineSet			(&_ptr->Lines);
 		CleanUpState			(_ptr, Engine);
-		CleanUpCamera			(_ptr->Nodes, _ptr->ActiveCamera);
-		CleanupForwardPass		(&_ptr->ForwardPass);
-		CleanupDeferredPass		(&_ptr->DeferredPass);
-		CleanUpGraphicScene		(&_ptr->GScene);
+		ReleaseCamera			(_ptr->Nodes, _ptr->ActiveCamera);
+		ReleaseGraphicScene		(&_ptr->GScene);
 		CleanupHairRender		(&_ptr->HairRender);
 		CleanUpScene			(&_ptr->PScene, &Engine->Physics);
-		CleanUpEngine			(Engine);
+		ReleaseEngine			(Engine);
 	}
 
 
@@ -1954,9 +1904,9 @@ extern "C"
 		typedef GameState*	(*InitiateGameStateFN)	(EngineMemory* Engine);
 		typedef void		(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, GameState* _ptr);
 		typedef void		(*UpdateIMPL)			(EngineMemory* Engine,	GameState* _ptr, double dt);
-		typedef void		(*UpdateAnimationsFN)	(RenderSystem* RS,		iAllocator* TempMemory, double dt, GameState* _ptr);
+		typedef void		(*UpdateAnimationsFN)	(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameState* _ptr);
 		typedef void		(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameState* _ptr);
-		typedef void		(*DrawFN)				(RenderSystem* RS,		iAllocator* TempMemory, FlexKit::ShaderTable* M, GameState* _ptr);
+		typedef void		(*DrawFN)				(EngineMemory* Engine,	iAllocator* TempMemory,			   GameState* _ptr);
 		typedef void		(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameState* _ptr);
 		typedef void		(*CleanUpFN)			(EngineMemory* Engine,	GameState* _ptr);
 		typedef void		(*PostPhysicsUpdate)	(GameState*);

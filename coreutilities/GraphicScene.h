@@ -188,7 +188,7 @@ namespace FlexKit
 	FLEXKITAPI void UploadGraphicScene				( GraphicScene* SM, PVS* , PVS* );
 	FLEXKITAPI void UpdateShadowCasters				( GraphicScene* SM );
 
-	FLEXKITAPI void CleanUpGraphicScene				( GraphicScene* SM );
+	FLEXKITAPI void ReleaseGraphicScene				( GraphicScene* SM );
 	FLEXKITAPI void BindJoint						( GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode );
 
 	FLEXKITAPI bool LoadScene	( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );

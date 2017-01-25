@@ -80,6 +80,24 @@ struct sKeyState
 /************************************************************************************************/
 
 
+struct MouseInputState
+{
+	int2	dPos			= { 0, 0 };
+	float2	Position		= { 0, 0 };
+	float2	NormalizedPos	= { 0, 0 };
+
+	bool LMB_Pressed = false;
+	bool RMB_Pressed = false;
+	bool Enabled	 = false;
+
+	double LMB_Duration = 0.0;
+	double RMB_Duration = 0.0;
+};
+
+
+/************************************************************************************************/
+
+
 struct EngineMemory;
 
 static const size_t MAX_CLIENTS = 10;
@@ -115,45 +133,16 @@ struct EngineMemory
 
 	NodeHandle		RootSN;
 
-	FlexKit::PVS			PVS_;
-	FlexKit::ShaderTable	Materials;
+	DeferredPass	DeferredRender;
+	::ForwardPass	ForwardRender;
 
-	struct
-	{
-		FlexKit::ShaderSetHandle			DefaultMaterial;
-		FlexKit::ShaderSetHandle			GenerateNormal;
-	}BuiltInMaterials;
+	PVS			PVS_;
 
-	// Move this to a resource Manager
-	struct
-	{
-		FlexKit::ShaderHandle VertexShaderNoNormal;
-		FlexKit::ShaderHandle VertexShaderPassthrough;
-		FlexKit::ShaderHandle VertexPulling;
-		FlexKit::ShaderHandle CalcNormalGshader;
-		FlexKit::ShaderHandle OutputToGBuffer;
-		FlexKit::ShaderHandle NormalMappedOutputToGbuffer;
-		FlexKit::ShaderHandle PixelShaderDebug;
-		FlexKit::ShaderHandle VertexPaletteSkinning;
-		FlexKit::ShaderHandle VTextRendering;
-		FlexKit::ShaderHandle GTextRendering;
-		FlexKit::ShaderHandle PTextRendering;
-	}ShaderHandles;
-	static_vector<FlexKit::Event>	NetworkEvents;
+	static_vector<Event>	NetworkEvents;
 					
-	Shader	GShader;
-	Shader	PShader;
-	Shader	PDShader;				// Outputs white
-	Shader	NormalMappedPShader;
-	Shader	VShader;				// Passes Normals Through
-	Shader	V2Shader;				// Passes BiTangents with Normals Through
-	Shader	VPShader;				// 
-	Shader	VertexPalletSkinning;	// No Bi-Tangent/Bi-Normal Passthrough 
-	Shader	VTextRendering;			// Simple Text Rendering
-	Shader	GTextRendering;			// Simple Text Rendering
-	Shader	PTextRendering;			// Simple Text Rendering
-	
-	FlexKit::SceneNodes			Nodes;
+	SceneNodes					Nodes;
+
+	// Memory Pools
 	byte						NodeMem	[NODEBUFFERSIZE];
 	byte						BlockMem[BLOCKALLOCSIZE];
 	byte						LevelMem[LEVELBUFFERSIZE];
@@ -172,9 +161,9 @@ typedef void (*OnHotReloadFN)			(EngineMemory*, double dt, void* _ptr);
 typedef void (*UpdateFN)				(EngineMemory* Engine, void* _ptr, double dt);
 typedef void (*FixedUpdateFN)			(EngineMemory*, double dt, void* _ptr);
 
-typedef void (*UpdateAnimationsFN)		(RenderSystem* RS,		iAllocator* TempMemory, double dt, void* _ptr);
-typedef	void (*UpdatePreDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, void* _ptr); 
-typedef	void (*DrawFN)					(RenderSystem* RS,		iAllocator* TempMemory, FlexKit::ShaderTable* M, void* _ptr); 
+typedef void (*UpdateAnimationsFN)		(EngineMemory* RS,		iAllocator* TempMemory, double dt,	void* _ptr);
+typedef	void (*UpdatePreDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt,	void* _ptr); 
+typedef	void (*DrawFN)					(EngineMemory* RS,		iAllocator* TempMemory,				void* _ptr);
 typedef void (*PostDrawFN)				(EngineMemory* Engine,	iAllocator* TempMemory, double dt,	void* _ptr);
 typedef void (*CleanUpFN)				(EngineMemory* Engine,	void* _ptr);
 

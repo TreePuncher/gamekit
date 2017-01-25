@@ -127,7 +127,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Destroy(DrawablePoseState* EPS)
+	void Release(DrawablePoseState* EPS)
 	{
 		EPS->Resource.Release();
 	}

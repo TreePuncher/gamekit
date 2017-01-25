@@ -70,12 +70,14 @@ struct GameCode
 	HANDLE	File;
 };
 
-void LoadGameCode(GameCode& Code, CodeTable* out)
+void LoadGameCode(GameCode& Code, CodeTable* out, char* DllLocation)
 {
-	wchar_t DefaultGameState[] = L"TestGameState.dll";
 	//DeleteFile(L"TestGameStateTemp.dll");
 	//CopyFile(L"TestGameState.dll", L"TestGameStateTemp.dll", FALSE);
-	Code.Lib = LoadLibrary(L"TestGameState.dll");
+
+	wchar_t MBString[512];
+	mbstowcs(MBString, DllLocation, 512);
+	Code.Lib = LoadLibrary(MBString);
 
 	auto GetStateTable	= reinterpret_cast<GetStateTableFN>(GetProcAddress(Code.Lib,	"GetStateTable"));
 	GetStateTable(out);
@@ -86,10 +88,10 @@ bool CheckGameCode(GameCode& Code)
 	return true;
 }
 
-void ReloadGameCode(GameCode& Code, CodeTable* out)
+void ReloadGameCode(GameCode& Code, CodeTable* out, char* DllLocation)
 {
 	FreeLibrary(Code.Lib);
-	LoadGameCode(Code, out);
+	LoadGameCode(Code, out, DllLocation);
 }
 
 void UnloadGameCode(GameCode& Code)
@@ -138,9 +140,9 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			::UpdateInput();
 
 			FNTable->UpdateFixed		(Engine, StepSize, State);
-			FNTable->UpdateAnimations	(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
+			FNTable->UpdateAnimations	(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
 			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
-			FNTable->Draw				(Engine->RenderSystem,	&Engine->TempAllocator.AllocatorInterface, &Engine->Materials,	State);
+			FNTable->Draw				(Engine,				&Engine->TempAllocator.AllocatorInterface,						State);
 			FNTable->PostDraw			(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
 
 			if (CodeCheckTimer > 2.0)
@@ -156,7 +158,7 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		}
 
 		if ( dt < StepSize )
-			Sleep( 2 );
+			Sleep( 1 );
 
 		Engine->Time.After();
 		Engine->Time.Update();
@@ -177,7 +179,16 @@ int main( int argc, char* argv[] )
 	GameCode	Code;
 	CodeTable	FNTable;
 
-	LoadGameCode(Code, &FNTable);
+	char* GameStateLocation = "TestGameState.dll";
+
+
+	for (size_t I = 0; I < argc; ++I) {
+		char* Str = argv[I];
+		if (!strcmp(Str, "-L") && I  + 1 < argc)
+			GameStateLocation = argv[I + 1];
+	}
+
+	LoadGameCode(Code, &FNTable, GameStateLocation);
 
 	if (Code.Lib)
 	{

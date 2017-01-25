@@ -124,7 +124,7 @@
 //								else
 //								{
 //									std::cout << "Swapping Shader\n";
-//									FlexKit::Destroy(Engine->GB.Shade);
+//									FlexKit::Release(Engine->GB.Shade);
 //									Engine->GB.Shade = CShader;
 //								}
 //							}
@@ -157,7 +157,7 @@
 //								else
 //								{
 //									std::cout << "Swapping Shader\n";
-//									FlexKit::Destroy(Engine->Materials.GetShader(Engine->ShaderHandles.VertexPaletteSkinning));
+//									FlexKit::Release(Engine->Materials.GetShader(Engine->ShaderHandles.VertexPaletteSkinning));
 //									Engine->Materials.SetShader(Engine->ShaderHandles.VertexPaletteSkinning, NewShader);
 //									Engine->VertexPalletSkinning = Engine->Materials.GetShader(Engine->ShaderHandles.VertexPaletteSkinning);
 //								}
@@ -849,10 +849,10 @@
 //	void CleanUp(EngineMemory* Engine)
 //	{
 //		FreeFontAsset(&Font);
-//		//CleanUpTerrain(Nodes, &Terrain);
+//		//Release(Nodes, &Terrain);
 //		//CleanUpTextArea(&TextBlock, &Engine->BlockAllocator);
 //		CleanUpScene(&S);
-//		CleanUpGraphicScene(&SM);
+//		ReleaseGraphicScene(&SM);
 //
 //		FreeAllResources(&Assets);
 //		FreeAllResourceFiles(&Assets);

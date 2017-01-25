@@ -41,9 +41,6 @@ namespace FlexKit
 	struct Landscape_Desc
 	{
 		Texture2D	HeightMap;
-
-		void*	PShaderCode;
-		size_t	PShaderSize;
 	};
 
 	struct Landscape
@@ -55,6 +52,7 @@ namespace FlexKit
 			int32_t BitID;
 			float2  UV_TL; // Top	 Left
 			float2  UV_BR; // Bottom Right
+			float4  ParentUV; // Bottom Right
 		};
 
 		struct ConstantBufferLayout
@@ -68,10 +66,12 @@ namespace FlexKit
 
 		uint16_t			  SplitCount;
 		size_t				  OutputBuffer;
+		/*
 		ID3D12PipelineState*  SplitState;
 		ID3D12PipelineState*  GenerateState;
 		ID3D12PipelineState*  GenerateStateDebug;
 		ID3D12PipelineState*  WireFrameState;
+		*/
 
 		StreamOutBuffer			RegionBuffers[2];// Ping Pongs Back and Forth
 		QueryResource			SOQuery;
@@ -108,7 +108,7 @@ namespace FlexKit
 	FLEXKITAPI void InitiateLandscape			( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* ls );
 	FLEXKITAPI void LoadTerrainPipelineStates	( RenderSystem* RS, Landscape* out, bool AssertOnFail = true);
 
-	FLEXKITAPI void CleanUpTerrain		( SceneNodes* Nodes, Landscape* ls );
+	FLEXKITAPI void Release		( SceneNodes* Nodes, Landscape* ls );
 	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
 	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12);
 	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, DeferredPass* PS, size_t splitcount, Camera* C, bool DrawWireframe = false);

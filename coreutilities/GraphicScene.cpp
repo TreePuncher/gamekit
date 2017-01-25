@@ -609,7 +609,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpGraphicScene(GraphicScene* SM)
+	void ReleaseGraphicScene(GraphicScene* SM)
 	{
 		for (auto E : SM->Drawables)
 		{
@@ -618,7 +618,7 @@ namespace FlexKit
 
 			if (E.PoseState) 
 			{
-				Destroy(E.PoseState);
+				Release(E.PoseState);
 				CleanUp(E.PoseState, SM->Memory);
 				SM->Memory->_aligned_free(E.PoseState);
 				SM->Memory->_aligned_free(E.AnimationState);

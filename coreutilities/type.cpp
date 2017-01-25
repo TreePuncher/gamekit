@@ -24,10 +24,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\pch.h"
 #include "type.h"
-
-namespace FlexKit
-{
-	static size_t TypeCount = 0;
-	Type_t GetNextTypeID() {return TypeCount++;}
-	const unsigned short NULLTYPE_INDEX = 0Xffff;
-}

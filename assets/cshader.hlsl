@@ -224,7 +224,7 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 
 	#else
 
-	#if 1
+	#if 0
 
     float3 Color = float4(0.0, 0.0, 0.0, 0.0f);
     //AmbientLight.xyz * Kd.xyz;
@@ -236,11 +236,13 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 		float3  Lp  = Light.P;
 		float3  Lc  = Light.K;
 		float3 	Lv 	= normalize(Lp-WPOS);
-		float   La  = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
+        float La = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
 		// TODO: Add in light Lists, buckets etc
-        Color += Kd;
+        // Color += Kd;
 		//Color += Frd( Lv, Lc, vdir, WPOS, Kd, n, Ks, m ) * La * PIInverse;
-	}
+
+        //Color += dot(Lp, Lv) * Kd.xyz * La;
+    }
 
 
 	/*
@@ -263,11 +265,13 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 		float   La  = pow(max(dot(-Ld, Lv), 0), 10);
 		// TODO: Add in light Lists, buckets etc
 
-        Color += Kd;
+        //Color += Kd;
 		//Color += float4(0.0, 1.0f, 0.0, 0.0f);
-		//Color += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m) * La * PIInverse, 0);
+		Color += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m) * La * PIInverse, 0);
 	}
-
+    #else
+    //float3 Color = n;
+    float3 Color = Kd;
 	#endif
 	#endif
 

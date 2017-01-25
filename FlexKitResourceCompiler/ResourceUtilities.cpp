@@ -1943,7 +1943,7 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 	}
 
 	FINALLY{
-		Manager->Destroy();
+		Manager->Release();
 		if (Desc->CookingEnabled)
 		{
 			if (Foundation)
