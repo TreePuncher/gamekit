@@ -29,17 +29,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef TYPEID_H
 #define TYPEID_H
 
-#pragma warning ( disable : 4251 )
-#pragma warning ( disable : 4305 )
-#pragma warning ( disable : 4309 )
-
 // Include
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
 
-/****************************************************************************************************/
-
-uint32_t CRCLookup[256] =
+constexpr uint32_t CRCLookup[256] =
 {
 	0x00000000,	0x77073096, 0xEE0E612C, 0x990951BA,
 	0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3,
@@ -107,32 +101,41 @@ uint32_t CRCLookup[256] =
 	0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D
 };
 
-/****************************************************************************************************/
-
-// Compile time version of this -> http://wiki.osdev.org/CRC32
-
-struct IDGen
+struct const_str
 {
-	template<size_t idx>
-	constexpr static uint32_t GetHash(const char s[])
-	{
-		const auto CRC = GetHash<idx - 1>(s); // Do previous iteration first
-		return CRCLookup[(uint8_t)CRC ^ s[idx]] ^ (CRC >> 8);
-	}
+	const char * const s;
 
-	template<>
-	constexpr static uint32_t GetHash<0>(const char s[])
-	{
-		return CRCLookup[(uint8_t)0xffffffff ^ s[0]] ^ (0xffffffff >> 8);
+	template <std::size_t N>
+	constexpr const_str(const char(&a)[N]) : s{ a } {}
+	constexpr char operator [](const size_t i) const {
+		return s[i];
 	}
 };
 
+template<size_t SIZE>
+struct IDGen
+{
+	template<size_t idx = 0>
+	constexpr static uint32_t GetHash(const char* s, const uint32_t CRC = 0xffffffff)
+	{
+		return GetHash<idx + 1>(s, CRCLookup[(uint8_t)CRC ^ s[idx]] ^ (CRC >> 8));
+	}
+
+	template<>
+	constexpr static uint32_t GetHash<SIZE>(const char* s, const uint32_t CRC)
+	{
+		return CRCLookup[(uint8_t)CRC ^ s[SIZE]] ^ (CRC >> 8);
+	}
+};
+
+#define GetCRC32(A) ~IDGen<sizeof(A)-2>::GetHash(A);
+
 template<typename Ty>
-constexpr static uint32_t GenerateTypeGUID() { return ~IDGen::GetHash<sizeof(__FUNCSIG__) - 2>(__FUNCSIG__); }
+uint32_t GenerateTypeGUID()
+{
+	const auto ID = GetCRC32(__func__);
+	return ID;
+}
 
-#define GetHash(A) IDGen::GetHash<sizeof(A) - 2>(A) ^ 0xffffffff;
 #define GetTypeGUID(A) GenerateTypeGUID<A>();
-
-/****************************************************************************************************/
-
 #endif
