@@ -558,7 +558,7 @@ namespace FlexKit
 		}
 
 		template<typename T, size_t a = 16, typename ... PARAM_TY>
-		T allocate_aligned(PARAM_TY ... Params)
+		T& allocate_aligned(PARAM_TY ... Params)
 		{
 			auto mem = _aligned_malloc(sizeof(T) + a, a);
 

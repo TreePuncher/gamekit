@@ -315,6 +315,16 @@ namespace FlexKit
 		}
 
 		template<typename TY_2>
+		bool operator == (const Vect<SIZE, TY_2>& in)
+		{
+			bool res = true;
+			for (auto I = 0; I < SIZE; ++I)
+				res = res & (Vector[I] == in[I]);
+
+			return res;
+		}
+
+		template<typename TY_2>
 		THISTYPE& operator = ( const std::initializer_list<TY_2>& il )
 		{
 			size_t itr = 0;

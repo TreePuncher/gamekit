@@ -68,13 +68,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpSimpleWindow(SimpleWindow* W)
+	void CleanUpSimpleWindow(SimpleWindow* W, RenderSystem* RS)
 	{
 		for (auto TB : W->TextButtons)
-			CleanUpTextArea(&TB.Text, W->Memory);
+			CleanUpTextArea(&TB.Text, W->Memory, RS);
 
 		for (auto TB : W->TextInputs)
-			CleanUpTextArea(&TB.TextGUI, W->Memory);
+			CleanUpTextArea(&TB.TextGUI, W->Memory, RS);
 
 		W->Elements.Release();
 		W->TexturedButtons.Release();
@@ -981,4 +981,287 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	ComplexWindow::ComplexWindow(iAllocator* memory) : 
+		Buttons		(memory),
+		Children	(memory), 
+		Grids		(memory), 
+		Elements	(memory),
+		Memory		(memory)
+	{
+	}
+
+	ComplexWindow::ComplexWindow(const ComplexWindow& RHS)
+	{
+		Children = RHS.Children;
+		Elements = RHS.Elements;
+		Grids    = RHS.Grids;
+		Memory   = Memory;
+	}
+
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::Update(double dt, const SimpleWindowInput Input)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::Upload(RenderSystem* RS, GUIRender* out)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::Draw(RenderSystem* RS, GUIRender* out)
+	{
+		::sort(this->Elements.begin(), this->Elements.end(), 
+			[&](auto LHS, auto RHS) {
+				return LHS.UpdatePriority < RHS.UpdatePriority;	});
+
+		LayoutEngine Layout;
+
+		for (auto& e : Elements) {
+			switch (e.Type)
+			{
+				case EGUI_ELEMENT_TYPE::EGE_GRID:{
+					GUIGrid::Draw(this, &Grids[e.Index], &Layout);
+				}
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::Draw_DEBUG(RenderSystem* RS, GUIRender* out)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	GUIGridHandle ComplexWindow::CreateGrid(GUIElementHandle Parent, uint2 ID)
+	{
+		GUIElementHandle BaseIndex = Elements.size();
+
+		Elements.push_back({ Grids.size(), Parent + 1, EGUI_ELEMENT_TYPE::EGE_GRID });
+		Grids.push_back(GUIGrid(Memory, BaseIndex));
+
+		return {this, BaseIndex};
+	}
+
+
+	/************************************************************************************************/
+
+
+	GUIButtonHandle ComplexWindow::CreateButton(GUIElementHandle Parent)
+	{
+		GUIElementHandle out = this->Elements.size();
+		Elements.push_back({ 
+			Buttons.size(), 
+			Elements[Parent].UpdatePriority + 1, 
+			EGUI_ELEMENT_TYPE::EGE_GRID});
+
+		Buttons.push_back({});
+
+		return { this, out };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::CreateTexturedButton()
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::CreateTextBox()
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::CreateTextInputBox()
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::CreateHorizontalSlider()
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ComplexWindow::CreateVerticalSlider()
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void LayoutEngine::PushRect(Draw_RECT Rect)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void LayoutEngine::PushOffset(float2 XY)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void LayoutEngine::PopOffset(float2 XY)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GUIGrid::Draw(ComplexWindow* Window, GUIGrid* Grid, LayoutEngine* LayoutEngine)
+	{
+		for (auto& C : Grid->Cells)
+		{
+
+		}
+	}
+
+
+	void GUIGrid::Draw_DEBUG(ComplexWindow* Window, GUIGrid* Grid, LayoutEngine* LayoutEngine)
+	{
+		for (auto& C : Grid->Cells)
+		{
+
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	GUIGridHandle::GUIGridHandle(ComplexWindow* Window, GUIElementHandle In) : mWindow(Window), mBase(In) {}
+
+	const GUIBaseElement GUIGridHandle::Base() const
+	{ 
+		return mWindow->Elements[mBase]; 
+	}
+	
+	GUIBaseElement&	GUIGridHandle::Base() 
+	{ 
+		return mWindow->Elements[mBase]; 
+	}
+
+	GUIGrid& GUIGridHandle::_GetGrid()
+	{ 
+		return mWindow->Grids[mWindow->Elements[mBase].Index]; 
+	}
+
+	DynArray<GUIDimension>&	GUIGridHandle::RowHeights()
+	{ 
+		return _GetGrid().ColumnWidths;
+	}
+
+	DynArray<GUIDimension>&	GUIGridHandle::ColumnWidths()
+	{ 
+		return _GetGrid().RowHeights;
+	}
+
+	GUIGrid::Cell& GUIGridHandle::GetCell(uint2 ID)
+	{
+		auto res = find(_GetGrid().Cells, [ID](auto I) { return I.ID == ID; });
+		return *res;
+	}
+
+	void GUIGridHandle::resize(float Width_percent, float Height_percent)
+	{
+		_GetGrid().WH = {Width_percent, Height_percent};
+	}
+
+	void GUIGridHandle::SetGridDimensions(size_t Columns, size_t Rows)
+	{
+		_GetGrid().ColumnWidths.resize(Columns);
+		_GetGrid().RowHeights.resize(Rows);
+
+		for (auto& W : _GetGrid().ColumnWidths)
+			W = _GetGrid().WH[0] / float(Columns);
+
+		for (auto& H : _GetGrid().RowHeights)
+			H = _GetGrid().WH[1] / float(Rows);
+	}
+
+	GUIElementHandle GUIGridHandle::CreateButton(uint2 CellID)
+	{
+		GUIElementHandle out = mWindow->CreateButton(mBase);
+		return out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	GUIButtonHandle::GUIButtonHandle(ComplexWindow* Window, GUIElementHandle In) : mWindow(Window), mBase(In){}
+	GUIBaseElement	const	GUIButtonHandle::Base() const{return mWindow->Elements[mBase];}
+	GUIBaseElement&			GUIButtonHandle::Base(){return mWindow->Elements[mBase];}
+
+	GUIButton& GUIButtonHandle::_IMPL()
+	{
+		auto Impl = Base().Index;
+		return mWindow->Buttons[Impl];
+	}
+
+
+	void GUIButtonHandle::resize(float Width_percent, float Height_percent)
+	{
+		_IMPL().Dimensions = {Width_percent, Height_percent};
+	}
+
+
+	void GUIButtonHandle::SetCellID(uint2 CellID)
+	{
+		_IMPL().CellID = CellID;
+	}
+
+
+
+	/************************************************************************************************/
 }// namespace FlexKit

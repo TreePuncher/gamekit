@@ -45,8 +45,8 @@ struct TextGeometry
 struct TextVertex
 {
 	float4 POS	  : SV_POSITION;
-	float2 UV	  : TEXCOORD;
 	float4 Color  : COLOR;
+	float2 UV	  : TEXCOORD;
 };
 
 /************************************************************************************************/
@@ -66,7 +66,7 @@ TextGeometry VTextMain(TextEntry In)
 /************************************************************************************************/
 
 [maxvertexcount(6)]
-void GTextMain( point TextEntry gin[1], inout TriangleStream<TextVertex> gout )
+void GTextMain( point TextGeometry gin[1], inout TriangleStream<TextVertex> gout )
 {
 	float2 TopLEFT			= float2(gin[0].POS);
 	float2 TopRight			= float2(gin[0].POS) + float2(gin[0].Size.x,	0);
@@ -105,6 +105,7 @@ void GTextMain( point TextEntry gin[1], inout TriangleStream<TextVertex> gout )
 	v.POS	= float4(BottomRight, 1.0f, 1);
 	v.UV	= BottomRightUV;
 	gout.Append(v);
+
 	gout.RestartStrip();
 }
 

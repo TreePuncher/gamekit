@@ -22,44 +22,38 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+
+/************************************************************************************************/
+
+
+#include "common.hlsl"
+
 static const float PI		 = 3.14159265359f;
 static const float PIInverse = 1/PI;
 
 // Outputs
-RWTexture2D<unorm float4>		BB : register(u0); // out
+RWTexture2D<float4> BB : register(u0); // out
+
 
 /************************************************************************************************/
 // OUTPUT STRUCTS
 
-void WriteOut( float4 C, uint2 PixelCord, uint2 offset )
-{
-	BB[PixelCord + offset] = C;
-}
+void WriteOut( float4 C, uint2 PixelCord, uint2 offset ) {BB[PixelCord + offset] = C;}
+
 
 /************************************************************************************************/
 // INPUT STRUCTS
-cbuffer CameraConstants	: register( b0 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	uint  	 MinZ;
-	uint  	 MaxZ;
-	int 	 PointLightCount;
-	int 	 SpotLightCount;
-};
 
-
-cbuffer GBufferConstantsLayout		: register(b1)
+cbuffer GBufferConstantsLayout : register(b1)
 {
 	uint DLightCount;
-	uint PLightCount;
-	uint SLightCount;
+	uint DeferredPointLightCount;
+	uint DeferredSpotLightCount;
 	uint Height;
 	uint Width;
+	uint DebugRenderMode;
+	uint Padding[2];
+	float4 AmbientLight;
 }
 
 struct PointLight
@@ -71,8 +65,8 @@ struct PointLight
 struct SpotLight
 {
 	float4 P; // Position + R
-	float4 D; // Direction;
 	float4 K; // Color + I
+	float4 D; // Direction;
 };
 
 struct DirectionalLight
@@ -86,15 +80,21 @@ sampler Sampler : register(s0);
 
 /************************************************************************************************/
 
-Texture2D<float4>		 		Color			: register(t0);
-Texture2D<float4>	 			Specular		: register(t1);
-Texture2D<float4>	 			Normal			: register(t2);
-Texture2D<float4>	 			Position 		: register(t3);
-StructuredBuffer<PointLight>	PointLights		: register(t4);
-StructuredBuffer<SpotLight>		SpotLights		: register(t5);
-Texture2D<float>	 			DepthView 		: register(t6);
+
+StructuredBuffer<PointLight>	PointLights		: register(t0);
+StructuredBuffer<SpotLight>		SpotLights		: register(t1);
+
+Texture2D<float4>		 		Color			: register(t2);
+Texture2D<float4>	 			Specular		: register(t3);
+Texture2D<float4>               Emissive        : register(t4);
+Texture2D<float2>               RoughMetal      : register(t5);
+Texture2D<float4>	 			Normal			: register(t6);
+Texture2D<float4>	 			Position 		: register(t7);
+Texture2D<float>	 			DepthView 		: register(t8);
+
 
 /************************************************************************************************/
+
 
 struct SurfaceProperties
 {
@@ -103,6 +103,7 @@ struct SurfaceProperties
 	float kd; //
 	float Kr; //
 };
+
 
 /************************************************************************************************/
 
@@ -173,11 +174,9 @@ struct SphereAreaLight
 	float 	R;	
 };
 
-float3 Frd(float3 l, float3 lc, float3 v, float3 WPOS, float4 Kd, float3 n, float3 Ks, float m)
+float3 Frd(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r)
 {
 	float3 h = normalize(v + l);
-
-	float  r  = Kd.a;
 	float  A  = saturate(pow(r, 2));
 
 	float ndotv = saturate(dot(n, v) + 1e-5);
@@ -193,92 +192,93 @@ float3 Frd(float3 l, float3 lc, float3 v, float3 WPOS, float4 Kd, float3 n, floa
 
 	// 	Diffuse BRDF
 	float Fd = Fr_Disney(ndotv, ndotl, ldoth, A);
-
-	float3 FinalColour = float3(Fr + (Fd * lc * Kd * (1 - m)));
-	return FinalColour * ndotl;
+	return  float3(Fr + (Fd * lc * Kd * (1 - m))) * ndotl;
 }
 
-bool CompareColor(float3 Kd)
+
+/************************************************************************************************/
+
+
+//groupshared PointLight Lights[256];
+
+[numthreads(64, 2, 1)]
+void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 {
-	Kd = Kd * Kd;
-	if((Kd[0] + Kd[1] + Kd[2]) > 0.0f)
-		return true;
-	return false;
-}
+	uint ThreadID = TID.x % 64 + TID.y * 128;
+	float3 n = Normal.Load(int3(ID.xy, 0)).xyz;
 
-[numthreads(20, 20, 1)]
-void cmain( uint3 ID : SV_DispatchThreadID )
-{
+	//Lights[ThreadID] = PointLights[ThreadID];
+	//GroupMemoryBarrierWithGroupSync();
 
-	//if(!CompareColor(n))
-	//	return;
+	if(!any(n))
+		return;
 
-	float3 n 	= Normal.Load(int3(ID.xy, 0)).xyz;
-	float4 Kd 	= Color.Load(int3(ID.xy, 0));
+	float3 Kd 	= Color.Load(int3(ID.xy, 0)).xyz;
 	float3 WPOS = Position.Load(int3(ID.xy, 0)).xyz;
 	float3 Ks 	= Specular.Load(int3(ID.xy, 0)).xyz;
-	float  m 	= Specular.Load(int3(ID.xy, 0)).w;
+	float  m 	= RoughMetal.Load(int3(ID.xy, 0)).y;
+	float  r    = RoughMetal.Load(int3(ID.xy, 0)).x;
 	float3 vdir = GetVectorToBack(WPOS);
 
-	#if 0
+    float3 ColorOut = float4(Kd * AmbientLight.xyz, 0.0f);
 
-	float ProjectionA = MaxZ / (MaxZ - MinZ);
-	float ProjectionB = (-MaxZ * MinZ) / (MaxZ - MinZ);
-	
-/*
-	float3 	vdir 				= GetVectorToBack(WPOS);
-	float  	Z 					= DepthView.Load(int3(ID.xy, 0));
-	float  	LinearZ 			= ProjectionB / ((Z) - ProjectionA );
-	float2 	ScreenCord 			= float2(float(ID.x)/Width * 2 - 1, 1 + float(ID.y)/Height  * -2);
-	float3 	ReconstructedPOS 	= mul( CameraInverse, float3(ScreenCord.x, ScreenCord.y, Z));
-*/
-
-	float4 Color 		= float4(WPOS, 0);
-	
-	//WPOS 			= float4(length(mul( CameraInverse, float4(ScreenCord.x, ScreenCord.y, Z,  1)).xyz - WPOS)/100, 0, 0, 0);
-	//float4 Color 		= float4(ID.x, ID.y, 0, 0);
-	//float4 Color 		= float4(DepthView.Load(int3(ID.xy, 0)), DepthView.Load(int3(ID.xy, 0)), DepthView.Load(int3(ID.xy, 0)), DepthView.Load(int3(ID.xy, 0)));
-	//float4 Color 		= float4(float(ID.x)/Width * 2 - 1, 1 + float(ID.y)/Height  * -2, 0, 0);
-	//float4 Color 		= float4(0.0, 0.0, 0.0, 0.0);
-	
-	#else
-	
-	float4 Color = float4(0.0, 0, 0.0, 0.0);
-	
-	// Points Lights
-	for( int I = 0; I < PointLightCount; ++I)
+   
+    #if 1
+	switch (DebugRenderMode)
 	{
-		//
-		float3  Lp  = PointLights[I].P;
-		float3 	Lv 	= normalize(Lp-WPOS);
-		float3  Lc  = PointLights[I].K;
-		float   La  = PL(Lp, WPOS, PointLights[I].P[3], PointLights[I].K[3]); // Attenuation
+		case 0:
+			{
+                for (int I = 0; I < DeferredPointLightCount; ++I)
+                {
+                    PointLight Light = PointLights[I];
+                    float3 Lp = Light.P;
+                    float3 Lc = Light.K;
+                    float3 Lv = normalize(Lp - WPOS);
+                    float La = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
 
-		// TODO: Add in light Lists, buckets etc
-		//Color += float4(La, La, La, 0);
-		
-		Color += float4(
-			Frd( Lv, Lc, vdir, WPOS, Kd, n, Ks, m ) * La * PIInverse 
-				, 0);
-	}
-	#endif
-	#if 1
-	// Spot Lights
-	for( int I = 0; I < SpotLightCount; ++I)
-	{
-		//
-		//
-		float3  Lp  = PointLights[I].P;
-		float3  Ld  = float3(0, -1, 0);
-		Lp[1] = 10;
-		float3 	Lv 	= normalize(Lp-WPOS);
-		float   La  = pow(max(dot(-Ld, Lv), 0), 10);
-		float3  Lc  = PointLights[I].K;
+                    ColorOut += Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse;
+                }
 
-		// TODO: Add in light Lists, buckets etc
-		Color += float4(	Frd( Lv, Lc, vdir, WPOS, Kd, n, Ks, m ) * La * PIInverse, 0);
+				for (int II = 0; II < DeferredSpotLightCount; ++II)
+				{
+					float3 Lp = SpotLights[II].P;
+					float3 Ld = SpotLights[II].D;
+					float3 Lv = normalize(Lp - WPOS);
+					float3 Lk = SpotLights[II].K;
+					float La  = pow(max(dot(-Ld, Lv), 0), 10);
+
+					ColorOut += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse, 0);
+				}
+			}   break;
+		case 1: // Display Albedo Buffer
+			{
+				ColorOut = Kd;
+			}   break;
+		case 2: // Display Roughness
+			{
+				ColorOut = float3(r, r, r);
+			}   break;
+		case 3: // Display Metal
+			{
+				ColorOut = float3(m, m, m);
+			}
+			break;
+		case 4: // Display Normal Buffer
+			{
+				ColorOut = n;
+			}   break;
+		case 5: // Lights used
+			{
+				float r = float(PointLightCount) / 64.0f;
+				ColorOut = float3(r, r, r);
+			}   break;
+		default:
+			break;
 	}
-	#endif
-	//WriteOut(Color, ID.xy, uint2(0, 0));
-	WriteOut(float4(pow(Color.xyz, 1/2.1), 1), ID.xy, uint2(0, 0));
+    #endif
+
+	WriteOut(float4(pow(ColorOut, 1.0f / 2.1f), 1), ID.xy, uint2(0, 0));
 }
+
+
+/************************************************************************************************/

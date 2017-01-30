@@ -22,6 +22,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#ifndef CONSOLESUBSTATE_H
+#define CONSOLESUBSTATE_H
+
 #include "Console.h"
 #include "BaseState.h"
 
@@ -37,3 +40,5 @@ struct ConsoleSubState : public SubState
 
 void Release(SubState* StateMemory);
 ConsoleSubState* CreateConsoleSubState(EngineMemory* Engine, Console* C, BaseState* Base);
+
+#endif

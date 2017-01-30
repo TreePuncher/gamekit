@@ -137,17 +137,17 @@ namespace FlexKit
 		{
 			D3D12_RESOURCE_DESC texDesc;
 			ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
-			texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-			texDesc.Alignment = 0;
-			texDesc.Width = width;
-			texDesc.Height = (uint32_t)height;
-			texDesc.DepthOrArraySize = (depth > 1) ? (uint16_t)depth : (uint16_t)arraySize;
-			texDesc.MipLevels = (uint16_t)mipCount;
-			texDesc.Format = format;
-			texDesc.SampleDesc.Count = 1;
+			texDesc.Dimension          = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+			texDesc.Alignment          = 0;
+			texDesc.Width              = width;
+			texDesc.Height             = (uint32_t)height;
+			texDesc.DepthOrArraySize   = (depth > 1) ? (uint16_t)depth : (uint16_t)arraySize;
+			texDesc.MipLevels          = (uint16_t)mipCount;
+			texDesc.Format             = format;
+			texDesc.SampleDesc.Count   = 1;
 			texDesc.SampleDesc.Quality = 0;
-			texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-			texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+			texDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+			texDesc.Flags              = D3D12_RESOURCE_FLAG_NONE;
 
 			hr = device->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),

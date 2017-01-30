@@ -36,7 +36,7 @@ void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 
 void ReleaseConsole(Console* out)
 {
-	ConsolePrintf(out, 1, 2, 3, 4);
+	//ConsolePrintf(out, 1, 2, 3, 4);
 }
 
 

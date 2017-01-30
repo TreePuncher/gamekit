@@ -56,6 +56,11 @@ cbuffer LocalConstants : register( b1 )
 	float4x4 WT;
 }
 
+cbuffer extraConstants : register(b10)
+{
+	float4x4 Stuff;
+}
+
 /************************************************************************************************/
 
 

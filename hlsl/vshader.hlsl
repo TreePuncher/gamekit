@@ -22,26 +22,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-struct Plane
-{
-	float4 Normal;
-	float4 Orgin;
-};
 
-cbuffer CameraConstants : register( b0 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	uint  	 MinZ;
-	uint  	 MaxZ;
-	int 	 PointLightCount;
-	int 	 SpotLightCount;
-};
+/************************************************************************************************/
 
+
+#include "common.hlsl"
 
 cbuffer LocalConstants : register( b1 )
 {
@@ -49,6 +34,10 @@ cbuffer LocalConstants : register( b1 )
 	float4	 Specular;
 	float4x4 WT;
 }
+
+
+/************************************************************************************************/
+
 
 struct VIN
 {
@@ -61,43 +50,88 @@ struct VOUT
 	float4 WPOS : POSITION;
 };
 
+
+/************************************************************************************************/
+
+
 VOUT VMain( VIN In )
 {
 	VOUT Out;
 	Out.POS 	= mul(PV, mul(WT, In.POS)); 
-	//Out.POS 	= mul(Proj, mul(View, mul(WT, In.POS)));
 	Out.WPOS 	= mul(WT, In.POS);
 
 	return Out;
 }
 
+struct LinePoint
+{
+	float4 POS		: POSITION;
+	float4 Colour	: COLOUR;
+};
+
+struct LinePointPS
+{
+	float4 Colour	: COLOUR;
+	float4 POS		: SV_POSITION;
+};
+
+LinePointPS VSegmentPassthrough(LinePoint In)
+{
+	LinePointPS Out;
+	Out.POS		= mul(PV, In.POS);
+	Out.Colour	= In.Colour;
+	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+struct RectPoint_VS
+{
+	float2 POS 		: POSITION;
+	float2 UV		: TEXCOORD;
+	float4 Color 	: COLOR;
+};
+
+RectPoint_PS DrawRect_VS( RectPoint_VS In )
+{
+	RectPoint_PS Out;
+	Out.POS		= float4(In.POS, 1, 1);
+	Out.UV		= In.UV;
+	Out.Color	= In.Color;
+
+	return Out;
+}
+
+
+/************************************************************************************************/
+
+
 struct VIN2
 {
 	float4 POS 		: POSITION;
+	float2 UV		: TEXCOORD;
 	float4 N	 	: NORMAL;
 };
 
-struct PS_IN
-{
-	float3 WPOS 	: TEXCOORD0;
-	float4 N 		: TEXCOORD1;
-	float4 POS 	 	: SV_POSITION;
-};
 
 PS_IN V2Main( VIN2 In )
 {
 	float3x3 rot = WT;
 	PS_IN Out;
-	In.POS.w = 1;
-
 	Out.WPOS 	= mul(WT, In.POS);
-	Out.POS 	= In.POS;
 	Out.POS 	= mul(PV, mul(WT, In.POS));
-	//Out.POS 	= mul(Proj, mul(View, mul(WT, In.POS)));
-	Out.N   	= float4(normalize(mul(rot, In.N)), Out.POS.w);
-	
+	//Out.POS 	= mul(mul(PV, WT), In.POS);
+
+	Out.N   	= normalize(mul(rot, In.N.xyz));
+	Out.UV		= In.UV;
 	return Out;
 }
+
+
+/************************************************************************************************/
+
 
 struct VIN3
 {
@@ -106,14 +140,10 @@ struct VIN3
 	float3 T 		: TANGENT;
 };
 
-struct PS_IN2
-{
-	float3 WPOS 	: TEXCOORD0;
-	float4 N 		: TEXCOORD1;
-	float3 T 		: TEXCOORD2;
-	float3 B 		: TEXCOORD3;
-	float4 POS 	 	: SV_POSITION;
-};
+
+
+/************************************************************************************************/
+
 
 PS_IN2 V3Main( VIN3 In )
 {
@@ -129,50 +159,130 @@ PS_IN2 V3Main( VIN3 In )
 	return Out;
 }
 
+
+/************************************************************************************************/
+
+
 struct Joint
 {
 	float4x4 I;
 	float4x4 T;
 };
 
-StructuredBuffer<Joint> Bones : register(t0);
-
 struct VIN4
 {
-	float4 POS 		: POSITION;
-	float4 N	 	: NORMAL;
+	float3 POS 		: POSITION;
+	float3 N	 	: NORMAL;
 	float3 W		: WEIGHTS;
+	float3 UV		: TEXCOORD;
 	uint4  I		: WEIGHTINDICES;
 };
 
+
+/************************************************************************************************/
+
+
+StructuredBuffer<Joint> Bones : register(t0);
+
+
+
 PS_IN VMainVertexPallet(VIN4 In)
 {
-	PS_IN Out;
-	float3 N = float3(0.0f, 0.0f, 0.0f);
-	float4 V = float4(0.0f, 0.0f, 0.0f, 0.0f);
-	float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
-	float4 P = In.POS;
+    PS_IN Out;
+    float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 V = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
+
+    float4x4 MTs[4] =
+    {
+        Bones[In.I[0]].T,
+        Bones[In.I[1]].T,
+        Bones[In.I[2]].T,
+        Bones[In.I[3]].T,
+    };
+
+    float4x4 MIs[4] = 
+    {
+        Bones[In.I[0]].I,
+        Bones[In.I[1]].I,
+        Bones[In.I[2]].I,
+        Bones[In.I[3]].I,
+    };
 
 	[unroll(4)]
-	for (int I = 0; I < 4; ++I)
-	{
-		float4x4 BoneT  = Bones[In.I[I]].T;
-		float4x4 BoneI  = Bones[In.I[I]].I;
-		float3x3 BoneR  = Bones[In.I[I]].T;
-		float3x3 BoneIR = Bones[In.I[I]].I;
+    for (uint I = 0; I < 4; ++I)
+    {
+        float4 TP = mul(MIs[I], float4(In.POS, 1)); // Temp Position
+        float4 TN = mul(MIs[I], float4(In.N, 0));   // Temp Normal
 
-		float4 TP = mul(BoneI,  In.POS);
-		float3 TN = mul(BoneIR, In.N);
+        V += mul(MTs[I], TP) * W[I];
+        N += mul(MTs[I], TN) * W[I];
+    }
 
-		V += mul(BoneT, TP) * W[I];
-		N += mul(BoneR, TN) * W[I];
-	}
+    float4 V2   = V;
+    Out.WPOS    = mul(WT, V2);
+    Out.POS     = mul(PV, mul(WT, V2));
+    Out.N       = mul(WT, N).xyz;
+    Out.UV      = In.UV;
 
-	float3x3 rot = WT;
-	Out.WPOS	 = mul(WT, V);
-	Out.POS		 = mul(PV, mul(WT, V));
-	Out.N		 = float4(normalize(mul(rot, N)), Out.POS.w);
+    return Out;
+}
+
+
+
+/************************************************************************************************/
+
+
+struct DepthPass_IN {
+	float4 POS_Normalized	: POSITION;
+	float4 POS				: SV_POSITION;
+};
+
+
+DepthPass_IN VMain_ShadowMapping(VIN In)
+{
+	DepthPass_IN Out;
+	Out.POS			   = mul(PV, mul(WT, In.POS));
+    Out.POS_Normalized = Out.POS;
+    //Out.POS_Normalized = float4(0, 0, 0,  4);//Out.POS; // Out.POS.w;
 
 	return Out;
 }
 
+
+/************************************************************************************************/
+
+
+struct VIN5
+{
+	float3 POS 		: POSITION;
+	float3 W		: WEIGHTS;
+	uint4  I		: WEIGHTINDICES;
+};
+
+DepthPass_IN VMainVertexPallet_ShadowMapping(VIN5 In)
+{
+	DepthPass_IN Out;
+	float3 V = float3(0.0f, 0.0f, 0.0f);
+	float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
+
+	[unroll(4)]
+	for (uint I = 0; I < 4; ++I)
+	{
+		float4x4 MT = Bones[In.I[I]].T;
+		float4x4 MI = Bones[In.I[I]].I;
+
+		float4 TP = mul(MI, float4(In.POS, 1));
+
+		V += mul(MT, TP) * W[I];
+	}
+
+	float4 V2 = float4(V, 1.0f);
+	Out.POS				= mul(PV, mul(WT, V2));
+    Out.POS_Normalized  = Out.POS;
+
+	return Out;
+}
+
+
+/************************************************************************************************/

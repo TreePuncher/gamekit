@@ -355,8 +355,8 @@ namespace FlexKit
 		float				EaseOutDuration		= 0.0f;
 		bool				Loop				= false;
 		bool				ForceComplete		= false;
-		DAConditionHandle	OnExitTrigger		= INVALIDHANDLE;
-		GUID_t				Animation			= INVALIDHANDLE;
+		DAConditionHandle	OnExitTrigger		= (DAConditionHandle)INVALIDHANDLE;
+		GUID_t				Animation			= (DAConditionHandle)INVALIDHANDLE;
 	};
 
 	struct AnimationCondition_Desc

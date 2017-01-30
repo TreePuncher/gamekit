@@ -73,6 +73,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /************************************************************************************************/
 
+using namespace FlexKit;
+
 
 void HandleKeyEvents(const Event& in, BaseState* _ptr) {
 	//_ptr->Quit = true;
@@ -81,12 +83,29 @@ void HandleKeyEvents(const Event& in, BaseState* _ptr) {
 	{
 	case Event::InputAction::Pressed:
 	{
-		if (in.mData1.mKC[0] == KC_ESC)
+		switch (in.mData1.mKC[0])
+		{
+		case KC_ESC:
 			_ptr->Quit = true;
-		if (in.mData1.mKC[0] == KC_M)
+			break;
+		case KC_M:
 			_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
-		if (in.mData1.mKC[0] == KC_Q)
+			break;
+		case KC_V:
+		{
+			_ptr->DP_DrawMode = EDEFERREDPASSMODE(_ptr->DP_DrawMode + 1);
+			if (_ptr->DP_DrawMode == EDEFERREDPASSMODE::EDPM_COUNT)
+				_ptr->DP_DrawMode = EDEFERREDPASSMODE::EDPM_DEFAULT;
+		}	break;
+		case KC_C:
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::DEFERREDSHADING_SHADE);
+			break;
+		case KC_Q:
 			PushSubState(_ptr, CreateConsoleSubState(_ptr->Engine, &_ptr->Console, _ptr));
+			break;
+		default:
+			break;
+		}
 	}	break;
 	default:
 		break;
@@ -282,6 +301,8 @@ extern "C"
 		State.PhysicsUpdateTimer		= 0.0f;
 		State.TerrainSplits				= 12;
 		State.ActiveWindow				= &Engine->Window;
+		State.Engine					= Engine;
+		State.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
@@ -314,10 +335,11 @@ extern "C"
 		Engine->Window.Handler.Subscribe(sub);
 
 		State.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
-		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
 
 		auto MenuSubState = CreateMenuState(&State, Engine);
 		PushSubState(&State, MenuSubState);
+
+		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
 
 		return &State;
 	}
@@ -374,6 +396,7 @@ extern "C"
 		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
 		SortPVSTransparent(State->Nodes, &Transparent, State->ActiveCamera);
 
+		Free_DelayedReleaseResources(Engine->RenderSystem);
 
 		// TODO: multi Thread these
 		// Do Uploads
@@ -381,6 +404,7 @@ extern "C"
 			DeferredPass_Parameters	DPP;
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
+			DPP.Mode			= State->DP_DrawMode;
 
 			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);
 			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
@@ -407,7 +431,7 @@ extern "C"
 			ClearDeferredBuffers  (RS, &Engine->DeferredRender);
 
 			DoDeferredPass		(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, &Engine->Geometry, nullptr);
-			DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, false);
+			//DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, false);
 
 			ShadeDeferredPass	(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 			DoForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
@@ -421,6 +445,8 @@ extern "C"
 
 	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, BaseState* State)
 	{
+		IncrementCurrent(&Engine->DepthBuffer);
+
 		PresentWindow(&Engine->Window, Engine->RenderSystem);
 	}
 

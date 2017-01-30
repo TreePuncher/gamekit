@@ -31,8 +31,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct MenuState : public SubState
 {
+	MenuState(iAllocator* Memory) : BettererWindow(Memory){}
+
+	MenuState(const MenuState& rhs) : BettererWindow(rhs.BettererWindow)
+	{
+		Window			= rhs.Window;
+		CursorSize		= rhs.CursorSize;
+	}
+
 	FlexKit::SimpleWindow	Window;
 	FlexKit::float2			CursorSize;
+
+	FlexKit::ComplexWindow	BettererWindow;
+
+	FlexKit::EntityHandle   Model;
+
+	double T;
 };
 
 

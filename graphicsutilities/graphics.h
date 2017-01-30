@@ -251,6 +251,7 @@ namespace FlexKit
 		R8G8B8A_UINT,
 		R8G8B8A8_UINT,
 		R8G8B8A8_UNORM,
+		R8G8_UNORM,
 		D24_UNORM_S8_UINT,
 		R32_FLOAT,
 		D32_FLOAT,
@@ -383,6 +384,13 @@ namespace FlexKit
 
 		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
 		void Release(){for( auto& r : Resources) {if(r) r->Release(); r = nullptr;};}
+
+		void Release_Delayed(RenderSystem* RS) 
+		{ 
+			for (auto& r : Resources) 
+				if(r) Push_DelayedRelease(RS, r); 
+		}
+
 
 		void _SetDebugName(const char* _str) {
 			size_t Str_len = strnlen_s(_str, 64);
@@ -907,9 +915,17 @@ namespace FlexKit
 			ID3D12RootSignature* RS2UAVs4SRVs4CBs;  // 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs4SRVs;		// 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs_SO;		// Stream Out Enabled
+			ID3D12RootSignature* ShadingRTSig;		// Signature For Compute Based Deferred Shading
 		}Library;
 
 		PipelineStateTable* States;
+
+		struct FreeEntry
+		{
+			ID3D12Resource* Resource;
+			size_t			Counter;
+		};
+		DynArray<FreeEntry> FreeList;
 
 		operator RenderSystem* ( ) { return this; }
 	};
@@ -1087,11 +1103,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	enum EDEFERREDPASSMODE
+	{
+		EDPM_DEFAULT	= 0,
+		EDPM_ALBEDO,
+		EDPM_ROUGHNESS,
+		EDPM_METAL,
+		EDPM_NORMALS,
+		EDPM_LIGHTCOUNT,
+		EDPM_COUNT,
+	};
 	struct DeferredPass_Parameters
 	{
 		float4x4 InverseZ;
 		uint64_t PointLightCount;
 		uint64_t SpotLightCount;
+		EDEFERREDPASSMODE Mode;// Only useable in Debug mode
 	};
 
 
@@ -1110,6 +1137,8 @@ namespace FlexKit
 		uint32_t SLightCount;
 		uint32_t Height;
 		uint32_t Width;
+		uint32_t DebugRenderEnabled;
+		uint32_t Padding[2];
 		float4	 AmbientLight;
 		//char padding[1019];
 	};
@@ -1156,15 +1185,15 @@ namespace FlexKit
 			Texture2D PositionTex;
 			Texture2D OutputBuffer;
 			Texture2D DepthBuffer;
+			Texture2D EmissiveTex;
+			Texture2D RoughnessMetal;
 		}GBuffers[3];
 		size_t CurrentBuffer;
 
 		// Shading
 		struct
 		{
-			ID3D12PipelineState*	ShadingPSO;
 			ConstantBuffer			ShaderConstants;
-			ID3D12RootSignature*	ShadingRTSig;
 			Shader					Shade;		// Compute Shader
 		}Shading;
 
@@ -1507,7 +1536,7 @@ namespace FlexKit
 	const TriMeshHandle INVALIDMESHHANDLE = TriMeshHandle(-1);
 	struct GeometryTable
 	{
-		GeometryTable() : Handles(GetTypeID<GeometryTable>(), nullptr) {}
+		GeometryTable() : Handles(GetTypeGUID(GeometryTable), nullptr) {}
 
 		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
 		DynArray<TriMesh*>								Geometry;
@@ -1729,77 +1758,6 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseTextureSet	(TextureSet* TS, iAllocator* Memory);
 
 
-	class FLEXKITAPI ShaderTable
-	{
-	public:
-		ShaderTable();
-
-		typedef char DirtFlag;
-
-		float4	GetAlbedo	(ShaderSetHandle hndl);
-		float4	GetMetal	(ShaderSetHandle hndl);
-
-		float4	GetAlbedo	(ShaderSetHandle hndl)	const;
-		float4	GetMetal	(ShaderSetHandle hndl)	const;
-
-		void	SetAlbedo	(ShaderSetHandle hndl, float4);
-		void	SetMetal	(ShaderSetHandle hndl, float4);
-
-
-		ShaderHandle	AddShader	 (Shader);
-		Shader			GetShader	 (ShaderHandle hndl);
-		void			SetShader	 (ShaderHandle hndl, Shader);
-		void			FreeShader	 (ShaderHandle hndl);
-
-		DirtFlag		GetDirtyFlag (ShaderSetHandle hndl);
-
-		Shader			GetPixelShader			 (ShaderSetHandle hndl);
-		Shader			GetVertexShader			 (ShaderSetHandle hndl);
-		Shader			GetVertexShader_Animated (ShaderSetHandle hndl);
-		Shader			GetGeometryShader		 (ShaderSetHandle hndl);
-
-		ShaderSetHandle	GetNewShaderSet();
-		ShaderHandle	GetNewShaderHandle();
-		ShaderSetHandle	GetDefaultMaterial()		  { return DefaultMaterial;}
-
-		void SetDefaultMaterial(ShaderSetHandle mhndl) { DefaultMaterial = mhndl; }
-
-		struct ShaderSet
-		{
-			ShaderSet() {
-				inUse = false;
-			}
-
-			ShaderHandle PShader;
-			ShaderHandle GShader;
-			ShaderHandle HShader;
-			ShaderHandle VShader;
-			ShaderHandle DShader;
-			ShaderHandle VShader_Animated;
-			bool inUse;
-		};
-
-		size_t	RegisterShaderSet(ShaderSet& in);
-		void	SetSSet(ShaderSetHandle, size_t);
-
-	private:
-		ShaderSetHandle	previousShaderSetHandle;
-		ShaderSetHandle	DefaultMaterial; // Used as a fallback option
-
-		size_t			previousShaderSet;
-
-		static_vector<float4,	128> Albedo;
-		static_vector<float4,	128> Metal;
-		static_vector<char,		128> SSetMappings;
-		static_vector<Shader,	128> Shaders;
-		static_vector<DirtFlag, 128> DirtyFlags;
-		static_vector<ShaderSet, 32> SSets;
-
-		FlexKit::HandleUtilities::HandleTable<ShaderSetHandle>	ShaderSetHndls;
-		FlexKit::HandleUtilities::HandleTable<ShaderHandle>		ShaderHandles;
-	};
-
-
 	struct DrawableDesc
 	{
 		ShaderSetHandle Material;
@@ -1860,8 +1818,8 @@ namespace FlexKit
 			}
 			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.5f), Spec(0)
 			{}
-			FlexKit::float4		Albedo;		// Term 4 is Roughness
-			FlexKit::float4		Spec;		// Metal Is first 4, Specular is rgb
+			float4		Albedo;		// Term 4 is Roughness
+			float4		Spec;		// Metal Is first 4, Specular is rgb
 		}MatProperties;
 
 		char Padding_2[32];
@@ -1912,7 +1870,7 @@ namespace FlexKit
 
 	struct FLEXKITAPI StaticScene
 	{
-		StaticScene() : ObjectTable(GetTypeID<StaticScene>(), nullptr) {}
+		StaticScene() : ObjectTable(GetTypeGUID(StaticScene), nullptr) {}
 		DynArray<DirectX::XMMATRIX>		Transforms		[MAXINSTANCES];
 		char							GeometryIndex	[MAXINSTANCES];
 		NodeHandle						NodeHandles		[MAXINSTANCES];
@@ -2007,6 +1965,10 @@ namespace FlexKit
 
 	FLEXKITAPI void	CleanUp			( RenderSystem* System );
 	FLEXKITAPI void	ReleaseCamera	( SceneNodes* Nodes, Camera* camera );
+
+
+	FLEXKITAPI void Push_DelayedRelease			(RenderSystem* RS, ID3D12Resource* Res);
+	FLEXKITAPI void Free_DelayedReleaseResources(RenderSystem* RS);
 
 	
 	/************************************************************************************************/
@@ -2273,7 +2235,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void ClearText		( TextArea* TA );
-	FLEXKITAPI void CleanUpTextArea	( TextArea* TA, iAllocator* BA );
+	FLEXKITAPI void CleanUpTextArea	( TextArea* TA, iAllocator* BA, RenderSystem* RS = nullptr );
 	FLEXKITAPI void PrintText		( TextArea* Area, const char* text );
 
 	FLEXKITAPI TextArea CreateTextArea	( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
@@ -2429,7 +2391,7 @@ namespace FlexKit
 	FLEXKITAPI void CleanUp	( PointLightBuffer* out,	iAllocator* Memory );
 	FLEXKITAPI void CleanUp	( SpotLightBuffer* out,		iAllocator* Memory );
 
-	FLEXKITAPI void DrawGUI	( RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, RenderWindow* Out );
+	FLEXKITAPI void DrawGUI	( RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, Texture2D Out );
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
@@ -2455,14 +2417,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void InitiateDeferredPass	( RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture );
-	FLEXKITAPI void ShadeDeferredPass		( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
-	FLEXKITAPI void ReleaseDeferredPass		( DeferredPass* gb );
-	FLEXKITAPI void ClearGBuffer			( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
-	FLEXKITAPI void UpdateGBufferConstants	( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
+	FLEXKITAPI void InitiateDeferredPass		( RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
+	FLEXKITAPI void DoDeferredPass				( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture );
+	FLEXKITAPI void ShadeDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
+	FLEXKITAPI void ReleaseDeferredPass			( DeferredPass* gb );
+	FLEXKITAPI void ClearGBuffer				( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
+	FLEXKITAPI void UpdateGBufferConstants		( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
+	FLEXKITAPI void UploadDeferredPassConstants	( RenderSystem* RS, DeferredPass_Parameters* in, float4 A, DeferredPass* Pass );
+	FLEXKITAPI void	IncrementDeferredPass		( DeferredPass* Pass );
+	FLEXKITAPI void ClearDeferredBuffers		( RenderSystem* RS, DeferredPass* );
 
-	FLEXKITAPI void RenderShadowMap(RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT);
+	FLEXKITAPI void RenderShadowMap				( RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT );
+
+
+	FLEXKITAPI Texture2D GetBackBufferTexture	( RenderWindow* Window );
 
 
 	/************************************************************************************************/
@@ -2473,6 +2441,8 @@ namespace FlexKit
 		DepthBuffer*	DepthBuffer;
 		RenderWindow*	OutputTarget;
 	};
+
+	FLEXKITAPI void		IncrementRSIndex( RenderSystem* RS );
 
 	FLEXKITAPI ID3D12CommandAllocator*		GetCurrentCommandAllocator	( RenderSystem* RS );
 	FLEXKITAPI ID3D12GraphicsCommandList*	GetCurrentCommandList		( RenderSystem* RS );

@@ -38,6 +38,7 @@ namespace FlexKit
 
 	enum EGUI_ELEMENT_TYPE
 	{
+		EGE_GRID,
 		EGE_VLIST,
 		EGE_HLIST,
 		EGE_HSLIDER,
@@ -418,7 +419,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void		InitiateSimpleWindow	( iAllocator*		Memory,		SimpleWindow* Out,		SimpleWindow_Desc& Desc );
-	FLEXKITAPI void		CleanUpSimpleWindow		( SimpleWindow* Out );
+	FLEXKITAPI void		CleanUpSimpleWindow		( SimpleWindow* Out, RenderSystem* RS = nullptr);
 	FLEXKITAPI void		DrawChildren			( GUIChildList&		Elements,	SimpleWindow* Window,	GUIRender* Out, ParentInfo& P, FormattingOptions& Formatting = FormattingOptions());
 	FLEXKITAPI void		DrawSimpleWindow		( SimpleWindowInput	Input,		SimpleWindow* Window,	GUIRender* Out );
 
@@ -449,6 +450,167 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	class ComplexWindow;
+
+
+	struct LayoutEngine
+	{
+		RenderSystem*	RS;
+		GUIRender*		GUI;
+
+		void PushRect	(Draw_RECT Rect);
+		void PushOffset	(float2 XY);
+		void PopOffset	(float2 XY);
+
+	};
+
+	struct GUIBaseElement
+	{
+		size_t Index;
+		size_t UpdatePriority;
+
+		EGUI_ELEMENT_TYPE	Type;
+	};
+
+	struct GUIDimension
+	{
+		float D;
+		GUIDimension& operator = (float f) { D = f; return *this; }
+		operator float () {
+			return D;
+		}
+	};
+
+	struct GUIButton
+	{
+		uint2	CellID;
+		float2	Dimensions;
+	};
+
+	struct GUIGrid
+	{
+		GUIGrid(iAllocator* memory, uint32_t base) : 
+			RowHeights	(memory), 
+			ColumnWidths(memory),
+			Cells		(memory),
+			Base		(base) {}
+
+		GUIGrid(const GUIGrid& rhs)
+		{
+			RowHeights		= rhs.RowHeights;
+			ColumnWidths	= rhs.ColumnWidths;
+			Cells			= rhs.Cells;
+			Base			= rhs.Base;
+		}
+
+		struct Cell
+		{
+			uint2    ID;
+			uint32_t Children;
+		};
+
+		static void Draw(ComplexWindow* Window, GUIGrid* Grid, LayoutEngine* LayoutEngine);
+		static void Draw_DEBUG(ComplexWindow* Window, GUIGrid* Grid, LayoutEngine* LayoutEngine);
+
+		DynArray<GUIDimension>	RowHeights;
+		DynArray<GUIDimension>	ColumnWidths;
+		DynArray<Cell>			Cells;
+		float2					WH;
+		uint32_t				Base;
+	};
+
+	
+	/************************************************************************************************/
+
+
+	class GUIGridHandle
+	{
+	public:
+		GUIGridHandle(ComplexWindow* Window, GUIElementHandle In);
+
+		const GUIBaseElement	Base() const;
+		GUIBaseElement&			Base();
+
+		DynArray<GUIDimension>&		RowHeights();
+		DynArray<GUIDimension>&		ColumnWidths();
+		GUIGrid::Cell&				GetCell(uint2 ID);
+
+		GUIGrid&					_GetGrid();
+
+		operator GUIElementHandle () { return mBase; }
+
+		void resize				(float Width_percent, float Height_percent);
+		void SetGridDimensions	(size_t Width, size_t Height);
+
+
+		GUIElementHandle CreateButton(uint2 CellID);
+
+	private:
+	
+		GUIElementHandle	mBase;
+		ComplexWindow*		mWindow;
+	};
+
+	class GUIButtonHandle
+	{
+	public:
+		GUIButtonHandle(ComplexWindow* Window, GUIElementHandle In);
+
+		const GUIBaseElement	Base() const;
+		GUIBaseElement&			Base();
+
+		operator GUIElementHandle () { return mBase; }
+
+		void resize		(float Width_percent, float Height_percent);
+		void SetCellID  (uint2 CellID);
+
+		GUIButton& _IMPL();
+
+	private:
+	
+		GUIElementHandle	mBase;
+		ComplexWindow*		mWindow;
+	};
+
+
+	class ComplexWindow
+	{
+	public:
+		ComplexWindow ( iAllocator* memory );
+		ComplexWindow ( const ComplexWindow& );
+
+		void Update		( double dt, const SimpleWindowInput in);
+		void Upload		( RenderSystem* RS, GUIRender* out );
+		void Draw		( RenderSystem* RS, GUIRender* out );
+		void Draw_DEBUG	( RenderSystem* RS, GUIRender* out );
+
+		GUIGridHandle CreateGrid(GUIElementHandle	Parent = 0, uint2 ID = {0, 0});
+
+		
+		GUIButtonHandle CreateButton(GUIElementHandle Parent);
+
+		void CreateTexturedButton();
+
+		void CreateTextBox();
+		void CreateTextInputBox();
+
+		void CreateHorizontalSlider();
+		void CreateVerticalSlider();
+
+		DynArray<GUIBaseElement>		Elements;
+		DynArray<GUIGrid>				Grids;
+		DynArray<GUIButton>				Buttons;
+
+		DynArray<DynArray<GUIElement>>	Children;
+
+		iAllocator* Memory;
+	};
+
+
+	/************************************************************************************************/
+
 }
 
 #endif

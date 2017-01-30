@@ -22,6 +22,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+// ---------------------------------------------------------------------------
+
 cbuffer CameraConstants : register( b0 )
 {
 	float4x4 View;
@@ -32,10 +34,12 @@ cbuffer CameraConstants : register( b0 )
 
 cbuffer LocalConstants : register( b1 )
 {
-	float4	 Albedo; // + roughness
-	float4	 Specular;
+	float4	 Albedo; 	// + Roughness
+	float4	 Specular;	// + Metal
 	float4x4 WT;
 }
+
+// ---------------------------------------------------------------------------
 
 struct GOUT
 {

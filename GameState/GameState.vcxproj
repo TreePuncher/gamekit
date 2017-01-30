@@ -72,6 +72,7 @@
     <ExecutablePath>$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH);</ExecutablePath>
     <LibraryPath>$(SolutionDir)Dependencies\lib\release_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\release;$(LibraryPath)</LibraryPath>
     <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;$(IncludePath)</IncludePath>
+    <OutDir>$(SolutionDir)\builds\release_x64\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;$(IncludePath)</IncludePath>
@@ -115,6 +116,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDLL;COMPILE_GAMESTATE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -124,18 +126,23 @@
   <ItemGroup>
     <ClCompile Include="Console.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ConsoleSubState.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="BaseGameState.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="MenuState.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="PlayState.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Win64.cpp" />
   </ItemGroup>

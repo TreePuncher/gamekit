@@ -22,14 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-cbuffer CameraConstants : register( b0 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4   CameraPOS;
-}
+#include "common.hlsl"
 
 StructuredBuffer<float4x4>	Transforms : register(t0);
 

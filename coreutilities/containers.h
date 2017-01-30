@@ -124,6 +124,12 @@ namespace FlexKit
 				reserve(MINSIZE);
 		}
 
+		inline  DynArray(const THISTYPE& RHS) :
+			Allocator	(RHS.Allocator),
+			Max			(RHS.Max),
+			Size		(RHS.Size) { (*this) = RHS; }
+
+
 		inline  DynArray(THISTYPE&& RHS) : 
 			A			(RHS.A),
 			Allocator	(RHS.Allocator),
@@ -184,6 +190,26 @@ namespace FlexKit
 			return A[Size - 1];
 		}
 
+
+		/************************************************************************************************/
+
+		void resize(size_t newSize)
+		{
+			if (Max < newSize)
+				reserve(newSize);
+
+			if (newSize > size()) {
+				auto I = newSize - size();
+				while(I--)
+					push_back(Ty());
+			}
+			else if(newSize < size())
+			{
+				auto I = size() - newSize;
+				while (I--)
+					pop_back();
+			}
+		}
 
 		/************************************************************************************************/
 

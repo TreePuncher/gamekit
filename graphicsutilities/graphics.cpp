@@ -343,9 +343,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CreateRootSignatureLibrary(RenderSystem* out)
+	void CreateRootSignatureLibrary(RenderSystem* RS)
 	{
-		ID3D12Device* Device = out->pDevice;
+		ID3D12Device* Device = RS->pDevice;
 
 		/*
 			CD3DX12_STATIC_SAMPLER_DESC(
@@ -394,7 +394,7 @@ namespace FlexKit
 			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
 												ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
 
-			out->Library.RS4CBVs4SRVs = NewRootSig;
+			RS->Library.RS4CBVs4SRVs = NewRootSig;
 			SETDEBUGNAME(NewRootSig, "RS4CBVs4SRVs");
 		}
 		{
@@ -424,7 +424,7 @@ namespace FlexKit
 			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
 				ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
 
-			out->Library.RS4CBVs_SO = NewRootSig;
+			RS->Library.RS4CBVs_SO = NewRootSig;
 			SETDEBUGNAME(NewRootSig, "RS3CBV1DT_SO");
 		}
 		{
@@ -453,8 +453,39 @@ namespace FlexKit
 			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
 				ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
 
-			out->Library.RS2UAVs4SRVs4CBs = NewRootSig;
+			RS->Library.RS2UAVs4SRVs4CBs = NewRootSig;
 			SETDEBUGNAME(NewRootSig, "RS2UAVs4SRVs4CBs");
+		}
+		{
+			// Shading Signature Setup
+			CD3DX12_DESCRIPTOR_RANGE ranges[3]; {
+				ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8, 0);
+				ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+				ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0);
+			}
+
+
+			CD3DX12_ROOT_PARAMETER Parameters[1];
+			Parameters[DSRP_DescriptorTable].InitAsDescriptorTable(3, ranges, D3D12_SHADER_VISIBILITY_ALL);
+
+			ID3DBlob* Signature = nullptr;
+			ID3DBlob* ErrorBlob = nullptr;
+			CD3DX12_STATIC_SAMPLER_DESC Default(0);
+			CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
+
+			RootSignatureDesc.Init(1, Parameters, 1, &Default);
+			HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob);
+			FK_ASSERT(SUCCEEDED(HR));
+
+			ID3D12RootSignature* RootSig = nullptr;
+			HR = RS->pDevice->CreateRootSignature(0, Signature->GetBufferPointer(),
+				Signature->GetBufferSize(), IID_PPV_ARGS(&RootSig));
+
+			FK_ASSERT(SUCCEEDED(HR));
+			SETDEBUGNAME(RootSig, "ShadingRTSig");
+			Signature->Release();
+
+			RS->Library.ShadingRTSig = RootSig;
 		}
 	}
 
@@ -614,7 +645,7 @@ namespace FlexKit
 			NewRenderSystem.Fences[I].FenceHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 			NewRenderSystem.Fences[I].FenceValue  = 0;
 		}
- 			
+			
 		D3D12_COMMAND_QUEUE_DESC CQD ={};
 		CQD.Flags							            = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		CQD.Type								        = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -808,6 +839,8 @@ namespace FlexKit
 		InitiateCopyEngine(out);
 		
 		out->States = CreatePSOTable(out);
+		out->FreeList.Allocator = in->Memory;
+		
 
 		return InitiateComplete;
 	}
@@ -869,6 +902,7 @@ namespace FlexKit
 		System->Library.RS4CBVs4SRVs->Release();
 		System->Library.RS4CBVs_SO->Release();
 		System->Library.RS2UAVs4SRVs4CBs->Release();
+		System->Library.ShadingRTSig->Release();
 		System->pGIFactory->Release();
 		System->pDevice->Release();
 		System->CopyEngine.TempBuffer->Release();
@@ -880,6 +914,30 @@ namespace FlexKit
 		System->pDebugDevice->Release();
 		System->pDebug->Release();
 #endif
+	}
+
+
+	void Push_DelayedRelease(RenderSystem* RS, ID3D12Resource* Res)
+	{
+		RS->FreeList.push_back({ Res, 3 });
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Free_DelayedReleaseResources(RenderSystem* RS)
+	{
+		for (auto& R : RS->FreeList)
+			if (!--R.Counter)
+				R.Resource->Release();
+
+		auto I = RS->FreeList.begin();
+		while (I < RS->FreeList.end()) {
+			if (!I->Counter)
+				RS->FreeList.remove_unstable(I);
+			I++;
+		}
 	}
 
 
@@ -1501,6 +1559,8 @@ namespace FlexKit
 		case FlexKit::FORMAT_2D::R8G8B8A8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
 			break;
+		case FlexKit::FORMAT_2D::R8G8_UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM;
 		case FlexKit::FORMAT_2D::R32G32B32_FLOAT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT;
 			break;
@@ -3586,9 +3646,30 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	ID3D12PipelineState* LoadShadeState(RenderSystem* RS)
+	{
+		auto ComputeShader = LoadShader("cmain", "DeferredShader", "cs_5_0", "assets\\cshader.hlsl");
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
+		ID3D12PipelineState* ShadingPSO = nullptr;
+
+		CPSODesc.pRootSignature		= RS->Library.ShadingRTSig;
+		CPSODesc.CS					= CD3DX12_SHADER_BYTECODE(ComputeShader.Blob);
+		CPSODesc.Flags				= D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
+
+		HRESULT HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		Release(&ComputeShader);
+
+		return ShadingPSO;
+	}
+
 
 	void InitiateDeferredPass(RenderSystem* RS, DeferredPassDesc* GBdesc, DeferredPass* out)
 	{
+		RegisterPSOLoader(RS, RS->States, DEFERREDSHADING_SHADE, LoadShadeState);
+		QueuePSOLoad(RS, DEFERREDSHADING_SHADE);
 
 		{
 			// Create GBuffers
@@ -3612,6 +3693,19 @@ namespace FlexKit
 						FK_ASSERT(out->GBuffers[I].ColorTex);
 						SETDEBUGNAME(out->GBuffers[I].ColorTex.Texture, "Albedo Buffer");
 					}
+					{	// Alebdo Buffer
+						desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
+						out->GBuffers[I].EmissiveTex = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].EmissiveTex);
+						SETDEBUGNAME(out->GBuffers[I].EmissiveTex.Texture, "Emissive Buffer");
+					}
+					{	// Roughness Metal Buffer
+						desc.Format = FORMAT_2D::R8G8_UNORM;
+						out->GBuffers[I].RoughnessMetal = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].RoughnessMetal);
+						SETDEBUGNAME(out->GBuffers[I].RoughnessMetal.Texture, "Roughness + Metal Buffer");
+					}
+
 					{
 						// Create Specular Buffer
 						desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
@@ -3647,11 +3741,9 @@ namespace FlexKit
 				}
 			}
 
-			out->Shading.Shade = LoadShader("cmain", "DeferredShader", "cs_5_0", "assets\\cshader.hlsl");
-
 			// Create Constant Buffers
 			{
-				FlexKit::GBufferConstantsLayout initial;
+				GBufferConstantsLayout initial;
 				initial.DLightCount = 0;
 				initial.PLightCount = 0;
 				initial.SLightCount = 0;
@@ -3659,9 +3751,10 @@ namespace FlexKit
 				initial.Height	    = GBdesc->RenderWindow->WH[1];
 				initial.SLightCount = 0;
 				initial.AmbientLight = float4(0, 0, 0, 0);
+				initial.DebugRenderEnabled = 0;
 
-				FlexKit::ConstantBuffer_desc CB_Desc;
-				CB_Desc.InitialSize		= sizeof(initial);
+				ConstantBuffer_desc CB_Desc;
+				CB_Desc.InitialSize		= 1024;
 				CB_Desc.pInital			= &initial;
 				CB_Desc.Structured		= false;
 				CB_Desc.StructureSize	= 0;
@@ -3691,46 +3784,6 @@ namespace FlexKit
 			UAV_DESC.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
 			UAV_DESC.Texture2D.MipSlice   = 0;
 			UAV_DESC.Texture2D.PlaneSlice = 0;
-
-			// Shading Signature Setup
-			CD3DX12_DESCRIPTOR_RANGE ranges[3]; {
-				ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 0);
-				ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
-				ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0);
-			}
-
-			CD3DX12_ROOT_PARAMETER Parameters[1];
-			Parameters[DSRP_DescriptorTable].InitAsDescriptorTable(3, ranges, D3D12_SHADER_VISIBILITY_ALL);
-
-			ID3DBlob* Signature = nullptr;
-			ID3DBlob* ErrorBlob = nullptr;
-			CD3DX12_STATIC_SAMPLER_DESC Default(0);
-			CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
-
-			RootSignatureDesc.Init(1, Parameters, 1, &Default);
-			HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob);
-			FK_ASSERT(SUCCEEDED(HR));
-
-			ID3D12RootSignature* RootSig = nullptr;
-			HR = RS->pDevice->CreateRootSignature(0, Signature->GetBufferPointer(),
-			Signature->GetBufferSize(), IID_PPV_ARGS(&RootSig));
-
-			FK_ASSERT(SUCCEEDED(HR));
-			SETDEBUGNAME(RootSig, "ShadingRTSig");
-			Signature->Release();
-
-			D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
-			ID3D12PipelineState* ShadingPSO = nullptr;
-
-			CPSODesc.pRootSignature		= RootSig;
-			CPSODesc.CS					= CD3DX12_SHADER_BYTECODE(out->Shading.Shade.Blob);
-			CPSODesc.Flags				= D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
-
-			HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
-			FK_ASSERT(SUCCEEDED(HR));
-
-			out->Shading.ShadingRTSig = RootSig;
-			out->Shading.ShadingPSO   = ShadingPSO;
 		}
 		// GBuffer Fill Signature Setup
 		{
@@ -3796,11 +3849,13 @@ namespace FlexKit
 					PSO_Desc.BlendState				= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 					PSO_Desc.SampleMask				= UINT_MAX;
 					PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-					PSO_Desc.NumRenderTargets		= 4;
-					PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R8G8B8A8_UNORM;
-					PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R8G8B8A8_UNORM;
-					PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R32G32B32A32_FLOAT;
-					PSO_Desc.RTVFormats[3]			= DXGI_FORMAT_R32G32B32A32_FLOAT;
+					PSO_Desc.NumRenderTargets		= 6;
+					PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Color
+					PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Specular
+					PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Emissive
+					PSO_Desc.RTVFormats[3]			= DXGI_FORMAT_R8G8_UNORM;	  // Roughness
+					PSO_Desc.RTVFormats[4]			= DXGI_FORMAT_R32G32B32A32_FLOAT; // Normal
+					PSO_Desc.RTVFormats[5]			= DXGI_FORMAT_R32G32B32A32_FLOAT; // Position
 					PSO_Desc.SampleDesc.Count		= 1;
 					PSO_Desc.SampleDesc.Quality		= 0;
 					PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
@@ -4088,6 +4143,7 @@ namespace FlexKit
 		Update.PLightCount  = in->PointLightCount;
 		Update.SLightCount  = in->SpotLightCount;
 		Update.AmbientLight = A;
+		Update.DebugRenderEnabled = in->Mode;
 
 		UpdateResourceByTemp(RS, &Pass->Shading.ShaderConstants, &Update, sizeof(Update), 1, 
 							D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -4119,7 +4175,7 @@ namespace FlexKit
 		RenderSystem* RS, const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
 	{
-		auto CL = GetCurrentCommandList(RS);
+		auto CL				 = GetCurrentCommandList(RS);
 		auto FrameResources  = GetCurrentFrameResources(RS);
 		auto BufferIndex	 = Pass->CurrentBuffer;
 		auto& CurrentGBuffer = Pass->GBuffers[BufferIndex];
@@ -4133,6 +4189,17 @@ namespace FlexKit
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
 
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.SpecularTex,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.EmissiveTex,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.RoughnessMetal,
 				D3D12_RESOURCE_STATE_RENDER_TARGET,
 				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
@@ -4152,11 +4219,11 @@ namespace FlexKit
 				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
 
-			CL->ResourceBarrier(5, Barrier1);
+			CL->ResourceBarrier(sizeof(Barrier1) / sizeof(Barrier1[0]), Barrier1);
 		}
 
 		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS  = ReserveDescHeap(RS, 9);
+		auto TablePOS  = ReserveDescHeap(RS, 11);
 
 		// The Max is to quiet a error if a no Lights are passed
 		TablePOS = PushSRVToDescHeap	(RS, PLB->Resource, TablePOS,  max(PLB->size(), 1),  PLB_Stride);	
@@ -4164,6 +4231,8 @@ namespace FlexKit
 
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,		TablePOS);
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.SpecularTex,	TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.EmissiveTex,	TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.RoughnessMetal,	TablePOS);
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.NormalTex,		TablePOS);
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.PositionTex,	TablePOS);
 		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,	TablePOS);
@@ -4177,8 +4246,8 @@ namespace FlexKit
 		CL->SetDescriptorHeaps(1, Heaps);
 
 		// Do Shading Here
-		CL->SetPipelineState				(Pass->Shading.ShadingPSO);
-		CL->SetComputeRootSignature			(Pass->Shading.ShadingRTSig);
+		CL->SetPipelineState				(GetPSO(RS, DEFERREDSHADING_SHADE));
+		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
 
 		CL->Dispatch(Target.WH[0] / 64, Target.WH[1] / 2, 1);
@@ -4191,6 +4260,16 @@ namespace FlexKit
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
 
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.SpecularTex,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.EmissiveTex,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.RoughnessMetal,
 				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
 				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
@@ -4215,7 +4294,7 @@ namespace FlexKit
 				D3D12_RESOURCE_STATE_COPY_DEST,	-1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
 
-			CL->ResourceBarrier(6, Barrier2);
+			CL->ResourceBarrier(sizeof(Barrier2)/ sizeof(Barrier2[0]), Barrier2);
 		}
 
 		CL->CopyResource(Target, CurrentGBuffer.OutputBuffer);
@@ -4256,7 +4335,7 @@ namespace FlexKit
 		auto DescriptorHeap	= GetCurrentDescriptorTable			(RS);
 
 		auto RTVPOSCPU		= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
-		auto RTVPOS			= ReserveRTVHeap					(RS, 6);
+		auto RTVPOS			= ReserveRTVHeap					(RS, 8);
 		auto RTVHeap		= GetCurrentRTVTable				(RS);
 
 		auto DSVPOSCPU		= GetDSVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On DSV heap on CPU
@@ -4274,10 +4353,12 @@ namespace FlexKit
 
 		size_t BufferIndex = Pass->CurrentBuffer;
 
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,	RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,	RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,		RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex,		RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].EmissiveTex,		RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].RoughnessMetal,	RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,		RTVPOS);
+		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex,		RTVPOS);
 		PushDepthStencil(RS, &Pass->GBuffers[BufferIndex].DepthBuffer, DSVPOS);
 
 		{	// Setup State
@@ -4293,20 +4374,20 @@ namespace FlexKit
 			VP.TopLeftX = 0;
 			VP.TopLeftY = 0;
 
-			D3D12_VIEWPORT	VPs[]	= { VP, VP, VP, VP, };
-			D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT,};
+			D3D12_VIEWPORT	VPs[]	= { VP, VP, VP, VP, VP, VP, };
+			D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT, RECT, RECT };
 
 			CL->SetGraphicsRootSignature			(Pass->Filling.FillRTSig);
 			CL->SetPipelineState					(Pass->Filling.PSO);
-			CL->OMSetRenderTargets					(4, &RTVPOSCPU, true, &DSVPOSCPU);
+			CL->OMSetRenderTargets					(6, &RTVPOSCPU, true, &DSVPOSCPU);
 			
 			CL->SetGraphicsRootConstantBufferView	(DFRP_ShadingConstants, RS->NullConstantBuffer->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView	(DFRP_CameraConstants,	C->Buffer->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView	(DFRP_TextureConstants, RS->NullConstantBuffer->GetGPUVirtualAddress());
 			CL->SetGraphicsRootDescriptorTable		(DFRP_Textures,			DescPOS);
 
-			CL->RSSetViewports						(4, VPs);
-			CL->RSSetScissorRects					(4, RECTs);
+			CL->RSSetViewports						(5, VPs);
+			CL->RSSetScissorRects					(5, RECTs);
 			CL->IASetPrimitiveTopology				(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		}
 		
@@ -4479,6 +4560,7 @@ namespace FlexKit
 
 	void InitiateForwardPass( RenderSystem* RS, ForwardPass_DESC* FBdesc, ForwardPass* out )
 	{
+		return;
 		// Load Shaders
 		out->VShader = LoadShader("VMain", "Forward", "vs_5_0", "assets\\ForwardPassVShader.hlsl");
 		out->PShader = LoadShader("PMain", "Forward", "ps_5_0", "assets\\ForwardPassPShader.hlsl");
@@ -4598,14 +4680,14 @@ namespace FlexKit
 
 	void ReleaseForwardPass(ForwardPass* FP)
 	{
-		FP->CommandList->Release();
-		FP->CommandAllocator->Release();
-		FP->PSO->Release();
-		FP->PassRTSig->Release();
-		FP->CBDescHeap->Release();
+		SAFERELEASE(FP->CommandList);
+		SAFERELEASE(FP->CommandAllocator);
+		SAFERELEASE(FP->PSO);
+		SAFERELEASE(FP->PassRTSig);
+		SAFERELEASE(FP->CBDescHeap);
 
-		FP->VShader.Blob->Release();
-		FP->PShader.Blob->Release();
+		SAFERELEASE(FP->VShader.Blob);
+		SAFERELEASE(FP->PShader.Blob);
 	}
 
 
@@ -4614,6 +4696,7 @@ namespace FlexKit
 
 	void DoForwardPass(PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT)
 	{
+		return;
 		auto CL = GetCurrentCommandList(RS);
 		if(!_PVS->size())
 			return;
@@ -4681,12 +4764,11 @@ namespace FlexKit
 			gb->GBuffers[I].NormalTex->Release();
 			gb->GBuffers[I].PositionTex->Release();
 			gb->GBuffers[I].OutputBuffer->Release();
+			gb->GBuffers[I].EmissiveTex->Release();
+			gb->GBuffers[I].RoughnessMetal->Release();
 		}
 
 		gb->Shading.ShaderConstants.Release();
-		gb->Shading.ShadingPSO->Release();
-		gb->Shading.ShadingRTSig->Release();
-		gb->Shading.Shade.Blob->Release();
 
 		gb->Filling.PSO->Release();
 		gb->Filling.PSOTextured->Release();
@@ -4833,7 +4915,7 @@ namespace FlexKit
 		ZeroNode(Nodes, Node);
 
 		out->Node        = Node;
-		out->FOV         = FlexKit::pi / 6;
+		out->FOV         = (float)pi / 6.0f;
 		out->Near        = Near;
 		out->Far         = Far;
 		out->AspectRatio = AspectRatio;
@@ -5274,199 +5356,6 @@ namespace FlexKit
 			F = LightBufferFlags::Dirty;
 	}
 
-	
-	/************************************************************************************************/
-	
-	
-	ShaderTable::ShaderTable() 
-		: ShaderSetHndls(FlexKit::GetTypeID<ShaderSetHandle>(), nullptr)
-		, ShaderHandles(FlexKit::GetTypeID<ShaderHandle>(), nullptr)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-	
-
-	float4	ShaderTable::GetAlbedo(ShaderSetHandle hndl)
-	{
-		return Albedo[ShaderSetHndls[hndl]];
-	}
-
-	
-	/************************************************************************************************/
-
-
-	float4	ShaderTable::GetAlbedo(ShaderSetHandle hndl) const
-	{
-		return Albedo[ShaderSetHndls[hndl]];
-	}
-
-	
-	/************************************************************************************************/
-	
-
-	void	ShaderTable::SetAlbedo(ShaderSetHandle hndl, float4 A)
-	{
-		Albedo[ShaderSetHndls[hndl]] = A;
-	}
-
-	
-	/************************************************************************************************/
-	
-
-	float4	ShaderTable::GetMetal(ShaderSetHandle hndl)
-	{
-		return Metal[ShaderSetHndls[hndl]];
-	}
-
-	float4	ShaderTable::GetMetal(ShaderSetHandle hndl) const
-	{
-		return Metal[ShaderSetHndls[hndl]];
-	}
-
-
-	/************************************************************************************************/
-	
-
-	void ShaderTable::SetMetal(ShaderSetHandle hndl, float4 M)
-	{
-		Metal[ShaderSetHndls[hndl]] = M;
-	}
-
-	
-	/************************************************************************************************/
-	
-	
-	ShaderHandle ShaderTable::AddShader(Shader S)
-	{
-		size_t index = Shaders.size();
-		Shaders.push_back(S);
-		auto hndl = ShaderHandles.GetNewHandle();
-		ShaderHandles[hndl] = index;
-		Shaders[index] = S;
-		return hndl;
-	}
-
-	
-	/************************************************************************************************/
-	
-
-	Shader ShaderTable::GetShader(ShaderHandle hndl)
-	{
-		return Shaders[ShaderHandles[hndl]];
-	}
-
-	void ShaderTable::SetShader(ShaderHandle hndl, Shader S)
-	{
-		Shaders[ShaderHandles[hndl]] = S;
-	}
-	
-	
-	/************************************************************************************************/
-
-
-	void	ShaderTable::FreeShader(ShaderHandle hndl)
-	{
-		ShaderHandles.RemoveHandle(hndl);
-	}
-
-
-	/************************************************************************************************/
-	
-
-	Shader	ShaderTable::GetPixelShader(ShaderSetHandle hndl)
-	{
-		if (previousShaderSetHandle != hndl)
-		{
-			previousShaderSetHandle = hndl;
-			previousShaderSet = SSetMappings[ShaderSetHndls[hndl]];
-		}
-		return Shaders[ShaderHandles[SSets[previousShaderSet].PShader]];
-	}
-
-
-	/************************************************************************************************/
-	
-
-	Shader	ShaderTable::GetVertexShader(ShaderSetHandle hndl)
-	{
-		if (previousShaderSetHandle != hndl)
-		{
-			previousShaderSetHandle = hndl;
-			previousShaderSet = SSetMappings[ShaderSetHndls[hndl]];
-		}
-		return Shaders[ShaderHandles[SSets[previousShaderSet].VShader]];
-	}
-
-
-	/************************************************************************************************/
-
-
-	Shader ShaderTable::GetVertexShader_Animated( ShaderSetHandle hndl )
-	{
-		if (previousShaderSetHandle != hndl)
-		{
-			previousShaderSetHandle = hndl;
-			previousShaderSet = SSetMappings[ShaderSetHndls[hndl]];
-		}
-		return Shaders[ShaderHandles[SSets[previousShaderSet].VShader_Animated]];
-	}
-
-	
-	/************************************************************************************************/
-	
-	
-	Shader	ShaderTable::GetGeometryShader(ShaderSetHandle hndl)
-	{
-		if (previousShaderSetHandle != hndl)
-		{
-			previousShaderSetHandle = hndl;
-			previousShaderSet = SSetMappings[ShaderSetHndls[hndl]];
-		}
-		return Shaders[ShaderHandles[SSets[previousShaderSet].GShader]];
-	}
-
-
-	/************************************************************************************************/
-	
-	
-	size_t	ShaderTable::RegisterShaderSet(ShaderSet& in)
-	{
-		size_t index = SSets.size();
-		SSets.push_back(in);
-
-		return index;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ShaderTable::SetSSet(ShaderSetHandle hndl, size_t I)
-	{
-		SSetMappings[ShaderSetHndls[hndl]] = I;
-	}
-
-
-	/************************************************************************************************/
-
-
-	ShaderSetHandle	ShaderTable::GetNewShaderSet()
-	{
-		size_t I = Albedo.size();
-		Albedo.push_back({1.0f, 1.0f, 1.0f, 0.8f});
-		Metal.push_back({1.0f, 1.0f, 1.0f, 1.0f});
-		SSetMappings.push_back(0);
-		DirtyFlags.push_back(0);
-
-		ShaderSetHandle newHndl = ShaderSetHndls.GetNewHandle();
-		ShaderSetHndls[newHndl] = I;
-
-		return newHndl;
-	}
-
 
 	/************************************************************************************************/
 
@@ -5871,6 +5760,7 @@ namespace FlexKit
 			NewData.MP.Albedo	= E->MatProperties.Albedo;
 			NewData.MP.Spec		= E->MatProperties.Spec;
 			NewData.Transform	= DirectX::XMMatrixTranspose( WT );
+			//NewData.MATID		= 0x01;
 
 			UpdateResourceByTemp(RS, &E->VConstants, &NewData, sizeof(NewData), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 			E->Dirty = false;
@@ -6777,7 +6667,7 @@ namespace FlexKit
 		P.V = WStoSS(Rect.TRight);
 		P.UV = { 1, 0 };
 		RG->Rects.push_back(P);// Top Right
-	    //
+		//
 
 		//
 		P.V = WStoSS(Rect.TRight);
@@ -7503,10 +7393,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpTextArea(TextArea* TA, FlexKit::iAllocator* BA)
+	void CleanUpTextArea(TextArea* TA, FlexKit::iAllocator* BA, RenderSystem* RS)
 	{
 		BA->free(TA->TextBuffer);
-		if (TA->Buffer) TA->Buffer.Release();
+	
+		if (TA->Buffer) {
+			if (RS)
+				TA->Buffer.Release_Delayed(RS);
+			else
+				TA->Buffer.Release();
+		}
 	}
 
 

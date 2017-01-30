@@ -22,27 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-struct Plane
-{
-	float4 Normal;
-	float4 Orgin;
-};
-
-
-cbuffer CameraConstants : register( b0 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	uint  	 MinZ;
-	uint  	 MaxZ;
-	int 	 PointLightCount;
-	int 	 SpotLightCount;
-};
-
+#include "common.hlsl"
 
 struct GE
 {
@@ -93,8 +73,8 @@ VOUT VMain( VIN IN )
 	Out.N 		= mul(WT, IN.N);
 	Out.T 		= mul(WT, IN.T);
 	Out.B 		= cross(IN.N, IN.T);
-	/*
 
+	/*
 	if(IN.vertexID < IN.instanceData[0])
 	{
 		uint Index  = Indices	[IN.instanceData[2]  + IN.vertexID] + IN.instanceData[1];

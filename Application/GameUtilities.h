@@ -38,4 +38,7 @@ float GetWindowAspectRatio	( EngineMemory* Engine );
 uint2 GetWindowWH			( EngineMemory* Engine );
 
 
+void UpdateMouseInput(MouseInputState* State, RenderWindow* Window);
+
+
 void InitEngine(EngineMemory* Game);

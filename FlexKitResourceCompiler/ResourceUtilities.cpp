@@ -239,12 +239,10 @@ struct Engine
 	iAllocator*		TempMem;
 	iAllocator*		LevelMem;
 	RenderSystem*	RS;
-	ShaderTable*	Materials;
 };
 
 struct Compiler
 {
-	ShaderTable*	Materials;
 };
 
 struct FBXVertexLayout
@@ -625,7 +623,11 @@ FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUt
 				IndexCount += 3;
 			} else if (size == 4)
 			{	// Quads
-				FK_ASSERT(false | SubDiv_Enabled);
+				bool QuadsEnabled = false | SubDiv_Enabled;
+				if (QuadsEnabled) {
+					std::cout << "Quads Disabled!\n";
+					FK_ASSERT(false);
+				}
 
 				auto VertexIndex1 =				  GetVertexIndex(I, 0, IndexCount, Mesh);
 				auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
@@ -1943,7 +1945,7 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 	}
 
 	FINALLY{
-		Manager->Release();
+		Manager->Destroy();
 		if (Desc->CookingEnabled)
 		{
 			if (Foundation)
@@ -1983,6 +1985,9 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 
 		return  LoadGeometryRES_ptr(G);
 	}
+	else
+		std::cout << "Failed to Open FBX File: " << AssetLocation << "\n";
+
 	return LoadGeometryRES_ptr(nullptr);
 }
 

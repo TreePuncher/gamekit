@@ -1296,32 +1296,36 @@ void HandleMouseEvents(const Event& e, GameState* GS)
 
 void SetActiveCamera(GameState* State, Camera* _ptr) { State->ActiveCamera = _ptr; }
 
-void PrintOnClick(void* _ptr, size_t GUIElement)
+bool PrintOnClick(void* _ptr, size_t GUIElement)
 {
 	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
 	PrintText(Args->Text, "Clicked BUTTON\n");
 	std::cout << "Clicked BUTTON\n";
+	return false;
 }
 
-void PrintOnEnter(void* _ptr, size_t GUIElement)
+bool PrintOnEnter(void* _ptr, size_t GUIElement)
 {
 	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
 	PrintText(Args->Text, "ENTERED BUTTON\n");
 	std::cout << "ENTERED BUTTON\n";
+	return false;
 }
 
-void PrintOnExit(void* _ptr, size_t GUIElement)
+bool PrintOnExit(void* _ptr, size_t GUIElement)
 {
 	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
 	PrintText(Args->Text, "LEFT BUTTON\n");
 	std::cout << "LEFT BUTTON\n";
+	return false;
 }
 
-void SliderBarClicked(float r, void* _ptr, size_t GUIElement)
+bool SliderBarClicked(float r, void* _ptr, size_t GUIElement)
 {
 	GUICallbackArgs* Args = (GUICallbackArgs*)_ptr;
 	PrintText(Args->Text, "Slider Clicked\n");
 	std::cout << "Slider Clicked\n";
+	return false;
 }
 
 void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
@@ -1876,7 +1880,7 @@ extern "C"
 		ReleaseTextureSet(_ptr->Set1, Engine->BlockAllocator);
 
 		CleanUpTextureVTable	(&_ptr->TextureState);
-		CleanUpSimpleWindow		(&_ptr->TestScene.Window);
+		CleanUpSimpleWindow		(&_ptr->TestScene.Window, Engine->RenderSystem);
 		ReleaseDrawGUI			(&_ptr->GUIRender);
 		CleanUpLineSet			(&_ptr->Lines);
 		CleanUpState			(_ptr, Engine);

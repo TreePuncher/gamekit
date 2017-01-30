@@ -313,7 +313,7 @@ namespace FlexKit
 			return AddCollider(&PS->Colliders, {Mesh, 1});
 		}
 
-		return ColliderHandle(INVALIDHANDLE);
+		return (ColliderHandle)INVALIDHANDLE;
 	}
 
 

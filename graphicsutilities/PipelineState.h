@@ -52,6 +52,7 @@ namespace FlexKit
 		TERRAIN_DRAW_PSO_DEBUG,
 		TERRAIN_DRAW_WIRE_PSO, // Debug State
 		TERRAIN_CULL_PSO,
+		DEFERREDSHADING_SHADE,
 		EPSO_COUNT,
 		EPSO_ERROR
 	};
@@ -89,10 +90,10 @@ namespace FlexKit
 
 	struct PipelineStateTable
 	{
-		static_vector<ID3D12PipelineState*, 128>		States;
-		static_vector<LOADSTATE_FN*, 128>				StateLoaders;
-		SL_list<LoadState>								LoadsInProgress;
-		ID3D12Device*									Device;
+		static_vector<ID3D12PipelineState*, EPSO_COUNT>		States;
+		static_vector<LOADSTATE_FN*, EPSO_COUNT>			StateLoaders;
+		SL_list<LoadState>									LoadsInProgress;
+		ID3D12Device*										Device;
 	};
 
 
@@ -105,7 +106,7 @@ namespace FlexKit
 	FLEXKITAPI bool						LoadPipelineStates	( RenderSystem* RS );
 
 
-	FLEXKITAPI ID3D12PipelineState*		GetPSO				( PipelineStateTable* States, EPIPELINESTATES State );
+	FLEXKITAPI ID3D12PipelineState*		GetPSO				( RenderSystem* RS, EPIPELINESTATES State );
 	FLEXKITAPI void 					QueuePSOLoad		( RenderSystem* RS, EPIPELINESTATES State ); // Forces a PSO load
 
 	FLEXKITAPI bool						ReloadLoadPSO		( RenderSystem* RS, PipelineStateTable* States, EPIPELINESTATES State );

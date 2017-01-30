@@ -114,8 +114,8 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass;
 	using FlexKit::ForwardPass_DESC;
 
-	uint32_t width	 = 1000;
-	uint32_t height	 = 800;
+	uint32_t width	 = 1920;
+	uint32_t height	 = 1080;
 	bool InvertDepth = true;
 
 	Engine->Window.Close = false;

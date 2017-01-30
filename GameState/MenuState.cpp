@@ -78,6 +78,11 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	DrawSimpleWindow(Input, &ThisState->Window, &StateMemory->Base->GUIRender);
 	DrawMouseCursor(Engine, ThisState->Base);
 
+	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Base->GUIRender);
+	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Base->GUIRender);
+
+	ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Base->GUIRender);
+
 	return true;
 }
 
@@ -85,11 +90,26 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	SimpleWindowInput	Input	  = {};
+	BaseState*			Base	  = ThisState->Base;
+
+	ThisState->T += dT;
+
 	Input.LeftMouseButtonPressed  = ThisState->Base->MouseState.LMB_Pressed;
 	Input.MousePosition			  = ThisState->Base->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
+	ThisState->BettererWindow.Update(dT, Input);
+
 	UpdateSimpleWindow(&Input, &ThisState->Window);
+
+	auto Model = ThisState->Model;
+	Base->GScene.SetMaterialParams(Model, 
+		float4(
+			std::abs(std::sin(ThisState->T * 2)), 	0, 0, std::abs(std::sin(ThisState->T/2))), 
+		float4(1, 1, 1, 0));
+
+
+
 
 	return true;
 }
@@ -97,69 +117,112 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 void ReleaseMenu	(SubState* StateMemory)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
-	CleanUpSimpleWindow(&ThisState->Window);
+	CleanUpSimpleWindow(&ThisState->Window, ThisState->Base->Engine->RenderSystem);
 }
 
 MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 {
-	auto* State = &Engine->BlockAllocator.allocate_aligned<MenuState>();
+	auto* State                 = &Engine->BlockAllocator.allocate_aligned<MenuState>(Engine->BlockAllocator);
 	State->VTable.PreDrawUpdate = PreDraw;
-	State->VTable.Update		= Update;
-	State->VTable.Release		= ReleaseMenu;
+	State->VTable.Update        = Update;
+	State->VTable.Release       = ReleaseMenu;
+	State->T                    = 0;
+	State->Base                 = Base;
+	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
+	Base->MouseState.Enabled    = true;
 
-	State->Base					= Base;
-	State->CursorSize			= float2{ 0.03f/ GetWindowAspectRatio(Engine), 0.03f  };
+	auto Model = Base->GScene.CreateDrawableAndSetMesh("Flower");
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100,100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
 
-	Base->MouseState.Enabled	= true;
+	Base->GScene.SetMaterialParams(Model, float4(1, 0, 0, 1), float4(0, 0, 1, 1));
+	Base->GScene.TranslateEntity_WT(Model, {-3, -4, -10});
 
-	SimpleWindow_Desc Desc(0.26f, 0.26f, 1, 1, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
+	FlexKit::SetPositionW(Engine->Nodes, Base->ActiveCamera->Node, float3{ 0,10, -25.921f });
+	FlexKit::Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi);
+
+	AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
+	FK_ASSERT(FlexKit::LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator ), "FAILED TO LOAD!\n");
+
+	State->Model = Model;
+
+	{
+		auto Grid = State->BettererWindow.CreateGrid();
+		Grid.resize(0.5f, 0.5f);
+		Grid.SetGridDimensions(5, 5);
+
+		auto Btn1 = Grid.CreateButton({ 3, 4 });
+		auto Btn2 = Grid.CreateButton({ 4, 4 });
+	}
+
+	{
+		SimpleWindow_Desc Desc(0.26f, 0.26f, 1, 1, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
 	
-	auto Window		= &State->Window;
-	auto WindowSize = GetWindowWH(Engine);
-	InitiateSimpleWindow(Engine->BlockAllocator, Window, Desc);
-	Window->Position	= {0.65f, 0.1f};
-	Window->CellBorder  = {0.01f, 0.01f};
-	Window->CellColor   = float4(Grey(.2), 1);
-	Window->PanelColor  = float4(Grey(.2), 1);
+		auto Window			= &State->Window;
+		auto WindowSize		= GetWindowWH(Engine);
+		InitiateSimpleWindow(Engine->BlockAllocator, Window, Desc);
+		Window->Position	= {0.65f, 0.1f};
+		Window->CellBorder  = {0.01f, 0.01f};
+		Window->CellColor   = float4(Grey(0.2f), 1.0f);
+		Window->PanelColor  = float4(Grey(0.2f), 1.0f);
 
-	GUIList List_Desc;
-	List_Desc.Position	= { 0, 0 };
-	List_Desc.WH		= { 1, 1 };
-	List_Desc.Color		= float4(Grey(.2), 1);
+		GUIList List_Desc;
+		List_Desc.Position	= { 0, 0 };
+		List_Desc.WH		= { 1, 1 };
+		List_Desc.Color		= float4(Grey(0.2f), 1);
 	
-	auto HorizontalOffset	= SimpleWindowAddHorizonalList	(Window, List_Desc);
-	SimpleWindowAddDivider(Window, { 0.02f, 0.00f }, HorizontalOffset);
+		auto HorizontalOffset	= SimpleWindowAddHorizonalList	(Window, List_Desc);
+		SimpleWindowAddDivider(Window, { 0.02f, 0.00f }, HorizontalOffset);
 
-	auto ButtonStack		= SimpleWindowAddVerticalList	(Window, List_Desc, HorizontalOffset);
+		auto ButtonStack   = SimpleWindowAddVerticalList	(Window, List_Desc, HorizontalOffset);
 
-	List_Desc.Position = { 0, 1 };
-	List_Desc.WH	   = { 1, 1 };
+		List_Desc.Position = { 0, 1 };
+		List_Desc.WH	   = { 1, 1 };
 
-	auto Args		= &Engine->BlockAllocator.allocate_aligned<CBArguements>();
-	Args->Engine	= Engine;
-	Args->State		= State;
+		auto Args		= &Engine->BlockAllocator.allocate_aligned<CBArguements>();
+		Args->Engine	= Engine;
+		Args->State		= State;
 
-	SimpleWindowAddDivider(Window, {0.0f, 0.01f}, ButtonStack);
+		SimpleWindowAddDivider(Window, {0.0f, 0.01f}, ButtonStack);
 
-	GUITextButton_Desc TextButton{};
-	TextButton.Font			   = Base->DefaultAssets.Font;
-	TextButton.Text			   = "Play Game";
-	TextButton.WH			   = float2(0.2f, 0.1f);
-	TextButton.WindowSize	   = {(float)WindowSize[0], (float)WindowSize[1]};
-	TextButton.CB_Args		   = Args;
-	TextButton.OnClicked_CB    = OnPlayPressed;
+		GUITextButton_Desc TextButton{};
+		TextButton.Font			   = Base->DefaultAssets.Font;
+		TextButton.Text			   = "Play Game";
+		TextButton.WH			   = float2(0.2f, 0.1f);
+		TextButton.WindowSize	   = {(float)WindowSize[0], (float)WindowSize[1]};
+		TextButton.CB_Args		   = Args;
+		TextButton.OnClicked_CB    = OnPlayPressed;
 
-	TextButton.BackGroundColor = float4(Grey(.5), 1);
-	TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(Base->DefaultAssets.Font->FontSize);
-	SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
+		TextButton.BackGroundColor = float4(Grey(.5), 1);
+		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(Base->DefaultAssets.Font->FontSize);
+		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
 
-	SimpleWindowAddDivider(Window, {0.0f, 0.005f}, ButtonStack);
+		SimpleWindowAddDivider(Window, {0.0f, 0.005f}, ButtonStack);
 
-	TextButton.OnClicked_CB    = OnExitPressed;
-	TextButton.OnEntered_CB    = OnExitEntered;
-	TextButton.OnExit_CB       = OnExitLeft;
-	TextButton.Text            = "Exit Game";
-	SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
-
+		TextButton.OnClicked_CB    = OnExitPressed;
+		TextButton.OnEntered_CB    = OnExitEntered;
+		TextButton.OnExit_CB       = OnExitLeft;
+		TextButton.Text            = "Exit Game";
+		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
+	}
 	return State;
 }

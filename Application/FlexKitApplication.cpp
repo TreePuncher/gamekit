@@ -80,7 +80,8 @@ void LoadGameCode(GameCode& Code, CodeTable* out, char* DllLocation)
 	Code.Lib = LoadLibrary(MBString);
 
 	auto GetStateTable	= reinterpret_cast<GetStateTableFN>(GetProcAddress(Code.Lib,	"GetStateTable"));
-	GetStateTable(out);
+	if(GetStateTable)
+		GetStateTable(out);
 }
 
 bool CheckGameCode(GameCode& Code)
@@ -201,6 +202,8 @@ int main( int argc, char* argv[] )
 
 		::_aligned_free(Engine);
 	}
+	else
+		return -1;
 
 	UnloadGameCode(Code);
 	return 0;

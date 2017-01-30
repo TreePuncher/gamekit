@@ -108,7 +108,7 @@ namespace FlexKit
 	FLEXKITAPI void InitiateLandscape			( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* ls );
 	FLEXKITAPI void LoadTerrainPipelineStates	( RenderSystem* RS, Landscape* out, bool AssertOnFail = true);
 
-	FLEXKITAPI void Release		( SceneNodes* Nodes, Landscape* ls );
+	FLEXKITAPI void ReleaseTerrain		( SceneNodes* Nodes, Landscape* ls );
 	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
 	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12);
 	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, DeferredPass* PS, size_t splitcount, Camera* C, bool DrawWireframe = false);

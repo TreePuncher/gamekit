@@ -22,91 +22,247 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-/************************************************************************************************/
+#include "common.hlsl"
 
-cbuffer CameraConstants : register( b0 )
-{
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	uint  	 MinZ;
-	uint  	 MaxZ;
-	int 	 PointLightCount;
-	int 	 SpotLightCount;
-};
+/************************************************************************************************/
 
 
 cbuffer LocalConstants : register( b1 )
 {
-	float4	 Albedo; // + roughness
-	float4	 Specular;
+	float4	 Albedo;    // + roughness
+	float4	 Specular;  // + Metal
 	float4x4 WT;
+    //uint     MatID;
+}
+
+cbuffer TextureConstants : register(b2)
+{
+    uint2 PageDimension;
+    uint2 AtlasDimension;
 }
 
 struct GBuffer
 {
-	float4 COLOR	: SV_TARGET0;
-	float4 Specular	: SV_TARGET1;
-	float4 NORMAL 	: SV_TARGET2;
-	float4 WPOS 	: SV_TARGET3;
+	float4 Albedo	    : SV_TARGET0; // Albedo    + MatID
+	float4 Specular	    : SV_TARGET1; // Specular  
+    float4 Emissive     : SV_TARGET2; // Emmissive 
+    float2 RoughMetal   : SV_TARGET3; // Roughness + Metal
+	float4 NORMAL 	    : SV_TARGET4; // Normal    + W Depth
+	float4 WPOS 	    : SV_TARGET5;
 };
 
-struct PS_IN
-{
-	float3 WPOS 	: TEXCOORD0;
-	float4 N 		: TEXCOORD1;
-};
 
-struct NormalMapped_IN
+
+
+/************************************************************************************************/
+
+Texture2D AlbedoTexture      : register(t0);
+Texture2D RandSTexture	     : register(t1);
+Texture2D AlbedoPageTable    : register(t2); //
+Texture2D RoughnessPageTable : register(t3); //
+Texture2D TextureVAtlas      : register(t4); // Global Texture Resource
+
+SamplerState DefaultSampler;
+
+/************************************************************************************************/
+
+
+GBuffer Write2Buffers(
+    float3  Color,
+    int     MATID,
+    float3  Spec,
+    float   Roughness,
+    float   Metal,
+    float3  Emissive,
+    float3  Normal,
+    float3  WPOS )
 {
-	float3 WPOS 	: TEXCOORD0;
-	float4 N 		: TEXCOORD1;
-	float3 T 		: TEXCOORD2;
-	float3 B 		: TEXCOORD3;
-};
+    GBuffer Out;
+
+    float w = length(CameraPOS.xyz - WPOS);
+
+    Out.Albedo      = float4(Color, MATID);
+    Out.Specular    = float4(Spec, 0);
+    Out.RoughMetal  = float2(Roughness, Metal);
+    Out.Emissive    = float4(Emissive, 0);
+    Out.NORMAL      = float4(Normal, 0);
+    Out.WPOS        = float4(1, 1, 1, w);
+
+    return Out;
+}
+
+
+/************************************************************************************************/
+
+
+float4 DrawTextureCoordinates(PS_IN IN) : SV_Target
+{
+    float4 Out        = float4(1, 1, 1, 1);
+    float2 Coordinate = IN.UV * PageDimension * AtlasDimension;
+    float2 Offset     = frac(Coordinate) / PageDimension;
+    float2 Page       = (Coordinate - Offset) / (PageDimension * AtlasDimension);
+
+    return float4(Offset, Page);
+}
+
+GBuffer DebugPaint(PS_IN IN)
+{
+}
+
 
 /************************************************************************************************/
 
 GBuffer PMain(PS_IN IN)
 {
-	GBuffer Out;
-	Out.COLOR 		= Albedo;				// Last Float is Roughness
-	Out.NORMAL 		= IN.N;					// last Float is Unused
-	Out.WPOS 		= float4(IN.WPOS,  	0);	// last Float is Unused
-	Out.Specular 	= Specular;				// Last Float is Metal Factor
+    float l = length(CameraPOS - IN.WPOS);
 
-	return Out;
+    return Write2Buffers(
+        Albedo.xyz, 
+        1, 
+        Specular.xyz,
+        Albedo.w,
+        Specular.w,
+        float3(0, 0, 0), 
+        IN.N, 
+        IN.WPOS);
 }
 
 GBuffer PMainNormalMapped(PS_IN IN)
 {
-	GBuffer Out;
-	Out.COLOR 		= Albedo;				// Last Float is Roughness
-	Out.NORMAL 		= IN.N;					//  
-	Out.WPOS 		= float4(IN.WPOS,  0);	// last Float is Unused
-	Out.Specular 	= Specular;
-
-	return Out;
+    return Write2Buffers(
+        Albedo.xyz,
+        1,
+        Specular.xyz,
+        Albedo.w,
+        Specular.w,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
 }
 
-GBuffer DebugPaint(PS_IN IN)
+
+/************************************************************************************************/
+
+
+struct LinePointPS
 {
-	GBuffer Out;
-	/*
-	float3 Color 	= float3(abs(IN.WPOS.x), abs(IN.WPOS.y), abs(IN.WPOS.z));
-	Out.COLOR 		= float4(Color, 	0.5f);
-	Out.Specular 	= float4(Color, 	0.0f);
-	Out.WPOS 		= float4(IN.WPOS,	0.0f);
-	*/
-	float3 Color 	= float3(1.0f, 1.0f, 1.0f);
-	Out.COLOR 		= float4(Color, 	0.5f);
-	Out.Specular 	= float4(Color, 	0.0f);
-	Out.WPOS 		= float4(IN.WPOS,	0.0f);
-	Out.NORMAL 		= IN.N;						
+	float4 Colour	: COLOUR;
+};
+
+float4 DrawLine(LinePointPS IN) : SV_TARGET
+{
+	return float4(IN.Colour.xyz, 1);
+}
+
+
+/************************************************************************************************/
+
+
+float4 DrawRect(RectPoint_PS IN) : SV_TARGET
+{
+	return IN.Color;
+}
+
+
+float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
+{
+	float4 Sample = AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
+	return Sample * IN.Color;
+}
+
+
+/************************************************************************************************/
+
+
+GBuffer TerrainPaint(PS_Colour_IN IN)
+{
+    return Write2Buffers(
+        IN.Colour,
+        0x01,
+        float3(1, 1, 1),
+        0.5f,
+        0.0f,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
+}
+
+GBuffer DebugTerrainPaint(PS_Colour_IN IN)
+{
+    return Write2Buffers(
+        IN.Colour,
+        0x01,
+        float3(1, 1, 1),
+        0.5f,
+        0.0f,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
+}
+
+GBuffer DebugTerrainPaint_2(PS_Colour_IN IN)
+{
+    return Write2Buffers(
+        IN.Colour,
+        0x01,
+        float3(1, 1, 1),
+        0.5f,
+        0.0f,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
+}
+
+struct PS_TEXURED_IN
+{
+	float3 WPOS 	: TEXCOORD0;
+	float3 N 		: TEXCOORD1;
+	float2 UV		: TEXCOORD2;
+};
+
+GBuffer PMain_TEXTURED(PS_TEXURED_IN IN )
+{
+	float3 A 		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Albedo;
+	float3 Spec		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Specular;
+	float2 RM		= RandSTexture.Sample(DefaultSampler, IN.UV);
+
+    return Write2Buffers(
+        A,
+        1,
+        Spec,
+        RM.x,
+        RM.y,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
+}
+
+
+/************************************************************************************************/
+
+
+struct PSIN_Shadow {
+	float4 POS_H	: Position;
+};
+
+struct ShadowSample {
+	float D         : SV_Depth;
+};
+
+ShadowSample PMain_ShadowMapping(PSIN_Shadow In) {
+	ShadowSample Out;
+    Out.D = In.POS_H.w;
 	return Out;
 }
+
+
+/************************************************************************************************/
+
+
+void PMain_FindSamples(PS_TEXURED_IN IN)
+{
+    IN.UV * PageDimension;
+}
+
 
 /************************************************************************************************/

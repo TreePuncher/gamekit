@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "..\Application\GameMemory.h"
+#include "..\Application\GameUtilities.h"
 #include "..\graphicsutilities\Graphics.h"
 #include "..\graphicsutilities\TerrainRendering.h"
 #include "..\coreutilities\GraphicScene.h"
@@ -84,6 +85,7 @@ struct BaseState
 	Camera*				ActiveCamera;
 	RenderWindow*		ActiveWindow;
 	float4				ClearColor;
+	EDEFERREDPASSMODE	DP_DrawMode;
 
 	Console				Console;
 	GUIRender			GUIRender;

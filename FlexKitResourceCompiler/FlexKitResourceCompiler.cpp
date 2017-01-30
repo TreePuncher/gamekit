@@ -155,6 +155,12 @@ int main(int argc, char* argv[])
 
 				size_t ResourceCount = ResourcesFound.size();
 				size_t ResourceSize  = 0;
+
+				if (!ResourceCount) {
+					std::cout << "No Resources Found!\n";
+					break;
+				}
+
 				size_t TableSize     = sizeof(ResourceEntry) * ResourceCount + sizeof(ResourceTable);
 				ResourceTable* Table = (ResourceTable*)malloc(TableSize);
 				memset(Table, 0, TableSize);

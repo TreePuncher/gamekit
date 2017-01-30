@@ -29,12 +29,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 cbuffer LocalConstants : register( b1 )
 {
-	float4	 Albedo; // + roughness
-	float4	 Specular;
+	float4	 Albedo;    // + roughness
+	float4	 Specular;  // + Metal
 	float4x4 WT;
+    //uint     MatID;
 }
 
-cbuffer LocalConstants : register(b2)
+cbuffer TextureConstants : register(b2)
 {
     uint2 PageDimension;
     uint2 AtlasDimension;
@@ -42,10 +43,12 @@ cbuffer LocalConstants : register(b2)
 
 struct GBuffer
 {
-	float4 Albedo	: SV_TARGET0;
-	float4 Specular	: SV_TARGET1;
-	float4 NORMAL 	: SV_TARGET2;
-	float4 WPOS 	: SV_TARGET3;
+	float4 Albedo	    : SV_TARGET0; // Albedo    + MatID
+	float4 Specular	    : SV_TARGET1; // Specular  
+    float4 Emissive     : SV_TARGET2; // Emmissive 
+    float2 RoughMetal   : SV_TARGET3; // Roughness + Metal
+	float4 NORMAL 	    : SV_TARGET4; // Normal    + W Depth
+	float4 WPOS 	    : SV_TARGET5;
 };
 
 
@@ -64,28 +67,33 @@ SamplerState DefaultSampler;
 /************************************************************************************************/
 
 
-GBuffer PMain(PS_IN IN)
+GBuffer Write2Buffers(
+    float3  Color,
+    int     MATID,
+    float3  Spec,
+    float   Roughness,
+    float   Metal,
+    float3  Emissive,
+    float3  Normal,
+    float3  WPOS )
 {
-	GBuffer Out;
-	float l 		= length(CameraPOS - IN.WPOS);
-	Out.Albedo		= Albedo;				// Last Float is Roughness
-	Out.NORMAL 		= float4(IN.N, 0);		// Pack W depth here?
-	Out.WPOS 		= float4(IN.WPOS, l);	// last Float is Unused
-	Out.Specular 	= Specular;				// Last Float is Metal Factor
+    GBuffer Out;
 
-	return Out;
+    float w = length(CameraPOS.xyz - WPOS);
+
+    Out.Albedo      = float4(Color, MATID);
+    Out.Specular    = float4(Spec, 0);
+    Out.RoughMetal  = float2(Roughness, Metal);
+    Out.Emissive    = float4(Emissive, 0);
+    Out.NORMAL      = float4(Normal, 0);
+    Out.WPOS        = float4(1, 1, 1, w);
+
+    return Out;
 }
 
-GBuffer PMainNormalMapped(PS_IN IN)
-{
-	GBuffer Out;
-	Out.Albedo		= Albedo;				// Last Float is Roughness
-	Out.NORMAL 		= float4(IN.N, 0);		// Pack W depth here?
-	Out.WPOS 		= float4(IN.WPOS,  0);	// last Float is Unused
-	Out.Specular 	= Specular;
 
-	return Out;
-}
+/************************************************************************************************/
+
 
 float4 DrawTextureCoordinates(PS_IN IN) : SV_Target
 {
@@ -99,19 +107,37 @@ float4 DrawTextureCoordinates(PS_IN IN) : SV_Target
 
 GBuffer DebugPaint(PS_IN IN)
 {
-	GBuffer Out;
-	/*
-	float3 Color 	= float3(abs(IN.WPOS.x), abs(IN.WPOS.y), abs(IN.WPOS.z));
-	Out.COLOR 		= float4(Color, 	0.5f);
-	Out.Specular 	= float4(Color, 	0.0f);
-	Out.WPOS 		= float4(IN.WPOS,	0.0f);
-	*/
-	float3 Color 	= float3(1.0f, 1.0f, 1.0f);
-	Out.Albedo		= Albedo;
-	Out.Specular 	= Albedo;
-	Out.WPOS 		= float4(IN.WPOS,	0.0f);
-	Out.NORMAL 		= float4(IN.N, 0);		// Pack W depth here?
-	return Out;
+}
+
+
+/************************************************************************************************/
+
+GBuffer PMain(PS_IN IN)
+{
+    float l = length(CameraPOS - IN.WPOS);
+
+    return Write2Buffers(
+        Albedo.xyz, 
+        1, 
+        Specular.xyz,
+        Albedo.w,
+        Specular.w,
+        float3(0, 0, 0), 
+        IN.N, 
+        IN.WPOS);
+}
+
+GBuffer PMainNormalMapped(PS_IN IN)
+{
+    return Write2Buffers(
+        Albedo.xyz,
+        1,
+        Specular.xyz,
+        Albedo.w,
+        Specular.w,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
 }
 
 
@@ -150,38 +176,41 @@ float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
 
 GBuffer TerrainPaint(PS_Colour_IN IN)
 {
-    GBuffer Out;
-    float l         = length(CameraPOS.xyz - IN.WPOS);
-    Out.Albedo      = float4(0, 0, 0, IN.Colour.y); // Last Float is Roughness
-    Out.NORMAL      = float4(IN.N, 0);      // Pack W depth here?
-    Out.WPOS        = float4(IN.WPOS, l);   // last Float is Unused
-    Out.Specular    = Specular;             // Last Float is Metal Factor
-
-    return Out;
+    return Write2Buffers(
+        IN.Colour,
+        0x01,
+        float3(1, 1, 1),
+        0.5f,
+        0.0f,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
 }
 
 GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 {
-	GBuffer Out;
-	float l			= length(CameraPOS.xyz - IN.WPOS);
-	Out.Albedo		= float4(IN.Colour, 0);	    // Last Float is Roughness
-	Out.NORMAL		= float4(IN.N, 0);			// Pack W depth here?
-	Out.WPOS		= float4(IN.WPOS, l);		// last Float is Unused
-	Out.Specular	= Specular;					// Last Float is Metal Factor
-
-	return Out;
+    return Write2Buffers(
+        IN.Colour,
+        0x01,
+        float3(1, 1, 1),
+        0.5f,
+        0.0f,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
 }
 
 GBuffer DebugTerrainPaint_2(PS_Colour_IN IN)
 {
-    GBuffer Out;
-    float l     = length(CameraPOS.xyz - IN.WPOS);
-    Out.Albedo  = float4(0, 0, 0, 0); // Last Float is Roughness
-    Out.NORMAL  = float4(IN.N, 0); // Pack W depth here?
-    Out.WPOS    = float4(IN.WPOS, l); // last Float is Unused
-    Out.Specular = Specular; // Last Float is Metal Factor
-
-    return Out;
+    return Write2Buffers(
+        IN.Colour,
+        0x01,
+        float3(1, 1, 1),
+        0.5f,
+        0.0f,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
 }
 
 struct PS_TEXURED_IN
@@ -193,18 +222,19 @@ struct PS_TEXURED_IN
 
 GBuffer PMain_TEXTURED(PS_TEXURED_IN IN )
 {
-	GBuffer Out;
-	float l 		= length(CameraPOS - IN.WPOS);
 	float3 A 		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Albedo;
 	float3 Spec		= AlbedoTexture.Sample(DefaultSampler, IN.UV) * Specular;
 	float2 RM		= RandSTexture.Sample(DefaultSampler, IN.UV);
 
-	Out.Albedo		= float4(A, RM.x * Albedo.w);			// Last Float is Roughness
-	Out.NORMAL 		= float4(IN.N, 0);						// 
-	Out.WPOS 		= float4(IN.WPOS, l);					// W is depth
-	Out.Specular 	= float4(Specular.rgb, RM.y * Specular.w);// Last Float is Metal Factor
-
-	return Out; 
+    return Write2Buffers(
+        A,
+        1,
+        Spec,
+        RM.x,
+        RM.y,
+        float3(0, 0, 0),
+        IN.N,
+        IN.WPOS);
 }
 
 
