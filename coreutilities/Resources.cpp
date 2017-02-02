@@ -533,7 +533,24 @@ namespace FlexKit
 		}
 		else
 		{
-			FK_ASSERT(0);
+			auto Index	= GT->FreeList.back();
+			GT->FreeList.pop_back();
+
+			Handle		= GT->Handles.GetNewHandle();
+
+			auto Available = isResourceAvailable(RM, GUID);
+			FK_ASSERT(Available);
+
+			auto RHandle = LoadGameResource(RM, GUID);
+			auto GameRes = GetResource(RM, RHandle);
+			auto NewMesh = Resource2TriMesh(RS, RM, RHandle, GT->Memory);
+			FreeResource(RM, RHandle);
+
+			GT->Handles[Handle]			= Index;
+			GT->Geometry[Index]			= NewMesh;
+			GT->GeometryIDs[Index]		= GameRes->ID;
+			GT->Guids[Index]			= GUID;
+			GT->ReferenceCounts[Index]	= 1;
 		}
 
 		return Handle;
@@ -573,7 +590,24 @@ namespace FlexKit
 		}
 		else
 		{
-			FK_ASSERT(0);
+			auto Index	= GT->FreeList.back();
+			GT->FreeList.pop_back();
+
+			Handle		= GT->Handles.GetNewHandle();
+
+			auto Available = isResourceAvailable(RM, ID);
+			FK_ASSERT(Available);
+
+			auto RHandle = LoadGameResource(RM, ID);
+			auto GameRes = GetResource(RM, RHandle);
+			auto NewMesh = Resource2TriMesh(RS, RM, RHandle, GT->Memory);
+			FreeResource(RM, RHandle);
+
+			GT->Handles[Handle]			= Index;
+			GT->Geometry[Index]			= NewMesh;
+			GT->GeometryIDs[Index]		= GameRes->ID;
+			GT->Guids[Index]			= GameRes->GUID;
+			GT->ReferenceCounts[Index]	= 1;
 		}
 
 		return Handle;

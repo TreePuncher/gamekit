@@ -155,7 +155,7 @@ struct EngineMemory
 
 typedef void (*MouseEventHandler)		(EngineMemory* Engine, const FlexKit::Event& in);
 typedef void*(*InitiateGameStateFN)		(EngineMemory* Engine);
-typedef void (*InitiateEngineFN)		(EngineMemory* Engine);
+typedef bool (*InitiateEngineFN)		(EngineMemory* Engine);
 typedef void (*OnHotReloadFN)			(EngineMemory*, double dt, void* _ptr);
 
 typedef void (*UpdateFN)				(EngineMemory* Engine, void* _ptr, double dt);

@@ -54,7 +54,7 @@ struct SubState;
 typedef bool (*FN_UPDATE_SUBSTATE)  (SubState* StateMemory, EngineMemory*, double DT); // Return True to allow Cascading updates down State Stack
 typedef void (*FN_RELEASE_SUBSTATE) (SubState* StateMemory);
 
-typedef void(*FN_EVENT_HANDLER) (SubState* StateMemory, Event);
+typedef bool(*FN_EVENT_HANDLER) (SubState* StateMemory, Event);
 
 
 struct SubStateVTable

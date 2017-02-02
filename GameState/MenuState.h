@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "BaseState.h"
-
+#include "CameraUtilities.h"
 	
 
 struct MenuState : public SubState
@@ -45,7 +45,6 @@ struct MenuState : public SubState
 	FlexKit::ComplexWindow	BettererWindow;
 
 	FlexKit::EntityHandle   Model;
-
 	double T;
 };
 

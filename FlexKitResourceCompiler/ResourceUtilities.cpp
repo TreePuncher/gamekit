@@ -1178,12 +1178,12 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 		case fbxsdk::FbxNodeAttribute::EType::eMesh:
 		{
 			const char* MeshName = node->GetName();
-			auto test   = Attr->GetUniqueID();
-			auto Mesh	= (fbxsdk::FbxMesh*)Attr;
-			bool found	= false;
+			auto test     = Attr->GetUniqueID();
+			auto Mesh	  = (fbxsdk::FbxMesh*)Attr;
+			bool found	  = false;
 			bool LoadMesh = false;
-			size_t ID	= (size_t)Mesh->GetUniqueID();
-			auto Geo	= FindGeoByID( GL, ID );
+			size_t ID	  = (size_t)Mesh->GetUniqueID();
+			auto Geo	  = FindGeoByID( GL, ID );
 
 			DynArray<size_t> RelatedMetaData;
 
@@ -1780,7 +1780,7 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 
 	NewNode.Parent	= Parent;
 	NewNode.TS		= float4(TranslateToFloat3(Position), LclScale.mData[0]);
-	NewNode.Q		= Quaternion{rotation.mData[0], rotation.mData[1], rotation.mData[2]};
+	NewNode.Q		= Quaternion(rotation.mData[0], rotation.mData[1], rotation.mData[2]);
 
 	size_t Nodehndl = AddSceneNode(&NewNode, SceneOut);
 	SceneOut->Nodes.push_back(NewNode);
@@ -1804,26 +1804,6 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 			auto Related	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, Node->GetName(), Memory);
 			auto MeshData	= (Mesh_MetaData*)ScanRelatedFor(MD, Related, MetaData::EMETAINFOTYPE::EMI_MESH);
 
-			/*
-			if (MeshData && MeshData->ColliderGUID != INVALIDHANDLE)
-			{
-				CompiledScene::Entity Entity;
-				Entity.MeshGuid		= UniqueID;
-				Entity.Collider		= MeshData->ColliderGUID;
-				Entity.Node			= Nodehndl;
-
-				AddEntity(Entity, SceneOut);
-			}
-			else
-			{
-				CompiledScene::Entity Entity;
-				Entity.MeshGuid		= UniqueID;
-				Entity.Node			= Nodehndl;
-
-				AddEntity(Entity, SceneOut);
-			}
-			*/
-
 			CompiledScene::Entity Entity;
 			Entity.MeshGuid = UniqueID;
 			Entity.Node = Nodehndl;
@@ -1839,7 +1819,7 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 			auto FBXLight    = static_cast<fbxsdk::FbxLight*>(Attr);
 			auto Type        = FBXLight->LightType.Get();
 			auto Cast        = FBXLight->CastLight.Get();
-			auto I           = FBXLight->Intensity.Get();
+			auto I           = FBXLight->Intensity.Get()/10;
 			auto K           = FBXLight->Color.Get();
 			auto R           = FBXLight->OuterAngle.Get();
 
@@ -1986,8 +1966,10 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 		return  LoadGeometryRES_ptr(G);
 	}
 	else
+	{
 		std::cout << "Failed to Open FBX File: " << AssetLocation << "\n";
-
+		MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
+	}
 	return LoadGeometryRES_ptr(nullptr);
 }
 

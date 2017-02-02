@@ -178,7 +178,7 @@ int main(int argc, char* argv[])
 						continue;
 
 					auto& res = ResourcesFound[I];
-					Table->Entries[I].ResourcePosition = Position;
+					Table->Entries[I].ResourcePosition  = Position;
 					Table->Entries[I].GUID				= res->GUID;
 					Table->Entries[I].Type				= res->Type;
 					memcpy(Table->Entries[I].ID, res->ID, ID_LENGTH);

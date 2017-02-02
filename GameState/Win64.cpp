@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameUtilities.cpp"
 #include "..\coreutilities\AllSourceFiles.cpp"
 
+#include "CameraUtilities.cpp"
 #include "Console.cpp"
 #include "ConsoleSubState.cpp"
 #include "BaseGameState.cpp"

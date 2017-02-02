@@ -525,7 +525,7 @@ namespace FlexKit
 
 		auto& CopyEngine = RS->CopyEngine;
 		ID3D12GraphicsCommandList* CS = GetCurrentCommandList(RS);
-		 
+
 		// Not enough remaining Space in Buffer GOTO Beginning
 		if	(CopyEngine.Position + Size > CopyEngine.Size)
 			CopyEngine.Position = 0;
@@ -654,8 +654,11 @@ namespace FlexKit
 		UploadCQD.Type								    = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY;
 
 		D3D12_COMMAND_QUEUE_DESC ComputeCQD = {};
-		UploadCQD.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
-		UploadCQD.Type = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
+		ComputeCQD.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
+		ComputeCQD.Type = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
+
+		
+		
 
 		D3D12_DESCRIPTOR_HEAP_DESC	FrameTextureHeap_DESC = {};
 		FrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
@@ -683,6 +686,14 @@ namespace FlexKit
 		ID3D12GraphicsCommandList*	UploadList	        = nullptr;
 		ID3D12GraphicsCommandList*	ComputeList	        = nullptr;
 		IDXGIFactory4*				DXGIFactory         = nullptr;
+
+		HR = Device->CreateCommandQueue		(&CQD,		 __uuidof(ID3D12CommandQueue),		(void**)&GraphicsQueue);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
+		HR = Device->CreateCommandQueue		(&UploadCQD, __uuidof(ID3D12CommandQueue),		(void**)&UploadQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
+		HR = Device->CreateCommandQueue		(&ComputeCQD, __uuidof(ID3D12CommandQueue),		(void**)&ComputeQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
+
+		ObjectsCreated.push_back(GraphicsQueue);
+		ObjectsCreated.push_back(UploadQueue);
+		ObjectsCreated.push_back(ComputeQueue);
 
 		FINALLY
 			if (!InitiateComplete)
@@ -718,13 +729,18 @@ namespace FlexKit
 					ObjectsCreated.push_back(UploadList);
 
 					CommandList->Close();
+					UploadList->Close();
+					ComputeList->Close();
 					GraphicsAllocator->Reset();
+					UploadAllocator->Reset();
+					ComputeAllocator->Reset();
+
+					NewRenderSystem.UploadQueues[I].UploadList[II] = static_cast<ID3D12GraphicsCommandList*>(UploadList);
+					NewRenderSystem.UploadQueues[I].UploadCLAllocator[II] = UploadAllocator;
 
 					NewRenderSystem.FrameResources[I].TempBuffers				= nullptr;
-					NewRenderSystem.FrameResources[I].UploadList[II]			= static_cast<ID3D12GraphicsCommandList*>(UploadList);
 					NewRenderSystem.FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
 					NewRenderSystem.FrameResources[I].CommandListsUsed[II]		= false;
-					NewRenderSystem.FrameResources[I].UploadCLAllocator[II]		= UploadAllocator;
 					NewRenderSystem.FrameResources[I].ComputeCLAllocator[II]	= ComputeAllocator;
 					NewRenderSystem.FrameResources[I].GraphicsCLAllocator[II]	= GraphicsAllocator;
 					NewRenderSystem.FrameResources[I].CommandLists[II]			= static_cast<ID3D12GraphicsCommandList*>(CommandList);
@@ -742,6 +758,8 @@ namespace FlexKit
 				HR = Device->CreateDescriptorHeap(&DepthStencilHeap_DESC, IID_PPV_ARGS(&DSVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 				SETDEBUGNAME(DSVHeap, "DSVHEAP");
 
+				NewRenderSystem.UploadQueues[I].UploadCount = 0;
+
 				NewRenderSystem.FrameResources[I].DescHeap.DescHeap = SRVHeap;
 				NewRenderSystem.FrameResources[I].RTVHeap.DescHeap  = RTVHeap;
 				NewRenderSystem.FrameResources[I].DSVHeap.DescHeap	= DSVHeap;
@@ -750,15 +768,8 @@ namespace FlexKit
 
 			NewRenderSystem.FrameResources[0].CommandLists[0]->Reset(NewRenderSystem.FrameResources[0].GraphicsCLAllocator[0], nullptr);
 
-			HR = Device->CreateCommandQueue		(&CQD,		 __uuidof(ID3D12CommandQueue),		(void**)&GraphicsQueue);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
-			HR = Device->CreateCommandQueue		(&UploadCQD, __uuidof(ID3D12CommandQueue),		(void**)&UploadQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
-			HR = Device->CreateCommandQueue		(&ComputeCQD, __uuidof(ID3D12CommandQueue),		(void**)&ComputeQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
 			HR = CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));			
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
-
-			ObjectsCreated.push_back(GraphicsQueue);
-			ObjectsCreated.push_back(UploadQueue);
-			ObjectsCreated.push_back(ComputeQueue);
 		}
 
 		FINALLY
@@ -777,6 +788,7 @@ namespace FlexKit
 			NewRenderSystem.pDebug					= Debug;
 			NewRenderSystem.BufferCount				= 3;
 			NewRenderSystem.CurrentIndex			= 0;
+			NewRenderSystem.CurrentUploadIndex		= 0;
 			NewRenderSystem.FenceCounter			= 0;
 			NewRenderSystem.DescriptorRTVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			NewRenderSystem.DescriptorDSVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -840,7 +852,8 @@ namespace FlexKit
 		
 		out->States = CreatePSOTable(out);
 		out->FreeList.Allocator = in->Memory;
-		
+
+		ReadyUploadQueues(out);
 
 		return InitiateComplete;
 	}
@@ -879,14 +892,17 @@ namespace FlexKit
 			for (auto alloc : FR.ComputeCLAllocator)
 				if (alloc)alloc->Release();
 
+			if(FR.TempBuffers)
+				System->Memory->_aligned_free(FR.TempBuffers);
+		}
+
+		for(auto FR : System->UploadQueues)
+		{
 			for (auto CL : FR.UploadList)
 				if (CL)CL->Release();
 
 			for (auto alloc : FR.UploadCLAllocator)
 				if (alloc)alloc->Release();
-
-			if(FR.TempBuffers)
-				System->Memory->_aligned_free(FR.TempBuffers);
 		}
 
 		ReleasePipelineStates(System);
@@ -1026,7 +1042,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CreateDepthBuffer(RenderSystem* RS, uint2 Dimensions, DepthBuffer_Desc& DepthDesc, DepthBuffer* out, ID3D12GraphicsCommandList* CL)
+	bool CreateDepthBuffer(RenderSystem* RS, uint2 Dimensions, DepthBuffer_Desc& DepthDesc, DepthBuffer* out, ID3D12GraphicsCommandList* CL)
 	{
 		// Create Depth Buffer
 		Texture2D_Desc desc;
@@ -1106,6 +1122,8 @@ namespace FlexKit
 		out->Inverted	   = DepthDesc.InverseDepth;
 		out->BufferCount   = DepthDesc.BufferCount;
 		out->CurrentBuffer = 0;
+
+		return true;
 	}
 
 
@@ -1588,6 +1606,63 @@ namespace FlexKit
 		//		D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
 	}
 
+	void UpdateResourceByUploadQueue(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
+	{
+		FK_ASSERT(Data);
+		FK_ASSERT(Dest);
+
+		auto& CopyEngine = RS->CopyEngine;
+		PerFrameUploadQueues* UploadQueue = GetCurrentUploadQueue(RS);
+		ID3D12GraphicsCommandList* CS = UploadQueue->UploadList[0];
+
+		// Not enough remaining Space in Buffer GOTO Beginning
+		if	(CopyEngine.Position + Size > CopyEngine.Size)
+			CopyEngine.Position = 0;
+
+		if(CopyEngine.Last <= CopyEngine.Position + Size)
+		{// Safe, Do Upload
+			memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
+			CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
+			CopyEngine.Position += Size;
+			UploadQueue->UploadCount++;
+		}
+		else if (CopyEngine.Last > CopyEngine.Position)
+		{// Potential Overlap condition
+			if(CopyEngine.Position + Size  < CopyEngine.Last)
+			{// Safe, Do Upload
+				memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
+				CopyEngine.Position += Size;
+
+				CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
+				UploadQueue->UploadCount++;
+				int x = 0;
+			}
+			else
+			{// Resize Buffer and Try again
+				AddTempBuffer(CopyEngine.TempBuffer, RS);
+
+				D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(CopyEngine.Size * 2);
+				D3D12_HEAP_PROPERTIES HEAP_Props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+				ID3D12Resource* TempBuffer;
+				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE,
+					&Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
+					nullptr, IID_PPV_ARGS(&TempBuffer));
+
+				RS->CopyEngine.Position   = 0;
+				RS->CopyEngine.Last		  = 0;
+				RS->CopyEngine.Size       = CopyEngine.Size * 2;
+				RS->CopyEngine.TempBuffer = TempBuffer;
+				SETDEBUGNAME(TempBuffer, "TEMPORARY");
+
+				CD3DX12_RANGE Range(0, 0);
+				HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
+
+				return UpdateResourceByUploadQueue(RS, Dest, Data, Size, ByteSize, EndState);
+			}
+		}
+	}
+
 	void UpdateResourceByTemp( RenderSystem* RS,  FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
 	{
 		Dest->IncrementCounter();
@@ -1801,15 +1876,23 @@ namespace FlexKit
 					break;
 		}
 #endif 
+#if 0
 			
 			UpdateResourceByTemp(RS, NewBuffer, Buffers[itr]->GetBuffer(), 
 				Buffers[itr]->GetBufferSizeRaw(), 1, 
 				D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
+#else
+				UpdateResourceByUploadQueue(RS, NewBuffer, Buffers[itr]->GetBuffer(),
+					Buffers[itr]->GetBufferSizeRaw(), 1, 
+					D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+#endif
+
 			DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
 			DVB_Out.VertexBuffers[itr].BufferStride			= Buffers[itr]->GetElementSize();
 			DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= Buffers[itr]->GetBufferSizeRaw();
 			DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
+
 		}
 		}
 		if (nullptr != Buffers[0x0f] && Buffers[0x0f]->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
@@ -1830,9 +1913,15 @@ namespace FlexKit
 				FK_ASSERT(0);
 			}
 
+#if 0
 			UpdateResourceByTemp(RS, NewBuffer, Buffers[15]->GetBuffer(), 
 				Buffers[0x0f]->GetBufferSizeRaw(), 1, 
 				D3D12_RESOURCE_STATE_INDEX_BUFFER);
+#else
+			UpdateResourceByUploadQueue(RS, NewBuffer, Buffers[15]->GetBuffer(),
+				Buffers[15]->GetBufferSizeRaw(), 1,
+				D3D12_RESOURCE_STATE_INDEX_BUFFER);
+#endif
 
 			SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
 
@@ -1857,6 +1946,8 @@ namespace FlexKit
 		GT->GeometryIDs.Allocator		= Memory;
 		GT->Handles.FreeList.Allocator  = Memory;
 		GT->Handles.Indexes.Allocator   = Memory;
+		GT->FreeList.Allocator			= Memory;
+
 		GT->Handles.Clear();
 	}
 
@@ -1915,7 +2006,8 @@ namespace FlexKit
 	void ReleaseMesh(GeometryTable* GT, TriMeshHandle TMHandle)
 	{
 		// TODO: MAKE ATOMIC
-		auto Count = --GT->ReferenceCounts[GT->Handles[TMHandle]];
+		size_t Index = GT->Handles[TMHandle];
+		auto Count = --GT->ReferenceCounts[Index];
 
 		if (Count == 0) {
 			auto G = GetMesh(GT, TMHandle);
@@ -1926,6 +2018,10 @@ namespace FlexKit
 
 			GT->Memory->free(const_cast<char*>(G->ID));
 			GT->Memory->free(G);
+
+			GT->Geometry[Index]   = nullptr;
+			GT->FreeList.push_back(Index);
+			GT->Handles[TMHandle] = INVALIDMESHHANDLE;
 		}
 	}
 
@@ -2492,7 +2588,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	void Release( ConstantBuffer buffer )
+	void Release( ConstantBuffer& buffer )
 	{
 		buffer.Release();
 	}
@@ -2887,7 +2983,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FreeHandle(SceneNodes* Nodes, NodeHandle handle)
+	void ReleaseNode(SceneNodes* Nodes, NodeHandle handle)
 	{
 		Nodes->Flags[_SNHandleToIndex(Nodes, handle)] = SceneNodes::FREE;
 		Nodes->Nodes[_SNHandleToIndex(Nodes, handle)].Parent = NodeHandle(-1);
@@ -3054,6 +3150,20 @@ namespace FlexKit
 	void GetWT(SceneNodes* Nodes, NodeHandle node, WT_Entry* __restrict out )
 	{
 		*out = Nodes->WT[_SNHandleToIndex(Nodes, node)];
+	}
+
+
+	/************************************************************************************************/
+
+	void SetScale(SceneNodes* Nodes, NodeHandle Node, float3 XYZ)
+	{
+		LT_Entry Local(GetLocal(Nodes, Node));
+
+		Local.S.m128_f32[0] *= XYZ.pfloats.m128_f32[0];
+		Local.S.m128_f32[1] *= XYZ.pfloats.m128_f32[1];
+		Local.S.m128_f32[2] *= XYZ.pfloats.m128_f32[2];
+
+		SetLocal(Nodes, Node, &Local);
 	}
 
 
@@ -3945,6 +4055,42 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void ReadyUploadQueues(RenderSystem* RS) 
+	{
+		auto UploadQueue		 = GetCurrentUploadQueue(RS);
+		auto UploadCLAllocator	 = UploadQueue->UploadCLAllocator[0];
+		auto UploadCL			 = UploadQueue->UploadList[0];
+		UploadQueue->UploadCount = 0;
+
+		HRESULT HR				= UploadCLAllocator->Reset();	
+
+		FK_ASSERT(SUCCEEDED(HR));
+		HR						= UploadCL->Reset(UploadCLAllocator, nullptr); 
+		FK_ASSERT(SUCCEEDED(HR));
+	}
+
+
+	void SubmitUploadQueues(RenderSystem* RS)
+	{
+		auto UploadQueue = GetCurrentUploadQueue(RS);
+
+		if (UploadQueue->UploadCount) {
+			auto HR = UploadQueue->UploadList[0]->Close();
+
+			FK_ASSERT(SUCCEEDED(HR));
+
+			RS->UploadQueue->ExecuteCommandLists(1, (ID3D12CommandList**)UploadQueue->UploadList);
+			RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
+
+			ReadyUploadQueues(RS);
+		}
+	}
+
+
+
+	/************************************************************************************************/
+
+
 	void CloseAndSubmit(static_vector<ID3D12GraphicsCommandList*> CLs, RenderSystem* RS, RenderWindow* Window)
 	{
 		CD3DX12_RESOURCE_BARRIER Barrier[] = {
@@ -4114,6 +4260,9 @@ namespace FlexKit
 		return RS->FrameResources[RS->CurrentIndex].CommandLists[1];
 	}
 
+	PerFrameUploadQueues*		GetCurrentUploadQueue(RenderSystem* RS) {
+		return RS->UploadQueues + RS->CurrentUploadIndex;
+	}
 
 	/************************************************************************************************/
 
@@ -4144,6 +4293,8 @@ namespace FlexKit
 		Update.SLightCount  = in->SpotLightCount;
 		Update.AmbientLight = A;
 		Update.DebugRenderEnabled = in->Mode;
+		Update.Height		= in->WH[1];
+		Update.Width		= in->WH[0];
 
 		UpdateResourceByTemp(RS, &Pass->Shading.ShaderConstants, &Update, sizeof(Update), 1, 
 							D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -4412,6 +4563,11 @@ namespace FlexKit
 			if(CurrentHandle != LastHandle)
 			{
 				TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+				
+#ifdef _DEBUG
+				if (!CurrentMesh)
+					continue;
+#endif		
 
 				IndexCount			= CurrentMesh->IndexCount;
 				size_t IBIndex		= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
@@ -4880,24 +5036,24 @@ namespace FlexKit
 		if(camera->Buffer)
 			FlexKit::Release(camera->Buffer);
 
-		FlexKit::FreeHandle(Nodes, camera->Node);
+		FlexKit::ReleaseNode(Nodes, camera->Node);
 	}
 
 
 	/************************************************************************************************/
 
 
-	DirectX::XMMATRIX CreatePerspective(Camera* camera)
+	DirectX::XMMATRIX CreatePerspective(Camera* camera, bool Invert = false)
 	{
 		DirectX::XMMATRIX InvertPersepective(DirectX::XMMatrixIdentity());
-		if (camera->invert)
+		if (Invert)
 		{
 			InvertPersepective.r[2].m128_f32[2] = -1;
 			InvertPersepective.r[2].m128_f32[3] =  1;
 			InvertPersepective.r[3].m128_f32[2] =  1;
 		}
 
-		DirectX::XMMATRIX proj = InvertPersepective * XMMatrixTranspose(DirectX::XMMatrixPerspectiveFovRH( camera->FOV, camera->AspectRatio, 0.01f, camera->Far ));
+		DirectX::XMMATRIX proj = InvertPersepective * XMMatrixTranspose(DirectX::XMMatrixPerspectiveFovRH( camera->FOV, camera->AspectRatio, camera->Near, camera->Far ));
 
 		return XMMatrixTranspose(proj);
 	}
@@ -4915,7 +5071,7 @@ namespace FlexKit
 		ZeroNode(Nodes, Node);
 
 		out->Node        = Node;
-		out->FOV         = (float)pi / 6.0f;
+		out->FOV         = (float)pi / 4.0f;
 		out->Near        = Near;
 		out->Far         = Far;
 		out->AspectRatio = AspectRatio;
@@ -4925,7 +5081,7 @@ namespace FlexKit
 		FlexKit::GetWT(Nodes, Node, &WT);
 
 		Camera::BufferLayout InitialData;
-		InitialData.Proj = CreatePerspective(out);
+		InitialData.Proj = CreatePerspective(out, out->invert);
 		InitialData.View = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, WT));
 		InitialData.PV   = XMMatrixMultiply(InitialData.Proj, InitialData.View);
 		InitialData.WT   = WT;
@@ -4936,7 +5092,7 @@ namespace FlexKit
 		desc.Structured    = false;
 		desc.StructureSize = 0;
 
-		auto NewBuffer = FlexKit::CreateConstantBuffer( RS, &desc);
+		auto NewBuffer = CreateConstantBuffer( RS, &desc);
 		if (!NewBuffer)
 			FK_ASSERT(0); // Failed to initialise Constant Buffer
 
@@ -4968,17 +5124,17 @@ namespace FlexKit
 
 		FlexKit::GetWT(nodes, camera->Node, &WT);
 		View = XMMatrixInverse(nullptr, WT);
-
-		Proj = CreatePerspective(camera);
-		View = XMMatrixTranspose(View);
+		Proj = CreatePerspective(camera, camera->invert);
+		View = View;
 		PV	 = XMMatrixTranspose(XMMatrixTranspose(Proj)* View);
-		IV	 = XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(Proj)* View));
+		IV	 = XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(camera, camera->invert)) * View));
 		WT	 = WT;
 		
 		camera->WT	 = XMMatrixToFloat4x4(&WT);
 		camera->View = XMMatrixToFloat4x4(&View);
 		camera->PV	 = XMMatrixToFloat4x4(&PV);
 		camera->Proj = XMMatrixToFloat4x4(&Proj);
+		camera->IV	 = XMMatrixToFloat4x4(&IV);
 	}
 
 
@@ -4998,11 +5154,12 @@ namespace FlexKit
 		NewData.Proj            = Float4x4ToXMMATIRX(&camera->Proj);
 		NewData.View            = Float4x4ToXMMATIRX(&camera->View);
 		NewData.PV              = XMMatrixTranspose(XMMatrixTranspose(NewData.Proj) * View);
-		NewData.IV              = XMMatrixTranspose(XMMatrixInverse(nullptr, NewData.PV));
+		NewData.IV              = XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(camera, camera->invert)) * View));
 		NewData.WT              = XMMatrixTranspose(WT);
 		NewData.WT				= XMMatrixTranspose(NewData.PV * WT);
 		NewData.MinZ            = camera->Near;
 		NewData.MaxZ            = camera->Far;
+
 
 		NewData.WPOS[0]         = WT.r[0].m128_f32[3];
 		NewData.WPOS[1]         = WT.r[1].m128_f32[3];
@@ -5012,6 +5169,21 @@ namespace FlexKit
 		NewData.SpotLightCount  = 0;
 		NewData.WindowWidth		= HW[0];
 		NewData.WindowHeight	= HW[1];
+		
+		Quaternion Q;
+		GetOrientation(Nodes, camera->Node, &Q);
+		auto CameraPoints	  = GetCameraFrustumPoints(camera, NewData.WPOS.xyz(), Q);
+
+		NewData.WSTopLeft     = CameraPoints.FTL;
+		NewData.WSTopRight    = CameraPoints.FTR;
+		NewData.WSBottomLeft  = CameraPoints.FBL;
+		NewData.WSBottomRight = CameraPoints.FBR;
+
+		NewData.WSTopLeft_Near		= CameraPoints.NTL;
+		NewData.WSTopRight_Near		= CameraPoints.NTR;
+		NewData.WSBottomLeft_Near	= CameraPoints.NBL;
+		NewData.WSBottomRight_Near	= CameraPoints.NBR;
+
 		
 		UpdateResourceByTemp(RS, &camera->Buffer, &NewData, Camera::BufferLayout::GetBufferSize(), 1,
 			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -5207,11 +5379,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
+FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	{
 		// TODO(R.M): Optimize this maybe?
 		FustrumPoints Out;
 
+		/*
 		Out.FTL.z = -C->Far;
 		Out.FTL.y = tan(C->FOV) * C->Far;
 		Out.FTL.x = -Out.FTL.y * C->AspectRatio;
@@ -5229,15 +5402,77 @@ namespace FlexKit
 		Out.NBL = { -Out.NTL.x, -Out.NTL.y, Out.NTL.z };
 		Out.NBR = {  Out.NTL.x, -Out.NTL.y, Out.NTL.z };
 
-		Out.FTL = Position + Q * Out.FTL;
-		Out.FTR = Position + Q * Out.FTR;
-		Out.FBL = Position + Q * Out.FBL;
-		Out.FBR = Position + Q * Out.FBR;
+		Out.FTL = Position + (Q * Out.FTL);
+		Out.FTR = Position + (Q * Out.FTR);
+		Out.FBL = Position + (Q * Out.FBL);
+		Out.FBR = Position + (Q * Out.FBR);
 
-		Out.NTL = Position + Q * Out.NTL;
-		Out.NTR = Position + Q * Out.NTR;
-		Out.NBL = Position + Q * Out.NBL;
+		Out.NTL = Position + (Q * Out.NTL);
+		Out.NTR = Position + (Q * Out.NTR);
+		Out.NBL = Position + (Q * Out.NBL);
+		Out.NBR = Position + (Q * Out.NBR);
+		*/
 
+		float4x4 InverseView = C->IV;
+
+		// Far Field
+		{
+			float4 TopRight		(1, 1, 0, 1);
+			float4 TopLeft		(-1, 1, 0, 1);
+			float4 BottomRight	(1, -1, 0, 1);
+			float4 BottomLeft	(-1, -1, 0, 1);
+			{
+				float4 V1 = DirectX::XMVector4Transform(TopRight,	Float4x4ToXMMATIRX(&InverseView));
+				float4 V2 = DirectX::XMVector4Transform(TopLeft,	Float4x4ToXMMATIRX(&InverseView));
+				float3 V3 = V1.xyz() / V1.w;
+				float3 V4 = V2.xyz() / V2.w;
+
+				Out.FTL	= V4;
+				Out.FTR = V3;
+
+				int x = 0;
+			}
+			{
+				float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
+				float4 V2 = DirectX::XMVector4Transform(BottomLeft,		Float4x4ToXMMATIRX(&InverseView));
+				float3 V3 = V1.xyz() / V1.w;
+				float3 V4 = V2.xyz() / V2.w;
+
+				Out.FBL = V4;
+				Out.FBR = V3;
+
+				int x = 0;
+			}
+		}
+		// Near Field
+		{
+			float4 TopRight		(1, 1, 1, 1);
+			float4 TopLeft		(-1, 1, 1, 1);
+			float4 BottomRight	(1, -1, 1, 1);
+			float4 BottomLeft	(-1, -1, 1, 1);
+			{
+				float4 V1 = DirectX::XMVector4Transform(TopRight, Float4x4ToXMMATIRX(&InverseView));
+				float4 V2 = DirectX::XMVector4Transform(TopLeft, Float4x4ToXMMATIRX(&InverseView));
+				float3 V3 = V1.xyz() / V1.w;
+				float3 V4 = V2.xyz() / V2.w;
+
+				Out.NTL = V4;
+				Out.NTR = V3;
+
+				int x = 0;
+			}
+			{
+				float4 V1 = DirectX::XMVector4Transform(BottomRight, Float4x4ToXMMATIRX(&InverseView));
+				float4 V2 = DirectX::XMVector4Transform(BottomLeft, Float4x4ToXMMATIRX(&InverseView));
+				float3 V3 = V1.xyz() / V1.w;
+				float3 V4 = V2.xyz() / V2.w;
+
+				Out.NBL = V4;
+				Out.NBR = V3;
+
+				int x = 0;
+			}
+		}
 		return Out;
 	}
 
@@ -5868,7 +6103,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpDrawable(Drawable* E)
+	void ReleaseDrawable(Drawable* E)
 	{
 		if (E)
 			Release(E->VConstants);
@@ -5877,6 +6112,20 @@ namespace FlexKit
 			Release(E->PoseState);
 	}
 	
+
+	void DelayReleaseDrawable(RenderSystem* RS, Drawable* E)
+	{
+		if (E) {
+			for (size_t itr = 0; itr < E->VConstants.BufferCount; ++itr) {
+				FlexKit::Push_DelayedRelease(RS, E->VConstants[itr]);
+				E->VConstants[itr] = nullptr;
+			}
+		}
+		if (E->PoseState) {
+			DelayedRelease(RS, E->PoseState);
+		}
+	}
+
 
 	/************************************************************************************************/
 

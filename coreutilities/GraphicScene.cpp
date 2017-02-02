@@ -71,23 +71,39 @@ namespace FlexKit
 	{
 		if (E + 1 == Drawables.size())
 		{
-			FreeHandle(SN, GetDrawable(E).Node);
-			CleanUpDrawable(&GetDrawable(E));
+			ReleaseNode(SN, GetDrawable(E).Node);
+			ReleaseDrawable(&GetDrawable(E));
 			Drawables.pop_back();
 		}
 		else
 		{
 			FreeEntityList.push_back(E);
-			FreeHandle(SN, GetDrawable(E).Node);
+			ReleaseNode(SN, GetDrawable(E).Node);
 
-			auto& Entity = GetDrawable(E);
-			CleanUpDrawable(&Entity);
+			auto& Drawable = GetDrawable(E);
+			ReleaseDrawable(&Drawable);
 
-			Entity.VConstants.Release();
-			Entity.Visable	= false;
-			ReleaseMesh(GT, Entity.MeshHandle);
-			Entity.MeshHandle = INVALIDMESHHANDLE;
+			Drawable.VConstants.Release();
+			Drawable.Visable	= false;
+			ReleaseMesh(GT, Drawable.MeshHandle);
+			Drawable.MeshHandle = INVALIDMESHHANDLE;
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GraphicScene::ClearScene()
+	{
+		for (auto& D : this->Drawables)
+		{
+			ReleaseNode(SN, D.Node);
+
+			DelayReleaseDrawable(RS, &D);
+		}
+
+		Drawables.clear();
 	}
 
 
@@ -263,7 +279,7 @@ namespace FlexKit
 
 	Drawable& GraphicScene::SetNode(EntityHandle EHandle, NodeHandle Node) 
 	{
-		FlexKit::FreeHandle(SN, GetNode(EHandle));
+		FlexKit::ReleaseNode(SN, GetNode(EHandle));
 		Drawables.at(EHandle).Node = Node;
 		return Drawables.at(EHandle);
 	}
@@ -279,11 +295,12 @@ namespace FlexKit
 		auto		Geo = FindMesh(GT, Mesh);
 		if (!Geo)	Geo = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
 
-		GetDrawable(EHandle).MeshHandle	= Geo;
-		GetDrawable(EHandle).Dirty		= true;
-		GetDrawable(EHandle).Visable	= true;
-		GetDrawable(EHandle).Textured	= false;
-		GetDrawable(EHandle).Textures	= nullptr;
+		auto& Drawble       = GetDrawable(EHandle);
+		Drawble.MeshHandle	= Geo;
+		Drawble.Dirty		= true;
+		Drawble.Visable	    = true;
+		Drawble.Textured	= false;
+		Drawble.Textures	= nullptr;
 
 		return EHandle;
 	}
@@ -303,12 +320,15 @@ namespace FlexKit
 #ifdef _DEBUG
 		FK_ASSERT(MeshHandle != INVALIDMESHHANDLE, "FAILED TO FIND MESH IN RESOURCES!");
 #endif
-		GetDrawable(EHandle).MeshHandle = MeshHandle;
-		GetDrawable(EHandle).Dirty		= true;
-		GetDrawable(EHandle).Visable	= true;
-		GetDrawable(EHandle).Textured   = false;
-		GetDrawable(EHandle).Posed		= false;
-		GetDrawable(EHandle).PoseState  = nullptr;
+
+		auto& Drawble       = GetDrawable(EHandle);
+		Drawble.Textures    = nullptr;
+		Drawble.MeshHandle  = MeshHandle;
+		Drawble.Dirty		= true;
+		Drawble.Visable	    = true;
+		Drawble.Textured    = false;
+		Drawble.Posed		= false;
+		Drawble.PoseState   = nullptr;
 
 
 		return EHandle;
@@ -614,7 +634,7 @@ namespace FlexKit
 		for (auto E : SM->Drawables)
 		{
 			ReleaseMesh(SM->GT, E.MeshHandle);
-			CleanUpDrawable(&E);
+			ReleaseDrawable(&E);
 
 			if (E.PoseState) 
 			{
@@ -676,9 +696,10 @@ namespace FlexKit
 					{
 						auto Node		= Nodes[I];
 						auto NewNode	= GetNewNode(SN);
-
-						SetOrientationL(SN, NewNode, Node.Q);
+						
+						SetOrientationL(SN, NewNode, Node.Q );
 						SetPositionL(SN,	NewNode, Node.TS.xyz());
+						SetScale(SN, NewNode, { Node.TS.w, Node.TS.w, Node.TS.w });
 
 						if (Node.Parent != -1)
 							SetParentNode(SN, CreatedNodes[Node.Parent], NewNode);
@@ -695,6 +716,7 @@ namespace FlexKit
 							auto NewEntity = GS_out->CreateDrawableAndSetMesh(Entities[I].MeshGuid);
 							GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
 							auto Position_DEBUG = GetPositionW(SN, CreatedNodes[Entities[I].Node]);
+							SetFlag(SN, CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
 							int x = 0;
 						}
 					}

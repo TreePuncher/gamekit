@@ -1716,7 +1716,7 @@ extern "C"
 
 	GAMESTATEAPI void Update(EngineMemory* Engine, GameState* State, double dt)
 	{
-		Engine->End = State->Quit;
+		//Engine->End = State->Quit;
 		State->Mouse.Enabled = State->Keys.MouseEnable;
 
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );

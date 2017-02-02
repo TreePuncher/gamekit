@@ -62,6 +62,7 @@ void InitiateEngineMemory( EngineMemory* Game )
 	using FlexKit::GetNewNode;
 	using FlexKit::Graphics_Desc;
 
+	bool Out = false;
 	BlockAllocator_desc BAdesc;
 	BAdesc._ptr			= (byte*)Game->BlockMem;
 	BAdesc.SmallBlock	= MEGABYTE * 64;
@@ -71,10 +72,6 @@ void InitiateEngineMemory( EngineMemory* Game )
 	Game->BlockAllocator.Init ( BAdesc );
 	Game->LevelAllocator.Init ( Game->LevelMem,	LEVELBUFFERSIZE );
 	Game->TempAllocator. Init ( Game->TempMem,	TEMPBUFFERSIZE );
-
-	FlexKit::Graphics_Desc	desc	= { 0 };
-	desc.Memory = Game->BlockAllocator;
-	InitiateRenderSystem ( &desc, Game->RenderSystem );
 
 	// Initate SceneGraph
 	InitiateSceneNodeBuffer		( &Game->Nodes, Game->NodeMem, NODEBUFFERSIZE );
@@ -86,7 +83,7 @@ void InitiateEngineMemory( EngineMemory* Game )
 /************************************************************************************************/
 
 
-void CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, bool fullscreen = false)
+bool CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, bool fullscreen = false)
 {
 	using FlexKit::CreateRenderWindow;
 	using FlexKit::RenderWindowDesc;
@@ -99,14 +96,14 @@ void CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, boo
 	WinDesc.width	   = width;
 	WinDesc.fullscreen = fullscreen;
 
-	FK_ASSERT( CreateRenderWindow( Game->RenderSystem, &WinDesc, &Game->Window ), "RENDER WINDOW FAILED TO INITIALIZE!" );
+	return( CreateRenderWindow( Game->RenderSystem, &WinDesc, &Game->Window ), "RENDER WINDOW FAILED TO INITIALIZE!" );
 }
 
 
 /************************************************************************************************/
 
 
-void InitiateCoreSystems(EngineMemory* Engine)
+bool InitiateCoreSystems(EngineMemory* Engine)
 {
 	using FlexKit::CreateDepthBuffer;
 	using FlexKit::DepthBuffer;
@@ -114,12 +111,25 @@ void InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass;
 	using FlexKit::ForwardPass_DESC;
 
+	bool Out		 = false;
 	uint32_t width	 = 1920;
 	uint32_t height	 = 1080;
 	bool InvertDepth = true;
+	FlexKit::Graphics_Desc	desc = { 0 };
+	desc.Memory = Engine->BlockAllocator;
+
+	Out = InitiateRenderSystem(&desc, Engine->RenderSystem);
+	if (!Out)
+		return false;
 
 	Engine->Window.Close = false;
-	CreateRenderWindow	(  Engine, height, width, false );
+	Out = CreateRenderWindow	(  Engine, height, width, false );
+	if (!Out)
+	{
+		CleanUp(Engine->RenderSystem);
+		return false;
+	}
+
 	CreateDepthBuffer	(  Engine->RenderSystem, { width, height }, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer, GetCurrentCommandList(Engine->RenderSystem) );
 
 	SetInputWIndow		( &Engine->Window );
@@ -133,6 +143,8 @@ void InitiateCoreSystems(EngineMemory* Engine)
 
 	InitiateGeometryTable	( &Engine->Geometry, Engine->BlockAllocator );
 	Engine->Assets.ResourceMemory = &Engine->BlockAllocator;
+
+	return Out;
 }
 
 
@@ -163,12 +175,12 @@ uint2 GetWindowWH(EngineMemory* Engine)
 /************************************************************************************************/
 
 
-void InitEngine( EngineMemory* Engine )
+bool InitEngine( EngineMemory* Engine )
 {
 	memset( Engine, 0, PRE_ALLOC_SIZE );
 
 	InitiateEngineMemory( Engine );
-	InitiateCoreSystems ( Engine );
+	return InitiateCoreSystems ( Engine );
 }
 
 

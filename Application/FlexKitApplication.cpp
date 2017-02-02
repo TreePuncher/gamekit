@@ -190,11 +190,16 @@ int main( int argc, char* argv[] )
 	}
 
 	LoadGameCode(Code, &FNTable, GameStateLocation);
+	FINALLY
+	{
+		UnloadGameCode(Code);
+	}FINALLYOVER;
 
 	if (Code.Lib)
 	{
 		EngineMemory* Engine = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
-		FNTable.InitEngine(Engine);
+		if (!FNTable.InitEngine(Engine))
+			return -1;
 
 		void* State = FNTable.Init(Engine);
 
@@ -205,7 +210,7 @@ int main( int argc, char* argv[] )
 	else
 		return -1;
 
-	UnloadGameCode(Code);
+	
 	return 0;
 }
 

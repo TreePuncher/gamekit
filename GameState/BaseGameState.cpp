@@ -86,7 +86,7 @@ void HandleKeyEvents(const Event& in, BaseState* _ptr) {
 		switch (in.mData1.mKC[0])
 		{
 		case KC_ESC:
-			_ptr->Quit = true;
+			_ptr->Engine->End = true;
 			break;
 		case KC_M:
 			_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
@@ -145,20 +145,25 @@ void HandleMouseEvents(const Event& in, BaseState* _ptr) {
 void EventsWrapper(const Event& evt, void* _ptr)
 {
 	auto* base = reinterpret_cast<BaseState*>(_ptr);
-	if (base->SubStates.back()->EventHandler)
+
+	auto itr = base->SubStates.rbegin();
+	while(itr != base->SubStates.rend())
 	{
-		base->SubStates.back()->EventHandler((SubState*)base->SubStates.back(), evt);
-	}
-	else
-	{
-		switch (evt.InputSource)
+		if (*itr && (*itr)->EventHandler) 
 		{
-		case Event::Keyboard:
-			HandleKeyEvents(evt, base);
-		case Event::Mouse:
-			HandleMouseEvents(evt, reinterpret_cast<BaseState*>(_ptr));
-			break;
+			if (!(*itr)->EventHandler((SubState*)(*itr), evt))
+				break;
 		}
+		itr++;
+	}
+
+	switch (evt.InputSource)
+	{
+	case Event::Keyboard:
+		HandleKeyEvents(evt, base);
+	case Event::Mouse:
+		HandleMouseEvents(evt, reinterpret_cast<BaseState*>(_ptr));
+		break;
 	}
 }
 
@@ -198,9 +203,9 @@ void ReleaseBaseState(EngineMemory* Engine, BaseState* State)
 	while (RItr != REnd)
 	{
 		auto VTable = *RItr;
-		if (VTable->Release)
+		if (VTable->Release){
 			VTable->Release(reinterpret_cast<SubState*>(VTable));
-
+		}
 		RItr++;
 	}
 }
@@ -315,7 +320,7 @@ extern "C"
 		{
 			uint2	WindowRect	= Engine->Window.WH;
 			float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
-			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &State.DefaultCamera, Aspect, 0.01f, 100000.0f, true);
+			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &State.DefaultCamera, Aspect, 0.01f, 10000.0f, true);
 			State.ActiveCamera = &State.DefaultCamera;
 		}
 
@@ -354,14 +359,13 @@ extern "C"
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
 		UpdateColliders	(&State->PScene, &Engine->Nodes);
 
-		Engine->End = State->Quit;
+		//Engine->End = State->Quit;
 	}
 
 
 	GAMESTATEAPI void UpdateFixed(EngineMemory* Engine, double dt, BaseState* State)
 	{
 		UpdateMouseInput(&State->MouseState, &Engine->Window);
-		UpdateGraphicScene(&State->GScene);
 	}
 
 
@@ -377,6 +381,7 @@ extern "C"
 
 		UpdateTransforms	(State->Nodes);
 		UpdateCamera		(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
+		UpdateGraphicScene	(&State->GScene);
 	}
 
 
@@ -405,8 +410,11 @@ extern "C"
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 			DPP.Mode			= State->DP_DrawMode;
+			DPP.WH				= GetWindowWH(Engine);
 
-			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);
+			SubmitUploadQueues(RS);
+
+			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);	
 			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
 
 			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->DeferredRender);
@@ -414,6 +422,7 @@ extern "C"
 			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
 			UploadLandscape			(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true, State->TerrainSplits + 1);
+
 		}
 
 		// Submission
@@ -435,7 +444,6 @@ extern "C"
 
 			ShadeDeferredPass	(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 			DoForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
-
 
 			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);

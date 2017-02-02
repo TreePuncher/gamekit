@@ -25,9 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConsoleSubState.h"
 
 
-void ConsoleEventHandler(SubState* StateMemory, Event evt)
+bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 {
-
+	return true;
 }
 
 bool UpdateConsoleScreen(SubState* StateMemory, EngineMemory*, double DT)

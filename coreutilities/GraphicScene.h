@@ -72,7 +72,6 @@ namespace FlexKit
 		float	r;
 		static_vector<EntityHandle, 64>	Contents;
 		static_vector<QuadTreeNode*,4>	ChildNodes;
-
 	};
 
 	typedef static_vector<QuadTreeNode*, 16> NodeBlock;
@@ -100,6 +99,7 @@ namespace FlexKit
 	{
 		EntityHandle CreateDrawable();
 		void		 RemoveEntity(EntityHandle E);
+		void		 ClearScene();
 
 		inline Drawable&	GetDrawable			(EntityHandle EHandle) {return Drawables.at(EHandle);								}
 		inline Skeleton*	GetEntitySkeleton	(EntityHandle EHandle) {return GetSkeleton(GT, Drawables.at(EHandle).MeshHandle);	}
@@ -149,7 +149,7 @@ namespace FlexKit
 		inline void SetPositionEntity_LT (EntityHandle Handle, float3 V)			{ FlexKit::SetPositionL		(SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
 		inline void SetOrientation		 (EntityHandle Handle, Quaternion Q)		{ FlexKit::SetOrientation	(SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
 		inline void SetOrientationL		 (EntityHandle Handle, Quaternion Q)		{ FlexKit::SetOrientationL	(SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
-		inline void SetLightNodeHandle	 (SpotLightHandle Handle, NodeHandle Node)	{ FreeHandle(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
+		inline void SetLightNodeHandle	 (SpotLightHandle Handle, NodeHandle Node)	{ ReleaseNode(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
 
 		DynArray<SpotLightShadowCaster>		SpotLightCasters;
 		DynArray<Drawable>					Drawables;

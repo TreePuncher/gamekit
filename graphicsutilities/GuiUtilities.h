@@ -581,6 +581,8 @@ namespace FlexKit
 		ComplexWindow ( iAllocator* memory );
 		ComplexWindow ( const ComplexWindow& );
 
+		void Release();
+
 		void Update		( double dt, const SimpleWindowInput in);
 		void Upload		( RenderSystem* RS, GUIRender* out );
 		void Draw		( RenderSystem* RS, GUIRender* out );

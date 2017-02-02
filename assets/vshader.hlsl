@@ -121,16 +121,57 @@ PS_IN V2Main( VIN2 In )
 	float3x3 rot = WT;
 	PS_IN Out;
 	Out.WPOS 	= mul(WT, In.POS);
-	Out.POS 	= mul(PV, mul(WT, In.POS));
-	//Out.POS 	= mul(mul(PV, WT), In.POS);
+	//Out.POS 	= mul(PV, mul(WT, In.POS));
+	Out.POS 	= mul(mul(PV, WT), In.POS);
 
 	Out.N   	= normalize(mul(rot, In.N.xyz));
 	Out.UV		= In.UV;
+    Out.Depth   = Out.POS.z / Out.POS.w;
+
 	return Out;
 }
 
 
 /************************************************************************************************/
+
+
+float4 FullScreeQuad(int ID : SV_VertexID) : SV_Position
+{
+    float4 Out;
+
+    if(ID == 0) // Top Left
+    {
+        float4 Out = float4(-1, 1, 0, 1);
+    }
+    if (ID == 1) // Top Right
+    {
+        float4 Out = float4(-1, 1, 0, 1);
+
+    }
+    if (ID == 2) // Bottom Left
+    {
+        float4 Out = float4(-1, 1, 0, 1);
+
+    }
+    if (ID == 3) // BottomLeft
+    {
+        float4 Out = float4(-1, 1, 0, 1);
+        
+    }
+    if (ID == 4) // Top Right
+    {
+        float4 Out = float4(-1, 1, 0, 1);
+
+    }
+    if (ID == 5) // Bottom Right
+    {
+        float4 Out = float4(-1, 1, 0, 1);
+        
+    }
+    Out = mul(PV, Out);
+
+    return Out;
+}
 
 
 struct VIN3
@@ -155,6 +196,7 @@ PS_IN2 V3Main( VIN3 In )
 	Out.N   	= float4(mul(rot, In.N), 0);
 	Out.T   	= mul(rot, In.T);
 	Out.B   	= mul(rot, cross(In.N, In.T));
+    Out.Depth   = Out.POS.z / Out.POS.w;
 	
 	return Out;
 }
@@ -188,44 +230,45 @@ StructuredBuffer<Joint> Bones : register(t0);
 
 PS_IN VMainVertexPallet(VIN4 In)
 {
-    PS_IN Out;
-    float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    float4 V = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
+	PS_IN Out;
+	float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
+	float4 V = float4(0.0f, 0.0f, 0.0f, 0.0f);
+	float4 W = float4(In.W.xyz, 1 - In.W.x - In.W.y - In.W.z);
 
-    float4x4 MTs[4] =
-    {
-        Bones[In.I[0]].T,
-        Bones[In.I[1]].T,
-        Bones[In.I[2]].T,
-        Bones[In.I[3]].T,
-    };
+	float4x4 MTs[4] =
+	{
+		Bones[In.I[0]].T,
+		Bones[In.I[1]].T,
+		Bones[In.I[2]].T,
+		Bones[In.I[3]].T,
+	};
 
-    float4x4 MIs[4] = 
-    {
-        Bones[In.I[0]].I,
-        Bones[In.I[1]].I,
-        Bones[In.I[2]].I,
-        Bones[In.I[3]].I,
-    };
+	float4x4 MIs[4] = 
+	{
+		Bones[In.I[0]].I,
+		Bones[In.I[1]].I,
+		Bones[In.I[2]].I,
+		Bones[In.I[3]].I,
+	};
 
 	[unroll(4)]
-    for (uint I = 0; I < 4; ++I)
-    {
-        float4 TP = mul(MIs[I], float4(In.POS, 1)); // Temp Position
-        float4 TN = mul(MIs[I], float4(In.N, 0));   // Temp Normal
+	for (uint I = 0; I < 4; ++I)
+	{
+		float4 TP = mul(MIs[I], float4(In.POS, 1)); // Temp Position
+		float4 TN = mul(MIs[I], float4(In.N, 0));   // Temp Normal
 
-        V += mul(MTs[I], TP) * W[I];
-        N += mul(MTs[I], TN) * W[I];
-    }
+		V += mul(MTs[I], TP) * W[I];
+		N += mul(MTs[I], TN) * W[I];
+	}
 
-    float4 V2   = V;
-    Out.WPOS    = mul(WT, V2);
-    Out.POS     = mul(PV, mul(WT, V2));
-    Out.N       = mul(WT, N).xyz;
-    Out.UV      = In.UV;
+	float4 V2   = V;
+	Out.WPOS    = mul(WT, V2);
+	Out.POS     = mul(PV, mul(WT, V2));
+	Out.N       = mul(WT, N).xyz;
+	Out.UV      = In.UV;
+    Out.Depth   = Out.POS.z / Out.POS.w;
 
-    return Out;
+	return Out;
 }
 
 
@@ -243,8 +286,7 @@ DepthPass_IN VMain_ShadowMapping(VIN In)
 {
 	DepthPass_IN Out;
 	Out.POS			   = mul(PV, mul(WT, In.POS));
-    Out.POS_Normalized = Out.POS;
-    //Out.POS_Normalized = float4(0, 0, 0,  4);//Out.POS; // Out.POS.w;
+	Out.POS_Normalized = Out.POS;
 
 	return Out;
 }
@@ -279,7 +321,7 @@ DepthPass_IN VMainVertexPallet_ShadowMapping(VIN5 In)
 
 	float4 V2 = float4(V, 1.0f);
 	Out.POS				= mul(PV, mul(WT, V2));
-    Out.POS_Normalized  = Out.POS;
+	Out.POS_Normalized  = Out.POS;
 
 	return Out;
 }

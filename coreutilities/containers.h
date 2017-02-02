@@ -369,7 +369,7 @@ namespace FlexKit
 		{
 			clear();
 
-			if(A)
+			if(A && Allocator)
 				Allocator->_aligned_free(A);
 
 			A	= nullptr;

@@ -1,6 +1,3 @@
-#ifndef PLAYSTATE_H
-#define PLAYSTATE_H
-
 /**********************************************************************
 
 Copyright (c) 2017 Robert May
@@ -25,48 +22,39 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "BaseState.h"
-#include "..\Application\GameMemory.h"
+#ifndef CAMERAUTILITIES
+#define CAMERAUTILITIES
 
-/*
-TODO's
-*/
+#include "../graphicsutilities/graphics.h"
 
-struct GamePlayObject
+using FlexKit::NodeHandle;
+using FlexKit::SceneNodes;
+using FlexKit::Camera;
+
+struct Camera3rdPersonContoller
 {
+	NodeHandle Yaw_Node;
+	NodeHandle Pitch_Node;
+	NodeHandle Roll_Node;
 
+	float Yaw, Pitch, Roll;
+
+	SceneNodes*	Nodes;
+	Camera*		C;
 };
 
-struct PlayerState
-{
+void InitiateCamera3rdPersonContoller( SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out );
+void UpdateCameraController( SceneNodes* Nodes, Camera3rdPersonContoller* Controller, double dT );
 
-};
+void SetCameraOffset(Camera3rdPersonContoller* Controller, float3 xyz);
 
-struct Player
-{
-	FlexKit::EntityHandle Model;
-};
+void TranslateCamera(Camera3rdPersonContoller* Controller, float3 xyz);
+void YawCamera(Camera3rdPersonContoller* Controller, float Degree);
+void PitchCamera(Camera3rdPersonContoller* Controller, float Degree);
+void RollCamera(Camera3rdPersonContoller* Controller, float Degree);
 
-struct PlayerController
-{
-	float3 Pos;
-	float3 Velocity;
-};
-
-struct PlayState : public SubState
-{
-	// Game element Controllers
-	PlayerController			PlayerCTR;
-	Camera3rdPersonContoller	Cam_Ctr;
-
-	double	T;
-	bool	Forward;
-	bool	Backward;
-	bool	Left;
-	bool	Right;
-};
-
-PlayState* CreatePlayState(EngineMemory* Engine, BaseState* Base);
+float3 GetForwardVector(Camera3rdPersonContoller* Controller);
+float3 GetRightVector(Camera3rdPersonContoller* Controller);
 
 
 #endif

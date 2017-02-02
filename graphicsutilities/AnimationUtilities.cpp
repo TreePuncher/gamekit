@@ -132,6 +132,14 @@ namespace FlexKit
 		EPS->Resource.Release();
 	}
 
+	void DelayedRelease(RenderSystem* RS, DrawablePoseState* EPS)
+	{
+		for (size_t itr = 0; itr < EPS->Resource.BufferCount; ++itr) {
+			Push_DelayedRelease(RS, EPS->Resource[itr]);
+			EPS->Resource[itr] = nullptr;
+		}
+	}
+
 
 	/************************************************************************************************/
 

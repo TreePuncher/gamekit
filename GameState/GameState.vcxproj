@@ -124,6 +124,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CameraUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Console.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -148,6 +152,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BaseState.h" />
+    <ClInclude Include="CameraUtilities.h" />
     <ClInclude Include="Console.h" />
     <ClInclude Include="ConsoleSubState.h" />
     <ClInclude Include="MenuState.h" />

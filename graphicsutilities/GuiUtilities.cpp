@@ -1004,6 +1004,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void ComplexWindow::Release()
+	{
+		//Buttons.Release();
+		//Children.Release();
+		//Grids.Release();
+		//Elements.Release();
+	}
+
+
+	/************************************************************************************************/
+
+
 	void ComplexWindow::Update(double dt, const SimpleWindowInput Input)
 	{
 	}

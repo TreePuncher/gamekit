@@ -34,7 +34,11 @@ struct CBArguements
 
 bool OnPlayPressed(void* _ptr, size_t GUIElement)
 {
+	std::cout << "Play Pressed\n";
 	auto* Args = (CBArguements*)_ptr;
+
+	Args->State->Base->GScene.ClearScene();
+
 	PopSubState(Args->State->Base);
 	PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
 
@@ -67,6 +71,7 @@ bool OnExitLeft(void* _ptr, size_t GUIElement)
 }
 
 
+
 bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
@@ -97,19 +102,25 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 	Input.LeftMouseButtonPressed  = ThisState->Base->MouseState.LMB_Pressed;
 	Input.MousePosition			  = ThisState->Base->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
-
+	
+	//Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 );
+	//Pitch(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 * ThisState->Base->MouseState.dPos[1] * dT);
+	
 	ThisState->BettererWindow.Update(dT, Input);
 
 	UpdateSimpleWindow(&Input, &ThisState->Window);
 
+	/*
 	auto Model = ThisState->Model;
-	Base->GScene.SetMaterialParams(Model, 
+	Base->GScene.SetMaterialParams(
+		Model, 
 		float4(
-			std::abs(std::sin(ThisState->T * 2)), 	0, 0, std::abs(std::sin(ThisState->T/2))), 
+			std::abs(std::sin(ThisState->T * 2)), 	0, 0, 
+			std::abs(std::sin(ThisState->T/2))), 
 		float4(1, 1, 1, 0));
+	*/
 
-
-
+	//DEBUG_DrawCameraFrustum(Base->GUIRender, Base->ActiveCamera);
 
 	return true;
 }
@@ -118,6 +129,7 @@ void ReleaseMenu	(SubState* StateMemory)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	CleanUpSimpleWindow(&ThisState->Window, ThisState->Base->Engine->RenderSystem);
+	ThisState->BettererWindow.Release();
 }
 
 MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
@@ -132,38 +144,40 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 	Base->MouseState.Enabled    = true;
 
 	auto Model = Base->GScene.CreateDrawableAndSetMesh("Flower");
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100,100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-
-	Base->GScene.SetMaterialParams(Model, float4(1, 0, 0, 1), float4(0, 0, 1, 1));
-	Base->GScene.TranslateEntity_WT(Model, {-3, -4, -10});
-
-	FlexKit::SetPositionW(Engine->Nodes, Base->ActiveCamera->Node, float3{ 0,10, -25.921f });
-	FlexKit::Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi);
-
-	AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
-	FK_ASSERT(FlexKit::LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator ), "FAILED TO LOAD!\n");
-
 	State->Model = Model;
+
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
+	
+	Base->GScene.SetMaterialParams(Model, float4(1, 0, 0, 1), float4(0, 0, 1, 1));
+	//Base->GScene.TranslateEntity_WT(Model, {-3, -4, -10});
+
+
+	//Pitch(Engine->Nodes, Base->ActiveCamera->Node, pi / 12.0f);
+	//TranslateWorld(Engine->Nodes, Base->ActiveCamera->Node, {0, -4, 0});
+	//Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi);
+	//SetPositionW(Engine->Nodes, Base->ActiveCamera->Node, float3{ 0,10, -25.921f });
+
+
 
 	{
 		auto Grid = State->BettererWindow.CreateGrid();

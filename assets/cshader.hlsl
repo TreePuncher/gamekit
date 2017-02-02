@@ -117,82 +117,132 @@ float3 BottomRight	= float3( 1, -1,  0);
 /************************************************************************************************/
 
 
+
+
 groupshared PointLight Lights[256];
 
 [numthreads(64, 2, 1)]
 void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 {
 	uint ThreadID = TID.x % 64 + TID.y * 64;
-	float3 n = Normal.Load(int3(ID.xy, 0)).xyz;
+	float3 Kd = Color.Load(int3(ID.xy, 0)).xyz;
+	int MatID = Color.Load(int3(ID.xy, 0)).w;
 
 	Lights[ThreadID] = PointLights[ThreadID];
 	GroupMemoryBarrierWithGroupSync();
 
-	if(!any(n))
-		return;
+    if (MatID == 0)
+        return;
 
-	float3 Kd 	= Color.Load(int3(ID.xy, 0)).xyz;
-	float3 WPOS = Position.Load(int3(ID.xy, 0)).xyz;
+    float U = float(ID.x) / WindowWidth;
+	float V = float(ID.y) / WindowHeight;
+
+	float3 Temp1    = lerp(WSTopLeft, WSBottomLeft,  V);
+	float3 Temp2    = lerp(WSTopRight, WSBottomRight, V);
+	float3 FarPos   = lerp(Temp1, Temp2, U);
+
+    float3 Temp3    = lerp(WSTopLeft_Near, WSBottomLeft_Near, V);
+    float3 Temp4    = lerp(WSTopRight_Near, WSBottomRight_Near, V);
+    float3 NearPos  = lerp(Temp3, Temp4, U);
+
+    
+	float3 n = Normal.Load(int3(ID.xy, 0)).xyz;
+	float  l = Normal.Load(int3(ID.xy, 0)).w;
+
+    float2 ProjRatio = float2(MaxZ/(MaxZ - MinZ), MinZ/(MinZ-MaxZ));
+    float LinearDepth = ProjRatio.y / (l - ProjRatio.x);
+    float Distance = l;
+
+    float3 ViewRay = normalize(FarPos - CameraPOS);
+    float3 WPOS = CameraPOS.xyz + (ViewRay * Distance);
 	float3 Ks 	= Specular.Load(int3(ID.xy, 0)).xyz;
 	float  m 	= RoughMetal.Load(int3(ID.xy, 0)).y;
 	float  r    = RoughMetal.Load(int3(ID.xy, 0)).x;
-	float3 vdir = GetVectorToBack(WPOS);
+    float3 vdir = -ViewRay;
 
-    float3 ColorOut = float4(Kd * AmbientLight.xyz, 0.0f);
+	float3 ColorOut = float4(Kd * AmbientLight.xyz, 0.0f);
 
-    switch (DebugRenderMode)
+	switch (MatID)
 	{
-		case 0:
+		case 1:
 			{
-                for (int I = 0; I < DeferredPointLightCount; ++I)
-                {
-                    PointLight Light = Lights[I];
-                    float3 Lp = Light.P;
-                    float3 Lc = Light.K;
-                    float3 Lv = normalize(Lp - WPOS);
-                    float La = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
-
-                    ColorOut += Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse;
-                }
-
-				for (int II = 0; II < DeferredSpotLightCount; ++II)
+				switch (DebugRenderMode)
 				{
-					float3 Lp = SpotLights[II].P;
-					float3 Ld = SpotLights[II].D;
-					float3 Lv = normalize(Lp - WPOS);
-					float3 Lk = SpotLights[II].K;
-					float La  = pow(max(dot(-Ld, Lv), 0), 10);
+					case 0:
+						{
+                            [loop]
+							for (int I = 0; I < DeferredPointLightCount; ++I)
+							{
+								PointLight Light = Lights[I];
+								float3 Lp = Light.P;
+								float3 Lc = Light.K;
+								float3 Lv = normalize(Lp - WPOS);
+								float La  = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
 
-					ColorOut += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse, 0);
+								ColorOut += Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse;
+							}
+
+                            [loop]
+							for (int II = 0; II < DeferredSpotLightCount; ++II)
+							{
+								float3 Lp = SpotLights[II].P;
+								float3 Ld = SpotLights[II].D;
+								float3 Lv = normalize(Lp - WPOS);
+								float3 Lk = SpotLights[II].K;
+								float La = pow(max(dot(-Ld, Lv), 0), 10);
+
+								ColorOut += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse, 0);
+							}
+						}
+						break;
+					case 1: // Display Albedo Buffer
+						{
+							ColorOut = Kd;
+						}
+						break;
+					case 2: // Display Roughness
+						{
+							ColorOut = float3(r, r, r);
+						}
+						break;
+					case 3: // Display Metal
+						{
+							ColorOut = float3(m, m, m);
+						}
+						break;
+					case 4: // Display Normal Buffer
+						{
+							ColorOut = n;
+						}
+						break;
+					case 5: // World Position
+						{
+							ColorOut = float3(WPOS);
+							break;
+						}
+					case 6: // Position Reconstruction
+						{
+                            float4 ActualPosition = Position.Load(int3(ID.xy, 0));
+                            float e = length(WPOS - ActualPosition);
+                            ColorOut = float3(e, e, e);
+                            break;
+                        }
+						break;
+					default:
+						break;
 				}
-			}   break;
-		case 1: // Display Albedo Buffer
-			{
-				ColorOut = Kd;
-			}   break;
-		case 2: // Display Roughness
-			{
-				ColorOut = float3(r, r, r);
-			}   break;
-		case 3: // Display Metal
-			{
-				ColorOut = float3(m, m, m);
 			}
 			break;
-		case 4: // Display Normal Buffer
+		case 2:
 			{
-				ColorOut = n;
-			}   break;
-		case 5: // Lights used
-			{
-				float r = float(PointLightCount) / 64.0f;
-				ColorOut = float3(r, r, r);
-			}   break;
+				break;
+			}
 		default:
 			break;
 	}
+	WriteOut(float4(ColorOut, 1), ID.xy, uint2(0, 0));
 
-	WriteOut(float4(pow(ColorOut, 1.0f / 2.1f), 1), ID.xy, uint2(0, 0));
+	//WriteOut(float4(pow(ColorOut, 1.0f / 2.1f), 1), ID.xy, uint2(0, 0));
 }
 
 

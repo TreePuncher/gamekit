@@ -89,10 +89,11 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+#pragma warning(disable:4067) 
 
 	FLEXKITAPI void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size);
 
-#ifdef _DEBUG
+#ifdef USING(DEBUGGRAPHICS)
 #define SETDEBUGNAME(RES, ID) {const char* NAME = ID; FlexKit::SetDebugName(RES, ID, strnlen(ID, 64));}
 #else
 #define SETDEBUGNAME(RES, ID) 
@@ -248,6 +249,7 @@ namespace FlexKit
 
 	enum class FORMAT_2D
 	{
+		R16G16_UINT,
 		R8G8B8A_UINT,
 		R8G8B8A8_UINT,
 		R8G8B8A8_UNORM,
@@ -839,6 +841,12 @@ namespace FlexKit
 		ID3D12DescriptorHeap*		DescHeap;
 	};
 
+	struct PerFrameUploadQueues
+	{
+		size_t UploadCount;
+		ID3D12CommandAllocator*		UploadCLAllocator	[MaxThreadCount];
+		ID3D12GraphicsCommandList*	UploadList			[MaxThreadCount];
+	};
 
 	struct PerFrameResources
 	{
@@ -846,9 +854,7 @@ namespace FlexKit
 		ID3D12GraphicsCommandList*	CommandLists		[MaxThreadCount];
 		bool						CommandListsUsed	[MaxThreadCount];
 		ID3D12CommandAllocator*		GraphicsCLAllocator	[MaxThreadCount];
-		ID3D12CommandAllocator*		UploadCLAllocator	[MaxThreadCount];
 		ID3D12CommandAllocator*		ComputeCLAllocator	[MaxThreadCount];
-		ID3D12GraphicsCommandList*	UploadList			[MaxThreadCount];
 		ID3D12GraphicsCommandList*	ComputeList			[MaxThreadCount];
 
 		DescHeapStack RTVHeap;
@@ -868,7 +874,9 @@ namespace FlexKit
 		ID3D12Debug*		pDebug;
 		ID3D12DebugDevice*	pDebugDevice;
 
-		PerFrameResources FrameResources[QueueSize];
+		PerFrameResources		FrameResources[QueueSize];
+		PerFrameUploadQueues	UploadQueues[QueueSize];
+
 
 		IDXGIFactory4*		pGIFactory;
 		ID3D12CommandQueue*	GraphicsQueue;
@@ -880,6 +888,7 @@ namespace FlexKit
 		Texture2D		NullSRV;
 
 		size_t CurrentIndex;
+		size_t CurrentUploadIndex;
 		size_t FenceCounter;
 
 		ID3D12Fence* Fence;
@@ -1110,7 +1119,8 @@ namespace FlexKit
 		EDPM_ROUGHNESS,
 		EDPM_METAL,
 		EDPM_NORMALS,
-		EDPM_LIGHTCOUNT,
+		EDPM_POSITION,
+		EDPM_CONSTRUCTPOSITION,
 		EDPM_COUNT,
 	};
 	struct DeferredPass_Parameters
@@ -1118,6 +1128,7 @@ namespace FlexKit
 		float4x4 InverseZ;
 		uint64_t PointLightCount;
 		uint64_t SpotLightCount;
+		uint2	 WH;
 		EDEFERREDPASSMODE Mode;// Only useable in Debug mode
 	};
 
@@ -1187,6 +1198,7 @@ namespace FlexKit
 			Texture2D DepthBuffer;
 			Texture2D EmissiveTex;
 			Texture2D RoughnessMetal;
+			Texture2D LightBuffer;
 		}GBuffers[3];
 		size_t CurrentBuffer;
 
@@ -1405,6 +1417,16 @@ namespace FlexKit
 			uint32_t	SpotLightCount;
 			uint32_t	WindowWidth;
 			uint32_t	WindowHeight;
+
+			float3  WSTopLeft;
+			float3  WSTopRight;
+			float3  WSBottomLeft;
+			float3  WSBottomRight;
+
+			float3  WSTopLeft_Near;
+			float3  WSTopRight_Near;
+			float3  WSBottomLeft_Near;
+			float3  WSBottomRight_Near;
 
 			constexpr static const size_t GetBufferSize()
 			{
@@ -1996,7 +2018,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI ConstantBuffer		CreateConstantBuffer		( RenderSystem* RS, ConstantBuffer_desc* );
-	FLEXKITAPI void					CreateDepthBuffer			( RenderSystem* RS, uint2				Dimensions,	DepthBuffer_Desc&	DepthDesc,	DepthBuffer* out, ID3D12GraphicsCommandList* CL = nullptr );
+	FLEXKITAPI bool					CreateDepthBuffer			( RenderSystem* RS, uint2				Dimensions,	DepthBuffer_Desc&	DepthDesc,	DepthBuffer* out, ID3D12GraphicsCommandList* CL = nullptr );
 	FLEXKITAPI Texture2D			CreateDepthBufferResource	( RenderSystem* RS, Texture2D_Desc*		desc_in,	bool				Float32);
 	FLEXKITAPI bool					CreateInputLayout			( RenderSystem* RS, VertexBufferView**,  size_t count, Shader*, VertexBuffer* OUT );		// Expects Index buffer in index 15
 	FLEXKITAPI Texture2D			CreateTexture2D				( RenderSystem* RS, Texture2D_Desc* desc_in );
@@ -2012,6 +2034,10 @@ namespace FlexKit
 	FLEXKITAPI void UpdateResourceByTemp ( RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 	FLEXKITAPI void UpdateResourceByTemp ( RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 
+
+	FLEXKITAPI void ReadyUploadQueues	( RenderSystem* RS );
+	FLEXKITAPI void SubmitUploadQueues	( RenderSystem* RS );
+	FLEXKITAPI PerFrameUploadQueues* GetCurrentUploadQueue( RenderSystem* RS );
 
 	/************************************************************************************************/
 
@@ -2042,7 +2068,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void	Release( ConstantBuffer		);
+	FLEXKITAPI void DelayReleaseDrawable(RenderSystem* RS, Drawable* E);
+
+	FLEXKITAPI void	Release( ConstantBuffer&	);
 	FLEXKITAPI void	Release( Texture2D			);
 	FLEXKITAPI void	Release( RenderWindow*		);
 	FLEXKITAPI void	Release( VertexBuffer*		);
@@ -2082,7 +2110,7 @@ namespace FlexKit
 
 	FLEXKITAPI void			InitiateSceneNodeBuffer		( SceneNodes* Nodes, byte* pmem, size_t );
 	FLEXKITAPI void			SortNodes					( SceneNodes* Nodes, StackAllocator* Temp );
-	FLEXKITAPI void			FreeHandle					( SceneNodes* Nodes, NodeHandle Node );
+	FLEXKITAPI void			ReleaseNode					( SceneNodes* Nodes, NodeHandle Node );
 
 	FLEXKITAPI float3		LocalToGlobal				( SceneNodes* Nodes, NodeHandle Node, float3 POS);
 
@@ -2106,7 +2134,8 @@ namespace FlexKit
 	FLEXKITAPI void			SetPositionW				( SceneNodes* Nodes, NodeHandle Node,	float3 in );
 	FLEXKITAPI void			SetPositionL				( SceneNodes* Nodes, NodeHandle Node,	float3 in );
 	FLEXKITAPI void			SetWT						( SceneNodes* Nodes, NodeHandle Node,	DirectX::XMMATRIX* __restrict in  );				// Set World Transform
-	
+	FLEXKITAPI void			SetScale					( SceneNodes* Nodes, NodeHandle Node,	float3 In );
+
 	FLEXKITAPI void			Scale						( SceneNodes* Nodes, NodeHandle Node,	float3 In );
 	FLEXKITAPI void			TranslateLocal				( SceneNodes* Nodes, NodeHandle Node,	float3 In );
 	FLEXKITAPI void			TranslateWorld				( SceneNodes* Nodes, NodeHandle Node,	float3 In );
@@ -2577,7 +2606,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void CleanUpDrawable		( Drawable*	p );
+	FLEXKITAPI void ReleaseDrawable		( Drawable*	p );
 	FLEXKITAPI void CleanUpTriMesh		( TriMesh*	p );
 
 

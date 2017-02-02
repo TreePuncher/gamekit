@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 void ReleaseEngine			( EngineMemory* Game );
 void InitiateEngineMemory	( EngineMemory* Game );
-void InitiateCoreSystems	( EngineMemory* Game );
+bool InitiateCoreSystems	( EngineMemory* Game );
 
 /************************************************************************************************/
 
@@ -41,4 +41,4 @@ uint2 GetWindowWH			( EngineMemory* Engine );
 void UpdateMouseInput(MouseInputState* State, RenderWindow* Window);
 
 
-void InitEngine(EngineMemory* Game);
+bool InitEngine(EngineMemory* Game);
