@@ -296,6 +296,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+#pragma warning(disable : 4309)
 
 	ColliderHandle LoadTriMeshCollider(FlexKit::PhysicsSystem* PS, Resources* RM, GUID_t Guid)
 	{
@@ -313,7 +314,7 @@ namespace FlexKit
 			return AddCollider(&PS->Colliders, {Mesh, 1});
 		}
 
-		return (ColliderHandle)INVALIDHANDLE;
+		return static_cast<ColliderHandle>(INVALIDHANDLE);
 	}
 
 

@@ -48,7 +48,7 @@ struct GBuffer
 	float4 Emissive     : SV_TARGET2; // Emmissive 
 	float2 RoughMetal   : SV_TARGET3; // Roughness + Metal
 	float4 NORMAL 	    : SV_TARGET4; // Normal    + W Depth
-	float4 WPOS 	    : SV_TARGET5;
+	//float4 WPOS 	    : SV_TARGET5;
 };
 
 
@@ -86,7 +86,7 @@ GBuffer Write2GBuffer(
 	Out.RoughMetal  = float2(Roughness, Metal);
 	Out.Emissive    = float4(Emissive, 0);
 	Out.NORMAL      = float4(normalize(Normal), length(WPOS - CameraPOS));
-	Out.WPOS        = float4(WPOS, length(WPOS - CameraPOS));
+	//Out.WPOS        = float4(WPOS, length(WPOS - CameraPOS));
 
 	return Out;
 }

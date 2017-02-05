@@ -75,6 +75,12 @@ struct DirectionalLight
 	float4 K; // Color + I
 };
 
+struct LightTile
+{
+	uint Offset;
+	uint Count;
+};
+
 // Inputs
 sampler Sampler : register(s0);
 
@@ -83,13 +89,13 @@ sampler Sampler : register(s0);
 
 StructuredBuffer<PointLight>	PointLights		: register(t0);
 StructuredBuffer<SpotLight>		SpotLights		: register(t1);
+StructuredBuffer<LightTile>		LightTiles		: register(t7);
 
 Texture2D<float4>		 		Color			: register(t2);
 Texture2D<float4>	 			Specular		: register(t3);
 Texture2D<float4>               Emissive        : register(t4);
 Texture2D<float2>               RoughMetal      : register(t5);
 Texture2D<float4>	 			Normal			: register(t6);
-Texture2D<float4>	 			Position 		: register(t7);
 Texture2D<float>	 			DepthView 		: register(t8);
 
 
@@ -107,58 +113,57 @@ struct SurfaceProperties
 
 /************************************************************************************************/
 
-// Inverse Depth
-float3 TopLeft		= float3(-1,  1,  0);
-float3 TopRight		= float3( 1,  1,  0);
-float3 BottomLeft	= float3(-1, -1,  0);
-float3 BottomRight	= float3( 1, -1,  0);
-
-
-/************************************************************************************************/
-
-
-
 
 groupshared PointLight Lights[256];
 
-[numthreads(64, 2, 1)]
-void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
+
+[numthreads(16, 8, 1)]
+void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 {
-	uint ThreadID = TID.x % 64 + TID.y * 64;
+	uint ThreadID = TID.x % 16 + TID.y * 8;
 	float3 Kd = Color.Load(int3(ID.xy, 0)).xyz;
 	int MatID = Color.Load(int3(ID.xy, 0)).w;
 
-	Lights[ThreadID] = PointLights[ThreadID];
+	// Pre-Load Lights
+	int Itr = 0;
+	while (Itr < PointLightCount)
+	{
+		Lights[Itr + ThreadID] = PointLights[ThreadID];
+		Itr += 16 * 8;
+	}
+
 	GroupMemoryBarrierWithGroupSync();
 
-    if (MatID == 0)
-        return;
+	if (MatID == 0)
+		return;
 
-    float U = float(ID.x) / WindowWidth;
+	float U = float(ID.x) / WindowWidth;
 	float V = float(ID.y) / WindowHeight;
 
 	float3 Temp1    = lerp(WSTopLeft, WSBottomLeft,  V);
 	float3 Temp2    = lerp(WSTopRight, WSBottomRight, V);
 	float3 FarPos   = lerp(Temp1, Temp2, U);
 
-    float3 Temp3    = lerp(WSTopLeft_Near, WSBottomLeft_Near, V);
-    float3 Temp4    = lerp(WSTopRight_Near, WSBottomRight_Near, V);
-    float3 NearPos  = lerp(Temp3, Temp4, U);
+	float3 Temp3    = lerp(WSTopLeft_Near, WSBottomLeft_Near, V);
+	float3 Temp4    = lerp(WSTopRight_Near, WSBottomRight_Near, V);
+	float3 NearPos  = lerp(Temp3, Temp4, U);
 
-    
+	
 	float3 n = Normal.Load(int3(ID.xy, 0)).xyz;
 	float  l = Normal.Load(int3(ID.xy, 0)).w;
 
-    float2 ProjRatio = float2(MaxZ/(MaxZ - MinZ), MinZ/(MinZ-MaxZ));
-    float LinearDepth = ProjRatio.y / (l - ProjRatio.x);
-    float Distance = l;
+	/*
+	float2 ProjRatio = float2(MaxZ/(MaxZ - MinZ), MinZ/(MinZ-MaxZ));
+	float LinearDepth = ProjRatio.y / (l - ProjRatio.x);
+	*/
+	float Distance = l;
 
-    float3 ViewRay = normalize(FarPos - CameraPOS);
-    float3 WPOS = CameraPOS.xyz + (ViewRay * Distance);
-	float3 Ks 	= Specular.Load(int3(ID.xy, 0)).xyz;
-	float  m 	= RoughMetal.Load(int3(ID.xy, 0)).y;
-	float  r    = RoughMetal.Load(int3(ID.xy, 0)).x;
-    float3 vdir = -ViewRay;
+	float3 ViewRay = normalize(FarPos - CameraPOS);
+	float3 WPOS    = CameraPOS.xyz + (ViewRay * Distance);
+	float3 Ks 	   = Specular.Load(int3(ID.xy, 0)).xyz;
+	float  m 	   = RoughMetal.Load(int3(ID.xy, 0)).y;
+	float  r       = RoughMetal.Load(int3(ID.xy, 0)).x;
+	float3 vdir    = -ViewRay;
 
 	float3 ColorOut = float4(Kd * AmbientLight.xyz, 0.0f);
 
@@ -170,7 +175,7 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 				{
 					case 0:
 						{
-                            [loop]
+							[loop]
 							for (int I = 0; I < DeferredPointLightCount; ++I)
 							{
 								PointLight Light = Lights[I];
@@ -182,7 +187,7 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 								ColorOut += Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse;
 							}
 
-                            [loop]
+							[loop]
 							for (int II = 0; II < DeferredSpotLightCount; ++II)
 							{
 								float3 Lp = SpotLights[II].P;
@@ -220,13 +225,13 @@ void cmain( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 							ColorOut = float3(WPOS);
 							break;
 						}
-					case 6: // Position Reconstruction
+					case 6: // Light Tile Debug
 						{
-                            float4 ActualPosition = Position.Load(int3(ID.xy, 0));
-                            float e = length(WPOS - ActualPosition);
-                            ColorOut = float3(e, e, e);
-                            break;
-                        }
+							//float4 ActualPosition = Position.Load(int3(ID.xy, 0));
+							//float e = length(WPOS - ActualPosition);
+							ColorOut = float3(0, 0, 0);
+							break;
+						}
 						break;
 					default:
 						break;

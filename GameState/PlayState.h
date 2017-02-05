@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "BaseState.h"
+#include "Gameplay.h"
+#include "CameraUtilities.h"
 #include "..\Application\GameMemory.h"
 
 /*
@@ -35,22 +37,6 @@ TODO's
 struct GamePlayObject
 {
 
-};
-
-struct PlayerState
-{
-
-};
-
-struct Player
-{
-	FlexKit::EntityHandle Model;
-};
-
-struct PlayerController
-{
-	float3 Pos;
-	float3 Velocity;
 };
 
 struct PlayState : public SubState

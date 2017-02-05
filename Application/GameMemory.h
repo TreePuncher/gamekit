@@ -48,18 +48,17 @@ struct sKeyState
 {
 	sKeyState()
 	{
-		W = false;
-		A = false;
-		S = false;
-		D = false;
-		Q = false;
-		E = false;
-		P = false;
-		R = false;
-		F = false;
+		W        = false;
+		A        = false;
+		S        = false;
+		D        = false;
+		Q        = false;
+		E        = false;
+		P        = false;
+		R        = false;
+		F        = false;
 		SpaceBar = false;
-
-		FrameID = 0;
+		FrameID  = 0;
 	}
 
 	char B[4];
@@ -133,8 +132,8 @@ struct EngineMemory
 
 	NodeHandle		RootSN;
 
-	DeferredPass	DeferredRender;
-	::ForwardPass	ForwardRender;
+	TiledDeferredRender	TiledRender;
+	ForwardRender		ForwardRender;
 
 	PVS			PVS_;
 

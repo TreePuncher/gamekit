@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if USING(RACKNET)
 
-#include "stdafx.h"
+
 #include "CommonStructs.h"
 #include "GameUtilities.h"
 

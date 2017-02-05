@@ -1637,7 +1637,7 @@ extern "C"
 		State.ActiveWindow				= &Engine->Window;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
-		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
+		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
 		State.GT = &Engine->Geometry;
 		ResetStats(&State.Stats);
@@ -1716,7 +1716,7 @@ extern "C"
 
 	GAMESTATEAPI void Update(EngineMemory* Engine, GameState* State, double dt)
 	{
-		//Engine->End = State->Quit;
+		Engine->End = State->Quit;
 		State->Mouse.Enabled = State->Keys.MouseEnable;
 
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
@@ -1796,12 +1796,13 @@ extern "C"
 			DeferredPass_Parameters	DPP;
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
+			//DPP.Mode = EDEFERREDPASSMODE::EDPM_POSITION;
 
 			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);
 			UploadPoses	(RS, &PVS, State->GT, TempMemory);
 
 			UploadLineSegments			(RS, &State->Lines);
-			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->DeferredRender);
+			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
 
 			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
@@ -1827,17 +1828,20 @@ extern "C"
 
 			if (State->DoDeferredShading)
 			{
-				IncrementDeferredPass (&Engine->DeferredRender);
-				ClearDeferredBuffers  (RS, &Engine->DeferredRender);
+				IncrementPassIndex (&Engine->TiledRender);
+				ClearTileRenderBuffers  (RS, &Engine->TiledRender);
 
-				DoDeferredPass		(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, State->GT, &State->TextureState);
-				DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, State->DrawLandScapewireframe);
+				TiledRender_LightPrePass	(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+				TiledRender_Fill			(RS, &PVS, &Engine->TiledRender, GetRenderTarget(State->ActiveWindow),  State->ActiveCamera, nullptr, State->GT, nullptr);
 
-				ShadeDeferredPass	(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-				DoForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
+
+				DrawLandscape				(RS, &State->Landscape, &Engine->TiledRender, State->TerrainSplits, State->ActiveCamera, State->DrawLandScapewireframe);
+
+				TiledRender_Shade	(RS, &PVS, &Engine->TiledRender, GetRenderTarget(State->ActiveWindow), State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+				ForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else
-				DoForwardPass(&PVS, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
+				ForwardPass(&PVS, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);
 
 
 #if 0

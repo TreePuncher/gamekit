@@ -38,6 +38,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <string>
 #include <emmintrin.h>
+#include <smmintrin.h>
 #include <xmmintrin.h>
 #include <initializer_list>
 
@@ -311,6 +312,15 @@ namespace FlexKit
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] = in[I];
 			
+			return *this;
+		}
+
+		template<typename TY_2>
+		THISTYPE& operator / (TY_2 in)
+		{
+			for (auto I = 0; I < SIZE; ++I)
+				Vector[I] /= 2;
+
 			return *this;
 		}
 

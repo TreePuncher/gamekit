@@ -40,7 +40,7 @@ void ReleaseEngine(EngineMemory* Engine)
 #endif
 	
 	ReleaseForwardPass	( &Engine->ForwardRender  );
-	ReleaseDeferredPass	( &Engine->DeferredRender );
+	ReleaseTiledRender	( &Engine->TiledRender );
 
 	Release( &Engine->DepthBuffer );
 	Release( &Engine->Window );
@@ -96,7 +96,10 @@ bool CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, boo
 	WinDesc.width	   = width;
 	WinDesc.fullscreen = fullscreen;
 
-	return( CreateRenderWindow( Game->RenderSystem, &WinDesc, &Game->Window ), "RENDER WINDOW FAILED TO INITIALIZE!" );
+	if (CreateRenderWindow(Game->RenderSystem, &WinDesc, &Game->Window))
+		FK_ASSERT(false, "RENDER WINDOW FAILED TO INITIALIZE!");
+
+	return true;
 }
 
 
@@ -108,12 +111,12 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::CreateDepthBuffer;
 	using FlexKit::DepthBuffer;
 	using FlexKit::DepthBuffer_Desc;
-	using FlexKit::ForwardPass;
+	using FlexKit::ForwardRender;
 	using FlexKit::ForwardPass_DESC;
 
 	bool Out		 = false;
-	uint32_t width	 = 1920;
-	uint32_t height	 = 1080;
+	uint32_t width	 = 800;
+	uint32_t height	 = 600;
 	bool InvertDepth = true;
 	FlexKit::Graphics_Desc	desc = { 0 };
 	desc.Memory = Engine->BlockAllocator;
@@ -136,10 +139,10 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->BlockAllocator );
 
 	ForwardPass_DESC FP_Desc{ &Engine->DepthBuffer, &Engine->Window };
-	DeferredPassDesc DP_Desc{ &Engine->DepthBuffer, &Engine->Window, nullptr };
+	TiledRendering_Desc DP_Desc{ &Engine->DepthBuffer, &Engine->Window, nullptr };
 
 	InitiateForwardPass(Engine->RenderSystem,	&FP_Desc, &Engine->ForwardRender);
-	InitiateDeferredPass(Engine->RenderSystem,	&DP_Desc, &Engine->DeferredRender);
+	InitiateTiledDeferredRender(Engine->RenderSystem,	&DP_Desc, &Engine->TiledRender);
 
 	InitiateGeometryTable	( &Engine->Geometry, Engine->BlockAllocator );
 	Engine->Assets.ResourceMemory = &Engine->BlockAllocator;

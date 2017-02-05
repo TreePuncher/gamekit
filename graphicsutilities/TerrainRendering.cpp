@@ -35,7 +35,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	const static size_t SO_BUFFERSIZES = KILOBYTE * 1024;
-	void DrawLandscape(RenderSystem* RS, Landscape* LS, DeferredPass* Pass, size_t splitcount, Camera* C, bool DrawWireframe)
+	void DrawLandscape(RenderSystem* RS, Landscape* LS, TiledDeferredRender* Pass, size_t splitcount, Camera* C, bool DrawWireframe)
 	{	
 		auto CL = GetCurrentCommandList(RS);
 		if (LS->Regions.size())
@@ -66,7 +66,7 @@ namespace FlexKit
 			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex, RTVPOS);
 			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
 			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex, RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
+			//RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
 
 			DescPOS = PushTextureToDescHeap(RS, LS->HeightMap, DescPOS);
 

@@ -695,6 +695,11 @@ namespace FlexKit
 		ObjectsCreated.push_back(UploadQueue);
 		ObjectsCreated.push_back(ComputeQueue);
 
+
+		SETDEBUGNAME(GraphicsQueue, "GRAPHICS QUEUE");
+		SETDEBUGNAME(UploadQueue,	"UPLOAD QUEUE");
+		SETDEBUGNAME(ComputeQueue,	"COMPUTE QUEUE");
+
 		FINALLY
 			if (!InitiateComplete)
 			{
@@ -719,6 +724,11 @@ namespace FlexKit
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,	ComputeAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&ComputeList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,	GraphicsAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&CommandList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,		UploadAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&UploadList);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+
+
+					SETDEBUGNAME(ComputeAllocator, "COMPUTE ALLOCATOR");
+					SETDEBUGNAME(GraphicsAllocator, "GRAPHICS ALLOCATOR");
+					SETDEBUGNAME(UploadAllocator, "UPLOAD ALLOCATOR");
 
 					ObjectsCreated.push_back(GraphicsAllocator);
 					ObjectsCreated.push_back(UploadAllocator);
@@ -1574,6 +1584,9 @@ namespace FlexKit
 	{
 		switch (F)
 		{
+		case FlexKit::FORMAT_2D::R16G16_UINT:
+			return DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT;
+			break;
 		case FlexKit::FORMAT_2D::R8G8B8A8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
 			break;
@@ -1957,6 +1970,9 @@ namespace FlexKit
 
 	void ReleaseGeometryTable(GeometryTable* GT)
 	{
+		for (auto G : GT->Geometry)
+			if(G) ReleaseTriMesh(G);
+
 		GT->Geometry.Release();
 		GT->ReferenceCounts.Release();
 		GT->Guids.Release();
@@ -2003,7 +2019,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseMesh(GeometryTable* GT, TriMeshHandle TMHandle)
+	void ReleaseMesh(RenderSystem* RS, GeometryTable* GT, TriMeshHandle TMHandle)
 	{
 		// TODO: MAKE ATOMIC
 		size_t Index = GT->Handles[TMHandle];
@@ -2012,7 +2028,8 @@ namespace FlexKit
 		if (Count == 0) {
 			auto G = GetMesh(GT, TMHandle);
 
-			CleanUpTriMesh(G);
+			DelayedReleaseTriMesh(RS, G);
+
 			if (G->Skeleton)
 				CleanUpSkeleton(G->Skeleton);
 
@@ -2580,10 +2597,24 @@ namespace FlexKit
 
 	void Release( VertexBuffer* VertexBuffer )
 	{	
-		for( auto Buffer : VertexBuffer->VertexBuffers )
-			if( Buffer.Buffer )Buffer.Buffer->Release();
+		for (auto Buffer : VertexBuffer->VertexBuffers) {
+			if (Buffer.Buffer)
+				Buffer.Buffer->Release();
+			Buffer.Buffer = nullptr;
+			Buffer.BufferSizeInBytes = 0;
+		}
 	}
 	
+
+	void DelayedRelease(RenderSystem* RS, VertexBuffer* VertexBuffer)
+	{
+		for (auto& Buffer : VertexBuffer->VertexBuffers) {
+			if (Buffer.Buffer)
+				Push_DelayedRelease(RS, Buffer.Buffer);
+			Buffer.Buffer				= nullptr;
+			Buffer.BufferSizeInBytes	= 0;
+		}
+	}
 
 	/************************************************************************************************/
 	
@@ -3666,6 +3697,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	DescHeapPOS Push2DSRVToDescHeap(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, D3D12_BUFFER_SRV_FLAGS Flags )
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC Desc; {
+			Desc.Format                         = DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
+			Desc.Shader4ComponentMapping        = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			Desc.ViewDimension                  = D3D12_SRV_DIMENSION_TEXTURE2D;
+			Desc.Texture2D.MipLevels		    = 1;
+			Desc.Texture2D.MostDetailedMip	    = 0;
+			Desc.Texture2D.PlaneSlice		    = 0;
+			Desc.Texture2D.ResourceMinLODClamp	= 0;
+		}
+
+		RS->pDevice->CreateShaderResourceView(Buffer, &Desc, POS);
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
+
+
+
+	/************************************************************************************************/
+
+
 	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
@@ -3756,9 +3808,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	ID3D12PipelineState* LoadShadeState(RenderSystem* RS)
 	{
-		auto ComputeShader = LoadShader("cmain", "DeferredShader", "cs_5_0", "assets\\cshader.hlsl");
+		auto ComputeShader = LoadShader("Tiled_Shading", "DeferredShader", "cs_5_0", "assets\\cshader.hlsl");
 
 		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
 		ID3D12PipelineState* ShadingPSO = nullptr;
@@ -3776,10 +3829,37 @@ namespace FlexKit
 	}
 
 
-	void InitiateDeferredPass(RenderSystem* RS, DeferredPassDesc* GBdesc, DeferredPass* out)
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* LoadLightPrePassState(RenderSystem* RS)
 	{
-		RegisterPSOLoader(RS, RS->States, DEFERREDSHADING_SHADE, LoadShadeState);
-		QueuePSOLoad(RS, DEFERREDSHADING_SHADE);
+		auto ComputeShader = LoadShader("Tiled_LightPrePass", "DeferredShader", "cs_5_0", "assets\\LightPrepass.hlsl");
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
+		ID3D12PipelineState* ShadingPSO = nullptr;
+
+		CPSODesc.pRootSignature = RS->Library.ShadingRTSig;
+		CPSODesc.CS = CD3DX12_SHADER_BYTECODE(ComputeShader.Blob);
+		CPSODesc.Flags = D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
+
+		HRESULT HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		Release(&ComputeShader);
+
+		return ShadingPSO;
+	}
+
+	/************************************************************************************************/
+
+
+	void InitiateTiledDeferredRender(RenderSystem* RS, TiledRendering_Desc* GBdesc, TiledDeferredRender* out)
+	{
+		RegisterPSOLoader(RS, RS->States, TILEDSHADING_SHADE,		 LoadShadeState);
+		RegisterPSOLoader(RS, RS->States, TILEDSHADING_LIGHTPREPASS, LoadLightPrePassState);
+		QueuePSOLoad(RS, TILEDSHADING_SHADE);
+		//QueuePSOLoad(RS, TILEDSHADING_LIGHTPREPASS);
 
 		{
 			// Create GBuffers
@@ -3815,7 +3895,6 @@ namespace FlexKit
 						FK_ASSERT(out->GBuffers[I].RoughnessMetal);
 						SETDEBUGNAME(out->GBuffers[I].RoughnessMetal.Texture, "Roughness + Metal Buffer");
 					}
-
 					{
 						// Create Specular Buffer
 						desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
@@ -3830,13 +3909,15 @@ namespace FlexKit
 						FK_ASSERT(out->GBuffers[I].NormalTex);
 						SETDEBUGNAME(out->GBuffers[I].NormalTex.Texture, "Normal Buffer");
 					}
+#if 0
 					{
 						desc.Format = FORMAT_2D::R32G32B32A32_FLOAT;
 						out->GBuffers[I].PositionTex = CreateTexture2D(RS, &desc);
 						FK_ASSERT(out->GBuffers[I].PositionTex);
 						SETDEBUGNAME(out->GBuffers[I].PositionTex.Texture, "WorldCord Texture");
 					}
-					{ // Create Output Byffer
+#endif
+					{ // Create Output Buffer
 						desc.Format			= FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
 						desc.UAV			= true;
 						desc.CV				= true;
@@ -3846,7 +3927,18 @@ namespace FlexKit
 						FK_ASSERT(out->GBuffers[I].OutputBuffer);
 						SETDEBUGNAME(out->GBuffers[I].OutputBuffer.Texture, "Output Buffer");
 					}
+					{ // Create Tile Buffer
+						desc.Width			= GBdesc->RenderWindow->WH[0]/8;
+						desc.Height			= GBdesc->RenderWindow->WH[1]/8;
+						desc.Format         = FlexKit::FORMAT_2D::R16G16_UINT;
+						desc.UAV            = true;
+						desc.CV				= false;
+						desc.RenderTarget   = false;
 
+						out->GBuffers[I].LightTilesBuffer = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].LightTilesBuffer);
+						SETDEBUGNAME(out->GBuffers[I].LightTilesBuffer.Texture, "Light Tiles Buffer");
+					}
 					out->GBuffers[I].DepthBuffer = GBdesc->DepthBuffer->Buffer[I];
 				}
 			}
@@ -3965,7 +4057,7 @@ namespace FlexKit
 					PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Emissive
 					PSO_Desc.RTVFormats[3]			= DXGI_FORMAT_R8G8_UNORM;	  // Roughness
 					PSO_Desc.RTVFormats[4]			= DXGI_FORMAT_R32G32B32A32_FLOAT; // Normal
-					PSO_Desc.RTVFormats[5]			= DXGI_FORMAT_R32G32B32A32_FLOAT; // Position
+					//PSO_Desc.RTVFormats[5]			= DXGI_FORMAT_R32G32B32A32_FLOAT; // Position
 					PSO_Desc.SampleDesc.Count		= 1;
 					PSO_Desc.SampleDesc.Quality		= 0;
 					PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
@@ -4084,6 +4176,16 @@ namespace FlexKit
 
 			ReadyUploadQueues(RS);
 		}
+	}
+
+	void ShutDownUploadQueues(RenderSystem* RS)
+	{
+		auto UploadQueue = GetCurrentUploadQueue(RS);
+		auto UploadCL = UploadQueue->UploadList[0];
+
+		UploadCL->Close();
+		UploadCL->Reset(UploadQueue->UploadCLAllocator[0], nullptr);
+		UploadQueue->UploadCLAllocator[0]->Reset();
 	}
 
 
@@ -4286,7 +4388,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadDeferredPassConstants(RenderSystem* RS, DeferredPass_Parameters* in, float4 A, DeferredPass* Pass)
+	void UploadDeferredPassConstants(RenderSystem* RS, DeferredPass_Parameters* in, float4 A, TiledDeferredRender* Pass)
 	{
 		GBufferConstantsLayout Update = {};
 		Update.PLightCount  = in->PointLightCount;
@@ -4304,16 +4406,76 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void IncrementDeferredPass(DeferredPass* Pass) {
+	void IncrementPassIndex(TiledDeferredRender* Pass) {
 		Pass->CurrentBuffer = ++Pass->CurrentBuffer % 3;
 	}
+
 
 
 	/************************************************************************************************/
 
 
-	void ClearDeferredPass(RenderSystem* RS, DeferredPass* Pass) {
+	void
+	TiledRender_LightPrePass(
+		RenderSystem* RS, TiledDeferredRender* Pass, const Camera* C,
+		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH)
+	{
+		auto CL				 = GetCurrentCommandList(RS);
+		auto FrameResources  = GetCurrentFrameResources(RS);
+		auto BufferIndex	 = Pass->CurrentBuffer;
+		auto& CurrentGBuffer = Pass->GBuffers[BufferIndex];
 
+		auto DescTable	= GetDescTableCurrentPosition_GPU(RS);
+		auto TablePOS	= ReserveDescHeap(RS, 11);
+
+		TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
+		TablePOS = PushCBToDescHeap			(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
+		
+		TablePOS = PushSRVToDescHeap		(RS, PLB->Resource, TablePOS, max(PLB->size(), 1), PLB_Stride);
+		TablePOS = PushSRVToDescHeap		(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride);
+
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+
+		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer, TablePOS, DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT);
+
+		CL->SetPipelineState				(GetPSO(RS, TILEDSHADING_LIGHTPREPASS));
+		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
+		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
+
+
+		ID3D12DescriptorHeap* Heaps[] = { FrameResources->DescHeap.DescHeap };
+		CL->SetDescriptorHeaps(1, Heaps);
+
+		// Do Shading Here
+		CL->SetPipelineState(GetPSO(RS, TILEDSHADING_LIGHTPREPASS));
+		CL->SetComputeRootSignature(RS->Library.ShadingRTSig);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier1[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.LightTilesBuffer,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+			};
+			CL->ResourceBarrier(sizeof(Barrier1) / sizeof(Barrier1[0]), Barrier1);
+		}
+
+		//CL->Dispatch(1, 1, 1);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier1[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.LightTilesBuffer,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+			};
+			CL->ResourceBarrier(sizeof(Barrier1) / sizeof(Barrier1[0]), Barrier1);
+		}
 	}
 
 
@@ -4321,8 +4483,8 @@ namespace FlexKit
 
 
 	void
-	ShadeDeferredPass(
-		PVS* _PVS, DeferredPass* Pass, Texture2D Target,
+	TiledRender_Shade(
+		PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target,
 		RenderSystem* RS, const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
 	{
@@ -4360,10 +4522,12 @@ namespace FlexKit
 				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
 
+#if 0
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.PositionTex,
 				D3D12_RESOURCE_STATE_RENDER_TARGET,
 				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+#endif
 
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
 				D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -4380,13 +4544,13 @@ namespace FlexKit
 		TablePOS = PushSRVToDescHeap	(RS, PLB->Resource, TablePOS,  max(PLB->size(), 1),  PLB_Stride);	
 		TablePOS = PushSRVToDescHeap	(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride);
 
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,		TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.SpecularTex,	TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.EmissiveTex,	TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.RoughnessMetal,	TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.NormalTex,		TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.PositionTex,	TablePOS);
-		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,	TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,			TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.SpecularTex,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.EmissiveTex,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.RoughnessMetal,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.NormalTex,			TablePOS);
+		TablePOS = Push2DSRVToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer,	TablePOS);
+		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,		TablePOS);
 
 		auto ConstantBuffers = DescTable;
 
@@ -4397,11 +4561,11 @@ namespace FlexKit
 		CL->SetDescriptorHeaps(1, Heaps);
 
 		// Do Shading Here
-		CL->SetPipelineState				(GetPSO(RS, DEFERREDSHADING_SHADE));
+		CL->SetPipelineState				(GetPSO(RS, TILEDSHADING_SHADE));
 		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
 
-		CL->Dispatch(Target.WH[0] / 64, Target.WH[1] / 2, 1);
+		CL->Dispatch(Target.WH[0] / 16, Target.WH[1] / 8, 1);
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barrier2[] = {
@@ -4430,10 +4594,12 @@ namespace FlexKit
 				D3D12_RESOURCE_STATE_RENDER_TARGET, -1, 
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
 
+#if 0
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.PositionTex,
 				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
 				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+#endif
 
 				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
 				D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
@@ -4466,16 +4632,16 @@ namespace FlexKit
 
 	}
 
-	void ClearDeferredBuffers(RenderSystem* RS, DeferredPass* Pass) {
+	void ClearTileRenderBuffers(RenderSystem* RS, TiledDeferredRender* Pass) {
 		size_t BufferIndex = Pass->CurrentBuffer;
 		float4	ClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
 		ClearGBuffer(RS, Pass, ClearValue, BufferIndex);
 	}
 
 	void 
-	DoDeferredPass(
-		PVS*			_PVS,	DeferredPass*	Pass,	Texture2D Target, 
-		RenderSystem*	RS,		const Camera*	C,		TextureManager* TM, 	
+	TiledRender_Fill(
+		RenderSystem*	RS,		PVS*			_PVS,	TiledDeferredRender*	Pass,	
+		Texture2D Target,		const Camera*	C,		TextureManager* TM,
 		GeometryTable*	GT,		TextureVTable*	Texture )
 	{
 		auto CL				= GetCurrentCommandList				(RS);
@@ -4509,7 +4675,7 @@ namespace FlexKit
 		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].EmissiveTex,		RTVPOS);
 		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].RoughnessMetal,	RTVPOS);
 		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,		RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex,		RTVPOS);
+		//RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex,		RTVPOS);
 		PushDepthStencil(RS, &Pass->GBuffers[BufferIndex].DepthBuffer, DSVPOS);
 
 		{	// Setup State
@@ -4714,7 +4880,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateForwardPass( RenderSystem* RS, ForwardPass_DESC* FBdesc, ForwardPass* out )
+	void InitiateForwardPass( RenderSystem* RS, ForwardPass_DESC* FBdesc, ForwardRender* out )
 	{
 		return;
 		// Load Shaders
@@ -4834,7 +5000,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseForwardPass(ForwardPass* FP)
+	void ReleaseForwardPass(ForwardRender* FP)
 	{
 		SAFERELEASE(FP->CommandList);
 		SAFERELEASE(FP->CommandAllocator);
@@ -4850,7 +5016,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DoForwardPass(PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT)
+	void ForwardPass(PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT)
 	{
 		return;
 		auto CL = GetCurrentCommandList(RS);
@@ -4910,7 +5076,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 	
-	void ReleaseDeferredPass(DeferredPass* gb)
+	void ReleaseTiledRender(TiledDeferredRender* gb)
 	{
 		// GBuffer
 		for(size_t I = 0; I < 3; ++I)
@@ -4918,7 +5084,8 @@ namespace FlexKit
 			gb->GBuffers[I].ColorTex->Release();
 			gb->GBuffers[I].SpecularTex->Release();
 			gb->GBuffers[I].NormalTex->Release();
-			gb->GBuffers[I].PositionTex->Release();
+			//gb->GBuffers[I].PositionTex->Release();
+			gb->GBuffers[I].LightTilesBuffer->Release();
 			gb->GBuffers[I].OutputBuffer->Release();
 			gb->GBuffers[I].EmissiveTex->Release();
 			gb->GBuffers[I].RoughnessMetal->Release();
@@ -4941,7 +5108,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 	
-	void SetGBufferState(RenderSystem* RS, ID3D12GraphicsCommandList* CL,  DeferredPass* Pass, size_t Index, D3D12_RESOURCE_STATES BeforeState, D3D12_RESOURCE_STATES AfterState)
+	void SetGBufferState(RenderSystem* RS, ID3D12GraphicsCommandList* CL,  TiledDeferredRender* Pass, size_t Index, D3D12_RESOURCE_STATES BeforeState, D3D12_RESOURCE_STATES AfterState)
 	{
 		static_vector<D3D12_RESOURCE_BARRIER>	Barriers;
 
@@ -4992,7 +5159,7 @@ namespace FlexKit
 			PushBarrier(Pass->GBuffers[Index].ColorTex);
 			PushBarrier(Pass->GBuffers[Index].NormalTex);
 			PushBarrier(Pass->GBuffers[Index].OutputBuffer);
-			PushBarrier(Pass->GBuffers[Index].PositionTex);
+			//PushBarrier(Pass->GBuffers[Index].PositionTex);
 			PushBarrier(Pass->GBuffers[Index].SpecularTex);
 		}
 		
@@ -5005,7 +5172,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearGBuffer(RenderSystem* RS, DeferredPass* Pass, const float4& Clear, size_t Index)
+	void ClearGBuffer(RenderSystem* RS, TiledDeferredRender* Pass, const float4& Clear, size_t Index)
 	{
 		auto CL			= GetCurrentCommandList(RS);
 		auto RTVPOSCPU	= GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
@@ -5023,7 +5190,7 @@ namespace FlexKit
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].ColorTex);
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].SpecularTex);
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].NormalTex);
-		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].PositionTex);
+		//ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].PositionTex);
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].OutputBuffer);
 	}
 	
@@ -6130,9 +6297,14 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void CleanUpTriMesh(TriMesh* T)
+	void ReleaseTriMesh(TriMesh* T)
 	{
 		Release(&T->VertexBuffer);
+	}
+
+	void DelayedReleaseTriMesh(RenderSystem* RS, TriMesh* T)
+	{
+		DelayedRelease(RS, &T->VertexBuffer);
 	}
 
 
@@ -6665,7 +6837,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void UpdateGBufferConstants(RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount)
+	void UpdateGBufferConstants(RenderSystem* RS, TiledDeferredRender* gb, size_t PLightCount, size_t SLightCount)
 	{
 		FlexKit::GBufferConstantsLayout constants;
 		constants.DLightCount = 0;

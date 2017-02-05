@@ -98,7 +98,7 @@ void HandleKeyEvents(const Event& in, BaseState* _ptr) {
 				_ptr->DP_DrawMode = EDEFERREDPASSMODE::EDPM_DEFAULT;
 		}	break;
 		case KC_C:
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::DEFERREDSHADING_SHADE);
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
 			break;
 		case KC_Q:
 			PushSubState(_ptr, CreateConsoleSubState(_ptr->Engine, &_ptr->Console, _ptr));
@@ -189,6 +189,17 @@ void DrawMouseCursor(EngineMemory* Engine, BaseState* State)
 
 void ReleaseBaseState(EngineMemory* Engine, BaseState* State)
 {
+	auto RItr = State->SubStates.rbegin();
+	auto REnd = State->SubStates.rend();
+	while (RItr != REnd)
+	{
+		auto VTable = *RItr;
+		if (VTable->Release) {
+			VTable->Release(reinterpret_cast<SubState*>(VTable));
+		}
+		RItr++;
+	}
+
 	FreeFontAsset(State->DefaultAssets.Font);
 	Release(State->DefaultAssets.Terrain);
 
@@ -197,17 +208,6 @@ void ReleaseBaseState(EngineMemory* Engine, BaseState* State)
 
 	ReleaseGraphicScene(&State->GScene);
 	ReleaseDrawGUI(&State->GUIRender);
-
-	auto RItr = State->SubStates.rbegin();
-	auto REnd = State->SubStates.rend();
-	while (RItr != REnd)
-	{
-		auto VTable = *RItr;
-		if (VTable->Release){
-			VTable->Release(reinterpret_cast<SubState*>(VTable));
-		}
-		RItr++;
-	}
 }
 
 
@@ -310,7 +310,7 @@ extern "C"
 		State.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
-		DeferredPassDesc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
+		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
 		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
@@ -322,6 +322,9 @@ extern "C"
 			float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
 			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &State.DefaultCamera, Aspect, 0.01f, 10000.0f, true);
 			State.ActiveCamera = &State.DefaultCamera;
+
+			State.MouseState.NormalizedPos = { 0.5f, 0.5f };
+			State.MouseState.Position = { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
 
 		{
@@ -359,7 +362,7 @@ extern "C"
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
 		UpdateColliders	(&State->PScene, &Engine->Nodes);
 
-		//Engine->End = State->Quit;
+		Engine->End = State->Quit;
 	}
 
 
@@ -395,6 +398,7 @@ extern "C"
 		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 		auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
 		auto CL				= GetCurrentCommandList(RS);
+		auto OutputTarget	= GetRenderTarget(State->ActiveWindow);
 
 		GetGraphicScenePVS(&State->GScene, State->ActiveCamera, &PVS, &Transparent);
 
@@ -417,7 +421,7 @@ extern "C"
 			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);	
 			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
 
-			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->DeferredRender);
+			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
 
 			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
@@ -436,14 +440,16 @@ extern "C"
 			SetViewport	(CL, BackBuffer);
 			SetScissor	(CL, BackBuffer.WH);
 
-			IncrementDeferredPass (&Engine->DeferredRender);
-			ClearDeferredBuffers  (RS, &Engine->DeferredRender);
+			IncrementPassIndex		(&Engine->TiledRender);
+			ClearTileRenderBuffers	(RS, &Engine->TiledRender);
 
-			DoDeferredPass		(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, nullptr, &Engine->Geometry, nullptr);
+			//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
+			TiledRender_Fill			(RS, &PVS, &Engine->TiledRender, OutputTarget,  State->ActiveCamera, nullptr, &Engine->Geometry,  nullptr); // Do Early-Z?
+
 			//DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, false);
 
-			ShadeDeferredPass	(&PVS, &Engine->DeferredRender, GetRenderTarget(State->ActiveWindow), RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-			DoForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
+			TiledRender_Shade	(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+			ForwardPass			(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
 
 			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
@@ -462,12 +468,20 @@ extern "C"
 	GAMESTATEAPI void Cleanup(EngineMemory* Engine, BaseState* State)
 	{
 		// wait for last Frame to finish Rendering
-		for (size_t I = 0; I < 3; ++I) {
+		auto CL = GetCurrentCommandList(Engine->RenderSystem);
+
+		for (size_t I = 0; I < 4; ++I) {
 			WaitforGPU(&Engine->RenderSystem);
 			IncrementRSIndex(Engine->RenderSystem);
 		}
 
+		//ShutDownUploadQueues(Engine->RenderSystem);
 		ReleaseBaseState(Engine, State);
+
+		// Counters are at Max 3
+		//Free_DelayedReleaseResources(Engine->RenderSystem);
+		//Free_DelayedReleaseResources(Engine->RenderSystem);
+		//Free_DelayedReleaseResources(Engine->RenderSystem);
 
 		Engine->BlockAllocator.free(State);
 		

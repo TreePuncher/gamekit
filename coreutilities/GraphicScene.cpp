@@ -85,7 +85,7 @@ namespace FlexKit
 
 			Drawable.VConstants.Release();
 			Drawable.Visable	= false;
-			ReleaseMesh(GT, Drawable.MeshHandle);
+			ReleaseMesh(RS, GT, Drawable.MeshHandle);
 			Drawable.MeshHandle = INVALIDMESHHANDLE;
 		}
 	}
@@ -633,7 +633,7 @@ namespace FlexKit
 	{
 		for (auto E : SM->Drawables)
 		{
-			ReleaseMesh(SM->GT, E.MeshHandle);
+			ReleaseMesh(SM->RS, SM->GT, E.MeshHandle);
 			ReleaseDrawable(&E);
 
 			if (E.PoseState) 

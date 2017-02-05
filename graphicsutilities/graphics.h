@@ -1133,7 +1133,7 @@ namespace FlexKit
 	};
 
 
-	struct DeferredPassDesc
+	struct TiledRendering_Desc
 	{
 		DepthBuffer*	DepthBuffer;
 		RenderWindow*	RenderWindow;
@@ -1185,7 +1185,7 @@ namespace FlexKit
 	};
 
 
-	struct DeferredPass
+	struct TiledDeferredRender
 	{
 		// GBuffer
 		struct GBuffer
@@ -1193,12 +1193,12 @@ namespace FlexKit
 			Texture2D ColorTex;
 			Texture2D SpecularTex;
 			Texture2D NormalTex;
-			Texture2D PositionTex;
+			//Texture2D PositionTex;
 			Texture2D OutputBuffer;
 			Texture2D DepthBuffer;
 			Texture2D EmissiveTex;
 			Texture2D RoughnessMetal;
-			Texture2D LightBuffer;
+			Texture2D LightTilesBuffer;
 		}GBuffers[3];
 		size_t CurrentBuffer;
 
@@ -1236,7 +1236,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct ForwardPass
+	struct ForwardRender
 	{
 		RenderWindow*				RenderTarget;
 		DepthBuffer*				DepthTarget;
@@ -1574,7 +1574,8 @@ namespace FlexKit
 	FLEXKITAPI void							ReleaseGeometryTable	( GeometryTable* GT );
 
 	FLEXKITAPI void							AddRef					( GeometryTable* GT, TriMeshHandle  TMHandle );
-	FLEXKITAPI void							ReleaseMesh				( GeometryTable* GT, TriMeshHandle  TMHandle );
+	FLEXKITAPI void							ReleaseMesh				( RenderSystem* RS, GeometryTable* GT, TriMeshHandle  TMHandle );
+
 	FLEXKITAPI TriMesh*						GetMesh					( GeometryTable* GT, TriMeshHandle  TMHandle );
 	FLEXKITAPI Skeleton*					GetSkeleton				( GeometryTable* GT, TriMeshHandle  TMHandle );
 	FLEXKITAPI size_t						GetSkeletonGUID			( GeometryTable* GT, TriMeshHandle  TMHandle );
@@ -2446,15 +2447,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void InitiateDeferredPass		( RenderSystem* RenderSystem, DeferredPassDesc* GBdesc, DeferredPass* out );
-	FLEXKITAPI void DoDeferredPass				( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture );
-	FLEXKITAPI void ShadeDeferredPass			( PVS* _PVS, DeferredPass* Pass, Texture2D Target, RenderSystem* RS, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
-	FLEXKITAPI void ReleaseDeferredPass			( DeferredPass* gb );
-	FLEXKITAPI void ClearGBuffer				( RenderSystem* RS, DeferredPass* gb, const float4& ClearColor, size_t Idx );
-	FLEXKITAPI void UpdateGBufferConstants		( RenderSystem* RS, DeferredPass* gb, size_t PLightCount, size_t SLightCount );
-	FLEXKITAPI void UploadDeferredPassConstants	( RenderSystem* RS, DeferredPass_Parameters* in, float4 A, DeferredPass* Pass );
-	FLEXKITAPI void	IncrementDeferredPass		( DeferredPass* Pass );
-	FLEXKITAPI void ClearDeferredBuffers		( RenderSystem* RS, DeferredPass* );
+	FLEXKITAPI void InitiateTiledDeferredRender	( RenderSystem* RenderSystem, TiledRendering_Desc* GBdesc, TiledDeferredRender* out );
+	FLEXKITAPI void TiledRender_LightPrePass	( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH);
+	FLEXKITAPI void TiledRender_Fill			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture );
+	FLEXKITAPI void TiledRender_Shade			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
+	FLEXKITAPI void ReleaseTiledRender			( TiledDeferredRender* gb );
+	FLEXKITAPI void ClearGBuffer				( RenderSystem* RS, TiledDeferredRender* gb, const float4& ClearColor, size_t Idx );
+	FLEXKITAPI void UpdateGBufferConstants		( RenderSystem* RS, TiledDeferredRender* gb, size_t PLightCount, size_t SLightCount );
+	FLEXKITAPI void UploadDeferredPassConstants	( RenderSystem* RS, DeferredPass_Parameters* in, float4 A, TiledDeferredRender* Pass );
+	FLEXKITAPI void	IncrementPassIndex		( TiledDeferredRender* Pass );
+	FLEXKITAPI void ClearTileRenderBuffers		( RenderSystem* RS, TiledDeferredRender* );
 
 	FLEXKITAPI void RenderShadowMap				( RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT );
 
@@ -2500,9 +2502,9 @@ namespace FlexKit
 	FLEXKITAPI void ClearDepthBuffers		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, static_vector<Texture2D> DB, const float ClearValue[] = DefaultClearDepthValues_1, const int Stencil[] = DefaultClearStencilValues, const size_t count = 1);
 	//FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, Texture2D* DB, float ClearValue = 1.0f, int Stencil = 0);
 	
-	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardPass* out );
-	FLEXKITAPI void DoForwardPass			( PVS* _PVS, ForwardPass* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
-	FLEXKITAPI void ReleaseForwardPass		( ForwardPass* FP );
+	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardRender* out );
+	FLEXKITAPI void ForwardPass			( PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
+	FLEXKITAPI void ReleaseForwardPass		( ForwardRender* FP );
 
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DescHeapPOS;
 
@@ -2529,7 +2531,8 @@ namespace FlexKit
 	FLEXKITAPI DescHeapPOS PushRenderTarget			( RenderSystem* RS, Texture2D* Target, DescHeapPOS POS );
 
 	FLEXKITAPI DescHeapPOS PushCBToDescHeap			( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t BufferSize );
-	FLEXKITAPI DescHeapPOS PushSRVToDescHeap	( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE );
+	FLEXKITAPI DescHeapPOS PushSRVToDescHeap		( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE );
+	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap		( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE );
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	( RenderSystem* RS,	Texture2D tex,					DescHeapPOS POS );
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		( RenderSystem* RS, Texture2D tex,					DescHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM );
 
@@ -2607,7 +2610,9 @@ namespace FlexKit
 
 
 	FLEXKITAPI void ReleaseDrawable		( Drawable*	p );
-	FLEXKITAPI void CleanUpTriMesh		( TriMesh*	p );
+	FLEXKITAPI void ReleaseTriMesh		( TriMesh*	p );
+
+	FLEXKITAPI void DelayedReleaseTriMesh ( RenderSystem* RS, TriMesh* T );
 
 
 	/************************************************************************************************/

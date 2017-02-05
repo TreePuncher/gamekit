@@ -24,6 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MenuState.h"
 #include "PlayState.h"
+#include "HostState.h"
+#include "Client.h"
 
 struct CBArguements
 {
@@ -32,15 +34,29 @@ struct CBArguements
 };
 
 
-bool OnPlayPressed(void* _ptr, size_t GUIElement)
+bool OnHostPressed(void* _ptr, size_t GUIElement)
 {
-	std::cout << "Play Pressed\n";
+	std::cout << "Host Pressed\n";
 	auto* Args = (CBArguements*)_ptr;
 
 	Args->State->Base->GScene.ClearScene();
 
 	PopSubState(Args->State->Base);
-	PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
+	PushSubState(Args->State->Base, CreateHostState(Args->Engine, Args->State->Base));
+
+	//Args->Engine->BlockAllocator.free(_ptr);
+	return true;
+}
+
+bool OnJoinPressed(void* _ptr, size_t GUIElement)
+{
+	std::cout << "Join Pressed\n";
+	auto* Args = (CBArguements*)_ptr;
+
+	Args->State->Base->GScene.ClearScene();
+
+	PopSubState(Args->State->Base);
+	PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
 
 	//Args->Engine->BlockAllocator.free(_ptr);
 	return true;
@@ -106,7 +122,7 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 	//Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 );
 	//Pitch(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 * ThisState->Base->MouseState.dPos[1] * dT);
 	
-	ThisState->BettererWindow.Update(dT, Input);
+	//ThisState->BettererWindow.Update(dT, Input);
 
 	UpdateSimpleWindow(&Input, &ThisState->Window);
 
@@ -178,7 +194,7 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 	//SetPositionW(Engine->Nodes, Base->ActiveCamera->Node, float3{ 0,10, -25.921f });
 
 
-
+	if(0)
 	{
 		auto Grid = State->BettererWindow.CreateGrid();
 		Grid.resize(0.5f, 0.5f);
@@ -188,8 +204,9 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 		auto Btn2 = Grid.CreateButton({ 4, 4 });
 	}
 
+	if(1)
 	{
-		SimpleWindow_Desc Desc(0.26f, 0.26f, 1, 1, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
+		SimpleWindow_Desc Desc(0.26f, 0.36f, 1, 1, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
 	
 		auto Window			= &State->Window;
 		auto WindowSize		= GetWindowWH(Engine);
@@ -220,12 +237,20 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 
 		GUITextButton_Desc TextButton{};
 		TextButton.Font			   = Base->DefaultAssets.Font;
-		TextButton.Text			   = "Play Game";
+		TextButton.Text			   = "Host";
 		TextButton.WH			   = float2(0.2f, 0.1f);
 		TextButton.WindowSize	   = {(float)WindowSize[0], (float)WindowSize[1]};
 		TextButton.CB_Args		   = Args;
-		TextButton.OnClicked_CB    = OnPlayPressed;
+		TextButton.OnClicked_CB    = OnHostPressed;
 
+		TextButton.BackGroundColor = float4(Grey(.5), 1);
+		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(Base->DefaultAssets.Font->FontSize);
+		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
+
+		SimpleWindowAddDivider(Window, { 0.0f, 0.005f }, ButtonStack);
+
+		TextButton.Text			   = "Join";
+		TextButton.OnClicked_CB    = OnJoinPressed;
 		TextButton.BackGroundColor = float4(Grey(.5), 1);
 		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(Base->DefaultAssets.Font->FontSize);
 		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
