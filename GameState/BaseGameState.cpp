@@ -171,6 +171,16 @@ void EventsWrapper(const Event& evt, void* _ptr)
 /************************************************************************************************/
 
 
+bool LoadScene(BaseState* State, const char* SceneName)
+{
+	auto Engine = State->Engine;
+	return LoadScene(Engine->RenderSystem, &Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, &State->GScene, Engine->TempAllocator);
+}
+
+
+/************************************************************************************************/
+
+
 void DrawMouseCursor(EngineMemory* Engine, BaseState* State)
 {
 	using FlexKit::Conversion::Vect2TOfloat2;
@@ -300,6 +310,8 @@ extern "C"
 		BaseState& State = Engine->BlockAllocator.allocate_aligned<BaseState>();
 		
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
+		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
+
 		State.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
 		State.Nodes						= &Engine->Nodes;
 		State.Quit						= false;

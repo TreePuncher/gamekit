@@ -481,12 +481,13 @@ namespace FlexKit
 		using FlexKit::CreatePointLightBuffer;
 		using FlexKit::PointLightBufferDesc;
 
-		Out->Drawables.Allocator		= Memory;
+		Out->FreeEntityList.Allocator    = Memory;
+		Out->Drawables.Allocator		 = Memory;
 		Out->SpotLightCasters.Allocator  = Memory;
-		Out->RS = in_RS;
-		Out->RM = in_RM;
-		Out->SN = in_SN;
-		Out->GT = GT;
+		Out->RS                          = in_RS;
+		Out->RM                          = in_RM;
+		Out->SN                          = in_SN;
+		Out->GT                          = GT;
 
 		Out->TaggedJoints.Allocator = Memory;
 		Out->Drawables	= nullptr;
@@ -686,6 +687,12 @@ namespace FlexKit
 			auto RHandle = LoadGameResource(RM, Guid);
 			auto R		 = GetResource(RM, RHandle);
 
+			FINALLY
+			{
+				FreeResource(RM, RHandle);
+			}
+			FINALLYOVER
+
 			if (R != nullptr) {
 				SceneResourceBlob* SceneBlob = (SceneResourceBlob*)R;
 				auto& CreatedNodes = fixed_vector<NodeHandle>::Create(SceneBlob->SceneTable.NodeCount, Temp);
@@ -730,9 +737,28 @@ namespace FlexKit
 						auto NewEntity	= GS_out->AddPointLight(Light.K, CreatedNodes[Light.Node], Light.I, Light.R * 10);
 					}
 				}
+				return true;
 			}
 		}
 
+		return false;
+	}
+
+	bool LoadScene(RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable* GT, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp)
+	{
+		if (isResourceAvailable(RM, LevelName))
+		{
+			auto RHandle = LoadGameResource(RM, LevelName);
+			auto R = GetResource(RM, RHandle);
+
+			FINALLY
+			{
+				FreeResource(RM, RHandle);
+			}
+			FINALLYOVER
+
+			return LoadScene(RS, SN, RM, GT, R->GUID, GS_out, Temp);
+		}
 		return false;
 	}
 

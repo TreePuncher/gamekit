@@ -966,6 +966,11 @@ namespace FlexKit
 			operator ID3D12Resource* ()	{ return Buffer; }
 		};
 
+		void clear()
+		{
+			VertexBuffers.clear();
+		}
+
 		ID3D12Resource*	operator[](size_t idx)	{ return VertexBuffers[idx].Buffer; }
 		static_vector<BuffEntry, 16>	VertexBuffers;
 		TriangleMeshMetaData			MD;
@@ -2455,7 +2460,7 @@ namespace FlexKit
 	FLEXKITAPI void ClearGBuffer				( RenderSystem* RS, TiledDeferredRender* gb, const float4& ClearColor, size_t Idx );
 	FLEXKITAPI void UpdateGBufferConstants		( RenderSystem* RS, TiledDeferredRender* gb, size_t PLightCount, size_t SLightCount );
 	FLEXKITAPI void UploadDeferredPassConstants	( RenderSystem* RS, DeferredPass_Parameters* in, float4 A, TiledDeferredRender* Pass );
-	FLEXKITAPI void	IncrementPassIndex		( TiledDeferredRender* Pass );
+	FLEXKITAPI void	IncrementPassIndex			( TiledDeferredRender* Pass );
 	FLEXKITAPI void ClearTileRenderBuffers		( RenderSystem* RS, TiledDeferredRender* );
 
 	FLEXKITAPI void RenderShadowMap				( RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT );

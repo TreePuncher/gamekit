@@ -162,6 +162,61 @@ namespace FlexKit
 	};
 
 
+	class CCHitReport : public physx::PxUserControllerHitReport, public physx::PxControllerBehaviorCallback
+	{
+	public:
+
+		virtual void onShapeHit(const physx::PxControllerShapeHit& hit)
+		{
+		}
+
+		virtual void onControllerHit(const physx::PxControllersHit& hit)
+		{
+		}
+
+		virtual void onObstacleHit(const physx::PxControllerObstacleHit& hit)
+		{
+		}
+
+		virtual physx::PxControllerBehaviorFlags getBehaviorFlags(const physx::PxShape&, const physx::PxActor&)
+		{
+			return physx::PxControllerBehaviorFlags(0);
+		}
+
+		virtual physx::PxControllerBehaviorFlags getBehaviorFlags(const physx::PxController&)
+		{
+			return physx::PxControllerBehaviorFlags(0);
+		}
+
+		virtual physx::PxControllerBehaviorFlags getBehaviorFlags(const physx::PxObstacle&)
+		{
+			return physx::PxControllerBehaviorFlags(0);
+		}
+
+	protected:
+	};
+
+	struct CapsuleCharacterController
+	{
+		physx::PxControllerFilters  characterControllerFilters;
+		physx::PxFilterData			characterFilterData;
+		physx::PxController*		Controller;
+
+		bool						FloorContact;
+		bool						CeilingContact;
+
+		CCHitReport					ReportCallback;
+	};
+	
+
+	struct CapsuleCharacterController_DESC
+	{
+		float r;
+		float h;
+		float3 FootPos;
+	};
+
+
 	/************************************************************************************************/
 
 
@@ -174,6 +229,9 @@ namespace FlexKit
 	FLEXKITAPI ColliderHandle	LoadTriMeshCollider		(PhysicsSystem* PS, Resources* RM, GUID_t Guid);
 	FLEXKITAPI size_t			CreateStaticActor		(PhysicsSystem* PS, PScene* Scene, NodeHandle Node, float3 POS = { 0, 0, 0 }, Quaternion Q = Quaternion::Identity());
 
+
+	FLEXKITAPI void Initiate		(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc);
+	FLEXKITAPI void ReleaseCapsule	(CapsuleCharacterController* Capsule);
 
 	FLEXKITAPI void	CleanupPhysics	(PhysicsSystem* Physics);
 	FLEXKITAPI void	CleanUpScene	(PScene* mat);

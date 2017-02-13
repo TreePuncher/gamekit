@@ -474,4 +474,31 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	void Initiate(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc)
+	{
+		PxCapsuleControllerDesc CCDesc;
+		CCDesc.material             = PS->DefaultMaterial;
+		CCDesc.radius               = Desc.r;
+		CCDesc.height               = Desc.h;
+		CCDesc.contactOffset        = 0.01f;
+		CCDesc.position             = { 0.0f, Desc.h / 2, 0.0f };
+		CCDesc.climbingMode         = PxCapsuleClimbingMode::eEASY;
+		//CCDesc.upDirection = PxVec3(0, 0, 1);
+		auto NewCharacterController = Scene->ControllerManager->createController(CCDesc);
+		out->Controller             = NewCharacterController;
+		out->Controller->setFootPosition({ Desc.FootPos.x, Desc.FootPos.y, Desc.FootPos.z });
+		out->FloorContact           = false;
+		out->CeilingContact         = false;
+	}
+
+
+	void ReleaseCapsule(CapsuleCharacterController* Capsule)
+	{
+		Capsule->Controller->release();
+	}
+
+
+	/************************************************************************************************/
 }// Namespace FlexKit

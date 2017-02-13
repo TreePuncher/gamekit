@@ -137,50 +137,6 @@ public:
 protected:
 };
 
-struct CapsuleCharacterController
-{
-	physx::PxControllerFilters  characterControllerFilters;
-	physx::PxFilterData			characterFilterData;
-	physx::PxController*		Controller;
-
-	bool						FloorContact;
-	bool						CeilingContact;
-
-	CCHitReport					ReportCallback;
-};
-
-struct CapsuleCharacterController_DESC
-{
-	float r;
-	float h;
-	float3 FootPos;
-};
-
-
-using namespace physx;
-
-
-/************************************************************************************************/
-
-
-void Initiate(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc)
-{
-	PxCapsuleControllerDesc CCDesc;
-	CCDesc.material       = PS->DefaultMaterial;
-	CCDesc.radius	      = Desc.r;
-	CCDesc.height	      = Desc.h;
-	CCDesc.contactOffset  = 0.1f;
-	CCDesc.position       = { 0.0f, Desc.h / 2, 0.0f };
-	CCDesc.climbingMode	  = PxCapsuleClimbingMode::eEASY;
-
-	auto NewCharacterController = Scene->ControllerManager->createController(CCDesc);
-	out->Controller				= NewCharacterController;
-	out->Controller->setFootPosition({Desc.FootPos.x, Desc.FootPos.y, Desc.FootPos.z});
-	out->FloorContact			= false;
-	out->CeilingContact			= false;
-}
-
-
 /************************************************************************************************/
 
 

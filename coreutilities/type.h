@@ -135,14 +135,13 @@ namespace FlexKit
 
 #define GetCRC32(A) ~IDGen<sizeof(A)-2>::GetHash(A);
 
-	template<typename Ty>
-	const Type_t GenerateTypeGUID()
+	//template<typename Ty>
+	constexpr Type_t GenerateTypeGUID(const char* A)
 	{
-		const auto ID = GetCRC32(__func__);
-		return ID;
+		return GetCRC32(A);
 	}
 
-#define GetTypeGUID(A) GenerateTypeGUID<A>()
+#define GetTypeGUID(A) GenerateTypeGUID(#A)
 
 }
 #endif

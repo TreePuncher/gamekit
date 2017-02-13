@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameMemory.h"
 #include "..\coreutilities\type.h"
 #include <inttypes.h>
+
 /*
 TODO's
 */
@@ -53,17 +54,26 @@ enum NetCommands : unsigned char
 	eREQUESTNAME,
 	eNAMEREPLY,
 	eSENDCLIENTINFO,
-	eGAMEINFO,
+	eGAMEREADYUP,
 	eGAMESETINFO,
 	eGAMESTARTING,
-	eGAMEPLAYERINFO,
 	eGAMEENDED,
 	eINCOMINGSTRUCT,
 };
 
-enum DataCodes
+enum ClientMode : unsigned char
 {
-	eGAMEINFODATA
+	eLOADINGMODE,
+	eLOBBYMODE,
+	ePLAYMODE,
+	eWAITINGMODE,
+};
+
+enum ServerMode : unsigned char
+{
+	eSERVERLOBBYMODE,	// Waits for Min Number of Players
+	eCLIENTLOADWAIT,	// Waits for all Players to Load Scene
+	eGAMEINPROGRESS, 
 };
 
 const unsigned short gServerPort = 1366;
@@ -74,8 +84,10 @@ typedef size_t PlayerID_t;
 
 struct PacketBase
 {
-	size_t ID;
-	size_t PacketSize;
+	Type_t ID;
+	size_t PacketSize;// Should I do a CRC?
+
+	operator char* () { return (char*)this; }
 };
 
 struct PacketUtility
@@ -83,7 +95,7 @@ struct PacketUtility
 	char		Command;
 	PacketBase	P;
 
-	operator char* () { return (char*)this; }
+	//operator char* () { return (char*)this; }
 };
 
 struct PlayerReadyState
@@ -97,7 +109,7 @@ struct GetNamePacket : PacketBase
 {
 	GetNamePacket( char* str)
 	{
-		ID = eNAMEREPLY;
+		ID = GetTypeGUID(GetNamePacket);
 		PacketSize = sizeof(GetNamePacket);
 		strncpy(Name, str, MaxNameSize-1);
 	}
@@ -107,13 +119,29 @@ struct GetNamePacket : PacketBase
 
 struct GameInfoPacket : PacketBase
 {
-	GameInfoPacket(size_t playercount) : PlayerCount(playercount)
+	GameInfoPacket(size_t playercount, char* level) : PlayerCount(playercount)
 	{
-		ID = eGAMEINFO;
+		ID = GetTypeGUID(GameInfoPacket);
+		strncpy(LevelName, level, sizeof(LevelName));
+		PacketSize = sizeof(GameInfoPacket) + sizeof(PlayerID_t) * playercount;
 	}
 
-	size_t PlayerCount;
-	size_t PlayerIDs[];
+	size_t		PlayerCount;
+	char		LevelName[128];
+
+	PlayerID_t	PlayerIDs[];
+};
+
+
+
+struct GameModePacket : PacketBase
+{
+	GameModePacket(ClientMode mode) : Mode(mode)
+	{
+		ID = GetTypeGUID(GameModePacket);
+	}
+
+	ClientMode Mode;
 };
 
 struct ConnectionAccepted
@@ -121,18 +149,47 @@ struct ConnectionAccepted
 	size_t PlayerID;
 };
 
-struct PlayerInfoPacket : PacketBase
+struct PlayerInputPacket : PacketBase
 {
-	PlayerInfoPacket(size_t ID)
+	PlayerInputPacket(PlayerInputState Input, float2 M, size_t frame = 0xffffffffffffffff) : PlayerInput(Input), Frame(frame),
+		Mouse(M)
 	{
-		ID = eGAMEPLAYERINFO;
-		PacketSize = sizeof(GetNamePacket);
+		ID = GetTypeGUID(PlayerInputPacket);
 	}
 
-	size_t PlayerID;
+	size_t				Frame;
+	float2				Mouse;
+	PlayerInputState	PlayerInput;
+};
+
+
+struct PlayerInfoPacket : PacketBase
+{
+	PlayerInfoPacket(size_t playerID, Quaternion Q, float3 xyz) : PlayerID(playerID), POS(xyz), R(Q)
+	{
+		ID			= GetTypeGUID(_PlayerInfoPacket_);
+		PacketSize	= sizeof(PlayerInfoPacket);
+	}
+
+	size_t		PlayerID;
 	float3		POS;
 	Quaternion	R;
 };
+
+
+struct SetPlayerInfoPacket : PacketBase
+{
+	SetPlayerInfoPacket(float3 xyz, Quaternion Q) : POS(xyz), R(Q)
+	{
+		ID = GetTypeGUID(SetPlayerInfoPacket);
+		PacketSize = sizeof(SetPlayerInfoPacket);
+	}
+
+	size_t		PlayerID;
+	float3		POS;
+	Quaternion	R;
+};
+
 
 struct HostState : public SubState
 {
@@ -142,12 +199,7 @@ struct HostState : public SubState
 
 	double						T;
 
-	enum
-	{
-		WaitingForPlayers,
-		GamePlaying
-	}CurrentState;
-
+	ServerMode ServerMode;
 
 	struct Connection
 	{
@@ -159,9 +211,12 @@ struct HostState : public SubState
 		char Name[MaxNameSize];
 	};
 
+	Gameplay_Model Game;
+
 	FlexKit::static_vector<Connection>	OpenConnections;
 	FlexKit::static_vector<bool>		PlayerReadyState;
 	FlexKit::static_vector<PlayerName>	Names;
+	FlexKit::static_vector<ClientMode>	ClientModes;
 };
 
 size_t GetPlayerIndex(HostState* Host, RakNet::SystemAddress Addr);

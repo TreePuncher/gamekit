@@ -38,7 +38,7 @@ void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPer
 	SetParentNode(Nodes, Yaw, Pitch);
 
 
-	C->Node		= Pitch;
+	C->Node		= Roll;
 	Out->C		= C;
 	Out->Nodes	= Nodes;
 
@@ -53,10 +53,12 @@ void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPer
 
 void UpdateCameraController(SceneNodes* Nodes, Camera3rdPersonContoller* Controller, double dT)
 {
-	auto Temp2 = GetPositionW(Nodes, Controller->Yaw_Node);
-	auto Temp = GetPositionW(Nodes, Controller->Pitch_Node);
-	Quaternion Q;
-	GetOrientation(Nodes, Controller->Roll_Node, &Q);
+	if (Controller->Pitch > 75)
+		Controller->Pitch = 75;
+
+	if (Controller->Pitch < -45)
+		Controller->Pitch = -45;
+
 	SetOrientationL(Nodes, Controller->Yaw_Node,	Quaternion(0, Controller->Yaw, 0));
 	SetOrientationL(Nodes, Controller->Pitch_Node,	Quaternion(Controller->Pitch, 0, 0));
 	//SetOrientationL(Nodes, Controller->Roll_Node,	Quaternion(0, 0, Controller->Roll));
@@ -64,9 +66,15 @@ void UpdateCameraController(SceneNodes* Nodes, Camera3rdPersonContoller* Control
 
 void SetCameraOffset(Camera3rdPersonContoller* Controller, float3 xyz)
 {
-	TranslateWorld(Controller->Nodes, Controller->Pitch_Node, {xyz});
+	TranslateWorld(Controller->Nodes, Controller->Pitch_Node, float3(0.0f, 1.0f, 0.0f) * xyz);
+	TranslateWorld(Controller->Nodes, Controller->Roll_Node,  float3(0.0f, 0.0f, 1.0f) * xyz);
+
 }
 
+void SetCameraPosition(Camera3rdPersonContoller* Controller, float3 xyz)
+{
+	SetPositionW(Controller->Nodes, Controller->Yaw_Node, xyz);
+}
 
 void TranslateCamera(Camera3rdPersonContoller* Controller, float3 xyz)
 {

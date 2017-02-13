@@ -191,7 +191,8 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseGraphicScene				( GraphicScene* SM );
 	FLEXKITAPI void BindJoint						( GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode );
 
-	FLEXKITAPI bool LoadScene	( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
+	FLEXKITAPI bool LoadScene ( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
+	FLEXKITAPI bool LoadScene ( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
 
 	template<typename ALLOC_T>
 	void CleanUp(DrawablePoseState* EPS, ALLOC_T* Mem)

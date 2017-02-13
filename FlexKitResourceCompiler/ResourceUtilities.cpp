@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceUtilities.h"
 
 #include "..\buildsettings.h"
+#include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\MeshUtils.h"
@@ -2279,8 +2280,11 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 	{
 		auto T = Tokens->at(itr);
 
+#define DOSTRCMP(A) (T.size && !strncmp(T.SubStr, A, max(strlen(A), T.size)))
+#define CHECKTAG(A, TYPE) ((A != nullptr) && (A->Type == TYPE))
+
 		// TODO: Reform this into a table
-		if		(T.size && !strncmp(T.SubStr, "AnimationClip",	max(strlen("AnimationClip"), T.size)))
+		if		(DOSTRCMP("AnimationClip"))
 		{
 			auto res    = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values = res.V1;
@@ -2322,7 +2326,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "Skeleton",		max(strlen("Skeleton"), T.size)))
+		else if (DOSTRCMP("Skeleton"))
 		{
 			auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values		= res.V1;
@@ -2354,7 +2358,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "Model",			max(strlen("Model"), T.size)))
+		else if (DOSTRCMP("Model"))
 		{
 			auto res			= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values			= res.V1;
@@ -2401,7 +2405,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "TextureSet",		max(strlen("TextureSet"), T.size)))
+		else if (DOSTRCMP("TextureSet"))
 		{
 			auto res		  = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values		  = res.V1;
@@ -2442,7 +2446,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 			MD_Out.push_back(TextureSet_Meta);
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "Scene",			max(strlen("Scene"), T.size)))
+		else if (DOSTRCMP("Scene"))
 		{
 			auto res        = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values     = res.V1;
@@ -2464,7 +2468,7 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 			MD_Out.push_back(&Scene);
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "Collider",		max(strlen("Collider"), T.size)))
+		else if (DOSTRCMP("Collider"))
 		{
 			auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
 			auto Values		= res.V1;
@@ -2486,8 +2490,43 @@ bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens
 			MD_Out.push_back(&Collider);
 			itr = res;
 		}
-		else if (T.size && !strncmp(T.SubStr, "{",				max(strlen("{"), T.size)))
+		else if (DOSTRCMP("Font")) 
+		{
+			auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+			auto Values		= res.V1;
+			auto AssetID	= Tokens->at(itr - 2);
+			auto AssetGUID	= FindValue(Values,	"AssetGUID");
+			auto FontFile	= FindValue(Values, "File");
+
+			// Check for ill formed data
+#if _DEBUG
+			FK_ASSERT(CHECKTAG(FontFile,	Value::STRING));
+			FK_ASSERT(CHECKTAG(AssetGUID,	Value::INT));
+#else	
+			if	  (	CHECKTAG(FontFile, Value::STRING) &&
+					CHECKTAG(AssetGUID, Value::INT))
+				return false;
+#endif
+
+			Font_MetaData& FontData = Memory->allocate<Font_MetaData>();
+			FontData.UserType       = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
+			FontData.type           = MetaData::EMETAINFOTYPE::EMI_FONT;
+			FontData.SetID(AssetID.SubStr, AssetID.size);
+
+			if (CHECKTAG(FontFile, Value::STRING))
+				strncpy(FontData.FontFile, FontFile->Data.S.S, min(FontFile->Data.S.size, sizeof(FontData.FontFile)));
+
+			if (CHECKTAG(AssetGUID, Value::INT))
+				FontData.Guid = AssetGUID->Data.I;
+
+			MD_Out.push_back(&FontData);
+			itr = res;
+		}
+		else if (DOSTRCMP("{"))
 			itr = SkipBrackets(Tokens, itr);
+
+#undef CHECKTAG
+#undef DOSTRCMP
 	}
 
 	return true;

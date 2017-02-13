@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameMemory.h"
 #include "..\coreutilities\AllSourceFiles.cpp"
 
+#include "TTFontLoader.cpp"
 #include "ResourceUtilities.cpp"
 
 #include <algorithm>
@@ -135,6 +136,16 @@ int main(int argc, char* argv[])
 						auto NewResource = MetaDataToBlob(MD, BlockMemory);
 						if(NewResource)
 							ResourcesFound.push_back(NewResource);
+					}
+				}
+
+				// Load Fonts
+				for (auto MD : MetaData)
+				{
+					if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
+					{
+						auto* Font = (Font_MetaData*)MD;
+						auto res = LoadTTFFile(Font->FontFile, BlockMemory);
 					}
 				}
 

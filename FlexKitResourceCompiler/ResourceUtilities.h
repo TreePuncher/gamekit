@@ -129,6 +129,7 @@ struct MetaData
 		EMI_INT,
 		EMI_GUID,
 		EMI_FLOAT,
+		EMI_FONT,
 		EMI_COLLIDER,
 		EMI_DOUBLE,
 		EMI_MESH,
@@ -181,6 +182,7 @@ struct MetaData
 
 typedef FlexKit::DynArray<MetaData*> MD_Vector;
 
+
 struct Skeleton_MetaData : public MetaData
 {
 	Skeleton_MetaData(){
@@ -192,6 +194,7 @@ struct Skeleton_MetaData : public MetaData
 	char	SkeletonID[ID_LENGTH];
 	GUID_t	SkeletonGUID;			
 };
+
 
 struct AnimationClip_MetaData : public MetaData
 {
@@ -206,6 +209,7 @@ struct AnimationClip_MetaData : public MetaData
 	double	T_End;
 	GUID_t	guid;
 };
+
 
 struct AnimationEvent_MetaData : public MetaData
 {
@@ -265,6 +269,17 @@ struct Collider_MetaData : public MetaData
 	char	ColliderID		[64];
 	size_t	ColliderIDSize;
 };
+
+
+struct Font_MetaData : public MetaData
+{
+	GUID_t	Guid;
+	char	FontID[64];
+	size_t	FontIDSize;
+
+	char FontFile[256];
+};
+
 
 struct TextureSet_MetaData : public MetaData
 {

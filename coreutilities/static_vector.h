@@ -250,6 +250,26 @@ namespace FlexKit
 				pop_back();
 		}
  
+		void resize(size_t NewSize)
+		{
+			if (NewSize > size())
+			{
+				size_t end = NewSize - size();
+				for (size_t I = 0; I < end; ++I) {
+					pop_back();
+				}
+			}
+			else if (NewSize < size())
+			{
+				size_t end = size() - NewSize;
+				for (size_t I = 0; I < end; ++I) {
+					new(Elements + (I + size())) TY_();
+				}
+			}
+
+			Size = NewSize;
+		}
+
 		void SetFull()
 		{
 			while( !full() )

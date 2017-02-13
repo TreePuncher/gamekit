@@ -110,6 +110,7 @@ struct SubState
 
 /************************************************************************************************/
 
+bool			LoadScene		(BaseState* State, const char* SceneName);
 
 void			DrawMouseCursor	 (EngineMemory* Engine, BaseState* State);
 

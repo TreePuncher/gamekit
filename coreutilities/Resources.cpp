@@ -330,7 +330,7 @@ namespace FlexKit
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
 		{
 			TriMeshResourceBlob* Blob = (TriMeshResourceBlob*)R;
-			TriMesh* Out              = (TriMesh*)Memory->_aligned_malloc(sizeof(TriMesh));
+			TriMesh* Out              = &Memory->allocate_aligned<TriMesh>();
 			size_t BufferCount        = 0;
 			size_t Index              = 0; 
 
@@ -345,6 +345,7 @@ namespace FlexKit
 			Out->Info.max.z   = Blob->Info.minz;
 			Out->IndexCount	  = Blob->IndexCount;
 			Out->Info.r		  = Blob->Info.r;
+			Out->VertexBuffer.clear();
 
 			if (strlen(Blob->ID))
 			{

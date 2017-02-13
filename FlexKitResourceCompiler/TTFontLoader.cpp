@@ -1,9 +1,6 @@
-#ifndef PLAYSTATE_H
-#define PLAYSTATE_H
-
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2015 - 2016 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,28 +22,43 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "BaseState.h"
-#include "Gameplay.h"
-#include "CameraUtilities.h"
-#include "..\Application\GameMemory.h"
+#include "stdafx.h"
+#include "TTFontLoader.h"
+#include "..\coreutilities\type.h"
+#include "..\coreutilities\memoryutilities.h"
 
-/*
-TODO's
-*/
+typedef uint16_t TTF_USHORT;
+typedef  int16_t TTF_SHORT;
 
-struct GamePlayObject
+typedef uint32_t  TTF_ULONG;
+typedef  int32_t  TTF_LONG;
+
+typedef int32_t TTF_FIXED;
+
+
+struct TTF_Directory
 {
-
+	TTF_FIXED  Version;
+	TTF_USHORT TableCount;
+	TTF_USHORT SearchRange;
+	TTF_USHORT EntrySelector;
+	TTF_USHORT RangeShift;
 };
 
-struct PlayState : public SubState
+inline float FixedToFloat(TTF_FIXED N)
 {
-	// Game element Controllers
-	Player						Player;
-	PlayerInputState			Input;
-};
+	return float((N & 0xFF00)>> 8) +  float(N & 0x00FF) / 100.0f;
+}
 
-PlayState* CreatePlayState(EngineMemory* Engine, BaseState* Base);
+Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
+{
+	auto FileSize = FlexKit::GetFileSize(File);
+	byte* Buffer = (byte*)Memory->_aligned_malloc(FileSize + 1);
 
+	LoadFileIntoBuffer(File, Buffer, FileSize);
 
-#endif
+	TTFont* Out = nullptr;
+	TTF_Directory* FileDirectory = (TTF_Directory*)Buffer;
+
+	return{ true, Out };
+}

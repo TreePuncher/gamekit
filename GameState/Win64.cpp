@@ -34,3 +34,4 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BaseGameState.cpp"
 #include "MenuState.cpp"
 #include "PlayState.cpp"
+#include "Gameplay.cpp"

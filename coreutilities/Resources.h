@@ -218,6 +218,20 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct FontResourceBlob
+	{
+#pragma warning(disable:4200)
+
+		size_t			ResourceSize;
+		EResourceType	Type;
+		GUID_t			GUID;
+		size_t			Pad;
+
+		char	ID[FlexKit::ID_LENGTH];
+	};
+
+	/************************************************************************************************/
+
 
 	struct AnimationResourceBlob
 	{
@@ -336,6 +350,7 @@ namespace FlexKit
 	};
 
 	typedef static_vector<CompiledScene*> SceneList;
+
 
 	/************************************************************************************************/
 

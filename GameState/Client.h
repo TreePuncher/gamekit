@@ -55,6 +55,7 @@ struct ClientState : public SubState
 	RakNet::SystemAddress		ServerAddr;
 
 	DynArray<PlayerID_t>	PlayerIds;
+	GUID_t					Scene;
 
 	size_t ID;
 	size_t PlayerCount;
@@ -72,9 +73,17 @@ struct ClientPlayState : public SubState
 {
 	ClientState* ClientState;
 
-	Player	LocalPlayer;
+	ClientMode	Mode;
 
-	FlexKit::DynArray<PlayerImposters> Vipiraks;// Cause hes an imposter, trying to steal all the client info
+	PlayerInputState	LocalInput;
+	Player				LocalPlayer;
+	float2				MouseInput;
+
+	double				T;
+	double				T_TillNextPositionUpdate; 
+	size_t				FrameCount;
+
+	FlexKit::DynArray<PlayerImposters> Imposters;// Cause hes an imposter, trying to steal all the client info
 };
 
 ClientState*		CreateClientState		(EngineMemory* Engine, BaseState* Base);

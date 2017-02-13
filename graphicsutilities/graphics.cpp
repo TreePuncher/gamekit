@@ -518,13 +518,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateGPUResource(RenderSystem* RS, void* Data, size_t Size, ID3D12Resource* Dest)
+	void ReserveTempSpace(RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset)
 	{
-		FK_ASSERT(Data);
-		FK_ASSERT(Dest);
+		// TOOD: make thread Safe
 
+		void* out = nullptr;
 		auto& CopyEngine = RS->CopyEngine;
-		ID3D12GraphicsCommandList* CS = GetCurrentCommandList(RS);
 
 		// Not enough remaining Space in Buffer GOTO Beginning
 		if	(CopyEngine.Position + Size > CopyEngine.Size)
@@ -532,16 +531,16 @@ namespace FlexKit
 
 		if(CopyEngine.Last <= CopyEngine.Position + Size)
 		{// Safe, Do Upload
-			memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
-			CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
+			CPUMem = CopyEngine.Buffer + CopyEngine.Position;
+			Offset = CopyEngine.Position;
 			CopyEngine.Position += Size;
 		}
 		else if (CopyEngine.Last > CopyEngine.Position)
 		{// Potential Overlap condition
 			if(CopyEngine.Position + Size  < CopyEngine.Last)
 			{// Safe, Do Upload
-				memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
-				CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
+				CPUMem = CopyEngine.Buffer + CopyEngine.Position;
+				Offset = CopyEngine.Position;
 				CopyEngine.Position += Size;
 			}
 			else
@@ -565,9 +564,31 @@ namespace FlexKit
 				CD3DX12_RANGE Range(0, 0);
 				HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
 
-				return UpdateGPUResource(RS, Data, Size, Dest);
+				return ReserveTempSpace(RS, Size, CPUMem, Offset);
 			}
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void UpdateGPUResource(RenderSystem* RS, void* Data, size_t Size, ID3D12Resource* Dest)
+	{
+		FK_ASSERT(Data);
+		FK_ASSERT(Dest);
+
+		auto& CopyEngine = RS->CopyEngine;
+		ID3D12GraphicsCommandList* CS = GetCurrentCommandList(RS);
+
+		void* _ptr = nullptr;
+		size_t Offset;
+		ReserveTempSpace(RS, Size, _ptr, Offset);
+
+		FK_ASSERT(_ptr, "UPLOAD ERROR!");
+
+		memcpy(_ptr, Data, Size);
+		CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, Offset, Size);
 	}
 
 
@@ -1628,52 +1649,15 @@ namespace FlexKit
 		PerFrameUploadQueues* UploadQueue = GetCurrentUploadQueue(RS);
 		ID3D12GraphicsCommandList* CS = UploadQueue->UploadList[0];
 
-		// Not enough remaining Space in Buffer GOTO Beginning
-		if	(CopyEngine.Position + Size > CopyEngine.Size)
-			CopyEngine.Position = 0;
+		void* _ptr = nullptr;
+		size_t Offset = 0;
+		ReserveTempSpace(RS, Size, _ptr, Offset);
 
-		if(CopyEngine.Last <= CopyEngine.Position + Size)
-		{// Safe, Do Upload
-			memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
-			CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
-			CopyEngine.Position += Size;
-			UploadQueue->UploadCount++;
-		}
-		else if (CopyEngine.Last > CopyEngine.Position)
-		{// Potential Overlap condition
-			if(CopyEngine.Position + Size  < CopyEngine.Last)
-			{// Safe, Do Upload
-				memcpy(CopyEngine.Buffer + CopyEngine.Position, Data, Size);
-				CopyEngine.Position += Size;
+		FK_ASSERT(_ptr, "UPLOAD ERROR!");
 
-				CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, CopyEngine.Position, Size);
-				UploadQueue->UploadCount++;
-				int x = 0;
-			}
-			else
-			{// Resize Buffer and Try again
-				AddTempBuffer(CopyEngine.TempBuffer, RS);
-
-				D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(CopyEngine.Size * 2);
-				D3D12_HEAP_PROPERTIES HEAP_Props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-
-				ID3D12Resource* TempBuffer;
-				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE,
-					&Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
-					nullptr, IID_PPV_ARGS(&TempBuffer));
-
-				RS->CopyEngine.Position   = 0;
-				RS->CopyEngine.Last		  = 0;
-				RS->CopyEngine.Size       = CopyEngine.Size * 2;
-				RS->CopyEngine.TempBuffer = TempBuffer;
-				SETDEBUGNAME(TempBuffer, "TEMPORARY");
-
-				CD3DX12_RANGE Range(0, 0);
-				HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
-
-				return UpdateResourceByUploadQueue(RS, Dest, Data, Size, ByteSize, EndState);
-			}
-		}
+		memcpy(_ptr, Data, Size);
+		CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, Offset, Size);
+		UploadQueue->UploadCount++;
 	}
 
 	void UpdateResourceByTemp( RenderSystem* RS,  FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
@@ -2022,6 +2006,9 @@ namespace FlexKit
 	void ReleaseMesh(RenderSystem* RS, GeometryTable* GT, TriMeshHandle TMHandle)
 	{
 		// TODO: MAKE ATOMIC
+		if (GT->Handles[TMHandle] == INVALIDMESHHANDLE)
+			return;// Already Released
+
 		size_t Index = GT->Handles[TMHandle];
 		auto Count = --GT->ReferenceCounts[Index];
 
@@ -2034,7 +2021,7 @@ namespace FlexKit
 				CleanUpSkeleton(G->Skeleton);
 
 			GT->Memory->free(const_cast<char*>(G->ID));
-			GT->Memory->free(G);
+			//GT->Memory->free(G);
 
 			GT->Geometry[Index]   = nullptr;
 			GT->FreeList.push_back(Index);
@@ -6305,6 +6292,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	void DelayedReleaseTriMesh(RenderSystem* RS, TriMesh* T)
 	{
 		DelayedRelease(RS, &T->VertexBuffer);
+		T->VertexBuffer.clear();
 	}
 
 

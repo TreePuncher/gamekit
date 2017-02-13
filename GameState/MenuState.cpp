@@ -56,7 +56,7 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 	Args->State->Base->GScene.ClearScene();
 
 	PopSubState(Args->State->Base);
-	PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
+	PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
 
 	//Args->Engine->BlockAllocator.free(_ptr);
 	return true;
@@ -162,28 +162,6 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 	auto Model = Base->GScene.CreateDrawableAndSetMesh("Flower");
 	State->Model = Model;
 
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	Base->GScene.AddPointLight(float3(1, 1, 1), float3{ 0, 1000, 10 }, 100, 100);
-	
 	Base->GScene.SetMaterialParams(Model, float4(1, 0, 0, 1), float4(0, 0, 1, 1));
 	//Base->GScene.TranslateEntity_WT(Model, {-3, -4, -10});
 

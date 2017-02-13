@@ -1191,32 +1191,39 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GUIGridHandle::GUIGridHandle(ComplexWindow* Window, GUIElementHandle In) : mWindow(Window), mBase(In) {}
+	GUIBaseElement&	GUIHandle::Base()
+	{
+		return mWindow->Elements[mBase];
+	}
 
-	const GUIBaseElement GUIGridHandle::Base() const
+	GUIGrid& GUIGridHandle::_GetGrid()
+	{
+		return mWindow->Grids[mWindow->Elements[mBase].Index];
+	}
+
+
+	/************************************************************************************************/
+
+
+	GUIGridHandle::GUIGridHandle(ComplexWindow* Window, GUIElementHandle In) : GUIHandle(Window, In) {}
+
+	const GUIBaseElement GUIHandle::Base() const
 	{ 
 		return mWindow->Elements[mBase]; 
 	}
 	
-	GUIBaseElement&	GUIGridHandle::Base() 
-	{ 
-		return mWindow->Elements[mBase]; 
-	}
-
-	GUIGrid& GUIGridHandle::_GetGrid()
-	{ 
-		return mWindow->Grids[mWindow->Elements[mBase].Index]; 
-	}
 
 	DynArray<GUIDimension>&	GUIGridHandle::RowHeights()
 	{ 
 		return _GetGrid().ColumnWidths;
 	}
 
+
 	DynArray<GUIDimension>&	GUIGridHandle::ColumnWidths()
 	{ 
 		return _GetGrid().RowHeights;
 	}
+
 
 	GUIGrid::Cell& GUIGridHandle::GetCell(uint2 ID)
 	{
@@ -1224,10 +1231,12 @@ namespace FlexKit
 		return *res;
 	}
 
+
 	void GUIGridHandle::resize(float Width_percent, float Height_percent)
 	{
 		_GetGrid().WH = {Width_percent, Height_percent};
 	}
+
 
 	void GUIGridHandle::SetGridDimensions(size_t Columns, size_t Rows)
 	{
@@ -1241,6 +1250,7 @@ namespace FlexKit
 			H = _GetGrid().WH[1] / float(Rows);
 	}
 
+
 	GUIElementHandle GUIGridHandle::CreateButton(uint2 CellID)
 	{
 		GUIElementHandle out = mWindow->CreateButton(mBase);
@@ -1251,9 +1261,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GUIButtonHandle::GUIButtonHandle(ComplexWindow* Window, GUIElementHandle In) : mWindow(Window), mBase(In){}
-	GUIBaseElement	const	GUIButtonHandle::Base() const{return mWindow->Elements[mBase];}
-	GUIBaseElement&			GUIButtonHandle::Base(){return mWindow->Elements[mBase];}
+	GUIButtonHandle::GUIButtonHandle(ComplexWindow* Window, GUIElementHandle In) : GUIHandle(Window, In){}
+
 
 	GUIButton& GUIButtonHandle::_IMPL()
 	{

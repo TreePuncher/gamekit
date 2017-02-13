@@ -1,9 +1,6 @@
-#ifndef PLAYSTATE_H
-#define PLAYSTATE_H
-
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2015 - 2016 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,28 +22,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "BaseState.h"
-#include "Gameplay.h"
-#include "CameraUtilities.h"
-#include "..\Application\GameMemory.h"
+#ifndef TTFONTLOADER_H
+#define TTFONTLOADER_H
 
-/*
-TODO's
-*/
+#include "..\coreutilities\memoryutilities.h"
 
-struct GamePlayObject
+using FlexKit::iAllocator;
+using FlexKit::Pair;
+
+struct TTFont
 {
-
+	iAllocator* Memory;
 };
 
-struct PlayState : public SubState
-{
-	// Game element Controllers
-	Player						Player;
-	PlayerInputState			Input;
-};
-
-PlayState* CreatePlayState(EngineMemory* Engine, BaseState* Base);
-
+Pair<bool, TTFont*> LoadTTFFile(const char* file, iAllocator* Memory);
 
 #endif

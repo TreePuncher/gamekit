@@ -46,15 +46,17 @@ struct Camera3rdPersonContoller
 void InitiateCamera3rdPersonContoller( SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out );
 void UpdateCameraController( SceneNodes* Nodes, Camera3rdPersonContoller* Controller, double dT );
 
-void SetCameraOffset(Camera3rdPersonContoller* Controller, float3 xyz);
+void SetCameraOffset	(Camera3rdPersonContoller* Controller, float3 xyz);
+void SetCameraPosition	(Camera3rdPersonContoller* Controller, float3 xyz);
 
-void TranslateCamera(Camera3rdPersonContoller* Controller, float3 xyz);
-void YawCamera(Camera3rdPersonContoller* Controller, float Degree);
-void PitchCamera(Camera3rdPersonContoller* Controller, float Degree);
-void RollCamera(Camera3rdPersonContoller* Controller, float Degree);
 
-float3 GetForwardVector(Camera3rdPersonContoller* Controller);
-float3 GetRightVector(Camera3rdPersonContoller* Controller);
+void TranslateCamera	(Camera3rdPersonContoller* Controller, float3 xyz);
+void YawCamera			(Camera3rdPersonContoller* Controller, float Degree);
+void PitchCamera		(Camera3rdPersonContoller* Controller, float Degree);
+void RollCamera			(Camera3rdPersonContoller* Controller, float Degree);
+
+float3 GetForwardVector	(Camera3rdPersonContoller* Controller);
+float3 GetRightVector	(Camera3rdPersonContoller* Controller);
 
 
 #endif

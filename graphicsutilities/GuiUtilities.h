@@ -524,14 +524,25 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
-
-	class GUIGridHandle
+	class GUIHandle
 	{
 	public:
-		GUIGridHandle(ComplexWindow* Window, GUIElementHandle In);
+		GUIHandle() {}
+		GUIHandle( ComplexWindow* window, GUIElementHandle hndl ) : mWindow(window), mBase(hndl) {}
+
+		GUIElementHandle	mBase;
+		ComplexWindow*		mWindow;
 
 		const GUIBaseElement	Base() const;
 		GUIBaseElement&			Base();
+	};
+
+
+
+	class GUIGridHandle : public GUIHandle
+	{
+	public:
+		GUIGridHandle(ComplexWindow* Window, GUIElementHandle In);
 
 		DynArray<GUIDimension>&		RowHeights();
 		DynArray<GUIDimension>&		ColumnWidths();
@@ -553,13 +564,10 @@ namespace FlexKit
 		ComplexWindow*		mWindow;
 	};
 
-	class GUIButtonHandle
+	class GUIButtonHandle : public GUIHandle
 	{
 	public:
 		GUIButtonHandle(ComplexWindow* Window, GUIElementHandle In);
-
-		const GUIBaseElement	Base() const;
-		GUIBaseElement&			Base();
 
 		operator GUIElementHandle () { return mBase; }
 
@@ -569,9 +577,6 @@ namespace FlexKit
 		GUIButton& _IMPL();
 
 	private:
-	
-		GUIElementHandle	mBase;
-		ComplexWindow*		mWindow;
 	};
 
 

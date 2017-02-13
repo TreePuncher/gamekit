@@ -667,7 +667,7 @@ namespace FlexKit
 		}
 
 		// Identities
-		inline float3 cross( float3& rhs ) 
+		inline float3 cross( float3 rhs ) 
 		{
 			return CrossProduct( pfloats, rhs.pfloats );
 		}
@@ -1481,7 +1481,8 @@ namespace FlexKit
 	FLEXKITAPI void printfloat2(const float2& in);
 	FLEXKITAPI void printfloat3(const float3& in);
 	FLEXKITAPI void printfloat4(const float4& in);
-	
+	FLEXKITAPI void printQuaternion(const Quaternion in);
+
 
 	/************************************************************************************************/
 

@@ -42,18 +42,20 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 		{
 			switch (evt.mData1.mKC[0])
 			{
+			case KC_E: {
+				ThisState->Input.Shield = true;
+			}	break;
 			case KC_W: {
-				ThisState->Forward = true;
-				break;
-			}
+				ThisState->Input.Forward = true;
+			}	break;
 			case KC_S: {
-				ThisState->Backward = true;
+				ThisState->Input.Backward = true;
 			}	break;
 			case KC_A: {
-				ThisState->Left = true;
+				ThisState->Input.Left = true;
 			}	break;
 			case KC_D: {
-				ThisState->Right = true;
+				ThisState->Input.Right = true;
 			}	break;
 			default:
 				break;
@@ -63,18 +65,21 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 		{
 			switch (evt.mData1.mKC[0])
 			{
+			case KC_E: {
+				ThisState->Input.Shield = false;
+			}	break;
 			case KC_W: {
-				ThisState->Forward = false;
+				ThisState->Input.Forward = false;
 				break;
 			}
 			case KC_S: {
-				ThisState->Backward = false;
+				ThisState->Input.Backward = false;
 			}	break;
 			case KC_A: {
-				ThisState->Left = false;
+				ThisState->Input.Left = false;
 			}	break;
 			case KC_D: {
-				ThisState->Right = false;
+				ThisState->Input.Right = false;
 			}	break;
 			default:
 				break;
@@ -96,29 +101,12 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	float VerticalMouseMovement		= float(ThisState->Base->MouseState.dPos[1]) / GetWindowWH(Engine)[1];
 
 	float MovementFactor = 50;
-
-	YawCamera(&ThisState->Cam_Ctr, 360 * HorizontalMouseMovement * dT * MovementFactor);
-	PitchCamera(&ThisState->Cam_Ctr, 360 * VerticalMouseMovement * dT * MovementFactor);
-
-	if (ThisState->Forward) {
-		auto Forward = GetForwardVector(&ThisState->Cam_Ctr);
-		TranslateCamera(&ThisState->Cam_Ctr, Forward * 1.0f / 60.0f * 20.0f);
-	}
-	else if (ThisState->Backward)
-	{
-		auto Backward = -GetForwardVector(&ThisState->Cam_Ctr);
-		TranslateCamera(&ThisState->Cam_Ctr, Backward * 1.0f / 60.0f * 20.0f);
-	}
-	if (ThisState->Right) {
-		auto Right = GetRightVector(&ThisState->Cam_Ctr);
-		TranslateCamera(&ThisState->Cam_Ctr, Right * 1.0f / 60.0f * 20.0f);
-	}
-	else if (ThisState->Left) {
-		auto Left = -GetRightVector(&ThisState->Cam_Ctr);
-		TranslateCamera(&ThisState->Cam_Ctr, Left * 1.0f / 60.0f * 20.0f);
-	}
-
-	UpdateCameraController(&Engine->Nodes, &ThisState->Cam_Ctr, dT);
+	UpdatePlayer(	
+			ThisState->Base, 
+			&ThisState->Player, 
+			ThisState->Input, 
+			{ HorizontalMouseMovement, VerticalMouseMovement }, 
+			dT);
 
 	return false;
 }
@@ -136,6 +124,17 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory*, double DT)
 /************************************************************************************************/
 
 
+void ReleasePlayState(SubState* StateMemory)
+{
+	auto ThisState = (PlayState*)StateMemory;
+
+	ReleasePlayer(&ThisState->Player, StateMemory->Base);
+}
+
+
+/************************************************************************************************/
+
+
 PlayState* CreatePlayState(EngineMemory* Engine, BaseState* Base)
 {
 	PlayState* State = nullptr;
@@ -145,16 +144,13 @@ PlayState* CreatePlayState(EngineMemory* Engine, BaseState* Base)
 	State->VTable.Update         = PlayUpdate;
 	State->VTable.EventHandler   = PlayEventHandler;
 	State->VTable.PostDrawUpdate = nullptr;
-	State->VTable.Release        = nullptr;
+	State->VTable.Release        = ReleasePlayState;
 	State->Base				     = Base;
 
-	InitiateCamera3rdPersonContoller(&Engine->Nodes, Base->ActiveCamera, &State->Cam_Ctr);
-	YawCamera(&State->Cam_Ctr, 180);
+	InitiatePlayer(Base, &State->Player);
 
-	TranslateCamera(&State->Cam_Ctr, float3{ 0,  0, -25.921f });
-	SetCameraOffset(&State->Cam_Ctr, float3{ 0, 10, 0 });
+	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
 
-	AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 	FK_ASSERT(FlexKit::LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	return State;
