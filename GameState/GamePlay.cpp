@@ -62,7 +62,7 @@ void InitiatePlayer(BaseState* Engine, Player* Out)
 	auto WalkState = DASAddState(WalkDesc, &Out->PlayerAnimation);
 
 	WalkDesc.EaseInDuration  = 0.2f;
-	WalkDesc.EaseOutDuration = 0.0f;
+	WalkDesc.EaseOutDuration = 0.2f;
 	WalkDesc.Animation = (GUID_t)Res2;
 	WalkDesc.Loop = true;
 	auto OtherState = DASAddState(WalkDesc, &Out->PlayerAnimation);
@@ -215,7 +215,6 @@ void UpdatePlayer(BaseState* Engine, Player* P, PlayerInputState Input, float2 M
 
 void UpdatePlayerAnimations(BaseState* Engine, Player* P, double dT)
 {
-	std::cout << "Animation Count: " << Engine->GScene.GetEntityAnimationPlayCount(P->Model) << "\n";
 	UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
 
 	if (Engine->GScene.GetDrawable(P->Model).PoseState)

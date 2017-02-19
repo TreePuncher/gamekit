@@ -380,8 +380,6 @@ namespace FlexKit
 					}
 					else
 					{
-						std::cout << "Animation Ended\n";
-
 						// Animation Ended
 						S.ID	 = INVALIDHANDLE;
 						S.Active = false;
