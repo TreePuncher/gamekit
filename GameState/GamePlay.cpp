@@ -53,14 +53,18 @@ void InitiatePlayer(BaseState* Engine, Player* Out)
 	WalkDesc.Animation       = (GUID_t)Res1;
 	WalkDesc.ForceComplete   = false;
 	WalkDesc.EaseOut         = EaseOut_RAMP;
+	WalkDesc.EaseIn			 = EaseIn_RAMP;
 	WalkDesc.Out             = WeightFunction::EWF_Ramp;
 	WalkDesc.EaseOutDuration = 0.2f;
-	WalkDesc.Loop			= false;
+	WalkDesc.Loop			= true;
+	WalkDesc.EaseInDuration = 0.2f;
 
 	auto WalkState = DASAddState(WalkDesc, &Out->PlayerAnimation);
 
+	WalkDesc.EaseInDuration  = 0.2f;
+	WalkDesc.EaseOutDuration = 0.0f;
 	WalkDesc.Animation = (GUID_t)Res2;
-	WalkDesc.Loop = false;
+	WalkDesc.Loop = true;
 	auto OtherState = DASAddState(WalkDesc, &Out->PlayerAnimation);
 
 	AnimationCondition_Desc Walk_Cd;

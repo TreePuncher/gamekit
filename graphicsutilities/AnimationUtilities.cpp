@@ -206,6 +206,8 @@ namespace FlexKit
 			State.Enabled			= true;
 			State.ID				= -1;
 			State.EaseOutDuration	= Desc.EaseOutDuration;
+			State.EaseInDuration	= Desc.EaseInDuration;
+			State.EaseIn			= Desc.EaseIn;
 			State.In				= Desc.In;
 			State.Out				= Desc.Out;
 			State.Speed				= Desc.Speed;
@@ -261,24 +263,24 @@ namespace FlexKit
 	{
 		// Set all States to False
 		for (auto& S : ASM->States) 
-			S.Active = false;
+			S.Active = true;
 
 		for (auto C : ASM->Conditions) {
 			if (C.Enabled) {
 				switch (C.Operation)
 				{
 				case EASO_TRUE:
-					ASM->States[C.TargetState].Active |= (C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B);	break;
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B);	break;
 				case EASO_FALSE:
-					ASM->States[C.TargetState].Active |= !(C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B); break;
+					ASM->States[C.TargetState].Active &= !(C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B); break;
 				case EASO_GREATERTHEN:
-					ASM->States[C.TargetState].Active |= (C.Inputs[0].I < C.Inputs[1].I); break;
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I < C.Inputs[1].I); break;
 				case EASO_LESSTHEN:
-					ASM->States[C.TargetState].Active |= (C.Inputs[0].I > C.Inputs[1].I); break;
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I > C.Inputs[1].I); break;
 				case EASO_WITHIN:
-					ASM->States[C.TargetState].Active |= (C.Inputs[0].I - C.Inputs[1].I) < C.Inputs[2].I; break;
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I - C.Inputs[1].I) < C.Inputs[2].I; break;
 				case EASO_FARTHERTHEN:
-					ASM->States[C.TargetState].Active |= (C.Inputs[0].I - C.Inputs[1].I) > C.Inputs[2].I; break;
+					ASM->States[C.TargetState].Active &= (C.Inputs[0].I - C.Inputs[1].I) > C.Inputs[2].I; break;
 				default:
 					break;
 				}
@@ -288,10 +290,12 @@ namespace FlexKit
 		for (auto& S : ASM->States) {
 			if (S.Enabled) {
 				if (S.Active && S.ID == INVALIDHANDLE) {
-					ASM->TargetDrawable;
+					float W = 1;
 
-					auto RES = Scene->EntityPlayAnimation(ASM->TargetDrawable, S.Animation, 1.0f, S.Loop);
-					std::cout << "Playing New Animation: " << (int64_t)RES << "\n";
+					if (S.EaseIn && S.EaseInDuration > 0)
+						W = S.EaseIn(0);
+
+					auto RES = Scene->EntityPlayAnimation(ASM->TargetDrawable, S.Animation, W, S.Loop);
 
 					if (!CompareFloats(1.0f, S.Speed, 0.001f))
 						SetAnimationSpeed(Scene->GetEntityAnimationState(ASM->TargetDrawable), (int64_t)RES, S.Speed);
@@ -325,17 +329,18 @@ namespace FlexKit
 						auto Animation	= GetAnimation(AnimationState, S.ID);
 						if (Animation) {
 							float EaseOutBegin		= 1 - S.EaseOutDuration;
+							float EaseInDuration	= S.EaseInDuration;
 							float AnimationProgress = GetAnimation_Completed(Animation);
-
+							
 							if (S.Active)
 							{
+								if ( Animation->FirstPlay && S.EaseIn && EaseInDuration > 0.0 && AnimationProgress <= EaseInDuration )
+									Animation->Weight = S.EaseIn(AnimationProgress / EaseInDuration);
+
 								S.EaseOutProgress = 0.0f;
-								Animation->Weight = 1.0f;
 							}
 							else
 							{
-								// TODO: Blend ease in
-
 								// Calculate ease out Animation Blend Weighting
 								if (S.ForceComplete)
 								{	// Blend Animation with next Animation
@@ -362,7 +367,7 @@ namespace FlexKit
 									float W = S.EaseOutProgress;
 									Animation->Weight = S.EaseOut(1 - W);
 
-									if (S.EaseOutProgress > 1.0f) {
+									if (S.EaseOutProgress >= 1.0f) {
 										AnimationState->Clips.erase(Animation);
 										S.ID = INVALIDHANDLE;
 
@@ -396,11 +401,21 @@ namespace FlexKit
 	}
 
 
-	float EaseOut_Square(float Weight)
+	float EaseOut_Squared(float Weight)
 	{
 		return Weight * Weight;
 	}
 
+	float EaseIn_RAMP(float Weight)
+	{
+		return Weight;
+	}
+
+	float EaseIn_Squared(float Weight)
+	{
+		Weight = Weight;
+		return Weight * Weight;
+	}
 
 	bool isStillPlaying(DrawableAnimationState* AS, int64_t ID)
 	{
@@ -651,6 +666,7 @@ namespace FlexKit
 				ASE.ForceLoop = ForceLoop;
 				ASE.Weight	  = max(min(Weight, 1.0f), 0.0f);
 				ASE.ID		  = chrono::high_resolution_clock::now().time_since_epoch().count();
+				ASE.FirstPlay = true;
 				EAS->Clips.push_back(ASE);
 				
 				out = ASE.ID;
@@ -1040,14 +1056,15 @@ namespace FlexKit
 					double AnimationDuration = FrameDuration * Clip->FrameCount;
 
 					if (!(Loop | C.ForceLoop) && C.T > AnimationDuration)
-						C.Playing = false;
-					else if (C.T > AnimationDuration)
+						C.Playing	= false;
+					else if (C.T > AnimationDuration) {
+						C.FirstPlay = false;
 						C.T = 0.0f;
+					}
 					else if (C.T < 0.0f)
 						C.T = AnimationDuration;
 					else
 						C.T += dT * C.Speed;
-
 
 					size_t FrameIndex	= size_t(T / FrameDuration) % Clip->FrameCount;
 					auto& CurrentFrame	= Clip->Frames[FrameIndex];

@@ -194,6 +194,7 @@ namespace FlexKit
 		int32_t			order;
 		int64_t			ID;
 		uint8_t			Playing;
+		bool			FirstPlay;
 		bool			ForceLoop;
 
 		enum
@@ -274,7 +275,10 @@ namespace FlexKit
 	typedef float(*EASE_FN)(float Weight);
 
 	FLEXKITAPI float EaseOut_RAMP	(float Weight);
-	FLEXKITAPI float EaseOut_Square	(float Weight);
+	FLEXKITAPI float EaseOut_Squared(float Weight);
+
+	FLEXKITAPI float EaseIn_RAMP	(float Weight);
+	FLEXKITAPI float EaseIn_Squared	(float Weight);
 
 	struct Pose {
 		size_t		JointCount;
@@ -304,6 +308,7 @@ namespace FlexKit
 			bool			Loop;		// Loops Animation While Active
 			bool			ForceComplete;
 
+			EASE_FN			EaseIn;
 			EASE_FN			EaseOut;
 
 			WeightFunction		In;
@@ -311,6 +316,7 @@ namespace FlexKit
 			//byte				Pad;
 			float				Speed;
 			float				EaseOutDuration;	// ratio from the end
+			float				EaseInDuration;
 			float				EaseOutProgress;
 			DAConditionHandle	TriggerOnExit;
 			int64_t				ID;
@@ -347,12 +353,14 @@ namespace FlexKit
 
 	struct AnimationStateEntry_Desc
 	{
-		EASE_FN			EaseOut				= EaseOut_Square;
+		EASE_FN			EaseOut				= EaseOut_Squared;
+		EASE_FN			EaseIn				= EaseIn_Squared;
 
 		WeightFunction		In					= EWF_Ramp;
 		WeightFunction		Out					= EWF_Ramp;
 		float				Speed				= 1.0f;
 		float				EaseOutDuration		= 0.0f;
+		float				EaseInDuration		= 0.0f;
 		bool				Loop				= false;
 		bool				ForceComplete		= false;
 		DAConditionHandle	OnExitTrigger		= (DAConditionHandle)INVALIDHANDLE;
