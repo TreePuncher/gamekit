@@ -327,8 +327,11 @@ extern "C"
 		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender, Engine->TempAllocator);
+
 		//InitateConsole			  (&State.Console, Engine);
 		
+		InitiateLineSet(Engine->RenderSystem, Engine->BlockAllocator, &State.DebugLines);
+
 		{
 			uint2	WindowRect	= Engine->Window.WH;
 			float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
@@ -422,6 +425,15 @@ extern "C"
 		// TODO: multi Thread these
 		// Do Uploads
 		{
+
+			{
+				Draw_LineSet_3D Lines;
+				Lines.C = State->ActiveCamera;
+				Lines.Lines = &State->DebugLines;
+				UploadLineSegments(Engine->RenderSystem, &State->DebugLines);
+				PushLineSet(&State->GUIRender, Lines);
+			}
+
 			DeferredPass_Parameters	DPP;
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
@@ -465,6 +477,7 @@ extern "C"
 
 			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
+			State->DebugLines.LineSegments.clear();
 		}
 	}
 

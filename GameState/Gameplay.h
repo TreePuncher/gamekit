@@ -61,6 +61,9 @@ struct Player
 	AnimationStateMachine		PlayerAnimation;
 	CapsuleCharacterController	PlayerCollider;
 
+	DAConditionHandle WalkCondition;
+	DAConditionHandle OtherCondition;
+
 	size_t					ID;
 
 	operator Player* () { return this; }// I'm Getting tired of typeing the &'s everywhere!

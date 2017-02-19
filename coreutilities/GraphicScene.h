@@ -115,6 +115,7 @@ namespace FlexKit
 
 		GSPlayAnimation_RES EntityPlayAnimation	(EntityHandle EHandle, const char*	Animation,	float w = 1.0f, bool Loop = false);
 		GSPlayAnimation_RES EntityPlayAnimation	(EntityHandle EHandle, GUID_t		Guid,		float w = 1.0f, bool Loop = false);
+		size_t				GetEntityAnimationPlayCount(EntityHandle EHandle);
 
 		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{Drawables.at(EHandle).Visable = Visable; }
 		inline void SetMesh				(EntityHandle EHandle, TriMeshHandle M)		{Drawables.at(EHandle).MeshHandle = M;		  }

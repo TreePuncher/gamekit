@@ -1330,11 +1330,11 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 		auto State1 = DASAddState(Forward_Desc, &Out->ASM);
 		auto State2 = DASAddState(Backward_Desc, &Out->ASM);
 
-		Condition_Desc.DrivenState = State1;
+		Condition_Desc.TargetStates = { State1 };
 		auto Condition1 = DASAddCondition(Condition_Desc, &Out->ASM);
 		Out->Condition1 = Condition1;
 
-		Condition_Desc.DrivenState = State2;
+		Condition_Desc.TargetStates = { State2 };
 		auto Condition2 = DASAddCondition(Condition_Desc, &Out->ASM);
 		Out->Condition2 = Condition2;
 	}
@@ -1345,9 +1345,9 @@ void CreateTestScene(EngineMemory* Engine, GameState* State, Scene* Out)
 	State->GScene.SetMaterialParams	(PlayerModel, { 0.1f, 0.2f, 0.5f , 0.8f }, { 0.5f, 0.5f, 0.5f , 0.0f });
 	State->DepthBuffer	= &Engine->DepthBuffer;
 
-	TextureSet* Textures = LoadTextureSet(&Engine->Assets, 100, Engine->BlockAllocator);
-	UploadTextureSet(Engine->RenderSystem, Textures, Engine->BlockAllocator);
-	State->Set1 = Textures;
+	//TextureSet* Textures = LoadTextureSet(&Engine->Assets, 100, Engine->BlockAllocator);
+	//UploadTextureSet(Engine->RenderSystem, Textures, Engine->BlockAllocator);
+	//State->Set1 = Textures;
 
 	uint2	WindowRect	= Engine->Window.WH;
 	float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
@@ -1787,13 +1787,18 @@ extern "C"
 				IncrementPassIndex (&Engine->TiledRender);
 				ClearTileRenderBuffers  (RS, &Engine->TiledRender);
 
-				TiledRender_LightPrePass	(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+				//TiledRender_LightPrePass	(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				TiledRender_Fill			(RS, &PVS, &Engine->TiledRender, GetRenderTarget(State->ActiveWindow),  State->ActiveCamera, nullptr, State->GT, nullptr);
 
 
 				DrawLandscape				(RS, &State->Landscape, &Engine->TiledRender, State->TerrainSplits, State->ActiveCamera, State->DrawLandScapewireframe);
 
-				TiledRender_Shade	(RS, &PVS, &Engine->TiledRender, GetRenderTarget(State->ActiveWindow), State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+				
+				//TiledRender_Shade	(
+				//		PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target,
+				//		RenderSystem* RS, const Camera* C,
+				//		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
+				TiledRender_Shade	(&PVS, &Engine->TiledRender, GetRenderTarget(State->ActiveWindow), Engine->RenderSystem, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 				ForwardPass		(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, State->GT);// Transparent Objects
 			}
 			else

@@ -467,7 +467,8 @@ namespace FlexKit
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	uint64_t	ID);
 	FLEXKITAPI EPLAY_ANIMATION_RES ClearAnimationPose		( DrawablePoseState* DPS, iAllocator* TEMP );
 	
-	FLEXKITAPI size_t				GetAnimationPlayingCount	( Drawable* E );
+	FLEXKITAPI size_t				GetAnimationCount			( Drawable* E );
+	FLEXKITAPI size_t				GetAnimationClipCount		( Skeleton* E );
 	FLEXKITAPI AnimationStateEntry*	GetAnimation				( DrawableAnimationState* AS, int64_t ID );
 	FLEXKITAPI double				GetAnimation_Completed		( AnimationStateEntry* AS );
 

@@ -108,6 +108,8 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 			{ HorizontalMouseMovement, VerticalMouseMovement }, 
 			dT);
 
+	UpdatePlayerAnimations(StateMemory->Base, &ThisState->Player, dT);
+
 	return false;
 }
 

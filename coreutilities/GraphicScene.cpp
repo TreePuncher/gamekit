@@ -204,36 +204,47 @@ namespace FlexKit
 		if (!SkeletonLoaded)
 			return { false, -1 };
 
-		if (SkeletonLoaded && IsAnimationsLoaded(GT, MeshHandle))
+		if (SkeletonLoaded)
 		{
-			// TODO: Needs to Iterate Over Clips
 			auto S = GetSkeleton(GT, MeshHandle);
-			if (S->Animations->Clip.guid == Guid)
+			Skeleton::AnimationList* I = S->Animations;
+			bool AnimationLoaded = false;
+
+			// Find if Animation is Already Loaded
 			{
-				int64_t ID = INVALIDHANDLE;
-				auto Res = PlayAnimation(&GetDrawable(EHandle), GT, Guid, Memory, Loop, W, ID);
-				if(Res == EPLAY_ANIMATION_RES::EPLAY_SUCCESS)
-					return { true, ID };
-
-				return{ false, -1};
+				
+				while (I)
+				{
+					if (I->Clip.guid == Guid) {
+						AnimationLoaded = true;
+						break;
+					}
+					
+					I = I->Next;
+				}
 			}
-		}
-
-		// Search Resources for Animation
-		if(isResourceAvailable(RM, Guid))
-		{
-			auto RHndl = LoadGameResource(RM, Guid);
-			if (LoadAnimation(this, EHandle, RHndl, MeshHandle, W)) {
-				int64_t ID = -1;
-				if (PlayAnimation(&GetDrawable(EHandle), GT, Guid, Memory, Loop, W, &ID) == EPLAY_SUCCESS)
-					return { true, ID};
-
-				return { false, -1 };
+			if (!AnimationLoaded)
+			{
+				// Search Resources for Animation
+				if (isResourceAvailable(RM, Guid))
+				{
+					auto RHndl = LoadGameResource(RM, Guid);
+					auto Res = LoadAnimation(this, EHandle, RHndl, MeshHandle, W);
+					if(!Res)
+						return{ false, -1 };
+				}
+				else
+					return{ false, -1 };
 			}
-			else
-				return { false, -1 };
+
+			int64_t ID = INVALIDHANDLE;
+			auto Res = PlayAnimation(&GetDrawable(EHandle), GT, Guid, Memory, Loop, W, ID);
+			if(Res == EPLAY_ANIMATION_RES::EPLAY_SUCCESS)
+				return { true, ID };
+
+			return{ false, -1};
 		}
-		return { false, -1 };
+		return{ false, -1 };
 	}
 
 
@@ -244,7 +255,7 @@ namespace FlexKit
 		if (!SkeletonLoaded)
 			return { false, -1 };
 
-		if (SkeletonLoaded && IsAnimationsLoaded(GT, MeshHandle))
+		if (SkeletonLoaded && HasAnimationData(GT, MeshHandle))
 		{
 			// TODO: Needs to Iterate Over Clips
 			auto S = GetSkeleton(GT, MeshHandle);
@@ -271,6 +282,14 @@ namespace FlexKit
 				return { false, -1 };
 		}
 		return { false, -1 };
+	}
+
+
+	size_t	GraphicScene::GetEntityAnimationPlayCount(EntityHandle EHandle)
+	{
+		size_t Out = 0;
+		Out = GetAnimationCount(&Drawables.at(EHandle));
+		return Out;
 	}
 
 
@@ -516,7 +535,7 @@ namespace FlexKit
 		for (auto E : SM->Drawables)
 		{
 			if (E.Posed) {
-				if (E.AnimationState && GetAnimationPlayingCount(&E))
+				if (E.AnimationState && GetAnimationCount(&E))
 					UpdateAnimation(SM->RS, &E, SM->GT, dt, SM->TempMem);
 				else
 					ClearAnimationPose(E.PoseState, SM->TempMem);

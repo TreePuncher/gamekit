@@ -1590,7 +1590,7 @@ namespace FlexKit
 	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GeometryTable* GT, const char*	ID   );
 	FLEXKITAPI bool							IsMeshLoaded			( GeometryTable* GT, GUID_t			guid );
 	FLEXKITAPI bool							IsSkeletonLoaded		( GeometryTable* GT, TriMeshHandle	guid );
-	FLEXKITAPI bool							IsAnimationsLoaded		( GeometryTable* GT, TriMeshHandle	guid );
+	FLEXKITAPI bool							HasAnimationData		( GeometryTable* GT, TriMeshHandle	guid );
 
 
 	FLEXKITAPI FustrumPoints	GetCameraFrustumPoints	(Camera* Camera, float3 XYZ, Quaternion Q);

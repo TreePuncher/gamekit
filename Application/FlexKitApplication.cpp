@@ -126,25 +126,40 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 
 	const double StepSize = 1 / 60.0f;
 	double T  = 0.0f;
+	double FPSTimer = 0.0;
+	size_t FPSCounter = 0;
 	double CodeCheckTimer  = 0.0f;
+	double dt = StepSize;// Engine->Time.GetAveragedFrameTime();
+
 
 	while (!Engine->End && !Engine->Window.Close)
 	{
 		Engine->Time.Before();
 
-		double dt = Engine->Time.GetAveragedFrameTime();
+		auto FrameStart = std::chrono::system_clock::now();
 		CodeCheckTimer += dt;
+		FPSTimer	   += dt;
+		FPSCounter++;
 
-		FNTable->Update(Engine, State, dt);
+
+
+
 		//if (T > StepSize)
 		{	// Game Tick  -----------------------------------------------------------------------------------
 			::UpdateInput();
 
+			FNTable->Update				(Engine, State, dt);
 			FNTable->UpdateFixed		(Engine, StepSize, State);
-			FNTable->UpdateAnimations	(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
-			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
+			FNTable->UpdateAnimations	(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
+			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
 			FNTable->Draw				(Engine,				&Engine->TempAllocator.AllocatorInterface,						State);
-			FNTable->PostDraw			(Engine,				&Engine->TempAllocator.AllocatorInterface, StepSize,			State);
+			FNTable->PostDraw			(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
+
+			if (FPSTimer > 1.0) {
+				std::cout << FPSCounter << "\n";
+				FPSCounter = 0;
+				FPSTimer = 0;
+			}
 
 			if (CodeCheckTimer > 2.0)
 			{
@@ -156,10 +171,19 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			// Memory -----------------------------------------------------------------------------------
 			Engine->BlockAllocator.LargeBlockAlloc.Collapse(); // Coalesce blocks
 			Engine->TempAllocator.clear();
+			T -= dt;
 		}
 
-		if ( dt < StepSize )
-			Sleep( 1 );
+		auto FrameEnd = std::chrono::system_clock::now();
+		auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
+
+		if(true)// FPS Locked
+			std::this_thread::sleep_for(chrono::microseconds(16000) - Duration);
+
+		FrameEnd = std::chrono::system_clock::now();
+		Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
+
+		dt = double(Duration.count()) / 1000000.0;
 
 		Engine->Time.After();
 		Engine->Time.Update();
@@ -180,7 +204,7 @@ int main( int argc, char* argv[] )
 	GameCode	Code;
 	CodeTable	FNTable;
 
-	char* GameStateLocation = "GameState.dll";
+	char* GameStateLocation = "TestGameState.dll";
 
 
 	for (size_t I = 0; I < argc; ++I) {

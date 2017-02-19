@@ -91,6 +91,8 @@ struct BaseState
 	GUIRender			GUIRender;
 	EngineMemory*		Engine;
 
+	LineSet	DebugLines;
+
 	static_vector<MouseHandler>		MouseHandlers;
 	static_vector<SubStateVTable*>	SubStates;
 

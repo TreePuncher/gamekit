@@ -112,6 +112,8 @@ namespace FlexKit
 		static_vector<DIR, 16>				ResourceFiles;
 		static_vector<Resource*, 256>		ResourcesLoaded;
 		static_vector<GUID_t, 256>			ResourceGUIDs;
+
+		operator Resource* () { return (Resource*)(this); }
 	};
 
 
@@ -121,8 +123,10 @@ namespace FlexKit
 	FLEXKITAPI size_t		ReadResourceTableSize	(FILE* F);
 	FLEXKITAPI size_t		ReadResourceSize		(FILE* F, ResourceTable* Table, size_t Index);
 
-	FLEXKITAPI void			AddResourceFile		(char* FILELOC, Resources* RM);
-	FLEXKITAPI Resource*	GetResource			(Resources* RM, ResourceHandle RHandle);
+	FLEXKITAPI void					AddResourceFile		(char* FILELOC, Resources* RM);
+	FLEXKITAPI Resource*			GetResource			(Resources* RM, ResourceHandle RHandle);
+	FLEXKITAPI Pair<GUID_t, bool>	FindResourceGUID	(Resources* RM, char* Str);
+
 
 	FLEXKITAPI bool			ReadResourceTable	(FILE* F, ResourceTable* Out, size_t TableSize);
 	FLEXKITAPI bool			ReadResource		(FILE* F, ResourceTable* Table, size_t Index, Resource* out);

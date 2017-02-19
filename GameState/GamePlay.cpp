@@ -41,6 +41,41 @@ void InitiatePlayer(BaseState* Engine, Player* Out)
 	InitiateCamera3rdPersonContoller(Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);
 	Initiate(&Out->PlayerCollider, &Engine->PScene, &Engine->Engine->Physics, Desc);
 	InitiateASM(&Out->PlayerAnimation, Engine->Engine->BlockAllocator, Out->Model);
+
+
+	AnimationStateEntry_Desc WalkDesc;
+	auto Res1 = FindResourceGUID(&Engine->Engine->Assets, "WALK_1");
+	auto Res2 = FindResourceGUID(&Engine->Engine->Assets, "ANIMATION2");
+
+	FK_ASSERT(Res1, "FAILED TO FIND WALK01 Animation!");
+	FK_ASSERT(Res2, "FAILED TO FIND ANIMATION2 Animation!");
+
+	WalkDesc.Animation       = (GUID_t)Res1;
+	WalkDesc.ForceComplete   = false;
+	WalkDesc.EaseOut         = EaseOut_RAMP;
+	WalkDesc.Out             = WeightFunction::EWF_Ramp;
+	WalkDesc.EaseOutDuration = 0.2f;
+	WalkDesc.Loop			= false;
+
+	auto WalkState = DASAddState(WalkDesc, &Out->PlayerAnimation);
+
+	WalkDesc.Animation = (GUID_t)Res2;
+	WalkDesc.Loop = false;
+	auto OtherState = DASAddState(WalkDesc, &Out->PlayerAnimation);
+
+	AnimationCondition_Desc Walk_Cd;
+	Walk_Cd.DrivenState = WalkState;
+	Walk_Cd.InputType   = ASCondition_InputType::ASC_BOOL;
+	Walk_Cd.Operation   = ASCondition_OP::EASO_TRUE;
+
+	auto WalkCondition = DASAddCondition(Walk_Cd, &Out->PlayerAnimation);
+
+	Walk_Cd.DrivenState = OtherState;
+	auto DummyCondition = DASAddCondition(Walk_Cd, &Out->PlayerAnimation);
+
+	Out->WalkCondition = WalkCondition;
+	Out->OtherCondition = DummyCondition;
+
 	TranslateCamera(&Out->CameraCTR, float3{ 0,  0, 0});
 	SetCameraOffset(&Out->CameraCTR, float3{ 0, 20, 40.0f });
 }
@@ -160,6 +195,14 @@ void UpdatePlayer(BaseState* Engine, Player* P, PlayerInputState Input, float2 M
 	P->PlayerCTR.Pos = {FinalPOS.x, FinalPOS.y - Offset, FinalPOS.z};// P->PlayerCTR.Velocity * dT;
 	P->PlayerCTR.Velocity -= P->PlayerCTR.Velocity * Drag * dT;
 	
+	if (P->PlayerCTR.Velocity.magnitudesquared() > 5.0f) {
+		ASSetBool(P->WalkCondition, true, &P->PlayerAnimation);
+		ASSetBool(P->OtherCondition, true, &P->PlayerAnimation);
+	}
+	else {
+		ASSetBool(P->WalkCondition, false, &P->PlayerAnimation);
+		ASSetBool(P->OtherCondition, false, &P->PlayerAnimation);
+	}
 	SetPositionW(P->CameraCTR.Nodes, P->CameraCTR.Yaw_Node, (P->PlayerCTR.Pos));
 	Engine->GScene.SetPositionEntity_WT(P->Model, P->PlayerCTR.Pos);
 
@@ -168,7 +211,11 @@ void UpdatePlayer(BaseState* Engine, Player* P, PlayerInputState Input, float2 M
 
 void UpdatePlayerAnimations(BaseState* Engine, Player* P, double dT)
 {
+	std::cout << "Animation Count: " << Engine->GScene.GetEntityAnimationPlayCount(P->Model) << "\n";
 	UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
+
+	if (Engine->GScene.GetDrawable(P->Model).PoseState)
+		DEBUG_DrawPoseState(Engine->GScene.GetDrawable(P->Model).PoseState, Engine->Nodes, Engine->GScene.GetNode(P->Model), &Engine->DebugLines);
 }
 
 

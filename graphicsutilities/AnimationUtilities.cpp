@@ -247,6 +247,8 @@ namespace FlexKit
 	
 	void ASSetBool(DAConditionHandle Condition, bool B, AnimationStateMachine* ASM, size_t index)
 	{
+		FK_ASSERT(index < size(ASM->Conditions[Condition].Inputs));
+
 		if(ASM->Conditions[Condition].Operation == EASO_TRUE || EASO_FALSE)
 			ASM->Conditions[Condition].Inputs[index].B = B;
 	}
@@ -259,24 +261,24 @@ namespace FlexKit
 	{
 		// Set all States to False
 		for (auto& S : ASM->States) 
-			S.Active = true;
+			S.Active = false;
 
 		for (auto C : ASM->Conditions) {
 			if (C.Enabled) {
 				switch (C.Operation)
 				{
 				case EASO_TRUE:
-					ASM->States[C.TargetState].Active &= (C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B);	break;
+					ASM->States[C.TargetState].Active |= (C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B);	break;
 				case EASO_FALSE:
-					ASM->States[C.TargetState].Active &= !(C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B); break;
+					ASM->States[C.TargetState].Active |= !(C.Inputs[0].B || C.Inputs[1].B || C.Inputs[2].B); break;
 				case EASO_GREATERTHEN:
-					ASM->States[C.TargetState].Active &= (C.Inputs[0].I < C.Inputs[1].I); break;
+					ASM->States[C.TargetState].Active |= (C.Inputs[0].I < C.Inputs[1].I); break;
 				case EASO_LESSTHEN:
-					ASM->States[C.TargetState].Active &= (C.Inputs[0].I > C.Inputs[1].I); break;
+					ASM->States[C.TargetState].Active |= (C.Inputs[0].I > C.Inputs[1].I); break;
 				case EASO_WITHIN:
-					ASM->States[C.TargetState].Active &= (C.Inputs[0].I - C.Inputs[1].I) < C.Inputs[2].I; break;
+					ASM->States[C.TargetState].Active |= (C.Inputs[0].I - C.Inputs[1].I) < C.Inputs[2].I; break;
 				case EASO_FARTHERTHEN:
-					ASM->States[C.TargetState].Active &= (C.Inputs[0].I - C.Inputs[1].I) > C.Inputs[2].I; break;
+					ASM->States[C.TargetState].Active |= (C.Inputs[0].I - C.Inputs[1].I) > C.Inputs[2].I; break;
 				default:
 					break;
 				}
@@ -289,6 +291,8 @@ namespace FlexKit
 					ASM->TargetDrawable;
 
 					auto RES = Scene->EntityPlayAnimation(ASM->TargetDrawable, S.Animation, 1.0f, S.Loop);
+					std::cout << "Playing New Animation: " << (int64_t)RES << "\n";
+
 					if (!CompareFloats(1.0f, S.Speed, 0.001f))
 						SetAnimationSpeed(Scene->GetEntityAnimationState(ASM->TargetDrawable), (int64_t)RES, S.Speed);
 
@@ -337,7 +341,7 @@ namespace FlexKit
 								{	// Blend Animation with next Animation
 									if (AnimationProgress > EaseOutBegin) {
 										if( CompareFloats( S.EaseOutProgress, 0.0f, 1.0f/60.0f) ) 
-											ASSetBool(S.TriggerOnExit, true, ASM); // Trigger next Animation
+											ASSetBool(S.TriggerOnExit, true, ASM); // Trigger next Condition
 
 										if (S.EaseOutDuration > 0.0f)
 											S.EaseOutProgress += dt / S.EaseOutDuration;
@@ -371,6 +375,8 @@ namespace FlexKit
 					}
 					else
 					{
+						std::cout << "Animation Ended\n";
+
 						// Animation Ended
 						S.ID	 = INVALIDHANDLE;
 						S.Active = false;
@@ -936,12 +942,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetAnimationPlayingCount(Drawable* E)
+	size_t GetAnimationCount(Drawable* E)
 	{
 		size_t Count = 0;
-		for (auto Clip : E->AnimationState->Clips)
-			if (Clip.Playing)
-				Count++;
+		if(E && E->AnimationState)
+			for (auto Clip : E->AnimationState->Clips)
+				if (Clip.Playing)
+					Count++;
 
 		return Count;
 	}
@@ -963,6 +970,19 @@ namespace FlexKit
 		return A->T / AnimationLength;
 	}
 
+
+	size_t GetAnimationClipCount(Skeleton* E)
+	{
+		size_t Out	= 0;
+		auto I		= E->Animations;
+		while (I)
+			if (I)
+			{
+				I = I->Next;
+				Out++;
+			}
+		return Out;
+	}
 
 	/************************************************************************************************/
 
@@ -1006,7 +1026,7 @@ namespace FlexKit
 			{
 					size_t W1 = (LHS.Playing ? 0x00 : 1 << 31) | LHS.order;
 					size_t W2 = (RHS.Playing ? 0x00 : 1 << 31) | RHS.order;
-					return W1 > W2; });
+					return W1 < W2; });
 
 			for (auto& C : AS->Clips)
 			{

@@ -977,7 +977,7 @@ namespace FlexKit
 	{
 		for (auto& R : RS->FreeList)
 			if (!--R.Counter)
-				R.Resource->Release();
+				SAFERELEASE(R.Resource);
 
 		auto I = RS->FreeList.begin();
 		while (I < RS->FreeList.end()) {
@@ -1361,7 +1361,7 @@ namespace FlexKit
 	{ 
 		CopyEnginePostFrameUpdate(RS);
 
-		Window->SwapChain_ptr->Present(1, 0);
+		Window->SwapChain_ptr->Present(0, 0);
 		Window->BufferIndex = Window->SwapChain_ptr->GetCurrentBackBufferIndex();
 
 		RS->Fences[RS->CurrentIndex].FenceValue = ++RS->FenceCounter;
@@ -2073,7 +2073,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool IsAnimationsLoaded(GeometryTable* GT, TriMeshHandle RMeshHandle){
+	bool HasAnimationData(GeometryTable* GT, TriMeshHandle RMeshHandle){
 		return GetSkeleton(GT, RMeshHandle)->Animations != nullptr;
 	}
 

@@ -120,6 +120,29 @@ namespace FlexKit
 	}
 
 
+	Pair<GUID_t, bool>	FindResourceGUID(Resources* RM, char* Str)
+	{
+		bool Found = false;
+		GUID_t Guid = INVALIDHANDLE;
+
+		for (auto T : RM->Tables)
+		{
+			auto end = T->ResourceCount;
+			for (size_t I = 0; I < end; ++I)
+			{
+				if (!strncmp(T->Entries[I].ID, Str, 64))
+				{
+					Found = true;
+					Guid = T->Entries[I].GUID;
+					return{ Guid, Found };
+				}
+			}
+		}
+
+		return{ Guid, Found };
+	}
+
+
 	/************************************************************************************************/
 
 
