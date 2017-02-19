@@ -255,6 +255,16 @@ bool UpdateClientEventHandler(SubState* StateMemory, Event evt)
 /************************************************************************************************/
 
 
+bool UpdateClientPreDraw(SubState* StateMemory, EngineMemory* Engine, double dT)
+{
+	ClientPlayState* ThisState = (ClientPlayState*)StateMemory;
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
 void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
 {
 	RakNet::Packet* Packet = nullptr;
@@ -368,6 +378,7 @@ bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT
 }
 
 
+
 /************************************************************************************************/
 
 
@@ -378,6 +389,7 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, BaseState* Base, Cl
 	PlayState->ClientState                    = Client;
 	PlayState->VTable.Update				  = UpdateClientGameplay;
 	PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
+	PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
 	PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
 	PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
 	PlayState->Imposters.Allocator			  = Engine->BlockAllocator;

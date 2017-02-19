@@ -295,7 +295,7 @@ namespace FlexKit
 		uint16_t MaxConditionCount;
 		uint16_t MaxStateCount;
 
-		size_t	TargetDrawable;
+		size_t TargetDrawable;
 
 		struct AnimationState
 		{

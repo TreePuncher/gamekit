@@ -55,18 +55,23 @@ struct PlayerInputState
 
 struct Player
 {
-	FlexKit::EntityHandle		Model;
+	EntityHandle				Model;
 	PlayerController			PlayerCTR;
 	Camera3rdPersonContoller	CameraCTR;
+	AnimationStateMachine		PlayerAnimation;
 	CapsuleCharacterController	PlayerCollider;
 
-	operator Player* () { return this; }// I'm Getting tired of typeing the & everywhere!
+	size_t					ID;
+
+	operator Player* () { return this; }// I'm Getting tired of typeing the &'s everywhere!
 };
 
 
-void InitiatePlayer		 ( BaseState* Engine, Player* Out );
-void ReleasePlayer		 ( Player* P, BaseState* Engine );
-void UpdatePlayer		 ( BaseState* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
+void InitiatePlayer			( BaseState* Engine, Player* Out );
+void ReleasePlayer			( Player* P, BaseState* Engine );
+void UpdatePlayer			( BaseState* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
+void UpdatePlayerAnimations	( BaseState* Engine, Player* P, double dT );
+
 
 void SetPlayerPosition	  ( Player* P, float3 Position );
 void YawPlayer			  ( Player* P, float Degree );
@@ -89,12 +94,12 @@ struct CircularBuffer
 	CircularBuffer() : _Head(0), _Tail(0), _Size(0)
 	{}
 	
-	size_t size()
+	size_t size() noexcept
 	{
 		return _Size;
 	}
 
-	Ty pop_front()
+	Ty pop_front() noexcept
 	{
 		if (!_Size)
 			FK_ASSERT("BUFFER EMPTY!");
@@ -106,22 +111,23 @@ struct CircularBuffer
 		return Buffer[idx];
 	}
 
-	void push_back(const Ty Item, bool overwrite = false)
+	bool push_back(const Ty Item) noexcept
 	{
-		if (SIZE > _Size || overwrite) {
+		if (SIZE > _Size) {
 			_Size++;
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
 		}
+		return false;
 	}
 
-	Ty& front()
+	Ty& front() noexcept
 	{
 		return Buffer[_Tail];
 	}
 
-	Ty& back()
+	Ty& back() noexcept
 	{
 		return Buffer[_Head];
 	}
@@ -190,6 +196,14 @@ struct Gameplay_Model
 		}
 		T += dT;
 	}
+
+
+	void UpdateAnimations(BaseState* Engine, double dT)
+	{
+		for (auto& P : Players)
+			UpdatePlayerAnimations(Engine, &P, dT);
+	}
+
 };
 
 #endif

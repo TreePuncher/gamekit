@@ -655,6 +655,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename TY>
+	TY ConvertEndianness(TY ValueToConvert)
+	{
+		union BoilerPlate
+		{
+			char	Bytes[sizeof(TY)];
+			TY		Ty;
+			operator TY () { return Ty; }
+		} In, Out;
+
+		In.Ty = ValueToConvert;
+
+		for (size_t I = 0; I < sizeof(TY); ++I) {
+			Out.Bytes[sizeof(TY) - I - 1] = In.Bytes[I];
+		}
+
+		return Out.Ty;
+	}
+
+
+	/************************************************************************************************/
+
+
 	static uint64_t hash_DJB2(char* str)
     {
         unsigned long hash = 5381;

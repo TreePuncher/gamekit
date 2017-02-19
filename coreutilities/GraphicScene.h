@@ -176,6 +176,9 @@ namespace FlexKit
 		PVS					_PVS;
 
 		ScenePartitionTable	SceneManagement;
+
+
+		operator GraphicScene* () { return this; }
 	};
 
 

@@ -31,6 +31,8 @@ void InitiatePlayer(BaseState* Engine, Player* Out)
 	Out->PlayerCTR.Velocity = float3(0, 0, 0);
 	Out->Model              = Engine->GScene.CreateDrawableAndSetMesh("PlayerModel");
 
+	Engine->GScene.EntityEnablePosing(Out->Model);
+
 	CapsuleCharacterController_DESC Desc;
 	Desc.FootPos = float3(0, 10, 0);
 	Desc.h = 20.0f;
@@ -38,6 +40,7 @@ void InitiatePlayer(BaseState* Engine, Player* Out)
 
 	InitiateCamera3rdPersonContoller(Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);
 	Initiate(&Out->PlayerCollider, &Engine->PScene, &Engine->Engine->Physics, Desc);
+	InitiateASM(&Out->PlayerAnimation, Engine->Engine->BlockAllocator, Out->Model);
 	TranslateCamera(&Out->CameraCTR, float3{ 0,  0, 0});
 	SetCameraOffset(&Out->CameraCTR, float3{ 0, 20, 40.0f });
 }
@@ -162,6 +165,12 @@ void UpdatePlayer(BaseState* Engine, Player* P, PlayerInputState Input, float2 M
 
 	UpdateCameraController(Engine->Nodes, Cam_Ctr, dT);
 }
+
+void UpdatePlayerAnimations(BaseState* Engine, Player* P, double dT)
+{
+	UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
+}
+
 
 
 /************************************************************************************************/

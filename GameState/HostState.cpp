@@ -356,7 +356,7 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 				ThisState->Game.BufferedInputs[ClientIdx].push_back( 
 				{	InputPacket->PlayerInput,
 					InputPacket->Mouse, 
-					InputPacket->Frame }, true);
+					InputPacket->Frame });
 
 				ThisState->Game.LastFrameRecieved[ClientIdx] = InputPacket->Frame;
 			}	break;

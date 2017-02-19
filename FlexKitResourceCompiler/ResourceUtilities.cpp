@@ -261,6 +261,7 @@ struct FBXVertexLayout
 
 using FlexKit::MeshUtilityFunctions::IndexList;
 using FlexKit::MeshUtilityFunctions::CombinedVertexBuffer;
+
 // Simple Buffer Filling Utility Functions
 uint32_t	FetchIndex			(size_t itr, fbxsdk::FbxMesh* Mesh)		{return Mesh->GetPolygonVertex(itr/3, itr % 3);}
 uint32_t	FetchIndex2			(size_t itr, IndexList* IL)				{return IL->at(itr);}
@@ -273,6 +274,7 @@ uint4_16	FetchWeightIndices	(size_t itr, CombinedVertexBuffer* Buff){return Buff
 uint32_t	WriteIndex			(uint32_t in)							{return in;}
 float3		WriteVertex			(float3 in)								{return in;}
 float2		WriteUV				(float2 in)								{return in;}
+
 
 /************************************************************************************************/
 // Complexe Buffer Filling Utility Functions
