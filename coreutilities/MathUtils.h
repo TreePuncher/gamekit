@@ -525,7 +525,7 @@ namespace FlexKit
 
 		inline float3 ( float val )						{ pfloats = _mm_set_ps1(val);					}
 		inline float3 ( float X, float Y, float Z )		{ pfloats = _mm_set_ps(0.0f, Z, Y, X);			}
-		inline float3 ( const float2 in )				{ pfloats = _mm_set_ps(in.x, in.y, 0.0f, 0.0f);	}
+		inline float3 ( const float2 in, float Z )		{ pfloats = _mm_set_ps(in.x, in.y, Z, 0.0f);	}
 		inline float3 ( const float3& a )				{ _mm_store_ps(pfloats.m128_f32, a.pfloats); 	}
 		inline float3 ( const __m128& in )				{ _mm_store_ps(pfloats.m128_f32, in);			}
 
@@ -625,8 +625,25 @@ namespace FlexKit
 			return (temp.x < ep) && (temp.y < ep)  && (temp.z < ep);
 		}
 		
-		inline float3 operator *	( const float3& a )		const { return float3( x * a.x, y * a.y, z * a.z );	}
-		inline float3 operator *	( const float a )		const {	return float3( x * a, y * a, z * a );		}
+		inline float3 operator *	( const float3& a )		const 
+		{ 
+#if USING(FASTMATH)
+			return _mm_mul_ps(a.pfloats, pfloats);
+#else
+			return float3( x * a.x, y * a.y, z * a.z );	
+#endif
+		}
+
+
+		inline float3 operator *	( const float a )		const 
+		{	
+#if USING(FASTMATH)
+			return _mm_mul_ps(_mm_set1_ps(a), pfloats);
+#else
+			return float3( x * a, y * a, z * a );		
+#endif
+
+		}
 		
 		inline float3& operator *=	( const float3& a )		
 		{

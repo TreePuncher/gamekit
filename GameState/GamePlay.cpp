@@ -51,7 +51,7 @@ void InitiatePlayer(BaseState* Engine, Player* Out)
 	FK_ASSERT(Res2, "FAILED TO FIND ANIMATION2 Animation!");
 
 	WalkDesc.Animation       = (GUID_t)Res1;
-	WalkDesc.ForceComplete   = false;
+	WalkDesc.ForceComplete   = true;
 	WalkDesc.EaseOut         = EaseOut_RAMP;
 	WalkDesc.EaseIn			 = EaseIn_RAMP;
 	WalkDesc.Out             = WeightFunction::EWF_Ramp;

@@ -452,18 +452,39 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class ComplexWindow;
+	class ComplexGUI;
+
+	struct GUIGrid;
+	struct GUIGridCell;
+
+	struct GUIButton;
+	class GUIButtonHandle;
+
+	/************************************************************************************************/
 
 
 	struct LayoutEngine
 	{
+		LayoutEngine(iAllocator* Memory, RenderSystem* RS, GUIRender* GUI);
+
 		RenderSystem*	RS;
 		GUIRender*		GUI;
+		iAllocator*		Memory;
 
+		DynArray<float2, 128> PositionStack;
+		
+		float2 GetCurrentPosition();
+
+		static float3 Position2SS(float2);
+		static float3 Position2SS(float3);
+
+		void PushLineSegments(FlexKit::LineSegments);
 		void PushRect	(Draw_RECT Rect);
 		void PushOffset	(float2 XY);
-		void PopOffset	(float2 XY);
+		void PopOffset	();
 
+		void Begin		();
+		void End		();
 	};
 
 	struct GUIBaseElement
@@ -471,6 +492,7 @@ namespace FlexKit
 		size_t Index;
 		size_t UpdatePriority;
 
+		bool				Active;
 		EGUI_ELEMENT_TYPE	Type;
 	};
 
@@ -487,6 +509,87 @@ namespace FlexKit
 	{
 		uint2	CellID;
 		float2	Dimensions;
+
+		static void Draw_DEBUG(GUIButtonHandle button, LayoutEngine* Layout);
+	};
+
+
+	/************************************************************************************************/
+
+
+	class GUIHandle
+	{
+	public:
+		GUIHandle() {}
+		GUIHandle(ComplexGUI* window, GUIElementHandle hndl) : mWindow(window), mBase(hndl) {}
+
+		GUIElementHandle	mBase;
+		ComplexGUI*		mWindow;
+
+		const EGUI_ELEMENT_TYPE	Type();
+		const EGUI_ELEMENT_TYPE	Type() const;
+
+		const GUIBaseElement	Base() const;
+		GUIBaseElement&			Base();
+	};
+
+
+	/************************************************************************************************/
+
+
+	class GUIGridHandle : public GUIHandle
+	{
+	public:
+		GUIGridHandle(GUIHandle);
+		GUIGridHandle(ComplexGUI* Window, GUIElementHandle In);
+
+		DynArray<GUIDimension>&		RowHeights();
+		DynArray<GUIDimension>&		ColumnWidths();
+		GUIGridCell&				GetCell(uint2 ID, bool& Found);
+		float2						GetCellWH(uint2 ID);
+
+		float2						GetPosition();
+		float2						GetChildPosition(GUIElementHandle Element);
+
+		GUIGrid&					_GetGrid();
+
+		operator GUIElementHandle () { return mBase; }
+
+		void resize(float Width_percent, float Height_percent);
+		void SetGridDimensions(size_t Width, size_t Height);
+
+		GUIElementHandle CreateButton(uint2 CellID);
+	};
+
+
+	/************************************************************************************************/
+
+
+	class GUIButtonHandle : public GUIHandle
+	{
+	public:
+		GUIButtonHandle(ComplexGUI* Window, GUIElementHandle In);
+
+		operator GUIElementHandle () { return mBase; }
+
+		void resize(float Width_percent, float Height_percent);
+		void SetCellID(uint2 CellID);
+
+		float2 WH();
+
+		GUIButton& _IMPL();
+
+	private:
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct GUIGridCell
+	{
+		uint2    ID;
+		uint32_t Children;
 	};
 
 	struct GUIGrid
@@ -505,86 +608,26 @@ namespace FlexKit
 			Base			= rhs.Base;
 		}
 
-		struct Cell
-		{
-			uint2    ID;
-			uint32_t Children;
-		};
 
-		static void Draw(ComplexWindow* Window, GUIGrid* Grid, LayoutEngine* LayoutEngine);
-		static void Draw_DEBUG(ComplexWindow* Window, GUIGrid* Grid, LayoutEngine* LayoutEngine);
+		static void Draw		( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
+		static void Draw_DEBUG	( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
 
 		DynArray<GUIDimension>	RowHeights;
 		DynArray<GUIDimension>	ColumnWidths;
-		DynArray<Cell>			Cells;
+		DynArray<GUIGridCell>	Cells;
 		float2					WH;
 		uint32_t				Base;
 	};
 
-	
+
 	/************************************************************************************************/
 
-	class GUIHandle
+
+	class ComplexGUI
 	{
 	public:
-		GUIHandle() {}
-		GUIHandle( ComplexWindow* window, GUIElementHandle hndl ) : mWindow(window), mBase(hndl) {}
-
-		GUIElementHandle	mBase;
-		ComplexWindow*		mWindow;
-
-		const GUIBaseElement	Base() const;
-		GUIBaseElement&			Base();
-	};
-
-
-
-	class GUIGridHandle : public GUIHandle
-	{
-	public:
-		GUIGridHandle(ComplexWindow* Window, GUIElementHandle In);
-
-		DynArray<GUIDimension>&		RowHeights();
-		DynArray<GUIDimension>&		ColumnWidths();
-		GUIGrid::Cell&				GetCell(uint2 ID);
-
-		GUIGrid&					_GetGrid();
-
-		operator GUIElementHandle () { return mBase; }
-
-		void resize				(float Width_percent, float Height_percent);
-		void SetGridDimensions	(size_t Width, size_t Height);
-
-
-		GUIElementHandle CreateButton(uint2 CellID);
-
-	private:
-	
-		GUIElementHandle	mBase;
-		ComplexWindow*		mWindow;
-	};
-
-	class GUIButtonHandle : public GUIHandle
-	{
-	public:
-		GUIButtonHandle(ComplexWindow* Window, GUIElementHandle In);
-
-		operator GUIElementHandle () { return mBase; }
-
-		void resize		(float Width_percent, float Height_percent);
-		void SetCellID  (uint2 CellID);
-
-		GUIButton& _IMPL();
-
-	private:
-	};
-
-
-	class ComplexWindow
-	{
-	public:
-		ComplexWindow ( iAllocator* memory );
-		ComplexWindow ( const ComplexWindow& );
+		ComplexGUI ( iAllocator* memory );
+		ComplexGUI ( const ComplexGUI& );
 
 		void Release();
 
@@ -593,9 +636,12 @@ namespace FlexKit
 		void Draw		( RenderSystem* RS, GUIRender* out );
 		void Draw_DEBUG	( RenderSystem* RS, GUIRender* out );
 
-		GUIGridHandle CreateGrid(GUIElementHandle	Parent = 0, uint2 ID = {0, 0});
+		void DrawElements_DEBUG	( RenderSystem* RS, GUIRender* out, GUIElementHandle Element, LayoutEngine* Layout );
 
-		
+		void DrawElement_DEBUG(GUIElementHandle Element, LayoutEngine* Layout);
+
+		GUIGridHandle	CreateGrid(uint2 ID = {0, 0});
+		GUIGridHandle	CreateGrid(GUIElementHandle	Parent, uint2 ID = {0, 0});
 		GUIButtonHandle CreateButton(GUIElementHandle Parent);
 
 		void CreateTexturedButton();
@@ -610,7 +656,7 @@ namespace FlexKit
 		DynArray<GUIGrid>				Grids;
 		DynArray<GUIButton>				Buttons;
 
-		DynArray<DynArray<GUIElement>>	Children;
+		DynArray<DynArray<GUIElementHandle>>	Children;
 
 		iAllocator* Memory;
 	};

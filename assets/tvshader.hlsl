@@ -320,7 +320,6 @@ Region_CP VPassThrough( VertexIn IN )
     OUT.UVCords       = IN.UVCords;
     OUT.ParentUVCords = IN.ParentUVCords;
 
-
 	return OUT;
 }
 

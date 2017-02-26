@@ -83,6 +83,14 @@ LinePointPS VSegmentPassthrough(LinePoint In)
 	return Out;
 }
 
+LinePointPS VSegmentPassthrough_NOPV(LinePoint In)
+{
+    LinePointPS Out;
+    Out.POS     = In.POS;
+    Out.Colour  = In.Colour;
+    return Out;
+}
+
 
 /************************************************************************************************/
 

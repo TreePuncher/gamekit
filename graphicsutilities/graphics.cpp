@@ -1792,8 +1792,9 @@ namespace FlexKit
 
 	void UploadResources(RenderSystem* RS)
 	{
-		ID3D12CommandList* CommandLists[] = {GetCurrentCommandList(RS)};
-		GetCurrentCommandList(RS)->Close();
+		ID3D12CommandList* CommandLists[1] = {GetCurrentCommandList(RS)};
+		auto CL = GetCurrentCommandList(RS);// ->Close();
+		CL->Close();
 		RS->GraphicsQueue->ExecuteCommandLists(1, CommandLists);
 	}
 
@@ -7180,6 +7181,23 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
+	void PushLineSet(GUIRender* RG, LineSegments LineSet)
+	{
+		RG->DrawCalls.push_back({ DCT_LINES2D, RG->DrawLines2D.size() });
+
+		size_t Begin = RG->Lines2D.LineSegments.size();
+		size_t Count = LineSet.size();
+
+		for (auto L : LineSet)
+			RG->Lines2D.LineSegments.push_back(L);
+
+		RG->DrawLines2D.push_back({Begin, Count});
+	}
+
+
+	/************************************************************************************************/
+
+
 	void InitiateDrawGUI(RenderSystem* RS, GUIRender* RG, iAllocator* Memory) 
 	{
 		for (size_t I = 0; I < DRAWCALLTYPE::DCT_COUNT; ++I)
@@ -7188,14 +7206,25 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		Shader DrawRectVShader;
 		Shader DrawRectPShader;
 		Shader DrawRectPSTexturedShader;
-		Shader DrawLineVShader;
+		Shader DrawLineVShader3D;
+		Shader DrawLineVShader2D;
 		Shader DrawLinePShader;
 
 		DrawRectVShader				= LoadShader("DrawRect_VS", "DrawRect_VS", "vs_5_0", "assets\\vshader.hlsl");
 		DrawRectPShader				= LoadShader("DrawRect", "DrawRect", "ps_5_0", "assets\\pshader.hlsl");
 		DrawRectPSTexturedShader	= LoadShader("DrawRectTextured", "DrawRectTextured", "ps_5_0", "assets\\pshader.hlsl");
-		DrawLineVShader				= LoadShader("VSegmentPassthrough", "VSegmentPassthrough", "vs_5_0", "assets\\vshader.hlsl");
+		DrawLineVShader2D			= LoadShader("VSegmentPassthrough_NOPV", "VSegmentPassthrough_NOPV", "vs_5_0", "assets\\vshader.hlsl");
+		DrawLineVShader3D			= LoadShader("VSegmentPassthrough", "VSegmentPassthrough", "vs_5_0", "assets\\vshader.hlsl");
 		DrawLinePShader				= LoadShader("DrawLine", "DrawLine", "ps_5_0", "assets\\pshader.hlsl");
+
+		FINALLY
+			Release(&DrawRectVShader);
+			Release(&DrawRectPShader);
+			Release(&DrawRectPSTexturedShader);
+			Release(&DrawLineVShader2D);
+			Release(&DrawLineVShader3D);
+			Release(&DrawLinePShader);
+		FINALLYOVER
 
 		{
 			// Draw Rect State Objects
@@ -7283,7 +7312,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 				PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
-				PSO_Desc.VS                    = DrawLineVShader;
+				PSO_Desc.VS                    = DrawLineVShader3D;
 				PSO_Desc.PS                    = DrawLinePShader;
 				PSO_Desc.RasterizerState       = Rast_Desc;
 				PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -7302,6 +7331,12 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			HRESULT HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 			FK_ASSERT(SUCCEEDED(HR));
 			RG->DrawStates[DCT_LINES3D] = PSO;
+
+			PSO_Desc.VS = DrawLineVShader2D;
+
+			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+			FK_ASSERT(SUCCEEDED(HR));
+			RG->DrawStates[DCT_LINES2D] = PSO;
 		}
 
 		// Create/Load Text Rendering State
@@ -7309,7 +7344,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			Shader DrawTextVShader = LoadShader("VTextMain", "TextPassThrough", "vs_5_0", "assets\\TextRendering.hlsl");
 			Shader DrawTextGShader = LoadShader("GTextMain", "GTextMain",		"gs_5_0", "assets\\TextRendering.hlsl");
 			Shader DrawTextPShader = LoadShader("PTextMain", "TextShading",		"ps_5_0", "assets\\TextRendering.hlsl");
-
 
 			HRESULT HR;
 			ID3D12PipelineState* PSO = nullptr;
@@ -7388,20 +7422,16 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		Desc.pInital	 = nullptr;
 		Desc.Structured  = false;
 
-		RG->RectBuffer			= CreateConstantBuffer(RS, &Desc);
-
+		RG->RectBuffer				= CreateConstantBuffer(RS, &Desc);
 		RG->Rects.Allocator			= Memory;
 		RG->DrawCalls.Allocator		= Memory;
 		RG->Text.Allocator			= Memory;
 		RG->TexturedRects.Allocator = Memory;
 		RG->ClipAreas.Allocator		= Memory;
 		RG->DrawLines3D.Allocator	= Memory;
+		RG->DrawLines2D.Allocator	= Memory;
 
-		Release(&DrawRectVShader);
-		Release(&DrawRectPShader);
-		Release(&DrawRectPSTexturedShader);
-		Release(&DrawLineVShader);
-		Release(&DrawLinePShader);
+		InitiateLineSet(RS, Memory, &RG->Lines2D);
 	}
 
 
@@ -7420,6 +7450,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			GUIStack->Rects.Release();
 			GUIStack->TexturedRects.Release();
 			GUIStack->Text.Release();
+			GUIStack->Lines2D.LineSegments.Release();
+			GUIStack->DrawLines2D.Release();
 			GUIStack->DrawLines3D.Release();
 			GUIStack->DrawCalls.Release();
 		}
@@ -7595,6 +7627,21 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				RectOffset+= 6;
 				TexturePosition++;
 			}	break;
+			case DRAWCALLTYPE::DCT_LINES2D: {
+				size_t Offset	= GUIStack->DrawLines2D[D.Index].Begin;
+				size_t Count	= GUIStack->DrawLines2D[D.Index].Count;
+
+				D3D12_VERTEX_BUFFER_VIEW Views[] = {
+					{ GUIStack->Lines2D.GPUResource->GetGPUVirtualAddress(),
+					(UINT)GUIStack->Lines2D.LineSegments.size() * sizeof(LineSegment),
+					(UINT)sizeof(float3) * 2
+					},
+				};
+
+				CL->IASetVertexBuffers(0, 1, Views);
+				CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
+				CL->DrawInstanced(2 * Count, 1, 2 * Offset, 0);
+			}	break;
 			case DRAWCALLTYPE::DCT_LINES3D: {
 				LineSet* LineDrawCall = GUIStack->DrawLines3D[D.Index].Lines;
 				Camera* C = GUIStack->DrawLines3D[D.Index].C;
@@ -7680,6 +7727,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			UpdateResourceByTemp(RS, &RG->RectBuffer, RG->Rects.begin(), RG->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 		for (auto& I : RG->Text)
 			UploadTextArea(I.Font, I.Text, TempMemory, RS, TargetWindow);
+
+		UploadLineSegments(RS, &RG->Lines2D);
 	}
 
 

@@ -169,7 +169,7 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			}
 
 			// Memory -----------------------------------------------------------------------------------
-			Engine->BlockAllocator.LargeBlockAlloc.Collapse(); // Coalesce blocks
+			//Engine->BlockAllocator.LargeBlockAlloc.Collapse(); // Coalesce blocks
 			Engine->TempAllocator.clear();
 			T -= dt;
 		}

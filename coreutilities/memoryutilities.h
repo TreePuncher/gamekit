@@ -293,7 +293,7 @@ namespace FlexKit
 		
 		void free(void* _ptr)
 		{
-			size_t temp = (size_t)_ptr;
+			size_t temp  = (size_t)_ptr;
 			size_t temp2 = (size_t)Blocks;
 			size_t index = (temp - temp2) / sizeof(Block);
 
@@ -302,7 +302,7 @@ namespace FlexKit
 
 		void _aligned_free(void* _ptr)
 		{
-			size_t temp = (size_t)_ptr;
+			size_t temp  = (size_t)_ptr;
 			size_t temp2 = (size_t)Blocks;
 			size_t index = (temp - temp2) / sizeof(Block);
 
@@ -560,10 +560,10 @@ namespace FlexKit
 		template<typename T, size_t a = 16, typename ... PARAM_TY>
 		T& allocate_aligned(PARAM_TY ... Params)
 		{
-			auto mem = _aligned_malloc(sizeof(T) + a, a);
+			auto* mem = _aligned_malloc(sizeof(T) + a, a);
 
-			auto t = new (mem) T(Params...);
-			return *t;
+			auto* t = new (mem) T(Params...);
+			return (T&)t;
 		}
 
 		template<typename T>
@@ -679,15 +679,15 @@ namespace FlexKit
 
 
 	static uint64_t hash_DJB2(char* str)
-    {
-        unsigned long hash = 5381;
-        int c;
+	{
+		unsigned long hash = 5381;
+		int c;
 
-        while (c = *str++)
-            hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+		while (c = *str++)
+			hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
 
-        return hash;
-    }
+		return hash;
+	}
 
 
 	/************************************************************************************************/

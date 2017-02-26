@@ -2247,11 +2247,11 @@ namespace FlexKit
 		float3 BColour;
 	};
 
-	typedef DynArray<LineSegment> LineSegements;
+	typedef DynArray<LineSegment> LineSegments;
 
 	struct LineSet
 	{
-		LineSegements			LineSegments;
+		LineSegments			LineSegments;
 		FrameBufferedResource	GPUResource;
 	};
 
@@ -2285,6 +2285,7 @@ namespace FlexKit
 		DCT_2DRECT,
 		DCT_2DRECT_TEXTURED,
 		DCT_2DRECT_CLIPPED,
+		DCT_LINES2D,
 		DCT_LINES3D,
 		DCT_Text,
 		DCT_COUNT,
@@ -2345,6 +2346,10 @@ namespace FlexKit
 		Camera*		C;
 	};
 
+	struct Draw_LineSet_2D
+	{
+		size_t Begin, Count;
+	};
 
 	struct Draw_TEXT
 	{
@@ -2370,10 +2375,12 @@ namespace FlexKit
 		DynArray<Draw_RECTPoint>	Rects;
 		DynArray<Textured_Rect>		TexturedRects;
 		DynArray<Draw_TEXT>			Text;
+		DynArray<Draw_LineSet_2D>	DrawLines2D;
 		DynArray<Draw_LineSet_3D>	DrawLines3D;
-
 		DynArray<DrawCall>			DrawCalls;
 
+
+		LineSet						Lines2D;
 		FrameBufferedResource		RectBuffer;
 		ID3D12PipelineState*		DrawStates[DRAWCALLTYPE::DCT_COUNT];
 	};
@@ -2413,6 +2420,7 @@ namespace FlexKit
 	FLEXKITAPI void PushText( GUIRender* RG, Draw_TEXT Text );
 
 	FLEXKITAPI void PushLineSet( GUIRender* RG, Draw_LineSet_3D);
+	FLEXKITAPI void PushLineSet( GUIRender* RG, LineSegments );
 	
 	FLEXKITAPI void InitiateDrawGUI		( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
 	FLEXKITAPI void ReleaseDrawGUI		( GUIRender* RG);

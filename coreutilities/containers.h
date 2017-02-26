@@ -484,9 +484,9 @@ namespace FlexKit
 		auto end = C.end();
 		for (; itr != end; ++itr)
 			if (_Pred(*itr))
-				break;
+				return itr;
 
-		return itr;
+		return C.end();
 	}
 
 	template<typename TY_C, typename TY_PRED>
@@ -496,9 +496,9 @@ namespace FlexKit
 		auto end = C.end();
 		for (; itr != end; ++itr)
 			if (_Pred(*itr))
-				break;
+				return itr;
 
-		return itr;
+		return C.end();
 	}
 
 

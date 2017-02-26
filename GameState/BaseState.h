@@ -81,6 +81,7 @@ struct BaseState
 	GraphicScene		GScene;
 
 	Camera				DefaultCamera;
+	GraphicScene*		ActiveScene;
 
 	Camera*				ActiveCamera;
 	RenderWindow*		ActiveWindow;

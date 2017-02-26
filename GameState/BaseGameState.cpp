@@ -320,6 +320,7 @@ extern "C"
 		State.ActiveWindow				= &Engine->Window;
 		State.Engine					= Engine;
 		State.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
+		State.ActiveScene				= &State.GScene;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
@@ -399,13 +400,12 @@ extern "C"
 
 		UpdateTransforms	(State->Nodes);
 		UpdateCamera		(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
-		UpdateGraphicScene	(&State->GScene);
+		UpdateGraphicScene	(&State->GScene); // Default Scene
 	}
 
 
 	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, BaseState* State)
 	{
-
 		auto RS = &Engine->RenderSystem;
 
 		BeginSubmission(RS, State->ActiveWindow);
@@ -415,7 +415,7 @@ extern "C"
 		auto CL				= GetCurrentCommandList(RS);
 		auto OutputTarget	= GetRenderTarget(State->ActiveWindow);
 
-		GetGraphicScenePVS(&State->GScene, State->ActiveCamera, &PVS, &Transparent);
+		GetGraphicScenePVS(State->ActiveScene, State->ActiveCamera, &PVS, &Transparent);
 
 		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
 		SortPVSTransparent(State->Nodes, &Transparent, State->ActiveCamera);
