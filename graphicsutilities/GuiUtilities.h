@@ -507,11 +507,42 @@ namespace FlexKit
 
 	struct GUIButton
 	{
+		GUIButton() :
+			CellID			({}),
+			Dimensions		({}),
+			Entered			(nullptr),
+			Clicked			(nullptr),
+			Released		(nullptr),
+			Hover			(nullptr),
+			Text			(nullptr),
+			Memory			(nullptr),
+			USR				(nullptr),
+			HoverDuration	(0.0),
+			HoverLength		(1.0f),
+			ClickState		(false)
+		{}
+
+
 		uint2	CellID;
 		float2	Dimensions;
 
+		EnteredEventFN	Entered;
+		ButtonEventFN	Clicked;
+		ButtonEventFN	Released;
+		ButtonEventFN	Hover;	
+
+		const char* Text; 
+		iAllocator*	Memory;
+
+		void*	USR;
+		double	HoverDuration;
+		double	HoverLength;
+		bool	ClickState;
+
 		static void Draw		(GUIButtonHandle button, LayoutEngine* Layout);
 		static void Draw_DEBUG	(GUIButtonHandle button, LayoutEngine* Layout);
+
+		static void Update(GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in);
 	};
 
 
@@ -525,7 +556,9 @@ namespace FlexKit
 		GUIHandle(ComplexGUI* window, GUIElementHandle hndl) : mWindow(window), mBase(hndl) {}
 
 		GUIElementHandle	mBase;
-		ComplexGUI*		mWindow;
+		ComplexGUI*			mWindow;
+
+		void SetActive(bool);
 
 		const EGUI_ELEMENT_TYPE	Type();
 		const EGUI_ELEMENT_TYPE	Type() const;
@@ -553,6 +586,8 @@ namespace FlexKit
 		float2						GetPosition();
 		float2						GetChildPosition(GUIElementHandle Element);
 
+		void						SetPosition(float2 XY);
+
 		GUIGrid&					_GetGrid();
 
 		operator GUIElementHandle () { return mBase; }
@@ -562,7 +597,7 @@ namespace FlexKit
 		void SetCellFormatting(uint2, EDrawDirection);
 		
 
-		GUIElementHandle CreateButton(uint2 CellID);
+		GUIButtonHandle CreateButton(uint2 CellID);
 	};
 
 
@@ -616,6 +651,7 @@ namespace FlexKit
 		}
 
 
+		static void Update		( GUIGridHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in );
 		static void Draw		( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
 		static void Draw_DEBUG	( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
 
@@ -639,7 +675,7 @@ namespace FlexKit
 
 		void Release();
 
-		void Update		( double dt, const SimpleWindowInput in);
+		void Update		( double dt, const SimpleWindowInput in );
 		void Upload		( RenderSystem* RS, GUIRender* out );
 
 		void Draw		( RenderSystem* RS, GUIRender* out );
@@ -648,9 +684,11 @@ namespace FlexKit
 		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
 		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );
 
-		GUIGridHandle	CreateGrid(uint2 ID = {0, 0});
-		GUIGridHandle	CreateGrid(GUIElementHandle	Parent, uint2 ID = {0, 0});
-		GUIButtonHandle CreateButton(GUIElementHandle Parent);
+		void UpdateElement( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	SimpleWindowInput Input );
+
+		GUIGridHandle	CreateGrid	( uint2 ID = {0, 0} );
+		GUIGridHandle	CreateGrid	( GUIElementHandle	Parent, uint2 ID = {0, 0} );
+		GUIButtonHandle CreateButton( GUIElementHandle Parent );
 
 		void CreateTexturedButton();
 

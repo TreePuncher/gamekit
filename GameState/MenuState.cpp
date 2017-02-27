@@ -51,14 +51,16 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 bool OnJoinPressed(void* _ptr, size_t GUIElement)
 {
 	std::cout << "Join Pressed\n";
-	auto* Args = (CBArguements*)_ptr;
+	if (_ptr) {
+		auto* Args = (CBArguements*)_ptr;
 
-	Args->State->Base->GScene.ClearScene();
+		Args->State->Base->GScene.ClearScene();
 
-	PopSubState(Args->State->Base);
-	PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
+		PopSubState(Args->State->Base);
+		PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
 
-	//Args->Engine->BlockAllocator.free(_ptr);
+		//Args->Engine->BlockAllocator.free(_ptr);
+	}
 	return true;
 }
 
@@ -178,14 +180,22 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 	if(1)
 	{
 		auto Grid = State.BettererWindow.CreateGrid();
-		Grid.resize(1.0f, 1.0f);
-		Grid.SetGridDimensions(10, 8);
+		Grid.resize(0.5f, 0.5f);
+		Grid.SetGridDimensions(3, 4);
+		Grid.SetPosition({0.0f, 0.0f});
 
-		auto Btn1 = Grid.CreateButton({ 1, 1 });
-		auto Btn2 = Grid.CreateButton({ 2, 2 });
+		auto Btn1 = Grid.CreateButton({ 0, 1 });
+		auto Btn2 = Grid.CreateButton({ 0, 2 });
+
+		auto Args		= &Engine->BlockAllocator.allocate_aligned<CBArguements>();
+		Args->Engine	= Engine;
+		Args->State		= &State;
+
+		Btn1.SetActive(true);
+		Btn1._IMPL().Clicked = OnJoinPressed;
+		Btn1._IMPL().USR = Args;
 	}
-
-	if(0)
+	else
 	{
 		SimpleWindow_Desc Desc(0.26f, 0.36f, 1, 1, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
 	
