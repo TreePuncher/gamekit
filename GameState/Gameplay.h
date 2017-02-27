@@ -52,6 +52,13 @@ struct PlayerInputState
 	}
 };
 
+struct PlayerStateFrame
+{
+	size_t FrameID;
+	float3 Velocity;
+	float3 Position;
+	float Yaw, Pitch, Roll;
+};
 
 struct Player
 {
@@ -75,15 +82,18 @@ void ReleasePlayer			( Player* P, BaseState* Engine );
 void UpdatePlayer			( BaseState* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
 void UpdatePlayerAnimations	( BaseState* Engine, Player* P, double dT );
 
-
 void SetPlayerPosition	  ( Player* P, float3 Position );
 void YawPlayer			  ( Player* P, float Degree );
 void SetPlayerOrientation ( Player* P, Quaternion Q );
 
-
-inline Quaternion GetOrientation(Player* P) 
+inline float GetPlayerYaw(Player* P)
 {
-	return Quaternion(0, P->CameraCTR.Yaw, 0);
+	return P->CameraCTR.Yaw;
+}
+
+inline Quaternion GetOrientation(Player* P, GraphicScene* GS) 
+{
+	return GS->GetOrientation(P->Model);
 }
 
 inline float3 GetPlayerPosition(Player* P)
@@ -91,69 +101,25 @@ inline float3 GetPlayerPosition(Player* P)
 	return P->PlayerCTR.Pos;
 }
 
-template<typename Ty, size_t SIZE = 64>
-struct CircularBuffer
+struct InputFrame
 {
-	CircularBuffer() : _Head(0), _Tail(0), _Size(0)
-	{}
-	
-	size_t size() noexcept
-	{
-		return _Size;
-	}
-
-	Ty pop_front() noexcept
-	{
-		if (!_Size)
-			FK_ASSERT("BUFFER EMPTY!");
-
-		_Size--;
-
-		size_t idx = _Tail++;
-		_Tail = _Tail % SIZE;
-		return Buffer[idx];
-	}
-
-	bool push_back(const Ty Item) noexcept
-	{
-		if (SIZE > _Size) {
-			_Size++;
-			size_t idx = _Head++;
-			_Head = _Head % SIZE;
-			Buffer[idx] = Item;
-		}
-		return false;
-	}
-
-	Ty& front() noexcept
-	{
-		return Buffer[_Tail];
-	}
-
-	Ty& back() noexcept
-	{
-		return Buffer[_Head];
-	}
-
-	size_t _Head, _Tail, _Size;
-	Ty Buffer[SIZE];
+	PlayerInputState	KeyboardInput;
+	float2				MouseInput;
+	size_t				FrameID;
 };
 
 struct Gameplay_Model
 {
-	struct InputFrame
-	{
-		PlayerInputState	KeyboardInput;
-		float2				MouseInput;
-		size_t				FrameID;
-	};
-	typedef CircularBuffer<InputFrame, 16> InputBuffer;
+	static_vector<Player>		Players;
+	static_vector<InputFrame>	PlayerInputs;
+	static_vector<size_t>		LastFrameRecieved;
+	double						T;
 
-	FlexKit::static_vector<Player>		Players;
-	FlexKit::static_vector<InputBuffer>	BufferedInputs;// Buffered Inputs
-	FlexKit::static_vector<InputFrame>	PlayerInputs;
-	FlexKit::static_vector<size_t>		LastFrameRecieved;
-	double								T;
+	void Initiate(BaseState* Base)
+	{
+		auto* Engine = Base->Engine;
+		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
+	}
 
 	void Clear()
 	{
@@ -162,7 +128,6 @@ struct Gameplay_Model
 
 	void SetPlayerCount(BaseState* Engine, size_t Count)
 	{
-		BufferedInputs.resize(Count);
 		PlayerInputs.resize(Count);
 		Players.resize(Count);
 		LastFrameRecieved.resize(Count);
@@ -180,18 +145,15 @@ struct Gameplay_Model
 		if (T > FrameStep) {
 			for (size_t i = 0; i < Players.size(); ++i)
 			{
-				if(BufferedInputs[i].size())
-					PlayerInputs[i] = BufferedInputs[i].pop_front();
-
 				UpdatePlayer(Engine, &Players[i], 
 					PlayerInputs[i].KeyboardInput, 
 					PlayerInputs[i].MouseInput, 
 					FrameStep);
-#if 1
+#if 0
 				printf("Player at Position: ");
 				printfloat3(Players[i].PlayerCTR.Pos);
 				printf("  Orientation:");
-				printQuaternion(GetOrientation(&Players[i]));
+				printQuaternion(GetOrientation(&Players[i], Engine->ActiveScene));
 				printf("\n");
 #endif
 			}

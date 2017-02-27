@@ -152,6 +152,15 @@ namespace FlexKit
 		inline void SetOrientationL		 (EntityHandle Handle, Quaternion Q)		{ FlexKit::SetOrientationL	(SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
 		inline void SetLightNodeHandle	 (SpotLightHandle Handle, NodeHandle Node)	{ ReleaseNode(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
 
+		inline Quaternion GetOrientation(EntityHandle Handle) 
+		{ 
+			Quaternion Out;
+			FlexKit::GetOrientation(SN, GetNode(Handle), &Out);
+			return Out;
+		}
+
+
+
 		DynArray<SpotLightShadowCaster>		SpotLightCasters;
 		DynArray<Drawable>					Drawables;
 		DynArray<size_t>					FreeEntityList;

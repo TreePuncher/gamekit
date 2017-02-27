@@ -87,6 +87,11 @@ void InitiatePlayer(BaseState* Engine, Player* Out)
 void SetPlayerPosition(Player* P, float3 Position)
 {
 	P->PlayerCTR.Pos = Position;
+	physx::PxExtendedVec3 V3;
+	V3.x = Position.x;
+	V3.y = Position.y;
+	V3.z = Position.z;
+	P->PlayerCollider.Controller->setFootPosition(V3);
 }
 
 

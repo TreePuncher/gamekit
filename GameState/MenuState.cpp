@@ -57,7 +57,8 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		Args->State->Base->GScene.ClearScene();
 
 		PopSubState(Args->State->Base);
-		PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
+		//PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
+		PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
 
 		//Args->Engine->BlockAllocator.free(_ptr);
 	}
@@ -177,7 +178,7 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 	//SetPositionW(Engine->Nodes, Base->ActiveCamera->Node, float3{ 0,10, -25.921f });
 
 
-	if(1)
+	if(0)
 	{
 		auto Grid = State.BettererWindow.CreateGrid();
 		Grid.resize(0.5f, 0.5f);

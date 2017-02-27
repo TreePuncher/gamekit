@@ -698,6 +698,74 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	template<typename Ty, int SIZE = 64>
+	struct CircularBuffer
+	{
+		CircularBuffer() : _Head(0), _Size(0)
+		{}
+
+		bool full() noexcept {
+			return (_Size > 0);
+		}
+
+		bool empty() noexcept {
+			return (_Size == 0);
+		}
+
+		size_t size() noexcept {
+			return _Size;
+		}
+
+		Ty pop_front() noexcept
+		{
+			//if (!_Size)
+			//	FK_ASSERT("BUFFER EMPTY!");
+
+
+			Ty Out = front();
+			_Size = max(--_Size, 0);
+			return Out;
+		}
+
+		Ty pop_back() noexcept
+		{
+			//if (!_Size)
+			//	FK_ASSERT("BUFFER EMPTY!");
+
+
+			Ty Out = back();
+			_Size = max(--_Size, 0);
+			_Head = (SIZE + --_Head) % SIZE;
+			return Out;
+		}
+
+		bool push_back(const Ty Item) noexcept
+		{
+			_Size = min(++_Size, SIZE);
+			size_t idx = _Head++;
+			_Head = _Head % SIZE;
+			Buffer[idx] = Item;
+
+			return false;
+		}
+
+		Ty& front() noexcept
+		{
+			return Buffer[(SIZE + _Head - _Size) % SIZE];
+		}
+
+		Ty& back() noexcept
+		{
+			return Buffer[_Head - 1];
+		}
+
+		int _Head, _Size;
+		Ty Buffer[SIZE];
+	};
+
+	/************************************************************************************************/
 }
 #endif
 #endif

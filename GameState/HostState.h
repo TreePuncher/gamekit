@@ -132,8 +132,6 @@ struct GameInfoPacket : PacketBase
 	PlayerID_t	PlayerIDs[];
 };
 
-
-
 struct GameModePacket : PacketBase
 {
 	GameModePacket(ClientMode mode) : Mode(mode)
@@ -151,15 +149,11 @@ struct ConnectionAccepted
 
 struct PlayerInputPacket : PacketBase
 {
-	PlayerInputPacket(PlayerInputState Input, float2 M, size_t frame = 0xffffffffffffffff) : PlayerInput(Input), Frame(frame),
-		Mouse(M)
+	PlayerInputPacket(InputFrame input) : Input(input)
 	{
 		ID = GetTypeGUID(PlayerInputPacket);
 	}
-
-	size_t				Frame;
-	float2				Mouse;
-	PlayerInputState	PlayerInput;
+	InputFrame	Input;
 };
 
 
@@ -190,6 +184,17 @@ struct SetPlayerInfoPacket : PacketBase
 	Quaternion	R;
 };
 
+
+struct PlayerClientStateInfoUpdate: PacketBase
+{
+	PlayerClientStateInfoUpdate(PlayerStateFrame state) : State(state)
+	{
+		ID			= GetTypeGUID(PlayerClientStateInfoUpdate);
+		PacketSize	= sizeof(PlayerClientStateInfoUpdate);
+	}
+
+	PlayerStateFrame State;
+};
 
 struct HostState : public SubState
 {

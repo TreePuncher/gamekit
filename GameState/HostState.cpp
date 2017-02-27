@@ -99,6 +99,31 @@ void SendClientInfo(HostState* Host, RakNet::SystemAddress Addr, size_t ID)
 }
 
 
+void SendCorrectPlayerStatePacket(HostState* Host, size_t PlayerIdx)
+{
+	printf("Sending Client Correction!\n");
+
+	RakNet::BitStream bsOut;
+	bsOut.Write(eINCOMINGSTRUCT);
+
+	Player* P = &Host->Game.Players[PlayerIdx];
+	auto Addr = Host->OpenConnections[PlayerIdx].Addr;
+
+	PlayerStateFrame Frame;
+	Frame.FrameID  = Host->Game.PlayerInputs[PlayerIdx].FrameID;
+	Frame.Yaw      = P->CameraCTR.Yaw;
+	Frame.Pitch    = P->CameraCTR.Pitch;
+	Frame.Roll     = P->CameraCTR.Roll;
+	Frame.Velocity = P->PlayerCTR.Velocity;
+	Frame.Position = P->PlayerCTR.Pos;
+
+	PlayerClientStateInfoUpdate Packet(Frame);
+	bsOut.Write(Packet, sizeof(Packet));
+
+	Host->Peer->Send(&bsOut, PacketPriority::IMMEDIATE_PRIORITY, PacketReliability::RELIABLE_ORDERED_WITH_ACK_RECEIPT, 0, Addr, false);
+}
+
+
 /************************************************************************************************/
 
 
@@ -262,7 +287,7 @@ void LobbyMode(HostState* ThisState, EngineMemory* ENgine, double dT)
 }
 
 
-void LoadWaitMode(HostState* ThisState, EngineMemory* ENgine, double dT)
+void LoadWaitMode(HostState* ThisState, EngineMemory* Engine, double dT)
 {
 	RakNet::Packet* Packet = nullptr;
 
@@ -305,7 +330,7 @@ void LoadWaitMode(HostState* ThisState, EngineMemory* ENgine, double dT)
 			SetPlayerPosition(&ThisState->Game.Players[I], Position);
 			SendSetPlayerPositionRotation(ThisState, ThisState->OpenConnections[I].Addr, 
 				Position, 
-				GetOrientation(&ThisState->Game.Players[I]),
+				GetOrientation(&ThisState->Game.Players[I], ThisState->Base->ActiveScene),
 				ThisState->OpenConnections[I].ID);
 		}
 
@@ -326,6 +351,7 @@ void LoadWaitMode(HostState* ThisState, EngineMemory* ENgine, double dT)
 void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 {
 	RakNet::Packet* Packet = nullptr;
+	auto Scene = ThisState->Base->ActiveScene;
 
 	while (Packet = ThisState->Peer->Receive(), Packet) {
 		switch (Packet->data[0])
@@ -346,28 +372,44 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 				size_t ClientIdx = GetPlayerIndex(ThisState, Packet->systemAddress);
 				PlayerInputPacket* InputPacket = (PlayerInputPacket*)IncomingPacket;
 				
-				size_t FramesLost = InputPacket->Frame - ThisState->Game.LastFrameRecieved[ClientIdx];
+				size_t FramesLost = InputPacket->Input.FrameID - ThisState->Game.LastFrameRecieved[ClientIdx];
 				for (size_t I = 0; I < FramesLost; ++I)// Replicated last known Input State for missing InputFrames
-				{
-					auto LastFrameRecieved = ThisState->Game.BufferedInputs[ClientIdx].back();
-					ThisState->Game.BufferedInputs[ClientIdx].push_back(LastFrameRecieved);
+					ThisState->Game.PlayerInputs[ClientIdx] = InputPacket->Input;
+
+				ThisState->Game.LastFrameRecieved[ClientIdx] = InputPacket->Input.FrameID;
+			}	break;
+			case GetTypeGUID(PlayerClientStateInfoUpdate):
+			{	// Check if Player State matches Server State
+				PlayerClientStateInfoUpdate* InfoPacket = (PlayerClientStateInfoUpdate*)IncomingPacket;
+				auto ClientIdx	= GetPlayerIndex(ThisState, Packet->systemAddress);
+				auto Player		= &ThisState->Game.Players[ClientIdx];
+
+				auto Position			= GetPlayerPosition	(Player);
+				auto Orientation		= GetOrientation	(Player, Scene);
+				bool ClientOutOfSync	= false;
+
+				ClientOutOfSync  = ((InfoPacket->State.Position - Position).magnitude() > 1.0f);
+				ClientOutOfSync |= CompareFloats(InfoPacket->State.Yaw, GetPlayerYaw(Player), 18.0f);
+
+				if (ClientOutOfSync) {
+					SendCorrectPlayerStatePacket(ThisState, ClientIdx);
+					printf("Expected Player at Position: ");
+					printfloat3(Position);
+					printf("  Actually At: ");
+					printfloat3(InfoPacket->State.Position);
+					printf("\n");
 				}
 
-				ThisState->Game.BufferedInputs[ClientIdx].push_back( 
-				{	InputPacket->PlayerInput,
-					InputPacket->Mouse, 
-					InputPacket->Frame });
-
-				ThisState->Game.LastFrameRecieved[ClientIdx] = InputPacket->Frame;
 			}	break;
 			case GetTypeGUID(_PlayerInfoPacket_):
-			{
+			{	// (OLD)Check if Player State matches Server State
 				PlayerInfoPacket* InfoPacket = (PlayerInfoPacket*)IncomingPacket;
 				for (auto I : ThisState->OpenConnections ) {
 					if (I.ID == InfoPacket->PlayerID) {
 						auto ClientIdx   = GetPlayerIndex(ThisState, I.Addr);
-						auto Position    = GetPlayerPosition(ThisState->Game.Players[ClientIdx]);
-						auto Orientation = GetOrientation(ThisState->Game.Players[ClientIdx]);
+						
+						auto Position = GetPlayerPosition(ThisState->Game.Players[ClientIdx]);
+						auto Orientation = GetOrientation(ThisState->Game.Players[ClientIdx], Scene);
 
 						bool updateClient = false;
 						if (Orientation.dot(InfoPacket->R) > 0.02f)
@@ -403,7 +445,7 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 				auto Position = GetPlayerPosition(&ThisState->Game.Players[Target]);
 				SendSetPlayerPositionRotation(ThisState, Client.Addr, 
 					Position, 
-					GetOrientation(&ThisState->Game.Players[Target]),
+					GetOrientation(&ThisState->Game.Players[Target], Scene),
 					ThisState->OpenConnections[Target].ID);
 			}
 		}
@@ -450,11 +492,12 @@ HostState* CreateHostState(EngineMemory* Engine, BaseState* Base)
 	State->Base           = Base;
 	State->PlayerCount	  = 0;
 	State->Peer			  = RakNet::RakPeerInterface::GetInstance();
-	
+
 	RakNet::SocketDescriptor sd(gServerPort, nullptr);
 
 	auto res = State->Peer->Startup(16, &sd, 1);
 
+	State->Game.Initiate(Base);
 	State->Peer->SetMaximumIncomingConnections(16);
 	State->ServerMode = ServerMode::eSERVERLOBBYMODE;
 

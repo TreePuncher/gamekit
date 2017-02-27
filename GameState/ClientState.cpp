@@ -76,6 +76,31 @@ void SendReady(ClientState* Client)
 /************************************************************************************************/
 
 
+void SendPlayerClientStateInfoUpdate(ClientState* Client, Player* P, size_t FrameID)
+{
+	//printf("Sending to Host the Client Player State!\n");
+
+	RakNet::BitStream bsOut;
+	bsOut.Write(eINCOMINGSTRUCT);
+
+	PlayerStateFrame Frame;
+	Frame.FrameID  = FrameID;
+	Frame.Yaw      = P->CameraCTR.Yaw;
+	Frame.Pitch    = P->CameraCTR.Pitch;
+	Frame.Roll     = P->CameraCTR.Roll;
+	Frame.Velocity = P->PlayerCTR.Velocity;
+	Frame.Position = P->PlayerCTR.Pos;
+
+	PlayerClientStateInfoUpdate Packet(Frame);
+	bsOut.Write(Packet, sizeof(Packet));
+
+	Client->Peer->Send(&bsOut, PacketPriority::IMMEDIATE_PRIORITY, PacketReliability::RELIABLE_ORDERED_WITH_ACK_RECEIPT, 0, Client->ServerAddr, false);
+}
+
+
+/************************************************************************************************/
+
+
 bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
 	auto ThisState = (ClientState*)StateMemory;
@@ -258,6 +283,9 @@ bool UpdateClientEventHandler(SubState* StateMemory, Event evt)
 bool UpdateClientPreDraw(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	ClientPlayState* ThisState = (ClientPlayState*)StateMemory;
+
+	UpdatePlayerAnimations(ThisState->Base, &ThisState->LocalPlayer, dT);
+
 	return true;
 }
 
@@ -269,10 +297,9 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
 {
 	RakNet::Packet* Packet = nullptr;
 
-	while (Packet = ThisState->ClientState->Peer->Receive(), Packet) {
+	while (Packet = ThisState->NetState->Peer->Receive(), Packet) {
 		if (Packet)
 		{
-			printf("Client Packet Received!\n");
 			switch (Packet->data[0])
 			{
 			case eINCOMINGSTRUCT: {
@@ -281,11 +308,11 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
 				switch (IncomingPacket->ID)
 				{
 				case GetTypeGUID(SetPlayerInfoPacket): {
-					printf("Server Moving Player!\n");
 
 					SetPlayerInfoPacket* Info = (SetPlayerInfoPacket*)IncomingPacket;
 
-					if (Info->PlayerID == ThisState->ClientState->ID) {
+					if (Info->PlayerID == ThisState->NetState->ID) {
+						printf("Server Moving Local Player!\n");
 						SetPlayerPosition	(&ThisState->LocalPlayer, Info->POS);
 						SetPlayerOrientation(&ThisState->LocalPlayer, Info->R);
 					}
@@ -308,13 +335,13 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
 			}	break;
 			case eGAMESTARTING:
 			{
-				SendMode(ThisState->ClientState, ePLAYMODE);
+				SendMode(ThisState->NetState, ePLAYMODE);
 				printf("eGAMESTARTED Received!\n");
 			}	break;
 			default:
 				break;
 			}
-			ThisState->ClientState->Peer->DeallocatePacket(Packet);
+			ThisState->NetState->Peer->DeallocatePacket(Packet);
 		}
 	}
 }
@@ -326,37 +353,49 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
 bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (ClientPlayState*)StateMemory;
+	auto Scene = ThisState->Base->ActiveScene;
 
 	float HorizontalMouseMovement	= float(ThisState->Base->MouseState.dPos[0]) / GetWindowWH(Engine)[0];
 	float VerticalMouseMovement		= float(ThisState->Base->MouseState.dPos[1]) / GetWindowWH(Engine)[1];
 
-	ThisState->T += dT;
-
-	ThisState->MouseInput += float2{ HorizontalMouseMovement, VerticalMouseMovement };
+	ThisState->T			+= dT;
+	ThisState->MouseInput	+= float2{ HorizontalMouseMovement, VerticalMouseMovement };
 
 	HandlePackets(ThisState, Engine, dT);
+
+	InputFrame CurrentInputState;
+	CurrentInputState.FrameID		= ThisState->FrameCount;
+	CurrentInputState.KeyboardInput = ThisState->LocalInput;
+	CurrentInputState.MouseInput	= ThisState->MouseInput;
+
+	ThisState->InputBuffer.push_back(CurrentInputState);
 
 	const double UpdateStep = 1.0 / 30.0;
 	if (ThisState->T > UpdateStep) {
 		UpdatePlayer(ThisState->Base, &ThisState->LocalPlayer, ThisState->LocalInput,
 					 ThisState->MouseInput, UpdateStep);
 
-		SendDataPacket<PlayerInputPacket>(
-				ThisState->ClientState, ThisState->LocalInput, 
-				ThisState->MouseInput, 
-				ThisState->FrameCount);// Send Client Input
+		SendDataPacket<PlayerInputPacket>(ThisState->NetState, CurrentInputState);// Send Client Input
 
 		ThisState->FrameCount++;
 		ThisState->T -= UpdateStep;
 		ThisState->MouseInput = {0.0f, 0.0f};
 	}
 
+	ThisState->T2ServerUpdate += dT;
+	if (ThisState->T2ServerUpdate > ThisState->ServerUpdatePeriod)
+	{
+		ThisState->T2ServerUpdate = 0;
+		SendPlayerClientStateInfoUpdate(ThisState->NetState, &ThisState->LocalPlayer, ThisState->FrameCount);
+	}
+
+
 	if (ThisState->T_TillNextPositionUpdate > 1.0f)
 	{
 		SendDataPacket<PlayerInfoPacket>(
-			ThisState->ClientState,
-			ThisState->ClientState->ID,
-			GetOrientation(&ThisState->LocalPlayer),
+			ThisState->NetState,
+			ThisState->NetState->ID,
+			GetOrientation(&ThisState->LocalPlayer, Scene),
 			GetPlayerPosition(&ThisState->LocalPlayer));
 
 		ThisState->T_TillNextPositionUpdate = 0;
@@ -364,13 +403,13 @@ bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT
 	else
 		ThisState->T_TillNextPositionUpdate += dT;
 
-	auto POS = GetPositionW(Engine->Nodes, ThisState->LocalPlayer.CameraCTR.Roll_Node);
+	auto POS = GetPositionW(Engine->Nodes, ThisState->LocalPlayer.CameraCTR.Yaw_Node);
 
-#if 1
+#if 0
 	printf("POS{");
 	printfloat3(POS);
 	printf("}, Q{");
-	printQuaternion(GetOrientation(ThisState->LocalPlayer));
+	printQuaternion(GetOrientation(ThisState->LocalPlayer, Scene));
 	printf("}\n");
 #endif
 
@@ -386,7 +425,7 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, BaseState* Base, Cl
 {
 	ClientPlayState* PlayState = &Engine->BlockAllocator.allocate_aligned<ClientPlayState>();
 	PlayState->Base                           = Base;
-	PlayState->ClientState                    = Client;
+	PlayState->NetState						  = Client;
 	PlayState->VTable.Update				  = UpdateClientGameplay;
 	PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
 	PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
@@ -395,6 +434,8 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, BaseState* Base, Cl
 	PlayState->Imposters.Allocator			  = Engine->BlockAllocator;
 	PlayState->Mode							  = eWAITINGMODE; // Wait for all Players to Load and respond
 	PlayState->FrameCount					  = 0;
+	PlayState->T2ServerUpdate				  = 0.0;
+	PlayState->ServerUpdatePeriod			  = 1.0;
 
 	PlayState->LocalInput.ClearState();
 	PlayState->Imposters.resize(Client->PlayerCount - 1);
@@ -405,6 +446,7 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, BaseState* Base, Cl
 		Imposter.PlayerID = Client->PlayerIds[I];
 	}
 
+	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
 	InitiatePlayer(Base, &PlayState->LocalPlayer);
 
 	return PlayState;

@@ -71,14 +71,17 @@ struct ClientState : public SubState
 
 struct ClientPlayState : public SubState
 {
-	ClientState* ClientState;
+	ClientState*	NetState;
+	ClientMode		Mode;
 
-	ClientMode	Mode;
+	CircularBuffer<InputFrame>	InputBuffer;// Buffers Last 64 Frames(1 Second of Input)
 
 	PlayerInputState	LocalInput;
 	Player				LocalPlayer;
 	float2				MouseInput;
 
+	double				ServerUpdatePeriod;
+	double				T2ServerUpdate;
 	double				T;
 	double				T_TillNextPositionUpdate; 
 	size_t				FrameCount;
