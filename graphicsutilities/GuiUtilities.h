@@ -475,7 +475,7 @@ namespace FlexKit
 		
 		float2 GetCurrentPosition();
 
-		static float3 Position2SS(float2);
+		static float2 Position2SS(float2);
 		static float3 Position2SS(float3);
 
 		void PushLineSegments(FlexKit::LineSegments);
@@ -510,7 +510,8 @@ namespace FlexKit
 		uint2	CellID;
 		float2	Dimensions;
 
-		static void Draw_DEBUG(GUIButtonHandle button, LayoutEngine* Layout);
+		static void Draw		(GUIButtonHandle button, LayoutEngine* Layout);
+		static void Draw_DEBUG	(GUIButtonHandle button, LayoutEngine* Layout);
 	};
 
 
@@ -545,6 +546,7 @@ namespace FlexKit
 
 		DynArray<GUIDimension>&		RowHeights();
 		DynArray<GUIDimension>&		ColumnWidths();
+		GUIGridCell*				CreateCell(uint2);
 		GUIGridCell&				GetCell(uint2 ID, bool& Found);
 		float2						GetCellWH(uint2 ID);
 
@@ -557,6 +559,8 @@ namespace FlexKit
 
 		void resize(float Width_percent, float Height_percent);
 		void SetGridDimensions(size_t Width, size_t Height);
+		void SetCellFormatting(uint2, EDrawDirection);
+		
 
 		GUIElementHandle CreateButton(uint2 CellID);
 	};
@@ -588,8 +592,9 @@ namespace FlexKit
 
 	struct GUIGridCell
 	{
-		uint2    ID;
-		uint32_t Children;
+		uint2			ID;
+		uint32_t		Children;
+		EDrawDirection	StackFormatting;
 	};
 
 	struct GUIGrid
@@ -598,6 +603,7 @@ namespace FlexKit
 			RowHeights	(memory), 
 			ColumnWidths(memory),
 			Cells		(memory),
+			XY			(0.0f, 0.0f),
 			Base		(base) {}
 
 		GUIGrid(const GUIGrid& rhs)
@@ -606,6 +612,7 @@ namespace FlexKit
 			ColumnWidths	= rhs.ColumnWidths;
 			Cells			= rhs.Cells;
 			Base			= rhs.Base;
+			XY				= rhs.XY;
 		}
 
 
@@ -616,6 +623,7 @@ namespace FlexKit
 		DynArray<GUIDimension>	ColumnWidths;
 		DynArray<GUIGridCell>	Cells;
 		float2					WH;
+		float2					XY;
 		uint32_t				Base;
 	};
 
@@ -633,12 +641,12 @@ namespace FlexKit
 
 		void Update		( double dt, const SimpleWindowInput in);
 		void Upload		( RenderSystem* RS, GUIRender* out );
+
 		void Draw		( RenderSystem* RS, GUIRender* out );
 		void Draw_DEBUG	( RenderSystem* RS, GUIRender* out );
 
-		void DrawElements_DEBUG	( RenderSystem* RS, GUIRender* out, GUIElementHandle Element, LayoutEngine* Layout );
-
-		void DrawElement_DEBUG(GUIElementHandle Element, LayoutEngine* Layout);
+		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
+		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );
 
 		GUIGridHandle	CreateGrid(uint2 ID = {0, 0});
 		GUIGridHandle	CreateGrid(GUIElementHandle	Parent, uint2 ID = {0, 0});

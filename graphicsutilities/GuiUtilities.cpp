@@ -1059,6 +1059,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void ComplexGUI::DrawElement(GUIElementHandle Element, LayoutEngine* Layout)
+	{
+		switch (Elements[Element].Type)
+		{
+		case EGUI_ELEMENT_TYPE::EGE_GRID: {
+			GUIGrid::Draw(GUIGridHandle(this, Element), Layout);
+		}	break;
+		case EGUI_ELEMENT_TYPE::EGE_BUTTON_TEXT: {
+			GUIButton::Draw(GUIButtonHandle(this, Element), Layout);
+		}	break;
+		default:
+			break;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	void ComplexGUI::DrawElement_DEBUG(GUIElementHandle Element, LayoutEngine* Layout)
 	{
 		switch (Elements[Element].Type)
@@ -1078,18 +1097,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::DrawElements_DEBUG(RenderSystem* RS, GUIRender* out, GUIElementHandle EH, LayoutEngine* Layout)
-	{
-		for (size_t I = 0; I < Elements.size(); ++I) {
-			if(Elements[I].UpdatePriority == 0)
-				DrawElement_DEBUG(I, Layout);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
 	void ComplexGUI::Draw_DEBUG(RenderSystem* RS, GUIRender* out)
 	{
 		LayoutEngine Layout(Memory, RS, out);
@@ -1097,7 +1104,7 @@ namespace FlexKit
 		for(size_t I = 0; I < Elements.size(); ++I)
 		{
 			if (Elements[I].UpdatePriority == 0) {
-				DrawElements_DEBUG(RS, out, I, &Layout);
+				DrawElement_DEBUG(I, &Layout);
 			}
 		}
 	}
@@ -1204,14 +1211,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 LayoutEngine::Position2SS(float2 in) 
-	{
-		return float3(((in * float2(1, -1)) + float2(-2, 26))/2, 1.0f); 
-	}
-	float3 LayoutEngine::Position2SS(float3 in) 
-	{ 
-		return float3(in.x * 2 - 2, in.y * -2 + 2, .5)/2;
-	}
+	float2 LayoutEngine::Position2SS(float2 in) { return {in.x * 2 - 1, in.y * -2 + 1}; }
+	float3 LayoutEngine::Position2SS(float3 in) { return{ in.x * 2 - 1, in.y * -2 + 1, .5 }; }
 
 
 	/************************************************************************************************/
@@ -1256,7 +1257,9 @@ namespace FlexKit
 
 	void LayoutEngine::PushRect(Draw_RECT Rect)
 	{
-
+		Rect.BLeft	= Position2SS(Rect.BLeft);
+		Rect.TRight = Position2SS(Rect.TRight);
+		FlexKit::PushRect(GUI, Rect);
 	}
 
 
@@ -1303,6 +1306,37 @@ namespace FlexKit
 
 		for (auto& C : Grid._GetGrid().Cells)
 		{
+			float Y = 0;
+			uint32_t Y_ID = 0;
+
+			for (auto& h : Grid.RowHeights())
+			{
+				uint32_t  X_ID = 0;
+
+				for (auto& w : Grid.ColumnWidths()) {
+					bool Result = false;
+					auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
+					if (Result)
+					{
+						auto& Children = Grid.mWindow->Children[Cell.Children];
+						if (&Children && Children.size())
+							for (auto& C : Children)
+								Grid.mWindow->DrawElement(C, LayoutEngine);
+					}
+
+					LayoutEngine->PushOffset({ w, 0 });
+					X_ID++;
+				}
+
+				for (auto& w : Grid.ColumnWidths())
+					LayoutEngine->PopOffset();
+
+				LayoutEngine->PushOffset({ 0, h });
+				Y_ID++;
+			}
+
+			for (auto& h : Grid.RowHeights())
+				LayoutEngine->PopOffset();
 		}
 
 		LayoutEngine->PopOffset();
@@ -1365,45 +1399,48 @@ namespace FlexKit
 			Lines.push_back(Line);
 		}
 
+		float Y = 0;
+		uint32_t Y_ID = 0;
+
+		for (auto& h : Grid.RowHeights())
 		{
-			float Y = 0;
-			uint32_t Y_ID = 0;
+			uint32_t  X_ID = 0;
 
-			for (auto& h : Grid.RowHeights())
-			{
-				uint32_t  X_ID = 0;
-
-				for (auto& w : Grid.ColumnWidths()) {
-					bool Result = false;
-					auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
-					if (Result)
-					{
-						auto& Children = Grid.mWindow->Children[Cell.Children];
-						if (&Children && Children.size())
-							for (auto& C : Children)
-								Grid.mWindow->DrawElement_DEBUG(C, LayoutEngine);
-					}
-
-					LayoutEngine->PushOffset({ w, 0 });
-					X_ID++;
+			for (auto& w : Grid.ColumnWidths()) {
+				bool Result = false;
+				auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
+				if (Result)
+				{
+					auto& Children = Grid.mWindow->Children[Cell.Children];
+					if (&Children && Children.size())
+						for (auto& C : Children)
+							Grid.mWindow->DrawElement_DEBUG(C, LayoutEngine);
 				}
 
-				for (auto& w : Grid.ColumnWidths())
-					LayoutEngine->PopOffset();
-
-				LayoutEngine->PushOffset({ 0, h });
-				Y_ID++;
+				LayoutEngine->PushOffset({ w, 0 });
+				X_ID++;
 			}
 
-			for (auto& h : Grid.RowHeights())
+			for (auto& w : Grid.ColumnWidths())
 				LayoutEngine->PopOffset();
+
+			LayoutEngine->PushOffset({ 0, h });
+			Y_ID++;
 		}
 
+		for (auto& h : Grid.RowHeights())
+			LayoutEngine->PopOffset();
+
 		LayoutEngine->PushLineSegments(Lines);
-
-
-
 		LayoutEngine->PopOffset();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GUIButton::Draw(GUIButtonHandle button, LayoutEngine* Layout)
+	{
 	}
 
 
@@ -1462,23 +1499,20 @@ namespace FlexKit
 
 	GUIGridCell& GUIGridHandle::GetCell(uint2 ID, bool& Found)
 	{
-		auto res = find(_GetGrid().Cells, [&](auto& I) 
-		{ 
-			return I.ID == ID; });
+		auto res = find(_GetGrid().Cells, [&](auto& I) { return I.ID == ID; });
+
 		Found = res != _GetGrid().Cells.end();
 		return *res;
 	}
 
 
-	float2 GUIGridHandle::GetCellWH(uint2 ID)
-	{
+	float2 GUIGridHandle::GetCellWH(uint2 ID){
 		return{ _GetGrid().RowHeights[ID[0]], _GetGrid().ColumnWidths[ID[1]] };
 	}
 
 
-	float2 GUIGridHandle::GetPosition()
-	{
-		return {};
+	float2 GUIGridHandle::GetPosition(){
+		return _GetGrid().XY;
 	}
 
 	float2 GUIGridHandle::GetChildPosition(GUIElementHandle Element)
@@ -1495,33 +1529,55 @@ namespace FlexKit
 
 	void GUIGridHandle::SetGridDimensions(size_t Columns, size_t Rows)
 	{
-		_GetGrid().ColumnWidths.resize(Columns);
-		_GetGrid().RowHeights.resize(Rows);
+		_GetGrid().ColumnWidths.resize(Rows);
+		_GetGrid().RowHeights.resize(Columns);
 
 		for (auto& W : _GetGrid().ColumnWidths)
-			W = _GetGrid().WH[0]  / float(Columns);
+			W = _GetGrid().WH[0]  / float(Rows);
 
 		for (auto& H : _GetGrid().RowHeights)
-			H = _GetGrid().WH[1] / float(Rows);
+			H = _GetGrid().WH[1] / float(Columns);
 	}
 
 
-	GUIElementHandle GUIGridHandle::CreateButton(uint2 CellID)
+	void GUIGridHandle::SetCellFormatting(uint2 CellID, EDrawDirection Formatting)
 	{
-		GUIElementHandle out = mWindow->CreateButton(mBase);
 		bool Result = false;
 		auto* Cell = &GetCell(CellID, Result);
-
-		float2 WH = GetCellWH(CellID);
-		mWindow->Buttons[mWindow->Elements[out].Index].Dimensions = WH;
 
 		if (!Result) {
 			_GetGrid().Cells.push_back({ CellID, (uint32_t)-1 });
 			Cell = &GetCell(CellID, Result);
 		}
 
-		if (Result)
+		Cell->StackFormatting = Formatting;
+	}
+
+
+	GUIGridCell* GUIGridHandle::CreateCell(uint2 CellID)
+	{
+		_GetGrid().Cells.push_back({ CellID, (uint32_t)-1, EDrawDirection::DD_Columns });
+		return &_GetGrid().Cells.back();
+	}
+
+
+	GUIElementHandle GUIGridHandle::CreateButton(uint2 CellID)
+	{
+		GUIElementHandle out = INVALIDHANDLE;
+
+		if (CellID[0] < _GetGrid().ColumnWidths.size() && 
+			CellID[1] < _GetGrid().RowHeights.size())
 		{
+			out = mWindow->CreateButton(mBase);
+			bool Result = false;
+			auto* Cell	= &GetCell(CellID, Result);
+
+			float2 WH = GetCellWH(CellID);
+			mWindow->Buttons[mWindow->Elements[out].Index].Dimensions = WH;
+
+			if (!Result)
+				Cell = CreateCell(CellID);
+
 			if (Cell->Children == (uint32_t)-1) {
 				auto idx = mWindow->Children.size();
 				mWindow->Children.push_back(DynArray<GUIElementHandle>(mWindow->Memory));

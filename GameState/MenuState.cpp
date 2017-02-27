@@ -178,8 +178,8 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 	if(1)
 	{
 		auto Grid = State.BettererWindow.CreateGrid();
-		Grid.resize(0.5f, 0.5f);
-		Grid.SetGridDimensions(3, 5);
+		Grid.resize(1.0f, 1.0f);
+		Grid.SetGridDimensions(10, 8);
 
 		auto Btn1 = Grid.CreateButton({ 1, 1 });
 		auto Btn2 = Grid.CreateButton({ 2, 2 });
