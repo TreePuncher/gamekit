@@ -54,7 +54,7 @@ void Release(SubState* StateMemory)
 
 }
 
-ConsoleSubState* CreateConsoleSubState(EngineMemory* Engine, Console* C, BaseState* Base)
+ConsoleSubState* CreateConsoleSubState(EngineMemory* Engine, Console* C, GameFramework* Base)
 {
 	ConsoleSubState* out;
 	out = &Engine->BlockAllocator.allocate_aligned<ConsoleSubState>();

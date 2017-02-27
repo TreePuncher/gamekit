@@ -483,7 +483,7 @@ bool UpdateHost(SubState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-HostState* CreateHostState(EngineMemory* Engine, BaseState* Base)
+HostState* CreateHostState(EngineMemory* Engine, GameFramework* Base)
 {
 	auto State = &Engine->BlockAllocator.allocate_aligned<HostState>();
 	State->VTable.Update  = UpdateHost;

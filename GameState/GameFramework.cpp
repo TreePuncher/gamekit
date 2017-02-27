@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "ConsoleSubState.h"
-#include "BaseState.h"
+#include "GameFramework.h"
 #include "MenuState.h"
 
 // TODO's
@@ -76,7 +76,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace FlexKit;
 
 
-void HandleKeyEvents(const Event& in, BaseState* _ptr) {
+void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 	//_ptr->Quit = true;
 
 	switch (in.Action)
@@ -116,7 +116,7 @@ void HandleKeyEvents(const Event& in, BaseState* _ptr) {
 /************************************************************************************************/
 
 
-void HandleMouseEvents(const Event& in, BaseState* _ptr) {
+void HandleMouseEvents(const Event& in, GameFramework* _ptr) {
 	switch (in.Action)
 	{
 	case Event::InputAction::Pressed:
@@ -144,7 +144,7 @@ void HandleMouseEvents(const Event& in, BaseState* _ptr) {
 
 void EventsWrapper(const Event& evt, void* _ptr)
 {
-	auto* base = reinterpret_cast<BaseState*>(_ptr);
+	auto* base = reinterpret_cast<GameFramework*>(_ptr);
 
 	auto itr = base->SubStates.rbegin();
 	while(itr != base->SubStates.rend())
@@ -162,7 +162,7 @@ void EventsWrapper(const Event& evt, void* _ptr)
 	case Event::Keyboard:
 		HandleKeyEvents(evt, base);
 	case Event::Mouse:
-		HandleMouseEvents(evt, reinterpret_cast<BaseState*>(_ptr));
+		HandleMouseEvents(evt, reinterpret_cast<GameFramework*>(_ptr));
 		break;
 	}
 }
@@ -171,7 +171,7 @@ void EventsWrapper(const Event& evt, void* _ptr)
 /************************************************************************************************/
 
 
-bool LoadScene(BaseState* State, const char* SceneName)
+bool LoadScene(GameFramework* State, const char* SceneName)
 {
 	auto Engine = State->Engine;
 	return LoadScene(Engine->RenderSystem, &Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, &State->GScene, Engine->TempAllocator);
@@ -181,13 +181,14 @@ bool LoadScene(BaseState* State, const char* SceneName)
 /************************************************************************************************/
 
 
-void DrawMouseCursor(EngineMemory* Engine, BaseState* State)
+void DrawMouseCursor(EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize)
 {
 	using FlexKit::Conversion::Vect2TOfloat2;
 
 	FlexKit::Draw_RECT Cursor;
-	Cursor.BLeft  = State->MouseState.NormalizedPos + float2{ 0.0f, -0.005f };
-	Cursor.TRight = State->MouseState.NormalizedPos + float2{ 0.005f / GetWindowAspectRatio(Engine), 0.005f };
+	Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
+	Cursor.TRight = Cursor.BLeft + CursorSize;
+
 	Cursor.Color  = float4(1, 1, 1, 1);
 
 	PushRect(State->GUIRender, Cursor);
@@ -197,7 +198,7 @@ void DrawMouseCursor(EngineMemory* Engine, BaseState* State)
 /************************************************************************************************/
 
 
-void ReleaseBaseState(EngineMemory* Engine, BaseState* State)
+void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
 {
 	auto RItr = State->SubStates.rbegin();
 	auto REnd = State->SubStates.rend();
@@ -224,7 +225,7 @@ void ReleaseBaseState(EngineMemory* Engine, BaseState* State)
 /************************************************************************************************/
 
 
-inline void PushSubState(BaseState* _ptr, SubState* SS)
+inline void PushSubState(GameFramework* _ptr, SubState* SS)
 {
 	_ptr->SubStates.push_back(GetStateVTable(SS));
 }
@@ -233,7 +234,7 @@ inline void PushSubState(BaseState* _ptr, SubState* SS)
 /************************************************************************************************/
 
 
-void PopSubState(BaseState* State)
+void PopSubState(GameFramework* State)
 {
 	auto Top = State->SubStates.back();
 	Top->Release(reinterpret_cast<SubState*>(Top));
@@ -245,7 +246,7 @@ void PopSubState(BaseState* State)
 /************************************************************************************************/
 
 
-void UpdateBaseState(EngineMemory* Engine, BaseState* State, double dT)
+void UpdateGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 {
 	UpdateMouseInput(&State->MouseState, &Engine->Window);
 
@@ -271,7 +272,7 @@ void UpdateBaseState(EngineMemory* Engine, BaseState* State, double dT)
 /************************************************************************************************/
 
 
-void PreDrawBaseState(EngineMemory* Engine, BaseState* State, double dT)
+void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 {
 	if (!State->SubStates.size()) {
 		State->Quit = true;
@@ -305,9 +306,9 @@ SubStateVTable* GetStateVTable(SubState* _ptr)
 
 extern "C"
 {
-	GAMESTATEAPI BaseState* InitiateBaseGameState(EngineMemory* Engine)
+	GAMESTATEAPI GameFramework* InitiateBaseGameState(EngineMemory* Engine)
 	{
-		BaseState& State = Engine->BlockAllocator.allocate_aligned<BaseState>();
+		GameFramework& State = Engine->BlockAllocator.allocate_aligned<GameFramework>();
 		
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
@@ -371,9 +372,9 @@ extern "C"
 
 #include<thread>
 
-	GAMESTATEAPI void Update(EngineMemory* Engine, BaseState* State, double dt)
+	GAMESTATEAPI void Update(EngineMemory* Engine, GameFramework* State, double dt)
 	{
-		UpdateBaseState(Engine, State, dt);
+		UpdateGameFramework(Engine, State, dt);
 
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
 		UpdateColliders	(&State->PScene, &Engine->Nodes);
@@ -382,21 +383,21 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void UpdateFixed(EngineMemory* Engine, double dt, BaseState* State)
+	GAMESTATEAPI void UpdateFixed(EngineMemory* Engine, double dt, GameFramework* State)
 	{
 		UpdateMouseInput(&State->MouseState, &Engine->Window);
 	}
 
 
-	GAMESTATEAPI void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, BaseState* _ptr)
+	GAMESTATEAPI void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
 	{
 		UpdateAnimationsGraphicScene(&_ptr->GScene, dt);
 	}
 
 
-	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, BaseState* State)
+	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
 	{
-		PreDrawBaseState(Engine, State, dt);
+		PreDrawGameFramework(Engine, State, dt);
 
 		UpdateTransforms	(State->Nodes);
 		UpdateCamera		(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
@@ -404,7 +405,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, BaseState* State)
+	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameFramework* State)
 	{
 		auto RS = &Engine->RenderSystem;
 
@@ -482,7 +483,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, BaseState* State)
+	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
 	{
 		IncrementCurrent(&Engine->DepthBuffer);
 
@@ -490,7 +491,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void Cleanup(EngineMemory* Engine, BaseState* State)
+	GAMESTATEAPI void Cleanup(EngineMemory* Engine, GameFramework* State)
 	{
 		// wait for last Frame to finish Rendering
 		auto CL = GetCurrentCommandList(Engine->RenderSystem);
@@ -501,7 +502,7 @@ extern "C"
 		}
 
 		//ShutDownUploadQueues(Engine->RenderSystem);
-		ReleaseBaseState(Engine, State);
+		ReleaseGameFramework(Engine, State);
 
 		// Counters are at Max 3
 		//Free_DelayedReleaseResources(Engine->RenderSystem);
@@ -517,29 +518,29 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void PostPhysicsUpdate(BaseState*)
+	GAMESTATEAPI void PostPhysicsUpdate(GameFramework*)
 	{
 
 	}
 
 
-	GAMESTATEAPI void PrePhysicsUpdate(BaseState*)
+	GAMESTATEAPI void PrePhysicsUpdate(GameFramework*)
 	{
 
 	}
 
 	struct CodeExports
 	{
-		typedef BaseState*	(*InitiateGameStateFN)	(EngineMemory* Engine);
-		typedef void		(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, BaseState* _ptr);
-		typedef void		(*UpdateIMPL)			(EngineMemory* Engine,	BaseState* _ptr, double dt);
-		typedef void		(*UpdateAnimationsFN)	(EngineMemory* RS,		iAllocator* TempMemory, double dt, BaseState* _ptr);
-		typedef void		(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, BaseState* _ptr);
-		typedef void		(*DrawFN)				(EngineMemory* RS,		iAllocator* TempMemory,			   BaseState* _ptr);
-		typedef void		(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, BaseState* _ptr);
-		typedef void		(*CleanUpFN)			(EngineMemory* Engine,	BaseState* _ptr);
-		typedef void		(*PostPhysicsUpdate)	(BaseState*);
-		typedef void		(*PrePhysicsUpdate)		(BaseState*);
+		typedef GameFramework*	(*InitiateGameStateFN)	(EngineMemory* Engine);
+		typedef void		(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, GameFramework* _ptr);
+		typedef void		(*UpdateIMPL)			(EngineMemory* Engine,	GameFramework* _ptr, double dt);
+		typedef void		(*UpdateAnimationsFN)	(EngineMemory* RS,		iAllocator* TempMemory, double dt, GameFramework* _ptr);
+		typedef void		(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
+		typedef void		(*DrawFN)				(EngineMemory* RS,		iAllocator* TempMemory,			   GameFramework* _ptr);
+		typedef void		(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
+		typedef void		(*CleanUpFN)			(EngineMemory* Engine,	GameFramework* _ptr);
+		typedef void		(*PostPhysicsUpdate)	(GameFramework*);
+		typedef void		(*PrePhysicsUpdate)		(GameFramework*);
 
 		InitiateGameStateFN		Init;
 		InitiateEngineFN		InitEngine;

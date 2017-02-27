@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "BaseState.h"
+#include "GameFramework.h"
 #include "CameraUtilities.h"
 
 
@@ -77,10 +77,10 @@ struct Player
 };
 
 
-void InitiatePlayer			( BaseState* Engine, Player* Out );
-void ReleasePlayer			( Player* P, BaseState* Engine );
-void UpdatePlayer			( BaseState* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
-void UpdatePlayerAnimations	( BaseState* Engine, Player* P, double dT );
+void InitiatePlayer			( GameFramework* Engine, Player* Out );
+void ReleasePlayer			( Player* P, GameFramework* Engine );
+void UpdatePlayer			( GameFramework* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
+void UpdatePlayerAnimations	( GameFramework* Engine, Player* P, double dT );
 
 void SetPlayerPosition	  ( Player* P, float3 Position );
 void YawPlayer			  ( Player* P, float Degree );
@@ -115,7 +115,7 @@ struct Gameplay_Model
 	static_vector<size_t>		LastFrameRecieved;
 	double						T;
 
-	void Initiate(BaseState* Base)
+	void Initiate(GameFramework* Base)
 	{
 		auto* Engine = Base->Engine;
 		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
@@ -126,7 +126,7 @@ struct Gameplay_Model
 		Players.clear();
 	}
 
-	void SetPlayerCount(BaseState* Engine, size_t Count)
+	void SetPlayerCount(GameFramework* Engine, size_t Count)
 	{
 		PlayerInputs.resize(Count);
 		Players.resize(Count);
@@ -139,7 +139,7 @@ struct Gameplay_Model
 			InitiatePlayer(Engine, &P);
 	}
 
-	void Update(BaseState* Engine, double dT)
+	void Update(GameFramework* Engine, double dT)
 	{
 		const double FrameStep = 1.0 / 30.0;
 		if (T > FrameStep) {
@@ -163,7 +163,7 @@ struct Gameplay_Model
 	}
 
 
-	void UpdateAnimations(BaseState* Engine, double dT)
+	void UpdateAnimations(GameFramework* Engine, double dT)
 	{
 		for (auto& P : Players)
 			UpdatePlayerAnimations(Engine, &P, dT);

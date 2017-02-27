@@ -1,5 +1,5 @@
-#ifndef BASESTATE_H
-#define BASESTATE_H
+#ifndef GameFramework_H
+#define GameFramework_H
 
 /**********************************************************************
 
@@ -66,7 +66,7 @@ struct SubStateVTable
 	FN_RELEASE_SUBSTATE Release			= nullptr;
 };
 
-struct BaseState
+struct GameFramework
 {
 	struct {
 		FontAsset*			Font;
@@ -107,22 +107,22 @@ struct BaseState
 struct SubState
 {
 	SubStateVTable	VTable;
-	BaseState*		Base;
+	GameFramework*		Base;
 };
 
 
 /************************************************************************************************/
 
-bool			LoadScene		(BaseState* State, const char* SceneName);
+bool			LoadScene		(GameFramework* State, const char* SceneName);
 
-void			DrawMouseCursor	 (EngineMemory* Engine, BaseState* State);
+void			DrawMouseCursor	 (EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
 
-void			PushSubState	 (BaseState* _ptr, SubState* SS);
-void			PopSubState		 (BaseState* _ptr);
+void			PushSubState	 (GameFramework* _ptr, SubState* SS);
+void			PopSubState		 (GameFramework* _ptr);
 
-void			UpdateBaseState	 (EngineMemory* Engine, BaseState* _ptr, double dT);
-void			PreDrawBaseState (EngineMemory* Engine, BaseState* _ptr, double dT);
-void			ReleaseBaseState (EngineMemory* Engine, BaseState* _ptr );
+void			UpdateGameFramework	 (EngineMemory* Engine, GameFramework* _ptr, double dT);
+void			PreDrawGameFramework (EngineMemory* Engine, GameFramework* _ptr, double dT);
+void			ReleaseGameFramework (EngineMemory* Engine, GameFramework* _ptr );
 
 SubStateVTable* GetStateVTable	 (SubState* _ptr);
 

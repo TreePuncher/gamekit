@@ -141,7 +141,7 @@ namespace FlexKit
 		auto ElementCord = CursorPos - POS;
 		auto T = WH - ElementCord;
 
-#if 0
+#if 1
 		std::cout << "Checking Cursor Inside: \n CursorPos:";
 		printfloat2(CursorPos);
 		std::cout << "\n CursorWH:";
@@ -1287,6 +1287,7 @@ namespace FlexKit
 			float2 Temp2 = GetCurrentPosition();
 			Offset = { Temp2.x, Temp2.y, 0.0f };
 		}
+
 		for (auto& L : Temp) {
 			L.A += Offset;
 			L.B += Offset;
@@ -1302,8 +1303,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LayoutEngine::PushRect(Draw_RECT Rect)
-	{
+	void LayoutEngine::PushRect(Draw_RECT Rect)	{
 		Rect.BLeft	= Position2SS(Rect.BLeft);
 		Rect.TRight = Position2SS(Rect.TRight);
 		FlexKit::PushRect(GUI, Rect);
@@ -1313,8 +1313,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LayoutEngine::PushOffset(float2 XY)
-	{
+	void LayoutEngine::PushOffset(float2 XY) {
 		PositionStack.push_back(XY);
 	}
 
@@ -1322,8 +1321,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LayoutEngine::PopOffset()
-	{
+	void LayoutEngine::PopOffset() {
 		PositionStack.pop_back();
 	}
 
@@ -1340,11 +1338,11 @@ namespace FlexKit
 			float Y = 0;
 			uint32_t Y_ID = 0;
 
-			for (auto& h : Grid.RowHeights())
+			for (auto& h : Grid.ColumnWidths())
 			{
 				uint32_t  X_ID = 0;
 
-				for (auto& w : Grid.ColumnWidths()) {
+				for (auto& w : Grid.RowHeights()) {
 					bool Result = false;
 					auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
 					if (Result)
@@ -1359,14 +1357,14 @@ namespace FlexKit
 					X_ID++;
 				}
 
-				for (auto& w : Grid.ColumnWidths())
+				for (auto& w : Grid.RowHeights())
 					LayoutEngine->PopOffset();
 
 				LayoutEngine->PushOffset({ 0, h });
 				Y_ID++;
 			}
 
-			for (auto& h : Grid.RowHeights())
+			for (auto& h : Grid.ColumnWidths())
 				LayoutEngine->PopOffset();
 		}
 
@@ -1550,15 +1548,22 @@ namespace FlexKit
 
 	void GUIButton::Update(GUIButtonHandle Btn, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in)
 	{
-		auto TL = LayoutEngine->GetCurrentPosition();
-		auto BR = TL + Btn.WH();
+		auto TL       = LayoutEngine->GetCurrentPosition();
+		auto BR       = TL + Btn.WH();
 		auto MousePOS = in.MousePosition;
-		MousePOS.y = 1.0f - MousePOS.y;
+		MousePOS.y    = 1.0f - MousePOS.y;
 
-		if(	MousePOS.x > TL.x && 
-			MousePOS.y > TL.y && 
-			MousePOS.y < BR.y &&
-			MousePOS.x < BR.x )
+		//for(size_t I = 0; I < 50; ++I)
+		//	std::cout << "\n";
+
+		//std::cout << "TL{ " << TL.x << ":" << TL.y << "}\n";
+		//std::cout << "MP{ " <<MousePOS.x << ":" << MousePOS.y << "}\n";
+		//std::cout << "BR{ " << BR.x << ":" << BR.y << "}\n";
+
+		if(	MousePOS.x >= TL.x && 
+			MousePOS.y >= TL.y && 
+			MousePOS.y <= BR.y &&
+			MousePOS.x <= BR.x )
 		{
 			if (Btn._IMPL().Entered && Btn._IMPL().HoverDuration == 0.0)
 				Btn._IMPL().Entered(Btn._IMPL().USR, Btn);
@@ -1576,7 +1581,7 @@ namespace FlexKit
 		else
 		{
 			Btn._IMPL().ClickState		= false;
-			Btn._IMPL().HoverDuration	= 0;
+			Btn._IMPL().HoverDuration	= 0.0;
 		}
 	}
 

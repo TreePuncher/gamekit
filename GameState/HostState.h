@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RakNetTypes.h"
 #include "BitStream.h"
 
-#include "BaseState.h"
+#include "GameFramework.h"
 #include "Gameplay.h"
 #include "..\Application\GameMemory.h"
 #include "..\coreutilities\type.h"
@@ -226,7 +226,7 @@ struct HostState : public SubState
 
 size_t GetPlayerIndex(HostState* Host, RakNet::SystemAddress Addr);
 
-HostState* CreateHostState(EngineMemory* Engine, BaseState* Base);
+HostState* CreateHostState(EngineMemory* Engine, GameFramework* Base);
 
 
 #endif

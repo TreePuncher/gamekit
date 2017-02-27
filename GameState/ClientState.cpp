@@ -191,7 +191,7 @@ bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-ClientState* CreateClientState(EngineMemory* Engine, BaseState* Base)
+ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Base)
 {
 	auto State = &Engine->BlockAllocator.allocate_aligned<ClientState>();
 	State->VTable.Update       = JoinServer;
@@ -421,7 +421,7 @@ bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT
 /************************************************************************************************/
 
 
-ClientPlayState* CreateClientPlayState(EngineMemory* Engine, BaseState* Base, ClientState* Client)
+ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Base, ClientState* Client)
 {
 	ClientPlayState* PlayState = &Engine->BlockAllocator.allocate_aligned<ClientPlayState>();
 	PlayState->Base                           = Base;

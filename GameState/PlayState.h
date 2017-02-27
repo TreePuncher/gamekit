@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "BaseState.h"
+#include "GameFramework.h"
 #include "Gameplay.h"
 #include "CameraUtilities.h"
 #include "..\Application\GameMemory.h"
@@ -46,7 +46,7 @@ struct PlayState : public SubState
 	PlayerInputState			Input;
 };
 
-PlayState* CreatePlayState(EngineMemory* Engine, BaseState* Base);
+PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base);
 
 
 #endif

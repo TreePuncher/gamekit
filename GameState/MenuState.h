@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "BaseState.h"
+#include "GameFramework.h"
 #include "CameraUtilities.h"
 	
 
@@ -52,6 +52,6 @@ struct MenuState : public SubState
 };
 
 
-MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine);
+MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine);
 
 #endif

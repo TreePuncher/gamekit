@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CONSOLESUBSTATE_H
 
 #include "Console.h"
-#include "BaseState.h"
+#include "GameFramework.h"
 
 
 // Eventually will be a Quake Style Console
@@ -39,6 +39,6 @@ struct ConsoleSubState : public SubState
 };
 
 void Release(SubState* StateMemory);
-ConsoleSubState* CreateConsoleSubState(EngineMemory* Engine, Console* C, BaseState* Base);
+ConsoleSubState* CreateConsoleSubState(EngineMemory* Engine, Console* C, GameFramework* Base);
 
 #endif

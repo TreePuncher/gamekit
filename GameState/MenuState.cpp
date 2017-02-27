@@ -57,8 +57,8 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		Args->State->Base->GScene.ClearScene();
 
 		PopSubState(Args->State->Base);
-		//PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
-		PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
+		PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
+		//PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
 
 		//Args->Engine->BlockAllocator.free(_ptr);
 	}
@@ -90,7 +90,6 @@ bool OnExitLeft(void* _ptr, size_t GUIElement)
 }
 
 
-
 bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
@@ -101,7 +100,7 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	Input.CursorWH				  = ThisState->CursorSize;
 
 	DrawSimpleWindow(Input, &ThisState->Window, &StateMemory->Base->GUIRender);
-	DrawMouseCursor(Engine, ThisState->Base);
+	DrawMouseCursor(Engine, ThisState->Base, ThisState->Base->MouseState.NormalizedPos, {0.05f, 0.05f});
 
 	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Base->GUIRender);
 	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Base->GUIRender);
@@ -111,11 +110,12 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	return true;
 }
 
+
 bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	SimpleWindowInput	Input	  = {};
-	BaseState*			Base	  = ThisState->Base;
+	GameFramework*		Base	  = ThisState->Base;
 
 	ThisState->T += dT;
 
@@ -128,7 +128,7 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 	
 	ThisState->BettererWindow.Update(dT, Input);
 
-	UpdateSimpleWindow(&Input, &ThisState->Window);
+	//UpdateSimpleWindow(&Input, &ThisState->Window);
 
 	/*
 	auto Model = ThisState->Model;
@@ -152,7 +152,7 @@ void ReleaseMenu	(SubState* StateMemory)
 	ThisState->BettererWindow.Release();
 }
 
-MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
+MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 {
 	auto& State                = *(MenuState*)Engine->BlockAllocator.malloc(sizeof(MenuState));
 	new(&State) MenuState(Engine->BlockAllocator);
@@ -178,12 +178,12 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 	//SetPositionW(Engine->Nodes, Base->ActiveCamera->Node, float3{ 0,10, -25.921f });
 
 
-	if(0)
+	if(1)
 	{
 		auto Grid = State.BettererWindow.CreateGrid();
 		Grid.resize(0.5f, 0.5f);
 		Grid.SetGridDimensions(3, 4);
-		Grid.SetPosition({0.0f, 0.0f});
+		Grid.SetPosition({0.5f, 0.0f});
 
 		auto Btn1 = Grid.CreateButton({ 0, 1 });
 		auto Btn2 = Grid.CreateButton({ 0, 2 });
@@ -193,8 +193,12 @@ MenuState* CreateMenuState(BaseState* Base, EngineMemory* Engine)
 		Args->State		= &State;
 
 		Btn1.SetActive(true);
-		Btn1._IMPL().Clicked = OnJoinPressed;
+		Btn1._IMPL().Clicked = OnExitPressed;
 		Btn1._IMPL().USR = Args;
+
+		Btn2.SetActive(true);
+		Btn2._IMPL().Clicked = OnExitPressed;
+		Btn2._IMPL().USR = Args;
 	}
 	else
 	{

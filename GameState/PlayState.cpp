@@ -137,7 +137,7 @@ void ReleasePlayState(SubState* StateMemory)
 /************************************************************************************************/
 
 
-PlayState* CreatePlayState(EngineMemory* Engine, BaseState* Base)
+PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
 {
 	PlayState* State = nullptr;
 

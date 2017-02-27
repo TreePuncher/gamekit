@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "CameraUtilities.cpp"
 #include "Console.cpp"
 #include "ConsoleSubState.cpp"
-#include "BaseGameState.cpp"
+#include "GameFramework.cpp"
 #include "MenuState.cpp"
 #include "PlayState.cpp"
 #include "Gameplay.cpp"

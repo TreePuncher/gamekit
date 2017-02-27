@@ -144,7 +144,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="BaseGameState.cpp">
+    <ClCompile Include="GameFramework.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -167,7 +167,7 @@
     <ClCompile Include="Win64.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="BaseState.h" />
+    <ClInclude Include="GameFramework.h" />
     <ClInclude Include="CameraUtilities.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="Console.h" />

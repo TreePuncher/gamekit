@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RakNetTypes.h"
 #include "BitStream.h"
 
-#include "BaseState.h"
+#include "GameFramework.h"
 #include "Gameplay.h"
 #include "..\Application\GameMemory.h"
 
@@ -89,8 +89,8 @@ struct ClientPlayState : public SubState
 	FlexKit::DynArray<PlayerImposters> Imposters;// Cause hes an imposter, trying to steal all the client info
 };
 
-ClientState*		CreateClientState		(EngineMemory* Engine, BaseState* Base);
-ClientPlayState*	CreateClientPlayState	(EngineMemory* Engine, BaseState* Base, ClientState* Peer);
+ClientState*		CreateClientState		(EngineMemory* Engine, GameFramework* Base);
+ClientPlayState*	CreateClientPlayState	(EngineMemory* Engine, GameFramework* Base, ClientState* Peer);
 
 
 #endif

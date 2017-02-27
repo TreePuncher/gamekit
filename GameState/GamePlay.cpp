@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gameplay.h"
 
-void InitiatePlayer(BaseState* Engine, Player* Out)
+void InitiatePlayer(GameFramework* Engine, Player* Out)
 {
 	//Out->PlayerCTR.Orientation = Quaternion(0, 0, 0, 1);
 	Out->PlayerCTR.Pos      = float3(0, 0, 0);
@@ -119,7 +119,7 @@ void TranslateActor(Player* P, float3 pos, double dT)
 }
 
 
-void UpdatePlayer(BaseState* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT)
+void UpdatePlayer(GameFramework* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT)
 {
 	float MovementFactor = 50;
 	float Drag =  Input.Shield ? 6.0f : 5.0f;
@@ -218,7 +218,7 @@ void UpdatePlayer(BaseState* Engine, Player* P, PlayerInputState Input, float2 M
 	UpdateCameraController(Engine->Nodes, Cam_Ctr, dT);
 }
 
-void UpdatePlayerAnimations(BaseState* Engine, Player* P, double dT)
+void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
 {
 	UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
 
@@ -231,7 +231,7 @@ void UpdatePlayerAnimations(BaseState* Engine, Player* P, double dT)
 /************************************************************************************************/
 
 
-void ReleasePlayer(Player* P, BaseState* Engine)
+void ReleasePlayer(Player* P, GameFramework* Engine)
 {
 	Engine->GScene.RemoveEntity(P->Model);
 	//P->PlayerCollider.Controller->release();
