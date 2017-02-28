@@ -1661,7 +1661,7 @@ extern "C"
 
 	void CleanUpState(GameState* Scene, EngineMemory* Engine)
 	{
-		FreeFontAsset(Scene->Font);
+		Release(Scene->Font);
 		CleanUpTextArea(&Scene->Text, Engine->BlockAllocator);
 		ReleaseTerrain(Scene->Nodes, &Scene->Landscape);
 
@@ -1852,7 +1852,7 @@ extern "C"
 		ReleaseCamera			(_ptr->Nodes, _ptr->ActiveCamera);
 		ReleaseGraphicScene		(&_ptr->GScene);
 		CleanupHairRender		(&_ptr->HairRender);
-		CleanUpScene			(&_ptr->PScene, &Engine->Physics);
+		ReleaseScene			(&_ptr->PScene, &Engine->Physics);
 		ReleaseEngine			(Engine);
 	}
 

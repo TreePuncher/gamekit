@@ -103,6 +103,8 @@ namespace FlexKit
 			DelayReleaseDrawable(RS, &D);
 		}
 
+		SceneManagement.Release();
+
 		Drawables.clear();
 	}
 
@@ -475,9 +477,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void QuadTree::Initiate(iAllocator* Memory)
+	void QuadTree::Initiate(iAllocator* memory)
 	{
-		Memory =  Memory;
+		Memory =  memory;
 		Root   = &Memory->allocate_aligned<ScenePartitionTable::TY_NODE>();
 	}
 
@@ -633,7 +635,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpSceneAnimation(AnimationClip* AC, iAllocator* Memory)
+	void ReleaseSceneAnimation(AnimationClip* AC, iAllocator* Memory)
 	{
 		for (size_t II = 0; II < AC->FrameCount; ++II) 
 		{

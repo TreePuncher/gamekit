@@ -420,7 +420,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanupPhysics(PhysicsSystem* Physics)
+	void ReleasePhysics(PhysicsSystem* Physics)
 	{
 		Physics->CPUDispatcher->release();// Physx
 		Physics->DefaultMaterial->release();
@@ -435,7 +435,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUpScene(PScene* Scn, PhysicsSystem* PS)
+	void ReleaseScene(PScene* Scn, PhysicsSystem* PS)
 	{
 		for (auto c : Scn->Colliders) {
 			auto SceneData = (PActor*)c.Actor->userData;
@@ -454,6 +454,9 @@ namespace FlexKit
 			if(c.Actor) c.Actor->release();
 		}
 
+		Scn->Scene->fetchResults(true);
+		Scn->ControllerManager->purgeControllers();
+		Scn->ControllerManager->release();
 		Scn->Colliders.Release();
 		Scn->Scene->release();
 	}
@@ -486,6 +489,7 @@ namespace FlexKit
 		CCDesc.position             = { 0.0f, Desc.h / 2, 0.0f };
 		CCDesc.climbingMode         = PxCapsuleClimbingMode::eEASY;
 		//CCDesc.upDirection = PxVec3(0, 0, 1);
+
 		auto NewCharacterController = Scene->ControllerManager->createController(CCDesc);
 		out->Controller             = NewCharacterController;
 		out->Controller->setFootPosition({ Desc.FootPos.x, Desc.FootPos.y, Desc.FootPos.z });

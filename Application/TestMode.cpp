@@ -848,10 +848,10 @@
 //
 //	void CleanUp(EngineMemory* Engine)
 //	{
-//		FreeFontAsset(&Font);
+//		Release(&Font);
 //		//Release(Nodes, &Terrain);
 //		//CleanUpTextArea(&TextBlock, &Engine->BlockAllocator);
-//		CleanUpScene(&S);
+//		ReleaseScene(&S);
 //		ReleaseGraphicScene(&SM);
 //
 //		FreeAllResources(&Assets);

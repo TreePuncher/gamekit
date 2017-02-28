@@ -36,7 +36,7 @@ void ReleaseEngine(EngineMemory* Engine)
 	using FlexKit::PrintBlockStatus;
 
 #if USING(PHYSX)
-	CleanupPhysics( &Engine->Physics );
+	ReleasePhysics( &Engine->Physics );
 #endif
 	
 	ReleaseForwardPass	( &Engine->ForwardRender  );

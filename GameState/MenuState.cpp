@@ -150,6 +150,7 @@ void ReleaseMenu	(SubState* StateMemory)
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	CleanUpSimpleWindow(&ThisState->Window, ThisState->Base->Engine->RenderSystem);
 	ThisState->BettererWindow.Release();
+	ThisState->Base->Engine->BlockAllocator.free(ThisState);
 }
 
 MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
@@ -165,20 +166,8 @@ MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 	State.CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 	Base->MouseState.Enabled    = true;
 
-	auto Model = Base->GScene.CreateDrawableAndSetMesh("Flower");
-	State.Model = Model;
-
-	Base->GScene.SetMaterialParams(Model, float4(1, 0, 0, 1), float4(0, 0, 1, 1));
-	//Base->GScene.TranslateEntity_WT(Model, {-3, -4, -10});
-
-
-	//Pitch(Engine->Nodes, Base->ActiveCamera->Node, pi / 12.0f);
-	//TranslateWorld(Engine->Nodes, Base->ActiveCamera->Node, {0, -4, 0});
-	//Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi);
-	//SetPositionW(Engine->Nodes, Base->ActiveCamera->Node, float3{ 0,10, -25.921f });
-
-
-	if(1)
+	/*
+	if(0)
 	{
 		auto Grid = State.BettererWindow.CreateGrid();
 		Grid.resize(0.5f, 0.5f);
@@ -193,7 +182,7 @@ MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 		Args->State		= &State;
 
 		Btn1.SetActive(true);
-		Btn1._IMPL().Clicked = OnExitPressed;
+		Btn1._IMPL().Clicked = OnJoinPressed;
 		Btn1._IMPL().USR = Args;
 
 		Btn2.SetActive(true);
@@ -259,5 +248,6 @@ MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 		TextButton.Text            = "Exit Game";
 		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
 	}
+	*/
 	return &State;
 }

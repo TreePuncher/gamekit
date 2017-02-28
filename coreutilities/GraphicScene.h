@@ -41,9 +41,14 @@ namespace FlexKit
 	{
 		typedef typename TY_SCHEME::TY_ENTRY TY_NODE;
 
-		void Initiate(iAllocator* Memory)
+		void Initiate(iAllocator* memory)
 		{
-			Scene.Initiate(Memory);
+			Scene.Initiate(memory);
+		}
+
+		void Release()
+		{
+			Scene.Release();
 		}
 
 
@@ -82,7 +87,7 @@ namespace FlexKit
 	{
 		typedef QuadTreeNode TY_ENTRY;
 
-		void Initiate(iAllocator* Memory);
+		void Initiate(iAllocator* memory);
 		void Release();
 
 		TY_ENTRY*						Root;

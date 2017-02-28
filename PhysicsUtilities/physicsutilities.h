@@ -233,8 +233,8 @@ namespace FlexKit
 	FLEXKITAPI void Initiate		(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc);
 	FLEXKITAPI void ReleaseCapsule	(CapsuleCharacterController* Capsule);
 
-	FLEXKITAPI void	CleanupPhysics	(PhysicsSystem* Physics);
-	FLEXKITAPI void	CleanUpScene	(PScene* mat);
+	FLEXKITAPI void	ReleasePhysics	(PhysicsSystem* Physics);
+	FLEXKITAPI void	ReleaseScene	(PScene* mat);
 
 
 	FLEXKITAPI void	InitiateScene	(PhysicsSystem* System, PScene* scn, iAllocator* allocator);

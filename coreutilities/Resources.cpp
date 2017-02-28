@@ -847,10 +847,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FreeFontAsset(FontAsset* asset)
+	void Release(FontAsset* asset)
 	{
 		FreeTexture(&asset->Texture);
 		asset->Memory->free(asset->FontDir);
+		asset->Memory->free(asset);
 	}
 
 

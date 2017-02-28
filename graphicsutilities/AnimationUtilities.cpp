@@ -462,7 +462,7 @@ namespace FlexKit
 
 		auto I = S->Animations;
 		while (I != nullptr) {
-			CleanUpSceneAnimation(&I->Clip, I->Memory);
+			ReleaseSceneAnimation(&I->Clip, I->Memory);
 			I->Memory->_aligned_free(I);
 			I = I->Next;
 		}

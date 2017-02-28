@@ -2423,7 +2423,7 @@ namespace FlexKit
 	FLEXKITAPI void PushLineSet( GUIRender* RG, LineSegments );
 	
 	FLEXKITAPI void InitiateDrawGUI		( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
-	FLEXKITAPI void ReleaseDrawGUI		( GUIRender* RG);
+	FLEXKITAPI void ReleaseDrawGUI		( RenderSystem* RS, GUIRender* RG);
 
 	FLEXKITAPI void Clear		( GUIRender* RG );
 	FLEXKITAPI void UploadGUI	( RenderSystem* RS, GUIRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);

@@ -942,7 +942,6 @@ namespace FlexKit
 		System->NullUAV->Release();
 		System->NullSRV->Release();
 
-
 		System->GraphicsQueue->Release();
 		System->UploadQueue->Release();
 		System->ComputeQueue->Release();
@@ -954,6 +953,8 @@ namespace FlexKit
 		System->pDevice->Release();
 		System->CopyEngine.TempBuffer->Release();
 		System->Fence->Release();
+
+		System->FreeList.Release();
 
 #if USING(DEBUGGRAPHICS)
 		// Prints Detailed Report
@@ -7735,10 +7736,18 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void ReleaseDrawGUI(GUIRender* RG) {
+	void ReleaseDrawGUI(RenderSystem* RS, GUIRender* RG) {
 		RG->Rects.Release();
 		RG->TexturedRects.Release();
 		RG->ClipAreas.Release();
+		RG->DrawLines2D.Release();
+		RG->DrawLines3D.Release();
+		RG->Lines2D.LineSegments.Release();
+		RG->Lines2D.GPUResource;
+		
+		Push_DelayedRelease(RS, RG->Lines2D.GPUResource[0]);
+		Push_DelayedRelease(RS, RG->Lines2D.GPUResource[1]);
+		Push_DelayedRelease(RS, RG->Lines2D.GPUResource[2]);
 
 		if(RG->RectBuffer)			RG->RectBuffer.Release();
 

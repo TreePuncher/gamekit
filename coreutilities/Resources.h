@@ -429,8 +429,8 @@ namespace FlexKit
 
 	typedef Pair<size_t, FlexKit::FontAsset*> LoadFontResult;
 
-	FLEXKITAPI LoadFontResult	LoadFontAsset ( char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
-	FLEXKITAPI void				FreeFontAsset ( FontAsset* asset );
+	FLEXKITAPI LoadFontResult	LoadFontAsset	( char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
+	FLEXKITAPI void				Release			( FontAsset* asset );
 
 
 	/************************************************************************************************/

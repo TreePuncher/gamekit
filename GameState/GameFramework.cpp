@@ -211,14 +211,14 @@ void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
 		RItr++;
 	}
 
-	FreeFontAsset(State->DefaultAssets.Font);
+	Release(State->DefaultAssets.Font);
 	Release(State->DefaultAssets.Terrain);
 
 	ReleaseTerrain(State->Nodes, &State->Landscape);
 	ReleaseCamera(State->Nodes, &State->DefaultCamera);
 
 	ReleaseGraphicScene(&State->GScene);
-	ReleaseDrawGUI(&State->GUIRender);
+	ReleaseDrawGUI(Engine->RenderSystem, &State->GUIRender);
 }
 
 
@@ -493,6 +493,11 @@ extern "C"
 
 	GAMESTATEAPI void Cleanup(EngineMemory* Engine, GameFramework* State)
 	{
+
+		Release(State->DefaultAssets.Font);
+
+		State->GScene.ClearScene();
+
 		// wait for last Frame to finish Rendering
 		auto CL = GetCurrentCommandList(Engine->RenderSystem);
 
@@ -502,10 +507,12 @@ extern "C"
 		}
 
 		//ShutDownUploadQueues(Engine->RenderSystem);
+
+		ReleaseScene(&State->PScene, &Engine->Physics);
 		ReleaseGameFramework(Engine, State);
 
 		// Counters are at Max 3
-		//Free_DelayedReleaseResources(Engine->RenderSystem);
+		Free_DelayedReleaseResources(Engine->RenderSystem);
 		//Free_DelayedReleaseResources(Engine->RenderSystem);
 		//Free_DelayedReleaseResources(Engine->RenderSystem);
 
