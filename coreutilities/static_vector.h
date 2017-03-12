@@ -102,6 +102,7 @@ namespace FlexKit
 					return;
 		}
  
+		operator TY_* () { return Elements; }
  
 		TY_& operator [](size_t index)
 		{

@@ -478,7 +478,7 @@ namespace FlexKit
 		static float2 Position2SS(float2);
 		static float3 Position2SS(float3);
 
-		void PushLineSegments(FlexKit::LineSegments);
+		void PushLineSegments(FlexKit::LineSegments& );
 		void PushRect	(Draw_RECT Rect);
 		void PushOffset	(float2 XY);
 		void PopOffset	();
@@ -634,6 +634,13 @@ namespace FlexKit
 
 	struct GUIGrid
 	{
+		GUIGrid() : 
+			RowHeights	(nullptr), 
+			ColumnWidths(nullptr),
+			Cells		(nullptr),
+			XY			(0.0f, 0.0f),
+			Base		(INVALIDHANDLE) {}
+
 		GUIGrid(iAllocator* memory, uint32_t base) : 
 			RowHeights	(memory), 
 			ColumnWidths(memory),

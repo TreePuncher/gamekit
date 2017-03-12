@@ -28,12 +28,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameFramework.h"
 #include "CameraUtilities.h"
 	
+struct MenuState;
+
+struct CBArguements
+{
+	EngineMemory*	Engine;
+	MenuState*		State;
+};
 
 struct MenuState : public SubState
 {
 	MenuState(iAllocator* Memory) : BettererWindow(Memory)
 	{
-		int x = 0;
 	}
 
 	MenuState(const MenuState& rhs) : BettererWindow(rhs.BettererWindow)
@@ -45,10 +51,12 @@ struct MenuState : public SubState
 	FlexKit::SimpleWindow	Window;
 	FlexKit::float2			CursorSize;
 
-	FlexKit::ComplexGUI	BettererWindow;
+	FlexKit::ComplexGUI		BettererWindow;
 
 	FlexKit::EntityHandle   Model;
 	double T;
+
+	CBArguements CBArgs;
 };
 
 

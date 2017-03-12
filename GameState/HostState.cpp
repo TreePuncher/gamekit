@@ -58,7 +58,10 @@ void SendGameINFO(HostState* Host, RakNet::SystemAddress Addr)
 
 void SendSetPlayerPositionRotation(HostState* Host, RakNet::SystemAddress Addr, float3 xyz, Quaternion Q, size_t PlayerID)
 {
-	printf("Setting Player Position:");
+	printf("Setting Player Position at:");
+	printfloat3(xyz);
+	printf("\n");
+
 	SetPlayerInfoPacket NewPacket(xyz, Q);
 	NewPacket.PlayerID = PlayerID;
 	RakNet::BitStream bsOut;
@@ -388,21 +391,29 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 				auto Orientation		= GetOrientation	(Player, Scene);
 				bool ClientOutOfSync	= false;
 
-				ClientOutOfSync  = ((InfoPacket->State.Position - Position).magnitude() > 1.0f);
-				ClientOutOfSync |= CompareFloats(InfoPacket->State.Yaw, GetPlayerYaw(Player), 18.0f);
+				float3 POS;
+				memcpy(&POS, &InfoPacket->State.Position, sizeof(POS));
+
+				ClientOutOfSync  = ((POS - Position).magnitude() > 1.0f);
+				ClientOutOfSync |= fabsf( InfoPacket->State.Yaw - GetPlayerYaw(Player)) > 18.0f;
 
 				if (ClientOutOfSync) {
 					SendCorrectPlayerStatePacket(ThisState, ClientIdx);
 					printf("Expected Player at Position: ");
 					printfloat3(Position);
-					printf("  Actually At: ");
+					printf("\n               Actually At: ");
 					printfloat3(InfoPacket->State.Position);
+					printf("\nExpected Orientation: ");
+					printfloat4(Quaternion(0, GetPlayerYaw(Player), 0).floats);
+					printf("\nActual   Orientation: ");
+					printfloat4(Quaternion(0, InfoPacket->State.Yaw, 0).floats);
 					printf("\n");
 				}
 
 			}	break;
 			case GetTypeGUID(_PlayerInfoPacket_):
 			{	// (OLD)Check if Player State matches Server State
+				continue;
 				PlayerInfoPacket* InfoPacket = (PlayerInfoPacket*)IncomingPacket;
 				for (auto I : ThisState->OpenConnections ) {
 					if (I.ID == InfoPacket->PlayerID) {
@@ -488,7 +499,7 @@ HostState* CreateHostState(EngineMemory* Engine, GameFramework* Base)
 	auto State = &Engine->BlockAllocator.allocate_aligned<HostState>();
 	State->VTable.Update  = UpdateHost;
 	State->VTable.Release = CloseServer;
-	State->MinPlayerCount = 1;
+	State->MinPlayerCount = 2;
 	State->Base           = Base;
 	State->PlayerCount	  = 0;
 	State->Peer			  = RakNet::RakPeerInterface::GetInstance();

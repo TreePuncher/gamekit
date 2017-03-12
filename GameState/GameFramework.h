@@ -92,8 +92,6 @@ struct GameFramework
 	GUIRender			GUIRender;
 	EngineMemory*		Engine;
 
-	LineSet	DebugLines;
-
 	static_vector<MouseHandler>		MouseHandlers;
 	static_vector<SubStateVTable*>	SubStates;
 
@@ -106,8 +104,11 @@ struct GameFramework
 
 struct SubState
 {
+	SubState() { Guard2 = Guard1 = (GameFramework*)0xFFFFFFFF; }
 	SubStateVTable	VTable;
-	GameFramework*		Base;
+	GameFramework*	Guard1;
+	GameFramework*	Base;
+	GameFramework*	Guard2;
 };
 
 

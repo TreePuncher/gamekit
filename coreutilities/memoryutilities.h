@@ -486,6 +486,10 @@ namespace FlexKit
 	{
 		BlockAllocator(){}
 
+		BlockAllocator(BlockAllocator&) = delete;
+		BlockAllocator& operator = (const BlockAllocator&) = delete;
+
+
 		void Init( BlockAllocator_desc& in )
 		{
 			char* Position = (char*)in._ptr;
@@ -563,7 +567,7 @@ namespace FlexKit
 			auto* mem = _aligned_malloc(sizeof(T) + a, a);
 
 			auto* t = new (mem) T(Params...);
-			return (T&)t;
+			return *t;
 		}
 
 		template<typename T>
@@ -640,9 +644,14 @@ namespace FlexKit
 			}
 
 			BlockAllocator* ParentAllocator;
+
+			operator iAllocator* ()	{ return this; }
 		}AllocatorInterface;
 
-		operator iAllocator* (){ return &AllocatorInterface; }
+		operator iAllocator* ()
+		{ 
+			return &AllocatorInterface; 
+		}
 	};
 
 	/************************************************************************************************/

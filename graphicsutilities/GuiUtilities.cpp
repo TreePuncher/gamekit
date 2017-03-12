@@ -1049,10 +1049,6 @@ namespace FlexKit
 
 	void ComplexGUI::Draw(RenderSystem* RS, GUIRender* out)
 	{
-		::sort(this->Elements.begin(), this->Elements.end(), 
-			[&](auto LHS, auto RHS) {
-				return LHS.UpdatePriority < RHS.UpdatePriority;	});
-
 		LayoutEngine Layout(Memory, RS, out);
 
 		for (size_t I = 0; I < Elements.size(); ++I) {
@@ -1279,7 +1275,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LayoutEngine::PushLineSegments(LineSegments Lines)
+	void LayoutEngine::PushLineSegments(LineSegments& Lines)
 	{
 		auto Temp = Lines;
 		float3 Offset;
@@ -1526,16 +1522,18 @@ namespace FlexKit
 	{
 		LineSegments Lines(Layout->Memory);
 		FlexKit::LineSegment Line;
+		float2	WH = button.WH();
+
 		Line.A       = { 0, 0, 0 };
 		Line.AColour = RED;
-		Line.B       = { button.WH().x, button.WH().y, 0 };
+		Line.B       = { WH.x, WH.y, 0 };
 		Line.BColour = RED;
 
 		Lines.push_back(Line);
 
-		Line.A       = { button.WH().x, 0, 0 };
+		Line.A       = { WH.x, 0, 0 };
 		Line.AColour = RED;
-		Line.B       = { 0, button.WH().y, 0 };
+		Line.B       = { 0, WH.y, 0 };
 		Line.BColour = RED;
 
 		Lines.push_back(Line);
@@ -1636,7 +1634,8 @@ namespace FlexKit
 
 
 	float2 GUIGridHandle::GetCellWH(uint2 ID){
-		return{ _GetGrid().ColumnWidths[ID[1]], _GetGrid().RowHeights[ID[0]] };
+		auto temp = _GetGrid().ColumnWidths[ID[1]];
+		return{ _GetGrid().ColumnWidths[ID[0]], _GetGrid().RowHeights[ID[1]] };
 	}
 
 

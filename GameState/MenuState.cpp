@@ -27,11 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "HostState.h"
 #include "Client.h"
 
-struct CBArguements
-{
-	EngineMemory*	Engine;
-	MenuState*		State;
-};
+
+/************************************************************************************************/
 
 
 bool OnHostPressed(void* _ptr, size_t GUIElement)
@@ -48,6 +45,10 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 	return true;
 }
 
+
+/************************************************************************************************/
+
+
 bool OnJoinPressed(void* _ptr, size_t GUIElement)
 {
 	std::cout << "Join Pressed\n";
@@ -60,10 +61,14 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
 		//PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
 
-		//Args->Engine->BlockAllocator.free(_ptr);
+		//Args->Engine->BlockAllocator.free(_ptr);		_ptr	0x0000028714059690	void *
+
 	}
 	return true;
 }
+
+
+/************************************************************************************************/
 
 
 bool OnExitPressed(void* _ptr, size_t GUIElement)
@@ -74,6 +79,9 @@ bool OnExitPressed(void* _ptr, size_t GUIElement)
 }
 
 
+/************************************************************************************************/
+
+
 bool OnExitEntered(void* _ptr, size_t GUIElement)
 {
 	auto* Args = (CBArguements*)_ptr;
@@ -82,12 +90,18 @@ bool OnExitEntered(void* _ptr, size_t GUIElement)
 }
 
 
+/************************************************************************************************/
+
+
 bool OnExitLeft(void* _ptr, size_t GUIElement)
 {
 	auto* Args = (CBArguements*)_ptr;
 	std::cout << "Button Left!\n";
 	return true;
 }
+
+
+/************************************************************************************************/
 
 
 bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
@@ -99,7 +113,7 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	Input.MousePosition			  = ThisState->Base->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
-	DrawSimpleWindow(Input, &ThisState->Window, &StateMemory->Base->GUIRender);
+	//DrawSimpleWindow(Input, &ThisState->Window, &StateMemory->Base->GUIRender);
 	DrawMouseCursor(Engine, ThisState->Base, ThisState->Base->MouseState.NormalizedPos, {0.05f, 0.05f});
 
 	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Base->GUIRender);
@@ -109,6 +123,9 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 
 	return true;
 }
+
+
+/************************************************************************************************/
 
 
 bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
@@ -122,7 +139,9 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 	Input.LeftMouseButtonPressed  = ThisState->Base->MouseState.LMB_Pressed;
 	Input.MousePosition			  = ThisState->Base->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
-	
+
+	//std::cout << "Current VRam Usage: " << GetVidMemUsage(Engine->RenderSystem) / MEGABYTE << "MBs\n";
+
 	//Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 );
 	//Pitch(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 * ThisState->Base->MouseState.dPos[1] * dT);
 	
@@ -145,6 +164,10 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 	return true;
 }
 
+
+/************************************************************************************************/
+
+
 void ReleaseMenu	(SubState* StateMemory)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
@@ -153,47 +176,60 @@ void ReleaseMenu	(SubState* StateMemory)
 	ThisState->Base->Engine->BlockAllocator.free(ThisState);
 }
 
+
+/************************************************************************************************/
+
+
 MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 {
-	auto& State                = *(MenuState*)Engine->BlockAllocator.malloc(sizeof(MenuState));
-	new(&State) MenuState(Engine->BlockAllocator);
+	FK_ASSERT(Base != nullptr);
+	auto* State	= &Engine->BlockAllocator.allocate_aligned<MenuState>(&Engine->BlockAllocator.AllocatorInterface);
 
-	State.VTable.PreDrawUpdate = PreDraw;
-	State.VTable.Update        = Update;
-	State.VTable.Release       = ReleaseMenu;
-	State.T                    = 0;
-	State.Base                 = Base;
-	State.CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
-	Base->MouseState.Enabled    = true;
+	State->VTable.PreDrawUpdate = PreDraw;
+	State->VTable.Update        = Update;
+	State->VTable.Release       = ReleaseMenu;
+	State->T                    = 0;
+	State->Base                 = Base;
+	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
+	Base->MouseState.Enabled   = true;
+	auto** asd = &State;
 
-	/*
-	if(0)
+	if(1)
 	{
-		auto Grid = State.BettererWindow.CreateGrid();
+		auto Grid = State->BettererWindow.CreateGrid();
 		Grid.resize(0.5f, 0.5f);
 		Grid.SetGridDimensions(3, 4);
 		Grid.SetPosition({0.5f, 0.0f});
 
 		auto Btn1 = Grid.CreateButton({ 0, 1 });
 		auto Btn2 = Grid.CreateButton({ 0, 2 });
+		auto Btn3 = Grid.CreateButton({ 0, 3 });
 
-		auto Args		= &Engine->BlockAllocator.allocate_aligned<CBArguements>();
+		auto Args		= &State->CBArgs;
 		Args->Engine	= Engine;
-		Args->State		= &State;
+		Args->State		= State;
+
+		std::cout << Args->Engine;
+		std::cout << Args->State;
+		std::cout << Args->State->Base;
 
 		Btn1.SetActive(true);
-		Btn1._IMPL().Clicked = OnJoinPressed;
-		Btn1._IMPL().USR = Args;
+		Btn1._IMPL().Clicked = OnHostPressed;
+		Btn1._IMPL().USR     = Args;
 
 		Btn2.SetActive(true);
-		Btn2._IMPL().Clicked = OnExitPressed;
-		Btn2._IMPL().USR = Args;
+		Btn2._IMPL().Clicked = OnJoinPressed;
+		Btn2._IMPL().USR     = Args;
+
+		Btn3.SetActive(true);
+		Btn3._IMPL().Clicked = OnExitPressed;
+		Btn3._IMPL().USR     = Args;
 	}
 	else
 	{
 		SimpleWindow_Desc Desc(0.26f, 0.36f, 1, 1, (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1]);
 	
-		auto Window			= &State.Window;
+		auto Window			= &State->Window;
 		auto WindowSize		= GetWindowWH(Engine);
 		InitiateSimpleWindow(Engine->BlockAllocator, Window, Desc);
 		Window->Position	= {0.65f, 0.1f};
@@ -214,9 +250,9 @@ MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 		List_Desc.Position = { 0, 1 };
 		List_Desc.WH	   = { 1, 1 };
 
-		auto Args		= &Engine->BlockAllocator.allocate_aligned<CBArguements>();
+		auto Args		= &State->CBArgs;
 		Args->Engine	= Engine;
-		Args->State		= &State;
+		Args->State		= State;
 
 		SimpleWindowAddDivider(Window, {0.0f, 0.01f}, ButtonStack);
 
@@ -248,6 +284,9 @@ MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 		TextButton.Text            = "Exit Game";
 		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
 	}
-	*/
-	return &State;
+
+	return State;
 }
+
+
+/************************************************************************************************/

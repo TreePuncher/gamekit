@@ -191,7 +191,7 @@ bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Base)
+ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Base, const char* Name, const char* Server)
 {
 	auto State = &Engine->BlockAllocator.allocate_aligned<ClientState>();
 	State->VTable.Update       = JoinServer;
@@ -204,14 +204,24 @@ ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Base)
 
 	RakNet::SocketDescriptor desc;
 	memset(str, 0, sizeof(str));
-	std::cout << "Enter Name\n";
-	std::cin >> State->ClientName;
 
-	std::cout << "Enter Server Address\n";
-	std::cin >> str;
+	if (!Name)
+	{
+		std::cout << "Enter Name\n";
+		std::cin >> State->ClientName;
+	}
+	else
+		strncpy(State->ClientName, Name, sizeof(State->ClientName));
+
+	if (!Server)
+	{
+		std::cout << "Enter Server Address\n";
+		std::cin >> str;
+	}
+
 	State->Peer->Startup(1, &desc, 1);
 
-	auto res = State->Peer->Connect(str, gServerPort, nullptr, 0);
+	auto res = State->Peer->Connect(Server ? Server : str, gServerPort, nullptr, 0);
 
 
 	return State;
@@ -307,6 +317,42 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
 
 				switch (IncomingPacket->ID)
 				{
+				case GetTypeGUID(PlayerClientStateInfoUpdate): {
+					PlayerClientStateInfoUpdate* Info = (PlayerClientStateInfoUpdate*)IncomingPacket;
+					Info->State.Yaw;
+
+					printf("Server Moving Local Player!\n");
+
+					size_t FrameIDLocal		= ThisState->FrameCount;
+					size_t FrameIDServer	= Info->State.FrameID;
+
+					size_t FrameDelta = FrameIDLocal - FrameIDServer;
+					std::cout << FrameDelta << "Frame Delta\n";
+
+					float3 POS;
+					float3 V;
+					memcpy(&POS, &Info->State.Position, sizeof(POS));
+					memcpy(&V, &Info->State.Velocity, sizeof(V));
+
+					SetPlayerPosition(&ThisState->LocalPlayer, POS);
+					ThisState->LocalPlayer.CameraCTR.Yaw		= Info->State.Yaw;
+					ThisState->LocalPlayer.PlayerCTR.Velocity	= V;
+
+					
+					size_t InputBufferStartIdx = 0;
+					for (size_t I = 0; I < ThisState->InputBuffer.size(); ++I)
+						if (ThisState->InputBuffer[I].FrameID == FrameIDServer) {
+							InputBufferStartIdx = I;
+							break;
+						}
+
+					
+					for (size_t I = 0; I < FrameDelta; ++I) {
+						auto input = ThisState->InputBuffer[InputBufferStartIdx + I];
+						UpdatePlayer(ThisState->Base, &ThisState->LocalPlayer, input.KeyboardInput, input.MouseInput, dT);
+					}
+
+				}	break;
 				case GetTypeGUID(SetPlayerInfoPacket): {
 
 					SetPlayerInfoPacket* Info = (SetPlayerInfoPacket*)IncomingPacket;

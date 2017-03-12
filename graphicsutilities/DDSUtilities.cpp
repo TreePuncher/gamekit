@@ -108,8 +108,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	static HRESULT CreateD3DResources12(
-		ID3D12Device* device,
-		ID3D12GraphicsCommandList* cmdList,
+		RenderSystem* RS,
 		uint32_t resDim,
 		size_t width,
 		size_t height,
@@ -120,12 +119,10 @@ namespace FlexKit
 		bool forceSRGB,
 		bool isCubeMap,
 		D3D12_SUBRESOURCE_DATA* initData,
-		ID3D12Resource** texture,
-		ID3D12Resource** textureUploadHeap
+		ID3D12Resource** texture
 	)
 	{
-		if (device == nullptr)
-			return E_POINTER;
+		FK_ASSERT(RS, "INVALID ARGUEMENT");
 
 		if (forceSRGB)
 			format = MakeSRGB(format);
@@ -149,7 +146,7 @@ namespace FlexKit
 			texDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 			texDesc.Flags              = D3D12_RESOURCE_FLAG_NONE;
 
-			hr = device->CreateCommittedResource(
+			hr = RS->pDevice->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 				D3D12_HEAP_FLAG_NONE,
 				&texDesc,
@@ -165,16 +162,26 @@ namespace FlexKit
 			}
 			else
 			{
+				SETDEBUGNAME(*texture, "TEXTURE");
+
 				const UINT num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
 				const UINT64 uploadBufferSize = GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
 
-				hr = device->CreateCommittedResource(
+				ID3D12Resource* textureUploadHeap = nullptr;
+				ID3D12GraphicsCommandList* cmdList = GetCurrentUploadQueue(RS)->UploadList[0];
+				GetCurrentUploadQueue(RS)->UploadCount++;
+
+
+				hr = RS->pDevice->CreateCommittedResource(
 					&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 					D3D12_HEAP_FLAG_NONE,
 					&CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
 					D3D12_RESOURCE_STATE_GENERIC_READ,
 					nullptr,
-					IID_PPV_ARGS(textureUploadHeap));
+					IID_PPV_ARGS(&textureUploadHeap));
+
+				AddTempBuffer(textureUploadHeap, RS);
+
 				if (FAILED(hr))
 				{
 					texture = nullptr;
@@ -182,14 +189,14 @@ namespace FlexKit
 				}
 				else
 				{
-					cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
-						D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
+					//cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
+					//	D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
 
 					// Use Heap-allocating UpdateSubresources implementation for variable number of subresources (which is the case for textures).
-					UpdateSubresources(cmdList, *texture, *textureUploadHeap, 0, 0, num2DSubresources, initData);
+					UpdateSubresources(cmdList, *texture, textureUploadHeap, 0, 0, num2DSubresources, initData);
 
-					cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
-						D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+					//cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
+					//	D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 				}
 			}
 		} break;
@@ -201,17 +208,14 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
 	static HRESULT CreateTextureFromDDS12(
-		ID3D12Device* device,
-		ID3D12GraphicsCommandList* cmdList,
+		RenderSystem* RS,
 		const DDS_HEADER* header,
 		const uint8_t* bitData,
 		size_t bitSize,
 		size_t maxsize,
 		bool forceSRGB,
 		ID3D12Resource** texture,
-		ID3D12Resource** textureUploadHeap,
 		DXGI_FORMAT*	 formatOut = nullptr)
 	{
 		HRESULT hr = S_OK;
@@ -388,7 +392,7 @@ namespace FlexKit
 
 		if (SUCCEEDED(hr))
 			hr = CreateD3DResources12(
-				device, cmdList,
+				RS,
 				resDim, twidth, theight, tdepth,
 				mipCount - skipMip,
 				arraySize,
@@ -396,8 +400,7 @@ namespace FlexKit
 				false, // forceSRGB
 				isCubeMap,
 				initData.get(),
-				texture,
-				textureUploadHeap);
+				texture);
 		
 
 		if(*formatOut) *formatOut = format;
@@ -410,11 +413,9 @@ namespace FlexKit
 
 
 	bool CreateDDSTextureFromFile12(
-		ID3D12Device*				device,
-		ID3D12GraphicsCommandList*	cmdList,
+		RenderSystem*				RS,
 		const wchar_t*				szFileName,
 		ID3D12Resource**			texture,
-		ID3D12Resource**			textureUploadHeap,
 		size_t						maxsize,
 		DDS_ALPHA_MODE*				alphaMode, 
 		uint2*						WH,
@@ -424,13 +425,10 @@ namespace FlexKit
 		if (*texture)
 			texture = nullptr;
 		
-		if (*textureUploadHeap)
-			textureUploadHeap = nullptr;
-		
 		if (alphaMode)
 			*alphaMode = DDS_ALPHA_MODE_UNKNOWN;
 		
-		if (!device || !szFileName)
+		if (!RS || !szFileName)
 			return false;
 
 		DDS_HEADER* header	= nullptr;
@@ -442,8 +440,8 @@ namespace FlexKit
 		if (FAILED(hr))
 			return false;
 
-		hr = CreateTextureFromDDS12(device, cmdList, header,
-			bitData, bitSize, maxsize, false, texture, textureUploadHeap, FormatOut);
+		hr = CreateTextureFromDDS12(RS, header,
+			bitData, bitSize, maxsize, false, texture, FormatOut);
 
 		if(WH) *WH					= {header->Width, header->Height};
 		if (MIPLevels) *MIPLevels	=  header->MipMapCount;
@@ -467,7 +465,8 @@ namespace FlexKit
 		uint2			WH;
 		uint64_t		MipLevels;
 		DXGI_FORMAT		Format;
-		auto res = CreateDDSTextureFromFile12(RS->pDevice, GetCurrentCommandList(RS), wstr, &Texture, &UploadHeap, 4096, &AlphaMode, &WH, &MipLevels, &Format);
+
+		auto res = CreateDDSTextureFromFile12(RS, wstr, &Texture, 4096, &AlphaMode, &WH, &MipLevels, &Format);
 
 		DDSTexture2D* TextureOut = &Memory->allocate_aligned<DDSTexture2D, 0x10>();
 		TextureOut->Alpha		 = AlphaMode;
@@ -476,8 +475,6 @@ namespace FlexKit
 		TextureOut->MipMapLevels = MipLevels;
 		TextureOut->Format		 = Format;
 		SetDebugName(TextureOut->Texture, File, strnlen(File, 256));
-
-		AddTempBuffer(UploadHeap, RS);
 
 		return {TextureOut, res};
 	}

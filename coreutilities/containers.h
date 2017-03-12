@@ -127,7 +127,10 @@ namespace FlexKit
 		inline  DynArray(const THISTYPE& RHS) :
 			Allocator	(RHS.Allocator),
 			Max			(RHS.Max),
-			Size		(RHS.Size) { (*this) = RHS; }
+			Size		(RHS.Size) 
+		{ 
+			(*this) = RHS; 
+		}
 
 
 		inline  DynArray(THISTYPE&& RHS) : 
@@ -287,7 +290,14 @@ namespace FlexKit
 #endif			
 				auto NewSize = ((Max < 1) ? 2 : (2 * Max));
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
-
+				{
+					size_t itr = 0;
+					size_t End = Size;
+					for (; itr < End; ++itr)
+					{
+						new(NewMem + itr) Ty();
+					}
+				}
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
 				FK_ASSERT(NewMem != A);
@@ -705,6 +715,12 @@ namespace FlexKit
 	{
 		CircularBuffer() : _Head(0), _Size(0)
 		{}
+
+		Ty& operator [](size_t idx)
+		{
+			idx = idx % size();
+			return Buffer[(_Head - 1 - idx + SIZE)% SIZE];
+		}
 
 		bool full() noexcept {
 			return (_Size > 0);

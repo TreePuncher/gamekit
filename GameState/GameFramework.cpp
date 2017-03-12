@@ -25,6 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConsoleSubState.h"
 #include "GameFramework.h"
 #include "MenuState.h"
+#include "HostState.h"
+#include "Client.h"
 
 // TODO's
 //	Gameplay:
@@ -308,65 +310,106 @@ extern "C"
 {
 	GAMESTATEAPI GameFramework* InitiateBaseGameState(EngineMemory* Engine)
 	{
-		GameFramework& State = Engine->BlockAllocator.allocate_aligned<GameFramework>();
+		GameFramework& Game = Engine->BlockAllocator.allocate_aligned<GameFramework>();
 		
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 
-		State.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
-		State.Nodes						= &Engine->Nodes;
-		State.Quit						= false;
-		State.PhysicsUpdateTimer		= 0.0f;
-		State.TerrainSplits				= 12;
-		State.ActiveWindow				= &Engine->Window;
-		State.Engine					= Engine;
-		State.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
-		State.ActiveScene				= &State.GScene;
+		Game.ClearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
+		Game.Nodes						= &Engine->Nodes;
+		Game.Quit						= false;
+		Game.PhysicsUpdateTimer			= 0.0f;
+		Game.TerrainSplits				= 12;
+		Game.ActiveWindow				= &Engine->Window;
+		Game.Engine						= Engine;
+		Game.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
+		Game.ActiveScene				= &Game.GScene;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-		InitiateScene			  (&Engine->Physics, &State.PScene, Engine->BlockAllocator);
-		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
-		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender, Engine->TempAllocator);
+		InitiateScene			  (&Engine->Physics, &Game.PScene, Engine->BlockAllocator);
+		InitiateGraphicScene	  (&Game.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
+		InitiateDrawGUI			  (Engine->RenderSystem, &Game.GUIRender, Engine->TempAllocator);
 
 		//InitateConsole			  (&State.Console, Engine);
 		
-		InitiateLineSet(Engine->RenderSystem, Engine->BlockAllocator, &State.DebugLines);
-
 		{
 			uint2	WindowRect	= Engine->Window.WH;
 			float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
-			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &State.DefaultCamera, Aspect, 0.01f, 10000.0f, true);
-			State.ActiveCamera = &State.DefaultCamera;
+			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Game.DefaultCamera, Aspect, 0.01f, 10000.0f, true);
+			Game.ActiveCamera = &Game.DefaultCamera;
 
-			State.MouseState.NormalizedPos = { 0.5f, 0.5f };
-			State.MouseState.Position = { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
+			Game.MouseState.NormalizedPos = { 0.5f, 0.5f };
+			Game.MouseState.Position = { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
 
 		{
 			Landscape_Desc Land_Desc = { 
-				State.DefaultAssets.Terrain
+				Game.DefaultAssets.Terrain
 			};
 
-			State.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
+			Game.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
 
-			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(State.Nodes), &Land_Desc, Engine->BlockAllocator, &State.Landscape);
+			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Game.Nodes), &Land_Desc, Engine->BlockAllocator, &Game.Landscape);
 		}
 
 		FlexKit::EventNotifier<>::Subscriber sub;
 		sub.Notify = &EventsWrapper;
-		sub._ptr   = &State;
+		sub._ptr   = &Game;
 		Engine->Window.Handler.Subscribe(sub);
 
-		State.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+		Game.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
 
-		auto MenuSubState = CreateMenuState(&State, Engine);
-		PushSubState(&State, MenuSubState);
+		enum Mode
+		{
+			Menu, 
+			Host,
+			Client,
+		}CurrentMode = Menu;
+
+
+		const char* Name	= nullptr;
+		const char* Server	= nullptr;
+
+		//for (auto Arg : Engine->CmdArguments)
+		for (size_t I = 0; I < Engine->CmdArguments.size(); ++I)
+		{
+			auto Arg = Engine->CmdArguments[I];
+			if (!strncmp(Arg, "-H", strlen("-H")))
+			{
+				CurrentMode = Host;
+			}
+			else if(!strncmp(Arg, "-C", strlen("-C")) && I + 2 < Engine->CmdArguments.size())
+			{
+				CurrentMode = Client;
+				Name	= Engine->CmdArguments[I + 1];
+				Server	= Engine->CmdArguments[I + 2];
+			}
+		}
+
+		switch (CurrentMode)
+		{
+		case Menu:{
+			auto MenuSubState = CreateMenuState(&Game, Engine);
+			PushSubState(&Game, MenuSubState);
+		}	break;
+		case Host: {
+			auto HostState = CreateHostState(Engine, &Game);
+			PushSubState(&Game, HostState);
+		}	break;
+		case Client: {
+			auto ClientState = CreateClientState(Engine, &Game, Name, Server);
+			PushSubState(&Game, ClientState);
+		}	break;
+		default:
+			break;
+		}
+		
 
 		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
 
-		return &State;
+		return &Game;
 	}
 
 
@@ -428,11 +471,11 @@ extern "C"
 		{
 
 			{
-				Draw_LineSet_3D Lines;
-				Lines.C = State->ActiveCamera;
-				Lines.Lines = &State->DebugLines;
-				UploadLineSegments(Engine->RenderSystem, &State->DebugLines);
-				PushLineSet(&State->GUIRender, Lines);
+				//Draw_LineSet_3D Lines;
+				//Lines.C = State->ActiveCamera;
+				//Lines.Lines = &State->DebugLines;
+				//UploadLineSegments(Engine->RenderSystem, &State->DebugLines);
+				//PushLineSet(&State->GUIRender, Lines);
 			}
 
 			DeferredPass_Parameters	DPP;
@@ -478,7 +521,6 @@ extern "C"
 
 			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
-			State->DebugLines.LineSegments.clear();
 		}
 	}
 
@@ -493,10 +535,10 @@ extern "C"
 
 	GAMESTATEAPI void Cleanup(EngineMemory* Engine, GameFramework* State)
 	{
-
-		Release(State->DefaultAssets.Font);
+		ShutDownUploadQueues(Engine->RenderSystem);
 
 		State->GScene.ClearScene();
+		Release(State->DefaultAssets.Font);
 
 		// wait for last Frame to finish Rendering
 		auto CL = GetCurrentCommandList(Engine->RenderSystem);
@@ -506,15 +548,14 @@ extern "C"
 			IncrementRSIndex(Engine->RenderSystem);
 		}
 
-		//ShutDownUploadQueues(Engine->RenderSystem);
 
 		ReleaseScene(&State->PScene, &Engine->Physics);
 		ReleaseGameFramework(Engine, State);
 
 		// Counters are at Max 3
 		Free_DelayedReleaseResources(Engine->RenderSystem);
-		//Free_DelayedReleaseResources(Engine->RenderSystem);
-		//Free_DelayedReleaseResources(Engine->RenderSystem);
+		Free_DelayedReleaseResources(Engine->RenderSystem);
+		Free_DelayedReleaseResources(Engine->RenderSystem);
 
 		Engine->BlockAllocator.free(State);
 		

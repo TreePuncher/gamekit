@@ -48,7 +48,7 @@ TODOs
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\memoryutilities.cpp"
-#include "..\coreutilities\timeutilities.cpp"	
+#include "..\coreutilities\timeutilities.cpp"
 
 #include "GameMemory.h"
 
@@ -114,15 +114,15 @@ void UpdateInput()
 }
 
 
+/************************************************************************************************/
+
+
 void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode* Code)
 {
 	using FlexKit::UpdateTransforms;
 	using FlexKit::UpdateInput;
 	using FlexKit::UpdatePointLightBuffer;
 	using FlexKit::PresentWindow;
-
-	Engine->Time.Clear();
-	Engine->Time.PrimeLoop();
 
 	const double StepSize = 1 / 60.0f;
 	double T  = 0.0f;
@@ -152,21 +152,24 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			FNTable->UpdateFixed		(Engine, StepSize, State);
 			FNTable->UpdateAnimations	(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
 			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
-			FNTable->Draw				(Engine,				&Engine->TempAllocator.AllocatorInterface,						State);
+			FNTable->Draw				(Engine,				&Engine->TempAllocator.AllocatorInterface,				State);
 			FNTable->PostDraw			(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
 
 			if (FPSTimer > 1.0) {
 				std::cout << FPSCounter << "\n";
+				//std::cout << "Current VRam Usage: " << GetVidMemUsage(Engine->RenderSystem) / MEGABYTE << "MBs\n";
 				FPSCounter = 0;
 				FPSTimer = 0;
 			}
 
+			/*
 			if (CodeCheckTimer > 2.0)
 			{
 				//std::cout << "Checking Code\n";
 				CodeCheckTimer = 0;
 				//ReloadGameCode(*Code, FNTable);
 			}
+			*/
 
 			// Memory -----------------------------------------------------------------------------------
 			//Engine->BlockAllocator.LargeBlockAlloc.Collapse(); // Coalesce blocks
@@ -204,8 +207,7 @@ int main( int argc, char* argv[] )
 	GameCode	Code;
 	CodeTable	FNTable;
 
-	char* GameStateLocation = "TestGameState.dll";
-
+	char* GameStateLocation = "GameState.dll";
 
 	for (size_t I = 0; I < argc; ++I) {
 		char* Str = argv[I];
@@ -224,6 +226,11 @@ int main( int argc, char* argv[] )
 		EngineMemory* Engine = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
 		if (!FNTable.InitEngine(Engine))
 			return -1;
+
+
+		for (size_t I = 0; I < argc; ++I) {
+			Engine->CmdArguments.push_back(argv[I]);
+		}
 
 		void* State = FNTable.Init(Engine);
 

@@ -56,7 +56,7 @@ void ReleaseEngine(EngineMemory* Engine)
 /************************************************************************************************/
 
 
-void InitiateEngineMemory( EngineMemory* Game )
+void InitiateEngineMemory( EngineMemory* Engine )
 {
 	using FlexKit::BlockAllocator_desc;
 	using FlexKit::GetNewNode;
@@ -64,19 +64,21 @@ void InitiateEngineMemory( EngineMemory* Game )
 
 	bool Out = false;
 	BlockAllocator_desc BAdesc;
-	BAdesc._ptr			= (byte*)Game->BlockMem;
+	BAdesc._ptr			= (byte*)Engine->BlockMem;
 	BAdesc.SmallBlock	= MEGABYTE * 64;
 	BAdesc.MediumBlock	= MEGABYTE * 64;
 	BAdesc.LargeBlock	= MEGABYTE * 256;
 
-	Game->BlockAllocator.Init ( BAdesc );
-	Game->LevelAllocator.Init ( Game->LevelMem,	LEVELBUFFERSIZE );
-	Game->TempAllocator. Init ( Game->TempMem,	TEMPBUFFERSIZE );
+	Engine->BlockAllocator.Init ( BAdesc );
+	Engine->LevelAllocator.Init ( Engine->LevelMem,	LEVELBUFFERSIZE );
+	Engine->TempAllocator. Init ( Engine->TempMem,	TEMPBUFFERSIZE );
 
 	// Initate SceneGraph
-	InitiateSceneNodeBuffer		( &Game->Nodes, Game->NodeMem, NODEBUFFERSIZE );
-	Game->RootSN = GetNewNode	( &Game->Nodes );
-	ZeroNode					( &Game->Nodes, Game->RootSN );
+	InitiateSceneNodeBuffer		( &Engine->Nodes, Engine->NodeMem, NODEBUFFERSIZE );
+	Engine->RootSN = GetNewNode	( &Engine->Nodes );
+	ZeroNode					( &Engine->Nodes, Engine->RootSN );
+
+	Engine->CmdArguments.Allocator = Engine->BlockAllocator;
 }
 
 
@@ -238,3 +240,8 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 
 
 /************************************************************************************************/
+
+void PushCmdArg(EngineMemory* Engine, const char* str)
+{
+	Engine->CmdArguments.push_back(str);
+}
