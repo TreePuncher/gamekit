@@ -43,10 +43,15 @@ TODO's
 
 struct PlayerImposters
 {
-	FlexKit::EntityHandle	Graphics;
-	size_t					PlayerID;
-};
+	FlexKit::EntityHandle		Graphics;
+	size_t						PlayerID;
+	CapsuleCharacterController	Collider;
 
+	void Move(GraphicScene* GS, float3 pos, double dT)
+	{
+		Collider.Controller->move({ pos.x, pos.y, pos.z }, 0.0001, dT, PxControllerFilters());
+	}
+};
 
 
 struct ClientState : public SubState

@@ -2012,6 +2012,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void AddTempBuffer	( ID3D12Resource* _ptr, RenderSystem* RS );
+	FLEXKITAPI void AddTempShaderRes( ShaderResourceBuffer& ShaderResource, RenderSystem* RS );
 	FLEXKITAPI void	PresentWindow	( RenderWindow* RW, RenderSystem* RS );
 	FLEXKITAPI void	WaitforGPU		( RenderSystem* RS );
 
@@ -2370,7 +2371,8 @@ namespace FlexKit
 		DCT_2DRECT_CLIPPED,
 		DCT_LINES2D,
 		DCT_LINES3D,
-		DCT_Text,
+		DCT_TEXT,
+		DCT_TEXT2,
 		DCT_COUNT,
 	};
 
@@ -2444,24 +2446,41 @@ namespace FlexKit
 		FontAsset*	Font;
 	};
 
+	struct Draw_TEXT2
+	{
+		size_t		Begin, Count;
+		float2		CLIPAREA_TOPLEFT;
+		float2		CLIPAREA_BOTTOMRIGHT;
+		float4		Color;
+		FontAsset*	Font;
+	};
+
 	struct DrawCall
 	{
 		DRAWCALLTYPE	Type;
 		size_t			Index;
 	};
 
-	struct GUIRender
+	const uint32_t TEXTBUFFERMINSIZE = 512;
+
+	struct ImmediateRender
 	{
-		operator GUIRender* () { return this; }
+		operator ImmediateRender* () { return this; }
+		RenderSystem*				RS;
 
 		DynArray<ClipArea>			ClipAreas;
 		DynArray<Draw_RECTPoint>	Rects;
 		DynArray<Textured_Rect>		TexturedRects;
 		DynArray<Draw_TEXT>			Text;
+		DynArray<Draw_TEXT2>		Text2;
 		DynArray<Draw_LineSet_2D>	DrawLines2D;
 		DynArray<Draw_LineSet_3D>	DrawLines3D;
 		DynArray<DrawCall>			DrawCalls;
 
+		DynArray<const char*>	TextBuffer;
+		size_t					TextBufferPosition;
+		ShaderResourceBuffer	TextBufferGPU;
+		uint32_t				TextBufferSizes[3];
 
 		LineSet						Lines2D;
 		FrameBufferedResource		RectBuffer;
@@ -2496,20 +2515,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT Rect );
-	FLEXKITAPI void PushRect( GUIRender* RG, Draw_RECT_CLIPPED Rect );
-	FLEXKITAPI void PushRect( GUIRender* RG, Draw_TEXTURED_RECT Rect );
+	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT Rect );
+	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT_CLIPPED Rect );
+	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_TEXTURED_RECT Rect );
 
-	FLEXKITAPI void PushText( GUIRender* RG, Draw_TEXT Text );
+	FLEXKITAPI void PushText( ImmediateRender* RG, Draw_TEXT Text );
 
-	FLEXKITAPI void PushLineSet( GUIRender* RG, Draw_LineSet_3D);
-	FLEXKITAPI void PushLineSet( GUIRender* RG, LineSegments );
+	FLEXKITAPI void PushLineSet( ImmediateRender* RG, Draw_LineSet_3D);
+	FLEXKITAPI void PushLineSet( ImmediateRender* RG, LineSegments );
 	
-	FLEXKITAPI void InitiateDrawGUI		( RenderSystem* RS, GUIRender* RG, iAllocator* Memory);
-	FLEXKITAPI void ReleaseDrawGUI		( RenderSystem* RS, GUIRender* RG);
+	FLEXKITAPI void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color);
 
-	FLEXKITAPI void Clear		( GUIRender* RG );
-	FLEXKITAPI void UploadGUI	( RenderSystem* RS, GUIRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);
+	FLEXKITAPI void InitiateImmediateRender		( RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory);
+	FLEXKITAPI void ReleaseDrawGUI		( RenderSystem* RS, ImmediateRender* RG);
+
+	FLEXKITAPI void Clear		( ImmediateRender* RG );
+	FLEXKITAPI void UploadGUI	( RenderSystem* RS, ImmediateRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);
 
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
@@ -2517,7 +2538,7 @@ namespace FlexKit
 	FLEXKITAPI void CleanUp	( PointLightBuffer* out,	iAllocator* Memory );
 	FLEXKITAPI void CleanUp	( SpotLightBuffer* out,		iAllocator* Memory );
 
-	FLEXKITAPI void DrawGUI	( RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, Texture2D Out );
+	FLEXKITAPI void DrawGUI	( RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* GUIStack, Texture2D Out );
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
@@ -2525,7 +2546,7 @@ namespace FlexKit
 	FLEXKITAPI void UpdateSpotLightBuffer	( RenderSystem& RS, SceneNodes* nodes, SpotLightBuffer* out, iAllocator* TempMemory );
 	FLEXKITAPI void UpdatePointLightBuffer	( RenderSystem& RS, SceneNodes* nodes, PointLightBuffer* out, iAllocator* TempMemory );
 
-	FLEXKITAPI void DEBUG_DrawCameraFrustum ( GUIRender* Render, Camera* C );
+	FLEXKITAPI void DEBUG_DrawCameraFrustum ( ImmediateRender* Render, Camera* C );
 
 
 	/************************************************************************************************/
@@ -2572,7 +2593,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardRender* out );
-	FLEXKITAPI void ForwardPass			( PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
+	FLEXKITAPI void ForwardPass				( PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
 	FLEXKITAPI void ReleaseForwardPass		( ForwardRender* FP );
 
 

@@ -61,8 +61,6 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
 		//PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
 
-		//Args->Engine->BlockAllocator.free(_ptr);		_ptr	0x0000028714059690	void *
-
 	}
 	return true;
 }
@@ -113,13 +111,15 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	Input.MousePosition			  = ThisState->Base->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
-	//DrawSimpleWindow(Input, &ThisState->Window, &StateMemory->Base->GUIRender);
+	//DrawSimpleWindow(Input, &ThisState->Window, &StateMemory->Base->ImmediateRender);
 	DrawMouseCursor(Engine, ThisState->Base, ThisState->Base->MouseState.NormalizedPos, {0.05f, 0.05f});
 
-	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Base->GUIRender);
-	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Base->GUIRender);
+	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Base->Immediate);
+	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Base->Immediate);
 
-	ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Base->GUIRender);
+	ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Base->Immediate);
+
+	PrintText(&ThisState->Base->Immediate, "THIS IS A TEST!\nHello World!", ThisState->Base->DefaultAssets.Font, { 0.0f, 0.0f }, {0.2f, 0.2f}, float4(WHITE, 1));
 
 	return true;
 }
@@ -159,7 +159,7 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 		float4(1, 1, 1, 0));
 	*/
 
-	//DEBUG_DrawCameraFrustum(Base->GUIRender, Base->ActiveCamera);
+	//DEBUG_DrawCameraFrustum(Base->ImmediateRender, Base->ActiveCamera);
 
 	return true;
 }

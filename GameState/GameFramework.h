@@ -89,7 +89,7 @@ struct GameFramework
 	EDEFERREDPASSMODE	DP_DrawMode;
 
 	Console				Console;
-	GUIRender			GUIRender;
+	ImmediateRender		Immediate;
 	EngineMemory*		Engine;
 
 	static_vector<MouseHandler>		MouseHandlers;

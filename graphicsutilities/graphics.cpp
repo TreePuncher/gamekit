@@ -1764,6 +1764,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void AddTempShaderRes(ShaderResourceBuffer& ShaderResource, RenderSystem* RS)
+	{
+		AddTempBuffer(ShaderResource[0], RS);
+		AddTempBuffer(ShaderResource[1], RS);
+		AddTempBuffer(ShaderResource[2], RS);
+	}
+
+
+	/************************************************************************************************/
+
+
 	Texture2D CreateTexture2D( RenderSystem* RS, Texture2D_Desc* desc_in )
 	{	
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormat2DXGIFormat(desc_in->Format), 
@@ -7144,7 +7155,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		return (XY * float2( 2, 2)) + float2( -1, -1);
 	}
 
-	void PushRect(GUIRender* RG, Draw_RECT Rect) 
+	void PushRect(ImmediateRender* RG, Draw_RECT Rect) 
 	{
 		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECT , 0 });
 		Draw_RECTPoint P;
@@ -7179,7 +7190,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void PushRect(GUIRender* RG, Draw_RECT_CLIPPED Rect)
+	void PushRect(ImmediateRender* RG, Draw_RECT_CLIPPED Rect)
 	{
 		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECT_CLIPPED , RG->ClipAreas.size() });
 		RG->ClipAreas.push_back({ Rect.CLIPAREA_BLEFT , Rect.CLIPAREA_TRIGHT });
@@ -7216,7 +7227,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void PushRect(GUIRender* RG, Draw_TEXTURED_RECT Rect)
+	void PushRect(ImmediateRender* RG, Draw_TEXTURED_RECT Rect)
 	{
 		RG->DrawCalls.push_back		({ DRAWCALLTYPE::DCT_2DRECT_TEXTURED , RG->TexturedRects.size() });
 		RG->TexturedRects.push_back	({ Rect.TextureHandle, Rect.BLeft, Rect.TRight });
@@ -7253,9 +7264,9 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void PushText(GUIRender* RG, Draw_TEXT Text)
+	void PushText(ImmediateRender* RG, Draw_TEXT Text)
 	{
-		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_Text, RG->Text.size() });
+		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT, RG->Text.size() });
 		RG->Text.push_back(Text);
 		/*
 		Draw_RECTPoint P;
@@ -7291,7 +7302,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void PushLineSet(GUIRender* RG, Draw_LineSet_3D LineSet)
+	void PushLineSet(ImmediateRender* RG, Draw_LineSet_3D LineSet)
 	{
 		RG->DrawCalls.push_back({DCT_LINES3D, RG->DrawLines3D.size()});
 		RG->DrawLines3D.push_back(LineSet);
@@ -7301,7 +7312,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void PushLineSet(GUIRender* RG, LineSegments LineSet)
+	void PushLineSet(ImmediateRender* RG, LineSegments LineSet)
 	{
 		RG->DrawCalls.push_back({ DCT_LINES2D, RG->DrawLines2D.size() });
 
@@ -7317,8 +7328,42 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	/************************************************************************************************/
 
+	// Position and Area start at Top Left of Screen, going to Bottom Right; Top Left{0, 0} -> Bottom Right{1.0, 1.0f}
+	void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color)
+	{
+		size_t StrLen = strlen(str);
 
-	void InitiateDrawGUI(RenderSystem* RS, GUIRender* RG, iAllocator* Memory) 
+		Draw_TEXT2 NewDrawCall;
+		NewDrawCall.Font                 = Font;
+		NewDrawCall.Begin                = RG->TextBufferPosition;
+		NewDrawCall.Count			     = StrLen;
+		NewDrawCall.CLIPAREA_TOPLEFT     = POS;
+		NewDrawCall.CLIPAREA_BOTTOMRIGHT = POS + TextArea;
+		NewDrawCall.Color				 = Color;
+
+		RG->TextBufferPosition	   += StrLen;
+		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, RG->Text2.size() });
+		RG->Text2.push_back(NewDrawCall);
+		RG->TextBuffer.push_back(str);
+
+		size_t Idx = RG->TextBufferGPU.Idx;
+		size_t CurrentBufferSize = RG->TextBufferSizes[Idx];
+		if (CurrentBufferSize <  RG->TextBufferPosition)
+		{	// Resize Buffer
+			RG->TextBufferSizes[Idx] = 2 * CurrentBufferSize;
+			CurrentBufferSize		*= 2;
+			auto NewResource         = CreateShaderResource(RG->RS, sizeof(TextEntry) * CurrentBufferSize);
+
+			AddTempShaderRes(RG->TextBufferGPU, RG->RS);
+			RG->TextBufferGPU = NewResource;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void InitiateImmediateRender(RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory) 
 	{
 		for (size_t I = 0; I < DRAWCALLTYPE::DCT_COUNT; ++I)
 			RG->DrawStates[I] = nullptr;
@@ -7534,7 +7579,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			Release(&DrawTextGShader);
 			Release(&DrawTextPShader);
 
-			RG->DrawStates[DCT_Text] = PSO;
+			RG->DrawStates[DCT_TEXT]  = PSO;
+			RG->DrawStates[DCT_TEXT2] = PSO;
 		}
 
 		ConstantBuffer_desc	Desc;
@@ -7550,6 +7596,17 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		RG->ClipAreas.Allocator		= Memory;
 		RG->DrawLines3D.Allocator	= Memory;
 		RG->DrawLines2D.Allocator	= Memory;
+		RG->TextBuffer.Allocator	= Memory;
+		RG->Text2.Allocator			= Memory;
+		RG->TextBufferPosition		= 0;
+
+		RG->RS = RS;
+
+		RG->TextBufferSizes[0] = TEXTBUFFERMINSIZE;
+		RG->TextBufferSizes[1] = TEXTBUFFERMINSIZE;
+		RG->TextBufferSizes[2] = TEXTBUFFERMINSIZE;
+
+		RG->TextBufferGPU = CreateShaderResource(RS, sizeof(TextEntry) * TEXTBUFFERMINSIZE);
 
 		InitiateLineSet(RS, Memory, &RG->Lines2D);
 	}
@@ -7558,7 +7615,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void DrawGUI(RenderSystem* RS, ID3D12GraphicsCommandList* CL, GUIRender* GUIStack, Texture2D RenderTarget)
+	void DrawGUI(RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* Immediate, Texture2D RenderTarget)
 	{
 		size_t			RectOffset		= 0;
 		size_t			TexturePosition = 0;
@@ -7566,18 +7623,22 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 		FINALLY
 		{
-			GUIStack->ClipAreas.Release();
-			GUIStack->Rects.Release();
-			GUIStack->TexturedRects.Release();
-			GUIStack->Text.Release();
-			GUIStack->Lines2D.LineSegments.Release();
-			GUIStack->DrawLines2D.Release();
-			GUIStack->DrawLines3D.Release();
-			GUIStack->DrawCalls.Release();
+			Immediate->ClipAreas.Release();
+			Immediate->Rects.Release();
+			Immediate->TexturedRects.Release();
+			Immediate->Text.Release();
+			Immediate->Text2.Release();
+			Immediate->TextBuffer.Release();
+			Immediate->Lines2D.LineSegments.Release();
+			Immediate->DrawLines2D.Release();
+			Immediate->DrawLines3D.Release();
+			Immediate->DrawCalls.Release();
+
+			Immediate->TextBufferPosition = 0;
 		}
 		FINALLYOVER
 
-		if (!GUIStack->DrawCalls.size())
+		if (!Immediate->DrawCalls.size())
 			return;
 
 
@@ -7609,7 +7670,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 		
 		D3D12_VERTEX_BUFFER_VIEW View[] = {
-			{ GUIStack->RectBuffer->GetGPUVirtualAddress(), (UINT)(sizeof(Draw_RECT) * GUIStack->Rects.size()),	(UINT)sizeof(Draw_RECT) },
+			{ Immediate->RectBuffer->GetGPUVirtualAddress(), (UINT)(sizeof(Draw_RECT) * Immediate->Rects.size()),	(UINT)sizeof(Draw_RECT) },
 		};
 
 		D3D12_VIEWPORT VP;
@@ -7645,7 +7706,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		*/
 
 		D3D12_RESOURCE_TRANSITION_BARRIER Transition = {
-			GUIStack->RectBuffer.Get(), 0,
+			Immediate->RectBuffer.Get(), 0,
 			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST,
 			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER
 		};
@@ -7662,11 +7723,11 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 		//CL->ResourceBarrier(1, Barrier);
 
-		for (auto D : GUIStack->DrawCalls)
+		for (auto D : Immediate->DrawCalls)
 		{
 			bool StateChanged = true;
 			if (PrevState != D.Type) {
-				CL->SetPipelineState(GUIStack->DrawStates[D.Type]);
+				CL->SetPipelineState(Immediate->DrawStates[D.Type]);
 				StateChanged = true;
 			}
 			else
@@ -7682,7 +7743,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				LONG bottom;
 				*/
 
-				auto ClipArea	= GUIStack->ClipAreas[D.Index];
+				auto ClipArea	= Immediate->ClipAreas[D.Index];
 				auto WH			= RenderTarget.WH;
 				
 				D3D12_RECT Rects[] = { {
@@ -7718,8 +7779,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			}	break;
 			case DRAWCALLTYPE::DCT_2DRECT_TEXTURED: {
 				auto WH		= RenderTarget.WH;
-				auto BLeft	= GUIStack->TexturedRects[D.Index].CLIPAREA_BLEFT;
-				auto TRight	= GUIStack->TexturedRects[D.Index].CLIPAREA_TRIGHT;
+				auto BLeft	= Immediate->TexturedRects[D.Index].CLIPAREA_BLEFT;
+				auto TRight	= Immediate->TexturedRects[D.Index].CLIPAREA_TRIGHT;
 
 				D3D12_RECT Rects[] = { {
 						(LONG)(WH[0] * BLeft[0]),
@@ -7731,7 +7792,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 				auto DescPOS = ReserveDescHeap(RS, 8);
 				auto DescItr = DescPOS;
-				DescItr = PushTextureToDescHeap(RS, *GUIStack->TexturedRects[TexturePosition].Texture, DescItr);
+				DescItr = PushTextureToDescHeap(RS, *Immediate->TexturedRects[TexturePosition].Texture, DescItr);
 
 				for (auto I = 0; I < 3; ++I)
 					DescItr = PushTextureToDescHeap(RS, RS->NullSRV, DescItr);
@@ -7748,12 +7809,12 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				TexturePosition++;
 			}	break;
 			case DRAWCALLTYPE::DCT_LINES2D: {
-				size_t Offset	= GUIStack->DrawLines2D[D.Index].Begin;
-				size_t Count	= GUIStack->DrawLines2D[D.Index].Count;
+				size_t Offset	= Immediate->DrawLines2D[D.Index].Begin;
+				size_t Count	= Immediate->DrawLines2D[D.Index].Count;
 
 				D3D12_VERTEX_BUFFER_VIEW Views[] = {
-					{ GUIStack->Lines2D.GPUResource->GetGPUVirtualAddress(),
-					(UINT)GUIStack->Lines2D.LineSegments.size() * sizeof(LineSegment),
+					{ Immediate->Lines2D.GPUResource->GetGPUVirtualAddress(),
+					(UINT)Immediate->Lines2D.LineSegments.size() * sizeof(LineSegment),
 					(UINT)sizeof(float3) * 2
 					},
 				};
@@ -7763,8 +7824,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				CL->DrawInstanced(2 * Count, 1, 2 * Offset, 0);
 			}	break;
 			case DRAWCALLTYPE::DCT_LINES3D: {
-				LineSet* LineDrawCall = GUIStack->DrawLines3D[D.Index].Lines;
-				Camera* C = GUIStack->DrawLines3D[D.Index].C;
+				LineSet* LineDrawCall = Immediate->DrawLines3D[D.Index].Lines;
+				Camera* C = Immediate->DrawLines3D[D.Index].C;
 				
 				D3D12_VERTEX_BUFFER_VIEW Views[] = {
 					{		  LineDrawCall->GPUResource->GetGPUVirtualAddress() ,
@@ -7778,52 +7839,82 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				CL->SetGraphicsRootConstantBufferView	(1,  C->Buffer.Get()->GetGPUVirtualAddress());
 				CL->DrawInstanced						(2 * LineDrawCall->LineSegments.size(), 1, 0,  0);
 			}	break;
-			case DRAWCALLTYPE::DCT_Text: {
-				{
-					auto T = GUIStack->Text[D.Index];
-					auto Font = T.Font;
-					auto Text = T.Text;
+			case DRAWCALLTYPE::DCT_TEXT: {
+				auto T = Immediate->Text[D.Index];
+				auto Font = T.Font;
+				auto Text = T.Text;
 
-					if(Text->CharacterCount){
-						D3D12_RECT RECT = D3D12_RECT();
-						RECT.right	= (UINT)RenderTarget.WH[0];
-						RECT.bottom = (UINT)RenderTarget.WH[1];
+				if(Text->CharacterCount){
+					D3D12_RECT RECT = D3D12_RECT();
+					RECT.right	= (UINT)RenderTarget.WH[0];
+					RECT.bottom = (UINT)RenderTarget.WH[1];
 
-						D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC = {};
-						SRV_DESC.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-						SRV_DESC.Texture2D.MipLevels           = 1;
-						SRV_DESC.Texture2D.MostDetailedMip     = 0;
-						SRV_DESC.Texture2D.PlaneSlice          = 0;
-						SRV_DESC.Texture2D.ResourceMinLODClamp = 0;
-						SRV_DESC.Shader4ComponentMapping	   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; 
+					/*
+					D3D12_SHADER_RESOURCE_VIEW_DESC SRV_DESC = {};
+					SRV_DESC.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+					SRV_DESC.Texture2D.MipLevels           = 1;
+					SRV_DESC.Texture2D.MostDetailedMip     = 0;
+					SRV_DESC.Texture2D.PlaneSlice          = 0;
+					SRV_DESC.Texture2D.ResourceMinLODClamp = 0;
+					SRV_DESC.Shader4ComponentMapping	   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; 
+					*/
 
-						D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
-							{ Text->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Text->CharacterCount), sizeof(TextEntry) },
-						};
+					D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
+						{ Text->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Text->CharacterCount), sizeof(TextEntry) },
+					};
 			
-						auto DescPOS = ReserveDescHeap(RS, 8);
-						auto DescITR = DescPOS;
+					auto DescPOS = ReserveDescHeap(RS, 8);
+					auto DescITR = DescPOS;
 
-						DescITR = PushTextureToDescHeap(RS, Font->Texture, DescITR);
+					DescITR = PushTextureToDescHeap(RS, Font->Texture, DescITR);
 
-						for (auto I = 0; I < 3; ++I)
-							DescITR = PushTextureToDescHeap(RS, RS->NullSRV, DescITR);
+					for (auto I = 0; I < 3; ++I)
+						DescITR = PushTextureToDescHeap(RS, RS->NullSRV, DescITR);
 
-						for (auto I = 0; I < 4; ++I)
-							DescITR = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescITR, 1024);
+					for (auto I = 0; I < 4; ++I)
+						DescITR = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescITR, 1024);
 
-						ID3D12DescriptorHeap* Heaps[] = { GetCurrentDescriptorTable(RS) };
+					ID3D12DescriptorHeap* Heaps[] = { GetCurrentDescriptorTable(RS) };
 
-						CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-						CL->IASetVertexBuffers				(0, 1, VBuffers);
-						CL->SetDescriptorHeaps				(1, Heaps);
-						CL->SetGraphicsRootDescriptorTable	(0, DescPOS);
-						CL->OMSetBlendFactor				(float4(1.0f, 1.0f, 1.0f, 1.0f));
-						CL->RSSetScissorRects				(1, &RECT);
+					CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+					CL->IASetVertexBuffers				(0, 1, VBuffers);
+					CL->SetDescriptorHeaps				(1, Heaps);
+					CL->SetGraphicsRootDescriptorTable	(0, DescPOS);
+					CL->OMSetBlendFactor				(float4(1.0f, 1.0f, 1.0f, 1.0f));
+					CL->RSSetScissorRects				(1, &RECT);
 
-						CL->DrawInstanced					(Text->CharacterCount, 1, 0, 0);
-					}
+					CL->DrawInstanced					(Text->CharacterCount, 1, 0, 0);
 				}
+			}	break;
+			case DRAWCALLTYPE::DCT_TEXT2: {
+				auto T	  = Immediate->Text2[D.Index];
+				auto Font = T.Font;
+				
+				D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
+					{ Immediate->TextBufferGPU.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * T.Count), sizeof(TextEntry) },
+				};
+			
+				auto DescPOS = ReserveDescHeap(RS, 8);
+				auto DescITR = DescPOS;
+
+				DescITR = PushTextureToDescHeap(RS, Font->Texture, DescITR);
+
+				for (auto I = 0; I < 3; ++I)
+					DescITR = PushTextureToDescHeap(RS, RS->NullSRV, DescITR);
+
+				for (auto I = 0; I < 4; ++I)
+					DescITR = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescITR, 1024);
+
+				ID3D12DescriptorHeap* Heaps[] = { GetCurrentDescriptorTable(RS) };
+
+				CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+				CL->IASetVertexBuffers				(0, 1, VBuffers);
+				CL->SetDescriptorHeaps				(1, Heaps);
+				CL->SetGraphicsRootDescriptorTable	(0, DescPOS);
+				CL->OMSetBlendFactor				(float4(1.0f, 1.0f, 1.0f, 1.0f));
+				//CL->RSSetScissorRects				(1, &RECT);
+
+				CL->DrawInstanced					(T.Count, 1, T.Begin, 0);
 			}	break;
 			//case DRAWCALLTYPE::DCT_3DMesh:
 				//CL->IASetVertexBuffers(0, 1, View + 1);
@@ -7840,32 +7931,99 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	/************************************************************************************************/
 
-	
-	void UploadGUI(RenderSystem* RS, GUIRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow)
+	float2 Position2SS(float2 in) { return{ in.x * 2 - 1, in.y * -2 + 1 }; }
+
+	void UploadGUI(RenderSystem* RS, ImmediateRender* IR, iAllocator* TempMemory, RenderWindow* TargetWindow)
 	{
-		if(RG->Rects.size())
-			UpdateResourceByTemp(RS, &RG->RectBuffer, RG->Rects.begin(), RG->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-		for (auto& I : RG->Text)
+		if(IR->Rects.size())
+			UpdateResourceByTemp(RS, &IR->RectBuffer, IR->Rects.begin(), IR->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		for (auto& I : IR->Text)
 			UploadTextArea(I.Font, I.Text, TempMemory, RS, TargetWindow);
 
-		UploadLineSegments(RS, &RG->Lines2D);
+		UploadLineSegments(RS, &IR->Lines2D);
+
+		auto PixelSize = GetPixelSize(TargetWindow);
+
+		// Upload Text
+		{
+			size_t BufferSize = IR->TextBufferPosition * sizeof(TextEntry);
+			TextEntry* Text = (TextEntry*)TempMemory->_aligned_malloc(BufferSize);
+			size_t itr = 0;
+			size_t itr2 = 0;
+
+			for (auto Draw : IR->Text2) {
+				for (auto str : IR->TextBuffer) {
+					size_t StrSize		= Draw.Count;
+					float2 AreaSize		= Draw.CLIPAREA_BOTTOMRIGHT - Draw.CLIPAREA_TOPLEFT;
+					float2 TopLeft		= Draw.CLIPAREA_TOPLEFT;
+					float2 BottomRight	= Draw.CLIPAREA_BOTTOMRIGHT;
+
+					float CurrentX = 0;
+					float CurrentY = .0;
+					float YAdvance = 0.0f;
+
+					for (size_t StrIdx = 0; StrIdx < StrSize; ++StrIdx) {
+						auto C				= str[StrIdx];
+						auto Font			= Draw.Font;
+						float2 GlyphArea	= Font->GlyphTable[C].WH * PixelSize;
+						float  XAdvance		= Font->GlyphTable[C].Xadvance * PixelSize.x;
+						auto G				= Font->GlyphTable[C];
+
+						float2 Scale		= float2(1.0f, 1.0f) / Font->TextSheetDimensions;
+						float2 WH			= G.WH * Scale;
+						float2 XY			= G.XY * Scale;
+						float2 UVTL			= XY;
+						float2 UVBR			= XY + WH;
+
+						if ( C == '\n' || CurrentX + XAdvance	> AreaSize.x) {
+							CurrentX = 0;
+							CurrentY += YAdvance/4;
+						}
+
+						TextEntry Character		= {};
+						Character.POS			= Position2SS(float2(CurrentX, CurrentY));
+						Character.TopLeftUV		= UVTL;
+						Character.BottomRightUV = UVBR;
+						Character.Color			= Draw.Color;
+						Character.Size			= WH;
+
+						Text[itr2] = Character;
+						YAdvance = max(YAdvance, GlyphArea.y);
+						CurrentX += XAdvance/2;
+						itr2++;
+					}
+				}
+				itr++;
+			}
+
+			UpdateResourceByTemp(RS, &IR->TextBufferGPU, Text, BufferSize, 1, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		}
+
+		
 	}
 
 
 	/************************************************************************************************/
 
 
-	void ReleaseDrawGUI(RenderSystem* RS, GUIRender* RG) {
+	void ReleaseDrawGUI(RenderSystem* RS, ImmediateRender* RG) {
 		RG->Rects.Release();
 		RG->TexturedRects.Release();
 		RG->ClipAreas.Release();
 		RG->DrawLines2D.Release();
 		RG->DrawLines3D.Release();
 		RG->Lines2D.LineSegments.Release();
-		
+		RG->TextBuffer.Release();
+		RG->Text.Release();
+		RG->Text2.Release();
+
 		Push_DelayedRelease(RS, RG->Lines2D.GPUResource[0]);
 		Push_DelayedRelease(RS, RG->Lines2D.GPUResource[1]);
 		Push_DelayedRelease(RS, RG->Lines2D.GPUResource[2]);
+
+		Push_DelayedRelease(RS, RG->TextBufferGPU[0]);
+		Push_DelayedRelease(RS, RG->TextBufferGPU[1]);
+		Push_DelayedRelease(RS, RG->TextBufferGPU[2]);
 
 		if(RG->RectBuffer)			RG->RectBuffer.Release();
 
@@ -7893,7 +8051,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void Clear(GUIRender* RG)
+	void Clear(ImmediateRender* RG)
 	{
 		RG->DrawCalls.clear();
 		RG->Rects.clear();

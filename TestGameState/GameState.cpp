@@ -864,7 +864,7 @@ struct GameState
 
 	ShadowMapPass		ShadowMapPass;
 
-	GUIRender			GUIRender;
+	ImmediateRender			ImmediateRender;
 
 	LineSet				Lines;
 
@@ -1507,12 +1507,12 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 	TexturedRect.Color         = float4(WHITE, 1.0f);
 	TexturedRect.TextureHandle = &TestScene->TestTexture;
 
-	PushRect(State->GUIRender, TexturedRect);
+	PushRect(State->ImmediateRender, TexturedRect);
 
 	UpdateGameActor				(Inertia, &State->GScene, dt, &TestScene->PlayerActor, TestScene->PlayerController.Node);
 	UpdateMouseCameraController	(&TestScene->PlayerCameraController, State->Nodes, State->Mouse.dPos);
 
-	PushLineSet(State->GUIRender, { &State->Lines, State->ActiveCamera });
+	PushLineSet(State->ImmediateRender, { &State->Lines, State->ActiveCamera });
 
 	SimpleWindowInput Input;
 	Input.MousePosition			 = State->Mouse.NormalizedPos;
@@ -1530,7 +1530,7 @@ void UpdateTestScene(Scene* TestScene,  GameState* State, double dt, iAllocator*
 
 	//SetSliderPosition((1 + sin(TestScene->T)) / 2, TestScene->Slider, &TestScene->Window);
 
-	DrawSimpleWindow(Input, &TestScene->Window, &State->GUIRender);
+	DrawSimpleWindow(Input, &TestScene->Window, &State->ImmediateRender);
 }
 
 
@@ -1602,7 +1602,7 @@ extern "C"
 		InitiateGraphicScene	  (&State.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		//InitiateHairRender		  (Engine->RenderSystem, &Engine->DepthBuffer,   &State.HairRender);
 		InitiateLineSet			  (Engine->RenderSystem, Engine->BlockAllocator, &State.Lines);
-		InitiateDrawGUI			  (Engine->RenderSystem, &State.GUIRender,		  Engine->TempAllocator);
+		InitiateImmediateRender			  (Engine->RenderSystem, &State.ImmediateRender,		  Engine->TempAllocator);
 		InitiateStaticMeshBatcher (Engine->RenderSystem, Engine->BlockAllocator, &State.StaticMeshBatcher);
 		InitiateShadowMapPass	  (Engine->RenderSystem, &State.ShadowMapPass);
 		InitiateTextureVTable	  (Engine->RenderSystem, {{128, 128}, {32, 32}, &Engine->Assets, Engine->BlockAllocator }, &State.TextureState);
@@ -1744,7 +1744,7 @@ extern "C"
 			ResetStats(&State->Stats);
 		}
 
-		PushText( State->GUIRender, { { 0.0f, 0.0f },{ 1.0f, 1.0f },{ WHITE, 1.0f }, &State->Text, State->Font });
+		PushText( State->ImmediateRender, { { 0.0f, 0.0f },{ 1.0f, 1.0f },{ WHITE, 1.0f }, &State->Text, State->Font });
 
 		// TODO: multi Thread these
 		// Do Uploads
@@ -1754,7 +1754,7 @@ extern "C"
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 			//DPP.Mode = EDEFERREDPASSMODE::EDPM_POSITION;
 
-			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);
+			UploadGUI	(RS, &State->ImmediateRender, TempMemory, State->ActiveWindow);
 			UploadPoses	(RS, &PVS, State->GT, TempMemory);
 
 			UploadLineSegments			(RS, &State->Lines);
@@ -1814,7 +1814,7 @@ extern "C"
 			}
 #endif
 
-			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
+			DrawGUI(RS, CL, &State->ImmediateRender, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
 	}
@@ -1846,7 +1846,7 @@ extern "C"
 
 		CleanUpTextureVTable	(&_ptr->TextureState);
 		CleanUpSimpleWindow		(&_ptr->TestScene.Window, Engine->RenderSystem);
-		ReleaseDrawGUI			(&_ptr->GUIRender);
+		ReleaseDrawGUI			(&_ptr->ImmediateRender);
 		CleanUpLineSet			(&_ptr->Lines);
 		CleanUpState			(_ptr, Engine);
 		ReleaseCamera			(_ptr->Nodes, _ptr->ActiveCamera);

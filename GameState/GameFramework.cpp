@@ -193,7 +193,7 @@ void DrawMouseCursor(EngineMemory* Engine, GameFramework* State, float2 CursorPo
 
 	Cursor.Color  = float4(1, 1, 1, 1);
 
-	PushRect(State->GUIRender, Cursor);
+	PushRect(State->Immediate, Cursor);
 }
 
 
@@ -220,7 +220,7 @@ void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
 	ReleaseCamera(State->Nodes, &State->DefaultCamera);
 
 	ReleaseGraphicScene(&State->GScene);
-	ReleaseDrawGUI(Engine->RenderSystem, &State->GUIRender);
+	ReleaseDrawGUI(Engine->RenderSystem, &State->Immediate);
 }
 
 
@@ -330,7 +330,7 @@ extern "C"
 
 		InitiateScene			  (&Engine->Physics, &Game.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&Game.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
-		InitiateDrawGUI			  (Engine->RenderSystem, &Game.GUIRender, Engine->TempAllocator);
+		InitiateImmediateRender			  (Engine->RenderSystem, &Game.Immediate, Engine->TempAllocator);
 
 		//InitateConsole			  (&State.Console, Engine);
 		
@@ -475,7 +475,7 @@ extern "C"
 				//Lines.C = State->ActiveCamera;
 				//Lines.Lines = &State->DebugLines;
 				//UploadLineSegments(Engine->RenderSystem, &State->DebugLines);
-				//PushLineSet(&State->GUIRender, Lines);
+				//PushLineSet(&State->ImmediateRender, Lines);
 			}
 
 			DeferredPass_Parameters	DPP;
@@ -486,7 +486,7 @@ extern "C"
 
 			SubmitUploadQueues(RS);
 
-			UploadGUI	(RS, &State->GUIRender, TempMemory, State->ActiveWindow);	
+			UploadGUI	(RS, &State->Immediate, TempMemory, State->ActiveWindow);	
 			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
 
 			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
@@ -519,7 +519,7 @@ extern "C"
 			TiledRender_Shade	(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 			ForwardPass			(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
 
-			DrawGUI(RS, CL, &State->GUIRender, GetBackBufferTexture(State->ActiveWindow));       
+			DrawGUI(RS, CL, &State->Immediate, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
 	}

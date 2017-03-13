@@ -60,6 +60,11 @@ struct PlayerStateFrame
 	float Yaw, Pitch, Roll;
 };
 
+struct PlayerGameplay_Variables
+{
+	float Health;
+};
+
 struct Player
 {
 	EntityHandle				Model;
@@ -72,6 +77,8 @@ struct Player
 	DAConditionHandle OtherCondition;
 
 	size_t					ID;
+
+	PlayerGameplay_Variables Vars;
 
 	operator Player* () { return this; }// I'm Getting tired of typeing the &'s everywhere!
 };
@@ -93,7 +100,7 @@ inline float GetPlayerYaw(Player* P)
 
 inline Quaternion GetOrientation(Player* P, GraphicScene* GS) 
 {
-	return GS->GetOrientation(P->Model);
+	return GS->GetOrientation(P->Model).Inverse();
 }
 
 inline float3 GetPlayerPosition(Player* P)

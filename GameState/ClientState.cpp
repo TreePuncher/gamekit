@@ -303,7 +303,7 @@ bool UpdateClientPreDraw(SubState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
+void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 {
 	RakNet::Packet* Packet = nullptr;
 
@@ -357,19 +357,30 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory*, double dT)
 
 					SetPlayerInfoPacket* Info = (SetPlayerInfoPacket*)IncomingPacket;
 
+					float3		POS;
+					Quaternion	Q;
+					memcpy(&POS,	&Info->POS, sizeof(POS));
+					memcpy(&Q,		&Info->R, sizeof(Q));
+
 					if (Info->PlayerID == ThisState->NetState->ID) {
 						printf("Server Moving Local Player!\n");
-						SetPlayerPosition	(&ThisState->LocalPlayer, Info->POS);
-						SetPlayerOrientation(&ThisState->LocalPlayer, Info->R);
+						SetPlayerPosition	(&ThisState->LocalPlayer, POS);
+						SetPlayerOrientation(&ThisState->LocalPlayer, Q);
 					}
 					else
 					{
 						for (auto& I : ThisState->Imposters) {
 							if (I.PlayerID == Info->PlayerID)
 							{
-								auto temp = Info->R;
-								ThisState->Base->GScene.SetPositionEntity_WT(I.Graphics, Info->POS);
-								ThisState->Base->GScene.SetOrientation(I.Graphics, temp.Inverse());
+								//ThisState->Base->GScene.SetPositionEntity_WT(I.Graphics, POS);
+								auto OldPOS = ThisState->Base->GScene.GetEntityPosition(I.Graphics);
+								auto dP = POS - OldPOS;
+
+								I.Move(&ThisState->Base->GScene, dP, dT);
+
+								auto NewPOS = I.Collider.Controller->getFootPosition();
+								ThisState->Base->GScene.SetPositionEntity_WT(I.Graphics, {NewPOS.x, NewPOS.y, NewPOS.z});
+								ThisState->Base->GScene.SetOrientation(I.Graphics, Q);
 							}
 						}
 					}
@@ -490,6 +501,13 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Base
 		auto& Imposter	  = PlayState->Imposters[I];
 		Imposter.Graphics = Base->GScene.CreateDrawableAndSetMesh("PlayerModel");
 		Imposter.PlayerID = Client->PlayerIds[I];
+		
+		CapsuleCharacterController_DESC Desc;
+		Desc.FootPos = {0.0f, 0.0f, 0.0f};
+		Desc.h = 20.0f;
+		Desc.r = 5.0f;
+
+		Initiate(&Imposter.Collider, &Base->PScene, &Engine->Physics, Desc);
 	}
 
 	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);

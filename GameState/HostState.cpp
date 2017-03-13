@@ -399,6 +399,7 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 
 				if (ClientOutOfSync) {
 					SendCorrectPlayerStatePacket(ThisState, ClientIdx);
+					/*
 					printf("Expected Player at Position: ");
 					printfloat3(Position);
 					printf("\n               Actually At: ");
@@ -408,6 +409,7 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 					printf("\nActual   Orientation: ");
 					printfloat4(Quaternion(0, InfoPacket->State.Yaw, 0).floats);
 					printf("\n");
+					*/
 				}
 
 			}	break;

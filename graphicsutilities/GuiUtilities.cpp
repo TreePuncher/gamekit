@@ -390,7 +390,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DrawChildren(GUIChildList& Elements, SimpleWindow* Window, GUIRender* Out, ParentInfo& P, FormattingOptions& Options)
+	void DrawChildren(GUIChildList& Elements, SimpleWindow* Window, ImmediateRender* Out, ParentInfo& P, FormattingOptions& Options)
 	{
 		FormattingState CurrentFormatting = InitiateFormattingState(Options, P);
 
@@ -593,7 +593,7 @@ namespace FlexKit
 		HandleWindowInput(Input, Window->Root, Window, P);
 	}
 
-	void DrawSimpleWindow(SimpleWindowInput Input, SimpleWindow* Window, GUIRender* Out)
+	void DrawSimpleWindow(SimpleWindowInput Input, SimpleWindow* Window, ImmediateRender* Out)
 	{
 		//Window->Position = Input.MousePosition;
 
@@ -1038,7 +1038,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::Upload(RenderSystem* RS, GUIRender* out)
+	void ComplexGUI::Upload(RenderSystem* RS, ImmediateRender* out)
 	{
 
 	}
@@ -1047,7 +1047,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::Draw(RenderSystem* RS, GUIRender* out)
+	void ComplexGUI::Draw(RenderSystem* RS, ImmediateRender* out)
 	{
 		LayoutEngine Layout(Memory, RS, out);
 
@@ -1130,7 +1130,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::Draw_DEBUG(RenderSystem* RS, GUIRender* out)
+	void ComplexGUI::Draw_DEBUG(RenderSystem* RS, ImmediateRender* out)
 	{
 		LayoutEngine Layout(Memory, RS, out);
 
@@ -1242,7 +1242,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LayoutEngine::LayoutEngine(iAllocator* memory, RenderSystem* rs, GUIRender* gui) :
+	LayoutEngine::LayoutEngine(iAllocator* memory, RenderSystem* rs, ImmediateRender* gui) :
 		PositionStack(memory),
 		RS(rs),
 		GUI(gui),

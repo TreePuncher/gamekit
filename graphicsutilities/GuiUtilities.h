@@ -420,8 +420,8 @@ namespace FlexKit
 
 	FLEXKITAPI void		InitiateSimpleWindow	( iAllocator*		Memory,		SimpleWindow* Out,		SimpleWindow_Desc& Desc );
 	FLEXKITAPI void		CleanUpSimpleWindow		( SimpleWindow* Out, RenderSystem* RS = nullptr);
-	FLEXKITAPI void		DrawChildren			( GUIChildList&		Elements,	SimpleWindow* Window,	GUIRender* Out, ParentInfo& P, FormattingOptions& Formatting = FormattingOptions());
-	FLEXKITAPI void		DrawSimpleWindow		( SimpleWindowInput	Input,		SimpleWindow* Window,	GUIRender* Out );
+	FLEXKITAPI void		DrawChildren			( GUIChildList&		Elements,	SimpleWindow* Window,	ImmediateRender* Out, ParentInfo& P, FormattingOptions& Formatting = FormattingOptions());
+	FLEXKITAPI void		DrawSimpleWindow		( SimpleWindowInput	Input,		SimpleWindow* Window,	ImmediateRender* Out );
 
 	FLEXKITAPI void		UpdateSimpleWindow		( SimpleWindowInput* Input, SimpleWindow* Window);
 
@@ -465,10 +465,10 @@ namespace FlexKit
 
 	struct LayoutEngine
 	{
-		LayoutEngine(iAllocator* Memory, RenderSystem* RS, GUIRender* GUI);
+		LayoutEngine(iAllocator* Memory, RenderSystem* RS, ImmediateRender* GUI);
 
 		RenderSystem*	RS;
-		GUIRender*		GUI;
+		ImmediateRender*		GUI;
 		iAllocator*		Memory;
 
 		DynArray<float2, 128> PositionStack;
@@ -683,10 +683,10 @@ namespace FlexKit
 		void Release();
 
 		void Update		( double dt, const SimpleWindowInput in );
-		void Upload		( RenderSystem* RS, GUIRender* out );
+		void Upload		( RenderSystem* RS, ImmediateRender* out );
 
-		void Draw		( RenderSystem* RS, GUIRender* out );
-		void Draw_DEBUG	( RenderSystem* RS, GUIRender* out );
+		void Draw		( RenderSystem* RS, ImmediateRender* out );
+		void Draw_DEBUG	( RenderSystem* RS, ImmediateRender* out );
 
 		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
 		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );
