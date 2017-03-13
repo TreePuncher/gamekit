@@ -99,6 +99,14 @@ struct GameFramework
 	bool				Quit;
 
 	size_t				TerrainSplits;
+
+	struct FrameStats
+	{
+		double T;
+		double Fps_T;
+		size_t FPS;
+		size_t FPS_Counter;
+	}Stats;
 };
 
 

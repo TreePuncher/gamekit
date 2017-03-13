@@ -7329,7 +7329,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 	// Position and Area start at Top Left of Screen, going to Bottom Right; Top Left{0, 0} -> Bottom Right{1.0, 1.0f}
-	void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color)
+	void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale)
 	{
 		size_t StrLen = strlen(str);
 
@@ -7340,6 +7340,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		NewDrawCall.CLIPAREA_TOPLEFT     = POS;
 		NewDrawCall.CLIPAREA_BOTTOMRIGHT = POS + TextArea;
 		NewDrawCall.Color				 = Color;
+		NewDrawCall.Scale				 = Scale;
 
 		RG->TextBufferPosition	   += StrLen;
 		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, RG->Text2.size() });
@@ -7977,7 +7978,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 						if ( C == '\n' || CurrentX + XAdvance	> AreaSize.x) {
 							CurrentX = 0;
-							CurrentY += YAdvance/4;
+							CurrentY += YAdvance/4 * Draw.Scale.y;
 						}
 
 						TextEntry Character		= {};
@@ -7985,11 +7986,11 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 						Character.TopLeftUV		= UVTL;
 						Character.BottomRightUV = UVBR;
 						Character.Color			= Draw.Color;
-						Character.Size			= WH;
+						Character.Size			= WH * Draw.Scale;
 
 						Text[itr2] = Character;
 						YAdvance = max(YAdvance, GlyphArea.y);
-						CurrentX += XAdvance/2;
+						CurrentX += XAdvance * Draw.Scale.y /2 ;
 						itr2++;
 					}
 				}

@@ -54,6 +54,7 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 	std::cout << "Join Pressed\n";
 	if (_ptr) {
 		auto* Args = (CBArguements*)_ptr;
+		auto ThisState = Args->State;
 
 		Args->State->Base->GScene.ClearScene();
 
@@ -119,7 +120,7 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 
 	ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Base->Immediate);
 
-	PrintText(&ThisState->Base->Immediate, "THIS IS A TEST!\nHello World!", ThisState->Base->DefaultAssets.Font, { 0.0f, 0.0f }, {0.2f, 0.2f}, float4(WHITE, 1));
+	//PrintText(&ThisState->Base->Immediate, "THIS IS A TEST!\nHello World!", ThisState->Base->DefaultAssets.Font, { 0.0f, 0.0f }, {0.4f, 0.2f}, float4(WHITE, 1));
 
 	return true;
 }
@@ -139,8 +140,6 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 	Input.LeftMouseButtonPressed  = ThisState->Base->MouseState.LMB_Pressed;
 	Input.MousePosition			  = ThisState->Base->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
-
-	//std::cout << "Current VRam Usage: " << GetVidMemUsage(Engine->RenderSystem) / MEGABYTE << "MBs\n";
 
 	//Yaw(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 );
 	//Pitch(Engine->Nodes, Base->ActiveCamera->Node, pi / 8 * ThisState->Base->MouseState.dPos[1] * dT);
@@ -191,6 +190,7 @@ MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine)
 	State->T                    = 0;
 	State->Base                 = Base;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
+
 	Base->MouseState.Enabled   = true;
 	auto** asd = &State;
 

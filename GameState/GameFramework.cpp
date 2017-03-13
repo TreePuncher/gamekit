@@ -325,6 +325,10 @@ extern "C"
 		Game.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 		Game.ActiveScene				= &Game.GScene;
 
+		Game.Stats.FPS			= 0;
+		Game.Stats.FPS_Counter	= 0;
+		Game.Stats.Fps_T		= 0.0;
+
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
@@ -415,9 +419,9 @@ extern "C"
 
 #include<thread>
 
-	GAMESTATEAPI void Update(EngineMemory* Engine, GameFramework* State, double dt)
+	GAMESTATEAPI void Update(EngineMemory* Engine, GameFramework* State, double dT)
 	{
-		UpdateGameFramework(Engine, State, dt);
+		UpdateGameFramework(Engine, State, dT);
 
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
 		UpdateColliders	(&State->PScene, &Engine->Nodes);
@@ -445,6 +449,22 @@ extern "C"
 		UpdateTransforms	(State->Nodes);
 		UpdateCamera		(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
 		UpdateGraphicScene	(&State->GScene); // Default Scene
+
+		if (State->Stats.Fps_T > 1.0)
+		{
+			State->Stats.FPS         = State->Stats.FPS_Counter;
+			State->Stats.FPS_Counter = 0;
+			State->Stats.Fps_T       = 0.0;
+		}
+
+		State->Stats.FPS_Counter++;
+		State->Stats.Fps_T += dt;
+
+
+		uint32_t VRamUsage = GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
+		char* TempBuffer = (char*)Engine->TempAllocator.malloc(512);
+		sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\n", VRamUsage, (uint32_t)State->Stats.FPS);
+		PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 1.0f, 1.0f }, float4(WHITE, 1), { .7f, .7f });
 	}
 
 
