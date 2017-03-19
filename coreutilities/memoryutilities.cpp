@@ -104,9 +104,13 @@ namespace FlexKit
 /************************************************************************************************/
 	
 // Generic Utiliteies
-	bool LoadFileIntoBuffer(const char* strLoc, byte* out, size_t strlen )
+	bool LoadFileIntoBuffer(const char* strLoc, byte* out, size_t strlen, bool TextFile )
 	{
-		std::fstream File(strLoc);
+		/*
+		std::fstream File;
+		auto mode = std::fstream::in;// | (textfile ? std::fstream::binary : 0);
+		File.open(strLoc, mode );
+
 		if( File.is_open() )
 		{
 			File.seekg( std::ios::beg );
@@ -117,12 +121,75 @@ namespace FlexKit
 
 			if( strlen > size )
 			{
+
 				File.seekg( std::ios::beg );
-				File.read( (char*)out, size );
+				File.read((char*)out, size);
+
+				if (!File)
+				{	// An Error Occured
+
+					auto ReadCount = File.gcount();
+					auto test = File.eof();
+					File.close();
+					return false;
+				}
+
 				File.close();
 				return true;
 			}
 			File.close();
+		}*/
+		/*
+		FILE* F = fopen(strLoc, "r");
+		if (F)
+		{
+			auto res = fseek(F, 0, SEEK_END);
+			size_t Size = ftell(F);
+
+			if (strlen > Size)
+			{
+				rewind(F);
+				auto res = fread(out, 1, Size, F);
+				auto eof = feof(F);
+				return (res == Size) | feof(F);
+
+			}
+			return true;
+		}
+		else
+			return false;
+		*/
+		size_t newSize = 0;
+		WCHAR Temp[512];
+		mbstowcs_s(&newSize, Temp, strLoc, ::strlen(strLoc));
+
+		auto F = CreateFile(Temp, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+		LARGE_INTEGER LSize; 
+		auto res = ::GetFileSizeEx(F, &LSize);
+		size_t Size = LSize.LowPart;
+
+		if ((size_t)Size < strlen)
+		{
+			DWORD BytesRead = 0;
+			auto res = ReadFile(F, out, Size, &BytesRead, nullptr);
+			
+			CloseHandle(F);
+
+			if (TextFile) {
+				for (size_t I = 0; I < Size; ++I)
+				{
+					switch (out[I])
+					{
+					case '\r':
+						out[I] = '\n';
+					default:
+						break;
+					}
+				}
+			}
+			int x = 0;
+			return (BytesRead == Size);
+
 		}
 		return false;
 	}

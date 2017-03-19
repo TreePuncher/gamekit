@@ -39,11 +39,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //	Graphics:
 //		(DONE) Basic Gui rendering methods (Draw Rect, etc)
-//		Multi-threaded Texture Uploads
+//		(PARTLY) Multi-threaded Texture Uploads
 //		Terrain Rendering
+//			(DONE) Geometry generation
+//			(PARTLY) CULLING
 //			Texture Splatting
+//			Normal Generation
 //		Occlusion Culling
-//		Animation State Machine
+//		(Partly Done)Animation State Machine
 //		(DONE/PARTLY) 3rd Person Camera Handler
 //		(DONE) Object -> Bone Attachment
 //		(DONE) Texture Loading
@@ -64,12 +67,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //	Physics:
 //		(DONE) Statics
 //		(DONE) TriMesh Statics
+//		
 //	Network:
 //		Client:
+//		(DONE) Connect to Server
+//		(DONE) Basic Game Room
+//		(DONE) Client Side Prediction
 //		Server:
+//		(DONE) Correct errors on Clients deviating from Server
 //
 //	Tools:
 //		(DONE) Meta-Data for Resource Compiling
+//		(PARTLY) TTF Loading
 //
 
 
@@ -370,7 +379,8 @@ extern "C"
 			Menu, 
 			Host,
 			Client,
-		}CurrentMode = Menu;
+			Play,
+		}CurrentMode = Play;
 
 
 		const char* Name	= nullptr;
@@ -406,6 +416,10 @@ extern "C"
 			auto ClientState = CreateClientState(Engine, &Game, Name, Server);
 			PushSubState(&Game, ClientState);
 		}	break;
+		case Play: {
+			auto PlayState= CreatePlayState(Engine, &Game);
+			PushSubState(&Game, PlayState);
+		}
 		default:
 			break;
 		}
@@ -523,6 +537,7 @@ extern "C"
 
 			ClearBackBuffer		 (RS, CL, State->ActiveWindow, { 0, 0, 0, 0 });
 			ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
+			ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->Culler.OcclusionBuffer) }, DefaultClearDepthValues_0);
 
 			Texture2D BackBuffer = GetBackBufferTexture(State->ActiveWindow);
 			SetViewport	(CL, BackBuffer);
@@ -531,8 +546,10 @@ extern "C"
 			IncrementPassIndex		(&Engine->TiledRender);
 			ClearTileRenderBuffers	(RS, &Engine->TiledRender);
 
+			OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, State->ActiveCamera);
+
 			//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
-			TiledRender_Fill			(RS, &PVS, &Engine->TiledRender, OutputTarget,  State->ActiveCamera, nullptr, &Engine->Geometry,  nullptr); // Do Early-Z?
+			TiledRender_Fill			(RS, &PVS, &Engine->TiledRender, OutputTarget,  State->ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
 
 			//DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, false);
 
@@ -548,6 +565,8 @@ extern "C"
 	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
 	{
 		IncrementCurrent(&Engine->DepthBuffer);
+
+		Engine->Culler.Increment();
 
 		PresentWindow(&Engine->Window, Engine->RenderSystem);
 	}

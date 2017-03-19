@@ -49,15 +49,15 @@ namespace FlexKit
 			} 	D3D12_VERTEX_BUFFER_VIEW;
 			*/
 
-			auto CL = GetCurrentCommandList(RS);
+			auto CL             = GetCurrentCommandList(RS);
 			auto FrameResources = GetCurrentFrameResources(RS);
-			auto DescPOSGPU = GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
-			auto DescPOS = ReserveDescHeap(RS, 6);
+			auto DescPOSGPU     = GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
+			auto DescPOS        = ReserveDescHeap(RS, 6);
 			auto DescriptorHeap = GetCurrentDescriptorTable(RS);
 
-			auto RTVPOSCPU = GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
-			auto RTVPOS = ReserveRTVHeap(RS, 6);
-			auto RTVHeap = GetCurrentRTVTable(RS);
+			auto RTVPOSCPU      = GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
+			auto RTVPOS         = ReserveRTVHeap(RS, 6);
+			auto RTVHeap        = GetCurrentRTVTable(RS);
 
 			CL->SetDescriptorHeaps(1, &DescriptorHeap);
 

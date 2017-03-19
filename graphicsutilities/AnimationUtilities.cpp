@@ -908,10 +908,12 @@ namespace FlexKit
 
 	void UploadPoses(RenderSystem* RS, PVS* Drawables, GeometryTable* GT, iAllocator* TEMP)
 	{
-		for (Drawable* d : *Drawables)
+		for (PVEntry& d : *Drawables)
 		{
-			if(d->PoseState && d->PoseState->Dirty)
-				UploadPose(RS, d, GT,TEMP);
+			auto D = d.D;
+
+			if(D->PoseState && D->PoseState->Dirty)
+				UploadPose(RS, D, GT,TEMP);
 		}
 	}
 

@@ -657,7 +657,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	FLEXKITAPI void		PrintBlockStatus	(FlexKit::BlockAllocator* BlockAlloc);
-	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, byte* out, size_t strlenmax);
+	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, byte* out, size_t strlenmax, bool textfile = true);
 	FLEXKITAPI size_t	GetFileSize			(const char* strLoc);
 	FLEXKITAPI size_t	GetLineToBuffer		(const char* Buffer, size_t position, char* out, size_t OutBuffSize);
 

@@ -370,7 +370,6 @@ namespace FlexKit
 		};
 
 		{
-			// Pixel Processor Root Sig
 			CD3DX12_DESCRIPTOR_RANGE ranges[2];
 			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0);
 			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 4, 4);
@@ -403,11 +402,11 @@ namespace FlexKit
 			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 0);
 
 			CD3DX12_ROOT_PARAMETER Parameters[5];
-			Parameters[0].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[1].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[2].InitAsConstantBufferView(2, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[3].InitAsDescriptorTable(1, ranges, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[4].InitAsUnorderedAccessView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[0].InitAsConstantBufferView	(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[1].InitAsConstantBufferView	(1, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[2].InitAsConstantBufferView	(2, 0, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[3].InitAsDescriptorTable		(1, ranges, D3D12_SHADER_VISIBILITY_ALL);
+			Parameters[4].InitAsUnorderedAccessView	(0, 0, D3D12_SHADER_VISIBILITY_ALL);
 
 			ID3DBlob* Signature = nullptr;
 			ID3DBlob* ErrorBlob = nullptr;
@@ -458,12 +457,13 @@ namespace FlexKit
 		}
 		{
 			// Shading Signature Setup
-			CD3DX12_DESCRIPTOR_RANGE ranges[3]; {
+			CD3DX12_DESCRIPTOR_RANGE ranges[4]; {
 				ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8, 0);
 				ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
 				ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0);
-			}
+				ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, -1, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
 
+			}
 
 			CD3DX12_ROOT_PARAMETER Parameters[1];
 			Parameters[DSRP_DescriptorTable].InitAsDescriptorTable(3, ranges, D3D12_SHADER_VISIBILITY_ALL);
@@ -690,7 +690,7 @@ namespace FlexKit
 
 		D3D12_DESCRIPTOR_HEAP_DESC	FrameTextureHeap_DESC = {};
 		FrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		FrameTextureHeap_DESC.NumDescriptors	= 1024;
+		FrameTextureHeap_DESC.NumDescriptors	= 4096 * 2;
 		FrameTextureHeap_DESC.NodeMask			= 0;
 		FrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
@@ -1843,12 +1843,192 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	ID3D12PipelineState* LoadOcclusionState(RenderSystem* RS)
+	{
+		Shader VShader = LoadShader("VMain", "VMAIN", "vs_5_0", "assets\\VShader.hlsl" );
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
+		}
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); {
+			Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+			//Depth_Desc.DepthEnable	= false;
+		}
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC GDesc = {};
+		GDesc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+		GDesc.VS                    = VShader;
+		GDesc.PS                    = { nullptr, 0 };
+		GDesc.RasterizerState       = Rast_Desc;
+		GDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		GDesc.SampleMask            = UINT_MAX;
+		GDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+		GDesc.NumRenderTargets      = 0;
+		GDesc.SampleDesc.Count      = 1;
+		GDesc.SampleDesc.Quality    = 0;
+		GDesc.DSVFormat             = DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
+		GDesc.InputLayout           = { InputElements, 1 };
+		GDesc.DepthStencilState     = Depth_Desc;
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&GDesc, IID_PPV_ARGS(&PSO));
+		CheckHR(HR, ASSERTONFAIL("Failed to Create PSO for Occlusion Culling!"));
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool Float)
+	{
+		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::OCCLUSION_CULLING, LoadOcclusionState);
+		QueuePSOLoad(RS, EPIPELINESTATES::OCCLUSION_CULLING);
+
+		auto NewRes = CreateShaderResource(RS, Count * 8);
+		NewRes._SetDebugName("OCCLUSIONCULLERRESULTS");
+		D3D12_QUERY_HEAP_DESC Desc;
+		Desc.Count		= Count;
+		Desc.Type		= D3D12_QUERY_HEAP_TYPE_OCCLUSION;
+		Desc.NodeMask	= 0;
+
+		ID3D12QueryHeap* Heap[3] = { nullptr, nullptr, nullptr };
+		
+		HRESULT HR;
+		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Heap[0])); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
+		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Heap[1])); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
+		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Heap[2])); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
+
+		FlexKit::Texture2D_Desc Tex2D_Desc;
+		Tex2D_Desc.CV           = true;
+		Tex2D_Desc.FLAGS        = FlexKit::SPECIALFLAGS::DEPTHSTENCIL;
+		Tex2D_Desc.Format       = FORMAT_2D::D32_FLOAT;
+		Tex2D_Desc.Width        = OcclusionBufferSize[0];
+		Tex2D_Desc.Height       = OcclusionBufferSize[1];
+		Tex2D_Desc.Read         = false;
+		Tex2D_Desc.MipLevels    = 1;
+		Tex2D_Desc.initialData  = nullptr;
+		Tex2D_Desc.RenderTarget = true;
+		Tex2D_Desc.UAV          = false;
+		Tex2D_Desc.Write        = false;
+
+		DepthBuffer DB;
+		FlexKit::DepthBuffer_Desc Depth_Desc;
+		Depth_Desc.BufferCount	= 3;
+		Depth_Desc.Float32		= true;
+		Depth_Desc.InverseDepth = true;
+
+		auto Res = CreateDepthBuffer(RS, OcclusionBufferSize, Depth_Desc, &DB);
+		FK_ASSERT(Res, "FAILED TO CREATE OCCLUSION BUFFER!");
+		
+		for (size_t I = 0; I < 3; ++I)
+			SETDEBUGNAME(DB.Buffer[I], "OCCLUSION CULLER DEPTH BUFFER");
+
+		return{ 0, Count, 0, {Heap[0], Heap[1], Heap[2]}, NewRes, DB, OcclusionBufferSize };
+	}
+
+
+	/************************************************************************************************/
+
+
+
+	void OcclusionPass(RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C)
+	{
+		auto OCHeap = OC->Heap[OC->Idx];
+		auto DSV	= ReserveDSVHeap(RS, 1);
+
+
+		D3D12_VIEWPORT VPs[1];
+		VPs[0].Width		= OC->HW[0];
+		VPs[0].Height		= OC->HW[1];
+		VPs[0].MaxDepth		= 1.0f;
+		VPs[0].MinDepth		= 0.0f;
+		VPs[0].TopLeftX		= 0;
+		VPs[0].TopLeftY		= 0;
+
+		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
+		DSVDesc.Format				= DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
+		DSVDesc.Texture2D.MipSlice	= 0;
+		DSVDesc.ViewDimension		= D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2D;
+
+		RS->pDevice->CreateDepthStencilView(GetCurrent(&OC->OcclusionBuffer), &DSVDesc, (D3D12_CPU_DESCRIPTOR_HANDLE)DSV);
+
+		CL->RSSetViewports(1, VPs);
+		CL->OMSetRenderTargets(0, nullptr, false, &(D3D12_CPU_DESCRIPTOR_HANDLE)DSV);
+		CL->SetPipelineState(GetPSO(RS, EPIPELINESTATES::OCCLUSION_CULLING));
+		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
+
+		for (size_t I = 0; I < Set->size(); ++I) {
+			size_t QueryID = OC->GetNext();
+
+			auto& P			= Set->at(I);
+			P.OcclusionID	= QueryID;
+
+			CL->BeginQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
+
+			auto DHeapPosition	= GetDescTableCurrentPosition_GPU(RS);
+			auto DHeap  = ReserveDescHeap(RS, 8);
+			auto DTable = DHeap;
+
+			{	// Fill Descriptor Table With Nulls
+				auto Next = Push2DSRVToDescHeap(RS, RS->NullSRV, DHeap);
+				Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
+				Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
+				Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
+				Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+				Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+				Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+				PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+			}
+
+			CL->SetGraphicsRootDescriptorTable(0, DHeapPosition);
+			CL->SetGraphicsRootConstantBufferView(1, C->Buffer.Get()->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView(2, P.D->VConstants.Get()->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView(3, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
+			CL->SetGraphicsRootConstantBufferView(4, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
+
+			auto CurrentMesh = GetMesh(GT, P.D->MeshHandle);
+			size_t IBIndex = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+			size_t IndexCount = GetMesh(GT, P.D->MeshHandle)->IndexCount;
+
+			D3D12_INDEX_BUFFER_VIEW		IndexView;
+			IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
+			IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+			IndexView.SizeInBytes		= IndexCount * 32;
+
+			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, CurrentMesh, VBViews));
+			
+			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			CL->IASetIndexBuffer(&IndexView);
+			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
+
+			CL->EndQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
+		}
+
+		CL->ResolveQueryData(OCHeap, D3D12_QUERY_TYPE_BINARY_OCCLUSION, 0, Set->size(), OC->Predicates.Get(), 0);
+
+		CL->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(OC->Predicates.Get(),
+			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT));
+	}
+
+
+	/************************************************************************************************/
+
+
 	void UploadTextureSet(RenderSystem* RS, TextureSet* TS, iAllocator* Memory)
 	{
 		for (size_t I = 0; I < 16; ++I)
 		{
 			if (TS->TextureGuids[I]) {
-				TS->Loaded[I] = true;
+				TS->Loaded[I]	= true;
 				TS->Textures[I] = LoadTextureFromFile(TS->TextureLocations[I].Directory, RS, Memory);
 			}
 		}
@@ -4761,7 +4941,7 @@ namespace FlexKit
 	TiledRender_Fill(
 		RenderSystem*	RS,		PVS*			_PVS,	TiledDeferredRender*	Pass,	
 		Texture2D Target,		const Camera*	C,		TextureManager* TM,
-		GeometryTable*	GT,		TextureVTable*	Texture )
+		GeometryTable*	GT,		TextureVTable*	Texture, OcclusionCuller* OC )
 	{
 		auto CL				= GetCurrentCommandList				(RS);
 		auto FrameResources	= GetCurrentFrameResources			(RS);
@@ -4779,6 +4959,11 @@ namespace FlexKit
 		auto DSVHeap		= GetCurrentRTVTable				(RS);
 
 
+#if 0
+		const auto CullMode = D3D12_PREDICATION_OP_EQUAL_ZERO;
+#else 
+		const auto CullMode = D3D12_PREDICATION_OP_NOT_EQUAL_ZERO;
+#endif
 		{// Push Temps
 			auto Itr = DescPOS;
 			for (size_t I = 0; I < 6; ++I)
@@ -4836,7 +5021,7 @@ namespace FlexKit
 
 		for (;itr != end;++itr)
 		{
-			Drawable* E = *itr;
+			Drawable* E = (*itr).D;
 
 			if (E->Posed || E->Textured)
 				break;
@@ -4872,6 +5057,11 @@ namespace FlexKit
 				LastHandle = CurrentHandle;
 			}
 
+			if (OC && (*itr).OcclusionID != -1)
+				CL->SetPredication(OC->Get(), (*itr).OcclusionID * 8, CullMode);
+			else
+				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
@@ -4886,7 +5076,7 @@ namespace FlexKit
 
 		for (; itr != end; ++itr)
 		{
-			Drawable* E = *itr;
+			Drawable* E = itr->D;
 			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
 			auto AnimationState		= E->PoseState;
 			
@@ -4929,6 +5119,12 @@ namespace FlexKit
 
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
 			CL->SetGraphicsRootShaderResourceView(DFRP_AnimationResources, AnimationState->Resource->GetGPUVirtualAddress());
+
+			if (OC && (*itr).OcclusionID != -1)
+				CL->SetPredication(OC->Get(), (*itr).OcclusionID * 8, CullMode);
+			else
+				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
 
@@ -4939,7 +5135,7 @@ namespace FlexKit
 
 		for (; itr != end; ++itr)
 		{
-			Drawable* E = *itr;
+			Drawable* E = (*itr).D;
 
 			if (E->Posed)
 				break;
@@ -4955,7 +5151,6 @@ namespace FlexKit
 			size_t IBIndex	= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
 			IndexCount		= CurrentMesh->IndexCount;
 
-			
 			if (CurrentTextureSet == nullptr)
 				continue;
 
@@ -4991,8 +5186,16 @@ namespace FlexKit
 			}
 
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
+
+			if (OC && (*itr).OcclusionID != -1)
+				CL->SetPredication(OC->Get(), (*itr).OcclusionID * 8, CullMode);
+			else
+				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
+
+		CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
 	}
 
 
@@ -5155,7 +5358,7 @@ namespace FlexKit
 
 		for(auto& PV : *_PVS)
 		{
-			auto E                  = (Drawable*)PV;
+			auto E                  = (Drawable*)PV.D;
 			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
 			size_t IBIndex          = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
 			size_t IndexCount       = CurrentMesh->IndexCount;
@@ -6295,14 +6498,23 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	void UpdateDrawables( RenderSystem* RS, SceneNodes* Nodes, PVS* PVS_ ){
 		for ( auto v : *PVS_ ) {
-			auto E = ( Drawable* )v;
-			UpdateDrawable( RS, Nodes, v.V2 );
+			auto D = ( Drawable* )v.D;
+			UpdateDrawable( RS, Nodes, D );
 		}
 	}
 
 
 	/************************************************************************************************/
 
+
+	size_t CreateSortingID(bool Posed, bool Textured, size_t Depth)
+	{
+		size_t DepthPart	= (Depth & 0x00ffffffffffff);
+		size_t PosedBit		= (size_t(Posed)	<< (Posed		? 63 : 0));
+		size_t TextureBit	= (size_t(Textured) << (Textured	? 62 : 0));
+		return DepthPart | PosedBit | TextureBit;
+			
+	}
 
 	void SortPVS( SceneNodes* Nodes, PVS* PVS_, Camera* C)
 	{
@@ -6312,19 +6524,17 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		auto CP = FlexKit::GetPositionW( Nodes, C->Node );
 		for( auto& v : *PVS_ )
 		{
-			auto E = ( (Drawable*)v );
+			auto E = v.D;
 			auto P = FlexKit::GetPositionW( Nodes, E->Node );
-			SortingField D;
-			D.Posed		  = E->Posed;
-			D.InvertDepth = false;
-			D.Textured	  = E->Textured;
-			D.Depth		  = abs( float3( CP - P ).magnitudesquared() * 10000 );
-			v.GetByType<size_t>() = *(size_t*)&D;
+
+			auto Depth = (size_t)abs(float3(CP - P).magnitudesquared() * 10000);
+			auto SortID = CreateSortingID(E->Posed, E->Textured, Depth);
+			v.SortID = SortID;
 		}
 
-		std::sort( PVS_->begin().I, PVS_->end().I, []( auto& R, auto& L ) -> bool
+		std::sort( PVS_->begin().I, PVS_->end().I, []( PVEntry& R, PVEntry& L ) -> bool
 		{
-			return ( (size_t)R < (size_t)L );
+			return ( (size_t)R.SortID < (size_t)L.SortID);
 		} );
 	}
 
@@ -6340,10 +6550,10 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		auto CP = FlexKit::GetPositionW( Nodes, C->Node );
 		for( auto& v : *PVS_ )
 		{
-			auto E = ( (Drawable*)v );
+			auto E = v.D;
 			auto P = FlexKit::GetPositionW( Nodes, E->Node );
 			float D = float3( CP - P ).magnitudesquared() * ( E->DrawLast ? -1.0 : 1.0 );
-			v.GetByType<size_t>() = D;
+			v.SortID = D;
 		}
 
 		std::sort( PVS_->begin().I, PVS_->end().I, []( auto& R, auto& L ) -> bool
@@ -7035,6 +7245,9 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	}
 
 
+	/************************************************************************************************/
+
+
 	void CleanUpShadowPass(ShadowMapPass* Out)
 	{
 		Out->PSO_Animated->Release();
@@ -7067,11 +7280,15 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 		for (; itr != end; ++itr)
 		{
-			Drawable* E = *itr;
+			Drawable* E = (*itr).D;
+			
 			if (!E->Posed)
 				CL->SetPipelineState(PSOs->PSO_Static);
 			else
 				CL->SetPipelineState(PSOs->PSO_Animated);
+
+			//if (DrawInfo.OcclusionID != -1)
+			//	CL->SetPredication()
 
 			CL->SetGraphicsRootConstantBufferView(2, E->VConstants->GetGPUVirtualAddress());
 

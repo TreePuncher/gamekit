@@ -22,6 +22,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+// TODOs
+// Draw Wireframe Primitive Helper Functions
+// Light Sorting for Tiled Rendering
+// Shadowing
+
 #ifdef _WIN32
 #pragma once
 #endif
@@ -1601,7 +1606,6 @@ namespace FlexKit
 	FLEXKITAPI bool							IsSkeletonLoaded		( GeometryTable* GT, TriMeshHandle	guid );
 	FLEXKITAPI bool							HasAnimationData		( GeometryTable* GT, TriMeshHandle	guid );
 
-
 	FLEXKITAPI FustrumPoints	GetCameraFrustumPoints	(Camera* Camera, float3 XYZ, Quaternion Q);
 	FLEXKITAPI MinMax			GetCameraAABS_XZ		(FustrumPoints Points);
 
@@ -1791,6 +1795,57 @@ namespace FlexKit
 	};
 
 
+	FLEXKITAPI struct OcclusionCuller
+	{
+		/*
+		OcclusionCuller(OcclusionCuller& rhs) : 
+			Head(rhs.Head), 
+			Max(rhs.Max), 
+			Heap(rhs.Heap),
+			Predicates(rhs.Predicates) {}
+		*/
+
+		size_t					Head;
+		size_t					Max;
+		size_t					Idx;
+
+		ID3D12QueryHeap*		Heap[3];
+		FrameBufferedResource	Predicates;		
+		DepthBuffer				OcclusionBuffer;
+		uint2					HW;
+
+		ID3D12PipelineState*	PSO;
+
+		size_t	GetNext(){
+			return Head++;
+		}
+
+		void Clear(){
+			Predicates.IncrementCounter();
+			Head = 0;
+		}
+
+		void Release()
+		{
+			Predicates.Release();
+		}
+
+		ID3D12Resource* Get()
+		{
+			return Predicates.Get();
+		}
+
+		void Increment()
+		{
+			IncrementCurrent(&OcclusionBuffer);
+			Predicates.IncrementCounter();
+			Head = 0;
+		}
+
+	};
+
+	FLEXKITAPI OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true);
+
 	FLEXKITAPI void UploadTextureSet	(RenderSystem* RS, TextureSet* TS, iAllocator* Memory);
 	FLEXKITAPI void ReleaseTextureSet	(TextureSet* TS, iAllocator* Memory);
 
@@ -1814,8 +1869,12 @@ namespace FlexKit
 			Posed			   = false; // Use Vertex Palette Skinning
 			PoseState		   = nullptr;
 			AnimationState	   = nullptr;
+			Occluder		   = INVALIDMESHHANDLE;
 		}
 		
+		NodeHandle			Node;						// 2
+		TriMeshHandle		Occluder;					// 2
+
 		//TriMesh*				Mesh;			// 8
 		TriMeshHandle			MeshHandle;		// 2
 		bool					Visable;		// 1
@@ -1823,50 +1882,36 @@ namespace FlexKit
 		bool					Transparent;	// 1
 		bool					Textured;		// 1
 		bool					Posed;			// 1
-		byte					Dirty;			// 1
-		byte					Padding_0;		// 1
+		bool					Dirty;			// 1
 
-		DrawablePoseState*		PoseState;
-		DrawableAnimationState*	AnimationState;
-		ConstantBuffer			VConstants;	
-
-		// --------------------------------------------- 64 Byte Line
-		NodeHandle			Node;						// 2
-		TriMeshHandle		Occluder;					// 2
-
-
-		// 76 Byte Line
-		TextureSet* Textures;
-		byte Padding_1[52];
-
-		// --------------------------------------------- 128 Byte Line
-
-		Drawable&	SetAlbedo(float4 RGBA)		{ MatProperties.Albedo	= RGBA; return *this; }
-		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }
-		Drawable&	SetNode(NodeHandle H)		{ Node = H; return *this; }
-
+		DrawablePoseState*		PoseState;		// 8 16
+		DrawableAnimationState*	AnimationState; // 8 24
+		TextureSet*				Textures;		// 8 32
 
 		struct MaterialProperties
 		{
 			MaterialProperties(float4 a, float4 m) : Albedo(a), Spec(m)
 			{
-				Albedo.w	= min(a.w, 1.0f);
-				Spec.w		= min(m.w, 1.0f);
+				Albedo.w = min(a.w, 1.0f);
+				Spec.w	 = min(m.w, 1.0f);
 			}
 			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.5f), Spec(0)
 			{}
 			float4		Albedo;		// Term 4 is Roughness
 			float4		Spec;		// Metal Is first 4, Specular is rgb
-		}MatProperties;
+		}MatProperties;	// 32 64
 
-		char Padding_2[32];
+		ConstantBuffer			VConstants;
+
+		Drawable&	SetAlbedo(float4 RGBA)		{ MatProperties.Albedo	= RGBA; return *this; }
+		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }
+		Drawable&	SetNode(NodeHandle H)		{ Node					= H;	return *this; }
 
 		struct VConsantsLayout
 		{
 			MaterialProperties	MP;
 			DirectX::XMMATRIX	Transform;
 		};
-
 	};
 
 
@@ -1878,19 +1923,34 @@ namespace FlexKit
 		unsigned int Textured		: 1;
 		unsigned int MaterialID		: 7;
 		unsigned int InvertDepth	: 1;
-		uint64_t	 Depth			: 54;
+		unsigned long long Depth	: 53;
 
-		operator uint64_t(){return *(uint64_t*)(this);}
+		operator uint64_t(){return *(uint64_t*)(this + 8);}
 
 	};
 
-	typedef Pair<size_t, Drawable*> PV;
-	typedef static_vector<PV, 16000> PVS;
+	struct PVEntry
+	{
+		PVEntry() {}
+		PVEntry(Drawable* d) : OcclusionID(-1), D(d){}
+		PVEntry(Drawable* d, size_t ID, size_t sortID) : OcclusionID(ID), D(d), SortID(sortID) {}
+
+		size_t		SortID;
+		size_t		OcclusionID;
+		Drawable*	D;
+
+		operator Drawable* () {return D;}
+		operator size_t () { return SortID; }
+
+	};
+
+	
+	typedef static_vector<PVEntry, 16000> PVS;
 
 	inline void PushPV(Drawable* e, PVS* pvs)
 	{
 		if (e && e->Visable && e->MeshHandle.to_uint() != INVALIDHANDLE)
-			pvs->push_back({ 0, e });
+			pvs->push_back(PVEntry( e, 0xffffffffffffffff, 0u));
 	}
 
 	FLEXKITAPI void UpdateDrawables		(RenderSystem* RS, SceneNodes* Nodes, PVS* PVS_);
@@ -2037,6 +2097,7 @@ namespace FlexKit
 
 	FLEXKITAPI DescHeapPOS ReserveDescHeap			( RenderSystem* RS, size_t SlotCount = 1 );
 	FLEXKITAPI DescHeapPOS ReserveRTVHeap			( RenderSystem* RS, size_t SlotCount );
+	FLEXKITAPI DescHeapPOS ReserveDSVHeap			( RenderSystem* RS, size_t SlotCount );
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget			( RenderSystem* RS, Texture2D* Target, DescHeapPOS POS );
 
@@ -2568,7 +2629,7 @@ namespace FlexKit
 
 	FLEXKITAPI void InitiateTiledDeferredRender	( RenderSystem* RenderSystem, TiledRendering_Desc* GBdesc, TiledDeferredRender* out );
 	FLEXKITAPI void TiledRender_LightPrePass	( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH);
-	FLEXKITAPI void TiledRender_Fill			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture );
+	FLEXKITAPI void TiledRender_Fill			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture, OcclusionCuller* OC = nullptr );
 	FLEXKITAPI void TiledRender_Shade			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
 	FLEXKITAPI void ReleaseTiledRender			( TiledDeferredRender* gb );
 	FLEXKITAPI void ClearGBuffer				( RenderSystem* RS, TiledDeferredRender* gb, const float4& ClearColor, size_t Idx );

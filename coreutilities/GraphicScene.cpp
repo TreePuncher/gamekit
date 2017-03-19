@@ -624,10 +624,10 @@ namespace FlexKit
 		for (auto& Caster : SM->SpotLightCasters)
 			UploadCamera(SM->RS, SM->SN, &Caster.C, 0, 0, 0.0f);
 
-		for (Drawable* d : *Dawables)
+		for (PVEntry d : *Dawables)
 			UpdateDrawable(SM->RS, SM->SN, d);
 
-		for (Drawable* t : *Transparent_PVS)
+		for (PVEntry t : *Transparent_PVS)
 			UpdateDrawable(SM->RS, SM->SN, t);
 	}
 

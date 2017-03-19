@@ -24,6 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gameplay.h"
 
+
+/************************************************************************************************/
+
+
 void InitiatePlayer(GameFramework* Engine, Player* Out)
 {
 	//Out->PlayerCTR.Orientation = Quaternion(0, 0, 0, 1);
@@ -84,6 +88,10 @@ void InitiatePlayer(GameFramework* Engine, Player* Out)
 	SetCameraOffset(&Out->CameraCTR, float3{ 0, 20, 40.0f });
 }
 
+
+/************************************************************************************************/
+
+
 void SetPlayerPosition(Player* P, float3 Position)
 {
 	P->PlayerCTR.Pos = Position;
@@ -93,6 +101,9 @@ void SetPlayerPosition(Player* P, float3 Position)
 	V3.z = Position.z;
 	P->PlayerCollider.Controller->setFootPosition(V3);
 }
+
+
+/************************************************************************************************/
 
 
 void YawPlayer(Player* P, float Degree)
@@ -105,11 +116,18 @@ void YawPlayer(Player* P, float Degree)
 }
 
 
+/************************************************************************************************/
+
+
 void SetPlayerOrientation(Player* P, Quaternion Q)
 {
 	SetOrientation(P->CameraCTR.Nodes, P->CameraCTR.Yaw_Node, Q);
 	//P->PlayerCTR.Orientation = Q;
 }
+
+
+/************************************************************************************************/
+
 
 void TranslateActor(Player* P, float3 pos, double dT)
 {
@@ -117,6 +135,9 @@ void TranslateActor(Player* P, float3 pos, double dT)
 	//Actor->BPC.FloorContact = flags & PxControllerCollisionFlag::eCOLLISION_DOWN;
 	//Actor->BPC.CeilingContact = flags & PxControllerCollisionFlag::eCOLLISION_UP;
 }
+
+
+/************************************************************************************************/
 
 
 void UpdatePlayer(GameFramework* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT)
@@ -150,6 +171,7 @@ void UpdatePlayer(GameFramework* Engine, Player* P, PlayerInputState Input, floa
 	{
 		P->PlayerCTR.Velocity = { 0, 0, 0 };
 	}
+
 
 	float ForwardBackwardAccel = Input.Shield ? 5.0f : 10.0f;
 	float StrafingAccel = 3.0f;
@@ -212,11 +234,16 @@ void UpdatePlayer(GameFramework* Engine, Player* P, PlayerInputState Input, floa
 		ASSetBool(P->WalkCondition, false, &P->PlayerAnimation);
 		ASSetBool(P->OtherCondition, false, &P->PlayerAnimation);
 	}
+
 	SetPositionW(P->CameraCTR.Nodes, P->CameraCTR.Yaw_Node, (P->PlayerCTR.Pos));
 	Engine->GScene.SetPositionEntity_WT(P->Model, P->PlayerCTR.Pos);
 
 	UpdateCameraController(Engine->Nodes, Cam_Ctr, dT);
 }
+
+
+/************************************************************************************************/
+
 
 void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
 {
@@ -225,7 +252,6 @@ void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
 	//if (Engine->GScene.GetDrawable(P->Model).PoseState)
 	//	DEBUG_DrawPoseState(Engine->GScene.GetDrawable(P->Model).PoseState, Engine->Nodes, Engine->GScene.GetNode(P->Model), &Engine->DebugLines);
 }
-
 
 
 /************************************************************************************************/

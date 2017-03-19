@@ -121,6 +121,7 @@ struct EngineMemory
 
 	bool			End;
 	RenderSystem	RenderSystem;
+	OcclusionCuller	Culler;
 
 	RenderWindow	Window;
 	DepthBuffer		DepthBuffer;

@@ -24,8 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "PlayState.h"
 
-//typedef void(*FN_EVENT_HANDLER) (SubState* StateMemory, Event);
-
 
 /************************************************************************************************/
 
@@ -154,6 +152,13 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
 	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
 
 	FK_ASSERT(FlexKit::LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+
+	for (size_t I = 0; I < 100; ++I) {
+		for (size_t II = 0; II < 10; ++II) {
+			auto Handle = Base->GScene.CreateDrawableAndSetMesh("Flower");
+			Base->GScene.TranslateEntity_WT(Handle, float3(10.0f * I, 0, 10.0f * II));
+		}
+	}
 
 	return State;
 }

@@ -49,6 +49,8 @@ void ReleaseEngine(EngineMemory* Engine)
 
 	ReleaseGeometryTable( &Engine->Geometry );
 
+	Engine->Culler.Release();
+
 	DEBUGBLOCK(PrintBlockStatus(&Engine->BlockAllocator));
 }
 
@@ -148,6 +150,7 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 
 	InitiateGeometryTable	( &Engine->Geometry, Engine->BlockAllocator );
 	Engine->Assets.ResourceMemory = &Engine->BlockAllocator;
+	Engine->Culler                = CreateOcclusionCuller(Engine->RenderSystem, 8096, GetWindowWH(Engine)/10);
 
 	return Out;
 }

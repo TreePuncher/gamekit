@@ -33,7 +33,9 @@ typedef  int16_t TTF_SHORT;
 typedef uint32_t  TTF_ULONG;
 typedef  int32_t  TTF_LONG;
 
-typedef int32_t TTF_FIXED;
+typedef  int32_t TTF_FIXED;
+
+typedef  int16_t TTF_FWORD;
 
 
 struct TTF_DirectoryEntry
@@ -73,9 +75,6 @@ inline float FixedToFloat(TTF_FIXED N)
 	return float((N & 0xFF00)>> 8) +  float(N & 0x00FF) / 100.0f;
 }
 
-
-
-
 struct Format4Encoding
 {
 	TTF_USHORT Format;
@@ -104,7 +103,11 @@ struct CMAP
 
 struct Glyf
 {
-
+	TTF_SHORT NumberOfContours;
+	TTF_FWORD xMin;
+	TTF_FWORD yMin;
+	TTF_FWORD xMax;
+	TTF_FWORD yMax;
 };
 
 struct Head
@@ -163,6 +166,8 @@ size_t GetGlyphCode(const TTF_USHORT* IDRangeOffsets, const TTF_USHORT* StartCod
 	return GlyphCode;
 }
 
+#define CONVERT(A) A = ConvertEndianness(A);
+
 Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 {
 	auto FileSize = GetFileSize(File);
@@ -170,7 +175,7 @@ Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 
 	Buffer[FileSize] = 0xff;
 
-	auto res = LoadFileIntoBuffer(File, Buffer, FileSize);
+	auto res = LoadFileIntoBuffer(File, Buffer, FileSize, false);
 
 	TTFont* Out = nullptr;
 	TTF_Directory* FileDirectory = (TTF_Directory*)Buffer;
@@ -180,19 +185,24 @@ Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 	auto temp = ConvertEndianness(0x0102);
 
 	size_t end = ConvertEndianness(FileDirectory->TableCount);
+	// Tables
+	CMAP* CMap    = nullptr;
+	Glyf* Glyfs   = nullptr;
+
 	for (size_t I = 0; I < end; ++I)
 	{
-		auto Entry = Entries[I];
-		auto Length = ConvertEndianness(Entries[I].length);
+		auto Entry    = Entries[I];
+		auto Length   = ConvertEndianness(Entries[I].length);
 		auto CheckSum = CalcTableChecksum((TTF_ULONG*)(Entries + I), Length);
 
 		switch (Entry.Tag_UL)
 		{
 		case 0x70616d63: // CMAP Tag
 		{
-			size_t Offset = ConvertEndianness(Entries[I].offset);
-			CMAP* CMap = (CMAP*)(Buffer + Offset);
+			size_t Offset	= ConvertEndianness(Entries[I].offset);
+			CMap		    = (CMAP*)(Buffer + Offset);
 
+			/*
 			size_t TableSize = ConvertEndianness(CMap->TableSize);
 			for (size_t II = 0; II < TableSize; ++II)
 			{
@@ -226,12 +236,28 @@ Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 				}
 				size_t C = 0;
 			}
+			*/
+		}	break;
+		case 0x66796c67:{
+			size_t Offset = ConvertEndianness(Entries[I].offset);
+			CONVERT(Entries[I].length);
+			Glyfs         = (Glyf*)(Buffer + Offset);
 		}	break;
 		default:
 			break;
 		}
 
 		auto c = 0;
+	}
+
+	if (Glyfs && CMap)
+	{	// Load Glyfs
+		int x = 0;
+		CONVERT(Glyfs->NumberOfContours);
+		CONVERT(Glyfs->xMax);
+		CONVERT(Glyfs->xMin);
+		CONVERT(Glyfs->yMax);
+		CONVERT(Glyfs->yMin);
 	}
 
 	return{ true, Out };
