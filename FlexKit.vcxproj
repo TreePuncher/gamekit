@@ -184,6 +184,7 @@
     <ClInclude Include="coreutilities\MathUtils.h" />
     <ClInclude Include="coreutilities\memoryutilities.h" />
     <ClInclude Include="coreutilities\MeshUtils.h" />
+    <ClInclude Include="coreutilities\ProfilingUtilities.h" />
     <ClInclude Include="coreutilities\Resources.h" />
     <ClInclude Include="coreutilities\GraphicScene.h" />
     <ClInclude Include="coreutilities\Signal.h" />
@@ -225,6 +226,12 @@
     <ClCompile Include="coreutilities\meshutils.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="coreutilities\ProfilingUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="coreutilities\Resources.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

@@ -61,7 +61,6 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		PopSubState(Args->State->Base);
 		PushSubState(Args->State->Base, CreatePlayState(Args->Engine, Args->State->Base));
 		//PushSubState(Args->State->Base, CreateClientState(Args->Engine, Args->State->Base));
-
 	}
 	return true;
 }

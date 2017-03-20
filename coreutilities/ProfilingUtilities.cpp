@@ -29,13 +29,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	static EngineMemory_DEBUG* gMemory = nullptr;
+
 	void InitDebug(EngineMemory_DEBUG* out)
 	{
 #if USING(DEBUG_PROFILING)
-		out->FrameCount = 0;
-		out->PrintStats = false;
+		gMemory = out;
+		gMemory->FrameCount = 0;
+		gMemory->PrintStats = false;
 
-		for (auto& T : out->Timings)
+		for (auto& T : gMemory->Timings)
 		{
 			T.Begin     = {};
 			T.End	    = {};
@@ -46,136 +49,142 @@ namespace FlexKit
 #endif
 	}
 
-	void LogFrameStats(FrameStats Stats, EngineMemory_DEBUG* _ptr)
+	void SetDebugMemory(EngineMemory_DEBUG* _ptr)
+	{
+		gMemory = _ptr;
+	}
+
+
+	void LogFrameStats(FrameStats Stats)
 	{
 #if USING(DEBUG_PROFILING)
 #endif
 	}
 
-	void ProfileBegin(uint16_t ID, EngineMemory_DEBUG* DMem)
+	void ProfileBegin(uint16_t ID)
 	{
 #if USING(DEBUG_PROFILING)
-		QueryPerformanceFrequency(&DMem->Timings[ID].Freq);
-		QueryPerformanceCounter(&DMem->Timings[ID].Begin);
+		QueryPerformanceFrequency	(&gMemory->Timings[ID].Freq);
+		QueryPerformanceCounter		(&gMemory->Timings[ID].Begin);
 #endif
 	}
 
 
-	void ProfileEnd(uint16_t ID, EngineMemory_DEBUG* DMem)
+	void ProfileEnd(uint16_t ID)
 	{
 #if USING(DEBUG_PROFILING)
 		LARGE_INTEGER End;
 		QueryPerformanceCounter(&End);
-		DMem->Timings[ID].End				 = End;
-		DMem->Timings[ID].Elapsed.QuadPart = DMem->Timings[ID].End.QuadPart - DMem->Timings[ID].Begin.QuadPart;
-		DMem->Timings[ID].Elapsed.QuadPart *= 1000000;
-		DMem->Timings[ID].Elapsed.QuadPart /= DMem->Timings[ID].Freq.QuadPart;
+		gMemory->Timings[ID].End			  = End;
+		gMemory->Timings[ID].Elapsed.QuadPart = gMemory->Timings[ID].End.QuadPart - gMemory->Timings[ID].Begin.QuadPart;
+		gMemory->Timings[ID].Elapsed.QuadPart *= 1000000;
+		gMemory->Timings[ID].Elapsed.QuadPart /= gMemory->Timings[ID].Freq.QuadPart;
 #endif
 	}
 
-	inline size_t GetDuration(uint16_t ID, EngineMemory_DEBUG* DMem)
+	inline size_t GetDuration(uint16_t ID)
 	{
 #if USING(DEBUG_PROFILING)
-		return DMem->Timings[ID].Elapsed.QuadPart;
+		return gMemory->Timings[ID].Elapsed.QuadPart;
 #else
 		return 0;
 #endif
 	}
 
-	void IncCounter(uint16_t Id, EngineMemory_DEBUG* DMem)
+	void IncCounter(uint16_t Id)
 	{
 #if USING(DEBUG_PROFILING)
-		++DMem->Counters[Id];
+		++gMemory->Counters[Id];
 #endif
 	}
 
-	void AddCounter(uint16_t Id, size_t N, EngineMemory_DEBUG* DMem)
+	void AddCounter(uint16_t Id, size_t N)
 	{
 #if USING(DEBUG_PROFILING)
-		DMem->Counters[Id] += N;
+		gMemory->Counters[Id] += N;
 #endif
 	}
 
-	void SetCounter(uint16_t Id, size_t N, EngineMemory_DEBUG* DMem)
+	void SetCounter(uint16_t Id, size_t N)
 	{
 #if USING(DEBUG_PROFILING)
-		DMem->Counters[Id] = N;
+		gMemory->Counters[Id] = N;
 #endif
 	}
 
-	size_t GetCounter(uint16_t ID, EngineMemory_DEBUG* DMem)
+	size_t GetCounter(uint16_t ID)
 	{
 #if USING(DEBUG_PROFILING)
-		return DMem->Counters[ID];
+		return gMemory->Counters[ID];
 #endif
 	}
 
-	void ResetCounter(uint16_t ID, EngineMemory_DEBUG* DMem)
+	void ResetCounter(uint16_t ID)
 	{
 #if USING(DEBUG_PROFILING)
-		DMem->Counters[ID] = 0;
+		gMemory->Counters[ID] = 0;
 #endif
 	}
 
-	FrameStats GetStats(EngineMemory_DEBUG* DMem)
+	FrameStats GetStats()
 	{
 		FrameStats out;
-		out.DrawCallsLastSecond		= GetCounter( COUNTER_INDEXEDDRAWCALL_LASTSECOND, DMem );
-		out.DrawCallsLastFrame		= GetCounter( COUNTER_INDEXEDDRAWCALL_LASTSECOND, DMem )		/ 600;
-		out.AverageFPSTime			= double(GetCounter( COUNTER_AVERAGEFRAMETIME, DMem ))			/ 1000.0;
-		out.AverageSortTime			= double(GetCounter( COUNTER_AVERAGESORTTIME, DMem ))			/ 1000.0;
-		out.EntUpdateTime			= double(GetCounter( COUNTER_AVERAGEENTITYUPDATETIME, DMem))	/ 1000.0;
+		out.DrawCallsLastSecond		= GetCounter(COUNTER_INDEXEDDRAWCALL_LASTSECOND);
+		out.DrawCallsLastFrame		= GetCounter(COUNTER_INDEXEDDRAWCALL_LASTSECOND)		/ 600;
+		out.AverageFPSTime			= double(GetCounter(COUNTER_AVERAGEFRAMETIME))			/ 1000.0;
+		out.AverageSortTime			= double(GetCounter(COUNTER_AVERAGESORTTIME))			/ 1000.0;
+		out.EntUpdateTime			= double(GetCounter(COUNTER_AVERAGEENTITYUPDATETIME))	/ 1000.0;
 
 		return out;
 	}
 
-	void AddTimerToCounter(COUNTER_IDs CID, PROFILE_IDs PID, EngineMemory_DEBUG* DMem)
+	void AddTimerToCounter(COUNTER_IDs CID, PROFILE_IDs PID)
 	{
-		AddCounter(CID,		GetDuration(PID, DMem), DMem);
+		AddCounter(CID,		GetDuration(PID));
 	}
 
-	void UpdateTimerAverage(COUNTER_IDs CID_AVE, COUNTER_IDs CID_ACC, size_t SampleCount, EngineMemory_DEBUG* DMem)
+	void UpdateTimerAverage(COUNTER_IDs CID_AVE, COUNTER_IDs CID_ACC, size_t SampleCount)
 	{
-		SetCounter	(CID_AVE, GetCounter(CID_ACC, DMem)/SampleCount, DMem);
-		ResetCounter(CID_ACC, DMem);
+		SetCounter	(CID_AVE, GetCounter(CID_ACC)/SampleCount);
+		ResetCounter(CID_ACC);
 	}
 
 
-	void UpdateFPSStats(EngineMemory_DEBUG* DMem)
+	void UpdateFPSStats()
 	{
 #if USING(DEBUG_PROFILING)
-		DMem->FrameCount++;
+		gMemory->FrameCount++;
 
-		IncCounter(COUNTER_FRAMECOUNTER, DMem);
+		IncCounter(COUNTER_FRAMECOUNTER);
 
-		AddCounter(COUNTER_DRAWCALL_SECOND,			GetCounter(COUNTER_DRAWCALL, DMem), DMem);
-		AddCounter(COUNTER_INDEXEDDRAWCALL_SECOND,	GetCounter(COUNTER_INDEXEDDRAWCALL, DMem), DMem);
+		AddCounter(COUNTER_DRAWCALL_SECOND,			GetCounter(COUNTER_DRAWCALL));
+		AddCounter(COUNTER_INDEXEDDRAWCALL_SECOND,	GetCounter(COUNTER_INDEXEDDRAWCALL));
 
-		AddTimerToCounter(COUNTER_ACC_ANIMTIME,			PROFILE_ANIMATIONUPDATE,	DMem);
-		AddTimerToCounter(COUNTER_ACC_ENTITYUPDATETIME, PROFILE_ENTITYUPDATE,		DMem);
-		AddTimerToCounter(COUNTER_ACC_FRAMETIME,		PROFILE_FRAME,				DMem);
-		AddTimerToCounter(COUNTER_ACC_PRESENT,			PROFILE_PRESENT,			DMem);
-		AddTimerToCounter(COUNTER_ACC_SORTTIME,			PROFILE_SORTING,			DMem);
+		AddTimerToCounter(COUNTER_ACC_ANIMTIME,			PROFILE_ANIMATIONUPDATE);
+		AddTimerToCounter(COUNTER_ACC_ENTITYUPDATETIME, PROFILE_ENTITYUPDATE);
+		AddTimerToCounter(COUNTER_ACC_FRAMETIME,		PROFILE_FRAME);
+		AddTimerToCounter(COUNTER_ACC_PRESENT,			PROFILE_PRESENT);
+		AddTimerToCounter(COUNTER_ACC_SORTTIME,			PROFILE_SORTING);
 
-		ResetCounter(COUNTER_DRAWCALL,				DMem);
-		ResetCounter(COUNTER_INDEXEDDRAWCALL,		DMem);
-		ResetCounter(COUNTER_OBJECTSDRAWN_FRAME,	DMem);
+		ResetCounter(COUNTER_DRAWCALL);
+		ResetCounter(COUNTER_INDEXEDDRAWCALL);
+		ResetCounter(COUNTER_OBJECTSDRAWN_FRAME);
 
-		if (DMem->FrameCount >= 60 )
+		if (gMemory->FrameCount >= 60 )
 		{
-			DMem->FrameCount = 0;
-			UpdateTimerAverage( COUNTER_AVERAGEPRESENT,				COUNTER_ACC_PRESENT,			60, DMem);
-			UpdateTimerAverage( COUNTER_AVERAGEFRAMETIME,			COUNTER_ACC_FRAMETIME,			60, DMem);
-			UpdateTimerAverage( COUNTER_AVERAGEANIMATIONTIME,		COUNTER_ACC_ANIMTIME,			60, DMem);
-			UpdateTimerAverage( COUNTER_AVERAGESORTTIME,			COUNTER_ACC_SORTTIME,			60, DMem);
-			UpdateTimerAverage( COUNTER_AVERAGEENTITYUPDATETIME,	COUNTER_ACC_ENTITYUPDATETIME,	60, DMem);
+			gMemory->FrameCount = 0;
+			UpdateTimerAverage( COUNTER_AVERAGEPRESENT,				COUNTER_ACC_PRESENT,			60);
+			UpdateTimerAverage( COUNTER_AVERAGEFRAMETIME,			COUNTER_ACC_FRAMETIME,			60);
+			UpdateTimerAverage( COUNTER_AVERAGEANIMATIONTIME,		COUNTER_ACC_ANIMTIME,			60);
+			UpdateTimerAverage( COUNTER_AVERAGESORTTIME,			COUNTER_ACC_SORTTIME,			60);
+			UpdateTimerAverage( COUNTER_AVERAGEENTITYUPDATETIME,	COUNTER_ACC_ENTITYUPDATETIME,	60);
 
 
-			SetCounter(COUNTER_DRAWCALL_LASTSECOND,			GetCounter(COUNTER_DRAWCALL_SECOND, DMem),			DMem);
-			SetCounter(COUNTER_INDEXEDDRAWCALL_LASTSECOND,	GetCounter(COUNTER_INDEXEDDRAWCALL_SECOND, DMem),	DMem);
+			SetCounter(COUNTER_DRAWCALL_LASTSECOND,			GetCounter(COUNTER_DRAWCALL_SECOND));
+			SetCounter(COUNTER_INDEXEDDRAWCALL_LASTSECOND,	GetCounter(COUNTER_INDEXEDDRAWCALL_SECOND));
 
-			ResetCounter(COUNTER_DRAWCALL_SECOND,			DMem);
-			ResetCounter(COUNTER_INDEXEDDRAWCALL_SECOND,	DMem);
+			ResetCounter(COUNTER_DRAWCALL_SECOND);
+			ResetCounter(COUNTER_INDEXEDDRAWCALL_SECOND);
 		}
 #endif
 	}

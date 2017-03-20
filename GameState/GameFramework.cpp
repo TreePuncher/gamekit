@@ -88,7 +88,6 @@ using namespace FlexKit;
 
 
 void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
-	//_ptr->Quit = true;
 
 	switch (in.Action)
 	{
@@ -97,7 +96,7 @@ void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 		switch (in.mData1.mKC[0])
 		{
 		case KC_ESC:
-			_ptr->Engine->End = true;
+			_ptr->Quit = true;
 			break;
 		case KC_M:
 			_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
@@ -320,7 +319,8 @@ extern "C"
 	GAMESTATEAPI GameFramework* InitiateBaseGameState(EngineMemory* Engine)
 	{
 		GameFramework& Game = Engine->BlockAllocator.allocate_aligned<GameFramework>();
-		
+		SetDebugMemory(&Engine->Debug);
+
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 
@@ -475,15 +475,19 @@ extern "C"
 		State->Stats.Fps_T += dt;
 
 
-		uint32_t VRamUsage = GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
-		char* TempBuffer = (char*)Engine->TempAllocator.malloc(512);
-		sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\n", VRamUsage, (uint32_t)State->Stats.FPS);
+		uint32_t VRamUsage	= GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
+		char* TempBuffer	= (char*)Engine->TempAllocator.malloc(512);
+		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION))/1000.0f;
+
+		sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)State->Stats.FPS, DrawTiming);
 		PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 1.0f, 1.0f }, float4(WHITE, 1), { .7f, .7f });
 	}
 
 
 	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameFramework* State)
 	{
+		ProfileBegin(PROFILE_SUBMISSION);
+
 		auto RS = &Engine->RenderSystem;
 
 		BeginSubmission(RS, State->ActiveWindow);
@@ -559,6 +563,8 @@ extern "C"
 			DrawImmediate(RS, CL, &State->Immediate, GetBackBufferTexture(State->ActiveWindow), State->ActiveCamera);       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
+
+		ProfileEnd(PROFILE_SUBMISSION);
 	}
 
 

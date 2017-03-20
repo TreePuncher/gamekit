@@ -6219,8 +6219,9 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 		out->Info.max ={ l, l, l };
 		out->Info.min ={ l, l, l };
-		FlexKit::CreateVertexBuffer	(RS, out->Buffers, 1, out->VertexBuffer);
-		FlexKit::CreateInputLayout	(RS, out->Buffers, 1,&desc.VertexShader, &out->VertexBuffer);
+
+		CreateVertexBuffer	(RS, out->Buffers, 1, out->VertexBuffer);
+		CreateInputLayout	(RS, out->Buffers, 1,&desc.VertexShader, &out->VertexBuffer);
 	}
 	
 

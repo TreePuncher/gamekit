@@ -161,11 +161,11 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
 
 	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
 
-	FK_ASSERT(FlexKit::LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+	FK_ASSERT(LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	for (size_t I = 0; I < 100; ++I) {
 		for (size_t II = 0; II < 10; ++II) {
-			auto Handle = Base->GScene.CreateDrawableAndSetMesh("Flower");
+			auto Handle = Base->GScene.CreateDrawableAndSetMesh("UVCube");
 			Base->GScene.TranslateEntity_WT(Handle, float3(10.0f * I, 0, 10.0f * II));
 		}
 	}

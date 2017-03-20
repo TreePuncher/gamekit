@@ -80,6 +80,8 @@ void InitiateEngineMemory( EngineMemory* Engine )
 	Engine->RootSN = GetNewNode	( &Engine->Nodes );
 	ZeroNode					( &Engine->Nodes, Engine->RootSN );
 
+	InitDebug(&Engine->Debug);
+
 	Engine->CmdArguments.Allocator = Engine->BlockAllocator;
 }
 

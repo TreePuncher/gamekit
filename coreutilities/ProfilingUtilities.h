@@ -39,6 +39,7 @@ namespace FlexKit
 		PROFILE_TRANSFORMUPDATE,
 		PROFILE_ENTITYUPDATE,
 		PROFILE_FRAME,
+		PROFILE_SUBMISSION,
 		PROFILE_PRESENT,
 		PROFILE_SORTING,
 		PROFILE_ID_COUNT
@@ -106,17 +107,18 @@ namespace FlexKit
 
 
 	FLEXKITAPI void		InitDebug		(EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		LogFrameStats	(FrameStats, EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		AddCounter		(uint16_t Id, size_t N, EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		IncCounter		(uint16_t Id, EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI size_t	GetCounter		(uint16_t Id, EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		ResetCounter	(uint16_t Id, EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		ProfileBegin	(uint16_t Id, EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void		ProfileEnd		(uint16_t Id, EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI size_t	GetDuration		(uint16_t Id, EngineMemory_DEBUG* _ptr);
+	FLEXKITAPI void		SetDebugMemory	(EngineMemory_DEBUG* _ptr);
+	FLEXKITAPI void		LogFrameStats	(FrameStats Stats);
+	FLEXKITAPI void		AddCounter		(uint16_t Id, size_t N);
+	FLEXKITAPI void		IncCounter		(uint16_t Id);
+	FLEXKITAPI size_t	GetCounter		(uint16_t Id);
+	FLEXKITAPI void		ResetCounter	(uint16_t Id);
+	FLEXKITAPI void		ProfileBegin	(uint16_t Id);
+	FLEXKITAPI void		ProfileEnd		(uint16_t Id);
+	FLEXKITAPI size_t	GetDuration		(uint16_t Id);
 
-	FLEXKITAPI FrameStats	GetStats		(EngineMemory_DEBUG* _ptr);
-	FLEXKITAPI void			UpdateFPSStats	(EngineMemory_DEBUG* _ptr);
+	FLEXKITAPI FrameStats	GetStats		();
+	FLEXKITAPI void			UpdateFPSStats	();
 }
 
 

@@ -112,6 +112,9 @@
     <ClInclude Include="graphicsutilities\PipelineState.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="coreutilities\ProfilingUtilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -173,6 +176,9 @@
     </ClCompile>
     <ClCompile Include="graphicsutilities\PipelineState.cpp">
       <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\ProfilingUtilities.cpp">
+      <Filter>coreutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
