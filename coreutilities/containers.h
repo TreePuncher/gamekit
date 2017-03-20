@@ -300,7 +300,8 @@ namespace FlexKit
 				}
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
-				FK_ASSERT(NewMem != A);
+				if(Size)
+					FK_ASSERT(NewMem != A);
 #endif
 
 				if (A) {

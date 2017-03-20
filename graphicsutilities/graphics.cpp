@@ -7400,6 +7400,335 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		return (XY * float2( 2, 2)) + float2( -1, -1);
 	}
 
+
+	void PushCircle2D(ImmediateRender* RG, iAllocator* Memory, float2 POS, float r, float2 Scale, float3 Color)
+	{
+		LineSegments Lines(Memory);
+
+		const size_t SegmentCount = 32;
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float x1 = POS.x + Scale.x * r * std::cos(2 * pi / SegmentCount * I) - .5f;
+			float y1 = POS.x + Scale.y * r * std::sin(2 * pi / SegmentCount * I) - .5f;
+
+			float x2 = POS.x + Scale.x * r * std::cos(2 * pi / SegmentCount * (I + 1)) - .5f;
+			float y2 = POS.x + Scale.y * r * std::sin(2 * pi / SegmentCount * (I + 1)) - .5f;
+
+			Line.A = float3(x1, y1 , 0);
+			Line.B = float3(x2, y2, 0);
+
+			Lines.push_back(Line);
+		}
+
+		PushLineSet2D(RG, Lines);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushCircle3D(ImmediateRender* RG, iAllocator* Memory, float3 POS, float r, float3 Scale, float3 Color)
+	{
+		LineSegments Lines(Memory);
+
+		const size_t SegmentCount = 32;
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float x1 = Scale.x * r * std::cos(2 * pi / SegmentCount * I);
+			float y1 = Scale.y * r * std::sin(2 * pi / SegmentCount * I);
+
+			float x2 = Scale.x * r * std::cos(2 * pi / SegmentCount * (I + 1));
+			float y2 = Scale.y * r * std::sin(2 * pi / SegmentCount * (I + 1));
+
+			Line.A = float3(x1, y1, 0) + POS;
+			Line.B = float3(x2, y2, 0) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float x1 = Scale.x * r * std::cos(2 * pi / SegmentCount * I);
+			float z1 = Scale.z * r * std::sin(2 * pi / SegmentCount * I);
+
+			float x2 = Scale.x * r * std::cos(2 * pi / SegmentCount * (I + 1));
+			float z2 = Scale.z * r * std::sin(2 * pi / SegmentCount * (I + 1));
+
+			Line.A = float3(x1, 0, z1) + POS;
+			Line.B = float3(x2, 0, z2) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float y1 = Scale.x * r * std::cos(2 * pi / SegmentCount * I);
+			float z1 = Scale.z * r * std::sin(2 * pi / SegmentCount * I);
+
+			float y2 = Scale.x * r * std::cos(2 * pi / SegmentCount * (I + 1));
+			float z2 = Scale.z * r * std::sin(2 * pi / SegmentCount * (I + 1));
+
+			Line.A = float3(0, y1, z1) + POS;
+			Line.B = float3(0, y2, z2) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		PushLineSet3D(RG, Lines);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushCube_Wireframe(ImmediateRender* RG, iAllocator* Memory, float3 POS, float r, float3 Color)
+	{
+		float3 Points[8] = {
+			float3(-r,  r,  r),// NearTopLeft
+			float3( r,  r,  r),// NearTopRight
+			float3(-r, -r,  r),// NearBottomLeft
+			float3( r, -r,  r),// NearBottomRight
+
+			float3(-r,  r, -r),// FarTopLeft
+			float3( r,  r, -r),// FarTopRight
+			float3(-r, -r, -r),// FarBottomLeft
+			float3( r, -r, -r),// FarBottomRight
+		};
+
+		LineSegments Lines(Memory);
+
+		LineSegment	Line;
+		Line.AColour = Color;
+		Line.BColour = Color;
+
+		// Add Edges
+		{
+			// Top Near Edge
+			Line.A = Points[0] + POS;
+			Line.B = Points[1] + POS;
+			Lines.push_back(Line);
+
+			// Top Far Edge
+			Line.A = Points[4] + POS;
+			Line.B = Points[5] + POS;
+			Lines.push_back(Line);
+
+			// Top Left Edge
+			Line.A = Points[0] + POS;
+			Line.B = Points[4] + POS;
+			Lines.push_back(Line);
+
+			// Top Right Edge
+			Line.A = Points[1] + POS;
+			Line.B = Points[5] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Near Edge
+			Line.A = Points[2] + POS;
+			Line.B = Points[3] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Far Edge
+			Line.A = Points[6] + POS;
+			Line.B = Points[7] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Left Edge
+			Line.A = Points[2] + POS;
+			Line.B = Points[6] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Right Edge
+			Line.A = Points[3] + POS;
+			Line.B = Points[7] + POS;
+			Lines.push_back(Line);
+
+			// Middle Near Left Edge
+			Line.A = Points[0] + POS;
+			Line.B = Points[2] + POS;
+			Lines.push_back(Line);
+
+			// Middle Near Right Edge
+			Line.A = Points[1] + POS;
+			Line.B = Points[3] + POS;
+			Lines.push_back(Line);
+
+			// Middle Far Left Edge
+			Line.A = Points[4] + POS;
+			Line.B = Points[6] + POS;
+			Lines.push_back(Line);
+
+			// Middle Far Right Edge
+			Line.A = Points[5] + POS;
+			Line.B = Points[7] + POS;
+			Lines.push_back(Line);
+		}
+
+		PushLineSet3D(RG, Lines);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushCapsule_Wireframe(ImmediateRender* RG, iAllocator* Memory, float3 POS, float r, float h, float3 Color)
+	{
+		LineSegments Lines(Memory);
+
+		const size_t SegmentCount = 16;
+
+		float TopHemiSphereOffSet = r + h;
+
+		// Draw HemiSpheres
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float x1 = r * std::cos(pi / SegmentCount * I);
+			float y1 = r * std::sin(pi / SegmentCount * I);
+
+			float x2 = r * std::cos(pi / SegmentCount * (I + 1));
+			float y2 = r * std::sin(pi / SegmentCount * (I + 1));
+
+			Line.A = float3(x1, y1 + TopHemiSphereOffSet, 0) + POS;
+			Line.B = float3(x2, y2 + TopHemiSphereOffSet, 0) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		for (size_t I = 0; I < 2 * SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float x1 = r * std::cos(2 * pi / SegmentCount * I);
+			float z1 = r * std::sin(2 * pi / SegmentCount * I);
+
+			float x2 = r * std::cos(2 * pi / SegmentCount * (I + 1));
+			float z2 = r * std::sin(2 * pi / SegmentCount * (I + 1));
+
+			Line.A = float3(x1, TopHemiSphereOffSet, z1) + POS;
+			Line.B = float3(x2, TopHemiSphereOffSet, z2) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float y1 = r * std::sin(pi / SegmentCount * I);
+			float z1 = r * std::cos(pi / SegmentCount * I);
+
+			float y2 = r * std::sin(pi / SegmentCount * (I + 1));
+			float z2 = r * std::cos(pi / SegmentCount * (I + 1));
+
+			Line.A = float3(0, y1 + TopHemiSphereOffSet, z1) + POS;
+			Line.B = float3(0, y2 + TopHemiSphereOffSet, z2) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		// Draw Bottom HemiSphere
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float x1 = r * std::cos(pi + pi / SegmentCount * I);
+			float y1 = r * std::sin(pi + pi / SegmentCount * I);
+
+			float x2 = r * std::cos(pi + pi / SegmentCount * (I + 1));
+			float y2 = r * std::sin(pi + pi / SegmentCount * (I + 1));
+
+			Line.A = float3(x1, y1 + r, 0) + POS;
+			Line.B = float3(x2, y2 + r, 0) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		for (size_t I = 0; I < 2 * SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float x1 = r * std::cos(2 * pi / SegmentCount * I);
+			float z1 = r * std::sin(2 * pi / SegmentCount * I);
+
+			float x2 = r * std::cos(2 * pi / SegmentCount * (I + 1));
+			float z2 = r * std::sin(2 * pi / SegmentCount * (I + 1));
+
+			Line.A = float3(x1, r, z1) + POS;
+			Line.B = float3(x2, r, z2) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		for (size_t I = 0; I < SegmentCount; ++I) {
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			float y1 = r * std::sin(pi + pi / SegmentCount * I);
+			float z1 = r * std::cos(pi + pi / SegmentCount * I);
+
+			float y2 = r * std::sin(pi + pi / SegmentCount * (I + 1));
+			float z2 = r * std::cos(pi + pi / SegmentCount * (I + 1));
+
+			Line.A = float3(0, y1 + r, z1) + POS;
+			Line.B = float3(0, y2 + r, z2) + POS;
+
+			Lines.push_back(Line);
+		}
+
+		// Draw Edges
+		{
+			LineSegment	Line;
+			Line.AColour = Color;
+			Line.BColour = Color;
+
+			// Left Edge
+			Line.A = float3(-r, h + r,	0) + POS;
+			Line.B = float3(-r, r,		0) + POS;
+			Lines.push_back(Line);
+
+			// Right Edge
+			Line.A = float3( r, h + r,	0) + POS;
+			Line.B = float3( r, r,		0) + POS;
+			Lines.push_back(Line);
+
+			// Near Edge
+			Line.A = float3( 0, h + r,	r) + POS;
+			Line.B = float3( 0, r,		r) + POS;
+			Lines.push_back(Line);
+
+			// Far Edge
+			Line.A = float3( 0, h + r,	-r) + POS;
+			Line.B = float3( 0, r,		-r) + POS;
+			Lines.push_back(Line);
+		}
+
+
+		PushLineSet3D(RG, Lines);
+	}
+
+	/************************************************************************************************/
+
+
 	void PushRect(ImmediateRender* RG, Draw_RECT Rect) 
 	{
 		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_2DRECT , 0 });
@@ -7547,17 +7876,24 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void PushLineSet(ImmediateRender* RG, Draw_LineSet_3D LineSet)
+	void PushLineSet3D(ImmediateRender* RG, LineSegments LineSet)
 	{
-		RG->DrawCalls.push_back({DCT_LINES3D, RG->DrawLines3D.size()});
-		RG->DrawLines3D.push_back(LineSet);
+		RG->DrawCalls.push_back({ DCT_LINES3D, RG->DrawLines3D.size() });
+
+		size_t Begin = RG->Lines3D.LineSegments.size();
+		size_t Count = LineSet.size();
+
+		for (auto L : LineSet)
+			RG->Lines3D.LineSegments.push_back(L);
+
+		RG->DrawLines3D.push_back({ Begin, Count });
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PushLineSet(ImmediateRender* RG, LineSegments LineSet)
+	void PushLineSet2D(ImmediateRender* RG, LineSegments LineSet)
 	{
 		RG->DrawCalls.push_back({ DCT_LINES2D, RG->DrawLines2D.size() });
 
@@ -7855,13 +8191,14 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		RG->TextBufferGPU = CreateShaderResource(RS, sizeof(TextEntry) * TEXTBUFFERMINSIZE);
 
 		InitiateLineSet(RS, Memory, &RG->Lines2D);
+		InitiateLineSet(RS, Memory, &RG->Lines3D);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void DrawGUI(RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* Immediate, Texture2D RenderTarget)
+	void DrawImmediate(RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* Immediate, Texture2D RenderTarget, Camera* C)
 	{
 		size_t			RectOffset		= 0;
 		size_t			TexturePosition = 0;
@@ -7876,10 +8213,10 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			Immediate->Text2.Release();
 			Immediate->TextBuffer.Release();
 			Immediate->Lines2D.LineSegments.Release();
+			Immediate->Lines3D.LineSegments.Release();
 			Immediate->DrawLines2D.Release();
 			Immediate->DrawLines3D.Release();
 			Immediate->DrawCalls.Release();
-
 			Immediate->TextBufferPosition = 0;
 		}
 		FINALLYOVER
@@ -8070,20 +8407,22 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				CL->DrawInstanced(2 * Count, 1, 2 * Offset, 0);
 			}	break;
 			case DRAWCALLTYPE::DCT_LINES3D: {
-				LineSet* LineDrawCall = Immediate->DrawLines3D[D.Index].Lines;
-				Camera* C = Immediate->DrawLines3D[D.Index].C;
-				
+				size_t Offset	= Immediate->DrawLines3D[D.Index].Begin;
+				size_t Count	= Immediate->DrawLines3D[D.Index].Count;
+
 				D3D12_VERTEX_BUFFER_VIEW Views[] = {
-					{		  LineDrawCall->GPUResource->GetGPUVirtualAddress() ,
-						(UINT)LineDrawCall->LineSegments.size() * sizeof(LineSegment),
-						(UINT)sizeof(float3) * 2
+					{		Immediate->Lines3D.GPUResource->GetGPUVirtualAddress(),
+					(UINT)	Immediate->Lines3D.LineSegments.size() * sizeof(LineSegment),
+					(UINT)	sizeof(float3) * 2
 					},
 				};
 
 				CL->IASetVertexBuffers					(0, 1, Views);
 				CL->IASetPrimitiveTopology				(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
 				CL->SetGraphicsRootConstantBufferView	(1,  C->Buffer.Get()->GetGPUVirtualAddress());
-				CL->DrawInstanced						(2 * LineDrawCall->LineSegments.size(), 1, 0,  0);
+				CL->DrawInstanced						(2 * Count, 1, 2 * Offset, 0);
+
+
 			}	break;
 			case DRAWCALLTYPE::DCT_TEXT: {
 				auto T = Immediate->Text[D.Index];
@@ -8179,7 +8518,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	float2 Position2SS(float2 in) { return{ in.x * 2 - 1, in.y * -2 + 1 }; }
 
-	void UploadGUI(RenderSystem* RS, ImmediateRender* IR, iAllocator* TempMemory, RenderWindow* TargetWindow)
+	void UploadImmediate(RenderSystem* RS, ImmediateRender* IR, iAllocator* TempMemory, RenderWindow* TargetWindow)
 	{
 		if(IR->Rects.size())
 			UpdateResourceByTemp(RS, &IR->RectBuffer, IR->Rects.begin(), IR->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -8187,6 +8526,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			UploadTextArea(I.Font, I.Text, TempMemory, RS, TargetWindow);
 
 		UploadLineSegments(RS, &IR->Lines2D);
+		UploadLineSegments(RS, &IR->Lines3D);
 
 		auto PixelSize = GetPixelSize(TargetWindow);
 
@@ -8252,7 +8592,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void ReleaseDrawGUI(RenderSystem* RS, ImmediateRender* RG) {
+	void ReleaseDrawImmediate(RenderSystem* RS, ImmediateRender* RG) {
 		RG->Rects.Release();
 		RG->TexturedRects.Release();
 		RG->ClipAreas.Release();

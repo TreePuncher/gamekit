@@ -115,8 +115,18 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-bool PreDrawUpdate(SubState* StateMemory, EngineMemory*, double DT)
+bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
+	auto ThisState = (PlayState*)StateMemory;
+
+	//PushCircle2D(&StateMemory->Base->Immediate, Engine->TempAllocator, { .5f, .5f }, .5, {1.0f, GetWindowAspectRatio(Engine) }, GREEN);
+	//PushCircle3D(&StateMemory->Base->Immediate, Engine->TempAllocator, { 0.0f, 1.0f, 0.0f }, 10, { 1.0f, 1.0f, 1.0f }, RED);
+	//PushCube_Wireframe(&StateMemory->Base->Immediate, Engine->TempAllocator, { 0.0f, 1.0f, 0.0f }, 10, RED);
+
+	auto PlayerPOS = ThisState->Player.PlayerCollider.Controller->getFootPosition();
+
+	PushCapsule_Wireframe(&StateMemory->Base->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 20, GREEN);
+
 	return false;
 }
 
@@ -155,7 +165,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
 
 	for (size_t I = 0; I < 100; ++I) {
 		for (size_t II = 0; II < 10; ++II) {
-			auto Handle = Base->GScene.CreateDrawableAndSetMesh("UVCube");
+			auto Handle = Base->GScene.CreateDrawableAndSetMesh("Flower");
 			Base->GScene.TranslateEntity_WT(Handle, float3(10.0f * I, 0, 10.0f * II));
 		}
 	}

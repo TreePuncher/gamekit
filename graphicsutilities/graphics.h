@@ -2466,14 +2466,7 @@ namespace FlexKit
 		float4		Color;
 	};
 
-	
-	struct Draw_LineSet_3D
-	{
-		LineSet*	Lines;
-		Camera*		C;
-	};
-
-	struct Draw_LineSet_2D
+	struct Draw_LineSet
 	{
 		size_t Begin, Count;
 	};
@@ -2516,8 +2509,8 @@ namespace FlexKit
 		DynArray<Textured_Rect>		TexturedRects;
 		DynArray<Draw_TEXT>			Text;
 		DynArray<Draw_TEXT2>		Text2;
-		DynArray<Draw_LineSet_2D>	DrawLines2D;
-		DynArray<Draw_LineSet_3D>	DrawLines3D;
+		DynArray<Draw_LineSet>		DrawLines2D;
+		DynArray<Draw_LineSet>		DrawLines3D;
 		DynArray<DrawCall>			DrawCalls;
 
 		DynArray<const char*>	TextBuffer;
@@ -2526,6 +2519,8 @@ namespace FlexKit
 		uint32_t				TextBufferSizes[3];
 
 		LineSet						Lines2D;
+		LineSet						Lines3D;
+
 		FrameBufferedResource		RectBuffer;
 		ID3D12PipelineState*		DrawStates[DRAWCALLTYPE::DCT_COUNT];
 	};
@@ -2558,22 +2553,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FLEXKITAPI void PushCircle2D( ImmediateRender* RG, iAllocator* Memory, float2 POS = {0.0f, 0.0f},		float r = 1.0f, float2 Scale = { 1, 1 },	float3 Color = WHITE );
+	FLEXKITAPI void PushCircle3D( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f},	float r = 1.0f, float3 Scale = { 1, 1, 1 }, float3 Color = WHITE );
+
+	void PushCube_Wireframe		( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f,				 float3 Color = WHITE );
+	void PushCapsule_Wireframe	( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f, float h = 0, float3 Color = WHITE );
+
+
 	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT Rect );
 	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT_CLIPPED Rect );
 	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_TEXTURED_RECT Rect );
 
 	FLEXKITAPI void PushText( ImmediateRender* RG, Draw_TEXT Text );
 
-	FLEXKITAPI void PushLineSet( ImmediateRender* RG, Draw_LineSet_3D);
-	FLEXKITAPI void PushLineSet( ImmediateRender* RG, LineSegments );
+	FLEXKITAPI void PushLineSet2D( ImmediateRender* RG, LineSegments );
+	FLEXKITAPI void PushLineSet3D( ImmediateRender* RG, LineSegments );
 	
 	FLEXKITAPI void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale = {1.0f, 1.0f});
 
 	FLEXKITAPI void InitiateImmediateRender		( RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory);
-	FLEXKITAPI void ReleaseDrawGUI		( RenderSystem* RS, ImmediateRender* RG);
+	FLEXKITAPI void ReleaseDrawImmediate		( RenderSystem* RS, ImmediateRender* RG);
 
 	FLEXKITAPI void Clear		( ImmediateRender* RG );
-	FLEXKITAPI void UploadGUI	( RenderSystem* RS, ImmediateRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);
+	FLEXKITAPI void UploadImmediate	( RenderSystem* RS, ImmediateRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);
 
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
@@ -2581,7 +2583,7 @@ namespace FlexKit
 	FLEXKITAPI void CleanUp	( PointLightBuffer* out,	iAllocator* Memory );
 	FLEXKITAPI void CleanUp	( SpotLightBuffer* out,		iAllocator* Memory );
 
-	FLEXKITAPI void DrawGUI	( RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* GUIStack, Texture2D Out );
+	FLEXKITAPI void DrawImmediate( RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* GUIStack, Texture2D Out, Camera* C );
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );

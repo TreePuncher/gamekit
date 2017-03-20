@@ -229,7 +229,7 @@ void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
 	ReleaseCamera(State->Nodes, &State->DefaultCamera);
 
 	ReleaseGraphicScene(&State->GScene);
-	ReleaseDrawGUI(Engine->RenderSystem, &State->Immediate);
+	ReleaseDrawImmediate(Engine->RenderSystem, &State->Immediate);
 }
 
 
@@ -520,7 +520,7 @@ extern "C"
 
 			SubmitUploadQueues(RS);
 
-			UploadGUI	(RS, &State->Immediate, TempMemory, State->ActiveWindow);	
+			UploadImmediate	(RS, &State->Immediate, TempMemory, State->ActiveWindow);	
 			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
 
 			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
@@ -556,7 +556,7 @@ extern "C"
 			TiledRender_Shade	(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 			ForwardPass			(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
 
-			DrawGUI(RS, CL, &State->Immediate, GetBackBufferTexture(State->ActiveWindow));       
+			DrawImmediate(RS, CL, &State->Immediate, GetBackBufferTexture(State->ActiveWindow), State->ActiveCamera);       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
 	}

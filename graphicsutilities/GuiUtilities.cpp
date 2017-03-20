@@ -1292,7 +1292,7 @@ namespace FlexKit
 			L.B = Position2SS(L.B);
 		}
 
-		PushLineSet(GUI, Temp);
+		PushLineSet2D(GUI, Temp);
 	}
 
 

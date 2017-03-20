@@ -1754,7 +1754,7 @@ extern "C"
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
 			//DPP.Mode = EDEFERREDPASSMODE::EDPM_POSITION;
 
-			UploadGUI	(RS, &State->ImmediateRender, TempMemory, State->ActiveWindow);
+			UploadImmediate	(RS, &State->ImmediateRender, TempMemory, State->ActiveWindow);
 			UploadPoses	(RS, &PVS, State->GT, TempMemory);
 
 			UploadLineSegments			(RS, &State->Lines);
@@ -1814,7 +1814,7 @@ extern "C"
 			}
 #endif
 
-			DrawGUI(RS, CL, &State->ImmediateRender, GetBackBufferTexture(State->ActiveWindow));       
+			DrawImmediate(RS, CL, &State->ImmediateRender, GetBackBufferTexture(State->ActiveWindow));       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
 	}
@@ -1846,7 +1846,7 @@ extern "C"
 
 		CleanUpTextureVTable	(&_ptr->TextureState);
 		CleanUpSimpleWindow		(&_ptr->TestScene.Window, Engine->RenderSystem);
-		ReleaseDrawGUI			(&_ptr->ImmediateRender);
+		ReleaseDrawImmediate			(&_ptr->ImmediateRender);
 		CleanUpLineSet			(&_ptr->Lines);
 		CleanUpState			(_ptr, Engine);
 		ReleaseCamera			(_ptr->Nodes, _ptr->ActiveCamera);
