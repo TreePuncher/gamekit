@@ -1874,7 +1874,7 @@ namespace FlexKit
 		GDesc.DSVFormat             = DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
 		GDesc.InputLayout           = { InputElements, 1 };
 		GDesc.DepthStencilState     = Depth_Desc;
-
+		
 		ID3D12PipelineState* PSO = nullptr;
 		auto HR = RS->pDevice->CreateGraphicsPipelineState(&GDesc, IID_PPV_ARGS(&PSO));
 		CheckHR(HR, ASSERTONFAIL("Failed to Create PSO for Occlusion Culling!"));
@@ -1972,6 +1972,7 @@ namespace FlexKit
 
 			CL->BeginQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
 
+			auto MeshHande = (P.D->Occluder == INVALIDMESHHANDLE) ? P.D->MeshHandle : P.D->Occluder;
 			auto DHeapPosition	= GetDescTableCurrentPosition_GPU(RS);
 			auto DHeap  = ReserveDescHeap(RS, 8);
 			auto DTable = DHeap;
@@ -1993,9 +1994,9 @@ namespace FlexKit
 			CL->SetGraphicsRootConstantBufferView(3, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView(4, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 
-			auto CurrentMesh = GetMesh(GT, P.D->MeshHandle);
-			size_t IBIndex = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t IndexCount = GetMesh(GT, P.D->MeshHandle)->IndexCount;
+			auto CurrentMesh	= GetMesh(GT, MeshHande);
+			size_t IBIndex		= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
+			size_t IndexCount	= GetMesh(GT, P.D->MeshHandle)->IndexCount;
 
 			D3D12_INDEX_BUFFER_VIEW		IndexView;
 			IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
@@ -2009,7 +2010,6 @@ namespace FlexKit
 			CL->IASetIndexBuffer(&IndexView);
 			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
-
 			CL->EndQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
 		}
 
@@ -2019,6 +2019,38 @@ namespace FlexKit
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT));
 	}
 
+
+	/************************************************************************************************/
+
+
+	size_t	OcclusionCuller::GetNext() {
+		return Head++;
+	}
+
+	void OcclusionCuller::Clear() {
+		Head = 0;
+	}
+
+	void OcclusionCuller::Release()
+	{
+		for (auto H : Heap)
+			H->Release();
+
+		FlexKit::Release(&OcclusionBuffer);
+		Predicates.Release();
+	}
+
+	ID3D12Resource* OcclusionCuller::Get()
+	{
+		return Predicates.Get();
+	}
+
+	void OcclusionCuller::Increment()
+	{
+		IncrementCurrent(&OcclusionBuffer);
+		Predicates.IncrementCounter();
+		Clear();
+	}
 
 	/************************************************************************************************/
 
@@ -4959,11 +4991,19 @@ namespace FlexKit
 		auto DSVHeap		= GetCurrentRTVTable				(RS);
 
 
-#if 0
+#if 1
 		const auto CullMode = D3D12_PREDICATION_OP_EQUAL_ZERO;
 #else 
 		const auto CullMode = D3D12_PREDICATION_OP_NOT_EQUAL_ZERO;
 #endif
+
+		auto SetPredication = [&](PVEntry& PV) {
+			if (OC && PV.OcclusionID != -1)
+				CL->SetPredication(OC->Get(), PV.OcclusionID * 8, CullMode);
+			else
+				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+		};
+
 		{// Push Temps
 			auto Itr = DescPOS;
 			for (size_t I = 0; I < 6; ++I)
@@ -5057,10 +5097,7 @@ namespace FlexKit
 				LastHandle = CurrentHandle;
 			}
 
-			if (OC && (*itr).OcclusionID != -1)
-				CL->SetPredication(OC->Get(), (*itr).OcclusionID * 8, CullMode);
-			else
-				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+			SetPredication(*itr);
 
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
@@ -5117,14 +5154,10 @@ namespace FlexKit
 				LastHandle = CurrentHandle;
 			}
 
+			SetPredication(*itr);
+
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
 			CL->SetGraphicsRootShaderResourceView(DFRP_AnimationResources, AnimationState->Resource->GetGPUVirtualAddress());
-
-			if (OC && (*itr).OcclusionID != -1)
-				CL->SetPredication(OC->Get(), (*itr).OcclusionID * 8, CullMode);
-			else
-				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
-
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
 
@@ -5185,13 +5218,8 @@ namespace FlexKit
 				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
 			}
 
+			SetPredication(*itr);
 			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
-
-			if (OC && (*itr).OcclusionID != -1)
-				CL->SetPredication(OC->Get(), (*itr).OcclusionID * 8, CullMode);
-			else
-				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
-
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
 
@@ -8195,7 +8223,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 						if ( C == '\n' || CurrentX + XAdvance	> AreaSize.x) {
 							CurrentX = 0;
-							CurrentY += YAdvance/4 * Draw.Scale.y;
+							CurrentY += YAdvance / 2 * Draw.Scale.y;
 						}
 
 						TextEntry Character		= {};
@@ -8207,7 +8235,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 						Text[itr2] = Character;
 						YAdvance = max(YAdvance, GlyphArea.y);
-						CurrentX += XAdvance * Draw.Scale.y /2 ;
+						CurrentX += XAdvance * Draw.Scale.x;
 						itr2++;
 					}
 				}

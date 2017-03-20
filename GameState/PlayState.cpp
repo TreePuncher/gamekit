@@ -155,7 +155,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
 
 	for (size_t I = 0; I < 100; ++I) {
 		for (size_t II = 0; II < 10; ++II) {
-			auto Handle = Base->GScene.CreateDrawableAndSetMesh("Flower");
+			auto Handle = Base->GScene.CreateDrawableAndSetMesh("UVCube");
 			Base->GScene.TranslateEntity_WT(Handle, float3(10.0f * I, 0, 10.0f * II));
 		}
 	}

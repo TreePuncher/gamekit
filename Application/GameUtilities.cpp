@@ -119,11 +119,12 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass_DESC;
 
 	bool Out		 = false;
-	uint32_t width	 = 800;
-	uint32_t height	 = 600;
+	uint32_t width	 = 1920;
+	uint32_t height	 = 1080;
 	bool InvertDepth = true;
 	FlexKit::Graphics_Desc	desc = { 0 };
 	desc.Memory = Engine->BlockAllocator;
+
 
 	Out = InitiateRenderSystem(&desc, Engine->RenderSystem);
 	if (!Out)
@@ -146,11 +147,13 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	TiledRendering_Desc DP_Desc{ &Engine->DepthBuffer, &Engine->Window, nullptr };
 
 	InitiateForwardPass(Engine->RenderSystem,	&FP_Desc, &Engine->ForwardRender);
-	InitiateTiledDeferredRender(Engine->RenderSystem,	&DP_Desc, &Engine->TiledRender);
-
+	InitiateTiledDeferredRender(Engine->RenderSystem, &DP_Desc, &Engine->TiledRender);
 	InitiateGeometryTable	( &Engine->Geometry, Engine->BlockAllocator );
+
+	auto OcclusionBufferWH = GetWindowWH(Engine)/4;
+
 	Engine->Assets.ResourceMemory = &Engine->BlockAllocator;
-	Engine->Culler                = CreateOcclusionCuller(Engine->RenderSystem, 8096, GetWindowWH(Engine)/10);
+	Engine->Culler                = CreateOcclusionCuller(Engine->RenderSystem, 8096, OcclusionBufferWH);
 
 	return Out;
 }

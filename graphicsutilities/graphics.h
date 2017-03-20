@@ -812,12 +812,12 @@ namespace FlexKit
 	};
 
 
-	void IncrementCurrent(DepthBuffer* DB) {
+	inline void IncrementCurrent(DepthBuffer* DB) {
 		DB->CurrentBuffer = (++DB->CurrentBuffer) % DB->BufferCount;
 	}
 
 
-	Texture2D GetCurrent(DepthBuffer* DB) {
+	inline Texture2D GetCurrent(DepthBuffer* DB) {
 		return DB->Buffer[DB->CurrentBuffer];
 	}
 
@@ -1816,31 +1816,12 @@ namespace FlexKit
 
 		ID3D12PipelineState*	PSO;
 
-		size_t	GetNext(){
-			return Head++;
-		}
+		ID3D12Resource* Get();
+		size_t			GetNext();
 
-		void Clear(){
-			Predicates.IncrementCounter();
-			Head = 0;
-		}
-
-		void Release()
-		{
-			Predicates.Release();
-		}
-
-		ID3D12Resource* Get()
-		{
-			return Predicates.Get();
-		}
-
-		void Increment()
-		{
-			IncrementCurrent(&OcclusionBuffer);
-			Predicates.IncrementCounter();
-			Head = 0;
-		}
+		void Clear();
+		void Increment();
+		void Release();
 
 	};
 

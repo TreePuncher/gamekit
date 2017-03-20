@@ -564,10 +564,8 @@ extern "C"
 
 	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
 	{
-		IncrementCurrent(&Engine->DepthBuffer);
-
 		Engine->Culler.Increment();
-
+		IncrementCurrent(&Engine->DepthBuffer);
 		PresentWindow(&Engine->Window, Engine->RenderSystem);
 	}
 

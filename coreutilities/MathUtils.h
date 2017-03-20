@@ -319,7 +319,7 @@ namespace FlexKit
 		THISTYPE& operator / (TY_2 in)
 		{
 			for (auto I = 0; I < SIZE; ++I)
-				Vector[I] /= 2;
+				Vector[I] /= in;
 
 			return *this;
 		}
