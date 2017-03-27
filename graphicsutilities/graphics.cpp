@@ -191,8 +191,14 @@ namespace FlexKit
 			ev.InputSource = Event::Keyboard;
 			ev.Action      = message == WM_KEYUP ? Event::InputAction::Release : Event::InputAction::Pressed;
 
+			auto ShiftState = GetAsyncKeyState(VK_LSHIFT) | GetAsyncKeyState(VK_RSHIFT);
+
 			switch (wParam)
 			{
+			case VK_RETURN:
+				ev.mData1.mKC[0] = KC_ENTER;
+				break;
+
 			case VK_SPACE:
 				ev.mData1.mKC[0]   = KC_SPACE;
 				break;
@@ -303,6 +309,12 @@ namespace FlexKit
 			case 'Z':
 				ev.mData1.mKC [0]  = KC_Z;
 				ev.mData2.mINT[0]  = wParam;
+				break;
+			case VK_OEM_3:
+				if (ShiftState) {
+					ev.mData1.mKC[0] = KC_TILDA;
+					ev.mData2.mINT[0] = wParam;
+				}
 				break;
 			default:
 
@@ -690,7 +702,7 @@ namespace FlexKit
 
 		D3D12_DESCRIPTOR_HEAP_DESC	FrameTextureHeap_DESC = {};
 		FrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		FrameTextureHeap_DESC.NumDescriptors	= 4096 * 2;
+		FrameTextureHeap_DESC.NumDescriptors	= 1024 * 1;
 		FrameTextureHeap_DESC.NodeMask			= 0;
 		FrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
@@ -1207,7 +1219,7 @@ namespace FlexKit
 		Window_Count++;
 
 		// Register Window Class
-		auto Window = CreateWindow( L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPEDWINDOW,
+		auto Window = CreateWindow( L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_BORDER,
 							   In_Desc->POS_X,
 							   In_Desc->POS_Y,
 							   In_Desc->width,
@@ -7435,7 +7447,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	{
 		LineSegments Lines(Memory);
 
-		const size_t SegmentCount = 32;
+		const size_t SegmentCount = 64;
 		for (size_t I = 0; I < SegmentCount; ++I) {
 			LineSegment	Line;
 			Line.AColour = Color;
@@ -7919,8 +7931,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		NewDrawCall.Font                 = Font;
 		NewDrawCall.Begin                = RG->TextBufferPosition;
 		NewDrawCall.Count			     = StrLen;
-		NewDrawCall.CLIPAREA_TOPLEFT     = POS;
-		NewDrawCall.CLIPAREA_BOTTOMRIGHT = POS + TextArea;
+		NewDrawCall.TopLeft			     = POS;
+		NewDrawCall.BottomRight			 = POS + TextArea;
 		NewDrawCall.Color				 = Color;
 		NewDrawCall.Scale				 = Scale;
 
@@ -7929,8 +7941,9 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		RG->Text2.push_back(NewDrawCall);
 		RG->TextBuffer.push_back(str);
 
-		size_t Idx = RG->TextBufferGPU.Idx;
-		size_t CurrentBufferSize = RG->TextBufferSizes[Idx];
+		size_t Idx					= RG->TextBufferGPU.Idx;
+		size_t CurrentBufferSize	= RG->TextBufferSizes[Idx];
+
 		if (CurrentBufferSize <  RG->TextBufferPosition)
 		{	// Resize Buffer
 			RG->TextBufferSizes[Idx] = 2 * CurrentBufferSize;
@@ -7938,7 +7951,9 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			auto NewResource         = CreateShaderResource(RG->RS, sizeof(TextEntry) * CurrentBufferSize);
 
 			AddTempShaderRes(RG->TextBufferGPU, RG->RS);
-			RG->TextBufferGPU = NewResource;
+			RG->TextBufferGPU[0] = NewResource[0];
+			RG->TextBufferGPU[1] = NewResource[1];
+			RG->TextBufferGPU[2] = NewResource[2];
 		}
 	}
 
@@ -8125,15 +8140,18 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 			D3D12_RENDER_TARGET_BLEND_DESC TransparencyBlend_Desc;{
 				TransparencyBlend_Desc.BlendEnable           = true;
-				TransparencyBlend_Desc.LogicOpEnable         = false;
+				
 				TransparencyBlend_Desc.SrcBlend              = D3D12_BLEND_SRC_ALPHA;
 				TransparencyBlend_Desc.DestBlend             = D3D12_BLEND_INV_SRC_ALPHA;
 				TransparencyBlend_Desc.BlendOp               = D3D12_BLEND_OP_ADD;
+				//TransparencyBlend_Desc.BlendOp               = D3D12_BLEND_OP_;
 				TransparencyBlend_Desc.SrcBlendAlpha         = D3D12_BLEND_ZERO;
 				TransparencyBlend_Desc.DestBlendAlpha        = D3D12_BLEND_ZERO;
 				TransparencyBlend_Desc.BlendOpAlpha          = D3D12_BLEND_OP_ADD;
-				TransparencyBlend_Desc.LogicOp               = D3D12_LOGIC_OP_NOOP;
 				TransparencyBlend_Desc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+
+				TransparencyBlend_Desc.LogicOpEnable         = false;
+				TransparencyBlend_Desc.LogicOp               = D3D12_LOGIC_OP_NOOP;
 			}
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_Desc = {};{
@@ -8476,8 +8494,9 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				auto T	  = Immediate->Text2[D.Index];
 				auto Font = T.Font;
 				
+				
 				D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
-					{ Immediate->TextBufferGPU.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * T.Count), sizeof(TextEntry) },
+					{ Immediate->TextBufferGPU.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Immediate->TextBufferSizes[0]), sizeof(TextEntry) },
 				};
 			
 				auto DescPOS = ReserveDescHeap(RS, 8);
@@ -8535,52 +8554,54 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		{
 			size_t BufferSize = IR->TextBufferPosition * sizeof(TextEntry);
 			TextEntry* Text = (TextEntry*)TempMemory->_aligned_malloc(BufferSize);
-			size_t itr = 0;
-			size_t itr2 = 0;
+			
 
-			for (auto Draw : IR->Text2) {
-				for (auto str : IR->TextBuffer) {
-					size_t StrSize		= Draw.Count;
-					float2 AreaSize		= Draw.CLIPAREA_BOTTOMRIGHT - Draw.CLIPAREA_TOPLEFT;
-					float2 TopLeft		= Draw.CLIPAREA_TOPLEFT;
-					float2 BottomRight	= Draw.CLIPAREA_BOTTOMRIGHT;
+			size_t itr_2 = 0;
 
-					float CurrentX = 0;
-					float CurrentY = .0;
-					float YAdvance = 0.0f;
+			for(size_t itr = 0; itr < IR->Text2.size(); itr++)
+			{
+				auto Draw = IR->Text2[itr];
+				auto str = IR->TextBuffer[itr];
 
-					for (size_t StrIdx = 0; StrIdx < StrSize; ++StrIdx) {
-						auto C				= str[StrIdx];
-						auto Font			= Draw.Font;
-						float2 GlyphArea	= Font->GlyphTable[C].WH * PixelSize;
-						float  XAdvance		= Font->GlyphTable[C].Xadvance * PixelSize.x;
-						auto G				= Font->GlyphTable[C];
+				size_t StrSize		= Draw.Count;
+				float2 AreaSize		= Draw.BottomRight - Draw.TopLeft;
+				float2 TopLeft		= Draw.TopLeft;
+				float2 BottomRight	= Draw.BottomRight;
 
-						float2 Scale		= float2(1.0f, 1.0f) / Font->TextSheetDimensions;
-						float2 WH			= G.WH * Scale;
-						float2 XY			= G.XY * Scale;
-						float2 UVTL			= XY;
-						float2 UVBR			= XY + WH;
+				float CurrentX = Draw.TopLeft.x;
+				float CurrentY = Draw.TopLeft.y;
+				float YAdvance = 0.0f;
 
-						if ( C == '\n' || CurrentX + XAdvance	> AreaSize.x) {
-							CurrentX = 0;
-							CurrentY += YAdvance / 2 * Draw.Scale.y;
-						}
+				for (size_t StrIdx = 0; StrIdx < StrSize; ++StrIdx) {
+					auto C				= str[StrIdx];
+					auto Font			= Draw.Font;
+					float2 GlyphArea	= Font->GlyphTable[C].WH * PixelSize;
+					float  XAdvance		= Font->GlyphTable[C].Xadvance * PixelSize.x;
+					auto G				= Font->GlyphTable[C];
 
-						TextEntry Character		= {};
-						Character.POS			= Position2SS(float2(CurrentX, CurrentY));
-						Character.TopLeftUV		= UVTL;
-						Character.BottomRightUV = UVBR;
-						Character.Color			= Draw.Color;
-						Character.Size			= WH * Draw.Scale;
+					float2 Scale		= float2(1.0f, 1.0f) / Font->TextSheetDimensions;
+					float2 WH			= G.WH * Scale;
+					float2 XY			= G.XY * Scale;
+					float2 UVTL			= XY;
+					float2 UVBR			= XY + WH;
 
-						Text[itr2] = Character;
-						YAdvance = max(YAdvance, GlyphArea.y);
-						CurrentX += XAdvance * Draw.Scale.x;
-						itr2++;
+					if ( C == '\n' || CurrentX + XAdvance	> AreaSize.x) {
+						CurrentX = Draw.TopLeft.x;
+						CurrentY += YAdvance / 2 * Draw.Scale.y;
 					}
+
+					TextEntry Character		= {};
+					Character.POS			= Position2SS(float2(CurrentX, CurrentY));
+					Character.TopLeftUV		= UVTL;
+					Character.BottomRightUV = UVBR;
+					Character.Color			= Draw.Color;
+					Character.Size			= WH * Draw.Scale;
+
+					Text[itr_2] = Character;
+					YAdvance = max(YAdvance, GlyphArea.y);
+					CurrentX += XAdvance * Draw.Scale.x;
+					itr_2++;
 				}
-				itr++;
 			}
 
 			UpdateResourceByTemp(RS, &IR->TextBufferGPU, Text, BufferSize, 1, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -8654,7 +8675,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		out->LineSegments.Release();
 		out->LineSegments.Allocator = Mem;
 
-		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 16);
+		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 64);
 		out->GPUResource._SetDebugName("LINE SEGMENTS");
 	}
 

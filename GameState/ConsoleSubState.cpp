@@ -27,7 +27,39 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 {
-	return true;
+	PlayState* ThisState = (PlayState*)StateMemory;
+
+	if (evt.InputSource == Event::Keyboard)
+	{
+		switch (evt.Action)
+		{
+		case Event::Pressed:
+		{
+			switch (evt.mData1.mKC[0])
+			{
+			case KC_TILDA: {
+				std::cout << "Popping Console State\n";
+				PopSubState(ThisState->Base);
+				return false;
+			}	break;
+			case KC_ENTER:
+			{
+				EnterLineConsole(&ThisState->Base->Console);
+			}	break;
+			case KC_SPACE:
+			{
+				InputConsole(&ThisState->Base->Console, ' ');
+			}	break;
+			default:
+			{
+				if (evt.mData1.mKC[0] < KC_INPUTCHARACTERCOUNT)
+					InputConsole(&ThisState->Base->Console, (char)evt.mData2.mINT[0]);
+			}	break;
+			}
+		}	break;
+		}
+	}
+	return false;
 }
 
 bool UpdateConsoleScreen(SubState* StateMemory, EngineMemory*, double DT)
@@ -37,34 +69,37 @@ bool UpdateConsoleScreen(SubState* StateMemory, EngineMemory*, double DT)
 	return !ThisState->PauseBackgroundLogic;
 }
 
-bool DrawConsoleScreen(SubState* StateMemory, EngineMemory*, double DT)
+bool DrawConsoleScreen(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
 	ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
+	
+	FlexKit::Draw_RECT Rect;
+	Rect.BLeft	= { 0, 0 };
+	Rect.TRight = { 1, 1 };
+	Rect.Color  = float4(Grey(0.0f), 0.5f);
+	PushRect(&ThisState->Base->Immediate, Rect);
 
-	FlexKit::Draw_TEXT Text;
-	Text.CLIPAREA_BLEFT		= { 0.0f, 0.5f };
-	Text.CLIPAREA_TRIGHT	= { 1.0f, 1.0f };
-	Text.Text               = &ThisState->C->TextArea;
+	DrawConsole(ThisState->C, ThisState->Base->Immediate, GetWindowWH(Engine));
 
-	return true;
+	return false;
 }
 
 void Release(SubState* StateMemory)
 {
-
+	
 }
 
-ConsoleSubState* CreateConsoleSubState(EngineMemory* Engine, Console* C, GameFramework* Base)
+ConsoleSubState* CreateConsoleSubState(GameFramework* Base)
 {
 	ConsoleSubState* out;
-	out = &Engine->BlockAllocator.allocate_aligned<ConsoleSubState>();
+	out = &Base->Engine->BlockAllocator.allocate_aligned<ConsoleSubState>();
 	
 	out->VTable.PreDrawUpdate = DrawConsoleScreen;
 	out->VTable.Update		  = UpdateConsoleScreen;
 	out->VTable.EventHandler  = ConsoleEventHandler;
-	out->C                    = C;
+	out->C                    = &Base->Console;
 	out->Base                 = Base;
-	out->Engine               = Engine;
+	out->Engine               = Base->Engine;
 	out->PauseBackgroundLogic = true;
 
 	return out;

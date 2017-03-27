@@ -34,20 +34,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 struct Console
 {
-	FlexKit::TextArea TextArea;
-	FlexKit::TextArea InputArea;
+	FlexKit::CircularBuffer<const char*, 60>	Lines;
+	FlexKit::FontAsset*							Font;
 
-	FlexKit::static_vector<char*, 64> Text;
+	char	InputBuffer[1024];
+	size_t	InputBufferSize;
+
+	iAllocator*	Memory;
 };
 
-void InitateConsole(Console* out, FontAsset* Font, EngineMemory* Engine);	
-void ReleaseConsole(Console* out);
+void InitateConsole ( Console* out, FontAsset* Font, EngineMemory* Engine );	
+void ReleaseConsole	( Console* out );
 
-void ConsolePrint(Console* out, const char* _ptr);
+void DrawConsole	( Console* C, ImmediateRender* IR, uint2 Window_WH );
 
-void ConsolePrintf(Console* out)
-{
-}
+void InputConsole		( Console* C, char InputCharacter );
+void EnterLineConsole	( Console* C);
+
+void ConsolePrint	( Console* out, const char* _ptr );
+void ConsolePrintf	( Console* out );
 
 template<typename Ty, typename ... Ty_Args >
 void ConsolePrintf(Console* out, const char* _ptr, Ty, Ty_Args ... Args )

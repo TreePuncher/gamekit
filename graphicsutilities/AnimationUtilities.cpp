@@ -334,8 +334,10 @@ namespace FlexKit
 							
 							if (S.Active)
 							{
-								if ( Animation->FirstPlay && S.EaseIn && EaseInDuration > 0.0 && AnimationProgress <= EaseInDuration )
+								if (Animation->FirstPlay && S.EaseIn && EaseInDuration > 0.0 && AnimationProgress <= EaseInDuration)
 									Animation->Weight = S.EaseIn(AnimationProgress / EaseInDuration);
+								else
+									Animation->Weight = 1;
 
 								S.EaseOutProgress = 0.0f;
 							}
@@ -376,6 +378,9 @@ namespace FlexKit
 									}
 								}
 							}
+
+
+							std::cout << "Animation Weight: " << Animation->Weight << "\n";
 						}
 					}
 					else

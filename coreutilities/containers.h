@@ -719,8 +719,13 @@ namespace FlexKit
 
 		Ty& operator [](size_t idx)
 		{
+			return at(idx);
+		}
+
+		Ty& at(size_t idx)
+		{
 			idx = idx % size();
-			return Buffer[(_Head - 1 - idx + SIZE)% SIZE];
+			return Buffer[(_Head - 1 - idx + SIZE) % SIZE];
 		}
 
 		bool full() noexcept {
@@ -729,6 +734,11 @@ namespace FlexKit
 
 		bool empty() noexcept {
 			return (_Size == 0);
+		}
+
+		void clear() noexcept {
+			_Size = 0;
+			_Head = 0;
 		}
 
 		size_t size() noexcept {
@@ -776,6 +786,51 @@ namespace FlexKit
 		Ty& back() noexcept
 		{
 			return Buffer[_Head - 1];
+		}
+
+
+		struct CircularIterator
+		{
+			CircularBuffer<Ty, SIZE>* Buffer;
+			int					Idx;
+
+			Ty operator *()
+			{
+				return Buffer->at(Idx);
+			}
+
+			bool operator <		(CircularIterator rhs) { return Idx < rhs.Idx; }
+			bool operator ==	(CircularIterator rhs) { return Idx == rhs.Idx; }
+
+			bool operator !=	(CircularIterator rhs) { return !(*this == rhs); }
+
+
+			void Increment()
+			{
+				Idx = (SIZE + Idx + 1) % SIZE;
+			}
+
+			void Decrement()
+			{
+				Idx = (SIZE + Idx - 1) % SIZE;
+			}
+
+			CircularIterator operator ++ (int)	{ auto Temp = *this; Increment(); return Temp; }
+			CircularIterator operator ++ ()		{ Increment(); return (*this); }
+
+			CircularIterator operator -- (int)	{ auto Temp = *this; Decrement(); return Temp; }
+			CircularIterator operator -- ()		{ Decrement(); return (*this); }
+
+		};
+
+		CircularIterator begin()
+		{
+			return{ this, 0 };
+		}
+
+		CircularIterator end()
+		{
+			return{ this, _Size };
 		}
 
 		int _Head, _Size;

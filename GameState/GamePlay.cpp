@@ -39,7 +39,7 @@ void InitiatePlayer(GameFramework* Engine, Player* Out)
 
 	CapsuleCharacterController_DESC Desc;
 	Desc.FootPos = float3(0, 10, 0);
-	Desc.h = 20.0f;
+	Desc.h = 10.0f;
 	Desc.r = 5.0f;
 
 	InitiateCamera3rdPersonContoller(Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);

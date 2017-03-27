@@ -54,6 +54,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		(DONE) Simple Window Elements
 //		(DONE) Deferred Rendering
 //		(DONE) Forward Rendering
+//		(DONE) Debug Drawing Functions for Drawing Circles, Capsules, Boxes
+//
 //		Particles
 //		Static Mesh Batcher
 //
@@ -109,9 +111,6 @@ void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 		}	break;
 		case KC_C:
 			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
-			break;
-		case KC_Q:
-			PushSubState(_ptr, CreateConsoleSubState(_ptr->Engine, &_ptr->Console, _ptr));
 			break;
 		default:
 			break;
@@ -247,7 +246,9 @@ inline void PushSubState(GameFramework* _ptr, SubState* SS)
 void PopSubState(GameFramework* State)
 {
 	auto Top = State->SubStates.back();
-	Top->Release(reinterpret_cast<SubState*>(Top));
+
+	if(Top->Release)
+		Top->Release(reinterpret_cast<SubState*>(Top));
 
 	State->SubStates.pop_back();
 }
@@ -289,6 +290,15 @@ void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 		return;
 	}
 
+	for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
+	{
+		auto P = State->GScene.PLights[I];
+
+		auto POS = GetPositionW(&Engine->Nodes, P.Position);
+
+		PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.I / 50);
+	}
+
 	auto RItr = State->SubStates.rbegin();
 	auto REnd = State->SubStates.rend();
 	while (RItr != REnd)
@@ -321,6 +331,7 @@ extern "C"
 		GameFramework& Game = Engine->BlockAllocator.allocate_aligned<GameFramework>();
 		SetDebugMemory(&Engine->Debug);
 
+
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 
@@ -343,8 +354,7 @@ extern "C"
 
 		InitiateScene			  (&Engine->Physics, &Game.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&Game.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
-		InitiateImmediateRender			  (Engine->RenderSystem, &Game.Immediate, Engine->TempAllocator);
-
+		InitiateImmediateRender	  (Engine->RenderSystem, &Game.Immediate, Engine->TempAllocator);
 		//InitateConsole			  (&State.Console, Engine);
 		
 		{
@@ -373,6 +383,7 @@ extern "C"
 		Engine->Window.Handler.Subscribe(sub);
 
 		Game.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+		InitateConsole(&Game.Console, Game.DefaultAssets.Font, Engine);
 
 		enum Mode
 		{
@@ -479,8 +490,8 @@ extern "C"
 		char* TempBuffer	= (char*)Engine->TempAllocator.malloc(512);
 		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION))/1000.0f;
 
-		sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)State->Stats.FPS, DrawTiming);
-		PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 1.0f, 1.0f }, float4(WHITE, 1), { .7f, .7f });
+		//sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)State->Stats.FPS, DrawTiming);
+		//PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 1.0f, 1.0f }, float4(WHITE, 1), { .7f, .7f });
 	}
 
 

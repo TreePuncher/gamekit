@@ -26,11 +26,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 {
-	TextArea_Desc TA_Desc = {};
-	TA_Desc.POS		= {0.0, 0.5f};
-	TA_Desc.WH		= { 1, 0.5 };
+	Out->Lines.clear();
+	Out->Memory          = Engine->BlockAllocator;
+	Out->Font            = Font;
+	Out->InputBufferSize = 0;
 
-//	CreateTextArea(Engine->RenderSystem, Engine->BlockAllocator, &TA_Desc);
+	memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
 }
 
 
@@ -40,7 +41,51 @@ void ReleaseConsole(Console* out)
 }
 
 
+void DrawConsole(Console* C, ImmediateRender* IR, uint2 Window_WH)
+{
+	const float LineHeight = (float(C->Font->FontSize[1]) / Window_WH[1]) / 4;
+	const float AspectRatio = float(Window_WH[0]) / float(Window_WH[1]);
+	size_t itr = 0;
+
+	float y = 1.0f - float(1 + (itr)) * LineHeight;
+	PrintText(IR, C->InputBuffer, C->Font, { 0, y }, float2(1.0f, 1.0f) - float2(0.0f, y), float4(WHITE, 1.0f), { 0.5f / AspectRatio, 0.5f });
+
+
+	for (auto Line : C->Lines) {
+		float y = 1.0f - float(2 + (itr)) * LineHeight ;
+
+		if (y > 0) {
+			float2 Position(0.0f, y);
+
+			PrintText(IR, Line, C->Font, Position, float2(1.0f, 1.0f) - Position, float4(WHITE, 1.0f), { 0.5f / AspectRatio, 0.5f });
+			itr++;
+		}
+		else
+			break;
+	}
+}
+
+
+void InputConsole(Console* C, char InputCharacter)
+{
+	C->InputBuffer[C->InputBufferSize++] = InputCharacter;
+}
+
+
+void EnterLineConsole(Console* C)
+{
+	C->InputBuffer[C->InputBufferSize++] = '\0';
+	char* str = (char*)C->Memory->malloc(C->InputBufferSize);
+	strcpy(str, C->InputBuffer);
+
+	ConsolePrint(C, str);
+
+	C->InputBufferSize = 0;
+	memset(C->InputBuffer, '\0', sizeof(C->InputBuffer));
+}
+
+
 void ConsolePrint(Console* out, const char* _ptr)
 {
-
+	out->Lines.push_back(_ptr);
 }

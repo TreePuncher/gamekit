@@ -112,8 +112,6 @@ namespace FlexKit
 
 	enum KEYCODES
 	{
-		KC_ERROR,
-
 		KC_A,
 		KC_B,
 		KC_C,
@@ -141,6 +139,20 @@ namespace FlexKit
 		KC_Y,
 		KC_Z,
 
+		KC_1,
+		KC_2,
+		KC_3,
+		KC_4,
+		KC_5,
+		KC_6,
+		KC_7,
+		KC_8,
+		KC_9,
+		KC_0,
+
+		KC_INPUTCHARACTERCOUNT,
+
+		KC_ENTER,
 		KC_ESC,
 		KC_LEFTSHIFT,
 		KC_LEFTCTRL,
@@ -155,17 +167,6 @@ namespace FlexKit
 		KC_PAGEUP,
 		KC_PAGEDOWN,
 
-		KC_1,
-		KC_2,
-		KC_3,
-		KC_4,
-		KC_5,
-		KC_6,
-		KC_7,
-		KC_8,
-		KC_9,
-		KC_0,
-
 		KC_NUM1,
 		KC_NUM2,
 		KC_NUM3,
@@ -179,7 +180,11 @@ namespace FlexKit
 
 		KC_MOUSELEFT,
 		KC_MOUSERIGHT,
-		KC_MOUSEMIDDLE
+		KC_MOUSEMIDDLE,
+
+		KC_ERROR,
+
+		KC_TILDA
 	};
 
 
@@ -2484,8 +2489,8 @@ namespace FlexKit
 	struct Draw_TEXT2
 	{
 		size_t		Begin, Count;
-		float2		CLIPAREA_TOPLEFT;
-		float2		CLIPAREA_BOTTOMRIGHT;
+		float2		TopLeft;
+		float2		BottomRight;
 		float2		Scale;
 		float4		Color;
 		FontAsset*	Font;
@@ -2497,7 +2502,7 @@ namespace FlexKit
 		size_t			Index;
 	};
 
-	const uint32_t TEXTBUFFERMINSIZE = 512;
+	const uint32_t TEXTBUFFERMINSIZE = 1024;
 
 	struct ImmediateRender
 	{

@@ -55,6 +55,11 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 			case KC_D: {
 				ThisState->Input.Right = true;
 			}	break;
+			case KC_TILDA:
+			{
+				std::cout << "Pushing Console State\n";
+				PushSubState(ThisState->Base, CreateConsoleSubState(ThisState->Base));
+			}	break;
 			default:
 				break;
 			}
@@ -119,13 +124,8 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
 	auto ThisState = (PlayState*)StateMemory;
 
-	//PushCircle2D(&StateMemory->Base->Immediate, Engine->TempAllocator, { .5f, .5f }, .5, {1.0f, GetWindowAspectRatio(Engine) }, GREEN);
-	//PushCircle3D(&StateMemory->Base->Immediate, Engine->TempAllocator, { 0.0f, 1.0f, 0.0f }, 10, { 1.0f, 1.0f, 1.0f }, RED);
-	//PushCube_Wireframe(&StateMemory->Base->Immediate, Engine->TempAllocator, { 0.0f, 1.0f, 0.0f }, 10, RED);
-
 	auto PlayerPOS = ThisState->Player.PlayerCollider.Controller->getFootPosition();
-
-	PushCapsule_Wireframe(&StateMemory->Base->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 20, GREEN);
+	PushCapsule_Wireframe(&StateMemory->Base->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
 
 	return false;
 }
@@ -164,7 +164,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
 	FK_ASSERT(LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	for (size_t I = 0; I < 100; ++I) {
-		for (size_t II = 0; II < 10; ++II) {
+		for (size_t II = 0; II < 0; ++II) {
 			auto Handle = Base->GScene.CreateDrawableAndSetMesh("UVCube");
 			Base->GScene.TranslateEntity_WT(Handle, float3(10.0f * I, 0, 10.0f * II));
 		}

@@ -112,11 +112,8 @@ struct GameFramework
 
 struct SubState
 {
-	SubState() { Guard2 = Guard1 = (GameFramework*)0xFFFFFFFF; }
 	SubStateVTable	VTable;
-	GameFramework*	Guard1;
 	GameFramework*	Base;
-	GameFramework*	Guard2;
 };
 
 

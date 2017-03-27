@@ -786,6 +786,7 @@ namespace FlexKit
 		}
 	};
 
+	const float3 BLACK	= float3(0.0f, 0.0f, 0.0f);
 	const float3 WHITE	= float3(1.0f, 1.0f, 1.0f);
 	const float3 RED	= float3(1.0f, 0.0f, 0.0f);
 	const float3 BLUE	= float3(0.0f, 0.0f, 1.0f);
