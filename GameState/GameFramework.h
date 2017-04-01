@@ -132,4 +132,6 @@ void			ReleaseGameFramework (EngineMemory* Engine, GameFramework* _ptr );
 
 SubStateVTable* GetStateVTable	 (SubState* _ptr);
 
+
+/************************************************************************************************/
 #endif

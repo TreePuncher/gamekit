@@ -115,6 +115,9 @@
     <ClInclude Include="coreutilities\ProfilingUtilities.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="coreutilities\Components.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">

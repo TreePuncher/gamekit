@@ -770,6 +770,9 @@ namespace FlexKit
 
 		bool push_back(const Ty Item) noexcept
 		{
+			if (_Size + 1 > _Size)// Call Destructor on Tail
+				back().~Ty();
+
 			_Size = min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;

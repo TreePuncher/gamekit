@@ -37,4 +37,22 @@
     </Expand>
   </Type>
 
+  <Type Name="FlexKit::float4">
+    <Expand>
+      <Item Name="X">x</Item>
+      <Item Name="Y">y</Item>
+      <Item Name="Z">z</Item>
+      <Item Name="W">w</Item>
+    </Expand>
+  </Type>
+
+<Type Name="FlexKit::Quaternion">
+    <Expand>
+      <Item Name="iX">x</Item>
+      <Item Name="jY">y</Item>
+      <Item Name="kZ">z</Item>
+      <Item Name="W">w</Item>
+    </Expand>
+  </Type>
+
 </AutoVisualizer>

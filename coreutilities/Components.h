@@ -44,7 +44,6 @@ namespace FlexKit
 			Renderable,
 			Collider
 		}Type;
-
 	};
 
 	/************************************************************************************************/
@@ -73,9 +72,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	template<size_t COMPONENTCOUNT = 3>
 	struct FLEXKITAPI GameObject
 	{
-		static_vector<Component, 3> Components;
+		static_vector<Component, COMPONENTCOUNT> Components;
 
 		void		AddComponent(Component C);
 
@@ -84,6 +84,7 @@ namespace FlexKit
 			for(auto& C : Components)
 				if (C.Type == T)
 					return &C;
+
 			return nullptr;
 		}
 

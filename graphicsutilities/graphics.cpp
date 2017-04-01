@@ -95,6 +95,9 @@ namespace FlexKit
 
 	LRESULT CALLBACK WindowProcess( HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam )
 	{
+		int Param = wParam;
+		auto ShiftState = GetAsyncKeyState(VK_LSHIFT) | GetAsyncKeyState(VK_RSHIFT);
+
 		switch( message )
 		{
 		case WM_SIZE:
@@ -191,135 +194,169 @@ namespace FlexKit
 			ev.InputSource = Event::Keyboard;
 			ev.Action      = message == WM_KEYUP ? Event::InputAction::Release : Event::InputAction::Pressed;
 
-			auto ShiftState = GetAsyncKeyState(VK_LSHIFT) | GetAsyncKeyState(VK_RSHIFT);
-
 			switch (wParam)
 			{
+			case VK_BACK:
+				ev.mData1.mKC[0] = KC_BACKSPACE;
+				break;
 			case VK_RETURN:
 				ev.mData1.mKC[0] = KC_ENTER;
 				break;
-
 			case VK_SPACE:
 				ev.mData1.mKC[0]   = KC_SPACE;
 				break;
 			case VK_ESCAPE:
 				ev.mData1.mKC [0]  = KC_ESC;
 				break;
-				//case VK_W
+			case VK_OEM_PLUS:
+				if (!ShiftState) {
+					ev.mData1.mKC[0] = KC_EQUAL;
+					Param = '=';
+				} else {
+					ev.mData1.mKC[0] = KC_PLUS;
+					Param = '+';
+				}
+				break;
+			case VK_OEM_MINUS:
+				if (!ShiftState) {
+					ev.mData1.mKC[0] = KC_MINUS;
+					Param = '-';
+				} else {
+					ev.mData1.mKC[0] = KC_UNDERSCORE;
+					Param = '_';
+				}
+				break;
+			case VK_OEM_7:
+				if (!ShiftState) {
+					ev.mData1.mKC[0] = KC_SYMBOL;
+					Param = '\'';
+				}
+				else {
+					ev.mData1.mKC[0] = KC_SYMBOL;
+					Param = '\"';
+				}	break;
+			case VK_OEM_COMMA:
+				if (!ShiftState) {
+					ev.mData1.mKC[0] = KC_SYMBOL;
+					Param = ',';
+				}
+				else {
+					ev.mData1.mKC[0] = KC_SYMBOL;
+					Param = '<';
+				}	break;
+			case VK_OEM_PERIOD:
+				if (!ShiftState) {
+					ev.mData1.mKC[0] = KC_SYMBOL;
+					Param = '.';
+				}
+				else {
+					ev.mData1.mKC[0] = KC_SYMBOL;
+					Param = '>';
+				}	break;
+				// 0 - 9
+			case 0x30:
+			case 0x31:
+			case 0x32:
+			case 0x33:
+			case 0x34:
+			case 0x35:
+			case 0x36:
+			case 0x37:
+			case 0x38:
+			case 0x39:
+				if (ShiftState) {
+					switch (wParam)
+					{
+					case 0x30:
+						ev.mData1.mKC[0] = KC_RIGHTPAREN;
+						Param = ')';
+						break;
+					case 0x31:
+						ev.mData1.mKC[0] = KC_EXCLAMATION;
+						Param = '!';
+						break;
+					case 0x32:
+						ev.mData1.mKC[0] = KC_AT;
+						Param = '@';
+						break;
+					case 0x33:
+						ev.mData1.mKC[0] = KC_HASH;
+						Param = '#';
+						break;
+					case 0x34:
+						ev.mData1.mKC[0] = KC_DOLLER;
+						Param = '$';
+						break;
+					case 0x35:
+						ev.mData1.mKC[0] = KC_PERCENT;
+						Param = '%';
+						break;
+					case 0x36:
+						ev.mData1.mKC[0] = KC_CHEVRON;
+						Param = '^';
+						break;
+					case 0x37:
+						ev.mData1.mKC[0] = KC_AMPERSAND;
+						Param = '&';
+						break;
+					case 0x38:
+						ev.mData1.mKC[0] = KC_STAR;
+						Param = '*';
+						break;
+					case 0x39:
+						ev.mData1.mKC[0] = KC_LEFTPAREN;
+						Param = '(';
+						break;
+					default:
+						break;
+					}
+				}
+				else
+				{
+					ev.mData1.mKC[0]	= (FlexKit::KEYCODES)(KC_0 + wParam - 0x30);
+					ev.mData1.mINT[2]	= wParam - 0x30;
+				}
+				break;
 			case 'A':
-				ev.mData1.mKC [0]  = KC_A;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'B':
-				ev.mData1.mKC [0]  = KC_B;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'C':
-				ev.mData1.mKC [0]  = KC_C;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'D':
-				ev.mData1.mKC [0]  = KC_D;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'E':
-				ev.mData1.mKC [0]  = KC_E;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'F':
-				ev.mData1.mKC [0]  = KC_F;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'G':
-				ev.mData1.mKC [0]  = KC_G;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'H':
-				ev.mData1.mKC [0]  = KC_H;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'I':
-				ev.mData1.mKC [0]  = KC_I;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'J':
-				ev.mData1.mKC [0]  = KC_J;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'K':
-				ev.mData1.mKC [0]  = KC_K;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'L':
-				ev.mData1.mKC [0]  = KC_L;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'M':
-				ev.mData1.mKC [0]  = KC_M;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'N':
-				ev.mData1.mKC [0]  = KC_N;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'O':
-				ev.mData1.mKC [0]  = KC_O;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'P':
-				ev.mData1.mKC [0]  = KC_P;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'Q':
-				ev.mData1.mKC [0]  = KC_Q;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'R':
-				ev.mData1.mKC [0]  = KC_R;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'S':
-				ev.mData1.mKC [0]  = KC_S;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'T':
-				ev.mData1.mKC [0]  = KC_T;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'U':
-				ev.mData1.mKC [0]  = KC_U;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'V':
-				ev.mData1.mKC [0]  = KC_V;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'W':
-				ev.mData1.mKC [0]  = KC_W;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'X':
-				ev.mData1.mKC [0]  = KC_X;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'Y':
-				ev.mData1.mKC [0]  = KC_Y;
-				ev.mData2.mINT[0]  = wParam;
-				break;
 			case 'Z':
-				ev.mData1.mKC [0]  = KC_Z;
-				ev.mData2.mINT[0]  = wParam;
+				ev.mData1.mKC [0]  = wParam;
+				if(!ShiftState)	Param += ('a' - 'A');
 				break;
 			case VK_OEM_3:
 				if (ShiftState) {
 					ev.mData1.mKC[0] = KC_TILDA;
-					ev.mData2.mINT[0] = wParam;
 				}
 				break;
 			default:
 
 				break;
 			}
+
+			ev.mData2.mINT[0] = Param;
 			gInputWindow->Handler.NotifyEvent(ev);
 		}
 		}

@@ -112,33 +112,34 @@ namespace FlexKit
 
 	enum KEYCODES
 	{
-		KC_A,
-		KC_B,
-		KC_C,
-		KC_D,
-		KC_E,
-		KC_F,
-		KC_G,
-		KC_H,
-		KC_I,
-		KC_J,
-		KC_K,
-		KC_L,
-		KC_M,
-		KC_N,
-		KC_O,
-		KC_P,
-		KC_Q,
-		KC_R,
-		KC_S,
-		KC_T,
-		KC_U,
-		KC_V,
-		KC_W,
-		KC_X,
-		KC_Y,
-		KC_Z,
+		KC_A = 'A',
+		KC_B = 'B',
+		KC_C = 'C',
+		KC_D = 'D',
+		KC_E = 'E',
+		KC_F = 'F',
+		KC_G = 'G',
+		KC_H = 'H',
+		KC_I = 'I',
+		KC_J = 'J',
+		KC_K = 'K',
+		KC_L = 'L',
+		KC_M = 'M',
+		KC_N = 'N',
+		KC_O = 'O',
+		KC_P = 'P',
+		KC_Q = 'Q',
+		KC_R = 'R',
+		KC_S = 'S',
+		KC_T = 'T',
+		KC_U = 'U',
+		KC_V = 'V',
+		KC_W = 'W',
+		KC_X = 'X',
+		KC_Y = 'Y',
+		KC_Z = 'Z',
 
+		KC_0,
 		KC_1,
 		KC_2,
 		KC_3,
@@ -148,18 +149,49 @@ namespace FlexKit
 		KC_7,
 		KC_8,
 		KC_9,
-		KC_0,
 
-		KC_INPUTCHARACTERCOUNT,
+		KC_OTHER,
+
+		KC_INPUTCHARACTERCOUNT = 36,
 
 		KC_ENTER,
 		KC_ESC,
 		KC_LEFTSHIFT,
 		KC_LEFTCTRL,
 		KC_SPACE,
+		KC_BACKSPACE,
 		KC_TAB,
 		KC_RIGHTSHIFT,
 		KC_RIGHTCTRL,
+
+		KC_COMMA,
+
+
+		KC_PLUS,
+		KC_MINUS,
+
+		KC_UNDERSCORE,
+		KC_EQUAL,
+
+		KC_SYMBOL,
+
+		KC_SYMBOLS_BEGIN,
+
+		KC_HASH,
+		KC_DOLLER,
+
+		KC_PERCENT,
+		KC_CHEVRON,
+
+		KC_EXCLAMATION,
+		KC_AT,
+		KC_AMPERSAND,
+		KC_STAR,
+
+		KC_LEFTPAREN,
+		KC_RIGHTPAREN,
+
+		KC_SYMBOLS_END,
 
 		KC_DELETE,
 		KC_HOME,
@@ -184,7 +216,7 @@ namespace FlexKit
 
 		KC_ERROR,
 
-		KC_TILDA
+		KC_TILDA = '~'
 	};
 
 

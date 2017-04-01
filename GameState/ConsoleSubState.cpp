@@ -25,6 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConsoleSubState.h"
 
 
+/************************************************************************************************/
+
+
 bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 {
 	PlayState* ThisState = (PlayState*)StateMemory;
@@ -42,6 +45,9 @@ bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 				PopSubState(ThisState->Base);
 				return false;
 			}	break;
+			case KC_BACKSPACE:
+				BackSpaceConsole(&ThisState->Base->Console);
+				break;
 			case KC_ENTER:
 			{
 				EnterLineConsole(&ThisState->Base->Console);
@@ -52,8 +58,14 @@ bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 			}	break;
 			default:
 			{
-				if (evt.mData1.mKC[0] < KC_INPUTCHARACTERCOUNT)
+				if ((evt.mData1.mKC[0] >= KC_A && evt.mData1.mKC[0] <= KC_Z ) || 
+					(evt.mData1.mKC[0] >= KC_0 && evt.mData1.mKC[0] <= KC_9)  ||
+					(evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
+					(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
+					(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
+					(evt.mData1.mKC[0] == KC_SYMBOL ))
 					InputConsole(&ThisState->Base->Console, (char)evt.mData2.mINT[0]);
+
 			}	break;
 			}
 		}	break;
@@ -62,12 +74,20 @@ bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 	return false;
 }
 
+
+/************************************************************************************************/
+
+
 bool UpdateConsoleScreen(SubState* StateMemory, EngineMemory*, double DT)
 {
 	ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 	
 	return !ThisState->PauseBackgroundLogic;
 }
+
+
+/************************************************************************************************/
+
 
 bool DrawConsoleScreen(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
@@ -84,10 +104,18 @@ bool DrawConsoleScreen(SubState* StateMemory, EngineMemory* Engine, double DT)
 	return false;
 }
 
+
+/************************************************************************************************/
+
+
 void Release(SubState* StateMemory)
 {
 	
 }
+
+
+/************************************************************************************************/
+
 
 ConsoleSubState* CreateConsoleSubState(GameFramework* Base)
 {
