@@ -344,6 +344,7 @@ extern "C"
 		Game.Engine						= Engine;
 		Game.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 		Game.ActiveScene				= &Game.GScene;
+		Game.DrawDebugStats				= false;
 
 		Game.Stats.FPS			= 0;
 		Game.Stats.FPS_Counter	= 0;
@@ -385,7 +386,9 @@ extern "C"
 		Game.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
 		
 		InitateConsole(&Game.Console, Game.DefaultAssets.Font, Engine);
-		BindUIntVar(&Game.Console, "TerrainSplits", &Game.TerrainSplits);
+		BindUIntVar(&Game.Console, "TerrainSplits",			&Game.TerrainSplits);
+		BindUIntVar(&Game.Console, "FPS",					&Game.Stats.FPS);
+		BindBoolVar(&Game.Console, "OnScreenDebugStats",	&Game.DrawDebugStats);
 
 		enum Mode
 		{
@@ -487,13 +490,15 @@ extern "C"
 		State->Stats.FPS_Counter++;
 		State->Stats.Fps_T += dt;
 
+		if (State->DrawDebugStats)
+		{
+			uint32_t VRamUsage = GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
+			char* TempBuffer   = (char*)Engine->TempAllocator.malloc(512);
+			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
-		uint32_t VRamUsage	= GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
-		char* TempBuffer	= (char*)Engine->TempAllocator.malloc(512);
-		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION))/1000.0f;
-
-		//sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)State->Stats.FPS, DrawTiming);
-		//PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 1.0f, 1.0f }, float4(WHITE, 1), { .7f, .7f });
+			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)State->Stats.FPS, DrawTiming);
+			PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 1.0f, 1.0f }, float4(WHITE, 1), { .7f, .7f });
+		}
 	}
 
 

@@ -380,7 +380,7 @@ namespace FlexKit
 							}
 
 
-							std::cout << "Animation Weight: " << Animation->Weight << "\n";
+							//std::cout << "Animation Weight: " << Animation->Weight << "\n";
 						}
 					}
 					else

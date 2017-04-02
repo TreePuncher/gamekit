@@ -96,6 +96,7 @@ struct GameFramework
 	static_vector<SubStateVTable*>	SubStates;
 
 	double				PhysicsUpdateTimer;
+	bool				DrawDebugStats;
 	bool				Quit;
 
 	size_t				TerrainSplits;

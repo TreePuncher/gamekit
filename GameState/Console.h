@@ -80,6 +80,7 @@ enum class ConsoleVariableType
 	CONSOLE_INT,
 	CONSOLE_UINT,
 	CONSOLE_ARRAY,
+	CONSOLE_BOOL,
 
 	STACK_FLOAT,
 	STACK_STRING,
@@ -209,6 +210,9 @@ size_t AddStringVar( Console* C, const char* Identifier, const char* Str );
 
 size_t BindIntVar	( Console* C, const char* Identifier, int* _ptr );
 size_t BindUIntVar	( Console* C, const char* Identifier, size_t* _ptr );
+
+size_t BindBoolVar ( Console* C, const char* Identifier, bool* _ptr );
+
 
 void				AddConsoleFunction( Console* C, ConsoleFunction NewFunc);
 ConsoleFunction*	FindConsoleFunction(Console* C, const char* str, size_t StrLen);

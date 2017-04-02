@@ -24,9 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Console.h"
 
-bool GetVariable	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
+bool PrintVar		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
 bool ListVars		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
 bool ListFunctions	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
+bool ToggleBool		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
 
 
 void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
@@ -39,9 +40,10 @@ void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 	Out->FunctionTable.Allocator      = Out->Memory;
 	Out->BuiltInIdentifiers.Allocator = Out->Memory;
 
-	AddConsoleFunction(Out, { "GetVariable", GetVariable, 1,{ ConsoleVariableType::CONSOLE_STRING } });
+	AddConsoleFunction(Out, { "PrintVar", PrintVar, 1,{ ConsoleVariableType::CONSOLE_STRING } });
 	AddConsoleFunction(Out, { "ListVars", ListVars, 0,{} });
 	AddConsoleFunction(Out, { "ListFunctions", ListFunctions, 0,{} });
+	AddConsoleFunction(Out, { "ToggleBool", ToggleBool, 1,{ ConsoleVariableType::CONSOLE_STRING } });
 
 	AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
 	AddStringVar(Out, "BuildDate", __DATE__);
@@ -111,6 +113,34 @@ void InputConsole(Console* C, char InputCharacter)
 
 /************************************************************************************************/
 
+bool ToggleBool(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+{
+	if (ArguementCount != 1 &&
+		(Arguments->Type != ConsoleVariableType::CONSOLE_STRING) ||
+		(Arguments->Type != ConsoleVariableType::STACK_STRING)) {
+		ConsolePrint(C, "INVALID NUMBER OF ARGUMENTS OR INVALID ARGUMENT!");
+		return false;
+	}
+
+	const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
+	for (auto Var : C->Variables)
+	{
+		if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
+		{
+			if (Var.Type == ConsoleVariableType::CONSOLE_BOOL) {
+				*(bool*)Var.Data_ptr = !(*(bool*)Var.Data_ptr);
+				return true;
+			}
+			else
+			{
+				ConsolePrint(C, "Invalid Target Variable!");
+				return false;
+			}
+		}
+	}
+	return false;
+}
+
 
 bool ListVars(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 {
@@ -124,7 +154,7 @@ bool ListVars(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 }
 
 
-bool GetVariable(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+bool PrintVar(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 {
 	if (ArguementCount != 1 && 
 		(Arguments->Type != ConsoleVariableType::CONSOLE_STRING) || 
@@ -151,6 +181,13 @@ bool GetVariable(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 
 				_itoa(*(size_t*)Var.Data_ptr, Str, 10);
 				ConsolePrint(C, Str, C->Memory);
+			}
+			case ConsoleVariableType::CONSOLE_BOOL:
+			{
+				if(*(bool*)Var.Data_ptr)
+					ConsolePrint(C, "True", C->Memory);
+				else
+					ConsolePrint(C, "False", C->Memory);
 			}
 			default:
 				break;
@@ -325,6 +362,7 @@ bool ExecuteGrammerTokens(DynArray<GrammerToken>& Tokens, Console* C, DynArray<C
 						else
 						{	// Search For Var
 							int x = 0;
+							FK_ASSERT(0, "Un-Implemented!");
 						}
 						II++;
 					}
@@ -499,6 +537,22 @@ size_t BindUIntVar(Console* C, const char* Identifier, size_t* _ptr)
 /************************************************************************************************/
 
 
+size_t BindBoolVar(Console* C, const char* Identifier, bool* _ptr)
+{
+	size_t Out = C->Variables.size();
+	ConsoleVariable NewVar;
+	NewVar.Data_ptr					= (void*)_ptr;
+	NewVar.Data_size				= sizeof(size_t);
+	NewVar.VariableIdentifier.str	= Identifier;
+	NewVar.Type						= ConsoleVariableType::CONSOLE_BOOL;
+
+	C->Variables.push_back(NewVar);
+	return Out;
+}
+
+/************************************************************************************************/
+
+
 void AddConsoleFunction(Console* C, ConsoleFunction NewFunc)
 {
 	C->FunctionTable.push_back(NewFunc);
@@ -517,6 +571,9 @@ ConsoleFunction*	FindConsoleFunction(Console* C, const char* str, size_t StrLen)
 
 	return nullptr;
 }
+
+
+/************************************************************************************************/
 
 
 void ConsolePrint(Console* out, const char* _ptr, iAllocator* Allocator)
