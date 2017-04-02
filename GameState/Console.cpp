@@ -24,7 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Console.h"
 
-bool GetVariable(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
+bool GetVariable	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
+bool ListVars		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
+bool ListFunctions	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
+
 
 void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 {
@@ -36,12 +39,12 @@ void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 	Out->FunctionTable.Allocator      = Out->Memory;
 	Out->BuiltInIdentifiers.Allocator = Out->Memory;
 
-	Out->FunctionTable.push_back({ "GetVariable", GetVariable, 1,{ ConsoleVariableType::CONSOLE_STRING } });
-	Out->BuiltInIdentifiers.push_back({ "GetVariable",	strlen("GetVariable"),	IdentifierType::FUNCTION });
+	AddConsoleFunction(Out, { "GetVariable", GetVariable, 1,{ ConsoleVariableType::CONSOLE_STRING } });
+	AddConsoleFunction(Out, { "ListVars", ListVars, 0,{} });
+	AddConsoleFunction(Out, { "ListFunctions", ListFunctions, 0,{} });
 
 	AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
 	AddStringVar(Out, "BuildDate", __DATE__);
-
 
 	memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
 }
@@ -59,6 +62,20 @@ void ReleaseConsole(Console* out)
 /************************************************************************************************/
 
 
+bool ListFunctions(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+{
+	ConsolePrint(C, "Function List:", nullptr);
+
+	for (auto& V : C->FunctionTable)
+		ConsolePrint(C, V.FunctionName, nullptr);
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
 void DrawConsole(Console* C, ImmediateRender* IR, uint2 Window_WH)
 {
 	const float LineHeight = (float(C->Font->FontSize[1]) / Window_WH[1]) / 4;
@@ -68,7 +85,7 @@ void DrawConsole(Console* C, ImmediateRender* IR, uint2 Window_WH)
 	float y = 1.0f - float(1 + (itr)) * LineHeight;
 	PrintText(IR, C->InputBuffer, C->Font, { 0, y }, float2(1.0f, 1.0f) - float2(0.0f, y), float4(WHITE, 1.0f), { 0.5f / AspectRatio, 0.5f });
 
-	for (auto Line : C->Lines) {
+	for (auto& Line : C->Lines) {
 		float y = 1.0f - float(2 + (itr)) * LineHeight ;
 
 		if (y > 0) {
@@ -95,6 +112,18 @@ void InputConsole(Console* C, char InputCharacter)
 /************************************************************************************************/
 
 
+bool ListVars(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+{
+	ConsolePrint(C, "Listing Variables:", nullptr);
+
+	for (auto& V : C->Variables)
+	{
+		ConsolePrint(C, V.VariableIdentifier.str, nullptr);
+	}
+	return true;
+}
+
+
 bool GetVariable(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 {
 	if (ArguementCount != 1 && 
@@ -115,6 +144,14 @@ bool GetVariable(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 			case ConsoleVariableType::CONSOLE_STRING:
 				ConsolePrint(C, (const char*)Var.Data_ptr);
 				break;
+			case ConsoleVariableType::CONSOLE_UINT:
+			{
+				char* Str = (char*)C->Memory->malloc(64);
+				memset(Str, '\0', 64);
+
+				_itoa(*(size_t*)Var.Data_ptr, Str, 10);
+				ConsolePrint(C, Str, C->Memory);
+			}
 			default:
 				break;
 			}
@@ -216,18 +253,18 @@ ConsoleSyntax IdentifyToken(DynArray<InputToken>& in, size_t i, ConsoleIdentifie
 					if ((in[i + 1].Type == InputToken::CT_SYMBOL) &&
 						(in[i + 1].Str[0] == '('))
 					{
-						// Count the Number of Arguements
 						size_t ii = 0;
-						while ((i + ii) < in.size() && in[i + ii + 2].Type != InputToken::CT_SYMBOL) 
+						while ((i + ii) < in.size()) 
 						{ 
-							++ii; 
+							if (in[i + ii].Type == InputToken::CT_SYMBOL && in[i + ii].Str[0] != ')')
+								return ConsoleSyntax::FUNCTIONCALL;
+							++ii;
 						}
 
 						// Check for Arguement End
-						if (in[i+ii].Type != InputToken::CT_SYMBOL && in[i + ii].Str[0] != ')')
-							return ConsoleSyntax::SYNTAXERROR;
+						
+						return ConsoleSyntax::SYNTAXERROR;
 
-						return ConsoleSyntax::FUNCTIONCALL;
 					}
 					else
 						return ConsoleSyntax::SYNTAXERROR;
@@ -378,7 +415,7 @@ bool ProcessTokens(iAllocator* Memory, DynArray<InputToken>& in, Console* C, Err
 
 void EnterLineConsole(Console* C)
 {
-	//C->InputBuffer[C->InputBufferSize++] = '\0';
+	C->InputBuffer[C->InputBufferSize++] = '\0';
 	char* str = (char*)C->Memory->malloc(C->InputBufferSize + 256);
 	strcpy(str, C->InputBuffer);
 
@@ -422,6 +459,50 @@ size_t AddStringVar(Console* C, const char* Identifier, const char* Str)
 
 	C->Variables.push_back(NewVar);
 	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+size_t BindIntVar(Console* C, const char* Identifier, int* _ptr)
+{
+	size_t Out = C->Variables.size();
+	ConsoleVariable NewVar;
+	NewVar.Data_ptr					= (void*)_ptr;
+	NewVar.Data_size				= sizeof(int);
+	NewVar.VariableIdentifier.str	= Identifier;
+	NewVar.Type						= ConsoleVariableType::CONSOLE_INT;
+
+	C->Variables.push_back(NewVar);
+	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+size_t BindUIntVar(Console* C, const char* Identifier, size_t* _ptr)
+{
+	size_t Out = C->Variables.size();
+	ConsoleVariable NewVar;
+	NewVar.Data_ptr					= (void*)_ptr;
+	NewVar.Data_size				= sizeof(size_t);
+	NewVar.VariableIdentifier.str	= Identifier;
+	NewVar.Type						= ConsoleVariableType::CONSOLE_UINT;
+
+	C->Variables.push_back(NewVar);
+	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+void AddConsoleFunction(Console* C, ConsoleFunction NewFunc)
+{
+	C->FunctionTable.push_back(NewFunc);
+	C->BuiltInIdentifiers.push_back({ NewFunc.FunctionName, strlen(NewFunc.FunctionName),	IdentifierType::FUNCTION });
 }
 
 

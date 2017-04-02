@@ -768,15 +768,28 @@ namespace FlexKit
 			return Out;
 		}
 
-		bool push_back(const Ty Item) noexcept
+		bool push_back(const Ty& Item) noexcept
 		{
-			if (_Size + 1 > _Size)// Call Destructor on Tail
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
 				back().~Ty();
 
 			_Size = min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
+
+			return false;
+		}
+
+		bool push_back(Ty&& Item) noexcept
+		{
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
+				back().~Ty();
+
+			_Size = min(++_Size, SIZE);
+			size_t idx = _Head++;
+			_Head = _Head % SIZE;
+			Buffer[idx] = std::move(Item);
 
 			return false;
 		}
@@ -797,7 +810,7 @@ namespace FlexKit
 			CircularBuffer<Ty, SIZE>* Buffer;
 			int					Idx;
 
-			Ty operator *()
+			Ty& operator *()
 			{
 				return Buffer->at(Idx);
 			}

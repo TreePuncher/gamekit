@@ -383,7 +383,9 @@ extern "C"
 		Engine->Window.Handler.Subscribe(sub);
 
 		Game.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+		
 		InitateConsole(&Game.Console, Game.DefaultAssets.Font, Engine);
+		BindUIntVar(&Game.Console, "TerrainSplits", &Game.TerrainSplits);
 
 		enum Mode
 		{

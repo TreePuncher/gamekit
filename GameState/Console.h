@@ -139,10 +139,33 @@ typedef FlexKit::DynArray<ConsoleFunction>	ConsoleFunctionTable;
 
 struct ConsoleLine
 {
+	ConsoleLine(const char* str = nullptr, iAllocator* memory = nullptr) : Str(str), Memory(memory)
+	{}
+
 	~ConsoleLine()
 	{
 		if (Memory)
 			Memory->free((void*)Str);
+	}
+
+	ConsoleLine(ConsoleLine&& rhs)
+	{
+		Memory	= rhs.Memory;
+		Str		= rhs.Str;
+
+		rhs.Str		= nullptr;
+		rhs.Memory	= nullptr;
+	}
+
+	ConsoleLine& operator = (ConsoleLine&& rhs)
+	{
+		Memory		= rhs.Memory;
+		Str			= rhs.Str;
+
+		rhs.Str		= nullptr;
+		rhs.Memory	= nullptr;
+
+		return *this;
 	}
 
 	const char* Str;
@@ -182,9 +205,13 @@ void EnterLineConsole	( Console* C );
 void BackSpaceConsole	( Console* C );
 
 
-size_t AddStringVar(Console* C, const char* Identifier, const char* Str);
+size_t AddStringVar( Console* C, const char* Identifier, const char* Str );
 
-ConsoleFunction*	FindConsoleFunction( Console* C, const char* str, size_t StrLen );
+size_t BindIntVar	( Console* C, const char* Identifier, int* _ptr );
+size_t BindUIntVar	( Console* C, const char* Identifier, size_t* _ptr );
+
+void				AddConsoleFunction( Console* C, ConsoleFunction NewFunc);
+ConsoleFunction*	FindConsoleFunction(Console* C, const char* str, size_t StrLen);
 
 void ConsolePrint	( Console* out, const char* _ptr, iAllocator* Memory = nullptr );
 void ConsolePrintf	( Console* out );
