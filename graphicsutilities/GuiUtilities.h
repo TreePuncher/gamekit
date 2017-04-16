@@ -460,6 +460,7 @@ namespace FlexKit
 	struct GUIButton;
 	class GUIButtonHandle;
 
+
 	/************************************************************************************************/
 
 
@@ -467,9 +468,9 @@ namespace FlexKit
 	{
 		LayoutEngine(iAllocator* Memory, RenderSystem* RS, ImmediateRender* GUI);
 
-		RenderSystem*	RS;
-		ImmediateRender*		GUI;
-		iAllocator*		Memory;
+		RenderSystem*		RS;
+		ImmediateRender*	GUI;
+		iAllocator*			Memory;
 
 		DynArray<float2, 128> PositionStack;
 		
@@ -478,14 +479,20 @@ namespace FlexKit
 		static float2 Position2SS(float2);
 		static float3 Position2SS(float3);
 
-		void PushLineSegments(FlexKit::LineSegments& );
-		void PushRect	(Draw_RECT Rect);
-		void PushOffset	(float2 XY);
-		void PopOffset	();
+		void PrintLine(const char* Str, float2 WH, FontAsset* Font, float2 Offset = {0.0f, 0.0f});
+
+		void PushLineSegments	( FlexKit::LineSegments& );
+		void PushRect			( Draw_RECT Rect );
+		void PushOffset			( float2 XY );
+		void PopOffset			( );
 
 		void Begin		();
 		void End		();
 	};
+
+
+	/************************************************************************************************/
+
 
 	struct GUIBaseElement
 	{
@@ -496,6 +503,10 @@ namespace FlexKit
 		EGUI_ELEMENT_TYPE	Type;
 	};
 
+
+	/************************************************************************************************/
+
+
 	struct GUIDimension
 	{
 		float D;
@@ -504,6 +515,10 @@ namespace FlexKit
 			return D;
 		}
 	};
+	
+	
+	/************************************************************************************************/
+
 
 	struct GUIButton
 	{
@@ -532,6 +547,7 @@ namespace FlexKit
 		ButtonEventFN	Hover;	
 
 		const char* Text; 
+		FontAsset*	Font;
 		iAllocator*	Memory;
 
 		void*	USR;
@@ -563,8 +579,8 @@ namespace FlexKit
 		const EGUI_ELEMENT_TYPE	Type();
 		const EGUI_ELEMENT_TYPE	Type() const;
 
-		const GUIBaseElement	Base() const;
-		GUIBaseElement&			Base();
+		const GUIBaseElement	Framework() const;
+		GUIBaseElement&			Framework();
 	};
 
 
@@ -597,7 +613,7 @@ namespace FlexKit
 		void SetCellFormatting(uint2, EDrawDirection);
 		
 
-		GUIButtonHandle CreateButton(uint2 CellID);
+		GUIButtonHandle CreateButton(uint2 CellID, const char* Str = nullptr, FontAsset* font = nullptr);
 	};
 
 
@@ -616,6 +632,7 @@ namespace FlexKit
 
 		float2 WH();
 
+		const char* Text();
 		GUIButton& _IMPL();
 
 	private:
@@ -639,21 +656,23 @@ namespace FlexKit
 			ColumnWidths(nullptr),
 			Cells		(nullptr),
 			XY			(0.0f, 0.0f),
-			Base		(INVALIDHANDLE) {}
+			Framework	(INVALIDHANDLE) {}
 
-		GUIGrid(iAllocator* memory, uint32_t base) : 
-			RowHeights	(memory), 
-			ColumnWidths(memory),
-			Cells		(memory),
-			XY			(0.0f, 0.0f),
-			Base		(base) {}
+
+		GUIGrid( iAllocator* memory, uint32_t base ) : 
+			RowHeights		(memory), 
+			ColumnWidths	(memory),
+			Cells			(memory),
+			XY				(0.0f, 0.0f),
+			Framework		(base) {}
+
 
 		GUIGrid(const GUIGrid& rhs)
 		{
 			RowHeights		= rhs.RowHeights;
 			ColumnWidths	= rhs.ColumnWidths;
 			Cells			= rhs.Cells;
-			Base			= rhs.Base;
+			Framework		= rhs.Framework;
 			XY				= rhs.XY;
 		}
 
@@ -667,7 +686,7 @@ namespace FlexKit
 		DynArray<GUIGridCell>	Cells;
 		float2					WH;
 		float2					XY;
-		uint32_t				Base;
+		uint32_t				Framework;
 	};
 
 
@@ -691,7 +710,7 @@ namespace FlexKit
 		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
 		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );
 
-		void UpdateElement( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	SimpleWindowInput Input );
+		void UpdateElement		( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	SimpleWindowInput Input );
 
 		GUIGridHandle	CreateGrid	( uint2 ID = {0, 0} );
 		GUIGridHandle	CreateGrid	( GUIElementHandle	Parent, uint2 ID = {0, 0} );
@@ -715,8 +734,6 @@ namespace FlexKit
 	};
 
 
-	/************************************************************************************************/
-
-}
+}	/************************************************************************************************/
 
 #endif

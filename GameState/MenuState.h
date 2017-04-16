@@ -61,6 +61,6 @@ struct MenuState : public SubState
 };
 
 
-MenuState* CreateMenuState(GameFramework* Base, EngineMemory* Engine);
+MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine);
 
 #endif

@@ -42,19 +42,19 @@ bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 			{
 			case KC_TILDA: {
 				std::cout << "Popping Console State\n";
-				PopSubState(ThisState->Base);
+				PopSubState(ThisState->Framework);
 				return false;
 			}	break;
 			case KC_BACKSPACE:
-				BackSpaceConsole(&ThisState->Base->Console);
+				BackSpaceConsole(&ThisState->Framework->Console);
 				break;
 			case KC_ENTER:
 			{
-				EnterLineConsole(&ThisState->Base->Console);
+				EnterLineConsole(&ThisState->Framework->Console);
 			}	break;
 			case KC_SPACE:
 			{
-				InputConsole(&ThisState->Base->Console, ' ');
+				InputConsole(&ThisState->Framework->Console, ' ');
 			}	break;
 			default:
 			{
@@ -64,7 +64,7 @@ bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 					(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
 					(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
 					(evt.mData1.mKC[0] == KC_SYMBOL ))
-					InputConsole(&ThisState->Base->Console, (char)evt.mData2.mINT[0]);
+					InputConsole(&ThisState->Framework->Console, (char)evt.mData2.mINT[0]);
 
 			}	break;
 			}
@@ -97,9 +97,9 @@ bool DrawConsoleScreen(SubState* StateMemory, EngineMemory* Engine, double DT)
 	Rect.BLeft	= { 0, 0 };
 	Rect.TRight = { 1, 1 };
 	Rect.Color  = float4(Grey(0.0f), 0.5f);
-	PushRect(&ThisState->Base->Immediate, Rect);
+	PushRect(&ThisState->Framework->Immediate, Rect);
 
-	DrawConsole(ThisState->C, ThisState->Base->Immediate, GetWindowWH(Engine));
+	DrawConsole(ThisState->C, ThisState->Framework->Immediate, GetWindowWH(Engine));
 
 	return false;
 }
@@ -108,27 +108,33 @@ bool DrawConsoleScreen(SubState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-void Release(SubState* StateMemory)
+void ReleaseConsoleState(SubState* StateMemory)
 {
-	
+	ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
+	ThisState->Framework->ConsoleActive = false;
 }
 
 
 /************************************************************************************************/
 
 
-ConsoleSubState* CreateConsoleSubState(GameFramework* Base)
+ConsoleSubState* CreateConsoleSubState(GameFramework* Framework)
 {
 	ConsoleSubState* out;
-	out = &Base->Engine->BlockAllocator.allocate_aligned<ConsoleSubState>();
+	out = &Framework->Engine->BlockAllocator.allocate_aligned<ConsoleSubState>();
 	
 	out->VTable.PreDrawUpdate = DrawConsoleScreen;
 	out->VTable.Update		  = UpdateConsoleScreen;
 	out->VTable.EventHandler  = ConsoleEventHandler;
-	out->C                    = &Base->Console;
-	out->Base                 = Base;
-	out->Engine               = Base->Engine;
+	out->VTable.Release		  = ReleaseConsoleState;
+
+	out->C                    = &Framework->Console;
+	out->Framework            = Framework;
+	out->Engine               = Framework->Engine;
 	out->PauseBackgroundLogic = true;
 
 	return out;
 }
+
+
+/************************************************************************************************/

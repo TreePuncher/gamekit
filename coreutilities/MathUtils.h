@@ -356,6 +356,8 @@ namespace FlexKit
 			return zero;
 		}
 
+		operator TY* () { return Vector; }
+
 		TY Vector[SIZE];
 	};
 
@@ -439,6 +441,8 @@ namespace FlexKit
 			y = lhs.y + rhs.y;
 		}
 
+		operator float* ()			{ return XY; }
+
 		struct
 		{
 			float x, y;
@@ -456,6 +460,18 @@ namespace FlexKit
 	template<typename TY_> float2 operator / (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x / RHS[0], LHS.y / RHS[1] };}
 
 	/************************************************************************************************/
+
+	inline float DotProduct2(const float* lhs, float* rhs)
+	{
+#if USING(FASTMATH)
+		__m128 l = _mm_loadr_ps(lhs);
+		__m128 r = _mm_loadr_ps(rhs);
+		__m128 res = _mm_dp_ps(l, r, 0x06);
+		return res.m128_f32[3];
+#else
+		return (lhs.m128_f32[0] * rhs.m128_f32[0]) + (lhs.m128_f32[1] * rhs.m128_f32[1]) + (lhs.m128_f32[2] * rhs.m128_f32[2]);
+#endif
+	}
 
 	inline float DotProduct3(const __m128& lhs, const __m128& rhs)
 	{
@@ -525,7 +541,7 @@ namespace FlexKit
 
 		inline float3 ( float val )						{ pfloats = _mm_set_ps1(val);					}
 		inline float3 ( float X, float Y, float Z )		{ pfloats = _mm_set_ps(0.0f, Z, Y, X);			}
-		inline float3 ( const float2 in, float Z )		{ pfloats = _mm_set_ps(in.x, in.y, Z, 0.0f);	}
+		inline float3 ( const float2 in, float Z )		{ pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f);	}
 		inline float3 ( const float3& a )				{ _mm_store_ps(pfloats.m128_f32, a.pfloats); 	}
 		inline float3 ( const __m128& in )				{ _mm_store_ps(pfloats.m128_f32, in);			}
 
@@ -766,7 +782,9 @@ namespace FlexKit
 		operator __m128 () const	 {return pfloats;}
 		inline float* toFloat3_ptr() {return reinterpret_cast<float*>( &pfloats );}
 
-		operator Vect3 () const		 {return{ x, y, z };};
+		operator Vect3 () const		 {return { x, y, z };};
+		operator float2() const		 {return { x, y };};
+
 
 		struct
 		{
@@ -1322,10 +1340,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline float Vect4FDot( const Vect4& lhs, const Vect4& rhs )
+	inline float Vect3FDot(const Vect4& lhs, const Vect4& rhs)
 	{
 		auto temp1 = _mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
 		auto temp2 = _mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
+
+		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
+
+		return res.m128_f32[3];
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline float Vect4FDot( const Vect4& lhs, const Vect4& rhs )
+	{
+		auto temp1 = _mm_loadr_ps(lhs.Vector); //_mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
+		auto temp2 = _mm_loadr_ps(rhs.Vector); //_mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
 
 		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
 
@@ -1361,21 +1393,24 @@ namespace FlexKit
 			return out;
 		}
 
-		/*
-		Vect<COL, Ty> operator*( const Vect<COL, Ty>& rhs )
-		{// TODO: FAST PATH
-			Vect<COL, Ty> out;
-			auto T = Transpose();
-			for( size_t i = 0; i < ROW; ++i )
+		Matrix<3, 3> operator*(const Matrix<3, 3>& rhs)
+		{
+			Matrix<3, 3> out;
+			auto transposed = rhs.Transpose();
+
+			for (size_t i = 0; i < ROW; ++i)
 			{
-				const auto v = T[i];
-				out[i] = v.Dot(rhs);
+				const auto v = *((Vect<4>*)matrix[i]);
+				for (size_t i2 = 0; i2 < COL; ++i2)
+				{
+					const auto v2 = transposed[i2];
+					out[i][i2] = Vect3FDot(v, v2);
+				}
 			}
 			return out;
 		}
-		*/
 
-		template<>
+
 		Matrix<4, 4> operator*( const Matrix<4, 4>& rhs )
 		{
 			Matrix<4, 4> out;
@@ -1427,9 +1462,37 @@ namespace FlexKit
 			return m_transposed;
 		}
 
-	private:
 		Ty matrix[COL][ROW];
 	};
+
+	/************************************************************************************************/
+
+
+	float2 Mulfloat2(Matrix<2, 2, float>& LHS, float2& RHS)
+	{
+		float2 Out;
+		auto transposed = LHS.Transpose();
+
+		for (size_t I = 0; I < 2; ++I)
+			Out[I] = DotProduct2(LHS.matrix[I], RHS);
+
+		return Out;
+	}
+
+	float3 Mulfloat3(Matrix<3, 3, float>& LHS, float3& RHS)
+	{
+		float3 Out;
+		auto transposed = LHS.Transpose();
+		__m128 Temp;
+		for (size_t I = 0; I < 2; ++I) {
+			Temp = _mm_set_ps(0, transposed.matrix[I][2], transposed.matrix[I][1], transposed.matrix[I][0]);
+			//Temp = _mm_loadu_ps(transposed.matrix[I]);
+			//Temp = _mm_shuffle_ps(Temp, Temp, 0x6c);
+			Out[I] = DotProduct3(Temp, RHS);
+		}
+
+		return Out;
+	}
 
 
 	/************************************************************************************************/

@@ -486,19 +486,19 @@ bool CullRegion(Region_CP R){
 [maxvertexcount(4)]
 void GS_Split(
 	point Region_CP IN[1], 
-	inout PointStream<SO_OUT> RegionBuffer,
+	inout PointStream<SO_OUT> IntermediateBuffer,
 	inout PointStream<SO_OUT> FinalBuffer)
 {	// TODO: Visibility Determination
 	if(!CullRegion(IN[0]))
 	{
 		if (SplitRegion(IN[0]))
 		{
-			RegionBuffer.Append(MakeTopLeft(IN[0]));
-			RegionBuffer.Append(MakeTopRight(IN[0]));
-			RegionBuffer.Append(MakeBottomRight(IN[0]));
-			RegionBuffer.Append(MakeBottomLeft(IN[0]));
-			RegionBuffer.RestartStrip();
-		} else {
+            IntermediateBuffer.Append(MakeTopLeft(IN[0]));
+            IntermediateBuffer.Append(MakeTopRight(IN[0]));
+            IntermediateBuffer.Append(MakeBottomRight(IN[0]));
+            IntermediateBuffer.Append(MakeBottomLeft(IN[0]));
+            IntermediateBuffer.RestartStrip();
+        } else {
 			FinalBuffer.Append(IN[0]);
 			FinalBuffer.RestartStrip();
 		}
@@ -920,6 +920,7 @@ PS_Colour_IN QuadPatchToTris_DEBUG(
     //Point.Colour = float3(t, t, t);
     Point.Colour = float3(UV.x, UV.x, UV.x);
 #else
+
     int TileID = bezPatch[TopLeft].CornerID;
     if (TileID == TopLeft)
         Point.Colour = float3(.5, .5, .5);

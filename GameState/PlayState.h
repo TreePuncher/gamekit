@@ -34,19 +34,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 TODO's
 */
 
-struct GamePlayObject
-{
-
-};
 
 struct PlayState : public SubState
 {
-	// Game element Controllers
-	Player						Player;
+	// Game Element Controllers
+
+	Gameplay_Model				Model;
 	PlayerInputState			Input;
+	GameObject<>				TestObject;
 };
 
-PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base);
+
+PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework);
 
 
 #endif

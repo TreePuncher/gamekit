@@ -103,6 +103,9 @@ namespace FlexKit
 		unsigned int	TYPE		: 16;
 		unsigned int	FLAGS		: 16;
 #endif
+
+		operator size_t () { return INDEX; }
+
 		enum HANDLE_FLAGS
 		{
 			HF_ERROR = 0x0001,
@@ -234,4 +237,8 @@ namespace FlexKit
 		}
 		/************************************************************************************************/
 	}
+
+	typedef Handle_t<16> EntityHandle;
+	//typedef size_t EntityHandle;
+
 }

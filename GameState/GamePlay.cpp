@@ -39,13 +39,12 @@ void InitiatePlayer(GameFramework* Engine, Player* Out)
 
 	CapsuleCharacterController_DESC Desc;
 	Desc.FootPos = float3(0, 10, 0);
-	Desc.h = 10.0f;
-	Desc.r = 5.0f;
+	Desc.h       = 10.0f;
+	Desc.r       = 5.0f;
 
 	InitiateCamera3rdPersonContoller(Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);
 	Initiate(&Out->PlayerCollider, &Engine->PScene, &Engine->Engine->Physics, Desc);
 	InitiateASM(&Out->PlayerAnimation, Engine->Engine->BlockAllocator, Out->Model);
-
 
 	AnimationStateEntry_Desc WalkDesc;
 	auto Res1 = FindResourceGUID(&Engine->Engine->Assets, "WALK_1");
@@ -60,16 +59,16 @@ void InitiatePlayer(GameFramework* Engine, Player* Out)
 	WalkDesc.EaseIn			 = EaseIn_RAMP;
 	WalkDesc.Out             = WeightFunction::EWF_Ramp;
 	WalkDesc.EaseOutDuration = 0.2f;
-	WalkDesc.Loop			= true;
-	WalkDesc.EaseInDuration = 0.2f;
+	WalkDesc.Loop			 = true;
+	WalkDesc.EaseInDuration  = 0.2f;
 
 	auto WalkState = DASAddState(WalkDesc, &Out->PlayerAnimation);
 
 	WalkDesc.EaseInDuration  = 0.2f;
 	WalkDesc.EaseOutDuration = 0.2f;
-	WalkDesc.Animation = (GUID_t)Res2;
-	WalkDesc.Loop = true;
-	auto OtherState = DASAddState(WalkDesc, &Out->PlayerAnimation);
+	WalkDesc.Animation		 = (GUID_t)Res2;
+	WalkDesc.Loop			 = true;
+	auto OtherState			 = DASAddState(WalkDesc, &Out->PlayerAnimation);
 
 	AnimationCondition_Desc Walk_Cd;
 	Walk_Cd.DrivenState = WalkState;

@@ -27,102 +27,101 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-
-	/************************************************************************************************/
-
-	void GameObject::AddComponent(Component C)
-	{
-		Components.push_back(C);
-	}
-
-	// 
 	/********************************* Implentation of Transform Components *************************/
 	/************************************************************************************************/
 	
+
 	void TansformComponent::Roll(float r)
 	{
-		FlexKit::Roll(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle) ,r);
+		FlexKit::Roll(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle) ,r);
 	}
 
+
 	/************************************************************************************************/
+
 
 	void TansformComponent::Pitch(float r)
 	{
-		FlexKit::Pitch(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle) ,r);
+		FlexKit::Pitch(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle) ,r);
 	}
 
+
 	/************************************************************************************************/
+
 
 	void TansformComponent::Yaw(float r)
 	{
-		FlexKit::Yaw(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle) ,r);
+		FlexKit::Yaw(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle) ,r);
 	}
 
+
 	/************************************************************************************************/
+
 
 	float3 TansformComponent::GetLocalPosition()
 	{
-		FlexKit::LT_Entry LT(FlexKit::GetLocal(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle)));
+		FlexKit::LT_Entry LT(FlexKit::GetLocal(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle)));
 		return LT.T;
 	}
 
+
 	/************************************************************************************************/
+
 
 	float3 TansformComponent::GetWorldPosition()
 	{
-		return FlexKit::GetPositionW(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle));
+		return FlexKit::GetPositionW(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle));
 	}
 
+
 	/************************************************************************************************/
+
 
 	void TansformComponent::SetLocalPosition(const float3& xyz)
 	{
-		FlexKit::LT_Entry LT(FlexKit::GetLocal(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle)));
+		FlexKit::LT_Entry LT(FlexKit::GetLocal(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle)));
 		LT.T = xyz.pfloats;
-		FlexKit::SetLocal(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle), &LT);
+		FlexKit::SetLocal(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), &LT);
 	}
 
+
 	/************************************************************************************************/
+
 
 	void TansformComponent::SetWorldPosition(const float3& xyz)
 	{
-		FlexKit::SetPositionW(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle), xyz);
+		FlexKit::SetPositionW(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), xyz);
 	}
 
+
 	/************************************************************************************************/
+
 
 	FlexKit::Quaternion TansformComponent::GetOrientation()
 	{
 		Quaternion Q;
-		FlexKit::GetOrientation(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle), &Q);
+		FlexKit::GetOrientation(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), &Q);
 		return Q;
 	}
 
+
 	/************************************************************************************************/
+
 
 	void TansformComponent::SetOrientation(FlexKit::Quaternion Q)
 	{
-		FlexKit::SetOrientation(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(Handle), Q);
+		FlexKit::SetOrientation(reinterpret_cast<SceneNodes*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), Q);
 	}
+
 
 	/************************************************************************************************/
 
-	TansformComponent CreateTransformComponent(SceneNodes* Nodes)
-	{
-		TansformComponent tc;
-		tc.ComponentSystem = Nodes;
-		tc.Handle = GetNewNode(Nodes);
-
-		ZeroNode(Nodes, tc.Handle);
-		return tc;
-	}
-
-	/************************************************************************************************/
 
 	void CleanupTransformComponent(TansformComponent* tc)
 	{
-		FreeHandle(	reinterpret_cast<SceneNodes*>(tc->ComponentSystem), tc->Handle );
+		ReleaseNode( reinterpret_cast<SceneNodes*>(tc->ComponentSystem), tc->ComponentHandle);
 	}
+
 
 	/************************************************************************************************/
 }

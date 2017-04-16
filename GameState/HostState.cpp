@@ -38,7 +38,7 @@ void SendGameINFO(HostState* Host, RakNet::SystemAddress Addr)
 	bsOut.Write(eINCOMINGSTRUCT);
 
 	size_t PacketSize = sizeof(GameInfoPacket) + (sizeof(PlayerID_t) * Host->PlayerCount);
-	GameInfoPacket* OutPacket = (GameInfoPacket*)Host->Base->Engine->BlockAllocator._aligned_malloc( PacketSize);
+	GameInfoPacket* OutPacket = (GameInfoPacket*)Host->Framework->Engine->BlockAllocator._aligned_malloc( PacketSize);
 	new(OutPacket) GameInfoPacket(Host->PlayerCount, "ShaderBallScene");
 
 	for (size_t itr = 0, OutIndex = 0; itr < Host->PlayerCount; itr++) {
@@ -201,7 +201,7 @@ void QueueGameLoad(HostState* Host)
 		SendGameINFO(ThisState, C.Addr);
 	}
 
-	ThisState->Game.SetPlayerCount(Host->Base, Host->PlayerCount);
+	ThisState->Game.SetPlayerCount(Host->Framework, Host->PlayerCount);
 	ThisState->ServerMode = ServerMode::eCLIENTLOADWAIT;
 }
 
@@ -333,7 +333,7 @@ void LoadWaitMode(HostState* ThisState, EngineMemory* Engine, double dT)
 			SetPlayerPosition(&ThisState->Game.Players[I], Position);
 			SendSetPlayerPositionRotation(ThisState, ThisState->OpenConnections[I].Addr, 
 				Position, 
-				GetOrientation(&ThisState->Game.Players[I], ThisState->Base->ActiveScene),
+				GetOrientation(&ThisState->Game.Players[I], ThisState->Framework->ActiveScene),
 				ThisState->OpenConnections[I].ID);
 		}
 
@@ -354,7 +354,7 @@ void LoadWaitMode(HostState* ThisState, EngineMemory* Engine, double dT)
 void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 {
 	RakNet::Packet* Packet = nullptr;
-	auto Scene = ThisState->Base->ActiveScene;
+	auto Scene = ThisState->Framework->ActiveScene;
 
 	while (Packet = ThisState->Peer->Receive(), Packet) {
 		switch (Packet->data[0])
@@ -445,7 +445,7 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 		ThisState->Peer->DeallocatePacket(Packet);
 	}
 
-	ThisState->Game.Update(ThisState->Base, dT);
+	ThisState->Game.Update(ThisState->Framework, dT);
 
 	for(auto Client : ThisState->OpenConnections)
 	{
@@ -496,13 +496,13 @@ bool UpdateHost(SubState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-HostState* CreateHostState(EngineMemory* Engine, GameFramework* Base)
+HostState* CreateHostState(EngineMemory* Engine, GameFramework* Framework)
 {
 	auto State = &Engine->BlockAllocator.allocate_aligned<HostState>();
 	State->VTable.Update  = UpdateHost;
 	State->VTable.Release = CloseServer;
 	State->MinPlayerCount = 2;
-	State->Base           = Base;
+	State->Framework           = Framework;
 	State->PlayerCount	  = 0;
 	State->Peer			  = RakNet::RakPeerInterface::GetInstance();
 
@@ -510,7 +510,7 @@ HostState* CreateHostState(EngineMemory* Engine, GameFramework* Base)
 
 	auto res = State->Peer->Startup(16, &sd, 1);
 
-	State->Game.Initiate(Base);
+	State->Game.Initiate(Framework);
 	State->Peer->SetMaximumIncomingConnections(16);
 	State->ServerMode = ServerMode::eSERVERLOBBYMODE;
 

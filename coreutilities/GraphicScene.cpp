@@ -58,9 +58,9 @@ namespace FlexKit
 			e.Visable  = false;
 			e.Node	   = N;
 			_PushEntity(e);
-			return Drawables.size() - 1;
+			return EntityHandle( Drawables.size() - 1 );
 		}
-		return -1;
+		return EntityHandle(-1);
 	}
 
 
@@ -351,7 +351,6 @@ namespace FlexKit
 		Drawble.Posed		= false;
 		Drawble.PoseState   = nullptr;
 
-
 		return EHandle;
 	}
 
@@ -555,8 +554,8 @@ namespace FlexKit
 		{
 			auto Entity = SM->GetDrawable(Tag.Source);
 
-			auto WT = GetJointPosed_WT(Tag.Joint, Entity.Node, SM->SN, Entity.PoseState);
-			auto WT_t = Float4x4ToXMMATIRX(&WT.Transpose());
+			auto WT		= GetJointPosed_WT(Tag.Joint, Entity.Node, SM->SN, Entity.PoseState);
+			auto WT_t	= Float4x4ToXMMATIRX(&WT.Transpose());
 
 			FlexKit::SetWT(SM->SN,		Tag.Target, &WT_t);
 			FlexKit::SetFlag(SM->SN,	Tag.Target, SceneNodes::StateFlags::UPDATED);

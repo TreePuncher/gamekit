@@ -1993,6 +1993,7 @@ namespace FlexKit
 		HandleUtilities::HandleTable<StaticObjectHandle>	ObjectTable;
 	};
 	
+
 	StaticObjectHandle CreateDrawable(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
 
 
@@ -2526,6 +2527,8 @@ namespace FlexKit
 		float2		Scale;
 		float4		Color;
 		FontAsset*	Font;
+		bool		Center_Height;
+		bool		Center_Width;
 	};
 
 	struct DrawCall
@@ -2606,7 +2609,7 @@ namespace FlexKit
 	FLEXKITAPI void PushLineSet2D( ImmediateRender* RG, LineSegments );
 	FLEXKITAPI void PushLineSet3D( ImmediateRender* RG, LineSegments );
 	
-	FLEXKITAPI void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale = {1.0f, 1.0f});
+	FLEXKITAPI void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale = { 1.0f, 1.0f }, bool CenterY = false);
 
 	FLEXKITAPI void InitiateImmediateRender		( RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory);
 	FLEXKITAPI void ReleaseDrawImmediate		( RenderSystem* RS, ImmediateRender* RG);

@@ -156,6 +156,15 @@ namespace FlexKit
 				Size++;
 			}
 		}
+
+		void push_back(TY_&& in)
+		{
+			if (!full())
+			{
+				new(&Elements[Size]) TY_(in);
+				Size++;
+			}
+		}
  
 		iterator begin()
 		{

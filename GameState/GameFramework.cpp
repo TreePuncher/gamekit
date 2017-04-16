@@ -45,7 +45,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //			(PARTLY) CULLING
 //			Texture Splatting
 //			Normal Generation
-//		Occlusion Culling
+//		(DONE) Occlusion Culling
 //		(Partly Done)Animation State Machine
 //		(DONE/PARTLY) 3rd Person Camera Handler
 //		(DONE) Object -> Bone Attachment
@@ -112,6 +112,14 @@ void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 		case KC_C:
 			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
 			break;
+		case KC_TILDA:
+		{
+			std::cout << "Pushing Console State\n";
+			if (!_ptr->ConsoleActive) {
+				PushSubState(_ptr, CreateConsoleSubState(_ptr));
+				_ptr->ConsoleActive = true;
+			}
+		}	break;
 		default:
 			break;
 		}
@@ -156,15 +164,6 @@ void EventsWrapper(const Event& evt, void* _ptr)
 	auto* base = reinterpret_cast<GameFramework*>(_ptr);
 
 	auto itr = base->SubStates.rbegin();
-	while(itr != base->SubStates.rend())
-	{
-		if (*itr && (*itr)->EventHandler) 
-		{
-			if (!(*itr)->EventHandler((SubState*)(*itr), evt))
-				break;
-		}
-		itr++;
-	}
 
 	switch (evt.InputSource)
 	{
@@ -173,6 +172,16 @@ void EventsWrapper(const Event& evt, void* _ptr)
 	case Event::Mouse:
 		HandleMouseEvents(evt, reinterpret_cast<GameFramework*>(_ptr));
 		break;
+	}
+
+	while(itr != base->SubStates.rend())
+	{
+		if (*itr && (*itr)->EventHandler) 
+		{
+			if (!(*itr)->EventHandler((SubState*)(*itr), evt))
+				break;
+		}
+		itr++;
 	}
 }
 
@@ -290,13 +299,15 @@ void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 		return;
 	}
 
-	for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
-	{
-		auto P = State->GScene.PLights[I];
+	if (State->DrawDebug) {
+		for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
+		{
+			auto P = State->GScene.PLights[I];
 
-		auto POS = GetPositionW(&Engine->Nodes, P.Position);
+			auto POS = GetPositionW(&Engine->Nodes, P.Position);
 
-		PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.I / 50);
+			PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.I / 50);
+		}
 	}
 
 	auto RItr = State->SubStates.rbegin();
@@ -331,7 +342,6 @@ extern "C"
 		GameFramework& Game = Engine->BlockAllocator.allocate_aligned<GameFramework>();
 		SetDebugMemory(&Engine->Debug);
 
-
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 
@@ -344,11 +354,15 @@ extern "C"
 		Game.Engine						= Engine;
 		Game.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 		Game.ActiveScene				= &Game.GScene;
+		Game.DrawDebug					= false;
 		Game.DrawDebugStats				= false;
+		Game.DrawPhysicsDebug			= false;
+		Game.DrawTerrain				= true;
+		Game.OcclusionCulling			= false;
 
-		Game.Stats.FPS			= 0;
-		Game.Stats.FPS_Counter	= 0;
-		Game.Stats.Fps_T		= 0.0;
+		Game.Stats.FPS					= 0;
+		Game.Stats.FPS_Counter			= 0;
+		Game.Stats.Fps_T				= 0.0;
 
 		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
@@ -356,7 +370,6 @@ extern "C"
 		InitiateScene			  (&Engine->Physics, &Game.PScene, Engine->BlockAllocator);
 		InitiateGraphicScene	  (&Game.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		InitiateImmediateRender	  (Engine->RenderSystem, &Game.Immediate, Engine->TempAllocator);
-		//InitateConsole			  (&State.Console, Engine);
 		
 		{
 			uint2	WindowRect	= Engine->Window.WH;
@@ -376,6 +389,7 @@ extern "C"
 			Game.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
 
 			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Game.Nodes), &Land_Desc, Engine->BlockAllocator, &Game.Landscape);
+			
 		}
 
 		FlexKit::EventNotifier<>::Subscriber sub;
@@ -386,9 +400,13 @@ extern "C"
 		Game.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
 		
 		InitateConsole(&Game.Console, Game.DefaultAssets.Font, Engine);
-		BindUIntVar(&Game.Console, "TerrainSplits",			&Game.TerrainSplits);
-		BindUIntVar(&Game.Console, "FPS",					&Game.Stats.FPS);
-		BindBoolVar(&Game.Console, "OnScreenDebugStats",	&Game.DrawDebugStats);
+		BindUIntVar(&Game.Console, "TerrainSplits",				&Game.TerrainSplits);
+		BindUIntVar(&Game.Console, "FPS",						&Game.Stats.FPS);
+		BindBoolVar(&Game.Console, "OnScreenDebugStats",		&Game.DrawDebugStats);
+		BindBoolVar(&Game.Console, "DrawDebug",					&Game.DrawDebug);
+		BindBoolVar(&Game.Console, "DrawTerrain",				&Game.DrawTerrain);
+		BindBoolVar(&Game.Console, "DrawPhysicsDebug",			&Game.DrawPhysicsDebug);
+		BindBoolVar(&Game.Console, "OcclusionCullingEnabled",	&Game.OcclusionCulling);
 
 		enum Mode
 		{
@@ -396,7 +414,7 @@ extern "C"
 			Host,
 			Client,
 			Play,
-		}CurrentMode = Play;
+		}CurrentMode = Menu;
 
 
 		const char* Name	= nullptr;
@@ -446,8 +464,6 @@ extern "C"
 		return &Game;
 	}
 
-
-#include<thread>
 
 	GAMESTATEAPI void Update(EngineMemory* Engine, GameFramework* State, double dT)
 	{
@@ -568,12 +584,14 @@ extern "C"
 			IncrementPassIndex		(&Engine->TiledRender);
 			ClearTileRenderBuffers	(RS, &Engine->TiledRender);
 
-			OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, State->ActiveCamera);
+			if(State->OcclusionCulling)
+				OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, State->ActiveCamera);
 
 			//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
-			TiledRender_Fill			(RS, &PVS, &Engine->TiledRender, OutputTarget,  State->ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
+			TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget,  State->ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
 
-			//DrawLandscape		(RS, &State->Landscape, &Engine->DeferredRender, State->TerrainSplits, State->ActiveCamera, false);
+			if(State->DrawTerrain)
+				DrawLandscape		(RS, &State->Landscape, &Engine->TiledRender, State->TerrainSplits, State->ActiveCamera, false);
 
 			TiledRender_Shade	(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
 			ForwardPass			(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
@@ -641,15 +659,15 @@ extern "C"
 	struct CodeExports
 	{
 		typedef GameFramework*	(*InitiateGameStateFN)	(EngineMemory* Engine);
-		typedef void		(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, GameFramework* _ptr);
-		typedef void		(*UpdateIMPL)			(EngineMemory* Engine,	GameFramework* _ptr, double dt);
-		typedef void		(*UpdateAnimationsFN)	(EngineMemory* RS,		iAllocator* TempMemory, double dt, GameFramework* _ptr);
-		typedef void		(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
-		typedef void		(*DrawFN)				(EngineMemory* RS,		iAllocator* TempMemory,			   GameFramework* _ptr);
-		typedef void		(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
-		typedef void		(*CleanUpFN)			(EngineMemory* Engine,	GameFramework* _ptr);
-		typedef void		(*PostPhysicsUpdate)	(GameFramework*);
-		typedef void		(*PrePhysicsUpdate)		(GameFramework*);
+		typedef void			(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, GameFramework* _ptr);
+		typedef void			(*UpdateIMPL)			(EngineMemory* Engine,	GameFramework* _ptr, double dt);
+		typedef void			(*UpdateAnimationsFN)	(EngineMemory* RS,		iAllocator* TempMemory, double dt, GameFramework* _ptr);
+		typedef void			(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
+		typedef void			(*DrawFN)				(EngineMemory* RS,		iAllocator* TempMemory,			   GameFramework* _ptr);
+		typedef void			(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
+		typedef void			(*CleanUpFN)			(EngineMemory* Engine,	GameFramework* _ptr);
+		typedef void			(*PostPhysicsUpdate)	(GameFramework*);
+		typedef void			(*PrePhysicsUpdate)		(GameFramework*);
 
 		InitiateGameStateFN		Init;
 		InitiateEngineFN		InitEngine;

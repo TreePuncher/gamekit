@@ -23,9 +23,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "..\buildsettings.h"
+#include "..\graphicsutilities\graphics.h"
+#include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\Handle.h"
 #include "..\coreutilities\MathUtils.h"
+
+#ifndef COMPONENT_H
+#define COMPONENT_H
 
 namespace FlexKit
 {
@@ -33,28 +38,139 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	// Components store all data needed for a component
-	struct Component
-	{
-		FlexKit::Handle_t<16>	Handle;
-		void*					ComponentSystem; // Component Use Only
+	typedef FlexKit::Handle_t<16> ComponentHandle;
 
-		enum ComponentType
-		{
-			Transform,
-			Renderable,
-			Collider
-		}Type;
+	enum ComponentType : uint16_t
+	{
+		CT_Transform,
+		CT_Renderable,
+		CT_Collider,
+		CT_Player,
+		CT_Unknown
 	};
 
+	struct Component
+	{
+		typedef void FN_RELEASECOMPONENT(Component* _ptr);
+
+		Component()
+		{
+			ComponentSystem		= nullptr;
+			ReleaseComponent	= nullptr;
+			Type				= ComponentType::CT_Unknown;
+		}
+
+
+		Component(
+			void*					CS,
+			FN_RELEASECOMPONENT*	RC,
+			FlexKit::Handle_t<16>	CH,
+			ComponentType			T
+		) :
+			ComponentSystem		(CS),
+			ReleaseComponent	(RC),
+			ComponentHandle		(CH),
+			Type				(T)	{}
+
+
+		Component& operator = (Component&& RHS)
+		{
+			ComponentSystem			= RHS.ComponentSystem;
+			ReleaseComponent		= RHS.ReleaseComponent;
+			ComponentHandle			= RHS.ComponentHandle;
+			Type					= RHS.Type;
+			RHS.ReleaseComponent	= 0;
+
+			return *this;
+		}
+
+
+		Component(const Component& RValue)
+		{
+			ComponentHandle		= RValue.ComponentHandle;
+			ReleaseComponent	= RValue.ReleaseComponent;
+			ComponentHandle		= RValue.ComponentHandle;
+			Type				= RValue.Type;
+		}
+
+
+		~Component()
+		{
+			if (ReleaseComponent)
+				ReleaseComponent(this);
+		}
+
+
+		void*					ComponentSystem; // Component Use Only
+		FN_RELEASECOMPONENT*	ReleaseComponent;
+		FlexKit::Handle_t<16>	ComponentHandle;
+		ComponentType			Type;
+	};
+
+
 	/************************************************************************************************/
+
+
+	template<size_t COMPONENTCOUNT = 6>
+	struct FLEXKITAPI GameObject
+	{
+		Component	Components[COMPONENTCOUNT];
+		uint16_t	LastComponent;
+		uint16_t	ComponentCount;
+		
+		static const size_t MaxComponentCount = COMPONENTCOUNT;
+		
+		GameObject()
+		{
+			LastComponent	= 0;
+			ComponentCount	= 0;
+		}
+
+		~GameObject()
+		{
+			for (size_t I = 0; I < ComponentCount; ++I)
+				if(Components[I].ReleaseComponent)
+					Components[I].ReleaseComponent(Components + I);
+		}
+
+
+		bool Full()
+		{
+			return (MaxComponentCount <= ComponentCount);
+		}
+
+
+		Component*	FindComponent(ComponentType T)
+		{
+			if (LastComponent != -1) {
+				if (Components[LastComponent].Type == T)
+				{
+					return &Components[LastComponent];
+				}
+			}
+
+			for (size_t I = 0; I < ComponentCount; ++I)
+				if (Components[I].Type == T) {
+					LastComponent = I;
+					return &Components[I];
+				}
+
+			return nullptr;
+		}
+	};
+
+
+	/************************************************************************************************/
+
+
 	// Component Derivatives 
 	// only define Methods
 	// All data is fetched using handle and System Pointer
 	struct FLEXKITAPI TansformComponent : public Component
 	{
-		void Roll	(float r);
-		void Pitch	(float r);
-		void Yaw	(float r);
+		void Roll(float r);
+		void Pitch(float r);
+		void Yaw(float r);
 
 		float3 GetLocalPosition();
 		float3 GetWorldPosition();
@@ -64,49 +180,107 @@ namespace FlexKit
 
 		FlexKit::Quaternion GetOrientation();
 		void				SetOrientation(FlexKit::Quaternion Q);
+
+		static void Release(Component* Component)
+		{
+			ReleaseNode((SceneNodes*)Component->ComponentSystem, Component->ComponentHandle);
+			Component->ReleaseComponent = nullptr;
+		}
 	};
 
-	struct SceneNodes;
-	TansformComponent	CreateTransformComponent	(SceneNodes*);
-	void				CleanupTransformComponent	(TansformComponent* tc);
+	struct EntityComponentArgs
+	{
+		FlexKit::EntityHandle	Entity;
+		FlexKit::GraphicScene*	GraphicScene;
+	};
+
+	struct FLEXKITAPI EntityComponent : public Component
+	{
+		static void Release(Component* Component)
+		{
+			auto* System = (GraphicScene*)Component->ComponentSystem;
+			System->RemoveEntity(Component->ComponentHandle);
+			Component->ReleaseComponent = nullptr;
+		}
+	};
+
+
+	template<typename ... TY_ARGS>
+	void CreateComponent(GameObject<>& GO)
+	{
+	}
+
+
+	void CreateComponent(GameObject<>& GO, SceneNodes* Nodes)
+	{
+		if (!GO.Full())
+		{
+			auto NodeHandle = GetZeroedNode(Nodes);
+			GO.Components[GO.ComponentCount++] = Component((void*)Nodes, TansformComponent::Release, NodeHandle, CT_Transform);
+		}
+	}
+
+
+	void CreateComponent(GameObject<>& GO, EntityComponentArgs& Args)
+	{
+		if (!GO.Full()) {
+			GO.Components[GO.ComponentCount++] = Component(Args.GraphicScene, &EntityComponent::Release, Args.Entity, CT_Renderable);
+			auto C = GO.FindComponent(ComponentType::CT_Transform);
+			if(C)
+				Args.GraphicScene->SetNode(Args.Entity, C->ComponentHandle);
+		}
+	}
+
+
+	void InitiateGameObject(GameObject<>& GO) {}
+
+	template<typename TY, typename ... TY_ARGS>
+	void InitiateGameObject(GameObject<>& GO, TY Component, TY_ARGS ... Args)
+	{
+		CreateComponent(GO, Component);
+		InitiateGameObject(GO, Args...);
+	}
+
 
 	/************************************************************************************************/
+	// Transform Functions
 
-	template<size_t COMPONENTCOUNT = 3>
-	struct FLEXKITAPI GameObject
+	float3 GetWorldPosition(GameObject<>& GO)
 	{
-		static_vector<Component, COMPONENTCOUNT> Components;
+		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		return C->GetWorldPosition();
+	}
 
-		void		AddComponent(Component C);
 
-		Component*	FindComponent(Component::ComponentType T)
-		{	
-			for(auto& C : Components)
-				if (C.Type == T)
-					return &C;
+	float3 GetLocalPosition(GameObject<>& GO)
+	{
+		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		return C->GetLocalPosition();
+	}
 
-			return nullptr;
-		}
 
-		template<typename Ty_>
-		Ty_*				GetComponent()
-		{	
-			// Unknown Type
-			return nullptr;
-		}
+	void SetLocalPosition(GameObject<>& GO, float3 XYZ)
+	{
+		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		C->SetLocalPosition(XYZ);
+	}
 
-		template<>
-		TansformComponent*	GetComponent()
-		{	
-#ifdef _DEBUG
-			auto _ptr = FindComponent(Component::Transform);
-			FK_ASSERT(_ptr);
-			return static_cast<TansformComponent*>(_ptr);
-#else
-			return static_cast<TansformComponent*>(FindComponent(Component::Transform));
-#endif
-		}
-	};
 
+	void SetWorldPosition(GameObject<>& GO, float3 XYZ)
+	{
+		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		C->SetWorldPosition(XYZ);
+	}
+
+
+	void Yaw(GameObject<>& GO, float R)
+	{
+		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		C->Yaw(R);
+	}
+
+	/************************************************************************************************/
 	/************************************************************************************************/
 }
+
+#endif

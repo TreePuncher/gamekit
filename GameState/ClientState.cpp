@@ -155,11 +155,11 @@ bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
 
 						SendMode(ThisState, eLOADINGMODE);
 
-						bool RES = LoadScene(ThisState->Base, Info->LevelName);
+						bool RES = LoadScene(ThisState->Framework, Info->LevelName);
 						if (!RES)
 							printf("Failed to Load Scene: %s \n", Info->LevelName);
 
-						PushSubState(ThisState->Base, CreateClientPlayState(Engine, ThisState->Base, ThisState));
+						PushSubState(ThisState->Framework, CreateClientPlayState(Engine, ThisState->Framework, ThisState));
 
 						SendMode(ThisState, eWAITINGMODE);
 					}	break;
@@ -170,7 +170,7 @@ bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
 			case eGAMEENDED:
 			{
 				printf("eGAMEENDED Received!\n");
-				StateMemory->Base->Quit = true;
+				StateMemory->Framework->Quit = true;
 			}	break;
 			case eREQUESTNAME: 
 				printf("Name Request Received!\n");
@@ -191,11 +191,11 @@ bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Base, const char* Name, const char* Server)
+ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Framework, const char* Name, const char* Server)
 {
 	auto State = &Engine->BlockAllocator.allocate_aligned<ClientState>();
 	State->VTable.Update       = JoinServer;
-	State->Base                = Base;
+	State->Framework                = Framework;
 	State->Peer                = RakNet::RakPeerInterface::GetInstance();
 	State->PlayerIds.Allocator = Engine->BlockAllocator;
 
@@ -294,7 +294,7 @@ bool UpdateClientPreDraw(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	ClientPlayState* ThisState = (ClientPlayState*)StateMemory;
 
-	UpdatePlayerAnimations(ThisState->Base, &ThisState->LocalPlayer, dT);
+	UpdatePlayerAnimations(ThisState->Framework, &ThisState->LocalPlayer, dT);
 
 	return true;
 }
@@ -349,7 +349,7 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 					
 					for (size_t I = 0; I < FrameDelta; ++I) {
 						auto input = ThisState->InputBuffer[InputBufferStartIdx + I];
-						UpdatePlayer(ThisState->Base, &ThisState->LocalPlayer, input.KeyboardInput, input.MouseInput, dT);
+						UpdatePlayer(ThisState->Framework, &ThisState->LocalPlayer, input.KeyboardInput, input.MouseInput, dT);
 					}
 
 				}	break;
@@ -372,15 +372,15 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 						for (auto& I : ThisState->Imposters) {
 							if (I.PlayerID == Info->PlayerID)
 							{
-								//ThisState->Base->GScene.SetPositionEntity_WT(I.Graphics, POS);
-								auto OldPOS = ThisState->Base->GScene.GetEntityPosition(I.Graphics);
+								//ThisState->Framework->GScene.SetPositionEntity_WT(I.Graphics, POS);
+								auto OldPOS = ThisState->Framework->GScene.GetEntityPosition(I.Graphics);
 								auto dP = POS - OldPOS;
 
-								I.Move(&ThisState->Base->GScene, dP, dT);
+								I.Move(&ThisState->Framework->GScene, dP, dT);
 
 								auto NewPOS = I.Collider.Controller->getFootPosition();
-								ThisState->Base->GScene.SetPositionEntity_WT(I.Graphics, {NewPOS.x, NewPOS.y, NewPOS.z});
-								ThisState->Base->GScene.SetOrientation(I.Graphics, Q);
+								ThisState->Framework->GScene.SetPositionEntity_WT(I.Graphics, {NewPOS.x, NewPOS.y, NewPOS.z});
+								ThisState->Framework->GScene.SetOrientation(I.Graphics, Q);
 							}
 						}
 					}
@@ -410,10 +410,10 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (ClientPlayState*)StateMemory;
-	auto Scene = ThisState->Base->ActiveScene;
+	auto Scene = ThisState->Framework->ActiveScene;
 
-	float HorizontalMouseMovement	= float(ThisState->Base->MouseState.dPos[0]) / GetWindowWH(Engine)[0];
-	float VerticalMouseMovement		= float(ThisState->Base->MouseState.dPos[1]) / GetWindowWH(Engine)[1];
+	float HorizontalMouseMovement	= float(ThisState->Framework->MouseState.dPos[0]) / GetWindowWH(Engine)[0];
+	float VerticalMouseMovement		= float(ThisState->Framework->MouseState.dPos[1]) / GetWindowWH(Engine)[1];
 
 	ThisState->T			+= dT;
 	ThisState->MouseInput	+= float2{ HorizontalMouseMovement, VerticalMouseMovement };
@@ -429,7 +429,7 @@ bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT
 
 	const double UpdateStep = 1.0 / 30.0;
 	if (ThisState->T > UpdateStep) {
-		UpdatePlayer(ThisState->Base, &ThisState->LocalPlayer, ThisState->LocalInput,
+		UpdatePlayer(ThisState->Framework, &ThisState->LocalPlayer, ThisState->LocalInput,
 					 ThisState->MouseInput, UpdateStep);
 
 		SendDataPacket<PlayerInputPacket>(ThisState->NetState, CurrentInputState);// Send Client Input
@@ -478,10 +478,10 @@ bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT
 /************************************************************************************************/
 
 
-ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Base, ClientState* Client)
+ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Framework, ClientState* Client)
 {
 	ClientPlayState* PlayState = &Engine->BlockAllocator.allocate_aligned<ClientPlayState>();
-	PlayState->Base                           = Base;
+	PlayState->Framework                           = Framework;
 	PlayState->NetState						  = Client;
 	PlayState->VTable.Update				  = UpdateClientGameplay;
 	PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
@@ -499,7 +499,7 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Base
 
 	for (size_t I = 0; I < PlayState->Imposters.size(); ++I) {
 		auto& Imposter	  = PlayState->Imposters[I];
-		Imposter.Graphics = Base->GScene.CreateDrawableAndSetMesh("PlayerModel");
+		Imposter.Graphics = Framework->GScene.CreateDrawableAndSetMesh("PlayerModel");
 		Imposter.PlayerID = Client->PlayerIds[I];
 		
 		CapsuleCharacterController_DESC Desc;
@@ -507,11 +507,11 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Base
 		Desc.h = 20.0f;
 		Desc.r = 5.0f;
 
-		Initiate(&Imposter.Collider, &Base->PScene, &Engine->Physics, Desc);
+		Initiate(&Imposter.Collider, &Framework->PScene, &Engine->Physics, Desc);
 	}
 
-	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
-	InitiatePlayer(Base, &PlayState->LocalPlayer);
+	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Framework->PScene);
+	InitiatePlayer(Framework, &PlayState->LocalPlayer);
 
 	return PlayState;
 }

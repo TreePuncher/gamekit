@@ -40,27 +40,20 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 		{
 			switch (evt.mData1.mKC[0])
 			{
-			case KC_E: {
-				ThisState->Input.Shield = true;
-			}	break;
-			case KC_W: {
-				ThisState->Input.Forward = true;
-			}	break;
-			case KC_S: {
+			case KC_E:
+				ThisState->Input.Shield   = true;
+				break;
+			case KC_W:
+				ThisState->Input.Forward  = true;
+				break;
+			case KC_S:
 				ThisState->Input.Backward = true;
-			}	break;
-			case KC_A: {
-				ThisState->Input.Left = true;
-			}	break;
-			case KC_D: {
-				ThisState->Input.Right = true;
-			}	break;
-			case KC_TILDA:
-			{
-				std::cout << "Pushing Console State\n";
-				PushSubState(ThisState->Base, CreateConsoleSubState(ThisState->Base));
-			}	break;
-			default:
+				break;
+			case KC_A:
+				ThisState->Input.Left     = true;
+				break;
+			case KC_D:
+				ThisState->Input.Right    = true;
 				break;
 			}
 		}	break;
@@ -68,23 +61,20 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 		{
 			switch (evt.mData1.mKC[0])
 			{
-			case KC_E: {
-				ThisState->Input.Shield = false;
-			}	break;
-			case KC_W: {
-				ThisState->Input.Forward = false;
+			case KC_E:
+				ThisState->Input.Shield   = false;
 				break;
-			}
-			case KC_S: {
+			case KC_W:
+				ThisState->Input.Forward  = false;
+				break;
+			case KC_S:
 				ThisState->Input.Backward = false;
-			}	break;
-			case KC_A: {
-				ThisState->Input.Left = false;
-			}	break;
-			case KC_D: {
-				ThisState->Input.Right = false;
-			}	break;
-			default:
+				break;
+			case KC_A:
+				ThisState->Input.Left     = false;
+				break;
+			case KC_D: 
+				ThisState->Input.Right    = false;
 				break;
 			}
 		}	break;
@@ -100,18 +90,16 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (PlayState*)StateMemory;
-	float HorizontalMouseMovement	= float(ThisState->Base->MouseState.dPos[0]) / GetWindowWH(Engine)[0];
-	float VerticalMouseMovement		= float(ThisState->Base->MouseState.dPos[1]) / GetWindowWH(Engine)[1];
+	float HorizontalMouseMovement	= float(ThisState->Framework->MouseState.dPos[0]) / GetWindowWH(Engine)[0];
+	float VerticalMouseMovement		= float(ThisState->Framework->MouseState.dPos[1]) / GetWindowWH(Engine)[1];
+	float MovementFactor			= 50.0f;
 
-	float MovementFactor = 50;
-	UpdatePlayer(	
-			ThisState->Base, 
-			&ThisState->Player, 
-			ThisState->Input, 
-			{ HorizontalMouseMovement, VerticalMouseMovement }, 
-			dT);
+	ThisState->Model.PlayerInputs[0].FrameID++;
+	ThisState->Model.PlayerInputs[0].MouseInput		= { HorizontalMouseMovement, VerticalMouseMovement };
+	ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
+	ThisState->Model.Update(StateMemory->Framework, dT);
 
-	UpdatePlayerAnimations(StateMemory->Base, &ThisState->Player, dT);
+	Yaw(ThisState->TestObject, dT * pi);
 
 	return false;
 }
@@ -124,8 +112,13 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double DT)
 {
 	auto ThisState = (PlayState*)StateMemory;
 
-	auto PlayerPOS = ThisState->Player.PlayerCollider.Controller->getFootPosition();
-	PushCapsule_Wireframe(&StateMemory->Base->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
+	if(ThisState->Framework->DrawPhysicsDebug)
+	{
+		auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
+		PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
+	}
+
+	ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
 	return false;
 }
@@ -137,15 +130,14 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double DT)
 void ReleasePlayState(SubState* StateMemory)
 {
 	auto ThisState = (PlayState*)StateMemory;
-
-	ReleasePlayer(&ThisState->Player, StateMemory->Base);
+	ThisState->Model.Release();
 }
 
 
 /************************************************************************************************/
 
 
-PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
+PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 {
 	PlayState* State = nullptr;
 
@@ -155,20 +147,21 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Base)
 	State->VTable.EventHandler   = PlayEventHandler;
 	State->VTable.PostDrawUpdate = nullptr;
 	State->VTable.Release        = ReleasePlayState;
-	State->Base				     = Base;
+	State->Framework			 = Framework;
 
-	InitiatePlayer(Base, &State->Player);
+	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Framework->PScene);
 
-	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
+	State->Model.Initiate(Framework);
+	State->Model.SetPlayerCount(Framework, 1);
 
-	FK_ASSERT(LoadScene(Engine->RenderSystem, Base->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Base->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+	FK_ASSERT(LoadScene(Engine->RenderSystem, Framework->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Framework->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
-	for (size_t I = 0; I < 100; ++I) {
-		for (size_t II = 0; II < 0; ++II) {
-			auto Handle = Base->GScene.CreateDrawableAndSetMesh("UVCube");
-			Base->GScene.TranslateEntity_WT(Handle, float3(10.0f * I, 0, 10.0f * II));
-		}
-	}
+	EntityHandle Entity = Framework->GScene.CreateDrawableAndSetMesh("Flower");
+
+	InitiateGameObject(
+		State->TestObject,
+		&Engine->Nodes,
+		EntityComponentArgs{ Entity , &Framework->GScene });
 
 	return State;
 }

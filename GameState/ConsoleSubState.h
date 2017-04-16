@@ -39,6 +39,6 @@ struct ConsoleSubState : public SubState
 };
 
 void Release(SubState* StateMemory);
-ConsoleSubState* CreateConsoleSubState(GameFramework* Base);
+ConsoleSubState* CreateConsoleSubState(GameFramework* Framework);
 
 #endif

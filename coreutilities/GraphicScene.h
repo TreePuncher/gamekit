@@ -32,7 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	typedef size_t EntityHandle;
 	typedef size_t SpotLightHandle;
 	typedef Pair<bool, int64_t> GSPlayAnimation_RES;
 
@@ -168,7 +167,7 @@ namespace FlexKit
 
 		DynArray<SpotLightShadowCaster>		SpotLightCasters;
 		DynArray<Drawable>					Drawables;
-		DynArray<size_t>					FreeEntityList;
+		DynArray<EntityHandle>				FreeEntityList;
 
 		struct TaggedJoint
 		{

@@ -7960,7 +7960,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 	// Position and Area start at Top Left of Screen, going to Bottom Right; Top Left{0, 0} -> Bottom Right{1.0, 1.0f}
-	void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale)
+	void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale, bool CenterY)
 	{
 		size_t StrLen = strlen(str);
 
@@ -7972,6 +7972,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		NewDrawCall.BottomRight			 = POS + TextArea;
 		NewDrawCall.Color				 = Color;
 		NewDrawCall.Scale				 = Scale;
+		NewDrawCall.Center_Width		 = CenterY;
 
 		RG->TextBufferPosition	   += StrLen;
 		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, RG->Text2.size() });
@@ -8573,6 +8574,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	/************************************************************************************************/
 
+
 	float2 Position2SS(float2 in) { return{ in.x * 2 - 1, in.y * -2 + 1 }; }
 
 	void UploadImmediate(RenderSystem* RS, ImmediateRender* IR, iAllocator* TempMemory, RenderWindow* TargetWindow)
@@ -8591,8 +8593,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		{
 			size_t BufferSize = IR->TextBufferPosition * sizeof(TextEntry);
 			TextEntry* Text = (TextEntry*)TempMemory->_aligned_malloc(BufferSize);
-			
-
 			size_t itr_2 = 0;
 
 			for(size_t itr = 0; itr < IR->Text2.size(); itr++)
@@ -8605,46 +8605,88 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				float2 TopLeft		= Draw.TopLeft;
 				float2 BottomRight	= Draw.BottomRight;
 
-				float CurrentX = Draw.TopLeft.x;
-				float CurrentY = Draw.TopLeft.y;
+				float XBegin = Draw.TopLeft.x;
+				float YBegin = Draw.TopLeft.y;
+
+				float CurrentX = 0;
+				float CurrentY = 0;
 				float YAdvance = 0.0f;
 
-				for (size_t StrIdx = 0; StrIdx < StrSize; ++StrIdx) {
-					auto C				= str[StrIdx];
-					auto Font			= Draw.Font;
-					float2 GlyphArea	= Font->GlyphTable[C].WH * PixelSize;
-					float  XAdvance		= Font->GlyphTable[C].Xadvance * PixelSize.x;
-					auto G				= Font->GlyphTable[C];
+				size_t OutputBegin = itr_2;
+				size_t LineBegin   = OutputBegin;
 
-					float2 Scale		= float2(1.0f, 1.0f) / Font->TextSheetDimensions;
-					float2 WH			= G.WH * Scale;
-					float2 XY			= G.XY * Scale;
-					float2 UVTL			= XY;
-					float2 UVBR			= XY + WH;
+				auto CenterLine = [&]()
+				{
+					if (Draw.Center_Width)
+					{
+						const float Offset_X = (AreaSize.x - CurrentX) / 2.0f;
+						const float Offset_Y = (AreaSize.y - CurrentY - YAdvance/2) / 2.0f;
 
-					if ( C == '\n' || CurrentX + XAdvance	> AreaSize.x) {
-						CurrentX = Draw.TopLeft.x;
-						CurrentY += YAdvance / 2 * Draw.Scale.y;
+						if (abs(Offset_X) > 0.0001f)
+						{
+							for (size_t ii = LineBegin; ii < itr_2; ++ii)
+							{
+								Text[ii].POS.x += Offset_X;
+								Text[ii].POS.y += Offset_Y;
+								}
+						}
 					}
+				};
 
-					TextEntry Character		= {};
-					Character.POS			= Position2SS(float2(CurrentX, CurrentY));
-					Character.TopLeftUV		= UVTL;
-					Character.BottomRightUV = UVBR;
-					Character.Color			= Draw.Color;
-					Character.Size			= WH * Draw.Scale;
+
+				auto ResetLinePosition = [&]()
+				{
+					LineBegin = itr_2;
+					CurrentX = 0;
+					CurrentY += YAdvance / 2 * Draw.Scale.y;
+				};
+
+
+				for (size_t StrIdx = 0; StrIdx < StrSize; ++StrIdx) 
+				{
+					const auto C			= str[StrIdx];
+					const auto Font			= Draw.Font;
+					const float2 GlyphArea	= Font->GlyphTable[C].WH * PixelSize;
+					const float  XAdvance	= Font->GlyphTable[C].Xadvance * PixelSize.x;
+					const auto G			= Font->GlyphTable[C];
+
+					const float2 Scale		= float2(1.0f, 1.0f) / Font->TextSheetDimensions;
+					const float2 WH			= G.WH * Scale;
+					const float2 XY			= G.XY * Scale;
+					const float2 UVTL		= XY;
+					const float2 UVBR		= XY + WH;
+
+					if ( C == '\n' || CurrentX + XAdvance > AreaSize.x) 
+					{
+						CenterLine();
+						ResetLinePosition();
+					}
+					
+					if (CurrentY > Draw.TopLeft.y + AreaSize.y)
+						continue;
+
+					TextEntry Character			= {};
+					Character.POS				= float2(CurrentX + XBegin, CurrentY + YBegin);
+					Character.TopLeftUV			= UVTL;
+					Character.BottomRightUV		= UVBR;
+					Character.Color				= Draw.Color;
+					Character.Size				= WH * Draw.Scale;
 
 					Text[itr_2] = Character;
-					YAdvance = max(YAdvance, GlyphArea.y);
+					YAdvance  = max(YAdvance, GlyphArea.y);
 					CurrentX += XAdvance * Draw.Scale.x;
 					itr_2++;
 				}
+
+				CenterLine();
 			}
+
+			
+			for(size_t I = 0; I < IR->TextBufferPosition; ++I)
+				Text[I].POS = Position2SS(Text[I].POS);
 
 			UpdateResourceByTemp(RS, &IR->TextBufferGPU, Text, BufferSize, 1, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 		}
-
-		
 	}
 
 

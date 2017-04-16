@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 
 //#include "..\coreutilities\DungeonGen.cpp"
+#include "..\coreutilities\Components.cpp"
 #include "..\coreutilities\GraphicScene.cpp"
 #include "..\coreutilities\Handle.cpp"
 #include "..\coreutilities\intersection.cpp"

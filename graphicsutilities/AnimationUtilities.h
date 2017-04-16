@@ -299,7 +299,7 @@ namespace FlexKit
 		uint16_t MaxConditionCount;
 		uint16_t MaxStateCount;
 
-		size_t TargetDrawable;
+		EntityHandle TargetDrawable;
 
 		struct AnimationState
 		{
@@ -441,7 +441,7 @@ namespace FlexKit
 
 	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* E, GeometryTable* GT, iAllocator* MEM );
 	FLEXKITAPI bool					InitiatePoseState	( RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
-	FLEXKITAPI void					InitiateASM			( AnimationStateMachine* AS, iAllocator*, size_t Target );
+	FLEXKITAPI void					InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
 	FLEXKITAPI void					Release				( DrawablePoseState* EAS );
 
 

@@ -94,7 +94,7 @@ struct ClientPlayState : public SubState
 	FlexKit::DynArray<PlayerImposters> Imposters;// Cause hes an imposter, trying to steal all the client info
 };
 
-ClientState*		CreateClientState		(EngineMemory* Engine, GameFramework* Base, const char* Name = nullptr, const char* Server = nullptr);
-ClientPlayState*	CreateClientPlayState	(EngineMemory* Engine, GameFramework* Base, ClientState* Peer);
+ClientState*		CreateClientState		(EngineMemory* Engine, GameFramework* Framework, const char* Name = nullptr, const char* Server = nullptr);
+ClientPlayState*	CreateClientPlayState	(EngineMemory* Engine, GameFramework* Framework, ClientState* Peer);
 
 #endif

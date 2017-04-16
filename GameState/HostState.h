@@ -226,7 +226,7 @@ struct HostState : public SubState
 
 size_t GetPlayerIndex(HostState* Host, RakNet::SystemAddress Addr);
 
-HostState* CreateHostState(EngineMemory* Engine, GameFramework* Base);
+HostState* CreateHostState(EngineMemory* Engine, GameFramework* Framework);
 
 
 #endif

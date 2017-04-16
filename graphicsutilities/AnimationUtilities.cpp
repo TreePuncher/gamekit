@@ -163,7 +163,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateASM( AnimationStateMachine* ASM, iAllocator* Memory, size_t Target)
+	void InitiateASM( AnimationStateMachine* ASM, iAllocator* Memory, EntityHandle Target)
 	{
 		ASM->StateCount			= 0;
 		ASM->MaxConditionCount	= 16;

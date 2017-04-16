@@ -30,6 +30,9 @@ bool ListFunctions	(Console* C, ConsoleVariable* Arguments, size_t ArguementCoun
 bool ToggleBool		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
 
 
+/************************************************************************************************/
+
+
 void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 {
 	Out->Lines.clear();
@@ -55,9 +58,13 @@ void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 /************************************************************************************************/
 
 
-void ReleaseConsole(Console* out)
+void ReleaseConsole(Console* C)
 {
 	//ConsolePrintf(out, 1, 2, 3, 4);
+
+	C->Variables.Release();
+	C->FunctionTable.Release();
+	C->BuiltInIdentifiers.Release();
 }
 
 
@@ -181,14 +188,14 @@ bool PrintVar(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 
 				_itoa(*(size_t*)Var.Data_ptr, Str, 10);
 				ConsolePrint(C, Str, C->Memory);
-			}
+			}	break;
 			case ConsoleVariableType::CONSOLE_BOOL:
 			{
 				if(*(bool*)Var.Data_ptr)
 					ConsolePrint(C, "True", C->Memory);
 				else
 					ConsolePrint(C, "False", C->Memory);
-			}
+			}	break;
 			default:
 				break;
 			}
@@ -298,8 +305,6 @@ ConsoleSyntax IdentifyToken(DynArray<InputToken>& in, size_t i, ConsoleIdentifie
 							++ii;
 						}
 
-						// Check for Arguement End
-						
 						return ConsoleSyntax::SYNTAXERROR;
 
 					}

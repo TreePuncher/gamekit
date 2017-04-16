@@ -28,12 +28,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameFramework.h"
 #include "CameraUtilities.h"
 
+#include "..\coreutilities\Components.h"
 
 struct PlayerController
 {
 	float3		Pos;
 	float3		Velocity;
 };
+
 
 struct PlayerInputState
 {
@@ -52,6 +54,7 @@ struct PlayerInputState
 	}
 };
 
+
 struct PlayerStateFrame
 {
 	size_t FrameID;
@@ -60,10 +63,6 @@ struct PlayerStateFrame
 	float Yaw, Pitch, Roll;
 };
 
-struct PlayerGameplay_Variables
-{
-	float Health;
-};
 
 struct Player
 {
@@ -76,9 +75,9 @@ struct Player
 	DAConditionHandle WalkCondition;
 	DAConditionHandle OtherCondition;
 
-	size_t					ID;
+	size_t ID;
 
-	PlayerGameplay_Variables Vars;
+	float Health;
 
 	operator Player* () { return this; }// I'm Getting tired of typeing the &'s everywhere!
 };
@@ -89,24 +88,13 @@ void ReleasePlayer			( Player* P, GameFramework* Engine );
 void UpdatePlayer			( GameFramework* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
 void UpdatePlayerAnimations	( GameFramework* Engine, Player* P, double dT );
 
-void SetPlayerPosition	  ( Player* P, float3 Position );
-void YawPlayer			  ( Player* P, float Degree );
-void SetPlayerOrientation ( Player* P, Quaternion Q );
+void SetPlayerPosition		( Player* P, float3 Position );
+void YawPlayer				( Player* P, float Degree );
+void SetPlayerOrientation	( Player* P, Quaternion Q );
 
-inline float GetPlayerYaw(Player* P)
-{
-	return P->CameraCTR.Yaw;
-}
-
-inline Quaternion GetOrientation(Player* P, GraphicScene* GS) 
-{
-	return GS->GetOrientation(P->Model).Inverse();
-}
-
-inline float3 GetPlayerPosition(Player* P)
-{
-	return P->PlayerCTR.Pos;
-}
+inline float		GetPlayerYaw		( Player* P )					{ return P->CameraCTR.Yaw; }
+inline Quaternion	GetOrientation		( Player* P, GraphicScene* GS)	{ return GS->GetOrientation(P->Model).Inverse(); }
+inline float3		GetPlayerPosition	( Player* P)					{ return P->PlayerCTR.Pos; }
 
 struct InputFrame
 {
@@ -169,6 +157,10 @@ struct Gameplay_Model
 		T += dT;
 	}
 
+	void Release()
+	{
+
+	}
 
 	void UpdateAnimations(GameFramework* Engine, double dT)
 	{
