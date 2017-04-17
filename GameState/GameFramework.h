@@ -91,6 +91,9 @@ struct GameFramework
 	EngineMemory*		Engine;
 
 
+	DrawableComponentSystem	DrawableComponent;
+	LightComponentSystem	LightComponent;
+
 	static_vector<MouseHandler>		MouseHandlers;
 	static_vector<SubStateVTable*>	SubStates;
 
@@ -104,6 +107,8 @@ struct GameFramework
 	bool				Quit;
 
 	size_t				TerrainSplits;
+
+	double TimeRunning;
 
 	struct FrameStats
 	{

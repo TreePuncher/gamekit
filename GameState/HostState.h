@@ -216,7 +216,7 @@ struct HostState : public SubState
 		char Name[MaxNameSize];
 	};
 
-	Gameplay_Model Game;
+	GameplayComponentSystem Game;
 
 	FlexKit::static_vector<Connection>	OpenConnections;
 	FlexKit::static_vector<bool>		PlayerReadyState;

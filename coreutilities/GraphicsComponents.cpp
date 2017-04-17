@@ -32,6 +32,8 @@ namespace FlexKit
 
 	void SceneNodeComponentSystem::InitiateSystem(byte* Memory, size_t BufferSize)
 	{
+		new(this) SceneNodeComponentSystem();
+
 		InitiateSceneNodeBuffer(&Nodes, Memory, BufferSize);
 		Root = GetZeroedNode(Nodes);
 	}
@@ -133,6 +135,13 @@ namespace FlexKit
 	{
 		FlexKit::SetOrientation(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), Q);
 	}
+
+
+	void TansformComponent::SetParentNode(NodeHandle Parent, NodeHandle Node)
+	{
+		FlexKit::SetParentNode(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), Parent, Node);
+	}
+
 
 
 	/************************************************************************************************/

@@ -39,14 +39,17 @@ namespace FlexKit
 
 	// Components store all data needed for a component
 	typedef FlexKit::Handle_t<16> ComponentHandle;
-	typedef size_t EventTypeID;
+	typedef uint32_t EventTypeID;
 
 	enum ComponentType : uint16_t
 	{
+		CT_Input,
 		CT_Transform,
 		CT_Renderable,
+		CT_PointLight,
 		CT_Collider,
 		CT_Player,
+		CT_GameObject,
 		CT_Unknown
 	};
 
@@ -54,28 +57,24 @@ namespace FlexKit
 	{
 	public:
 		virtual void ReleaseHandle	(ComponentHandle Handle) = 0;
+		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID) {}
 	};
 
 	struct Component
 	{
-		typedef void FN_RELEASECOMPONENT(Component* _ptr);
-
 		Component()
 		{
 			ComponentSystem		= nullptr;
-			ReleaseComponent	= nullptr;
 			Type				= ComponentType::CT_Unknown;
 		}
 
 
 		Component(
 			ComponentSystemInterface*	CS,
-			FN_RELEASECOMPONENT*		RC,
 			FlexKit::Handle_t<16>		CH,
 			ComponentType				T
 		) :
 			ComponentSystem		(CS),
-			ReleaseComponent	(RC),
 			ComponentHandle		(CH),
 			Type				(T)	{}
 
@@ -83,10 +82,10 @@ namespace FlexKit
 		Component& operator = (Component&& RHS)
 		{
 			ComponentSystem			= RHS.ComponentSystem;
-			ReleaseComponent		= RHS.ReleaseComponent;
 			ComponentHandle			= RHS.ComponentHandle;
 			Type					= RHS.Type;
-			RHS.ReleaseComponent	= 0;
+
+			RHS.ComponentSystem		= nullptr;
 
 			return *this;
 		}
@@ -95,7 +94,6 @@ namespace FlexKit
 		Component(const Component& RValue)
 		{
 			ComponentHandle		= RValue.ComponentHandle;
-			ReleaseComponent	= RValue.ReleaseComponent;
 			ComponentHandle		= RValue.ComponentHandle;
 			Type				= RValue.Type;
 		}
@@ -103,13 +101,19 @@ namespace FlexKit
 
 		~Component()
 		{
-			if (ReleaseComponent)
-				ReleaseComponent(this);
+			Release();
 		}
 
 
+		void Release()
+		{
+			if (ComponentSystem)
+				ComponentSystem->ReleaseHandle(ComponentHandle);
+
+			ComponentSystem = nullptr;
+		}
+
 		ComponentSystemInterface*	ComponentSystem;
-		FN_RELEASECOMPONENT*		ReleaseComponent;
 		FlexKit::Handle_t<16>		ComponentHandle;
 		ComponentType				Type;
 	};
@@ -136,8 +140,7 @@ namespace FlexKit
 		~GameObject()
 		{
 			for (size_t I = 0; I < ComponentCount; ++I)
-				if(Components[I].ReleaseComponent)
-					Components[I].ReleaseComponent(Components + I);
+				Components[I].Release();
 		}
 
 
@@ -146,6 +149,14 @@ namespace FlexKit
 			return (MaxComponentCount <= ComponentCount);
 		}
 
+
+		void NotifyAll(ComponentType Source, EventTypeID EventID)
+		{
+			for (size_t I = 0; I < ComponentCount; ++I) {
+				if(Components[I].ComponentSystem)
+					Components[I].ComponentSystem->HandleEvent(Components[I].ComponentHandle, Source, EventID);
+			}
+		}
 
 		Component*	FindComponent(ComponentType T)
 		{

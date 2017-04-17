@@ -83,6 +83,7 @@ struct Player
 };
 
 
+
 void InitiatePlayer			( GameFramework* Engine, Player* Out );
 void ReleasePlayer			( Player* P, GameFramework* Engine );
 void UpdatePlayer			( GameFramework* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
@@ -103,17 +104,58 @@ struct InputFrame
 	size_t				FrameID;
 };
 
-struct Gameplay_Model
+typedef Handle_t<16>	PlayerHandle;
+
+
+
+struct GameplayComponentSystem;
+
+struct GameplayLocalInputComponentSystem : public ComponentSystemInterface
 {
+	void Initiate		(GameplayComponentSystem* Target);
+	void Update			(double dt, MouseInputState MouseInput, GameFramework* Framework);
+
+	ComponentHandle BindInputToPlayer(PlayerHandle Player)
+	{
+		Listeners.push_back(Player);
+		return  ComponentHandle(Listeners.size() - 1);
+	}
+
+	void ReleaseHandle	(ComponentHandle Handle){}
+
+	static_vector<PlayerHandle> Listeners;
+
+	PlayerInputState		 KeyState;
+	GameplayComponentSystem* TargetModel;
+
+	operator GameplayLocalInputComponentSystem* (){return this;}
+};
+
+
+struct GameplayComponentSystem : public ComponentSystemInterface
+{
+	GameFramework*				Framework;
 	static_vector<Player>		Players;
 	static_vector<InputFrame>	PlayerInputs;
 	static_vector<size_t>		LastFrameRecieved;
 	double						T;
 
-	void Initiate(GameFramework* Base)
+	void ReleaseHandle(ComponentHandle Handle)
 	{
-		auto* Engine = Base->Engine;
-		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Base->PScene);
+		ReleasePlayer(&Players[Handle], Framework);
+	}
+
+	void HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID ID)
+	{
+		if (EventSource == ComponentType::CT_Input && ID == GetCRCGUID(LOCALINPUT)) {
+		}
+	}
+
+	void Initiate(GameFramework* framework)
+	{
+		Framework = framework;
+		auto* Engine = framework->Engine;
+		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &framework->PScene);
 	}
 
 	void Clear()
@@ -121,8 +163,9 @@ struct Gameplay_Model
 		Players.clear();
 	}
 
-	void SetPlayerCount(GameFramework* Engine, size_t Count)
+	void SetPlayerCount(size_t Count)
 	{
+		/*
 		PlayerInputs.resize(Count);
 		Players.resize(Count);
 		LastFrameRecieved.resize(Count);
@@ -132,6 +175,18 @@ struct Gameplay_Model
 
 		for (auto& P : Players)
 			InitiatePlayer(Engine, &P);
+		*/
+	}
+
+	PlayerHandle CreatePlayer()
+	{
+		PlayerInputs.push_back(InputFrame());
+		Players.push_back(Player());
+		LastFrameRecieved.push_back(0);
+
+		InitiatePlayer(Framework, &Players.back());
+
+		return PlayerHandle(Players.size() - 1);
 	}
 
 	void Update(GameFramework* Engine, double dT)
@@ -168,6 +223,55 @@ struct Gameplay_Model
 			UpdatePlayerAnimations(Engine, &P, dT);
 	}
 
+	NodeHandle GetPlayerNode(PlayerHandle)
+	{
+		return NodeHandle(-1);
+	}
+
+	void SetPlayerNode(PlayerHandle Player, NodeHandle Node)
+	{
+		Players[Player].CameraCTR.Yaw_Node = Node;
+		Framework->Engine->Nodes.SetParentNode(Node, Players[Player].CameraCTR.Pitch_Node);
+	}
 };
+
+
+struct PlayersComponentArgs
+{
+	GameplayComponentSystem*			Gameplay;
+	GameplayLocalInputComponentSystem*	Input;
+	GameFramework*						Framework;
+};
+
+
+void CreateComponent(GameObject<>& GO, PlayersComponentArgs& Args)
+{
+	PlayerHandle	Player					= Args.Gameplay->CreatePlayer();
+	ComponentHandle InputComponentHandle	= Args.Input->BindInputToPlayer(Player);
+
+	auto C = GO.FindComponent(ComponentType::CT_Transform);
+
+	if (GO.ComponentCount + 2 < GO.MaxComponentCount)
+	{
+
+		if (!C)
+		{
+			auto Node = Args.Gameplay->GetPlayerNode(Player);
+			CreateComponent(GO, TransformComponentArgs{ Args.Framework->Engine->Nodes, Node });
+		}
+		else
+		{
+			Args.Gameplay->SetPlayerNode(Player, GetNodeHandle(GO));
+		}
+		GO.Components[GO.ComponentCount++] = Component{ Args.Gameplay, Player,				CT_Player };
+		GO.Components[GO.ComponentCount++] = Component{ Args.Input, InputComponentHandle,	CT_Input  };
+	}
+}
+
+
+PlayersComponentArgs CreateLocalPlayer(GameplayComponentSystem* GameplaySystem, GameplayLocalInputComponentSystem* Input, GameFramework* Framework)
+{
+	return { GameplaySystem, Input, Framework };
+}
 
 #endif

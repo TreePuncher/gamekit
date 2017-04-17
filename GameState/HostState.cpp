@@ -201,7 +201,7 @@ void QueueGameLoad(HostState* Host)
 		SendGameINFO(ThisState, C.Addr);
 	}
 
-	ThisState->Game.SetPlayerCount(Host->Framework, Host->PlayerCount);
+	//ThisState->Game.SetPlayerCount(Host->Framework, Host->PlayerCount);
 	ThisState->ServerMode = ServerMode::eCLIENTLOADWAIT;
 }
 

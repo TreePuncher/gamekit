@@ -337,75 +337,83 @@ SubStateVTable* GetStateVTable(SubState* _ptr)
 
 extern "C"
 {
-	GAMESTATEAPI GameFramework* InitiateBaseGameState(EngineMemory* Engine)
+	GAMESTATEAPI GameFramework* InitiateFramework(EngineMemory* Engine)
 	{
-		GameFramework& Game = Engine->BlockAllocator.allocate_aligned<GameFramework>();
+		GameFramework& Framework = Engine->BlockAllocator.allocate_aligned<GameFramework>();
 		SetDebugMemory(&Engine->Debug);
 
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 
-		Game.ClearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
-		Game.Quit						= false;
-		Game.PhysicsUpdateTimer			= 0.0f;
-		Game.TerrainSplits				= 12;
-		Game.ActiveWindow				= &Engine->Window;
-		Game.Engine						= Engine;
-		Game.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
-		Game.ActiveScene				= &Game.GScene;
-		Game.DrawDebug					= false;
-		Game.DrawDebugStats				= false;
-		Game.DrawPhysicsDebug			= false;
-		Game.DrawTerrain				= true;
-		Game.OcclusionCulling			= false;
+		Framework.ClearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
+		Framework.Quit						= false;
+		Framework.PhysicsUpdateTimer			= 0.0f;
+		Framework.TerrainSplits				= 12;
+		Framework.ActiveWindow				= &Engine->Window;
+		Framework.Engine					= Engine;
+		Framework.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
+		Framework.ActiveScene				= &Framework.GScene;
 
-		Game.Stats.FPS					= 0;
-		Game.Stats.FPS_Counter			= 0;
-		Game.Stats.Fps_T				= 0.0;
+#ifdef _DEBUG
+		Framework.DrawDebug					= true;
+#else
+		Framework.DrawDebug					= false;
+#endif
+		Framework.DrawDebugStats			= false;
+		Framework.DrawPhysicsDebug			= false;
+		Framework.DrawTerrain				= true;
+		Framework.OcclusionCulling			= false;
 
-		ForwardPass_DESC FP_Desc{&Engine->DepthBuffer, &Engine->Window};
+		Framework.Stats.FPS					= 0;
+		Framework.Stats.FPS_Counter			= 0;
+		Framework.Stats.Fps_T				= 0.0;
+
+		ForwardPass_DESC	FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-		InitiateScene			  (&Engine->Physics, &Game.PScene, Engine->BlockAllocator);
-		InitiateGraphicScene	  (&Game.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
-		InitiateImmediateRender	  (Engine->RenderSystem, &Game.Immediate, Engine->TempAllocator);
+		InitiateScene			  (&Engine->Physics, &Framework.PScene, Engine->BlockAllocator);
+		InitiateGraphicScene	  (&Framework.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
+		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->TempAllocator);
 		
-		{
-			uint2	WindowRect	= Engine->Window.WH;
-			float	Aspect		= (float)WindowRect[0] / (float)WindowRect[1];
-			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Game.DefaultCamera, Aspect, 0.01f, 10000.0f, true);
-			Game.ActiveCamera = &Game.DefaultCamera;
+		Framework.DrawableComponent.InitiateSystem	(Framework.GScene, Engine->Nodes);
+		Framework.LightComponent.InitiateSystem		(Framework.GScene, Engine->Nodes);
 
-			Game.MouseState.NormalizedPos = { 0.5f, 0.5f };
-			Game.MouseState.Position = { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
+		{
+			uint2	WindowRect	   = Engine->Window.WH;
+			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
+			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.01f, 10000.0f, true);
+			Framework.ActiveCamera = &Framework.DefaultCamera;
+
+			Framework.MouseState.NormalizedPos = { 0.5f, 0.5f };
+			Framework.MouseState.Position = { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
 
 		{
 			Landscape_Desc Land_Desc = { 
-				Game.DefaultAssets.Terrain
+				Framework.DefaultAssets.Terrain
 			};
 
-			Game.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
+			Framework.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
 
-			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Game.Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &Game.Landscape);
+			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Framework.Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &Framework.Landscape);
 			
 		}
 
 		FlexKit::EventNotifier<>::Subscriber sub;
 		sub.Notify = &EventsWrapper;
-		sub._ptr   = &Game;
+		sub._ptr   = &Framework;
 		Engine->Window.Handler.Subscribe(sub);
 
-		Game.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+		Framework.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
 		
-		InitateConsole(&Game.Console, Game.DefaultAssets.Font, Engine);
-		BindUIntVar(&Game.Console, "TerrainSplits",				&Game.TerrainSplits);
-		BindUIntVar(&Game.Console, "FPS",						&Game.Stats.FPS);
-		BindBoolVar(&Game.Console, "OnScreenDebugStats",		&Game.DrawDebugStats);
-		BindBoolVar(&Game.Console, "DrawDebug",					&Game.DrawDebug);
-		BindBoolVar(&Game.Console, "DrawTerrain",				&Game.DrawTerrain);
-		BindBoolVar(&Game.Console, "DrawPhysicsDebug",			&Game.DrawPhysicsDebug);
-		BindBoolVar(&Game.Console, "OcclusionCullingEnabled",	&Game.OcclusionCulling);
+		InitateConsole(&Framework.Console, Framework.DefaultAssets.Font, Engine);
+		BindUIntVar(&Framework.Console, "TerrainSplits",			&Framework.TerrainSplits);
+		BindUIntVar(&Framework.Console, "FPS",						&Framework.Stats.FPS);
+		BindBoolVar(&Framework.Console, "OnScreenDebugStats",		&Framework.DrawDebugStats);
+		BindBoolVar(&Framework.Console, "DrawDebug",				&Framework.DrawDebug);
+		BindBoolVar(&Framework.Console, "DrawTerrain",				&Framework.DrawTerrain);
+		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",			&Framework.DrawPhysicsDebug);
+		BindBoolVar(&Framework.Console, "OcclusionCullingEnabled",	&Framework.OcclusionCulling);
 
 		enum Mode
 		{
@@ -438,20 +446,20 @@ extern "C"
 		switch (CurrentMode)
 		{
 		case Menu:{
-			auto MenuSubState = CreateMenuState(&Game, Engine);
-			PushSubState(&Game, MenuSubState);
+			auto MenuSubState = CreateMenuState(&Framework, Engine);
+			PushSubState(&Framework, MenuSubState);
 		}	break;
 		case Host: {
-			auto HostState = CreateHostState(Engine, &Game);
-			PushSubState(&Game, HostState);
+			auto HostState = CreateHostState(Engine, &Framework);
+			PushSubState(&Framework, HostState);
 		}	break;
 		case Client: {
-			auto ClientState = CreateClientState(Engine, &Game, Name, Server);
-			PushSubState(&Game, ClientState);
+			auto ClientState = CreateClientState(Engine, &Framework, Name, Server);
+			PushSubState(&Framework, ClientState);
 		}	break;
 		case Play: {
-			auto PlayState= CreatePlayState(Engine, &Game);
-			PushSubState(&Game, PlayState);
+			auto PlayState= CreatePlayState(Engine, &Framework);
+			PushSubState(&Framework, PlayState);
 		}
 		default:
 			break;
@@ -460,18 +468,20 @@ extern "C"
 
 		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
 
-		return &Game;
+		return &Framework;
 	}
 
 
-	GAMESTATEAPI void Update(EngineMemory* Engine, GameFramework* State, double dT)
+	GAMESTATEAPI void Update(EngineMemory* Engine, GameFramework* Framework, double dT)
 	{
-		UpdateGameFramework(Engine, State, dT);
+		Framework->TimeRunning += dT;
 
-		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
-		UpdateColliders	(&State->PScene, Engine->Nodes);
+		UpdateGameFramework(Engine, Framework, dT);
 
-		Engine->End = State->Quit;
+		UpdateScene		(&Framework->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
+		UpdateColliders	(&Framework->PScene, Engine->Nodes);
+
+		Engine->End = Framework->Quit;
 	}
 
 
@@ -683,7 +693,7 @@ extern "C"
 	{
 		CodeExports* Table = reinterpret_cast<CodeExports*>(out);
 
-		Table->Init				= &InitiateBaseGameState;
+		Table->Init				= &InitiateFramework;
 		Table->InitEngine		= &InitEngine;
 		Table->Update			= &Update;
 		Table->UpdateFixed		= &UpdateFixed;

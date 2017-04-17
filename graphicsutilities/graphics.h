@@ -2569,7 +2569,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef FlexKit::Handle	LightHandle;
+	typedef FlexKit::Handle_t<16>	LightHandle;
 
 	struct LightDesc{
 		NodeHandle	Hndl;

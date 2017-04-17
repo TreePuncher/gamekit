@@ -6080,7 +6080,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	LightHandle CreateLight(PointLightBuffer* PL, LightDesc& in)
 	{
-		return Handle(0);
+		return LightHandle(0);
 		auto HandleIndex = PL->Lights->size();
 		PL->Lights->push_back({in.K, in.I, in.R, in.Hndl});
 

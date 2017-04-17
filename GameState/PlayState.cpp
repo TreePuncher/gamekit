@@ -41,19 +41,19 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 			switch (evt.mData1.mKC[0])
 			{
 			case KC_E:
-				ThisState->Input.Shield   = true;
+				ThisState->Input.KeyState.Shield   = true;
 				break;
 			case KC_W:
-				ThisState->Input.Forward  = true;
+				ThisState->Input.KeyState.Forward  = true;
 				break;
 			case KC_S:
-				ThisState->Input.Backward = true;
+				ThisState->Input.KeyState.Backward = true;
 				break;
 			case KC_A:
-				ThisState->Input.Left     = true;
+				ThisState->Input.KeyState.Left     = true;
 				break;
 			case KC_D:
-				ThisState->Input.Right    = true;
+				ThisState->Input.KeyState.Right    = true;
 				break;
 			}
 		}	break;
@@ -62,19 +62,19 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 			switch (evt.mData1.mKC[0])
 			{
 			case KC_E:
-				ThisState->Input.Shield   = false;
+				ThisState->Input.KeyState.Shield   = false;
 				break;
 			case KC_W:
-				ThisState->Input.Forward  = false;
+				ThisState->Input.KeyState.Forward  = false;
 				break;
 			case KC_S:
-				ThisState->Input.Backward = false;
+				ThisState->Input.KeyState.Backward = false;
 				break;
 			case KC_A:
-				ThisState->Input.Left     = false;
+				ThisState->Input.KeyState.Left     = false;
 				break;
 			case KC_D: 
-				ThisState->Input.Right    = false;
+				ThisState->Input.KeyState.Right    = false;
 				break;
 			}
 		}	break;
@@ -90,17 +90,30 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (PlayState*)StateMemory;
-	float HorizontalMouseMovement	= float(ThisState->Framework->MouseState.dPos[0]) / GetWindowWH(Engine)[0];
-	float VerticalMouseMovement		= float(ThisState->Framework->MouseState.dPos[1]) / GetWindowWH(Engine)[1];
+
 	float MovementFactor			= 50.0f;
 
-	ThisState->Model.PlayerInputs[0].FrameID++;
-	ThisState->Model.PlayerInputs[0].MouseInput		= { HorizontalMouseMovement, VerticalMouseMovement };
-	ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
+	//ThisState->Model.PlayerInputs[0].FrameID++;
+	//ThisState->Model.PlayerInputs[0].MouseInput		= { HorizontalMouseMovement, VerticalMouseMovement };
+	//ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
+
+	ThisState->Input.Update(dT, ThisState->Framework->MouseState, StateMemory->Framework );
 	ThisState->Model.Update(StateMemory->Framework, dT);
 
-	Yaw(ThisState->TestObject, dT * pi);
+	double CosT = (float)cos(ThisState->Framework->TimeRunning);
+	double SinT = (float)sqrt(1 - CosT * CosT);
 
+	float Begin	= 0.0f;
+	float End	= 60.0f;
+	float IaR	= 1000 * (1 + CosT) / 2;
+
+	Yaw(ThisState->TestObject, dT * pi);
+	SetDrawableColor(ThisState->TestObject, Grey(CosT));
+	SetWorldPosition(ThisState->TestObject, float3( 10.0f * CosT, 60.0f, SinT * 10));
+
+	SetLightRadius(ThisState->TestObject, 100 + IaR);
+	SetLightIntensity(ThisState->TestObject, 100 + IaR);
+	
 	return false;
 }
 
@@ -149,16 +162,20 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->VTable.Release        = ReleasePlayState;
 	State->Framework			 = Framework;
 
-	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Framework->PScene);
-
 	State->Model.Initiate(Framework);
-	State->Model.SetPlayerCount(Framework, 1);
+	State->Input.Initiate(&State->Model);
 
 	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Framework->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	InitiateGameObject(
 		State->TestObject,
-		CreateEnityComponent(Framework->GScene, "Flower"));
+		CreateEnityComponent(Framework->DrawableComponent, "Flower"),
+		CreateLightComponent(Framework->LightComponent));
+
+
+	InitiateGameObject(
+		State->Player,
+		CreateLocalPlayer(&State->Model, State->Input, Framework));
 
 	return State;
 }

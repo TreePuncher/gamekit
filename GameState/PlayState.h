@@ -39,9 +39,11 @@ struct PlayState : public SubState
 {
 	// Game Element Controllers
 
-	Gameplay_Model				Model;
-	PlayerInputState			Input;
+	GameplayComponentSystem				Model;
+	GameplayLocalInputComponentSystem	Input;
+
 	GameObject<>				TestObject;
+	GameObject<>				Player;
 };
 
 

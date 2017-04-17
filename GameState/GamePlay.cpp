@@ -25,6 +25,31 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gameplay.h"
 
 
+
+
+/************************************************************************************************/
+
+
+void GameplayLocalInputComponentSystem::Initiate(GameplayComponentSystem* Target)
+{
+	TargetModel = Target;
+}
+
+
+void GameplayLocalInputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* Framework)
+{
+	float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Engine)[0];
+	float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Engine)[1];
+
+	for (auto L : Listeners) {
+		TargetModel->PlayerInputs[L].FrameID++;
+		TargetModel->PlayerInputs[L].KeyboardInput = this->KeyState;
+		TargetModel->PlayerInputs[L].MouseInput = float2{HorizontalMouseMovement, VerticalMouseMovement};
+		TargetModel->HandleEvent(L, ComponentType::CT_Input, GetCRCGUID(LOCALINPUT));
+	}
+}
+
+
 /************************************************************************************************/
 
 

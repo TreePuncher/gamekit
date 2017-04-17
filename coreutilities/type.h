@@ -142,6 +142,7 @@ namespace FlexKit
 	}
 
 #define GetTypeGUID(A) GenerateTypeGUID(#A)
+#define GetCRCGUID(A) GenerateTypeGUID(#A)
 
 }
 #endif
