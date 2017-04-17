@@ -244,7 +244,8 @@ struct PlayersComponentArgs
 };
 
 
-void CreateComponent(GameObject<>& GO, PlayersComponentArgs& Args)
+template<size_t SIZE>
+void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
 {
 	PlayerHandle	Player					= Args.Gameplay->CreatePlayer();
 	ComponentHandle InputComponentHandle	= Args.Input->BindInputToPlayer(Player);

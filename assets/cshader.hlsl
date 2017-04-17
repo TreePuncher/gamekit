@@ -232,6 +232,20 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 							ColorOut = float3(0, 0, 0);
 							break;
 						}
+                       case 7:
+                        {
+                            [loop]
+                            for (int I = 0; I < DeferredPointLightCount; ++I)
+                            {
+                                PointLight Light = Lights[I];
+                                float3 Lp = Light.P;
+                                float3 Lc = Light.K;
+                                float3 Lv = normalize(Lp - WPOS);
+                                float La = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
+
+                                ColorOut += La * Lc;
+                            }
+                        }   break;
 						break;
 					default:
 						break;

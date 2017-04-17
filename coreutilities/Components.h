@@ -114,7 +114,7 @@ namespace FlexKit
 		}
 
 		ComponentSystemInterface*	ComponentSystem;
-		FlexKit::Handle_t<16>		ComponentHandle;
+		Handle_t<16>				ComponentHandle;
 		ComponentType				Type;
 	};
 
@@ -125,9 +125,9 @@ namespace FlexKit
 	template<size_t COMPONENTCOUNT = 6>
 	struct FLEXKITAPI GameObject
 	{
-		Component	Components[COMPONENTCOUNT];
 		uint16_t	LastComponent;
 		uint16_t	ComponentCount;
+		Component	Components[COMPONENTCOUNT];
 		
 		static const size_t MaxComponentCount = COMPONENTCOUNT;
 		
@@ -158,6 +158,16 @@ namespace FlexKit
 			}
 		}
 
+
+		void Release()
+		{
+			for (size_t I = 0; I < ComponentCount; ++I) {
+				if (Components[I].ComponentSystem)
+					Components[I].Release();
+			}
+		}
+
+
 		Component*	FindComponent(ComponentType T)
 		{
 			if (LastComponent != -1) {
@@ -181,16 +191,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename ... TY_ARGS>
-	void CreateComponent(GameObject<>& GO)
+	template<typename TY_GO>
+	void CreateComponent(TY_GO& GO)
 	{
 	}
 
 
-	void InitiateGameObject(GameObject<>& GO) {}
+	template<typename TY_GO>
+	void InitiateGameObject(TY_GO& GO) {}
 
-	template<typename TY, typename ... TY_ARGS>
-	void InitiateGameObject(GameObject<>& GO, TY Component, TY_ARGS ... Args)
+
+	template<size_t COUNT, typename TY, typename ... TY_ARGS>
+	void InitiateGameObject(GameObject<COUNT>& GO, TY Component, TY_ARGS ... Args)
 	{
 		CreateComponent(GO, Component);
 		InitiateGameObject(GO, Args...);

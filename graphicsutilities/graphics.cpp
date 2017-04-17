@@ -6161,6 +6161,17 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
+	void ReleaseLight(PointLightBuffer*	PL, LightHandle Handle)
+	{
+		PL->Lights->at(Handle).I	= 0.0f;
+		PL->Lights->at(Handle).R	= 0.0f;
+		PL->Flags->at(Handle)		= LightBufferFlags::Unused;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void CreatePlaneMesh(RenderSystem* RS, TriMesh* out, StackAllocator* mem, PlaneDesc desc)
 	{	// Change this to be allocated from level Memory
 		out->Buffers[0]		= FlexKit::CreateVertexBufferView((byte*)mem->malloc(512), 512);

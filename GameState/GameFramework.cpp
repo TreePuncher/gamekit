@@ -302,11 +302,13 @@ void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 	if (State->DrawDebug) {
 		for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
 		{
-			auto P = State->GScene.PLights[I];
+			auto P		= State->GScene.PLights[I];
+			auto PState = State->GScene.PLights.Flags->at(I);
 
-			auto POS = GetPositionW(Engine->Nodes, P.Position);
-
-			PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.I / 50);
+			if ((LightBufferFlags)PState != LightBufferFlags::Unused) {
+				auto POS = GetPositionW(Engine->Nodes, P.Position);
+				PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.I / 50);
+			}
 		}
 	}
 

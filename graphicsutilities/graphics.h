@@ -1177,6 +1177,7 @@ namespace FlexKit
 		EDPM_NORMALS,
 		EDPM_POSITION,
 		EDPM_CONSTRUCTPOSITION,
+		EDPM_LIGHTCONTRIBUTION,
 		EDPM_COUNT,
 	};
 	struct DeferredPass_Parameters
@@ -1344,8 +1345,9 @@ namespace FlexKit
 
 	enum LightBufferFlags
 	{
-		Dirty = 0x01,
-		Clean = 0x00
+		Dirty  = 0x01,
+		Unused = 0x02,
+		Clean  = 0x00
 	};
 
 
@@ -2628,6 +2630,8 @@ namespace FlexKit
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
 	
+	FLEXKITAPI void ReleaseLight(PointLightBuffer*	PL, LightHandle Handle);
+
 	FLEXKITAPI void UpdateSpotLightBuffer	( RenderSystem& RS, SceneNodes* nodes, SpotLightBuffer* out, iAllocator* TempMemory );
 	FLEXKITAPI void UpdatePointLightBuffer	( RenderSystem& RS, SceneNodes* nodes, PointLightBuffer* out, iAllocator* TempMemory );
 

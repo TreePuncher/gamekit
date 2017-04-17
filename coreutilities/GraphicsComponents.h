@@ -62,8 +62,8 @@ namespace FlexKit
 		NodeHandle					Node;
 	};
 
-
-	void CreateComponent(GameObject<>& GO, SceneNodeComponentSystem* Nodes)
+	template<size_t SIZE>
+	void CreateComponent(GameObject<SIZE>& GO, SceneNodeComponentSystem* Nodes)
 	{
 		if (!GO.Full())
 		{
@@ -73,7 +73,8 @@ namespace FlexKit
 	}
 
 
-	void CreateComponent(GameObject<>& GO, TransformComponentArgs Args)
+	template<size_t SIZE>
+	void CreateComponent(GameObject<SIZE>& GO, TransformComponentArgs Args)
 	{
 		if (!GO.Full())
 		{
@@ -86,21 +87,24 @@ namespace FlexKit
 	}
 
 
-	float3 GetWorldPosition(GameObject<>& GO)
+	template<typename TY_GO>
+	float3 GetWorldPosition(TY_GO& GO)
 	{
 		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
 		return C->GetWorldPosition();
 	}
 
 
-	float3 GetLocalPosition(GameObject<>& GO)
+	template<typename TY_GO>
+	float3 GetLocalPosition(TY_GO& GO)
 	{
 		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
 		return C->GetLocalPosition();
 	}
 
 
-	NodeHandle GetNodeHandle(GameObject<>& GO)
+	template<typename TY_GO>
+	NodeHandle GetNodeHandle(TY_GO& GO)
 	{
 		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
 		if(C)
@@ -109,7 +113,8 @@ namespace FlexKit
 	}
 
 
-	void SetLocalPosition(GameObject<>& GO, float3 XYZ)
+	template<typename TY_GO>
+	void SetLocalPosition(TY_GO& GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
 		if (C) {
@@ -119,7 +124,8 @@ namespace FlexKit
 	}
 
 
-	void SetWorldPosition(GameObject<>& GO, float3 XYZ)
+	template<typename TY_GO>
+	void SetWorldPosition(TY_GO& GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
 		if (C) {
@@ -129,7 +135,8 @@ namespace FlexKit
 	}
 
 
-	void Yaw(GameObject<>& GO, float R)
+	template<typename TY_GO>
+	void Yaw(TY_GO& GO, float R)
 	{
 		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
 		if (C) {
@@ -200,7 +207,8 @@ namespace FlexKit
 	};
 
 
-	inline bool SetDrawableColor(GameObject<>& GO, float3 Color)
+	template<typename TY_GO>
+	inline bool SetDrawableColor(TY_GO& GO, float3 Color)
 	{
 		auto C = GO.FindComponent(ComponentType::CT_Renderable);
 		if (C) {
@@ -211,7 +219,8 @@ namespace FlexKit
 		return (C != nullptr);
 	}
 
-	inline bool SetDrawableMetal(GameObject<>& GO, bool M)
+	template<typename TY_GO>
+	inline bool SetDrawableMetal(TY_GO& GO, bool M)
 	{
 		auto C = GO.FindComponent(ComponentType::CT_Renderable);
 		if (C) {
@@ -233,8 +242,8 @@ namespace FlexKit
 		return { DrawableComponent->Scene->CreateDrawableAndSetMesh(Mesh), DrawableComponent };
 	}
 
-	template<typename TY_GO>
-	void CreateComponent(TY_GO& GO, DrawableComponentArgs& Args)
+	template<size_t SIZE>
+	void CreateComponent(GameObject<SIZE>& GO, DrawableComponentArgs& Args)
 	{
 		if (!GO.Full()) {
 			auto C = GO.FindComponent(ComponentType::CT_Transform);
@@ -256,7 +265,7 @@ namespace FlexKit
 	public:
 		void InitiateSystem(GraphicScene* IN_Scene, SceneNodeComponentSystem* IN_SceneNodes)
 		{
-			new(this) LightComponentSystem();
+			new(this) LightComponentSystem();// Setups VTable
 
 			Scene		= IN_Scene;
 			SceneNodes	= IN_SceneNodes;
@@ -264,7 +273,7 @@ namespace FlexKit
 
 		void ReleaseHandle(ComponentHandle Handle) final
 		{
-			Scene->RemoveEntity(Handle);
+			ReleaseLight(&Scene->PLights, Handle);
 		}
 
 		void SetNode(ComponentHandle Light, NodeHandle Node)
@@ -274,7 +283,7 @@ namespace FlexKit
 
 		void SetColor(ComponentHandle Light, float3 NewColor)
 		{
-			//Scene->Set(Drawable, Node);
+			Scene->PLights[Light].K = NewColor;
 		}
 
 		void SetIntensity(ComponentHandle Light, float I)
@@ -286,7 +295,6 @@ namespace FlexKit
 		{
 			Scene->PLights[Light].R = R;
 		}
-
 
 		operator LightComponentSystem* ()	{ return this; }
 		operator GraphicScene* ()			{ return *Scene; }
@@ -303,6 +311,19 @@ namespace FlexKit
 		float					I;
 		float					R;
 	};
+
+	template<typename T_GO>
+	bool SetLightColor(T_GO& GO, float3 K)
+	{
+		auto C = GO.FindComponent(ComponentType::CT_PointLight);
+		if (C)
+		{
+			auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
+			LightSystem->SetColor(C->ComponentHandle, K);
+			GO.NotifyAll(CT_Renderable, GetCRCGUID(LIGHTPROPERTIES));
+		}
+		return C != nullptr;
+	}
 
 	template<typename T_GO>
 	bool SetLightIntensity(T_GO& GO, float I)
@@ -337,8 +358,8 @@ namespace FlexKit
 	}
 
 
-	template<typename TY_GO>
-	void CreateComponent(TY_GO& GO, LightComponentArgs& Args)
+	template<size_t SIZE>
+	void CreateComponent(GameObject<SIZE>& GO, LightComponentArgs& Args)
 	{
 		if (!GO.Full()) {
 			NodeHandle Node;

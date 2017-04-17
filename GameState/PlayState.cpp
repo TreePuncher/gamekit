@@ -100,19 +100,20 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	ThisState->Input.Update(dT, ThisState->Framework->MouseState, StateMemory->Framework );
 	ThisState->Model.Update(StateMemory->Framework, dT);
 
-	double CosT = (float)cos(ThisState->Framework->TimeRunning);
-	double SinT = (float)sqrt(1 - CosT * CosT);
+	double T = ThisState->Framework->TimeRunning;
+	double CosT = (float)cos(T);
+	double SinT = (float)sin(T);
 
 	float Begin	= 0.0f;
 	float End	= 60.0f;
-	float IaR	= 1000 * (1 + CosT) / 2;
+	float IaR	= 10000 * (1 + (float)cos(T * 6)) / 2;
 
 	Yaw(ThisState->TestObject, dT * pi);
 	SetDrawableColor(ThisState->TestObject, Grey(CosT));
-	SetWorldPosition(ThisState->TestObject, float3( 10.0f * CosT, 60.0f, SinT * 10));
+	SetWorldPosition(ThisState->TestObject, float3( 100.0f * CosT, 60.0f, SinT * 100));
 
-	SetLightRadius(ThisState->TestObject, 100 + IaR);
-	SetLightIntensity(ThisState->TestObject, 100 + IaR);
+	SetLightRadius		(ThisState->TestObject, 100 + IaR);
+	SetLightIntensity	(ThisState->TestObject, 100 + IaR);
 	
 	return false;
 }
@@ -143,6 +144,8 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double DT)
 void ReleasePlayState(SubState* StateMemory)
 {
 	auto ThisState = (PlayState*)StateMemory;
+	ThisState->Player.Release();
+	ThisState->TestObject.Release();
 	ThisState->Model.Release();
 }
 
@@ -167,11 +170,14 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Framework->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
+	GameObject<> Test;
+
 	InitiateGameObject(
 		State->TestObject,
 		CreateEnityComponent(Framework->DrawableComponent, "Flower"),
 		CreateLightComponent(Framework->LightComponent));
 
+	SetLightColor(State->TestObject, RED);
 
 	InitiateGameObject(
 		State->Player,

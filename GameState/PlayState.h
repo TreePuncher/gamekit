@@ -43,7 +43,7 @@ struct PlayState : public SubState
 	GameplayLocalInputComponentSystem	Input;
 
 	GameObject<>				TestObject;
-	GameObject<>				Player;
+	GameObject<16>				Player;
 };
 
 
