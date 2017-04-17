@@ -192,7 +192,7 @@ void EventsWrapper(const Event& evt, void* _ptr)
 bool LoadScene(GameFramework* State, const char* SceneName)
 {
 	auto Engine = State->Engine;
-	return LoadScene(Engine->RenderSystem, &Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, &State->GScene, Engine->TempAllocator);
+	return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, &State->GScene, Engine->TempAllocator);
 }
 
 
@@ -232,8 +232,8 @@ void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
 	Release(State->DefaultAssets.Font);
 	Release(State->DefaultAssets.Terrain);
 
-	ReleaseTerrain(State->Nodes, &State->Landscape);
-	ReleaseCamera(State->Nodes, &State->DefaultCamera);
+	ReleaseTerrain	(State->Engine->Nodes, &State->Landscape);
+	ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
 
 	ReleaseGraphicScene(&State->GScene);
 	ReleaseDrawImmediate(Engine->RenderSystem, &State->Immediate);
@@ -304,7 +304,7 @@ void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 		{
 			auto P = State->GScene.PLights[I];
 
-			auto POS = GetPositionW(&Engine->Nodes, P.Position);
+			auto POS = GetPositionW(Engine->Nodes, P.Position);
 
 			PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.I / 50);
 		}
@@ -346,7 +346,6 @@ extern "C"
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 
 		Game.ClearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
-		Game.Nodes						= &Engine->Nodes;
 		Game.Quit						= false;
 		Game.PhysicsUpdateTimer			= 0.0f;
 		Game.TerrainSplits				= 12;
@@ -388,7 +387,7 @@ extern "C"
 
 			Game.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
 
-			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Game.Nodes), &Land_Desc, Engine->BlockAllocator, &Game.Landscape);
+			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Game.Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &Game.Landscape);
 			
 		}
 
@@ -414,13 +413,13 @@ extern "C"
 			Host,
 			Client,
 			Play,
-		}CurrentMode = Menu;
+		}CurrentMode = Play;
 
 
 		const char* Name	= nullptr;
 		const char* Server	= nullptr;
+		
 
-		//for (auto Arg : Engine->CmdArguments)
 		for (size_t I = 0; I < Engine->CmdArguments.size(); ++I)
 		{
 			auto Arg = Engine->CmdArguments[I];
@@ -470,7 +469,7 @@ extern "C"
 		UpdateGameFramework(Engine, State, dT);
 
 		UpdateScene		(&State->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
-		UpdateColliders	(&State->PScene, &Engine->Nodes);
+		UpdateColliders	(&State->PScene, Engine->Nodes);
 
 		Engine->End = State->Quit;
 	}
@@ -492,8 +491,8 @@ extern "C"
 	{
 		PreDrawGameFramework(Engine, State, dt);
 
-		UpdateTransforms	(State->Nodes);
-		UpdateCamera		(Engine->RenderSystem, State->Nodes, State->ActiveCamera, dt);
+		UpdateTransforms	(Engine->Nodes);
+		UpdateCamera		(Engine->RenderSystem, Engine->Nodes, State->ActiveCamera, dt);
 		UpdateGraphicScene	(&State->GScene); // Default Scene
 
 		if (State->Stats.Fps_T > 1.0)
@@ -513,7 +512,7 @@ extern "C"
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
 			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)State->Stats.FPS, DrawTiming);
-			PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 1.0f, 1.0f }, float4(WHITE, 1), { .7f, .7f });
+			PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), { .7f, .7f });
 		}
 	}
 
@@ -533,8 +532,8 @@ extern "C"
 
 		GetGraphicScenePVS(State->ActiveScene, State->ActiveCamera, &PVS, &Transparent);
 
-		SortPVS(State->Nodes, &PVS, State->ActiveCamera);
-		SortPVSTransparent(State->Nodes, &Transparent, State->ActiveCamera);
+		SortPVS				(Engine->Nodes, &PVS, State->ActiveCamera);
+		SortPVSTransparent	(Engine->Nodes, &Transparent, State->ActiveCamera);
 
 		Free_DelayedReleaseResources(Engine->RenderSystem);
 
@@ -563,9 +562,9 @@ extern "C"
 
 			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
 
-			UploadCamera			(RS, State->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
+			UploadCamera			(RS, Engine->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
-			UploadLandscape			(RS, &State->Landscape, State->Nodes, State->ActiveCamera, false, true, State->TerrainSplits + 1);
+			UploadLandscape			(RS, &State->Landscape, Engine->Nodes, State->ActiveCamera, false, true, State->TerrainSplits + 1);
 
 		}
 

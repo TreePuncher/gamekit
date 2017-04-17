@@ -76,9 +76,7 @@ void InitiateEngineMemory( EngineMemory* Engine )
 	Engine->TempAllocator. Init ( Engine->TempMem,	TEMPBUFFERSIZE );
 
 	// Initate SceneGraph
-	InitiateSceneNodeBuffer		( &Engine->Nodes, Engine->NodeMem, NODEBUFFERSIZE );
-	Engine->RootSN = GetNewNode	( &Engine->Nodes );
-	ZeroNode					( &Engine->Nodes, Engine->RootSN );
+	Engine->Nodes.InitiateSystem( Engine->NodeMem, NODEBUFFERSIZE );
 
 	InitDebug(&Engine->Debug);
 

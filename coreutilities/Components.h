@@ -39,6 +39,7 @@ namespace FlexKit
 
 	// Components store all data needed for a component
 	typedef FlexKit::Handle_t<16> ComponentHandle;
+	typedef size_t EventTypeID;
 
 	enum ComponentType : uint16_t
 	{
@@ -47,6 +48,12 @@ namespace FlexKit
 		CT_Collider,
 		CT_Player,
 		CT_Unknown
+	};
+
+	class ComponentSystemInterface
+	{
+	public:
+		virtual void ReleaseHandle	(ComponentHandle Handle) = 0;
 	};
 
 	struct Component
@@ -62,10 +69,10 @@ namespace FlexKit
 
 
 		Component(
-			void*					CS,
-			FN_RELEASECOMPONENT*	RC,
-			FlexKit::Handle_t<16>	CH,
-			ComponentType			T
+			ComponentSystemInterface*	CS,
+			FN_RELEASECOMPONENT*		RC,
+			FlexKit::Handle_t<16>		CH,
+			ComponentType				T
 		) :
 			ComponentSystem		(CS),
 			ReleaseComponent	(RC),
@@ -101,10 +108,10 @@ namespace FlexKit
 		}
 
 
-		void*					ComponentSystem; // Component Use Only
-		FN_RELEASECOMPONENT*	ReleaseComponent;
-		FlexKit::Handle_t<16>	ComponentHandle;
-		ComponentType			Type;
+		ComponentSystemInterface*	ComponentSystem;
+		FN_RELEASECOMPONENT*		ReleaseComponent;
+		FlexKit::Handle_t<16>		ComponentHandle;
+		ComponentType				Type;
 	};
 
 
@@ -163,72 +170,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	// Component Derivatives 
-	// only define Methods
-	// All data is fetched using handle and System Pointer
-	struct FLEXKITAPI TansformComponent : public Component
-	{
-		void Roll(float r);
-		void Pitch(float r);
-		void Yaw(float r);
-
-		float3 GetLocalPosition();
-		float3 GetWorldPosition();
-
-		void SetLocalPosition(const float3&);
-		void SetWorldPosition(const float3&);
-
-		FlexKit::Quaternion GetOrientation();
-		void				SetOrientation(FlexKit::Quaternion Q);
-
-		static void Release(Component* Component)
-		{
-			ReleaseNode((SceneNodes*)Component->ComponentSystem, Component->ComponentHandle);
-			Component->ReleaseComponent = nullptr;
-		}
-	};
-
-	struct EntityComponentArgs
-	{
-		FlexKit::EntityHandle	Entity;
-		FlexKit::GraphicScene*	GraphicScene;
-	};
-
-	struct FLEXKITAPI EntityComponent : public Component
-	{
-		static void Release(Component* Component)
-		{
-			auto* System = (GraphicScene*)Component->ComponentSystem;
-			System->RemoveEntity(Component->ComponentHandle);
-			Component->ReleaseComponent = nullptr;
-		}
-	};
-
-
 	template<typename ... TY_ARGS>
 	void CreateComponent(GameObject<>& GO)
 	{
-	}
-
-
-	void CreateComponent(GameObject<>& GO, SceneNodes* Nodes)
-	{
-		if (!GO.Full())
-		{
-			auto NodeHandle = GetZeroedNode(Nodes);
-			GO.Components[GO.ComponentCount++] = Component((void*)Nodes, TansformComponent::Release, NodeHandle, CT_Transform);
-		}
-	}
-
-
-	void CreateComponent(GameObject<>& GO, EntityComponentArgs& Args)
-	{
-		if (!GO.Full()) {
-			GO.Components[GO.ComponentCount++] = Component(Args.GraphicScene, &EntityComponent::Release, Args.Entity, CT_Renderable);
-			auto C = GO.FindComponent(ComponentType::CT_Transform);
-			if(C)
-				Args.GraphicScene->SetNode(Args.Entity, C->ComponentHandle);
-		}
 	}
 
 
@@ -242,44 +186,6 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-	// Transform Functions
-
-	float3 GetWorldPosition(GameObject<>& GO)
-	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
-		return C->GetWorldPosition();
-	}
-
-
-	float3 GetLocalPosition(GameObject<>& GO)
-	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
-		return C->GetLocalPosition();
-	}
-
-
-	void SetLocalPosition(GameObject<>& GO, float3 XYZ)
-	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
-		C->SetLocalPosition(XYZ);
-	}
-
-
-	void SetWorldPosition(GameObject<>& GO, float3 XYZ)
-	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
-		C->SetWorldPosition(XYZ);
-	}
-
-
-	void Yaw(GameObject<>& GO, float R)
-	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
-		C->Yaw(R);
-	}
-
-	/************************************************************************************************/
 	/************************************************************************************************/
 }
 

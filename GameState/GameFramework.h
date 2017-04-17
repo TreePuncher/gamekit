@@ -31,7 +31,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GAMESTATEAPI __declspec(dllimport)
 #endif
 
-
 #include "..\Application\GameMemory.h"
 #include "..\Application\GameUtilities.h"
 #include "..\graphicsutilities\Graphics.h"
@@ -76,7 +75,6 @@ struct GameFramework
 	MouseInputState		MouseState;
 
 	Landscape			Landscape;
-	SceneNodes*			Nodes;
 	PScene				PScene;
 	GraphicScene		GScene;
 
@@ -91,6 +89,7 @@ struct GameFramework
 	Console				Console;
 	ImmediateRender		Immediate;
 	EngineMemory*		Engine;
+
 
 	static_vector<MouseHandler>		MouseHandlers;
 	static_vector<SubStateVTable*>	SubStates;

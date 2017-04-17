@@ -118,6 +118,9 @@
     <ClInclude Include="coreutilities\Components.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="coreutilities\GraphicsComponents.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -181,6 +184,9 @@
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="coreutilities\ProfilingUtilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GraphicsComponents.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
   </ItemGroup>

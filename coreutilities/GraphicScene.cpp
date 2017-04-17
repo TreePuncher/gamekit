@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "GraphicScene.h"
+#include "GraphicsComponents.h"
 #include "intersection.h"
 
 namespace FlexKit
@@ -39,7 +40,7 @@ namespace FlexKit
 			Drawable& e = GetDrawable(E);
 
 			DrawableDesc	Desc;
-			NodeHandle N  = GetZeroedNode(SN);
+			NodeHandle N  = GetZeroedNode(*SN);
 			FlexKit::CreateDrawable(RS, &e, Desc);
 
 			e.Visable	= false;
@@ -52,7 +53,7 @@ namespace FlexKit
 		{
 			Drawable		e;
 			DrawableDesc	Desc;
-			NodeHandle N  = GetZeroedNode(SN);
+			NodeHandle N  = GetZeroedNode(*SN);
 			FlexKit::CreateDrawable(RS, &e, Desc);
 
 			e.Visable  = false;
@@ -71,14 +72,14 @@ namespace FlexKit
 	{
 		if (E + 1 == Drawables.size())
 		{
-			ReleaseNode(SN, GetDrawable(E).Node);
+			ReleaseNode(*SN, GetDrawable(E).Node);
 			ReleaseDrawable(&GetDrawable(E));
 			Drawables.pop_back();
 		}
 		else
 		{
 			FreeEntityList.push_back(E);
-			ReleaseNode(SN, GetDrawable(E).Node);
+			ReleaseNode(*SN, GetDrawable(E).Node);
 
 			auto& Drawable = GetDrawable(E);
 			ReleaseDrawable(&Drawable);
@@ -98,7 +99,7 @@ namespace FlexKit
 	{
 		for (auto& D : this->Drawables)
 		{
-			ReleaseNode(SN, D.Node);
+			ReleaseNode(*SN, D.Node);
 
 			DelayReleaseDrawable(RS, &D);
 		}
@@ -300,7 +301,7 @@ namespace FlexKit
 
 	Drawable& GraphicScene::SetNode(EntityHandle EHandle, NodeHandle Node) 
 	{
-		FlexKit::ReleaseNode(SN, GetNode(EHandle));
+		FlexKit::ReleaseNode(*SN, GetNode(EHandle));
 		Drawables.at(EHandle).Node = Node;
 		return Drawables.at(EHandle);
 	}
@@ -330,7 +331,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateDrawableAndSetMesh(char* Mesh)
+	EntityHandle GraphicScene::CreateDrawableAndSetMesh(const char* Mesh)
 	{
 		auto EHandle = CreateDrawable();
 
@@ -380,8 +381,8 @@ namespace FlexKit
 
 	LightHandle GraphicScene::AddPointLight(float3 Color, float3 POS, float I, float R)
 	{
-		auto Node = GetNewNode(SN);
-		SetPositionW(SN, Node, POS);
+		auto Node = GetNewNode(*SN);
+		SetPositionW(*SN, Node, POS);
 		PLights.push_back({ Color, I, R, Node });
 		return LightHandle(PLights.size() - 1);
 	}
@@ -392,8 +393,8 @@ namespace FlexKit
 
 	SpotLightHandle GraphicScene::AddSpotLight(float3 POS, float3 Color, float3 Dir, float t, float I, float R)
 	{
-		auto Node = GetNewNode(SN);
-		SetPositionW(SN, Node, POS);
+		auto Node = GetNewNode(*SN);
+		SetPositionW(*SN, Node, POS);
 		SPLights.push_back({Color, Dir, I, R, t, Node});
 		return PLights.size() - 1;
 	}
@@ -407,7 +408,7 @@ namespace FlexKit
 		auto Light = &SPLights[0];
 		SpotLightCasters.push_back({ Camera(), SpotLight});
 		SpotLightCasters.back().C.FOV = RadToDegree(Light->t);
-		InitiateCamera(RS, SN, &SpotLightCasters.back().C, 1.0f, 15.0f, 100, false);
+		InitiateCamera(RS, *SN, &SpotLightCasters.back().C, 1.0f, 15.0f, 100, false);
 	}
 
 
@@ -426,7 +427,7 @@ namespace FlexKit
 	void UpdateQuadTree(QuadTreeNode* Node, GraphicScene* Scene)
 	{
 		for (const auto D : Scene->Drawables) {
-			if (GetFlag(Scene->SN, D.Node, SceneNodes::StateFlags::UPDATED))
+			if (GetFlag(*Scene->SN, D.Node, SceneNodes::StateFlags::UPDATED))
 			{
 				/*
 				if()
@@ -495,7 +496,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodes* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory)
+	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodeComponentSystem* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory)
 	{
 		using FlexKit::CreateSpotLightBuffer;
 		using FlexKit::CreatePointLightBuffer;
@@ -554,11 +555,11 @@ namespace FlexKit
 		{
 			auto Entity = SM->GetDrawable(Tag.Source);
 
-			auto WT		= GetJointPosed_WT(Tag.Joint, Entity.Node, SM->SN, Entity.PoseState);
+			auto WT		= GetJointPosed_WT(Tag.Joint, Entity.Node, *SM->SN, Entity.PoseState);
 			auto WT_t	= Float4x4ToXMMATIRX(&WT.Transpose());
 
-			FlexKit::SetWT(SM->SN,		Tag.Target, &WT_t);
-			FlexKit::SetFlag(SM->SN,	Tag.Target, SceneNodes::StateFlags::UPDATED);
+			FlexKit::SetWT		(*SM->SN,	Tag.Target, &WT_t);
+			FlexKit::SetFlag	(*SM->SN,	Tag.Target, SceneNodes::StateFlags::UPDATED);
 		}
 	}
 
@@ -570,7 +571,7 @@ namespace FlexKit
 	{
 		for (auto& Caster : GS->SpotLightCasters)
 		{
-			UpdateCamera(GS->RS, GS->SN, &Caster.C, 0.00f);
+			UpdateCamera(GS->RS, *GS->SN, &Caster.C, 0.00f);
 		}
 	}
 
@@ -592,14 +593,14 @@ namespace FlexKit
 		FK_ASSERT(out != T_out);
 
 		Quaternion Q;
-		FlexKit::GetOrientation(SM->SN, C->Node, &Q);
-		auto F = GetFrustum(C, GetPositionW(SM->SN, C->Node), Q);
+		FlexKit::GetOrientation(*SM->SN, C->Node, &Q);
+		auto F = GetFrustum(C, GetPositionW(*SM->SN, C->Node), Q);
 
 		for (auto &E : SM->Drawables)
 		{
 			auto Mesh	= GetMesh(SM->GT, E.MeshHandle);
-			auto Ls		= GetLocalScale(SM->SN, E.Node).x;
-			auto Pw		= GetPositionW(SM->SN, E.Node);
+			auto Ls		= GetLocalScale(*SM->SN, E.Node).x;
+			auto Pw		= GetPositionW(*SM->SN, E.Node);
 
 			if (Mesh && CompareBSAgainstFrustum(&F, Pw, Mesh->Info.r * Ls))
 			{
@@ -617,17 +618,17 @@ namespace FlexKit
 
 	void UploadGraphicScene(GraphicScene* SM, PVS* Dawables, PVS* Transparent_PVS)
 	{
-		UpdatePointLightBuffer	(*SM->RS, SM->SN, &SM->PLights, SM->TempMem);
-		UpdateSpotLightBuffer	(*SM->RS, SM->SN, &SM->SPLights, SM->TempMem);
+		UpdatePointLightBuffer	(*SM->RS, *SM->SN, &SM->PLights, SM->TempMem);
+		UpdateSpotLightBuffer	(*SM->RS, *SM->SN, &SM->SPLights, SM->TempMem);
 
 		for (auto& Caster : SM->SpotLightCasters)
-			UploadCamera(SM->RS, SM->SN, &Caster.C, 0, 0, 0.0f);
+			UploadCamera(SM->RS, *SM->SN, &Caster.C, 0, 0, 0.0f);
 
 		for (PVEntry d : *Dawables)
-			UpdateDrawable(SM->RS, SM->SN, d);
+			UpdateDrawable(SM->RS, *SM->SN, d);
 
 		for (PVEntry t : *Transparent_PVS)
-			UpdateDrawable(SM->RS, SM->SN, t);
+			UpdateDrawable(SM->RS, *SM->SN, t);
 	}
 
 
@@ -722,14 +723,14 @@ namespace FlexKit
 					for (size_t I = 0; I < SceneBlob->SceneTable.NodeCount; ++I)
 					{
 						auto Node		= Nodes[I];
-						auto NewNode	= GetNewNode(SN);
+						auto NewNode	= GetNewNode(*SN);
 						
-						SetOrientationL(SN, NewNode, Node.Q );
-						SetPositionL(SN,	NewNode, Node.TS.xyz());
-						SetScale(SN, NewNode, { Node.TS.w, Node.TS.w, Node.TS.w });
+						SetOrientationL(*SN, NewNode, Node.Q );
+						SetPositionL(*SN,	NewNode, Node.TS.xyz());
+						SetScale(*SN, NewNode, { Node.TS.w, Node.TS.w, Node.TS.w });
 
 						if (Node.Parent != -1)
-							SetParentNode(SN, CreatedNodes[Node.Parent], NewNode);
+							SetParentNode(*SN, CreatedNodes[Node.Parent], NewNode);
 
 						CreatedNodes.push_back(NewNode);
 					}
@@ -742,8 +743,8 @@ namespace FlexKit
 						if (Entities[I].MeshGuid != INVALIDHANDLE) {
 							auto NewEntity = GS_out->CreateDrawableAndSetMesh(Entities[I].MeshGuid);
 							GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
-							auto Position_DEBUG = GetPositionW(SN, CreatedNodes[Entities[I].Node]);
-							SetFlag(SN, CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
+							auto Position_DEBUG = GetPositionW(*SN, CreatedNodes[Entities[I].Node]);
+							SetFlag(*SN, CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
 							int x = 0;
 						}
 					}
@@ -777,12 +778,39 @@ namespace FlexKit
 			}
 			FINALLYOVER
 
-			return LoadScene(RS, SN, RM, GT, R->GUID, GS_out, Temp);
+			return LoadScene(RS, *SN, RM, GT, R->GUID, GS_out, Temp);
 		}
 		return false;
 	}
 
 
 	/************************************************************************************************/
+
+
+	float3 GraphicScene::GetEntityPosition(EntityHandle EHandle) 
+	{ 
+		return GetPositionW(*SN, Drawables.at(EHandle).Node); 
+	}
+
+	inline Quaternion GraphicScene::GetOrientation(EntityHandle Handle)
+	{
+		Quaternion Out;
+		FlexKit::GetOrientation(*SN, GetNode(Handle), &Out);
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+	void GraphicScene::Yaw					(EntityHandle Handle, float a)				{ FlexKit::Yaw	(*SN, GetDrawable(Handle).Node, a); }
+	void GraphicScene::Pitch				(EntityHandle Handle, float a)				{ FlexKit::Pitch(*SN, GetDrawable(Handle).Node, a); }
+	void GraphicScene::Roll					(EntityHandle Handle, float a)				{ FlexKit::Roll	(*SN, GetDrawable(Handle).Node, a); }
+	void GraphicScene::TranslateEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateLocal	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
+	void GraphicScene::TranslateEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateWorld	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
+	void GraphicScene::SetPositionEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionW		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
+	void GraphicScene::SetPositionEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionL		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
+	void GraphicScene::SetOrientation		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientation	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
+	void GraphicScene::SetOrientationL		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientationL	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
+	void GraphicScene::SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ ReleaseNode(*SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
 
 }

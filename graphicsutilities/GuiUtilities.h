@@ -656,7 +656,7 @@ namespace FlexKit
 			ColumnWidths(nullptr),
 			Cells		(nullptr),
 			XY			(0.0f, 0.0f),
-			Framework	(INVALIDHANDLE) {}
+			Framework	((uint32_t)-1) {}
 
 
 		GUIGrid( iAllocator* memory, uint32_t base ) : 

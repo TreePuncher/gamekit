@@ -47,9 +47,10 @@ TODOs
 #include "stdafx.h"
 
 #include "..\buildsettings.h"
-#include "..\coreutilities\memoryutilities.cpp"
-#include "..\coreutilities\timeutilities.cpp"
 
+//#include "..\graphicsutilities\graphics.cpp"
+
+#include "..\coreutilities\AllSourceFiles.cpp"
 #include "GameMemory.h"
 
 #include <Windows.h>
@@ -154,13 +155,6 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
 			FNTable->Draw				(Engine,				&Engine->TempAllocator.AllocatorInterface,				State);
 			FNTable->PostDraw			(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
-
-			if (FPSTimer > 1.0) {
-				std::cout << FPSCounter << "\n";
-				//std::cout << "Current VRam Usage: " << GetVidMemUsage(Engine->RenderSystem) / MEGABYTE << "MBs\n";
-				FPSCounter = 0;
-				FPSTimer = 0;
-			}
 
 			/*
 			if (CodeCheckTimer > 2.0)

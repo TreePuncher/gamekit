@@ -8634,14 +8634,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 				};
 
 
-				auto ResetLinePosition = [&]()
-				{
-					LineBegin = itr_2;
-					CurrentX = 0;
-					CurrentY += YAdvance / 2 * Draw.Scale.y;
-				};
-
-
 				for (size_t StrIdx = 0; StrIdx < StrSize; ++StrIdx) 
 				{
 					const auto C			= str[StrIdx];
@@ -8659,7 +8651,10 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 					if ( C == '\n' || CurrentX + XAdvance > AreaSize.x) 
 					{
 						CenterLine();
-						ResetLinePosition();
+						
+						LineBegin	= itr_2;
+						CurrentX	= 0;
+						CurrentY   += YAdvance / 2 * Draw.Scale.y;
 					}
 					
 					if (CurrentY > Draw.TopLeft.y + AreaSize.y)

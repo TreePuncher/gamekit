@@ -32,6 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\ProfilingUtilities.h"
 #include "..\coreutilities\Resources.h"
 
+#include "..\coreutilities\GraphicsComponents.h"
 
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\MeshUtils.h"
@@ -134,8 +135,6 @@ struct EngineMemory
 	PhysicsSystem	Physics;
 	PScene*			CurrentScene;
 
-	NodeHandle		RootSN;
-
 	TiledDeferredRender	TiledRender;
 	ForwardRender		ForwardRender;
 
@@ -143,7 +142,9 @@ struct EngineMemory
 
 	static_vector<Event>	NetworkEvents;
 					
-	SceneNodes					Nodes;
+	// Component System
+	SceneNodeComponentSystem	Nodes;
+
 	DynArray<const char*>		CmdArguments;
 
 	EngineMemory_DEBUG	Debug;

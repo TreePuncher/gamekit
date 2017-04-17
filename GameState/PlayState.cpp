@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "PlayState.h"
-
+#include "..\coreutilities\GraphicsComponents.h"
 
 /************************************************************************************************/
 
@@ -154,14 +154,11 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->Model.Initiate(Framework);
 	State->Model.SetPlayerCount(Framework, 1);
 
-	FK_ASSERT(LoadScene(Engine->RenderSystem, Framework->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Framework->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
-
-	EntityHandle Entity = Framework->GScene.CreateDrawableAndSetMesh("Flower");
+	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Framework->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	InitiateGameObject(
 		State->TestObject,
-		&Engine->Nodes,
-		EntityComponentArgs{ Entity , &Framework->GScene });
+		CreateEnityComponent(Framework->GScene, "Flower"));
 
 	return State;
 }

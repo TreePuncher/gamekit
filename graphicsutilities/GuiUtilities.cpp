@@ -1744,7 +1744,7 @@ namespace FlexKit
 
 	GUIButtonHandle GUIGridHandle::CreateButton(uint2 CellID, const char* Str, FontAsset* font)
 	{
-		GUIElementHandle out = INVALIDHANDLE;
+		GUIElementHandle out = (uint32_t)-1;
 		auto& Grid = _GetGrid();
 
 		if (CellID[0] < Grid.ColumnWidths.size() && 

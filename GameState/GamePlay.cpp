@@ -42,7 +42,7 @@ void InitiatePlayer(GameFramework* Engine, Player* Out)
 	Desc.h       = 10.0f;
 	Desc.r       = 5.0f;
 
-	InitiateCamera3rdPersonContoller(Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);
+	InitiateCamera3rdPersonContoller(Engine->Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);
 	Initiate(&Out->PlayerCollider, &Engine->PScene, &Engine->Engine->Physics, Desc);
 	InitiateASM(&Out->PlayerAnimation, Engine->Engine->BlockAllocator, Out->Model);
 
@@ -139,7 +139,7 @@ void TranslateActor(Player* P, float3 pos, double dT)
 /************************************************************************************************/
 
 
-void UpdatePlayer(GameFramework* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT)
+void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, float2 MouseMovement, double dT)
 {
 	float MovementFactor = 50;
 	float Drag =  Input.Shield ? 6.0f : 5.0f;
@@ -160,10 +160,10 @@ void UpdatePlayer(GameFramework* Engine, Player* P, PlayerInputState Input, floa
 			float3 Forward = P->PlayerCTR.Velocity.normal();
 			Forward = Quaternion(0, -90, 0) * Forward;
 			auto Q = FlexKit::Vector2Quaternion(Forward, { 0, 1, 0 }, Forward.cross({ 0, 1, 0 }));
-			Engine->GScene.SetOrientation(P->Model, Q);
+			Framework->GScene.SetOrientation(P->Model, Q);
 		}
 		else {
-			Engine->GScene.SetOrientation( P->Model, Quaternion(0, P->CameraCTR.Yaw + 180, 0));
+			Framework->GScene.SetOrientation( P->Model, Quaternion(0, P->CameraCTR.Yaw + 180, 0));
 		}
 	}
 	else
@@ -235,9 +235,9 @@ void UpdatePlayer(GameFramework* Engine, Player* P, PlayerInputState Input, floa
 	}
 
 	SetPositionW(P->CameraCTR.Nodes, P->CameraCTR.Yaw_Node, (P->PlayerCTR.Pos));
-	Engine->GScene.SetPositionEntity_WT(P->Model, P->PlayerCTR.Pos);
+	Framework->GScene.SetPositionEntity_WT(P->Model, P->PlayerCTR.Pos);
 
-	UpdateCameraController(Engine->Nodes, Cam_Ctr, dT);
+	UpdateCameraController(Framework->Engine->Nodes, Cam_Ctr, dT);
 }
 
 

@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\Resources.h"
+#include "..\coreutilities\GraphicsComponents.h"
 #include "..\graphicsutilities\AnimationUtilities.h" 
 #include "..\graphicsutilities\graphics.h"
 
@@ -34,6 +35,8 @@ namespace FlexKit
 {
 	typedef size_t SpotLightHandle;
 	typedef Pair<bool, int64_t> GSPlayAnimation_RES;
+
+	struct SceneNodeComponentSystem;
 
 	template<typename TY_SCHEME>
 	struct iScenePartitioner
@@ -105,12 +108,12 @@ namespace FlexKit
 		void		 RemoveEntity(EntityHandle E);
 		void		 ClearScene();
 
-		inline Drawable&	GetDrawable			(EntityHandle EHandle) {return Drawables.at(EHandle);								}
-		inline Skeleton*	GetEntitySkeleton	(EntityHandle EHandle) {return GetSkeleton(GT, Drawables.at(EHandle).MeshHandle);	}
-		inline float4		GetMaterialColour	(EntityHandle EHandle) {return Drawables.at(EHandle).MatProperties.Albedo;			}
-		inline float4		GetMaterialSpec		(EntityHandle EHandle) {return Drawables.at(EHandle).MatProperties.Spec;			}
-		inline NodeHandle	GetNode				(EntityHandle EHandle) {return Drawables.at(EHandle).Node;							}
-		inline float3		GetEntityPosition	(EntityHandle EHandle) {return GetPositionW(SN, Drawables.at(EHandle).Node);		}
+		Drawable&	GetDrawable			(EntityHandle EHandle) {return Drawables.at(EHandle);								}
+		Skeleton*	GetEntitySkeleton	(EntityHandle EHandle) {return GetSkeleton(GT, Drawables.at(EHandle).MeshHandle);	}
+		float4		GetMaterialColour	(EntityHandle EHandle) {return Drawables.at(EHandle).MatProperties.Albedo;			}
+		float4		GetMaterialSpec		(EntityHandle EHandle) {return Drawables.at(EHandle).MatProperties.Spec;			}
+		NodeHandle	GetNode				(EntityHandle EHandle) {return Drawables.at(EHandle).Node;							}
+		float3		GetEntityPosition	(EntityHandle EHandle);
 
 		bool isEntitySkeletonAvailable			(EntityHandle EHandle);
 		bool EntityEnablePosing					(EntityHandle EHandle);
@@ -133,7 +136,7 @@ namespace FlexKit
 		Drawable& SetNode(EntityHandle EHandle, NodeHandle Node);
 
 		EntityHandle CreateDrawableAndSetMesh(GUID_t Mesh);
-		EntityHandle CreateDrawableAndSetMesh(char* Mesh);
+		EntityHandle CreateDrawableAndSetMesh(const char* Mesh);
 		
 		LightHandle	AddPointLight ( float3 Color, float3 POS, float I = 10, float R = 10);
 		LightHandle	AddPointLight ( float3 Color, NodeHandle, float I = 10, float R = 10);
@@ -145,24 +148,18 @@ namespace FlexKit
 
 		void _PushEntity(Drawable E);
 
-		inline void Yaw					 (EntityHandle Handle, float a)				{ FlexKit::Yaw	(SN, GetDrawable(Handle).Node, a); }
-		inline void Pitch				 (EntityHandle Handle, float a)				{ FlexKit::Pitch(SN, GetDrawable(Handle).Node, a); }
-		inline void Roll				 (EntityHandle Handle, float a)				{ FlexKit::Roll	(SN, GetDrawable(Handle).Node, a); }
-		inline void TranslateEntity_LT	 (EntityHandle Handle, float3 V)			{ FlexKit::TranslateLocal	(SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-		inline void TranslateEntity_WT	 (EntityHandle Handle, float3 V)			{ FlexKit::TranslateWorld	(SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-		inline void SetPositionEntity_WT (EntityHandle Handle, float3 V)			{ FlexKit::SetPositionW		(SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-		inline void SetPositionEntity_LT (EntityHandle Handle, float3 V)			{ FlexKit::SetPositionL		(SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-		inline void SetOrientation		 (EntityHandle Handle, Quaternion Q)		{ FlexKit::SetOrientation	(SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
-		inline void SetOrientationL		 (EntityHandle Handle, Quaternion Q)		{ FlexKit::SetOrientationL	(SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
-		inline void SetLightNodeHandle	 (SpotLightHandle Handle, NodeHandle Node)	{ ReleaseNode(SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
+		void Yaw					(EntityHandle Handle, float a);	
+		void Pitch					(EntityHandle Handle, float a);			
+		void Roll					(EntityHandle Handle, float a);
+		void TranslateEntity_LT		(EntityHandle Handle, float3 V);			
+		void TranslateEntity_WT		(EntityHandle Handle, float3 V);			
+		void SetPositionEntity_WT	(EntityHandle Handle, float3 V);			
+		void SetPositionEntity_LT	(EntityHandle Handle, float3 V);			
+		void SetOrientation			(EntityHandle Handle, Quaternion Q);
+		void SetOrientationL		(EntityHandle Handle, Quaternion Q);		
+		void SetLightNodeHandle		(SpotLightHandle Handle, NodeHandle Node);
 
-		inline Quaternion GetOrientation(EntityHandle Handle) 
-		{ 
-			Quaternion Out;
-			FlexKit::GetOrientation(SN, GetNode(Handle), &Out);
-			return Out;
-		}
-
+		inline Quaternion GetOrientation(EntityHandle Handle);
 
 
 		DynArray<SpotLightShadowCaster>		SpotLightCasters;
@@ -182,7 +179,7 @@ namespace FlexKit
 		iAllocator*					Memory;
 		RenderSystem*				RS;
 		Resources*					RM;
-		SceneNodes*					SN;
+		SceneNodeComponentSystem*	SN;
 		GeometryTable*				GT;
 
 		PointLightBuffer	PLights;
@@ -196,7 +193,7 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI void InitiateGraphicScene			( GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodes* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory );
+	FLEXKITAPI void InitiateGraphicScene			( GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodeComponentSystem* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory );
 
 	FLEXKITAPI void UpdateGraphicScene				( GraphicScene* SM );
 	FLEXKITAPI void UpdateAnimationsGraphicScene	( GraphicScene* SM, double dt );

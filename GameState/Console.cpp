@@ -43,10 +43,10 @@ void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 	Out->FunctionTable.Allocator      = Out->Memory;
 	Out->BuiltInIdentifiers.Allocator = Out->Memory;
 
-	AddConsoleFunction(Out, { "PrintVar", PrintVar, 1,{ ConsoleVariableType::CONSOLE_STRING } });
-	AddConsoleFunction(Out, { "ListVars", ListVars, 0,{} });
-	AddConsoleFunction(Out, { "ListFunctions", ListFunctions, 0,{} });
-	AddConsoleFunction(Out, { "ToggleBool", ToggleBool, 1,{ ConsoleVariableType::CONSOLE_STRING } });
+	AddConsoleFunction(Out, { "PrintVar",		PrintVar, 1,{ ConsoleVariableType::CONSOLE_STRING } });
+	AddConsoleFunction(Out, { "ListVars",		ListVars, 0,{} });
+	AddConsoleFunction(Out, { "ListFunctions",	ListFunctions, 0,{} });
+	AddConsoleFunction(Out, { "Toggle",			ToggleBool, 1,{ ConsoleVariableType::CONSOLE_STRING } });
 
 	AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
 	AddStringVar(Out, "BuildDate", __DATE__);
