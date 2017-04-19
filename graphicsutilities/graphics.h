@@ -934,6 +934,7 @@ namespace FlexKit
 		size_t CurrentIndex;
 		size_t CurrentUploadIndex;
 		size_t FenceCounter;
+		size_t FenceUploadCounter;
 
 		ID3D12Fence* Fence;
 		ID3D12Fence* CopyFence;

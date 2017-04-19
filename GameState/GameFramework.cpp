@@ -358,10 +358,11 @@ extern "C"
 
 #ifdef _DEBUG
 		Framework.DrawDebug					= true;
+		Framework.DrawDebugStats			= true;
 #else
 		Framework.DrawDebug					= false;
+		Framework.DrawDebugStats			= true;
 #endif
-		Framework.DrawDebugStats			= false;
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
 		Framework.OcclusionCulling			= false;
@@ -552,15 +553,6 @@ extern "C"
 		// TODO: multi Thread these
 		// Do Uploads
 		{
-
-			{
-				//Draw_LineSet_3D Lines;
-				//Lines.C = State->ActiveCamera;
-				//Lines.Lines = &State->DebugLines;
-				//UploadLineSegments(Engine->RenderSystem, &State->DebugLines);
-				//PushLineSet(&State->ImmediateRender, Lines);
-			}
-
 			DeferredPass_Parameters	DPP;
 			DPP.PointLightCount = State->GScene.PLights.size();
 			DPP.SpotLightCount  = State->GScene.SPLights.size();
@@ -577,7 +569,6 @@ extern "C"
 			UploadCamera			(RS, Engine->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
 			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
 			UploadLandscape			(RS, &State->Landscape, Engine->Nodes, State->ActiveCamera, false, true, State->TerrainSplits + 1);
-
 		}
 
 		// Submission

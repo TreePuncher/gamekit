@@ -669,6 +669,8 @@ namespace FlexKit
 		NewRenderSystem.Memory			   = in->Memory;
 		NewRenderSystem.Settings.AAQuality = 0;
 		NewRenderSystem.Settings.AASamples = 1;
+		NewRenderSystem.FenceCounter	   = 0;
+		NewRenderSystem.FenceUploadCounter = 0;
 		UINT DeviceFlags                   = 0;
 
 		ID3D12Device*		Device;
@@ -4472,7 +4474,11 @@ namespace FlexKit
 		//ID3D12CommandList* CommandLists[MaxThreadCount];
 		//size_t	CommandListsUsed = 0;
 
+		auto Val = ++RS->FenceCounter;
+		RS->Fences[RS->CurrentIndex].FenceValue = Val;
+
 		RS->GraphicsQueue->ExecuteCommandLists(CLs.size(), CLs.begin());
+		RS->GraphicsQueue->Signal(RS->Fence, Val);
 	}
 
 
@@ -4502,7 +4508,7 @@ namespace FlexKit
 		size_t Index		= RS->CurrentUploadIndex;
 		auto Fence			= RS->CopyFence;
 
-		if (RS->Fences[Index].FenceValue != 0 && CompletedValue < RS->CopyFences[Index].FenceValue) {
+		if (CompletedValue < RS->CopyFences[Index].FenceValue) {
 			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
 			Fence->SetEventOnCompletion(RS->CopyFences[Index].FenceValue, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
@@ -4534,14 +4540,19 @@ namespace FlexKit
 	void SubmitUploadQueues(RenderSystem* RS)
 	{
 		auto UploadQueue = GetCurrentUploadQueue(RS);
+		auto Fence = RS->CopyFence;
 
 		if (UploadQueue->UploadCount) {
 			WaitForUploadQueue(RS);
 
 			auto HR = UploadQueue->UploadList[0]->Close();
-			RS->UploadQueue->Signal(RS->CopyFence, ++RS->CopyFences[RS->CurrentUploadIndex].FenceValue);
+			size_t Value = RS->CopyFences[RS->CurrentUploadIndex].FenceValue = ++RS->FenceUploadCounter;
+
 			RS->UploadQueue->ExecuteCommandLists(1, (ID3D12CommandList**)UploadQueue->UploadList);
+			RS->UploadQueue->Signal(Fence, Value);
+
 			RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
+
 			ReadyUploadQueues(RS);
 		}
 	}
@@ -4755,7 +4766,7 @@ namespace FlexKit
 		auto Fence = RS->Fence;
 		size_t CompleteValue = Fence->GetCompletedValue();
 		
-		if (RS->Fences[Index].FenceValue != 0 && CompleteValue < RS->Fences[Index].FenceValue){
+		if (CompleteValue < RS->Fences[Index].FenceValue){
 			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
 			Fence->SetEventOnCompletion(RS->Fences[Index].FenceValue, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
