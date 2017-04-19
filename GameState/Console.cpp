@@ -91,11 +91,11 @@ void DrawConsole(Console* C, ImmediateRender* IR, uint2 Window_WH)
 	const float AspectRatio = float(Window_WH[0]) / float(Window_WH[1]);
 	size_t itr = 0;
 
-	float y = 1.0f - float(1 + (itr)) * LineHeight;
+	float y = 0.5f - float(1 + (itr)) * LineHeight;
 	PrintText(IR, C->InputBuffer, C->Font, { 0, y }, float2(1.0f, 1.0f) - float2(0.0f, y), float4(WHITE, 1.0f), { 0.5f / AspectRatio, 0.5f });
 
 	for (auto& Line : C->Lines) {
-		float y = 1.0f - float(2 + (itr)) * LineHeight ;
+		float y = 0.5f - float(2 + (itr)) * LineHeight ;
 
 		if (y > 0) {
 			float2 Position(0.0f, y);

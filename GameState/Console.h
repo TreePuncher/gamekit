@@ -177,7 +177,7 @@ struct ConsoleLine
 
 struct Console
 {
-	FlexKit::CircularBuffer<ConsoleLine, 60>	Lines;
+	FlexKit::CircularBuffer<ConsoleLine, 4>		Lines;
 	FlexKit::FontAsset*							Font;
 
 	DynArray<ConsoleVariable>	Variables;

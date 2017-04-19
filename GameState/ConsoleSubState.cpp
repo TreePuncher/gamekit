@@ -94,7 +94,7 @@ bool DrawConsoleScreen(SubState* StateMemory, EngineMemory* Engine, double DT)
 	ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 	
 	FlexKit::Draw_RECT Rect;
-	Rect.BLeft	= { 0, 0 };
+	Rect.BLeft	= { 0, 0.5 };
 	Rect.TRight = { 1, 1 };
 	Rect.Color  = float4(Grey(0.0f), 0.5f);
 	PushRect(&ThisState->Framework->Immediate, Rect);

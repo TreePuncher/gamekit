@@ -724,8 +724,8 @@ namespace FlexKit
 
 		Ty& at(size_t idx)
 		{
-			idx = idx % size();
-			return Buffer[(_Head - 1 - idx + SIZE) % SIZE];
+			idx = (_Head - idx - 1) % SIZE;
+			return Buffer[idx];
 		}
 
 		bool full() noexcept {
@@ -801,7 +801,7 @@ namespace FlexKit
 
 		Ty& back() noexcept
 		{
-			return Buffer[_Head - 1];
+			return Buffer[(SIZE + _Head - 1) % SIZE];
 		}
 
 
@@ -823,12 +823,12 @@ namespace FlexKit
 
 			void Increment()
 			{
-				Idx = (SIZE + Idx + 1) % SIZE;
+				Idx++;
 			}
 
 			void Decrement()
 			{
-				Idx = (SIZE + Idx - 1) % SIZE;
+				Idx--;;
 			}
 
 			CircularIterator operator ++ (int)	{ auto Temp = *this; Increment(); return Temp; }
