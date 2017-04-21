@@ -1,4 +1,5 @@
 /**********************************************************************
+
 Copyright (c) 2015 - 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,16 +21,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-#ifndef PCH_H
-#define PCH_H
-
-#include "buildsettings.h"
-#include "coreutilities\containers.h"
-
-#include <chrono>
-#include <iostream>
-#include <thread>
-#include <stdint.h>
-
-#endif

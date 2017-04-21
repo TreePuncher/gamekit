@@ -25,11 +25,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CAMERAUTILITIES
 #define CAMERAUTILITIES
 
+#include "GameFramework.h"
 #include "../graphicsutilities/graphics.h"
+#include "../coreutilities/GraphicsComponents.h"
 
 using FlexKit::NodeHandle;
 using FlexKit::SceneNodes;
 using FlexKit::Camera;
+using FlexKit::ComponentSystemInterface;
+
 
 struct Camera3rdPersonContoller
 {
@@ -58,5 +62,40 @@ void RollCamera			(Camera3rdPersonContoller* Controller, float Degree);
 float3 GetForwardVector	(Camera3rdPersonContoller* Controller);
 float3 GetRightVector	(Camera3rdPersonContoller* Controller);
 
+namespace FlexKit
+{
+	typedef Handle_t<16> CameraControllerHandle;
 
+	struct ThirdPersonCameraComponentSystem : public ComponentSystemInterface
+	{
+		void Initiate(GameFramework* Framework);
+
+		void ReleaseHandle	(ComponentHandle Handle);
+		void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID);
+
+		enum State
+		{
+			UNUSED,
+			Dirty, 
+			Clean,
+		};
+
+		struct CameraController
+		{
+			NodeHandle Yaw_Node;
+			NodeHandle Pitch_Node;
+			NodeHandle Roll_Node;
+
+			float Yaw, Pitch, Roll;
+
+			SceneNodes*	Nodes;
+			Camera*		C;
+		};
+
+		DynArray<State>				States;
+		DynArray<CameraController>	CameraControllers;
+	};
+
+	CameraControllerHandle CreateThirdPersonCamComponent(ThirdPersonCameraComponentSystem*);
+}
 #endif

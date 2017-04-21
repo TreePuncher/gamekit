@@ -161,7 +161,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <Profile>false</Profile>
+      <Profile>true</Profile>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>
@@ -199,6 +199,7 @@
     <ClInclude Include="graphicsutilities\graphics.h" />
     <ClInclude Include="graphicsutilities\GuiUtilities.h" />
     <ClInclude Include="graphicsutilities\PipelineState.h" />
+    <ClInclude Include="graphicsutilities\SSReflections.h" />
     <ClInclude Include="graphicsutilities\TerrainRendering.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PhysicsUtilities\physicsutilities.h" />
@@ -280,6 +281,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="graphicsutilities\SSReflections.cpp" />
     <ClCompile Include="graphicsutilities\TerrainRendering.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

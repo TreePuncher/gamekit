@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2016 Robert May
+Copyright (c) 2015 - 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -122,6 +122,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct GameObjectInterface
+	{
+		uint16_t	LastComponent;
+		uint16_t	ComponentCount;
+		Component	Components[];
+	};
+
 	template<size_t COMPONENTCOUNT = 6>
 	struct FLEXKITAPI GameObject
 	{
@@ -185,6 +192,8 @@ namespace FlexKit
 
 			return nullptr;
 		}
+
+		operator GameObjectInterface* (){return reinterpret_cast<GameObjectInterface*>(this);}
 	};
 
 
@@ -192,9 +201,7 @@ namespace FlexKit
 
 
 	template<typename TY_GO>
-	void CreateComponent(TY_GO& GO)
-	{
-	}
+	void CreateComponent(TY_GO& GO){}
 
 
 	template<typename TY_GO>

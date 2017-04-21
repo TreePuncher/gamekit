@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2016 Robert May
+Copyright (c) 2015 - 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -142,9 +142,6 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		FPSTimer	   += dt;
 		FPSCounter++;
 
-
-
-
 		//if (T > StepSize)
 		{	// Game Tick  -----------------------------------------------------------------------------------
 			::UpdateInput();
@@ -174,7 +171,7 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		auto FrameEnd = std::chrono::system_clock::now();
 		auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
 
-		if(true)// FPS Locked
+		if(Engine->FrameLock)// FPS Locked
 			std::this_thread::sleep_for(chrono::microseconds(16000) - Duration);
 
 		FrameEnd = std::chrono::system_clock::now();

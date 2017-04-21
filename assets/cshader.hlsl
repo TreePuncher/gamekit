@@ -117,7 +117,7 @@ struct SurfaceProperties
 groupshared PointLight Lights[256];
 
 
-[numthreads(16, 8, 1)]
+[numthreads(32, 12, 1)]
 void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 {
 	uint ThreadID = TID.x % 16 + TID.y * 8;
@@ -167,6 +167,7 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 
 	float3 ColorOut = float4(Kd * AmbientLight.xyz, 0.0f);
 
+    #if 1
 	switch (MatID)
 	{
 		case 1:
@@ -259,6 +260,32 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 		default:
 			break;
 	}
+
+#else
+    [loop]
+	for (int I = 0; I < DeferredPointLightCount; ++I)
+	{
+		PointLight Light = Lights[I];
+		float3 Lp = Light.P;
+		float3 Lc = Light.K;
+		float3 Lv = normalize(Lp - WPOS);
+		float La  = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
+
+		ColorOut += Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse;
+	}
+
+	[loop]
+	for (int II = 0; II < DeferredSpotLightCount; ++II)
+	{
+		float3 Lp = SpotLights[II].P;
+		float3 Ld = SpotLights[II].D;
+		float3 Lv = normalize(Lp - WPOS);
+		float3 Lk = SpotLights[II].K;
+		float La = pow(max(dot(-Ld, Lv), 0), 10);
+
+		ColorOut += float4(Frd(Lv, Lk, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse, 0);
+	}
+#endif
 	WriteOut(float4(ColorOut, 1), ID.xy, uint2(0, 0));
 
 	//WriteOut(float4(pow(ColorOut, 1.0f / 2.1f), 1), ID.xy, uint2(0, 0));

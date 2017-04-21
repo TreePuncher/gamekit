@@ -361,7 +361,7 @@ extern "C"
 		Framework.DrawDebugStats			= true;
 #else
 		Framework.DrawDebug					= false;
-		Framework.DrawDebugStats			= true;
+		Framework.DrawDebugStats			= false;
 #endif
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
@@ -416,7 +416,8 @@ extern "C"
 		BindBoolVar(&Framework.Console, "DrawDebug",				&Framework.DrawDebug);
 		BindBoolVar(&Framework.Console, "DrawTerrain",				&Framework.DrawTerrain);
 		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",			&Framework.DrawPhysicsDebug);
-		BindBoolVar(&Framework.Console, "OcclusionCullingEnabled",	&Framework.OcclusionCulling);
+		BindBoolVar(&Framework.Console, "OcclusionCullingEnabled",  &Framework.OcclusionCulling);
+		BindBoolVar(&Framework.Console, "FrameLock",				&Engine->FrameLock);
 
 		enum Mode
 		{
@@ -536,6 +537,7 @@ extern "C"
 
 		auto RS = &Engine->RenderSystem;
 
+		SubmitUploadQueues(RS);
 		BeginSubmission(RS, State->ActiveWindow);
 
 		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
@@ -559,7 +561,6 @@ extern "C"
 			DPP.Mode			= State->DP_DrawMode;
 			DPP.WH				= GetWindowWH(Engine);
 
-			SubmitUploadQueues(RS);
 
 			UploadImmediate	(RS, &State->Immediate, TempMemory, State->ActiveWindow);	
 			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);

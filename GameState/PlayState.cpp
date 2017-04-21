@@ -132,7 +132,7 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double DT)
 		PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
 	}
 
-	ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
+	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
 	return false;
 }
