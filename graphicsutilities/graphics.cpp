@@ -939,6 +939,12 @@ namespace FlexKit
 			
 			ObjectsCreated.push_back(out->NullSRV);
 		}
+		{
+			out->NullSRV1D = CreateShaderResource(out, 1024);
+			SETDEBUGNAME( out->NullSRV, "NULL SRV");
+			
+			ObjectsCreated.push_back(out->NullSRV);
+		}
 
 		InitiateComplete = true;
 
@@ -4137,53 +4143,6 @@ namespace FlexKit
 		}
 
 		CL->RSSetViewports(Count, VPs);
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	ID3D12PipelineState* LoadShadeState(RenderSystem* RS)
-	{
-		auto ComputeShader = LoadShader("Tiled_Shading", "DeferredShader", "cs_5_0", "assets\\cshader.hlsl");
-
-		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
-		ID3D12PipelineState* ShadingPSO = nullptr;
-
-		CPSODesc.pRootSignature		= RS->Library.ShadingRTSig;
-		CPSODesc.CS					= CD3DX12_SHADER_BYTECODE(ComputeShader.Blob);
-		CPSODesc.Flags				= D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
-
-		HRESULT HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
-		FK_ASSERT(SUCCEEDED(HR));
-
-		Release(&ComputeShader);
-
-		return ShadingPSO;
-	}
-
-
-	/************************************************************************************************/
-
-
-	ID3D12PipelineState* LoadLightPrePassState(RenderSystem* RS)
-	{
-		auto ComputeShader = LoadShader("Tiled_LightPrePass", "DeferredShader", "cs_5_0", "assets\\LightPrepass.hlsl");
-
-		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
-		ID3D12PipelineState* ShadingPSO = nullptr;
-
-		CPSODesc.pRootSignature = RS->Library.ShadingRTSig;
-		CPSODesc.CS = CD3DX12_SHADER_BYTECODE(ComputeShader.Blob);
-		CPSODesc.Flags = D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
-
-		HRESULT HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
-		FK_ASSERT(SUCCEEDED(HR));
-
-		Release(&ComputeShader);
-
-		return ShadingPSO;
 	}
 
 

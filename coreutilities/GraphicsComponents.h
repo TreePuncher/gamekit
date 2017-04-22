@@ -1,6 +1,30 @@
 #ifndef GRAPHICSCOMPONENTS_H
 #define GRAPHICSCOMPONENTS_H
 
+/**********************************************************************
+
+Copyright (c) 2017 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+
 #include "..\coreutilities\Components.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\graphicsutilities\graphics.h"
@@ -9,7 +33,6 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 	// Transform Functions
-
 	// Component Derivatives 
 	// only define Methods
 	// All data is fetched using handle and System Pointer
@@ -21,7 +44,6 @@ namespace FlexKit
 
 		// Interface Methods
 		void ReleaseHandle(ComponentHandle Handle) final;
-
 
 		NodeHandle GetRoot();
 		NodeHandle GetNewNode();
@@ -38,6 +60,7 @@ namespace FlexKit
 		operator ComponentSystemInterface* ()	{ return this; }
 		operator SceneNodeComponentSystem* ()	{ return this; }
 	};
+
 
 	struct FLEXKITAPI TansformComponent : public Component
 	{
@@ -56,6 +79,10 @@ namespace FlexKit
 		void		SetParentNode(NodeHandle Parent, NodeHandle Node);
 	};
 
+
+	/************************************************************************************************/
+
+
 	struct TransformComponentArgs
 	{
 		SceneNodeComponentSystem*	Nodes;
@@ -68,7 +95,7 @@ namespace FlexKit
 		if (!GO.Full())
 		{
 			auto NodeHandle = Nodes->GetNewNode();
-			GO.Components[GO.ComponentCount++] = Component(Nodes, NodeHandle, CT_Transform);
+			GO.AddComponent(Component(Nodes, NodeHandle, CT_Transform));
 		}
 	}
 
@@ -81,8 +108,8 @@ namespace FlexKit
 			NodeHandle Handle = Args.Node;
 			if (Args.Node.INDEX == INVALIDHANDLE)
 				Handle = Args.Nodes->GetNewNode();
-
-			GO.Components[GO.ComponentCount++] = Component(Args.Nodes, Handle, CT_Transform);
+			
+			GO.AddComponent(Component(Args.Nodes, Handle, CT_Transform));
 		}
 	}
 
@@ -252,7 +279,7 @@ namespace FlexKit
 			else
 				CreateComponent(GO, TransformComponentArgs{ Args.System->SceneNodes, Args.System->GetNode(Args.Entity) });
 
-			GO.Components[GO.ComponentCount++] = Component(Args.System, Args.Entity, CT_Renderable);
+			GO.AddComponent(Component(Args.System, Args.Entity, CT_Renderable));
 		}
 	}
 
@@ -352,6 +379,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	LightComponentArgs CreateLightComponent( LightComponentSystem* LightSystem, float3 Color = float3(1.0f, 1.0f, 1.0f), float I = 100.0f, float R = 10000.0f )
 	{
 		return { NodeHandle(-1), LightSystem, Color, I, R};
@@ -377,9 +407,11 @@ namespace FlexKit
 				Node = Args.Node;
 
 			LightHandle Light = Args.System->Scene->AddPointLight(Args.Color, Node,  Args.I, Args.R);
-			GO.Components[GO.ComponentCount++] = Component(Args.System, Light, CT_PointLight);
+			GO.AddComponent(Component(Args.System, Light, CT_PointLight));
 		}
 	}
+
+	/************************************************************************************************/
 }//namespace FlexKit
 
 #endif

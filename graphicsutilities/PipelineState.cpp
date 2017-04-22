@@ -43,6 +43,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void ReleasePipelineStates(RenderSystem* RS)
 	{
 		for (auto s : RS->States->States)

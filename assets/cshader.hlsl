@@ -38,7 +38,8 @@ RWTexture2D<float4> BB : register(u0); // out
 /************************************************************************************************/
 // OUTPUT STRUCTS
 
-void WriteOut( float4 C, uint2 PixelCord, uint2 offset ) {BB[PixelCord + offset] = C;}
+void    WriteOut( float4 C, uint2 PixelCord, uint2 offset ) { BB[PixelCord + offset] = C; }
+float4  ReadIn  (uint2 PixelCord)                           { return BB[PixelCord]; }
 
 
 /************************************************************************************************/
@@ -289,6 +290,16 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 	WriteOut(float4(ColorOut, 1), ID.xy, uint2(0, 0));
 
 	//WriteOut(float4(pow(ColorOut, 1.0f / 2.1f), 1), ID.xy, uint2(0, 0));
+}
+
+
+/************************************************************************************************/
+
+
+[numthreads(32, 12, 1)]
+void ConvertOut(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
+{
+    WriteOut(pow(ReadIn(ID.xy), 1.0f / 2.1f), ID.xy, uint2(0, 0));
 }
 
 

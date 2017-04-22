@@ -285,9 +285,9 @@ struct TextureSet_MetaData : public MetaData
 {
 	TextureSet_MetaData() {
 		UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
-		type = MetaData::EMETAINFOTYPE::EMI_TEXTURESET;
-		size = 0;
-		Guid = 0;
+		type     = MetaData::EMETAINFOTYPE::EMI_TEXTURESET;
+		size     = 0;
+		Guid     = 0;
 		memset(&Textures, 0, sizeof(Textures));
 	}
 

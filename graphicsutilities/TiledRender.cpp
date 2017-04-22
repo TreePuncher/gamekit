@@ -23,9 +23,79 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "graphics.h"
+#include "PipelineState.h"
 
 namespace FlexKit
 {
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* LoadShadeState(RenderSystem* RS)
+	{
+		auto ComputeShader = LoadShader("Tiled_Shading", "DeferredShader", "cs_5_0", "assets\\cshader.hlsl");
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
+		ID3D12PipelineState* ShadingPSO = nullptr;
+
+		CPSODesc.pRootSignature		= RS->Library.ShadingRTSig;
+		CPSODesc.CS					= CD3DX12_SHADER_BYTECODE(ComputeShader.Blob);
+		CPSODesc.Flags				= D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
+
+		HRESULT HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		Release(&ComputeShader);
+
+		return ShadingPSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* LoadLightPrePassState(RenderSystem* RS)
+	{
+		auto ComputeShader = LoadShader("Tiled_LightPrePass", "DeferredShader", "cs_5_0", "assets\\LightPrepass.hlsl");
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
+		ID3D12PipelineState* ShadingPSO = nullptr;
+
+		CPSODesc.pRootSignature = RS->Library.ShadingRTSig;
+		CPSODesc.CS             = CD3DX12_SHADER_BYTECODE(ComputeShader.Blob);
+		CPSODesc.Flags          = D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
+
+		HRESULT HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		Release(&ComputeShader);
+
+		return ShadingPSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* LoadLightCopyOutState(RenderSystem* RS)
+	{
+		auto ComputeShader = LoadShader("ConvertOut", "DeferredShader", "cs_5_0", "assets\\CopyOut.hlsl");
+
+		D3D12_COMPUTE_PIPELINE_STATE_DESC CPSODesc{};
+		ID3D12PipelineState* ShadingPSO = nullptr;
+
+		CPSODesc.pRootSignature = RS->Library.ShadingRTSig;
+		CPSODesc.CS             = CD3DX12_SHADER_BYTECODE(ComputeShader.Blob);
+		CPSODesc.Flags          = D3D12_PIPELINE_STATE_FLAGS::D3D12_PIPELINE_STATE_FLAG_NONE;
+
+		HRESULT HR = RS->pDevice->CreateComputePipelineState(&CPSODesc, IID_PPV_ARGS(&ShadingPSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		Release(&ComputeShader);
+
+		return ShadingPSO;
+	}
+
+
 	/************************************************************************************************/
 	
 	
@@ -42,6 +112,8 @@ namespace FlexKit
 			gb->GBuffers[I].OutputBuffer->Release();
 			gb->GBuffers[I].EmissiveTex->Release();
 			gb->GBuffers[I].RoughnessMetal->Release();
+			gb->GBuffers[I].Temp->Release();
+
 		}
 
 		gb->Shading.ShaderConstants.Release();
@@ -80,8 +152,10 @@ namespace FlexKit
 	{
 		RegisterPSOLoader(RS, RS->States, TILEDSHADING_SHADE,		 LoadShadeState);
 		RegisterPSOLoader(RS, RS->States, TILEDSHADING_LIGHTPREPASS, LoadLightPrePassState);
+		RegisterPSOLoader(RS, RS->States, TILEDSHADING_COPYOUT,		 LoadLightCopyOutState);
+
 		QueuePSOLoad(RS, TILEDSHADING_SHADE);
-		//QueuePSOLoad(RS, TILEDSHADING_LIGHTPREPASS);
+		QueuePSOLoad(RS, TILEDSHADING_COPYOUT);
 
 		{
 			// Create GBuffers
@@ -160,6 +234,18 @@ namespace FlexKit
 						out->GBuffers[I].LightTilesBuffer = CreateTexture2D(RS, &desc);
 						FK_ASSERT(out->GBuffers[I].LightTilesBuffer);
 						SETDEBUGNAME(out->GBuffers[I].LightTilesBuffer.Texture, "Light Tiles Buffer");
+					}
+					{ // Create Temp Buffer
+						desc.Width			= GBdesc->RenderWindow->WH[0];
+						desc.Height			= GBdesc->RenderWindow->WH[1];
+						desc.Format         = FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
+						desc.UAV            = true;
+						desc.CV				= false;
+						desc.RenderTarget   = false;
+
+						out->GBuffers[I].Temp = CreateTexture2D(RS, &desc);
+						FK_ASSERT(out->GBuffers[I].Temp);
+						SETDEBUGNAME(out->GBuffers[I].Temp.Texture, "Temp Buffer");
 					}
 					out->GBuffers[I].DepthBuffer = GBdesc->DepthBuffer->Buffer[I];
 				}
@@ -274,11 +360,11 @@ namespace FlexKit
 					PSO_Desc.SampleMask				= UINT_MAX;
 					PSO_Desc.PrimitiveTopologyType	= D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 					PSO_Desc.NumRenderTargets		= 6;
-					PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Color
-					PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Specular
-					PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R8G8B8A8_UNORM; // Emissive
-					PSO_Desc.RTVFormats[3]			= DXGI_FORMAT_R8G8_UNORM;	  // Roughness
-					PSO_Desc.RTVFormats[4]			= DXGI_FORMAT_R16G16B16A16_FLOAT; // Normal
+					PSO_Desc.RTVFormats[0]			= DXGI_FORMAT_R8G8B8A8_UNORM;		// Color
+					PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R8G8B8A8_UNORM;		// Specular
+					PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R8G8B8A8_UNORM;		// Emissive
+					PSO_Desc.RTVFormats[3]			= DXGI_FORMAT_R8G8_UNORM;			// Roughness
+					PSO_Desc.RTVFormats[4]			= DXGI_FORMAT_R16G16B16A16_FLOAT;	// Normal
 					PSO_Desc.SampleDesc.Count		= 1;
 					PSO_Desc.SampleDesc.Quality		= 0;
 					PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;
@@ -474,7 +560,7 @@ namespace FlexKit
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.RoughnessMetal,		TablePOS);
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.NormalTex,			TablePOS);
 		TablePOS = Push2DSRVToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer,	TablePOS);
-		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,		TablePOS);
+		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,		TablePOS, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
 		auto ConstantBuffers = DescTable;
 
@@ -537,8 +623,6 @@ namespace FlexKit
 
 			CL->ResourceBarrier(sizeof(Barrier2)/ sizeof(Barrier2[0]), Barrier2);
 		}
-
-		CL->CopyResource(Target, CurrentGBuffer.OutputBuffer);
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barrier3[] = {
@@ -692,6 +776,8 @@ namespace FlexKit
 				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,		 CurrentMesh, VBViews));
 				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,	 CurrentMesh, VBViews));
 			
+
+
 				CL->IASetIndexBuffer(&IndexView);
 				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin() );
 				LastHandle = CurrentHandle;
@@ -917,4 +1003,83 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-}
+
+
+	void PresentBufferToTarget(RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* Render, Texture2D* Target)
+	{
+		auto BufferIndex	 = Render->CurrentBuffer;
+		auto& CurrentGBuffer = Render->GBuffers[BufferIndex];
+
+		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
+		auto TablePOS  = ReserveDescHeap(RS, 11);
+
+		
+		// The Max is to quiet a error if a no Lights are passed
+
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.OutputBuffer, TablePOS);
+		TablePOS = PushCBToDescHeap			(RS, RS->NullConstantBuffer.Get(), TablePOS, 1024); // t1
+
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS); 
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+
+		TablePOS = Push2DSRVToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer,	TablePOS);
+		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.Temp,				TablePOS, DXGI_FORMAT_R8G8B8A8_UNORM);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
+					D3D12_RESOURCE_STATE_RENDER_TARGET,
+					D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, -1,
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.Temp,
+					D3D12_RESOURCE_STATE_COPY_SOURCE,
+					D3D12_RESOURCE_STATE_UNORDERED_ACCESS, -1,
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(*Target,
+					D3D12_RESOURCE_STATE_RENDER_TARGET,
+					D3D12_RESOURCE_STATE_COPY_DEST, -1,
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE)
+			};
+
+			CL->ResourceBarrier(3, Barrier);
+		}
+
+		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
+		CL->SetComputeRootDescriptorTable	(0, DescTable);
+		CL->SetPipelineState				(GetPSO(RS, EPIPELINESTATES::TILEDSHADING_COPYOUT));
+		CL->Dispatch						(Target->WH[0] / 32, Target->WH[1] / 12, 1);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
+					D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+					D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.Temp,
+					D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+					D3D12_RESOURCE_STATE_COPY_SOURCE, -1,
+					D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+			};
+
+			CL->ResourceBarrier(2, Barrier);
+		}
+
+		CL->CopyResource(*Target, CurrentGBuffer.Temp);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(*Target,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE)
+			};
+
+			CL->ResourceBarrier(1, Barrier);
+		}
+	}
+
+
+}	/************************************************************************************************/

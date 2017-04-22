@@ -104,12 +104,12 @@ namespace FlexKit
 			Texture2D ColorTex;
 			Texture2D SpecularTex;
 			Texture2D NormalTex;
-			//Texture2D PositionTex;
 			Texture2D OutputBuffer;
 			Texture2D DepthBuffer;
 			Texture2D EmissiveTex;
 			Texture2D RoughnessMetal;
 			Texture2D LightTilesBuffer;
+			Texture2D Temp;
 		}GBuffers[3];
 		size_t CurrentBuffer;
 
@@ -146,8 +146,8 @@ namespace FlexKit
 	FLEXKITAPI void UploadDeferredPassConstants	( RenderSystem* RS, DeferredPass_Parameters* in, float4 A, TiledDeferredRender* Pass );
 	FLEXKITAPI void	IncrementPassIndex			( TiledDeferredRender* Pass );
 	FLEXKITAPI void ClearTileRenderBuffers		( RenderSystem* RS, TiledDeferredRender* );
-
-	FLEXKITAPI void PresentBufferToTarget		();
+	
+	FLEXKITAPI void PresentBufferToTarget		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* Render, Texture2D* Target );
 }
 
 #endif

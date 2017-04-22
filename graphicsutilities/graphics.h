@@ -909,7 +909,7 @@ namespace FlexKit
 
 	struct RenderSystem
 	{
-		iAllocator*				Memory;
+		iAllocator*			Memory;
 
 		// TODO: Add Asset Manager _ptr Here
 
@@ -927,9 +927,10 @@ namespace FlexKit
 		ID3D12CommandQueue*	UploadQueue;
 		ID3D12CommandQueue*	ComputeQueue;
 
-		ConstantBuffer	NullConstantBuffer; // Zero Filled Constant Buffer
-		Texture2D		NullUAV; // 1x1 Zero UAV
-		Texture2D		NullSRV;
+		ConstantBuffer			NullConstantBuffer; // Zero Filled Constant Buffer
+		Texture2D				NullUAV; // 1x1 Zero UAV
+		Texture2D				NullSRV;
+		ShaderResourceBuffer	NullSRV1D;
 
 		size_t CurrentIndex;
 		size_t CurrentUploadIndex;

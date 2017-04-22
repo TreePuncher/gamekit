@@ -307,7 +307,7 @@ void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 
 			if ((LightBufferFlags)PState != LightBufferFlags::Unused) {
 				auto POS = GetPositionW(Engine->Nodes, P.Position);
-				PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.I / 50);
+				PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.R);
 			}
 		}
 	}
@@ -596,8 +596,9 @@ extern "C"
 			if(State->DrawTerrain)
 				DrawLandscape		(RS, &State->Landscape, &Engine->TiledRender, State->TerrainSplits, State->ActiveCamera, false);
 
-			TiledRender_Shade	(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-			ForwardPass			(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
+			TiledRender_Shade		(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
+			PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget);
+			ForwardPass				(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
 
 			DrawImmediate(RS, CL, &State->Immediate, GetBackBufferTexture(State->ActiveWindow), State->ActiveCamera);       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);

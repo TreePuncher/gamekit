@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2016 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -50,29 +50,30 @@ namespace FlexKit
 		CT_Collider,
 		CT_Player,
 		CT_GameObject,
+		CT_User,
 		CT_Unknown
 	};
+
+	struct Component;
 
 	class ComponentSystemInterface
 	{
 	public:
 		virtual void ReleaseHandle	(ComponentHandle Handle) = 0;
-		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID) {}
+		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID, Component* Components, size_t ComponentCount) {}
 	};
 
 	struct Component
 	{
-		Component()
-		{
-			ComponentSystem		= nullptr;
-			Type				= ComponentType::CT_Unknown;
-		}
+		Component() :
+			ComponentSystem	(nullptr),
+			Type			(ComponentType::CT_Unknown){}
 
 
 		Component(
 			ComponentSystemInterface*	CS,
 			FlexKit::Handle_t<16>		CH,
-			ComponentType				T
+			ComponentType				T 
 		) :
 			ComponentSystem		(CS),
 			ComponentHandle		(CH),
@@ -122,13 +123,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct GameObjectInterface
-	{
-		uint16_t	LastComponent;
-		uint16_t	ComponentCount;
-		Component	Components[];
-	};
-
 	template<size_t COMPONENTCOUNT = 6>
 	struct FLEXKITAPI GameObject
 	{
@@ -156,15 +150,35 @@ namespace FlexKit
 			return (MaxComponentCount <= ComponentCount);
 		}
 
-
 		void NotifyAll(ComponentType Source, EventTypeID EventID)
 		{
-			for (size_t I = 0; I < ComponentCount; ++I) {
+			for (size_t I = 0; I < ComponentCount; ++I) 
+			{
 				if(Components[I].ComponentSystem)
-					Components[I].ComponentSystem->HandleEvent(Components[I].ComponentHandle, Source, EventID);
+					Components[I].ComponentSystem->HandleEvent(
+						Components[I].ComponentHandle, 
+						Source, EventID, 
+						Components, 
+						ComponentCount);
 			}
 		}
 
+		bool AddComponent(Component&& NewC)
+		{
+			if (!Full())
+			{
+				for (auto& C : Components) {
+					if (C.Type == ComponentType::CT_Unknown) {
+						C = std::move(NewC);
+						break;
+					}
+				}
+
+				++ComponentCount;
+				return true;
+			}
+			return false;
+		}
 
 		void Release()
 		{
@@ -192,8 +206,6 @@ namespace FlexKit
 
 			return nullptr;
 		}
-
-		operator GameObjectInterface* (){return reinterpret_cast<GameObjectInterface*>(this);}
 	};
 
 
@@ -201,7 +213,9 @@ namespace FlexKit
 
 
 	template<typename TY_GO>
-	void CreateComponent(TY_GO& GO){}
+	void CreateComponent(TY_GO& GO)
+	{
+	}
 
 
 	template<typename TY_GO>
