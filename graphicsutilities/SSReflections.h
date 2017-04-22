@@ -21,3 +21,18 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
+
+#include "graphics.h"
+
+namespace FlexKit
+{
+	struct SSRTracer
+	{
+		Texture2D OutputBuffer;
+	};
+
+	bool InitiateSSReflectionTracer	(RenderSystem* RS, SSRTracer* Out);
+	void TraceReflections			(RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* In, Texture2D Out);
+
+	void ReleaseSSReflectionTracer	(SSRTracer* Out);
+}

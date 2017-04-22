@@ -46,5 +46,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\Meshutils.cpp"
 #include "..\graphicsutilities\PipelineState.cpp"
 #include "..\graphicsutilities\TerrainRendering.cpp"
+#include "..\graphicsutilities\TiledRender.cpp"
 
 #include "..\PhysicsUtilities\physicsutilities.cpp"

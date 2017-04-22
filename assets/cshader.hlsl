@@ -186,7 +186,7 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 								float La  = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
 
 								ColorOut += Frd(Lv, Lc, vdir, WPOS, Kd, n, Ks, m, r) * La * PIInverse;
-							}
+                            }
 
 							[loop]
 							for (int II = 0; II < DeferredSpotLightCount; ++II)

@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GraphicsComponents.h"
 
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\TiledRender.h"
 #include "..\graphicsutilities\MeshUtils.h"
 
 #include "..\PhysicsUtilities\physicsutilities.h"
