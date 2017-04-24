@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameUtilities.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\SSReflections.h"
 #include <cstdio>
 
 using namespace FlexKit;
@@ -147,9 +148,10 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	ForwardPass_DESC FP_Desc{ &Engine->DepthBuffer, &Engine->Window };
 	TiledRendering_Desc DP_Desc{ &Engine->DepthBuffer, &Engine->Window, nullptr };
 
-	InitiateForwardPass(Engine->RenderSystem,	&FP_Desc, &Engine->ForwardRender);
-	InitiateTiledDeferredRender(Engine->RenderSystem, &DP_Desc, &Engine->TiledRender);
-	InitiateGeometryTable	( &Engine->Geometry, Engine->BlockAllocator );
+	InitiateForwardPass			(Engine->RenderSystem,	&FP_Desc, &Engine->ForwardRender);
+	InitiateTiledDeferredRender	(Engine->RenderSystem, &DP_Desc, &Engine->TiledRender);
+	InitiateGeometryTable		( &Engine->Geometry, Engine->BlockAllocator );
+	InitiateSSReflectionTracer	(Engine->RenderSystem, GetWindowWH(Engine), &Engine->Reflections);
 
 	auto OcclusionBufferWH = GetWindowWH(Engine)/4;
 

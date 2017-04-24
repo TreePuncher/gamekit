@@ -158,6 +158,7 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 	float LinearDepth = ProjRatio.y / (l - ProjRatio.x);
 	*/
 	float Distance = l;
+    float LinearNormlizedDisance = (Distance - MinZ) / (500 - MinZ);
 
 	float3 ViewRay = normalize(FarPos - CameraPOS);
 	float3 WPOS    = CameraPOS.xyz + (ViewRay * Distance);
@@ -217,38 +218,42 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 							ColorOut = float3(m, m, m);
 						}
 						break;
-					case 4: // Display Normal Buffer
+					case 4: // Display WorldSpace Normals
 						{
 							ColorOut = n;
 						}
 						break;
-					case 5: // World Position
+                    case 5: // Display Screeen Space Normal Buffer
+						{
+                            ColorOut = mul(PV, n);
+                        }
+                        break;
+					case 6: // World Position
 						{
 							ColorOut = float3(WPOS);
 							break;
 						}
-					case 6: // Light Tile Debug
+					case 7: // Depth Debug
 						{
 							//float4 ActualPosition = Position.Load(int3(ID.xy, 0));
 							//float e = length(WPOS - ActualPosition);
-							ColorOut = float3(0, 0, 0);
+                            ColorOut = LinearNormlizedDisance;
 							break;
 						}
-                       case 7:
+                    case 8:
+                    {
+                        [loop]
+                        for (int I = 0; I < DeferredPointLightCount; ++I)
                         {
-                            [loop]
-                            for (int I = 0; I < DeferredPointLightCount; ++I)
-                            {
-                                PointLight Light = Lights[I];
-                                float3 Lp = Light.P;
-                                float3 Lc = Light.K;
-                                float3 Lv = normalize(Lp - WPOS);
-                                float La = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
+                            PointLight Light = Lights[I];
+                            float3 Lp   = Light.P;
+                            float3 Lc   = Light.K;
+                            float3 Lv   = normalize(Lp - WPOS);
+                            float La    = PL(Lp, WPOS, Light.P[3], Light.K[3]); // Attenuation
 
-                                ColorOut += La * Lc;
-                            }
-                        }   break;
-						break;
+                            ColorOut += La * Lc;
+                        }
+                    }   break;
 					default:
 						break;
 				}
