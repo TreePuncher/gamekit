@@ -100,6 +100,10 @@ void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 		case KC_ESC:
 			_ptr->Quit = true;
 			break;
+		case KC_R:
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::SSREFLECTIONS);
+
+			break;
 		case KC_M:
 			_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
 			break;
@@ -365,7 +369,7 @@ extern "C"
 #endif
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
-		Framework.OcclusionCulling			= false;
+		Framework.OcclusionCulling			= true;
 
 		Framework.Stats.FPS					= 0;
 		Framework.Stats.FPS_Counter			= 0;
@@ -412,7 +416,7 @@ extern "C"
 		InitateConsole(&Framework.Console, Framework.DefaultAssets.Font, Engine);
 		BindUIntVar(&Framework.Console, "TerrainSplits",			&Framework.TerrainSplits);
 		BindUIntVar(&Framework.Console, "FPS",						&Framework.Stats.FPS);
-		BindBoolVar(&Framework.Console, "OnScreenDebugStats",		&Framework.DrawDebugStats);
+		BindBoolVar(&Framework.Console, "HUD",						&Framework.DrawDebugStats);
 		BindBoolVar(&Framework.Console, "DrawDebug",				&Framework.DrawDebug);
 		BindBoolVar(&Framework.Console, "DrawTerrain",				&Framework.DrawTerrain);
 		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",			&Framework.DrawPhysicsDebug);
@@ -597,9 +601,11 @@ extern "C"
 				DrawLandscape		(RS, &State->Landscape, &Engine->TiledRender, State->TerrainSplits, State->ActiveCamera, false);
 
 			TiledRender_Shade		(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-			PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget);
-			ForwardPass				(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
+			TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, GetWindowWH(Engine), &Engine->Reflections);
 
+			PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget, GetCurrentBuffer(&Engine->Reflections));
+
+			ForwardPass				(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
 			DrawImmediate(RS, CL, &State->Immediate, GetBackBufferTexture(State->ActiveWindow), State->ActiveCamera);       
 			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
 		}
@@ -612,6 +618,8 @@ extern "C"
 	{
 		Engine->Culler.Increment();
 		IncrementCurrent(&Engine->DepthBuffer);
+		IncrementIndex(&Engine->Reflections);
+
 		PresentWindow(&Engine->Window, Engine->RenderSystem);
 	}
 

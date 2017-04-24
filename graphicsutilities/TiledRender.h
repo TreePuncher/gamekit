@@ -36,9 +36,10 @@ namespace FlexKit
 		EDPM_ALBEDO,
 		EDPM_ROUGHNESS,
 		EDPM_METAL,
-		EDPM_NORMALS,
+		EDPM_WSNORMALS,
+		EDPM_SSNORMALS,
 		EDPM_POSITION,
-		EDPM_CONSTRUCTPOSITION,
+		EDPM_LINEARDEPTH,
 		EDPM_LIGHTCONTRIBUTION,
 		EDPM_COUNT,
 	};
@@ -147,7 +148,7 @@ namespace FlexKit
 	FLEXKITAPI void	IncrementPassIndex			( TiledDeferredRender* Pass );
 	FLEXKITAPI void ClearTileRenderBuffers		( RenderSystem* RS, TiledDeferredRender* );
 	
-	FLEXKITAPI void PresentBufferToTarget		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* Render, Texture2D* Target );
+	FLEXKITAPI void PresentBufferToTarget		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* Render, Texture2D* Target, Texture2D* ReflectionBuffer = nullptr);
 }
 
 #endif

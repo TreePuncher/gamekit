@@ -87,8 +87,6 @@ namespace FlexKit
 	char* DEBUGDEVICEID		= "MainContext";
 	char* DEBUGSWAPCHAINID	= "MainSwapChain";
 
-	#define CALCULATECONSTANTBUFFERSIZE(TYPE) (sizeof(TYPE)/1024 + 1024)
-
 
 	/************************************************************************************************/
 
@@ -745,6 +743,12 @@ namespace FlexKit
 		FrameTextureHeap_DESC.NodeMask			= 0;
 		FrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
+		D3D12_DESCRIPTOR_HEAP_DESC	GPUFrameTextureHeap_DESC = {};
+		GPUFrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		GPUFrameTextureHeap_DESC.NumDescriptors		= 1024 * 1;
+		GPUFrameTextureHeap_DESC.NodeMask			= 0;
+		GPUFrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+
 		D3D12_DESCRIPTOR_HEAP_DESC	RenderTargetHeap_DESC = {};
 		RenderTargetHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 		RenderTargetHeap_DESC.NumDescriptors	= 128;
@@ -840,6 +844,10 @@ namespace FlexKit
 				HR = Device->CreateDescriptorHeap(&FrameTextureHeap_DESC, IID_PPV_ARGS(&SRVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 				SETDEBUGNAME(SRVHeap, "RESOURCEHEAP");
 
+				ID3D12DescriptorHeap* GPUSRVHeap = nullptr;
+				HR = Device->CreateDescriptorHeap(&GPUFrameTextureHeap_DESC, IID_PPV_ARGS(&GPUSRVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
+				SETDEBUGNAME(GPUSRVHeap, "GPURESOURCEHEAP");
+
 				ID3D12DescriptorHeap* RTVHeap = nullptr;
 				HR = Device->CreateDescriptorHeap(&RenderTargetHeap_DESC, IID_PPV_ARGS(&RTVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 				SETDEBUGNAME(RTVHeap, "RENDERTARGETHEAP");
@@ -850,10 +858,11 @@ namespace FlexKit
 
 				NewRenderSystem.UploadQueues[I].UploadCount = 0;
 
-				NewRenderSystem.FrameResources[I].DescHeap.DescHeap = SRVHeap;
-				NewRenderSystem.FrameResources[I].RTVHeap.DescHeap  = RTVHeap;
-				NewRenderSystem.FrameResources[I].DSVHeap.DescHeap	= DSVHeap;
-				NewRenderSystem.FrameResources[I].ThreadsIssued = 0;
+				NewRenderSystem.FrameResources[I].DescHeap.DescHeap    = SRVHeap;
+				NewRenderSystem.FrameResources[I].GPUDescHeap.DescHeap = GPUSRVHeap;
+				NewRenderSystem.FrameResources[I].RTVHeap.DescHeap     = RTVHeap;
+				NewRenderSystem.FrameResources[I].DSVHeap.DescHeap	   = DSVHeap;
+				NewRenderSystem.FrameResources[I].ThreadsIssued        = 0;
 			}
 
 			NewRenderSystem.FrameResources[0].CommandLists[0]->Reset(NewRenderSystem.FrameResources[0].GraphicsCLAllocator[0], nullptr);
@@ -1877,7 +1886,7 @@ namespace FlexKit
 		CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
 
 		Texture2D NewTexture = {NewResource, 
-								{desc_in->Height, desc_in->Height}, 
+								{desc_in->Width, desc_in->Height}, 
 								TextureFormat2DXGIFormat(desc_in->Format)};
 
 		SETDEBUGNAME(NewResource, __func__);
@@ -3853,13 +3862,23 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
-
+	
 	void ResetDescHeap(RenderSystem* RS)
 	{
 		auto FrameResources = GetCurrentFrameResources(RS);
 		FrameResources->DescHeap.GPU_HeapPOS = FrameResources->DescHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
 		FrameResources->DescHeap.CPU_HeapPOS = FrameResources->DescHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ResetGPUDescHeap(RenderSystem* RS)
+	{
+		auto FrameResources = GetCurrentFrameResources(RS);
+		FrameResources->GPUDescHeap.GPU_HeapPOS = FrameResources->GPUDescHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
+		FrameResources->GPUDescHeap.CPU_HeapPOS = FrameResources->GPUDescHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
 	}
 
 
@@ -3929,6 +3948,20 @@ namespace FlexKit
 		return{ CPU , GPU };
 	}
 
+	/************************************************************************************************/
+
+
+	DescHeapPOS ReserveGPUDescHeap(RenderSystem* RS, size_t SlotCount)
+	{
+		auto FrameResources = GetCurrentFrameResources(RS);
+		auto CPU = FrameResources->GPUDescHeap.CPU_HeapPOS;
+		auto GPU = FrameResources->GPUDescHeap.GPU_HeapPOS;
+		FrameResources->GPUDescHeap.CPU_HeapPOS.ptr = FrameResources->GPUDescHeap.CPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
+		FrameResources->GPUDescHeap.GPU_HeapPOS.ptr = FrameResources->GPUDescHeap.GPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
+
+		return{ CPU , GPU };
+	}
+
 
 	/************************************************************************************************/
 
@@ -3971,6 +4004,12 @@ namespace FlexKit
 	{
 		return GetCurrentFrameResources(RS)->DSVHeap.GPU_HeapPOS;
 	}
+
+	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescTableCurrentPosition_GPU(RenderSystem* RS)
+	{
+		return GetCurrentFrameResources(RS)->GPUDescHeap.GPU_HeapPOS;
+	}
+
 
 	/************************************************************************************************/
 
@@ -4172,6 +4211,7 @@ namespace FlexKit
 
 		ResetRTVHeap(RS);
 		ResetDescHeap(RS);
+		ResetGPUDescHeap(RS);
 		ResetDSVHeap(RS);
 
 		auto SRVs = GetCurrentDescriptorTable(RS);
@@ -7321,7 +7361,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			Release(&DrawTextPShader);
 
 			RG->DrawStates[DCT_TEXT]  = PSO;
-			RG->DrawStates[DCT_TEXT2] = PSO;
+			RG->DrawStates[DCT_TEXT2] = PSO; PSO->AddRef();
 		}
 
 		ConstantBuffer_desc	Desc;

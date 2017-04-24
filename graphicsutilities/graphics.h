@@ -106,6 +106,7 @@ namespace FlexKit
 
 #define SAFERELEASE(RES) if(RES) { RES->Release(); RES = nullptr; }
 
+#define CALCULATECONSTANTBUFFERSIZE(TYPE) (sizeof(TYPE)/1024 + 1024)
 
 	/************************************************************************************************/
 
@@ -903,6 +904,7 @@ namespace FlexKit
 		DescHeapStack RTVHeap;
 		DescHeapStack DSVHeap;
 		DescHeapStack DescHeap;
+		DescHeapStack GPUDescHeap;
 
 		size_t						ThreadsIssued;
 	};
@@ -2004,8 +2006,12 @@ namespace FlexKit
 	FLEXKITAPI D3D12_CPU_DESCRIPTOR_HANDLE  GetDSVTableCurrentPosition_CPU	( RenderSystem* RS );
 	FLEXKITAPI D3D12_GPU_DESCRIPTOR_HANDLE  GetDSVTableCurrentPosition_GPU	( RenderSystem* RS );
 
-	FLEXKITAPI void		   ResetDescHeap			( RenderSystem* RS );
-	FLEXKITAPI void		   ResetRTVHeap				( RenderSystem* RS );
+	FLEXKITAPI D3D12_GPU_DESCRIPTOR_HANDLE  GetGPUDescTableCurrentPosition_GPU (RenderSystem* RS);
+
+
+	FLEXKITAPI void	ResetDescHeap		( RenderSystem* RS );
+	FLEXKITAPI void	ResetRTVHeap		( RenderSystem* RS );
+	FLEXKITAPI void	ResetGPUDescHeap	( RenderSystem* RS );
 
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DescHeapPOS;
 
@@ -2015,6 +2021,8 @@ namespace FlexKit
 	}
 
 	FLEXKITAPI DescHeapPOS ReserveDescHeap			( RenderSystem* RS, size_t SlotCount = 1 );
+	FLEXKITAPI DescHeapPOS ReserveGPUDescHeap		( RenderSystem* RS, size_t SlotCount = 1 );
+
 	FLEXKITAPI DescHeapPOS ReserveRTVHeap			( RenderSystem* RS, size_t SlotCount );
 	FLEXKITAPI DescHeapPOS ReserveDSVHeap			( RenderSystem* RS, size_t SlotCount );
 

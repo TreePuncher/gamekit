@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameUtilities.h"
 #include "..\graphicsutilities\Graphics.h"
 #include "..\graphicsutilities\TerrainRendering.h"
+#include "..\graphicsutilities\SSReflections.h"
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\Resources.h"
 

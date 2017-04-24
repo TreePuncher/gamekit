@@ -493,157 +493,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TiledRender_Shade(
-		PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target,
-		RenderSystem* RS, const Camera* C,
-		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
-	{
-		auto CL				 = GetCurrentCommandList(RS);
-		auto FrameResources  = GetCurrentFrameResources(RS);
-		auto BufferIndex	 = Pass->CurrentBuffer;
-		auto& CurrentGBuffer = Pass->GBuffers[BufferIndex];
-
-
-		{
-			CD3DX12_RESOURCE_BARRIER Barrier1[] = {
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.ColorTex,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.SpecularTex,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.EmissiveTex,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.RoughnessMetal,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.NormalTex,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-#if 0
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.PositionTex,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-#endif
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
-
-			CL->ResourceBarrier(sizeof(Barrier1) / sizeof(Barrier1[0]), Barrier1);
-		}
-
-		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS  = ReserveDescHeap(RS, 11);
-
-		// The Max is to quiet a error if a no Lights are passed
-		TablePOS = PushSRVToDescHeap	(RS, PLB->Resource, TablePOS,  max(PLB->size(), 1),  PLB_Stride);	
-		TablePOS = PushSRVToDescHeap	(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride);
-
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,			TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.SpecularTex,		TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.EmissiveTex,		TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.RoughnessMetal,		TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.NormalTex,			TablePOS);
-		TablePOS = Push2DSRVToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer,	TablePOS);
-		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,		TablePOS, DXGI_FORMAT_R32G32B32A32_FLOAT);
-
-		auto ConstantBuffers = DescTable;
-
-		TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
-		TablePOS = PushCBToDescHeap			(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
-
-		ID3D12DescriptorHeap* Heaps[] = { FrameResources->DescHeap.DescHeap };
-		CL->SetDescriptorHeaps(1, Heaps);
-
-		// Do Shading Here
-		CL->SetPipelineState				(GetPSO(RS, TILEDSHADING_SHADE));
-		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
-		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
-
-		CL->Dispatch(Target.WH[0] / 32, Target.WH[1] / 12, 1);
-
-		{
-			CD3DX12_RESOURCE_BARRIER Barrier2[] = {
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.ColorTex,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.SpecularTex,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.EmissiveTex,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.RoughnessMetal,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.NormalTex,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1, 
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-#if 0
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.PositionTex,
-				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-#endif
-
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
-				D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-				D3D12_RESOURCE_STATE_COPY_SOURCE, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-
-				CD3DX12_RESOURCE_BARRIER::Transition(Target,
-				D3D12_RESOURCE_STATE_RENDER_TARGET,
-				D3D12_RESOURCE_STATE_COPY_DEST,	-1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
-
-			CL->ResourceBarrier(sizeof(Barrier2)/ sizeof(Barrier2[0]), Barrier2);
-		}
-
-		{
-			CD3DX12_RESOURCE_BARRIER Barrier3[] = {
-				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
-				D3D12_RESOURCE_STATE_COPY_SOURCE,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
-				CD3DX12_RESOURCE_BARRIER::Transition(Target,
-				D3D12_RESOURCE_STATE_COPY_DEST,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
-				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
-
-			CL->ResourceBarrier(2, Barrier3);
-		}
-
-	}
-
-
-	/************************************************************************************************/
-
-
 	void ClearTileRenderBuffers(RenderSystem* RS, TiledDeferredRender* Pass) {
 		size_t BufferIndex = Pass->CurrentBuffer;
 		float4	ClearValue = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -978,6 +827,156 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+		void TiledRender_Shade(
+		PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target,
+		RenderSystem* RS, const Camera* C,
+		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
+	{
+		auto CL				 = GetCurrentCommandList(RS);
+		auto FrameResources  = GetCurrentFrameResources(RS);
+		auto BufferIndex	 = Pass->CurrentBuffer;
+		auto& CurrentGBuffer = Pass->GBuffers[BufferIndex];
+
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier1[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.ColorTex,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.SpecularTex,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.EmissiveTex,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.RoughnessMetal,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.NormalTex,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+#if 0
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.PositionTex,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+#endif
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
+
+			CL->ResourceBarrier(sizeof(Barrier1) / sizeof(Barrier1[0]), Barrier1);
+		}
+
+		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
+		auto TablePOS  = ReserveDescHeap(RS, 11);
+		auto DispatchDimensions = uint2{ Target.WH[0] / 32, Target.WH[1] / 12 };
+
+		// The Max is to quiet a error if a no Lights are passed
+		TablePOS = PushSRVToDescHeap	(RS, PLB->Resource, TablePOS,  max(PLB->size(), 1),  PLB_Stride);	
+		TablePOS = PushSRVToDescHeap	(RS, SPLB->Resource, TablePOS, max(SPLB->size(), 1), SPLB_Stride);
+
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.ColorTex,			TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.SpecularTex,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.EmissiveTex,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.RoughnessMetal,		TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.NormalTex,			TablePOS);
+		TablePOS = Push2DSRVToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer,	TablePOS);
+		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.OutputBuffer,		TablePOS, DXGI_FORMAT_R32G32B32A32_FLOAT);
+
+		auto ConstantBuffers = DescTable;
+
+		TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
+		TablePOS = PushCBToDescHeap			(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
+
+		ID3D12DescriptorHeap* Heaps[] = { FrameResources->DescHeap.DescHeap };
+		CL->SetDescriptorHeaps(1, Heaps);
+
+		// Do Shading Here
+		CL->SetPipelineState				(GetPSO(RS, TILEDSHADING_SHADE));
+		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
+		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
+
+		CL->Dispatch(DispatchDimensions[0], DispatchDimensions[1], 1);
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier2[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.ColorTex,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.SpecularTex,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.EmissiveTex,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.RoughnessMetal,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.NormalTex,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1, 
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+#if 0
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.PositionTex,
+				D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+#endif
+
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
+				D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+				D3D12_RESOURCE_STATE_COPY_SOURCE, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+
+				CD3DX12_RESOURCE_BARRIER::Transition(Target,
+				D3D12_RESOURCE_STATE_RENDER_TARGET,
+				D3D12_RESOURCE_STATE_COPY_DEST,	-1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
+
+			CL->ResourceBarrier(sizeof(Barrier2)/ sizeof(Barrier2[0]), Barrier2);
+		}
+
+		{
+			CD3DX12_RESOURCE_BARRIER Barrier3[] = {
+				CD3DX12_RESOURCE_BARRIER::Transition(CurrentGBuffer.OutputBuffer,
+				D3D12_RESOURCE_STATE_COPY_SOURCE,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE),
+				CD3DX12_RESOURCE_BARRIER::Transition(Target,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
+
+			CL->ResourceBarrier(2, Barrier3);
+		}
+
+	}
+
+
+	/************************************************************************************************/
 
 	void ClearGBuffer(RenderSystem* RS, TiledDeferredRender* Pass, const float4& Clear, size_t Index)
 	{
@@ -1005,7 +1004,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PresentBufferToTarget(RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* Render, Texture2D* Target)
+	void PresentBufferToTarget(RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* Render, Texture2D* Target, Texture2D* ReflectionBuffer)
 	{
 		auto BufferIndex	 = Render->CurrentBuffer;
 		auto& CurrentGBuffer = Render->GBuffers[BufferIndex];
@@ -1019,7 +1018,11 @@ namespace FlexKit
 		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.OutputBuffer, TablePOS);
 		TablePOS = PushCBToDescHeap			(RS, RS->NullConstantBuffer.Get(), TablePOS, 1024); // t1
 
-		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS); 
+		if(ReflectionBuffer)
+			TablePOS = Push2DSRVToDescHeap		(RS, *ReflectionBuffer, TablePOS);
+		else
+			TablePOS = PushTextureToDescHeap(RS, RS->NullSRV, TablePOS);
+
 		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
 		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
 		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);

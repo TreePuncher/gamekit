@@ -325,6 +325,16 @@ namespace FlexKit
 		}
 
 		template<typename TY_2>
+		THISTYPE operator / (const Vect<SIZE, TY_2> in)
+		{
+			THISTYPE Out;
+			for (auto I = 0; I < SIZE; ++I)
+				Out[I] = Vector[I] / in[I];
+
+			return Out;
+		}
+
+		template<typename TY_2>
 		bool operator == (const Vect<SIZE, TY_2>& in)
 		{
 			bool res = true;
