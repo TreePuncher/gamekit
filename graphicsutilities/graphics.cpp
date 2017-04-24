@@ -4864,7 +4864,7 @@ namespace FlexKit
 
 		Camera::BufferLayout NewData;
 		NewData.Proj            = Float4x4ToXMMATIRX(&camera->Proj);
-		NewData.View            = Float4x4ToXMMATIRX(&camera->View);
+		NewData.View            = XMMatrixTranspose(Float4x4ToXMMATIRX(&camera->View));
 		NewData.PV              = XMMatrixTranspose(XMMatrixTranspose(NewData.Proj) * View);
 		NewData.IV              = XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(camera, camera->invert)) * View));
 		NewData.WT              = XMMatrixTranspose(WT);

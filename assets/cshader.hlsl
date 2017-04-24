@@ -242,6 +242,7 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 						}
                     case 8:
                     {
+                    /*
                         [loop]
                         for (int I = 0; I < DeferredPointLightCount; ++I)
                         {
@@ -253,7 +254,10 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 
                             ColorOut += La * Lc;
                         }
-                    }   break;
+                    */
+                            ColorOut = 0;
+
+                        }   break;
 					default:
 						break;
 				}
