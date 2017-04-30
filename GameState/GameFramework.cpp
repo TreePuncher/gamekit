@@ -396,7 +396,7 @@ extern "C"
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
 		Framework.OcclusionCulling			= true;
-		Framework.ScreenSpaceReflections	= false;
+		Framework.ScreenSpaceReflections	= true;
 
 		Framework.Stats.FPS					= 0;
 		Framework.Stats.FPS_Counter			= 0;

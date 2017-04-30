@@ -96,15 +96,15 @@ sampler Sampler : register(s0);
 
 
 StructuredBuffer<PointLight> PointLights : register(t0);
-StructuredBuffer<SpotLight> SpotLights   : register(t1);
-StructuredBuffer<LightTile> LightTiles   : register(t7);
+StructuredBuffer<SpotLight> SpotLights : register(t1);
+StructuredBuffer<LightTile> LightTiles : register(t7);
 
-Texture2D<float4> Color      : register(t2);
-Texture2D<float4> Specular   : register(t3);
-Texture2D<float4> Radience   : register(t4);
+Texture2D<float4> Color : register(t2);
+Texture2D<float4> Specular : register(t3);
+Texture2D<float4> Radience : register(t4);
 Texture2D<float2> RoughMetal : register(t5);
-Texture2D<float4> Normal     : register(t6);
-Texture2D<float> DepthView   : register(t8);
+Texture2D<float4> Normal : register(t6);
+Texture2D<float> DepthView : register(t8);
 
 
 /************************************************************************************************/
@@ -137,11 +137,11 @@ void Write3x3Dot(uint2 ID, float4 Color)
     BB[ID.xy + uint2(1, 1)] = Color;
     BB[ID.xy + uint2(0, 1)] = Color;
 
-    BB[ID.xy + uint2(-1,  0)] = Color;
-    BB[ID.xy + uint2(-1,  0)] = Color;
-    BB[ID.xy + uint2(-1,  1)] = Color;
-    BB[ID.xy + uint2( 0, -1)] = Color;
-    BB[ID.xy + uint2( 1, -1)] = Color;
+    BB[ID.xy + uint2(-1, 0)] = Color;
+    BB[ID.xy + uint2(-1, 0)] = Color;
+    BB[ID.xy + uint2(-1, 1)] = Color;
+    BB[ID.xy + uint2(0, -1)] = Color;
+    BB[ID.xy + uint2(1, -1)] = Color;
 }
 
 
@@ -156,7 +156,7 @@ groupshared PointLight Lights[256];
 
 bool IntersectsDepthBuffer(float Z, float MinZ, float MaxZ)
 {
-    return (MaxZ < Z) && (MinZ > Z);
+    return (MaxZ > Z) && (MinZ - 20 < Z);
 }
 
 
@@ -170,15 +170,15 @@ void Swap(inout float A, inout float B)
 
 bool Raycast(const float3 OriginCS, const float3 RayCS, out float2 HitPixel, out float3 HitPosition)
 {
-    HitPixel    = 0;
+    HitPixel = 0;
     HitPosition = 0;
 
-    float RayLength = ((OriginCS.z + RayCS.z * MaxZ) < MinZ) ? 
+    float RayLength = ((OriginCS.z + RayCS.z * MaxZ) < MinZ) ?
         (MinZ - OriginCS.z) / RayCS.z : MaxZ;
 
     float3 EndPointCS = OriginCS + RayCS * RayLength;
 
-    float4 OriginDS = mul(Proj, float4(OriginCS, 1.0f) );
+    float4 OriginDS = mul(Proj, float4(OriginCS, 1.0f));
     OriginDS /= OriginDS.w;
 
     float4 EndPDS = mul(Proj, float4(EndPointCS, 1.0f));
@@ -201,7 +201,7 @@ bool Raycast(const float3 OriginCS, const float3 RayCS, out float2 HitPixel, out
     float2 Delta = P1 - P0;
 
     bool Permute = false;
-    if(abs(Delta.x) < abs(Delta.y))
+    if (abs(Delta.x) < abs(Delta.y))
     {
         Permute = true;
         Delta = Delta.yx;
@@ -209,32 +209,34 @@ bool Raycast(const float3 OriginCS, const float3 RayCS, out float2 HitPixel, out
         P1 = P1.yx;
     }
 
-    //Write3x3Dot(Permute ? P0.yx : P0.xy, float4(212.0, 244.0, 66, 0) / 255);
-    //Write3x3Dot(Permute ? P1.yx : P1.xy, float4(212.0, 244.0, 66, 0) / 255);
+    #if 0
+    Write3x3Dot(Permute ? P0.yx : P0.xy, float4(1, 0, 0, 0) );
+    Write3x3Dot(Permute ? P1.yx : P1.xy, float4(0, 1, 0, 0));
+    #endif
 
-    float StepDir   = sign(Delta.x);
-    float InvDx     = StepDir / Delta.x;
+    float StepDir = sign(Delta.x);
+    float InvDx = StepDir / Delta.x;
 
-    float3 dQ   = (Q1 - Q0) * InvDx;
-    float dK    = (k1 - k0) * InvDx;
-    float2 dP   = float2(StepDir, Delta.y * InvDx);
+    float3 dQ = (Q1 - Q0) * InvDx;
+    float dK = (k1 - k0) * InvDx;
+    float2 dP = float2(StepDir, Delta.y * InvDx);
 
     float StrideScale = 1.0f - min(1.0f, OriginCS.z * 0.5f);
-    float Stride      = 1.0f + StrideScale * 0.1f;
+    float Stride = 1.0f + StrideScale * 0.1f;
     dP *= Stride;
     dQ *= Stride;
     dK *= Stride;
 
-    float4 PQk  = float4(P0, Q0.z, k0);
+    float4 PQk = float4(P0, Q0.z, k0);
     float4 dPQk = float4(dP, dQ.z, dK);
     float3 Q = Q0;
 
-    float MaxSteps   = 128;
-    float StepCount  = 0;
+    float MaxSteps = 128;
+    float StepCount = 0;
     float PrevZMaxEstimate = -OriginCS.z;
-    float RayZMin    = PrevZMaxEstimate;
-    float RayZMax    = PrevZMaxEstimate;
-    float SceneZMax  = MaxZ;
+    float RayZMin = PrevZMaxEstimate;
+    float RayZMax = PrevZMaxEstimate;
+    float SceneZMax = RayZMax + 1;
 
     for (;
         StepCount < MaxSteps &&
@@ -242,25 +244,18 @@ bool Raycast(const float3 OriginCS, const float3 RayCS, out float2 HitPixel, out
         (SceneZMax > 0.0f);
         StepCount += 1.0f)
     {
-#if 1
         RayZMin = PrevZMaxEstimate;
         RayZMax = (dPQk.z * 0.5f + PQk.z) / (dPQk.w * 0.5f + PQk.w);
         PrevZMaxEstimate = RayZMax;
 
         if (RayZMin > RayZMax)
-           Swap(RayZMin, RayZMax);
+            Swap(RayZMin, RayZMax);
 
-        HitPixel = Permute ? PQk.yx : PQk.xy;
-        SceneZMax = Normal.Load(uint3(HitPixel.xy, 0)).w;
+        HitPixel    = Permute ? PQk.yx : PQk.xy;
+        SceneZMax   = Normal.Load(uint3(HitPixel.xy, 0)).w;
 
         Write1x1Dot(HitPixel, float4(1, 0, 1, 0));
         PQk += dPQk;
-#else
-        float fi        = 1 / MaxSteps * StepCount;
-        float fi2       = fi * fi;
-        float2 Temp2 = lerp(P0, P1, fi);
-        Write2x2Dot(Permute ? Temp2.yx : Temp2.xy, float4(lerp(float2(1, 0), float2(0, 1), fi2), 0, 0));
-#endif
     }
 
     Q.xy += dQ.xy * StepCount;
@@ -271,13 +266,13 @@ bool Raycast(const float3 OriginCS, const float3 RayCS, out float2 HitPixel, out
 
 float3 GetWorldSpacePositionAndViewDir(float3 UVW, out float3 VWS)
 {
-    float3 Temp1    = lerp(WSTopLeft, WSBottomLeft, UVW.y);
-    float3 Temp2    = lerp(WSTopRight, WSBottomRight, UVW.y);
-    float3 FarPos   = lerp(Temp1, Temp2, UVW.x);
+    float3 Temp1 = lerp(WSTopLeft, WSBottomLeft, UVW.y);
+    float3 Temp2 = lerp(WSTopRight, WSBottomRight, UVW.y);
+    float3 FarPos = lerp(Temp1, Temp2, UVW.x);
 
-    float3 Temp3    = lerp(WSTopLeft_Near, WSBottomLeft_Near, UVW.y);
-    float3 Temp4    = lerp(WSTopRight_Near, WSBottomRight_Near, UVW.y);
-    float3 NearPOS  = lerp(Temp3, Temp4, UVW.x);
+    float3 Temp3 = lerp(WSTopLeft_Near, WSBottomLeft_Near, UVW.y);
+    float3 Temp4 = lerp(WSTopRight_Near, WSBottomRight_Near, UVW.y);
+    float3 NearPOS = lerp(Temp3, Temp4, UVW.x);
 
     VWS = normalize(FarPos - CameraPOS.xyz);
     return CameraPOS.xyz + VWS * UVW.z;
@@ -310,43 +305,43 @@ void Trace(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 
     float3 ViewRayWS = 0;
 
-	float3 N = Normal.Load(int3(ID.xy, 0)).xyz;
-	float  l = Normal.Load(int3(ID.xy, 0)).w;
+    float3 N = Normal.Load(int3(ID.xy, 0)).xyz;
+    float l = Normal.Load(int3(ID.xy, 0)).w;
 
     float3 UVW = float3(ID.xy / float2(WindowWidth, WindowHeight), l);
 
-    float Distance          = l;
+    float Distance = l;
     float DistanceTravelled = 0;
     float LinearDistanceNormalized = (Distance - MinZ) / (100 - MinZ);
 
-    const float3 OriginWS   = GetWorldSpacePositionAndViewDir(UVW, ViewRayWS);
-	const float  r           = RoughMetal.Load(int3(ID.xy, 0)).x;
-	const float3 vdir       = -ViewRayWS;
+    const float3 OriginWS = GetWorldSpacePositionAndViewDir(UVW, ViewRayWS);
+    const float r = RoughMetal.Load(int3(ID.xy, 0)).x;
+    const float3 vdir = -ViewRayWS;
 
     float4 Out = float4(OriginWS, 0);
     float MaxDistance = 1000.0f;
     
-    if (ID.x % 64 == 0 && ID.y % 64 == 0 && TID.z == 0)// Making debugging easier with this, should be able to follow a limited number of traces
-    //if (TID.x == 0 && TID.y == 0 && TID.z == 0)// Making debugging easier with this, should be able to follow a limited number of traces
+    //if (ID.x % 64 == 0 && ID.y % 64 == 0 && TID.z == 0)// Making debugging easier with this, should be able to follow a limited number of traces
+    if (TID.x == 0 && TID.y == 0 && TID.z == 0)// Making debugging easier with this, should be able to follow a limited number of traces
     {
-        float3 RayWS    = reflect(vdir, N);
+        float3 RayWS = reflect(vdir, N);
         float4 OriginCS = mul(View, float4(OriginWS, 1));
-        float4 RayCS    = mul(View, float4(RayWS, 0));
+        float4 RayCS = mul(View, float4(RayWS, 0));
 
         float2 HitPixel;
         float3 HitPosition;
 
-        #if 1
+#if 1
         if (Raycast(OriginCS.xyz, RayCS.xyz, HitPixel, HitPosition))
         {
             //Write2x2Dot(HitPixel, float4(LinearDistanceNormalized, LinearDistanceNormalized, LinearDistanceNormalized, 0));
-            Write3x3Dot(ID.xy, float4(0, 0, 1, 0));
-            Write3x3Dot(HitPixel, float4(1, 1, 1, 0));
+            //Write3x3Dot(ID.xy, float4(0, 0, 1, 0));
+            Write1x1Dot(HitPixel, Radience[HitPixel]);
            ///Write2x2Dot(ID, float4(0, 0, 1, 0));
-            Write1x1Dot(ID, Radience.Gather(Sampler, HitPixel.x, WindowHeight - HitPixel.y));
+            //Write1x1Dot(ID, Radience.Gather(Sampler, HitPixel.x, WindowHeight - HitPixel.y));
         }
-        #else
+#else
         Write2x2Dot(ID, float4(OriginWS, 0));
-        #endif
+#endif
     }
 }

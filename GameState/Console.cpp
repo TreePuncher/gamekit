@@ -66,6 +66,7 @@ void ReleaseConsole(Console* C)
 {
 	//ConsolePrintf(out, 1, 2, 3, 4);
 
+	C->ConsoleUInts.Release();
 	C->Variables.Release();
 	C->FunctionTable.Release();
 	C->BuiltInIdentifiers.Release();
@@ -123,6 +124,7 @@ void InputConsole(Console* C, char InputCharacter)
 
 
 /************************************************************************************************/
+
 
 bool ToggleBool(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 {

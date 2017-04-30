@@ -65,6 +65,18 @@ bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 					ThisState->IncrementRecallIndex();
 				}
 			}	break;
+			case KC_ARROWDOWN:
+			{
+				if (ThisState->C->CommandHistory.size()) {
+					auto line = ThisState->C->CommandHistory[ThisState->RecallIndex].Str;
+					auto LineSize = strlen(line);
+
+					strcpy_s(ThisState->C->InputBuffer, ThisState->C->CommandHistory[ThisState->RecallIndex]);
+
+					ThisState->C->InputBufferSize = LineSize;
+					ThisState->DecrementRecallIndex();
+				}
+			}	break;
 			case KC_SPACE:
 			{
 				InputConsole(&ThisState->Framework->Console, ' ');

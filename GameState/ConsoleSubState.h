@@ -42,6 +42,11 @@ struct ConsoleSubState : public SubState
 	{
 		RecallIndex = (RecallIndex + 1)% C->CommandHistory.size();
 	}
+
+	void DecrementRecallIndex()
+	{
+		RecallIndex = (C->CommandHistory.size() + RecallIndex - 1) % C->CommandHistory.size();
+	}
 };
 
 void Release(SubState* StateMemory);
