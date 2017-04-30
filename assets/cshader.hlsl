@@ -157,6 +157,7 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 	float2 ProjRatio = float2(MaxZ/(MaxZ - MinZ), MinZ/(MinZ-MaxZ));
 	float LinearDepth = ProjRatio.y / (l - ProjRatio.x);
 	*/
+
 	float Distance = l;
     float LinearNormlizedDisance = (Distance - MinZ) / (500 - MinZ);
 

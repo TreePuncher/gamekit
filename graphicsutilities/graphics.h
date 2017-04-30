@@ -1363,18 +1363,19 @@ namespace FlexKit
 		struct __declspec(align(16)) BufferLayout
 		{
 			XMMATRIX	View;
+			XMMATRIX	ViewI;
 			XMMATRIX	Proj;
-			XMMATRIX	WT;			// World Transform
-			XMMATRIX	PV;			// Projection x View
-			XMMATRIX	PVW;		// Projection x View x World Transform
-			XMMATRIX	IV;			// Inverse Transform
+			XMMATRIX	PV;			//  Projection x View
+			XMMATRIX	PVI;		// (Projection x View)^-1
 			float4		WPOS;
 			float		MinZ;
 			float		MaxZ;
-			uint32_t	PointLightCount;
-			uint32_t	SpotLightCount;
-			uint32_t	WindowWidth;
-			uint32_t	WindowHeight;
+			float		PointLightCount;
+			float		SpotLightCount;
+			float		WindowWidth;
+			float		WindowHeight;
+
+			float Padding[2];
 
 			float3  WSTopLeft;
 			float3  WSTopRight;
@@ -1389,7 +1390,7 @@ namespace FlexKit
 			constexpr static const size_t GetBufferSize()
 			{
 				//return sizeof(BufferLayout);	
-				return 1024 * (1024 / sizeof(BufferLayout)) + 1024 / sizeof(BufferLayout);	
+				return 4096;	
 			}
 
 		};

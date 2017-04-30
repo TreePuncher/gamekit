@@ -154,12 +154,6 @@ void Write1x1Dot(uint2 ID, float4 Color)
 groupshared PointLight Lights[256];
 
 
-float2 ViewToTextureSpace(float2 CoordDS)
-{
-    return float2((CoordDS.x + 1) / 2, (1 - CoordDS.y) / 2) * float2(WindowWidth, WindowHeight);
-}
-
-
 bool IntersectsDepthBuffer(float Z, float MinZ, float MaxZ)
 {
     return (MaxZ < Z) && (MinZ > Z);

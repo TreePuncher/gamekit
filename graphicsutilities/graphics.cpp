@@ -4796,7 +4796,6 @@ namespace FlexKit
 		InitialData.Proj = CreatePerspective(out, out->invert);
 		InitialData.View = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, WT));
 		InitialData.PV   = XMMatrixMultiply(InitialData.Proj, InitialData.View);
-		InitialData.WT   = WT;
 
 		ConstantBuffer_desc desc;
 		desc.InitialSize   = Camera::BufferLayout::GetBufferSize();
@@ -4864,14 +4863,12 @@ namespace FlexKit
 
 		Camera::BufferLayout NewData;
 		NewData.Proj            = Float4x4ToXMMATIRX(&camera->Proj);
-		NewData.View            = XMMatrixTranspose(Float4x4ToXMMATIRX(&camera->View));
+		NewData.View			= XMMatrixTranspose(Float4x4ToXMMATIRX(&camera->View.Transpose()));
+		NewData.ViewI           = WT;
 		NewData.PV              = XMMatrixTranspose(XMMatrixTranspose(NewData.Proj) * View);
-		NewData.IV              = XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(camera, camera->invert)) * View));
-		NewData.WT              = XMMatrixTranspose(WT);
-		NewData.WT				= XMMatrixTranspose(NewData.PV * WT);
+		NewData.PVI             = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(NewData.Proj) * View));
 		NewData.MinZ            = camera->Near;
 		NewData.MaxZ            = camera->Far;
-
 
 		NewData.WPOS[0]         = WT.r[0].m128_f32[3];
 		NewData.WPOS[1]         = WT.r[1].m128_f32[3];

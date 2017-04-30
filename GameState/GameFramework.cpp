@@ -102,7 +102,9 @@ void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 			break;
 		case KC_R:
 			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::SSREFLECTIONS);
-
+			break;
+		case KC_T:
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
 			break;
 		case KC_M:
 			_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
@@ -113,9 +115,6 @@ void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 			if (_ptr->DP_DrawMode == EDEFERREDPASSMODE::EDPM_COUNT)
 				_ptr->DP_DrawMode = EDEFERREDPASSMODE::EDPM_DEFAULT;
 		}	break;
-		case KC_C:
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
-			break;
 		case KC_TILDA:
 		{
 			std::cout << "Pushing Console State\n";
@@ -388,11 +387,11 @@ extern "C"
 		{
 			uint2	WindowRect	   = Engine->Window.WH;
 			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
-			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.01f, 10000.0f, true);
-			Framework.ActiveCamera = &Framework.DefaultCamera;
+			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 10000.0f, true);
 
-			Framework.MouseState.NormalizedPos = { 0.5f, 0.5f };
-			Framework.MouseState.Position = { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
+			Framework.ActiveCamera				= &Framework.DefaultCamera;
+			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
+			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
 
 		{
