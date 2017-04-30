@@ -131,6 +131,7 @@ struct GameplayLocalInputComponentSystem : public ComponentSystemInterface
 	operator GameplayLocalInputComponentSystem* (){return this;}
 };
 
+const uint32_t InputComponentID = GetTypeGUID(INPUTCOMPONENT);
 
 struct GameplayComponentSystem : public ComponentSystemInterface
 {
@@ -147,7 +148,7 @@ struct GameplayComponentSystem : public ComponentSystemInterface
 
 	void HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID ID)
 	{
-		if (EventSource == ComponentType::CT_Input && ID == GetCRCGUID(LOCALINPUT)) {
+		if (EventSource == InputComponentID && ID == GetCRCGUID(LOCALINPUT)) {
 		}
 	}
 
@@ -235,6 +236,7 @@ struct GameplayComponentSystem : public ComponentSystemInterface
 	}
 };
 
+const uint32_t PlayerComponentID = GetTypeGUID(PlayerComponent);
 
 struct PlayersComponentArgs
 {
@@ -250,7 +252,7 @@ void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
 	PlayerHandle	Player					= Args.Gameplay->CreatePlayer();
 	ComponentHandle InputComponentHandle	= Args.Input->BindInputToPlayer(Player);
 
-	auto C = GO.FindComponent(ComponentType::CT_Transform);
+	auto C = FindComponent(GO, TransformComponentID);
 
 	if (GO.ComponentCount + 2 < GO.MaxComponentCount)
 	{
@@ -264,8 +266,8 @@ void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
 		{
 			Args.Gameplay->SetPlayerNode(Player, GetNodeHandle(GO));
 		}
-		GO.Components[GO.ComponentCount++] = Component{ Args.Gameplay, Player,				CT_Player };
-		GO.Components[GO.ComponentCount++] = Component{ Args.Input, InputComponentHandle,	CT_Input  };
+		GO.Components[GO.ComponentCount++] = Component{ Args.Gameplay, Player,				PlayerComponentID };
+		GO.Components[GO.ComponentCount++] = Component{ Args.Input, InputComponentHandle,	InputComponentID};
 	}
 }
 

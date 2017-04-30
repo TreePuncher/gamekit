@@ -148,6 +148,11 @@ float2 PixelCordToCameraCord(int2 UV, float2 WH)
 }
 
 
+float2 GetTextureSpaceCord(float2 UV)
+{
+    return UV / float2(WindowWidth, WindowHeight);
+}
+
 float2 ViewToTextureSpace(float2 CoordDS)
 {
     return float2((CoordDS.x + 1) / 2, (1 - CoordDS.y) / 2) * float2(WindowWidth, WindowHeight);

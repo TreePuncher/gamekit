@@ -197,7 +197,7 @@ bool Raycast(const float3 OriginCS, const float3 RayCS, out float2 HitPixel, out
     float2 P1 = H1.xy * k1;
 
 
-    //P1 += (DistanceSquared2(P0, P1) < 0.0001f) ? float2(0.01f, 0.01f) : 0.0f;
+    P1 += (DistanceSquared2(P0, P1) < 0.0001f) ? float2(0.01f, 0.01f) : 0.0f;
     float2 Delta = P1 - P0;
 
     bool Permute = false;
@@ -302,31 +302,24 @@ void Trace(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
     }
 
     // Reconstruct World Position
-
     float3 ViewRayWS = 0;
 
-    float3 N = Normal.Load(int3(ID.xy, 0)).xyz;
-    float l = Normal.Load(int3(ID.xy, 0)).w;
+    float3 N  = Normal.Load(int3(ID.xy, 0)).xyz;
+    float  Z  = Normal.Load(int3(ID.xy, 0)).w;
+    float2 UV = GetTextureSpaceCord(ID);
 
-    float3 UVW = float3(ID.xy / float2(WindowWidth, WindowHeight), l);
+    const float3 ViewVector = GetViewVector(UV);
+    const float3 OriginWS   = GetWorldSpacePosition(ViewVector, CameraPOS, -Z);
+    const float r           = RoughMetal.Load(int3(ID.xy, 0)).x;
 
-    float Distance = l;
-    float DistanceTravelled = 0;
-    float LinearDistanceNormalized = (Distance - MinZ) / (100 - MinZ);
-
-    const float3 OriginWS = GetWorldSpacePositionAndViewDir(UVW, ViewRayWS);
-    const float r = RoughMetal.Load(int3(ID.xy, 0)).x;
-    const float3 vdir = -ViewRayWS;
-
-    float4 Out = float4(OriginWS, 0);
-    float MaxDistance = 1000.0f;
+    float LinearDistanceNormalized = (Z - MinZ) / (100 - MinZ);
     
     //if (ID.x % 64 == 0 && ID.y % 64 == 0 && TID.z == 0)// Making debugging easier with this, should be able to follow a limited number of traces
     if (TID.x == 0 && TID.y == 0 && TID.z == 0)// Making debugging easier with this, should be able to follow a limited number of traces
     {
-        float3 RayWS = reflect(vdir, N);
+        float3 RayWS    = reflect(-ViewVector, N);
         float4 OriginCS = mul(View, float4(OriginWS, 1));
-        float4 RayCS = mul(View, float4(RayWS, 0));
+        float4 RayCS    = mul(View, float4(RayWS, 0));
 
         float2 HitPixel;
         float3 HitPosition;
@@ -334,11 +327,7 @@ void Trace(uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID)
 #if 1
         if (Raycast(OriginCS.xyz, RayCS.xyz, HitPixel, HitPosition))
         {
-            //Write2x2Dot(HitPixel, float4(LinearDistanceNormalized, LinearDistanceNormalized, LinearDistanceNormalized, 0));
-            //Write3x3Dot(ID.xy, float4(0, 0, 1, 0));
-            Write1x1Dot(HitPixel, Radience[HitPixel]);
-           ///Write2x2Dot(ID, float4(0, 0, 1, 0));
-            //Write1x1Dot(ID, Radience.Gather(Sampler, HitPixel.x, WindowHeight - HitPixel.y));
+            Write1x1Dot(HitPixel, float4(HitPosition, 1));
         }
 #else
         Write2x2Dot(ID, float4(OriginWS, 0));

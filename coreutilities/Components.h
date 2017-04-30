@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\Handle.h"
 #include "..\coreutilities\MathUtils.h"
+#include "..\coreutilities\type.h"
+
 
 #ifndef COMPONENT_H
 #define COMPONENT_H
@@ -41,20 +43,11 @@ namespace FlexKit
 	typedef FlexKit::Handle_t<16> ComponentHandle;
 	typedef uint32_t EventTypeID;
 
-	enum ComponentType : uint16_t
-	{
-		CT_Input,
-		CT_Transform,
-		CT_Renderable,
-		CT_PointLight,
-		CT_Collider,
-		CT_Player,
-		CT_GameObject,
-		CT_User,
-		CT_Unknown
-	};
+	typedef uint32_t ComponentType;
+
 
 	struct Component;
+	struct GameObjectInterface;
 
 	class ComponentSystemInterface
 	{
@@ -63,11 +56,13 @@ namespace FlexKit
 		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID, Component* Components, size_t ComponentCount) {}
 	};
 
+	const uint32_t UnknownComponentID = GetTypeGUID(Component);
+
 	struct Component
 	{
 		Component() :
 			ComponentSystem	(nullptr),
-			Type			(ComponentType::CT_Unknown){}
+			Type			(GetTypeGUID(Component)){}
 
 
 		Component(
@@ -115,8 +110,8 @@ namespace FlexKit
 		}
 
 		ComponentSystemInterface*	ComponentSystem;
-		Handle_t<16>				ComponentHandle;
 		ComponentType				Type;
+		Handle_t<16>				ComponentHandle;
 	};
 
 
@@ -161,14 +156,14 @@ namespace FlexKit
 						Components, 
 						ComponentCount);
 			}
-		}
+		}s
 
 		bool AddComponent(Component&& NewC)
 		{
 			if (!Full())
 			{
 				for (auto& C : Components) {
-					if (C.Type == ComponentType::CT_Unknown) {
+					if (C.Type == UnknownComponentID) {
 						C = std::move(NewC);
 						break;
 					}
@@ -189,25 +184,38 @@ namespace FlexKit
 		}
 
 
-		Component*	FindComponent(ComponentType T)
+		operator GameObjectInterface* ()
 		{
-			if (LastComponent != -1) {
-				if (Components[LastComponent].Type == T)
-				{
-					return &Components[LastComponent];
-				}
-			}
-
-			for (size_t I = 0; I < ComponentCount; ++I)
-				if (Components[I].Type == T) {
-					LastComponent = I;
-					return &Components[I];
-				}
-
-			return nullptr;
+			return (GameObjectInterface*)this;
 		}
 	};
 
+
+	struct FLEXKITAPI GameObjectInterface
+	{
+		uint16_t	LastComponent;
+		uint16_t	ComponentCount;
+		Component	Components[];
+	};
+
+
+	Component*	FindComponent(GameObjectInterface* GO, ComponentType T)
+	{
+		if (GO->LastComponent != -1) {
+			if (GO->Components[GO->LastComponent].Type == T)
+			{
+				return &GO->Components[GO->LastComponent];
+			}
+		}
+
+		for (size_t I = 0; I < GO->ComponentCount; ++I)
+			if (GO->Components[I].Type == T) {
+				GO->LastComponent = I;
+				return &GO->Components[I];
+			}
+
+		return nullptr;
+	}	
 
 	/************************************************************************************************/
 

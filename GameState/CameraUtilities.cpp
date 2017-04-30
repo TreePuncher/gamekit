@@ -26,6 +26,28 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace FlexKit;
 
+void OrbitCameraSystem::Initiate(GameFramework* Framework)
+{
+
+}
+
+void OrbitCameraSystem::ReleaseHandle(ComponentHandle Handle)
+{
+
+}
+
+void OrbitCameraSystem::HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID)
+{
+
+}
+
+void OrbitCameraSystem::Update(double dT)
+{
+
+}
+
+CameraControllerHandle CreateOrbitCamera();
+
 void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out)
 {
 	ReleaseNode(Nodes, C->Node);

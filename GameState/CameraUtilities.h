@@ -66,6 +66,24 @@ namespace FlexKit
 {
 	typedef Handle_t<16> CameraControllerHandle;
 
+	struct OrbitCameraSystem : public ComponentSystemInterface
+	{
+		void Initiate		(GameFramework* Framework);
+
+		void ReleaseHandle	(ComponentHandle Handle);
+		void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID);
+
+		void Update(double dT);
+
+		CameraControllerHandle CreateOrbitCamera();
+	};
+
+	NodeHandle GetSceneNode(GameObjectInterface* GO)
+	{
+		//FindComponent(GO,
+		return NodeHandle(0);
+	}
+
 	struct ThirdPersonCameraComponentSystem : public ComponentSystemInterface
 	{
 		void Initiate(GameFramework* Framework);

@@ -89,6 +89,8 @@ namespace FlexKit
 		NodeHandle					Node;
 	};
 
+	const uint32_t TransformComponentID = GetTypeGUID(TransformComponent);
+
 	template<size_t SIZE>
 	void CreateComponent(GameObject<SIZE>& GO, SceneNodeComponentSystem* Nodes)
 	{
@@ -109,7 +111,7 @@ namespace FlexKit
 			if (Args.Node.INDEX == INVALIDHANDLE)
 				Handle = Args.Nodes->GetNewNode();
 			
-			GO.AddComponent(Component(Args.Nodes, Handle, CT_Transform));
+			GO.AddComponent(Component(Args.Nodes, Handle, TransformComponentID));
 		}
 	}
 
@@ -117,7 +119,7 @@ namespace FlexKit
 	template<typename TY_GO>
 	float3 GetWorldPosition(TY_GO& GO)
 	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		return C->GetWorldPosition();
 	}
 
@@ -125,7 +127,7 @@ namespace FlexKit
 	template<typename TY_GO>
 	float3 GetLocalPosition(TY_GO& GO)
 	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		return C->GetLocalPosition();
 	}
 
@@ -133,7 +135,7 @@ namespace FlexKit
 	template<typename TY_GO>
 	NodeHandle GetNodeHandle(TY_GO& GO)
 	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if(C)
 			return C->ComponentHandle;
 		return NodeHandle(-1);
@@ -143,10 +145,10 @@ namespace FlexKit
 	template<typename TY_GO>
 	void SetLocalPosition(TY_GO& GO, float3 XYZ)
 	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
 			C->SetLocalPosition(XYZ);
-			GO.NotifyAll(CT_Transform, GetCRCGUID(POSITION));
+			GO.NotifyAll(TransformComponentID, GetCRCGUID(POSITION));
 		}
 	}
 
@@ -154,10 +156,10 @@ namespace FlexKit
 	template<typename TY_GO>
 	void SetWorldPosition(TY_GO& GO, float3 XYZ)
 	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
 			C->SetWorldPosition(XYZ);
-			GO.NotifyAll(CT_Transform, GetCRCGUID(POSITION));
+			GO.NotifyAll(TransformComponentID, GetCRCGUID(POSITION));
 		}
 	}
 
@@ -165,10 +167,10 @@ namespace FlexKit
 	template<typename TY_GO>
 	void Yaw(TY_GO& GO, float R)
 	{
-		auto C = (TansformComponent*)GO.FindComponent(CT_Transform);
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
 			C->Yaw(R);
-			GO.NotifyAll(CT_Transform, GetCRCGUID(ORIENTATION));
+			GO.NotifyAll(TransformComponentID, GetCRCGUID(ORIENTATION));
 		}
 	}
 
@@ -233,15 +235,16 @@ namespace FlexKit
 		SceneNodeComponentSystem*	SceneNodes;	// A Source System
 	};
 
+	const uint32_t RenderableComponentID = GetTypeGUID(DrawableComponentSystem);
 
 	template<typename TY_GO>
 	inline bool SetDrawableColor(TY_GO& GO, float3 Color)
 	{
-		auto C = GO.FindComponent(ComponentType::CT_Renderable);
+		auto C = FindComponent(GO, RenderableComponentID);
 		if (C) {
 			auto System = (DrawableComponentSystem*)C->ComponentSystem;
 			System->SetColor(C->ComponentHandle, Color);
-			GO.NotifyAll(CT_Renderable, GetCRCGUID(MATERIAL));
+			GO.NotifyAll(RenderableComponentID, GetCRCGUID(MATERIAL));
 		}
 		return (C != nullptr);
 	}
@@ -249,7 +252,7 @@ namespace FlexKit
 	template<typename TY_GO>
 	inline bool SetDrawableMetal(TY_GO& GO, bool M)
 	{
-		auto C = GO.FindComponent(ComponentType::CT_Renderable);
+		auto C = FindComponent(GO, ComponentType::CT_Renderable);
 		if (C) {
 			auto System = (DrawableComponentSystem*)C->ComponentSystem;
 			System->SetMetal(C->ComponentHandle, M);
@@ -273,13 +276,13 @@ namespace FlexKit
 	void CreateComponent(GameObject<SIZE>& GO, DrawableComponentArgs& Args)
 	{
 		if (!GO.Full()) {
-			auto C = GO.FindComponent(ComponentType::CT_Transform);
+			auto C = FindComponent(GO, RenderableComponentID);
 			if (C)
 				Args.System->SetNode(Args.Entity, C->ComponentHandle);
 			else
 				CreateComponent(GO, TransformComponentArgs{ Args.System->SceneNodes, Args.System->GetNode(Args.Entity) });
 
-			GO.AddComponent(Component(Args.System, Args.Entity, CT_Renderable));
+			GO.AddComponent(Component(Args.System, Args.Entity, RenderableComponentID));
 		}
 	}
 
@@ -330,6 +333,9 @@ namespace FlexKit
 		SceneNodeComponentSystem*	SceneNodes;	// A Source System
 	};
 
+	const uint32_t LightComponentID = GetTypeGUID(PointLightComponentSystem);
+
+
 	struct LightComponentArgs
 	{
 		NodeHandle				Node;
@@ -342,12 +348,12 @@ namespace FlexKit
 	template<typename T_GO>
 	bool SetLightColor(T_GO& GO, float3 K)
 	{
-		auto C = GO.FindComponent(ComponentType::CT_PointLight);
+		auto C = FindComponent(GO, LightComponentID);
 		if (C)
 		{
 			auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
 			LightSystem->SetColor(C->ComponentHandle, K);
-			GO.NotifyAll(CT_Renderable, GetCRCGUID(LIGHTPROPERTIES));
+			GO.NotifyAll(LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
 		}
 		return C != nullptr;
 	}
@@ -355,12 +361,12 @@ namespace FlexKit
 	template<typename T_GO>
 	bool SetLightIntensity(T_GO& GO, float I)
 	{
-		auto C = GO.FindComponent(ComponentType::CT_PointLight);
+		auto C = FindComponent(GO, LightComponentID);
 		if (C)
 		{
 			auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
 			LightSystem->SetIntensity(C->ComponentHandle, I);
-			GO.NotifyAll(CT_Renderable, GetCRCGUID(LIGHTPROPERTIES));
+			GO.NotifyAll(LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
 		}
 		return C != nullptr;
 	}
@@ -368,12 +374,12 @@ namespace FlexKit
 	template<typename T_GO>
 	bool SetLightRadius(T_GO& GO, float R)
 	{
-		auto C = GO.FindComponent(ComponentType::CT_PointLight);
+		auto C = FindComponent(GO, LightComponentID);
 		if (C)
 		{
 			auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
 			LightSystem->SetRadius(C->ComponentHandle, R);
-			GO.NotifyAll(CT_Renderable, GetCRCGUID(LIGHTPROPERTIES));
+			GO.NotifyAll(LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
 		}
 		return C != nullptr;
 	}
@@ -396,7 +402,7 @@ namespace FlexKit
 
 			if (Args.Node == NodeHandle(-1))
 			{
-				auto C = GO.FindComponent(ComponentType::CT_Transform);
+				auto C = FindComponent(GO, TransformComponentID);
 
 				if (C)
 					Node = C->ComponentHandle;
@@ -407,7 +413,7 @@ namespace FlexKit
 				Node = Args.Node;
 
 			LightHandle Light = Args.System->Scene->AddPointLight(Args.Color, Node,  Args.I, Args.R);
-			GO.AddComponent(Component(Args.System, Light, CT_PointLight));
+			GO.AddComponent(Component(Args.System, Light, LightComponentID));
 		}
 	}
 

@@ -45,7 +45,7 @@ void GameplayLocalInputComponentSystem::Update(double dt, MouseInputState MouseI
 		TargetModel->PlayerInputs[L].FrameID++;
 		TargetModel->PlayerInputs[L].KeyboardInput = this->KeyState;
 		TargetModel->PlayerInputs[L].MouseInput = float2{HorizontalMouseMovement, VerticalMouseMovement};
-		TargetModel->HandleEvent(L, ComponentType::CT_Input, GetCRCGUID(LOCALINPUT));
+		TargetModel->HandleEvent(L, InputComponentID, GetCRCGUID(LOCALINPUT));
 	}
 }
 
