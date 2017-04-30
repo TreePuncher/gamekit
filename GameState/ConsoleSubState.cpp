@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 {
-	PlayState* ThisState = (PlayState*)StateMemory;
+	ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 
 	if (evt.InputSource == Event::Keyboard)
 	{
@@ -50,7 +50,20 @@ bool ConsoleEventHandler(SubState* StateMemory, Event evt)
 				break;
 			case KC_ENTER:
 			{
+				ThisState->RecallIndex = 0;
 				EnterLineConsole(&ThisState->Framework->Console);
+			}	break;
+			case KC_ARROWUP:
+			{
+				if(ThisState->C->CommandHistory.size()){
+					auto line = ThisState->C->CommandHistory[ThisState->RecallIndex].Str;
+					auto LineSize = strlen(line);
+
+					strcpy_s(ThisState->C->InputBuffer, ThisState->C->CommandHistory[ThisState->RecallIndex]);
+
+					ThisState->C->InputBufferSize = LineSize;
+					ThisState->IncrementRecallIndex();
+				}
 			}	break;
 			case KC_SPACE:
 			{

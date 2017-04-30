@@ -242,6 +242,18 @@ namespace FlexKit
 					ev.mData1.mKC[0] = KC_SYMBOL;
 					Param = '<';
 				}	break;
+			case VK_UP:
+				ev.mData1.mKC[0] = KC_ARROWUP;
+				break;
+			case VK_DOWN:
+				ev.mData1.mKC[0] = KC_ARROWDOWN;
+				break;
+			case VK_LEFT:
+				ev.mData1.mKC[0] = KC_ARROWLEFT;
+				break;
+			case VK_RIGHT:
+				ev.mData1.mKC[0] = KC_ARROWRIGHT;
+				break;
 			case VK_OEM_PERIOD:
 				if (!ShiftState) {
 					ev.mData1.mKC[0] = KC_SYMBOL;

@@ -462,6 +462,7 @@ void EnterLineConsole(Console* C)
 	char* str = (char*)C->Memory->malloc(C->InputBufferSize + 256);
 	strcpy(str, C->InputBuffer);
 
+	PushCommandToHistory(C, str, C->InputBufferSize + 256);
 	ConsolePrint(C, str, C->Memory);
 
 	C->InputBufferSize = 0;
@@ -554,6 +555,18 @@ size_t BindBoolVar(Console* C, const char* Identifier, bool* _ptr)
 	C->Variables.push_back(NewVar);
 	return Out;
 }
+
+/************************************************************************************************/
+
+
+void PushCommandToHistory(Console* C, const char* Str, size_t StrLen)
+{
+	char* NewStr = (char*)C->Memory->malloc(StrLen + 1);
+	strcpy(NewStr, Str);
+
+	C->CommandHistory.push_back(ConsoleLine(NewStr, C->Memory));
+}
+
 
 /************************************************************************************************/
 

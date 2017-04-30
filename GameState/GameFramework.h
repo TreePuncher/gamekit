@@ -101,6 +101,7 @@ struct GameFramework
 	double				PhysicsUpdateTimer;
 	bool				ConsoleActive;
 	bool				OcclusionCulling;
+	bool				ScreenSpaceReflections;
 	bool				DrawTerrain;
 	bool				DrawDebug;
 	bool				DrawDebugStats;

@@ -33,9 +33,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct ConsoleSubState : public SubState
 {
 	bool PauseBackgroundLogic;
+	size_t	RecallIndex;
 	Console* C;
 
 	EngineMemory* Engine;
+
+	void IncrementRecallIndex()
+	{
+		RecallIndex = (RecallIndex + 1)% C->CommandHistory.size();
+	}
 };
 
 void Release(SubState* StateMemory);

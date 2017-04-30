@@ -178,6 +178,7 @@ struct ConsoleLine
 struct Console
 {
 	FlexKit::CircularBuffer<ConsoleLine, 32>	Lines;
+	FlexKit::CircularBuffer<ConsoleLine, 32>	CommandHistory;
 	FlexKit::FontAsset*							Font;
 
 	DynArray<ConsoleVariable>	Variables;
@@ -213,6 +214,8 @@ size_t BindUIntVar	( Console* C, const char* Identifier, size_t* _ptr );
 
 size_t BindBoolVar ( Console* C, const char* Identifier, bool* _ptr );
 
+
+void				PushCommandToHistory(Console* C, const char* str, size_t StrLen);
 
 void				AddConsoleFunction( Console* C, ConsoleFunction NewFunc);
 ConsoleFunction*	FindConsoleFunction(Console* C, const char* str, size_t StrLen);
