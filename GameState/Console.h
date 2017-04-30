@@ -121,12 +121,13 @@ struct ConsoleVariable
 };
 
 
-typedef bool Console_FN(Console* C, ConsoleVariable*, size_t ArguementCount);
+typedef bool Console_FN(Console* C, ConsoleVariable*, size_t ArguementCount, void* USER);
 
 struct ConsoleFunction
 {
 	const char*								FunctionName;
 	Console_FN*								FN_Ptr;
+	void*									USER;
 	size_t									ExpectedArguementCount;
 	static_vector<ConsoleVariableType, 6>	ExpectedArguementTypes;
 };
@@ -185,6 +186,8 @@ struct Console
 	ConsoleFunctionTable		FunctionTable;
 	ConsoleIdentifierTable		BuiltInIdentifiers;
 
+	DynArray<size_t>			ConsoleUInts;
+
 	char	InputBuffer[1024];
 	size_t	InputBufferSize;
 
@@ -207,7 +210,8 @@ void EnterLineConsole	( Console* C );
 void BackSpaceConsole	( Console* C );
 
 
-size_t AddStringVar( Console* C, const char* Identifier, const char* Str );
+size_t AddStringVar	( Console* C, const char* Identifier, const char* Str );
+size_t AddUIntVar	( Console* C, const char* Identifier, size_t uint );
 
 size_t BindIntVar	( Console* C, const char* Identifier, int* _ptr );
 size_t BindUIntVar	( Console* C, const char* Identifier, size_t* _ptr );
@@ -215,10 +219,10 @@ size_t BindUIntVar	( Console* C, const char* Identifier, size_t* _ptr );
 size_t BindBoolVar ( Console* C, const char* Identifier, bool* _ptr );
 
 
-void				PushCommandToHistory(Console* C, const char* str, size_t StrLen);
+void				PushCommandToHistory( Console* C, const char* str, size_t StrLen );
 
-void				AddConsoleFunction( Console* C, ConsoleFunction NewFunc);
-ConsoleFunction*	FindConsoleFunction(Console* C, const char* str, size_t StrLen);
+void				AddConsoleFunction	( Console* C, ConsoleFunction NewFunc );
+ConsoleFunction*	FindConsoleFunction	( Console* C, const char* str, size_t StrLen );
 
 void ConsolePrint	( Console* out, const char* _ptr, iAllocator* Memory = nullptr );
 void ConsolePrintf	( Console* out );

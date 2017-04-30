@@ -340,6 +340,33 @@ SubStateVTable* GetStateVTable(SubState* _ptr)
 /************************************************************************************************/
 
 
+bool SetDebugRenderMode(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void* USR)
+{
+	GameFramework* Framework = (GameFramework*)USR;
+	if (ArguementCount == 1 && Arguments->Type == ConsoleVariableType::STACK_STRING) {
+		size_t Mode = 0;
+
+		const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
+		for (auto Var : C->Variables)
+		{
+			if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
+			{
+				if(Var.Type == ConsoleVariableType::CONSOLE_UINT)
+				Mode = *(size_t*)Var.Data_ptr;
+			}
+		}
+
+
+		if (Mode < EDEFERREDPASSMODE::EDPM_COUNT)
+		{
+			Framework->DP_DrawMode = (EDEFERREDPASSMODE)Mode;
+			return true;
+		}
+	}
+	return false;
+}
+
+
 extern "C"
 {
 	GAMESTATEAPI GameFramework* InitiateFramework(EngineMemory* Engine)
@@ -369,6 +396,7 @@ extern "C"
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
 		Framework.OcclusionCulling			= true;
+		Framework.ScreenSpaceReflections	= false;
 
 		Framework.Stats.FPS					= 0;
 		Framework.Stats.FPS_Counter			= 0;
@@ -420,7 +448,15 @@ extern "C"
 		BindBoolVar(&Framework.Console, "DrawTerrain",				&Framework.DrawTerrain);
 		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",			&Framework.DrawPhysicsDebug);
 		BindBoolVar(&Framework.Console, "OcclusionCullingEnabled",  &Framework.OcclusionCulling);
+		BindBoolVar(&Framework.Console, "ScreenSpaceReflections",	&Framework.ScreenSpaceReflections);
 		BindBoolVar(&Framework.Console, "FrameLock",				&Engine->FrameLock);
+
+		AddUIntVar(&Framework.Console, "RM_Default",	EDEFERREDPASSMODE::EDPM_DEFAULT);
+		AddUIntVar(&Framework.Console, "RM_Normals",	EDEFERREDPASSMODE::EDPM_SSNORMALS);
+		AddUIntVar(&Framework.Console, "RM_PositionWS", EDEFERREDPASSMODE::EDPM_POSITION);
+		AddUIntVar(&Framework.Console, "RM_Depth",		EDEFERREDPASSMODE::EDPM_LINEARDEPTH);
+
+		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});
 
 		enum Mode
 		{
@@ -429,7 +465,6 @@ extern "C"
 			Client,
 			Play,
 		}CurrentMode = Play;
-
 
 		const char* Name	= nullptr;
 		const char* Server	= nullptr;
@@ -465,7 +500,7 @@ extern "C"
 			PushSubState(&Framework, ClientState);
 		}	break;
 		case Play: {
-			auto PlayState= CreatePlayState(Engine, &Framework);
+			auto PlayState = CreatePlayState(Engine, &Framework);
 			PushSubState(&Framework, PlayState);
 		}
 		default:
@@ -600,7 +635,9 @@ extern "C"
 				DrawLandscape		(RS, &State->Landscape, &Engine->TiledRender, State->TerrainSplits, State->ActiveCamera, false);
 
 			TiledRender_Shade		(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-			TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, GetWindowWH(Engine), &Engine->Reflections);
+
+			if(State->ScreenSpaceReflections)
+				TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, GetWindowWH(Engine), &Engine->Reflections);
 
 			PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget, GetCurrentBuffer(&Engine->Reflections));
 

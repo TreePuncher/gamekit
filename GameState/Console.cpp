@@ -24,10 +24,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Console.h"
 
-bool PrintVar		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
-bool ListVars		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
-bool ListFunctions	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
-bool ToggleBool		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount);
+/************************************************************************************************/
+
+
+bool PrintVar		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
+bool ListVars		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
+bool ListFunctions	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
+bool ToggleBool		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
 
 
 /************************************************************************************************/
@@ -42,11 +45,12 @@ void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
 	Out->Variables.Allocator          = Out->Memory;
 	Out->FunctionTable.Allocator      = Out->Memory;
 	Out->BuiltInIdentifiers.Allocator = Out->Memory;
+	Out->ConsoleUInts.Allocator		  = Out->Memory;
 
-	AddConsoleFunction(Out, { "PrintVar",		PrintVar, 1,{ ConsoleVariableType::CONSOLE_STRING } });
-	AddConsoleFunction(Out, { "ListVars",		ListVars, 0,{} });
-	AddConsoleFunction(Out, { "ListFunctions",	ListFunctions, 0,{} });
-	AddConsoleFunction(Out, { "Toggle",			ToggleBool, 1,{ ConsoleVariableType::CONSOLE_STRING } });
+	AddConsoleFunction(Out, { "PrintVar",		PrintVar, nullptr, 1,{ ConsoleVariableType::CONSOLE_STRING } });
+	AddConsoleFunction(Out, { "ListVars",		ListVars, nullptr, 0,{} });
+	AddConsoleFunction(Out, { "ListFunctions",	ListFunctions, nullptr, 0,{} });
+	AddConsoleFunction(Out, { "Toggle",			ToggleBool, nullptr, 1,{ ConsoleVariableType::CONSOLE_STRING } });
 
 	AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
 	AddStringVar(Out, "BuildDate", __DATE__);
@@ -71,7 +75,7 @@ void ReleaseConsole(Console* C)
 /************************************************************************************************/
 
 
-bool ListFunctions(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+bool ListFunctions(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 {
 	ConsolePrint(C, "Function List:", nullptr);
 
@@ -120,7 +124,7 @@ void InputConsole(Console* C, char InputCharacter)
 
 /************************************************************************************************/
 
-bool ToggleBool(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+bool ToggleBool(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 {
 	if (ArguementCount != 1 &&
 		(Arguments->Type != ConsoleVariableType::CONSOLE_STRING) ||
@@ -149,7 +153,7 @@ bool ToggleBool(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 }
 
 
-bool ListVars(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+bool ListVars(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 {
 	ConsolePrint(C, "Listing Variables:", nullptr);
 
@@ -161,7 +165,7 @@ bool ListVars(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
 }
 
 
-bool PrintVar(Console* C, ConsoleVariable* Arguments, size_t ArguementCount)
+bool PrintVar(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 {
 	if (ArguementCount != 1 && 
 		(Arguments->Type != ConsoleVariableType::CONSOLE_STRING) || 
@@ -373,7 +377,7 @@ bool ExecuteGrammerTokens(DynArray<GrammerToken>& Tokens, Console* C, DynArray<C
 					}
 				}
 
-				Fn->FN_Ptr(C, Arguments.begin(), Arguments.size());
+				Fn->FN_Ptr(C, Arguments.begin(), Arguments.size(), Fn->USER);
 			}
 			else
 			{
@@ -495,11 +499,33 @@ void BackSpaceConsole(Console* C)
 size_t AddStringVar(Console* C, const char* Identifier, const char* Str)
 {
 	size_t Out = C->Variables.size();
+
 	ConsoleVariable NewVar;
 	NewVar.Data_ptr					= (void*)Str;
 	NewVar.Data_size				= strlen(Str);
 	NewVar.VariableIdentifier.str	= Identifier;
 	NewVar.Type						= ConsoleVariableType::CONSOLE_STRING;
+
+	C->Variables.push_back(NewVar);
+	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+size_t AddUIntVar(Console* C, const char* Identifier, size_t uint )
+{
+	size_t Out = C->Variables.size();
+
+	C->ConsoleUInts.push_back(uint);
+	size_t& Value = C->ConsoleUInts.back();
+
+	ConsoleVariable NewVar;
+	NewVar.Data_ptr					= &Value;
+	NewVar.Data_size				= sizeof(size_t);
+	NewVar.VariableIdentifier.str	= Identifier;
+	NewVar.Type						= ConsoleVariableType::CONSOLE_UINT;
 
 	C->Variables.push_back(NewVar);
 	return Out;
