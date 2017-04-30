@@ -37,20 +37,20 @@ namespace FlexKit
 		Framework				= F;
 	}
 
-
 	/*
 	TargetModel->PlayerInputs[L].FrameID++;
 	TargetModel->PlayerInputs[L].KeyboardInput = this->KeyState;
 	TargetModel->PlayerInputs[L].MouseInput = float2{HorizontalMouseMovement, VerticalMouseMovement};
 	*/
+
 	void InputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* Framework)
 	{
 		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Engine)[0];
 		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Engine)[1];
 
 		for (size_t I = 0; I < this->Listeners.size(); ++I) {
-			auto& L = Listeners[I];
-			auto& System = this->TargetSystems[I];
+			auto& L			= Listeners[I];
+			auto& System	= this->TargetSystems[I];
 
 			System->HandleEvent(L, InputComponentID, this, GetTypeGUID(KEYINPUT), nullptr);
 		}

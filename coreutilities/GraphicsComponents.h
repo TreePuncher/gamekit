@@ -71,6 +71,9 @@ namespace FlexKit
 		float3 GetLocalPosition();
 		float3 GetWorldPosition();
 
+		void Translate(const float3 xyz);
+		void TranslateWorld(const float3 xyz);
+
 		void SetLocalPosition(const float3&);
 		void SetWorldPosition(const float3&);
 
@@ -184,7 +187,27 @@ namespace FlexKit
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
 			C->SetWorldPosition(XYZ);
-			GO.NotifyAll(TransformComponentID, GetCRCGUID(POSITION));
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
+		}
+	}
+
+
+	void Translate(GameObjectInterface* GO, float3 XYZ)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		if (C) {
+			C->Translate(XYZ);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
+		}
+	}
+
+
+	void TranslateWorld(GameObjectInterface* GO, float3 XYZ)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		if (C) {
+			C->TranslateWorld(XYZ);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
 		}
 	}
 
@@ -195,7 +218,7 @@ namespace FlexKit
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
 			C->Yaw(R);
-			GO.NotifyAll(TransformComponentID, GetCRCGUID(ORIENTATION));
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
 		}
 	}
 
@@ -269,7 +292,7 @@ namespace FlexKit
 		if (C) {
 			auto System = (DrawableComponentSystem*)C->ComponentSystem;
 			System->SetColor(C->ComponentHandle, Color);
-			GO.NotifyAll(RenderableComponentID, GetCRCGUID(MATERIAL));
+			NotifyAll(GO, RenderableComponentID, GetCRCGUID(MATERIAL));
 		}
 		return (C != nullptr);
 	}
@@ -378,7 +401,7 @@ namespace FlexKit
 		{
 			auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
 			LightSystem->SetColor(C->ComponentHandle, K);
-			GO.NotifyAll(LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
+			NotifyAll(GO, LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
 		}
 		return C != nullptr;
 	}
@@ -391,7 +414,7 @@ namespace FlexKit
 		{
 			auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
 			LightSystem->SetIntensity(C->ComponentHandle, I);
-			GO.NotifyAll(LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
+			NotifyAll(GO, LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
 		}
 		return C != nullptr;
 	}
@@ -404,7 +427,7 @@ namespace FlexKit
 		{
 			auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
 			LightSystem->SetRadius(C->ComponentHandle, R);
-			GO.NotifyAll(LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
+			NotifyAll(GO, LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
 		}
 		return C != nullptr;
 	}
@@ -441,6 +464,7 @@ namespace FlexKit
 			GO.AddComponent(Component(Args.System, Light, LightComponentID));
 		}
 	}
+
 
 	/************************************************************************************************/
 }//namespace FlexKit

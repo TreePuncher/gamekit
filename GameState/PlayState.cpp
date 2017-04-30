@@ -190,6 +190,8 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 		State->Player,
 		CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
+	Translate(State->Player, {0, 100, 0});
+
 	return State;
 }
 

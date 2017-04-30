@@ -145,17 +145,6 @@ namespace FlexKit
 			return (MaxComponentCount <= ComponentCount);
 		}
 
-		void NotifyAll(ComponentType Source, EventTypeID EventID, ComponentSystemInterface* System = nullptr)
-		{
-			for (size_t I = 0; I < ComponentCount; ++I) 
-			{
-				if(Components[I].ComponentSystem)
-					Components[I].ComponentSystem->HandleEvent(
-						Components[I].ComponentHandle, 
-						Source, System, EventID, *this);
-			}
-		}
-
 		bool AddComponent(Component&& NewC)
 		{
 			if (!Full())
@@ -215,6 +204,21 @@ namespace FlexKit
 
 		return nullptr;
 	}	
+
+
+	/************************************************************************************************/
+
+
+	void NotifyAll(GameObjectInterface* GO, ComponentType Source, EventTypeID EventID, ComponentSystemInterface* System = nullptr)
+	{
+		for (size_t I = 0; I < GO->ComponentCount; ++I)
+		{
+			if (GO->Components[I].ComponentSystem)
+				GO->Components[I].ComponentSystem->HandleEvent(
+					GO->Components[I].ComponentHandle,
+					Source, System, EventID, GO);
+		}
+	}
 
 	/************************************************************************************************/
 

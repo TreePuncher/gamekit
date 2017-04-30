@@ -100,6 +100,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void TansformComponent::Translate(const float3 xyz)
+	{
+		FlexKit::TranslateLocal(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), xyz);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TansformComponent::TranslateWorld(const float3 xyz)
+	{
+		FlexKit::TranslateWorld(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), xyz);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void TansformComponent::SetLocalPosition(const float3& xyz)
 	{
 		FlexKit::LT_Entry LT(FlexKit::GetLocal(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle)));
