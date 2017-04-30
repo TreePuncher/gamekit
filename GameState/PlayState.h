@@ -40,7 +40,8 @@ struct PlayState : public SubState
 	// Game Element Controllers
 
 	GameplayComponentSystem				Model;
-	GameplayLocalInputComponentSystem	Input;
+	InputComponentSystem	Input;
+	OrbitCameraSystem					OrbitCameras;
 
 	GameObject<>				TestObject;
 	GameObject<16>				Player;

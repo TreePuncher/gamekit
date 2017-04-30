@@ -25,7 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CAMERAUTILITIES
 #define CAMERAUTILITIES
 
+#include "Gameplay.h"
 #include "GameFramework.h"
+#include "InputComponent.h"
+
 #include "../graphicsutilities/graphics.h"
 #include "../coreutilities/GraphicsComponents.h"
 
@@ -33,7 +36,6 @@ using FlexKit::NodeHandle;
 using FlexKit::SceneNodes;
 using FlexKit::Camera;
 using FlexKit::ComponentSystemInterface;
-
 
 struct Camera3rdPersonContoller
 {
@@ -53,7 +55,6 @@ void UpdateCameraController( SceneNodes* Nodes, Camera3rdPersonContoller* Contro
 void SetCameraOffset	(Camera3rdPersonContoller* Controller, float3 xyz);
 void SetCameraPosition	(Camera3rdPersonContoller* Controller, float3 xyz);
 
-
 void TranslateCamera	(Camera3rdPersonContoller* Controller, float3 xyz);
 void YawCamera			(Camera3rdPersonContoller* Controller, float Degree);
 void PitchCamera		(Camera3rdPersonContoller* Controller, float Degree);
@@ -66,23 +67,108 @@ namespace FlexKit
 {
 	typedef Handle_t<16> CameraControllerHandle;
 
+	struct OrbitCameraSystem;
+
+	struct OrbitCameraArgs
+	{
+		CameraControllerHandle	Handle;
+		OrbitCameraSystem*		System;
+	};
+
+	struct OrbitCameraInputState
+	{
+		MouseInputState Mouse;
+		bool Forward;
+		bool Backward;
+		bool Left;
+		bool Right;
+	};
+
+	struct CameraOrbitController
+	{
+		NodeHandle CameraNode;
+		NodeHandle YawNode;
+		NodeHandle PitchNode;
+		NodeHandle RollNode;
+	};
+
+
 	struct OrbitCameraSystem : public ComponentSystemInterface
 	{
-		void Initiate		(GameFramework* Framework);
+		operator OrbitCameraSystem* (){return this;}
+		void Initiate		(GameFramework* Framework, InputComponentSystem* Input);
 
 		void ReleaseHandle	(ComponentHandle Handle);
 		void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID);
 
 		void Update(double dT);
 
-		CameraControllerHandle CreateOrbitCamera();
+		NodeHandle GetNode(CameraControllerHandle Handle)
+		{
+			return Controllers[Handle].YawNode;
+		}
+
+		void SetCameraNode(CameraControllerHandle Handle, NodeHandle Node)
+		{
+			Controllers[Handle].CameraNode = Node;
+			SetParentNode(*Nodes, Controllers[Handle].CameraNode, Controllers[Handle].PitchNode);
+		}
+
+		DynArray<CameraOrbitController>	Controllers;
+
+		// Component Data Sources
+		SceneNodeComponentSystem*	Nodes;
+		InputComponentSystem*		InputSystem;
 	};
 
-	NodeHandle GetSceneNode(GameObjectInterface* GO)
+	const uint32_t OrbitCameraComponentID = GetTypeGUID(OrbitCamera);
+
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, Camera* Cam);
+
+	NodeHandle GetCameraSceneNode(GameObjectInterface* GO)
 	{
-		//FindComponent(GO,
+		auto C = FindComponent(GO, OrbitCameraComponentID);
+		if(C)
+		{
+			auto OrbitSystem = (OrbitCameraSystem*)C->ComponentSystem;
+			return OrbitSystem->GetNode(C->ComponentHandle);
+		}
+
 		return NodeHandle(0);
 	}
+
+	void SetParentNode(GameObjectInterface* GO, NodeHandle Node)
+	{
+		auto C = FindComponent(GO, OrbitCameraComponentID);
+		if (C)
+		{
+			auto System		= (OrbitCameraSystem*)C->ComponentSystem;
+			auto YawNode	= System->GetNode(C->ComponentHandle);
+
+			System->Nodes->SetParentNode(YawNode, Node);
+		}
+	}
+
+	template<size_t SIZE>
+	void CreateComponent(GameObject<SIZE>& GO, OrbitCameraArgs& Args)
+	{
+		Args.System->InputSystem->BindInput(Args.Handle, Args.System);
+
+		GO.AddComponent(Component(Args.System, Args.Handle, OrbitCameraComponentID));
+
+		auto T			= (TansformComponent*)FindComponent(GO, TransformComponentID);
+		auto CameraNode = GetCameraSceneNode(GO);
+
+		if (T)
+		{
+			Parent(GO, CameraNode);
+		}
+		else
+		{
+			CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, CameraNode });
+		}
+	}
+
 
 	struct ThirdPersonCameraComponentSystem : public ComponentSystemInterface
 	{

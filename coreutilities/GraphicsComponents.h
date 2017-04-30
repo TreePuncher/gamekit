@@ -117,6 +117,19 @@ namespace FlexKit
 
 
 	template<typename TY_GO>
+	bool SetParent(TY_GO& GO, NodeHandle Node)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		if (C)
+		{
+			C->SetParentNode(Node, C->ComponentHandle);
+			return true;
+		}
+		return false;
+	}
+
+
+	template<typename TY_GO>
 	float3 GetWorldPosition(TY_GO& GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
@@ -141,6 +154,18 @@ namespace FlexKit
 		return NodeHandle(-1);
 	}
 
+
+	template<typename TY_GO>
+	bool Parent(TY_GO& GO, NodeHandle Node)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		if (C) {
+			auto ThisNode = GetNodeHandle(GO);
+			C->SetParentNode(ThisNode, Node);
+			return true;
+		}
+		return false;
+	}
 
 	template<typename TY_GO>
 	void SetLocalPosition(TY_GO& GO, float3 XYZ)

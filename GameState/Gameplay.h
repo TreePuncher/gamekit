@@ -27,9 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GameFramework.h"
 #include "CameraUtilities.h"
+#include "InputComponent.h"
 
 #include "..\coreutilities\Components.h"
-
 struct PlayerController
 {
 	float3		Pos;
@@ -37,22 +37,6 @@ struct PlayerController
 };
 
 
-struct PlayerInputState
-{
-	bool Forward;
-	bool Backward;
-	bool Left;
-	bool Right;
-	bool Shield;
-
-	void ClearState()
-	{
-		Forward = false;
-		Backward = false;
-		Left = false;
-		Right = false;
-	}
-};
 
 
 struct PlayerStateFrame
@@ -106,32 +90,6 @@ struct InputFrame
 
 typedef Handle_t<16>	PlayerHandle;
 
-
-
-struct GameplayComponentSystem;
-
-struct GameplayLocalInputComponentSystem : public ComponentSystemInterface
-{
-	void Initiate		(GameplayComponentSystem* Target);
-	void Update			(double dt, MouseInputState MouseInput, GameFramework* Framework);
-
-	ComponentHandle BindInputToPlayer(PlayerHandle Player)
-	{
-		Listeners.push_back(Player);
-		return  ComponentHandle(Listeners.size() - 1);
-	}
-
-	void ReleaseHandle	(ComponentHandle Handle){}
-
-	static_vector<PlayerHandle> Listeners;
-
-	PlayerInputState		 KeyState;
-	GameplayComponentSystem* TargetModel;
-
-	operator GameplayLocalInputComponentSystem* (){return this;}
-};
-
-const uint32_t InputComponentID = GetTypeGUID(INPUTCOMPONENT);
 
 struct GameplayComponentSystem : public ComponentSystemInterface
 {
@@ -240,9 +198,9 @@ const uint32_t PlayerComponentID = GetTypeGUID(PlayerComponent);
 
 struct PlayersComponentArgs
 {
-	GameplayComponentSystem*			Gameplay;
-	GameplayLocalInputComponentSystem*	Input;
-	GameFramework*						Framework;
+	GameplayComponentSystem*	Gameplay;
+	InputComponentSystem*		Input;
+	GameFramework*				Framework;
 };
 
 
@@ -250,7 +208,7 @@ template<size_t SIZE>
 void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
 {
 	PlayerHandle	Player					= Args.Gameplay->CreatePlayer();
-	ComponentHandle InputComponentHandle	= Args.Input->BindInputToPlayer(Player);
+	ComponentHandle InputComponentHandle	= Args.Input->BindInput(Player, Args.Gameplay);
 
 	auto C = FindComponent(GO, TransformComponentID);
 
@@ -266,13 +224,14 @@ void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
 		{
 			Args.Gameplay->SetPlayerNode(Player, GetNodeHandle(GO));
 		}
-		GO.Components[GO.ComponentCount++] = Component{ Args.Gameplay, Player,				PlayerComponentID };
-		GO.Components[GO.ComponentCount++] = Component{ Args.Input, InputComponentHandle,	InputComponentID};
+
+		GO.AddComponent(Component{ Args.Gameplay, Player, PlayerComponentID });
+		GO.AddComponent(Component{ Args.Input, InputComponentHandle, InputComponentID });
 	}
 }
 
 
-PlayersComponentArgs CreateLocalPlayer(GameplayComponentSystem* GameplaySystem, GameplayLocalInputComponentSystem* Input, GameFramework* Framework)
+PlayersComponentArgs CreateLocalPlayer(GameplayComponentSystem* GameplaySystem, InputComponentSystem* Input, GameFramework* Framework)
 {
 	return { GameplaySystem, Input, Framework };
 }

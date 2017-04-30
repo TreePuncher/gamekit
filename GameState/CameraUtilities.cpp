@@ -24,29 +24,86 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "CameraUtilities.h"
 
+
+namespace FlexKit
+{
+	void OrbitCameraSystem::Initiate(GameFramework* Framework, InputComponentSystem* Input)
+	{
+		Controllers.Allocator = Framework->Engine->BlockAllocator;
+
+		Nodes			= Framework->Engine->Nodes;
+		InputSystem		= Input;
+	}
+
+	void OrbitCameraSystem::ReleaseHandle(ComponentHandle Handle)
+	{
+
+	}
+
+	void OrbitCameraSystem::HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID)
+	{
+
+	}
+
+	void OrbitCameraSystem::Update(double dT)
+	{
+		for (auto Controller : this->Controllers) {
+			Quaternion Q = GetOrientation(*Nodes, Controller.CameraNode);
+
+			float3 dP = 0;
+
+			auto MouseState = InputSystem->GetMouseState();
+
+			if (InputSystem->KeyState.Forward)
+			{
+				dP += float3(0, 0, -1);
+			}
+
+			if (InputSystem->KeyState.Backward)
+			{
+				dP += float3(0, 0, 1);
+			}
+
+			if (InputSystem->KeyState.Left)
+			{
+				dP += float3(-1, 0, 0);
+			}
+
+			if (InputSystem->KeyState.Right)
+			{
+				dP += float3(1, 0, -1);
+			}
+			dP = Q * dP;
+			TranslateWorld(*Nodes, Controller.YawNode, dP * dT * 10);
+			Pitch(*Nodes, Controller.PitchNode, MouseState.dPos[1] * dT);
+			Yaw(*Nodes, Controller.YawNode, MouseState.dPos[0] * dT);
+		}
+
+	}
+
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, Camera* Cam)
+	{
+		CameraOrbitController Controller;
+		Controller.CameraNode	= Cam->Node;
+		Controller.PitchNode	= System->Nodes->GetNewNode();
+		Controller.RollNode		= System->Nodes->GetNewNode();
+		Controller.YawNode		= System->Nodes->GetNewNode();
+
+		System->Nodes->SetParentNode(Controller.YawNode,	Controller.PitchNode);
+		System->Nodes->SetParentNode(Controller.PitchNode,	Controller.RollNode);
+		System->Nodes->SetParentNode(Controller.RollNode,	Controller.CameraNode);
+
+		OrbitCameraArgs Out = {};
+		Out.System = System;
+		Out.Handle = CameraControllerHandle(System->Controllers.size());
+
+		System->Controllers.push_back(Controller);
+
+		return Out;
+	}
+}
+
 using namespace FlexKit;
-
-void OrbitCameraSystem::Initiate(GameFramework* Framework)
-{
-
-}
-
-void OrbitCameraSystem::ReleaseHandle(ComponentHandle Handle)
-{
-
-}
-
-void OrbitCameraSystem::HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID)
-{
-
-}
-
-void OrbitCameraSystem::Update(double dT)
-{
-
-}
-
-CameraControllerHandle CreateOrbitCamera();
 
 void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out)
 {
@@ -120,15 +177,12 @@ void RollCamera(Camera3rdPersonContoller* Controller, float Degree)
 
 float3 GetForwardVector(Camera3rdPersonContoller* Controller)
 {
-	Quaternion Q;
-	GetOrientation(Controller->Nodes, Controller->Yaw_Node, &Q);
+	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
 	return -(Q * float3(0, 0, 1)).normal();
 }
 
-
 float3 GetRightVector(Camera3rdPersonContoller* Controller)
 {
-	Quaternion Q;
-	GetOrientation(Controller->Nodes, Controller->Yaw_Node, &Q);
+	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
 	return -(Q * float3(-1, 0, 0)).normal();
 }

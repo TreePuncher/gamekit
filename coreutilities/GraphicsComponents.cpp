@@ -122,8 +122,7 @@ namespace FlexKit
 
 	FlexKit::Quaternion TansformComponent::GetOrientation()
 	{
-		Quaternion Q;
-		FlexKit::GetOrientation(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle), &Q);
+		Quaternion Q = FlexKit::GetOrientation(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), static_cast<NodeHandle>(ComponentHandle) );
 		return Q;
 	}
 

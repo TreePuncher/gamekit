@@ -3594,14 +3594,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GetOrientation(SceneNodes* Nodes, NodeHandle node, Quaternion* Out)
+	Quaternion GetOrientation(SceneNodes* Nodes, NodeHandle node)
 	{
 		DirectX::XMMATRIX WT;
 		GetWT(Nodes, node, &WT);
 
 		DirectX::XMVECTOR q = DirectX::XMQuaternionRotationMatrix(WT);
 
-		Out->floats = q;
+		return q;
 	}
 
 
@@ -4891,8 +4891,7 @@ namespace FlexKit
 		NewData.WindowWidth		= HW[0];
 		NewData.WindowHeight	= HW[1];
 		
-		Quaternion Q;
-		GetOrientation(Nodes, camera->Node, &Q);
+		Quaternion Q = GetOrientation(Nodes, camera->Node);
 		auto CameraPoints	  = GetCameraFrustumPoints(camera, NewData.WPOS.xyz(), Q);
 
 		NewData.WSTopLeft     = CameraPoints.FTL;
@@ -4953,8 +4952,7 @@ namespace FlexKit
 				SLs[itr].POS	= float4(GetPositionW(nodes, L.Position), L.R);
 				SLs[itr].Color	= float4(L.K, L.I);
 
-				Quaternion Q;
-				GetOrientation(nodes, L.Position, &Q);
+				Quaternion Q = GetOrientation(nodes, L.Position);
 				SLs[itr].Direction = Q *  L.Direction;
 				itr++;
 			}

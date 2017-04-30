@@ -592,8 +592,7 @@ namespace FlexKit
 	{
 		FK_ASSERT(out != T_out);
 
-		Quaternion Q;
-		FlexKit::GetOrientation(*SM->SN, C->Node, &Q);
+		Quaternion Q = FlexKit::GetOrientation(*SM->SN, C->Node);
 		auto F = GetFrustum(C, GetPositionW(*SM->SN, C->Node), Q);
 
 		for (auto &E : SM->Drawables)
@@ -794,9 +793,7 @@ namespace FlexKit
 
 	inline Quaternion GraphicScene::GetOrientation(EntityHandle Handle)
 	{
-		Quaternion Out;
-		FlexKit::GetOrientation(*SN, GetNode(Handle), &Out);
-		return Out;
+		return FlexKit::GetOrientation(*SN, GetNode(Handle));
 	}
 
 

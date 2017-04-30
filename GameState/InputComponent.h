@@ -1,3 +1,6 @@
+#ifndef INPUTCOMPONENT_H
+#define INPUTCOMPONENT_H
+
 /**********************************************************************
 
 Copyright (c) 2017 Robert May
@@ -22,17 +25,55 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\buildsettings.h"
-#include "..\Application\GameUtilities.cpp"
-#include "..\coreutilities\AllSourceFiles.cpp"
+#include "GameFramework.h"
+#include "..\coreutilities\Components.h"
 
-#include "HostState.cpp"
-#include "ClientState.cpp"
-#include "CameraUtilities.cpp"
-#include "Console.cpp"
-#include "ConsoleSubState.cpp"
-#include "GameFramework.cpp"
-#include "MenuState.cpp"
-#include "PlayState.cpp"
-#include "Gameplay.cpp"
-#include "InputComponent.cpp"
+struct PlayerInputState
+{
+	bool Forward;
+	bool Backward;
+	bool Left;
+	bool Right;
+	bool Shield;
+
+	void ClearState()
+	{
+		Forward  = false;
+		Backward = false;
+		Left     = false;
+		Right    = false;
+	}
+};
+
+
+namespace FlexKit
+{
+	struct InputComponentSystem : public ComponentSystemInterface
+	{
+		void Initiate		(GameFramework* F);
+		void Update			(double dt, MouseInputState MouseInput, GameFramework* Framework);
+
+		ComponentHandle BindInput(ComponentHandle Handle, ComponentSystemInterface* System)
+		{
+			Listeners.push_back(Handle);
+			TargetSystems.push_back(System);
+
+			return ComponentHandle(Listeners.size() - 1);
+		}
+
+		MouseInputState	GetMouseState();
+
+		void ReleaseHandle	(ComponentHandle Handle){}
+
+		DynArray<ComponentHandle>			Listeners;
+		DynArray<ComponentSystemInterface*>	TargetSystems;
+
+		GameFramework*						Framework;
+		PlayerInputState					KeyState;
+
+		operator InputComponentSystem* (){return this;}
+	};
+
+	const uint32_t InputComponentID = GetTypeGUID(INPUTCOMPONENT);
+}
+#endif

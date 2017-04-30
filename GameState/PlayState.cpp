@@ -115,6 +115,12 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	SetLightRadius		(ThisState->TestObject, 100 + IaR);
 	SetLightIntensity	(ThisState->TestObject, 100 + IaR);
 	
+	FlexKit::OrbitCameraInputState Input;
+	Input.Mouse = ThisState->Framework->MouseState;
+	Input.Forward = ThisState->Input;
+
+	ThisState->OrbitCameras.Update(dT);
+
 	return false;
 }
 
@@ -166,7 +172,8 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->Framework			 = Framework;
 
 	State->Model.Initiate(Framework);
-	State->Input.Initiate(&State->Model);
+	State->Input.Initiate(Framework);
+	State->OrbitCameras.Initiate(Framework, State->Input);
 
 	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Framework->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
@@ -181,7 +188,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	InitiateGameObject(
 		State->Player,
-		CreateLocalPlayer(&State->Model, State->Input, Framework));
+		CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
 	return State;
 }

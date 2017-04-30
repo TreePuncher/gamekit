@@ -1066,8 +1066,7 @@ namespace FlexKit
 			Landscape::ConstantBufferLayout Buffer;
 
 			float3 POS = GetPositionW(Nodes, Camera->Node);
-			Quaternion Q;
-			GetOrientation(Nodes, Camera->Node, &Q);
+			Quaternion Q = GetOrientation(Nodes, Camera->Node);
 			Buffer.Albedo	= {1, 1, 1, 0.9f};
 			Buffer.Specular = {1, 1, 1, 1};
 

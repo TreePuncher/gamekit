@@ -45,18 +45,18 @@ namespace FlexKit
 
 	typedef uint32_t ComponentType;
 
-
 	struct Component;
 	struct GameObjectInterface;
+
+	const uint32_t UnknownComponentID = GetTypeGUID(Component);
 
 	class ComponentSystemInterface
 	{
 	public:
 		virtual void ReleaseHandle	(ComponentHandle Handle) = 0;
-		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID, Component* Components, size_t ComponentCount) {}
+		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID, GameObjectInterface* GO) {}
 	};
 
-	const uint32_t UnknownComponentID = GetTypeGUID(Component);
 
 	struct Component
 	{
@@ -145,25 +145,24 @@ namespace FlexKit
 			return (MaxComponentCount <= ComponentCount);
 		}
 
-		void NotifyAll(ComponentType Source, EventTypeID EventID)
+		void NotifyAll(ComponentType Source, EventTypeID EventID, ComponentSystemInterface* System = nullptr)
 		{
 			for (size_t I = 0; I < ComponentCount; ++I) 
 			{
 				if(Components[I].ComponentSystem)
 					Components[I].ComponentSystem->HandleEvent(
 						Components[I].ComponentHandle, 
-						Source, EventID, 
-						Components, 
-						ComponentCount);
+						Source, System, EventID, *this);
 			}
-		}s
+		}
 
 		bool AddComponent(Component&& NewC)
 		{
 			if (!Full())
 			{
 				for (auto& C : Components) {
-					if (C.Type == UnknownComponentID) {
+					if (C.Type == UnknownComponentID) 
+					{
 						C = std::move(NewC);
 						break;
 					}
