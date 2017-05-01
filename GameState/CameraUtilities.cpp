@@ -60,13 +60,12 @@ namespace FlexKit
 			dP += InputSystem->KeyState.Right		? float3(1, 0, 0)	: float3(0, 0, 0);
 
 			dP = Q * dP;
-			TranslateWorld(*Nodes, Controller.YawNode, dP * dT * 50);
+			Translate(Controller.ParentGO, dP * dT * 50);
 			Pitch(*Nodes, Controller.PitchNode, MouseState.dPos[1] * dT);
 			Yaw(*Nodes, Controller.YawNode, MouseState.dPos[0] * dT);
 		}
 
 	}
-
 
 	void SetParentNode(GameObjectInterface* GO, NodeHandle Node)
 	{

@@ -2206,6 +2206,7 @@ namespace FlexKit
 	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle node,	float4x4* __restrict out );
 	FLEXKITAPI Quaternion	GetOrientation				( SceneNodes* Nodes, NodeHandle Node );
 	FLEXKITAPI float3		GetPositionW				( SceneNodes* Nodes, NodeHandle Node );
+	FLEXKITAPI float3		GetPositionL				( SceneNodes* Nodes, NodeHandle Node );
 	FLEXKITAPI NodeHandle	GetNewNode					( SceneNodes* Nodes );
 	FLEXKITAPI NodeHandle	GetZeroedNode				( SceneNodes* Nodes );
 	FLEXKITAPI bool			GetFlag						( SceneNodes* Nodes, NodeHandle Node,	size_t f );

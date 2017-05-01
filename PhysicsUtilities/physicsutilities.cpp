@@ -455,7 +455,7 @@ namespace FlexKit
 
 		ControllerManager = PxCreateControllerManager(*Scene);
 
-
+		CharacterControllers.Initiate(Nodes, memory, Scene);
 		CubeColliders.Initiate(Memory);
 		StaticBoxColliders.Initate(Memory);
 		Base.Initiate(nodes, Memory);
@@ -494,6 +494,8 @@ namespace FlexKit
 			Base.UpdateSystem();
 			UpdateColliders = false;
 		}
+
+		CharacterControllers.UpdateSystem(dT);
 	}
 
 

@@ -3423,6 +3423,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	float3 GetPositionL(SceneNodes* Nodes, NodeHandle Node)
+	{
+		auto Local = GetLocal(Nodes, Node);
+		return Local.T;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void SetPositionW(SceneNodes* Nodes, NodeHandle node, float3 in) // Sets Position in World Space
 	{
 #if 0

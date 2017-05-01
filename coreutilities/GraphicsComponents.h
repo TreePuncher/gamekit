@@ -52,10 +52,32 @@ namespace FlexKit
 		NodeHandle Root;
 		SceneNodes Nodes;
 
-		void SetParentNode(NodeHandle Parent, NodeHandle Node)
+		void SetParentNode	(NodeHandle Parent, NodeHandle Node)
 		{
 			FlexKit::SetParentNode(Nodes, Parent, Node);
 		}
+		
+		float3 GetPositionW	(NodeHandle Node)
+		{
+			return FlexKit::GetPositionW(Nodes, Node);
+		}
+
+		float3 GetPositionL(NodeHandle Node)
+		{
+			return FlexKit::GetPositionL(Nodes, Node);
+		}
+
+		void SetPositionW(NodeHandle Node, float3 xyz)
+		{
+			FlexKit::SetPositionW(Nodes, Node, xyz);
+		}
+
+		void SetPositionL(NodeHandle Node, float3 xyz)
+		{
+			FlexKit::SetPositionL(Nodes, Node, xyz);
+		}
+
+
 
 		operator SceneNodes* ()					{ return &Nodes; }
 		operator ComponentSystemInterface* ()	{ return this; }
@@ -213,6 +235,8 @@ namespace FlexKit
 			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
 		}
 	}
+
+
 
 
 	void TranslateWorld(GameObjectInterface* GO, float3 XYZ)

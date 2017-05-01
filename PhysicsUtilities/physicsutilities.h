@@ -335,17 +335,150 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	bool TranslateCollider(GameObjectInterface* GO, float3 XYZ)
-	{
-		auto BaseCollider = FindComponent(GO, ColliderComponentID);
-		if(BaseCollider)
-		{
-			auto System = (ColliderBaseSystem*)BaseCollider->ComponentSystem;
 
-			return true;
+	struct CharacterControllerSystem : public FlexKit::ComponentSystemInterface
+	{
+		struct CharacterController
+		{
+			float3					CurrentPosition = 0;
+			float3					Delta			= 0;
+			NodeHandle				Node			= NodeHandle(-1);
+			physx::PxController*	Controller		= nullptr;
+			bool					FloorContact	= false;
+			bool					CeilingContact	= false;
+			bool					SideContact		= false;
+		};
+
+
+		void Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene)
+		{
+			Nodes					= nodes;
+			Controllers.Allocator	= Memory;
+			ControllerManager		= PxCreateControllerManager(*Scene);
 		}
-		return false;
+
+
+		void UpdateSystem(double dT)
+		{
+			for (auto& C : Controllers)
+			{
+				physx::PxControllerFilters Filter;
+				if (C.Delta.magnitudesquared() > 0.001f)
+				{
+					C.Controller->move(
+					{ C.Delta.x, C.Delta.y, C.Delta.z },
+						0.01f,
+						dT,
+						Filter);
+
+					C.Delta = 0;
+
+					auto NewPosition = C.Controller->getFootPosition();
+					auto NewPositionFK = { NewPosition.x, NewPosition.y, NewPosition.z };
+
+					C.CurrentPosition = NewPositionFK;
+
+					printfloat3(C.CurrentPosition);
+					printf("\n");
+
+					Nodes->SetPositionL(C.Node, NewPositionFK);
+				}
+			}
+		}
+
+
+		void Release()
+		{
+		}
+
+
+		void ReleaseHandle(ComponentHandle Handle)
+		{
+		}
+
+
+		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID ID, GameObjectInterface* GO) final
+		{
+			if (EventSource == TransformComponentID && ID == GetCRCGUID(POSITION))
+			{
+				auto CurrentPosition	= Controllers[Handle].CurrentPosition;
+				auto Position			= Nodes->GetPositionL(Controllers[Handle].Node);
+				auto DeltaPosition		= Position - CurrentPosition;
+
+				Controllers[Handle].Delta += DeltaPosition;
+			}
+		}
+
+		void		SetNodeHandle(ComponentHandle Handle, NodeHandle Node)
+		{
+			Nodes->ReleaseHandle(Controllers[Handle].Node);
+			Controllers[Handle].Node = Node;
+		}
+		NodeHandle	GetNodeHandle(ComponentHandle Handle)
+		{
+			return Controllers[Handle].Node;
+		}
+
+
+		ComponentHandle CreateCapsuleController(PhysicsSystem* PS, physx::PxScene* Scene, physx::PxMaterial* Mat,float R, float H, float3 InitialPosition = 0, Quaternion Q = Quaternion())
+		{
+			physx::PxCapsuleControllerDesc CCDesc;
+			CCDesc.material             = Mat;
+			CCDesc.radius               = R;
+			CCDesc.height               = H;
+			CCDesc.contactOffset        = 0.01f;
+			CCDesc.position             = { 0.0f, H / 2, 0.0f };
+			CCDesc.climbingMode         = physx::PxCapsuleClimbingMode::eEASY;
+			//CCDesc.upDirection = PxVec3(0, 0, 1);
+
+			CharacterController NewController;
+
+			auto NewCharacterController = ControllerManager->createController(CCDesc);
+			NewController.Controller	= NewCharacterController;
+			NewController.Node			= Nodes->GetNewNode();
+			NewCharacterController->setFootPosition({ InitialPosition.x, InitialPosition.y, InitialPosition.z });
+
+			Controllers.push_back(NewController);
+
+			return ComponentHandle(Controllers.size() - 1);
+		}
+
+		DynArray<CharacterController>	Controllers;
+		physx::PxControllerManager*		ControllerManager;
+		SceneNodeComponentSystem*		Nodes;
+	};
+
+	const uint32_t CharacterControllerSystemID = GetTypeGUID(CharacterControllerSystem);
+
+
+	/************************************************************************************************/
+
+
+	struct CapsuleCharacterArgs
+	{
+		ComponentHandle				CapsuleController;
+		CharacterControllerSystem*	System;
+	};
+
+
+	template<size_t SIZE>
+	void CreateComponent(GameObject<SIZE>& GO, CapsuleCharacterArgs& Args)
+	{
+		auto C = FindComponent(GO, TransformComponentID);
+		if (C)
+		{
+			auto Transform = (TansformComponent*)C;
+			Args.System->SetNodeHandle(Args.CapsuleController, Transform->ComponentHandle);
+		}
+		else
+		{
+			auto Handle = Args.System->GetNodeHandle(Args.CapsuleController);
+			GO.AddComponent(Component(Args.System->Nodes, Handle, TransformComponentID));
+		}
+
+		GO.AddComponent(Component(Args.System, Args.CapsuleController, CharacterControllerSystemID));
 	}
+
 
 	/************************************************************************************************/
 
@@ -475,11 +608,7 @@ namespace FlexKit
 		void UpdateSystem	(double dT);
 		void Release		();
 
-		ColliderBaseSystem			Base;
-		CubeColliderSystem			CubeColliders;
-		StaticCubeColliderSystem	StaticBoxColliders;
-	
-		StaticBoxColliderArgs	CreateStaticBoxCollider(float3 XYZ = 1, float3 Pos = 0) {
+		StaticBoxColliderArgs	CreateStaticBoxCollider	(float3 XYZ = 1, float3 Pos = 0) {
 			auto Static = physx::PxCreateStatic(
 							*System->Physx, 
 							{ Pos.x, Pos.y, Pos.z },
@@ -501,7 +630,7 @@ namespace FlexKit
 
 			return Out;
 		}
-		CubeColliderArgs		CreateCubeComponent(float3 InitialP = 0, float3 InitialV = 0, float l = 10, Quaternion Q = Quaternion(0, 0, 0, 1))
+		CubeColliderArgs		CreateCubeComponent		(float3 InitialP = 0, float3 InitialV = 0, float l = 10, Quaternion Q = Quaternion(0, 0, 0, 1))
 		{
 			physx::PxVec3 pV;
 			pV.x = InitialP.x;
@@ -537,6 +666,21 @@ namespace FlexKit
 			return Out;
 		}
 
+		CapsuleCharacterArgs	CreateCharacterController(float3 InitialP = 0, float R = 5, float H = 5, Quaternion Q = Quaternion())
+		{
+			auto CapsuleCharacter = CharacterControllers.CreateCapsuleController(System, Scene, System->DefaultMaterial, R, H, InitialP, Q);
+
+			CapsuleCharacterArgs Args;
+			Args.CapsuleController = CapsuleCharacter;
+			Args.System = &CharacterControllers;
+
+			return Args;
+		}
+
+		ColliderBaseSystem			Base;
+		CubeColliderSystem			CubeColliders;
+		StaticCubeColliderSystem	StaticBoxColliders;
+		CharacterControllerSystem	CharacterControllers;
 
 		physx::PxScene*				Scene;
 		physx::PxControllerManager*	ControllerManager;

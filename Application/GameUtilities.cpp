@@ -145,8 +145,8 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	SetInputWIndow		( &Engine->Window );
 	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->BlockAllocator );
 
-	ForwardPass_DESC FP_Desc{ &Engine->DepthBuffer, &Engine->Window };
-	TiledRendering_Desc DP_Desc{ &Engine->DepthBuffer, &Engine->Window, nullptr };
+	ForwardPass_DESC FP_Desc	{ &Engine->DepthBuffer, &Engine->Window };
+	TiledRendering_Desc DP_Desc	{ &Engine->DepthBuffer, &Engine->Window, nullptr };
 
 	InitiateForwardPass			(Engine->RenderSystem,	&FP_Desc, &Engine->ForwardRender);
 	InitiateTiledDeferredRender	(Engine->RenderSystem, &DP_Desc, &Engine->TiledRender);

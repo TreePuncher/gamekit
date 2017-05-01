@@ -90,6 +90,8 @@ namespace FlexKit
 		NodeHandle YawNode;
 		NodeHandle PitchNode;
 		NodeHandle RollNode;
+
+		GameObjectInterface* ParentGO;
 	};
 
 
@@ -149,6 +151,7 @@ namespace FlexKit
 		Args.System->InputSystem->BindInput(Args.Handle, Args.System);
 
 		GO.AddComponent(Component(Args.System, Args.Handle, OrbitCameraComponentID));
+		Args.System->Controllers[Args.Handle].ParentGO = GO;
 
 		auto T			= (TansformComponent*)FindComponent(GO, TransformComponentID);
 		auto CameraNode = GetCameraSceneNode(GO);

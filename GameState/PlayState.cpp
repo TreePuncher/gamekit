@@ -206,6 +206,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	InitiateGameObject(
 		State->Player,
+			State->Physics.CreateCharacterController(),
 			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
 	Translate(State->Player, {0, 10, -10});
