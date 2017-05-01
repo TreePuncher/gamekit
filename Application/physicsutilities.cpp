@@ -34,6 +34,7 @@ using FlexKit::SceneNodes;
 
 /************************************************************************************************/
 
+
 void InitiatePhysics(PhysicsSystem* Physics, uint32_t CoreCount)
 {
 #ifdef _DEBUG
@@ -95,7 +96,9 @@ void InitiatePhysics(PhysicsSystem* Physics, uint32_t CoreCount)
 	Physics->DefaultMaterial = DefaultMaterial;
 }
 
+
 /************************************************************************************************/
+
 
 void UpdateColliders(PScene* scn, FlexKit::SceneNodes* nodes)
 {
@@ -130,7 +133,9 @@ void UpdateColliders(PScene* scn, FlexKit::SceneNodes* nodes)
 	}
 }
 
+
 /************************************************************************************************/
+
 
 size_t CreateCubeActor(physx::PxMaterial* material, PScene* scene, float l, float3 initialP, FlexKit::Quaternion initialQ, float3 InitialV )
 {
@@ -156,7 +161,9 @@ size_t CreateCubeActor(physx::PxMaterial* material, PScene* scene, float l, floa
 	return scene->Colliders.size() - 1;
 }
 
+
 /************************************************************************************************/
+
 
 size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene)
 {
@@ -172,7 +179,9 @@ size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene)
 	return scene->Colliders.size() - 1;
 }
 
+
 /************************************************************************************************/
+
 
 physx::PxFilterFlags Test(
 	physx::PxFilterObjectAttributes attributes0,
@@ -188,6 +197,10 @@ physx::PxFilterFlags Test(
 	pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
 	return physx::PxFilterFlag::eDEFAULT;
 }
+
+
+/************************************************************************************************/
+
 
 void CreateScene( PhysicsSystem* System, PScene* scn )
 {
@@ -217,7 +230,9 @@ void CreateScene( PhysicsSystem* System, PScene* scn )
 	scn->ControllerManager = PxCreateControllerManager(*scn->Scene);
 }
 
+
 /************************************************************************************************/
+
 
 size_t CreateSphereActor(physx::PxMaterial* material, PScene* scene, float3 initialP, FlexKit::Quaternion initialQ, float3 InitialV)
 {
@@ -232,7 +247,9 @@ size_t CreateSphereActor(physx::PxMaterial* material, PScene* scene, float3 init
 	return scene->Colliders.size() - 1;
 }
 
+
 /************************************************************************************************/
+
 
 void UpdateScene(PScene* scn, double dt, FNPSCENECALLBACK_POSTUPDATE PreUpdate, FNPSCENECALLBACK_PREUPDATE PostUpdate, void* P)
 {
@@ -256,7 +273,9 @@ void UpdateScene(PScene* scn, double dt, FNPSCENECALLBACK_POSTUPDATE PreUpdate, 
 	// Update Object Positions
 }
 
+
 /************************************************************************************************/
+
 
 void CleanupPhysics(PhysicsSystem* Physics)
 {
@@ -269,7 +288,9 @@ void CleanupPhysics(PhysicsSystem* Physics)
 	if(Physics->Foundation)			Physics->Foundation->release();
 }
 
+
 /************************************************************************************************/
+
 
 void CleanUpScene(PScene* mat)
 {
@@ -278,7 +299,9 @@ void CleanUpScene(PScene* mat)
 	mat->Scene->release();
 }
 
+
 /************************************************************************************************/
+
 
 void MakeCube(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Entity* E, NodeHandle node, float3 initialP, FlexKit::Quaternion initialQ)
 {
@@ -289,5 +312,6 @@ void MakeCube(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMateri
 
 	FlexKit::ZeroNode(Nodes, node);
 }
+
 
 /************************************************************************************************/

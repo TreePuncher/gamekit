@@ -136,7 +136,6 @@ struct EngineMemory
 	GeometryTable	Geometry;
 
 	PhysicsSystem	Physics;
-	PScene*			CurrentScene;
 
 	TiledDeferredRender	TiledRender;
 	ForwardRender		ForwardRender;

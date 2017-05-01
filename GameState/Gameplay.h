@@ -37,8 +37,6 @@ struct PlayerController
 };
 
 
-
-
 struct PlayerStateFrame
 {
 	size_t FrameID;
@@ -67,19 +65,8 @@ struct Player
 };
 
 
+/************************************************************************************************/
 
-void InitiatePlayer			( GameFramework* Engine, Player* Out );
-void ReleasePlayer			( Player* P, GameFramework* Engine );
-void UpdatePlayer			( GameFramework* Engine, Player* P, PlayerInputState Input, float2 MouseMovement, double dT );
-void UpdatePlayerAnimations	( GameFramework* Engine, Player* P, double dT );
-
-void SetPlayerPosition		( Player* P, float3 Position );
-void YawPlayer				( Player* P, float Degree );
-void SetPlayerOrientation	( Player* P, Quaternion Q );
-
-inline float		GetPlayerYaw		( Player* P )					{ return P->CameraCTR.Yaw; }
-inline Quaternion	GetOrientation		( Player* P, GraphicScene* GS)	{ return GS->GetOrientation(P->Model).Inverse(); }
-inline float3		GetPlayerPosition	( Player* P)					{ return P->PlayerCTR.Pos; }
 
 struct InputFrame
 {
@@ -91,9 +78,12 @@ struct InputFrame
 typedef Handle_t<16>	PlayerHandle;
 
 
+/*
 struct GameplayComponentSystem : public ComponentSystemInterface
 {
 	GameFramework*				Framework;
+	PhysicsComponentSystem*		Scene;
+
 	static_vector<Player>		Players;
 	static_vector<InputFrame>	PlayerInputs;
 	static_vector<size_t>		LastFrameRecieved;
@@ -110,11 +100,12 @@ struct GameplayComponentSystem : public ComponentSystemInterface
 		}
 	}
 
-	void Initiate(GameFramework* framework)
+	void Initiate( PhysicsComponentSystem* System, GameFramework* framework )
 	{
-		Framework = framework;
-		auto* Engine = framework->Engine;
-		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &framework->PScene);
+		Framework		= framework;
+		auto* Engine	= framework->Engine;
+
+		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &System->Scene);
 	}
 
 	void Clear()
@@ -124,7 +115,6 @@ struct GameplayComponentSystem : public ComponentSystemInterface
 
 	void SetPlayerCount(size_t Count)
 	{
-		/*
 		PlayerInputs.resize(Count);
 		Players.resize(Count);
 		LastFrameRecieved.resize(Count);
@@ -134,7 +124,6 @@ struct GameplayComponentSystem : public ComponentSystemInterface
 
 		for (auto& P : Players)
 			InitiatePlayer(Engine, &P);
-		*/
 	}
 
 	PlayerHandle CreatePlayer()
@@ -231,9 +220,8 @@ void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
 }
 
 
-PlayersComponentArgs CreateLocalPlayer(GameplayComponentSystem* GameplaySystem, InputComponentSystem* Input, GameFramework* Framework)
-{
-	return { GameplaySystem, Input, Framework };
-}
+PlayersComponentArgs CreateLocalPlayer(GameplayComponentSystem* GameplaySystem, InputComponentSystem* Input, GameFramework* Framework)	 { return { GameplaySystem, Input, Framework };}
+
+*/
 
 #endif

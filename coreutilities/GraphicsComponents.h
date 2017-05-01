@@ -43,6 +43,7 @@ namespace FlexKit
 		void InitiateSystem(byte* Memory, size_t BufferSize);
 
 		// Interface Methods
+		void Release();
 		void ReleaseHandle(ComponentHandle Handle) final;
 
 		NodeHandle GetRoot();
@@ -80,6 +81,8 @@ namespace FlexKit
 		Quaternion	GetOrientation();
 		void		SetOrientation(FlexKit::Quaternion Q);
 		void		SetParentNode(NodeHandle Parent, NodeHandle Node);
+
+		NodeHandle	GetParentNode(NodeHandle Node);
 	};
 
 
@@ -154,6 +157,16 @@ namespace FlexKit
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if(C)
 			return C->ComponentHandle;
+		return NodeHandle(-1);
+	}
+
+
+	template<typename TY_GO>
+	NodeHandle GetParent(TY_GO& GO)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		if (C)
+			return C->GetParentNode(C->ComponentHandle);
 		return NodeHandle(-1);
 	}
 
@@ -236,6 +249,8 @@ namespace FlexKit
 			Scene		= IN_Scene;
 			SceneNodes	= IN_SceneNodes;
 		}
+		
+		void Release(){}
 
 		void ReleaseHandle(ComponentHandle Handle) final
 		{
@@ -349,30 +364,11 @@ namespace FlexKit
 			SceneNodes	= IN_SceneNodes;
 		}
 
-		void ReleaseHandle(ComponentHandle Handle) final
-		{
-			ReleaseLight(&Scene->PLights, Handle);
-		}
-
-		void SetNode(ComponentHandle Light, NodeHandle Node)
-		{
-			Scene->SetLightNodeHandle(Light, Node);
-		}
-
-		void SetColor(ComponentHandle Light, float3 NewColor)
-		{
-			Scene->PLights[Light].K = NewColor;
-		}
-
-		void SetIntensity(ComponentHandle Light, float I)
-		{
-			Scene->PLights[Light].I = I;
-		}
-
-		void SetRadius(ComponentHandle Light, float R)
-		{
-			Scene->PLights[Light].R = R;
-		}
+		void ReleaseHandle	( ComponentHandle Handle ) final			{ ReleaseLight(&Scene->PLights, Handle); }
+		void SetNode		( ComponentHandle Light, NodeHandle Node )	{ Scene->SetLightNodeHandle(Light, Node); }
+		void SetColor		( ComponentHandle Light, float3 NewColor )	{ Scene->PLights[Light].K = NewColor; }
+		void SetIntensity	( ComponentHandle Light, float I )			{ Scene->PLights[Light].I = I; }
+		void SetRadius		( ComponentHandle Light, float R )			{ Scene->PLights[Light].R = R; }
 
 		operator LightComponentSystem* ()	{ return this; }
 		operator GraphicScene* ()			{ return *Scene; }

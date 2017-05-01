@@ -121,8 +121,8 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	using FlexKit::ForwardPass_DESC;
 
 	bool Out		 = false;
-	uint32_t width	 = 800;
-	uint32_t height	 = 600;
+	uint32_t width	 = 1920;
+	uint32_t height	 = 1080;
 	bool InvertDepth = true;
 	FlexKit::Graphics_Desc	desc = { 0 };
 	desc.Memory = Engine->BlockAllocator;

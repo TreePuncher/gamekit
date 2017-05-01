@@ -54,32 +54,32 @@ namespace FlexKit
 
 			auto MouseState = InputSystem->GetMouseState();
 
-			if (InputSystem->KeyState.Forward)
-			{
-				dP += float3(0, 0, -1);
-			}
+			dP += InputSystem->KeyState.Forward		? float3(0, 0, -1)	: float3(0, 0, 0);
+			dP += InputSystem->KeyState.Backward	? float3(0, 0, 1)	: float3(0, 0, 0);
+			dP += InputSystem->KeyState.Left		? float3(-1, 0, 0)	: float3(0, 0, 0);
+			dP += InputSystem->KeyState.Right		? float3(1, 0, 0)	: float3(0, 0, 0);
 
-			if (InputSystem->KeyState.Backward)
-			{
-				dP += float3(0, 0, 1);
-			}
-
-			if (InputSystem->KeyState.Left)
-			{
-				dP += float3(-1, 0, 0);
-			}
-
-			if (InputSystem->KeyState.Right)
-			{
-				dP += float3(1, 0, -1);
-			}
 			dP = Q * dP;
-			TranslateWorld(*Nodes, Controller.YawNode, dP * dT * 10);
+			TranslateWorld(*Nodes, Controller.YawNode, dP * dT * 50);
 			Pitch(*Nodes, Controller.PitchNode, MouseState.dPos[1] * dT);
 			Yaw(*Nodes, Controller.YawNode, MouseState.dPos[0] * dT);
 		}
 
 	}
+
+
+	void SetParentNode(GameObjectInterface* GO, NodeHandle Node)
+	{
+		auto C = FindComponent(GO, OrbitCameraComponentID);
+		if (C)
+		{
+			auto System = (OrbitCameraSystem*)C->ComponentSystem;
+			auto YawNode = System->GetNode(C->ComponentHandle);
+
+			System->Nodes->SetParentNode(YawNode, Node);
+		}
+	}
+
 
 	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, Camera* Cam)
 	{

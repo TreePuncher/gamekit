@@ -24,15 +24,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gameplay.h"
 
+/*
 
-void InitiatePlayer(GameFramework* Engine, Player* Out)
+void InitiatePlayer(GraphicScene* Scene, GameFramework* Engine, Player* Out)
 {
 	//Out->PlayerCTR.Orientation = Quaternion(0, 0, 0, 1);
 	Out->PlayerCTR.Pos      = float3(0, 0, 0);
 	Out->PlayerCTR.Velocity = float3(0, 0, 0);
-	Out->Model              = Engine->GScene.CreateDrawableAndSetMesh("PlayerModel");
+	Out->Model              = Scene->CreateDrawableAndSetMesh("PlayerModel");
 
-	Engine->GScene.EntityEnablePosing(Out->Model);
+	Scene->EntityEnablePosing(Out->Model);
 
 	CapsuleCharacterController_DESC Desc;
 	Desc.FootPos = float3(0, 10, 0);
@@ -85,9 +86,6 @@ void InitiatePlayer(GameFramework* Engine, Player* Out)
 }
 
 
-/************************************************************************************************/
-
-
 void SetPlayerPosition(Player* P, float3 Position)
 {
 	P->PlayerCTR.Pos = Position;
@@ -99,7 +97,6 @@ void SetPlayerPosition(Player* P, float3 Position)
 }
 
 
-/************************************************************************************************/
 
 
 void YawPlayer(Player* P, float Degree)
@@ -112,9 +109,6 @@ void YawPlayer(Player* P, float Degree)
 }
 
 
-/************************************************************************************************/
-
-
 void SetPlayerOrientation(Player* P, Quaternion Q)
 {
 	SetOrientation(P->CameraCTR.Nodes, P->CameraCTR.Yaw_Node, Q);
@@ -122,7 +116,6 @@ void SetPlayerOrientation(Player* P, Quaternion Q)
 }
 
 
-/************************************************************************************************/
 
 
 void TranslateActor(Player* P, float3 pos, double dT)
@@ -133,7 +126,6 @@ void TranslateActor(Player* P, float3 pos, double dT)
 }
 
 
-/************************************************************************************************/
 
 
 void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, float2 MouseMovement, double dT)
@@ -238,7 +230,6 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 }
 
 
-/************************************************************************************************/
 
 
 void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
@@ -250,7 +241,6 @@ void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
 }
 
 
-/************************************************************************************************/
 
 
 void ReleasePlayer(Player* P, GameFramework* Engine)
@@ -260,4 +250,5 @@ void ReleasePlayer(Player* P, GameFramework* Engine)
 }
 
 
-/************************************************************************************************/
+
+*/

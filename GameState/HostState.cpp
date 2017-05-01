@@ -104,6 +104,7 @@ void SendClientInfo(HostState* Host, RakNet::SystemAddress Addr, size_t ID)
 
 void SendCorrectPlayerStatePacket(HostState* Host, size_t PlayerIdx)
 {
+	/*
 	printf("Sending Client Correction!\n");
 
 	RakNet::BitStream bsOut;
@@ -124,6 +125,7 @@ void SendCorrectPlayerStatePacket(HostState* Host, size_t PlayerIdx)
 	bsOut.Write(Packet, sizeof(Packet));
 
 	Host->Peer->Send(&bsOut, PacketPriority::IMMEDIATE_PRIORITY, PacketReliability::RELIABLE_ORDERED_WITH_ACK_RECEIPT, 0, Addr, false);
+	*/
 }
 
 
@@ -231,6 +233,7 @@ void CloseServer(SubState* StateMemory)
 
 void LobbyMode(HostState* ThisState, EngineMemory* ENgine, double dT)
 {
+	/*
 	RakNet::Packet* Packet = nullptr;
 
 	while (Packet = ThisState->Peer->Receive(), Packet) {
@@ -287,11 +290,13 @@ void LobbyMode(HostState* ThisState, EngineMemory* ENgine, double dT)
 		if (CheckPlayerReadyStates(ThisState))
 			QueueGameLoad(ThisState);
 	}
+	*/
 }
 
 
 void LoadWaitMode(HostState* ThisState, EngineMemory* Engine, double dT)
 {
+	/*
 	RakNet::Packet* Packet = nullptr;
 
 	while (Packet = ThisState->Peer->Receive(), Packet) {
@@ -345,6 +350,7 @@ void LoadWaitMode(HostState* ThisState, EngineMemory* Engine, double dT)
 		}
 
 	}
+	*/
 }
 
 
@@ -353,6 +359,7 @@ void LoadWaitMode(HostState* ThisState, EngineMemory* Engine, double dT)
 
 void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 {
+	/*
 	RakNet::Packet* Packet = nullptr;
 	auto Scene = ThisState->Framework->ActiveScene;
 
@@ -399,7 +406,6 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 
 				if (ClientOutOfSync) {
 					SendCorrectPlayerStatePacket(ThisState, ClientIdx);
-					/*
 					printf("Expected Player at Position: ");
 					printfloat3(Position);
 					printf("\n               Actually At: ");
@@ -409,7 +415,6 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 					printf("\nActual   Orientation: ");
 					printfloat4(Quaternion(0, InfoPacket->State.Yaw, 0).floats);
 					printf("\n");
-					*/
 				}
 
 			}	break;
@@ -463,6 +468,9 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 			}
 		}
 	}
+
+	*/
+
 }
 
 
@@ -510,9 +518,9 @@ HostState* CreateHostState(EngineMemory* Engine, GameFramework* Framework)
 
 	auto res = State->Peer->Startup(16, &sd, 1);
 
-	State->Game.Initiate(Framework);
-	State->Peer->SetMaximumIncomingConnections(16);
-	State->ServerMode = ServerMode::eSERVERLOBBYMODE;
+	//State->Game.Initiate(&State->Scene , Framework);
+	//State->Peer->SetMaximumIncomingConnections(16);
+	//State->ServerMode = ServerMode::eSERVERLOBBYMODE;
 
 	return State;
 }

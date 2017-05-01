@@ -74,16 +74,14 @@ struct GameFramework
 	}DefaultAssets;
 
 	MouseInputState		MouseState;
-
 	Landscape			Landscape;
-	PScene				PScene;
-	GraphicScene		GScene;
 
-	Camera				DefaultCamera;
-	GraphicScene*		ActiveScene;
+	Camera					DefaultCamera;
+	GraphicScene*			ActiveScene;
+	PhysicsComponentSystem*	ActivePhysicsScene;
+	Camera*					ActiveCamera;
+	RenderWindow*			ActiveWindow;
 
-	Camera*				ActiveCamera;
-	RenderWindow*		ActiveWindow;
 	float4				ClearColor;
 	EDEFERREDPASSMODE	DP_DrawMode;
 
@@ -92,11 +90,9 @@ struct GameFramework
 	EngineMemory*		Engine;
 
 
-	DrawableComponentSystem	DrawableComponent;
-	LightComponentSystem	LightComponent;
-
 	static_vector<MouseHandler>		MouseHandlers;
 	static_vector<SubStateVTable*>	SubStates;
+
 
 	double				PhysicsUpdateTimer;
 	bool				ConsoleActive;
@@ -131,8 +127,8 @@ struct SubState
 
 /************************************************************************************************/
 
-bool			LoadScene		(GameFramework* State, const char* SceneName);
 
+bool			LoadScene		 (EngineMemory* Engine, GraphicScene* Scene, const char* SceneName);
 void			DrawMouseCursor	 (EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
 
 void			PushSubState	 (GameFramework* _ptr, SubState* SS);

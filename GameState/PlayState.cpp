@@ -98,7 +98,6 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	//ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
 
 	ThisState->Input.Update(dT, ThisState->Framework->MouseState, StateMemory->Framework );
-	ThisState->Model.Update(StateMemory->Framework, dT);
 
 	double T = ThisState->Framework->TimeRunning;
 	double CosT = (float)cos(T);
@@ -115,10 +114,6 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	SetLightRadius		(ThisState->TestObject, 100 + IaR);
 	SetLightIntensity	(ThisState->TestObject, 100 + IaR);
 	
-	FlexKit::OrbitCameraInputState Input;
-	Input.Mouse = ThisState->Framework->MouseState;
-	Input.Forward = ThisState->Input;
-
 	ThisState->OrbitCameras.Update(dT);
 
 	return false;
@@ -128,14 +123,15 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double DT)
+bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (PlayState*)StateMemory;
+	ThisState->Physics.UpdateSystem(dT);
 
 	if(ThisState->Framework->DrawPhysicsDebug)
 	{
-		auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
-		PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
+		//auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
+		//PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
 	}
 
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
@@ -152,7 +148,9 @@ void ReleasePlayState(SubState* StateMemory)
 	auto ThisState = (PlayState*)StateMemory;
 	ThisState->Player.Release();
 	ThisState->TestObject.Release();
-	ThisState->Model.Release();
+	ThisState->Physics.Release();
+	ThisState->GScene.ClearScene();
+	//ThisState->Model.Release();
 }
 
 
@@ -171,26 +169,47 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->VTable.Release        = ReleasePlayState;
 	State->Framework			 = Framework;
 
-	State->Model.Initiate(Framework);
+	InitiateGraphicScene(&State->GScene, Engine->RenderSystem, &Engine->Assets, Engine->Nodes, Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
+	State->Drawables.InitiateSystem(&State->GScene, Engine->Nodes);
+	State->Lights.InitiateSystem(&State->GScene, Engine->Nodes);
+	State->Physics.InitiateSystem(&Engine->Physics, Engine->Nodes, Engine->BlockAllocator);
+
 	State->Input.Initiate(Framework);
 	State->OrbitCameras.Initiate(Framework, State->Input);
 
-	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &Framework->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+	Framework->ActivePhysicsScene	= &State->Physics;
+	Framework->ActiveScene			= &State->GScene;
+
+	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	GameObject<> Test;
 
 	InitiateGameObject(
 		State->TestObject,
-		CreateEnityComponent(Framework->DrawableComponent, "Flower"),
-		CreateLightComponent(Framework->LightComponent));
+			CreateEnityComponent(&State->Drawables, "Flower"),
+			CreateLightComponent(&State->Lights));
 
 	SetLightColor(State->TestObject, RED);
 
+	InitiateGameObject( 
+		State->FloorObject,
+			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
+
+	for(size_t I = 0; I < 64; ++I)
+	InitiateGameObject( 
+		State->CubeObjects[I],
+			CreateEnityComponent(&State->Drawables, "Flower"),
+
+			State->Physics.CreateCubeComponent(
+				{ 0, 20.0f + 10.0f * I, 0}, 
+				{ 0, 10, 0}, 1));
+
 	InitiateGameObject(
 		State->Player,
-		CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
-	Translate(State->Player, {0, 100, 0});
+	Translate(State->Player, {0, 10, -10});
+	Yaw(State->Player, pi);
 
 	return State;
 }

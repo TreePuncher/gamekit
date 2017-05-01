@@ -76,8 +76,9 @@ struct ClientState : public SubState
 
 struct ClientPlayState : public SubState
 {
-	ClientState*	NetState;
-	ClientMode		Mode;
+	ClientState*			NetState;
+	ClientMode				Mode;
+	PhysicsComponentSystem	Scene;
 
 	CircularBuffer<InputFrame>	InputBuffer;// Buffers Last 64 Frames(1 Second of Input)
 

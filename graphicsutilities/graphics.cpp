@@ -579,7 +579,7 @@ namespace FlexKit
 
 	void ReserveTempSpace(RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset)
 	{
-		// TOOD: make thread Safe
+		// TODO: make thread Safe
 
 		void* out = nullptr;
 		auto& CopyEngine = RS->CopyEngine;
@@ -589,25 +589,25 @@ namespace FlexKit
 			CopyEngine.Position = 0;
 
 		if(CopyEngine.Last <= CopyEngine.Position + Size)
-		{// Safe, Do Upload
+		{	// Safe, Do Upload
 			CPUMem = CopyEngine.Buffer + CopyEngine.Position;
 			Offset = CopyEngine.Position;
 			CopyEngine.Position += Size;
 		}
 		else if (CopyEngine.Last > CopyEngine.Position)
-		{// Potential Overlap condition
+		{	// Potential Overlap condition
 			if(CopyEngine.Position + Size  < CopyEngine.Last)
-			{// Safe, Do Upload
+			{	// Safe, Do Upload
 				CPUMem = CopyEngine.Buffer + CopyEngine.Position;
 				Offset = CopyEngine.Position;
 				CopyEngine.Position += Size;
 			}
 			else
-			{// Resize Buffer and Try again
+			{	// Resize Buffer and Try again
 				AddTempBuffer(CopyEngine.TempBuffer, RS);
 
 				D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(CopyEngine.Size * 2);
-				D3D12_HEAP_PROPERTIES HEAP_Props = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+				D3D12_HEAP_PROPERTIES HEAP_Props	= CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 
 				ID3D12Resource* TempBuffer;
 				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE,
@@ -4262,23 +4262,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	/*
-	void WaitforGPU(RenderSystem* RS)
-	{
-		size_t Index = RS->CurrentIndex;
-		auto Fence = RS->Fence;
-		size_t CompleteValue = Fence->GetCompletedValue();
-
-		if (RS->Fences[Index].FenceValue != 0 && CompleteValue < RS->Fences[Index].FenceValue){
-			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-			Fence->SetEventOnCompletion(RS->Fences[Index].FenceValue, eventHandle);
-			WaitForSingleObject(eventHandle, INFINITE);
-			CloseHandle(eventHandle);
-			ReleaseTempResources(RS);
-			}
-	}
-	*/
-
 	void WaitForUploadQueue(RenderSystem* RS)
 	{
 		auto CompletedValue = RS->CopyFence->GetCompletedValue();
@@ -4304,10 +4287,8 @@ namespace FlexKit
 		auto UploadCL			 = UploadQueue->UploadList[0];
 		UploadQueue->UploadCount = 0;
 
-		HRESULT HR				= UploadCLAllocator->Reset();	
-		FK_ASSERT(SUCCEEDED(HR));
-		HR						= UploadCL->Reset(UploadCLAllocator, nullptr); 
-		FK_ASSERT(SUCCEEDED(HR));
+		HRESULT HR				= UploadCLAllocator->Reset();					FK_ASSERT(SUCCEEDED(HR));
+		HR						= UploadCL->Reset(UploadCLAllocator, nullptr);	FK_ASSERT(SUCCEEDED(HR));
 	}
 
 
@@ -4349,7 +4330,6 @@ namespace FlexKit
 		RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
 		WaitForUploadQueue(RS);
 		RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
-
 
 		UploadCL->Close();
 		UploadCL->Reset(UploadQueue->UploadCLAllocator[0], nullptr);

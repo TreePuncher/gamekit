@@ -37,6 +37,9 @@ namespace FlexKit
 		InitiateSceneNodeBuffer(&Nodes, Memory, BufferSize);
 		Root = GetZeroedNode(Nodes);
 	}
+	void SceneNodeComponentSystem::Release()
+	{
+	}
 
 	void SceneNodeComponentSystem::ReleaseHandle(ComponentHandle Handle)
 	{
@@ -159,6 +162,11 @@ namespace FlexKit
 		FlexKit::SetParentNode(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), Parent, Node);
 	}
 
+
+	NodeHandle TansformComponent::GetParentNode(NodeHandle Node)
+	{
+		return FlexKit::GetParentNode(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), Node);
+	}
 
 
 	/************************************************************************************************/

@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSICSUTILITIES_H
 
 #include "..\buildsettings.h"
+#include "..\coreutilities\Components.h"
+#include "..\coreutilities\GraphicsComponents.h"
 #include "..\graphicsutilities\graphics.h"
 
 #include "CommonStructs.h"
@@ -112,30 +114,43 @@ struct PScene
 
 /************************************************************************************************/
 
+
 struct SceneDesc
 {
 	physx::PxTolerancesScale		tolerances;
 	physx::PxDefaultCpuDispatcher*	CPUDispatcher;
 };
 
+
 /************************************************************************************************/
+
 
 size_t	CreateCubeActor		(physx::PxMaterial* material, PScene* scene, float l, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV = {0, 0, 0});
 size_t	CreatePlaneCollider	(physx::PxMaterial* material, PScene* scene);
 void	CreateScene			(PhysicsSystem* System, PScene* scn );
 size_t	CreateSphereActor	(physx::PxMaterial* material, PScene* scene, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV = {0, 0, 0});
 
+
 void	CleanupPhysics	(PhysicsSystem* Physics);
 void	CleanUpScene	(PScene* mat);
+
 
 void	InitiatePhysics	(PhysicsSystem* Physics, uint32_t CoreCount);
 void	MakeCube		(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Entity* E, NodeHandle node, float3 initialP = {0, 0, 0}, FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity());
 
+
 typedef void (*FNPSCENECALLBACK_POSTUPDATE)(void*);
 typedef void (*FNPSCENECALLBACK_PREUPDATE) (void*);
 
+
 void	UpdateScene		(PScene* scn, double dt, FNPSCENECALLBACK_POSTUPDATE, FNPSCENECALLBACK_PREUPDATE, void* P);
 void	UpdateColliders	(PScene* scn, FlexKit::SceneNodes* nodes);
+
+
+/************************************************************************************************/
+
+
+
 
 /************************************************************************************************/
 

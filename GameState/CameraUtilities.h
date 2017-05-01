@@ -137,17 +137,11 @@ namespace FlexKit
 		return NodeHandle(0);
 	}
 
-	void SetParentNode(GameObjectInterface* GO, NodeHandle Node)
-	{
-		auto C = FindComponent(GO, OrbitCameraComponentID);
-		if (C)
-		{
-			auto System		= (OrbitCameraSystem*)C->ComponentSystem;
-			auto YawNode	= System->GetNode(C->ComponentHandle);
 
-			System->Nodes->SetParentNode(YawNode, Node);
-		}
-	}
+	/************************************************************************************************/
+
+
+	void SetParentNode(GameObjectInterface* GO, NodeHandle Node);
 
 	template<size_t SIZE>
 	void CreateComponent(GameObject<SIZE>& GO, OrbitCameraArgs& Args)
@@ -160,13 +154,9 @@ namespace FlexKit
 		auto CameraNode = GetCameraSceneNode(GO);
 
 		if (T)
-		{
 			Parent(GO, CameraNode);
-		}
 		else
-		{
 			CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, CameraNode });
-		}
 	}
 
 

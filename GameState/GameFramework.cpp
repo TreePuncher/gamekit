@@ -192,10 +192,9 @@ void EventsWrapper(const Event& evt, void* _ptr)
 /************************************************************************************************/
 
 
-bool LoadScene(GameFramework* State, const char* SceneName)
+bool LoadScene(EngineMemory* Engine, GraphicScene* Scene, const char* SceneName)
 {
-	auto Engine = State->Engine;
-	return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, &State->GScene, Engine->TempAllocator);
+	return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->TempAllocator);
 }
 
 
@@ -238,8 +237,7 @@ void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
 	ReleaseTerrain	(State->Engine->Nodes, &State->Landscape);
 	ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
 
-	ReleaseGraphicScene(&State->GScene);
-	ReleaseDrawImmediate(Engine->RenderSystem, &State->Immediate);
+	ReleaseDrawImmediate	(Engine->RenderSystem, &State->Immediate);
 }
 
 
@@ -303,6 +301,7 @@ void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 	}
 
 	if (State->DrawDebug) {
+		/*
 		for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
 		{
 			auto P		= State->GScene.PLights[I];
@@ -313,6 +312,7 @@ void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
 				PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.R);
 			}
 		}
+		*/
 	}
 
 	auto RItr = State->SubStates.rbegin();
@@ -384,7 +384,8 @@ extern "C"
 		Framework.ActiveWindow				= &Engine->Window;
 		Framework.Engine					= Engine;
 		Framework.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
-		Framework.ActiveScene				= &Framework.GScene;
+		Framework.ActiveScene				= nullptr;
+
 
 #ifdef _DEBUG
 		Framework.DrawDebug					= true;
@@ -393,10 +394,11 @@ extern "C"
 		Framework.DrawDebug					= false;
 		Framework.DrawDebugStats			= false;
 #endif
+
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
 		Framework.OcclusionCulling			= true;
-		Framework.ScreenSpaceReflections	= true;
+		Framework.ScreenSpaceReflections	= false;
 
 		Framework.Stats.FPS					= 0;
 		Framework.Stats.FPS_Counter			= 0;
@@ -405,12 +407,8 @@ extern "C"
 		ForwardPass_DESC	FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-		InitiateScene			  (&Engine->Physics, &Framework.PScene, Engine->BlockAllocator);
-		InitiateGraphicScene	  (&Framework.GScene, Engine->RenderSystem, &Engine->Assets, &Engine->Nodes, &Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
 		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->TempAllocator);
 		
-		Framework.DrawableComponent.InitiateSystem	(Framework.GScene, Engine->Nodes);
-		Framework.LightComponent.InitiateSystem		(Framework.GScene, Engine->Nodes);
 
 		{
 			uint2	WindowRect	   = Engine->Window.WH;
@@ -421,7 +419,6 @@ extern "C"
 			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
 			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
-
 		{
 			Landscape_Desc Land_Desc = { 
 				Framework.DefaultAssets.Terrain
@@ -430,7 +427,6 @@ extern "C"
 			Framework.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
 
 			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Framework.Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &Framework.Landscape);
-			
 		}
 
 		FlexKit::EventNotifier<>::Subscriber sub;
@@ -520,8 +516,8 @@ extern "C"
 
 		UpdateGameFramework(Engine, Framework, dT);
 
-		UpdateScene		(&Framework->PScene, 1.0f/60.0f, nullptr, nullptr, nullptr );
-		UpdateColliders	(&Framework->PScene, Engine->Nodes);
+		//UpdateScene		(&Framework->ActivePhysicsScene->Scene, 1.0f/60.0f, nullptr, nullptr, nullptr );
+		//UpdateColliders	(&Framework->ActivePhysicsScene->Scene, Engine->Nodes);
 
 		Engine->End = Framework->Quit;
 	}
@@ -535,117 +531,126 @@ extern "C"
 
 	GAMESTATEAPI void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
 	{
-		UpdateAnimationsGraphicScene(&_ptr->GScene, dt);
+		UpdateAnimationsGraphicScene(_ptr->ActiveScene, dt);
 	}
 
 
-	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
+	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework)
 	{
-		PreDrawGameFramework(Engine, State, dt);
+		PreDrawGameFramework(Engine, Framework, dt);
 
 		UpdateTransforms	(Engine->Nodes);
-		UpdateCamera		(Engine->RenderSystem, Engine->Nodes, State->ActiveCamera, dt);
-		UpdateGraphicScene	(&State->GScene); // Default Scene
+		UpdateCamera		(Engine->RenderSystem, Engine->Nodes, Framework->ActiveCamera, dt);
+		UpdateGraphicScene	(Framework->ActiveScene); // Default Scene
 
-		if (State->Stats.Fps_T > 1.0)
+		if (Framework->Stats.Fps_T > 1.0)
 		{
-			State->Stats.FPS         = State->Stats.FPS_Counter;
-			State->Stats.FPS_Counter = 0;
-			State->Stats.Fps_T       = 0.0;
+			Framework->Stats.FPS         = Framework->Stats.FPS_Counter;
+			Framework->Stats.FPS_Counter = 0;
+			Framework->Stats.Fps_T       = 0.0;
 		}
 
-		State->Stats.FPS_Counter++;
-		State->Stats.Fps_T += dt;
+		Framework->Stats.FPS_Counter++;
+		Framework->Stats.Fps_T += dt;
 
-		if (State->DrawDebugStats)
+		if (Framework->DrawDebugStats)
 		{
 			uint32_t VRamUsage = GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
 			char* TempBuffer   = (char*)Engine->TempAllocator.malloc(512);
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
-			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)State->Stats.FPS, DrawTiming);
-			PrintText(&State->Immediate, TempBuffer, State->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), { .7f, .7f });
+			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming);
+			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), { .7f, .7f });
 		}
 	}
 
 
-	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameFramework* State)
+	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameFramework* Framework)
 	{
 		ProfileBegin(PROFILE_SUBMISSION);
 
-		auto RS = &Engine->RenderSystem;
-
-		SubmitUploadQueues(RS);
-		BeginSubmission(RS, State->ActiveWindow);
-
-		auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
-		auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
-		auto CL				= GetCurrentCommandList(RS);
-		auto OutputTarget	= GetRenderTarget(State->ActiveWindow);
-
-		GetGraphicScenePVS(State->ActiveScene, State->ActiveCamera, &PVS, &Transparent);
-
-		SortPVS				(Engine->Nodes, &PVS, State->ActiveCamera);
-		SortPVSTransparent	(Engine->Nodes, &Transparent, State->ActiveCamera);
-
-		Free_DelayedReleaseResources(Engine->RenderSystem);
-
-		// TODO: multi Thread these
-		// Do Uploads
+		if(
+			Framework->ActiveCamera &&
+			Framework->ActivePhysicsScene &&
+			Framework->ActiveScene &&
+			Framework->ActiveWindow )
 		{
-			DeferredPass_Parameters	DPP;
-			DPP.PointLightCount = State->GScene.PLights.size();
-			DPP.SpotLightCount  = State->GScene.SPLights.size();
-			DPP.Mode			= State->DP_DrawMode;
-			DPP.WH				= GetWindowWH(Engine);
+			auto RS = &Engine->RenderSystem;
+
+			SubmitUploadQueues(RS);
+			BeginSubmission(RS, Framework->ActiveWindow);
+
+			auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
+			auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
+			auto CL				= GetCurrentCommandList(RS);
+			auto OutputTarget	= GetRenderTarget(Framework->ActiveWindow);
+
+			GetGraphicScenePVS(Framework->ActiveScene, Framework->ActiveCamera, &PVS, &Transparent);
+
+			SortPVS				(Engine->Nodes, &PVS, Framework->ActiveCamera);
+			SortPVSTransparent	(Engine->Nodes, &Transparent, Framework->ActiveCamera);
+
+			Free_DelayedReleaseResources(Engine->RenderSystem);
+
+			// TODO: multi Thread these
+			// Do Uploads
+			{
+				DeferredPass_Parameters	DPP;
+				DPP.PointLightCount = Framework->ActiveScene->PLights.size();
+				DPP.SpotLightCount  = Framework->ActiveScene->SPLights.size();
+				DPP.Mode			= Framework->DP_DrawMode;
+				DPP.WH				= GetWindowWH(Engine);
 
 
-			UploadImmediate	(RS, &State->Immediate, TempMemory, State->ActiveWindow);	
-			UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
+				UploadImmediate	(RS, &Framework->Immediate, TempMemory, Framework->ActiveWindow);
+				UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
 
-			UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
+				UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
 
-			UploadCamera			(RS, Engine->Nodes, State->ActiveCamera, State->GScene.PLights.size(), State->GScene.SPLights.size(), 0.0f, State->ActiveWindow->WH);
-			UploadGraphicScene		(&State->GScene, &PVS, &Transparent);
-			UploadLandscape			(RS, &State->Landscape, Engine->Nodes, State->ActiveCamera, false, true, State->TerrainSplits + 1);
+				UploadCamera			(RS, Engine->Nodes, Framework->ActiveCamera, Framework->ActiveScene->PLights.size(), Framework->ActiveScene->SPLights.size(), 0.0f, Framework->ActiveWindow->WH);
+				UploadGraphicScene		(Framework->ActiveScene, &PVS, &Transparent);
+				UploadLandscape			(RS, &Framework->Landscape, Engine->Nodes, Framework->ActiveCamera, false, true, Framework->TerrainSplits + 1);
+			}
+
+			// Submission
+			{
+				//SetDepthBuffersWrite(RS, CL, { GetCurrent(State->DepthBuffer) });
+
+				ClearBackBuffer		 (RS, CL, Framework->ActiveWindow, { 0, 0, 0, 0 });
+				ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
+				ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->Culler.OcclusionBuffer) }, DefaultClearDepthValues_0);
+
+				Texture2D BackBuffer = GetBackBufferTexture(Framework->ActiveWindow);
+				SetViewport	(CL, BackBuffer);
+				SetScissor	(CL, BackBuffer.WH);
+
+				IncrementPassIndex		(&Engine->TiledRender);
+				ClearTileRenderBuffers	(RS, &Engine->TiledRender);
+
+				if(Framework->OcclusionCulling)
+					OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, Framework->ActiveCamera);
+
+				//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
+				TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget, Framework->ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
+
+				if(Framework->DrawTerrain)
+					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, Framework->ActiveCamera, false);
+
+				TiledRender_Shade		(&PVS, &Engine->TiledRender, OutputTarget, RS, Framework->ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights);
+
+				if(Framework->ScreenSpaceReflections)
+				{
+					TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, Framework->ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights, GetWindowWH(Engine), &Engine->Reflections);
+					PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget, GetCurrentBuffer(&Engine->Reflections));
+				}
+				else
+					PresentBufferToTarget(RS, CL, &Engine->TiledRender, &OutputTarget, &Engine->RenderSystem.NullSRV);
+
+				ForwardPass				(&Transparent, &Engine->ForwardRender, RS, Framework->ActiveCamera, Framework->ClearColor, &Framework->ActiveScene->PLights, &Engine->Geometry);// Transparent Objects
+				DrawImmediate(RS, CL, &Framework->Immediate, GetBackBufferTexture(Framework->ActiveWindow), Framework->ActiveCamera);
+				CloseAndSubmit({ CL }, RS, Framework->ActiveWindow);
+			}
 		}
-
-		// Submission
-		{
-			//SetDepthBuffersWrite(RS, CL, { GetCurrent(State->DepthBuffer) });
-
-			ClearBackBuffer		 (RS, CL, State->ActiveWindow, { 0, 0, 0, 0 });
-			ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
-			ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->Culler.OcclusionBuffer) }, DefaultClearDepthValues_0);
-
-			Texture2D BackBuffer = GetBackBufferTexture(State->ActiveWindow);
-			SetViewport	(CL, BackBuffer);
-			SetScissor	(CL, BackBuffer.WH);
-
-			IncrementPassIndex		(&Engine->TiledRender);
-			ClearTileRenderBuffers	(RS, &Engine->TiledRender);
-
-			if(State->OcclusionCulling)
-				OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, State->ActiveCamera);
-
-			//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
-			TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget,  State->ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
-
-			if(State->DrawTerrain)
-				DrawLandscape		(RS, &State->Landscape, &Engine->TiledRender, State->TerrainSplits, State->ActiveCamera, false);
-
-			TiledRender_Shade		(&PVS, &Engine->TiledRender, OutputTarget, RS, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights);
-
-			if(State->ScreenSpaceReflections)
-				TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, GetWindowWH(Engine), &Engine->Reflections);
-
-			PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget, GetCurrentBuffer(&Engine->Reflections));
-
-			ForwardPass				(&Transparent, &Engine->ForwardRender, RS, State->ActiveCamera, State->ClearColor, &State->GScene.PLights, &Engine->Geometry);// Transparent Objects
-			DrawImmediate(RS, CL, &State->Immediate, GetBackBufferTexture(State->ActiveWindow), State->ActiveCamera);       
-			CloseAndSubmit({ CL }, RS, State->ActiveWindow);
-		}
-
 		ProfileEnd(PROFILE_SUBMISSION);
 	}
 
@@ -660,12 +665,11 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void Cleanup(EngineMemory* Engine, GameFramework* State)
+	GAMESTATEAPI void Cleanup(EngineMemory* Engine, GameFramework* Framework)
 	{
 		ShutDownUploadQueues(Engine->RenderSystem);
 
-		State->GScene.ClearScene();
-		Release(State->DefaultAssets.Font);
+		Release(Framework->DefaultAssets.Font);
 
 		// wait for last Frame to finish Rendering
 		auto CL = GetCurrentCommandList(Engine->RenderSystem);
@@ -675,16 +679,14 @@ extern "C"
 			IncrementRSIndex(Engine->RenderSystem);
 		}
 
-
-		ReleaseScene(&State->PScene, &Engine->Physics);
-		ReleaseGameFramework(Engine, State);
+		ReleaseGameFramework(Engine, Framework);
 
 		// Counters are at Max 3
 		Free_DelayedReleaseResources(Engine->RenderSystem);
 		Free_DelayedReleaseResources(Engine->RenderSystem);
 		Free_DelayedReleaseResources(Engine->RenderSystem);
 
-		Engine->BlockAllocator.free(State);
+		Engine->BlockAllocator.free(Framework);
 		
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);

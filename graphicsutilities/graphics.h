@@ -1520,6 +1520,8 @@ namespace FlexKit
 	const TriMeshHandle INVALIDMESHHANDLE = TriMeshHandle(-1);
 	struct GeometryTable
 	{
+		operator GeometryTable* () { return this; }
+
 		GeometryTable() : Handles(GetTypeGUID(GeometryTable), nullptr) {}
 
 		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
@@ -2207,6 +2209,7 @@ namespace FlexKit
 	FLEXKITAPI NodeHandle	GetNewNode					( SceneNodes* Nodes );
 	FLEXKITAPI NodeHandle	GetZeroedNode				( SceneNodes* Nodes );
 	FLEXKITAPI bool			GetFlag						( SceneNodes* Nodes, NodeHandle Node,	size_t f );
+	FLEXKITAPI NodeHandle	GetParentNode				( SceneNodes* Nodes, NodeHandle Node );
 
 	FLEXKITAPI void			SetFlag						( SceneNodes* Nodes, NodeHandle Node,	SceneNodes::StateFlags f );
 	FLEXKITAPI void			SetLocal					( SceneNodes* Nodes, NodeHandle Node,	LT_Entry* __restrict In );

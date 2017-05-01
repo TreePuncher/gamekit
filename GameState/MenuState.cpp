@@ -36,7 +36,7 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 	std::cout << "Host Pressed\n";
 	auto* Args = (CBArguements*)_ptr;
 
-	Args->State->Framework->GScene.ClearScene();
+	Args->State->Framework->ActiveScene->ClearScene();
 
 	PopSubState(Args->State->Framework);
 	PushSubState(Args->State->Framework, CreateHostState(Args->Engine, Args->State->Framework));
@@ -56,7 +56,7 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		auto* Args = (CBArguements*)_ptr;
 		auto ThisState = Args->State;
 
-		Args->State->Framework->GScene.ClearScene();
+		Args->State->Framework->ActiveScene->ClearScene();
 
 		PopSubState(Args->State->Framework);
 		PushSubState(Args->State->Framework, CreatePlayState(Args->Engine, Args->State->Framework));
@@ -190,7 +190,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 	State->VTable.Update        = Update;
 	State->VTable.Release       = ReleaseMenu;
 	State->T                    = 0;
-	State->Framework                 = Framework;
+	State->Framework            = Framework;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 
 	Framework->MouseState.Enabled   = true;

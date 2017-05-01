@@ -120,44 +120,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	void UpdateColliders(PScene* scn, FlexKit::SceneNodes* nodes)
-	{
-		if (scn->UpdateColliders)
-		{
-			if (!scn->Scene->checkResults())
-				return;
-
-			scn->UpdateColliders = false;
-			scn->Scene->fetchResults();
-
-			for (auto c : scn->Colliders)
-			{
-				if (c.Actor->isRigidBody())
-				{
-					physx::PxRigidDynamic* o = static_cast<physx::PxRigidDynamic*>(c.Actor);
-					auto pose = o->getGlobalPose();
-
-					FlexKit::LT_Entry LT(FlexKit::GetLocal(nodes, c.Node));
-					LT.T.m128_f32[0] = pose.p.x;
-					LT.T.m128_f32[1] = pose.p.y;
-					LT.T.m128_f32[2] = pose.p.z;
-
-					LT.R.m128_f32[0] = pose.q.x;
-					LT.R.m128_f32[1] = pose.q.y;
-					LT.R.m128_f32[2] = pose.q.z;
-					LT.R.m128_f32[3] = pose.q.w;
-
-					FlexKit::SetLocal(nodes, c.Node, &LT);
-				}
-			}
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
+	/*
 	size_t CreateCubeActor(physx::PxMaterial* material, PScene* scene, float l, float3 initialP, FlexKit::Quaternion initialQ, float3 InitialV)
 	{
 		physx::PxVec3 pV;
@@ -176,25 +139,26 @@ namespace FlexKit
 		Cube->setLinearVelocity({ InitialV.x, InitialV.y, InitialV.z }, true);
 		Cube->setOwnerClient(scene->CID);
 
-		scene->Colliders.push_back({Cube, NodeHandle() });
-		scene->Scene->addActor(*Cube);
+		//scene->Colliders.push_back({Cube, NodeHandle() });
+		//scene->Scene->addActor(*Cube);
 
-		return scene->Colliders.size() - 1;
+		return -1;//scene->Colliders.size() - 1;
 	}
-
+	*/
 
 	/************************************************************************************************/
 
-
+	/*
 	size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene, SceneNodes* SN, NodeHandle Nodes)
 	{
 		auto Static = physx::PxCreateStatic(scene->Scene->getPhysics(), { 0, -0.5f, 0 }, PxBoxGeometry(50000.0f, 1.0f, 50000.0f), *material);
 
-		scene->Scene->addActor(*Static);
-		scene->Colliders.push_back({ Static, Nodes });
+		//scene->Scene->addActor(*Static);
+		//scene->Colliders.push_back({ Static, Nodes });
 
-		return scene->Colliders.size() - 1;
+		return -1;//scene->Colliders.size() - 1;
 	}
+	*/
 
 	/************************************************************************************************/
 
@@ -213,34 +177,6 @@ namespace FlexKit
 		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
 		return physx::PxFilterFlag::eDEFAULT;
 	}
-
-	void InitiateScene(PhysicsSystem* System, PScene* Scn, iAllocator* allocator)
-	{
-		physx::PxSceneDesc desc(System->Physx->getTolerancesScale());
-		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
-		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
-		desc.cpuDispatcher	= System->CPUDispatcher;
-
-		Scn->Colliders.Allocator = allocator;
-
-		//if (!desc.gpuDispatcher && game->Physics->GpuContextManger)
-		//{
-		//	desc.gpuDispatcher = game->Physics->GpuContextManger->getGpuDispatcher();
-		//}
-
-		Scn->Scene = System->Physx->createScene(desc);
-
-		if (!Scn->Scene)
-			FK_ASSERT(0, "FAILED TO CREATE PSCENE!");
-
-		Scn->UpdateColliders = false;
-
-		physx::PxClientID CID = Scn->Scene->createClient();
-		Scn->CID = CID;
-
-		Scn->ControllerManager = PxCreateControllerManager(*Scn->Scene);
-	}
-
 
 	/************************************************************************************************/
 
@@ -283,21 +219,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	/*
 	size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene)
 	{
 		auto Static = physx::PxCreateStatic(scene->Scene->getPhysics(), { 0, -0.5f, 0 }, PxBoxGeometry(50000.0f, 1.0f, 50000.0f), *material);
 
 		scene->Scene->addActor(*Static);
-		scene->Colliders.push_back({ Static });
+		//scene->Colliders.push_back({ Static });
 
-		return scene->Colliders.size() - 1;
+		return -1;//scene->Colliders.size() - 1;
 	}
-
+	*/
 
 	/************************************************************************************************/
 
 #pragma warning(disable : 4309)
 
+	/*
 	ColliderHandle LoadTriMeshCollider(FlexKit::PhysicsSystem* PS, Resources* RM, GUID_t Guid)
 	{
 		if (isResourceAvailable(RM, Guid))
@@ -316,7 +254,7 @@ namespace FlexKit
 
 		return static_cast<ColliderHandle>(INVALIDHANDLE);
 	}
-
+	*/
 
 	/************************************************************************************************/
 
@@ -354,7 +292,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	/*
 	size_t CreateStaticActor(PhysicsSystem* PS, FlexKit::PScene* Scene, ColliderHandle CHandle, float3 POS, Quaternion Q)
 	{
 		PxTriangleMeshGeometry triGeom;
@@ -364,17 +302,18 @@ namespace FlexKit
 		auto Shape = Static->createShape(triGeom, *PS->DefaultMaterial, PxTransform(0, 0, 0));
 
 		Scene->Scene->addActor(*Static);
-		Scene->Colliders.push_back({ Static });
+		//Scene->Colliders.push_back({ Static });
 
 		AddRef(PS, CHandle);
 
-		return Scene->Colliders.size() - 1;
+		return -1; //Scene->Colliders.size() - 1;
 	}
+	*/
 
 
 	/************************************************************************************************/
 
-
+	/*
 	size_t CreateSphereActor(physx::PxMaterial* material, PScene* scene, float3 initialP, FlexKit::Quaternion initialQ, float3 InitialV)
 	{
 		physx::PxRigidDynamic* sphere = scene->Scene->getPhysics().createRigidDynamic(physx::PxTransform(initialP.x, initialP.y, initialP.z, { initialQ.x, initialQ.y, initialQ.z, initialQ.w }));
@@ -385,37 +324,12 @@ namespace FlexKit
 		sphere->setLinearVelocity(physx::PxVec3(InitialV.x, InitialV.y, InitialV.z), true);
 		sphere->setOwnerClient(scene->CID);
 		scene->Scene->addActor(*sphere);
-		scene->Colliders.push_back({ sphere, NodeHandle(-1), MappingData});
-		sphere->userData = &scene->Colliders.back().ExtraData;
+		//scene->Colliders.push_back({ sphere, NodeHandle(-1), MappingData});
+		//sphere->userData = &scene->Colliders.back().ExtraData;
 
-		return scene->Colliders.size() - 1;
+		return -1;//scene->Colliders.size() - 1;
 	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateScene(PScene* Scn, double dt, FNPSCENECALLBACK_POSTUPDATE PreUpdate, FNPSCENECALLBACK_PREUPDATE PostUpdate, void* P)
-	{
-		if (!Scn->Scene)
-			return;
-
-		const double StepSize = 1 / 60.0f;
-		Scn->T += dt;
-
-		while (Scn->T > StepSize)
-		{
-			Scn->T -= StepSize;
-			if (!Scn->Scene->checkResults() && !Scn->UpdateColliders)
-			{
-				if(PreUpdate)	PreUpdate(P);
-				Scn->Scene->simulate(StepSize);
-				Scn->UpdateColliders = true;
-				if(PostUpdate)	PostUpdate(P);
-			}
-		}
-	}
-
+	(/
 
 	/************************************************************************************************/
 
@@ -435,8 +349,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseScene(PScene* Scn, PhysicsSystem* PS)
-	{
+	//void ReleaseScene(PScene* Scn, PhysicsSystem* PS)
+	//{
+		/*
 		for (auto c : Scn->Colliders) {
 			auto SceneData = (PActor*)c.Actor->userData;
 			if (SceneData)
@@ -459,26 +374,27 @@ namespace FlexKit
 		Scn->ControllerManager->release();
 		Scn->Colliders.Release();
 		Scn->Scene->release();
-	}
+		*/
+	//}
 
 
 	/************************************************************************************************/
 
-
+	/*
 	void MakeCube(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Drawable* E, NodeHandle node, float3 initialP, FlexKit::Quaternion initialQ)
 	{
 		auto index                                 = CreateCubeActor(Material, scene, cdesc.r, initialP, initialQ);
-		scene->Colliders[index].Node               = node;
-		scene->Colliders[index].Actor->userData	   = E;
+		//scene->Colliders[index].Node               = node;
+		//scene->Colliders[index].Actor->userData	   = E;
 		E->Node                                    = node;
 
 		ZeroNode(Nodes, node);
 	}
-
+	*/
 
 	/************************************************************************************************/
 
-
+	/*
 	void Initiate(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc)
 	{
 		PxCapsuleControllerDesc CCDesc;
@@ -496,11 +412,104 @@ namespace FlexKit
 		out->FloorContact           = false;
 		out->CeilingContact         = false;
 	}
-
+	*/
 
 	void ReleaseCapsule(CapsuleCharacterController* Capsule)
 	{
 		Capsule->Controller->release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PhysicsComponentSystem::InitiateSystem(PhysicsSystem* system, SceneNodeComponentSystem* nodes, iAllocator* memory)
+	{
+		FK_ASSERT(System && Nodes && Memory, "INVALID ARGUEMENT");
+
+		System = system;
+		Nodes  = nodes;
+		Memory = memory;
+
+		physx::PxSceneDesc desc(System->Physx->getTolerancesScale());
+		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
+		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
+		desc.cpuDispatcher	= System->CPUDispatcher;
+
+		//Scn->Colliders.Allocator = allocator;
+
+		//if (!desc.gpuDispatcher && game->Physics->GpuContextManger)
+		//{
+		//	desc.gpuDispatcher = game->Physics->GpuContextManger->getGpuDispatcher();
+		//}
+
+		Scene = System->Physx->createScene(desc);
+
+		if (!Scene)
+			FK_ASSERT(0, "FAILED TO CREATE PSCENE!");
+
+		UpdateColliders = false;
+
+		physx::PxClientID CID = Scene->createClient();
+		CID = CID;
+
+		ControllerManager = PxCreateControllerManager(*Scene);
+
+
+		CubeColliders.Initiate(Memory);
+		StaticBoxColliders.Initate(Memory);
+		Base.Initiate(nodes, Memory);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PhysicsComponentSystem::UpdateSystem(double dT)
+	{
+		if (!Scene)
+			return;
+
+		const double StepSize = 1 / 60.0f;
+		T += dT;
+
+		while (T > StepSize)
+		{
+			T -= StepSize;
+			if (!Scene->checkResults() && !UpdateColliders)
+			{
+				if (PreUpdate)	PreUpdate(User);
+				Scene->simulate(StepSize);
+				UpdateColliders	= true;
+				if (PostUpdate)	PostUpdate(User);
+			}
+		}
+
+		if (UpdateColliders) 
+		{
+			if (!Scene->checkResults())
+				return;
+
+			Scene->fetchResults();
+			Base.UpdateSystem();
+			UpdateColliders = false;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PhysicsComponentSystem::Release()
+	{
+		CubeColliders.Release();
+		Base.Release();
+		StaticBoxColliders.Release();
+
+		Scene->fetchResults(true);
+		ControllerManager->purgeControllers();
+		ControllerManager->release();
+		Scene->release();
 	}
 
 

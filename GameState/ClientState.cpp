@@ -153,15 +153,15 @@ bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
 						for (size_t itr = 0; itr < ThisState->PlayerCount - 1; ++itr)
 							ThisState->PlayerIds[itr] = Info->PlayerIDs[itr];
 
-						SendMode(ThisState, eLOADINGMODE);
+						//SendMode(ThisState, eLOADINGMODE);
 
-						bool RES = LoadScene(ThisState->Framework, Info->LevelName);
-						if (!RES)
-							printf("Failed to Load Scene: %s \n", Info->LevelName);
+						//bool RES = LoadScene(ThisState->Framework, Info->LevelName);
+						//if (!RES)
+						//	printf("Failed to Load Scene: %s \n", Info->LevelName);
 
-						PushSubState(ThisState->Framework, CreateClientPlayState(Engine, ThisState->Framework, ThisState));
+						//PushSubState(ThisState->Framework, CreateClientPlayState(Engine, ThisState->Framework, ThisState));
 
-						SendMode(ThisState, eWAITINGMODE);
+						//SendMode(ThisState, eWAITINGMODE);
 					}	break;
 				default:
 					break;
@@ -294,7 +294,7 @@ bool UpdateClientPreDraw(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	ClientPlayState* ThisState = (ClientPlayState*)StateMemory;
 
-	UpdatePlayerAnimations(ThisState->Framework, &ThisState->LocalPlayer, dT);
+	//UpdatePlayerAnimations(ThisState->Framework, &ThisState->LocalPlayer, dT);
 
 	return true;
 }
@@ -305,6 +305,7 @@ bool UpdateClientPreDraw(SubState* StateMemory, EngineMemory* Engine, double dT)
 
 void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 {
+	/*
 	RakNet::Packet* Packet = nullptr;
 
 	while (Packet = ThisState->NetState->Peer->Receive(), Packet) {
@@ -373,14 +374,14 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 							if (I.PlayerID == Info->PlayerID)
 							{
 								//ThisState->Framework->GScene.SetPositionEntity_WT(I.Graphics, POS);
-								auto OldPOS = ThisState->Framework->GScene.GetEntityPosition(I.Graphics);
-								auto dP = POS - OldPOS;
+								//auto OldPOS = ThisState->Scene.GetEntityPosition(I.Graphics);
+								//auto dP = POS - OldPOS;
 
-								I.Move(&ThisState->Framework->GScene, dP, dT);
+								//I.Move(&ThisState->Framework->GScene, dP, dT);
 
-								auto NewPOS = I.Collider.Controller->getFootPosition();
-								ThisState->Framework->GScene.SetPositionEntity_WT(I.Graphics, {NewPOS.x, NewPOS.y, NewPOS.z});
-								ThisState->Framework->GScene.SetOrientation(I.Graphics, Q);
+								//auto NewPOS = I.Collider.Controller->getFootPosition();
+								//ThisState->Framework->GScene.SetPositionEntity_WT(I.Graphics, {NewPOS.x, NewPOS.y, NewPOS.z});
+								//ThisState->Framework->GScene.SetOrientation(I.Graphics, Q);
 							}
 						}
 					}
@@ -401,6 +402,7 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 			ThisState->NetState->Peer->DeallocatePacket(Packet);
 		}
 	}
+	*/
 }
 
 
@@ -409,6 +411,7 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 
 bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
+	/*
 	auto ThisState = (ClientPlayState*)StateMemory;
 	auto Scene = ThisState->Framework->ActiveScene;
 
@@ -470,6 +473,7 @@ bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT
 	printf("}\n");
 #endif
 
+	*/
 	return true;
 }
 
@@ -481,7 +485,7 @@ bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT
 ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Framework, ClientState* Client)
 {
 	ClientPlayState* PlayState = &Engine->BlockAllocator.allocate_aligned<ClientPlayState>();
-	PlayState->Framework                           = Framework;
+	PlayState->Framework                      = Framework;
 	PlayState->NetState						  = Client;
 	PlayState->VTable.Update				  = UpdateClientGameplay;
 	PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
@@ -497,6 +501,8 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Fram
 	PlayState->LocalInput.ClearState();
 	PlayState->Imposters.resize(Client->PlayerCount - 1);
 
+
+	/*
 	for (size_t I = 0; I < PlayState->Imposters.size(); ++I) {
 		auto& Imposter	  = PlayState->Imposters[I];
 		Imposter.Graphics = Framework->GScene.CreateDrawableAndSetMesh("PlayerModel");
@@ -512,6 +518,7 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Fram
 
 	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Framework->PScene);
 	InitiatePlayer(Framework, &PlayState->LocalPlayer);
+	*/
 
 	return PlayState;
 }

@@ -38,11 +38,20 @@ TODO's
 struct PlayState : public SubState
 {
 	// Game Element Controllers
+	//GameplayComponentSystem		Model;
 
-	GameplayComponentSystem				Model;
-	InputComponentSystem	Input;
-	OrbitCameraSystem					OrbitCameras;
+	InputComponentSystem		Input;
+	OrbitCameraSystem			OrbitCameras;
 
+	GraphicScene				GScene;
+
+	PhysicsComponentSystem		Physics;
+	DrawableComponentSystem		Drawables;
+	LightComponentSystem		Lights;
+
+	GameObject<>				CubeObjects[64];
+
+	GameObject<>				FloorObject;
 	GameObject<>				TestObject;
 	GameObject<16>				Player;
 };
