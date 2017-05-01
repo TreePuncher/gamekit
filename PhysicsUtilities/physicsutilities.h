@@ -365,23 +365,28 @@ namespace FlexKit
 				physx::PxControllerFilters Filter;
 				if (C.Delta.magnitudesquared() > 0.001f)
 				{
-					C.Controller->move(
-					{ C.Delta.x, C.Delta.y, C.Delta.z },
-						0.01f,
-						dT,
-						Filter);
+					if(C.Delta.magnitudesquared() < 10.0f)
+					{
+						C.Controller->move(
+							{ C.Delta.x, C.Delta.y, C.Delta.z },
+							0.01f,
+							dT,
+							Filter);
+
+						auto NewPosition	= C.Controller->getFootPosition();
+						auto NewPositionFK	= { NewPosition.x, NewPosition.y, NewPosition.z };
+						C.CurrentPosition	= NewPositionFK;
+
+						Nodes->SetPositionL(C.Node, NewPositionFK);
+					}
+					else
+					{
+						auto Position		= GetPositionL(*Nodes, C.Node);
+						C.CurrentPosition	= Position;
+						C.Controller->setFootPosition({ Position.x, Position.y, Position.z });
+					}
 
 					C.Delta = 0;
-
-					auto NewPosition = C.Controller->getFootPosition();
-					auto NewPositionFK = { NewPosition.x, NewPosition.y, NewPosition.z };
-
-					C.CurrentPosition = NewPositionFK;
-
-					printfloat3(C.CurrentPosition);
-					printf("\n");
-
-					Nodes->SetPositionL(C.Node, NewPositionFK);
 				}
 			}
 		}
@@ -409,11 +414,12 @@ namespace FlexKit
 			}
 		}
 
-		void		SetNodeHandle(ComponentHandle Handle, NodeHandle Node)
+		void SetNodeHandle(ComponentHandle Handle, NodeHandle Node)
 		{
 			Nodes->ReleaseHandle(Controllers[Handle].Node);
 			Controllers[Handle].Node = Node;
 		}
+
 		NodeHandle	GetNodeHandle(ComponentHandle Handle)
 		{
 			return Controllers[Handle].Node;
@@ -597,7 +603,7 @@ namespace FlexKit
 		auto TransformComponent = (FlexKit::TansformComponent*)FindComponent(GO, FlexKit::TransformComponentID);
 
 		if (TransformComponent) {
-			auto ColliderNode	= Args.Base->GetNode(Args.ColliderHandle);
+			auto ColliderNode = Args.Base->GetNode(Args.ColliderHandle);
 			SetParent(GO, ColliderNode);
 		}
 	}
@@ -605,7 +611,8 @@ namespace FlexKit
 	struct PhysicsComponentSystem
 	{
 		void InitiateSystem	(PhysicsSystem* System, SceneNodeComponentSystem* Nodes, iAllocator* Memory);
-		void UpdateSystem	(double dT);
+		void UpdateSystem			(double dT);
+		void UpdateSystem_PreDraw	(double dT);
 		void Release		();
 
 		StaticBoxColliderArgs	CreateStaticBoxCollider	(float3 XYZ = 1, float3 Pos = 0) {

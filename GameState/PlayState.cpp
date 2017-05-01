@@ -115,6 +115,7 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	SetLightIntensity	(ThisState->TestObject, 100 + IaR);
 	
 	ThisState->OrbitCameras.Update(dT);
+	ThisState->Physics.UpdateSystem(dT);
 
 	return false;
 }
@@ -126,7 +127,7 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (PlayState*)StateMemory;
-	ThisState->Physics.UpdateSystem(dT);
+	ThisState->Physics.UpdateSystem_PreDraw(dT);
 
 	if(ThisState->Framework->DrawPhysicsDebug)
 	{
@@ -206,7 +207,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	InitiateGameObject(
 		State->Player,
-			State->Physics.CreateCharacterController(),
+			State->Physics.CreateCharacterController({0, 10, 0}, 5, 0.01),
 			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
 	Translate(State->Player, {0, 10, -10});

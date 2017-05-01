@@ -581,9 +581,9 @@ namespace FlexKit
 		}
 
 		
-		inline float3& operator = (float)
+		inline float3& operator = (float F)
 		{
-			pfloats = _mm_set_ps1(x);
+			pfloats = _mm_set_ps1(F);
 			return *this;
 		}
 
