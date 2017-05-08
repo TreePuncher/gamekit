@@ -1,5 +1,3 @@
-#ifndef PLAYSTATE_H
-#define PLAYSTATE_H
 
 /**********************************************************************
 
@@ -25,41 +23,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "GameFramework.h"
-#include "Gameplay.h"
-#include "CameraUtilities.h"
-#include "..\Application\GameMemory.h"
+#include "..\buildsettings.h"
+#include "..\coreutilities\MathUtils.h"
+#include "..\graphicsutilities\graphics.h"
 
-/*
-TODO's
-*/
+#ifndef IMAGEUTILITIES_H
+#define IMAGEUTILITIES_H
 
-
-struct PlayState : public SubState
+namespace FlexKit
 {
-	// Game Element Controllers
-	//GameplayComponentSystem		Model;
-	~PlayState();
-
-	InputComponentSystem		Input;
-	OrbitCameraSystem			OrbitCameras;
-
-	GraphicScene				GScene;
-	Texture2D					TestTexture;
-
-	PhysicsComponentSystem		Physics;
-	DrawableComponentSystem		Drawables;
-	LightComponentSystem		Lights;
-
-	GameObject<>				CubeObjects[1024];
-
-	GameObject<>				FloorObject;
-	GameObject<>				TestObject;
-	GameObject<16>				Player;
-};
+	struct RGBA
+	{
+		byte Red;
+		byte Green;
+		byte Blue;
+		byte Reserved;
+	};
 
 
-PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework);
+	FLEXKITAPI bool LoadBMP(const char* File, iAllocator* Memory, TextureBuffer* Out);
+}
 
 
 #endif

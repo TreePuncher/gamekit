@@ -584,45 +584,71 @@ namespace FlexKit
 		void* out = nullptr;
 		auto& CopyEngine = RS->CopyEngine;
 
+		size_t SizePlusOffset = Size + 512;
+
+		auto ResizeBuffer = [&]()
+		{
+			AddTempBuffer(CopyEngine.TempBuffer, RS);
+			CopyEngine.TempBuffer->Unmap(0, 0);
+
+			size_t NewBufferSize = CopyEngine.Size;
+			while (NewBufferSize < SizePlusOffset)
+				NewBufferSize = NewBufferSize * 2;
+
+			D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(NewBufferSize);
+			D3D12_HEAP_PROPERTIES HEAP_Props	= CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
+
+			ID3D12Resource* TempBuffer;
+			HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE,
+				&Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
+				nullptr, IID_PPV_ARGS(&TempBuffer));
+
+			RS->CopyEngine.Position   = 0;
+			RS->CopyEngine.Last		  = 0;
+			RS->CopyEngine.Size       = NewBufferSize;
+			RS->CopyEngine.TempBuffer = TempBuffer;
+			SETDEBUGNAME(TempBuffer, "TEMPORARY");
+
+			CD3DX12_RANGE Range(0, 0);
+			HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
+
+			return ReserveTempSpace(RS, Size, CPUMem, Offset);
+		};
+
+		
+
 		// Not enough remaining Space in Buffer GOTO Beginning
-		if	(CopyEngine.Position + Size > CopyEngine.Size)
+		if	(CopyEngine.Position + SizePlusOffset > CopyEngine.Size)
 			CopyEngine.Position = 0;
 
-		if(CopyEngine.Last <= CopyEngine.Position + Size)
+		// Buffer too Small
+		if (SizePlusOffset > CopyEngine.Size)
+		{
+			ResizeBuffer();
+			return ReserveTempSpace(RS, Size, CPUMem, Offset);
+		}
+
+		if(CopyEngine.Last <= CopyEngine.Position + SizePlusOffset)
 		{	// Safe, Do Upload
-			CPUMem = CopyEngine.Buffer + CopyEngine.Position;
-			Offset = CopyEngine.Position;
-			CopyEngine.Position += Size;
+
+			size_t AlignmentOffset = 512 - (size_t(CopyEngine.Buffer + CopyEngine.Position) % 512);
+			CPUMem = CopyEngine.Buffer + CopyEngine.Position + AlignmentOffset;
+			Offset = CopyEngine.Position + AlignmentOffset;
+			CopyEngine.Position += SizePlusOffset;
 		}
 		else if (CopyEngine.Last > CopyEngine.Position)
 		{	// Potential Overlap condition
-			if(CopyEngine.Position + Size  < CopyEngine.Last)
+			if(CopyEngine.Position + SizePlusOffset  < CopyEngine.Last)
 			{	// Safe, Do Upload
-				CPUMem = CopyEngine.Buffer + CopyEngine.Position;
-				Offset = CopyEngine.Position;
-				CopyEngine.Position += Size;
+				size_t AlignmentOffset = 512 - (size_t(CopyEngine.Buffer + CopyEngine.Position) % 512);
+
+				CPUMem = CopyEngine.Buffer + CopyEngine.Position + AlignmentOffset;
+				Offset = CopyEngine.Position + AlignmentOffset;
+				CopyEngine.Position += SizePlusOffset;
 			}
 			else
 			{	// Resize Buffer and Try again
-				AddTempBuffer(CopyEngine.TempBuffer, RS);
-
-				D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(CopyEngine.Size * 2);
-				D3D12_HEAP_PROPERTIES HEAP_Props	= CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
-
-				ID3D12Resource* TempBuffer;
-				HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAG_NONE,
-					&Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
-					nullptr, IID_PPV_ARGS(&TempBuffer));
-
-				RS->CopyEngine.Position   = 0;
-				RS->CopyEngine.Last		  = 0;
-				RS->CopyEngine.Size       = CopyEngine.Size * 2;
-				RS->CopyEngine.TempBuffer = TempBuffer;
-				SETDEBUGNAME(TempBuffer, "TEMPORARY");
-
-				CD3DX12_RANGE Range(0, 0);
-				HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
-
+				ResizeBuffer();
 				return ReserveTempSpace(RS, Size, CPUMem, Offset);
 			}
 		}
@@ -751,13 +777,13 @@ namespace FlexKit
 
 		D3D12_DESCRIPTOR_HEAP_DESC	FrameTextureHeap_DESC = {};
 		FrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		FrameTextureHeap_DESC.NumDescriptors	= 1024 * 1;
+		FrameTextureHeap_DESC.NumDescriptors	= 1024 * 64;
 		FrameTextureHeap_DESC.NodeMask			= 0;
 		FrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
 		D3D12_DESCRIPTOR_HEAP_DESC	GPUFrameTextureHeap_DESC = {};
 		GPUFrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		GPUFrameTextureHeap_DESC.NumDescriptors		= 1024 * 1;
+		GPUFrameTextureHeap_DESC.NumDescriptors		= 1024 * 64;
 		GPUFrameTextureHeap_DESC.NodeMask			= 0;
 		GPUFrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
@@ -1005,7 +1031,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CleanUp(RenderSystem* System)
+	void Release(RenderSystem* System)
 	{
 		for(auto FR : System->FrameResources)
 		{
@@ -1757,34 +1783,45 @@ namespace FlexKit
 		const size_t SubResCount = Desc->SubResourceCount;
 		const size_t SubResStart = Desc->SubResourceStart;
 
+		PerFrameUploadQueue* UploadQueue	= GetCurrentUploadQueue(RS);
+		ID3D12GraphicsCommandList* CS		= UploadQueue->UploadList[0];
+
 		for (size_t I = 0; I < SubResCount + SubResStart; ++I) 
 		{
 			D3D12_RANGE R;
 			R.Begin     = 0;
 			R.End	    = Desc->Size;
-			void* pData = nullptr;
-			CE.TempBuffer->Map(I, nullptr, &pData);
-			memcpy((char*)pData + Offset, (char*)Desc->Data + SrOffset + Offset, 12);
-			CE.TempBuffer->Unmap(I, nullptr);
+
+
+			void* pData		= nullptr;
+			size_t Offset	= 0;
+			ReserveTempSpace(RS, Desc->WH[0] * Desc->WH[1] * 4, pData, Offset);
+
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
+			SubRegion.Footprint.Depth    = 1;
+			SubRegion.Footprint.Format   = DXGI_FORMAT_R8G8B8A8_UNORM;
+			SubRegion.Footprint.RowPitch = 4 * Desc->WH[0];
+			SubRegion.Footprint.Width    = Desc->WH[0];
+			SubRegion.Footprint.Height   = Desc->WH[1];
+			SubRegion.Offset             = Offset;
+
+			auto Destination	= CD3DX12_TEXTURE_COPY_LOCATION(Dest);
+			auto Source			= CD3DX12_TEXTURE_COPY_LOCATION(CE.TempBuffer, SubRegion);
+
+			Destination.SubresourceIndex                 = 0;
+			Destination.Type	                         = D3D12_TEXTURE_COPY_TYPE::D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			Destination.pResource                        = Dest;
+			Destination.PlacedFootprint.Footprint.Depth  = 1;
+			Destination.PlacedFootprint.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			Destination.PlacedFootprint.Footprint.Width  = Desc->WH[0];
+			Destination.PlacedFootprint.Footprint.Height = Desc->WH[1];
+			Destination.PlacedFootprint.Footprint.RowPitch = 4 * Desc->WH[0];
+
+			memcpy((char*)pData, (char*)Desc->Data, Desc->WH[0] * Desc->WH[1] * 4);
 			auto TextureDesc = Dest->GetDesc();
-			Dest->WriteToSubresource(I, nullptr, (char*)pData + Offset, TextureDesc.Width * 4, 0);
+			CS->CopyTextureRegion(&Destination, 0, 0, 0, &Source, nullptr);
 			SrOffset += Desc->SubResourceSizes[I];
 		}
-
-
-		/*
-		UpdateSubresources(cmdList, *texture, *textureUploadHeap, 0, 0, num2DSubresources, initData);
-		auto Queue = GetCurrentUploadQueue(RS);
-		GetCurrentUploadQueue
-		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
-		D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST));
-
-		// Use Heap-allocating UpdateSubresources implementation for variable number of subresources (which is the case for textures).
-		UpdateSubresources(cmdList, *texture, *textureUploadHeap, 0, 0, num2DSubresources, initData);
-
-		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
-		*/
 	}
 
 	void UpdateResourceByUploadQueue(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
@@ -1793,8 +1830,8 @@ namespace FlexKit
 		FK_ASSERT(Dest);
 
 		auto& CopyEngine = RS->CopyEngine;
-		PerFrameUploadQueue* UploadQueue = GetCurrentUploadQueue(RS);
-		ID3D12GraphicsCommandList* CS = UploadQueue->UploadList[0];
+		PerFrameUploadQueue* UploadQueue	= GetCurrentUploadQueue(RS);
+		ID3D12GraphicsCommandList* CS		= UploadQueue->UploadList[0];
 
 		void* _ptr = nullptr;
 		size_t Offset = 0;
@@ -2330,13 +2367,14 @@ namespace FlexKit
 	void ReleaseGeometryTable(GeometryTable* GT)
 	{
 		for (auto G : GT->Geometry)
-			if(G) ReleaseTriMesh(G);
+			ReleaseTriMesh(&G);
 
 		GT->Geometry.Release();
 		GT->ReferenceCounts.Release();
 		GT->Guids.Release();
 		GT->GeometryIDs.Release();
 		GT->Handles.Release();
+		GT->FreeList.Release();
 	}
 
 
@@ -2395,10 +2433,7 @@ namespace FlexKit
 			if (G->Skeleton)
 				CleanUpSkeleton(G->Skeleton);
 
-			GT->Memory->free(const_cast<char*>(G->ID));
-			//GT->Memory->free(G);
-
-			GT->Geometry[Index]   = nullptr;
+			GT->Geometry[Index]   = TriMesh();
 			GT->FreeList.push_back(Index);
 			GT->Handles[TMHandle] = INVALIDMESHHANDLE;
 		}
@@ -2409,7 +2444,7 @@ namespace FlexKit
 
 
 	TriMesh* GetMesh(GeometryTable* GT, TriMeshHandle TMHandle){
-		return GT->Geometry[GT->Handles[TMHandle]];
+		return &GT->Geometry[GT->Handles[TMHandle]];
 	}
 	
 
@@ -2962,6 +2997,7 @@ namespace FlexKit
 		for (auto Buffer : VertexBuffer->VertexBuffers) {
 			if (Buffer.Buffer)
 				Buffer.Buffer->Release();
+
 			Buffer.Buffer = nullptr;
 			Buffer.BufferSizeInBytes = 0;
 		}
@@ -4962,6 +4998,10 @@ namespace FlexKit
 		out->Flags	= &LightFlags::Create_Aligned(Desc.MaxLightCount, Memory, 0x10);
 		out->IDs	= &LightIDs::Create_Aligned(Desc.MaxLightCount, Memory, 0x10);
 
+		FK_ASSERT(out->Lights);
+		FK_ASSERT(out->Flags);
+		FK_ASSERT(out->IDs);
+
 		D3D12_RESOURCE_DESC Resource_DESC	= CD3DX12_RESOURCE_DESC::Buffer(0);
 		Resource_DESC.Alignment				= 0;
 		Resource_DESC.DepthOrArraySize		= 1;
@@ -4992,7 +5032,7 @@ namespace FlexKit
 	}
 
 
-	void CleanUp(PointLightBuffer* out, iAllocator* Memory)
+	void Release(PointLightBuffer* out, iAllocator* Memory)
 	{
 		if(out->Resource) out->Resource->Release();
 
@@ -5007,7 +5047,7 @@ namespace FlexKit
 	}
 
 
-	void CleanUp(SpotLightBuffer* out, iAllocator* Memory)
+	void Release(SpotLightBuffer* out, iAllocator* Memory)
 	{
 		if(out->Resource) out->Resource->Release();
 
@@ -5858,12 +5898,37 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	void ReleaseTriMesh(TriMesh* T)
 	{
-		Release(&T->VertexBuffer);
+		if(T->Memory){
+			Release(&T->VertexBuffer);
+			T->Memory->free((void*)T->ID);
+
+			for (auto& B : T->Buffers)
+			{
+				if(B)
+					T->Memory->free(B);
+
+				B = nullptr;
+			}
+		}
 	}
+
+
+	/************************************************************************************************/
+
 
 	void DelayedReleaseTriMesh(RenderSystem* RS, TriMesh* T)
 	{
 		DelayedRelease(RS, &T->VertexBuffer);
+		T->Memory->free((void*)T->ID);
+
+		for (auto& B : T->Buffers)
+		{
+			if (B)
+				T->Memory->free(B);
+
+			B = nullptr;
+		}
+
 		T->VertexBuffer.clear();
 	}
 
@@ -6570,6 +6635,60 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		MemoryOut->free(Texture);
 
 		return tex;
+	}
+
+
+	/************************************************************************************************/
+
+
+	Texture2D	LoadTexture(TextureBuffer* Buffer, RenderSystem* RS, iAllocator* Memout)
+	{
+		Texture2D_Desc TextureDesc;
+		TextureDesc.MipLevels    = 1;
+		TextureDesc.RenderTarget = false;
+		TextureDesc.CV           = false;
+		TextureDesc.FLAGS        = FlexKit::SPECIALFLAGS::NONE;
+		TextureDesc.Format       = FORMAT_2D::R8G8B8A8_UNORM;
+		TextureDesc.Width        = Buffer->WH[0];
+		TextureDesc.Height       = Buffer->WH[1];
+		TextureDesc.UAV          = false;
+		TextureDesc.Write        = false;
+		TextureDesc.initialData  = Buffer->Buffer;
+		
+		size_t ResourceSizes[] = { Buffer->Size };
+
+		auto temp = CreateTexture2D(RS, &TextureDesc);
+		FlexKit::SubResourceUpload_Desc Desc = {};
+		Desc.Data                            = Buffer->Buffer;
+		Desc.RowCount                        = Buffer->WH[1];
+		Desc.RowSize                         = Buffer->WH[0] * 4;
+		Desc.Size	                         = Buffer->Size;
+		Desc.WH	                             = Buffer->WH;
+		Desc.SubResourceCount                = 1;
+		Desc.SubResourceSizes                = ResourceSizes;
+		Desc.SubResourceStart                = 0;
+
+		UpdateSubResourceByUploadQueue(RS, temp, &Desc, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+		SETDEBUGNAME(temp, "TEST TEXTURE! LOADED FROM BMP");
+		return temp;
+	}
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI TextureBuffer CreateTextureBuffer(size_t Width, size_t Height, iAllocator* Memory)
+	{
+		TextureBuffer Out;
+		auto Mem		= Memory->malloc(Width * Height * 4);
+		Out.Buffer      = (byte*)Mem;
+		Out.ElementSize = 4;
+		Out.Memory      = Memory;
+		Out.Size        = Width * Height * 4;
+		Out.WH          = {Width, Height};
+
+		return Out;
 	}
 
 
@@ -7657,7 +7776,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 					ID3D12DescriptorHeap* Heaps[] = { GetCurrentDescriptorTable(RS) };
 
-					CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+					CL->IASetPrimitiveTopology			(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 					CL->IASetVertexBuffers				(0, 1, VBuffers);
 					CL->SetDescriptorHeaps				(1, Heaps);
 					CL->SetGraphicsRootDescriptorTable	(0, DescPOS);

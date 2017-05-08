@@ -52,6 +52,7 @@ namespace FlexKit
 			SAFERELEASE(s);
 
 		RS->Memory->free(RS->States);
+		RS->States->LoadsInProgress.Release();
 	}
 
 

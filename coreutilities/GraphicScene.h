@@ -209,7 +209,7 @@ namespace FlexKit
 	FLEXKITAPI bool LoadScene ( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
 
 	template<typename ALLOC_T>
-	void CleanUp(DrawablePoseState* EPS, ALLOC_T* Mem)
+	void Release(DrawablePoseState* EPS, ALLOC_T* Mem)
 	{
 		if(EPS->Joints)			Mem->free(EPS->Joints);
 		if(EPS->CurrentPose)	Mem->free(EPS->CurrentPose);

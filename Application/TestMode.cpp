@@ -846,7 +846,7 @@
 //
 //	/************************************************************************************************/
 //
-//	void CleanUp(EngineMemory* Engine)
+//	void Release(EngineMemory* Engine)
 //	{
 //		Release(&Font);
 //		//Release(Nodes, &Terrain);

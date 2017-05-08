@@ -371,11 +371,11 @@ namespace FlexKit
 					{
 						size_t currentBlock  = i;
 						size_t NextBlockData = i + BlocksNeeded;
-						for ( size_t II = i; II < NextBlockData; ++II )
-						{
-							BlockTable[II].state  = BlockTable[i].state;
-							BlockTable[II].Parent = currentBlock;
-						}
+						//for ( size_t II = i; II < NextBlockData; ++II )
+						//{
+						//	BlockTable[II].state  = BlockTable[i].state;
+						//	BlockTable[II].Parent = currentBlock;
+						//}
 						if(NextBlockData < Size && BlockTable[NextBlockData].state == BlockData::UNUSED)
 						{// Split Block
 							BlockTable[NextBlockData].state          = BlockData::Free;
@@ -434,14 +434,14 @@ namespace FlexKit
 			Collapse(index);
 		}
 
-		void Collapse(size_t itr = 0)
+		void Collapse(size_t block = 0)
 		{
 			while (true)
 			{
-				size_t next = itr + BlockTable[itr].AllocationSize;
-				if (BlockTable[next].state == BlockData::Free)
+				size_t next = block + BlockTable[block].AllocationSize;
+				if (next < Size && BlockTable[next].state == BlockData::Free)
 				{
-					BlockTable[itr].AllocationSize += BlockTable[next].AllocationSize;
+					BlockTable[block].AllocationSize += BlockTable[next].AllocationSize;
 					BlockTable[next].state			= BlockData::UNUSED;
 				}
 				else break;
@@ -534,6 +534,19 @@ namespace FlexKit
 
 		void free(void* _ptr)
 		{
+			if (InSmallRange((byte*)_ptr))
+				SmallBlockAlloc.free((void*)_ptr);
+			else if (InMediumRange((byte*)_ptr))
+				MediumBlockAlloc.free((void*)_ptr);
+			else if (InLargeRange((byte*)_ptr))
+				LargeBlockAlloc.free((void*)_ptr);
+		}
+
+		template<typename TY>
+		void Delete(TY* _ptr)
+		{
+			_ptr->~TY();
+
 			if (InSmallRange((byte*)_ptr))
 				SmallBlockAlloc.free((void*)_ptr);
 			else if (InMediumRange((byte*)_ptr))

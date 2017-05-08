@@ -397,12 +397,13 @@ extern "C"
 
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
-		Framework.OcclusionCulling			= true;
+		Framework.OcclusionCulling			= false;
 		Framework.ScreenSpaceReflections	= false;
 
-		Framework.Stats.FPS					= 0;
-		Framework.Stats.FPS_Counter			= 0;
-		Framework.Stats.Fps_T				= 0.0;
+		Framework.Stats.FPS						= 0;
+		Framework.Stats.FPS_Counter				= 0;
+		Framework.Stats.Fps_T					= 0.0;
+		Framework.Stats.ObjectsDrawnLastFrame	= 0;
 
 		ForwardPass_DESC	FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
@@ -443,7 +444,7 @@ extern "C"
 		BindBoolVar(&Framework.Console, "DrawDebug",				&Framework.DrawDebug);
 		BindBoolVar(&Framework.Console, "DrawTerrain",				&Framework.DrawTerrain);
 		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",			&Framework.DrawPhysicsDebug);
-		BindBoolVar(&Framework.Console, "OcclusionCullingEnabled",  &Framework.OcclusionCulling);
+		BindBoolVar(&Framework.Console, "OcclusionCulling",			&Framework.OcclusionCulling);
 		BindBoolVar(&Framework.Console, "ScreenSpaceReflections",	&Framework.ScreenSpaceReflections);
 		BindBoolVar(&Framework.Console, "FrameLock",				&Engine->FrameLock);
 
@@ -559,7 +560,7 @@ extern "C"
 			char* TempBuffer   = (char*)Engine->TempAllocator.malloc(512);
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
-			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\n", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming);
+			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
 			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), { .7f, .7f });
 		}
 	}
@@ -589,6 +590,8 @@ extern "C"
 
 			SortPVS				(Engine->Nodes, &PVS, Framework->ActiveCamera);
 			SortPVSTransparent	(Engine->Nodes, &Transparent, Framework->ActiveCamera);
+
+			Framework->Stats.ObjectsDrawnLastFrame = PVS.size() + Transparent.size();
 
 			Free_DelayedReleaseResources(Engine->RenderSystem);
 
@@ -669,6 +672,7 @@ extern "C"
 	{
 		ShutDownUploadQueues(Engine->RenderSystem);
 
+		ReleaseConsole(&Framework->Console);
 		Release(Framework->DefaultAssets.Font);
 
 		// wait for last Frame to finish Rendering

@@ -530,10 +530,14 @@ namespace FlexKit
 
 		~SL_list()
 		{
+			Release();
+		}
+
+		void Release()
+		{
 			while (size())
 				pop_front();
 		}
-
 
 		struct Node
 		{

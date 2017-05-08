@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "PlayState.h"
+#include "..\graphicsutilities\ImageUtilities.h"
 #include "..\coreutilities\GraphicsComponents.h"
 
 /************************************************************************************************/
@@ -135,9 +136,38 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 		//PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
 	}
 
+	Draw_TEXTURED_RECT Rect;
+	Rect.BLeft	= {0, 0};
+	Rect.TRight = {.5f, .5f * GetWindowAspectRatio(Engine)};
+	Rect.TextureHandle = &ThisState->TestTexture;
+	Rect.BRight_UVOffset = { 0, 0 };
+	Rect.TLeft_UVOffset  = { 0, 0 };
+	Rect.Color			 = { 1, 1, 1, 1 };
+	Rect.ZOrder = 0;
+	PushRect(ThisState->Framework->Immediate, Rect);
+
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
 	return false;
+}
+
+
+/************************************************************************************************/
+
+PlayState::~PlayState()
+{
+	FloorObject.Release();
+	TestObject.Release();
+
+	for(auto& GO : CubeObjects)
+		GO.Release();
+
+	Player.Release();
+	TestObject.Release();
+	Physics.Release();
+	GScene.ClearScene();
+
+	ReleaseGraphicScene(&GScene);
 }
 
 
@@ -147,11 +177,7 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 void ReleasePlayState(SubState* StateMemory)
 {
 	auto ThisState = (PlayState*)StateMemory;
-	ThisState->Player.Release();
-	ThisState->TestObject.Release();
-	ThisState->Physics.Release();
-	ThisState->GScene.ClearScene();
-	//ThisState->Model.Release();
+	ThisState->Framework->Engine->BlockAllocator.Delete(ThisState);
 }
 
 
@@ -178,6 +204,30 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->Input.Initiate(Framework);
 	State->OrbitCameras.Initiate(Framework, State->Input);
 
+
+	TextureBuffer Texture;
+
+#if 0
+	if (LoadBMP("assets\\Textures\\Test.bmp", Engine->BlockAllocator, &Texture))
+	{
+		State->TestTexture = LoadTexture(&Texture, Engine->RenderSystem, Engine->BlockAllocator);
+		//Texture.Release();
+	}
+
+#else
+	size_t size = 1024;
+	Texture		= CreateTextureBuffer(size, size, Engine->BlockAllocator);
+	RGBA* Pixels = (RGBA*)Texture.Buffer;
+	for(size_t y = 0; y < size; ++y)
+		for (size_t x = 0; x < size; ++x) {
+			Pixels[x + y * size].Blue = x % 255;
+			Pixels[x + y * size].Green = y % 255;
+			Pixels[x + y * size].Red = x % (y + 1);
+		}
+
+	State->TestTexture = LoadTexture(&Texture, Engine->RenderSystem, Engine->BlockAllocator);
+#endif
+
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
@@ -196,14 +246,15 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 		State->FloorObject,
 			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
 
-	for(size_t I = 0; I < 64; ++I)
-	InitiateGameObject( 
-		State->CubeObjects[I],
-			CreateEnityComponent(&State->Drawables, "Flower"),
-
-			State->Physics.CreateCubeComponent(
-				{ 0, 20.0f + 10.0f * I, 0}, 
-				{ 0, 10, 0}, 1));
+	for(size_t I = 0; I < 10; ++I){
+		InitiateGameObject( 
+			State->CubeObjects[I],
+				CreateEnityComponent(&State->Drawables, "Flower"),
+				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
+				State->Physics.CreateCubeComponent(
+					{ 0, 20.0f + 10.0f * I, 0}, 
+					{ 0, 10, 0}, 1));
+	}
 
 	InitiateGameObject(
 		State->Player,

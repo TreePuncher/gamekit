@@ -791,6 +791,35 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct TextureBuffer
+	{
+		byte*		Buffer;
+		uint2		WH;
+		size_t		Size;
+		size_t		ElementSize;
+		iAllocator* Memory;
+
+		void Release()
+		{
+			Memory->_aligned_free(Buffer);
+		}
+	};
+
+
+	template<typename TY>
+	struct TextureBufferView
+	{
+		TextureBuffer* Texture;
+		TY& operator [](uint2 XY)
+		{
+			return Texture->Buffer + (Texture->WH[0] * XY[1] + XY[0]) * sizeof(TY);
+		}
+	};
+
+
+	/************************************************************************************************/
+
+
 	struct Texture2D
 	{
 		ID3D12Resource* operator ->()
@@ -1302,7 +1331,7 @@ namespace FlexKit
 
 		size_t	size()	const {return Lights->size();}
 		size_t	max()	const {return Lights->max_length();}
-		void CleanUp()	{Resource->Release();}
+		void Release()	{Resource->Release();}
 	};
 
 
@@ -1337,7 +1366,7 @@ namespace FlexKit
 
 		size_t size() const {return Lights->size();}
 
-		void CleanUp(){Resource->Release();}
+		void Release(){Resource->Release();}
 	};
 
 
@@ -1461,6 +1490,7 @@ namespace FlexKit
 
 			ID				= nullptr;
 			AnimationData	= EAD_None;
+			Memory			= nullptr;
 		}
 
 
@@ -1510,7 +1540,8 @@ namespace FlexKit
 		Occlusion_Volume EOV_type;
 		BoundingVolume	 Bounding;
 
-		size_t SkeletonGUID;
+		size_t		SkeletonGUID;
+		iAllocator*	Memory;
 	};
 
 	/************************************************************************************************/
@@ -1525,7 +1556,7 @@ namespace FlexKit
 		GeometryTable() : Handles(GetTypeGUID(GeometryTable), nullptr) {}
 
 		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
-		DynArray<TriMesh*>								Geometry;
+		DynArray<TriMesh>								Geometry;
 		DynArray<size_t>								ReferenceCounts;
 		DynArray<GUID_t>								Guids;
 		DynArray<const char*>							GeometryIDs;
@@ -1990,7 +2021,7 @@ namespace FlexKit
 
 	FLEXKITAPI size_t GetVidMemUsage	( RenderSystem* RS);
 
-	FLEXKITAPI void	CleanUp			( RenderSystem* System );
+	FLEXKITAPI void	Release			( RenderSystem* System );
 	FLEXKITAPI void	ReleaseCamera	( SceneNodes* Nodes, Camera* camera );
 
 
@@ -2106,9 +2137,9 @@ namespace FlexKit
 	{
 		const void* Data; 
 		size_t	Size;
-		size_t	ByteSize;
 		size_t	RowSize;
 		size_t	RowCount;
+		uint2	WH;
 		size_t	SubResourceStart;
 		size_t	SubResourceCount;
 		size_t* SubResourceSizes;
@@ -2170,6 +2201,11 @@ namespace FlexKit
 	FLEXKITAPI bool			LoadAndCompileShaderFromFile	(const char* FileLoc, ShaderDesc* desc, Shader* out);
 	FLEXKITAPI Shader		LoadShader						(const char* Entry, const char* ID, const char* ShaderVersion, const char* File);
 	FLEXKITAPI Texture2D	LoadTextureFromFile				(char* file, RenderSystem* RS, iAllocator* Memout);
+	FLEXKITAPI Texture2D	LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout);
+
+	FLEXKITAPI TextureBuffer CreateTextureBuffer			(size_t Width, size_t Height, iAllocator* Memout);
+
+
 	FLEXKITAPI void			FreeTexture						(Texture2D* Tex);
 
 
@@ -2536,8 +2572,8 @@ namespace FlexKit
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
 
-	FLEXKITAPI void CleanUp	( PointLightBuffer* out,	iAllocator* Memory );
-	FLEXKITAPI void CleanUp	( SpotLightBuffer* out,		iAllocator* Memory );
+	FLEXKITAPI void Release	( PointLightBuffer* out,	iAllocator* Memory );
+	FLEXKITAPI void Release	( SpotLightBuffer* out,		iAllocator* Memory );
 
 	FLEXKITAPI void DrawImmediate( RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* GUIStack, Texture2D Out, Camera* C );
 

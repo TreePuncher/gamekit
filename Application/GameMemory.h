@@ -110,9 +110,9 @@ static const size_t SERVER_PORT = 60000;
 
 static const size_t PRE_ALLOC_SIZE  = GIGABYTE * 2;
 static const size_t LEVELBUFFERSIZE = MEGABYTE * 64;
-static const size_t NODEBUFFERSIZE  = MEGABYTE * 256;
+static const size_t NODEBUFFERSIZE  = MEGABYTE * 64;
 static const size_t TEMPBUFFERSIZE  = MEGABYTE * 128;
-static const size_t BLOCKALLOCSIZE	= MEGABYTE * 512;
+static const size_t BLOCKALLOCSIZE	= MEGABYTE * 768;
 
 
 /************************************************************************************************/
@@ -126,6 +126,7 @@ struct EngineMemory
 
 	bool			FrameLock;
 	bool			End;
+
 	RenderSystem	RenderSystem;
 	OcclusionCuller	Culler;
 

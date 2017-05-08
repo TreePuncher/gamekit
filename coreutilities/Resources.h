@@ -418,11 +418,11 @@ namespace FlexKit
 
 	FLEXKITAPI AnimationClip	Resource2AnimationClip	( Resource* R, iAllocator* Memory );
 	FLEXKITAPI Skeleton*		Resource2Skeleton		( Resources* RM, ResourceHandle RHandle, iAllocator* Memory );
-	FLEXKITAPI TriMesh*			Resource2TriMesh		( RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, bool ClearBuffers = true );
+	FLEXKITAPI bool				Resource2TriMesh		( RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
 	FLEXKITAPI TextureSet*		Resource2TextureSet		( Resources* RM, ResourceHandle RHandle, iAllocator* Memory );
 
 	FLEXKITAPI TextureSet*		LoadTextureSet	 ( Resources* RM, GUID_t ID, iAllocator* Memory );
-	FLEXKITAPI void				LoatTriangleMesh ( Resources* RM, GUID_t ID, iAllocator* Memory, TriMesh* out );
+	FLEXKITAPI void				LoadTriangleMesh ( Resources* RM, GUID_t ID, iAllocator* Memory, TriMesh* out );
 
 	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, Resources* RM, GeometryTable*, size_t guid );
 	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID );

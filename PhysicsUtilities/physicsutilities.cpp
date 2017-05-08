@@ -495,6 +495,7 @@ namespace FlexKit
 			UpdateColliders = false;
 		}
 
+		CharacterControllers.UpdateSystem(dT);
 	}
 
 
@@ -503,7 +504,6 @@ namespace FlexKit
 
 	void PhysicsComponentSystem::UpdateSystem_PreDraw(double dT)
 	{
-		CharacterControllers.UpdateSystem(dT);
 	}
 
 

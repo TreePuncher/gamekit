@@ -660,7 +660,7 @@ namespace FlexKit
 			if (E.PoseState) 
 			{
 				Release(E.PoseState);
-				CleanUp(E.PoseState, SM->Memory);
+				Release(E.PoseState, SM->Memory);
 				SM->Memory->_aligned_free(E.PoseState);
 				SM->Memory->_aligned_free(E.AnimationState);
 			}
@@ -668,11 +668,10 @@ namespace FlexKit
 
 		SM->Drawables.Release();
 
-		CleanUp(&SM->PLights, SM->Memory);
-		CleanUp(&SM->SPLights, SM->Memory);
+		Release(&SM->PLights, SM->Memory);
+		Release(&SM->SPLights, SM->Memory);
 
 		SM->TaggedJoints.Release();
-		SM->Memory->_aligned_free(SM->PLights.Lights);
 		SM->PLights.Lights	= nullptr;
 		SM->Drawables		= nullptr;
 	}

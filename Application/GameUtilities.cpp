@@ -45,12 +45,17 @@ void ReleaseEngine(EngineMemory* Engine)
 
 	Release( &Engine->DepthBuffer );
 	Release( &Engine->Window );
-	CleanUp( &Engine->RenderSystem );
+	Release( &Engine->RenderSystem );
 
 
 	ReleaseGeometryTable( &Engine->Geometry );
 
+	for(auto Arg : Engine->CmdArguments)
+		Engine->BlockAllocator.free((void*)Arg);
+
 	Engine->Culler.Release();
+	Engine->CmdArguments.Release();
+
 
 	DEBUGBLOCK(PrintBlockStatus(&Engine->BlockAllocator));
 }
@@ -70,7 +75,7 @@ void InitiateEngineMemory( EngineMemory* Engine )
 	BAdesc._ptr			= (byte*)Engine->BlockMem;
 	BAdesc.SmallBlock	= MEGABYTE * 64;
 	BAdesc.MediumBlock	= MEGABYTE * 64;
-	BAdesc.LargeBlock	= MEGABYTE * 256;
+	BAdesc.LargeBlock	= MEGABYTE * 512;
 
 	Engine->BlockAllocator.Init ( BAdesc );
 	Engine->LevelAllocator.Init ( Engine->LevelMem,	LEVELBUFFERSIZE );
@@ -136,7 +141,7 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	Out = CreateRenderWindow	(  Engine, height, width, false );
 	if (!Out)
 	{
-		CleanUp(Engine->RenderSystem);
+		Release(Engine->RenderSystem);
 		return false;
 	}
 

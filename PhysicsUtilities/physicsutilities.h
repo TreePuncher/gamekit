@@ -258,6 +258,8 @@ namespace FlexKit
 				if (C.Actor) 
 					C.Actor->release();
 			}
+
+			Colliders.Release();
 		}
 
 
@@ -305,17 +307,11 @@ namespace FlexKit
 					physx::PxRigidDynamic* o = static_cast<physx::PxRigidDynamic*>(c.Actor);
 					auto pose = o->getGlobalPose();
 
-					FlexKit::LT_Entry LT(FlexKit::GetLocal(*Nodes, c.Node));
-					LT.T.m128_f32[0] = pose.p.x;
-					LT.T.m128_f32[1] = pose.p.y;
-					LT.T.m128_f32[2] = pose.p.z;
+					LT_Entry LT(GetLocal(*Nodes, c.Node));
+					LT.T = float3		(pose.p.x, pose.p.y, pose.p.z );
+					LT.R = Quaternion	(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
 
-					LT.R.m128_f32[0] = pose.q.x;
-					LT.R.m128_f32[1] = pose.q.y;
-					LT.R.m128_f32[2] = pose.q.z;
-					LT.R.m128_f32[3] = pose.q.w;
-
-					FlexKit::SetLocal(*Nodes, c.Node, &LT);
+					SetLocal(*Nodes, c.Node, &LT);
 				}
 			}
 		}
@@ -414,11 +410,13 @@ namespace FlexKit
 			}
 		}
 
+		
 		void SetNodeHandle(ComponentHandle Handle, NodeHandle Node)
 		{
 			Nodes->ReleaseHandle(Controllers[Handle].Node);
 			Controllers[Handle].Node = Node;
 		}
+
 
 		NodeHandle	GetNodeHandle(ComponentHandle Handle)
 		{
@@ -504,6 +502,7 @@ namespace FlexKit
 
 		void Release()
 		{
+			Colliders.Release();
 		}
 
 		void ReleaseHandle(ComponentHandle Handle)
@@ -550,6 +549,7 @@ namespace FlexKit
 		}
 	}
 
+
 	struct CubeColliderSystem : FlexKit::ComponentSystemInterface
 	{
 		struct CubeCollider
@@ -565,7 +565,7 @@ namespace FlexKit
 
 		void Release()
 		{
-
+			Colliders.Release();
 		}
 
 		void ReleaseHandle(ComponentHandle Handle)
@@ -610,12 +610,12 @@ namespace FlexKit
 
 	struct PhysicsComponentSystem
 	{
-		void InitiateSystem	(PhysicsSystem* System, SceneNodeComponentSystem* Nodes, iAllocator* Memory);
+		void InitiateSystem			(PhysicsSystem* System, SceneNodeComponentSystem* Nodes, iAllocator* Memory);
 		void UpdateSystem			(double dT);
 		void UpdateSystem_PreDraw	(double dT);
-		void Release		();
+		void Release				();
 
-		StaticBoxColliderArgs	CreateStaticBoxCollider	(float3 XYZ = 1, float3 Pos = 0) {
+		StaticBoxColliderArgs	CreateStaticBoxCollider		(float3 XYZ = 1, float3 Pos = 0) {
 			auto Static = physx::PxCreateStatic(
 							*System->Physx, 
 							{ Pos.x, Pos.y, Pos.z },
@@ -637,7 +637,8 @@ namespace FlexKit
 
 			return Out;
 		}
-		CubeColliderArgs		CreateCubeComponent		(float3 InitialP = 0, float3 InitialV = 0, float l = 10, Quaternion Q = Quaternion(0, 0, 0, 1))
+		
+		CubeColliderArgs		CreateCubeComponent			(float3 InitialP = 0, float3 InitialV = 0, float l = 10, Quaternion Q = Quaternion(0, 0, 0, 1))
 		{
 			physx::PxVec3 pV;
 			pV.x = InitialP.x;
@@ -673,7 +674,7 @@ namespace FlexKit
 			return Out;
 		}
 
-		CapsuleCharacterArgs	CreateCharacterController(float3 InitialP = 0, float R = 5, float H = 5, Quaternion Q = Quaternion())
+		CapsuleCharacterArgs	CreateCharacterController	(float3 InitialP = 0, float R = 5, float H = 5, Quaternion Q = Quaternion())
 		{
 			auto CapsuleCharacter = CharacterControllers.CreateCapsuleController(System, Scene, System->DefaultMaterial, R, H, InitialP, Q);
 

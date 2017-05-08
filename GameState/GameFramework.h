@@ -114,6 +114,7 @@ struct GameFramework
 		double Fps_T;
 		size_t FPS;
 		size_t FPS_Counter;
+		size_t ObjectsDrawnLastFrame;
 	}Stats;
 };
 

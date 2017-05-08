@@ -185,8 +185,6 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 		T += dt;
 		// End Update  -----------------------------------------------------------------------------------------
 	}
-	// Clean-Up
-	FNTable->Cleanup( Engine, State );
 }
 
 
@@ -226,6 +224,8 @@ int main( int argc, char* argv[] )
 		void* State = FNTable.Init(Engine);
 
 		DLLGameLoop(Engine, State, &FNTable, &Code);
+
+		FNTable.Cleanup(Engine, State);
 
 		::_aligned_free(Engine);
 	}
