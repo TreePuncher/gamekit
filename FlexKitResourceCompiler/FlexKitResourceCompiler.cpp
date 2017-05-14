@@ -28,8 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameMemory.h"
 #include "..\coreutilities\AllSourceFiles.cpp"
 
-#include "TTFontLoader.cpp"
+#include "common.cpp"
+#include "Animation.cpp"
+#include "MeshProcessing.cpp"
 #include "ResourceUtilities.cpp"
+#include "TTFontLoader.cpp"
 
 #include <algorithm>
 #include <initializer_list>

@@ -45,7 +45,6 @@ struct PlayState : public SubState
 	OrbitCameraSystem			OrbitCameras;
 
 	GraphicScene				GScene;
-	Texture2D					TestTexture;
 
 	PhysicsComponentSystem		Physics;
 	DrawableComponentSystem		Drawables;

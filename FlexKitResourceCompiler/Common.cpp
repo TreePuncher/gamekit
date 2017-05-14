@@ -1,7 +1,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2015 - 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -23,27 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\graphicsutilities\graphics.h"
 
-#ifndef IMAGEUTILITIES_H
-#define IMAGEUTILITIES_H
+#include "stdafx.h"
+#include "Common.h"
 
-namespace FlexKit
-{
-	struct RGBA
-	{
-		byte Red;
-		byte Green;
-		byte Blue;
-		byte Reserved;
-	};
-
-
-	FLEXKITAPI bool LoadBMP(const char* File, iAllocator* Memory, TextureBuffer* Out);
-	FLEXKITAPI bool CheckerBoard(int XSize, int YSize, TextureBuffer* Out);
-}
-
-
-#endif

@@ -101,8 +101,15 @@ void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
 			_ptr->Quit = true;
 			break;
 		case KC_R:
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::SSREFLECTIONS);
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_CULL_PSO);
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO);
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
+			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
 			break;
+		case KC_E:
+		{
+			_ptr->DrawTerrainDebug = !_ptr->DrawTerrainDebug;
+		}	break;
 		case KC_T:
 			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
 			break;
@@ -386,11 +393,12 @@ extern "C"
 		Framework.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 		Framework.ActiveScene				= nullptr;
 
-
 #ifdef _DEBUG
 		Framework.DrawDebug					= true;
 		Framework.DrawDebugStats			= true;
+		Framework.DrawTerrainDebug			= true;
 #else
+		Framework.DrawTerrainDebug			= false;
 		Framework.DrawDebug					= false;
 		Framework.DrawDebugStats			= false;
 #endif
@@ -421,11 +429,12 @@ extern "C"
 			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
 		{
-			Landscape_Desc Land_Desc = { 
-				Framework.DefaultAssets.Terrain
+			Framework.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
+
+			Landscape_Desc Land_Desc;{
+				Land_Desc.HeightMap = Framework.DefaultAssets.Terrain;
 			};
 
-			Framework.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
 
 			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Framework.Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &Framework.Landscape);
 		}
@@ -563,6 +572,7 @@ extern "C"
 			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
 			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), { .7f, .7f });
 		}
+
 	}
 
 
@@ -612,7 +622,7 @@ extern "C"
 
 				UploadCamera			(RS, Engine->Nodes, Framework->ActiveCamera, Framework->ActiveScene->PLights.size(), Framework->ActiveScene->SPLights.size(), 0.0f, Framework->ActiveWindow->WH);
 				UploadGraphicScene		(Framework->ActiveScene, &PVS, &Transparent);
-				UploadLandscape			(RS, &Framework->Landscape, Engine->Nodes, Framework->ActiveCamera, false, true, Framework->TerrainSplits + 1);
+				UploadLandscape			(RS, &Framework->Landscape, Engine->Nodes, Framework->ActiveCamera, true, true, Framework->TerrainSplits + 1);
 			}
 
 			// Submission
@@ -637,7 +647,7 @@ extern "C"
 				TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget, Framework->ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
 
 				if(Framework->DrawTerrain)
-					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, Framework->ActiveCamera, false);
+					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, Framework->ActiveCamera, Framework->DrawTerrainDebug);
 
 				TiledRender_Shade		(&PVS, &Engine->TiledRender, OutputTarget, RS, Framework->ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights);
 

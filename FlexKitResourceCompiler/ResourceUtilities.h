@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#include "Common.h"
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"

@@ -16,7 +16,6 @@
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\MeshUtils.h"
 
 #include "PxPhysicsAPI.h"
 #include <stdio.h>

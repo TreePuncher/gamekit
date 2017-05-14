@@ -60,20 +60,31 @@ struct Plane
 // ---------------------------------------------------------------------------
 
 
-cbuffer CameraConstants : register( b0 )
+cbuffer CameraConstants : register(b0)
 {
-	float4x4 View;
-	float4x4 Proj;
-	float4x4 CameraWT;			// World Transform
-	float4x4 PV;				// Projection x View
-	float4x4 CameraInverse;
-	float4   CameraPOS;
-	uint  	 MinZ;
-	uint  	 MaxZ;
-	int 	 PointLightCount;
-	int 	 SpotLightCount;
-};
+    float4x4 View;
+    float4x4 ViewI;
+    float4x4 Proj;
+    float4x4 PV; // Projection x View
+    float4x4 PVI; // Projection x View
+    float4 CameraPOS;
+    float MinZ;
+    float MaxZ;
+    float PointLightCount;
+    float SpotLightCount;
+    float WindowWidth;
+    float WindowHeight;
 
+    float4 WSTopLeft;
+    float4 WSTopRight;
+    float4 WSBottomLeft;
+    float4 WSBottomRight;
+
+    float4 WSTopLeft_Near;
+    float4 WSTopRight_Near;
+    float4 WSBottomLeft_Near;
+    float4 WSBottomRight_Near;
+};
 
 // ---------------------------------------------------------------------------
 
@@ -219,7 +230,8 @@ bool CompareAgainstFrustum(float3 V, float r)
         float D = NdP - r;
         Bottom  = D <= 0;
     }
-	return !(Near & Far & Left & Right & Bottom);
+
+	return !(Near & Far & Left & Right & Bottom & Top & Bottom);
 }
 
 
@@ -474,8 +486,23 @@ Region_CP MakeBottomRight(Region_CP IN)
 
 bool CullRegion(Region_CP R){ 
     float3 CenterPosition = R.POS.xyz;
-    CenterPosition.y = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + R.UVCords.zw) / 2);
-	return CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
+    float2 UVSpan = R.UVCords.xy - R.UVCords.zw;
+    float P4 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy));
+    float P1 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + UVSpan));
+    float P2 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + (UVSpan * float2(0, 1))));
+    float P3 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + (UVSpan * float2(1, 0))));
+
+    float HighestPoint  = max(max(P1, P2), max(P3, P4));
+    float LowestPoint   = min(min(P1, P2), min(P3, P4));
+
+    R.POS.xyz.y = 10000.0f;
+    bool TopPlane       = CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
+
+    //R.POS.xyz.y = LowestPoint + 1000.0f;
+    //bool BottomPlane    = CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
+
+    return TopPlane; //| BottomPlane;
+
 }
 
 

@@ -512,7 +512,7 @@ namespace FlexKit
 			
 			auto NoDepthState					= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 			NoDepthState.DepthFunc				= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-			NoDepthState.DepthEnable			= true;
+			NoDepthState.DepthEnable			= false;
 
 			D3D12_SHADER_BYTECODE DCode = { (BYTE*)ShaderQuad2Tri_Debug.Blob->GetBufferPointer(),	ShaderQuad2Tri_Debug.Blob->GetBufferSize() };
 			D3D12_SHADER_BYTECODE GCode = { (BYTE*)ShaderRegion2Tri.Blob->GetBufferPointer(),		ShaderRegion2Tri.Blob->GetBufferSize()	};
@@ -1065,8 +1065,8 @@ namespace FlexKit
 		{
 			Landscape::ConstantBufferLayout Buffer;
 
-			float3 POS = GetPositionW(Nodes, Camera->Node);
-			Quaternion Q = GetOrientation(Nodes, Camera->Node);
+			float3 POS      = GetPositionW(Nodes, Camera->Node);
+			Quaternion Q    = GetOrientation(Nodes, Camera->Node);
 			Buffer.Albedo	= {1, 1, 1, 0.9f};
 			Buffer.Specular = {1, 1, 1, 1};
 

@@ -136,15 +136,6 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 		//PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
 	}
 
-	Draw_TEXTURED_RECT Rect;
-	Rect.BLeft	= {0, 0};
-	Rect.TRight = {.5f, .5f * GetWindowAspectRatio(Engine)};
-	Rect.TextureHandle = &ThisState->TestTexture;
-	Rect.BRight_UVOffset = { 0, 0 };
-	Rect.TLeft_UVOffset  = { 0, 0 };
-	Rect.Color			 = { 1, 1, 1, 1 };
-	Rect.ZOrder = 0;
-	PushRect(ThisState->Framework->Immediate, Rect);
 
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
@@ -205,33 +196,10 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->OrbitCameras.Initiate(Framework, State->Input);
 
 
-	TextureBuffer Texture;
-
-#if 0
-	if (LoadBMP("assets\\Textures\\Test.bmp", Engine->BlockAllocator, &Texture))
-	{
-		State->TestTexture = LoadTexture(&Texture, Engine->RenderSystem, Engine->BlockAllocator);
-		//Texture.Release();
-	}
-
-#else
-	size_t size = 1024;
-	Texture		= CreateTextureBuffer(size, size, Engine->BlockAllocator);
-	RGBA* Pixels = (RGBA*)Texture.Buffer;
-	for(size_t y = 0; y < size; ++y)
-		for (size_t x = 0; x < size; ++x) {
-			Pixels[x + y * size].Blue = x % 255;
-			Pixels[x + y * size].Green = y % 255;
-			Pixels[x + y * size].Red = x % (y + 1);
-		}
-
-	State->TestTexture = LoadTexture(&Texture, Engine->RenderSystem, Engine->BlockAllocator);
-#endif
-
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
-	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+	//FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	GameObject<> Test;
 
@@ -242,9 +210,11 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	SetLightColor(State->TestObject, RED);
 
+#if 0
 	InitiateGameObject( 
 		State->FloorObject,
 			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
+#endif
 
 	for(size_t I = 0; I < 10; ++I){
 		InitiateGameObject( 
@@ -263,6 +233,183 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	Translate(State->Player, {0, 10, -10});
 	Yaw(State->Player, pi);
+	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
+
+	//return State;
+
+
+	// Creating Cube
+	
+	float R = 10; // Edge Length
+
+	FlexKit::VertexBufferView* Views[3];
+
+
+	// Index Buffer
+	{
+		Views[0] = FlexKit::CreateVertexBufferView((byte*)Framework->Engine->BlockAllocator._aligned_malloc(4096), 4096);
+		Views[0]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16);
+
+		for(uint16_t I = 0; I < 36; ++I)
+			Views[0]->Push(I);
+
+		FK_ASSERT( Views[0]->End() );
+	}
+
+
+	// Vertex Buffer
+	{
+		Views[1] = FlexKit::CreateVertexBufferView((byte*)Framework->Engine->BlockAllocator._aligned_malloc(4096), 4096);
+		Views[1]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
+
+		float3 TopFarLeft	= { -R,  R, -R };
+		float3 TopFarRight  = { -R,  R, -R };
+		float3 TopNearLeft  = { -R,  R,  R };
+		float3 TopNearRight = {  R,  R,  R };
+
+		float3 BottomFarLeft   = { -R,  -R, -R };
+		float3 BottomFarRight  = { -R,  -R, -R };
+		float3 BottomNearLeft  = { -R,  -R,  R };
+		float3 BottomNearRight = {  R,  -R,  R };
+
+		// Top Plane
+		Views[1]->Push(TopFarLeft); 
+		Views[1]->Push(TopFarRight);
+		Views[1]->Push(TopNearRight);
+
+		Views[1]->Push(TopNearRight);
+		Views[1]->Push(TopNearLeft);
+		Views[1]->Push(TopFarLeft);
+
+
+		// Bottom Plane
+		Views[1]->Push(BottomFarLeft);
+		Views[1]->Push(BottomNearRight);
+		Views[1]->Push(BottomFarRight);
+
+		Views[1]->Push(BottomNearRight);
+		Views[1]->Push(BottomFarLeft);
+		Views[1]->Push(BottomNearLeft);
+
+		// Left Plane
+		Views[1]->Push(TopFarLeft);
+		Views[1]->Push(TopNearLeft);
+		Views[1]->Push(BottomNearLeft);
+
+		Views[1]->Push(TopFarLeft);
+		Views[1]->Push(BottomNearLeft);
+		Views[1]->Push(BottomFarLeft);
+		
+		// Right Plane
+		Views[1]->Push(TopFarRight);
+		Views[1]->Push(BottomNearRight);
+		Views[1]->Push(TopNearRight);
+
+		Views[1]->Push(TopFarRight);
+		Views[1]->Push(BottomFarRight);
+		Views[1]->Push(TopNearRight);
+
+		// Near Plane
+		Views[1]->Push(TopNearLeft);
+		Views[1]->Push(TopNearRight);
+		Views[1]->Push(BottomNearRight);
+
+		Views[1]->Push(TopNearLeft);
+		Views[1]->Push(BottomNearRight);
+		Views[1]->Push(BottomNearLeft);
+
+		// FarPlane
+		Views[1]->Push(TopFarLeft);
+		Views[1]->Push(TopFarRight);
+		Views[1]->Push(BottomFarRight);
+		
+		Views[1]->Push(TopFarLeft);
+		Views[1]->Push(BottomFarRight);
+		Views[1]->Push(BottomFarLeft);
+
+		FK_ASSERT( Views[1]->End() );
+	}
+
+
+	// Normal Buffer
+	{
+		Views[2] = FlexKit::CreateVertexBufferView((byte*)Framework->Engine->BlockAllocator._aligned_malloc(4096), 4096);
+		Views[2]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
+
+		float3 TopPlane		= {  0,  1,  0 };
+		float3 BottomPlane  = {  0, -1,  0 };
+		float3 LeftPlane	= { -1,  0,  0 };
+		float3 RightPlane	= {  1,  0,  1 };
+		float3 NearPlane	= {  0,  0,  1 };
+		float3 FarPlane		= {  0,  0, -1 };
+
+		// Top Plane
+		Views[2]->Push(TopPlane);
+		Views[2]->Push(TopPlane);
+		Views[2]->Push(TopPlane);
+
+		Views[2]->Push(TopPlane);
+		Views[2]->Push(TopPlane);
+		Views[2]->Push(TopPlane);
+
+		// Bottom Plane
+		Views[2]->Push(BottomPlane);
+		Views[2]->Push(BottomPlane);
+		Views[2]->Push(BottomPlane);
+
+		Views[2]->Push(BottomPlane);
+		Views[2]->Push(BottomPlane);
+		Views[2]->Push(BottomPlane);
+
+		// Left Plane
+		Views[2]->Push(LeftPlane);
+		Views[2]->Push(LeftPlane);
+		Views[2]->Push(LeftPlane);
+
+		Views[2]->Push(LeftPlane);
+		Views[2]->Push(LeftPlane);
+		Views[2]->Push(LeftPlane);
+
+		// Right Plane
+		Views[2]->Push(RightPlane);
+		Views[2]->Push(RightPlane);
+		Views[2]->Push(RightPlane);
+
+		Views[2]->Push(RightPlane);
+		Views[2]->Push(RightPlane);
+		Views[2]->Push(RightPlane);
+
+		// Near Plane
+		Views[2]->Push(NearPlane);
+		Views[2]->Push(NearPlane);
+		Views[2]->Push(NearPlane);
+
+		Views[2]->Push(NearPlane);
+		Views[2]->Push(NearPlane);
+		Views[2]->Push(NearPlane);
+
+		// FarPlane
+		Views[2]->Push(FarPlane);
+		Views[2]->Push(FarPlane);
+		Views[2]->Push(FarPlane);
+
+		Views[2]->Push(FarPlane);
+		Views[2]->Push(FarPlane);
+		Views[2]->Push(FarPlane);
+
+		FK_ASSERT( Views[2]->End() );
+	}
+
+	Mesh_Description Desc;
+	Desc.Buffers		= Views;
+	Desc.BufferCount	= 3;
+	Desc.IndexBuffer	= 0;
+
+	auto MeshGUID		= Handle_t<16>(123456);
+	auto TriMeshHandle	= BuildMesh(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, &Desc, MeshGUID);
+
+	for(auto V : Views)
+		Framework->Engine->BlockAllocator._aligned_free(V);
 
 	return State;
 }

@@ -724,7 +724,7 @@ namespace FlexKit
 		
 		bool InitiateComplete = false;
 
-		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
+		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device));
 
 		if(FAILED(HR))
 		{
@@ -1968,6 +1968,7 @@ namespace FlexKit
 		};
 
 		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
+			Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE::D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 		}
 
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); {
@@ -2726,8 +2727,8 @@ namespace FlexKit
 	bool CreateInputLayout(RenderSystem* RS, VertexBufferView** Buffers, size_t count, Shader* Shader, VertexBuffer* DVB_Out)
 	{
 #ifdef _DEBUG
-		FK_ASSERT(Shader);
-		FK_ASSERT(Shader->Blob);
+		//FK_ASSERT(Shader);
+		//FK_ASSERT(Shader->Blob);
 #endif
 		InputDescription Input_Desc;
 
@@ -5126,6 +5127,51 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	TriMeshHandle BuildMesh(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, TriMeshHandle guid)
+	{
+		TriMesh* Mesh = nullptr;
+		TriMeshHandle Handle = INVALIDMESHHANDLE;
+
+		if (!GT->FreeList.size())
+		{
+			auto Index				= GT->Geometry.size();
+			TriMeshHandle	Handle	= GT->Handles.GetNewHandle();
+
+			GT->Geometry.push_back(TriMesh());
+			GT->GeometryIDs.push_back(nullptr);
+			GT->Guids.push_back(guid);
+			GT->ReferenceCounts.push_back(1);
+
+			Mesh = &GT->Geometry.back();
+		}
+		else
+		{
+			auto Index	= GT->FreeList.back();
+			GT->FreeList.pop_back();
+
+			Handle		= GT->Handles.GetNewHandle();
+
+			GT->Handles[Handle]			= Index;
+			GT->GeometryIDs[Index]		= nullptr;
+			GT->Guids[Index]			= guid;
+			GT->ReferenceCounts[Index]	= 1;
+
+			Mesh = &GT->Geometry[Index];
+		}
+
+		for( auto& V : Mesh->Buffers)
+			V = nullptr;
+
+		size_t End = Desc->BufferCount;
+		for (size_t I = 0; I < End; ++I)
+			Mesh->Buffers[I] = Desc->Buffers[I];
+
+		CreateVertexBuffer	(RS, Mesh->Buffers, Desc->BufferCount, Mesh->VertexBuffer);
+
+		return Handle;
+	}
 
 
 FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)

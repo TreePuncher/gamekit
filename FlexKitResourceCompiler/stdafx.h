@@ -29,10 +29,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\graphicsutilities\AnimationUtilities.h"
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\MeshUtils.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\MeshUtils.h"
 #include <stdio.h>
 #include <tchar.h>
 

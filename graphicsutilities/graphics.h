@@ -1565,6 +1565,9 @@ namespace FlexKit
 	};
 
 
+	/************************************************************************************************/
+
+
 	FLEXKITAPI void							InitiateGeometryTable	( GeometryTable* GT, iAllocator* Memory );
 	FLEXKITAPI void							ReleaseGeometryTable	( GeometryTable* GT );
 
@@ -1581,6 +1584,19 @@ namespace FlexKit
 	FLEXKITAPI bool							IsMeshLoaded			( GeometryTable* GT, GUID_t			guid );
 	FLEXKITAPI bool							IsSkeletonLoaded		( GeometryTable* GT, TriMeshHandle	guid );
 	FLEXKITAPI bool							HasAnimationData		( GeometryTable* GT, TriMeshHandle	guid );
+
+
+	struct Mesh_Description
+	{
+
+		size_t IndexBuffer;
+		size_t BufferCount;
+
+		VertexBufferView** Buffers;
+	};
+
+	FLEXKITAPI TriMeshHandle	BuildMesh	(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, TriMeshHandle guid);
+
 
 	FLEXKITAPI FustrumPoints	GetCameraFrustumPoints	(Camera* Camera, float3 XYZ, Quaternion Q);
 	FLEXKITAPI MinMax			GetCameraAABS_XZ		(FustrumPoints Points);

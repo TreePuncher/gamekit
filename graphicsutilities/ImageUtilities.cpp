@@ -137,4 +137,27 @@ namespace FlexKit
 
 		return false;
 	}
+
+
+	bool CheckerBoard(int XSize, int YSize, TextureBuffer* Out)
+	{
+		FK_ASSERT(Out);
+		FK_ASSERT(XSize > 0);
+		FK_ASSERT(YSize > 0);
+
+		const size_t Width = Out->WH[0];
+		const size_t Height= Out->WH[1];
+
+		RGBA* Pixels = (RGBA*)Out->Buffer;
+		for(size_t y = 0; y < Height; ++y)
+			for (size_t x = 0; x < Width; ++x) {
+				int Val = ((x/XSize + (y/YSize % 2)) % 2) * 255;
+				Pixels[x + y * Width].Blue	= Val;
+				Pixels[x + y * Width].Green	= Val;
+				Pixels[x + y * Width].Red	= Val;
+			}
+
+		return true;
+	}
+
 }

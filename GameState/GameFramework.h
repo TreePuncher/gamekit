@@ -99,6 +99,7 @@ struct GameFramework
 	bool				OcclusionCulling;
 	bool				ScreenSpaceReflections;
 	bool				DrawTerrain;
+	bool				DrawTerrainDebug;
 	bool				DrawDebug;
 	bool				DrawDebugStats;
 	bool				DrawPhysicsDebug;
