@@ -175,79 +175,13 @@ void ReleasePlayState(SubState* StateMemory)
 /************************************************************************************************/
 
 
-PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
+TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory, float R, GUID_t MeshID)
 {
-	PlayState* State = nullptr;
-
-	State						 = &Engine->BlockAllocator.allocate_aligned<PlayState>();
-	State->VTable.PreDrawUpdate  = PreDrawUpdate;
-	State->VTable.Update         = PlayUpdate;
-	State->VTable.EventHandler   = PlayEventHandler;
-	State->VTable.PostDrawUpdate = nullptr;
-	State->VTable.Release        = ReleasePlayState;
-	State->Framework			 = Framework;
-
-	InitiateGraphicScene(&State->GScene, Engine->RenderSystem, &Engine->Assets, Engine->Nodes, Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
-	State->Drawables.InitiateSystem(&State->GScene, Engine->Nodes);
-	State->Lights.InitiateSystem(&State->GScene, Engine->Nodes);
-	State->Physics.InitiateSystem(&Engine->Physics, Engine->Nodes, Engine->BlockAllocator);
-
-	State->Input.Initiate(Framework);
-	State->OrbitCameras.Initiate(Framework, State->Input);
-
-
-	Framework->ActivePhysicsScene	= &State->Physics;
-	Framework->ActiveScene			= &State->GScene;
-
-	//FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
-
-	GameObject<> Test;
-
-	InitiateGameObject(
-		State->TestObject,
-			CreateEnityComponent(&State->Drawables, "Flower"),
-			CreateLightComponent(&State->Lights));
-
-	SetLightColor(State->TestObject, RED);
-
-#if 0
-	InitiateGameObject( 
-		State->FloorObject,
-			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
-#endif
-
-	for(size_t I = 0; I < 10; ++I){
-		InitiateGameObject( 
-			State->CubeObjects[I],
-				CreateEnityComponent(&State->Drawables, "Flower"),
-				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
-				State->Physics.CreateCubeComponent(
-					{ 0, 20.0f + 10.0f * I, 0}, 
-					{ 0, 10, 0}, 1));
-	}
-
-	InitiateGameObject(
-		State->Player,
-			State->Physics.CreateCharacterController({0, 10, 0}, 5, 0.01),
-			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
-
-	Translate(State->Player, {0, 10, -10});
-	Yaw(State->Player, pi);
-	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
-
-	//return State;
-
-
-	// Creating Cube
-	
-	float R = 10; // Edge Length
-
 	FlexKit::VertexBufferView* Views[3];
-
 
 	// Index Buffer
 	{
-		Views[0] = FlexKit::CreateVertexBufferView((byte*)Framework->Engine->BlockAllocator._aligned_malloc(4096), 4096);
+		Views[0] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
 		Views[0]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16);
 
 		for(uint16_t I = 0; I < 36; ++I)
@@ -256,10 +190,9 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 		FK_ASSERT( Views[0]->End() );
 	}
 
-
 	// Vertex Buffer
 	{
-		Views[1] = FlexKit::CreateVertexBufferView((byte*)Framework->Engine->BlockAllocator._aligned_malloc(4096), 4096);
+		Views[1] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
 		Views[1]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
 
 		float3 TopFarLeft	= { -R,  R, -R };
@@ -329,11 +262,9 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 		FK_ASSERT( Views[1]->End() );
 	}
-
-
 	// Normal Buffer
 	{
-		Views[2] = FlexKit::CreateVertexBufferView((byte*)Framework->Engine->BlockAllocator._aligned_malloc(4096), 4096);
+		Views[2] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
 		Views[2]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
 
 		float3 TopPlane		= {  0,  1,  0 };
@@ -405,11 +336,75 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	Desc.BufferCount	= 3;
 	Desc.IndexBuffer	= 0;
 
-	auto MeshGUID		= Handle_t<16>(123456);
-	auto TriMeshHandle	= BuildMesh(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, &Desc, MeshGUID);
+	auto MeshHandle		= BuildMesh(RS, GT, &Desc, MeshID);
 
 	for(auto V : Views)
-		Framework->Engine->BlockAllocator._aligned_free(V);
+		Memory->_aligned_free(V);
+
+	return MeshHandle;
+}
+
+PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
+{
+	PlayState* State = nullptr;
+
+	State						 = &Engine->BlockAllocator.allocate_aligned<PlayState>();
+	State->VTable.PreDrawUpdate  = PreDrawUpdate;
+	State->VTable.Update         = PlayUpdate;
+	State->VTable.EventHandler   = PlayEventHandler;
+	State->VTable.PostDrawUpdate = nullptr;
+	State->VTable.Release        = ReleasePlayState;
+	State->Framework			 = Framework;
+
+	InitiateGraphicScene(&State->GScene, Engine->RenderSystem, &Engine->Assets, Engine->Nodes, Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
+	State->Drawables.InitiateSystem(&State->GScene, Engine->Nodes);
+	State->Lights.InitiateSystem(&State->GScene, Engine->Nodes);
+	State->Physics.InitiateSystem(&Engine->Physics, Engine->Nodes, Engine->BlockAllocator);
+
+	State->Input.Initiate(Framework);
+	State->OrbitCameras.Initiate(Framework, State->Input);
+
+
+	Framework->ActivePhysicsScene	= &State->Physics;
+	Framework->ActiveScene			= &State->GScene;
+
+	//FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+
+	GameObject<> Test;
+
+	InitiateGameObject(
+		State->TestObject,
+			CreateEnityComponent(&State->Drawables, "Flower"),
+			CreateLightComponent(&State->Lights));
+
+	SetLightColor(State->TestObject, RED);
+
+#if 0
+	InitiateGameObject( 
+		State->FloorObject,
+			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
+#endif
+
+	for(size_t I = 0; I < 10; ++I){
+		InitiateGameObject( 
+			State->CubeObjects[I],
+				CreateEnityComponent(&State->Drawables, "Flower"),
+				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
+				State->Physics.CreateCubeComponent(
+					{ 0, 20.0f + 10.0f * I, 0}, 
+					{ 0, 10, 0}, 1));
+	}
+
+	InitiateGameObject(
+		State->Player,
+			State->Physics.CreateCharacterController({0, 10, 0}, 5, 0.01),
+			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+
+	Translate(State->Player, {0, 10, -10});
+	Yaw(State->Player, pi);
+	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
+
+	auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
 
 	return State;
 }

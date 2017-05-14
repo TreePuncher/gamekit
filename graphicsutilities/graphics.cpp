@@ -5129,7 +5129,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle BuildMesh(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, TriMeshHandle guid)
+	TriMeshHandle BuildMesh(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, GUID_t guid)
 	{
 		TriMesh* Mesh = nullptr;
 		TriMeshHandle Handle = INVALIDMESHHANDLE;

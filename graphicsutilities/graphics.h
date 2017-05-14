@@ -1586,6 +1586,9 @@ namespace FlexKit
 	FLEXKITAPI bool							HasAnimationData		( GeometryTable* GT, TriMeshHandle	guid );
 
 
+	/************************************************************************************************/
+
+
 	struct Mesh_Description
 	{
 
