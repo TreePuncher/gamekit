@@ -216,8 +216,8 @@ namespace FlexKit
 			HandleTable( const HandleTable<HANDLE,SIZE>& in )	= delete;	// Do not allow Table copying
 			HandleTable& operator = ( const HandleTable& rhs )	= delete;	// Do not allow Table copying
 
-			DynArray<index_t> FreeList;
-			DynArray<index_t> Indexes;
+			Vector<index_t> FreeList;
+			Vector<index_t> Indexes;
 
 			void Release()
 			{

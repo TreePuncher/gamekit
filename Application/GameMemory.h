@@ -149,7 +149,7 @@ struct EngineMemory
 	// Component System
 	SceneNodeComponentSystem	Nodes;
 
-	DynArray<const char*>		CmdArguments;
+	Vector<const char*>		CmdArguments;
 
 	EngineMemory_DEBUG	Debug;
 

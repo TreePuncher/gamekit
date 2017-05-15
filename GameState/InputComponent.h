@@ -65,8 +65,8 @@ namespace FlexKit
 
 		void ReleaseHandle	(ComponentHandle Handle){}
 
-		DynArray<ComponentHandle>			Listeners;
-		DynArray<ComponentSystemInterface*>	TargetSystems;
+		Vector<ComponentHandle>			Listeners;
+		Vector<ComponentSystemInterface*>	TargetSystems;
 
 		GameFramework*						Framework;
 		PlayerInputState					KeyState;

@@ -74,7 +74,7 @@ namespace FlexKit
 		uint2				RC;// ROW - COLUMN
 	};
 
-	typedef DynArray<size_t> GUIChildList;
+	typedef Vector<size_t> GUIChildList;
 
 	struct GUIElement_List{
 		GUIElement_List(GUIElement_List&& in) {
@@ -231,18 +231,18 @@ namespace FlexKit
 	struct SimpleWindow
 	{
 		GUIChildList						Root;
-		DynArray<GUIElement>				Elements;
-		DynArray<GUIElement_List>			Lists;
-		DynArray<GUIElement_TexuredButton>	TexturedButtons;
-		DynArray<GUIElement_TextButton>		TextButtons;
-		DynArray<GUIElement_TextInput>		TextInputs;
-		DynArray<GUIElement_TextBox>		TextBoxes;
-		DynArray<GUIElement_Slider>			Slider;
-		DynArray<GUIElement_RadioButton>	RadioButton;
-		DynArray<GUIElement_Graph>			Graphs;
-		DynArray<GUIElement_Div>			Dividers;
+		Vector<GUIElement>				Elements;
+		Vector<GUIElement_List>			Lists;
+		Vector<GUIElement_TexuredButton>	TexturedButtons;
+		Vector<GUIElement_TextButton>		TextButtons;
+		Vector<GUIElement_TextInput>		TextInputs;
+		Vector<GUIElement_TextBox>		TextBoxes;
+		Vector<GUIElement_Slider>			Slider;
+		Vector<GUIElement_RadioButton>	RadioButton;
+		Vector<GUIElement_Graph>			Graphs;
+		Vector<GUIElement_Div>			Dividers;
 
-		DynArray<int32_t> CellState;// Marks Owner, -1 if Unused
+		Vector<int32_t> CellState;// Marks Owner, -1 if Unused
 
 		size_t RowCount;
 		size_t ColumnCount;
@@ -472,7 +472,7 @@ namespace FlexKit
 		ImmediateRender*	GUI;
 		iAllocator*			Memory;
 
-		DynArray<float2, 128> PositionStack;
+		Vector<float2, 128> PositionStack;
 		
 		float2 GetCurrentPosition();
 
@@ -593,8 +593,8 @@ namespace FlexKit
 		GUIGridHandle(GUIHandle);
 		GUIGridHandle(ComplexGUI* Window, GUIElementHandle In);
 
-		DynArray<GUIDimension>&		RowHeights();
-		DynArray<GUIDimension>&		ColumnWidths();
+		Vector<GUIDimension>&		RowHeights();
+		Vector<GUIDimension>&		ColumnWidths();
 		GUIGridCell*				CreateCell(uint2);
 		GUIGridCell&				GetCell(uint2 ID, bool& Found);
 		float2						GetCellWH(uint2 ID);
@@ -681,9 +681,9 @@ namespace FlexKit
 		static void Draw		( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
 		static void Draw_DEBUG	( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
 
-		DynArray<GUIDimension>	RowHeights;
-		DynArray<GUIDimension>	ColumnWidths;
-		DynArray<GUIGridCell>	Cells;
+		Vector<GUIDimension>	RowHeights;
+		Vector<GUIDimension>	ColumnWidths;
+		Vector<GUIGridCell>	Cells;
 		float2					WH;
 		float2					XY;
 		uint32_t				Framework;
@@ -724,11 +724,11 @@ namespace FlexKit
 		void CreateHorizontalSlider();
 		void CreateVerticalSlider();
 
-		DynArray<GUIBaseElement>		Elements;
-		DynArray<GUIGrid>				Grids;
-		DynArray<GUIButton>				Buttons;
+		Vector<GUIBaseElement>		Elements;
+		Vector<GUIGrid>				Grids;
+		Vector<GUIButton>				Buttons;
 
-		DynArray<DynArray<GUIElementHandle>>	Children;
+		Vector<Vector<GUIElementHandle>>	Children;
 
 		iAllocator* Memory;
 	};

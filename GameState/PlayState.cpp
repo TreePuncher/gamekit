@@ -139,6 +139,9 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
+	if(ThisState->Framework->DrawDebug)
+		ThisState->Drawables.DrawDebug(&StateMemory->Framework->Immediate, Engine->TempAllocator);
+
 	return false;
 }
 

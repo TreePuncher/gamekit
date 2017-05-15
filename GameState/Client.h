@@ -59,7 +59,7 @@ struct ClientState : public SubState
 	RakNet::RakPeerInterface*	Peer;
 	RakNet::SystemAddress		ServerAddr;
 
-	DynArray<PlayerID_t>	PlayerIds;
+	Vector<PlayerID_t>	PlayerIds;
 	GUID_t					Scene;
 
 	size_t ID;
@@ -92,7 +92,7 @@ struct ClientPlayState : public SubState
 	double				T_TillNextPositionUpdate; 
 	size_t				FrameCount;
 
-	FlexKit::DynArray<PlayerImposters> Imposters;// Cause hes an imposter, trying to steal all the client info
+	FlexKit::Vector<PlayerImposters> Imposters;// Cause hes an imposter, trying to steal all the client info
 };
 
 ClientState*		CreateClientState		(EngineMemory* Engine, GameFramework* Framework, const char* Name = nullptr, const char* Server = nullptr);

@@ -105,7 +105,7 @@ namespace FlexKit
 		double	mdAverage;
 		double	mTimeSinceLastFrame;
 
-		DynArray<Timer*> mTimers;
+		Vector<Timer*> mTimers;
 	};
 }
 

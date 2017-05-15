@@ -53,7 +53,7 @@ struct FBXIDTranslation
 	size_t	FBXID;
 	GUID_t	Guid;
 };
-typedef DynArray<FBXIDTranslation> FBXIDTranslationTable;
+typedef Vector<FBXIDTranslation> FBXIDTranslationTable;
 
 
 GUID_t	TranslateID(size_t FBXID, FBXIDTranslationTable& Table)
@@ -117,7 +117,7 @@ struct Compiler
 };
 
 
-typedef DynArray<TriMesh> GeometryList;
+typedef Vector<TriMesh> GeometryList;
 
 
 /************************************************************************************************/
@@ -239,9 +239,9 @@ struct CompiledMeshInfo
 };
 
 
-DynArray<size_t> FindRelatedMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem)
+Vector<size_t> FindRelatedMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem)
 {
-	DynArray<size_t> RelatedData(TempMem);
+	Vector<size_t> RelatedData(TempMem);
 	size_t IDLength = strlen(ID);
 
 	for (size_t I = 0; I < MetaData->size(); ++I)
@@ -258,7 +258,7 @@ DynArray<size_t> FindRelatedMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPI
 /************************************************************************************************/
 
 
-Mesh_MetaData* GetMeshMetaData(MD_Vector* MetaData, DynArray<size_t>& related)
+Mesh_MetaData* GetMeshMetaData(MD_Vector* MetaData, Vector<size_t>& related)
 {
 	for (auto I : related)
 		if(MetaData->at(I)->type == MetaData::EMETAINFOTYPE::EMI_MESH)
@@ -312,14 +312,14 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 			size_t ID	  = (size_t)Mesh->GetUniqueID();
 			auto Geo	  = FindGeoByID( GL, ID );
 
-			DynArray<size_t> RelatedMetaData;
+			Vector<size_t> RelatedMetaData;
 
 #if USING(RESCOMPILERVERBOSE)
 			std::cout << "Found Mesh: " << MeshName << "\n";
 #endif
 			if (MD)
 			{
-				MoveDynArray(	
+				MoveVector(	
 					RelatedMetaData, 
 					FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName, TempMem ));
 			}
@@ -1157,7 +1157,7 @@ struct MD_Token
 };
 
 
-typedef DynArray<MD_Token> TokenList;
+typedef Vector<MD_Token> TokenList;
 
 
 /************************************************************************************************/
@@ -1165,7 +1165,7 @@ typedef DynArray<MD_Token> TokenList;
 
 TokenList* GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
 {
-	DynArray<MD_Token>* Tokens = &Memory->allocate_aligned<DynArray<MD_Token>>(Memory);
+	Vector<MD_Token>* Tokens = &Memory->allocate_aligned<Vector<MD_Token>>(Memory);
 
 	size_t StartPos = 0;
 	size_t CurrentPos = 0;

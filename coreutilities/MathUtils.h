@@ -587,6 +587,7 @@ namespace FlexKit
 			return *this;
 		}
 
+
 		inline float& operator[] ( const size_t index )		  { return pfloats.m128_f32[index]; }
 		inline float operator[]  ( const size_t index )	const { return pfloats.m128_f32[index]; }
 		// Operator Overloads

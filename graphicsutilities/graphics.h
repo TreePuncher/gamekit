@@ -1021,7 +1021,7 @@ namespace FlexKit
 			ID3D12Resource* Resource;
 			size_t			Counter;
 		};
-		DynArray<FreeEntry> FreeList;
+		Vector<FreeEntry> FreeList;
 
 		operator RenderSystem* ( ) { return this; }
 	};
@@ -1556,11 +1556,11 @@ namespace FlexKit
 		GeometryTable() : Handles(GetTypeGUID(GeometryTable), nullptr) {}
 
 		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
-		DynArray<TriMesh>								Geometry;
-		DynArray<size_t>								ReferenceCounts;
-		DynArray<GUID_t>								Guids;
-		DynArray<const char*>							GeometryIDs;
-		DynArray<size_t>								FreeList;
+		Vector<TriMesh>								Geometry;
+		Vector<size_t>								ReferenceCounts;
+		Vector<GUID_t>								Guids;
+		Vector<const char*>							GeometryIDs;
+		Vector<size_t>								FreeList;
 		iAllocator*										Memory;
 	};
 
@@ -1746,9 +1746,9 @@ namespace FlexKit
 		Texture2D					TextureMemory;
 		FrameBufferedRenderTarget	RenderTarget;// Read-Back Buffer
 
-		DynArray<Texture2D>			PageTables;
-		DynArray<TextureEntry>		TextureTable;
-		DynArray<TextureSet*>		TextureSets;
+		Vector<Texture2D>			PageTables;
+		Vector<TextureEntry>		TextureTable;
+		Vector<TextureSet*>		TextureSets;
 
 		struct TableEntry{
 			GUID_t ResourceID;
@@ -1785,8 +1785,8 @@ namespace FlexKit
 
 	struct TextureManager
 	{
-		DynArray<TextureSet>	Textures;
-		DynArray<uint32_t>		FreeList;
+		Vector<TextureSet>	Textures;
+		Vector<uint32_t>		FreeList;
 	};
 
 
@@ -1944,7 +1944,7 @@ namespace FlexKit
 	struct FLEXKITAPI StaticScene
 	{
 		StaticScene() : ObjectTable(GetTypeGUID(StaticScene), nullptr) {}
-		DynArray<DirectX::XMMATRIX>		Transforms		[MAXINSTANCES];
+		Vector<DirectX::XMMATRIX>		Transforms		[MAXINSTANCES];
 		char							GeometryIndex	[MAXINSTANCES];
 		NodeHandle						NodeHandles		[MAXINSTANCES];
 
@@ -2382,7 +2382,7 @@ namespace FlexKit
 		float3 BColour;
 	};
 
-	typedef DynArray<LineSegment> LineSegments;
+	typedef Vector<LineSegment> LineSegments;
 
 	struct LineSet
 	{
@@ -2515,16 +2515,16 @@ namespace FlexKit
 		operator ImmediateRender* () { return this; }
 		RenderSystem*				RS;
 
-		DynArray<ClipArea>			ClipAreas;
-		DynArray<Draw_RECTPoint>	Rects;
-		DynArray<Textured_Rect>		TexturedRects;
-		DynArray<Draw_TEXT>			Text;
-		DynArray<Draw_TEXT2>		Text2;
-		DynArray<Draw_LineSet>		DrawLines2D;
-		DynArray<Draw_LineSet>		DrawLines3D;
-		DynArray<DrawCall>			DrawCalls;
+		Vector<ClipArea>			ClipAreas;
+		Vector<Draw_RECTPoint>	Rects;
+		Vector<Textured_Rect>		TexturedRects;
+		Vector<Draw_TEXT>			Text;
+		Vector<Draw_TEXT2>		Text2;
+		Vector<Draw_LineSet>		DrawLines2D;
+		Vector<Draw_LineSet>		DrawLines3D;
+		Vector<DrawCall>			DrawCalls;
 
-		DynArray<const char*>	TextBuffer;
+		Vector<const char*>	TextBuffer;
 		size_t					TextBufferPosition;
 		ShaderResourceBuffer	TextBufferGPU;
 		uint32_t				TextBufferSizes[3];

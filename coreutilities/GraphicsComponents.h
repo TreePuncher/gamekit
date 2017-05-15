@@ -310,6 +310,10 @@ namespace FlexKit
 		}
 
 
+		void DrawDebug(ImmediateRender* R, iAllocator* Temp)
+		{
+		}
+
 		NodeHandle GetNode(ComponentHandle Drawable)
 		{
 			return Scene->GetNode(Drawable);

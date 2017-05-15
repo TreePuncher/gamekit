@@ -456,7 +456,7 @@ struct Scalp
 	};
 
 	size_t				CurrentBuffer;
-	DynArray<Strand>	Hairs;
+	Vector<Strand>	Hairs;
 };
 
 struct HairRender

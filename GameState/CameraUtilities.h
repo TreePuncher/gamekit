@@ -116,7 +116,7 @@ namespace FlexKit
 			SetParentNode(*Nodes, Controllers[Handle].CameraNode, Controllers[Handle].PitchNode);
 		}
 
-		DynArray<CameraOrbitController>	Controllers;
+		Vector<CameraOrbitController>	Controllers;
 
 		// Component Data Sources
 		SceneNodeComponentSystem*	Nodes;
@@ -189,8 +189,8 @@ namespace FlexKit
 			Camera*		C;
 		};
 
-		DynArray<State>				States;
-		DynArray<CameraController>	CameraControllers;
+		Vector<State>				States;
+		Vector<CameraController>	CameraControllers;
 	};
 
 	CameraControllerHandle CreateThirdPersonCamComponent(ThirdPersonCameraComponentSystem*);

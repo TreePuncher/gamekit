@@ -42,7 +42,7 @@ using FlexKit::fixed_vector;
 struct Scene;
 struct EngineMemory;
 
-using FlexKit::DynArray;
+using FlexKit::Vector;
 using FlexKit::EResourceType;
 using FlexKit::float2;
 using FlexKit::float3;
@@ -181,7 +181,7 @@ struct MetaData
 	char					ID[ID_LENGTH];	// Specifies the Asset that uses the meta data
 };
 
-typedef FlexKit::DynArray<MetaData*> MD_Vector;
+typedef FlexKit::Vector<MetaData*> MD_Vector;
 
 
 struct Skeleton_MetaData : public MetaData
@@ -296,7 +296,7 @@ struct TextureSet_MetaData : public MetaData
 	FlexKit::TextureSet_Locations Textures;
 };
 
-typedef DynArray<size_t> RelatedMetaData;
+typedef Vector<size_t> RelatedMetaData;
 
 bool			ReadMetaData		( const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out );
 RelatedMetaData	FindRelatedMetaData ( MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem );

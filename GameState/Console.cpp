@@ -217,9 +217,9 @@ bool PrintVar(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, voi
 /************************************************************************************************/
 
 
-DynArray<InputToken> GetTokens(iAllocator* Memory, const char* Str, ErrorTable)
+Vector<InputToken> GetTokens(iAllocator* Memory, const char* Str, ErrorTable)
 {
-	DynArray<InputToken> Out(Memory);
+	Vector<InputToken> Out(Memory);
 
 	size_t StrLen = strlen(Str);
 	size_t I = 0;
@@ -279,7 +279,7 @@ DynArray<InputToken> GetTokens(iAllocator* Memory, const char* Str, ErrorTable)
 	return Out;
 }
 
-ConsoleSyntax IdentifyToken(DynArray<InputToken>& in, size_t i, ConsoleIdentifierTable& Identifiers, TokenList& Tokens, ErrorTable& ErrorHandler)
+ConsoleSyntax IdentifyToken(Vector<InputToken>& in, size_t i, ConsoleIdentifierTable& Identifiers, TokenList& Tokens, ErrorTable& ErrorHandler)
 {
 	switch (in[i].Type)
 	{
@@ -350,7 +350,7 @@ ConsoleSyntax IdentifyToken(DynArray<InputToken>& in, size_t i, ConsoleIdentifie
 }
 
 
-bool ExecuteGrammerTokens(DynArray<GrammerToken>& Tokens, Console* C, DynArray<ConsoleVariable>& TempVariables)
+bool ExecuteGrammerTokens(Vector<GrammerToken>& Tokens, Console* C, Vector<ConsoleVariable>& TempVariables)
 {
 	for (size_t I = 0; I < Tokens.size(); ++I)
 	{
@@ -398,12 +398,12 @@ bool ExecuteGrammerTokens(DynArray<GrammerToken>& Tokens, Console* C, DynArray<C
 	return false;
 }
 
-bool ProcessTokens(iAllocator* Memory, DynArray<InputToken>& in, Console* C, ErrorTable& ErrorHandler )
+bool ProcessTokens(iAllocator* Memory, Vector<InputToken>& in, Console* C, ErrorTable& ErrorHandler )
 {
 	bool Success = true;
 
-	DynArray<GrammerToken>		Tokens(Memory);
-	DynArray<ConsoleVariable>	TempVariables(Memory);
+	Vector<GrammerToken>		Tokens(Memory);
+	Vector<ConsoleVariable>	TempVariables(Memory);
 
 	// Translate Tokens into Grammer Objects
 	for (size_t I = 0; I < in.size(); ++I)

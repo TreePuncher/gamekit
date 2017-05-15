@@ -87,8 +87,8 @@ namespace FlexKit
 
 	struct TriMeshColliderList
 	{
-		DynArray<TriangleCollider>						TriMeshColliders;
-		DynArray<size_t>								FreeSlots;
+		Vector<TriangleCollider>						TriMeshColliders;
+		Vector<size_t>								FreeSlots;
 		HandleUtilities::HandleTable<ColliderHandle>	TriMeshColliderTable;
 	};
 
@@ -323,8 +323,8 @@ namespace FlexKit
 		}
 
 		SceneNodeComponentSystem*	Nodes;
-		DynArray<Collider>			Colliders;
-		DynArray<Collider>			FreeColliders;
+		Vector<Collider>			Colliders;
+		Vector<Collider>			FreeColliders;
 	};
 
 	const uint32_t ColliderComponentID = GetTypeGUID(ColliderSystem);
@@ -447,7 +447,7 @@ namespace FlexKit
 			return ComponentHandle(Controllers.size() - 1);
 		}
 
-		DynArray<CharacterController>	Controllers;
+		Vector<CharacterController>	Controllers;
 		physx::PxControllerManager*		ControllerManager;
 		SceneNodeComponentSystem*		Nodes;
 	};
@@ -519,7 +519,7 @@ namespace FlexKit
 		}
 
 		SceneNodes*				Nodes;
-		DynArray<CubeCollider>	Colliders;
+		Vector<CubeCollider>	Colliders;
 	};
 
 
@@ -581,7 +581,7 @@ namespace FlexKit
 		}
 
 		SceneNodes*				Nodes;
-		DynArray<CubeCollider>	Colliders;
+		Vector<CubeCollider>	Colliders;
 	};
 
 	const uint32_t CubeColliderComponentID = GetTypeGUID(CubeColliderSystem);

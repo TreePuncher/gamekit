@@ -1436,7 +1436,7 @@ namespace FlexKit
 		float RowLength		= Grid._GetGrid().WH[0];
 		float ColumnLength	= Grid._GetGrid().WH[1];
 
-		DynArray<LineSegment> Lines(LayoutEngine->Memory);
+		Vector<LineSegment> Lines(LayoutEngine->Memory);
 
 		{	// Draw Vertical Lines
 			float Y = 0;
@@ -1635,8 +1635,8 @@ namespace FlexKit
 
 
 	const GUIBaseElement GUIHandle::Framework() const		{ return mWindow->Elements[mBase];  }
-	DynArray<GUIDimension>&	GUIGridHandle::RowHeights()		{ return _GetGrid().ColumnWidths;	}
-	DynArray<GUIDimension>&	GUIGridHandle::ColumnWidths()	{ return _GetGrid().RowHeights;		}
+	Vector<GUIDimension>&	GUIGridHandle::RowHeights()		{ return _GetGrid().ColumnWidths;	}
+	Vector<GUIDimension>&	GUIGridHandle::ColumnWidths()	{ return _GetGrid().RowHeights;		}
 
 
 	/************************************************************************************************/
@@ -1764,7 +1764,7 @@ namespace FlexKit
 
 			if (Cell->Children == 0xFFFFFFFF) {
 				auto idx = mWindow->Children.size();
-				mWindow->Children.push_back(DynArray<GUIElementHandle>(mWindow->Memory));
+				mWindow->Children.push_back(Vector<GUIElementHandle>(mWindow->Memory));
 				Cell->Children = idx;
 			}
 

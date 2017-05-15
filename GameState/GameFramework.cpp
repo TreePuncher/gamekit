@@ -150,14 +150,12 @@ void HandleMouseEvents(const Event& in, GameFramework* _ptr) {
 	{
 		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
 			_ptr->MouseState.LMB_Pressed = true;
-			std::cout << "KC_LMB PRESSED\n";
 		}
 	}	break;
 	case Event::InputAction::Release:
 	{
 		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
 			_ptr->MouseState.LMB_Pressed = false;
-			std::cout << "KC_LMB RELEASED\n";
 		}
 	}	break;
 	default:

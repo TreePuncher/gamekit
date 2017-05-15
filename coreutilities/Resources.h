@@ -343,11 +343,11 @@ namespace FlexKit
 			char*	ID;
 		};
 
-		DynArray<SceneNode>				Nodes;
-		DynArray<PointLight>			SceneLights;
-		DynArray<SceneGeometryTable>	SceneGeometry;
-		DynArray<Entity>				SceneEntities;
-		DynArray<Entity>				SceneStatics;
+		Vector<SceneNode>				Nodes;
+		Vector<PointLight>			SceneLights;
+		Vector<SceneGeometryTable>	SceneGeometry;
+		Vector<Entity>				SceneEntities;
+		Vector<Entity>				SceneStatics;
 		GUID_t							Guid;
 		char							ID[64];
 		size_t							IDSize;

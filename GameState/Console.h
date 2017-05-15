@@ -71,7 +71,7 @@ struct GrammerToken
 	ConsoleSyntax	SyntaxType;
 };
 
-typedef DynArray<GrammerToken> TokenList;
+typedef Vector<GrammerToken> TokenList;
 
 enum class ConsoleVariableType
 {
@@ -136,8 +136,8 @@ struct ErrorTable
 {
 };
 
-typedef FlexKit::DynArray<Identifier>		ConsoleIdentifierTable;
-typedef FlexKit::DynArray<ConsoleFunction>	ConsoleFunctionTable;
+typedef FlexKit::Vector<Identifier>		ConsoleIdentifierTable;
+typedef FlexKit::Vector<ConsoleFunction>	ConsoleFunctionTable;
 
 struct ConsoleLine
 {
@@ -182,11 +182,11 @@ struct Console
 	FlexKit::CircularBuffer<ConsoleLine, 32>	CommandHistory;
 	FlexKit::FontAsset*							Font;
 
-	DynArray<ConsoleVariable>	Variables;
+	Vector<ConsoleVariable>	Variables;
 	ConsoleFunctionTable		FunctionTable;
 	ConsoleIdentifierTable		BuiltInIdentifiers;
 
-	DynArray<size_t>			ConsoleUInts;
+	Vector<size_t>			ConsoleUInts;
 
 	char	InputBuffer[1024];
 	size_t	InputBufferSize;

@@ -95,7 +95,7 @@ namespace FlexKit
 
 		ConstantBuffer	ConstantBuffer;
 
-		DynArray<ViewableRegion> Regions;
+		Vector<ViewableRegion> Regions;
 
 		float4 Albedo;
 		float4 Specular;

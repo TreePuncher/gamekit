@@ -59,9 +59,9 @@ namespace FlexKit
 
 		}
 
-		DynArray<EntityHandle>	GetViewables(Camera* C)
+		Vector<EntityHandle>	GetViewables(Camera* C)
 		{
-			DynArray<EntityHandle> Out;
+			Vector<EntityHandle> Out;
 			return Out;
 		}
 
@@ -162,9 +162,9 @@ namespace FlexKit
 		inline Quaternion GetOrientation(EntityHandle Handle);
 
 
-		DynArray<SpotLightShadowCaster>		SpotLightCasters;
-		DynArray<Drawable>					Drawables;
-		DynArray<EntityHandle>				FreeEntityList;
+		Vector<SpotLightShadowCaster>		SpotLightCasters;
+		Vector<Drawable>					Drawables;
+		Vector<EntityHandle>				FreeEntityList;
 
 		struct TaggedJoint
 		{
@@ -173,7 +173,7 @@ namespace FlexKit
 			NodeHandle		Target;
 		};
 
-		DynArray<TaggedJoint>		TaggedJoints;
+		Vector<TaggedJoint>		TaggedJoints;
 
 		iAllocator*					TempMem;
 		iAllocator*					Memory;

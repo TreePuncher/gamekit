@@ -66,7 +66,7 @@ struct AnimationCut
 
 
 typedef static_vector<JointInfo, 1024> JointList;
-typedef DynArray<AnimationCut> CutList;
+typedef Vector<AnimationCut> CutList;
 
 
 /************************************************************************************************/
