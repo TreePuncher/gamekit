@@ -402,7 +402,7 @@ namespace FlexKit
 		{
 			if (EventSource == TransformComponentID && ID == GetCRCGUID(POSITION))
 			{
-				auto CurrentPosition	= Controllers[Handle].CurrentPosition;
+				auto CurrentPosition	= Controllers[Handle].CurrentPosition + Controllers[Handle].Delta;
 				auto Position			= Nodes->GetPositionL(Controllers[Handle].Node);
 				auto DeltaPosition		= Position - CurrentPosition;
 
