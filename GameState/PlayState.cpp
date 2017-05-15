@@ -119,7 +119,7 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	RaySet Rays(Engine->TempAllocator);
 	Ray R = {Origin, -D};
 	Rays.push_back(R);
-	auto results = ThisState->Drawables.RayCastBoundingSpheres(Rays, Engine->BlockAllocator, Engine->Nodes);
+	auto results = ThisState->Drawables.RayCastOBB(Rays, Engine->BlockAllocator, Engine->Nodes);
 
 	if (results.size()) {
 		Color = BLUE;

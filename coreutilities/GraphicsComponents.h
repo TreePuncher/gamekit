@@ -435,15 +435,53 @@ namespace FlexKit
 					auto Orientation = Nodes->GetOrientation(Node);
 					auto Ls			 = Nodes->GetLocalScale(Node);
 					auto AABB		 = Mesh->AABB;// Not Yet Orientated
+					auto H			 =(AABB.TopRight - AABB.BottomLeft)/2;
+
+					auto Normals = static_vector<float3, 3>(
+					{	Orientation * float3{ 1, 0, 0 },
+						Orientation * float3{ 0, 1, 0 },
+						Orientation * float3{ 0, 0, 1 } });
 
 					for (auto r : Rays)
 					{
-						//RayIntesectionResult Hit;
-						//Hit.D      = T;
-						//Hit.Entity = DrawableHandle;
-						//Hit.Mesh   = MeshHandle;
-						//Hit.R      = r;
-						//Out.push_back(Hit);
+						float t_min = -INFINITY;
+						float t_max = +INFINITY;
+						auto P = PosWS - r.O;
+
+						[&]() {
+							for (size_t I = 0; I < 3; ++I)
+							{
+								auto e = Normals[I].dot(P);
+								auto f = Normals[I].dot(r.D);
+
+								if (abs(f) > 0.00)
+								{
+									float t_1 = e + H[I] / f;
+									float t_2 = e - H[I] / f;
+
+									if (t_1 > t_2)// Swap
+										std::swap(t_1, t_2);
+
+									if (t_1 > t_min) t_min = t_1;
+									if (t_2 < t_max) t_max = t_2;
+									if (t_min > t_max)	return;
+									if (t_max < 0)		return;
+								}
+								else if( -e - H[I] > 0 || 
+										 -e + H[I] < 0 ) return;
+							}
+
+							RayIntesectionResult Hit;
+							if (t_min > 0)
+								Hit.D  = t_min;
+							else
+								Hit.D = t_max;
+
+							Hit.R	   = r;
+							Hit.Entity = DrawableHandle;
+							Hit.Mesh   = MeshHandle;
+							Out.push_back(Hit);
+						}();
 					}
 				}
 			}
