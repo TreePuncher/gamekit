@@ -152,9 +152,7 @@ namespace FlexKit
 		}
 	}
 
-
-	template<typename TY_GO>
-	bool SetParent(TY_GO& GO, NodeHandle Node)
+	bool SetParent(GameObjectInterface* GO, NodeHandle Node)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C)
@@ -166,46 +164,54 @@ namespace FlexKit
 	}
 
 
-	template<typename TY_GO>
-	float3 GetWorldPosition(TY_GO& GO)
+	float3 GetWorldPosition(GameObjectInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
-		return C->GetWorldPosition();
+		return C ? C->GetWorldPosition() : 0;
 	}
 
 
-	template<typename TY_GO>
-	float3 GetLocalPosition(TY_GO& GO)
+	float3 GetLocalPosition(GameObjectInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
-		return C->GetLocalPosition();
+		return C ? C->GetLocalPosition() : 0;
 	}
 
 
-	template<typename TY_GO>
-	NodeHandle GetNodeHandle(TY_GO& GO)
+	Quaternion GetOrientation(GameObjectInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		return C ? C->GetOrientation() : Quaternion::Identity();
+	}
+
+
+	NodeHandle GetNodeHandle(GameObjectInterface*  GO)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		FK_ASSERT(C);
+
 		if(C)
 			return C->ComponentHandle;
 		return NodeHandle(-1);
 	}
 
 
-	template<typename TY_GO>
-	NodeHandle GetParent(TY_GO& GO)
+	NodeHandle GetParent(GameObjectInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		FK_ASSERT(C);
+
 		if (C)
 			return C->GetParentNode(C->ComponentHandle);
 		return NodeHandle(-1);
 	}
 
 
-	template<typename TY_GO>
-	bool Parent(TY_GO& GO, NodeHandle Node)
+	bool Parent(GameObjectInterface* GO, NodeHandle Node)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		FK_ASSERT(C);
+
 		if (C) {
 			auto ThisNode = GetNodeHandle(GO);
 			C->SetParentNode(ThisNode, Node);
@@ -214,19 +220,17 @@ namespace FlexKit
 		return false;
 	}
 
-	template<typename TY_GO>
-	void SetLocalPosition(TY_GO& GO, float3 XYZ)
+	void SetLocalPosition(GameObjectInterface* GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+
 		if (C) {
 			C->SetLocalPosition(XYZ);
-			GO.NotifyAll(TransformComponentID, GetCRCGUID(POSITION));
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
 		}
 	}
 
-
-	template<typename TY_GO>
-	void SetWorldPosition(TY_GO& GO, float3 XYZ)
+	void SetWorldPosition(GameObjectInterface* GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -234,7 +238,6 @@ namespace FlexKit
 			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
 		}
 	}
-
 
 	void Translate(GameObjectInterface* GO, float3 XYZ)
 	{
@@ -245,9 +248,6 @@ namespace FlexKit
 		}
 	}
 
-
-
-
 	void TranslateWorld(GameObjectInterface* GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
@@ -257,9 +257,7 @@ namespace FlexKit
 		}
 	}
 
-
-	template<typename TY_GO>
-	void Yaw(TY_GO& GO, float R)
+	void Yaw(GameObjectInterface* GO, float R)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -271,6 +269,15 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct RaySphereIntesectionResult
+	{
+		Ray		R;				// The Ray the Intersected the Volume
+		float	D;				// Distance from Origin along R
+		TriMeshHandle	Mesh;	// Mesh Intersected
+		EntityHandle	Entity;	// Entity Intersected
+	};
+
+	typedef Vector<RaySphereIntesectionResult> RaySphereIntesectionResults;
 
 	struct FLEXKITAPI DrawableComponentSystem : public ComponentSystemInterface
 	{
@@ -318,6 +325,15 @@ namespace FlexKit
 			Scene->SetMaterialParams(Drawable, DrawableColor, DrawableSpec);
 		}
 
+		void SetVisibility(ComponentHandle Drawable, bool V)
+		{
+			Scene->SetVisability(Drawable, V);
+		}
+
+		void SetRayVisibility(ComponentHandle Drawable, bool V)
+		{
+			Scene->SetRayVisability(Drawable, V);
+		}
 
 		void DrawDebug(ImmediateRender* R, SceneNodeComponentSystem* Nodes, iAllocator* Temp)
 		{
@@ -338,10 +354,69 @@ namespace FlexKit
 					auto Ls			 = Nodes->GetLocalScale(Node);
 					auto BS			 = Mesh->BS;
 
-					PushBox_WireFrame(R, Temp, PositionWS, Orientation, Ls * BS.w * 2, BLACK);
-					//PushCircle3D(R, Temp, PositionWS + Orientation * BS.xyz(), BS.w * Ls.x);
+					PushBox_WireFrame(R, Temp, PositionWS + Orientation * BS.xyz(), Orientation, Ls * BS.w * 2, {1, 1, 0});
+					PushCircle3D(R, Temp, PositionWS + Orientation * BS.xyz(), BS.w * Ls.x);
 				}
 			}
+		}
+
+		RaySphereIntesectionResults RayCastBoundingSpheres(RaySet& Rays, iAllocator* Memory, SceneNodeComponentSystem* Nodes)// Runs RayCasts Against all object Bounding Spheres
+		{
+			RaySphereIntesectionResults Out(Memory);
+
+			auto& Drawables  = Scene->Drawables;
+			auto& Visibility = Scene->DrawableVisibility;
+
+			size_t End = Scene->Drawables.size();
+			for (size_t I = 0; I < End; ++I)
+			{
+				auto DrawableHandle = EntityHandle(I);
+				if (Scene->GetRayVisability(DrawableHandle) && Scene->GetVisability(DrawableHandle))
+				{
+					auto MeshHandle  = Scene->GetMeshHandle(DrawableHandle);
+					auto Mesh        = GetMesh(Scene->GT, MeshHandle);
+					auto Node        = Scene->GetNode(DrawableHandle);
+					auto PosWS		 = Nodes->GetPositionW(Node);
+					auto Orientation = Nodes->GetOrientation(Node);
+					auto Ls			 = Nodes->GetLocalScale(Node);
+					auto BS			 = Mesh->BS;
+
+					for (auto r : Rays)
+					{
+						auto Origin = r.O;
+						auto R = BS.w * Ls.x;
+						auto R2 = R * R;
+						auto L = (Origin - PosWS);
+						auto S = r.D.dot(L);
+						auto S2 = S * S;
+						auto L2 = L.dot(L);
+						auto M2 = L2 - S2;
+
+						if(S < 0 && L2 > R2)
+							continue; // Miss
+
+						if(M2 > R2)
+							continue; // Miss
+
+						auto Q = sqrt(R2 - M2);
+
+						float T = 0;
+						if(L2 > R2)
+							T = S - Q;
+						else 
+							T = S + Q;
+
+						RaySphereIntesectionResult Hit;
+						Hit.D      = T;
+						Hit.Entity = DrawableHandle;
+						Hit.Mesh   = MeshHandle;
+						Hit.R      = r;
+						Out.push_back(Hit);
+					}
+				}
+			}
+
+			return Out;
 		}
 
 		NodeHandle GetNode(ComponentHandle Drawable)
@@ -373,14 +448,38 @@ namespace FlexKit
 	template<typename TY_GO>
 	inline bool SetDrawableMetal(TY_GO& GO, bool M)
 	{
-		auto C = FindComponent(GO, ComponentType::CT_Renderable);
+		auto C = FindComponent(GO, RenderableComponentID);
 		if (C) {
 			auto System = (DrawableComponentSystem*)C->ComponentSystem;
 			System->SetMetal(C->ComponentHandle, M);
-			GO.NotifyAll(CT_Renderable, GetCRCGUID(MATERIAL));
+			GO.NotifyAll(RenderableComponentID, GetCRCGUID(MATERIAL));
 		}
 		return (C != nullptr);
 	}
+
+
+	inline bool SetVisibility(GameObjectInterface* GO, bool V)
+	{
+		auto C = FindComponent(GO, RenderableComponentID);
+		if (C) {
+			auto System = (DrawableComponentSystem*)C->ComponentSystem;
+			System->SetVisibility(C->ComponentHandle, V);
+			NotifyAll(GO, RenderableComponentID, GetCRCGUID(RAYVISIBILITY));
+		}
+		return (C != nullptr);
+	}
+
+	inline bool SetRayVisibility(GameObjectInterface* GO, bool V)
+	{
+		auto C = FindComponent(GO, RenderableComponentID);
+		if (C) {
+			auto System = (DrawableComponentSystem*)C->ComponentSystem;
+			System->SetRayVisibility(C->ComponentHandle, V);
+			NotifyAll(GO, RenderableComponentID, GetCRCGUID(RAYVISIBILITY));
+		}
+		return (C != nullptr);
+	}
+
 
 	struct DrawableComponentArgs
 	{
@@ -447,8 +546,7 @@ namespace FlexKit
 		float					R;
 	};
 
-	template<typename T_GO>
-	bool SetLightColor(T_GO& GO, float3 K)
+	bool SetLightColor(GameObjectInterface* GO, float3 K)
 	{
 		auto C = FindComponent(GO, LightComponentID);
 		if (C)
@@ -460,8 +558,7 @@ namespace FlexKit
 		return C != nullptr;
 	}
 
-	template<typename T_GO>
-	bool SetLightIntensity(T_GO& GO, float I)
+	bool SetLightIntensity(GameObjectInterface* GO, float I)
 	{
 		auto C = FindComponent(GO, LightComponentID);
 		if (C)

@@ -107,16 +107,48 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	float Begin	= 0.0f;
 	float End	= 60.0f;
 	float IaR	= 10000 * (1 + (float)cos(T * 6)) / 2;
-
-	Yaw(ThisState->TestObject, dT * pi);
-	SetDrawableColor(ThisState->TestObject, Grey(CosT));
-	SetWorldPosition(ThisState->TestObject, float3( 100.0f * CosT, 60.0f, SinT * 100));
-
-	SetLightRadius		(ThisState->TestObject, 100 + IaR);
-	SetLightIntensity	(ThisState->TestObject, 100 + IaR);
 	
 	ThisState->OrbitCameras.Update(dT);
 	ThisState->Physics.UpdateSystem(dT);
+
+	Quaternion Q	= GetCameraOrientation(ThisState->Player);
+	float3 Origin	= GetWorldPosition(ThisState->Player);
+	float3 D		= Q * float3(0, 0, -1);
+	float3 Color	= RED;
+
+	RaySet Rays(Engine->TempAllocator);
+	Ray R = {Origin, -D};
+	Rays.push_back(R);
+	auto results = ThisState->Drawables.RayCastBoundingSpheres(Rays, Engine->BlockAllocator, Engine->Nodes);
+
+	if (results.size()) {
+		Color = BLUE;
+		
+		Yaw(ThisState->TestObject, dT * pi);
+		SetDrawableColor(ThisState->TestObject, Grey(CosT));
+		//SetWorldPosition(ThisState->TestObject, float3( 100.0f * CosT, 60.0f, SinT * 100));
+
+		SetLightRadius(ThisState->TestObject, 100 + IaR);
+		SetLightIntensity(ThisState->TestObject, 100 + IaR);
+		SetWorldPosition(ThisState->TestObject, Origin + results.back().D * D);
+		SetVisibility(ThisState->TestObject, true);
+	}
+	else
+	{
+		SetLightIntensity(ThisState->TestObject, 0);
+		SetVisibility(ThisState->TestObject, false);
+
+	}
+
+	LineSegment Line;
+	Line.A = Origin + (Q * float3(10, 0, 0));
+	Line.AColour = Color;
+	Line.B = Origin + D * 1000;
+	Line.BColour = Color;
+	LineSegments Lines(Engine->TempAllocator);
+	Lines.push_back(Line);
+
+	PushLineSet3D(ThisState->Framework->Immediate, Lines);
 
 	return false;
 }
@@ -381,6 +413,8 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 			CreateLightComponent(&State->Lights));
 
 	SetLightColor(State->TestObject, RED);
+	SetLightIntensity(State->TestObject, 0);
+	SetVisibility(State->TestObject, false);
 
 #if 1
 	InitiateGameObject( 
@@ -396,6 +430,8 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 				State->Physics.CreateCubeComponent(
 					{ 0, 20.0f + 10.0f * I, 0}, 
 					{ 0, 10, 0}, 1));
+
+		SetRayVisibility(State->CubeObjects[I], true);
 	}
 
 	InitiateGameObject(

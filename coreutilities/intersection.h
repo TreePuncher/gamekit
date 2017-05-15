@@ -64,7 +64,7 @@ namespace FlexKit
 	{
 		float3 D;// Direction
 		float3 O;// Origin
-		float3 UpVector;
+
 		Ray(){}
 
 		Ray(float3 origin, float3 dir)
@@ -77,6 +77,8 @@ namespace FlexKit
 		float3 operator * (float k) { return O + D*k; }
 	};
 
+
+	typedef Vector<Ray> RaySet;
 
 	/************************************************************************************************/
 	// Intersection Distance from Origin to Plane Surface

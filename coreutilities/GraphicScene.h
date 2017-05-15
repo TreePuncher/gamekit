@@ -127,6 +127,9 @@ namespace FlexKit
 		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{ DrawableVisibility.at(EHandle) = Visable; }
 		inline bool GetVisability		(EntityHandle EHandle)						{ return DrawableVisibility.at(EHandle);	}
 
+		inline void SetRayVisability	(EntityHandle EHandle, bool Visable = true)	{ DrawableRayVisibility.at(EHandle) = Visable; }
+		inline bool GetRayVisability	(EntityHandle EHandle)						{ return DrawableRayVisibility.at(EHandle);	}
+
 		inline void				SetMeshHandle(EntityHandle EHandle, TriMeshHandle M)	{ Drawables.at(EHandle).MeshHandle = M;		}
 		inline TriMeshHandle	GetMeshHandle(EntityHandle EHandle)						{ return Drawables.at(EHandle).MeshHandle;	}
 
@@ -171,6 +174,7 @@ namespace FlexKit
 		Vector<SpotLightShadowCaster>		SpotLightCasters;
 		Vector<Drawable>					Drawables;
 		Vector<bool>						DrawableVisibility;
+		Vector<bool>						DrawableRayVisibility;
 		Vector<EntityHandle>				FreeEntityList;
 
 		struct TaggedJoint

@@ -48,7 +48,7 @@ namespace FlexKit
 	void OrbitCameraSystem::Update(double dT)
 	{
 		for (auto Controller : this->Controllers) {
-			Quaternion Q = GetOrientation(*Nodes, Controller.CameraNode);
+			Quaternion Q = ::GetOrientation(*Nodes, Controller.CameraNode);
 
 			float3 dP = 0;
 

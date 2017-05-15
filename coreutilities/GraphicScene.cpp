@@ -75,6 +75,7 @@ namespace FlexKit
 			ReleaseDrawable(&GetDrawable(E));
 			Drawables.pop_back();
 			DrawableVisibility.pop_back();
+			DrawableRayVisibility.pop_back();
 		}
 		else
 		{
@@ -88,6 +89,7 @@ namespace FlexKit
 			ReleaseMesh(RS, GT, Drawable.MeshHandle);
 			Drawable.MeshHandle = INVALIDMESHHANDLE;
 			DrawableVisibility[E] = false;
+			DrawableRayVisibility[E] = false;
 		}
 	}
 
@@ -421,6 +423,8 @@ namespace FlexKit
 	{
 		Drawables.push_back(E);
 		DrawableVisibility.push_back(false);
+		DrawableRayVisibility.push_back(false);
+
 	}
 
 
@@ -505,14 +509,15 @@ namespace FlexKit
 		using FlexKit::CreatePointLightBuffer;
 		using FlexKit::PointLightBufferDesc;
 
-		Out->FreeEntityList.Allocator     = Memory;
-		Out->Drawables.Allocator		  = Memory;
-		Out->DrawableVisibility.Allocator = Memory;
-		Out->SpotLightCasters.Allocator   = Memory;
-		Out->RS                           = in_RS;
-		Out->RM                           = in_RM;
-		Out->SN                           = in_SN;
-		Out->GT                           = GT;
+		Out->FreeEntityList.Allocator			= Memory;
+		Out->Drawables.Allocator				= Memory;
+		Out->DrawableVisibility.Allocator		= Memory;
+		Out->DrawableRayVisibility.Allocator	= Memory;
+		Out->SpotLightCasters.Allocator		    = Memory;
+		Out->RS                                 = in_RS;
+		Out->RM                                 = in_RM;
+		Out->SN                                 = in_SN;
+		Out->GT                                 = GT;
 
 		Out->TaggedJoints.Allocator = Memory;
 		Out->Drawables	= nullptr;

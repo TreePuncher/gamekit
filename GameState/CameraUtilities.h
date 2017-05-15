@@ -115,6 +115,11 @@ namespace FlexKit
 			Controllers[Handle].CameraNode = Node;
 			SetParentNode(*Nodes, Controllers[Handle].CameraNode, Controllers[Handle].PitchNode);
 		}
+		
+		Quaternion GetOrientation(ComponentHandle handle)
+		{
+			return Nodes->GetOrientation(Controllers[handle].CameraNode);
+		}
 
 		Vector<CameraOrbitController>	Controllers;
 
@@ -138,6 +143,19 @@ namespace FlexKit
 
 		return NodeHandle(0);
 	}
+
+	Quaternion GetCameraOrientation(GameObjectInterface* GO)
+	{
+		auto C = FindComponent(GO, OrbitCameraComponentID);
+		if (C)
+		{
+			auto OrbitSystem = (OrbitCameraSystem*)C->ComponentSystem;
+			return OrbitSystem->GetOrientation(C->ComponentHandle);
+		}
+
+		return Quaternion::Identity();
+	}
+
 
 
 	/************************************************************************************************/
