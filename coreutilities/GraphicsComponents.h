@@ -57,6 +57,11 @@ namespace FlexKit
 			FlexKit::SetParentNode(Nodes, Parent, Node);
 		}
 		
+		float3 GetLocalScale(NodeHandle Node)
+		{
+			return FlexKit::GetLocalScale(Nodes, Node);
+		}
+
 		float3 GetPositionW	(NodeHandle Node)
 		{
 			return FlexKit::GetPositionW(Nodes, Node);
@@ -77,6 +82,10 @@ namespace FlexKit
 			FlexKit::SetPositionL(Nodes, Node, xyz);
 		}
 
+		Quaternion GetOrientation(NodeHandle Node)
+		{
+			return FlexKit::GetOrientation(Nodes, Node);
+		}
 
 
 		operator SceneNodes* ()					{ return &Nodes; }
@@ -310,8 +319,29 @@ namespace FlexKit
 		}
 
 
-		void DrawDebug(ImmediateRender* R, iAllocator* Temp)
+		void DrawDebug(ImmediateRender* R, SceneNodeComponentSystem* Nodes, iAllocator* Temp)
 		{
+			auto& Drawables = Scene->Drawables;
+			auto& Visibility = Scene->DrawableVisibility;
+
+			size_t End = Scene->Drawables.size();
+			for (size_t I = 0; I < End; ++I)
+			{
+				auto DrawableHandle = EntityHandle(I);
+				if (Scene->GetVisability(DrawableHandle))
+				{
+					auto MeshHandle  = Scene->GetMeshHandle(DrawableHandle);
+					auto Mesh        = GetMesh(Scene->GT, MeshHandle);
+					auto Node        = Scene->GetNode(DrawableHandle);
+					auto PositionWS  = Nodes->GetPositionW(Node);
+					auto Orientation = Nodes->GetOrientation(Node);
+					auto Ls			 = Nodes->GetLocalScale(Node);
+					auto BS			 = Mesh->BS;
+
+					PushBox_WireFrame(R, Temp, PositionWS, Orientation, Ls * BS.w * 2, BLACK);
+					//PushCircle3D(R, Temp, PositionWS + Orientation * BS.xyz(), BS.w * Ls.x);
+				}
+			}
 		}
 
 		NodeHandle GetNode(ComponentHandle Drawable)

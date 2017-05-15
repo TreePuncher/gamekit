@@ -3,14 +3,7 @@
 
 namespace FlexKit
 {
-
-	struct BoundingSphere
-	{
-		float4 OffsetR;//Offset + Radius
-	};
-
-
-	bool CompareBSAgainstFrustum(Frustum* F, float3 V, float r)
+	bool CompareBSAgainstFrustum(Frustum* F, BoundingSphere BS)
 	{
 		bool Bottom = false;
 		bool Near	= false;
@@ -18,6 +11,8 @@ namespace FlexKit
 		bool Left	= false;
 		bool Right	= false;
 		bool Top	= false;
+		float3 V = BS.xyz();
+		float  r = BS.w;
 
 		{
 			auto P = V - F->Planes[EPlane_FAR].Orgin;

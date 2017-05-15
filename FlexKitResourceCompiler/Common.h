@@ -79,7 +79,7 @@ inline float3		FetchFloat3ZERO		(size_t itr, CombinedVertexBuffer* Buff)	{return
 inline float2		FetchVertexUV		(size_t itr, CombinedVertexBuffer* Buff)	{auto temp = Buff->at(itr).TEXCOORD.xy();return {temp.x, temp.y};}
 inline uint4_16		FetchWeightIndices	(size_t itr, CombinedVertexBuffer* Buff)	{return Buff->at(itr).WIndices;}
 inline uint32_t		WriteIndex			(uint32_t in)								{return in;}
-inline float3		WriteVertex			(float3 in)									{return in;}
+inline float3		WriteVertex			(float3 in)									{return float3(in);}
 inline float2		WriteUV				(float2 in)									{return in;}
 inline uint4_16		Writeuint4			(uint4_16 in);
 

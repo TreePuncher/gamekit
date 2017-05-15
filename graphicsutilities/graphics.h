@@ -1449,20 +1449,12 @@ namespace FlexKit
 		size_t		BoneCount;
 	};
 
-
 	union BoundingVolume
 	{
 		BoundingVolume() {}
 
-		struct BoundingBox
-		{
-			float3 TopLeft, BottomRight;
-		}OBB;
-
-		struct BoundingSphere
-		{
-			float r;
-		}BoundingSphere;
+		AABB			OBB;
+		BoundingSphere	BS;
 	};
 	
 
@@ -1537,8 +1529,9 @@ namespace FlexKit
 			float  r;
 		}Info;
 
-		Occlusion_Volume EOV_type;
-		BoundingVolume	 Bounding;
+		// Visibility Information
+		AABB			AABB;
+		BoundingSphere	BS;
 
 		size_t		SkeletonGUID;
 		iAllocator*	Memory;
@@ -1839,7 +1832,6 @@ namespace FlexKit
 		// TODO: move state flags into a single byte 
 		Drawable() 
 		{
-			Visable            = true; 
 			DrawLast		   = false;
 			Transparent		   = false;
 			Posed			   = false; // Use Vertex Palette Skinning
@@ -1853,12 +1845,12 @@ namespace FlexKit
 
 		//TriMesh*				Mesh;			// 8
 		TriMeshHandle			MeshHandle;		// 2
-		bool					Visable;		// 1
 		bool					DrawLast;		// 1
 		bool					Transparent;	// 1
 		bool					Textured;		// 1
 		bool					Posed;			// 1
 		bool					Dirty;			// 1
+		bool					Padding;		// 1
 
 		DrawablePoseState*		PoseState;		// 8 16
 		DrawableAnimationState*	AnimationState; // 8 24
@@ -1925,7 +1917,7 @@ namespace FlexKit
 
 	inline void PushPV(Drawable* e, PVS* pvs)
 	{
-		if (e && e->Visable && e->MeshHandle.to_uint() != INVALIDHANDLE)
+		if (e && e->MeshHandle.to_uint() != INVALIDHANDLE)
 			pvs->push_back(PVEntry( e, 0xffffffffffffffff, 0u));
 	}
 
@@ -2202,6 +2194,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename Ty_Container, typename FetchFN, typename TranslateFN, typename ProcessFN>
+	void ProcessBufferView(Ty_Container* Container, size_t vertexCount, TranslateFN Translate, FetchFN Fetch, ProcessFN Process)
+	{
+		for (size_t itr = 0; itr < vertexCount; ++itr) {
+			auto Vert = Translate(Fetch(itr, Container));
+			Process(Vert);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	FLEXKITAPI void DelayReleaseDrawable(RenderSystem* RS, Drawable* E);
 
 	FLEXKITAPI void	Release( ConstantBuffer&	);
@@ -2388,6 +2393,7 @@ namespace FlexKit
 	{
 		LineSegments			LineSegments;
 		FrameBufferedResource	GPUResource;
+		size_t					ResourceSize;
 	};
 
 
@@ -2567,9 +2573,10 @@ namespace FlexKit
 	FLEXKITAPI void PushCircle2D( ImmediateRender* RG, iAllocator* Memory, float2 POS = {0.0f, 0.0f},		float r = 1.0f, float2 Scale = { 1, 1 },	float3 Color = WHITE );
 	FLEXKITAPI void PushCircle3D( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f},	float r = 1.0f, float3 Scale = { 1, 1, 1 }, float3 Color = WHITE );
 
-	void PushCube_Wireframe		( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f,				 float3 Color = WHITE );
-	void PushCapsule_Wireframe	( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f, float h = 0, float3 Color = WHITE );
+	FLEXKITAPI void PushCube_Wireframe		( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f,				 float3 Color = WHITE );
+	FLEXKITAPI void PushCapsule_Wireframe	( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f, float h = 0, float3 Color = WHITE );
 
+	FLEXKITAPI void PushBox_WireFrame( ImmediateRender* RG, iAllocator* Memory, float3 POS = 0, Quaternion Q = Quaternion::Identity(), float3 BoxDim = 1, float3 Color = WHITE);
 
 	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT Rect );
 	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT_CLIPPED Rect );

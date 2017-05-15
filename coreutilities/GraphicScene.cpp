@@ -43,7 +43,6 @@ namespace FlexKit
 			NodeHandle N  = GetZeroedNode(*SN);
 			FlexKit::CreateDrawable(RS, &e, Desc);
 
-			e.Visable	= false;
 			e.Posed		= false;
 			e.Textured	= false;
 			e.Node		= N;
@@ -56,9 +55,9 @@ namespace FlexKit
 			NodeHandle N  = GetZeroedNode(*SN);
 			FlexKit::CreateDrawable(RS, &e, Desc);
 
-			e.Visable  = false;
 			e.Node	   = N;
 			_PushEntity(e);
+
 			return EntityHandle( Drawables.size() - 1 );
 		}
 		return EntityHandle(-1);
@@ -75,6 +74,7 @@ namespace FlexKit
 			ReleaseNode(*SN, GetDrawable(E).Node);
 			ReleaseDrawable(&GetDrawable(E));
 			Drawables.pop_back();
+			DrawableVisibility.pop_back();
 		}
 		else
 		{
@@ -85,9 +85,9 @@ namespace FlexKit
 			ReleaseDrawable(&Drawable);
 
 			Drawable.VConstants.Release();
-			Drawable.Visable	= false;
 			ReleaseMesh(RS, GT, Drawable.MeshHandle);
 			Drawable.MeshHandle = INVALIDMESHHANDLE;
+			DrawableVisibility[E] = false;
 		}
 	}
 
@@ -318,9 +318,10 @@ namespace FlexKit
 		if (!Geo)	Geo = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
 
 		auto& Drawble       = GetDrawable(EHandle);
+		SetVisability(EHandle, true);
+
 		Drawble.MeshHandle	= Geo;
 		Drawble.Dirty		= true;
-		Drawble.Visable	    = true;
 		Drawble.Textured	= false;
 		Drawble.Textures	= nullptr;
 
@@ -344,10 +345,11 @@ namespace FlexKit
 #endif
 
 		auto& Drawble       = GetDrawable(EHandle);
+		SetVisability(EHandle, true);
+
 		Drawble.Textures    = nullptr;
 		Drawble.MeshHandle  = MeshHandle;
 		Drawble.Dirty		= true;
-		Drawble.Visable	    = true;
 		Drawble.Textured    = false;
 		Drawble.Posed		= false;
 		Drawble.PoseState   = nullptr;
@@ -418,6 +420,7 @@ namespace FlexKit
 	void GraphicScene::_PushEntity(Drawable E)
 	{
 		Drawables.push_back(E);
+		DrawableVisibility.push_back(false);
 	}
 
 
@@ -502,13 +505,14 @@ namespace FlexKit
 		using FlexKit::CreatePointLightBuffer;
 		using FlexKit::PointLightBufferDesc;
 
-		Out->FreeEntityList.Allocator    = Memory;
-		Out->Drawables.Allocator		 = Memory;
-		Out->SpotLightCasters.Allocator  = Memory;
-		Out->RS                          = in_RS;
-		Out->RM                          = in_RM;
-		Out->SN                          = in_SN;
-		Out->GT                          = GT;
+		Out->FreeEntityList.Allocator     = Memory;
+		Out->Drawables.Allocator		  = Memory;
+		Out->DrawableVisibility.Allocator = Memory;
+		Out->SpotLightCasters.Allocator   = Memory;
+		Out->RS                           = in_RS;
+		Out->RM                           = in_RM;
+		Out->SN                           = in_SN;
+		Out->GT                           = GT;
 
 		Out->TaggedJoints.Allocator = Memory;
 		Out->Drawables	= nullptr;
@@ -595,13 +599,20 @@ namespace FlexKit
 		Quaternion Q = FlexKit::GetOrientation(*SM->SN, C->Node);
 		auto F = GetFrustum(C, GetPositionW(*SM->SN, C->Node), Q);
 
-		for (auto &E : SM->Drawables)
+		auto End = SM->Drawables.size();
+		for (size_t I = 0; I < End; ++I)
 		{
+			auto &E = SM->Drawables[I];
 			auto Mesh	= GetMesh(SM->GT, E.MeshHandle);
 			auto Ls		= GetLocalScale(*SM->SN, E.Node).x;
 			auto Pw		= GetPositionW(*SM->SN, E.Node);
+			auto Lq		= GetOrientation(*SM->SN, E.Node);
 
-			if (Mesh && CompareBSAgainstFrustum(&F, Pw, Mesh->Info.r * Ls))
+			auto BS		= Mesh->BS;
+
+			BoundingSphere BoundingVolume = float4((Lq * BS.xyz()) + Pw, BS.w * Ls);
+
+			if (SM->DrawableVisibility[I] && Mesh && CompareBSAgainstFrustum(&F, BoundingVolume))
 			{
 				if (!E.Transparent)
 					PushPV(&E, out);

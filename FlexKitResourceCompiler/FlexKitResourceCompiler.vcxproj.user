@@ -3,12 +3,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>..\builds\release_x64\</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>-c -f assets\assets.fbx</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-c -f assets\assets.fbx -md MetaData.meta -o assets\ResourceFile.gameres </LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerWorkingDirectory>..\builds\debug_x64\</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>-c -o assets\ShaderBallTestScene.gameres -md assets\MetaDataTest.meta</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-c -o assets\assets.gameres -md assets\MetaDataTest.meta -f assets\Assets.fbx</LocalDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LocalDebuggerWorkingDirectory>..\builds\debug_x64\</LocalDebuggerWorkingDirectory>

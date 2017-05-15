@@ -179,7 +179,7 @@ namespace FlexKit
 			float r;
 			byte   _PAD[12];
 		}Info;
-
+		float  BS[4];// Uses Float Array instead of float4, float4 requires alignment 
 
 		struct Buffer
 		{

@@ -512,7 +512,7 @@ namespace FlexKit
 			
 			auto NoDepthState					= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 			NoDepthState.DepthFunc				= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-			NoDepthState.DepthEnable			= false;
+			NoDepthState.DepthEnable			= true;
 
 			D3D12_SHADER_BYTECODE DCode = { (BYTE*)ShaderQuad2Tri_Debug.Blob->GetBufferPointer(),	ShaderQuad2Tri_Debug.Blob->GetBufferSize() };
 			D3D12_SHADER_BYTECODE GCode = { (BYTE*)ShaderRegion2Tri.Blob->GetBufferPointer(),		ShaderRegion2Tri.Blob->GetBufferSize()	};

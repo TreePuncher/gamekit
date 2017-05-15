@@ -32,6 +32,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct AABB // Axis Aligned Bounding Box
+	{
+		float3 BottomLeft, TopRight;
+	};
+
+
+	typedef float4 BoundingSphere;
+
+	/************************************************************************************************/
+
+
 	struct Plane
 	{
 		Plane(float2 D = float2(0.0, 0.0), float3 P = {0.0f, 0.0f, 0.0f}, float3 UpV = { 0.0f, 1.0f, 0.0f }) :
@@ -146,7 +157,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool CompareBSAgainstFrustum(Frustum* F, float3 V, float r);
+	FLEXKITAPI bool CompareBSAgainstFrustum(Frustum* F, BoundingSphere BS);
 
 
 	/************************************************************************************************/

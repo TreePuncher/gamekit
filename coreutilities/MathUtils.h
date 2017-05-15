@@ -555,6 +555,7 @@ namespace FlexKit
 		inline float3 ( const float3& a )				{ _mm_store_ps(pfloats.m128_f32, a.pfloats); 	}
 		inline float3 ( const __m128& in )				{ _mm_store_ps(pfloats.m128_f32, in);			}
 
+
 #else
 
 		inline float3 ( float val )						{ x = y = z = val;								}
@@ -810,6 +811,12 @@ namespace FlexKit
 
 		__m128	pfloats;
 
+		static float3 Load(float* a)
+		{
+			auto temp = _mm_loadu_ps(a);
+			return float3(_mm_loadr_ps(temp.m128_f32));
+		}
+
 		private:
 		static float3 SetVector(float in)
 		{
@@ -819,6 +826,7 @@ namespace FlexKit
 			V.z = in;
 			return V;
 		}
+
 	};
 
 	const float3 BLACK	= float3(0.0f, 0.0f, 0.0f);
@@ -976,7 +984,7 @@ namespace FlexKit
 		inline float4 operator += ( const float4& a )
 		{
 #if USING(FASTMATH)
-			_mm_store_ps(pFloats.m128_f32, _mm_mul_ps(pFloats, a));
+			_mm_store_ps(pFloats.m128_f32, _mm_add_ps(pFloats, a));
 #else
 			return float4(	x + a.x, 
 							y + a.y, 

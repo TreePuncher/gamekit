@@ -124,9 +124,15 @@ namespace FlexKit
 		GSPlayAnimation_RES EntityPlayAnimation	(EntityHandle EHandle, GUID_t		Guid,		float w = 1.0f, bool Loop = false);
 		size_t				GetEntityAnimationPlayCount(EntityHandle EHandle);
 
-		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{Drawables.at(EHandle).Visable = Visable; }
-		inline void SetMesh				(EntityHandle EHandle, TriMeshHandle M)		{Drawables.at(EHandle).MeshHandle = M;		  }
-		inline void SetTextureSet		(EntityHandle EHandle, TextureSet* Set)		{Drawables.at(EHandle).Textures = Set; Drawables.at(EHandle).Textured = true;}
+		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{ DrawableVisibility.at(EHandle) = Visable; }
+		inline bool GetVisability		(EntityHandle EHandle)						{ return DrawableVisibility.at(EHandle);	}
+
+		inline void				SetMeshHandle(EntityHandle EHandle, TriMeshHandle M)	{ Drawables.at(EHandle).MeshHandle = M;		}
+		inline TriMeshHandle	GetMeshHandle(EntityHandle EHandle)						{ return Drawables.at(EHandle).MeshHandle;	}
+
+		inline void				SetTextureSet		(EntityHandle EHandle, TextureSet* Set)	{ Drawables.at(EHandle).Textures = Set; Drawables.at(EHandle).Textured = true; }
+		inline TextureSet*		GetTextureSet		(EntityHandle EHandle)					{ return Drawables.at(EHandle).Textures; }
+
 		inline void SetMaterialParams	(EntityHandle EHandle, float4 RGBA = float4(1.0f, 1.0f, 1.0f, 0.5f), float4 Spec = float4(1.0f, 1.0f, 1.0f, 0.5f))
 		{
 			Drawables.at(EHandle).MatProperties.Albedo		 = RGBA;
@@ -164,6 +170,7 @@ namespace FlexKit
 
 		Vector<SpotLightShadowCaster>		SpotLightCasters;
 		Vector<Drawable>					Drawables;
+		Vector<bool>						DrawableVisibility;
 		Vector<EntityHandle>				FreeEntityList;
 
 		struct TaggedJoint

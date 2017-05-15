@@ -30,9 +30,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MeshProcessing.h"
 
 
-
 /************************************************************************************************/
 
+using FlexKit::Joint;
+using FlexKit::JointPose;
+using FlexKit::JointHandle;
 
 struct	JointAnimation
 {
@@ -86,7 +88,5 @@ FlexKit::Skeleton*	LoadSkeleton				( FbxMesh* M, iAllocator* Mem, iAllocator* Te
 
 
 /************************************************************************************************/
-
-
 
 #endif

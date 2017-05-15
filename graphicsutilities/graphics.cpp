@@ -5791,7 +5791,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	void UpdateDrawable(RenderSystem* RS, SceneNodes* Nodes, Drawable* E)
 	{
-		if ( E->Dirty || ( E->Visable && E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
+		if ( E->Dirty || (E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
 			DirectX::XMMATRIX WT;
 			FlexKit::GetWT( Nodes, E->Node, &WT );
 
@@ -5902,7 +5902,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 		e->MeshHandle				  = INVALIDMESHHANDLE;
 		e->Occluder                   = INVALIDMESHHANDLE;
-		e->Visable                    = true; 
 		e->DrawLast					  = false;
 		e->Transparent				  = false;
 		e->AnimationState			  = nullptr;
@@ -6778,6 +6777,97 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		}
 
 		PushLineSet2D(RG, Lines);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushBox_WireFrame(ImmediateRender* RG, iAllocator* Memory, float3 POS, Quaternion Q, float3 BoxDim, float3 Color)
+	{
+		const float3 HalfDim = BoxDim / 2;
+
+		float3 Points[8] = {
+			Q * (HalfDim * float3(-1,  1,  1)),// NearTopLeft
+			Q * (HalfDim * float3( 1,  1,  1)),// Nea1Top1ight
+			Q * (HalfDim * float3(-1, -1,  1)),// Nea1BottomLeft
+			Q * (HalfDim * float3( 1, -1,  1)),// Nea1Bottom1ight
+
+			Q * (HalfDim * float3(-1,  1, -1)),// Fa1TopLeft
+			Q * (HalfDim * float3( 1,  1, -1)),// Fa1Top1ight
+			Q * (HalfDim * float3(-1, -1, -1)),// Fa1BottomLeft
+			Q * (HalfDim * float3( 1, -1, -1)),// Fa1Bottom1ight
+		};
+
+		LineSegments Lines(Memory);
+
+		LineSegment	Line;
+		Line.AColour = Color;
+		Line.BColour = Color;
+
+		// Add Edges
+		{
+			// Top Near Edge
+			Line.A = Points[0] + POS;
+			Line.B = Points[1] + POS;
+			Lines.push_back(Line);
+
+			// Top Far Edge
+			Line.A = Points[4] + POS;
+			Line.B = Points[5] + POS;
+			Lines.push_back(Line);
+
+			// Top Left Edge
+			Line.A = Points[0] + POS;
+			Line.B = Points[4] + POS;
+			Lines.push_back(Line);
+
+			// Top Right Edge
+			Line.A = Points[1] + POS;
+			Line.B = Points[5] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Near Edge
+			Line.A = Points[2] + POS;
+			Line.B = Points[3] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Far Edge
+			Line.A = Points[6] + POS;
+			Line.B = Points[7] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Left Edge
+			Line.A = Points[2] + POS;
+			Line.B = Points[6] + POS;
+			Lines.push_back(Line);
+
+			// Bottom Right Edge
+			Line.A = Points[3] + POS;
+			Line.B = Points[7] + POS;
+			Lines.push_back(Line);
+
+			// Middle Near Left Edge
+			Line.A = Points[0] + POS;
+			Line.B = Points[2] + POS;
+			Lines.push_back(Line);
+
+			// Middle Near Right Edge
+			Line.A = Points[1] + POS;
+			Line.B = Points[3] + POS;
+			Lines.push_back(Line);
+
+			// Middle Far Left Edge
+			Line.A = Points[4] + POS;
+			Line.B = Points[6] + POS;
+			Lines.push_back(Line);
+
+			// Middle Far Right Edge
+			Line.A = Points[5] + POS;
+			Line.B = Points[7] + POS;
+			Lines.push_back(Line);
+		}
+		PushLineSet3D(RG, Lines);
 	}
 
 
@@ -8021,14 +8111,28 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void UploadLineSegments(RenderSystem* RS, LineSet* Pass)
+	void UploadLineSegments(RenderSystem* RS, LineSet* Set)
 	{
-		if(Pass->LineSegments.size())
+		if(Set->LineSegments.size())
 		{
+			size_t SpaceNeeded = Set->LineSegments.size() * sizeof(LineSegment);
+			if (SpaceNeeded  > Set->ResourceSize)
+			{
+				Push_DelayedRelease(RS, Set->GPUResource[0]);
+				Push_DelayedRelease(RS, Set->GPUResource[1]);
+				Push_DelayedRelease(RS, Set->GPUResource[2]);
+
+				while(SpaceNeeded > Set->ResourceSize)
+					Set->ResourceSize *= 2;
+
+				Set->GPUResource = CreateShaderResource(RS, Set->ResourceSize);
+				Set->GPUResource._SetDebugName("LINE SEGMENTS");
+			}
+
 			UpdateResourceByTemp(
-					RS, &Pass->GPUResource, 
-					Pass->LineSegments.begin(), 
-					Pass->LineSegments.size() * sizeof(LineSegment), 1, 
+					RS, &Set->GPUResource,
+					Set->LineSegments.begin(),
+					Set->LineSegments.size() * sizeof(LineSegment), 1,
 					D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 		}
 	}
@@ -8052,7 +8156,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	{
 		out->LineSegments.Release();
 		out->LineSegments.Allocator = Mem;
-
+		out->ResourceSize = KILOBYTE * 64;
 		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 64);
 		out->GPUResource._SetDebugName("LINE SEGMENTS");
 	}

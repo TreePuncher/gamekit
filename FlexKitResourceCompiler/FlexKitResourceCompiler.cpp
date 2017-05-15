@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.cpp"
 #include "Animation.cpp"
 #include "MeshProcessing.cpp"
+#include "MetaData.cpp"
 #include "ResourceUtilities.cpp"
 #include "TTFontLoader.cpp"
 
@@ -130,8 +131,17 @@ int main(int argc, char* argv[])
 					ReadMetaData(MD_Location, BlockMemory, TempMemory, MetaData);
 
 #if USING(RESCOMPILERVERBOSE)
-				PrintMetaDataList(MetaData);
+				std::cout << "FOUND FOLLOWING METADATA:\n";
+				std::cout << "Metadata Entry Count: " << MetaData.size() << "\n";
+				FlexKit::PrintMetaDataList(MetaData);
 #endif
+
+				if (!MetaData.size())
+				{
+					std::cout << "No Meta Data Found!\n";
+					return -1;
+				}
+
 				ResourceList ResourcesFound;
 				for (auto MD : MetaData)
 				{
@@ -147,8 +157,8 @@ int main(int argc, char* argv[])
 				{
 					if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
 					{
-						auto* Font = (Font_MetaData*)MD;
-						auto res = LoadTTFFile(Font->FontFile, BlockMemory);
+						//auto* Font = (Font_MetaData*)MD;
+						//auto res = LoadTTFFile(Font->FontFile, BlockMemory);
 					}
 				}
 

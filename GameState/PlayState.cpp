@@ -140,7 +140,7 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
 	if(ThisState->Framework->DrawDebug)
-		ThisState->Drawables.DrawDebug(&StateMemory->Framework->Immediate, Engine->TempAllocator);
+		ThisState->Drawables.DrawDebug(&StateMemory->Framework->Immediate, Engine->Nodes, Engine->TempAllocator);
 
 	return false;
 }
@@ -371,7 +371,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
-	//FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
 
 	GameObject<> Test;
 
@@ -382,7 +382,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	SetLightColor(State->TestObject, RED);
 
-#if 0
+#if 1
 	InitiateGameObject( 
 		State->FloorObject,
 			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
@@ -407,9 +407,9 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	Yaw(State->Player, pi);
 	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
 
-	auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
-
 	return State;
+
+	auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
 }
 
 

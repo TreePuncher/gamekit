@@ -371,6 +371,8 @@ namespace FlexKit
 			Out->Memory		  = Memory;
 			Out->VertexBuffer.clear();
 
+			Out->BS			  = { { Blob->BS[0], Blob->BS[1], Blob->BS[2] },Blob->BS[3] };
+
 			if (strlen(Blob->ID))
 			{
 				Out->ID = (char*)Memory->malloc(64);
