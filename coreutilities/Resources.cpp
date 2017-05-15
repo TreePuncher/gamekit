@@ -372,6 +372,11 @@ namespace FlexKit
 			Out->VertexBuffer.clear();
 
 			Out->BS			  = { { Blob->BS[0], Blob->BS[1], Blob->BS[2] },Blob->BS[3] };
+			Out->AABB		 = 
+			{ 
+				{ Blob->AABB[0], Blob->AABB[1], Blob->AABB[2] },
+				{ Blob->AABB[3], Blob->AABB[4], Blob->AABB[5] }
+			};
 
 			if (strlen(Blob->ID))
 			{

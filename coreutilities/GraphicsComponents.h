@@ -269,7 +269,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	struct RaySphereIntesectionResult
+	struct RayIntesectionResult
 	{
 		Ray		R;				// The Ray the Intersected the Volume
 		float	D;				// Distance from Origin along R
@@ -277,7 +277,7 @@ namespace FlexKit
 		EntityHandle	Entity;	// Entity Intersected
 	};
 
-	typedef Vector<RaySphereIntesectionResult> RaySphereIntesectionResults;
+	typedef Vector<RayIntesectionResult> RayIntesectionResults;
 
 	struct FLEXKITAPI DrawableComponentSystem : public ComponentSystemInterface
 	{
@@ -325,15 +325,9 @@ namespace FlexKit
 			Scene->SetMaterialParams(Drawable, DrawableColor, DrawableSpec);
 		}
 
-		void SetVisibility(ComponentHandle Drawable, bool V)
-		{
-			Scene->SetVisability(Drawable, V);
-		}
+		void SetVisibility(ComponentHandle Drawable, bool V)	{ Scene->SetVisability(Drawable, V); }
 
-		void SetRayVisibility(ComponentHandle Drawable, bool V)
-		{
-			Scene->SetRayVisability(Drawable, V);
-		}
+		void SetRayVisibility(ComponentHandle Drawable, bool V)	{ Scene->SetRayVisability(Drawable, V);	}
 
 		void DrawDebug(ImmediateRender* R, SceneNodeComponentSystem* Nodes, iAllocator* Temp)
 		{
@@ -353,16 +347,17 @@ namespace FlexKit
 					auto Orientation = Nodes->GetOrientation(Node);
 					auto Ls			 = Nodes->GetLocalScale(Node);
 					auto BS			 = Mesh->BS;
+					auto AABBSpan	 = Mesh->AABB.TopRight - Mesh->AABB.BottomLeft;
 
-					PushBox_WireFrame(R, Temp, PositionWS + Orientation * BS.xyz(), Orientation, Ls * BS.w * 2, {1, 1, 0});
-					PushCircle3D(R, Temp, PositionWS + Orientation * BS.xyz(), BS.w * Ls.x);
+					PushBox_WireFrame(R, Temp, PositionWS + Orientation * BS.xyz(), Orientation, Ls * AABBSpan, {1, 1, 0});
+					//PushCircle3D(R, Temp, PositionWS + Orientation * BS.xyz(), BS.w * Ls.x);
 				}
 			}
 		}
 
-		RaySphereIntesectionResults RayCastBoundingSpheres(RaySet& Rays, iAllocator* Memory, SceneNodeComponentSystem* Nodes)// Runs RayCasts Against all object Bounding Spheres
+		RayIntesectionResults RayCastBoundingSpheres(RaySet& Rays, iAllocator* Memory, SceneNodeComponentSystem* Nodes)// Runs RayCasts Against all object Bounding Spheres
 		{
-			RaySphereIntesectionResults Out(Memory);
+			RayIntesectionResults Out(Memory);
 
 			auto& Drawables  = Scene->Drawables;
 			auto& Visibility = Scene->DrawableVisibility;
@@ -406,12 +401,49 @@ namespace FlexKit
 						else 
 							T = S + Q;
 
-						RaySphereIntesectionResult Hit;
+						RayIntesectionResult Hit;
 						Hit.D      = T;
 						Hit.Entity = DrawableHandle;
 						Hit.Mesh   = MeshHandle;
 						Hit.R      = r;
 						Out.push_back(Hit);
+					}
+				}
+			}
+
+			return Out;
+		}
+
+
+		RayIntesectionResults RayCastOBB(RaySet& Rays, iAllocator* Memory, SceneNodeComponentSystem* Nodes)// Runs RayCasts Against all object OBB's
+		{
+			RayIntesectionResults Out(Memory);
+
+			auto& Drawables  = Scene->Drawables;
+			auto& Visibility = Scene->DrawableVisibility;
+
+			size_t End = Scene->Drawables.size();
+			for (size_t I = 0; I < End; ++I)
+			{
+				auto DrawableHandle = EntityHandle(I);
+				if (Scene->GetRayVisability(DrawableHandle) && Scene->GetVisability(DrawableHandle))
+				{
+					auto MeshHandle  = Scene->GetMeshHandle(DrawableHandle);
+					auto Mesh        = GetMesh(Scene->GT, MeshHandle);
+					auto Node        = Scene->GetNode(DrawableHandle);
+					auto PosWS		 = Nodes->GetPositionW(Node);
+					auto Orientation = Nodes->GetOrientation(Node);
+					auto Ls			 = Nodes->GetLocalScale(Node);
+					auto AABB		 = Mesh->AABB;// Not Yet Orientated
+
+					for (auto r : Rays)
+					{
+						//RayIntesectionResult Hit;
+						//Hit.D      = T;
+						//Hit.Entity = DrawableHandle;
+						//Hit.Mesh   = MeshHandle;
+						//Hit.R      = r;
+						//Out.push_back(Hit);
 					}
 				}
 			}

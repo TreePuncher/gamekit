@@ -287,6 +287,12 @@ void FillTriMeshBlob(TriMeshResourceBlob* out, TriMesh* Mesh)
 	out->Info.r	    = Mesh->Info.r;
 	
 	memcpy(out->BS, &Mesh->BS, sizeof(BoundingSphere));
+	out->AABB[0] = Mesh->AABB.BottomLeft[0];
+	out->AABB[1] = Mesh->AABB.BottomLeft[1];
+	out->AABB[2] = Mesh->AABB.BottomLeft[2];
+	out->AABB[3] = Mesh->AABB.TopRight[0];
+	out->AABB[4] = Mesh->AABB.TopRight[1];
+	out->AABB[5] = Mesh->AABB.TopRight[2];
 
 	if(Mesh->ID)
 		strcpy_s(out->ID, ID_LENGTH, Mesh->ID);
