@@ -342,8 +342,8 @@ namespace FlexKit
 		using fbxsdk::FbxLayerElement;
 
 		FBXMeshDesc	out = {};
-		float3 MinV(0);
-		float3 MaxV(0);
+		float3 MinV(INFINITY);
+		float3 MaxV(-INFINITY);
 		float  R = 0;
 
 		{	// Get Vertices
