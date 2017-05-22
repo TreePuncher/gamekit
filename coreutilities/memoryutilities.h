@@ -37,9 +37,9 @@ namespace FlexKit
 
 	struct iAllocator
 	{
-		virtual void* malloc(size_t) = 0;
-		virtual void  free(void* _ptr) = 0;
-		virtual void*  _aligned_malloc(size_t, size_t A = 0x10) = 0;
+		virtual void* malloc(size_t)	= 0;
+		virtual void  free(void* _ptr)	= 0;
+		virtual void* _aligned_malloc(size_t, size_t A = 0x10) = 0;
 		virtual void  _aligned_free(void* _ptr) = 0;
 		virtual void  clear(void) {};
 
@@ -63,6 +63,31 @@ namespace FlexKit
 		}
 	};
 
+	struct _SystemAllocator : public iAllocator
+	{
+		void* malloc(size_t n)
+		{
+			return ::malloc(n);
+		}
+
+		void  free(void* _ptr)
+		{
+			::free(_ptr);
+		}
+		void* _aligned_malloc(size_t n, size_t A = 0x10)
+		{
+			return ::_aligned_malloc(n, A);
+		}
+
+		void  _aligned_free(void* _ptr)
+		{
+			::_aligned_free(_ptr);
+		}
+
+		operator iAllocator* (){return this;}
+	};
+
+	static _SystemAllocator SystemAllocator;
 
 	struct FLEXKITAPI StackAllocator
 	{

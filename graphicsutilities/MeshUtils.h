@@ -94,8 +94,8 @@ namespace FlexKit
 	struct CombinedVertex
 	{
 		CombinedVertex() : NORMAL(0), POS(0), TEXCOORD(0), WEIGHTS(0) {}
-		float3	 NORMAL;
 		float3	 POS;
+		float3	 NORMAL;
 		float3	 TEXCOORD;
 		float3	 WEIGHTS;
 		uint4_16 WIndices;

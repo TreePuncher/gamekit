@@ -110,6 +110,11 @@ int main(int argc, char* argv[])
 	case TOOL_MODE::ETOOLMODE_COMPILERESOURCE:
 		if(FileChosen)
 		{
+#if USING(TOOTLE)
+			auto RES = TootleInit();
+			if(RES != TOOTLE_OK)
+				return -1;
+#endif
 			FlexKit::BlockAllocator_desc BlockDesc;
 			BlockDesc.LargeBlock  = MEGABYTE * 500;
 			BlockDesc.MediumBlock = MEGABYTE * 200;

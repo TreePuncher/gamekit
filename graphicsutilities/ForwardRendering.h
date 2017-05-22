@@ -22,33 +22,46 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#ifndef FORWARDRENDERING_H
+#define FORWARDRENDERING_H
+
 #include "..\buildsettings.h"
+#include "graphics.h"
 
-//#include "..\coreutilities\DungeonGen.cpp"
-#include "..\coreutilities\Components.cpp"
-#include "..\coreutilities\GraphicsComponents.cpp"
-#include "..\coreutilities\GraphicScene.cpp"
-#include "..\coreutilities\Handle.cpp"
-#include "..\coreutilities\intersection.cpp"
-#include "..\coreutilities\MathUtils.cpp"
-#include "..\coreutilities\memoryutilities.cpp"
-#include "..\coreutilities\ProfilingUtilities.cpp"
-#include "..\coreutilities\Resources.cpp"
-//#include "..\coreutilities\signal.cpp"
-#include "..\coreutilities\ThreadUtilities.cpp"
-#include "..\coreutilities\timeutilities.cpp"
-#include "..\coreutilities\type.cpp"
 
-#include "..\graphicsutilities\AnimationUtilities.cpp"
-#include "..\graphicsutilities\DDSUtilities.cpp"
-#include "..\graphicsutilities\ForwardRendering.cpp"
-#include "..\graphicsutilities\graphics.cpp"
-#include "..\graphicsutilities\GuiUtilities.cpp"
-#include "..\graphicsutilities\ImageUtilities.cpp"
-#include "..\graphicsutilities\Meshutils.cpp"
-#include "..\graphicsutilities\PipelineState.cpp"
-#include "..\graphicsutilities\TerrainRendering.cpp"
-#include "..\graphicsutilities\TiledRender.cpp"
-#include "..\graphicsutilities\SSReflections.cpp"
+namespace FlexKit
+{
+	/************************************************************************************************/
 
-#include "..\PhysicsUtilities\physicsutilities.cpp"
+
+	struct ForwardRender
+	{
+		RenderWindow*				RenderTarget;
+		DepthBuffer*				DepthTarget;
+		ID3D12GraphicsCommandList*	CommandList;
+		ID3D12CommandAllocator*		CommandAllocator;
+		ID3D12PipelineState*		PSO;
+		ID3D12RootSignature*		PassRTSig;
+		ID3D12DescriptorHeap*		CBDescHeap;
+
+		Shader VShader;
+		Shader PShader;
+	};
+
+
+	struct ForwardPass_DESC
+	{
+		DepthBuffer*	DepthBuffer;
+		RenderWindow*	OutputTarget;
+	};
+
+
+	FLEXKITAPI void InitiateForwardPass	( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardRender* out );
+	FLEXKITAPI void ForwardPass			( PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
+	FLEXKITAPI void ReleaseForwardPass	( ForwardRender* FP );
+
+
+	/************************************************************************************************/
+}
+
+#endif

@@ -25,8 +25,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "stdafx.h"
+#include "..\buildsettings.h"
+
 #include "MeshProcessing.h"
 #include "Animation.h"
+
+#if USING(TOOTLE)
+#include <tootlelib.h>
+
+#ifdef _DEBUG
+#pragma comment(lib, "TootleSoftwareOnlyDLL_2015_d64.lib")
+
+#else 
+#pragma comment(lib, "TootleSoftwareOnlyDLL_2015_64.lib")
+#endif
+#endif
 
 namespace FlexKit
 {
@@ -519,6 +532,11 @@ namespace FlexKit
 
 	CompiledMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MD_Vector* MD = nullptr)
 	{
+#if USING(TOOTLE)
+		Memory  = SystemAllocator;// It will Leak, I know
+		TempMem = SystemAllocator;
+#endif
+
 		using FlexKit::FillBufferView;
 		using FlexKit::AnimationClip;
 		using FlexKit::Skeleton;
@@ -555,6 +573,30 @@ namespace FlexKit
 			BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 });
 			BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16 });
 		}
+
+#if USING(TOOTLE)
+		// Re-Order Buffers
+		if (!EnableSubDiv)
+		{
+			float Efficiency = 0;
+			auto RES = TootleMeasureCacheEfficiency(IB.begin(), IndexCount / 3, TOOTLE_DEFAULT_VCACHE_SIZE, &Efficiency);
+			std::cout << "Mesh Efficiency: " << Efficiency << "\n";
+
+			if (Efficiency > 0.8f) {
+				std::cout << "Optimizing Mesh!\n";
+
+				CombinedVertexBuffer* NewCVB = &CombinedVertexBuffer::Create_Aligned(1024000, TempMem); NewCVB->SetFull();
+				IndexList* NewIB = &IndexList::Create_Aligned(IndexCount * 8 * 1.2, TempMem); NewIB->SetFull();
+
+				auto OptimizeRes = TootleOptimize(CVB.begin(), IB.begin(), VertexCount, IndexCount / 3, sizeof(CombinedVertex), TOOTLE_DEFAULT_VCACHE_SIZE, nullptr, 0, TOOTLE_CW, NewIB->begin(), nullptr, TOOTLE_VCACHE_LSTRIPS, TOOTLE_OVERDRAW_FAST);
+				//auto Res = TootleOptimizeVertexMemory(CVB.begin(), IB.begin(), IndexCount / 3, VertexCount, sizeof(CombinedVertex), NewCVB->begin(), NewIB->begin(), nullptr);
+
+				auto RES = TootleMeasureCacheEfficiency(NewIB->begin(), IndexCount / 3, TOOTLE_DEFAULT_VCACHE_SIZE, &Efficiency);
+				std::cout << "New Mesh Efficiency: " << Efficiency << "\n";
+				int x = 0;
+			}
+		}
+#endif
 
 		for (size_t i = 0; i < BuffersFound.size(); ++i) {
 			CreateBufferView(VertexCount, Memory, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);

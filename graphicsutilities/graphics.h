@@ -1225,24 +1225,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct ForwardRender
-	{
-		RenderWindow*				RenderTarget;
-		DepthBuffer*				DepthTarget;
-		ID3D12GraphicsCommandList*	CommandList;
-		ID3D12CommandAllocator*		CommandAllocator;
-		ID3D12PipelineState*		PSO;
-		ID3D12RootSignature*		PassRTSig;
-		ID3D12DescriptorHeap*		CBDescHeap;
-
-		Shader VShader;
-		Shader PShader;
-	};
-
-
-	/************************************************************************************************/
-
-
 	struct PointLight
 	{
 		float3 K;
@@ -2633,22 +2615,11 @@ namespace FlexKit
 	FLEXKITAPI void RenderShadowMap				( RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT );
 
 
-	FLEXKITAPI Texture2D GetBackBufferTexture	( RenderWindow* Window );
+	FLEXKITAPI Texture2D		GetBackBufferTexture	( RenderWindow* Window );
+	FLEXKITAPI ID3D12Resource*	GetBackBufferResource	( RenderWindow* Window );
 
 
 	/************************************************************************************************/
-
-
-	struct ForwardPass_DESC
-	{
-		DepthBuffer*	DepthBuffer;
-		RenderWindow*	OutputTarget;
-	};
-
-
-	FLEXKITAPI void InitiateForwardPass		( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardRender* out );
-	FLEXKITAPI void ForwardPass				( PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
-	FLEXKITAPI void ReleaseForwardPass		( ForwardRender* FP );
 
 
 	inline float3	Grey( float P ) { P = min(max(0, P), 1); return float3(P, P, P); }
