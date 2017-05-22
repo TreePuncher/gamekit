@@ -22,34 +22,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef CONSOLESUBSTATE_H
-#define CONSOLESUBSTATE_H
 
-#include "Console.h"
-#include "GameFramework.h"
-
-
-// Eventually will be a Quake Style Console
-struct ConsoleSubState : public SubState
-{
-	bool PauseBackgroundLogic;
-	size_t	RecallIndex;
-	Console* C;
-
-	EngineMemory* Engine;
-
-	void IncrementRecallIndex()
-	{
-		RecallIndex = (RecallIndex + 1)% C->CommandHistory.size();
-	}
-
-	void DecrementRecallIndex()
-	{
-		RecallIndex = (C->CommandHistory.size() + RecallIndex - 1) % C->CommandHistory.size();
-	}
-};
-
-void Release(SubState* StateMemory);
-ConsoleSubState* CreateConsoleSubState(GameFramework* Framework);
-
-#endif
+#include "..\Application\CameraUtilities.cpp"
+#include "..\Application\Console.cpp"
+#include "..\Application\ConsoleSubState.cpp"
+#include "..\Application\GameFramework.cpp"
+#include "..\Application\GameUtilities.cpp"
+#include "..\Application\InputComponent.cpp"
+#include "..\Application\NetworkUtilities.cpp"

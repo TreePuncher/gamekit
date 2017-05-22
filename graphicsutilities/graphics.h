@@ -1561,6 +1561,7 @@ namespace FlexKit
 	FLEXKITAPI bool							HasAnimationData		( GeometryTable* GT, TriMeshHandle	guid );
 
 
+
 	/************************************************************************************************/
 
 
@@ -1765,40 +1766,8 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI struct OcclusionCuller
-	{
-		/*
-		OcclusionCuller(OcclusionCuller& rhs) : 
-			Head(rhs.Head), 
-			Max(rhs.Max), 
-			Heap(rhs.Heap),
-			Predicates(rhs.Predicates) {}
-		*/
-
-		size_t					Head;
-		size_t					Max;
-		size_t					Idx;
-
-		ID3D12QueryHeap*		Heap[3];
-		FrameBufferedResource	Predicates;		
-		DepthBuffer				OcclusionBuffer;
-		uint2					HW;
-
-		ID3D12PipelineState*	PSO;
-
-		ID3D12Resource* Get();
-		size_t			GetNext();
-
-		void Clear();
-		void Increment();
-		void Release();
-
-	};
-
-	FLEXKITAPI OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true);
-
-	FLEXKITAPI void UploadTextureSet	(RenderSystem* RS, TextureSet* TS, iAllocator* Memory);
-	FLEXKITAPI void ReleaseTextureSet	(TextureSet* TS, iAllocator* Memory);
+	FLEXKITAPI void UploadTextureSet	( RenderSystem* RS, TextureSet* TS, iAllocator* Memory );
+	FLEXKITAPI void ReleaseTextureSet	( TextureSet* TS, iAllocator* Memory );
 
 
 	struct DrawableDesc
@@ -1867,6 +1836,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	struct SortingField
 	{
 		unsigned int Posed			: 1;
@@ -1906,6 +1876,44 @@ namespace FlexKit
 	FLEXKITAPI void UpdateDrawables		(RenderSystem* RS, SceneNodes* Nodes, PVS* PVS_);
 	FLEXKITAPI void SortPVS				(SceneNodes* Nodes, PVS* PVS_, Camera* C);
 	FLEXKITAPI void SortPVSTransparent	(SceneNodes* Nodes, PVS* PVS_, Camera* C);
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI struct OcclusionCuller
+	{
+		/*
+		OcclusionCuller(OcclusionCuller& rhs) : 
+			Head(rhs.Head), 
+			Max(rhs.Max), 
+			Heap(rhs.Heap),
+			Predicates(rhs.Predicates) {}
+		*/
+
+		size_t					Head;
+		size_t					Max;
+		size_t					Idx;
+
+		ID3D12QueryHeap*		Heap[3];
+		FrameBufferedResource	Predicates;		
+		DepthBuffer				OcclusionBuffer;
+		uint2					HW;
+
+		ID3D12PipelineState*	PSO;
+
+		ID3D12Resource* Get();
+		size_t			GetNext();
+
+		void Clear();
+		void Increment();
+		void Release();
+
+	};
+
+	FLEXKITAPI OcclusionCuller	CreateOcclusionCuller	( RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true );
+	FLEXKITAPI void				OcclusionPass			( RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C );
+
 
 	/************************************************************************************************/
 	
@@ -2143,8 +2151,10 @@ namespace FlexKit
 	FLEXKITAPI void UpdateResourceByTemp			( RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 	FLEXKITAPI void UpdateSubResourceByUploadQueue	( RenderSystem* RS, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState);
 
-	FLEXKITAPI void ReadyUploadQueues	( RenderSystem* RS );
-	FLEXKITAPI void SubmitUploadQueues	( RenderSystem* RS );
+	FLEXKITAPI void ReadyUploadQueues	 ( RenderSystem* RS );
+	FLEXKITAPI void SubmitUploadQueues	 ( RenderSystem* RS );
+	FLEXKITAPI void ShutDownUploadQueues ( RenderSystem* RS );
+
 	FLEXKITAPI PerFrameUploadQueue* GetCurrentUploadQueue( RenderSystem* RS );
 
 	/************************************************************************************************/

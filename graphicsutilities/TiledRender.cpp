@@ -828,8 +828,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 		void TiledRender_Shade(
-		PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target,
-		RenderSystem* RS, const Camera* C,
+		RenderSystem* RS, PVS* _PVS, 
+		TiledDeferredRender* Pass, Texture2D Target,
+		const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
 	{
 		auto CL				 = GetCurrentCommandList(RS);

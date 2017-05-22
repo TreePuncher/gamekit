@@ -32,9 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RakNetTypes.h"
 #include "BitStream.h"
 
-#include "GameFramework.h"
 #include "Gameplay.h"
 #include "..\Application\GameMemory.h"
+#include "..\Application\GameFramework.h"
 #include "..\coreutilities\type.h"
 #include <inttypes.h>
 
@@ -61,26 +61,8 @@ enum NetCommands : unsigned char
 	eINCOMINGSTRUCT,
 };
 
-enum ClientMode : unsigned char
-{
-	eLOADINGMODE,
-	eLOBBYMODE,
-	ePLAYMODE,
-	eWAITINGMODE,
-};
-
-enum ServerMode : unsigned char
-{
-	eSERVERLOBBYMODE,	// Waits for Min Number of Players
-	eCLIENTLOADWAIT,	// Waits for all Players to Load Scene
-	eGAMEINPROGRESS, 
-};
-
 const unsigned short gServerPort = 1366;
 const size_t MaxNameSize = 64;
-
-typedef size_t PlayerID_t;
-
 
 struct PacketBase
 {

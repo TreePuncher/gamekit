@@ -31,11 +31,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RakPeerInterface.h"
 #include "RakNetTypes.h"
 #include "BitStream.h"
-
-#include "GameFramework.h"
 #include "Gameplay.h"
+
+#include "..\Application\GameFramework.h"
 #include "..\Application\GameMemory.h"
 
+#include "Gameplay.h"
 
 /*
 TODO's
@@ -49,7 +50,7 @@ struct PlayerImposters
 
 	void Move(GraphicScene* GS, float3 pos, double dT)
 	{
-		Collider.Controller->move({ pos.x, pos.y, pos.z }, 0.0001, dT, PxControllerFilters());
+		Collider.Controller->move({ pos.x, pos.y, pos.z }, 0.0001, dT, physx::PxControllerFilters());
 	}
 };
 

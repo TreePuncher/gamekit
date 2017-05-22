@@ -23,16 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "..\buildsettings.h"
-#include "..\Application\GameUtilities.cpp"
+#include "..\Application\FrameworkSourceFiles.cpp"
 #include "..\coreutilities\AllSourceFiles.cpp"
 
+#include "InitiateState.cpp"
 #include "HostState.cpp"
 #include "ClientState.cpp"
-#include "CameraUtilities.cpp"
-#include "Console.cpp"
-#include "ConsoleSubState.cpp"
-#include "GameFramework.cpp"
 #include "MenuState.cpp"
 #include "PlayState.cpp"
 #include "Gameplay.cpp"
-#include "InputComponent.cpp"

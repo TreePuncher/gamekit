@@ -25,11 +25,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "GameFramework.h"
-#include "CameraUtilities.h"
-#include "InputComponent.h"
+#include "..\Application\CameraUtilities.h"
+#include "..\Application\GameFramework.h"
+#include "..\Application\InputComponent.h"
 
 #include "..\coreutilities\Components.h"
+
 struct PlayerController
 {
 	float3		Pos;
@@ -62,6 +63,28 @@ struct Player
 	float Health;
 
 	operator Player* () { return this; }// I'm Getting tired of typeing the &'s everywhere!
+};
+
+
+typedef size_t PlayerID_t;
+
+
+/************************************************************************************************/
+
+
+enum ClientMode : unsigned char
+{
+	eLOADINGMODE,
+	eLOBBYMODE,
+	ePLAYMODE,
+	eWAITINGMODE,
+};
+
+enum ServerMode : unsigned char
+{
+	eSERVERLOBBYMODE,	// Waits for Min Number of Players
+	eCLIENTLOADWAIT,	// Waits for all Players to Load Scene
+	eGAMEINPROGRESS,
 };
 
 

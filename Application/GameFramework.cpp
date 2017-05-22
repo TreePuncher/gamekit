@@ -22,11 +22,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#include "stdafx.h"
 #include "ConsoleSubState.h"
 #include "GameFramework.h"
-#include "MenuState.h"
-#include "HostState.h"
-#include "Client.h"
+#include "..\graphicsutilities\graphics.h"
 
 // TODO's
 //	Gameplay:
@@ -84,66 +83,65 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
 
-/************************************************************************************************/
+namespace FlexKit 
+{	/************************************************************************************************/
 
-using namespace FlexKit;
 
-
-void HandleKeyEvents(const Event& in, GameFramework* _ptr) {
-
-	switch (in.Action)
+	void HandleKeyEvents(const Event& in, GameFramework* _ptr)
 	{
-	case Event::InputAction::Pressed:
-	{
-		switch (in.mData1.mKC[0])
+		switch (in.Action)
 		{
-		case KC_ESC:
-			_ptr->Quit = true;
-			break;
-		case KC_R:
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_CULL_PSO);
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO);
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
-			break;
-		case KC_E:
+		case Event::InputAction::Pressed:
 		{
-			_ptr->DrawTerrainDebug = !_ptr->DrawTerrainDebug;
-		}	break;
-		case KC_T:
-			QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
-			break;
-		case KC_M:
-			_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
-			break;
-		case KC_V:
-		{
-			_ptr->DP_DrawMode = EDEFERREDPASSMODE(_ptr->DP_DrawMode + 1);
-			if (_ptr->DP_DrawMode == EDEFERREDPASSMODE::EDPM_COUNT)
-				_ptr->DP_DrawMode = EDEFERREDPASSMODE::EDPM_DEFAULT;
-		}	break;
-		case KC_TILDA:
-		{
-			std::cout << "Pushing Console State\n";
-			if (!_ptr->ConsoleActive) {
-				PushSubState(_ptr, CreateConsoleSubState(_ptr));
-				_ptr->ConsoleActive = true;
+			switch (in.mData1.mKC[0])
+			{
+			case KC_ESC:
+				_ptr->Quit = true;
+				break;
+			case KC_R:
+				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_CULL_PSO);
+				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO);
+				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
+				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
+				break;
+			case KC_E:
+			{
+				_ptr->DrawTerrainDebug = !_ptr->DrawTerrainDebug;
+			}	break;
+			case KC_T:
+				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
+				break;
+			case KC_M:
+				_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
+				break;
+			case KC_V:
+			{
+				_ptr->DP_DrawMode = EDEFERREDPASSMODE(_ptr->DP_DrawMode + 1);
+				if (_ptr->DP_DrawMode == EDEFERREDPASSMODE::EDPM_COUNT)
+					_ptr->DP_DrawMode = EDEFERREDPASSMODE::EDPM_DEFAULT;
+			}	break;
+			case KC_TILDA:
+			{
+				std::cout << "Pushing Console State\n";
+				if (!_ptr->ConsoleActive) {
+					PushSubState(_ptr, CreateConsoleSubState(_ptr));
+					_ptr->ConsoleActive = true;
+				}
+			}	break;
+			default:
+				break;
 			}
 		}	break;
 		default:
 			break;
 		}
-	}	break;
-	default:
-		break;
 	}
-}
 
 
-/************************************************************************************************/
+	/************************************************************************************************/
 
 
-void HandleMouseEvents(const Event& in, GameFramework* _ptr) {
+	void HandleMouseEvents(const Event& in, GameFramework* _ptr) {
 	switch (in.Action)
 	{
 	case Event::InputAction::Pressed:
@@ -164,217 +162,218 @@ void HandleMouseEvents(const Event& in, GameFramework* _ptr) {
 }
 
 
-/************************************************************************************************/
+	/************************************************************************************************/
 
 
-void EventsWrapper(const Event& evt, void* _ptr)
-{
-	auto* base = reinterpret_cast<GameFramework*>(_ptr);
-
-	auto itr = base->SubStates.rbegin();
-
-	switch (evt.InputSource)
+	void EventsWrapper(const Event& evt, void* _ptr)
 	{
-	case Event::Keyboard:
-		HandleKeyEvents(evt, base);
-	case Event::Mouse:
-		HandleMouseEvents(evt, reinterpret_cast<GameFramework*>(_ptr));
-		break;
-	}
+		auto* base = reinterpret_cast<GameFramework*>(_ptr);
 
-	while(itr != base->SubStates.rend())
-	{
-		if (*itr && (*itr)->EventHandler) 
+		auto itr = base->SubStates.rbegin();
+
+		switch (evt.InputSource)
 		{
-			if (!(*itr)->EventHandler((SubState*)(*itr), evt))
-				break;
-		}
-		itr++;
-	}
-}
-
-
-/************************************************************************************************/
-
-
-bool LoadScene(EngineMemory* Engine, GraphicScene* Scene, const char* SceneName)
-{
-	return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->TempAllocator);
-}
-
-
-/************************************************************************************************/
-
-
-void DrawMouseCursor(EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize)
-{
-	using FlexKit::Conversion::Vect2TOfloat2;
-
-	FlexKit::Draw_RECT Cursor;
-	Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
-	Cursor.TRight = Cursor.BLeft + CursorSize;
-
-	Cursor.Color  = float4(1, 1, 1, 1);
-
-	PushRect(State->Immediate, Cursor);
-}
-
-
-/************************************************************************************************/
-
-
-void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
-{
-	auto RItr = State->SubStates.rbegin();
-	auto REnd = State->SubStates.rend();
-	while (RItr != REnd)
-	{
-		auto VTable = *RItr;
-		if (VTable->Release) {
-			VTable->Release(reinterpret_cast<SubState*>(VTable));
-		}
-		RItr++;
-	}
-
-	Release(State->DefaultAssets.Font);
-	Release(State->DefaultAssets.Terrain);
-
-	ReleaseTerrain	(State->Engine->Nodes, &State->Landscape);
-	ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
-
-	ReleaseDrawImmediate	(Engine->RenderSystem, &State->Immediate);
-}
-
-
-/************************************************************************************************/
-
-
-inline void PushSubState(GameFramework* _ptr, SubState* SS)
-{
-	_ptr->SubStates.push_back(GetStateVTable(SS));
-}
-
-
-/************************************************************************************************/
-
-
-void PopSubState(GameFramework* State)
-{
-	auto Top = State->SubStates.back();
-
-	if(Top->Release)
-		Top->Release(reinterpret_cast<SubState*>(Top));
-
-	State->SubStates.pop_back();
-}
-
-
-/************************************************************************************************/
-
-
-void UpdateGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
-{
-	UpdateMouseInput(&State->MouseState, &Engine->Window);
-
-	if (!State->SubStates.size()) {
-		State->Quit = true;
-		return;
-	}
-
-	auto RItr = State->SubStates.rbegin();
-	auto REnd = State->SubStates.rend();
-
-	while (RItr != REnd)
-	{
-		auto VTable = *RItr;
-		if (VTable->Update && !VTable->Update(reinterpret_cast<SubState*>(VTable), Engine, dT))
+		case Event::Keyboard:
+			HandleKeyEvents(evt, base);
+		case Event::Mouse:
+			HandleMouseEvents(evt, reinterpret_cast<GameFramework*>(_ptr));
 			break;
-
-		RItr++;
-	}
-}
-
-
-/************************************************************************************************/
-
-
-void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
-{
-	if (!State->SubStates.size()) {
-		State->Quit = true;
-		return;
-	}
-
-	if (State->DrawDebug) {
-		/*
-		for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
-		{
-			auto P		= State->GScene.PLights[I];
-			auto PState = State->GScene.PLights.Flags->at(I);
-
-			if ((LightBufferFlags)PState != LightBufferFlags::Unused) {
-				auto POS = GetPositionW(Engine->Nodes, P.Position);
-				PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.R);
-			}
 		}
-		*/
-	}
 
-	auto RItr = State->SubStates.rbegin();
-	auto REnd = State->SubStates.rend();
-	while (RItr != REnd)
-	{
-		auto VTable = *RItr;
-		if (VTable->PreDrawUpdate && !VTable->PreDrawUpdate(reinterpret_cast<SubState*>(VTable), Engine, dT))
-			break;
-
-		RItr++;
-	}
-}
-
-
-/************************************************************************************************/
-
-
-SubStateVTable* GetStateVTable(SubState* _ptr)
-{
-	return &_ptr->VTable;
-}
-
-
-/************************************************************************************************/
-
-
-bool SetDebugRenderMode(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void* USR)
-{
-	GameFramework* Framework = (GameFramework*)USR;
-	if (ArguementCount == 1 && Arguments->Type == ConsoleVariableType::STACK_STRING) {
-		size_t Mode = 0;
-
-		const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
-		for (auto Var : C->Variables)
+		while(itr != base->SubStates.rend())
 		{
-			if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
+			if (*itr && (*itr)->EventHandler) 
 			{
-				if(Var.Type == ConsoleVariableType::CONSOLE_UINT)
-				Mode = *(size_t*)Var.Data_ptr;
+				if (!(*itr)->EventHandler((SubState*)(*itr), evt))
+					break;
 			}
-		}
-
-
-		if (Mode < EDEFERREDPASSMODE::EDPM_COUNT)
-		{
-			Framework->DP_DrawMode = (EDEFERREDPASSMODE)Mode;
-			return true;
+			itr++;
 		}
 	}
-	return false;
-}
 
 
-extern "C"
-{
-	GAMESTATEAPI GameFramework* InitiateFramework(EngineMemory* Engine)
+	/************************************************************************************************/
+
+
+	bool LoadScene(EngineMemory* Engine, GraphicScene* Scene, const char* SceneName)
+	{
+		return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->TempAllocator);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DrawMouseCursor(EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize)
+	{
+		using FlexKit::Conversion::Vect2TOfloat2;
+
+		FlexKit::Draw_RECT Cursor;
+		Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
+		Cursor.TRight = Cursor.BLeft + CursorSize;
+
+		Cursor.Color  = float4(1, 1, 1, 1);
+
+		PushRect(State->Immediate, Cursor);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
+	{
+		auto RItr = State->SubStates.rbegin();
+		auto REnd = State->SubStates.rend();
+		while (RItr != REnd)
+		{
+			auto VTable = *RItr;
+			if (VTable->Release) {
+				VTable->Release(reinterpret_cast<SubState*>(VTable));
+			}
+			RItr++;
+		}
+
+		Release(State->DefaultAssets.Font);
+		Release(State->DefaultAssets.Terrain);
+
+		ReleaseTerrain	(State->Engine->Nodes, &State->Landscape);
+		ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
+
+		ReleaseDrawImmediate	(Engine->RenderSystem, &State->Immediate);
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline void PushSubState(GameFramework* _ptr, SubState* SS)
+	{
+		_ptr->SubStates.push_back(GetStateVTable(SS));
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PopSubState(GameFramework* State)
+	{
+		auto Top = State->SubStates.back();
+
+		if(Top->Release)
+			Top->Release(reinterpret_cast<SubState*>(Top));
+
+		State->SubStates.pop_back();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void UpdateGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
+	{
+		UpdateMouseInput(&State->MouseState, &Engine->Window);
+
+		if (!State->SubStates.size()) {
+			State->Quit = true;
+			return;
+		}
+
+		auto RItr = State->SubStates.rbegin();
+		auto REnd = State->SubStates.rend();
+
+		while (RItr != REnd)
+		{
+			auto VTable = *RItr;
+			if (VTable->Update && !VTable->Update(reinterpret_cast<SubState*>(VTable), Engine, dT))
+				break;
+
+			RItr++;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
+	{
+		if (!State->SubStates.size()) {
+			State->Quit = true;
+			return;
+		}
+
+		if (State->DrawDebug) {
+			/*
+			for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
+			{
+				auto P		= State->GScene.PLights[I];
+				auto PState = State->GScene.PLights.Flags->at(I);
+
+				if ((LightBufferFlags)PState != LightBufferFlags::Unused) {
+					auto POS = GetPositionW(Engine->Nodes, P.Position);
+					PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.R);
+				}
+			}
+			*/
+		}
+
+		auto RItr = State->SubStates.rbegin();
+		auto REnd = State->SubStates.rend();
+		while (RItr != REnd)
+		{
+			auto VTable = *RItr;
+			if (VTable->PreDrawUpdate && !VTable->PreDrawUpdate(reinterpret_cast<SubState*>(VTable), Engine, dT))
+				break;
+
+			RItr++;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	SubStateVTable* GetStateVTable(SubState* _ptr)
+	{
+		return &_ptr->VTable;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool SetDebugRenderMode(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void* USR)
+	{
+		GameFramework* Framework = (GameFramework*)USR;
+		if (ArguementCount == 1 && Arguments->Type == ConsoleVariableType::STACK_STRING) {
+			size_t Mode = 0;
+
+			const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
+			for (auto Var : C->Variables)
+			{
+				if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
+				{
+					if(Var.Type == ConsoleVariableType::CONSOLE_UINT)
+					Mode = *(size_t*)Var.Data_ptr;
+				}
+			}
+
+
+			if (Mode < EDEFERREDPASSMODE::EDPM_COUNT)
+			{
+				Framework->DP_DrawMode = (EDEFERREDPASSMODE)Mode;
+				return true;
+			}
+		}
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	GameFramework* InitiateFramework(EngineMemory* Engine)
 	{
 		GameFramework& Framework = Engine->BlockAllocator.allocate_aligned<GameFramework>();
 		SetDebugMemory(&Engine->Debug);
@@ -462,63 +461,13 @@ extern "C"
 
 		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});
 
-		enum Mode
-		{
-			Menu, 
-			Host,
-			Client,
-			Play,
-		}CurrentMode = Play;
-
-		const char* Name	= nullptr;
-		const char* Server	= nullptr;
-		
-
-		for (size_t I = 0; I < Engine->CmdArguments.size(); ++I)
-		{
-			auto Arg = Engine->CmdArguments[I];
-			if (!strncmp(Arg, "-H", strlen("-H")))
-			{
-				CurrentMode = Host;
-			}
-			else if(!strncmp(Arg, "-C", strlen("-C")) && I + 2 < Engine->CmdArguments.size())
-			{
-				CurrentMode = Client;
-				Name	= Engine->CmdArguments[I + 1];
-				Server	= Engine->CmdArguments[I + 2];
-			}
-		}
-
-		switch (CurrentMode)
-		{
-		case Menu:{
-			auto MenuSubState = CreateMenuState(&Framework, Engine);
-			PushSubState(&Framework, MenuSubState);
-		}	break;
-		case Host: {
-			auto HostState = CreateHostState(Engine, &Framework);
-			PushSubState(&Framework, HostState);
-		}	break;
-		case Client: {
-			auto ClientState = CreateClientState(Engine, &Framework, Name, Server);
-			PushSubState(&Framework, ClientState);
-		}	break;
-		case Play: {
-			auto PlayState = CreatePlayState(Engine, &Framework);
-			PushSubState(&Framework, PlayState);
-		}
-		default:
-			break;
-		}
-		
-
 		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
 
 		return &Framework;
 	}
 
 
-	GAMESTATEAPI void Update(EngineMemory* Engine, GameFramework* Framework, double dT)
+	void Update(EngineMemory* Engine, GameFramework* Framework, double dT)
 	{
 		Framework->TimeRunning += dT;
 
@@ -531,19 +480,19 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void UpdateFixed(EngineMemory* Engine, double dt, GameFramework* State)
+	void UpdateFixed(EngineMemory* Engine, double dt, GameFramework* State)
 	{
 		UpdateMouseInput(&State->MouseState, &Engine->Window);
 	}
 
 
-	GAMESTATEAPI void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
+	void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
 	{
 		UpdateAnimationsGraphicScene(_ptr->ActiveScene, dt);
 	}
 
 
-	GAMESTATEAPI void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework)
+	void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework)
 	{
 		PreDrawGameFramework(Engine, Framework, dt);
 
@@ -574,7 +523,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameFramework* Framework)
+	void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameFramework* Framework)
 	{
 		ProfileBegin(PROFILE_SUBMISSION);
 
@@ -647,7 +596,7 @@ extern "C"
 				if(Framework->DrawTerrain)
 					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, Framework->ActiveCamera, Framework->DrawTerrainDebug);
 
-				TiledRender_Shade		(&PVS, &Engine->TiledRender, OutputTarget, RS, Framework->ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights);
+				TiledRender_Shade		(RS, &PVS, &Engine->TiledRender, OutputTarget, Framework->ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights);
 
 				if(Framework->ScreenSpaceReflections)
 				{
@@ -666,7 +615,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
+	void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
 	{
 		Engine->Culler.Increment();
 		IncrementCurrent(&Engine->DepthBuffer);
@@ -676,7 +625,7 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void Cleanup(EngineMemory* Engine, GameFramework* Framework)
+	void Cleanup(EngineMemory* Engine, GameFramework* Framework)
 	{
 		ShutDownUploadQueues(Engine->RenderSystem);
 
@@ -707,53 +656,17 @@ extern "C"
 	}
 
 
-	GAMESTATEAPI void PostPhysicsUpdate(GameFramework*)
+	void PostPhysicsUpdate(GameFramework*)
 	{
 
 	}
 
 
-	GAMESTATEAPI void PrePhysicsUpdate(GameFramework*)
+	void PrePhysicsUpdate(GameFramework*)
 	{
 
 	}
 
-	struct CodeExports
-	{
-		typedef GameFramework*	(*InitiateGameStateFN)	(EngineMemory* Engine);
-		typedef void			(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, GameFramework* _ptr);
-		typedef void			(*UpdateIMPL)			(EngineMemory* Engine,	GameFramework* _ptr, double dt);
-		typedef void			(*UpdateAnimationsFN)	(EngineMemory* RS,		iAllocator* TempMemory, double dt, GameFramework* _ptr);
-		typedef void			(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
-		typedef void			(*DrawFN)				(EngineMemory* RS,		iAllocator* TempMemory,			   GameFramework* _ptr);
-		typedef void			(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
-		typedef void			(*CleanUpFN)			(EngineMemory* Engine,	GameFramework* _ptr);
-		typedef void			(*PostPhysicsUpdate)	(GameFramework*);
-		typedef void			(*PrePhysicsUpdate)		(GameFramework*);
 
-		InitiateGameStateFN		Init;
-		InitiateEngineFN		InitEngine;
-		UpdateIMPL				Update;
-		UpdateFixedIMPL			UpdateFixed;
-		UpdateAnimationsFN		UpdateAnimations;
-		UpdatePreDrawFN			UpdatePreDraw;
-		DrawFN					Draw;
-		PostDrawFN				PostDraw;
-		CleanUpFN				Cleanup;
-	};
 
-	GAMESTATEAPI void GetStateTable(CodeTable* out)
-	{
-		CodeExports* Table = reinterpret_cast<CodeExports*>(out);
-
-		Table->Init				= &InitiateFramework;
-		Table->InitEngine		= &InitEngine;
-		Table->Update			= &Update;
-		Table->UpdateFixed		= &UpdateFixed;
-		Table->UpdateAnimations	= &UpdateAnimations;
-		Table->UpdatePreDraw	= &UpdatePreDraw;
-		Table->Draw				= &Draw;
-		Table->PostDraw			= &PostDraw;
-		Table->Cleanup			= &Cleanup;
-	}
 }

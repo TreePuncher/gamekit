@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CAMERAUTILITIES
 #define CAMERAUTILITIES
 
-#include "Gameplay.h"
 #include "GameFramework.h"
 #include "InputComponent.h"
 

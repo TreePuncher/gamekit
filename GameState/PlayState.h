@@ -25,11 +25,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "GameFramework.h"
-#include "Gameplay.h"
-#include "CameraUtilities.h"
+#include "..\Application\GameFramework.h"
+#include "..\Application\CameraUtilities.h"
 #include "..\Application\GameMemory.h"
 
+#include "Gameplay.h"
 /*
 TODO's
 */

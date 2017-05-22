@@ -22,6 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#include "stdafx.h"
 #include "InputComponent.h"
 
 namespace FlexKit

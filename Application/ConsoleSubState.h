@@ -1,6 +1,3 @@
-#ifndef MENUSTATE_H
-#define MENUSTATE_H
-
 /**********************************************************************
 
 Copyright (c) 2017 Robert May
@@ -25,42 +22,38 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\Application\GameFramework.h"
-#include "..\Application\CameraUtilities.h"
-	
-struct MenuState;
+#ifndef CONSOLESUBSTATE_H
+#define CONSOLESUBSTATE_H
 
-struct CBArguements
+#include "Console.h"
+#include "GameFramework.h"
+
+
+namespace FlexKit
 {
-	EngineMemory*	Engine;
-	MenuState*		State;
-};
 
-struct MenuState : public SubState
-{
-	MenuState(iAllocator* Memory) : BettererWindow(Memory)
+	// Eventually will be a Quake Style Console
+	struct ConsoleSubState : public SubState
 	{
-	}
+		bool PauseBackgroundLogic;
+		size_t	RecallIndex;
+		Console* C;
 
-	MenuState(const MenuState& rhs) : BettererWindow(rhs.BettererWindow)
-	{
-		Window			= rhs.Window;
-		CursorSize		= rhs.CursorSize;
-	}
+		EngineMemory* Engine;
 
-	FlexKit::SimpleWindow	Window;
-	FlexKit::float2			CursorSize;
+		void IncrementRecallIndex()
+		{
+			RecallIndex = (RecallIndex + 1)% C->CommandHistory.size();
+		}
 
-	FlexKit::ComplexGUI		BettererWindow;
+		void DecrementRecallIndex()
+		{
+			RecallIndex = (C->CommandHistory.size() + RecallIndex - 1) % C->CommandHistory.size();
+		}
+	};
 
-	FlexKit::EntityHandle   Model;
-	double T;
+	void Release(SubState* StateMemory);
+	ConsoleSubState* CreateConsoleSubState(GameFramework* Framework);
 
-
-	CBArguements CBArgs;
-};
-
-
-MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine);
-
+}
 #endif
