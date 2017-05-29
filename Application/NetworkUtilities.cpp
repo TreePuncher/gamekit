@@ -36,10 +36,12 @@ void CleanupNetwork(Network* Net)
 	if (Net->isServer)
 		Net->Peer->Shutdown(0);
 
-	RakNet::RakPeerInterface::ReleaseInstance(Net->Peer);
+	RakNet::RakPeerInterface::DestroyInstance(Net->Peer);
 }
 
+
 /************************************************************************************************/
+
 
 void InitiateNetwork(Network* Net, FlexKit::StackAllocator* alloc, bool isServer, unsigned short ServerPort)
 {
@@ -71,5 +73,8 @@ void InitiateNetwork(Network* Net, FlexKit::StackAllocator* alloc, bool isServer
 		Net->ClientState->CurrentState = Network::sClientState::ClientEstablishingConnection;
 	}
 }
+
+
+/************************************************************************************************/
 
 #endif

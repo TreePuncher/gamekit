@@ -35,7 +35,7 @@ namespace FlexKit
 		new(this) SceneNodeComponentSystem();
 
 		InitiateSceneNodeBuffer(&Nodes, Memory, BufferSize);
-		Root = GetZeroedNode(Nodes);
+		Root = FlexKit::GetZeroedNode(Nodes);
 	}
 	void SceneNodeComponentSystem::Release()
 	{
@@ -56,6 +56,11 @@ namespace FlexKit
 		return FlexKit::GetNewNode(Nodes); 
 	}
 
+
+	NodeHandle SceneNodeComponentSystem::GetZeroedNode()
+	{
+		return FlexKit::GetZeroedNode(Nodes);
+	}
 
 	void TansformComponent::Roll(float r)
 	{

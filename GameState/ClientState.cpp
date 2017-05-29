@@ -84,12 +84,14 @@ void SendPlayerClientStateInfoUpdate(ClientState* Client, Player* P, size_t Fram
 	bsOut.Write(eINCOMINGSTRUCT);
 
 	PlayerStateFrame Frame;
+	/*
 	Frame.FrameID  = FrameID;
 	Frame.Yaw      = P->CameraCTR.Yaw;
 	Frame.Pitch    = P->CameraCTR.Pitch;
 	Frame.Roll     = P->CameraCTR.Roll;
 	Frame.Velocity = P->PlayerCTR.Velocity;
 	Frame.Position = P->PlayerCTR.Pos;
+	*/
 
 	PlayerClientStateInfoUpdate Packet(Frame);
 	bsOut.Write(Packet, sizeof(Packet));
@@ -490,8 +492,8 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Fram
 	PlayState->VTable.Update				  = UpdateClientGameplay;
 	PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
 	PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
-	PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
-	PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
+	//PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
+	//PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
 	PlayState->Imposters.Allocator			  = Engine->BlockAllocator;
 	PlayState->Mode							  = eWAITINGMODE; // Wait for all Players to Load and respond
 	PlayState->FrameCount					  = 0;

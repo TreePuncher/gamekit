@@ -24,26 +24,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gameplay.h"
 
-/*
 
 void InitiatePlayer(GraphicScene* Scene, GameFramework* Engine, Player* Out)
 {
 	//Out->PlayerCTR.Orientation = Quaternion(0, 0, 0, 1);
-	Out->PlayerCTR.Pos      = float3(0, 0, 0);
-	Out->PlayerCTR.Velocity = float3(0, 0, 0);
-	Out->Model              = Scene->CreateDrawableAndSetMesh("PlayerModel");
+	//Out->PlayerCTR.Pos      = float3(0, 0, 0);
+	//Out->PlayerCTR.Velocity = float3(0, 0, 0);
+	//Out->Model              = Scene->CreateDrawableAndSetMesh("PlayerModel");
 
-	Scene->EntityEnablePosing(Out->Model);
+	//Scene->EntityEnablePosing(Out->Model);
 
 	CapsuleCharacterController_DESC Desc;
 	Desc.FootPos = float3(0, 10, 0);
 	Desc.h       = 10.0f;
 	Desc.r       = 5.0f;
 
-	InitiateCamera3rdPersonContoller(Engine->Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);
-	Initiate(&Out->PlayerCollider, &Engine->PScene, &Engine->Engine->Physics, Desc);
-	InitiateASM(&Out->PlayerAnimation, Engine->Engine->BlockAllocator, Out->Model);
+	//InitiateCamera3rdPersonContoller(Engine->Engine->Nodes, Engine->ActiveCamera, &Out->CameraCTR);
 
+	/*
 	AnimationStateEntry_Desc WalkDesc;
 	auto Res1 = FindResourceGUID(&Engine->Engine->Assets, "WALK_1");
 	auto Res2 = FindResourceGUID(&Engine->Engine->Assets, "ANIMATION2");
@@ -83,49 +81,9 @@ void InitiatePlayer(GraphicScene* Scene, GameFramework* Engine, Player* Out)
 
 	TranslateCamera(&Out->CameraCTR, float3{ 0,  0, 0});
 	SetCameraOffset(&Out->CameraCTR, float3{ 0, 20, 40.0f });
+
+	*/
 }
-
-
-void SetPlayerPosition(Player* P, float3 Position)
-{
-	P->PlayerCTR.Pos = Position;
-	physx::PxExtendedVec3 V3;
-	V3.x = Position.x;
-	V3.y = Position.y;
-	V3.z = Position.z;
-	P->PlayerCollider.Controller->setFootPosition(V3);
-}
-
-
-
-
-void YawPlayer(Player* P, float Degree)
-{
-	//Quaternion Q(0.0f, FlexKit::DegreetoRad(Degree), 0.0f);
-	//Quaternion NewR = P->PlayerCTR.Orientation * Q;
-	//P->PlayerCTR.Orientation = NewR;
-
-	YawCamera(&P->CameraCTR, Degree );
-}
-
-
-void SetPlayerOrientation(Player* P, Quaternion Q)
-{
-	SetOrientation(P->CameraCTR.Nodes, P->CameraCTR.Yaw_Node, Q);
-	//P->PlayerCTR.Orientation = Q;
-}
-
-
-
-
-void TranslateActor(Player* P, float3 pos, double dT)
-{
-	P->PlayerCollider.Controller->move({ pos.x, pos.y, pos.z }, 0.0001, dT, PxControllerFilters());
-	//Actor->BPC.FloorContact = flags & PxControllerCollisionFlag::eCOLLISION_DOWN;
-	//Actor->BPC.CeilingContact = flags & PxControllerCollisionFlag::eCOLLISION_UP;
-}
-
-
 
 
 void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, float2 MouseMovement, double dT)
@@ -133,31 +91,31 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 	float MovementFactor = 50;
 	float Drag =  Input.Shield ? 6.0f : 5.0f;
 
-	auto Cam_Ctr = &P->CameraCTR;
+	//auto Cam_Ctr = &P->CameraCTR;
 
 	Quaternion Q(0.0f, 360 * MouseMovement.x * dT * MovementFactor, 0.0f);
 	
 	//YawCamera	(Cam_Ctr, 360 * MouseMovement.x * dT * MovementFactor);
-	YawPlayer(P, 360 * MouseMovement.x * dT * MovementFactor);
-	PitchCamera	(Cam_Ctr, 360 * MouseMovement.y * dT * MovementFactor);
+	//YawPlayer(P, 360 * MouseMovement.x * dT * MovementFactor);
+	//PitchCamera	(Cam_Ctr, 360 * MouseMovement.y * dT * MovementFactor);
 
 	//SetOrientation(Engine->Nodes, Cam_Ctr->Yaw_Node, P->PlayerCTR.Orientation);
 
-	if (P->PlayerCTR.Velocity.magnitudesquared() > 0.001f)
+	//if (P->PlayerCTR.Velocity.magnitudesquared() > 0.001f)
 	{
 		if (!Input.Shield) {
-			float3 Forward = P->PlayerCTR.Velocity.normal();
-			Forward = Quaternion(0, -90, 0) * Forward;
-			auto Q = FlexKit::Vector2Quaternion(Forward, { 0, 1, 0 }, Forward.cross({ 0, 1, 0 }));
-			Framework->GScene.SetOrientation(P->Model, Q);
+			//float3 Forward = P->PlayerCTR.Velocity.normal();
+			//Forward = Quaternion(0, -90, 0) * Forward;
+			//auto Q = FlexKit::Vector2Quaternion(Forward, { 0, 1, 0 }, Forward.cross({ 0, 1, 0 }));
+			//Framework->GScene.SetOrientation(P->Model, Q);
 		}
 		else {
-			Framework->GScene.SetOrientation( P->Model, Quaternion(0, P->CameraCTR.Yaw + 180, 0));
+			//Framework->GScene.SetOrientation( P->Model, Quaternion(0, P->CameraCTR.Yaw + 180, 0));
 		}
 	}
-	else
+	//else
 	{
-		P->PlayerCTR.Velocity = { 0, 0, 0 };
+		//P->PlayerCTR.Velocity = { 0, 0, 0 };
 	}
 
 
@@ -167,52 +125,53 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 
 	if (Input.Shield) {
 		if (Input.Forward) {
-			auto Forward = GetForwardVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Forward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
+			//auto Forward = GetForwardVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Forward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
 		}
 		else if (Input.Backward)
 		{
-			auto Backward = -GetForwardVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Backward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
+			//auto Backward = -GetForwardVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Backward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
 		}
 		if (Input.Right) {
-			auto Right = GetRightVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Right * 1.0f / 60.0f * 20.0f * StrafingAccel;
+			//auto Right = GetRightVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Right * 1.0f / 60.0f * 20.0f * StrafingAccel;
 		}
 		else if (Input.Left) {
-			auto Left = -GetRightVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Left * 1.0f / 60.0f * 20.0f * StrafingAccel;
+			//auto Left = -GetRightVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Left * 1.0f / 60.0f * 20.0f * StrafingAccel;
 		}
 	}
 	else
 	{
 		if (Input.Forward) {
-			auto Forward = GetForwardVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Forward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
+			//auto Forward = GetForwardVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Forward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
 		}
 		else if (Input.Backward)
 		{
-			auto Backward = -GetForwardVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Backward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
+			//auto Backward = -GetForwardVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Backward * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
 		}
 		if (Input.Right) {
-			auto Right = GetRightVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Right * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
+			//auto Right = GetRightVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Right * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
 		}
 		else if (Input.Left) {
-			auto Left = -GetRightVector(Cam_Ctr);
-			P->PlayerCTR.Velocity += Left * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
+			//auto Left = -GetRightVector(Cam_Ctr);
+			//P->PlayerCTR.Velocity += Left * 1.0f / 60.0f * 20.0f * ForwardBackwardAccel;
 		}
 	}
 
+	/*
 
 	TranslateActor(P, P->PlayerCTR.Velocity * dT + float3(0, -1, 0), dT);
-	auto FinalPOS = P->PlayerCollider.Controller->getFootPosition();
+	//auto FinalPOS = P->PlayerCollider.Controller->getFootPosition();
 
-	float Offset = P->PlayerCollider.Controller->getStepOffset();
+	//float Offset = P->PlayerCollider.Controller->getStepOffset();
 
-	P->PlayerCTR.Pos = {FinalPOS.x, FinalPOS.y - Offset, FinalPOS.z};// P->PlayerCTR.Velocity * dT;
-	P->PlayerCTR.Velocity -= P->PlayerCTR.Velocity * Drag * dT;
+	//P->PlayerCTR.Pos = {FinalPOS.x, FinalPOS.y - Offset, FinalPOS.z};// P->PlayerCTR.Velocity * dT;
+	//P->PlayerCTR.Velocity -= P->PlayerCTR.Velocity * Drag * dT;
 	
 	if (P->PlayerCTR.Velocity.magnitudesquared() > 5.0f) {
 		ASSetBool(P->WalkCondition, true, &P->PlayerAnimation);
@@ -227,6 +186,8 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 	Framework->GScene.SetPositionEntity_WT(P->Model, P->PlayerCTR.Pos);
 
 	UpdateCameraController(Framework->Engine->Nodes, Cam_Ctr, dT);
+
+	*/
 }
 
 
@@ -234,7 +195,7 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 
 void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
 {
-	UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
+	//UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
 
 	//if (Engine->GScene.GetDrawable(P->Model).PoseState)
 	//	DEBUG_DrawPoseState(Engine->GScene.GetDrawable(P->Model).PoseState, Engine->Nodes, Engine->GScene.GetNode(P->Model), &Engine->DebugLines);
@@ -245,10 +206,7 @@ void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
 
 void ReleasePlayer(Player* P, GameFramework* Engine)
 {
-	Engine->GScene.RemoveEntity(P->Model);
+	//Engine->GScene.RemoveEntity(P->Model);
 	//P->PlayerCollider.Controller->release();
 }
 
-
-
-*/

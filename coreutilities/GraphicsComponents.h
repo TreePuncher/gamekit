@@ -48,6 +48,7 @@ namespace FlexKit
 
 		NodeHandle GetRoot();
 		NodeHandle GetNewNode();
+		NodeHandle GetZeroedNode();
 
 		NodeHandle Root;
 		SceneNodes Nodes;
@@ -257,11 +258,33 @@ namespace FlexKit
 		}
 	}
 
+
+	/************************************************************************************************/
+
+
 	void Yaw(GameObjectInterface* GO, float R)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
 			C->Yaw(R);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+	}
+
+	void Pitch(GameObjectInterface* GO, float R)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		if (C) {
+			C->Pitch(R);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+	}
+
+	void Roll(GameObjectInterface* GO, float R)
+	{
+		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+		if (C) {
+			C->Roll(R);
 			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
 		}
 	}

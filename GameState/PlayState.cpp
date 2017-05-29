@@ -108,8 +108,28 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	float End	= 60.0f;
 	float IaR	= 10000 * (1 + (float)cos(T * 6)) / 2;
 	
+	//Translate(ThisState->Player, float3{ 0, 100, 0 } * dT);
+	auto Forward	= GetForwardVector(ThisState->Player);
+	auto Left		= GetLeftVector(ThisState->Player);
+	const float MoveRate = 25;
+
+	if (ThisState->Input.KeyState.Forward)
+		Translate(ThisState->Player, Forward * dT * MoveRate);
+
+	if (ThisState->Input.KeyState.Backward)
+		Translate(ThisState->Player, Forward * dT * -MoveRate);
+
+	if (ThisState->Input.KeyState.Left)
+		Translate(ThisState->Player, Left * dT * MoveRate);
+
+	if (ThisState->Input.KeyState.Right)
+		Translate(ThisState->Player, Left * dT * -MoveRate);
+
 	ThisState->OrbitCameras.Update(dT);
 	ThisState->Physics.UpdateSystem(dT);
+	ThisState->TPC.Update(dT);
+	// Ray Cast Tests
+#if 0
 
 	Quaternion Q	= GetCameraOrientation(ThisState->Player);
 	float3 Origin	= GetWorldPosition(ThisState->Player);
@@ -150,6 +170,8 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 
 	PushLineSet3D(ThisState->Framework->Immediate, Lines);
 
+#endif
+
 	return false;
 }
 
@@ -165,7 +187,7 @@ bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	if(ThisState->Framework->DrawPhysicsDebug)
 	{
 		//auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
-		//PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, { PlayerPOS.x, PlayerPOS.y, PlayerPOS.z }, 5, 10, GREEN);
+		PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, GetWorldPosition(ThisState->Player), 5, 10, GREEN);
 	}
 
 
@@ -397,6 +419,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->Physics.InitiateSystem(&Engine->Physics, Engine->Nodes, Engine->BlockAllocator);
 
 	State->Input.Initiate(Framework);
+	State->TPC.Initiate(Framework, State->Input);
 	State->OrbitCameras.Initiate(Framework, State->Input);
 
 
@@ -411,6 +434,7 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 		State->TestObject,
 			CreateEnityComponent(&State->Drawables, "Flower"),
 			CreateLightComponent(&State->Lights));
+
 
 	SetLightColor(State->TestObject, RED);
 	SetLightIntensity(State->TestObject, 0);
@@ -436,11 +460,14 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 
 	InitiateGameObject(
 		State->Player,
-			State->Physics.CreateCharacterController({0, 10, 0}, 5, 0.01),
-			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
+			CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
+			//CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
-	Translate(State->Player, {0, 10, -10});
-	Yaw(State->Player, pi);
+	Translate		(State->Player, {0, 0, -10});
+	SetCameraOffset	(State->Player, { 0, 15, 10 });
+	YawCamera(State->Player, pi);
+	//Yaw(State->Player, pi);
 	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
 
 	return State;

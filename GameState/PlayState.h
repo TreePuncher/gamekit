@@ -46,9 +46,10 @@ struct PlayState : public SubState
 
 	GraphicScene				GScene;
 
-	PhysicsComponentSystem		Physics;
-	DrawableComponentSystem		Drawables;
-	LightComponentSystem		Lights;
+	ThirdPersonCameraComponentSystem	TPC;
+	PhysicsComponentSystem				Physics;
+	DrawableComponentSystem				Drawables;
+	LightComponentSystem				Lights;
 
 	GameObject<>				CubeObjects[1024];
 

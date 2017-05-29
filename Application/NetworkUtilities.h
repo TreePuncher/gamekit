@@ -69,22 +69,18 @@ enum PlayerState
 };
 
 /************************************************************************************************/
-const size_t INPUTBUFFERSIZE = 8;
 
-struct PlayerInstance
+
+struct PlayerConnection
 {
 	size_t									PlayerID;
 	RakNet::SystemAddress					Address;
 	char									Name[32];
-	size_t									head;
-	size_t									tail;
-	PlayerState								State;
-	bool									WaitingCheck;
-	double									StateCheckTimer;
 };
 
-typedef FlexKit::static_vector<PlayerInstance> PlayerList; 
-typedef size_t PlayerHandle;
+typedef FlexKit::static_vector<PlayerConnection>	ConnectionList;
+typedef size_t										ConnectionID;
+
 
 /************************************************************************************************/
 
@@ -112,7 +108,7 @@ struct Network
 		char					PlayerName[32];
 		RakNet::AddressOrGUID	ServerAddress;
 
-		PlayerList				OtherPlayers;
+		ConnectionList			OtherPlayers;
 
 		FlexKit::StackAllocator	Allocator;
 		byte _p[1024];

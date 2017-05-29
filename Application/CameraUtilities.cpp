@@ -22,8 +22,84 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+
 #include "stdafx.h"
 #include "CameraUtilities.h"
+
+
+
+void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out)
+{
+	ReleaseNode(Nodes, C->Node);
+
+	auto Yaw	= GetZeroedNode(Nodes);
+	auto Pitch	= GetZeroedNode(Nodes);
+	auto Roll	= GetZeroedNode(Nodes);
+
+	SetParentNode(Nodes, Pitch, Roll);
+	SetParentNode(Nodes, Yaw, Pitch);
+
+
+	C->Node		= Roll;
+	Out->C		= C;
+	Out->Nodes	= Nodes;
+
+	Out->Pitch	= 0;
+	Out->Roll	= 0;
+	Out->Yaw	= 0;
+
+	Out->Pitch_Node = Pitch;
+	Out->Roll_Node  = Roll;
+	Out->Yaw_Node   = Yaw;
+}
+
+void UpdateCameraController(SceneNodes* Nodes, Camera3rdPersonContoller* Controller, double dT)
+{
+}
+
+void SetCameraOffset(Camera3rdPersonContoller* Controller, float3 xyz)
+{
+	TranslateWorld(Controller->Nodes, Controller->Pitch_Node, float3(0.0f, 1.0f, 0.0f) * xyz);
+	TranslateWorld(Controller->Nodes, Controller->Roll_Node,  float3(0.0f, 0.0f, 1.0f) * xyz);
+
+}
+
+void SetCameraPosition(Camera3rdPersonContoller* Controller, float3 xyz)
+{
+	SetPositionW(Controller->Nodes, Controller->Yaw_Node, xyz);
+}
+
+void TranslateCamera(Camera3rdPersonContoller* Controller, float3 xyz)
+{
+	TranslateWorld(Controller->Nodes, Controller->Yaw_Node, xyz);
+}
+
+void YawCamera(Camera3rdPersonContoller* Controller, float Degree)
+{
+	Controller->Yaw += Degree;
+}
+
+void PitchCamera(Camera3rdPersonContoller* Controller, float Degree)
+{
+	Controller->Pitch += Degree;
+}
+
+void RollCamera(Camera3rdPersonContoller* Controller, float Degree)
+{
+	Controller->Roll += Degree;
+}
+
+float3 GetForwardVector(Camera3rdPersonContoller* Controller)
+{
+	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
+	return -(Q * float3(0, 0, 1)).normal();
+}
+
+float3 GetRightVector(Camera3rdPersonContoller* Controller)
+{
+	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
+	return -(Q * float3(-1, 0, 0)).normal();
+}
 
 namespace FlexKit
 {
@@ -100,88 +176,14 @@ namespace FlexKit
 
 		return Out;
 	}
-}
-
-using namespace FlexKit;
-
-void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out)
-{
-	ReleaseNode(Nodes, C->Node);
-
-	auto Yaw	= GetZeroedNode(Nodes);
-	auto Pitch	= GetZeroedNode(Nodes);
-	auto Roll	= GetZeroedNode(Nodes);
-
-	SetParentNode(Nodes, Pitch, Roll);
-	SetParentNode(Nodes, Yaw, Pitch);
 
 
-	C->Node		= Roll;
-	Out->C		= C;
-	Out->Nodes	= Nodes;
+	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System, Camera* C)
+	{
+		ThirdPersonCameraArgs Args;
+		Args.C		= C;
+		Args.System = System;
 
-	Out->Pitch	= 0;
-	Out->Roll	= 0;
-	Out->Yaw	= 0;
-
-	Out->Pitch_Node = Pitch;
-	Out->Roll_Node  = Roll;
-	Out->Yaw_Node   = Yaw;
-}
-
-void UpdateCameraController(SceneNodes* Nodes, Camera3rdPersonContoller* Controller, double dT)
-{
-	if (Controller->Pitch > 75)
-		Controller->Pitch = 75;
-
-	if (Controller->Pitch < -45)
-		Controller->Pitch = -45;
-
-	SetOrientationL(Nodes, Controller->Yaw_Node,	Quaternion(0, Controller->Yaw, 0));
-	SetOrientationL(Nodes, Controller->Pitch_Node,	Quaternion(Controller->Pitch, 0, 0));
-	//SetOrientationL(Nodes, Controller->Roll_Node,	Quaternion(0, 0, Controller->Roll));
-}
-
-void SetCameraOffset(Camera3rdPersonContoller* Controller, float3 xyz)
-{
-	TranslateWorld(Controller->Nodes, Controller->Pitch_Node, float3(0.0f, 1.0f, 0.0f) * xyz);
-	TranslateWorld(Controller->Nodes, Controller->Roll_Node,  float3(0.0f, 0.0f, 1.0f) * xyz);
-
-}
-
-void SetCameraPosition(Camera3rdPersonContoller* Controller, float3 xyz)
-{
-	SetPositionW(Controller->Nodes, Controller->Yaw_Node, xyz);
-}
-
-void TranslateCamera(Camera3rdPersonContoller* Controller, float3 xyz)
-{
-	TranslateWorld(Controller->Nodes, Controller->Yaw_Node, xyz);
-}
-
-void YawCamera(Camera3rdPersonContoller* Controller, float Degree)
-{
-	Controller->Yaw += Degree;
-}
-
-void PitchCamera(Camera3rdPersonContoller* Controller, float Degree)
-{
-	Controller->Pitch += Degree;
-}
-
-void RollCamera(Camera3rdPersonContoller* Controller, float Degree)
-{
-	Controller->Roll += Degree;
-}
-
-float3 GetForwardVector(Camera3rdPersonContoller* Controller)
-{
-	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
-	return -(Q * float3(0, 0, 1)).normal();
-}
-
-float3 GetRightVector(Camera3rdPersonContoller* Controller)
-{
-	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
-	return -(Q * float3(-1, 0, 0)).normal();
+		return Args;
+	}
 }

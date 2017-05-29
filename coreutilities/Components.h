@@ -55,6 +55,7 @@ namespace FlexKit
 	public:
 		virtual void ReleaseHandle	(ComponentHandle Handle) = 0;
 		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID, GameObjectInterface* GO) {}
+		virtual void ObjectMoved	(ComponentHandle Handle, ComponentSystemInterface* System, GameObjectInterface* GO)	{}
 	};
 
 
@@ -121,6 +122,8 @@ namespace FlexKit
 	template<size_t COMPONENTCOUNT = 6>
 	struct FLEXKITAPI GameObject
 	{
+		typedef GameObject<COMPONENTCOUNT> ThisType_t;
+
 		uint16_t	LastComponent;
 		uint16_t	ComponentCount;
 		Component	Components[COMPONENTCOUNT];
@@ -139,6 +142,12 @@ namespace FlexKit
 				Components[I].Release();
 		}
 
+
+		ThisType_t& operator = (ThisType_t&& RHS)
+		{
+			return *this;
+		}
+		
 
 		bool Full()
 		{
@@ -219,6 +228,7 @@ namespace FlexKit
 					Source, System, EventID, GO);
 		}
 	}
+
 
 	/************************************************************************************************/
 

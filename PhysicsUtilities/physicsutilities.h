@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\graphics.h"
 
 #include "PxPhysicsAPI.h"
-
+#include <physx\Include\characterkinematic\PxController.h>
 #include <typeinfo>
 
 #ifdef _DEBUG
@@ -363,11 +363,14 @@ namespace FlexKit
 				{
 					if(C.Delta.magnitudesquared() < 10.0f)
 					{
-						C.Controller->move(
+						auto Flags = C.Controller->move(
 							{ C.Delta.x, C.Delta.y, C.Delta.z },
 							0.01f,
 							dT,
 							Filter);
+
+						C.CeilingContact	= Flags & physx::PxControllerCollisionFlag::eCOLLISION_UP;
+						C.FloorContact		= Flags & physx::PxControllerCollisionFlag::eCOLLISION_DOWN;
 
 						auto NewPosition	= C.Controller->getFootPosition();
 						auto NewPositionFK	= { NewPosition.x, NewPosition.y, NewPosition.z };
@@ -453,6 +456,22 @@ namespace FlexKit
 	};
 
 	const uint32_t CharacterControllerSystemID = GetTypeGUID(CharacterControllerSystem);
+
+
+	/************************************************************************************************/
+
+
+	bool GetFloorContact(GameObjectInterface* GO, bool& out)
+	{
+		auto C = FindComponent(GO, CharacterControllerSystemID);
+		if (C) {
+			auto System = (CharacterControllerSystem*)C->ComponentSystem;
+			out = System->Controllers[C->ComponentHandle].FloorContact;
+			return true;
+		}
+		else
+			return false;
+	}
 
 
 	/************************************************************************************************/

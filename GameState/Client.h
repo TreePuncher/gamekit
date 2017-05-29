@@ -83,8 +83,9 @@ struct ClientPlayState : public SubState
 
 	CircularBuffer<InputFrame>	InputBuffer;// Buffers Last 64 Frames(1 Second of Input)
 
+	//Player				LocalPlayer;
+
 	PlayerInputState	LocalInput;
-	Player				LocalPlayer;
 	float2				MouseInput;
 
 	double				ServerUpdatePeriod;
