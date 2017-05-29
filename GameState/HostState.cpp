@@ -233,7 +233,6 @@ void CloseServer(SubState* StateMemory)
 
 void LobbyMode(HostState* ThisState, EngineMemory* ENgine, double dT)
 {
-	/*
 	RakNet::Packet* Packet = nullptr;
 
 	while (Packet = ThisState->Peer->Receive(), Packet) {
@@ -290,8 +289,10 @@ void LobbyMode(HostState* ThisState, EngineMemory* ENgine, double dT)
 		if (CheckPlayerReadyStates(ThisState))
 			QueueGameLoad(ThisState);
 	}
-	*/
 }
+
+
+/************************************************************************************************/
 
 
 void LoadWaitMode(HostState* ThisState, EngineMemory* Engine, double dT)
@@ -517,10 +518,8 @@ HostState* CreateHostState(EngineMemory* Engine, GameFramework* Framework)
 	RakNet::SocketDescriptor sd(gServerPort, nullptr);
 
 	auto res = State->Peer->Startup(16, &sd, 1);
-
-	//State->Game.Initiate(&State->Scene , Framework);
-	//State->Peer->SetMaximumIncomingConnections(16);
-	//State->ServerMode = ServerMode::eSERVERLOBBYMODE;
+	State->Peer->SetMaximumIncomingConnections(16);
+	State->ServerMode = ServerMode::eSERVERLOBBYMODE;
 
 	return State;
 }

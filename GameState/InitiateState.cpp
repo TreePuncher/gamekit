@@ -66,7 +66,7 @@ extern "C"
 			Host,
 			Client,
 			Play,
-		}CurrentMode = Play;
+		}CurrentMode = Menu;
 
 		const char* Name	= nullptr;
 		const char* Server	= nullptr;

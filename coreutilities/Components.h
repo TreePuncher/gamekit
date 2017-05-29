@@ -145,6 +145,11 @@ namespace FlexKit
 
 		ThisType_t& operator = (ThisType_t&& RHS)
 		{
+			for (size_t I = 0; I < ComponentCount; ++I) {
+				Components[I] = RHS.Components[I];
+				Components[I]->ComponentSystem->ObjectMoved(Components[I].ComponentHandle, Components[I].ComponentSystem, *this);
+			}
+
 			return *this;
 		}
 		

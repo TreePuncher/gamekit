@@ -199,7 +199,7 @@ struct HostState : public SubState
 	};
 
 	PhysicsComponentSystem	Scene;
-	//GameplayComponentSystem Game;
+	GameplayComponentSystem Game;
 
 	FlexKit::static_vector<Connection>	OpenConnections;
 	FlexKit::static_vector<bool>		PlayerReadyState;

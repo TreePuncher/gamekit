@@ -488,7 +488,8 @@ namespace FlexKit
 
 	void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
 	{
-		UpdateAnimationsGraphicScene(_ptr->ActiveScene, dt);
+		if(_ptr->ActiveScene)	
+			UpdateAnimationsGraphicScene(_ptr->ActiveScene, dt);
 	}
 
 
@@ -496,9 +497,12 @@ namespace FlexKit
 	{
 		PreDrawGameFramework(Engine, Framework, dt);
 
-		UpdateTransforms	(Engine->Nodes);
-		UpdateCamera		(Engine->RenderSystem, Engine->Nodes, Framework->ActiveCamera, dt);
-		UpdateGraphicScene	(Framework->ActiveScene); // Default Scene
+		if(Framework->ActiveScene)
+		{
+			UpdateTransforms	(Engine->Nodes);
+			UpdateCamera		(Engine->RenderSystem, Engine->Nodes, Framework->ActiveCamera, dt);
+			UpdateGraphicScene	(Framework->ActiveScene); // Default Scene
+		}
 
 		if (Framework->Stats.Fps_T > 1.0)
 		{
@@ -527,20 +531,32 @@ namespace FlexKit
 	{
 		ProfileBegin(PROFILE_SUBMISSION);
 
+		auto RS = &Engine->RenderSystem;
+
+		SubmitUploadQueues(RS);
+		BeginSubmission(RS, Framework->ActiveWindow);
+
+		auto CL = GetCurrentCommandList(RS);
+		ClearBackBuffer		 (RS, CL, Framework->ActiveWindow, { 0, 0, 0, 0 });
+		ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
+		ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->Culler.OcclusionBuffer) }, DefaultClearDepthValues_0);
+
+		Texture2D BackBuffer = GetBackBufferTexture(Framework->ActiveWindow);
+		SetViewport	(CL, BackBuffer);
+		SetScissor	(CL, BackBuffer.WH);
+
+		UploadImmediate(RS, &Framework->Immediate, TempMemory, Framework->ActiveWindow);
+
 		if(
 			Framework->ActiveCamera &&
 			Framework->ActivePhysicsScene &&
 			Framework->ActiveScene &&
 			Framework->ActiveWindow )
 		{
-			auto RS = &Engine->RenderSystem;
 
-			SubmitUploadQueues(RS);
-			BeginSubmission(RS, Framework->ActiveWindow);
 
 			auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 			auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
-			auto CL				= GetCurrentCommandList(RS);
 			auto OutputTarget	= GetRenderTarget(Framework->ActiveWindow);
 
 			GetGraphicScenePVS(Framework->ActiveScene, Framework->ActiveCamera, &PVS, &Transparent);
@@ -561,10 +577,7 @@ namespace FlexKit
 				DPP.Mode			= Framework->DP_DrawMode;
 				DPP.WH				= GetWindowWH(Engine);
 
-
-				UploadImmediate	(RS, &Framework->Immediate, TempMemory, Framework->ActiveWindow);
 				UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
-
 				UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
 
 				UploadCamera			(RS, Engine->Nodes, Framework->ActiveCamera, Framework->ActiveScene->PLights.size(), Framework->ActiveScene->SPLights.size(), 0.0f, Framework->ActiveWindow->WH);
@@ -575,14 +588,6 @@ namespace FlexKit
 			// Submission
 			{
 				//SetDepthBuffersWrite(RS, CL, { GetCurrent(State->DepthBuffer) });
-
-				ClearBackBuffer		 (RS, CL, Framework->ActiveWindow, { 0, 0, 0, 0 });
-				ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
-				ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->Culler.OcclusionBuffer) }, DefaultClearDepthValues_0);
-
-				Texture2D BackBuffer = GetBackBufferTexture(Framework->ActiveWindow);
-				SetViewport	(CL, BackBuffer);
-				SetScissor	(CL, BackBuffer.WH);
 
 				IncrementPassIndex		(&Engine->TiledRender);
 				ClearTileRenderBuffers	(RS, &Engine->TiledRender);
@@ -607,10 +612,13 @@ namespace FlexKit
 					PresentBufferToTarget(RS, CL, &Engine->TiledRender, &OutputTarget, &Engine->RenderSystem.NullSRV);
 
 				ForwardPass				(&Transparent, &Engine->ForwardRender, RS, Framework->ActiveCamera, Framework->ClearColor, &Framework->ActiveScene->PLights, &Engine->Geometry);// Transparent Objects
-				DrawImmediate(RS, CL, &Framework->Immediate, GetBackBufferTexture(Framework->ActiveWindow), Framework->ActiveCamera);
-				CloseAndSubmit({ CL }, RS, Framework->ActiveWindow);
+
 			}
 		}
+
+		DrawImmediate(RS, CL, &Framework->Immediate, GetBackBufferTexture(Framework->ActiveWindow), Framework->ActiveCamera);
+		CloseAndSubmit({ CL }, RS, Framework->ActiveWindow);
+
 		ProfileEnd(PROFILE_SUBMISSION);
 	}
 

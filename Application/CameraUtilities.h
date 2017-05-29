@@ -193,6 +193,10 @@ namespace FlexKit
 			CameraControllers.Allocator = Framework->Engine->BlockAllocator;
 		}
 
+		void ObjectMoved	(ComponentHandle Handle, ComponentSystemInterface* System, GameObjectInterface* GO)
+		{
+			CameraControllers[Handle].GO = GO;
+		}
 
 		void ReleaseHandle	(ComponentHandle Handle)
 		{
