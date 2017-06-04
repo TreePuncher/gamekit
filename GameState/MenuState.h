@@ -36,6 +36,7 @@ struct CBArguements
 	MenuState*		State;
 };
 
+
 struct MenuState : public SubState
 {
 	MenuState(iAllocator* Memory) : BettererWindow(Memory)
@@ -50,17 +51,35 @@ struct MenuState : public SubState
 
 	FlexKit::SimpleWindow	Window;
 	FlexKit::float2			CursorSize;
-
 	FlexKit::ComplexGUI		BettererWindow;
 
-	FlexKit::EntityHandle   Model;
 	double T;
-
 
 	CBArguements CBArgs;
 };
 
 
 MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine);
+
+struct JoinScreen : public SubState
+{
+	JoinScreen(iAllocator* Memory) : BettererWindow(Memory)
+	{
+	}
+
+	JoinScreen(const JoinScreen& rhs) : BettererWindow(rhs.BettererWindow)
+	{
+		CursorSize = rhs.CursorSize;
+	}
+
+	FlexKit::float2			CursorSize;
+	FlexKit::ComplexGUI		BettererWindow;
+
+	CBArguements CBArgs;
+};
+
+
+JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine);
+
 
 #endif

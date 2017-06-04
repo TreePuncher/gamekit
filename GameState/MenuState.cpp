@@ -56,10 +56,11 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		auto* Args = (CBArguements*)_ptr;
 		auto ThisState = Args->State;
 
-		Args->State->Framework->ActiveScene->ClearScene();
+		//Args->State->Framework->ActiveScene->ClearScene();
+		auto Framework = Args->State->Framework;
 
-		PopSubState(Args->State->Framework);
-		PushSubState(Args->State->Framework, CreatePlayState(Args->Engine, Args->State->Framework));
+		PopSubState	(Framework);
+		PushSubState(Framework, CreateJoinScreenState(Framework, Framework->Engine));
 		//PushSubState(Args->State->Framework, CreateClientState(Args->Engine, Args->State->Framework));
 	}
 	return true;
@@ -194,7 +195,6 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 
 	Framework->MouseState.Enabled   = true;
-	auto** asd = &State;
 
 	if(1)
 	{
@@ -297,6 +297,79 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 		TextButton.Text            = "Exit Game";
 		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
 	}
+
+	return State;
+}
+
+
+/************************************************************************************************/
+
+
+bool JoinScreenUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
+{
+	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
+	SimpleWindowInput	Input = {};
+	GameFramework*		Framework = ThisState->Framework;
+
+	Input.LeftMouseButtonPressed = ThisState->Framework->MouseState.LMB_Pressed;
+	Input.MousePosition			 = ThisState->Framework->MouseState.NormalizedPos;
+	Input.CursorWH				 = ThisState->CursorSize;
+
+	ThisState->BettererWindow.Update(dT, Input);
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool JoinScreenPreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
+{
+	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
+	SimpleWindowInput	Input = {};
+
+	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate);
+	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate);
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+void ReleaseJoinScreen(SubState* StateMemory)
+{
+	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
+
+	ThisState->~JoinScreen();
+}
+
+
+/************************************************************************************************/
+
+
+JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine)
+{
+	FK_ASSERT(Framework != nullptr);
+	auto* State	= &Engine->BlockAllocator.allocate_aligned<JoinScreen>(&Engine->BlockAllocator.AllocatorInterface);
+
+	State->VTable.PreDrawUpdate = JoinScreenPreDraw;
+	State->VTable.Update        = JoinScreenUpdate;
+	State->VTable.Release       = ReleaseJoinScreen;
+	State->Framework            = Framework;
+	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
+
+	Framework->MouseState.Enabled   = true;
+
+	auto Grid = State->BettererWindow.CreateGrid();
+	Grid.resize(0.2, 0.3);
+	Grid.SetPosition({ 0.4f, 0.35f});
+	Grid.SetGridDimensions(1, 4);
+	Grid.SetActive(true);
+	auto TextLabel1 = Grid.CreateTextBox({0, 0}, "Test", Framework->DefaultAssets.Font);
+	TextLabel1.SetActive(true);
 
 	return State;
 }

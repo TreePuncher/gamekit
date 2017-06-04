@@ -2413,131 +2413,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	enum DRAWCALLTYPE : size_t
-	{
-		DCT_2DRECT,
-		DCT_2DRECT_TEXTURED,
-		DCT_2DRECT_CLIPPED,
-		DCT_LINES2D,
-		DCT_LINES3D,
-		DCT_TEXT,
-		DCT_TEXT2,
-		DCT_COUNT,
-	};
-
-	struct ClipArea
-	{
-		float2 CLIPAREA_BLEFT;
-		float2 CLIPAREA_TRIGHT;
-	};
-
-	struct Draw_RECT
-	{
-		float2 TRight;
-		float2 BLeft;
-		float4 Color;
-	};
-
-	struct Draw_RECT_CLIPPED
-	{
-		float2 TRight;
-		float2 BLeft;
-		float4 Color;
-		float2 CLIPAREA_TRIGHT;
-		float2 CLIPAREA_BLEFT;
-	};
-
-	struct Draw_RECTPoint
-	{
-		float2 V;
-		float2 UV;
-		float4 Color;
-	};
-
-	struct Draw_TEXTURED_RECT
-	{
-		float2			TRight;
-		float2			BLeft;
-		float2			TLeft_UVOffset;
-		float2			BRight_UVOffset;
-		float4			Color;
-		uint32_t		ZOrder;
-		Texture2D*		TextureHandle;
-	};
-
-	struct Textured_Rect
-	{
-		Texture2D*	Texture;
-		float2		CLIPAREA_BLEFT;
-		float2		CLIPAREA_TRIGHT;
-		float4		Color;
-	};
-
-	struct Draw_LineSet
-	{
-		size_t Begin, Count;
-	};
-
-	struct Draw_TEXT
-	{
-		float2 CLIPAREA_BLEFT;
-		float2 CLIPAREA_TRIGHT;
-		float4 Color;
-
-		TextArea*	Text;
-		FontAsset*	Font;
-	};
-
-	struct Draw_TEXT2
-	{
-		size_t		Begin, Count;
-		float2		TopLeft;
-		float2		BottomRight;
-		float2		Scale;
-		float4		Color;
-		FontAsset*	Font;
-		bool		Center_Height;
-		bool		Center_Width;
-	};
-
-	struct DrawCall
-	{
-		DRAWCALLTYPE	Type;
-		size_t			Index;
-	};
-
-	const uint32_t TEXTBUFFERMINSIZE = 1024;
-
-	struct ImmediateRender
-	{
-		operator ImmediateRender* () { return this; }
-		RenderSystem*				RS;
-
-		Vector<ClipArea>			ClipAreas;
-		Vector<Draw_RECTPoint>	Rects;
-		Vector<Textured_Rect>		TexturedRects;
-		Vector<Draw_TEXT>			Text;
-		Vector<Draw_TEXT2>		Text2;
-		Vector<Draw_LineSet>		DrawLines2D;
-		Vector<Draw_LineSet>		DrawLines3D;
-		Vector<DrawCall>			DrawCalls;
-
-		Vector<const char*>	TextBuffer;
-		size_t					TextBufferPosition;
-		ShaderResourceBuffer	TextBufferGPU;
-		uint32_t				TextBufferSizes[3];
-
-		LineSet						Lines2D;
-		LineSet						Lines3D;
-
-		FrameBufferedResource		RectBuffer;
-		ID3D12PipelineState*		DrawStates[DRAWCALLTYPE::DCT_COUNT];
-	};
-
-
-	/************************************************************************************************/
-
-
 	typedef FlexKit::Handle_t<16>	LightHandle;
 
 	struct LightDesc{
@@ -2562,38 +2437,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void PushCircle2D( ImmediateRender* RG, iAllocator* Memory, float2 POS = {0.0f, 0.0f},		float r = 1.0f, float2 Scale = { 1, 1 },	float3 Color = WHITE );
-	FLEXKITAPI void PushCircle3D( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f},	float r = 1.0f, float3 Scale = { 1, 1, 1 }, float3 Color = WHITE );
-
-	FLEXKITAPI void PushCube_Wireframe		( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f,				 float3 Color = WHITE );
-	FLEXKITAPI void PushCapsule_Wireframe	( ImmediateRender* RG, iAllocator* Memory, float3 POS = {0.0f, 0.0f, 0.0f}, float r = 1.0f, float h = 0, float3 Color = WHITE );
-
-	FLEXKITAPI void PushBox_WireFrame( ImmediateRender* RG, iAllocator* Memory, float3 POS = 0, Quaternion Q = Quaternion::Identity(), float3 BoxDim = 1, float3 Color = WHITE);
-
-	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT Rect );
-	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_RECT_CLIPPED Rect );
-	FLEXKITAPI void PushRect( ImmediateRender* RG, Draw_TEXTURED_RECT Rect );
-
-	FLEXKITAPI void PushText( ImmediateRender* RG, Draw_TEXT Text );
-
-	FLEXKITAPI void PushLineSet2D( ImmediateRender* RG, LineSegments );
-	FLEXKITAPI void PushLineSet3D( ImmediateRender* RG, LineSegments );
-	
-	FLEXKITAPI void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale = { 1.0f, 1.0f }, bool CenterY = false);
-
-	FLEXKITAPI void InitiateImmediateRender		( RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory);
-	FLEXKITAPI void ReleaseDrawImmediate		( RenderSystem* RS, ImmediateRender* RG);
-
-	FLEXKITAPI void Clear		( ImmediateRender* RG );
-	FLEXKITAPI void UploadImmediate	( RenderSystem* RS, ImmediateRender* RG, iAllocator* TempMemory, RenderWindow* TargetWindow);
-
 	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
 	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
 
 	FLEXKITAPI void Release	( PointLightBuffer* out,	iAllocator* Memory );
 	FLEXKITAPI void Release	( SpotLightBuffer* out,		iAllocator* Memory );
-
-	FLEXKITAPI void DrawImmediate( RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* GUIStack, Texture2D Out, Camera* C );
 
 	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
 	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
@@ -2602,8 +2450,6 @@ namespace FlexKit
 
 	FLEXKITAPI void UpdateSpotLightBuffer	( RenderSystem& RS, SceneNodes* nodes, SpotLightBuffer* out, iAllocator* TempMemory );
 	FLEXKITAPI void UpdatePointLightBuffer	( RenderSystem& RS, SceneNodes* nodes, PointLightBuffer* out, iAllocator* TempMemory );
-
-	FLEXKITAPI void DEBUG_DrawCameraFrustum ( ImmediateRender* Render, Camera* C );
 
 
 	/************************************************************************************************/
@@ -2632,8 +2478,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline float3	Grey( float P ) { P = min(max(0, P), 1); return float3(P, P, P); }
-	
+	inline float2 WStoSS		( const float2 XY )	{ return (XY * float2(2, 2)) + float2(-1, -1); }
+	inline float2 Position2SS	( const float2 in )	{ return{ in.x * 2 - 1, in.y * -2 + 1 }; }
+	inline float3 Grey			( const float P )	{ float V = min(max(0, P), 1); return float3(V, V, V); }
+
 
 	/************************************************************************************************/
 

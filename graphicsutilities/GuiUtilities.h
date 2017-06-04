@@ -26,7 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
+
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\ImmediateRendering.h"
 
 #ifndef GUIUTILITIES_H
 #define GUIUTILITIES_H
@@ -47,6 +49,7 @@ namespace FlexKit
 		EGE_BUTTON_TEXTURED,
 		EGE_BUTTON_TEXT,
 		EGE_TEXTINPUT,
+		EGE_TEXTBOX,
 	};
 
 	enum EGUI_FORMATTING
@@ -555,14 +558,15 @@ namespace FlexKit
 		double	HoverLength;
 		bool	ClickState;
 
-		static void Draw		(GUIButtonHandle button, LayoutEngine* Layout);
-		static void Draw_DEBUG	(GUIButtonHandle button, LayoutEngine* Layout);
+		static void Draw		( GUIButtonHandle button, LayoutEngine* Layout );
+		static void Draw_DEBUG	( GUIButtonHandle button, LayoutEngine* Layout );
 
-		static void Update(GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in);
+		static void Update		( GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in );
 	};
 
 
 	/************************************************************************************************/
+
 
 
 	class GUIHandle
@@ -586,6 +590,46 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct GUITextBox;
+
+	class GUITextBoxHandle : public GUIHandle
+	{
+	public:
+		GUITextBoxHandle	( GUIHandle );
+		GUITextBoxHandle	( ComplexGUI* Window, GUIElementHandle In );
+		
+
+		void SetText	( const char* Text );
+		void SetTextFont( FontAsset* Font );
+		void SetCellID	( uint2 CellID );
+
+		float2 WH();
+
+		GUITextBox& _GetTextBox();
+	};
+
+
+	struct GUITextBox
+	{
+		uint2	CellID;
+		float2	Dimensions;
+		float4	Color;
+
+		const char* Text;
+		float4		TextColor;
+		FontAsset*	Font;
+		iAllocator*	Memory;
+
+		void*	USR;
+
+		static void Update		(GUITextBoxHandle  TextBox, LayoutEngine* Layout, double dT, const SimpleWindowInput Input);
+		static void Draw		(GUITextBoxHandle  button, LayoutEngine* Layout);
+		static void Draw_DEBUG	(GUITextBoxHandle  button, LayoutEngine* Layout);
+	};
+
+
+	/************************************************************************************************/
+
 
 	class GUIGridHandle : public GUIHandle
 	{
@@ -593,27 +637,29 @@ namespace FlexKit
 		GUIGridHandle(GUIHandle);
 		GUIGridHandle(ComplexGUI* Window, GUIElementHandle In);
 
-		Vector<GUIDimension>&		RowHeights();
-		Vector<GUIDimension>&		ColumnWidths();
-		GUIGridCell*				CreateCell(uint2);
-		GUIGridCell&				GetCell(uint2 ID, bool& Found);
-		float2						GetCellWH(uint2 ID);
+		Vector<GUIDimension>&		RowHeights		();
+		Vector<GUIDimension>&		ColumnWidths	();
+		GUIGridCell*				CreateCell		(uint2);
+		GUIGridCell&				GetCell			(uint2 ID, bool& Found);
+		float2						GetCellWH		(uint2 ID);
 
 		float2						GetPosition();
 		float2						GetChildPosition(GUIElementHandle Element);
 
 		void						SetPosition(float2 XY);
 
-		GUIGrid&					_GetGrid();
+		GUIGrid&							_GetGrid();
+		Vector<Vector<GUIElementHandle>>	_GetChildren();
 
 		operator GUIElementHandle () { return mBase; }
 
-		void resize(float Width_percent, float Height_percent);
-		void SetGridDimensions(size_t Width, size_t Height);
-		void SetCellFormatting(uint2, EDrawDirection);
+		void resize				( float Width_percent, float Height_percent );
+		void SetGridDimensions	( size_t Width, size_t Height );
+		void SetCellFormatting	( uint2, EDrawDirection );
 		
 
-		GUIButtonHandle CreateButton(uint2 CellID, const char* Str = nullptr, FontAsset* font = nullptr);
+		GUIButtonHandle		CreateButton	(uint2 CellID, const char* Str = nullptr, FontAsset* font = nullptr);
+		GUITextBoxHandle	CreateTextBox	(uint2 CellID, const char* Str = nullptr, FontAsset* font = nullptr);
 	};
 
 
@@ -699,6 +745,9 @@ namespace FlexKit
 		ComplexGUI ( iAllocator* memory );
 		ComplexGUI ( const ComplexGUI& );
 
+		~ComplexGUI() { Release(); }
+
+
 		void Release();
 
 		void Update		( double dt, const SimpleWindowInput in );
@@ -712,22 +761,21 @@ namespace FlexKit
 
 		void UpdateElement		( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	SimpleWindowInput Input );
 
-		GUIGridHandle	CreateGrid	( uint2 ID = {0, 0} );
-		GUIGridHandle	CreateGrid	( GUIElementHandle	Parent, uint2 ID = {0, 0} );
-		GUIButtonHandle CreateButton( GUIElementHandle Parent );
+		GUIGridHandle		CreateGrid		( uint2 ID = {0, 0} );
+		GUIGridHandle		CreateGrid		( GUIElementHandle	Parent, uint2 ID = {0, 0} );
+		GUIButtonHandle		CreateButton	( GUIElementHandle Parent );
+		GUITextBoxHandle	CreateTextBox	( GUIElementHandle Parent );
+		void				CreateTextInputBox();
 
 		void CreateTexturedButton();
-
-		void CreateTextBox();
-		void CreateTextInputBox();
 
 		void CreateHorizontalSlider();
 		void CreateVerticalSlider();
 
 		Vector<GUIBaseElement>		Elements;
 		Vector<GUIGrid>				Grids;
-		Vector<GUIButton>				Buttons;
-
+		Vector<GUIButton>			Buttons;
+		Vector<GUITextBox>			TextBoxes;
 		Vector<Vector<GUIElementHandle>>	Children;
 
 		iAllocator* Memory;

@@ -988,6 +988,7 @@ namespace FlexKit
 		Children	(memory), 
 		Grids		(memory), 
 		Elements	(memory),
+		TextBoxes	(memory),
 		Memory		(memory)
 	{
 		int x = 0;
@@ -1078,6 +1079,9 @@ namespace FlexKit
 			case EGUI_ELEMENT_TYPE::EGE_BUTTON_TEXT: {
 				GUIButton::Update(GUIButtonHandle(this, Element), Layout, dt, Input);
 			}	break;
+			case EGUI_ELEMENT_TYPE::EGE_TEXTBOX: {
+				GUITextBox::Update(GUITextBoxHandle(this, Element), Layout, dt, Input);
+			}	break;
 			default:
 				break;
 			}
@@ -1099,6 +1103,9 @@ namespace FlexKit
 			case EGUI_ELEMENT_TYPE::EGE_BUTTON_TEXT: {
 				GUIButton::Draw(GUIButtonHandle(this, Element), Layout);
 			}	break;
+			case EGUI_ELEMENT_TYPE::EGE_TEXTBOX: {
+				GUITextBox::Draw(GUITextBoxHandle(this, Element), Layout);
+			}	break;
 			default:
 				break;
 			}
@@ -1119,6 +1126,9 @@ namespace FlexKit
 			}	break;
 			case EGUI_ELEMENT_TYPE::EGE_BUTTON_TEXT: {
 				GUIButton::Draw_DEBUG(GUIButtonHandle(this, Element), Layout);
+			}	break;
+			case EGUI_ELEMENT_TYPE::EGE_TEXTBOX: {
+				GUITextBox::Draw_DEBUG(GUITextBoxHandle(this, Element), Layout);
 			}	break;
 			default:
 				break;
@@ -1208,9 +1218,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::CreateTextBox()
+	GUITextBoxHandle ComplexGUI::CreateTextBox(GUIElementHandle Parent)
 	{
+		GUITextBox Box;
+		Box.CellID             = (0, 0);
+		Box.Dimensions         = { 0, 0 };
+		Box.Font               = nullptr;
+		Box.Memory             = Memory;
+		Box.Text               = nullptr;
+		Box.TextColor          = float4(WHITE, 1);
+		Box.USR	               = nullptr;
+		TextBoxes.push_back(Box);
 
+		GUIBaseElement Element;
+		Element.Active         = false;
+		Element.Index          = TextBoxes.size() - 1;
+		Element.Type           = EGUI_ELEMENT_TYPE::EGE_TEXTBOX;
+		Element.UpdatePriority = Elements[Parent].UpdatePriority + 1;
+		Elements.push_back(Element);
+
+		GUIElementHandle Handle = Elements.size() - 1;
+		return { this, Handle };
 	}
 
 
@@ -1608,6 +1636,40 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+
+	void GUITextBox::Update(GUITextBoxHandle TextBox, LayoutEngine* Layout, double dT, const SimpleWindowInput Input)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GUITextBox::Draw(GUITextBoxHandle TextBox, LayoutEngine* Layout)
+	{
+		std::cout << "Drawing TextBox!\n";
+		//Layout->PushText();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GUITextBox::Draw_DEBUG(GUITextBoxHandle TextBox, LayoutEngine* Layout)
+	{
+		Draw_RECT Rect;
+		Rect.BLeft  = {0, 0};
+		Rect.TRight = TextBox.WH();
+		Rect.Color  = float4(WHITE, 1);
+		Layout->PushRect(Rect);
+		std::cout << "Debugging TextBox!\n";
+	}
+
+
+	/************************************************************************************************/
+
+
 	GUIBaseElement&	GUIHandle::Framework()	{
 		return mWindow->Elements[mBase];
 	}
@@ -1751,13 +1813,14 @@ namespace FlexKit
 			CellID[1] < Grid.RowHeights.size())
 		{
 			out = mWindow->CreateButton(mBase);
-			bool Result = false;
-			auto* Cell	= &GetCell(CellID, Result);
 
-			float2 WH = GetCellWH(CellID);
+			float2 WH	= GetCellWH(CellID);
 			mWindow->Buttons[mWindow->Elements[out].Index].Dimensions	= WH;
 			mWindow->Buttons[mWindow->Elements[out].Index].Font			= font;
 			mWindow->Buttons[mWindow->Elements[out].Index].Text			= Str;
+
+			bool Result = false;
+			auto* Cell = &GetCell(CellID, Result);
 
 			if (!Result)
 				Cell = CreateCell(CellID);
@@ -1769,6 +1832,48 @@ namespace FlexKit
 			}
 
 			mWindow->Children[Cell->Children].push_back(out);
+		}
+
+		return{ mWindow, out };
+	}
+
+
+	/************************************************************************************************/
+
+
+	GUITextBoxHandle GUIGridHandle::CreateTextBox(uint2 CellID, const char* Str, FontAsset* Font)
+	{
+		GUIElementHandle out = (uint32_t)-1;
+		auto& Grid = _GetGrid();
+
+		if (CellID[0] < Grid.ColumnWidths.size() &&
+			CellID[1] < Grid.RowHeights.size())
+		{
+			auto TextBox = mWindow->CreateTextBox(mBase);
+
+			float2 WH = GetCellWH(CellID);
+			TextBox._GetTextBox().Dimensions = WH;
+			TextBox._GetTextBox().Color		 = float4(Grey(0.5f), 1);
+
+			TextBox.SetCellID(CellID);
+			TextBox.SetText(Str);
+			TextBox.SetTextFont(Font);
+
+			bool Result = false;
+			auto* Cell = &GetCell(CellID, Result);
+
+			if (!Result)
+				Cell = CreateCell(CellID);
+
+			if (Cell->Children == 0xFFFFFFFF) {
+				auto idx = mWindow->Children.size();
+				mWindow->Children.push_back(Vector<GUIElementHandle>(mWindow->Memory));
+				Cell->Children = idx;
+			}
+
+			mWindow->Children[Cell->Children].push_back(TextBox.mBase);
+			out = TextBox.mBase;
+
 		}
 
 		return{ mWindow, out };
@@ -1816,6 +1921,52 @@ namespace FlexKit
 
 	float2 GUIButtonHandle::WH() { return _IMPL().Dimensions; }
 
+
+	/************************************************************************************************/
+
+
+	GUITextBoxHandle::GUITextBoxHandle(GUIHandle Handle)
+	{
+		mBase = Handle.mBase;
+		mWindow = Handle.mWindow;
+	}
+
+
+	GUITextBoxHandle::GUITextBoxHandle(ComplexGUI* Window, GUIElementHandle In)
+	{
+		mBase = In;
+		mWindow = Window;
+	}
+
+	void GUITextBoxHandle::SetText(const char* Text)
+	{
+		auto& TextBox = _GetTextBox();
+		TextBox.Text = Text;
+	}
+
+	void GUITextBoxHandle::SetTextFont(FontAsset* Font)
+	{
+		auto& TextBox = _GetTextBox();
+		TextBox.Font = Font;
+	}
+
+	void GUITextBoxHandle::SetCellID(uint2 CellID)
+	{
+		auto& TextBox = _GetTextBox();
+		TextBox.CellID = CellID;
+	}
+
+
+	float2 GUITextBoxHandle::WH()
+	{
+		return _GetTextBox().Dimensions;
+	}
+
+
+	GUITextBox& GUITextBoxHandle::_GetTextBox()
+	{
+		return mWindow->TextBoxes[mWindow->Elements[mBase].Index];
+	}
 
 	/************************************************************************************************/
 }// namespace FlexKit
