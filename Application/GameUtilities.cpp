@@ -194,6 +194,16 @@ uint2 GetWindowWH(EngineMemory* Engine)
 /************************************************************************************************/
 
 
+float2 GetPixelSize(EngineMemory* Engine)
+{
+	return GetPixelSize(&Engine->Window);
+}
+
+
+
+/************************************************************************************************/
+
+
 bool InitEngine( EngineMemory* Engine )
 {
 	memset( Engine, 0, PRE_ALLOC_SIZE );

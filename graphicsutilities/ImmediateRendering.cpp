@@ -639,38 +639,121 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	// Position and Area start at Top Left of Screen, going to Bottom Right; Top Left{0, 0} -> Bottom Right{1.0, 1.0f}
-	void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale, bool CenterY)
+	void PrintText(ImmediateRender* IR, const char* str, FontAsset* Font, PrintTextFormatting& Formatting, iAllocator* TempMemory, PrintState& State, bool End)
 	{
 		size_t StrLen = strlen(str);
 
 		Draw_TEXT2 NewDrawCall;
 		NewDrawCall.Font                 = Font;
-		NewDrawCall.Begin                = RG->TextBufferPosition;
+		NewDrawCall.Begin                = IR->TextBufferPosition;
 		NewDrawCall.Count			     = StrLen;
-		NewDrawCall.TopLeft			     = POS;
-		NewDrawCall.BottomRight			 = POS + TextArea;
-		NewDrawCall.Color				 = Color;
-		NewDrawCall.Scale				 = Scale;
-		NewDrawCall.Center_Width		 = CenterY;
 
-		RG->TextBufferPosition	   += StrLen;
-		RG->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, RG->Text2.size() });
-		RG->Text2.push_back(NewDrawCall);
-		RG->TextBuffer.push_back(str);
+		IR->TextBufferPosition	   += StrLen;
+		IR->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, IR->Text2.size() });
+		IR->Text2.push_back(NewDrawCall);
 
-		size_t Idx					= RG->TextBufferGPU.Idx;
-		size_t CurrentBufferSize	= RG->TextBufferSizes[Idx];
+		size_t Idx					= IR->TextBufferGPU.Idx;
+		size_t CurrentBufferSize	= IR->TextBufferSizes[Idx];
 
-		if (CurrentBufferSize <  RG->TextBufferPosition)
+		if (CurrentBufferSize <  IR->TextBufferPosition)
 		{	// Resize Buffer
-			RG->TextBufferSizes[Idx] = 2 * CurrentBufferSize;
+			IR->TextBufferSizes[Idx] = 2 * CurrentBufferSize;
 			CurrentBufferSize		*= 2;
-			auto NewResource         = CreateShaderResource(RG->RS, sizeof(TextEntry) * CurrentBufferSize);
+			auto NewResource         = CreateShaderResource(IR->RS, sizeof(TextEntry) * CurrentBufferSize);
 
-			AddTempShaderRes(RG->TextBufferGPU, RG->RS);
-			RG->TextBufferGPU[0] = NewResource[0];
-			RG->TextBufferGPU[1] = NewResource[1];
-			RG->TextBufferGPU[2] = NewResource[2];
+			AddTempShaderRes(IR->TextBufferGPU, IR->RS);
+			IR->TextBufferGPU[0] = NewResource[0];
+			IR->TextBufferGPU[1] = NewResource[1];
+			IR->TextBufferGPU[2] = NewResource[2];
+		}
+
+		size_t BufferSize = StrLen * sizeof(TextEntry);
+		auto& Text = State.TextBuffer;
+		size_t itr_2 = 0;
+
+		float XBegin = Formatting.StartingPOS.x;
+		float YBegin = Formatting.StartingPOS.y;
+
+		float CurrentX = State.CurrentX;
+		float CurrentY = State.CurrentY;
+		float YAdvance = State.YAdvance;
+
+		size_t BufferOffset = Text.size();
+		size_t OutputBegin = itr_2;
+		size_t LineBegin = OutputBegin + BufferOffset;
+
+		auto CenterLine = [&]()
+		{
+			if (Formatting.CenterX)
+			{
+				const float Offset_X = (Formatting.TextArea.x - CurrentX) / 2.0f;
+				const float Offset_Y = (Formatting.TextArea.y - CurrentY - YAdvance / 2) / 2.0f;
+
+				if (abs(Offset_X) > 0.0001f)
+				{
+					for (size_t ii = LineBegin; ii < itr_2; ++ii)
+					{
+						Text[ii].POS.x += Offset_X;
+						Text[ii].POS.y += Offset_Y;
+					}
+				}
+			}
+		};
+
+
+		for (size_t StrIdx = 0; StrIdx < StrLen; ++StrIdx)
+		{
+			const auto C           = str[StrIdx];
+			const float2 GlyphArea = Font->GlyphTable[C].WH * Formatting.PixelSize;
+			const float  XAdvance  = Font->GlyphTable[C].Xadvance * Formatting.PixelSize.x;
+			const auto G           = Font->GlyphTable[C];
+
+			const float2 Scale	= float2(1.0f, 1.0f) / Font->TextSheetDimensions;
+			const float2 WH		= G.WH * Scale;
+			const float2 XY		= G.XY * Scale;
+			const float2 UVTL	= XY;
+			const float2 UVBR	= XY + WH;
+
+			if (C == '\n' || CurrentX + XAdvance > Formatting.TextArea.x)
+			{
+				CenterLine();
+
+				LineBegin = itr_2;
+				CurrentX = 0;
+				CurrentY += YAdvance / 2 * Formatting.Scale.y;
+			}
+
+			if (CurrentY > Formatting.StartingPOS.y + Formatting.TextArea.y)
+				continue;
+
+			TextEntry Character		= {};
+			Character.POS           = float2(CurrentX + XBegin, CurrentY + YBegin);
+			Character.TopLeftUV     = UVTL;
+			Character.BottomRightUV = UVBR;
+			Character.Color         = Formatting.Color;
+			Character.Size          = WH * Formatting.Scale;
+
+			Text.push_back(Character);
+			YAdvance    = max(YAdvance, GlyphArea.y);
+			CurrentX += XAdvance * Formatting.Scale.x;
+			itr_2++;
+		}
+
+		State.CurrentX		= CurrentX;
+		State.CurrentY		= CurrentY;
+		State.CurrentY		= YAdvance;
+
+		if (End)
+		{
+			CenterLine();
+
+			for (size_t I = 0; I < IR->TextBufferPosition; ++I)
+				Text[I].POS = Position2SS(Text[I].POS);
+
+			for (uint32_t I = 0; I < StrLen; ++I)
+				IR->TextBuffer.push_back(Text[I]);
+
+			State.TextBuffer.Release();
 		}
 	}
 
@@ -678,7 +761,40 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateImmediateRender(RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory) 
+	void PrintText(ImmediateRender* IR, const char* str, FontAsset* Font, PrintTextFormatting& Formatting, iAllocator* TempMemory)
+	{
+		PrintState State;
+		State.CurrentX = 0;
+		State.CurrentY = 0;
+		State.YAdvance = 0;
+		State.TextBuffer.Allocator = TempMemory;
+
+		PrintText(IR, str, Font, Formatting, TempMemory, State, true);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PrintText(ImmediateRender* IR, const char* str, FontAsset* Font, float2 StartPOS, float2 TextArea, float4 Color, float2 PixelSize)
+	{
+		PrintTextFormatting Format;
+		Format.PixelSize = PixelSize;
+		Format.CenterX   = false;
+		Format.CenterY   = false;
+		Format.Color     = Color;
+		Format.PixelSize = PixelSize;
+		Format.Scale     = {1, 1};
+		Format.TextArea  = TextArea;
+
+		PrintText(IR, str, Font, Format, IR->TempMemory);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void InitiateImmediateRender(RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory, iAllocator* TempMemory)
 	{
 		for (size_t I = 0; I < DRAWCALLTYPE::DCT_COUNT; ++I)
 			RG->DrawStates[I] = nullptr;
@@ -907,6 +1023,7 @@ namespace FlexKit
 		Desc.Structured  = false;
 
 		RG->RectBuffer				= CreateConstantBuffer(RS, &Desc);
+		RG->TempMemory				= TempMemory;
 		RG->Rects.Allocator			= Memory;
 		RG->DrawCalls.Allocator		= Memory;
 		RG->Text.Allocator			= Memory;
@@ -917,7 +1034,6 @@ namespace FlexKit
 		RG->TextBuffer.Allocator	= Memory;
 		RG->Text2.Allocator			= Memory;
 		RG->TextBufferPosition		= 0;
-
 		RG->RS = RS;
 
 		RG->TextBufferSizes[0] = TEXTBUFFERMINSIZE;
@@ -944,101 +1060,8 @@ namespace FlexKit
 		UploadLineSegments(RS, &IR->Lines2D);
 		UploadLineSegments(RS, &IR->Lines3D);
 
-		auto PixelSize = GetPixelSize(TargetWindow);
-
-		// Upload Text
-		{
-			size_t BufferSize = IR->TextBufferPosition * sizeof(TextEntry);
-			TextEntry* Text = (TextEntry*)TempMemory->_aligned_malloc(BufferSize);
-			size_t itr_2 = 0;
-
-			for (size_t itr = 0; itr < IR->Text2.size(); itr++)
-			{
-				auto Draw = IR->Text2[itr];
-				auto str = IR->TextBuffer[itr];
-
-				size_t StrSize = Draw.Count;
-				float2 AreaSize = Draw.BottomRight - Draw.TopLeft;
-				float2 TopLeft = Draw.TopLeft;
-				float2 BottomRight = Draw.BottomRight;
-
-				float XBegin = Draw.TopLeft.x;
-				float YBegin = Draw.TopLeft.y;
-
-				float CurrentX = 0;
-				float CurrentY = 0;
-				float YAdvance = 0.0f;
-
-				size_t OutputBegin = itr_2;
-				size_t LineBegin = OutputBegin;
-
-				auto CenterLine = [&]()
-				{
-					if (Draw.Center_Width)
-					{
-						const float Offset_X = (AreaSize.x - CurrentX) / 2.0f;
-						const float Offset_Y = (AreaSize.y - CurrentY - YAdvance / 2) / 2.0f;
-
-						if (abs(Offset_X) > 0.0001f)
-						{
-							for (size_t ii = LineBegin; ii < itr_2; ++ii)
-							{
-								Text[ii].POS.x += Offset_X;
-								Text[ii].POS.y += Offset_Y;
-							}
-						}
-					}
-				};
-
-
-				for (size_t StrIdx = 0; StrIdx < StrSize; ++StrIdx)
-				{
-					const auto C = str[StrIdx];
-					const auto Font = Draw.Font;
-					const float2 GlyphArea = Font->GlyphTable[C].WH * PixelSize;
-					const float  XAdvance = Font->GlyphTable[C].Xadvance * PixelSize.x;
-					const auto G = Font->GlyphTable[C];
-
-					const float2 Scale = float2(1.0f, 1.0f) / Font->TextSheetDimensions;
-					const float2 WH = G.WH * Scale;
-					const float2 XY = G.XY * Scale;
-					const float2 UVTL = XY;
-					const float2 UVBR = XY + WH;
-
-					if (C == '\n' || CurrentX + XAdvance > AreaSize.x)
-					{
-						CenterLine();
-
-						LineBegin = itr_2;
-						CurrentX = 0;
-						CurrentY += YAdvance / 2 * Draw.Scale.y;
-					}
-
-					if (CurrentY > Draw.TopLeft.y + AreaSize.y)
-						continue;
-
-					TextEntry Character = {};
-					Character.POS = float2(CurrentX + XBegin, CurrentY + YBegin);
-					Character.TopLeftUV = UVTL;
-					Character.BottomRightUV = UVBR;
-					Character.Color = Draw.Color;
-					Character.Size = WH * Draw.Scale;
-
-					Text[itr_2] = Character;
-					YAdvance = max(YAdvance, GlyphArea.y);
-					CurrentX += XAdvance * Draw.Scale.x;
-					itr_2++;
-				}
-
-				CenterLine();
-			}
-
-
-			for (size_t I = 0; I < IR->TextBufferPosition; ++I)
-				Text[I].POS = Position2SS(Text[I].POS);
-
-			UpdateResourceByTemp(RS, &IR->TextBufferGPU, Text, BufferSize, 1, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-		}
+		if(IR->TextBuffer.size())
+			UpdateResourceByTemp(RS, &IR->TextBufferGPU, IR->TextBuffer.begin(), IR->TextBuffer.size() * sizeof(TextEntry), 1, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 
 

@@ -469,20 +469,22 @@ namespace FlexKit
 
 	struct LayoutEngine
 	{
-		LayoutEngine(iAllocator* Memory, RenderSystem* RS, ImmediateRender* GUI);
+		LayoutEngine(iAllocator* tempmemory, iAllocator* Memory, RenderSystem* RS, ImmediateRender* GUI, float2 pixelsize);
 
 		RenderSystem*		RS;
 		ImmediateRender*	GUI;
 		iAllocator*			Memory;
+		iAllocator*			TempMemory;
 
 		Vector<float2, 128> PositionStack;
 		
+		float2 PixelSize;
 		float2 GetCurrentPosition();
 
 		static float2 Position2SS(float2);
 		static float3 Position2SS(float3);
 
-		void PrintLine(const char* Str, float2 WH, FontAsset* Font, float2 Offset = {0.0f, 0.0f});
+		void PrintLine(const char* Str, float2 WH, FontAsset* Font, float2 Offset = { 0.0f, 0.0f }, float2 Scale = { 1.0f, 1.0f }, bool CenterX = false, bool CenterY = false);
 
 		void PushLineSegments	( FlexKit::LineSegments& );
 		void PushRect			( Draw_RECT Rect );
@@ -750,11 +752,11 @@ namespace FlexKit
 
 		void Release();
 
-		void Update		( double dt, const SimpleWindowInput in );
+		void Update		( double dt, const SimpleWindowInput in, float2 PixelSize, iAllocator* TempMemory );
 		void Upload		( RenderSystem* RS, ImmediateRender* out );
 
-		void Draw		( RenderSystem* RS, ImmediateRender* out );
-		void Draw_DEBUG	( RenderSystem* RS, ImmediateRender* out );
+		void Draw		( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
+		void Draw_DEBUG	( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
 
 		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
 		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );
@@ -772,10 +774,10 @@ namespace FlexKit
 		void CreateHorizontalSlider();
 		void CreateVerticalSlider();
 
-		Vector<GUIBaseElement>		Elements;
-		Vector<GUIGrid>				Grids;
-		Vector<GUIButton>			Buttons;
-		Vector<GUITextBox>			TextBoxes;
+		Vector<GUIBaseElement>				Elements;
+		Vector<GUIGrid>						Grids;
+		Vector<GUIButton>					Buttons;
+		Vector<GUITextBox>					TextBoxes;
 		Vector<Vector<GUIElementHandle>>	Children;
 
 		iAllocator* Memory;

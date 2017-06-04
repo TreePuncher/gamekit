@@ -39,6 +39,7 @@ bool InitiateCoreSystems	( EngineMemory* Game );
 float GetWindowAspectRatio	( EngineMemory* Engine );
 uint2 GetWindowWH			( EngineMemory* Engine );
 
+float2 GetPixelSize(EngineMemory*);
 
 void UpdateMouseInput(MouseInputState* State, RenderWindow* Window);
 

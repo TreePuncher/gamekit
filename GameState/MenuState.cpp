@@ -112,18 +112,16 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	Input.MousePosition			  = ThisState->Framework->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
-	//DrawSimpleWindow(Input, &ThisState->Window, &StateMemory->Framework->ImmediateRender);
-
-	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Framework->Immediate);
+	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
 
 	if(StateMemory->Framework->DrawDebug)
-		ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Framework->Immediate);
+		ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
 
 	ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Framework->Immediate);
 
 	DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.05f, 0.05f });
 
-	//PrintText(&ThisState->Framework->Immediate, "THIS IS A TEST!\nHello World!", ThisState->Framework->DefaultAssets.Font, { 0.0f, 0.0f }, {0.4f, 0.2f}, float4(WHITE, 1));
+	//PrintText(&ThisState->Framework->Immediate, "THIS IS A TEST!\nHello World!", ThisState->Framework->DefaultAssets.Font, { 0.0f, 0.0f }, {0.4f, 0.2f}, float4(WHITE, 1), GetPixelSize(Engine));
 
 	return true;
 }
@@ -147,7 +145,7 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 	//Yaw(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 );
 	//Pitch(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 * ThisState->Framework->MouseState.dPos[1] * dT);
 	
-	ThisState->BettererWindow.Update(dT, Input);
+	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->TempAllocator);
 
 	//UpdateSimpleWindow(&Input, &ThisState->Window);
 
@@ -315,7 +313,7 @@ bool JoinScreenUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 	Input.MousePosition			 = ThisState->Framework->MouseState.NormalizedPos;
 	Input.CursorWH				 = ThisState->CursorSize;
 
-	ThisState->BettererWindow.Update(dT, Input);
+	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->TempAllocator);
 
 	return true;
 }
@@ -329,8 +327,8 @@ bool JoinScreenPreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	SimpleWindowInput	Input = {};
 
-	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate);
-	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate);
+	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
+	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
 
 	return true;
 }
@@ -364,12 +362,16 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine
 	Framework->MouseState.Enabled   = true;
 
 	auto Grid = State->BettererWindow.CreateGrid();
-	Grid.resize(0.2, 0.3);
-	Grid.SetPosition({ 0.4f, 0.35f});
-	Grid.SetGridDimensions(1, 4);
-	Grid.SetActive(true);
-	auto TextLabel1 = Grid.CreateTextBox({0, 0}, "Test", Framework->DefaultAssets.Font);
+	Grid.resize				(0.2, 0.3);
+	Grid.SetPosition		({ 0.4f, 0.35f});
+	Grid.SetGridDimensions	(1, 4);
+	Grid.SetActive			(true);
+
+	auto TextLabel1 = Grid.CreateTextBox({0, 0}, "Enter IP", Framework->DefaultAssets.Font);
 	TextLabel1.SetActive(true);
+
+	auto TextLabel2 = Grid.CreateTextBox({0, 2}, "Enter Name", Framework->DefaultAssets.Font);
+	TextLabel2.SetActive(true);
 
 	return State;
 }

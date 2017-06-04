@@ -98,15 +98,22 @@ namespace FlexKit
 		size_t itr = 0;
 
 		float y = 0.5f - float(1 + (itr)) * LineHeight;
-		PrintText(IR, C->InputBuffer, C->Font, { 0, y }, float2(1.0f, 1.0f) - float2(0.0f, y), float4(WHITE, 1.0f), { 0.5f / AspectRatio, 0.5f });
+		PrintTextFormatting Format;
+		Format.StartingPOS = { 0, y };
+		Format.TextArea    = float2(1.0f, 1.0f) - float2(0.0f, y);
+		Format.Color       = float4(WHITE, 1.0f);
+		Format.Scale       = { 0.5f / AspectRatio, 0.5f };
+		Format.PixelSize   = float2(1.0f,1.0f ) / Window_WH;
+		PrintText(IR, C->InputBuffer, C->Font, Format, C->Memory);
 
 		for (auto& Line : C->Lines) {
 			float y = 0.5f - float(2 + (itr)) * LineHeight ;
 
 			if (y > 0) {
 				float2 Position(0.0f, y);
-
-				PrintText(IR, Line, C->Font, Position, float2(1.0f, 1.0f) - Position, float4(WHITE, 1.0f), { 0.5f / AspectRatio, 0.5f });
+				Format.StartingPOS = Position;
+				Format.TextArea = float2(1.0f, 1.0f) - Position;
+				PrintText(IR, Line, C->Font, Format, C->Memory);
 				itr++;
 			}
 			else

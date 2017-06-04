@@ -1019,9 +1019,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::Update(double dt, const SimpleWindowInput Input)
+	void ComplexGUI::Update(double dt, const SimpleWindowInput Input, float2 PixelSize, iAllocator* TempMemory)
 	{
-		LayoutEngine Layout(Memory, nullptr, nullptr);
+		LayoutEngine Layout(TempMemory, Memory, nullptr, nullptr, PixelSize);
 
 		for (size_t I = 0; I < Elements.size(); ++I) {
 			switch (Elements[I].Type)
@@ -1048,9 +1048,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::Draw(RenderSystem* RS, ImmediateRender* out)
+	void ComplexGUI::Draw(RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize)
 	{
-		LayoutEngine Layout(Memory, RS, out);
+		LayoutEngine Layout(Temp, Memory, RS, out, PixelSize);
 
 		for (size_t I = 0; I < Elements.size(); ++I) {
 			switch (Elements[I].Type)
@@ -1140,9 +1140,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ComplexGUI::Draw_DEBUG(RenderSystem* RS, ImmediateRender* out)
+	void ComplexGUI::Draw_DEBUG(RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize)
 	{
-		LayoutEngine Layout(Memory, RS, out);
+		LayoutEngine Layout(Temp, Memory, RS, out, PixelSize);
 
 		for(size_t I = 0; I < Elements.size(); ++I)
 		{
@@ -1270,11 +1270,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LayoutEngine::LayoutEngine(iAllocator* memory, RenderSystem* rs, ImmediateRender* gui) :
+	LayoutEngine::LayoutEngine(iAllocator* tempmemory, iAllocator* memory, RenderSystem* rs, ImmediateRender* gui, float2 pixelsize) :
 		PositionStack(memory),
 		RS(rs),
 		GUI(gui),
-		Memory(memory)
+		Memory(memory),
+		PixelSize(pixelsize),
+		TempMemory(tempmemory)
 	{
 	}
 
@@ -1303,9 +1305,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LayoutEngine::PrintLine(const char* Str, float2 WH, FontAsset* Font, float2 Offset)
+	void LayoutEngine::PrintLine(const char* Str, float2 WH, FontAsset* Font, float2 Offset, float2 Scale, bool CenterX, bool CenterY)
 	{
-		PrintText(GUI, Str, Font, GetCurrentPosition() + Offset, WH, float4(WHITE, 1), {1.0f, 1.0f}, true);
+		PrintTextFormatting Formatting = PrintTextFormatting::DefaultParams();
+		Formatting.PixelSize           = PixelSize;
+		Formatting.StartingPOS         = GetCurrentPosition() + Offset;
+		Formatting.TextArea            = WH;
+		Formatting.Color               = float4(WHITE, 1);
+		Formatting.CenterX			   = CenterX;
+		Formatting.CenterY			   = CenterY;
+		PrintText(GUI, Str, Font, Formatting, TempMemory);
 	}
 
 
@@ -1560,7 +1569,7 @@ namespace FlexKit
 		Layout->PushRect(Rect);
 
 		if(button.Text() && button._IMPL().Font)
-			Layout->PrintLine(button.Text(), button.WH(), button._IMPL().Font);
+			Layout->PrintLine(button.Text(), button.WH(), button._IMPL().Font, { 0, 0 }, {1, 1}, true, true);
 	}
 
 
@@ -1648,8 +1657,7 @@ namespace FlexKit
 
 	void GUITextBox::Draw(GUITextBoxHandle TextBox, LayoutEngine* Layout)
 	{
-		std::cout << "Drawing TextBox!\n";
-		//Layout->PushText();
+		Layout->PrintLine(TextBox._GetTextBox().Text, TextBox.WH(), TextBox._GetTextBox().Font, { 0, 0 }, {0.4f, 0.4f}, true, true);
 	}
 
 
@@ -1661,9 +1669,8 @@ namespace FlexKit
 		Draw_RECT Rect;
 		Rect.BLeft  = {0, 0};
 		Rect.TRight = TextBox.WH();
-		Rect.Color  = float4(WHITE, 1);
+		Rect.Color  = float4(Grey(0.3f), 1);
 		Layout->PushRect(Rect);
-		std::cout << "Debugging TextBox!\n";
 	}
 
 

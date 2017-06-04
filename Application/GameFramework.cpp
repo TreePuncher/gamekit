@@ -413,7 +413,7 @@ namespace FlexKit
 		ForwardPass_DESC	FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->TempAllocator);
+		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->BlockAllocator, Engine->TempAllocator);
 		
 
 		{
@@ -521,7 +521,7 @@ namespace FlexKit
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
 			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
-			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), { .7f, .7f });
+			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Engine));
 		}
 
 	}

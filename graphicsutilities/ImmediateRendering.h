@@ -112,13 +112,8 @@ namespace FlexKit
 	struct Draw_TEXT2
 	{
 		size_t		Begin, Count;
-		float2		TopLeft;
-		float2		BottomRight;
-		float2		Scale;
-		float4		Color;
 		FontAsset*	Font;
-		bool		Center_Height;
-		bool		Center_Width;
+		size_t		Pad;
 	};
 
 	struct DrawCall
@@ -127,12 +122,47 @@ namespace FlexKit
 		size_t			Index;
 	};
 
+	struct PrintTextFormatting
+	{
+		static PrintTextFormatting DefaultParams()
+		{
+			return 
+			{
+				{0, 0},
+				{1, 1},
+				{1, 1},
+				{1, 1},
+				float4(WHITE, 1),
+				false, false
+			};
+		}
+
+		float2 StartingPOS;
+		float2 TextArea;
+		float2 Scale;
+		float2 PixelSize;
+		float4 Color;
+
+		bool CenterX;
+		bool CenterY;
+
+	};
+
+	struct PrintState
+	{
+		float		CurrentX;
+		float		CurrentY;
+		float		YAdvance;
+		Vector<TextEntry> TextBuffer;
+	};
+
 	const uint32_t TEXTBUFFERMINSIZE = 1024;
 
 	struct ImmediateRender
 	{
 		operator ImmediateRender* () { return this; }
 		RenderSystem*				RS;
+		iAllocator*					TempMemory;
 
 		Vector<ClipArea>			ClipAreas;
 		Vector<Draw_RECTPoint>		Rects;
@@ -143,7 +173,7 @@ namespace FlexKit
 		Vector<Draw_LineSet>		DrawLines3D;
 		Vector<DrawCall>			DrawCalls;
 
-		Vector<const char*>		TextBuffer;
+		Vector<TextEntry>		TextBuffer;
 		size_t					TextBufferPosition;
 		ShaderResourceBuffer	TextBufferGPU;
 		uint32_t				TextBufferSizes[3];
@@ -176,9 +206,11 @@ namespace FlexKit
 	FLEXKITAPI void PushLineSet2D( ImmediateRender* RG, LineSegments );
 	FLEXKITAPI void PushLineSet3D( ImmediateRender* RG, LineSegments );
 	
-	FLEXKITAPI void PrintText(ImmediateRender* RG, const char* str, FontAsset* Font, float2 POS, float2 TextArea, float4 Color, float2 Scale = { 1.0f, 1.0f }, bool CenterY = false);
+	FLEXKITAPI void PrintText					( ImmediateRender* IR, const char* str, FontAsset* Font, PrintTextFormatting& Formatting, iAllocator* TempMemory );
+	FLEXKITAPI void PrintText					( ImmediateRender* IR, const char* str, FontAsset* Font, PrintTextFormatting& Formatting, iAllocator* TempMemory, PrintState& State, bool End = false );
+	FLEXKITAPI void PrintText					( ImmediateRender* IR, const char* str, FontAsset* Font, float2 StartPOS, float2 TextArea, float4 Color, float2 PixelSize );
 
-	FLEXKITAPI void InitiateImmediateRender		( RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory);
+	FLEXKITAPI void InitiateImmediateRender		( RenderSystem* RS, ImmediateRender* RG, iAllocator* Memory, iAllocator* TempMemory);
 	FLEXKITAPI void ReleaseDrawImmediate		( RenderSystem* RS, ImmediateRender* RG);
 
 	FLEXKITAPI void DrawImmediate	( RenderSystem* RS, ID3D12GraphicsCommandList* CL, ImmediateRender* GUIStack, Texture2D Out, Camera* C );
