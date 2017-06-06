@@ -171,6 +171,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\coreutilities\GUIInputState.h" />
     <ClInclude Include="CameraUtilities.h" />
     <ClInclude Include="Console.h" />
     <ClInclude Include="ConsoleSubState.h" />
@@ -184,6 +185,10 @@
     <ClInclude Include="TestMode.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\coreutilities\GUIInputState.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\Dependencies\sdks\physx\Source\PhysXExtensions\src\ExtDefaultErrorCallback.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>

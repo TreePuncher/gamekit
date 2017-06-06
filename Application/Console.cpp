@@ -200,7 +200,7 @@ namespace FlexKit
 					char* Str = (char*)C->Memory->malloc(64);
 					memset(Str, '\0', 64);
 
-					_itoa(*(size_t*)Var.Data_ptr, Str, 10);
+					_itoa_s(*(size_t*)Var.Data_ptr, Str, 64, 10);
 					ConsolePrint(C, Str, C->Memory);
 				}	break;
 				case ConsoleVariableType::CONSOLE_BOOL:
@@ -473,8 +473,9 @@ namespace FlexKit
 	void EnterLineConsole(Console* C)
 	{
 		C->InputBuffer[C->InputBufferSize++] = '\0';
-		char* str = (char*)C->Memory->malloc(C->InputBufferSize + 256);
-		strcpy(str, C->InputBuffer);
+		size_t BufferSize = C->InputBufferSize + 256;
+		char* str = (char*)C->Memory->malloc(BufferSize);
+		strcpy_s(str, BufferSize, C->InputBuffer);
 
 		PushCommandToHistory(C, str, C->InputBufferSize + 256);
 		ConsolePrint(C, str, C->Memory);
@@ -597,8 +598,10 @@ namespace FlexKit
 
 	void PushCommandToHistory(Console* C, const char* Str, size_t StrLen)
 	{
-		char* NewStr = (char*)C->Memory->malloc(StrLen + 1);
-		strcpy(NewStr, Str);
+		size_t BufferSize = StrLen + 1;
+		char* NewStr = (char*)C->Memory->malloc(BufferSize);
+
+		strcpy_s(NewStr, BufferSize, Str);
 
 		C->CommandHistory.push_back(ConsoleLine(NewStr, C->Memory));
 	}

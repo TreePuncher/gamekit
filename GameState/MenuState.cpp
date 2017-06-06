@@ -60,8 +60,8 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		auto Framework = Args->State->Framework;
 
 		PopSubState	(Framework);
-		PushSubState(Framework, CreateJoinScreenState(Framework, Framework->Engine));
 		//PushSubState(Args->State->Framework, CreateClientState(Args->Engine, Args->State->Framework));
+		PushSubState(Framework, CreateJoinScreenState(Framework, Framework->Engine));
 	}
 	return true;
 }
@@ -103,7 +103,7 @@ bool OnExitLeft(void* _ptr, size_t GUIElement)
 /************************************************************************************************/
 
 
-bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
+bool PreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	SimpleWindowInput	Input	  = {};
@@ -130,7 +130,7 @@ bool PreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
+bool Update			(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	SimpleWindowInput	Input	  = {};
@@ -168,7 +168,7 @@ bool Update			(SubState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-void ReleaseMenu	(SubState* StateMemory)
+void ReleaseMenu	(FrameworkState* StateMemory)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	CleanUpSimpleWindow(&ThisState->Window, ThisState->Framework->Engine->RenderSystem);
@@ -197,15 +197,26 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 	if(1)
 	{
 		auto Grid = State->BettererWindow.CreateGrid();
-		Grid.resize(0.5f, 0.5f);
-		Grid.SetGridDimensions(3, 4);
-		Grid.SetPosition({0.5f, 0.1f});
+		Grid.resize(0.2f, 0.5f);
+		Grid.SetGridDimensions(3, 5);
+		Grid.SetPosition({0.1f, 0.1f});
 
 		auto Font = Framework->DefaultAssets.Font;
 
-		auto Btn1 = Grid.CreateButton({ 0, 1 });
-		auto Btn2 = Grid.CreateButton({ 0, 2 });
-		auto Btn3 = Grid.CreateButton({ 0, 3 });
+		auto C = Grid.ColumnWidths();
+		Grid.ColumnWidths()[0] = 0.05f;
+		Grid.ColumnWidths()[1] = 0.90f;
+		Grid.ColumnWidths()[2] = 0.05f;
+
+		Grid.RowHeights()[0] = 0.05f;
+		Grid.RowHeights()[1] = 0.30f;
+		Grid.RowHeights()[2] = 0.30f;
+		Grid.RowHeights()[3] = 0.30f;
+		Grid.RowHeights()[4] = 0.05f;
+
+		auto Btn1 = Grid.CreateButton({ 1, 1 });
+		auto Btn2 = Grid.CreateButton({ 1, 2 });
+		auto Btn3 = Grid.CreateButton({ 1, 3 });
 
 		auto Args		= &State->CBArgs;
 		Args->Engine	= Engine;
@@ -303,7 +314,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 /************************************************************************************************/
 
 
-bool JoinScreenUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
+bool JoinScreenUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	SimpleWindowInput	Input = {};
@@ -315,14 +326,14 @@ bool JoinScreenUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 
 	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->TempAllocator);
 
-	return true;
+	return false;
 }
 
 
 /************************************************************************************************/
 
 
-bool JoinScreenPreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
+bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 {
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	SimpleWindowInput	Input = {};
@@ -330,17 +341,18 @@ bool JoinScreenPreDraw(SubState* StateMemory, EngineMemory* Engine, double DT)
 	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
 	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
 
-	return true;
+	return false;
 }
 
 
 /************************************************************************************************/
 
 
-void ReleaseJoinScreen(SubState* StateMemory)
+void ReleaseJoinScreen(FrameworkState* StateMemory)
 {
-	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
-
+	JoinScreen*	ThisState = (JoinScreen*)StateMemory;
+	
+	ThisState->BettererWindow.Release();
 	ThisState->~JoinScreen();
 }
 
@@ -351,6 +363,8 @@ void ReleaseJoinScreen(SubState* StateMemory)
 JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine)
 {
 	FK_ASSERT(Framework != nullptr);
+	FK_ASSERT(Engine != nullptr);
+
 	auto* State	= &Engine->BlockAllocator.allocate_aligned<JoinScreen>(&Engine->BlockAllocator.AllocatorInterface);
 
 	State->VTable.PreDrawUpdate = JoinScreenPreDraw;
@@ -362,16 +376,22 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine
 	Framework->MouseState.Enabled   = true;
 
 	auto Grid = State->BettererWindow.CreateGrid();
-	Grid.resize				(0.2, 0.3);
-	Grid.SetPosition		({ 0.4f, 0.35f});
+	Grid.resize				(0.4, 0.3);
+	Grid.SetPosition		({ 0.3f, 0.35f});
 	Grid.SetGridDimensions	(1, 4);
 	Grid.SetActive			(true);
 
-	auto TextLabel1 = Grid.CreateTextBox({0, 0}, "Enter IP", Framework->DefaultAssets.Font);
+	auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter IP", Framework->DefaultAssets.Font);
 	TextLabel1.SetActive(true);
 
-	auto TextLabel2 = Grid.CreateTextBox({0, 2}, "Enter Name", Framework->DefaultAssets.Font);
+	auto TextLabel2		= Grid.CreateTextBox({0, 2}, "Enter Name", Framework->DefaultAssets.Font);
 	TextLabel2.SetActive(true);
+
+	auto IPInput		= Grid.CreateTextBox({ 0, 1 }, "", Framework->DefaultAssets.Font);
+	IPInput.SetActive(true);
+
+	auto NameInput		= Grid.CreateTextBox({ 0, 3 }, "", Framework->DefaultAssets.Font);
+	NameInput.SetActive(true);
 
 	return State;
 }

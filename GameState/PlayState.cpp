@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-bool PlayEventHandler(SubState* StateMemory, Event evt)
+bool PlayEventHandler(FrameworkState* StateMemory, Event evt)
 {
 	PlayState* ThisState = (PlayState*)StateMemory;
 
@@ -88,7 +88,7 @@ bool PlayEventHandler(SubState* StateMemory, Event evt)
 /************************************************************************************************/
 
 
-bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
+bool PlayUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (PlayState*)StateMemory;
 
@@ -179,7 +179,7 @@ bool PlayUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-bool PreDrawUpdate(SubState* StateMemory, EngineMemory* Engine, double dT)
+bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (PlayState*)StateMemory;
 	ThisState->Physics.UpdateSystem_PreDraw(dT);
@@ -222,7 +222,7 @@ PlayState::~PlayState()
 /************************************************************************************************/
 
 
-void ReleasePlayState(SubState* StateMemory)
+void ReleasePlayState(FrameworkState* StateMemory)
 {
 	auto ThisState = (PlayState*)StateMemory;
 	ThisState->Framework->Engine->BlockAllocator.Delete(ThisState);

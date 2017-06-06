@@ -30,7 +30,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	bool ConsoleEventHandler(SubState* StateMemory, Event evt)
+	bool ConsoleEventHandler(FrameworkState* StateMemory, Event evt)
 	{
 		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 
@@ -105,7 +105,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool UpdateConsoleScreen(SubState* StateMemory, EngineMemory*, double DT)
+	bool UpdateConsoleScreen(FrameworkState* StateMemory, EngineMemory*, double DT)
 	{
 		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 	
@@ -116,7 +116,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DrawConsoleScreen(SubState* StateMemory, EngineMemory* Engine, double DT)
+	bool DrawConsoleScreen(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 	{
 		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 	
@@ -135,7 +135,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseConsoleState(SubState* StateMemory)
+	void ReleaseConsoleState(FrameworkState* StateMemory)
 	{
 		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 		ThisState->Framework->ConsoleActive = false;

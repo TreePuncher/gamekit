@@ -55,7 +55,7 @@ struct PlayerImposters
 };
 
 
-struct ClientState : public SubState
+struct ClientState : public FrameworkState
 {
 	RakNet::RakPeerInterface*	Peer;
 	RakNet::SystemAddress		ServerAddr;
@@ -75,7 +75,7 @@ struct ClientState : public SubState
 	char ClientName[256];
 };
 
-struct ClientPlayState : public SubState
+struct ClientPlayState : public FrameworkState
 {
 	ClientState*			NetState;
 	ClientMode				Mode;

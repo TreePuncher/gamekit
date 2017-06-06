@@ -73,8 +73,10 @@ namespace FlexKit
 		if (!Obj)
 			return;
 
-		wchar_t WString[128];
-		mbstowcs(WString, cstr, 128);
+		const size_t StringSize = 128;
+		size_t ConvertedCount = 0;
+		wchar_t WString[StringSize];
+		mbstowcs_s(&ConvertedCount, WString, cstr, StringSize);
 		Obj->SetName(WString);
 #endif
 	}
@@ -3124,8 +3126,9 @@ namespace FlexKit
 
 	bool LoadAndCompileShaderFromFile(const char* FileLoc, ShaderDesc* desc, Shader* out )
 	{
+		size_t ConvertCount = 0;
 		wchar_t WString[256];
-		mbstowcs(WString, FileLoc, 128);
+		mbstowcs_s(&ConvertCount, WString, FileLoc, 128);
 		ID3DBlob* NewBlob   = nullptr;
 		ID3DBlob* Errors    = nullptr;
 		DWORD dwShaderFlags = 0;
@@ -3156,9 +3159,9 @@ namespace FlexKit
 
 		bool res = false;
 		FlexKit::ShaderDesc SDesc;
-		strcpy(SDesc.entry, Entry);
-		strcpy(SDesc.ID, ID);
-		strcpy(SDesc.shaderVersion, ShaderVersion);
+		strncpy_s(SDesc.entry, Entry, 128);
+		strncpy_s(SDesc.ID, ID, 128);
+		strncpy_s(SDesc.shaderVersion, ShaderVersion, 16);
 
 		do
 		{

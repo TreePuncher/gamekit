@@ -14,8 +14,12 @@ Dependencies/
 *.obj
 *.pch
 *.pdb
+*.VC.db
 /.vs/FlexKit/v14/(Desktop's conflicted copy 2016-05-02).suo
 /.vs/FlexKit/v14/ (WIN-IU8R7AI4A8V's conflicted copy 2016-07-02).suo
 *.flooignore
 *.floo
 /x64/Release
+*.db
+/.vs/FlexKit/v15/.suo
+/.vs/FlexKit/v14/.suo

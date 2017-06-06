@@ -103,7 +103,7 @@ void SendPlayerClientStateInfoUpdate(ClientState* Client, Player* P, size_t Fram
 /************************************************************************************************/
 
 
-bool JoinServer(SubState* StateMemory, EngineMemory* Engine, double DT)
+bool JoinServer(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 {
 	auto ThisState = (ClientState*)StateMemory;
 
@@ -201,7 +201,6 @@ ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Framework, c
 	State->Peer                = RakNet::RakPeerInterface::GetInstance();
 	State->PlayerIds.Allocator = Engine->BlockAllocator;
 
-
 	char str[512];
 
 	RakNet::SocketDescriptor desc;
@@ -233,7 +232,7 @@ ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Framework, c
 /************************************************************************************************/
 
 
-bool UpdateClientEventHandler(SubState* StateMemory, Event evt)
+bool UpdateClientEventHandler(FrameworkState* StateMemory, Event evt)
 {
 	ClientPlayState* ThisState = (ClientPlayState*)StateMemory;
 
@@ -292,7 +291,7 @@ bool UpdateClientEventHandler(SubState* StateMemory, Event evt)
 /************************************************************************************************/
 
 
-bool UpdateClientPreDraw(SubState* StateMemory, EngineMemory* Engine, double dT)
+bool UpdateClientPreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	ClientPlayState* ThisState = (ClientPlayState*)StateMemory;
 
@@ -411,7 +410,7 @@ void HandlePackets(ClientPlayState* ThisState, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-bool UpdateClientGameplay(SubState* StateMemory, EngineMemory* Engine, double dT)
+bool UpdateClientGameplay(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	/*
 	auto ThisState = (ClientPlayState*)StateMemory;

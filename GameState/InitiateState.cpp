@@ -28,7 +28,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MenuState.h"
 #include "PlayState.h"
 
+
 using namespace FlexKit;
+
 
 struct CodeExports
 {
@@ -53,6 +55,7 @@ struct CodeExports
 	PostDrawFN				PostDraw;
 	CleanUpFN				Cleanup;
 };
+
 
 extern "C"
 {
@@ -112,6 +115,7 @@ extern "C"
 		return Framework;
 	}
 
+
 	GAMESTATEAPI void GetStateTable(CodeTable* out)
 	{
 		CodeExports* Table = reinterpret_cast<CodeExports*>(out);
@@ -127,10 +131,3 @@ extern "C"
 		Table->Cleanup			= &FlexKit::Cleanup;
 	}
 }
-
-
-
-
-/*
-		
-*/

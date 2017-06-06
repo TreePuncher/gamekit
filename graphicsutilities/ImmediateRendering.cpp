@@ -643,15 +643,6 @@ namespace FlexKit
 	{
 		size_t StrLen = strlen(str);
 
-		Draw_TEXT2 NewDrawCall;
-		NewDrawCall.Font                 = Font;
-		NewDrawCall.Begin                = IR->TextBufferPosition;
-		NewDrawCall.Count			     = StrLen;
-
-		IR->TextBufferPosition	   += StrLen;
-		IR->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, IR->Text2.size() });
-		IR->Text2.push_back(NewDrawCall);
-
 		size_t Idx					= IR->TextBufferGPU.Idx;
 		size_t CurrentBufferSize	= IR->TextBufferSizes[Idx];
 
@@ -746,6 +737,15 @@ namespace FlexKit
 		if (End)
 		{
 			CenterLine();
+
+			Draw_TEXT2 NewDrawCall;
+			NewDrawCall.Font = Font;
+			NewDrawCall.Begin = IR->TextBuffer.size();
+			NewDrawCall.Count = Text.size();
+
+			IR->TextBufferPosition += StrLen;
+			IR->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, IR->Text2.size() });
+			IR->Text2.push_back(NewDrawCall);
 
 			for (size_t I = 0; I < IR->TextBufferPosition; ++I)
 				Text[I].POS = Position2SS(Text[I].POS);

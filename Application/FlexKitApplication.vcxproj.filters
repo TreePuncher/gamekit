@@ -56,6 +56,9 @@
     <ClInclude Include="TestMode.h">
       <Filter>Headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\coreutilities\GUIInputState.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -92,6 +95,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FrameworkSourceFiles.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GUIInputState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

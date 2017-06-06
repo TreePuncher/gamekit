@@ -178,7 +178,7 @@ struct PlayerClientStateInfoUpdate: PacketBase
 	PlayerStateFrame State;
 };
 
-struct HostState : public SubState
+struct HostState : public FrameworkState
 {
 	RakNet::RakPeerInterface*	Peer;
 	size_t						PlayerCount;

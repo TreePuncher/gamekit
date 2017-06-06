@@ -52,12 +52,12 @@ namespace FlexKit
 	{
 	};
 
-	struct SubState;
+	struct FrameworkState;
 
-	typedef bool (*FN_UPDATE_SUBSTATE)  (SubState* StateMemory, EngineMemory*, double DT); // Return True to allow Cascading updates down State Stack
-	typedef void (*FN_RELEASE_SUBSTATE) (SubState* StateMemory);
+	typedef bool (*FN_UPDATE_SUBSTATE)  (FrameworkState* StateMemory, EngineMemory*, double DT); // Return True to allow Cascading updates down State Stack
+	typedef void (*FN_RELEASE_SUBSTATE) (FrameworkState* StateMemory);
 
-	typedef bool(*FN_EVENT_HANDLER) (SubState* StateMemory, Event);
+	typedef bool(*FN_EVENT_HANDLER) (FrameworkState* StateMemory, Event);
 
 
 	struct SubStateVTable
@@ -123,7 +123,7 @@ namespace FlexKit
 	};
 
 
-	struct SubState
+	struct FrameworkState
 	{
 		SubStateVTable	VTable;
 		GameFramework*	Framework;
@@ -136,14 +136,14 @@ namespace FlexKit
 	bool			LoadScene		 (EngineMemory* Engine, GraphicScene* Scene, const char* SceneName);
 	void			DrawMouseCursor	 (EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
 
-	void			PushSubState	 (GameFramework* _ptr, SubState* SS);
+	void			PushSubState	 (GameFramework* _ptr, FrameworkState* SS);
 	void			PopSubState		 (GameFramework* _ptr);
 
 	void			UpdateGameFramework	 (EngineMemory* Engine, GameFramework* _ptr, double dT);
 	void			PreDrawGameFramework (EngineMemory* Engine, GameFramework* _ptr, double dT);
 	void			ReleaseGameFramework (EngineMemory* Engine, GameFramework* _ptr );
 
-	SubStateVTable* GetStateVTable	 (SubState* _ptr);
+	SubStateVTable* GetStateVTable	 (FrameworkState* _ptr);
 
 
 	/************************************************************************************************/
@@ -159,5 +159,7 @@ namespace FlexKit
 	void			Cleanup				( EngineMemory* Engine, GameFramework* Framework );
 	void			PostPhysicsUpdate	( GameFramework* );
 	void			PrePhysicsUpdate	( GameFramework* );
-}
+
+
+}	/************************************************************************************************/
 #endif

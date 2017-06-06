@@ -184,7 +184,7 @@ namespace FlexKit
 		{
 			if (*itr && (*itr)->EventHandler) 
 			{
-				if (!(*itr)->EventHandler((SubState*)(*itr), evt))
+				if (!(*itr)->EventHandler((FrameworkState*)(*itr), evt))
 					break;
 			}
 			itr++;
@@ -229,7 +229,7 @@ namespace FlexKit
 		{
 			auto VTable = *RItr;
 			if (VTable->Release) {
-				VTable->Release(reinterpret_cast<SubState*>(VTable));
+				VTable->Release(reinterpret_cast<FrameworkState*>(VTable));
 			}
 			RItr++;
 		}
@@ -247,7 +247,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void PushSubState(GameFramework* _ptr, SubState* SS)
+	inline void PushSubState(GameFramework* _ptr, FrameworkState* SS)
 	{
 		_ptr->SubStates.push_back(GetStateVTable(SS));
 	}
@@ -261,7 +261,7 @@ namespace FlexKit
 		auto Top = State->SubStates.back();
 
 		if(Top->Release)
-			Top->Release(reinterpret_cast<SubState*>(Top));
+			Top->Release(reinterpret_cast<FrameworkState*>(Top));
 
 		State->SubStates.pop_back();
 	}
@@ -285,7 +285,7 @@ namespace FlexKit
 		while (RItr != REnd)
 		{
 			auto VTable = *RItr;
-			if (VTable->Update && !VTable->Update(reinterpret_cast<SubState*>(VTable), Engine, dT))
+			if (VTable->Update && !VTable->Update(reinterpret_cast<FrameworkState*>(VTable), Engine, dT))
 				break;
 
 			RItr++;
@@ -323,7 +323,7 @@ namespace FlexKit
 		while (RItr != REnd)
 		{
 			auto VTable = *RItr;
-			if (VTable->PreDrawUpdate && !VTable->PreDrawUpdate(reinterpret_cast<SubState*>(VTable), Engine, dT))
+			if (VTable->PreDrawUpdate && !VTable->PreDrawUpdate(reinterpret_cast<FrameworkState*>(VTable), Engine, dT))
 				break;
 
 			RItr++;
@@ -334,7 +334,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	SubStateVTable* GetStateVTable(SubState* _ptr)
+	SubStateVTable* GetStateVTable(FrameworkState* _ptr)
 	{
 		return &_ptr->VTable;
 	}
@@ -520,7 +520,7 @@ namespace FlexKit
 			char* TempBuffer   = (char*)Engine->TempAllocator.malloc(512);
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
-			sprintf(TempBuffer, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
+			sprintf_s(TempBuffer, 512, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
 			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Engine));
 		}
 

@@ -1430,6 +1430,9 @@ namespace FlexKit
 		float Y       = 0;
 		uint32_t Y_ID = 0;
 
+		float RowWidth		= Grid._GetGrid().WH[0];
+		float ColumnHeight	= Grid._GetGrid().WH[1];
+
 		for (auto& h : Grid.ColumnWidths())
 		{
 			uint32_t  X_ID = 0;
@@ -1445,14 +1448,14 @@ namespace FlexKit
 							Grid.mWindow->DrawElement(C, LayoutEngine);
 				}
 
-				LayoutEngine->PushOffset({ w, 0 });
+				LayoutEngine->PushOffset({ w * RowWidth, 0 });
 				X_ID++;
 			}
 
 			for (auto& w : Grid.RowHeights())
 				LayoutEngine->PopOffset();
 
-			LayoutEngine->PushOffset({ 0, h });
+			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
 			Y_ID++;
 		}
 
@@ -1470,51 +1473,74 @@ namespace FlexKit
 	{	// Draws Grid Lines
 		LayoutEngine->PushOffset(Grid.GetPosition());
 
-		float RowLength		= Grid._GetGrid().WH[0];
-		float ColumnLength	= Grid._GetGrid().WH[1];
+		float RowWidth		= Grid._GetGrid().WH[0];
+		float ColumnHeight	= Grid._GetGrid().WH[1];
 
 		Vector<LineSegment> Lines(LayoutEngine->Memory);
 
 		{	// Draw Vertical Lines
-			float Y = 0;
-			for (auto& RowHeight : Grid.ColumnWidths()) {
+			float X = 0;
+			auto& ColumnWidths = Grid.ColumnWidths();
+
+			for (auto& ColumnWidth : ColumnWidths) {
+				float Width = ColumnWidth * RowWidth;
+				X += Width;
+
 				LineSegment Line;
-				Line.A       = float3{ 0, Y, 0 };
-				Line.B       = float3{ RowLength, Y, 0 };
-				Line.AColour = float3(0, 1, 0);
-				Line.BColour = float3(0, 1, 0);
+				Line.A       = float3{ X, 0, 0 };
+				Line.B       = float3{ X, ColumnHeight, 0 };
+				Line.AColour = float3(0, 0, 0.5 +  X/2);
+				Line.BColour = float3(0, 0, 0.5 +  X/2);
 
 				Lines.push_back(Line);
-				Y += RowHeight;
 			}
 
 			LineSegment Line;
-			Line.A       = float3{ 0, Y, 0 };
-			Line.B       = float3{ RowLength, Y, 0 };
-			Line.AColour = float3(0, 1, 0);
+			Line.A       = float3{ RowWidth, 0, 0 };
+			Line.B       = float3{ RowWidth, ColumnHeight, 0 };
+			Line.AColour = float3(1, 0, 0);
 			Line.BColour = float3(0, 1, 0);
+
+			Lines.push_back(Line);
+
+
+			Line.A = float3{ 0, 0, 0 };
+			Line.B = float3{ 0, ColumnHeight, 0 };
+			Line.AColour = float3(0, 1, 0);
+			Line.BColour = float3(1, 0, 0);
 
 			Lines.push_back(Line);
 		}
 
 		{	// Draw Horizontal Lines
-			float X = 0;
-			for (auto& ColumnWidth : Grid.RowHeights()) {
+			float Y = 0;
+			auto& Heights = Grid.RowHeights();
+
+			for (auto& RowHeight : Heights) {
+				float Width = RowHeight * ColumnHeight;
+				Y += Width;
+
 				LineSegment Line;
-				Line.A		 = float3{ X, 0, 0 };
-				Line.B		 = float3{ X, ColumnLength, 0 };
-				Line.AColour = float3(0, 1, 0);
-				Line.BColour = float3(0, 1, 0);
+				Line.A		 = float3{ 0,			Y, 0 };
+				Line.B		 = float3{ RowWidth,	Y, 0 };
+				Line.AColour = float3(0, 0.5 + Y/2, 0);
+				Line.BColour = float3(0, 0.5 + Y/2, 0);
 
 				Lines.push_back(Line);
-				X += ColumnWidth;
 			}
 
 			LineSegment Line;
-			Line.A = float3{ X, 0, 0 };
-			Line.B = float3{ X, ColumnLength, 0 };
-			Line.AColour = float3(0, 1, 0);
-			Line.BColour = float3(0, 1, 0);
+			Line.A			= float3{ 0,		0, 0 };
+			Line.B			= float3{ RowWidth,	0, 0 };
+			Line.AColour	= float3(0, 1, 0);
+			Line.BColour	= float3(1, 0, 0);
+
+			Lines.push_back(Line);
+
+			Line.A			= float3{ 0,		ColumnHeight, 0 };
+			Line.B			= float3{ RowWidth,	ColumnHeight, 0 };
+			Line.AColour	= float3(0, 1, 0);
+			Line.BColour	= float3(1, 0, 0);
 
 			Lines.push_back(Line);
 		}
@@ -1537,14 +1563,14 @@ namespace FlexKit
 							Grid.mWindow->DrawElement_DEBUG(C, LayoutEngine);
 				}
 
-				LayoutEngine->PushOffset({ w, 0 });
+				LayoutEngine->PushOffset({ w * RowWidth, 0 });
 				X_ID++;
 			}
 
 			for (auto& w : Grid.RowHeights())
 				LayoutEngine->PopOffset();
 
-			LayoutEngine->PushOffset({ 0, h });
+			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
 			Y_ID++;
 		}
 
@@ -1645,10 +1671,47 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
-	void GUITextBox::Update(GUITextBoxHandle TextBox, LayoutEngine* Layout, double dT, const SimpleWindowInput Input)
+	void GUITextBox::Update(GUITextBoxHandle TextBox, LayoutEngine* LayoutEngine, double dT, const SimpleWindowInput Input)
 	{
+		auto& Element = TextBox._GetTextBox();
+		auto TL       = LayoutEngine->GetCurrentPosition();
+		auto BR       = TL + TextBox.WH();
+		auto MousePOS = Input.MousePosition;
+		MousePOS.y    = 1.0f - MousePOS.y;
 
+		//for(size_t I = 0; I < 50; ++I)
+		//	std::cout << "\n";
+
+		//std::cout << "TL{ " << TL.x << ":" << TL.y << "}\n";
+		//std::cout << "MP{ " <<MousePOS.x << ":" << MousePOS.y << "}\n";
+		//std::cout << "BR{ " << BR.x << ":" << BR.y << "}\n";
+
+		if(	MousePOS.x >= TL.x && 
+			MousePOS.y >= TL.y && 
+			MousePOS.y <= BR.y &&
+			MousePOS.x <= BR.x )
+		{
+			//if (Element.Entered && Element.HoverDuration == 0.0)
+			//	Element.Entered(Element.USR, Btn);
+
+			//Element.HoverDuration += dT;
+
+			//if (Element.Hover && Element.HoverDuration > Btn._IMPL().HoverLength)
+			//	Element.Hover(Element.USR, Btn);
+
+			std::cout << "ENTERED TEXTBOX!\n";
+
+			if (Element.Clicked && Input.LeftMouseButtonPressed && !Element.ClickState) 
+			{
+				//Element.Clicked(Element.USR, TextBox.mBase);
+				Element.ClickState = true;
+			}
+		}
+		else
+		{
+			Element.ClickState		= false;
+			//Element.HoverDuration	= 0.0;
+		}
 	}
 
 
@@ -1657,7 +1720,15 @@ namespace FlexKit
 
 	void GUITextBox::Draw(GUITextBoxHandle TextBox, LayoutEngine* Layout)
 	{
-		Layout->PrintLine(TextBox._GetTextBox().Text, TextBox.WH(), TextBox._GetTextBox().Font, { 0, 0 }, {0.4f, 0.4f}, true, true);
+		auto& Element = TextBox._GetTextBox();
+		Draw_RECT Rect;
+		Rect.BLeft  = { 0, 0 };
+		Rect.TRight = TextBox.WH();
+		Rect.Color  = Element.Highlighted ? Element.HighlightedColor : Element.Color;
+		Layout->PushRect(Rect);
+
+		if(strlen(Element.Text))
+			Layout->PrintLine(Element.Text, TextBox.WH(), Element.Font, { 0, 0 }, {0.4f, 0.4f}, true, true);
 	}
 
 
@@ -1666,11 +1737,7 @@ namespace FlexKit
 
 	void GUITextBox::Draw_DEBUG(GUITextBoxHandle TextBox, LayoutEngine* Layout)
 	{
-		Draw_RECT Rect;
-		Rect.BLeft  = {0, 0};
-		Rect.TRight = TextBox.WH();
-		Rect.Color  = float4(Grey(0.3f), 1);
-		Layout->PushRect(Rect);
+
 	}
 
 
@@ -1704,8 +1771,8 @@ namespace FlexKit
 
 
 	const GUIBaseElement GUIHandle::Framework() const		{ return mWindow->Elements[mBase];  }
-	Vector<GUIDimension>&	GUIGridHandle::RowHeights()		{ return _GetGrid().ColumnWidths;	}
-	Vector<GUIDimension>&	GUIGridHandle::ColumnWidths()	{ return _GetGrid().RowHeights;		}
+	Vector<GUIDimension>&	GUIGridHandle::RowHeights()		{ return _GetGrid().RowHeights;		}
+	Vector<GUIDimension>&	GUIGridHandle::ColumnWidths()	{ return _GetGrid().ColumnWidths;	}
 
 
 	/************************************************************************************************/
@@ -1725,7 +1792,7 @@ namespace FlexKit
 
 	float2 GUIGridHandle::GetCellWH(uint2 ID){
 		auto temp = _GetGrid().ColumnWidths[ID[1]];
-		return{ _GetGrid().ColumnWidths[ID[0]], _GetGrid().RowHeights[ID[1]] };
+		return float2 { _GetGrid().ColumnWidths[ID[0]], _GetGrid().RowHeights[ID[1]] } * _GetGrid().WH;
 	}
 
 
@@ -1767,17 +1834,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GUIGridHandle::SetGridDimensions(size_t x, size_t y)
+	void GUIGridHandle::SetGridDimensions(size_t Columns, size_t Rows)
 	{
 		auto& Grid = _GetGrid();
-		Grid.ColumnWidths.resize(x);
-		Grid.RowHeights.resize(y);
+		Grid.ColumnWidths.resize(Columns);
+		Grid.RowHeights.resize(Rows);
 
 		for (auto& W : Grid.ColumnWidths)
-			W = Grid.WH[0]  / float(x);
+			W = Grid.WH[0]  / float(Columns);
 
 		for (auto& H : Grid.RowHeights)
-			H = Grid.WH[1] / float(y);
+			H = Grid.WH[1] / float(Rows);
 	}
 
 
@@ -1859,8 +1926,11 @@ namespace FlexKit
 			auto TextBox = mWindow->CreateTextBox(mBase);
 
 			float2 WH = GetCellWH(CellID);
-			TextBox._GetTextBox().Dimensions = WH;
-			TextBox._GetTextBox().Color		 = float4(Grey(0.5f), 1);
+			TextBox._GetTextBox().Dimensions		= WH;
+			TextBox._GetTextBox().Color				= float4(Grey(0.5f), 1);
+
+			TextBox._GetTextBox().Highlighted		= false;
+			TextBox._GetTextBox().HighlightedColor	= float4(Grey(0.8f), 1);
 
 			TextBox.SetCellID(CellID);
 			TextBox.SetText(Str);
@@ -1880,7 +1950,6 @@ namespace FlexKit
 
 			mWindow->Children[Cell->Children].push_back(TextBox.mBase);
 			out = TextBox.mBase;
-
 		}
 
 		return{ mWindow, out };

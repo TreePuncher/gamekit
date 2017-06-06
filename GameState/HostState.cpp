@@ -211,7 +211,7 @@ void QueueGameLoad(HostState* Host)
 /************************************************************************************************/
 
 
-void CloseServer(SubState* StateMemory)
+void CloseServer(FrameworkState* StateMemory)
 {
 	printf("Shutting down Game!\n");
 
@@ -478,7 +478,7 @@ void GameInProgressMode(HostState* ThisState, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-bool UpdateHost(SubState* StateMemory, EngineMemory* Engine, double dT)
+bool UpdateHost(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (HostState*)StateMemory;
 	ThisState->T += dT;

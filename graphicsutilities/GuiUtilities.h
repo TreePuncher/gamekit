@@ -109,7 +109,7 @@ namespace FlexKit
 
 	// CallBacks Definitions
 	typedef bool (*EnteredEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	typedef bool (*ButtonEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	typedef bool (*GenericGUIEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
 	typedef bool (*TextInputEventFN)( char*, size_t, void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
 	typedef bool (*SliderEventFN)	( float,		 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
 
@@ -133,8 +133,8 @@ namespace FlexKit
 
 		void*				_ptr				= nullptr;
 		EnteredEventFN		OnClicked_CB		= nullptr;
-		ButtonEventFN		OnEntered_CB		= nullptr;
-		ButtonEventFN		OnExit_CB			= nullptr;
+		GenericGUIEventFN		OnEntered_CB		= nullptr;
+		GenericGUIEventFN		OnExit_CB			= nullptr;
 	};
 
 	struct GUIElement_TextButton
@@ -151,8 +151,8 @@ namespace FlexKit
 
 		void*				CB_Args				= nullptr;
 		EnteredEventFN		OnClicked_CB		= nullptr;
-		ButtonEventFN		OnEntered_CB		= nullptr;
-		ButtonEventFN		OnExit_CB			= nullptr;
+		GenericGUIEventFN		OnEntered_CB		= nullptr;
+		GenericGUIEventFN		OnExit_CB			= nullptr;
 
 		EGUI_FORMATTING		Formatting = EGF_FORMAT_DEFAULT;
 	};
@@ -211,7 +211,7 @@ namespace FlexKit
 		float2			WH;
 
 		void*			_ptr;
-		ButtonEventFN	OnChanged;
+		GenericGUIEventFN	OnChanged;
 	
 		bool Toggled;
 	};
@@ -288,9 +288,9 @@ namespace FlexKit
 
 	struct GUITexturedButton_Desc
 	{
-		ButtonEventFN OnClicked_CB = nullptr;
-		ButtonEventFN OnEntered_CB = nullptr;
-		ButtonEventFN OnExit_CB	   = nullptr;
+		GenericGUIEventFN OnClicked_CB = nullptr;
+		GenericGUIEventFN OnEntered_CB = nullptr;
+		GenericGUIEventFN OnExit_CB	   = nullptr;
 
 		void* CB_Args;
 
@@ -308,9 +308,9 @@ namespace FlexKit
 
 	struct GUITextButton_Desc
 	{
-		ButtonEventFN OnClicked_CB = nullptr;
-		ButtonEventFN OnEntered_CB = nullptr;
-		ButtonEventFN OnExit_CB	   = nullptr;
+		GenericGUIEventFN OnClicked_CB = nullptr;
+		GenericGUIEventFN OnEntered_CB = nullptr;
+		GenericGUIEventFN OnExit_CB	   = nullptr;
 		void*		  CB_Args;
 
 		float2			WH;				// Width Heigth of Button in Pixels
@@ -341,8 +341,8 @@ namespace FlexKit
 
 		void*				CB_Args			= nullptr;
 		EnteredEventFN		OnClicked_CB	= nullptr;
-		ButtonEventFN		OnEntered_CB	= nullptr;
-		ButtonEventFN		OnExit_CB		= nullptr;
+		GenericGUIEventFN		OnEntered_CB	= nullptr;
+		GenericGUIEventFN		OnExit_CB		= nullptr;
 		TextInputUpdateFN	OnTextUpdate	= nullptr;
 
 		GUITextInput_Desc& SetTextBoxSizeByPixelSize(float2 PixelSize, uint2 PixelWH) {
@@ -546,10 +546,10 @@ namespace FlexKit
 		uint2	CellID;
 		float2	Dimensions;
 
-		EnteredEventFN	Entered;
-		ButtonEventFN	Clicked;
-		ButtonEventFN	Released;
-		ButtonEventFN	Hover;	
+		EnteredEventFN		Entered;
+		GenericGUIEventFN	Clicked;
+		GenericGUIEventFN	Released;
+		GenericGUIEventFN	Hover;	
 
 		const char* Text; 
 		FontAsset*	Font;
@@ -600,10 +600,14 @@ namespace FlexKit
 		GUITextBoxHandle	( GUIHandle );
 		GUITextBoxHandle	( ComplexGUI* Window, GUIElementHandle In );
 		
-
 		void SetText	( const char* Text );
 		void SetTextFont( FontAsset* Font );
 		void SetCellID	( uint2 CellID );
+
+		EnteredEventFN		Entered;
+		GenericGUIEventFN	Clicked;
+		GenericGUIEventFN	Released;
+		GenericGUIEventFN	Hover;
 
 		float2 WH();
 
@@ -611,11 +615,23 @@ namespace FlexKit
 	};
 
 
+	/************************************************************************************************/
+
+
 	struct GUITextBox
 	{
 		uint2	CellID;
 		float2	Dimensions;
 		float4	Color;
+		float4  HighlightedColor;
+
+		EnteredEventFN		Entered;
+		GenericGUIEventFN	Clicked;
+		GenericGUIEventFN	Released;
+		GenericGUIEventFN	Hover;
+
+		bool	Highlighted;
+		bool	ClickState;
 
 		const char* Text;
 		float4		TextColor;

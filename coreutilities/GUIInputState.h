@@ -1,9 +1,6 @@
-#ifndef PLAYSTATE_H
-#define PLAYSTATE_H
-
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2015 - 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,41 +22,46 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#ifndef GUIINPUTSTATE_H
+#define GUIINPUTSTATE_H
+
 #include "..\Application\GameFramework.h"
-#include "..\Application\CameraUtilities.h"
-#include "..\Application\GameMemory.h"
+#include "..\graphicsutilities\GuiUtilities.h"
 
-#include "Gameplay.h"
-/*
-TODO's
-*/
-
-
-struct PlayState : public FrameworkState
+namespace FlexKit
 {
-	// Game Element Controllers
-	//GameplayComponentSystem		Model;
-	~PlayState();
+	struct InputState;
 
-	InputComponentSystem		Input;
-	OrbitCameraSystem			OrbitCameras;
+	struct ARROW_DIRECTION
+	{
+		enum : char
+		{
+			UP,
+			DOWN,
+			LEFT,
+			RIGHT
+		};
+	};
 
-	GraphicScene				GScene;
+	typedef char ARROW_DIR;
 
-	ThirdPersonCameraComponentSystem	TPC;
-	PhysicsComponentSystem				Physics;
-	DrawableComponentSystem				Drawables;
-	LightComponentSystem				Lights;
+	typedef void (*InputStateCallback_ARROW)		(InputState* InputState, ARROW_DIR);
+	typedef void (*InputStateCallback_CHARACTER)	(InputState* InputState, char c);
+	typedef void (*InputStateCallback_KEY)			(InputState* InputState);
 
-	GameObject<>				CubeObjects[1024];
+	struct InputState : public FlexKit::FrameworkState
+	{
+		InputStateCallback_ARROW		OnArrow		= nullptr;	
+		InputStateCallback_CHARACTER	OnChar		= nullptr;
+		InputStateCallback_KEY			OnEnter		= nullptr;
+		InputStateCallback_KEY			OnBackSpace	= nullptr;
 
-	GameObject<>				FloorObject;
-	GameObject<>				TestObject;
-	GameObject<16>				Player;
-};
+		void* USR;
+	};
 
+	InputState*	CreateTextBoxInputState(GameFramework* Framework, GUITextBoxHandle Handle, iAllocator* Memory, size_t BufferSize);
 
-PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework);
-
+	bool GUIInputEventHandler_Helper(FrameworkState* StateMemory, Event evt);
+}
 
 #endif
