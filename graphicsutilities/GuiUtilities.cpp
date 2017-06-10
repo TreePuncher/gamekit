@@ -1379,44 +1379,12 @@ namespace FlexKit
 
 	void GUIGrid::Update(GUIGridHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in)
 	{
-		LayoutEngine->PushOffset(Grid.GetPosition());
-
-		for (auto& C : Grid._GetGrid().Cells)
+		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
 		{
-			float Y = 0;
-			uint32_t Y_ID = 0;
+			Grid.mWindow->UpdateElement(hndl, LayoutEngine, dt, in);
+		};
 
-			for (auto& h : Grid.ColumnWidths())
-			{
-				uint32_t  X_ID = 0;
-
-				for (auto& w : Grid.RowHeights()) {
-					bool Result = false;
-					auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
-					if (Result)
-					{
-						auto& Children = Grid.mWindow->Children[Cell.Children];
-						if (&Children && Children.size())
-							for (auto& C : Children)
-								Grid.mWindow->UpdateElement(C, LayoutEngine, dt, in);
-					}
-
-					LayoutEngine->PushOffset({ w, 0 });
-					X_ID++;
-				}
-
-				for (auto& w : Grid.RowHeights())
-					LayoutEngine->PopOffset();
-
-				LayoutEngine->PushOffset({ 0, h });
-				Y_ID++;
-			}
-
-			for (auto& h : Grid.ColumnWidths())
-				LayoutEngine->PopOffset();
-		}
-
-		LayoutEngine->PopOffset();
+		ScanElements(Grid, *LayoutEngine, ScanFunction);
 	}
 
 
@@ -1425,42 +1393,12 @@ namespace FlexKit
 
 	void GUIGrid::Draw(GUIGridHandle Grid, LayoutEngine* LayoutEngine)
 	{
-		LayoutEngine->PushOffset(Grid.GetPosition());
-
-		float Y = 0;
-		uint32_t Y_ID = 0;
-
-		float RowWidth		= Grid._GetGrid().WH[0];
-		float ColumnHeight	= Grid._GetGrid().WH[1];
-
-		for (auto& h : Grid.RowHeights())
+		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
 		{
-			uint32_t  X_ID = 0;
+			Grid.mWindow->DrawElement(hndl, LayoutEngine);
+		};
 
-			for (auto& w : Grid.ColumnWidths()) {
-				bool Result = false;
-				auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
-				if (Result)
-				{
-					auto& Children = Grid.mWindow->Children[Cell.Children];
-					if (&Children && Children.size())
-						for (auto& C : Children)
-							Grid.mWindow->DrawElement(C, LayoutEngine);
-				}
-
-				LayoutEngine->PushOffset({ w * RowWidth, 0 });
-				X_ID++;
-			}
-
-			for (auto& w : Grid.ColumnWidths())
-				LayoutEngine->PopOffset();
-
-			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
-			Y_ID++;
-		}
-
-		for (auto& h : Grid.RowHeights())
-			LayoutEngine->PopOffset();
+		ScanElements(Grid, *LayoutEngine, ScanFunction);
 	}
 
 
@@ -1543,70 +1481,16 @@ namespace FlexKit
 			Lines.push_back(Line);
 		}
 
-		float Y = 0;
-		uint32_t Y_ID = 0;
-		/*
-		for (auto& h : Grid.ColumnWidths())
-		{
-			uint32_t  X_ID = 0;
-
-			for (auto& w : Grid.RowHeights()) {
-				bool Result = false;
-				auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
-				if (Result)
-				{
-					auto& Children = Grid.mWindow->Children[Cell.Children];
-					if (&Children && Children.size())
-						for (auto& C : Children)
-							Grid.mWindow->DrawElement_DEBUG(C, LayoutEngine);
-				}
-
-				LayoutEngine->PushOffset({ w * RowWidth, 0 });
-				X_ID++;
-			}
-
-			for (auto& w : Grid.RowHeights())
-				LayoutEngine->PopOffset();
-
-			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
-			Y_ID++;
-		}
-		for (auto& h : Grid.ColumnWidths())
-			LayoutEngine->PopOffset();
-
-		*/
-
-		for (auto& h : Grid.RowHeights())
-		{
-			uint32_t  X_ID = 0;
-
-			for (auto& w : Grid.ColumnWidths()) {
-				bool Result = false;
-				auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
-				if (Result)
-				{
-					auto& Children = Grid.mWindow->Children[Cell.Children];
-					if (&Children && Children.size())
-						for (auto& C : Children)
-							Grid.mWindow->DrawElement_DEBUG(C, LayoutEngine);
-				}
-
-				LayoutEngine->PushOffset({ w * RowWidth, 0 });
-				X_ID++;
-			}
-
-			for (auto& w : Grid.ColumnWidths())
-				LayoutEngine->PopOffset();
-
-			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
-			Y_ID++;
-		}
-
-		for (auto& h : Grid.RowHeights())
-			LayoutEngine->PopOffset();
-
 		LayoutEngine->PushLineSegments(Lines);
 		LayoutEngine->PopOffset();
+
+		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
+		{
+			Grid.mWindow->DrawElement_DEBUG(hndl, LayoutEngine);
+		};
+
+		ScanElements(Grid, *LayoutEngine, ScanFunction);
+
 	}
 
 
