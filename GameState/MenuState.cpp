@@ -199,7 +199,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 		auto Grid = State->BettererWindow.CreateGrid();
 		Grid.resize(0.2f, 0.5f);
 		Grid.SetGridDimensions(3, 5);
-		Grid.SetPosition({0.1f, 0.1f});
+		Grid.SetPosition({0.7f, 0.1f});
 
 		auto Font = Framework->DefaultAssets.Font;
 

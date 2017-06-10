@@ -1427,19 +1427,19 @@ namespace FlexKit
 	{
 		LayoutEngine->PushOffset(Grid.GetPosition());
 
-		float Y       = 0;
+		float Y = 0;
 		uint32_t Y_ID = 0;
 
 		float RowWidth		= Grid._GetGrid().WH[0];
 		float ColumnHeight	= Grid._GetGrid().WH[1];
 
-		for (auto& h : Grid.ColumnWidths())
+		for (auto& h : Grid.RowHeights())
 		{
 			uint32_t  X_ID = 0;
 
-			for (auto& w : Grid.RowHeights()) {
+			for (auto& w : Grid.ColumnWidths()) {
 				bool Result = false;
-				auto& Cell  = Grid.GetCell({ X_ID, Y_ID }, Result);
+				auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
 				if (Result)
 				{
 					auto& Children = Grid.mWindow->Children[Cell.Children];
@@ -1452,17 +1452,15 @@ namespace FlexKit
 				X_ID++;
 			}
 
-			for (auto& w : Grid.RowHeights())
+			for (auto& w : Grid.ColumnWidths())
 				LayoutEngine->PopOffset();
 
 			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
 			Y_ID++;
 		}
 
-		for (auto& h : Grid.ColumnWidths())
+		for (auto& h : Grid.RowHeights())
 			LayoutEngine->PopOffset();
-
-		LayoutEngine->PopOffset();
 	}
 
 
@@ -1547,7 +1545,7 @@ namespace FlexKit
 
 		float Y = 0;
 		uint32_t Y_ID = 0;
-
+		/*
 		for (auto& h : Grid.ColumnWidths())
 		{
 			uint32_t  X_ID = 0;
@@ -1573,8 +1571,38 @@ namespace FlexKit
 			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
 			Y_ID++;
 		}
-
 		for (auto& h : Grid.ColumnWidths())
+			LayoutEngine->PopOffset();
+
+		*/
+
+		for (auto& h : Grid.RowHeights())
+		{
+			uint32_t  X_ID = 0;
+
+			for (auto& w : Grid.ColumnWidths()) {
+				bool Result = false;
+				auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
+				if (Result)
+				{
+					auto& Children = Grid.mWindow->Children[Cell.Children];
+					if (&Children && Children.size())
+						for (auto& C : Children)
+							Grid.mWindow->DrawElement_DEBUG(C, LayoutEngine);
+				}
+
+				LayoutEngine->PushOffset({ w * RowWidth, 0 });
+				X_ID++;
+			}
+
+			for (auto& w : Grid.ColumnWidths())
+				LayoutEngine->PopOffset();
+
+			LayoutEngine->PushOffset({ 0, h * ColumnHeight });
+			Y_ID++;
+		}
+
+		for (auto& h : Grid.RowHeights())
 			LayoutEngine->PopOffset();
 
 		LayoutEngine->PushLineSegments(Lines);
