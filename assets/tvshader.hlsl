@@ -44,7 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define MaxSpan	2048
 	  
 
-#define TerrainHeight 512
+#define TerrainHeight 1024
 
 // Constant Buffers
 // ---------------------------------------------------------------------------
@@ -179,7 +179,7 @@ bool CompareAgainstFrustum(float3 V, float r)
 	bool Left	= false;
 	bool Right	= false;
     bool Top    = false;
-    bool Bottom = false;
+    bool Bottom = true;
 
 
 	{
@@ -231,7 +231,7 @@ bool CompareAgainstFrustum(float3 V, float r)
         Bottom  = D <= 0;
     }
 
-	return !(Near & Far & Left & Right & Bottom & Top & Bottom);
+	return !(Near & Far & Left & Right & Bottom);
 }
 
 
@@ -240,82 +240,78 @@ bool CompareAgainstFrustum(float3 V, float r)
 
 float3 GetTopLeftPoint(Region_CP CP)
 {
-	float3 Out = float3(0, 0, 0);
-	float offset = float(CP.POS.w);
+	float3 Out     = float3(0, 0, 0);
+	float offset   = float(CP.POS.w);
 
-    float2 UV_TL = CP.UVCords.xy;
-    float2 UV_BR = CP.UVCords.zw;
+    float2 UV_TL   = CP.UVCords.xy;
+    float2 UV_BR   = CP.UVCords.zw;
     float2 UV_Span = UV_BR - UV_TL;
 
-    float2 UV = UV_TL;
-    float y = 0;
-    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
+    float2 UV      = UV_TL;
+    float2 Test    = float2(1 - UV.x, 1 - UV.y);
+    float y        = HeightMap.Gather(NearestPoint, Test) * TerrainHeight;
 
-	Out.x = CP.POS.x - offset;
-    Out.y = y;
-	Out.z = CP.POS.z + offset;
-
+	Out.x          = CP.POS.x - offset;
+    Out.y          = y;
+	Out.z          = CP.POS.z + offset;
 
 	return Out;
 }
 
 float3 GetTopRightPoint(Region_CP CP)
 {
-	float3 Out = float3(0, 0, 0);
-	float offset = float(CP.POS.w);
-    float2 UV_TL = CP.UVCords.xy;
-    float2 UV_BR = CP.UVCords.zw;
+	float3 Out     = float3(0, 0, 0);
+	float offset   = float(CP.POS.w);
+    float2 UV_TL   = CP.UVCords.xy;
+    float2 UV_BR   = CP.UVCords.zw;
     float2 UV_Span = UV_BR - UV_TL;
 
-    float2 UV = UV_TL + float2(UV_Span.x, 0.0f);
-    float y = 0;
-    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
+    float2 UV      = UV_TL + float2(UV_Span.x, 0.0f);
+    float2 Test    = float2(1 - UV.x, 1 - UV.y);
+    float y        = HeightMap.Gather(NearestPoint, Test) * TerrainHeight;
 
-	Out.x = CP.POS.x + offset;
-    Out.y = y;
-	Out.z = CP.POS.z + offset;
-
-
+	Out.x          = CP.POS.x + offset;
+    Out.y          = y;
+	Out.z          = CP.POS.z + offset;
 
 	return Out;
 }
 
 float3 GetBottomLeftPoint(Region_CP CP)
 {
-	float3 Out = float3(0, 0, 0);
-	float offset = float(CP.POS.w);
-    float2 UV_TL = CP.UVCords.xy;
-    float2 UV_BR = CP.UVCords.zw;
+	float3 Out     = float3(0, 0, 0);
+	float offset   = float(CP.POS.w);
+    float2 UV_TL   = CP.UVCords.xy;
+    float2 UV_BR   = CP.UVCords.zw;
     float2 UV_Span = UV_BR - UV_TL;
 
-    float2 UV = UV_BR - float2(UV_Span.x, 0.0f);
-    float y = 0;
-    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
+    float2 UV      = UV_BR - float2(UV_Span.x, 0.0f);
+
+    float2 Test    = float2(1 - UV.x, 1 - UV.y);
+    float y        = HeightMap.Gather(NearestPoint, Test) * TerrainHeight;
 
 	Out.x = CP.POS.x - offset;
     Out.y = y;
 	Out.z = CP.POS.z - offset;
-
 
 	return Out;
 }
 
 float3 GetBottomRightPoint(Region_CP CP)
 {
-	float3 Out = float3(0, 0, 0);
-	float offset = float(CP.POS.w);
-    float2 UV_TL = CP.UVCords.xy;
-    float2 UV_BR = CP.UVCords.zw;
+	float3 Out     = float3(0, 0, 0);
+	float offset   = float(CP.POS.w);
+    float2 UV_TL   = CP.UVCords.xy;
+    float2 UV_BR   = CP.UVCords.zw;
     float2 UV_Span = UV_BR - UV_TL;
 
-    float2 UV = UV_BR;
-    float y = 0;
-    //HeightMap.Gather(DefaultSampler, UV) * TerrainHeight - TerrainHeight;
+    float2 UV      = UV_BR;
+    float2 Test    = float2(1 - UV.x, 1 - UV.y);
+    float y        = HeightMap.Gather(NearestPoint, Test) * TerrainHeight;
 
-	Out.x = CP.POS.x + offset;
-    Out.y = y;
-	Out.z = CP.POS.z - offset;
-
+	Out.x          = CP.POS.x + offset;
+    Out.y          = y;
+	Out.z          = CP.POS.z - offset;
 
 	return Out;
 }
@@ -405,6 +401,10 @@ Region_CP MakeTopLeft(Region_CP IN)
 }
 
 
+// ---------------------------------------------------------------------------
+
+
+
 Region_CP MakeTopRight(Region_CP IN)
 {
 	Region_CP R;
@@ -429,6 +429,9 @@ Region_CP MakeTopRight(Region_CP IN)
 }
 
 
+// ---------------------------------------------------------------------------
+
+
 Region_CP MakeBottomLeft(Region_CP IN)
 {
     Region_CP R;
@@ -451,6 +454,10 @@ Region_CP MakeBottomLeft(Region_CP IN)
 
     return R;
 }
+
+
+// ---------------------------------------------------------------------------
+
 
 
 Region_CP MakeBottomRight(Region_CP IN)
@@ -479,35 +486,27 @@ Region_CP MakeBottomRight(Region_CP IN)
 }
 
 
-
-
 // ---------------------------------------------------------------------------
 
 
 bool CullRegion(Region_CP R){ 
-    float3 CenterPosition = R.POS.xyz;
-    float2 UVSpan = R.UVCords.xy - R.UVCords.zw;
-    float P4 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy));
-    float P1 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + UVSpan));
-    float P2 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + (UVSpan * float2(0, 1))));
-    float P3 = HeightMap.Gather(DefaultSampler, (R.UVCords.xy + (UVSpan * float2(1, 0))));
+    float3 CenterPosition   = R.POS.xyz;
+    bool TopPlane           = CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
 
-    float HighestPoint  = max(max(P1, P2), max(P3, P4));
-    float LowestPoint   = min(min(P1, P2), min(P3, P4));
+    float3 BL = GetBottomLeftPoint  (R);
+    float3 BR = GetBottomRightPoint (R);
+    float3 TL = GetTopLeftPoint     (R);
+    float3 TR = GetTopRightPoint    (R);
 
-    R.POS.xyz.y = 10000.0f;
-    bool TopPlane       = CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
+    float  Radius = length(BL - TR)/2;
+    float3 POS = (BL - TR) / 2;
 
-    //R.POS.xyz.y = LowestPoint + 1000.0f;
-    //bool BottomPlane    = CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
-
-    return TopPlane; //| BottomPlane;
-
+    return TopPlane;
+    //CompareAgainstFrustum(POS, Radius); //| BottomPlane;
 }
 
 
 // ---------------------------------------------------------------------------
-
 
 
 [maxvertexcount(4)]
@@ -640,10 +639,10 @@ RegionTessFactors ScreenSpaceFactors(InputPatch<Region_CP, 1> ip)
 	float	MinFactor = pow(2, Depth - MaxDepth);
 
 	// Get Regions Points
-	float3 TopLeftPoint		= GetTopLeftPoint(ip[0]);
-	float3 TopRightPoint	= GetTopRightPoint(ip[0]);
-	float3 BottomLeftPoint	= GetBottomLeftPoint(ip[0]);
-	float3 BottomRightPoint = GetBottomRightPoint(ip[0]);
+	float3 TopLeftPoint		= GetTopLeftPoint(ip[0])     * float3(1, 0, 1);
+	float3 TopRightPoint	= GetTopRightPoint(ip[0])    * float3(1, 0, 1);
+	float3 BottomLeftPoint	= GetBottomLeftPoint(ip[0])  * float3(1, 0, 1);
+	float3 BottomRightPoint = GetBottomRightPoint(ip[0]) * float3(1, 0, 1);
 
     float BaseFactor = 8;
     float4 Factors   = float4(BaseFactor, BaseFactor, BaseFactor, BaseFactor); // {Right, Top, Left, Bottom}
@@ -888,15 +887,16 @@ PS_Colour_IN QuadPatchToTris(
     float2 UV = float2(lerp(bezPatch[TopLeft].UV.x, bezPatch[TopRight].UV.x,   1 - uv[0]),
                         lerp(bezPatch[TopLeft].UV.y, bezPatch[BottomLeft].UV.y, uv[1]));
 
-    y = HeightMap.Gather(NearestPoint, UV) * TerrainHeight - TerrainHeight;
+    float2 Test = float2(1 - UV.x, 1 - UV.y);
+    y = HeightMap.Gather(NearestPoint, Test) * TerrainHeight;
 
     float4 WPOS = float4(x, y, z, 1.0f);
 
 	Point.WPOS	= WPOS.xyz;
-	Point.N		= float4(0,1,0, 0.0f);
+	Point.N		= float4(0.0f, 1.0f, 0.0f, 0.0f);
 	Point.POS	= mul(Proj, mul(View, WPOS));
 
-    float t = 1 - y * 1 / -TerrainHeight;
+    float t = y / TerrainHeight;
     t = t * t;
     Point.Colour = float3(t, t, t);
 	return Point;
@@ -932,12 +932,13 @@ PS_Colour_IN QuadPatchToTris_DEBUG(
     float2 UV = float2(lerp(bezPatch[TopLeft].UV.x, bezPatch[TopRight].UV.x, 1 - uv[0]),
                        lerp(bezPatch[TopLeft].UV.y, bezPatch[BottomLeft].UV.y, uv[1]));
 
-    y = HeightMap.Gather(NearestPoint, UV) * TerrainHeight - 0.1f - TerrainHeight;
+    float2 Test = float2(1 - UV.x, 1 - UV.y);
+    y = HeightMap.Gather(NearestPoint, Test) * TerrainHeight;
 
     float4 WPOS = float4(x, y, z, 1.0f);
 
     Point.WPOS  = WPOS.xyz;
-    Point.N     = float4(0, 1, 0, 0.0f);
+    Point.N     = float4(0.0f, 1.0f, 0.0f, 0.0f);
     Point.POS   = mul(Proj, mul(View, WPOS));
 
     float t = 1 - y * 1 / -TerrainHeight;
@@ -960,6 +961,7 @@ PS_Colour_IN QuadPatchToTris_DEBUG(
 
     if (TileID == BottomRight)
         Point.Colour = float3(0, 0, 1);
+
 #endif
     //Point.Colour *= t * t;
 

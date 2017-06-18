@@ -45,7 +45,7 @@ struct GBuffer
 {
 	float4 Albedo	    : SV_TARGET0; // Albedo    + MatID
 	float4 Specular	    : SV_TARGET1; // Specular  
-	float4 Emissive     : SV_TARGET2; // Emmissive 
+	float4 Emissive     : SV_TARGET2; // Emissive 
 	float2 RoughMetal   : SV_TARGET3; // Roughness + Metal
 	float4 NORMAL 	    : SV_TARGET4; // Normal    + W Depth
 	//float4 WPOS 	    : SV_TARGET5;
@@ -184,11 +184,12 @@ GBuffer TerrainPaint(PS_Colour_IN IN)
 		float3(1, 1, 1),
 		0.5f,
 		0.0f,
-		float3(0, 0, 0),
+		float3(0, 1, 0),
 		IN.N,
 		IN.WPOS,
-		1);
+		length(IN.WPOS - CameraPOS));
 }
+
 
 GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 {
@@ -198,16 +199,17 @@ GBuffer DebugTerrainPaint(PS_Colour_IN IN)
 		float3(1, 1, 1),
 		0.5f,
 		0.0f,
-		float3(0, 0, 0),
+		float3(0, 1, 0),
 		IN.N,
 		IN.WPOS,
-		1);
+		length(IN.WPOS - CameraPOS));
 }
+
 
 GBuffer DebugTerrainPaint_2(PS_Colour_IN IN)
 {
 	return Write2GBuffer(
-		IN.Colour,
+		float3(0, 0, 0),
 		0x01,
 		float3(1, 1, 1),
 		0.5f,
@@ -215,8 +217,9 @@ GBuffer DebugTerrainPaint_2(PS_Colour_IN IN)
 		float3(0, 0, 0),
 		IN.N,
 		IN.WPOS,
-		1);
+		length(IN.WPOS - CameraPOS));
 }
+
 
 struct PS_TEXURED_IN
 {
@@ -224,6 +227,7 @@ struct PS_TEXURED_IN
 	float3 N 		: TEXCOORD1;
 	float2 UV		: TEXCOORD2;
 };
+
 
 GBuffer PMain_TEXTURED(PS_TEXURED_IN IN )
 {

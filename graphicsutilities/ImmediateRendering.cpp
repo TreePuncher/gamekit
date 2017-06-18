@@ -1025,15 +1025,15 @@ namespace FlexKit
 
 		RG->RectBuffer				= CreateConstantBuffer(RS, &Desc);
 		RG->TempMemory				= TempMemory;
-		RG->Rects.Allocator			= Memory;
-		RG->DrawCalls.Allocator		= Memory;
-		RG->Text.Allocator			= Memory;
-		RG->TexturedRects.Allocator = Memory;
-		RG->ClipAreas.Allocator		= Memory;
-		RG->DrawLines3D.Allocator	= Memory;
-		RG->DrawLines2D.Allocator	= Memory;
-		RG->TextBuffer.Allocator	= Memory;
-		RG->Text2.Allocator			= Memory;
+		RG->Rects.Allocator			= TempMemory;
+		RG->DrawCalls.Allocator		= TempMemory;
+		RG->Text.Allocator			= TempMemory;
+		RG->TexturedRects.Allocator = TempMemory;
+		RG->ClipAreas.Allocator		= TempMemory;
+		RG->DrawLines3D.Allocator	= TempMemory;
+		RG->DrawLines2D.Allocator	= TempMemory;
+		RG->TextBuffer.Allocator	= TempMemory;
+		RG->Text2.Allocator			= TempMemory;
 		RG->TextBufferPosition		= 0;
 		RG->RS = RS;
 
@@ -1043,8 +1043,8 @@ namespace FlexKit
 
 		RG->TextBufferGPU = CreateShaderResource(RS, sizeof(TextEntry) * TEXTBUFFERMINSIZE);
 
-		InitiateLineSet(RS, Memory, &RG->Lines2D);
-		InitiateLineSet(RS, Memory, &RG->Lines3D);
+		InitiateLineSet(RS, TempMemory, &RG->Lines2D);
+		InitiateLineSet(RS, TempMemory, &RG->Lines3D);
 	}
 
 

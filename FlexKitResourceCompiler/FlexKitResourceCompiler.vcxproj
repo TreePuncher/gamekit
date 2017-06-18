@@ -161,6 +161,7 @@
     <ClInclude Include="Common.h" />
     <ClInclude Include="MeshProcessing.h" />
     <ClInclude Include="MetaData.h" />
+    <ClInclude Include="PhysicsUtilities.h" />
     <ClInclude Include="ResourceUtilities.h" />
     <ClInclude Include="Scenes.h" />
     <ClInclude Include="stdafx.h" />
@@ -188,6 +189,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="PhysicsUtilities.cpp" />
     <ClCompile Include="ResourceUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

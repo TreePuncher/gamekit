@@ -1016,21 +1016,25 @@ namespace FlexKit
 		
 		// The Max is to quiet a error if a no Lights are passed
 
-		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.OutputBuffer, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, CurrentGBuffer.OutputBuffer, TablePOS);		// t0
 		TablePOS = PushCBToDescHeap			(RS, RS->NullConstantBuffer.Get(), TablePOS, 1024); // t1
 
 		if(ReflectionBuffer)
-			TablePOS = Push2DSRVToDescHeap		(RS, *ReflectionBuffer, TablePOS);
+			TablePOS = Push2DSRVToDescHeap		(RS, *ReflectionBuffer, TablePOS);	// t2
 		else
-			TablePOS = PushTextureToDescHeap(RS, RS->NullSRV, TablePOS);
+			TablePOS = PushTextureToDescHeap(RS, RS->NullSRV, TablePOS); // t2
 
-		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
-		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS);
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS); // t3
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS); // t4
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS); // t5
+		TablePOS = PushTextureToDescHeap	(RS, RS->NullSRV, TablePOS); // t6
 
-		TablePOS = Push2DSRVToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer,	TablePOS);
-		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.Temp,				TablePOS, DXGI_FORMAT_R8G8B8A8_UNORM);
+		TablePOS = Push2DSRVToDescHeap		(RS, CurrentGBuffer.LightTilesBuffer,	TablePOS); // t7
+		TablePOS = PushUAV2DToDescHeap		(RS, CurrentGBuffer.Temp,				TablePOS, DXGI_FORMAT_R8G8B8A8_UNORM); //t8
+
+
+		TablePOS = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), TablePOS, 1024);
+		TablePOS = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), TablePOS, 1024);
 
 		{
 			CD3DX12_RESOURCE_BARRIER Barrier[] = {

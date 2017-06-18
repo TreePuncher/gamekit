@@ -35,6 +35,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 
+#include "PxPhysicsAPI.h"
+
 using FlexKit::iAllocator;
 using FlexKit::BlockAllocator;
 using FlexKit::StackAllocator;
@@ -109,6 +111,9 @@ struct CompileSceneFromFBXFile_DESC
 	FlexKit::StackAllocator* LevelMem; 
 	FlexKit::NodeHandle		 SceneRoot;
 
+	physx::PxCooking*		Cooker		= nullptr;
+	physx::PxFoundation*	Foundation	= nullptr;
+
 	bool					 SUBDIVEnabled;
 	bool					 CloseFBX;
 	bool					 IncludeShaders;
@@ -120,10 +125,6 @@ typedef LoadGeometry_RES*				LoadGeometryRES_ptr;
 typedef static_vector<Resource*, 256>	ResourceList;
 
 FileDir SelectFile();
-
-/************************************************************************************************/
-
-
 
 
 /************************************************************************************************/

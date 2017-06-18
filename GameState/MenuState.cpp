@@ -227,8 +227,8 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 		std::cout << Args->State->Framework;
 
 		Btn1.SetActive(true);
-		auto& Btn1_Ref = Btn1._IMPL();
-		auto DefaultFont = State->Framework->DefaultAssets.Font;
+		auto& Btn1_Ref		= Btn1._IMPL();
+		auto DefaultFont	= State->Framework->DefaultAssets.Font;
 
 		Btn1_Ref.Clicked = OnHostPressed;
 		Btn1_Ref.USR     = Args;
@@ -338,8 +338,10 @@ bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	SimpleWindowInput	Input = {};
 
-	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
 	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
+	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
+
+	DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.02f / GetWindowAspectRatio(Engine), 0.02f});
 
 	return false;
 }
@@ -360,6 +362,26 @@ void ReleaseJoinScreen(FrameworkState* StateMemory)
 /************************************************************************************************/
 
 
+bool ServerFieldClicked(void* _ptr, size_t GUIElement)
+{
+	std::cout << "Server Field Clicked\n";
+	return false;
+}
+
+
+/************************************************************************************************/
+
+
+bool NameFieldClicked(void* _ptr, size_t GUIElement)
+{
+	std::cout << "Name Field Clicked\n";
+	return false;
+}
+
+
+/************************************************************************************************/
+
+
 JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine)
 {
 	FK_ASSERT(Framework != nullptr);
@@ -367,31 +389,49 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine
 
 	auto* State	= &Engine->BlockAllocator.allocate_aligned<JoinScreen>(&Engine->BlockAllocator.AllocatorInterface);
 
+	Framework->MouseState.Enabled = true;
+
 	State->VTable.PreDrawUpdate = JoinScreenPreDraw;
 	State->VTable.Update        = JoinScreenUpdate;
 	State->VTable.Release       = ReleaseJoinScreen;
 	State->Framework            = Framework;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 
-	Framework->MouseState.Enabled   = true;
+	memset(State->Name, '\0', sizeof(JoinScreen::Name));
+	memset(State->Server, '\0', sizeof(JoinScreen::Server));
 
-	auto Grid = State->BettererWindow.CreateGrid();
-	Grid.resize				(0.4, 0.3);
+	auto  Grid = State->BettererWindow.CreateGrid();
+	auto& GridImpl = Grid._GetGrid();
+	Grid.resize				(0.3, 0.2);
 	Grid.SetPosition		({ 0.3f, 0.35f});
-	Grid.SetGridDimensions	(1, 4);
+	Grid.SetGridDimensions	(1, 5);
 	Grid.SetActive			(true);
 
-	auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter IP", Framework->DefaultAssets.Font);
+	GridImpl.RowHeights[0] = 0.20f;
+	GridImpl.RowHeights[1] = 0.20f;
+	GridImpl.RowHeights[2] = 0.20f;
+	GridImpl.RowHeights[3] = 0.20f;
+	GridImpl.RowHeights[4] = 0.20f;
+
+	GridImpl.ColumnWidths[0] = 1.0f;
+
+	auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter Server IP", Framework->DefaultAssets.Font);
 	TextLabel1.SetActive(true);
 
 	auto TextLabel2		= Grid.CreateTextBox({0, 2}, "Enter Name", Framework->DefaultAssets.Font);
 	TextLabel2.SetActive(true);
 
-	auto IPInput		= Grid.CreateTextBox({ 0, 1 }, "", Framework->DefaultAssets.Font);
+	auto IPInput		= Grid.CreateTextBox({ 0, 1 }, State->Name, Framework->DefaultAssets.Font);
 	IPInput.SetActive(true);
-
-	auto NameInput		= Grid.CreateTextBox({ 0, 3 }, "", Framework->DefaultAssets.Font);
+	IPInput._IMPL().Clicked		= ServerFieldClicked;
+	auto NameInput				= Grid.CreateTextBox({ 0, 3 }, State->Server, Framework->DefaultAssets.Font);
 	NameInput.SetActive(true);
+	NameInput._IMPL().Clicked	= NameFieldClicked;
+	NameInput.SetUSR(State);
+
+	//auto AcceptButton	= Grid.CreateButton({ 0, 4 }, "Accept", Framework->DefaultAssets.Font);
+	//AcceptButton.SetActive(true);
+	//sAcceptButton.SetUSR(State);
 
 	return State;
 }

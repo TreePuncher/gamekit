@@ -58,7 +58,9 @@ struct MenuState : public FrameworkState
 	CBArguements CBArgs;
 };
 
+
 MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine);
+
 
 struct JoinScreen : public FrameworkState
 {
@@ -78,6 +80,13 @@ struct JoinScreen : public FrameworkState
 
 	char	Name	[32];
 	char	Server	[64];
+
+	enum SubState
+	{
+		ENTERSERVERINFO,
+		ENTERNAMEINFO,
+		NONE
+	}State;
 
 	CBArguements CBArgs;
 };

@@ -211,11 +211,13 @@ namespace FlexKit
 	FLEXKITAPI void AddRef(PhysicsSystem* PS, ColliderHandle);
 	FLEXKITAPI void Release(PhysicsSystem* PS, ColliderHandle);
 
+	FLEXKITAPI ColliderHandle			LoadTriMeshCollider			(PhysicsSystem* PS, Resources* RM, GUID_t Guid);
+	FLEXKITAPI physx::PxHeightField*	LoadHeightFieldCollider		(PhysicsSystem* PS, Resources* RM, GUID_t Guid);
+
 	/*
 	FLEXKITAPI size_t			CreateCubeActor			(physx::PxMaterial* material, PScene* scene, float l, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
 	FLEXKITAPI size_t			CreatePlaneCollider		(physx::PxMaterial* material, PScene* scene);
 	FLEXKITAPI size_t			CreateSphereActor		(physx::PxMaterial* material, PScene* scene, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
-	FLEXKITAPI ColliderHandle	LoadTriMeshCollider		(PhysicsSystem* PS, Resources* RM, GUID_t Guid);
 	FLEXKITAPI size_t			CreateStaticActor		(PhysicsSystem* PS, PScene* Scene, NodeHandle Node, float3 POS = { 0, 0, 0 }, Quaternion Q = Quaternion::Identity());
 
 

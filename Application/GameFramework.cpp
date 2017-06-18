@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConsoleSubState.h"
 #include "GameFramework.h"
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\ImageUtilities.h"
 
 // TODO's
 //	Gameplay:
@@ -378,6 +379,7 @@ namespace FlexKit
 		GameFramework& Framework = Engine->BlockAllocator.allocate_aligned<GameFramework>();
 		SetDebugMemory(&Engine->Debug);
 
+		AddResourceFile("assets\\assets.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
 		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
 
@@ -426,7 +428,11 @@ namespace FlexKit
 			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
 		{
-			Framework.DefaultAssets.Terrain = LoadTextureFromFile("assets\\textures\\HeightMap_1.DDS", Engine->RenderSystem, Engine->BlockAllocator);
+			TextureBuffer TempBuffer;
+			LoadBMP("assets\\textures\\TestMap.bmp", Engine->BlockAllocator, &TempBuffer);
+			Texture2D	HeightMap = LoadTexture(&TempBuffer, Engine->RenderSystem, Engine->BlockAllocator);
+
+			Framework.DefaultAssets.Terrain = HeightMap;
 
 			Landscape_Desc Land_Desc;{
 				Land_Desc.HeightMap = Framework.DefaultAssets.Terrain;
@@ -537,6 +543,8 @@ namespace FlexKit
 		BeginSubmission(RS, Framework->ActiveWindow);
 
 		auto CL = GetCurrentCommandList(RS);
+
+		SetDepthBuffersWrite (RS, CL, { GetCurrent(&Engine->DepthBuffer) });
 		ClearBackBuffer		 (RS, CL, Framework->ActiveWindow, { 0, 0, 0, 0 });
 		ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
 		ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->Culler.OcclusionBuffer) }, DefaultClearDepthValues_0);
@@ -553,8 +561,6 @@ namespace FlexKit
 			Framework->ActiveScene &&
 			Framework->ActiveWindow )
 		{
-
-
 			auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 			auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
 			auto OutputTarget	= GetRenderTarget(Framework->ActiveWindow);
@@ -587,7 +593,6 @@ namespace FlexKit
 
 			// Submission
 			{
-				//SetDepthBuffersWrite(RS, CL, { GetCurrent(State->DepthBuffer) });
 
 				IncrementPassIndex		(&Engine->TiledRender);
 				ClearTileRenderBuffers	(RS, &Engine->TiledRender);
@@ -612,10 +617,10 @@ namespace FlexKit
 					PresentBufferToTarget(RS, CL, &Engine->TiledRender, &OutputTarget, &Engine->RenderSystem.NullSRV);
 
 				ForwardPass				(&Transparent, &Engine->ForwardRender, RS, Framework->ActiveCamera, Framework->ClearColor, &Framework->ActiveScene->PLights, &Engine->Geometry);// Transparent Objects
-
 			}
 		}
 
+		SetDepthBuffersRead(RS, CL, { GetCurrent(&Engine->DepthBuffer) });
 		DrawImmediate(RS, CL, &Framework->Immediate, GetBackBufferTexture(Framework->ActiveWindow), Framework->ActiveCamera);
 		CloseAndSubmit({ CL }, RS, Framework->ActiveWindow);
 

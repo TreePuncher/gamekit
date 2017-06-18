@@ -111,7 +111,7 @@ bool PlayUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 	//Translate(ThisState->Player, float3{ 0, 100, 0 } * dT);
 	auto Forward	= GetForwardVector(ThisState->Player);
 	auto Left		= GetLeftVector(ThisState->Player);
-	const float MoveRate = 25;
+	const float MoveRate = 100;
 
 	if (ThisState->Input.KeyState.Forward)
 		Translate(ThisState->Player, Forward * dT * MoveRate);
@@ -426,8 +426,14 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
-	FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+	auto HF = LoadHeightFieldCollider(&Engine->Physics, &Engine->Assets, 10601);
 
+	PxHeightFieldGeometry hfGeom(HF, PxMeshGeometryFlags(), 1024.0f/32767.0f , 8, 8);
+	PxTransform HFPose(PxVec3(-4096, 0, -4096));
+	auto aHeightFieldActor = Engine->Physics.Physx->createRigidStatic(HFPose);
+
+	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Engine->Physics.DefaultMaterial, 1);
+	State->Physics.Scene->addActor(*aHeightFieldActor);
 	GameObject<> Test;
 
 	InitiateGameObject(
@@ -441,10 +447,12 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	SetVisibility(State->TestObject, false);
 
 #if 1
-	InitiateGameObject( 
-		State->FloorObject,
-			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
-#endif
+	//FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
+
+
+	//InitiateGameObject( 
+	//	State->FloorObject,
+	//		State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
 
 	for(size_t I = 0; I < 10; ++I){
 		InitiateGameObject( 
@@ -452,19 +460,22 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 				CreateEnityComponent(&State->Drawables, "Flower"),
 				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
 				State->Physics.CreateCubeComponent(
-					{ 0, 20.0f + 10.0f * I, 0}, 
+					{ 0, 1000.0f + 10.0f * I, 0}, 
 					{ 0, 10, 0}, 1));
 
 		SetRayVisibility(State->CubeObjects[I], true);
 	}
 
+
+#endif
+
 	InitiateGameObject(
 		State->Player,
 			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
-			CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			//CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
+			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
-	Translate		(State->Player, {0, 0, -10});
+	Translate		(State->Player, {0, 1000, -10});
 	SetCameraOffset	(State->Player, { 0, 15, 10 });
 	YawCamera(State->Player, pi);
 	//Yaw(State->Player, pi);

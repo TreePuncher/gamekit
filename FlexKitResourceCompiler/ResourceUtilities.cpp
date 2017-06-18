@@ -903,36 +903,8 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 	fbxsdk::FbxManager*				Manager     = fbxsdk::FbxManager::Create();
 	fbxsdk::FbxIOSettings*			Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
 	fbxsdk::FbxScene*				Scene       = nullptr;
-	physx::PxCooking*				Cooker		= nullptr;
-	physx::PxFoundation*			Foundation	= nullptr;
-	physx::PxDefaultErrorCallback	DefaultErrorCallback;
-	physx::PxDefaultAllocator		DefaultAllocatorCallback;
 
 	Manager->SetIOSettings(Settings);
-
-	if (Desc->CookingEnabled)
-	{
-#if USING(RESCOMPILERVERBOSE)
-		std::cout << "Physx Model Baking Enabled!\n";
-#endif
-		Foundation	= PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, DefaultErrorCallback);
-		FK_ASSERT(Foundation);
-
-		Cooker		= PxCreateCooking(PX_PHYSICS_VERSION ,*Foundation, physx::PxCookingParams(physx::PxTolerancesScale()));
-		FK_ASSERT(Cooker);
-	}
-
-	FINALLY{
-		Manager->Destroy();
-		if (Desc->CookingEnabled)
-		{
-			if (Foundation)
-				Foundation->release();
-
-			if (Cooker)
-				Cooker->release();
-		}
-	}FINALLYOVER;
 
 	auto res = LoadFBXScene( AssetLocation, Manager, Settings );
 	if (res)
@@ -940,7 +912,7 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 		SceneList Scenes;
 		FBXIDTranslationTable Table(*Desc->BlockMemory);
 		GetScenes(res, *Desc->BlockMemory, *Desc->BlockMemory, METAINFO, &Scenes);
-		ResourceList LoadRes = GatherSceneResources((FbxScene*)res, Cooker, *Desc->BlockMemory, &Table, true, METAINFO);
+		ResourceList LoadRes = GatherSceneResources((FbxScene*)res, Desc->Cooker, *Desc->BlockMemory, &Table, true, METAINFO);
 
 		for (auto Scene : Scenes){
 			auto res = CreateSceneResourceBlob(*Desc->BlockMemory, Scene, &Table);

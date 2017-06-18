@@ -726,13 +726,19 @@ namespace FlexKit
 		
 		bool InitiateComplete = false;
 
-		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device));
-
+		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
 		{
+			// Trying again with a DX11 Feature Level
+			HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
+
+			std::cout << "Created A DX11 Device!\n";
 			MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
 			return false;
 		}
+		else
+			std::cout << "Created A DX12 Device!\n";
+
 
 		out->pDevice = Device;
 
@@ -744,7 +750,7 @@ namespace FlexKit
 		
 		{
 			ID3D12Fence* NewFence = nullptr;
-			HR = Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&NewFence);
+			HR = Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&NewFence));
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE FENCE!");
 			SETDEBUGNAME(NewFence, "GRAPHICS FENCE");
 
@@ -754,7 +760,7 @@ namespace FlexKit
 
 		{
 			ID3D12Fence* NewFence = nullptr;
-			HR = Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, __uuidof(ID3D12Fence), (void**)&NewFence);
+			HR = Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&NewFence));
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE FENCE!");
 			SETDEBUGNAME(NewFence, "COPY FENCE");
 			NewRenderSystem.CopyFence = NewFence;
@@ -777,17 +783,39 @@ namespace FlexKit
 		ComputeCQD.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		ComputeCQD.Type = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
 
+		ID3D12CommandQueue*			GraphicsQueue		= nullptr;
+		ID3D12CommandQueue*			UploadQueue			= nullptr;
+		ID3D12CommandQueue*			ComputeQueue		= nullptr;
+		ID3D12CommandAllocator*		UploadAllocator		= nullptr;
+		ID3D12CommandAllocator*		ComputeAllocator	= nullptr;
+		ID3D12GraphicsCommandList*	UploadList	        = nullptr;
+		ID3D12GraphicsCommandList*	ComputeList	        = nullptr;
+		IDXGIFactory4*				DXGIFactory         = nullptr;
+		IDXGIAdapter3*				DXGIAdapter			= nullptr;
+
+		HR = Device->CreateCommandQueue(&CQD,			IID_PPV_ARGS(&GraphicsQueue));		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
+		HR = Device->CreateCommandQueue(&UploadCQD,		IID_PPV_ARGS(&UploadQueue));		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
+		HR = Device->CreateCommandQueue(&ComputeCQD,	IID_PPV_ARGS(&ComputeQueue));		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
+
+		ObjectsCreated.push_back(GraphicsQueue);
+		ObjectsCreated.push_back(UploadQueue);
+		ObjectsCreated.push_back(ComputeQueue);
+
+		std::cout << GraphicsQueue;
+		//MessageBox(NULL, L"Got To point -1", L"ERROR!", MB_OK);
+
+
 		D3D12_DESCRIPTOR_HEAP_DESC	FrameTextureHeap_DESC = {};
 		FrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		FrameTextureHeap_DESC.NumDescriptors	= 1024 * 64;
+		FrameTextureHeap_DESC.NumDescriptors	= 1024 * 16;
 		FrameTextureHeap_DESC.NodeMask			= 0;
 		FrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
 		D3D12_DESCRIPTOR_HEAP_DESC	GPUFrameTextureHeap_DESC = {};
-		GPUFrameTextureHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-		GPUFrameTextureHeap_DESC.NumDescriptors		= 1024 * 64;
-		GPUFrameTextureHeap_DESC.NodeMask			= 0;
-		GPUFrameTextureHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		GPUFrameTextureHeap_DESC.Flags			= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		GPUFrameTextureHeap_DESC.NumDescriptors	= 1024 * 16;
+		GPUFrameTextureHeap_DESC.NodeMask		= 0;
+		GPUFrameTextureHeap_DESC.Type			= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 
 		D3D12_DESCRIPTOR_HEAP_DESC	RenderTargetHeap_DESC = {};
 		RenderTargetHeap_DESC.Flags				= D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
@@ -800,24 +828,6 @@ namespace FlexKit
 		DepthStencilHeap_DESC.NumDescriptors	= 128;
 		DepthStencilHeap_DESC.NodeMask			= 0;
 		DepthStencilHeap_DESC.Type				= D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-
-		ID3D12CommandQueue*			GraphicsQueue		= nullptr;
-		ID3D12CommandQueue*			UploadQueue			= nullptr;
-		ID3D12CommandQueue*			ComputeQueue		= nullptr;
-		ID3D12CommandAllocator*		UploadAllocator		= nullptr;
-		ID3D12CommandAllocator*		ComputeAllocator	= nullptr;
-		ID3D12GraphicsCommandList*	UploadList	        = nullptr;
-		ID3D12GraphicsCommandList*	ComputeList	        = nullptr;
-		IDXGIFactory4*				DXGIFactory         = nullptr;
-		IDXGIAdapter3*				DXGIAdapter			= nullptr;
-
-		HR = Device->CreateCommandQueue		(&CQD,		 __uuidof(ID3D12CommandQueue),		(void**)&GraphicsQueue);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
-		HR = Device->CreateCommandQueue		(&UploadCQD, __uuidof(ID3D12CommandQueue),		(void**)&UploadQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
-		HR = Device->CreateCommandQueue		(&ComputeCQD, __uuidof(ID3D12CommandQueue),		(void**)&ComputeQueue);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
-
-		ObjectsCreated.push_back(GraphicsQueue);
-		ObjectsCreated.push_back(UploadQueue);
-		ObjectsCreated.push_back(ComputeQueue);
 
 
 		SETDEBUGNAME(GraphicsQueue, "GRAPHICS QUEUE");
@@ -842,12 +852,19 @@ namespace FlexKit
 					ID3D12GraphicsCommandList*	CommandList		  = nullptr;
 					ID3D12CommandAllocator*		GraphicsAllocator = nullptr;
 
-					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,		__uuidof(ID3D12CommandAllocator), (void**)&GraphicsAllocator);						FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
-					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,			__uuidof(ID3D12CommandAllocator), (void**)&UploadAllocator);						FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
-					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,		__uuidof(ID3D12CommandAllocator), (void**)&ComputeAllocator);						FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
-					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,	ComputeAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&ComputeList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
-					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,	GraphicsAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&CommandList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
-					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,		UploadAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&UploadList);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,		IID_PPV_ARGS(&GraphicsAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
+					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,			IID_PPV_ARGS(&UploadAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
+					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,		IID_PPV_ARGS(&ComputeAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
+
+					std::cout << Device;
+					std::cout << GraphicsAllocator;
+					//MessageBox(NULL, L"Got To point 0", L"ERROR!", MB_OK);
+
+					HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,	GraphicsAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&CommandList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+					HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,	ComputeAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&ComputeList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+					HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,	UploadAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&UploadList);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+
+					FK_ASSERT(CommandList != nullptr, "FAILED TO CREATE COMMAND LIST");
 
 
 					SETDEBUGNAME(ComputeAllocator, "COMPUTE ALLOCATOR");
@@ -862,12 +879,19 @@ namespace FlexKit
 					ObjectsCreated.push_back(CommandList);
 					ObjectsCreated.push_back(UploadList);
 
+
+					//std::cout << CommandList;
+					//MessageBox(NULL, L"Got To point 1", L"ERROR!", MB_OK);
+					//MessageBox(NULL, L"Got To point 2", L"ERROR!", MB_OK);
+
 					CommandList->Close();
 					UploadList->Close();
 					ComputeList->Close();
 					GraphicsAllocator->Reset();
 					UploadAllocator->Reset();
 					ComputeAllocator->Reset();
+
+
 
 					NewRenderSystem.UploadQueues[I].UploadList[II] = static_cast<ID3D12GraphicsCommandList*>(UploadList);
 					NewRenderSystem.UploadQueues[I].UploadCLAllocator[II] = UploadAllocator;
@@ -885,7 +909,7 @@ namespace FlexKit
 				SETDEBUGNAME(SRVHeap, "RESOURCEHEAP");
 
 				ID3D12DescriptorHeap* GPUSRVHeap = nullptr;
-				HR = Device->CreateDescriptorHeap(&GPUFrameTextureHeap_DESC, IID_PPV_ARGS(&GPUSRVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
+				HR = Device->CreateDescriptorHeap(&GPUFrameTextureHeap_DESC, IID_PPV_ARGS(&GPUSRVHeap));																							FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 				SETDEBUGNAME(GPUSRVHeap, "GPURESOURCEHEAP");
 
 				ID3D12DescriptorHeap* RTVHeap = nullptr;
@@ -914,6 +938,8 @@ namespace FlexKit
 
 			DXGIFactory->EnumAdapterByLuid(DeviceID, IID_PPV_ARGS(&DXGIAdapter));
 		}
+
+
 
 		FINALLY
 			if (!InitiateComplete)
@@ -1189,7 +1215,7 @@ namespace FlexKit
 		CheckHR(RS->pDevice->CreateCommittedResource(
 			&HEAP_Props,
 			D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, &Resource_DESC,
-			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_READ,
+			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE,
 			&Clear, IID_PPV_ARGS(&Resource)), [&]() {});
 
 		NewTexture.Format		= Resource_DESC.Format;
@@ -1769,9 +1795,13 @@ namespace FlexKit
 	{
 		UpdateGPUResource(RS, Data, SourceSize, Dest);
 		// NOT SURE IF NEEDED, RUNS CORRECTLY WITHOUT FOR THE MOMENT
-		//RS->CommandList->ResourceBarrier(1, 
-		//		&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
-		//		D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
+
+		auto& CopyEngine = RS->CopyEngine;
+		ID3D12GraphicsCommandList* CS = GetCurrentCommandList(RS);
+
+		CS->ResourceBarrier(1, 
+				&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
+				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
 	}
 
 	FLEXKITAPI void UpdateSubResourceByUploadQueue(RenderSystem* RS, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState)

@@ -89,7 +89,6 @@ namespace FlexKit
 						byte Blue;
 						byte Green;
 						byte Red;
-						byte A;
 					}*PixelsBGR = (BGRA*)(Buffer + Header->OffBits);
 
 					for (size_t y = 0; y < Height; ++y)
@@ -101,7 +100,7 @@ namespace FlexKit
 							OutBuffer[I_Out].Blue	= PixelsBGR[I_In].Blue;
 							OutBuffer[I_Out].Green	= PixelsBGR[I_In].Green;
 						}
-				}
+				}	break;
 			case 32:
 			{
 				// Convert to RGBA
@@ -124,7 +123,7 @@ namespace FlexKit
 						OutBuffer[I_Out].Blue	= PixelsBGRA[I_In].Blue;
 						OutBuffer[I_Out].Green	= PixelsBGRA[I_In].Green;
 				}
-			}
+			}	break;
 
 			}
 			Out->ElementSize  = 4;

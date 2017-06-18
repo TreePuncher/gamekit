@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameUtilities.cpp"
 #include "..\Application\GameMemory.h"
 #include "..\coreutilities\AllSourceFiles.cpp"
+#include "..\graphicsutilities\ImageUtilities.h"
 
 #include "common.cpp"
 #include "Animation.cpp"
@@ -167,6 +168,84 @@ int main(int argc, char* argv[])
 					}
 				}
 
+				physx::PxCooking*				Cooker			= nullptr;
+				physx::PxFoundation*			Foundation		= nullptr;
+				physx::PxDefaultErrorCallback	DefaultErrorCallback;
+				physx::PxDefaultAllocator		DefaultAllocatorCallback;
+
+				Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, DefaultErrorCallback);
+				FK_ASSERT(Foundation);
+
+				Cooker = PxCreateCooking(PX_PHYSICS_VERSION, *Foundation, physx::PxCookingParams(physx::PxTolerancesScale()));
+				FK_ASSERT(Cooker);
+
+				FINALLY{
+					if (Foundation)
+						Foundation->release();
+
+					if (Cooker)
+						Cooker->release();
+				}FINALLYOVER;
+
+				{
+					// Load Terrain Collider
+					for (auto MD : MetaData)
+					{
+						if (MD->type == MetaData::EMETAINFOTYPE::EMI_TERRAINCOLLIDER)
+						{
+							std::cout << "Cooking HeightField!\n";
+
+							auto* TerrainCollider = (TerrainCollider_MetaData*)MD;
+							ColliderStream Stream = ColliderStream(BlockMemory, 4096);
+
+							struct TerrainSample{
+								int16_t Height;
+								int8_t Material_1;
+								int8_t RESERVED;
+
+							}* Samples;
+
+
+							FlexKit::TextureBuffer Buffer;
+							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc, BlockMemory, &Buffer);
+
+							Samples = (TerrainSample*)BlockMemory.malloc(Buffer.WH[0] * Buffer.WH[1] * sizeof(TerrainSample));
+
+							FlexKit::TextureBufferView<RGBA> View(&Buffer);
+							auto SampleCount = Buffer.WH[0] * Buffer.WH[1];
+							for (size_t I = 0; I < SampleCount; ++I){
+								double Height = ((RGBA*)Buffer.Buffer)[I].Red;
+								Height = Height / double(unsigned char(0xff));
+
+								Samples[I].Height		= uint16_t(Height * 32767.0f);
+								Samples[I].Material_1	= 0;
+								Samples[I].RESERVED		= 0;
+							}
+
+							physx::PxHeightFieldDesc Desc;
+							Desc.nbColumns		= Buffer.WH[0];
+							Desc.nbRows			= Buffer.WH[1];
+							Desc.samples.data	= Samples;
+							Desc.samples.stride	= 4;
+							auto RES = Cooker->cookHeightField(Desc, Stream);
+							if (!RES)
+							{
+								int x = 0;
+							}
+							int c = 0;
+
+							Buffer.Release();
+							BlockMemory.free(Samples);
+							std::cout << "Done Cooking HeightField!\n";
+
+							auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, TerrainCollider->Guid, TerrainCollider->ColliderID, BlockMemory);
+							Blob->Type = EResourceType::EResource_TerrainCollider;
+
+							ResourcesFound.push_back(Blob);
+						}
+					}
+				}
+
 				// Scan Input Files for Resources
 				for (auto Input : Inputs)
 				{
@@ -175,9 +254,11 @@ int main(int argc, char* argv[])
 					Desc.CloseFBX		= true;
 					Desc.IncludeShaders = false;
 					Desc.CookingEnabled = true;
-
+					Desc.Foundation;
+					Desc.Cooker;
 					std::cout << "Compiling File: " << Input << "\n";
 					Resources.push_back(CompileSceneFromFBXFile(Input, &Desc, &MetaData));
+
 					if(Resources.back())
 						ResourcesFound += Resources.back()->Resources;
 				}
@@ -264,6 +345,8 @@ int main(int argc, char* argv[])
 					case EResourceType::EResource_TriMesh:
 					std::cout << " Type: TriangleMesh" << "\n";			break;
 					case EResourceType::EResource_TextureSet:
+					std::cout << " Type: TextureSet" << "\n";			break;
+					case EResourceType::EResource_TerrainCollider:
 					std::cout << " Type: TextureSet" << "\n";			break;
 					default:
 						break;

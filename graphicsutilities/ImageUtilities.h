@@ -41,8 +41,8 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI bool LoadBMP(const char* File, iAllocator* Memory, TextureBuffer* Out);
-	FLEXKITAPI bool CheckerBoard(int XSize, int YSize, TextureBuffer* Out);
+	FLEXKITAPI bool LoadBMP			( const char* File, iAllocator* Memory, TextureBuffer* Out );
+	FLEXKITAPI bool CheckerBoard	( int XSize, int YSize, TextureBuffer* Out );
 }
 
 

@@ -34,7 +34,7 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
-	const static size_t SO_BUFFERSIZES = KILOBYTE * 1024;
+	const static size_t SO_BUFFERSIZES = MEGABYTE * 4;
 	void DrawLandscape(RenderSystem* RS, Landscape* LS, TiledDeferredRender* Pass, size_t splitcount, Camera* C, bool DrawWireframe)
 	{	
 		auto CL = GetCurrentCommandList(RS);
@@ -52,23 +52,25 @@ namespace FlexKit
 			auto CL             = GetCurrentCommandList(RS);
 			auto FrameResources = GetCurrentFrameResources(RS);
 			auto DescPOSGPU     = GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
-			auto DescPOS        = ReserveDescHeap(RS, 6);
+			auto DescPOS        = ReserveDescHeap(RS, 11);
 			auto DescriptorHeap = GetCurrentDescriptorTable(RS);
 
 			auto RTVPOSCPU      = GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
-			auto RTVPOS         = ReserveRTVHeap(RS, 6);
+			auto RTVPOS         = ReserveRTVHeap(RS, 5);
 			auto RTVHeap        = GetCurrentRTVTable(RS);
 
 			CL->SetDescriptorHeaps(1, &DescriptorHeap);
 
 			size_t BufferIndex = Pass->CurrentBuffer;
 
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex, RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex, RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex, RTVPOS);
-			//RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex, RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,		RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex,		RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].EmissiveTex,		RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].RoughnessMetal,	RTVPOS);
+			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,		RTVPOS);
 
 			DescPOS = PushTextureToDescHeap(RS, LS->HeightMap, DescPOS);
+			DescPOS = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescPOS, 1024); // t1
 
 			UINT Stride = sizeof(Landscape::ViewableRegion);
 
@@ -131,7 +133,7 @@ namespace FlexKit
 			auto POS = ReserveDSVHeap(RS, 1);
 			PushDepthStencil(RS, &Pass->GBuffers[Pass->CurrentBuffer].DepthBuffer, POS);
 
-			CL->OMSetRenderTargets(4, &RTVPOSCPU, true, &DSVPOSCPU);
+			CL->OMSetRenderTargets(5, &RTVPOSCPU, true, &DSVPOSCPU);
 
 			{
 				D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, };
@@ -139,7 +141,7 @@ namespace FlexKit
 			}
 
 			// Reset Stream Counters
-			CL->CopyResource(LS->FB_Counter.Get(), LS->ZeroValues);
+			CL->CopyResource(LS->FB_Counter.Get(),  LS->ZeroValues);
 			CL->CopyResource(LS->SOCounter_1.Get(), LS->ZeroValues);
 			CL->CopyResource(LS->SOCounter_2.Get(), LS->ZeroValues);
 
@@ -367,13 +369,12 @@ namespace FlexKit
 				PSO_Desc.PS                            = PCode;
 				PSO_Desc.SampleMask                    = UINT_MAX;
 				PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-				PSO_Desc.NumRenderTargets			   = 6;
-				PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
-				PSO_Desc.RTVFormats[1]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
-				PSO_Desc.RTVFormats[2]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
-				PSO_Desc.RTVFormats[3]				   = DXGI_FORMAT_R8G8_UNORM;
-				PSO_Desc.RTVFormats[4]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
-				PSO_Desc.RTVFormats[5]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
+				PSO_Desc.NumRenderTargets			   = 5;
+				PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R8G8B8A8_UNORM;		// Color
+				PSO_Desc.RTVFormats[1]				   = DXGI_FORMAT_R8G8B8A8_UNORM;		// Specular
+				PSO_Desc.RTVFormats[2]				   = DXGI_FORMAT_R8G8B8A8_UNORM;		// Emissive
+				PSO_Desc.RTVFormats[3]				   = DXGI_FORMAT_R8G8_UNORM;			// Roughness and Metal
+				PSO_Desc.RTVFormats[4]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;	// Normal
 				PSO_Desc.SampleDesc.Count              = 1;
 				PSO_Desc.SampleDesc.Quality            = 0;
 				PSO_Desc.RasterizerState               = Rast_State;
@@ -483,7 +484,7 @@ namespace FlexKit
 		auto ShaderVS             = LoadShader("VPassThrough",			"VPassThrough",			 "vs_5_0", "assets\\tvshader.hlsl");
 		auto ShaderRegion2Tri     = LoadShader("RegionToTris",			"RegionToTris",	 		 "gs_5_0", "assets\\tvshader.hlsl");
 		auto ShaderRegion2Quad    = LoadShader("RegionToQuadPatch",		"RegionToQuadPatch",	 "hs_5_0", "assets\\tvshader.hlsl");
-		auto ShaderQuad2Tri		  = LoadShader("QuadPatchToTris", "QuadPatchToTris", "ds_5_0", "assets\\tvshader.hlsl");
+		auto ShaderQuad2Tri		  = LoadShader("QuadPatchToTris",		"QuadPatchToTris", "ds_5_0", "assets\\tvshader.hlsl");
 		auto ShaderQuad2Tri_Debug = LoadShader("QuadPatchToTris_DEBUG",	"QuadPatchToTris_DEBUG", "ds_5_0", "assets\\tvshader.hlsl");
 		auto ShaderPaint_Wire     = LoadShader("DebugTerrainPaint_2",	"DebugTerrainPaint_2",	 "ps_5_0", "assets\\pshader.hlsl");
 
@@ -883,8 +884,8 @@ namespace FlexKit
 
 
 		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_PSO,		LoadTerrainPSO_Generate			);
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO,	LoadTerrainPSO_GenerateDebug	);
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG,	LoadTerrainPSO_WireDebug		);
+		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO,	LoadTerrainPSO_WireDebug		);
+		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG,	LoadTerrainPSO_GenerateDebug	);
 		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_CULL_PSO,		LoadTerrainPSO_CULL				);
 
 		QueuePSOLoad( RS, TERRAIN_DRAW_PSO );
@@ -951,7 +952,7 @@ namespace FlexKit
 					Resource_DESC.DepthOrArraySize      = 1;
 					Resource_DESC.Dimension             = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
 					Resource_DESC.Layout                = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-					Resource_DESC.Width                 = 1024;
+					Resource_DESC.Width                 = 512;
 					Resource_DESC.Height                = 1;
 					Resource_DESC.Format                = DXGI_FORMAT_UNKNOWN;
 					Resource_DESC.SampleDesc.Count      = 1;

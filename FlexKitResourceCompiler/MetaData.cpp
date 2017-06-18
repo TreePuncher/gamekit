@@ -544,6 +544,32 @@ namespace FlexKit
 				MD_Out.push_back(&Collider);
 				itr = res;
 			}
+			else if (DOSTRCMP("TerrainCollider"))
+			{
+				auto res       = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
+				auto Values    = res.V1;
+				auto Target    = Tokens->at(itr - 2);
+				auto AssetGUID = FindValue(Values, "AssetGUID");
+				auto AssetID   = FindValue(Values, "AssetID");
+				auto BitMapLoc = FindValue(Values, "BitMapLocation");
+
+				TerrainCollider_MetaData TerrainCollider = Memory->allocate<TerrainCollider_MetaData>();
+
+				if (AssetGUID != nullptr && AssetGUID->Type == Value::INT)
+					TerrainCollider.Guid = AssetGUID->Data.I;
+
+				if (AssetID != nullptr && AssetID->Type == Value::STRING) {
+					strncpy(TerrainCollider.ColliderID, AssetID->Data.S.S, min(AssetID->Data.S.size, 64));
+					TerrainCollider.ColliderIDSize = AssetID->Data.S.size;
+				}
+
+				if (BitMapLoc != nullptr && BitMapLoc->Type == Value::STRING) {
+					strncpy(TerrainCollider.BitmapFileLoc, BitMapLoc->Data.S.S, min(BitMapLoc->Data.S.size, 256));
+					TerrainCollider.BitmapFileLocSize = BitMapLoc->Data.S.size;
+				}
+				MD_Out.push_back(&TerrainCollider);
+				itr = res;
+			}
 			else if (DOSTRCMP("Font")) 
 			{
 #if USING(RESCOMPILERVERBOSE)

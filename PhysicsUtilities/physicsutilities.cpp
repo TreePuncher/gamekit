@@ -235,7 +235,6 @@ namespace FlexKit
 
 #pragma warning(disable : 4309)
 
-	/*
 	ColliderHandle LoadTriMeshCollider(FlexKit::PhysicsSystem* PS, Resources* RM, GUID_t Guid)
 	{
 		if (isResourceAvailable(RM, Guid))
@@ -254,7 +253,27 @@ namespace FlexKit
 
 		return static_cast<ColliderHandle>(INVALIDHANDLE);
 	}
-	*/
+
+
+	physx::PxHeightField*	LoadHeightFieldCollider(PhysicsSystem* PS, Resources* RM, GUID_t Guid)
+	{
+		if (isResourceAvailable(RM, Guid))
+		{
+			auto RHandle		= LoadGameResource(RM, Guid);
+			auto Resource		= (ColliderResourceBlob*)GetResource(RM, RHandle);
+			size_t ResourceSize = Resource->ResourceSize - sizeof(ColliderResourceBlob);
+
+			PxDefaultMemoryInputData readBuffer(Resource->Buffer, ResourceSize);
+			auto HeightField = PS->Physx->createHeightField(readBuffer);
+
+			FreeResource(RM, RHandle);
+			return HeightField;
+			//return AddCollider(&PS->Colliders, { Mesh, 1 });
+		}
+		return nullptr;
+		//return static_cast<ColliderHandle>(INVALIDHANDLE);
+	}
+
 
 	/************************************************************************************************/
 

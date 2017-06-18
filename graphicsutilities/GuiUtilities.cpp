@@ -1353,7 +1353,7 @@ namespace FlexKit
 		// Change Cordinate System From Top Down, to Buttom Up
 		Draw_RECT Out = Rect;
 		Out.BLeft	= { Rect.BLeft[0], 1 - Rect.TRight[1] };
-		Out.TRight = { Rect.TRight[0], 1 - Rect.BLeft[1] };
+		Out.TRight  = { Rect.TRight[0], 1 - Rect.BLeft[1] };
 		FlexKit::PushRect(GUI, Out);
 	}
 
@@ -1379,12 +1379,15 @@ namespace FlexKit
 
 	void GUIGrid::Update(GUIGridHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in)
 	{
+		LayoutEngine->PushOffset(Grid.GetPosition());
+
 		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
 		{
 			Grid.mWindow->UpdateElement(hndl, LayoutEngine, dt, in);
 		};
 
 		ScanElements(Grid, *LayoutEngine, ScanFunction);
+		LayoutEngine->PopOffset();
 	}
 
 
@@ -1393,12 +1396,22 @@ namespace FlexKit
 
 	void GUIGrid::Draw(GUIGridHandle Grid, LayoutEngine* LayoutEngine)
 	{
+		Draw_RECT Rect;
+		Rect.BLeft	= {0, 0};
+		Rect.TRight = Grid.GetWH();
+		Rect.Color	= Grid.GetBackgroundColor();
+
+		LayoutEngine->PushOffset(Grid.GetPosition());
+		LayoutEngine->PushRect(Rect);
+
 		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
 		{
 			Grid.mWindow->DrawElement(hndl, LayoutEngine);
 		};
 
 		ScanElements(Grid, *LayoutEngine, ScanFunction);
+
+		LayoutEngine->PopOffset();
 	}
 
 
@@ -1482,7 +1495,6 @@ namespace FlexKit
 		}
 
 		LayoutEngine->PushLineSegments(Lines);
-		LayoutEngine->PopOffset();
 
 		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
 		{
@@ -1490,7 +1502,7 @@ namespace FlexKit
 		};
 
 		ScanElements(Grid, *LayoutEngine, ScanFunction);
-
+		LayoutEngine->PopOffset();
 	}
 
 
@@ -1585,44 +1597,41 @@ namespace FlexKit
 
 	void GUITextBox::Update(GUITextBoxHandle TextBox, LayoutEngine* LayoutEngine, double dT, const SimpleWindowInput Input)
 	{
-		auto& Element = TextBox._GetTextBox();
+		auto& Element = TextBox._IMPL();
 		auto TL       = LayoutEngine->GetCurrentPosition();
 		auto BR       = TL + TextBox.WH();
 		auto MousePOS = Input.MousePosition;
 		MousePOS.y    = 1.0f - MousePOS.y;
 
-		//for(size_t I = 0; I < 50; ++I)
-		//	std::cout << "\n";
-
-		//std::cout << "TL{ " << TL.x << ":" << TL.y << "}\n";
-		//std::cout << "MP{ " <<MousePOS.x << ":" << MousePOS.y << "}\n";
-		//std::cout << "BR{ " << BR.x << ":" << BR.y << "}\n";
 
 		if(	MousePOS.x >= TL.x && 
 			MousePOS.y >= TL.y && 
 			MousePOS.y <= BR.y &&
 			MousePOS.x <= BR.x )
 		{
-			//if (Element.Entered && Element.HoverDuration == 0.0)
-			//	Element.Entered(Element.USR, Btn);
+			if (Element.Entered && Element.HoverDuration == 0.0)
+				Element.Entered(Element.USR, TextBox.mBase);
 
-			//Element.HoverDuration += dT;
 
-			//if (Element.Hover && Element.HoverDuration > Btn._IMPL().HoverLength)
-			//	Element.Hover(Element.USR, Btn);
+			Element.HoverDuration += dT;
 
-			std::cout << "ENTERED TEXTBOX!\n";
-
-			if (Element.Clicked && Input.LeftMouseButtonPressed && !Element.ClickState) 
+			if (Input.LeftMouseButtonPressed)
 			{
-				//Element.Clicked(Element.USR, TextBox.mBase);
-				Element.ClickState = true;
+				if (Element.Clicked && !Element.ClickState)
+				{
+					Element.Clicked(Element.USR, TextBox.mBase);
+					Element.ClickState = true;
+				}
+			}
+			else
+			{
+				Element.ClickState = false;
 			}
 		}
 		else
 		{
 			Element.ClickState		= false;
-			//Element.HoverDuration	= 0.0;
+			Element.HoverDuration	= 0.0;
 		}
 	}
 
@@ -1632,7 +1641,7 @@ namespace FlexKit
 
 	void GUITextBox::Draw(GUITextBoxHandle TextBox, LayoutEngine* Layout)
 	{
-		auto& Element = TextBox._GetTextBox();
+		auto& Element = TextBox._IMPL();
 		Draw_RECT Rect;
 		Rect.BLeft  = { 0, 0 };
 		Rect.TRight = TextBox.WH();
@@ -1711,6 +1720,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	float2 GUIGridHandle::GetWH()
+	{
+		return _GetGrid().WH;
+	}
+
+
+	/************************************************************************************************/
+
+
 	float2 GUIGridHandle::GetPosition(){
 		return _GetGrid().XY;
 	}
@@ -1731,6 +1749,24 @@ namespace FlexKit
 	float2 GUIGridHandle::GetChildPosition(GUIElementHandle Element)
 	{
 		return {};
+	}
+
+
+	/************************************************************************************************/
+
+
+	float4 GUIGridHandle::GetBackgroundColor()
+	{
+		return _GetGrid().BackgroundColor;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GUIGridHandle::SetBackgroundColor(float4 K)
+	{
+		_GetGrid().BackgroundColor = K;
 	}
 
 
@@ -1838,11 +1874,11 @@ namespace FlexKit
 			auto TextBox = mWindow->CreateTextBox(mBase);
 
 			float2 WH = GetCellWH(CellID);
-			TextBox._GetTextBox().Dimensions		= WH;
-			TextBox._GetTextBox().Color				= float4(Grey(0.5f), 1);
+			TextBox._IMPL().Dimensions		= WH;
+			TextBox._IMPL().Color				= float4(Grey(0.5f), 1);
 
-			TextBox._GetTextBox().Highlighted		= false;
-			TextBox._GetTextBox().HighlightedColor	= float4(Grey(0.8f), 1);
+			TextBox._IMPL().Highlighted		= false;
+			TextBox._IMPL().HighlightedColor	= float4(Grey(0.8f), 1);
 
 			TextBox.SetCellID(CellID);
 			TextBox.SetText(Str);
@@ -1901,6 +1937,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void GUIButtonHandle::SetUSR(void* usr)
+	{
+		_IMPL().USR = usr;
+	}
+
+
+	/************************************************************************************************/
+
+
 	const char* GUIButtonHandle::Text() { return _IMPL().Text; }
 
 
@@ -1926,32 +1971,41 @@ namespace FlexKit
 		mWindow = Window;
 	}
 
+
 	void GUITextBoxHandle::SetText(const char* Text)
 	{
-		auto& TextBox = _GetTextBox();
+		auto& TextBox = _IMPL();
 		TextBox.Text = Text;
 	}
 
+
 	void GUITextBoxHandle::SetTextFont(FontAsset* Font)
 	{
-		auto& TextBox = _GetTextBox();
+		auto& TextBox = _IMPL();
 		TextBox.Font = Font;
 	}
 
+
 	void GUITextBoxHandle::SetCellID(uint2 CellID)
 	{
-		auto& TextBox = _GetTextBox();
+		auto& TextBox = _IMPL();
 		TextBox.CellID = CellID;
+	}
+
+
+	void GUITextBoxHandle::SetUSR(void* usr)
+	{
+		_IMPL().USR = usr;
 	}
 
 
 	float2 GUITextBoxHandle::WH()
 	{
-		return _GetTextBox().Dimensions;
+		return _IMPL().Dimensions;
 	}
 
 
-	GUITextBox& GUITextBoxHandle::_GetTextBox()
+	GUITextBox& GUITextBoxHandle::_IMPL()
 	{
 		return mWindow->TextBoxes[mWindow->Elements[mBase].Index];
 	}

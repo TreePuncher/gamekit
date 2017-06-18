@@ -50,6 +50,7 @@ namespace FlexKit
 			EMI_SKELETALANIMATION,
 			EMI_ANIMATIONCLIP,
 			EMI_ANIMATIONEVENT,
+			EMI_TERRAINCOLLIDER,
 			EMI_TEXTURESET,
 		};
 
@@ -198,6 +199,30 @@ namespace FlexKit
 		GUID_t	Guid;
 		char	ColliderID		[64];
 		size_t	ColliderIDSize;
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct TerrainCollider_MetaData : public MetaData
+	{
+		TerrainCollider_MetaData() {
+			UserType	      = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
+			type		      = MetaData::EMETAINFOTYPE::EMI_TERRAINCOLLIDER;
+			size              = 0;
+			ColliderIDSize    = 0;
+			BitmapFileLocSize = 0;
+			Guid              = INVALIDHANDLE;
+		}
+
+
+		GUID_t	Guid;
+		char	ColliderID[64];
+		size_t	ColliderIDSize;
+		char	BitmapFileLoc[256];
+		size_t	BitmapFileLocSize;
+
 	};
 
 

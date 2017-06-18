@@ -130,6 +130,9 @@
     <ClInclude Include="graphicsutilities\ImmediateRendering.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="graphicsutilities\ImageUtilities.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -211,6 +214,9 @@
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="graphicsutilities\ImmediateRendering.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\ImageUtilities.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>

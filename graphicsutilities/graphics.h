@@ -809,11 +809,15 @@ namespace FlexKit
 	template<typename TY>
 	struct TextureBufferView
 	{
-		TextureBuffer* Texture;
+		TextureBufferView(TextureBuffer* Buffer) : Texture(Buffer) {}
+
 		TY& operator [](uint2 XY)
 		{
-			return Texture->Buffer + (Texture->WH[0] * XY[1] + XY[0]) * sizeof(TY);
+			TY* buffer = (TY*)Texture->Buffer;
+			return buffer[Texture->WH[1] * XY[1] + XY[0]];
 		}
+
+		TextureBuffer* Texture;
 	};
 
 

@@ -108,10 +108,10 @@ namespace FlexKit
 	};
 
 	// CallBacks Definitions
-	typedef bool (*EnteredEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	typedef bool (*EnteredEventFN)		( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
 	typedef bool (*GenericGUIEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	typedef bool (*TextInputEventFN)( char*, size_t, void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	typedef bool (*SliderEventFN)	( float,		 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	typedef bool (*TextInputEventFN)	( char*, size_t, void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	typedef bool (*SliderEventFN)		( float,		 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
 
 	struct TextInputState{
 		bool RemainActive = true;
@@ -603,15 +603,11 @@ namespace FlexKit
 		void SetText	( const char* Text );
 		void SetTextFont( FontAsset* Font );
 		void SetCellID	( uint2 CellID );
-
-		EnteredEventFN		Entered;
-		GenericGUIEventFN	Clicked;
-		GenericGUIEventFN	Released;
-		GenericGUIEventFN	Hover;
+		void SetUSR		( void* usr );
 
 		float2 WH();
 
-		GUITextBox& _GetTextBox();
+		GUITextBox& _IMPL();
 	};
 
 
@@ -625,20 +621,21 @@ namespace FlexKit
 		float4	Color;
 		float4  HighlightedColor;
 
-		EnteredEventFN		Entered;
-		GenericGUIEventFN	Clicked;
-		GenericGUIEventFN	Released;
-		GenericGUIEventFN	Hover;
+		EnteredEventFN		Entered		= nullptr;
+		GenericGUIEventFN	Clicked		= nullptr;
+		GenericGUIEventFN	Released	= nullptr;
+		GenericGUIEventFN	Hover		= nullptr;
 
-		bool	Highlighted;
-		bool	ClickState;
+		float	HoverDuration	= 0;
+		bool	Highlighted		= false;
+		bool	ClickState		= false;
 
 		const char* Text;
 		float4		TextColor;
 		FontAsset*	Font;
 		iAllocator*	Memory;
 
-		void*	USR;
+		void*	USR	= nullptr;
 
 		static void Update		(GUITextBoxHandle  TextBox, LayoutEngine* Layout, double dT, const SimpleWindowInput Input);
 		static void Draw		(GUITextBoxHandle  button, LayoutEngine* Layout);
@@ -661,9 +658,13 @@ namespace FlexKit
 		GUIGridCell&				GetCell			(uint2 ID, bool& Found);
 		float2						GetCellWH		(uint2 ID);
 
+
+		float2						GetWH();
 		float2						GetPosition();
 		float2						GetChildPosition(GUIElementHandle Element);
+		float4						GetBackgroundColor();
 
+		void						SetBackgroundColor(float4 K);
 		void						SetPosition(float2 XY);
 
 		GUIGrid&							_GetGrid();
@@ -693,6 +694,7 @@ namespace FlexKit
 
 		void resize(float Width_percent, float Height_percent);
 		void SetCellID(uint2 CellID);
+		void SetUSR(void*);
 
 		float2 WH();
 
@@ -716,11 +718,12 @@ namespace FlexKit
 	struct GUIGrid
 	{
 		GUIGrid() : 
-			RowHeights	(nullptr), 
-			ColumnWidths(nullptr),
-			Cells		(nullptr),
-			XY			(0.0f, 0.0f),
-			Framework	((uint32_t)-1) {}
+			RowHeights			(nullptr), 
+			ColumnWidths		(nullptr),
+			Cells				(nullptr),
+			XY					(0.0f, 0.0f),
+			Framework			((uint32_t)-1),
+			BackgroundColor		(Grey(0.5f), 1){}
 
 
 		GUIGrid( iAllocator* memory, uint32_t base ) : 
@@ -728,7 +731,8 @@ namespace FlexKit
 			ColumnWidths	(memory),
 			Cells			(memory),
 			XY				(0.0f, 0.0f),
-			Framework		(base) {}
+			Framework		(base),
+			BackgroundColor	(Grey(0.5f), 1) {}
 
 
 		GUIGrid(const GUIGrid& rhs)
@@ -738,13 +742,12 @@ namespace FlexKit
 			Cells			= rhs.Cells;
 			Framework		= rhs.Framework;
 			XY				= rhs.XY;
+			BackgroundColor	= rhs.BackgroundColor;
 		}
 
 		template<typename FN>
 		static void ScanElements(GUIGridHandle Grid, LayoutEngine& LayoutEngine, FN ScanFunction)
 		{
-			LayoutEngine.PushOffset(Grid.GetPosition());
-
 			float Y = 0;
 			uint32_t Y_ID = 0;
 
@@ -757,15 +760,13 @@ namespace FlexKit
 
 				for (auto& w : Grid.ColumnWidths()) {
 					bool Result = false;
-					auto& Cell = Grid.GetCell({ X_ID, Y_ID }, Result);
+					auto& Cell	= Grid.GetCell({ X_ID, Y_ID }, Result);
 					if (Result)
 					{
 						auto& Children = Grid.mWindow->Children[Cell.Children];
-						if (&Children && Children.size()) {
-							for (auto& C : Children) {
+						if (&Children && Children.size())
+							for (auto& C : Children)
 								ScanFunction(C, LayoutEngine);
-							}
-						}
 					}
 
 					LayoutEngine.PushOffset({ w * RowWidth, 0 });
@@ -792,6 +793,7 @@ namespace FlexKit
 		Vector<GUIGridCell>		Cells;
 		float2					WH;
 		float2					XY;
+		float4					BackgroundColor;
 		uint32_t				Framework;
 	};
 

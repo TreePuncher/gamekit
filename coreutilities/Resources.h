@@ -48,6 +48,7 @@ namespace FlexKit
 		EResource_Shader,
 		EResource_Scene,
 		EResource_TriMesh,
+		EResource_TerrainCollider,
 		EResource_Texture,
 		EResource_TextureSet,
 	};
