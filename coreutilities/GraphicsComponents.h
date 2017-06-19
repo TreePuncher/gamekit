@@ -481,8 +481,8 @@ namespace FlexKit
 
 								if (abs(f) > 0.00)
 								{
-									float t_1 = e + H[I] / f;
-									float t_2 = e - H[I] / f;
+									float t_1 = (e + H[I]) / f;
+									float t_2 = (e - H[I]) / f;
 
 									if (t_1 > t_2)// Swap
 										std::swap(t_1, t_2);

@@ -928,7 +928,7 @@ PS_Colour_IN QuadPatchToTris(
                         lerp(bezPatch[TopLeft].UV.y, bezPatch[BottomLeft].UV.y, uv[1]));
 
     float2 Test = float2(1 - UV.x, 1 - UV.y);
-    y = HeightMap.Gather(NearestPoint, Test) * TerrainHeight;
+    y = (HeightMap.Gather(NearestPoint, Test) * TerrainHeight * 2) - TerrainHeight;
 
     float4 WPOS = float4(x, y, z, 1.0f);
 

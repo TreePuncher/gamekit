@@ -174,7 +174,7 @@ bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 
 	PushLineSet3D(ThisState->Framework->Immediate, Lines);
 	// Ray Cast Tests
-#if 0
+#if 1
 
 	double T = ThisState->Framework->TimeRunning;
 	double CosT = (float)cos(T);
@@ -185,9 +185,9 @@ bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 	float IaR = 10000 * (1 + (float)cos(T * 6)) / 2;
 
 
-	Quaternion Q	= GetCameraOrientation(ThisState->Player);
+	Quaternion Q2	= GetCameraOrientation(ThisState->Player);
 	float3 Origin	= GetWorldPosition(ThisState->Player);
-	float3 D		= Q * float3(0, 0, -1);
+	float3 D		= Q2 * float3(0, 0, -1);
 	float3 Color	= RED;
 
 	RaySet Rays(Engine->TempAllocator);
@@ -214,15 +214,15 @@ bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 
 	}
 
-	LineSegment Line;
-	Line.A = Origin + (Q * float3(10, 0, 0));
-	Line.AColour = Color;
-	Line.B = Origin + D * 1000;
-	Line.BColour = Color;
-	LineSegments Lines(Engine->TempAllocator);
-	Lines.push_back(Line);
+	LineSegment Line2;
+	Line2.A = Origin + (Q2 * float3(10, 0, 0));
+	Line2.AColour = Color;
+	Line2.B = Origin + D * 1000;
+	Line2.BColour = Color;
+	LineSegments Lines2(Engine->TempAllocator);
+	Lines2.push_back(Line2);
 
-	PushLineSet3D(ThisState->Framework->Immediate, Lines);
+	PushLineSet3D(ThisState->Framework->Immediate, Lines2);
 
 #endif
 
@@ -507,6 +507,9 @@ void CreateTerrainTest(PlayState* State, GameFramework* Framework)
 }
 
 
+/************************************************************************************************/
+
+
 PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 {
 	PlayState* State = nullptr;
@@ -531,8 +534,8 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
-	CreateTerrainTest(State, Framework);
-	//CreateIntersectionTest(State, Framework);
+	//CreateTerrainTest(State, Framework);
+	CreateIntersectionTest(State, Framework);
 
 	return State;
 }
