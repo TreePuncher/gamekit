@@ -489,7 +489,7 @@ void CreateTerrainTest(PlayState* State, GameFramework* Framework)
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
 			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
 
-	Translate		(State->Player, {0, 1000, -10});
+	Translate		(State->Player, {0, 10000, -10});
 	SetCameraOffset	(State->Player, { 0, 15, 10 });
 
 	auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);

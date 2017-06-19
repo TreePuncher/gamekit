@@ -80,6 +80,22 @@ namespace FlexKit
 
 			switch (Info->BitCount)
 			{
+			case 8:
+			{
+				// Convert to RGBA
+				// Slow Path
+				byte *PixelsBGR = (byte*)(Buffer + Header->OffBits);
+
+				for (size_t y = 0; y < Height; ++y)
+					for (size_t x = 0; x < Width; ++x) {
+						size_t I_Out = x + y * Info->Width;
+						size_t I_In = x + (Info->Height - y - 1) * Info->Width;
+
+						OutBuffer[I_Out].Red = PixelsBGR[I_In];
+						OutBuffer[I_Out].Blue = PixelsBGR[I_In];
+						OutBuffer[I_Out].Green = PixelsBGR[I_In];
+					}
+			}	break;
 			case 24:
 				{
 					// Convert to RGBA

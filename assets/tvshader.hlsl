@@ -37,11 +37,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	EPlane_LEFT		4
 #define	EPlane_RIGHT	5
 
-#define MinScreenSpan 0.01f
+#define MinScreenSpan 0.05fs
 #define MaxScreenSpan 0.2f
 
 #define MinSpan 8
-#define MaxSpan	4096
+#define MaxSpan	1024
 	  
 
 #define TerrainHeight 4096
