@@ -421,7 +421,8 @@ namespace FlexKit
 		{
 			uint2	WindowRect	   = Engine->Window.WH;
 			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
-			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 10000.0f, true);
+			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 160000.0f, true);
+			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DebugCamera, Aspect, 0.1f, 160000.0f, true);
 
 			Framework.ActiveCamera				= &Framework.DefaultCamera;
 			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
@@ -588,7 +589,17 @@ namespace FlexKit
 
 				UploadCamera			(RS, Engine->Nodes, Framework->ActiveCamera, Framework->ActiveScene->PLights.size(), Framework->ActiveScene->SPLights.size(), 0.0f, Framework->ActiveWindow->WH);
 				UploadGraphicScene		(Framework->ActiveScene, &PVS, &Transparent);
-				UploadLandscape			(RS, &Framework->Landscape, Engine->Nodes, Framework->ActiveCamera, true, true, Framework->TerrainSplits + 1);
+
+#if 1
+				UploadLandscape		(RS, &Framework->Landscape, Engine->Nodes, Framework->ActiveCamera, true, true, Framework->TerrainSplits + 1);
+#else
+				
+				UploadLandscape2		(
+					RS, &Framework->Landscape, 
+					Engine->Nodes, Framework->ActiveCamera, 
+					GetFrustum(&Framework->DebugCamera, GetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node), GetOrientation(Framework->Engine->Nodes, Framework->DebugCamera.Node)),
+					true, true, Framework->TerrainSplits + 1);
+#endif
 			}
 
 			// Submission

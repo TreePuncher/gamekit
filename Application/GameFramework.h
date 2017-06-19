@@ -79,6 +79,7 @@ namespace FlexKit
 		MouseInputState		MouseState;
 		Landscape			Landscape;
 
+		Camera					DebugCamera;
 		Camera					DefaultCamera;
 		GraphicScene*			ActiveScene;
 		PhysicsComponentSystem*	ActivePhysicsScene;

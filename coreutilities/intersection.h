@@ -107,12 +107,12 @@ namespace FlexKit
 
 	enum EPlane
 	{
-		EPlane_FAR,
-		EPlane_NEAR,
-		EPlane_TOP, 
-		EPlane_BOTTOM, 
-		EPlane_LEFT, 
-		EPlane_RIGHT,
+		EPlane_FAR		= 0,
+		EPlane_NEAR		= 1,
+		EPlane_TOP		= 2, 
+		EPlane_BOTTOM	= 3, 
+		EPlane_LEFT		= 4, 
+		EPlane_RIGHT	= 5,
 	};
 
 

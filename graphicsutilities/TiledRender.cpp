@@ -200,7 +200,7 @@ namespace FlexKit
 					}
 					{
 						// Create Normal Buffer
-						desc.Format = FORMAT_2D::R16G16B16A16_FLOAT;
+						desc.Format = FORMAT_2D::R32G32B32A32_FLOAT;
 						out->GBuffers[I].NormalTex = CreateTexture2D(RS, &desc);
 						FK_ASSERT(out->GBuffers[I].NormalTex);
 						SETDEBUGNAME(out->GBuffers[I].NormalTex.Texture, "Normal Buffer");
@@ -364,7 +364,7 @@ namespace FlexKit
 					PSO_Desc.RTVFormats[1]			= DXGI_FORMAT_R8G8B8A8_UNORM;		// Specular
 					PSO_Desc.RTVFormats[2]			= DXGI_FORMAT_R8G8B8A8_UNORM;		// Emissive
 					PSO_Desc.RTVFormats[3]			= DXGI_FORMAT_R8G8_UNORM;			// Roughness
-					PSO_Desc.RTVFormats[4]			= DXGI_FORMAT_R16G16B16A16_FLOAT;	// Normal
+					PSO_Desc.RTVFormats[4]			= DXGI_FORMAT_R32G32B32A32_FLOAT;	// Normal
 					PSO_Desc.SampleDesc.Count		= 1;
 					PSO_Desc.SampleDesc.Quality		= 0;
 					PSO_Desc.DSVFormat				= DXGI_FORMAT_D32_FLOAT;

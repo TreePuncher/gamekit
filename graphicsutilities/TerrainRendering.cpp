@@ -1088,4 +1088,37 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	void UploadLandscape2(RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* Camera, Frustum F, bool UploadRegions, bool UploadConstants, int PassCount)
+	{
+		if (!ls->Regions.size())
+			return;
+
+		if (UploadConstants)
+		{
+			Landscape::ConstantBufferLayout Buffer;
+
+			float3 POS = GetPositionW(Nodes, Camera->Node);
+			Quaternion Q = GetOrientation(Nodes, Camera->Node);
+			Buffer.Albedo = { 1, 1, 1, 0.9f };
+			Buffer.Specular = { 1, 1, 1, 1 };
+
+			Buffer.RegionDimensions = {};
+			Buffer.Frustum = F;
+			Buffer.PassCount = PassCount;
+			UpdateResourceByTemp(RS, &ls->ConstantBuffer, &Buffer, sizeof(Buffer), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		}
+
+		if (UploadRegions)
+		{
+			UpdateResourceByTemp(
+				RS, ls->InputBuffer, ls->Regions.begin(),
+				sizeof(Landscape::ViewableRegion) * ls->Regions.size(),
+				1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		}
+	}
+
+
+	/************************************************************************************************/
 }

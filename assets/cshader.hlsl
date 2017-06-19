@@ -168,7 +168,8 @@ void Tiled_Shading( uint3 ID : SV_DispatchThreadID, uint3 TID : SV_GroupThreadID
 	float  r       = RoughMetal.Load(int3(ID.xy, 0)).x;
 	float3 vdir    = -ViewRay;
 
-	float3 ColorOut = float4(Kd * float3(1, 1, 1), 0.0f) * dot(n, float3 (0, 1, 0));
+    //float3 ColorOut = float4(Kd * float3(1, 1, 1), 0.0f) * dot(n, float3(0, 1, 0));
+    float3 ColorOut = 0;
 
     #if 1
 	switch (MatID)

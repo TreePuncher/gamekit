@@ -34,7 +34,7 @@ namespace FlexKit
 			auto P = V - F->Planes[EPlane_TOP].Orgin;
 			auto N = F->Planes[EPlane_TOP].Normal;
 
-			float NdP	= -N.dot(P);
+			float NdP	= N.dot(P);
 			float D		= NdP - r;
 			Top			= D <= 0;
 		}
@@ -42,7 +42,7 @@ namespace FlexKit
 			auto P = V - F->Planes[EPlane_BOTTOM].Orgin;
 			auto N = F->Planes[EPlane_BOTTOM].Normal;
 
-			float NdP	= -N.dot(P);
+			float NdP	= N.dot(P);
 			float D		= NdP - r;
 			Bottom		= D <= 0;
 		}
@@ -124,13 +124,13 @@ namespace FlexKit
 			float3 N2 = DirectionVector(FTL, NTL);
 
 			Out.Planes[EPlane_TOP].Orgin	= ((FTL + FTR) / 2 + (NTL + NTR) / 2) / 2;
-			Out.Planes[EPlane_TOP].Normal	= N1.cross(N2).normal();
+			Out.Planes[EPlane_TOP].Normal	= -N1.cross(N2).normal();
 		}
 		{
-			float3 N1 = DirectionVector(FBR, FBL);
-			float3 N2 = DirectionVector(FBL, NBR);
+			float3 N1 = DirectionVector(FBL, FBR);
+			float3 N2 = DirectionVector(FBL, NBL);
 
-			Out.Planes[EPlane_BOTTOM].Orgin	    = ((FBL + FBR) / 2 + (NBR + NBL) / 2) / 2;
+			Out.Planes[EPlane_BOTTOM].Orgin	    = (FBL + NBR) / 2;
 			Out.Planes[EPlane_BOTTOM].Normal	= N1.cross(N2).normal();
 		}
 		{

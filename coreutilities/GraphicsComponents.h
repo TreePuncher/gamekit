@@ -459,7 +459,8 @@ namespace FlexKit
 					auto Orientation = Nodes->GetOrientation(Node);
 					auto Ls			 = Nodes->GetLocalScale(Node);
 					auto AABB		 = Mesh->AABB;// Not Yet Orientated
-					auto H			 =(AABB.TopRight - AABB.BottomLeft)/2;
+
+					auto H = AABB.TopRight;
 
 					auto Normals = static_vector<float3, 3>(
 					{	Orientation * float3{ 1, 0, 0 },

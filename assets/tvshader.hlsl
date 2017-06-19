@@ -37,14 +37,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define	EPlane_LEFT		4
 #define	EPlane_RIGHT	5
 
-#define MinScreenSpan 0.005f
-#define MaxScreenSpan 0.05f
+#define MinScreenSpan 0.01f
+#define MaxScreenSpan 0.2f
 
-#define MinSpan 16
-#define MaxSpan	2048
+#define MinSpan 8
+#define MaxSpan	4096
 	  
 
-#define TerrainHeight 1024
+#define TerrainHeight 4096
 
 // Constant Buffers
 // ---------------------------------------------------------------------------
@@ -68,6 +68,7 @@ cbuffer CameraConstants : register(b0)
     float4x4 PV; // Projection x View
     float4x4 PVI; // Projection x View
     float4 CameraPOS;
+
     float MinZ;
     float MaxZ;
     float PointLightCount;
@@ -85,6 +86,7 @@ cbuffer CameraConstants : register(b0)
     float4 WSBottomLeft_Near;
     float4 WSBottomRight_Near;
 };
+
 
 // ---------------------------------------------------------------------------
 
@@ -172,6 +174,8 @@ struct SO_OUT
 // ---------------------------------------------------------------------------
 
 
+
+
 bool CompareAgainstFrustum(float3 V, float r)
 {
 	bool Near	= false;
@@ -179,7 +183,7 @@ bool CompareAgainstFrustum(float3 V, float r)
 	bool Left	= false;
 	bool Right	= false;
     bool Top    = false;
-    bool Bottom = true;
+    bool Bottom = false;
 
 
 	{
@@ -218,7 +222,7 @@ bool CompareAgainstFrustum(float3 V, float r)
         float3 P = V - Frustum[EPlane_TOP].Orgin.xyz;
         float3 N =     Frustum[EPlane_TOP].Normal.xyz;
 
-        float NdP = -dot(N, P);
+        float NdP = dot(N, P);
         float D = NdP - r;
         Top = D <= 0;
     }
@@ -226,7 +230,7 @@ bool CompareAgainstFrustum(float3 V, float r)
         float3 P = V - Frustum[EPlane_BOTTOM].Orgin.xyz;
         float3 N =     Frustum[EPlane_BOTTOM].Normal.xyz;
 
-        float NdP = -dot(N, P);
+        float NdP = dot(N, P);
         float D = NdP - r;
         Bottom  = D <= 0;
     }
@@ -489,20 +493,56 @@ Region_CP MakeBottomRight(Region_CP IN)
 // ---------------------------------------------------------------------------
 
 
+struct AABB
+{
+    float2  Position; // Center Position
+    float3  MinMax[2];
+    float   TopHeight;
+    float   R;
+};
+
+
+bool IntersectsFrustum(AABB aabb)
+{
+    int Result = 1;
+
+    for (int I = 0; I < 6; ++I)
+    {
+        float px = ((Frustum[I].Normal.x > 0.0f) ? -aabb.R : aabb.R);
+        float py = (Frustum[I].Normal.y > 0.0f) ? 0 : TerrainHeight;
+        float pz = ((Frustum[I].Normal.z > 0.0f) ? -aabb.R : aabb.R);
+
+        float3 Temp = float3(
+            aabb.Position.x + px,
+            py,
+            aabb.Position.y + pz);
+
+        float3 pV = Temp - Frustum[I].Orgin.xyz;
+        float dP  = dot(Frustum[I].Normal.xyz, pV);
+
+        if (dP >= 0)
+            return false;
+    }
+
+    return true;
+}
+
+
 bool CullRegion(Region_CP R){ 
-    float3 CenterPosition   = R.POS.xyz;
-    bool TopPlane           = CompareAgainstFrustum(CenterPosition, R.POS.w * 2);
+    float3 BL = GetBottomLeftPoint(R);
+    float3 BR = GetBottomRightPoint(R);
+    float3 TR = GetTopRightPoint(R);
+    float3 TL = GetTopLeftPoint(R);
 
-    float3 BL = GetBottomLeftPoint  (R);
-    float3 BR = GetBottomRightPoint (R);
-    float3 TL = GetTopLeftPoint     (R);
-    float3 TR = GetTopRightPoint    (R);
+    AABB aabb;
+    aabb.Position  = R.POS.xz;
+    aabb.TopHeight = TerrainHeight;
+    aabb.R = R.POS.w;
+    //aabb.TopHeight = max(max(TL.y, TR.y), max(BL.y, BR.y));
+    aabb.MinMax[0] = BL;
+    aabb.MinMax[1] = float3(TR.x, 1024, TR.z);
 
-    float  Radius = length(BL - TR)/2;
-    float3 POS = (BL - TR) / 2;
-
-    return TopPlane;
-    //CompareAgainstFrustum(POS, Radius); //| BottomPlane;
+    return !IntersectsFrustum(aabb);
 }
 
 

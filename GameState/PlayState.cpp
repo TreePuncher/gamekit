@@ -87,7 +87,7 @@ bool PlayEventHandler(FrameworkState* StateMemory, Event evt)
 
 /************************************************************************************************/
 
-
+float3 CameraPOS = {8000,1000,8000};
 bool PlayUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 {
 	auto ThisState = (PlayState*)StateMemory;
@@ -111,25 +111,79 @@ bool PlayUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 	//Translate(ThisState->Player, float3{ 0, 100, 0 } * dT);
 	auto Forward	= GetForwardVector(ThisState->Player);
 	auto Left		= GetLeftVector(ThisState->Player);
-	const float MoveRate = 100;
+	const float MoveRate = 1000;
 
-	if (ThisState->Input.KeyState.Forward)
-		Translate(ThisState->Player, Forward * dT * MoveRate);
 
-	if (ThisState->Input.KeyState.Backward)
-		Translate(ThisState->Player, Forward * dT * -MoveRate);
+	SetPositionW(ThisState->Framework->Engine->Nodes, ThisState->Framework->DebugCamera.Node, CameraPOS);
+	Yaw(ThisState->Framework->Engine->Nodes, ThisState->Framework->DebugCamera.Node, pi * dT);
 
-	if (ThisState->Input.KeyState.Left)
-		Translate(ThisState->Player, Left * dT * MoveRate);
+	//if (ThisState->Input.KeyState.Forward)
+	//	Translate(ThisState->Player, Forward * dT * MoveRate);
 
-	if (ThisState->Input.KeyState.Right)
-		Translate(ThisState->Player, Left * dT * -MoveRate);
+	//if (ThisState->Input.KeyState.Backward)
+	//	Translate(ThisState->Player, Forward * dT * -MoveRate);
+
+	//if (ThisState->Input.KeyState.Left)
+	//	Translate(ThisState->Player, Left * dT * MoveRate);
+
+	//if (ThisState->Input.KeyState.Right)
+	//	Translate(ThisState->Player, Left * dT * -MoveRate);
 
 	ThisState->OrbitCameras.Update(dT);
 	ThisState->Physics.UpdateSystem(dT);
 	ThisState->TPC.Update(dT);
+
+
+	return false;
+}
+
+
+/************************************************************************************************/
+
+
+bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
+{
+	auto ThisState = (PlayState*)StateMemory;
+	ThisState->Physics.UpdateSystem_PreDraw(dT);
+
+	if(ThisState->Framework->DrawPhysicsDebug)
+	{
+		//auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
+		PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, GetWorldPosition(ThisState->Player), 5, 10, GREEN);
+	}
+
+
+	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
+
+	if(ThisState->Framework->DrawDebug)
+		ThisState->Drawables.DrawDebug(&StateMemory->Framework->Immediate, Engine->Nodes, Engine->TempAllocator);
+
+	UpdateCamera(ThisState->Framework->Engine->RenderSystem, ThisState->Framework->Engine->Nodes, &ThisState->Framework->DebugCamera, dT);
+	auto Q = GetOrientation(ThisState->Framework->Engine->Nodes, ThisState->Framework->DebugCamera.Node);
+
+	LineSegments Lines(Engine->TempAllocator);
+	LineSegment Line;
+	Line.A = float3(0, 0, 0) + CameraPOS;
+	Line.B = float3(0, 20, 0) + CameraPOS;
+	Line.AColour = float3(1, 1, 0);
+	Line.BColour = float3(1, 1, 0);
+	Lines.push_back(Line);
+	
+	Line.B = Q * float3(0, 0, -10000) + CameraPOS;
+	Lines.push_back(Line);
+
+	PushLineSet3D(ThisState->Framework->Immediate, Lines);
 	// Ray Cast Tests
 #if 0
+
+	double T = ThisState->Framework->TimeRunning;
+	double CosT = (float)cos(T);
+	double SinT = (float)sin(T);
+
+	float Begin = 0.0f;
+	float End = 60.0f;
+	float IaR = 10000 * (1 + (float)cos(T * 6)) / 2;
+
 
 	Quaternion Q	= GetCameraOrientation(ThisState->Player);
 	float3 Origin	= GetWorldPosition(ThisState->Player);
@@ -137,7 +191,7 @@ bool PlayUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 	float3 Color	= RED;
 
 	RaySet Rays(Engine->TempAllocator);
-	Ray R = {Origin, -D};
+	Ray R = {Origin, D};
 	Rays.push_back(R);
 	auto results = ThisState->Drawables.RayCastOBB(Rays, Engine->BlockAllocator, Engine->Nodes);
 
@@ -171,30 +225,6 @@ bool PlayUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 	PushLineSet3D(ThisState->Framework->Immediate, Lines);
 
 #endif
-
-	return false;
-}
-
-
-/************************************************************************************************/
-
-
-bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
-{
-	auto ThisState = (PlayState*)StateMemory;
-	ThisState->Physics.UpdateSystem_PreDraw(dT);
-
-	if(ThisState->Framework->DrawPhysicsDebug)
-	{
-		//auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
-		PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, GetWorldPosition(ThisState->Player), 5, 10, GREEN);
-	}
-
-
-	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
-
-	if(ThisState->Framework->DrawDebug)
-		ThisState->Drawables.DrawDebug(&StateMemory->Framework->Immediate, Engine->Nodes, Engine->TempAllocator);
 
 	return false;
 }
@@ -401,6 +431,82 @@ TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory
 	return MeshHandle;
 }
 
+
+void CreateIntersectionTest(PlayState* State, GameFramework* Framework)
+{
+	FK_ASSERT(LoadScene(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->Engine->Assets, &Framework->Engine->Geometry, 201, &State->GScene, Framework->Engine->TempAllocator), "FAILED TO LOAD!\n");
+
+	InitiateGameObject( 
+		State->FloorObject,
+			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
+
+	InitiateGameObject(
+		State->Player,
+			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
+			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
+			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+
+	for(size_t I = 0; I < 10; ++I){
+		InitiateGameObject( 
+			State->CubeObjects[I],
+				CreateEnityComponent(&State->Drawables, "Flower"),
+				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
+				State->Physics.CreateCubeComponent(
+					{ 0, 10.0f * I, 0}, 
+					{ 0, 10, 0}, 1));
+
+		SetRayVisibility(State->CubeObjects[I], true);
+	}
+
+	InitiateGameObject(
+		State->TestObject,
+			CreateEnityComponent(&State->Drawables, "Flower"),
+			CreateLightComponent(&State->Lights));
+
+	SetLightColor(State->TestObject, RED);
+	SetLightIntensity(State->TestObject, 0);
+	SetVisibility(State->TestObject, false);
+}
+
+
+void CreateTerrainTest(PlayState* State, GameFramework* Framework)
+{
+	for(size_t I = 0; I < 10; ++I){
+		InitiateGameObject( 
+			State->CubeObjects[I],
+				CreateEnityComponent(&State->Drawables, "Flower"),
+				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
+				State->Physics.CreateCubeComponent(
+					{ 0, 1000.0f + 10.0f * I, 0}, 
+					{ 0, 10, 0}, 1));
+
+		SetRayVisibility(State->CubeObjects[I], true);
+	}
+
+	InitiateGameObject(
+		State->Player,
+			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
+			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
+			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+
+	Translate		(State->Player, {0, 1000, -10});
+	SetCameraOffset	(State->Player, { 0, 15, 10 });
+
+	auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
+
+	auto HF = LoadHeightFieldCollider(&Framework->Engine->Physics, &Framework->Engine->Assets, 10601);
+
+	PxHeightFieldGeometry hfGeom(HF, PxMeshGeometryFlags(), 4096.0f/32767.0f , 8, 8);
+	PxTransform HFPose(PxVec3(-4096, 0, -4096));
+	auto aHeightFieldActor = Framework->Engine->Physics.Physx->createRigidStatic(HFPose);
+
+	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Framework->Engine->Physics.DefaultMaterial, 1);
+	State->Physics.Scene->addActor(*aHeightFieldActor);
+
+	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
+}
+
+
 PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 {
 	PlayState* State = nullptr;
@@ -422,68 +528,13 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	State->TPC.Initiate(Framework, State->Input);
 	State->OrbitCameras.Initiate(Framework, State->Input);
 
-
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
-	auto HF = LoadHeightFieldCollider(&Engine->Physics, &Engine->Assets, 10601);
-
-	PxHeightFieldGeometry hfGeom(HF, PxMeshGeometryFlags(), 1024.0f/32767.0f , 8, 8);
-	PxTransform HFPose(PxVec3(-4096, 0, -4096));
-	auto aHeightFieldActor = Engine->Physics.Physx->createRigidStatic(HFPose);
-
-	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Engine->Physics.DefaultMaterial, 1);
-	State->Physics.Scene->addActor(*aHeightFieldActor);
-	GameObject<> Test;
-
-	InitiateGameObject(
-		State->TestObject,
-			CreateEnityComponent(&State->Drawables, "Flower"),
-			CreateLightComponent(&State->Lights));
-
-
-	SetLightColor(State->TestObject, RED);
-	SetLightIntensity(State->TestObject, 0);
-	SetVisibility(State->TestObject, false);
-
-#if 1
-	//FK_ASSERT(LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, 201, &State->GScene, Engine->TempAllocator), "FAILED TO LOAD!\n");
-
-
-	//InitiateGameObject( 
-	//	State->FloorObject,
-	//		State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
-
-	for(size_t I = 0; I < 10; ++I){
-		InitiateGameObject( 
-			State->CubeObjects[I],
-				CreateEnityComponent(&State->Drawables, "Flower"),
-				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
-				State->Physics.CreateCubeComponent(
-					{ 0, 1000.0f + 10.0f * I, 0}, 
-					{ 0, 10, 0}, 1));
-
-		SetRayVisibility(State->CubeObjects[I], true);
-	}
-
-
-#endif
-
-	InitiateGameObject(
-		State->Player,
-			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
-			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
-
-	Translate		(State->Player, {0, 1000, -10});
-	SetCameraOffset	(State->Player, { 0, 15, 10 });
-	YawCamera(State->Player, pi);
-	//Yaw(State->Player, pi);
-	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
+	CreateTerrainTest(State, Framework);
+	//CreateIntersectionTest(State, Framework);
 
 	return State;
-
-	auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
 }
 
 

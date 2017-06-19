@@ -893,8 +893,8 @@ namespace FlexKit
 
 
 
-					NewRenderSystem.UploadQueues[I].UploadList[II] = static_cast<ID3D12GraphicsCommandList*>(UploadList);
-					NewRenderSystem.UploadQueues[I].UploadCLAllocator[II] = UploadAllocator;
+					NewRenderSystem.UploadQueues[I].UploadList[II]				= static_cast<ID3D12GraphicsCommandList*>(UploadList);
+					NewRenderSystem.UploadQueues[I].UploadCLAllocator[II]		= UploadAllocator;
 
 					NewRenderSystem.FrameResources[I].TempBuffers				= nullptr;
 					NewRenderSystem.FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
@@ -938,8 +938,6 @@ namespace FlexKit
 
 			DXGIFactory->EnumAdapterByLuid(DeviceID, IID_PPV_ARGS(&DXGIAdapter));
 		}
-
-
 
 		FINALLY
 			if (!InitiateComplete)
