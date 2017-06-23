@@ -747,7 +747,7 @@ namespace FlexKit
 			IR->DrawCalls.push_back({ DRAWCALLTYPE::DCT_TEXT2, IR->Text2.size() });
 			IR->Text2.push_back(NewDrawCall);
 
-			for (size_t I = 0; I < IR->TextBufferPosition; ++I)
+			for (size_t I = 0; I < IR->TextBufferPosition && I < Text.size(); ++I)
 				Text[I].POS = Position2SS(Text[I].POS);
 
 			for (uint32_t I = 0; I < StrLen; ++I)
@@ -1076,6 +1076,7 @@ namespace FlexKit
 		RG->DrawLines2D.Release();
 		RG->DrawLines3D.Release();
 		RG->Lines2D.LineSegments.Release();
+		RG->Lines3D.GPUResource.Release();
 		RG->TextBuffer.Release();
 		RG->Text.Release();
 		RG->Text2.Release();

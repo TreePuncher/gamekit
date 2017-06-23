@@ -104,6 +104,8 @@ namespace FlexKit
 		Format.Color       = float4(WHITE, 1.0f);
 		Format.Scale       = { 0.5f / AspectRatio, 0.5f };
 		Format.PixelSize   = float2(1.0f,1.0f ) / Window_WH;
+		Format.CenterX	   = false;
+		Format.CenterY	   = false;
 		PrintText(IR, C->InputBuffer, C->Font, Format, C->Memory);
 
 		for (auto& Line : C->Lines) {

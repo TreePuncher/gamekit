@@ -37,6 +37,8 @@ namespace FlexKit
 	};
 
 	void InitiateSSReflectionTracer	( RenderSystem* RS, uint2 WH, SSReflectionBuffers* Out );
+	void ReleaseSSR					( SSReflectionBuffers* SSR );
+
 	void TraceReflections			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* In, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH, SSReflectionBuffers* SSR);
 	
 	void 		ClearBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, SSReflectionBuffers* Buffers );

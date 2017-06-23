@@ -72,7 +72,12 @@ namespace FlexKit
 		if (E + 1 == Drawables.size())
 		{
 			ReleaseNode(*SN, GetDrawable(E).Node);
-			ReleaseDrawable(&GetDrawable(E));
+			auto& Drawable = GetDrawable(E);
+
+			ReleaseMesh(RS, GT, Drawable.MeshHandle);
+			ReleaseDrawable(&Drawable);
+
+			Drawable.MeshHandle = INVALIDMESHHANDLE;
 			Drawables.pop_back();
 			DrawableVisibility.pop_back();
 			DrawableRayVisibility.pop_back();
@@ -87,6 +92,7 @@ namespace FlexKit
 
 			Drawable.VConstants.Release();
 			ReleaseMesh(RS, GT, Drawable.MeshHandle);
+
 			Drawable.MeshHandle = INVALIDMESHHANDLE;
 			DrawableVisibility[E] = false;
 			DrawableRayVisibility[E] = false;
@@ -326,6 +332,8 @@ namespace FlexKit
 		Drawble.Dirty		= true;
 		Drawble.Textured	= false;
 		Drawble.Textures	= nullptr;
+
+		SetRayVisability(EHandle, true);
 
 		return EHandle;
 	}

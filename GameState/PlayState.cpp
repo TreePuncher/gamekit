@@ -152,7 +152,6 @@ bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 		PushCapsule_Wireframe(&StateMemory->Framework->Immediate, Engine->TempAllocator, GetWorldPosition(ThisState->Player), 5, 10, GREEN);
 	}
 
-
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
 	if(ThisState->Framework->DrawDebug)
@@ -163,26 +162,27 @@ bool PreDrawUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 
 	LineSegments Lines(Engine->TempAllocator);
 	LineSegment Line;
-	Line.A = float3(0, 0, 0) + CameraPOS;
-	Line.B = float3(0, 20, 0) + CameraPOS;
+	Line.A       = float3(0, 0, 0) + CameraPOS;
+	Line.B       = float3(0, 20, 0) + CameraPOS;
 	Line.AColour = float3(1, 1, 0);
 	Line.BColour = float3(1, 1, 0);
 	Lines.push_back(Line);
 	
-	Line.B = Q * float3(0, 0, -10000) + CameraPOS;
+	Line.B       = Q * float3(0, 0, -10000) + CameraPOS;
 	Lines.push_back(Line);
 
 	PushLineSet3D(ThisState->Framework->Immediate, Lines);
-	// Ray Cast Tests
-#if 1
 
-	double T = ThisState->Framework->TimeRunning;
+#if 1
+	// Ray Cast Tests
+
+	double T	= ThisState->Framework->TimeRunning;
 	double CosT = (float)cos(T);
 	double SinT = (float)sin(T);
 
-	float Begin = 0.0f;
-	float End = 60.0f;
-	float IaR = 10000 * (1 + (float)cos(T * 6)) / 2;
+	float Begin = 00.0f;
+	float End	= 60.0f;
+	float IaR	= 10000 * (1 + (float)cos(T * 6)) / 2;
 
 
 	Quaternion Q2	= GetCameraOrientation(ThisState->Player);

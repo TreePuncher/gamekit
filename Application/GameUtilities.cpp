@@ -42,6 +42,7 @@ void ReleaseEngine(EngineMemory* Engine)
 	
 	ReleaseForwardPass	( &Engine->ForwardRender  );
 	ReleaseTiledRender	( &Engine->TiledRender );
+	ReleaseSSR			( &Engine->Reflections );
 
 	Release( &Engine->DepthBuffer );
 	Release( &Engine->Window );
@@ -243,14 +244,14 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 	{
 
 		State->dPos = GetMousedPos(Window);
-		State->Position.x -= State->dPos[0];
-		State->Position.y += State->dPos[1];
+		State->Position.x -= State->dPos[0] * 0.5f;
+		State->Position.y += State->dPos[1] * 0.5f;
 
-		State->Position[0] = max(0, min(State->Position[0], Window->WH[0]));
-		State->Position[1] = max(0, min(State->Position[1], Window->WH[1]));
+		State->Position[0] = max(0.0f, min((float)State->Position[0], (float)Window->WH[0]));
+		State->Position[1] = max(0.0f, min((float)State->Position[1], (float)Window->WH[1]));
 
-		State->NormalizedPos[0] = max(0, min(State->Position[0] / Window->WH[0], 1));
-		State->NormalizedPos[1] = max(0, min(State->Position[1] / Window->WH[1], 1));
+		State->NormalizedPos[0] = max(0.0f, min((float)State->Position[0] / (float)Window->WH[0], 1));
+		State->NormalizedPos[1] = max(0.0f, min((float)State->Position[1] / (float)Window->WH[1], 1));
 
 		SetSystemCursorToWindowCenter(Window);
 		ShowCursor(false);
@@ -265,9 +266,11 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 
 /************************************************************************************************/
 
+
 void PushCmdArg(EngineMemory* Engine, const char* str)
 {
 	Engine->CmdArguments.push_back(str);
 }
 
 
+/************************************************************************************************/

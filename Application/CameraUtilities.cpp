@@ -136,7 +136,7 @@ namespace FlexKit
 			dP += InputSystem->KeyState.Right		? float3(1, 0, 0)	: float3(0, 0, 0);
 
 			dP = Q * dP;
-			Translate	(Controller.ParentGO, dP * dT * 1000);
+			Translate	(Controller.ParentGO, dP * dT * Controller.MoveRate);
 			Pitch		(*Nodes, Controller.PitchNode, MouseState.dPos[1] * dT);
 			Yaw			(*Nodes, Controller.YawNode, MouseState.dPos[0] * dT);
 		}
@@ -156,13 +156,14 @@ namespace FlexKit
 	}
 
 
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, Camera* Cam)
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, Camera* Cam, float MoveRate)
 	{
 		CameraOrbitController Controller;
 		Controller.CameraNode	= Cam->Node;
 		Controller.PitchNode	= System->Nodes->GetNewNode();
 		Controller.RollNode		= System->Nodes->GetNewNode();
 		Controller.YawNode		= System->Nodes->GetNewNode();
+		Controller.MoveRate		= MoveRate;
 
 		System->Nodes->SetParentNode(Controller.YawNode,	Controller.PitchNode);
 		System->Nodes->SetParentNode(Controller.PitchNode,	Controller.RollNode);

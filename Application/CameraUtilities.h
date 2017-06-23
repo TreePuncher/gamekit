@@ -93,6 +93,8 @@ namespace FlexKit
 		NodeHandle PitchNode;
 		NodeHandle RollNode;
 
+		float MoveRate;
+
 		GameObjectInterface* ParentGO;
 	};
 
@@ -132,7 +134,7 @@ namespace FlexKit
 
 	const uint32_t OrbitCameraComponentID = GetTypeGUID(OrbitCamera);
 
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, Camera* Cam);
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, Camera* Cam, float MoveRate = 100);
 
 	NodeHandle GetCameraSceneNode(GameObjectInterface* GO)
 	{

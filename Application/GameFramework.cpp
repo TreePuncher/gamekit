@@ -212,7 +212,6 @@ namespace FlexKit
 		FlexKit::Draw_RECT Cursor;
 		Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
 		Cursor.TRight = Cursor.BLeft + CursorSize;
-
 		Cursor.Color  = float4(1, 1, 1, 1);
 
 		PushRect(State->Immediate, Cursor);
@@ -240,6 +239,7 @@ namespace FlexKit
 
 		ReleaseTerrain	(State->Engine->Nodes, &State->Landscape);
 		ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
+		ReleaseCamera	(State->Engine->Nodes, &State->DebugCamera);
 
 		ReleaseDrawImmediate	(Engine->RenderSystem, &State->Immediate);
 	}

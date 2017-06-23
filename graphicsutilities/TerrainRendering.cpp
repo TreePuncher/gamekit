@@ -644,225 +644,8 @@ namespace FlexKit
 		return  PSO;
 	}
 
+
 	/************************************************************************************************/
-
-	// OLD
-	void LoadTerrainPipelineStates(RenderSystem* RS, Landscape* out, bool AssertOnFail)
-	{
-		auto ShaderVS             = LoadShader("VPassThrough",			"VPassThrough",			 "vs_5_0", "assets\\tvshader.hlsl");
-		auto ShaderGS             = LoadShader("GS_Split",				"GS_Split",			 	 "gs_5_0", "assets\\tvshader.hlsl");
-		auto ShaderRegion2Tri     = LoadShader("RegionToTris",			"RegionToTris",	 		 "gs_5_0", "assets\\tvshader.hlsl");
-		auto ShaderRegion2Quad    = LoadShader("RegionToQuadPatch",		"RegionToQuadPatch",	 "hs_5_0", "assets\\tvshader.hlsl");
-		auto ShaderQuad2Tri       = LoadShader("QuadPatchToTris",		"QuadPatchToTris",		 "ds_5_0", "assets\\tvshader.hlsl");
-		auto ShaderQuad2Tri_Debug = LoadShader("QuadPatchToTris_DEBUG",	"QuadPatchToTris_DEBUG", "ds_5_0", "assets\\tvshader.hlsl");
-		auto ShaderPaint          = LoadShader("DebugTerrainPaint",		"TerrainPaint",			 "ps_5_0", "assets\\pshader.hlsl");
-		auto ShaderPaint_Debug    = LoadShader("DebugTerrainPaint",		"DebugTerrainPaint",	 "ps_5_0", "assets\\pshader.hlsl");
-		auto ShaderPaint_Wire     = LoadShader("DebugTerrainPaint_2",	"DebugTerrainPaint_2",	 "ps_5_0", "assets\\pshader.hlsl");
-
-		/*
-		// Old Shader Names
-		out->VShader			= LoadShader("VPassThrough",			"VPassThrough",			 "vs_5_0", "assets\\tvshader.hlsl");
-		out->GSubdivShader		= LoadShader("GS_Split",				"GS_Split",			 	 "gs_5_0", "assets\\tvshader.hlsl");
-		out->RegionToTri		= LoadShader("RegionToTris",			"RegionToTris",	 		 "gs_5_0", "assets\\tvshader.hlsl");
-		out->HullShader			= LoadShader("RegionToQuadPatch",		"RegionToQuadPatch",	 "hs_5_0", "assets\\tvshader.hlsl");
-		out->DomainShader		= LoadShader("QuadPatchToTris",			"QuadPatchToTris",		 "ds_5_0", "assets\\tvshader.hlsl");
-		out->DomainShader_Debug = LoadShader("QuadPatchToTris_DEBUG",	"QuadPatchToTris_DEBUG", "ds_5_0", "assets\\tvshader.hlsl");
-		out->PShader			= LoadShader("DebugTerrainPaint",		"TerrainPaint",			 "ps_5_0", "assets\\pshader.hlsl");
-		out->PShaderDebug		= LoadShader("DebugTerrainPaint",		"DebugTerrainPaint",	 "ps_5_0", "assets\\pshader.hlsl");
-		out->PShaderWire		= LoadShader("DebugTerrainPaint_2",		"DebugTerrainPaint_2",	 "ps_5_0", "assets\\pshader.hlsl");
-		*/
-
-		FINALLY
-			Release(&ShaderVS);
-			Release(&ShaderGS);
-			Release(&ShaderRegion2Tri);
-			Release(&ShaderRegion2Quad);
-			Release(&ShaderQuad2Tri);
-			Release(&ShaderQuad2Tri_Debug);
-			Release(&ShaderPaint);
-			Release(&ShaderPaint_Debug);
-			Release(&ShaderPaint_Wire);
-		FINALLYOVER;
-
-		// PSO Creation
-		auto RootSig = RS->Library.RS4CBVs_SO;
-
-		/*
-		typedef struct D3D12_INPUT_ELEMENT_DESC
-		{
-			LPCSTR						SemanticName;
-			UINT						SemanticIndex;
-			DXGI_FORMAT					Format;
-			UINT						InputSlot;
-			UINT						AlignedByteOffset;
-			D3D12_INPUT_CLASSIFICATION	InputSlotClass;
-			UINT						InstanceDataStepRate;
-		} 	D3D12_INPUT_ELEMENT_DESC;
-		*/
-
-		ID3D12PipelineState* SplitState			= nullptr;
-		ID3D12PipelineState* GenerateState		= nullptr;
-		ID3D12PipelineState* GenerateStateDebug = nullptr;
-		ID3D12PipelineState* WireFrameState		= nullptr;
-
-		D3D12_INPUT_ELEMENT_DESC InputElements[] =
-		{
-			{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-
-		// Generate Geometry State
-		{
-			auto Rast_State			= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			Rast_State.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
-			auto BlendState			= CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			auto DepthState			= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-			DepthState.DepthEnable	= true;
-			DepthState.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-
-
-			D3D12_SHADER_BYTECODE GCode = { (BYTE*)ShaderRegion2Tri.Blob->GetBufferPointer(),	ShaderRegion2Tri.Blob->GetBufferSize()	};
-			D3D12_SHADER_BYTECODE PCode = { (BYTE*)ShaderPaint.Blob->GetBufferPointer(),		ShaderPaint.Blob->GetBufferSize()		};
-			D3D12_SHADER_BYTECODE PCode2= { (BYTE*)ShaderPaint_Wire.Blob->GetBufferPointer(),	ShaderPaint_Wire.Blob->GetBufferSize()	};
-			D3D12_SHADER_BYTECODE HCode = { (BYTE*)ShaderRegion2Quad.Blob->GetBufferPointer(),	ShaderRegion2Quad.Blob->GetBufferSize()	};
-			D3D12_SHADER_BYTECODE DCode = { (BYTE*)ShaderQuad2Tri.Blob->GetBufferPointer(),		ShaderQuad2Tri.Blob->GetBufferSize()	};
-			D3D12_SHADER_BYTECODE VCode = { (BYTE*)ShaderVS.Blob->GetBufferPointer(),			ShaderVS.Blob->GetBufferSize()			};
-
-			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-				PSO_Desc.pRootSignature                = RootSig;
-				PSO_Desc.VS                            = VCode;
-				PSO_Desc.HS							   = HCode;
-				PSO_Desc.DS                            = DCode;
-				PSO_Desc.PS                            = PCode;
-				PSO_Desc.SampleMask                    = UINT_MAX;
-				PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-				PSO_Desc.NumRenderTargets			   = 4;
-				PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
-				PSO_Desc.RTVFormats[1]				   = DXGI_FORMAT_R8G8B8A8_UNORM;
-				PSO_Desc.RTVFormats[2]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
-				PSO_Desc.RTVFormats[3]				   = DXGI_FORMAT_R32G32B32A32_FLOAT;
-				PSO_Desc.SampleDesc.Count              = 1;
-				PSO_Desc.SampleDesc.Quality            = 0;
-				PSO_Desc.RasterizerState               = Rast_State;
-				PSO_Desc.DepthStencilState			   = DepthState;
-				PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-				PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
-				PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements)/sizeof(InputElements[0]) };
-				PSO_Desc.DepthStencilState.DepthEnable = true;
-				PSO_Desc.DSVFormat					   = DXGI_FORMAT_D32_FLOAT;
-			}
-
-			ID3D12PipelineState* PSO = nullptr;
-			auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-			if (AssertOnFail)
-				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE TERRAIN STATE!"));
-			GenerateState = PSO;
-
-			ID3D12PipelineState* PSODebugRender = nullptr;
-			PSO_Desc.DS = ShaderQuad2Tri_Debug;
-			PSO_Desc.PS	= PCode;
-			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSODebugRender));
-			if (AssertOnFail)
-				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE TERRAIN STATE!"));
-			GenerateStateDebug = PSODebugRender;
-
-			auto NoDepthState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-			NoDepthState.DepthFunc				= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
-			PSO_Desc.DS							= DCode;
-			PSO_Desc.PS							= PCode2;
-			PSO_Desc.RasterizerState.FillMode	= D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
-			PSO_Desc.DepthStencilState			= NoDepthState;
-
-			ID3D12PipelineState* PSOWire = nullptr;
-			HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSOWire));
-			if (AssertOnFail)
-				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE TERRAIN STATE!"));
-			WireFrameState = PSOWire;
-
-
-		}
-		// GPU Quad Tree expansion state
-		{
-			/*
-			typedef struct D3D12_SO_DECLARATION_ENTRY
-			{
-			UINT Stream;
-			LPCSTR SemanticName;
-			UINT SemanticIndex;
-			BYTE StartComponent;
-			BYTE ComponentCount;
-			BYTE OutputSlot;
-			} 	D3D12_SO_DECLARATION_ENTRY;
-			*/
-
-			D3D12_SO_DECLARATION_ENTRY SO_Entries[] = {
-				{ 0, "REGION",		0, 0, 4, 0 },
-				{ 0, "TEXCOORD",	0, 0, 4, 0 },
-				{ 0, "TEXCOORD",	1, 0, 4, 0 },
-				{ 1, "REGION",		0, 0, 4, 1 },
-				{ 1, "TEXCOORD",	0, 0, 4, 1 },
-				{ 1, "TEXCOORD",	1, 0, 4, 1 },
-			};
-
-			UINT Strides = sizeof(Landscape::ViewableRegion);
-			UINT SO_Strides[] = {
-				Strides,
-				Strides,
-				Strides,
-			};
-
-			D3D12_STREAM_OUTPUT_DESC SO_Desc = {};{
-				SO_Desc.NumEntries		= 6;
-				SO_Desc.NumStrides		= 3;
-				SO_Desc.pBufferStrides	= SO_Strides;
-				SO_Desc.pSODeclaration	= SO_Entries;
-			}
-
-			D3D12_SHADER_BYTECODE GCode = { ShaderGS.Blob->GetBufferPointer(),  ShaderGS.Blob->GetBufferSize() };
-			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-				PSO_Desc.pRootSignature                = RootSig;
-				PSO_Desc.VS                            = { (BYTE*)ShaderVS.Blob->GetBufferPointer(), ShaderVS.Blob->GetBufferSize() };
-				PSO_Desc.GS                            = GCode;
-				PSO_Desc.SampleMask                    = UINT_MAX;
-				PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-				PSO_Desc.NumRenderTargets              = 0;
-				PSO_Desc.SampleDesc.Count              = 1;
-				PSO_Desc.SampleDesc.Quality            = 0;
-				PSO_Desc.RasterizerState               = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-				PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-				PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
-				PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements) / sizeof(InputElements[0]) };
-				PSO_Desc.DepthStencilState.DepthEnable = false;
-				PSO_Desc.StreamOutput				   = SO_Desc;
-			}
-
-			ID3D12PipelineState* PSO = nullptr;
-			auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-			if(AssertOnFail)
-				CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE TERRAIN STATE!"));
-
-			SplitState = PSO;
-		}
-
-		/*
-		if (SplitState && GenerateState &&  GenerateStateDebug && WireFrameState)
-		{	// All Loads Sucessfull
-			// Swap States
-			if(out->SplitState)			out->SplitState->Release();
-			if(out->GenerateState)		out->GenerateState->Release();
-			if(out->GenerateStateDebug)	out->GenerateStateDebug->Release();
-			if(out->WireFrameState)		out->WireFrameState->Release();
-
-			out->SplitState			= SplitState;
-			out->GenerateState		= GenerateState;
-			out->GenerateStateDebug = GenerateStateDebug;
-			out->WireFrameState		= WireFrameState;
-		}
-		else if (AssertOnFail)
-			FK_ASSERT(false, "FAILED TO CREATE TERRAIN STATE!");
-		*/
-	}
 
 
 	void InitiateLandscape( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* out )
@@ -1019,8 +802,6 @@ namespace FlexKit
 		ls->RegionBuffers[1].Release();
 		ls->Regions.Release();
 
-		Release(ls->HeightMap);
-
 		if ( ls->CommandSignature )	 ls->CommandSignature->Release();	ls->CommandSignature = nullptr;
 		if ( ls->ZeroValues )		 ls->ZeroValues->Release();			ls->ZeroValues		 = nullptr;
 		if ( ls->ConstantBuffer )	 ls->ConstantBuffer.Release();
@@ -1029,20 +810,12 @@ namespace FlexKit
 		if ( ls->SOCounter_1 )		 ls->SOCounter_1.Release();
 		if ( ls->SOCounter_2 )		 ls->SOCounter_2.Release();
 		if ( ls->FB_Counter )		 ls->FB_Counter.Release();
-
-		/*
-		if ( ls->GenerateStateDebug) ls->GenerateStateDebug->Release();
-		if ( ls->GenerateState )	 ls->GenerateState->Release();
-		if ( ls->WireFrameState)	 ls->WireFrameState->Release();
-		if ( ls->SplitState )		 ls->SplitState->Release();
-		*/
-
-		if ( ls->SOQuery ) ls->SOQuery.Release();
+		if ( ls->SOQuery )			 ls->SOQuery.Release();
 
 		if( ls->IndirectOptions1 ) ls->IndirectOptions1.Release();
 		if( ls->IndirectOptions2 ) ls->IndirectOptions2.Release();
 
-		if( ls->InputBuffer ) ls->InputBuffer->Release();
+		if( ls->InputBuffer )	   ls->InputBuffer->Release();
 	}
 
 
@@ -1089,7 +862,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	/*
+		UploadLandscape2
+			Allows use of a different Frustum for debugging purposes.
+	*/
 	void UploadLandscape2(RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* Camera, Frustum F, bool UploadRegions, bool UploadConstants, int PassCount)
 	{
 		if (!ls->Regions.size())

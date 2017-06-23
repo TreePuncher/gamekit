@@ -1061,9 +1061,12 @@ namespace FlexKit
 	{
 		for(auto FR : System->FrameResources)
 		{
-			FR.DescHeap.DescHeap->Release();
-			FR.RTVHeap.DescHeap->Release();
 			FR.DSVHeap.DescHeap->Release();
+			FR.DescHeap.DescHeap->Release();
+			FR.GPUDescHeap.DescHeap->Release();
+			FR.RTVHeap.DescHeap->Release();
+
+			//FR.
 
 			for (auto CL : FR.CommandLists)
 				if(CL)CL->Release();
@@ -1092,6 +1095,8 @@ namespace FlexKit
 
 		ReleasePipelineStates(System);
 
+		System->CopyEngine.TempBuffer->Unmap(0, nullptr);
+
 		System->NullConstantBuffer.Release();
 		System->NullUAV->Release();
 		System->NullSRV->Release();
@@ -1108,6 +1113,7 @@ namespace FlexKit
 		System->pDevice->Release();
 		System->CopyEngine.TempBuffer->Release();
 		System->Fence->Release();
+		System->CopyFence->Release();
 
 		System->FreeList.Release();
 
@@ -2182,6 +2188,7 @@ namespace FlexKit
 		for (auto H : Heap)
 			H->Release();
 
+	
 		FlexKit::Release(&OcclusionBuffer);
 		Predicates.Release();
 	}

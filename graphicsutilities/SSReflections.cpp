@@ -70,6 +70,13 @@ namespace FlexKit
 		QueuePSOLoad(RS, EPIPELINESTATES::SSREFLECTIONS);
 	}
 
+	void ReleaseSSR(SSReflectionBuffers* SSR)
+	{
+		for( auto& I : SSR->ReflectionBuffer )
+			I->Release();
+	}
+
+
 	Texture2D*	GetCurrentBuffer(SSReflectionBuffers* Buffers)
 	{
 		return Buffers->ReflectionBuffer + Buffers->CurrentBuffer;

@@ -438,7 +438,6 @@ namespace FlexKit
 			return Out;
 		}
 
-
 		RayIntesectionResults RayCastOBB(RaySet& Rays, iAllocator* Memory, SceneNodeComponentSystem* Nodes)// Runs RayCasts Against all object OBB's
 		{
 			RayIntesectionResults Out(Memory);
@@ -460,7 +459,7 @@ namespace FlexKit
 					auto Ls			 = Nodes->GetLocalScale(Node);
 					auto AABB		 = Mesh->AABB;// Not Yet Orientated
 
-					auto H = AABB.TopRight;
+					auto H = AABB.TopRight * Ls;
 
 					auto Normals = static_vector<float3, 3>(
 					{	Orientation * float3{ 1, 0, 0 },
