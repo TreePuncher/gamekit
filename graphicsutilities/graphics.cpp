@@ -593,6 +593,8 @@ namespace FlexKit
 			AddTempBuffer(CopyEngine.TempBuffer, RS);
 			CopyEngine.TempBuffer->Unmap(0, 0);
 
+			Push_DelayedRelease(RS, CopyEngine.TempBuffer);
+
 			size_t NewBufferSize = CopyEngine.Size;
 			while (NewBufferSize < SizePlusOffset)
 				NewBufferSize = NewBufferSize * 2;
@@ -616,8 +618,6 @@ namespace FlexKit
 
 			return ReserveTempSpace(RS, Size, CPUMem, Offset);
 		};
-
-		
 
 		// Not enough remaining Space in Buffer GOTO Beginning
 		if	(CopyEngine.Position + SizePlusOffset > CopyEngine.Size)
@@ -1013,8 +1013,7 @@ namespace FlexKit
 			ObjectsCreated.push_back(out->NullSRV);
 		}
 		{
-			out->NullSRV1D = CreateShaderResource(out, 1024);
-			SETDEBUGNAME( out->NullSRV, "NULL SRV");
+			out->NullSRV1D = CreateShaderResource(out, 1024, "NULL SRV 1D");
 			
 			ObjectsCreated.push_back(out->NullSRV);
 		}
@@ -1096,10 +1095,12 @@ namespace FlexKit
 		ReleasePipelineStates(System);
 
 		System->CopyEngine.TempBuffer->Unmap(0, nullptr);
+		System->CopyEngine.TempBuffer->Release();
 
 		System->NullConstantBuffer.Release();
 		System->NullUAV->Release();
 		System->NullSRV->Release();
+		System->NullSRV1D.Release();
 
 		System->GraphicsQueue->Release();
 		System->UploadQueue->Release();
@@ -1111,7 +1112,6 @@ namespace FlexKit
 		System->pGIFactory->Release();
 		System->pDXGIAdapter->Release();
 		System->pDevice->Release();
-		System->CopyEngine.TempBuffer->Release();
 		System->Fence->Release();
 		System->CopyFence->Release();
 
@@ -1170,8 +1170,8 @@ namespace FlexKit
 		Clear.Color[2] = 0.0f;
 		Clear.Color[3] = 0.0f;
 
-		Clear.DepthStencil.Depth = 0.0f;
-		Clear.DepthStencil.Stencil = 0;
+		Clear.DepthStencil.Depth	= 0.0f;
+		Clear.DepthStencil.Stencil	= 0;
 
 		if (Float32){
 			Resource_DESC.Width					= desc_in->Width;
@@ -2043,8 +2043,8 @@ namespace FlexKit
 		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::OCCLUSION_CULLING, LoadOcclusionState);
 		QueuePSOLoad(RS, EPIPELINESTATES::OCCLUSION_CULLING);
 
-		auto NewRes = CreateShaderResource(RS, Count * 8);
-		NewRes._SetDebugName("OCCLUSIONCULLERRESULTS");
+		auto NewRes = CreateShaderResource(RS, Count * 8, "OCCLUSIONCULLERRESULTS");
+
 		D3D12_QUERY_HEAP_DESC Desc;
 		Desc.Count		= Count;
 		Desc.Type		= D3D12_QUERY_HEAP_TYPE_OCCLUSION;
@@ -2053,28 +2053,30 @@ namespace FlexKit
 		ID3D12QueryHeap* Heap[3] = { nullptr, nullptr, nullptr };
 		
 		HRESULT HR;
-		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Heap[0])); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
-		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Heap[1])); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
-		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Heap[2])); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
+		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(Heap + 0)); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
+		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(Heap + 1)); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
+		HR = RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(Heap + 2)); FK_ASSERT(HR, "FAILED TO CREATE QUERY HEAP!");
 
+		/*
 		FlexKit::Texture2D_Desc Tex2D_Desc;
-		Tex2D_Desc.CV           = true;
-		Tex2D_Desc.FLAGS        = FlexKit::SPECIALFLAGS::DEPTHSTENCIL;
-		Tex2D_Desc.Format       = FORMAT_2D::D32_FLOAT;
-		Tex2D_Desc.Width        = OcclusionBufferSize[0];
-		Tex2D_Desc.Height       = OcclusionBufferSize[1];
-		Tex2D_Desc.Read         = false;
-		Tex2D_Desc.MipLevels    = 1;
-		Tex2D_Desc.initialData  = nullptr;
-		Tex2D_Desc.RenderTarget = true;
-		Tex2D_Desc.UAV          = false;
-		Tex2D_Desc.Write        = false;
+		Tex2D_Desc.CV				= true;
+		Tex2D_Desc.FLAGS			= FlexKit::SPECIALFLAGS::DEPTHSTENCIL;
+		Tex2D_Desc.Format			= FORMAT_2D::D32_FLOAT;
+		Tex2D_Desc.Width			= OcclusionBufferSize[0];
+		Tex2D_Desc.Height			= OcclusionBufferSize[1];
+		Tex2D_Desc.Read				= false;
+		Tex2D_Desc.MipLevels		= 1;
+		Tex2D_Desc.initialData		= nullptr;
+		Tex2D_Desc.RenderTarget		= true;
+		Tex2D_Desc.UAV				= false;
+		Tex2D_Desc.Write			= false;
+		*/
 
 		DepthBuffer DB;
 		FlexKit::DepthBuffer_Desc Depth_Desc;
-		Depth_Desc.BufferCount	= 3;
-		Depth_Desc.Float32		= true;
-		Depth_Desc.InverseDepth = true;
+		Depth_Desc.BufferCount		= 3;
+		Depth_Desc.Float32			= true;
+		Depth_Desc.InverseDepth		= true;
 
 		auto Res = CreateDepthBuffer(RS, OcclusionBufferSize, Depth_Desc, &DB);
 		FK_ASSERT(Res, "FAILED TO CREATE OCCLUSION BUFFER!");
@@ -2082,7 +2084,17 @@ namespace FlexKit
 		for (size_t I = 0; I < 3; ++I)
 			SETDEBUGNAME(DB.Buffer[I], "OCCLUSION CULLER DEPTH BUFFER");
 
-		return{ 0, Count, 0, {Heap[0], Heap[1], Heap[2]}, NewRes, DB, OcclusionBufferSize };
+		OcclusionCuller Out;
+		Out.Head		    = 0;
+		Out.Max			    = Count;
+		Out.Heap[0]		    = Heap[0];
+		Out.Heap[1]		    = Heap[1];
+		Out.Heap[2]		    = Heap[2];
+		Out.Predicates	    = NewRes;
+		Out.OcclusionBuffer = DB;
+		Out.HW              = OcclusionBufferSize;
+
+		return Out;
 	}
 
 
@@ -2185,9 +2197,10 @@ namespace FlexKit
 
 	void OcclusionCuller::Release()
 	{
-		for (auto H : Heap)
+		for (auto& H : Heap) {
 			H->Release();
-
+			H = nullptr;
+		}
 	
 		FlexKit::Release(&OcclusionBuffer);
 		Predicates.Release();
@@ -2318,8 +2331,8 @@ namespace FlexKit
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_PACKED:
 					{SETDEBUGNAME(NewBuffer, "PACKED_BUFFER");break;}
 				case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR:
-					break;
 				default:
+					{SETDEBUGNAME(NewBuffer, "VERTEXBUFFER_TYPE_ERROR"); break; }
 					break;
 		}
 #endif 
@@ -2672,7 +2685,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ShaderResourceBuffer CreateShaderResource(RenderSystem* RS, const size_t ResourceSize)
+	ShaderResourceBuffer CreateShaderResource(RenderSystem* RS, const size_t ResourceSize, const char* _DebugName)
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(ResourceSize);
 		Resource_DESC.Alignment				= 0;
@@ -2708,7 +2721,7 @@ namespace FlexKit
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
 			NewResource.Resources[I] = Resource;
 
-			SETDEBUGNAME(Resource, __func__ );
+			SETDEBUGNAME(Resource, _DebugName);
 		}
 		return NewResource;
 	}
@@ -2745,9 +2758,9 @@ namespace FlexKit
 		{
 			ID3D12Resource* Resource = nullptr;
 			HRESULT HR = RS->pDevice->CreateCommittedResource(
-				&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
-				&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
-				IID_PPV_ARGS(&Resource));
+								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
+								IID_PPV_ARGS(&Resource));
 
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
 			NewResource.Resources[I] = Resource;
@@ -6593,9 +6606,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	{
 		out->LineSegments.Release();
 		out->LineSegments.Allocator = Mem;
-		out->ResourceSize = KILOBYTE * 64;
-		out->GPUResource = CreateShaderResource(RS, KILOBYTE * 64);
-		out->GPUResource._SetDebugName("LINE SEGMENTS");
+		out->ResourceSize	= KILOBYTE * 64;
+		out->GPUResource	= CreateShaderResource(RS, KILOBYTE * 64, "LINE SEGMENTS");
 	}
 
 
@@ -6816,8 +6828,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		HEAP_Props.CreationNodeMask	     = 0;
 		HEAP_Props.VisibleNodeMask		 = 0;
 
-		auto NewResource = CreateShaderResource(RS, C * R * sizeof(TextEntry));
-		NewResource._SetDebugName("TEXTOBJECT");
+		auto NewResource = CreateShaderResource(RS, C * R * sizeof(TextEntry), "TEXTAREA");
 
 		TextArea Out = 
 		{ 

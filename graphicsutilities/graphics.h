@@ -432,7 +432,15 @@ namespace FlexKit
 		TY_*	Get() const			{ return Resources[Idx]; }
 
 		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
-		void Release(){for( auto& r : Resources) {if(r) r->Release(); r = nullptr;};}
+		void Release()
+		{
+			for( auto& r : Resources) 
+			{
+				if(r) 
+					r->Release(); 
+				r = nullptr;
+			};
+		}
 
 		void Release_Delayed(RenderSystem* RS) 
 		{ 
@@ -2132,7 +2140,7 @@ namespace FlexKit
 	FLEXKITAPI bool					CreateInputLayout			( RenderSystem* RS, VertexBufferView**,  size_t count, Shader*, VertexBuffer* OUT );		// Expects Index buffer in index 15
 	FLEXKITAPI Texture2D			CreateTexture2D				( RenderSystem* RS, Texture2D_Desc* desc_in );
 	FLEXKITAPI void					CreateVertexBuffer			( RenderSystem* RS, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
-	FLEXKITAPI ShaderResourceBuffer CreateShaderResource		( RenderSystem* RS, const size_t ResourceSize );
+	FLEXKITAPI ShaderResourceBuffer CreateShaderResource		( RenderSystem* RS, const size_t ResourceSize, const char* _DebugName = "CreateShaderResource" );
 	FLEXKITAPI StreamOutBuffer		CreateStreamOut				( RenderSystem* RS, const size_t ResourceSize );
 	FLEXKITAPI VertexResourceBuffer CreateVertexBufferResource	( RenderSystem* RS, const size_t ResourceSize );
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );

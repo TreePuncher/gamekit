@@ -650,7 +650,7 @@ namespace FlexKit
 		{	// Resize Buffer
 			IR->TextBufferSizes[Idx] = 2 * CurrentBufferSize;
 			CurrentBufferSize		*= 2;
-			auto NewResource         = CreateShaderResource(IR->RS, sizeof(TextEntry) * CurrentBufferSize);
+			auto NewResource         = CreateShaderResource(IR->RS, sizeof(TextEntry) * CurrentBufferSize, "TEXT BUFFER");
 
 			AddTempShaderRes(IR->TextBufferGPU, IR->RS);
 			IR->TextBufferGPU[0] = NewResource[0];
@@ -1041,7 +1041,7 @@ namespace FlexKit
 		RG->TextBufferSizes[1] = TEXTBUFFERMINSIZE;
 		RG->TextBufferSizes[2] = TEXTBUFFERMINSIZE;
 
-		RG->TextBufferGPU = CreateShaderResource(RS, sizeof(TextEntry) * TEXTBUFFERMINSIZE);
+		RG->TextBufferGPU = CreateShaderResource(RS, sizeof(TextEntry) * TEXTBUFFERMINSIZE, "TEXT BUFFER INITIAL");
 
 		InitiateLineSet(RS, TempMemory, &RG->Lines2D);
 		InitiateLineSet(RS, TempMemory, &RG->Lines3D);
@@ -1113,8 +1113,7 @@ namespace FlexKit
 				while (SpaceNeeded > Set->ResourceSize)
 					Set->ResourceSize *= 2;
 
-				Set->GPUResource = CreateShaderResource(RS, Set->ResourceSize);
-				Set->GPUResource._SetDebugName("LINE SEGMENTS");
+				Set->GPUResource = CreateShaderResource(RS, Set->ResourceSize, "LINE SEGMENTS - Expanded");
 			}
 
 			UpdateResourceByTemp(

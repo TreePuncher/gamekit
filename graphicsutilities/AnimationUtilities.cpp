@@ -107,8 +107,7 @@ namespace FlexKit
 	{
 		bool ReturnState = false;
 		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint) * 2;
-		ShaderResourceBuffer NewResource = CreateShaderResource(RS, ResourceSize);
-		NewResource._SetDebugName("POSESTATE");
+		ShaderResourceBuffer NewResource = CreateShaderResource(RS, ResourceSize, "POSESTATE");
 		
 		if (NewResource)
 		{
