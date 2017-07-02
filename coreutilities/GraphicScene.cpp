@@ -33,34 +33,20 @@ namespace FlexKit
 
 	EntityHandle GraphicScene::CreateDrawable()
 	{
-		if (FreeEntityList.size())
-		{
-			auto E = FreeEntityList.back();
-			FreeEntityList.pop_back();
-			Drawable& e = GetDrawable(E);
+		EntityHandle Out = HandleTable.GetNewHandle();
 
-			DrawableDesc	Desc;
-			NodeHandle N  = GetZeroedNode(*SN);
-			FlexKit::CreateDrawable(RS, &e, Desc);
+		Drawable		D;
+		DrawableDesc	Desc;
+		NodeHandle N  = GetZeroedNode(*SN);
+		FlexKit::CreateDrawable(RS, &D, Desc);
 
-			e.Posed		= false;
-			e.Textured	= false;
-			e.Node		= N;
-			return E;
-		}
-		else
-		{
-			Drawable		e;
-			DrawableDesc	Desc;
-			NodeHandle N  = GetZeroedNode(*SN);
-			FlexKit::CreateDrawable(RS, &e, Desc);
+		D.Node = N;
+		_PushEntity(D, Out);
 
-			e.Node	   = N;
-			_PushEntity(e);
+		HandleTable[Out] = Drawables.size() - 1;
 
-			return EntityHandle( Drawables.size() - 1 );
-		}
-		return EntityHandle(-1);
+		SceneManagement.CreateNode(Out);
+		return Out;
 	}
 
 
@@ -69,34 +55,39 @@ namespace FlexKit
 
 	void GraphicScene::RemoveEntity(EntityHandle E)
 	{
-		if (E + 1 == Drawables.size())
-		{
-			ReleaseNode(*SN, GetDrawable(E).Node);
-			auto& Drawable = GetDrawable(E);
+		ReleaseNode(*SN, GetDrawable(E).Node);
 
-			ReleaseMesh(RS, GT, Drawable.MeshHandle);
-			ReleaseDrawable(&Drawable);
+		auto& Drawable = GetDrawable(E);
+		ReleaseDrawable(&Drawable);
 
-			Drawable.MeshHandle = INVALIDMESHHANDLE;
-			Drawables.pop_back();
-			DrawableVisibility.pop_back();
-			DrawableRayVisibility.pop_back();
-		}
-		else
-		{
-			FreeEntityList.push_back(E);
-			ReleaseNode(*SN, GetDrawable(E).Node);
+		Drawable.VConstants.Release();
+		ReleaseMesh(RS, GT, Drawable.MeshHandle);
 
-			auto& Drawable = GetDrawable(E);
-			ReleaseDrawable(&Drawable);
+		Drawable.MeshHandle		 = INVALIDMESHHANDLE;
+		DrawableVisibility[E]	 = false;
+		DrawableRayVisibility[E] = false;
 
-			Drawable.VConstants.Release();
-			ReleaseMesh(RS, GT, Drawable.MeshHandle);
+		auto Index = HandleTable[E];
 
-			Drawable.MeshHandle = INVALIDMESHHANDLE;
-			DrawableVisibility[E] = false;
-			DrawableRayVisibility[E] = false;
-		}
+		auto TempDrawable			= Drawables.back();
+		auto TempVisibility			= DrawableVisibility.back();
+		auto TempRayVisilibility	= DrawableRayVisibility.back();
+		auto TempDrawableHandle		= DrawableHandles.back();
+
+		Drawables.pop_back();
+		DrawableVisibility.pop_back();
+		DrawableRayVisibility.pop_back();
+		DrawableHandles.pop_back();
+
+		if (Index + 1 == Drawables.size())
+			return;
+
+		Drawables[Index]				= TempDrawable;
+		DrawableVisibility[Index]		= TempVisibility;
+		DrawableRayVisibility[Index]	= TempRayVisilibility;
+		DrawableHandles[Index]			= TempDrawableHandle;
+
+		HandleTable[TempDrawableHandle] = HandleTable[E];
 	}
 
 
@@ -121,11 +112,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void GraphicScene::Update()
+	{
+		SceneManagement.Update();
+	}
+
+
+	/************************************************************************************************/
+
+
 	bool GraphicScene::isEntitySkeletonAvailable(EntityHandle EHandle)
 	{
-		if (Drawables.at(EHandle).MeshHandle != INVALIDMESHHANDLE)
+		auto Index = HandleTable[EHandle];
+		if (Drawables.at(Index).MeshHandle != INVALIDMESHHANDLE)
 		{
-			auto Mesh		= GetMesh(GT, Drawables.at(EHandle).MeshHandle);
+			auto Mesh		= GetMesh(GT, Drawables.at(Index).MeshHandle);
 			auto ID			= Mesh->TriMeshID;
 			bool Available	= isResourceAvailable(RM, ID);
 			return Available;
@@ -139,6 +140,7 @@ namespace FlexKit
 
 	bool GraphicScene::EntityEnablePosing(EntityHandle EHandle)
 	{
+		auto Index				= HandleTable[EHandle];
 		bool Available			= isEntitySkeletonAvailable(EHandle);
 		bool SkeletonAvailable  = false;
 		auto MeshHandle			= GetDrawable(EHandle).MeshHandle;
@@ -208,6 +210,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, GUID_t Guid, float W, bool Loop)
 	{
 		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
@@ -217,7 +222,7 @@ namespace FlexKit
 
 		if (SkeletonLoaded)
 		{
-			auto S = GetSkeleton(GT, MeshHandle);
+			auto S = FlexKit::GetSkeleton(GT, MeshHandle);
 			Skeleton::AnimationList* I = S->Animations;
 			bool AnimationLoaded = false;
 
@@ -259,6 +264,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation, float W, bool Loop)
 	{
 		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
@@ -269,7 +277,7 @@ namespace FlexKit
 		if (SkeletonLoaded && HasAnimationData(GT, MeshHandle))
 		{
 			// TODO: Needs to Iterate Over Clips
-			auto S = GetSkeleton(GT, MeshHandle);
+			auto S = FlexKit::GetSkeleton(GT, MeshHandle);
 			if (!strcmp(S->Animations->Clip.mID, Animation))
 			{
 				int64_t AnimationID = -1;
@@ -296,10 +304,13 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	size_t	GraphicScene::GetEntityAnimationPlayCount(EntityHandle EHandle)
 	{
 		size_t Out = 0;
-		Out = GetAnimationCount(&Drawables.at(EHandle));
+		Out = GetAnimationCount(&Drawables.at(HandleTable[EHandle]));
 		return Out;
 	}
 
@@ -310,8 +321,9 @@ namespace FlexKit
 	Drawable& GraphicScene::SetNode(EntityHandle EHandle, NodeHandle Node) 
 	{
 		FlexKit::ReleaseNode(*SN, GetNode(EHandle));
-		Drawables.at(EHandle).Node = Node;
-		return Drawables.at(EHandle);
+		auto& Drawable = Drawables.at(HandleTable[EHandle]);
+		Drawable.Node = Node;
+		return Drawable;
 	}
 
 
@@ -427,12 +439,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::_PushEntity(Drawable E)
+	void GraphicScene::_PushEntity(Drawable E, EntityHandle Handle)
 	{
 		Drawables.push_back(E);
 		DrawableVisibility.push_back(false);
 		DrawableRayVisibility.push_back(false);
-
+		DrawableHandles.push_back(Handle);
 	}
 
 
@@ -465,46 +477,42 @@ namespace FlexKit
 
 	void QuadTree::Release()
 	{
-		FreeNode(FreeList, Memory, Root);
-
-		for (auto I : FreeList)
-			Memory->free(I);
-	}
-
-	/************************************************************************************************/
-
-
-	void FreeNode(NodeBlock& FreeList, iAllocator* Memory, QuadTreeNode* Node)
-	{
-		for (auto& I : Node->ChildNodes)
-			FreeNode(FreeList, Memory, I);
-
-		if (!FreeList.full())
-			FreeList.push_back(Node);
-		else
-			Memory->free(Node);
-
-		Node->Contents.clear();
-		Node->ChildNodes.clear();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void QuadTree::Initiate(iAllocator* memory)
+	void QuadTree::CreateNode(EntityHandle Handle)
 	{
-		Memory =  memory;
-		Root   = &Memory->allocate_aligned<ScenePartitionTable::TY_NODE>();
+
 	}
 
 
 	/************************************************************************************************/
 
 
-	void InitiateSceneMgr(ScenePartitionTable* SPT, iAllocator* Memory)
+	void QuadTree::ReleaseNode(EntityHandle Handle)
 	{
-		SPT->Initiate(Memory);
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QuadTree::Update()
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QuadTree::Initiate(iAllocator* memory, float2 AreaDimensions)
+	{
+		Memory = memory;
+		Area = AreaDimensions;
 	}
 
 
@@ -517,7 +525,9 @@ namespace FlexKit
 		using FlexKit::CreatePointLightBuffer;
 		using FlexKit::PointLightBufferDesc;
 
-		Out->FreeEntityList.Allocator			= Memory;
+		Out->HandleTable.Initiate(Memory);
+
+		Out->DrawableHandles.Allocator			= Memory;
 		Out->Drawables.Allocator				= Memory;
 		Out->DrawableVisibility.Allocator		= Memory;
 		Out->DrawableRayVisibility.Allocator	= Memory;
@@ -540,8 +550,7 @@ namespace FlexKit
 		CreatePointLightBuffer(in_RS, &Out->PLights, Desc, Memory);
 		CreateSpotLightBuffer(in_RS,  &Out->SPLights, Memory);
 		
-		InitiateSceneMgr(&Out->SceneManagement, Out->Memory);
-
+		Out->SceneManagement.Initiate(Memory);
 		Out->_PVS.clear();
 	}
 
@@ -787,6 +796,10 @@ namespace FlexKit
 		return false;
 	}
 
+
+	/************************************************************************************************/
+
+
 	bool LoadScene(RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable* GT, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp)
 	{
 		if (isResourceAvailable(RM, LevelName))
@@ -814,7 +827,11 @@ namespace FlexKit
 		return GetPositionW(*SN, Drawables.at(EHandle).Node); 
 	}
 
-	inline Quaternion GraphicScene::GetOrientation(EntityHandle Handle)
+
+	/************************************************************************************************/
+
+
+	Quaternion GraphicScene::GetOrientation(EntityHandle Handle)
 	{
 		return FlexKit::GetOrientation(*SN, GetNode(Handle));
 	}
@@ -822,15 +839,19 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void GraphicScene::Yaw					(EntityHandle Handle, float a)				{ FlexKit::Yaw	(*SN, GetDrawable(Handle).Node, a); }
-	void GraphicScene::Pitch				(EntityHandle Handle, float a)				{ FlexKit::Pitch(*SN, GetDrawable(Handle).Node, a); }
-	void GraphicScene::Roll					(EntityHandle Handle, float a)				{ FlexKit::Roll	(*SN, GetDrawable(Handle).Node, a); }
-	void GraphicScene::TranslateEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateLocal	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-	void GraphicScene::TranslateEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateWorld	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-	void GraphicScene::SetPositionEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionW		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-	void GraphicScene::SetPositionEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionL		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true;}
-	void GraphicScene::SetOrientation		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientation	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
-	void GraphicScene::SetOrientationL		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientationL	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true;}
-	void GraphicScene::SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ ReleaseNode(*SN, PLights[Handle].Position); PLights[Handle].Position = Node; }
+	/*
+	void GraphicScene::Yaw					(EntityHandle Handle, float a)				{ FlexKit::Yaw	(*SN, GetDrawable(Handle).Node, a);												   }
+	void GraphicScene::Pitch				(EntityHandle Handle, float a)				{ FlexKit::Pitch(*SN, GetDrawable(Handle).Node, a);												   }
+	void GraphicScene::Roll					(EntityHandle Handle, float a)				{ FlexKit::Roll	(*SN, GetDrawable(Handle).Node, a);												   }
+	void GraphicScene::TranslateEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateLocal	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
+	void GraphicScene::TranslateEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateWorld	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
+	void GraphicScene::SetPositionEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionW		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
+	void GraphicScene::SetPositionEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionL		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
+	void GraphicScene::SetOrientation		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientation	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true; }
+	void GraphicScene::SetOrientationL		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientationL	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true; }
+	*/
 
-}
+	void GraphicScene::SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ FlexKit::ReleaseNode		(*SN, PLights[Handle].Position); PLights[Handle].Position = Node;	   }
+
+
+}	/************************************************************************************************/

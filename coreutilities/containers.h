@@ -330,9 +330,11 @@ namespace FlexKit
 			pop_back();
 		}
 
-		void pop_back()
+		Ty pop_back()
 		{
+			auto Temp = back();
 			A[Size--].~Ty();
+			return Temp;
 		}
 
 

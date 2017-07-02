@@ -413,7 +413,6 @@ namespace FlexKit
 			}
 			else
 			{
-				SETDEBUGNAME(*texture, "TEXTURE");
 
 				const UINT		num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
 				const UINT64	uploadBufferSize = GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
@@ -432,8 +431,9 @@ namespace FlexKit
 					IID_PPV_ARGS(&textureUploadHeap));
 
 				Push_DelayedRelease(RS, textureUploadHeap);
-				SETDEBUGNAME(textureUploadHeap, "textureUploadHeap");
 
+				SETDEBUGNAME(*texture, "TEXTURE");
+				SETDEBUGNAME(textureUploadHeap, "textureUploadHeap");
 
 				if (FAILED(hr))
 				{
@@ -470,6 +470,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
 
 	static HRESULT CreateTextureFromDDS12(
 		RenderSystem* RS,

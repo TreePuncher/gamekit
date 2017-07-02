@@ -416,12 +416,12 @@ namespace FlexKit
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH)
 	{
 		auto CL = GetCurrentCommandList(RS);
-		auto FrameResources = GetCurrentFrameResources(RS);
-		auto BufferIndex = Pass->CurrentBuffer;
-		auto& CurrentGBuffer = Pass->GBuffers[BufferIndex];
+		auto FrameResources		= GetCurrentFrameResources(RS);
+		auto BufferIndex		= Pass->CurrentBuffer;
+		auto& CurrentGBuffer	= Pass->GBuffers[BufferIndex];
 
-		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS = ReserveDescHeap(RS, 11);
+		auto DescTable	= GetDescTableCurrentPosition_GPU(RS);
+		auto TablePOS	= ReserveDescHeap(RS, 11);
 
 		TablePOS = PushCBToDescHeap(RS, C->Buffer.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
 		TablePOS = PushCBToDescHeap(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));

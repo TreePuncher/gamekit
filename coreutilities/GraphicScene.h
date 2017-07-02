@@ -38,42 +38,6 @@ namespace FlexKit
 
 	struct SceneNodeComponentSystem;
 
-	template<typename TY_SCHEME>
-	struct iScenePartitioner
-	{
-		typedef typename TY_SCHEME::TY_ENTRY TY_NODE;
-
-		void Initiate(iAllocator* memory)
-		{
-			Scene.Initiate(memory);
-		}
-
-		void Release()
-		{
-			Scene.Release();
-		}
-
-
-		void TranslateEntity(float3 XYZ, float2 UV)
-		{
-
-		}
-
-		Vector<EntityHandle>	GetViewables(Camera* C)
-		{
-			Vector<EntityHandle> Out;
-			return Out;
-		}
-
-		void Update()
-		{
-
-		}
-
-		TY_SCHEME Scene;
-	};
-	
-
 	struct QuadTreeNode
 	{
 		float	r;
@@ -83,55 +47,58 @@ namespace FlexKit
 
 	typedef static_vector<QuadTreeNode*, 16> NodeBlock;
 
-	void FreeNode(NodeBlock& FreeList, iAllocator* Memory, QuadTreeNode* Node);
-
 	struct QuadTree
 	{
-		typedef QuadTreeNode TY_ENTRY;
-
-		void Initiate(iAllocator* memory);
+		void Initiate(iAllocator* memory, float2 AreaDimensions = {8096, 8096});
 		void Release();
+		
+		void CreateNode		( EntityHandle Handle );
+		void ReleaseNode	( EntityHandle Handle );
 
-		TY_ENTRY*						Root;
+		void Update();
+
+		const size_t NodeSize = 16;
+
+		float2							Area;
+		QuadTreeNode*					Root;
 		iAllocator*						Memory;
-		static_vector<TY_ENTRY*, 16>	FreeList;
 	};
 
-	typedef iScenePartitioner<QuadTree>	ScenePartitionTable;
+	void UpdateQuadTree		( QuadTreeNode* Node, GraphicScene* Scene );
 
-	void UpdateQuadTree		(QuadTreeNode* Node, GraphicScene* Scene);
-	void InitiateSceneMgr	(ScenePartitionTable* SPT, iAllocator* Memory);
+	constexpr const Type_t DRAWABLE_ID = GetTypeGUID(DRAWABLEHANDLE);
 
 	struct FLEXKITAPI GraphicScene
 	{
-		EntityHandle CreateDrawable();
-		void		 RemoveEntity(EntityHandle E);
-		void		 ClearScene();
+		EntityHandle CreateDrawable	();
+		void		 RemoveEntity	( EntityHandle E );
+		void		 ClearScene		();
+		void		 Update			();
 
-		Drawable&	GetDrawable			(EntityHandle EHandle) {return Drawables.at(EHandle);								}
-		Skeleton*	GetEntitySkeleton	(EntityHandle EHandle) {return GetSkeleton(GT, Drawables.at(EHandle).MeshHandle);	}
-		float4		GetMaterialColour	(EntityHandle EHandle) {return Drawables.at(EHandle).MatProperties.Albedo;			}
-		float4		GetMaterialSpec		(EntityHandle EHandle) {return Drawables.at(EHandle).MatProperties.Spec;			}
-		NodeHandle	GetNode				(EntityHandle EHandle) {return Drawables.at(EHandle).Node;							}
-		float3		GetEntityPosition	(EntityHandle EHandle);
+		Drawable&	GetDrawable			( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]);										}
+		Skeleton*	GetSkeleton			( EntityHandle EHandle ) { return FlexKit::GetSkeleton(GT, Drawables.at(HandleTable[EHandle]).MeshHandle);	}
+		float4		GetMaterialColour	( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).MatProperties.Albedo;					}
+		float4		GetMaterialSpec		( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).MatProperties.Spec;					}
+		NodeHandle	GetNode				( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).Node;									}
+		float3		GetEntityPosition	( EntityHandle EHandle );
 
-		bool isEntitySkeletonAvailable			(EntityHandle EHandle);
-		bool EntityEnablePosing					(EntityHandle EHandle);
+		bool isEntitySkeletonAvailable			( EntityHandle EHandle );
+		bool EntityEnablePosing					( EntityHandle EHandle );
 
 		inline DrawableAnimationState*	GetEntityAnimationState(EntityHandle EHandle) { return Drawables.at(EHandle).AnimationState; }
 
-		GSPlayAnimation_RES EntityPlayAnimation	(EntityHandle EHandle, const char*	Animation,	float w = 1.0f, bool Loop = false);
-		GSPlayAnimation_RES EntityPlayAnimation	(EntityHandle EHandle, GUID_t		Guid,		float w = 1.0f, bool Loop = false);
-		size_t				GetEntityAnimationPlayCount(EntityHandle EHandle);
+		GSPlayAnimation_RES EntityPlayAnimation	( EntityHandle EHandle, const char*	Animation,	float w = 1.0f, bool Loop = false );
+		GSPlayAnimation_RES EntityPlayAnimation	( EntityHandle EHandle, GUID_t		Guid,		float w = 1.0f, bool Loop = false );
+		size_t				GetEntityAnimationPlayCount	( EntityHandle EHandle );
 
-		inline void SetVisability		(EntityHandle EHandle, bool Visable = true)	{ DrawableVisibility.at(EHandle) = Visable; }
-		inline bool GetVisability		(EntityHandle EHandle)						{ return DrawableVisibility.at(EHandle);	}
+		inline void SetVisability		( EntityHandle EHandle, bool Visable = true )		{ DrawableVisibility.at(EHandle) = Visable; }
+		inline bool GetVisability		( EntityHandle EHandle )							{ return DrawableVisibility.at(EHandle);	}
 
-		inline void SetRayVisability	(EntityHandle EHandle, bool Visable = true)	{ DrawableRayVisibility.at(EHandle) = Visable; }
-		inline bool GetRayVisability	(EntityHandle EHandle)						{ return DrawableRayVisibility.at(EHandle);	}
+		inline void SetRayVisability	( EntityHandle EHandle, bool Visable = true )		{ DrawableRayVisibility.at(EHandle) = Visable; }
+		inline bool GetRayVisability	( EntityHandle EHandle )							{ return DrawableRayVisibility.at(EHandle);	}
 
-		inline void				SetMeshHandle(EntityHandle EHandle, TriMeshHandle M)	{ Drawables.at(EHandle).MeshHandle = M;		}
-		inline TriMeshHandle	GetMeshHandle(EntityHandle EHandle)						{ return Drawables.at(EHandle).MeshHandle;	}
+		inline void				SetMeshHandle(EntityHandle EHandle, TriMeshHandle M)		{ Drawables.at(EHandle).MeshHandle = M;		}
+		inline TriMeshHandle	GetMeshHandle(EntityHandle EHandle)							{ return Drawables.at(EHandle).MeshHandle;	}
 
 		inline void				SetTextureSet		(EntityHandle EHandle, TextureSet* Set)	{ Drawables.at(EHandle).Textures = Set; Drawables.at(EHandle).Textured = true; }
 		inline TextureSet*		GetTextureSet		(EntityHandle EHandle)					{ return Drawables.at(EHandle).Textures; }
@@ -155,27 +122,23 @@ namespace FlexKit
 		SpotLightHandle AddSpotLight ( NodeHandle Node, float3 Color, float3 Dir, float t = pi / 4, float I = 10.0f, float R = 10.0f);
 		SpotLightHandle AddSpotLight ( float3 POS,		float3 Color, float3 Dir, float t = pi / 4, float I = 10, float R = 10);
 
-		void _PushEntity(Drawable E);
+		void _PushEntity( Drawable E, EntityHandle Handle);
 
-		void Yaw					(EntityHandle Handle, float a);	
-		void Pitch					(EntityHandle Handle, float a);			
-		void Roll					(EntityHandle Handle, float a);
-		void TranslateEntity_LT		(EntityHandle Handle, float3 V);			
-		void TranslateEntity_WT		(EntityHandle Handle, float3 V);			
-		void SetPositionEntity_WT	(EntityHandle Handle, float3 V);			
-		void SetPositionEntity_LT	(EntityHandle Handle, float3 V);			
-		void SetOrientation			(EntityHandle Handle, Quaternion Q);
-		void SetOrientationL		(EntityHandle Handle, Quaternion Q);		
-		void SetLightNodeHandle		(SpotLightHandle Handle, NodeHandle Node);
+		/*
+		void Yaw					( EntityHandle Handle, float a				);	
+		void Pitch					( EntityHandle Handle, float a				);			
+		void Roll					( EntityHandle Handle, float a				);
+		void TranslateEntity_LT		( EntityHandle Handle, float3 V				);			
+		void TranslateEntity_WT		( EntityHandle Handle, float3 V				);			
+		void SetPositionEntity_WT	( EntityHandle Handle, float3 V				);			
+		void SetPositionEntity_LT	( EntityHandle Handle, float3 V				);			
+		void SetOrientation			( EntityHandle Handle, Quaternion Q			);
+		void SetOrientationL		( EntityHandle Handle, Quaternion Q			);		
+		*/
 
-		inline Quaternion GetOrientation(EntityHandle Handle);
+		void SetLightNodeHandle		( SpotLightHandle Handle, NodeHandle Node	);
 
-
-		Vector<SpotLightShadowCaster>		SpotLightCasters;
-		Vector<Drawable>					Drawables;
-		Vector<bool>						DrawableVisibility;
-		Vector<bool>						DrawableRayVisibility;
-		Vector<EntityHandle>				FreeEntityList;
+		Quaternion GetOrientation	( EntityHandle Handle );
 
 		struct TaggedJoint
 		{
@@ -184,7 +147,14 @@ namespace FlexKit
 			NodeHandle		Target;
 		};
 
-		Vector<TaggedJoint>		TaggedJoints;
+		HandleUtilities::HandleTable<EntityHandle, 16> HandleTable;
+
+		Vector<SpotLightShadowCaster>		SpotLightCasters;
+		Vector<Drawable>					Drawables;
+		Vector<bool>						DrawableVisibility;
+		Vector<bool>						DrawableRayVisibility;
+		Vector<EntityHandle>				DrawableHandles;
+		Vector<TaggedJoint>					TaggedJoints;
 
 		iAllocator*					TempMem;
 		iAllocator*					Memory;
@@ -197,8 +167,7 @@ namespace FlexKit
 		SpotLightBuffer		SPLights;
 		PVS					_PVS;
 
-		ScenePartitionTable	SceneManagement;
-
+		QuadTree	SceneManagement;
 
 		operator GraphicScene* () { return this; }
 	};

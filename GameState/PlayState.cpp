@@ -469,6 +469,9 @@ void CreateIntersectionTest(PlayState* State, GameFramework* Framework)
 }
 
 
+/************************************************************************************************/
+
+
 void CreateTerrainTest(PlayState* State, GameFramework* Framework)
 {
 	for(size_t I = 0; I < 10; ++I){
@@ -487,12 +490,12 @@ void CreateTerrainTest(PlayState* State, GameFramework* Framework)
 		State->Player,
 			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10000.0f));
 
 	Translate		(State->Player, {0, 10000, -10});
 	SetCameraOffset	(State->Player, { 0, 15, 10 });
 
-	auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
+	//auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
 
 	auto HF = LoadHeightFieldCollider(&Framework->Engine->Physics, &Framework->Engine->Assets, 10601);
 
@@ -534,8 +537,8 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
-	//CreateTerrainTest(State, Framework);
-	CreateIntersectionTest(State, Framework);
+	CreateTerrainTest(State, Framework);
+	//CreateIntersectionTest(State, Framework);
 
 	return State;
 }

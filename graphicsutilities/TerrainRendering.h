@@ -54,7 +54,7 @@ namespace FlexKit
 			int32_t BitID;
 			float2  UV_TL; // Top	 Left
 			float2  UV_BR; // Bottom Right
-			float4  ParentUV; // Bottom Right
+			int32_t TerrainInfo[4]; // Texture Index
 		};
 
 		struct ConstantBufferLayout
@@ -109,7 +109,6 @@ namespace FlexKit
 	
 
 	FLEXKITAPI void InitiateLandscape	( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* ls );
-
 	FLEXKITAPI void ReleaseTerrain		( SceneNodes* Nodes, Landscape* ls );
 	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
 	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12 );
