@@ -74,12 +74,15 @@ namespace FlexKit
 		auto TempRayVisilibility	= DrawableRayVisibility.back();
 		auto TempDrawableHandle		= DrawableHandles.back();
 
+		auto Index2 = HandleTable[TempDrawableHandle];
+
+
 		Drawables.pop_back();
 		DrawableVisibility.pop_back();
 		DrawableRayVisibility.pop_back();
 		DrawableHandles.pop_back();
 
-		if (Index + 1 == Drawables.size())
+		if (!Drawables.size() || (Index == Drawables.size()))
 			return;
 
 		Drawables[Index]				= TempDrawable;
