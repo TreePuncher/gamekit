@@ -219,6 +219,15 @@ namespace FlexKit
 				return Indexes.end();
 			}
 
+			HANDLE find(size_t idx)
+			{
+				for (size_t I = 0; I < Indexes.size(); ++I)
+					if(Indexes[I] == idx)
+						return HANDLE(I);
+
+				return HANDLE(-1);
+			}
+
 			HandleTable( const HandleTable<HANDLE,SIZE>& in )	= delete;	// Do not allow Table copying
 			HandleTable& operator = ( const HandleTable& rhs )	= delete;	// Do not allow Table copying
 

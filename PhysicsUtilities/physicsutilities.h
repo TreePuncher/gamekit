@@ -348,113 +348,64 @@ namespace FlexKit
 		};
 
 
-		void Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene)
-		{
-			Nodes					= nodes;
-			Controllers.Allocator	= Memory;
-			ControllerManager		= PxCreateControllerManager(*Scene);
-		}
-
-
-		void UpdateSystem(double dT)
-		{
-			for (auto& C : Controllers)
-			{
-				physx::PxControllerFilters Filter;
-				if (C.Delta.magnitudesquared() > 0.001f)
-				{
-					if(C.Delta.magnitudesquared() < 10.0f)
-					{
-						auto Flags = C.Controller->move(
-							{ C.Delta.x, C.Delta.y, C.Delta.z },
-							0.01f,
-							dT,
-							Filter);
-
-						C.CeilingContact	= Flags & physx::PxControllerCollisionFlag::eCOLLISION_UP;
-						C.FloorContact		= Flags & physx::PxControllerCollisionFlag::eCOLLISION_DOWN;
-
-						auto NewPosition	= C.Controller->getFootPosition();
-						auto NewPositionFK	= { NewPosition.x, NewPosition.y, NewPosition.z };
-						C.CurrentPosition	= NewPositionFK;
-
-						Nodes->SetPositionL(C.Node, NewPositionFK);
-					}
-					else
-					{
-						auto Position		= GetPositionL(*Nodes, C.Node);
-						C.CurrentPosition	= Position;
-						C.Controller->setFootPosition({ Position.x, Position.y, Position.z });
-					}
-
-					C.Delta = 0;
-				}
-			}
-		}
-
+		void Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene);
+		void UpdateSystem(double dT);
 
 		void Release()
 		{
+			ControllerManager->release();
 		}
 
 
 		void ReleaseHandle(ComponentHandle Handle)
 		{
-		}
+			auto Temp		= Controllers.back();
+			auto SwapHandle = Handles.find(Controllers.size() - 1);
 
+			if(SwapHandle.INDEX != -1)
+			{
+				Controllers[Handles[Handle]].Controller->release();
+				Controllers.pop_back();
+				Controllers[SwapHandle] = Temp;
+
+				Handles.Indexes[SwapHandle] = Handles[Handle];
+			}
+		}
 
 		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID ID, GameObjectInterface* GO) final
 		{
 			if (EventSource == TransformComponentID && ID == GetCRCGUID(POSITION))
 			{
-				auto CurrentPosition	= Controllers[Handle].CurrentPosition + Controllers[Handle].Delta;
-				auto Position			= Nodes->GetPositionL(Controllers[Handle].Node);
+				auto Index				= Handles[Handle];
+				auto CurrentPosition	= Controllers[Index].CurrentPosition + Controllers[Index].Delta;
+				auto Position			= Nodes->GetPositionL(Controllers[Index].Node);
 				auto DeltaPosition		= Position - CurrentPosition;
 
-				Controllers[Handle].Delta += DeltaPosition;
+				Controllers[Index].Delta += DeltaPosition;
 			}
 		}
 
 		
 		void SetNodeHandle(ComponentHandle Handle, NodeHandle Node)
 		{
-			Nodes->ReleaseHandle(Controllers[Handle].Node);
-			Controllers[Handle].Node = Node;
+			auto Index = Handles[Handle];
+			Nodes->ReleaseHandle(Controllers[Index].Node);
+			Controllers[Index].Node = Node;
 		}
 
 
 		NodeHandle	GetNodeHandle(ComponentHandle Handle)
 		{
-			return Controllers[Handle].Node;
+			return Controllers[Handles[Handle]].Node;
 		}
 
 
-		ComponentHandle CreateCapsuleController(PhysicsSystem* PS, physx::PxScene* Scene, physx::PxMaterial* Mat,float R, float H, float3 InitialPosition = 0, Quaternion Q = Quaternion())
-		{
-			physx::PxCapsuleControllerDesc CCDesc;
-			CCDesc.material             = Mat;
-			CCDesc.radius               = R;
-			CCDesc.height               = H;
-			CCDesc.contactOffset        = 0.01f;
-			CCDesc.position             = { 0.0f, H / 2, 0.0f };
-			CCDesc.climbingMode         = physx::PxCapsuleClimbingMode::eEASY;
-			//CCDesc.upDirection = PxVec3(0, 0, 1);
+		ComponentHandle CreateCapsuleController(PhysicsSystem* PS, physx::PxScene* Scene, physx::PxMaterial* Mat,float R, float H, float3 InitialPosition = 0, Quaternion Q = Quaternion());
 
-			CharacterController NewController;
-
-			auto NewCharacterController = ControllerManager->createController(CCDesc);
-			NewController.Controller	= NewCharacterController;
-			NewController.Node			= Nodes->GetNewNode();
-			NewCharacterController->setFootPosition({ InitialPosition.x, InitialPosition.y, InitialPosition.z });
-
-			Controllers.push_back(NewController);
-
-			return ComponentHandle(Controllers.size() - 1);
-		}
-
-		Vector<CharacterController>	Controllers;
-		physx::PxControllerManager*		ControllerManager;
-		SceneNodeComponentSystem*		Nodes;
+		HandleUtilities::HandleTable<ComponentHandle>	Handles;
+		Vector<CharacterController>						Controllers;
+		physx::PxControllerManager*						ControllerManager;
+		SceneNodeComponentSystem*						Nodes;
 	};
 
 	const uint32_t CharacterControllerSystemID = GetTypeGUID(CharacterControllerSystem);
@@ -636,75 +587,9 @@ namespace FlexKit
 		void UpdateSystem_PreDraw	(double dT);
 		void Release				();
 
-		StaticBoxColliderArgs	CreateStaticBoxCollider		(float3 XYZ = 1, float3 Pos = 0) {
-			auto Static = physx::PxCreateStatic(
-							*System->Physx, 
-							{ Pos.x, Pos.y, Pos.z },
-							physx::PxBoxGeometry(XYZ.x, XYZ.y, XYZ.z), 
-							*System->DefaultMaterial);
-
-			Scene->addActor(*Static);
-
-			auto BaseCollider	= Base.CreateCollider(Static, System->DefaultMaterial);
-			auto BoxCollider	= StaticBoxColliders.CreateStaticBoxCollider(BaseCollider, Static);
-
-			SetPositionW(*Nodes, Base.GetNode(BaseCollider), Pos);
-
-			StaticBoxColliderArgs Out;
-			Out.Base				= &Base;
-			Out.System				= &StaticBoxColliders;
-			Out.ColliderHandle		= BaseCollider;
-			Out.BoxColliderHandle	= BoxCollider;
-
-			return Out;
-		}
-		
-		CubeColliderArgs		CreateCubeComponent			(float3 InitialP = 0, float3 InitialV = 0, float l = 10, Quaternion Q = Quaternion(0, 0, 0, 1))
-		{
-			physx::PxVec3 pV;
-			pV.x = InitialP.x;
-			pV.y = InitialP.y;
-			pV.z = InitialP.z;
-
-			physx::PxQuat pQ;
-			pQ.x = Q.x;
-			pQ.y = Q.y;
-			pQ.z = Q.z;
-			pQ.w = Q.w;
-
-			physx::PxRigidDynamic*	Cube	= Scene->getPhysics().createRigidDynamic(physx::PxTransform(pV, pQ));
-			physx::PxShape*			Shape	= Cube->createShape(physx::PxBoxGeometry(l, l, l), *System->DefaultMaterial);
-			Cube->setLinearVelocity({ InitialV.x, InitialV.y, InitialV.z }, true);
-			Cube->setOwnerClient(CID);
-
-			Scene->addActor(*Cube);
-
-			auto BaseCollider	= Base.CreateCollider(Cube, System->DefaultMaterial);
-			auto CubeCollider	= CubeColliders.CreateCubeCollider(BaseCollider, Cube, Shape);
-
-			auto Node = Base.GetNode(BaseCollider);
-			SetPositionW	(*Nodes, Node, InitialP);
-			SetOrientation	(*Nodes, Node, Q);
-
-			CubeColliderArgs Out;
-			Out.Base              = &Base;
-			Out.System            = &CubeColliders;
-			Out.ColliderHandle    = BaseCollider;
-			Out.CubeHandle		  = CubeCollider;
-
-			return Out;
-		}
-
-		CapsuleCharacterArgs	CreateCharacterController	(float3 InitialP = 0, float R = 5, float H = 5, Quaternion Q = Quaternion())
-		{
-			auto CapsuleCharacter = CharacterControllers.CreateCapsuleController(System, Scene, System->DefaultMaterial, R, H, InitialP, Q);
-
-			CapsuleCharacterArgs Args;
-			Args.CapsuleController = CapsuleCharacter;
-			Args.System = &CharacterControllers;
-
-			return Args;
-		}
+		StaticBoxColliderArgs	CreateStaticBoxCollider		( float3 XYZ = 1, float3 Pos = 0 );
+		CubeColliderArgs		CreateCubeComponent			( float3 InitialP = 0, float3 InitialV = 0, float l = 10, Quaternion Q = Quaternion(0, 0, 0, 1) );
+		CapsuleCharacterArgs	CreateCharacterController	( float3 InitialP = 0, float R = 5, float H = 5, Quaternion Q = Quaternion() );
 
 		ColliderBaseSystem			Base;
 		CubeColliderSystem			CubeColliders;

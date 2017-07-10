@@ -98,7 +98,6 @@ namespace FlexKit
 		GameObjectInterface* ParentGO;
 	};
 
-
 	struct OrbitCameraSystem : public ComponentSystemInterface
 	{
 		operator OrbitCameraSystem* (){return this;}

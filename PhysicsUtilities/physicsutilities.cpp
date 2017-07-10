@@ -433,6 +433,90 @@ namespace FlexKit
 	}
 	*/
 
+	/************************************************************************************************/
+
+
+	void CharacterControllerSystem::Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene)
+	{
+		Nodes					= nodes;
+		Controllers.Allocator	= Memory;
+		ControllerManager		= PxCreateControllerManager(*Scene);
+		Handles.Initiate(Memory);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void CharacterControllerSystem::UpdateSystem(double dT)
+	{
+		for (auto& C : Controllers)
+		{
+			physx::PxControllerFilters Filter;
+			if (C.Delta.magnitudesquared() > 0.001f)
+			{
+				if(C.Delta.magnitudesquared() < 10.0f)
+				{
+					auto Flags = C.Controller->move(
+						{ C.Delta.x, C.Delta.y, C.Delta.z },
+						0.01f,
+						dT,
+						Filter);
+
+					C.CeilingContact	= Flags & physx::PxControllerCollisionFlag::eCOLLISION_UP;
+					C.FloorContact		= Flags & physx::PxControllerCollisionFlag::eCOLLISION_DOWN;
+
+					auto NewPosition	= C.Controller->getFootPosition();
+					auto NewPositionFK	= { NewPosition.x, NewPosition.y, NewPosition.z };
+					C.CurrentPosition	= NewPositionFK;
+
+					Nodes->SetPositionL(C.Node, NewPositionFK);
+				}
+				else
+				{
+					auto Position		= GetPositionL(*Nodes, C.Node);
+					C.CurrentPosition	= Position;
+					C.Controller->setFootPosition({ Position.x, Position.y, Position.z });
+				}
+
+				C.Delta = 0;
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	ComponentHandle CharacterControllerSystem::CreateCapsuleController(PhysicsSystem* PS, physx::PxScene* Scene, physx::PxMaterial* Mat,float R, float H, float3 InitialPosition, Quaternion Q)
+	{
+		physx::PxCapsuleControllerDesc CCDesc;
+		CCDesc.material             = Mat;
+		CCDesc.radius               = R;
+		CCDesc.height               = H;
+		CCDesc.contactOffset        = 0.01f;
+		CCDesc.position             = { 0.0f, H / 2, 0.0f };
+		CCDesc.climbingMode         = physx::PxCapsuleClimbingMode::eEASY;
+		//CCDesc.upDirection = PxVec3(0, 0, 1);
+
+		CharacterController NewController;
+
+		auto NewCharacterController = ControllerManager->createController(CCDesc);
+		NewController.Controller	= NewCharacterController;
+		NewController.Node			= Nodes->GetNewNode();
+		NewCharacterController->setFootPosition({ InitialPosition.x, InitialPosition.y, InitialPosition.z });
+
+		Controllers.push_back(NewController);
+
+		ComponentHandle NewHandle = Handles.GetNewHandle();
+		Handles[NewHandle] = Controllers.size() - 1;
+		return NewHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void ReleaseCapsule(CapsuleCharacterController* Capsule)
 	{
 		Capsule->Controller->release();
@@ -539,6 +623,89 @@ namespace FlexKit
 		ControllerManager->purgeControllers();
 		ControllerManager->release();
 		Scene->release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	StaticBoxColliderArgs	PhysicsComponentSystem::CreateStaticBoxCollider(float3 XYZ, float3 Pos)
+	{
+		auto Static = physx::PxCreateStatic(
+						*System->Physx, 
+						{ Pos.x, Pos.y, Pos.z },
+						physx::PxBoxGeometry(XYZ.x, XYZ.y, XYZ.z), 
+						*System->DefaultMaterial);
+
+		Scene->addActor(*Static);
+
+		auto BaseCollider	= Base.CreateCollider(Static, System->DefaultMaterial);
+		auto BoxCollider	= StaticBoxColliders.CreateStaticBoxCollider(BaseCollider, Static);
+
+		SetPositionW(*Nodes, Base.GetNode(BaseCollider), Pos);
+
+		StaticBoxColliderArgs Out;
+		Out.Base				= &Base;
+		Out.System				= &StaticBoxColliders;
+		Out.ColliderHandle		= BaseCollider;
+		Out.BoxColliderHandle	= BoxCollider;
+
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	CubeColliderArgs PhysicsComponentSystem::CreateCubeComponent(float3 InitialP, float3 InitialV, float l, Quaternion Q)
+	{
+		physx::PxVec3 pV;
+		pV.x = InitialP.x;
+		pV.y = InitialP.y;
+		pV.z = InitialP.z;
+
+		physx::PxQuat pQ;
+		pQ.x = Q.x;
+		pQ.y = Q.y;
+		pQ.z = Q.z;
+		pQ.w = Q.w;
+
+		physx::PxRigidDynamic*	Cube	= Scene->getPhysics().createRigidDynamic(physx::PxTransform(pV, pQ));
+		physx::PxShape*			Shape	= Cube->createShape(physx::PxBoxGeometry(l, l, l), *System->DefaultMaterial);
+		Cube->setLinearVelocity({ InitialV.x, InitialV.y, InitialV.z }, true);
+		Cube->setOwnerClient(CID);
+
+		Scene->addActor(*Cube);
+
+		auto BaseCollider	= Base.CreateCollider(Cube, System->DefaultMaterial);
+		auto CubeCollider	= CubeColliders.CreateCubeCollider(BaseCollider, Cube, Shape);
+
+		auto Node = Base.GetNode(BaseCollider);
+		SetPositionW	(*Nodes, Node, InitialP);
+		SetOrientation	(*Nodes, Node, Q);
+
+		CubeColliderArgs Out;
+		Out.Base              = &Base;
+		Out.System            = &CubeColliders;
+		Out.ColliderHandle    = BaseCollider;
+		Out.CubeHandle		  = CubeCollider;
+
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	CapsuleCharacterArgs PhysicsComponentSystem::CreateCharacterController(float3 InitialP, float R, float H, Quaternion Q )
+	{
+		auto CapsuleCharacter = CharacterControllers.CreateCapsuleController(System, Scene, System->DefaultMaterial, R, H, InitialP, Q);
+
+		CapsuleCharacterArgs Args;
+		Args.CapsuleController = CapsuleCharacter;
+		Args.System = &CharacterControllers;
+
+		return Args;
 	}
 
 

@@ -111,28 +111,28 @@ bool PlayUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 	//Translate(ThisState->Player, float3{ 0, 100, 0 } * dT);
 	auto Forward	= GetForwardVector(ThisState->Player);
 	auto Left		= GetLeftVector(ThisState->Player);
-	const float MoveRate = 1000;
+	const float MoveRate = 100;
 
 
 	SetPositionW(ThisState->Framework->Engine->Nodes, ThisState->Framework->DebugCamera.Node, CameraPOS);
 	Yaw(ThisState->Framework->Engine->Nodes, ThisState->Framework->DebugCamera.Node, pi * dT);
 
-	//if (ThisState->Input.KeyState.Forward)
-	//	Translate(ThisState->Player, Forward * dT * MoveRate);
+	if (ThisState->Input.KeyState.Forward)
+		Translate(ThisState->Player, Forward * dT * MoveRate);
 
-	//if (ThisState->Input.KeyState.Backward)
-	//	Translate(ThisState->Player, Forward * dT * -MoveRate);
+	if (ThisState->Input.KeyState.Backward)
+		Translate(ThisState->Player, Forward * dT * -MoveRate);
 
-	//if (ThisState->Input.KeyState.Left)
-	//	Translate(ThisState->Player, Left * dT * MoveRate);
+	if (ThisState->Input.KeyState.Left)
+		Translate(ThisState->Player, Left * dT * MoveRate);
 
-	//if (ThisState->Input.KeyState.Right)
-	//	Translate(ThisState->Player, Left * dT * -MoveRate);
+	if (ThisState->Input.KeyState.Right)
+		Translate(ThisState->Player, Left * dT * -MoveRate);
 
+	Translate(ThisState->Player, dT * float3{0, -98.0f, 0});
 	ThisState->OrbitCameras.Update(dT);
 	ThisState->Physics.UpdateSystem(dT);
 	ThisState->TPC.Update(dT);
-
 
 	return false;
 }
@@ -438,13 +438,15 @@ void CreateIntersectionTest(PlayState* State, GameFramework* Framework)
 
 	InitiateGameObject( 
 		State->FloorObject,
-			State->Physics.CreateStaticBoxCollider({10000, 1, 10000}, {0, -0.5, 0}));
+			State->Physics.CreateStaticBoxCollider({1000, 3, 1000}, {0, -3, 0}));
 
 	InitiateGameObject(
 		State->Player,
-			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
-			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera));
+			State->Physics.CreateCharacterController({0, 10, 0}, 10, 20),
+			CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
+			//CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10));
+
+	SetCameraOffset(State->Player, {0, 10, 10});
 
 	for(size_t I = 0; I < 10; ++I){
 		InitiateGameObject( 
@@ -537,8 +539,8 @@ PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
 	Framework->ActivePhysicsScene	= &State->Physics;
 	Framework->ActiveScene			= &State->GScene;
 
-	CreateTerrainTest(State, Framework);
-	//CreateIntersectionTest(State, Framework);
+	//CreateTerrainTest(State, Framework);
+	CreateIntersectionTest(State, Framework);
 
 	return State;
 }

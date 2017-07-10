@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameMemory.h"
 
 #include "Gameplay.h"
+
 /*
 TODO's
 */
@@ -38,7 +39,8 @@ TODO's
 struct PlayState : public FrameworkState
 {
 	// Game Element Controllers
-	//GameplayComponentSystem		Model;
+	// GameplayComponentSystem		Model;
+
 	~PlayState();
 
 	InputComponentSystem		Input;
@@ -52,7 +54,6 @@ struct PlayState : public FrameworkState
 	LightComponentSystem				Lights;
 
 	GameObject<>				CubeObjects[1024];
-
 	GameObject<>				FloorObject;
 	GameObject<>				TestObject;
 	GameObject<16>				Player;

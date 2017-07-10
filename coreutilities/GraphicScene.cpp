@@ -610,6 +610,7 @@ namespace FlexKit
 
 	void UpdateGraphicScene(GraphicScene* SM)
 	{
+		SM->SceneManagement.Update();
 		UpdateShadowCasters(SM);
 	}
 

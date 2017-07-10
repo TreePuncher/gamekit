@@ -562,6 +562,8 @@ namespace FlexKit
 			Framework->ActiveScene &&
 			Framework->ActiveWindow )
 		{
+
+
 			auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
 			auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
 			auto OutputTarget	= GetRenderTarget(Framework->ActiveWindow);
