@@ -46,7 +46,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib,	"legacy_stdio_definitions.lib"			)
 #pragma comment(lib,	"SceneQueryDEBUG.lib"					)
 #pragma comment(lib,	"SimulationControllerDEBUG.lib"			)
-
 #else
 #pragma comment(lib,	"LowLevel.lib"						)
 #pragma comment(lib,	"LowLevelCloth.lib"					)
@@ -372,6 +371,7 @@ namespace FlexKit
 			}
 		}
 
+
 		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID ID, GameObjectInterface* GO) final
 		{
 			if (EventSource == TransformComponentID && ID == GetCRCGUID(POSITION))
@@ -613,5 +613,6 @@ namespace FlexKit
 		void*						User;
 	};
 
-}
+
+}	/************************************************************************************************/
 #endif//PHYSICSUTILITIES_H

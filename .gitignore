@@ -3,7 +3,7 @@ assets/
 builds/
 Dependencies/
 *.tlog
-/FlexKit.VC.VC.opendb
+*.opendb
 /FlexKit.VC.db
 *.idb
 *.ipch
@@ -23,3 +23,7 @@ Dependencies/
 *.db
 /.vs/FlexKit/v15/.suo
 /.vs/FlexKit/v14/.suo
+*.opendb
+/.vs/FlexKit/v15/Browse.VC.opendb
+/.vs/FlexKit/v15
+*.opendb

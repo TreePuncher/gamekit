@@ -92,7 +92,7 @@ VOUT VMain( VIN IN )
 	else
 	{
 		Out.WPOS 	= float3(10.0f, 10.0f, 10.0f);
-		Out.POS		= float4(10.0f, 10.0f, 10.0f, 10.0f);
+		Out.POS		= float4(10.0f, 10.0f, 10.0f, 1.0f);
 		Out.N 		= float3(0.0f, 0.0f, 0.0f);
 		Out.T 		= float3(0.0f, 0.0f, 0.0f);
 		Out.B 		= float3(0.0f, 0.0f, 0.0f);
