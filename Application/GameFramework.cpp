@@ -129,6 +129,15 @@ namespace FlexKit
 					_ptr->ConsoleActive = true;
 				}
 			}	break;
+			case KC_F1:
+			{
+				_ptr->DrawDebug			= !_ptr->DrawDebug;
+				_ptr->DrawDebugStats	= !_ptr->DrawDebugStats;
+			}	break;
+			case KC_F2:
+			{
+				_ptr->ScreenSpaceReflections = !_ptr->ScreenSpaceReflections;
+			}	break;
 			default:
 				break;
 			}

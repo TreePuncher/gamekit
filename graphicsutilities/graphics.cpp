@@ -196,6 +196,36 @@ namespace FlexKit
 
 			switch (wParam)
 			{
+			case VK_F1:
+				ev.mData1.mKC[0] = KC_F1;
+				break;
+			case VK_F2:
+				ev.mData1.mKC[0] = KC_F2;
+				break;
+			case VK_F3:
+				ev.mData1.mKC[0] = KC_F3;
+				break;
+			case VK_F4:
+				ev.mData1.mKC[0] = KC_F4;
+				break;
+			case VK_F5:
+				ev.mData1.mKC[0] = KC_F5;
+				break;
+			case VK_F6:
+				ev.mData1.mKC[0] = KC_F6;
+				break;
+			case VK_F7:
+				ev.mData1.mKC[0] = KC_F7;
+				break;
+			case VK_F8:
+				ev.mData1.mKC[0] = KC_F8;
+				break;
+			case VK_F9:
+				ev.mData1.mKC[0] = KC_F9;
+				break;
+			case VK_F10:
+				ev.mData1.mKC[0] = KC_F10;
+				break;
 			case VK_BACK:
 				ev.mData1.mKC[0] = KC_BACKSPACE;
 				break;

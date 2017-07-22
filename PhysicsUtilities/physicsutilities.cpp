@@ -576,6 +576,8 @@ namespace FlexKit
 		const double StepSize = 1 / 60.0f;
 		T += dT;
 
+		CharacterControllers.UpdateSystem(dT);
+
 		while (T > StepSize)
 		{
 			T -= StepSize;
@@ -597,8 +599,6 @@ namespace FlexKit
 			Base.UpdateSystem();
 			UpdateColliders = false;
 		}
-
-		CharacterControllers.UpdateSystem(dT);
 	}
 
 
