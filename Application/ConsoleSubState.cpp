@@ -150,6 +150,7 @@ namespace FlexKit
 		ConsoleSubState* out;
 		out = &Framework->Engine->BlockAllocator.allocate_aligned<ConsoleSubState>();
 	
+		/*
 		out->VTable.PreDrawUpdate = DrawConsoleScreen;
 		out->VTable.Update		  = UpdateConsoleScreen;
 		out->VTable.EventHandler  = ConsoleEventHandler;
@@ -159,6 +160,7 @@ namespace FlexKit
 		out->Framework            = Framework;
 		out->Engine               = Framework->Engine;
 		out->PauseBackgroundLogic = true;
+		*/
 
 		return out;
 	}

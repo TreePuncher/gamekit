@@ -192,11 +192,8 @@ namespace FlexKit
 
 		while(itr != base->SubStates.rend())
 		{
-			if (*itr && (*itr)->EventHandler) 
-			{
-				if (!(*itr)->EventHandler((FrameworkState*)(*itr), evt))
-					break;
-			}
+			if (!(*itr)->EventHandler(evt))
+				break;
 			itr++;
 		}
 	}
@@ -236,10 +233,7 @@ namespace FlexKit
 		auto REnd = State->SubStates.rend();
 		while (RItr != REnd)
 		{
-			auto VTable = *RItr;
-			if (VTable->Release) {
-				VTable->Release(reinterpret_cast<FrameworkState*>(VTable));
-			}
+			(*RItr)->~FrameworkState();
 			RItr++;
 		}
 
@@ -259,7 +253,7 @@ namespace FlexKit
 
 	inline void PushSubState(GameFramework* _ptr, FrameworkState* SS)
 	{
-		_ptr->SubStates.push_back(GetStateVTable(SS));
+		_ptr->SubStates.push_back(SS);
 	}
 
 
@@ -268,11 +262,10 @@ namespace FlexKit
 
 	void PopSubState(GameFramework* State)
 	{
-		auto Top = State->SubStates.back();
+		if (!State->SubStates.size())
+			return;
 
-		if(Top->Release)
-			Top->Release(reinterpret_cast<FrameworkState*>(Top));
-
+		State->SubStates.back()->~FrameworkState();
 		State->SubStates.pop_back();
 	}
 
@@ -294,8 +287,8 @@ namespace FlexKit
 
 		while (RItr != REnd)
 		{
-			auto VTable = *RItr;
-			if (VTable->Update && !VTable->Update(reinterpret_cast<FrameworkState*>(VTable), Engine, dT))
+			auto State = *RItr;
+			if (!State->Update(Engine, dT))
 				break;
 
 			RItr++;
@@ -332,21 +325,12 @@ namespace FlexKit
 		auto REnd = State->SubStates.rend();
 		while (RItr != REnd)
 		{
-			auto VTable = *RItr;
-			if (VTable->PreDrawUpdate && !VTable->PreDrawUpdate(reinterpret_cast<FrameworkState*>(VTable), Engine, dT))
+			auto State = *RItr;
+			if (!State->PreDrawUpdate(Engine, dT))
 				break;
 
 			RItr++;
 		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	SubStateVTable* GetStateVTable(FrameworkState* _ptr)
-	{
-		return &_ptr->VTable;
 	}
 
 

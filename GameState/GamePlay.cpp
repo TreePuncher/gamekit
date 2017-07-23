@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gameplay.h"
 
+using FlexKit::GameFramework;
 
 void InitiatePlayer(GraphicScene* Scene, GameFramework* Engine, Player* Out)
 {
@@ -193,20 +194,20 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 
 
 
-void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
-{
+//void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
+//{
 	//UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
 
 	//if (Engine->GScene.GetDrawable(P->Model).PoseState)
 	//	DEBUG_DrawPoseState(Engine->GScene.GetDrawable(P->Model).PoseState, Engine->Nodes, Engine->GScene.GetNode(P->Model), &Engine->DebugLines);
-}
+//}
 
 
 
 
-void ReleasePlayer(Player* P, GameFramework* Engine)
-{
+//void ReleasePlayer(Player* P, GameFramework* Engine)
+//{
 	//Engine->GScene.RemoveEntity(P->Model);
 	//P->PlayerCollider.Controller->release();
-}
+//}
 

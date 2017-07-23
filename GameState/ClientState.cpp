@@ -196,10 +196,10 @@ bool JoinServer(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Framework, const char* Name, const char* Server)
 {
 	auto State = &Engine->BlockAllocator.allocate_aligned<ClientState>();
-	State->VTable.Update       = JoinServer;
-	State->Framework                = Framework;
-	State->Peer                = RakNet::RakPeerInterface::GetInstance();
-	State->PlayerIds.Allocator = Engine->BlockAllocator;
+	//State->VTable.Update       = JoinServer;
+	//State->Framework                = Framework;
+	//State->Peer                = RakNet::RakPeerInterface::GetInstance();
+	//State->PlayerIds.Allocator = Engine->BlockAllocator;
 
 	char str[512];
 
@@ -488,9 +488,9 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Fram
 	ClientPlayState* PlayState = &Engine->BlockAllocator.allocate_aligned<ClientPlayState>();
 	PlayState->Framework                      = Framework;
 	PlayState->NetState						  = Client;
-	PlayState->VTable.Update				  = UpdateClientGameplay;
-	PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
-	PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
+	//PlayState->VTable.Update				  = UpdateClientGameplay;
+	//PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
+	//PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
 	//PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
 	//PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
 	PlayState->Imposters.Allocator			  = Engine->BlockAllocator;

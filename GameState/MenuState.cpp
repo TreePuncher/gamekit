@@ -185,9 +185,9 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 	FK_ASSERT(Framework != nullptr);
 	auto* State	= &Engine->BlockAllocator.allocate_aligned<MenuState>(&Engine->BlockAllocator.AllocatorInterface);
 
-	State->VTable.PreDrawUpdate = PreDraw;
-	State->VTable.Update        = Update;
-	State->VTable.Release       = ReleaseMenu;
+	//State->VTable.PreDrawUpdate = PreDraw;
+	//State->VTable.Update        = Update;
+	//State->VTable.Release       = ReleaseMenu;
 	State->T                    = 0;
 	State->Framework            = Framework;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
@@ -391,9 +391,9 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine
 
 	Framework->MouseState.Enabled = true;
 
-	State->VTable.PreDrawUpdate = JoinScreenPreDraw;
-	State->VTable.Update        = JoinScreenUpdate;
-	State->VTable.Release       = ReleaseJoinScreen;
+	//State->VTable.PreDrawUpdate = JoinScreenPreDraw;
+	//State->VTable.Update        = JoinScreenUpdate;
+	//State->VTable.Release       = ReleaseJoinScreen;
 	State->Framework            = Framework;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 

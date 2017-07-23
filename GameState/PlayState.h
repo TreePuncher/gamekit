@@ -36,12 +36,21 @@ TODO's
 */
 
 
+using FlexKit::GameFramework;
+
+
 struct PlayState : public FrameworkState
 {
 	// Game Element Controllers
 	// GameplayComponentSystem		Model;
 
+	PlayState(EngineMemory* Engine, GameFramework* Framework);
 	~PlayState();
+
+	bool Update			(EngineMemory* Engine, double dT);
+	bool DrawDebug		(EngineMemory* Engine, double dT);
+	bool PreDrawUpdate	(EngineMemory* Engine, double dT);
+	bool EventHandler	(Event evt);
 
 	InputComponentSystem		Input;
 	OrbitCameraSystem			OrbitCameras;

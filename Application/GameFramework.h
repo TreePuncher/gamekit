@@ -52,7 +52,7 @@ namespace FlexKit
 	{
 	};
 
-	struct FrameworkState;
+	class FrameworkState;
 
 	typedef bool (*FN_UPDATE_SUBSTATE)  (FrameworkState* StateMemory, EngineMemory*, double DT); // Return True to allow Cascading updates down State Stack
 	typedef void (*FN_RELEASE_SUBSTATE) (FrameworkState* StateMemory);
@@ -60,14 +60,8 @@ namespace FlexKit
 	typedef bool(*FN_EVENT_HANDLER) (FrameworkState* StateMemory, Event);
 
 
-	struct SubStateVTable
-	{
-		FN_UPDATE_SUBSTATE  Update			= nullptr;
-		FN_UPDATE_SUBSTATE  PreDrawUpdate	= nullptr;
-		FN_UPDATE_SUBSTATE  PostDrawUpdate	= nullptr;
-		FN_EVENT_HANDLER	EventHandler	= nullptr;
-		FN_RELEASE_SUBSTATE Release			= nullptr;
-	};
+	/************************************************************************************************/
+
 
 	struct GameFramework
 	{
@@ -95,7 +89,7 @@ namespace FlexKit
 
 
 		static_vector<MouseHandler>		MouseHandlers;
-		static_vector<SubStateVTable*>	SubStates;
+		static_vector<FrameworkState*>	SubStates;
 
 
 		double				PhysicsUpdateTimer;
@@ -124,9 +118,21 @@ namespace FlexKit
 	};
 
 
-	struct FrameworkState
+	/************************************************************************************************/
+
+
+	class FrameworkState
 	{
-		SubStateVTable	VTable;
+	public:
+		virtual ~FrameworkState() {}
+
+		virtual bool  Update(EngineMemory* Engine, double dT)			{ return true; };
+		virtual bool  DebugDraw(EngineMemory* Engine, double dT)		{ return true; };
+		virtual bool  PreDrawUpdate(EngineMemory* Engine, double dT)	{ return true; };
+		virtual bool  PostDrawUpdate(EngineMemory* Engine, double dT)	{ return true; };
+
+		virtual bool  EventHandler(Event evt) { return true; };
+
 		GameFramework*	Framework;
 	};
 
@@ -143,8 +149,6 @@ namespace FlexKit
 	void			UpdateGameFramework	 (EngineMemory* Engine, GameFramework* _ptr, double dT);
 	void			PreDrawGameFramework (EngineMemory* Engine, GameFramework* _ptr, double dT);
 	void			ReleaseGameFramework (EngineMemory* Engine, GameFramework* _ptr );
-
-	SubStateVTable* GetStateVTable	 (FrameworkState* _ptr);
 
 
 	/************************************************************************************************/
