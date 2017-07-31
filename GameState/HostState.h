@@ -209,7 +209,7 @@ struct HostState : public FrameworkState
 
 size_t GetPlayerIndex(HostState* Host, RakNet::SystemAddress Addr);
 
-HostState* CreateHostState(EngineMemory* Engine, GameFramework* Framework);
+HostState* CreateHostState(EngineCore* Engine, GameFramework* Framework);
 
 
 #endif

@@ -5729,8 +5729,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			auto SortID = CreateSortingID(E->Posed, E->Textured, Depth);
 			v.SortID = SortID;
 		}
-
-		std::sort( PVS_->begin().I, PVS_->end().I, []( PVEntry& R, PVEntry& L ) -> bool
+		
+		std::sort( PVS_->begin(), PVS_->end(), []( PVEntry& R, PVEntry& L ) -> bool
 		{
 			return ( (size_t)R.SortID < (size_t)L.SortID);
 		} );
@@ -5754,7 +5754,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			v.SortID = D;
 		}
 
-		std::sort( PVS_->begin().I, PVS_->end().I, []( auto& R, auto& L ) -> bool
+		std::sort( PVS_->begin(), PVS_->end(), []( auto& R, auto& L ) -> bool
 		{
 			return ( (size_t)R > (size_t)L );
 		} );

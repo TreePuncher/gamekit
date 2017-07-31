@@ -611,7 +611,7 @@ namespace FlexKit
 		template<typename T>
 		T& allocate()
 		{
-			auto mem = malloc(sizeof(T), a);
+			auto mem = malloc(sizeof(T));
 
 			auto t = new (mem) T();
 			return *t;
@@ -620,7 +620,7 @@ namespace FlexKit
 		template<typename T, typename ... PARAM_TY>
 		T& allocate(PARAM_TY ... Params)
 		{
-			auto mem = malloc(sizeof(T), a);
+			auto mem = malloc(sizeof(T));
 
 			auto t = new (mem) T(Params...);
 			return *t;

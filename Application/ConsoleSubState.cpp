@@ -116,7 +116,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DrawConsoleScreen(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
+	bool DrawConsoleScreen(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 	{
 		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
 	
@@ -148,7 +148,7 @@ namespace FlexKit
 	ConsoleSubState* CreateConsoleSubState(GameFramework* Framework)
 	{
 		ConsoleSubState* out;
-		out = &Framework->Engine->BlockAllocator.allocate_aligned<ConsoleSubState>();
+		out = &Framework->Engine->GetBlockMemory().allocate_aligned<ConsoleSubState>();
 	
 		/*
 		out->VTable.PreDrawUpdate = DrawConsoleScreen;

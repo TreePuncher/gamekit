@@ -712,6 +712,142 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	class FLEXKITAPI CameraComponentSystem : public ComponentSystemInterface
+	{
+	public:
+		CameraComponentSystem(RenderSystem* rs = nullptr, SceneNodeComponentSystem* nodes = nullptr, iAllocator *memory = nullptr) : Cameras(Memory), Handles(Memory), Nodes(nodes) {}
+
+		~CameraComponentSystem() override 
+		{
+			for (auto& C : Cameras)
+				FlexKit::ReleaseCamera(*Nodes, &C);
+
+			Cameras.Release();
+			Handles.Release();
+		}
+
+
+		void InitiateSystem(RenderSystem* rs, SceneNodeComponentSystem* nodes, iAllocator *memory)
+		{
+			RS		= rs;
+			Nodes	= nodes;
+			Memory	= memory;
+
+			Cameras.Allocator			= memory;
+			Handles.FreeList.Allocator	= memory;
+			Handles.Indexes.Allocator	= memory;
+		}
+
+
+		ComponentHandle CreateCamera(float AspectRatio, float Near, float Far, NodeHandle Node = NodeHandle(-1), bool Invert = true)
+		{
+			Camera NewCamera;
+			InitiateCamera(RS, *Nodes, &NewCamera, AspectRatio, Near, Far, Invert);
+
+			if (INVALIDHANDLE != Node) {
+				Nodes->ReleaseHandle(NewCamera.Node);
+				NewCamera.Node = Node;
+			}
+
+			auto NewHandle		= Handles.GetNewHandle();
+			Handles[NewHandle]	= Cameras.size();
+			Cameras.push_back(NewCamera);
+
+			return NewHandle;
+		}
+
+
+		void ReleaseHandle(ComponentHandle Handle) override
+		{
+			if (Cameras.size() - 1 > Handles[Handle]) 
+			{
+				for (auto& H : Handles.Indexes)
+				{
+					if (H == Cameras.size() - 1)
+					{	
+						auto index = Handles[Handle];
+						Cameras[index] = Cameras.back();
+						H = Handles[Handle];
+						Handles.RemoveHandle(Handle);
+					}
+				}
+			}
+
+			ReleaseCamera(*Nodes, &Cameras.back());
+			Cameras.pop_back();
+		}
+
+
+		void Update(double dT)
+		{
+			for (auto& C : Cameras)
+				UpdateCamera(RS, *Nodes, &C, dT);
+		}
+
+
+		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID, GameObjectInterface* GO) override
+		{
+		}
+
+
+		SceneNodeComponentSystem*						Nodes;
+		RenderSystem*									RS;
+		iAllocator*										Memory;
+		Vector<Camera>									Cameras;
+		HandleUtilities::HandleTable<ComponentHandle>	Handles;
+	};
+
+
+	const uint32_t CameraComponentID = GetTypeGUID(CameraComponent);
+
+
+
+	struct CameraComponentArgs
+	{
+		NodeHandle				Node;
+		CameraComponentSystem*	System;
+		float					AspectRatio;
+		float					Near;
+		float					Far;
+		bool					InverseBuffer = true;
+	};
+
+
+	FlexKit::Quaternion GetCameraOrientation(GameObjectInterface* GO)
+	{
+		return FlexKit::Quaternion(0, 0, 0, 1);
+	}
+
+
+	template<size_t SIZE>
+	void CreateComponent(GameObject<SIZE>& GO, CameraComponentArgs& Args)
+	{
+		if (!GO.Full()) {
+			auto Transform = FindComponent(GO, TransformComponentArgs);
+
+			GO.AddComponent(Component(Args.System, Args.Entity, RenderableComponentID));
+		}
+	}
+
+
+	CameraComponentArgs CreateCameraComponent(CameraComponentSystem* System, float AspectRatio, float Near, float Far, NodeHandle Node, bool InverseBuffer = true)
+	{
+		CameraComponentArgs args;
+		args.System			= System;
+		args.InverseBuffer	= InverseBuffer;
+		args.Far			= Far;
+		args.Near			= Near;
+		args.AspectRatio	= AspectRatio;
+		args.Node			= Node;
+
+		return args;
+	}
+
+
+	/************************************************************************************************/
+
 }//namespace FlexKit
 
 #endif

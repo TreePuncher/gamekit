@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace FlexKit;
 
-void ReleaseEngine(EngineMemory* Engine)
+void ReleaseEngine(EngineCore* Engine)
 {
 	using FlexKit::Release;
 	using FlexKit::PrintBlockStatus;
@@ -52,50 +52,63 @@ void ReleaseEngine(EngineMemory* Engine)
 	ReleaseGeometryTable( &Engine->Geometry );
 
 	for(auto Arg : Engine->CmdArguments)
-		Engine->BlockAllocator.free((void*)Arg);
+		Engine->GetBlockMemory().free((void*)Arg);
 
 	Engine->Culler.Release();
 	Engine->CmdArguments.Release();
 
 
-	DEBUGBLOCK(PrintBlockStatus(&Engine->BlockAllocator));
+	DEBUGBLOCK(PrintBlockStatus(&Engine->GetBlockMemory()));
 }
 
 
 /************************************************************************************************/
 
 
-void InitiateEngineMemory( EngineMemory* Engine )
+bool InitiateEngineMemory( EngineMemory*& Memory )
 {
 	using FlexKit::BlockAllocator_desc;
 	using FlexKit::GetNewNode;
 	using FlexKit::Graphics_Desc;
 
+	Memory = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
+	memset(Memory, 0, PRE_ALLOC_SIZE);
+
 	bool Out = false;
 	BlockAllocator_desc BAdesc;
-	BAdesc._ptr			= (byte*)Engine->BlockMem;
+	BAdesc._ptr			= (byte*)Memory->BlockMem;
 	BAdesc.SmallBlock	= MEGABYTE * 64;
 	BAdesc.MediumBlock	= MEGABYTE * 64;
 	BAdesc.LargeBlock	= MEGABYTE * 512;
 
-	Engine->BlockAllocator.Init ( BAdesc );
-	Engine->LevelAllocator.Init ( Engine->LevelMem,	LEVELBUFFERSIZE );
-	Engine->TempAllocator. Init ( Engine->TempMem,	TEMPBUFFERSIZE );
+	Memory->BlockAllocator.Init ( BAdesc );
+	Memory->LevelAllocator.Init ( Memory->LevelMem,	LEVELBUFFERSIZE );
+	Memory->TempAllocator. Init ( Memory->TempMem,	TEMPBUFFERSIZE );
 
-	// Initate SceneGraph
-	Engine->Nodes.InitiateSystem( Engine->NodeMem, NODEBUFFERSIZE );
+	InitDebug(&Memory->Debug);
 
-	InitDebug(&Engine->Debug);
-
-	Engine->CmdArguments.Allocator = Engine->BlockAllocator;
-	Engine->FrameLock	= true;
+	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, bool fullscreen = false)
+bool InitEngine(EngineCore*& Core, EngineMemory*& Memory)
+{
+	InitiateEngineMemory(Memory);
+
+	Core = &Memory->BlockAllocator.allocate<EngineCore>(Memory);
+	InitiateCoreSystems(Core);
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool fullscreen = false)
 {
 	using FlexKit::CreateRenderWindow;
 	using FlexKit::RenderWindowDesc;
@@ -118,7 +131,7 @@ bool CreateRenderWindow(EngineMemory* Game, uint32_t height, uint32_t width, boo
 /************************************************************************************************/
 
 
-bool InitiateCoreSystems(EngineMemory* Engine)
+bool InitiateCoreSystems(EngineCore*& Engine)
 {
 	using FlexKit::CreateDepthBuffer;
 	using FlexKit::DepthBuffer;
@@ -131,7 +144,7 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	uint32_t height	 = 1080;
 	bool InvertDepth = true;
 	FlexKit::Graphics_Desc	desc = { 0 };
-	desc.Memory = Engine->BlockAllocator;
+	desc.Memory = Engine->GetBlockMemory();
 
 
 	Out = InitiateRenderSystem(&desc, Engine->RenderSystem);
@@ -140,6 +153,7 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 
 	Engine->Window.Close = false;
 	Out = CreateRenderWindow	(  Engine, height, width, false );
+
 	if (!Out)
 	{
 		Release(Engine->RenderSystem);
@@ -149,20 +163,25 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 	CreateDepthBuffer	(  Engine->RenderSystem, { width, height }, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer, GetCurrentCommandList(Engine->RenderSystem) );
 
 	SetInputWIndow		( &Engine->Window );
-	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->BlockAllocator );
+	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->GetBlockMemory() );
+
+	// Initate Component Systems
+	Engine->Cameras.InitiateSystem	(&Engine->RenderSystem, &Engine->Nodes, Engine->GetBlockMemory() );
+	Engine->Nodes.InitiateSystem	(Engine->Memory->NodeMem, NODEBUFFERSIZE);
 
 	ForwardPass_DESC FP_Desc	{ &Engine->DepthBuffer, &Engine->Window };
 	TiledRendering_Desc DP_Desc	{ &Engine->DepthBuffer, &Engine->Window, nullptr };
 
-	InitiateForwardPass			(Engine->RenderSystem,	&FP_Desc, &Engine->ForwardRender);
-	InitiateTiledDeferredRender	(Engine->RenderSystem, &DP_Desc, &Engine->TiledRender);
-	InitiateGeometryTable		( &Engine->Geometry, Engine->BlockAllocator );
-	InitiateSSReflectionTracer	(Engine->RenderSystem, GetWindowWH(Engine), &Engine->Reflections);
+	InitiateForwardPass			(  Engine->RenderSystem, &FP_Desc, &Engine->ForwardRender);
+	InitiateTiledDeferredRender	(  Engine->RenderSystem, &DP_Desc, &Engine->TiledRender);
+	InitiateGeometryTable		( &Engine->Geometry,	Engine->GetBlockMemory() );
+	InitiateSSReflectionTracer	(  Engine->RenderSystem, GetWindowWH(Engine), &Engine->Reflections);
 
 	auto OcclusionBufferWH = GetWindowWH(Engine)/4;
 
-	Engine->Assets.ResourceMemory = &Engine->BlockAllocator;
+	Engine->Assets.ResourceMemory = &Engine->GetBlockMemory();
 	Engine->Culler                = CreateOcclusionCuller(Engine->RenderSystem, 8096, OcclusionBufferWH);
+
 
 	return Out;
 }
@@ -171,7 +190,7 @@ bool InitiateCoreSystems(EngineMemory* Engine)
 /************************************************************************************************/
 
 
-float GetWindowAspectRatio(EngineMemory* Engine)
+float GetWindowAspectRatio(EngineCore* Engine)
 {
 	FK_ASSERT(Engine);
 
@@ -184,7 +203,7 @@ float GetWindowAspectRatio(EngineMemory* Engine)
 /************************************************************************************************/
 
 
-uint2 GetWindowWH(EngineMemory* Engine)
+uint2 GetWindowWH(EngineCore* Engine)
 {
 	FK_ASSERT(Engine);
 	
@@ -195,23 +214,11 @@ uint2 GetWindowWH(EngineMemory* Engine)
 /************************************************************************************************/
 
 
-float2 GetPixelSize(EngineMemory* Engine)
+float2 GetPixelSize(EngineCore* Engine)
 {
 	return GetPixelSize(&Engine->Window);
 }
 
-
-
-/************************************************************************************************/
-
-
-bool InitEngine( EngineMemory* Engine )
-{
-	memset( Engine, 0, PRE_ALLOC_SIZE );
-
-	InitiateEngineMemory( Engine );
-	return InitiateCoreSystems ( Engine );
-}
 
 
 /************************************************************************************************/
@@ -267,7 +274,7 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 /************************************************************************************************/
 
 
-void PushCmdArg(EngineMemory* Engine, const char* str)
+void PushCmdArg(EngineCore* Engine, const char* str)
 {
 	Engine->CmdArguments.push_back(str);
 }

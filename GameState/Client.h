@@ -97,7 +97,7 @@ struct ClientPlayState : public FrameworkState
 	FlexKit::Vector<PlayerImposters> Imposters;// Cause hes an imposter, trying to steal all the client info
 };
 
-ClientState*		CreateClientState		(EngineMemory* Engine, GameFramework* Framework, const char* Name = nullptr, const char* Server = nullptr);
-ClientPlayState*	CreateClientPlayState	(EngineMemory* Engine, GameFramework* Framework, ClientState* Peer);
+ClientState*		CreateClientState		(EngineCore* Engine, GameFramework* Framework, const char* Name = nullptr, const char* Server = nullptr);
+ClientPlayState*	CreateClientPlayState	(EngineCore* Engine, GameFramework* Framework, ClientState* Peer);
 
 #endif

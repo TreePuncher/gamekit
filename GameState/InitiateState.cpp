@@ -34,14 +34,14 @@ using namespace FlexKit;
 
 struct CodeExports
 {
-	typedef GameFramework*	(*InitiateGameStateFN)	(EngineMemory* Engine);
-	typedef void			(*UpdateFixedIMPL)		(EngineMemory* Engine,	double dt, GameFramework* _ptr);
-	typedef void			(*UpdateIMPL)			(EngineMemory* Engine,	GameFramework* _ptr, double dt);
-	typedef void			(*UpdateAnimationsFN)	(EngineMemory* RS,		iAllocator* TempMemory, double dt, GameFramework* _ptr);
-	typedef void			(*UpdatePreDrawFN)		(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
-	typedef void			(*DrawFN)				(EngineMemory* RS,		iAllocator* TempMemory,			   GameFramework* _ptr);
-	typedef void			(*PostDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
-	typedef void			(*CleanUpFN)			(EngineMemory* Engine,	GameFramework* _ptr);
+	typedef GameFramework*	(*InitiateGameStateFN)	(EngineCore* Engine);
+	typedef void			(*UpdateFixedIMPL)		(EngineCore* Engine,	double dt, GameFramework* _ptr);
+	typedef void			(*UpdateIMPL)			(EngineCore* Engine,	GameFramework* _ptr, double dt);
+	typedef void			(*UpdateAnimationsFN)	(EngineCore* RS,		iAllocator* TempMemory, double dt, GameFramework* _ptr);
+	typedef void			(*UpdatePreDrawFN)		(EngineCore* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
+	typedef void			(*DrawFN)				(EngineCore* RS,		iAllocator* TempMemory,			   GameFramework* _ptr);
+	typedef void			(*PostDrawFN)			(EngineCore* Engine,	iAllocator* TempMemory, double dt, GameFramework* _ptr);
+	typedef void			(*CleanUpFN)			(EngineCore* Engine,	GameFramework* _ptr);
 	typedef void			(*PostPhysicsUpdate)	(GameFramework*);
 	typedef void			(*PrePhysicsUpdate)		(GameFramework*);
 
@@ -59,7 +59,7 @@ struct CodeExports
 
 extern "C"
 {
-	GameFramework* InitateState(EngineMemory* Engine)
+	GameFramework* InitateState(EngineCore* Engine)
 	{
 		auto* Framework = InitiateFramework(Engine);
 

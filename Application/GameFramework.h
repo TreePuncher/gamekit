@@ -73,8 +73,6 @@ namespace FlexKit
 		MouseInputState		MouseState;
 		Landscape			Landscape;
 
-		Camera					DebugCamera;
-		Camera					DefaultCamera;
 		GraphicScene*			ActiveScene;
 		PhysicsComponentSystem*	ActivePhysicsScene;
 		Camera*					ActiveCamera;
@@ -85,7 +83,7 @@ namespace FlexKit
 
 		Console				Console;
 		ImmediateRender		Immediate;
-		EngineMemory*		Engine;
+		EngineCore*			Engine;
 
 
 		static_vector<MouseHandler>		MouseHandlers;
@@ -126,12 +124,12 @@ namespace FlexKit
 	public:
 		virtual ~FrameworkState() {}
 
-		virtual bool  Update(EngineMemory* Engine, double dT)			{ return true; };
-		virtual bool  DebugDraw(EngineMemory* Engine, double dT)		{ return true; };
-		virtual bool  PreDrawUpdate(EngineMemory* Engine, double dT)	{ return true; };
-		virtual bool  PostDrawUpdate(EngineMemory* Engine, double dT)	{ return true; };
+		virtual bool  Update			(EngineCore* Engine, double dT) { return true; };
+		virtual bool  DebugDraw			(EngineCore* Engine, double dT) { return true; };
+		virtual bool  PreDrawUpdate		(EngineCore* Engine, double dT) { return true; };
+		virtual bool  PostDrawUpdate	(EngineCore* Engine, double dT) { return true; };
 
-		virtual bool  EventHandler(Event evt) { return true; };
+		virtual bool  EventHandler		(Event evt) { return true; };
 
 		GameFramework*	Framework;
 	};
@@ -154,14 +152,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GameFramework*	InitiateFramework	( EngineMemory* Engine );
-	void			Update				( EngineMemory* Engine, GameFramework* Framework, double dT );
-	void			UpdateFixed			( EngineMemory* Engine, double dt, GameFramework* State );
-	void			UpdateAnimations	( EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr );
-	void			UpdatePreDraw		( EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework );
-	void			Draw				( EngineMemory* Engine, iAllocator* TempMemory, GameFramework* Framework );
-	void			PostDraw			( EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State );
-	void			Cleanup				( EngineMemory* Engine, GameFramework* Framework );
+	GameFramework*	InitiateFramework	( EngineCore* Engine );
+	void			Update				( EngineCore* Engine, GameFramework* Framework, double dT );
+	void			UpdateFixed			( EngineCore* Engine, double dt, GameFramework* State );
+	void			UpdateAnimations	( EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr );
+	void			UpdatePreDraw		( EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework );
+	void			Draw				( EngineCore* Engine, iAllocator* TempMemory, GameFramework* Framework );
+	void			PostDraw			( EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State );
+	void			Cleanup				( EngineCore* Engine, GameFramework* Framework );
 	void			PostPhysicsUpdate	( GameFramework* );
 	void			PrePhysicsUpdate	( GameFramework* );
 

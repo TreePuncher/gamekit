@@ -147,6 +147,7 @@ namespace FlexKit
 		return NodeHandle(0);
 	}
 
+	/*
 	Quaternion GetCameraOrientation(GameObjectInterface* GO)
 	{
 		auto C = FindComponent(GO, OrbitCameraComponentID);
@@ -158,7 +159,7 @@ namespace FlexKit
 
 		return Quaternion::Identity();
 	}
-
+	*/
 
 
 	/************************************************************************************************/
@@ -190,8 +191,8 @@ namespace FlexKit
 		{
 			Input						= InputSystem;
 			Nodes						= Framework->Engine->Nodes;
-			States.Allocator			= Framework->Engine->BlockAllocator;
-			CameraControllers.Allocator = Framework->Engine->BlockAllocator;
+			States.Allocator			= Framework->Engine->GetBlockMemory();
+			CameraControllers.Allocator = Framework->Engine->GetBlockMemory();
 		}
 
 		void ObjectMoved	(ComponentHandle Handle, ComponentSystemInterface* System, GameObjectInterface* GO)
@@ -359,6 +360,7 @@ namespace FlexKit
 
 	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System, Camera* C);
 
+
 	void PitchCamera(GameObjectInterface* GO, float R)
 	{
 		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
@@ -369,6 +371,7 @@ namespace FlexKit
 		}
 	}
 
+
 	void YawCamera(GameObjectInterface* GO, float R)
 	{
 		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
@@ -378,6 +381,7 @@ namespace FlexKit
 			//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
 		}
 	}
+
 
 	void RollCamera(GameObjectInterface* GO, float R)
 	{
@@ -421,5 +425,8 @@ namespace FlexKit
 		}
 		return float3(0);
 	}
+
+
+	/************************************************************************************************/
 }
 #endif

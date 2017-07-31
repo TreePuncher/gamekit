@@ -87,7 +87,7 @@ namespace FlexKit
 	struct TriMeshColliderList
 	{
 		Vector<TriangleCollider>						TriMeshColliders;
-		Vector<size_t>								FreeSlots;
+		Vector<size_t>									FreeSlots;
 		HandleUtilities::HandleTable<ColliderHandle>	TriMeshColliderTable;
 	};
 

@@ -53,6 +53,8 @@ namespace FlexKit
 	class ComponentSystemInterface
 	{
 	public:
+		virtual ~ComponentSystemInterface() {}
+
 		virtual void ReleaseHandle	(ComponentHandle Handle) = 0;
 		virtual void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID, GameObjectInterface* GO) {}
 		virtual void ObjectMoved	(ComponentHandle Handle, ComponentSystemInterface* System, GameObjectInterface* GO)	{}

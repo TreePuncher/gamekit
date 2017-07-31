@@ -87,7 +87,7 @@ bool PlayState::EventHandler(Event evt)
 
 float3 CameraPOS = {8000,1000,8000};
 
-bool PlayState::Update(EngineMemory* Engine, double dT)
+bool PlayState::Update(EngineCore* Engine, double dT)
 {
 	float MovementFactor			= 50.0f;
 
@@ -111,8 +111,8 @@ bool PlayState::Update(EngineMemory* Engine, double dT)
 	const float MoveRate = 100;
 
 
-	SetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node, CameraPOS);
-	Yaw(Framework->Engine->Nodes, Framework->DebugCamera.Node, pi * dT);
+	//SetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node, CameraPOS);
+	//Yaw(Framework->Engine->Nodes, Framework->DebugCamera.Node, pi * dT);
 
 	if (Input.KeyState.Forward)
 		Translate(Player, Forward * dT * MoveRate);
@@ -137,9 +137,9 @@ bool PlayState::Update(EngineMemory* Engine, double dT)
 
 /************************************************************************************************/
 
-
-bool PlayState::DrawDebug(EngineMemory* Engine, double dT)
+bool PlayState::DebugDraw(EngineCore* Engine, double dT)
 {
+	PushCapsule_Wireframe(&Framework->Immediate, Engine->GetTempMemory(), GetWorldPosition(Player), 5, 10, GREEN);
 	return true;
 }
 
@@ -147,23 +147,24 @@ bool PlayState::DrawDebug(EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-bool PlayState::PreDrawUpdate(EngineMemory* Engine, double dT)
+bool PlayState::PreDrawUpdate(EngineCore* Engine, double dT)
 {
 	Physics.UpdateSystem_PreDraw(dT);
 
 	if(Framework->DrawPhysicsDebug)
 	{
 		//auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
-		PushCapsule_Wireframe(&Framework->Immediate, Engine->TempAllocator, GetWorldPosition(Player), 5, 10, GREEN);
 	}
 
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
 
 	if(Framework->DrawDebug)
-		Drawables.DrawDebug(&Framework->Immediate, Engine->Nodes, Engine->TempAllocator);
+		Drawables.DrawDebug(&Framework->Immediate, Engine->Nodes, Engine->GetTempMemory());
 
-	UpdateCamera(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->DebugCamera, dT);
-	auto Q = GetOrientation(Framework->Engine->Nodes, Framework->DebugCamera.Node);
+#if 0
+
+	//UpdateCamera(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->DebugCamera, dT);
+	//auto Q = GetOrientation(Framework->Engine->Nodes, Framework->DebugCamera.Node);
 
 	LineSegments Lines(Engine->TempAllocator);
 	LineSegment Line;
@@ -177,6 +178,8 @@ bool PlayState::PreDrawUpdate(EngineMemory* Engine, double dT)
 	Lines.push_back(Line);
 
 	PushLineSet3D(Framework->Immediate, Lines);
+
+#endif
 
 #if 1
 	// Ray Cast Tests
@@ -194,10 +197,10 @@ bool PlayState::PreDrawUpdate(EngineMemory* Engine, double dT)
 	float3 D		= Q2 * float3(0, 0, -1);
 	float3 Color	= RED;
 
-	RaySet Rays(Engine->TempAllocator);
+	RaySet Rays(Engine->GetTempMemory());
 	Ray R = {Origin, D};
 	Rays.push_back(R);
-	auto results = Drawables.RayCastOBB(Rays, Engine->BlockAllocator, Engine->Nodes);
+	auto results = Drawables.RayCastOBB(Rays, Engine->GetBlockMemory(), Engine->Nodes);
 
 	if (results.size()) {
 		Color = BLUE;
@@ -222,7 +225,7 @@ bool PlayState::PreDrawUpdate(EngineMemory* Engine, double dT)
 	Line2.AColour = Color;
 	Line2.B       = Origin + D * 1000;
 	Line2.BColour = Color;
-	LineSegments Lines2(Engine->TempAllocator);
+	LineSegments Lines2(Engine->GetTempMemory());
 	Lines2.push_back(Line2);
 
 	PushLineSet3D(Framework->Immediate, Lines2);
@@ -249,7 +252,7 @@ PlayState::~PlayState()
 	GScene.ClearScene();
 
 	ReleaseGraphicScene(&GScene);
-	Framework->Engine->BlockAllocator.free(this);
+	Framework->Engine->GetBlockMemory().free(this);
 }
 
 
@@ -428,7 +431,7 @@ TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory
 
 void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 {
-	FK_ASSERT(LoadScene(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->Engine->Assets, &Framework->Engine->Geometry, 201, &State->GScene, Framework->Engine->TempAllocator), "FAILED TO LOAD!\n");
+	FK_ASSERT(LoadScene(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->Engine->Assets, &Framework->Engine->Geometry, 201, &State->GScene, Framework->Engine->GetTempMemory()), "FAILED TO LOAD!\n");
 
 	InitiateGameObject( 
 		State->FloorObject,
@@ -440,7 +443,7 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 			CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
 			//CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10));
 
-	SetCameraOffset(State->Player, {0, 10, 10});
+	SetCameraOffset(State->Player, {0, 30, 30});
 
 	for(size_t I = 0; I < 10; ++I){
 		InitiateGameObject( 
@@ -491,7 +494,7 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 	Translate		(State->Player, {0, 10000, -10});
 	SetCameraOffset	(State->Player, { 0, 15, 10 });
 
-	//auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->BlockAllocator, 100, 1234);
+	//auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->GetBlockMemory(), 100, 1234);
 
 	auto HF = LoadHeightFieldCollider(&Framework->Engine->Physics, &Framework->Engine->Assets, 10601);
 
@@ -509,14 +512,14 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 /************************************************************************************************/
 
 
-PlayState::PlayState(EngineMemory* Engine, GameFramework* framework)
+PlayState::PlayState(EngineCore* Engine, GameFramework* framework)
 {
 	Framework = framework;
 
-	InitiateGraphicScene		(&GScene, Engine->RenderSystem, &Engine->Assets, Engine->Nodes, Engine->Geometry, Engine->BlockAllocator, Engine->TempAllocator);
+	InitiateGraphicScene		(&GScene, Engine->RenderSystem, &Engine->Assets, Engine->Nodes, Engine->Geometry, Engine->GetBlockMemory(), Engine->GetTempMemory());
 	Drawables.InitiateSystem	(&GScene, Engine->Nodes);
 	Lights.InitiateSystem		(&GScene, Engine->Nodes);
-	Physics.InitiateSystem		(&Engine->Physics, Engine->Nodes, Engine->BlockAllocator);
+	Physics.InitiateSystem		(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory());
 
 	Input.Initiate			(Framework);
 	TPC.Initiate			(Framework, Input);
@@ -530,11 +533,11 @@ PlayState::PlayState(EngineMemory* Engine, GameFramework* framework)
 /************************************************************************************************/
 
 
-PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework)
+PlayState* CreatePlayState(EngineCore* Engine, GameFramework* Framework)
 {
 	PlayState* State = nullptr;
 
-	State = &Engine->BlockAllocator.allocate_aligned<PlayState>(Engine, Framework);
+	State = &Engine->GetBlockMemory().allocate_aligned<PlayState>(Engine, Framework);
 
 	//CreateTerrainTest(State, Framework);
 	CreateIntersectionTest(State, Framework);

@@ -38,7 +38,7 @@ void SendGameINFO(HostState* Host, RakNet::SystemAddress Addr)
 	bsOut.Write(eINCOMINGSTRUCT);
 
 	size_t PacketSize = sizeof(GameInfoPacket) + (sizeof(PlayerID_t) * Host->PlayerCount);
-	GameInfoPacket* OutPacket = (GameInfoPacket*)Host->Framework->Engine->BlockAllocator._aligned_malloc( PacketSize);
+	GameInfoPacket* OutPacket = (GameInfoPacket*)Host->Framework->Engine->GetBlockMemory()._aligned_malloc( PacketSize);
 	new(OutPacket) GameInfoPacket(Host->PlayerCount, "ShaderBallScene");
 
 	for (size_t itr = 0, OutIndex = 0; itr < Host->PlayerCount; itr++) {
@@ -505,9 +505,9 @@ bool UpdateHost(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 /************************************************************************************************/
 
 
-HostState* CreateHostState(EngineMemory* Engine, GameFramework* Framework)
+HostState* CreateHostState(EngineCore* Engine, GameFramework* Framework)
 {
-	auto State = &Engine->BlockAllocator.allocate_aligned<HostState>();
+	auto State = &Engine->GetBlockMemory().allocate_aligned<HostState>();
 	//State->VTable.Update  = UpdateHost;
 	//State->VTable.Release = CloseServer;
 	//State->MinPlayerCount = 2;

@@ -235,7 +235,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PrintBlockStatus(FlexKit::BlockAllocator* BlockAlloc)
+	void PrintBlockStatus(BlockAllocator* BlockAlloc)
 	{
 		{
 			std::cout << "Small Blocks Allocated\n";

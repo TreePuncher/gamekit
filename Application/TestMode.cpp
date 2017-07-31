@@ -850,7 +850,7 @@
 //	{
 //		Release(&Font);
 //		//Release(Nodes, &Terrain);
-//		//CleanUpTextArea(&TextBlock, &Engine->BlockAllocator);
+//		//CleanUpTextArea(&TextBlock, &Engine->GetBlockMemory());
 //		ReleaseScene(&S);
 //		ReleaseGraphicScene(&SM);
 //
@@ -891,7 +891,7 @@
 ///************************************************************************************************/
 //
 //
-//void MoveFontAsset(FontAsset* S, FontAsset* D, BlockAllocator* Mem)
+//void MoveFontAsset(FontAsset* S, FontAsset* D, GetBlockMemory()* Mem)
 //{
 //	*D = *S;
 //	if (S->KerningTableSize && Mem)
@@ -935,14 +935,14 @@
 //	/*
 //	auto Font = TextUtilities::LoadFontAsset( "assets\\textures\\", "fontTest.fnt", Engine->RenderSystem, &Engine->TempAllocator, &Engine->LevelAllocator );
 //	if ((size_t)Font > 0) {
-//		MoveFontAsset(GetByType<FontAsset*>(Font), &level->Font, &Engine->BlockAllocator);
+//		MoveFontAsset(GetByType<FontAsset*>(Font), &level->Font, &Engine->GetBlockMemory());
 //		Engine->TempAllocator.clear();
 //	}
 //	*/
 //
-//	level->Assets.ResourceMemory = &Engine->BlockAllocator;
+//	level->Assets.ResourceMemory = &Engine->GetBlockMemory();
 //	AddResourceFile("assets\\ResourceFile.gameres", &level->Assets);
-//	InitiateGraphicScene(&level->SM, Engine->RenderSystem, &Engine->Materials, &level->Assets, level->Nodes, &Engine->BlockAllocator, &Engine->TempAllocator);
+//	InitiateGraphicScene(&level->SM, Engine->RenderSystem, &Engine->Materials, &level->Assets, level->Nodes, &Engine->GetBlockMemory(), &Engine->TempAllocator);
 //	level->PointLightCount	= 0;
 //
 //	// Text Render Initiation
@@ -958,7 +958,7 @@
 //		Desc.TextWH		= {  10,  20 };
 //		Desc.WH			= { 800, 600 };
 //
-//		level->TextBlock = CreateTextObject(Engine->RenderSystem, &Engine->BlockAllocator, &Desc, &Engine->Materials);// Setups a 2D Surface for Drawing Text into
+//		level->TextBlock = CreateTextObject(Engine->RenderSystem, &Engine->GetBlockMemory(), &Desc, &Engine->Materials);// Setups a 2D Surface for Drawing Text into
 //		PrintText(&level->TextBlock, "THIS IS A TEST\nNEWLINE!\nA LINE THAT IS TOO BIG TO FIT ON A SINGLE LINE THAT SHOULD OVERFLOW THE EDGE ONTO THE NEXT LINES UNDER!!!!!!!! qwertyuiopasdfghjklzxcvbnm~!@#$%^&*()");
 //	}
 //

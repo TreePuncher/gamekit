@@ -1553,14 +1553,22 @@ namespace FlexKit
 	{
 		operator GeometryTable* () { return this; }
 
-		GeometryTable() : Handles(GetTypeGUID(GeometryTable), nullptr) {}
+		GeometryTable(iAllocator* memory = nullptr) : 
+			FreeList(memory),
+			Geometry(memory),
+			GeometryIDs(memory),
+			Guids(memory),
+			Handles(memory, GetTypeGUID(GeometryTable)),
+			Memory(memory),
+			ReferenceCounts(memory)
+		{}
 
 		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
-		Vector<TriMesh>								Geometry;
-		Vector<size_t>								ReferenceCounts;
-		Vector<GUID_t>								Guids;
-		Vector<const char*>							GeometryIDs;
-		Vector<size_t>								FreeList;
+		Vector<TriMesh>									Geometry;
+		Vector<size_t>									ReferenceCounts;
+		Vector<GUID_t>									Guids;
+		Vector<const char*>								GeometryIDs;
+		Vector<size_t>									FreeList;
 		iAllocator*										Memory;
 	};
 
@@ -1890,7 +1898,7 @@ namespace FlexKit
 	};
 
 	
-	typedef static_vector<PVEntry, 16000> PVS;
+	typedef Vector<PVEntry> PVS;
 
 	inline void PushPV(Drawable* e, PVS* pvs)
 	{
@@ -1950,7 +1958,7 @@ namespace FlexKit
 
 	struct FLEXKITAPI StaticScene
 	{
-		StaticScene() : ObjectTable(GetTypeGUID(StaticScene), nullptr) {}
+		StaticScene() : ObjectTable(nullptr, GetTypeGUID(StaticScene)) {}
 		Vector<DirectX::XMMATRIX>		Transforms		[MAXINSTANCES];
 		char							GeometryIndex	[MAXINSTANCES];
 		NodeHandle						NodeHandles		[MAXINSTANCES];

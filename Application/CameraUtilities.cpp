@@ -105,7 +105,7 @@ namespace FlexKit
 {
 	void OrbitCameraSystem::Initiate(GameFramework* Framework, InputComponentSystem* Input)
 	{
-		Controllers.Allocator = Framework->Engine->BlockAllocator;
+		Controllers.Allocator = Framework->Engine->GetBlockMemory();
 
 		Nodes			= Framework->Engine->Nodes;
 		InputSystem		= Input;

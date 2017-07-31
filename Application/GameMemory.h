@@ -28,11 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\coreutilities\timeutilities.h"
 #include "..\coreutilities\containers.h"
+#include "..\coreutilities\GraphicsComponents.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\coreutilities\ProfilingUtilities.h"
 #include "..\coreutilities\Resources.h"
-
-#include "..\coreutilities\GraphicsComponents.h"
+#include "..\coreutilities\ThreadUtilities.h"
 
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\ForwardRendering.h"
@@ -121,9 +121,31 @@ static const size_t BLOCKALLOCSIZE	= MEGABYTE * 768;
 
 struct EngineMemory
 {
+	// Allocators
 	BlockAllocator	BlockAllocator;
 	StackAllocator	TempAllocator;
 	StackAllocator	LevelAllocator;
+
+	EngineMemory_DEBUG	Debug;
+
+	// Memory Pools
+	byte						NodeMem		[NODEBUFFERSIZE];
+	byte						BlockMem	[BLOCKALLOCSIZE];
+	byte						LevelMem	[LEVELBUFFERSIZE];
+	byte						TempMem		[TEMPBUFFERSIZE];
+};
+
+struct EngineCore
+{
+	EngineCore(EngineMemory* memory) :
+		CmdArguments	(memory->BlockAllocator),
+		Geometry		(memory->BlockAllocator),
+		PVS_			(memory->BlockAllocator),
+		Time			(memory->BlockAllocator),
+		Threads			(memory->BlockAllocator),
+		Memory			(memory),
+		FrameLock		(false)
+	{}
 
 	bool			FrameLock;
 	bool			End;
@@ -147,37 +169,40 @@ struct EngineMemory
 
 	static_vector<Event>	NetworkEvents;
 					
-	// Component System
+	// Component Systems
 	SceneNodeComponentSystem	Nodes;
+	CameraComponentSystem		Cameras;
 
 	Vector<const char*>		CmdArguments;
 
-	EngineMemory_DEBUG	Debug;
+	ThreadManager		Threads;
 
-	// Memory Pools
-	byte						NodeMem	[NODEBUFFERSIZE];
-	byte						BlockMem[BLOCKALLOCSIZE];
-	byte						LevelMem[LEVELBUFFERSIZE];
-	byte						TempMem	[TEMPBUFFERSIZE];
+	EngineMemory* Memory;
+
+	BlockAllocator& GetBlockMemory()	{ return  Memory->BlockAllocator; }
+	StackAllocator& GetLevelMemory()	{ return  Memory->LevelAllocator; }
+	StackAllocator& GetTempMemory()		{ return  Memory->TempAllocator;  }
+
+	EngineMemory_DEBUG* GetDebugMemory() { return &Memory->Debug; }
 };
 
 
 /************************************************************************************************/
 
 
-typedef void (*MouseEventHandler)		(EngineMemory* Engine, const FlexKit::Event& in);
-typedef void*(*InitiateGameStateFN)		(EngineMemory* Engine);
-typedef bool (*InitiateEngineFN)		(EngineMemory* Engine);
-typedef void (*OnHotReloadFN)			(EngineMemory*, double dt, void* _ptr);
+typedef void (*MouseEventHandler)		(EngineCore* Core, const FlexKit::Event& in);
+typedef void*(*InitiateGameStateFN)		(EngineCore* Core);
+typedef bool (*InitiateEngineFN)		(EngineCore*& Core, EngineMemory*& Memory);
+typedef void (*OnHotReloadFN)			(EngineCore*, double dt, void* _ptr);
 
-typedef void (*UpdateFN)				(EngineMemory* Engine, void* _ptr, double dt);
-typedef void (*FixedUpdateFN)			(EngineMemory*, double dt, void* _ptr);
+typedef void (*UpdateFN)				(EngineCore* Core, void* _ptr, double dt);
+typedef void (*FixedUpdateFN)			(EngineCore*, double dt, void* _ptr);
 
-typedef void (*UpdateAnimationsFN)		(EngineMemory* RS,		iAllocator* TempMemory, double dt,	void* _ptr);
-typedef	void (*UpdatePreDrawFN)			(EngineMemory* Engine,	iAllocator* TempMemory, double dt,	void* _ptr); 
-typedef	void (*DrawFN)					(EngineMemory* RS,		iAllocator* TempMemory,				void* _ptr);
-typedef void (*PostDrawFN)				(EngineMemory* Engine,	iAllocator* TempMemory, double dt,	void* _ptr);
-typedef void (*CleanUpFN)				(EngineMemory* Engine,	void* _ptr);
+typedef void (*UpdateAnimationsFN)		(EngineCore* RS,	iAllocator* TempMemory, double dt,	void* _ptr);
+typedef	void (*UpdatePreDrawFN)			(EngineCore* Core,	iAllocator* TempMemory, double dt,	void* _ptr);
+typedef	void (*DrawFN)					(EngineCore* RS,	iAllocator* TempMemory,				void* _ptr);
+typedef void (*PostDrawFN)				(EngineCore* Core,	iAllocator* TempMemory, double dt,	void* _ptr);
+typedef void (*CleanUpFN)				(EngineCore* Core,	void* _ptr);
 
 typedef void (*PostPhysicsUpdateFN)	(void*);
 typedef void (*PrePhysicsUpdateFN)	(void*);

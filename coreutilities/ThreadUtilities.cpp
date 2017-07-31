@@ -37,15 +37,11 @@ namespace FlexKit
 	std::mutex					gQueueWriteLock;
 	vector_t<Thread*>			gThreadpool;
 
-	void			AddTask( ThreadTask* _ptr );
-	ThreadTask*		GetNextTask();
-	void			InitThreads( size_t threadcount );
-	bool			WakeNextThread();
 
 	class Thread
 	{
 		public:
-			Thread() : mTask{nullptr}, mThread{}
+			Thread(iAllocator* memory) : mTask{nullptr}, mThread{}, Memory(memory)
 			{
 				mSpin	 = true;
 				mRunning = false;
@@ -74,17 +70,18 @@ namespace FlexKit
 						//	delete task;
 						mTask.store(nullptr);
 					}
-					ThreadTask* NextTask = GetNextTask();
+
+					ThreadTask* NextTask = QueuedWork.pop_front();// GetNextTask();
 					mTask = NextTask;
 
 					if( !NextTask )
 					{	
 						std::this_thread::sleep_for(std::chrono::microseconds(1));
-						if(!mSpin)
-						goto END;
+						if (!mSpin)
+							break;
 					}
 				}
-				END:
+
 				mThread.detach();
 				mRunning = false;
 				mLock.unlock();
@@ -120,59 +117,10 @@ namespace FlexKit
 		std::mutex					mLock;
 		std::atomic<ThreadTask*>	mTask;
 		std::thread					mThread;
+
+		SL_list<ThreadTask*>		QueuedWork;
+		iAllocator*					Memory;
 	};
-
-	ThreadTask*	GetNextTask()
-	{
-		gQueueWriteLock.lock();
-		ThreadTask* task = nullptr;
-		if( gTaskBoard.size() )
-		{
-			task = gTaskBoard.front();
-			gTaskBoard.pop_front();
-		}
-		gQueueWriteLock.unlock();
-		return task;
-	}
-
-
-	void InitThreads( size_t threadcount )
-	{
-		gThreadCount = threadcount;
-		for( int itr = threadcount; itr-->0; )
-		{
-			gThreadpool.push_back( new Thread());
-			gThreadpool.back()->Begin();
-		}
-
-	}
-
-
-	bool WakeNextThread()
-	{
-		for( auto thread : gThreadpool )
-			if( !thread->Running() )
-			{
-				thread->SetSpin(true);
-				thread->Begin();
-				return true;
-			}
-		return false;
-	}
-
-
-
-	void AddTask( ThreadTask* _ptr )
-	{
-		if( !gThreadCount )
-		{
-			_ptr->Run();
-			return;
-		}
-		gQueueWriteLock.lock();
-		gTaskBoard.push_back(_ptr);
-		gQueueWriteLock.unlock();
-	}
 
 
 	void TaskProxy::Run()

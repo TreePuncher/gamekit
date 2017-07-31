@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	// includes
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
-#include "..\coreutilities\containers.h"
+#include "..\coreutilities\memoryutilities.h"
 
 #include <atomic>
 #include <memory>
@@ -124,7 +124,9 @@ namespace FlexKit
 
 		bool mDelete;
 	};
+
 	//-----------------------------------------------------------------------------------------
+
 	typedef std::function<void ()> Task_Function_Def;
 
 	class LambdaTask : public ThreadTask
@@ -144,13 +146,114 @@ namespace FlexKit
 		Task_Function_Def	m_Lambda;
 	};
 
-	const unsigned MAXQUEUEDTASKS = 1000;
-	const unsigned MaxThreads = MAXTHREADCOUNT;
+
+
+	__declspec(align(64))
+	class ThreadWorker
+	{
+	public:
+		ThreadWorker(iAllocator* Memory) : JobList(Memory)
+		{
+			Thread = std::thread([&]() {_Run(); });
+		}
+
+		void Initate()
+		{
+		}
+
+
+		void Release()
+		{
+
+		}
+
+		void Shutdown()
+		{
+
+		}
+
+		void AddJob(ThreadTask* Worker)
+		{
+			JobList.push_back(Worker);
+		}
+
+		bool isRunning()
+		{
+			return false;
+		}
+
+		size_t QueueSize()
+		{
+			return JobList.size();
+		}
+
+	private:
+
+		void _Run()
+		{
+
+		}
+
+		std::thread	Thread;
+
+		SL_list<ThreadTask*>	JobList;
+		std::mutex				Mutex;
+		std::condition_variable	Condition;
+	};
+
 
 	//-----------------------------------------------------------------------------------------
 
-	FLEXKITAPI void InitThreads( size_t threadcount );
-	FLEXKITAPI void AddTask( ThreadTask* _ptr );
+
+	class ThreadManager
+	{
+	public:
+		ThreadManager(iAllocator* memory = nullptr, size_t ThreadCount = -1) :
+			Workers(memory),
+			Memory(memory)
+		{
+			if (ThreadCount == -1)
+				ThreadCount = std::thread::hardware_concurrency() - 1;
+
+			for (size_t I = 0; I < ThreadCount; ++I)
+				Workers.push_back(&Memory->allocate_aligned<ThreadWorker, 64>(Memory));
+		}
+
+
+		void AddTask(ThreadTask* Task)
+		{
+			std::sort(Workers.begin(), Workers.end(), [&](ThreadWorker* LHS, ThreadWorker* RHS) {
+				return LHS->QueueSize() < RHS->QueueSize();
+			});
+		}
+
+
+		void Release()
+		{
+			for (auto& Worker : Workers)
+				Worker->Shutdown();
+
+			while (true) 
+			{
+				bool ThreadRunning = true;
+				for (auto& Worker : Workers)
+					ThreadRunning |= !Worker->isRunning();
+			}
+		}
+
+
+	private:
+		Vector<ThreadWorker*>	Workers;
+		iAllocator*				Memory;
+	};
+
+
+	const unsigned MAXQUEUEDTASKS = 1000;
+	const unsigned MaxThreads = MAXTHREADCOUNT;
+
+
+	//-----------------------------------------------------------------------------------------
+
 
 
 #define MAXTASKCOUNT	100
@@ -196,6 +299,16 @@ namespace FlexKit
 		list_t<ThreadTask*>			mTasksWaiting;
 		static_vector<TaskProxy,16>	mProxyPool;
 	};
+
+
+	class FLEXKITAPI JobGroup
+	{
+	public:
+		bool AddTask(ThreadTask* _ptr);
+
+		static_vector<TaskProxy, 16> Workers;
+	};
+
 
 	//-----------------------------------------------------------------------------------------
 #define BEGINTHREADEDSECTION FlexKit::AddTask( new FlexKit::LambdaTask( [&]() {

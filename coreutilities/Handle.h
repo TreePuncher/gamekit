@@ -137,7 +137,7 @@ namespace FlexKit
 		template<typename HANDLE, size_t SIZE = 128>
 		struct HandleTable
 		{
-			HandleTable( const Type_t type = 0x00, iAllocator* Memory = nullptr ) : mType( type ), FreeList(Memory), Indexes(Memory) {}
+			HandleTable(iAllocator* Memory = nullptr, const Type_t type = 0x00 ) : mType( type ), FreeList(Memory), Indexes(Memory) {}
 
 			void Initiate( iAllocator* Memory )
 			{

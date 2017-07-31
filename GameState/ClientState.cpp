@@ -193,13 +193,13 @@ bool JoinServer(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-ClientState* CreateClientState(EngineMemory* Engine, GameFramework* Framework, const char* Name, const char* Server)
+ClientState* CreateClientState(EngineCore* Engine, GameFramework* Framework, const char* Name, const char* Server)
 {
-	auto State = &Engine->BlockAllocator.allocate_aligned<ClientState>();
+	auto State = &Engine->GetBlockMemory().allocate_aligned<ClientState>();
 	//State->VTable.Update       = JoinServer;
 	//State->Framework                = Framework;
 	//State->Peer                = RakNet::RakPeerInterface::GetInstance();
-	//State->PlayerIds.Allocator = Engine->BlockAllocator;
+	//State->PlayerIds.Allocator = Engine->GetBlockMemory();
 
 	char str[512];
 
@@ -483,9 +483,9 @@ bool UpdateClientGameplay(FrameworkState* StateMemory, EngineMemory* Engine, dou
 /************************************************************************************************/
 
 
-ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Framework, ClientState* Client)
+ClientPlayState* CreateClientPlayState(EngineCore* Engine, GameFramework* Framework, ClientState* Client)
 {
-	ClientPlayState* PlayState = &Engine->BlockAllocator.allocate_aligned<ClientPlayState>();
+	ClientPlayState* PlayState = &Engine->GetBlockMemory().allocate_aligned<ClientPlayState>();
 	PlayState->Framework                      = Framework;
 	PlayState->NetState						  = Client;
 	//PlayState->VTable.Update				  = UpdateClientGameplay;
@@ -493,7 +493,7 @@ ClientPlayState* CreateClientPlayState(EngineMemory* Engine, GameFramework* Fram
 	//PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
 	//PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
 	//PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
-	PlayState->Imposters.Allocator			  = Engine->BlockAllocator;
+	PlayState->Imposters.Allocator			  = Engine->GetBlockMemory();
 	PlayState->Mode							  = eWAITINGMODE; // Wait for all Players to Load and respond
 	PlayState->FrameCount					  = 0;
 	PlayState->T2ServerUpdate				  = 0.0;

@@ -41,7 +41,7 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 	PopSubState(Args->State->Framework);
 	PushSubState(Args->State->Framework, CreateHostState(Args->Engine, Args->State->Framework));
 
-	//Args->Engine->BlockAllocator.free(_ptr);
+	//Args->Engine->GetBlockMemory().free(_ptr);
 	return true;
 }
 
@@ -103,7 +103,7 @@ bool OnExitLeft(void* _ptr, size_t GUIElement)
 /************************************************************************************************/
 
 
-bool PreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
+bool PreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	SimpleWindowInput	Input	  = {};
@@ -112,10 +112,10 @@ bool PreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 	Input.MousePosition			  = ThisState->Framework->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
-	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
+	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
 
 	if(StateMemory->Framework->DrawDebug)
-		ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
+		ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
 
 	ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Framework->Immediate);
 
@@ -130,7 +130,7 @@ bool PreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-bool Update			(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
+bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	SimpleWindowInput	Input	  = {};
@@ -145,7 +145,7 @@ bool Update			(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 	//Yaw(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 );
 	//Pitch(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 * ThisState->Framework->MouseState.dPos[1] * dT);
 	
-	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->TempAllocator);
+	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
 
 	//UpdateSimpleWindow(&Input, &ThisState->Window);
 
@@ -173,17 +173,17 @@ void ReleaseMenu	(FrameworkState* StateMemory)
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	CleanUpSimpleWindow(&ThisState->Window, ThisState->Framework->Engine->RenderSystem);
 	ThisState->BettererWindow.Release();
-	ThisState->Framework->Engine->BlockAllocator.free(ThisState);
+	ThisState->Framework->Engine->GetBlockMemory().free(ThisState);
 }
 
 
 /************************************************************************************************/
 
 
-MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
+MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 {
 	FK_ASSERT(Framework != nullptr);
-	auto* State	= &Engine->BlockAllocator.allocate_aligned<MenuState>(&Engine->BlockAllocator.AllocatorInterface);
+	auto* State	= &Engine->GetBlockMemory().allocate_aligned<MenuState>(&Engine->GetBlockMemory().AllocatorInterface);
 
 	//State->VTable.PreDrawUpdate = PreDraw;
 	//State->VTable.Update        = Update;
@@ -253,7 +253,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 	
 		auto Window			= &State->Window;
 		auto WindowSize		= GetWindowWH(Engine);
-		InitiateSimpleWindow(Engine->BlockAllocator, Window, Desc);
+		InitiateSimpleWindow(Engine->GetBlockMemory(), Window, Desc);
 		Window->Position	= {0.65f, 0.1f};
 		Window->CellBorder  = {0.01f, 0.01f};
 		Window->CellColor   = float4(Grey(0.2f), 1.0f);
@@ -314,7 +314,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine)
 /************************************************************************************************/
 
 
-bool JoinScreenUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
+bool JoinScreenUpdate(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 {
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	SimpleWindowInput	Input = {};
@@ -324,7 +324,7 @@ bool JoinScreenUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double 
 	Input.MousePosition			 = ThisState->Framework->MouseState.NormalizedPos;
 	Input.CursorWH				 = ThisState->CursorSize;
 
-	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->TempAllocator);
+	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
 
 	return false;
 }
@@ -333,13 +333,13 @@ bool JoinScreenUpdate(FrameworkState* StateMemory, EngineMemory* Engine, double 
 /************************************************************************************************/
 
 
-bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
+bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 {
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	SimpleWindowInput	Input = {};
 
-	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
-	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->TempAllocator, GetPixelSize(Engine));
+	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
 
 	DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.02f / GetWindowAspectRatio(Engine), 0.02f});
 
@@ -382,12 +382,12 @@ bool NameFieldClicked(void* _ptr, size_t GUIElement)
 /************************************************************************************************/
 
 
-JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine)
+JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
 {
 	FK_ASSERT(Framework != nullptr);
 	FK_ASSERT(Engine != nullptr);
 
-	auto* State	= &Engine->BlockAllocator.allocate_aligned<JoinScreen>(&Engine->BlockAllocator.AllocatorInterface);
+	auto* State	= &Engine->GetBlockMemory().allocate_aligned<JoinScreen>(&Engine->GetBlockMemory().AllocatorInterface);
 
 	Framework->MouseState.Enabled = true;
 

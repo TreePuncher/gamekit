@@ -118,7 +118,7 @@ void UpdateInput()
 /************************************************************************************************/
 
 
-void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode* Code)
+void DLLGameLoop(EngineCore* Engine, void* State, CodeTable* FNTable, GameCode* Code)
 {
 	using FlexKit::UpdateTransforms;
 	using FlexKit::UpdateInput;
@@ -148,10 +148,10 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 
 			FNTable->Update				(Engine, State, dt);
 			FNTable->UpdateFixed		(Engine, StepSize, State);
-			FNTable->UpdateAnimations	(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
-			FNTable->UpdatePreDraw		(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
-			FNTable->Draw				(Engine,				&Engine->TempAllocator.AllocatorInterface,				State);
-			FNTable->PostDraw			(Engine,				&Engine->TempAllocator.AllocatorInterface, dt,			State);
+			FNTable->UpdateAnimations	(Engine,				Engine->GetTempMemory(), dt, State);
+			FNTable->UpdatePreDraw		(Engine,				Engine->GetTempMemory(), dt, State);
+			FNTable->Draw				(Engine,				Engine->GetTempMemory(),	 State);
+			FNTable->PostDraw			(Engine,				Engine->GetTempMemory(), dt, State);
 
 			/*
 			if (CodeCheckTimer > 2.0)
@@ -163,8 +163,8 @@ void DLLGameLoop(EngineMemory* Engine, void* State, CodeTable* FNTable, GameCode
 			*/
 
 			// Memory -----------------------------------------------------------------------------------
-			//Engine->BlockAllocator.LargeBlockAlloc.Collapse(); // Coalesce blocks
-			Engine->TempAllocator.clear();
+			//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
+			Engine->GetTempMemory().clear();
 			T -= dt;
 		}
 
@@ -212,22 +212,23 @@ int main( int argc, char* argv[] )
 
 	if (Code.Lib)
 	{
-		EngineMemory* Engine = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
-		if (!FNTable.InitEngine(Engine))
+		EngineMemory*	Memory	= nullptr;//
+		EngineCore*		Core	= nullptr;//&Memory->BlockAllocator.allocate_aligned<EngineCore>(Memory);
+
+		if (!FNTable.InitEngine(Core, Memory))
 			return -1;
 
 
 		for (size_t I = 0; I < argc; ++I) {
-			Engine->CmdArguments.push_back(argv[I]);
+			Core->CmdArguments.push_back(argv[I]);
 		}
 
-		void* State = FNTable.Init(Engine);
+		void* State = FNTable.Init(Core);
 
-		DLLGameLoop(Engine, State, &FNTable, &Code);
+		DLLGameLoop(Core, State, &FNTable, &Code);
+		FNTable.Cleanup(Core, State);
 
-		FNTable.Cleanup(Engine, State);
-
-		::_aligned_free(Engine);
+		::_aligned_free(Memory);
 	}
 	else
 		return -1;

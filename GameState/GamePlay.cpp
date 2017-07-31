@@ -196,7 +196,7 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 
 //void UpdatePlayerAnimations(GameFramework* Engine, Player* P, double dT)
 //{
-	//UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->BlockAllocator, Engine->GScene);
+	//UpdateASM(dT, &P->PlayerAnimation, Engine->Engine->TempAllocator, Engine->Engine->GetBlockMemory(), Engine->GScene);
 
 	//if (Engine->GScene.GetDrawable(P->Model).PoseState)
 	//	DEBUG_DrawPoseState(Engine->GScene.GetDrawable(P->Model).PoseState, Engine->Nodes, Engine->GScene.GetNode(P->Model), &Engine->DebugLines);

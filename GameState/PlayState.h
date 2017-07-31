@@ -44,12 +44,12 @@ struct PlayState : public FrameworkState
 	// Game Element Controllers
 	// GameplayComponentSystem		Model;
 
-	PlayState(EngineMemory* Engine, GameFramework* Framework);
+	PlayState(EngineCore* Engine, GameFramework* Framework);
 	~PlayState();
 
-	bool Update			(EngineMemory* Engine, double dT);
-	bool DrawDebug		(EngineMemory* Engine, double dT);
-	bool PreDrawUpdate	(EngineMemory* Engine, double dT);
+	bool Update			(EngineCore* Engine, double dT);
+	bool DebugDraw		(EngineCore* Engine, double dT);
+	bool PreDrawUpdate	(EngineCore* Engine, double dT);
 	bool EventHandler	(Event evt);
 
 	InputComponentSystem		Input;
@@ -69,7 +69,7 @@ struct PlayState : public FrameworkState
 };
 
 
-PlayState* CreatePlayState(EngineMemory* Engine, GameFramework* Framework);
+PlayState* CreatePlayState(EngineCore* Engine, GameFramework* Framework);
 
 
 #endif

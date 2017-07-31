@@ -32,8 +32,8 @@ struct MenuState;
 
 struct CBArguements
 {
-	EngineMemory*	Engine;
-	MenuState*		State;
+	EngineCore*	Engine;
+	MenuState*	State;
 };
 
 
@@ -59,7 +59,7 @@ struct MenuState : public FrameworkState
 };
 
 
-MenuState* CreateMenuState(GameFramework* Framework, EngineMemory* Engine);
+MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine);
 
 
 struct JoinScreen : public FrameworkState
@@ -92,7 +92,7 @@ struct JoinScreen : public FrameworkState
 };
 
 
-JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineMemory* Engine);
+JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine);
 
 
 #endif

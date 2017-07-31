@@ -202,16 +202,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(EngineMemory* Engine, GraphicScene* Scene, const char* SceneName)
+	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, const char* SceneName)
 	{
-		return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->TempAllocator);
+		return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->GetTempMemory());
 	}
 
 
 	/************************************************************************************************/
 
 
-	void DrawMouseCursor(EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize)
+	void DrawMouseCursor(EngineCore* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize)
 	{
 		using FlexKit::Conversion::Vect2TOfloat2;
 
@@ -227,7 +227,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseGameFramework(EngineMemory* Engine, GameFramework* State)
+	void ReleaseGameFramework(EngineCore* Engine, GameFramework* State)
 	{
 		auto RItr = State->SubStates.rbegin();
 		auto REnd = State->SubStates.rend();
@@ -241,8 +241,8 @@ namespace FlexKit
 		Release(State->DefaultAssets.Terrain);
 
 		ReleaseTerrain	(State->Engine->Nodes, &State->Landscape);
-		ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
-		ReleaseCamera	(State->Engine->Nodes, &State->DebugCamera);
+		//ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
+		//ReleaseCamera	(State->Engine->Nodes, &State->DebugCamera);
 
 		ReleaseDrawImmediate	(Engine->RenderSystem, &State->Immediate);
 	}
@@ -273,7 +273,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
+	void UpdateGameFramework(EngineCore* Engine, GameFramework* State, double dT)
 	{
 		UpdateMouseInput(&State->MouseState, &Engine->Window);
 
@@ -299,7 +299,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PreDrawGameFramework(EngineMemory* Engine, GameFramework* State, double dT)
+	void PreDrawGameFramework(EngineCore* Engine, GameFramework* State, double dT)
 	{
 		if (!State->SubStates.size()) {
 			State->Quit = true;
@@ -307,6 +307,16 @@ namespace FlexKit
 		}
 
 		if (State->DrawDebug) {
+			auto RItr = State->SubStates.rbegin();
+			auto REnd = State->SubStates.rend();
+			while (RItr != REnd)
+			{
+				auto State = *RItr;
+				if (!State->DebugDraw(Engine, dT))
+					break;
+
+				RItr++;
+			}
 			/*
 			for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
 			{
@@ -367,18 +377,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GameFramework* InitiateFramework(EngineMemory* Engine)
+	GameFramework* InitiateFramework(EngineCore* Engine)
 	{
-		GameFramework& Framework = Engine->BlockAllocator.allocate_aligned<GameFramework>();
-		SetDebugMemory(&Engine->Debug);
+		GameFramework& Framework = Engine->GetBlockMemory().allocate_aligned<GameFramework>();
+		SetDebugMemory(Engine->GetDebugMemory());
 
-		AddResourceFile("assets\\assets.gameres", &Engine->Assets);
-		AddResourceFile("assets\\ResourceFile.gameres", &Engine->Assets);
-		AddResourceFile("assets\\ShaderBallTestScene.gameres", &Engine->Assets);
+		AddResourceFile("assets\\assets.gameres",				&Engine->Assets);
+		AddResourceFile("assets\\ResourceFile.gameres",			&Engine->Assets);
+		AddResourceFile("assets\\ShaderBallTestScene.gameres",	&Engine->Assets);
 
-		Framework.ClearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
+		Framework.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
 		Framework.Quit						= false;
-		Framework.PhysicsUpdateTimer			= 0.0f;
+		Framework.PhysicsUpdateTimer		= 0.0f;
 		Framework.TerrainSplits				= 12;
 		Framework.ActiveWindow				= &Engine->Window;
 		Framework.Engine					= Engine;
@@ -408,23 +418,24 @@ namespace FlexKit
 		ForwardPass_DESC	FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->BlockAllocator, Engine->TempAllocator);
+		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->GetBlockMemory(), Engine->GetBlockMemory());
 		
 
 		{
 			uint2	WindowRect	   = Engine->Window.WH;
 			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
-			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 160000.0f, true);
-			InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DebugCamera, Aspect, 0.1f, 160000.0f, true);
+			//InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 160000.0f, true);
+			//InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DebugCamera, Aspect, 0.1f, 160000.0f, true);
 
-			Framework.ActiveCamera				= &Framework.DefaultCamera;
+			//Framework.ActiveCamera				= &Framework.DefaultCamera;
+			Framework.ActiveCamera				= nullptr;
 			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
 			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
 		{
 			TextureBuffer TempBuffer;
-			LoadBMP("assets\\textures\\TestMap.bmp", Engine->BlockAllocator, &TempBuffer);
-			Texture2D	HeightMap = LoadTexture(&TempBuffer, Engine->RenderSystem, Engine->BlockAllocator);
+			LoadBMP("assets\\textures\\TestMap.bmp", Engine->GetBlockMemory(), &TempBuffer);
+			Texture2D	HeightMap = LoadTexture(&TempBuffer, Engine->RenderSystem, Engine->GetBlockMemory());
 
 			Framework.DefaultAssets.Terrain = HeightMap;
 
@@ -433,7 +444,7 @@ namespace FlexKit
 			};
 
 
-			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Framework.Engine->Nodes), &Land_Desc, Engine->BlockAllocator, &Framework.Landscape);
+			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Framework.Engine->Nodes), &Land_Desc, Engine->GetBlockMemory(), &Framework.Landscape);
 		}
 
 		FlexKit::EventNotifier<>::Subscriber sub;
@@ -441,7 +452,7 @@ namespace FlexKit
 		sub._ptr   = &Framework;
 		Engine->Window.Handler.Subscribe(sub);
 
-		Framework.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->TempAllocator, Engine->BlockAllocator);
+		Framework.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->GetTempMemory(), Engine->GetBlockMemory());
 		
 		InitateConsole(&Framework.Console, Framework.DefaultAssets.Font, Engine);
 		BindUIntVar(&Framework.Console, "TerrainSplits",			&Framework.TerrainSplits);
@@ -467,7 +478,7 @@ namespace FlexKit
 	}
 
 
-	void Update(EngineMemory* Engine, GameFramework* Framework, double dT)
+	void Update(EngineCore* Engine, GameFramework* Framework, double dT)
 	{
 		Framework->TimeRunning += dT;
 
@@ -480,20 +491,20 @@ namespace FlexKit
 	}
 
 
-	void UpdateFixed(EngineMemory* Engine, double dt, GameFramework* State)
+	void UpdateFixed(EngineCore* Engine, double dt, GameFramework* State)
 	{
 		UpdateMouseInput(&State->MouseState, &Engine->Window);
 	}
 
 
-	void UpdateAnimations(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
+	void UpdateAnimations(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
 	{
 		if(_ptr->ActiveScene)	
 			UpdateAnimationsGraphicScene(_ptr->ActiveScene, dt);
 	}
 
 
-	void UpdatePreDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework)
+	void UpdatePreDraw(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework)
 	{
 		PreDrawGameFramework(Engine, Framework, dt);
 
@@ -517,7 +528,7 @@ namespace FlexKit
 		if (Framework->DrawDebugStats)
 		{
 			uint32_t VRamUsage = GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
-			char* TempBuffer   = (char*)Engine->TempAllocator.malloc(512);
+			char* TempBuffer   = (char*)Engine->GetTempMemory().malloc(512);
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
 			sprintf_s(TempBuffer, 512, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
@@ -527,7 +538,7 @@ namespace FlexKit
 	}
 
 
-	void Draw(EngineMemory* Engine, iAllocator* TempMemory, GameFramework* Framework)
+	void Draw(EngineCore* Engine, iAllocator* TempMemory, GameFramework* Framework)
 	{
 		ProfileBegin(PROFILE_SUBMISSION);
 
@@ -634,7 +645,7 @@ namespace FlexKit
 	}
 
 
-	void PostDraw(EngineMemory* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
+	void PostDraw(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
 	{
 		Engine->Culler.Increment();
 		IncrementCurrent(&Engine->DepthBuffer);
@@ -644,7 +655,7 @@ namespace FlexKit
 	}
 
 
-	void Cleanup(EngineMemory* Engine, GameFramework* Framework)
+	void Cleanup(EngineCore* Engine, GameFramework* Framework)
 	{
 		ShutDownUploadQueues(Engine->RenderSystem);
 
@@ -666,7 +677,7 @@ namespace FlexKit
 		Free_DelayedReleaseResources(Engine->RenderSystem);
 		Free_DelayedReleaseResources(Engine->RenderSystem);
 
-		Engine->BlockAllocator.free(Framework);
+		Engine->GetBlockMemory().free(Framework);
 		
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);

@@ -37,10 +37,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitateConsole(Console* Out, FontAsset* Font, EngineMemory* Engine)
+	void InitateConsole(Console* Out, FontAsset* Font, EngineCore* Engine)
 	{
 		Out->Lines.clear();
-		Out->Memory                       = Engine->BlockAllocator;
+		Out->Memory                       = Engine->GetBlockMemory();
 		Out->Font                         = Font;
 		Out->InputBufferSize              = 0;
 		Out->Variables.Allocator          = Out->Memory;
