@@ -50,7 +50,13 @@ namespace FlexKit
 {
 	struct InputComponentSystem : public ComponentSystemInterface
 	{
-		void Initiate		(GameFramework* F);
+		InputComponentSystem(GameFramework* F)
+		{
+			Listeners.Allocator		= F->Engine->GetBlockMemory();
+			TargetSystems.Allocator = F->Engine->GetBlockMemory();
+			Framework				= F;
+		}
+
 		void Update			(double dt, MouseInputState MouseInput, GameFramework* Framework);
 
 		ComponentHandle BindInput(ComponentHandle Handle, ComponentSystemInterface* System)
@@ -65,7 +71,7 @@ namespace FlexKit
 
 		void ReleaseHandle	(ComponentHandle Handle){}
 
-		Vector<ComponentHandle>			Listeners;
+		Vector<ComponentHandle>				Listeners;
 		Vector<ComponentSystemInterface*>	TargetSystems;
 
 		GameFramework*						Framework;

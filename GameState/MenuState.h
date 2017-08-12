@@ -39,11 +39,13 @@ struct CBArguements
 
 struct MenuState : public FrameworkState
 {
-	MenuState(iAllocator* Memory) : BettererWindow(Memory)
+	MenuState(GameFramework* framework, iAllocator* Memory) : 
+		FrameworkState(framework), 
+		BettererWindow(Memory)
 	{
 	}
 
-	MenuState(const MenuState& rhs) : BettererWindow(rhs.BettererWindow)
+	MenuState(const MenuState& rhs) : FrameworkState(rhs.Framework), BettererWindow(rhs.BettererWindow)
 	{
 		Window			= rhs.Window;
 		CursorSize		= rhs.CursorSize;
@@ -64,13 +66,17 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine);
 
 struct JoinScreen : public FrameworkState
 {
-	JoinScreen(iAllocator* Memory) : BettererWindow(Memory)
+	JoinScreen(GameFramework* framework, iAllocator* Memory) : 
+		FrameworkState(framework), 
+		BettererWindow(Memory)
 	{
 		memset(Name, '\0', 32);
 		memset(Server, '\0', 64);
 	}
 
-	JoinScreen(const JoinScreen& rhs) : BettererWindow(rhs.BettererWindow)
+	JoinScreen(const JoinScreen& rhs) : 
+		FrameworkState(rhs.Framework),
+		BettererWindow(rhs.BettererWindow)
 	{
 		CursorSize = rhs.CursorSize;
 	}

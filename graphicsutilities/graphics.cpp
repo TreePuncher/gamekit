@@ -3864,6 +3864,8 @@ namespace FlexKit
 		FlexKit::SetWT(Nodes, node, &WT);
 
 		Nodes->Nodes[_SNHandleToIndex(Nodes, node)].Scaleflag = false;
+		Nodes->Nodes[_SNHandleToIndex(Nodes, node)].Parent = NodeHandle(0);
+
 		return node;
 	}
 
@@ -4724,7 +4726,7 @@ namespace FlexKit
 		desc.Structured    = false;
 		desc.StructureSize = 0;
 
-		auto NewBuffer = CreateConstantBuffer( RS, &desc);
+		auto NewBuffer = CreateConstantBuffer(RS, &desc);
 		if (!NewBuffer)
 			FK_ASSERT(0); // Failed to initialise Constant Buffer
 

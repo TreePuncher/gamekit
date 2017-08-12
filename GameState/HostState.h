@@ -180,6 +180,17 @@ struct PlayerClientStateInfoUpdate: PacketBase
 
 struct HostState : public FrameworkState
 {
+	HostState(EngineCore* Core, GameFramework* Framework)  :
+		FrameworkState(Framework),
+		Scene(Core->Physics, Core->Nodes, Core->GetBlockMemory())
+	{
+		RakNet::SocketDescriptor sd(gServerPort, nullptr);
+
+		auto res = Peer->Startup(16, &sd, 1);
+		Peer->SetMaximumIncomingConnections(16);
+		ServerMode = ServerMode::eSERVERLOBBYMODE;
+	}
+
 	RakNet::RakPeerInterface*	Peer;
 	size_t						PlayerCount;
 	size_t						MinPlayerCount;
@@ -208,8 +219,5 @@ struct HostState : public FrameworkState
 };
 
 size_t GetPlayerIndex(HostState* Host, RakNet::SystemAddress Addr);
-
-HostState* CreateHostState(EngineCore* Engine, GameFramework* Framework);
-
 
 #endif

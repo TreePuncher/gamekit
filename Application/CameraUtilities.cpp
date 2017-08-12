@@ -103,14 +103,6 @@ float3 GetRightVector(Camera3rdPersonContoller* Controller)
 
 namespace FlexKit
 {
-	void OrbitCameraSystem::Initiate(GameFramework* Framework, InputComponentSystem* Input)
-	{
-		Controllers.Allocator = Framework->Engine->GetBlockMemory();
-
-		Nodes			= Framework->Engine->Nodes;
-		InputSystem		= Input;
-	}
-
 	void OrbitCameraSystem::ReleaseHandle(ComponentHandle Handle)
 	{
 
@@ -138,11 +130,12 @@ namespace FlexKit
 			dP = Q * dP;
 
 			Translate	(Controller.ParentGO, dP * dT * Controller.MoveRate);
-			Pitch		(*Nodes, Controller.PitchNode, MouseState.dPos[1] * dT);
-			Yaw			(*Nodes, Controller.YawNode, MouseState.dPos[0] * dT);
+			Pitch		(*Nodes, Controller.PitchNode,	MouseState.dPos[1] * dT * 4);
+			Yaw			(*Nodes, Controller.YawNode,	MouseState.dPos[0] * dT * 4);
 		}
 
 	}
+
 
 	void SetParentNode(GameObjectInterface* GO, NodeHandle Node)
 	{
@@ -157,33 +150,33 @@ namespace FlexKit
 	}
 
 
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, Camera* Cam, float MoveRate)
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, NodeHandle CameraNode, float MoveRate)
 	{
-		CameraOrbitController Controller;
-		Controller.CameraNode	= Cam->Node;
-		Controller.PitchNode	= System->Nodes->GetNewNode();
-		Controller.RollNode		= System->Nodes->GetNewNode();
-		Controller.YawNode		= System->Nodes->GetNewNode();
-		Controller.MoveRate		= MoveRate;
-
-		System->Nodes->SetParentNode(Controller.YawNode,	Controller.PitchNode);
-		System->Nodes->SetParentNode(Controller.PitchNode,	Controller.RollNode);
-		System->Nodes->SetParentNode(Controller.RollNode,	Controller.CameraNode);
-
 		OrbitCameraArgs Out = {};
-		Out.System = System;
-		Out.Handle = CameraControllerHandle(System->Controllers.size());
-
-		System->Controllers.push_back(Controller);
+		Out.System		= System;
+		Out.Cameras		= nullptr;
+		Out.Node		= CameraNode;
+		Out.MoveRate	= MoveRate;
 
 		return Out;
 	}
 
 
-	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System, Camera* C)
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, CameraComponentSystem* Cameras, float MoveRate)
+	{
+		OrbitCameraArgs Out = {};
+		Out.System		= System;
+		Out.Cameras		= Cameras;
+		Out.Node		= InvalidComponentHandle;
+		Out.MoveRate	= MoveRate;
+
+		return Out;
+	}
+
+
+	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System)
 	{
 		ThirdPersonCameraArgs Args;
-		Args.C		= C;
 		Args.System = System;
 
 		return Args;

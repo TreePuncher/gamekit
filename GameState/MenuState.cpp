@@ -39,7 +39,11 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 	Args->State->Framework->ActiveScene->ClearScene();
 
 	PopSubState(Args->State->Framework);
-	PushSubState(Args->State->Framework, CreateHostState(Args->Engine, Args->State->Framework));
+	PushSubState(
+		Args->State->Framework, 
+		&Args->State->Framework->Engine->GetBlockMemory().allocate_aligned<HostState>(
+			Args->Engine, 
+			Args->State->Framework));
 
 	//Args->Engine->GetBlockMemory().free(_ptr);
 	return true;
@@ -182,6 +186,7 @@ void ReleaseMenu	(FrameworkState* StateMemory)
 
 MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 {
+	/*
 	FK_ASSERT(Framework != nullptr);
 	auto* State	= &Engine->GetBlockMemory().allocate_aligned<MenuState>(&Engine->GetBlockMemory().AllocatorInterface);
 
@@ -308,6 +313,8 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 	}
 
 	return State;
+	*/
+	return nullptr;
 }
 
 
@@ -387,10 +394,11 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
 	FK_ASSERT(Framework != nullptr);
 	FK_ASSERT(Engine != nullptr);
 
-	auto* State	= &Engine->GetBlockMemory().allocate_aligned<JoinScreen>(&Engine->GetBlockMemory().AllocatorInterface);
+	auto* State	= &Engine->GetBlockMemory().allocate_aligned<JoinScreen>(
+													Framework, 
+													Engine->GetBlockMemory().AllocatorInterface);
 
 	Framework->MouseState.Enabled = true;
-
 	//State->VTable.PreDrawUpdate = JoinScreenPreDraw;
 	//State->VTable.Update        = JoinScreenUpdate;
 	//State->VTable.Release       = ReleaseJoinScreen;

@@ -522,39 +522,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateGraphicScene(GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodeComponentSystem* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory)
+	void InitiateGraphicScene()
 	{
-		using FlexKit::CreateSpotLightBuffer;
-		using FlexKit::CreatePointLightBuffer;
-		using FlexKit::PointLightBufferDesc;
-
-		Out->HandleTable.Initiate(Memory);
-
-		Out->DrawableHandles.Allocator			= Memory;
-		Out->Drawables.Allocator				= Memory;
-		Out->DrawableVisibility.Allocator		= Memory;
-		Out->DrawableRayVisibility.Allocator	= Memory;
-		Out->SpotLightCasters.Allocator		    = Memory;
-		Out->RS                                 = in_RS;
-		Out->RM                                 = in_RM;
-		Out->SN                                 = in_SN;
-		Out->GT                                 = GT;
-
-		Out->TaggedJoints.Allocator = Memory;
-		Out->Drawables	= nullptr;
-
-		Out->Memory		= Memory;
-		Out->TempMem	= TempMemory;
-
-		FlexKit::PointLightBufferDesc Desc;
-		Desc.MaxLightCount	= 512;
-
-
-		CreatePointLightBuffer(in_RS, &Out->PLights, Desc, Memory);
-		CreateSpotLightBuffer(in_RS,  &Out->SPLights, Memory);
 		
-		Out->SceneManagement.Initiate(Memory);
-		Out->_PVS.clear();
 	}
 
 
@@ -567,9 +537,9 @@ namespace FlexKit
 		{
 			if (E.Posed) {
 				if (E.AnimationState && GetAnimationCount(&E))
-					UpdateAnimation(SM->RS, &E, SM->GT, dt, SM->TempMem);
+					UpdateAnimation(SM->RS, &E, SM->GT, dt, SM->TempMemory);
 				else
-					ClearAnimationPose(E.PoseState, SM->TempMem);
+					ClearAnimationPose(E.PoseState, SM->TempMemory);
 			}
 		}
 	}
@@ -654,8 +624,8 @@ namespace FlexKit
 
 	void UploadGraphicScene(GraphicScene* SM, PVS* Dawables, PVS* Transparent_PVS)
 	{
-		UpdatePointLightBuffer	(*SM->RS, *SM->SN, &SM->PLights, SM->TempMem);
-		UpdateSpotLightBuffer	(*SM->RS, *SM->SN, &SM->SPLights, SM->TempMem);
+		UpdatePointLightBuffer	(*SM->RS, *SM->SN, &SM->PLights, SM->TempMemory);
+		UpdateSpotLightBuffer	(*SM->RS, *SM->SN, &SM->SPLights, SM->TempMemory);
 
 		for (auto& Caster : SM->SpotLightCasters)
 			UploadCamera(SM->RS, *SM->SN, &Caster.C, 0, 0, 0.0f);

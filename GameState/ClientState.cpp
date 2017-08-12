@@ -193,45 +193,6 @@ bool JoinServer(FrameworkState* StateMemory, EngineMemory* Engine, double DT)
 /************************************************************************************************/
 
 
-ClientState* CreateClientState(EngineCore* Engine, GameFramework* Framework, const char* Name, const char* Server)
-{
-	auto State = &Engine->GetBlockMemory().allocate_aligned<ClientState>();
-	//State->VTable.Update       = JoinServer;
-	//State->Framework                = Framework;
-	//State->Peer                = RakNet::RakPeerInterface::GetInstance();
-	//State->PlayerIds.Allocator = Engine->GetBlockMemory();
-
-	char str[512];
-
-	RakNet::SocketDescriptor desc;
-	memset(str, 0, sizeof(str));
-
-	if (!Name)
-	{
-		std::cout << "Enter Name\n";
-		std::cin >> State->ClientName;
-	}
-	else
-		strncpy(State->ClientName, Name, sizeof(State->ClientName));
-
-	if (!Server)
-	{
-		std::cout << "Enter Server Address\n";
-		std::cin >> str;
-	}
-
-	State->Peer->Startup(1, &desc, 1);
-
-	auto res = State->Peer->Connect(Server ? Server : str, gServerPort, nullptr, 0);
-
-
-	return State;
-}
-
-
-/************************************************************************************************/
-
-
 bool UpdateClientEventHandler(FrameworkState* StateMemory, Event evt)
 {
 	ClientPlayState* ThisState = (ClientPlayState*)StateMemory;
@@ -476,52 +437,6 @@ bool UpdateClientGameplay(FrameworkState* StateMemory, EngineMemory* Engine, dou
 
 	*/
 	return true;
-}
-
-
-
-/************************************************************************************************/
-
-
-ClientPlayState* CreateClientPlayState(EngineCore* Engine, GameFramework* Framework, ClientState* Client)
-{
-	ClientPlayState* PlayState = &Engine->GetBlockMemory().allocate_aligned<ClientPlayState>();
-	PlayState->Framework                      = Framework;
-	PlayState->NetState						  = Client;
-	//PlayState->VTable.Update				  = UpdateClientGameplay;
-	//PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
-	//PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
-	//PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
-	//PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
-	PlayState->Imposters.Allocator			  = Engine->GetBlockMemory();
-	PlayState->Mode							  = eWAITINGMODE; // Wait for all Players to Load and respond
-	PlayState->FrameCount					  = 0;
-	PlayState->T2ServerUpdate				  = 0.0;
-	PlayState->ServerUpdatePeriod			  = 1.0;
-
-	PlayState->LocalInput.ClearState();
-	PlayState->Imposters.resize(Client->PlayerCount - 1);
-
-
-	/*
-	for (size_t I = 0; I < PlayState->Imposters.size(); ++I) {
-		auto& Imposter	  = PlayState->Imposters[I];
-		Imposter.Graphics = Framework->GScene.CreateDrawableAndSetMesh("PlayerModel");
-		Imposter.PlayerID = Client->PlayerIds[I];
-		
-		CapsuleCharacterController_DESC Desc;
-		Desc.FootPos = {0.0f, 0.0f, 0.0f};
-		Desc.h = 20.0f;
-		Desc.r = 5.0f;
-
-		Initiate(&Imposter.Collider, &Framework->PScene, &Engine->Physics, Desc);
-	}
-
-	CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Framework->PScene);
-	InitiatePlayer(Framework, &PlayState->LocalPlayer);
-	*/
-
-	return PlayState;
 }
 
 

@@ -30,13 +30,6 @@ namespace FlexKit
 	/********************************* Implentation of Transform Components *************************/
 	/************************************************************************************************/
 
-	void SceneNodeComponentSystem::InitiateSystem(byte* Memory, size_t BufferSize)
-	{
-		new(this) SceneNodeComponentSystem();
-
-		InitiateSceneNodeBuffer(&Nodes, Memory, BufferSize);
-		Root = FlexKit::GetZeroedNode(Nodes);
-	}
 	void SceneNodeComponentSystem::Release()
 	{
 	}
@@ -59,7 +52,9 @@ namespace FlexKit
 
 	NodeHandle SceneNodeComponentSystem::GetZeroedNode()
 	{
-		return FlexKit::GetZeroedNode(Nodes);
+		auto Node = FlexKit::GetZeroedNode(Nodes);
+		SetParentNode(Root, Node);
+		return Node;
 	}
 
 	void TansformComponent::Roll(float r)
@@ -172,6 +167,12 @@ namespace FlexKit
 	{
 		return FlexKit::GetParentNode(*static_cast<SceneNodeComponentSystem*>(ComponentSystem), Node);
 	}
+
+	NodeHandle TansformComponent::GetNode()
+	{
+		return ComponentHandle;
+	}
+
 
 
 	/************************************************************************************************/

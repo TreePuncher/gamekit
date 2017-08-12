@@ -57,6 +57,38 @@ struct PlayerImposters
 
 struct ClientState : public FrameworkState
 {
+	ClientState(GameFramework* framework, EngineCore* Engine, const char* Name = nullptr, const char* Server = nullptr) :
+		FrameworkState(framework)
+	{
+		//State->VTable.Update       = JoinServer;
+		//State->Framework           = Framework;
+		//State->Peer                = RakNet::RakPeerInterface::GetInstance();
+		//State->PlayerIds.Allocator = Engine->GetBlockMemory();
+
+		char str[512];
+
+		RakNet::SocketDescriptor desc;
+		memset(str, 0, sizeof(str));
+
+		if (!Name)
+		{
+			std::cout << "Enter Name\n";
+			std::cin >> ClientName;
+		}
+		else
+			strncpy(ClientName, Name, sizeof(ClientName));
+
+		if (!Server)
+		{
+			std::cout << "Enter Server Address\n";
+			std::cin >> str;
+		}
+
+		Peer->Startup(1, &desc, 1);
+
+		//auto res = Peer->Connect(Server ? Server : str, gServerPort, nullptr, 0);
+	}
+
 	RakNet::RakPeerInterface*	Peer;
 	RakNet::SystemAddress		ServerAddr;
 
@@ -77,6 +109,46 @@ struct ClientState : public FrameworkState
 
 struct ClientPlayState : public FrameworkState
 {
+	ClientPlayState(GameFramework* framework, ClientState* Client) :
+		FrameworkState(framework),
+		NetState(Client),
+		Scene(nullptr, framework->Engine->Nodes, framework->Engine->GetBlockMemory())
+	{
+		
+		//PlayState->VTable.Update				  = UpdateClientGameplay;
+		//PlayState->VTable.EventHandler			  = UpdateClientEventHandler;
+		//PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
+		//PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
+		//PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
+		Imposters.Allocator = framework->Engine->GetBlockMemory();
+		Mode                = eWAITINGMODE; // Wait for all Players to Load and respond
+		FrameCount          = 0;
+		T2ServerUpdate      = 0.0;
+		ServerUpdatePeriod  = 1.0;
+
+		LocalInput.ClearState();
+		Imposters.resize(Client->PlayerCount - 1);
+
+
+		/*
+		for (size_t I = 0; I < PlayState->Imposters.size(); ++I) {
+		auto& Imposter	  = PlayState->Imposters[I];
+		Imposter.Graphics = Framework->GScene.CreateDrawableAndSetMesh("PlayerModel");
+		Imposter.PlayerID = Client->PlayerIds[I];
+
+		CapsuleCharacterController_DESC Desc;
+		Desc.FootPos = {0.0f, 0.0f, 0.0f};
+		Desc.h = 20.0f;
+		Desc.r = 5.0f;
+
+		Initiate(&Imposter.Collider, &Framework->PScene, &Engine->Physics, Desc);
+		}
+
+		CreatePlaneCollider(Engine->Physics.DefaultMaterial, &Framework->PScene);
+		InitiatePlayer(Framework, &PlayState->LocalPlayer);
+		*/
+	}
+
 	ClientState*			NetState;
 	ClientMode				Mode;
 	PhysicsComponentSystem	Scene;
@@ -97,7 +169,5 @@ struct ClientPlayState : public FrameworkState
 	FlexKit::Vector<PlayerImposters> Imposters;// Cause hes an imposter, trying to steal all the client info
 };
 
-ClientState*		CreateClientState		(EngineCore* Engine, GameFramework* Framework, const char* Name = nullptr, const char* Server = nullptr);
-ClientPlayState*	CreateClientPlayState	(EngineCore* Engine, GameFramework* Framework, ClientState* Peer);
 
 #endif

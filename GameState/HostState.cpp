@@ -503,26 +503,3 @@ bool UpdateHost(FrameworkState* StateMemory, EngineMemory* Engine, double dT)
 
 
 /************************************************************************************************/
-
-
-HostState* CreateHostState(EngineCore* Engine, GameFramework* Framework)
-{
-	auto State = &Engine->GetBlockMemory().allocate_aligned<HostState>();
-	//State->VTable.Update  = UpdateHost;
-	//State->VTable.Release = CloseServer;
-	//State->MinPlayerCount = 2;
-	//State->Framework           = Framework;
-	//State->PlayerCount	  = 0;
-	//State->Peer			  = RakNet::RakPeerInterface::GetInstance();
-
-	RakNet::SocketDescriptor sd(gServerPort, nullptr);
-
-	auto res = State->Peer->Startup(16, &sd, 1);
-	State->Peer->SetMaximumIncomingConnections(16);
-	State->ServerMode = ServerMode::eSERVERLOBBYMODE;
-
-	return State;
-}
-
-
-/************************************************************************************************/

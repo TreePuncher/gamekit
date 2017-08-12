@@ -89,6 +89,7 @@ struct sKeyState
 struct MouseInputState
 {
 	int2	dPos			= { 0, 0 };
+	float2	Normalized_dPos	= { 0, 0 };
 	float2	Position		= { 0, 0 };
 	float2	NormalizedPos	= { 0, 0 };
 
@@ -143,9 +144,13 @@ struct EngineCore
 		PVS_			(memory->BlockAllocator),
 		Time			(memory->BlockAllocator),
 		Threads			(memory->BlockAllocator),
+
+		Cameras			(&RenderSystem, &Nodes, memory->BlockAllocator),
+		Nodes			(memory->NodeMem, sizeof(EngineMemory::NodeMem)),
 		Memory			(memory),
-		FrameLock		(false)
+		FrameLock		(true)
 	{}
+
 
 	bool			FrameLock;
 	bool			End;
@@ -175,7 +180,7 @@ struct EngineCore
 
 	Vector<const char*>		CmdArguments;
 
-	ThreadManager		Threads;
+	ThreadManager Threads;
 
 	EngineMemory* Memory;
 

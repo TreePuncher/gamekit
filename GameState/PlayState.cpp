@@ -89,6 +89,9 @@ float3 CameraPOS = {8000,1000,8000};
 
 bool PlayState::Update(EngineCore* Engine, double dT)
 {
+	printfloat3(GetWorldPosition(Player));
+	printf("\n");
+
 	float MovementFactor			= 50.0f;
 
 	//ThisState->Model.PlayerInputs[0].FrameID++;
@@ -96,6 +99,7 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	//ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
 
 	Input.Update(dT, Framework->MouseState, Framework );
+	//Yaw(Player, dT * Framework->MouseState.Normalized_dPos[0]);
 
 	double T = Framework->TimeRunning;
 	double CosT = (float)cos(T);
@@ -106,30 +110,40 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	float IaR	= 10000 * (1 + (float)cos(T * 6)) / 2;
 	
 	//Translate(ThisState->Player, float3{ 0, 100, 0 } * dT);
-	auto Forward	= GetForwardVector(Player);
-	auto Left		= GetLeftVector(Player);
+	
 	const float MoveRate = 100;
 
 
 	//SetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node, CameraPOS);
 	//Yaw(Framework->Engine->Nodes, Framework->DebugCamera.Node, pi * dT);
 
+#if 0
+	if (Input.KeyState.Forward)
+		//Translate(Player, Forward * dT * MoveRate);
+		Translate(Player, float3{0, float(dT) * MoveRate, 0});
+#else
+
+	//auto Forward	= GetForwardVector(Player);
+	//auto Left		= GetLeftVector(Player);
+
+	auto Q			= GetCameraOrientation(Player);
+	auto Forward	= Q * float3( 0,  0, -1);
+	auto Left		= Q * float3( -1,  0,  0);
+
 	if (Input.KeyState.Forward)
 		Translate(Player, Forward * dT * MoveRate);
-
 	if (Input.KeyState.Backward)
 		Translate(Player, Forward * dT * -MoveRate);
-
 	if (Input.KeyState.Left)
 		Translate(Player, Left * dT * MoveRate);
-
 	if (Input.KeyState.Right)
 		Translate(Player, Left * dT * -MoveRate);
+#endif
 
-	Translate(Player, dT * float3{0, -98.0f, 0});
+	//Translate(Player, dT * float3{0, -98.0f, 0});
 	OrbitCameras.Update(dT);
-	Physics.UpdateSystem(dT);
-	TPC.Update(dT);
+	//Physics.UpdateSystem(dT);
+	//TPC.Update(dT);
 
 	return false;
 }
@@ -149,6 +163,7 @@ bool PlayState::DebugDraw(EngineCore* Engine, double dT)
 
 bool PlayState::PreDrawUpdate(EngineCore* Engine, double dT)
 {
+	return false;
 	Physics.UpdateSystem_PreDraw(dT);
 
 	if(Framework->DrawPhysicsDebug)
@@ -181,7 +196,7 @@ bool PlayState::PreDrawUpdate(EngineCore* Engine, double dT)
 
 #endif
 
-#if 1
+#if 0
 	// Ray Cast Tests
 
 	double T	= Framework->TimeRunning;
@@ -249,9 +264,9 @@ PlayState::~PlayState()
 	Player.Release();
 	TestObject.Release();
 	Physics.Release();
-	GScene.ClearScene();
+	Scene.ClearScene();
 
-	ReleaseGraphicScene(&GScene);
+	ReleaseGraphicScene(&Scene);
 	Framework->Engine->GetBlockMemory().free(this);
 }
 
@@ -431,7 +446,7 @@ TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory
 
 void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 {
-	FK_ASSERT(LoadScene(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->Engine->Assets, &Framework->Engine->Geometry, 201, &State->GScene, Framework->Engine->GetTempMemory()), "FAILED TO LOAD!\n");
+	FK_ASSERT(LoadScene(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->Engine->Assets, &Framework->Engine->Geometry, 201, &State->Scene, Framework->Engine->GetTempMemory()), "FAILED TO LOAD!\n");
 
 	InitiateGameObject( 
 		State->FloorObject,
@@ -439,13 +454,19 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 
 	InitiateGameObject(
 		State->Player,
-			State->Physics.CreateCharacterController({0, 10, 0}, 10, 20),
-			CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			//CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10));
+			State->Physics.CreateCharacterController({0, 10, 0}, 10, 0.004f),
+			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
+			//CreateThirdPersonCamera(&State->TPC));
+			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10));
 
-	SetCameraOffset(State->Player, {0, 30, 30});
+	//Yaw(State->Player, pi/100);
 
-	for(size_t I = 0; I < 10; ++I){
+
+	SetActiveCamera(Framework, State->Player);
+	SetWorldPosition(State->Player, {0, 30, 50});
+	//SetCameraOffset(State->Player, {0, 30, 30});
+
+	for(size_t I = 0; I < 0; ++I){
 		InitiateGameObject( 
 			State->CubeObjects[I],
 				CreateEnityComponent(&State->Drawables, "Flower"),
@@ -489,7 +510,8 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 		State->Player,
 			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10000.0f));
+			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
+			CreateOrbitCamera(State->OrbitCameras, &Framework->Engine->Cameras, 10000.0f));
 
 	Translate		(State->Player, {0, 10000, -10});
 	SetCameraOffset	(State->Player, { 0, 15, 10 });
@@ -498,9 +520,9 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 
 	auto HF = LoadHeightFieldCollider(&Framework->Engine->Physics, &Framework->Engine->Assets, 10601);
 
-	PxHeightFieldGeometry hfGeom(HF, PxMeshGeometryFlags(), 4096.0f/32767.0f , 8, 8);
-	PxTransform HFPose(PxVec3(-4096, 0, -4096));
-	auto aHeightFieldActor = Framework->Engine->Physics.Physx->createRigidStatic(HFPose);
+	PxHeightFieldGeometry	hfGeom(HF, PxMeshGeometryFlags(), 4096.0f/32767.0f , 8, 8);
+	PxTransform				HFPose(PxVec3(-4096, 0, -4096));
+	auto					aHeightFieldActor = Framework->Engine->Physics.Physx->createRigidStatic(HFPose);
 
 	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Framework->Engine->Physics.DefaultMaterial, 1);
 	State->Physics.Scene->addActor(*aHeightFieldActor);
@@ -512,21 +534,18 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 /************************************************************************************************/
 
 
-PlayState::PlayState(EngineCore* Engine, GameFramework* framework)
+PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
+	FrameworkState	(framework),
+	Input			(Framework),
+	TPC				(Framework, Input, Engine->Cameras),
+	OrbitCameras	(Framework, Input),
+	Scene			(Framework->Engine->RenderSystem, &Framework->Engine->Assets, Framework->Engine->Nodes, Framework->Engine->Geometry, Framework->Engine->GetBlockMemory(), Framework->Engine->GetTempMemory()),
+	Drawables		(&Scene, Framework->Engine->Nodes),
+	Lights			(&Scene, Framework->Engine->Nodes),
+	Physics			(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory())
 {
-	Framework = framework;
-
-	InitiateGraphicScene		(&GScene, Engine->RenderSystem, &Engine->Assets, Engine->Nodes, Engine->Geometry, Engine->GetBlockMemory(), Engine->GetTempMemory());
-	Drawables.InitiateSystem	(&GScene, Engine->Nodes);
-	Lights.InitiateSystem		(&GScene, Engine->Nodes);
-	Physics.InitiateSystem		(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory());
-
-	Input.Initiate			(Framework);
-	TPC.Initiate			(Framework, Input);
-	OrbitCameras.Initiate	(Framework, Input);
-
 	Framework->ActivePhysicsScene	= &Physics;
-	Framework->ActiveScene			= &GScene;
+	Framework->ActiveScene			= &Scene;
 }
 
 

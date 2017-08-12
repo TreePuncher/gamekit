@@ -107,6 +107,8 @@ namespace FlexKit
 		physx::PxMaterial*					DefaultMaterial;
 
 		TriMeshColliderList Colliders;
+
+		operator PhysicsSystem* () { return this; }
 	};
 
 
@@ -582,7 +584,43 @@ namespace FlexKit
 
 	struct PhysicsComponentSystem
 	{
-		void InitiateSystem			(PhysicsSystem* System, SceneNodeComponentSystem* Nodes, iAllocator* Memory);
+		PhysicsComponentSystem(PhysicsSystem* system, SceneNodeComponentSystem* nodes, iAllocator* memory) :
+			System	(system),
+			Nodes	(nodes),
+			Memory	(memory)
+		{
+			FK_ASSERT(System && Nodes && Memory, "INVALID ARGUEMENT");
+
+			physx::PxSceneDesc desc(System->Physx->getTolerancesScale());
+			desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
+			desc.filterShader	= physx::PxDefaultSimulationFilterShader;
+			desc.cpuDispatcher	= System->CPUDispatcher;
+
+			//Scn->Colliders.Allocator = allocator;
+
+			//if (!desc.gpuDispatcher && game->Physics->GpuContextManger)
+			//{
+			//	desc.gpuDispatcher = game->Physics->GpuContextManger->getGpuDispatcher();
+			//}
+
+			Scene = System->Physx->createScene(desc);
+
+			if (!Scene)
+				FK_ASSERT(0, "FAILED TO CREATE PSCENE!");
+
+			UpdateColliders = false;
+
+			physx::PxClientID CID = Scene->createClient();
+			CID = CID;
+
+			ControllerManager = PxCreateControllerManager(*Scene);
+
+			CharacterControllers.Initiate(Nodes, memory, Scene);
+			CubeColliders.Initiate(Memory);
+			StaticBoxColliders.Initate(Memory);
+			Base.Initiate(nodes, Memory);
+		}
+
 		void UpdateSystem			(double dT);
 		void UpdateSystem_PreDraw	(double dT);
 		void Release				();

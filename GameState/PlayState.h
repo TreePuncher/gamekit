@@ -47,15 +47,15 @@ struct PlayState : public FrameworkState
 	PlayState(EngineCore* Engine, GameFramework* Framework);
 	~PlayState();
 
-	bool Update			(EngineCore* Engine, double dT);
-	bool DebugDraw		(EngineCore* Engine, double dT);
-	bool PreDrawUpdate	(EngineCore* Engine, double dT);
-	bool EventHandler	(Event evt);
+	bool Update			(EngineCore* Engine, double dT) override;
+	bool DebugDraw		(EngineCore* Engine, double dT) override;
+	bool PreDrawUpdate	(EngineCore* Engine, double dT) override;
+	bool EventHandler	(Event evt)						override;
 
 	InputComponentSystem		Input;
 	OrbitCameraSystem			OrbitCameras;
 
-	GraphicScene				GScene;
+	GraphicScene				Scene;
 
 	ThirdPersonCameraComponentSystem	TPC;
 	PhysicsComponentSystem				Physics;

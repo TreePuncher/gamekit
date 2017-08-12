@@ -526,48 +526,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysicsComponentSystem::InitiateSystem(PhysicsSystem* system, SceneNodeComponentSystem* nodes, iAllocator* memory)
-	{
-		FK_ASSERT(System && Nodes && Memory, "INVALID ARGUEMENT");
-
-		System = system;
-		Nodes  = nodes;
-		Memory = memory;
-
-		physx::PxSceneDesc desc(System->Physx->getTolerancesScale());
-		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
-		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
-		desc.cpuDispatcher	= System->CPUDispatcher;
-
-		//Scn->Colliders.Allocator = allocator;
-
-		//if (!desc.gpuDispatcher && game->Physics->GpuContextManger)
-		//{
-		//	desc.gpuDispatcher = game->Physics->GpuContextManger->getGpuDispatcher();
-		//}
-
-		Scene = System->Physx->createScene(desc);
-
-		if (!Scene)
-			FK_ASSERT(0, "FAILED TO CREATE PSCENE!");
-
-		UpdateColliders = false;
-
-		physx::PxClientID CID = Scene->createClient();
-		CID = CID;
-
-		ControllerManager = PxCreateControllerManager(*Scene);
-
-		CharacterControllers.Initiate(Nodes, memory, Scene);
-		CubeColliders.Initiate(Memory);
-		StaticBoxColliders.Initate(Memory);
-		Base.Initiate(nodes, Memory);
-	}
-
-
-	/************************************************************************************************/
-
-
 	void PhysicsComponentSystem::UpdateSystem(double dT)
 	{
 		if (!Scene)

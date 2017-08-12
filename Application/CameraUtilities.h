@@ -73,9 +73,12 @@ namespace FlexKit
 
 	struct OrbitCameraArgs
 	{
-		CameraControllerHandle	Handle;
+		float					MoveRate;
+		NodeHandle				Node;
 		OrbitCameraSystem*		System;
+		CameraComponentSystem*	Cameras;
 	};
+
 
 	struct OrbitCameraInputState
 	{
@@ -85,6 +88,7 @@ namespace FlexKit
 		bool Left;
 		bool Right;
 	};
+
 
 	struct CameraOrbitController
 	{
@@ -98,15 +102,40 @@ namespace FlexKit
 		GameObjectInterface* ParentGO;
 	};
 
+
 	struct OrbitCameraSystem : public ComponentSystemInterface
 	{
+		OrbitCameraSystem(GameFramework* Framework, InputComponentSystem* Input) :
+			Controllers	(Framework->Engine->GetBlockMemory()),
+			Nodes		(Framework->Engine->Nodes),
+			InputSystem	(Input)	{}
+
 		operator OrbitCameraSystem* (){return this;}
-		void Initiate		(GameFramework* Framework, InputComponentSystem* Input);
 
 		void ReleaseHandle	(ComponentHandle Handle);
 		void HandleEvent	(ComponentHandle Handle, ComponentType EventSource, EventTypeID);
 
 		void Update(double dT);
+
+		CameraControllerHandle CreateOrbitCamera(ComponentHandle Node, ComponentHandle CameraNode, float MoveRate)
+		{	
+			FK_ASSERT(Node != CameraNode);
+
+			CameraOrbitController Controller;
+			Controller.CameraNode	= CameraNode;
+			Controller.YawNode		= Node;
+			Controller.PitchNode	= Nodes->GetZeroedNode();
+			Controller.RollNode		= Nodes->GetZeroedNode();
+			Controller.MoveRate		= MoveRate;
+
+			Nodes->SetParentNode(Controller.YawNode,	Controller.PitchNode);
+			Nodes->SetParentNode(Controller.PitchNode,	Controller.RollNode);
+			Nodes->SetParentNode(Controller.RollNode,	CameraNode);
+
+			Controllers.push_back(Controller);
+
+			return CameraControllerHandle(Controllers.size() - 1);
+		}
 
 		NodeHandle GetNode(CameraControllerHandle Handle)
 		{
@@ -131,20 +160,39 @@ namespace FlexKit
 		InputComponentSystem*		InputSystem;
 	};
 
+
 	const uint32_t OrbitCameraComponentID = GetTypeGUID(OrbitCamera);
 
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, Camera* Cam, float MoveRate = 100);
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, NodeHandle Camera, float MoveRate = 100);
+	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, CameraComponentSystem* Cameras, float MoveRate = 100);
+
+
+	/************************************************************************************************/
+
 
 	NodeHandle GetCameraSceneNode(GameObjectInterface* GO)
 	{
-		auto C = FindComponent(GO, OrbitCameraComponentID);
+		auto C = FindComponent(GO, CameraComponentID);
 		if(C)
+		{
+			auto CameraSystem = (CameraComponentSystem*)C->ComponentSystem;
+			return CameraSystem->GetNode(C->ComponentHandle);
+		}
+
+		return InvalidComponentHandle;
+	}
+
+
+	NodeHandle GetOrbitCameraSceneNode(GameObjectInterface* GO)
+	{
+		auto C = FindComponent(GO, CameraComponentID);
+		if (C)
 		{
 			auto OrbitSystem = (OrbitCameraSystem*)C->ComponentSystem;
 			return OrbitSystem->GetNode(C->ComponentHandle);
 		}
 
-		return NodeHandle(0);
+		return InvalidComponentHandle;
 	}
 
 	/*
@@ -170,35 +218,55 @@ namespace FlexKit
 	template<size_t SIZE>
 	void CreateComponent(GameObject<SIZE>& GO, OrbitCameraArgs& Args)
 	{
-		Args.System->InputSystem->BindInput(Args.Handle, Args.System);
+		auto T						= (TansformComponent*)FindComponent(GO, TransformComponentID);
+		auto C						= (CameraComponent*)FindComponent(GO, CameraComponentID);
+		ComponentHandle Node		= InvalidComponentHandle;
+		ComponentHandle CameraNode	= InvalidComponentHandle;
 
-		GO.AddComponent(Component(Args.System, Args.Handle, OrbitCameraComponentID));
-		Args.System->Controllers[Args.Handle].ParentGO = GO;
+		CameraNode = (Args.Node != InvalidComponentHandle) ? Args.Node : C->GetNode();
 
-		auto T			= (TansformComponent*)FindComponent(GO, TransformComponentID);
-		auto CameraNode = GetCameraSceneNode(GO);
+		if (!T && Args.Node == InvalidComponentHandle)
+			Node = Args.System->Nodes->GetZeroedNode();	// No Node Specified, make one
+		else if (T)
+			if (T->ComponentHandle == CameraNode)
+				Node = Args.System->Nodes->GetZeroedNode();
+			else
+				Node = T->ComponentHandle;
+		
+		if (!C)
+			return;// TODO: Maybe Create Camera here?
+
+		auto ControllerHandle = Args.System->CreateOrbitCamera(Node, CameraNode, Args.MoveRate);
+		GO.AddComponent(Component(Args.System, ControllerHandle, OrbitCameraComponentID));
+
+		Args.System->Controllers[ControllerHandle].ParentGO = GO;
+		Args.System->InputSystem->BindInput(ControllerHandle, Args.System);
 
 		if (T)
-			Parent(GO, CameraNode);
+			T->ComponentHandle = Node;
 		else
-			CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, CameraNode });
+			CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, Node });
 	}
+
+
+	/************************************************************************************************/
 
 
 	struct ThirdPersonCameraComponentSystem : public ComponentSystemInterface
 	{
-		void Initiate(GameFramework* Framework, InputComponentSystem* InputSystem)
-		{
-			Input						= InputSystem;
-			Nodes						= Framework->Engine->Nodes;
-			States.Allocator			= Framework->Engine->GetBlockMemory();
-			CameraControllers.Allocator = Framework->Engine->GetBlockMemory();
-		}
+		ThirdPersonCameraComponentSystem(GameFramework* Framework, InputComponentSystem* InputSystem, CameraComponentSystem* camerasystem) :
+			Input				(InputSystem),
+			CameraSystem		(camerasystem),
+			CameraControllers	(Framework->Engine->GetBlockMemory()),
+			Nodes				(Framework->Engine->Nodes),
+			States				(Framework->Engine->GetBlockMemory()){}
+
 
 		void ObjectMoved	(ComponentHandle Handle, ComponentSystemInterface* System, GameObjectInterface* GO)
 		{
 			CameraControllers[Handle].GO = GO;
 		}
+
 
 		void ReleaseHandle	(ComponentHandle Handle)
 		{
@@ -229,44 +297,61 @@ namespace FlexKit
 			CameraControllers[Handle].Roll += R;
 		}
 
+		void OffsetYawNode(ComponentHandle Handle, float3 xyz)
+		{
+			Nodes->SetPositionL(CameraControllers[Handle].Yaw_Node, xyz);
+		}
 
 		void SetOffset(ComponentHandle Handle, float3 Offset)
 		{
+			if (Handle == InvalidComponentHandle)
+				return;
 
 			auto Pitch = CameraControllers[Handle].Pitch_Node;
 			SetPositionL(*Nodes, Pitch, Offset);
 		}
 
+
 		float3 GetForwardVector(ComponentHandle Handle)
 		{
+			if (Handle == InvalidComponentHandle)
+				return float3(0);
+
 			float3 Forward(0, 0, -1);
 			Quaternion Q = GetOrientation(*Nodes, CameraControllers[Handle].Yaw_Node);
 			return Q * Forward;
 		}
 
+
 		float3 GetLeftVector(ComponentHandle Handle)
 		{
+			if (Handle == InvalidComponentHandle)
+				return float3(0);
+
 			float3 Left(-1, 0, 0);
 			Quaternion Q = GetOrientation(*Nodes, CameraControllers[Handle].Yaw_Node);
 			return Q * Left;
 		}
 
 
-		CameraControllerHandle CreateController(GameObjectInterface* GO, Camera* C)
+		CameraControllerHandle CreateController(GameObjectInterface* GO, NodeHandle CameraNode)
 		{
 			CameraController Controller;
-			ReleaseNode(*Nodes, C->Node);
+
+			if (CameraNode == InvalidComponentHandle)
+				return InvalidComponentHandle;
+
+			ReleaseNode(*Nodes, CameraNode);
 
 			auto Yaw	= GetZeroedNode(*Nodes);
 			auto Pitch	= GetZeroedNode(*Nodes);
-			auto Roll	= GetZeroedNode(*Nodes);
+			auto Roll	= CameraNode;
 
 			Nodes->SetParentNode(GetNodeHandle(GO), Yaw);
 			Nodes->SetParentNode(Yaw, Pitch);
 			Nodes->SetParentNode(Pitch, Roll);
 			
-			C->Node					= Roll;
-			Controller.C	        = C;
+			//C->Node					= Roll;
 			Controller.GO			= GO;
 
 			Controller.Pitch	    = 0;
@@ -325,9 +410,10 @@ namespace FlexKit
 			float Yaw, Pitch, Roll;
 
 			GameObjectInterface*	GO;
-			Camera*					C;
 		};
 
+
+		CameraComponentSystem*		CameraSystem;
 		SceneNodeComponentSystem*	Nodes;
 		InputComponentSystem*		Input;
 
@@ -340,7 +426,7 @@ namespace FlexKit
 	struct ThirdPersonCameraArgs
 	{
 		ThirdPersonCameraComponentSystem*	System;
-		Camera*								C;
+		ComponentHandle						Camera;
 	};
 
 	template<size_t SIZE>
@@ -352,16 +438,16 @@ namespace FlexKit
 		if (!T)
 			CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, Args.System->Nodes->GetZeroedNode() });
 
-		auto Handle = Args.System->CreateController(GO, Args.C);
+		auto Handle = Args.System->CreateController(GO, CameraNode);
 		GO.AddComponent(Component(Args.System, Handle, ThirdPersonCameraComponentID));
 		Args.System->Input->BindInput(Handle, Args.System);
 	}
 
 
-	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System, Camera* C);
+	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System);
 
 
-	void PitchCamera(GameObjectInterface* GO, float R)
+	void PitchCamera	(GameObjectInterface* GO, float R)
 	{
 		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
 		if (C) {
@@ -372,7 +458,7 @@ namespace FlexKit
 	}
 
 
-	void YawCamera(GameObjectInterface* GO, float R)
+	void YawCamera		(GameObjectInterface* GO, float R)
 	{
 		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
 		if (C) {
@@ -383,7 +469,7 @@ namespace FlexKit
 	}
 
 
-	void RollCamera(GameObjectInterface* GO, float R)
+	void RollCamera		(GameObjectInterface* GO, float R)
 	{
 		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
 		if (C) {
@@ -400,7 +486,16 @@ namespace FlexKit
 		if (C) {
 			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
 			Component->SetOffset(C->ComponentHandle, Offset);
-			//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+	}
+
+
+	void OffsetYawNode(GameObjectInterface* GO, float3 Offset)
+	{
+		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
+		if (C) {
+			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
+			Component->OffsetYawNode(C->ComponentHandle, Offset);
 		}
 	}
 

@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace FlexKit;
 
-void ReleaseEngine(EngineCore* Engine)
+void ReleaseCore(EngineCore* Engine)
 {
 	using FlexKit::Release;
 	using FlexKit::PrintBlockStatus;
@@ -108,6 +108,16 @@ bool InitEngine(EngineCore*& Core, EngineMemory*& Memory)
 /************************************************************************************************/
 
 
+void UpdateCoreComponents(EngineCore* Core, double dt)
+{
+	UpdateTransforms(Core->Nodes);
+	Core->Cameras.Update(dt);
+}
+
+
+/************************************************************************************************/
+
+
 bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool fullscreen = false)
 {
 	using FlexKit::CreateRenderWindow;
@@ -166,8 +176,8 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->GetBlockMemory() );
 
 	// Initate Component Systems
-	Engine->Cameras.InitiateSystem	(&Engine->RenderSystem, &Engine->Nodes, Engine->GetBlockMemory() );
-	Engine->Nodes.InitiateSystem	(Engine->Memory->NodeMem, NODEBUFFERSIZE);
+	//Engine->Cameras.InitiateSystem	(&Engine->RenderSystem, &Engine->Nodes, Engine->GetBlockMemory() );
+	//Engine->Nodes.InitiateSystem	(Engine->Memory->NodeMem, NODEBUFFERSIZE);
 
 	ForwardPass_DESC FP_Desc	{ &Engine->DepthBuffer, &Engine->Window };
 	TiledRendering_Desc DP_Desc	{ &Engine->DepthBuffer, &Engine->Window, nullptr };

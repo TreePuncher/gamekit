@@ -377,6 +377,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void SetActiveCamera(GameFramework* Framework, GameObjectInterface* Camera)
+	{
+		auto C = FindComponent(Camera, CameraComponentID);
+		if (C)
+			Framework->ActiveCamera = C->ComponentHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
 	GameFramework* InitiateFramework(EngineCore* Engine)
 	{
 		GameFramework& Framework = Engine->GetBlockMemory().allocate_aligned<GameFramework>();
@@ -390,10 +401,8 @@ namespace FlexKit
 		Framework.Quit						= false;
 		Framework.PhysicsUpdateTimer		= 0.0f;
 		Framework.TerrainSplits				= 12;
-		Framework.ActiveWindow				= &Engine->Window;
 		Framework.Engine					= Engine;
 		Framework.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
-		Framework.ActiveScene				= nullptr;
 
 #ifdef _DEBUG
 		Framework.DrawDebug					= true;
@@ -404,6 +413,11 @@ namespace FlexKit
 		Framework.DrawDebug					= false;
 		Framework.DrawDebugStats			= false;
 #endif
+
+		Framework.ActiveCamera				= InvalidComponentHandle;
+		Framework.ActivePhysicsScene		= nullptr;
+		Framework.ActiveScene				= nullptr;
+		Framework.ActiveWindow				= &Engine->Window;
 
 		Framework.DrawPhysicsDebug			= false;
 		Framework.DrawTerrain				= true;
@@ -418,7 +432,7 @@ namespace FlexKit
 		ForwardPass_DESC	FP_Desc{&Engine->DepthBuffer, &Engine->Window};
 		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
 
-		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->GetBlockMemory(), Engine->GetBlockMemory());
+		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->GetBlockMemory(), Engine->GetTempMemory());
 		
 
 		{
@@ -428,7 +442,6 @@ namespace FlexKit
 			//InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DebugCamera, Aspect, 0.1f, 160000.0f, true);
 
 			//Framework.ActiveCamera				= &Framework.DefaultCamera;
-			Framework.ActiveCamera				= nullptr;
 			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
 			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
@@ -504,14 +517,13 @@ namespace FlexKit
 	}
 
 
-	void UpdatePreDraw(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework)
+	void UpdatePreDraw(EngineCore* Core, iAllocator* TempMemory, double dt, GameFramework* Framework)
 	{
-		PreDrawGameFramework(Engine, Framework, dt);
+		PreDrawGameFramework(Core, Framework, dt);
 
 		if(Framework->ActiveScene)
 		{
-			UpdateTransforms	(Engine->Nodes);
-			UpdateCamera		(Engine->RenderSystem, Engine->Nodes, Framework->ActiveCamera, dt);
+			UpdateCoreComponents(Core, dt);
 			UpdateGraphicScene	(Framework->ActiveScene); // Default Scene
 		}
 
@@ -527,14 +539,13 @@ namespace FlexKit
 
 		if (Framework->DrawDebugStats)
 		{
-			uint32_t VRamUsage = GetVidMemUsage(Engine->RenderSystem) / MEGABYTE;
-			char* TempBuffer   = (char*)Engine->GetTempMemory().malloc(512);
+			uint32_t VRamUsage = GetVidMemUsage(Core->RenderSystem) / MEGABYTE;
+			char* TempBuffer   = (char*)Core->GetTempMemory().malloc(512);
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
 			sprintf_s(TempBuffer, 512, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
-			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Engine));
+			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Core));
 		}
-
 	}
 
 
@@ -560,22 +571,22 @@ namespace FlexKit
 
 		UploadImmediate(RS, &Framework->Immediate, TempMemory, Framework->ActiveWindow);
 
-		if(
-			Framework->ActiveCamera &&
+		Camera* ActiveCamera = (Framework->ActiveCamera != InvalidComponentHandle) ? Framework->GetActiveCamera_ptr() : nullptr;
+
+		if(	ActiveCamera &&
 			Framework->ActivePhysicsScene &&
 			Framework->ActiveScene &&
 			Framework->ActiveWindow )
 		{
 
-
-			auto PVS			= TempMemory->allocate_aligned<FlexKit::PVS>();
-			auto Transparent	= TempMemory->allocate_aligned<FlexKit::PVS>();
+			auto PVS			= FlexKit::PVS(TempMemory);
+			auto Transparent	= FlexKit::PVS(TempMemory);
 			auto OutputTarget	= GetRenderTarget(Framework->ActiveWindow);
 
-			GetGraphicScenePVS(Framework->ActiveScene, Framework->ActiveCamera, &PVS, &Transparent);
+			GetGraphicScenePVS(Framework->ActiveScene, ActiveCamera, &PVS, &Transparent);
 
-			SortPVS				(Engine->Nodes, &PVS, Framework->ActiveCamera);
-			SortPVSTransparent	(Engine->Nodes, &Transparent, Framework->ActiveCamera);
+			SortPVS				(Engine->Nodes, &PVS, ActiveCamera);
+			SortPVSTransparent	(Engine->Nodes, &Transparent, ActiveCamera);
 
 			Framework->Stats.ObjectsDrawnLastFrame = PVS.size() + Transparent.size();
 
@@ -593,11 +604,11 @@ namespace FlexKit
 				UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
 				UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
 
-				UploadCamera			(RS, Engine->Nodes, Framework->ActiveCamera, Framework->ActiveScene->PLights.size(), Framework->ActiveScene->SPLights.size(), 0.0f, Framework->ActiveWindow->WH);
+				UploadCamera			(RS, Engine->Nodes, ActiveCamera, Framework->ActiveScene->PLights.size(), Framework->ActiveScene->SPLights.size(), 0.0f, Framework->ActiveWindow->WH);
 				UploadGraphicScene		(Framework->ActiveScene, &PVS, &Transparent);
 
 #if 1
-				UploadLandscape		(RS, &Framework->Landscape, Engine->Nodes, Framework->ActiveCamera, true, true, Framework->TerrainSplits + 1);
+				UploadLandscape		(RS, &Framework->Landscape, Engine->Nodes, ActiveCamera, true, true, Framework->TerrainSplits + 1);
 #else
 				
 				UploadLandscape2		(
@@ -615,30 +626,30 @@ namespace FlexKit
 				ClearTileRenderBuffers	(RS, &Engine->TiledRender);
 
 				if(Framework->OcclusionCulling)
-					OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, Framework->ActiveCamera);
+					OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, ActiveCamera);
 
 				//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
-				TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget, Framework->ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
+				TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget, ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
 
 				if(Framework->DrawTerrain)
-					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, Framework->ActiveCamera, Framework->DrawTerrainDebug);
+					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, ActiveCamera, Framework->DrawTerrainDebug);
 
-				TiledRender_Shade		(RS, &PVS, &Engine->TiledRender, OutputTarget, Framework->ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights);
+				TiledRender_Shade		(RS, &PVS, &Engine->TiledRender, OutputTarget, ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights);
 
 				if(Framework->ScreenSpaceReflections)
 				{
-					TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, Framework->ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights, GetWindowWH(Engine), &Engine->Reflections);
+					TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights, GetWindowWH(Engine), &Engine->Reflections);
 					PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget, GetCurrentBuffer(&Engine->Reflections));
 				}
 				else
 					PresentBufferToTarget(RS, CL, &Engine->TiledRender, &OutputTarget, &Engine->RenderSystem.NullSRV);
 
-				ForwardPass				(&Transparent, &Engine->ForwardRender, RS, Framework->ActiveCamera, Framework->ClearColor, &Framework->ActiveScene->PLights, &Engine->Geometry);// Transparent Objects
+				ForwardPass				(&Transparent, &Engine->ForwardRender, RS, ActiveCamera, Framework->ClearColor, &Framework->ActiveScene->PLights, &Engine->Geometry);// Transparent Objects
 			}
 		}
 
 		SetDepthBuffersRead(RS, CL, { GetCurrent(&Engine->DepthBuffer) });
-		DrawImmediate(RS, CL, &Framework->Immediate, GetBackBufferTexture(Framework->ActiveWindow), Framework->ActiveCamera);
+		DrawImmediate(RS, CL, &Framework->Immediate, GetBackBufferTexture(Framework->ActiveWindow), ActiveCamera);
 		CloseAndSubmit({ CL }, RS, Framework->ActiveWindow);
 
 		ProfileEnd(PROFILE_SUBMISSION);
@@ -682,7 +693,7 @@ namespace FlexKit
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);
 
-		ReleaseEngine			(Engine);
+		ReleaseCore			(Engine);
 	}
 
 

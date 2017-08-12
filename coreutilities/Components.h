@@ -41,6 +41,9 @@ namespace FlexKit
 
 	// Components store all data needed for a component
 	typedef FlexKit::Handle_t<16> ComponentHandle;
+
+	const ComponentHandle InvalidComponentHandle(-1);
+
 	typedef uint32_t EventTypeID;
 
 	typedef uint32_t ComponentType;

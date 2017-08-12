@@ -35,6 +35,9 @@ namespace FlexKit
 	// Eventually will be a Quake Style Console
 	struct ConsoleSubState : public FrameworkState
 	{
+		ConsoleSubState(GameFramework* framework) :
+			FrameworkState(framework) {}
+
 		bool PauseBackgroundLogic;
 		size_t	RecallIndex;
 		Console* C;

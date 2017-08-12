@@ -25,17 +25,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "stdafx.h"
 #include "InputComponent.h"
 
+#include <iostream>
+
 namespace FlexKit
 {
 	/************************************************************************************************/
 
 
-	void InputComponentSystem::Initiate(GameFramework* F)
-	{
-		Listeners.Allocator		= F->Engine->GetBlockMemory();
-		TargetSystems.Allocator = F->Engine->GetBlockMemory();
-		Framework				= F;
-	}
 
 	/*
 	TargetModel->PlayerInputs[L].FrameID++;
@@ -47,6 +43,12 @@ namespace FlexKit
 	{
 		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Engine)[0];
 		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Engine)[1];
+
+		Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
+#if 1
+		std::cout << "H: " << HorizontalMouseMovement << "\n";
+		std::cout << "V: " << VerticalMouseMovement << "\n";
+#endif
 
 		for (size_t I = 0; I < this->Listeners.size(); ++I) {
 			auto& L			= Listeners[I];

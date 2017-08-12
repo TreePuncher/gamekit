@@ -97,12 +97,10 @@ extern "C"
 			PushSubState(Framework, MenuSubState);
 		}	break;
 		case Host: {
-			auto HostState = CreateHostState(Engine, Framework);
-			PushSubState(Framework, HostState);
+			PushSubState(Framework, &Engine->GetBlockMemory().allocate_aligned<HostState>(Engine, Framework));
 		}	break;
 		case Client: {
-			auto ClientState = CreateClientState(Engine, Framework, Name, Server);
-			PushSubState(Framework, ClientState);
+			PushSubState(Framework, &Engine->GetBlockMemory().allocate_aligned<ClientState>(Framework, Engine, Name, Server));
 		}	break;
 		case Play: {
 			auto PlayState = CreatePlayState(Engine, Framework);

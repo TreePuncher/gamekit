@@ -70,6 +70,35 @@ namespace FlexKit
 
 	struct FLEXKITAPI GraphicScene
 	{
+		GraphicScene(RenderSystem* in_RS, Resources* in_RM, SceneNodeComponentSystem* in_SN, GeometryTable* GT, iAllocator* memory, iAllocator* tempmemory) :
+			Memory					(memory),
+			TempMemory				(tempmemory),
+			HandleTable				(memory),
+			DrawableHandles			(memory),
+			Drawables				(memory),
+			DrawableVisibility		(memory),
+			DrawableRayVisibility	(memory),
+			SpotLightCasters		(memory),
+			TaggedJoints			(memory),
+			RS						(in_RS),
+			RM						(in_RM),
+			SN						(in_SN),
+			GT						(GT),
+			_PVS					(tempmemory)
+		{
+			using FlexKit::CreateSpotLightBuffer;
+			using FlexKit::CreatePointLightBuffer;
+			using FlexKit::PointLightBufferDesc;
+
+			FlexKit::PointLightBufferDesc Desc;
+			Desc.MaxLightCount = 512;
+
+			CreatePointLightBuffer	(in_RS,	&PLights, Desc, Memory);
+			CreateSpotLightBuffer	(in_RS,	&SPLights, Memory);
+
+			SceneManagement.Initiate(Memory);
+		}
+
 		EntityHandle CreateDrawable	();
 		void		 RemoveEntity	( EntityHandle E );
 		void		 ClearScene		();
@@ -147,6 +176,14 @@ namespace FlexKit
 			NodeHandle		Target;
 		};
 
+		iAllocator*					TempMemory;
+		iAllocator*					Memory;
+		RenderSystem*				RS;
+		Resources*					RM;
+		SceneNodeComponentSystem*	SN;
+		GeometryTable*				GT;
+		PVS							_PVS;
+
 		HandleUtilities::HandleTable<EntityHandle, 16> HandleTable;
 
 		Vector<SpotLightShadowCaster>		SpotLightCasters;
@@ -156,16 +193,8 @@ namespace FlexKit
 		Vector<EntityHandle>				DrawableHandles;
 		Vector<TaggedJoint>					TaggedJoints;
 
-		iAllocator*					TempMem;
-		iAllocator*					Memory;
-		RenderSystem*				RS;
-		Resources*					RM;
-		SceneNodeComponentSystem*	SN;
-		GeometryTable*				GT;
-
 		PointLightBuffer	PLights;
 		SpotLightBuffer		SPLights;
-		PVS					_PVS;
 
 		QuadTree	SceneManagement;
 

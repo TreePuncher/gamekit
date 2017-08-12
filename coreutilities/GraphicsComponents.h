@@ -41,7 +41,11 @@ namespace FlexKit
 	struct FLEXKITAPI SceneNodeComponentSystem : public ComponentSystemInterface
 	{
 	public:
-		void InitiateSystem(byte* Memory, size_t BufferSize);
+		SceneNodeComponentSystem(byte* Memory, size_t BufferSize)
+		{
+			InitiateSceneNodeBuffer(&Nodes, Memory, BufferSize);
+			Root = FlexKit::GetZeroedNode(Nodes);
+		}
 
 		// Interface Methods
 		void Release();
@@ -116,6 +120,7 @@ namespace FlexKit
 		void		SetParentNode(NodeHandle Parent, NodeHandle Node);
 
 		NodeHandle	GetParentNode(NodeHandle Node);
+		NodeHandle	GetNode();
 	};
 
 
@@ -306,14 +311,10 @@ namespace FlexKit
 	struct FLEXKITAPI DrawableComponentSystem : public ComponentSystemInterface
 	{
 	public:
-		void InitiateSystem(GraphicScene* IN_Scene, SceneNodeComponentSystem* IN_SceneNodes)
-		{
-			new(this) DrawableComponentSystem();
+		DrawableComponentSystem(GraphicScene* IN_Scene, SceneNodeComponentSystem* IN_SceneNodes) :
+			Scene		(IN_Scene),
+			SceneNodes	(IN_SceneNodes) {}
 
-			Scene		= IN_Scene;
-			SceneNodes	= IN_SceneNodes;
-		}
-		
 		void Release(){}
 
 		void ReleaseHandle(ComponentHandle Handle) final
@@ -607,13 +608,9 @@ namespace FlexKit
 	struct FLEXKITAPI LightComponentSystem : public ComponentSystemInterface
 	{
 	public:
-		void InitiateSystem(GraphicScene* IN_Scene, SceneNodeComponentSystem* IN_SceneNodes)
-		{
-			new(this) LightComponentSystem();// Setups VTable
-
-			Scene		= IN_Scene;
-			SceneNodes	= IN_SceneNodes;
-		}
+		LightComponentSystem(GraphicScene* IN_Scene, SceneNodeComponentSystem* IN_SceneNodes) :
+			Scene(IN_Scene),
+			SceneNodes(IN_SceneNodes) {}
 
 		void ReleaseHandle	( ComponentHandle Handle ) final			{ ReleaseLight(&Scene->PLights, Handle); }
 		void SetNode		( ComponentHandle Light, NodeHandle Node )	{ Scene->SetLightNodeHandle(Light, Node); }
@@ -717,7 +714,13 @@ namespace FlexKit
 	class FLEXKITAPI CameraComponentSystem : public ComponentSystemInterface
 	{
 	public:
-		CameraComponentSystem(RenderSystem* rs = nullptr, SceneNodeComponentSystem* nodes = nullptr, iAllocator *memory = nullptr) : Cameras(Memory), Handles(Memory), Nodes(nodes) {}
+		CameraComponentSystem(RenderSystem* rs, SceneNodeComponentSystem* nodes, iAllocator* memory) : 
+			Cameras(Memory), 
+			Handles(Memory), 
+			Memory(memory),
+			Nodes(nodes),
+			RS(rs) {}
+
 
 		~CameraComponentSystem() override 
 		{
@@ -729,25 +732,19 @@ namespace FlexKit
 		}
 
 
-		void InitiateSystem(RenderSystem* rs, SceneNodeComponentSystem* nodes, iAllocator *memory)
-		{
-			RS		= rs;
-			Nodes	= nodes;
-			Memory	= memory;
-
-			Cameras.Allocator			= memory;
-			Handles.FreeList.Allocator	= memory;
-			Handles.Indexes.Allocator	= memory;
-		}
-
-
 		ComponentHandle CreateCamera(float AspectRatio, float Near, float Far, NodeHandle Node = NodeHandle(-1), bool Invert = true)
 		{
 			Camera NewCamera;
 			InitiateCamera(RS, *Nodes, &NewCamera, AspectRatio, Near, Far, Invert);
 
-			if (INVALIDHANDLE != Node) {
-				Nodes->ReleaseHandle(NewCamera.Node);
+			if (Node != InvalidComponentHandle) {
+				//Nodes->ReleaseHandle(NewCamera.Node);
+				Nodes->SetParentNode(Node, NewCamera.Node);
+				NewCamera.Node = Node;
+			}
+			else
+			{
+				Node = Nodes->GetZeroedNode();
 				NewCamera.Node = Node;
 			}
 
@@ -786,11 +783,32 @@ namespace FlexKit
 				UpdateCamera(RS, *Nodes, &C, dT);
 		}
 
+		Camera* GetCamera(ComponentHandle Handle)
+		{
+			if (Handle == InvalidComponentHandle)
+				return nullptr;
+			return &Cameras[Handles[Handle]];
+		}
+
+		NodeHandle GetNode(ComponentHandle Handle)
+		{
+			auto Camera = GetCamera(Handle);
+			if (Camera)
+				return Camera->Node;
+
+			return InvalidComponentHandle;
+		}
+
 
 		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID, GameObjectInterface* GO) override
 		{
 		}
 
+
+		operator CameraComponentSystem* ()
+		{
+			return this;
+		}
 
 		SceneNodeComponentSystem*						Nodes;
 		RenderSystem*									RS;
@@ -801,7 +819,6 @@ namespace FlexKit
 
 
 	const uint32_t CameraComponentID = GetTypeGUID(CameraComponent);
-
 
 
 	struct CameraComponentArgs
@@ -815,19 +832,19 @@ namespace FlexKit
 	};
 
 
-	FlexKit::Quaternion GetCameraOrientation(GameObjectInterface* GO)
-	{
-		return FlexKit::Quaternion(0, 0, 0, 1);
-	}
-
-
 	template<size_t SIZE>
 	void CreateComponent(GameObject<SIZE>& GO, CameraComponentArgs& Args)
 	{
 		if (!GO.Full()) {
-			auto Transform = FindComponent(GO, TransformComponentArgs);
+			auto Transform  = (TansformComponent*)FindComponent(GO, TransformComponentID);
 
-			GO.AddComponent(Component(Args.System, Args.Entity, RenderableComponentID));
+			auto NodeHandle = (Args.Node != InvalidComponentHandle) ? Args.Node : ((Transform != nullptr) ? Transform->GetNode() : InvalidComponentHandle);
+			auto Handle		= Args.System->CreateCamera(Args.AspectRatio, Args.Near, Args.Far, NodeHandle);
+
+			if (!Transform)
+				CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, Args.System->GetNode(Handle) });
+
+			GO.AddComponent(Component(Args.System, Handle, CameraComponentID));
 		}
 	}
 
@@ -843,6 +860,34 @@ namespace FlexKit
 		args.Node			= Node;
 
 		return args;
+	}
+
+
+	struct FLEXKITAPI CameraComponent : public Component
+	{
+		NodeHandle GetNode()
+		{
+			auto Cameras = static_cast<CameraComponentSystem*>(ComponentSystem);
+			return Cameras->GetNode(ComponentHandle);
+		}
+
+
+		Quaternion GetOrientation()
+		{
+			auto Cameras = static_cast<CameraComponentSystem*>(ComponentSystem);
+			return Cameras->Nodes->GetOrientation(Cameras->GetNode(ComponentHandle));
+		}
+	};
+
+
+	Quaternion GetCameraOrientation(GameObjectInterface* GO)
+	{
+		auto Camera = (CameraComponent*)FindComponent(GO, CameraComponentID);
+
+		if (Camera)
+			return Camera->GetOrientation();
+
+		return Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
 

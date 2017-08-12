@@ -65,6 +65,14 @@ namespace FlexKit
 
 	struct GameFramework
 	{
+		Camera* GetActiveCamera_ptr()
+		{
+			if (ActiveCamera != InvalidComponentHandle)
+				return Engine->Cameras.GetCamera(ActiveCamera);
+
+			return nullptr;
+		}
+
 		struct {
 			FontAsset*			Font;
 			Texture2D			Terrain;
@@ -75,7 +83,8 @@ namespace FlexKit
 
 		GraphicScene*			ActiveScene;
 		PhysicsComponentSystem*	ActivePhysicsScene;
-		Camera*					ActiveCamera;
+
+		ComponentHandle			ActiveCamera;
 		RenderWindow*			ActiveWindow;
 
 		float4				ClearColor;
@@ -122,6 +131,9 @@ namespace FlexKit
 	class FrameworkState
 	{
 	public:
+		FrameworkState(GameFramework* framework) : 
+			Framework(framework) {}
+
 		virtual ~FrameworkState() {}
 
 		virtual bool  Update			(EngineCore* Engine, double dT) { return true; };
@@ -148,6 +160,10 @@ namespace FlexKit
 	void			PreDrawGameFramework (EngineMemory* Engine, GameFramework* _ptr, double dT);
 	void			ReleaseGameFramework (EngineMemory* Engine, GameFramework* _ptr );
 
+
+	/************************************************************************************************/
+
+	void SetActiveCamera	(GameFramework* Framework, GameObjectInterface* Camera );
 
 	/************************************************************************************************/
 

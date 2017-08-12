@@ -148,7 +148,7 @@ namespace FlexKit
 	ConsoleSubState* CreateConsoleSubState(GameFramework* Framework)
 	{
 		ConsoleSubState* out;
-		out = &Framework->Engine->GetBlockMemory().allocate_aligned<ConsoleSubState>();
+		out = &Framework->Engine->GetBlockMemory().allocate_aligned<ConsoleSubState>(Framework);
 	
 		/*
 		out->VTable.PreDrawUpdate = DrawConsoleScreen;

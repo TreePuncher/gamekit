@@ -29,14 +29,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-void ReleaseEngine			( EngineCore*		Game );
+void ReleaseCore			( EngineCore*		Game );
 bool InitiateCoreSystems	( EngineCore*&		Game );
 bool InitiateEngineMemory	( EngineMemory*&	Game );
 
-bool InitEngine(EngineCore*& Core, EngineMemory*& Engine );
+bool InitEngine				( EngineCore*& Core, EngineMemory*& Engine );
+void UpdateCoreComponents	( EngineCore* Core, double dt );
 
 
 /************************************************************************************************/
+
 
 float GetWindowAspectRatio	( EngineCore* Engine );
 uint2 GetWindowWH			( EngineCore* Engine );
