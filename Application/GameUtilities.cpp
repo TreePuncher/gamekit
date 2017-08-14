@@ -33,32 +33,7 @@ using namespace FlexKit;
 
 void ReleaseCore(EngineCore* Engine)
 {
-	using FlexKit::Release;
-	using FlexKit::PrintBlockStatus;
 
-#if USING(PHYSX)
-	ReleasePhysics( &Engine->Physics );
-#endif
-	
-	ReleaseForwardPass	( &Engine->ForwardRender  );
-	ReleaseTiledRender	( &Engine->TiledRender );
-	ReleaseSSR			( &Engine->Reflections );
-
-	Release( &Engine->DepthBuffer );
-	Release( &Engine->Window );
-	Release( &Engine->RenderSystem );
-
-
-	ReleaseGeometryTable( &Engine->Geometry );
-
-	for(auto Arg : Engine->CmdArguments)
-		Engine->GetBlockMemory().free((void*)Arg);
-
-	Engine->Culler.Release();
-	Engine->CmdArguments.Release();
-
-
-	DEBUGBLOCK(PrintBlockStatus(&Engine->GetBlockMemory()));
 }
 
 

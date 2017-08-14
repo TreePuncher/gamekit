@@ -341,6 +341,8 @@ namespace FlexKit
 		{
 			float3					CurrentPosition = 0;
 			float3					Delta			= 0;
+			float					Height			= 0.0f;
+			float					Radius			= 0.0f;
 			NodeHandle				Node			= NodeHandle(-1);
 			physx::PxController*	Controller		= nullptr;
 			bool					FloorContact	= false;
@@ -349,8 +351,17 @@ namespace FlexKit
 		};
 
 
-		void Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene);
-		void UpdateSystem(double dT);
+		void Initiate		(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene);
+		void UpdateSystem	(double dT);
+
+		void DebugDraw		(ImmediateRender* FR,  iAllocator* TempMemory)
+		{
+			for (auto& C : Controllers)
+			{
+				auto Pos = C.Controller->getFootPosition();
+				PushCapsule_Wireframe(FR, TempMemory, {Pos.x, Pos.y, Pos.z}, C.Radius, C.Height, GREEN);
+			}
+		}
 
 		void Release()
 		{
@@ -360,16 +371,20 @@ namespace FlexKit
 
 		void ReleaseHandle(ComponentHandle Handle)
 		{
-			auto Temp		= Controllers.back();
-			auto SwapHandle = Handles.find(Controllers.size() - 1);
+			Controllers[Handles[Handle]].Controller->release();
 
-			if(SwapHandle.INDEX != -1)
+			if(Handles[Handle] != Controllers.size() - 1)
 			{
-				Controllers[Handles[Handle]].Controller->release();
-				Controllers.pop_back();
-				Controllers[SwapHandle] = Temp;
+				auto Temp		= Controllers.back();
+				auto SwapHandle = Handles.find(Controllers.size() - 1);
 
-				Handles.Indexes[SwapHandle] = Handles[Handle];
+				if(SwapHandle.INDEX)
+				{
+					Controllers.pop_back();
+					Controllers[SwapHandle] = Temp;
+
+					Handles.Indexes[SwapHandle] = Handles[Handle];
+				}
 			}
 		}
 
@@ -542,9 +557,20 @@ namespace FlexKit
 			Colliders.Release();
 		}
 
+		void DebugDraw(FlexKit::ImmediateRender* FR, iAllocator* TempMemory)
+		{
+			for (auto& C : Colliders)
+			{
+				auto pose = C.Cube->getGlobalPose();
+
+				float3		Pos(pose.p.x, pose.p.y, pose.p.z );
+				Quaternion	Q(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
+			}
+		}
+
+
 		void ReleaseHandle(ComponentHandle Handle)
 		{
-
 		}
 
 		ComponentHandle CreateCubeCollider(ComponentHandle BaseHandle, physx::PxRigidDynamic* Box, physx::PxShape* Shape)
@@ -623,6 +649,10 @@ namespace FlexKit
 
 		void UpdateSystem			(double dT);
 		void UpdateSystem_PreDraw	(double dT);
+
+		void DebugDraw				(FlexKit::ImmediateRender* FR, iAllocator* TempMemory);
+
+
 		void Release				();
 
 		StaticBoxColliderArgs	CreateStaticBoxCollider		( float3 XYZ = 1, float3 Pos = 0 );

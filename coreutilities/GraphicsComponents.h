@@ -356,8 +356,8 @@ namespace FlexKit
 
 		void DrawDebug(ImmediateRender* R, SceneNodeComponentSystem* Nodes, iAllocator* Temp)
 		{
-			auto& Drawables = Scene->Drawables;
-			auto& Visibility = Scene->DrawableVisibility;
+			auto& Drawables		= Scene->Drawables;
+			auto& Visibility	= Scene->DrawableVisibility;
 
 			size_t End = Scene->Drawables.size();
 			for (size_t I = 0; I < End; ++I)

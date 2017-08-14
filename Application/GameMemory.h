@@ -152,6 +152,35 @@ struct EngineCore
 	{}
 
 
+	~EngineCore()
+	{
+		using FlexKit::Release;
+		using FlexKit::PrintBlockStatus;
+
+	#if USING(PHYSX)
+		ReleasePhysics( &Physics );
+	#endif
+	
+		ReleaseForwardPass	( &ForwardRender  );
+		ReleaseTiledRender	( &TiledRender );
+		ReleaseSSR			( &Reflections );
+
+		Release( &DepthBuffer );
+		Release( &Window );
+		Release( &RenderSystem );
+
+		ReleaseGeometryTable( &Geometry );
+
+		for(auto Arg : CmdArguments)
+			GetBlockMemory().free((void*)Arg);
+
+		Culler.Release();
+		CmdArguments.Release();
+
+
+		Threads.Release();
+	}
+
 	bool			FrameLock;
 	bool			End;
 

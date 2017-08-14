@@ -151,9 +151,12 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 
 /************************************************************************************************/
 
-bool PlayState::DebugDraw(EngineCore* Engine, double dT)
+bool PlayState::DebugDraw(EngineCore* Core, double dT)
 {
-	PushCapsule_Wireframe(&Framework->Immediate, Engine->GetTempMemory(), GetWorldPosition(Player), 5, 10, GREEN);
+	//PushCapsule_Wireframe(Framework->Immediate, Core->GetTempMemory(), GetWorldPosition(Player), 5, 10, GREEN);
+	Physics.DebugDraw	(Framework->Immediate, Core->GetTempMemory());
+	Drawables.DrawDebug	(Framework->Immediate, Core->Nodes, Core->GetTempMemory());
+
 	return true;
 }
 
@@ -161,9 +164,8 @@ bool PlayState::DebugDraw(EngineCore* Engine, double dT)
 /************************************************************************************************/
 
 
-bool PlayState::PreDrawUpdate(EngineCore* Engine, double dT)
+bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 {
-	return false;
 	Physics.UpdateSystem_PreDraw(dT);
 
 	if(Framework->DrawPhysicsDebug)
@@ -172,9 +174,6 @@ bool PlayState::PreDrawUpdate(EngineCore* Engine, double dT)
 	}
 
 	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
-
-	if(Framework->DrawDebug)
-		Drawables.DrawDebug(&Framework->Immediate, Engine->Nodes, Engine->GetTempMemory());
 
 #if 0
 
@@ -263,6 +262,7 @@ PlayState::~PlayState()
 
 	Player.Release();
 	TestObject.Release();
+
 	Physics.Release();
 	Scene.ClearScene();
 
@@ -454,7 +454,7 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 
 	InitiateGameObject(
 		State->Player,
-			State->Physics.CreateCharacterController({0, 10, 0}, 10, 0.004f),
+			State->Physics.CreateCharacterController({0, 10, 0}, 10, 5.0f),
 			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
 			//CreateThirdPersonCamera(&State->TPC));
 			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10));
@@ -464,6 +464,7 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 
 	SetActiveCamera(Framework, State->Player);
 	SetWorldPosition(State->Player, {0, 30, 50});
+	//OffsetYawNode(State->Player, { 0.0f, 5, 0.0f });
 	//SetCameraOffset(State->Player, {0, 30, 30});
 
 	for(size_t I = 0; I < 0; ++I){

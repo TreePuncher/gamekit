@@ -447,8 +447,8 @@ namespace FlexKit
 		}
 		{
 			TextureBuffer TempBuffer;
-			LoadBMP("assets\\textures\\TestMap.bmp", Engine->GetBlockMemory(), &TempBuffer);
-			Texture2D	HeightMap = LoadTexture(&TempBuffer, Engine->RenderSystem, Engine->GetBlockMemory());
+			LoadBMP("assets\\textures\\TestMap.bmp", Engine->GetTempMemory(), &TempBuffer);
+			Texture2D	HeightMap = LoadTexture(&TempBuffer, Engine->RenderSystem, Engine->GetTempMemory());
 
 			Framework.DefaultAssets.Terrain = HeightMap;
 
@@ -693,7 +693,9 @@ namespace FlexKit
 		FreeAllResourceFiles	(&Engine->Assets);
 		FreeAllResources		(&Engine->Assets);
 
-		ReleaseCore			(Engine);
+		Engine->GetBlockMemory().release_allocation(*Engine);
+
+		DEBUGBLOCK(PrintBlockStatus(&Engine->GetBlockMemory()));
 	}
 
 

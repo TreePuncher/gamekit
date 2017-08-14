@@ -233,12 +233,16 @@ namespace FlexKit
 			for (auto& Worker : Workers)
 				Worker->Shutdown();
 
-			while (true) 
+			for (bool ThreadRunning = false; ThreadRunning;)
 			{
-				bool ThreadRunning = true;
 				for (auto& Worker : Workers)
 					ThreadRunning |= !Worker->isRunning();
 			}
+
+			for (auto Worker : Workers)
+				Memory->free(Worker);
+
+			Workers.Release();
 		}
 
 

@@ -626,6 +626,13 @@ namespace FlexKit
 			return *t;
 		}
 
+		template<typename T>
+		void release_allocation(T& I)
+		{
+			I.~T();
+			free(&I);
+		}
+
 		SmallBlockAllocator		SmallBlockAlloc;
 		MediumBlockAllocator	MediumBlockAlloc;
 		LargeBlockAllocator		LargeBlockAlloc;

@@ -568,14 +568,22 @@ namespace FlexKit
 	}
 
 
+	void PhysicsComponentSystem::DebugDraw(FlexKit::ImmediateRender* FR, iAllocator* TempMemory)
+	{
+		CharacterControllers.DebugDraw(FR, TempMemory);
+		//CubeColliders.DrawDebug(FR);
+		//StaticBoxColliders.DrawDebug(FR);
+	}
+
+
 	/************************************************************************************************/
 
 
 	void PhysicsComponentSystem::Release()
 	{
 		CubeColliders.Release();
-		Base.Release();
 		StaticBoxColliders.Release();
+		Base.Release();
 
 		Scene->fetchResults(true);
 		ControllerManager->purgeControllers();

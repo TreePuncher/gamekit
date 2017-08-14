@@ -130,8 +130,8 @@ namespace FlexKit
 			dP = Q * dP;
 
 			Translate	(Controller.ParentGO, dP * dT * Controller.MoveRate);
-			Pitch		(*Nodes, Controller.PitchNode,	MouseState.dPos[1] * dT * 4);
-			Yaw			(*Nodes, Controller.YawNode,	MouseState.dPos[0] * dT * 4);
+			Pitch		(*Nodes, Controller.PitchNode,	MouseState.Normalized_dPos[1] * dT * 256.0f);
+			Yaw			(*Nodes, Controller.YawNode,	MouseState.Normalized_dPos[0] * dT * 256.0f);
 		}
 
 	}

@@ -334,6 +334,7 @@ namespace FlexKit
 		{
 			auto Temp = back();
 			A[Size--].~Ty();
+
 			return Temp;
 		}
 

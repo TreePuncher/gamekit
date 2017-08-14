@@ -27,3 +27,4 @@ Dependencies/
 /.vs/FlexKit/v15/Browse.VC.opendb
 /.vs/FlexKit/v15
 *.opendb
+/Dependencies/sdks
