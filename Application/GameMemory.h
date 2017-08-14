@@ -160,23 +160,22 @@ struct EngineCore
 	#if USING(PHYSX)
 		ReleasePhysics( &Physics );
 	#endif
-	
+		Culler.Release();
+
 		ReleaseForwardPass	( &ForwardRender  );
 		ReleaseTiledRender	( &TiledRender );
 		ReleaseSSR			( &Reflections );
+
+		ReleaseGeometryTable(&Geometry);
 
 		Release( &DepthBuffer );
 		Release( &Window );
 		Release( &RenderSystem );
 
-		ReleaseGeometryTable( &Geometry );
-
 		for(auto Arg : CmdArguments)
 			GetBlockMemory().free((void*)Arg);
 
-		Culler.Release();
 		CmdArguments.Release();
-
 
 		Threads.Release();
 	}
