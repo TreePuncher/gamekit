@@ -36,27 +36,36 @@ namespace FlexKit
 	struct ConsoleSubState : public FrameworkState
 	{
 		ConsoleSubState(GameFramework* framework) :
-			FrameworkState(framework) {}
-
-		bool PauseBackgroundLogic;
-		size_t	RecallIndex;
-		Console* C;
-
-		EngineMemory* Engine;
-
-		void IncrementRecallIndex()
+			FrameworkState(framework) 
 		{
-			RecallIndex = (RecallIndex + 1)% C->CommandHistory.size();
+			C                    = &Framework->Console;
+			Framework            = Framework;
+			Engine               = Framework->Engine;
+			PauseBackgroundLogic = true;
 		}
 
-		void DecrementRecallIndex()
+		~ConsoleSubState()
 		{
-			RecallIndex = (C->CommandHistory.size() + RecallIndex - 1) % C->CommandHistory.size();
+			Framework->ConsoleActive = false;
 		}
+
+		bool			PauseBackgroundLogic;
+		size_t			RecallIndex;
+		Console*		C;
+
+		EngineCore*	Engine;
+
+		void IncrementRecallIndex();
+		void DecrementRecallIndex();
+
+		bool  Update			(EngineCore* Engine, double dT) override;
+		bool  DebugDraw			(EngineCore* Engine, double dT) override;
+		bool  PreDrawUpdate		(EngineCore* Engine, double dT) override;
+		bool  PostDrawUpdate	(EngineCore* Engine, double dT) override;
+
+		bool  EventHandler		(Event evt)	override;
+
 	};
-
-	void Release(FrameworkState* StateMemory);
-	ConsoleSubState* CreateConsoleSubState(GameFramework* Framework);
 
 }
 #endif

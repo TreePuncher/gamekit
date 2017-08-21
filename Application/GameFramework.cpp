@@ -125,7 +125,7 @@ namespace FlexKit
 			{
 				std::cout << "Pushing Console State\n";
 				if (!_ptr->ConsoleActive) {
-					PushSubState(_ptr, CreateConsoleSubState(_ptr));
+					PushSubState(_ptr, &_ptr->Engine->GetBlockMemory().allocate<ConsoleSubState>(_ptr));
 					_ptr->ConsoleActive = true;
 				}
 			}	break;

@@ -30,10 +30,52 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	bool ConsoleEventHandler(FrameworkState* StateMemory, Event evt)
+	bool  ConsoleSubState::Update(EngineCore* Engine, double dT)
 	{
-		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
+		return !PauseBackgroundLogic;
+	}
 
+
+	/************************************************************************************************/
+
+
+	bool  ConsoleSubState::DebugDraw(EngineCore* Engine, double dT)
+	{
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool  ConsoleSubState::PreDrawUpdate(EngineCore* Engine, double dT)
+	{
+		FlexKit::Draw_RECT Rect;
+		Rect.BLeft	= { 0, 0.5 };
+		Rect.TRight = { 1, 1 };
+		Rect.Color  = float4(Grey(0.0f), 0.5f);
+		PushRect(Framework->Immediate, Rect);
+
+		DrawConsole(C, Framework->Immediate, GetWindowWH(Engine));
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool  ConsoleSubState::PostDrawUpdate(EngineCore* Engine, double dT)
+	{
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool  ConsoleSubState::EventHandler(Event evt)
+	{
 		if (evt.InputSource == Event::Keyboard)
 		{
 			switch (evt.Action)
@@ -44,44 +86,44 @@ namespace FlexKit
 				{
 				case KC_TILDA: {
 					std::cout << "Popping Console State\n";
-					PopSubState(ThisState->Framework);
+					PopSubState(Framework);
 					return false;
 				}	break;
 				case KC_BACKSPACE:
-					BackSpaceConsole(&ThisState->Framework->Console);
+					BackSpaceConsole(&Framework->Console);
 					break;
 				case KC_ENTER:
 				{
-					ThisState->RecallIndex = 0;
-					EnterLineConsole(&ThisState->Framework->Console);
+					RecallIndex = 0;
+					EnterLineConsole(&Framework->Console);
 				}	break;
 				case KC_ARROWUP:
 				{
-					if(ThisState->C->CommandHistory.size()){
-						auto line = ThisState->C->CommandHistory[ThisState->RecallIndex].Str;
+					if(C->CommandHistory.size()){
+						auto line	  = C->CommandHistory[RecallIndex].Str;
 						auto LineSize = strlen(line);
 
-						strcpy_s(ThisState->C->InputBuffer, ThisState->C->CommandHistory[ThisState->RecallIndex]);
+						strcpy_s(C->InputBuffer, C->CommandHistory[RecallIndex]);
 
-						ThisState->C->InputBufferSize = LineSize;
-						ThisState->IncrementRecallIndex();
+						C->InputBufferSize = LineSize;
+						IncrementRecallIndex();
 					}
 				}	break;
 				case KC_ARROWDOWN:
 				{
-					if (ThisState->C->CommandHistory.size()) {
-						auto line = ThisState->C->CommandHistory[ThisState->RecallIndex].Str;
-						auto LineSize = strlen(line);
+					if (C->CommandHistory.size()) {
+						auto line		= C->CommandHistory[RecallIndex].Str;
+						auto LineSize	= strlen(line);
 
-						strcpy_s(ThisState->C->InputBuffer, ThisState->C->CommandHistory[ThisState->RecallIndex]);
+						strcpy_s(C->InputBuffer, C->CommandHistory[RecallIndex]);
 
-						ThisState->C->InputBufferSize = LineSize;
-						ThisState->DecrementRecallIndex();
+						C->InputBufferSize = LineSize;
+						DecrementRecallIndex();
 					}
 				}	break;
 				case KC_SPACE:
 				{
-					InputConsole(&ThisState->Framework->Console, ' ');
+					InputConsole(&Framework->Console, ' ');
 				}	break;
 				default:
 				{
@@ -91,7 +133,7 @@ namespace FlexKit
 						(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
 						(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
 						(evt.mData1.mKC[0] == KC_SYMBOL ))
-						InputConsole(&ThisState->Framework->Console, (char)evt.mData2.mINT[0]);
+						InputConsole(&Framework->Console, (char)evt.mData2.mINT[0]);
 
 				}	break;
 				}
@@ -105,66 +147,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool UpdateConsoleScreen(FrameworkState* StateMemory, EngineMemory*, double DT)
+	void ConsoleSubState::IncrementRecallIndex()
 	{
-		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
-	
-		return !ThisState->PauseBackgroundLogic;
+		RecallIndex = (RecallIndex + 1) % C->CommandHistory.size();
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool DrawConsoleScreen(FrameworkState* StateMemory, EngineCore* Engine, double DT)
+	void ConsoleSubState::DecrementRecallIndex()
 	{
-		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
-	
-		FlexKit::Draw_RECT Rect;
-		Rect.BLeft	= { 0, 0.5 };
-		Rect.TRight = { 1, 1 };
-		Rect.Color  = float4(Grey(0.0f), 0.5f);
-		PushRect(&ThisState->Framework->Immediate, Rect);
-
-		DrawConsole(ThisState->C, ThisState->Framework->Immediate, GetWindowWH(Engine));
-
-		return false;
+		RecallIndex = (C->CommandHistory.size() + RecallIndex - 1) % C->CommandHistory.size();
 	}
 
 
 	/************************************************************************************************/
 
-
-	void ReleaseConsoleState(FrameworkState* StateMemory)
-	{
-		ConsoleSubState* ThisState = (ConsoleSubState*)StateMemory;
-		ThisState->Framework->ConsoleActive = false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	ConsoleSubState* CreateConsoleSubState(GameFramework* Framework)
-	{
-		ConsoleSubState* out;
-		out = &Framework->Engine->GetBlockMemory().allocate_aligned<ConsoleSubState>(Framework);
-	
-		/*
-		out->VTable.PreDrawUpdate = DrawConsoleScreen;
-		out->VTable.Update		  = UpdateConsoleScreen;
-		out->VTable.EventHandler  = ConsoleEventHandler;
-		out->VTable.Release		  = ReleaseConsoleState;
-
-		out->C                    = &Framework->Console;
-		out->Framework            = Framework;
-		out->Engine               = Framework->Engine;
-		out->PauseBackgroundLogic = true;
-		*/
-
-		return out;
-	}
-
-
-	/************************************************************************************************/
 } // namespace FlexKit;

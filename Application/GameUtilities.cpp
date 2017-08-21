@@ -234,8 +234,7 @@ void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 
 	if (GetForegroundWindow() == Window->hWindow)
 	{
-
-		State->dPos = GetMousedPos(Window);
+		State->dPos		   = GetMousedPos(Window);
 		State->Position.x -= State->dPos[0] * 0.5f;
 		State->Position.y += State->dPos[1] * 0.5f;
 
