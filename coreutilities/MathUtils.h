@@ -24,16 +24,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifdef _WIN32
 #pragma once
+#pragma warning ( disable : 4244 )
 #endif
 
-#ifndef cMyMath_H_INCLUDED
-#define cMyMath_H_INCLUDED
+#ifndef MATHUTTILS
+#define MATHUTTILS
 
-#pragma warning ( disable : 4244 )
 
 // Includes
-#include "..\buildsettings.h"
+#include "../buildsettings.h"
 #include "containers.h"
+
 #include <math.h>
 #include <stdint.h>
 #include <string>
@@ -109,18 +110,18 @@ namespace FlexKit
 		return Acc / 3 * S;
 	}
 
-	typedef float FxDef(float);
-
-	template<size_t Iterations>
-	float newtonmethod( FxDef fX, FxDef fprimeX, float initial )
+	/*
+	template<typename FN_FX, typename FN_FPRIME>
+	float newtonmethod(FN_FX fX, FN_FPRIME fprimeX, float initial, const size_t Iterations)
 	{
 		float V = 0;
 
 		for (unsigned int i = 0; i < Iterations; ++i)
-			V = (V - (fx(V) / fpx(V)));
+			V = (V - (fx(V) / fprimeX(V)));
 
 		return V;
 	}
+	*/
 
 	template<typename TY>
 	inline TY Saturate(TY A) { return max( 0.0f, min(1.0f, A)); }
@@ -129,6 +130,50 @@ namespace FlexKit
 	inline bool CompareFloats(TY A, TY B, TY E) {
 		return fabs(A - B) <= E;
 	}
+
+
+	
+	inline const float& GetElement(const __m128& V, size_t idx)
+	{
+#ifdef WIN32
+		return V.m128_f32[idx];
+#else
+		return V[idx];
+#endif
+	}
+
+	inline float* GetElement_ptr(__m128& V, size_t idx)
+	{
+#ifdef WIN32
+		return &V.m128_f32[idx];
+#else
+		return &V[idx];
+#endif
+	}
+
+	inline float& GetElement_ref(__m128& V, size_t idx)
+	{
+#ifdef WIN32
+		return V.m128_f32[idx];
+#else
+		return V[idx];
+#endif
+	}
+
+	inline void SetElement(__m128& V, float X, size_t idx)
+	{
+#ifdef WIN32
+		V.m128_f32[idx] = X;
+#else
+		V[idx] = X;
+#endif
+	}
+
+	inline float GetFirst	(__m128& V)	{ return GetElement(V, 3); }
+	inline float GetLast	(__m128& V)	{ return GetElement(V, 0); }
+
+	inline void SetFirst	(__m128& V, float X)	{ return SetElement(V, X, 3); }
+	inline void SetLast		(__m128& V, float X)	{ return SetElement(V, X, 0); }
 
 
 	/************************************************************************************************/
@@ -428,7 +473,7 @@ namespace FlexKit
 		inline float2 operator * ( const float   a ) const { return float2( this->x * a,	this->y * a );					}
 		inline float2 operator / ( const float2& a ) const { return float2( this->x / a.x,	this->y / a.y );				}
 		inline float2 operator / ( const float   a ) const { return float2( this->x / a,	this->y / a );					}
-		inline float2 operator % ( const float2& a ) const { return float2( std::fmodf(x, a.x), std::fmodf(y, a.y));	}
+		inline float2 operator % ( const float2& a ) const { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
 
 		inline float2 operator *= (const float2& a) 
 		{ 
@@ -474,12 +519,18 @@ namespace FlexKit
 	inline float DotProduct2(const float* lhs, float* rhs)
 	{
 #if USING(FASTMATH)
-		__m128 l = _mm_loadr_ps(lhs);
-		__m128 r = _mm_loadr_ps(rhs);
+		// Windows
+		__m128 l   = _mm_loadr_ps(lhs);
+		__m128 r   = _mm_loadr_ps(rhs);
 		__m128 res = _mm_dp_ps(l, r, 0x06);
-		return res.m128_f32[3];
+		return GetFirst(res);
 #else
+#if WIN32
 		return (lhs.m128_f32[0] * rhs.m128_f32[0]) + (lhs.m128_f32[1] * rhs.m128_f32[1]) + (lhs.m128_f32[2] * rhs.m128_f32[2]);
+#else
+		static_assert(false, "Not Implemented!");
+		// Slow Path Not Implmented
+#endif
 #endif
 	}
 
@@ -487,7 +538,7 @@ namespace FlexKit
 	{
 #if USING(FASTMATH)
 		__m128 res = _mm_dp_ps(lhs, rhs, 0xFF);
-		return res.m128_f32[3];
+		return GetFirst(res);
 #else
 		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
 #endif
@@ -497,7 +548,7 @@ namespace FlexKit
 	{
 #if USING(FASTMATH)
 		__m128 res = _mm_dp_ps(lhs, rhs, 0xFF);
-		return res.m128_f32[0];
+		return GetFirst(res);
 #else
 		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
 #endif
@@ -506,9 +557,9 @@ namespace FlexKit
 	inline __m128 CrossProductSlow(const __m128 lhs, const __m128 rhs)
 	{
 		__m128 out = _mm_set1_ps(0);
-		out.m128_f32[0] = ( lhs.m128_f32[1] * rhs.m128_f32[2] ) - ( lhs.m128_f32[2] * rhs.m128_f32[1] );
-		out.m128_f32[1] = ( lhs.m128_f32[2] * rhs.m128_f32[0] ) - ( lhs.m128_f32[0] * rhs.m128_f32[2] );
-		out.m128_f32[2] = ( lhs.m128_f32[0] * rhs.m128_f32[1] ) - ( lhs.m128_f32[1] * rhs.m128_f32[0] );
+		SetElement( out, (GetElement(lhs, 1) * GetElement(rhs, 2)) - (GetElement(lhs, 2) * GetElement(rhs, 1)), 0 );
+		SetElement( out, (GetElement(lhs, 2) * GetElement(rhs, 0)) - (GetElement(lhs, 0) * GetElement(rhs, 2)), 1 );
+		SetElement( out, (GetElement(lhs, 0) * GetElement(rhs, 1)) - (GetElement(lhs, 1) * GetElement(rhs, 0)), 2 );
 		return out;
 	}
 	
@@ -519,7 +570,8 @@ namespace FlexKit
 		__m128 temp1 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6));
 		__m128 temp2 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6));
 		__m128 res	 = _mm_sub_ps(temp1, temp2);
-		res.m128_f32[3] = 0;
+		SetLast(res, 0.0f);
+
 		return res;
 #else
 		return CrossProductSlow(a, b);
@@ -531,29 +583,42 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+#ifdef WIN32
 	__declspec( align( 16 ) ) union float3
+#else
+	__attribute__((aligned(16))) union float3
+#endif
 	{
 	public:
 		float3() {}
 
-		template<class TY>
+		template<class TY = float>
 		float3(std::initializer_list<TY> il)
 		{
-			__m128 V = _mm_set1_ps(0.0f);
-			auto n = il.begin();
-			for( size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n )
-				V.m128_f32[itr] = *n;
-
-			pfloats = V;
+			pfloats = _mm_set1_ps(0.0f);
+			auto i = il.begin();
+			for( auto count = 0; i != il.end() && count < 4; ++count, ++i)
+				SetElement(pfloats, (float)*i, count);
 		}
+
+		inline float3( std::initializer_list<float> il )
+		{
+			auto n  = il.begin();
+			pfloats = _mm_set_ps1(0);
+
+			for (size_t itr = 0; n != il.end() && itr < 3; ++itr, ++n)
+				SetElement(pfloats, *n, itr);
+
+		}
+		
 
 #if USING( FASTMATH )
 
 		inline float3 ( float val )						{ pfloats = _mm_set_ps1(val);					}
 		inline float3 ( float X, float Y, float Z )		{ pfloats = _mm_set_ps(0.0f, Z, Y, X);			}
 		inline float3 ( const float2 in, float Z )		{ pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f);	}
-		inline float3 ( const float3& a )				{ _mm_store_ps(pfloats.m128_f32, a.pfloats); 	}
-		inline float3 ( const __m128& in )				{ _mm_store_ps(pfloats.m128_f32, in);			}
+		inline float3 ( const float3& a )				{ pfloats = a.pfloats;							}
+		inline float3 ( const __m128& in )				{ pfloats = in;									}
 
 
 #else
@@ -570,18 +635,7 @@ namespace FlexKit
 		inline float3 xz() { return float3(x, 0.0f, z); }
 		inline float3 yz() { return float3(0.0f, y, z); }
 
-		
-		inline float3( std::initializer_list<float> il )
-		{
-			auto n  = il.begin();
-			pfloats = _mm_set_ps1(0);
 
-			for (size_t itr = 0; n != il.end() && itr < 3; ++itr, ++n)
-				pfloats.m128_f32[itr] = *n;
-
-		}
-
-		
 		inline float3& operator = (float F)
 		{
 			pfloats = _mm_set_ps1(F);
@@ -589,13 +643,14 @@ namespace FlexKit
 		}
 
 
-		inline float& operator[] ( const size_t index )		  { return pfloats.m128_f32[index]; }
-		inline float operator[]  ( const size_t index )	const { return pfloats.m128_f32[index]; }
+		inline float& operator[] ( const size_t index )		  { return *GetElement_ptr(pfloats, index); }
+		inline float operator[]  ( const size_t index )	const { return GetElement(pfloats, index); }
+
 		// Operator Overloads
-		inline float3 operator - ()							  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-		inline float3 operator - ()	const					  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1)); }
-		inline float3 operator + ( const float& rhs )	const { return _mm_add_ps(pfloats, _mm_set_ps1(rhs)); }
-		inline float3 operator + ( const float3& rhs )	const { return _mm_add_ps(pfloats, rhs); }
+		inline float3 operator - ()							  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1));	}
+		inline float3 operator - ()	const					  { return _mm_mul_ps(pfloats, _mm_set_ps1(-1));	}
+		inline float3 operator + ( const float& rhs )	const { return _mm_add_ps(pfloats, _mm_set_ps1(rhs));	}
+		inline float3 operator + ( const float3& rhs )	const { return _mm_add_ps(pfloats, rhs);				}
 
 
 		inline float3& operator += ( const float3& rhs )
@@ -653,7 +708,7 @@ namespace FlexKit
 #endif
 		}
 		
-		static inline bool Compare(const float3& lhs, const float3& rhs, float ep = .001)
+		static inline bool Compare(const float3& lhs, const float3& rhs, float ep = 0.001f)
 		{
 			float3 temp = lhs - rhs;
 			return (temp.x < ep) && (temp.y < ep)  && (temp.z < ep);
@@ -687,7 +742,7 @@ namespace FlexKit
 			return *this;
 		}
 
-		inline float3& operator *= ( float a )
+		inline float3& operator *=	( float a )
 		{
 			x *= a;
 			y *= a;
@@ -708,8 +763,8 @@ namespace FlexKit
 			(*this)[0] *= S;
 			(*this)[1] *= S;
 			(*this)[2] *= S;
-			return *this;
 #endif
+			return *this;
 		}
 
 		inline float3 inverse()
@@ -746,7 +801,12 @@ namespace FlexKit
 			__m128 r = _mm_mul_ps(pfloats, pfloats);
 			r = _mm_hadd_ps(r, r);
 			r = _mm_hadd_ps(r, r);
-			return _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(r.m128_f32[0])).m128_f32[0];
+			float x = GetFirst(r);
+			//return _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(r.m128_f32[0])).m128_f32[0];
+			auto M = _mm_mul_ps(_mm_rsqrt_ps(r), _mm_set1_ps(x));
+			float Res = GetLast(M);
+
+			return Res;
 #else
 			return ::std::sqrt( ( x*x ) + ( y*y ) + ( z*z ) );
 #endif
@@ -759,7 +819,7 @@ namespace FlexKit
 			__m128 r = _mm_mul_ps(pfloats, pfloats);
 			r = _mm_hadd_ps(r, r);
 			r = _mm_hadd_ps(r, r);
-			return r.m128_f32[0];
+			return GetLast(r);
 #else		
 			return ( x*x ) + ( y*y ) + ( z*z );
 #endif
@@ -814,7 +874,7 @@ namespace FlexKit
 		static float3 Load(float* a)
 		{
 			auto temp = _mm_loadu_ps(a);
-			return float3(_mm_loadr_ps(temp.m128_f32));
+			return float3(_mm_loadr_ps((float*)&temp));
 		}
 
 		private:
@@ -849,7 +909,11 @@ namespace FlexKit
 
 	inline float3 RotateVectorAxisAngle( float3 N, float a, float3 V ) { return V*cos(a) + (V.dot(N) * N * (1-cos(a)) + (N.cross(V)*sin(a)));	}
 	
-	__declspec( align( 16 ) ) union float4
+#ifdef WIN32
+	__declspec(align(16)) union float4
+#else
+	__attribute__((aligned(16))) union float4
+#endif
 	{
 	public:
 		float4() {}
@@ -900,13 +964,13 @@ namespace FlexKit
 		{
 			auto n = il.begin();
 			for (size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n)
-				pFloats.m128_f32[itr] = *n;
+				SetElement(pFloats, *n, itr);
 		}
 
-		inline operator float*				()					{ return pFloats.m128_f32;} 
-		inline operator const float* const	()	const			{ return pFloats.m128_f32;} 
-		inline float& operator[] ( const size_t index )			{ return pFloats.m128_f32[index]; }
-		inline float operator[]  ( const size_t index )	const	{ return pFloats.m128_f32[index]; }
+		inline operator float*				()					{ return (float*)&pFloats;} 
+		inline operator const float* const	()	const			{ return (float*)&pFloats;}
+		inline float& operator[] ( const size_t index )			{ return GetElement_ref( pFloats, index); }
+		inline float operator[]  ( const size_t index )	const	{ return GetElement( pFloats, index); }
 		inline operator __m128	 ()						const	{ return pFloats;} 
 
 		inline float4 operator+ ( const float4& a ) const 
@@ -984,7 +1048,7 @@ namespace FlexKit
 		inline float4 operator += ( const float4& a )
 		{
 #if USING(FASTMATH)
-			_mm_store_ps(pFloats.m128_f32, _mm_add_ps(pFloats, a));
+			pFloats = _mm_add_ps(pFloats, a);
 #else
 			return float4(	x + a.x, 
 							y + a.y, 
@@ -1020,10 +1084,10 @@ namespace FlexKit
 
 		inline float4 operator % ( const float4& a ) const
 		{
-			return float4(	std::fmodf( x, a.x ), 
-							std::fmodf( y, a.y ),
-							std::fmodf( z, a.z ),
-							std::fmodf( w, a.w ) );
+			return float4(	std::fmod( x, a.x ), 
+							std::fmod( y, a.y ),
+							std::fmod( z, a.z ),
+							std::fmod( w, a.w ) );
 		}
 
 		struct
@@ -1038,7 +1102,7 @@ namespace FlexKit
 
 		float3 xyz()
 		{
-			return{ x, y, z, 0 };
+			return { x, y, z, 0 };
 		}
 
 		operator Vect4 ()		{ return{ x, y, z, w }; };
@@ -1054,7 +1118,11 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	__declspec( align( 16 ) ) union Quaternion
+#ifdef WIN32
+	__declspec(align(16)) union Quaternion
+#else
+	__attribute__((aligned(16))) union Quaternion
+#endif
 	{
 	public:
 		inline Quaternion() {}
@@ -1091,17 +1159,17 @@ namespace FlexKit
 		{
 			auto n = il.begin();
 			for (size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n)
-				floats.m128_f32[itr] = *n;
+				SetElement( floats, *n, itr);
 		}
 
 
-		inline Quaternion( float* in )
+		inline explicit Quaternion( float* in )
 		{
-			memcpy( floats.m128_f32, in, sizeof( floats ) );
+			_mm_store_ps( in, floats );
 		}
 
 
-		inline Quaternion( const Quaternion& in ) : 
+		inline explicit Quaternion( const Quaternion& in ) :
 			floats( in.floats )	{}
 
 
@@ -1113,7 +1181,7 @@ namespace FlexKit
 			for( size_t I = 0; I < FlexKit::min(il.size(), 4); ++I  )
 			{
 				float V = *IV;
-				floats.m128_f32[I] = V;
+				SetElement(floats,V, I);
 				IV++;
 			}
 		}
@@ -1125,9 +1193,9 @@ namespace FlexKit
 			Y.Zero();
 			Z.Zero();;
 			
-			float dX1_2 = FlexKit::DegreetoRad( dX / 2 );
-			float dY1_2 = FlexKit::DegreetoRad( dY / 2 );
-			float dZ1_2 = FlexKit::DegreetoRad( dZ / 2 );
+			float dX1_2 = DegreetoRad( dX / 2 );
+			float dY1_2 = DegreetoRad( dY / 2 );
+			float dZ1_2 = DegreetoRad( dZ / 2 );
 
 			X.x = std::sin( dX1_2 );
 			X.w = std::cos( dX1_2 );
@@ -1145,7 +1213,6 @@ namespace FlexKit
 		{
 			auto v = XYZ() * -1;
 			auto vXV = v.cross(V);
-			auto test = v.cross(vXV);
 			auto ret = float3(V + (vXV * (2 * w)) + (v.cross(vXV) * 2));
 
 			return ret;
@@ -1160,7 +1227,8 @@ namespace FlexKit
 
 		inline Quaternion& operator *= ( Quaternion& rhs )
 		{
-			return (*this)*rhs;
+			(*this) = GrassManProduct(*this, rhs);
+			return (*this);
 		}
 
 		inline Quaternion& operator = ( Quaternion& rhs )
@@ -1175,11 +1243,11 @@ namespace FlexKit
 			return (*this);
 		}
 
-		inline float& operator [] ( const size_t index )		{ return floats.m128_f32[index]; }
-		inline float operator  [] ( const size_t index ) const	{ return floats.m128_f32[index]; }
+		inline float& operator [] ( const size_t index )		{ return GetElement_ref	(floats, index); }
+		inline float operator  [] ( const size_t index ) const	{ return GetElement		(floats, index); }
 
-		inline operator		  float* ()			{ return floats.m128_f32; }
-		inline operator const float* () const	{ return floats.m128_f32; }
+		inline operator		  float* ()			{ return (float*)&floats; }
+		inline operator const float* () const	{ return (float*)&floats; }
 		inline operator		  __m128 ()			{ return floats; }
 		inline operator const __m128 () const	{ return floats; }
 
@@ -1226,7 +1294,7 @@ namespace FlexKit
 			__m128 q2 = _mm_mul_ps(floats, floats);
 			q2 = _mm_hadd_ps(q2, q2);
 			q2 = _mm_hadd_ps(q2, q2);
-			return q2.m128_f32[0];
+			return GetLast(q2);
 #else
 			return x * x + y * y + z * z + w * w;
 #endif
@@ -1365,14 +1433,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline float Vect3FDot(const Vect4& lhs, const Vect4& rhs)
+	inline float Vect3FDot(const Vect3& lhs, const Vect3& rhs)
 	{
 		auto temp1 = _mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
 		auto temp2 = _mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
 
 		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
 
-		return res.m128_f32[3];
+		return GetFirst(res);
 	}
 
 
@@ -1386,7 +1454,7 @@ namespace FlexKit
 
 		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
 
-		return res.m128_f32[3];
+		return GetFirst(res);
 	}
 
 
@@ -1394,7 +1462,11 @@ namespace FlexKit
 
 	// Row Major
 	template< const int ROW, const int COL, typename Ty = float >
-	class __declspec( align( 64 ) ) Matrix
+#ifdef WIN32
+	class __declspec(align(16))  Matrix
+#else
+	__attribute__((aligned(16))) union Matrix
+#endif
 	{
 	public:
 		Matrix(){}
@@ -1425,7 +1497,7 @@ namespace FlexKit
 
 			for (size_t i = 0; i < ROW; ++i)
 			{
-				const auto v = *((Vect<4>*)matrix[i]);
+				const auto v = *((Vect<3>*)matrix[i]);
 				for (size_t i2 = 0; i2 < COL; ++i2)
 				{
 					const auto v2 = transposed[i2];
@@ -1493,18 +1565,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float2 Mulfloat2(Matrix<2, 2, float>& LHS, float2& RHS)
+	inline float2 Mulfloat2(Matrix<2, 2, float>& LHS, float2& RHS)
 	{
 		float2 Out;
 		auto transposed = LHS.Transpose();
 
 		for (size_t I = 0; I < 2; ++I)
-			Out[I] = DotProduct2(LHS.matrix[I], RHS);
+			Out[I] = DotProduct2(transposed.matrix[I], RHS);
 
 		return Out;
 	}
 
-	float3 Mulfloat3(Matrix<3, 3, float>& LHS, float3& RHS)
+	inline float3 Mulfloat3(Matrix<3, 3, float>& LHS, float3& RHS)
 	{
 		float3 Out;
 		auto transposed = LHS.Transpose();
@@ -1529,7 +1601,7 @@ namespace FlexKit
 	{
 		float sum = 0.0f;
 		for( size_t itr = 0; itr < Matrix_Size; itr++ )
-			for( size_t itr_2 = 0;itr_2 < 3; itr_2+= 4, itr + itr_2 )
+			for( size_t itr_2 = 0;itr_2 < 3; itr_2+= 4, itr += itr_2 )
 				sum += in[itr];
 		return sum;
 	}
@@ -1692,7 +1764,7 @@ namespace FlexKit
 		Temp1 = _mm_mul_ps(Temp1, _mm_set1_ps(0.5f));
 
 		// Copy Sign
-		__m128 Temp3 = _mm_set_ps(Temp1.m128_f32[3],	M[0][1], M[2][0], M[1][2]);
+		__m128 Temp3 = _mm_set_ps(GetFirst(Temp1),		M[0][1], M[2][0], M[1][2]);
 		__m128 Temp4 = _mm_set_ps(0.0f,					M[1][0], M[0][2], M[2][1]);
 		__m128 Temp5 = _mm_sub_ps(Temp3, Temp4);
 		__m128 res = SSE_CopySign(Temp5, Temp1);
@@ -1773,10 +1845,10 @@ namespace FlexKit
 
 	inline Quaternion PointAt(float3 A, float3 B)
 	{
-		float3 Dir		= float3{ B - A }.magnitude();
+		float3 Dir		= (B - A).magnitude();
 		Dir = {Dir.z, Dir.y, -Dir.x};
 
-		float3 UpV		= float3{0, 1, 0};
+		float3 UpV		= (0, 1, 0);
 		float3 DirXUpV	= Dir.cross(UpV);
 
 		return Vector2Quaternion(Dir, DirXUpV.cross(Dir), DirXUpV);

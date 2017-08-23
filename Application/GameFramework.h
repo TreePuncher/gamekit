@@ -136,12 +136,12 @@ namespace FlexKit
 
 		virtual ~FrameworkState() {}
 
-		virtual bool  Update			(EngineCore* Engine, double dT) { return true; };
-		virtual bool  DebugDraw			(EngineCore* Engine, double dT) { return true; };
-		virtual bool  PreDrawUpdate		(EngineCore* Engine, double dT) { return true; };
-		virtual bool  PostDrawUpdate	(EngineCore* Engine, double dT) { return true; };
+		virtual bool Update			(EngineCore* Engine, double dT) { return true; };
+		virtual bool DebugDraw		(EngineCore* Engine, double dT) { return true; };
+		virtual bool PreDrawUpdate	(EngineCore* Engine, double dT) { return true; };
+		virtual bool PostDrawUpdate	(EngineCore* Engine, double dT) { return true; };
 
-		virtual bool  EventHandler		(Event evt) { return true; };
+		virtual bool EventHandler	(Event evt) { return true; };
 
 		GameFramework*	Framework;
 	};

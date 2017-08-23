@@ -30,9 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 namespace FlexKit
-{
-
-	// Eventually will be a Quake Style Console
+{	// Will eventually be a Quake Style Console
 	struct ConsoleSubState : public FrameworkState
 	{
 		ConsoleSubState(GameFramework* framework) :
@@ -47,6 +45,7 @@ namespace FlexKit
 		~ConsoleSubState()
 		{
 			Framework->ConsoleActive = false;
+			C->Memory->free(this); // Not sure what to do about this. Seems like a poor design implication
 		}
 
 		bool			PauseBackgroundLogic;
