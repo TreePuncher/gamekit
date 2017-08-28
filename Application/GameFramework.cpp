@@ -208,6 +208,12 @@ namespace FlexKit
 	}
 
 
+	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID)
+	{
+		return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneID, Scene, Engine->GetTempMemory());
+	}
+
+
 	/************************************************************************************************/
 
 

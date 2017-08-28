@@ -146,6 +146,7 @@ namespace FlexKit
 
 
 	bool			LoadScene		 (EngineCore* Engine, GraphicScene* Scene, const char* SceneName);
+	bool			LoadScene		 (EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID);
 	void			DrawMouseCursor	 (EngineCore* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
 
 	void			PushSubState	 (GameFramework* _ptr, FrameworkState* SS);
