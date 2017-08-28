@@ -431,11 +431,10 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
 
 	auto IPInput		= Grid.CreateTextBox({ 0, 1 }, State->Name, Framework->DefaultAssets.Font);
 	IPInput.SetActive(true);
-	IPInput._IMPL().Clicked		= ServerFieldClicked;
+	IPInput._IMPL().Clicked		= [](size_t x) -> bool{return false;};
 	auto NameInput				= Grid.CreateTextBox({ 0, 3 }, State->Server, Framework->DefaultAssets.Font);
 	NameInput.SetActive(true);
-	NameInput._IMPL().Clicked	= NameFieldClicked;
-	NameInput.SetUSR(State);
+	//NameInput._IMPL().Clicked	= NameFieldClicked;
 
 	//auto AcceptButton	= Grid.CreateButton({ 0, 4 }, "Accept", Framework->DefaultAssets.Font);
 	//AcceptButton.SetActive(true);

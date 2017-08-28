@@ -1,4 +1,7 @@
 #pragma once
+#ifndef static_vector_h
+#define static_vector_h
+
 /**********************************************************************
  
 Copyright (c) 2014-2017 Robert May
@@ -314,3 +317,5 @@ namespace FlexKit
 		TY_             Elements[TSIZE];
 	};
 }
+
+#endif

@@ -30,6 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\ImmediateRendering.h"
 
+#include <functional>
+
 #ifndef GUIUTILITIES_H
 #define GUIUTILITIES_H
 
@@ -108,10 +110,15 @@ namespace FlexKit
 	};
 
 	// CallBacks Definitions
-	typedef bool (*EnteredEventFN)		( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	typedef bool (*GenericGUIEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	typedef bool (*TextInputEventFN)	( char*, size_t, void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	typedef bool (*SliderEventFN)		( float,		 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	//typedef bool (*EnteredEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	//typedef bool (*GenericGUIEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	//typedef bool (*TextInputEventFN)	( char*, size_t, void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+	//typedef bool (*SliderEventFN)		( float,		 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
+
+	typedef std::function<bool (char*, size_t,	size_t GUIElement)>	TextInputEventFN;
+	typedef std::function<bool (				size_t GUIElement)> EnteredEventFN;
+	typedef std::function<bool (				size_t GUIElement)> GenericGUIEventFN;
+	typedef std::function<bool (float,			size_t GUIElement)> SliderEventFN;
 
 	struct TextInputState{
 		bool RemainActive = true;
@@ -133,8 +140,8 @@ namespace FlexKit
 
 		void*				_ptr				= nullptr;
 		EnteredEventFN		OnClicked_CB		= nullptr;
-		GenericGUIEventFN		OnEntered_CB		= nullptr;
-		GenericGUIEventFN		OnExit_CB			= nullptr;
+		GenericGUIEventFN	OnEntered_CB		= nullptr;
+		GenericGUIEventFN	OnExit_CB			= nullptr;
 	};
 
 	struct GUIElement_TextButton
@@ -603,7 +610,6 @@ namespace FlexKit
 		void SetText	( const char* Text );
 		void SetTextFont( FontAsset* Font );
 		void SetCellID	( uint2 CellID );
-		void SetUSR		( void* usr );
 
 		float2 WH();
 
@@ -621,10 +627,10 @@ namespace FlexKit
 		float4	Color;
 		float4  HighlightedColor;
 
-		EnteredEventFN		Entered		= nullptr;
-		GenericGUIEventFN	Clicked		= nullptr;
-		GenericGUIEventFN	Released	= nullptr;
-		GenericGUIEventFN	Hover		= nullptr;
+		EnteredEventFN		Entered;
+		GenericGUIEventFN	Clicked;
+		GenericGUIEventFN	Released;
+		GenericGUIEventFN	Hover;
 
 		float	HoverDuration	= 0;
 		bool	Highlighted		= false;
@@ -634,8 +640,6 @@ namespace FlexKit
 		float4		TextColor;
 		FontAsset*	Font;
 		iAllocator*	Memory;
-
-		void*	USR	= nullptr;
 
 		static void Update		(GUITextBoxHandle  TextBox, LayoutEngine* Layout, double dT, const SimpleWindowInput Input);
 		static void Draw		(GUITextBoxHandle  button, LayoutEngine* Layout);

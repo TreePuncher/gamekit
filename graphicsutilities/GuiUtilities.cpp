@@ -236,6 +236,7 @@ namespace FlexKit
 	{
 		FormattingState CurrentFormatting = InitiateFormattingState(Options, P);
 
+		/*
 		for (auto& I : Elements)
 		{
 			const auto& E = Window->Elements[I];
@@ -277,17 +278,17 @@ namespace FlexKit
 				if (CursorInside(Input->MousePosition, Input->CursorWH, Position, WH)) {
 
 					if (CurrentButton->OnClicked_CB && Input->LeftMouseButtonPressed)
-						if (CurrentButton->OnClicked_CB(CurrentButton->_ptr, I))
+						if (CurrentButton->OnClicked_CB(I))
 							return true;
 					if (CurrentButton->OnEntered_CB && !CurrentButton->Entered)
-						CurrentButton->OnEntered_CB(CurrentButton->_ptr, I);
+						CurrentButton->OnEntered_CB(I);
 
 					CurrentButton->Active  = true;
 					CurrentButton->Entered = true;
 				}
 				else {
 					if (CurrentButton->OnExit_CB && CurrentButton->Entered)
-						if (CurrentButton->OnExit_CB(CurrentButton->_ptr, I))
+						if (CurrentButton->OnExit_CB(I))
 							return true;
 					CurrentButton->Entered = false;
 				}
@@ -306,10 +307,10 @@ namespace FlexKit
 				if (CursorInside(Input->MousePosition, Input->CursorWH, Position, WH)) {
 
 					if (CurrentButton->OnClicked_CB && Input->LeftMouseButtonPressed)
-						if (CurrentButton->OnClicked_CB(CurrentButton->CB_Args, I))
+						if (CurrentButton->OnClicked_CB(I))
 							return true;
 					if (CurrentButton->OnEntered_CB && !CurrentButton->Entered)
-						if (CurrentButton->OnEntered_CB(CurrentButton->CB_Args, I))
+						if (CurrentButton->OnEntered_CB(I))
 							return true;
 
 					CurrentButton->Active  = true;
@@ -317,7 +318,7 @@ namespace FlexKit
 				}
 				else {
 					if (CurrentButton->OnExit_CB && CurrentButton->Entered)
-						if (CurrentButton->OnExit_CB(CurrentButton->CB_Args, I))
+						if (CurrentButton->OnExit_CB(I))
 							return true;
 					CurrentButton->Entered = false;
 				}
@@ -347,7 +348,6 @@ namespace FlexKit
 				Draw_RECT_CLIPPED Bar;
 				float2 BarPosition	= Position + TravelDistance * Saturate(Slider.SliderPosition);
 				float2 BarWH		= Bar.BLeft + WH * S;
-
 				if (CursorInside(Input->MousePosition, Input->CursorWH, Position, WH)) {
 					if (!Slider.Entered)
 						if (Slider.OnEntered_CB)
@@ -383,6 +383,7 @@ namespace FlexKit
 			if (IncrementFormatingState(CurrentFormatting, Options, WH))
 				return true;// Ran out of Space in Row/Column
 		}
+		*/
 		return false;
 	}
 
@@ -1227,7 +1228,6 @@ namespace FlexKit
 		Box.Memory             = Memory;
 		Box.Text               = nullptr;
 		Box.TextColor          = float4(WHITE, 1);
-		Box.USR	               = nullptr;
 		TextBoxes.push_back(Box);
 
 		GUIBaseElement Element;
@@ -1572,15 +1572,15 @@ namespace FlexKit
 			MousePOS.x <= BR.x )
 		{
 			if (Btn._IMPL().Entered && Btn._IMPL().HoverDuration == 0.0)
-				Btn._IMPL().Entered(Btn._IMPL().USR, Btn);
+				Btn._IMPL().Entered(Btn);
 
 			Btn._IMPL().HoverDuration += dt;
 
 			if (Btn._IMPL().Hover && Btn._IMPL().HoverDuration > Btn._IMPL().HoverLength)
-				Btn._IMPL().Hover(Btn._IMPL().USR, Btn);
+				Btn._IMPL().Hover(Btn);
 
 			if (Btn._IMPL().Clicked && in.LeftMouseButtonPressed && !Btn._IMPL().ClickState) {
-				Btn._IMPL().Clicked(Btn._IMPL().USR, Btn);
+				Btn._IMPL().Clicked(Btn);
 				Btn._IMPL().ClickState = true;
 			}
 		}
@@ -1603,14 +1603,13 @@ namespace FlexKit
 		auto MousePOS = Input.MousePosition;
 		MousePOS.y    = 1.0f - MousePOS.y;
 
-
 		if(	MousePOS.x >= TL.x && 
 			MousePOS.y >= TL.y && 
 			MousePOS.y <= BR.y &&
 			MousePOS.x <= BR.x )
 		{
 			if (Element.Entered && Element.HoverDuration == 0.0)
-				Element.Entered(Element.USR, TextBox.mBase);
+				Element.Entered(TextBox.mBase);
 
 
 			Element.HoverDuration += dT;
@@ -1619,7 +1618,7 @@ namespace FlexKit
 			{
 				if (Element.Clicked && !Element.ClickState)
 				{
-					Element.Clicked(Element.USR, TextBox.mBase);
+					Element.Clicked(TextBox.mBase);
 					Element.ClickState = true;
 				}
 			}
@@ -1990,12 +1989,6 @@ namespace FlexKit
 	{
 		auto& TextBox = _IMPL();
 		TextBox.CellID = CellID;
-	}
-
-
-	void GUITextBoxHandle::SetUSR(void* usr)
-	{
-		_IMPL().USR = usr;
 	}
 
 

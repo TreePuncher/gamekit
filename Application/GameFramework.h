@@ -54,11 +54,6 @@ namespace FlexKit
 
 	class FrameworkState;
 
-	typedef bool (*FN_UPDATE_SUBSTATE)  (FrameworkState* StateMemory, EngineMemory*, double DT); // Return True to allow Cascading updates down State Stack
-	typedef void (*FN_RELEASE_SUBSTATE) (FrameworkState* StateMemory);
-
-	typedef bool(*FN_EVENT_HANDLER) (FrameworkState* StateMemory, Event);
-
 
 	/************************************************************************************************/
 
@@ -150,15 +145,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool			LoadScene		 (EngineMemory* Engine, GraphicScene* Scene, const char* SceneName);
-	void			DrawMouseCursor	 (EngineMemory* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
+	bool			LoadScene		 (EngineCore* Engine, GraphicScene* Scene, const char* SceneName);
+	void			DrawMouseCursor	 (EngineCore* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
 
 	void			PushSubState	 (GameFramework* _ptr, FrameworkState* SS);
 	void			PopSubState		 (GameFramework* _ptr);
 
-	void			UpdateGameFramework	 (EngineMemory* Engine, GameFramework* _ptr, double dT);
-	void			PreDrawGameFramework (EngineMemory* Engine, GameFramework* _ptr, double dT);
-	void			ReleaseGameFramework (EngineMemory* Engine, GameFramework* _ptr );
+	void			UpdateGameFramework	 (EngineCore* Engine, GameFramework* _ptr, double dT);
+	void			PreDrawGameFramework (EngineCore* Engine, GameFramework* _ptr, double dT);
+	void			ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr );
 
 
 	/************************************************************************************************/
