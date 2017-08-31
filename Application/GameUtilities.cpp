@@ -31,6 +31,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace FlexKit;
 
+
+/************************************************************************************************/
+
+
 void ReleaseCore(EngineCore* Engine)
 {
 
@@ -124,16 +128,14 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 	using FlexKit::ForwardRender;
 	using FlexKit::ForwardPass_DESC;
 
-	bool Out		 = false;
-	uint32_t width	 = 1920;
-	uint32_t height	 = 1080;
-	bool InvertDepth = true;
-	FlexKit::Graphics_Desc	desc = { 0 };
+	bool Out						= false;
+	uint32_t width					= 1920;
+	uint32_t height					= 1080;
+	bool InvertDepth				= true;
+	FlexKit::Graphics_Desc	desc	= { 0 };
 	desc.Memory = Engine->GetBlockMemory();
 
-
-	Out = InitiateRenderSystem(&desc, Engine->RenderSystem);
-	if (!Out)
+	if (!Engine->RenderSystem.Initiate(&desc))
 		return false;
 
 	Engine->Window.Close = false;
@@ -141,7 +143,7 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 
 	if (!Out)
 	{
-		Release(Engine->RenderSystem);
+		Engine->RenderSystem.Release();
 		return false;
 	}
 
@@ -166,7 +168,6 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 
 	Engine->Assets.ResourceMemory = &Engine->GetBlockMemory();
 	Engine->Culler                = CreateOcclusionCuller(Engine->RenderSystem, 8096, OcclusionBufferWH);
-
 
 	return Out;
 }

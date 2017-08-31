@@ -246,11 +246,8 @@ namespace FlexKit
 		Release(State->DefaultAssets.Font);
 		Release(State->DefaultAssets.Terrain);
 
-		ReleaseTerrain	(State->Engine->Nodes, &State->Landscape);
-		//ReleaseCamera	(State->Engine->Nodes, &State->DefaultCamera);
-		//ReleaseCamera	(State->Engine->Nodes, &State->DebugCamera);
-
-		ReleaseDrawImmediate	(Engine->RenderSystem, &State->Immediate);
+		ReleaseTerrain		(State->Engine->Nodes, &State->Landscape);
+		ReleaseDrawImmediate(Engine->RenderSystem, &State->Immediate);
 	}
 
 

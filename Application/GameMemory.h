@@ -170,7 +170,7 @@ struct EngineCore
 
 		Release( &DepthBuffer );
 		Release( &Window );
-		Release( &RenderSystem );
+		RenderSystem.Release();
 
 		for(auto Arg : CmdArguments)
 			GetBlockMemory().free((void*)Arg);

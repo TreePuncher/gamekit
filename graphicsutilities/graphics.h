@@ -49,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Handle.h"
 #include "..\coreutilities\intersection.h"
 #include "..\coreutilities\mathutils.h"
+#include "..\coreutilities\Transforms.h"
 #include "..\coreutilities\type.h"
 
 #include <iso646.h>
@@ -966,25 +967,87 @@ namespace FlexKit
 		size_t						ThreadsIssued;
 	};
 
-	struct RenderSystem
+	typedef Handle_t<32>	ConstantBufferHandle;
+	struct ConstantBufferTable
 	{
-		iAllocator*			Memory;
+		ConstantBufferTable() 
+		{
+		}
 
-		// TODO: Add Asset Manager _ptr Here
+		struct ConstantBufferUsage
+		{
+			size_t BufferSize;
 
-		ID3D12Device*		pDevice;
-		ID3D12Debug*		pDebug;
-		ID3D12DebugDevice*	pDebugDevice;
+			struct MemoryRange
+			{
+				size_t					Begin;
+				size_t					End;
+				size_t					BlockCount;
+				size_t					BlockSize;
+				Vector<MemoryRange*>	ChildRanges;
+			}Top;
+		};
 
-		PerFrameResources	FrameResources[QueueSize];
-		PerFrameUploadQueue	UploadQueues[QueueSize];
+		Vector<ID3D12Resource*>		ConstantBufferPools;
+		Vector<ConstantBufferUsage>	ConstantBufferDesciptors;
+
+		HandleUtilities::HandleTable<ConstantBufferHandle>	Handles;
+	};
+
+	template<size_t ENTRYCOUNT = 16>
+	class DesciptorHeap
+	{
+		DesciptorHeap(DescHeapStack* Stack)
+		{
+		}
+		struct Descriptor
+		{
+			enum class Entry_TYPE
+			{
+				ConstantBuffer,
+				StructuredBuffer,
+				TextureBuffer,
+				UAVBuffer,
+			}Type;
+
+			union
+			{
+				ConstantBufferHandle		ConstantBuffer;
+				ID3D12Resource*				Resource_ptr;
+				D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
+				D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
+			};
+		};
+		static_vector<Descriptor, ENTRYCOUNT> Entries;
+	};
 
 
-		IDXGIFactory4*		pGIFactory;
-		IDXGIAdapter3*		pDXGIAdapter;
-		ID3D12CommandQueue*	GraphicsQueue;
-		ID3D12CommandQueue*	UploadQueue;
-		ID3D12CommandQueue*	ComputeQueue;
+	class RootSignature
+	{
+	};
+
+
+	FLEXKITAPI struct RenderSystem
+	{
+		bool Initiate(Graphics_Desc* desc_in);
+		void Release();
+
+		operator RenderSystem* () { return this; }
+
+		iAllocator*				Memory;
+
+		ID3D12Device*			pDevice;
+		ID3D12Debug*			pDebug;
+		ID3D12DebugDevice*		pDebugDevice;
+
+		PerFrameResources		FrameResources[QueueSize];
+		PerFrameUploadQueue		UploadQueues[QueueSize];
+
+		IDXGIFactory4*			pGIFactory;
+		IDXGIAdapter3*			pDXGIAdapter;
+		ID3D12CommandQueue*		GraphicsQueue;
+		ID3D12CommandQueue*		UploadQueue;
+		ID3D12CommandQueue*		ComputeQueue;
 
 		ConstantBuffer			NullConstantBuffer; // Zero Filled Constant Buffer
 		Texture2D				NullUAV; // 1x1 Zero UAV
@@ -1048,7 +1111,7 @@ namespace FlexKit
 		};
 		Vector<FreeEntry> FreeList;
 
-		operator RenderSystem* ( ) { return this; }
+		ConstantBufferTable ConstantBuffers;
 	};
 
 
@@ -1119,113 +1182,6 @@ namespace FlexKit
 	};
 
 
-	const	size_t							NodeHandleSize = 16;
-	typedef Handle_t<NodeHandleSize>		NodeHandle;
-	typedef Handle_t<16>					TextureSetHandle;
-	typedef static_vector<NodeHandle, 32>	ChildrenVector;
-
-
-	struct Node
-	{
-		NodeHandle	TH;
-		NodeHandle	Parent;
-		NodeHandle	ChildrenList;
-		bool		Scaleflag;// Calculates Scale only when set to on, Off By default
-	};
-
-	
-	__declspec(align(16))  struct LT_Entry
-	{
-		DirectX::XMVECTOR T;
-		DirectX::XMVECTOR R;
-		DirectX::XMVECTOR S;
-		DirectX::XMVECTOR Padding;
-
-		static LT_Entry Zero()
-		{
-			LT_Entry zero;
-			zero.T = DirectX::XMVectorZero();
-			zero.R = DirectX::XMQuaternionIdentity();
-			zero.S = DirectX::XMVectorSet(1, 1, 1, 0);
-
-			return zero;
-		}
-	};
-
-
-	__declspec(align(16))  struct WT_Entry
-	{
-		//LT_Entry			World;
-		DirectX::XMMATRIX	m4x4;// Cached
-
-		void SetToIdentity()	
-		{	
-			m4x4  = DirectX::XMMatrixIdentity(); 
-			//World = LT_Entry::Zero();
-		}	
-	};
-
-
-	/************************************************************************************************/
-
-	
-	inline float4x4 XMMatrixToFloat4x4(DirectX::XMMATRIX* M)
-	{
-		float4x4 Mout;
-		Mout = *(float4x4*)M;
-		return Mout;
-	}
-
-
-	inline DirectX::XMMATRIX Float4x4ToXMMATIRX(float4x4* M)
-	{
-		DirectX::XMMATRIX Mout;
-		Mout = *(DirectX::XMMATRIX*)M;
-		return Mout;
-	}
-
-
-	/************************************************************************************************/
-
-
-	struct SceneNodes
-	{
-		enum StateFlags : char
-		{
-			CLEAR   = 0x00,
-			DIRTY   = 0x01,
-			FREE    = 0x02,
-			SCALE   = 0x04,
-			UPDATED = 0x08
-		};
-
-		operator SceneNodes* () { return this; }
-
-		size_t used;
-		size_t max;
-
-		Node*			Nodes;
-		LT_Entry*		LT;
-		WT_Entry*		WT;
-		char*			Flags;
-
-		uint16_t*		Indexes;
-		ChildrenVector* Children;
-
-
-		#pragma pack(push, 1)
-		struct BOILERPLATE
-		{
-			Node		N;
-			LT_Entry	LT;
-			WT_Entry	WT;
-			uint16_t	I;
-			char		State;
-		};
-		#pragma pack(pop)
-	};
-
-	
 	/************************************************************************************************/
 
 
@@ -1969,7 +1925,7 @@ namespace FlexKit
 
 	StaticObjectHandle CreateDrawable(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
 
-
+	// TODO: Implement this
 	struct FLEXKITAPI StaticMeshBatcher
 	{
 		typedef char DirtyFlag;
@@ -2049,7 +2005,7 @@ namespace FlexKit
 
 	FLEXKITAPI VertexBuffer::BuffEntry* GetBuffer( VertexBuffer*, VERTEXBUFFER_TYPE ); // return nullptr if not found
 	
-	FLEXKITAPI bool	InitiateRenderSystem( Graphics_Desc* desc_in, RenderSystem* );
+	FLEXKITAPI bool	InitiateRenderSystem();
 
 	FLEXKITAPI void ReserveTempSpace	( RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset );
 
@@ -2269,70 +2225,6 @@ namespace FlexKit
 	};
 
 	FLEXKITAPI void	DoPixelProcessor(RenderSystem* RS, PIXELPROCESS_DESC* DESC_in, Texture2D* out);
-
-
-	/************************************************************************************************/
-	
-
-	inline size_t	_SNHandleToIndex	( SceneNodes* Nodes, NodeHandle Node)				{ return Nodes->Indexes[Node.INDEX];	}
-	inline void		_SNSetHandleIndex	( SceneNodes* Nodes, NodeHandle Node, size_t index)	{ Nodes->Indexes[Node.INDEX] = index;	}
-
-	FLEXKITAPI void			InitiateSceneNodeBuffer		( SceneNodes* Nodes, byte* pmem, size_t );
-	FLEXKITAPI void			SortNodes					( SceneNodes* Nodes, StackAllocator* Temp );
-	FLEXKITAPI void			ReleaseNode					( SceneNodes* Nodes, NodeHandle Node );
-
-	FLEXKITAPI float3		LocalToGlobal				( SceneNodes* Nodes, NodeHandle Node, float3 POS);
-
-
-	FLEXKITAPI LT_Entry		GetLocal					( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI float3		GetLocalScale				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
-	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	WT_Entry* __restrict out );		
-	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle node,	float4x4* __restrict out );
-	FLEXKITAPI Quaternion	GetOrientation				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI float3		GetPositionW				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI float3		GetPositionL				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI NodeHandle	GetNewNode					( SceneNodes* Nodes );
-	FLEXKITAPI NodeHandle	GetZeroedNode				( SceneNodes* Nodes );
-	FLEXKITAPI bool			GetFlag						( SceneNodes* Nodes, NodeHandle Node,	size_t f );
-	FLEXKITAPI NodeHandle	GetParentNode				( SceneNodes* Nodes, NodeHandle Node );
-
-	FLEXKITAPI void			SetFlag						( SceneNodes* Nodes, NodeHandle Node,	SceneNodes::StateFlags f );
-	FLEXKITAPI void			SetLocal					( SceneNodes* Nodes, NodeHandle Node,	LT_Entry* __restrict In );
-	FLEXKITAPI void			SetOrientation				( SceneNodes* Nodes, NodeHandle Node,	Quaternion& In );	// Sets World Orientation
-	FLEXKITAPI void			SetOrientationL				( SceneNodes* Nodes, NodeHandle Node,	Quaternion& In );	// Sets World Orientation
-	FLEXKITAPI void			SetParentNode				( SceneNodes* Nodes, NodeHandle Parent, NodeHandle Node );
-	FLEXKITAPI void			SetPositionW				( SceneNodes* Nodes, NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetPositionL				( SceneNodes* Nodes, NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetWT						( SceneNodes* Nodes, NodeHandle Node,	DirectX::XMMATRIX* __restrict in  );				// Set World Transform
-	FLEXKITAPI void			SetScale					( SceneNodes* Nodes, NodeHandle Node,	float3 In );
-
-	FLEXKITAPI void			Scale						( SceneNodes* Nodes, NodeHandle Node,	float3 In );
-	FLEXKITAPI void			TranslateLocal				( SceneNodes* Nodes, NodeHandle Node,	float3 In );
-	FLEXKITAPI void			TranslateWorld				( SceneNodes* Nodes, NodeHandle Node,	float3 In );
-	FLEXKITAPI bool			UpdateTransforms			( SceneNodes* Nodes );
-	FLEXKITAPI NodeHandle	ZeroNode					( SceneNodes* Nodes, NodeHandle Node );
-
-	FLEXKITAPI inline void Yaw							( SceneNodes* Nodes, NodeHandle Node,	float r );
-	FLEXKITAPI inline void Roll							( SceneNodes* Nodes, NodeHandle Node,	float r );
-	FLEXKITAPI inline void Pitch						( SceneNodes* Nodes, NodeHandle Node,	float r );
-
-
-	/************************************************************************************************/
-
-
-	struct FLEXKITAPI SceneNodeCtr
-	{
-		inline void WTranslate	( float3 XYZ ) { TranslateWorld(SceneNodes, Node, XYZ); }
-		inline void LTranslate	( float3 XYZ ) { TranslateLocal(SceneNodes, Node, XYZ); }
-		void		Rotate		( Quaternion Q );
-
-		NodeHandle	Node;
-		SceneNodes*	SceneNodes;
-	};
-
-
-	/************************************************************************************************/
 
 
 	struct TextEntry
@@ -2591,6 +2483,19 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+	class RenderResources
+	{
+
+	};
+
+	// Interface
+	class RenderPass
+	{
+	public:
+		virtual void Draw(RenderSystem* RS, ID3D12CommandList* CL, RenderResources* Resources, PVS* Elements) = delete;
+		virtual void Release() = delete;
+	};
 }
 
 #endif

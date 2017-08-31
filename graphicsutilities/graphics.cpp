@@ -722,7 +722,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool InitiateRenderSystem( Graphics_Desc* in, RenderSystem* out )
+	bool RenderSystem::Initiate( Graphics_Desc* in)
 	{
 #if USING( DEBUGGRAPHICS )
 		gWindowHandle		= GetConsoleWindow();
@@ -733,13 +733,12 @@ namespace FlexKit
 
 		RegisterWindowClass(gInstance);
 
-		RenderSystem NewRenderSystem       = {0};
-		NewRenderSystem.Memory			   = in->Memory;
-		NewRenderSystem.Settings.AAQuality = 0;
-		NewRenderSystem.Settings.AASamples = 1;
-		NewRenderSystem.FenceCounter	   = 0;
-		NewRenderSystem.FenceUploadCounter = 0;
-		UINT DeviceFlags                   = 0;
+		Memory			   = in->Memory;
+		Settings.AAQuality = 0;
+		Settings.AASamples = 1;
+		FenceCounter	   = 0;
+		FenceUploadCounter = 0;
+		UINT DeviceFlags   = 0;
 
 		ID3D12Device*		Device;
 		ID3D12Debug*		Debug;
@@ -770,8 +769,6 @@ namespace FlexKit
 			std::cout << "Created A DX12 Device!\n";
 
 
-		out->pDevice = Device;
-
 #if USING( DEBUGGRAPHICS )
 		HR =  Device->QueryInterface(__uuidof(ID3D12DebugDevice), (void**)&DebugDevice);
 #else
@@ -784,7 +781,7 @@ namespace FlexKit
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE FENCE!");
 			SETDEBUGNAME(NewFence, "GRAPHICS FENCE");
 
-			NewRenderSystem.Fence = NewFence;
+			Fence = NewFence;
 			ObjectsCreated.push_back(NewFence);
 		}
 
@@ -793,13 +790,13 @@ namespace FlexKit
 			HR = Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&NewFence));
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE FENCE!");
 			SETDEBUGNAME(NewFence, "COPY FENCE");
-			NewRenderSystem.CopyFence = NewFence;
+			CopyFence = NewFence;
 			ObjectsCreated.push_back(NewFence);
 		}
 
 		for(size_t I = 0; I < 3; ++I){
-			NewRenderSystem.CopyFences[I].FenceHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-			NewRenderSystem.CopyFences[I].FenceValue  = 0;
+			CopyFences[I].FenceHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+			CopyFences[I].FenceValue  = 0;
 		}
 			
 		D3D12_COMMAND_QUEUE_DESC CQD ={};
@@ -813,9 +810,6 @@ namespace FlexKit
 		ComputeCQD.Flags = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		ComputeCQD.Type = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
 
-		ID3D12CommandQueue*			GraphicsQueue		= nullptr;
-		ID3D12CommandQueue*			UploadQueue			= nullptr;
-		ID3D12CommandQueue*			ComputeQueue		= nullptr;
 		ID3D12CommandAllocator*		UploadAllocator		= nullptr;
 		ID3D12CommandAllocator*		ComputeAllocator	= nullptr;
 		ID3D12GraphicsCommandList*	UploadList	        = nullptr;
@@ -830,9 +824,6 @@ namespace FlexKit
 		ObjectsCreated.push_back(GraphicsQueue);
 		ObjectsCreated.push_back(UploadQueue);
 		ObjectsCreated.push_back(ComputeQueue);
-
-		std::cout << GraphicsQueue;
-		//MessageBox(NULL, L"Got To point -1", L"ERROR!", MB_OK);
 
 
 		D3D12_DESCRIPTOR_HEAP_DESC	FrameTextureHeap_DESC = {};
@@ -885,21 +876,15 @@ namespace FlexKit
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,		IID_PPV_ARGS(&GraphicsAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,			IID_PPV_ARGS(&UploadAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,		IID_PPV_ARGS(&ComputeAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
-
-					std::cout << Device;
-					std::cout << GraphicsAllocator;
-					//MessageBox(NULL, L"Got To point 0", L"ERROR!", MB_OK);
-
-					HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,	GraphicsAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&CommandList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
-					HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,	ComputeAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&ComputeList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
-					HR = Device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,	UploadAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&UploadList);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,	GraphicsAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&CommandList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,	ComputeAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&ComputeList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,		UploadAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&UploadList);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 
 					FK_ASSERT(CommandList != nullptr, "FAILED TO CREATE COMMAND LIST");
 
-
-					SETDEBUGNAME(ComputeAllocator, "COMPUTE ALLOCATOR");
+					SETDEBUGNAME(ComputeAllocator,	"COMPUTE ALLOCATOR");
 					SETDEBUGNAME(GraphicsAllocator, "GRAPHICS ALLOCATOR");
-					SETDEBUGNAME(UploadAllocator, "UPLOAD ALLOCATOR");
+					SETDEBUGNAME(UploadAllocator,	"UPLOAD ALLOCATOR");
 
 					ObjectsCreated.push_back(GraphicsAllocator);
 					ObjectsCreated.push_back(UploadAllocator);
@@ -909,11 +894,6 @@ namespace FlexKit
 					ObjectsCreated.push_back(CommandList);
 					ObjectsCreated.push_back(UploadList);
 
-
-					//std::cout << CommandList;
-					//MessageBox(NULL, L"Got To point 1", L"ERROR!", MB_OK);
-					//MessageBox(NULL, L"Got To point 2", L"ERROR!", MB_OK);
-
 					CommandList->Close();
 					UploadList->Close();
 					ComputeList->Close();
@@ -921,45 +901,42 @@ namespace FlexKit
 					UploadAllocator->Reset();
 					ComputeAllocator->Reset();
 
+					UploadQueues[I].UploadList[II]				= static_cast<ID3D12GraphicsCommandList*>(UploadList);
+					UploadQueues[I].UploadCLAllocator[II]		= UploadAllocator;
 
-
-					NewRenderSystem.UploadQueues[I].UploadList[II]				= static_cast<ID3D12GraphicsCommandList*>(UploadList);
-					NewRenderSystem.UploadQueues[I].UploadCLAllocator[II]		= UploadAllocator;
-
-					NewRenderSystem.FrameResources[I].TempBuffers				= nullptr;
-					NewRenderSystem.FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
-					NewRenderSystem.FrameResources[I].CommandListsUsed[II]		= false;
-					NewRenderSystem.FrameResources[I].ComputeCLAllocator[II]	= ComputeAllocator;
-					NewRenderSystem.FrameResources[I].GraphicsCLAllocator[II]	= GraphicsAllocator;
-					NewRenderSystem.FrameResources[I].CommandLists[II]			= static_cast<ID3D12GraphicsCommandList*>(CommandList);
+					FrameResources[I].TempBuffers				= nullptr;
+					FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
+					FrameResources[I].CommandListsUsed[II]		= false;
+					FrameResources[I].ComputeCLAllocator[II]	= ComputeAllocator;
+					FrameResources[I].GraphicsCLAllocator[II]	= GraphicsAllocator;
+					FrameResources[I].CommandLists[II]			= static_cast<ID3D12GraphicsCommandList*>(CommandList);
 				}
 
-				ID3D12DescriptorHeap* SRVHeap = nullptr;
-				HR = Device->CreateDescriptorHeap(&FrameTextureHeap_DESC, IID_PPV_ARGS(&SRVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
-				SETDEBUGNAME(SRVHeap, "RESOURCEHEAP");
+				ID3D12DescriptorHeap* SRVHeap		= nullptr;
+				ID3D12DescriptorHeap* GPUSRVHeap	= nullptr;
+				ID3D12DescriptorHeap* RTVHeap		= nullptr;
+				ID3D12DescriptorHeap* DSVHeap		= nullptr;									
 
-				ID3D12DescriptorHeap* GPUSRVHeap = nullptr;
-				HR = Device->CreateDescriptorHeap(&GPUFrameTextureHeap_DESC, IID_PPV_ARGS(&GPUSRVHeap));																							FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
-				SETDEBUGNAME(GPUSRVHeap, "GPURESOURCEHEAP");
+				HR = Device->CreateDescriptorHeap(&FrameTextureHeap_DESC,		IID_PPV_ARGS(&SRVHeap));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
+				HR = Device->CreateDescriptorHeap(&GPUFrameTextureHeap_DESC,	IID_PPV_ARGS(&GPUSRVHeap));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
+				HR = Device->CreateDescriptorHeap(&RenderTargetHeap_DESC,		IID_PPV_ARGS(&RTVHeap));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
+				HR = Device->CreateDescriptorHeap(&DepthStencilHeap_DESC,		IID_PPV_ARGS(&DSVHeap));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 
-				ID3D12DescriptorHeap* RTVHeap = nullptr;
-				HR = Device->CreateDescriptorHeap(&RenderTargetHeap_DESC, IID_PPV_ARGS(&RTVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
-				SETDEBUGNAME(RTVHeap, "RENDERTARGETHEAP");
+				SETDEBUGNAME(SRVHeap,		"RESOURCEHEAP");
+				SETDEBUGNAME(GPUSRVHeap,	"GPURESOURCEHEAP");
+				SETDEBUGNAME(RTVHeap,		"RENDERTARGETHEAP");
+				SETDEBUGNAME(DSVHeap,		"DSVHEAP");
 
-				ID3D12DescriptorHeap* DSVHeap = nullptr;
-				HR = Device->CreateDescriptorHeap(&DepthStencilHeap_DESC, IID_PPV_ARGS(&DSVHeap));																									FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
-				SETDEBUGNAME(DSVHeap, "DSVHEAP");
+				UploadQueues[I].UploadCount = 0;
 
-				NewRenderSystem.UploadQueues[I].UploadCount = 0;
-
-				NewRenderSystem.FrameResources[I].DescHeap.DescHeap    = SRVHeap;
-				NewRenderSystem.FrameResources[I].GPUDescHeap.DescHeap = GPUSRVHeap;
-				NewRenderSystem.FrameResources[I].RTVHeap.DescHeap     = RTVHeap;
-				NewRenderSystem.FrameResources[I].DSVHeap.DescHeap	   = DSVHeap;
-				NewRenderSystem.FrameResources[I].ThreadsIssued        = 0;
+				FrameResources[I].DescHeap.DescHeap    = SRVHeap;
+				FrameResources[I].GPUDescHeap.DescHeap = GPUSRVHeap;
+				FrameResources[I].RTVHeap.DescHeap     = RTVHeap;
+				FrameResources[I].DSVHeap.DescHeap	   = DSVHeap;
+				FrameResources[I].ThreadsIssued        = 0;
 			}
 
-			NewRenderSystem.FrameResources[0].CommandLists[0]->Reset(NewRenderSystem.FrameResources[0].GraphicsCLAllocator[0], nullptr);
+			FrameResources[0].CommandLists[0]->Reset(FrameResources[0].GraphicsCLAllocator[0], nullptr);
 
 			HR = CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));			
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
@@ -976,37 +953,31 @@ namespace FlexKit
 
 		// Copy Resources Over
 		{
-			NewRenderSystem.pDevice					= Device;
-			NewRenderSystem.UploadQueue				= UploadQueue;
-			NewRenderSystem.GraphicsQueue			= GraphicsQueue;
-			NewRenderSystem.ComputeQueue			= ComputeQueue;
-			NewRenderSystem.pGIFactory				= DXGIFactory;
-			NewRenderSystem.pDXGIAdapter			= DXGIAdapter;
-			NewRenderSystem.pDebugDevice			= DebugDevice;
-			NewRenderSystem.pDebug					= Debug;
-			NewRenderSystem.BufferCount				= 3;
-			NewRenderSystem.CurrentIndex			= 0;
-			NewRenderSystem.CurrentUploadIndex		= 0;
-			NewRenderSystem.FenceCounter			= 0;
-			NewRenderSystem.DescriptorRTVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-			NewRenderSystem.DescriptorDSVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-			NewRenderSystem.DescriptorCBVSRVUAVSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+			pDevice					= Device;
+			pGIFactory				= DXGIFactory;
+			pDXGIAdapter			= DXGIAdapter;
+			pDebugDevice			= DebugDevice;
+			pDebug					= Debug;
+			BufferCount				= 3;
+			CurrentIndex			= 0;
+			CurrentUploadIndex		= 0;
+			FenceCounter			= 0;
+			DescriptorRTVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			DescriptorDSVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+			DescriptorCBVSRVUAVSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
-
-		*out = NewRenderSystem;
-
 		{
 			ConstantBuffer_desc NullBuffer_Desc;
 			NullBuffer_Desc.InitialSize	= 1024;
 			NullBuffer_Desc.pInital		= nullptr;
 			NullBuffer_Desc.Structured	= false;
 
-			out->NullConstantBuffer = CreateConstantBuffer(out, &NullBuffer_Desc);
-			out->NullConstantBuffer._SetDebugName("NULL CONSTANT BUFFER");
+			NullConstantBuffer = CreateConstantBuffer(this, &NullBuffer_Desc);
+			NullConstantBuffer._SetDebugName("NULL CONSTANT BUFFER");
 
-			ObjectsCreated.push_back(out->NullConstantBuffer[0]);
-			ObjectsCreated.push_back(out->NullConstantBuffer[1]);
-			ObjectsCreated.push_back(out->NullConstantBuffer[2]);
+			ObjectsCreated.push_back(NullConstantBuffer[0]);
+			ObjectsCreated.push_back(NullConstantBuffer[1]);
+			ObjectsCreated.push_back(NullConstantBuffer[2]);
 		}
 		{
 			Texture2D_Desc NullUAV_Desc;
@@ -1019,10 +990,10 @@ namespace FlexKit
 			NullUAV_Desc.CV			  = true;
 			NullUAV_Desc.RenderTarget = true;
 
-			out->NullUAV = CreateTexture2D(out, &NullUAV_Desc);
-			SETDEBUGNAME( out->NullUAV, "NULL UAV");
+			NullUAV = CreateTexture2D(this, &NullUAV_Desc);
+			SETDEBUGNAME(NullUAV, "NULL UAV");
 
-			ObjectsCreated.push_back(out->NullUAV);
+			ObjectsCreated.push_back(NullUAV);
 		}
 		{
 			Texture2D_Desc NullSRV_Desc;
@@ -1037,26 +1008,27 @@ namespace FlexKit
 			NullSRV_Desc.RenderTarget = false;
 			NullSRV_Desc.Format		  = FORMAT_2D::R32G32B32A32_FLOAT;
 
-			out->NullSRV = CreateTexture2D(out, &NullSRV_Desc);
-			SETDEBUGNAME( out->NullSRV, "NULL SRV");
+			NullSRV = CreateTexture2D(this, &NullSRV_Desc);
+			SETDEBUGNAME( NullSRV, "NULL SRV");
 			
-			ObjectsCreated.push_back(out->NullSRV);
+			ObjectsCreated.push_back(NullSRV);
 		}
 		{
-			out->NullSRV1D = CreateShaderResource(out, 1024, "NULL SRV 1D");
-			
-			ObjectsCreated.push_back(out->NullSRV);
+			NullSRV1D = CreateShaderResource(this, 1024, "NULL SRV 1D");
+			ObjectsCreated.push_back(NullSRV1D[0]);
+			ObjectsCreated.push_back(NullSRV1D[1]);
+			ObjectsCreated.push_back(NullSRV1D[2]);
 		}
 
 		InitiateComplete = true;
 
-		CreateRootSignatureLibrary(out);
-		InitiateCopyEngine(out);
+		CreateRootSignatureLibrary(this);
+		InitiateCopyEngine(this);
 		
-		out->States = CreatePSOTable(out);
-		out->FreeList.Allocator = in->Memory;
+		States = CreatePSOTable(this);
+		FreeList.Allocator = in->Memory;
 
-		ReadyUploadQueues(out);
+		ReadyUploadQueues(this);
 
 		return InitiateComplete;
 	}
@@ -1086,16 +1058,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(RenderSystem* System)
+	void RenderSystem::Release()
 	{
-		for(auto FR : System->FrameResources)
+		for(auto FR : FrameResources)
 		{
 			FR.DSVHeap.DescHeap->Release();
 			FR.DescHeap.DescHeap->Release();
 			FR.GPUDescHeap.DescHeap->Release();
 			FR.RTVHeap.DescHeap->Release();
-
-			//FR.
 
 			for (auto CL : FR.CommandLists)
 				if(CL)CL->Release();
@@ -1110,10 +1080,10 @@ namespace FlexKit
 				if (alloc)alloc->Release();
 
 			if(FR.TempBuffers)
-				System->Memory->_aligned_free(FR.TempBuffers);
+				Memory->_aligned_free(FR.TempBuffers);
 		}
 
-		for(auto FR : System->UploadQueues)
+		for(auto FR : UploadQueues)
 		{
 			for (auto CL : FR.UploadList)
 				if (CL)CL->Release();
@@ -1122,36 +1092,36 @@ namespace FlexKit
 				if (alloc)alloc->Release();
 		}
 
-		ReleasePipelineStates(System);
+		ReleasePipelineStates(this);
 
-		System->CopyEngine.TempBuffer->Unmap(0, nullptr);
-		System->CopyEngine.TempBuffer->Release();
+		CopyEngine.TempBuffer->Unmap(0, nullptr);
+		CopyEngine.TempBuffer->Release();
 
-		System->NullConstantBuffer.Release();
-		System->NullUAV->Release();
-		System->NullSRV->Release();
-		System->NullSRV1D.Release();
+		NullConstantBuffer.Release();
+		NullUAV->Release();
+		NullSRV->Release();
+		NullSRV1D.Release();
 
-		System->GraphicsQueue->Release();
-		System->UploadQueue->Release();
-		System->ComputeQueue->Release();
-		System->Library.RS4CBVs4SRVs->Release();
-		System->Library.RS4CBVs_SO->Release();
-		System->Library.RS2UAVs4SRVs4CBs->Release();
-		System->Library.ShadingRTSig->Release();
-		System->pGIFactory->Release();
-		System->pDXGIAdapter->Release();
-		System->pDevice->Release();
-		System->Fence->Release();
-		System->CopyFence->Release();
+		GraphicsQueue->Release();
+		UploadQueue->Release();
+		ComputeQueue->Release();
+		Library.RS4CBVs4SRVs->Release();
+		Library.RS4CBVs_SO->Release();
+		Library.RS2UAVs4SRVs4CBs->Release();
+		Library.ShadingRTSig->Release();
+		pGIFactory->Release();
+		pDXGIAdapter->Release();
+		pDevice->Release();
+		Fence->Release();
+		CopyFence->Release();
 
-		System->FreeList.Release();
+		FreeList.Release();
 
 #if USING(DEBUGGRAPHICS)
 		// Prints Detailed Report
-		System->pDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
-		System->pDebugDevice->Release();
-		System->pDebug->Release();
+		pDebugDevice->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
+		pDebugDevice->Release();
+		pDebug->Release();
 #endif
 	}
 
@@ -3270,740 +3240,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	size_t CalculateNodeBufferSize(size_t BufferSize)
-	{
-		size_t PerNodeFootPrint = sizeof(LT_Entry) + sizeof(WT_Entry) + sizeof(Node) + sizeof(uint16_t);
-		return (BufferSize - sizeof(SceneNodes)) / PerNodeFootPrint;
-	}
-
 	
-	/************************************************************************************************/
-
-
-	void InitiateSceneNodeBuffer(SceneNodes* Nodes, byte* pmem, size_t MemSize)
-	{
-		size_t NodeFootPrint = sizeof(SceneNodes::BOILERPLATE);
-		size_t NodeMax = (MemSize - sizeof(SceneNodes)) / NodeFootPrint  - 0x20;
-
-		Nodes->Nodes = (Node*)pmem;
-		{
-			const size_t aligment = 0x10;
-			auto Memory = pmem + NodeMax;
-			size_t alignoffset = (size_t)Memory % aligment;
-			if(alignoffset)
-				Memory += aligment - alignoffset;	// 16 Byte byte Align
-			Nodes->LT = (LT_Entry*)(Memory);
-			int c = 0; // Debug Point
-		}
-		{
-			const size_t aligment = 0x40;
-			char* Memory = (char*)Nodes->LT + NodeMax;
-			size_t alignoffset = (size_t)Memory % aligment; // Cache Align
-			if(alignoffset)
-				Memory += aligment - alignoffset;
-			Nodes->WT = (WT_Entry*)(Memory);
-			int c = 0; // Debug Point
-		}
-		{
-			Nodes->Flags = (char*)(Nodes->WT + NodeMax);
-			for (size_t I = 0; I < NodeMax; ++I)
-				Nodes->Flags[I] = SceneNodes::FREE;
-
-			int c = 0; // Debug Point
-		}
-		{
-			Nodes->Indexes = (uint16_t*)(Nodes->Flags + NodeMax);
-			for (size_t I = 0; I < NodeMax; ++I)
-				Nodes->Indexes[I] = 0xffff;
-
-			int c = 0; // Debug Point
-		}
-
-		for (size_t I = 0; I < NodeMax; ++I)
-		{
-			Nodes->LT[I].R = DirectX::XMQuaternionIdentity();
-			Nodes->LT[I].S = DirectX::XMVectorSet(1, 1, 1, 1);
-			Nodes->LT[I].T = DirectX::XMVectorSet(0, 0, 0, 0);
-		}
-
-		for (size_t I = 0; I < NodeMax; ++I)
-			Nodes->WT[I].m4x4 = DirectX::XMMatrixIdentity();
-
-		Nodes->used		= 0;
-		Nodes->max		= NodeMax;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PushAllChildren(SceneNodes* Nodes, size_t CurrentNode, fixed_vector<size_t>& Out)
-	{
-		for (size_t I = 1; I < Nodes->used; ++I)
-		{
-			auto ParentIndex = _SNHandleToIndex(Nodes, Nodes->Nodes[I].Parent);
-			if(ParentIndex == CurrentNode)
-			{
-				Out.push_back(I);
-				PushAllChildren(Nodes, I, Out);
-			}
-		}
-	}
-
-	void SwapNodeEntryies(SceneNodes* Nodes, size_t LHS, size_t RHS)
-	{
-		LT_Entry	Local_Temp = Nodes->LT[LHS];
-		WT_Entry	World_Temp = Nodes->WT[LHS];
-		Node		Node_Temp  = Nodes->Nodes[LHS];
-		char		Flags_Temp = Nodes->Flags[LHS];
-
-		Nodes->LT[LHS]		= Nodes->LT		[RHS];
-		Nodes->WT[LHS]		= Nodes->WT		[RHS];
-		Nodes->Nodes[LHS]	= Nodes->Nodes	[RHS];
-		Nodes->Flags[LHS]	= Nodes->Flags	[RHS];
-
-		Nodes->LT[RHS]		= Local_Temp;
-		Nodes->WT[RHS]		= World_Temp;
-		Nodes->Nodes[RHS]	= Node_Temp;
-		Nodes->Flags[RHS]	= Flags_Temp;
-	}
-
-	size_t FindFreeIndex(SceneNodes* Nodes)
-	{
-		size_t FreeIndex = -1;
-		for (size_t I = Nodes->used - 1; I >= 0; ++I)
-		{
-			if (Nodes->Flags[I] & SceneNodes::FREE) {
-				FreeIndex = I;
-				break;
-			}
-		}
-		return FreeIndex;
-	}
-
-	void SortNodes(SceneNodes* Nodes, StackAllocator* Temp)
-	{
-		#ifdef _DEBUG
-			std::cout << "Node Usage Before\n";
-			for (size_t I = 0; I < Nodes->used; ++I)
-				if (Nodes->Flags[I] & SceneNodes::FREE)
-					std::cout << "Node: " << I << " Unused\n";
-				else
-					std::cout << "Node: " << I << " Used\n";
-		#endif
-
-		// Find Order
-		if (Nodes->used > 1)
-		{
-			size_t NewLength = Nodes->used;
-			fixed_vector<size_t>& Out = fixed_vector<size_t>::Create(Nodes->used - 1, Temp);
-			for (size_t I = 1; I < Nodes->used; ++I)// First Node Is Always Root
-			{
-				if (Nodes->Flags[I] & SceneNodes::FREE) {
-					size_t II = I + 1;
-					for (; II < Nodes->used; ++II)
-						if (!(Nodes->Flags[II] & SceneNodes::FREE))
-							break;
-					
-					SwapNodeEntryies(Nodes, I, II);
-					Nodes->Indexes[I] = I;
-					Nodes->Indexes[II]= II;
-					NewLength--;
-					int x = 0;
-				}
-				if(Nodes->Nodes[I].Parent == NodeHandle(-1))
-					continue;
-
-				size_t ParentIndex = _SNHandleToIndex(Nodes, Nodes->Nodes[I].Parent);
-				if (ParentIndex > I)
-				{					
-					SwapNodeEntryies(Nodes, ParentIndex, I);
-					Nodes->Indexes[ParentIndex] = I;
-					Nodes->Indexes[I]			= ParentIndex;
-				}
-			}
-			Nodes->used = NewLength + 1;
-#ifdef _DEBUG
-			std::cout << "Node Usage After\n";
-			for (size_t I = 0; I < Nodes->used; ++I)
-				if (Nodes->Flags[I] & SceneNodes::FREE)
-					std::cout << "Node: " << I << " Unused\n";
-				else
-					std::cout << "Node: " << I << " Used\n";
-#endif
-		}
-	}
-
-
-	/************************************************************************************************/
-
-	// TODO: Search an optional Free List
-	NodeHandle GetNewNode(SceneNodes* Nodes )
-	{
-		if (Nodes->max < Nodes->used)
-			FK_ASSERT(0);
-
-		auto HandleIndex	= 0;
-		auto NodeIndex		= 0;
-
-		{
-			size_t itr = 0;
-			size_t end = Nodes->max;
-			for (; itr < end; ++itr)
-			{
-				if (Nodes->Indexes[itr] == 0xffff)
-					break;
-			}
-			NodeIndex = itr;
-
-			itr = 0;
-			for (; itr < end; ++itr)
-			{
-				if (Nodes->Flags[itr] & SceneNodes::FREE) break;
-			}
-
-			HandleIndex = itr;
-		}
-
-		Nodes->Flags[NodeIndex] = SceneNodes::DIRTY;
-		auto node = NodeHandle(HandleIndex);
-
-		Nodes->Indexes[HandleIndex] = NodeIndex;
-		Nodes->Nodes[node.INDEX].TH	= node;
-		Nodes->used++;
-
-		return node;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SwapNodes(SceneNodes* Nodes, NodeHandle lhs, NodeHandle rhs)
-	{
-		auto lhs_Index = _SNHandleToIndex(Nodes, lhs);
-		auto rhs_Index = _SNHandleToIndex(Nodes, rhs);
-		SwapNodeEntryies(Nodes, lhs_Index, rhs_Index);
-
-		_SNSetHandleIndex(Nodes, lhs, rhs_Index);
-		_SNSetHandleIndex(Nodes, rhs, lhs_Index);
-	}
-
-	
-	/************************************************************************************************/
-
-
-	void ReleaseNode(SceneNodes* Nodes, NodeHandle handle)
-	{
-		Nodes->Flags[_SNHandleToIndex(Nodes, handle)] = SceneNodes::FREE;
-		Nodes->Nodes[_SNHandleToIndex(Nodes, handle)].Parent = NodeHandle(-1);
-		_SNSetHandleIndex(Nodes, handle, -1);
-	}
-
-	
-	/************************************************************************************************/
-
-
-	NodeHandle GetParentNode(SceneNodes* Nodes, NodeHandle node )
-	{
-		return Nodes->Nodes[Nodes->Indexes[node.INDEX]].Parent;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetParentNode(SceneNodes* Nodes, NodeHandle parent, NodeHandle node)
-	{
-		auto ParentIndex	= _SNHandleToIndex(Nodes, parent);
-		auto ChildIndex		= _SNHandleToIndex(Nodes, node);
-
-		if (ChildIndex < ParentIndex)
-			SwapNodes(Nodes, parent, node);
-
-		Nodes->Nodes[Nodes->Indexes[node.INDEX]].Parent = parent;
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3 GetPositionW(SceneNodes* Nodes, NodeHandle node)
-	{
-		DirectX::XMMATRIX wt;
-		GetWT(Nodes, node, &wt);
-		return float3( wt.r[0].m128_f32[3], wt.r[1].m128_f32[3], wt.r[2].m128_f32[3] );
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3 GetPositionL(SceneNodes* Nodes, NodeHandle Node)
-	{
-		auto Local = GetLocal(Nodes, Node);
-		return Local.T;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetPositionW(SceneNodes* Nodes, NodeHandle node, float3 in) // Sets Position in World Space
-	{
-#if 0
-		using DirectX::XMQuaternionConjugate;
-		using DirectX::XMQuaternionMultiply;
-		using DirectX::XMVectorSubtract;
-
-		// Set New Local Position
-		LT_Entry Local;
-		WT_Entry Parent;
-
-		// Gather
-		GetLocal(Nodes, node, &Local);
-		GetWT(Nodes, GetParentNode(Nodes, node), &Parent);
-
-		// Calculate
-		Local.T = XMVectorSubtract( Parent.World.T, in.pfloats );
-		SetLocal(Nodes, node, &Local);
-#else
-		DirectX::XMMATRIX wt;
-		GetWT(Nodes, node, &wt);
-		auto tmp =  DirectX::XMMatrixInverse(nullptr, wt) * DirectX::XMMatrixTranslation(in[0], in[1], in[2] );
-		float3 lPosition = float3( tmp.r[3].m128_f32[0], tmp.r[3].m128_f32[1], tmp.r[3].m128_f32[2] );
-
-		wt.r[0].m128_f32[3] = in.x;
-		wt.r[1].m128_f32[3] = in.y;
-		wt.r[2].m128_f32[3] = in.z;
-
-		SetWT(Nodes, node, &wt);
-		// Set New Local Position
-		LT_Entry Local(GetLocal(Nodes, node));
-
-		Local.T.m128_f32[0] = lPosition[0];
-		Local.T.m128_f32[1] = lPosition[1];
-		Local.T.m128_f32[2] = lPosition[2];
-
-		SetLocal(Nodes, node, &Local);
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetPositionL(SceneNodes* Nodes, NodeHandle Node, float3 V)
-	{
-		auto Local = GetLocal(Nodes, Node);
-		Local.T = V;
-		SetLocal(Nodes, Node, &Local);
-		SetFlag(Nodes, Node, SceneNodes::DIRTY);
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3 LocalToGlobal(SceneNodes* Nodes, NodeHandle Node, float3 POS)
-	{
-		float4x4 WT; GetWT(Nodes, Node, &WT);
-		return (WT * float4(POS, 1)).xyz();
-	}
-
-
-	/************************************************************************************************/
-
-
-	LT_Entry GetLocal(SceneNodes* Nodes, NodeHandle Node){ 
-		return Nodes->LT[_SNHandleToIndex(Nodes, Node)]; 
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3 GetLocalScale(SceneNodes* Nodes, NodeHandle Node)
-	{
-		float3 L_s = GetLocal(Nodes, Node).S;
-		return L_s;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GetWT(SceneNodes* Nodes, NodeHandle node, DirectX::XMMATRIX* __restrict out)
-	{
-		auto index		= _SNHandleToIndex(Nodes, node);
-#if 0
-		auto WorldQRS	= Nodes->WT[index];
-		DirectX::XMMATRIX wt = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(WorldQRS.World.R) * DirectX::XMMatrixTranslationFromVector(WorldQRS.World.T)); // Seperate this
-		*out = wt;
-#else
-		*out = Nodes->WT[index].m4x4;
-#endif
-	}
-
-
-	/************************************************************************************************/
-
-
-	void GetWT(SceneNodes* Nodes, NodeHandle node, float4x4* __restrict out)
-	{
-		auto index		= _SNHandleToIndex(Nodes, node);
-#if 0
-		auto WorldQRS	= Nodes->WT[index];
-		DirectX::XMMATRIX wt = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(WorldQRS.World.R) * DirectX::XMMatrixTranslationFromVector(WorldQRS.World.T)); // Seperate this
-		*out = wt;
-#else
-		*out = XMMatrixToFloat4x4(&Nodes->WT[index].m4x4).Transpose();
-#endif
-	}
-
-
-	/************************************************************************************************/
-	
-	
-	void GetWT(SceneNodes* Nodes, NodeHandle node, WT_Entry* __restrict out )
-	{
-		*out = Nodes->WT[_SNHandleToIndex(Nodes, node)];
-	}
-
-
-	/************************************************************************************************/
-
-	void SetScale(SceneNodes* Nodes, NodeHandle Node, float3 XYZ)
-	{
-		LT_Entry Local(GetLocal(Nodes, Node));
-
-		Local.S.m128_f32[0] *= XYZ.pfloats.m128_f32[0];
-		Local.S.m128_f32[1] *= XYZ.pfloats.m128_f32[1];
-		Local.S.m128_f32[2] *= XYZ.pfloats.m128_f32[2];
-
-		SetLocal(Nodes, Node, &Local);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetWT(SceneNodes* Nodes, NodeHandle node, DirectX::XMMATRIX* __restrict In)
-	{
-		Nodes->WT[_SNHandleToIndex(Nodes, node)].m4x4 = *In;
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetLocal(SceneNodes* Nodes, NodeHandle node, LT_Entry* __restrict In)
-	{
-		Nodes->LT[_SNHandleToIndex(Nodes, node)] = *In;
-		SetFlag(Nodes, node, SceneNodes::StateFlags::DIRTY);
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool GetFlag(SceneNodes* Nodes, NodeHandle Node, size_t m)
-	{
-		auto index = _SNHandleToIndex(Nodes, Node);
-		auto F = Nodes->Flags[index];
-		return (F & m) != 0;
-	}
-
-
-	/************************************************************************************************/
-
-
-	Quaternion GetOrientation(SceneNodes* Nodes, NodeHandle node)
-	{
-		DirectX::XMMATRIX WT;
-		GetWT(Nodes, node, &WT);
-
-		DirectX::XMVECTOR q = DirectX::XMQuaternionRotationMatrix(WT);
-
-		return q;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetOrientation(SceneNodes* Nodes, NodeHandle node, Quaternion& in)
-	{
-		DirectX::XMMATRIX wt;
-		LT_Entry Local(GetLocal(Nodes, node));
-		GetWT(Nodes, FlexKit::GetParentNode(Nodes, node), &wt);
-
-		auto tmp2 = FlexKit::Matrix2Quat(FlexKit::XMMatrixToFloat4x4(&DirectX::XMMatrixTranspose(wt)));
-		tmp2 = tmp2.Inverse();
-
-		Local.R = DirectX::XMQuaternionMultiply(in, tmp2);
-		SetLocal(Nodes, node, &Local);
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
-	}
-
-	
-	/************************************************************************************************/
-
-
-	void SetOrientationL(SceneNodes* Nodes, NodeHandle node, Quaternion& in)
-	{
-		LT_Entry Local(GetLocal(Nodes, node));
-		Local.R = in;
-		SetLocal(Nodes, node, &Local);
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool UpdateTransforms(SceneNodes* Nodes)
-	{
-		using DirectX::XMMatrixIdentity;
-		using DirectX::XMMatrixMultiply;
-		using DirectX::XMMatrixTranspose;
-		using DirectX::XMMatrixTranslationFromVector;
-		using DirectX::XMMatrixScalingFromVector;
-		using DirectX::XMMatrixRotationQuaternion;
-
-		Nodes->WT[0].SetToIdentity();// Making sure root is Identity 
-#if 0
-		for (size_t itr = 1; itr < Nodes->used; ++itr)// Skip Root
-		{
-			if ( Nodes->Flags[itr]												| SceneNodes::DIRTY || 
-				 Nodes->Flags[_SNHandleToIndex(Nodes, Nodes->Nodes[itr].Parent)]| SceneNodes::DIRTY )
-			{
-				Nodes->Flags[itr] = Nodes->Flags[itr] | SceneNodes::DIRTY; // To cause Further children to update
-				bool			  EnableScale = Nodes->Nodes[itr].Scaleflag;
-				FlexKit::WT_Entry Parent;
-				FlexKit::WT_Entry WOut;
-				FlexKit::LT_Entry LIn;
-
-				// Gather
-				GetWT(Nodes, Nodes->Nodes[itr].Parent, &Parent);
-
-				WOut = Nodes->WT[itr];
-				LIn  = Nodes->LT[itr];
-
-				// Calculate
-				WOut.World.R = DirectX::XMQuaternionMultiply(LIn.R, Parent.World.R);
-				WOut.World.S = DirectX::XMVectorMultiply	(LIn.S, Parent.World.S);
-
-				LIn.T.m128_f32[3] = 0;// Should Always Be Zero
-				//if(EnableScale)	WOut.World.T = DirectX::XMVectorMultiply(Parent.World.S, LIn.T);
-				WOut.World.T = DirectX::XMQuaternionMultiply(DirectX::XMQuaternionConjugate(Parent.World.R), LIn.T);
-				WOut.World.T = DirectX::XMQuaternionMultiply(WOut.World.T, Parent.World.R);
-				WOut.World.T = DirectX::XMVectorAdd			(WOut.World.T, Parent.World.T);
-
-				// Write Results
-				Nodes->WT[itr] = WOut;
-			}
-		}
-#else
-		for (size_t itr = 1; itr < Nodes->used; ++itr)
-			if (Nodes->Flags[itr] | SceneNodes::UPDATED && !(Nodes->Flags[itr] | SceneNodes::DIRTY))
-				Nodes->Flags[itr] ^= SceneNodes::CLEAR;
-
-		size_t Unused_Nodes = 0;;
-		for (size_t itr = 1; itr < Nodes->used; ++itr)
-		{
-			if (!(Nodes->Flags[itr] & SceneNodes::FREE)  && 
-				 (Nodes->Flags[itr] | SceneNodes::DIRTY) ||
-				  Nodes->Flags[_SNHandleToIndex(Nodes, Nodes->Nodes[itr].Parent)] | SceneNodes::UPDATED)
-			{
-				Nodes->Flags[itr] ^= SceneNodes::DIRTY;		
-				Nodes->Flags[itr] |= SceneNodes::UPDATED; // Propagates Dirty Status of Panret to Children to update
-
-				DirectX::XMMATRIX LT = XMMatrixIdentity();
-				LT_Entry TRS = GetLocal(Nodes, Nodes->Nodes[itr].TH);
-
-				bool sf = (Nodes->Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
-				LT =(	XMMatrixRotationQuaternion(TRS.R) *
-						XMMatrixScalingFromVector(sf ? TRS.S : float3(1.0f, 1.0f, 1.0f).pfloats)) *
-						XMMatrixTranslationFromVector(TRS.T);
-
-				auto ParentIndex = _SNHandleToIndex(Nodes, Nodes->Nodes[itr].Parent);
-				auto PT = Nodes->WT[ParentIndex].m4x4;
-				auto WT = XMMatrixTranspose(XMMatrixMultiply(LT, XMMatrixTranspose(PT)));
-
-				auto temp	= Nodes->WT[itr].m4x4;
-				Nodes->WT[itr].m4x4 = WT;
-			}
-
-			Unused_Nodes += (Nodes->Flags[itr] & SceneNodes::FREE);
-		}
-#endif
-
-		Nodes->WT[0].SetToIdentity();// Making sure root is Identity 
-		return ((float(Unused_Nodes) / float(Nodes->used)) > 0.25f);
-	}
-
-
-	/************************************************************************************************/
-
-
-	NodeHandle ZeroNode(SceneNodes* Nodes, NodeHandle node)
-	{
-		FlexKit::LT_Entry LT;
-		LT.S = DirectX::XMVectorSet(1, 1, 1, 1);
-		LT.R = DirectX::XMQuaternionIdentity();
-		LT.T = DirectX::XMVectorZero();
-		FlexKit::SetLocal(Nodes, node, &LT);
-
-		DirectX::XMMATRIX WT;
-		WT = DirectX::XMMatrixIdentity();
-		FlexKit::SetWT(Nodes, node, &WT);
-
-		Nodes->Nodes[_SNHandleToIndex(Nodes, node)].Scaleflag = false;
-		Nodes->Nodes[_SNHandleToIndex(Nodes, node)].Parent = NodeHandle(0);
-
-		return node;
-	}
-
-
-	/************************************************************************************************/
-
-
-	NodeHandle	GetZeroedNode(SceneNodes* nodes)
-	{
-		return ZeroNode(nodes, GetNewNode(nodes));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetFlag(SceneNodes* Nodes, NodeHandle node, SceneNodes::StateFlags f)
-	{
-		auto index = _SNHandleToIndex(Nodes, node);
-		Nodes->Flags[index] = Nodes->Flags[index] | f;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Scale(SceneNodes* Nodes, NodeHandle node, float3 XYZ)
-	{
-		LT_Entry Local(GetLocal(Nodes, node));
-
-		Local.S.m128_f32[0] *= XYZ.pfloats.m128_f32[0];
-		Local.S.m128_f32[1] *= XYZ.pfloats.m128_f32[1];
-		Local.S.m128_f32[2] *= XYZ.pfloats.m128_f32[2];
-
-		SetLocal(Nodes, node, &Local);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void TranslateLocal(SceneNodes* Nodes, NodeHandle node, float3 XYZ)
-	{
-		LT_Entry Local(GetLocal(Nodes, node));
-
-		Local.T.m128_f32[0] += XYZ.pfloats.m128_f32[0];
-		Local.T.m128_f32[1] += XYZ.pfloats.m128_f32[1];
-		Local.T.m128_f32[2] += XYZ.pfloats.m128_f32[2];
-
-		SetLocal(Nodes, node, &Local);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void TranslateWorld(SceneNodes* Nodes, NodeHandle Node, float3 XYZ)
-	{
-		WT_Entry WT;
-		GetWT(Nodes, GetParentNode(Nodes, Node), &WT);
-
-		auto MI = DirectX::XMMatrixInverse(nullptr, WT.m4x4);
-		auto V = DirectX::XMVector4Transform(XYZ.pfloats, MI);
-		TranslateLocal(Nodes, Node, float3(V));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SceneNodeCtr::Rotate(Quaternion Q)
-	{
-		LT_Entry Local(GetLocal(SceneNodes, Node));
-		DirectX::XMVECTOR R = DirectX::XMQuaternionMultiply(Local.R, Q.floats);
-		Local.R = R;
-
-		SetLocal(SceneNodes, Node, &Local);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Yaw(FlexKit::SceneNodes* Nodes, NodeHandle Node, float r)
-	{
-		DirectX::XMVECTOR rot;
-		rot.m128_f32[0] = 0;
-		rot.m128_f32[1] = std::sin(r / 2);
-		rot.m128_f32[2] = 0;
-		rot.m128_f32[3] = std::cos(r / 2);
-
-		FlexKit::LT_Entry Local(FlexKit::GetLocal(Nodes, Node));
-
-		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
-
-		FlexKit::SetLocal(Nodes, Node, &Local);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Pitch(FlexKit::SceneNodes* Nodes, NodeHandle Node, float r)
-	{
-		DirectX::XMVECTOR rot;
-		rot.m128_f32[0] = std::sin(r / 2);;
-		rot.m128_f32[1] = 0;
-		rot.m128_f32[2] = 0;
-		rot.m128_f32[3] = std::cos(r / 2);
-
-		FlexKit::LT_Entry Local(FlexKit::GetLocal(Nodes, Node));
-
-		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
-
-		FlexKit::SetLocal(Nodes, Node, &Local);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Roll(FlexKit::SceneNodes* Nodes, NodeHandle Node, float r)
-	{
-		DirectX::XMVECTOR rot;
-		rot.m128_f32[0] = 0;
-		rot.m128_f32[1] = 0;
-		rot.m128_f32[2] = std::sin(r / 2);
-		rot.m128_f32[3] = std::cos(r / 2);
-
-		FlexKit::LT_Entry Local(FlexKit::GetLocal(Nodes, Node));
-
-		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
-
-		FlexKit::SetLocal(Nodes, Node, &Local);
-	}
-
-
-	/************************************************************************************************/
 	
 	void ResetDescHeap(RenderSystem* RS)
 	{
@@ -4069,8 +3306,8 @@ namespace FlexKit
 		auto FrameResources						 = GetCurrentFrameResources(RS);
 		auto CPU								 = FrameResources->RTVHeap.CPU_HeapPOS;
 		auto GPU								 = FrameResources->RTVHeap.GPU_HeapPOS;
-		FrameResources->RTVHeap.CPU_HeapPOS.ptr = FrameResources->RTVHeap.CPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
-		FrameResources->RTVHeap.GPU_HeapPOS.ptr = FrameResources->RTVHeap.GPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
+		FrameResources->RTVHeap.CPU_HeapPOS.ptr  = FrameResources->RTVHeap.CPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
+		FrameResources->RTVHeap.GPU_HeapPOS.ptr  = FrameResources->RTVHeap.GPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
 
 		return { CPU , GPU };
 	}

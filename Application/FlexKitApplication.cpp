@@ -104,6 +104,7 @@ void UnloadGameCode(GameCode& Code)
 
 /************************************************************************************************/
 
+
 void UpdateInput()
 {
 	MSG  msg;
@@ -146,12 +147,12 @@ void DLLGameLoop(EngineCore* Engine, void* State, CodeTable* FNTable, GameCode* 
 		{	// Game Tick  -----------------------------------------------------------------------------------
 			::UpdateInput();
 
-			FNTable->Update				(Engine, State, dt);
-			FNTable->UpdateFixed		(Engine, StepSize, State);
-			FNTable->UpdateAnimations	(Engine,				Engine->GetTempMemory(), dt, State);
-			FNTable->UpdatePreDraw		(Engine,				Engine->GetTempMemory(), dt, State);
-			FNTable->Draw				(Engine,				Engine->GetTempMemory(),	 State);
-			FNTable->PostDraw			(Engine,				Engine->GetTempMemory(), dt, State);
+			FNTable->Update				(Engine,								State, dt);
+			FNTable->UpdateFixed		(Engine, StepSize,						State);
+			FNTable->UpdateAnimations	(Engine, Engine->GetTempMemory(), dt,	State);
+			FNTable->UpdatePreDraw		(Engine, Engine->GetTempMemory(), dt,	State);
+			FNTable->Draw				(Engine, Engine->GetTempMemory(),		State);
+			FNTable->PostDraw			(Engine, Engine->GetTempMemory(), dt,	State);
 
 			/*
 			if (CodeCheckTimer > 2.0)
@@ -204,11 +205,14 @@ int main( int argc, char* argv[] )
 			GameStateLocation = argv[I + 1];
 	}
 
+
 	LoadGameCode(Code, &FNTable, GameStateLocation);
 	FINALLY
 	{
 		UnloadGameCode(Code);
 	}FINALLYOVER;
+
+
 
 	if (Code.Lib)
 	{

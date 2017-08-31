@@ -46,20 +46,23 @@ template<typename Ty>					using vector_t	= std::vector<Ty>;
 template<typename Ty, typename Ty_key>	using map_t		= std::map<Ty, Ty_key>;
 template<typename Ty>					using list_t	= std::list<Ty>;
 
-/************************************************************************************************/
-
 namespace FlexKit
 {
+	/************************************************************************************************/
+
+
 	template<typename Ty, size_t SIZE = 16>
 	struct RingBuffer
 	{
-		RingBuffer(){
+		RingBuffer()
+		{
 			head	= 0;
 			end		= 0;
 			count	= 0;
 		}
 
-		void push_back(const Ty& in){
+		void push_back(const Ty& in)
+		{
 			_t[end++] = in;
 			end = end % SIZE;
 			++count;
@@ -68,7 +71,8 @@ namespace FlexKit
 				head++;
 		}
 
-		Ty pop_front(){
+		Ty pop_front()
+		{
 			size_t i = end;
 			if (count){
 				--count;
@@ -516,6 +520,46 @@ namespace FlexKit
 	}
 
 
+	template<typename TY>
+	constexpr bool TYPE_CHECK(TY A, TY B) { return true; }
+
+	template<typename TY_1, typename TY_2>
+	constexpr bool TYPE_CHECK(TY_1 A, TY_2 B) { return false; }
+
+
+	template<typename TY>
+	bool IsXInSet(const TY& X, std::initializer_list<TY> C)
+	{
+		for (auto& Ci : C)
+			if (Ci == X)
+				return true;
+
+		return false;
+	}
+
+
+	template<typename TY_C, typename TY>
+	bool IsXInSet(const TY& X, const TY_C& C)
+	{
+		static_assert(TYPE_CHECK(TY(), TY_C::TYPE()), "TYPES MUST MATCH!");
+		for (auto& Ci : C)
+			if (Ci == X)
+				return true;
+
+		return false;
+	}
+
+	template<typename TY_C, typename TY, typename PRED>
+	bool IsXInSet(const TY& X, const TY_C& C, PRED& Pred)
+	{
+		for (auto& Ci : C)
+			if (Pred(Ci, X))
+				return true;
+
+		return false;
+	}
+
+
 	/************************************************************************************************/
 
 	// Whole Point of this single linked list is for communication multiple Threads (Producer Consumer Queues)
@@ -859,6 +903,7 @@ namespace FlexKit
 		int _Head, _Size;
 		Ty Buffer[SIZE];
 	};
+
 
 	/************************************************************************************************/
 }

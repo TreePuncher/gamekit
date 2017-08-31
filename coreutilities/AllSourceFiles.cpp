@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Resources.cpp"
 //#include "..\coreutilities\signal.cpp"
 #include "..\coreutilities\ThreadUtilities.cpp"
+#include "..\coreutilities\Transforms.cpp"
 #include "..\coreutilities\timeutilities.cpp"
 #include "..\coreutilities\type.cpp"
 

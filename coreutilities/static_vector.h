@@ -310,6 +310,8 @@ namespace FlexKit
 			std::sort(begin.I, end.I, PD);
 		}
 		
+
+		typedef TY_ TYPE;
 	private:
 		size_t          Size;							// Used Counter
 		char			Padding[0x10 - sizeof(size_t)];	// 8-Byte Pad to keep 16byte Alignment of Elements

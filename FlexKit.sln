@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26430.15
+VisualStudioVersion = 15.0.26730.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKit", "FlexKit.vcxproj", "{54DB6A2B-4E65-4379-AF8B-4245F63D6512}"
 EndProject
@@ -25,6 +25,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameState", "GameState\Game
 	ProjectSection(ProjectDependencies) = postProject
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8} = {A0D6FF61-30E0-4936-A264-4F4EDD102EA8}
 	EndProjectSection
+EndProject
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "MayaToolsetPlugin", "FlexKitMayaPlug\MayaToolsetPlugin.pyproj", "{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -90,9 +92,18 @@ Global
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Release|x64.Build.0 = Release|x64
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Release|x86.ActiveCfg = Release|Win32
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Release|x86.Build.0 = Release|Win32
+		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Release|x64.ActiveCfg = Release|Any CPU
+		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {88CC678C-48E2-400F-9307-9B44D971D652}
 	EndGlobalSection
 	GlobalSection(Performance) = preSolution
 		HasPerformanceSessions = true

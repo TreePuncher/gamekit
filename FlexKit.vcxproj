@@ -193,6 +193,7 @@
     <ClInclude Include="coreutilities\ThreadUtilities.h" />
     <ClInclude Include="coreutilities\timeutilities.h" />
     <ClInclude Include="coreutilities\GraphicsComponents.h" />
+    <ClInclude Include="coreutilities\Transforms.h" />
     <ClInclude Include="coreutilities\type.h" />
     <ClInclude Include="graphicsutilities\AnimationUtilities.h" />
     <ClInclude Include="graphicsutilities\DDSUtilities.h" />
@@ -260,6 +261,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="coreutilities\GraphicsComponents.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Transforms.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
