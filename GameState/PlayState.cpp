@@ -142,8 +142,8 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 
 	//Translate(Player, dT * float3{0, -98.0f, 0});
 	OrbitCameras.Update(dT);
-	//Physics.UpdateSystem(dT);
-	//TPC.Update(dT);
+	Physics.UpdateSystem(dT);
+	TPC.Update(dT);
 
 	return false;
 }

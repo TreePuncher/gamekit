@@ -303,6 +303,35 @@ namespace FlexKit
 		PIPELINE_DEST_ALL  = 0xFF
 	};
 
+	inline D3D12_SHADER_VISIBILITY PipelineDest2ShaderVis(PIPELINE_DESTINATION PD)
+	{
+		switch (PD)
+		{
+		case FlexKit::PIPELINE_DEST_NONE:
+			return D3D12_SHADER_VISIBILITY_ALL;
+		case FlexKit::PIPELINE_DEST_IA:
+			return D3D12_SHADER_VISIBILITY_ALL;
+		case FlexKit::PIPELINE_DEST_HS:
+			return D3D12_SHADER_VISIBILITY_HULL;
+		case FlexKit::PIPELINE_DEST_GS:
+			return D3D12_SHADER_VISIBILITY_GEOMETRY;
+		case FlexKit::PIPELINE_DEST_VS:
+			return D3D12_SHADER_VISIBILITY_VERTEX;
+		case FlexKit::PIPELINE_DEST_PS:
+			return D3D12_SHADER_VISIBILITY_PIXEL;
+		case FlexKit::PIPELINE_DEST_CS:
+			return D3D12_SHADER_VISIBILITY_ALL;
+		case FlexKit::PIPELINE_DEST_OM:
+			return D3D12_SHADER_VISIBILITY_ALL;
+		case FlexKit::PIPELINE_DEST_DS:
+			return D3D12_SHADER_VISIBILITY_DOMAIN;
+		case FlexKit::PIPELINE_DEST_ALL:
+			return D3D12_SHADER_VISIBILITY_ALL;
+		default:
+			break;
+		}
+		return D3D12_SHADER_VISIBILITY_ALL;
+	}
 
 	/************************************************************************************************/
 
@@ -797,7 +826,7 @@ namespace FlexKit
 	struct ShaderResource;
 	struct Shader;
 	struct Texture2D;
-	struct RenderSystem;
+	class RenderSystem;
 
 
 	/************************************************************************************************/
@@ -994,41 +1023,321 @@ namespace FlexKit
 		HandleUtilities::HandleTable<ConstantBufferHandle>	Handles;
 	};
 
+	enum class DescHeapEntryType : uint32_t
+	{
+		ConstantBuffer,
+		ShaderResource,
+		UAVBuffer,
+		HeapError
+	};
+
+	enum class RootSignatureEntryType : uint32_t
+	{
+		DescriptorHeap,
+		ConstantBuffer,
+		StructuredBuffer,
+		UnorderedAcess,
+		Error
+	};
+
+	struct Descriptor
+	{
+		DescHeapEntryType Type;
+
+		union Anonymouse
+		{
+			Anonymouse() {}
+			ConstantBufferHandle		ConstantBuffer;
+			ID3D12Resource*				Resource_ptr;
+			D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
+			D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
+		}Value;
+	};
+
 	template<size_t ENTRYCOUNT = 16>
+	class DesciptorHeapLayout
+	{
+	public:
+		bool SetParameterAsConstantBufferView(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL,
+			size_t BufferTag = -1)
+		{
+			HeapDescriptor Desc;
+			Desc.Register		= Register;
+			Desc.Space			= RegisterSpace;
+			Desc.Type			= DescHeapEntryType::ConstantBuffer;
+			Desc.Destination	= AccessableStages;
+
+			if (Entries.size() < Index)
+			{
+				if (!Entries.full())
+					Entries.resize(Index + 1);
+				else
+					return false;
+			}
+			Entries[Index] = Desc;
+
+			return true;
+		}
+
+
+		bool SetParameterAsShaderResourceView(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL,
+			size_t BufferTag = -1)
+		{
+			HeapDescriptor Desc;
+			Desc.Register		= Register;
+			Desc.Space			= RegisterSpace;
+			Desc.Type			= DescHeapEntryType::ShaderResource;
+			Desc.Destination	= AccessableStages;
+
+			if (Entries.size() < Index)
+			{
+				if (!Entries.full())
+					Entries.resize(Index + 1);
+				else
+					return false;
+			}
+
+			Entries[Index] = Desc;
+
+			return true;
+		}
+
+
+		bool Check()
+		{
+			return (!IsXInSet(DescHeapEntryType::HeapError, Entries, [](auto a, auto b) -> bool
+					{ return a == b.Type; }));
+		}
+
+
+		struct HeapDescriptor
+		{
+			uint32_t				Register		= -1;
+			uint32_t				Space			= 0;
+			DescHeapEntryType		Type			= DescHeapEntryType::HeapError;
+			PIPELINE_DESTINATION	Destination;
+		};
+
+
+		static_vector<HeapDescriptor, ENTRYCOUNT> Entries;
+	};
+
+
 	class DesciptorHeap
 	{
+	public:
 		DesciptorHeap(DescHeapStack* Stack)
 		{
 		}
-		struct Descriptor
-		{
-			enum class Entry_TYPE
-			{
-				ConstantBuffer,
-				StructuredBuffer,
-				TextureBuffer,
-				UAVBuffer,
-			}Type;
 
-			union
+		struct EntriesBlock {
+			Descriptor& operator [](size_t) 
 			{
-				ConstantBufferHandle		ConstantBuffer;
-				ID3D12Resource*				Resource_ptr;
-				D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
-				D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
-			};
-		};
-		static_vector<Descriptor, ENTRYCOUNT> Entries;
+			}
+			static_vector<Descriptor, 16>	Entries;
+			EntriesBlock*					Next;
+		}Entries;
 	};
 
 
 	class RootSignature
 	{
+	public:
+		RootSignature(iAllocator* Memory) :
+			Signature(nullptr),
+			Heaps(Memory)
+		{
+		}
+
+
+		~RootSignature()
+		{
+			Signature = nullptr;
+		}
+
+
+		void Release()
+		{
+			if (Signature)
+				Signature->Release();
+			Signature = nullptr;
+		}
+
+
+		template<size_t SIZE>
+		bool SetParameterAsDescriptorTable(
+			size_t Index, DesciptorHeapLayout<SIZE>& Layout, size_t Tag = -1)
+		{
+			RootEntry Desc;
+			Desc.Type					= RootSignatureEntryType::DescriptorHeap;
+			Desc.DescriptorHeap.HeapIdx = Heaps.size();
+			Heaps.push_back({Index, Layout});
+
+			if (RootEntries.size() <= Index)
+			{
+				if (!RootEntries.full()) {
+					RootEntries.resize(Index + 1);
+					Tags.resize(Index + 1);
+				}
+				else
+					return false;
+			}
+
+			RootEntries[Index] = Desc;
+			Tags[Index]        = Tag;
+
+			return false;
+		}
+
+
+		bool SetParameterAsConstantBufferView(
+			size_t Index, size_t Register, size_t RegisterSpace, 
+			PIPELINE_DESTINATION AccessableStages, size_t Tag = -1)
+		{
+			RootEntry Desc;
+			Desc.Type							= RootSignatureEntryType::ConstantBuffer;
+			Desc.ConstantBuffer.Register		= Register;
+			Desc.ConstantBuffer.RegisterSpace	= RegisterSpace;
+			Desc.ConstantBuffer.Accessibility	= AccessableStages;
+
+
+			if (RootEntries.size() <= Index)
+			{
+				if (!RootEntries.full())
+					RootEntries.resize(Index + 1);
+				else
+					return false;
+			}
+
+			RootEntries[Index] = Desc;
+			Tags[Index]        = Tag;
+
+			return false;
+		}
+
+
+		bool SetParameterAsShaderResourceView(
+			size_t Index, size_t Register, size_t RegisterSpace = 0,
+			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL,
+			size_t Tag = -1)
+		{
+			RootEntry Desc;
+			Desc.Type							= RootSignatureEntryType::StructuredBuffer;
+			Desc.ConstantBuffer.Register		= Register;
+			Desc.ConstantBuffer.RegisterSpace	= RegisterSpace;
+			Desc.ConstantBuffer.Accessibility	= AccessableStages;
+
+			if (RootEntries.size() < Index)
+			{
+				if (!RootEntries.full())
+					RootEntries.resize(Index + 1);
+				else
+					return false;
+			}
+
+			RootEntries[Index] = Desc;
+			Tags[Index]        = Tag;
+
+			return false;
+		}
+
+
+		bool Build(RenderSystem* RS, iAllocator* TempMemory);
+		void Print();
+
+
+		operator ID3D12RootSignature* () { return Signature; };
+
+
+	private:
+		struct HeapEntry
+		{
+			size_t					idx;
+			DesciptorHeapLayout<16> Heap;
+		};
+
+		struct RootEntry
+		{
+			RootSignatureEntryType Type = RootSignatureEntryType::Error;
+			union 
+			{
+				struct DH
+				{
+					size_t					HeapIdx;
+					PIPELINE_DESTINATION	Accessibility;
+				}DescriptorHeap;
+
+				struct CB
+				{
+					uint32_t				Register;
+					uint32_t				RegisterSpace;
+					PIPELINE_DESTINATION	Accessibility;
+				}ConstantBuffer;
+
+				struct SR
+				{
+					uint32_t				Register;
+					uint32_t				RegisterSpace;
+					PIPELINE_DESTINATION	Accessibility;
+				}ShaderResource;
+
+				struct UAV
+				{
+					uint32_t				Register;
+					uint32_t				RegisterSpace;
+					PIPELINE_DESTINATION	Accessibility;
+				}UnorderedAccess;
+			};
+		};
+
+		ID3D12RootSignature*		Signature;
+		static_vector<size_t, 12>	Tags;
+		Vector<HeapEntry>			Heaps;
+		static_vector<RootEntry>	RootEntries;
+	};
+
+	class Context
+	{
+	public:
+
 	};
 
 
-	FLEXKITAPI struct RenderSystem
+	FLEXKITAPI class RenderSystem
 	{
+	public:
+		RenderSystem(iAllocator* Memory_IN) :
+			Memory(Memory_IN),
+			Library(Memory_IN)
+		{
+			pDevice                = nullptr;
+			pDebug                 = nullptr;
+			pDebugDevice           = nullptr;
+
+			pGIFactory		       = nullptr;
+			pDXGIAdapter	       = nullptr;
+			GraphicsQueue	       = nullptr;
+			UploadQueue		       = nullptr;
+			ComputeQueue	       = nullptr;
+
+			ID3D12Fence* Fence	   = nullptr;
+			ID3D12Fence* CopyFence = nullptr;
+
+			CurrentIndex       = 0;
+			CurrentUploadIndex = 0;
+			FenceCounter       = 0;
+			FenceUploadCounter = 0;
+
+			BufferCount             = 0;
+			DescriptorRTVSize       = 0;
+			DescriptorDSVSize       = 0;
+			DescriptorCBVSRVUAVSize = 0;
+		}
+
 		bool Initiate(Graphics_Desc* desc_in);
 		void Release();
 
@@ -1096,10 +1405,17 @@ namespace FlexKit
 
 		struct RootSigLibrary
 		{
+			RootSigLibrary(iAllocator* Memory):
+				TestSignature(Memory)
+			{
+
+			}
 			ID3D12RootSignature* RS2UAVs4SRVs4CBs;  // 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs4SRVs;		// 4CBVs On all Stages, 4 SRV On all Stages
 			ID3D12RootSignature* RS4CBVs_SO;		// Stream Out Enabled
 			ID3D12RootSignature* ShadingRTSig;		// Signature For Compute Based Deferred Shading
+
+			RootSignature	TestSignature;
 		}Library;
 
 		PipelineStateTable* States;

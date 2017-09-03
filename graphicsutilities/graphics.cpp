@@ -434,6 +434,119 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	bool RootSignature::Build(RenderSystem* RS, iAllocator* TempMemory)
+	{
+		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps(TempMemory);
+		DesciptorHeaps.reserve(12);
+
+		static_vector<CD3DX12_ROOT_PARAMETER> Parameters;
+
+		for (auto& I : RootEntries)
+		{
+			CD3DX12_ROOT_PARAMETER Param;
+
+			switch (I.Type)
+			{
+			case RootSignatureEntryType::DescriptorHeap:
+			{
+				auto  HeapIdx = I.DescriptorHeap.HeapIdx;
+				auto& HeapEntry = Heaps[HeapIdx];
+
+				DesciptorHeaps.push_back(Vector<CD3DX12_DESCRIPTOR_RANGE>(TempMemory));
+
+				for (auto& H : HeapEntry.Heap.Entries)
+				{
+					D3D12_DESCRIPTOR_RANGE_TYPE RangeType;
+					switch (H.Type)
+					{
+					case DescHeapEntryType::ConstantBuffer:
+						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+						break;
+					case DescHeapEntryType::ShaderResource:
+						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+						break;
+					case DescHeapEntryType::UAVBuffer:
+						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+						break;
+					case DescHeapEntryType::HeapError:
+						FK_ASSERT(false);
+					default:
+						break;
+					}
+
+					CD3DX12_DESCRIPTOR_RANGE Range;
+					Range.Init(
+						RangeType,
+						H.Space, H.Register, 0);
+
+					DesciptorHeaps.back().push_back(Range);
+				}
+
+				Param.InitAsDescriptorTable(
+					DesciptorHeaps.back().size(), 
+					DesciptorHeaps.back().begin(), 
+					PipelineDest2ShaderVis(I.DescriptorHeap.Accessibility));
+			}	break;
+			case RootSignatureEntryType::ConstantBuffer:
+			{
+				Param.InitAsConstantBufferView
+				(	I.ConstantBuffer.Register, 
+					I.ConstantBuffer.RegisterSpace, 
+					PipelineDest2ShaderVis(I.ConstantBuffer.Accessibility));
+
+			}	break;
+			case RootSignatureEntryType::StructuredBuffer:
+			{
+				Param.InitAsShaderResourceView(
+					I.ShaderResource.Register,
+					I.ShaderResource.RegisterSpace,
+					PipelineDest2ShaderVis(I.ConstantBuffer.Accessibility));
+			}	break;
+			case RootSignatureEntryType::UnorderedAcess:
+			{
+				Param.InitAsUnorderedAccessView(
+					I.ShaderResource.Register,
+					I.ShaderResource.RegisterSpace,
+					PipelineDest2ShaderVis(I.ConstantBuffer.Accessibility));
+			}break;
+
+			default:
+				return false;
+				FK_ASSERT(false);
+			}
+			Parameters.push_back(Param);
+		}
+
+		ID3DBlob* SignatureBlob = nullptr;
+		ID3DBlob* ErrorBlob = nullptr;
+		CD3DX12_STATIC_SAMPLER_DESC Default(0);
+		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
+
+		RootSignatureDesc.Init(Parameters.size(), Parameters.begin(), 1, &Default);
+		HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &SignatureBlob, &ErrorBlob);
+		
+		if (!SUCCEEDED(HR))
+		{
+			std::cout << (char*)ErrorBlob->GetBufferPointer() << '\n';
+			ErrorBlob->Release();
+			return false;
+		}
+
+		HR = RS->pDevice->CreateRootSignature(0, SignatureBlob->GetBufferPointer(),
+			SignatureBlob->GetBufferSize(), IID_PPV_ARGS(&Signature));
+
+		FK_ASSERT(SUCCEEDED(HR));
+		SETDEBUGNAME(Signature, "ShadingRTSig");
+		SignatureBlob->Release(); 
+
+		DesciptorHeaps.clear();
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void CreateRootSignatureLibrary(RenderSystem* RS)
 	{
 		ID3D12Device* Device = RS->pDevice;
@@ -577,6 +690,19 @@ namespace FlexKit
 			Signature->Release();
 
 			RS->Library.ShadingRTSig = RootSig;
+		}
+		{
+			DesciptorHeapLayout<16> DescriptorHeap;
+			DescriptorHeap.SetParameterAsConstantBufferView(0, 4, 4);
+			DescriptorHeap.SetParameterAsShaderResourceView(1, 0, 4);
+			FK_ASSERT(DescriptorHeap.Check());
+
+			RS->Library.TestSignature.SetParameterAsDescriptorTable(0, DescriptorHeap);
+			RS->Library.TestSignature.SetParameterAsConstantBufferView(1, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.SetParameterAsConstantBufferView(2, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.SetParameterAsConstantBufferView(3, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.SetParameterAsConstantBufferView(4, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.Build(RS, RS->Memory);
 		}
 	}
 

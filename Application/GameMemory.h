@@ -148,7 +148,8 @@ struct EngineCore
 		Cameras			(&RenderSystem, &Nodes, memory->BlockAllocator),
 		Nodes			(memory->NodeMem, sizeof(EngineMemory::NodeMem)),
 		Memory			(memory),
-		FrameLock		(true)
+		FrameLock		(true),
+		RenderSystem	(memory->BlockAllocator)
 	{}
 
 

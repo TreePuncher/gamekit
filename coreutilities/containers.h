@@ -550,10 +550,10 @@ namespace FlexKit
 	}
 
 	template<typename TY_C, typename TY, typename PRED>
-	bool IsXInSet(const TY& X, const TY_C& C, PRED& Pred)
+	bool IsXInSet(const TY& X, const TY_C& C, PRED Pred)
 	{
 		for (auto& Ci : C)
-			if (Pred(Ci, X))
+			if (Pred(X, Ci))
 				return true;
 
 		return false;

@@ -169,11 +169,11 @@ namespace FlexKit
 #endif
 	}
 
-	inline float GetFirst	(__m128& V)	{ return GetElement(V, 3); }
-	inline float GetLast	(__m128& V)	{ return GetElement(V, 0); }
+	inline float GetFirst	(__m128& V)	{ return GetElement(V, 0); } // Should Return the X Component
+	inline float GetLast	(__m128& V)	{ return GetElement(V, 2); } // SHould Return the W Component
 
-	inline void SetFirst	(__m128& V, float X)	{ return SetElement(V, X, 3); }
-	inline void SetLast		(__m128& V, float X)	{ return SetElement(V, X, 0); }
+	inline void SetFirst	(__m128& V, float X)	{ return SetElement(V, X, 0); }
+	inline void SetLast		(__m128& V, float X)	{ return SetElement(V, X, 3); }
 
 
 	/************************************************************************************************/

@@ -152,10 +152,7 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 	SetInputWIndow		( &Engine->Window );
 	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->GetBlockMemory() );
 
-	// Initate Component Systems
-	//Engine->Cameras.InitiateSystem	(&Engine->RenderSystem, &Engine->Nodes, Engine->GetBlockMemory() );
-	//Engine->Nodes.InitiateSystem	(Engine->Memory->NodeMem, NODEBUFFERSIZE);
-
+	// Initiate Component Systems
 	ForwardPass_DESC FP_Desc	{ &Engine->DepthBuffer, &Engine->Window };
 	TiledRendering_Desc DP_Desc	{ &Engine->DepthBuffer, &Engine->Window, nullptr };
 

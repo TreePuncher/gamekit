@@ -53,7 +53,7 @@ namespace FlexKit
 			float NdP	= N.dot(P);
 			float D		= NdP - r;
 			Left		= D <= 0;
-			int x = 0;
+			int x = 0; 
 		}
 		{
 			auto P = V - F->Planes[EPlane_RIGHT].Orgin;

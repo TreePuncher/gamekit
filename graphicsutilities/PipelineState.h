@@ -43,7 +43,7 @@ struct ID3D12PipelineState;
 
 namespace FlexKit
 {
-	struct RenderSystem;
+	class RenderSystem;
 
 
 	enum EPIPELINESTATES

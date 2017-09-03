@@ -608,7 +608,9 @@ namespace FlexKit
 
 			BoundingSphere BoundingVolume = float4((Lq * BS.xyz()) + Pw, BS.w * Ls);
 
-			if (SM->DrawableVisibility[I] && Mesh && CompareBSAgainstFrustum(&F, BoundingVolume))
+			auto DrawableVisibility = SM->DrawableVisibility[I];
+
+			if (DrawableVisibility && Mesh && CompareBSAgainstFrustum(&F, BoundingVolume))
 			{
 				if (!E.Transparent)
 					PushPV(&E, out);
