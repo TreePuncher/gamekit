@@ -434,6 +434,84 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	DesciptorHeap::DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
+		FillState(TempMemory)
+	{
+		const size_t EntryCount = Layout_IN.size();
+		DescriptorHeap	= ReserveDescHeap(RS, EntryCount);
+		Layout			= &Layout_IN;
+
+		for (size_t I = 0; I < EntryCount; I++)
+			FillState.push_back(false);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DesciptorHeap::NullFill(RenderSystem* RS)
+	{
+		auto& Entries = Layout->Entries;
+		for (size_t I = 0, Idx = 0; I < FillState.size(); I++)
+		{
+			auto& e = Entries[I];
+
+			for (size_t II = 0; II < e.Space; II++)
+			{
+				if (!FillState[Idx])
+				{
+					switch (e.Type)
+					{
+					case DescHeapEntryType::ConstantBuffer:
+					{
+						auto POS = IncrementHeapPOS(
+							DescriptorHeap,
+							RS->DescriptorCBVSRVUAVSize,
+							Idx);
+
+						PushCBToDescHeap(
+							RS, RS->NullConstantBuffer.Get(),
+							POS, 1024);
+					}	break;
+					case DescHeapEntryType::ShaderResource:
+					{
+						auto POS = IncrementHeapPOS(
+							DescriptorHeap,
+							RS->DescriptorCBVSRVUAVSize,
+							Idx);
+
+						PushSRVToDescHeap(
+							RS, RS->NullSRV1D.Get(),
+							POS, 0, 16);
+					}	break;
+					case DescHeapEntryType::UAVBuffer:
+					{
+						auto POS = IncrementHeapPOS(
+							DescriptorHeap,
+							RS->DescriptorCBVSRVUAVSize,
+							Idx);
+
+						PushUAV2DToDescHeap(
+							RS, RS->NullUAV,
+							POS);
+					}	break;
+					case DescHeapEntryType::HeapError:
+					{
+						FK_ASSERT(false, "ERROR IN HEAP LAYOUT!");
+					}	break;
+					default:
+						break;
+					}
+					Idx++;
+				}
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	bool RootSignature::Build(RenderSystem* RS, iAllocator* TempMemory)
 	{
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps(TempMemory);
@@ -522,6 +600,7 @@ namespace FlexKit
 		CD3DX12_STATIC_SAMPLER_DESC Default(0);
 		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
 
+		RootSignatureDesc.Flags; 
 		RootSignatureDesc.Init(Parameters.size(), Parameters.begin(), 1, &Default);
 		HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &SignatureBlob, &ErrorBlob);
 		
@@ -541,6 +620,149 @@ namespace FlexKit
 
 		DesciptorHeaps.clear();
 		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetRootSignature(RootSignature& RS)
+	{
+		DeviceContext->SetGraphicsRootSignature(RS);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetPipelineState(ID3D12PipelineState* PSO)
+	{
+		CurrentPipelineState = PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetRenderTargets(static_vector<Texture2D*, 16> RTs)
+	{
+		auto RTVPOSCPU		= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
+		auto RTVPOS			= ReserveRTVHeap					(RS, RTs.size());
+		auto RTVHeap		= GetCurrentRTVTable				(RS);
+		RenderTargetCount	= RTs.size();
+
+		for (auto I : RTs)
+			RTVPOS = PushRenderTarget(RS, I, RTVPOS);
+		
+		UpdateRTVState();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetViewports(static_vector<D3D12_VIEWPORT, 16> VPs)
+	{
+		Viewports = VPs;
+		DeviceContext->RSSetViewports(VPs.size(), VPs.begin());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetDepthStencil(Texture2D* DS)
+	{
+		if (DS)
+		{
+			auto DSVPOSCPU		= GetDSVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On DSV heap on CPU
+			auto DSVPOS			= ReserveDSVHeap					(RS, 1);
+			auto DSVHeap		= GetCurrentRTVTable				(RS);
+			PushDepthStencil(RS, DS, DSVPOS);
+		}
+
+		DepthStencilEnabled = DS != nullptr;
+		UpdateRTVState();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetPrimitiveTopology(EInputTopology Topology)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBuffer& CB)
+	{
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, CB.Get()->GetGPUVirtualAddress());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetGraphicsDescriptorTable(size_t idx, DesciptorHeap& DH)
+	{
+		DeviceContext->SetGraphicsRootDescriptorTable(idx, DH);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetGraphicsShaderResourceView(size_t, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::AddIndexBuffer(TriMesh* Mesh)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::AddVertexBuffers(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers)
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::DrawIndexed(size_t IndexCount)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::Clear()
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::UpdateRTVState()
+	{
+
+		DeviceContext->OMSetRenderTargets(
+			RenderTargetCount,
+			RenderTargetCount ? &RTVPOSCPU : nullptr, false,
+			DepthStencilEnabled ? &DSVPOSCPU : nullptr);
 	}
 
 

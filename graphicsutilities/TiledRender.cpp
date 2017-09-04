@@ -508,82 +508,46 @@ namespace FlexKit
 		Texture2D Target,		const Camera*	C,		TextureManager* TM,
 		GeometryTable*	GT,		TextureVTable*	Texture, OcclusionCuller* OC )
 	{
-		auto CL				= GetCurrentCommandList				(RS);
-		auto FrameResources	= GetCurrentFrameResources			(RS);
+		auto FrameResources	= GetCurrentFrameResources(RS);
 
-		auto DescPOSGPU		= GetDescTableCurrentPosition_GPU	(RS); // _Ptr to Beginning of Heap On GPU
-		auto DescPOS		= ReserveDescHeap					(RS, 6);
-		auto DescriptorHeap	= GetCurrentDescriptorTable			(RS);
-
-		auto RTVPOSCPU		= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
-		auto RTVPOS			= ReserveRTVHeap					(RS, 8);
-		auto RTVHeap		= GetCurrentRTVTable				(RS);
-
-		auto DSVPOSCPU		= GetDSVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On DSV heap on CPU
-		auto DSVPOS			= ReserveDSVHeap					(RS, 1);
-		auto DSVHeap		= GetCurrentRTVTable				(RS);
-
-
-#if 1
-		const auto CullMode = D3D12_PREDICATION_OP_EQUAL_ZERO;
-#else 
-		const auto CullMode = D3D12_PREDICATION_OP_NOT_EQUAL_ZERO;
-#endif
-
-		auto SetPredication = [&](PVEntry& PV) {
-			if (OC && PV.OcclusionID != -1)
-				CL->SetPredication(OC->Get(), PV.OcclusionID * 8, CullMode);
-			else
-				CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
-		};
-
-		{// Push Temps
-			auto Itr = DescPOS;
-			for (size_t I = 0; I < 6; ++I)
-				Itr = PushTextureToDescHeap(RS, RS->NullSRV, Itr);
-		}
-
-		CL->SetDescriptorHeaps	(1, &DescriptorHeap);
+		Context Ctx(GetCurrentCommandList(RS), RS);
+		Ctx.Clear(); // Clear Any Residual State
 
 		size_t BufferIndex = Pass->CurrentBuffer;
 
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,		RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex,		RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].EmissiveTex,		RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].RoughnessMetal,	RTVPOS);
-		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,		RTVPOS);
-		//RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].PositionTex,		RTVPOS);
-		PushDepthStencil(RS, &Pass->GBuffers[BufferIndex].DepthBuffer, DSVPOS);
+		Ctx.SetDepthStencil(&Pass->GBuffers[BufferIndex].DepthBuffer);
+		Ctx.SetRenderTargets(
+			{	&Pass->GBuffers[BufferIndex].ColorTex, 
+				&Pass->GBuffers[BufferIndex].SpecularTex, 
+				&Pass->GBuffers[BufferIndex].EmissiveTex, 
+				&Pass->GBuffers[BufferIndex].RoughnessMetal, 
+				&Pass->GBuffers[BufferIndex].NormalTex });
 
-		{	// Setup State
-			D3D12_RECT		RECT = D3D12_RECT();
-			D3D12_VIEWPORT	VP	 = D3D12_VIEWPORT();
 
-			RECT.right  = (UINT)Target.WH[0];
-			RECT.bottom = (UINT)Target.WH[1];
-			VP.Height   = (UINT)Target.WH[1];
-			VP.Width    = (UINT)Target.WH[0];
-			VP.MaxDepth = 1;
-			VP.MinDepth = 0;
-			VP.TopLeftX = 0;
-			VP.TopLeftY = 0;
+		// Setup State
+		D3D12_RECT		RECT = D3D12_RECT();
+		D3D12_VIEWPORT	VP	 = D3D12_VIEWPORT();
 
-			D3D12_VIEWPORT	VPs[]	= { VP, VP, VP, VP, VP, VP, };
-			D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT, RECT, RECT };
+		RECT.right  = (UINT)Target.WH[0];
+		RECT.bottom = (UINT)Target.WH[1];
+		VP.Height   = (UINT)Target.WH[1];
+		VP.Width    = (UINT)Target.WH[0];
+		VP.MaxDepth = 1;
+		VP.MinDepth = 0;
+		VP.TopLeftX = 0;
+		VP.TopLeftY = 0;
 
-			CL->SetGraphicsRootSignature			(Pass->Filling.FillRTSig);
-			CL->SetPipelineState					(Pass->Filling.PSO);
-			CL->OMSetRenderTargets					(6, &RTVPOSCPU, true, &DSVPOSCPU);
-			
-			CL->SetGraphicsRootConstantBufferView	(DFRP_ShadingConstants, RS->NullConstantBuffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView	(DFRP_CameraConstants,	C->Buffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView	(DFRP_TextureConstants, RS->NullConstantBuffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootDescriptorTable		(DFRP_Textures,			DescPOS);
+		D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT, RECT, RECT };
 
-			CL->RSSetViewports						(5, VPs);
-			CL->RSSetScissorRects					(5, RECTs);
-			CL->IASetPrimitiveTopology				(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		}
+		Ctx.SetRootSignature			(RS->Library.TestSignature);
+		Ctx.SetPipelineState			(Pass->Filling.PSO);
+		Ctx.SetViewports				({ VP, VP, VP, VP, VP, VP, });
+		Ctx.SetPrimitiveTopology		(EInputTopology::EIT_TRIANGLELIST);
+
+		Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants, RS->NullConstantBuffer);
+		Ctx.SetGraphicsConstantBufferView	(DFRP_CameraConstants,	C->Buffer);
+		Ctx.SetGraphicsConstantBufferView	(DFRP_TextureConstants, RS->NullConstantBuffer);
+
 		
 		TriMeshHandle	LastHandle	= INVALIDMESHHANDLE;
 		TriMesh*		Mesh		= nullptr;
@@ -592,62 +556,9 @@ namespace FlexKit
 		auto itr = _PVS->begin();
 		auto end = _PVS->end();
 
-		for (;itr != end;++itr)
-		{
-			Drawable* E = (*itr).D;
-
-			if (E->Posed || E->Textured)
-				break;
-
-			TriMeshHandle CurrentHandle = E->MeshHandle;
-			if (CurrentHandle == INVALIDMESHHANDLE)
-				continue;
-
-			if(CurrentHandle != LastHandle)
-			{
-				TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
-				
-#ifdef _DEBUG
-				if (!CurrentMesh)
-					continue;
-#endif		
-
-				IndexCount			= CurrentMesh->IndexCount;
-				size_t IBIndex		= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-
-				D3D12_INDEX_BUFFER_VIEW		IndexView;
-				IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
-				IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-				IndexView.SizeInBytes		= IndexCount * 32;
-
-				static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,		 CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,	 CurrentMesh, VBViews));
-			
-
-
-				CL->IASetIndexBuffer(&IndexView);
-				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin() );
-				LastHandle = CurrentHandle;
-			}
-
-			SetPredication(*itr);
-
-			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
-			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
-		}
-
-		if(itr != end)
-			CL->SetPipelineState(Pass->Filling.PSOAnimated);
-
-		D3D12_SHADER_RESOURCE_VIEW_DESC Desc;
-		Desc.ViewDimension	     = D3D12_SRV_DIMENSION_BUFFER;
-		Desc.Buffer.FirstElement = 0;
-		Desc.Buffer.Flags        = D3D12_BUFFER_SRV_FLAG_NONE;
-
 		for (; itr != end; ++itr)
 		{
+
 			Drawable* E = itr->D;
 			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
 			auto AnimationState		= E->PoseState;
@@ -658,8 +569,45 @@ namespace FlexKit
 			if(!AnimationState || !AnimationState->Resource)
 				continue;
 
-			Desc.Buffer.NumElements			= AnimationState->JointCount;
-			Desc.Buffer.StructureByteStride = sizeof(float4x4) * 2;
+			TriMeshHandle CurrentHandle = E->MeshHandle;
+			if (CurrentHandle == INVALIDMESHHANDLE)
+				continue;
+
+			if (CurrentHandle != LastHandle)
+			{
+				Ctx.AddIndexBuffer(CurrentMesh);
+				Ctx.AddVertexBuffers(
+						CurrentMesh, 
+						{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL	});
+				LastHandle = CurrentHandle;
+			}
+
+
+			DesciptorHeap Heap(RS, RS->Library.TestSignature.GetDescHeap(0), nullptr);
+
+			Ctx.SetGraphicsDescriptorTable		(0, Heap);
+			Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants,	C->Buffer);
+			Ctx.DrawIndexed						(IndexCount);
+		}
+
+		/*
+		if(itr != end)
+			Ctx.SetPipelineState(Pass->Filling.PSOAnimated);
+
+		for (; itr != end; ++itr)
+		{
+
+			Drawable* E = itr->D;
+			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+			auto AnimationState		= E->PoseState;
+			
+			if (!E->Posed || E->Textured)
+				break;
+			
+			if(!AnimationState || !AnimationState->Resource)
+				continue;
 
 			TriMeshHandle CurrentHandle = E->MeshHandle;
 			if (CurrentHandle == INVALIDMESHHANDLE)
@@ -667,98 +615,26 @@ namespace FlexKit
 
 			if (CurrentHandle != LastHandle)
 			{
-				size_t IBIndex = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-				IndexCount = CurrentMesh->IndexCount;
-
-				D3D12_INDEX_BUFFER_VIEW	IndexView;
-				IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress(),
-					IndexView.SizeInBytes = IndexCount * 32;
-
-				IndexView.Format = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-
-				static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-				{	FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
-					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
-					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
-					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,	CurrentMesh, VBViews));
-					FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,	CurrentMesh, VBViews));
-				}
-
-				CL->IASetIndexBuffer(&IndexView);
-				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+				Ctx.AddIndexBuffer(CurrentMesh);
+				Ctx.AddVertexBuffers(
+						CurrentMesh, 
+						{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2 });
 				LastHandle = CurrentHandle;
 			}
 
-			SetPredication(*itr);
 
-			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
-			CL->SetGraphicsRootShaderResourceView(DFRP_AnimationResources, AnimationState->Resource->GetGPUVirtualAddress());
-			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
+			DesciptorHeap Heap(FrameResources->DescHeap, RS->Library.TestSignature.GetDescHeap(0));
+
+			Ctx.SetRootDescriptorTable			(0, Heap);
+			Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants,		C->Buffer);
+			Ctx.SetGraphicsShaderResourceView	(DFRP_AnimationResources,	AnimationState, AnimationState->JointCount, sizeof(float4x4) * 2);
+			Ctx.DrawIndexed						(IndexCount);
 		}
-
-		if (itr != end)
-			CL->SetPipelineState(Pass->Filling.PSOTextured);
-
-		TextureSet*	LastTextureSet = nullptr;
-
-		for (; itr != end; ++itr)
-		{
-			Drawable* E = (*itr).D;
-
-			if (E->Posed)
-				break;
-
-			TriMeshHandle CurrentHandle		= E->MeshHandle;
-
-			if (CurrentHandle == INVALIDMESHHANDLE)
-				continue;
-
-			TriMesh*	CurrentMesh			= GetMesh(GT, CurrentHandle);
-			TextureSet* CurrentTextureSet	= E->Textures;
-
-			size_t IBIndex	= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			IndexCount		= CurrentMesh->IndexCount;
-
-			if (CurrentTextureSet == nullptr)
-				continue;
-
-			if(LastTextureSet != CurrentTextureSet)
-			{
-				LastTextureSet	= CurrentTextureSet;
-				auto Textures	= GetDescTableCurrentPosition_GPU(RS);
-				auto TablePOS	= ReserveDescHeap(RS, 2);
-
-				TablePOS		= PushTextureToDescHeap(RS, E->Textures->Textures[0], TablePOS);
-				TablePOS		= PushTextureToDescHeap(RS, E->Textures->Textures[1], TablePOS);
-				CL->SetGraphicsRootDescriptorTable(DFRP_Textures, Textures);
-			}
-
-			if(CurrentHandle != LastHandle)
-			{
-				D3D12_INDEX_BUFFER_VIEW	IndexView;{
-					IndexView.BufferLocation = GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
-					IndexView.Format         = DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-					IndexView.SizeInBytes    = IndexCount * 32;
-				}
-
-				LastHandle = CurrentHandle;
-				
-				static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,	CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,			CurrentMesh, VBViews));
-				FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,		CurrentMesh, VBViews));
-
-				CL->SetGraphicsRootConstantBufferView	(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
-				CL->IASetIndexBuffer(&IndexView);
-				CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
-			}
-
-			SetPredication(*itr);
-			CL->SetGraphicsRootConstantBufferView(DFRP_ShadingConstants, E->VConstants->GetGPUVirtualAddress());
-			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
-		}
-
-		CL->SetPredication(nullptr, 0, D3D12_PREDICATION_OP_EQUAL_ZERO);
+		*/
 	}
 
 
@@ -827,7 +703,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-		void TiledRender_Shade(
+	void TiledRender_Shade(
 		RenderSystem* RS, PVS* _PVS, 
 		TiledDeferredRender* Pass, Texture2D Target,
 		const Camera* C,
@@ -997,7 +873,6 @@ namespace FlexKit
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].ColorTex);
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].SpecularTex);
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].NormalTex);
-		//ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].PositionTex);
 		ClearTarget(RTVPOS, Pass->GBuffers[BufferIndex].OutputBuffer);
 	}
 

@@ -70,26 +70,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 	// Forward Declarations
+	struct Buffer;
 	struct RenderTargetDesc;
 	struct RenderWindowDesc;
 	struct RenderViewDesc;
+	struct RenderWindow;
 	struct StackAllocator;
+	struct ShaderResource;
+	struct Shader;
+	struct Texture2D;
+	struct TriMesh;
 
-	class cAny;
-	class iCamera;
-	class Hash;
-	class InputInterface;
-	class iCurve;
-	class iObject;
-	class PhObject;
-	class PluginManager;
-	class iRenderTarget;
-	class iRenderWindow;
-	class iSceneNode;
-
-	struct RenderTargetDesc;
-	struct RenderWindowDesc;
-	struct RenderViewDesc;
+	class RenderSystem;
 
 	using DirectX::XMMATRIX;
 
@@ -500,12 +492,13 @@ namespace FlexKit
 		}
 	};
 
-	typedef FrameBufferedObject<ID3D12Resource>	 FrameBufferedResource;
-	typedef FrameBufferedResource				 IndexBuffer;
-	typedef FrameBufferedResource				 ConstantBuffer;
-	typedef FrameBufferedResource				 ShaderResourceBuffer;
-	typedef FrameBufferedResource				 StreamOutBuffer;
-	typedef	FrameBufferedObject<ID3D12QueryHeap> QueryResource;
+	typedef FrameBufferedObject<ID3D12Resource>								FrameBufferedResource;
+	typedef FrameBufferedResource											IndexBuffer;
+	typedef FrameBufferedResource											ConstantBuffer;
+	typedef FrameBufferedResource											ShaderResourceBuffer;
+	typedef FrameBufferedResource											StreamOutBuffer;
+	typedef	FrameBufferedObject<ID3D12QueryHeap>							QueryResource;
+	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>	DescHeapPOS;
 
 	typedef ID3D12Resource*						VertexResourceBuffer;
 
@@ -762,7 +755,6 @@ namespace FlexKit
 		char		ID[64];
 	};
 
-	struct RenderWindow;
 
 
 	/************************************************************************************************/
@@ -817,16 +809,6 @@ namespace FlexKit
 		size_t							Flags;
 		UINT							Strides[16];
 	};
-	
-
-	/************************************************************************************************/
-
-
-	struct Buffer;
-	struct ShaderResource;
-	struct Shader;
-	struct Texture2D;
-	class RenderSystem;
 
 
 	/************************************************************************************************/
@@ -1113,6 +1095,14 @@ namespace FlexKit
 					{ return a == b.Type; }));
 		}
 
+		const size_t size() const
+		{
+			size_t out = 0;
+			for (auto& e : Entries)
+				out += e.Space + 1;
+
+			return out;
+		}
 
 		struct HeapDescriptor
 		{
@@ -1122,29 +1112,27 @@ namespace FlexKit
 			PIPELINE_DESTINATION	Destination;
 		};
 
-
 		static_vector<HeapDescriptor, ENTRYCOUNT> Entries;
 	};
 
 
-	class DesciptorHeap
+	FLEXKITAPI class DesciptorHeap
 	{
 	public:
-		DesciptorHeap(DescHeapStack* Stack)
-		{
-		}
+		DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
-		struct EntriesBlock {
-			Descriptor& operator [](size_t) 
-			{
-			}
-			static_vector<Descriptor, 16>	Entries;
-			EntriesBlock*					Next;
-		}Entries;
+		void NullFill(RenderSystem* RS);
+
+		operator D3D12_GPU_DESCRIPTOR_HANDLE () { return DescriptorHeap; }
+
+	private:
+		DescHeapPOS						DescriptorHeap;
+		const DesciptorHeapLayout<>*	Layout;
+		Vector<bool>					FillState;
 	};
 
 
-	class RootSignature
+	FLEXKITAPI class RootSignature
 	{
 	public:
 		RootSignature(iAllocator* Memory) :
@@ -1159,6 +1147,7 @@ namespace FlexKit
 			Signature = nullptr;
 		}
 
+		operator ID3D12RootSignature* () { return Signature; }
 
 		void Release()
 		{
@@ -1250,8 +1239,14 @@ namespace FlexKit
 		void Print();
 
 
-		operator ID3D12RootSignature* () { return Signature; };
+		const DesciptorHeapLayout<16>& GetDescHeap(size_t idx) const
+		{
+			return Heaps[idx].Heap;
+		}
 
+
+		//bool AllowIA	= true;
+		//bool DisableIA	= false;
 
 	private:
 		struct HeapEntry
@@ -1300,10 +1295,50 @@ namespace FlexKit
 		static_vector<RootEntry>	RootEntries;
 	};
 
-	class Context
+
+	FLEXKITAPI class Context
 	{
 	public:
+		Context(ID3D12GraphicsCommandList* Context_IN, RenderSystem* RS_IN) :
+			CurrentRootSignature(nullptr),
+			DeviceContext(Context_IN),
+			RS(RS_IN) {}
 
+		void SetRootSignature		(RootSignature& RS);
+		void SetPipelineState		(ID3D12PipelineState* PSO);
+		void SetRenderTargets		(static_vector<Texture2D*,16>		RTs);
+		void SetViewports			(static_vector<D3D12_VIEWPORT, 16>	VPs);
+
+		void SetDepthStencil		(Texture2D* DS);
+		void SetPrimitiveTopology	(EInputTopology Topology);
+
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
+		void SetGraphicsDescriptorTable		(size_t idx, DesciptorHeap& DH);
+		void SetGraphicsShaderResourceView	(size_t, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
+
+		void AddIndexBuffer		(TriMesh* Mesh);
+		void AddVertexBuffers	(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers);
+
+		void DrawIndexed		(size_t IndexCount);
+		void Clear				();
+
+	private:
+		void UpdateRTVState();
+
+		ID3D12GraphicsCommandList*				DeviceContext;
+		RootSignature*							CurrentRootSignature;
+		ID3D12PipelineState*					CurrentPipelineState;
+		RenderSystem*							RS;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
+		D3D12_CPU_DESCRIPTOR_HANDLE DSVPOSCPU;
+
+		size_t	RenderTargetCount;
+		bool	DepthStencilEnabled;
+
+		static_vector<D3D12_VIEWPORT, 16>		Viewports;
+		static_vector<DesciptorHeap*>			DesciptorHeaps;
+		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 	};
 
 
@@ -1457,10 +1492,7 @@ namespace FlexKit
 			operator ID3D12Resource* ()	{ return Buffer; }
 		};
 
-		void clear()
-		{
-			VertexBuffers.clear();
-		}
+		void clear() { VertexBuffers.clear(); }
 
 		ID3D12Resource*	operator[](size_t idx)	{ return VertexBuffers[idx].Buffer; }
 		static_vector<BuffEntry, 16>	VertexBuffers;
@@ -2356,8 +2388,6 @@ namespace FlexKit
 	FLEXKITAPI void	ResetRTVHeap		( RenderSystem* RS );
 	FLEXKITAPI void	ResetGPUDescHeap	( RenderSystem* RS );
 
-	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> DescHeapPOS;
-
 	inline DescHeapPOS IncrementHeapPOS(DescHeapPOS POS, size_t Size, size_t INC) {
 		const size_t Offset = Size * INC;
 		return{ POS.V1.ptr + Offset , POS.V2.ptr + Offset };
@@ -2376,6 +2406,7 @@ namespace FlexKit
 	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap		( RenderSystem* RS, ID3D12Resource* Buffer,			DescHeapPOS POS, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAGS::D3D12_BUFFER_SRV_FLAG_NONE );
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	( RenderSystem* RS,	Texture2D tex,					DescHeapPOS POS );
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		( RenderSystem* RS, Texture2D tex,					DescHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT_R8G8B8A8_UNORM );
+	FLEXKITAPI DescHeapPOS PushDepthStencil			( RenderSystem* RS, Texture2D* Target,				DescHeapPOS POS );
 
 
 	FLEXKITAPI void SetViewport	 ( ID3D12GraphicsCommandList* CL, Texture2D Targets, uint2 Offset = {0, 0} );
