@@ -437,6 +437,8 @@ namespace FlexKit
 	DesciptorHeap::DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
 		FillState(TempMemory)
 	{
+		FK_ASSERT(TempMemory);
+
 		const size_t EntryCount = Layout_IN.size();
 		DescriptorHeap	= ReserveDescHeap(RS, EntryCount);
 		Layout			= &Layout_IN;
@@ -600,8 +602,8 @@ namespace FlexKit
 		CD3DX12_STATIC_SAMPLER_DESC Default(0);
 		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
 
-		RootSignatureDesc.Flags; 
 		RootSignatureDesc.Init(Parameters.size(), Parameters.begin(), 1, &Default);
+		RootSignatureDesc.Flags |= AllowIA ? D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT : D3D12_ROOT_SIGNATURE_FLAG_NONE;
 		HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &SignatureBlob, &ErrorBlob);
 		
 		if (!SUCCEEDED(HR))
@@ -638,6 +640,8 @@ namespace FlexKit
 	void Context::SetPipelineState(ID3D12PipelineState* PSO)
 	{
 		CurrentPipelineState = PSO;
+
+		DeviceContext->SetPipelineState(PSO);
 	}
 
 
@@ -646,7 +650,7 @@ namespace FlexKit
 
 	void Context::SetRenderTargets(static_vector<Texture2D*, 16> RTs)
 	{
-		auto RTVPOSCPU		= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
+		RTVPOSCPU			= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
 		auto RTVPOS			= ReserveRTVHeap					(RS, RTs.size());
 		auto RTVHeap		= GetCurrentRTVTable				(RS);
 		RenderTargetCount	= RTs.size();
@@ -671,13 +675,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetScissorRects(static_vector<D3D12_RECT, 16>		Rects)
+	{
+		DeviceContext->RSSetScissorRects(Rects.size(), Rects.begin());
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::SetDepthStencil(Texture2D* DS)
 	{
 		if (DS)
 		{
-			auto DSVPOSCPU		= GetDSVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On DSV heap on CPU
-			auto DSVPOS			= ReserveDSVHeap					(RS, 1);
-			auto DSVHeap		= GetCurrentRTVTable				(RS);
+			DSVPOSCPU		= GetDSVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On DSV heap on CPU
+			auto DSVPOS		= ReserveDSVHeap					(RS, 1);
+			auto DSVHeap	= GetCurrentRTVTable				(RS);
 			PushDepthStencil(RS, DS, DSVPOS);
 		}
 
@@ -691,6 +704,21 @@ namespace FlexKit
 
 	void Context::SetPrimitiveTopology(EInputTopology Topology)
 	{
+		D3D12_PRIMITIVE_TOPOLOGY D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_POINTLIST;
+		switch (Topology)
+		{
+		case EIT_TRIANGLELIST:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			break;
+		case EIT_TRIANGLE:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+			break;
+		case EIT_POINT:
+			D3DTopology = D3D10_PRIMITIVE_TOPOLOGY_POINTLIST;
+			break;
+		}
+
+		DeviceContext->IASetPrimitiveTopology(D3DTopology);
 	}
 
 
@@ -715,8 +743,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetGraphicsShaderResourceView(size_t, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
+	void Context::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
 	{
+		DeviceContext->SetGraphicsRootShaderResourceView(idx, Resource->Get()->GetGPUVirtualAddress());
 	}
 
 
@@ -725,6 +754,15 @@ namespace FlexKit
 
 	void Context::AddIndexBuffer(TriMesh* Mesh)
 	{
+		size_t	IBIndex		= Mesh->VertexBuffer.MD.IndexBuffer_Index;
+		size_t	IndexCount	= Mesh->IndexCount;
+
+		D3D12_INDEX_BUFFER_VIEW		IndexView;
+		IndexView.BufferLocation	= GetBuffer(Mesh, IBIndex)->GetGPUVirtualAddress();
+		IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
+		IndexView.SizeInBytes		= IndexCount * 4;
+
+		DeviceContext->IASetIndexBuffer(&IndexView);
 	}
 
 
@@ -733,7 +771,11 @@ namespace FlexKit
 
 	void Context::AddVertexBuffers(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers)
 	{
+		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+		for(auto& I : Buffers)
+			FK_ASSERT(AddVertexBuffer(I, Mesh, VBViews));
 
+		DeviceContext->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
 	}
 
 
@@ -742,6 +784,7 @@ namespace FlexKit
 
 	void Context::DrawIndexed(size_t IndexCount)
 	{
+		DeviceContext->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 	}
 
 
@@ -761,8 +804,8 @@ namespace FlexKit
 
 		DeviceContext->OMSetRenderTargets(
 			RenderTargetCount,
-			RenderTargetCount ? &RTVPOSCPU : nullptr, false,
-			DepthStencilEnabled ? &DSVPOSCPU : nullptr);
+			RenderTargetCount ?		&RTVPOSCPU : nullptr, true,
+			DepthStencilEnabled ?	&DSVPOSCPU : nullptr);
 	}
 
 
@@ -914,16 +957,17 @@ namespace FlexKit
 			RS->Library.ShadingRTSig = RootSig;
 		}
 		{
+			RS->Library.TestSignature.AllowIA = true;
+
 			DesciptorHeapLayout<16> DescriptorHeap;
-			DescriptorHeap.SetParameterAsConstantBufferView(0, 4, 4);
-			DescriptorHeap.SetParameterAsShaderResourceView(1, 0, 4);
+			DescriptorHeap.SetParameterAsShaderResourceView(0, 0, 10);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.TestSignature.SetParameterAsDescriptorTable(0, DescriptorHeap);
-			RS->Library.TestSignature.SetParameterAsConstantBufferView(1, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.TestSignature.SetParameterAsConstantBufferView(2, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.TestSignature.SetParameterAsConstantBufferView(3, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.TestSignature.SetParameterAsConstantBufferView(4, 3, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.SetParameterAsConstantBufferView(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.SetParameterAsConstantBufferView(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.SetParameterAsConstantBufferView(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.TestSignature.SetParameterAsShaderResourceView(3, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_VS);
+			RS->Library.TestSignature.SetParameterAsDescriptorTable(4, DescriptorHeap, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
 			RS->Library.TestSignature.Build(RS, RS->Memory);
 		}
 	}

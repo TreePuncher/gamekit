@@ -139,7 +139,7 @@ namespace FlexKit
 
 	FLEXKITAPI void InitiateTiledDeferredRender	( RenderSystem* RenderSystem,  TiledRendering_Desc* GBdesc, TiledDeferredRender* out );
 	FLEXKITAPI void TiledRender_LightPrePass	( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH);
-	FLEXKITAPI void TiledRender_Fill			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture, OcclusionCuller* OC = nullptr );
+	FLEXKITAPI void TiledRender_Fill			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture, OcclusionCuller* OC = nullptr, iAllocator* TempMemory = nullptr);
 
 	FLEXKITAPI void TiledRender_Shade			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
 

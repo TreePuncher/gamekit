@@ -1042,16 +1042,14 @@ namespace FlexKit
 	public:
 		bool SetParameterAsConstantBufferView(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL,
 			size_t BufferTag = -1)
 		{
 			HeapDescriptor Desc;
 			Desc.Register		= Register;
 			Desc.Space			= RegisterSpace;
 			Desc.Type			= DescHeapEntryType::ConstantBuffer;
-			Desc.Destination	= AccessableStages;
 
-			if (Entries.size() < Index)
+			if (Entries.size() <= Index)
 			{
 				if (!Entries.full())
 					Entries.resize(Index + 1);
@@ -1066,16 +1064,14 @@ namespace FlexKit
 
 		bool SetParameterAsShaderResourceView(
 			size_t Index, size_t Register, size_t RegisterSpace = 0,
-			PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL,
 			size_t BufferTag = -1)
 		{
 			HeapDescriptor Desc;
 			Desc.Register		= Register;
 			Desc.Space			= RegisterSpace;
 			Desc.Type			= DescHeapEntryType::ShaderResource;
-			Desc.Destination	= AccessableStages;
 
-			if (Entries.size() < Index)
+			if (Entries.size() <=  Index)
 			{
 				if (!Entries.full())
 					Entries.resize(Index + 1);
@@ -1099,7 +1095,7 @@ namespace FlexKit
 		{
 			size_t out = 0;
 			for (auto& e : Entries)
-				out += e.Space + 1;
+				out += (e.Space > 0 ) ? e.Space : 1;
 
 			return out;
 		}
@@ -1109,7 +1105,6 @@ namespace FlexKit
 			uint32_t				Register		= -1;
 			uint32_t				Space			= 0;
 			DescHeapEntryType		Type			= DescHeapEntryType::HeapError;
-			PIPELINE_DESTINATION	Destination;
 		};
 
 		static_vector<HeapDescriptor, ENTRYCOUNT> Entries;
@@ -1159,11 +1154,12 @@ namespace FlexKit
 
 		template<size_t SIZE>
 		bool SetParameterAsDescriptorTable(
-			size_t Index, DesciptorHeapLayout<SIZE>& Layout, size_t Tag = -1)
+			size_t Index, DesciptorHeapLayout<SIZE>& Layout, size_t Tag = -1, PIPELINE_DESTINATION AccessableStages = PIPELINE_DESTINATION::PIPELINE_DEST_ALL)
 		{
 			RootEntry Desc;
-			Desc.Type					= RootSignatureEntryType::DescriptorHeap;
-			Desc.DescriptorHeap.HeapIdx = Heaps.size();
+			Desc.Type							= RootSignatureEntryType::DescriptorHeap;
+			Desc.DescriptorHeap.HeapIdx			= Heaps.size();
+			Desc.DescriptorHeap.Accessibility	= AccessableStages;
 			Heaps.push_back({Index, Layout});
 
 			if (RootEntries.size() <= Index)
@@ -1245,7 +1241,7 @@ namespace FlexKit
 		}
 
 
-		//bool AllowIA	= true;
+		bool AllowIA	= true;
 		//bool DisableIA	= false;
 
 	private:
@@ -1308,6 +1304,7 @@ namespace FlexKit
 		void SetPipelineState		(ID3D12PipelineState* PSO);
 		void SetRenderTargets		(static_vector<Texture2D*,16>		RTs);
 		void SetViewports			(static_vector<D3D12_VIEWPORT, 16>	VPs);
+		void SetScissorRects		(static_vector<D3D12_RECT, 16>		Rects);
 
 		void SetDepthStencil		(Texture2D* DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);

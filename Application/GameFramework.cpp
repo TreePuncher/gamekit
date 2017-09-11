@@ -632,7 +632,7 @@ namespace FlexKit
 					OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, ActiveCamera);
 
 				//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
-				TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget, ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler); // Do Early-Z?
+				TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget, ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler, Engine->GetTempMemory()); // Do Early-Z?
 
 				if(Framework->DrawTerrain)
 					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, ActiveCamera, Framework->DrawTerrainDebug);

@@ -187,7 +187,7 @@ namespace FlexKit
 					}
 				}
 			}
-			int x = 0;
+
 			return (BytesRead == Size);
 
 		}
