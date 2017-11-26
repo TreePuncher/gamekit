@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\Resources.h"
 
+#include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\Graphics.h"
 #include "..\graphicsutilities\TerrainRendering.h"
 #include "..\graphicsutilities\SSReflections.h"
@@ -60,14 +61,6 @@ namespace FlexKit
 
 	struct GameFramework
 	{
-		Camera* GetActiveCamera_ptr()
-		{
-			if (ActiveCamera != InvalidComponentHandle)
-				return Engine->Cameras.GetCamera(ActiveCamera);
-
-			return nullptr;
-		}
-
 		struct {
 			FontAsset*			Font;
 			Texture2D			Terrain;
@@ -76,11 +69,9 @@ namespace FlexKit
 		MouseInputState		MouseState;
 		Landscape			Landscape;
 
-		GraphicScene*			ActiveScene;
-		PhysicsComponentSystem*	ActivePhysicsScene;
-
-		ComponentHandle			ActiveCamera;
-		RenderWindow*			ActiveWindow;
+		GraphicScene*				ActiveScene;
+		PhysicsComponentSystem*		ActivePhysicsScene;
+		RenderWindow*				ActiveWindow;
 
 		float4				ClearColor;
 		EDEFERREDPASSMODE	DP_DrawMode;
@@ -126,19 +117,24 @@ namespace FlexKit
 	class FrameworkState
 	{
 	public:
-		FrameworkState(GameFramework* framework) : 
-			Framework(framework) {}
+		FrameworkState(const FrameworkState& in) = delete;
+
+		FrameworkState& operator = (const FrameworkState& in) = delete;
 
 		virtual ~FrameworkState() {}
 
 		virtual bool Update			(EngineCore* Engine, double dT) { return true; };
 		virtual bool DebugDraw		(EngineCore* Engine, double dT) { return true; };
 		virtual bool PreDrawUpdate	(EngineCore* Engine, double dT) { return true; };
+		virtual bool Draw			(EngineCore* Engine, double dT, FrameGraph& Graph) { return true; };
 		virtual bool PostDrawUpdate	(EngineCore* Engine, double dT) { return true; };
 
 		virtual bool EventHandler	(Event evt) { return true; };
 
 		GameFramework*	Framework;
+
+	protected: 		
+		FrameworkState(GameFramework* framework) : Framework(framework) {}
 	};
 
 
@@ -154,26 +150,22 @@ namespace FlexKit
 
 	void			UpdateGameFramework	 (EngineCore* Engine, GameFramework* _ptr, double dT);
 	void			PreDrawGameFramework (EngineCore* Engine, GameFramework* _ptr, double dT);
-	void			ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr );
+	void			ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr);
 
 
 	/************************************************************************************************/
 
-	void SetActiveCamera	(GameFramework* Framework, GameObjectInterface* Camera );
 
-	/************************************************************************************************/
-
-
-	GameFramework*	InitiateFramework	( EngineCore* Engine );
-	void			Update				( EngineCore* Engine, GameFramework* Framework, double dT );
-	void			UpdateFixed			( EngineCore* Engine, double dt, GameFramework* State );
-	void			UpdateAnimations	( EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr );
-	void			UpdatePreDraw		( EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework );
-	void			Draw				( EngineCore* Engine, iAllocator* TempMemory, GameFramework* Framework );
-	void			PostDraw			( EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State );
-	void			Cleanup				( EngineCore* Engine, GameFramework* Framework );
-	void			PostPhysicsUpdate	( GameFramework* );
-	void			PrePhysicsUpdate	( GameFramework* );
+	GameFramework*	InitiateFramework	(EngineCore* Engine);
+	void			Update				(EngineCore* Engine, GameFramework* Framework, double dT);
+	void			UpdateFixed			(EngineCore* Engine, double dt, GameFramework* State);
+	void			UpdateAnimations	(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr);
+	void			UpdatePreDraw		(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework);
+	void			Draw				(EngineCore* Engine, iAllocator* TempMemory, GameFramework* Framework);
+	void			PostDraw			(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State);
+	void			Cleanup				(EngineCore* Engine, GameFramework* Framework);
+	void			PostPhysicsUpdate	(GameFramework*);
+	void			PrePhysicsUpdate	(GameFramework*);
 
 
 }	/************************************************************************************************/

@@ -35,14 +35,19 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
-	struct iAllocator
+	class iAllocator
 	{
+	public:
+		iAllocator				(const iAllocator& rhs) = delete;
+		iAllocator& operator =	(const iAllocator& rhs) = delete;
+
+		virtual ~iAllocator() {}
+
 		virtual void* malloc(size_t)	= 0;
 		virtual void  free(void* _ptr)	= 0;
 		virtual void* _aligned_malloc(size_t, size_t A = 0x10) = 0;
 		virtual void  _aligned_free(void* _ptr) = 0;
 		virtual void  clear(void) {};
-
 
 		template<typename T, typename ... Params>
 		T& allocate(Params ... Args)
@@ -61,10 +66,16 @@ namespace FlexKit
 			auto t = new (mem) T(Args...);
 			return *t;
 		}
+
+	protected:
+		iAllocator() {}
 	};
 
-	struct _SystemAllocator : public iAllocator
+	class _SystemAllocator : public iAllocator
 	{
+	public:
+		_SystemAllocator() {}
+
 		void* malloc(size_t n)
 		{
 			return ::malloc(n);
@@ -89,8 +100,9 @@ namespace FlexKit
 
 	static _SystemAllocator SystemAllocator;
 
-	struct FLEXKITAPI StackAllocator
+	class FLEXKITAPI StackAllocator
 	{
+	public:
 		StackAllocator()
 		{
 			used	= 0;
@@ -98,7 +110,7 @@ namespace FlexKit
 			Buffer	= 0;
 		}
 
-		StackAllocator( StackAllocator&& RHS)
+		StackAllocator(StackAllocator&& RHS)
 		{
 			used   = RHS.used;
 			size   = RHS.size;
@@ -109,12 +121,12 @@ namespace FlexKit
 			RHS.Buffer = nullptr;
 		}
 
-		void	Init				( byte* memory, size_t );
-		void*	malloc				( size_t s );
-		void*	malloc_MT			( size_t s );
-		void*	_aligned_malloc		( size_t s, size_t alignement = 0x10 );
-		void*	_aligned_malloc_MT	( size_t s, size_t alignement = 0x10 );
-		void	clear();
+		void	Init				(byte* memory, size_t);
+		void*	malloc				(size_t s);
+		void*	malloc_MT			(size_t s);
+		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
+		void*	_aligned_malloc_MT	(size_t s, size_t alignement = 0x10);
+		void	clear				();
 
 		template<typename T>
 		T& allocate()
@@ -134,6 +146,8 @@ namespace FlexKit
 			return *t;
 		}
 
+		operator iAllocator* ()	{return &AllocatorInterface;}
+	private:
 		size_t used		= 0;
 		size_t size		= 0;
 		byte*  Buffer	= 0;
@@ -164,7 +178,6 @@ namespace FlexKit
 			StackAllocator*	ParentAllocator;
 		}AllocatorInterface;
 
-		operator iAllocator* (){return &AllocatorInterface;}
 
 		std::mutex	critsection;
 	};

@@ -26,11 +26,11 @@
     <Filter Include="coreutilities\headers">
       <UniqueIdentifier>{9d5847be-ed7e-4ffd-b7ef-6a2163185a7f}</UniqueIdentifier>
     </Filter>
-    <Filter Include="source">
-      <UniqueIdentifier>{10851d44-e24c-45a9-be9e-563ee0de74a2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Physics">
       <UniqueIdentifier>{17be3a6d-8dc9-46cd-bfb3-ff32c7a0147e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source">
+      <UniqueIdentifier>{10851d44-e24c-45a9-be9e-563ee0de74a2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -136,6 +136,9 @@
     <ClInclude Include="coreutilities\Transforms.h">
       <Filter>coreutilities\source</Filter>
     </ClInclude>
+    <ClInclude Include="graphicsutilities\FrameGraph.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -224,6 +227,9 @@
     </ClCompile>
     <ClCompile Include="coreutilities\Transforms.cpp">
       <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\FrameGraph.cpp">
+      <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

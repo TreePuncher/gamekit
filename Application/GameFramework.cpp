@@ -380,17 +380,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetActiveCamera(GameFramework* Framework, GameObjectInterface* Camera)
-	{
-		auto C = FindComponent(Camera, CameraComponentID);
-		if (C)
-			Framework->ActiveCamera = C->ComponentHandle;
-	}
-
-
-	/************************************************************************************************/
-
-
 	GameFramework* InitiateFramework(EngineCore* Engine)
 	{
 		GameFramework& Framework = Engine->GetBlockMemory().allocate_aligned<GameFramework>();
@@ -417,7 +406,6 @@ namespace FlexKit
 		Framework.DrawDebugStats			= false;
 #endif
 
-		Framework.ActiveCamera				= InvalidComponentHandle;
 		Framework.ActivePhysicsScene		= nullptr;
 		Framework.ActiveScene				= nullptr;
 		Framework.ActiveWindow				= &Engine->Window;
@@ -494,6 +482,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void Update(EngineCore* Engine, GameFramework* Framework, double dT)
 	{
 		Framework->TimeRunning += dT;
@@ -507,10 +498,16 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void UpdateFixed(EngineCore* Engine, double dt, GameFramework* State)
 	{
 		UpdateMouseInput(&State->MouseState, &Engine->Window);
 	}
+
+
+	/************************************************************************************************/
 
 
 	void UpdateAnimations(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
@@ -518,6 +515,9 @@ namespace FlexKit
 		if(_ptr->ActiveScene)	
 			UpdateAnimationsGraphicScene(_ptr->ActiveScene, dt);
 	}
+
+
+	/************************************************************************************************/
 
 
 	void UpdatePreDraw(EngineCore* Core, iAllocator* TempMemory, double dt, GameFramework* Framework)
@@ -540,7 +540,7 @@ namespace FlexKit
 		Framework->Stats.FPS_Counter++;
 		Framework->Stats.Fps_T += dt;
 
-		if (Framework->DrawDebugStats)
+		if (Framework->DrawDebugStats && false)
 		{
 			uint32_t VRamUsage = GetVidMemUsage(Core->RenderSystem) / MEGABYTE;
 			char* TempBuffer   = (char*)Core->GetTempMemory().malloc(512);
@@ -552,111 +552,47 @@ namespace FlexKit
 	}
 
 
-	void Draw(EngineCore* Engine, iAllocator* TempMemory, GameFramework* Framework)
+	/************************************************************************************************/
+
+
+	void Draw(EngineCore* Core, iAllocator* TempMemory, GameFramework* Framework)
 	{
-		ProfileBegin(PROFILE_SUBMISSION);
+		FrameGraph		FrameGraph(Core->RenderSystem, TempMemory);
 
-		auto RS = &Engine->RenderSystem;
+		// Add in Base Resources
+		FrameGraph.Resources.AddBackBuffer(GetCurrentBackBuffer(&Core->Window), GetCRCGUID(BACKBUFFER));
 
-		SubmitUploadQueues(RS);
-		BeginSubmission(RS, Framework->ActiveWindow);
 
-		auto CL = GetCurrentCommandList(RS);
-
-		SetDepthBuffersWrite (RS, CL, { GetCurrent(&Engine->DepthBuffer) });
-		ClearBackBuffer		 (RS, CL, Framework->ActiveWindow, { 0, 0, 0, 0 });
-		ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->DepthBuffer) }, DefaultClearDepthValues_0);
-		ClearDepthBuffers	 (RS, CL, { GetCurrent(&Engine->Culler.OcclusionBuffer) }, DefaultClearDepthValues_0);
-
-		Texture2D BackBuffer = GetBackBufferTexture(Framework->ActiveWindow);
-		SetViewport	(CL, BackBuffer);
-		SetScissor	(CL, BackBuffer.WH);
-
-		UploadImmediate(RS, &Framework->Immediate, TempMemory, Framework->ActiveWindow);
-
-		Camera* ActiveCamera = (Framework->ActiveCamera != InvalidComponentHandle) ? Framework->GetActiveCamera_ptr() : nullptr;
-
-		if(	ActiveCamera &&
-			Framework->ActivePhysicsScene &&
-			Framework->ActiveScene &&
-			Framework->ActiveWindow )
 		{
+			auto Itr = Framework->SubStates.begin();
+			auto End = Framework->SubStates.end();
 
-			auto PVS			= FlexKit::PVS(TempMemory);
-			auto Transparent	= FlexKit::PVS(TempMemory);
-			auto OutputTarget	= GetRenderTarget(Framework->ActiveWindow);
-
-			GetGraphicScenePVS(Framework->ActiveScene, ActiveCamera, &PVS, &Transparent);
-
-			SortPVS				(Engine->Nodes, &PVS, ActiveCamera);
-			SortPVSTransparent	(Engine->Nodes, &Transparent, ActiveCamera);
-
-			Framework->Stats.ObjectsDrawnLastFrame = PVS.size() + Transparent.size();
-
-			Free_DelayedReleaseResources(Engine->RenderSystem);
-
-			// TODO: multi Thread these
-			// Do Uploads
+			while (Itr != End)
 			{
-				DeferredPass_Parameters	DPP;
-				DPP.PointLightCount = Framework->ActiveScene->PLights.size();
-				DPP.SpotLightCount  = Framework->ActiveScene->SPLights.size();
-				DPP.Mode			= Framework->DP_DrawMode;
-				DPP.WH				= GetWindowWH(Engine);
+				auto Framework = *Itr;
+				if (!Framework->Draw(Core, 0, FrameGraph))
+					break;
 
-				UploadPoses	(RS, &PVS, &Engine->Geometry, TempMemory);
-				UploadDeferredPassConstants	(RS, &DPP, {0.2f, 0.2f, 0.2f, 0}, &Engine->TiledRender);
-
-				UploadCamera			(RS, Engine->Nodes, ActiveCamera, Framework->ActiveScene->PLights.size(), Framework->ActiveScene->SPLights.size(), 0.0f, Framework->ActiveWindow->WH);
-				UploadGraphicScene		(Framework->ActiveScene, &PVS, &Transparent);
-
-#if 1
-				UploadLandscape		(RS, &Framework->Landscape, Engine->Nodes, ActiveCamera, true, true, Framework->TerrainSplits + 1);
-#else
-				
-				UploadLandscape2		(
-					RS, &Framework->Landscape, 
-					Engine->Nodes, Framework->ActiveCamera, 
-					GetFrustum(&Framework->DebugCamera, GetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node), GetOrientation(Framework->Engine->Nodes, Framework->DebugCamera.Node)),
-					true, true, Framework->TerrainSplits + 1);
-#endif
-			}
-
-			// Submission
-			{
-
-				IncrementPassIndex		(&Engine->TiledRender);
-				ClearTileRenderBuffers	(RS, &Engine->TiledRender);
-
-				if(Framework->OcclusionCulling)
-					OcclusionPass(RS, &PVS, &Engine->Culler, CL, &Engine->Geometry, ActiveCamera);
-
-				//TiledRender_LightPrePass(RS, &Engine->TiledRender, State->ActiveCamera, &State->GScene.PLights, &State->GScene.SPLights, { OutputTarget.WH[0] / 8, OutputTarget.WH[1] / 16 });
-				TiledRender_Fill	(RS, &PVS, &Engine->TiledRender, OutputTarget, ActiveCamera, nullptr, &Engine->Geometry,  nullptr, &Engine->Culler, Engine->GetTempMemory()); // Do Early-Z?
-
-				if(Framework->DrawTerrain)
-					DrawLandscape		(RS, &Framework->Landscape, &Engine->TiledRender, Framework->TerrainSplits, ActiveCamera, Framework->DrawTerrainDebug);
-
-				TiledRender_Shade		(RS, &PVS, &Engine->TiledRender, OutputTarget, ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights);
-
-				if(Framework->ScreenSpaceReflections)
-				{
-					TraceReflections		(Engine->RenderSystem, CL, &Engine->TiledRender, ActiveCamera, &Framework->ActiveScene->PLights, &Framework->ActiveScene->SPLights, GetWindowWH(Engine), &Engine->Reflections);
-					PresentBufferToTarget	(RS, CL, &Engine->TiledRender, &OutputTarget, GetCurrentBuffer(&Engine->Reflections));
-				}
-				else
-					PresentBufferToTarget(RS, CL, &Engine->TiledRender, &OutputTarget, &Engine->RenderSystem.NullSRV);
-
-				ForwardPass				(&Transparent, &Engine->ForwardRender, RS, ActiveCamera, Framework->ClearColor, &Framework->ActiveScene->PLights, &Engine->Geometry);// Transparent Objects
+				Itr++;
 			}
 		}
 
-		SetDepthBuffersRead(RS, CL, { GetCurrent(&Engine->DepthBuffer) });
-		DrawImmediate(RS, CL, &Framework->Immediate, GetBackBufferTexture(Framework->ActiveWindow), ActiveCamera);
-		CloseAndSubmit({ CL }, RS, Framework->ActiveWindow);
+
+		ProfileBegin(PROFILE_SUBMISSION);
+
+		if(	Framework->ActiveWindow )
+		{
+			FrameGraph.UpdateFrameGraph(Core->RenderSystem, Framework->ActiveWindow, Core->GetTempMemory());
+			FrameGraph.SubmitFrameGraph(Core->RenderSystem, Framework->ActiveWindow);
+
+			Free_DelayedReleaseResources(Core->RenderSystem);
+		}
 
 		ProfileEnd(PROFILE_SUBMISSION);
 	}
+
+
+	/************************************************************************************************/
 
 
 	void PostDraw(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
@@ -667,6 +603,9 @@ namespace FlexKit
 
 		PresentWindow(&Engine->Window, Engine->RenderSystem);
 	}
+
+
+	/************************************************************************************************/
 
 
 	void Cleanup(EngineCore* Engine, GameFramework* Framework)
@@ -702,10 +641,16 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void PostPhysicsUpdate(GameFramework*)
 	{
 
 	}
+
+
+	/************************************************************************************************/
 
 
 	void PrePhysicsUpdate(GameFramework*)
@@ -714,5 +659,5 @@ namespace FlexKit
 	}
 
 
-
+	/************************************************************************************************/
 }

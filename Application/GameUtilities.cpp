@@ -139,7 +139,7 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 		return false;
 
 	Engine->Window.Close = false;
-	Out = CreateRenderWindow	(  Engine, height, width, false );
+	Out = CreateRenderWindow( Engine, height, width, false );
 
 	if (!Out)
 	{

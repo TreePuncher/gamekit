@@ -122,7 +122,6 @@ namespace FlexKit
 		gb->Filling.PSOTextured->Release();
 		gb->Filling.PSOAnimated->Release();
 		gb->Filling.PSOAnimatedTextured->Release();
-		gb->Filling.FillRTSig->Release();
 		gb->Filling.NormalMesh.Blob->Release();
 		gb->Filling.AnimatedMesh.Blob->Release();
 		gb->Filling.NoTexture.Blob->Release();
@@ -305,39 +304,6 @@ namespace FlexKit
 	
 			// Setup Pipeline State
 			{
-				CD3DX12_DESCRIPTOR_RANGE ranges[1];	{
-					ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 0);
-				}
-
-				CD3DX12_ROOT_PARAMETER Parameters[DFRP_COUNT];{
-					Parameters[DFRP_CameraConstants].InitAsConstantBufferView	(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-					Parameters[DFRP_ShadingConstants].InitAsConstantBufferView	(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-					Parameters[DFRP_TextureConstants].InitAsConstantBufferView	(2, 0, D3D12_SHADER_VISIBILITY_ALL);
-					Parameters[DFRP_AnimationResources].InitAsShaderResourceView(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-					Parameters[DFRP_Textures].InitAsDescriptorTable				(1, ranges, D3D12_SHADER_VISIBILITY_PIXEL);
-				}
-
-				ID3DBlob* SignatureDescBlob                    = nullptr;
-				ID3DBlob* ErrorBlob		                       = nullptr;
-				D3D12_ROOT_SIGNATURE_DESC	 Desc              = {};
-				CD3DX12_ROOT_SIGNATURE_DESC  RootSignatureDesc = {};
-				CD3DX12_STATIC_SAMPLER_DESC	 Default(0);
-
-				RootSignatureDesc.Init(RootSignatureDesc, DFRP_COUNT, Parameters, 1, &Default, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-				HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &SignatureDescBlob, &ErrorBlob);
-
-				FK_ASSERT(SUCCEEDED(HR));
-
-				ID3D12RootSignature* RootSig = nullptr;
-				HR = RS->pDevice->CreateRootSignature(0, SignatureDescBlob->GetBufferPointer(),
-													  SignatureDescBlob->GetBufferSize(), IID_PPV_ARGS(&RootSig));
-
-				SETDEBUGNAME(RootSig, "FillRTSig");
-				SignatureDescBlob->Release();
-
-				FK_ASSERT(SUCCEEDED(HR));
-				out->Filling.FillRTSig = RootSig;
-
 				D3D12_INPUT_ELEMENT_DESC InputElements[5] = {	
 					{"POSITION",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
 					{"TEXCOORD",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	    1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
@@ -352,7 +318,7 @@ namespace FlexKit
 				Depth_Desc.DepthEnable					= true;
 
 				D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {};{
-					PSO_Desc.pRootSignature			= RS->Library.TestSignature;
+					PSO_Desc.pRootSignature			= RS->Library.RSDefault;
 					PSO_Desc.VS						= out->Filling.NormalMesh;
 					PSO_Desc.PS						= out->Filling.NoTexture;
 					PSO_Desc.RasterizerState		= Rast_Desc;
@@ -373,7 +339,7 @@ namespace FlexKit
 				}
 
 				ID3D12PipelineState* PSO = nullptr;
-				HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+				auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
 				FK_ASSERT(SUCCEEDED(HR));
 				out->Filling.PSO = PSO;
 
@@ -504,14 +470,14 @@ namespace FlexKit
 
 
 	void TiledRender_Fill(
-		RenderSystem*	RS,		PVS*			_PVS,	TiledDeferredRender*	Pass,	
-		Texture2D Target,		const Camera*	C,		TextureManager* TM,
-		GeometryTable*	GT,		TextureVTable*	Texture, OcclusionCuller* OC, 
+		RenderSystem*	RS,		PVS*			_PVS,		TiledDeferredRender*	Pass,	
+		Texture2D Target,		const Camera*	C,			TextureManager* TM,
+		GeometryTable*	GT,		TextureVTable*	Texture,	OcclusionCuller* OC, 
 		iAllocator* TempMemory)
 	{
 		auto FrameResources	= GetCurrentFrameResources(RS);
 
-		Context Ctx(GetCurrentCommandList(RS), RS);
+		Context Ctx(GetCurrentCommandList(RS), RS, TempMemory);
 		Ctx.Clear(); // Clear Any Residual State
 
 		size_t BufferIndex = Pass->CurrentBuffer;
@@ -540,16 +506,17 @@ namespace FlexKit
 
 		D3D12_RECT		RECTs[] = { RECT, RECT, RECT, RECT, RECT, RECT };
 
-		Ctx.SetRootSignature			(RS->Library.TestSignature);
+		Ctx.SetRootSignature			(RS->Library.RSDefault);
 		Ctx.SetPipelineState			(Pass->Filling.PSO);
 		Ctx.SetViewports				({ VP, VP, VP, VP, VP, VP, });
 		Ctx.SetScissorRects				({ RECT, RECT, RECT, RECT, RECT, RECT, });
 		Ctx.SetPrimitiveTopology		(EInputTopology::EIT_TRIANGLELIST);
 
-		Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants, RS->NullConstantBuffer);
-		Ctx.SetGraphicsConstantBufferView	(DFRP_CameraConstants,	C->Buffer);
-		Ctx.SetGraphicsConstantBufferView	(DFRP_TextureConstants, RS->NullConstantBuffer);
-
+		Ctx.SetGraphicsConstantBufferView(DFRP_ShadingConstants,	 RS->NullConstantBuffer);
+		Ctx.SetGraphicsConstantBufferView(DFRP_CameraConstants,		 C->Buffer);
+		Ctx.SetGraphicsConstantBufferView(DFRP_TextureConstants,	 RS->NullConstantBuffer);
+		Ctx.SetGraphicsShaderResourceView(DFRP_AnimationResources,	&RS->NullSRV1D, 0, 0);
+		// End State Setup
 		
 		TriMeshHandle	LastHandle	= INVALIDMESHHANDLE;
 		TriMesh*		Mesh		= nullptr;
@@ -561,18 +528,15 @@ namespace FlexKit
 		while (itr != end) {
 			for (; itr != end; ++itr)
 			{
+				Drawable* E				= itr->D;
+				TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+				auto AnimationState		= E->PoseState;
 
-				Drawable* E = itr->D;
-				TriMesh* CurrentMesh = GetMesh(GT, E->MeshHandle);
-				auto AnimationState = E->PoseState;
-
-				/*
-				if (E->Posed || E->Textured)
+				if (E->Posed)
 					break;
 
-				if (AnimationState || AnimationState->Resource)
-					continue;
-				*/
+				if (AnimationState) // animated, continue on
+					break;
 
 				TriMeshHandle CurrentHandle = E->MeshHandle;
 				if (CurrentHandle == INVALIDMESHHANDLE)
@@ -583,7 +547,7 @@ namespace FlexKit
 					Ctx.AddIndexBuffer(CurrentMesh);
 					Ctx.AddVertexBuffers(
 						CurrentMesh,
-						{ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+						{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
 							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL });
 
@@ -592,57 +556,54 @@ namespace FlexKit
 				}
 
 
-				DesciptorHeap Heap(RS, RS->Library.TestSignature.GetDescHeap(0), TempMemory);
+				DesciptorHeap Heap(RS, RS->Library.RSDefault.GetDescHeap(0), TempMemory);
 
-				Ctx.SetGraphicsDescriptorTable(DFRP_Textures, Heap);
-				Ctx.SetGraphicsConstantBufferView(DFRP_ShadingConstants, itr->D->VConstants);
+				Ctx.SetGraphicsDescriptorTable		(DFRP_Textures, Heap);
+				Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants, itr->D->VConstants);
+				Ctx.SetGraphicsShaderResourceView	(DFRP_AnimationResources, &RS->NullSRV1D, 0, 0);
 				Ctx.DrawIndexed(IndexCount);
 			}
-		}
 
-		/*
-		if(itr != end)
-			Ctx.SetPipelineState(Pass->Filling.PSOAnimated);
+			if(itr != end)
+				Ctx.SetPipelineState(Pass->Filling.PSOAnimated);
 
-		for (; itr != end; ++itr)
-		{
-
-			Drawable* E = itr->D;
-			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
-			auto AnimationState		= E->PoseState;
-			
-			if (!E->Posed || E->Textured)
-				break;
-			
-			if(!AnimationState || !AnimationState->Resource)
-				continue;
-
-			TriMeshHandle CurrentHandle = E->MeshHandle;
-			if (CurrentHandle == INVALIDMESHHANDLE)
-				continue;
-
-			if (CurrentHandle != LastHandle)
+			for (; itr != end; ++itr)
 			{
-				Ctx.AddIndexBuffer(CurrentMesh);
-				Ctx.AddVertexBuffers(
-						CurrentMesh, 
-						{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2 });
-				LastHandle = CurrentHandle;
+				Drawable* E				= itr->D;
+				TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+				auto AnimationState		= E->PoseState;
+			
+				if (!E->Posed || E->Textured)
+					break;
+			
+				if(!AnimationState || !AnimationState->Resource) // Not Animated, change state
+					break;
+
+				TriMeshHandle CurrentHandle = E->MeshHandle;
+				if (CurrentHandle == INVALIDMESHHANDLE) // Malformed Drawable
+					continue;
+
+				if (CurrentHandle != LastHandle)
+				{
+					Ctx.AddIndexBuffer(CurrentMesh);
+					Ctx.AddVertexBuffers(
+							CurrentMesh, 
+							{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2 });
+					LastHandle = CurrentHandle;
+				}
+
+				DesciptorHeap Heap(RS, RS->Library.RSDefault.GetDescHeap(0), TempMemory);
+
+				Ctx.SetGraphicsDescriptorTable		(DFRP_Textures, Heap);
+				Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants,		C->Buffer);
+				Ctx.SetGraphicsShaderResourceView	(DFRP_AnimationResources,	&AnimationState->Resource, AnimationState->JointCount, sizeof(float4x4) * 2);
+				Ctx.DrawIndexed						(IndexCount);
 			}
-
-
-			DesciptorHeap Heap(FrameResources->DescHeap, RS->Library.TestSignature.GetDescHeap(0));
-
-			Ctx.SetRootDescriptorTable			(0, Heap);
-			Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants,		C->Buffer);
-			Ctx.SetGraphicsShaderResourceView	(DFRP_AnimationResources,	AnimationState, AnimationState->JointCount, sizeof(float4x4) * 2);
-			Ctx.DrawIndexed						(IndexCount);
 		}
-		*/
 	}
 
 
@@ -700,7 +661,6 @@ namespace FlexKit
 			PushBarrier(Pass->GBuffers[Index].ColorTex);
 			PushBarrier(Pass->GBuffers[Index].NormalTex);
 			PushBarrier(Pass->GBuffers[Index].OutputBuffer);
-			//PushBarrier(Pass->GBuffers[Index].PositionTex);
 			PushBarrier(Pass->GBuffers[Index].SpecularTex);
 		}
 
@@ -794,7 +754,6 @@ namespace FlexKit
 		CL->SetPipelineState				(GetPSO(RS, TILEDSHADING_SHADE));
 		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
-
 		CL->Dispatch(DispatchDimensions[0], DispatchDimensions[1], 1);
 
 		{
@@ -862,6 +821,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
 
 	void ClearGBuffer(RenderSystem* RS, TiledDeferredRender* Pass, const float4& Clear, size_t Index)
 	{
@@ -972,5 +932,35 @@ namespace FlexKit
 		}
 	}
 
+
+	/*
+
+	TiledDeferredFillPass::TiledDeferredFillPass(RenderSystem* RS, RenderSceneGraph* Graph)
+	{
+		Texture2D_Desc RenderTargetDesc;
+
+		Graph->AddRenderTarget(CreateRenderTarget(RS, RenderTargetDesc, GetCRCGUID(ALBEDOBUFFER)));
+		Graph->AddRenderTarget(CreateRenderTarget(RS, RenderTargetDesc, GetCRCGUID(SPECULARBUFFER)));
+		Graph->AddRenderTarget(CreateRenderTarget(RS, RenderTargetDesc, GetCRCGUID(NORMALBUFFER)));
+		Graph->AddRenderTarget(CreateRenderTarget(RS, RenderTargetDesc, GetCRCGUID(METALSMOOTHBUFFER)));
+	}
+
+
+
+
+	void TiledDeferredFillPass::Draw(RenderSystem* RS, Context* CL, FrameResources* Resources)
+	{
+
+	}
+
+
+
+
+	void TiledDeferredFillPass::Release()
+	{
+
+	}
+
+	*/
 
 }	/************************************************************************************************/

@@ -516,6 +516,9 @@ namespace FlexKit
 
 	bool RootSignature::Build(RenderSystem* RS, iAllocator* TempMemory)
 	{
+		if (Signature)
+			Release();
+
 		Vector<Vector<CD3DX12_DESCRIPTOR_RANGE>> DesciptorHeaps(TempMemory);
 		DesciptorHeaps.reserve(12);
 
@@ -603,8 +606,13 @@ namespace FlexKit
 		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
 
 		RootSignatureDesc.Init(Parameters.size(), Parameters.begin(), 1, &Default);
-		RootSignatureDesc.Flags |= AllowIA ? D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT : D3D12_ROOT_SIGNATURE_FLAG_NONE;
-		HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &SignatureBlob, &ErrorBlob);
+		RootSignatureDesc.Flags |= AllowIA ? 
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT : 
+			D3D12_ROOT_SIGNATURE_FLAG_NONE;
+		
+		HRESULT HR = D3D12SerializeRootSignature(
+			&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, 
+			&SignatureBlob,		&ErrorBlob);
 		
 		if (!SUCCEEDED(HR))
 		{
@@ -622,6 +630,37 @@ namespace FlexKit
 
 		DesciptorHeaps.clear();
 		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+
+	void Context::AddRenderTargetBarrier(TextureHandle Handle, DeviceResourceState Before, DeviceResourceState New)
+	{
+		Barrier NewBarrier;
+		NewBarrier.OldState				= Before;
+		NewBarrier.NewState				= New;
+		NewBarrier.Type					= Barrier::BT_RenderTarget;
+		NewBarrier.RenderTarget			= Handle;
+
+		PendingBarriers.push_back(NewBarrier);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::AddPresentBarrier(TextureHandle Handle, DeviceResourceState Before)
+	{
+		Barrier NewBarrier;
+		NewBarrier.OldState				= Before;
+		NewBarrier.NewState				= DeviceResourceState::DRS_Present;
+		NewBarrier.Type					= Barrier::BT_RenderTarget;
+		NewBarrier.RenderTarget			= Handle;
+
+		PendingBarriers.push_back(NewBarrier);
 	}
 
 
@@ -660,6 +699,28 @@ namespace FlexKit
 		
 		UpdateRTVState();
 	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetRenderTargets(static_vector<DescHeapPOS, 16> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
+	{
+		DSVPOSCPU = DepthStencil;
+		RTs.clear();
+
+		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTVHandles;
+
+		for (auto RT : RTs) 
+			RTVHandles.push_back(RT);
+
+		DeviceContext->OMSetRenderTargets(
+			RTs.size(),
+			RTVHandles.begin(),
+			false,
+			DepthStecil ? &(D3D12_CPU_DESCRIPTOR_HANDLE)DepthStencil : nullptr);
+	}
+
 
 
 	/************************************************************************************************/
@@ -782,17 +843,137 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::DrawIndexed(size_t IndexCount)
+	void Context::ClearRenderTarget(TextureObject Texture, float4 ClearColor)
 	{
-		DeviceContext->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
+		UpdateResourceStates();
+		DeviceContext->ClearRenderTargetView(Texture.GPUHandle, ClearColor, 0, nullptr);
 	}
 
 
 	/************************************************************************************************/
 
 
+	void Context::DrawIndexed(size_t IndexCount, size_t IndexOffet, size_t BaseVertex)
+	{
+		UpdateResourceStates();
+		DeviceContext->DrawIndexedInstanced(IndexCount, 1, IndexOffet, BaseVertex, 0);
+	}
+
+
+	void Context::DrawIndexedInstanced(
+		size_t IndexCount, size_t IndexOffet, 
+		size_t BaseVertex, size_t InstanceCount, 
+		size_t InstanceOffset)
+	{
+		UpdateResourceStates();
+		DeviceContext->DrawIndexedInstanced(
+			IndexCount, InstanceCount, 
+			IndexOffet, BaseVertex, 
+			InstanceOffset);
+	}
+
+
+	void Context::FlushBarriers()
+	{
+		UpdateResourceStates();
+	}
+
+	/************************************************************************************************/
+
+
 	void Context::Clear()
 	{
+		PendingBarriers.Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetRTRead(TextureHandle Handle)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetRTWrite(TextureHandle Handle)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetRTFree(TextureHandle Handle)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetUAVRead() 
+	{
+		FK_ASSERT(0);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetUAVWrite() 
+	{
+		FK_ASSERT(0);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetUAVFree() 
+	{
+		FK_ASSERT(0);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::UpdateResourceStates()
+	{
+		if (!PendingBarriers.size())
+			return;
+
+		static_vector<D3D12_RESOURCE_BARRIER> Barriers;
+
+		for (auto& B : PendingBarriers)
+		{
+			switch(B.Type)
+			{
+				case Barrier::BT_RenderTarget:
+				case Barrier::BT_UAV:
+				{
+					auto Handle			= B.RenderTarget;
+					auto Resource		= RS->RenderTargets.GetResource(Handle);
+					auto CurrentState	= DRS2D3DState(B.OldState);
+					auto NewState		= DRS2D3DState(B.NewState);
+
+					if (B.OldState != B.NewState)
+						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(Resource, CurrentState, NewState));
+				}	break;
+					break;
+				case Barrier::BT_ConstantBuffer:
+				case Barrier::BT_VertexBuffer:
+					break;
+			};
+		}
+
+		DeviceContext->ResourceBarrier(Barriers.size(), Barriers.begin());
+
+		Barriers.clear();
+		PendingBarriers.clear();
 	}
 
 
@@ -801,7 +982,6 @@ namespace FlexKit
 
 	void Context::UpdateRTVState()
 	{
-
 		DeviceContext->OMSetRenderTargets(
 			RenderTargetCount,
 			RenderTargetCount ?		&RTVPOSCPU : nullptr, true,
@@ -925,50 +1105,30 @@ namespace FlexKit
 			SETDEBUGNAME(NewRootSig, "RS2UAVs4SRVs4CBs");
 		}
 		{
-			// Shading Signature Setup
-			CD3DX12_DESCRIPTOR_RANGE ranges[4]; {
-				ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8, 0);
-				ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
-				ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 2, 0);
-				ranges[3].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, -1, 0, 1, D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE);
+			RS->Library.ShadingRTSig.AllowIA = false;
 
-			}
+			DesciptorHeapLayout<16> DescriptorHeap;
+			DescriptorHeap.SetParameterAsShaderResourceView	(0, 0, 8);
+			DescriptorHeap.SetParameterAsShaderUAV			(1, 0, 1);
+			DescriptorHeap.SetParameterAsConstantBufferView	(2, 0, 2);
+			FK_ASSERT(DescriptorHeap.Check());
 
-			CD3DX12_ROOT_PARAMETER Parameters[1];
-			Parameters[0].InitAsDescriptorTable(3, ranges, D3D12_SHADER_VISIBILITY_ALL);
-
-			ID3DBlob* Signature = nullptr;
-			ID3DBlob* ErrorBlob = nullptr;
-			CD3DX12_STATIC_SAMPLER_DESC Default(0);
-			CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
-
-			RootSignatureDesc.Init(1, Parameters, 1, &Default);
-			HRESULT HR = D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob);
-			FK_ASSERT(SUCCEEDED(HR));
-
-			ID3D12RootSignature* RootSig = nullptr;
-			HR = RS->pDevice->CreateRootSignature(0, Signature->GetBufferPointer(),
-				Signature->GetBufferSize(), IID_PPV_ARGS(&RootSig));
-
-			FK_ASSERT(SUCCEEDED(HR));
-			SETDEBUGNAME(RootSig, "ShadingRTSig");
-			Signature->Release();
-
-			RS->Library.ShadingRTSig = RootSig;
+			RS->Library.ShadingRTSig.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
+			RS->Library.ShadingRTSig.Build(RS, RS->Memory);
 		}
 		{
-			RS->Library.TestSignature.AllowIA = true;
+			RS->Library.RSDefault.AllowIA = true;
 
 			DesciptorHeapLayout<16> DescriptorHeap;
 			DescriptorHeap.SetParameterAsShaderResourceView(0, 0, 10);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.TestSignature.SetParameterAsConstantBufferView(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.TestSignature.SetParameterAsConstantBufferView(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.TestSignature.SetParameterAsConstantBufferView(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.TestSignature.SetParameterAsShaderResourceView(3, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_VS);
-			RS->Library.TestSignature.SetParameterAsDescriptorTable(4, DescriptorHeap, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-			RS->Library.TestSignature.Build(RS, RS->Memory);
+			RS->Library.RSDefault.SetParameterAsConstantBufferView(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsConstantBufferView(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsConstantBufferView(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsShaderResourceView(3, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_VS);
+			RS->Library.RSDefault.SetParameterAsDescriptorTable(4, DescriptorHeap, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+			RS->Library.RSDefault.Build(RS, RS->Memory);
 		}
 	}
 
@@ -1500,7 +1660,6 @@ namespace FlexKit
 		Library.RS4CBVs4SRVs->Release();
 		Library.RS4CBVs_SO->Release();
 		Library.RS2UAVs4SRVs4CBs->Release();
-		Library.ShadingRTSig->Release();
 		pGIFactory->Release();
 		pDXGIAdapter->Release();
 		pDevice->Release();
@@ -1795,6 +1954,11 @@ namespace FlexKit
 
 		NewWindow.SwapChain_ptr = static_cast<IDXGISwapChain3*>(NewSwapChain_ptr);
 
+		Texture2D_Desc Desc;
+		Desc.Height	= NewWindow.VP.Height;
+		Desc.Width	= NewWindow.VP.Width;
+		Desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
+
 		//CreateBackBuffer
 		for (size_t I = 0; I < swapChainDesc.BufferCount; ++I)
 		{
@@ -1803,6 +1967,8 @@ namespace FlexKit
 			NewWindow.BackBuffer[I] = buffer;
 
 			SETDEBUGNAME(buffer, "BackBuffer");
+			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER));
+			NewWindow.RenderTargets[I] = Handle;
 		}
 
 		SetActiveWindow(Window);
@@ -4005,7 +4171,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Submit(static_vector<ID3D12CommandList*>& CLs, RenderSystem* RS, RenderWindow* Window)
+	void Submit(static_vector<ID3D12CommandList*>& CLs, RenderSystem* RS)
 	{
 		//ID3D12CommandList* CommandLists[MaxThreadCount];
 		//size_t	CommandListsUsed = 0;
@@ -4111,7 +4277,7 @@ namespace FlexKit
 
 		Close(CLs);
 		
-		Submit(CLs._PTR_Cast<ID3D12CommandList>(), RS, Window);
+		Submit(CLs._PTR_Cast<ID3D12CommandList>(), RS);
 	}
 
 
@@ -6507,6 +6673,24 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		};
 
 		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle AddRenderTarget(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag)
+	{
+		return RS->RenderTargets.AddResource(Desc, Resource);
+	}
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle CreateRenderTarget(RenderSystem* RS, Texture2D_Desc& Desc, uint32_t Tag)
+	{
+		return TextureHandle(-1);
 	}
 
 

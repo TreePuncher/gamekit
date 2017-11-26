@@ -128,6 +128,7 @@ namespace FlexKit
 				reserve(MINSIZE);
 		}
 
+
 		inline  Vector(const THISTYPE& RHS) :
 			Allocator	(RHS.Allocator),
 			Max			(RHS.Max),
@@ -148,7 +149,9 @@ namespace FlexKit
 			RHS.Size = 0;
 		}
 
+
 		inline ~Vector(){if(A)Allocator->_aligned_free(A);}
+
 
 		inline			Ty& operator [](size_t index)		{return A[index];}
 		inline const	Ty& operator [](size_t index) const {return A[index];}
@@ -171,7 +174,32 @@ namespace FlexKit
 		}
 
 
-		Ty PopVect(){
+		/************************************************************************************************/
+
+
+		THISTYPE& operator =(THISTYPE&& RHS)
+		{
+			if (!Allocator) Allocator = RHS.Allocator;
+
+			Release();
+
+			A        = RHS.A;
+			Max      = RHS.Max;
+			Size     = RHS.Size;
+
+			RHS.Size = 0;
+			RHS.Max  = 0;
+			RHS.A    = nullptr;
+
+			return *this;
+		}
+
+
+		/************************************************************************************************/
+
+
+		Ty PopVect()
+		{
 			FK_ASSERT(C->Size >= 1);
 			auto temp = C->A[--C->Size];
 			A[C->Size].~Ty();
@@ -182,7 +210,8 @@ namespace FlexKit
 		/************************************************************************************************/
 		
 		
-		Ty& front()	{
+		Ty& front()	
+		{
 			FK_ASSERT(Size > 0);
 			return A[0];
 		}
@@ -199,6 +228,7 @@ namespace FlexKit
 
 
 		/************************************************************************************************/
+
 
 		void resize(size_t newSize)
 		{
@@ -217,6 +247,7 @@ namespace FlexKit
 					pop_back();
 			}
 		}
+
 
 		/************************************************************************************************/
 
@@ -326,13 +357,78 @@ namespace FlexKit
 
 #endif
 
+
 		/************************************************************************************************/
 
 
-		void remove_unstable(Iterator I) {
+		void push_back(Ty&& in) {
+			if (Size + 1 > Max)
+			{// Increase Size
+#ifdef _DEBUG
+				FK_ASSERT(Allocator);
+#endif			
+				auto NewSize = ((Max < 1) ? 2 : (2 * Max));
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
+				{
+					size_t itr = 0;
+					size_t End = Size;
+					for (; itr < End; ++itr)
+						new(NewMem + itr) Ty();
+				}
+#ifdef _DEBUG
+				FK_ASSERT(NewMem);
+				if (Size)
+					FK_ASSERT(NewMem != A);
+#endif
+
+				if (A) 
+				{
+					size_t itr = 0;
+					size_t End = Size;
+					for (; itr < End; ++itr)
+						NewMem[itr] = std::move(A[itr]);
+
+					Allocator->_aligned_free(A);
+				}
+
+				A = NewMem;
+				Max = NewSize;
+			}
+
+			new(A + Size++) Ty(std::move(in));
+		}
+
+
+		/************************************************************************************************/
+
+		// Order Not Preserved
+		void remove_unstable(Iterator I) 
+		{
+			if (I == end())
+				return;
+
 			*I = back();
 			pop_back();
 		}
+
+
+		/************************************************************************************************/
+
+
+		void remove_stable(Iterator I)
+		{
+			if (I == end())
+				return;
+
+			while (I != end() && (I + 1)!= end())
+				*I = *(I + 1);
+
+			pop_back();
+		}
+
+
+		/************************************************************************************************/
+
 
 		Ty pop_back()
 		{
@@ -358,7 +454,9 @@ namespace FlexKit
 				{
 					size_t itr = 0;
 					size_t End = Size + 1;
-					for (; itr < End;) NewMem[itr] = A[itr];
+					for (; itr < End;) 
+						NewMem[itr] = std::move(A[itr]); // move if Possible
+
 					Allocator->_aligned_free(A);
 				}
 
@@ -435,9 +533,9 @@ namespace FlexKit
 		Dest.Size		= Source.Size;
 		Dest.Max		= Source.Max;
 
-		Source.A    = nullptr;
-		Source.Size = 0;
-		Source.Max  = 0;
+		Source.A		= nullptr;
+		Source.Size		= 0;
+		Source.Max		= 0;
 	}
 
 
@@ -507,6 +605,7 @@ namespace FlexKit
 		return C.end();
 	}
 
+
 	template<typename TY_C, typename TY_PRED>
 	auto find(TY_C& C, TY_PRED _Pred) noexcept
 	{
@@ -541,7 +640,7 @@ namespace FlexKit
 	template<typename TY_C, typename TY>
 	bool IsXInSet(const TY& X, const TY_C& C)
 	{
-		static_assert(TYPE_CHECK(TY(), TY_C::TYPE()), "TYPES MUST MATCH!");
+		//static_assert(TYPE_CHECK(TY(), TY_C::TYPE()), "TYPES MUST MATCH!");
 		for (auto& Ci : C)
 			if (Ci == X)
 				return true;

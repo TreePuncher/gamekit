@@ -39,22 +39,24 @@ TODO's
 using FlexKit::GameFramework;
 
 
-struct PlayState : public FrameworkState
+class PlayState : public FrameworkState
 {
+public:
 	// Game Element Controllers
 	// GameplayComponentSystem		Model;
 
 	PlayState(EngineCore* Engine, GameFramework* Framework);
 	~PlayState();
 
-	bool Update			(EngineCore* Engine, double dT) override;
-	bool DebugDraw		(EngineCore* Engine, double dT) override;
-	bool PreDrawUpdate	(EngineCore* Engine, double dT) override;
-	bool EventHandler	(Event evt)						override;
+	bool Update			(EngineCore* Engine, double dT) final;
+	bool DebugDraw		(EngineCore* Engine, double dT) final;
+	bool PreDrawUpdate	(EngineCore* Engine, double dT) final;
+	bool Draw			(EngineCore* Engine, double dT, FrameGraph& Graph) final;
+
+	bool EventHandler	(Event evt)	final;
 
 	InputComponentSystem		Input;
 	OrbitCameraSystem			OrbitCameras;
-
 	GraphicScene				Scene;
 
 	ThirdPersonCameraComponentSystem	TPC;
@@ -62,10 +64,11 @@ struct PlayState : public FrameworkState
 	DrawableComponentSystem				Drawables;
 	LightComponentSystem				Lights;
 
-	GameObject<>				CubeObjects[1024];
-	GameObject<>				FloorObject;
-	GameObject<>				TestObject;
-	GameObject<16>				Player;
+	// GameObjects
+	GameObject<> CubeObjects[1024];
+	GameObject<> FloorObject;
+	GameObject<> TestObject;
+	GameObject<> Player;
 };
 
 

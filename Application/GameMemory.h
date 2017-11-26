@@ -34,8 +34,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Resources.h"
 #include "..\coreutilities\ThreadUtilities.h"
 
-#include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\ForwardRendering.h"
+#include "..\graphicsutilities\FrameGraph.h"
+#include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\TiledRender.h"
 #include "..\graphicsutilities\SSReflections.h"
 #include "..\graphicsutilities\MeshUtils.h"
@@ -184,8 +185,8 @@ struct EngineCore
 	bool			FrameLock;
 	bool			End;
 
-	RenderSystem	RenderSystem;
-	OcclusionCuller	Culler;
+	RenderSystem		RenderSystem;
+	OcclusionCuller		Culler;
 
 	RenderWindow	Window;
 	DepthBuffer		DepthBuffer;

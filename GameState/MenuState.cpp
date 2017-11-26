@@ -396,16 +396,14 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
 
 	auto* State	= &Engine->GetBlockMemory().allocate_aligned<JoinScreen>(
 													Framework, 
-													Engine->GetBlockMemory().AllocatorInterface);
+													(iAllocator*)Engine->GetBlockMemory());
 
 	Framework->MouseState.Enabled = true;
-	//State->VTable.PreDrawUpdate = JoinScreenPreDraw;
-	//State->VTable.Update        = JoinScreenUpdate;
-	//State->VTable.Release       = ReleaseJoinScreen;
+
 	State->Framework            = Framework;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 
-	memset(State->Name, '\0', sizeof(JoinScreen::Name));
+	memset(State->Name, '\0',	sizeof(JoinScreen::Name));
 	memset(State->Server, '\0', sizeof(JoinScreen::Server));
 
 	auto  Grid = State->BettererWindow.CreateGrid();

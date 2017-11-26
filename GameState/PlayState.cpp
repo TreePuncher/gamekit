@@ -23,6 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "PlayState.h"
+#include "..\graphicsutilities\FrameGraph.h"
+#include "..\graphicsutilities\PipelineState.h"
 #include "..\graphicsutilities\ImageUtilities.h"
 #include "..\coreutilities\GraphicsComponents.h"
 
@@ -154,8 +156,8 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 bool PlayState::DebugDraw(EngineCore* Core, double dT)
 {
 	//PushCapsule_Wireframe(Framework->Immediate, Core->GetTempMemory(), GetWorldPosition(Player), 5, 10, GREEN);
-	Physics.DebugDraw	(Framework->Immediate, Core->GetTempMemory());
-	Drawables.DrawDebug	(Framework->Immediate, Core->Nodes, Core->GetTempMemory());
+	//Physics.DebugDraw	(Framework->Immediate, Core->GetTempMemory());
+	//Drawables.DrawDebug	(Framework->Immediate, Core->Nodes, Core->GetTempMemory());
 
 	return true;
 }
@@ -268,6 +270,46 @@ PlayState::~PlayState()
 
 	ReleaseGraphicScene(&Scene);
 	Framework->Engine->GetBlockMemory().free(this);
+}
+
+
+/************************************************************************************************/
+
+
+bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
+{
+	ClearBackBuffer(&FrameGraph);
+	PresentBackBuffer(&FrameGraph, &Core->Window);
+
+	//struct PassData
+	//{	// Define Pass Resources Here
+	//	FrameResourceHandle Output;
+	//};
+
+
+	/*
+	auto Pass = FrameGraph.AddNode<PassData>(
+		GetCRCGUID(PASS_1), 
+		[&](FrameGraphNodeBuilder& Builder, PassData& Data)
+		{
+			// Setup Resource Usage Here
+			Data.Output = FrameGraph.Resources.FindRenderTarget(GetCRCGUID(BACKBUFFER));
+			//Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+		},
+			[=](const PassData& Data, FrameResources& Resources, Context* Ctx) 
+		{	// Render Stuff Here
+			auto& Signature = Core->RenderSystem.Library.ShadingRTSig;
+			DesciptorHeap Heap(Core->RenderSystem, Signature.GetDescHeap(0), Core->GetTempMemory());
+
+			Ctx->SetRootSignature(Core->RenderSystem.Library.ShadingRTSig);
+			Ctx->SetPipelineState(GetPSO(Core->RenderSystem, TILEDSHADING_SHADE));
+			Ctx->SetGraphicsDescriptorTable(0, Heap);
+
+			SetRenderTargets(Ctx, { Data.Output }, Resources);
+		});
+	*/
+
+	return true;
 }
 
 
@@ -452,17 +494,16 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 		State->FloorObject,
 			State->Physics.CreateStaticBoxCollider({1000, 3, 1000}, {0, -3, 0}));
 
-	InitiateGameObject(
-		State->Player,
-			State->Physics.CreateCharacterController({0, 10, 0}, 10, 5.0f),
-			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
+	//InitiateGameObject(
+	//	State->Player,
+	//		State->Physics.CreateCharacterController({0, 10, 0}, 10, 5.0f),
+	//		CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
 			//CreateThirdPersonCamera(&State->TPC));
-			CreateOrbitCamera(State->OrbitCameras, Framework->ActiveCamera, 10));
+	//		CreateOrbitCamera(State->OrbitCameras, , 10));
 
 	//Yaw(State->Player, pi/100);
 
 
-	SetActiveCamera(Framework, State->Player);
 	SetWorldPosition(State->Player, {0, 30, 50});
 	//OffsetYawNode(State->Player, { 0.0f, 5, 0.0f });
 	//SetCameraOffset(State->Player, {0, 30, 30});

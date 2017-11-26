@@ -129,7 +129,6 @@ namespace FlexKit
 			ID3D12PipelineState*	PSOAnimated;
 			ID3D12PipelineState*	PSOAnimatedTextured;
 
-			ID3D12RootSignature*	FillRTSig;
 			Shader					NormalMesh;
 			Shader					AnimatedMesh;
 			Shader					NoTexture;
@@ -137,12 +136,12 @@ namespace FlexKit
 		}Filling;
 	};
 
+
 	FLEXKITAPI void InitiateTiledDeferredRender	( RenderSystem* RenderSystem,  TiledRendering_Desc* GBdesc, TiledDeferredRender* out );
 	FLEXKITAPI void TiledRender_LightPrePass	( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH);
 	FLEXKITAPI void TiledRender_Fill			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, TextureManager* TM, GeometryTable* GT, TextureVTable* Texture, OcclusionCuller* OC = nullptr, iAllocator* TempMemory = nullptr);
 
 	FLEXKITAPI void TiledRender_Shade			( RenderSystem* RS, PVS* _PVS, TiledDeferredRender* Pass, Texture2D Target, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB );
-
 
 	FLEXKITAPI void ReleaseTiledRender			( TiledDeferredRender* gb );
 	FLEXKITAPI void ClearGBuffer				( RenderSystem* RS, TiledDeferredRender* gb, const float4& ClearColor, size_t Idx );
