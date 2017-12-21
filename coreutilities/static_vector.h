@@ -4,7 +4,7 @@
 
 /**********************************************************************
  
-Copyright (c) 2014-2017 Robert May
+Copyright (c) 2014-2018 Robert May
  
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -93,6 +93,7 @@ namespace FlexKit
 			for( auto e : list )
 				push_back( e );
 		}
+
 		template< unsigned int RHSIZE = 10 >
 		static_vector(const static_vector<TY_, RHSIZE>& in)
 		{
@@ -105,6 +106,22 @@ namespace FlexKit
 					return;
 		}
  
+		template<typename TY_C>
+		static_vector& operator = (const TY_C& in)
+		{
+			FK_ASSERT(TSIZE > in.size());
+
+			Size = 0;
+
+			for (auto i : in)
+				if (Size != TSIZE)
+					push_back(i);
+				else
+					break;
+
+			return *this;
+		}
+
 		operator TY_* () { return Elements; }
  
 		TY_& operator [](size_t index)

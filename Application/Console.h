@@ -138,7 +138,7 @@ namespace FlexKit
 	{
 	};
 
-	typedef FlexKit::Vector<Identifier>		ConsoleIdentifierTable;
+	typedef FlexKit::Vector<Identifier>			ConsoleIdentifierTable;
 	typedef FlexKit::Vector<ConsoleFunction>	ConsoleFunctionTable;
 
 	struct ConsoleLine

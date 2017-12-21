@@ -440,7 +440,7 @@ namespace FlexKit
 		FK_ASSERT(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size();
-		DescriptorHeap	= ReserveDescHeap(RS, EntryCount);
+		DescriptorHeap	= RS->_ReserveDescHeap(EntryCount);
 		Layout			= &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -560,11 +560,12 @@ namespace FlexKit
 					CD3DX12_DESCRIPTOR_RANGE Range;
 					Range.Init(
 						RangeType,
-						H.Space, H.Register, 0);
+						H.Count, H.Register, H.Space);
 
 					DesciptorHeaps.back().push_back(Range);
 				}
 
+				auto temp = DesciptorHeaps.back().size();
 				Param.InitAsDescriptorTable(
 					DesciptorHeaps.back().size(), 
 					DesciptorHeaps.back().begin(), 
@@ -618,6 +619,11 @@ namespace FlexKit
 		{
 			std::cout << (char*)ErrorBlob->GetBufferPointer() << '\n';
 			ErrorBlob->Release();
+
+#ifdef _DEBUG 
+			FK_ASSERT(false, "Invalid Root Signature Description!");
+#endif
+
 			return false;
 		}
 
@@ -689,9 +695,9 @@ namespace FlexKit
 
 	void Context::SetRenderTargets(static_vector<Texture2D*, 16> RTs)
 	{
-		RTVPOSCPU			= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
-		auto RTVPOS			= ReserveRTVHeap					(RS, RTs.size());
-		auto RTVHeap		= GetCurrentRTVTable				(RS);
+		RTVPOSCPU			= RS->_GetRTVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
+		auto RTVPOS			= RS->_ReserveRTVHeap(RTs.size());
+		auto RTVHeap		= RS->_GetCurrentRTVTable();
 		RenderTargetCount	= RTs.size();
 
 		for (auto I : RTs)
@@ -736,7 +742,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetScissorRects(static_vector<D3D12_RECT, 16>		Rects)
+	void Context::SetScissorRects(static_vector<D3D12_RECT, 16>	Rects)
 	{
 		DeviceContext->RSSetScissorRects(Rects.size(), Rects.begin());
 	}
@@ -749,9 +755,9 @@ namespace FlexKit
 	{
 		if (DS)
 		{
-			DSVPOSCPU		= GetDSVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On DSV heap on CPU
-			auto DSVPOS		= ReserveDSVHeap					(RS, 1);
-			auto DSVHeap	= GetCurrentRTVTable				(RS);
+			DSVPOSCPU		= RS->_GetDSVTableCurrentPosition_CPU(); // _Ptr to Current POS On DSV heap on CPU
+			auto DSVPOS		= RS->_ReserveDSVHeap(1);
+			auto DSVHeap	= RS->_GetCurrentRTVTable();
 			PushDepthStencil(RS, DS, DSVPOS);
 		}
 
@@ -853,6 +859,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::Draw(size_t VertexCount, size_t BaseVertex)
+	{
+		UpdateResourceStates();
+		DeviceContext->DrawInstanced(VertexCount, 1, BaseVertex, 0);
+	}
+
+
 	void Context::DrawIndexed(size_t IndexCount, size_t IndexOffet, size_t BaseVertex)
 	{
 		UpdateResourceStates();
@@ -871,6 +884,9 @@ namespace FlexKit
 			IndexOffet, BaseVertex, 
 			InstanceOffset);
 	}
+
+
+	/************************************************************************************************/
 
 
 	void Context::FlushBarriers()
@@ -960,8 +976,16 @@ namespace FlexKit
 					auto CurrentState	= DRS2D3DState(B.OldState);
 					auto NewState		= DRS2D3DState(B.NewState);
 
+					#ifdef _DEBUG
+						std::cout << "Transitioning Resource: " << Resource 
+							<< " From State: " << CurrentState << " To State: " 
+							<< NewState << "\n";
+					#endif
+
 					if (B.OldState != B.NewState)
-						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(Resource, CurrentState, NewState));
+						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+							Resource, CurrentState, NewState));
+
 				}	break;
 					break;
 				case Barrier::BT_ConstantBuffer:
@@ -970,7 +994,8 @@ namespace FlexKit
 			};
 		}
 
-		DeviceContext->ResourceBarrier(Barriers.size(), Barriers.begin());
+		if (Barriers.size())
+			DeviceContext->ResourceBarrier(Barriers.size(), Barriers.begin());
 
 		Barriers.clear();
 		PendingBarriers.clear();
@@ -992,12 +1017,62 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CreateRootSignatureLibrary(RenderSystem* RS)
+	ID3D12PipelineState* CreateDrawRectStatePSO(RenderSystem* RS)
+	{
+		auto DrawRectVShader = LoadShader("DrawRect_VS", "DrawRect_VS", "vs_5_0", "assets\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRect", "DrawRect", "ps_5_0", "assets\\pshader.hlsl");
+
+		FINALLY
+			
+		Release(&DrawRectVShader);
+		Release(&DrawRectPShader);
+
+		FINALLYOVER
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+
+		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		Depth_Desc.DepthEnable = false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.VS                    = DrawRectVShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::RootSigLibrary::Initiate(RenderSystem* RS)
 	{
 		ID3D12Device* Device = RS->pDevice;
 
-		/*
-			CD3DX12_STATIC_SAMPLER_DESC(
+		/*	CD3DX12_STATIC_SAMPLER_DESC(
 			UINT shaderRegister,
 			D3D12_FILTER filter                      = D3D12_FILTER_ANISOTROPIC,
 			D3D12_TEXTURE_ADDRESS_MODE addressU      = D3D12_TEXTURE_ADDRESS_MODE_WRAP,
@@ -1013,6 +1088,7 @@ namespace FlexKit
 			UINT registerSpace                       = 0)
 		{
 		*/
+
 		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
 			CD3DX12_STATIC_SAMPLER_DESC(0),
 			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR },
@@ -1023,6 +1099,7 @@ namespace FlexKit
 			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0);
 			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 4, 4);
 
+			/*
 			CD3DX12_ROOT_PARAMETER Parameters[5];
 			Parameters[0].InitAsDescriptorTable(2, ranges, D3D12_SHADER_VISIBILITY_ALL);
 			Parameters[1].InitAsConstantBufferView(0, 0,   D3D12_SHADER_VISIBILITY_ALL);
@@ -1044,91 +1121,78 @@ namespace FlexKit
 
 			RS->Library.RS4CBVs4SRVs = NewRootSig;
 			SETDEBUGNAME(NewRootSig, "RS4CBVs4SRVs");
+			*/
+
+			RS->Library.RS4CBVs4SRVs.AllowIA = true;
+			DesciptorHeapLayout<2> DescriptorHeap;
+			DescriptorHeap.SetParameterAsSRV(0, 0, 4);
+			DescriptorHeap.SetParameterAsCBV(1, 4, 4);
+			FK_ASSERT(DescriptorHeap.Check());
+
+			RS->Library.RS4CBVs4SRVs.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
+			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs4SRVs.Build(RS, RS->Memory);
+			SETDEBUGNAME(RS->Library.RS4CBVs4SRVs, "RS4CBVs4SRVs");
 		}
 		{
-			// Pixel Processor Root Sig
-			CD3DX12_DESCRIPTOR_RANGE ranges[1];
-			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 0);
+			RS->Library.RS4CBVs_SO.AllowIA	= false;
+			DesciptorHeapLayout<1> DescriptorHeap;
+			DescriptorHeap.SetParameterAsSRV(0, 3, 4);
 
-			CD3DX12_ROOT_PARAMETER Parameters[5];
-			Parameters[0].InitAsConstantBufferView	(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[1].InitAsConstantBufferView	(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[2].InitAsConstantBufferView	(2, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[3].InitAsDescriptorTable		(1, ranges, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[4].InitAsUnorderedAccessView	(0, 0, D3D12_SHADER_VISIBILITY_ALL);
+			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(0, 0, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(1, 1, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(2, 2, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs_SO.SetParameterAsDescriptorTable	(3, DescriptorHeap, -1);
+			RS->Library.RS4CBVs_SO.SetParameterAsUAV				(4, 0, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs_SO.Build(RS, RS->Memory);
 
-			ID3DBlob* Signature = nullptr;
-			ID3DBlob* ErrorBlob = nullptr;
-			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
-
-			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 4, Parameters, 2, Samplers,
-												D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | 
-												D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT);
-
-			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob),
-				PRINTERRORBLOB(ErrorBlob));
-
-			ID3D12RootSignature* NewRootSig = nullptr;
-			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
-				ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
-
-			RS->Library.RS4CBVs_SO = NewRootSig;
-			SETDEBUGNAME(NewRootSig, "RS3CBV1DT_SO");
+			SETDEBUGNAME(RS->Library.RS4CBVs_SO, "RS4CBVs4SRVs");
 		}
 		{
-			// Compute Processor Root Sig
-			CD3DX12_DESCRIPTOR_RANGE ranges[3];
-			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0);
-			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0);
-			ranges[2].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 4, 4);
+			RS->Library.RS2UAVs4SRVs4CBs.AllowIA = true;
+			DesciptorHeapLayout<16> DescriptorHeap;
+			DescriptorHeap.SetParameterAsShaderUAV	(0, 0, 2);
+			DescriptorHeap.SetParameterAsSRV		(1, 0, 4);
+			DescriptorHeap.SetParameterAsCBV		(2, 4, 4);
+			FK_ASSERT(DescriptorHeap.Check());
 
-			CD3DX12_ROOT_PARAMETER Parameters[5];
-			Parameters[0].InitAsDescriptorTable(sizeof(ranges)/sizeof(ranges[0]), ranges, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[1].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[2].InitAsConstantBufferView(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[3].InitAsConstantBufferView(2, 0, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[4].InitAsConstantBufferView(3, 0, D3D12_SHADER_VISIBILITY_ALL);
+			RS->Library.RS2UAVs4SRVs4CBs.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
+			RS->Library.RS2UAVs4SRVs4CBs.SetParameterAsCBV(1, 0, 3, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RS2UAVs4SRVs4CBs.Build(RS, RS->Memory);
 
-			ID3DBlob* Signature = nullptr;
-			ID3DBlob* ErrorBlob = nullptr;
-			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
-
-			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 2, Samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob),
-				PRINTERRORBLOB(ErrorBlob));
-
-			ID3D12RootSignature* NewRootSig = nullptr;
-			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
-				ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
-
-			RS->Library.RS2UAVs4SRVs4CBs = NewRootSig;
-			SETDEBUGNAME(NewRootSig, "RS2UAVs4SRVs4CBs");
+			SETDEBUGNAME(RS->Library.RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
 		}
 		{
 			RS->Library.ShadingRTSig.AllowIA = false;
 
 			DesciptorHeapLayout<16> DescriptorHeap;
-			DescriptorHeap.SetParameterAsShaderResourceView	(0, 0, 8);
-			DescriptorHeap.SetParameterAsShaderUAV			(1, 0, 1);
-			DescriptorHeap.SetParameterAsConstantBufferView	(2, 0, 2);
+			DescriptorHeap.SetParameterAsSRV		(0, 0, 8);
+			DescriptorHeap.SetParameterAsShaderUAV	(1, 0, 1);
+			DescriptorHeap.SetParameterAsCBV		(2, 0, 2);
 			FK_ASSERT(DescriptorHeap.Check());
 
 			RS->Library.ShadingRTSig.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
 			RS->Library.ShadingRTSig.Build(RS, RS->Memory);
+
+			SETDEBUGNAME(RS->Library.ShadingRTSig, "ShadingRTSig");
 		}
 		{
 			RS->Library.RSDefault.AllowIA = true;
 
 			DesciptorHeapLayout<16> DescriptorHeap;
-			DescriptorHeap.SetParameterAsShaderResourceView(0, 0, 10);
+			DescriptorHeap.SetParameterAsSRV(0, 0, 10);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.RSDefault.SetParameterAsConstantBufferView(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsConstantBufferView(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsConstantBufferView(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RSDefault.SetParameterAsShaderResourceView(3, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_VS);
-			RS->Library.RSDefault.SetParameterAsDescriptorTable(4, DescriptorHeap, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+			RS->Library.RSDefault.SetParameterAsCBV				(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsCBV				(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsCBV				(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+			RS->Library.RSDefault.SetParameterAsSRV				(3, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_VS);
+			RS->Library.RSDefault.SetParameterAsDescriptorTable	(4, DescriptorHeap, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
 			RS->Library.RSDefault.Build(RS, RS->Memory);
+
+			SETDEBUGNAME(RS->Library.RSDefault, "RSDefault");
 		}
 	}
 
@@ -1248,7 +1312,7 @@ namespace FlexKit
 		FK_ASSERT(Dest);
 
 		auto& CopyEngine = RS->CopyEngine;
-		ID3D12GraphicsCommandList* CS = GetCurrentCommandList(RS);
+		ID3D12GraphicsCommandList* CS = RS->_GetCurrentCommandList();
 
 		void* _ptr = nullptr;
 		size_t Offset;
@@ -1317,9 +1381,6 @@ namespace FlexKit
 			MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
 			return false;
 		}
-		else
-			std::cout << "Created A DX12 Device!\n";
-
 
 #if USING( DEBUGGRAPHICS )
 		HR =  Device->QueryInterface(__uuidof(ID3D12DebugDevice), (void**)&DebugDevice);
@@ -1366,8 +1427,9 @@ namespace FlexKit
 		ID3D12CommandAllocator*		ComputeAllocator	= nullptr;
 		ID3D12GraphicsCommandList*	UploadList	        = nullptr;
 		ID3D12GraphicsCommandList*	ComputeList	        = nullptr;
-		IDXGIFactory4*				DXGIFactory         = nullptr;
-		IDXGIAdapter3*				DXGIAdapter			= nullptr;
+		IDXGIFactory5*				DXGIFactory         = nullptr;
+		IDXGIAdapter4*				DXGIAdapter			= nullptr;
+		
 
 		HR = Device->CreateCommandQueue(&CQD,			IID_PPV_ARGS(&GraphicsQueue));		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
 		HR = Device->CreateCommandQueue(&UploadCQD,		IID_PPV_ARGS(&UploadQueue));		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND QUEUE!");
@@ -1496,6 +1558,7 @@ namespace FlexKit
 			auto DeviceID = Device->GetAdapterLuid();
 
 			DXGIFactory->EnumAdapterByLuid(DeviceID, IID_PPV_ARGS(&DXGIAdapter));
+
 		}
 
 		FINALLY
@@ -1573,14 +1636,14 @@ namespace FlexKit
 		}
 
 		InitiateComplete = true;
-
-		CreateRootSignatureLibrary(this);
 		InitiateCopyEngine(this);
 		
-		States = CreatePSOTable(this);
+		Library.Initiate(this);
+
 		FreeList.Allocator = in->Memory;
 
-		ReadyUploadQueues(this);
+		ReadyUploadQueues();
+
 
 		return InitiateComplete;
 	}
@@ -1644,7 +1707,7 @@ namespace FlexKit
 				if (alloc)alloc->Release();
 		}
 
-		ReleasePipelineStates(this);
+		PipelineStates.ReleasePSOs();
 
 		CopyEngine.TempBuffer->Unmap(0, nullptr);
 		CopyEngine.TempBuffer->Release();
@@ -1657,9 +1720,6 @@ namespace FlexKit
 		GraphicsQueue->Release();
 		UploadQueue->Release();
 		ComputeQueue->Release();
-		Library.RS4CBVs4SRVs->Release();
-		Library.RS4CBVs_SO->Release();
-		Library.RS2UAVs4SRVs4CBs->Release();
 		pGIFactory->Release();
 		pDXGIAdapter->Release();
 		pDevice->Release();
@@ -1675,6 +1735,93 @@ namespace FlexKit
 		pDebug->Release();
 #endif
 	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12PipelineState* RenderSystem::GetPSO(EPIPELINESTATES StateID)
+	{
+		return PipelineStates.GetPSO(StateID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::RegisterPSOLoader(EPIPELINESTATES State, LOADSTATE_FN Loader)
+	{
+		PipelineStates.RegisterPSOLoader(State, Loader);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::QueuePSOLoad(EPIPELINESTATES State)
+	{
+		PipelineStates.QueuePSOLoad(State);
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t	RenderSystem::GetCurrentFrame()
+	{
+		return CurrentFrame;
+	}
+
+
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::PresentWindow(RenderWindow* Window)
+	{
+		CopyEnginePostFrameUpdate(this);
+
+		Window->SwapChain_ptr->Present(0, 0);
+		Window->BufferIndex = Window->SwapChain_ptr->GetCurrentBackBufferIndex();
+
+		Fences[CurrentIndex].FenceValue = ++FenceCounter;
+		GraphicsQueue->Signal(Fence, FenceCounter);
+
+		++CurrentFrame;
+	}
+
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::WaitforGPU()
+	{
+		size_t Index	= CurrentIndex;
+		auto Fence		= this->Fence;
+		size_t CompleteValue = Fence->GetCompletedValue();
+
+		if (CompleteValue < Fences[Index].FenceValue) {
+			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+			Fence->SetEventOnCompletion(Fences[Index].FenceValue, eventHandle);
+			WaitForSingleObject(eventHandle, INFINITE);
+			CloseHandle(eventHandle);
+			ReleaseTempResources();
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	VertexBufferHandle RenderSystem::CreateVertexBuffer(size_t BufferSize, bool GPUResident)
+	{
+		return VertexBuffers.CreateVertexBuffer(BufferSize, GPUResident, this);
+	}
+
+
+	/************************************************************************************************/
 
 
 	void Push_DelayedRelease(RenderSystem* RS, ID3D12Resource* Res)
@@ -1777,6 +1924,11 @@ namespace FlexKit
 		NewTexture.Texture      = Resource;
 		NewTexture.WH			= {Resource_DESC.Width,Resource_DESC.Height};
 
+#ifdef _DEBUG 
+		cout << "Creating Depth Buffer Resource!\n";
+#endif
+
+		FK_ASSERT(Resource != nullptr, "Failed Creating Depth Buffer Resource!");
 		SETDEBUGNAME(Resource, __func__);
 
 		return (NewTexture);
@@ -1807,6 +1959,7 @@ namespace FlexKit
 			auto DB = CreateDepthBufferResource(RS, &desc, DepthDesc.Float32);
 			
 			if (!DB) {
+				cout << "Failed To Create Depth Buffer!\n";
 				FK_ASSERT(0);
 			} else {
 				SETDEBUGNAME(DB, "DEPTHBUFFER");
@@ -1888,6 +2041,7 @@ namespace FlexKit
 	{
 		SetProcessDPIAware();
 
+
 		RenderWindow NewWindow = {0};
 		static size_t Window_Count = 0;
 
@@ -1908,7 +2062,12 @@ namespace FlexKit
 		RECT WindowRect;
 		GetClientRect(Window, &ClientRect);
 		GetWindowRect(Window, &WindowRect);
-		MoveWindow(Window, In_Desc->POS_X, In_Desc->POS_Y, WindowRect.right - WindowRect.left - ClientRect.right + In_Desc->width, WindowRect.bottom - WindowRect.top - ClientRect.bottom + In_Desc->height, false);
+		MoveWindow(
+			Window, 
+			In_Desc->POS_X, In_Desc->POS_Y, 
+			WindowRect.right - WindowRect.left - ClientRect.right + In_Desc->width, 
+			WindowRect.bottom - WindowRect.top - ClientRect.bottom + In_Desc->height, 
+			false);
 
 		{
 			POINT cursor;
@@ -1934,25 +2093,33 @@ namespace FlexKit
 		NewWindow.VP.Min      = 0.0f;
 		NewWindow.BufferIndex = 0;
 		// Create Swap Chain
-		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
-		swapChainDesc.BufferCount		= 2;
-		swapChainDesc.Width				= In_Desc->width;
-		swapChainDesc.Height			= In_Desc->height;
-		swapChainDesc.Format			= DXGI_FORMAT_R8G8B8A8_UNORM;
-		swapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-		swapChainDesc.SampleDesc.Count	= 1;
+		DXGI_SWAP_CHAIN_DESC1 SwapChainDesc = {};
+		SwapChainDesc.Stereo			= false;
+		SwapChainDesc.BufferCount		= 3;
+		SwapChainDesc.Width				= In_Desc->width;
+		SwapChainDesc.Height			= In_Desc->height;
+		SwapChainDesc.Format			= DXGI_FORMAT_R8G8B8A8_UNORM;
+		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+		SwapChainDesc.SampleDesc.Count	= 1;
 		ShowWindow(Window, 5);
 
 		IDXGISwapChain1* NewSwapChain_ptr = nullptr;
-		HRESULT HR = RS->pGIFactory->CreateSwapChainForHwnd( RS->GraphicsQueue, NewWindow.hWindow, &swapChainDesc, nullptr, nullptr, &NewSwapChain_ptr );
+		HRESULT HR = RS->pGIFactory->CreateSwapChainForHwnd( 
+			RS->GraphicsQueue, NewWindow.hWindow, 
+			&SwapChainDesc, nullptr, nullptr,
+			&NewSwapChain_ptr );
+
+
+
 		if ( FAILED( HR ) )
 		{
-			FK_ASSERT(SUCCEEDED(HR), "FAILED TO CREATE SWAP CHAIN!");
+			cout << "Failed to Create Swap Chain!\n";
+			FK_ASSERT(FAILED(HR), "FAILED TO CREATE SWAP CHAIN!");
 			return false;
 		}
 
-		NewWindow.SwapChain_ptr = static_cast<IDXGISwapChain3*>(NewSwapChain_ptr);
+		NewWindow.SwapChain_ptr = static_cast<IDXGISwapChain4*>(NewSwapChain_ptr);
 
 		Texture2D_Desc Desc;
 		Desc.Height	= NewWindow.VP.Height;
@@ -1960,14 +2127,16 @@ namespace FlexKit
 		Desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
 
 		//CreateBackBuffer
-		for (size_t I = 0; I < swapChainDesc.BufferCount; ++I)
+		for (size_t I = 0; I < SwapChainDesc.BufferCount; ++I)
 		{
 			ID3D12Resource* buffer;
 			NewSwapChain_ptr->GetBuffer( I, __uuidof(ID3D12Resource), (void**)&buffer);
 			NewWindow.BackBuffer[I] = buffer;
 
+			FK_ASSERT(buffer, "Failed to Create Back Buffer!");
 			SETDEBUGNAME(buffer, "BackBuffer");
 			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER));
+			RS->RenderTargets.SetState(Handle, DRS_RenderTarget);
 			NewWindow.RenderTargets[I] = Handle;
 		}
 
@@ -1976,8 +2145,8 @@ namespace FlexKit
 		NewWindow.WH[0]         = In_Desc->width;
 		NewWindow.WH[1]         = In_Desc->height;
 		NewWindow.Close         = false;
-		NewWindow.BufferCount	= 2;
-		NewWindow.Format		= swapChainDesc.Format;
+		NewWindow.BufferCount	= SwapChainDesc.BufferCount;
+		NewWindow.Format		= SwapChainDesc.Format;
 		memset(NewWindow.InputBuffer, 0, sizeof(NewWindow.InputBuffer));
 
 		*out = NewWindow;
@@ -2039,9 +2208,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseTempResources(RenderSystem* RS)
+	void RenderSystem::ReleaseTempResources()
 	{
-		auto TempBuffer = RS->FrameResources[RS->CurrentIndex].TempBuffers;
+		auto TempBuffer = FrameResources[CurrentIndex].TempBuffers;
 		if (TempBuffer)	{
 			for (auto r : *TempBuffer)
 				r->Release();
@@ -2071,21 +2240,6 @@ namespace FlexKit
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PresentWindow( RenderWindow* Window, RenderSystem* RS )									
-	{ 
-		CopyEnginePostFrameUpdate(RS);
-
-		Window->SwapChain_ptr->Present(0, 0);
-		Window->BufferIndex = Window->SwapChain_ptr->GetCurrentBackBufferIndex();
-
-		RS->Fences[RS->CurrentIndex].FenceValue = ++RS->FenceCounter;
-		RS->GraphicsQueue->Signal(RS->Fence, RS->FenceCounter);
 	}
 
 
@@ -2359,7 +2513,7 @@ namespace FlexKit
 		// NOT SURE IF NEEDED, RUNS CORRECTLY WITHOUT FOR THE MOMENT
 
 		auto& CopyEngine = RS->CopyEngine;
-		ID3D12GraphicsCommandList* CS = GetCurrentCommandList(RS);
+		ID3D12GraphicsCommandList* CS = RS->_GetCurrentCommandList();
 
 		CS->ResourceBarrier(1, 
 				&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
@@ -2377,7 +2531,7 @@ namespace FlexKit
 		const size_t SubResCount = Desc->SubResourceCount;
 		const size_t SubResStart = Desc->SubResourceStart;
 
-		PerFrameUploadQueue* UploadQueue	= GetCurrentUploadQueue(RS);
+		PerFrameUploadQueue* UploadQueue	= RS->_GetCurrentUploadQueue();
 		ID3D12GraphicsCommandList* CS		= UploadQueue->UploadList[0];
 
 		for (size_t I = 0; I < SubResCount + SubResStart; ++I) 
@@ -2424,7 +2578,7 @@ namespace FlexKit
 		FK_ASSERT(Dest);
 
 		auto& CopyEngine = RS->CopyEngine;
-		PerFrameUploadQueue* UploadQueue	= GetCurrentUploadQueue(RS);
+		PerFrameUploadQueue* UploadQueue	= RS->_GetCurrentUploadQueue();
 		ID3D12GraphicsCommandList* CS		= UploadQueue->UploadList[0];
 
 		void* _ptr = nullptr;
@@ -2447,7 +2601,7 @@ namespace FlexKit
 		Dest->IncrementCounter();
 		UpdateGPUResource(RS, Data, SourceSize, Dest->Get());
 		// NOT SURE IF NEEDED, RUNS CORRECTLY WITHOUT FOR THE MOMENT
-		GetCurrentCommandList(RS)->ResourceBarrier(1, 
+		RS->_GetCurrentCommandList()->ResourceBarrier(1,
 				&CD3DX12_RESOURCE_BARRIER::Transition(Dest->Get(), D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
 	}
@@ -2532,6 +2686,9 @@ namespace FlexKit
 								{desc_in->Width, desc_in->Height}, 
 								TextureFormat2DXGIFormat(desc_in->Format)};
 
+		std::cout << "Creating Texture!\n";
+
+		FK_ASSERT(NewTexture, "Failed to Create Texture!");
 		SETDEBUGNAME(NewResource, __func__);
 
 		return (NewTexture);
@@ -2598,8 +2755,9 @@ namespace FlexKit
 
 	OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool Float)
 	{
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::OCCLUSION_CULLING, LoadOcclusionState);
-		QueuePSOLoad(RS, EPIPELINESTATES::OCCLUSION_CULLING);
+		FK_ASSERT(0);
+		//RegisterPSOLoader(EPIPELINESTATES::OCCLUSION_CULLING, LoadOcclusionState);
+		//QueuePSOLoad(RS, EPIPELINESTATES::OCCLUSION_CULLING);
 
 		auto NewRes = CreateShaderResource(RS, Count * 8, "OCCLUSIONCULLERRESULTS");
 
@@ -2662,8 +2820,9 @@ namespace FlexKit
 
 	void OcclusionPass(RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C)
 	{
+		FK_ASSERT(0);
 		auto OCHeap = OC->Heap[OC->Idx];
-		auto DSV	= ReserveDSVHeap(RS, 1);
+		auto DSV	= RS->_ReserveDSVHeap(1);
 
 
 		D3D12_VIEWPORT VPs[1];
@@ -2683,7 +2842,7 @@ namespace FlexKit
 
 		CL->RSSetViewports(1, VPs);
 		CL->OMSetRenderTargets(0, nullptr, false, &(D3D12_CPU_DESCRIPTOR_HANDLE)DSV);
-		CL->SetPipelineState(GetPSO(RS, EPIPELINESTATES::OCCLUSION_CULLING));
+		//CL->SetPipelineState(GetPSO(RS, EPIPELINESTATES::OCCLUSION_CULLING));
 		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
 
 		for (size_t I = 0; I < Set->size(); ++I) {
@@ -2694,10 +2853,10 @@ namespace FlexKit
 
 			CL->BeginQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
 
-			auto MeshHande = (P.D->Occluder == INVALIDMESHHANDLE) ? P.D->MeshHandle : P.D->Occluder;
-			auto DHeapPosition	= GetDescTableCurrentPosition_GPU(RS);
-			auto DHeap  = ReserveDescHeap(RS, 8);
-			auto DTable = DHeap;
+			auto MeshHande		= (P.D->Occluder == INVALIDMESHHANDLE) ? P.D->MeshHandle : P.D->Occluder;
+			auto DHeapPosition	= RS->_GetDescTableCurrentPosition_GPU();
+			auto DHeap			= RS->_ReserveDescHeap(8);
+			auto DTable			= DHeap;
 
 			{	// Fill Descriptor Table With Nulls
 				auto Next = Push2DSRVToDescHeap(RS, RS->NullSRV, DHeap);
@@ -2804,18 +2963,6 @@ namespace FlexKit
 			}
 		}
 		Memory->free(TS);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UploadResources(RenderSystem* RS)
-	{
-		ID3D12CommandList* CommandLists[1] = {GetCurrentCommandList(RS)};
-		auto CL = GetCurrentCommandList(RS);// ->Close();
-		CL->Close();
-		RS->GraphicsQueue->ExecuteCommandLists(1, CommandLists);
 	}
 
 
@@ -2954,36 +3101,207 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	void InitiateGeometryTable(GeometryTable* GT, iAllocator* Memory)
+	VertexBufferHandle VertexBufferStateTable::CreateVertexBuffer(size_t BufferSize, bool GPUResident, RenderSystem* RS) // Creates Using Placed Resource
 	{
-		GT->Memory						= Memory;
-		GT->Geometry.Allocator          = Memory;
-		GT->ReferenceCounts.Allocator	= Memory;
-		GT->Guids.Allocator				= Memory;
-		GT->GeometryIDs.Allocator		= Memory;
-		GT->Handles.FreeList.Allocator  = Memory;
-		GT->Handles.Indexes.Allocator   = Memory;
-		GT->FreeList.Allocator			= Memory;
+		VBufferHandle Buffer;
+		if (!FreeBuffers.size())
+			Buffer = CreateVertexBufferResource(BufferSize, GPUResident, RS);
+		else
+		{
+		}
 
-		GT->Handles.Clear();
+		auto Handle = Handles.GetNewHandle();
+		Handles[Handle] = UserBuffers.size();
+
+		UserBuffers.push_back(UserVertexBuffer{
+			Buffer,
+			BufferSize,
+			0, 
+			Buffers[Buffer].MappedPtr,
+			Buffers[Buffer].Resource});
+
+		return Handle;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void ReleaseGeometryTable(GeometryTable* GT)
+	VertexBufferStateTable::VBufferHandle VertexBufferStateTable::CreateVertexBufferResource(size_t BufferSize, bool GPUResident, RenderSystem* RS)
 	{
-		for (auto G : GT->Geometry)
+		ID3D12Resource*	NewResource = RS->_CreateVertexBufferDeviceResource(BufferSize, GPUResident);
+		void* _ptr = nullptr;
+
+		FK_ASSERT(NewResource, "Failed To Create VertexBuffer Resource!");
+
+		if (!GPUResident)
+			NewResource->Map(0, nullptr, &_ptr);
+
+		Buffers.push_back(
+			VertexBuffer{
+				NewResource,
+				BufferSize,
+				(char*)_ptr, 
+				RS->GetCurrentFrame() });
+
+		return Buffers.size() - 1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool VertexBufferStateTable::PushVertex(VertexBufferHandle Handle, void* _ptr, size_t ElementSize)
+	{
+		auto Idx	= Handles[Handle];
+		auto Offset = UserBuffers[Idx].Offset;
+		auto _Ptr	= UserBuffers[Idx].MappedPtr;
+
+		if (!_Ptr)
+		{
+			FK_ASSERT(false, "Buffer in Lock!");
+			// TODO: Get next available buffer.
+		}
+
+		memcpy(_Ptr + Offset, _ptr, ElementSize);
+		UserBuffers[Idx].Offset += ElementSize;
+
+		return true;
+	}
+	
+
+	/************************************************************************************************/
+
+
+	void VertexBufferStateTable::LockUntil(size_t Frame)
+	{
+		for (auto& UserBuffer : UserBuffers)
+		{
+			auto BufferIdx			= UserBuffer.Buffer;
+			UserBuffer.MappedPtr	= nullptr;
+
+			Buffers[BufferIdx].NextAvailableFrame = Frame;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+
+	void VertexBufferStateTable::Reset(VertexBufferHandle Handle)
+	{
+		UserBuffers[Handles[Handle]].Offset = 0;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource* VertexBufferStateTable::GetResource(VertexBufferHandle Handle)
+	{
+		return Buffers[Handles[Handle]].Resource;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool VertexBufferStateTable::CurrentlyAvailable(VertexBufferStateTable::VBufferHandle Handle, size_t CurrentFrame)
+	{
+		return Buffers[Handle].NextAvailableFrame <= CurrentFrame;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void VertexBufferStateTable::Release()
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void VertexBufferStateTable::ReleaseVertexBuffer(VertexBufferHandle Handle)
+	{
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStateTable::Release()
+	{
+		for (auto& T : Textures)
+		{
+			if (T)
+				T->Release();
+			T = nullptr;
+		}
+
+		Textures.Release();
+		WHs.Release();
+		Formats.Release();
+		States.Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle TextureStateTable::AddResource(Texture2D_Desc& Desc, ID3D12Resource* Resource)
+	{
+		auto Handle = Handles.GetNewHandle();
+		Handles[Handle] = Textures.size();
+
+		Textures.push_back(Resource);
+		WHs.push_back({ Desc.Width, Desc.Height });
+		Formats.push_back(TextureFormat2DXGIFormat(Desc.Format));
+
+		return Handle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	Texture2D TextureStateTable::operator[](TextureHandle Handle)
+	{
+		auto Idx	= Handles[Handle];
+		auto Res	= Textures[Idx];
+		auto WH		= WHs[Idx];
+		auto Format = Formats[Idx];
+
+		return { Res, WH, Format };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStateTable::SetState(TextureHandle Handle, DeviceResourceState State)
+	{
+		States[Handles[Handle]] = State;
+	}
+	
+
+	/************************************************************************************************/
+
+
+	void GeometryTable::Release()
+	{
+		for (auto G : Geometry)
 			ReleaseTriMesh(&G);
 
-		GT->Geometry.Release();
-		GT->ReferenceCounts.Release();
-		GT->Guids.Release();
-		GT->GeometryIDs.Release();
-		GT->Handles.Release();
-		GT->FreeList.Release();
+		Geometry.Release();
+		ReferenceCounts.Release();
+		Guids.Release();
+		GeometryIDs.Release();
+		Handles.Release();
+		FreeList.Release();
 	}
 
 
@@ -3018,7 +3336,6 @@ namespace FlexKit
 #else
 		GT->ReferenceCounts[Index]++;
 #endif
-
 	}
 
 
@@ -3042,8 +3359,8 @@ namespace FlexKit
 			if (G->Skeleton)
 				CleanUpSkeleton(G->Skeleton);
 
-			GT->Geometry[Index]   = TriMesh();
 			GT->FreeList.push_back(Index);
+			GT->Geometry[Index]   = TriMesh();
 			GT->Handles[TMHandle] = INVALIDMESHHANDLE;
 		}
 	}
@@ -3203,7 +3520,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexResourceBuffer CreateVertexBufferResource(RenderSystem* RS, const size_t ResourceSize)
+	VertexResourceBuffer RenderSystem::_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident)
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(ResourceSize);
 		Resource_DESC.Alignment          = 0;
@@ -3219,24 +3536,369 @@ namespace FlexKit
 
 		D3D12_HEAP_PROPERTIES HEAP_Props = {};
 		HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type                  = D3D12_HEAP_TYPE_DEFAULT;
+		HEAP_Props.Type                  = GPUResident ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD;
 		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
 		HEAP_Props.CreationNodeMask      = 0;
 		HEAP_Props.VisibleNodeMask       = 0;
 
-		size_t BufferCount               = RS->BufferCount;
 		FrameBufferedResource NewResource;
 		NewResource.BufferCount          = BufferCount;
 
+		auto InitialState = GPUResident ? D3D12_RESOURCE_STATE_COMMON : D3D12_RESOURCE_STATE_GENERIC_READ;
+
 		ID3D12Resource* Resource = nullptr;
-		HRESULT HR = RS->pDevice->CreateCommittedResource(
+		HRESULT HR = pDevice->CreateCommittedResource(
 			&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
-			&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
+			&Resource_DESC, InitialState, nullptr,
 			IID_PPV_ARGS(&Resource));
 
 		SETDEBUGNAME(Resource, __func__);
 
 		return Resource;
+	}
+
+
+
+	/************************************************************************************************/
+
+
+	DescHeapPOS RenderSystem::_ReserveDescHeap(size_t SlotCount)
+	{	// Make This Atomic
+		auto FrameResources = _GetCurrentFrameResources();
+		auto CPU = FrameResources->DescHeap.CPU_HeapPOS;
+		auto GPU = FrameResources->DescHeap.GPU_HeapPOS;
+		FrameResources->DescHeap.CPU_HeapPOS.ptr = FrameResources->DescHeap.CPU_HeapPOS.ptr + DescriptorCBVSRVUAVSize * SlotCount;
+		FrameResources->DescHeap.GPU_HeapPOS.ptr = FrameResources->DescHeap.GPU_HeapPOS.ptr + DescriptorCBVSRVUAVSize * SlotCount;
+
+		return { CPU , GPU };
+	}
+
+
+
+	/************************************************************************************************/
+
+
+	DescHeapPOS RenderSystem::_ReserveGPUDescHeap(size_t SlotCount)
+	{
+		auto FrameResources = _GetCurrentFrameResources();
+		auto CPU = FrameResources->GPUDescHeap.CPU_HeapPOS;
+		auto GPU = FrameResources->GPUDescHeap.GPU_HeapPOS;
+		FrameResources->GPUDescHeap.CPU_HeapPOS.ptr = FrameResources->GPUDescHeap.CPU_HeapPOS.ptr + DescriptorCBVSRVUAVSize * SlotCount;
+		FrameResources->GPUDescHeap.GPU_HeapPOS.ptr = FrameResources->GPUDescHeap.GPU_HeapPOS.ptr + DescriptorCBVSRVUAVSize * SlotCount;
+
+		return{ CPU , GPU };
+	}
+
+	/************************************************************************************************/
+
+
+	DescHeapPOS RenderSystem::_ReserveRTVHeap(size_t SlotCount)
+	{
+		auto FrameResources = _GetCurrentFrameResources();
+		auto CPU = FrameResources->RTVHeap.CPU_HeapPOS;
+		auto GPU = FrameResources->RTVHeap.GPU_HeapPOS;
+		FrameResources->RTVHeap.CPU_HeapPOS.ptr = FrameResources->RTVHeap.CPU_HeapPOS.ptr + DescriptorRTVSize * SlotCount;
+		FrameResources->RTVHeap.GPU_HeapPOS.ptr = FrameResources->RTVHeap.GPU_HeapPOS.ptr + DescriptorRTVSize * SlotCount;
+
+		return { CPU , GPU };
+	}
+
+
+	/************************************************************************************************/
+
+
+	DescHeapPOS RenderSystem::_ReserveDSVHeap(size_t SlotCount)
+	{
+		auto FrameResources = _GetCurrentFrameResources();
+		auto CPU = FrameResources->DSVHeap.CPU_HeapPOS;
+		auto GPU = FrameResources->DSVHeap.GPU_HeapPOS;
+		FrameResources->DSVHeap.CPU_HeapPOS.ptr = FrameResources->DSVHeap.CPU_HeapPOS.ptr + DescriptorDSVSize * SlotCount;
+		FrameResources->DSVHeap.GPU_HeapPOS.ptr = FrameResources->DSVHeap.GPU_HeapPOS.ptr + DescriptorDSVSize * SlotCount;
+
+		return{ CPU , GPU };
+	}
+
+
+	/************************************************************************************************/
+
+
+
+	void RenderSystem::_ResetDescHeap()
+	{
+		auto FrameResources = _GetCurrentFrameResources();
+		FrameResources->DescHeap.GPU_HeapPOS = FrameResources->DescHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
+		FrameResources->DescHeap.CPU_HeapPOS = FrameResources->DescHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::_ResetRTVHeap()
+	{
+		auto FrameResources = _GetCurrentFrameResources();
+		FrameResources->RTVHeap.GPU_HeapPOS = FrameResources->RTVHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
+		FrameResources->RTVHeap.CPU_HeapPOS = FrameResources->RTVHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::_ResetGPUDescHeap()
+	{
+		auto FrameResources = _GetCurrentFrameResources();
+		FrameResources->GPUDescHeap.GPU_HeapPOS = FrameResources->GPUDescHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
+		FrameResources->GPUDescHeap.CPU_HeapPOS = FrameResources->GPUDescHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::_ResetDSVHeap()
+	{
+		auto FrameResources = _GetCurrentFrameResources();
+		FrameResources->DSVHeap.GPU_HeapPOS = FrameResources->DSVHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
+		FrameResources->DSVHeap.CPU_HeapPOS = FrameResources->DSVHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12DescriptorHeap* RenderSystem::_GetCurrentRTVTable()
+	{
+		return _GetCurrentFrameResources()->RTVHeap.DescHeap;
+	}
+
+	ID3D12DescriptorHeap* RenderSystem::_GetCurrentDescriptorTable()
+	{
+		return _GetCurrentFrameResources()->DescHeap.DescHeap;
+	}
+
+	ID3D12DescriptorHeap* RenderSystem::_GetCurrentDSVTable()
+	{
+		return _GetCurrentFrameResources()->DSVHeap.DescHeap;
+	}
+
+	D3D12_GPU_DESCRIPTOR_HANDLE RenderSystem::_GetDescTableCurrentPosition_GPU()
+	{
+		return _GetCurrentFrameResources()->DescHeap.GPU_HeapPOS;
+	}
+
+	D3D12_GPU_DESCRIPTOR_HANDLE RenderSystem::_GetRTVTableCurrentPosition_GPU()
+	{
+		return _GetCurrentFrameResources()->RTVHeap.GPU_HeapPOS;
+	}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE RenderSystem::_GetRTVTableCurrentPosition_CPU()
+	{
+		return _GetCurrentFrameResources()->RTVHeap.CPU_HeapPOS;
+	}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE RenderSystem::_GetDSVTableCurrentPosition_CPU()
+	{
+		return _GetCurrentFrameResources()->DSVHeap.CPU_HeapPOS;
+	}
+
+	D3D12_GPU_DESCRIPTOR_HANDLE RenderSystem::_GetDSVTableCurrentPosition_GPU()
+	{
+		return _GetCurrentFrameResources()->DSVHeap.GPU_HeapPOS;
+	}
+
+	D3D12_GPU_DESCRIPTOR_HANDLE RenderSystem::_GetGPUDescTableCurrentPosition_GPU()
+	{
+		return _GetCurrentFrameResources()->GPUDescHeap.GPU_HeapPOS;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12CommandAllocator*	 RenderSystem::_GetCurrentCommandAllocator()
+	{
+		return FrameResources[CurrentIndex].GraphicsCLAllocator[0];
+	}
+
+	/************************************************************************************************/
+
+
+	ID3D12GraphicsCommandList*	RenderSystem::_GetCurrentCommandList()
+	{
+		return FrameResources[CurrentIndex].CommandLists[0];
+	}
+
+
+	/************************************************************************************************/
+
+
+	PerFrameResources* RenderSystem::_GetCurrentFrameResources()
+	{
+		return FrameResources + CurrentIndex;
+	}
+
+	/************************************************************************************************/
+
+
+	ID3D12GraphicsCommandList*	RenderSystem::_GetCommandList_1()
+	{
+		_GetCurrentFrameResources()->CommandListsUsed[1] = true;
+
+		return FrameResources[CurrentIndex].CommandLists[1];
+	}
+
+
+	/************************************************************************************************/
+
+
+	PerFrameUploadQueue* RenderSystem::_GetCurrentUploadQueue()
+	{
+		return UploadQueues + CurrentUploadIndex;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Close(static_vector<ID3D12GraphicsCommandList*> CLs) {
+		//HRESULT HR;
+		for (auto CL : CLs)
+			FK_ASSERT(SUCCEEDED(CL->Close()));
+	}
+
+	/************************************************************************************************/
+
+
+
+	void RenderSystem::BeginSubmission(RenderWindow* Window)
+	{
+		_IncrementRSIndex();
+		size_t Index = CurrentIndex;
+		WaitforGPU();
+
+		HRESULT HR;
+		HR = _GetCurrentCommandAllocator()->Reset();									FK_ASSERT(SUCCEEDED(HR));
+		HR = _GetCurrentCommandList()->Reset(_GetCurrentCommandAllocator(), nullptr);	FK_ASSERT(SUCCEEDED(HR));
+
+		for (auto& b : _GetCurrentFrameResources()->CommandListsUsed)
+			b = false;
+
+		_GetCurrentFrameResources()->CommandListsUsed[0] = true;
+
+		_ResetRTVHeap();
+		_ResetDescHeap();
+		_ResetGPUDescHeap();
+		_ResetDSVHeap();
+
+		auto SRVs = _GetCurrentDescriptorTable();
+		_GetCurrentCommandList()->SetDescriptorHeaps(1, &SRVs);
+		_GetCurrentCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBufferResource(Window),
+			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::Submit(static_vector<ID3D12CommandList*>& CLs)
+	{
+		auto Val = ++FenceCounter;
+		Fences[CurrentIndex].FenceValue = Val;
+
+		GraphicsQueue->ExecuteCommandLists(CLs.size(), CLs.begin());
+		GraphicsQueue->Signal(Fence, Val);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::WaitForUploadQueue()
+	{
+		auto CompletedValue      = CopyFence->GetCompletedValue();
+		size_t Index	         = CurrentUploadIndex;
+		auto Fence		         = CopyFence;
+
+		if (CompletedValue < CopyFences[Index].FenceValue) {
+			HANDLE eventHandle   = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+			Fence->SetEventOnCompletion(CopyFences[Index].FenceValue, eventHandle);
+			WaitForSingleObject(eventHandle, INFINITE);
+			CloseHandle(eventHandle);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::ReadyUploadQueues()
+	{
+		auto UploadQueue         = _GetCurrentUploadQueue();
+		auto UploadCLAllocator   = UploadQueue->UploadCLAllocator[0];
+		auto UploadCL            = UploadQueue->UploadList[0];
+		UploadQueue->UploadCount = 0;
+
+		HRESULT HR               = UploadCLAllocator->Reset();					FK_ASSERT(SUCCEEDED(HR));
+		HR                       = UploadCL->Reset(UploadCLAllocator, nullptr);	FK_ASSERT(SUCCEEDED(HR));
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::SubmitUploadQueues()
+	{
+		auto CurrentUploadQueue	= _GetCurrentUploadQueue();
+		auto Fence				= CopyFence;
+
+		if (CurrentUploadQueue->UploadCount) {
+			WaitForUploadQueue();
+
+			auto HR			= CurrentUploadQueue->UploadList[0]->Close();
+			size_t Value	= CopyFences[CurrentUploadIndex].FenceValue = ++FenceUploadCounter;
+
+			UploadQueue->ExecuteCommandLists(1, (ID3D12CommandList**)CurrentUploadQueue->UploadList);
+			UploadQueue->Signal(Fence, Value);
+
+			CurrentUploadIndex = (CurrentUploadIndex + 1) % 3;
+
+			ReadyUploadQueues();
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::ShutDownUploadQueues()
+	{
+		auto UploadQueue	= _GetCurrentUploadQueue();
+		auto UploadCL		= UploadQueue->UploadList[0];
+
+		WaitForUploadQueue();
+		CurrentUploadIndex = (CurrentUploadIndex + 1) % 3;
+		WaitForUploadQueue();
+		CurrentUploadIndex = (CurrentUploadIndex + 1) % 3;
+		WaitForUploadQueue();
+		CurrentUploadIndex = (CurrentUploadIndex + 1) % 3;
+
+		UploadCL->Close();
+		UploadCL->Reset(UploadQueue->UploadCLAllocator[0], nullptr);
+		UploadQueue->UploadCLAllocator[0]->Reset();
+	}
+
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::UploadResources()
+	{
+		ID3D12CommandList* CommandLists[1] = { _GetCurrentCommandList() };
+		auto CL = _GetCurrentCommandList();// ->Close();
+		CL->Close();
+		GraphicsQueue->ExecuteCommandLists(1, CommandLists);
 	}
 
 
@@ -3796,159 +4458,9 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-
-	
-	
-	void ResetDescHeap(RenderSystem* RS)
-	{
-		auto FrameResources = GetCurrentFrameResources(RS);
-		FrameResources->DescHeap.GPU_HeapPOS = FrameResources->DescHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
-		FrameResources->DescHeap.CPU_HeapPOS = FrameResources->DescHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
-	}
-
 
 	/************************************************************************************************/
 
-
-	void ResetGPUDescHeap(RenderSystem* RS)
-	{
-		auto FrameResources = GetCurrentFrameResources(RS);
-		FrameResources->GPUDescHeap.GPU_HeapPOS = FrameResources->GPUDescHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
-		FrameResources->GPUDescHeap.CPU_HeapPOS = FrameResources->GPUDescHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ResetRTVHeap(RenderSystem* RS)
-	{
-		auto FrameResources = GetCurrentFrameResources(RS);
-		FrameResources->RTVHeap.GPU_HeapPOS = FrameResources->RTVHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
-		FrameResources->RTVHeap.CPU_HeapPOS = FrameResources->RTVHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ResetDSVHeap(RenderSystem* RS)
-	{
-		auto FrameResources = GetCurrentFrameResources(RS);
-		FrameResources->DSVHeap.GPU_HeapPOS = FrameResources->DSVHeap.DescHeap->GetGPUDescriptorHandleForHeapStart();
-		FrameResources->DSVHeap.CPU_HeapPOS = FrameResources->DSVHeap.DescHeap->GetCPUDescriptorHandleForHeapStart();
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS ReserveDescHeap(RenderSystem* RS, size_t SlotCount)
-	{	// Make This Atomic
-		auto FrameResources						 = GetCurrentFrameResources(RS);
-		auto CPU								 = FrameResources->DescHeap.CPU_HeapPOS;
-		auto GPU								 = FrameResources->DescHeap.GPU_HeapPOS;
-		FrameResources->DescHeap.CPU_HeapPOS.ptr = FrameResources->DescHeap.CPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
-		FrameResources->DescHeap.GPU_HeapPOS.ptr = FrameResources->DescHeap.GPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
-
-		return { CPU , GPU };
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS ReserveRTVHeap(RenderSystem* RS, size_t SlotCount)
-	{
-		auto FrameResources						 = GetCurrentFrameResources(RS);
-		auto CPU								 = FrameResources->RTVHeap.CPU_HeapPOS;
-		auto GPU								 = FrameResources->RTVHeap.GPU_HeapPOS;
-		FrameResources->RTVHeap.CPU_HeapPOS.ptr  = FrameResources->RTVHeap.CPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
-		FrameResources->RTVHeap.GPU_HeapPOS.ptr  = FrameResources->RTVHeap.GPU_HeapPOS.ptr + RS->DescriptorRTVSize * SlotCount;
-
-		return { CPU , GPU };
-	}
-
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS ReserveDSVHeap(RenderSystem* RS, size_t SlotCount)
-	{
-		auto FrameResources = GetCurrentFrameResources(RS);
-		auto CPU = FrameResources->DSVHeap.CPU_HeapPOS;
-		auto GPU = FrameResources->DSVHeap.GPU_HeapPOS;
-		FrameResources->DSVHeap.CPU_HeapPOS.ptr = FrameResources->DSVHeap.CPU_HeapPOS.ptr + RS->DescriptorDSVSize * SlotCount;
-		FrameResources->DSVHeap.GPU_HeapPOS.ptr = FrameResources->DSVHeap.GPU_HeapPOS.ptr + RS->DescriptorDSVSize * SlotCount;
-
-		return{ CPU , GPU };
-	}
-
-	/************************************************************************************************/
-
-
-	DescHeapPOS ReserveGPUDescHeap(RenderSystem* RS, size_t SlotCount)
-	{
-		auto FrameResources = GetCurrentFrameResources(RS);
-		auto CPU = FrameResources->GPUDescHeap.CPU_HeapPOS;
-		auto GPU = FrameResources->GPUDescHeap.GPU_HeapPOS;
-		FrameResources->GPUDescHeap.CPU_HeapPOS.ptr = FrameResources->GPUDescHeap.CPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
-		FrameResources->GPUDescHeap.GPU_HeapPOS.ptr = FrameResources->GPUDescHeap.GPU_HeapPOS.ptr + RS->DescriptorCBVSRVUAVSize * SlotCount;
-
-		return{ CPU , GPU };
-	}
-
-
-	/************************************************************************************************/
-
-	ID3D12DescriptorHeap* GetCurrentRTVTable(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->RTVHeap.DescHeap;
-	}
-
-	ID3D12DescriptorHeap* GetCurrentDescriptorTable(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->DescHeap.DescHeap;
-	}
-
-	ID3D12DescriptorHeap* GetCurrentDSVTable(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->DSVHeap.DescHeap;
-	}
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GetDescTableCurrentPosition_GPU(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->DescHeap.GPU_HeapPOS;
-	}
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GetRTVTableCurrentPosition_GPU(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->RTVHeap.GPU_HeapPOS;
-	}
-
-	D3D12_CPU_DESCRIPTOR_HANDLE GetRTVTableCurrentPosition_CPU(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->RTVHeap.CPU_HeapPOS;
-	}
-
-	D3D12_CPU_DESCRIPTOR_HANDLE GetDSVTableCurrentPosition_CPU(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->DSVHeap.CPU_HeapPOS;
-	}
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GetDSVTableCurrentPosition_GPU(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->DSVHeap.GPU_HeapPOS;
-	}
-
-	D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescTableCurrentPosition_GPU(RenderSystem* RS)
-	{
-		return GetCurrentFrameResources(RS)->GPUDescHeap.GPU_HeapPOS;
-	}
-
-
-	/************************************************************************************************/
 
 
 	DescHeapPOS PushRenderTarget(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS)
@@ -4125,146 +4637,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void IncrementRSIndex(RenderSystem* RS){ RS->CurrentIndex = (RS->CurrentIndex + 1) % 3;}
-
-
-	/************************************************************************************************/
-
-
-	void BeginSubmission(RenderSystem* RS, RenderWindow* Window)
-	{
-		IncrementRSIndex(RS);
-		size_t Index = RS->CurrentIndex;
-		WaitforGPU(RS);
-
-		HRESULT HR;
-		HR = GetCurrentCommandAllocator(RS)->Reset();									FK_ASSERT(SUCCEEDED(HR));
-		HR = GetCurrentCommandList(RS)->Reset(GetCurrentCommandAllocator(RS), nullptr);	FK_ASSERT(SUCCEEDED(HR));
-
-		for (auto& b : GetCurrentFrameResources(RS)->CommandListsUsed)
-			b = false;
-
-		GetCurrentFrameResources(RS)->CommandListsUsed[0] = true;
-
-		ResetRTVHeap(RS);
-		ResetDescHeap(RS);
-		ResetGPUDescHeap(RS);
-		ResetDSVHeap(RS);
-
-		auto SRVs = GetCurrentDescriptorTable(RS);
-		GetCurrentCommandList(RS)->SetDescriptorHeaps(1, &SRVs);
-		GetCurrentCommandList(RS)->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBufferResource(Window),
-			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Close(static_vector<ID3D12GraphicsCommandList*> CLs) {
-		//HRESULT HR;
-		for (auto CL : CLs)
-			FK_ASSERT(SUCCEEDED(CL->Close()));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Submit(static_vector<ID3D12CommandList*>& CLs, RenderSystem* RS)
-	{
-		//ID3D12CommandList* CommandLists[MaxThreadCount];
-		//size_t	CommandListsUsed = 0;
-
-		auto Val = ++RS->FenceCounter;
-		RS->Fences[RS->CurrentIndex].FenceValue = Val;
-
-		RS->GraphicsQueue->ExecuteCommandLists(CLs.size(), CLs.begin());
-		RS->GraphicsQueue->Signal(RS->Fence, Val);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void WaitForUploadQueue(RenderSystem* RS)
-	{
-		auto CompletedValue = RS->CopyFence->GetCompletedValue();
-		size_t Index		= RS->CurrentUploadIndex;
-		auto Fence			= RS->CopyFence;
-
-		if (CompletedValue < RS->CopyFences[Index].FenceValue) {
-			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-			Fence->SetEventOnCompletion(RS->CopyFences[Index].FenceValue, eventHandle);
-			WaitForSingleObject(eventHandle, INFINITE);
-			CloseHandle(eventHandle);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReadyUploadQueues(RenderSystem* RS) 
-	{
-		auto UploadQueue		 = GetCurrentUploadQueue(RS);
-		auto UploadCLAllocator	 = UploadQueue->UploadCLAllocator[0];
-		auto UploadCL			 = UploadQueue->UploadList[0];
-		UploadQueue->UploadCount = 0;
-
-		HRESULT HR				= UploadCLAllocator->Reset();					FK_ASSERT(SUCCEEDED(HR));
-		HR						= UploadCL->Reset(UploadCLAllocator, nullptr);	FK_ASSERT(SUCCEEDED(HR));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SubmitUploadQueues(RenderSystem* RS)
-	{
-		auto UploadQueue = GetCurrentUploadQueue(RS);
-		auto Fence = RS->CopyFence;
-
-		if (UploadQueue->UploadCount) {
-			WaitForUploadQueue(RS);
-
-			auto HR = UploadQueue->UploadList[0]->Close();
-			size_t Value = RS->CopyFences[RS->CurrentUploadIndex].FenceValue = ++RS->FenceUploadCounter;
-
-			RS->UploadQueue->ExecuteCommandLists(1, (ID3D12CommandList**)UploadQueue->UploadList);
-			RS->UploadQueue->Signal(Fence, Value);
-
-			RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
-
-			ReadyUploadQueues(RS);
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ShutDownUploadQueues(RenderSystem* RS)
-	{
-		auto UploadQueue = GetCurrentUploadQueue(RS);
-		auto UploadCL = UploadQueue->UploadList[0];
-
-		WaitForUploadQueue(RS);
-		RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
-		WaitForUploadQueue(RS);
-		RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
-		WaitForUploadQueue(RS);
-		RS->CurrentUploadIndex = (RS->CurrentUploadIndex + 1) % 3;
-
-		UploadCL->Close();
-		UploadCL->Reset(UploadQueue->UploadCLAllocator[0], nullptr);
-		UploadQueue->UploadCLAllocator[0]->Reset();
-	}
-
-
-	/************************************************************************************************/
-
-
 	void CloseAndSubmit(static_vector<ID3D12GraphicsCommandList*> CLs, RenderSystem* RS, RenderWindow* Window)
 	{
 		CD3DX12_RESOURCE_BARRIER Barrier[] = {
@@ -4273,11 +4645,11 @@ namespace FlexKit
 			D3D12_RESOURCE_STATE_PRESENT, -1,
 			D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE) };
 
-		GetCurrentCommandList(RS)->ResourceBarrier(1, Barrier);
+		RS->_GetCurrentCommandList()->ResourceBarrier(1, Barrier);
 
 		Close(CLs);
 		
-		Submit(CLs._PTR_Cast<ID3D12CommandList>(), RS);
+		RS->Submit(CLs._PTR_Cast<ID3D12CommandList>());
 	}
 
 
@@ -4285,9 +4657,9 @@ namespace FlexKit
 	
 
 	void ClearBackBuffer(RenderSystem* RS, ID3D12GraphicsCommandList* CL, RenderWindow* RW, float4 ClearColor){
-		auto RTVPOSCPU		= GetRTVTableCurrentPosition_CPU	(RS); // _Ptr to Current POS On RTV heap on CPU
-		auto RTVPOS			= ReserveRTVHeap					(RS, 1);
-		auto RTVHeap		= GetCurrentRTVTable				(RS);
+		auto RTVPOSCPU		= RS->_GetRTVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
+		auto RTVPOS			= RS->_ReserveRTVHeap(1);
+		auto RTVHeap		= RS->_GetCurrentRTVTable();
 		
 		PushRenderTarget(RS, &GetRenderTarget(RW), RTVPOS);
 
@@ -4405,57 +4777,15 @@ namespace FlexKit
 	void ClearDepthBuffers(RenderSystem* RS, ID3D12GraphicsCommandList* CL, static_vector<Texture2D> DB, const float ClearValue[], const int Stencil[], const size_t count)
 	{
 		for (size_t I = 0; I < count; ++I) {
-			auto DSVPOS		= GetDSVTableCurrentPosition_CPU(RS);
-			auto POS		= ReserveDSVHeap(RS, 1);
+			auto DSVPOS		= RS->_GetDSVTableCurrentPosition_CPU();
+			auto POS		= RS->_ReserveDSVHeap(1);
+
 			PushDepthStencil(RS, &DB[I], POS);
+			
 			CL->ClearDepthStencilView(DSVPOS, D3D12_CLEAR_FLAG_DEPTH, ClearValue[I], Stencil[I], 0, nullptr);
 		}
 	}
 
-
-	/************************************************************************************************/
-
-
-	ID3D12CommandAllocator*		GetCurrentCommandAllocator(RenderSystem* RS){
-		return RS->FrameResources[RS->CurrentIndex].GraphicsCLAllocator[0]; 
-	}
-
-	ID3D12GraphicsCommandList*	GetCurrentCommandList(RenderSystem* RS){
-		return RS->FrameResources[RS->CurrentIndex].CommandLists[0];
-	}
-
-	PerFrameResources*			GetCurrentFrameResources(RenderSystem* RS){
-		return RS->FrameResources + RS->CurrentIndex;
-	}
-
-	ID3D12GraphicsCommandList*	GetCommandList_1(RenderSystem* RS){
-		GetCurrentFrameResources(RS)->CommandListsUsed[1] = true;
-
-		return RS->FrameResources[RS->CurrentIndex].CommandLists[1];
-	}
-
-	PerFrameUploadQueue*		GetCurrentUploadQueue(RenderSystem* RS) {
-		return RS->UploadQueues + RS->CurrentUploadIndex;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void WaitforGPU(RenderSystem* RS)
-	{
-		size_t Index = RS->CurrentIndex;
-		auto Fence = RS->Fence;
-		size_t CompleteValue = Fence->GetCompletedValue();
-		
-		if (CompleteValue < RS->Fences[Index].FenceValue){
-			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-			Fence->SetEventOnCompletion(RS->Fences[Index].FenceValue, eventHandle);
-			WaitForSingleObject(eventHandle, INFINITE);
-			CloseHandle(eventHandle);
-			ReleaseTempResources(RS);
-		}
-	}
 
 
 	/************************************************************************************************/
@@ -6266,13 +6596,13 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	void RenderShadowMap(RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT)
 	{
-		auto CL             = GetCurrentCommandList(RS);
-		auto FrameResources = GetCurrentFrameResources(RS);
-		auto DescPOSGPU     = GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
-		auto DescPOS        = ReserveDescHeap(RS, 6);
+		auto CL             = RS->_GetCurrentCommandList();
+		auto FrameResources = RS->_GetCurrentFrameResources();
+		auto DescPOSGPU     = RS->_GetDescTableCurrentPosition_GPU(); // _Ptr to Beginning of Heap On GPU
+		auto DescPOS        = RS->_ReserveDescHeap(6);
 
-		auto DSVPOSCPU      = GetDSVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
-		auto DSVPOS         = ReserveDSVHeap(RS, 6);
+		auto DSVPOSCPU      = RS->_GetDSVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
+		auto DSVPOS         = RS->_ReserveDSVHeap(6);
 
 		PushDepthStencil(RS, RenderTarget, DSVPOS);
 
@@ -6681,6 +7011,12 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	TextureHandle AddRenderTarget(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag)
 	{
+		FK_ASSERT(Resource);
+
+#ifdef _DEBUG
+		cout << "Adding RenderTarget: " << Resource << "\n";
+#endif
+
 		return RS->RenderTargets.AddResource(Desc, Resource);
 	}
 

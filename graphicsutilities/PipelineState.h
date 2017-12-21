@@ -57,28 +57,26 @@ namespace FlexKit
 		TILEDSHADING_COPYOUT,
 		OCCLUSION_CULLING,
 		SSREFLECTIONS,
+		Draw_PSO,
 		EPSO_COUNT,
 		EPSO_ERROR
 	};
 
 	typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
 
-	struct LoadState
+	class LoadState
 	{
+	public:
 		LoadState() : State(EPSO_ERROR)
 		{
 			FK_ASSERT(false);
 		}
 
 		LoadState(const LoadState& rhs) : State( rhs.State )
-		{
-
-		}
+		{}
 
 		LoadState(EPIPELINESTATES s) : State(s)
-		{
-
-		}
+		{}
 
 		bool operator == (EPIPELINESTATES rhs)
 		{
@@ -92,32 +90,32 @@ namespace FlexKit
 	};
 
 
-	struct PipelineStateTable
+	/************************************************************************************************/
+
+
+	class FLEXKITAPI PipelineStateTable
 	{
+	public:
+		PipelineStateTable( RenderSystem* RS, iAllocator* Memory );
+		
+		void ReleasePSOs();
+		void LoadPSOs();
+
+		bool					ReloadLoadPSO	( EPIPELINESTATES State );
+		void					QueuePSOLoad	( EPIPELINESTATES State );
+		ID3D12PipelineState*	GetPSO			( EPIPELINESTATES State );
+
+		void RegisterPSOLoader( EPIPELINESTATES State, LOADSTATE_FN Loader );
+
+	private:
 		static_vector<ID3D12PipelineState*, EPSO_COUNT>		States;
 		static_vector<LOADSTATE_FN*, EPSO_COUNT>			StateLoaders;
 		SL_list<LoadState>									LoadsInProgress;
 		ID3D12Device*										Device;
+		RenderSystem*										RS;
+		iAllocator*											Memory;
 	};
 
 
-	/************************************************************************************************/
-
-
-	FLEXKITAPI PipelineStateTable*		CreatePSOTable			( RenderSystem* RS );
-	FLEXKITAPI void						ReleasePipelineStates	( RenderSystem* RS );
-
-	FLEXKITAPI bool						LoadPipelineStates	( RenderSystem* RS );
-
-
-	FLEXKITAPI ID3D12PipelineState*		GetPSO				( RenderSystem* RS, EPIPELINESTATES State );
-	FLEXKITAPI void 					QueuePSOLoad		( RenderSystem* RS, EPIPELINESTATES State ); // Forces a PSO load
-
-	FLEXKITAPI bool						ReloadLoadPSO		( RenderSystem* RS, PipelineStateTable* States, EPIPELINESTATES State );
-	FLEXKITAPI void						RegisterPSOLoader	( RenderSystem* RS, PipelineStateTable* States, EPIPELINESTATES State, LOADSTATE_FN Loader );
-
-
-	/************************************************************************************************/
-
-}
+}	/************************************************************************************************/
 #endif

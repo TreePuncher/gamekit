@@ -67,7 +67,6 @@ namespace FlexKit
 		}DefaultAssets;
 
 		MouseInputState		MouseState;
-		Landscape			Landscape;
 
 		GraphicScene*				ActiveScene;
 		PhysicsComponentSystem*		ActivePhysicsScene;
@@ -77,7 +76,6 @@ namespace FlexKit
 		EDEFERREDPASSMODE	DP_DrawMode;
 
 		Console				Console;
-		ImmediateRender		Immediate;
 		EngineCore*			Engine;
 
 

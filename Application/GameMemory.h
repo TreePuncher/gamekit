@@ -142,7 +142,6 @@ struct EngineCore
 	EngineCore(EngineMemory* memory) :
 		CmdArguments	(memory->BlockAllocator),
 		Geometry		(memory->BlockAllocator),
-		PVS_			(memory->BlockAllocator),
 		Time			(memory->BlockAllocator),
 		Threads			(memory->BlockAllocator),
 
@@ -162,16 +161,7 @@ struct EngineCore
 	#if USING(PHYSX)
 		ReleasePhysics( &Physics );
 	#endif
-		Culler.Release();
-
-		ReleaseForwardPass	( &ForwardRender  );
-		ReleaseTiledRender	( &TiledRender );
-		ReleaseSSR			( &Reflections );
-
-		ReleaseGeometryTable(&Geometry);
-
-		Release( &DepthBuffer );
-		Release( &Window );
+		Release(&Window);
 		RenderSystem.Release();
 
 		for(auto Arg : CmdArguments)
@@ -184,35 +174,23 @@ struct EngineCore
 
 	bool			FrameLock;
 	bool			End;
+		
+	RenderSystem				RenderSystem;
 
-	RenderSystem		RenderSystem;
-	OcclusionCuller		Culler;
+	RenderWindow				Window;
+	Time						Time;
+	Resources					Assets;
+	GeometryTable				Geometry;
+	PhysicsSystem				Physics;
 
-	RenderWindow	Window;
-	DepthBuffer		DepthBuffer;
-	Time			Time;
-	Resources		Assets;
-	GeometryTable	Geometry;
-
-	PhysicsSystem	Physics;
-
-	TiledDeferredRender	TiledRender;
-	ForwardRender		ForwardRender;
-	SSReflectionBuffers	Reflections;
-
-	PVS			PVS_;
-
-	static_vector<Event>	NetworkEvents;
-					
 	// Component Systems
 	SceneNodeComponentSystem	Nodes;
 	CameraComponentSystem		Cameras;
 
-	Vector<const char*>		CmdArguments;
+	Vector<const char*>			CmdArguments;
 
-	ThreadManager Threads;
-
-	EngineMemory* Memory;
+	ThreadManager				Threads;
+	EngineMemory*				Memory;
 
 	BlockAllocator& GetBlockMemory()	{ return  Memory->BlockAllocator; }
 	StackAllocator& GetLevelMemory()	{ return  Memory->LevelAllocator; }

@@ -66,8 +66,8 @@ namespace FlexKit
 			SETDEBUGNAME(Out->ReflectionBuffer[I], "Reflection Buffer");
 		}
 
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::SSREFLECTIONS, LoadSSReflectionState);
-		QueuePSOLoad(RS, EPIPELINESTATES::SSREFLECTIONS);
+		RS->RegisterPSOLoader	(EPIPELINESTATES::SSREFLECTIONS, LoadSSReflectionState);
+		RS->QueuePSOLoad		(EPIPELINESTATES::SSREFLECTIONS);
 	}
 
 	void ReleaseSSR(SSReflectionBuffers* SSR)
@@ -91,8 +91,8 @@ namespace FlexKit
 
 	void ClearBuffer(RenderSystem* RS, ID3D12GraphicsCommandList* CL, SSReflectionBuffers* Buffers)
 	{
-		auto GPUPOS		= GetGPUDescTableCurrentPosition_GPU(RS);
-		auto POS		= ReserveGPUDescHeap(RS);
+		auto GPUPOS		= RS->_GetGPUDescTableCurrentPosition_GPU();
+		auto POS		= RS->_ReserveGPUDescHeap();
 
 		PushUAV2DToDescHeap(RS, *GetCurrentBuffer(Buffers), POS, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
@@ -106,12 +106,12 @@ namespace FlexKit
 		TiledDeferredRender* In, const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH, SSReflectionBuffers* SSR)
 	{
-		auto FrameResources  = GetCurrentFrameResources(RS);
+		auto FrameResources  = RS->_GetCurrentFrameResources();
 		auto BufferIndex	 = In->CurrentBuffer;
 		auto& CurrentGBuffer = In->GBuffers[BufferIndex];
 
-		auto DescTable					= GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS					= ReserveDescHeap(RS, 11);
+		auto DescTable					= RS->_GetDescTableCurrentPosition_GPU();
+		auto TablePOS					= RS->_ReserveDescHeap(11);
 		auto DispatchDimensions			= uint2{WH[0]/32, WH[1]/12 };
 		auto CurrentReflectionBuffer	= SSR->ReflectionBuffer[SSR->CurrentBuffer];
 
@@ -154,7 +154,7 @@ namespace FlexKit
 		CL->SetComputeRootSignature(RS->Library.ShadingRTSig);
 		CL->SetDescriptorHeaps(1, Heaps);
 		CL->SetComputeRootDescriptorTable(DSRP_DescriptorTable, DescTable);
-		CL->SetPipelineState(GetPSO(RS, EPIPELINESTATES::SSREFLECTIONS));
+		CL->SetPipelineState(RS->GetPSO(EPIPELINESTATES::SSREFLECTIONS));
 		CL->Dispatch(DispatchDimensions[0], DispatchDimensions[1], 1);
 
 		{

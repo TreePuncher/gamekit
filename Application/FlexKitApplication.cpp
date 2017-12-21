@@ -124,7 +124,6 @@ void DLLGameLoop(EngineCore* Engine, void* State, CodeTable* FNTable, GameCode* 
 	using FlexKit::UpdateTransforms;
 	using FlexKit::UpdateInput;
 	using FlexKit::UpdatePointLightBuffer;
-	using FlexKit::PresentWindow;
 
 	const double StepSize = 1 / 60.0f;
 	double T  = 0.0f;
@@ -221,7 +220,6 @@ int main( int argc, char* argv[] )
 
 		if (!FNTable.InitEngine(Core, Memory))
 			return -1;
-
 
 		for (size_t I = 0; I < argc; ++I) {
 			Core->CmdArguments.push_back(argv[I]);

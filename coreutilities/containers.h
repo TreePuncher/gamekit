@@ -198,6 +198,19 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+		THISTYPE& operator +=(const THISTYPE& RHS)
+		{
+			reserve(size() + RHS.size());
+			for (auto I : RHS)
+				push_back(I);
+
+			return (*this);
+		}
+
+
+		/************************************************************************************************/
+
+
 		Ty PopVect()
 		{
 			FK_ASSERT(C->Size >= 1);
@@ -453,8 +466,8 @@ namespace FlexKit
 				if (A)
 				{
 					size_t itr = 0;
-					size_t End = Size + 1;
-					for (; itr < End;) 
+					size_t End = Size;
+					for (; itr < End; ++itr) 
 						NewMem[itr] = std::move(A[itr]); // move if Possible
 
 					Allocator->_aligned_free(A);
@@ -480,7 +493,7 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-
+		// Releases Memory, does not call destructors
 		void Release()
 		{
 			clear();

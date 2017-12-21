@@ -1175,13 +1175,13 @@ namespace FlexKit
 		} 	D3D12_VERTEX_BUFFER_VIEW;
 		*/
 		
-		auto Resources		= GetCurrentFrameResources(RS);
+		auto Resources		= RS->_GetCurrentFrameResources();
 		auto RTVHeap		= Resources->RTVHeap.DescHeap;
-		auto DescriptorHeap = GetCurrentDescriptorTable(RS);
-		auto RTVs			= GetRTVTableCurrentPosition_CPU(RS);
-		auto RTVPOS			= ReserveRTVHeap(RS, 1);
-		auto DSVs			= GetDSVTableCurrentPosition_CPU(RS);
-		auto NullTable      = ReserveDescHeap(RS, 9);
+		auto DescriptorHeap = RS->_GetCurrentDescriptorTable();
+		auto RTVs			= RS->_GetRTVTableCurrentPosition_CPU();
+		auto RTVPOS			= RS->_ReserveRTVHeap(1);
+		auto DSVs			= RS->_GetDSVTableCurrentPosition_CPU();
+		auto NullTable      = RS->_ReserveDescHeap(9);
 		auto NullTableItr   = NullTable;
 		auto CamConstants	= C ? C->Buffer.Get()->GetGPUVirtualAddress() : RS->NullConstantBuffer->GetGPUVirtualAddress();
 
@@ -1315,7 +1315,7 @@ namespace FlexKit
 					}
 				};
 
-				auto DescPOS = ReserveDescHeap(RS, 8);
+				auto DescPOS = RS->_ReserveDescHeap(8);
 				auto DescItr = DescPOS;
 				DescItr = PushTextureToDescHeap(RS, *Immediate->TexturedRects[TexturePosition].Texture, DescItr);
 
@@ -1390,7 +1390,7 @@ namespace FlexKit
 						{ Text->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Text->CharacterCount), sizeof(TextEntry) },
 					};
 			
-					auto DescPOS = ReserveDescHeap(RS, 8);
+					auto DescPOS = RS->_ReserveDescHeap(8);
 					auto DescITR = DescPOS;
 
 					DescITR = PushTextureToDescHeap(RS, Font->Texture, DescITR);
@@ -1401,7 +1401,7 @@ namespace FlexKit
 					for (auto I = 0; I < 4; ++I)
 						DescITR = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescITR, 1024);
 
-					ID3D12DescriptorHeap* Heaps[] = { GetCurrentDescriptorTable(RS) };
+					ID3D12DescriptorHeap* Heaps[] = { RS->_GetCurrentDescriptorTable() };
 
 					CL->IASetPrimitiveTopology			(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 					CL->IASetVertexBuffers				(0, 1, VBuffers);
@@ -1422,7 +1422,7 @@ namespace FlexKit
 					{ Immediate->TextBufferGPU.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Immediate->TextBufferSizes[0]), sizeof(TextEntry) },
 				};
 			
-				auto DescPOS = ReserveDescHeap(RS, 8);
+				auto DescPOS = RS->_ReserveDescHeap(8);
 				auto DescITR = DescPOS;
 
 				DescITR = PushTextureToDescHeap(RS, Font->Texture, DescITR);
@@ -1433,7 +1433,7 @@ namespace FlexKit
 				for (auto I = 0; I < 4; ++I)
 					DescITR = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescITR, 1024);
 
-				ID3D12DescriptorHeap* Heaps[] = { GetCurrentDescriptorTable(RS) };
+				ID3D12DescriptorHeap* Heaps[] = { RS->_GetCurrentDescriptorTable() };
 
 				CL->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 				CL->IASetVertexBuffers				(0, 1, VBuffers);

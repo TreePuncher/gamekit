@@ -16,13 +16,14 @@ namespace FlexKit
 
 	void ResourceTransition::ProcessTransition(FrameResources& Resources, Context* Ctx) const
 	{
-		switch (BeforeState)
+		switch (AfterState)
 		{
 		case DRS_Present:
+		{
 			Ctx->AddPresentBarrier(
 				Resources.GetRenderTarget(Object->Handle),
 				BeforeState);
-			break;
+		}	break;
 		case DRS_RenderTarget:
 			Ctx->AddRenderTargetBarrier(
 				Resources.GetRenderTarget(Object->Handle),
@@ -54,6 +55,8 @@ namespace FlexKit
 	{
 		for (const auto& T : Transitions)
 			T.ProcessTransition(Resources, Ctx);
+
+
 	}
 
 
@@ -102,15 +105,15 @@ namespace FlexKit
 	
 	void FrameGraph::UpdateFrameGraph(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp)
 	{
-		SubmitUploadQueues(RS);
-		BeginSubmission(RS, Window);
+		RS->SubmitUploadQueues();
+		RS->BeginSubmission(Window);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void FrameGraphNodeBuilder::BuildNode(FrameGraphResourceContext& Context, FrameGraph* FrameGraph)
+	void FrameGraphNodeBuilder::BuildNode(FrameGraph* FrameGraph)
 	{	// Builds Nodes Linkages, Transitions
 		auto CheckNodeSource = [](FrameGraphNode& Node, FrameObjectDependency& Resource)
 		{
@@ -122,6 +125,7 @@ namespace FlexKit
 			}
 		};
 
+		/*
 		for (auto& Object : LocalInputs)
 		{
 			if (!Object.Source)
@@ -144,10 +148,7 @@ namespace FlexKit
 			{	// Begin Tracking Resource
 				auto ResState = Object.FO->State;	
 
-				if (ResState & DRS_Read && Object.TransitionNeeded())
-					Transitions.push_back(Object);
-
-				Context.AddReadable(
+				Transitions.push_back(
 					FrameObjectDependency(
 						Object.FO,
 						&Node,
@@ -181,10 +182,7 @@ namespace FlexKit
 				auto ResState = Object.FO->State;	
 				Object.Source = &Node;
 
-				if (ResState & DRS_Read && Object.TransitionNeeded())
-					Transitions.push_back(Object);
-
-				Context.AddWriteable(
+				Transitions.push_back(
 					FrameObjectDependency(
 						Object.FO,
 						&Node,
@@ -197,34 +195,19 @@ namespace FlexKit
 			}
 		}
 
-		//auto Pred = [&](auto& lhs) { return (lhs.Tag == Object.Tag);	};
-		//Writables.remove_unstable(find(Object.SourceObject, Pred));
+		*/
 
-		// Process Detected Transitions
+		// Process Transitions
 		for (auto& Object : Transitions)
 		{
 			CheckNodeSource(Node, Object);
+			Object.Source = &Node;
 
-			if (Object.ExpectedState & DRS_Read)
-				Context.RemoveReadable(Object.Tag);
-			else if (Object.ExpectedState & DRS_Write)
-				Context.RemoveWriteable(Object.Tag);
-
-			if (Object.State & DRS_Read)
-			{
-				Context.AddReadable(Object);
-				Node.AddTransition(Object);
-			}
-			else if (Object.State & DRS_Write)
-			{
-				Object.Source = &Node;
-				Context.AddWriteable(Object);
-				Node.AddTransition(Object);
-			}
-			else if(Object.State == DRS_Free)
-			{
+			if(Object.State == DRS_Free)
 				Context.Retire(Object);
-			}
+			else
+				if(Object.ExpectedState != Object.State)
+					Node.AddTransition(Object);
 		}
 
 		for (auto& SourceNode : LocalInputs)
@@ -232,8 +215,6 @@ namespace FlexKit
 
 		Node.InputObjects	= std::move(LocalInputs);
 		Node.OutputObjects	= std::move(LocalOutputs);
-
-		ClearContext();
 	}
 
 
@@ -246,7 +227,7 @@ namespace FlexKit
 		{	return (lhs.Tag == Tag); };
 
 		auto Res = find(Writables, Pred);
-		return {Res == Writables.end(), *Res};
+		return {Res != Writables.end(), *Res};
 	}
 
 
@@ -256,7 +237,7 @@ namespace FlexKit
 		{	return (lhs.Tag == Tag); };
 
 		auto Res = find(Readables, Pred);
-		return { Res == Readables.end(), *Res };
+		return { Res != Readables.end(), *Res };
 	}
 
 
@@ -265,15 +246,42 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::AddReadableResource(uint32_t Tag, DeviceResourceState State)
 	{
-		FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
-		LocalInputs.push_back(
-			FrameObjectDependency{
-				Resources->GetResourceObject(Resource),
-				nullptr,
-				Resources->GetResourceObjectState(Resource),
-				State });
+		bool TrackedReadable = Context.IsTrackedReadable(Tag);
+		bool TrackedWritable = Context.IsTrackedWriteable(Tag);
 
-		return Resource;
+		if (!TrackedReadable && !TrackedWritable)
+		{
+			FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
+
+			LocalInputs.push_back(
+				FrameObjectDependency{
+					Resources->GetResourceObject(Resource),
+					nullptr,
+					Resources->GetResourceObjectState(Resource),
+					State });
+
+			Context.AddReadable(LocalOutputs.back());
+			Transitions.push_back(LocalOutputs.back());
+
+			return Resource;
+		}
+		else
+		{
+			auto Object				= TrackedReadable ? 
+				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
+
+			Object.ExpectedState	= Object.State;
+			Object.State			= State;
+			LocalOutputs.push_back(Object);
+
+			if (TrackedWritable) {
+				Context.RemoveWriteable(Tag);
+				Context.AddReadable(Object);
+				Transitions.push_back(Object);
+			}
+
+			return Object.FO->Handle;
+		}
 	}
 
 
@@ -282,16 +290,42 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(uint32_t Tag, DeviceResourceState State)
 	{
+		bool TrackedReadable = Context.IsTrackedReadable(Tag);
+		bool TrackedWritable = Context.IsTrackedWriteable(Tag);
 
-		FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
-		LocalOutputs.push_back(
-			FrameObjectDependency{
-				Resources->GetResourceObject(Resource),
-				nullptr,
-				Resources->GetResourceObjectState(Resource),
-				State });
+		if (!TrackedReadable && !TrackedWritable)
+		{
+			FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
 
-		return Resource;
+			LocalOutputs.push_back(
+				FrameObjectDependency{
+					Resources->GetResourceObject(Resource),
+					nullptr,
+					Resources->GetResourceObjectState(Resource),
+					State });
+
+			Context.AddWriteable(LocalOutputs.back());
+			Transitions.push_back(LocalOutputs.back());
+
+			return Resource;
+		}
+		else
+		{
+			auto Object				= TrackedReadable ? 
+				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
+
+			Object.ExpectedState	= Object.State;
+			Object.State			= State;
+			LocalOutputs.push_back(Object);
+
+			if (TrackedReadable) {
+				Context.RemoveReadable(Tag);
+				Context.AddWriteable(Object);
+				Transitions.push_back(Object);
+			}
+
+			return Object.FO->Handle;
+		}
 	}
 
 
@@ -351,16 +385,6 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-
-
-	void FrameGraphNodeBuilder::ClearContext()
-	{
-		LocalInputs.clear();
-		LocalOutputs.clear();
-		Transitions.clear();
-	}
-
 
 	/************************************************************************************************/
 
@@ -416,7 +440,7 @@ namespace FlexKit
 	void FrameGraph::SubmitFrameGraph(RenderSystem* RS, RenderWindow* RenderWindow)
 	{
 		Vector<Context>	Contexts(Memory);
-		auto CL = GetCurrentCommandList(RS);
+		auto CL = RS->_GetCurrentCommandList();
 
 		Contexts.push_back(Context(CL, RS, Memory));
 		ReadyResources();
@@ -426,8 +450,10 @@ namespace FlexKit
 
 		static_vector<ID3D12CommandList*> CLs = { Contexts.back().GetCommandList() };
 
-		Close	({ Contexts.back().GetCommandList() });
-		Submit	(CLs, RS);
+		Close({ Contexts.back().GetCommandList() });
+		RS->Submit(CLs);
+
+		UpdateResourceFinalState();
 	}
 
 
@@ -449,7 +475,7 @@ namespace FlexKit
 		}
 
 		auto RS			= Resources.RenderSystem;
-		auto Table		= ReserveRTVHeap(RS, RenderTargets.size());
+		auto Table		= RS->_ReserveRTVHeap(RenderTargets.size());
 		auto TablePOS	= Table;
 
 		for (auto RT : RenderTargets)
@@ -466,21 +492,68 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void FrameGraph::UpdateResourceFinalState()
+	{
+		auto Objects = ResourceContext.GetFinalStates();
+
+		for (auto& I : Objects)
+		{
+			switch (I.State)
+			{
+			case DRS_RenderTarget:
+			case DRS_Present:
+			{
+				if (I.FO->Type == FrameObjectResourceType::OT_BackBuffer ||
+					I.FO->Type == FrameObjectResourceType::OT_RenderTarget)
+				{
+					Resources.RenderSystem->RenderTargets.SetState(
+						I.FO->RenderTarget.Texture, 
+						I.State);
+				}
+			}	break;
+			case DRS_ShaderResource:
+			{	FK_ASSERT(0, "Not Implemented!");
+			}	break;
+			case DRS_UAV:
+			{
+				FK_ASSERT(0, "Not Implemented!");
+			}	break;
+			case DRS_VERTEXBUFFER: // & DRS_CONSTANTBUFFER
+			{	FK_ASSERT(0, "Not Implemented!");
+			}	break;
+			case DRS_PREDICATE:
+			{	FK_ASSERT(0, "Not Implemented!");
+			}	break;
+			case DRS_INDIRECTARGS:
+			{	FK_ASSERT(0, "Not Implemented!");
+			}	break;
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	void ClearBackBuffer(FrameGraph* Graph, float4 Color)
 	{
 		struct PassData
 		{
 			FrameResourceHandle BackBuffer;
+			float4				ClearColor;
 		};
 
 		auto& Pass = Graph->AddNode<PassData>(GetCRCGUID(PRESENT),
-			[&](FrameGraphNodeBuilder& Builder, PassData& Data)
+			[=](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
 				Data.BackBuffer = Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+				Data.ClearColor = Color;
 			},
 			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
 			{	// do clear here
-				Ctx->ClearRenderTarget(Resources.GetRenderTargetObject(Data.BackBuffer));
+				Ctx->ClearRenderTarget(
+					Resources.GetRenderTargetObject(Data.BackBuffer), 
+					Data.ClearColor);
 			});
 	}
 
@@ -500,12 +573,36 @@ namespace FlexKit
 				Data.BackBuffer = Builder.PresentBackBuffer(GetCRCGUID(BACKBUFFER));
 			},
 			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
-			{	// Do nothing, Barriers already handled
-				// This makes sure all writes to the back-buffer complete
+			{	
 #if _DEBUG
 				std::cout << "Present Barrier\n";
 #endif
 			});
+	}
+
+	
+	/************************************************************************************************/
+
+
+	void DrawRectangle(FrameGraph* Graph, VertexBufferHandle PushBuffer, float2 UpperLeft, float2 BottomRight, float4 Color)
+	{
+		struct DrawRect
+		{
+			FrameResourceHandle BackBuffer;
+			VertexBufferHandle	VertexBuffer;
+			size_t				Offset;
+		};
+		auto& Pass = Graph->AddNode<DrawRect>(GetCRCGUID(PRESENT),
+			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
+		{
+			Data.BackBuffer = Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+		},
+			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
+		{
+			Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, false);
+			Ctx->SetPipelineState(Resources.GetPipelineState		(EPIPELINESTATES::Draw_PSO));
+			Ctx->Draw(3, Data.Offset);
+		});
 	}
 
 

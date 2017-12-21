@@ -50,13 +50,13 @@ namespace FlexKit
 
 	bool  ConsoleSubState::PreDrawUpdate(EngineCore* Engine, double dT)
 	{
+		FK_ASSERT(0);
 		FlexKit::Draw_RECT Rect;
 		Rect.BLeft	= { 0, 0.5 };
 		Rect.TRight = { 1, 1 };
 		Rect.Color  = float4(Grey(0.0f), 0.5f);
-		PushRect(Framework->Immediate, Rect);
-
-		DrawConsole(C, Framework->Immediate, GetWindowWH(Engine));
+		//PushRect(Framework->Immediate, Rect);
+		//DrawConsole(C, Framework->Immediate, GetWindowWH(Engine));
 
 		return false;
 	}

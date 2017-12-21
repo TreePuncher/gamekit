@@ -116,14 +116,15 @@ bool PreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 	Input.MousePosition			  = ThisState->Framework->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
-	ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+	FK_ASSERT(0);
+	//ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
 
-	if(StateMemory->Framework->DrawDebug)
-		ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+	//if(StateMemory->Framework->DrawDebug)
+	//	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
 
-	ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Framework->Immediate);
+	//ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Framework->Immediate);
 
-	DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.05f, 0.05f });
+	//DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.05f, 0.05f });
 
 	//PrintText(&ThisState->Framework->Immediate, "THIS IS A TEST!\nHello World!", ThisState->Framework->DefaultAssets.Font, { 0.0f, 0.0f }, {0.4f, 0.2f}, float4(WHITE, 1), GetPixelSize(Engine));
 
@@ -345,8 +346,9 @@ bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineCore* Engine, double D
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	SimpleWindowInput	Input = {};
 
-	ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
-	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+	FK_ASSERT(0);
+	//ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+	//ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
 
 	DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.02f / GetWindowAspectRatio(Engine), 0.02f});
 

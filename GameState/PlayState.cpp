@@ -28,6 +28,34 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\ImageUtilities.h"
 #include "..\coreutilities\GraphicsComponents.h"
 
+
+
+/************************************************************************************************/
+
+
+PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
+	FrameworkState(framework),
+	Input		(Framework),
+	TPC			(Framework, Input, Engine->Cameras),
+	OrbitCameras(Framework, Input),
+	Scene		(
+		 Framework->Engine->RenderSystem, 
+		&Framework->Engine->Assets, 
+		 Framework->Engine->Nodes, 
+		 Framework->Engine->Geometry, 
+		 Framework->Engine->GetBlockMemory(), 
+		 Framework->Engine->GetTempMemory()),
+	Drawables	(&Scene, Framework->Engine->Nodes),
+	Lights		(&Scene, Framework->Engine->Nodes),
+	Physics		(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory()),
+	Test		(0),
+	VertexBuffer(Engine->RenderSystem.CreateVertexBuffer(8096, false))
+{
+	Framework->ActivePhysicsScene	= &Physics;
+	Framework->ActiveScene			= &Scene;
+}
+
+
 /************************************************************************************************/
 
 
@@ -278,7 +306,15 @@ PlayState::~PlayState()
 
 bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 {
-	ClearBackBuffer(&FrameGraph);
+	float4 ClearColor = Test > 4 ? float4{1, 0, 0, 0} : float4{0, 1, 0, 0};
+	Test = Test > 8 ? 0 : Test + 1;
+
+	ClearBackBuffer(&FrameGraph, ClearColor);
+	
+	DrawRectangle(
+		&FrameGraph, VertexBuffer, 
+		{ 0.0f, 0.0f }, { 1.0f, 1.0f });
+
 	PresentBackBuffer(&FrameGraph, &Core->Window);
 
 	//struct PassData
@@ -569,25 +605,8 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Framework->Engine->Physics.DefaultMaterial, 1);
 	State->Physics.Scene->addActor(*aHeightFieldActor);
 
-	PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
-}
-
-
-/************************************************************************************************/
-
-
-PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
-	FrameworkState	(framework),
-	Input			(Framework),
-	TPC				(Framework, Input, Engine->Cameras),
-	OrbitCameras	(Framework, Input),
-	Scene			(Framework->Engine->RenderSystem, &Framework->Engine->Assets, Framework->Engine->Nodes, Framework->Engine->Geometry, Framework->Engine->GetBlockMemory(), Framework->Engine->GetTempMemory()),
-	Drawables		(&Scene, Framework->Engine->Nodes),
-	Lights			(&Scene, Framework->Engine->Nodes),
-	Physics			(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory())
-{
-	Framework->ActivePhysicsScene	= &Physics;
-	Framework->ActiveScene			= &Scene;
+	FK_ASSERT(0);
+	//PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
 }
 
 

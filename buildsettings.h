@@ -106,7 +106,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifdef _DEBUG
 
 #define FK_ASSERT1(A) assert(A)
-#define FK_ASSERT2(A, B) assert(A)
+#define FK_ASSERT2(A, B) std::cout << B << "\n"; assert(A);
 
 #else
 

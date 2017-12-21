@@ -128,12 +128,14 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 	using FlexKit::ForwardRender;
 	using FlexKit::ForwardPass_DESC;
 
+
 	bool Out						= false;
 	uint32_t width					= 1920;
 	uint32_t height					= 1080;
 	bool InvertDepth				= true;
 	FlexKit::Graphics_Desc	desc	= { 0 };
 	desc.Memory = Engine->GetBlockMemory();
+
 
 	if (!Engine->RenderSystem.Initiate(&desc))
 		return false;
@@ -144,27 +146,15 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 	if (!Out)
 	{
 		Engine->RenderSystem.Release();
+		cout << "Failed to Create Render Window!\n";
 		return false;
 	}
 
-	CreateDepthBuffer	(  Engine->RenderSystem, { width, height }, DepthBuffer_Desc{3, InvertDepth, InvertDepth}, &Engine->DepthBuffer, GetCurrentCommandList(Engine->RenderSystem) );
 
 	SetInputWIndow		( &Engine->Window );
 	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->GetBlockMemory() );
 
-	// Initiate Component Systems
-	ForwardPass_DESC FP_Desc	{ &Engine->DepthBuffer, &Engine->Window };
-	TiledRendering_Desc DP_Desc	{ &Engine->DepthBuffer, &Engine->Window, nullptr };
-
-	InitiateForwardPass			(  Engine->RenderSystem, &FP_Desc, &Engine->ForwardRender);
-	InitiateTiledDeferredRender	(  Engine->RenderSystem, &DP_Desc, &Engine->TiledRender);
-	InitiateGeometryTable		( &Engine->Geometry,	Engine->GetBlockMemory() );
-	InitiateSSReflectionTracer	(  Engine->RenderSystem, GetWindowWH(Engine), &Engine->Reflections);
-
-	auto OcclusionBufferWH = GetWindowWH(Engine)/4;
-
 	Engine->Assets.ResourceMemory = &Engine->GetBlockMemory();
-	Engine->Culler                = CreateOcclusionCuller(Engine->RenderSystem, 8096, OcclusionBufferWH);
 
 	return Out;
 }

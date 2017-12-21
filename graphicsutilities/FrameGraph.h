@@ -158,12 +158,10 @@ namespace FlexKit
 		PassObjectList		Resources;
 		RenderSystem*		RenderSystem;
 
-		//  || Should These Be in a scene structure instead?
-		//  \/
+		//  TODO: Move these to a Scene Structure
 		GeometryTable*		GT;
 		PointLightBuffer*	PointLights;
 		SpotLightBuffer*	SpotLights;
-		//
 		//
 
 		TextureObject		GetRenderTargetObject(FrameResourceHandle Handle) const
@@ -171,14 +169,22 @@ namespace FlexKit
 			return { Resources[Handle].RenderTarget.HeapPOS, Resources[Handle].RenderTarget.Texture };
 		}
 
+
 		DeviceResourceState	GetResourceObjectState(FrameResourceHandle Handle)
 		{
 			return Resources[Handle].State;
 		}
 
+
 		FrameObject*		GetResourceObject(FrameResourceHandle Handle)
 		{
 			return &Resources[Handle];
+		}
+
+
+		ID3D12PipelineState*	GetPipelineState(EPIPELINESTATES State)	const
+		{
+			return RenderSystem->GetPSO(State);
 		}
 
 
@@ -264,6 +270,7 @@ namespace FlexKit
 		ResourceTransition		(FrameObjectDependency& Dep);
 		void ProcessTransition	(FrameResources& Resources, Context* Ctx) const;
 
+
 	private:
 		FrameObject*		Object;
 		DeviceResourceState	BeforeState;
@@ -303,15 +310,14 @@ namespace FlexKit
 		{}
 
 
-		void HandleBarriers(FrameResources& Resouces, Context* Ctx);
-
+		void HandleBarriers	(FrameResources& Resouces, Context* Ctx);
 		void AddTransition	(FrameObjectDependency& Dep);
 		bool DependsOn		(uint32_t Tag);
 		bool Outputs		(uint32_t Tag);
 
+
 		Vector<FrameGraphNode*>		GetNodeDependencies()	{ return (nullptr); } 
-		//PassObjectList				GetInputs()				{ return InputObjects; }
-		//PassObjectList				GetOutputs()			{ return OutputObjects; }
+
 
 		bool							Executed;
 		FN_NodeAction					NodeAction;
@@ -334,15 +340,18 @@ namespace FlexKit
 			Retirees	{Temp}
 		{}
 
+
 		void AddWriteable(const FrameObjectDependency& NewObject)
 		{
 			Writables.push_back(NewObject);
 		}
 
+
 		void AddReadable(const FrameObjectDependency& NewObject)
 		{
 			Readables.push_back(NewObject);
 		}
+
 
 		void RemoveReadable(uint32_t Tag)
 		{
@@ -350,11 +359,13 @@ namespace FlexKit
 			Readables.remove_unstable(find(Readables, Pred));
 		}
 
+
 		void RemoveWriteable(uint32_t Tag)
 		{
 			auto Pred = [&](auto& lhs) { return (lhs.Tag == Tag);	};
 			Writables.remove_unstable(find(Writables, Pred));
 		}
+
 
 		void Retire(FrameObjectDependency& Object)
 		{
@@ -363,6 +374,37 @@ namespace FlexKit
 
 			Object.ExpectedState = Object.State;
 			Retirees.push_back(Object);
+		}
+
+
+		FrameObjectDependency& GetReadable(uint32_t Tag)
+		{
+			auto Pred = [&](auto& lhs) { return (lhs.Tag == Tag);	};
+			auto Res = find(Readables, Pred);
+
+			return *Res;
+		}
+
+
+		FrameObjectDependency& GetWriteable(uint32_t Tag)
+		{
+			auto Pred = [&](auto& lhs) { return (lhs.Tag == Tag);	};
+			auto Res = find(Writables, Pred);
+
+			return *Res;
+		}
+
+
+		Vector<FrameObjectDependency>	GetFinalStates()
+		{
+			Vector<FrameObjectDependency> Objects(Writables.Allocator);
+			Objects.reserve(Writables.size() + Readables.size() + Retirees.size());
+
+			Objects += Writables;
+			Objects += Readables;
+			Objects += Retirees;
+
+			return std::move(Objects);
 		}
 
 		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(uint32_t Tag);
@@ -374,26 +416,31 @@ namespace FlexKit
 	};
 
 
+	/************************************************************************************************/
+
+
 	FLEXKITAPI class FrameGraphNodeBuilder
 	{
 	public:
 		FrameGraphNodeBuilder(
 			FrameResources*				Resources_IN, 
 			FrameGraphNode&				Node_IN,
+			FrameGraphResourceContext&	Context_IN,
 			iAllocator*					Temp) :
+				Context			{Context_IN},
 				LocalInputs		{Temp},
 				LocalOutputs	{Temp},
 				Node			{Node_IN},
-				Transitions		{Temp},
-				Resources		{Resources_IN}
+				Resources		{Resources_IN},
+				Transitions		{Temp}
 		{}
+
 
 		// No Copying
 		FrameGraphNodeBuilder				(const FrameGraphNodeBuilder& RHS) = delete;
 		FrameGraphNodeBuilder&	operator =	(const FrameGraphNodeBuilder& RHS) = delete;
 
-
-		void BuildNode(FrameGraphResourceContext& Context, FrameGraph* FrameGraph);
+		void BuildNode(FrameGraph* FrameGraph);
 
 		FrameResourceHandle ReadRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 		FrameResourceHandle WriteRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
@@ -401,8 +448,6 @@ namespace FlexKit
 		FrameResourceHandle	PresentBackBuffer	(uint32_t Tag);
 		FrameResourceHandle	ReadBackBuffer		(uint32_t Tag);
 		FrameResourceHandle	WriteBackBuffer		(uint32_t Tag);
-
-		void ClearContext();
 
 	private:
 		FrameResourceHandle AddReadableResource		(uint32_t Tag, DeviceResourceState State);
@@ -438,6 +483,7 @@ namespace FlexKit
 		Vector<FrameObjectDependency>	LocalInputs;
 		Vector<FrameObjectDependency>	Transitions;
 
+		FrameGraphResourceContext&		Context;
 		FrameGraphNode&					Node;
 		FrameResources*					Resources;
 	};
@@ -450,11 +496,10 @@ namespace FlexKit
 	{
 	public:
 		FrameGraph(RenderSystem* RS, iAllocator* Temp) :
-			Nodes{ Temp },
-			Memory{ Temp },
-			Resources{ RS,			Temp },
-			ResourceContext{ Temp } {}
-
+			Nodes			{ Temp },
+			Memory			{ Temp },
+			Resources		{ RS,	Temp },
+			ResourceContext	{ Temp } {}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
@@ -466,7 +511,7 @@ namespace FlexKit
 
 			TY& Data				= Memory->allocate_aligned<TY>();
 			FrameGraphNode& Node	= Nodes.back();
-			FrameGraphNodeBuilder Builder(&Resources, Node, Memory);
+			FrameGraphNodeBuilder Builder(&Resources, Node, ResourceContext, Memory);
 
 			Node.NodeAction = [=, &Data, &Node](
 				FrameResources& Resources, 
@@ -479,7 +524,7 @@ namespace FlexKit
 			};
 
 			Setup(Builder, Data);
-			Builder.BuildNode(ResourceContext, this);
+			Builder.BuildNode(this);
 
 			return Data;
 		}
@@ -490,21 +535,6 @@ namespace FlexKit
 		void UpdateFrameGraph	(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp);// 
 		void SubmitFrameGraph	(RenderSystem* RS, RenderWindow* Window);
 
-		enum class ObjectState
-		{
-			OA_Closed,
-			OA_Read,
-			OA_Write,
-			OA_UnCreated
-		};
-
-
-		struct RenderTargetState
-		{
-			ObjectState		State;
-			TextureHandle	Handle;
-		};
-
 		FrameResources				Resources;
 		FrameGraphResourceContext	ResourceContext;
 		iAllocator*					Memory;
@@ -512,6 +542,9 @@ namespace FlexKit
 
 	private:
 		void ReadyResources();
+		void UpdateResourceFinalState();
+
+
 	};
 
 
@@ -520,6 +553,10 @@ namespace FlexKit
 
 	void ClearBackBuffer	(FrameGraph* Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
 	void PresentBackBuffer	(FrameGraph* Graph, RenderWindow* Window);
+	
+	void DrawRectangle		(FrameGraph* Graph, VertexBufferHandle PushBuffer, float2 UpperLeft, float2 BottomRight, float4 Color = { 1.0f, 1.0f, 1.0f, 1.0f });
 	void SetRenderTargets	(Context* Ctx, static_vector<FrameResourceHandle> RenderTargets, FrameResources& FG);
-}
+
+
+}	/************************************************************************************************/
 #endif

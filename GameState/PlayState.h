@@ -64,6 +64,9 @@ public:
 	DrawableComponentSystem				Drawables;
 	LightComponentSystem				Lights;
 
+	VertexBufferHandle			VertexBuffer;
+	int							Test;
+
 	// GameObjects
 	GameObject<> CubeObjects[1024];
 	GameObject<> FloorObject;

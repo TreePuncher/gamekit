@@ -149,12 +149,12 @@ namespace FlexKit
 
 	void InitiateTiledDeferredRender(RenderSystem* RS, TiledRendering_Desc* GBdesc, TiledDeferredRender* out)
 	{
-		RegisterPSOLoader(RS, RS->States, TILEDSHADING_SHADE,		 LoadShadeState);
-		RegisterPSOLoader(RS, RS->States, TILEDSHADING_LIGHTPREPASS, LoadLightPrePassState);
-		RegisterPSOLoader(RS, RS->States, TILEDSHADING_COPYOUT,		 LoadLightCopyOutState);
+		RS->RegisterPSOLoader(TILEDSHADING_SHADE,		 LoadShadeState);
+		RS->RegisterPSOLoader(TILEDSHADING_LIGHTPREPASS, LoadLightPrePassState);
+		RS->RegisterPSOLoader(TILEDSHADING_COPYOUT,		 LoadLightCopyOutState);
 
-		QueuePSOLoad(RS, TILEDSHADING_SHADE);
-		QueuePSOLoad(RS, TILEDSHADING_COPYOUT);
+		RS->QueuePSOLoad(TILEDSHADING_SHADE);
+		RS->QueuePSOLoad(TILEDSHADING_COPYOUT);
 
 		{
 			// Create GBuffers
@@ -381,13 +381,13 @@ namespace FlexKit
 		RenderSystem* RS, TiledDeferredRender* Pass, const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH)
 	{
-		auto CL = GetCurrentCommandList(RS);
-		auto FrameResources		= GetCurrentFrameResources(RS);
+		auto CL = RS->_GetCurrentCommandList();
+		auto FrameResources		= RS->_GetCurrentFrameResources();
 		auto BufferIndex		= Pass->CurrentBuffer;
 		auto& CurrentGBuffer	= Pass->GBuffers[BufferIndex];
 
-		auto DescTable	= GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS	= ReserveDescHeap(RS, 11);
+		auto DescTable	= RS->_GetDescTableCurrentPosition_GPU();
+		auto TablePOS	= RS->_ReserveDescHeap(11);
 
 		TablePOS = PushCBToDescHeap(RS, C->Buffer.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
 		TablePOS = PushCBToDescHeap(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
@@ -404,7 +404,7 @@ namespace FlexKit
 
 		TablePOS = PushUAV2DToDescHeap(RS, CurrentGBuffer.LightTilesBuffer, TablePOS, DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT);
 
-		CL->SetPipelineState(GetPSO(RS, TILEDSHADING_LIGHTPREPASS));
+		CL->SetPipelineState(RS->GetPSO(TILEDSHADING_LIGHTPREPASS));
 		CL->SetComputeRootSignature(RS->Library.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable(DSRP_DescriptorTable, DescTable);
 
@@ -413,7 +413,7 @@ namespace FlexKit
 		CL->SetDescriptorHeaps(1, Heaps);
 
 		// Do Shading Here
-		CL->SetPipelineState(GetPSO(RS, TILEDSHADING_LIGHTPREPASS));
+		CL->SetPipelineState(RS->GetPSO(TILEDSHADING_LIGHTPREPASS));
 		CL->SetComputeRootSignature(RS->Library.ShadingRTSig);
 
 		{
@@ -475,9 +475,9 @@ namespace FlexKit
 		GeometryTable*	GT,		TextureVTable*	Texture,	OcclusionCuller* OC, 
 		iAllocator* TempMemory)
 	{
-		auto FrameResources	= GetCurrentFrameResources(RS);
+		auto FrameResources	= RS->_GetCurrentFrameResources();
 
-		Context Ctx(GetCurrentCommandList(RS), RS, TempMemory);
+		Context Ctx(RS->_GetCurrentCommandList(), RS, TempMemory);
 		Ctx.Clear(); // Clear Any Residual State
 
 		size_t BufferIndex = Pass->CurrentBuffer;
@@ -677,8 +677,8 @@ namespace FlexKit
 		const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB)
 	{
-		auto CL				 = GetCurrentCommandList(RS);
-		auto FrameResources  = GetCurrentFrameResources(RS);
+		auto CL				 = RS->_GetCurrentCommandList();
+		auto FrameResources  = RS->_GetCurrentFrameResources();
 		auto BufferIndex	 = Pass->CurrentBuffer;
 		auto& CurrentGBuffer = Pass->GBuffers[BufferIndex];
 
@@ -726,8 +726,8 @@ namespace FlexKit
 			CL->ResourceBarrier(sizeof(Barrier1) / sizeof(Barrier1[0]), Barrier1);
 		}
 
-		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS  = ReserveDescHeap(RS, 11);
+		auto DescTable = RS->_GetDescTableCurrentPosition_GPU();
+		auto TablePOS  = RS->_ReserveDescHeap(11);
 		auto DispatchDimensions = uint2{ Target.WH[0] / 32, Target.WH[1] / 12 };
 
 		// The Max is to quiet a error if a no Lights are passed
@@ -751,7 +751,7 @@ namespace FlexKit
 		CL->SetDescriptorHeaps(1, Heaps);
 
 		// Do Shading Here
-		CL->SetPipelineState				(GetPSO(RS, TILEDSHADING_SHADE));
+		CL->SetPipelineState				(RS->GetPSO(TILEDSHADING_SHADE));
 		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable	(DSRP_DescriptorTable, DescTable);
 		CL->Dispatch(DispatchDimensions[0], DispatchDimensions[1], 1);
@@ -825,10 +825,10 @@ namespace FlexKit
 
 	void ClearGBuffer(RenderSystem* RS, TiledDeferredRender* Pass, const float4& Clear, size_t Index)
 	{
-		auto CL = GetCurrentCommandList(RS);
-		auto RTVPOSCPU = GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
-		auto RTVPOS = ReserveRTVHeap(RS, 6);
-		auto RTVHeap = GetCurrentRTVTable(RS);
+		auto CL        = RS->_GetCurrentCommandList();
+		auto RTVPOSCPU = RS->_GetRTVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
+		auto RTVPOS    = RS->_ReserveRTVHeap(6);
+		auto RTVHeap   = RS->_GetCurrentRTVTable();
 
 		size_t BufferIndex = Pass->CurrentBuffer;
 
@@ -853,8 +853,8 @@ namespace FlexKit
 		auto BufferIndex	 = Render->CurrentBuffer;
 		auto& CurrentGBuffer = Render->GBuffers[BufferIndex];
 
-		auto DescTable = GetDescTableCurrentPosition_GPU(RS);
-		auto TablePOS  = ReserveDescHeap(RS, 11);
+		auto DescTable = RS->_GetDescTableCurrentPosition_GPU();
+		auto TablePOS  = RS->_ReserveDescHeap(11);
 
 		
 		// The Max is to quiet a error if a no Lights are passed
@@ -900,7 +900,7 @@ namespace FlexKit
 
 		CL->SetComputeRootSignature			(RS->Library.ShadingRTSig);
 		CL->SetComputeRootDescriptorTable	(0, DescTable);
-		CL->SetPipelineState				(GetPSO(RS, EPIPELINESTATES::TILEDSHADING_COPYOUT));
+		CL->SetPipelineState				(RS->GetPSO(EPIPELINESTATES::TILEDSHADING_COPYOUT));
 		CL->Dispatch						(Target->WH[0] / 32, Target->WH[1] / 12, 1);
 
 		{

@@ -100,17 +100,17 @@ namespace FlexKit
 				_ptr->Quit = true;
 				break;
 			case KC_R:
-				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_CULL_PSO);
-				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO);
-				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
-				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
+				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_CULL_PSO);
+				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO);
+				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
+				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
 				break;
 			case KC_E:
 			{
 				_ptr->DrawTerrainDebug = !_ptr->DrawTerrainDebug;
 			}	break;
 			case KC_T:
-				QueuePSOLoad(_ptr->Engine->RenderSystem, EPIPELINESTATES::TILEDSHADING_SHADE);
+				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TILEDSHADING_SHADE);
 				break;
 			case KC_M:
 				_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
@@ -221,12 +221,15 @@ namespace FlexKit
 	{
 		using FlexKit::Conversion::Vect2TOfloat2;
 
+
+		FK_ASSERT(0);
+
 		FlexKit::Draw_RECT Cursor;
 		Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
 		Cursor.TRight = Cursor.BLeft + CursorSize;
 		Cursor.Color  = float4(1, 1, 1, 1);
 
-		PushRect(State->Immediate, Cursor);
+		//PushRect(State->Immediate, Cursor);
 	}
 
 
@@ -245,9 +248,6 @@ namespace FlexKit
 
 		Release(State->DefaultAssets.Font);
 		Release(State->DefaultAssets.Terrain);
-
-		ReleaseTerrain		(State->Engine->Nodes, &State->Landscape);
-		ReleaseDrawImmediate(Engine->RenderSystem, &State->Immediate);
 	}
 
 
@@ -420,11 +420,6 @@ namespace FlexKit
 		Framework.Stats.Fps_T					= 0.0;
 		Framework.Stats.ObjectsDrawnLastFrame	= 0;
 
-		ForwardPass_DESC	FP_Desc{&Engine->DepthBuffer, &Engine->Window};
-		TiledRendering_Desc DP_Desc{&Engine->DepthBuffer, &Engine->Window, nullptr };
-
-		InitiateImmediateRender	  (Engine->RenderSystem, &Framework.Immediate, Engine->GetBlockMemory(), Engine->GetTempMemory());
-		
 
 		{
 			uint2	WindowRect	   = Engine->Window.WH;
@@ -442,13 +437,6 @@ namespace FlexKit
 			Texture2D	HeightMap = LoadTexture(&TempBuffer, Engine->RenderSystem, Engine->GetTempMemory());
 
 			Framework.DefaultAssets.Terrain = HeightMap;
-
-			Landscape_Desc Land_Desc;{
-				Land_Desc.HeightMap = Framework.DefaultAssets.Terrain;
-			};
-
-
-			InitiateLandscape(Engine->RenderSystem, GetZeroedNode(Framework.Engine->Nodes), &Land_Desc, Engine->GetBlockMemory(), &Framework.Landscape);
 		}
 
 		FlexKit::EventNotifier<>::Subscriber sub;
@@ -476,7 +464,7 @@ namespace FlexKit
 
 		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});
 
-		UploadResources(&Engine->RenderSystem);// Uploads fresh Resources to GPU
+		Engine->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
 
 		return &Framework;
 	}
@@ -547,7 +535,9 @@ namespace FlexKit
 			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
 			sprintf_s(TempBuffer, 512, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
-			PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Core));
+
+			FK_ASSERT(0);
+			//PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Core));
 		}
 	}
 
@@ -560,7 +550,9 @@ namespace FlexKit
 		FrameGraph		FrameGraph(Core->RenderSystem, TempMemory);
 
 		// Add in Base Resources
-		FrameGraph.Resources.AddBackBuffer(GetCurrentBackBuffer(&Core->Window), GetCRCGUID(BACKBUFFER));
+		auto BB			= GetCurrentBackBuffer(&Core->Window);
+		auto BBState	= Core->RenderSystem.RenderTargets.GetState(BB);
+		FrameGraph.Resources.AddBackBuffer(BB, GetCRCGUID(BACKBUFFER), BBState);
 
 
 		{
@@ -569,14 +561,13 @@ namespace FlexKit
 
 			while (Itr != End)
 			{
-				auto Framework = *Itr;
+				auto Framework = *Itr;		
 				if (!Framework->Draw(Core, 0, FrameGraph))
 					break;
 
 				Itr++;
 			}
 		}
-
 
 		ProfileBegin(PROFILE_SUBMISSION);
 
@@ -597,11 +588,7 @@ namespace FlexKit
 
 	void PostDraw(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
 	{
-		Engine->Culler.Increment();
-		IncrementCurrent(&Engine->DepthBuffer);
-		IncrementIndex(&Engine->Reflections);
-
-		PresentWindow(&Engine->Window, Engine->RenderSystem);
+		Engine->RenderSystem.PresentWindow(&Engine->Window);
 	}
 
 
@@ -610,17 +597,18 @@ namespace FlexKit
 
 	void Cleanup(EngineCore* Engine, GameFramework* Framework)
 	{
-		ShutDownUploadQueues(Engine->RenderSystem);
+		Engine->RenderSystem.ShutDownUploadQueues();
 
 		ReleaseConsole(&Framework->Console);
 		Release(Framework->DefaultAssets.Font);
 
 		// wait for last Frame to finish Rendering
-		auto CL = GetCurrentCommandList(Engine->RenderSystem);
+		auto CL = Engine->RenderSystem._GetCurrentCommandList();
 
-		for (size_t I = 0; I < 4; ++I) {
-			WaitforGPU(&Engine->RenderSystem);
-			IncrementRSIndex(Engine->RenderSystem);
+		for (size_t I = 0; I < 4; ++I) 
+		{
+			Engine->RenderSystem.WaitforGPU();
+			Engine->RenderSystem._IncrementRSIndex();
 		}
 
 		ReleaseGameFramework(Engine, Framework);

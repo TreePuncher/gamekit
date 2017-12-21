@@ -166,7 +166,7 @@ namespace FlexKit
 	void ForwardPass(PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT)
 	{
 		return;
-		auto CL = GetCurrentCommandList(RS);
+		auto CL = RS->_GetCurrentCommandList();
 		if(!_PVS->size())
 			return;
 
@@ -215,7 +215,7 @@ namespace FlexKit
 			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
 		}
 
-		GetCurrentCommandList(RS)->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBufferResource(Pass->RenderTarget),
+		RS->_GetCurrentCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBufferResource(Pass->RenderTarget),
 				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 	}
 }

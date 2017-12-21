@@ -28,38 +28,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 
-	/************************************************************************************************/
-
-
-	PipelineStateTable* CreatePSOTable( RenderSystem* RS )
+	PipelineStateTable::PipelineStateTable(RenderSystem* RS_IN, iAllocator* Memory_IN) :
+		LoadsInProgress(Memory_IN),
+		Device(RS_IN->pDevice),
+		Memory(Memory_IN),
+		RS(RS_IN)
 	{
-		PipelineStateTable* out		= &RS->Memory->allocate_aligned<PipelineStateTable>();
-		out->LoadsInProgress.Memory = RS->Memory;
-		out->Device					= RS->pDevice;
-
-		out->States.SetFull();
-
-		return out;
+		States.SetFull();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void ReleasePipelineStates(RenderSystem* RS)
+	void PipelineStateTable::ReleasePSOs()
 	{
-		for (auto s : RS->States->States)
+		for (auto s : States)
 			SAFERELEASE(s);
 
-		RS->Memory->free(RS->States);
-		RS->States->LoadsInProgress.Release();
+		LoadsInProgress.Release();
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool LoadPipelineStates( RenderSystem* RS )
+	bool PipelineStateTable::ReloadLoadPSO( EPIPELINESTATES State )
 	{
 		return false;
 	}
@@ -68,19 +62,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ReloadLoadPipelineState( RenderSystem* RS, PipelineStateTable* States, EPIPELINESTATES State )
+	void PipelineStateTable::LoadPSOs()
 	{
-		return false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void LoadPSOs( RenderSystem* RS )
-	{
-		PipelineStateTable*	States = RS->States;
-		while (States->LoadsInProgress.size()) {
+		while (LoadsInProgress.size()) {
 
 #if 1
 			std::chrono::system_clock Clock;
@@ -92,18 +76,20 @@ namespace FlexKit
 			FINALLYOVER
 #endif
 
-			auto& LoadRequest = States->LoadsInProgress.first();
+			auto& LoadRequest = LoadsInProgress.first();
 			std::lock_guard<mutex> lk(LoadRequest.Mutex);
 
-			auto Res = States->StateLoaders[LoadRequest.State](RS);
+			auto Res = StateLoaders[LoadRequest.State](RS);
 			if (Res) {
 				//SAFERELEASE(States->States[LoadRequest.State]); // Not Safe to do, just leak and disable during release mode
-				States->States[LoadRequest.State] = Res;
+				States[LoadRequest.State] = Res;
 			}
+#if _DEBUG
 			std::cout << "Finished PSO Load\n";
-			LoadRequest.CV.notify_all();
+#endif
 
-			States->LoadsInProgress.pop_front();
+			LoadRequest.CV.notify_all();
+			LoadsInProgress.pop_front();
 		}
 	}
 
@@ -111,24 +97,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void QueuePSOLoad(RenderSystem* RS, EPIPELINESTATES State)
+	void PipelineStateTable::QueuePSOLoad(EPIPELINESTATES State)
 	{
-		PipelineStateTable*	States = RS->States;
+		if (!LoadsInProgress.size()) {
 
-		if (!RS->States->LoadsInProgress.size()) {
+			auto Load = LoadsInProgress.push_back({ State });
 
-			auto Load = States->LoadsInProgress.push_back({ State });
-
-			std::thread Thread([RS, State]
+			std::thread Thread([this, State]
 			{
-				LoadPSOs(RS);
+				LoadPSOs();
 			});
 
 			Thread.detach();
 		}
 		else
 		{
-			States->LoadsInProgress.push_back({ State });
+			LoadsInProgress.push_back({ State });
 		}
 	}
 
@@ -136,24 +120,23 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 	
-	ID3D12PipelineState*	GetPSO( RenderSystem* RS, EPIPELINESTATES State )
+	ID3D12PipelineState*	PipelineStateTable::GetPSO( EPIPELINESTATES State )
 	{
 		ID3D12PipelineState*	PSO_Out = nullptr;
-		PipelineStateTable*		States  = RS->States;
-		PSO_Out = States->States[(int)State];
+		PSO_Out = States[(int)State];
 
 		while (PSO_Out == nullptr)
 		{
-			if (States->LoadsInProgress.size())
+			if (LoadsInProgress.size())
 			{
-				States->LoadsInProgress.For_Each([&](auto& e)
+				LoadsInProgress.For_Each([&](auto& e)
 				{
 					if (e == State) {
 						{
 							std::unique_lock<mutex> lk(e.Mutex);
-							e.CV.wait(lk, [&] {return States->States[(size_t)State] != nullptr; });
+							e.CV.wait(lk, [&] {return States[(size_t)State] != nullptr; });
 						}
-						PSO_Out = States->States[(size_t)State];
+						PSO_Out = States[(size_t)State];
 						return false;
 					}
 
@@ -161,7 +144,10 @@ namespace FlexKit
 				});
 			}
 			else
-				PSO_Out = States->States[(size_t)State];
+				PSO_Out = States[(size_t)State];
+
+			if (!PSO_Out)
+				QueuePSOLoad(State);
 		}
 
 		return PSO_Out;
@@ -180,9 +166,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RegisterPSOLoader( RenderSystem* RS, PipelineStateTable* States, EPIPELINESTATES State, LOADSTATE_FN Loader )
+	void PipelineStateTable::RegisterPSOLoader( EPIPELINESTATES State, LOADSTATE_FN Loader )
 	{
-		States->StateLoaders[State] = Loader;
+		StateLoaders[State] = Loader;
 	}
 
 

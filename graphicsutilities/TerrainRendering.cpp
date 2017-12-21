@@ -37,7 +37,7 @@ namespace FlexKit
 	const static size_t SO_BUFFERSIZES = MEGABYTE * 4;
 	void DrawLandscape(RenderSystem* RS, Landscape* LS, TiledDeferredRender* Pass, size_t splitcount, Camera* C, bool DrawWireframe)
 	{	
-		auto CL = GetCurrentCommandList(RS);
+		auto CL = RS->_GetCurrentCommandList();
 		if (LS->Regions.size())
 		{
 			/*
@@ -49,15 +49,15 @@ namespace FlexKit
 			} 	D3D12_VERTEX_BUFFER_VIEW;
 			*/
 
-			auto CL             = GetCurrentCommandList(RS);
-			auto FrameResources = GetCurrentFrameResources(RS);
-			auto DescPOSGPU     = GetDescTableCurrentPosition_GPU(RS); // _Ptr to Beginning of Heap On GPU
-			auto DescPOS        = ReserveDescHeap(RS, 11);
-			auto DescriptorHeap = GetCurrentDescriptorTable(RS);
+			auto CL             = RS->_GetCurrentCommandList();
+			auto FrameResources = RS->_GetCurrentFrameResources();
+			auto DescPOSGPU     = RS->_GetDescTableCurrentPosition_GPU(); // _Ptr to Beginning of Heap On GPU
+			auto DescPOS        = RS->_ReserveDescHeap(11);
+			auto DescriptorHeap = RS->_GetCurrentDescriptorTable();
 
-			auto RTVPOSCPU      = GetRTVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On RTV heap on CPU
-			auto RTVPOS         = ReserveRTVHeap(RS, 5);
-			auto RTVHeap        = GetCurrentRTVTable(RS);
+			auto RTVPOSCPU      = RS->_GetRTVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
+			auto RTVPOS         = RS->_ReserveRTVHeap(5);
+			auto RTVHeap        = RS->_GetCurrentRTVTable();
 
 			CL->SetDescriptorHeaps(1, &DescriptorHeap);
 
@@ -129,8 +129,8 @@ namespace FlexKit
 			ID3D12Resource*						OutputCounters[] = { LS->SOCounter_1.Get(), LS->SOCounter_2.Get() };
 
 
-			auto DSVPOSCPU = GetDSVTableCurrentPosition_CPU(RS); // _Ptr to Current POS On DSV heap on CPU
-			auto POS = ReserveDSVHeap(RS, 1);
+			auto DSVPOSCPU	= RS->_GetDSVTableCurrentPosition_CPU(); // _Ptr to Current POS On DSV heap on CPU
+			auto POS		= RS->_ReserveDSVHeap(1);
 			PushDepthStencil(RS, &Pass->GBuffers[Pass->CurrentBuffer].DepthBuffer, POS);
 
 			CL->OMSetRenderTargets(5, &RTVPOSCPU, true, &DSVPOSCPU);
@@ -157,7 +157,7 @@ namespace FlexKit
 			}
 
 			{
-				auto PSO = GetPSO(RS, TERRAIN_CULL_PSO);
+				auto PSO = RS->GetPSO(TERRAIN_CULL_PSO);
 				CL->SetGraphicsRootSignature(RS->Library.RS4CBVs_SO);
 				CL->SetPipelineState(PSO);
 				CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
@@ -269,23 +269,23 @@ namespace FlexKit
 
 				// Draw Final Buffer
 				CL->IASetVertexBuffers	(0, 1, FinalBufferInput);
-				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_PSO_DEBUG));
+				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO_DEBUG));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
 
-				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_WIRE_PSO));
+				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_WIRE_PSO));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
 
 				// Draw Remainder
 				CL->IASetVertexBuffers	(0, 1, Input[NextIndex]);
-				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_PSO_DEBUG));
+				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO_DEBUG));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 
-				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_WIRE_PSO));
+				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_WIRE_PSO));
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 			}
 			else
 			{
-				CL->SetPipelineState	(GetPSO(RS, TERRAIN_DRAW_PSO));
+				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO));
 				// Draw Final Buffer
 				CL->IASetVertexBuffers(0, 1, FinalBufferInput);
 				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
@@ -666,17 +666,15 @@ namespace FlexKit
 		out->HeightMap			= desc->HeightMap;
 
 
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_PSO,		LoadTerrainPSO_Generate			);
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO,	LoadTerrainPSO_WireDebug		);
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG,	LoadTerrainPSO_GenerateDebug	);
-		RegisterPSOLoader(RS, RS->States, EPIPELINESTATES::TERRAIN_CULL_PSO,		LoadTerrainPSO_CULL				);
+		RS->RegisterPSOLoader(EPIPELINESTATES::TERRAIN_DRAW_PSO,		LoadTerrainPSO_Generate			);
+		RS->RegisterPSOLoader(EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO,	LoadTerrainPSO_WireDebug		);
+		RS->RegisterPSOLoader(EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG,	LoadTerrainPSO_GenerateDebug	);
+		RS->RegisterPSOLoader(EPIPELINESTATES::TERRAIN_CULL_PSO,		LoadTerrainPSO_CULL				);
 
-		QueuePSOLoad( RS, TERRAIN_DRAW_PSO );
-		QueuePSOLoad( RS, TERRAIN_DRAW_WIRE_PSO );
-		QueuePSOLoad( RS, TERRAIN_DRAW_PSO_DEBUG );
-		QueuePSOLoad( RS, TERRAIN_CULL_PSO );
-
-		GetPSO(RS, TERRAIN_DRAW_PSO);
+		RS->QueuePSOLoad( TERRAIN_DRAW_PSO );
+		RS->QueuePSOLoad( TERRAIN_DRAW_WIRE_PSO );
+		RS->QueuePSOLoad( TERRAIN_DRAW_PSO_DEBUG );
+		RS->QueuePSOLoad( TERRAIN_CULL_PSO );
 
 		// Create Resources
 		{
@@ -704,7 +702,7 @@ namespace FlexKit
 			out->IndirectOptions1 = CreateStreamOut(RS, SO_BUFFERSIZES); out->IndirectOptions1._SetDebugName("Indirect Arguments 1");
 			out->IndirectOptions2 = CreateStreamOut(RS, SO_BUFFERSIZES); out->IndirectOptions2._SetDebugName("Indirect Arguments 2");
 
-			out->InputBuffer        = CreateVertexBufferResource(RS, KILOBYTE * 2);
+			//out->InputBuffer        = CreateVertexBufferResource(RS, KILOBYTE * 2);
 			out->FinalBuffer        = FinalBuffer;
 			out->TriBuffer          = TriBuffer;
 			out->SOCounter_1        = CounterBuffer1;
@@ -784,7 +782,7 @@ namespace FlexKit
 						CD3DX12_RESOURCE_BARRIER::Transition(out->IndirectOptions2[2], D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
 					};
 
-					auto CL = GetCurrentCommandList(RS);
+					auto CL = RS->_GetCurrentCommandList();
 					CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
 				}
 
