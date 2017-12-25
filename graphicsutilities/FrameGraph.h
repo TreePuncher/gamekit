@@ -139,13 +139,23 @@ namespace FlexKit
 	typedef Vector<FrameObject>		PassObjectList;
 	class FrameGraph;
 
-	class FrameResources
+	FLEXKITAPI class FrameResources
 	{
 	public:
 		FrameResources(RenderSystem* rendersystem, iAllocator* Memory) : 
 			Resources(Memory), 
 			RenderSystem(rendersystem)
 		{}
+
+		PassObjectList		Resources;
+		RenderSystem*		RenderSystem;
+		GeometryTable*		Geometry;
+
+		//  TODO: Move these to a Scene Structure
+		//	Why are these here again?
+		PointLightBuffer*	PointLights;
+		SpotLightBuffer*	SpotLights;
+		//
 
 		void AddBackBuffer(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
 		{
@@ -155,30 +165,9 @@ namespace FlexKit
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
 
-		PassObjectList		Resources;
-		RenderSystem*		RenderSystem;
-
-		//  TODO: Move these to a Scene Structure
-		GeometryTable*		GT;
-		PointLightBuffer*	PointLights;
-		SpotLightBuffer*	SpotLights;
-		//
-
-		TextureObject		GetRenderTargetObject(FrameResourceHandle Handle) const
+		TextureObject			GetRenderTargetObject(FrameResourceHandle Handle) const
 		{
 			return { Resources[Handle].RenderTarget.HeapPOS, Resources[Handle].RenderTarget.Texture };
-		}
-
-
-		DeviceResourceState	GetResourceObjectState(FrameResourceHandle Handle)
-		{
-			return Resources[Handle].State;
-		}
-
-
-		FrameObject*		GetResourceObject(FrameResourceHandle Handle)
-		{
-			return &Resources[Handle];
 		}
 
 
@@ -188,7 +177,37 @@ namespace FlexKit
 		}
 
 
-		FrameResourceHandle FindRenderTargetResource(uint32_t Tag)
+		size_t					GetVertexBufferOffset(VertexBufferHandle Handle, size_t VertexSize)
+		{
+			return RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
+		}
+
+
+		DeviceResourceState		GetResourceObjectState(FrameResourceHandle Handle)
+		{
+			return Resources[Handle].State;
+		}
+
+
+		FrameObject*			GetResourceObject(FrameResourceHandle Handle)
+		{
+			return &Resources[Handle];
+		}
+
+
+		TextureHandle			GetRenderTarget(FrameResourceHandle Handle) const
+		{
+			return Resources[Handle].RenderTarget.Texture;
+		}
+
+
+		DescHeapPOS				GetRenderTargetDescHeapEntry(FrameResourceHandle Handle)
+		{
+			return Resources[Handle].RenderTarget.HeapPOS;
+		}
+
+
+		FrameResourceHandle		FindRenderTargetResource(uint32_t Tag)
 		{
 			auto res = find(Resources, 
 				[&](const auto& LHS)
@@ -209,19 +228,42 @@ namespace FlexKit
 
 			return NewResource;
 		}
-
-
-		TextureHandle	GetRenderTarget(FrameResourceHandle Handle) const
-		{
-			return Resources[Handle].RenderTarget.Texture;
-		}
-
-
-		DescHeapPOS		GetRenderTargetDescHeapEntry(FrameResourceHandle Handle)
-		{
-			return Resources[Handle].RenderTarget.HeapPOS;
-		}
 	};
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY_V>
+	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources)
+	{
+		bool res = Resources.RenderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, sizeof(TY_V));
+		FK_ASSERT(res, "Failed to Push Vertex!");
+		return res;
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
+	{
+		return Resources.RenderSystem->ConstantBuffers.BeginNewBuffer(CB);
+	}
+
+
+	//inline size_t GetCurrentConstantBufferOffset(ConstantBufferHandle Buffer, FrameResources& Resources)
+	//{
+
+//	}
+
+	template<typename TY_CB>
+	bool PushConstantBufferData(const TY_CB& Constants, ConstantBufferHandle Buffer, FrameResources& Resources)
+	{
+		bool res = Resources.RenderSystem->ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB));
+		FK_ASSERT(res, "Failed to Push Constants!");
+		return res;
+	}
 
 
 	/************************************************************************************************/
@@ -269,7 +311,6 @@ namespace FlexKit
 
 		ResourceTransition		(FrameObjectDependency& Dep);
 		void ProcessTransition	(FrameResources& Resources, Context* Ctx) const;
-
 
 	private:
 		FrameObject*		Object;
@@ -394,7 +435,6 @@ namespace FlexKit
 			return *Res;
 		}
 
-
 		Vector<FrameObjectDependency>	GetFinalStates()
 		{
 			Vector<FrameObjectDependency> Objects(Writables.Allocator);
@@ -517,7 +557,6 @@ namespace FlexKit
 				FrameResources& Resources, 
 				Context* Ctx) 
 			{
-				// TODO(R.M.): Auto Barrier Handling Here
 				Node.HandleBarriers(Resources, Ctx);
 				Draw(Data, Resources, Ctx);
 				Ctx->FlushBarriers();
@@ -551,11 +590,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearBackBuffer	(FrameGraph* Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
-	void PresentBackBuffer	(FrameGraph* Graph, RenderWindow* Window);
+	void ClearBackBuffer	(FrameGraph& Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
+	void PresentBackBuffer	(FrameGraph& Graph, RenderWindow* Window);
 	
-	void DrawRectangle		(FrameGraph* Graph, VertexBufferHandle PushBuffer, float2 UpperLeft, float2 BottomRight, float4 Color = { 1.0f, 1.0f, 1.0f, 1.0f });
+	void DrawRectangle		(FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, float2 UpperLeft, float2 BottomRight, float4 Color = { 1.0f, 1.0f, 1.0f, 1.0f });
+
 	void SetRenderTargets	(Context* Ctx, static_vector<FrameResourceHandle> RenderTargets, FrameResources& FG);
+	void ClearVertexBuffer	(FrameGraph& FG, VertexBufferHandle PushBuffer);
 
 
 }	/************************************************************************************************/

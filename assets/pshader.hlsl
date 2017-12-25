@@ -162,7 +162,7 @@ float4 DrawLine(LinePointPS IN) : SV_TARGET
 
 float4 DrawRect(RectPoint_PS IN) : SV_TARGET
 {
-	return IN.Color;
+	return float4(1, 1, 1, 1);
 }
 
 

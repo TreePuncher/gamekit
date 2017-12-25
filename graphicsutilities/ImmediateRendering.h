@@ -158,6 +158,7 @@ namespace FlexKit
 
 	const uint32_t TEXTBUFFERMINSIZE = 1024;
 
+	// TODO: replace and remove with new Frame Graph based functions
 	struct ImmediateRender
 	{
 		operator ImmediateRender* () { return this; }

@@ -149,6 +149,8 @@ namespace FlexKit
 
 	void InitiateTiledDeferredRender(RenderSystem* RS, TiledRendering_Desc* GBdesc, TiledDeferredRender* out)
 	{
+		FK_ASSERT(0, "Depreciated!");
+
 		RS->RegisterPSOLoader(TILEDSHADING_SHADE,		 LoadShadeState);
 		RS->RegisterPSOLoader(TILEDSHADING_LIGHTPREPASS, LoadLightPrePassState);
 		RS->RegisterPSOLoader(TILEDSHADING_COPYOUT,		 LoadLightCopyOutState);
@@ -268,9 +270,9 @@ namespace FlexKit
 				CB_Desc.Structured		= false;
 				CB_Desc.StructureSize	= 0;
 
-				auto NewConstantBuffer		 = CreateConstantBuffer(RS, &CB_Desc);
-				out->Shading.ShaderConstants = NewConstantBuffer;
-				NewConstantBuffer._SetDebugName("GBufferPass Constants");
+				//auto NewConstantBuffer		 = CreateConstantBuffer(RS, &CB_Desc);
+				//out->Shading.ShaderConstants = NewConstantBuffer;
+				//NewConstantBuffer._SetDebugName("GBufferPass Constants");
 			}
 
 			D3D12_DESCRIPTOR_HEAP_DESC	Heap_Desc;
@@ -381,6 +383,8 @@ namespace FlexKit
 		RenderSystem* RS, TiledDeferredRender* Pass, const Camera* C,
 		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH)
 	{
+		FK_ASSERT(false, "DEPRECIATED!");
+
 		auto CL = RS->_GetCurrentCommandList();
 		auto FrameResources		= RS->_GetCurrentFrameResources();
 		auto BufferIndex		= Pass->CurrentBuffer;
@@ -389,7 +393,7 @@ namespace FlexKit
 		auto DescTable	= RS->_GetDescTableCurrentPosition_GPU();
 		auto TablePOS	= RS->_ReserveDescHeap(11);
 
-		TablePOS = PushCBToDescHeap(RS, C->Buffer.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
+		//TablePOS = PushCBToDescHeap(RS, C->Buffer.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
 		TablePOS = PushCBToDescHeap(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
 
 		TablePOS = PushSRVToDescHeap(RS, PLB->Resource, TablePOS, max(PLB->size(), 1), PLB_Stride);
@@ -513,7 +517,7 @@ namespace FlexKit
 		Ctx.SetPrimitiveTopology		(EInputTopology::EIT_TRIANGLELIST);
 
 		Ctx.SetGraphicsConstantBufferView(DFRP_ShadingConstants,	 RS->NullConstantBuffer);
-		Ctx.SetGraphicsConstantBufferView(DFRP_CameraConstants,		 C->Buffer);
+		//Ctx.SetGraphicsConstantBufferView(DFRP_CameraConstants,		 C->Buffer);
 		Ctx.SetGraphicsConstantBufferView(DFRP_TextureConstants,	 RS->NullConstantBuffer);
 		Ctx.SetGraphicsShaderResourceView(DFRP_AnimationResources,	&RS->NullSRV1D, 0, 0);
 		// End State Setup
@@ -559,7 +563,7 @@ namespace FlexKit
 				DesciptorHeap Heap(RS, RS->Library.RSDefault.GetDescHeap(0), TempMemory);
 
 				Ctx.SetGraphicsDescriptorTable		(DFRP_Textures, Heap);
-				Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants, itr->D->VConstants);
+				//Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants, itr->D->VConstants);
 				Ctx.SetGraphicsShaderResourceView	(DFRP_AnimationResources, &RS->NullSRV1D, 0, 0);
 				Ctx.DrawIndexed(IndexCount);
 			}
@@ -599,7 +603,7 @@ namespace FlexKit
 				DesciptorHeap Heap(RS, RS->Library.RSDefault.GetDescHeap(0), TempMemory);
 
 				Ctx.SetGraphicsDescriptorTable		(DFRP_Textures, Heap);
-				Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants,		C->Buffer);
+				//Ctx.SetGraphicsConstantBufferView	(DFRP_ShadingConstants,		C->Buffer);
 				Ctx.SetGraphicsShaderResourceView	(DFRP_AnimationResources,	&AnimationState->Resource, AnimationState->JointCount, sizeof(float4x4) * 2);
 				Ctx.DrawIndexed						(IndexCount);
 			}
@@ -744,8 +748,8 @@ namespace FlexKit
 
 		auto ConstantBuffers = DescTable;
 
-		TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
-		TablePOS = PushCBToDescHeap			(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
+		//TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
+		//TablePOS = PushCBToDescHeap			(RS, Pass->Shading.ShaderConstants.Get(), TablePOS, CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
 
 		ID3D12DescriptorHeap* Heaps[] = { FrameResources->DescHeap.DescHeap };
 		CL->SetDescriptorHeaps(1, Heaps);

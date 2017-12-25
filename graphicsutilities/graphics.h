@@ -497,13 +497,18 @@ namespace FlexKit
 		}
 	};
 
+	// Old
 	typedef FrameBufferedObject<ID3D12Resource>								FrameBufferedResource;
 	typedef FrameBufferedResource											IndexBuffer;
 	typedef FrameBufferedResource											ConstantBuffer;
 	typedef FrameBufferedResource											ShaderResourceBuffer;
 	typedef FrameBufferedResource											StreamOutBuffer;
 	typedef	FrameBufferedObject<ID3D12QueryHeap>							QueryResource;
+
+	// New
+	typedef Handle_t<32>													ContantBufferHandle;
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>	DescHeapPOS;
+	typedef Handle_t<32>													VertexBufferHandle;
 	typedef Handle_t<32>													TextureHandle;
 	typedef Handle_t<32>													VertexBufferHandle;
 	typedef ID3D12Resource*													VertexResourceBuffer;
@@ -1002,14 +1007,35 @@ namespace FlexKit
 	
 	struct ConstantBufferTable
 	{
-		ConstantBufferTable()
+		ConstantBufferTable(iAllocator* Memory, RenderSystem* RS_IN) : 
+			ConstantBuffers(Memory),
+			UserBufferEntries(Memory),
+			RS(RS_IN)
 		{
 		}
 
-		struct ConstantBufferUsage
+		struct BufferResourceSet
+		{
+			ID3D12Resource*	Resources	[3];
+			size_t BufferSize;
+			bool GPUResident;
+		};
+
+		struct UserConstantBuffer
 		{
 			size_t BufferSize;
+			size_t BufferSet;
+			size_t CurrentBuffer;
+			size_t Offset;
+			size_t BeginOffset;
 
+			size_t Locks[3];
+
+			void*  Mapped_ptr;
+			bool GPUResident;
+			bool WrittenTo;
+			/*
+			TODO: Constant Buffer Pools
 			struct MemoryRange
 			{
 				size_t					Begin;
@@ -1018,10 +1044,28 @@ namespace FlexKit
 				size_t					BlockSize;
 				Vector<MemoryRange*>	ChildRanges;
 			}Top;
+			*/
 		};
 
-		Vector<ID3D12Resource*>		ConstantBufferPools;
-		Vector<ConstantBufferUsage>	ConstantBufferDesciptors;
+
+		ConstantBufferHandle	CreateConstantBuffer(size_t BufferSize, bool GPUResident = false);
+
+		ID3D12Resource*			GetBufferResource	(ConstantBufferHandle Handle);
+		size_t					GetBufferOffset		(ConstantBufferHandle Handle);
+		size_t					GetBufferBeginOffset(ConstantBufferHandle Handle);
+
+
+		size_t					BeginNewBuffer(ConstantBufferHandle Handle);
+		bool					Push(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
+
+		void					LockUntil(size_t);
+
+	private:
+		void					UpdateCurrentBuffer(ConstantBufferHandle Handle);
+
+		RenderSystem*				RS;
+		Vector<BufferResourceSet>	ConstantBuffers;
+		Vector<UserConstantBuffer>	UserBufferEntries;
 
 		HandleUtilities::HandleTable<ConstantBufferHandle>	Handles;
 	};
@@ -1466,6 +1510,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+
+	struct VertexBufferEntry
+	{
+		VertexBufferHandle	VertexBuffer;
+		UINT				Stride;
+	};
+
+	typedef static_vector<VertexBufferEntry, 16> VertexBufferList;
 	typedef static_vector<DescHeapPOS, 16> RenderTargetList;
 
 	FLEXKITAPI class Context
@@ -1550,12 +1602,16 @@ namespace FlexKit
 		void SetDepthStencil		(Texture2D* DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
+
+
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsDescriptorTable		(size_t idx, DesciptorHeap& DH);
 		void SetGraphicsShaderResourceView	(size_t, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 
 		void AddIndexBuffer			(TriMesh* Mesh);
 		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers);
+		void SetVertexBuffers		(VertexBufferList& List);
 
 		void Draw					(size_t VertexCount, size_t BaseVertex = 0);
 		void DrawIndexed			(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0);
@@ -1651,9 +1707,12 @@ namespace FlexKit
 		bool				PushVertex			(VertexBufferHandle Handle, void* _ptr, size_t ElementSize);
 
 		void				LockUntil	(size_t Frame);// Locks all in use Buffers until given Frame
-
 		void				Reset		(VertexBufferHandle Handle);
+
 		ID3D12Resource*		GetResource	(VertexBufferHandle Handle);
+		size_t				GetCurrentVertexBufferOffset(VertexBufferHandle Handle) const;
+		size_t				GetBufferSize				(VertexBufferHandle Handle) const;
+
 
 		void				Release();
 		void				ReleaseVertexBuffer(VertexBufferHandle Handle);
@@ -1663,7 +1722,7 @@ namespace FlexKit
 
 		VBufferHandle	CreateVertexBufferResource(size_t BufferSize, bool GPUResident, RenderSystem* RS); // Creates Using Placed Resource
 
-		bool CurrentlyAvailable(VBufferHandle Handle, size_t CurrentFrame);
+		bool CurrentlyAvailable(VBufferHandle Handle, size_t CurrentFrame) const;
 
 		struct VertexBuffer
 		{
@@ -1676,12 +1735,25 @@ namespace FlexKit
 
 		struct UserVertexBuffer
 		{
-			size_t			Buffer;						// Current Buffer
+			size_t			CurrentBuffer;
+			size_t			Buffers[3];					// Current Buffer
 			size_t			ResourceSize;				// Requested Size
 			size_t			Offset			 = 0;		// Current Head for Push Buffers
 			char*			MappedPtr		 = 0;		//
 			ID3D12Resource* Resource		 = nullptr; // To avoid some reads
-			size_t			Padding[3];	
+			bool			WrittenTo		 = false;
+			size_t			Padding[1];	
+
+			void IncrementCurrentBuffer()
+			{
+				CurrentBuffer = ++CurrentBuffer % 3;
+			}
+
+
+			size_t GetCurrentBuffer() const
+			{
+				return Buffers[CurrentBuffer];
+			}
 		};
 
 
@@ -1767,6 +1839,7 @@ namespace FlexKit
 			RenderTargets	(Memory_IN),
 			Textures		(Memory_IN),
 			VertexBuffers	(Memory_IN),
+			ConstantBuffers	(Memory_IN, this),
 			PipelineStates	(this, Memory_IN)
 		{
 			pDevice                = nullptr;
@@ -1810,8 +1883,13 @@ namespace FlexKit
 		void PresentWindow		(RenderWindow* RW);
 		void WaitforGPU			();
 
+		size_t						GetVertexBufferSize		(const VertexBufferHandle);
+		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress	(const VertexBufferHandle VB);
+
+		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
 
 		// Resource Creation and Destruction
+		ConstantBufferHandle	CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer	(size_t BufferSize, bool GPUResident = true);
 
 		void ReleaseTempResources();
@@ -1825,7 +1903,8 @@ namespace FlexKit
 
 
 		// Internal
-		VertexResourceBuffer	_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident = true);
+		static ConstantBuffer	_CreateConstantBufferResource		(RenderSystem* RS, ConstantBuffer_desc* desc);
+		VertexResourceBuffer	_CreateVertexBufferDeviceResource	(const size_t ResourceSize, bool GPUResident = true);
 
 		DescHeapPOS				_ReserveDescHeap			(size_t SlotCount = 1 );
 		DescHeapPOS				_ReserveGPUDescHeap			(size_t SlotCount = 1 );
@@ -2183,7 +2262,6 @@ namespace FlexKit
 
 	struct Camera
 	{
-		ConstantBuffer	Buffer;
 		NodeHandle		Node;
 
 		float FOV;
@@ -2659,8 +2737,6 @@ namespace FlexKit
 			float4		Spec;		// Metal Is first 4, Specular is rgb
 		}MatProperties;	// 32 64
 
-		ConstantBuffer			VConstants;
-
 		Drawable&	SetAlbedo(float4 RGBA)		{ MatProperties.Albedo	= RGBA; return *this; }
 		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }
 		Drawable&	SetNode(NodeHandle H)		{ Node					= H;	return *this; }
@@ -2913,9 +2989,9 @@ namespace FlexKit
 
 	
 	/************************************************************************************************/
+	// Depreciated API
 
-	FLEXKITAPI void					InitiateCamera				( RenderSystem* RS, SceneNodes* Nodes, Camera* out, float AspectRatio = 1.0f, float Near = 0.01, float Far = 10000.0f, bool invert = false );
-	FLEXKITAPI ConstantBuffer		CreateConstantBuffer		( RenderSystem* RS, ConstantBuffer_desc* );
+	FLEXKITAPI void					InitiateCamera				( SceneNodes* Nodes, Camera* out, float AspectRatio = 1.0f, float Near = 0.01, float Far = 10000.0f, bool invert = false );
 	FLEXKITAPI bool					CreateDepthBuffer			( RenderSystem* RS, uint2				Dimensions,	DepthBuffer_Desc&	DepthDesc,	DepthBuffer* out, ID3D12GraphicsCommandList* CL = nullptr );
 	FLEXKITAPI Texture2D			CreateDepthBufferResource	( RenderSystem* RS, Texture2D_Desc*		desc_in,	bool				Float32);
 	FLEXKITAPI bool					CreateInputLayout			( RenderSystem* RS, VertexBufferView**,  size_t count, Shader*, VertexBuffer* OUT );		// Expects Index buffer in index 15
@@ -3264,7 +3340,8 @@ namespace FlexKit
 
 	FLEXKITAPI void CreateCubeMesh		( RenderSystem* RS, TriMesh* r,		StackAllocator* mem, CubeDesc& desc );
 	FLEXKITAPI void CreatePlaneMesh		( RenderSystem* RS, TriMesh* out,	StackAllocator* mem, PlaneDesc desc );
-	FLEXKITAPI void CreateDrawable		( RenderSystem* RS, Drawable* e,	DrawableDesc& desc );
+
+	FLEXKITAPI void CreateDrawable		( Drawable* e,	DrawableDesc& desc );
 
 	FLEXKITAPI bool LoadObjMesh			( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
 	FLEXKITAPI void UpdateDrawable		( RenderSystem* RS, SceneNodes* Nodes, Drawable* E );

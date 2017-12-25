@@ -431,6 +431,204 @@ namespace FlexKit
 	 }
 
 
+
+	/************************************************************************************************/
+
+
+	ConstantBufferHandle	ConstantBufferTable::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
+	{
+		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(BufferSize);
+		Resource_DESC.Alignment				= 0;
+		Resource_DESC.DepthOrArraySize		= 1;
+		Resource_DESC.Dimension				= D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
+		Resource_DESC.Layout				= D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		Resource_DESC.Width					= BufferSize;
+		Resource_DESC.Height				= 1;
+		Resource_DESC.Format				= DXGI_FORMAT_UNKNOWN;
+		Resource_DESC.SampleDesc.Count		= 1;
+		Resource_DESC.SampleDesc.Quality	= 0;
+		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+
+		D3D12_HEAP_PROPERTIES HEAP_Props ={};
+		HEAP_Props.CPUPageProperty	     = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type				     = GPUResident ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD;
+		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask	     = 0;
+		HEAP_Props.VisibleNodeMask		 = 0;
+
+		size_t BufferCount		= 3;
+		BufferResourceSet	NewResourceSet;
+
+		D3D12_RESOURCE_STATES InitialState = GPUResident ? 
+			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON :
+			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_GENERIC_READ;
+
+		for(size_t I = 0; I < BufferCount; ++I)
+		{
+			ID3D12Resource* Resource = nullptr;
+			HRESULT HR = RS->pDevice->CreateCommittedResource(
+							&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES, 
+							&Resource_DESC, InitialState, nullptr,
+							IID_PPV_ARGS(&Resource));
+
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
+			NewResourceSet.Resources[I] = Resource;
+
+			SETDEBUGNAME(Resource, __func__);
+		}
+
+		size_t BufferIdx = ConstantBuffers.size();
+		ConstantBuffers.push_back(NewResourceSet);
+
+		void* Mapped_ptr = nullptr;
+
+		if(!GPUResident)
+			NewResourceSet.Resources[0]->Map(0, nullptr, &Mapped_ptr);
+
+		auto Idx = UserBufferEntries.size();
+		UserConstantBuffer	NewBuffer = {
+			BufferSize,
+			BufferIdx,
+			0,
+			0,
+			0,
+			{0, 0, 0},
+			Mapped_ptr,
+			GPUResident,
+			false};
+
+		UserBufferEntries.push_back(NewBuffer);
+
+		return ConstantBufferHandle(Idx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource* ConstantBufferTable::GetBufferResource(ConstantBufferHandle Handle)
+	{
+		size_t Idx			= UserBufferEntries[Handle].CurrentBuffer;
+		size_t BufferIdx	= UserBufferEntries[Handle].BufferSet;
+		return ConstantBuffers[BufferIdx].Resources[Idx];
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t ConstantBufferTable::GetBufferOffset(ConstantBufferHandle Handle)
+	{
+		return UserBufferEntries[Handle].Offset;
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t ConstantBufferTable::GetBufferBeginOffset(ConstantBufferHandle Handle)
+	{
+		return UserBufferEntries[Handle].BeginOffset;
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t ConstantBufferTable::BeginNewBuffer(ConstantBufferHandle Handle)
+	{
+		if (UserBufferEntries[Handle].GPUResident)
+			return false; // Cannot directly push to GPU Resident Memory
+
+		UpdateCurrentBuffer(Handle);
+
+		size_t Idx			= UserBufferEntries[Handle].CurrentBuffer;
+		size_t BufferIdx	= UserBufferEntries[Handle].BufferSet;
+		size_t BufferSize	= UserBufferEntries[Handle].BufferSize;
+		size_t BufferOffset = UserBufferEntries[Handle].Offset;
+
+		size_t OffsetToNextAlignment = 256 - (BufferOffset % 256);
+		size_t NewOffset = BufferOffset + OffsetToNextAlignment;
+
+		if (OffsetToNextAlignment == 256)
+			return 0;
+
+		UserBufferEntries[Handle].BeginOffset	= NewOffset;
+		UserBufferEntries[Handle].Offset		= NewOffset;
+
+		return NewOffset;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize)
+	{
+		if (UserBufferEntries[Handle].GPUResident)
+			return false; // Cannot directly push to GPU Resident Memory
+
+		UpdateCurrentBuffer(Handle);
+
+		size_t Idx			= UserBufferEntries[Handle].CurrentBuffer;
+		size_t BufferIdx	= UserBufferEntries[Handle].BufferSet;
+		size_t BufferSize	= UserBufferEntries[Handle].BufferSize;
+		size_t BufferOffset = UserBufferEntries[Handle].Offset;
+		char*  Mapped_Ptr	= (char*)UserBufferEntries[Handle].Mapped_ptr;
+
+		if (BufferSize < BufferOffset + PushSize)
+			return false; // Buffer To small to accommodate Push
+
+		UserBufferEntries[Handle].Offset += PushSize;
+		UserBufferEntries[Handle].WrittenTo = true;
+		memcpy(Mapped_Ptr + BufferOffset, _Ptr, PushSize);
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ConstantBufferTable::LockUntil(size_t FrameID)
+	{
+		for (auto& Buffer : UserBufferEntries) 
+		{
+			// TODO: handle WrittenTo Flags
+			auto BufferIdx		= Buffer.CurrentBuffer;
+
+			Buffer.Locks[BufferIdx] = FrameID;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ConstantBufferTable::UpdateCurrentBuffer(ConstantBufferHandle Handle)
+	{
+		size_t Idx = UserBufferEntries[Handle].CurrentBuffer;
+
+		if (UserBufferEntries[Handle].Locks[Idx] > RS->GetCurrentFrame())
+		{
+			size_t BufferIdx = UserBufferEntries[Handle].BufferSet;
+
+			// Map Next Buffer
+			if (!UserBufferEntries[Handle].GPUResident) 
+			{
+				char*  Mapped_Ptr = nullptr;
+				ConstantBuffers[BufferIdx].Resources[Idx]->Unmap(0, nullptr);	// Is a Written Range Needed?
+				Idx = UserBufferEntries[Handle].CurrentBuffer = (Idx + 1) % 3;	// Update Buffer Idx
+				ConstantBuffers[BufferIdx].Resources[Idx]->Map(0, nullptr, (void**)&Mapped_Ptr);
+				UserBufferEntries[Handle].Mapped_ptr	= Mapped_Ptr;
+			}
+
+			UserBufferEntries[Handle].Offset		= 0;
+			UserBufferEntries[Handle].BeginOffset	= 0;
+		}
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -684,8 +882,10 @@ namespace FlexKit
 
 	void Context::SetPipelineState(ID3D12PipelineState* PSO)
 	{
-		CurrentPipelineState = PSO;
+		//if (CurrentPipelineState == PSO)
+		//	return;
 
+		CurrentPipelineState = PSO;
 		DeviceContext->SetPipelineState(PSO);
 	}
 
@@ -713,7 +913,6 @@ namespace FlexKit
 	void Context::SetRenderTargets(static_vector<DescHeapPOS, 16> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
 	{
 		DSVPOSCPU = DepthStencil;
-		RTs.clear();
 
 		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTVHandles;
 
@@ -792,6 +991,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t Offset)
+	{
+		FK_ASSERT(!(Offset % 256), "Incorrect CB Offset!");
+
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->GetConstantBufferAddress(CB) + Offset);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBuffer& CB)
 	{
 		DeviceContext->SetGraphicsRootConstantBufferView(idx, CB.Get()->GetGPUVirtualAddress());
@@ -839,8 +1049,36 @@ namespace FlexKit
 	void Context::AddVertexBuffers(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers)
 	{
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+
 		for(auto& I : Buffers)
 			FK_ASSERT(AddVertexBuffer(I, Mesh, VBViews));
+
+		DeviceContext->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
+	}
+
+
+	/************************************************************************************************/
+
+	
+	void Context::SetVertexBuffers(VertexBufferList& List)
+	{
+		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+		for (auto& VB : List)
+		{
+			/*
+			typedef struct D3D12_VERTEX_BUFFER_VIEW
+			{
+			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
+			UINT SizeInBytes;
+			UINT StrideInBytes;
+			} 	D3D12_VERTEX_BUFFER_VIEW;
+			*/
+
+			VBViews.push_back({
+				RS->GetVertexBufferAddress(VB.VertexBuffer),
+				(UINT)RS->GetVertexBufferSize(VB.VertexBuffer),
+				VB.Stride});
+		}
 
 		DeviceContext->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
 	}
@@ -1019,8 +1257,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDrawRectStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS", "DrawRect_VS", "vs_5_0", "assets\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect", "DrawRect", "ps_5_0", "assets\\pshader.hlsl");
+		auto DrawRectVShader = LoadShader("DrawRect_VS", "DrawRect_VS", "vs_5_0",	"assets\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRect", "DrawRect", "ps_5_0",			"assets\\pshader.hlsl");
 
 		FINALLY
 			
@@ -1044,6 +1282,7 @@ namespace FlexKit
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
+			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
 			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 			PSO_Desc.SampleMask            = UINT_MAX;
@@ -1587,7 +1826,7 @@ namespace FlexKit
 			NullBuffer_Desc.pInital		= nullptr;
 			NullBuffer_Desc.Structured	= false;
 
-			NullConstantBuffer = CreateConstantBuffer(this, &NullBuffer_Desc);
+			NullConstantBuffer = _CreateConstantBufferResource(this, &NullBuffer_Desc);
 			NullConstantBuffer._SetDebugName("NULL CONSTANT BUFFER");
 
 			ObjectsCreated.push_back(NullConstantBuffer[0]);
@@ -1809,6 +2048,43 @@ namespace FlexKit
 			CloseHandle(eventHandle);
 			ReleaseTempResources();
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	D3D12_GPU_VIRTUAL_ADDRESS RenderSystem::GetVertexBufferAddress(const VertexBufferHandle VB)
+	{
+		return VertexBuffers.GetResource(VB)->GetGPUVirtualAddress();
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t RenderSystem::GetVertexBufferSize(const VertexBufferHandle VB)
+	{
+		return VertexBuffers.GetBufferSize(VB);
+	}
+
+
+	/************************************************************************************************/
+
+
+	D3D12_GPU_VIRTUAL_ADDRESS RenderSystem::GetConstantBufferAddress(const ConstantBufferHandle CB)
+	{
+		// TODO: deal with Push Buffer Offsets
+		return ConstantBuffers.GetBufferResource(CB)->GetGPUVirtualAddress();
+	}
+
+
+	/************************************************************************************************/
+
+
+	ConstantBufferHandle RenderSystem::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
+	{
+		return ConstantBuffers.CreateConstantBuffer(BufferSize, GPUResident);
 	}
 
 
@@ -2136,7 +2412,7 @@ namespace FlexKit
 			FK_ASSERT(buffer, "Failed to Create Back Buffer!");
 			SETDEBUGNAME(buffer, "BackBuffer");
 			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER));
-			RS->RenderTargets.SetState(Handle, DRS_RenderTarget);
+			RS->RenderTargets.SetState(Handle, DRS_Present);
 			NewWindow.RenderTargets[I] = Handle;
 		}
 
@@ -2870,8 +3146,8 @@ namespace FlexKit
 			}
 
 			CL->SetGraphicsRootDescriptorTable(0, DHeapPosition);
-			CL->SetGraphicsRootConstantBufferView(1, C->Buffer.Get()->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView(2, P.D->VConstants.Get()->GetGPUVirtualAddress());
+			//CL->SetGraphicsRootConstantBufferView(1, C->Buffer.Get()->GetGPUVirtualAddress());
+			//CL->SetGraphicsRootConstantBufferView(2, P.D->VConstants.Get()->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView(3, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView(4, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 
@@ -3103,22 +3379,22 @@ namespace FlexKit
 
 	VertexBufferHandle VertexBufferStateTable::CreateVertexBuffer(size_t BufferSize, bool GPUResident, RenderSystem* RS) // Creates Using Placed Resource
 	{
-		VBufferHandle Buffer;
-		if (!FreeBuffers.size())
-			Buffer = CreateVertexBufferResource(BufferSize, GPUResident, RS);
-		else
-		{
-		}
+		VBufferHandle Buffer[3];
+
+		for(size_t I = 0; I < 3; ++I)
+			Buffer[I] = CreateVertexBufferResource(BufferSize, GPUResident, RS);
 
 		auto Handle = Handles.GetNewHandle();
 		Handles[Handle] = UserBuffers.size();
 
 		UserBuffers.push_back(UserVertexBuffer{
-			Buffer,
+			0,
+			{Buffer[0], Buffer[1], Buffer[2]},
 			BufferSize,
 			0, 
-			Buffers[Buffer].MappedPtr,
-			Buffers[Buffer].Resource});
+			Buffers[Buffer[0]].MappedPtr,
+			Buffers[Buffer[0]].Resource,
+			false});
 
 		return Handle;
 	}
@@ -3153,18 +3429,28 @@ namespace FlexKit
 
 	bool VertexBufferStateTable::PushVertex(VertexBufferHandle Handle, void* _ptr, size_t ElementSize)
 	{
-		auto Idx	= Handles[Handle];
-		auto Offset = UserBuffers[Idx].Offset;
-		auto _Ptr	= UserBuffers[Idx].MappedPtr;
+		auto	Idx			= Handles[Handle];
+		auto&	UserBuffer  = UserBuffers[Idx];
+		auto	Offset		= UserBuffers[Idx].Offset;
+		auto	_Ptr		= UserBuffers[Idx].MappedPtr;
 
 		if (!_Ptr)
 		{
-			FK_ASSERT(false, "Buffer in Lock!");
 			// TODO: Get next available buffer.
+			UserBuffer.IncrementCurrentBuffer();
+
+			UserBuffer.MappedPtr	= Buffers[UserBuffer.CurrentBuffer].MappedPtr;
+			UserBuffer.Resource		= Buffers[UserBuffer.CurrentBuffer].Resource;
+
+			_Ptr = UserBuffer.MappedPtr;
+
+			//if (!UserBuffer.Offset)
+			//	return false;
 		}
 
 		memcpy(_Ptr + Offset, _ptr, ElementSize);
 		UserBuffers[Idx].Offset += ElementSize;
+		UserBuffers[Idx].WrittenTo = true;
 
 		return true;
 	}
@@ -3177,7 +3463,10 @@ namespace FlexKit
 	{
 		for (auto& UserBuffer : UserBuffers)
 		{
-			auto BufferIdx			= UserBuffer.Buffer;
+			if (!UserBuffer.WrittenTo)
+				continue;
+
+			auto BufferIdx			= UserBuffer.GetCurrentBuffer();
 			UserBuffer.MappedPtr	= nullptr;
 
 			Buffers[BufferIdx].NextAvailableFrame = Frame;
@@ -3207,7 +3496,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool VertexBufferStateTable::CurrentlyAvailable(VertexBufferStateTable::VBufferHandle Handle, size_t CurrentFrame)
+	size_t VertexBufferStateTable::GetCurrentVertexBufferOffset(VertexBufferHandle Handle) const
+	{
+		return UserBuffers[Handles[Handle]].Offset;
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t VertexBufferStateTable::GetBufferSize(VertexBufferHandle Handle) const
+	{
+		return UserBuffers[Handles[Handle]].ResourceSize;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool VertexBufferStateTable::CurrentlyAvailable(VertexBufferStateTable::VBufferHandle Handle, size_t CurrentFrame) const
 	{
 		return Buffers[Handle].NextAvailableFrame <= CurrentFrame;
 	}
@@ -3474,7 +3781,48 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ConstantBuffer CreateConstantBuffer(RenderSystem* RS, ConstantBuffer_desc* desc)
+	VertexResourceBuffer RenderSystem::_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident)
+	{
+		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(ResourceSize);
+		Resource_DESC.Alignment          = 0;
+		Resource_DESC.DepthOrArraySize   = 1;
+		Resource_DESC.Dimension          = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
+		Resource_DESC.Layout             = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		Resource_DESC.Width              = ResourceSize;
+		Resource_DESC.Height             = 1;
+		Resource_DESC.Format             = DXGI_FORMAT_UNKNOWN;
+		Resource_DESC.SampleDesc.Count   = 1;
+		Resource_DESC.SampleDesc.Quality = 0;
+		Resource_DESC.Flags              = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+		D3D12_HEAP_PROPERTIES HEAP_Props = {};
+		HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type                  = GPUResident ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD;
+		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask      = 0;
+		HEAP_Props.VisibleNodeMask       = 0;
+
+		FrameBufferedResource NewResource;
+		NewResource.BufferCount          = BufferCount;
+
+		auto InitialState = GPUResident ? D3D12_RESOURCE_STATE_COMMON : D3D12_RESOURCE_STATE_GENERIC_READ;
+
+		ID3D12Resource* Resource = nullptr;
+		HRESULT HR = pDevice->CreateCommittedResource(
+			&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
+			&Resource_DESC, InitialState, nullptr,
+			IID_PPV_ARGS(&Resource));
+
+		SETDEBUGNAME(Resource, __func__);
+
+		return Resource;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ConstantBuffer RenderSystem::_CreateConstantBufferResource(RenderSystem* RS, ConstantBuffer_desc* desc)
 	{
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(desc->InitialSize);
 		Resource_DESC.Alignment				= 0;
@@ -3515,48 +3863,6 @@ namespace FlexKit
 
 		return NewResource;
 	}
-
-
-	/************************************************************************************************/
-
-
-	VertexResourceBuffer RenderSystem::_CreateVertexBufferDeviceResource(const size_t ResourceSize, bool GPUResident)
-	{
-		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(ResourceSize);
-		Resource_DESC.Alignment          = 0;
-		Resource_DESC.DepthOrArraySize   = 1;
-		Resource_DESC.Dimension          = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
-		Resource_DESC.Layout             = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Resource_DESC.Width              = ResourceSize;
-		Resource_DESC.Height             = 1;
-		Resource_DESC.Format             = DXGI_FORMAT_UNKNOWN;
-		Resource_DESC.SampleDesc.Count   = 1;
-		Resource_DESC.SampleDesc.Quality = 0;
-		Resource_DESC.Flags              = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-
-		D3D12_HEAP_PROPERTIES HEAP_Props = {};
-		HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type                  = GPUResident ? D3D12_HEAP_TYPE_DEFAULT : D3D12_HEAP_TYPE_UPLOAD;
-		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-		HEAP_Props.CreationNodeMask      = 0;
-		HEAP_Props.VisibleNodeMask       = 0;
-
-		FrameBufferedResource NewResource;
-		NewResource.BufferCount          = BufferCount;
-
-		auto InitialState = GPUResident ? D3D12_RESOURCE_STATE_COMMON : D3D12_RESOURCE_STATE_GENERIC_READ;
-
-		ID3D12Resource* Resource = nullptr;
-		HRESULT HR = pDevice->CreateCommittedResource(
-			&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
-			&Resource_DESC, InitialState, nullptr,
-			IID_PPV_ARGS(&Resource));
-
-		SETDEBUGNAME(Resource, __func__);
-
-		return Resource;
-	}
-
 
 
 	/************************************************************************************************/
@@ -3793,8 +4099,6 @@ namespace FlexKit
 
 		auto SRVs = _GetCurrentDescriptorTable();
 		_GetCurrentCommandList()->SetDescriptorHeaps(1, &SRVs);
-		_GetCurrentCommandList()->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(GetBackBufferResource(Window),
-			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 	}
 
 
@@ -3808,6 +4112,9 @@ namespace FlexKit
 
 		GraphicsQueue->ExecuteCommandLists(CLs.size(), CLs.begin());
 		GraphicsQueue->Signal(Fence, Val);
+
+		VertexBuffers.LockUntil(GetCurrentFrame() + 2);
+		ConstantBuffers.LockUntil(GetCurrentFrame() + 2);
 	}
 
 
@@ -4793,10 +5100,7 @@ namespace FlexKit
 
 	void ReleaseCamera(SceneNodes* Nodes, Camera* camera)
 	{
-		if(camera->Buffer)
-			FlexKit::Release(camera->Buffer);
-
-		FlexKit::ReleaseNode(Nodes, camera->Node);
+		ReleaseNode(Nodes, camera->Node);
 	}
 
 
@@ -4822,7 +5126,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateCamera(RenderSystem* RS, SceneNodes* Nodes, Camera* out, float AspectRatio, float Near, float Far, bool invert)
+	void InitiateCamera(SceneNodes* Nodes, Camera* out, float AspectRatio, float Near, float Far, bool invert)
 	{
 		using DirectX::XMMatrixTranspose;
 		using DirectX::XMMatrixMultiply;
@@ -4837,6 +5141,8 @@ namespace FlexKit
 		out->AspectRatio = AspectRatio;
 		out->invert		 = invert;
 
+		/*
+		TODO: Create Create Camera Constant Buffer Function
 		DirectX::XMMATRIX WT;
 		FlexKit::GetWT(Nodes, Node, &WT);
 
@@ -4844,21 +5150,7 @@ namespace FlexKit
 		InitialData.Proj = CreatePerspective(out, out->invert);
 		InitialData.View = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, WT));
 		InitialData.PV   = XMMatrixMultiply(InitialData.Proj, InitialData.View);
-
-		ConstantBuffer_desc desc;
-		desc.InitialSize   = Camera::BufferLayout::GetBufferSize();
-		desc.pInital       = &InitialData;
-		desc.Structured    = false;
-		desc.StructureSize = 0;
-
-		auto NewBuffer = CreateConstantBuffer(RS, &desc);
-		if (!NewBuffer)
-			FK_ASSERT(0); // Failed to initialise Constant Buffer
-
-		char* DebugName = "CAMERA BUFFER";
-		NewBuffer._SetDebugName(DebugName);
-
-		out->Buffer = NewBuffer;
+		*/
 	}
 
 
@@ -4941,9 +5233,8 @@ namespace FlexKit
 		NewData.WSBottomRight_Near	= CameraPoints.NBR;
 
 		
-		UpdateResourceByTemp(RS, &camera->Buffer, &NewData, Camera::BufferLayout::GetBufferSize(), 1,
-			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-
+		//UpdateResourceByTemp(RS, &camera->Buffer, &NewData, Camera::BufferLayout::GetBufferSize(), 1,
+		//	D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	}
 
 
@@ -5800,6 +6091,8 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	void UpdateDrawable(RenderSystem* RS, SceneNodes* Nodes, Drawable* E)
 	{
+		// TODO: Is this needed anymore?
+		/*
 		if ( E->Dirty || (E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
 			DirectX::XMMATRIX WT;
 			FlexKit::GetWT( Nodes, E->Node, &WT );
@@ -5814,6 +6107,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			UpdateResourceByTemp(RS, &E->VConstants, &NewData, sizeof(NewData), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 			E->Dirty = false;
 		}
+		*/
 	}
 
 
@@ -5891,7 +6185,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	void CreateDrawable( RenderSystem* RS, Drawable* e, DrawableDesc& desc )
+	void CreateDrawable(Drawable* e, DrawableDesc& desc )
 	{
 		DirectX::XMMATRIX WT;
 		WT = DirectX::XMMatrixIdentity();
@@ -5916,7 +6210,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		e->AnimationState			  = nullptr;
 		e->PoseState				  = false;
 		e->Posed					  = false;
-		e->VConstants = FlexKit::CreateConstantBuffer(RS, &CDesc);
 	}
 
 
@@ -5925,9 +6218,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	void ReleaseDrawable(Drawable* E)
 	{
-		if (E)
-			Release(E->VConstants);
-
 		if (E->PoseState)
 			Release(E->PoseState);
 	}
@@ -5936,10 +6226,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	void DelayReleaseDrawable(RenderSystem* RS, Drawable* E)
 	{
 		if (E) {
-			for (size_t itr = 0; itr < E->VConstants.BufferCount; ++itr) {
-				FlexKit::Push_DelayedRelease(RS, E->VConstants[itr]);
-				E->VConstants[itr] = nullptr;
-			}
 		}
 		if (E->PoseState) {
 			DelayedRelease(RS, E->PoseState);
@@ -6609,7 +6895,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
 		CL->OMSetRenderTargets(0, nullptr, true, &DSVPOSCPU);
 		CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		CL->SetGraphicsRootConstantBufferView(1, Caster->C.Buffer->GetGPUVirtualAddress());
+		//CL->SetGraphicsRootConstantBufferView(1, Caster->C.Buffer->GetGPUVirtualAddress());
 
 		auto itr = _PVS->begin();
 		auto end = _PVS->end();
@@ -6626,7 +6912,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 			//if (DrawInfo.OcclusionID != -1)
 			//	CL->SetPredication()
 
-			CL->SetGraphicsRootConstantBufferView(2, E->VConstants->GetGPUVirtualAddress());
+			//CL->SetGraphicsRootConstantBufferView(2, E->VConstants->GetGPUVirtualAddress());
 
 			auto CurrentMesh  = GetMesh(GT, E->MeshHandle);
 			size_t IBIndex	  = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;

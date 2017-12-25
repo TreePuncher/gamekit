@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\ImageUtilities.h"
 
-// TODO's
+// Todo List
 //	Gameplay:
 //		Entity Model
 //	Sound:
@@ -38,15 +38,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		Config loading system?
 //
 //	Graphics:
+//		(PARTLY) Frame Graph Rendering
+//				(Done) Auto Barrier Handling
+//				TODO: (In Progress) Replacement Draw Utility Functions that use the frame graph rather then direct submission
+//
 //		(DONE) Basic Gui rendering methods (Draw Rect, etc)
 //		(PARTLY) Multi-threaded Texture Uploads
-//		Terrain Rendering
-//			(DONE) Geometry generation
-//			(PARTLY) CULLING
-//			Texture Splatting
-//			Normal Generation
+//		TODO: (Partly)	Terrain Rendering
+//				(DONE) Geometry generation
+//				(DONE) CULLING
+//				Texture Splatting
+//				Normal Generation
 //		(DONE) Occlusion Culling
-//		(Partly Done)Animation State Machine
+//		(TODO:)(Partly Done)Animation State Machine
 //		(DONE/PARTLY) 3rd Person Camera Handler
 //		(DONE) Object -> Bone Attachment
 //		(DONE) Texture Loading
@@ -107,7 +111,6 @@ namespace FlexKit
 				break;
 			case KC_E:
 			{
-				_ptr->DrawTerrainDebug = !_ptr->DrawTerrainDebug;
 			}	break;
 			case KC_T:
 				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TILEDSHADING_SHADE);
@@ -136,7 +139,6 @@ namespace FlexKit
 			}	break;
 			case KC_F2:
 			{
-				_ptr->ScreenSpaceReflections = !_ptr->ScreenSpaceReflections;
 			}	break;
 			default:
 				break;
@@ -399,7 +401,6 @@ namespace FlexKit
 #ifdef _DEBUG
 		Framework.DrawDebug					= true;
 		Framework.DrawDebugStats			= true;
-		Framework.DrawTerrainDebug			= true;
 #else
 		Framework.DrawTerrainDebug			= false;
 		Framework.DrawDebug					= false;
@@ -411,9 +412,6 @@ namespace FlexKit
 		Framework.ActiveWindow				= &Engine->Window;
 
 		Framework.DrawPhysicsDebug			= false;
-		Framework.DrawTerrain				= true;
-		Framework.OcclusionCulling			= false;
-		Framework.ScreenSpaceReflections	= false;
 
 		Framework.Stats.FPS						= 0;
 		Framework.Stats.FPS_Counter				= 0;
@@ -451,10 +449,7 @@ namespace FlexKit
 		BindUIntVar(&Framework.Console, "FPS",						&Framework.Stats.FPS);
 		BindBoolVar(&Framework.Console, "HUD",						&Framework.DrawDebugStats);
 		BindBoolVar(&Framework.Console, "DrawDebug",				&Framework.DrawDebug);
-		BindBoolVar(&Framework.Console, "DrawTerrain",				&Framework.DrawTerrain);
 		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",			&Framework.DrawPhysicsDebug);
-		BindBoolVar(&Framework.Console, "OcclusionCulling",			&Framework.OcclusionCulling);
-		BindBoolVar(&Framework.Console, "ScreenSpaceReflections",	&Framework.ScreenSpaceReflections);
 		BindBoolVar(&Framework.Console, "FrameLock",				&Engine->FrameLock);
 
 		AddUIntVar(&Framework.Console, "RM_Default",	EDEFERREDPASSMODE::EDPM_DEFAULT);

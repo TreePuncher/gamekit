@@ -1023,7 +1023,7 @@ namespace FlexKit
 		Desc.pInital	 = nullptr;
 		Desc.Structured  = false;
 
-		RG->RectBuffer				= CreateConstantBuffer(RS, &Desc);
+		//RG->RectBuffer				= CreateConstantBuffer(RS, &Desc);
 		RG->TempMemory				= TempMemory;
 		RG->Rects.Allocator			= TempMemory;
 		RG->DrawCalls.Allocator		= TempMemory;
@@ -1183,7 +1183,7 @@ namespace FlexKit
 		auto DSVs			= RS->_GetDSVTableCurrentPosition_CPU();
 		auto NullTable      = RS->_ReserveDescHeap(9);
 		auto NullTableItr   = NullTable;
-		auto CamConstants	= C ? C->Buffer.Get()->GetGPUVirtualAddress() : RS->NullConstantBuffer->GetGPUVirtualAddress();
+		//auto CamConstants	= C ? C->Buffer.Get()->GetGPUVirtualAddress() : RS->NullConstantBuffer->GetGPUVirtualAddress();
 
 		PushRenderTarget(RS, &RenderTarget, RTVPOS);
 
@@ -1361,7 +1361,7 @@ namespace FlexKit
 
 				CL->IASetVertexBuffers					(0, 1, Views);
 				CL->IASetPrimitiveTopology				(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_LINELIST);
-				CL->SetGraphicsRootConstantBufferView	(1, CamConstants);
+				//CL->SetGraphicsRootConstantBufferView	(1, CamConstants);
 				CL->DrawInstanced						(2 * Count, 1, 2 * Offset, 0);
 
 

@@ -38,7 +38,7 @@ namespace FlexKit
 		Drawable		D;
 		DrawableDesc	Desc;
 		NodeHandle N  = GetZeroedNode(*SN);
-		FlexKit::CreateDrawable(RS, &D, Desc);
+		FlexKit::CreateDrawable(&D, Desc);
 
 		D.Node = N;
 		_PushEntity(D, Out);
@@ -59,8 +59,6 @@ namespace FlexKit
 
 		auto& Drawable = GetDrawable(E);
 		ReleaseDrawable(&Drawable);
-
-		Drawable.VConstants.Release();
 		ReleaseMesh(RS, GT, Drawable.MeshHandle);
 
 		Drawable.MeshHandle		 = INVALIDMESHHANDLE;
@@ -435,7 +433,7 @@ namespace FlexKit
 		auto Light = &SPLights[0];
 		SpotLightCasters.push_back({ Camera(), SpotLight});
 		SpotLightCasters.back().C.FOV = RadToDegree(Light->t);
-		InitiateCamera(RS, *SN, &SpotLightCasters.back().C, 1.0f, 15.0f, 100, false);
+		InitiateCamera(*SN, &SpotLightCasters.back().C, 1.0f, 15.0f, 100, false);
 	}
 
 

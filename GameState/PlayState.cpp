@@ -49,7 +49,8 @@ PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
 	Lights		(&Scene, Framework->Engine->Nodes),
 	Physics		(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory()),
 	Test		(0),
-	VertexBuffer(Engine->RenderSystem.CreateVertexBuffer(8096, false))
+	VertexBuffer(Engine->RenderSystem.CreateVertexBuffer(8096, false)),
+	ConstantBuffer(Engine->RenderSystem.CreateConstantBuffer(8096, false))
 {
 	Framework->ActivePhysicsScene	= &Physics;
 	Framework->ActiveScene			= &Scene;
@@ -119,16 +120,16 @@ float3 CameraPOS = {8000,1000,8000};
 
 bool PlayState::Update(EngineCore* Engine, double dT)
 {
-	printfloat3(GetWorldPosition(Player));
-	printf("\n");
+	//printfloat3(GetWorldPosition(Player));
+	//printf("\n");
 
-	float MovementFactor			= 50.0f;
+	//float MovementFactor			= 50.0f;
 
 	//ThisState->Model.PlayerInputs[0].FrameID++;
 	//ThisState->Model.PlayerInputs[0].MouseInput		= { HorizontalMouseMovement, VerticalMouseMovement };
 	//ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
 
-	Input.Update(dT, Framework->MouseState, Framework );
+	//Input.Update(dT, Framework->MouseState, Framework );
 	//Yaw(Player, dT * Framework->MouseState.Normalized_dPos[0]);
 
 	double T = Framework->TimeRunning;
@@ -146,6 +147,7 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 
 	//SetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node, CameraPOS);
 	//Yaw(Framework->Engine->Nodes, Framework->DebugCamera.Node, pi * dT);
+	/*
 
 #if 0
 	if (Input.KeyState.Forward)
@@ -174,7 +176,7 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	OrbitCameras.Update(dT);
 	Physics.UpdateSystem(dT);
 	TPC.Update(dT);
-
+	*/
 	return false;
 }
 
@@ -306,44 +308,19 @@ PlayState::~PlayState()
 
 bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 {
-	float4 ClearColor = Test > 4 ? float4{1, 0, 0, 0} : float4{0, 1, 0, 0};
-	Test = Test > 8 ? 0 : Test + 1;
+	float4 ClearColor = Test > 20 ? float4{1, 1, 1, 0} : float4{0, 1, 0, 0};
+	Test = Test > 40 ? 0 : Test + 1;
 
-	ClearBackBuffer(&FrameGraph, ClearColor);
-	
+	ClearBackBuffer		(FrameGraph, float4{1, 0, 1, 0} - ClearColor);
+	ClearVertexBuffer	(FrameGraph, VertexBuffer);
+
 	DrawRectangle(
-		&FrameGraph, VertexBuffer, 
-		{ 0.0f, 0.0f }, { 1.0f, 1.0f });
+		FrameGraph, 
+		VertexBuffer, 
+		ConstantBuffer,
+		{ 0.0f, 1.0f }, { 1.0f, 0.0f }, {1, 1, 1, 1});
 
-	PresentBackBuffer(&FrameGraph, &Core->Window);
-
-	//struct PassData
-	//{	// Define Pass Resources Here
-	//	FrameResourceHandle Output;
-	//};
-
-
-	/*
-	auto Pass = FrameGraph.AddNode<PassData>(
-		GetCRCGUID(PASS_1), 
-		[&](FrameGraphNodeBuilder& Builder, PassData& Data)
-		{
-			// Setup Resource Usage Here
-			Data.Output = FrameGraph.Resources.FindRenderTarget(GetCRCGUID(BACKBUFFER));
-			//Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
-		},
-			[=](const PassData& Data, FrameResources& Resources, Context* Ctx) 
-		{	// Render Stuff Here
-			auto& Signature = Core->RenderSystem.Library.ShadingRTSig;
-			DesciptorHeap Heap(Core->RenderSystem, Signature.GetDescHeap(0), Core->GetTempMemory());
-
-			Ctx->SetRootSignature(Core->RenderSystem.Library.ShadingRTSig);
-			Ctx->SetPipelineState(GetPSO(Core->RenderSystem, TILEDSHADING_SHADE));
-			Ctx->SetGraphicsDescriptorTable(0, Heap);
-
-			SetRenderTargets(Ctx, { Data.Output }, Resources);
-		});
-	*/
+	PresentBackBuffer	(FrameGraph, &Core->Window);
 
 	return true;
 }
@@ -620,7 +597,7 @@ PlayState* CreatePlayState(EngineCore* Engine, GameFramework* Framework)
 	State = &Engine->GetBlockMemory().allocate_aligned<PlayState>(Engine, Framework);
 
 	//CreateTerrainTest(State, Framework);
-	CreateIntersectionTest(State, Framework);
+	//CreateIntersectionTest(State, Framework);
 
 	return State;
 }

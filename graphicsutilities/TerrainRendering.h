@@ -45,6 +45,8 @@ namespace FlexKit
 		Texture2D	HeightMap;
 	};
 
+
+	// TODO: update to use Frame Graph System
 	struct Landscape
 	{
 		struct ViewableRegion

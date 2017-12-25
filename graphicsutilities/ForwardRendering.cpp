@@ -166,6 +166,7 @@ namespace FlexKit
 	void ForwardPass(PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT)
 	{
 		return;
+
 		auto CL = RS->_GetCurrentCommandList();
 		if(!_PVS->size())
 			return;
@@ -193,8 +194,8 @@ namespace FlexKit
 			IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
 			IndexView.SizeInBytes		= IndexCount * 32;
 
-			CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView(1, E->VConstants->GetGPUVirtualAddress()); 
+			//CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
+			//CL->SetGraphicsRootConstantBufferView(1, E->VConstants->GetGPUVirtualAddress()); 
 			CL->IASetIndexBuffer(&IndexView);
 
 			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;

@@ -66,35 +66,31 @@ namespace FlexKit
 			Texture2D			Terrain;
 		}DefaultAssets;
 
-		MouseInputState		MouseState;
+		MouseInputState			MouseState;
 
-		GraphicScene*				ActiveScene;
-		PhysicsComponentSystem*		ActivePhysicsScene;
-		RenderWindow*				ActiveWindow;
+		GraphicScene*			ActiveScene;
+		PhysicsComponentSystem*	ActivePhysicsScene;
+		RenderWindow*			ActiveWindow;
 
-		float4				ClearColor;
-		EDEFERREDPASSMODE	DP_DrawMode;
+		float4					ClearColor;
+		EDEFERREDPASSMODE		DP_DrawMode;
 
-		Console				Console;
-		EngineCore*			Engine;
+		Console					Console;
+		EngineCore*				Engine;
 
 
 		static_vector<MouseHandler>		MouseHandlers;
 		static_vector<FrameworkState*>	SubStates;
 
 
-		double				PhysicsUpdateTimer;
-		bool				ConsoleActive;
-		bool				OcclusionCulling;
-		bool				ScreenSpaceReflections;
-		bool				DrawTerrain;
-		bool				DrawTerrainDebug;
-		bool				DrawDebug;
-		bool				DrawDebugStats;
-		bool				DrawPhysicsDebug;
-		bool				Quit;
+		double	PhysicsUpdateTimer;
+		bool	ConsoleActive;
+		bool	DrawDebug;
+		bool	DrawDebugStats;
+		bool	DrawPhysicsDebug;
+		bool	Quit;
 
-		size_t				TerrainSplits;
+		size_t	TerrainSplits;
 
 		double TimeRunning;
 

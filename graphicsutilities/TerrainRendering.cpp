@@ -162,7 +162,7 @@ namespace FlexKit
 				CL->SetPipelineState(PSO);
 				CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 			}
-			CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
+			//CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView(1, LS->ConstantBuffer->GetGPUVirtualAddress());
 			//CL->SetGraphicsRootConstantBufferView (2, RS->NullConstantBuffer);
 			CL->SetGraphicsRootDescriptorTable(3, DescPOSGPU);
@@ -695,7 +695,7 @@ namespace FlexKit
 			auto CounterBuffer2 = CreateStreamOut(RS, 512);	CounterBuffer2._SetDebugName("SO Counter 2");
 			auto CounterBuffer3	= CreateStreamOut(RS, 512);	CounterBuffer2._SetDebugName("FB SO Counter 3");
 			
-			out->ConstantBuffer	  = CreateConstantBuffer(RS, &bd);		out->ConstantBuffer._SetDebugName("TerrainConstants");
+			//out->ConstantBuffer	  = CreateConstantBuffer(RS, &bd);		out->ConstantBuffer._SetDebugName("TerrainConstants");
 			out->RegionBuffers[0] = CreateStreamOut(RS, SO_BUFFERSIZES); out->RegionBuffers[0]._SetDebugName("IntermediateBuffer_1");
 			out->RegionBuffers[1] = CreateStreamOut(RS, SO_BUFFERSIZES); out->RegionBuffers[1]._SetDebugName("IntermediateBuffer_2");
 			

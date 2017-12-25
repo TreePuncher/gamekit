@@ -130,7 +130,7 @@ namespace FlexKit
 
 		auto ConstantBuffers = DescTable;
 
-		TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
+		//TablePOS = PushCBToDescHeap			(RS, C->Buffer.Get(), TablePOS,						CALCULATECONSTANTBUFFERSIZE(Camera::BufferLayout));
 		TablePOS = PushCBToDescHeap			(RS, In->Shading.ShaderConstants.Get(), TablePOS,	CALCULATECONSTANTBUFFERSIZE(GBufferConstantsLayout));
 		
 		ID3D12DescriptorHeap* Heaps[] = { FrameResources->DescHeap.DescHeap };

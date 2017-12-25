@@ -535,7 +535,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearBackBuffer(FrameGraph* Graph, float4 Color)
+	void ClearBackBuffer(FrameGraph& Graph, float4 Color)
 	{
 		struct PassData
 		{
@@ -543,7 +543,7 @@ namespace FlexKit
 			float4				ClearColor;
 		};
 
-		auto& Pass = Graph->AddNode<PassData>(GetCRCGUID(PRESENT),
+		auto& Pass = Graph.AddNode<PassData>(GetCRCGUID(PRESENT),
 			[=](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
 				Data.BackBuffer = Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
@@ -561,13 +561,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PresentBackBuffer(FrameGraph* Graph, RenderWindow* Window)
+	void PresentBackBuffer(FrameGraph& Graph, RenderWindow* Window)
 	{
 		struct PassData
 		{
 			FrameResourceHandle BackBuffer;
 		};
-		auto& Pass = Graph->AddNode<PassData>(GetCRCGUID(PRESENT),
+		auto& Pass = Graph.AddNode<PassData>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
 				Data.BackBuffer = Builder.PresentBackBuffer(GetCRCGUID(BACKBUFFER));
@@ -584,24 +584,113 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DrawRectangle(FrameGraph* Graph, VertexBufferHandle PushBuffer, float2 UpperLeft, float2 BottomRight, float4 Color)
+	void DrawRectangle(
+		FrameGraph& Graph, 
+		VertexBufferHandle PushBuffer,
+		ConstantBufferHandle CB,
+		float2 UpperLeft, 
+		float2 BottomRight, 
+		float4 Color)
 	{
 		struct DrawRect
 		{
-			FrameResourceHandle BackBuffer;
-			VertexBufferHandle	VertexBuffer;
-			size_t				Offset;
+			FrameResourceHandle		BackBuffer;
+			VertexBufferHandle		VertexBuffer;
+			ConstantBufferHandle	ConstantBuffer;
+			size_t					CB_Offset;
+			size_t					VB_Offset;
 		};
-		auto& Pass = Graph->AddNode<DrawRect>(GetCRCGUID(PRESENT),
+
+
+		struct Vert {
+			float2 POS;
+			float2 UV;
+			float4 Color;
+		};
+
+
+		auto& Pass = Graph.AddNode<DrawRect>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
 		{
-			Data.BackBuffer = Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+			// Single Thread Section
+			// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
+			// for thread safety
+
+			Data.BackBuffer		= Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+			Data.VB_Offset		= Graph.Resources.GetVertexBufferOffset(PushBuffer, sizeof(float2));
+			Data.VertexBuffer	= PushBuffer;
+			Data.ConstantBuffer = CB;
+
+			float2 RectUpperLeft	= UpperLeft;
+			float2 RectUpperRight	= { BottomRight.x, UpperLeft.y};
+			float2 RectBottomRight	= BottomRight;
+			float2 RectBottomLeft	= { UpperLeft.x, BottomRight.y};
+			float2 UV				= { 0, 0 };
+
+			float2 TestOffset = { -1, -1 };
+			PushVertex(Vert{ RectUpperLeft, UV,		Color }, Data.VertexBuffer, Graph.Resources);
+			PushVertex(Vert{ RectBottomRight, UV,	Color }, Data.VertexBuffer, Graph.Resources);
+			PushVertex(Vert{ RectBottomLeft, UV,	Color }, Data.VertexBuffer, Graph.Resources);
+
+			PushVertex(Vert{ RectUpperLeft, UV,		Color }, Data.VertexBuffer, Graph.Resources);
+			PushVertex(Vert{ RectUpperRight, UV,	Color }, Data.VertexBuffer, Graph.Resources);
+			PushVertex(Vert{ RectBottomRight, UV,	Color }, Data.VertexBuffer, Graph.Resources);
+
+			/*
+			cbuffer LocalConstants : register( b1 )
+			{
+			float4	 Albedo; // + roughness
+			float4	 Specular;
+			float4x4 WT;
+			}
+			*/
+
+			struct Constants
+			{
+				float4		Albedo;
+				float4		Specular;
+				float4x4	WT;
+			}CB_Data_1, CB_Data_2;
+
+			CB_Data_1.Albedo	= float4(1, 1, 0, 1);
+			CB_Data_1.Specular	= float4(1, 1, 0, 1);
+			CB_Data_1.WT		= float4x4::Identity();
+
+			CB_Data_2.Albedo	= float4(1, 0, 1, 1);
+			CB_Data_2.Specular	= float4(1, 0, 1, 1);
+			CB_Data_2.WT		= float4x4::Identity();
+
+			Data.CB_Offset = BeginNewConstantBuffer(CB,	Graph.Resources);
+			PushConstantBufferData(CB_Data_1,	CB,	Graph.Resources);
+
+			BeginNewConstantBuffer(CB, Graph.Resources);
+			PushConstantBufferData(CB_Data_2,	CB,	Graph.Resources);
 		},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
 		{
+			// Multithreaded Section
+
+			D3D12_RECT Rects{
+					(LONG)(0),
+					(LONG)(0),
+					(LONG)(1920),
+					(LONG)(1080),
+			};
+
+			Ctx->SetViewports({ { 0, 0, 1920, 1080, 0, 1 } });
+			Ctx->SetScissorRects({ Rects });
 			Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, false);
-			Ctx->SetPipelineState(Resources.GetPipelineState		(EPIPELINESTATES::Draw_PSO));
-			Ctx->Draw(3, Data.Offset);
+
+			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+			Ctx->SetPipelineState(Resources.GetPipelineState(EPIPELINESTATES::Draw_PSO));
+			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+
+			Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, Data.CB_Offset);
+			Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(Vert)} });
+			Ctx->Draw(6, Data.VB_Offset);
+
+			Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, Data.CB_Offset + 256);
+			Ctx->Draw(6, Data.VB_Offset + 6);
 		});
 	}
 
@@ -615,11 +704,19 @@ namespace FlexKit
 		FrameResources& Resources)
 	{
 		static_vector<DescHeapPOS> Targets;
-		for (auto RenderTarget : RenderTargets) {
+		for (auto RenderTarget : RenderTargets)
 			auto HeapPOS = Resources.GetRenderTargetDescHeapEntry(RenderTarget);
-		}
 
 		Ctx->SetRenderTargets(Targets, false, DescHeapPOS());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ClearVertexBuffer(FrameGraph& FG, VertexBufferHandle PushBuffer)
+	{
+		FG.Resources.RenderSystem->VertexBuffers.Reset(PushBuffer);
 	}
 
 
