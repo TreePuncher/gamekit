@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2014-2017 Robert May
+Copyright (c) 2014-2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -31,8 +31,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 #endif
 
-#ifndef CGRAPHICSMANAGER_H_INCLUDED
-#define CGRAPHICSMANAGER_H_INCLUDED
+#ifndef GRAPHICS_H_INCLUDED
+#define GRAPHICS_H_INCLUDED
 
 //#pragma comment( lib, "DirectXTK.lib")
 #pragma comment( lib, "D3D12.lib")
@@ -506,7 +506,7 @@ namespace FlexKit
 	typedef	FrameBufferedObject<ID3D12QueryHeap>							QueryResource;
 
 	// New
-	typedef Handle_t<32>													ContantBufferHandle;
+	typedef Handle_t<32>													ConstantBufferHandle;
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>	DescHeapPOS;
 	typedef Handle_t<32>													VertexBufferHandle;
 	typedef Handle_t<32>													TextureHandle;
@@ -997,77 +997,6 @@ namespace FlexKit
 		DescHeapStack GPUDescHeap;
 
 		size_t						ThreadsIssued;
-	};
-
-
-	/************************************************************************************************/
-
-
-	typedef Handle_t<32>	ConstantBufferHandle;
-	
-	struct ConstantBufferTable
-	{
-		ConstantBufferTable(iAllocator* Memory, RenderSystem* RS_IN) : 
-			ConstantBuffers(Memory),
-			UserBufferEntries(Memory),
-			RS(RS_IN)
-		{
-		}
-
-		struct BufferResourceSet
-		{
-			ID3D12Resource*	Resources	[3];
-			size_t BufferSize;
-			bool GPUResident;
-		};
-
-		struct UserConstantBuffer
-		{
-			size_t BufferSize;
-			size_t BufferSet;
-			size_t CurrentBuffer;
-			size_t Offset;
-			size_t BeginOffset;
-
-			size_t Locks[3];
-
-			void*  Mapped_ptr;
-			bool GPUResident;
-			bool WrittenTo;
-			/*
-			TODO: Constant Buffer Pools
-			struct MemoryRange
-			{
-				size_t					Begin;
-				size_t					End;
-				size_t					BlockCount;
-				size_t					BlockSize;
-				Vector<MemoryRange*>	ChildRanges;
-			}Top;
-			*/
-		};
-
-
-		ConstantBufferHandle	CreateConstantBuffer(size_t BufferSize, bool GPUResident = false);
-
-		ID3D12Resource*			GetBufferResource	(ConstantBufferHandle Handle);
-		size_t					GetBufferOffset		(ConstantBufferHandle Handle);
-		size_t					GetBufferBeginOffset(ConstantBufferHandle Handle);
-
-
-		size_t					BeginNewBuffer(ConstantBufferHandle Handle);
-		bool					Push(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
-
-		void					LockUntil(size_t);
-
-	private:
-		void					UpdateCurrentBuffer(ConstantBufferHandle Handle);
-
-		RenderSystem*				RS;
-		Vector<BufferResourceSet>	ConstantBuffers;
-		Vector<UserConstantBuffer>	UserBufferEntries;
-
-		HandleUtilities::HandleTable<ConstantBufferHandle>	Handles;
 	};
 
 
@@ -1773,6 +1702,97 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	typedef Handle_t<16> SubBufferHandle;
+	
+	struct ConstantBufferTable
+	{
+		ConstantBufferTable(iAllocator* Memory, RenderSystem* RS_IN) :
+			ConstantBuffers(Memory),
+			Handles(Memory),
+			FreeResourceSets(Memory),
+			RS(RS_IN),
+			UserBufferEntries(Memory)
+		{}
+
+		struct SubAllocation
+		{
+		};
+
+		struct BufferResourceSet
+		{
+			ID3D12Resource*	Resources[3];
+			size_t BufferSize;
+			bool GPUResident;
+		};
+
+		struct UserConstantBuffer
+		{
+			uint32_t	BufferSize;
+			uint32_t	BufferSet;
+			uint32_t	CurrentBuffer;
+			uint32_t	Offset;
+			uint32_t	BeginOffset;
+			void*		Mapped_ptr;
+
+			Vector<SubAllocation> SubAllocations;
+			bool GPUResident;
+			bool WrittenTo;
+
+			ConstantBufferHandle Handle;
+			size_t Locks[3];
+
+			/*
+			TODO: Constant Buffer Pools
+			struct MemoryRange
+			{
+			size_t					Begin;
+			size_t					End;
+			size_t					BlockCount;
+			size_t					BlockSize;
+			Vector<MemoryRange*>	ChildRanges;
+			}Top;
+			*/
+		};
+
+
+		ConstantBufferHandle	CreateConstantBuffer	(size_t BufferSize, bool GPUResident = false);
+		void					ReleaseBuffer			(ConstantBufferHandle Handle);
+
+		ID3D12Resource*			GetBufferResource		(ConstantBufferHandle Handle);
+		size_t					GetBufferOffset			(ConstantBufferHandle Handle);
+		size_t					GetBufferBeginOffset	(ConstantBufferHandle Handle);
+
+		size_t					BeginNewBuffer	(ConstantBufferHandle Handle);
+		bool					Push			(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
+		
+		SubBufferHandle			Reserve					(ConstantBufferHandle Handle, size_t Size);
+		size_t					GetSubAllocationSize	(ConstantBufferHandle Handle, SubBufferHandle);
+		void					PushSuballocation		(ConstantBufferHandle Handle, SubBufferHandle, void*, size_t PushSize);
+
+		void					LockUntil(size_t);
+
+	private:
+		void					UpdateCurrentBuffer(ConstantBufferHandle Handle);
+
+		RenderSystem*				RS;
+		iAllocator*					Memory;
+		Vector<BufferResourceSet>	ConstantBuffers;
+		Vector<UserConstantBuffer>	UserBufferEntries;
+		Vector<size_t>				FreeResourceSets;
+
+		HandleUtilities::HandleTable<ConstantBufferHandle>	Handles;
+	};
+
+
+	/************************************************************************************************/
+
+
+	enum TextureFlags
+	{
+		TF_None			= 0x00,
+		TF_RenderTarget	= 0x01,
+		TF_BackBuffer	= 0x02,
+	};
 
 	class TextureStateTable
 	{
@@ -1782,12 +1802,14 @@ namespace FlexKit
 			Textures{memory},
 			States	{memory},
 			Handles {memory, 0},
-			WHs		{memory}
+			WHs		{memory},
+			Flags	{memory}
 		{
 			Formats.reserve(1024);
 			States.reserve(1024);
 			Textures.reserve(1024);
 			WHs.reserve(1024);
+			Flags.reserve(1024);
 		}
 
 
@@ -1804,7 +1826,7 @@ namespace FlexKit
 
 		Texture2D		operator[]		(TextureHandle Handle);
 
-		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource* Resource);
+		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Flags);
 		void			SetState		(TextureHandle Handle, DeviceResourceState State);
 
 		DeviceResourceState GetState	(TextureHandle Handle) { return States[Handles[Handle]]; }
@@ -1815,6 +1837,7 @@ namespace FlexKit
 		Vector<uint2>					WHs;
 		Vector<DXGI_FORMAT>				Formats;
 		Vector<DeviceResourceState>		States; // Current State
+		Vector<uint32_t>				Flags; // Current State
 
 		HandleUtilities::HandleTable<TextureHandle, 32>	Handles;
 	};
@@ -1891,6 +1914,9 @@ namespace FlexKit
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer	(size_t BufferSize, bool GPUResident = true);
+
+		void ReleaseCB(ConstantBufferHandle);
+		void ReleaseVB(VertexBufferHandle);
 
 		void ReleaseTempResources();
 
@@ -2012,6 +2038,7 @@ namespace FlexKit
 			RootSignature RSDefault;		// Default Signature for Rasting
 		}Library;
 
+		ConstantBufferTable		ConstantBuffers;
 		VertexBufferStateTable	VertexBuffers;
 		TextureStateTable		RenderTargets;
 		TextureStateTable		Textures;
@@ -2025,7 +2052,6 @@ namespace FlexKit
 
 		Vector<FreeEntry>	FreeList;
 
-		ConstantBufferTable ConstantBuffers;
 
 		ID3D12Debug*			pDebug;
 		ID3D12DebugDevice*		pDebugDevice;
@@ -3003,7 +3029,7 @@ namespace FlexKit
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );
 	FLEXKITAPI QueryResource		CreateSOQuery				( RenderSystem* RS, D3D12_QUERY_HEAP_TYPE Type = D3D12_QUERY_HEAP_TYPE_SO_STATISTICS );
 
-	FLEXKITAPI TextureHandle AddRenderTarget	(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag);
+	FLEXKITAPI TextureHandle AddRenderTarget	(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag, uint32_t Flags = TF_None);
 	FLEXKITAPI TextureHandle CreateRenderTarget	(RenderSystem* RS, Texture2D_Desc& Desc, uint32_t Tag);
 
 	struct SubResourceUpload_Desc

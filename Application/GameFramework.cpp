@@ -402,7 +402,6 @@ namespace FlexKit
 		Framework.DrawDebug					= true;
 		Framework.DrawDebugStats			= true;
 #else
-		Framework.DrawTerrainDebug			= false;
 		Framework.DrawDebug					= false;
 		Framework.DrawDebugStats			= false;
 #endif
@@ -445,12 +444,12 @@ namespace FlexKit
 		Framework.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->GetTempMemory(), Engine->GetBlockMemory());
 		
 		InitateConsole(&Framework.Console, Framework.DefaultAssets.Font, Engine);
-		BindUIntVar(&Framework.Console, "TerrainSplits",			&Framework.TerrainSplits);
-		BindUIntVar(&Framework.Console, "FPS",						&Framework.Stats.FPS);
-		BindBoolVar(&Framework.Console, "HUD",						&Framework.DrawDebugStats);
-		BindBoolVar(&Framework.Console, "DrawDebug",				&Framework.DrawDebug);
-		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",			&Framework.DrawPhysicsDebug);
-		BindBoolVar(&Framework.Console, "FrameLock",				&Engine->FrameLock);
+		BindUIntVar(&Framework.Console, "TerrainSplits",	&Framework.TerrainSplits);
+		BindUIntVar(&Framework.Console, "FPS",				&Framework.Stats.FPS);
+		BindBoolVar(&Framework.Console, "HUD",				&Framework.DrawDebugStats);
+		BindBoolVar(&Framework.Console, "DrawDebug",		&Framework.DrawDebug);
+		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
+		BindBoolVar(&Framework.Console, "FrameLock",		&Engine->FrameLock);
 
 		AddUIntVar(&Framework.Console, "RM_Default",	EDEFERREDPASSMODE::EDPM_DEFAULT);
 		AddUIntVar(&Framework.Console, "RM_Normals",	EDEFERREDPASSMODE::EDPM_SSNORMALS);

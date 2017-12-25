@@ -64,7 +64,7 @@ public:
 	DrawableComponentSystem				Drawables;
 	LightComponentSystem				Lights;
 
-	ContantBufferHandle			ConstantBuffer;
+	ConstantBufferHandle		ConstantBuffer;
 	VertexBufferHandle			VertexBuffer;
 	int							Test;
 

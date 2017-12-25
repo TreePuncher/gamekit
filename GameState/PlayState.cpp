@@ -284,6 +284,7 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 
 /************************************************************************************************/
 
+
 PlayState::~PlayState()
 {
 	FloorObject.Release();
@@ -298,6 +299,9 @@ PlayState::~PlayState()
 	Physics.Release();
 	Scene.ClearScene();
 
+	Framework->Engine->RenderSystem.ReleaseVB(VertexBuffer);
+	Framework->Engine->RenderSystem.ReleaseCB(ConstantBuffer);
+
 	ReleaseGraphicScene(&Scene);
 	Framework->Engine->GetBlockMemory().free(this);
 }
@@ -308,17 +312,33 @@ PlayState::~PlayState()
 
 bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 {
-	float4 ClearColor = Test > 20 ? float4{1, 1, 1, 0} : float4{0, 1, 0, 0};
+	float4 ClearColor = Test > 20 ? float4{ 1, 1, 1, 0 } : float4{ 0, 1, 0, 0 };
 	Test = Test > 40 ? 0 : Test + 1;
+
+	RectangleList Tris(Core->GetTempMemory());
+	Tris.push_back(
+		{	{ 0.0f, 1.0f, 0.0f, 0.0f },
+			{ 0.0f, 0.0f}, {1.0f, 1.0f} });
+	Tris.push_back(
+		{	{ 1.0f, 1.0f, 0.0f, 0.0f },
+			{ 1.0f, 0.0f },{ 1.0f, 1.0f } });
+
+	Tris.push_back(
+		{	{ 1.0f, 0.0f, 1.0f, 0.0f },
+			{ 0.5f, 0.0f },{ 1.0f, 1.0f } });
+
+	Tris.push_back(
+		{	{ 1.0f, 1.0f, 1.0f, 0.0f },
+			{ -0.5f, -0.4f },{ -0.5f, 0.5f } });
 
 	ClearBackBuffer		(FrameGraph, float4{1, 0, 1, 0} - ClearColor);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
-	DrawRectangle(
+	DrawRectangles(
 		FrameGraph, 
 		VertexBuffer, 
 		ConstantBuffer,
-		{ 0.0f, 1.0f }, { 1.0f, 0.0f }, {1, 1, 1, 1});
+		Tris);
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 

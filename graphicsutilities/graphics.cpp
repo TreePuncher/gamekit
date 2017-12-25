@@ -447,7 +447,7 @@ namespace FlexKit
 		Resource_DESC.Format				= DXGI_FORMAT_UNKNOWN;
 		Resource_DESC.SampleDesc.Count		= 1;
 		Resource_DESC.SampleDesc.Quality	= 0;
-		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;//D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE; // Causes Graphics Debugger to crash
 
 		D3D12_HEAP_PROPERTIES HEAP_Props ={};
 		HEAP_Props.CPUPageProperty	     = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -467,7 +467,7 @@ namespace FlexKit
 		{
 			ID3D12Resource* Resource = nullptr;
 			HRESULT HR = RS->pDevice->CreateCommittedResource(
-							&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES, 
+							&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
 							&Resource_DESC, InitialState, nullptr,
 							IID_PPV_ARGS(&Resource));
 
@@ -477,7 +477,7 @@ namespace FlexKit
 			SETDEBUGNAME(Resource, __func__);
 		}
 
-		size_t BufferIdx = ConstantBuffers.size();
+		uint32_t BufferIdx = uint32_t(ConstantBuffers.size());
 		ConstantBuffers.push_back(NewResourceSet);
 
 		void* Mapped_ptr = nullptr;
@@ -486,20 +486,26 @@ namespace FlexKit
 			NewResourceSet.Resources[0]->Map(0, nullptr, &Mapped_ptr);
 
 		auto Idx = UserBufferEntries.size();
+
+		ConstantBufferHandle NewHandle = Handles.GetNewHandle();
+		Handles[NewHandle] = Idx;
+
 		UserConstantBuffer	NewBuffer = {
-			BufferSize,
+			uint32_t(BufferSize),
 			BufferIdx,
 			0,
 			0,
 			0,
-			{0, 0, 0},
 			Mapped_ptr,
+			Memory,
 			GPUResident,
-			false};
+			false,
+			NewHandle,
+			{0, 0, 0} };
 
 		UserBufferEntries.push_back(NewBuffer);
 
-		return ConstantBufferHandle(Idx);
+		return NewHandle;
 	}
 
 
@@ -508,8 +514,9 @@ namespace FlexKit
 
 	ID3D12Resource* ConstantBufferTable::GetBufferResource(ConstantBufferHandle Handle)
 	{
-		size_t Idx			= UserBufferEntries[Handle].CurrentBuffer;
-		size_t BufferIdx	= UserBufferEntries[Handle].BufferSet;
+		size_t UserIdx		= Handles[Handle];
+		uint32_t Idx		= UserBufferEntries[UserIdx].CurrentBuffer;
+		uint32_t BufferIdx	= UserBufferEntries[UserIdx].BufferSet;
 		return ConstantBuffers[BufferIdx].Resources[Idx];
 	}
 
@@ -519,7 +526,7 @@ namespace FlexKit
 
 	size_t ConstantBufferTable::GetBufferOffset(ConstantBufferHandle Handle)
 	{
-		return UserBufferEntries[Handle].Offset;
+		return UserBufferEntries[Handles[Handle]].Offset;
 	}
 
 
@@ -528,7 +535,7 @@ namespace FlexKit
 
 	size_t ConstantBufferTable::GetBufferBeginOffset(ConstantBufferHandle Handle)
 	{
-		return UserBufferEntries[Handle].BeginOffset;
+		return UserBufferEntries[Handles[Handle]].BeginOffset;
 	}
 
 
@@ -537,24 +544,26 @@ namespace FlexKit
 
 	size_t ConstantBufferTable::BeginNewBuffer(ConstantBufferHandle Handle)
 	{
-		if (UserBufferEntries[Handle].GPUResident)
+		size_t UserIdx = Handles[Handle];
+
+		if (UserBufferEntries[Handles[Handle]].GPUResident)
 			return false; // Cannot directly push to GPU Resident Memory
 
 		UpdateCurrentBuffer(Handle);
 
-		size_t Idx			= UserBufferEntries[Handle].CurrentBuffer;
-		size_t BufferIdx	= UserBufferEntries[Handle].BufferSet;
-		size_t BufferSize	= UserBufferEntries[Handle].BufferSize;
-		size_t BufferOffset = UserBufferEntries[Handle].Offset;
+		uint32_t Idx			= UserBufferEntries[UserIdx].CurrentBuffer;
+		uint32_t BufferIdx		= UserBufferEntries[UserIdx].BufferSet;
+		uint32_t BufferSize		= UserBufferEntries[UserIdx].BufferSize;
+		uint32_t BufferOffset	= UserBufferEntries[UserIdx].Offset;
 
 		size_t OffsetToNextAlignment = 256 - (BufferOffset % 256);
-		size_t NewOffset = BufferOffset + OffsetToNextAlignment;
+		size_t NewOffset			 = BufferOffset + OffsetToNextAlignment;
 
 		if (OffsetToNextAlignment == 256)
 			return 0;
 
-		UserBufferEntries[Handle].BeginOffset	= NewOffset;
-		UserBufferEntries[Handle].Offset		= NewOffset;
+		UserBufferEntries[UserIdx].BeginOffset	= NewOffset;
+		UserBufferEntries[UserIdx].Offset		= NewOffset;
 
 		return NewOffset;
 	}
@@ -565,22 +574,27 @@ namespace FlexKit
 
 	bool ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize)
 	{
-		if (UserBufferEntries[Handle].GPUResident)
+		size_t UserIdx = Handles[Handle];
+
+		if (UserBufferEntries[UserIdx].GPUResident)
 			return false; // Cannot directly push to GPU Resident Memory
 
 		UpdateCurrentBuffer(Handle);
 
-		size_t Idx			= UserBufferEntries[Handle].CurrentBuffer;
-		size_t BufferIdx	= UserBufferEntries[Handle].BufferSet;
-		size_t BufferSize	= UserBufferEntries[Handle].BufferSize;
-		size_t BufferOffset = UserBufferEntries[Handle].Offset;
-		char*  Mapped_Ptr	= (char*)UserBufferEntries[Handle].Mapped_ptr;
+		uint32_t Idx			= UserBufferEntries[UserIdx].CurrentBuffer;
+		uint32_t BufferIdx		= UserBufferEntries[UserIdx].BufferSet;
+		uint32_t BufferSize		= UserBufferEntries[UserIdx].BufferSize;
+		uint32_t BufferOffset	= UserBufferEntries[UserIdx].Offset;
+		char*  Mapped_Ptr		= (char*)UserBufferEntries[UserIdx].Mapped_ptr;
+
+		if (!Mapped_Ptr)
+			return false;
 
 		if (BufferSize < BufferOffset + PushSize)
 			return false; // Buffer To small to accommodate Push
 
-		UserBufferEntries[Handle].Offset += PushSize;
-		UserBufferEntries[Handle].WrittenTo = true;
+		UserBufferEntries[UserIdx].Offset += PushSize;
+		UserBufferEntries[UserIdx].WrittenTo = true;
 		memcpy(Mapped_Ptr + BufferOffset, _Ptr, PushSize);
 
 		return true;
@@ -605,26 +619,42 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void ConstantBufferTable::ReleaseBuffer(ConstantBufferHandle Handle)
+	{
+		size_t UserIdx = Handles[Handle];
+
+
+	}
+
+
+	/************************************************************************************************/
+
+
 	void ConstantBufferTable::UpdateCurrentBuffer(ConstantBufferHandle Handle)
 	{
-		size_t Idx = UserBufferEntries[Handle].CurrentBuffer;
+		size_t UserIdx	= Handles[Handle];
+		size_t Idx		= UserBufferEntries[UserIdx].CurrentBuffer;
 
-		if (UserBufferEntries[Handle].Locks[Idx] > RS->GetCurrentFrame())
+		if (UserBufferEntries[UserIdx].Locks[Idx] > RS->GetCurrentFrame())
 		{
-			size_t BufferIdx = UserBufferEntries[Handle].BufferSet;
+			size_t BufferIdx = UserBufferEntries[UserIdx].BufferSet;
 
 			// Map Next Buffer
-			if (!UserBufferEntries[Handle].GPUResident) 
+			if (!UserBufferEntries[UserIdx].GPUResident)
 			{
 				char*  Mapped_Ptr = nullptr;
 				ConstantBuffers[BufferIdx].Resources[Idx]->Unmap(0, nullptr);	// Is a Written Range Needed?
-				Idx = UserBufferEntries[Handle].CurrentBuffer = (Idx + 1) % 3;	// Update Buffer Idx
-				ConstantBuffers[BufferIdx].Resources[Idx]->Map(0, nullptr, (void**)&Mapped_Ptr);
-				UserBufferEntries[Handle].Mapped_ptr	= Mapped_Ptr;
+				Idx = UserBufferEntries[UserIdx].CurrentBuffer = (Idx + 1) % 3;	// Update Buffer Idx
+				auto HR = ConstantBuffers[BufferIdx].Resources[Idx]->Map(0, nullptr, (void**)&Mapped_Ptr);
+				if (FAILED(HR))
+				{
+					int x = 0;
+				}
+				UserBufferEntries[UserIdx].Mapped_ptr	= Mapped_Ptr;
 			}
 
-			UserBufferEntries[Handle].Offset		= 0;
-			UserBufferEntries[Handle].BeginOffset	= 0;
+			UserBufferEntries[UserIdx].Offset		= 0;
+			UserBufferEntries[UserIdx].BeginOffset	= 0;
 		}
 	}
 
@@ -1791,7 +1821,7 @@ namespace FlexKit
 
 			FrameResources[0].CommandLists[0]->Reset(FrameResources[0].GraphicsCLAllocator[0], nullptr);
 
-			HR = CreateDXGIFactory(IID_PPV_ARGS(&DXGIFactory));			
+			HR = CreateDXGIFactory2(0, IID_PPV_ARGS(&DXGIFactory));			
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
 
 			auto DeviceID = Device->GetAdapterLuid();
@@ -2016,12 +2046,12 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	
 	void RenderSystem::PresentWindow(RenderWindow* Window)
 	{
-		CopyEnginePostFrameUpdate(this);
+		//CopyEnginePostFrameUpdate(this);
 
-		Window->SwapChain_ptr->Present(0, 0);
+		Window->SwapChain_ptr->Present(1, 0);
 		Window->BufferIndex = Window->SwapChain_ptr->GetCurrentBackBufferIndex();
 
 		Fences[CurrentIndex].FenceValue = ++FenceCounter;
@@ -2094,6 +2124,23 @@ namespace FlexKit
 	VertexBufferHandle RenderSystem::CreateVertexBuffer(size_t BufferSize, bool GPUResident)
 	{
 		return VertexBuffers.CreateVertexBuffer(BufferSize, GPUResident, this);
+	}
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::ReleaseCB(ConstantBufferHandle Handle)
+	{
+		ConstantBuffers.ReleaseBuffer(Handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::ReleaseVB(VertexBufferHandle Handle)
+	{
+		VertexBuffers.ReleaseVertexBuffer(Handle);
 	}
 
 
@@ -2376,7 +2423,7 @@ namespace FlexKit
 		SwapChainDesc.Height			= In_Desc->height;
 		SwapChainDesc.Format			= DXGI_FORMAT_R8G8B8A8_UNORM;
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
 		ShowWindow(Window, 5);
 
@@ -2411,7 +2458,7 @@ namespace FlexKit
 
 			FK_ASSERT(buffer, "Failed to Create Back Buffer!");
 			SETDEBUGNAME(buffer, "BackBuffer");
-			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER));
+			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER), TF_BackBuffer & TF_RenderTarget);
 			RS->RenderTargets.SetState(Handle, DRS_Present);
 			NewWindow.RenderTargets[I] = Handle;
 		}
@@ -3542,10 +3589,14 @@ namespace FlexKit
 
 	void TextureStateTable::Release()
 	{
-		for (auto& T : Textures)
+		for (size_t I = 0; I < Textures.size(); ++I)
 		{
-			if (T)
+			auto T = Textures[I];
+			auto F = Flags[I];
+
+			if ( T && !(F & TF_BackBuffer))
 				T->Release();
+
 			T = nullptr;
 		}
 
@@ -3559,7 +3610,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle TextureStateTable::AddResource(Texture2D_Desc& Desc, ID3D12Resource* Resource)
+	TextureHandle TextureStateTable::AddResource(Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Flags_IN)
 	{
 		auto Handle = Handles.GetNewHandle();
 		Handles[Handle] = Textures.size();
@@ -3567,6 +3618,7 @@ namespace FlexKit
 		Textures.push_back(Resource);
 		WHs.push_back({ Desc.Width, Desc.Height });
 		Formats.push_back(TextureFormat2DXGIFormat(Desc.Format));
+		Flags.push_back(Flags_IN);
 
 		return Handle;
 	}
@@ -7295,7 +7347,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
-	TextureHandle AddRenderTarget(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag)
+	TextureHandle AddRenderTarget(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag, uint32_t Flags)
 	{
 		FK_ASSERT(Resource);
 
@@ -7303,7 +7355,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		cout << "Adding RenderTarget: " << Resource << "\n";
 #endif
 
-		return RS->RenderTargets.AddResource(Desc, Resource);
+		return RS->RenderTargets.AddResource(Desc, Resource, Flags);
 	}
 
 

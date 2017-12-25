@@ -589,11 +589,19 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct Rectangle
+	{
+		float4 Color	= { 1.0f, 1.0f, 1.0f, 1.0f };
+		float2 Position;
+		float2 WH;
+	};
+
+	typedef Vector<Rectangle> RectangleList;
 
 	void ClearBackBuffer	(FrameGraph& Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
 	void PresentBackBuffer	(FrameGraph& Graph, RenderWindow* Window);
-	
-	void DrawRectangle		(FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, float2 UpperLeft, float2 BottomRight, float4 Color = { 1.0f, 1.0f, 1.0f, 1.0f });
+
+	void DrawRectangles		(FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, RectangleList& Rects);
 
 	void SetRenderTargets	(Context* Ctx, static_vector<FrameResourceHandle> RenderTargets, FrameResources& FG);
 	void ClearVertexBuffer	(FrameGraph& FG, VertexBufferHandle PushBuffer);
