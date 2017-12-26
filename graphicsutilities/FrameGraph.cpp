@@ -630,14 +630,13 @@ namespace FlexKit
 				float2 RectBottomLeft	= { RectUpperLeft.x,	RectBottomRight.y };
 				float2 UV = { 0, 0 };
 
-				float2 TestOffset = { -1, -1 };
-				PushVertex(Vert{ RectUpperLeft,		{0.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
-				PushVertex(Vert{ RectBottomRight,	{1.0f, 0.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
-				PushVertex(Vert{ RectBottomLeft,	{0.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
+				PushVertex(Vert{ Position2SS(RectUpperLeft),	{0.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
+				PushVertex(Vert{ Position2SS(RectBottomRight),	{1.0f, 0.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
+				PushVertex(Vert{ Position2SS(RectBottomLeft),	{0.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
 
-				PushVertex(Vert{ RectUpperLeft,		{0.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
-				PushVertex(Vert{ RectUpperRight,	{1.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
-				PushVertex(Vert{ RectBottomRight,	{1.0f, 0.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
+				PushVertex(Vert{ Position2SS(RectUpperLeft),	{0.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
+				PushVertex(Vert{ Position2SS(RectUpperRight),	{1.0f, 1.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
+				PushVertex(Vert{ Position2SS(RectBottomRight),	{1.0f, 0.0f}, Rect.Color }, Data.VertexBuffer, Graph.Resources);
 
 				/*
 				cbuffer LocalConstants : register( b1 )

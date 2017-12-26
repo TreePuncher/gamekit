@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\Fonts.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 
 /************************************************************************************************/

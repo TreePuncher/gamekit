@@ -2852,6 +2852,9 @@ namespace FlexKit
 
 	};
 
+	/************************************************************************************************/
+
+
 	FLEXKITAPI OcclusionCuller	CreateOcclusionCuller	( RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true );
 	FLEXKITAPI void				OcclusionPass			( RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C );
 
@@ -2877,7 +2880,7 @@ namespace FlexKit
 
 	StaticObjectHandle CreateDrawable(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
 
-	// TODO: Implement this
+	// TODO: Implement StaticMeshBatcher
 	struct FLEXKITAPI StaticMeshBatcher
 	{
 		typedef char DirtyFlag;
@@ -3129,77 +3132,6 @@ namespace FlexKit
 
 	};
 
-	FLEXKITAPI void	DoPixelProcessor(RenderSystem* RS, PIXELPROCESS_DESC* DESC_in, Texture2D* out);
-
-
-	struct TextEntry
-	{
-		float2 POS;
-		float2 Size;
-		float2 TopLeftUV;
-		float2 BottomRightUV;
-		float4 Color;
-	};
-
-	struct TextArea
-	{
-		char*		TextBuffer;
-		size_t		BufferSize;
-		uint2		BufferDimensions;
-		uint2		Position;
-		float2		ScreenPosition;
-		float2		CharacterScale;
-		uint2		ScreenWH; // Screen Width - In Pixels
-
-		ShaderResourceBuffer Buffer;
-
-		size_t				 CharacterCount;
-		size_t				 Dirty;
-
-		iAllocator*			 Memory;
-	};
-
-	struct TextArea_Desc
-	{
-		float2 POS;		// Screen Space Cord
-		float2 WH;		// WH of Area Being Rendered to,		Percent of Screen
-		float2 CharWH;	// Size of Characters Being Rendered,	Percent of Screen
-	};
-
-	struct FontAsset
-	{
-		uint2	FontSize = { 0, 0 };
-		bool	Unicode	 = false;
-
-		uint2			TextSheetDimensions;
-		Texture2D		Texture;
-		uint4			Padding = 0; // Ordering { Top, Left, Bottom, Right }
-		iAllocator*		Memory;
-
-		struct Glyph
-		{
-			float2		WH;
-			float2		XY;
-			float2		Offsets;
-			float		Xadvance;
-			uint32_t	Channel;
-		}GlyphTable[256];
-
-		size_t	KerningTableSize = 0;
-		struct Kerning
-		{
-			char	ID[2];
-			float   Offset;
-		}*KerningTable;
-
-
-		char	FontName[128];
-		char*	FontDir; // Texture Directory
-	};
-
-
-	/************************************************************************************************/
-
 
 	struct LineSegment
 	{
@@ -3227,17 +3159,6 @@ namespace FlexKit
 	FLEXKITAPI void CleanUpLineSet			( LineSet* Pass	);
 	FLEXKITAPI void AddLineSegment			( LineSet* Pass, LineSegment in		);
 	FLEXKITAPI void UploadLineSegments		( RenderSystem* RS, LineSet* Pass	);
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI void ClearText		( TextArea* TA );
-	FLEXKITAPI void CleanUpTextArea	( TextArea* TA, iAllocator* BA, RenderSystem* RS = nullptr );
-	FLEXKITAPI void PrintText		( TextArea* Area, const char* text );
-
-	FLEXKITAPI TextArea CreateTextArea	( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
-	FLEXKITAPI void		UploadTextArea	( FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, RenderWindow* Target);
 
 
 	/************************************************************************************************/

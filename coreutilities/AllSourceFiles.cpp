@@ -44,6 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\DDSUtilities.cpp"
 #include "..\graphicsutilities\ForwardRendering.cpp"
 #include "..\graphicsutilities\FrameGraph.cpp"
+#include "..\graphicsutilities\Fonts.cpp"
 #include "..\graphicsutilities\graphics.cpp"
 #include "..\graphicsutilities\GuiUtilities.cpp"
 #include "..\graphicsutilities\ImageUtilities.cpp"

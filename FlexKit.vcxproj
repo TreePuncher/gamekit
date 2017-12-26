@@ -197,6 +197,7 @@
     <ClInclude Include="coreutilities\type.h" />
     <ClInclude Include="graphicsutilities\AnimationUtilities.h" />
     <ClInclude Include="graphicsutilities\DDSUtilities.h" />
+    <ClInclude Include="graphicsutilities\Fonts.h" />
     <ClInclude Include="graphicsutilities\graphics.h" />
     <ClInclude Include="graphicsutilities\GuiUtilities.h" />
     <ClInclude Include="graphicsutilities\ImageUtilities.h" />
@@ -281,6 +282,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="graphicsutilities\Fonts.cpp" />
     <ClCompile Include="graphicsutilities\ForwardRendering.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
