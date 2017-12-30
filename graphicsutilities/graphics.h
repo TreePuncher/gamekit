@@ -97,7 +97,7 @@ namespace FlexKit
 #define SETDEBUGNAME(RES, ID) 
 #endif
 
-#define SAFERELEASE(RES) if(RES) { RES->Release(); RES = nullptr; }
+#define SAFERELEASE(RES) if(RES) {RES->Release(); RES = nullptr;}
 
 #define CALCULATECONSTANTBUFFERSIZE(TYPE) (sizeof(TYPE)/1024 + 1024)
 
@@ -1531,12 +1531,10 @@ namespace FlexKit
 		void SetDepthStencil		(Texture2D* DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
-
-
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsDescriptorTable		(size_t idx, DesciptorHeap& DH);
-		void SetGraphicsShaderResourceView	(size_t, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
+		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 
 		void AddIndexBuffer			(TriMesh* Mesh);
 		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers);
@@ -1671,7 +1669,7 @@ namespace FlexKit
 			char*			MappedPtr		 = 0;		//
 			ID3D12Resource* Resource		 = nullptr; // To avoid some reads
 			bool			WrittenTo		 = false;
-			size_t			Padding[1];	
+			size_t			Padding[2];	
 
 			void IncrementCurrentBuffer()
 			{
@@ -1713,6 +1711,25 @@ namespace FlexKit
 			RS(RS_IN),
 			UserBufferEntries(Memory)
 		{}
+
+		~ConstantBufferTable()
+		{
+			for (auto& CB : ConstantBuffers)
+			{
+				for (auto R : CB.Resources)
+				{
+					if (R)
+						R->Release();
+
+					R = nullptr;
+				}
+			}
+
+
+			ConstantBuffers.Release();
+			UserBufferEntries.Release();
+			FreeResourceSets.Release();
+		}
 
 		struct SubAllocation
 		{

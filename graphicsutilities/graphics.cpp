@@ -2458,7 +2458,7 @@ namespace FlexKit
 
 			FK_ASSERT(buffer, "Failed to Create Back Buffer!");
 			SETDEBUGNAME(buffer, "BackBuffer");
-			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER), TF_BackBuffer & TF_RenderTarget);
+			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER), TF_BackBuffer | TF_RenderTarget);
 			RS->RenderTargets.SetState(Handle, DRS_Present);
 			NewWindow.RenderTargets[I] = Handle;
 		}
@@ -3572,7 +3572,13 @@ namespace FlexKit
 
 	void VertexBufferStateTable::Release()
 	{
+		for (auto& B : Buffers)
+			B.Resource->Release();
 
+		Buffers.Release();
+		UserBuffers.Release();
+		FreeBuffers.Release();
+		Handles.Release();
 	}
 
 

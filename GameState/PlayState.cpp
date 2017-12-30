@@ -49,7 +49,7 @@ PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
 	Lights		(&Scene, Framework->Engine->Nodes),
 	Physics		(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory()),
 	Test		(0),
-	VertexBuffer(Engine->RenderSystem.CreateVertexBuffer(8096, false)),
+	VertexBuffer(Engine->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
 	ConstantBuffer(Engine->RenderSystem.CreateConstantBuffer(8096, false))
 {
 	Framework->ActivePhysicsScene	= &Physics;
@@ -315,30 +315,13 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	float4 ClearColor = Test > 20 ? float4{ 1, 1, 1, 0 } : float4{ 0, 1, 0, 0 };
 	Test = Test > 40 ? 0 : Test + 1;
 
-	RectangleList Tris(Core->GetTempMemory());
-	Tris.push_back(
-		{	{ 0.0f, 1.0f, 0.0f, 0.0f },
-			{ 0.0f, 0.0f}, {1.0f, 1.0f} });
-	Tris.push_back(
-		{	{ 1.0f, 1.0f, 0.0f, 0.0f },
-			{ 1.0f, 0.0f },{ 1.0f, 1.0f } });
-
-	Tris.push_back(
-		{	{ 1.0f, 0.0f, 1.0f, 0.0f },
-			{ 0.5f, 0.0f },{ 1.0f, 1.0f } });
-
-	Tris.push_back(
-		{	{ 1.0f, 1.0f, 1.0f, 0.0f },
-			{ -0.5f, -0.4f },{ -0.5f, 0.5f } });
-
 	ClearBackBuffer		(FrameGraph, float4{1, 0, 1, 0} - ClearColor);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
-	DrawRectangles(
-		FrameGraph, 
-		VertexBuffer, 
-		ConstantBuffer,
-		Tris);
+	DrawShapes(FrameGraph, VertexBuffer, ConstantBuffer, Core->GetTempMemory(),
+		RectangleShape	({ 0.1f, 0.1f }, { 0.8f, 0.8f }, float4(0.4f)),
+		CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
+		CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 

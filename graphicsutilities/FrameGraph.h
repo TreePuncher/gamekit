@@ -246,6 +246,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	inline size_t GetCurrentVBufferOffset()
+	{
+
+	}
+
 	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
 	{
 		return Resources.RenderSystem->ConstantBuffers.BeginNewBuffer(CB);
@@ -601,10 +606,224 @@ namespace FlexKit
 	void ClearBackBuffer	(FrameGraph& Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
 	void PresentBackBuffer	(FrameGraph& Graph, RenderWindow* Window);
 
-	void DrawRectangles		(FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, RectangleList& Rects);
 
 	void SetRenderTargets	(Context* Ctx, static_vector<FrameResourceHandle> RenderTargets, FrameResources& FG);
 	void ClearVertexBuffer	(FrameGraph& FG, VertexBufferHandle PushBuffer);
+
+
+	/************************************************************************************************/
+
+
+	struct ShapeVert {
+		float2 POS;
+		float2 UV;
+		float4 Color;
+	};
+
+	struct ShapeDraw
+	{
+		size_t ConstantBufferOffset;
+		size_t VertexBufferOffset;
+		size_t VertexCount;
+	};
+
+
+	struct Constants
+	{
+		float4		Albedo;
+		float4		Specular;
+		float4x4	WT;
+	};
+
+	typedef Vector<ShapeDraw> DrawList;
+
+
+	class ShapeProtoType
+	{
+		virtual void AddShapeDraw(
+			DrawList&				DrawList,
+			VertexBufferHandle		PushBuffer,
+			ConstantBufferHandle	CB,
+			FrameResources&			Resources) = 0;
+	};
+
+
+	class CircleShape final : public ShapeProtoType
+	{
+	public:
+		CircleShape(
+			float2	POS_IN, 
+			float	Radius, 
+			float4	Color_IN		= float4(1.0f), 
+			float	AspectRatio_IN	= 16.0f/9.0f,
+			size_t	Divisions_IN	= 64) : 
+				Color		{Color_IN},
+				POS			{POS_IN}, 
+				R			{Radius},
+				Divisions	{Divisions_IN},
+				AspectRatio {AspectRatio_IN}{}
+
+		void AddShapeDraw(
+			DrawList&				DrawList, 
+			VertexBufferHandle		PushBuffer, 
+			ConstantBufferHandle	CB,
+			FrameResources&			Resources) override
+		{
+			size_t VBOffset = Resources.GetVertexBufferOffset(PushBuffer, sizeof(ShapeVert));
+
+			float Step = 2 * pi / Divisions;
+			for (size_t I = 0; I < Divisions; ++I)
+			{
+				float2 V1 = { POS.x + R * cos(Step * I),		POS.y - AspectRatio * (R * sin(Step * I)) };
+				float2 V2 = { POS.x + R * cos(Step * (I + 1)),	POS.y - AspectRatio * (R * sin(Step * (I + 1)))};
+
+				PushVertex(ShapeVert{ Position2SS(POS),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
+				PushVertex(ShapeVert{ Position2SS(V2),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
+				PushVertex(ShapeVert{ Position2SS(V1),	{ 1.0f, 0.0f }, Color }, PushBuffer, Resources);
+			}
+
+			Constants CB_Data = {
+				Color,
+				Color,
+				float4x4::Identity()
+			};
+
+			auto CBOffset = BeginNewConstantBuffer(CB, Resources);
+			PushConstantBufferData(CB_Data, CB, Resources);
+
+			DrawList.push_back({ CBOffset, VBOffset, Divisions * 3});
+		}
+
+
+	private:
+		float2	POS;
+		float4	Color;
+		float	R;
+		float	AspectRatio;
+		size_t	Divisions;
+	};
+
+
+	class RectangleShape final : public ShapeProtoType
+	{
+	public:
+		RectangleShape(float2 POS_IN, float2 WH_IN, float4 Color_IN = float4(1.0f)) :
+			POS(POS_IN),
+			WH(WH_IN),
+			Color(Color_IN){}
+
+		void AddShapeDraw(
+			DrawList&				DrawList, 
+			VertexBufferHandle		PushBuffer, 
+			ConstantBufferHandle	CB,
+			FrameResources&			Resources) override
+		{
+			float2 RectUpperLeft	= POS;
+			float2 RectBottomRight	= POS + WH;
+			float2 RectUpperRight	= { RectBottomRight.x,	RectUpperLeft.y };
+			float2 RectBottomLeft	= { RectUpperLeft.x,	RectBottomRight.y };
+
+			size_t VBOffset = Resources.GetVertexBufferOffset(PushBuffer, sizeof(ShapeVert));
+
+			PushVertex(ShapeVert{ Position2SS(RectUpperLeft),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
+			PushVertex(ShapeVert{ Position2SS(RectBottomRight),	{ 1.0f, 0.0f }, Color }, PushBuffer, Resources);
+			PushVertex(ShapeVert{ Position2SS(RectBottomLeft),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
+
+			PushVertex(ShapeVert{ Position2SS(RectUpperLeft),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
+			PushVertex(ShapeVert{ Position2SS(RectUpperRight),	{ 1.0f, 1.0f }, Color }, PushBuffer, Resources);
+			PushVertex(ShapeVert{ Position2SS(RectBottomRight),	{ 1.0f, 0.0f }, Color }, PushBuffer, Resources);
+
+			Constants CB_Data = {
+				Color,
+				Color,
+				float4x4::Identity()
+			};
+
+			auto CBOffset = BeginNewConstantBuffer(CB, Resources);
+			PushConstantBufferData(CB_Data, CB, Resources);
+
+			DrawList.push_back({ CBOffset, VBOffset, 6 });
+		}
+
+		float2 POS;
+		float2 WH;
+		float4 Color;
+	};
+
+	inline void AddShapes(
+		DrawList&				List, 
+		VertexBufferHandle		VertexBuffer,
+		ConstantBufferHandle	CB,
+		FrameResources&			Resources) {}
+
+
+	template<typename TY_1, typename ... TY_OTHER>
+	void AddShapes(
+		DrawList&				List, 
+		VertexBufferHandle		VertexBuffer, 
+		ConstantBufferHandle	CB,
+		FrameResources&			Resources,
+		TY_1					Shape, 
+		TY_OTHER ...			ParameterPack)
+	{
+		Shape.AddShapeDraw(List, VertexBuffer, CB, Resources);
+		AddShapes(List, VertexBuffer, CB, Resources, ParameterPack...);
+	}
+
+
+	template<typename ... TY_OTHER>
+	void DrawShapes(FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, iAllocator* Memory, TY_OTHER ... ARGS)
+	{
+		struct DrawRect
+		{
+			FrameResourceHandle		BackBuffer;
+			VertexBufferHandle		VertexBuffer;
+			ConstantBufferHandle	ConstantBuffer;
+			DrawList				Draws;
+		};
+
+
+		auto& Pass = Graph.AddNode<DrawRect>(GetCRCGUID(PRESENT),
+			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
+		{
+			// Single Thread Section
+			// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
+			// for thread safety
+
+			Data.BackBuffer		= Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+			Data.VertexBuffer	= PushBuffer;
+			Data.ConstantBuffer = CB;
+			Data.Draws			= DrawList(Memory);
+
+			AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, ARGS...);
+		},
+			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
+		{
+			// Multithreaded Section
+
+			D3D12_RECT Rects{
+				(LONG)(0),
+				(LONG)(0),
+				(LONG)(1920),
+				(LONG)(1080),
+			};
+
+			Ctx->SetViewports({ { 0, 0, 1920, 1080, 0, 1 } });
+			Ctx->SetScissorRects({ Rects });
+			Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, false);
+
+			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+			Ctx->SetPipelineState(Resources.GetPipelineState(EPIPELINESTATES::Draw_PSO));
+			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+			Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
+
+			for (auto D : Data.Draws)
+			{
+				Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
+				Ctx->Draw(D.VertexCount, D.VertexBufferOffset);
+			}
+		});
+	} 
 
 
 }	/************************************************************************************************/
