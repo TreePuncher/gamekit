@@ -735,7 +735,7 @@ namespace FlexKit
 		ComponentHandle CreateCamera(float AspectRatio, float Near, float Far, NodeHandle Node = NodeHandle(-1), bool Invert = true)
 		{
 			Camera NewCamera;
-			InitiateCamera(*Nodes, &NewCamera, AspectRatio, Near, Far, Invert);
+			InitiateCamera(*Nodes, &NewCamera, AspectRatio, Near, Far, false);
 
 			if (Node != InvalidComponentHandle) {
 				//Nodes->ReleaseHandle(NewCamera.Node);

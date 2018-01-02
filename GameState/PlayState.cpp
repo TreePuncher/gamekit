@@ -73,11 +73,11 @@ PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
 			Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
 			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
-			CreateOrbitCamera(OrbitCameras, &Framework->Engine->Cameras, 10000.0f));
+			CreateOrbitCamera(OrbitCameras, &Framework->Engine->Cameras, 100.0f));
 
-	SetWorldPosition(Player, { 0, 30, 50 });
+	SetWorldPosition(Player, { 0, 15, 60 });
 	OffsetYawNode	(Player, { 0.0f, 5, 0.0f });
-	SetCameraOffset	(Player, {0, 30, 30});
+	SetCameraOffset	(Player, {0, 30, 60});
 
 
 	InitiateGameObject(	FloorObject,
@@ -160,7 +160,7 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	//ThisState->Model.PlayerInputs[0].MouseInput		= { HorizontalMouseMovement, VerticalMouseMovement };
 	//ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
 
-	//Input.Update(dT, Framework->MouseState, Framework );
+	Input.Update(dT, Framework->MouseState, Framework );
 	//Yaw(Player, dT * Framework->MouseState.Normalized_dPos[0]);
 
 	double T = Framework->TimeRunning;
@@ -173,7 +173,7 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	
 	//Translate(ThisState->Player, float3{ 0, 100, 0 } * dT);
 	
-	const float MoveRate = 100;
+	const float MoveRate = 10;
 
 
 	//SetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node, CameraPOS);
@@ -205,7 +205,7 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 
 	//Translate(Player, dT * float3{0, -98.0f, 0});
 	*/
-	Yaw(Player, pi * dT);
+	//Yaw(Player, pi * dT/ 2);
 
 	OrbitCameras.Update(dT);
 	Physics.UpdateSystem(dT);
@@ -353,11 +353,11 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
 	DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, Core->GetTempMemory(),
-		RectangleShape	({0.1f, 0.1f}, { 0.8f, 0.8f }, float4(0.0f, 0.0f, 1.0f, 0.0f)),
+		RectangleShape	({0.0f, 0.0f}, { 1.0f, 1.0f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
 		CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
 		CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
 
-	//Render.DefaultRender(Drawables_Solid, GetCamera_ptr(Player), Core->Nodes, FrameGraph, Core->GetTempMemory());
+	Render.DefaultRender(Drawables_Solid, GetCamera_ptr(Player), Core->Nodes, FrameGraph, Core->GetTempMemory());
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
 	return true;

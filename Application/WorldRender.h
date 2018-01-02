@@ -46,7 +46,7 @@ namespace FlexKit
 		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, GeometryTable* GT_IN) :
 			GT(GT_IN),
 			RS(RS_IN),
-			ConstantBuffer(RS->CreateConstantBuffer(64 * MEGABYTE)),
+			ConstantBuffer(RS->CreateConstantBuffer(64 * MEGABYTE, false)),
 			DepthBuffer(RS->CreateDepthBuffer({ 1920, 1080 }, true))
 		{
 			RS->RegisterPSOLoader(FORWARDDRAW, CreateForwardDrawPSO);

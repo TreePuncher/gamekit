@@ -68,7 +68,7 @@ namespace FlexKit
 
 		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
 		Depth_Desc.DepthEnable	= true;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
@@ -100,7 +100,7 @@ namespace FlexKit
 		auto DBState = RS->RenderTargets.GetState(DepthBuffer);
 		Graph.Resources.AddDepthBuffer(DepthBuffer, GetCRCGUID(DEPTHBUFFER), DBState);
 
-		ClearDepthBuffer(Graph, DepthBuffer, 0.0f);
+		ClearDepthBuffer(Graph, DepthBuffer, 1.0f);
 
 		RenderDrawabled_SimpleForward(Drawables, Camera_ptr, Nodes, Graph, Memory);
 	}

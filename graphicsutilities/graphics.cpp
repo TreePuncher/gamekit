@@ -3600,8 +3600,11 @@ namespace FlexKit
 
 	void VertexBufferStateTable::Release()
 	{
-		for (auto& B : Buffers)
-			B.Resource->Release();
+		for (auto& B : Buffers) {
+			if(B.Resource)
+				B.Resource->Release();
+			B.Resource = nullptr;
+		}
 
 		Buffers.Release();
 		UserBuffers.Release();
@@ -3625,6 +3628,7 @@ namespace FlexKit
 			if(Buffers[ResourceIdx].Resource)
 				Buffers[ResourceIdx].Resource->Release();
 
+			Buffers[ResourceIdx].Resource = nullptr;
 			FreeBuffers.push_back({0, ResourceIdx});
 		}
 	}
