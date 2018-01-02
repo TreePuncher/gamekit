@@ -24,26 +24,22 @@ namespace FlexKit
 				Resources.GetRenderTarget(Object->Handle),
 				BeforeState);
 		}	break;
+		case DRS_DEPTHBUFFERWRITE:
 		case DRS_RenderTarget:
 			Ctx->AddRenderTargetBarrier(
 				Resources.GetRenderTarget(Object->Handle),
 				BeforeState,
 				AfterState);
 			break;
+
 		case DRS_ShaderResource:
-			break;
 		case DRS_UAV:
-			break;
 		case DRS_CONSTANTBUFFER:
-			break;
 		case DRS_PREDICATE:
-			break;
 		case DRS_INDIRECTARGS:
-			break;
 		case DRS_UNKNOWN:
-			break;
 		default:
-			FK_ASSERT(0);
+			FK_ASSERT(0); // Unimplemented
 		}
 	}
 
@@ -385,6 +381,30 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::ReadDepthBuffer(uint32_t Tag)
+	{
+		FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
+		LocalInputs.push_back(FrameObjectDependency{
+			Resources->GetResourceObject(Resource),
+			nullptr,
+			Resources->GetResourceObjectState(Resource),
+			DeviceResourceState::DRS_DEPTHBUFFERWRITE });
+
+		return Resource;
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(uint32_t Tag)
+	{
+		return AddWriteableResource(Tag, DeviceResourceState::DRS_DEPTHBUFFERWRITE);
+	}
+
 
 	/************************************************************************************************/
 
@@ -465,6 +485,10 @@ namespace FlexKit
 		Vector<FrameObject*> RenderTargets(Memory);
 		RenderTargets.reserve(64);
 
+		Vector<FrameObject*> DepthBuffers(Memory);
+		DepthBuffers.reserve(64);
+
+
 		for (auto& Resource : Resources.Resources)
 		{
 			if (Resource.Type == OT_RenderTarget ||
@@ -472,19 +496,37 @@ namespace FlexKit
 			{
 				RenderTargets.push_back(&Resource);
 			}
+			else if(Resource.Type == OT_DepthBuffer)
+				DepthBuffers.push_back(&Resource);
 		}
 
 		auto RS			= Resources.RenderSystem;
-		auto Table		= RS->_ReserveRTVHeap(RenderTargets.size());
-		auto TablePOS	= Table;
 
-		for (auto RT : RenderTargets)
-		{
-			auto Handle			= RT->RenderTarget.Texture;
-			auto Texture		= Resources.RenderSystem->RenderTargets[Handle];
+		{	// Push RenderTargets
+			auto Table		= RS->_ReserveRTVHeap(RenderTargets.size());
+			auto TablePOS	= Table;
 
-			RT->RenderTarget.HeapPOS = TablePOS;
-			TablePOS = PushRenderTarget(RS, &Texture, TablePOS);
+			for (auto RT : RenderTargets)
+			{
+				auto Handle			= RT->RenderTarget.Texture;
+				auto Texture		= Resources.RenderSystem->RenderTargets[Handle];
+
+				RT->RenderTarget.HeapPOS	= TablePOS;
+				TablePOS					= PushRenderTarget(RS, &Texture, TablePOS);
+			}
+		}
+		{	// Push Depth Stencils
+			auto TableDepth = RS->_ReserveDSVHeap(DepthBuffers.size());
+			auto TableDepthPOS = TableDepth;
+
+			for (auto RT : DepthBuffers)
+			{
+				auto Handle		= RT->RenderTarget.Texture;
+				auto Texture	= Resources.RenderSystem->RenderTargets[Handle];
+
+				RT->RenderTarget.HeapPOS	= TableDepthPOS;
+				TableDepthPOS				= PushDepthStencil(RS, &Texture, TableDepthPOS);
+			}
 		}
 	}
 
@@ -561,6 +603,32 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void ClearDepthBuffer(FrameGraph& Graph, TextureHandle Handle, float D)
+	{
+		struct ClearDepthBuffer
+		{
+			FrameResourceHandle DeptBuffer;
+			float				ClearDepth;
+		};
+
+		auto& Pass = Graph.AddNode<ClearDepthBuffer>(GetCRCGUID(PRESENT),
+			[=](FrameGraphNodeBuilder& Builder, ClearDepthBuffer& Data)
+			{
+				Data.DeptBuffer = Builder.WriteDepthBuffer(GetCRCGUID(DEPTHBUFFER));
+				Data.ClearDepth = D;
+			},
+			[=](const ClearDepthBuffer& Data, const FrameResources& Resources, Context* Ctx)
+			{	// do clear here
+				Ctx->ClearDepthBuffer(
+					Resources.GetRenderTargetObject(Data.DeptBuffer),
+					Data.ClearDepth);
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
 	void PresentBackBuffer(FrameGraph& Graph, RenderWindow* Window)
 	{
 		struct PassData
@@ -581,12 +649,6 @@ namespace FlexKit
 	}
 
 	
-	/************************************************************************************************/
-
-
-
-
-
 	/************************************************************************************************/
 
 

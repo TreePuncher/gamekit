@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameFramework.h"
 #include "..\Application\CameraUtilities.h"
 #include "..\Application\GameMemory.h"
+#include "..\Application\WorldRender.h"
 
 #include "Gameplay.h"
 
@@ -63,6 +64,8 @@ public:
 	PhysicsComponentSystem				Physics;
 	DrawableComponentSystem				Drawables;
 	LightComponentSystem				Lights;
+
+	WorldRender							Render;
 
 	ConstantBufferHandle		ConstantBuffer;
 	VertexBufferHandle			VertexBuffer;

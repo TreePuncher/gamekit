@@ -38,18 +38,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	ID3D12PipelineState* CreateForwardDrawPSO(RenderSystem* RS);
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* Memory, RenderSystem* RS_IN):
+		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, GeometryTable* GT_IN) :
+			GT(GT_IN),
 			RS(RS_IN),
-			ConstantBuffer(RS->CreateConstantBuffer(64 * MEGABYTE, false))
-		{}
+			ConstantBuffer(RS->CreateConstantBuffer(64 * MEGABYTE)),
+			DepthBuffer(RS->CreateDepthBuffer({ 1920, 1080 }, true))
+		{
+			RS->RegisterPSOLoader(FORWARDDRAW, CreateForwardDrawPSO);
+			RS->QueuePSOLoad(FORWARDDRAW);
+		}
 
 		~WorldRender()
 		{
 			RS->ReleaseCB(ConstantBuffer);
 		}
+
+		void DefaultRender(PVS& Objects, Camera* Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
+
+		void RenderDrawabled_SimpleForward(PVS& Objects, Camera* Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
 
 		void ClearGBuffer				(FrameGraph& Graph);
 		void RenderDrawabledPBR_Main	(PVS& Objects, FrameGraph& Graph);
@@ -58,8 +69,11 @@ namespace FlexKit
 		void ShadePBRPass				(FrameGraph& Graph);
 	private:
 		RenderSystem*			RS;
+		GeometryTable*			GT;
 		ConstantBufferHandle	ConstantBuffer;
 		uint2					WH;// Output Size
+
+		TextureHandle		DepthBuffer;
 
 
 		// GBuffer

@@ -100,13 +100,20 @@ namespace FlexKit
 		for (auto& D : this->Drawables)
 		{
 			ReleaseNode(*SN, D.Node);
+			ReleaseMesh(RS, GT, D.MeshHandle);
 
 			DelayReleaseDrawable(RS, &D);
+			D.MeshHandle;
+			
 		}
 
 		SceneManagement.Release();
-
-		Drawables.clear();
+		SpotLightCasters.Release();
+		Drawables.Release();
+		DrawableVisibility.Release();
+		DrawableRayVisibility.Release();
+		DrawableHandles.Release();
+		TaggedJoints.Release();
 	}
 
 
@@ -588,7 +595,12 @@ namespace FlexKit
 
 	void GetGraphicScenePVS(GraphicScene* SM, Camera* C, PVS* __restrict out, PVS* __restrict T_out)
 	{
-		FK_ASSERT(out != T_out);
+		FK_ASSERT(out   != T_out);
+		FK_ASSERT(C     != nullptr);
+		FK_ASSERT(SM    != nullptr);
+		FK_ASSERT(out   != nullptr);
+		FK_ASSERT(T_out != nullptr);
+
 
 		Quaternion Q = FlexKit::GetOrientation(*SM->SN, C->Node);
 		auto F = GetFrustum(C, GetPositionW(*SM->SN, C->Node), Q);
@@ -627,8 +639,8 @@ namespace FlexKit
 		UpdatePointLightBuffer	(*SM->RS, *SM->SN, &SM->PLights, SM->TempMemory);
 		UpdateSpotLightBuffer	(*SM->RS, *SM->SN, &SM->SPLights, SM->TempMemory);
 
-		for (auto& Caster : SM->SpotLightCasters)
-			UploadCamera(SM->RS, *SM->SN, &Caster.C, 0, 0, 0.0f);
+		//for (auto& Caster : SM->SpotLightCasters)
+		//	UploadCamera(SM->RS, *SM->SN, &Caster.C, 0, 0, 0.0f);
 
 		for (PVEntry d : *Dawables)
 			UpdateDrawable(SM->RS, *SM->SN, d);

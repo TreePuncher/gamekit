@@ -1117,6 +1117,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::ClearDepthBuffer(TextureObject Texture, float ClearDepth)
+	{
+		UpdateResourceStates();
+		DeviceContext->ClearDepthStencilView(Texture.GPUHandle, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
+
+		RS->RenderTargets.MarkRTUsed(Texture.CPUHandle);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::ClearRenderTarget(TextureObject Texture, float4 ClearColor)
 	{
 		UpdateResourceStates();
@@ -1287,8 +1299,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDrawRectStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS", "DrawRect_VS", "vs_5_0",	"assets\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect", "DrawRect", "ps_5_0",			"assets\\pshader.hlsl");
+		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS", "vs_5_0",	"assets\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect", "ps_5_0",		"assets\\pshader.hlsl");
 
 		FINALLY
 			
@@ -2126,6 +2138,22 @@ namespace FlexKit
 		return VertexBuffers.CreateVertexBuffer(BufferSize, GPUResident, this);
 	}
 
+
+	/************************************************************************************************/
+
+
+	TextureHandle RenderSystem::CreateDepthBuffer(uint2 WH, bool UseFloat)
+	{
+		Texture2D_Desc Desc(WH[1], WH[0], FORMAT_2D::D32_FLOAT, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL);
+
+		ID3D12Resource* Resources[] = { CreateDepthBufferResource(this, &Desc, UseFloat), CreateDepthBufferResource(this, &Desc, UseFloat), CreateDepthBufferResource(this, &Desc, UseFloat) };
+
+		auto DepthBuffer = RenderTargets.AddResource(Desc, Resources, 3, DRS_DEPTHBUFFERWRITE, TF_RenderTarget);
+
+		return DepthBuffer;
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -2458,8 +2486,8 @@ namespace FlexKit
 
 			FK_ASSERT(buffer, "Failed to Create Back Buffer!");
 			SETDEBUGNAME(buffer, "BackBuffer");
-			auto Handle = AddRenderTarget(RS, Desc, buffer, GetCRCGUID(BACKBUFFER), TF_BackBuffer | TF_RenderTarget);
-			RS->RenderTargets.SetState(Handle, DRS_Present);
+
+			auto Handle = RS->RenderTargets.AddResource(Desc, &buffer, 1, DeviceResourceState::DRS_Present, TF_BackBuffer);
 			NewWindow.RenderTargets[I] = Handle;
 		}
 
@@ -3587,6 +3615,18 @@ namespace FlexKit
 
 	void VertexBufferStateTable::ReleaseVertexBuffer(VertexBufferHandle Handle)
 	{
+		// TODO: buffer Recycling
+		auto UserIdx		= Handles[Handle];
+
+		for (size_t I = 0; I < 3; ++I)
+		{
+			auto ResourceIdx = UserBuffers[UserIdx].Buffers[I];
+
+			if(Buffers[ResourceIdx].Resource)
+				Buffers[ResourceIdx].Resource->Release();
+
+			FreeBuffers.push_back({0, ResourceIdx});
+		}
 	}
 
 
@@ -3595,36 +3635,53 @@ namespace FlexKit
 
 	void TextureStateTable::Release()
 	{
-		for (size_t I = 0; I < Textures.size(); ++I)
+		for (size_t I = 0; I < UserEntries.size(); ++I)
 		{
-			auto T = Textures[I];
-			auto F = Flags[I];
+			auto& T = UserEntries[I];
+			auto F  = T.Flags;
 
-			if ( T && !(F & TF_BackBuffer))
-				T->Release();
-
-			T = nullptr;
+			if ( !(F & TF_BackBuffer))
+				Resources[T.ResourceIdx].Release();
 		}
 
-		Textures.Release();
-		WHs.Release();
-		Formats.Release();
-		States.Release();
+		UserEntries.Release();
+		Resources.Release();
+		Handles.Clear();
 	}
 
 
 	/************************************************************************************************/
 
 
-	TextureHandle TextureStateTable::AddResource(Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Flags_IN)
+	TextureHandle TextureStateTable::AddResource(
+		Texture2D_Desc&		Desc, 
+		ID3D12Resource**	Resources_IN, 
+		uint32_t			ResourceCount, 
+		DeviceResourceState InitialState,
+		uint32_t			Flags_IN)
 	{
-		auto Handle = Handles.GetNewHandle();
-		Handles[Handle] = Textures.size();
+		auto UserIdx     = UserEntries.size();
+		auto ResourceIdx = Resources.size();
+		auto Handle		 = Handles.GetNewHandle();
+		Handles[Handle]  = UserIdx;
 
-		Textures.push_back(Resource);
-		WHs.push_back({ Desc.Width, Desc.Height });
-		Formats.push_back(TextureFormat2DXGIFormat(Desc.Format));
-		Flags.push_back(Flags_IN);
+		UserEntries.push_back({ResourceIdx, Flags_IN });
+
+		ResourceEntry NewEntry = 
+		{	
+			ResourceCount,
+			0,
+			{ nullptr, nullptr, nullptr },
+			{ 0, 0, 0 },
+			{ InitialState, InitialState , InitialState },
+			Desc.GetFormat(),
+			{ Desc.Width, Desc.Height },
+		};
+
+		for (size_t I = 0; I < ResourceCount; ++I)
+			NewEntry.Resources[I] = Resources_IN[I];
+
+		Resources.push_back(NewEntry);
 
 		return Handle;
 	}
@@ -3636,9 +3693,9 @@ namespace FlexKit
 	Texture2D TextureStateTable::operator[](TextureHandle Handle)
 	{
 		auto Idx	= Handles[Handle];
-		auto Res	= Textures[Idx];
-		auto WH		= WHs[Idx];
-		auto Format = Formats[Idx];
+		auto Res	= Resources[UserEntries[Idx].ResourceIdx].GetResource();
+		auto WH		= Resources[UserEntries[Idx].ResourceIdx].WH;
+		auto Format = Resources[UserEntries[Idx].ResourceIdx].Format;
 
 		return { Res, WH, Format };
 	}
@@ -3649,9 +3706,80 @@ namespace FlexKit
 
 	void TextureStateTable::SetState(TextureHandle Handle, DeviceResourceState State)
 	{
-		States[Handles[Handle]] = State;
+		auto UserIdx = Handles[Handle];
+		auto ResIdx  = UserEntries[UserIdx].ResourceIdx;
+
+		Resources[ResIdx].SetState(State);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStateTable::MarkRTUsed(TextureHandle Handle)
+	{
+		auto UserIdx = Handles[Handle];
+		UserEntries[UserIdx].Flags |= TF_INUSE;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStateTable::LockUntil(size_t FrameID)
+	{
+		for (size_t I = 0; I < UserEntries.size(); ++I)
+		{
+			auto& UserEntry = UserEntries[I];
+			auto Flags = UserEntry.Flags;
+
+			if (Flags & TF_INUSE && !(Flags & TF_BackBuffer))
+			{
+				Resources[UserEntry.ResourceIdx].SetFrameLock(FrameID);
+				Resources[UserEntry.ResourceIdx].IncreaseIdx();
+			}
+		}
 	}
 	
+
+	/************************************************************************************************/
+
+
+	void TextureStateTable::ResourceEntry::Release()
+	{
+		for (auto& R : Resources)
+		{
+			if (R)
+				R->Release();
+
+			R = nullptr;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	DeviceResourceState TextureStateTable::GetState(TextureHandle Handle)
+	{
+		auto Idx			= Handles[Handle];
+		auto ResourceIdx	= UserEntries[Idx].ResourceIdx;
+
+		return Resources[ResourceIdx].States[Resources[ResourceIdx].CurrentResource];
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource*		TextureStateTable::GetResource(TextureHandle Handle)
+	{
+		auto Idx			= Handles[Handle];
+		auto ResourceIdx	= UserEntries[Idx].ResourceIdx;
+
+		return Resources[ResourceIdx].Resources[Resources[ResourceIdx].CurrentResource];
+	}
+
 
 	/************************************************************************************************/
 
@@ -3713,10 +3841,11 @@ namespace FlexKit
 		if (GT->Handles[TMHandle] == INVALIDMESHHANDLE)
 			return;// Already Released
 
-		size_t Index = GT->Handles[TMHandle];
-		auto Count = --GT->ReferenceCounts[Index];
+		size_t Index	= GT->Handles[TMHandle];
+		auto Count		= --GT->ReferenceCounts[Index];
 
-		if (Count == 0) {
+		if (Count == 0) 
+		{
 			auto G = GetMesh(GT, TMHandle);
 
 			DelayedReleaseTriMesh(RS, G);
@@ -3875,6 +4004,14 @@ namespace FlexKit
 
 		return Resource;
 	}
+
+
+	/************************************************************************************************/
+
+
+	//TextureHandle RenderSystem::_AddBackBuffer(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag)
+	//{
+	//}
 
 
 	/************************************************************************************************/
@@ -4173,6 +4310,7 @@ namespace FlexKit
 
 		VertexBuffers.LockUntil(GetCurrentFrame() + 2);
 		ConstantBuffers.LockUntil(GetCurrentFrame() + 2);
+		RenderTargets.LockUntil(GetCurrentFrame() + 2);
 	}
 
 
@@ -5250,7 +5388,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadCamera(RenderSystem* RS, SceneNodes* Nodes, Camera* camera, int PointLightCount, int SpotLightCount, double dt, uint2 HW)
+	Camera::BufferLayout GetCameraConstantBuffer(SceneNodes* Nodes, Camera* camera, double dt, uint2 HW)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixTranspose;
@@ -5272,7 +5410,7 @@ namespace FlexKit
 		NewData.WPOS[1]         = WT.r[1].m128_f32[3];
 		NewData.WPOS[2]         = WT.r[2].m128_f32[3];
 		NewData.WPOS[3]         = 0;
-		NewData.PointLightCount = PointLightCount;
+		//NewData.PointLightCount = PointLightCount;
 		NewData.SpotLightCount  = 0;
 		NewData.WindowWidth		= HW[0];
 		NewData.WindowHeight	= HW[1];
@@ -5290,9 +5428,7 @@ namespace FlexKit
 		NewData.WSBottomLeft_Near	= CameraPoints.NBL;
 		NewData.WSBottomRight_Near	= CameraPoints.NBR;
 
-		
-		//UpdateResourceByTemp(RS, &camera->Buffer, &NewData, Camera::BufferLayout::GetBufferSize(), 1,
-		//	D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		return NewData;
 	}
 
 
@@ -6169,6 +6305,23 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	}
 
 
+	/************************************************************************************************/
+
+
+	Drawable::VConsantsLayout GetDrawableConstantBuffer(SceneNodes* Nodes, Drawable* E)
+	{
+		DirectX::XMMATRIX WT;
+		FlexKit::GetWT(Nodes, E->Node, &WT);
+
+		Drawable::VConsantsLayout	Constants;
+
+		Constants.MP.Albedo	= E->MatProperties.Albedo;
+		Constants.MP.Spec	= E->MatProperties.Spec;
+		Constants.Transform	= DirectX::XMMatrixTranspose(WT);
+
+		return Constants;
+	}
+
 
 	/************************************************************************************************/
 
@@ -6276,17 +6429,17 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 	void ReleaseDrawable(Drawable* E)
 	{
+		FK_ASSERT(E);
+
 		if (E->PoseState)
 			Release(E->PoseState);
 	}
 	
 
-	void DelayReleaseDrawable(RenderSystem* RS, Drawable* E)
+	void DelayReleaseDrawable(RenderSystem* RS, Drawable* D)
 	{
-		if (E) {
-		}
-		if (E->PoseState) {
-			DelayedRelease(RS, E->PoseState);
+		if (D->PoseState) {
+			DelayedRelease(RS, D->PoseState);
 		}
 	}
 
@@ -7163,27 +7316,4 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 
 
 	/************************************************************************************************/
-
-
-	TextureHandle AddRenderTarget(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag, uint32_t Flags)
-	{
-		FK_ASSERT(Resource);
-
-#ifdef _DEBUG
-		cout << "Adding RenderTarget: " << Resource << "\n";
-#endif
-
-		return RS->RenderTargets.AddResource(Desc, Resource, Flags);
-	}
-
-
-	/************************************************************************************************/
-
-
-	TextureHandle CreateRenderTarget(RenderSystem* RS, Texture2D_Desc& Desc, uint32_t Tag)
-	{
-		return TextureHandle(-1);
-	}
-
-
 }//	Namespace FlexKit

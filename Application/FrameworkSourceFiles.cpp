@@ -30,3 +30,4 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameUtilities.cpp"
 #include "..\Application\InputComponent.cpp"
 #include "..\Application\NetworkUtilities.cpp"
+#include "..\Application\WorldRender.cpp"

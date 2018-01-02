@@ -54,6 +54,7 @@ namespace FlexKit
 	enum FrameObjectResourceType
 	{
 		OT_BackBuffer,
+		OT_DepthBuffer,
 		OT_RenderTarget,
 		OT_ConstantBuffer,
 		OT_PVS,
@@ -130,6 +131,17 @@ namespace FlexKit
 
 			return RenderTarget;
 		}
+
+		static FrameObject DepthBufferObject(uint32_t Tag, TextureHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
+		{
+			FrameObject RenderTarget;
+			RenderTarget.State                = InitialState;
+			RenderTarget.Type                 = OT_DepthBuffer;
+			RenderTarget.Tag                  = Tag;
+			RenderTarget.RenderTarget.Texture = Handle;
+
+			return RenderTarget;
+		}
 	};
 
 
@@ -157,10 +169,19 @@ namespace FlexKit
 		SpotLightBuffer*	SpotLights;
 		//
 
+
 		void AddBackBuffer(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
 		{
 			Resources.push_back(
 				FrameObject::BackBufferObject(Tag, Handle, InitialState));
+
+			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+		}
+
+		void AddDepthBuffer(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
+		{
+			Resources.push_back(
+				FrameObject::DepthBufferObject(Tag, Handle, InitialState));
 
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
@@ -215,7 +236,8 @@ namespace FlexKit
 					return (
 						LHS.Tag == Tag && 
 						(	LHS.Type == OT_RenderTarget || 
-							Tag && LHS.Type == OT_BackBuffer));	
+							LHS.Type == OT_BackBuffer	|| 
+							LHS.Type == OT_DepthBuffer ));	
 				});
 
 			if (res != Resources.end())
@@ -494,6 +516,10 @@ namespace FlexKit
 		FrameResourceHandle	ReadBackBuffer		(uint32_t Tag);
 		FrameResourceHandle	WriteBackBuffer		(uint32_t Tag);
 
+		FrameResourceHandle	ReadDepthBuffer		(uint32_t Tag);
+		FrameResourceHandle	WriteDepthBuffer	(uint32_t Tag);
+
+
 	private:
 		FrameResourceHandle AddReadableResource		(uint32_t Tag, DeviceResourceState State);
 		FrameResourceHandle AddWriteableResource	(uint32_t Tag, DeviceResourceState State);
@@ -574,6 +600,7 @@ namespace FlexKit
 		}
 
 		void AddRenderTarget	(TextureHandle Texture);
+
 		void ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Context& Context);
 		
 		void UpdateFrameGraph	(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp);// 
@@ -604,6 +631,7 @@ namespace FlexKit
 	typedef Vector<Rectangle> RectangleList;
 
 	void ClearBackBuffer	(FrameGraph& Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
+	void ClearDepthBuffer	(FrameGraph& Graph, TextureHandle Handle, float D);
 	void PresentBackBuffer	(FrameGraph& Graph, RenderWindow* Window);
 
 
@@ -625,8 +653,16 @@ namespace FlexKit
 		size_t ConstantBufferOffset;
 		size_t VertexBufferOffset;
 		size_t VertexCount;
+
+		enum class RenderMode
+		{
+			Line,
+			Triangle,
+			Textured,
+		}Mode = RenderMode::Triangle;
 	};
 
+	typedef Vector<ShapeDraw> DrawList;
 
 	struct Constants
 	{
@@ -634,8 +670,6 @@ namespace FlexKit
 		float4		Specular;
 		float4x4	WT;
 	};
-
-	typedef Vector<ShapeDraw> DrawList;
 
 
 	class ShapeProtoType
@@ -674,12 +708,12 @@ namespace FlexKit
 			float Step = 2 * pi / Divisions;
 			for (size_t I = 0; I < Divisions; ++I)
 			{
-				float2 V1 = { POS.x + R * cos(Step * I),		POS.y - AspectRatio * (R * sin(Step * I)) };
-				float2 V2 = { POS.x + R * cos(Step * (I + 1)),	POS.y - AspectRatio * (R * sin(Step * (I + 1)))};
+				float2 V1 = { POS.x + R * cos(Step * (I + 1)),	POS.y - AspectRatio * (R * sin(Step * (I + 1)))};
+				float2 V2 = { POS.x + R * cos(Step * I),		POS.y - AspectRatio * (R * sin(Step * I)) };
 
 				PushVertex(ShapeVert{ Position2SS(POS),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
-				PushVertex(ShapeVert{ Position2SS(V2),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
-				PushVertex(ShapeVert{ Position2SS(V1),	{ 1.0f, 0.0f }, Color }, PushBuffer, Resources);
+				PushVertex(ShapeVert{ Position2SS(V1),	{ 0.0f, 1.0f }, Color }, PushBuffer, Resources);
+				PushVertex(ShapeVert{ Position2SS(V2),	{ 1.0f, 0.0f }, Color }, PushBuffer, Resources);
 			}
 
 			Constants CB_Data = {
@@ -772,7 +806,7 @@ namespace FlexKit
 
 
 	template<typename ... TY_OTHER>
-	void DrawShapes(FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, iAllocator* Memory, TY_OTHER ... ARGS)
+	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, iAllocator* Memory, TY_OTHER ... ARGS)
 	{
 		struct DrawRect
 		{
@@ -799,28 +833,36 @@ namespace FlexKit
 		},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
 		{
-			// Multithreaded Section
-
-			D3D12_RECT Rects{
-				(LONG)(0),
-				(LONG)(0),
-				(LONG)(1920),
-				(LONG)(1080),
-			};
+			// Multi-threadable Section
 
 			Ctx->SetViewports({ { 0, 0, 1920, 1080, 0, 1 } });
-			Ctx->SetScissorRects({ Rects });
+			Ctx->SetScissorRects({ {0,0,1920,1080} });
 			Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, false);
 
 			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-			Ctx->SetPipelineState(Resources.GetPipelineState(EPIPELINESTATES::Draw_PSO));
+			Ctx->SetPipelineState(Resources.GetPipelineState(State));
 			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 			Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
 
+			ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
 			for (auto D : Data.Draws)
 			{
+				switch (D.Mode) {
+					case ShapeDraw::RenderMode::Line:
+					{
+					}	break;
+					case ShapeDraw::RenderMode::Triangle:
+					{
+					}	break;
+					case ShapeDraw::RenderMode::Textured:
+					{
+					}	break;
+				}
+
 				Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
 				Ctx->Draw(D.VertexCount, D.VertexBufferOffset);
+
+				PreviousMode = D.Mode;
 			}
 		});
 	} 

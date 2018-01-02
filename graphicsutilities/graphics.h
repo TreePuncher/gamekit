@@ -1170,21 +1170,25 @@ namespace FlexKit
 
 	enum DeviceResourceState
 	{
-		DRS_Free			= 0x0003, // Forces any type of transition
-		DRS_Read			= 0x0001,
-		DRS_Retire			= 0x1000,
+		DRS_Free			 = 0x0003, // Forces any type of transition
+		DRS_Read			 = 0x0001,
+		DRS_Retire			 = 0x1000,
 
-		DRS_Write			= 0x0002,
-		DRS_Present			= 0x1005, // Implied Read and Retire
-		DRS_RenderTarget	= 0x0006, // Implied write
-		DRS_ShaderResource	= 0x0009, // Implied Read
-		DRS_UAV				= 0x000A, // Implied Write
-		DRS_VERTEXBUFFER	= 0x000C, // Implied Read
-		DRS_CONSTANTBUFFER	= 0x000C, // Implied Read
-		DRS_PREDICATE		= 0x0015, // Implied Read
-		DRS_INDIRECTARGS	= 0x0019, // Implied Read
-		DRS_UNKNOWN			= 0x0020, 
-		DRS_ERROR			= 0xFFFF 
+		DRS_Write			 = 0x0002,
+		DRS_Present			 = 0x1005, // Implied Read and Retire
+		DRS_RenderTarget	 = 0x0006, // Implied write
+		DRS_ShaderResource	 = 0x0009, // Implied Read
+		DRS_UAV				 = 0x000A, // Implied Write
+		DRS_VERTEXBUFFER	 = 0x000C, // Implied Read
+		DRS_CONSTANTBUFFER	 = 0x000C, // Implied Read
+		DRS_DEPTHBUFFER		 = 0x0030,
+		DRS_DEPTHBUFFERREAD  = 0x0030 | DRS_Read,
+		DRS_DEPTHBUFFERWRITE = 0x0030 | DRS_Write,
+
+		DRS_PREDICATE		 = 0x0015, // Implied Read
+		DRS_INDIRECTARGS	 = 0x0019, // Implied Read
+		DRS_UNKNOWN			 = 0x0020, 
+		DRS_ERROR			 = 0xFFFF 
 	};
 
 
@@ -1518,6 +1522,7 @@ namespace FlexKit
 		void AddRenderTargetBarrier	(TextureHandle Handle, DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
 		void AddPresentBarrier		(TextureHandle Handle, DeviceResourceState Before);
 
+		void ClearDepthBuffer		(TextureObject Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
 		void ClearRenderTarget		(TextureObject Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
 
 		void SetRootSignature		(RootSignature& RS);
@@ -1622,6 +1627,7 @@ namespace FlexKit
 		VertexBufferStateTable(iAllocator* memory) :
 			Buffers(memory),
 			Handles(memory, GetTypeGUID(VertexBuffer)),
+			FreeBuffers(memory),
 			UserBuffers(memory)
 		{}
 
@@ -1806,27 +1812,21 @@ namespace FlexKit
 
 	enum TextureFlags
 	{
-		TF_None			= 0x00,
-		TF_RenderTarget	= 0x01,
-		TF_BackBuffer	= 0x02,
+		TF_NONE			= 0x00,
+		TF_INUSE		= 0x01,
+		TF_RenderTarget = 0x02,
+		TF_BackBuffer	= 0x04,
+		TF_DepthBuffer	= 0x08,
 	};
 
 	class TextureStateTable
 	{
 	public:
 		TextureStateTable(iAllocator* memory) :
-			Formats	{memory},
-			Textures{memory},
-			States	{memory},
-			Handles {memory, 0},
-			WHs		{memory},
-			Flags	{memory}
+			Handles		{memory},
+			UserEntries	{memory},
+			Resources	{memory}
 		{
-			Formats.reserve(1024);
-			States.reserve(1024);
-			Textures.reserve(1024);
-			WHs.reserve(1024);
-			Flags.reserve(1024);
 		}
 
 
@@ -1843,19 +1843,43 @@ namespace FlexKit
 
 		Texture2D		operator[]		(TextureHandle Handle);
 
-		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Flags);
+		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource** Resource, uint32_t ResourceCount, DeviceResourceState InitialState, uint32_t Flags_IN = 0);
 		void			SetState		(TextureHandle Handle, DeviceResourceState State);
 
-		DeviceResourceState GetState	(TextureHandle Handle) { return States[Handles[Handle]]; }
-		ID3D12Resource*		GetResource	(TextureHandle Handle) { return Textures[Handles[Handle]]; }
+		void			MarkRTUsed		(TextureHandle Handle);
+
+		DeviceResourceState GetState	(TextureHandle Handle);
+		ID3D12Resource*		GetResource	(TextureHandle Handle);
+
+		void LockUntil(size_t FrameID);
 
 	private:
-		Vector<ID3D12Resource*>			Textures;
-		Vector<uint2>					WHs;
-		Vector<DXGI_FORMAT>				Formats;
-		Vector<DeviceResourceState>		States; // Current State
-		Vector<uint32_t>				Flags; // Current State
 
+		struct UserEntry
+		{
+			size_t				ResourceIdx;
+			uint32_t			Flags;
+		};
+
+		struct ResourceEntry
+		{
+			void			Release();
+			void			SetState(DeviceResourceState State) { States[CurrentResource]		= State;	}
+			void			SetFrameLock(size_t FrameID)		{ FrameLocks[CurrentResource]	= FrameID;	}
+			ID3D12Resource* GetResource()						{ return Resources[CurrentResource];		}
+			void			IncreaseIdx()						{ CurrentResource = ++CurrentResource % 3;	}
+
+			size_t				ResourceCount;
+			size_t				CurrentResource;
+			ID3D12Resource*		Resources[3];
+			size_t				FrameLocks[3];
+			DeviceResourceState	States[3];
+			DXGI_FORMAT			Format;
+			uint2				WH;
+		};
+			
+		Vector<UserEntry>								UserEntries;
+		Vector<ResourceEntry>							Resources;
 		HandleUtilities::HandleTable<TextureHandle, 32>	Handles;
 	};
 
@@ -1931,6 +1955,9 @@ namespace FlexKit
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer	(size_t BufferSize, bool GPUResident = true);
+		TextureHandle			CreateDepthBuffer	(uint2 WH, bool UseFloat = false);
+
+
 
 		void ReleaseCB(ConstantBufferHandle);
 		void ReleaseVB(VertexBufferHandle);
@@ -1946,6 +1973,7 @@ namespace FlexKit
 
 
 		// Internal
+		//TextureHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
 		static ConstantBuffer	_CreateConstantBufferResource		(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource	(const size_t ResourceSize, bool GPUResident = true);
 
@@ -3026,12 +3054,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	
-	FLEXKITAPI bool	CreateRenderWindow	( RenderSystem*, RenderWindowDesc* desc_in, RenderWindow* );
-	FLEXKITAPI bool	ResizeRenderWindow	( RenderSystem*, RenderWindow* Window, uint2 HW );
-	FLEXKITAPI void	SetInputWIndow		( RenderWindow* );
-	FLEXKITAPI void	UpdateInput			( void );
-	FLEXKITAPI void	UpdateCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, double dt);
-	FLEXKITAPI void	UploadCamera		( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, int PointLightCount, int SpotLightCount, double dt, uint2 HW = {1u, 1u});
+	FLEXKITAPI bool					CreateRenderWindow			( RenderSystem*, RenderWindowDesc* desc_in, RenderWindow* );
+	FLEXKITAPI bool					ResizeRenderWindow			( RenderSystem*, RenderWindow* Window, uint2 HW );
+	FLEXKITAPI void					SetInputWIndow				( RenderWindow* );
+	FLEXKITAPI void					UpdateInput					( void );
+	FLEXKITAPI void					UpdateCamera				( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, double dt);
+	FLEXKITAPI Camera::BufferLayout	GetCameraConstantBuffer		( SceneNodes* Nodes, Camera* camera, double dt, uint2 HW = {1u, 1u});
 
 	
 	/************************************************************************************************/
@@ -3049,7 +3077,6 @@ namespace FlexKit
 	FLEXKITAPI VertexBufferView*	CreateVertexBufferView		( byte*, size_t );
 	FLEXKITAPI QueryResource		CreateSOQuery				( RenderSystem* RS, D3D12_QUERY_HEAP_TYPE Type = D3D12_QUERY_HEAP_TYPE_SO_STATISTICS );
 
-	FLEXKITAPI TextureHandle AddRenderTarget	(RenderSystem* RS, Texture2D_Desc& Desc, ID3D12Resource* Resource, uint32_t Tag, uint32_t Flags = TF_None);
 	FLEXKITAPI TextureHandle CreateRenderTarget	(RenderSystem* RS, Texture2D_Desc& Desc, uint32_t Tag);
 
 	struct SubResourceUpload_Desc
@@ -3308,7 +3335,9 @@ namespace FlexKit
 	FLEXKITAPI void CreateDrawable		( Drawable* e,	DrawableDesc& desc );
 
 	FLEXKITAPI bool LoadObjMesh			( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
-	FLEXKITAPI void UpdateDrawable		( RenderSystem* RS, SceneNodes* Nodes, Drawable* E );
+	FLEXKITAPI void UpdateDrawable				( RenderSystem* RS, SceneNodes* Nodes, Drawable* E );
+	FLEXKITAPI Drawable::VConsantsLayout GetDrawableConstantBuffer	( SceneNodes* Nodes, Drawable* E);
+
 
 
 	/************************************************************************************************/

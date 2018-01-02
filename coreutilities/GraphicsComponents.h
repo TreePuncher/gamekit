@@ -787,6 +787,7 @@ namespace FlexKit
 		{
 			if (Handle == InvalidComponentHandle)
 				return nullptr;
+
 			return &Cameras[Handles[Handle]];
 		}
 
@@ -877,7 +878,16 @@ namespace FlexKit
 			auto Cameras = static_cast<CameraComponentSystem*>(ComponentSystem);
 			return Cameras->Nodes->GetOrientation(Cameras->GetNode(ComponentHandle));
 		}
+
+		Camera* GetCamera_ptr()
+		{
+			auto Cameras = static_cast<CameraComponentSystem*>(ComponentSystem);
+			return Cameras->GetCamera(ComponentHandle);
+		}
 	};
+
+
+	/************************************************************************************************/
 
 
 	Quaternion GetCameraOrientation(GameObjectInterface* GO)
@@ -888,6 +898,12 @@ namespace FlexKit
 			return Camera->GetOrientation();
 
 		return Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
+	}
+
+	Camera* GetCamera_ptr(GameObjectInterface* GO)
+	{
+		auto CameraComp = (CameraComponent*)FindComponent(GO, CameraComponentID);
+		return CameraComp->GetCamera_ptr();
 	}
 
 

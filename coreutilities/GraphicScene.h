@@ -99,6 +99,11 @@ namespace FlexKit
 			SceneManagement.Initiate(Memory);
 		}
 
+		~GraphicScene()
+		{
+			ClearScene();
+		}
+
 		EntityHandle CreateDrawable	();
 		void		 RemoveEntity	( EntityHandle E );
 		void		 ClearScene		();

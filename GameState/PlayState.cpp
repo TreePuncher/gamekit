@@ -38,6 +38,10 @@ PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
 	Input		(Framework),
 	TPC			(Framework, Input, Engine->Cameras),
 	OrbitCameras(Framework, Input),
+	Render		(
+		 Framework->Engine->GetTempMemory(), 
+		 Framework->Engine->RenderSystem, 
+		 Framework->Engine->Geometry),
 	Scene		(
 		 Framework->Engine->RenderSystem, 
 		&Framework->Engine->Assets, 
@@ -54,6 +58,30 @@ PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
 {
 	Framework->ActivePhysicsScene	= &Physics;
 	Framework->ActiveScene			= &Scene;
+
+	bool res = LoadScene(
+		Framework->Engine->RenderSystem, 
+		Framework->Engine->Nodes, 
+		&Framework->Engine->Assets, 
+		&Framework->Engine->Geometry, 
+		201, 
+		&Scene, 
+		Framework->Engine->GetTempMemory());
+
+	InitiateGameObject(
+		Player,
+			Physics.CreateCharacterController({0, 10, 0}, 5, 5),
+			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
+			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
+			CreateOrbitCamera(OrbitCameras, &Framework->Engine->Cameras, 10000.0f));
+
+	SetWorldPosition(Player, { 0, 30, 50 });
+	OffsetYawNode	(Player, { 0.0f, 5, 0.0f });
+	SetCameraOffset	(Player, {0, 30, 30});
+
+
+	InitiateGameObject(	FloorObject,
+		Physics.CreateStaticBoxCollider({ 1000, 3, 1000 }, { 0, -3, 0 }));
 }
 
 
@@ -91,6 +119,9 @@ bool PlayState::EventHandler(Event evt)
 		{
 			switch (evt.mData1.mKC[0])
 			{
+			case KC_R:
+				//this->Framework->Engine->RenderSystem.QueuePSOLoad(FORWARDDRAW);
+				break;
 			case KC_E:
 				Input.KeyState.Shield   = false;
 				break;
@@ -173,10 +204,12 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 #endif
 
 	//Translate(Player, dT * float3{0, -98.0f, 0});
+	*/
+	Yaw(Player, pi * dT);
+
 	OrbitCameras.Update(dT);
 	Physics.UpdateSystem(dT);
 	TPC.Update(dT);
-	*/
 	return false;
 }
 
@@ -297,7 +330,6 @@ PlayState::~PlayState()
 	TestObject.Release();
 
 	Physics.Release();
-	Scene.ClearScene();
 
 	Framework->Engine->RenderSystem.ReleaseVB(VertexBuffer);
 	Framework->Engine->RenderSystem.ReleaseCB(ConstantBuffer);
@@ -312,17 +344,20 @@ PlayState::~PlayState()
 
 bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 {
-	float4 ClearColor = Test > 20 ? float4{ 1, 1, 1, 0 } : float4{ 0, 1, 0, 0 };
-	Test = Test > 40 ? 0 : Test + 1;
+	PVS	Drawables_Solid(Core->GetTempMemory());
+	PVS	Drawables_Transparent(Core->GetTempMemory());
 
-	ClearBackBuffer		(FrameGraph, float4{1, 0, 1, 0} - ClearColor);
+	GetGraphicScenePVS(Scene, GetCamera_ptr(Player), &Drawables_Solid, &Drawables_Transparent);
+
+	ClearBackBuffer		(FrameGraph, {0.0f});
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
-	DrawShapes(FrameGraph, VertexBuffer, ConstantBuffer, Core->GetTempMemory(),
-		RectangleShape	({ 0.1f, 0.1f }, { 0.8f, 0.8f }, float4(0.4f)),
+	DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, Core->GetTempMemory(),
+		RectangleShape	({0.1f, 0.1f}, { 0.8f, 0.8f }, float4(0.0f, 0.0f, 1.0f, 0.0f)),
 		CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
 		CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
 
+	//Render.DefaultRender(Drawables_Solid, GetCamera_ptr(Player), Core->Nodes, FrameGraph, Core->GetTempMemory());
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
 	return true;
