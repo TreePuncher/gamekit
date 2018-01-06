@@ -36,9 +36,7 @@ namespace FlexKit
 		EntityHandle Out = HandleTable.GetNewHandle();
 
 		Drawable		D;
-		DrawableDesc	Desc;
 		NodeHandle N  = GetZeroedNode(*SN);
-		FlexKit::CreateDrawable(&D, Desc);
 
 		D.Node = N;
 		_PushEntity(D, Out);
@@ -58,7 +56,8 @@ namespace FlexKit
 		ReleaseNode(*SN, GetDrawable(E).Node);
 
 		auto& Drawable = GetDrawable(E);
-		ReleaseDrawable(&Drawable);
+		Drawable.Release();
+
 		ReleaseMesh(RS, GT, Drawable.MeshHandle);
 
 		Drawable.MeshHandle		 = INVALIDMESHHANDLE;
@@ -101,14 +100,9 @@ namespace FlexKit
 		{
 			ReleaseNode(*SN, D.Node);
 			ReleaseMesh(RS, GT, D.MeshHandle);
-
-			DelayReleaseDrawable(RS, &D);
-			D.MeshHandle;
-			
 		}
 
 		SceneManagement.Release();
-		SpotLightCasters.Release();
 		Drawables.Release();
 		DrawableVisibility.Release();
 		DrawableRayVisibility.Release();
@@ -437,10 +431,11 @@ namespace FlexKit
 
 	void GraphicScene::EnableShadowCasting(SpotLightHandle SpotLight)
 	{
+		FK_ASSERT(0, "UNIMPLENTED");
 		auto Light = &SPLights[0];
-		SpotLightCasters.push_back({ Camera(), SpotLight});
-		SpotLightCasters.back().C.FOV = RadToDegree(Light->t);
-		InitiateCamera(*SN, &SpotLightCasters.back().C, 1.0f, 15.0f, 100, false);
+		//SpotLightCasters.push_back({ Camera(), SpotLight});
+		//SpotLightCasters.back().C.FOV = RadToDegree(Light->t);
+		//InitiateCamera(*SN, &SpotLightCasters.back().C, 1.0f, 15.0f, 100, false);
 	}
 
 
@@ -573,10 +568,10 @@ namespace FlexKit
 
 	void UpdateShadowCasters(GraphicScene* GS)
 	{
-		for (auto& Caster : GS->SpotLightCasters)
-		{
-			UpdateCamera(GS->RS, *GS->SN, &Caster.C, 0.00f);
-		}
+		//for (auto& Caster : GS->SpotLightCasters)
+		//{
+		//	UpdateCamera(GS->RS, *GS->SN, &Caster.C, 0.00f);
+		//}
 	}
 
 
@@ -641,12 +636,6 @@ namespace FlexKit
 
 		//for (auto& Caster : SM->SpotLightCasters)
 		//	UploadCamera(SM->RS, *SM->SN, &Caster.C, 0, 0, 0.0f);
-
-		for (PVEntry d : *Dawables)
-			UpdateDrawable(SM->RS, *SM->SN, d);
-
-		for (PVEntry t : *Transparent_PVS)
-			UpdateDrawable(SM->RS, *SM->SN, t);
 	}
 
 
@@ -674,12 +663,12 @@ namespace FlexKit
 		for (auto E : SM->Drawables)
 		{
 			ReleaseMesh(SM->RS, SM->GT, E.MeshHandle);
-			ReleaseDrawable(&E);
 
 			if (E.PoseState) 
 			{
-				Release(E.PoseState);
-				Release(E.PoseState, SM->Memory);
+				FK_ASSERT(0);
+				//Release(E.PoseState);
+				//Release(E.PoseState, SM->Memory);
 				SM->Memory->_aligned_free(E.PoseState);
 				SM->Memory->_aligned_free(E.AnimationState);
 			}
@@ -839,5 +828,24 @@ namespace FlexKit
 
 	void GraphicScene::SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ FlexKit::ReleaseNode		(*SN, PLights[Handle].Position); PLights[Handle].Position = Node;	   }
 
+
+
+	
+
+
+
+	Drawable::VConsantsLayout Drawable::GetConstants(SceneNodes* Nodes)
+	{
+		DirectX::XMMATRIX WT;
+		FlexKit::GetWT(Nodes, Node, &WT);
+
+		Drawable::VConsantsLayout	Constants;
+
+		Constants.MP.Albedo = float4(0, 1, 1, 0.5f);// E->MatProperties.Albedo;
+		Constants.MP.Spec	= MatProperties.Spec;
+		Constants.Transform = DirectX::XMMatrixTranspose(WT);
+
+		return Constants;
+	}
 
 }	/************************************************************************************************/

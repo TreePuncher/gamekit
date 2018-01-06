@@ -167,7 +167,7 @@ namespace FlexKit
 
 	FLEXKITAPI inline float3 DirectionVector(float3 A, float3 B) {return float3{ B - A }.normal();}
 
-	struct Camera;
+	class Camera;
 	FLEXKITAPI Frustum GetFrustum(Camera* C, float3 Position, Quaternion Q);
 
 

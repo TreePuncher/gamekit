@@ -210,6 +210,10 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	OrbitCameras.Update(dT);
 	Physics.UpdateSystem(dT);
 	TPC.Update(dT);
+
+	//UpdateTransforms(Engine->Nodes);
+	//Engine->Cameras.Update(0.0);
+
 	return false;
 }
 
@@ -349,15 +353,15 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 
 	GetGraphicScenePVS(Scene, GetCamera_ptr(Player), &Drawables_Solid, &Drawables_Transparent);
 
-	ClearBackBuffer		(FrameGraph, {0.0f});
+	ClearBackBuffer(FrameGraph, 0.0f);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
-	DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, Core->GetTempMemory(),
-		RectangleShape	({0.0f, 0.0f}, { 1.0f, 1.0f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
-		CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
-		CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
+	//DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, Core->GetTempMemory(),
+	//	RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
+	//	CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
+	//	CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
 
-	Render.DefaultRender(Drawables_Solid, GetCamera_ptr(Player), Core->Nodes, FrameGraph, Core->GetTempMemory());
+	Render.DefaultRender(Drawables_Solid, GetCamera_ref(Player), Core->Nodes, FrameGraph, Core->GetTempMemory());
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
 	return true;

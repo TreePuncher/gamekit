@@ -334,6 +334,7 @@ namespace FlexKit
 		R8G8B8A_UINT,
 		R8G8B8A8_UINT,
 		R8G8B8A8_UNORM,
+		R16G16B16A16_UNORM,
 		R8G8_UNORM,
 		D24_UNORM_S8_UINT,
 		R32_FLOAT,
@@ -2328,73 +2329,12 @@ namespace FlexKit
 	};
 
 
-	/************************************************************************************************/
 
-
-	struct Camera
-	{
-		NodeHandle		Node;
-
-		float FOV;
-		float AspectRatio;
-		float Near;
-		float Far;
-		bool  invert;
-		float fStop;	// Future
-		float ISO;		// Future
-
-		float4x4 View;
-		float4x4 Proj;
-		float4x4 WT;	// World Transform
-		float4x4 PV;	// Projection x View
-		float4x4 IV;	// Inverse Transform
-
-		struct __declspec(align(16)) BufferLayout
-		{
-			XMMATRIX	View;
-			XMMATRIX	ViewI;
-			XMMATRIX	Proj;
-			XMMATRIX	PV;			//  Projection x View
-			XMMATRIX	PVI;		// (Projection x View)^-1
-			float4		WPOS;
-			float		MinZ;
-			float		MaxZ;
-			float		PointLightCount;
-			float		SpotLightCount;
-			float		WindowWidth;
-			float		WindowHeight;
-
-			float Padding[2];
-
-			float3  WSTopLeft;
-			float3  WSTopRight;
-			float3  WSBottomLeft;
-			float3  WSBottomRight;
-
-			float3  WSTopLeft_Near;
-			float3  WSTopRight_Near;
-			float3  WSBottomLeft_Near;
-			float3  WSBottomRight_Near;
-
-			constexpr static const size_t GetBufferSize()
-			{
-				//return sizeof(BufferLayout);	
-				return 4096;	
-			}
-
-		};
-
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct SpotLightShadowCaster
-	{
-		Camera	C;
-		size_t	LightHandle;
-	};
+	//struct SpotLightShadowCaster
+	//{
+	//	Camera	C;
+	//	size_t	LightHandle;
+	//};
 
 
 	/************************************************************************************************/
@@ -2563,10 +2503,6 @@ namespace FlexKit
 	};
 
 	FLEXKITAPI TriMeshHandle	BuildMesh	(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, TriMeshHandle guid);
-
-
-	FLEXKITAPI FustrumPoints	GetCameraFrustumPoints	(Camera* Camera, float3 XYZ, Quaternion Q);
-	FLEXKITAPI MinMax			GetCameraAABS_XZ		(FustrumPoints Points);
 
 
 	/************************************************************************************************/
@@ -2758,115 +2694,6 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseTextureSet	( TextureSet* TS, iAllocator* Memory );
 
 
-	struct DrawableDesc
-	{
-		ShaderSetHandle Material;
-	};
-
-	struct DrawableAnimationState;
-	struct DrawablePoseState;
-	 
-	struct Drawable
-	{
-		// TODO: move state flags into a single byte 
-		Drawable() 
-		{
-			DrawLast		   = false;
-			Transparent		   = false;
-			Posed			   = false; // Use Vertex Palette Skinning
-			PoseState		   = nullptr;
-			AnimationState	   = nullptr;
-			Occluder		   = INVALIDMESHHANDLE;
-		}
-		
-		NodeHandle			Node;						// 2
-		TriMeshHandle		Occluder;					// 2
-
-		//TriMesh*				Mesh;			// 8
-		TriMeshHandle			MeshHandle;		// 2
-		bool					DrawLast;		// 1
-		bool					Transparent;	// 1
-		bool					Textured;		// 1
-		bool					Posed;			// 1
-		bool					Dirty;			// 1
-		bool					Padding;		// 1
-
-		DrawablePoseState*		PoseState;		// 8 16
-		DrawableAnimationState*	AnimationState; // 8 24
-		TextureSet*				Textures;		// 8 32
-
-		struct MaterialProperties
-		{
-			MaterialProperties(float4 a, float4 m) : Albedo(a), Spec(m)
-			{
-				Albedo.w = min(a.w, 1.0f);
-				Spec.w	 = min(m.w, 1.0f);
-			}
-			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.5f), Spec(0)
-			{}
-			float4		Albedo;		// Term 4 is Roughness
-			float4		Spec;		// Metal Is first 4, Specular is rgb
-		}MatProperties;	// 32 64
-
-		Drawable&	SetAlbedo(float4 RGBA)		{ MatProperties.Albedo	= RGBA; return *this; }
-		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }
-		Drawable&	SetNode(NodeHandle H)		{ Node					= H;	return *this; }
-
-		struct VConsantsLayout
-		{
-			MaterialProperties	MP;
-			DirectX::XMMATRIX	Transform;
-		};
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct SortingField
-	{
-		unsigned int Posed			: 1;
-		unsigned int Textured		: 1;
-		unsigned int MaterialID		: 7;
-		unsigned int InvertDepth	: 1;
-		unsigned long long Depth	: 53;
-
-		operator uint64_t(){return *(uint64_t*)(this + 8);}
-
-	};
-
-	struct PVEntry
-	{
-		PVEntry() {}
-		PVEntry(Drawable* d) : OcclusionID(-1), D(d){}
-		PVEntry(Drawable* d, size_t ID, size_t sortID) : OcclusionID(ID), D(d), SortID(sortID) {}
-
-		size_t		SortID;
-		size_t		OcclusionID;
-		Drawable*	D;
-
-		operator Drawable* () {return D;}
-		operator size_t () { return SortID; }
-
-	};
-
-	
-	typedef Vector<PVEntry> PVS;
-
-	inline void PushPV(Drawable* e, PVS* pvs)
-	{
-		if (e && e->MeshHandle.to_uint() != INVALIDHANDLE)
-			pvs->push_back(PVEntry( e, 0xffffffffffffffff, 0u));
-	}
-
-	FLEXKITAPI void UpdateDrawables		(RenderSystem* RS, SceneNodes* Nodes, PVS* PVS_);
-	FLEXKITAPI void SortPVS				(SceneNodes* Nodes, PVS* PVS_, Camera* C);
-	FLEXKITAPI void SortPVSTransparent	(SceneNodes* Nodes, PVS* PVS_, Camera* C);
-
-
-	/************************************************************************************************/
-
-
 	FLEXKITAPI struct OcclusionCuller
 	{
 		/*
@@ -2900,8 +2727,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI OcclusionCuller	CreateOcclusionCuller	( RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true );
-	FLEXKITAPI void				OcclusionPass			( RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C );
+	//FLEXKITAPI OcclusionCuller	CreateOcclusionCuller	( RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true );
+	//FLEXKITAPI void				OcclusionPass			( RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C );
 
 
 	/************************************************************************************************/
@@ -3059,7 +2886,6 @@ namespace FlexKit
 	FLEXKITAPI void					SetInputWIndow				( RenderWindow* );
 	FLEXKITAPI void					UpdateInput					( void );
 	FLEXKITAPI void					UpdateCamera				( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, double dt);
-	FLEXKITAPI Camera::BufferLayout	GetCameraConstantBuffer		( SceneNodes* Nodes, Camera* camera, double dt, uint2 HW = {1u, 1u});
 
 	
 	/************************************************************************************************/
@@ -3139,8 +2965,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	FLEXKITAPI void DelayReleaseDrawable(RenderSystem* RS, Drawable* E);
 
 	FLEXKITAPI void	Release( ConstantBuffer&	);
 	FLEXKITAPI void	Release( Texture2D			);
@@ -3263,7 +3087,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	FLEXKITAPI void RenderShadowMap				( RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT );
+	//FLEXKITAPI void RenderShadowMap				( RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT );
 
 
 	FLEXKITAPI Texture2D		GetBackBufferTexture	( RenderWindow* Window );
@@ -3332,21 +3156,14 @@ namespace FlexKit
 	FLEXKITAPI void CreateCubeMesh		( RenderSystem* RS, TriMesh* r,		StackAllocator* mem, CubeDesc& desc );
 	FLEXKITAPI void CreatePlaneMesh		( RenderSystem* RS, TriMesh* out,	StackAllocator* mem, PlaneDesc desc );
 
-	FLEXKITAPI void CreateDrawable		( Drawable* e,	DrawableDesc& desc );
-
 	FLEXKITAPI bool LoadObjMesh			( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
-	FLEXKITAPI void UpdateDrawable				( RenderSystem* RS, SceneNodes* Nodes, Drawable* E );
-	FLEXKITAPI Drawable::VConsantsLayout GetDrawableConstantBuffer	( SceneNodes* Nodes, Drawable* E);
-
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void ReleaseDrawable		( Drawable*	p );
-	FLEXKITAPI void ReleaseTriMesh		( TriMesh*	p );
-
-	FLEXKITAPI void DelayedReleaseTriMesh ( RenderSystem* RS, TriMesh* T );
+	FLEXKITAPI void ReleaseTriMesh			( TriMesh*	p );
+	FLEXKITAPI void DelayedReleaseTriMesh	( RenderSystem* RS, TriMesh* T );
 
 
 	/************************************************************************************************/

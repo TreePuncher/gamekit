@@ -126,10 +126,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(DrawablePoseState* EPS)
-	{
-		EPS->Resource.Release();
-	}
 
 	void DelayedRelease(RenderSystem* RS, DrawablePoseState* EPS)
 	{

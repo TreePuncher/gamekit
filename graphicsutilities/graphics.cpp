@@ -1330,7 +1330,7 @@ namespace FlexKit
 			PSO_Desc.SampleMask            = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			PSO_Desc.NumRenderTargets      = 1;
-			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT;
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -2449,7 +2449,7 @@ namespace FlexKit
 		SwapChainDesc.BufferCount		= 3;
 		SwapChainDesc.Width				= In_Desc->width;
 		SwapChainDesc.Height			= In_Desc->height;
-		SwapChainDesc.Format			= DXGI_FORMAT_R8G8B8A8_UNORM;
+		SwapChainDesc.Format			= DXGI_FORMAT_R16G16B16A16_FLOAT;
 		SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 		SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
 		SwapChainDesc.SampleDesc.Count	= 1;
@@ -2475,7 +2475,7 @@ namespace FlexKit
 		Texture2D_Desc Desc;
 		Desc.Height	= NewWindow.VP.Height;
 		Desc.Width	= NewWindow.VP.Width;
-		Desc.Format = FORMAT_2D::R8G8B8A8_UNORM;
+		Desc.Format = FORMAT_2D::R16G16B16A16_FLOAT;
 
 		//CreateBackBuffer
 		for (size_t I = 0; I < SwapChainDesc.BufferCount; ++I)
@@ -5392,35 +5392,35 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Camera::BufferLayout GetCameraConstantBuffer(SceneNodes* Nodes, Camera* camera, double dt, uint2 HW)
+	Camera::BufferLayout Camera::GetConstants(SceneNodes* Nodes, double dt, uint2 HW)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixTranspose;
 		using DirectX::XMMatrixInverse;
 
-		DirectX::XMMATRIX WT   = Float4x4ToXMMATIRX(&camera->WT);
-		DirectX::XMMATRIX View = DirectX::XMMatrixInverse(nullptr, WT);
+		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&WT);
+		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
 
 		Camera::BufferLayout NewData;
-		NewData.Proj            = Float4x4ToXMMATIRX(&camera->Proj);
-		NewData.View			= XMMatrixTranspose(Float4x4ToXMMATIRX(&camera->View));
-		NewData.ViewI           = WT;
-		NewData.PV              = XMMatrixTranspose(XMMatrixTranspose(NewData.Proj) * View);
-		NewData.PVI             = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(NewData.Proj) * View));
-		NewData.MinZ            = camera->Near;
-		NewData.MaxZ            = camera->Far;
+		NewData.Proj            = Float4x4ToXMMATIRX(&Proj);
+		NewData.View			= XMMatrixTranspose(Float4x4ToXMMATIRX(&View));
+		NewData.ViewI           = XMWT;
+		NewData.PV              = XMMatrixTranspose(XMMatrixTranspose(NewData.Proj) * XMView);
+		NewData.PVI             = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(NewData.Proj) * XMView));
+		NewData.MinZ            = Near;
+		NewData.MaxZ            = Far;
 
-		NewData.WPOS[0]         = WT.r[0].m128_f32[3];
-		NewData.WPOS[1]         = WT.r[1].m128_f32[3];
-		NewData.WPOS[2]         = WT.r[2].m128_f32[3];
+		NewData.WPOS[0]         = XMWT.r[0].m128_f32[3];
+		NewData.WPOS[1]         = XMWT.r[1].m128_f32[3];
+		NewData.WPOS[2]         = XMWT.r[2].m128_f32[3];
 		NewData.WPOS[3]         = 0;
 		//NewData.PointLightCount = PointLightCount;
 		NewData.SpotLightCount  = 0;
 		NewData.WindowWidth		= HW[0];
 		NewData.WindowHeight	= HW[1];
 		
-		Quaternion Q = GetOrientation(Nodes, camera->Node);
-		auto CameraPoints	  = GetCameraFrustumPoints(camera, NewData.WPOS.xyz(), Q);
+		Quaternion Q			= GetOrientation(Nodes, Node);
+		auto CameraPoints		= GetFrustumPoints(NewData.WPOS.xyz(), Q);
 
 		NewData.WSTopLeft     = CameraPoints.FTL;
 		NewData.WSTopRight    = CameraPoints.FTR;
@@ -5561,72 +5561,6 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-
-
-	void DEBUG_DrawCameraFrustum(LineSet* out, Camera* C, float3 Position, Quaternion Q)
-	{
-		auto Points = GetCameraFrustumPoints(C, Position, Q);
-
-		LineSegment Line;
-		Line.AColour = WHITE;
-		Line.BColour = WHITE;
-
-		Line.A = Points.FTL;
-		Line.B = Points.FTR;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.FTL;
-		Line.B = Points.FBL;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.FTR;
-		Line.B = Points.FBR;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.FBL;
-		Line.B = Points.FBR;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.NTL;
-		Line.B = Points.NTR;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.NTL;
-		Line.B = Points.NBR;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.NTR;
-		Line.B = Points.NBL;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.NBL;
-		Line.B = Points.NBR;
-		out->LineSegments.push_back(Line);
-
-		//*****************************************
-
-		Line.A = Points.NBR;
-		Line.B = Points.FBR;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.NBL;
-		Line.B = Points.FBL;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.NTR;
-		Line.B = Points.FTL;
-		out->LineSegments.push_back(Line);
-
-		Line.A = Points.NTL;
-		Line.B = Points.FTR;
-		out->LineSegments.push_back(Line);
-	}
-
-
-	/************************************************************************************************/
-
-
 	TriMeshHandle BuildMesh(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, GUID_t guid)
 	{
 		TriMesh* Mesh = nullptr;
@@ -5671,128 +5605,6 @@ namespace FlexKit
 		return Handle;
 	}
 
-
-FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
-	{
-		// TODO(R.M): Optimize this maybe?
-		FustrumPoints Out;
-
-#if 0
-		Out.FTL.z = -C->Far;
-		Out.FTL.y = tan(C->FOV) * C->Far;
-		Out.FTL.x = -Out.FTL.y * C->AspectRatio;
-
-		Out.FTR = { -Out.FTL.x,  Out.FTL.y, Out.FTL.z };
-		Out.FBL = {  Out.FTL.x, -Out.FTL.y, Out.FTL.z };
-		Out.FBR = { -Out.FTL.x, -Out.FTL.y, Out.FTL.z };
-
-
-		Out.NTL.z = -C->Near;
-		Out.NTL.y = tan(C->FOV / 2) * C->Near;
-		Out.NTL.x = -Out.NTL.y  * C->AspectRatio;
-
-		Out.NTR = { -Out.NTL.x,  Out.NTL.y, Out.NTL.z };
-		Out.NBL = { -Out.NTL.x, -Out.NTL.y, Out.NTL.z };
-		Out.NBR = {  Out.NTL.x, -Out.NTL.y, Out.NTL.z };
-
-		Out.FTL = Position + (Q * Out.FTL);
-		Out.FTR = Position + (Q * Out.FTR);
-		Out.FBL = Position + (Q * Out.FBL);
-		Out.FBR = Position + (Q * Out.FBR);
-
-		Out.NTL = Position + (Q * Out.NTL);
-		Out.NTR = Position + (Q * Out.NTR);
-		Out.NBL = Position + (Q * Out.NBL);
-		Out.NBR = Position + (Q * Out.NBR);
-
-#else
-		float4x4 InverseView = C->IV;
-
-		// Far Field
-		{
-			float4 TopRight		(1, 1, 0.0f, 1);
-			float4 TopLeft		(-1, 1, 0.0f, 1);
-			float4 BottomRight	(1, -1, 0.0f, 1);
-			float4 BottomLeft	(-1, -1, 0.0f, 1);
-			{
-				float4 V1 = DirectX::XMVector4Transform(TopRight,	Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(TopLeft,	Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
-
-				Out.FTL	= V4;
-				Out.FTR = V3;
-
-				int x = 0;
-			}
-			{
-				float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(BottomLeft,		Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
-
-				Out.FBL = V4;
-				Out.FBR = V3;
-
-				int x = 0;
-			}
-		}
-		// Near Field
-		{
-			float4 TopRight		(1, 1, 1, 1);
-			float4 TopLeft		(-1, 1, 1, 1);
-			float4 BottomRight	(1, -1, 1, 1);
-			float4 BottomLeft	(-1, -1, 1, 1);
-			{
-				float4 V1 = DirectX::XMVector4Transform(TopRight, Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(TopLeft, Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
-
-				Out.NTL = V4;
-				Out.NTR = V3;
-			}
-			{
-				float4 V1 = DirectX::XMVector4Transform(BottomRight, Float4x4ToXMMATIRX(&InverseView));
-				float4 V2 = DirectX::XMVector4Transform(BottomLeft, Float4x4ToXMMATIRX(&InverseView));
-				float3 V3 = V1.xyz() / V1.w;
-				float3 V4 = V2.xyz() / V2.w;
-
-				Out.NBL = V4;
-				Out.NBR = V3;
-			}
-		}
-
-#endif
-		return Out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	MinMax GetCameraAABS_XZ(FustrumPoints Frustum)
-	{
-		MinMax Out;
-		Out.Max = float3(0);
-		Out.Min = float3(0);
-
-		for (auto P : Frustum.Points)
-		{
-			Out.Min.x = min(Out.Min.x, P.x);
-			Out.Min.y = min(Out.Min.y, P.y);
-			Out.Min.z = min(Out.Min.z, P.z);
-
-			Out.Max.x = max(Out.Min.x, P.x);
-			Out.Max.y = max(Out.Min.y, P.y);
-			Out.Max.z = max(Out.Min.z, P.z);
-		}
-
-		return Out;
-	}
-
-
-	/************************************************************************************************/
 	/*
 	struct PointLight {
 		float3 K;
@@ -6283,169 +6095,6 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		}
 	}
 	*/
-
-	/************************************************************************************************/
-
-
-	void UpdateDrawable(RenderSystem* RS, SceneNodes* Nodes, Drawable* E)
-	{
-		// TODO: Is this needed anymore?
-		/*
-		if ( E->Dirty || (E->VConstants && GetFlag(Nodes, E->Node, SceneNodes::UPDATED))){
-			DirectX::XMMATRIX WT;
-			FlexKit::GetWT( Nodes, E->Node, &WT );
-
-			Drawable::VConsantsLayout	NewData;
-
-			NewData.MP.Albedo	= E->MatProperties.Albedo;
-			NewData.MP.Spec		= E->MatProperties.Spec;
-			NewData.Transform	= DirectX::XMMatrixTranspose( WT );
-			//NewData.MATID		= 0x01;
-
-			UpdateResourceByTemp(RS, &E->VConstants, &NewData, sizeof(NewData), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-			E->Dirty = false;
-		}
-		*/
-	}
-
-
-	/************************************************************************************************/
-
-
-	Drawable::VConsantsLayout GetDrawableConstantBuffer(SceneNodes* Nodes, Drawable* E)
-	{
-		DirectX::XMMATRIX WT;
-		FlexKit::GetWT(Nodes, E->Node, &WT);
-
-		Drawable::VConsantsLayout	Constants;
-
-		Constants.MP.Albedo	= E->MatProperties.Albedo;
-		Constants.MP.Spec	= E->MatProperties.Spec;
-		Constants.Transform	= DirectX::XMMatrixTranspose(WT);
-
-		return Constants;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateDrawables( RenderSystem* RS, SceneNodes* Nodes, PVS* PVS_ ){
-		for ( auto v : *PVS_ ) {
-			auto D = ( Drawable* )v.D;
-			UpdateDrawable( RS, Nodes, D );
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t CreateSortingID(bool Posed, bool Textured, size_t Depth)
-	{
-		size_t DepthPart	= (Depth & 0x00ffffffffffff);
-		size_t PosedBit		= (size_t(Posed)	<< (Posed		? 63 : 0));
-		size_t TextureBit	= (size_t(Textured) << (Textured	? 62 : 0));
-		return DepthPart | PosedBit | TextureBit;
-			
-	}
-
-	void SortPVS( SceneNodes* Nodes, PVS* PVS_, Camera* C)
-	{
-		if(!PVS_->size())
-			return;
-
-		auto CP = FlexKit::GetPositionW( Nodes, C->Node );
-		for( auto& v : *PVS_ )
-		{
-			auto E = v.D;
-			auto P = FlexKit::GetPositionW( Nodes, E->Node );
-
-			auto Depth = (size_t)abs(float3(CP - P).magnitudesquared() * 10000);
-			auto SortID = CreateSortingID(E->Posed, E->Textured, Depth);
-			v.SortID = SortID;
-		}
-		
-		std::sort( PVS_->begin(), PVS_->end(), []( PVEntry& R, PVEntry& L ) -> bool
-		{
-			return ( (size_t)R.SortID < (size_t)L.SortID);
-		} );
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SortPVSTransparent( SceneNodes* Nodes, PVS* PVS_, Camera* C)
-	{
-		if(!PVS_->size())
-			return;
-
-		auto CP = FlexKit::GetPositionW( Nodes, C->Node );
-		for( auto& v : *PVS_ )
-		{
-			auto E = v.D;
-			auto P = FlexKit::GetPositionW( Nodes, E->Node );
-			float D = float3( CP - P ).magnitudesquared() * ( E->DrawLast ? -1.0 : 1.0 );
-			v.SortID = D;
-		}
-
-		std::sort( PVS_->begin(), PVS_->end(), []( auto& R, auto& L ) -> bool
-		{
-			return ( (size_t)R > (size_t)L );
-		} );
-	}
-	
-
-	/************************************************************************************************/
-
-
-	void CreateDrawable(Drawable* e, DrawableDesc& desc )
-	{
-		DirectX::XMMATRIX WT;
-		WT = DirectX::XMMatrixIdentity();
-
-		Drawable::VConsantsLayout	VC;
-		VC.Transform = DirectX::XMMatrixTranspose(WT);
-		VC.MP.Albedo = {1.0f, 1.0f, 1.0f, 0.75f};
-		VC.MP.Spec	 = {1.0f, 1.0f, 1.0f, 0.75f};
-
-		e->MatProperties.Albedo = VC.MP.Albedo;
-		e->MatProperties.Spec	= VC.MP.Spec;
-
-		FlexKit::ConstantBuffer_desc CDesc;
-		CDesc.InitialSize = 1024;
-		CDesc.pInital     = &VC;
-		CDesc.Structured  = false;
-
-		e->MeshHandle				  = INVALIDMESHHANDLE;
-		e->Occluder                   = INVALIDMESHHANDLE;
-		e->DrawLast					  = false;
-		e->Transparent				  = false;
-		e->AnimationState			  = nullptr;
-		e->PoseState				  = false;
-		e->Posed					  = false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReleaseDrawable(Drawable* E)
-	{
-		FK_ASSERT(E);
-
-		if (E->PoseState)
-			Release(E->PoseState);
-	}
-	
-
-	void DelayReleaseDrawable(RenderSystem* RS, Drawable* D)
-	{
-		if (D->PoseState) {
-			DelayedRelease(RS, D->PoseState);
-		}
-	}
 
 
 	/************************************************************************************************/
@@ -7095,6 +6744,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 	/************************************************************************************************/
 
 
+	/*
 	void RenderShadowMap(RenderSystem* RS, PVS* _PVS, SpotLightShadowCaster* Caster, Texture2D* RenderTarget, ShadowMapPass* PSOs, GeometryTable* GT)
 	{
 		auto CL             = RS->_GetCurrentCommandList();
@@ -7168,7 +6818,7 @@ FustrumPoints GetCameraFrustumPoints(Camera* C, float3 Position, Quaternion Q)
 		CL->ResourceBarrier(1, Barrier);
 
 	}
-
+	*/
 
 	/************************************************************************************************/
 

@@ -30,12 +30,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GraphicsComponents.h"
 #include "..\graphicsutilities\AnimationUtilities.h" 
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\CoreSceneObjects.h"
 
 namespace FlexKit
 {
 	typedef size_t SpotLightHandle;
 	typedef Pair<bool, int64_t> GSPlayAnimation_RES;
 
+	struct GraphicScene;
 	struct SceneNodeComponentSystem;
 
 	struct QuadTreeNode
@@ -66,7 +68,11 @@ namespace FlexKit
 
 	void UpdateQuadTree		( QuadTreeNode* Node, GraphicScene* Scene );
 
-	constexpr const Type_t DRAWABLE_ID = GetTypeGUID(DRAWABLEHANDLE);
+
+	
+	/************************************************************************************************/
+
+
 
 	struct FLEXKITAPI GraphicScene
 	{
@@ -78,7 +84,7 @@ namespace FlexKit
 			Drawables				(memory),
 			DrawableVisibility		(memory),
 			DrawableRayVisibility	(memory),
-			SpotLightCasters		(memory),
+			//SpotLightCasters		(memory),
 			TaggedJoints			(memory),
 			RS						(in_RS),
 			RM						(in_RM),
@@ -191,7 +197,7 @@ namespace FlexKit
 
 		HandleUtilities::HandleTable<EntityHandle, 16> HandleTable;
 
-		Vector<SpotLightShadowCaster>		SpotLightCasters;
+		//Vector<SpotLightShadowCaster>		SpotLightCasters;
 		Vector<Drawable>					Drawables;
 		Vector<bool>						DrawableVisibility;
 		Vector<bool>						DrawableRayVisibility;
@@ -222,11 +228,10 @@ namespace FlexKit
 	FLEXKITAPI bool LoadScene ( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
 	FLEXKITAPI bool LoadScene ( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
 
-	template<typename ALLOC_T>
-	void Release(DrawablePoseState* EPS, ALLOC_T* Mem)
+	void Release(DrawablePoseState* EPS, iAllocator* allocator)
 	{
-		if(EPS->Joints)			Mem->free(EPS->Joints);
-		if(EPS->CurrentPose)	Mem->free(EPS->CurrentPose);
+		if(EPS->Joints)			allocator->free(EPS->Joints);
+		if(EPS->CurrentPose)	allocator->free(EPS->CurrentPose);
 
 		EPS->Joints		 = nullptr;
 		EPS->CurrentPose = nullptr;

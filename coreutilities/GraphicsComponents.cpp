@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\graphicsutilities\graphics.h"
 #include "GraphicsComponents.h"
+#include "GraphicScene.h"
 
 namespace FlexKit
 {
@@ -173,6 +174,252 @@ namespace FlexKit
 		return ComponentHandle;
 	}
 
+
+	/************************************************************************************************/
+
+	DrawableComponentArgs CreateEnityComponent(DrawableComponentSystem*	DrawableComponent, const char* Mesh)
+	{
+		return { DrawableComponent->Scene->CreateDrawableAndSetMesh(Mesh), DrawableComponent };
+	}
+
+	/************************************************************************************************/
+
+	void LightComponentSystem::ReleaseHandle(ComponentHandle Handle)  
+	{ 
+		ReleaseLight(&Scene->PLights, Handle); 
+	}
+	void LightComponentSystem::SetNode(ComponentHandle Light, NodeHandle Node) 
+	{ 
+		Scene->SetLightNodeHandle(Light, Node); 
+	}
+	void LightComponentSystem::SetColor(ComponentHandle Light, float3 NewColor) 
+	{ 
+		Scene->PLights[Light].K = NewColor; 
+	}
+	void LightComponentSystem::SetIntensity(ComponentHandle Light, float I) 
+	{ 
+		Scene->PLights[Light].I = I; 
+	}
+	void LightComponentSystem::SetRadius(ComponentHandle Light, float R) 
+	{ 
+		Scene->PLights[Light].R = R; 
+	}
+
+	/************************************************************************************************/
+
+	void DrawableComponentSystem::ReleaseHandle(ComponentHandle Handle)
+	{
+		Scene->RemoveEntity(Handle);
+	}
+
+	void DrawableComponentSystem::SetNode(ComponentHandle Drawable, NodeHandle Node)
+	{
+		Scene->SetNode(Drawable, Node);
+	}
+
+
+	void DrawableComponentSystem::SetColor(ComponentHandle Drawable, float3 NewColor)
+	{
+		auto DrawableColor = Scene->GetMaterialColour(Drawable);
+		auto DrawableSpec  = Scene->GetMaterialSpec(Drawable);
+
+		DrawableColor.x = NewColor.x;
+		DrawableColor.y = NewColor.y;
+		DrawableColor.z = NewColor.z;
+		// W cord the Metal Factor
+
+		Scene->SetMaterialParams(Drawable, DrawableColor, DrawableSpec);
+	}
+
+
+	void DrawableComponentSystem::SetMetal(ComponentHandle Drawable, bool M)
+	{
+		auto DrawableColor = Scene->GetMaterialColour(Drawable);
+		auto DrawableSpec = Scene->GetMaterialSpec(Drawable);
+
+		DrawableColor.w = 1.0f * M;
+
+		Scene->SetMaterialParams(Drawable, DrawableColor, DrawableSpec);
+	}
+
+	void DrawableComponentSystem::SetVisibility(ComponentHandle Drawable, bool V)
+	{ 
+		Scene->SetVisability(Drawable, V); 
+	}
+
+	void DrawableComponentSystem::SetRayVisibility(ComponentHandle Drawable, bool V) 
+	{ 
+		Scene->SetRayVisability(Drawable, V); 
+	}
+
+	NodeHandle DrawableComponentSystem::GetNode(ComponentHandle Drawable)
+	{
+		return Scene->GetNode(Drawable);
+	}
+	/*
+
+	// TODO: Rewrite this to use Frame Graph
+	void DrawableComponentSystem::DrawDebug(ImmediateRender* R, SceneNodeComponentSystem* Nodes, iAllocator* Temp)
+	{
+		auto& Drawables		= Scene->Drawables;
+		auto& Visibility	= Scene->DrawableVisibility;
+
+		size_t End = Scene->Drawables.size();
+		for (size_t I = 0; I < End; ++I)
+		{
+			auto DrawableHandle = EntityHandle(I);
+			if (Scene->GetVisability(DrawableHandle))
+			{
+				auto MeshHandle  = Scene->GetMeshHandle(DrawableHandle);
+				auto Mesh        = GetMesh(Scene->GT, MeshHandle);
+				auto Node        = Scene->GetNode(DrawableHandle);
+				auto PositionWS  = Nodes->GetPositionW(Node);
+				auto Orientation = Nodes->GetOrientation(Node);
+				auto Ls			 = Nodes->GetLocalScale(Node);
+				auto BS			 = Mesh->BS;
+				auto AABBSpan	 = Mesh->AABB.TopRight - Mesh->AABB.BottomLeft;
+
+				PushBox_WireFrame(R, Temp, PositionWS + Orientation * BS.xyz(), Orientation, Ls * AABBSpan, {1, 1, 0});
+				//PushCircle3D(R, Temp, PositionWS + Orientation * BS.xyz(), BS.w * Ls.x);
+			}
+		}
+	}
+	*/
+
+	RayIntesectionResults DrawableComponentSystem::RayCastBoundingSpheres(RaySet& Rays, iAllocator* Memory, SceneNodeComponentSystem* Nodes)// Runs RayCasts Against all object Bounding Spheres
+	{
+		RayIntesectionResults Out(Memory);
+
+		auto& Drawables  = Scene->Drawables;
+		auto& Visibility = Scene->DrawableVisibility;
+
+		size_t End = Scene->Drawables.size();
+		for (size_t I = 0; I < End; ++I)
+		{
+			auto DrawableHandle = EntityHandle(I);
+			if (Scene->GetRayVisability(DrawableHandle) && Scene->GetVisability(DrawableHandle))
+			{
+				auto MeshHandle  = Scene->GetMeshHandle(DrawableHandle);
+				auto Mesh        = GetMesh(Scene->GT, MeshHandle);
+				auto Node        = Scene->GetNode(DrawableHandle);
+				auto PosWS		 = Nodes->GetPositionW(Node);
+				auto Orientation = Nodes->GetOrientation(Node);
+				auto Ls			 = Nodes->GetLocalScale(Node);
+				auto BS			 = Mesh->BS;
+
+				for (auto r : Rays)
+				{
+					auto Origin = r.O;
+					auto R = BS.w * Ls.x;
+					auto R2 = R * R;
+					auto L = (Origin - PosWS);
+					auto S = r.D.dot(L);
+					auto S2 = S * S;
+					auto L2 = L.dot(L);
+					auto M2 = L2 - S2;
+
+					if(S < 0 && L2 > R2)
+						continue; // Miss
+
+					if(M2 > R2)
+						continue; // Miss
+
+					auto Q = sqrt(R2 - M2);
+
+					float T = 0;
+					if(L2 > R2)
+						T = S - Q;
+					else 
+						T = S + Q;
+
+					RayIntesectionResult Hit;
+					Hit.D      = T;
+					Hit.Entity = DrawableHandle;
+					Hit.Mesh   = MeshHandle;
+					Hit.R      = r;
+					Out.push_back(Hit);
+				}
+			}
+		}
+
+		return Out;
+	}
+
+
+	RayIntesectionResults DrawableComponentSystem::RayCastOBB(RaySet& Rays, iAllocator* Memory, SceneNodeComponentSystem* Nodes)// Runs RayCasts Against all object OBB's
+	{
+		RayIntesectionResults Out(Memory);
+
+		auto& Drawables  = Scene->Drawables;
+		auto& Visibility = Scene->DrawableVisibility;
+
+		size_t End = Scene->Drawables.size();
+		for (size_t I = 0; I < End; ++I)
+		{
+			auto DrawableHandle = EntityHandle(I);
+			if (Scene->GetRayVisability(DrawableHandle) && Scene->GetVisability(DrawableHandle))
+			{
+				auto MeshHandle  = Scene->GetMeshHandle(DrawableHandle);
+				auto Mesh        = GetMesh(Scene->GT, MeshHandle);
+				auto Node        = Scene->GetNode(DrawableHandle);
+				auto PosWS		 = Nodes->GetPositionW(Node);
+				auto Orientation = Nodes->GetOrientation(Node);
+				auto Ls			 = Nodes->GetLocalScale(Node);
+				auto AABB		 = Mesh->AABB;// Not Yet Orientated
+
+				auto H = AABB.TopRight * Ls;
+
+				auto Normals = static_vector<float3, 3>(
+				{	Orientation * float3{ 1, 0, 0 },
+					Orientation * float3{ 0, 1, 0 },
+					Orientation * float3{ 0, 0, 1 } });
+
+				for (auto r : Rays)
+				{
+					float t_min = -INFINITY;
+					float t_max = +INFINITY;
+					auto P = PosWS - r.O;
+
+					[&]() {
+						for (size_t I = 0; I < 3; ++I)
+						{
+							auto e = Normals[I].dot(P);
+							auto f = Normals[I].dot(r.D);
+
+							if (abs(f) > 0.00)
+							{
+								float t_1 = (e + H[I]) / f;
+								float t_2 = (e - H[I]) / f;
+
+								if (t_1 > t_2)// Swap
+									std::swap(t_1, t_2);
+
+								if (t_1 > t_min) t_min = t_1;
+								if (t_2 < t_max) t_max = t_2;
+								if (t_min > t_max)	return;
+								if (t_max < 0)		return;
+							}
+							else if( -e - H[I] > 0 || 
+										-e + H[I] < 0 ) return;
+						}
+
+						RayIntesectionResult Hit;
+						if (t_min > 0)
+							Hit.D  = t_min;
+						else
+							Hit.D = t_max;
+
+						Hit.R	   = r;
+						Hit.Entity = DrawableHandle;
+						Hit.Mesh   = MeshHandle;
+						Out.push_back(Hit);
+					}();
+				}
+			}
+		}
+
+		return Out;
+	}
 
 
 	/************************************************************************************************/

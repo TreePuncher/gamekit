@@ -35,6 +35,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../buildsettings.h"
 #include "../graphicsutilities/FrameGraph.h"
 #include "../graphicsutilities/graphics.h"
+#include "../graphicsutilities/CoreSceneObjects.h"
 
 namespace FlexKit
 {
@@ -58,15 +59,15 @@ namespace FlexKit
 			RS->ReleaseCB(ConstantBuffer);
 		}
 
-		void DefaultRender(PVS& Objects, Camera* Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
+		void DefaultRender(PVS& Objects, Camera& Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
 
-		void RenderDrawabled_SimpleForward(PVS& Objects, Camera* Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
+		void RenderDrawabledPBR_Forward	(PVS& Objects, Camera& Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
 
 		void ClearGBuffer				(FrameGraph& Graph);
 		void RenderDrawabledPBR_Main	(PVS& Objects, FrameGraph& Graph);
 		void RenderDrawabledPBR_Shadow	(PVS& Objects, FrameGraph& Graph);
-
 		void ShadePBRPass				(FrameGraph& Graph);
+
 	private:
 		RenderSystem*			RS;
 		GeometryTable*			GT;

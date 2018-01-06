@@ -105,7 +105,7 @@ struct RectPoint_VS
 RectPoint_PS DrawRect_VS( RectPoint_VS In )
 {
 	RectPoint_PS Out;
-	Out.POS		= float4(In.POS, 1, 0);
+	Out.POS		= float4(In.POS, 1, 1);
 	Out.UV		= In.UV;
 	Out.Color	= In.Color;
 

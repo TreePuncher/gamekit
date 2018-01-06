@@ -297,10 +297,12 @@ namespace FlexKit
 			CameraControllers[Handle].Roll += R;
 		}
 
+
 		void OffsetYawNode(ComponentHandle Handle, float3 xyz)
 		{
 			Nodes->SetPositionL(CameraControllers[Handle].Yaw_Node, xyz);
 		}
+
 
 		void SetOffset(ComponentHandle Handle, float3 Offset)
 		{
@@ -524,4 +526,4 @@ namespace FlexKit
 
 	/************************************************************************************************/
 }
-#endif
+#endif	

@@ -80,12 +80,16 @@ namespace FlexKit
 			PSO_Desc.SampleMask            = UINT_MAX;
 			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 			PSO_Desc.NumRenderTargets      = 1;
-			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT;
 			PSO_Desc.SampleDesc.Count      = 1;
 			PSO_Desc.SampleDesc.Quality    = 0;
 			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
 			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
 			PSO_Desc.DepthStencilState     = Depth_Desc;
+			PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+			PSO_Desc.BlendState.RenderTarget[0].DestBlend	= D3D12_BLEND::D3D12_BLEND_DEST_COLOR;
+			PSO_Desc.BlendState.RenderTarget[0].SrcBlend	= D3D12_BLEND::D3D12_BLEND_SRC_COLOR;
+			PSO_Desc.BlendState.RenderTarget[0].BlendOp		= D3D12_BLEND_OP::D3D12_BLEND_OP_ADD;
 		}
 
 		ID3D12PipelineState* PSO = nullptr;
@@ -95,19 +99,19 @@ namespace FlexKit
 		return PSO;
 	}
 
-	void WorldRender::DefaultRender(PVS& Drawables, Camera* Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory)
+	void WorldRender::DefaultRender(PVS& Drawables, Camera& Camera, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory)
 	{
 		auto DBState = RS->RenderTargets.GetState(DepthBuffer);
 		Graph.Resources.AddDepthBuffer(DepthBuffer, GetCRCGUID(DEPTHBUFFER), DBState);
 
 		ClearDepthBuffer(Graph, DepthBuffer, 1.0f);
 
-		RenderDrawabled_SimpleForward(Drawables, Camera_ptr, Nodes, Graph, Memory);
+		RenderDrawabledPBR_Forward(Drawables, Camera, Nodes, Graph, Memory);
 	}
 
-	void WorldRender::RenderDrawabled_SimpleForward(
+	void WorldRender::RenderDrawabledPBR_Forward(
 		PVS&		Drawables, 
-		Camera*		Camera_ptr,
+		Camera&		Camera,
 		SceneNodes* Nodes,
 		FrameGraph& Graph, 
 		iAllocator* Memory)
@@ -136,17 +140,14 @@ namespace FlexKit
 			Data.DepthBuffer	= Builder.WriteDepthBuffer(GetCRCGUID(DEPTHBUFFER));
 
 			Data.Draws = ForwardDrawableList{ Memory };
-			Camera::BufferLayout CameraConstants = GetCameraConstantBuffer(
-				Nodes, 
-				Camera_ptr, 
-				0.0f);
+			Camera::BufferLayout CameraConstants = Camera.GetConstants(Nodes, 0.0f);
 
 			auto CameraConsantsOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
 			PushConstantBufferData(CameraConstants, ConstantBuffer, Graph.Resources);
 
 			for (auto Viewable : Drawables)
 			{
-				Drawable::VConsantsLayout	Constants = GetDrawableConstantBuffer(Nodes, Viewable.D);
+				Drawable::VConsantsLayout	Constants = Viewable.D->GetConstants(Nodes);
 
 				auto CBOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
 				PushConstantBufferData(Constants, ConstantBuffer, Graph.Resources);

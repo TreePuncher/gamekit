@@ -30,6 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\\coreutilities\MathUtils.h"
 #include "..\\coreutilities\memoryutilities.h"
 #include "..\\coreutilities\Resources.h"
+#include "..\\graphicsutilities\CoreSceneObjects.h"
+
 
 #include "graphics.h"
 
@@ -49,8 +51,10 @@ namespace FlexKit
 
 	typedef uint16_t	JointHandle;
 
-	struct Resources;
-	struct Skeleton;
+	// PreDeclarations
+	struct	Drawable;
+	struct	Resources;
+	struct	Skeleton;
 
 	struct Joint
 	{
@@ -176,6 +180,11 @@ namespace FlexKit
 
 	struct DrawablePoseState
 	{
+		void Release()
+		{
+			Resource.Release();
+		}
+
 		FrameBufferedResource	Resource;
 		JointPose*				Joints		= nullptr;
 		DirectX::XMMATRIX*		CurrentPose	= nullptr;
@@ -207,6 +216,7 @@ namespace FlexKit
 		byte			Pad[38];
 
 	};
+
 	struct DrawableAnimationState
 	{
 		static_vector<AnimationStateEntry>	Clips; // Animations in
@@ -439,10 +449,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* E, GeometryTable* GT, iAllocator* MEM );
+	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* D, GeometryTable* GT, iAllocator* MEM );
 	FLEXKITAPI bool					InitiatePoseState	( RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
 	FLEXKITAPI void					InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
-	FLEXKITAPI void					Release				( DrawablePoseState* EAS );
 
 
 	/************************************************************************************************/
@@ -486,7 +495,7 @@ namespace FlexKit
 	// Advance skip updating Joint, updates timers
 	FLEXKITAPI void UpdateAnimation	( RenderSystem* RS, Drawable* E,		GeometryTable* GT, double dT, iAllocator* TEMP, bool AdvanceOnly = false );
 	FLEXKITAPI void UploadPose		( RenderSystem* RS, Drawable* E,		GeometryTable* GT, iAllocator* TEMP);
-	FLEXKITAPI void UploadPoses		( RenderSystem* RS, PVS* Drawables,	GeometryTable* GT, iAllocator* TEMP);
+	FLEXKITAPI void UploadPoses		( RenderSystem* RS, PVS* Drawables,		GeometryTable* GT, iAllocator* TEMP);
 
 	//	Call After Updating PoseState
 	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, SceneNodes* Nodes, DrawablePoseState* DPS );
