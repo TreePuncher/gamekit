@@ -336,6 +336,12 @@ namespace FlexKit
 	}
 
 
+	FrameResourceHandle FrameGraphNodeBuilder::ReadRenderTarget(TextureHandle RenderTarget)
+	{
+		return ReadRenderTarget(Resources->RenderSystem->GetTag(RenderTarget));
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -345,6 +351,12 @@ namespace FlexKit
 	{
 		return AddWriteableResource(Tag, DeviceResourceState::DRS_RenderTarget);
 	}
+
+	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(TextureHandle RenderTarget)
+	{
+		return WriteRenderTarget(Resources->RenderSystem->GetTag(RenderTarget));
+	}
+
 
 
 	/************************************************************************************************/

@@ -545,9 +545,7 @@ namespace FlexKit
 
 		// Add in Base Resources
 		auto BB			= GetCurrentBackBuffer(&Core->Window);
-		auto BBState	= Core->RenderSystem.RenderTargets.GetState(BB);
-		FrameGraph.Resources.AddBackBuffer(BB, GetCRCGUID(BACKBUFFER), BBState);
-
+		FrameGraph.Resources.AddRenderTarget(BB);
 
 		{
 			auto Itr = Framework->SubStates.begin();

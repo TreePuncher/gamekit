@@ -67,6 +67,7 @@ public:
 
 	WorldRender							Render;
 
+	TextureHandle				DepthBuffer;
 	ConstantBufferHandle		ConstantBuffer;
 	VertexBufferHandle			VertexBuffer;
 	int							Test;

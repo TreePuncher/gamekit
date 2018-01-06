@@ -170,12 +170,28 @@ namespace FlexKit
 		//
 
 
-		void AddBackBuffer(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
+		void AddRenderTarget(TextureHandle Handle)
+		{
+			AddRenderTarget(
+				Handle,
+				RenderSystem->GetTag(Handle),
+				RenderSystem->RenderTargets.GetState(Handle));
+		}
+
+		void AddRenderTarget(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
 		{
 			Resources.push_back(
 				FrameObject::BackBufferObject(Tag, Handle, InitialState));
 
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+		}
+
+		void AddDepthBuffer(TextureHandle Handle)
+		{
+			AddDepthBuffer(
+				Handle,
+				RenderSystem->GetTag(Handle),
+				RenderSystem->RenderTargets.GetState(Handle));
 		}
 
 		void AddDepthBuffer(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
@@ -221,6 +237,11 @@ namespace FlexKit
 			return Resources[Handle].RenderTarget.Texture;
 		}
 
+
+		uint2					GetRenderTargetWH(FrameResourceHandle Handle) const
+		{
+			return RenderSystem->GetRenderTargetWH(GetRenderTarget(Handle));
+		}
 
 		DescHeapPOS				GetRenderTargetDescHeapEntry(FrameResourceHandle Handle)
 		{
@@ -511,6 +532,9 @@ namespace FlexKit
 
 		FrameResourceHandle ReadRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 		FrameResourceHandle WriteRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
+
+		FrameResourceHandle ReadRenderTarget	(TextureHandle Handle);
+		FrameResourceHandle WriteRenderTarget	(TextureHandle Handle);
 
 		FrameResourceHandle	PresentBackBuffer	(uint32_t Tag);
 		FrameResourceHandle	ReadBackBuffer		(uint32_t Tag);
@@ -806,11 +830,11 @@ namespace FlexKit
 
 
 	template<typename ... TY_OTHER>
-	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, iAllocator* Memory, TY_OTHER ... ARGS)
+	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER ... ARGS)
 	{
 		struct DrawRect
 		{
-			FrameResourceHandle		BackBuffer;
+			FrameResourceHandle		RenderTarget;
 			VertexBufferHandle		VertexBuffer;
 			ConstantBufferHandle	ConstantBuffer;
 			DrawList				Draws;
@@ -824,7 +848,7 @@ namespace FlexKit
 			// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
 			// for thread safety
 
-			Data.BackBuffer		= Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+			Data.RenderTarget	= Builder.WriteRenderTarget(RenderTarget);
 			Data.VertexBuffer	= PushBuffer;
 			Data.ConstantBuffer = CB;
 			Data.Draws			= DrawList(Memory);
@@ -835,9 +859,10 @@ namespace FlexKit
 		{
 			// Multi-threadable Section
 
-			Ctx->SetViewports({ { 0, 0, 1920, 1080, 0, 1 } });
-			Ctx->SetScissorRects({ {0,0,1920,1080} });
-			Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, false);
+			auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
+
+			Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
+			Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
 
 			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
 			Ctx->SetPipelineState(Resources.GetPipelineState(State));

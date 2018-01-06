@@ -1534,6 +1534,8 @@ namespace FlexKit
 		void SetViewports			(static_vector<D3D12_VIEWPORT, 16>	VPs);
 		void SetScissorRects		(static_vector<D3D12_RECT, 16>		Rects);
 
+		void SetScissorAndViewports	(static_vector<TextureHandle, 16>	RenderTargets);
+
 		void SetDepthStencil		(Texture2D* DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
@@ -1847,6 +1849,12 @@ namespace FlexKit
 		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource** Resource, uint32_t ResourceCount, DeviceResourceState InitialState, uint32_t Flags_IN = 0);
 		void			SetState		(TextureHandle Handle, DeviceResourceState State);
 
+		uint2			GetWH(TextureHandle Handle);
+
+		uint32_t		GetTag(TextureHandle Handle);
+		void			SetTag(TextureHandle Handle, uint32_t Tag);
+
+
 		void			MarkRTUsed		(TextureHandle Handle);
 
 		DeviceResourceState GetState	(TextureHandle Handle);
@@ -1860,6 +1868,7 @@ namespace FlexKit
 		{
 			size_t				ResourceIdx;
 			uint32_t			Flags;
+			uint32_t			Tag;
 		};
 
 		struct ResourceEntry
@@ -1950,14 +1959,18 @@ namespace FlexKit
 
 		size_t						GetVertexBufferSize		(const VertexBufferHandle);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress	(const VertexBufferHandle VB);
-
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
+
+
+		uint32_t	GetTag(TextureHandle Handle);
+		void		SetTag(TextureHandle Handle, uint32_t);
+
+		uint2		GetRenderTargetWH(TextureHandle Handle);
 
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer	(size_t BufferSize, bool GPUResident = true);
 		TextureHandle			CreateDepthBuffer	(uint2 WH, bool UseFloat = false);
-
 
 
 		void ReleaseCB(ConstantBufferHandle);

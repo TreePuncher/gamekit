@@ -41,14 +41,21 @@ namespace FlexKit
 {
 	ID3D12PipelineState* CreateForwardDrawPSO(RenderSystem* RS);
 
+
+	struct WorldRender_Targets
+	{
+		TextureHandle RenderTarget;
+		TextureHandle DepthTarget;
+	};
+
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
 		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, GeometryTable* GT_IN) :
 			GT(GT_IN),
 			RS(RS_IN),
-			ConstantBuffer(RS->CreateConstantBuffer(64 * MEGABYTE, false)),
-			DepthBuffer(RS->CreateDepthBuffer({ 1920, 1080 }, true))
+			ConstantBuffer(RS->CreateConstantBuffer(64 * MEGABYTE, false))
 		{
 			RS->RegisterPSOLoader(FORWARDDRAW, CreateForwardDrawPSO);
 			RS->QueuePSOLoad(FORWARDDRAW);
@@ -59,9 +66,8 @@ namespace FlexKit
 			RS->ReleaseCB(ConstantBuffer);
 		}
 
-		void DefaultRender(PVS& Objects, Camera& Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
-
-		void RenderDrawabledPBR_Forward	(PVS& Objects, Camera& Camera_ptr, SceneNodes* Nodes, FrameGraph& Graph, iAllocator* Memory);
+		void DefaultRender				(PVS& Objects, Camera& Camera,		SceneNodes* Nodes,	WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
+		void RenderDrawabledPBR_Forward	(PVS& Objects, Camera& Camera_ptr,	SceneNodes* Nodes,	WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
 
 		void ClearGBuffer				(FrameGraph& Graph);
 		void RenderDrawabledPBR_Main	(PVS& Objects, FrameGraph& Graph);
@@ -73,9 +79,6 @@ namespace FlexKit
 		GeometryTable*			GT;
 		ConstantBufferHandle	ConstantBuffer;
 		uint2					WH;// Output Size
-
-		TextureHandle		DepthBuffer;
-
 
 		// GBuffer
 		//RenderTargetHandle		Albedo;

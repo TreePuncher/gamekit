@@ -979,6 +979,26 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	// Assumes setting each to fullscreen
+	void Context::SetScissorAndViewports(static_vector<TextureHandle, 16>	RenderTargets)
+	{
+		static_vector<D3D12_VIEWPORT, 16>	VPs;
+		static_vector<D3D12_RECT, 16>		Rects;
+
+		for (auto RT : RenderTargets)
+		{
+			auto WH = RS->GetRenderTargetWH(RT);
+			VPs.push_back	({ 0, 0,	(FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
+			Rects.push_back	({ 0,0,	(LONG)WH[0], (LONG)WH[1] });
+		}
+
+		SetViewports(VPs);
+		SetScissorRects(Rects);
+	}
+
+
+	/************************************************************************************************/
+
 
 	void Context::SetDepthStencil(Texture2D* DS)
 	{
@@ -2114,6 +2134,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	uint32_t RenderSystem::GetTag(TextureHandle Handle)
+	{
+		return RenderTargets.GetTag(Handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::SetTag(TextureHandle Handle, uint32_t Tag)
+	{
+		RenderTargets.SetTag(Handle, Tag);
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint2	RenderSystem::GetRenderTargetWH(TextureHandle Handle)
+	{
+		return RenderTargets.GetWH(Handle);
+	}
+
+
+	/************************************************************************************************/
+
+
 	D3D12_GPU_VIRTUAL_ADDRESS RenderSystem::GetConstantBufferAddress(const ConstantBufferHandle CB)
 	{
 		// TODO: deal with Push Buffer Offsets
@@ -2489,6 +2536,8 @@ namespace FlexKit
 
 			auto Handle = RS->RenderTargets.AddResource(Desc, &buffer, 1, DeviceResourceState::DRS_Present, TF_BackBuffer);
 			NewWindow.RenderTargets[I] = Handle;
+
+			RS->RenderTargets.SetTag(Handle, GetCRCGUID(BACKBUFFER));
 		}
 
 		SetActiveWindow(Window);
@@ -3714,6 +3763,34 @@ namespace FlexKit
 		auto ResIdx  = UserEntries[UserIdx].ResourceIdx;
 
 		Resources[ResIdx].SetState(State);
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint32_t TextureStateTable::GetTag(TextureHandle Handle)
+	{
+		auto UserIdx = Handles[Handle];
+		return UserEntries[UserIdx].Tag;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TextureStateTable::SetTag(TextureHandle Handle, uint32_t Tag)
+	{
+		auto UserIdx = Handles[Handle];
+		UserEntries[UserIdx].Tag = Tag;
+	}
+
+
+	uint2 TextureStateTable::GetWH(TextureHandle Handle)
+	{
+		auto UserIdx = Handles[Handle];
+
+		return Resources[UserEntries[UserIdx].ResourceIdx].WH;
 	}
 
 
