@@ -3,12 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKit", "FlexKit.vcxproj", "{54DB6A2B-4E65-4379-AF8B-4245F63D6512}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKitCore", "FlexKit.vcxproj", "{54DB6A2B-4E65-4379-AF8B-4245F63D6512}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKitApplication", "Application\FlexKitApplication.vcxproj", "{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}"
-	ProjectSection(ProjectDependencies) = postProject
-		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF} = {DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}
-	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0DEABFB8-0A13-4C66-8AE8-673A0ACD624D}"
 	ProjectSection(SolutionItems) = preProject
@@ -24,7 +21,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestGameState", "TestGameSt
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8} = {A0D6FF61-30E0-4936-A264-4F4EDD102EA8}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GameState", "GameState\GameState.vcxproj", "{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestState", "GameState\GameState.vcxproj", "{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "MayaToolsetPlugin", "FlexKitMayaPlug\MayaToolsetPlugin.pyproj", "{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}"
 EndProject

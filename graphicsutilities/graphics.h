@@ -906,6 +906,11 @@ namespace FlexKit
 
 		EventNotifier<>				Handler;
 
+		TextureHandle	GetBackBuffer()
+		{
+			return RenderTargets[BufferIndex];
+		}
+
 		WORD	InputBuffer[128];
 		size_t	InputBuffSize;
 		size_t	CurrentBuffer;

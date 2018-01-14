@@ -46,7 +46,7 @@ public:
 	// Game Element Controllers
 	// GameplayComponentSystem		Model;
 
-	PlayState(EngineCore* Engine, GameFramework* Framework);
+	PlayState(GameFramework* Framework);
 	~PlayState();
 
 	bool Update			(EngineCore* Engine, double dT) final;
@@ -78,9 +78,6 @@ public:
 	GameObject<> TestObject;
 	GameObject<> Player;
 };
-
-
-PlayState* CreatePlayState(EngineCore* Engine, GameFramework* Framework);
 
 
 #endif

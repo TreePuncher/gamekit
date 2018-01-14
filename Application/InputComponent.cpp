@@ -41,8 +41,8 @@ namespace FlexKit
 
 	void InputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* Framework)
 	{
-		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Engine)[0];
-		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Engine)[1];
+		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Core)[0];
+		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Core)[1];
 
 		Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
 #if 1

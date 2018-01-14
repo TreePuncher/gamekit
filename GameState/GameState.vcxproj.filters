@@ -33,9 +33,6 @@
     <ClCompile Include="ClientState.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="InitiateState.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PlayState.h">

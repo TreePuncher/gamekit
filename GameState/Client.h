@@ -112,7 +112,7 @@ struct ClientPlayState : public FrameworkState
 	ClientPlayState(GameFramework* framework, ClientState* Client) :
 		FrameworkState(framework),
 		NetState(Client),
-		Scene(nullptr, framework->Engine->Nodes, framework->Engine->GetBlockMemory())
+		Scene(nullptr, framework->Core->Nodes, framework->Core->GetBlockMemory())
 	{
 		
 		//PlayState->VTable.Update				  = UpdateClientGameplay;
@@ -120,7 +120,7 @@ struct ClientPlayState : public FrameworkState
 		//PlayState->VTable.PreDrawUpdate			  = UpdateClientPreDraw;
 		//PlayState->LocalPlayer.PlayerCTR.Pos      = float3(0, 0, 0);
 		//PlayState->LocalPlayer.PlayerCTR.Velocity = float3(0, 0, 0);
-		Imposters.Allocator = framework->Engine->GetBlockMemory();
+		Imposters.Allocator = framework->Core->GetBlockMemory();
 		Mode                = eWAITINGMODE; // Wait for all Players to Load and respond
 		FrameCount          = 0;
 		T2ServerUpdate      = 0.0;

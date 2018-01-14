@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../graphicsutilities/graphics.h"
 #include "../coreutilities/GraphicsComponents.h"
-
+#include "../coreutilities/Transforms.h"
 
 using FlexKit::NodeHandle;
 using FlexKit::SceneNodes;
@@ -106,8 +106,8 @@ namespace FlexKit
 	struct OrbitCameraSystem : public ComponentSystemInterface
 	{
 		OrbitCameraSystem(GameFramework* Framework, InputComponentSystem* Input) :
-			Controllers	(Framework->Engine->GetBlockMemory()),
-			Nodes		(Framework->Engine->Nodes),
+			Controllers	(Framework->Core->GetBlockMemory()),
+			Nodes		(Framework->Core->Nodes),
 			InputSystem	(Input)	{}
 
 		operator OrbitCameraSystem* (){return this;}
@@ -257,9 +257,9 @@ namespace FlexKit
 		ThirdPersonCameraComponentSystem(GameFramework* Framework, InputComponentSystem* InputSystem, CameraComponentSystem* camerasystem) :
 			Input				(InputSystem),
 			CameraSystem		(camerasystem),
-			CameraControllers	(Framework->Engine->GetBlockMemory()),
-			Nodes				(Framework->Engine->Nodes),
-			States				(Framework->Engine->GetBlockMemory()){}
+			CameraControllers	(Framework->Core->GetBlockMemory()),
+			Nodes				(Framework->Core->Nodes),
+			States				(Framework->Core->GetBlockMemory()){}
 
 
 		void ObjectMoved	(ComponentHandle Handle, ComponentSystemInterface* System, GameObjectInterface* GO)

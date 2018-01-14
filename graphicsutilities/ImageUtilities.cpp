@@ -91,9 +91,9 @@ namespace FlexKit
 						size_t I_Out = x + y * Info->Width;
 						size_t I_In = x + (Info->Height - y - 1) * Info->Width;
 
-						OutBuffer[I_Out].Red = PixelsBGR[I_In];
-						OutBuffer[I_Out].Blue = PixelsBGR[I_In];
-						OutBuffer[I_Out].Green = PixelsBGR[I_In];
+						OutBuffer[I_Out].Red	= PixelsBGR[I_In];
+						OutBuffer[I_Out].Blue	= PixelsBGR[I_In];
+						OutBuffer[I_Out].Green	= PixelsBGR[I_In];
 					}
 			}	break;
 			case 24:

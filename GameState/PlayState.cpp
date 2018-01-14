@@ -33,47 +33,47 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
-	FrameworkState(framework),
-	Input		(Framework),
-	TPC			(Framework, Input, Engine->Cameras),
-	OrbitCameras(Framework, Input),
-	Render		(
-		 Framework->Engine->GetTempMemory(), 
-		 Framework->Engine->RenderSystem, 
-		 Framework->Engine->Geometry),
+PlayState::PlayState(GameFramework* framework) :
+	FrameworkState	(framework),
+	Input			(Framework),
+	TPC				(Framework, Input, Framework->Core->Cameras),
+	OrbitCameras	(Framework, Input),
+	Render			(
+		 Framework->Core->GetTempMemory(), 
+		 Framework->Core->RenderSystem, 
+		 Framework->Core->Geometry),
 	Scene		(
-		 Framework->Engine->RenderSystem, 
-		&Framework->Engine->Assets, 
-		 Framework->Engine->Nodes, 
-		 Framework->Engine->Geometry, 
-		 Framework->Engine->GetBlockMemory(), 
-		 Framework->Engine->GetTempMemory()),
-	Drawables	(&Scene, Framework->Engine->Nodes),
-	Lights		(&Scene, Framework->Engine->Nodes),
-	Physics		(&Engine->Physics, Engine->Nodes, Engine->GetBlockMemory()),
+		 Framework->Core->RenderSystem, 
+		&Framework->Core->Assets, 
+		 Framework->Core->Nodes, 
+		 Framework->Core->Geometry, 
+		 Framework->Core->GetBlockMemory(), 
+		 Framework->Core->GetTempMemory()),
+	Drawables	(&Scene, Framework->Core->Nodes),
+	Lights		(&Scene, Framework->Core->Nodes),
+	Physics		(&Framework->Core->Physics, Framework->Core->Nodes, Framework->Core->GetBlockMemory()),
 	Test		(0),
-	VertexBuffer(Engine->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
-	ConstantBuffer(Engine->RenderSystem.CreateConstantBuffer(8096, false))
+	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
+	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096, false))
 {
 	Framework->ActivePhysicsScene	= &Physics;
 	Framework->ActiveScene			= &Scene;
 
 	bool res = LoadScene(
-		Framework->Engine->RenderSystem, 
-		Framework->Engine->Nodes, 
-		&Framework->Engine->Assets, 
-		&Framework->Engine->Geometry, 
+		Framework->Core->RenderSystem, 
+		Framework->Core->Nodes, 
+		&Framework->Core->Assets, 
+		&Framework->Core->Geometry, 
 		201, 
 		&Scene, 
-		Framework->Engine->GetTempMemory());
+		Framework->Core->GetTempMemory());
 
 	InitiateGameObject(
 		Player,
 			Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
-			CreateOrbitCamera(OrbitCameras, &Framework->Engine->Cameras, 100.0f));
+			CreateCameraComponent(Framework->Core->Cameras, GetWindowAspectRatio(Framework->Core), 0.01f, 10000.0f, InvalidComponentHandle),
+			CreateOrbitCamera(OrbitCameras, &Framework->Core->Cameras, 100.0f));
 
 	SetWorldPosition(Player, { 0, 15, 60 });
 	OffsetYawNode	(Player, { 0.0f, 5, 0.0f });
@@ -83,8 +83,8 @@ PlayState::PlayState(EngineCore* Engine, GameFramework* framework) :
 	InitiateGameObject(	FloorObject,
 		Physics.CreateStaticBoxCollider({ 1000, 3, 1000 }, { 0, -3, 0 }));
 
-	DepthBuffer = (Framework->Engine->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
-	Framework->Engine->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
+	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
+	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
 }
 
 
@@ -123,7 +123,7 @@ bool PlayState::EventHandler(Event evt)
 			switch (evt.mData1.mKC[0])
 			{
 			case KC_R:
-				//this->Framework->Engine->RenderSystem.QueuePSOLoad(FORWARDDRAW);
+				//this->Framework->Core->RenderSystem.QueuePSOLoad(FORWARDDRAW);
 				break;
 			case KC_E:
 				Input.KeyState.Shield   = false;
@@ -179,8 +179,8 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	const float MoveRate = 10;
 
 
-	//SetPositionW(Framework->Engine->Nodes, Framework->DebugCamera.Node, CameraPOS);
-	//Yaw(Framework->Engine->Nodes, Framework->DebugCamera.Node, pi * dT);
+	//SetPositionW(Framework->Core->Nodes, Framework->DebugCamera.Node, CameraPOS);
+	//Yaw(Framework->Core->Nodes, Framework->DebugCamera.Node, pi * dT);
 	/*
 
 #if 0
@@ -249,8 +249,8 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 
 #if 0
 
-	//UpdateCamera(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->DebugCamera, dT);
-	//auto Q = GetOrientation(Framework->Engine->Nodes, Framework->DebugCamera.Node);
+	//UpdateCamera(Framework->Core->RenderSystem, Framework->Core->Nodes, &Framework->DebugCamera, dT);
+	//auto Q = GetOrientation(Framework->Core->Nodes, Framework->DebugCamera.Node);
 
 	LineSegments Lines(Engine->TempAllocator);
 	LineSegment Line;
@@ -338,11 +338,11 @@ PlayState::~PlayState()
 
 	Physics.Release();
 
-	Framework->Engine->RenderSystem.ReleaseVB(VertexBuffer);
-	Framework->Engine->RenderSystem.ReleaseCB(ConstantBuffer);
+	Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
+	Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
 
 	ReleaseGraphicScene(&Scene);
-	Framework->Engine->GetBlockMemory().free(this);
+	Framework->Core->GetBlockMemory().free(this);
 }
 
 
@@ -352,6 +352,10 @@ PlayState::~PlayState()
 bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 {
 	FrameGraph.Resources.AddDepthBuffer(DepthBuffer);
+	WorldRender_Targets Targets = {
+		GetCurrentBackBuffer(&Core->Window),
+		DepthBuffer
+	};
 
 	PVS	Drawables_Solid(Core->GetTempMemory());
 	PVS	Drawables_Transparent(Core->GetTempMemory());
@@ -361,17 +365,15 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	ClearBackBuffer		(FrameGraph, 0.0f);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
-	DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
-		RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
-		CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
-		CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
-
-	WorldRender_Targets Targets = {
-		GetCurrentBackBuffer(&Core->Window),
-		DepthBuffer
-	};
-
 	Render.DefaultRender(Drawables_Solid, GetCamera_ref(Player), Core->Nodes, Targets, FrameGraph, Core->GetTempMemory());
+
+	//DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
+	//	RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
+	//	CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
+	//	CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
+
+
+
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
 	return true;
@@ -553,7 +555,7 @@ TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory
 
 void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 {
-	FK_ASSERT(LoadScene(Framework->Engine->RenderSystem, Framework->Engine->Nodes, &Framework->Engine->Assets, &Framework->Engine->Geometry, 201, &State->Scene, Framework->Engine->GetTempMemory()), "FAILED TO LOAD!\n");
+	FK_ASSERT(LoadScene(Framework->Core->RenderSystem, Framework->Core->Nodes, &Framework->Core->Assets, &Framework->Core->Geometry, 201, &State->Scene, Framework->Core->GetTempMemory()), "FAILED TO LOAD!\n");
 
 	InitiateGameObject( 
 		State->FloorObject,
@@ -562,7 +564,7 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 	//InitiateGameObject(
 	//	State->Player,
 	//		State->Physics.CreateCharacterController({0, 10, 0}, 10, 5.0f),
-	//		CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
+	//		CreateCameraComponent(Framework->Core->Cameras, GetWindowAspectRatio(Framework->Core), 0.01f, 10000.0f, InvalidComponentHandle),
 			//CreateThirdPersonCamera(&State->TPC));
 	//		CreateOrbitCamera(State->OrbitCameras, , 10));
 
@@ -617,41 +619,25 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 		State->Player,
 			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
-			CreateCameraComponent(Framework->Engine->Cameras, GetWindowAspectRatio(Framework->Engine), 0.01f, 10000.0f, InvalidComponentHandle),
-			CreateOrbitCamera(State->OrbitCameras, &Framework->Engine->Cameras, 10000.0f));
+			CreateCameraComponent(Framework->Core->Cameras, GetWindowAspectRatio(Framework->Core), 0.01f, 10000.0f, InvalidComponentHandle),
+			CreateOrbitCamera(State->OrbitCameras, &Framework->Core->Cameras, 10000.0f));
 
 	Translate		(State->Player, {0, 10000, -10});
 	SetCameraOffset	(State->Player, { 0, 15, 10 });
 
-	//auto CubeHandle = CreateCube(State->Framework->Engine->RenderSystem, State->Framework->Engine->Geometry, State->Framework->Engine->GetBlockMemory(), 100, 1234);
+	//auto CubeHandle = CreateCube(State->Framework->Core->RenderSystem, State->Framework->Core->Geometry, State->Framework->Core->GetBlockMemory(), 100, 1234);
 
-	auto HF = LoadHeightFieldCollider(&Framework->Engine->Physics, &Framework->Engine->Assets, 10601);
+	auto HF = LoadHeightFieldCollider(&Framework->Core->Physics, &Framework->Core->Assets, 10601);
 
 	PxHeightFieldGeometry	hfGeom(HF, PxMeshGeometryFlags(), 4096.0f/32767.0f , 8, 8);
 	PxTransform				HFPose(PxVec3(-4096, 0, -4096));
-	auto					aHeightFieldActor = Framework->Engine->Physics.Physx->createRigidStatic(HFPose);
+	auto					aHeightFieldActor = Framework->Core->Physics.Physx->createRigidStatic(HFPose);
 
-	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Framework->Engine->Physics.DefaultMaterial, 1);
+	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Framework->Core->Physics.DefaultMaterial, 1);
 	State->Physics.Scene->addActor(*aHeightFieldActor);
 
 	FK_ASSERT(0);
 	//PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
-}
-
-
-/************************************************************************************************/
-
-
-PlayState* CreatePlayState(EngineCore* Engine, GameFramework* Framework)
-{
-	PlayState* State = nullptr;
-
-	State = &Engine->GetBlockMemory().allocate_aligned<PlayState>(Engine, Framework);
-
-	//CreateTerrainTest(State, Framework);
-	//CreateIntersectionTest(State, Framework);
-
-	return State;
 }
 
 

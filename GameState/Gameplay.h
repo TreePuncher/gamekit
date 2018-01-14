@@ -126,8 +126,8 @@ struct GameplayComponentSystem : public ComponentSystemInterface
 
 	void Initiate( PhysicsComponentSystem* System, GameFramework* framework )
 	{
-		Framework		= framework;
-		auto* Engine	= framework->Engine;
+		Framework	= framework;
+		auto* Core	= framework->Core;
 	}
 
 	void Clear()
@@ -188,7 +188,7 @@ void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
 		if (!C)
 		{
 			auto Node = Args.Gameplay->GetPlayerNode(Player);
-			CreateComponent(GO, TransformComponentArgs{ Args.Framework->Engine->Nodes, Node });
+			CreateComponent(GO, TransformComponentArgs{ Args.Framework->Core->Nodes, Node });
 		}
 		else
 		{

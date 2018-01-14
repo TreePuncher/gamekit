@@ -99,25 +99,25 @@ namespace FlexKit
 				}	break;
 				case KC_ARROWUP:
 				{
-					if(C->CommandHistory.size()){
-						auto line	  = C->CommandHistory[RecallIndex].Str;
+					if(Console->CommandHistory.size()){
+						auto line	  = Console->CommandHistory[RecallIndex].Str;
 						auto LineSize = strlen(line);
 
-						strcpy_s(C->InputBuffer, C->CommandHistory[RecallIndex]);
+						strcpy_s(Console->InputBuffer, Console->CommandHistory[RecallIndex]);
 
-						C->InputBufferSize = LineSize;
+						Console->InputBufferSize = LineSize;
 						IncrementRecallIndex();
 					}
 				}	break;
 				case KC_ARROWDOWN:
 				{
-					if (C->CommandHistory.size()) {
-						auto line		= C->CommandHistory[RecallIndex].Str;
+					if (Console->CommandHistory.size()) {
+						auto line		= Console->CommandHistory[RecallIndex].Str;
 						auto LineSize	= strlen(line);
 
-						strcpy_s(C->InputBuffer, C->CommandHistory[RecallIndex]);
+						strcpy_s(Console->InputBuffer, Console->CommandHistory[RecallIndex]);
 
-						C->InputBufferSize = LineSize;
+						Console->InputBufferSize = LineSize;
 						DecrementRecallIndex();
 					}
 				}	break;
@@ -149,7 +149,7 @@ namespace FlexKit
 
 	void ConsoleSubState::IncrementRecallIndex()
 	{
-		RecallIndex = (RecallIndex + 1) % C->CommandHistory.size();
+		RecallIndex = (RecallIndex + 1) % Console->CommandHistory.size();
 	}
 
 
@@ -158,7 +158,7 @@ namespace FlexKit
 
 	void ConsoleSubState::DecrementRecallIndex()
 	{
-		RecallIndex = (C->CommandHistory.size() + RecallIndex - 1) % C->CommandHistory.size();
+		RecallIndex = (Console->CommandHistory.size() + RecallIndex - 1) % Console->CommandHistory.size();
 	}
 
 

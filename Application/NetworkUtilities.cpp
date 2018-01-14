@@ -27,7 +27,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #if USING(RACKNET)
 
-
+// TODO: Get these libraries build settings to match
+#ifdef _DEBUG
+#pragma comment(lib, "RakNet_VS2008_LibStatic_Debug_x64.lib")
+#else
+#pragma comment(lib, "RakNet_VS2008_DLL_Release_x64.lib")
+#endif
 /************************************************************************************************/
 
 

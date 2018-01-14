@@ -186,7 +186,7 @@ void UpdatePlayer(GameFramework* Framework, Player* P, PlayerInputState Input, f
 	SetPositionW(P->CameraCTR.Nodes, P->CameraCTR.Yaw_Node, (P->PlayerCTR.Pos));
 	Framework->GScene.SetPositionEntity_WT(P->Model, P->PlayerCTR.Pos);
 
-	UpdateCameraController(Framework->Engine->Nodes, Cam_Ctr, dT);
+	UpdateCameraController(Framework->Core->Nodes, Cam_Ctr, dT);
 
 	*/
 }

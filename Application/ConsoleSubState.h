@@ -36,23 +36,22 @@ namespace FlexKit
 		ConsoleSubState(GameFramework* framework) :
 			FrameworkState(framework) 
 		{
-			C                    = &Framework->Console;
+			Console              = &Framework->Console;
 			Framework            = Framework;
-			Engine               = Framework->Engine;
+			Core				 = Framework->Core;
 			PauseBackgroundLogic = true;
 		}
 
 		~ConsoleSubState()
 		{
 			Framework->ConsoleActive = false;
-			C->Memory->free(this); // Not sure what to do about this. Seems like a poor design implication
+			Console->Memory->free(this); // Not sure what to do about this. Seems like a poor design implication
 		}
 
 		bool			PauseBackgroundLogic;
 		size_t			RecallIndex;
-		Console*		C;
-
-		EngineCore*	Engine;
+		Console*		Console;
+		EngineCore*		Core;
 
 		void IncrementRecallIndex();
 		void DecrementRecallIndex();

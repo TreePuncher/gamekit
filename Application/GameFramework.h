@@ -59,8 +59,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct GameFramework
+	class GameFramework
 	{
+	public:
+		void Update				(double dT);
+		void UpdateFixed		(double dT);
+		void UpdateAnimations	(iAllocator* TempMemory, double dT);
+		void UpdatePreDraw		(iAllocator* TempMemory, double dT);
+		void Draw				(iAllocator* TempMemory);
+		void PostDraw			(iAllocator* TempMemory, double dT);
+		void Cleanup			();
+
+		void PostPhysicsUpdate	();
+		void PrePhysicsUpdate	();
+
 		struct {
 			FontAsset*			Font;
 			Texture2D			Terrain;
@@ -76,12 +88,11 @@ namespace FlexKit
 		EDEFERREDPASSMODE		DP_DrawMode;
 
 		Console					Console;
-		EngineCore*				Engine;
+		EngineCore*				Core;
 
 
 		static_vector<MouseHandler>		MouseHandlers;
 		static_vector<FrameworkState*>	SubStates;
-
 
 		double	PhysicsUpdateTimer;
 		bool	ConsoleActive;
@@ -135,31 +146,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool			LoadScene		 (EngineCore* Engine, GraphicScene* Scene, const char* SceneName);
-	bool			LoadScene		 (EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID);
-	void			DrawMouseCursor	 (EngineCore* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
-
-	void			PushSubState	 (GameFramework* _ptr, FrameworkState* SS);
-	void			PopSubState		 (GameFramework* _ptr);
-
-	void			UpdateGameFramework	 (EngineCore* Engine, GameFramework* _ptr, double dT);
-	void			PreDrawGameFramework (EngineCore* Engine, GameFramework* _ptr, double dT);
-	void			ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr);
+	bool LoadScene		 (EngineCore* Engine, GraphicScene* Scene, const char* SceneName);
+	bool LoadScene		 (EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID);
+	void DrawMouseCursor (EngineCore* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
+ 
+	void PushSubState	 (GameFramework* _ptr, FrameworkState* SS);
+	void PopSubState	 (GameFramework* _ptr);
+ 
+	void UpdateGameFramework  (EngineCore* Engine, GameFramework* _ptr, double dT);
+	void PreDrawGameFramework (EngineCore* Engine, GameFramework* _ptr, double dT);
+	void ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr);
 
 
 	/************************************************************************************************/
 
 
-	GameFramework*	InitiateFramework	(EngineCore* Engine);
-	void			Update				(EngineCore* Engine, GameFramework* Framework, double dT);
-	void			UpdateFixed			(EngineCore* Engine, double dt, GameFramework* State);
-	void			UpdateAnimations	(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr);
-	void			UpdatePreDraw		(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* Framework);
-	void			Draw				(EngineCore* Engine, iAllocator* TempMemory, GameFramework* Framework);
-	void			PostDraw			(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State);
-	void			Cleanup				(EngineCore* Engine, GameFramework* Framework);
-	void			PostPhysicsUpdate	(GameFramework*);
-	void			PrePhysicsUpdate	(GameFramework*);
+	void InitiateFramework	(EngineCore* Engine, GameFramework& Framework);
 
 
 }	/************************************************************************************************/

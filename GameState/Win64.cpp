@@ -23,12 +23,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "..\buildsettings.h"
-#include "..\Application\FrameworkSourceFiles.cpp"
-#include "..\coreutilities\AllSourceFiles.cpp"
+#include "..\Application\Application.h"
 
-#include "InitiateState.cpp"
 #include "HostState.cpp"
 #include "ClientState.cpp"
 #include "MenuState.cpp"
 #include "PlayState.cpp"
 #include "Gameplay.cpp"
+
+int main(int argc, char* argv[])
+{
+	FlexKit::FKApplication App;
+
+	for (size_t I = 0; I < argc; ++I)
+		App.PushArgument(argv[I]);
+
+	App.SetInitialState<PlayState>();
+	App.Run();
+	App.Cleanup();
+
+	return 0;
+}

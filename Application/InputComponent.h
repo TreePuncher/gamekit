@@ -52,8 +52,8 @@ namespace FlexKit
 	{
 		InputComponentSystem(GameFramework* F)
 		{
-			Listeners.Allocator		= F->Engine->GetBlockMemory();
-			TargetSystems.Allocator = F->Engine->GetBlockMemory();
+			Listeners.Allocator		= F->Core->GetBlockMemory();
+			TargetSystems.Allocator = F->Core->GetBlockMemory();
 			Framework				= F;
 		}
 

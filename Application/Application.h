@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2015 - 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,17 +22,65 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef APPSOURCE_INCLUDED
-#define APPSOURCE_INCLUDED
+
+#ifndef FKAPPLICATION_H
+#define FKAPPLICATION_H
+
+#pragma warning( disable : 4251 )
+
+#include "stdafx.h"
+
+#include "..\buildsettings.h"
+#include "..\coreutilities\AllSourceFiles.cpp"
+#include "FrameworkSourceFiles.cpp"
+
+#include "GameMemory.h"
+#include "GameFramework.h"
+
+#include <Windows.h>
+#include <iostream>
 
 
-#include "..\Application\CameraUtilities.cpp"
-#include "..\Application\Console.cpp"
-#include "..\Application\ConsoleSubState.cpp"
-#include "..\Application\GameFramework.cpp"
-#include "..\Application\GameUtilities.cpp"
-#include "..\Application\InputComponent.cpp"
-#include "..\Application\NetworkUtilities.cpp"
-#include "..\Application\WorldRender.cpp"
+namespace FlexKit
+{
+	class FKApplication
+	{
+	public:
+		FKApplication()
+		{
+			bool Success = InitEngine(Core, Memory);
+			FK_ASSERT(Success);
+
+			InitiateFramework(Core, Framework);
+		}
+
+		~FKApplication() 
+		{
+			Cleanup();
+		}
+
+		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
+		void SetInitialState(TY_ARGS ... ARGS)
+		{
+			Framework.SubStates.push_back(&Core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(&Framework, ARGS...));
+		}
+
+		void Run();
+		void Cleanup();
+
+		void PushArgument(const char* Str)
+		{
+			Core->CmdArguments.push_back(Str);
+		}
+
+	private:
+		EngineMemory*	Memory;
+		EngineCore*		Core;
+		GameFramework	Framework;
+	};
+
+}
+
+#include "Application.cpp"
 
 #endif

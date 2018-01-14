@@ -38,7 +38,7 @@ void SendGameINFO(HostState* Host, RakNet::SystemAddress Addr)
 	bsOut.Write(eINCOMINGSTRUCT);
 
 	size_t PacketSize = sizeof(GameInfoPacket) + (sizeof(PlayerID_t) * Host->PlayerCount);
-	GameInfoPacket* OutPacket = (GameInfoPacket*)Host->Framework->Engine->GetBlockMemory()._aligned_malloc( PacketSize);
+	GameInfoPacket* OutPacket = (GameInfoPacket*)Host->Framework->Core->GetBlockMemory()._aligned_malloc( PacketSize);
 	new(OutPacket) GameInfoPacket(Host->PlayerCount, "ShaderBallScene");
 
 	for (size_t itr = 0, OutIndex = 0; itr < Host->PlayerCount; itr++) {

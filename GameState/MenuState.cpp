@@ -41,7 +41,7 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 	PopSubState(Args->State->Framework);
 	PushSubState(
 		Args->State->Framework, 
-		&Args->State->Framework->Engine->GetBlockMemory().allocate_aligned<HostState>(
+		&Args->State->Framework->Core->GetBlockMemory().allocate_aligned<HostState>(
 			Args->Engine, 
 			Args->State->Framework));
 
@@ -65,7 +65,7 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 
 		PopSubState	(Framework);
 		//PushSubState(Args->State->Framework, CreateClientState(Args->Engine, Args->State->Framework));
-		PushSubState(Framework, CreateJoinScreenState(Framework, Framework->Engine));
+		PushSubState(Framework, CreateJoinScreenState(Framework, Framework->Core));
 	}
 	return true;
 }
@@ -176,9 +176,9 @@ bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 void ReleaseMenu	(FrameworkState* StateMemory)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
-	CleanUpSimpleWindow(&ThisState->Window, ThisState->Framework->Engine->RenderSystem);
+	CleanUpSimpleWindow(&ThisState->Window, ThisState->Framework->Core->RenderSystem);
 	ThisState->BettererWindow.Release();
-	ThisState->Framework->Engine->GetBlockMemory().free(ThisState);
+	ThisState->Framework->Core->GetBlockMemory().free(ThisState);
 }
 
 

@@ -7,12 +7,9 @@
 
 #include "targetver.h"
 
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\containers.h"
-
 //#include "..\Application\ResourceUtilities.h"
 //#include "..\graphicsutilities\AnimationUtilities.h"
-//#include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\graphics.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
@@ -20,7 +17,6 @@
 #include "PxPhysicsAPI.h"
 #include <stdio.h>
 #include <tchar.h>
-
 
 
 // TODO: reference additional headers your program requires here

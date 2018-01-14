@@ -104,16 +104,16 @@ namespace FlexKit
 				_ptr->Quit = true;
 				break;
 			case KC_R:
-				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_CULL_PSO);
-				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO);
-				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
-				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
+				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_CULL_PSO);
+				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO);
+				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
+				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
 				break;
 			case KC_E:
 			{
 			}	break;
 			case KC_T:
-				_ptr->Engine->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TILEDSHADING_SHADE);
+				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TILEDSHADING_SHADE);
 				break;
 			case KC_M:
 				_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
@@ -128,7 +128,7 @@ namespace FlexKit
 			{
 				std::cout << "Pushing Console State\n";
 				if (!_ptr->ConsoleActive) {
-					PushSubState(_ptr, &_ptr->Engine->GetBlockMemory().allocate<ConsoleSubState>(_ptr));
+					PushSubState(_ptr, &_ptr->Core->GetBlockMemory().allocate<ConsoleSubState>(_ptr));
 					_ptr->ConsoleActive = true;
 				}
 			}	break;
@@ -147,6 +147,196 @@ namespace FlexKit
 		default:
 			break;
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GameFramework::Update(double dT)
+	{
+		TimeRunning += dT;
+
+		UpdateMouseInput(&MouseState, &Core->Window);
+
+		if (!SubStates.size()) {
+			Quit = true;
+			return;
+		}
+
+
+		auto RItr = SubStates.rbegin();
+		auto REnd = SubStates.rend();
+
+		while (RItr != REnd)
+		{
+			auto State = *RItr;
+			if (!State->Update(Core, dT))
+				break;
+
+			RItr++;
+		}
+
+		UpdateTransforms(Core->Nodes);
+		Core->Cameras.Update(dT);
+
+		Core->End = Quit;
+	}
+
+
+	void GameFramework::UpdateFixed(double dt)
+	{
+		UpdateMouseInput(&MouseState, &Core->Window);
+	}
+
+
+	void GameFramework::UpdateAnimations(iAllocator* TempMemory, double dt)
+	{
+
+	}
+
+
+	void GameFramework::UpdatePreDraw(iAllocator* TempMemory, double dT)
+	{
+		if (!SubStates.size()) {
+			Quit = true;
+			return;
+		}
+
+		if (DrawDebug) {
+			auto RItr = SubStates.rbegin();
+			auto REnd = SubStates.rend();
+			while (RItr != REnd)
+			{
+				auto State = *RItr;
+				if (!State->DebugDraw(Core, dT))
+					break;
+
+				RItr++;
+			}
+		}
+
+		auto RItr = SubStates.rbegin();
+		auto REnd = SubStates.rend();
+		while (RItr != REnd)
+		{
+			auto State = *RItr;
+			if (!State->PreDrawUpdate(Core, dT))
+				break;
+
+			RItr++;
+		}
+
+
+		if (Stats.Fps_T > 1.0)
+		{
+			Stats.FPS         = Stats.FPS_Counter;
+			Stats.FPS_Counter = 0;
+			Stats.Fps_T       = 0.0;
+		}
+
+		Stats.FPS_Counter++;
+		Stats.Fps_T += dT;
+
+		if (DrawDebugStats && false)
+		{
+			uint32_t VRamUsage = GetVidMemUsage(Core->RenderSystem) / MEGABYTE;
+			char* TempBuffer   = (char*)Core->GetTempMemory().malloc(512);
+			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
+
+			sprintf_s(TempBuffer, 512, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Stats.FPS, DrawTiming, (uint32_t)Stats.ObjectsDrawnLastFrame);
+
+			FK_ASSERT(0);
+			//PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Core));
+		}
+	}
+
+
+	void GameFramework::Draw(iAllocator* TempMemory)
+	{
+		FrameGraph		FrameGraph(Core->RenderSystem, TempMemory);
+
+		// Add in Base Resources
+		FrameGraph.Resources.AddRenderTarget(Core->Window.GetBackBuffer());
+
+		{
+			auto Itr = SubStates.begin();
+			auto End = SubStates.end();
+
+			while (Itr != End)
+			{
+				auto Framework = *Itr;		
+				if (!Framework->Draw(Core, 0, FrameGraph))
+					break;
+
+				Itr++;
+			}
+		}
+
+		ProfileBegin(PROFILE_SUBMISSION);
+
+		if(	ActiveWindow )
+		{
+			FrameGraph.UpdateFrameGraph(Core->RenderSystem, ActiveWindow, Core->GetTempMemory());
+			FrameGraph.SubmitFrameGraph(Core->RenderSystem, ActiveWindow);
+
+			Free_DelayedReleaseResources(Core->RenderSystem);
+		}
+
+		ProfileEnd(PROFILE_SUBMISSION);
+	}
+
+
+	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
+	{
+		Core->RenderSystem.PresentWindow(&Core->Window);
+	}
+
+
+	void GameFramework::Cleanup()
+	{
+		Core->RenderSystem.ShutDownUploadQueues();
+
+		ReleaseConsole(&Console);
+		Release(DefaultAssets.Font);
+
+		// wait for last Frame to finish Rendering
+		auto CL = Core->RenderSystem._GetCurrentCommandList();
+
+		for (size_t I = 0; I < 4; ++I) 
+		{
+			Core->RenderSystem.WaitforGPU();
+			Core->RenderSystem._IncrementRSIndex();
+		}
+
+		ReleaseGameFramework(Core, this);
+
+		// Counters are at Max 3
+		Free_DelayedReleaseResources(Core->RenderSystem);
+		Free_DelayedReleaseResources(Core->RenderSystem);
+		Free_DelayedReleaseResources(Core->RenderSystem);
+
+		FreeAllResourceFiles	(&Core->Assets);
+		FreeAllResources		(&Core->Assets);
+
+		Core->GetBlockMemory().release_allocation(*Core);
+
+		DEBUGBLOCK(PrintBlockStatus(&Core->GetBlockMemory()));
+	}
+
+
+	void GameFramework::PostPhysicsUpdate()
+	{
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GameFramework::PrePhysicsUpdate()
+	{
+
 	}
 
 
@@ -278,80 +468,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateGameFramework(EngineCore* Engine, GameFramework* State, double dT)
-	{
-		UpdateMouseInput(&State->MouseState, &Engine->Window);
-
-		if (!State->SubStates.size()) {
-			State->Quit = true;
-			return;
-		}
-
-		auto RItr = State->SubStates.rbegin();
-		auto REnd = State->SubStates.rend();
-
-		while (RItr != REnd)
-		{
-			auto State = *RItr;
-			if (!State->Update(Engine, dT))
-				break;
-
-			RItr++;
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PreDrawGameFramework(EngineCore* Engine, GameFramework* State, double dT)
-	{
-		if (!State->SubStates.size()) {
-			State->Quit = true;
-			return;
-		}
-
-		if (State->DrawDebug) {
-			auto RItr = State->SubStates.rbegin();
-			auto REnd = State->SubStates.rend();
-			while (RItr != REnd)
-			{
-				auto State = *RItr;
-				if (!State->DebugDraw(Engine, dT))
-					break;
-
-				RItr++;
-			}
-			/*
-			for (size_t I = 0; I < State->GScene.PLights.size(); ++I)
-			{
-				auto P		= State->GScene.PLights[I];
-				auto PState = State->GScene.PLights.Flags->at(I);
-
-				if ((LightBufferFlags)PState != LightBufferFlags::Unused) {
-					auto POS = GetPositionW(Engine->Nodes, P.Position);
-					PushCircle3D(&State->Immediate, Engine->TempAllocator, POS, P.R);
-				}
-			}
-			*/
-		}
-
-		auto RItr = State->SubStates.rbegin();
-		auto REnd = State->SubStates.rend();
-		while (RItr != REnd)
-		{
-			auto State = *RItr;
-			if (!State->PreDrawUpdate(Engine, dT))
-				break;
-
-			RItr++;
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
 	bool SetDebugRenderMode(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void* USR)
 	{
 		GameFramework* Framework = (GameFramework*)USR;
@@ -382,20 +498,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GameFramework* InitiateFramework(EngineCore* Engine)
+	void InitiateFramework(EngineCore* Core, GameFramework& Framework)
 	{
-		GameFramework& Framework = Engine->GetBlockMemory().allocate_aligned<GameFramework>();
-		SetDebugMemory(Engine->GetDebugMemory());
+		SetDebugMemory(Core->GetDebugMemory());
 
-		AddResourceFile("assets\\assets.gameres",				&Engine->Assets);
-		AddResourceFile("assets\\ResourceFile.gameres",			&Engine->Assets);
-		AddResourceFile("assets\\ShaderBallTestScene.gameres",	&Engine->Assets);
+		AddResourceFile("assets\\assets.gameres",				&Core->Assets);
+		AddResourceFile("assets\\ResourceFile.gameres",			&Core->Assets);
+		AddResourceFile("assets\\ShaderBallTestScene.gameres",	&Core->Assets);
 
 		Framework.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
 		Framework.Quit						= false;
 		Framework.PhysicsUpdateTimer		= 0.0f;
 		Framework.TerrainSplits				= 12;
-		Framework.Engine					= Engine;
+		Framework.Core						= Core;
 		Framework.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 
 #ifdef _DEBUG
@@ -408,7 +523,7 @@ namespace FlexKit
 
 		Framework.ActivePhysicsScene		= nullptr;
 		Framework.ActiveScene				= nullptr;
-		Framework.ActiveWindow				= &Engine->Window;
+		Framework.ActiveWindow				= &Core->Window;
 
 		Framework.DrawPhysicsDebug			= false;
 
@@ -419,10 +534,10 @@ namespace FlexKit
 
 
 		{
-			uint2	WindowRect	   = Engine->Window.WH;
+			uint2	WindowRect	   = Core->Window.WH;
 			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
-			//InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 160000.0f, true);
-			//InitiateCamera(Engine->RenderSystem, Engine->Nodes, &Framework.DebugCamera, Aspect, 0.1f, 160000.0f, true);
+			//InitiateCamera(Core->RenderSystem, Core->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 160000.0f, true);
+			//InitiateCamera(Core->RenderSystem, Core->Nodes, &Framework.DebugCamera, Aspect, 0.1f, 160000.0f, true);
 
 			//Framework.ActiveCamera				= &Framework.DefaultCamera;
 			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
@@ -430,8 +545,8 @@ namespace FlexKit
 		}
 		{
 			TextureBuffer TempBuffer;
-			LoadBMP("assets\\textures\\TestMap.bmp", Engine->GetTempMemory(), &TempBuffer);
-			Texture2D	HeightMap = LoadTexture(&TempBuffer, Engine->RenderSystem, Engine->GetTempMemory());
+			LoadBMP("assets\\textures\\TestMap.bmp", Core->GetTempMemory(), &TempBuffer);
+			Texture2D	HeightMap = LoadTexture(&TempBuffer, Core->RenderSystem, Core->GetTempMemory());
 
 			Framework.DefaultAssets.Terrain = HeightMap;
 		}
@@ -439,17 +554,17 @@ namespace FlexKit
 		FlexKit::EventNotifier<>::Subscriber sub;
 		sub.Notify = &EventsWrapper;
 		sub._ptr   = &Framework;
-		Engine->Window.Handler.Subscribe(sub);
+		Core->Window.Handler.Subscribe(sub);
 
-		Framework.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Engine->RenderSystem, Engine->GetTempMemory(), Engine->GetBlockMemory());
+		Framework.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Core->RenderSystem, Core->GetTempMemory(), Core->GetBlockMemory());
 		
-		InitateConsole(&Framework.Console, Framework.DefaultAssets.Font, Engine);
+		InitateConsole(&Framework.Console, Framework.DefaultAssets.Font, Core);
 		BindUIntVar(&Framework.Console, "TerrainSplits",	&Framework.TerrainSplits);
 		BindUIntVar(&Framework.Console, "FPS",				&Framework.Stats.FPS);
 		BindBoolVar(&Framework.Console, "HUD",				&Framework.DrawDebugStats);
 		BindBoolVar(&Framework.Console, "DrawDebug",		&Framework.DrawDebug);
 		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
-		BindBoolVar(&Framework.Console, "FrameLock",		&Engine->FrameLock);
+		BindBoolVar(&Framework.Console, "FrameLock",		&Core->FrameLock);
 
 		AddUIntVar(&Framework.Console, "RM_Default",	EDEFERREDPASSMODE::EDPM_DEFAULT);
 		AddUIntVar(&Framework.Console, "RM_Normals",	EDEFERREDPASSMODE::EDPM_SSNORMALS);
@@ -458,186 +573,8 @@ namespace FlexKit
 
 		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});
 
-		Engine->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
-
-		return &Framework;
+		Core->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
 	}
 
 
-	/************************************************************************************************/
-
-
-	void Update(EngineCore* Engine, GameFramework* Framework, double dT)
-	{
-		Framework->TimeRunning += dT;
-
-		UpdateGameFramework(Engine, Framework, dT);
-
-		//UpdateScene		(&Framework->ActivePhysicsScene->Scene, 1.0f/60.0f, nullptr, nullptr, nullptr );
-		//UpdateColliders	(&Framework->ActivePhysicsScene->Scene, Engine->Nodes);
-
-		Engine->End = Framework->Quit;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateFixed(EngineCore* Engine, double dt, GameFramework* State)
-	{
-		UpdateMouseInput(&State->MouseState, &Engine->Window);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateAnimations(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* _ptr)
-	{
-		if(_ptr->ActiveScene)	
-			UpdateAnimationsGraphicScene(_ptr->ActiveScene, dt);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdatePreDraw(EngineCore* Core, iAllocator* TempMemory, double dt, GameFramework* Framework)
-	{
-		PreDrawGameFramework(Core, Framework, dt);
-
-		if(Framework->ActiveScene)
-		{
-			UpdateCoreComponents(Core, dt);
-			UpdateGraphicScene	(Framework->ActiveScene); // Default Scene
-		}
-
-		if (Framework->Stats.Fps_T > 1.0)
-		{
-			Framework->Stats.FPS         = Framework->Stats.FPS_Counter;
-			Framework->Stats.FPS_Counter = 0;
-			Framework->Stats.Fps_T       = 0.0;
-		}
-
-		Framework->Stats.FPS_Counter++;
-		Framework->Stats.Fps_T += dt;
-
-		if (Framework->DrawDebugStats && false)
-		{
-			uint32_t VRamUsage = GetVidMemUsage(Core->RenderSystem) / MEGABYTE;
-			char* TempBuffer   = (char*)Core->GetTempMemory().malloc(512);
-			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
-
-			sprintf_s(TempBuffer, 512, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Framework->Stats.FPS, DrawTiming, (uint32_t)Framework->Stats.ObjectsDrawnLastFrame);
-
-			FK_ASSERT(0);
-			//PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Core));
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Draw(EngineCore* Core, iAllocator* TempMemory, GameFramework* Framework)
-	{
-		FrameGraph		FrameGraph(Core->RenderSystem, TempMemory);
-
-		// Add in Base Resources
-		auto BB			= GetCurrentBackBuffer(&Core->Window);
-		FrameGraph.Resources.AddRenderTarget(BB);
-
-		{
-			auto Itr = Framework->SubStates.begin();
-			auto End = Framework->SubStates.end();
-
-			while (Itr != End)
-			{
-				auto Framework = *Itr;		
-				if (!Framework->Draw(Core, 0, FrameGraph))
-					break;
-
-				Itr++;
-			}
-		}
-
-		ProfileBegin(PROFILE_SUBMISSION);
-
-		if(	Framework->ActiveWindow )
-		{
-			FrameGraph.UpdateFrameGraph(Core->RenderSystem, Framework->ActiveWindow, Core->GetTempMemory());
-			FrameGraph.SubmitFrameGraph(Core->RenderSystem, Framework->ActiveWindow);
-
-			Free_DelayedReleaseResources(Core->RenderSystem);
-		}
-
-		ProfileEnd(PROFILE_SUBMISSION);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PostDraw(EngineCore* Engine, iAllocator* TempMemory, double dt, GameFramework* State)
-	{
-		Engine->RenderSystem.PresentWindow(&Engine->Window);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Cleanup(EngineCore* Engine, GameFramework* Framework)
-	{
-		Engine->RenderSystem.ShutDownUploadQueues();
-
-		ReleaseConsole(&Framework->Console);
-		Release(Framework->DefaultAssets.Font);
-
-		// wait for last Frame to finish Rendering
-		auto CL = Engine->RenderSystem._GetCurrentCommandList();
-
-		for (size_t I = 0; I < 4; ++I) 
-		{
-			Engine->RenderSystem.WaitforGPU();
-			Engine->RenderSystem._IncrementRSIndex();
-		}
-
-		ReleaseGameFramework(Engine, Framework);
-
-		// Counters are at Max 3
-		Free_DelayedReleaseResources(Engine->RenderSystem);
-		Free_DelayedReleaseResources(Engine->RenderSystem);
-		Free_DelayedReleaseResources(Engine->RenderSystem);
-
-		Engine->GetBlockMemory().free(Framework);
-		
-		FreeAllResourceFiles	(&Engine->Assets);
-		FreeAllResources		(&Engine->Assets);
-
-		Engine->GetBlockMemory().release_allocation(*Engine);
-
-		DEBUGBLOCK(PrintBlockStatus(&Engine->GetBlockMemory()));
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PostPhysicsUpdate(GameFramework*)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PrePhysicsUpdate(GameFramework*)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-}
+}	/************************************************************************************************/
