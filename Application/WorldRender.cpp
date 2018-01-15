@@ -99,9 +99,67 @@ namespace FlexKit
 		return PSO;
 	}
 
+
+	ID3D12PipelineState* CreateOcclusionDrawPSO(RenderSystem* RS)
+	{
+		auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\forwardRender.hlsl");
+
+		FINALLY
+			
+		Release(&DrawRectVShader);
+
+		FINALLYOVER
+
+		/*
+		typedef struct D3D12_INPUT_ELEMENT_DESC
+		{
+		LPCSTR SemanticName;
+		UINT SemanticIndex;
+		DXGI_FORMAT Format;
+		UINT InputSlot;
+		UINT AlignedByteOffset;
+		D3D12_INPUT_CLASSIFICATION InputSlotClass;
+		UINT InstanceDataStepRate;
+		} 	D3D12_INPUT_ELEMENT_DESC;
+		*/
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+
+		D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+		Depth_Desc.DepthEnable	= true;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.VS                    = DrawRectVShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets      = 0;
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+	}
+
+
 	void WorldRender::DefaultRender(PVS& Drawables, Camera& Camera, SceneNodes* Nodes, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
 	{
-		ClearDepthBuffer(Graph, Targets.DepthTarget, 1.0f);
+		ClearDepthBuffer(Graph, Targets.DepthTarget,	1.0f);
+		ClearDepthBuffer(Graph, OcclusionBuffer,		1.0f);
 
 		RenderDrawabledPBR_Forward(Drawables, Camera, Nodes, Targets, Graph, Memory);
 	}
@@ -118,6 +176,7 @@ namespace FlexKit
 		{
 			TriMeshHandle	Mesh;
 			size_t			ConstantBufferOffset;
+			size_t			OcclusionIdx;
 		};
 
 		typedef Vector<ForwardDraw> ForwardDrawableList;
@@ -125,6 +184,7 @@ namespace FlexKit
 		{
 			FrameResourceHandle		BackBuffer;
 			FrameResourceHandle		DepthBuffer;
+			FrameResourceHandle		OcclusionBuffer;
 			VertexBufferHandle		VertexBuffer;
 			ConstantBufferHandle	ConstantBuffer;
 			ForwardDrawableList		Draws;
@@ -134,8 +194,11 @@ namespace FlexKit
 		auto& Pass = Graph.AddNode<ForwardDrawPass>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, ForwardDrawPass& Data)
 		{
-			Data.BackBuffer		= Builder.WriteBackBuffer	(RS->GetTag(Targets.RenderTarget));
-			Data.DepthBuffer	= Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+			Data.BackBuffer		 = Builder.WriteBackBuffer	(RS->GetTag(Targets.RenderTarget));
+			Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+
+			if(OcclusionCulling)
+				Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
 
 			Data.Draws = ForwardDrawableList{ Memory };
 			Camera::BufferLayout CameraConstants = Camera.GetConstants(Nodes, 0.0f);
@@ -155,7 +218,19 @@ namespace FlexKit
 		},
 			[=](const ForwardDrawPass& Data, const FrameResources& Resources, Context* Ctx)
 		{
-			// Setup Initial State
+			if (OcclusionCulling)
+			{
+				Ctx->SetScissorAndViewports({ Targets.RenderTarget });
+				Ctx->SetRenderTargets(
+					{	(DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, true,
+						(DescHeapPOS)Resources.GetRenderTargetObject(Data.OcclusionBuffer));
+
+				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+			}
+			else
+				Ctx->SetPredicate(false);
+
+			// Setup Initial Shading State
 			Ctx->SetScissorAndViewports({Targets.RenderTarget});
 			Ctx->SetRenderTargets(
 				{ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, true, 
@@ -169,6 +244,9 @@ namespace FlexKit
 			for (auto D : Data.Draws)
 			{
 				auto* TriMesh = &GT->Geometry[D.Mesh];
+
+				if(OcclusionCulling)
+					Ctx->SetPredicate(true, OcclusionQueries, D.OcclusionIdx * 8);
 
 				Ctx->AddIndexBuffer(TriMesh);
 				Ctx->AddVertexBuffers(TriMesh, 

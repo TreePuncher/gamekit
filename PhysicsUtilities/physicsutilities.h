@@ -234,8 +234,8 @@ namespace FlexKit
 
 	FLEXKITAPI void	UpdateScene		(PScene* scn, double dt, FNPSCENECALLBACK_POSTUPDATE, FNPSCENECALLBACK_PREUPDATE, void* P);
 	FLEXKITAPI void	UpdateColliders	(PScene* scn, FlexKit::SceneNodes* nodes);
-
 	*/
+
 
 	FLEXKITAPI void	InitiatePhysics(PhysicsSystem* Physics, uint32_t CoreCount, iAllocator* allocator);
 	FLEXKITAPI void	ReleasePhysics	(PhysicsSystem* Physics);

@@ -39,8 +39,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	ID3D12PipelineState* CreateForwardDrawPSO(RenderSystem* RS);
-
+	ID3D12PipelineState* CreateForwardDrawPSO	(RenderSystem* RS);
+	ID3D12PipelineState* CreateOcclusionDrawPSO	(RenderSystem* RS);
 
 	struct WorldRender_Targets
 	{
@@ -55,9 +55,13 @@ namespace FlexKit
 		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, GeometryTable* GT_IN) :
 			GT(GT_IN),
 			RS(RS_IN),
-			ConstantBuffer(RS->CreateConstantBuffer(64 * MEGABYTE, false))
+			ConstantBuffer	(RS->CreateConstantBuffer(64 * MEGABYTE, false)),
+			OcclusionBuffer	(RS->CreateDepthBuffer({1024, 1024}, true)),
+			OcclusionCulling(false),
+			OcclusionQueries(RS->CreateOcclusionBuffer(4096))
 		{
-			RS->RegisterPSOLoader(FORWARDDRAW, CreateForwardDrawPSO);
+			RS->RegisterPSOLoader(FORWARDDRAW,			CreateForwardDrawPSO);
+			RS->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	CreateOcclusionDrawPSO);
 			RS->QueuePSOLoad(FORWARDDRAW);
 		}
 
@@ -78,8 +82,11 @@ namespace FlexKit
 		RenderSystem*			RS;
 		GeometryTable*			GT;
 		ConstantBufferHandle	ConstantBuffer;
+		QueryBufferHandle		OcclusionQueries;
+		TextureHandle			OcclusionBuffer;
 		uint2					WH;// Output Size
 
+		bool OcclusionCulling;
 		// GBuffer
 		//RenderTargetHandle		Albedo;
 		//RenderTargetHandle		Color;

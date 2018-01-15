@@ -177,9 +177,11 @@ namespace FlexKit
 			RItr++;
 		}
 
+		if(ActivePhysicsScene)
+			ActivePhysicsScene->UpdateSystem(dT);
+
 		UpdateTransforms(Core->Nodes);
 		Core->Cameras.Update(dT);
-
 		Core->End = Quit;
 	}
 

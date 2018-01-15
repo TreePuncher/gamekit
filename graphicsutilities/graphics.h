@@ -511,6 +511,7 @@ namespace FlexKit
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>	DescHeapPOS;
 	typedef Handle_t<32>													VertexBufferHandle;
 	typedef Handle_t<32>													TextureHandle;
+	typedef Handle_t<32>													QueryBufferHandle;
 	typedef Handle_t<32>													VertexBufferHandle;
 	typedef ID3D12Resource*													VertexResourceBuffer;
 
@@ -1560,6 +1561,7 @@ namespace FlexKit
 
 		void FlushBarriers();
 
+		void SetPredicate(bool Enable, QueryBufferHandle Handle = {}, size_t = 0);
 
 		void SetRTRead	(TextureHandle Handle);
 		void SetRTWrite	(TextureHandle Handle);
@@ -1818,6 +1820,72 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	enum class QueryType
+	{
+		OcclusionQuery,
+		PipelineStats,
+	};
+
+
+	struct QueryTable
+	{
+		QueryTable(iAllocator* Memory, RenderSystem* RS_in) :
+			Users{Memory},
+			Resources{Memory},
+			RS{RS_in}
+		{
+		}
+
+
+		~QueryTable()
+		{
+		}
+
+
+		QueryBufferHandle	CreateQueryBuffer	(size_t Count, QueryType type);
+		void				LockUntil			(size_t FrameID);
+
+
+		void				SetUsed		(QueryBufferHandle Handle)
+		{
+			Users[Handle].Used = true;
+		}
+
+
+		ID3D12Resource*		GetResource	(QueryBufferHandle Handle)
+		{
+			auto& Res = Resources[Users[Handle].ResourceIdx];
+
+			return Res.Resources[Res.CurrentResource];
+		}
+
+
+		struct UserEntry
+		{
+			size_t ResourceIdx;
+			size_t ResourceSize;
+			size_t CurrentOffset;
+			bool   Used;
+		};
+
+
+		struct ResourceEntry
+		{
+			ID3D12Resource* Resources[3];
+			size_t			ResourceLocks[3];
+			size_t			CurrentResource;
+			size_t			Padding[1];
+		};
+
+		RenderSystem*			RS;
+		Vector<UserEntry>		Users;
+		Vector<ResourceEntry>	Resources;
+	};
+
+
+	/************************************************************************************************/
+
+
 	enum TextureFlags
 	{
 		TF_NONE			= 0x00,
@@ -1915,11 +1983,12 @@ namespace FlexKit
 		RenderSystem(iAllocator* Memory_IN) :
 			Memory			(Memory_IN),
 			Library			(Memory_IN),
+			Queries			(Memory_IN, this),
 			RenderTargets	(Memory_IN),
 			Textures		(Memory_IN),
 			VertexBuffers	(Memory_IN),
 			ConstantBuffers	(Memory_IN, this),
-			PipelineStates	(this, Memory_IN)
+			PipelineStates	(Memory_IN, this)
 		{
 			pDevice                = nullptr;
 			pDebug                 = nullptr;
@@ -1973,10 +2042,10 @@ namespace FlexKit
 		uint2		GetRenderTargetWH(TextureHandle Handle);
 
 		// Resource Creation and Destruction
-		ConstantBufferHandle	CreateConstantBuffer(size_t BufferSize, bool GPUResident = true);
-		VertexBufferHandle		CreateVertexBuffer	(size_t BufferSize, bool GPUResident = true);
-		TextureHandle			CreateDepthBuffer	(uint2 WH, bool UseFloat = false);
-
+		ConstantBufferHandle	CreateConstantBuffer	(size_t BufferSize, bool GPUResident = true);
+		VertexBufferHandle		CreateVertexBuffer		(size_t BufferSize, bool GPUResident = true);
+		TextureHandle			CreateDepthBuffer		(uint2 WH, bool UseFloat = false);
+		QueryBufferHandle		CreateOcclusionBuffer	(size_t Size);
 
 		void ReleaseCB(ConstantBufferHandle);
 		void ReleaseVB(VertexBufferHandle);
@@ -2016,6 +2085,8 @@ namespace FlexKit
 		D3D12_CPU_DESCRIPTOR_HANDLE	_GetDSVTableCurrentPosition_CPU();
 		D3D12_GPU_DESCRIPTOR_HANDLE	_GetDSVTableCurrentPosition_GPU();
 		D3D12_GPU_DESCRIPTOR_HANDLE	_GetGPUDescTableCurrentPosition_GPU();
+
+		ID3D12Resource*				_GetQueryResource(QueryBufferHandle Handle);
 
 		ID3D12CommandAllocator*		_GetCurrentCommandAllocator();
 		ID3D12GraphicsCommandList*	_GetCurrentCommandList();
@@ -2103,6 +2174,8 @@ namespace FlexKit
 		}Library;
 
 		ConstantBufferTable		ConstantBuffers;
+		QueryTable				Queries;
+
 		VertexBufferStateTable	VertexBuffers;
 		TextureStateTable		RenderTargets;
 		TextureStateTable		Textures;

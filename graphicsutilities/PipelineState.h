@@ -53,6 +53,7 @@ namespace FlexKit
 		TERRAIN_DRAW_WIRE_PSO, // Debug State
 		TERRAIN_CULL_PSO,
 		FORWARDDRAW,
+		FORWARDDRAW_OCCLUDE,
 		TILEDSHADING_SHADE,
 		TILEDSHADING_LIGHTPREPASS,
 		TILEDSHADING_COPYOUT,
@@ -97,7 +98,7 @@ namespace FlexKit
 	class FLEXKITAPI PipelineStateTable
 	{
 	public:
-		PipelineStateTable( RenderSystem* RS, iAllocator* Memory );
+		PipelineStateTable(iAllocator* Memory, RenderSystem* RS);
 		
 		void ReleasePSOs();
 		void LoadPSOs();

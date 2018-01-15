@@ -1197,6 +1197,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetPredicate(bool Enabled, QueryBufferHandle Handle, size_t Offset)
+	{
+		if (Enabled)
+			DeviceContext->SetPredication(RS->_GetQueryResource(Handle), Offset, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
+		else
+			DeviceContext->SetPredication(nullptr, 0, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::Clear()
 	{
 		PendingBarriers.Release();
@@ -2198,6 +2210,15 @@ namespace FlexKit
 		auto DepthBuffer = RenderTargets.AddResource(Desc, Resources, 3, DRS_DEPTHBUFFERWRITE, TF_RenderTarget);
 
 		return DepthBuffer;
+	}
+
+
+	/************************************************************************************************/
+
+
+	QueryBufferHandle	RenderSystem::CreateOcclusionBuffer(size_t Counts)
+	{
+		return Queries.CreateQueryBuffer(Counts, QueryType::OcclusionQuery);
 	}
 
 
@@ -3686,6 +3707,62 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	QueryBufferHandle QueryTable::CreateQueryBuffer(size_t Count, QueryType type)
+	{
+		D3D12_QUERY_HEAP_DESC Desc;
+		Desc.Count = Count;
+		Desc.NodeMask = 0;
+
+		switch (type)
+		{
+		case QueryType::OcclusionQuery:
+			Desc.Type = D3D12_QUERY_HEAP_TYPE_OCCLUSION;
+			break;
+		case QueryType::PipelineStats:
+			Desc.Type = D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
+			break;
+		default:
+			break;
+		}
+
+		ResourceEntry NewResEntry = { 0 };
+
+		for (auto& Res : NewResEntry.Resources)
+			RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Res));
+
+		size_t		UserIdx = Users.size();
+		UserEntry	NewUserEntry = { 0, 0, 0, false };
+
+		NewUserEntry.ResourceIdx = Resources.size();
+
+		Users.push_back(NewUserEntry);
+		Resources.push_back(NewResEntry);
+
+		return QueryBufferHandle(UserIdx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QueryTable::LockUntil(size_t FrameID)
+	{
+		for (auto& User : Users)
+		{
+			if (User.Used)
+			{
+				size_t ResourceIdx			= User.ResourceIdx;
+				size_t CurrentResourceIdx	= Resources[ResourceIdx].CurrentResource;
+
+				Resources[ResourceIdx].CurrentResource = (CurrentResourceIdx + 2 % 3);
+			}
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
 	void TextureStateTable::Release()
 	{
 		for (size_t I = 0; I < UserEntries.size(); ++I)
@@ -4298,6 +4375,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	ID3D12Resource*	RenderSystem::_GetQueryResource(QueryBufferHandle Handle)
+	{
+		return Queries.GetResource(Handle);
+	}
+
+
+	/************************************************************************************************/
+
+
 	ID3D12CommandAllocator*	 RenderSystem::_GetCurrentCommandAllocator()
 	{
 		return FrameResources[CurrentIndex].GraphicsCLAllocator[0];
@@ -4392,6 +4478,7 @@ namespace FlexKit
 		VertexBuffers.LockUntil(GetCurrentFrame() + 2);
 		ConstantBuffers.LockUntil(GetCurrentFrame() + 2);
 		RenderTargets.LockUntil(GetCurrentFrame() + 2);
+		Queries.LockUntil(GetCurrentFrame() + 2);
 	}
 
 

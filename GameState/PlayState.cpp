@@ -54,7 +54,7 @@ PlayState::PlayState(GameFramework* framework) :
 	Physics		(&Framework->Core->Physics, Framework->Core->Nodes, Framework->Core->GetBlockMemory()),
 	Test		(0),
 	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
-	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096, false))
+	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false))
 {
 	Framework->ActivePhysicsScene	= &Physics;
 	Framework->ActiveScene			= &Scene;
@@ -70,7 +70,7 @@ PlayState::PlayState(GameFramework* framework) :
 
 	InitiateGameObject(
 		Player,
-			Physics.CreateCharacterController({0, 10, 0}, 5, 5),
+			//Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
 			CreateCameraComponent(Framework->Core->Cameras, GetWindowAspectRatio(Framework->Core), 0.01f, 10000.0f, InvalidComponentHandle),
 			CreateOrbitCamera(OrbitCameras, &Framework->Core->Cameras, 100.0f));
@@ -85,6 +85,15 @@ PlayState::PlayState(GameFramework* framework) :
 
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
+
+	for (size_t I = 0; I < 4000; ++I)
+		InitiateGameObject(
+			CubeObjects[I],
+			CreateEnityComponent(&Drawables, "Flower"),
+			//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
+			Physics.CreateCubeComponent(
+				{ 0, 10.0f * I, 0 },
+				{ 0, 10, 0 }, 1));
 }
 
 
@@ -367,12 +376,10 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 
 	Render.DefaultRender(Drawables_Solid, GetCamera_ref(Player), Core->Nodes, Targets, FrameGraph, Core->GetTempMemory());
 
-	//DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
-	//	RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
-	//	CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
-	//	CircleShape		({0.5f, 0.5f},	 0.1f, float4(1.0f,1.0f,1.0f,1.0f) ));
-
-
+	DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
+		//RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
+		//CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
+		CircleShape		({0.5f, 0.5f},	 0.005f, float4(1.0f,1.0f,1.0f,1.0f) ));
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 

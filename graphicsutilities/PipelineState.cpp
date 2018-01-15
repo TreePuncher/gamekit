@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 
-	PipelineStateTable::PipelineStateTable(RenderSystem* RS_IN, iAllocator* Memory_IN) :
+	PipelineStateTable::PipelineStateTable(iAllocator* Memory_IN, RenderSystem* RS_IN) :
 		LoadsInProgress(Memory_IN),
 		Device(RS_IN->pDevice),
 		Memory(Memory_IN),
@@ -89,7 +89,9 @@ namespace FlexKit
 #endif
 
 			LoadRequest.CV.notify_all();
-			LoadsInProgress.pop_front();
+
+			if(LoadsInProgress.size())
+				LoadsInProgress.pop_front();
 		}
 	}
 

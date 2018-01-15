@@ -73,7 +73,7 @@ public:
 	int							Test;
 
 	// GameObjects
-	GameObject<> CubeObjects[1024];
+	GameObject<> CubeObjects[5000];
 	GameObject<> FloorObject;
 	GameObject<> TestObject;
 	GameObject<> Player;
