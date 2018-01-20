@@ -688,7 +688,7 @@ namespace FlexKit
 		GetWT(Nodes, GetParentNode(Nodes, Node), &WT);
 
 		auto MI = DirectX::XMMatrixInverse(nullptr, WT.m4x4);
-		auto V = DirectX::XMVector4Transform(XYZ.pfloats, MI);
+		auto V	= DirectX::XMVector4Transform(XYZ.pfloats, MI);
 		TranslateLocal(Nodes, Node, float3(V));
 	}
 

@@ -29,8 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FONTS_H
 
 #include "../buildsettings.h"
-#include "graphics.h"
-
+#include "../coreutilities/MathUtils.h"
+#include "../coreutilities/memoryutilities.h"
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -55,8 +55,6 @@ namespace FlexKit
 		float2		ScreenPosition;
 		float2		CharacterScale;
 		uint2		ScreenWH; // Screen Width - In Pixels
-
-		ShaderResourceBuffer Buffer;
 
 		size_t				 CharacterCount;
 		size_t				 Dirty;
@@ -105,15 +103,23 @@ namespace FlexKit
 	};
 
 
+	struct Character
+	{
+
+	};
+
+	struct CodePage
+	{
+
+	};
+
+	struct TTFAsset
+	{
+
+	};
+
+
 	/************************************************************************************************/
-
-
-	FLEXKITAPI void ClearText		( TextArea* TA );
-	FLEXKITAPI void CleanUpTextArea	( TextArea* TA, iAllocator* BA, RenderSystem* RS = nullptr );
-	FLEXKITAPI void PrintText		( TextArea* Area, const char* text );
-
-	FLEXKITAPI TextArea CreateTextArea	( RenderSystem* RS, iAllocator* Mem, TextArea_Desc* D);// Setups a 2D Surface for Drawing Text into
-	FLEXKITAPI void		UploadTextArea	( FontAsset* F, TextArea* TA, iAllocator* Temp, RenderSystem* RS, RenderWindow* Target);
 }
 
 #endif

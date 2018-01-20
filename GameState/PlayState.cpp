@@ -49,10 +49,9 @@ PlayState::PlayState(GameFramework* framework) :
 		 Framework->Core->Geometry, 
 		 Framework->Core->GetBlockMemory(), 
 		 Framework->Core->GetTempMemory()),
-	Drawables	(&Scene, Framework->Core->Nodes),
-	Lights		(&Scene, Framework->Core->Nodes),
-	Physics		(&Framework->Core->Physics, Framework->Core->Nodes, Framework->Core->GetBlockMemory()),
-	Test		(0),
+	Drawables		(&Scene, Framework->Core->Nodes),
+	Lights			(&Scene, Framework->Core->Nodes),
+	Physics			(&Framework->Core->Physics, Framework->Core->Nodes, Framework->Core->GetBlockMemory()),
 	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
 	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false))
 {

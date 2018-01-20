@@ -27,6 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\type.h"
 #include "..\coreutilities\memoryutilities.h"
 
+#include "..\graphicsutilities\Fonts.h"
+
+typedef uint8_t TTF_UBYTE;
+typedef  int8_t TTF_BYTE;
+
 typedef uint16_t TTF_USHORT;
 typedef  int16_t TTF_SHORT;
 
@@ -37,7 +42,6 @@ typedef  int32_t TTF_FIXED;
 
 typedef  int16_t TTF_FWORD;
 
-
 struct TTF_DirectoryEntry
 {
 	union {
@@ -47,6 +51,16 @@ struct TTF_DirectoryEntry
 	TTF_ULONG checkSum;
 	TTF_ULONG offset;
 	TTF_ULONG length;
+
+	TTF_DirectoryEntry ConvertEndianess() const
+	{
+		TTF_DirectoryEntry Converted = *this;
+		Converted.checkSum	= ConvertEndianness(checkSum);
+		Converted.offset	= ConvertEndianness(offset);
+		Converted.length	= ConvertEndianness(length);
+
+		return Converted;
+	}
 };
 
 struct TTF_Directory
@@ -59,15 +73,15 @@ struct TTF_Directory
 };
 
 TTF_ULONG
-CalcTableChecksum(TTF_ULONG* Table, TTF_ULONG Length)
+CalcTableChecksum(TTF_ULONG *Table, TTF_ULONG Length)
 {
-	TTF_ULONG	Sum	= 0L;
-	TTF_ULONG*	End	= (TTF_ULONG*)(Table + ((Length + 3) & ~3) / sizeof(ULONG));
-
-	while ((size_t)Table < (size_t)End)
+	TTF_ULONG  Sum = 0L;
+	TTF_ULONG* Endptr = Table + ((Length + 3) & ~3) / sizeof(TTF_ULONG);
+	while (Table < Endptr)
 		Sum += *Table++;
 	return Sum;
 }
+
 
 
 inline float FixedToFloat(TTF_FIXED N)
@@ -77,14 +91,116 @@ inline float FixedToFloat(TTF_FIXED N)
 
 struct Format4Encoding
 {
+	TTF_USHORT	Format;
+	TTF_USHORT	Length; // Byte Length
+	TTF_USHORT	Language;
+	TTF_USHORT	segCountX2;
+	TTF_USHORT	SearchRange;
+	TTF_USHORT	EntrySelector;
+	TTF_USHORT	RangeShift;
+	TTF_USHORT* StartCodes;
+	TTF_USHORT* EndCodes;
+	TTF_USHORT* glyphIdArray;
+	TTF_SHORT*  idDelta;
+	TTF_USHORT* idRangeOffset;
+
+	bool HasCharacter(char Code)
+	{
+		for (size_t I = 0; I < segCountX2/2; I++)
+		{
+			auto End = ConvertEndianness(EndCodes[I]);
+			if (ConvertEndianness(EndCodes[I]) >= Code)
+			{
+				auto EndCode	= I - 1;
+				auto Begin		= ConvertEndianness(StartCodes[I]);
+
+				if (Begin <= Code)
+				{	// Code Point Between these two ranges, Code Page Found
+					auto RangeOffset = ConvertEndianness(idRangeOffset[I]);
+					int c = 0;
+				}
+				int c = 0;
+			}
+		}
+		return false;
+	}
+};
+
+struct _Format4Encoding
+{
 	TTF_USHORT Format;
 	TTF_USHORT Length; // Byte Length
-	TTF_USHORT Version;
+	TTF_USHORT Language; // Only Used On Mac
 	TTF_USHORT segCountX2;
 	TTF_USHORT SearchRange;
 	TTF_USHORT EntrySelector;
 	TTF_USHORT RangeShift;
 	TTF_USHORT EndCodes[];
+
+	Format4Encoding GetEndianConverted()
+	{
+		Format4Encoding Converted;
+		Converted.Format		= ConvertEndianness(Format);
+		Converted.Length		= ConvertEndianness(Length); // Byte Length
+		Converted.Language		= ConvertEndianness(Language);
+		Converted.segCountX2	= ConvertEndianness(segCountX2);
+		Converted.SearchRange	= ConvertEndianness(SearchRange);
+		Converted.EntrySelector	= ConvertEndianness(EntrySelector);
+		Converted.RangeShift	= ConvertEndianness(RangeShift);
+		Converted.EndCodes		= EndCodes;
+
+		auto SegmentCount = Converted.segCountX2 / 2;
+
+		Converted.StartCodes	= EndCodes + SegmentCount + 1;
+		Converted.idDelta		= (TTF_SHORT*)	Converted.StartCodes + SegmentCount;
+		Converted.idRangeOffset = (TTF_USHORT*)	Converted.idDelta + SegmentCount;
+		Converted.glyphIdArray  = (TTF_USHORT*)	Converted.idRangeOffset + SegmentCount;
+
+		return Converted;
+	}
+};
+
+struct UnicodeRange
+{
+	TTF_ULONG	startUnicodeValue : 24;
+	TTF_UBYTE	additionalCount;
+
+};
+
+struct DefaultUVSTable
+{
+	TTF_ULONG		numUnicodeValueRanges;
+	UnicodeRange	Ranges[];
+};
+
+struct Format14Encoding
+{
+	TTF_USHORT Format;
+	TTF_USHORT Length; // Byte Length
+	TTF_USHORT NumVarSelectorRecords;
+
+	/*
+	Each variation selector records specifies a variation selector character,
+	and offsets to “default” and “non-default” tables used to map variation
+	sequences using that variation selector.
+	*/
+
+	struct varSelector
+	{
+		TTF_ULONG	VarSelector : 24;
+		TTF_ULONG	defaultUVSOffset;
+		TTF_ULONG	nonDefaultUVSOffset;
+
+		varSelector GetEndianConverted()
+		{
+			varSelector Converted			= *this;
+			Converted.VarSelector			= ConvertEndianness(VarSelector);
+			Converted.defaultUVSOffset		= ConvertEndianness(defaultUVSOffset);
+			Converted.nonDefaultUVSOffset	= ConvertEndianness(nonDefaultUVSOffset);
+
+			return Converted;
+		}
+	}Records[];
 };
 
 struct CMAP_Entry
@@ -92,13 +208,72 @@ struct CMAP_Entry
 	TTF_USHORT PlatformID;
 	TTF_USHORT EncodingID;
 	TTF_ULONG  SubTableOffset;
+
+	CMAP_Entry GetEndianConverted()
+	{
+		CMAP_Entry Converted;
+		Converted.PlatformID		= ConvertEndianness(PlatformID);
+		Converted.EncodingID		= ConvertEndianness(EncodingID);
+		Converted.SubTableOffset	= ConvertEndianness(SubTableOffset);
+
+		return Converted;
+	}
 };
 
-struct CMAP
+struct _CMAP
 {
-	USHORT Version;
-	USHORT TableSize;
+	USHORT		Version;
+	USHORT		TableSize;
 	CMAP_Entry	Table[];
+};
+
+
+struct CMap
+{
+	USHORT		Version;
+	USHORT		TableSize;
+	CMAP_Entry*	Tables;
+	byte*		Buffer;
+	
+	bool HasWindowsEntry()
+	{
+		bool Out = false;
+
+		for (size_t I = 0; I < TableSize; I++)
+		{
+			auto Table = Tables[I].GetEndianConverted();
+
+			if (	Table.PlatformID == 0x03 &&
+					Table.EncodingID == 0x01)
+			{
+				Out = true;
+				break;
+			};
+		}
+		return Out;
+	}
+
+	CMAP_Entry GetWindowsEntry()
+	{
+		for (size_t I = 0; I < TableSize; I++)
+		{
+			auto Table = Tables[I].GetEndianConverted();
+
+			if (	Table.PlatformID == 0x03 &&
+					Table.EncodingID == 0x01)
+				return Table;
+		}
+	}
+
+	Format4Encoding GetSubTableAsFormat4(size_t Offset)
+	{
+		return reinterpret_cast<_Format4Encoding*>(Buffer + Offset)->GetEndianConverted();
+	}
+
+	byte* GetSubTable(size_t Offset)
+	{
+		return Buffer + Offset;
+	}
 };
 
 struct Glyf
@@ -145,6 +320,58 @@ struct OS2
 
 };
 
+class TTF_File
+{
+public:
+	TTF_File(const char* File, iAllocator* Memory)
+	{
+		auto FileSize = GetFileSize(File);
+		Buffer		= (byte*)Memory->_aligned_malloc(FileSize + 1);
+		auto res	= LoadFileIntoBuffer(File, Buffer, FileSize, false);
+		FK_ASSERT(res, "failed to Load File!");
+
+		FileDirectory	= (TTF_Directory*)Buffer;
+		Entries			= (TTF_DirectoryEntry*)(Buffer + 12);
+
+		TableCount	= ConvertEndianness(FileDirectory->TableCount);
+	}
+
+
+	CMap GetCMap()
+	{
+		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
+
+		for (size_t I = 0; I < TableCount; ++I)
+		{
+			auto Entry    = Entries[I].ConvertEndianess();
+			auto Length   = Entry.length;
+			size_t Offset = Entry.offset;
+			auto CheckSum = CalcTableChecksum((TTF_ULONG*)(&Entries[I]), sizeof(Entry));
+
+			//FK_ASSERT(Checksum == Entry.Checksum);
+
+			if (Entry.Tag_UL == 0x70616d63) {
+				auto Temp = reinterpret_cast<_CMAP*>(Buffer + Offset);
+				CMap Out;
+				Out.Tables		= Temp->Table;
+				Out.Version		= ConvertEndianness(Temp->Version);
+				Out.TableSize	= ConvertEndianness(Temp->TableSize);
+				Out.Buffer		= Buffer + Offset;
+				return Out;
+			}
+		}
+
+		return CMap();
+	}
+
+	size_t					TableCount;
+	TTF_Directory*			FileDirectory;
+	TTF_DirectoryEntry*		Entries;
+
+	size_t					BufferSize;
+	byte*					Buffer;
+};
+
 size_t GetGlyphCode(const TTF_USHORT* IDRangeOffsets, const TTF_USHORT* StartCodes, const TTF_USHORT* EndCodes, const size_t TableSize, char C = 'A')
 {
 	FK_ASSERT(IDRangeOffsets != StartCodes);
@@ -168,97 +395,25 @@ size_t GetGlyphCode(const TTF_USHORT* IDRangeOffsets, const TTF_USHORT* StartCod
 
 #define CONVERT(A) A = ConvertEndianness(A);
 
+
 Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 {
-	auto FileSize = GetFileSize(File);
-	byte* Buffer  = (byte*)Memory->_aligned_malloc(FileSize + 1);
-
-	Buffer[FileSize] = 0xff;
-
-	auto res = LoadFileIntoBuffer(File, Buffer, FileSize, false);
-
 	TTFont* Out = nullptr;
-	TTF_Directory* FileDirectory = (TTF_Directory*)Buffer;
+	TTF_File	Font(File, Memory);
 
-	TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
-
-	auto temp = ConvertEndianness(0x0102);
-
-	size_t end = ConvertEndianness(FileDirectory->TableCount);
 	// Tables
-	CMAP* CMap    = nullptr;
-	Glyf* Glyfs   = nullptr;
+	CMap CMap	= Font.GetCMap();
 
-	for (size_t I = 0; I < end; ++I)
+	if (CMap.HasWindowsEntry())
 	{
-		auto Entry    = Entries[I];
-		auto Length   = ConvertEndianness(Entries[I].length);
-		auto CheckSum = CalcTableChecksum((TTF_ULONG*)(Entries + I), Length);
+		auto Table			= CMap.GetWindowsEntry();
+		auto Format4Table	= CMap.GetSubTableAsFormat4(Table.SubTableOffset);
 
-		switch (Entry.Tag_UL)
-		{
-		case 0x70616d63: // CMAP Tag
-		{
-			size_t Offset	= ConvertEndianness(Entries[I].offset);
-			CMap		    = (CMAP*)(Buffer + Offset);
-
-			/*
-			size_t TableSize = ConvertEndianness(CMap->TableSize);
-			for (size_t II = 0; II < TableSize; ++II)
-			{
-				auto PlatformID = ConvertEndianness(CMap->Table[II].PlatformID);
-				auto EncodingID = ConvertEndianness(CMap->Table[II].EncodingID);
-				auto TableOffset = ConvertEndianness(CMap->Table[II].SubTableOffset);
-
-				if (PlatformID == 3)
-				{
-					switch (EncodingID) 
-					{
-					case 0x01: // Unicode Encoding
-					{
-						Format4Encoding* Table	= (Format4Encoding*)(Buffer + Offset);
-						size_t TableByteLength	= ConvertEndianness(Table->Length);
-						size_t SegCount			= ConvertEndianness(Table->segCountX2) / 2;
-						USHORT* EndCodes		= Table->EndCodes;
-						USHORT* StartCodes		= EndCodes + SegCount + 1;
-
-						USHORT* IDDelta			= StartCodes		+ SegCount;
-						USHORT* IDRangeOffsets	= IDDelta			+ SegCount;
-						USHORT* GlyphIDs		= IDRangeOffsets	+ SegCount;
-
-						auto GlyphCode_A = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'A');
-						auto GlyphCode_B = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'B');
-						auto GlyphCode_C = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'C');
-
-						int x = 0;
-					}
-					}
-				}
-				size_t C = 0;
-			}
-			*/
-		}	break;
-		case 0x66796c67:{
-			size_t Offset = ConvertEndianness(Entries[I].offset);
-			CONVERT(Entries[I].length);
-			Glyfs         = (Glyf*)(Buffer + Offset);
-		}	break;
-		default:
-			break;
-		}
-
-		auto c = 0;
+		auto Test = Format4Table.HasCharacter('a');
+		int c = 0;
 	}
-
-	if (Glyfs && CMap)
-	{	// Load Glyfs
-		int x = 0;
-		CONVERT(Glyfs->NumberOfContours);
-		CONVERT(Glyfs->xMax);
-		CONVERT(Glyfs->xMin);
-		CONVERT(Glyfs->yMax);
-		CONVERT(Glyfs->yMin);
-	}
+	else
+		return { false, Out };
 
 	return{ true, Out };
 }
