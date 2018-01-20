@@ -1055,8 +1055,8 @@ namespace FlexKit
 	{
 		if (IR->Rects.size())
 			UpdateResourceByTemp(RS, &IR->RectBuffer, IR->Rects.begin(), IR->Rects.size() * sizeof(Draw_RECT), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-		for (auto& I : IR->Text)
-			UploadTextArea(I.Font, I.Text, TempMemory, RS, TargetWindow);
+		//for (auto& I : IR->Text)
+		//	UploadTextArea(I.Font, I.Text, TempMemory, RS, TargetWindow);
 
 		UploadLineSegments(RS, &IR->Lines2D);
 		UploadLineSegments(RS, &IR->Lines3D);
@@ -1366,12 +1366,14 @@ namespace FlexKit
 
 
 			}	break;
-			case DRAWCALLTYPE::DCT_TEXT: {
+			case DRAWCALLTYPE::DCT_TEXT:
+			{
 				auto T = Immediate->Text[D.Index];
 				auto Font = T.Font;
 				auto Text = T.Text;
 
-				if(Text->CharacterCount){
+				if(Text->CharacterCount)
+				{
 					D3D12_RECT RECT = D3D12_RECT();
 					RECT.right	= (UINT)RenderTarget.WH[0];
 					RECT.bottom = (UINT)RenderTarget.WH[1];
@@ -1386,9 +1388,9 @@ namespace FlexKit
 					SRV_DESC.Shader4ComponentMapping	   = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; 
 					*/
 
-					D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
-						{ Text->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Text->CharacterCount), sizeof(TextEntry) },
-					};
+				//	D3D12_VERTEX_BUFFER_VIEW VBuffers[] = {
+				//		{ Text->Buffer.Get()->GetGPUVirtualAddress(), UINT(sizeof(TextEntry) * Text->CharacterCount), sizeof(TextEntry) },
+				//	};
 			
 					auto DescPOS = RS->_ReserveDescHeap(8);
 					auto DescITR = DescPOS;
@@ -1404,7 +1406,7 @@ namespace FlexKit
 					ID3D12DescriptorHeap* Heaps[] = { RS->_GetCurrentDescriptorTable() };
 
 					CL->IASetPrimitiveTopology			(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-					CL->IASetVertexBuffers				(0, 1, VBuffers);
+					///CL->IASetVertexBuffers				(0, 1, VBuffers);
 					CL->SetDescriptorHeaps				(1, Heaps);
 					CL->SetGraphicsRootDescriptorTable	(0, DescPOS);
 					CL->OMSetBlendFactor				(float4(1.0f, 1.0f, 1.0f, 1.0f));
@@ -1413,7 +1415,8 @@ namespace FlexKit
 					CL->DrawInstanced					(Text->CharacterCount, 1, 0, 0);
 				}
 			}	break;
-			case DRAWCALLTYPE::DCT_TEXT2: {
+			case DRAWCALLTYPE::DCT_TEXT2: 
+			{
 				auto T	  = Immediate->Text2[D.Index];
 				auto Font = T.Font;
 				

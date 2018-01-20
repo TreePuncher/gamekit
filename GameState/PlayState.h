@@ -70,7 +70,6 @@ public:
 	TextureHandle				DepthBuffer;
 	ConstantBufferHandle		ConstantBuffer;
 	VertexBufferHandle			VertexBuffer;
-	int							Test;
 
 	// GameObjects
 	GameObject<> CubeObjects[5000];

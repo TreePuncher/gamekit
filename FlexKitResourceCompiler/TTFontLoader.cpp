@@ -27,6 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\type.h"
 #include "..\coreutilities\memoryutilities.h"
 
+#include "..\graphicsutilities\Fonts.h"
+
+typedef uint8_t TTF_UBYTE;
+typedef  int8_t TTF_BYTE;
+
 typedef uint16_t TTF_USHORT;
 typedef  int16_t TTF_SHORT;
 
@@ -37,7 +42,6 @@ typedef  int32_t TTF_FIXED;
 
 typedef  int16_t TTF_FWORD;
 
-
 struct TTF_DirectoryEntry
 {
 	union {
@@ -47,6 +51,16 @@ struct TTF_DirectoryEntry
 	TTF_ULONG checkSum;
 	TTF_ULONG offset;
 	TTF_ULONG length;
+
+	TTF_DirectoryEntry ConvertEndianess() const
+	{
+		TTF_DirectoryEntry Converted = *this;
+		Converted.checkSum	= ConvertEndianness(checkSum);
+		Converted.offset	= ConvertEndianness(offset);
+		Converted.length	= ConvertEndianness(length);
+
+		return Converted;
+	}
 };
 
 struct TTF_Directory
@@ -59,15 +73,15 @@ struct TTF_Directory
 };
 
 TTF_ULONG
-CalcTableChecksum(TTF_ULONG* Table, TTF_ULONG Length)
+CalcTableChecksum(TTF_ULONG *Table, TTF_ULONG Length)
 {
-	TTF_ULONG	Sum	= 0L;
-	TTF_ULONG*	End	= (TTF_ULONG*)(Table + ((Length + 3) & ~3) / sizeof(ULONG));
-
-	while ((size_t)Table < (size_t)End)
+	TTF_ULONG  Sum = 0L;
+	TTF_ULONG* Endptr = Table + ((Length + 3) & ~3) / sizeof(TTF_ULONG);
+	while (Table < Endptr)
 		Sum += *Table++;
 	return Sum;
 }
+
 
 
 inline float FixedToFloat(TTF_FIXED N)
@@ -191,57 +205,144 @@ Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 
 	for (size_t I = 0; I < end; ++I)
 	{
-		auto Entry    = Entries[I];
-		auto Length   = ConvertEndianness(Entries[I].length);
-		auto CheckSum = CalcTableChecksum((TTF_ULONG*)(Entries + I), Length);
+		auto Entry    = Entries[I].ConvertEndianess();
+		auto Length   = Entry.length;
+		auto CheckSum = CalcTableChecksum((TTF_ULONG*)(&Entries[I]), Length);
 
 		switch (Entry.Tag_UL)
 		{
+		case 0x322f534f: // OS/2 Tag
+			// Contains line spacing, font weight, font style, codepoint ranges (codepage and Unicode) covered by glyphs, overall appearance, sub- and super-script support, strike out information.[http://scripts.sil.org/cms/scripts/page.php?item_id=IWS-AppendixC]
+		case 0x46454447: // GDEF Tag, Not Yet Parsed
+			// Contains glyph definition data. Indicates glyph classes, caret locations for ligatures, and provides an attachment point cache. (Attachment points must be specified in GPOS too.)[http://scripts.sil.org/cms/scripts/page.php?item_id=IWS-AppendixC]
+		case 0x4d544646: // FFTM Tag
+		{
+			// Contains three timestamps: First FontForge's version date, then when the font was generated, and when the font was created;[http://scripts.sil.org/cms/scripts/page.php?item_id=IWS-AppendixC]
+			// UNUSED
+		}	break;
 		case 0x70616d63: // CMAP Tag
 		{
-			size_t Offset	= ConvertEndianness(Entries[I].offset);
+			size_t Offset	= Entry.offset;
 			CMap		    = (CMAP*)(Buffer + Offset);
 
-			/*
 			size_t TableSize = ConvertEndianness(CMap->TableSize);
 			for (size_t II = 0; II < TableSize; ++II)
 			{
-				auto PlatformID = ConvertEndianness(CMap->Table[II].PlatformID);
-				auto EncodingID = ConvertEndianness(CMap->Table[II].EncodingID);
-				auto TableOffset = ConvertEndianness(CMap->Table[II].SubTableOffset);
+				auto PlatformID		= ConvertEndianness(CMap->Table[II].PlatformID);
+				auto EncodingID		= ConvertEndianness(CMap->Table[II].EncodingID);
+				auto TableOffset	= ConvertEndianness(CMap->Table[II].SubTableOffset);
 
-				if (PlatformID == 3)
+				// PlatformID 0x00 is Unicode
+				// PlatformID 0x01 is Mac
+				// PlatformID 0x03 is Windows 
+				switch (PlatformID)
+				{
+				case 0x00:
+				{
+					switch (EncodingID)
+					{
+					case 0x03:	
+					{
+
+					}	break;
+					case 0x14:	// Unicode Variation Sequences
+					{
+						struct UnicodeRange
+						{
+							TTF_ULONG	startUnicodeValue : 24;
+							TTF_UBYTE	additionalCount;
+
+						};
+
+						struct DefaultUVSTable
+						{
+							TTF_ULONG		numUnicodeValueRanges;
+							UnicodeRange	Ranges[];
+						};
+
+						struct Format14Encoding
+						{
+							TTF_USHORT Format;
+							TTF_USHORT Length; // Byte Length
+							TTF_USHORT NumVarSelectorRecords;
+
+							/*
+							Each variation selector records specifies a variation selector character, 
+							and offsets to “default” and “non-default” tables used to map variation 
+							sequences using that variation selector.
+							*/
+
+							struct varSelector
+							{
+								TTF_ULONG	VarSelector : 24;
+								TTF_ULONG	defaultUVSOffset;
+								TTF_ULONG	nonDefaultUVSOffset;
+
+								varSelector GetEndianConverted()
+								{
+									varSelector Converted			= *this;
+									Converted.VarSelector			= ConvertEndianness(VarSelector);
+									Converted.defaultUVSOffset		= ConvertEndianness(defaultUVSOffset);
+									Converted.nonDefaultUVSOffset	= ConvertEndianness(nonDefaultUVSOffset);
+
+									return Converted;
+								}
+							}Records[];
+						} *Table = (Format14Encoding*)(Buffer + Offset);
+
+						byte* Format14TableBeginning = (byte*)(Buffer + Offset);
+
+						auto Length = ConvertEndianness(Table->Length);
+
+						for (size_t I = 0; I < Length; I++)
+						{
+							auto Record = Table->Records[I].GetEndianConverted();
+						
+							DefaultUVSTable* UVSTable = reinterpret_cast<DefaultUVSTable*>(Format14TableBeginning + Record.VarSelector);
+
+							int x = 0;
+						}
+						int x = 0;
+					}	break;	// Unicode Variation Sequences
+					}
+				}	break;
+				case 0x01:
+				{	// 
+
+				}	break;
+				case 0x03:
 				{
 					switch (EncodingID) 
 					{
-					case 0x01: // Unicode Encoding
-					{
-						Format4Encoding* Table	= (Format4Encoding*)(Buffer + Offset);
-						size_t TableByteLength	= ConvertEndianness(Table->Length);
-						size_t SegCount			= ConvertEndianness(Table->segCountX2) / 2;
-						USHORT* EndCodes		= Table->EndCodes;
-						USHORT* StartCodes		= EndCodes + SegCount + 1;
+						case 0x01: // Unicode Encoding
+						{
+							Format4Encoding* Table	= (Format4Encoding*)(Buffer + Offset);
+							size_t TableByteLength	= ConvertEndianness(Table->Length);
+							size_t SegCount			= ConvertEndianness(Table->segCountX2) / 2;
+							USHORT* EndCodes		= Table->EndCodes;
+							USHORT* StartCodes		= EndCodes + SegCount + 1;
 
-						USHORT* IDDelta			= StartCodes		+ SegCount;
-						USHORT* IDRangeOffsets	= IDDelta			+ SegCount;
-						USHORT* GlyphIDs		= IDRangeOffsets	+ SegCount;
+							USHORT* IDDelta			= StartCodes		+ SegCount;
+							USHORT* IDRangeOffsets	= IDDelta			+ SegCount;
+							USHORT* GlyphIDs		= IDRangeOffsets	+ SegCount;
 
-						auto GlyphCode_A = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'A');
-						auto GlyphCode_B = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'B');
-						auto GlyphCode_C = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'C');
+							auto GlyphCode_A = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'A');
+							auto GlyphCode_B = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'B');
+							auto GlyphCode_C = GetGlyphCode(IDRangeOffsets, StartCodes, EndCodes, 'C');
 
-						int x = 0;
-					}
+							int x = 0;
+						}
 					}
 				}
 				size_t C = 0;
+				}
 			}
-			*/
 		}	break;
-		case 0x66796c67:{
-			size_t Offset = ConvertEndianness(Entries[I].offset);
-			CONVERT(Entries[I].length);
-			Glyfs         = (Glyf*)(Buffer + Offset);
+		case 0x66796c67:
+		{
+			size_t Offset = Entry.offset;
+			CONVERT(Entry.length);
+			Glyfs = (Glyf*)(Buffer + Offset);
 		}	break;
 		default:
 			break;

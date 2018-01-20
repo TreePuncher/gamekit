@@ -71,11 +71,13 @@ namespace FlexKit
 
 	void CleanUpSimpleWindow(SimpleWindow* W, RenderSystem* RS)
 	{
+		/*
 		for (auto TB : W->TextButtons)
 			CleanUpTextArea(&TB.Text, W->Memory, RS);
 
 		for (auto TB : W->TextInputs)
 			CleanUpTextArea(&TB.TextGUI, W->Memory, RS);
+		*/
 
 		W->Elements.Release();
 		W->TexturedButtons.Release();
@@ -825,8 +827,8 @@ namespace FlexKit
 			Desc.CharacterScale * Desc.Font->FontSize
 		};
 		
-		auto Text = CreateTextArea(RS, Window->Memory, &TA_Desc);
-		PrintText(&Text, Desc.Text);
+		//auto Text = CreateTextArea(RS, Window->Memory, &TA_Desc);
+		//PrintText(&Text, Desc.Text);
 
 		GUIElement			  E;
 		GUIElement_TextButton TB;
@@ -838,7 +840,7 @@ namespace FlexKit
 		TB.OnEntered_CB     = Desc.OnEntered_CB;
 		TB.OnExit_CB        = Desc.OnExit_CB;
 		TB.CB_Args		    = Desc.CB_Args;
-		TB.Text			    = Text;
+		//TB.Text			    = Text;
 		TB.WH			    = Desc.WH;
 		TB.Font			    = Desc.Font;
 		TB.BackGroundColor	= Desc.BackGroundColor;
@@ -955,14 +957,14 @@ namespace FlexKit
 			{ 16, 16 }
 		};
 
-		TI.TextGUI			= CreateTextArea(RS, Window->Memory, &TA_Desc);
+		//TI.TextGUI			= CreateTextArea(RS, Window->Memory, &TA_Desc);
 		TI.Memory			= Window->Memory;
 		TI.WH				= Desc.WH;
 		TI.Font				= Desc.Font;
 		TI.MaxTextLength	= TI.TextGUI.BufferDimensions.Product();
 
-		if(Desc.Text)
-			PrintText(&TI.TextGUI, Desc.Text);
+		//if(Desc.Text)
+		//	PrintText(&TI.TextGUI, Desc.Text);
 
 		GameWindow_PushElement(Window, Parent, E);
 

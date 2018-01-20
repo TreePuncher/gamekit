@@ -163,8 +163,8 @@ int main(int argc, char* argv[])
 				{
 					if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
 					{
-						//auto* Font = (Font_MetaData*)MD;
-						//auto res = LoadTTFFile(Font->FontFile, BlockMemory);
+						auto* Font = (Font_MetaData*)MD;
+						auto res = LoadTTFFile(Font->FontFile, BlockMemory);
 					}
 				}
 
