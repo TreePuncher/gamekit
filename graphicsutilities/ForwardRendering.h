@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "graphics.h"
-
+#include "CoreSceneObjects.h"
 
 namespace FlexKit
 {

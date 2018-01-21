@@ -24,7 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\Application\Application.h"
-
 #include "HostState.cpp"
 #include "ClientState.cpp"
 #include "MenuState.cpp"
@@ -33,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char* argv[])
 {
-	FlexKit::FKApplication App;
+	FlexKit::FKApplication App({800,600});
 
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);

@@ -1,5 +1,5 @@
 /**********************************************************************
-
+, 1080
 Copyright (c) 2015 - 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -46,9 +46,9 @@ namespace FlexKit
 	class FKApplication
 	{
 	public:
-		FKApplication()
+		FKApplication(uint2 WindowResolution = {1920, 1080})
 		{
-			bool Success = InitEngine(Core, Memory);
+			bool Success = InitEngine(Core, Memory, WindowResolution);
 			FK_ASSERT(Success);
 
 			InitiateFramework(Core, Framework);

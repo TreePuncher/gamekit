@@ -3622,7 +3622,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
 	void VertexBufferStateTable::Reset(VertexBufferHandle Handle)
 	{
 		UserBuffers[Handles[Handle]].Offset = 0;

@@ -85,7 +85,7 @@ PlayState::PlayState(GameFramework* framework) :
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
 
-	for (size_t I = 0; I < 4000; ++I)
+	for (size_t I = 0; I < 400; ++I)
 		InitiateGameObject(
 			CubeObjects[I],
 			CreateEnityComponent(&Drawables, "Flower"),

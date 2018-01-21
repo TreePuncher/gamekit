@@ -73,12 +73,12 @@ bool InitiateEngineMemory( EngineMemory*& Memory )
 /************************************************************************************************/
 
 
-bool InitEngine(EngineCore*& Core, EngineMemory*& Memory)
+bool InitEngine(EngineCore*& Core, EngineMemory*& Memory, uint2 WH)
 {
 	InitiateEngineMemory(Memory);
 
 	Core = &Memory->BlockAllocator.allocate<EngineCore>(Memory);
-	InitiateCoreSystems(Core);
+	InitiateCoreSystems(WH, Core);
 
 	return true;
 }
@@ -120,7 +120,7 @@ bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool 
 /************************************************************************************************/
 
 
-bool InitiateCoreSystems(EngineCore*& Engine)
+bool InitiateCoreSystems(uint2 WH, EngineCore*& Engine)
 {
 	using FlexKit::CreateDepthBuffer;
 	using FlexKit::DepthBuffer;
@@ -130,8 +130,8 @@ bool InitiateCoreSystems(EngineCore*& Engine)
 
 
 	bool Out						= false;
-	uint32_t width					= 1920;
-	uint32_t height					= 1080;
+	uint32_t width					= WH[0];
+	uint32_t height					= WH[1];
 	bool InvertDepth				= true;
 	FlexKit::Graphics_Desc	desc	= { 0 };
 	desc.Memory = Engine->GetBlockMemory();

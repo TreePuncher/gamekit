@@ -263,6 +263,8 @@ struct CMap
 					Table.EncodingID == 0x01)
 				return Table;
 		}
+
+		return CMAP_Entry();
 	}
 
 	Format4Encoding GetSubTableAsFormat4(size_t Offset)
