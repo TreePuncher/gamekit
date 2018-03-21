@@ -376,8 +376,8 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	Render.DefaultRender(Drawables_Solid, GetCamera_ref(Player), Core->Nodes, Targets, FrameGraph, Core->GetTempMemory());
 
 	DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
-		//RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
-		//CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
+		RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
+		CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
 		CircleShape		({0.5f, 0.5f},	 0.005f, float4(1.0f,1.0f,1.0f,1.0f) ));
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
@@ -571,7 +571,7 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 	//	State->Player,
 	//		State->Physics.CreateCharacterController({0, 10, 0}, 10, 5.0f),
 	//		CreateCameraComponent(Framework->Core->Cameras, GetWindowAspectRatio(Framework->Core), 0.01f, 10000.0f, InvalidComponentHandle),
-			//CreateThirdPersonCamera(&State->TPC));
+	//		CreateThirdPersonCamera(&State->TPC));
 	//		CreateOrbitCamera(State->OrbitCameras, , 10));
 
 	//Yaw(State->Player, pi/100);

@@ -48,6 +48,7 @@ struct TTF_DirectoryEntry
 		char		Tag_C[4];
 		TTF_ULONG	Tag_UL;
 	};
+
 	TTF_ULONG checkSum;
 	TTF_ULONG offset;
 	TTF_ULONG length;
@@ -83,11 +84,17 @@ CalcTableChecksum(TTF_ULONG *Table, TTF_ULONG Length)
 }
 
 
+/************************************************************************************************/
+
 
 inline float FixedToFloat(TTF_FIXED N)
 {
 	return float((N & 0xFF00)>> 8) +  float(N & 0x00FF) / 100.0f;
 }
+
+
+/************************************************************************************************/
+
 
 struct Format4Encoding
 {
@@ -104,27 +111,70 @@ struct Format4Encoding
 	TTF_SHORT*  idDelta;
 	TTF_USHORT* idRangeOffset;
 
+
+	/************************************************************************************************/
+
+
 	bool HasCharacter(char Code)
+	{
+		for (size_t I = 0; I < segCountX2 / 2; I++)
+		{
+			auto End = ConvertEndianness(EndCodes[I]);
+
+			if (EndCodes[I] == 0xffff)
+				return false;
+
+			if (ConvertEndianness(EndCodes[I]) <= Code)
+				continue;
+
+			auto Segment = I - 1;
+			auto Begin = ConvertEndianness(StartCodes[Segment]);
+
+			if (Begin <= Code)
+				// Code Point Between these two ranges, Code Page Found
+				return true;
+		}
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	size_t GetCodePointGlyphIndex(char CP)
 	{
 		for (size_t I = 0; I < segCountX2/2; I++)
 		{
 			auto End = ConvertEndianness(EndCodes[I]);
-			if (ConvertEndianness(EndCodes[I]) >= Code)
-			{
-				auto EndCode	= I - 1;
-				auto Begin		= ConvertEndianness(StartCodes[I]);
 
-				if (Begin <= Code)
-				{	// Code Point Between these two ranges, Code Page Found
-					auto RangeOffset = ConvertEndianness(idRangeOffset[I]);
-					int c = 0;
-				}
-				int c = 0;
+			if (EndCodes[I] == 0xffff)
+				return -1;
+
+			if (ConvertEndianness(EndCodes[I]) <= CP)
+				continue;
+
+			auto Segment	= I - 1;
+			auto Begin		= ConvertEndianness(StartCodes[Segment]);
+
+			if (Begin <= CP)
+			{	// Code Point Between these two ranges, Code Page Found
+				auto RangeOffset = ConvertEndianness(idRangeOffset[Segment]);
+
+				if (RangeOffset)
+					return *(RangeOffset / 2 + (CP - Begin) + &idRangeOffset[Segment]);
+				else
+					return ConvertEndianness(glyphIdArray[CP]);
 			}
 		}
-		return false;
+
+		return -1;
 	}
+
 };
+
+
+/************************************************************************************************/
+
 
 struct _Format4Encoding
 {
@@ -160,18 +210,29 @@ struct _Format4Encoding
 	}
 };
 
+
+/************************************************************************************************/
+
+
 struct UnicodeRange
 {
 	TTF_ULONG	startUnicodeValue : 24;
 	TTF_UBYTE	additionalCount;
-
 };
+
+
+/************************************************************************************************/
+
 
 struct DefaultUVSTable
 {
 	TTF_ULONG		numUnicodeValueRanges;
 	UnicodeRange	Ranges[];
 };
+
+
+/************************************************************************************************/
+
 
 struct Format14Encoding
 {
@@ -203,6 +264,10 @@ struct Format14Encoding
 	}Records[];
 };
 
+
+/************************************************************************************************/
+
+
 struct CMAP_Entry
 {
 	TTF_USHORT PlatformID;
@@ -220,12 +285,19 @@ struct CMAP_Entry
 	}
 };
 
+
+/************************************************************************************************/
+
+
 struct _CMAP
 {
 	USHORT		Version;
 	USHORT		TableSize;
 	CMAP_Entry	Table[];
 };
+
+
+/************************************************************************************************/
 
 
 struct CMap
@@ -278,49 +350,165 @@ struct CMap
 	}
 };
 
-struct Glyf
+
+/************************************************************************************************/
+
+
+struct Glyph
 {
-	TTF_SHORT NumberOfContours;
+	TTF_SHORT NumberOfContours;// Negative Values Flag multiple Glyphs
 	TTF_FWORD xMin;
 	TTF_FWORD yMin;
 	TTF_FWORD xMax;
 	TTF_FWORD yMax;
+
+	Glyph GetConverted()
+	{
+		Glyph Converted;
+
+		Converted.NumberOfContours = ConvertEndianness(NumberOfContours);
+		Converted.xMin = ConvertEndianness(xMin);
+		Converted.yMin = ConvertEndianness(yMin);
+		Converted.xMax = ConvertEndianness(xMax);
+		Converted.yMax = ConvertEndianness(yMax);
+
+		return Converted;
+	}
 };
+
+
+/************************************************************************************************/
+
+
+struct SimpleGlyph
+{
+	TTF_USHORT*		EndPtsOfCountours;
+	TTF_USHORT		InstructionCount;
+	TTF_BYTE*		Inustructions;
+	TTF_BYTE*		Flags;
+	
+	union
+	{
+		TTF_SHORT*		XCoords_16bit;
+		TTF_SHORT*		YCoords_16bit;
+
+		TTF_BYTE*		XCoords_8bit;
+		TTF_BYTE*		YCoords_8bit;
+	};
+
+	enum class Bit
+	{
+		BIT_8,
+		BIT_16,
+	}Bits;
+};
+
+
+/************************************************************************************************/
+
+
+struct CompoundGlyph
+{
+	TTF_USHORT	Flags;
+	TTF_USHORT	GlyphIndex;
+	union
+	{
+		struct 
+		{
+			TTF_SHORT*		XCoords_S;
+			TTF_SHORT*		YCoords_S;
+		};
+
+		struct 
+		{
+			TTF_USHORT*		XCoords_US;
+			TTF_USHORT*		YCoords_US;
+		};
+
+		struct
+		{
+			TTF_BYTE*		XCoords_B;
+			TTF_BYTE*		YCoords_B;
+		};
+	};
+
+	enum class Bit
+	{
+		BIT_8,
+		BIT_16,
+	}Bits;
+
+	bool Signed;
+
+	TTF_USHORT	Options;
+};
+
+
+/************************************************************************************************/
+
 
 struct Head
 {
 
 };
 
+
+/************************************************************************************************/
+
+
 struct Hhea
 {
 
 };
+
+
+/************************************************************************************************/
+
 
 struct Loca
 {
 
 };
 
+
+/************************************************************************************************/
+
+
 struct Maxp
 {
 
 };
+
+
+/************************************************************************************************/
+
 
 struct Name
 {
 	 
 };
 
+
+/************************************************************************************************/
+
+
 struct Post
 {
 
 };
 
+
+/************************************************************************************************/
+
+
 struct OS2
 {
 
 };
+
+
+/************************************************************************************************/
+
 
 class TTF_File
 {
@@ -339,7 +527,27 @@ public:
 	}
 
 
-	CMap GetCMap()
+	/************************************************************************************************/
+
+
+	void PrintTableList()
+	{
+		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
+		for (size_t I = 0; I < TableCount; ++I)
+		{
+			std::cout <<
+				Entries[I].Tag_C[0] <<
+				Entries[I].Tag_C[1] <<
+				Entries[I].Tag_C[2] <<
+				Entries[I].Tag_C[3] << '\n';
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(TTF_ULONG ID)
 	{
 		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
 
@@ -348,23 +556,75 @@ public:
 			auto Entry    = Entries[I].ConvertEndianess();
 			auto Length   = Entry.length;
 			size_t Offset = Entry.offset;
-			auto CheckSum = CalcTableChecksum((TTF_ULONG*)(&Entries[I]), sizeof(Entry));
 
-			//FK_ASSERT(Checksum == Entry.Checksum);
-
-			if (Entry.Tag_UL == 0x70616d63) {
-				auto Temp = reinterpret_cast<_CMAP*>(Buffer + Offset);
-				CMap Out;
-				Out.Tables		= Temp->Table;
-				Out.Version		= ConvertEndianness(Temp->Version);
-				Out.TableSize	= ConvertEndianness(Temp->TableSize);
-				Out.Buffer		= Buffer + Offset;
-				return Out;
-			}
+			if (Entry.Tag_UL == ID) 
+				return { Entry, true };
 		}
 
-		return CMap();
+		return { TTF_DirectoryEntry(), false };
 	}
+
+
+	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(const char* Tag)
+	{
+		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
+
+		for (size_t I = 0; I < TableCount; ++I)
+		{
+			auto Entry		= Entries[I].ConvertEndianess();
+			auto Length		= Entry.length;
+			size_t Offset	= Entry.offset;
+
+			if (Entry.Tag_C[0] == Tag[0] && 
+				Entry.Tag_C[1] == Tag[1] && 
+				Entry.Tag_C[2] == Tag[2] && 
+				Entry.Tag_C[3] == Tag[3])
+					return { Entry, true };
+		}
+
+		return { TTF_DirectoryEntry(), false };
+	}
+
+	/************************************************************************************************/
+
+
+	CMap GetCMap()
+	{
+		auto RES					= FindDirectoryEntry("cmap");
+		TTF_DirectoryEntry& Entry	= (TTF_DirectoryEntry)RES;
+
+		FK_ASSERT(RES != false);
+
+		size_t Offset = Entry.offset;
+
+		//auto CheckSum = CalcTableChecksum((TTF_ULONG*)(&Entries[I]), sizeof(Entry));
+		//FK_ASSERT(Checksum == Entry.Checksum);
+
+		auto Temp = reinterpret_cast<_CMAP*>(Buffer + Offset);
+		CMap Out;
+		Out.Tables		= Temp->Table;
+		Out.Version		= ConvertEndianness(Temp->Version);
+		Out.TableSize	= ConvertEndianness(Temp->TableSize);
+		Out.Buffer		= Buffer + Offset;
+
+		return Out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	Glyph* GetGlyphs()
+	{
+		auto RES = FindDirectoryEntry("glyf");
+		TTF_DirectoryEntry& Entry = (TTF_DirectoryEntry)RES;
+
+		size_t Offset	= Entry.offset;
+		auto Glyphs		= reinterpret_cast<Glyph*>(Buffer + Offset);
+
+		return Glyphs;
+	}
+
 
 	size_t					TableCount;
 	TTF_Directory*			FileDirectory;
@@ -374,7 +634,16 @@ public:
 	byte*					Buffer;
 };
 
-size_t GetGlyphCode(const TTF_USHORT* IDRangeOffsets, const TTF_USHORT* StartCodes, const TTF_USHORT* EndCodes, const size_t TableSize, char C = 'A')
+
+/************************************************************************************************/
+
+
+size_t GetGlyphCode(
+	const TTF_USHORT*	IDRangeOffsets, 
+	const TTF_USHORT*	StartCodes, 
+	const TTF_USHORT*	EndCodes, 
+	const size_t		TableSize, 
+	char				C = 'A')
 {
 	FK_ASSERT(IDRangeOffsets != StartCodes);
 
@@ -398,24 +667,40 @@ size_t GetGlyphCode(const TTF_USHORT* IDRangeOffsets, const TTF_USHORT* StartCod
 #define CONVERT(A) A = ConvertEndianness(A);
 
 
+/************************************************************************************************/
+
+
 Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 {
-	TTFont* Out = nullptr;
+	TTFont*		Out = nullptr;
 	TTF_File	Font(File, Memory);
 
 	// Tables
-	CMap CMap	= Font.GetCMap();
+	std::cout << "Tables in Font:\n";
+	Font.PrintTableList();
+
+	CMap	CMap		= Font.GetCMap();
+	Glyph*	GlyphTable	= Font.GetGlyphs();
 
 	if (CMap.HasWindowsEntry())
 	{
 		auto Table			= CMap.GetWindowsEntry();
 		auto Format4Table	= CMap.GetSubTableAsFormat4(Table.SubTableOffset);
 
-		auto Test = Format4Table.HasCharacter('a');
-		int c = 0;
+		// 
+		for (char CP = 0; CP < 128; ++CP)
+		{
+			auto idx	= Format4Table.GetCodePointGlyphIndex(CP);
+			auto Glyph	= GlyphTable[idx].GetConverted();
+
+			int x = 0;
+		}
 	}
 	else
 		return { false, Out };
 
 	return{ true, Out };
 }
+
+
+/************************************************************************************************/

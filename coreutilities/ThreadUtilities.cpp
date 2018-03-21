@@ -32,189 +32,65 @@ using std::mutex;
 
 namespace FlexKit
 {
-	size_t						gThreadCount = 0;
-	list_t<ThreadTask*>			gTaskBoard;
-	std::mutex					gQueueWriteLock;
-	vector_t<Thread*>			gThreadpool;
-
-
-	class Thread
+	bool WorkerThread::AddItem(iWork* Item)
 	{
-		public:
-			Thread(iAllocator* memory) : mTask{nullptr}, mThread{}, Memory(memory)
-			{
-				mSpin	 = true;
-				mRunning = false;
-			}
-			
-			
-			void Begin()
-			{
-				mLock.lock();
-				mThread = std::move( std::thread( &Thread::operator(), this ) );
-				mLock.unlock();
-			}
+		if (!Running || Quit)
+			return false;
 
+		std::unique_lock<std::mutex> Lock(AddLock);
 
-			void operator()()
-			{
-				mLock.lock();
-				mRunning = true;
-				while( mRunning || mSpin )
-				{
-					auto task = mTask.load();
-					if( task != nullptr )
-					{
-						task->Run();
-						//if( task->mDelete )
-						//	delete task;
-						mTask.store(nullptr);
-					}
+		WorkList.push_back(Item);
+		CV.notify_all();
 
-					ThreadTask* NextTask = QueuedWork.pop_front();// GetNextTask();
-					mTask = NextTask;
-
-					if( !NextTask )
-					{	
-						std::this_thread::sleep_for(std::chrono::microseconds(1));
-						if (!mSpin)
-							break;
-					}
-				}
-
-				mThread.detach();
-				mRunning = false;
-				mLock.unlock();
-			}
-			
-			
-			void SetSpin( bool spin )
-			{
-				mSpin = spin;
-			}
-			
-			
-			bool SetTask( ThreadTask* Task )
-			{
-				if( !mRunning )
-				{
-					// Queued
-					mTask.store( Task );
-					return true;
-				}
-				return false;
-			}
-
-
-			bool Running()
-			{
-				return mRunning;
-			}
-
-
-		std::atomic_bool			mRunning;
-		std::atomic_bool			mSpin;
-		std::mutex					mLock;
-		std::atomic<ThreadTask*>	mTask;
-		std::thread					mThread;
-
-		SL_list<ThreadTask*>		QueuedWork;
-		iAllocator*					Memory;
-	};
-
-
-	void TaskProxy::Run()
-	{
-		while( mRunning )
-		{
-			auto task = mTask;
-			if( task != nullptr )
-			{
-				task->Run();
-				if( task->mDelete )
-					delete task;
-				mTask = nullptr;
-			}
-			ThreadTask* NextTask = mRend->_GetNextTask();
-			mTask = NextTask;
-
-			if( NextTask == nullptr )
-				goto END;
-		}
-	END:
-		mRunning = false;
-	}
-
-
-	TaskRendezvous::TaskRendezvous()
-	{
-		for( auto itr = gThreadCount; itr-- > 1; )
-		{
-			mProxyPool.push_back( TaskProxy() );
-			mProxyPool.back().mRend = this;
-
-		}
-	}
-
-
-	TaskRendezvous::~TaskRendezvous()
-	{
-		WaitforRendezvous(); 
-	}
-
-
-	bool TaskRendezvous::AddTask( ThreadTask* _ptr )
-	{
-		if( !gThreadCount )
-		{
-			_ptr->Run();
-			if( _ptr->mDelete )
-				delete _ptr;
-			return true;
-		}
-		mWritelock.lock();
-		mTasksWaiting.push_back( _ptr );
-		mWritelock.unlock();
 		return true;
 	}
 
 
-	ThreadTask*	TaskRendezvous::_GetNextTask()
+	void WorkerThread::Shutdown()
 	{
-		
-		mWritelock.lock();
-		ThreadTask* task = nullptr;
-		if( mTasksWaiting.size() )
+		Quit = true;
+		CV.notify_all();
+	}
+
+
+	void WorkerThread::Run()
+	{
+		Running.store(true);
+
+		EXITSCOPE({
+			Running.store(false);
+		});
+
+
+		while (true)
 		{
-			task = mTasksWaiting.front();
-			mTasksWaiting.pop_front();
+			std::unique_lock<std::mutex> Lock(CBLock);
+			CV.wait(Lock);
+
+			while (WorkList.size())
+			{
+				auto WorkItem = WorkList.front();
+				WorkList.pop_front();
+
+				if (WorkItem) {
+					Manager->IncrementActiveWorkerCount();
+
+					WorkItem->Run();
+					WorkItem->NotifyWatchers();
+
+					Manager->DecrementActiveWorkerCount();
+				}
+			}
+
+			if (!WorkList.size() && Quit)
+				return;
 		}
-		mWritelock.unlock();
-		return task;
 	}
 
-
-	bool TaskRendezvous::TasksAreStillRunning()
+	bool WorkerThread::IsRunning()
 	{
-		size_t itr = 0;
-		size_t size = mProxyPool.size();
-		while( itr++ < size )
-			if( mProxyPool[itr].mRunning )
-				return true;
-		return false;
+		return Running.load();
 	}
 
-
-	void TaskRendezvous::WaitforRendezvous()
-	{
-		while( mTasksWaiting.size() )
-		{
-			ThreadTask* task = _GetNextTask();
-			if( task )
-				task->Run();
-		}
-		bool debug = TasksAreStillRunning();
-		while( debug )
-			std::this_thread::sleep_for(std::chrono::microseconds(1));
-	}
+	ThreadManager* WorkerThread::Manager = nullptr;
 }

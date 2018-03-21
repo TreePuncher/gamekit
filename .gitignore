@@ -31,3 +31,4 @@ Dependencies/
 *.ib_pdb_index
 *.ib_tag
 Dependencies
+/x64/Debug

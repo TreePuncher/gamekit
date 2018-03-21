@@ -410,7 +410,7 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
 
 	auto  Grid = State->BettererWindow.CreateGrid();
 	auto& GridImpl = Grid._GetGrid();
-	Grid.resize				(0.3, 0.2);
+	Grid.resize				(0.3f, 0.2f);
 	Grid.SetPosition		({ 0.3f, 0.35f});
 	Grid.SetGridDimensions	(1, 5);
 	Grid.SetActive			(true);

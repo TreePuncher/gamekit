@@ -29,23 +29,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-void ReleaseCore			( EngineCore*		Game );
-bool InitiateCoreSystems	( uint2 WH,			EngineCore*& Game );
-bool InitiateEngineMemory	( EngineMemory*&	Game );
+void ReleaseCore			(EngineCore*		Game);
+bool InitiateCoreSystems	(uint2 WH,			EngineCore*& Game);
+bool InitiateEngineMemory	(EngineMemory*&	Game);
 
-bool InitEngine				( EngineCore*& Core, EngineMemory*& Engine, uint2 WH );
-void UpdateCoreComponents	( EngineCore* Core, double dt );
+bool InitEngine				(EngineCore*& Core, EngineMemory*& Engine, uint2 WH);
+void UpdateCoreComponents	(EngineCore* Core, double dt);
 
 
 /************************************************************************************************/
 
 
-float GetWindowAspectRatio	( EngineCore* Engine );
-uint2 GetWindowWH			( EngineCore* Engine );
+float GetWindowAspectRatio	(EngineCore* Engine);
+uint2 GetWindowWH			(EngineCore* Engine);
 
-float2 GetPixelSize(EngineCore*);
+float2	GetPixelSize	(EngineCore*);
 
-void UpdateMouseInput(MouseInputState* State, RenderWindow* Window);
+void UpdateMouseInput	(MouseInputState* State,	RenderWindow* Window);
+void PushCmdArg			(EngineCore* Engine,		const char* arg);
 
 
-void PushCmdArg(EngineCore* Engine, const char* );
+/************************************************************************************************/

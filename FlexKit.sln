@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2010
+VisualStudioVersion = 15.0.27130.2026
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKitCore", "FlexKit.vcxproj", "{54DB6A2B-4E65-4379-AF8B-4245F63D6512}"
 EndProject
@@ -23,7 +23,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestState", "GameState\Game
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "MayaToolsetPlugin", "FlexKitMayaPlug\MayaToolsetPlugin.pyproj", "{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiThreadTesting", "..\MultiThreadTesting\MultiThreadTesting.vcxproj", "{A2502145-C5CF-4FDB-964B-82DF93342054}"
+EndProject
 Global
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
@@ -43,22 +48,18 @@ Global
 		{54DB6A2B-4E65-4379-AF8B-4245F63D6512}.Release|x86.Build.0 = Release|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x64.ActiveCfg = Debug|x64
-		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x64.Build.0 = Debug|x64
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x86.ActiveCfg = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Debug|x86.Build.0 = Debug|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|Any CPU.ActiveCfg = Release|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|x64.ActiveCfg = Release|x64
-		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|x64.Build.0 = Release|x64
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|x86.ActiveCfg = Release|Win32
 		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8}.Release|x86.Build.0 = Release|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|x64.ActiveCfg = Debug|x64
-		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|x64.Build.0 = Debug|x64
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|x86.ActiveCfg = Debug|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Debug|x86.Build.0 = Debug|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|Any CPU.ActiveCfg = Release|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|x64.ActiveCfg = Release|x64
-		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|x64.Build.0 = Release|x64
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|x86.ActiveCfg = Release|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|x86.Build.0 = Release|Win32
 		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Debug|Any CPU.ActiveCfg = Debug|Win32
@@ -85,6 +86,16 @@ Global
 		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Release|x64.ActiveCfg = Release|Any CPU
 		{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}.Release|x86.ActiveCfg = Release|Any CPU
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Debug|x64.ActiveCfg = Debug|x64
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Debug|x64.Build.0 = Debug|x64
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Debug|x86.ActiveCfg = Debug|Win32
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Debug|x86.Build.0 = Debug|Win32
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|Any CPU.ActiveCfg = Release|Win32
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x64.ActiveCfg = Release|x64
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x64.Build.0 = Release|x64
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x86.ActiveCfg = Release|Win32
+		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

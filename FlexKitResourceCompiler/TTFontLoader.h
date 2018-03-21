@@ -27,14 +27,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\coreutilities\memoryutilities.h"
 
+
 using FlexKit::iAllocator;
 using FlexKit::Pair;
+
 
 struct TTFont
 {
 	iAllocator* Memory;
 };
 
+
 Pair<bool, TTFont*> LoadTTFFile(const char* file, iAllocator* Memory);
+
 
 #endif

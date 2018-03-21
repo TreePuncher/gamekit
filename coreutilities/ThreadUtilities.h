@@ -45,14 +45,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma warning ( disable : 4251 )
 
+
+
 namespace FlexKit
 {
 	using std::atomic;
 	using std::atomic_bool;
 
-	class Thread;
-	class TaskRendezvous;
-	class ThreadScheduler;
+	class ThreadManager;
 
 	template<typename Ty_1, unsigned int MAX = 16>
 	class SRSW_Queue
@@ -112,214 +112,339 @@ namespace FlexKit
 		Ty_1 m_Waiting[MAX]; // Buffer 
 	};
 
-	class FLEXKITAPI ThreadTask
+
+	typedef std::function<void()> OnCompletionEvent;
+
+
+	class iWork
 	{
 	public:
-		ThreadTask() { mDelete = false; }
+		iWork & operator = (iWork& rhs) = delete;
 
-		virtual ~ThreadTask(){}
-		virtual void Run()	{}
-		//
-		
+		iWork(iAllocator* Memory)	{}
+		~iWork()					{ Watchers.Release();}
 
-		bool mDelete;
-	};
+		virtual void Run() {}
 
-	//-----------------------------------------------------------------------------------------
-
-	typedef std::function<void ()> Task_Function_Def;
-
-	class LambdaTask : public ThreadTask
-	{
-	public:
-		LambdaTask( Task_Function_Def lambda_func ) : m_Lambda( lambda_func ) {}
-
-	private:
-		LambdaTask( const LambdaTask *);
-
-		void				Run()
-		{ 
-			if( m_Lambda )	m_Lambda(); 
-			delete this;
+		void NotifyWatchers()
+		{
+			for (auto& Watcher : Watchers)
+				Watcher();
 		}
 
-		Task_Function_Def	m_Lambda;
-	};
+		void Subscribe(OnCompletionEvent CallMeLater) 
+		{ 
+			Watchers.push_back(CallMeLater);
+		}
 
+	private:
+
+		Vector<OnCompletionEvent> Watchers;
+	};
 
 
 	__declspec(align(64))
-	class ThreadWorker
+	class WorkerThread
 	{
 	public:
-		ThreadWorker(iAllocator* Memory) : JobList(Memory)
-		{
-			Thread = std::thread([&]() {_Run(); });
-		}
+		WorkerThread(iAllocator* Memory = nullptr) :
+			Thread([this] {Run(); }),
+			Running(false),
+			Quit(false)
+		{}
 
-		void Initate()
-		{
-		}
+		bool AddItem(iWork* Item);
+		void Shutdown();
+		void Run();
+		bool IsRunning();
 
-
-		void Release()
-		{
-
-		}
-
-		void Shutdown()
-		{
-
-		}
-
-		void AddJob(ThreadTask* Worker)
-		{
-			JobList.push_back(Worker);
-		}
-
-		bool isRunning()
-		{
-			return false;
-		}
-
-		size_t QueueSize()
-		{
-			return JobList.size();
-		}
+		static ThreadManager*	Manager;
 
 	private:
-
-		void _Run()
-		{
-
-		}
-
-		std::thread	Thread;
-
-		SL_list<ThreadTask*>	JobList;
-		std::mutex				Mutex;
-		std::condition_variable	Condition;
+		std::condition_variable	CV;
+		std::atomic_bool		Running;
+		std::atomic_bool		Quit;
+		std::deque<iWork*>		WorkList;
+		std::mutex				CBLock;
+		std::mutex				AddLock;
+		std::thread				Thread;
 	};
 
 
-	//-----------------------------------------------------------------------------------------
+	/************************************************************************************************/
+
+
+	class WorkerList
+	{
+	public:
+		struct Element
+		{
+			Element*		_Prev = nullptr;
+			Element*		_Next = nullptr;
+			WorkerThread	Thread;
+		};
+
+		struct ElementIterator
+		{
+			ElementIterator(Element* i) : I{ i } {}
+
+			ElementIterator operator ++()
+			{
+				if (I->_Next)
+					I = I->_Next;
+				else
+					I = nullptr;
+
+				return *this;
+			}
+
+			ElementIterator operator --()
+			{
+				if (I->_Prev)
+					I = I->_Prev;
+				else
+					I = nullptr;
+
+				return *this;
+			}
+
+			bool operator == (const ElementIterator& rhs) const
+			{
+				return (rhs.I == I);
+			}
+
+			bool operator != (const ElementIterator& rhs) const
+			{
+				return !(rhs == *this);
+			}
+
+			WorkerThread& operator* ()
+			{
+				return I->Thread;
+			}
+
+			WorkerThread* operator -> ()
+			{
+				return &I->Thread;
+			}
+
+
+			Element* I;
+		};
+
+
+		WorkerList(iAllocator* Memory, const size_t ThreadCount = 2) :
+			Begin	{ nullptr },
+			End		{ nullptr }
+		{
+		}
+
+
+		ElementIterator begin()
+		{
+			return { Begin };
+		}
+
+
+		ElementIterator end()
+		{
+			return { nullptr };
+		}
+
+
+		void Rotate()
+		{
+			MoveToBack(begin());
+		}
+
+
+		void MoveToBack(ElementIterator Itr)
+		{
+			std::unique_lock<std::mutex> Lock(M);
+
+			if (Begin == Itr.I)
+				Begin = Itr.I->_Next;
+
+			if (Itr.I->_Prev)
+				Itr.I->_Prev->_Next = Itr.I->_Next;
+
+			if (Itr.I->_Next)
+				Itr.I->_Next->_Prev = Itr.I->_Prev;
+
+			if (End)
+			{
+				Itr.I->_Prev = End;
+				End->_Next = Itr.I;
+				Itr.I->_Next = nullptr;
+			}
+
+			End = Itr.I;
+		}
+
+
+		void AddThread(iAllocator* Memory)
+		{
+			std::unique_lock<std::mutex> Lock(M);
+
+			auto NewThread = new Element;
+
+			if (End)
+			{
+				NewThread->_Prev = End;
+				End->_Next = NewThread;
+			}
+
+			if (!Begin)
+				Begin = NewThread;
+
+			End = NewThread;
+		}
+
+
+	private:
+		Element * Begin;
+		Element*	End;
+		size_t		ThreadCount;
+		std::mutex	M;
+	};
+
+
+	/************************************************************************************************/
 
 
 	class ThreadManager
 	{
 	public:
-		ThreadManager(iAllocator* memory = nullptr, size_t ThreadCount = -1) :
-			Workers(memory),
+		ThreadManager(iAllocator* memory, size_t ThreadCount = 4) :
+			Threads(memory),
 			Memory(memory)
 		{
-			if (ThreadCount == -1)
-				ThreadCount = std::thread::hardware_concurrency() - 1;
+			WorkerThread::Manager = this;
 
 			for (size_t I = 0; I < ThreadCount; ++I)
-				Workers.push_back(&Memory->allocate_aligned<ThreadWorker, 64>(Memory));
-		}
-
-
-		void AddTask(ThreadTask* Task)
-		{
-			std::sort(Workers.begin(), Workers.end(), [&](ThreadWorker* LHS, ThreadWorker* RHS) {
-				return LHS->QueueSize() < RHS->QueueSize();
-			});
+				Threads.AddThread(memory);
 		}
 
 
 		void Release()
 		{
-			for (auto& Worker : Workers)
-				Worker->Shutdown();
+			WaitForWorkersToComplete();
 
-			for (bool ThreadRunning = false; ThreadRunning;)
+			for (auto& I : Threads)
+				I.Shutdown();
+
+			WaitForShutdown();
+		}
+
+
+		template<typename TY_FN>
+		void AddWork(TY_FN FN, iAllocator* Memory = nullptr)
+		{
+			class LambdaWork : public iWork
 			{
-				for (auto& Worker : Workers)
-					ThreadRunning |= !Worker->isRunning();
-			}
+			public:
+				LambdaWork(TY_FN& FNIN, iAllocator* Memory) :
+					iWork		{ Memory	},
+					Callback	{ FNIN		}{}
 
-			for (auto Worker : Workers)
-				Memory->free(Worker);
+				void Run()
+				{
+					Callback();
+				}
 
-			Workers.Release();
+				TY_FN& Callback;
+			};
+
+			auto* Item = new LambdaWork(FN, Memory);
+
+			AddWork(static_cast<iWork*>(Item));
 		}
 
+
+		void AddWork(iWork* Work)
+		{
+			bool success = false;
+			do {
+				success = Threads.begin()->AddItem(Work);
+				Threads.Rotate();
+			} while (!success);
+		}
+
+
+		void WaitForWorkersToComplete()
+		{
+			std::mutex						M;
+			std::unique_lock<std::mutex>	Lock(M);
+
+			CV.wait(Lock, [this]{ return WorkingThreadCount <= 0; });
+		}
+
+
+		void WaitForShutdown()
+		{
+			bool ThreadRunning = false;
+			do
+			{
+				ThreadRunning = false;
+				for (auto& I : Threads)
+					ThreadRunning |= I.IsRunning();
+			} while (ThreadRunning);
+		}
+
+
+		void IncrementActiveWorkerCount()
+		{
+			WorkingThreadCount++;
+			CV.notify_all();
+		}
+
+
+		void DecrementActiveWorkerCount()
+		{
+			WorkingThreadCount--;
+			CV.notify_all();
+		}
 
 	private:
-		Vector<ThreadWorker*>	Workers;
-		iAllocator*				Memory;
+		WorkerList					Threads;
+
+		std::condition_variable		CV;
+		std::atomic_int				WorkingThreadCount;
+
+		iAllocator*		Memory;
 	};
 
 
-	const unsigned MAXQUEUEDTASKS = 1000;
-	const unsigned MaxThreads = MAXTHREADCOUNT;
+	/************************************************************************************************/
 
 
-	//-----------------------------------------------------------------------------------------
-
-
-
-#define MAXTASKCOUNT	100
-	struct TaskProxy;
-
-	struct TaskProxy : public ThreadTask
-	{
-		void Run();
-
-		TaskRendezvous*		mRend;
-		atomic<bool>		mRunning;
-		ThreadTask*			mTask;
-
-		TaskProxy()
-		{
-			mRend = nullptr;
-			mTask = nullptr;
-		}
-		TaskProxy( const TaskProxy& in )
-		{
-			bool Val = in.mRunning;
-			mRunning = Val;
-		}
-	};
-
-	class FLEXKITAPI TaskRendezvous
+	class TaskBarrier
 	{
 	public:
-		TaskRendezvous();
-		~TaskRendezvous();
+		TaskBarrier(iAllocator* Memory) :
+			WorkWaiting	{},
+			Events		{} {}
 
-		bool AddTask(ThreadTask* _ptr);
-		bool TasksAreStillRunning();
-		void WaitforRendezvous();
+		~TaskBarrier() {}
 
-		ThreadTask*	_GetNextTask();
+		TaskBarrier(const TaskBarrier&)					= delete;
+		TaskBarrier& operator = (const TaskBarrier&)	= delete;
+
+		void AddDependentTask		();
+		void AddOnCompletionEvent	(OnCompletionEvent Callback);
+		void Wait					();
 
 	private:
-		TaskRendezvous( const TaskRendezvous & ) = delete;
+		ThreadManager*				Threads;
+		Vector<iWork*>				WorkWaiting;
+		Vector<OnCompletionEvent>	Events;
 
-		std::mutex					mReadlock;
-		std::mutex					mWritelock;
-		list_t<ThreadTask*>			mTasksWaiting;
-		static_vector<TaskProxy,16>	mProxyPool;
+		std::condition_variable		CV;
+		std::atomic_int				TaskInProgress;
 	};
 
 
-	class FLEXKITAPI JobGroup
-	{
-	public:
-		bool AddTask(ThreadTask* _ptr);
-
-		static_vector<TaskProxy, 16> Workers;
-	};
-
-
-	//-----------------------------------------------------------------------------------------
-#define BEGINTHREADEDSECTION FlexKit::AddTask( new FlexKit::LambdaTask( [&]() {
-#define ENDTHREADEDSECTION } ) );
-
-#define Begin_TASKCREATION new FlexKit::LambdaTask( [&]() {
-#define End_TASKCREATION } )
-}
+	/************************************************************************************************/
+}	// namespace FlexKit
 
 #endif

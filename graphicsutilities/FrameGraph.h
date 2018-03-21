@@ -840,7 +840,6 @@ namespace FlexKit
 			DrawList				Draws;
 		};
 
-
 		auto& Pass = Graph.AddNode<DrawRect>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
 		{

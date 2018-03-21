@@ -114,6 +114,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	// NOTE: Doesn't call destructors automatically, but does free held memory!
 	template<typename Ty, size_t MINSIZE = 0>
 	struct Vector
 	{
@@ -493,7 +494,7 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-		// Releases Memory, does not call destructors
+		// Releases Memory, does call Destructors!
 		void Release()
 		{
 			clear();
