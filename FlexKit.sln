@@ -26,9 +26,6 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiThreadTesting", "..\MultiThreadTesting\MultiThreadTesting.vcxproj", "{A2502145-C5CF-4FDB-964B-82DF93342054}"
 EndProject
 Global
-	GlobalSection(Performance) = preSolution
-		HasPerformanceSessions = true
-	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
@@ -72,7 +69,6 @@ Global
 		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Release|x86.Build.0 = Release|Win32
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|x64.ActiveCfg = Debug|x64
-		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|x64.Build.0 = Debug|x64
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|x86.ActiveCfg = Debug|Win32
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|x86.Build.0 = Debug|Win32
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Release|Any CPU.ActiveCfg = Release|Win32
@@ -102,6 +98,9 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {88CC678C-48E2-400F-9307-9B44D971D652}
+	EndGlobalSection
+	GlobalSection(Performance) = preSolution
+		HasPerformanceSessions = true
 	EndGlobalSection
 	GlobalSection(Performance) = preSolution
 		HasPerformanceSessions = true

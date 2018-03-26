@@ -414,20 +414,17 @@ struct CompoundGlyph
 	union
 	{
 		struct 
-		{
-			TTF_SHORT*		XCoords_S;
+		{	TTF_SHORT*		XCoords_S;
 			TTF_SHORT*		YCoords_S;
 		};
 
 		struct 
-		{
-			TTF_USHORT*		XCoords_US;
+		{	TTF_USHORT*		XCoords_US;
 			TTF_USHORT*		YCoords_US;
 		};
 
 		struct
-		{
-			TTF_BYTE*		XCoords_B;
+		{	TTF_BYTE*		XCoords_B;
 			TTF_BYTE*		YCoords_B;
 		};
 	};

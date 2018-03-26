@@ -121,7 +121,7 @@ namespace FlexKit
 	public:
 		iWork & operator = (iWork& rhs) = delete;
 
-		iWork(iAllocator* Memory)	{}
+		iWork(iAllocator* Memory) : Watchers{Memory}	{}
 		~iWork()					{ Watchers.Release();}
 
 		virtual void Run() {}
@@ -136,6 +136,8 @@ namespace FlexKit
 		{ 
 			Watchers.push_back(CallMeLater);
 		}
+
+		operator iWork* () { return this; }
 
 	private:
 
@@ -308,6 +310,39 @@ namespace FlexKit
 		std::mutex	M;
 	};
 
+	/************************************************************************************************/
+
+
+	template<typename TY_FN>
+	class LambdaWork : public iWork
+	{
+	public:
+		LambdaWork(TY_FN& FNIN, iAllocator* Memory = FlexKit::SystemAllocator) :
+			iWork{ Memory },
+			Callback{ FNIN } {}
+
+		void Run()
+		{
+			Callback();
+		}
+
+		TY_FN Callback;
+	};
+
+	template<typename TY_FN>
+	LambdaWork<TY_FN> CreateLambdaWork(TY_FN FNIN, iAllocator* Memory = FlexKit::SystemAllocator)
+	{
+		return LambdaWork<TY_FN>(FNIN, Memory);
+	}
+
+	template<typename TY_FN>
+	LambdaWork<TY_FN>& CreateLambdaWork_New(
+		TY_FN FNIN, 
+		iAllocator* Memory_1 = FlexKit::SystemAllocator,
+		iAllocator* Memory_2 = FlexKit::SystemAllocator)
+	{
+		return Memory_1->allocate<LambdaWork<TY_FN>>(FNIN, Memory_2);
+	}
 
 	/************************************************************************************************/
 
@@ -337,29 +372,15 @@ namespace FlexKit
 		}
 
 
+		/*
 		template<typename TY_FN>
 		void AddWork(TY_FN FN, iAllocator* Memory = nullptr)
 		{
-			class LambdaWork : public iWork
-			{
-			public:
-				LambdaWork(TY_FN& FNIN, iAllocator* Memory) :
-					iWork		{ Memory	},
-					Callback	{ FNIN		}{}
-
-				void Run()
-				{
-					Callback();
-				}
-
-				TY_FN& Callback;
-			};
-
-			auto* Item = new LambdaWork(FN, Memory);
+			LambdaWork<TY_FN>* Item = &Memory->allocate<LambdaWork<TY_FN>>(FN, Memory);
 
 			AddWork(static_cast<iWork*>(Item));
 		}
-
+		*/
 
 		void AddWork(iWork* Work)
 		{
@@ -418,25 +439,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class TaskBarrier
+	class WorkBarrier
 	{
 	public:
-		TaskBarrier(iAllocator* Memory) :
-			WorkWaiting	{},
-			Events		{} {}
+		WorkBarrier(
+			size_t BarrierSize = 0,  
+			iAllocator* Memory = FlexKit::SystemAllocator) :
+				Events		{ Memory } 
+		{
+		}
 
-		~TaskBarrier() {}
+		~WorkBarrier() {}
 
-		TaskBarrier(const TaskBarrier&)					= delete;
-		TaskBarrier& operator = (const TaskBarrier&)	= delete;
+		WorkBarrier(const WorkBarrier&)					= delete;
+		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
-		void AddDependentTask		();
+		void AddDependentWork		(iWork* Work);
 		void AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void Wait					();
 
 	private:
 		ThreadManager*				Threads;
-		Vector<iWork*>				WorkWaiting;
+		//Vector<iWork*>				WorkWaiting;
 		Vector<OnCompletionEvent>	Events;
 
 		std::condition_variable		CV;
