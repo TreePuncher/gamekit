@@ -443,9 +443,8 @@ namespace FlexKit
 	{
 	public:
 		WorkBarrier(
-			size_t BarrierSize = 0,  
 			iAllocator* Memory = FlexKit::SystemAllocator) :
-				Events		{ Memory } 
+				PostEvents{ Memory }
 		{
 		}
 
@@ -460,8 +459,7 @@ namespace FlexKit
 
 	private:
 		ThreadManager*				Threads;
-		//Vector<iWork*>				WorkWaiting;
-		Vector<OnCompletionEvent>	Events;
+		Vector<OnCompletionEvent>	PostEvents;
 
 		std::condition_variable		CV;
 		std::atomic_int				TaskInProgress;

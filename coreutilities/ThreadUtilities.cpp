@@ -79,6 +79,7 @@ namespace FlexKit
 			std::unique_lock<std::mutex> Lock(CBLock);
 			CV.wait(Lock);
 
+
 			while (WorkList.size())
 			{
 				auto WorkItem = WorkList.front();
@@ -94,9 +95,11 @@ namespace FlexKit
 				}
 			}
 
+
 			if (!WorkList.size() && Quit)
 				return;
 		}
+
 	}
 
 
@@ -117,12 +120,21 @@ namespace FlexKit
 		FK_ASSERT(Work != nullptr);
 
 		++TaskInProgress;
-		Work->Subscribe([this] 
+		Work->Subscribe(
+			[this]
 			{
 				TaskInProgress--; 
 				CV.notify_all(); 
-				std::cout << "Work Completed!\n"; 
 			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	void WorkBarrier::AddOnCompletionEvent(OnCompletionEvent Callback)
+	{
+		PostEvents.push_back(Callback);
 	}
 
 
@@ -138,9 +150,14 @@ namespace FlexKit
 		{
 			return TaskInProgress == 0;
 		});
+
+		for (auto Evt : PostEvents)
+			Evt();
 	}
 
+
 	ThreadManager* WorkerThread::Manager = nullptr;
-}
+}	/************************************************************************************************/
+
 
 #endif
