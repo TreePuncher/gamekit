@@ -32,13 +32,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
-	/*
-	TargetModel->PlayerInputs[L].FrameID++;
-	TargetModel->PlayerInputs[L].KeyboardInput = this->KeyState;
-	TargetModel->PlayerInputs[L].MouseInput = float2{HorizontalMouseMovement, VerticalMouseMovement};
-	*/
-
 	void InputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* Framework)
 	{
 		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Core)[0];

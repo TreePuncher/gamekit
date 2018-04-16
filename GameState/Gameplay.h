@@ -49,7 +49,7 @@ struct PlayerStateFrame
 
 struct Player
 {
-	GameObjectInterface* GameObject;
+	ComponentListInterface* ComponentList;
 
 	DAConditionHandle WalkCondition;
 	DAConditionHandle OtherCondition;
@@ -119,7 +119,7 @@ struct GameplayComponentSystem : public ComponentSystemInterface
 	}
 
 
-	void ObjectMoved(ComponentHandle Handle, ComponentSystemInterface* System, GameObjectInterface* GO)
+	void ObjectMoved(ComponentHandle Handle, ComponentSystemInterface* System, ComponentListInterface* GO)
 	{
 	}
 
@@ -175,7 +175,7 @@ struct PlayersComponentArgs
 
 
 template<size_t SIZE>
-void CreateComponent(GameObject<SIZE>& GO, PlayersComponentArgs& Args)
+void CreateComponent(ComponentList<SIZE>& GO, PlayersComponentArgs& Args)
 {
 	PlayerHandle	Player					= Args.Gameplay->CreatePlayer();
 	ComponentHandle InputComponentHandle	= Args.Input->BindInput(Player, Args.Gameplay);

@@ -32,3 +32,4 @@ Dependencies/
 *.ib_tag
 Dependencies
 /x64/Debug
+/CodeGraphData

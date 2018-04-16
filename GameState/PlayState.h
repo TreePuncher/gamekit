@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameMemory.h"
 #include "..\Application\WorldRender.h"
 
+
 #include "Gameplay.h"
 
 /*
@@ -38,6 +39,28 @@ TODO's
 
 
 using FlexKit::GameFramework;
+
+
+class TestBehavior :
+	public FlexKit::SceneNodeBehavior,
+	public FlexKit::ThirdPersonCameraBehavior,
+	public FlexKit::iEventReceiver
+{
+public:
+	TestBehavior(ComponentListInterface& GO) :
+		FlexKit::SceneNodeBehavior(GO),
+		FlexKit::ThirdPersonCameraBehavior(GO)
+	{}
+
+	void Update(double dt)
+	{
+		//Yaw(dt * pi);
+	}
+
+	void Notify(const Event& evt) override
+	{
+	}
+};
 
 
 class PlayState : public FrameworkState
@@ -71,11 +94,13 @@ public:
 	ConstantBufferHandle		ConstantBuffer;
 	VertexBufferHandle			VertexBuffer;
 
-	// GameObjects
-	GameObject<> CubeObjects[5000];
-	GameObject<> FloorObject;
-	GameObject<> TestObject;
-	GameObject<> Player;
+	// ComponentLists
+	ComponentList<> CubeObjects[5000];
+	ComponentList<> FloorObject;
+	ComponentList<> TestObject;
+	ComponentList<> Player;
+
+	TestBehavior TestBehavior;
 };
 
 

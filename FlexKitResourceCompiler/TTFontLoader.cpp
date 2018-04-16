@@ -42,6 +42,9 @@ typedef  int32_t TTF_FIXED;
 
 typedef  int16_t TTF_FWORD;
 
+typedef uint64_t  TTF_LONGDATE;
+
+
 struct TTF_DirectoryEntry
 {
 	union {
@@ -407,10 +410,75 @@ struct SimpleGlyph
 /************************************************************************************************/
 
 
+struct GlyphEntry
+{
+	GlyphEntry(byte* buffer)
+	{
+		auto data = reinterpret_cast<Glyph*>(buffer)->GetConverted();
+
+		Compound			= data.NumberOfContours > 1;
+		NumberOfContours	= abs(data.NumberOfContours);
+
+		BufferBegin			= buffer + sizeof(Glyph);
+	}
+
+
+	struct Curve
+	{
+		FlexKit::float4 A = { 0 };
+		FlexKit::float4 B = { 0 };
+	};
+
+
+	Curve GetCurve(size_t Idx, size_t Contour = 0)
+	{
+		Curve Out;
+
+		byte* Begin = BufferBegin + sizeof(Glyph);
+
+		if (Compound)
+		{
+			TTF_USHORT* endPtsOfContours	= 
+				reinterpret_cast<TTF_USHORT*>(Begin);
+
+			size_t InstructionLength		= 
+				ConvertEndianness(
+					endPtsOfContours[NumberOfContours]);
+
+			TTF_UBYTE* instructions			= 
+				reinterpret_cast<TTF_UBYTE*>(
+					endPtsOfContours + NumberOfContours + 1);
+
+		}
+		else
+		{
+			TTF_USHORT* endPtsOfContours	= 
+				reinterpret_cast<TTF_USHORT*>(Begin);
+
+			TTF_USHORT InstructionLength	= 
+				endPtsOfContours[NumberOfContours];
+
+			TTF_UBYTE* instructions =
+				reinterpret_cast<TTF_UBYTE*>(
+					endPtsOfContours + NumberOfContours + 1);
+
+		}
+
+		return Out;
+	}
+
+	TTF_USHORT	NumberOfContours;
+	bool		Compound;
+	Glyph		Data;
+	byte*		BufferBegin;
+};
+
+
 struct CompoundGlyph
 {
 	TTF_USHORT	Flags;
 	TTF_USHORT	GlyphIndex;
+
 	union
 	{
 		struct 
@@ -444,9 +512,55 @@ struct CompoundGlyph
 /************************************************************************************************/
 
 
+// https://docs.microsoft.com/en-us/typography/opentype/spec/head
 struct Head
 {
+	Head(byte* Buffer)
+	{
+		Head* Temp = reinterpret_cast<Head*>(Buffer);
+		Version				= ConvertEndianness(Temp->Version);
+		FontVersion			= ConvertEndianness(Temp->FontVersion);
+		CheckSumAdjustment	= ConvertEndianness(Temp->CheckSumAdjustment);
+		MagicNumber			= ConvertEndianness(Temp->MagicNumber);
+		Flags				= ConvertEndianness(Temp->Flags);
+		UintsPerEm			= ConvertEndianness(Temp->UintsPerEm);
+		Created				= ConvertEndianness(Temp->Created);
+		Modified			= ConvertEndianness(Temp->Modified);
+		XMin				= ConvertEndianness(Temp->XMin);
+		YMin				= ConvertEndianness(Temp->YMin);
+		XMax				= ConvertEndianness(Temp->XMax);
+		YMax				= ConvertEndianness(Temp->YMax);
+		MacStyle			= ConvertEndianness(Temp->MacStyle);
+		LowestRecPPEM		= ConvertEndianness(Temp->LowestRecPPEM);
+		FontDirectionHint	= ConvertEndianness(Temp->FontDirectionHint);
+		IndexToLocFormat	= ConvertEndianness(Temp->IndexToLocFormat);
+		GlyphDataFormat		= ConvertEndianness(Temp->GlyphDataFormat);
+	}
 
+	TTF_FIXED		Version;
+	TTF_FIXED		FontVersion;
+
+	TTF_ULONG		CheckSumAdjustment;
+	TTF_ULONG		MagicNumber;
+
+	TTF_SHORT		Flags;
+	TTF_USHORT		UintsPerEm;
+
+	TTF_LONGDATE	Created;
+	TTF_LONGDATE	Modified;
+
+	TTF_SHORT		XMin;
+	TTF_SHORT		YMin;
+
+	TTF_SHORT		XMax;
+	TTF_SHORT		YMax;
+
+	TTF_USHORT		MacStyle;
+	TTF_SHORT		LowestRecPPEM;
+	TTF_SHORT		FontDirectionHint;
+
+	TTF_SHORT		IndexToLocFormat;
+	TTF_SHORT		GlyphDataFormat;
 };
 
 
@@ -464,7 +578,24 @@ struct Hhea
 
 struct Loca
 {
+	Loca(byte* LocaBuffer, bool LongVersion)
+	{
+		LONG	= reinterpret_cast<TTF_ULONG*>(LocaBuffer);
+		Length	= LongVersion;
+	}
 
+	union
+	{
+		TTF_ULONG*	LONG;
+		TTF_USHORT*	SHORT;
+	};
+
+	TTF_ULONG GetOffset(size_t CP)	
+	{ 
+		return Length ? ConvertEndianness(LONG[CP]) : (ConvertEndianness(SHORT[CP]) * 2);
+	}
+
+	bool	Length = false;
 };
 
 
@@ -512,15 +643,19 @@ class TTF_File
 public:
 	TTF_File(const char* File, iAllocator* Memory)
 	{
-		auto FileSize = GetFileSize(File);
-		Buffer		= (byte*)Memory->_aligned_malloc(FileSize + 1);
-		auto res	= LoadFileIntoBuffer(File, Buffer, FileSize, false);
+		auto FileSize	= GetFileSize(File);
+		Buffer			= (byte*)Memory->_aligned_malloc(FileSize + 1);
+		auto res		= LoadFileIntoBuffer(File, Buffer, FileSize, false);
 		FK_ASSERT(res, "failed to Load File!");
 
 		FileDirectory	= (TTF_Directory*)Buffer;
 		Entries			= (TTF_DirectoryEntry*)(Buffer + 12);
 
-		TableCount	= ConvertEndianness(FileDirectory->TableCount);
+		TableCount		= ConvertEndianness(FileDirectory->TableCount);
+
+#ifdef _DEBUG
+		PrintTableList();
+#endif
 	}
 
 
@@ -544,7 +679,7 @@ public:
 	/************************************************************************************************/
 
 
-	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(TTF_ULONG ID)
+	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(TTF_ULONG ID) const
 	{
 		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
 
@@ -562,7 +697,10 @@ public:
 	}
 
 
-	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(const char* Tag)
+	/************************************************************************************************/
+
+
+	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(const char* Tag) const
 	{
 		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
 
@@ -581,6 +719,7 @@ public:
 
 		return { TTF_DirectoryEntry(), false };
 	}
+
 
 	/************************************************************************************************/
 
@@ -611,6 +750,37 @@ public:
 	/************************************************************************************************/
 
 
+	Loca GetLoca() const
+	{
+		auto RES  = FindDirectoryEntry("loca");
+		auto Head = GetHead();
+
+		TTF_DirectoryEntry& EntryLoca = (TTF_DirectoryEntry)RES;
+
+		FK_ASSERT(RES == true);
+
+		return { Buffer + EntryLoca.offset, static_cast<bool>(Head.IndexToLocFormat) };
+	}
+
+
+	/************************************************************************************************/
+
+
+	Head GetHead() const
+	{
+		auto RES = FindDirectoryEntry("head");
+
+		TTF_DirectoryEntry& EntryLoca = (TTF_DirectoryEntry)RES;
+
+		FK_ASSERT(RES == true);
+
+		return { Buffer + EntryLoca.offset };
+	}
+
+
+	/************************************************************************************************/
+
+
 	Glyph* GetGlyphs()
 	{
 		auto RES = FindDirectoryEntry("glyf");
@@ -621,6 +791,32 @@ public:
 
 		return Glyphs;
 	}
+
+
+	/************************************************************************************************/
+
+
+	GlyphEntry GetGlyph(size_t Glyph_offset)
+	{
+		auto RES = FindDirectoryEntry("glyf");
+		TTF_DirectoryEntry& Entry = (TTF_DirectoryEntry)RES;
+
+		return { Buffer + Entry.offset + Glyph_offset };
+	}
+
+
+	/************************************************************************************************/
+
+
+	struct Curve
+	{
+		FlexKit::float4 A = { 0 };
+		FlexKit::float4 B = { 0 };
+	};
+
+
+
+	/************************************************************************************************/
 
 
 	size_t					TableCount;
@@ -676,22 +872,26 @@ Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
 	std::cout << "Tables in Font:\n";
 	Font.PrintTableList();
 
+	Head	Head		= Font.GetHead();
+	Loca    Loca		= Font.GetLoca();
 	CMap	CMap		= Font.GetCMap();
-	Glyph*	GlyphTable	= Font.GetGlyphs();
 
 	if (CMap.HasWindowsEntry())
 	{
 		auto Table			= CMap.GetWindowsEntry();
 		auto Format4Table	= CMap.GetSubTableAsFormat4(Table.SubTableOffset);
 
-		// 
-		for (char CP = 0; CP < 128; ++CP)
-		{
-			auto idx	= Format4Table.GetCodePointGlyphIndex(CP);
-			auto Glyph	= GlyphTable[idx].GetConverted();
+		auto Glyph = Font.GetGlyph(Loca.GetOffset(0));
 
-			int x = 0;
+		auto Curve = Glyph.GetCurve(0);
+		/*
+		if (Glyph.NumberOfContours > 0)
+		{
+			auto Glyphs = Font.GetGlyphs_Simple(Loca.GetOffset('A'));
+			size_t ContourCount = std::abs(Glyph.NumberOfContours);
 		}
+		*/
+		int x = 0;
 	}
 	else
 		return { false, Out };

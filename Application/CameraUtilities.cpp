@@ -137,7 +137,7 @@ namespace FlexKit
 	}
 
 
-	void SetParentNode(GameObjectInterface* GO, NodeHandle Node)
+	void SetParentNode(ComponentListInterface* GO, NodeHandle Node)
 	{
 		auto C = FindComponent(GO, OrbitCameraComponentID);
 		if (C)

@@ -962,6 +962,7 @@ namespace FlexKit
 
 	enum EInputTopology
 	{
+		EIT_LINE,
 		EIT_TRIANGLELIST,
 		EIT_TRIANGLE,
 		EIT_POINT,
@@ -1971,7 +1972,8 @@ namespace FlexKit
 
 
 	// Basic Draw States
-	ID3D12PipelineState* CreateDrawRectStatePSO(RenderSystem* RS);
+	ID3D12PipelineState* CreateDrawTriStatePSO(RenderSystem* RS);
+	ID3D12PipelineState* CreateDrawLineStatePSO(RenderSystem* RS);
 
 
 	/************************************************************************************************/
@@ -2013,7 +2015,8 @@ namespace FlexKit
 			DescriptorDSVSize       = 0;
 			DescriptorCBVSRVUAVSize = 0;
 
-			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::Draw_PSO, CreateDrawRectStatePSO);
+			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_PSO,			CreateDrawTriStatePSO);
+			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_LINE_PSO,	CreateDrawLineStatePSO);
 		}
 
 		bool	Initiate(Graphics_Desc* desc_in);
@@ -2656,6 +2659,10 @@ namespace FlexKit
 
 		return true;
 	}
+
+
+	inline TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory, float R, GUID_t MeshID);
+
 
 
 	/************************************************************************************************/

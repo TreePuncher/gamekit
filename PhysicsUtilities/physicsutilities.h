@@ -389,7 +389,7 @@ namespace FlexKit
 		}
 
 
-		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID ID, GameObjectInterface* GO) final
+		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID ID, ComponentListInterface* GO) final
 		{
 			if (EventSource == TransformComponentID && ID == GetCRCGUID(POSITION))
 			{
@@ -431,7 +431,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool GetFloorContact(GameObjectInterface* GO, bool& out)
+	bool GetFloorContact(ComponentListInterface* GO, bool& out)
 	{
 		auto C = FindComponent(GO, CharacterControllerSystemID);
 		if (C) {
@@ -455,7 +455,7 @@ namespace FlexKit
 
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, CapsuleCharacterArgs& Args)
+	void CreateComponent(ComponentList<SIZE>& GO, CapsuleCharacterArgs& Args)
 	{
 		auto C = FindComponent(GO, TransformComponentID);
 		if (C)
@@ -525,7 +525,7 @@ namespace FlexKit
 
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, StaticBoxColliderArgs& Args)
+	void CreateComponent(ComponentList<SIZE>& GO, StaticBoxColliderArgs& Args)
 	{
 		GO.AddComponent(Component(Args.Base,	Args.ColliderHandle,	ColliderComponentID));
 		GO.AddComponent(Component(Args.System,	Args.BoxColliderHandle, StaticCubeColliderComponentID));
@@ -595,7 +595,7 @@ namespace FlexKit
 	};
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, CubeColliderArgs& Args)
+	void CreateComponent(ComponentList<SIZE>& GO, CubeColliderArgs& Args)
 	{
 		GO.AddComponent(Component(Args.Base,	Args.ColliderHandle,	ColliderComponentID));
 		GO.AddComponent(Component(Args.System,	Args.CubeHandle,		CubeColliderComponentID));

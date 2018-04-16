@@ -762,6 +762,45 @@ namespace FlexKit
 	};
 
 
+	class LineShape final : public ShapeProtoType
+	{
+	public:
+		LineShape(
+			LineSegments& lines
+		) : Lines{lines} {}
+
+		void AddShapeDraw(
+			DrawList&				DrawList,
+			VertexBufferHandle		PushBuffer,
+			ConstantBufferHandle	CB,
+			FrameResources&			Resources) override
+		{
+			size_t VBOffset = Resources.GetVertexBufferOffset(PushBuffer, sizeof(ShapeVert));
+
+			for (auto Segment : Lines)
+			{
+				PushVertex(ShapeVert{ Position2SS(Segment.A),{ 0.0f, 0.0f }, Segment.AColour }, PushBuffer, Resources);
+				PushVertex(ShapeVert{ Position2SS(Segment.B),{ 0.0f, 0.0f }, Segment.BColour }, PushBuffer, Resources);
+			}
+
+			Constants CB_Data = {
+				float4{ 0 },
+				float4{ 0 },
+				float4x4::Identity()
+			};
+
+			auto CBOffset = BeginNewConstantBuffer(CB, Resources);
+			PushConstantBufferData(CB_Data, CB, Resources);
+
+			DrawList.push_back({ CBOffset, VBOffset, Lines.size() * 2, ShapeDraw::RenderMode::Line });
+		}
+
+
+	private:
+		LineSegments& Lines;
+	};
+
+
 	class RectangleShape final : public ShapeProtoType
 	{
 	public:
@@ -874,12 +913,15 @@ namespace FlexKit
 				switch (D.Mode) {
 					case ShapeDraw::RenderMode::Line:
 					{
+						Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
 					}	break;
 					case ShapeDraw::RenderMode::Triangle:
 					{
+						Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 					}	break;
 					case ShapeDraw::RenderMode::Textured:
 					{
+						FK_ASSERT(0, "UNHANDLED CASE!");
 					}	break;
 				}
 

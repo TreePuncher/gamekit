@@ -1023,6 +1023,9 @@ namespace FlexKit
 		D3D12_PRIMITIVE_TOPOLOGY D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_POINTLIST;
 		switch (Topology)
 		{
+		case EIT_LINE:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+			break;
 		case EIT_TRIANGLELIST:
 			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 			break;
@@ -1329,7 +1332,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12PipelineState* CreateDrawRectStatePSO(RenderSystem* RS)
+	ID3D12PipelineState* CreateDrawTriStatePSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS", "vs_5_0",	"assets\\vshader.hlsl");
 		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect", "ps_5_0",		"assets\\pshader.hlsl");
@@ -1352,6 +1355,60 @@ namespace FlexKit
 		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 		Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 		Depth_Desc.DepthEnable = false;
+
+		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.VS                    = DrawRectVShader;
+			PSO_Desc.PS                    = DrawRectPShader;
+			PSO_Desc.RasterizerState       = Rast_Desc;
+			PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+			PSO_Desc.SampleMask            = UINT_MAX;
+			PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+			PSO_Desc.NumRenderTargets      = 1;
+			PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT;
+			PSO_Desc.SampleDesc.Count      = 1;
+			PSO_Desc.SampleDesc.Quality    = 0;
+			PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+			PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+			PSO_Desc.DepthStencilState     = Depth_Desc;
+		}
+
+		ID3D12PipelineState* PSO = nullptr;
+		auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+		FK_ASSERT(SUCCEEDED(HR));
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+		ID3D12PipelineState* CreateDrawLineStatePSO(RenderSystem* RS)
+	{
+		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS", "vs_5_0",	"assets\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect", "ps_5_0",		"assets\\pshader.hlsl");
+
+		FINALLY
+			
+		Release(&DrawRectVShader);
+		Release(&DrawRectPShader);
+
+		FINALLYOVER
+
+		D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+				{ "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 0, 8,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+				{ "COLOR",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		};
+
+
+		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+		Rast_Desc.FillMode		= D3D12_FILL_MODE::D3D12_FILL_MODE_WIREFRAME;
+
+		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
@@ -7129,6 +7186,179 @@ namespace FlexKit
 
 		CL->RSSetViewports(1, &VP);
 		CL->RSSetScissorRects(1, &RECT);
+	}
+
+
+	/************************************************************************************************/
+
+
+	inline TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory, float R, GUID_t MeshID)
+	{
+		FlexKit::VertexBufferView* Views[3];
+
+		// Index Buffer
+		{
+			Views[0] = CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
+			Views[0]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16);
+
+			for(uint16_t I = 0; I < 36; ++I)
+				Views[0]->Push(I);
+
+			FK_ASSERT( Views[0]->End() );
+		}
+
+		// Vertex Buffer
+		{
+			Views[1] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
+			Views[1]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
+
+			float3 TopFarLeft	= { -R,  R, -R };
+			float3 TopFarRight  = { -R,  R, -R };
+			float3 TopNearLeft  = { -R,  R,  R };
+			float3 TopNearRight = {  R,  R,  R };
+
+			float3 BottomFarLeft   = { -R,  -R, -R };
+			float3 BottomFarRight  = { -R,  -R, -R };
+			float3 BottomNearLeft  = { -R,  -R,  R };
+			float3 BottomNearRight = {  R,  -R,  R };
+
+			// Top Plane
+			Views[1]->Push(TopFarLeft); 
+			Views[1]->Push(TopFarRight);
+			Views[1]->Push(TopNearRight);
+
+			Views[1]->Push(TopNearRight);
+			Views[1]->Push(TopNearLeft);
+			Views[1]->Push(TopFarLeft);
+
+
+			// Bottom Plane
+			Views[1]->Push(BottomFarLeft);
+			Views[1]->Push(BottomNearRight);
+			Views[1]->Push(BottomFarRight);
+
+			Views[1]->Push(BottomNearRight);
+			Views[1]->Push(BottomFarLeft);
+			Views[1]->Push(BottomNearLeft);
+
+			// Left Plane
+			Views[1]->Push(TopFarLeft);
+			Views[1]->Push(TopNearLeft);
+			Views[1]->Push(BottomNearLeft);
+
+			Views[1]->Push(TopFarLeft);
+			Views[1]->Push(BottomNearLeft);
+			Views[1]->Push(BottomFarLeft);
+		
+			// Right Plane
+			Views[1]->Push(TopFarRight);
+			Views[1]->Push(BottomNearRight);
+			Views[1]->Push(TopNearRight);
+
+			Views[1]->Push(TopFarRight);
+			Views[1]->Push(BottomFarRight);
+			Views[1]->Push(TopNearRight);
+
+			// Near Plane
+			Views[1]->Push(TopNearLeft);
+			Views[1]->Push(TopNearRight);
+			Views[1]->Push(BottomNearRight);
+
+			Views[1]->Push(TopNearLeft);
+			Views[1]->Push(BottomNearRight);
+			Views[1]->Push(BottomNearLeft);
+
+			// FarPlane
+			Views[1]->Push(TopFarLeft);
+			Views[1]->Push(TopFarRight);
+			Views[1]->Push(BottomFarRight);
+		
+			Views[1]->Push(TopFarLeft);
+			Views[1]->Push(BottomFarRight);
+			Views[1]->Push(BottomFarLeft);
+
+			FK_ASSERT( Views[1]->End() );
+		}
+		// Normal Buffer
+		{
+			Views[2] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
+			Views[2]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
+
+			float3 TopPlane		= {  0,  1,  0 };
+			float3 BottomPlane  = {  0, -1,  0 };
+			float3 LeftPlane	= { -1,  0,  0 };
+			float3 RightPlane	= {  1,  0,  1 };
+			float3 NearPlane	= {  0,  0,  1 };
+			float3 FarPlane		= {  0,  0, -1 };
+
+			// Top Plane
+			Views[2]->Push(TopPlane);
+			Views[2]->Push(TopPlane);
+			Views[2]->Push(TopPlane);
+
+			Views[2]->Push(TopPlane);
+			Views[2]->Push(TopPlane);
+			Views[2]->Push(TopPlane);
+
+			// Bottom Plane
+			Views[2]->Push(BottomPlane);
+			Views[2]->Push(BottomPlane);
+			Views[2]->Push(BottomPlane);
+
+			Views[2]->Push(BottomPlane);
+			Views[2]->Push(BottomPlane);
+			Views[2]->Push(BottomPlane);
+
+			// Left Plane
+			Views[2]->Push(LeftPlane);
+			Views[2]->Push(LeftPlane);
+			Views[2]->Push(LeftPlane);
+
+			Views[2]->Push(LeftPlane);
+			Views[2]->Push(LeftPlane);
+			Views[2]->Push(LeftPlane);
+
+			// Right Plane
+			Views[2]->Push(RightPlane);
+			Views[2]->Push(RightPlane);
+			Views[2]->Push(RightPlane);
+
+			Views[2]->Push(RightPlane);
+			Views[2]->Push(RightPlane);
+			Views[2]->Push(RightPlane);
+
+			// Near Plane
+			Views[2]->Push(NearPlane);
+			Views[2]->Push(NearPlane);
+			Views[2]->Push(NearPlane);
+
+			Views[2]->Push(NearPlane);
+			Views[2]->Push(NearPlane);
+			Views[2]->Push(NearPlane);
+
+			// FarPlane
+			Views[2]->Push(FarPlane);
+			Views[2]->Push(FarPlane);
+			Views[2]->Push(FarPlane);
+
+			Views[2]->Push(FarPlane);
+			Views[2]->Push(FarPlane);
+			Views[2]->Push(FarPlane);
+
+			FK_ASSERT( Views[2]->End() );
+		}
+
+		Mesh_Description Desc;
+		Desc.Buffers		= Views;
+		Desc.BufferCount	= 3;
+		Desc.IndexBuffer	= 0;
+
+		auto MeshHandle		= BuildMesh(RS, GT, &Desc, MeshID);
+
+		for(auto V : Views)
+			Memory->_aligned_free(V);
+
+		return MeshHandle;
 	}
 
 

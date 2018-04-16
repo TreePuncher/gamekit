@@ -140,7 +140,7 @@ namespace FlexKit
 	const uint32_t TransformComponentID = GetTypeGUID(TransformComponent);
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, SceneNodeComponentSystem* Nodes)
+	void CreateComponent(ComponentList<SIZE>& GO, SceneNodeComponentSystem* Nodes)
 	{
 		if (!GO.Full())
 		{
@@ -151,7 +151,7 @@ namespace FlexKit
 
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, TransformComponentArgs Args)
+	void CreateComponent(ComponentList<SIZE>& GO, TransformComponentArgs Args)
 	{
 		if (!GO.Full())
 		{
@@ -163,7 +163,7 @@ namespace FlexKit
 		}
 	}
 
-	bool SetParent(GameObjectInterface* GO, NodeHandle Node)
+	bool SetParent(ComponentListInterface* GO, NodeHandle Node)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C)
@@ -175,28 +175,28 @@ namespace FlexKit
 	}
 
 
-	float3 GetWorldPosition(GameObjectInterface* GO)
+	float3 GetWorldPosition(ComponentListInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		return C ? C->GetWorldPosition() : 0;
 	}
 
 
-	float3 GetLocalPosition(GameObjectInterface* GO)
+	float3 GetLocalPosition(ComponentListInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		return C ? C->GetLocalPosition() : 0;
 	}
 
 
-	Quaternion GetOrientation(GameObjectInterface* GO)
+	Quaternion GetOrientation(ComponentListInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		return C ? C->GetOrientation() : Quaternion::Identity();
 	}
 
 
-	NodeHandle GetNodeHandle(GameObjectInterface*  GO)
+	NodeHandle GetNodeHandle(ComponentListInterface*  GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		FK_ASSERT(C);
@@ -207,7 +207,7 @@ namespace FlexKit
 	}
 
 
-	NodeHandle GetParent(GameObjectInterface* GO)
+	NodeHandle GetParent(ComponentListInterface* GO)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		FK_ASSERT(C);
@@ -218,7 +218,7 @@ namespace FlexKit
 	}
 
 
-	bool Parent(GameObjectInterface* GO, NodeHandle Node)
+	bool Parent(ComponentListInterface* GO, NodeHandle Node)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		FK_ASSERT(C);
@@ -231,7 +231,7 @@ namespace FlexKit
 		return false;
 	}
 
-	void SetLocalPosition(GameObjectInterface* GO, float3 XYZ)
+	void SetLocalPosition(ComponentListInterface* GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 
@@ -241,7 +241,7 @@ namespace FlexKit
 		}
 	}
 
-	void SetWorldPosition(GameObjectInterface* GO, float3 XYZ)
+	void SetWorldPosition(ComponentListInterface* GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -250,7 +250,7 @@ namespace FlexKit
 		}
 	}
 
-	void Translate(GameObjectInterface* GO, float3 XYZ)
+	void Translate(ComponentListInterface* GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -259,7 +259,7 @@ namespace FlexKit
 		}
 	}
 
-	void TranslateWorld(GameObjectInterface* GO, float3 XYZ)
+	void TranslateWorld(ComponentListInterface* GO, float3 XYZ)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -272,7 +272,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Yaw(GameObjectInterface* GO, float R)
+	void Yaw(ComponentListInterface* GO, float R)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -281,7 +281,7 @@ namespace FlexKit
 		}
 	}
 
-	void Pitch(GameObjectInterface* GO, float R)
+	void Pitch(ComponentListInterface* GO, float R)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -290,7 +290,7 @@ namespace FlexKit
 		}
 	}
 
-	void Roll(GameObjectInterface* GO, float R)
+	void Roll(ComponentListInterface* GO, float R)
 	{
 		auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 		if (C) {
@@ -298,6 +298,134 @@ namespace FlexKit
 			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
 		}
 	}
+
+
+	/************************************************************************************************/
+
+
+	class SceneNodeBehavior :
+		public BehaviorBase
+	{
+	public:
+		SceneNodeBehavior(ComponentListInterface& GO) :
+			BehaviorBase(GO, GetTypeGUID(SceneNodeBehavior)) 
+		{
+		}
+
+		bool Validate() override
+		{
+			return	
+				BehaviorBase::Validate() &
+				(FindComponent(GO, TransformComponentID) != nullptr);
+		}
+
+
+		virtual void TranslateLocal(const float3 xyz)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->Translate(xyz);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+
+
+		virtual void TranslateWorld(const float3 xyz)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->TranslateWorld(xyz);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+
+
+		virtual void Yaw(float R)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->Yaw(R);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+
+
+		virtual void Pitch(float R)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->Pitch(R);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+
+
+		virtual void Roll(float R)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->Roll(R);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+
+
+		virtual void SetLocalPosition(float3 XYZ)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->SetLocalPosition(XYZ);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
+		}
+
+
+		virtual void SetWorldPosition(float3 XYZ)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->SetWorldPosition(XYZ);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(POSITION));
+		}
+
+
+		virtual bool SetParent(NodeHandle Node)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->SetParentNode(Node, C->ComponentHandle);
+			return true;
+		}
+
+
+		virtual float3 GetWorldPosition()
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			return C ? C->GetWorldPosition() : 0;
+		}
+
+
+		virtual float3 GetLocalPosition()
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			return C ? C->GetLocalPosition() : 0;
+		}
+
+
+		virtual Quaternion GetOrientation()
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			return C ? C->GetOrientation() : Quaternion::Identity();
+		}
+
+
+		virtual NodeHandle GetNodeHandle()
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+
+			if (C)
+				return C->ComponentHandle;
+
+			return NodeHandle(-1);
+		}
+
+
+		virtual NodeHandle GetParent(ComponentListInterface* GO)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+
+			if (C)
+				return C->GetParentNode(C->ComponentHandle);
+
+			return NodeHandle(-1);
+		}
+	};
 
 
 	/************************************************************************************************/
@@ -367,7 +495,7 @@ namespace FlexKit
 	}
 
 
-	inline bool SetVisibility(GameObjectInterface* GO, bool V)
+	inline bool SetVisibility(ComponentListInterface* GO, bool V)
 	{
 		auto C = FindComponent(GO, RenderableComponentID);
 		if (C) {
@@ -378,7 +506,8 @@ namespace FlexKit
 		return (C != nullptr);
 	}
 
-	inline bool SetRayVisibility(GameObjectInterface* GO, bool V)
+
+	inline bool SetRayVisibility(ComponentListInterface* GO, bool V)
 	{
 		auto C = FindComponent(GO, RenderableComponentID);
 		if (C) {
@@ -399,7 +528,7 @@ namespace FlexKit
 	DrawableComponentArgs CreateEnityComponent(DrawableComponentSystem*	DrawableComponent, const char* Mesh);
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, DrawableComponentArgs& Args)
+	void CreateComponent(ComponentList<SIZE>& GO, DrawableComponentArgs& Args)
 	{
 		if (!GO.Full()) {
 			auto C = FindComponent(GO, RenderableComponentID);
@@ -411,6 +540,73 @@ namespace FlexKit
 			GO.AddComponent(Component(Args.System, Args.Entity, RenderableComponentID));
 		}
 	}
+
+
+	/************************************************************************************************/
+
+
+	class DrawableBehavior :
+		public BehaviorBase
+	{
+	public:
+		DrawableBehavior(ComponentListInterface& GO) :
+			BehaviorBase(GO, GetTypeGUID(DrawableBehavior)) {}
+
+		bool Validate() override
+		{
+			return
+				BehaviorBase::Validate() &
+				(FindComponent(GO, RenderableComponentID) != nullptr);
+		}
+
+
+		bool SetDrawableColor(float3 Color)
+		{
+			auto C = FindComponent(GO, RenderableComponentID);
+			if (C) {
+				auto System = (DrawableComponentSystem*)C->ComponentSystem;
+				System->SetColor(C->ComponentHandle, Color);
+				//NotifyAll(GO, RenderableComponentID, GetCRCGUID(MATERIAL));
+			}
+			return (C != nullptr);
+		}
+
+
+		bool SetDrawableMetal(bool M)
+		{
+			auto C = FindComponent(GO, RenderableComponentID);
+			if (C) {
+				auto System = (DrawableComponentSystem*)C->ComponentSystem;
+				System->SetMetal(C->ComponentHandle, M);
+				//GO.NotifyAll(RenderableComponentID, GetCRCGUID(MATERIAL));
+			}
+			return (C != nullptr);
+		}
+
+
+		bool SetVisibility(bool V)
+		{
+			auto C = FindComponent(GO, RenderableComponentID);
+			if (C) {
+				auto System = (DrawableComponentSystem*)C->ComponentSystem;
+				System->SetVisibility(C->ComponentHandle, V);
+				//NotifyAll(GO, RenderableComponentID, GetCRCGUID(RAYVISIBILITY));
+			}
+			return (C != nullptr);
+		}
+
+
+		bool SetRayVisibility(bool V)
+		{
+			auto C = FindComponent(GO, RenderableComponentID);
+			if (C) {
+				auto System = (DrawableComponentSystem*)C->ComponentSystem;
+				System->SetRayVisibility(C->ComponentHandle, V);
+				//NotifyAll(GO, RenderableComponentID, GetCRCGUID(RAYVISIBILITY));
+			}
+			return (C != nullptr);
+		}
+	};
 
 
 	/************************************************************************************************/
@@ -448,7 +644,7 @@ namespace FlexKit
 		float					R;
 	};
 
-	bool SetLightColor(GameObjectInterface* GO, float3 K)
+	bool SetLightColor(ComponentListInterface* GO, float3 K)
 	{
 		auto C = FindComponent(GO, LightComponentID);
 		if (C)
@@ -460,7 +656,7 @@ namespace FlexKit
 		return C != nullptr;
 	}
 
-	bool SetLightIntensity(GameObjectInterface* GO, float I)
+	bool SetLightIntensity(ComponentListInterface* GO, float I)
 	{
 		auto C = FindComponent(GO, LightComponentID);
 		if (C)
@@ -496,7 +692,7 @@ namespace FlexKit
 
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, LightComponentArgs& Args)
+	void CreateComponent(ComponentList<SIZE>& GO, LightComponentArgs& Args)
 	{
 		if (!GO.Full()) {
 			NodeHandle Node;
@@ -517,6 +713,65 @@ namespace FlexKit
 			GO.AddComponent(Component(Args.System, Light, LightComponentID));
 		}
 	}
+
+
+	/************************************************************************************************/
+
+
+	class LightBehavior :
+		public BehaviorBase
+	{
+	public:
+		LightBehavior(ComponentListInterface& GO) :
+			BehaviorBase(GO, GetTypeGUID(LightBehavior))
+		{
+			FK_ASSERT(FindComponent(GO, LightComponentID) != nullptr);
+		}
+
+
+		bool SetLightColor(float3 K)
+		{
+			auto C = FindComponent(GO, LightComponentID);
+
+			if (C)
+			{
+				auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
+				LightSystem->SetColor(C->ComponentHandle, K);
+				NotifyAll(GO, LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
+			}
+
+			return C != nullptr;
+		}
+
+
+		bool SetLightIntensity(float I)
+		{
+			auto C = FindComponent(GO, LightComponentID);
+			if (C)
+			{
+				auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
+				LightSystem->SetIntensity(C->ComponentHandle, I);
+				NotifyAll(GO, LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
+			}
+
+			return C != nullptr;
+		}
+
+
+		bool SetLightRadius(float R)
+		{
+			auto C = FindComponent(GO, LightComponentID);
+
+			if (C)
+			{
+				auto LightSystem = (LightComponentSystem*)C->ComponentSystem;
+				LightSystem->SetRadius(C->ComponentHandle, R);
+				NotifyAll(GO, LightComponentID, GetCRCGUID(LIGHTPROPERTIES));
+			}
+
+			return C != nullptr;
+		}
+	};
 
 
 	/************************************************************************************************/
@@ -612,7 +867,7 @@ namespace FlexKit
 		}
 
 
-		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID, GameObjectInterface* GO) override
+		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, ComponentSystemInterface* System, EventTypeID, ComponentListInterface* GO) override
 		{
 		}
 
@@ -645,7 +900,7 @@ namespace FlexKit
 
 
 	template<size_t SIZE>
-	void CreateComponent(GameObject<SIZE>& GO, CameraComponentArgs& Args)
+	void CreateComponent(ComponentList<SIZE>& GO, CameraComponentArgs& Args)
 	{
 		if (!GO.Full()) {
 			auto Transform  = (TansformComponent*)FindComponent(GO, TransformComponentID);
@@ -701,7 +956,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Quaternion GetCameraOrientation(GameObjectInterface* GO)
+	Quaternion GetCameraOrientation(ComponentListInterface* GO)
 	{
 		auto Camera = (CameraComponent*)FindComponent(GO, CameraComponentID);
 
@@ -711,13 +966,13 @@ namespace FlexKit
 		return Quaternion(0.0f, 0.0f, 0.0f, 1.0f);
 	}
 
-	Camera* GetCamera_ptr(GameObjectInterface* GO)
+	Camera* GetCamera_ptr(ComponentListInterface* GO)
 	{
 		auto CameraComp = (CameraComponent*)FindComponent(GO, CameraComponentID);
 		return CameraComp->GetCamera_ptr();
 	}
 
-	Camera& GetCamera_ref(GameObjectInterface* GO)
+	Camera& GetCamera_ref(ComponentListInterface* GO)
 	{
 		auto CameraComp = (CameraComponent*)FindComponent(GO, CameraComponentID);
 		FK_ASSERT(CameraComp);
@@ -725,8 +980,52 @@ namespace FlexKit
 		return *CameraComp->GetCamera_ptr();
 	}
 
+
 	/************************************************************************************************/
 
+
+	class CameraBehavior :
+		public BehaviorBase
+	{
+	public:
+
+
+		CameraBehavior(ComponentListInterface& GO) :
+			BehaviorBase(GO, GetTypeGUID(CameraBehavior))
+		{
+			//FK_ASSERT(FindComponent(GO, CameraComponentID) != nullptr);
+		}
+
+		bool Validate() override
+		{
+			return
+				BehaviorBase::Validate() &
+				(FindComponent(GO, CameraComponentID) != nullptr);
+		}
+
+		Quaternion GetCameraOrientation()
+		{
+			auto Camera = (CameraComponent*)FindComponent(GO, CameraComponentID);
+			return Camera->GetOrientation();
+		}
+
+
+		Camera* GetCamera_ptr()
+		{
+			auto CameraComp = (CameraComponent*)FindComponent(GO, CameraComponentID);
+			return CameraComp->GetCamera_ptr();
+		}
+
+
+		Camera& GetCamera_ref()
+		{
+			auto CameraComp = (CameraComponent*)FindComponent(GO, CameraComponentID);
+			return *CameraComp->GetCamera_ptr();
+		}
+	};
+
+
+	/************************************************************************************************/
 }//namespace FlexKit
 
 #endif

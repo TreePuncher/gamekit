@@ -104,6 +104,7 @@ namespace FlexKit
 				_ptr->Quit = true;
 				break;
 			case KC_R:
+				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::DRAW_LINE_PSO);
 				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_CULL_PSO);
 				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO);
 				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);

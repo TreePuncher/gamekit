@@ -33,6 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
+
+
 PlayState::PlayState(GameFramework* framework) :
 	FrameworkState	(framework),
 	Input			(Framework),
@@ -53,10 +55,12 @@ PlayState::PlayState(GameFramework* framework) :
 	Lights			(&Scene, Framework->Core->Nodes),
 	Physics			(&Framework->Core->Physics, Framework->Core->Nodes, Framework->Core->GetBlockMemory()),
 	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
-	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false))
+	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)),
+	TestBehavior	(Player)
 {
 	Framework->ActivePhysicsScene	= &Physics;
 	Framework->ActiveScene			= &Scene;
+
 
 	bool res = LoadScene(
 		Framework->Core->RenderSystem, 
@@ -67,7 +71,8 @@ PlayState::PlayState(GameFramework* framework) :
 		&Scene, 
 		Framework->Core->GetTempMemory());
 
-	InitiateGameObject(
+
+	InitiateComponentList(
 		Player,
 			//Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
@@ -76,17 +81,17 @@ PlayState::PlayState(GameFramework* framework) :
 
 	SetWorldPosition(Player, { 0, 15, 60 });
 	OffsetYawNode	(Player, { 0.0f, 5, 0.0f });
-	SetCameraOffset	(Player, {0, 30, 60});
+	SetCameraOffset	(Player, { 0, 30, 60});
 
 
-	InitiateGameObject(	FloorObject,
+	InitiateComponentList(	FloorObject,
 		Physics.CreateStaticBoxCollider({ 1000, 3, 1000 }, { 0, -3, 0 }));
 
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
 
 	for (size_t I = 0; I < 400; ++I)
-		InitiateGameObject(
+		InitiateComponentList(
 			CubeObjects[I],
 			CreateEnityComponent(&Drawables, "Flower"),
 			//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
@@ -162,68 +167,12 @@ float3 CameraPOS = {8000,1000,8000};
 
 bool PlayState::Update(EngineCore* Engine, double dT)
 {
-	//printfloat3(GetWorldPosition(Player));
-	//printf("\n");
-
-	//float MovementFactor			= 50.0f;
-
-	//ThisState->Model.PlayerInputs[0].FrameID++;
-	//ThisState->Model.PlayerInputs[0].MouseInput		= { HorizontalMouseMovement, VerticalMouseMovement };
-	//ThisState->Model.PlayerInputs[0].KeyboardInput	= ThisState->Input;
-
 	Input.Update(dT, Framework->MouseState, Framework );
-	//Yaw(Player, dT * Framework->MouseState.Normalized_dPos[0]);
-
-	double T = Framework->TimeRunning;
-	double CosT = (float)cos(T);
-	double SinT = (float)sin(T);
-
-	float Begin	= 0.0f;
-	float End	= 60.0f;
-	float IaR	= 10000 * (1 + (float)cos(T * 6)) / 2;
 	
-	//Translate(ThisState->Player, float3{ 0, 100, 0 } * dT);
-	
-	const float MoveRate = 10;
-
-
-	//SetPositionW(Framework->Core->Nodes, Framework->DebugCamera.Node, CameraPOS);
-	//Yaw(Framework->Core->Nodes, Framework->DebugCamera.Node, pi * dT);
-	/*
-
-#if 0
-	if (Input.KeyState.Forward)
-		//Translate(Player, Forward * dT * MoveRate);
-		Translate(Player, float3{0, float(dT) * MoveRate, 0});
-#else
-
-	//auto Forward	= GetForwardVector(Player);
-	//auto Left		= GetLeftVector(Player);
-
-	auto Q			= GetCameraOrientation(Player);
-	auto Forward	= Q * float3( 0,  0, -1);
-	auto Left		= Q * float3( -1,  0,  0);
-
-	if (Input.KeyState.Forward)
-		Translate(Player, Forward * dT * MoveRate);
-	if (Input.KeyState.Backward)
-		Translate(Player, Forward * dT * -MoveRate);
-	if (Input.KeyState.Left)
-		Translate(Player, Left * dT * MoveRate);
-	if (Input.KeyState.Right)
-		Translate(Player, Left * dT * -MoveRate);
-#endif
-
-	//Translate(Player, dT * float3{0, -98.0f, 0});
-	*/
-	//Yaw(Player, pi * dT/ 2);
-
+	TestBehavior.Update(dT);
 	OrbitCameras.Update(dT);
 	Physics.UpdateSystem(dT);
 	TPC.Update(dT);
-
-	//UpdateTransforms(Engine->Nodes);
-	//Engine->Cameras.Update(0.0);
 
 	return false;
 }
@@ -375,10 +324,12 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 
 	Render.DefaultRender(Drawables_Solid, GetCamera_ref(Player), Core->Nodes, Targets, FrameGraph, Core->GetTempMemory());
 
-	DrawShapes(EPIPELINESTATES::Draw_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
-		RectangleShape	({0.01f, 0.01f}, { 0.98f, 0.98f }, float4(0.1f, 0.1f, 0.1f, 0.0f)),
-		CircleShape		({0.5f, 0.5f},	 0.2f, float4(1.0f,0.0f,0.0f,1.0f) ),
-		CircleShape		({0.5f, 0.5f},	 0.005f, float4(1.0f,1.0f,1.0f,1.0f) ));
+	LineSegments Lines(Core->GetTempMemory());
+	Lines.push_back( { {0, 0, 1},		{1, 1, 1, 1}, {1, 1, 1}, {1, 1, 1, 1} } );
+	Lines.push_back( { {0.0f, 1.0f, 1},	{1, 1, 1, 1}, {1.0f, 0.0f, 1}, {1, 1, 1, 1} } );
+
+	DrawShapes(EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
+		LineShape(Lines));
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
@@ -389,211 +340,31 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 /************************************************************************************************/
 
 
-TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory, float R, GUID_t MeshID)
-{
-	FlexKit::VertexBufferView* Views[3];
-
-	// Index Buffer
-	{
-		Views[0] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
-		Views[0]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16);
-
-		for(uint16_t I = 0; I < 36; ++I)
-			Views[0]->Push(I);
-
-		FK_ASSERT( Views[0]->End() );
-	}
-
-	// Vertex Buffer
-	{
-		Views[1] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
-		Views[1]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
-
-		float3 TopFarLeft	= { -R,  R, -R };
-		float3 TopFarRight  = { -R,  R, -R };
-		float3 TopNearLeft  = { -R,  R,  R };
-		float3 TopNearRight = {  R,  R,  R };
-
-		float3 BottomFarLeft   = { -R,  -R, -R };
-		float3 BottomFarRight  = { -R,  -R, -R };
-		float3 BottomNearLeft  = { -R,  -R,  R };
-		float3 BottomNearRight = {  R,  -R,  R };
-
-		// Top Plane
-		Views[1]->Push(TopFarLeft); 
-		Views[1]->Push(TopFarRight);
-		Views[1]->Push(TopNearRight);
-
-		Views[1]->Push(TopNearRight);
-		Views[1]->Push(TopNearLeft);
-		Views[1]->Push(TopFarLeft);
-
-
-		// Bottom Plane
-		Views[1]->Push(BottomFarLeft);
-		Views[1]->Push(BottomNearRight);
-		Views[1]->Push(BottomFarRight);
-
-		Views[1]->Push(BottomNearRight);
-		Views[1]->Push(BottomFarLeft);
-		Views[1]->Push(BottomNearLeft);
-
-		// Left Plane
-		Views[1]->Push(TopFarLeft);
-		Views[1]->Push(TopNearLeft);
-		Views[1]->Push(BottomNearLeft);
-
-		Views[1]->Push(TopFarLeft);
-		Views[1]->Push(BottomNearLeft);
-		Views[1]->Push(BottomFarLeft);
-		
-		// Right Plane
-		Views[1]->Push(TopFarRight);
-		Views[1]->Push(BottomNearRight);
-		Views[1]->Push(TopNearRight);
-
-		Views[1]->Push(TopFarRight);
-		Views[1]->Push(BottomFarRight);
-		Views[1]->Push(TopNearRight);
-
-		// Near Plane
-		Views[1]->Push(TopNearLeft);
-		Views[1]->Push(TopNearRight);
-		Views[1]->Push(BottomNearRight);
-
-		Views[1]->Push(TopNearLeft);
-		Views[1]->Push(BottomNearRight);
-		Views[1]->Push(BottomNearLeft);
-
-		// FarPlane
-		Views[1]->Push(TopFarLeft);
-		Views[1]->Push(TopFarRight);
-		Views[1]->Push(BottomFarRight);
-		
-		Views[1]->Push(TopFarLeft);
-		Views[1]->Push(BottomFarRight);
-		Views[1]->Push(BottomFarLeft);
-
-		FK_ASSERT( Views[1]->End() );
-	}
-	// Normal Buffer
-	{
-		Views[2] = FlexKit::CreateVertexBufferView((byte*)Memory->_aligned_malloc(4096), 4096);
-		Views[2]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
-
-		float3 TopPlane		= {  0,  1,  0 };
-		float3 BottomPlane  = {  0, -1,  0 };
-		float3 LeftPlane	= { -1,  0,  0 };
-		float3 RightPlane	= {  1,  0,  1 };
-		float3 NearPlane	= {  0,  0,  1 };
-		float3 FarPlane		= {  0,  0, -1 };
-
-		// Top Plane
-		Views[2]->Push(TopPlane);
-		Views[2]->Push(TopPlane);
-		Views[2]->Push(TopPlane);
-
-		Views[2]->Push(TopPlane);
-		Views[2]->Push(TopPlane);
-		Views[2]->Push(TopPlane);
-
-		// Bottom Plane
-		Views[2]->Push(BottomPlane);
-		Views[2]->Push(BottomPlane);
-		Views[2]->Push(BottomPlane);
-
-		Views[2]->Push(BottomPlane);
-		Views[2]->Push(BottomPlane);
-		Views[2]->Push(BottomPlane);
-
-		// Left Plane
-		Views[2]->Push(LeftPlane);
-		Views[2]->Push(LeftPlane);
-		Views[2]->Push(LeftPlane);
-
-		Views[2]->Push(LeftPlane);
-		Views[2]->Push(LeftPlane);
-		Views[2]->Push(LeftPlane);
-
-		// Right Plane
-		Views[2]->Push(RightPlane);
-		Views[2]->Push(RightPlane);
-		Views[2]->Push(RightPlane);
-
-		Views[2]->Push(RightPlane);
-		Views[2]->Push(RightPlane);
-		Views[2]->Push(RightPlane);
-
-		// Near Plane
-		Views[2]->Push(NearPlane);
-		Views[2]->Push(NearPlane);
-		Views[2]->Push(NearPlane);
-
-		Views[2]->Push(NearPlane);
-		Views[2]->Push(NearPlane);
-		Views[2]->Push(NearPlane);
-
-		// FarPlane
-		Views[2]->Push(FarPlane);
-		Views[2]->Push(FarPlane);
-		Views[2]->Push(FarPlane);
-
-		Views[2]->Push(FarPlane);
-		Views[2]->Push(FarPlane);
-		Views[2]->Push(FarPlane);
-
-		FK_ASSERT( Views[2]->End() );
-	}
-
-	Mesh_Description Desc;
-	Desc.Buffers		= Views;
-	Desc.BufferCount	= 3;
-	Desc.IndexBuffer	= 0;
-
-	auto MeshHandle		= BuildMesh(RS, GT, &Desc, MeshID);
-
-	for(auto V : Views)
-		Memory->_aligned_free(V);
-
-	return MeshHandle;
-}
-
-
 void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 {
 	FK_ASSERT(LoadScene(Framework->Core->RenderSystem, Framework->Core->Nodes, &Framework->Core->Assets, &Framework->Core->Geometry, 201, &State->Scene, Framework->Core->GetTempMemory()), "FAILED TO LOAD!\n");
 
-	InitiateGameObject( 
+	InitiateComponentList( 
 		State->FloorObject,
 			State->Physics.CreateStaticBoxCollider({1000, 3, 1000}, {0, -3, 0}));
-
-	//InitiateGameObject(
-	//	State->Player,
-	//		State->Physics.CreateCharacterController({0, 10, 0}, 10, 5.0f),
-	//		CreateCameraComponent(Framework->Core->Cameras, GetWindowAspectRatio(Framework->Core), 0.01f, 10000.0f, InvalidComponentHandle),
-	//		CreateThirdPersonCamera(&State->TPC));
-	//		CreateOrbitCamera(State->OrbitCameras, , 10));
-
-	//Yaw(State->Player, pi/100);
-
 
 	SetWorldPosition(State->Player, {0, 30, 50});
 	//OffsetYawNode(State->Player, { 0.0f, 5, 0.0f });
 	//SetCameraOffset(State->Player, {0, 30, 30});
 
 	for(size_t I = 0; I < 0; ++I){
-		InitiateGameObject( 
+		InitiateComponentList( 
 			State->CubeObjects[I],
 				CreateEnityComponent(&State->Drawables, "Flower"),
 				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
 				State->Physics.CreateCubeComponent(
 					{ 0, 10.0f * I, 0}, 
-					{ 0, 10, 0}, 1));
+					{ 0, 10, 0 }, 1));
 
 		SetRayVisibility(State->CubeObjects[I], true);
 	}
 
-	InitiateGameObject(
+	InitiateComponentList(
 		State->TestObject,
 			CreateEnityComponent(&State->Drawables, "Flower"),
 			CreateLightComponent(&State->Lights));
@@ -610,7 +381,7 @@ void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
 void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 {
 	for(size_t I = 0; I < 10; ++I){
-		InitiateGameObject( 
+		InitiateComponentList( 
 			State->CubeObjects[I],
 				CreateEnityComponent(&State->Drawables, "Flower"),
 				//CreateLightComponent(&State->Lights, {1, -1, -1}, 1, 1000),
@@ -621,7 +392,7 @@ void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
 		SetRayVisibility(State->CubeObjects[I], true);
 	}
 
-	InitiateGameObject(
+	InitiateComponentList(
 		State->Player,
 			State->Physics.CreateCharacterController({0, 10, 0}, 5, 5),
 			//CreateThirdPersonCamera(&State->TPC, Framework->ActiveCamera));
