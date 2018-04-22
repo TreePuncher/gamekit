@@ -145,7 +145,7 @@ namespace FlexKit
 	};
 
 
-	__declspec(align(64))
+	//__declspec(align(64))
 	class WorkerThread
 	{
 	public:
