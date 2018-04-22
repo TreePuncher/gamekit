@@ -14,11 +14,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKitResourceCompiler", "FlexKitResourceCompiler\FlexKitResourceCompiler.vcxproj", "{2994D4AB-F8E7-4617-909E-6BD87E211C6F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestGameState", "TestGameState\TestGameState.vcxproj", "{1123F4F5-7268-435E-BE98-B95C51D0C664}"
-	ProjectSection(ProjectDependencies) = postProject
-		{A0D6FF61-30E0-4936-A264-4F4EDD102EA8} = {A0D6FF61-30E0-4936-A264-4F4EDD102EA8}
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestState", "GameState\GameState.vcxproj", "{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "MayaToolsetPlugin", "FlexKitMayaPlug\MayaToolsetPlugin.pyproj", "{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}"
@@ -59,12 +54,6 @@ Global
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|x64.ActiveCfg = Release|x64
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|x86.ActiveCfg = Release|Win32
 		{2994D4AB-F8E7-4617-909E-6BD87E211C6F}.Release|x86.Build.0 = Release|Win32
-		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Debug|Any CPU.ActiveCfg = Debug|Win32
-		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Debug|x64.ActiveCfg = Debug|x64
-		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Debug|x86.ActiveCfg = Debug|Win32
-		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Release|Any CPU.ActiveCfg = Release|Win32
-		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Release|x64.ActiveCfg = Release|x64
-		{1123F4F5-7268-435E-BE98-B95C51D0C664}.Release|x86.ActiveCfg = Release|Win32
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|Any CPU.ActiveCfg = Debug|Win32
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|x64.ActiveCfg = Debug|x64
 		{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}.Debug|x64.Build.0 = Debug|x64
