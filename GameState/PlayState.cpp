@@ -176,15 +176,21 @@ PlayState::PlayState(GameFramework* framework) :
 	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
 	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)),
 	Grid			{Framework->Core->GetBlockMemory()},
-	Player1_Handler	{Grid},
-	Player2_Handler	{Grid}
+	Player1_Handler	{Grid, Framework->Core->GetBlockMemory() },
+	Player2_Handler	{Grid, Framework->Core->GetBlockMemory() }
 {
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
 
 	Player1_Handler.SetActive(Grid.CreatePlayer());
-
 	Grid.CreateGridObject();
+
+	const uint32_t UPEVENT = GetCRCGUID(PLAYER1_UP);
+
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W, (int32_t)PLAYER_EVENTS::PLAYER1_UP);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A, (int32_t)PLAYER_EVENTS::PLAYER1_LEFT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S, (int32_t)PLAYER_EVENTS::PLAYER1_DOWN);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D, (int32_t)PLAYER_EVENTS::PLAYER1_RIGHT);
 }
 
 
@@ -193,62 +199,6 @@ PlayState::PlayState(GameFramework* framework) :
 
 bool PlayState::EventHandler(Event evt)
 {
-	if (evt.InputSource == Event::Keyboard)
-	{
-		switch (evt.Action)
-		{
-		case Event::Pressed:
-		{
-			switch (evt.mData1.mKC[0])
-			{
-			case KC_E:
-				Input.KeyState.Shield   = true;
-				break;
-			case KC_W:
-				Player1_Handler.MoveUp();
-				Input.KeyState.Forward  = true;
-				break;
-			case KC_S:
-				Player1_Handler.MoveDown();
-				Input.KeyState.Backward = true;
-				break;
-			case KC_A:
-				Player1_Handler.MoveLeft();
-				Input.KeyState.Left     = true;
-				break;
-			case KC_D:
-				Player1_Handler.MoveRight();
-				Input.KeyState.Right    = true;
-				break;
-			}
-		}	break;
-		case Event::Release:
-		{
-			switch (evt.mData1.mKC[0])
-			{
-			case KC_R:
-				//this->Framework->Core->RenderSystem.QueuePSOLoad(FORWARDDRAW);
-				break;
-			case KC_E:
-				Input.KeyState.Shield   = false;
-				break;
-			case KC_W:
-				Input.KeyState.Forward  = false;
-				break;
-			case KC_S:
-				Input.KeyState.Backward = false;
-				break;
-			case KC_A:
-				Input.KeyState.Left     = false;
-				break;
-			case KC_D: 
-				Input.KeyState.Right    = false;
-				break;
-			}
-		}	break;
-		}
-	}
-
 	if (Player1_Handler.Enabled)
 		Player1_Handler.Handle(evt);
 

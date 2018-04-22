@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gameplay.h"
 
+
 /*
 TODO's
 */
@@ -51,24 +52,50 @@ typedef size_t GridObject_Handle;
 class InputMap
 {
 public:
+	InputMap(iAllocator* Memory) :
+		EventMap{ Memory }{}
+
+
 	bool Map(const Event& evt_in, Event& evt_out)
 	{
+		if (evt_in.InputSource != Event::Keyboard)
+			return false;
 
+		auto res = FlexKit::find(
+			EventMap, 
+			[&](auto &rhs) 
+				{
+					return evt_in.mData1.mKC[0] == rhs.EventKC;
+				});
+
+		if (res == EventMap.end())
+			return false;
+
+		evt_out					= evt_in;
+		evt_out.mData1.mINT[0]	= (*res).EventID;
+
+		return true;
 	}
 
-	void MapKeyToEvent(KEYCODES KC, size_t EventID)
+	void MapKeyToEvent(KEYCODES KC, int32_t EventID)
 	{
-
+		EventMap.push_back({ EventID, KC });
 	}
 
 	bool operator ()(const Event& evt_in, Event& evt_out)
 	{
-		return false;
+		return Map(evt_in, evt_out);
 	}
 
 private:
 
-	static_vector<Event, KC_COUNT> EventMap;
+	struct TiedEvent
+	{
+		int32_t		EventID;
+		KEYCODES	EventKC;
+	};
+
+	Vector<TiedEvent> EventMap;
 };
 
 
@@ -160,13 +187,26 @@ public:
 /************************************************************************************************/
 
 
+enum class PLAYER_EVENTS
+{
+	PLAYER1_UP,
+	PLAYER1_LEFT,
+	PLAYER1_DOWN,
+	PLAYER1_RIGHT,
+	PLAYER1_UNKNOWN,
+};
+
+
 class LocalPlayerHandler :
 	public FlexKit::iEventReceiver,
 	public FlexKit::iUpdatable
 {
 public:
-	LocalPlayerHandler(GameGrid& grid) :
-		Grid{ grid } {}
+	LocalPlayerHandler(GameGrid& grid, iAllocator* memory) :
+		Grid		{ grid }, 
+		Map			{ memory },
+		InputState	{ false, false, false, false, -1 }
+	{}
 
 	void Handle(const Event& evt) override
 	{
@@ -177,7 +217,55 @@ public:
 
 			if (Res)
 			{
+				switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
+				{
+				case PLAYER_EVENTS::PLAYER1_UP:
+					InputState.UP		=	
+						 (evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.UP);
+					break;
+				case PLAYER_EVENTS::PLAYER1_LEFT:
+					InputState.LEFT		= 
+						 (evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.LEFT);
+					break;
+				case PLAYER_EVENTS::PLAYER1_DOWN:
+					InputState.DOWN		= 
+						 (evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.DOWN);
+					break;
+				case PLAYER_EVENTS::PLAYER1_RIGHT:
+					InputState.RIGHT	= 
+						 (evt.Action == Event::Pressed) ? true : 
+ 						((evt.Action == Event::Release) ? false : InputState.RIGHT);
+					break;
+				default:
+					break;
+				}
 
+				if (evt.Action == Event::Pressed)
+				{
+					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
+					{
+					case PLAYER_EVENTS::PLAYER1_UP:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_UP;
+						break;
+					case PLAYER_EVENTS::PLAYER1_LEFT:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_LEFT;
+						break;
+					case PLAYER_EVENTS::PLAYER1_DOWN:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_DOWN;
+						break;
+					case PLAYER_EVENTS::PLAYER1_RIGHT:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_RIGHT;
+						break;
+					default:
+						break;
+					}
+				}
+
+				if (evt.Action == Event::Release)
+					InputState.PreferredDirection = -1;
 			}
 		}
 	}
@@ -218,6 +306,61 @@ public:
 	}
 
 	bool Enabled = false;
+
+	void Update(const double dt) override
+	{
+
+		if (InputState.PreferredDirection != -1)
+		{
+			switch ((int)InputState.PreferredDirection)
+			{
+				case (int)PLAYER_EVENTS::PLAYER1_UP:
+					MoveUp();
+					break;
+				case (int)PLAYER_EVENTS::PLAYER1_LEFT:
+					MoveLeft();
+					break;
+				case (int)PLAYER_EVENTS::PLAYER1_DOWN:
+					MoveDown();
+					break;
+				case (int)PLAYER_EVENTS::PLAYER1_RIGHT:
+					MoveRight();
+					break;
+			}
+		}
+		else
+		{
+			if (InputState.UP)
+			{
+				MoveUp();
+			}
+			else if (InputState.DOWN)
+			{
+				MoveDown();
+			}
+			else if (InputState.LEFT)
+			{
+				MoveLeft();
+			}
+			else if (InputState.RIGHT)
+			{
+				MoveRight();
+			}
+		}
+	}
+
+	struct
+	{
+		bool UP;
+		bool DOWN;
+		bool LEFT;
+		bool RIGHT;
+
+		int	PreferredDirection;// if -1 then a preferred direction is ignored
+
+		operator bool()	{ return UP | DOWN | LEFT | RIGHT; }
+	}InputState;
+
 
 	InputMap		Map;
 	Player_Handle	Player;
