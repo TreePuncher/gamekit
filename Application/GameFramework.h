@@ -70,6 +70,8 @@ namespace FlexKit
 		void PostDraw			(iAllocator* TempMemory, double dT);
 		void Cleanup			();
 
+		void DispatchEvent(const Event& evt);
+
 		void PostPhysicsUpdate	();
 		void PrePhysicsUpdate	();
 

@@ -328,6 +328,18 @@ namespace FlexKit
 	}
 
 
+	void GameFramework::DispatchEvent(const Event& evt)
+	{
+		auto itr = SubStates.rbegin();
+		while (itr != SubStates.rend())
+		{
+			if (!(*itr)->EventHandler(evt))
+				break;
+			itr++;
+		}
+	}
+
+
 	void GameFramework::PostPhysicsUpdate()
 	{
 
@@ -385,12 +397,7 @@ namespace FlexKit
 			break;
 		}
 
-		while(itr != base->SubStates.rend())
-		{
-			if (!(*itr)->EventHandler(evt))
-				break;
-			itr++;
-		}
+		base->DispatchEvent(evt);
 	}
 
 
