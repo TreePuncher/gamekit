@@ -89,7 +89,6 @@ Global
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Debug|x86.Build.0 = Debug|Win32
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|Any CPU.ActiveCfg = Release|Win32
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x64.ActiveCfg = Release|x64
-		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x64.Build.0 = Release|x64
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x86.ActiveCfg = Release|Win32
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection

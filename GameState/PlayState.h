@@ -48,6 +48,33 @@ typedef size_t GridObject_Handle;
 /************************************************************************************************/
 
 
+class InputMap
+{
+public:
+	bool Map(const Event& evt_in, Event& evt_out)
+	{
+
+	}
+
+	void MapKeyToEvent(KEYCODES KC, size_t EventID)
+	{
+
+	}
+
+	bool operator ()(const Event& evt_in, Event& evt_out)
+	{
+		return false;
+	}
+
+private:
+
+	static_vector<Event, KC_COUNT> EventMap;
+};
+
+
+/************************************************************************************************/
+
+
 class GridPlayer :
 	public FlexKit::iEventReceiver,
 	public FlexKit::iUpdatable
@@ -143,13 +170,26 @@ public:
 
 	void Handle(const Event& evt) override
 	{
+		if (evt.InputSource == Event::Keyboard)
+		{
+			Event ReMapped_Event;
+			auto Res = Map(evt, ReMapped_Event);
+
+			if (Res)
+			{
+
+			}
+		}
+	}
+
+	void SetActive(Player_Handle P)
+	{
+		Player	= P;
+		Enabled = true;
 	}
 
 	void MovePlayer(FlexKit::int2 XY)
 	{
-		//if (Grid.IsCellClear(XY))
-		//	Grid.Players[Player].XY = XY;
-
 		Grid.MovePlayer(Player, XY);
 	}
 
@@ -179,6 +219,7 @@ public:
 
 	bool Enabled = false;
 
+	InputMap		Map;
 	Player_Handle	Player;
 	GameGrid&		Grid;
 };
@@ -191,7 +232,7 @@ class MovePlayerTask :
 	public iGridTask
 {
 public:
-	MovePlayerTask(
+	explicit MovePlayerTask(
 		FlexKit::int2	a, 
 		FlexKit::int2	b,
 		Player_Handle	player,
@@ -206,7 +247,6 @@ public:
 			T			{0.0f},
 			Grid		{grid}
 	{
-		std::cout << "Moving Player\n";
 		Grid->Players[Player].State = GridPlayer::PS_Moving;
 	}
 
@@ -230,23 +270,7 @@ public:
 /************************************************************************************************/
 
 
-class InputMap
-{
-public:
-	bool Map(const Event& evt_in, Event& evt_out)
-	{
 
-	}
-
-	void MapKeyToEvent(KEYCODES KC, size_t EventID)
-	{
-
-	}
-
-private:
-
-	static_vector<Event, KC_COUNT> EventMap;
-};
 
 
 /************************************************************************************************/

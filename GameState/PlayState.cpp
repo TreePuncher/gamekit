@@ -71,6 +71,7 @@ bool GameGrid::MovePlayer(Player_Handle Player, GridID_t GridID)
 		OldPOS,
 		GridID,
 		Player,
+		0.25f,
 		this);
 
 	Tasks.push_back(Task);
@@ -178,23 +179,11 @@ PlayState::PlayState(GameFramework* framework) :
 	Player1_Handler	{Grid},
 	Player2_Handler	{Grid}
 {
-	Framework->ActivePhysicsScene	= &Physics;
-	Framework->ActiveScene			= &Scene;
-
-
-	bool res = LoadScene(
-		Framework->Core->RenderSystem, 
-		Framework->Core->Nodes, 
-		&Framework->Core->Assets, 
-		&Framework->Core->Geometry, 
-		201, 
-		&Scene, 
-		Framework->Core->GetTempMemory());
-
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
 
-	Grid.CreatePlayer();
+	Player1_Handler.SetActive(Grid.CreatePlayer());
+
 	Grid.CreateGridObject();
 }
 
