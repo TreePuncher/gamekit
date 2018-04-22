@@ -132,13 +132,11 @@ void MovePlayerTask::Update(const double dt)
 	if (T < 1.0f)
 	{
 		int2 temp	= B - A;
-		float2 D	= { 
+		float2 C	= { 
 			(float)temp[0], 
 			(float)temp[1] };
 
-		Grid->Players[Player].Offset = { D * T };
-		printfloat2(Grid->Players[Player].Offset);
-		std::cout << "\n";
+		Grid->Players[Player].Offset = { C * T };
 	}
 	else
 	{
@@ -148,7 +146,7 @@ void MovePlayerTask::Update(const double dt)
 		complete = true;
 	}
 
-	T += dt * 4;
+	T += dt / D;
 }
 
 
@@ -300,10 +298,6 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 
 bool PlayState::DebugDraw(EngineCore* Core, double dT)
 {
-	//PushCapsule_Wireframe(Framework->Immediate, Core->GetTempMemory(), GetWorldPosition(Player), 5, 10, GREEN);
-	//Physics.DebugDraw	(Framework->Immediate, Core->GetTempMemory());
-	//Drawables.DrawDebug	(Framework->Immediate, Core->Nodes, Core->GetTempMemory());
-
 	return true;
 }
 
@@ -314,84 +308,6 @@ bool PlayState::DebugDraw(EngineCore* Core, double dT)
 bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 {
 	Physics.UpdateSystem_PreDraw(dT);
-
-	if(Framework->DrawPhysicsDebug)
-	{
-		//auto PlayerPOS = ThisState->Model.Players[0].PlayerCTR.Pos;
-	}
-
-	//ThisState->Model.UpdateAnimations(ThisState->Framework, DT);
-
-#if 0
-
-	//UpdateCamera(Framework->Core->RenderSystem, Framework->Core->Nodes, &Framework->DebugCamera, dT);
-	//auto Q = GetOrientation(Framework->Core->Nodes, Framework->DebugCamera.Node);
-
-	LineSegments Lines(Engine->TempAllocator);
-	LineSegment Line;
-	Line.A       = float3(0, 0, 0) + CameraPOS;
-	Line.B       = float3(0, 20, 0) + CameraPOS;
-	Line.AColour = float3(1, 1, 0);
-	Line.BColour = float3(1, 1, 0);
-	Lines.push_back(Line);
-	
-	Line.B       = Q * float3(0, 0, -10000) + CameraPOS;
-	Lines.push_back(Line);
-
-	PushLineSet3D(Framework->Immediate, Lines);
-
-#endif
-
-#if 0
-	// Ray Cast Tests
-
-	double T	= Framework->TimeRunning;
-	double CosT = (float)cos(T);
-	double SinT = (float)sin(T);
-
-	float Begin = 00.0f;
-	float End	= 60.0f;
-	float IaR	= 10000 * (1 + (float)cos(T * 6)) / 2;
-
-	Quaternion Q2	= GetCameraOrientation(Player);
-	float3 Origin	= GetWorldPosition(Player);
-	float3 D		= Q2 * float3(0, 0, -1);
-	float3 Color	= RED;
-
-	RaySet Rays(Engine->GetTempMemory());
-	Ray R = {Origin, D};
-	Rays.push_back(R);
-	auto results = Drawables.RayCastOBB(Rays, Engine->GetBlockMemory(), Engine->Nodes);
-
-	if (results.size()) {
-		Color = BLUE;
-		
-		Yaw(TestObject, dT * pi);
-		SetDrawableColor(TestObject, Grey(CosT));
-		//SetWorldPosition(ThisState->TestObject, float3( 100.0f * CosT, 60.0f, SinT * 100));
-
-		SetLightRadius(TestObject, 100 + IaR);
-		SetLightIntensity(TestObject, 100 + IaR);
-		SetWorldPosition(TestObject, Origin + results.back().D * D);
-		SetVisibility(TestObject, true);
-	}
-	else
-	{
-		SetLightIntensity(TestObject, 0);
-		SetVisibility(TestObject, false);
-	}
-
-	LineSegment Line2;
-	Line2.A       = Origin + (Q2 * float3(10, 0, 0));
-	Line2.AColour = Color;
-	Line2.B       = Origin + D * 1000;
-	Line2.BColour = Color;
-	LineSegments Lines2(Engine->GetTempMemory());
-	Lines2.push_back(Line2);
-
-	PushLineSet3D(Framework->Immediate, Lines2);
-
-#endif
 
 	return false;
 }
@@ -472,37 +388,6 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
 	return true;
-}
-
-
-/************************************************************************************************/
-
-
-void CreateIntersectionTest(PlayState* State, FlexKit::GameFramework* Framework)
-{
-}
-
-
-/************************************************************************************************/
-
-
-void CreateTerrainTest(PlayState* State, FlexKit::GameFramework* Framework)
-{
-	//auto CubeHandle = CreateCube(State->Framework->Core->RenderSystem, State->Framework->Core->Geometry, State->Framework->Core->GetBlockMemory(), 100, 1234);
-
-	/*
-	auto HF = LoadHeightFieldCollider(&Framework->Core->Physics, &Framework->Core->Assets, 10601);
-
-	PxHeightFieldGeometry	hfGeom(HF, PxMeshGeometryFlags(), 4096.0f/32767.0f , 8, 8);
-	PxTransform				HFPose(PxVec3(-4096, 0, -4096));
-	auto					aHeightFieldActor = Framework->Core->Physics.Physx->createRigidStatic(HFPose);
-
-	PxShape* aHeightFieldShape = aHeightFieldActor->createShape(hfGeom, &Framework->Core->Physics.DefaultMaterial, 1);
-	State->Physics.Scene->addActor(*aHeightFieldActor);
-
-	FK_ASSERT(0);
-	//PushRegion(&State->Framework->Landscape, { { 0, 0, 0, 16384 },{}, 0,{ 0.0f, 0.0f },{ 1.0f, 1.0f } });
-	*/
 }
 
 

@@ -93,10 +93,6 @@ class iGridTask
 {
 public:
 	iGridTask() {}
-	// Prevent Slicing
-	iGridTask(const iGridTask& rhs)			= delete;
-	iGridTask& operator = (iGridTask&& rhs) = delete;
-	iGridTask& operator = (iGridTask& rhs)	= delete;
 
 	virtual ~iGridTask() {}
 
@@ -199,10 +195,12 @@ public:
 		FlexKit::int2	a, 
 		FlexKit::int2	b,
 		Player_Handle	player,
+		float			Duration,
 		GameGrid*		grid
 			) :
 			A			{a},
 			B			{b},
+			D			{Duration},
 			Player		{player},
 			complete	{false},
 			T			{0.0f},
@@ -219,6 +217,7 @@ public:
 	bool Complete() { return complete; }
 
 	float			T;
+	float			D;
 
 	FlexKit::int2	A, B;
 
