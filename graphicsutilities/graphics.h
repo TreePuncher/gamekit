@@ -226,7 +226,8 @@ namespace FlexKit
 
 		KC_ERROR,
 
-		KC_TILDA = '~'
+		KC_TILDA = '~',
+		KC_COUNT
 	};
 
 

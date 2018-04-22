@@ -1291,11 +1291,13 @@ namespace FlexKit
 					auto CurrentState	= DRS2D3DState(B.OldState);
 					auto NewState		= DRS2D3DState(B.NewState);
 
+					/*
 					#ifdef _DEBUG
 						std::cout << "Transitioning Resource: " << Resource 
 							<< " From State: " << CurrentState << " To State: " 
 							<< NewState << "\n";
 					#endif
+					*/
 
 					if (B.OldState != B.NewState)
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(

@@ -38,7 +38,7 @@ namespace FlexKit
 		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Core)[1];
 
 		Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
-#if 1
+#if 0
 		std::cout << "H: " << HorizontalMouseMovement << "\n";
 		std::cout << "V: " << VerticalMouseMovement << "\n";
 #endif

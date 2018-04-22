@@ -292,10 +292,17 @@ namespace FlexKit
 	};
 
 
+	class iUpdatable
+	{
+	public:
+		virtual void Update(const double dt) {}
+	};
+
+
 	class iEventReceiver
 	{
 	public:
-		virtual void Notify(const Event& evt) {};
+		virtual void Handle(const Event& evt) {}
 	};
 
 

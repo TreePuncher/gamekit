@@ -41,43 +41,237 @@ TODO's
 using FlexKit::GameFramework;
 
 
-class TestBehavior :
-	public FlexKit::SceneNodeBehavior,
-	public FlexKit::ThirdPersonCameraBehavior,
-	public FlexKit::iEventReceiver
+typedef size_t Player_Handle;
+typedef size_t GridObject_Handle;
+
+
+/************************************************************************************************/
+
+
+class GridPlayer :
+	public FlexKit::iEventReceiver,
+	public FlexKit::iUpdatable
 {
 public:
-	TestBehavior(ComponentListInterface& GO) :
-		FlexKit::SceneNodeBehavior(GO),
-		FlexKit::ThirdPersonCameraBehavior(GO)
+	GridPlayer()
+	{
+	}
+
+	void Update(const double dt) override
+	{
+	}
+
+	// NO INPUT HANDLING IN HERE!
+	void Handle(const Event& evt) override
+	{
+	}
+
+
+	enum PlayerState
+	{
+		PS_Moving,
+		PS_Idle,
+	}State = PS_Idle;
+
+	FlexKit::int2	XY		= {1, 1};
+	FlexKit::float2 Offset	= {0.f, 0.f};
+};
+
+
+/************************************************************************************************/
+
+
+struct GridObject
+{
+	FlexKit::int2 XY = {0, 0};
+};
+
+typedef FlexKit::uint2 GridID_t;
+
+
+class iGridTask
+{
+public:
+	iGridTask() {}
+	// Prevent Slicing
+	iGridTask(const iGridTask& rhs)			= delete;
+	iGridTask& operator = (iGridTask&& rhs) = delete;
+	iGridTask& operator = (iGridTask& rhs)	= delete;
+
+	virtual ~iGridTask() {}
+
+	virtual void Update(const double dt)	{}
+	virtual bool Complete()					{ return true; }
+};
+
+
+/************************************************************************************************/
+
+
+class GameGrid
+{
+public:
+	GameGrid(FlexKit::iAllocator* memory) :
+		Memory { memory },
+		Players{ memory },
+		Objects{ memory },
+		Tasks  { memory }
 	{}
 
-	void Update(double dt)
+
+	Player_Handle		CreatePlayer();
+	GridObject_Handle	CreateGridObject();
+
+	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
+	bool IsCellClear	(GridID_t GridID);
+	void Update			(const double dt, iAllocator* Memory);
+
+	FlexKit::Vector<GridPlayer>		Players;
+	FlexKit::Vector<GridObject>		Objects;
+	FlexKit::Vector<iGridTask*>		Tasks;
+
+	iAllocator* Memory;
+};
+
+
+/************************************************************************************************/
+
+
+class LocalPlayerHandler :
+	public FlexKit::iEventReceiver,
+	public FlexKit::iUpdatable
+{
+public:
+	LocalPlayerHandler(GameGrid& grid) :
+		Grid{ grid } {}
+
+	void Handle(const Event& evt) override
 	{
-		//Yaw(dt * pi);
 	}
 
-	void Notify(const Event& evt) override
+	void MovePlayer(FlexKit::int2 XY)
 	{
+		//if (Grid.IsCellClear(XY))
+		//	Grid.Players[Player].XY = XY;
+
+		Grid.MovePlayer(Player, XY);
 	}
+
+	void MoveUp()
+	{
+		auto POS = Grid.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{  0, -1 });
+	}
+
+	void MoveDown()
+	{
+		auto POS = Grid.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{  0,  1 });
+	}
+
+	void MoveLeft()
+	{
+		auto POS = Grid.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{ -1,  0 });
+	}
+
+	void MoveRight()
+	{
+		auto POS = Grid.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{  1,  0 });
+	}
+
+	bool Enabled = false;
+
+	Player_Handle	Player;
+	GameGrid&		Grid;
 };
+
+
+/************************************************************************************************/
+
+
+class MovePlayerTask : 
+	public iGridTask
+{
+public:
+	MovePlayerTask(
+		FlexKit::int2	a, 
+		FlexKit::int2	b,
+		Player_Handle	player,
+		GameGrid*		grid
+			) :
+			A			{a},
+			B			{b},
+			Player		{player},
+			complete	{false},
+			T			{0.0f},
+			Grid		{grid}
+	{
+		std::cout << "Moving Player\n";
+		Grid->Players[Player].State = GridPlayer::PS_Moving;
+	}
+
+	MovePlayerTask& operator = (MovePlayerTask& rhs) = delete;
+
+	void Update(const double dt) override;
+
+	bool Complete() { return complete; }
+
+	float			T;
+
+	FlexKit::int2	A, B;
+
+	GameGrid*		Grid;
+	Player_Handle	Player;
+	bool			complete;
+};
+
+
+/************************************************************************************************/
+
+
+class InputMap
+{
+public:
+	bool Map(const Event& evt_in, Event& evt_out)
+	{
+
+	}
+
+	void MapKeyToEvent(KEYCODES KC, size_t EventID)
+	{
+
+	}
+
+private:
+
+	static_vector<Event, KC_COUNT> EventMap;
+};
+
+
+/************************************************************************************************/
 
 
 class PlayState : public FrameworkState
 {
 public:
-	// Game Element Controllers
-	// GameplayComponentSystem		Model;
-
 	PlayState(GameFramework* Framework);
 	~PlayState();
 
 	bool Update			(EngineCore* Engine, double dT) final;
-	bool DebugDraw		(EngineCore* Engine, double dT) final;
+
 	bool PreDrawUpdate	(EngineCore* Engine, double dT) final;
 	bool Draw			(EngineCore* Engine, double dT, FrameGraph& Graph) final;
+	bool DebugDraw		(EngineCore* Engine, double dT) final;
 
 	bool EventHandler	(Event evt)	final;
+
+	void BindPlayer1();
+	void BindPlayer2();
+
+	void ReleasePlayer1();
+	void ReleasePlayer2();
 
 	InputComponentSystem		Input;
 	OrbitCameraSystem			OrbitCameras;
@@ -94,14 +288,12 @@ public:
 	ConstantBufferHandle		ConstantBuffer;
 	VertexBufferHandle			VertexBuffer;
 
-	// ComponentLists
-	ComponentList<> CubeObjects[5000];
-	ComponentList<> FloorObject;
-	ComponentList<> TestObject;
-	ComponentList<> Player;
-
-	TestBehavior TestBehavior;
+	GameGrid			Grid;
+	LocalPlayerHandler	Player1_Handler;
+	LocalPlayerHandler	Player2_Handler;
 };
 
+
+/************************************************************************************************/
 
 #endif

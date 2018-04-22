@@ -474,7 +474,7 @@ namespace FlexKit
 		Vector<Context>	Contexts(Memory);
 		auto CL = RS->_GetCurrentCommandList();
 
-		Contexts.push_back(Context(CL, RS, Memory));
+		Contexts.emplace_back(Context(CL, RS, Memory));
 		ReadyResources();
 
 		for (auto& N : Nodes)
@@ -654,9 +654,11 @@ namespace FlexKit
 			},
 			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
 			{	
+				/*
 #if _DEBUG
 				std::cout << "Present Barrier\n";
 #endif
+				*/
 			});
 	}
 

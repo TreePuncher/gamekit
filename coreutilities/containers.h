@@ -374,8 +374,7 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-
-		void push_back(Ty&& in) {
+		void emplace_back(Ty&& in) {
 			if (Size + 1 > Max)
 			{// Increase Size
 #ifdef _DEBUG
@@ -411,7 +410,6 @@ namespace FlexKit
 
 			new(A + Size++) Ty(std::move(in));
 		}
-
 
 		/************************************************************************************************/
 
