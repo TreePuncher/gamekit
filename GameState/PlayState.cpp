@@ -156,23 +156,10 @@ void MovePlayerTask::Update(const double dt)
 
 PlayState::PlayState(GameFramework* framework) :
 	FrameworkState	(framework),
-	Input			(Framework),
-	TPC				(Framework, Input, Framework->Core->Cameras),
-	OrbitCameras	(Framework, Input),
 	Render			(
 		 Framework->Core->GetTempMemory(), 
 		 Framework->Core->RenderSystem, 
 		 Framework->Core->Geometry),
-	Scene		(
-		 Framework->Core->RenderSystem, 
-		&Framework->Core->Assets, 
-		 Framework->Core->Nodes, 
-		 Framework->Core->Geometry, 
-		 Framework->Core->GetBlockMemory(), 
-		 Framework->Core->GetTempMemory()),
-	Drawables		(&Scene, Framework->Core->Nodes),
-	Lights			(&Scene, Framework->Core->Nodes),
-	Physics			(&Framework->Core->Physics, Framework->Core->Nodes, Framework->Core->GetBlockMemory()),
 	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
 	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)),
 	Grid			{Framework->Core->GetBlockMemory()},
@@ -215,8 +202,6 @@ float3 CameraPOS = {8000,1000,8000};
 
 bool PlayState::Update(EngineCore* Engine, double dT)
 {
-	Input.Update(dT, Framework->MouseState, Framework );
-	
 	if (Player1_Handler.Enabled)
 		Player1_Handler.Update(dT);
 
@@ -224,10 +209,6 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 		Player2_Handler.Update(dT);
 
 	Grid.Update(dT, Engine->GetTempMemory());
-
-	OrbitCameras.Update(dT);
-	Physics.UpdateSystem(dT);
-	TPC.Update(dT);
 
 	return false;
 }
@@ -246,8 +227,6 @@ bool PlayState::DebugDraw(EngineCore* Core, double dT)
 
 bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 {
-	Physics.UpdateSystem_PreDraw(dT);
-
 	return false;
 }
 
@@ -257,12 +236,10 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 
 PlayState::~PlayState()
 {
-	Physics.Release();
 
 	Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
 	Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
 
-	ReleaseGraphicScene(&Scene);
 	Framework->Core->GetBlockMemory().free(this);
 }
 

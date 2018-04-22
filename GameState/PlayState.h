@@ -433,16 +433,7 @@ public:
 	void ReleasePlayer1();
 	void ReleasePlayer2();
 
-	InputComponentSystem		Input;
-	OrbitCameraSystem			OrbitCameras;
-	GraphicScene				Scene;
-
-	ThirdPersonCameraComponentSystem	TPC;
-	PhysicsComponentSystem				Physics;
-	DrawableComponentSystem				Drawables;
-	LightComponentSystem				Lights;
-
-	WorldRender							Render;
+	WorldRender					Render;
 
 	TextureHandle				DepthBuffer;
 	ConstantBufferHandle		ConstantBuffer;

@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char* argv[])
 {
-	FlexKit::FKApplication App({800,600});
+	FlexKit::FKApplication App;
 
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);
