@@ -203,7 +203,7 @@ class LocalPlayerHandler :
 {
 public:
 	LocalPlayerHandler(GameGrid& grid, iAllocator* memory) :
-		Grid		{ grid }, 
+		Game		{ grid },
 		Map			{ memory },
 		InputState	{ false, false, false, false, -1 }
 	{}
@@ -278,30 +278,30 @@ public:
 
 	void MovePlayer(FlexKit::int2 XY)
 	{
-		Grid.MovePlayer(Player, XY);
+		Game.MovePlayer(Player, XY);
 	}
 
 	void MoveUp()
 	{
-		auto POS = Grid.Players[Player].XY;
+		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  0, -1 });
 	}
 
 	void MoveDown()
 	{
-		auto POS = Grid.Players[Player].XY;
+		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  0,  1 });
 	}
 
 	void MoveLeft()
 	{
-		auto POS = Grid.Players[Player].XY;
+		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{ -1,  0 });
 	}
 
 	void MoveRight()
 	{
-		auto POS = Grid.Players[Player].XY;
+		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  1,  0 });
 	}
 
@@ -364,7 +364,7 @@ public:
 
 	InputMap		Map;
 	Player_Handle	Player;
-	GameGrid&		Grid;
+	GameGrid&		Game;
 };
 
 
@@ -408,12 +408,6 @@ public:
 	Player_Handle	Player;
 	bool			complete;
 };
-
-
-/************************************************************************************************/
-
-
-
 
 
 /************************************************************************************************/
