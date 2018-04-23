@@ -145,6 +145,9 @@
     <ClInclude Include="graphicsutilities\CoreSceneObjects.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="coreutilities\KeycodesEnums.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">

@@ -31,6 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "containers.h"
+#include "KeycodesEnums.h"
 
 namespace FlexKit
 {
@@ -75,6 +76,10 @@ namespace FlexKit
 		} mData1, mData2;
 	};
 
+
+	/************************************************************************************************/
+
+
 	template< typename Ty = Event >
 	class EventNotifier
 	{
@@ -102,6 +107,60 @@ namespace FlexKit
 	private:
 		static_vector<Subscriber, 8>	mSubscribers;
 	};
+
+
+	/************************************************************************************************/
+
+
+	class InputMap
+	{
+	public:
+		InputMap(iAllocator* Memory) :
+			EventMap{ Memory }{}
+
+
+		bool Map(const Event& evt_in, Event& evt_out)
+		{
+			if (evt_in.InputSource != Event::Keyboard)
+				return false;
+
+			auto res = FlexKit::find(
+				EventMap, 
+				[&](auto &rhs) 
+					{
+						return evt_in.mData1.mKC[0] == rhs.EventKC;
+					});
+
+			if (res == EventMap.end())
+				return false;
+
+			evt_out					= evt_in;
+			evt_out.mData1.mINT[0]	= (*res).EventID;
+
+			return true;
+		}
+
+		void MapKeyToEvent(KEYCODES KC, int32_t EventID)
+		{
+			EventMap.push_back({ EventID, KC });
+		}
+
+		bool operator ()(const Event& evt_in, Event& evt_out)
+		{
+			return Map(evt_in, evt_out);
+		}
+
+	private:
+
+		struct TiedEvent
+		{
+			int32_t		EventID;
+			KEYCODES	EventKC;
+		};
+
+		Vector<TiedEvent> EventMap;
+	};
+
 }
 
 #endif

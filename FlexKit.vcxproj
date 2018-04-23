@@ -183,6 +183,7 @@
     <ClInclude Include="coreutilities\Handle.h" />
     <ClInclude Include="coreutilities\Input.h" />
     <ClInclude Include="coreutilities\intersection.h" />
+    <ClInclude Include="coreutilities\KeycodesEnums.h" />
     <ClInclude Include="coreutilities\MathUtils.h" />
     <ClInclude Include="coreutilities\memoryutilities.h" />
     <ClInclude Include="coreutilities\MeshUtils.h" />
