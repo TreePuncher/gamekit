@@ -1,10 +1,16 @@
+# folders #
 Tools/
 assets/
 builds/
 Dependencies/
+CodeGraphData/
+.vs/
+/x64/
+
+# files #
 *.tlog
 *.opendb
-/FlexKit.VC.db
+*.db
 *.idb
 *.ipch
 *.iobj
@@ -14,22 +20,10 @@ Dependencies/
 *.obj
 *.pch
 *.pdb
-*.VC.db
-/.vs/FlexKit/v14/(Desktop's conflicted copy 2016-05-02).suo
-/.vs/FlexKit/v14/ (WIN-IU8R7AI4A8V's conflicted copy 2016-07-02).suo
+*.suo
 *.flooignore
 *.floo
-/x64/Release
-*.db
-/.vs/FlexKit/v15/.suo
-/.vs/FlexKit/v14/.suo
 *.opendb
-/.vs/FlexKit/v15/Browse.VC.opendb
-/.vs/FlexKit/v15
-*.opendb
-/Dependencies/sdks
 *.ib_pdb_index
 *.ib_tag
-Dependencies
-/x64/Debug
-/CodeGraphData
+*.sdf
