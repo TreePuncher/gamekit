@@ -33,6 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 bool OnHostPressed(void* _ptr, size_t GUIElement)
 {
+	return false;
+	/*
 	std::cout << "Host Pressed\n";
 	auto* Args = (CBArguements*)_ptr;
 
@@ -47,6 +49,7 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 
 	//Args->Engine->GetBlockMemory().free(_ptr);
 	return true;
+	*/
 }
 
 
@@ -55,6 +58,9 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 
 bool OnJoinPressed(void* _ptr, size_t GUIElement)
 {
+	return false;
+
+	/*
 	std::cout << "Join Pressed\n";
 	if (_ptr) {
 		auto* Args = (CBArguements*)_ptr;
@@ -68,6 +74,7 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		PushSubState(Framework, CreateJoinScreenState(Framework, Framework->Core));
 	}
 	return true;
+	*/
 }
 
 
@@ -116,17 +123,6 @@ bool PreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 	Input.MousePosition			  = ThisState->Framework->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
-	FK_ASSERT(0);
-	//ThisState->BettererWindow.Draw		(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
-
-	//if(StateMemory->Framework->DrawDebug)
-	//	ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, &ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
-
-	//ThisState->BettererWindow.Upload(Engine->RenderSystem, &ThisState->Framework->Immediate);
-
-	//DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.05f, 0.05f });
-
-	//PrintText(&ThisState->Framework->Immediate, "THIS IS A TEST!\nHello World!", ThisState->Framework->DefaultAssets.Font, { 0.0f, 0.0f }, {0.4f, 0.2f}, float4(WHITE, 1), GetPixelSize(Engine));
 
 	return true;
 }

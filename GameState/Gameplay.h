@@ -1,9 +1,6 @@
-#ifndef GAMEPLAY_H
-#define GAMEPLAY_H
-
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,182 +22,390 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\Application\CameraUtilities.h"
-#include "..\Application\GameFramework.h"
-#include "..\Application\InputComponent.h"
+/*
+TODO's
+*/
 
+
+#ifndef GAMEPLAY_H_INCLUDED
+#define GAMEPLAY_H_INCLUDED
+
+#include "..\coreutilities\containers.h"
 #include "..\coreutilities\Components.h"
+#include "..\coreutilities\Events.h"
+#include "..\coreutilities\MathUtils.h"
 
-struct PlayerController
-{
-	float3		Pos;
-	float3		Velocity;
-};
+using FlexKit::GameFramework;
 
 
-struct PlayerStateFrame
-{
-	size_t FrameID;
-	float3 Velocity;
-	float3 Position;
-	float Yaw, Pitch, Roll;
-};
-
-
-struct Player
-{
-	ComponentListInterface* ComponentList;
-
-	DAConditionHandle WalkCondition;
-	DAConditionHandle OtherCondition;
-
-	size_t ID;
-
-	float Health;
-
-	operator Player* () { return this; }// I'm Getting tired of typeing the &'s everywhere!
-};
-
-
-typedef size_t			PlayerID_t;
-typedef Handle_t<16>	PlayerHandle;
+typedef size_t Player_Handle;
+typedef size_t GridObject_Handle;
 
 
 /************************************************************************************************/
 
 
-enum ClientMode : unsigned char
+class InputMap
 {
-	eLOADINGMODE,
-	eLOBBYMODE,
-	ePLAYMODE,
-	eWAITINGMODE,
-};
+public:
+	InputMap(iAllocator* Memory) :
+		EventMap{ Memory }{}
 
-enum ServerMode : unsigned char
-{
-	eSERVERLOBBYMODE,	// Waits for Min Number of Players
-	eCLIENTLOADWAIT,	// Waits for all Players to Load Scene
-	eGAMEINPROGRESS,
+
+	bool Map(const Event& evt_in, Event& evt_out)
+	{
+		if (evt_in.InputSource != Event::Keyboard)
+			return false;
+
+		auto res = FlexKit::find(
+			EventMap, 
+			[&](auto &rhs) 
+				{
+					return evt_in.mData1.mKC[0] == rhs.EventKC;
+				});
+
+		if (res == EventMap.end())
+			return false;
+
+		evt_out					= evt_in;
+		evt_out.mData1.mINT[0]	= (*res).EventID;
+
+		return true;
+	}
+
+	void MapKeyToEvent(KEYCODES KC, int32_t EventID)
+	{
+		EventMap.push_back({ EventID, KC });
+	}
+
+	bool operator ()(const Event& evt_in, Event& evt_out)
+	{
+		return Map(evt_in, evt_out);
+	}
+
+private:
+
+	struct TiedEvent
+	{
+		int32_t		EventID;
+		KEYCODES	EventKC;
+	};
+
+	Vector<TiedEvent> EventMap;
 };
 
 
 /************************************************************************************************/
 
 
-struct InputFrame
+class GridPlayer :
+	public FlexKit::iEventReceiver,
+	public FlexKit::iUpdatable
 {
-	PlayerInputState	KeyboardInput;
-	float2				MouseInput;
-	size_t				FrameID;
+public:
+	GridPlayer()
+	{
+	}
+
+	void Update(const double dt) override
+	{
+	}
+
+	// NO INPUT HANDLING IN HERE!
+	void Handle(const Event& evt) override
+	{
+	}
+
+
+	enum PlayerState
+	{
+		PS_Moving,
+		PS_Idle,
+	}State = PS_Idle;
+
+	FlexKit::int2	XY		= {1, 1};
+	FlexKit::float2 Offset	= {0.f, 0.f};
 };
 
 
+/************************************************************************************************/
 
-struct GameplayComponentSystem : public ComponentSystemInterface
+
+struct GridObject
 {
-	GameFramework*				Framework;
-	PhysicsComponentSystem*		Scene;
-
-	static_vector<Player>		Players;
-	static_vector<InputFrame>	PlayerInputs;
-	static_vector<size_t>		LastFrameRecieved;
-	double						T;
-
-	void ReleaseHandle(ComponentHandle Handle)
-	{
-	}
-
-
-	void HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID ID)
-	{
-		if (EventSource == InputComponentID && ID == GetCRCGUID(LOCALINPUT)) {
-		}
-	}
-
-
-	void ObjectMoved(ComponentHandle Handle, ComponentSystemInterface* System, ComponentListInterface* GO)
-	{
-	}
-
-
-	void Initiate( PhysicsComponentSystem* System, GameFramework* framework )
-	{
-		Framework	= framework;
-		auto* Core	= framework->Core;
-	}
-
-	void Clear()
-	{
-		Players.clear();
-	}
-
-	void Update(GameFramework* Engine, double dT)
-	{
-		const double FrameStep = 1.0 / 30.0;
-		if (T > FrameStep) {
-			for (size_t i = 0; i < Players.size(); ++i)
-			{
-#if 0
-				printf("Player at Position: ");
-				printfloat3(Players[i].PlayerCTR.Pos);
-				printf("  Orientation:");
-				printQuaternion(GetOrientation(&Players[i], Engine->ActiveScene));
-				printf("\n");
-#endif
-			}
-			T -= FrameStep;
-		}
-		T += dT;
-	}
-
-	void Release()
-	{
-
-	}
-
-	void UpdateAnimations(GameFramework* Engine, double dT)
-	{
-	}
+	FlexKit::int2 XY = {0, 0};
 };
 
-const uint32_t PlayerComponentID = GetTypeGUID(PlayerComponent);
+typedef FlexKit::uint2 GridID_t;
 
-struct PlayersComponentArgs
+
+class iGridTask
 {
-	GameplayComponentSystem*	Gameplay;
-	InputComponentSystem*		Input;
-	GameFramework*				Framework;
+public:
+	iGridTask() {}
+
+	virtual ~iGridTask() {}
+
+	virtual void Update(const double dt)	{}
+	virtual bool Complete()					{ return true; }
 };
 
 
-template<size_t SIZE>
-void CreateComponent(ComponentList<SIZE>& GO, PlayersComponentArgs& Args)
+/************************************************************************************************/
+
+
+class GameGrid
 {
-	PlayerHandle	Player					= Args.Gameplay->CreatePlayer();
-	ComponentHandle InputComponentHandle	= Args.Input->BindInput(Player, Args.Gameplay);
+public:
+	GameGrid(FlexKit::iAllocator* memory) :
+		Memory { memory },
+		Players{ memory },
+		Objects{ memory },
+		Tasks  { memory }
+	{}
 
-	auto C = FindComponent(GO, TransformComponentID);
 
-	if (GO.ComponentCount + 2 < GO.MaxComponentCount)
+	Player_Handle		CreatePlayer();
+	GridObject_Handle	CreateGridObject();
+
+	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
+	bool IsCellClear	(GridID_t GridID);
+	void Update			(const double dt, iAllocator* Memory);
+
+	FlexKit::Vector<GridPlayer>		Players;
+	FlexKit::Vector<GridObject>		Objects;
+	FlexKit::Vector<iGridTask*>		Tasks;
+
+	iAllocator* Memory;
+};
+
+
+/************************************************************************************************/
+
+
+enum class PLAYER_EVENTS
+{
+	PLAYER1_UP,
+	PLAYER1_LEFT,
+	PLAYER1_DOWN,
+	PLAYER1_RIGHT,
+	PLAYER1_UNKNOWN,
+};
+
+
+class LocalPlayerHandler :
+	public FlexKit::iEventReceiver,
+	public FlexKit::iUpdatable
+{
+public:
+	LocalPlayerHandler(GameGrid& grid, iAllocator* memory) :
+		Game		{ grid },
+		Map			{ memory },
+		InputState	{ false, false, false, false, -1 }
+	{}
+
+	void Handle(const Event& evt) override
 	{
-
-		if (!C)
+		if (evt.InputSource == Event::Keyboard)
 		{
-			auto Node = Args.Gameplay->GetPlayerNode(Player);
-			CreateComponent(GO, TransformComponentArgs{ Args.Framework->Core->Nodes, Node });
+			Event ReMapped_Event;
+			auto Res = Map(evt, ReMapped_Event);
+
+			if (Res)
+			{
+				switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
+				{
+				case PLAYER_EVENTS::PLAYER1_UP:
+					InputState.UP		=	
+						 (evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.UP);
+					break;
+				case PLAYER_EVENTS::PLAYER1_LEFT:
+					InputState.LEFT		= 
+						 (evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.LEFT);
+					break;
+				case PLAYER_EVENTS::PLAYER1_DOWN:
+					InputState.DOWN		= 
+						 (evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.DOWN);
+					break;
+				case PLAYER_EVENTS::PLAYER1_RIGHT:
+					InputState.RIGHT	= 
+						 (evt.Action == Event::Pressed) ? true : 
+ 						((evt.Action == Event::Release) ? false : InputState.RIGHT);
+					break;
+				default:
+					break;
+				}
+
+				if (evt.Action == Event::Pressed)
+				{
+					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
+					{
+					case PLAYER_EVENTS::PLAYER1_UP:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_UP;
+						break;
+					case PLAYER_EVENTS::PLAYER1_LEFT:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_LEFT;
+						break;
+					case PLAYER_EVENTS::PLAYER1_DOWN:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_DOWN;
+						break;
+					case PLAYER_EVENTS::PLAYER1_RIGHT:
+						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_RIGHT;
+						break;
+					default:
+						break;
+					}
+				}
+
+				if (evt.Action == Event::Release)
+					InputState.PreferredDirection = -1;
+			}
+		}
+	}
+
+	void SetActive(Player_Handle P)
+	{
+		Player	= P;
+		Enabled = true;
+	}
+
+	void MovePlayer(FlexKit::int2 XY)
+	{
+		Game.MovePlayer(Player, XY);
+	}
+
+	void MoveUp()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{  0, -1 });
+	}
+
+	void MoveDown()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{  0,  1 });
+	}
+
+	void MoveLeft()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{ -1,  0 });
+	}
+
+	void MoveRight()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{  1,  0 });
+	}
+
+	bool Enabled = false;
+
+	void Update(const double dt) override
+	{
+
+		if (InputState.PreferredDirection != -1)
+		{
+			switch ((int)InputState.PreferredDirection)
+			{
+				case (int)PLAYER_EVENTS::PLAYER1_UP:
+					MoveUp();
+					break;
+				case (int)PLAYER_EVENTS::PLAYER1_LEFT:
+					MoveLeft();
+					break;
+				case (int)PLAYER_EVENTS::PLAYER1_DOWN:
+					MoveDown();
+					break;
+				case (int)PLAYER_EVENTS::PLAYER1_RIGHT:
+					MoveRight();
+					break;
+			}
 		}
 		else
 		{
-			Args.Gameplay->SetPlayerNode(Player, GetNodeHandle(GO));
+			if (InputState.UP)
+			{
+				MoveUp();
+			}
+			else if (InputState.DOWN)
+			{
+				MoveDown();
+			}
+			else if (InputState.LEFT)
+			{
+				MoveLeft();
+			}
+			else if (InputState.RIGHT)
+			{
+				MoveRight();
+			}
 		}
-
-		GO.AddComponent(Component{ Args.Gameplay, Player, PlayerComponentID });
-		GO.AddComponent(Component{ Args.Input, InputComponentHandle, InputComponentID });
 	}
-}
+
+	struct
+	{
+		bool UP;
+		bool DOWN;
+		bool LEFT;
+		bool RIGHT;
+
+		int	PreferredDirection;// if -1 then a preferred direction is ignored
+
+		operator bool()	{ return UP | DOWN | LEFT | RIGHT; }
+	}InputState;
 
 
-PlayersComponentArgs CreateLocalPlayer(GameplayComponentSystem* GameplaySystem, InputComponentSystem* Input, GameFramework* Framework)	 { return { GameplaySystem, Input, Framework };}
+	InputMap		Map;
+	Player_Handle	Player;
+	GameGrid&		Game;
+};
+
+
+/************************************************************************************************/
+
+
+class MovePlayerTask : 
+	public iGridTask
+{
+public:
+	explicit MovePlayerTask(
+		FlexKit::int2	a, 
+		FlexKit::int2	b,
+		Player_Handle	player,
+		float			Duration,
+		GameGrid*		grid
+			) :
+			A			{a},
+			B			{b},
+			D			{Duration},
+			Player		{player},
+			complete	{false},
+			T			{0.0f},
+			Grid		{grid}
+	{
+		Grid->Players[Player].State = GridPlayer::PS_Moving;
+	}
+
+	MovePlayerTask& operator = (MovePlayerTask& rhs) = delete;
+
+	void Update(const double dt) override;
+
+	bool Complete() { return complete; }
+
+	float			T;
+	float			D;
+
+	FlexKit::int2	A, B;
+
+	GameGrid*		Grid;
+	Player_Handle	Player;
+	bool			complete;
+};
+
+
+/************************************************************************************************/
 
 #endif

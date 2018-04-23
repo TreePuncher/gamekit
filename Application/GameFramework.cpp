@@ -546,10 +546,7 @@ namespace FlexKit
 		{
 			uint2	WindowRect	   = Core->Window.WH;
 			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
-			//InitiateCamera(Core->RenderSystem, Core->Nodes, &Framework.DefaultCamera, Aspect, 0.1f, 160000.0f, true);
-			//InitiateCamera(Core->RenderSystem, Core->Nodes, &Framework.DebugCamera, Aspect, 0.1f, 160000.0f, true);
 
-			//Framework.ActiveCamera				= &Framework.DefaultCamera;
 			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
 			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
