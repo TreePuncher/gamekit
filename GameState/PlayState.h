@@ -30,11 +30,60 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\GameMemory.h"
 #include "..\Application\WorldRender.h"
 
-
 #include "Gameplay.h"
 
+#include <fmod.hpp>
+
+/************************************************************************************************/
 
 
+typedef uint32_t SoundHandle;
+
+class FMOD_SoundSystem
+{
+public:
+	FMOD_SoundSystem()
+	{
+		result = FMOD::System_Create(&system);
+		auto initres = system->init(32, FMOD_INIT_NORMAL, nullptr);
+		auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+		
+		if(sound1)
+			system->playSound(sound1, nullptr, false, &channel);
+
+		int x = 0;
+	}
+
+	~FMOD_SoundSystem()
+	{
+		sound1->release();
+		system->release();
+		system = nullptr;
+	}
+
+
+	SoundHandle LoadSoundFromDisk(const char* str)
+	{
+		return -1;
+	}
+
+	void Update()
+	{
+		auto result = system->update();
+	}
+
+	Vector<FMOD::Sound*> Sounds;
+
+
+	FMOD::System     *system;
+	FMOD::Sound      *sound1, *sound2, *sound3;
+	FMOD::Channel    *channel = 0;
+	FMOD_RESULT       result;
+	unsigned int      version;
+};
+
+
+/************************************************************************************************/
 
 
 class PlayState : public FrameworkState
@@ -57,15 +106,17 @@ public:
 	void ReleasePlayer1();
 	void ReleasePlayer2();
 
-	WorldRender					Render;
+	WorldRender				Render;
 
-	TextureHandle				DepthBuffer;
-	ConstantBufferHandle		ConstantBuffer;
-	VertexBufferHandle			VertexBuffer;
+	TextureHandle			DepthBuffer;
+	ConstantBufferHandle	ConstantBuffer;
+	VertexBufferHandle		VertexBuffer;
 
 	GameGrid			Grid;
 	LocalPlayerHandler	Player1_Handler;
 	LocalPlayerHandler	Player2_Handler;
+
+	FMOD_SoundSystem	Sound;
 };
 
 

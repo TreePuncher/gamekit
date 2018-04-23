@@ -76,8 +76,8 @@
     <OutDir>$(SolutionDir)\builds\release_x64\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(SolutionDir)Dependencies\lib\debug_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\debug;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)Dependencies\lib\debug_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\debug;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)\builds\debug_x64\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\ImageUtilities.h"
 #include "..\coreutilities\GraphicsComponents.h"
 
-
+#pragma comment(lib, "fmod64_vc.lib")
 
 PlayState::PlayState(GameFramework* framework) :
 	FrameworkState	(framework),
@@ -84,6 +84,8 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 		Player2_Handler.Update(dT);
 
 	Grid.Update(dT, Engine->GetTempMemory());
+
+	Sound.Update();
 
 	return false;
 }

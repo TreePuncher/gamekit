@@ -30,7 +30,8 @@ Current Dependencies
   * Physx
   * RakNet
   * DirectX 12
-  
+  * fmod
+
 Directory Layout
   - Application
   - assets
