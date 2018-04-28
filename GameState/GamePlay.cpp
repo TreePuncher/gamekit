@@ -124,8 +124,11 @@ void GameGrid::Update(const double dt, iAllocator* TempMemory)
 
 void MovePlayerTask::Update(const double dt)
 {
-	if (T < 1.0f)
+	T += dt / D;
+
+	if (T < (1.0f - 1.0f/60.f))
 	{
+		std::cout << T << "\n";
 		int2 temp	= B - A;
 		float2 C	= { 
 			(float)temp[0], 
@@ -140,8 +143,6 @@ void MovePlayerTask::Update(const double dt)
 		Grid->Players[Player].State	 = GridPlayer::PS_Idle;
 		complete = true;
 	}
-
-	T += dt / D;
 }
 
 
