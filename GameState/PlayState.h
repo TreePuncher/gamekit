@@ -44,14 +44,12 @@ class FMOD_SoundSystem
 public:
 	FMOD_SoundSystem()
 	{
-		result = FMOD::System_Create(&system);
-		auto initres = system->init(32, FMOD_INIT_NORMAL, nullptr);
-		auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+		result			= FMOD::System_Create(&system);
+		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
+		auto res		= system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
 		
 		if(sound1)
 			system->playSound(sound1, nullptr, false, &channel);
-
-		int x = 0;
 	}
 
 	~FMOD_SoundSystem()
