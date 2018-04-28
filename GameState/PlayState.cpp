@@ -155,7 +155,7 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 		Lines.push_back({ { CStep  * I, 0, 0 },{ 1.0f, 1.0f, 1.0f },{ CStep  * I, 1, 0 },{ 1, 1, 1, 1 } });
 
 
-	auto Aspect = GetWindowAspectRatio(Core);
+	auto AspectRatio = GetWindowAspectRatio(Core);
 
 	DrawShapes(EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
 		LineShape(Lines));
@@ -168,9 +168,9 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 					CStep / 2 + Player.XY[0] * CStep + Player.Offset.x * CStep,
 					RStep / 2 + Player.XY[1] * RStep + Player.Offset.y * RStep },
 				min(
-					(CStep / 2.0f) / Aspect,
+					(CStep / 2.0f) / AspectRatio,
 					(RStep / 2.0f)),
-				float4{1.0f}, 1.33f));
+				float4{1.0f}, AspectRatio));
 
 
 	for (auto Object : Grid.Objects)
