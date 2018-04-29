@@ -34,6 +34,7 @@ TODO's
 #include "..\coreutilities\Components.h"
 #include "..\coreutilities\Events.h"
 #include "..\coreutilities\MathUtils.h"
+#include "..\graphicsutilities\FrameGraph.h"
 
 using FlexKit::GameFramework;
 
@@ -108,9 +109,23 @@ public:
 		Memory { memory },
 		Players{ memory },
 		Objects{ memory },
-		Tasks  { memory }
-	{}
+		Tasks  { memory },
+		Grid   { memory },
+		WH	   { 20, 20 }
+	{
+		Grid.resize(WH.Product());
 
+		for (auto& Cell : Grid)
+			Cell = EState::Empty;
+	}
+
+	enum class EState
+	{
+		Empty,
+		Player,
+		Object,
+		InUse
+	};
 
 	Player_Handle		CreatePlayer();
 	GridObject_Handle	CreateGridObject();
@@ -118,13 +133,71 @@ public:
 	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
 	bool IsCellClear	(GridID_t GridID);
 	void Update			(const double dt, iAllocator* Memory);
+	bool MarkCell		(GridID_t CellID, EState State);
+
+	FlexKit::uint2					WH;	// Width Height
 
 	FlexKit::Vector<GridPlayer>		Players;
 	FlexKit::Vector<GridObject>		Objects;
 	FlexKit::Vector<iGridTask*>		Tasks;
+	FlexKit::Vector<EState>			Grid;
 
 	iAllocator* Memory;
 };
+
+
+/************************************************************************************************/
+
+
+inline void DrawGameGrid(
+	double					dt,
+	float					AspectRatio,
+	GameGrid&				Grid,
+	FrameGraph&				FrameGraph,
+	ConstantBufferHandle	ConstantBuffer,
+	VertexBufferHandle		VertexBuffer,
+	TextureHandle			RenderTarget,
+	iAllocator*				TempMem
+	)
+{
+	const size_t ColumnCount	= 20;
+	const size_t RowCount		= 20;
+	LineSegments Lines(TempMem);
+	Lines.reserve(ColumnCount + RowCount);
+
+	const auto RStep = 1.0f / RowCount;
+
+	for (size_t I = 0; I < RowCount; ++I)
+		Lines.push_back({ {0, RStep  * I,1}, {1.0f, 1.0f, 1.0f}, { 1, RStep  * I, 1, 1 }, {1, 1, 1, 1} });
+
+	const auto CStep = 1.0f / ColumnCount;
+	for (size_t I = 0; I < ColumnCount; ++I)
+		Lines.push_back({ { CStep  * I, 0, 0 },{ 1.0f, 1.0f, 1.0f },{ CStep  * I, 1, 0 },{ 1, 1, 1, 1 } });
+
+
+	DrawShapes(EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+		LineShape(Lines));
+
+
+	for (auto Player : Grid.Players)
+		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+			CircleShape(
+				float2{	
+					CStep / 2 + Player.XY[0] * CStep + Player.Offset.x * CStep,
+					RStep / 2 + Player.XY[1] * RStep + Player.Offset.y * RStep },
+				min(
+					(CStep / 2.0f) / AspectRatio,
+					(RStep / 2.0f)),
+				float4{1.0f}, AspectRatio));
+
+
+	for (auto Object : Grid.Objects)
+		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+			RectangleShape(float2{ 
+				Object.XY[0] * CStep, 
+				Object.XY[1] * RStep }, 
+				{ CStep , RStep }));
+}
 
 
 /************************************************************************************************/
@@ -334,6 +407,8 @@ public:
 			Grid		{grid}
 	{
 		Grid->Players[Player].State = GridPlayer::PS_Moving;
+		Grid->MarkCell(A, GameGrid::EState::InUse);
+
 	}
 
 	MovePlayerTask& operator = (MovePlayerTask& rhs) = delete;

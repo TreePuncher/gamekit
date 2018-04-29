@@ -44,6 +44,9 @@ GridObject_Handle GameGrid::CreateGridObject()
 {
 	Objects.push_back(GridObject());
 
+	auto CellID = Objects.back().XY;
+	MarkCell(CellID, EState::Object);
+
 	return Objects.size() - 1;
 }
 
@@ -79,6 +82,7 @@ bool GameGrid::MovePlayer(Player_Handle Player, GridID_t GridID)
 
 bool GameGrid::IsCellClear(GridID_t GridID)
 {
+	/*
 	for (auto Obj : Objects)
 	{
 		if (Obj.XY == GridID)
@@ -90,8 +94,18 @@ bool GameGrid::IsCellClear(GridID_t GridID)
 		if (P.XY == GridID)
 			return false;
 	}
+	*/
 
-	return true;
+	if (GridID[0] >= WH[0] || GridID[0] < 0)
+		return false;
+
+	if (GridID[1] >= WH[1] || GridID[1] < 0)
+		return false;
+
+
+	size_t Idx = WH[0] * GridID[1] + GridID[0];
+
+	return (Grid[Idx] == EState::Empty);
 }
 
 
@@ -122,13 +136,28 @@ void GameGrid::Update(const double dt, iAllocator* TempMemory)
 /************************************************************************************************/
 
 
+bool GameGrid::MarkCell(GridID_t CellID, EState State)
+{
+	size_t Idx = WH[0] * CellID[1] + CellID[0];
+
+	//if (!IsCellClear(CellID))
+	//	return false;
+
+	Grid[Idx] = State;
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
 void MovePlayerTask::Update(const double dt)
 {
 	T += dt / D;
 
 	if (T < (1.0f - 1.0f/60.f))
 	{
-		std::cout << T << "\n";
 		int2 temp	= B - A;
 		float2 C	= { 
 			(float)temp[0], 
@@ -138,6 +167,9 @@ void MovePlayerTask::Update(const double dt)
 	}
 	else
 	{
+		Grid->MarkCell(A, GameGrid::EState::Empty);
+		Grid->MarkCell(B, GameGrid::EState::Player);
+
 		Grid->Players[Player].Offset = { 0.f, 0.f };
 		Grid->Players[Player].XY	 = B;
 		Grid->Players[Player].State	 = GridPlayer::PS_Idle;

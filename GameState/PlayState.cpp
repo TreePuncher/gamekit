@@ -60,6 +60,19 @@ PlayState::PlayState(GameFramework* framework) :
 /************************************************************************************************/
 
 
+PlayState::~PlayState()
+{
+
+	Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
+	Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
+
+	Framework->Core->GetBlockMemory().free(this);
+}
+
+
+/************************************************************************************************/
+
+
 bool PlayState::EventHandler(Event evt)
 {
 	if (Player1_Handler.Enabled)
@@ -111,19 +124,6 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 /************************************************************************************************/
 
 
-PlayState::~PlayState()
-{
-
-	Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
-	Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
-
-	Framework->Core->GetBlockMemory().free(this);
-}
-
-
-/************************************************************************************************/
-
-
 bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 {
 	FrameGraph.Resources.AddDepthBuffer(DepthBuffer);
@@ -139,46 +139,16 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	ClearBackBuffer		(FrameGraph, 0.0f);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
-	// Draw Grid
-	const size_t ColumnCount	= 20;
-	const size_t RowCount		= 20;
-	LineSegments Lines(Core->GetTempMemory());
-	Lines.reserve(ColumnCount + RowCount);
-
-	const auto RStep = 1.0f / RowCount;
-
-	for (size_t I = 0; I < RowCount; ++I)
-		Lines.push_back({ {0, RStep  * I,1}, {1.0f, 1.0f, 1.0f}, { 1, RStep  * I, 1, 1 }, {1, 1, 1, 1} });
-
-	const auto CStep = 1.0f / ColumnCount;
-	for (size_t I = 0; I < ColumnCount; ++I)
-		Lines.push_back({ { CStep  * I, 0, 0 },{ 1.0f, 1.0f, 1.0f },{ CStep  * I, 1, 0 },{ 1, 1, 1, 1 } });
-
-
-	auto AspectRatio = GetWindowAspectRatio(Core);
-
-	DrawShapes(EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
-		LineShape(Lines));
-
-
-	for (auto Player : Grid.Players)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core ->GetTempMemory(),
-			CircleShape(
-				float2{	
-					CStep / 2 + Player.XY[0] * CStep + Player.Offset.x * CStep,
-					RStep / 2 + Player.XY[1] * RStep + Player.Offset.y * RStep },
-				min(
-					(CStep / 2.0f) / AspectRatio,
-					(RStep / 2.0f)),
-				float4{1.0f}, AspectRatio));
-
-
-	for (auto Object : Grid.Objects)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, GetCurrentBackBuffer(&Core->Window), Core->GetTempMemory(),
-			RectangleShape(float2{ 
-				Object.XY[0] * CStep, 
-				Object.XY[1] * RStep }, 
-				{ CStep , RStep }));
+	DrawGameGrid(
+		dt,
+		GetWindowAspectRatio(Core),
+		Grid,
+		FrameGraph,
+		ConstantBuffer,
+		VertexBuffer,
+		GetCurrentBackBuffer(&Core->Window),
+		Core->GetTempMemory()
+	);
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
