@@ -45,15 +45,14 @@ PlayState::PlayState(GameFramework* framework) :
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
 
-	Player1_Handler.SetActive(Grid.CreatePlayer());
-	Grid.CreateGridObject();
+	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
+	Grid.CreateGridObject({10, 5});
 
-	const uint32_t UPEVENT = GetCRCGUID(PLAYER1_UP);
 
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W, (int32_t)PLAYER_EVENTS::PLAYER1_UP);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A, (int32_t)PLAYER_EVENTS::PLAYER1_LEFT);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S, (int32_t)PLAYER_EVENTS::PLAYER1_DOWN);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D, (int32_t)PLAYER_EVENTS::PLAYER1_RIGHT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W, (int64_t)PLAYER_EVENTS::PLAYER1_UP);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A, (int64_t)PLAYER_EVENTS::PLAYER1_LEFT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S, (int64_t)PLAYER_EVENTS::PLAYER1_DOWN);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D, (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT);
 }
 
 

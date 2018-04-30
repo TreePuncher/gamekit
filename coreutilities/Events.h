@@ -70,8 +70,8 @@ namespace FlexKit
 		union
 		{
 			char*						mMessage;
-			int32_t						mKC	[2];
-			int32_t						mINT[2];
+			int64_t						mKC	[2];
+			int64_t						mINT[2];
 			uint64_t					mSize;
 		} mData1, mData2;
 	};
@@ -140,7 +140,7 @@ namespace FlexKit
 			return true;
 		}
 
-		void MapKeyToEvent(KEYCODES KC, int32_t EventID)
+		void MapKeyToEvent(KEYCODES KC, int64_t EventID)
 		{
 			EventMap.push_back({ EventID, KC });
 		}
@@ -154,7 +154,7 @@ namespace FlexKit
 
 		struct TiedEvent
 		{
-			int32_t		EventID;
+			int64_t		EventID;
 			KEYCODES	EventKC;
 		};
 

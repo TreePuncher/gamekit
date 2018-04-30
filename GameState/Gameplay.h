@@ -124,16 +124,18 @@ public:
 		Empty,
 		Player,
 		Object,
+		Destroyed,
 		InUse
 	};
 
-	Player_Handle		CreatePlayer();
-	GridObject_Handle	CreateGridObject();
+	Player_Handle		CreatePlayer(GridID_t CellID);
+	GridObject_Handle	CreateGridObject(GridID_t CellID);
 
 	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
 	bool IsCellClear	(GridID_t GridID);
 	void Update			(const double dt, iAllocator* Memory);
 	bool MarkCell		(GridID_t CellID, EState State);
+	void Resize			(uint2 wh);
 
 	FlexKit::uint2					WH;	// Width Height
 
@@ -160,18 +162,19 @@ inline void DrawGameGrid(
 	iAllocator*				TempMem
 	)
 {
-	const size_t ColumnCount	= 20;
-	const size_t RowCount		= 20;
+	const size_t ColumnCount	= Grid.WH[1];
+	const size_t RowCount		= Grid.WH[0];
+
 	LineSegments Lines(TempMem);
 	Lines.reserve(ColumnCount + RowCount);
 
 	const auto RStep = 1.0f / RowCount;
 
-	for (size_t I = 0; I < RowCount; ++I)
+	for (size_t I = 1; I < RowCount; ++I)
 		Lines.push_back({ {0, RStep  * I,1}, {1.0f, 1.0f, 1.0f}, { 1, RStep  * I, 1, 1 }, {1, 1, 1, 1} });
 
 	const auto CStep = 1.0f / ColumnCount;
-	for (size_t I = 0; I < ColumnCount; ++I)
+	for (size_t I = 1; I < ColumnCount; ++I)
 		Lines.push_back({ { CStep  * I, 0, 0 },{ 1.0f, 1.0f, 1.0f },{ CStep  * I, 1, 0 },{ 1, 1, 1, 1 } });
 
 
@@ -203,12 +206,12 @@ inline void DrawGameGrid(
 /************************************************************************************************/
 
 
-enum class PLAYER_EVENTS
+enum class PLAYER_EVENTS : int64_t
 {
-	PLAYER1_UP,
-	PLAYER1_LEFT,
-	PLAYER1_DOWN,
-	PLAYER1_RIGHT,
+	PLAYER1_UP		= GetCRCGUID(PLAYER1_UP),
+	PLAYER1_LEFT	= GetCRCGUID(PLAYER1_LEFT),
+	PLAYER1_DOWN	= GetCRCGUID(PLAYER1_DOWN),
+	PLAYER1_RIGHT	= GetCRCGUID(PLAYER1_RIGHT),
 	PLAYER1_UNKNOWN,
 };
 
@@ -264,16 +267,16 @@ public:
 					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
 					{
 					case PLAYER_EVENTS::PLAYER1_UP:
-						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_UP;
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_UP;
 						break;
 					case PLAYER_EVENTS::PLAYER1_LEFT:
-						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_LEFT;
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_LEFT;
 						break;
 					case PLAYER_EVENTS::PLAYER1_DOWN:
-						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_DOWN;
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_DOWN;
 						break;
 					case PLAYER_EVENTS::PLAYER1_RIGHT:
-						InputState.PreferredDirection = (int)PLAYER_EVENTS::PLAYER1_RIGHT;
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT;
 						break;
 					default:
 						break;
@@ -328,18 +331,18 @@ public:
 
 		if (InputState.PreferredDirection != -1)
 		{
-			switch ((int)InputState.PreferredDirection)
+			switch ((int64_t)InputState.PreferredDirection)
 			{
-				case (int)PLAYER_EVENTS::PLAYER1_UP:
+				case (int64_t)PLAYER_EVENTS::PLAYER1_UP:
 					MoveUp();
 					break;
-				case (int)PLAYER_EVENTS::PLAYER1_LEFT:
+				case (int64_t)PLAYER_EVENTS::PLAYER1_LEFT:
 					MoveLeft();
 					break;
-				case (int)PLAYER_EVENTS::PLAYER1_DOWN:
+				case (int64_t)PLAYER_EVENTS::PLAYER1_DOWN:
 					MoveDown();
 					break;
-				case (int)PLAYER_EVENTS::PLAYER1_RIGHT:
+				case (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT:
 					MoveRight();
 					break;
 			}
@@ -372,7 +375,7 @@ public:
 		bool LEFT;
 		bool RIGHT;
 
-		int	PreferredDirection;// if -1 then a preferred direction is ignored
+		int64_t	PreferredDirection;// if -1 then a preferred direction is ignored
 
 		operator bool()	{ return UP | DOWN | LEFT | RIGHT; }
 	}InputState;

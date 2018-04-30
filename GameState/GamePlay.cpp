@@ -29,9 +29,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-Player_Handle GameGrid::CreatePlayer()
+Player_Handle GameGrid::CreatePlayer(GridID_t CellID)
 {
 	Players.push_back(GridPlayer());
+	Players.back().XY = CellID;
+
+	MarkCell(CellID, EState::Player);
 
 	return Players.size() - 1;
 }
@@ -40,11 +43,11 @@ Player_Handle GameGrid::CreatePlayer()
 /************************************************************************************************/
 
 
-GridObject_Handle GameGrid::CreateGridObject()
+GridObject_Handle GameGrid::CreateGridObject(GridID_t CellID)
 {
 	Objects.push_back(GridObject());
 
-	auto CellID = Objects.back().XY;
+	Objects.back().XY = CellID;
 	MarkCell(CellID, EState::Object);
 
 	return Objects.size() - 1;
@@ -146,6 +149,25 @@ bool GameGrid::MarkCell(GridID_t CellID, EState State)
 	Grid[Idx] = State;
 
 	return true;
+}
+
+
+/************************************************************************************************/
+
+// Certain State will be lost
+void GameGrid::Resize(uint2 wh)
+{
+	WH = wh;
+	Grid.resize(WH.Product());
+
+	for (auto& Cell : Grid)
+		Cell = EState::Empty;
+
+	for (auto Obj : Objects)
+		MarkCell(Obj.XY, GameGrid::EState::Object);
+
+	for (auto Player : Players)
+		MarkCell(Player.XY, GameGrid::EState::Player);
 }
 
 
