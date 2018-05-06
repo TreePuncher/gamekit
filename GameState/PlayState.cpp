@@ -49,10 +49,12 @@ PlayState::PlayState(GameFramework* framework) :
 	Grid.CreateGridObject({10, 5});
 
 
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W, (int64_t)PLAYER_EVENTS::PLAYER1_UP);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A, (int64_t)PLAYER_EVENTS::PLAYER1_LEFT);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S, (int64_t)PLAYER_EVENTS::PLAYER1_DOWN);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D, (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER1_UP);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER1_LEFT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER1_DOWN);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER1_RIGHT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER1_HOLD);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER1_ACTION1);
 }
 
 

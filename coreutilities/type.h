@@ -133,6 +133,16 @@ namespace FlexKit
 		}
 	};
 
+	uint32_t Crc(byte* Buffer, size_t BufferSize = 0)
+	{
+		uint32_t CRC = 0xffffffff;
+		for (size_t I = 0; I < BufferSize; ++I)
+		{
+			CRC = (uint8_t)CRC ^ Buffer[I] ^ (CRC >> 8);
+		}
+		return CRC;
+	}
+
 #define GetCRC32(A) ~IDGen<sizeof(A)-2>::GetHash(A);
 
 	template<size_t SIZE>

@@ -36,6 +36,7 @@ TODO's
 #include "..\coreutilities\MathUtils.h"
 #include "..\graphicsutilities\FrameGraph.h"
 
+
 using FlexKit::GameFramework;
 
 
@@ -46,6 +47,12 @@ typedef size_t GridObject_Handle;
 /************************************************************************************************/
 
 
+enum PlayerDirection
+{
+	UP, DOWN, LEFT, RIGHT
+};
+
+
 class GridPlayer :
 	public FlexKit::iEventReceiver,
 	public FlexKit::iUpdatable
@@ -54,6 +61,7 @@ public:
 	GridPlayer()
 	{
 	}
+
 
 	void Update(const double dt) override
 	{
@@ -71,12 +79,17 @@ public:
 		PS_Idle,
 	}State = PS_Idle;
 
-	FlexKit::int2	XY		= {1, 1};
-	FlexKit::float2 Offset	= {0.f, 0.f};
+
+	FlexKit::int2	XY				= {1, 1};
+	FlexKit::float2 Offset			= {0.f, 0.f};
+	PlayerDirection	FacingDirection = PlayerDirection::DOWN;
 };
 
 
 /************************************************************************************************/
+
+
+typedef FlexKit::uint2 GridID_t;
 
 
 struct GridObject
@@ -84,7 +97,24 @@ struct GridObject
 	FlexKit::int2 XY = {0, 0};
 };
 
-typedef FlexKit::uint2 GridID_t;
+enum class EBombType
+{
+	Regular
+};
+
+typedef uint64_t BombID_t;
+
+struct GridBomb
+{
+	GridID_t	XY		= { 0, 0 };
+	EBombType	Type	= EBombType::Regular;
+	float		T		= 0.0f;
+	BombID_t	ID		= -1;
+};
+
+
+
+/************************************************************************************************/
 
 
 class iGridTask
@@ -106,6 +136,7 @@ class GameGrid
 {
 public:
 	GameGrid(FlexKit::iAllocator* memory) :
+		Bombs  { memory },
 		Memory { memory },
 		Players{ memory },
 		Objects{ memory },
@@ -128,8 +159,9 @@ public:
 		InUse
 	};
 
-	Player_Handle		CreatePlayer(GridID_t CellID);
+	Player_Handle		CreatePlayer	(GridID_t CellID);
 	GridObject_Handle	CreateGridObject(GridID_t CellID);
+	void				CreateBomb		(EBombType Type, GridID_t CellID, BombID_t ID);
 
 	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
 	bool IsCellClear	(GridID_t GridID);
@@ -137,9 +169,12 @@ public:
 	bool MarkCell		(GridID_t CellID, EState State);
 	void Resize			(uint2 wh);
 
+
+
 	FlexKit::uint2					WH;	// Width Height
 
 	FlexKit::Vector<GridPlayer>		Players;
+	FlexKit::Vector<GridBomb>		Bombs;
 	FlexKit::Vector<GridObject>		Objects;
 	FlexKit::Vector<iGridTask*>		Tasks;
 	FlexKit::Vector<EState>			Grid;
@@ -151,7 +186,7 @@ public:
 /************************************************************************************************/
 
 
-inline void DrawGameGrid(
+void DrawGameGrid(
 	double					dt,
 	float					AspectRatio,
 	GameGrid&				Grid,
@@ -159,61 +194,25 @@ inline void DrawGameGrid(
 	ConstantBufferHandle	ConstantBuffer,
 	VertexBufferHandle		VertexBuffer,
 	TextureHandle			RenderTarget,
-	iAllocator*				TempMem
-	)
-{
-	const size_t ColumnCount	= Grid.WH[1];
-	const size_t RowCount		= Grid.WH[0];
-
-	LineSegments Lines(TempMem);
-	Lines.reserve(ColumnCount + RowCount);
-
-	const auto RStep = 1.0f / RowCount;
-
-	for (size_t I = 1; I < RowCount; ++I)
-		Lines.push_back({ {0, RStep  * I,1}, {1.0f, 1.0f, 1.0f}, { 1, RStep  * I, 1, 1 }, {1, 1, 1, 1} });
-
-	const auto CStep = 1.0f / ColumnCount;
-	for (size_t I = 1; I < ColumnCount; ++I)
-		Lines.push_back({ { CStep  * I, 0, 0 },{ 1.0f, 1.0f, 1.0f },{ CStep  * I, 1, 0 },{ 1, 1, 1, 1 } });
-
-
-	DrawShapes(EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-		LineShape(Lines));
-
-
-	for (auto Player : Grid.Players)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-			CircleShape(
-				float2{	
-					CStep / 2 + Player.XY[0] * CStep + Player.Offset.x * CStep,
-					RStep / 2 + Player.XY[1] * RStep + Player.Offset.y * RStep },
-				min(
-					(CStep / 2.0f) / AspectRatio,
-					(RStep / 2.0f)),
-				float4{1.0f}, AspectRatio));
-
-
-	for (auto Object : Grid.Objects)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-			RectangleShape(float2{ 
-				Object.XY[0] * CStep, 
-				Object.XY[1] * RStep }, 
-				{ CStep , RStep }));
-}
+	iAllocator*				TempMem);
 
 
 /************************************************************************************************/
 
 
-enum class PLAYER_EVENTS : int64_t
+enum PLAYER_EVENTS : int64_t
 {
 	PLAYER1_UP		= GetCRCGUID(PLAYER1_UP),
 	PLAYER1_LEFT	= GetCRCGUID(PLAYER1_LEFT),
 	PLAYER1_DOWN	= GetCRCGUID(PLAYER1_DOWN),
 	PLAYER1_RIGHT	= GetCRCGUID(PLAYER1_RIGHT),
+	PLAYER1_ACTION1 = GetCRCGUID(PLAYER1_ACTION1),
+	PLAYER1_HOLD	= GetCRCGUID(PLAYER1_HOLD),
 	PLAYER1_UNKNOWN,
 };
+
+
+/************************************************************************************************/
 
 
 class LocalPlayerHandler :
@@ -226,6 +225,7 @@ public:
 		Map			{ memory },
 		InputState	{ false, false, false, false, -1 }
 	{}
+
 
 	void Handle(const Event& evt) override
 	{
@@ -258,36 +258,79 @@ public:
 						 (evt.Action == Event::Pressed) ? true : 
  						((evt.Action == Event::Release) ? false : InputState.RIGHT);
 					break;
+				case PLAYER_EVENTS::PLAYER1_ACTION1:
+				{
+					if ((evt.Action == Event::Release))
+					{
+						int2 GridPOS = Game.Players[0].XY;
+						switch (Game.Players[0].FacingDirection)
+						{
+							case UP:
+								GridPOS += int2{  0, -1  };
+								break;
+							case DOWN: 
+								GridPOS += int2{  0,  1  };
+								break;
+							case LEFT:
+								GridPOS += int2{ -1,  0  };
+								break;
+							case RIGHT:
+								GridPOS += int2{  1,  0  };
+								break;
+							default:
+								FK_ASSERT(0, "!!!!!");
+						}
+
+						if (!Game.IsCellClear(GridPOS))
+							return;
+
+						size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
+						Game.CreateBomb(EBombType::Regular, GridPOS, ID);
+						break;
+					}
+				}	break;
 				default:
 					break;
 				}
 
-				if (evt.Action == Event::Pressed)
+
+				if (evt.Action == Event::Release)
 				{
+					std::cout << "Key Released!\n";
 					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
 					{
 					case PLAYER_EVENTS::PLAYER1_UP:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_UP;
-						break;
-					case PLAYER_EVENTS::PLAYER1_LEFT:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_LEFT;
-						break;
 					case PLAYER_EVENTS::PLAYER1_DOWN:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_DOWN;
-						break;
+					case PLAYER_EVENTS::PLAYER1_LEFT:
 					case PLAYER_EVENTS::PLAYER1_RIGHT:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT;
+						InputState.PreferredDirection = -1;
 						break;
 					default:
 						break;
 					}
 				}
 
-				if (evt.Action == Event::Release)
-					InputState.PreferredDirection = -1;
+
+				if (evt.Action == Event::Pressed)
+				{
+					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
+					{
+					case PLAYER_EVENTS::PLAYER1_UP:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_UP;			break;
+					case PLAYER_EVENTS::PLAYER1_LEFT:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_LEFT;		break;
+					case PLAYER_EVENTS::PLAYER1_DOWN:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_DOWN;		break;
+					case PLAYER_EVENTS::PLAYER1_RIGHT:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT;		break;
+					default:
+						break;
+					}
+				}
 			}
 		}
 	}
+
 
 	void SetActive(Player_Handle P)
 	{
@@ -295,10 +338,12 @@ public:
 		Enabled = true;
 	}
 
+
 	void MovePlayer(FlexKit::int2 XY)
 	{
 		Game.MovePlayer(Player, XY);
 	}
+
 
 	void MoveUp()
 	{
@@ -306,11 +351,13 @@ public:
 		MovePlayer(POS + FlexKit::int2{  0, -1 });
 	}
 
+
 	void MoveDown()
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  0,  1 });
 	}
+
 
 	void MoveLeft()
 	{
@@ -318,13 +365,16 @@ public:
 		MovePlayer(POS + FlexKit::int2{ -1,  0 });
 	}
 
+
 	void MoveRight()
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  1,  0 });
 	}
 
+
 	bool Enabled = false;
+
 
 	void Update(const double dt) override
 	{
@@ -367,6 +417,7 @@ public:
 			}
 		}
 	}
+
 
 	struct
 	{
@@ -428,6 +479,33 @@ public:
 	GameGrid*		Grid;
 	Player_Handle	Player;
 	bool			complete;
+};
+
+
+/************************************************************************************************/
+
+
+class RegularBombTask :
+	public iGridTask
+{
+public:
+	explicit RegularBombTask(BombID_t IN_Bomb, GameGrid* IN_Grid) :
+		Bomb		{ IN_Bomb	},
+		T			{ 0.0f		},
+		Completed	{ false		},
+		Grid		{ IN_Grid	}
+	{}
+
+
+	void Update(const double dt) override;
+	bool Complete() { return Completed; }
+
+
+private:
+	bool		Completed;
+	float		T;
+	BombID_t	Bomb;
+	GameGrid*	Grid;
 };
 
 
