@@ -260,10 +260,13 @@ public:
 					break;
 				case PLAYER_EVENTS::PLAYER1_ACTION1:
 				{
+					if (Game.Players[Player].State != GridPlayer::PS_Idle)
+						return;
+
 					if ((evt.Action == Event::Release))
 					{
-						int2 GridPOS = Game.Players[0].XY;
-						switch (Game.Players[0].FacingDirection)
+						int2 GridPOS = Game.Players[Player].XY;
+						switch (Game.Players[Player].FacingDirection)
 						{
 							case UP:
 								GridPOS += int2{  0, -1  };
@@ -286,6 +289,7 @@ public:
 
 						size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
 						Game.CreateBomb(EBombType::Regular, GridPOS, ID);
+						Game.MarkCell(GridPOS, GameGrid::EState::InUse);
 						break;
 					}
 				}	break;
@@ -349,6 +353,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  0, -1 });
+		Game.Players[Player].FacingDirection = PlayerDirection::UP;
 	}
 
 
@@ -356,6 +361,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  0,  1 });
+		Game.Players[Player].FacingDirection = PlayerDirection::DOWN;
 	}
 
 
@@ -363,6 +369,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{ -1,  0 });
+		Game.Players[Player].FacingDirection = PlayerDirection::LEFT;
 	}
 
 
@@ -370,6 +377,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  1,  0 });
+		Game.Players[Player].FacingDirection = PlayerDirection::RIGHT;
 	}
 
 

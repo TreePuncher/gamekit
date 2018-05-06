@@ -36,7 +36,7 @@ PlayState::PlayState(GameFramework* framework) :
 		 Framework->Core->GetTempMemory(), 
 		 Framework->Core->RenderSystem, 
 		 Framework->Core->Geometry),
-	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 4, false)),
+	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
 	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)),
 	Grid			{Framework->Core->GetBlockMemory()},
 	Player1_Handler	{Grid, Framework->Core->GetBlockMemory() },

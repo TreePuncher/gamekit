@@ -244,6 +244,7 @@ void DrawGameGrid(
 	for (size_t I = 1; I < RowCount; ++I)
 		Lines.push_back({ {0, RStep  * I,1}, {1.0f, 1.0f, 1.0f}, { 1, RStep  * I, 1, 1 }, {1, 1, 1, 1} });
 
+
 	const auto CStep = 1.0f / ColumnCount;
 	for (size_t I = 1; I < ColumnCount; ++I)
 		Lines.push_back({ { CStep  * I, 0, 0 },{ 1.0f, 1.0f, 1.0f },{ CStep  * I, 1, 0 },{ 1, 1, 1, 1 } });
@@ -284,15 +285,7 @@ void DrawGameGrid(
 				Object.XY[1] * RStep }, 
 				{ CStep , RStep },
 				{0.5f, 0.5f, 0.5f, 1.0f}));
-
-
-	//for (auto Object : Grid.Objects) {
-	//	DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-	//		RectangleShape(float2{
-	//			Object.XY[0] * CStep,
-	//			Object.XY[1] * RStep },
-	//			{ CStep , RStep },
-	//			{ 1.0f, 0.0f, 1.0f }));
-	//}
 }
+
+
 /************************************************************************************************/
