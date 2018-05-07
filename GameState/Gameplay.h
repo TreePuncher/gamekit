@@ -168,7 +168,8 @@ public:
 	void Update			(const double dt, iAllocator* Memory);
 	bool MarkCell		(GridID_t CellID, EState State);
 	void Resize			(uint2 wh);
-
+	bool GetBomb		(BombID_t ID, GridBomb& out);
+	bool RemoveBomb		(BombID_t ID);
 
 
 	FlexKit::uint2					WH;	// Width Height
@@ -300,7 +301,6 @@ public:
 
 				if (evt.Action == Event::Release)
 				{
-					std::cout << "Key Released!\n";
 					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
 					{
 					case PLAYER_EVENTS::PLAYER1_UP:

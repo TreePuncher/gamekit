@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Gameplay.h"
-
+#include "..\coreutilities\containers.h"
 
 
 /************************************************************************************************/
@@ -60,7 +60,12 @@ GridObject_Handle GameGrid::CreateGridObject(GridID_t CellID)
 void GameGrid::CreateBomb(EBombType Type, GridID_t CellID, BombID_t ID)
 {
 	Bombs.push_back({ CellID, EBombType::Regular, 0, ID });
-	FK_ASSERT(false, "Un-Implemented!");
+
+	auto* Task = &Memory->allocate_aligned<RegularBombTask>(
+		ID, 
+		this);
+
+	Tasks.push_back(Task);
 }
 
 
@@ -184,6 +189,41 @@ void GameGrid::Resize(uint2 wh)
 /************************************************************************************************/
 
 
+bool GameGrid::GetBomb(BombID_t ID, GridBomb& Out)
+{
+	auto Res = FlexKit::find(Bombs, 
+		[this, ID](auto res) 
+		{ 
+			return (res.ID == ID);
+		});
+	Out = *(GridBomb*)Res;
+
+	return (bool)Res;
+}
+
+
+/************************************************************************************************/
+
+
+bool GameGrid::RemoveBomb(BombID_t ID) 
+{
+	auto Res = FlexKit::find(Bombs,
+		[this, ID](auto res)
+	{
+		return (res.ID == ID);
+	});
+
+	if ((bool)Res)
+		Bombs.remove_unstable(Res);
+
+	return ((bool)Res);
+}
+
+
+
+/************************************************************************************************/
+
+
 void MovePlayerTask::Update(const double dt)
 {
 	T += dt / D;
@@ -215,7 +255,41 @@ void MovePlayerTask::Update(const double dt)
 
 void RegularBombTask::Update(const double dt)
 {
+	T += dt;
 
+	if (T >= 2.0f)
+	{
+		Completed = true;
+		GridBomb BombEntry;
+		if (!Grid->GetBomb(Bomb, BombEntry))
+			return;
+
+		Grid->RemoveBomb(Bomb);
+
+		Grid->MarkCell(BombEntry.XY + int2{ -1, -1 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  0, -1 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  1, -1 }, GameGrid::EState::Destroyed);
+
+		Grid->MarkCell(BombEntry.XY + int2{ -1, -0 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  0, -0 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  1, -0 }, GameGrid::EState::Destroyed);
+
+		Grid->MarkCell(BombEntry.XY + int2{ -1,  1 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  0,  1 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  1,  1 }, GameGrid::EState::Destroyed);
+
+		Grid->CreateGridObject(BombEntry.XY + int2{ -1, -1 });
+		Grid->CreateGridObject(BombEntry.XY + int2{ -0, -1 });
+		Grid->CreateGridObject(BombEntry.XY + int2{  1, -1 });
+
+		Grid->CreateGridObject(BombEntry.XY + int2{ -1, -0 });
+		Grid->CreateGridObject(BombEntry.XY + int2{ -0, -0 });
+		Grid->CreateGridObject(BombEntry.XY + int2{  1, -0 });
+
+		Grid->CreateGridObject(BombEntry.XY + int2{ -1,  1 });
+		Grid->CreateGridObject(BombEntry.XY + int2{  0,  1 });
+		Grid->CreateGridObject(BombEntry.XY + int2{  1,  1 });
+	}
 }
 
 

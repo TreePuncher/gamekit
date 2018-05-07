@@ -432,9 +432,11 @@ namespace FlexKit
 			if (I == end())
 				return;
 
-			while (I != end() && (I + 1)!= end())
+			while (I != end() && (I + 1) != end())
+			{
 				*I = *(I + 1);
-
+				++I;
+			}
 			pop_back();
 		}
 
