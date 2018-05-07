@@ -30,17 +30,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma comment(lib, "fmod64_vc.lib")
 
-PlayState::PlayState(GameFramework* framework) :
-	FrameworkState	(framework),
-	Render			(
-		 Framework->Core->GetTempMemory(), 
-		 Framework->Core->RenderSystem, 
-		 Framework->Core->Geometry),
+PlayState::PlayState(
+		GameFramework* framework,
+		FlexKit::FKApplication* IN_App) :
+	App				{ IN_App },
+	Sound			{ framework->Core->Threads },
+	FrameworkState	{ framework },
+	Render	(
+				Framework->Core->GetTempMemory(), 
+				Framework->Core->RenderSystem, 
+				Framework->Core->Geometry),
 	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
 	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)),
 	Grid			{Framework->Core->GetBlockMemory()},
 	Player1_Handler	{Grid, Framework->Core->GetBlockMemory() },
-	Player2_Handler	{Grid, Framework->Core->GetBlockMemory() }
+	Player2_Handler	{Grid, Framework->Core->GetBlockMemory() },
+	GameInPlay		{true}
 {
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
@@ -89,8 +94,13 @@ bool PlayState::EventHandler(Event evt)
 /************************************************************************************************/
 
 
-bool PlayState::Update(EngineCore* Engine, double dT)
+bool PlayState::Update(EngineCore* Engine, double dT)	
 {
+	// Check if any players Died
+	for (auto& P : Grid.Players)
+		if (Grid.IsCellDestroyed(P.XY))
+			Framework->PopState();
+
 	if (Player1_Handler.Enabled)
 		Player1_Handler.Update(dT);
 

@@ -165,6 +165,7 @@ public:
 
 	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
 	bool IsCellClear	(GridID_t GridID);
+	bool IsCellDestroyed(GridID_t GridID);
 	void Update			(const double dt, iAllocator* Memory);
 	bool MarkCell		(GridID_t CellID, EState State);
 	void Resize			(uint2 wh);

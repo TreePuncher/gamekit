@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);
 
-	App.SetInitialState<PlayState>();
+	App.SetInitialState<PlayState>(&App);
 	App.Run();
 	App.Cleanup();
 

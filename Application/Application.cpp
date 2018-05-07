@@ -26,6 +26,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	FKApplication::FKApplication(uint2 WindowResolution)
+	{
+		bool Success = InitEngine(Core, Memory, WindowResolution);
+		FK_ASSERT(Success);
+
+		InitiateFramework(Core, Framework);
+	}
+
+
+	FKApplication::~FKApplication()
+	{
+		Cleanup();
+	}
+
+
 	void FKApplication::Cleanup()
 	{
 		if (Memory)
@@ -36,6 +51,13 @@ namespace FlexKit
 		}
 	}
 
+
+	void FKApplication::PushArgument(const char* Str)
+	{
+		Core->CmdArguments.push_back(Str);
+	}
+
+
 	void FKApplication::Run()
 	{
 		const double StepSize	= 1 / 60.0f;
@@ -45,7 +67,7 @@ namespace FlexKit
 		double CodeCheckTimer	= 0.0f;
 		double dT				= StepSize;
 
-		while (!Core->End && !Core->Window.Close)
+		while (!Core->End && !Core->Window.Close && Framework.SubStates.size())
 		{
 			Core->Time.Before();
 
@@ -86,6 +108,8 @@ namespace FlexKit
 			Core->Time.Update();
 
 			T += dT;
+
+			
 		}
 			// End Update  -----------------------------------------------------------------------------------------
 	}

@@ -293,6 +293,9 @@ namespace FlexKit
 	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
 	{
 		Core->RenderSystem.PresentWindow(&Core->Window);
+
+		for (;PopCount && SubStates.size(); --PopCount)
+			PopSubState(this);
 	}
 
 
@@ -352,6 +355,15 @@ namespace FlexKit
 	void GameFramework::PrePhysicsUpdate()
 	{
 
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GameFramework::PopState()
+	{
+		++PopCount;
 	}
 
 

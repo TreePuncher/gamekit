@@ -46,18 +46,8 @@ namespace FlexKit
 	class FKApplication
 	{
 	public:
-		FKApplication(uint2 WindowResolution = {1920, 1080})
-		{
-			bool Success = InitEngine(Core, Memory, WindowResolution);
-			FK_ASSERT(Success);
-
-			InitiateFramework(Core, Framework);
-		}
-
-		~FKApplication() 
-		{
-			Cleanup();
-		}
+		FKApplication(uint2 WindowResolution = { 1920, 1080 });
+		~FKApplication();
 
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
 		void SetInitialState(TY_ARGS ... ARGS)
@@ -68,10 +58,7 @@ namespace FlexKit
 		void Run();
 		void Cleanup();
 
-		void PushArgument(const char* Str)
-		{
-			Core->CmdArguments.push_back(Str);
-		}
+		void PushArgument(const char* Str);
 
 	private:
 		EngineMemory*	Memory;

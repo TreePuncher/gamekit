@@ -75,6 +75,8 @@ namespace FlexKit
 		void PostPhysicsUpdate	();
 		void PrePhysicsUpdate	();
 
+		void PopState();
+
 		struct {
 			FontAsset*			Font;
 			Texture2D			Terrain;
@@ -104,6 +106,7 @@ namespace FlexKit
 		bool	Quit;
 
 		size_t	TerrainSplits;
+		size_t  PopCount;
 
 		double TimeRunning;
 

@@ -42,14 +42,19 @@ typedef uint32_t SoundHandle;
 class FMOD_SoundSystem
 {
 public:
-	FMOD_SoundSystem()
+	FMOD_SoundSystem(FlexKit::ThreadManager& IN_Threads) : 
+		Threads	{	IN_Threads	}
 	{
 		result			= FMOD::System_Create(&system);
 		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
-		auto res		= system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+
+		Threads.AddWork(CreateLambdaWork_New(
+			[this]() {
+				auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+				if(sound1)
+					system->playSound(sound1, nullptr, false, &channel);
+		}));
 		
-		if(sound1)
-			system->playSound(sound1, nullptr, false, &channel);
 	}
 
 	~FMOD_SoundSystem()
@@ -72,6 +77,7 @@ public:
 
 	Vector<FMOD::Sound*> Sounds;
 
+	FlexKit::ThreadManager& Threads;
 
 	FMOD::System     *system;
 	FMOD::Sound      *sound1, *sound2, *sound3;
@@ -87,7 +93,7 @@ public:
 class PlayState : public FrameworkState
 {
 public:
-	PlayState(GameFramework* Framework);
+	PlayState(GameFramework* Framework, FlexKit::FKApplication*);
 	~PlayState();
 
 	bool Update			(EngineCore* Engine, double dT) final;
@@ -104,6 +110,10 @@ public:
 	void ReleasePlayer1();
 	void ReleasePlayer2();
 
+	bool GameInPlay;
+
+
+	FKApplication*			App;
 	WorldRender				Render;
 
 	TextureHandle			DepthBuffer;

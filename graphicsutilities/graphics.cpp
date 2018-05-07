@@ -1749,7 +1749,7 @@ namespace FlexKit
 			// Trying again with a DX11 Feature Level
 			HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
 
-			std::cout << "Created A DX11 Device!\n";
+			std::cout << "Failed to create A DX12 Device!\n";
 			MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
 			return false;
 		}

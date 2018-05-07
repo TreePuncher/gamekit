@@ -127,6 +127,21 @@ bool GameGrid::IsCellClear(GridID_t GridID)
 }
 
 
+bool GameGrid::IsCellDestroyed(GridID_t GridID)
+{
+	if (GridID[0] >= WH[0] || GridID[0] < 0)
+		return false;
+
+	if (GridID[1] >= WH[1] || GridID[1] < 0)
+		return false;
+
+
+	size_t Idx = WH[0] * GridID[1] + GridID[0];
+
+	return (Grid[Idx] == EState::Object);
+}
+
+
 /************************************************************************************************/
 
 
@@ -270,9 +285,9 @@ void RegularBombTask::Update(const double dt)
 		Grid->MarkCell(BombEntry.XY + int2{  0, -1 }, GameGrid::EState::Destroyed);
 		Grid->MarkCell(BombEntry.XY + int2{  1, -1 }, GameGrid::EState::Destroyed);
 
-		Grid->MarkCell(BombEntry.XY + int2{ -1, -0 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  0, -0 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  1, -0 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{ -1,  0 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  0,  0 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  1,  0 }, GameGrid::EState::Destroyed);
 
 		Grid->MarkCell(BombEntry.XY + int2{ -1,  1 }, GameGrid::EState::Destroyed);
 		Grid->MarkCell(BombEntry.XY + int2{  0,  1 }, GameGrid::EState::Destroyed);

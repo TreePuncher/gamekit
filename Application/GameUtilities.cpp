@@ -78,9 +78,11 @@ bool InitEngine(EngineCore*& Core, EngineMemory*& Memory, uint2 WH)
 	InitiateEngineMemory(Memory);
 
 	Core = &Memory->BlockAllocator.allocate<EngineCore>(Memory);
-	InitiateCoreSystems(WH, Core);
+	auto RES = InitiateCoreSystems(WH, Core);
 
-	return true;
+	FK_ASSERT(RES, "FAILED TO INITIATE ENGINE!");
+
+	return RES;
 }
 
 
