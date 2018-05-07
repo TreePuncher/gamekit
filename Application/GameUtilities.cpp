@@ -55,7 +55,7 @@ bool InitiateEngineMemory( EngineMemory*& Memory )
 
 	bool Out = false;
 	BlockAllocator_desc BAdesc;
-	BAdesc._ptr			= (byte*)Memory->BlockMem;
+	BAdesc._ptr			= (FlexKit::byte*)Memory->BlockMem;
 	BAdesc.SmallBlock	= MEGABYTE * 64;
 	BAdesc.MediumBlock	= MEGABYTE * 64;
 	BAdesc.LargeBlock	= MEGABYTE * 512;

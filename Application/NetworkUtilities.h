@@ -111,7 +111,7 @@ struct Network
 		ConnectionList			OtherPlayers;
 
 		FlexKit::StackAllocator	Allocator;
-		byte _p[1024];
+		FlexKit::byte _p[1024];
 	}*ClientState;
 
 	struct sServerState
@@ -128,7 +128,7 @@ struct Network
 		}StateData;
 		size_t					PlayerCount;
 		FlexKit::StackAllocator	Allocator;
-		byte _p[1024];
+		FlexKit::byte _p[1024];
 	}*ServerState;
 	bool			isServer;
 	unsigned short  ServerPort;

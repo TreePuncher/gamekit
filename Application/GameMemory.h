@@ -131,11 +131,13 @@ struct EngineMemory
 	EngineMemory_DEBUG	Debug;
 
 	// Memory Pools
-	byte						NodeMem		[NODEBUFFERSIZE];
-	byte						BlockMem	[BLOCKALLOCSIZE];
-	byte						LevelMem	[LEVELBUFFERSIZE];
-	byte						TempMem		[TEMPBUFFERSIZE];
+	FlexKit::byte	NodeMem		[NODEBUFFERSIZE];
+	FlexKit::byte	BlockMem	[BLOCKALLOCSIZE];
+	FlexKit::byte	LevelMem	[LEVELBUFFERSIZE];
+	FlexKit::byte	TempMem		[TEMPBUFFERSIZE];
 };
+
+
 
 struct EngineCore
 {

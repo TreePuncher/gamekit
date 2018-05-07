@@ -188,9 +188,11 @@ static const size_t GIGABYTE	= 1024 * MEGABYTE;
 
 const size_t INVALIDHANDLE = -1;
 
-typedef uint8_t	 byte;
-typedef uint64_t ResourceHandle;
-typedef uint64_t GUID_t;
+namespace FlexKit {
+	typedef uint8_t	 byte;
+	typedef uint64_t ResourceHandle;
+	typedef uint64_t GUID_t;
+}
 
 #define NOMINMAX
 

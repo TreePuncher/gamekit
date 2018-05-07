@@ -235,10 +235,10 @@ bool GameGrid::RemoveBomb(BombID_t ID)
 		return (res.ID == ID);
 	});
 
-	if ((bool)Res)
+	if (Res)
 		Bombs.remove_unstable(Res);
 
-	return ((bool)Res);
+	return Res;
 }
 
 
