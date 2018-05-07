@@ -50,16 +50,17 @@ PlayState::PlayState(
 	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
 	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
 
+
 	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
 	Grid.CreateGridObject({10, 5});
 
 
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER1_UP);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER1_LEFT);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER1_DOWN);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER1_RIGHT);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER1_HOLD);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER1_ACTION1);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
+	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
 }
 
 
@@ -150,7 +151,8 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	ClearBackBuffer		(FrameGraph, 0.0f);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 
-	DrawGameGrid(
+#ifdef _DEBUG
+	DrawGameGrid_Debug(
 		dt,
 		GetWindowAspectRatio(Core),
 		Grid,
@@ -160,6 +162,8 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 		GetCurrentBackBuffer(&Core->Window),
 		Core->GetTempMemory()
 	);
+#else
+#endif
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 

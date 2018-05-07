@@ -57,8 +57,12 @@ GridObject_Handle GameGrid::CreateGridObject(GridID_t CellID)
 /************************************************************************************************/
 
 
-void GameGrid::CreateBomb(EBombType Type, GridID_t CellID, BombID_t ID)
+void GameGrid::CreateBomb(EBombType Type, GridID_t CellID, BombID_t ID, Player_Handle PlayerID)
 {
+
+	if (!Players[PlayerID].DecrementBombSlot(Type))
+		return;
+
 	Bombs.push_back({ CellID, EBombType::Regular, 0, ID });
 
 	auto* Task = &Memory->allocate_aligned<RegularBombTask>(
@@ -125,6 +129,9 @@ bool GameGrid::IsCellClear(GridID_t GridID)
 
 	return (Grid[Idx] == EState::Empty);
 }
+
+
+/************************************************************************************************/
 
 
 bool GameGrid::IsCellDestroyed(GridID_t GridID)
@@ -194,10 +201,10 @@ void GameGrid::Resize(uint2 wh)
 		Cell = EState::Empty;
 
 	for (auto Obj : Objects)
-		MarkCell(Obj.XY, GameGrid::EState::Object);
+		MarkCell(Obj.XY, EState::Object);
 
 	for (auto Player : Players)
-		MarkCell(Player.XY, GameGrid::EState::Player);
+		MarkCell(Player.XY, EState::Player);
 }
 
 
@@ -254,8 +261,8 @@ void MovePlayerTask::Update(const double dt)
 	}
 	else
 	{
-		Grid->MarkCell(A, GameGrid::EState::Empty);
-		Grid->MarkCell(B, GameGrid::EState::Player);
+		Grid->MarkCell(A, EState::Empty);
+		Grid->MarkCell(B, EState::Player);
 
 		Grid->Players[Player].Offset = { 0.f, 0.f };
 		Grid->Players[Player].XY	 = B;
@@ -281,17 +288,17 @@ void RegularBombTask::Update(const double dt)
 
 		Grid->RemoveBomb(Bomb);
 
-		Grid->MarkCell(BombEntry.XY + int2{ -1, -1 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  0, -1 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  1, -1 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{ -1, -1 }, EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  0, -1 }, EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  1, -1 }, EState::Destroyed);
 
-		Grid->MarkCell(BombEntry.XY + int2{ -1,  0 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  0,  0 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  1,  0 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{ -1,  0 }, EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  0,  0 }, EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  1,  0 }, EState::Destroyed);
 
-		Grid->MarkCell(BombEntry.XY + int2{ -1,  1 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  0,  1 }, GameGrid::EState::Destroyed);
-		Grid->MarkCell(BombEntry.XY + int2{  1,  1 }, GameGrid::EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{ -1,  1 }, EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  0,  1 }, EState::Destroyed);
+		Grid->MarkCell(BombEntry.XY + int2{  1,  1 }, EState::Destroyed);
 
 		Grid->CreateGridObject(BombEntry.XY + int2{ -1, -1 });
 		Grid->CreateGridObject(BombEntry.XY + int2{ -0, -1 });
@@ -311,7 +318,7 @@ void RegularBombTask::Update(const double dt)
 /************************************************************************************************/
 
 
-void DrawGameGrid(
+void DrawGameGrid_Debug(
 	double					dt,
 	float					AspectRatio,
 	GameGrid&				Grid,

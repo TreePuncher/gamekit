@@ -655,7 +655,7 @@ namespace FlexKit
 	bool IsXInSet(const TY& X, const TY_C& C)
 	{
 		//static_assert(TYPE_CHECK(TY(), TY_C::TYPE()), "TYPES MUST MATCH!");
-		for (auto& Ci : C)
+		for (const auto& Ci : C)
 			if (Ci == X)
 				return true;
 

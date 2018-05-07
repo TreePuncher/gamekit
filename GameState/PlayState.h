@@ -50,9 +50,9 @@ public:
 
 		Threads.AddWork(CreateLambdaWork_New(
 			[this]() {
-				auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
-				if(sound1)
-					system->playSound(sound1, nullptr, false, &channel);
+				//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+				//if(sound1)
+				//	system->playSound(sound1, nullptr, false, &channel);
 		}));
 		
 	}
@@ -125,6 +125,8 @@ public:
 	LocalPlayerHandler	Player2_Handler;
 
 	FMOD_SoundSystem	Sound;
+
+	FlexKit::CircularBuffer<GameGridFrame, 120>	FrameCache;
 };
 
 

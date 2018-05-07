@@ -40,6 +40,9 @@ TODO's
 using FlexKit::GameFramework;
 
 
+/************************************************************************************************/
+
+
 typedef size_t Player_Handle;
 typedef size_t GridObject_Handle;
 
@@ -53,6 +56,12 @@ enum PlayerDirection
 };
 
 
+enum class EBombType
+{
+	Regular
+};
+
+
 class GridPlayer :
 	public FlexKit::iEventReceiver,
 	public FlexKit::iUpdatable
@@ -60,6 +69,8 @@ class GridPlayer :
 public:
 	GridPlayer()
 	{
+		BombSlots.push_back(EBombType::Regular);
+		BombCounts.push_back(256);
 	}
 
 
@@ -72,7 +83,6 @@ public:
 	{
 	}
 
-
 	enum PlayerState
 	{
 		PS_Moving,
@@ -80,8 +90,30 @@ public:
 	}State = PS_Idle;
 
 
+	bool DecrementBombSlot(EBombType Type)
+	{
+		auto Res = FlexKit::IsXInSet(Type, BombSlots);
+		if (!Res)
+			return false;
+
+		for (size_t I = 0; I < BombSlots.size(); ++I)
+		{
+			if (BombSlots[I] == Type && BombCounts[I])
+			{
+				--BombCounts[I];
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+
 	FlexKit::int2	XY				= {1, 1};
 	FlexKit::float2 Offset			= {0.f, 0.f};
+	FlexKit::static_vector<EBombType, 4>	BombSlots;
+	FlexKit::static_vector<size_t, 4>		BombCounts;
+
 	PlayerDirection	FacingDirection = PlayerDirection::DOWN;
 };
 
@@ -95,11 +127,6 @@ typedef FlexKit::uint2 GridID_t;
 struct GridObject
 {
 	FlexKit::int2 XY = {0, 0};
-};
-
-enum class EBombType
-{
-	Regular
 };
 
 typedef uint64_t BombID_t;
@@ -132,6 +159,34 @@ public:
 /************************************************************************************************/
 
 
+enum class EState
+{
+	Empty,
+	Player,
+	Object,
+	Destroyed,
+	InUse
+};
+
+
+/************************************************************************************************/
+
+
+class GameGridFrame
+{
+public:
+	FlexKit::uint2					WH;	
+	FlexKit::Vector<GridPlayer>		Players;
+	FlexKit::Vector<GridBomb>		Bombs;
+	FlexKit::Vector<GridObject>		Objects;
+	FlexKit::Vector<iGridTask*>		Tasks;
+	FlexKit::Vector<EState>			Grid;
+};
+
+
+/************************************************************************************************/
+
+
 class GameGrid
 {
 public:
@@ -150,18 +205,11 @@ public:
 			Cell = EState::Empty;
 	}
 
-	enum class EState
-	{
-		Empty,
-		Player,
-		Object,
-		Destroyed,
-		InUse
-	};
+
 
 	Player_Handle		CreatePlayer	(GridID_t CellID);
 	GridObject_Handle	CreateGridObject(GridID_t CellID);
-	void				CreateBomb		(EBombType Type, GridID_t CellID, BombID_t ID);
+	void				CreateBomb		(EBombType Type, GridID_t CellID, BombID_t ID, Player_Handle PlayerID);
 
 	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
 	bool IsCellClear	(GridID_t GridID);
@@ -174,7 +222,6 @@ public:
 
 
 	FlexKit::uint2					WH;	// Width Height
-
 	FlexKit::Vector<GridPlayer>		Players;
 	FlexKit::Vector<GridBomb>		Bombs;
 	FlexKit::Vector<GridObject>		Objects;
@@ -188,7 +235,7 @@ public:
 /************************************************************************************************/
 
 
-void DrawGameGrid(
+void DrawGameGrid_Debug(
 	double					dt,
 	float					AspectRatio,
 	GameGrid&				Grid,
@@ -204,13 +251,13 @@ void DrawGameGrid(
 
 enum PLAYER_EVENTS : int64_t
 {
-	PLAYER1_UP		= GetCRCGUID(PLAYER1_UP),
-	PLAYER1_LEFT	= GetCRCGUID(PLAYER1_LEFT),
-	PLAYER1_DOWN	= GetCRCGUID(PLAYER1_DOWN),
-	PLAYER1_RIGHT	= GetCRCGUID(PLAYER1_RIGHT),
-	PLAYER1_ACTION1 = GetCRCGUID(PLAYER1_ACTION1),
-	PLAYER1_HOLD	= GetCRCGUID(PLAYER1_HOLD),
-	PLAYER1_UNKNOWN,
+	PLAYER_UP		= GetCRCGUID(PLAYER_UP),
+	PLAYER_LEFT		= GetCRCGUID(PLAYER_LEFT),
+	PLAYER_DOWN		= GetCRCGUID(PLAYER_DOWN),
+	PLAYER_RIGHT	= GetCRCGUID(PLAYER_RIGHT),
+	PLAYER_ACTION1	= GetCRCGUID(PLAYER_ACTION1),
+	PLAYER_HOLD		= GetCRCGUID(PLAYER_HOLD),
+	PLAYER_UNKNOWN,
 };
 
 
@@ -231,6 +278,8 @@ public:
 
 	void Handle(const Event& evt) override
 	{
+		CurrentFrameEvents.push_back(evt);
+
 		if (evt.InputSource == Event::Keyboard)
 		{
 			Event ReMapped_Event;
@@ -240,27 +289,27 @@ public:
 			{
 				switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
 				{
-				case PLAYER_EVENTS::PLAYER1_UP:
+				case PLAYER_EVENTS::PLAYER_UP:
 					InputState.UP		=	
 						 (evt.Action == Event::Pressed) ? true : 
 						((evt.Action == Event::Release) ? false : InputState.UP);
 					break;
-				case PLAYER_EVENTS::PLAYER1_LEFT:
+				case PLAYER_EVENTS::PLAYER_LEFT:
 					InputState.LEFT		= 
 						 (evt.Action == Event::Pressed) ? true : 
 						((evt.Action == Event::Release) ? false : InputState.LEFT);
 					break;
-				case PLAYER_EVENTS::PLAYER1_DOWN:
+				case PLAYER_EVENTS::PLAYER_DOWN:
 					InputState.DOWN		= 
 						 (evt.Action == Event::Pressed) ? true : 
 						((evt.Action == Event::Release) ? false : InputState.DOWN);
 					break;
-				case PLAYER_EVENTS::PLAYER1_RIGHT:
+				case PLAYER_EVENTS::PLAYER_RIGHT:
 					InputState.RIGHT	= 
 						 (evt.Action == Event::Pressed) ? true : 
  						((evt.Action == Event::Release) ? false : InputState.RIGHT);
 					break;
-				case PLAYER_EVENTS::PLAYER1_ACTION1:
+				case PLAYER_EVENTS::PLAYER_ACTION1:
 				{
 					if (Game.Players[Player].State != GridPlayer::PS_Idle)
 						return;
@@ -290,8 +339,8 @@ public:
 							return;
 
 						size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
-						Game.CreateBomb(EBombType::Regular, GridPOS, ID);
-						Game.MarkCell(GridPOS, GameGrid::EState::InUse);
+						Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
+						Game.MarkCell(GridPOS, EState::InUse);
 						break;
 					}
 				}	break;
@@ -304,10 +353,10 @@ public:
 				{
 					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
 					{
-					case PLAYER_EVENTS::PLAYER1_UP:
-					case PLAYER_EVENTS::PLAYER1_DOWN:
-					case PLAYER_EVENTS::PLAYER1_LEFT:
-					case PLAYER_EVENTS::PLAYER1_RIGHT:
+					case PLAYER_EVENTS::PLAYER_UP:
+					case PLAYER_EVENTS::PLAYER_DOWN:
+					case PLAYER_EVENTS::PLAYER_LEFT:
+					case PLAYER_EVENTS::PLAYER_RIGHT:
 						InputState.PreferredDirection = -1;
 						break;
 					default:
@@ -320,14 +369,14 @@ public:
 				{
 					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
 					{
-					case PLAYER_EVENTS::PLAYER1_UP:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_UP;			break;
-					case PLAYER_EVENTS::PLAYER1_LEFT:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_LEFT;		break;
-					case PLAYER_EVENTS::PLAYER1_DOWN:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_DOWN;		break;
-					case PLAYER_EVENTS::PLAYER1_RIGHT:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT;		break;
+					case PLAYER_EVENTS::PLAYER_UP:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_UP;			break;
+					case PLAYER_EVENTS::PLAYER_LEFT:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_LEFT;		break;
+					case PLAYER_EVENTS::PLAYER_DOWN:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_DOWN;		break;
+					case PLAYER_EVENTS::PLAYER_RIGHT:
+						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_RIGHT;		break;
 					default:
 						break;
 					}
@@ -387,21 +436,20 @@ public:
 
 	void Update(const double dt) override
 	{
-
 		if (InputState.PreferredDirection != -1)
 		{
 			switch ((int64_t)InputState.PreferredDirection)
 			{
-				case (int64_t)PLAYER_EVENTS::PLAYER1_UP:
+				case (int64_t)PLAYER_EVENTS::PLAYER_UP:
 					MoveUp();
 					break;
-				case (int64_t)PLAYER_EVENTS::PLAYER1_LEFT:
+				case (int64_t)PLAYER_EVENTS::PLAYER_LEFT:
 					MoveLeft();
 					break;
-				case (int64_t)PLAYER_EVENTS::PLAYER1_DOWN:
+				case (int64_t)PLAYER_EVENTS::PLAYER_DOWN:
 					MoveDown();
 					break;
-				case (int64_t)PLAYER_EVENTS::PLAYER1_RIGHT:
+				case (int64_t)PLAYER_EVENTS::PLAYER_RIGHT:
 					MoveRight();
 					break;
 			}
@@ -425,6 +473,9 @@ public:
 				MoveRight();
 			}
 		}
+
+		FrameCache.push_back(CurrentFrameEvents);
+		CurrentFrameEvents.clear();
 	}
 
 
@@ -440,6 +491,9 @@ public:
 		operator bool()	{ return UP | DOWN | LEFT | RIGHT; }
 	}InputState;
 
+	typedef static_vector<Event, 12>			KeyEventList;
+	KeyEventList								CurrentFrameEvents;
+	FlexKit::CircularBuffer<KeyEventList, 120>	FrameCache;
 
 	InputMap		Map;
 	Player_Handle	Player;
@@ -470,8 +524,7 @@ public:
 			Grid		{grid}
 	{
 		Grid->Players[Player].State = GridPlayer::PS_Moving;
-		Grid->MarkCell(A, GameGrid::EState::InUse);
-
+		Grid->MarkCell(A, EState::InUse);
 	}
 
 	MovePlayerTask& operator = (MovePlayerTask& rhs) = delete;
