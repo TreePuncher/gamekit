@@ -121,7 +121,8 @@ public:
 /************************************************************************************************/
 
 
-typedef FlexKit::uint2 GridID_t;
+typedef FlexKit::uint2	GridID_t;
+typedef uint64_t		BombID_t;
 
 
 struct GridObject
@@ -129,16 +130,16 @@ struct GridObject
 	FlexKit::int2 XY = {0, 0};
 };
 
-typedef uint64_t BombID_t;
 
 struct GridBomb
 {
-	GridID_t	XY		= { 0, 0 };
-	EBombType	Type	= EBombType::Regular;
-	float		T		= 0.0f;
-	BombID_t	ID		= -1;
+	GridID_t	XY			= { 0, 0 };
+	EBombType	Type		= EBombType::Regular;
+	float		T			= 0.0f;
+	BombID_t	ID			= -1;
+	int2		Direction	= { 0, 0 };
+	float2		Offset		= { 0.0f, 0.0f };
 };
-
 
 
 /************************************************************************************************/
@@ -165,6 +166,7 @@ enum class EState
 	Player,
 	Object,
 	Destroyed,
+	Bomb,
 	InUse
 };
 
@@ -212,13 +214,19 @@ public:
 	void				CreateBomb		(EBombType Type, GridID_t CellID, BombID_t ID, Player_Handle PlayerID);
 
 	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
-	bool IsCellClear	(GridID_t GridID);
-	bool IsCellDestroyed(GridID_t GridID);
-	void Update			(const double dt, iAllocator* Memory);
-	bool MarkCell		(GridID_t CellID, EState State);
-	void Resize			(uint2 wh);
-	bool GetBomb		(BombID_t ID, GridBomb& out);
-	bool RemoveBomb		(BombID_t ID);
+	bool MoveBomb		(GridID_t GridID, int2 Direction);
+
+	bool IsCellClear		(GridID_t GridID);
+	bool IsCellDestroyed	(GridID_t GridID);
+	void Update				(const double dt, iAllocator* Memory);
+	bool MarkCell			(GridID_t CellID, EState State);
+	void Resize				(uint2 wh);
+	bool RemoveBomb			(BombID_t ID);
+
+	bool	GetBomb			(BombID_t ID, GridBomb& out);
+	EState	GetCellState	(GridID_t GridPOS);
+
+	bool	SetBomb(BombID_t ID, const GridBomb& In);
 
 
 	FlexKit::uint2					WH;	// Width Height
@@ -316,31 +324,43 @@ public:
 
 					if ((evt.Action == Event::Release))
 					{
-						int2 GridPOS = Game.Players[Player].XY;
+						int2 Offset = {0, 0};
+
 						switch (Game.Players[Player].FacingDirection)
 						{
-							case UP:
-								GridPOS += int2{  0, -1  };
-								break;
-							case DOWN: 
-								GridPOS += int2{  0,  1  };
-								break;
-							case LEFT:
-								GridPOS += int2{ -1,  0  };
-								break;
-							case RIGHT:
-								GridPOS += int2{  1,  0  };
-								break;
-							default:
-								FK_ASSERT(0, "!!!!!");
+						case UP:
+							Offset += int2{ 0, -1 };
+							break;
+						case DOWN:
+							Offset += int2{ 0,  1 };
+							break;
+						case LEFT:
+							Offset += int2{ -1,  0 };
+							break;
+						case RIGHT:
+							Offset += int2{ 1,  0 };
+							break;
+						default:
+							FK_ASSERT(0, "!!!!!");
 						}
 
-						if (!Game.IsCellClear(GridPOS))
-							return;
+						int2 GridPOS = Game.Players[Player].XY + Offset;
+
+						//if (!Game.IsCellClear(GridPOS))
+						//	return;
 
 						size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
-						Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
-						Game.MarkCell(GridPOS, EState::InUse);
+
+						auto State = Game.GetCellState(GridPOS);
+						if (State == EState::Bomb)
+						{
+							Game.MoveBomb(GridPOS, Offset);
+						}
+						else
+						{
+							Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
+							Game.MarkCell(GridPOS, EState::Bomb);
+						}
 						break;
 					}
 				}	break;
@@ -456,7 +476,7 @@ public:
 		}
 		else
 		{
-			if (InputState.UP)
+			if		(InputState.UP)
 			{
 				MoveUp();
 			}
@@ -554,6 +574,7 @@ public:
 	explicit RegularBombTask(BombID_t IN_Bomb, GameGrid* IN_Grid) :
 		Bomb		{ IN_Bomb	},
 		T			{ 0.0f		},
+		T2			{ 0.0f		},
 		Completed	{ false		},
 		Grid		{ IN_Grid	}
 	{}
@@ -566,6 +587,7 @@ public:
 private:
 	bool		Completed;
 	float		T;
+	float		T2;
 	BombID_t	Bomb;
 	GameGrid*	Grid;
 };

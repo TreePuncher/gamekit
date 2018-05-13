@@ -59,11 +59,16 @@ GridObject_Handle GameGrid::CreateGridObject(GridID_t CellID)
 
 void GameGrid::CreateBomb(EBombType Type, GridID_t CellID, BombID_t ID, Player_Handle PlayerID)
 {
-
 	if (!Players[PlayerID].DecrementBombSlot(Type))
 		return;
 
-	Bombs.push_back({ CellID, EBombType::Regular, 0, ID });
+	Bombs.push_back({ 
+		CellID, 
+		EBombType::Regular, 
+		0, 
+		ID,
+		{    0,   0		},
+		{ 0.0f, 0.0f	}});
 
 	auto* Task = &Memory->allocate_aligned<RegularBombTask>(
 		ID, 
@@ -94,6 +99,26 @@ bool GameGrid::MovePlayer(Player_Handle Player, GridID_t GridID)
 		this);
 
 	Tasks.push_back(Task);
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool GameGrid::MoveBomb(GridID_t GridID, int2 Direction)
+{
+	if (GetCellState(GridID) != EState::Bomb)
+		return false;
+
+	auto res = FlexKit::find(Bombs, [GridID](auto& entry) {
+		return entry.XY == GridID; });
+
+	if (!res)
+		return false;
+
+	res->Direction = Direction;
 
 	return true;
 }
@@ -218,9 +243,38 @@ bool GameGrid::GetBomb(BombID_t ID, GridBomb& Out)
 		{ 
 			return (res.ID == ID);
 		});
+
 	Out = *(GridBomb*)Res;
 
 	return (bool)Res;
+}
+
+
+/************************************************************************************************/
+
+
+bool GameGrid::SetBomb(BombID_t ID, const GridBomb& In)
+{
+	auto Res = FlexKit::find(Bombs,
+		[this, ID](auto res)
+	{
+		return (res.ID == ID);
+	});
+
+	*(GridBomb*)Res = In;
+
+	return (bool)Res;
+}
+
+
+/************************************************************************************************/
+
+
+EState GameGrid::GetCellState(GridID_t CellID)
+{
+	size_t Idx = WH[0] * CellID[1] + CellID[0];
+
+	return Grid[Idx];
 }
 
 
@@ -279,12 +333,47 @@ void RegularBombTask::Update(const double dt)
 {
 	T += dt;
 
+	GridBomb BombEntry;
+	if (!Grid->GetBomb(Bomb, BombEntry))
+		return;
+
+	auto Direction = BombEntry.Direction;
+
+ 	if ((Direction * Direction).Sum() > 0)
+	{
+		T2 += dt * 4;
+		auto A = BombEntry.XY;
+		auto B = BombEntry.XY + BombEntry.Direction;
+
+		if (Grid->GetCellState(B) != EState::Empty)
+		{
+			T = 2.0f;
+		}
+		else if (T2 < (1.0f - 1.0f / 60.f))
+		{
+
+			int2 temp = B - A;
+			float2 C = {
+				(float)temp[0],
+				(float)temp[1] };
+
+			BombEntry.Offset = { C * T2 };
+		}
+		else
+		{
+			Grid->MarkCell(A, EState::Empty);
+			Grid->MarkCell(B, EState::Bomb);
+
+			T2					= 0.0f;
+			BombEntry.Offset	= { 0.f, 0.f };
+			BombEntry.XY		= B;
+		}
+	}
+
 	if (T >= 2.0f)
 	{
 		Completed = true;
-		GridBomb BombEntry;
-		if (!Grid->GetBomb(Bomb, BombEntry))
-			return;
+
 
 		Grid->RemoveBomb(Bomb);
 
@@ -312,6 +401,8 @@ void RegularBombTask::Update(const double dt)
 		Grid->CreateGridObject(BombEntry.XY + int2{  0,  1 });
 		Grid->CreateGridObject(BombEntry.XY + int2{  1,  1 });
 	}
+
+	Grid->SetBomb(Bomb, BombEntry);
 }
 
 
@@ -366,8 +457,8 @@ void DrawGameGrid_Debug(
 		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
 			CircleShape(
 				float2{
-					CStep / 2 + Bombs.XY[0] * CStep,
-					RStep / 2 + Bombs.XY[1] * RStep},
+					CStep / 2 + Bombs.XY[0] * CStep + Bombs.Offset.x * CStep,
+					RStep / 2 + Bombs.XY[1] * RStep + Bombs.Offset.y * RStep },
 					min(
 						(CStep / 2.0f) / AspectRatio,
 						(RStep / 2.0f)),

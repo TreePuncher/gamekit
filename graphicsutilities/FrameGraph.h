@@ -698,6 +698,11 @@ namespace FlexKit
 
 	class ShapeProtoType
 	{
+	public:
+		ShapeProtoType() {}
+		virtual ~ShapeProtoType() {}
+		ShapeProtoType(const ShapeProtoType& rhs) = delete;
+
 		virtual void AddShapeDraw(
 			DrawList&				DrawList,
 			VertexBufferHandle		PushBuffer,
@@ -705,6 +710,66 @@ namespace FlexKit
 			FrameResources&			Resources) = 0;
 	};
 
+
+	class ShapeList final : public ShapeProtoType
+	{
+	public:
+		ShapeList(iAllocator* Memory = SystemAllocator) :
+			Shapes{ Memory } {}
+
+		ShapeList(const ShapeList& rhs)
+		{
+		}
+
+
+		~ShapeList()
+		{
+			Shapes.Release();
+		}
+
+		void AddShape(ShapeProtoType* Shape)
+		{
+			Shapes.push_back(Shape);
+		}
+
+	protected:
+		void AddShapeDraw(
+			DrawList&				DrawList,
+			VertexBufferHandle		PushBuffer,
+			ConstantBufferHandle	CB,
+			FrameResources&			Resources) override
+		{
+			for (auto Shape : Shapes)
+				Shape->AddShapeDraw(
+					DrawList, 
+					PushBuffer, 
+					CB, 
+					Resources);
+		}
+
+		FlexKit::Vector<ShapeProtoType*> Shapes;
+	};
+
+	/*
+	void AddShape2List(ShapeList&)
+	{
+	}
+
+	template<typename TY_Shape, typename ... SHAPE_PACK>
+	void AddShape2List(ShapeList& List, TY_Shape& Shape, SHAPE_PACK&& ..SHAPE_PACK)
+	{
+		List.AddShape(Shape);
+		AddShape2List(List);
+	}
+
+	template<typename ... SHAPE_PACK>
+	ShapeList&& CreateShapeList(iAllocator* Memory, SHAPE_PACK&& ... Shape_Pack)
+	{
+		ShapeList Out;
+		AddShape2List(Out, Shape_Pack...);
+		return std::move(Out);
+	}
+	*/
 
 	class CircleShape final : public ShapeProtoType
 	{
@@ -720,6 +785,14 @@ namespace FlexKit
 				R			{Radius},
 				Divisions	{Divisions_IN},
 				AspectRatio {AspectRatio_IN}{}
+
+		CircleShape(const CircleShape& rhs):
+				Color		{rhs.Color},
+				POS			{rhs.POS}, 
+				R			{rhs.R},
+				Divisions	{rhs.Divisions},
+				AspectRatio {rhs.AspectRatio}
+		{}
 
 		void AddShapeDraw(
 			DrawList&				DrawList, 
@@ -752,8 +825,6 @@ namespace FlexKit
 			DrawList.push_back({ CBOffset, VBOffset, Divisions * 3});
 		}
 
-
-	private:
 		float2	POS;
 		float4	Color;
 		float	R;
@@ -768,6 +839,12 @@ namespace FlexKit
 		LineShape(
 			LineSegments& lines
 		) : Lines{lines} {}
+
+		LineShape(const LineShape& rhs)
+			: Lines{ rhs.Lines }{}
+
+		LineShape(const LineShape&& rhs)
+			: Lines{ rhs.Lines }{}
 
 		void AddShapeDraw(
 			DrawList&				DrawList,
@@ -808,6 +885,11 @@ namespace FlexKit
 			POS(POS_IN),
 			WH(WH_IN),
 			Color(Color_IN){}
+
+		RectangleShape(const RectangleShape& rhs) :
+			POS		{ rhs.POS		},
+			WH		{ rhs.WH		},
+			Color	{ rhs.Color		}{}
 
 		void AddShapeDraw(
 			DrawList&				DrawList, 
@@ -854,22 +936,22 @@ namespace FlexKit
 		FrameResources&			Resources) {}
 
 
-	template<typename TY_1, typename ... TY_OTHER>
+	template<typename TY_1, typename ... TY_OTHER_SHAPES>
 	void AddShapes(
 		DrawList&				List, 
 		VertexBufferHandle		VertexBuffer, 
 		ConstantBufferHandle	CB,
 		FrameResources&			Resources,
 		TY_1					Shape, 
-		TY_OTHER ...			ParameterPack)
+		TY_OTHER_SHAPES&& ...	ShapePack)
 	{
 		Shape.AddShapeDraw(List, VertexBuffer, CB, Resources);
-		AddShapes(List, VertexBuffer, CB, Resources, ParameterPack...);
+		AddShapes(List, VertexBuffer, CB, Resources, ShapePack...);
 	}
 
 
 	template<typename ... TY_OTHER>
-	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER ... ARGS)
+	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER&& ... Args)
 	{
 		struct DrawRect
 		{
@@ -891,7 +973,7 @@ namespace FlexKit
 			Data.ConstantBuffer = CB;
 			Data.Draws			= DrawList(Memory);
 
-			AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, ARGS...);
+			AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, Args...);
 		},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
 		{
