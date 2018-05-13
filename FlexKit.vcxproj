@@ -186,6 +186,7 @@
     <ClInclude Include="coreutilities\Input.h" />
     <ClInclude Include="coreutilities\intersection.h" />
     <ClInclude Include="coreutilities\KeycodesEnums.h" />
+    <ClInclude Include="coreutilities\Logging.h" />
     <ClInclude Include="coreutilities\MathUtils.h" />
     <ClInclude Include="coreutilities\memoryutilities.h" />
     <ClInclude Include="coreutilities\MeshUtils.h" />
@@ -229,6 +230,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="coreutilities\Logging.cpp" />
     <ClCompile Include="coreutilities\MathUtils.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

@@ -148,6 +148,9 @@
     <ClInclude Include="coreutilities\KeycodesEnums.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="coreutilities\Logging.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -245,6 +248,9 @@
     </ClCompile>
     <ClCompile Include="graphicsutilities\CoreSceneObjects.cpp">
       <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Logging.cpp">
+      <Filter>coreutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
