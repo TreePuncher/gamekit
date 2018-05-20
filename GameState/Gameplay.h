@@ -237,6 +237,16 @@ public:
 	FlexKit::Vector<EState>			Grid;
 
 	iAllocator* Memory;
+
+	size_t GridID2Index(GridID_t ID)
+	{
+		return WH[0] * ID[1] + ID[0];;
+	}
+
+	bool IDInGrid(GridID_t ID)
+	{
+		return (ID[0] >= WH[0] || ID[0] < 0) && (ID[1] >= WH[1] || ID[1] < 0);
+	}
 };
 
 

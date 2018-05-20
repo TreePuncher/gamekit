@@ -1181,7 +1181,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawSkeleton(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, LineSet* Out)
+	void DEBUG_DrawSkeleton(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, LineSegments* Out)
 	{
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
 		float4x4 WT; GetWT(Nodes, Node, &WT);
@@ -1209,10 +1209,10 @@ namespace FlexKit
 			float3 Y = (WT * (PT * float4{ 0, 1, 0, 1 })).xyz();
 			float3 Z = (WT * (PT * float4{ 0, 0, 1, 1 })).xyz();
 
-			AddLineSegment(Out, { A, WHITE, B, PURPLE });
-			AddLineSegment(Out, { B, RED,	X, RED });
-			AddLineSegment(Out, { B, GREEN, Y, GREEN });
-			AddLineSegment(Out, { B, BLUE,	Z, BLUE });
+			Out->push_back({ A, WHITE,	B, PURPLE	});
+			Out->push_back({ B, RED,	X, RED		});
+			Out->push_back({ B, GREEN,	Y, GREEN	});
+			Out->push_back({ B, BLUE,	Z, BLUE		});
 		}
 	}
 
@@ -1220,7 +1220,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawPoseState(DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, LineSet* Out)
+	void DEBUG_DrawPoseState(DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, LineSegments* Out)
 	{
 		if (!DPS)
 			return;
@@ -1248,10 +1248,10 @@ namespace FlexKit
 			float3 Y = (WT * (PT * float4{ 0, 1, 0, 1 })).xyz();
 			float3 Z = (WT * (PT * float4{ 0, 0, 1, 1 })).xyz();
 
-			AddLineSegment(Out, { A, WHITE, B, PURPLE});
-			AddLineSegment(Out, { B, RED,	X, RED	 });
-			AddLineSegment(Out, { B, GREEN, Y, GREEN });
-			AddLineSegment(Out, { B, BLUE,	Z, BLUE	 });
+			Out->push_back({ A, WHITE,	B, PURPLE	});
+			Out->push_back({ B, RED,	X, RED		});
+			Out->push_back({ B, GREEN,	Y, GREEN	});
+			Out->push_back({ B, BLUE,	Z, BLUE		});
 		}
 	}
 

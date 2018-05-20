@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\memoryutilities.h"
 
 #include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\ImmediateRendering.h"
 
 #include <functional>
 
@@ -430,8 +429,8 @@ namespace FlexKit
 
 	FLEXKITAPI void		InitiateSimpleWindow	( iAllocator*		Memory,		SimpleWindow* Out,		SimpleWindow_Desc& Desc );
 	FLEXKITAPI void		CleanUpSimpleWindow		( SimpleWindow* Out, RenderSystem* RS = nullptr);
-	FLEXKITAPI void		DrawChildren			( GUIChildList&		Elements,	SimpleWindow* Window,	ImmediateRender* Out, ParentInfo& P, FormattingOptions& Formatting = FormattingOptions());
-	FLEXKITAPI void		DrawSimpleWindow		( SimpleWindowInput	Input,		SimpleWindow* Window,	ImmediateRender* Out );
+	//FLEXKITAPI void		DrawChildren			( GUIChildList&		Elements,	SimpleWindow* Window,	ImmediateRender* Out, ParentInfo& P, FormattingOptions& Formatting = FormattingOptions());
+	//FLEXKITAPI void		DrawSimpleWindow		( SimpleWindowInput	Input,		SimpleWindow* Window,	ImmediateRender* Out );
 
 	FLEXKITAPI void		UpdateSimpleWindow		( SimpleWindowInput* Input, SimpleWindow* Window);
 
@@ -476,10 +475,16 @@ namespace FlexKit
 
 	struct LayoutEngine
 	{
-		LayoutEngine(iAllocator* tempmemory, iAllocator* Memory, RenderSystem* RS, ImmediateRender* GUI, float2 pixelsize);
+		struct Draw_RECT
+		{
+			float2 XY;
+			float2 WH;
+			float4 Color;
+		};
+
+		LayoutEngine(iAllocator* tempmemory, iAllocator* Memory, RenderSystem* RS, float2 pixelsize);
 
 		RenderSystem*		RS;
-		ImmediateRender*	GUI;
 		iAllocator*			Memory;
 		iAllocator*			TempMemory;
 
@@ -817,10 +822,9 @@ namespace FlexKit
 		void Release();
 
 		void Update		( double dt, const SimpleWindowInput in, float2 PixelSize, iAllocator* TempMemory );
-		void Upload		( RenderSystem* RS, ImmediateRender* out );
 
-		void Draw		( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
-		void Draw_DEBUG	( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
+		//void Draw		( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
+		//void Draw_DEBUG	( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
 
 		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
 		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );

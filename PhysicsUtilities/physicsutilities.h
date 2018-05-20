@@ -354,12 +354,13 @@ namespace FlexKit
 		void Initiate		(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene);
 		void UpdateSystem	(double dT);
 
-		void DebugDraw		(ImmediateRender* FR,  iAllocator* TempMemory)
+		void DebugDraw		(FrameGraph* FGraph,  iAllocator* TempMemory)
 		{
 			for (auto& C : Controllers)
 			{
+				FK_ASSERT(0, "Not Implemented!");
 				auto Pos = C.Controller->getFootPosition();
-				PushCapsule_Wireframe(FR, TempMemory, {Pos.x, Pos.y, Pos.z}, C.Radius, C.Height, GREEN);
+				//PushCapsule_Wireframe(FR, TempMemory, {Pos.x, Pos.y, Pos.z}, C.Radius, C.Height, GREEN);
 			}
 		}
 
@@ -557,8 +558,10 @@ namespace FlexKit
 			Colliders.Release();
 		}
 
-		void DebugDraw(FlexKit::ImmediateRender* FR, iAllocator* TempMemory)
+		void DebugDraw(FrameGraph* FGraph, iAllocator* TempMemory)
 		{
+			FK_ASSERT(0, "NOT IMPLEMENTED!");
+
 			for (auto& C : Colliders)
 			{
 				auto pose = C.Cube->getGlobalPose();
@@ -650,7 +653,7 @@ namespace FlexKit
 		void UpdateSystem			(double dT);
 		void UpdateSystem_PreDraw	(double dT);
 
-		void DebugDraw				(FlexKit::ImmediateRender* FR, iAllocator* TempMemory);
+		void DebugDraw				(FlexKit::FrameGraph* FGraph, iAllocator* TempMemory);
 
 
 		void Release				();

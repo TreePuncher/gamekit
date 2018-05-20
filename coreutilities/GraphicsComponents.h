@@ -28,7 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Components.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\ImmediateRendering.h"
 #include "..\graphicsutilities\CoreSceneObjects.h"
 
 namespace FlexKit

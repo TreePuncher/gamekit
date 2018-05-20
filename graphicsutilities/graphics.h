@@ -215,7 +215,8 @@ namespace FlexKit
 		R16G16B16A16_FLOAT,
 		R32G32_FLOAT,
 		R32G32B32_FLOAT,
-		R32G32B32A32_FLOAT
+		R32G32B32A32_FLOAT,
+		BCC
 	};
 
 	DXGI_FORMAT TextureFormat2DXGIFormat(FORMAT_2D F);
@@ -2981,23 +2982,6 @@ namespace FlexKit
 	};
 
 	typedef Vector<LineSegment> LineSegments;
-
-	struct LineSet
-	{
-		LineSegments			LineSegments;
-		FrameBufferedResource	GPUResource;
-		size_t					ResourceSize;
-	};
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI void InitiateLineSet			( RenderSystem* RS, iAllocator* Mem, LineSet* out );
-	FLEXKITAPI void ClearLineSet			( LineSet* Pass	);
-	FLEXKITAPI void CleanUpLineSet			( LineSet* Pass	);
-	FLEXKITAPI void AddLineSegment			( LineSet* Pass, LineSegment in		);
-	FLEXKITAPI void UploadLineSegments		( RenderSystem* RS, LineSet* Pass	);
 
 
 	/************************************************************************************************/

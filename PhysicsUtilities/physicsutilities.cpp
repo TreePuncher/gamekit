@@ -568,9 +568,9 @@ namespace FlexKit
 	}
 
 
-	void PhysicsComponentSystem::DebugDraw(FlexKit::ImmediateRender* FR, iAllocator* TempMemory)
+	void PhysicsComponentSystem::DebugDraw(FlexKit::FrameGraph* FGraph, iAllocator* TempMemory)
 	{
-		CharacterControllers.DebugDraw(FR, TempMemory);
+		CharacterControllers.DebugDraw(FGraph, TempMemory);
 		//CubeColliders.DrawDebug(FR);
 		//StaticBoxColliders.DrawDebug(FR);
 	}

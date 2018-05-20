@@ -41,7 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\Graphics.h"
 #include "..\graphicsutilities\TerrainRendering.h"
 #include "..\graphicsutilities\SSReflections.h"
-#include "..\graphicsutilities\ImmediateRendering.h"
 
 #include "Console.h"
 

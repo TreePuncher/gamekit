@@ -91,6 +91,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	/*
 	void DrawConsole(Console* C, ImmediateRender* IR, uint2 Window_WH)
 	{
 		const float LineHeight = (float(C->Font->FontSize[1]) / Window_WH[1]) / 4;
@@ -122,7 +123,7 @@ namespace FlexKit
 				break;
 		}
 	}
-
+	*/
 
 	/************************************************************************************************/
 

@@ -207,11 +207,11 @@
     <ClInclude Include="graphicsutilities\graphics.h" />
     <ClInclude Include="graphicsutilities\GuiUtilities.h" />
     <ClInclude Include="graphicsutilities\ImageUtilities.h" />
-    <ClInclude Include="graphicsutilities\ImmediateRendering.h" />
     <ClInclude Include="graphicsutilities\PipelineState.h" />
     <ClInclude Include="graphicsutilities\FrameGraph.h" />
     <ClInclude Include="graphicsutilities\SSReflections.h" />
     <ClInclude Include="graphicsutilities\TerrainRendering.h" />
+    <ClInclude Include="graphicsutilities\TextRendering.h" />
     <ClInclude Include="graphicsutilities\TiledRender.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PhysicsUtilities\physicsutilities.h" />
@@ -332,12 +332,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="graphicsutilities\ImmediateRendering.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="graphicsutilities\PipelineState.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -362,6 +356,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="graphicsutilities\TextRendering.cpp" />
     <ClCompile Include="graphicsutilities\TiledRender.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

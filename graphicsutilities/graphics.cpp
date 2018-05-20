@@ -7132,47 +7132,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateLineSet(RenderSystem* RS, iAllocator* Mem, LineSet* out)
-	{
-		out->LineSegments.Release();
-		out->LineSegments.Allocator = Mem;
-		out->ResourceSize	= KILOBYTE * 64;
-		out->GPUResource	= CreateShaderResource(RS, KILOBYTE * 64, "LINE SEGMENTS");
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ClearLineSet(LineSet* Set)
-	{
-		Set->LineSegments.clear();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CleanUpLineSet(LineSet* pass)
-	{
-		pass->LineSegments.Release();
-		pass->GPUResource.Release();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void AddLineSegment(LineSet* Pass, LineSegment in)
-	{
-		Pass->LineSegments.push_back(in);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetWindowRect(ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I)
+	void SetFullscreenRect(ID3D12GraphicsCommandList* CL, RenderWindow* TargetWindow, UINT I)
 	{
 		D3D12_RECT		RECT = D3D12_RECT();
 		D3D12_VIEWPORT	VP	 = D3D12_VIEWPORT();

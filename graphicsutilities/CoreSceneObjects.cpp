@@ -90,7 +90,7 @@ namespace FlexKit
 
 	
 
-	void DEBUG_DrawCameraFrustum(LineSet* out, Camera* C, float3 Position, Quaternion Q)
+	void DEBUG_DrawCameraFrustum(LineSegments* out, Camera* C, float3 Position, Quaternion Q)
 	{
 		auto Points = C->GetFrustumPoints(Position, Q);
 
@@ -100,53 +100,53 @@ namespace FlexKit
 
 		Line.A = Points.FTL;
 		Line.B = Points.FTR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.FTL;
 		Line.B = Points.FBL;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.FTR;
 		Line.B = Points.FBR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.FBL;
 		Line.B = Points.FBR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.NTL;
 		Line.B = Points.NTR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.NTL;
 		Line.B = Points.NBR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.NTR;
 		Line.B = Points.NBL;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.NBL;
 		Line.B = Points.NBR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		//*****************************************
 
 		Line.A = Points.NBR;
 		Line.B = Points.FBR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.NBL;
 		Line.B = Points.FBL;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.NTR;
 		Line.B = Points.FTL;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 
 		Line.A = Points.NTL;
 		Line.B = Points.FTR;
-		out->LineSegments.push_back(Line);
+		out->push_back(Line);
 	}
 
 

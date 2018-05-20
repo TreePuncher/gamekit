@@ -205,7 +205,7 @@ namespace FlexKit
 	void InitateConsole ( Console* out, FontAsset* Font, EngineMemory* Engine );	
 	void ReleaseConsole	( Console* out );
 
-	void DrawConsole	( Console* C, ImmediateRender* IR, uint2 Window_WH );
+	//void DrawConsole	( Console* C, ImmediateRender* IR, uint2 Window_WH );
 
 	void InputConsole		( Console* C, char InputCharacter );
 	void EnterLineConsole	( Console* C );

@@ -500,8 +500,8 @@ namespace FlexKit
 	//	Call After Updating PoseState
 	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, SceneNodes* Nodes, DrawablePoseState* DPS );
 
-	FLEXKITAPI void DEBUG_DrawSkeleton				( Skeleton* S,				SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, LineSet* Out );
-	FLEXKITAPI void DEBUG_DrawPoseState				( DrawablePoseState* DPS,	SceneNodes* Nodes, NodeHandle Node, LineSet* Out ) ;
+	FLEXKITAPI void DEBUG_DrawSkeleton				( Skeleton* S,				SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, LineSegments* Out );
+	FLEXKITAPI void DEBUG_DrawPoseState				( DrawablePoseState* DPS,	SceneNodes* Nodes, NodeHandle Node, LineSegments* Out ) ;
 	FLEXKITAPI void DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
 }
 #endif

@@ -143,14 +143,10 @@ bool GameGrid::IsCellClear(GridID_t GridID)
 	}
 	*/
 
-	if (GridID[0] >= WH[0] || GridID[0] < 0)
+	if (IDInGrid(GridID))
 		return false;
 
-	if (GridID[1] >= WH[1] || GridID[1] < 0)
-		return false;
-
-
-	size_t Idx = WH[0] * GridID[1] + GridID[0];
+	size_t Idx = GridID2Index(GridID);
 
 	return (Grid[Idx] == EState::Empty);
 }
@@ -161,14 +157,10 @@ bool GameGrid::IsCellClear(GridID_t GridID)
 
 bool GameGrid::IsCellDestroyed(GridID_t GridID)
 {
-	if (GridID[0] >= WH[0] || GridID[0] < 0)
+	if (IDInGrid(GridID))
 		return false;
 
-	if (GridID[1] >= WH[1] || GridID[1] < 0)
-		return false;
-
-
-	size_t Idx = WH[0] * GridID[1] + GridID[0];
+	size_t Idx = GridID2Index(GridID);
 
 	return (Grid[Idx] == EState::Object);
 }
@@ -203,7 +195,7 @@ void GameGrid::Update(const double dt, iAllocator* TempMemory)
 
 bool GameGrid::MarkCell(GridID_t CellID, EState State)
 {
-	size_t Idx = WH[0] * CellID[1] + CellID[0];
+	size_t Idx = GridID2Index(CellID);
 
 	//if (!IsCellClear(CellID))
 	//	return false;

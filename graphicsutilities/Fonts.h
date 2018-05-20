@@ -119,6 +119,33 @@ namespace FlexKit
 	};
 
 
+	struct PrintTextFormatting
+	{
+		static PrintTextFormatting DefaultParams()
+		{
+			return 
+			{
+				{0, 0},
+				{1, 1},
+				{1, 1},
+				{1, 1},
+				float4(WHITE, 1),
+				false, false
+			};
+		}
+
+		float2 StartingPOS;
+		float2 TextArea;
+		float2 Scale;
+		float2 PixelSize;
+		float4 Color;
+
+		bool CenterX;
+		bool CenterY;
+
+	};
+
+
 	/************************************************************************************************/
 }
 

@@ -438,10 +438,10 @@ namespace FlexKit
 
 		FK_ASSERT(0);
 
-		FlexKit::Draw_RECT Cursor;
-		Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
-		Cursor.TRight = Cursor.BLeft + CursorSize;
-		Cursor.Color  = float4(1, 1, 1, 1);
+		//FlexKit::Draw_RECT Cursor;
+		//Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
+		//Cursor.TRight = Cursor.BLeft + CursorSize;
+		//Cursor.Color  = float4(1, 1, 1, 1);
 
 		//PushRect(State->Immediate, Cursor);
 	}

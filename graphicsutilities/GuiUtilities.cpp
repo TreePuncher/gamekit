@@ -393,187 +393,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DrawChildren(GUIChildList& Elements, SimpleWindow* Window, ImmediateRender* Out, ParentInfo& P, FormattingOptions& Options)
-	{
-		FormattingState CurrentFormatting = InitiateFormattingState(Options, P);
-
-		for (auto& I : Elements)
-		{
-			const auto& E = Window->Elements[I];
-			float2 WH;
-
-			switch (E.Type) {
-			case EGE_HLIST:
-			case EGE_VLIST: {
-				float2 Position = GetCellPosition		(Window, E.Position);
-				WH				= GetCellDimension		(Window, Window->Lists[E.Index].WH);
-
-				Draw_RECT_CLIPPED	Panel;
-				Panel.BLeft			  = Position + CurrentFormatting.CurrentOffset;
-				Panel.TRight          = Panel.BLeft + WH;
-				Panel.Color           = Window->Lists[E.Index].Color;
-				Panel.CLIPAREA_BLEFT  = P.ClipArea_BL;
-				Panel.CLIPAREA_TRIGHT = P.ClipArea_TR;
-
-				PushRect(Out, Panel);
-
-				ParentInfo This;
-				This.ParentPosition = Position + CurrentFormatting.CurrentOffset;
-				This.ClipArea_BL	= This.ParentPosition;
-				This.ClipArea_TR	= This.ClipArea_BL + WH;// + Window->CellBorder;
-				This.ClipArea_WH	= WH;
-
-				FormattingOptions Formatting;
-				Formatting.CellDividerSize = Window->CellBorder;
-
-				if (E.Type == EGE_HLIST) 
-					Formatting.DrawDirection = EDrawDirection::DD_Rows;
-				else if (E.Type == EGE_VLIST)
-					Formatting.DrawDirection = EDrawDirection::DD_Columns;
-
-				DrawChildren(Window->Lists[E.Index].Children, Window, Out, This, Formatting);
-			}	break;
-			case EGE_BUTTON_TEXTURED: {
-				auto		CurrentButton	= &Window->TexturedButtons[E.Index];
-				float2		Position		= GetFormattedPosition(CurrentFormatting, Options, CurrentButton->WH);
-				WH							= CurrentButton->WH;
-				Texture2D*	Texture			= CurrentButton->Active ?  CurrentButton->Texture_Active : CurrentButton->Texture_InActive;
-
-				CurrentButton->Active		= false;
-
-				Draw_TEXTURED_RECT NewButton;
-				NewButton.TextureHandle = Texture;
-				NewButton.BLeft         = Position;//Position;
-				NewButton.Color         = float4(WHITE, 1);
-				NewButton.TRight        = Position + WH;
-
-				if (!WillFit(NewButton.BLeft, NewButton.TRight, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
-					return;
-
-				PushRect(Out, NewButton);
-			}	break;
-			case EGE_BUTTON_TEXT: {
-				auto		CurrentButton	= &Window->TextButtons[E.Index];
-				float2		Position		= GetFormattedPosition(CurrentFormatting, Options, CurrentButton->WH);
-							WH				= CurrentButton->WH;
-
-				CurrentButton->Active				= false;
-				CurrentButton->Text.ScreenPosition	= Position + WH * float2{0, 1.0f};
-
-				Draw_TEXT Text;
-				Text.Font			 =  CurrentButton->Font;
-				Text.Text			 = &CurrentButton->Text;
-				Text.CLIPAREA_BLEFT  =  Position;
-				Text.CLIPAREA_TRIGHT =  Position + WH;
-				Text.Color			 =  CurrentButton->TextColor;
-
-				if (!WillFit(Text.CLIPAREA_BLEFT, Text.CLIPAREA_TRIGHT, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
-					return;
-
-				if(CurrentButton->BackgroundTexture)
-				{
-					Draw_TEXTURED_RECT NewButton;
-					NewButton.BLeft			= Position;
-					NewButton.Color			= CurrentButton->BackGroundColor;
-					NewButton.TRight		= Position + WH;
-					NewButton.TextureHandle = CurrentButton->BackgroundTexture;
-					PushRect(Out, NewButton);
-				}
-				else
-				{
-					Draw_RECT NewButton;
-					NewButton.BLeft			= Position;
-					NewButton.Color			= CurrentButton->BackGroundColor;
-					NewButton.TRight		= Position + WH;
-					PushRect(Out, NewButton);
-				}
-
-				PushText(Out, Text);
-			}	break;
-			case EGE_TEXTINPUT: {
-				auto TextInput = Window->TextInputs[E.Index];
-
-				WH = TextInput.WH;
-				auto Position = GetFormattedPosition(CurrentFormatting, Options, WH);
-
-				if (!WillFit(Position, Position + WH, P.ClipArea_BL, P.ClipArea_TR) && Options.OverflowHandling == OF_Exlude)
-					return;
-
-				Draw_RECT_CLIPPED Background;
-				Background.BLeft		   = Position;
-				Background.TRight          = Background.BLeft + WH;
-				Background.Color           = {Grey(0.5f), 1};
-				Background.CLIPAREA_BLEFT  = P.ClipArea_BL;
-				Background.CLIPAREA_TRIGHT = P.ClipArea_TR;
-				PushRect(Out, Background);
-
-				TextInput.TextGUI.ScreenPosition = Position + WH * float2{ 0, 1.0f };
-
-				Draw_TEXT Text;
-				Text.Font				=  TextInput.Font;
-				Text.Text				= &TextInput.TextGUI;
-				Text.CLIPAREA_BLEFT		= Position;
-				Text.CLIPAREA_TRIGHT	= Position + WH;
-				Text.Color				= float4(GREEN, 1);
-			}	break;
-			case EGE_HSLIDER: 
-			case EGE_VSLIDER: {
-				auto& Slider = Window->Slider[E.Index];
-
-				float2	Position	= GetFormattedPosition(CurrentFormatting, Options, Slider.WH);
-						WH			= Slider.WH;
-				float	R			= Saturate(Slider.BarRatio);
-
-				if (!WillFit(
-						Position, 
-						Position + WH, 
-						P.ClipArea_BL, P.ClipArea_TR) 
-					&& Options.OverflowHandling == OF_Exlude)
-					return;
-
-				// Bar Background
-				{
-					Draw_RECT_CLIPPED	Background;
-					Background.BLeft		   = Position;
-					Background.TRight          = Background.BLeft + WH;
-					Background.Color           = {Grey(0.5f), 1};
-					Background.CLIPAREA_BLEFT  = P.ClipArea_BL;
-					Background.CLIPAREA_TRIGHT = P.ClipArea_TR;
-					PushRect(Out, Background);
-				}
-				// Bar
-				{
-					float2 S  = (E.Type == EGE_HSLIDER) ? float2{R, 1.0f} : float2{ 1.0f, R};
-					float2 S2 = (E.Type == EGE_HSLIDER) ? float2{1.0f, 0.0f} : float2{ 0.0f, 1.0f };
-
-					float2 TravelDistance = WH * (1 - R);
-					TravelDistance *= S2;
-
-					Draw_RECT_CLIPPED Bar;
-					Bar.BLeft			= Position + TravelDistance * Saturate(Slider.SliderPosition);
-					Bar.TRight          = Bar.BLeft + WH * S;
-					Bar.Color           = {Grey(0.9f), 1};
-					Bar.CLIPAREA_BLEFT  = P.ClipArea_BL;
-					Bar.CLIPAREA_TRIGHT = P.ClipArea_TR;
-					PushRect(Out, Bar);
-				}
-			}	break;
-			case EGE_DIVIDER: {
-				WH = Window->Dividers[E.Index].Size;
-			}	break;
-			default:
-				break;
-			}
-
-			if (IncrementFormatingState(CurrentFormatting, Options, WH))
-				return;// Ran out of Space in Row/Column
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
 	bool CursorInsideCell(SimpleWindow* Window, float2 CursorPos, float2 CursorWH, uint2 Cell)
 	{
 		auto CellPOS = GetCellPosition	(Window, Cell);
@@ -594,67 +413,6 @@ namespace FlexKit
 		P.ParentPosition = Window->Position;
 
 		HandleWindowInput(Input, Window->Root, Window, P);
-	}
-
-	void DrawSimpleWindow(SimpleWindowInput Input, SimpleWindow* Window, ImmediateRender* Out)
-	{
-		//Window->Position = Input.MousePosition;
-
-		{
-			Draw_RECT	BackPanel;
-			BackPanel.BLeft		= Window->Position;
-			BackPanel.TRight	= Window->Position + Window->WH;
-			BackPanel.Color		= float4(Grey(0.35f), 1);
-
-			PushRect(Out, BackPanel);
-		}
-
-		uint32_t ColumnCount = Window->ColumnCount;
-		uint32_t RowCount	 = Window->RowCount;
-
-		const float WindowWidth  = Window->WH[0];
-		const float WindowHeight = Window->WH[1];
-
-		const float CellGapWidth  = Window->CellBorder[0];
-		const float CellGapHeight = Window->CellBorder[1];
-
-		const float CellWidth	= (WindowWidth  / ColumnCount)	- CellGapWidth  - CellGapWidth  / ColumnCount;
-		const float CellHeight	= (WindowHeight / RowCount)		- CellGapHeight - CellGapHeight / RowCount;
-
-		for (uint32_t I = 0; I < Window->ColumnCount; ++I){
-			for (uint32_t J = 0; J < Window->RowCount; ++J)	{
-				if (!GetCellState({I, J}, Window))
-				{
-					Draw_RECT BackPanel;
-					//BackPanel.BLeft		= Window->Position + float2{ CellGapWidth + (CellGapWidth + CellWidth) * I, CellGapHeight + (CellGapHeight + CellHeight) * J };
-					BackPanel.BLeft  = Window->Position + float2{ (CellWidth + CellGapWidth) * I + CellGapWidth, (CellHeight + CellGapHeight) * J + CellGapHeight };
-					BackPanel.TRight = BackPanel.BLeft  + float2{ CellWidth	, CellHeight };
-					
-					if (Input.LeftMouseButtonPressed && CursorInside(Input.MousePosition, Input.CursorWH,BackPanel.BLeft, float2{ CellWidth, CellHeight }))
-						BackPanel.Color = float4(Grey(1.0f), 1);
-					else if (CursorInside(Input.MousePosition, Input.CursorWH, BackPanel.BLeft, float2{ CellWidth	, CellHeight }))
-						BackPanel.Color = float4(Grey(0.75f), 1);
-					else
-						BackPanel.Color = float4(Grey(0.45f), 1);
-
-					PushRect(Out, BackPanel);
-				}
-			}
-		}
-		
-		ParentInfo P;
-		P.ClipArea_BL		= Window->Position;
-		P.ClipArea_TR		= Window->Position + Window->WH;
-		P.ParentPosition	= Window->Position;
-		DrawChildren(Window->Root, Window, Out, P);
-
-		float AspectRatio = Window->WH[0] / Window->WH[1];
-
-		FlexKit::Draw_RECT	TestCursor;
-		TestCursor.BLeft  = Input.MousePosition + float2{ 0.0f, -0.005f };
-		TestCursor.TRight = Input.MousePosition + float2{ 0.005f / AspectRatio, 0.005f };
-		TestCursor.Color  = float4(GREEN, 1);
-		PushRect(Out, TestCursor);
 	}
 
 
@@ -1024,7 +782,7 @@ namespace FlexKit
 
 	void ComplexGUI::Update(double dt, const SimpleWindowInput Input, float2 PixelSize, iAllocator* TempMemory)
 	{
-		LayoutEngine Layout(TempMemory, Memory, nullptr, nullptr, PixelSize);
+		LayoutEngine Layout(TempMemory, Memory, nullptr, PixelSize);
 
 		for (size_t I = 0; I < Elements.size(); ++I) {
 			switch (Elements[I].Type)
@@ -1040,16 +798,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
-
-	void ComplexGUI::Upload(RenderSystem* RS, ImmediateRender* out)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-
+	/*
 
 	void ComplexGUI::Draw(RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize)
 	{
@@ -1066,8 +815,8 @@ namespace FlexKit
 			}
 		}
 	}
-
-
+	
+	*/
 	/************************************************************************************************/
 
 
@@ -1141,7 +890,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
+	/*
 
 	void ComplexGUI::Draw_DEBUG(RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize)
 	{
@@ -1155,7 +904,7 @@ namespace FlexKit
 		}
 	}
 
-
+	*/
 	/************************************************************************************************/
 
 
@@ -1272,10 +1021,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LayoutEngine::LayoutEngine(iAllocator* tempmemory, iAllocator* memory, RenderSystem* rs, ImmediateRender* gui, float2 pixelsize) :
+	LayoutEngine::LayoutEngine(iAllocator* tempmemory, iAllocator* memory, RenderSystem* rs, float2 pixelsize) :
 		PositionStack(memory),
 		RS(rs),
-		GUI(gui),
 		Memory(memory),
 		PixelSize(pixelsize),
 		TempMemory(tempmemory)
@@ -1316,7 +1064,8 @@ namespace FlexKit
 		Formatting.Color               = float4(WHITE, 1);
 		Formatting.CenterX			   = CenterX;
 		Formatting.CenterY			   = CenterY;
-		PrintText(GUI, Str, Font, Formatting, TempMemory);
+		
+		//PrintText(GUI, Str, Font, Formatting, TempMemory);
 	}
 
 
@@ -1340,7 +1089,7 @@ namespace FlexKit
 			L.B = Position2SS(L.B);
 		}
 
-		PushLineSet2D(GUI, Temp);
+		//PushLineSet2D(GUI, Temp);
 	}
 
 
@@ -1349,14 +1098,16 @@ namespace FlexKit
 	void LayoutEngine::PushRect(Draw_RECT Rect)	{
 		auto Offset = GetCurrentPosition();
 
-		Rect.BLeft  += Offset;
-		Rect.TRight += Offset;
+		FK_ASSERT(0, "Not Implemented!");
+
+		//Rect.BLeft  += Offset;
+		//Rect.TRight += Offset;
 
 		// Change Cordinate System From Top Down, to Buttom Up
 		Draw_RECT Out = Rect;
-		Out.BLeft	= { Rect.BLeft[0], 1 - Rect.TRight[1] };
-		Out.TRight  = { Rect.TRight[0], 1 - Rect.BLeft[1] };
-		FlexKit::PushRect(GUI, Out);
+		//Out.BLeft	= { Rect.BLeft[0], 1 - Rect.TRight[1] };
+		//Out.TRight  = { Rect.TRight[0], 1 - Rect.BLeft[1] };
+		//FlexKit::PushRect(GUI, Out);
 	}
 
 
@@ -1398,22 +1149,24 @@ namespace FlexKit
 
 	void GUIGrid::Draw(GUIGridHandle Grid, LayoutEngine* LayoutEngine)
 	{
-		Draw_RECT Rect;
-		Rect.BLeft	= {0, 0};
-		Rect.TRight = Grid.GetWH();
-		Rect.Color	= Grid.GetBackgroundColor();
+		FK_ASSERT(0, "Not Implemented!");
 
-		LayoutEngine->PushOffset(Grid.GetPosition());
-		LayoutEngine->PushRect(Rect);
+		//Draw_RECT Rect;
+		//Rect.BLeft	= {0, 0};
+		//Rect.TRight = Grid.GetWH();
+		//Rect.Color	= Grid.GetBackgroundColor();
 
-		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
-		{
-			Grid.mWindow->DrawElement(hndl, LayoutEngine);
-		};
+		//LayoutEngine->PushOffset(Grid.GetPosition());
+		//LayoutEngine->PushRect(Rect);
 
-		ScanElements(Grid, *LayoutEngine, ScanFunction);
+		//auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
+		//{
+		//	Grid.mWindow->DrawElement(hndl, LayoutEngine);
+		//};
 
-		LayoutEngine->PopOffset();
+		//ScanElements(Grid, *LayoutEngine, ScanFunction);
+
+		//LayoutEngine->PopOffset();
 	}
 
 
@@ -1513,15 +1266,17 @@ namespace FlexKit
 
 	void GUIButton::Draw(GUIButtonHandle button, LayoutEngine* Layout)
 	{
-		Draw_RECT Rect;
-		Rect.BLeft	= { 0.0f, 0.0f };
-		Rect.TRight = button.WH();
-		Rect.Color  = float4(Grey(0.5f), 1.0f);
-	
-		Layout->PushRect(Rect);
+		FK_ASSERT(0, "Not Implemented!");
 
-		if(button.Text() && button._IMPL().Font)
-			Layout->PrintLine(button.Text(), button.WH(), button._IMPL().Font, { 0, 0 }, {1, 1}, true, true);
+		//Draw_RECT Rect;
+		//Rect.BLeft	= { 0.0f, 0.0f };
+		//Rect.TRight = button.WH();
+		//Rect.Color  = float4(Grey(0.5f), 1.0f);
+	
+		//Layout->PushRect(Rect);
+
+		//if(button.Text() && button._IMPL().Font)
+		//	Layout->PrintLine(button.Text(), button.WH(), button._IMPL().Font, { 0, 0 }, {1, 1}, true, true);
 	}
 
 
@@ -1642,15 +1397,17 @@ namespace FlexKit
 
 	void GUITextBox::Draw(GUITextBoxHandle TextBox, LayoutEngine* Layout)
 	{
-		auto& Element = TextBox._IMPL();
-		Draw_RECT Rect;
-		Rect.BLeft  = { 0, 0 };
-		Rect.TRight = TextBox.WH();
-		Rect.Color  = Element.Highlighted ? Element.HighlightedColor : Element.Color;
-		Layout->PushRect(Rect);
+		FK_ASSERT(0, "Not Implemented!");
 
-		if(strlen(Element.Text))
-			Layout->PrintLine(Element.Text, TextBox.WH(), Element.Font, { 0, 0 }, {0.4f, 0.4f}, true, true);
+		auto& Element = TextBox._IMPL();
+		//Draw_RECT Rect;
+		//Rect.BLeft  = { 0, 0 };
+		//Rect.TRight = TextBox.WH();
+		//Rect.Color  = Element.Highlighted ? Element.HighlightedColor : Element.Color;
+		//Layout->PushRect(Rect);
+
+		//if(strlen(Element.Text))
+		//	Layout->PrintLine(Element.Text, TextBox.WH(), Element.Font, { 0, 0 }, {0.4f, 0.4f}, true, true);
 	}
 
 

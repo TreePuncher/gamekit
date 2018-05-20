@@ -127,9 +127,6 @@
     <ClInclude Include="graphicsutilities\TiledRender.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\ImmediateRendering.h">
-      <Filter>graphicsutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="graphicsutilities\ImageUtilities.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
@@ -150,6 +147,9 @@
     </ClInclude>
     <ClInclude Include="coreutilities\Logging.h">
       <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\TextRendering.h">
+      <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -231,9 +231,6 @@
     <ClCompile Include="graphicsutilities\ForwardRendering.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
-    <ClCompile Include="graphicsutilities\ImmediateRendering.cpp">
-      <Filter>graphicsutilities\source</Filter>
-    </ClCompile>
     <ClCompile Include="graphicsutilities\ImageUtilities.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
@@ -251,6 +248,9 @@
     </ClCompile>
     <ClCompile Include="coreutilities\Logging.cpp">
       <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\TextRendering.cpp">
+      <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
