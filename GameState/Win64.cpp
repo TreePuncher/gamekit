@@ -22,6 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#include "..\coreutilities\Logging.h"
 #include "..\buildsettings.h"
 #include "..\Application\Application.h"
 #include "HostState.cpp"
@@ -29,17 +30,30 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MenuState.cpp"
 #include "PlayState.cpp"
 #include "Gameplay.cpp"
+#include <iostream>
 
 int main(int argc, char* argv[])
 {
+	FlexKit::InitLog(argc, argv);
+	FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
+	FlexKit::AddLogFile("GameState.log", FlexKit::Verbosity_INFO);
+	FK_LOG_INFO("Logging initialized started.");
+
 	FlexKit::FKApplication App;
 
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);
 
 	App.SetInitialState<PlayState>(&App);
+	FK_LOG_INFO("Set initial PlayState state.");
+
+	FK_LOG_INFO("Running application...");
 	App.Run();
+	FK_LOG_INFO("Completed running application");
+
+	FK_LOG_INFO("Started cleanup...");
 	App.Cleanup();
+	FK_LOG_INFO("Completed cleanup.");
 
 	return 0;
 }
