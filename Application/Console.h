@@ -182,7 +182,7 @@ namespace FlexKit
 	{
 		CircularBuffer<ConsoleLine, 32>	Lines;
 		CircularBuffer<ConsoleLine, 32>	CommandHistory;
-		FontAsset*						Font;
+		SpriteFontAsset*				Font;
 
 		Vector<ConsoleVariable>		Variables;
 		ConsoleFunctionTable		FunctionTable;
@@ -202,7 +202,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitateConsole ( Console* out, FontAsset* Font, EngineMemory* Engine );	
+	void InitateConsole ( Console* out, SpriteFontAsset* Font, EngineMemory* Engine );
 	void ReleaseConsole	( Console* out );
 
 	//void DrawConsole	( Console* C, ImmediateRender* IR, uint2 Window_WH );

@@ -119,6 +119,7 @@ public:
 	TextureHandle			DepthBuffer;
 	ConstantBufferHandle	ConstantBuffer;
 	VertexBufferHandle		VertexBuffer;
+	VertexBufferHandle		TextBuffer;
 
 	GameGrid			Grid;
 	LocalPlayerHandler	Player1_Handler;

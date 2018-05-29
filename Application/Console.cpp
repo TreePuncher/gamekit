@@ -37,7 +37,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitateConsole(Console* Out, FontAsset* Font, EngineCore* Engine)
+	void InitateConsole(Console* Out, SpriteFontAsset* Font, EngineCore* Engine)
 	{
 		Out->Lines.clear();
 		Out->Memory                       = Engine->GetBlockMemory();

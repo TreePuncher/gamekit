@@ -53,20 +53,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	/************************************************************************************************/
-	// UTILITIY FUNCTIONS
-
-	template<typename TY_>
-	HRESULT CheckHR(HRESULT HR, TY_ FN)
-	{
-		auto res = FAILED(HR);
-		if (res) FN();
-		return HR;
-	}
-
-	#define PRINTERRORBLOB(Blob) [&](){std::cout << Blob->GetBufferPointer();}
-	#define ASSERTONFAIL(ERRORMESSAGE)[&](){FK_ASSERT(0, ERRORMESSAGE);}
-
 	void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size)
 	{
 #if USING(DEBUGGRAPHICS)
@@ -679,6 +665,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void DesciptorHeap::Init(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
+	{
+		FK_ASSERT(TempMemory);
+		FillState = Vector<bool>(TempMemory);
+
+		const size_t EntryCount = Layout_IN.size();
+		DescriptorHeap = RS->_ReserveDescHeap(EntryCount);
+		Layout = &Layout_IN;
+
+		for (size_t I = 0; I < EntryCount; I++)
+			FillState.push_back(false);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void DesciptorHeap::NullFill(RenderSystem* RS)
 	{
 		auto& Entries = Layout->Entries;
@@ -736,6 +739,26 @@ namespace FlexKit
 				}
 			}
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool DesciptorHeap::SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle)
+	{
+		if (Layout->Entries[Index].Type != DescHeapEntryType::ShaderResource)
+			return false;
+
+
+		Push2DSRVToDescHeap(
+			RS, 
+			RS->Textures[Handle], 
+			IncrementHeapPOS(DescriptorHeap, 
+				RS->DescriptorCBVSRVUAVSize, 
+				Index));
+
+		return true;
 	}
 
 
@@ -1076,6 +1099,14 @@ namespace FlexKit
 	void Context::SetGraphicsShaderResourceView(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize)
 	{
 		DeviceContext->SetGraphicsRootShaderResourceView(idx, Resource->Get()->GetGPUVirtualAddress());
+	}
+
+
+	/************************************************************************************************/
+
+	void Context::SetGraphicsShaderResourceView(size_t idx, Texture2D& Texture)
+	{
+		DeviceContext->SetGraphicsRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
 	}
 
 
@@ -1977,7 +2008,7 @@ namespace FlexKit
 			NullUAV_Desc.CV			  = true;
 			NullUAV_Desc.RenderTarget = true;
 
-			NullUAV = CreateTexture2D(this, &NullUAV_Desc);
+			NullUAV = FlexKit::CreateTexture2D(this, &NullUAV_Desc);
 			SETDEBUGNAME(NullUAV, "NULL UAV");
 
 			ObjectsCreated.push_back(NullUAV);
@@ -1995,7 +2026,7 @@ namespace FlexKit
 			NullSRV_Desc.RenderTarget = false;
 			NullSRV_Desc.Format		  = FORMAT_2D::R32G32B32A32_FLOAT;
 
-			NullSRV = CreateTexture2D(this, &NullSRV_Desc);
+			NullSRV = FlexKit::CreateTexture2D(this, &NullSRV_Desc);
 			SETDEBUGNAME( NullSRV, "NULL SRV");
 			
 			ObjectsCreated.push_back(NullSRV);
@@ -2016,6 +2047,10 @@ namespace FlexKit
 
 		ReadyUploadQueues();
 
+		_ResetDescHeap();
+		_ResetRTVHeap();
+		_ResetGPUDescHeap();
+		_ResetDSVHeap();
 
 		return InitiateComplete;
 	}
@@ -2242,6 +2277,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	size_t RenderSystem::GetTextureFrameGraphIndex(TextureHandle Texture)
+	{
+		auto FrameID = GetCurrentFrame();
+		return Textures.GetFrameGraphIndex(Texture, FrameID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::SetTextureFrameGraphIndex(TextureHandle Texture, size_t Index)
+	{
+		auto FrameID = GetCurrentFrame();
+		Textures.SetFrameGraphIndex(Texture, FrameID, Index);
+	}
+
+
+	/************************************************************************************************/
+
+
 	ConstantBufferHandle RenderSystem::CreateConstantBuffer(size_t BufferSize, bool GPUResident)
 	{
 		return ConstantBuffers.CreateConstantBuffer(BufferSize, GPUResident);
@@ -2264,11 +2319,41 @@ namespace FlexKit
 	{
 		Texture2D_Desc Desc(WH[1], WH[0], FORMAT_2D::D32_FLOAT, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL);
 
-		ID3D12Resource* Resources[] = { CreateDepthBufferResource(this, &Desc, UseFloat), CreateDepthBufferResource(this, &Desc, UseFloat), CreateDepthBufferResource(this, &Desc, UseFloat) };
+		ID3D12Resource* Resources[] = { 
+			CreateDepthBufferResource(this, &Desc, UseFloat), 
+			CreateDepthBufferResource(this, &Desc, UseFloat), 
+			CreateDepthBufferResource(this, &Desc, UseFloat) 
+		};
 
 		auto DepthBuffer = RenderTargets.AddResource(Desc, Resources, 3, DRS_DEPTHBUFFERWRITE, TF_RenderTarget);
 
 		return DepthBuffer;
+	}
+
+
+	TextureHandle RenderSystem::CreateTexture2D(uint2 WH, FORMAT_2D Format, size_t MipLevels)
+	{
+		ID3D12Resource* Resources[] = {
+			nullptr
+		};
+
+		Texture2D_Desc Desc(WH[1], WH[0], Format, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL, MipLevels);
+
+		FK_ASSERT(0);
+		auto Texture = Textures.AddResource(Desc, Resources, 1, DRS_ShaderResource, TF_NONE);
+		return Texture;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle RenderSystem::CreateTexture2D(uint2 WH, FORMAT_2D Format, size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount)
+	{
+		Texture2D_Desc Desc(WH[1], WH[0], Format, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL, MipLevels);
+
+		auto Texture = Textures.AddResource(Desc, Resources, ResourceCount, DRS_ShaderResource, TF_NONE);
+		return Texture;
 	}
 
 
@@ -2961,15 +3046,12 @@ namespace FlexKit
 		{
 		case FlexKit::FORMAT_2D::R16G16_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT;
-			break;
 		case FlexKit::FORMAT_2D::R8G8B8A8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
-			break;
 		case FlexKit::FORMAT_2D::R8G8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM;
 		case FlexKit::FORMAT_2D::R32G32B32_FLOAT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT;
-			break;
 		case FlexKit::FORMAT_2D::R16G16B16A16_FLOAT:
 			return DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT;
 		case FlexKit::FORMAT_2D::R32G32B32A32_FLOAT:
@@ -2978,6 +3060,36 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT;
 		case FlexKit::FORMAT_2D::D32_FLOAT:
 			return DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT;
+		case FlexKit::FORMAT_2D::BC1_TYPELESS:
+			return DXGI_FORMAT::DXGI_FORMAT_BC1_TYPELESS;
+		case FlexKit::FORMAT_2D::BC1_UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM;
+		case FlexKit::FORMAT_2D::BC1_UNORM_SRGB:
+			return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM_SRGB;
+		case FlexKit::FORMAT_2D::BC2_TYPELESS:
+			return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM_SRGB;
+		case FlexKit::FORMAT_2D::BC2_UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM;
+		case FlexKit::FORMAT_2D::BC2_UNORM_SRGB:
+			return DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM_SRGB;
+		case FlexKit::FORMAT_2D::BC3_TYPELESS:
+			return DXGI_FORMAT::DXGI_FORMAT_BC3_TYPELESS;
+		case FlexKit::FORMAT_2D::BC3_UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM;
+		case FlexKit::FORMAT_2D::BC3_UNORM_SRGB:
+			return DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM_SRGB;
+		case FlexKit::FORMAT_2D::BC4_TYPELESS:
+			return DXGI_FORMAT::DXGI_FORMAT_BC4_TYPELESS;
+		case FlexKit::FORMAT_2D::BC4_UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC4_UNORM;
+		case FlexKit::FORMAT_2D::BC4_SNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC4_SNORM;
+		case FlexKit::FORMAT_2D::BC5_TYPELESS:
+			return DXGI_FORMAT::DXGI_FORMAT_BC5_TYPELESS;
+		case FlexKit::FORMAT_2D::BC5_UNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM;
+		case FlexKit::FORMAT_2D::BC5_SNORM:
+			return DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM;
 		default:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UINT;
 			break;
@@ -2985,6 +3097,64 @@ namespace FlexKit
 	}
 
 	
+	/************************************************************************************************/
+
+
+	FORMAT_2D	DXGIFormat2TextureFormat(DXGI_FORMAT F)
+	{
+		switch (F)
+		{
+		case DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT:
+			return FlexKit::FORMAT_2D::R16G16_UINT;
+		case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM:
+			return FlexKit::FORMAT_2D::R8G8B8A8_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM:
+			return FlexKit::FORMAT_2D::R8G8_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT:
+			return FlexKit::FORMAT_2D::R32G32B32_FLOAT;
+		case DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT:
+			return FlexKit::FORMAT_2D::R16G16B16A16_FLOAT;
+		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT:
+			return FlexKit::FORMAT_2D::R32G32B32A32_FLOAT;
+		case DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT:
+			return FlexKit::FORMAT_2D::R32_FLOAT;
+		case DXGI_FORMAT::DXGI_FORMAT_D32_FLOAT:
+			return FlexKit::FORMAT_2D::D32_FLOAT;
+		case DXGI_FORMAT::DXGI_FORMAT_BC1_TYPELESS:
+			return FlexKit::FORMAT_2D::BC1_TYPELESS;
+		case DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM:
+			return FlexKit::FORMAT_2D::BC1_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM_SRGB:
+			return FlexKit::FORMAT_2D::BC1_UNORM_SRGB;
+		case DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM:
+			return FlexKit::FORMAT_2D::BC2_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM_SRGB:
+			return FlexKit::FORMAT_2D::BC2_UNORM_SRGB;
+		case DXGI_FORMAT::DXGI_FORMAT_BC3_TYPELESS:
+			return FlexKit::FORMAT_2D::BC3_TYPELESS;
+		case DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM:
+			return FlexKit::FORMAT_2D::BC3_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM_SRGB:
+			return FlexKit::FORMAT_2D::BC3_UNORM_SRGB;
+		case DXGI_FORMAT::DXGI_FORMAT_BC4_TYPELESS:
+			return FlexKit::FORMAT_2D::BC4_TYPELESS;
+		case DXGI_FORMAT::DXGI_FORMAT_BC4_UNORM:
+			return FlexKit::FORMAT_2D::BC4_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_BC4_SNORM:
+			return FlexKit::FORMAT_2D::BC4_SNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_BC5_TYPELESS:
+			return FlexKit::FORMAT_2D::BC5_TYPELESS;
+		case DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM:
+			return FlexKit::FORMAT_2D::BC5_UNORM;
+		case DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM:
+			return FlexKit::FORMAT_2D::BC5_SNORM;
+		default:
+			return FlexKit::FORMAT_2D::UNKNOWN;
+			break;
+		}
+	}
+
+
 	/************************************************************************************************/
 
 	void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
@@ -3424,7 +3594,7 @@ namespace FlexKit
 		{
 			if (TS->TextureGuids[I]) {
 				TS->Loaded[I]	= true;
-				TS->Textures[I] = LoadTextureFromFile(TS->TextureLocations[I].Directory, RS, Memory);
+				TS->Textures[I] = LoadDDSTextureFromFile(TS->TextureLocations[I].Directory, RS, Memory);
 			}
 		}
 	}
@@ -3439,7 +3609,8 @@ namespace FlexKit
 		{
 			if (TS->TextureGuids[I]) {
 				TS->Loaded[I] = false;
-				TS->Textures[I]->Release();
+				FK_ASSERT(0);
+				//TS->Textures[I]->Release();
 			}
 		}
 		Memory->free(TS);
@@ -3614,8 +3785,10 @@ namespace FlexKit
 
 		FK_ASSERT(NewResource, "Failed To Create VertexBuffer Resource!");
 
+		CD3DX12_RANGE readRange(0, 0);
+
 		if (!GPUResident)
-			NewResource->Map(0, nullptr, &_ptr);
+			NewResource->Map(0, &readRange, &_ptr);
 
 		Buffers.push_back(
 			VertexBuffer{
@@ -3636,25 +3809,38 @@ namespace FlexKit
 		auto	Idx			= Handles[Handle];
 		auto&	UserBuffer  = UserBuffers[Idx];
 		auto	Offset		= UserBuffers[Idx].Offset;
-		auto	_Ptr		= UserBuffers[Idx].MappedPtr;
-
-		if (!_Ptr)
-		{
+		auto	Mapped_Ptr	= UserBuffers[Idx].MappedPtr;
+		//UserBuffer.Resource	= Buffers[UserBuffer.GetCurrentBuffer()].Resource;
+#if 1
+		//if (!Mapped_Ptr)
+		//{
 			// TODO: Get next available buffer.
-			UserBuffer.IncrementCurrentBuffer();
+			//UserBuffer.IncrementCurrentBuffer();
 
-			UserBuffer.MappedPtr	= Buffers[UserBuffer.CurrentBuffer].MappedPtr;
-			UserBuffer.Resource		= Buffers[UserBuffer.CurrentBuffer].Resource;
+			//UserBuffer.Resource		= Buffers[ResourceIdx].Resource;
+			
+			//Buffers[ResourceIdx].Resource->Map(0, nullptr, (void**)&Mapped_Ptr);
 
-			_Ptr = UserBuffer.MappedPtr;
+			//UserBuffer.MappedPtr = Mapped_Ptr;
 
 			//if (!UserBuffer.Offset)
 			//	return false;
-		}
+		//}
 
-		memcpy(_Ptr + Offset, _ptr, ElementSize);
+		memcpy(Mapped_Ptr + Offset, _ptr, ElementSize);
 		UserBuffers[Idx].Offset += ElementSize;
 		UserBuffers[Idx].WrittenTo = true;
+
+#else
+		if(!UserBuffers[Idx].WrittenTo)
+			UserBuffer.IncrementCurrentBuffer();
+
+		Buffers[ResourceIdx].Resource->Map(0, nullptr, (void**)&Mapped_Ptr);
+		memcpy(Mapped_Ptr + Offset, _ptr, ElementSize);
+		UserBuffers[Idx].Offset += ElementSize;
+		UserBuffers[Idx].WrittenTo = true;
+		Buffers[ResourceIdx].Resource->Unmap(0, nullptr);
+#endif
 
 		return true;
 	}
@@ -3670,10 +3856,13 @@ namespace FlexKit
 			if (!UserBuffer.WrittenTo)
 				continue;
 
-			auto BufferIdx			= UserBuffer.GetCurrentBuffer();
-			UserBuffer.MappedPtr	= nullptr;
+			Buffers[UserBuffer.GetCurrentBuffer()].NextAvailableFrame = Frame;
 
-			Buffers[BufferIdx].NextAvailableFrame = Frame;
+			UserBuffer.IncrementCurrentBuffer();
+			auto BufferIdx					= UserBuffer.GetCurrentBuffer();
+			UserBuffer.MappedPtr			= Buffers[BufferIdx].MappedPtr;
+			UserBuffer.WrittenTo			= false;
+			UserBuffer.Offset				= 0;
 		}
 	}
 
@@ -3683,7 +3872,28 @@ namespace FlexKit
 
 	void VertexBufferStateTable::Reset(VertexBufferHandle Handle)
 	{
-		UserBuffers[Handles[Handle]].Offset = 0;
+		auto& UserBuffer = UserBuffers[Handles[Handle]];
+		if(UserBuffer.WrittenTo)
+		{	// UnMap Current Buffer
+			auto  ResourceIdx = UserBuffer.GetCurrentBuffer();
+			D3D12_RANGE Range = { 0, UserBuffer.Offset };
+			Buffers[ResourceIdx].Resource->Unmap(0, &Range);
+		}
+		
+		UserBuffer.WrittenTo = false;
+		UserBuffer.IncrementCurrentBuffer();
+
+		{	// Map Current Buffer
+			auto	ResourceIdx		= UserBuffer.GetCurrentBuffer();
+			void*	MappedPtr		= nullptr;
+
+			D3D12_RANGE Range{ 0, 0 };
+			Buffers[ResourceIdx].Resource->Map(0, &Range, &MappedPtr);
+
+			UserBuffer.Offset		= 0;
+			UserBuffer.MappedPtr	= (char*)MappedPtr;
+			UserBuffer.Resource		= Buffers[ResourceIdx].Resource;
+		}
 	}
 
 
@@ -3692,7 +3902,7 @@ namespace FlexKit
 
 	ID3D12Resource* VertexBufferStateTable::GetResource(VertexBufferHandle Handle)
 	{
-		return Buffers[Handles[Handle]].Resource;
+		return Buffers[UserBuffers[Handles[Handle]].GetCurrentBuffer()].Resource;
 	}
 
 
@@ -3717,8 +3927,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool VertexBufferStateTable::CurrentlyAvailable(VertexBufferStateTable::VBufferHandle Handle, size_t CurrentFrame) const
+	bool VertexBufferStateTable::CurrentlyAvailable(VertexBufferHandle Handle, size_t CurrentFrame) const
 	{
+		auto UserIdx	= Handles[Handle];
+		auto BufferIdx	= UserBuffers[UserIdx].GetCurrentBuffer();
+
 		return Buffers[Handle].NextAvailableFrame <= CurrentFrame;
 	}
 
@@ -3853,7 +4066,13 @@ namespace FlexKit
 		auto Handle		 = Handles.GetNewHandle();
 		Handles[Handle]  = UserIdx;
 
-		UserEntries.push_back({ResourceIdx, Flags_IN });
+		UserEntry Entry;
+		Entry.ResourceIdx		= ResourceIdx;
+		Entry.FrameGraphIndex	= -1;
+		Entry.FGI_FrameStamp    = -1;
+		Entry.Flags				= Flags_IN;
+
+		UserEntries.push_back(Entry);
 
 		ResourceEntry NewEntry = 
 		{	
@@ -3919,6 +4138,27 @@ namespace FlexKit
 		auto UserIdx = Handles[Handle];
 		UserEntries[UserIdx].Tag = Tag;
 	}
+
+
+	size_t TextureStateTable::GetFrameGraphIndex(TextureHandle Handle, size_t FrameID)
+	{
+		auto UserIdx	= Handles[Handle];
+		auto FrameStamp	= UserEntries[UserIdx].FGI_FrameStamp;
+
+		if (FrameStamp < int(FrameID))
+			return INVALIDHANDLE;
+
+		return UserEntries[UserIdx].FrameGraphIndex;
+	}
+
+
+	void TextureStateTable::SetFrameGraphIndex(TextureHandle Handle, size_t FrameID, size_t Index)
+	{
+		auto UserIdx = Handles[Handle];
+		UserEntries[UserIdx].FGI_FrameStamp		= FrameID;
+		UserEntries[UserIdx].FrameGraphIndex	= Index;
+	}
+
 
 
 	uint2 TextureStateTable::GetWH(TextureHandle Handle)
@@ -5189,7 +5429,6 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
 
 
 	DescHeapPOS PushRenderTarget(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS)
@@ -7045,23 +7284,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	// assumes File str should be at most 256 bytes
-	Texture2D LoadTextureFromFile(char* file, RenderSystem* RS, iAllocator* MemoryOut)
+	TextureHandle LoadDDSTextureFromFile(char* file, RenderSystem* RS, iAllocator* MemoryOut)
 	{
 		Texture2D tex = {};
 		wchar_t	wfile[256];
 		size_t	ConvertedSize = 0;
 		mbstowcs_s(&ConvertedSize, wfile, file, 256);
-		auto RESULT = LoadDDSTexture2DFromFile(file, MemoryOut, RS);
+		auto [Texture, Sucess] = LoadDDSTexture2DFromFile_2(file, MemoryOut, RS);
 
-		FK_ASSERT(RESULT != false, "Failed to Create Texture!");
-		DDSTexture2D* Texture = RESULT;
-		tex.Texture = Texture->Texture;
-		tex.WH		= Texture->WH;
-		tex.Format	= Texture->Format;
+		FK_ASSERT(Sucess != false, "Failed to Create Texture!");
 
-		MemoryOut->free(Texture);
 
-		return tex;
+		return Texture;
 	}
 
 

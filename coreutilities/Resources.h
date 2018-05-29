@@ -431,10 +431,10 @@ namespace FlexKit
 	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, Resources* RM, GeometryTable*, size_t guid );
 	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID );
 
-	typedef Pair<size_t, FlexKit::FontAsset*> LoadFontResult;
+	typedef Pair<size_t, FlexKit::SpriteFontAsset*> LoadFontResult;
 
 	FLEXKITAPI LoadFontResult	LoadFontAsset	( char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
-	FLEXKITAPI void				Release			( FontAsset* asset );
+	FLEXKITAPI void				Release			(SpriteFontAsset* asset );
 
 
 	/************************************************************************************************/

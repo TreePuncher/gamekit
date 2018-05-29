@@ -152,7 +152,7 @@ namespace FlexKit
 		float4				BackGroundColor;
 		float4				TextColor;
 		TextArea			Text;
-		FontAsset*			Font;
+		SpriteFontAsset*	Font;
 		Texture2D*			BackgroundTexture	= nullptr;
 
 		void*				CB_Args				= nullptr;
@@ -174,7 +174,7 @@ namespace FlexKit
 		char*				TextSTR;
 
 		TextArea			TextGUI;
-		FontAsset*			Font;
+		SpriteFontAsset*	Font;
 		size_t				MaxTextLength;
 
 		void*				CB_Args;
@@ -319,13 +319,13 @@ namespace FlexKit
 		GenericGUIEventFN OnExit_CB	   = nullptr;
 		void*		  CB_Args;
 
-		float2			WH;				// Width Heigth of Button in Pixels
-		float2			WindowSize;		// RenderTarget Size
-		float4			BackGroundColor = float4(Grey(.5), 1);
-		float4			TextColor	    = float4(WHITE, 1);
-		char*			Text;			// Text To Be Displayed
-		FontAsset*		Font;			// Font to be used during Rendering
-		float2			CharacterScale   = {1.0f, 1.0f}; // Increase Size of Characters by this Factor	
+		float2				WH;				// Width Heigth of Button in Pixels
+		float2				WindowSize;		// RenderTarget Size
+		float4				BackGroundColor = float4(Grey(.5), 1);
+		float4				TextColor	    = float4(WHITE, 1);
+		char*				Text;			// Text To Be Displayed
+		SpriteFontAsset*	Font;			// Font to be used during Rendering
+		float2				CharacterScale	= {1.0f, 1.0f}; // Increase Size of Characters by this Factor	
 
 		EGUI_FORMATTING Placement = EGUI_FORMATTING::EGF_FORMAT_DEFAULT;
 
@@ -339,16 +339,16 @@ namespace FlexKit
 
 	struct GUITextInput_Desc
 	{
-		float2		WH;
+		float2				WH;
 
-		float2		WindowSize;
-		char*		Text;
-		FontAsset*	Font;
+		float2				WindowSize;
+		char*				Text;
+		SpriteFontAsset*	Font;
 
 		void*				CB_Args			= nullptr;
 		EnteredEventFN		OnClicked_CB	= nullptr;
-		GenericGUIEventFN		OnEntered_CB	= nullptr;
-		GenericGUIEventFN		OnExit_CB		= nullptr;
+		GenericGUIEventFN	OnEntered_CB	= nullptr;
+		GenericGUIEventFN	OnExit_CB		= nullptr;
 		TextInputUpdateFN	OnTextUpdate	= nullptr;
 
 		GUITextInput_Desc& SetTextBoxSizeByPixelSize(float2 PixelSize, uint2 PixelWH) {
@@ -496,7 +496,7 @@ namespace FlexKit
 		static float2 Position2SS(float2);
 		static float3 Position2SS(float3);
 
-		void PrintLine(const char* Str, float2 WH, FontAsset* Font, float2 Offset = { 0.0f, 0.0f }, float2 Scale = { 1.0f, 1.0f }, bool CenterX = false, bool CenterY = false);
+		void PrintLine(const char* Str, float2 WH, SpriteFontAsset* Font, float2 Offset = { 0.0f, 0.0f }, float2 Scale = { 1.0f, 1.0f }, bool CenterX = false, bool CenterY = false);
 
 		void PushLineSegments	( FlexKit::LineSegments& );
 		void PushRect			( Draw_RECT Rect );
@@ -563,9 +563,9 @@ namespace FlexKit
 		GenericGUIEventFN	Released;
 		GenericGUIEventFN	Hover;	
 
-		const char* Text; 
-		FontAsset*	Font;
-		iAllocator*	Memory;
+		const char*			Text; 
+		SpriteFontAsset*	Font;
+		iAllocator*			Memory;
 
 		void*	USR;
 		double	HoverDuration;
@@ -613,7 +613,7 @@ namespace FlexKit
 		GUITextBoxHandle	( ComplexGUI* Window, GUIElementHandle In );
 		
 		void SetText	( const char* Text );
-		void SetTextFont( FontAsset* Font );
+		void SetTextFont( SpriteFontAsset* Font );
 		void SetCellID	( uint2 CellID );
 
 		float2 WH();
@@ -641,10 +641,10 @@ namespace FlexKit
 		bool	Highlighted		= false;
 		bool	ClickState		= false;
 
-		const char* Text;
-		float4		TextColor;
-		FontAsset*	Font;
-		iAllocator*	Memory;
+		const char*			Text;
+		float4				TextColor;
+		SpriteFontAsset*	Font;
+		iAllocator*		Memory;
 
 		static void Update		(GUITextBoxHandle  TextBox, LayoutEngine* Layout, double dT, const SimpleWindowInput Input);
 		static void Draw		(GUITextBoxHandle  button, LayoutEngine* Layout);
@@ -686,8 +686,8 @@ namespace FlexKit
 		void SetCellFormatting	( uint2, EDrawDirection );
 		
 
-		GUIButtonHandle		CreateButton	(uint2 CellID, const char* Str = nullptr, FontAsset* font = nullptr);
-		GUITextBoxHandle	CreateTextBox	(uint2 CellID, const char* Str = nullptr, FontAsset* font = nullptr);
+		GUIButtonHandle		CreateButton	(uint2 CellID, const char* Str = nullptr, SpriteFontAsset* font = nullptr);
+		GUITextBoxHandle	CreateTextBox	(uint2 CellID, const char* Str = nullptr, SpriteFontAsset* font = nullptr);
 	};
 
 

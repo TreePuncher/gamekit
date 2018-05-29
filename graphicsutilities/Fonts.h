@@ -71,13 +71,13 @@ namespace FlexKit
 	};
 
 
-	struct FontAsset
+	struct SpriteFontAsset
 	{
 		uint2	FontSize = { 0, 0 };
 		bool	Unicode	 = false;
 
 		uint2			TextSheetDimensions;
-		Texture2D		Texture;
+		TextureHandle	Texture;
 		uint4			Padding = 0; // Ordering { Top, Left, Bottom, Right }
 		iAllocator*		Memory;
 
@@ -108,10 +108,12 @@ namespace FlexKit
 
 	};
 
+
 	struct CodePage
 	{
 
 	};
+
 
 	struct TTFAsset
 	{
@@ -130,9 +132,11 @@ namespace FlexKit
 				{1, 1},
 				{1, 1},
 				float4(WHITE, 1),
+				0.0f, 0.0f, 0.0f,
 				false, false
 			};
 		}
+
 
 		float2 StartingPOS;
 		float2 TextArea;
@@ -140,13 +144,16 @@ namespace FlexKit
 		float2 PixelSize;
 		float4 Color;
 
+		float CurrentX;
+		float CurrentY;
+		float YAdvance;
+
 		bool CenterX;
 		bool CenterY;
-
 	};
 
 
-	/************************************************************************************************/
-}
+}	/************************************************************************************************/
+
 
 #endif

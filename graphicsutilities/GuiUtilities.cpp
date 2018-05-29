@@ -1055,7 +1055,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LayoutEngine::PrintLine(const char* Str, float2 WH, FontAsset* Font, float2 Offset, float2 Scale, bool CenterX, bool CenterY)
+	void LayoutEngine::PrintLine(const char* Str, float2 WH, SpriteFontAsset* Font, float2 Offset, float2 Scale, bool CenterX, bool CenterY)
 	{
 		PrintTextFormatting Formatting = PrintTextFormatting::DefaultParams();
 		Formatting.PixelSize           = PixelSize;
@@ -1584,7 +1584,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GUIButtonHandle GUIGridHandle::CreateButton(uint2 CellID, const char* Str, FontAsset* font)
+	GUIButtonHandle GUIGridHandle::CreateButton(uint2 CellID, const char* Str, SpriteFontAsset* font)
 	{
 		GUIElementHandle out = (uint32_t)-1;
 		auto& Grid = _GetGrid();
@@ -1621,7 +1621,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GUITextBoxHandle GUIGridHandle::CreateTextBox(uint2 CellID, const char* Str, FontAsset* Font)
+	GUITextBoxHandle GUIGridHandle::CreateTextBox(uint2 CellID, const char* Str, SpriteFontAsset* Font)
 	{
 		GUIElementHandle out = (uint32_t)-1;
 		auto& Grid = _GetGrid();
@@ -1737,7 +1737,7 @@ namespace FlexKit
 	}
 
 
-	void GUITextBoxHandle::SetTextFont(FontAsset* Font)
+	void GUITextBoxHandle::SetTextFont(SpriteFontAsset* Font)
 	{
 		auto& TextBox = _IMPL();
 		TextBox.Font = Font;

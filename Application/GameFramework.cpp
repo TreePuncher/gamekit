@@ -304,7 +304,7 @@ namespace FlexKit
 		Core->RenderSystem.ShutDownUploadQueues();
 
 		ReleaseConsole(&Console);
-		Release(DefaultAssets.Font);
+		//Release(DefaultAssets.Font);
 
 		// wait for last Frame to finish Rendering
 		auto CL = Core->RenderSystem._GetCurrentCommandList();
@@ -460,7 +460,7 @@ namespace FlexKit
 			RItr++;
 		}
 
-		Release(State->DefaultAssets.Font);
+		//Release(State->DefaultAssets.Font);
 		Release(State->DefaultAssets.Terrain);
 	}
 

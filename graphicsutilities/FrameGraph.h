@@ -65,6 +65,7 @@ namespace FlexKit
 	};
 
 	typedef Handle_t<16> FrameResourceHandle;
+	typedef Handle_t<16> StaticFrameResourceHandle;
 
 
 	struct FrameObject
@@ -92,6 +93,8 @@ namespace FlexKit
 				TextureHandle	Texture;
 				DescHeapPOS		HeapPOS;
 			}RenderTarget;
+
+			TextureHandle Texture;
 
 			struct {
 				char	buff[256];
@@ -142,6 +145,17 @@ namespace FlexKit
 
 			return RenderTarget;
 		}
+
+		static FrameObject TextureObject(uint32_t Tag, TextureHandle Handle )
+		{
+			FrameObject RenderTarget;
+			RenderTarget.State                = DeviceResourceState::DRS_ShaderResource;
+			RenderTarget.Type                 = OT_Texture;
+			RenderTarget.Tag                  = Tag;
+			RenderTarget.RenderTarget.Texture = Handle;
+
+			return RenderTarget;
+		}
 	};
 
 
@@ -155,11 +169,13 @@ namespace FlexKit
 	{
 	public:
 		FrameResources(RenderSystem* rendersystem, iAllocator* Memory) : 
-			Resources(Memory), 
-			RenderSystem(rendersystem)
+			Resources		(Memory), 
+			Textures		(Memory),
+			RenderSystem	(rendersystem)
 		{}
 
 		PassObjectList		Resources;
+		PassObjectList		Textures;	// State should be mostly Static across frame
 		RenderSystem*		RenderSystem;
 		GeometryTable*		Geometry;
 
@@ -249,7 +265,18 @@ namespace FlexKit
 		}
 
 
-		FrameResourceHandle		FindRenderTargetResource(uint32_t Tag)
+		TextureHandle GetTexture(StaticFrameResourceHandle Handle) const
+		{
+			return Textures[Handle].Texture;
+		}
+
+
+		StaticFrameResourceHandle AddTexture(TextureHandle Handle, uint32_t Tag)
+		{
+		}
+
+
+		FrameResourceHandle	FindRenderTargetResource(uint32_t Tag)
 		{
 			auto res = find(Resources, 
 				[&](const auto& LHS)
@@ -289,9 +316,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline size_t GetCurrentVBufferOffset()
+	template<typename TY_V>
+	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources, size_t PushSize)
 	{
+		bool res = Resources.RenderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, PushSize);
+		FK_ASSERT(res, "Failed to Push Vertex!");
+		return res;
+	}
 
+
+	/************************************************************************************************/
+
+
+	template<typename TY_V>
+	inline size_t GetCurrentVBufferOffset(VertexBufferHandle Buffer, FrameResources& Resources)
+	{
+		return Resources.RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Buffer) / sizeof(TY_V);
 	}
 
 	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
@@ -529,6 +569,8 @@ namespace FlexKit
 		FrameGraphNodeBuilder&	operator =	(const FrameGraphNodeBuilder& RHS) = delete;
 
 		void BuildNode(FrameGraph* FrameGraph);
+
+		StaticFrameResourceHandle ReadTexture	(uint32_t Tag, TextureHandle Texture);
 
 		FrameResourceHandle ReadRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 		FrameResourceHandle WriteRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
@@ -963,56 +1005,56 @@ namespace FlexKit
 
 		auto& Pass = Graph.AddNode<DrawRect>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
-		{
-			// Single Thread Section
-			// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
-			// for thread safety
-
-			Data.RenderTarget	= Builder.WriteRenderTarget(RenderTarget);
-			Data.VertexBuffer	= PushBuffer;
-			Data.ConstantBuffer = CB;
-			Data.Draws			= DrawList(Memory);
-
-			AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, Args...);
-		},
-			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
-		{
-			// Multi-threadable Section
-
-			auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
-
-			Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
-			Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
-
-			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-			Ctx->SetPipelineState(Resources.GetPipelineState(State));
-			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-			Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
-
-			ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
-			for (auto D : Data.Draws)
 			{
-				switch (D.Mode) {
-					case ShapeDraw::RenderMode::Line:
-					{
-						Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
-					}	break;
-					case ShapeDraw::RenderMode::Triangle:
-					{
-						Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-					}	break;
-					case ShapeDraw::RenderMode::Textured:
-					{
-						FK_ASSERT(0, "UNHANDLED CASE!");
-					}	break;
+				// Single Thread Section
+				// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
+				// for thread safety
+
+				Data.RenderTarget	= Builder.WriteRenderTarget(RenderTarget);
+				Data.VertexBuffer	= PushBuffer;
+				Data.ConstantBuffer = CB;
+				Data.Draws			= DrawList(Memory);
+
+				AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, Args...);
+			},
+			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
+			{
+				// Multi-threadable Section
+
+				auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
+
+				Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
+				Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
+
+				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetPipelineState(Resources.GetPipelineState(State));
+				Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+				Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
+
+				ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
+				for (auto D : Data.Draws)
+				{
+					switch (D.Mode) {
+						case ShapeDraw::RenderMode::Line:
+						{
+							Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
+						}	break;
+						case ShapeDraw::RenderMode::Triangle:
+						{
+							Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+						}	break;
+						case ShapeDraw::RenderMode::Textured:
+						{
+							FK_ASSERT(0, "UNHANDLED CASE!");
+						}	break;
+					}
+
+					Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
+					Ctx->Draw(D.VertexCount, D.VertexBufferOffset);
+
+					PreviousMode = D.Mode;
 				}
-
-				Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
-				Ctx->Draw(D.VertexCount, D.VertexBufferOffset);
-
-				PreviousMode = D.Mode;
-			}
-		});
+			});
 	} 
 
 

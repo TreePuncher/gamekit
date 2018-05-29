@@ -106,6 +106,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename TY_>
+	HRESULT CheckHR(HRESULT HR, TY_ FN)
+	{
+		auto res = FAILED(HR);
+		if (res) FN();
+		return HR;
+	}
+
+
+#define PRINTERRORBLOB(Blob) [&](){std::cout << Blob->GetBufferPointer();}
+#define ASSERTONFAIL(ERRORMESSAGE)[&](){FK_ASSERT(0, ERRORMESSAGE);}
+
+
+	/************************************************************************************************/
+
+
 	enum class VERTEXBUFFER_TYPE
 	{
 		VERTEXBUFFER_TYPE_COLOR,
@@ -216,10 +232,27 @@ namespace FlexKit
 		R32G32_FLOAT,
 		R32G32B32_FLOAT,
 		R32G32B32A32_FLOAT,
-		BCC
+		BC1_TYPELESS,
+		BC1_UNORM,
+		BC1_UNORM_SRGB,
+		BC2_TYPELESS,
+		BC2_UNORM,
+		BC2_UNORM_SRGB,
+		BC3_TYPELESS,
+		BC3_UNORM,
+		BC3_UNORM_SRGB,
+		BC4_TYPELESS,
+		BC4_UNORM,
+		BC4_SNORM,
+		BC5_TYPELESS,
+		BC5_UNORM,
+		BC5_SNORM,
+		UNKNOWN
 	};
 
 	DXGI_FORMAT TextureFormat2DXGIFormat(FORMAT_2D F);
+	FORMAT_2D	DXGIFormat2TextureFormat(DXGI_FORMAT F);
+
 
 	enum class CPUACCESSMODE
 	{
@@ -264,12 +297,14 @@ namespace FlexKit
 			size_t			in_width,
 			FORMAT_2D		in_format,
 			CPUACCESSMODE	in_Mode,
-			SPECIALFLAGS	in_FLAGS) : Texture2D_Desc()
+			SPECIALFLAGS	in_FLAGS,
+			size_t			in_MipLevels = 0) : Texture2D_Desc()
 		{
-			Height = in_height;
-			Width = in_width;
-			Format = in_format;
-			FLAGS = in_FLAGS;
+			Height		= in_height;
+			Width		= in_width;
+			Format		= in_format;
+			FLAGS		= in_FLAGS;
+			MipLevels	= in_MipLevels;
 		}
 
 		size_t			Height, Width;
@@ -303,6 +338,36 @@ namespace FlexKit
 				return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT;
 			case FlexKit::FORMAT_2D::R32G32B32A32_FLOAT:
 				return DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
+			case FlexKit::FORMAT_2D::BC1_TYPELESS:
+				return DXGI_FORMAT::DXGI_FORMAT_BC1_TYPELESS;
+			case FlexKit::FORMAT_2D::BC1_UNORM:
+				return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM;
+			case FlexKit::FORMAT_2D::BC1_UNORM_SRGB:
+				return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM_SRGB;
+			case FlexKit::FORMAT_2D::BC2_TYPELESS:
+				return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM_SRGB;
+			case FlexKit::FORMAT_2D::BC2_UNORM:
+				return DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM;
+			case FlexKit::FORMAT_2D::BC2_UNORM_SRGB:
+				return DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM_SRGB;
+			case FlexKit::FORMAT_2D::BC3_TYPELESS:
+				return DXGI_FORMAT::DXGI_FORMAT_BC3_TYPELESS;
+			case FlexKit::FORMAT_2D::BC3_UNORM:
+				return DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM;
+			case FlexKit::FORMAT_2D::BC3_UNORM_SRGB:
+				return DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM_SRGB;
+			case FlexKit::FORMAT_2D::BC4_TYPELESS:
+				return DXGI_FORMAT::DXGI_FORMAT_BC4_TYPELESS;
+			case FlexKit::FORMAT_2D::BC4_UNORM:
+				return DXGI_FORMAT::DXGI_FORMAT_BC4_UNORM;
+			case FlexKit::FORMAT_2D::BC4_SNORM:
+				return DXGI_FORMAT::DXGI_FORMAT_BC4_SNORM;
+			case FlexKit::FORMAT_2D::BC5_TYPELESS:
+				return DXGI_FORMAT::DXGI_FORMAT_BC5_TYPELESS;
+			case FlexKit::FORMAT_2D::BC5_UNORM:
+				return DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM;
+			case FlexKit::FORMAT_2D::BC5_SNORM:
+				return DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM;
 			default:
 				break;
 			}
@@ -1108,9 +1173,13 @@ namespace FlexKit
 	FLEXKITAPI class DesciptorHeap
 	{
 	public:
+		DesciptorHeap() {}
 		DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
-		void NullFill(RenderSystem* RS);
+		void Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		void NullFill	(RenderSystem* RS);
+
+		bool SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle);
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () { return DescriptorHeap; }
 
@@ -1332,8 +1401,8 @@ namespace FlexKit
 		UINT				Stride;
 	};
 
-	typedef static_vector<VertexBufferEntry, 16> VertexBufferList;
-	typedef static_vector<DescHeapPOS, 16> RenderTargetList;
+	typedef static_vector<VertexBufferEntry, 16>	VertexBufferList;
+	typedef static_vector<DescHeapPOS, 16>			RenderTargetList;
 
 	FLEXKITAPI class Context
 	{
@@ -1424,6 +1493,8 @@ namespace FlexKit
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsDescriptorTable		(size_t idx, DesciptorHeap& DH);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
+		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
+
 
 		void AddIndexBuffer			(TriMesh* Mesh);
 		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers);
@@ -1540,7 +1611,7 @@ namespace FlexKit
 
 		VBufferHandle	CreateVertexBufferResource(size_t BufferSize, bool GPUResident, RenderSystem* RS); // Creates Using Placed Resource
 
-		bool CurrentlyAvailable(VBufferHandle Handle, size_t CurrentFrame) const;
+		bool CurrentlyAvailable(VertexBufferHandle Handle, size_t CurrentFrame) const;
 
 		struct VertexBuffer
 		{
@@ -1585,7 +1656,7 @@ namespace FlexKit
 		Vector<UserVertexBuffer>	UserBuffers;
 		Vector<FreeVertexBuffer>	FreeBuffers;
 
-		HandleUtilities::HandleTable<TextureHandle, 32>	Handles;
+		HandleUtilities::HandleTable<VertexBufferHandle, 32>	Handles;
 	};
 
 
@@ -1798,6 +1869,8 @@ namespace FlexKit
 		void			SetState		(TextureHandle Handle, DeviceResourceState State);
 
 		uint2			GetWH(TextureHandle Handle);
+		size_t			GetFrameGraphIndex(TextureHandle Texture, size_t FrameID);
+		void			SetFrameGraphIndex(TextureHandle Texture, size_t FrameID, size_t Index);
 
 		uint32_t		GetTag(TextureHandle Handle);
 		void			SetTag(TextureHandle Handle, uint32_t Tag);
@@ -1815,8 +1888,11 @@ namespace FlexKit
 		struct UserEntry
 		{
 			size_t				ResourceIdx;
+			int64_t				FGI_FrameStamp;
+			uint32_t			FrameGraphIndex;
 			uint32_t			Flags;
 			uint32_t			Tag;
+			uint32_t			Padding;
 		};
 
 		struct ResourceEntry
@@ -1913,6 +1989,10 @@ namespace FlexKit
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
 
 
+
+		size_t	GetTextureFrameGraphIndex(TextureHandle);
+		void	SetTextureFrameGraphIndex(TextureHandle, size_t);
+
 		uint32_t	GetTag(TextureHandle Handle);
 		void		SetTag(TextureHandle Handle, uint32_t);
 
@@ -1922,6 +2002,8 @@ namespace FlexKit
 		ConstantBufferHandle	CreateConstantBuffer	(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer		(size_t BufferSize, bool GPUResident = true);
 		TextureHandle			CreateDepthBuffer		(uint2 WH, bool UseFloat = false);
+		TextureHandle			CreateTexture2D			(uint2 WH, FORMAT_2D Format, size_t MipLevels = 0);
+		TextureHandle			CreateTexture2D			(uint2 WH, FORMAT_2D Format, size_t MipLevels = 0, ID3D12Resource** Resources = nullptr, size_t ResourceCount = 1);
 		QueryBufferHandle		CreateOcclusionBuffer	(size_t Size);
 
 		void ReleaseCB(ConstantBufferHandle);
@@ -2576,8 +2658,8 @@ namespace FlexKit
 
 		size_t		TextureGuids[16];
 
-		Texture2D	Textures[16];
-		bool		Loaded[16];
+		TextureHandle	Textures[16];
+		bool			Loaded[16];
 	};
 
 
@@ -2951,10 +3033,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool			LoadAndCompileShaderFromFile	(const char* FileLoc, ShaderDesc* desc, Shader* out);
-	FLEXKITAPI Shader		LoadShader						(const char* Entry, const char* ID, const char* ShaderVersion, const char* File);
-	FLEXKITAPI Texture2D	LoadTextureFromFile				(char* file, RenderSystem* RS, iAllocator* Memout);
-	FLEXKITAPI Texture2D	LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout);
+	FLEXKITAPI bool				LoadAndCompileShaderFromFile	(const char* FileLoc, ShaderDesc* desc, Shader* out);
+	FLEXKITAPI Shader			LoadShader						(const char* Entry, const char* ID, const char* ShaderVersion, const char* File);
+	FLEXKITAPI TextureHandle	LoadDDSTextureFromFile			(char* file, RenderSystem* RS, iAllocator* Memout);
+	FLEXKITAPI Texture2D		LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout);
 
 	FLEXKITAPI TextureBuffer CreateTextureBuffer			(size_t Width, size_t Height, iAllocator* Memout);
 

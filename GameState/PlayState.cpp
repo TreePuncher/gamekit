@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\PipelineState.h"
 #include "..\graphicsutilities\ImageUtilities.h"
 #include "..\coreutilities\GraphicsComponents.h"
+#include "..\graphicsutilities\PipelineState.h"
+
 
 #pragma comment(lib, "fmod64_vc.lib")
 
@@ -41,6 +43,8 @@ PlayState::PlayState(
 				Framework->Core->RenderSystem, 
 				Framework->Core->Geometry),
 	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+	TextBuffer		(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+	
 	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)),
 	Grid			{Framework->Core->GetBlockMemory()},
 	Player1_Handler	{Grid, Framework->Core->GetBlockMemory() },
@@ -61,6 +65,9 @@ PlayState::PlayState(
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
+
+	framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO );
+	framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO);
 }
 
 
@@ -147,11 +154,11 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	PVS	Drawables_Solid(Core->GetTempMemory());
 	PVS	Drawables_Transparent(Core->GetTempMemory());
 
-
 	ClearBackBuffer		(FrameGraph, 0.0f);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
+	ClearVertexBuffer	(FrameGraph, TextBuffer);
 
-#ifdef _DEBUG
+#if 1
 	DrawGameGrid_Debug(
 		dt,
 		GetWindowAspectRatio(Core),
@@ -164,6 +171,14 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	);
 #else
 #endif
+
+	DrawSprite_Text(
+		"A!!!!This is sample text rendered using Sprites Text!!!!",
+		FrameGraph, 
+		*Framework->DefaultAssets.Font,
+		TextBuffer,
+		GetCurrentBackBuffer(&Core->Window),
+				Core->GetTempMemory());
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 

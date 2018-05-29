@@ -326,6 +326,37 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+	
+	
+	StaticFrameResourceHandle FrameGraphNodeBuilder::ReadTexture(uint32_t Tag, TextureHandle Texture)
+	{
+		FrameResourceHandle Handle_Out{ 0xffff };
+		auto State = Resources->RenderSystem->Textures.GetState(Texture);
+
+		if (!(State | DRS_Read))
+		{	// Auto Barrier Insertion
+			FK_ASSERT(0);
+			//Context.AddReadable({});
+		}
+
+		auto Index = Resources->RenderSystem->GetTextureFrameGraphIndex(Texture);
+		if (Index != INVALIDHANDLE)
+		{
+			size_t Index = 0;
+			Resources->RenderSystem->SetTextureFrameGraphIndex(Texture, Index);
+			Handle_Out = FrameResourceHandle{ static_cast<unsigned int>(Index) };
+		}
+		else
+		{
+			Handle_Out = FrameResourceHandle{ static_cast<unsigned int>(Resources->Textures.size()) };
+			Resources->Textures.push_back(FrameObject::TextureObject(Tag, Texture));
+		}
+
+		return Handle_Out;
+	}
+
+
+	/************************************************************************************************/
 
 
 	FrameResourceHandle FrameGraphNodeBuilder::ReadRenderTarget(

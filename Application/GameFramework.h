@@ -77,7 +77,7 @@ namespace FlexKit
 		void PopState();
 
 		struct {
-			FontAsset*			Font;
+			SpriteFontAsset*	Font;
 			Texture2D			Terrain;
 		}DefaultAssets;
 

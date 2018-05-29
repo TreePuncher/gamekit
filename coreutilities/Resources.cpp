@@ -765,8 +765,8 @@ namespace FlexKit
 		INFOBLOCK	Info;
 		COMMONBLOCK	CB;
 
-		FontAsset*		Fonts      = nullptr;
-		size_t			FontCount  = 0;
+		SpriteFontAsset*	Fonts      = nullptr;
+		size_t				FontCount  = 0;
 
 		KERNINGENTRY*	KBlocks    = nullptr;
 		size_t			KBlockUsed = 0;
@@ -812,7 +812,7 @@ namespace FlexKit
 					COMMONBLOCK* pCB = (COMMONBLOCK*)(mem + Position + sizeof(BlockDescriptor));
 
 					FontCount = pCB->Pages;
-					Fonts = (FontAsset*)outMem->malloc(sizeof(FontAsset) * FontCount);
+					Fonts = (SpriteFontAsset*)outMem->malloc(sizeof(SpriteFontAsset) * FontCount);
 
 					for (size_t I = 0; I < FontCount; ++I) {
 						Fonts[I].Padding = Padding;
@@ -835,9 +835,9 @@ namespace FlexKit
 						strcpy_s(Fonts[I].FontDir, BufferSize, dir);
 						strcat_s(Fonts[I].FontDir, BufferSize, FONTPATH + I * FontPathLen);
 
-						auto res = LoadTextureFromFile(Fonts[I].FontDir, RS, outMem);
-						Fonts[I].Texture             = res;
-						Fonts[I].TextSheetDimensions = { CB.ScaleW, CB.ScaleH };
+						auto Texture					= LoadDDSTextureFromFile(Fonts[I].FontDir, RS, outMem);
+						Fonts[I].Texture				= Texture;
+						Fonts[I].TextSheetDimensions	= { CB.ScaleW, CB.ScaleH };
 					}
 				}break;
 				case 0x04:
@@ -877,9 +877,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(FontAsset* asset)
+	void Release(SpriteFontAsset* asset)
 	{
-		FreeTexture(&asset->Texture);
+		FK_ASSERT(0);
+		//FreeTexture(&asset->Texture);
 		asset->Memory->free(asset->FontDir);
 		asset->Memory->free(asset);
 	}

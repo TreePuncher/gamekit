@@ -414,11 +414,11 @@ namespace FlexKit
 			else
 			{
 
-				const UINT		num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
-				const UINT64	uploadBufferSize = GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
+				const UINT		num2DSubresources	= texDesc.DepthOrArraySize * texDesc.MipLevels;
+				const UINT64	uploadBufferSize	= GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
 
-				ID3D12Resource* textureUploadHeap = nullptr;
-				ID3D12GraphicsCommandList* cmdList = RS->_GetCurrentUploadQueue()->UploadList[0];
+				ID3D12Resource* textureUploadHeap	= nullptr;
+				ID3D12GraphicsCommandList* cmdList	= RS->_GetCurrentUploadQueue()->UploadList[0];
 				RS->_GetCurrentUploadQueue()->UploadCount++;
 
 
@@ -741,6 +741,29 @@ namespace FlexKit
 		SetDebugName(TextureOut->Texture, File, strnlen(File, 256));
 
 		return {TextureOut, res};
+	}
+
+	typedef FlexKit::Pair<TextureHandle, bool> LoadDDSTexture2DFromFile_RES;
+
+	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS)
+	{
+		size_t NewSize = 0;
+		wchar_t	wstr[256];
+		mbstowcs_s(&NewSize, wstr, File, 256);
+
+		ID3D12Resource* TextureResources = nullptr;
+		ID3D12Resource* UploadHeap = nullptr;
+		DDS_ALPHA_MODE	AlphaMode;
+		uint2			WH;
+		uint64_t		MipLevels;
+		DXGI_FORMAT		Format;
+
+		auto res = CreateDDSTextureFromFile12(RS, wstr, &TextureResources, 4096, &AlphaMode, &WH, &MipLevels, &Format);
+		TextureHandle Texture = RS->CreateTexture2D(WH, DXGIFormat2TextureFormat(Format), MipLevels, &TextureResources, 1);
+
+		FK_ASSERT((size_t)Texture != INVALIDHANDLE, "TEXTURE FAILED TO CREATE!");
+
+		return {Texture, res && (size_t)Texture != INVALIDHANDLE};
 	}
 
 
