@@ -245,7 +245,10 @@ public:
 
 	bool IDInGrid(GridID_t ID)
 	{
-		return (ID[0] >= WH[0] || ID[0] < 0) && (ID[1] >= WH[1] || ID[1] < 0);
+		auto temp1 = (0 <= ID[0] && ID[0] < WH[0]);
+		auto temp2 = (0 <= ID[1] && ID[1] < WH[1]);
+
+		return (0 <= ID[0] && ID[0] < WH[0]) && ( 0 <= ID[1] && ID[1] < WH[1]);
 	}
 };
 
