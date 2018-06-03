@@ -33,19 +33,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "fmod64_vc.lib")
 
 PlayState::PlayState(
-		GameFramework* framework,
-		FlexKit::FKApplication* IN_App) :
-	App				{ IN_App },
-	Sound			{ framework->Core->Threads },
-	FrameworkState	{ framework },
-	Render	(
-				Framework->Core->GetTempMemory(), 
-				Framework->Core->RenderSystem, 
+	GameFramework*			IN_Framework,
+	VertexBufferHandle		IN_VertexBuffer,
+	VertexBufferHandle		IN_TextBuffer,
+	ConstantBufferHandle	IN_ConstantBuffer) :
+		FrameworkState	{ IN_Framework },
+		Sound			{ Framework->Core->Threads },
+		Render	(
+				Framework->Core->GetTempMemory(),
+				Framework->Core->RenderSystem,
 				Framework->Core->Geometry),
-	VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-	TextBuffer		(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-	
-	ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)),
+
+	VertexBuffer	(IN_VertexBuffer	),
+	TextBuffer		(IN_TextBuffer		),
+	ConstantBuffer	(IN_ConstantBuffer	),
+
 	Grid			{Framework->Core->GetBlockMemory()},
 	Player1_Handler	{Grid, Framework->Core->GetBlockMemory() },
 	Player2_Handler	{Grid, Framework->Core->GetBlockMemory() },
@@ -66,8 +68,8 @@ PlayState::PlayState(
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
 
-	framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO );
-	framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO);
+	Framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO );
+	Framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO);
 }
 
 
@@ -178,7 +180,7 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 		*Framework->DefaultAssets.Font,
 		TextBuffer,
 		GetCurrentBackBuffer(&Core->Window),
-				Core->GetTempMemory());
+		Core->GetTempMemory());
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 

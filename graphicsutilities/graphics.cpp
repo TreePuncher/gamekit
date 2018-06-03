@@ -2167,6 +2167,8 @@ namespace FlexKit
 
 	void RenderSystem::QueuePSOLoad(EPIPELINESTATES State)
 	{
+		FK_LOG_INFO("Reloading PSO!");
+
 		PipelineStates.QueuePSOLoad(State);
 	}
 

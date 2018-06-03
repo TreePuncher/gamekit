@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GameFramework.h"
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\ImageUtilities.h"
+#include "..\coreutilities\Logging.h"
 
 // Todo List
 //	Gameplay:
@@ -127,7 +128,8 @@ namespace FlexKit
 			}	break;
 			case KC_TILDA:
 			{
-				std::cout << "Pushing Console State\n";
+				FK_LOG_INFO("Console Key Pressed!");
+
 				if (!_ptr->ConsoleActive) {
 					PushSubState(_ptr, &_ptr->Core->GetBlockMemory().allocate<ConsoleSubState>(_ptr));
 					_ptr->ConsoleActive = true;

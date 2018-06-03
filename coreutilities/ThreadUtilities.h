@@ -74,7 +74,7 @@ namespace FlexKit
 			unsigned int index = m_writer_index;
 			m_Waiting[index % MAX] = in;
 	
-			_WriteBarrier();
+			//_WriteBarrier();
 			m_writer_index = index + 1;
 	
 			return true;

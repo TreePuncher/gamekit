@@ -93,7 +93,12 @@ public:
 class PlayState : public FrameworkState
 {
 public:
-	PlayState(GameFramework* Framework, FlexKit::FKApplication*);
+	PlayState(
+		GameFramework*			Framework,
+		VertexBufferHandle		VertexBuffer,
+		VertexBufferHandle		TextBuffer,
+		ConstantBufferHandle	ConstantBuffer);
+
 	~PlayState();
 
 	bool Update			(EngineCore* Engine, double dT) final;
@@ -112,8 +117,6 @@ public:
 
 	bool GameInPlay;
 
-
-	FKApplication*			App;
 	WorldRender				Render;
 
 	TextureHandle			DepthBuffer;

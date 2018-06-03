@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"	
 #include "..\Application\GameMemory.h"
 #include "..\graphicsutilities\Graphics.h"
+#include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\GuiUtilities.h"
 
 namespace FlexKit
@@ -180,6 +181,10 @@ namespace FlexKit
 
 	struct Console
 	{
+		VertexBufferHandle		VertexBuffer;// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		VertexBufferHandle		TextBuffer;// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		ConstantBufferHandle	ConstantBuffer;
+
 		CircularBuffer<ConsoleLine, 32>	Lines;
 		CircularBuffer<ConsoleLine, 32>	CommandHistory;
 		SpriteFontAsset*				Font;
@@ -195,17 +200,19 @@ namespace FlexKit
 
 		iAllocator*	Memory;
 
-		const char* EngineVersion = "Version: Pre-Alpha 0.0.0.1";
+		const char* EngineVersion = "Version: Pre-Alpha 0.0.0.2:" __DATE__;
 	};
 
 
 	/************************************************************************************************/
 
 
-	void InitateConsole ( Console* out, SpriteFontAsset* Font, EngineMemory* Engine );
+	void InitateConsole ( Console* out, SpriteFontAsset* Font, EngineMemory* Engine);
 	void ReleaseConsole	( Console* out );
 
 	//void DrawConsole	( Console* C, ImmediateRender* IR, uint2 Window_WH );
+	void DrawConsole	( Console* C, FrameGraph& Graph, TextureHandle RenderTarget);
+
 
 	void InputConsole		( Console* C, char InputCharacter );
 	void EnterLineConsole	( Console* C );

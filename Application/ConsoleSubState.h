@@ -36,6 +36,8 @@ namespace FlexKit
 		ConsoleSubState(GameFramework* framework) :
 			FrameworkState(framework) 
 		{
+			FK_LOG_INFO("Creating Console State!");
+
 			Console              = &Framework->Console;
 			Framework            = Framework;
 			Core				 = Framework->Core;
@@ -58,8 +60,7 @@ namespace FlexKit
 
 		bool  Update			(EngineCore* Engine, double dT) override;
 		bool  DebugDraw			(EngineCore* Engine, double dT) override;
-		bool  PreDrawUpdate		(EngineCore* Engine, double dT) override;
-		bool  PostDrawUpdate	(EngineCore* Engine, double dT) override;
+		bool  Draw				(EngineCore* Engine, double dT, FrameGraph& Graph) override;
 
 		bool  EventHandler		(Event evt)	override;
 

@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ClientState.cpp"
 #include "MenuState.cpp"
 #include "PlayState.cpp"
+#include "BaseState.h"
 #include "Gameplay.cpp"
 #include <iostream>
 
@@ -44,7 +45,13 @@ int main(int argc, char* argv[])
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);
 
-	App.SetInitialState<PlayState>(&App);
+	auto& GameBase = App.PushState<BaseState>(&App);
+
+	App.PushState<PlayState>(
+			GameBase.VertexBuffer,
+			GameBase.TextBuffer,
+			GameBase.ConstantBuffer);
+
 	FK_LOG_INFO("Set initial PlayState state.");
 
 	FK_LOG_INFO("Running application...");

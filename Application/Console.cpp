@@ -39,6 +39,10 @@ namespace FlexKit
 
 	void InitateConsole(Console* Out, SpriteFontAsset* Font, EngineCore* Engine)
 	{
+		Out->ConstantBuffer				  = Engine->RenderSystem.CreateConstantBuffer(8096 * 2000, false);
+		Out->VertexBuffer				  = Engine->RenderSystem.CreateVertexBuffer	 (8096 * 2000, false);
+		Out->TextBuffer					  = Engine->RenderSystem.CreateVertexBuffer	 (8096 * 2000, false);
+
 		Out->Lines.clear();
 		Out->Memory                       = Engine->GetBlockMemory();
 		Out->Font                         = Font;
@@ -56,7 +60,7 @@ namespace FlexKit
 		AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
 		AddStringVar(Out, "BuildDate", __DATE__);
 
-		memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
+		::memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
 	}
 
 
@@ -71,6 +75,36 @@ namespace FlexKit
 		C->Variables.Release();
 		C->FunctionTable.Release();
 		C->BuiltInIdentifiers.Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void DrawConsole(Console* C, FrameGraph& Graph, TextureHandle RenderTarget)
+	{
+		auto WindowWH			= Graph.Resources.RenderSystem->GetRenderTargetWH(RenderTarget);
+		const float LineHeight	= (float(C->Font->FontSize[1]) / WindowWH[1]) / 4;
+		const float AspectRatio = float(WindowWH[0]) / float(WindowWH[1]);
+		size_t	itr				= 0;
+		float	y				= 0.5f - float(1 + (itr)) * LineHeight;
+
+		PrintTextFormatting Format;
+		Format.StartingPOS = { 0, y };
+		Format.TextArea    = float2(1.0f, 1.0f) - float2(0.0f, y);
+		Format.Color       = float4(WHITE, 1.0f);
+		Format.Scale       = { 0.5f / AspectRatio, 0.5f };
+		Format.PixelSize   = float2(1.0f,1.0f ) / WindowWH;
+		Format.CenterX	   = false;
+		Format.CenterY	   = false;
+
+		DrawSprite_Text(
+				C->InputBuffer, 
+				Graph, 
+				*C->Font, 
+				C->VertexBuffer, 
+				RenderTarget, 
+				C->Memory, Format);
 	}
 
 

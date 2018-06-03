@@ -44,13 +44,11 @@ namespace FlexKit
 		return false;
 	}
 
-
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::PreDrawUpdate(EngineCore* Engine, double dT)
+	bool  ConsoleSubState::Draw(EngineCore* Engine, double dT, FrameGraph& Graph) 
 	{
-		FK_ASSERT(0);
 		/*
 		FlexKit::Draw_RECT Rect;
 		Rect.BLeft	= { 0, 0.5 };
@@ -59,15 +57,23 @@ namespace FlexKit
 		//PushRect(Framework->Immediate, Rect);
 		//DrawConsole(C, Framework->Immediate, GetWindowWH(Engine));
 		*/
-		return false;
-	}
 
+		ClearVertexBuffer(Graph, Console->VertexBuffer);
+		ClearVertexBuffer(Graph, Console->TextBuffer);
 
-	/************************************************************************************************/
+		DrawShapes(
+				EPIPELINESTATES::DRAW_PSO, Graph, 
+				Console->VertexBuffer,
+				Console->ConstantBuffer,
+				GetCurrentBackBuffer(&Core->Window),
+				Core->GetTempMemory(),
+			RectangleShape(
+				float2{0, 0},
+				float2{0, 0},
+				{ 0.5f, 0.5f, 0.5f, 1.0f }));
 
+		DrawConsole(Console, Graph, GetCurrentBackBuffer(&Core->Window));
 
-	bool  ConsoleSubState::PostDrawUpdate(EngineCore* Engine, double dT)
-	{
 		return false;
 	}
 

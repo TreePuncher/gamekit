@@ -1,6 +1,8 @@
+#pragma once
+
 /**********************************************************************
-, 1080
-Copyright (c) 2015 - 2018 Robert May
+
+Copyright (c) 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -23,56 +25,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#ifndef FKAPPLICATION_H
-#define FKAPPLICATION_H
-
-#pragma warning( disable : 4251 )
-
-#include "stdafx.h"
-
-#include "..\buildsettings.h"
-#include "..\coreutilities\AllSourceFiles.cpp"
-#include "FrameworkSourceFiles.cpp"
-
-#include "GameMemory.h"
-#include "GameFramework.h"
-
-#include <Windows.h>
-#include <iostream>
+#include "..\Application\GameFramework.h"
 
 
-namespace FlexKit
+class MainMenu : public FlexKit::FrameworkState
 {
-	class FKApplication
-	{
-	public:
-		FKApplication(uint2 WindowResolution = { 1920, 1080 });
-		~FKApplication();
+public:
+	MainMenu(
+		GameFramework*			IN_Framework,
+		ConstantBufferHandle	Contsants, 
+		VertexBufferHandle		VertexBuffer, 
+		VertexBufferHandle		TextBuffer);
 
-		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
-		TY_INITIALSTATE& PushState(TY_ARGS ... ARGS)
-		{
-			FK_LOG_INFO("Pushing New State");
+	bool  Update	(EngineCore* Engine, double dT)						override;
+	bool  Draw		(EngineCore* Engine, double dT, FrameGraph& Graph)	override;
 
-			auto& State = Core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(&Framework, ARGS...);
 
-			Framework.SubStates.push_back(&State);
-			return State;
-		}
+private:
+	ConstantBufferHandle	Constants;
+	VertexBufferHandle		VertexBuffer;
+	VertexBufferHandle		TextBuffer;
 
-		void Run();
-		void Cleanup();
-
-		void PushArgument(const char* Str);
-
-	private:
-		EngineMemory*	Memory;
-		EngineCore*		Core;
-		GameFramework	Framework;
-	};
-
-}
-
-#include "Application.cpp"
-
-#endif
+};
