@@ -307,8 +307,8 @@ struct CMap
 {
 	USHORT		Version;
 	USHORT		TableSize;
-	CMAP_Entry*	Tables;
-	byte*		Buffer;
+	CMAP_Entry*		Tables;
+	FlexKit::byte*	Buffer;
 	
 	bool HasWindowsEntry()
 	{
@@ -347,7 +347,7 @@ struct CMap
 		return reinterpret_cast<_Format4Encoding*>(Buffer + Offset)->GetEndianConverted();
 	}
 
-	byte* GetSubTable(size_t Offset)
+	FlexKit::byte* GetSubTable(size_t Offset)
 	{
 		return Buffer + Offset;
 	}
@@ -412,7 +412,7 @@ struct SimpleGlyph
 
 struct GlyphEntry
 {
-	GlyphEntry(byte* buffer)
+	GlyphEntry(FlexKit::byte* buffer)
 	{
 		auto data = reinterpret_cast<Glyph*>(buffer)->GetConverted();
 
@@ -434,7 +434,7 @@ struct GlyphEntry
 	{
 		Curve Out;
 
-		byte* Begin = BufferBegin + sizeof(Glyph);
+		FlexKit::byte* Begin = BufferBegin + sizeof(Glyph);
 
 		if (Compound)
 		{
@@ -469,8 +469,8 @@ struct GlyphEntry
 
 	TTF_USHORT	NumberOfContours;
 	bool		Compound;
-	Glyph		Data;
-	byte*		BufferBegin;
+	Glyph			Data;
+	FlexKit::byte*	BufferBegin;
 };
 
 
@@ -515,7 +515,7 @@ struct CompoundGlyph
 // https://docs.microsoft.com/en-us/typography/opentype/spec/head
 struct Head
 {
-	Head(byte* Buffer)
+	Head(FlexKit::byte* Buffer)
 	{
 		Head* Temp = reinterpret_cast<Head*>(Buffer);
 		Version				= ConvertEndianness(Temp->Version);
@@ -578,7 +578,7 @@ struct Hhea
 
 struct Loca
 {
-	Loca(byte* LocaBuffer, bool LongVersion)
+	Loca(FlexKit::byte* LocaBuffer, bool LongVersion)
 	{
 		LONG	= reinterpret_cast<TTF_ULONG*>(LocaBuffer);
 		Length	= LongVersion;
@@ -644,7 +644,7 @@ public:
 	TTF_File(const char* File, iAllocator* Memory)
 	{
 		auto FileSize	= GetFileSize(File);
-		Buffer			= (byte*)Memory->_aligned_malloc(FileSize + 1);
+		Buffer			= (FlexKit::byte*)Memory->_aligned_malloc(FileSize + 1);
 		auto res		= LoadFileIntoBuffer(File, Buffer, FileSize, false);
 		FK_ASSERT(res, "failed to Load File!");
 
@@ -824,7 +824,7 @@ public:
 	TTF_DirectoryEntry*		Entries;
 
 	size_t					BufferSize;
-	byte*					Buffer;
+	FlexKit::byte*			Buffer;
 };
 
 

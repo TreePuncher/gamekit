@@ -121,13 +121,13 @@ int main(int argc, char* argv[])
 			BlockDesc.MediumBlock = MEGABYTE * 200;
 			BlockDesc.SmallBlock  = MEGABYTE * 150;
 			BlockDesc.PoolSize	  = BlockDesc.LargeBlock + BlockDesc.MediumBlock + BlockDesc.SmallBlock;
-			BlockDesc._ptr		  = (byte*)_aligned_malloc(BlockDesc.PoolSize + MEGABYTE, 0x40);
+			BlockDesc._ptr		  = (FlexKit::byte*)_aligned_malloc(BlockDesc.PoolSize + MEGABYTE, 0x40);
 
 			FlexKit::BlockAllocator BlockMemory;
 			BlockMemory.Init(BlockDesc);
 
 			FlexKit::StackAllocator TempMemory;
-			TempMemory.Init((byte*)_aligned_malloc(MEGABYTE, 0x40), MEGABYTE);
+			TempMemory.Init((FlexKit::byte*)_aligned_malloc(MEGABYTE, 0x40), MEGABYTE);
 
 			{
 				static_vector<LoadGeometryRES_ptr, 16>	Resources;
@@ -159,6 +159,7 @@ int main(int argc, char* argv[])
 				}
 
 				// Load Fonts
+#ifdef _DEBUG
 				for (auto MD : MetaData)
 				{
 					if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
@@ -167,6 +168,7 @@ int main(int argc, char* argv[])
 						auto res = LoadTTFFile(Font->FontFile, BlockMemory);
 					}
 				}
+#endif
 
 				physx::PxCooking*				Cooker			= nullptr;
 				physx::PxFoundation*			Foundation		= nullptr;
@@ -315,10 +317,10 @@ int main(int argc, char* argv[])
 		{
 			for(auto i : Inputs)
 			{
-				FILE* F           = nullptr;
-				auto openRes      = fopen_s(&F, i, "rb");
-				size_t TableSize  = ReadResourceTableSize(F);
-				byte* TableMemory = (byte*)malloc(TableSize);
+				FILE* F						= nullptr;
+				auto openRes				= fopen_s(&F, i, "rb");
+				size_t TableSize			= ReadResourceTableSize(F);
+				FlexKit::byte* TableMemory	= (FlexKit::byte*)malloc(TableSize);
 				ResourceTable* RT = (ResourceTable*)TableMemory;
 
 				ReadResourceTable(F, RT, TableSize);

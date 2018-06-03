@@ -520,7 +520,7 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 {
 	size_t TempMemorySize = MEGABYTE * 256;
 	StackAllocator TempMemory;
-	TempMemory.Init((byte*)_aligned_malloc(TempMemorySize, 0x40), TempMemorySize);
+	TempMemory.Init((FlexKit::byte*)_aligned_malloc(TempMemorySize, 0x40), TempMemorySize);
 
 	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, TempMemory, Table, MD);
 
