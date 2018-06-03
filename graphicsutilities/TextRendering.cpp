@@ -144,8 +144,6 @@ namespace FlexKit
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })
 					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.RenderSystem->GetRenderTargetWH(RenderTarget);
 
-				Formatting.PixelSize = Formatting.PixelSize * 2;
-
 				Data.Heap.Init(
 					FGraph.Resources.RenderSystem, 
 					FGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0), 
@@ -209,7 +207,7 @@ namespace FlexKit
 
 						LineBegin = itr_2;
 						CurrentX = 0;
-						CurrentY -= YAdvance / 2 * Formatting.Scale.y;
+						CurrentY += YAdvance / 2 * Formatting.Scale.y;
 					}
 
 					if (CurrentY > Formatting.StartingPOS.y + Formatting.TextArea.y)
@@ -221,7 +219,7 @@ namespace FlexKit
 					Character.BottomRightUV = UVBR;
 					Character.Color         = Formatting.Color;
 					Character.Size          = WH * Formatting.Scale;
-
+						
 					Text.push_back(Character);
 					YAdvance    = max(YAdvance, GlyphArea.y);
 					CurrentX += XAdvance * Formatting.Scale.x;
@@ -232,8 +230,12 @@ namespace FlexKit
 				Formatting.CurrentY = CurrentY;
 				Formatting.CurrentY = YAdvance;
 
-				for (auto Character : Text)
-					FlexKit::PushVertex(Character, Buffer, FGraph.Resources);
+				for (auto Character : Text) 
+				{
+					auto Character2 = Character;
+					Character2.POS = Position2SS(Character2.POS);
+					FlexKit::PushVertex(Character2, Buffer, FGraph.Resources);
+				}
 			},
 			[](DrawSpriteText& Data, const FrameResources& Resources, Context* Ctx)
 			{
