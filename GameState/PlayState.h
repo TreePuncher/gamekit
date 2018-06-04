@@ -89,12 +89,82 @@ public:
 
 /************************************************************************************************/
 
+class PlayerCameraController : 
+	public FlexKit::CameraBehavior,
+	public FlexKit::SceneNodeBehavior
+{
+public:
+	PlayerCameraController(ComponentListInterface& IN_Components) :
+			Components			{IN_Components},
+			CameraBehavior		{IN_Components},
+			SceneNodeBehavior	{IN_Components}{}
+
+	ComponentListInterface& Components;
+
+	void Update(float dt)
+	{
+
+	}
+};
+
+ComponentListInterface& InitiatePlayerCameraController(
+	CameraComponentSystem*		CameraSystem,
+	SceneNodeComponentSystem*	SceneNodeSystem,
+	ComponentList<>&			Components)
+{
+	auto SceneNode = SceneNodeSystem->GetNewNode();
+
+	InitiateComponentList(Components,
+		CreateCameraComponent(
+			CameraSystem,
+			1.6666f,
+			0.01f,
+			10000.0f,
+			SceneNode,
+			false));
+
+	return Components;
+}
+
+
+/************************************************************************************************/
+
+
+class PlayerController : 
+	public FlexKit::SceneNodeBehavior,
+	public FlexKit::DrawableBehavior
+{
+public: 
+	PlayerController(ComponentListInterface& Components) : 
+		SceneNodeBehavior	{Components},
+		DrawableBehavior	{Components}
+	{}
+};
+
+
+ComponentListInterface& InitiatePlayerController(
+	DrawableComponentSystem*	DCS, 
+	SceneNodeComponentSystem*	SceneNodeSystem,
+	ComponentList<>&			Components)
+{
+	InitiateComponentList(Components,
+		CreateDrawableComponent(DCS, "Flower"));
+
+	return Components;
+}
+
+
+/************************************************************************************************/
+
+
 
 class PlayState : public FrameworkState
 {
 public:
 	PlayState(
 		GameFramework*			Framework,
+		WorldRender*			Render,
+		TextureHandle			DepthBuffer,
 		VertexBufferHandle		VertexBuffer,
 		VertexBufferHandle		TextBuffer,
 		ConstantBufferHandle	ConstantBuffer);
@@ -117,8 +187,10 @@ public:
 
 	bool GameInPlay;
 
-	WorldRender				Render;
+	GraphicScene			Scene;
+	DrawableComponentSystem	SceneManager;
 
+	WorldRender*			Render;
 	TextureHandle			DepthBuffer;
 	ConstantBufferHandle	ConstantBuffer;
 	VertexBufferHandle		VertexBuffer;
@@ -131,6 +203,13 @@ public:
 	FMOD_SoundSystem	Sound;
 
 	FlexKit::CircularBuffer<GameGridFrame, 120>	FrameCache;
+
+	// Player State Controllers
+	ComponentList<>			PlayerCameraComponents;
+	ComponentList<>			PlayerComponents;
+
+	PlayerCameraController	LocalCamera;
+	PlayerController		LocalPlayer;
 };
 
 

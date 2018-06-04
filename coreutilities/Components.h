@@ -141,6 +141,9 @@ namespace FlexKit
 		{
 			LastComponent	= 0;
 			ComponentCount	= 0;
+
+			for (auto& C : Components)
+				C.Type = UnknownComponentID;
 		}
 
 		~ComponentList()
@@ -174,13 +177,16 @@ namespace FlexKit
 					if (C.Type == UnknownComponentID) 
 					{
 						C = std::move(NewC);
-						break;
+
+						FK_LOG_INFO("Adding component!");
+
+						++ComponentCount;
+						return true;
 					}
 				}
-
-				++ComponentCount;
-				return true;
 			}
+
+			FK_LOG_ERROR("Failed adding component!");
 			return false;
 		}
 

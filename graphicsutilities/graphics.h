@@ -48,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Events.h"
 #include "..\coreutilities\Handle.h"
 #include "..\coreutilities\intersection.h"
+#include "..\coreutilities\Logging.h"
 #include "..\coreutilities\mathutils.h"
 #include "..\coreutilities\Transforms.h"
 #include "..\coreutilities\type.h"
@@ -2008,7 +2009,7 @@ namespace FlexKit
 
 		void ReleaseCB(ConstantBufferHandle);
 		void ReleaseVB(VertexBufferHandle);
-
+		void ReleaseDB(TextureHandle);
 		void ReleaseTempResources();
 
 		// Upload Queues
@@ -2939,7 +2940,7 @@ namespace FlexKit
 	FLEXKITAPI bool					ResizeRenderWindow			( RenderSystem*, RenderWindow* Window, uint2 HW );
 	FLEXKITAPI void					SetInputWIndow				( RenderWindow* );
 	FLEXKITAPI void					UpdateInput					( void );
-	FLEXKITAPI void					UpdateCamera				( RenderSystem* RS, SceneNodes* Nodes, Camera* camera, double dt);
+	FLEXKITAPI void					UpdateCamera				( SceneNodes* Nodes, Camera* camera, double dt);
 
 	
 	/************************************************************************************************/

@@ -158,8 +158,8 @@ namespace FlexKit
 
 	void WorldRender::DefaultRender(PVS& Drawables, Camera& Camera, SceneNodes* Nodes, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
 	{
-		ClearDepthBuffer(Graph, Targets.DepthTarget,	1.0f);
-		ClearDepthBuffer(Graph, OcclusionBuffer,		1.0f);
+		//ClearDepthBuffer(Graph, Targets.DepthTarget,	1.0f);
+		//ClearDepthBuffer(Graph, OcclusionBuffer,		1.0f);
 
 		RenderDrawabledPBR_Forward(Drawables, Camera, Nodes, Targets, Graph, Memory);
 	}
@@ -194,11 +194,11 @@ namespace FlexKit
 		auto& Pass = Graph.AddNode<ForwardDrawPass>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, ForwardDrawPass& Data)
 		{
-			Data.BackBuffer		 = Builder.WriteBackBuffer	(RS->GetTag(Targets.RenderTarget));
-			Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+			//Data.BackBuffer		 = Builder.WriteBackBuffer	(RS->GetTag(Targets.RenderTarget));
+			//Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
 
-			if(OcclusionCulling)
-				Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
+			//if(OcclusionCulling)
+			//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
 
 			Data.Draws = ForwardDrawableList{ Memory };
 			Camera::BufferLayout CameraConstants = Camera.GetConstants(Nodes, 0.0f);

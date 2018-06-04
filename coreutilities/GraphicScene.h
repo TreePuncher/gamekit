@@ -74,23 +74,35 @@ namespace FlexKit
 
 
 
-	struct FLEXKITAPI GraphicScene
+	class GraphicScene
 	{
-		GraphicScene(RenderSystem* in_RS, Resources* in_RM, SceneNodeComponentSystem* in_SN, GeometryTable* GT, iAllocator* memory, iAllocator* tempmemory) :
-			Memory					(memory),
-			TempMemory				(tempmemory),
-			HandleTable				(memory),
-			DrawableHandles			(memory),
-			Drawables				(memory),
-			DrawableVisibility		(memory),
-			DrawableRayVisibility	(memory),
-			//SpotLightCasters		(memory),
-			TaggedJoints			(memory),
-			RS						(in_RS),
-			RM						(in_RM),
-			SN						(in_SN),
-			GT						(GT),
-			_PVS					(tempmemory)
+	public:
+		GraphicScene(int x)
+		{
+			std::cout << "STUFF HAPPENED";
+		}
+
+		GraphicScene(
+			RenderSystem*				in_RS, 
+			Resources*					in_RM, 
+			SceneNodeComponentSystem*	in_SN, 
+			GeometryTable*				GT, 
+			iAllocator*					memory, 
+			iAllocator*					tempmemory) :
+				Memory						(memory),
+				TempMemory					(tempmemory),
+				HandleTable					(memory),
+				DrawableHandles				(memory),
+				Drawables					(memory),
+				DrawableVisibility			(memory),
+				DrawableRayVisibility		(memory),
+				//SpotLightCasters			(memory),
+				TaggedJoints				(memory),
+				RS							(in_RS),
+				RM							(in_RM),
+				SN							(in_SN),
+				GT							(GT),
+				_PVS						(tempmemory)
 		{
 			using FlexKit::CreateSpotLightBuffer;
 			using FlexKit::CreatePointLightBuffer;

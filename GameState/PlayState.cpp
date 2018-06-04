@@ -34,32 +34,50 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 PlayState::PlayState(
 	GameFramework*			IN_Framework,
+	WorldRender*			IN_Render,
+	TextureHandle			IN_DepthBuffer,
 	VertexBufferHandle		IN_VertexBuffer,
 	VertexBufferHandle		IN_TextBuffer,
 	ConstantBufferHandle	IN_ConstantBuffer) :
-		FrameworkState	{ IN_Framework },
-		Sound			{ Framework->Core->Threads },
-		Render	(
-				Framework->Core->GetTempMemory(),
-				Framework->Core->RenderSystem,
-				Framework->Core->Geometry),
+		FrameworkState	{IN_Framework},
+		LocalCamera		{
+			InitiatePlayerCameraController(
+				Framework->Core->Cameras,
+				Framework->Core->Nodes, PlayerCameraComponents)},
+		
+		LocalPlayer{
+			InitiatePlayerController(
+				SceneManager,
+				Framework->Core->Nodes,
+				PlayerComponents)},
 
-	VertexBuffer	(IN_VertexBuffer	),
-	TextBuffer		(IN_TextBuffer		),
-	ConstantBuffer	(IN_ConstantBuffer	),
+		Scene{
+			Framework->Core->RenderSystem, 
+			Framework->Core->Assets,
+			Framework->Core->Nodes, 
+			Framework->Core->Geometry, 
+			Framework->Core->GetBlockMemory(),
+			Framework->Core->GetTempMemory() },
 
-	Grid			{Framework->Core->GetBlockMemory()},
-	Player1_Handler	{Grid, Framework->Core->GetBlockMemory() },
-	Player2_Handler	{Grid, Framework->Core->GetBlockMemory() },
-	GameInPlay		{true}
+
+		SceneManager{
+			Scene,
+			Framework->Core->Nodes},
+
+		Sound			{Framework->Core->Threads},
+		DepthBuffer		{IN_DepthBuffer},
+		Render			{IN_Render},
+		Grid			{Framework->Core->GetBlockMemory()},
+		Player1_Handler	{Grid, Framework->Core->GetBlockMemory()},
+		Player2_Handler	{Grid, Framework->Core->GetBlockMemory()},
+		GameInPlay		{true}
 {
-	DepthBuffer = (Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 }, true));
-	Framework->Core->RenderSystem.SetTag(DepthBuffer, GetCRCGUID(DEPTHBUFFER));
-
-
 	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
 	Grid.CreateGridObject({10, 5});
 
+	/*
+	LocalPlayer = PlayerController{  };
+		*/
 
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
@@ -78,10 +96,7 @@ PlayState::PlayState(
 
 PlayState::~PlayState()
 {
-
-	Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
-	Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
-
+	// TODO: Make this not stoopid 
 	Framework->Core->GetBlockMemory().free(this);
 }
 
@@ -148,6 +163,7 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 {
 	FrameGraph.Resources.AddDepthBuffer(DepthBuffer);
+
 	WorldRender_Targets Targets = {
 		GetCurrentBackBuffer(&Core->Window),
 		DepthBuffer
@@ -172,6 +188,19 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 		Core->GetTempMemory()
 	);
 #else
+	Camera* ActiveCamera = LocalCamera.GetCamera_ptr();
+	PVS Drawables				{Core->GetTempMemory()};
+	PVS TransparentDrawables	{Core->GetTempMemory()};
+
+	GetGraphicScenePVS(Scene, ActiveCamera, &Drawables, &TransparentDrawables);
+
+	Render->DefaultRender(
+		Drawables, 
+		*ActiveCamera, 
+		Core->Nodes, 
+		Targets,
+		FrameGraph, 
+		Core->GetTempMemory());
 #endif
 
 	DrawSprite_Text(

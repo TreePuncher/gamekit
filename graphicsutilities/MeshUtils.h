@@ -66,8 +66,8 @@ namespace FlexKit
 
 	struct s_TokenValue
 	{
-		byte	buffer[31];
-		Token	token;
+		FlexKit::byte	buffer[31];
+		Token			token;
 
 		static s_TokenValue Empty()
 		{

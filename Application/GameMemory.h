@@ -147,7 +147,7 @@ struct EngineCore
 		Time			(memory->BlockAllocator),
 		Threads			(memory->BlockAllocator),
 
-		Cameras			(&RenderSystem, &Nodes, memory->BlockAllocator),
+		Cameras			(&Nodes, memory->BlockAllocator),
 		Nodes			(memory->NodeMem, sizeof(EngineMemory::NodeMem)),
 		Memory			(memory),
 		FrameLock		(true),

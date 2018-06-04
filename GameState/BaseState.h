@@ -37,15 +37,33 @@ public:
 		FlexKit::FKApplication* IN_App	) :
 			App				{IN_App},
 			FrameworkState	{Framework},
-			VertexBuffer	(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-			TextBuffer		(Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-			ConstantBuffer	(Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000, false))
-	{
+			DepthBuffer		{Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 },	true)},
+			VertexBuffer	{Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64,		false)},
+			TextBuffer		{Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64,		false)},
+			ConstantBuffer	{Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000,	false)},
 
+			Render	{
+				Framework->Core->GetTempMemory(),
+				Framework->Core->RenderSystem,
+				Framework->Core->Geometry}
+	{
 	}
+
+	~BaseState()
+	{
+		Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
+		Framework->Core->RenderSystem.ReleaseVB(TextBuffer);
+		Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
+
+		// TODO: Release this Depth Buffer
+		//Framework->Core->RenderSystem.ReleaseDp
+	}
+
 
 	FlexKit::FKApplication* App;
 
+	WorldRender				Render;
+	TextureHandle			DepthBuffer;
 	VertexBufferHandle		VertexBuffer;
 	VertexBufferHandle		TextBuffer;
 	ConstantBufferHandle	ConstantBuffer;

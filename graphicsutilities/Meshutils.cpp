@@ -337,7 +337,7 @@ namespace FlexKit
 			/************************************************************************************************/
 
 
-			void ExtractFloats_2( const char* in, size_t LineLength, byte* out )
+			void ExtractFloats_2( const char* in, size_t LineLength, FlexKit::byte* out )
 			{
 				// Skip token plus spaces
 				size_t itr = 0;

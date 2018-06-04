@@ -273,6 +273,7 @@ namespace FlexKit
 
 		StaticFrameResourceHandle AddTexture(TextureHandle Handle, uint32_t Tag)
 		{
+			FK_ASSERT(0);
 		}
 
 
@@ -286,6 +287,29 @@ namespace FlexKit
 						(	LHS.Type == OT_RenderTarget || 
 							LHS.Type == OT_BackBuffer	|| 
 							LHS.Type == OT_DepthBuffer ));	
+				});
+
+			if (res != Resources.end())
+				return res->Handle;
+
+			// Create New Resource
+			FrameResourceHandle NewResource;
+
+			FK_ASSERT(0);
+
+			return NewResource;
+		}
+
+		FrameResourceHandle	FindRenderTargetResource(TextureHandle Handle)
+		{
+			auto res = find(Resources, 
+				[&](const auto& LHS)
+				{
+					auto CorrectType = (LHS.Type == OT_RenderTarget ||
+						LHS.Type == OT_BackBuffer ||
+						LHS.Type == OT_DepthBuffer);
+
+					return (CorrectType && LHS.Texture == Handle);
 				});
 
 			if (res != Resources.end())
@@ -381,6 +405,7 @@ namespace FlexKit
 		FrameObject*		FO;
 		FrameGraphNode*		Source;
 		uint32_t			Tag;
+		uint32_t			ID;	// Extra ID
 		DeviceResourceState	ExpectedState;
 		DeviceResourceState	State;
 	};
@@ -538,6 +563,9 @@ namespace FlexKit
 		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(uint32_t Tag);
 		Pair<bool, FrameObjectDependency&> IsTrackedReadable	(uint32_t Tag);
 
+		Pair<bool, FrameObjectDependency&> IsTrackedWriteableTexture	(TextureHandle Handle);
+		Pair<bool, FrameObjectDependency&> IsTrackedReadableTexture		(TextureHandle Handle);
+
 		Vector<FrameObjectDependency>	Writables;
 		Vector<FrameObjectDependency>	Readables;
 		Vector<FrameObjectDependency>	Retirees;
@@ -585,6 +613,8 @@ namespace FlexKit
 		FrameResourceHandle	ReadDepthBuffer		(uint32_t Tag);
 		FrameResourceHandle	WriteDepthBuffer	(uint32_t Tag);
 
+		FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
+		FrameResourceHandle	WriteDepthBuffer	(TextureHandle Handle);
 
 	private:
 		FrameResourceHandle AddReadableResource		(uint32_t Tag, DeviceResourceState State);

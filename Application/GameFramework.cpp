@@ -262,7 +262,7 @@ namespace FlexKit
 		FrameGraph		FrameGraph(Core->RenderSystem, TempMemory);
 
 		// Add in Base Resources
-		FrameGraph.Resources.AddRenderTarget(Core->Window.GetBackBuffer());
+		FrameGraph.Resources.AddRenderTarget(Core->Window.GetBackBuffer(), GetCRCGUID(BACKBUFFER));
 
 		{
 			auto Itr = SubStates.begin();

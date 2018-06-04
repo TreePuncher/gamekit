@@ -129,7 +129,7 @@ bool GameGrid::MoveBomb(GridID_t GridID, int2 Direction)
 
 bool GameGrid::IsCellClear(GridID_t GridID)
 {
-	if (IDInGrid(GridID))
+	if (!IDInGrid(GridID))
 		return false;
 
 	size_t Idx = GridID2Index(GridID);
@@ -143,7 +143,7 @@ bool GameGrid::IsCellClear(GridID_t GridID)
 
 bool GameGrid::IsCellDestroyed(GridID_t GridID)
 {
-	if (IDInGrid(GridID))
+	if (!IDInGrid(GridID))
 		return false;
 
 	size_t Idx = GridID2Index(GridID);

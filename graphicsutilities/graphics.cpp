@@ -2389,6 +2389,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void RenderSystem::ReleaseDB(TextureHandle Handle)
+	{
+		FK_LOG_INFO("Leaking DepthBuffer!");
+		//TODO: Release DepthBuffer Properly!
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Push_DelayedRelease(RenderSystem* RS, ID3D12Resource* Res)
 	{
 		RS->FreeList.push_back({ Res, 3 });
@@ -2864,7 +2874,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView::VertexBufferView( byte* _ptr, size_t size )
+	VertexBufferView::VertexBufferView(FlexKit::byte* _ptr, size_t size )
 	{
 		mBufferinError     = true;
 		mBufferFormat      = VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_UNKNOWN;
@@ -2957,7 +2967,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	byte* VertexBufferView::GetBuffer() const
+	FlexKit::byte* VertexBufferView::GetBuffer() const
 	{
 		return mBuffer;
 	}
@@ -5820,9 +5830,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateCamera(RenderSystem* RS, SceneNodes* nodes, Camera* camera, double dt)
+	void UpdateCamera(SceneNodes* nodes, Camera* camera, double dt)
 	{
-		FK_ASSERT(RS);
 		FK_ASSERT(nodes);
 		FK_ASSERT(camera);
 

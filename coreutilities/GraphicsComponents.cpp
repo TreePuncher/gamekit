@@ -177,7 +177,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	DrawableComponentArgs CreateEnityComponent(DrawableComponentSystem*	DrawableComponent, const char* Mesh)
+	DrawableComponentArgs CreateDrawableComponent(DrawableComponentSystem*	DrawableComponent, const char* Mesh)
 	{
 		return { DrawableComponent->Scene->CreateDrawableAndSetMesh(Mesh), DrawableComponent };
 	}

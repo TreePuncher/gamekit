@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Gameplay.cpp"
 #include <iostream>
 
+
 int main(int argc, char* argv[])
 {
 	FlexKit::InitLog(argc, argv);
@@ -48,6 +49,8 @@ int main(int argc, char* argv[])
 	auto& GameBase = App.PushState<BaseState>(&App);
 
 	App.PushState<PlayState>(
+			&GameBase.Render,
+			GameBase.DepthBuffer,
 			GameBase.VertexBuffer,
 			GameBase.TextBuffer,
 			GameBase.ConstantBuffer);

@@ -115,7 +115,7 @@ namespace FlexKit
 		static_vector<Resource*, 256>		ResourcesLoaded;
 		static_vector<GUID_t, 256>			ResourceGUIDs;
 
-		operator Resource* () { return (Resource*)(this); }
+		operator Resources* () { return this; }
 	};
 
 

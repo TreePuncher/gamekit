@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\MathUtils.h"
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\CoreSceneObjects.h"
+#include "..\coreutilities\Logging.h"
 
 namespace FlexKit
 {
@@ -524,7 +525,7 @@ namespace FlexKit
 		DrawableComponentSystem*	System;
 	};
 
-	DrawableComponentArgs CreateEnityComponent(DrawableComponentSystem*	DrawableComponent, const char* Mesh);
+	DrawableComponentArgs CreateDrawableComponent(DrawableComponentSystem*	DrawableComponent, const char* Mesh);
 
 	template<size_t SIZE>
 	void CreateComponent(ComponentList<SIZE>& GO, DrawableComponentArgs& Args)
@@ -532,9 +533,15 @@ namespace FlexKit
 		if (!GO.Full()) {
 			auto C = FindComponent(GO, RenderableComponentID);
 			if (C)
+			{
+				FK_LOG_INFO("Transform Component already exists, switching node.");
 				Args.System->SetNode(Args.Entity, C->ComponentHandle);
+			}
 			else
+			{
+				FK_LOG_INFO("Transform Component not found, creating node and component.");
 				CreateComponent(GO, TransformComponentArgs{ Args.System->SceneNodes, Args.System->GetNode(Args.Entity) });
+			}
 
 			GO.AddComponent(Component(Args.System, Args.Entity, RenderableComponentID));
 		}
@@ -779,12 +786,11 @@ namespace FlexKit
 	class FLEXKITAPI CameraComponentSystem : public ComponentSystemInterface
 	{
 	public:
-		CameraComponentSystem(RenderSystem* rs, SceneNodeComponentSystem* nodes, iAllocator* memory) : 
-			Cameras(Memory), 
-			Handles(Memory), 
-			Memory(memory),
-			Nodes(nodes),
-			RS(rs) {}
+		CameraComponentSystem(SceneNodeComponentSystem* nodes, iAllocator* memory) : 
+			Cameras	(memory), 
+			Handles	(memory), 
+			Memory	(memory),
+			Nodes	(nodes){}
 
 
 		~CameraComponentSystem() override 
@@ -845,7 +851,7 @@ namespace FlexKit
 		void Update(double dT)
 		{
 			for (auto& C : Cameras)
-				UpdateCamera(RS, *Nodes, &C, dT);
+				UpdateCamera(*Nodes, &C, dT);
 		}
 
 		Camera* GetCamera(ComponentHandle Handle)
@@ -877,7 +883,6 @@ namespace FlexKit
 		}
 
 		SceneNodeComponentSystem*						Nodes;
-		RenderSystem*									RS;
 		iAllocator*										Memory;
 		Vector<Camera>									Cameras;
 		HandleUtilities::HandleTable<ComponentHandle>	Handles;
@@ -987,8 +992,6 @@ namespace FlexKit
 		public BehaviorBase
 	{
 	public:
-
-
 		CameraBehavior(ComponentListInterface& GO) :
 			BehaviorBase(GO, GetTypeGUID(CameraBehavior))
 		{
