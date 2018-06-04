@@ -85,7 +85,7 @@ namespace FlexKit
 
 				if (!Physics->VisualDebuggerConnection) {
 					Physics->RemoteDebuggerEnabled = false; // No remote Debugger Available
-					std::cout << "PVD failed to Connect!\n";
+					FK_LOG_WARNING("PVD failed to Connect!");
 				}
 
 				Physics->Physx->getVisualDebugger()->setVisualizeConstraints(true);

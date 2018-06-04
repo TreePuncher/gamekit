@@ -2499,9 +2499,7 @@ namespace FlexKit
 		NewTexture.Texture      = Resource;
 		NewTexture.WH			= {Resource_DESC.Width,Resource_DESC.Height};
 
-#ifdef _DEBUG 
-		cout << "Creating Depth Buffer Resource!\n";
-#endif
+		FK_LOG_INFO("Creating Depth Buffer Resource!");
 
 		FK_ASSERT(Resource != nullptr, "Failed Creating Depth Buffer Resource!");
 		SETDEBUGNAME(Resource, __func__);
@@ -3348,7 +3346,7 @@ namespace FlexKit
 								{desc_in->Width, desc_in->Height}, 
 								TextureFormat2DXGIFormat(desc_in->Format)};
 
-		std::cout << "Creating Texture!\n";
+		FK_LOG_INFO("Creating Texture!");
 
 		FK_ASSERT(NewTexture, "Failed to Create Texture!");
 		SETDEBUGNAME(NewResource, __func__);
@@ -5414,7 +5412,7 @@ namespace FlexKit
 
 		do
 		{
-			printf("LoadingShader - %s - \n", Entry);
+			FK_LOG_INFO("LoadingShader - %s - \n", Entry);
 			res = LoadAndCompileShaderFromFile(File, &SDesc, &Shader);
 #if USING( EDITSHADERCONTINUE )
 			if (!res)
