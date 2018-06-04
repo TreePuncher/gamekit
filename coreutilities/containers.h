@@ -916,7 +916,7 @@ namespace FlexKit
 
 
 			Ty Out = front();
-			_Size = max(--_Size, 0);
+			_Size = std::max(--_Size, 0);
 			return Out;
 		}
 
@@ -927,7 +927,7 @@ namespace FlexKit
 
 
 			Ty Out = back();
-			_Size = max(--_Size, 0);
+			_Size = std::max(--_Size, 0);
 			_Head = (SIZE + --_Head) % SIZE;
 			return Out;
 		}

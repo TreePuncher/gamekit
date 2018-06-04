@@ -172,11 +172,12 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	PVS	Drawables_Solid(Core->GetTempMemory());
 	PVS	Drawables_Transparent(Core->GetTempMemory());
 
-	ClearBackBuffer		(FrameGraph, 0.0f);
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 	ClearVertexBuffer	(FrameGraph, TextBuffer);
 
 #if 1
+	ClearBackBuffer		(FrameGraph, 0.0f);
+
 	DrawGameGrid_Debug(
 		dt,
 		GetWindowAspectRatio(Core),
@@ -204,7 +205,7 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 #endif
 
 	DrawSprite_Text(
-		"A!!!!This is sample text rendered using Sprites Text!!!!",
+		"!!!!This is sample text rendered using Sprites Text!!!!",
 		FrameGraph, 
 		*Framework->DefaultAssets.Font,
 		TextBuffer,

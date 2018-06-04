@@ -564,6 +564,8 @@ namespace FlexKit
 			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
 			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 		}
+
+		/*
 		{
 			TextureBuffer TempBuffer;
 			LoadBMP("assets\\textures\\TestMap.bmp", Core->GetTempMemory(), &TempBuffer);
@@ -571,6 +573,7 @@ namespace FlexKit
 
 			Framework.DefaultAssets.Terrain = HeightMap;
 		}
+		*/
 
 		FlexKit::EventNotifier<>::Subscriber sub;
 		sub.Notify = &EventsWrapper;

@@ -242,12 +242,13 @@ namespace FlexKit
 				auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
 				
 				Data.Heap.SetSRV(Resources.RenderSystem, 0, Resources.GetTexture(Data.TextSheet));
+				Data.Heap.NullFill(Resources.RenderSystem);
 
 				Ctx->SetRootSignature				(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.RenderTarget) });
+				Ctx->SetRenderTargets				({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
 				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 				Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
-				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.RenderTarget) });
-				Ctx->SetRootSignature				(Resources.RenderSystem->Library.RS4CBVs4SRVs);
 				Ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);
 				Ctx->SetVertexBuffers				(VertexBufferList{ { Data.VertexBuffer, sizeof(TextEntry) } });
 				Ctx->Draw							(Data.VertexCount, Data.VertexOffset);
