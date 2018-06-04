@@ -72,7 +72,7 @@ namespace FlexKit
 			FINALLY
 				auto After = Clock.now();
 			auto Duration = chrono::duration_cast<chrono::milliseconds>(After - Before);
-			std::cout << "Shader Load Time: " << Duration.count() << "milliseconds\n";
+			FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
 			FINALLYOVER
 #endif
 
@@ -85,7 +85,7 @@ namespace FlexKit
 				States[LoadRequest.State] = Res;
 			}
 #if _DEBUG
-			std::cout << "Finished PSO Load\n";
+			FK_LOG_INFO("Finished PSO Load");
 #endif
 
 			LoadRequest.CV.notify_all();
