@@ -70,7 +70,9 @@ PlayState::PlayState(
 		Grid			{Framework->Core->GetBlockMemory()},
 		Player1_Handler	{Grid, Framework->Core->GetBlockMemory()},
 		Player2_Handler	{Grid, Framework->Core->GetBlockMemory()},
-		GameInPlay		{true}
+		GameInPlay		{true},
+		TextBuffer		{IN_TextBuffer},
+		VertexBuffer	{IN_VertexBuffer}
 {
 	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
 	Grid.CreateGridObject({10, 5});
