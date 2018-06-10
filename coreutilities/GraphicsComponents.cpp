@@ -177,6 +177,16 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	NodeHandle  TansformComponent::CreateNode()
+	{
+		auto Nodes = static_cast<SceneNodeComponentSystem*>(ComponentSystem);
+		return Nodes->GetNewNode();
+	}
+
+
+	/************************************************************************************************/
+
 	DrawableComponentArgs CreateDrawableComponent(DrawableComponentSystem*	DrawableComponent, const char* Mesh)
 	{
 		return { DrawableComponent->Scene->CreateDrawableAndSetMesh(Mesh), DrawableComponent };

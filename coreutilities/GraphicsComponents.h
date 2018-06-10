@@ -125,6 +125,8 @@ namespace FlexKit
 
 		NodeHandle	GetParentNode(NodeHandle Node);
 		NodeHandle	GetNode();
+
+		NodeHandle  CreateNode();
 	};
 
 
@@ -319,6 +321,12 @@ namespace FlexKit
 				(FindComponent(GO, TransformComponentID) != nullptr);
 		}
 
+		NodeHandle CreateNode()
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			return C->CreateNode();
+		}
+
 
 		virtual void TranslateLocal(const float3 xyz)
 		{
@@ -329,6 +337,13 @@ namespace FlexKit
 
 
 		virtual void TranslateWorld(const float3 xyz)
+		{
+			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
+			C->TranslateWorld(xyz);
+			NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
+		}
+
+		virtual void TranslateWorld(const float3 xyz, NodeHandle Node)
 		{
 			auto C = (TansformComponent*)FindComponent(GO, TransformComponentID);
 			C->TranslateWorld(xyz);

@@ -189,13 +189,20 @@ namespace FlexKit
 			ConstantBufferHandle	ConstantBuffer;
 			ForwardDrawableList		Draws;
 			size_t					CameraConsantsOffset;
+			FlexKit::DesciptorHeap	Heap; // Null Filled
 		};
 
 		auto& Pass = Graph.AddNode<ForwardDrawPass>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, ForwardDrawPass& Data)
 		{
-			//Data.BackBuffer		 = Builder.WriteBackBuffer	(RS->GetTag(Targets.RenderTarget));
-			//Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+			Data.BackBuffer		 = Builder.WriteRenderTarget(RS->GetTag(Targets.RenderTarget));
+			Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+			Data.ConstantBuffer	 = ConstantBuffer;
+			Data.Heap.Init(
+				Graph.Resources.RenderSystem,
+				Graph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+				Memory);
+
 
 			//if(OcclusionCulling)
 			//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
@@ -216,19 +223,27 @@ namespace FlexKit
 				Data.Draws.push_back({ Viewable.D->MeshHandle, CBOffset });
 			}
 		},
-			[=](const ForwardDrawPass& Data, const FrameResources& Resources, Context* Ctx)
+			[=](ForwardDrawPass& Data, const FrameResources& Resources, Context* Ctx)
 		{
+			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+			Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
+
+			/*
 			if (OcclusionCulling)
 			{
 				Ctx->SetScissorAndViewports({ Targets.RenderTarget });
 				Ctx->SetRenderTargets(
 					{	(DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, true,
 						(DescHeapPOS)Resources.GetRenderTargetObject(Data.OcclusionBuffer));
-
-				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
 			}
 			else
 				Ctx->SetPredicate(false);
+			*/
+
+			Data.Heap.NullFill(Resources.RenderSystem);
+			//Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
+
+			Ctx->SetPredicate(false);
 
 			// Setup Initial Shading State
 			Ctx->SetScissorAndViewports({Targets.RenderTarget});
@@ -236,17 +251,17 @@ namespace FlexKit
 				{ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, true, 
 				  (DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
 
-			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-			Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
+			auto temp = Resources.GetPipelineState(FORWARDDRAW);
 			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 			Ctx->SetGraphicsConstantBufferView(1, Data.ConstantBuffer, Data.CameraConsantsOffset);
+			Ctx->SetGraphicsConstantBufferView(3, Data.ConstantBuffer, Data.CameraConsantsOffset);
 
 			for (auto D : Data.Draws)
 			{
 				auto* TriMesh = &GT->Geometry[D.Mesh];
 
-				if(OcclusionCulling)
-					Ctx->SetPredicate(true, OcclusionQueries, D.OcclusionIdx * 8);
+				//if(OcclusionCulling)
+				//	Ctx->SetPredicate(true, OcclusionQueries, D.OcclusionIdx * 8);
 
 				Ctx->AddIndexBuffer(TriMesh);
 				Ctx->AddVertexBuffers(TriMesh, 

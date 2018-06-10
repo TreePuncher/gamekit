@@ -245,12 +245,15 @@ namespace FlexKit
 				Data.Heap.NullFill(Resources.RenderSystem);
 
 				Ctx->SetRootSignature				(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
+
 				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.RenderTarget) });
 				Ctx->SetRenderTargets				({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
-				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
+
 				Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
 				Ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);
 				Ctx->SetVertexBuffers				(VertexBufferList{ { Data.VertexBuffer, sizeof(TextEntry) } });
+
 				Ctx->Draw							(Data.VertexCount, Data.VertexOffset);
 			});
 	}

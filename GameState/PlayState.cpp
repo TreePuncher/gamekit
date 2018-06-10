@@ -30,6 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\PipelineState.h"
 
 
+#define DEBUGCAMERA
+
 #pragma comment(lib, "fmod64_vc.lib")
 
 PlayState::PlayState(
@@ -72,21 +74,33 @@ PlayState::PlayState(
 		Player2_Handler	{Grid, Framework->Core->GetBlockMemory()},
 		GameInPlay		{true},
 		TextBuffer		{IN_TextBuffer},
-		VertexBuffer	{IN_VertexBuffer}
+		VertexBuffer	{IN_VertexBuffer},
+		DebugCamera{
+			InitiateDebugCameraController(
+				Framework->Core->Cameras,
+				Framework->Core->Nodes,
+				DEBUGComponents)},
+		EventMap{ Framework->Core->GetBlockMemory() }
 {
 	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
 	Grid.CreateGridObject({10, 5});
 
-	/*
-	LocalPlayer = PlayerController{  };
-		*/
-
+#ifndef DEBUGCAMERA
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
 	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
+#endif
+
+	// Debug Orbit Camera
+#ifdef DEBUGCAMERA
+	EventMap.MapKeyToEvent(KEYCODES::KC_W, PLAYER_EVENTS::DEBUG_PLAYER_UP);
+	EventMap.MapKeyToEvent(KEYCODES::KC_A, PLAYER_EVENTS::DEBUG_PLAYER_LEFT);
+	EventMap.MapKeyToEvent(KEYCODES::KC_S, PLAYER_EVENTS::DEBUG_PLAYER_DOWN);
+	EventMap.MapKeyToEvent(KEYCODES::KC_D, PLAYER_EVENTS::DEBUG_PLAYER_RIGHT);
+#endif
 
 	Framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO );
 	Framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO);
@@ -108,11 +122,17 @@ PlayState::~PlayState()
 
 bool PlayState::EventHandler(Event evt)
 {
+#ifndef DEBUGCAMERA
 	if (Player1_Handler.Enabled)
 		Player1_Handler.Handle(evt);
 
 	if (Player2_Handler.Enabled)
 		Player2_Handler.Handle(evt);
+#else
+	Event Remapped;
+	if(EventMap.Map(evt, Remapped))
+		DebugCamera.EventHandler(Remapped);
+#endif
 
 	return true;
 }
@@ -123,6 +143,7 @@ bool PlayState::EventHandler(Event evt)
 
 bool PlayState::Update(EngineCore* Engine, double dT)	
 {
+#ifndef DEBUGCAMERA
 	// Check if any players Died
 	for (auto& P : Grid.Players)
 		if (Grid.IsCellDestroyed(P.XY))
@@ -133,10 +154,22 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 
 	if (Player2_Handler.Enabled)
 		Player2_Handler.Update(dT);
-
 	Grid.Update(dT, Engine->GetTempMemory());
 
 	Sound.Update();
+#else
+	float HorizontalMouseMovement	= float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
+	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
+
+	Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
+	DebugCamera.Yaw(Framework->MouseState.Normalized_dPos[0]);
+	DebugCamera.Pitch(Framework->MouseState.Normalized_dPos[1]);
+
+	DebugCamera.Update(dT);
+	LocalPlayer.Update(dT);
+#endif
+
+
 
 	return false;
 }
@@ -177,8 +210,10 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	ClearVertexBuffer	(FrameGraph, VertexBuffer);
 	ClearVertexBuffer	(FrameGraph, TextBuffer);
 
-#if 1
-	ClearBackBuffer		(FrameGraph, 0.0f);
+	ClearBackBuffer	(FrameGraph, 0.0f);
+	ClearDepthBuffer(FrameGraph, DepthBuffer, 1.0f);
+
+#if 0
 
 	DrawGameGrid_Debug(
 		dt,
@@ -191,7 +226,7 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 		Core->GetTempMemory()
 	);
 #else
-	Camera* ActiveCamera = LocalCamera.GetCamera_ptr();
+	Camera* ActiveCamera = DebugCamera.GetCamera_ptr();
 	PVS Drawables				{Core->GetTempMemory()};
 	PVS TransparentDrawables	{Core->GetTempMemory()};
 

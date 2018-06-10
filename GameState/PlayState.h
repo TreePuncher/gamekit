@@ -130,6 +130,120 @@ ComponentListInterface& InitiatePlayerCameraController(
 /************************************************************************************************/
 
 
+
+class DebugCameraController :
+	public FlexKit::CameraBehavior,
+	public FlexKit::SceneNodeBehavior
+{
+public:
+	DebugCameraController(ComponentListInterface& IN_Components) :
+		Components			{ IN_Components },
+		CameraBehavior		{ IN_Components },
+		SceneNodeBehavior	{ IN_Components }
+	{
+		//auto YawNode = CreateNode();
+		//SetParent(YawNode);
+		TranslateWorld({ 0, 0, -10 });
+		Yaw(pi);
+	}
+
+	ComponentListInterface& Components;
+
+	bool EventHandler(Event evt)
+	{
+		if (evt.InputSource == Event::Keyboard)
+		{
+			if (evt.Action == Event::Pressed)
+			{
+				switch (evt.mData1.mINT[0])
+				{
+				case PLAYER_EVENTS::DEBUG_PLAYER_UP:
+					MoveForward = true;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_LEFT:
+					MoveLeft = true;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_DOWN:
+					MoveBackward = true;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_RIGHT:
+					MoveRight = true;
+					break;
+				default:
+					break;
+				};
+			}
+
+			if (evt.Action == Event::Release)
+			{
+				switch (evt.mData1.mINT[0])
+				{
+				case PLAYER_EVENTS::DEBUG_PLAYER_UP:
+					MoveForward = false;
+				case PLAYER_EVENTS::DEBUG_PLAYER_DOWN:
+					MoveBackward = false;
+				case PLAYER_EVENTS::DEBUG_PLAYER_LEFT:
+					MoveLeft	= false;
+				case PLAYER_EVENTS::DEBUG_PLAYER_RIGHT:
+					MoveRight = false;
+				default:
+					break;
+				}
+			}
+		}
+		return false;
+	}
+
+
+	void Update(float dt)
+	{
+		FlexKit::float3 Direction = { 0, 0, 0 };
+
+		if (MoveForward)
+			Direction += float3( 0,  0, -1);
+		if (MoveBackward)
+			Direction += float3( 0,  0,  1);
+		if (MoveLeft)
+			Direction += float3(-1, 0, 0);
+		if (MoveRight)
+			Direction += float3( 1, 0, 0);
+
+		Direction = GetOrientation() * Direction;
+
+		TranslateWorld(Direction * dt * MovingSpeed);
+	}
+
+	float		MovingSpeed		= 30.0f;
+	bool		MoveForward		= false;
+	bool		MoveBackward	= false;
+	bool		MoveLeft		= false;
+	bool		MoveRight		= false;
+};
+
+
+ComponentListInterface& InitiateDebugCameraController(
+	CameraComponentSystem*		CameraSystem,
+	SceneNodeComponentSystem*	SceneNodeSystem,
+	ComponentList<>&			Components)
+{
+	auto SceneNode = SceneNodeSystem->GetNewNode();
+
+	InitiateComponentList(Components,
+		CreateCameraComponent(
+			CameraSystem,
+			1.6666f,
+			0.01f,
+			10000.0f,
+			SceneNode,
+			false));
+
+	return Components;
+}
+
+
+/************************************************************************************************/
+
+
 class PlayerController : 
 	public FlexKit::SceneNodeBehavior,
 	public FlexKit::DrawableBehavior
@@ -139,6 +253,11 @@ public:
 		SceneNodeBehavior	{Components},
 		DrawableBehavior	{Components}
 	{}
+
+	void Update(float dt)
+	{
+		Yaw(dt * pi);
+	}
 };
 
 
@@ -207,9 +326,14 @@ public:
 	// Player State Controllers
 	ComponentList<>			PlayerCameraComponents;
 	ComponentList<>			PlayerComponents;
+	ComponentList<>			DEBUGComponents;
+
+	DebugCameraController	DebugCamera;
 
 	PlayerCameraController	LocalCamera;
 	PlayerController		LocalPlayer;
+
+	InputMap EventMap;
 };
 
 

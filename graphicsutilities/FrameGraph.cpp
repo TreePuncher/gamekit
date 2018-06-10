@@ -1,5 +1,6 @@
 #include "graphics.h"
 #include "FrameGraph.h"
+#include "..\coreutilities\Logging.h"
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -240,35 +241,35 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	/*
-	Pair<bool, FrameObjectDependency&> FrameGraphNodeBuilder::IsTrackedWriteableTexture(TextureHandle Handle)
+	Pair<bool, FrameObjectDependency&> FrameGraphResourceContext::IsTrackedReadable(TextureHandle Handle, FrameObjectResourceType Type)
 	{
 		auto Pred = [&](auto& lhs)
-		{	
-
-			return (lhs.Tag == Tag); 
+		{
+			auto A = lhs.FO->Type == Type;
+			return A && (lhs.ID == Handle);
 		};
 
 		auto Res = find(Readables, Pred);
 		return { Res != Readables.end(), *Res };
 	}
-	*/
+
 
 	/************************************************************************************************/
 
 
-	/*
-	Pair<bool, FrameObjectDependency&> FrameGraphNodeBuilder::IsTrackedReadableTexture(TextureHandle Handle)
+	Pair<bool, FrameObjectDependency&>	FrameGraphResourceContext::IsTrackedWriteable(TextureHandle Handle, FrameObjectResourceType Type)
 	{
 		auto Pred = [&](auto& lhs)
 		{	
-			return (lhs.Tag == Tag); 
+			
+			auto A = lhs.FO->Type == Type;
+			return A && (lhs.ID == Handle);
 		};
 
-		auto Res = find(Readables, Pred);
-		return { Res != Readables.end(), *Res };
+		auto Res = find(Writables, Pred);
+		return { Res != Writables.end(), *Res };
 	}
-	*/
+
 
 	/************************************************************************************************/
 
@@ -355,6 +356,55 @@ namespace FlexKit
 
 			return Object.FO->Handle;
 		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(TextureHandle Handle, DeviceResourceState State, FrameObjectResourceType Type)
+	{
+		bool TrackedReadable = Context.IsTrackedReadable	(Handle, Type);
+		bool TrackedWritable = Context.IsTrackedWriteable	(Handle, Type);
+
+		if (!TrackedReadable && !TrackedWritable)
+		{
+			FrameResourceHandle Resource = Resources->FindRenderTargetResource(Handle);
+
+			LocalOutputs.push_back(
+				FrameObjectDependency{
+					Resources->GetResourceObject(Resource),
+					nullptr,
+					Resources->GetResourceObjectState(Resource),
+					State });
+
+			Context.AddWriteable(LocalOutputs.back());
+			Transitions.push_back(LocalOutputs.back());
+
+			return Resource;
+		}
+		else
+		{
+			FK_ASSERT(0);
+			/*
+			auto Object = TrackedReadable ?
+				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
+
+			Object.ExpectedState = Object.State;
+			Object.State = State;
+			LocalOutputs.push_back(Object);
+
+			if (TrackedReadable) {
+				Context.RemoveReadable(Tag);
+				Context.AddWriteable(Object);
+				Transitions.push_back(Object);
+			}
+
+			return Object.FO->Handle;
+			*/
+		}
+
+		return FrameResourceHandle(0);
 	}
 
 
@@ -484,7 +534,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
+	/*
 	FrameResourceHandle	FrameGraphNodeBuilder::ReadDepthBuffer(TextureHandle Handle)
 	{
 		auto Resource = Resources->FindRenderTargetResource(Handle);
@@ -496,17 +546,14 @@ namespace FlexKit
 
 		return FrameResourceHandle(INVALIDHANDLE);
 	}
-
+	*/
 
 	/************************************************************************************************/
 
-
-	/*
 	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(TextureHandle Handle)
 	{
-		return AddWriteableResource(Handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE);
+		return AddWriteableResource(Handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE, FrameObjectResourceType::OT_DepthBuffer);
 	}
-	*/
 
 	/************************************************************************************************/
 
@@ -707,7 +754,7 @@ namespace FlexKit
 
 	void ClearDepthBuffer(FrameGraph& Graph, TextureHandle Handle, float D)
 	{
-		FK_LOG_INFO("Clearing depth buffer.");
+		FK_VLOG(Verbosity_9, "Clearing depth buffer.");
 
 		struct ClearDepthBuffer
 		{
@@ -718,7 +765,7 @@ namespace FlexKit
 		auto& Pass = Graph.AddNode<ClearDepthBuffer>(GetCRCGUID(PRESENT),
 			[=](FrameGraphNodeBuilder& Builder, ClearDepthBuffer& Data)
 			{
-				//Data.DepthBuffer = Builder.WriteDepthBuffer(Handle);
+				Data.DepthBuffer = Builder.WriteDepthBuffer(Handle);
 				Data.ClearDepth = D;
 			},
 			[=](const ClearDepthBuffer& Data, const FrameResources& Resources, Context* Ctx)

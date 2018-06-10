@@ -278,6 +278,14 @@ enum PLAYER_EVENTS : int64_t
 	PLAYER_RIGHT	= GetCRCGUID(PLAYER_RIGHT),
 	PLAYER_ACTION1	= GetCRCGUID(PLAYER_ACTION1),
 	PLAYER_HOLD		= GetCRCGUID(PLAYER_HOLD),
+
+	DEBUG_PLAYER_UP			= GetCRCGUID(DEBUG_PLAYER_UP),
+	DEBUG_PLAYER_LEFT		= GetCRCGUID(DEBUG_PLAYER_LEFT),
+	DEBUG_PLAYER_DOWN		= GetCRCGUID(DEBUG_PLAYER_DOWN),
+	DEBUG_PLAYER_RIGHT		= GetCRCGUID(DEBUG_PLAYER_RIGHT),
+	DEBUG_PLAYER_ACTION1	= GetCRCGUID(DEBUG_PLAYER_ACTION1),
+	DEBUG_PLAYER_HOLD		= GetCRCGUID(DEBUG_PLAYER_HOLD),
+
 	PLAYER_UNKNOWN,
 };
 
@@ -292,7 +300,7 @@ class LocalPlayerHandler :
 public:
 	LocalPlayerHandler(GameGrid& grid, iAllocator* memory) :
 		Game		{ grid },
-		Map			{ memory },
+		//Map			{ memory },
 		InputState	{ false, false, false, false, -1 }
 	{}
 
@@ -303,116 +311,110 @@ public:
 
 		if (evt.InputSource == Event::Keyboard)
 		{
-			Event ReMapped_Event;
-			auto Res = Map(evt, ReMapped_Event);
-
-			if (Res)
+			switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
 			{
-				switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
+			case PLAYER_EVENTS::PLAYER_UP:
+				InputState.UP		=	
+						(evt.Action == Event::Pressed) ? true : 
+					((evt.Action == Event::Release) ? false : InputState.UP);
+				break;
+			case PLAYER_EVENTS::PLAYER_LEFT:
+				InputState.LEFT		= 
+						(evt.Action == Event::Pressed) ? true : 
+					((evt.Action == Event::Release) ? false : InputState.LEFT);
+				break;
+			case PLAYER_EVENTS::PLAYER_DOWN:
+				InputState.DOWN		= 
+						(evt.Action == Event::Pressed) ? true : 
+					((evt.Action == Event::Release) ? false : InputState.DOWN);
+				break;
+			case PLAYER_EVENTS::PLAYER_RIGHT:
+				InputState.RIGHT	= 
+						(evt.Action == Event::Pressed) ? true : 
+ 					((evt.Action == Event::Release) ? false : InputState.RIGHT);
+				break;
+			case PLAYER_EVENTS::PLAYER_ACTION1:
+			{
+				if (Game.Players[Player].State != GridPlayer::PS_Idle)
+					return;
+
+				if ((evt.Action == Event::Release))
+				{
+					int2 Offset = {0, 0};
+
+					switch (Game.Players[Player].FacingDirection)
+					{
+					case UP:
+						Offset += int2{ 0, -1 };
+						break;
+					case DOWN:
+						Offset += int2{ 0,  1 };
+						break;
+					case LEFT:
+						Offset += int2{ -1,  0 };
+						break;
+					case RIGHT:
+						Offset += int2{ 1,  0 };
+						break;
+					default:
+						FK_ASSERT(0, "!!!!!");
+					}
+
+					int2 GridPOS = Game.Players[Player].XY + Offset;
+
+					//if (!Game.IsCellClear(GridPOS))
+					//	return;
+
+					size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
+
+					auto State = Game.GetCellState(GridPOS);
+					if (State == EState::Bomb)
+					{
+						Game.MoveBomb(GridPOS, Offset);
+					}
+					else
+					{
+						Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
+						Game.MarkCell(GridPOS, EState::Bomb);
+					}
+					break;
+				}
+			}	break;
+			default:
+				break;
+			}
+
+
+			if (evt.Action == Event::Release)
+			{
+				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
 				{
 				case PLAYER_EVENTS::PLAYER_UP:
-					InputState.UP		=	
-						 (evt.Action == Event::Pressed) ? true : 
-						((evt.Action == Event::Release) ? false : InputState.UP);
-					break;
-				case PLAYER_EVENTS::PLAYER_LEFT:
-					InputState.LEFT		= 
-						 (evt.Action == Event::Pressed) ? true : 
-						((evt.Action == Event::Release) ? false : InputState.LEFT);
-					break;
 				case PLAYER_EVENTS::PLAYER_DOWN:
-					InputState.DOWN		= 
-						 (evt.Action == Event::Pressed) ? true : 
-						((evt.Action == Event::Release) ? false : InputState.DOWN);
-					break;
+				case PLAYER_EVENTS::PLAYER_LEFT:
 				case PLAYER_EVENTS::PLAYER_RIGHT:
-					InputState.RIGHT	= 
-						 (evt.Action == Event::Pressed) ? true : 
- 						((evt.Action == Event::Release) ? false : InputState.RIGHT);
+					InputState.PreferredDirection = -1;
 					break;
-				case PLAYER_EVENTS::PLAYER_ACTION1:
-				{
-					if (Game.Players[Player].State != GridPlayer::PS_Idle)
-						return;
-
-					if ((evt.Action == Event::Release))
-					{
-						int2 Offset = {0, 0};
-
-						switch (Game.Players[Player].FacingDirection)
-						{
-						case UP:
-							Offset += int2{ 0, -1 };
-							break;
-						case DOWN:
-							Offset += int2{ 0,  1 };
-							break;
-						case LEFT:
-							Offset += int2{ -1,  0 };
-							break;
-						case RIGHT:
-							Offset += int2{ 1,  0 };
-							break;
-						default:
-							FK_ASSERT(0, "!!!!!");
-						}
-
-						int2 GridPOS = Game.Players[Player].XY + Offset;
-
-						//if (!Game.IsCellClear(GridPOS))
-						//	return;
-
-						size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
-
-						auto State = Game.GetCellState(GridPOS);
-						if (State == EState::Bomb)
-						{
-							Game.MoveBomb(GridPOS, Offset);
-						}
-						else
-						{
-							Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
-							Game.MarkCell(GridPOS, EState::Bomb);
-						}
-						break;
-					}
-				}	break;
 				default:
 					break;
 				}
+			}
 
 
-				if (evt.Action == Event::Release)
+			if (evt.Action == Event::Pressed)
+			{
+				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
 				{
-					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
-					{
-					case PLAYER_EVENTS::PLAYER_UP:
-					case PLAYER_EVENTS::PLAYER_DOWN:
-					case PLAYER_EVENTS::PLAYER_LEFT:
-					case PLAYER_EVENTS::PLAYER_RIGHT:
-						InputState.PreferredDirection = -1;
-						break;
-					default:
-						break;
-					}
-				}
-
-
-				if (evt.Action == Event::Pressed)
-				{
-					switch ((PLAYER_EVENTS)ReMapped_Event.mData1.mINT[0])
-					{
-					case PLAYER_EVENTS::PLAYER_UP:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_UP;			break;
-					case PLAYER_EVENTS::PLAYER_LEFT:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_LEFT;		break;
-					case PLAYER_EVENTS::PLAYER_DOWN:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_DOWN;		break;
-					case PLAYER_EVENTS::PLAYER_RIGHT:
-						InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_RIGHT;		break;
-					default:
-						break;
-					}
+				case PLAYER_EVENTS::PLAYER_UP:
+					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_UP;			break;
+				case PLAYER_EVENTS::PLAYER_LEFT:
+					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_LEFT;		break;
+				case PLAYER_EVENTS::PLAYER_DOWN:
+					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_DOWN;		break;
+				case PLAYER_EVENTS::PLAYER_RIGHT:
+					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_RIGHT;		break;
+				default:
+					break;
 				}
 			}
 		}
@@ -528,7 +530,6 @@ public:
 	KeyEventList								CurrentFrameEvents;
 	FlexKit::CircularBuffer<KeyEventList, 120>	FrameCache;
 
-	InputMap		Map;
 	Player_Handle	Player;
 	GameGrid&		Game;
 };

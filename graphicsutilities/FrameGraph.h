@@ -305,8 +305,9 @@ namespace FlexKit
 			auto res = find(Resources, 
 				[&](const auto& LHS)
 				{
-					auto CorrectType = (LHS.Type == OT_RenderTarget ||
-						LHS.Type == OT_BackBuffer ||
+					auto CorrectType = (
+						LHS.Type == OT_RenderTarget ||
+						LHS.Type == OT_BackBuffer	||
 						LHS.Type == OT_DepthBuffer);
 
 					return (CorrectType && LHS.Texture == Handle);
@@ -562,9 +563,8 @@ namespace FlexKit
 
 		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(uint32_t Tag);
 		Pair<bool, FrameObjectDependency&> IsTrackedReadable	(uint32_t Tag);
-
-		Pair<bool, FrameObjectDependency&> IsTrackedWriteableTexture	(TextureHandle Handle);
-		Pair<bool, FrameObjectDependency&> IsTrackedReadableTexture		(TextureHandle Handle);
+		Pair<bool, FrameObjectDependency&> IsTrackedReadable	(TextureHandle Handle, FrameObjectResourceType Type);
+		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(TextureHandle Handle, FrameObjectResourceType Type);
 
 		Vector<FrameObjectDependency>	Writables;
 		Vector<FrameObjectDependency>	Readables;
@@ -613,12 +613,15 @@ namespace FlexKit
 		FrameResourceHandle	ReadDepthBuffer		(uint32_t Tag);
 		FrameResourceHandle	WriteDepthBuffer	(uint32_t Tag);
 
-		FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
+		//FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
 		FrameResourceHandle	WriteDepthBuffer	(TextureHandle Handle);
 
 	private:
 		FrameResourceHandle AddReadableResource		(uint32_t Tag, DeviceResourceState State);
 		FrameResourceHandle AddWriteableResource	(uint32_t Tag, DeviceResourceState State);
+
+		FrameResourceHandle AddWriteableResource	(TextureHandle Handle, DeviceResourceState State, FrameObjectResourceType Type);
+
 
 
 		template<typename FN_Create>
@@ -1056,10 +1059,10 @@ namespace FlexKit
 				Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
 				Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
 
-				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-				Ctx->SetPipelineState(Resources.GetPipelineState(State));
-				Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-				Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
+				Ctx->SetRootSignature		(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetPipelineState		(Resources.GetPipelineState(State));
+				Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
+				Ctx->SetVertexBuffers		(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
 
 				ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
 				for (auto D : Data.Draws)

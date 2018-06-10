@@ -1566,6 +1566,7 @@ namespace FlexKit
 		size_t	RenderTargetCount;
 		bool	DepthStencilEnabled;
 
+		static_vector<TextureHandle, 16>		RenderTargets;
 		static_vector<D3D12_VIEWPORT, 16>		Viewports;
 		static_vector<DesciptorHeap*>			DesciptorHeaps;
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
