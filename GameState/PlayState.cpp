@@ -42,29 +42,6 @@ PlayState::PlayState(
 	VertexBufferHandle		IN_TextBuffer,
 	ConstantBufferHandle	IN_ConstantBuffer) :
 		FrameworkState	{IN_Framework},
-		LocalCamera		{
-			InitiatePlayerCameraController(
-				Framework->Core->Cameras,
-				Framework->Core->Nodes, PlayerCameraComponents)},
-		
-		LocalPlayer{
-			InitiatePlayerController(
-				SceneManager,
-				Framework->Core->Nodes,
-				PlayerComponents)},
-
-		Scene{
-			Framework->Core->RenderSystem, 
-			Framework->Core->Assets,
-			Framework->Core->Nodes, 
-			Framework->Core->Geometry, 
-			Framework->Core->GetBlockMemory(),
-			Framework->Core->GetTempMemory() },
-
-
-		SceneManager{
-			Scene,
-			Framework->Core->Nodes},
 
 		Sound			{Framework->Core->Threads},
 		DepthBuffer		{IN_DepthBuffer},
@@ -75,12 +52,12 @@ PlayState::PlayState(
 		GameInPlay		{true},
 		TextBuffer		{IN_TextBuffer},
 		VertexBuffer	{IN_VertexBuffer},
-		DebugCamera{
-			InitiateDebugCameraController(
-				Framework->Core->Cameras,
-				Framework->Core->Nodes,
-				DEBUGComponents)},
-		EventMap{ Framework->Core->GetBlockMemory() }
+		EventMap		{Framework->Core->GetBlockMemory()},
+		Scene			
+			{
+				Framework->Core->GetBlockMemory(),
+				Framework->Core->GetTempMemory()
+			}
 {
 	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
 	Grid.CreateGridObject({10, 5});
@@ -130,8 +107,8 @@ bool PlayState::EventHandler(Event evt)
 		Player2_Handler.Handle(evt);
 #else
 	Event Remapped;
-	if(EventMap.Map(evt, Remapped))
-		DebugCamera.EventHandler(Remapped);
+	//if(EventMap.Map(evt, Remapped))
+	//	DebugCamera.EventHandler(Remapped);
 #endif
 
 	return true;
@@ -162,11 +139,11 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
 
 	Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
-	DebugCamera.Yaw(Framework->MouseState.Normalized_dPos[0]);
-	DebugCamera.Pitch(Framework->MouseState.Normalized_dPos[1]);
+	//DebugCamera.Yaw(Framework->MouseState.Normalized_dPos[0]);
+	//DebugCamera.Pitch(Framework->MouseState.Normalized_dPos[1]);
 
-	DebugCamera.Update(dT);
-	LocalPlayer.Update(dT);
+	//DebugCamera.Update(dT);
+	//LocalPlayer.Update(dT);
 #endif
 
 
@@ -213,7 +190,7 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	ClearBackBuffer	(FrameGraph, 0.0f);
 	ClearDepthBuffer(FrameGraph, DepthBuffer, 1.0f);
 
-#if 0
+#if 1
 
 	DrawGameGrid_Debug(
 		dt,
@@ -226,7 +203,7 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 		Core->GetTempMemory()
 	);
 #else
-	Camera* ActiveCamera = DebugCamera.GetCamera_ptr();
+	Camera* ActiveCamera = nullptr;
 	PVS Drawables				{Core->GetTempMemory()};
 	PVS TransparentDrawables	{Core->GetTempMemory()};
 
@@ -235,7 +212,6 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	Render->DefaultRender(
 		Drawables, 
 		*ActiveCamera, 
-		Core->Nodes, 
 		Targets,
 		FrameGraph, 
 		Core->GetTempMemory());

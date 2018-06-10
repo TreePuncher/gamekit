@@ -104,7 +104,7 @@ namespace FlexKit
 
 	void TraceReflections(RenderSystem* RS, ID3D12GraphicsCommandList* CL, 
 		TiledDeferredRender* In, const Camera* C,
-		const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH, SSReflectionBuffers* SSR)
+		const PointLightList* PLB, const SpotLightList* SPLB, uint2 WH, SSReflectionBuffers* SSR)
 	{
 		auto FrameResources  = RS->_GetCurrentFrameResources();
 		auto BufferIndex	 = In->CurrentBuffer;

@@ -56,7 +56,7 @@ using FlexKit::NodeHandle;
 using FlexKit::Quaternion;
 using FlexKit::Pair;
 using FlexKit::PointLight;
-using FlexKit::PointLightBuffer;
+using FlexKit::PointLightList;
 using FlexKit::Resource;
 using FlexKit::RenderSystem;
 using FlexKit::SceneNodes;

@@ -73,7 +73,7 @@ namespace FlexKit
 		};
 
 		FustrumPoints	GetFrustumPoints	(float3 XYZ, Quaternion Q);
-		BufferLayout	GetConstants		(SceneNodes* Nodes, double dt, uint2 HW = { 1u, 1u });
+		BufferLayout	GetConstants		(double dt, uint2 HW = { 1u, 1u });
 		NodeHandle		Node;
 
 		float FOV;
@@ -165,7 +165,7 @@ namespace FlexKit
 			DirectX::XMMATRIX	Transform;
 		};
 
-		VConsantsLayout GetConstants(SceneNodes* Nodes);
+		VConsantsLayout GetConstants();
 	};
 
 	constexpr const Type_t DRAWABLE_ID = GetTypeGUID(DRAWABLEHANDLE);

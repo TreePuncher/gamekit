@@ -212,7 +212,6 @@
     <ClInclude Include="graphicsutilities\SSReflections.h" />
     <ClInclude Include="graphicsutilities\TerrainRendering.h" />
     <ClInclude Include="graphicsutilities\TextRendering.h" />
-    <ClInclude Include="graphicsutilities\TiledRender.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="PhysicsUtilities\physicsutilities.h" />
   </ItemGroup>
@@ -359,12 +358,6 @@
     <ClCompile Include="graphicsutilities\TextRendering.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="graphicsutilities\TiledRender.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="PhysicsUtilities\physicsutilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

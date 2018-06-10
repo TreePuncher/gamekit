@@ -181,8 +181,8 @@ namespace FlexKit
 
 		//  TODO: Move these to a Scene Structure
 		//	Why are these here again?
-		PointLightBuffer*	PointLights;
-		SpotLightBuffer*	SpotLights;
+		PointLightList*	PointLights;
+		SpotLightList*	SpotLights;
 		//
 
 

@@ -39,16 +39,16 @@ namespace FlexKit
 			
 	}
 
-	void SortPVS( SceneNodes* Nodes, PVS* PVS_, Camera* C)
+	void SortPVS(PVS* PVS_, Camera* C)
 	{
 		if(!PVS_->size())
 			return;
 
-		auto CP = FlexKit::GetPositionW( Nodes, C->Node );
+		auto CP = FlexKit::GetPositionW( C->Node );
 		for( auto& v : *PVS_ )
 		{
 			auto E = v.D;
-			auto P = FlexKit::GetPositionW( Nodes, E->Node );
+			auto P = FlexKit::GetPositionW( E->Node );
 
 			auto Depth = (size_t)abs(float3(CP - P).magnitudesquared() * 10000);
 			auto SortID = CreateSortingID(E->Posed, E->Textured, Depth);
@@ -65,16 +65,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SortPVSTransparent( SceneNodes* Nodes, PVS* PVS_, Camera* C)
+	void SortPVSTransparent(PVS* PVS_, Camera* C)
 	{
 		if(!PVS_->size())
 			return;
 
-		auto CP = FlexKit::GetPositionW( Nodes, C->Node );
+		auto CP = FlexKit::GetPositionW( C->Node );
 		for( auto& v : *PVS_ )
 		{
 			auto E = v.D;
-			auto P = FlexKit::GetPositionW( Nodes, E->Node );
+			auto P = FlexKit::GetPositionW( E->Node );
 			float D = float3( CP - P ).magnitudesquared() * ( E->DrawLast ? -1.0 : 1.0 );
 			v.SortID = D;
 		}

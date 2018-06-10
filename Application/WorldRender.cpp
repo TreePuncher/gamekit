@@ -156,18 +156,17 @@ namespace FlexKit
 	}
 
 
-	void WorldRender::DefaultRender(PVS& Drawables, Camera& Camera, SceneNodes* Nodes, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
+	void WorldRender::DefaultRender(PVS& Drawables, Camera& Camera, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
 	{
 		//ClearDepthBuffer(Graph, Targets.DepthTarget,	1.0f);
 		//ClearDepthBuffer(Graph, OcclusionBuffer,		1.0f);
 
-		RenderDrawabledPBR_Forward(Drawables, Camera, Nodes, Targets, Graph, Memory);
+		RenderDrawabledPBR_Forward(Drawables, Camera, Targets, Graph, Memory);
 	}
 
 	void WorldRender::RenderDrawabledPBR_Forward(
 		PVS&					Drawables, 
 		Camera&					Camera,
-		SceneNodes*				Nodes,
 		WorldRender_Targets&	Targets,
 		FrameGraph&				Graph, 
 		iAllocator*				Memory)
@@ -208,14 +207,14 @@ namespace FlexKit
 			//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
 
 			Data.Draws = ForwardDrawableList{ Memory };
-			Camera::BufferLayout CameraConstants = Camera.GetConstants(Nodes, 0.0f);
+			Camera::BufferLayout CameraConstants = Camera.GetConstants(0.0f);
 
 			auto CameraConsantsOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
 			PushConstantBufferData(CameraConstants, ConstantBuffer, Graph.Resources);
 
 			for (auto Viewable : Drawables)
 			{
-				Drawable::VConsantsLayout	Constants = Viewable.D->GetConstants(Nodes);
+				Drawable::VConsantsLayout	Constants = Viewable.D->GetConstants();
 
 				auto CBOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
 				PushConstantBufferData(Constants, ConstantBuffer, Graph.Resources);

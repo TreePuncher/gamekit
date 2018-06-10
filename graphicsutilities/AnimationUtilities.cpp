@@ -934,8 +934,8 @@ namespace FlexKit
 		for (size_t I = 0; I < S->JointCount; ++I) {
 			auto BasePose	= S->JointPoses[I];
 			auto JointPose	= DPS->Joints[I];
-
-			M[I] = GetTransform(JointPose) * GetTransform(BasePose);
+			
+			M[I] = GetPoseTransform(JointPose) * GetPoseTransform(BasePose);
 		}
 
 
@@ -1031,7 +1031,7 @@ namespace FlexKit
 				auto BasePose	= S->JointPoses[I];
 				auto JointPose	= PS->Joints[I];
 				
-				M[I] = GetTransform(JointPose) * GetTransform(BasePose);
+				M[I] = GetPoseTransform(JointPose) * GetPoseTransform(BasePose);
 			}
 
 			bool AnimationPlayed = false;
@@ -1082,7 +1082,7 @@ namespace FlexKit
 							auto Scaling		= XMMatrixScalingFromVector		(XMVectorSet(Pose.ts[3], Pose.ts[3], Pose.ts[3], 1.0f));
 							auto Translation	= XMMatrixTranslationFromVector	(XMVectorSet(Pose.ts[0], Pose.ts[1], Pose.ts[2], 1.0f));
 
-							auto PoseT	= GetTransform(Pose);
+							auto PoseT	= GetPoseTransform(Pose);
 							M[JHndl]	= PoseT * M[JHndl];
 						}
 
@@ -1115,7 +1115,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DirectX::XMMATRIX GetTransform(JointPose P)
+	DirectX::XMMATRIX GetPoseTransform(JointPose P)
 	{
 		auto Rotation		= DirectX::XMMatrixRotationQuaternion(P.r);
 		auto Scaling		= DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P.ts[3], P.ts[3], P.ts[3], 1.0f));
@@ -1137,9 +1137,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float4x4 GetJointPosed_WT(JointHandle Joint, NodeHandle Node, SceneNodes* Nodes, DrawablePoseState* DPS)
+	float4x4 GetJointPosed_WT(JointHandle Joint, NodeHandle Node, DrawablePoseState* DPS)
 	{
-		float4x4 WT; GetWT(Nodes, Node, &WT);
+		float4x4 WT; GetTransform(Node, &WT);
 		float4x4 JT = XMMatrixToFloat4x4(DPS->CurrentPose + Joint);
 		return	JT * WT;
 	}
@@ -1181,10 +1181,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawSkeleton(Skeleton* S, SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, LineSegments* Out)
+	void DEBUG_DrawSkeleton(Skeleton* S, NodeHandle Node, iAllocator* TEMP, LineSegments* Out)
 	{
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
-		float4x4 WT; GetWT(Nodes, Node, &WT);
+		float4x4 WT; GetTransform(Node, &WT);
 
 		float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
 
@@ -1199,7 +1199,7 @@ namespace FlexKit
 				PT = float4x4::Identity();
 
 			auto J  = S->JointPoses[I];
-			auto JT = PT * XMMatrixToFloat4x4(&GetTransform(J));
+			auto JT = PT * XMMatrixToFloat4x4(&GetPoseTransform(J));
 
 			A = (WT * (JT * Zero)).xyz();
 			B = (WT * (PT * Zero)).xyz();
@@ -1220,14 +1220,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawPoseState(DrawablePoseState* DPS, SceneNodes* Nodes, NodeHandle Node, LineSegments* Out)
+	void DEBUG_DrawPoseState(DrawablePoseState* DPS, NodeHandle Node, LineSegments* Out)
 	{
 		if (!DPS)
 			return;
 
 		Skeleton* S = DPS->Sk;
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
-		float4x4 WT; GetWT(Nodes, Node, &WT);
+		float4x4 WT; GetTransform(Node, &WT);
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{

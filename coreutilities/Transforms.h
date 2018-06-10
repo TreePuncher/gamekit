@@ -107,8 +107,6 @@ namespace FlexKit
 			UPDATED = 0x08
 		};
 
-		operator SceneNodes* () { return this; }
-
 		size_t used;
 		size_t max;
 
@@ -131,68 +129,52 @@ namespace FlexKit
 			char		State;
 		};
 		#pragma pack(pop)
-	};
+	}SceneNodeTable;
 
 
 	/************************************************************************************************/
 	
 
-	inline size_t	_SNHandleToIndex	( SceneNodes* Nodes, NodeHandle Node)				{ return Nodes->Indexes[Node.INDEX];	}
-	inline void		_SNSetHandleIndex	( SceneNodes* Nodes, NodeHandle Node, size_t index)	{ Nodes->Indexes[Node.INDEX] = index;	}
+	FLEXKITAPI size_t	_SNHandleToIndex	(NodeHandle Node);
+	FLEXKITAPI void		_SNSetHandleIndex	(NodeHandle Node, size_t index);
 
-	FLEXKITAPI void			InitiateSceneNodeBuffer		( SceneNodes* Nodes, byte* pmem, size_t );
-	FLEXKITAPI void			SortNodes					( SceneNodes* Nodes, StackAllocator* Temp );
-	FLEXKITAPI void			ReleaseNode					( SceneNodes* Nodes, NodeHandle Node );
+	FLEXKITAPI void			InitiateSceneNodeBuffer		( byte* pmem, size_t );
+	FLEXKITAPI void			SortNodes					( StackAllocator* Temp );
+	FLEXKITAPI void			ReleaseNode					( NodeHandle Node );
 
-	FLEXKITAPI float3		LocalToGlobal				( SceneNodes* Nodes, NodeHandle Node, float3 POS);
+	FLEXKITAPI float3		LocalToGlobal				( NodeHandle Node, float3 POS);
 
+	FLEXKITAPI LT_Entry		GetLocal					( NodeHandle Node );
+	FLEXKITAPI float3		GetLocalScale				( NodeHandle Node );
+	FLEXKITAPI void			GetTransform				( NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
+	FLEXKITAPI void			GetTransform				( NodeHandle node,	float4x4* __restrict out );
+	FLEXKITAPI Quaternion	GetOrientation				( NodeHandle Node );
+	FLEXKITAPI float3		GetPositionW				( NodeHandle Node );
+	FLEXKITAPI float3		GetPositionL				( NodeHandle Node );
+	FLEXKITAPI NodeHandle	GetNewNode					();
+	FLEXKITAPI NodeHandle	GetZeroedNode				();
+	FLEXKITAPI bool			GetFlag						( NodeHandle Node,	size_t f );
+	FLEXKITAPI NodeHandle	GetParentNode				( NodeHandle Node );
 
-	FLEXKITAPI LT_Entry		GetLocal					( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI float3		GetLocalScale				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
-	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle Node,	WT_Entry* __restrict out );		
-	FLEXKITAPI void			GetWT						( SceneNodes* Nodes, NodeHandle node,	float4x4* __restrict out );
-	FLEXKITAPI Quaternion	GetOrientation				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI float3		GetPositionW				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI float3		GetPositionL				( SceneNodes* Nodes, NodeHandle Node );
-	FLEXKITAPI NodeHandle	GetNewNode					( SceneNodes* Nodes );
-	FLEXKITAPI NodeHandle	GetZeroedNode				( SceneNodes* Nodes );
-	FLEXKITAPI bool			GetFlag						( SceneNodes* Nodes, NodeHandle Node,	size_t f );
-	FLEXKITAPI NodeHandle	GetParentNode				( SceneNodes* Nodes, NodeHandle Node );
+	FLEXKITAPI void			SetFlag						( NodeHandle Node,	SceneNodes::StateFlags f );
+	FLEXKITAPI void			SetLocal					( NodeHandle Node,	LT_Entry* __restrict In );
+	FLEXKITAPI void			SetOrientation				( NodeHandle Node,	Quaternion& In );	// Sets World Orientation
+	FLEXKITAPI void			SetOrientationL				( NodeHandle Node,	Quaternion& In );	// Sets World Orientation
+	FLEXKITAPI void			SetParentNode				( NodeHandle Parent, NodeHandle Node );
+	FLEXKITAPI void			SetPositionW				( NodeHandle Node,	float3 in );
+	FLEXKITAPI void			SetPositionL				( NodeHandle Node,	float3 in );
+	FLEXKITAPI void			SetWT						( NodeHandle Node,	DirectX::XMMATRIX* __restrict in  );				// Set World Transfo
+	FLEXKITAPI void			SetScale					( NodeHandle Node,	float3 In );
 
-	FLEXKITAPI void			SetFlag						( SceneNodes* Nodes, NodeHandle Node,	SceneNodes::StateFlags f );
-	FLEXKITAPI void			SetLocal					( SceneNodes* Nodes, NodeHandle Node,	LT_Entry* __restrict In );
-	FLEXKITAPI void			SetOrientation				( SceneNodes* Nodes, NodeHandle Node,	Quaternion& In );	// Sets World Orientation
-	FLEXKITAPI void			SetOrientationL				( SceneNodes* Nodes, NodeHandle Node,	Quaternion& In );	// Sets World Orientation
-	FLEXKITAPI void			SetParentNode				( SceneNodes* Nodes, NodeHandle Parent, NodeHandle Node );
-	FLEXKITAPI void			SetPositionW				( SceneNodes* Nodes, NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetPositionL				( SceneNodes* Nodes, NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetWT						( SceneNodes* Nodes, NodeHandle Node,	DirectX::XMMATRIX* __restrict in  );				// Set World Transform
-	FLEXKITAPI void			SetScale					( SceneNodes* Nodes, NodeHandle Node,	float3 In );
+	FLEXKITAPI void			Scale						( NodeHandle Node,	float3 In );
+	FLEXKITAPI void			TranslateLocal				( NodeHandle Node,	float3 In );
+	FLEXKITAPI void			TranslateWorld				( NodeHandle Node,	float3 In );
+	FLEXKITAPI bool			UpdateTransforms			();
+	FLEXKITAPI NodeHandle	ZeroNode					( NodeHandle Node );
 
-	FLEXKITAPI void			Scale						( SceneNodes* Nodes, NodeHandle Node,	float3 In );
-	FLEXKITAPI void			TranslateLocal				( SceneNodes* Nodes, NodeHandle Node,	float3 In );
-	FLEXKITAPI void			TranslateWorld				( SceneNodes* Nodes, NodeHandle Node,	float3 In );
-	FLEXKITAPI bool			UpdateTransforms			( SceneNodes* Nodes );
-	FLEXKITAPI NodeHandle	ZeroNode					( SceneNodes* Nodes, NodeHandle Node );
-
-	FLEXKITAPI inline void Yaw							( SceneNodes* Nodes, NodeHandle Node,	float r );
-	FLEXKITAPI inline void Roll							( SceneNodes* Nodes, NodeHandle Node,	float r );
-	FLEXKITAPI inline void Pitch						( SceneNodes* Nodes, NodeHandle Node,	float r );
-
-
-	/************************************************************************************************/
-
-
-	struct FLEXKITAPI SceneNodeCtr
-	{
-		inline void WTranslate	( float3 XYZ ) { TranslateWorld(SceneNodes, Node, XYZ); }
-		inline void LTranslate	( float3 XYZ ) { TranslateLocal(SceneNodes, Node, XYZ); }
-		void		Rotate		( Quaternion Q );
-
-		NodeHandle	Node;
-		SceneNodes*	SceneNodes;
-	};
+	FLEXKITAPI inline void Yaw							( NodeHandle Node,	float r );
+	FLEXKITAPI inline void Roll							( NodeHandle Node,	float r );
+	FLEXKITAPI inline void Pitch						( NodeHandle Node,	float r );
 
 
 	/************************************************************************************************/

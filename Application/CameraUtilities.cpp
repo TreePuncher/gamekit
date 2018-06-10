@@ -28,21 +28,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out)
+void InitiateCamera3rdPersonContoller(Camera* C, Camera3rdPersonContoller* Out)
 {
-	ReleaseNode(Nodes, C->Node);
+	ReleaseNode(C->Node);
 
-	auto Yaw	= GetZeroedNode(Nodes);
-	auto Pitch	= GetZeroedNode(Nodes);
-	auto Roll	= GetZeroedNode(Nodes);
+	auto Yaw	= GetZeroedNode();
+	auto Pitch	= GetZeroedNode();
+	auto Roll	= GetZeroedNode();
 
-	SetParentNode(Nodes, Pitch, Roll);
-	SetParentNode(Nodes, Yaw, Pitch);
+	SetParentNode(Pitch, Roll);
+	SetParentNode(Yaw, Pitch);
 
 
 	C->Node		= Roll;
 	Out->C		= C;
-	Out->Nodes	= Nodes;
 
 	Out->Pitch	= 0;
 	Out->Roll	= 0;
@@ -53,25 +52,25 @@ void InitiateCamera3rdPersonContoller(SceneNodes* Nodes, Camera* C, Camera3rdPer
 	Out->Yaw_Node   = Yaw;
 }
 
-void UpdateCameraController(SceneNodes* Nodes, Camera3rdPersonContoller* Controller, double dT)
+void UpdateCameraController(Camera3rdPersonContoller* Controller, double dT)
 {
 }
 
 void SetCameraOffset(Camera3rdPersonContoller* Controller, float3 xyz)
 {
-	TranslateWorld(Controller->Nodes, Controller->Pitch_Node, float3(0.0f, 1.0f, 0.0f) * xyz);
-	TranslateWorld(Controller->Nodes, Controller->Roll_Node,  float3(0.0f, 0.0f, 1.0f) * xyz);
+	TranslateWorld(Controller->Pitch_Node, float3(0.0f, 1.0f, 0.0f) * xyz);
+	TranslateWorld(Controller->Roll_Node,  float3(0.0f, 0.0f, 1.0f) * xyz);
 
 }
 
 void SetCameraPosition(Camera3rdPersonContoller* Controller, float3 xyz)
 {
-	SetPositionW(Controller->Nodes, Controller->Yaw_Node, xyz);
+	SetPositionW(Controller->Yaw_Node, xyz);
 }
 
 void TranslateCamera(Camera3rdPersonContoller* Controller, float3 xyz)
 {
-	TranslateWorld(Controller->Nodes, Controller->Yaw_Node, xyz);
+	TranslateWorld(Controller->Yaw_Node, xyz);
 }
 
 void YawCamera(Camera3rdPersonContoller* Controller, float Degree)
@@ -91,15 +90,16 @@ void RollCamera(Camera3rdPersonContoller* Controller, float Degree)
 
 float3 GetForwardVector(Camera3rdPersonContoller* Controller)
 {
-	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
+	Quaternion Q = GetOrientation( Controller->Yaw_Node);
 	return -(Q * float3(0, 0, 1)).normal();
 }
 
 float3 GetRightVector(Camera3rdPersonContoller* Controller)
 {
-	Quaternion Q = GetOrientation(Controller->Nodes, Controller->Yaw_Node);
+	Quaternion Q = GetOrientation(Controller->Yaw_Node);
 	return -(Q * float3(-1, 0, 0)).normal();
 }
+
 
 namespace FlexKit
 {
@@ -116,10 +116,11 @@ namespace FlexKit
 	void OrbitCameraSystem::Update(double dT)
 	{
 		for (auto Controller : this->Controllers) {
-			Quaternion Q = ::GetOrientation(*Nodes, Controller.CameraNode);
+			Quaternion Q = ::GetOrientation(Controller.CameraNode);
 
 			float3 dP = 0;
 
+			/*
 			auto MouseState = InputSystem->GetMouseState();
 
 			dP += InputSystem->KeyState.Forward		? float3(0, 0, -1)	: float3(0, 0, 0);
@@ -132,53 +133,8 @@ namespace FlexKit
 			Translate	(Controller.ParentGO, dP * dT * Controller.MoveRate);
 			Pitch		(*Nodes, Controller.PitchNode,	MouseState.Normalized_dPos[1] * dT * 256.0f);
 			Yaw			(*Nodes, Controller.YawNode,	MouseState.Normalized_dPos[0] * dT * 256.0f);
+			*/
 		}
 
-	}
-
-
-	void SetParentNode(ComponentListInterface* GO, NodeHandle Node)
-	{
-		auto C = FindComponent(GO, OrbitCameraComponentID);
-		if (C)
-		{
-			auto System = (OrbitCameraSystem*)C->ComponentSystem;
-			auto YawNode = System->GetNode(C->ComponentHandle);
-
-			System->Nodes->SetParentNode(YawNode, Node);
-		}
-	}
-
-
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, NodeHandle CameraNode, float MoveRate)
-	{
-		OrbitCameraArgs Out = {};
-		Out.System		= System;
-		Out.Cameras		= nullptr;
-		Out.Node		= CameraNode;
-		Out.MoveRate	= MoveRate;
-
-		return Out;
-	}
-
-
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* System, CameraComponentSystem* Cameras, float MoveRate)
-	{
-		OrbitCameraArgs Out = {};
-		Out.System		= System;
-		Out.Cameras		= Cameras;
-		Out.Node		= InvalidComponentHandle;
-		Out.MoveRate	= MoveRate;
-
-		return Out;
-	}
-
-
-	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System)
-	{
-		ThirdPersonCameraArgs Args;
-		Args.System = System;
-
-		return Args;
 	}
 }

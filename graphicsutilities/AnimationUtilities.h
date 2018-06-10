@@ -83,7 +83,7 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI XMMATRIX		GetTransform(JointPose P);
+	FLEXKITAPI XMMATRIX		GetPoseTransform(JointPose P);
 	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX M);
 
 
@@ -498,10 +498,10 @@ namespace FlexKit
 	FLEXKITAPI void UploadPoses		( RenderSystem* RS, PVS* Drawables,		GeometryTable* GT, iAllocator* TEMP);
 
 	//	Call After Updating PoseState
-	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, SceneNodes* Nodes, DrawablePoseState* DPS );
+	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, DrawablePoseState* DPS );
 
-	FLEXKITAPI void DEBUG_DrawSkeleton				( Skeleton* S,				SceneNodes* Nodes, NodeHandle Node, iAllocator* TEMP, LineSegments* Out );
-	FLEXKITAPI void DEBUG_DrawPoseState				( DrawablePoseState* DPS,	SceneNodes* Nodes, NodeHandle Node, LineSegments* Out ) ;
+	FLEXKITAPI void DEBUG_DrawSkeleton				( Skeleton* S,				NodeHandle Node, iAllocator* TEMP, LineSegments* Out );
+	FLEXKITAPI void DEBUG_DrawPoseState				( DrawablePoseState* DPS,	NodeHandle Node, LineSegments* Out ) ;
 	FLEXKITAPI void DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
 }
 #endif

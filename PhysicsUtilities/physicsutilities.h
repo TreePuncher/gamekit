@@ -243,8 +243,9 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	/*
 
-	struct ColliderBaseSystem : FlexKit::ComponentSystemInterface
+	struct ColliderBaseSystem
 	{
 		void Initiate(
 			SceneNodeComponentSystem* nodes,
@@ -266,10 +267,6 @@ namespace FlexKit
 		}
 
 
-		void ReleaseHandle(ComponentHandle Handle)
-		{
-		}
-
 
 		struct Collider
 		{
@@ -287,7 +284,6 @@ namespace FlexKit
 			physx::PxMaterial*	Material;
 			NodeHandle			Node;
 		};
-
 		ComponentHandle CreateCollider(
 			physx::PxActor*		actor,
 			physx::PxMaterial*	mat
@@ -325,16 +321,18 @@ namespace FlexKit
 			return Colliders[C].Node;
 		}
 
+
 		SceneNodeComponentSystem*	Nodes;
 		Vector<Collider>			Colliders;
 		Vector<Collider>			FreeColliders;
 	};
+		*/
 
-	const uint32_t ColliderComponentID = GetTypeGUID(ColliderSystem);
+	//const uint32_t ColliderComponentID = GetTypeGUID(ColliderSystem);
 
 	/************************************************************************************************/
 
-
+	/*
 	struct CharacterControllerSystem : public FlexKit::ComponentSystemInterface
 	{
 		struct CharacterController
@@ -428,8 +426,7 @@ namespace FlexKit
 
 	const uint32_t CharacterControllerSystemID = GetTypeGUID(CharacterControllerSystem);
 
-
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	bool GetFloorContact(ComponentListInterface* GO, bool& out)
@@ -445,7 +442,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	struct CapsuleCharacterArgs
@@ -474,7 +471,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	struct StaticCubeColliderSystem : FlexKit::ComponentSystemInterface
@@ -684,6 +681,9 @@ namespace FlexKit
 		void*						User;
 	};
 
+*/
 
 }	/************************************************************************************************/
+
+
 #endif//PHYSICSUTILITIES_H

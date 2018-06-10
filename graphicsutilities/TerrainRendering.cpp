@@ -34,278 +34,280 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
+
 	const static size_t SO_BUFFERSIZES = MEGABYTE * 4;
-	void DrawLandscape(RenderSystem* RS, Landscape* LS, TiledDeferredRender* Pass, size_t splitcount, Camera* C, bool DrawWireframe)
-	{	
-		auto CL = RS->_GetCurrentCommandList();
-		if (LS->Regions.size())
-		{
-			/*
-			typdef struct D3D12_VERTEX_BUFFER_VIEW Views
-			{
-				D3D12_GPU_VIRTUAL_ADDRESS	BufferLocation;
-				UINT						SizeInBytes;
-				UINT						StrideInBytes;
-			} 	D3D12_VERTEX_BUFFER_VIEW;
-			*/
 
-			auto CL             = RS->_GetCurrentCommandList();
-			auto FrameResources = RS->_GetCurrentFrameResources();
-			auto DescPOSGPU     = RS->_GetDescTableCurrentPosition_GPU(); // _Ptr to Beginning of Heap On GPU
-			auto DescPOS        = RS->_ReserveDescHeap(11);
-			auto DescriptorHeap = RS->_GetCurrentDescriptorTable();
+	//void DrawLandscape(RenderSystem* RS, Landscape* LS, TiledDeferredRender* Pass, size_t splitcount, Camera* C, bool DrawWireframe)
+	//{	
+	//	auto CL = RS->_GetCurrentCommandList();
+	//	if (LS->Regions.size())
+	//	{
+	//		/*
+	//		typdef struct D3D12_VERTEX_BUFFER_VIEW Views
+	//		{
+	//			D3D12_GPU_VIRTUAL_ADDRESS	BufferLocation;
+	//			UINT						SizeInBytes;
+	//			UINT						StrideInBytes;
+	//		} 	D3D12_VERTEX_BUFFER_VIEW;
+	//		*/
 
-			auto RTVPOSCPU      = RS->_GetRTVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
-			auto RTVPOS         = RS->_ReserveRTVHeap(5);
-			auto RTVHeap        = RS->_GetCurrentRTVTable();
+	//		auto CL             = RS->_GetCurrentCommandList();
+	//		auto FrameResources = RS->_GetCurrentFrameResources();
+	//		auto DescPOSGPU     = RS->_GetDescTableCurrentPosition_GPU(); // _Ptr to Beginning of Heap On GPU
+	//		auto DescPOS        = RS->_ReserveDescHeap(11);
+	//		auto DescriptorHeap = RS->_GetCurrentDescriptorTable();
 
-			CL->SetDescriptorHeaps(1, &DescriptorHeap);
+	//		auto RTVPOSCPU      = RS->_GetRTVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
+	//		auto RTVPOS         = RS->_ReserveRTVHeap(5);
+	//		auto RTVHeap        = RS->_GetCurrentRTVTable();
 
-			size_t BufferIndex = Pass->CurrentBuffer;
+	//		CL->SetDescriptorHeaps(1, &DescriptorHeap);
 
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,		RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex,		RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].EmissiveTex,		RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].RoughnessMetal,	RTVPOS);
-			RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,		RTVPOS);
+	//		size_t BufferIndex = Pass->CurrentBuffer;
 
-			DescPOS = PushTextureToDescHeap(RS, LS->HeightMap, DescPOS);
-			DescPOS = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescPOS, 1024); // t1
+	//		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].ColorTex,		RTVPOS);
+	//		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].SpecularTex,		RTVPOS);
+	//		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].EmissiveTex,		RTVPOS);
+	//		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].RoughnessMetal,	RTVPOS);
+	//		RTVPOS = PushRenderTarget(RS, &Pass->GBuffers[BufferIndex].NormalTex,		RTVPOS);
 
-			UINT Stride = sizeof(Landscape::ViewableRegion);
+	//		DescPOS = PushTextureToDescHeap(RS, LS->HeightMap, DescPOS);
+	//		DescPOS = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), DescPOS, 1024); // t1
 
-			D3D12_VERTEX_BUFFER_VIEW SO_1[] = { {
-					LS->RegionBuffers[0]->GetGPUVirtualAddress(),
-					(UINT)SO_BUFFERSIZES,
-					Stride,//sizeof(Landscape::ViewableRegion)
-				}, };
+	//		UINT Stride = sizeof(Landscape::ViewableRegion);
 
-			D3D12_VERTEX_BUFFER_VIEW SO_2[] = { {
-					LS->RegionBuffers[1]->GetGPUVirtualAddress(),
-					(UINT)SO_BUFFERSIZES,
-					Stride,//sizeof(Landscape::ViewableRegion)
-				}, };
+	//		D3D12_VERTEX_BUFFER_VIEW SO_1[] = { {
+	//				LS->RegionBuffers[0]->GetGPUVirtualAddress(),
+	//				(UINT)SO_BUFFERSIZES,
+	//				Stride,//sizeof(Landscape::ViewableRegion)
+	//			}, };
 
-			D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { {
-					LS->InputBuffer->GetGPUVirtualAddress(),
-					(UINT)LS->Regions.size() * sizeof(Landscape::ViewableRegion),
-					Stride,//sizeof(Landscape::ViewableRegion)
-				}, };
+	//		D3D12_VERTEX_BUFFER_VIEW SO_2[] = { {
+	//				LS->RegionBuffers[1]->GetGPUVirtualAddress(),
+	//				(UINT)SO_BUFFERSIZES,
+	//				Stride,//sizeof(Landscape::ViewableRegion)
+	//			}, };
 
-			D3D12_VERTEX_BUFFER_VIEW FinalBufferInput[] = { {
-					LS->FinalBuffer->GetGPUVirtualAddress(),
-					(UINT)SO_BUFFERSIZES,
-					Stride,//(UINT)sizeof(Landscape::ViewableRegion)
-				}, };
+	//		D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { {
+	//				LS->InputBuffer->GetGPUVirtualAddress(),
+	//				(UINT)LS->Regions.size() * sizeof(Landscape::ViewableRegion),
+	//				Stride,//sizeof(Landscape::ViewableRegion)
+	//			}, };
 
-			/*
-			typedef struct D3D12_STREAM_OUTPUT_BUFFER_VIEW
-			{
-				D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
-				UINT64 SizeInBytes;
-				D3D12_GPU_VIRTUAL_ADDRESS BufferFilledSizeLocation;
-			} 	D3D12_STREAM_OUTPUT_BUFFER_VIEW;
-			*/
+	//		D3D12_VERTEX_BUFFER_VIEW FinalBufferInput[] = { {
+	//				LS->FinalBuffer->GetGPUVirtualAddress(),
+	//				(UINT)SO_BUFFERSIZES,
+	//				Stride,//(UINT)sizeof(Landscape::ViewableRegion)
+	//			}, };
 
-			ID3D12Resource*	IndirectBuffers[] = {
-				LS->IndirectOptions1.Get(),
-				LS->IndirectOptions2.Get(),
-			};
+	//		/*
+	//		typedef struct D3D12_STREAM_OUTPUT_BUFFER_VIEW
+	//		{
+	//			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
+	//			UINT64 SizeInBytes;
+	//			D3D12_GPU_VIRTUAL_ADDRESS BufferFilledSizeLocation;
+	//		} 	D3D12_STREAM_OUTPUT_BUFFER_VIEW;
+	//		*/
 
-			D3D12_STREAM_OUTPUT_BUFFER_VIEW SOViews1[] = {
-				{ LS->RegionBuffers[0]->GetGPUVirtualAddress(),	SO_BUFFERSIZES, LS->SOCounter_1->GetGPUVirtualAddress() },
-				{ LS->FinalBuffer->GetGPUVirtualAddress(),		SO_BUFFERSIZES, LS->FB_Counter->GetGPUVirtualAddress()  },
-			};
+	//		ID3D12Resource*	IndirectBuffers[] = {
+	//			LS->IndirectOptions1.Get(),
+	//			LS->IndirectOptions2.Get(),
+	//		};
 
-			D3D12_STREAM_OUTPUT_BUFFER_VIEW SOViews2[] = {
-				{ LS->RegionBuffers[1]->GetGPUVirtualAddress(),	SO_BUFFERSIZES, LS->SOCounter_2->GetGPUVirtualAddress() },
-				{ LS->FinalBuffer->GetGPUVirtualAddress(),		SO_BUFFERSIZES, LS->FB_Counter->GetGPUVirtualAddress()  },
-			};
+	//		D3D12_STREAM_OUTPUT_BUFFER_VIEW SOViews1[] = {
+	//			{ LS->RegionBuffers[0]->GetGPUVirtualAddress(),	SO_BUFFERSIZES, LS->SOCounter_1->GetGPUVirtualAddress() },
+	//			{ LS->FinalBuffer->GetGPUVirtualAddress(),		SO_BUFFERSIZES, LS->FB_Counter->GetGPUVirtualAddress()  },
+	//		};
 
-			ID3D12Resource*				Buffers[] = { LS->RegionBuffers[0].Get(), LS->RegionBuffers[1].Get() };
-			D3D12_VERTEX_BUFFER_VIEW*	Input[] = { SO_1 , SO_2 };
+	//		D3D12_STREAM_OUTPUT_BUFFER_VIEW SOViews2[] = {
+	//			{ LS->RegionBuffers[1]->GetGPUVirtualAddress(),	SO_BUFFERSIZES, LS->SOCounter_2->GetGPUVirtualAddress() },
+	//			{ LS->FinalBuffer->GetGPUVirtualAddress(),		SO_BUFFERSIZES, LS->FB_Counter->GetGPUVirtualAddress()  },
+	//		};
 
-			D3D12_STREAM_OUTPUT_BUFFER_VIEW*	Output[] = { SOViews1, SOViews2 };
-			ID3D12Resource*						OutputCounters[] = { LS->SOCounter_1.Get(), LS->SOCounter_2.Get() };
+	//		ID3D12Resource*				Buffers[] = { LS->RegionBuffers[0].Get(), LS->RegionBuffers[1].Get() };
+	//		D3D12_VERTEX_BUFFER_VIEW*	Input[] = { SO_1 , SO_2 };
 
-
-			auto DSVPOSCPU	= RS->_GetDSVTableCurrentPosition_CPU(); // _Ptr to Current POS On DSV heap on CPU
-			auto POS		= RS->_ReserveDSVHeap(1);
-			PushDepthStencil(RS, &Pass->GBuffers[Pass->CurrentBuffer].DepthBuffer, POS);
-
-			CL->OMSetRenderTargets(5, &RTVPOSCPU, true, &DSVPOSCPU);
-
-			{
-				D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, };
-				CL->IASetVertexBuffers(0, sizeof(SO_Initial) / sizeof(SO_Initial[0]), SO_Initial);
-			}
-
-			// Reset Stream Counters
-			CL->CopyResource(LS->FB_Counter.Get(),  LS->ZeroValues);
-			CL->CopyResource(LS->SOCounter_1.Get(), LS->ZeroValues);
-			CL->CopyResource(LS->SOCounter_2.Get(), LS->ZeroValues);
-
-			{
-				CD3DX12_RESOURCE_BARRIER Barrier[] = {
-					CD3DX12_RESOURCE_BARRIER::Transition(LS->FB_Counter.Get(),  D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
-					CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_1.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
-					CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_2.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
-					CD3DX12_RESOURCE_BARRIER::Transition(LS->FinalBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
-				};
-
-				CL->ResourceBarrier(4, Barrier);
-			}
-
-			{
-				auto PSO = RS->GetPSO(TERRAIN_CULL_PSO);
-				CL->SetGraphicsRootSignature(RS->Library.RS4CBVs_SO);
-				CL->SetPipelineState(PSO);
-				CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
-			}
-			//CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
-			CL->SetGraphicsRootConstantBufferView(1, LS->ConstantBuffer->GetGPUVirtualAddress());
-			//CL->SetGraphicsRootConstantBufferView (2, RS->NullConstantBuffer);
-			CL->SetGraphicsRootDescriptorTable(3, DescPOSGPU);
-
-			// Prime System
-			CL->IASetVertexBuffers(0, 1, SO_Initial);
-			CL->BeginQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
-			CL->SOSetTargets(0, 2, Output[0]);
-
-			size_t I = 0;
-			for (; I < splitcount; ++I)
-			{
-				bool Index = (I % 2) != 0;
-				bool NextIndex = Index ? 0 : 1;
-
-				CL->BeginQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1);
-
-				if (I)
-					CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
-				else
-					CL->DrawInstanced(1, 1, 0, 0);
-
-				{
-					CD3DX12_RESOURCE_BARRIER Barrier[] = {
-						CD3DX12_RESOURCE_BARRIER::Transition(Buffers[Index],			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER),
-						CD3DX12_RESOURCE_BARRIER::Transition(Buffers[!Index],			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_STREAM_OUT),
-						CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[!Index],	D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_COPY_DEST),
-						CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_1.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST),
-						CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_2.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST),
-
-					};
-
-					CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
-				}
-
-				CL->EndQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1);
-				CL->ResolveQueryData(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1, 1, IndirectBuffers[NextIndex], 0);
-				CL->CopyBufferRegion(IndirectBuffers[NextIndex], 4, LS->ZeroValues, 4, 12);
-
-				CL->CopyBufferRegion(LS->SOCounter_1.Get(), 0, LS->ZeroValues, 16, 16);
-				CL->CopyBufferRegion(LS->SOCounter_2.Get(), 0, LS->ZeroValues, 16, 16);
-
-				{
-					CD3DX12_RESOURCE_BARRIER Barrier[] = {
-						CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[!Index],	D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
-						CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_1.Get(),		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
-						CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_2.Get(),		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
-					};
-
-					CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
-				}
-
-				CL->IASetVertexBuffers(0, 1, Input[Index]);
-				CL->SOSetTargets(0, 2, Output[!Index]);
-			}
+	//		D3D12_STREAM_OUTPUT_BUFFER_VIEW*	Output[] = { SOViews1, SOViews2 };
+	//		ID3D12Resource*						OutputCounters[] = { LS->SOCounter_1.Get(), LS->SOCounter_2.Get() };
 
 
-			{
-				D3D12_STREAM_OUTPUT_BUFFER_VIEW NullSO[] = {
-					{ 0, 0, 0 },
-					{ 0, 0, 0 },
-				};
+	//		auto DSVPOSCPU	= RS->_GetDSVTableCurrentPosition_CPU(); // _Ptr to Current POS On DSV heap on CPU
+	//		auto POS		= RS->_ReserveDSVHeap(1);
+	//		PushDepthStencil(RS, &Pass->GBuffers[Pass->CurrentBuffer].DepthBuffer, POS);
 
-				CL->SOSetTargets(0, 2, NullSO);
-			}
+	//		CL->OMSetRenderTargets(5, &RTVPOSCPU, true, &DSVPOSCPU);
 
-			// Do Draw Here
+	//		{
+	//			D3D12_VERTEX_BUFFER_VIEW SO_Initial[] = { { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, { 0, 0, 0 }, };
+	//			CL->IASetVertexBuffers(0, sizeof(SO_Initial) / sizeof(SO_Initial[0]), SO_Initial);
+	//		}
 
-			uint16_t Index = I % 2;
-			uint16_t NextIndex = Index ? 0 : 1;
+	//		// Reset Stream Counters
+	//		CL->CopyResource(LS->FB_Counter.Get(),  LS->ZeroValues);
+	//		CL->CopyResource(LS->SOCounter_1.Get(), LS->ZeroValues);
+	//		CL->CopyResource(LS->SOCounter_2.Get(), LS->ZeroValues);
 
-			{
-				CD3DX12_RESOURCE_BARRIER Barrier[] = {
-					CD3DX12_RESOURCE_BARRIER::Transition(Buffers[Index],			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER),
-					CD3DX12_RESOURCE_BARRIER::Transition(Buffers[!Index],			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_STREAM_OUT),
-					CD3DX12_RESOURCE_BARRIER::Transition(LS->FinalBuffer.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER),
-					CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[0],		D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,	D3D12_RESOURCE_STATE_COPY_DEST),
-					CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[1],		D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,	D3D12_RESOURCE_STATE_COPY_DEST),
-				};
+	//		{
+	//			CD3DX12_RESOURCE_BARRIER Barrier[] = {
+	//				CD3DX12_RESOURCE_BARRIER::Transition(LS->FB_Counter.Get(),  D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_1.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_2.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(LS->FinalBuffer.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//			};
 
-				CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
-			}
+	//			CL->ResourceBarrier(4, Barrier);
+	//		}
 
-			CL->EndQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
-			CL->ResolveQueryData(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0, 1, IndirectBuffers[NextIndex], 0);
-			CL->CopyBufferRegion(IndirectBuffers[NextIndex], 4, LS->ZeroValues, 4, 12);
+	//		{
+	//			auto PSO = RS->GetPSO(TERRAIN_CULL_PSO);
+	//			CL->SetGraphicsRootSignature(RS->Library.RS4CBVs_SO);
+	//			CL->SetPipelineState(PSO);
+	//			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+	//		}
+	//		//CL->SetGraphicsRootConstantBufferView(0, C->Buffer->GetGPUVirtualAddress());
+	//		CL->SetGraphicsRootConstantBufferView(1, LS->ConstantBuffer->GetGPUVirtualAddress());
+	//		//CL->SetGraphicsRootConstantBufferView (2, RS->NullConstantBuffer);
+	//		CL->SetGraphicsRootDescriptorTable(3, DescPOSGPU);
 
-			{
-				CD3DX12_RESOURCE_BARRIER Barrier[] = {
-					CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[0],		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
-					CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[1],		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
-				};
+	//		// Prime System
+	//		CL->IASetVertexBuffers(0, 1, SO_Initial);
+	//		CL->BeginQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
+	//		CL->SOSetTargets(0, 2, Output[0]);
 
-				CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
-			}
+	//		size_t I = 0;
+	//		for (; I < splitcount; ++I)
+	//		{
+	//			bool Index = (I % 2) != 0;
+	//			bool NextIndex = Index ? 0 : 1;
 
-			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST);
-			//CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
+	//			CL->BeginQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1);
+
+	//			if (I)
+	//				CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
+	//			else
+	//				CL->DrawInstanced(1, 1, 0, 0);
+
+	//			{
+	//				CD3DX12_RESOURCE_BARRIER Barrier[] = {
+	//					CD3DX12_RESOURCE_BARRIER::Transition(Buffers[Index],			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER),
+	//					CD3DX12_RESOURCE_BARRIER::Transition(Buffers[!Index],			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//					CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[!Index],	D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_COPY_DEST),
+	//					CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_1.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST),
+	//					CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_2.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_COPY_DEST),
+
+	//				};
+
+	//				CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
+	//			}
+
+	//			CL->EndQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1);
+	//			CL->ResolveQueryData(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, 1, 1, IndirectBuffers[NextIndex], 0);
+	//			CL->CopyBufferRegion(IndirectBuffers[NextIndex], 4, LS->ZeroValues, 4, 12);
+
+	//			CL->CopyBufferRegion(LS->SOCounter_1.Get(), 0, LS->ZeroValues, 16, 16);
+	//			CL->CopyBufferRegion(LS->SOCounter_2.Get(), 0, LS->ZeroValues, 16, 16);
+
+	//			{
+	//				CD3DX12_RESOURCE_BARRIER Barrier[] = {
+	//					CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[!Index],	D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
+	//					CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_1.Get(),		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//					CD3DX12_RESOURCE_BARRIER::Transition(LS->SOCounter_2.Get(),		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//				};
+
+	//				CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
+	//			}
+
+	//			CL->IASetVertexBuffers(0, 1, Input[Index]);
+	//			CL->SOSetTargets(0, 2, Output[!Index]);
+	//		}
+
+
+	//		{
+	//			D3D12_STREAM_OUTPUT_BUFFER_VIEW NullSO[] = {
+	//				{ 0, 0, 0 },
+	//				{ 0, 0, 0 },
+	//			};
+
+	//			CL->SOSetTargets(0, 2, NullSO);
+	//		}
+
+	//		// Do Draw Here
+
+	//		uint16_t Index = I % 2;
+	//		uint16_t NextIndex = Index ? 0 : 1;
+
+	//		{
+	//			CD3DX12_RESOURCE_BARRIER Barrier[] = {
+	//				CD3DX12_RESOURCE_BARRIER::Transition(Buffers[Index],			D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(Buffers[!Index],			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_STREAM_OUT),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(LS->FinalBuffer.Get(),		D3D12_RESOURCE_STATE_STREAM_OUT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[0],		D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,	D3D12_RESOURCE_STATE_COPY_DEST),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[1],		D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT,	D3D12_RESOURCE_STATE_COPY_DEST),
+	//			};
+
+	//			CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
+	//		}
+
+	//		CL->EndQuery(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0);
+	//		CL->ResolveQueryData(LS->SOQuery.Get(), D3D12_QUERY_TYPE_SO_STATISTICS_STREAM1, 0, 1, IndirectBuffers[NextIndex], 0);
+	//		CL->CopyBufferRegion(IndirectBuffers[NextIndex], 4, LS->ZeroValues, 4, 12);
+
+	//		{
+	//			CD3DX12_RESOURCE_BARRIER Barrier[] = {
+	//				CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[0],		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
+	//				CD3DX12_RESOURCE_BARRIER::Transition(IndirectBuffers[1],		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
+	//			};
+
+	//			CL->ResourceBarrier(sizeof(Barrier) / sizeof(Barrier[0]), Barrier);
+	//		}
+
+	//		CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST);
+	//		//CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 
 
 
-			if (DrawWireframe){
-				//CL->IASetVertexBuffers	(0, 1, Input[Index]);
+	//		if (DrawWireframe){
+	//			//CL->IASetVertexBuffers	(0, 1, Input[Index]);
 
-				// Draw Final Buffer
-				CL->IASetVertexBuffers	(0, 1, FinalBufferInput);
-				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO_DEBUG));
-				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
+	//			// Draw Final Buffer
+	//			CL->IASetVertexBuffers	(0, 1, FinalBufferInput);
+	//			CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO_DEBUG));
+	//			CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
 
-				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_WIRE_PSO));
-				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
+	//			CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_WIRE_PSO));
+	//			CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
 
-				// Draw Remainder
-				CL->IASetVertexBuffers	(0, 1, Input[NextIndex]);
-				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO_DEBUG));
-				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
+	//			// Draw Remainder
+	//			CL->IASetVertexBuffers	(0, 1, Input[NextIndex]);
+	//			CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO_DEBUG));
+	//			CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
 
-				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_WIRE_PSO));
-				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
-			}
-			else
-			{
-				CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO));
-				// Draw Final Buffer
-				CL->IASetVertexBuffers(0, 1, FinalBufferInput);
-				CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
+	//			CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_WIRE_PSO));
+	//			CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
+	//		}
+	//		else
+	//		{
+	//			CL->SetPipelineState	(RS->GetPSO(TERRAIN_DRAW_PSO));
+	//			// Draw Final Buffer
+	//			CL->IASetVertexBuffers(0, 1, FinalBufferInput);
+	//			CL->ExecuteIndirect		(LS->CommandSignature, 1, IndirectBuffers[NextIndex], 0, nullptr, 0);
 
-				CL->IASetVertexBuffers(0, 1, Input[NextIndex]);
-				CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
-			}
+	//			CL->IASetVertexBuffers(0, 1, Input[NextIndex]);
+	//			CL->ExecuteIndirect(LS->CommandSignature, 1, IndirectBuffers[Index], 0, nullptr, 0);
+	//		}
 
-			LS->RegionBuffers[0].IncrementCounter();
-			LS->RegionBuffers[1].IncrementCounter();
-			LS->FinalBuffer.IncrementCounter();
-			LS->TriBuffer.IncrementCounter();
-			LS->SOCounter_1.IncrementCounter();
-			LS->SOCounter_2.IncrementCounter();
-			LS->FB_Counter.IncrementCounter();
-			LS->IndirectOptions1.IncrementCounter();
-			LS->IndirectOptions2.IncrementCounter();
-			LS->SOQuery.IncrementCounter();
-		}
-	}
+	//		LS->RegionBuffers[0].IncrementCounter();
+	//		LS->RegionBuffers[1].IncrementCounter();
+	//		LS->FinalBuffer.IncrementCounter();
+	//		LS->TriBuffer.IncrementCounter();
+	//		LS->SOCounter_1.IncrementCounter();
+	//		LS->SOCounter_2.IncrementCounter();
+	//		LS->FB_Counter.IncrementCounter();
+	//		LS->IndirectOptions1.IncrementCounter();
+	//		LS->IndirectOptions2.IncrementCounter();
+	//		LS->SOQuery.IncrementCounter();
+	//	}
+	//}
 
 
 	/************************************************************************************************/
@@ -794,7 +796,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseTerrain(SceneNodes* Nodes, Landscape* ls)
+	void ReleaseTerrain(Landscape* ls)
 	{
 		ls->RegionBuffers[0].Release();
 		ls->RegionBuffers[1].Release();
@@ -828,7 +830,7 @@ namespace FlexKit
 	};
 	*/
 
-	void UploadLandscape(RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* Camera, bool UploadRegions, bool UploadConstants, int PassCount)
+	void UploadLandscape(RenderSystem* RS, Landscape* ls, Camera* Camera, bool UploadRegions, bool UploadConstants, int PassCount)
 	{
 		if (!ls->Regions.size())
 			return;
@@ -837,8 +839,8 @@ namespace FlexKit
 		{
 			Landscape::ConstantBufferLayout Buffer;
 
-			float3 POS      = GetPositionW(Nodes, Camera->Node);
-			Quaternion Q    = GetOrientation(Nodes, Camera->Node);
+			float3 POS      = GetPositionW(Camera->Node);
+			Quaternion Q    = GetOrientation(Camera->Node);
 			Buffer.Albedo	= {1, 1, 1, 0.9f};
 			Buffer.Specular = {1, 1, 1, 1};
 
@@ -864,7 +866,7 @@ namespace FlexKit
 		UploadLandscape2
 			Allows use of a different Frustum for debugging purposes.
 	*/
-	void UploadLandscape2(RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* Camera, Frustum F, bool UploadRegions, bool UploadConstants, int PassCount)
+	void UploadLandscape2(RenderSystem* RS, Landscape* ls, Camera* Camera, Frustum F, bool UploadRegions, bool UploadConstants, int PassCount)
 	{
 		if (!ls->Regions.size())
 			return;
@@ -873,8 +875,8 @@ namespace FlexKit
 		{
 			Landscape::ConstantBufferLayout Buffer;
 
-			float3 POS = GetPositionW(Nodes, Camera->Node);
-			Quaternion Q = GetOrientation(Nodes, Camera->Node);
+			float3 POS = GetPositionW(Camera->Node);
+			Quaternion Q = GetOrientation(Camera->Node);
 			Buffer.Albedo = { 1, 1, 1, 0.9f };
 			Buffer.Specular = { 1, 1, 1, 1 };
 

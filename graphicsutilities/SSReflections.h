@@ -26,8 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SSREFLECTIONS_H
 
 #include "graphics.h"
-#include "TiledRender.h"
 
+/*
 namespace FlexKit
 {
 	struct SSReflectionBuffers
@@ -39,12 +39,13 @@ namespace FlexKit
 	void InitiateSSReflectionTracer	( RenderSystem* RS, uint2 WH, SSReflectionBuffers* Out );
 	void ReleaseSSR					( SSReflectionBuffers* SSR );
 
-	void TraceReflections			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* In, const Camera* C, const PointLightBuffer* PLB, const SpotLightBuffer* SPLB, uint2 WH, SSReflectionBuffers* SSR);
+	void TraceReflections			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, TiledDeferredRender* In, const Camera* C, const PointLightList* PLB, const SpotLightList* SPLB, uint2 WH, SSReflectionBuffers* SSR);
 	
 	void 		ClearBuffer			( RenderSystem* RS, ID3D12GraphicsCommandList* CL, SSReflectionBuffers* Buffers );
 	Texture2D*	GetCurrentBuffer	( SSReflectionBuffers* Buffers );
 	void		IncrementIndex		( SSReflectionBuffers* Buffers );
 
 }
+*/
 
 #endif

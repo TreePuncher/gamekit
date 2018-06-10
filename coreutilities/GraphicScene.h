@@ -83,10 +83,6 @@ namespace FlexKit
 		}
 
 		GraphicScene(
-			RenderSystem*				in_RS, 
-			Resources*					in_RM, 
-			SceneNodeComponentSystem*	in_SN, 
-			GeometryTable*				GT, 
 			iAllocator*					memory, 
 			iAllocator*					tempmemory) :
 				Memory						(memory),
@@ -98,21 +94,17 @@ namespace FlexKit
 				DrawableRayVisibility		(memory),
 				//SpotLightCasters			(memory),
 				TaggedJoints				(memory),
-				RS							(in_RS),
-				RM							(in_RM),
-				SN							(in_SN),
-				GT							(GT),
 				_PVS						(tempmemory)
 		{
-			using FlexKit::CreateSpotLightBuffer;
-			using FlexKit::CreatePointLightBuffer;
-			using FlexKit::PointLightBufferDesc;
+			using FlexKit::CreateSpotLightList;
+			using FlexKit::CreatePointLightList;
+			using FlexKit::PointLightListDesc;
 
-			FlexKit::PointLightBufferDesc Desc;
+			FlexKit::PointLightListDesc Desc;
 			Desc.MaxLightCount = 512;
 
-			CreatePointLightBuffer	(in_RS,	&PLights, Desc, Memory);
-			CreateSpotLightBuffer	(in_RS,	&SPLights, Memory);
+			CreatePointLightList	(&PLights, Desc, Memory);
+			CreateSpotLightList	(&SPLights, Memory);
 
 			SceneManagement.Initiate(Memory);
 		}
@@ -203,7 +195,6 @@ namespace FlexKit
 		iAllocator*					Memory;
 		RenderSystem*				RS;
 		Resources*					RM;
-		SceneNodeComponentSystem*	SN;
 		GeometryTable*				GT;
 		PVS							_PVS;
 
@@ -216,8 +207,8 @@ namespace FlexKit
 		Vector<EntityHandle>				DrawableHandles;
 		Vector<TaggedJoint>					TaggedJoints;
 
-		PointLightBuffer	PLights;
-		SpotLightBuffer		SPLights;
+		PointLightList	PLights;
+		SpotLightList		SPLights;
 
 		QuadTree	SceneManagement;
 
@@ -237,8 +228,8 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseGraphicScene				( GraphicScene* SM );
 	FLEXKITAPI void BindJoint						( GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode );
 
-	FLEXKITAPI bool LoadScene ( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
-	FLEXKITAPI bool LoadScene ( RenderSystem* RS, SceneNodes* SN, Resources* RM, GeometryTable*, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
+	FLEXKITAPI bool LoadScene ( RenderSystem* RS, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
+	FLEXKITAPI bool LoadScene ( RenderSystem* RS, Resources* RM, GeometryTable*, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
 
 	void Release(DrawablePoseState* EPS, iAllocator* allocator)
 	{

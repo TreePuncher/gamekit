@@ -5341,18 +5341,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(SpotLightBuffer* SLB)
+	void Release(SpotLightList* SLB)
 	{
-		SLB->Resource->Release();
 	}
 
 
 	/************************************************************************************************/
 	
 
-	void Release(PointLightBuffer* SLB)
+	void Release(PointLightList* SLB)
 	{
-		SLB->Resource->Release();
 	}
 	
 
@@ -5804,9 +5802,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseCamera(SceneNodes* Nodes, Camera* camera)
+	void ReleaseCamera(Camera* camera)
 	{
-		ReleaseNode(Nodes, camera->Node);
+		ReleaseNode(camera->Node);
 	}
 
 
@@ -5832,13 +5830,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateCamera(SceneNodes* Nodes, Camera* out, float AspectRatio, float Near, float Far, bool invert)
+	void InitiateCamera(Camera* out, float AspectRatio, float Near, float Far, bool invert)
 	{
 		using DirectX::XMMatrixTranspose;
 		using DirectX::XMMatrixMultiply;
 
-		NodeHandle Node = FlexKit::GetNewNode(Nodes);
-		ZeroNode(Nodes, Node);
+		NodeHandle Node = GetZeroedNode();
 
 		out->Node        = Node;
 		out->FOV         = (float)pi / 4.0f;
@@ -5850,7 +5847,7 @@ namespace FlexKit
 		/*
 		TODO: Create Create Camera Constant Buffer Function
 		DirectX::XMMATRIX WT;
-		FlexKit::GetWT(Nodes, Node, &WT);
+		FlexKit::GetTransform(Nodes, Node, &WT);
 
 		Camera::BufferLayout InitialData;
 		InitialData.Proj = CreatePerspective(out, out->invert);
@@ -5863,9 +5860,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateCamera(SceneNodes* nodes, Camera* camera, double dt)
+	void UpdateCamera(Camera* camera, double dt)
 	{
-		FK_ASSERT(nodes);
 		FK_ASSERT(camera);
 
 		using DirectX::XMMATRIX;
@@ -5878,7 +5874,7 @@ namespace FlexKit
 		XMMATRIX IV;
 		XMMATRIX Proj;
 
-		FlexKit::GetWT(nodes, camera->Node, &WT);
+		GetTransform(camera->Node, &WT);
 		View = XMMatrixInverse(nullptr, WT);
 		Proj = CreatePerspective(camera, camera->invert);
 		View = View;
@@ -5897,7 +5893,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Camera::BufferLayout Camera::GetConstants(SceneNodes* Nodes, double dt, uint2 HW)
+	Camera::BufferLayout Camera::GetConstants(double dt, uint2 HW)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixTranspose;
@@ -5924,7 +5920,7 @@ namespace FlexKit
 		NewData.WindowWidth		= HW[0];
 		NewData.WindowHeight	= HW[1];
 		
-		Quaternion Q			= GetOrientation(Nodes, Node);
+		Quaternion Q			= GetOrientation(Node);
 		auto CameraPoints		= GetFrustumPoints(NewData.WPOS.xyz(), Q);
 
 		NewData.WSTopLeft     = CameraPoints.FTL;
@@ -5944,57 +5940,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdatePointLightBuffer( RenderSystem& RS, SceneNodes* nodes, PointLightBuffer* out, iAllocator* TempMemory )
-	{
-		size_t count = out->Lights->size();
-		if (!count)
-			return;
-
-		PointLightEntry* PLs = (PointLightEntry*)TempMemory->_aligned_malloc(sizeof(PointLightEntry) * out->Lights->size());
-
-		for ( size_t itr = 0; itr < count; ++itr )
-		{
-			auto LightEntry = out->Lights->at(itr);
-			PLs[itr].POS	= float4( GetPositionW( nodes, LightEntry.Position ), LightEntry.R );
-			PLs[itr].Color	= float4( LightEntry.K, LightEntry.I );
-		}
-
-		UpdateResourceByTemp(RS, out->Resource, (char*)PLs, sizeof(PointLightEntry) * out->Lights->size() );
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateSpotLightBuffer( RenderSystem& RS, SceneNodes* nodes, SpotLightBuffer* out, iAllocator* TempMemory )
-	{
-		size_t count = out->Lights->size();
-		if (!count)
-			return;
-
-		SpotLightEntry* SLs = (SpotLightEntry*)TempMemory->_aligned_malloc(sizeof(SpotLightEntry) * out->Lights->size());
-
-		for(size_t itr = 0; itr < count; ++itr)
-		{
-			auto& L = out->Lights->at(itr);
-			if (out->Flags->at(itr) | LightBufferFlags::Dirty)
-			{
-				SLs[itr].POS	= float4(GetPositionW(nodes, L.Position), L.R);
-				SLs[itr].Color	= float4(L.K, L.I);
-
-				Quaternion Q = GetOrientation(nodes, L.Position);
-				SLs[itr].Direction = Q *  L.Direction;
-				itr++;
-			}
-		}
-		UpdateResourceByTemp(RS, out->Resource, (char*)SLs, sizeof(SpotLightEntry) * out->Lights->size());
-	}
-
-
-	/************************************************************************************************/
-
-
-	void CreatePointLightBuffer( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Memory )
+	void CreatePointLightList(PointLightList* out, PointLightListDesc Desc, iAllocator* Memory )
 	{
 		FK_ASSERT( Desc.MaxLightCount > 0, "INVALID PARAMS" );
 
@@ -6006,60 +5952,30 @@ namespace FlexKit
 		FK_ASSERT(out->Flags);
 		FK_ASSERT(out->IDs);
 
-		D3D12_RESOURCE_DESC Resource_DESC	= CD3DX12_RESOURCE_DESC::Buffer(0);
-		Resource_DESC.Alignment				= 0;
-		Resource_DESC.DepthOrArraySize		= 1;
-		Resource_DESC.Dimension				= D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
-		Resource_DESC.Layout				= D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Resource_DESC.Width					= sizeof(PointLightEntry) * Desc.MaxLightCount;
-		Resource_DESC.Height				= 1;
-		Resource_DESC.Format				= DXGI_FORMAT_UNKNOWN;
-		Resource_DESC.SampleDesc.Count		= 1;
-		Resource_DESC.SampleDesc.Quality	= 0;
-		Resource_DESC.Flags					= D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-
-		D3D12_HEAP_PROPERTIES HEAP_Props ={};
-		HEAP_Props.CPUPageProperty	    = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type				    = D3D12_HEAP_TYPE_DEFAULT;
-		HEAP_Props.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-		HEAP_Props.CreationNodeMask	    = 0;
-		HEAP_Props.VisibleNodeMask		= 0;
-
-		ID3D12Resource* NewBuffer = nullptr;
-		HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, &Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&NewBuffer));
-		out->Resource = NewBuffer;
-
-		SETDEBUGNAME(NewBuffer, "POINTLIGHTBUFFER");
 
 		for ( size_t itr = 0; itr < Desc.MaxLightCount; itr++ )
 			out->IDs->at(itr) = nullptr;
 	}
 
 
-	void Release(PointLightBuffer* out, iAllocator* Memory)
+	void Release(PointLightList* out, iAllocator* Memory)
 	{
-		if(out->Resource) out->Resource->Release();
-
 		Memory->_aligned_free(out->Lights);
 		Memory->_aligned_free(out->Flags);
 		Memory->_aligned_free(out->IDs);
 
-		out->Resource = nullptr;
 		out->Lights   = nullptr;
 		out->Flags    = nullptr;
 		out->IDs      = nullptr;
 	}
 
 
-	void Release(SpotLightBuffer* out, iAllocator* Memory)
+	void Release(SpotLightList* out, iAllocator* Memory)
 	{
-		if(out->Resource) out->Resource->Release();
-
 		Memory->_aligned_free(out->Lights);
 		Memory->_aligned_free(out->Flags);
 		Memory->_aligned_free(out->IDs);
 
-		out->Resource = nullptr;
 		out->Lights   = nullptr;
 		out->Flags    = nullptr;
 		out->IDs      = nullptr;
@@ -6120,7 +6036,7 @@ namespace FlexKit
 	*/
 	
 
-	LightHandle CreateLight(PointLightBuffer* PL, LightDesc& in)
+	LightHandle CreateLight(PointLightList* PL, LightDesc& in)
 	{
 		return LightHandle(0);
 		auto HandleIndex = PL->Lights->size();
@@ -6145,7 +6061,7 @@ namespace FlexKit
 	*/
 	
 
-	LightHandle CreateLight(SpotLightBuffer* SL, LightDesc& in, float3 Dir, float p)
+	LightHandle CreateLight(SpotLightList* SL, LightDesc& in, float3 Dir, float p)
 	{
 		auto HandleIndex = SL->size();
 		SL->push_back({in.K, Dir, in.I, in.R, float(pi/4.0f), in.Hndl});
@@ -6161,36 +6077,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CreateSpotLightBuffer(RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max)
+	void CreateSpotLightList(SpotLightList* out, iAllocator* Memory, size_t Max)
 	{
 		out->Lights		= &SLList::		Create_Aligned(Max, Memory, 0x10);
 		out->Flags		= &LightFlags::	Create_Aligned(Max, Memory, 0x10);
 		out->IDs		= &LightIDs::	Create_Aligned(Max, Memory, 0x10);
-		
-		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(0);
-		Resource_DESC.Alignment           = 0;
-		Resource_DESC.DepthOrArraySize    = 1;
-		Resource_DESC.Dimension           = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
-		Resource_DESC.Layout              = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Resource_DESC.Width               = sizeof(SpotLightEntry) * Max;
-		Resource_DESC.Height              = 1;
-		Resource_DESC.Format              = DXGI_FORMAT_UNKNOWN;
-		Resource_DESC.SampleDesc.Count    = 1;
-		Resource_DESC.SampleDesc.Quality  = 0;
-		Resource_DESC.Flags               = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-
-		D3D12_HEAP_PROPERTIES HEAP_Props  = {};
-		HEAP_Props.CPUPageProperty        = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-		HEAP_Props.Type                   = D3D12_HEAP_TYPE_DEFAULT;
-		HEAP_Props.MemoryPoolPreference   = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-		HEAP_Props.CreationNodeMask       = 0;
-		HEAP_Props.VisibleNodeMask        = 0;
-
-		ID3D12Resource* NewBuffer = nullptr;
-		HRESULT HR = RS->pDevice->CreateCommittedResource(&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, &Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(&NewBuffer));
-		out->Resource = NewBuffer;
-
-		SETDEBUGNAME(NewBuffer, "SpotLightBuffer");
 
 		for (size_t itr = 0; itr < Max; itr++)
 			out->IDs->at(itr) = nullptr;
@@ -6203,7 +6094,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseLight(PointLightBuffer*	PL, LightHandle Handle)
+	void ReleaseLight(PointLightList*	PL, LightHandle Handle)
 	{
 		PL->Lights->at(Handle).I	= 0.0f;
 		PL->Lights->at(Handle).R	= 0.0f;
@@ -6786,7 +6677,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Upload(RenderSystem* RS, SceneNodes* nodes, iAllocator* Temp, Camera* C)
+	void Upload(RenderSystem* RS, iAllocator* Temp, Camera* C)
 	{
 		/*
 		bool BufferDirty = false;
@@ -6812,7 +6703,7 @@ namespace FlexKit
 			if (DirtyFlags[I] & DIRTY_Transform)
 			{
 				BufferDirty = BufferDirty | true;
-				FlexKit::GetWT(nodes, NodeHandles[I], &Transforms[I]);
+				FlexKit::GetTransform(nodes, NodeHandles[I], &Transforms[I]);
 				Transforms[I] = DirectX::XMMatrixTranspose(Transforms[I]);
 				DirtyFlags[I] = DirtyFlags[I] ^ DIRTY_Transform;
 			}

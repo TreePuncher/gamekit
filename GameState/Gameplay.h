@@ -62,9 +62,7 @@ enum class EBombType
 };
 
 
-class GridPlayer :
-	public FlexKit::iEventReceiver,
-	public FlexKit::iUpdatable
+class GridPlayer
 {
 public:
 	GridPlayer()
@@ -74,12 +72,12 @@ public:
 	}
 
 
-	void Update(const double dt) override
+	void Update(const double dt)
 	{
 	}
 
 	// NO INPUT HANDLING IN HERE!
-	void Handle(const Event& evt) override
+	void Handle(const Event& evt)
 	{
 	}
 
@@ -293,9 +291,7 @@ enum PLAYER_EVENTS : int64_t
 /************************************************************************************************/
 
 
-class LocalPlayerHandler :
-	public FlexKit::iEventReceiver,
-	public FlexKit::iUpdatable
+class LocalPlayerHandler
 {
 public:
 	LocalPlayerHandler(GameGrid& grid, iAllocator* memory) :
@@ -305,7 +301,7 @@ public:
 	{}
 
 
-	void Handle(const Event& evt) override
+	void Handle(const Event& evt)
 	{
 		CurrentFrameEvents.push_back(evt);
 
@@ -469,7 +465,7 @@ public:
 	bool Enabled = false;
 
 
-	void Update(const double dt) override
+	void Update(const double dt)
 	{
 		if (InputState.PreferredDirection != -1)
 		{

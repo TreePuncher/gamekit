@@ -45,13 +45,12 @@ struct Camera3rdPersonContoller
 
 	float Yaw, Pitch, Roll;
 
-	SceneNodes*	Nodes;
 	Camera*		C;
 };
 
 
-void InitiateCamera3rdPersonContoller	( SceneNodes* Nodes, Camera* C, Camera3rdPersonContoller* Out );
-void UpdateCameraController				( SceneNodes* Nodes, Camera3rdPersonContoller* Controller, double dT );
+void InitiateCamera3rdPersonContoller	(Camera* C, Camera3rdPersonContoller* Out);
+void UpdateCameraController				(Camera3rdPersonContoller* Controller, double dT);
 
 void SetCameraOffset	(Camera3rdPersonContoller* Controller, float3 xyz);
 void SetCameraPosition	(Camera3rdPersonContoller* Controller, float3 xyz);
@@ -71,15 +70,6 @@ namespace FlexKit
 
 	struct OrbitCameraSystem;
 
-	struct OrbitCameraArgs
-	{
-		float					MoveRate;
-		NodeHandle				Node;
-		OrbitCameraSystem*		System;
-		CameraComponentSystem*	Cameras;
-	};
-
-
 	struct OrbitCameraInputState
 	{
 		MouseInputState Mouse;
@@ -98,17 +88,16 @@ namespace FlexKit
 		NodeHandle RollNode;
 
 		float MoveRate;
-
-		ComponentListInterface* ParentGO;
 	};
+	
+
+	typedef Handle_t<32> OrbitCamera_Handle;
 
 
 	struct OrbitCameraSystem : public ComponentSystemInterface
 	{
 		OrbitCameraSystem(GameFramework* Framework, InputComponentSystem* Input) :
-			Controllers	(Framework->Core->GetBlockMemory()),
-			Nodes		(Framework->Core->Nodes),
-			InputSystem	(Input)	{}
+			Controllers(Framework->Core->GetBlockMemory()) {}
 
 		operator OrbitCameraSystem* (){return this;}
 
@@ -117,20 +106,20 @@ namespace FlexKit
 
 		void Update(double dT);
 
-		CameraControllerHandle CreateOrbitCamera(ComponentHandle Node, ComponentHandle CameraNode, float MoveRate)
+		CameraControllerHandle CreateOrbitCamera(NodeHandle Node, NodeHandle CameraNode, float MoveRate)
 		{	
 			FK_ASSERT(Node != CameraNode);
 
 			CameraOrbitController Controller;
 			Controller.CameraNode	= CameraNode;
 			Controller.YawNode		= Node;
-			Controller.PitchNode	= Nodes->GetZeroedNode();
-			Controller.RollNode		= Nodes->GetZeroedNode();
+			Controller.PitchNode	= GetZeroedNode();
+			Controller.RollNode		= GetZeroedNode();
 			Controller.MoveRate		= MoveRate;
 
-			Nodes->SetParentNode(Controller.YawNode,	Controller.PitchNode);
-			Nodes->SetParentNode(Controller.PitchNode,	Controller.RollNode);
-			Nodes->SetParentNode(Controller.RollNode,	CameraNode);
+			SetParentNode(Controller.YawNode,	Controller.PitchNode);
+			SetParentNode(Controller.PitchNode,	Controller.RollNode);
+			SetParentNode(Controller.RollNode,	CameraNode);
 
 			Controllers.push_back(Controller);
 
@@ -145,162 +134,34 @@ namespace FlexKit
 		void SetCameraNode(CameraControllerHandle Handle, NodeHandle Node)
 		{
 			Controllers[Handle].CameraNode = Node;
-			SetParentNode(*Nodes, Controllers[Handle].CameraNode, Controllers[Handle].PitchNode);
+			SetParentNode(Controllers[Handle].CameraNode, Controllers[Handle].PitchNode);
 		}
 		
-		Quaternion GetOrientation(ComponentHandle handle)
+		Quaternion GetCameraOrientation(ComponentHandle handle)
 		{
-			return Nodes->GetOrientation(Controllers[handle].CameraNode);
+			return GetOrientation(Controllers[handle].CameraNode);
 		}
 
 		Vector<CameraOrbitController>	Controllers;
-
-		// Component Data Sources
-		SceneNodeComponentSystem*	Nodes;
-		InputComponentSystem*		InputSystem;
 	};
 
 
 	const uint32_t OrbitCameraComponentID = GetTypeGUID(OrbitCamera);
 
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, NodeHandle Camera, float MoveRate = 100);
-	OrbitCameraArgs CreateOrbitCamera(OrbitCameraSystem* S, CameraComponentSystem* Cameras, float MoveRate = 100);
-
-
 	/************************************************************************************************/
 
 
-	NodeHandle GetCameraSceneNode(ComponentListInterface* GO)
-	{
-		auto C = FindComponent(GO, CameraComponentID);
-		if(C)
-		{
-			auto CameraSystem = (CameraComponentSystem*)C->ComponentSystem;
-			return CameraSystem->GetNode(C->ComponentHandle);
-		}
-
-		return InvalidComponentHandle;
-	}
-
-
-	NodeHandle GetOrbitCameraSceneNode(ComponentListInterface* GO)
-	{
-		auto C = FindComponent(GO, CameraComponentID);
-		if (C)
-		{
-			auto OrbitSystem = (OrbitCameraSystem*)C->ComponentSystem;
-			return OrbitSystem->GetNode(C->ComponentHandle);
-		}
-
-		return InvalidComponentHandle;
-	}
-
-	/*
-	Quaternion GetCameraOrientation(ComponentListInterface* GO)
-	{
-		auto C = FindComponent(GO, OrbitCameraComponentID);
-		if (C)
-		{
-			auto OrbitSystem = (OrbitCameraSystem*)C->ComponentSystem;
-			return OrbitSystem->GetOrientation(C->ComponentHandle);
-		}
-
-		return Quaternion::Identity();
-	}
-	*/
-
-
-	/************************************************************************************************/
-
-
-	void SetParentNode(ComponentListInterface* GO, NodeHandle Node);
-
-	template<size_t SIZE>
-	void CreateComponent(ComponentList<SIZE>& GO, OrbitCameraArgs& Args)
-	{
-		auto T						= (TansformComponent*)FindComponent(GO, TransformComponentID);
-		auto C						= (CameraComponent*)FindComponent(GO, CameraComponentID);
-		ComponentHandle Node		= InvalidComponentHandle;
-		ComponentHandle CameraNode	= InvalidComponentHandle;
-
-		CameraNode = (Args.Node != InvalidComponentHandle) ? Args.Node : C->GetNode();
-
-		if (!T && Args.Node == InvalidComponentHandle)
-			Node = Args.System->Nodes->GetZeroedNode();	// No Node Specified, make one
-		else if (T)
-			if (T->ComponentHandle == CameraNode)
-				Node = Args.System->Nodes->GetZeroedNode();
-			else
-				Node = T->ComponentHandle;
-		
-		if (!C)
-			return;// TODO: Maybe Create Camera here?
-
-		auto ControllerHandle = Args.System->CreateOrbitCamera(Node, CameraNode, Args.MoveRate);
-		GO.AddComponent(Component(Args.System, ControllerHandle, OrbitCameraComponentID));
-
-		Args.System->Controllers[ControllerHandle].ParentGO = GO;
-		Args.System->InputSystem->BindInput(ControllerHandle, Args.System);
-
-		if (T)
-			T->ComponentHandle = Node;
-		else
-			CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, Node });
-	}
-
-
-	/************************************************************************************************/
-
+	typedef Handle_t<32> ThirdPersonCamera_Handle;
 
 	struct ThirdPersonCameraComponentSystem : public ComponentSystemInterface
 	{
-		ThirdPersonCameraComponentSystem(GameFramework* Framework, InputComponentSystem* InputSystem, CameraComponentSystem* camerasystem) :
-			Input				(InputSystem),
-			CameraSystem		(camerasystem),
+		ThirdPersonCameraComponentSystem(GameFramework* Framework) :
 			CameraControllers	(Framework->Core->GetBlockMemory()),
-			Nodes				(Framework->Core->Nodes),
 			States				(Framework->Core->GetBlockMemory()){}
-
-
-		void ObjectMoved(ComponentHandle Handle, ComponentSystemInterface* System, ComponentListInterface* GO)
-		{
-			//CameraControllers[Handle].GO = GO;
-		}
-
-
-		void ReleaseHandle(ComponentHandle Handle)
-		{
-
-		}
-
-
-		void HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID)
-		{
-
-		}
-
-
-		void Yaw(ComponentHandle Handle, float R)
-		{
-			CameraControllers[Handle].Yaw += R;
-		}
-
-
-		void Pitch(ComponentHandle Handle, float R)
-		{
-			CameraControllers[Handle].Pitch += R;
-		}
-
-
-		void Roll(ComponentHandle Handle, float R)
-		{
-			CameraControllers[Handle].Roll += R;
-		}
-
 
 		void OffsetYawNode(ComponentHandle Handle, float3 xyz)
 		{
-			Nodes->SetPositionL(CameraControllers[Handle].Yaw_Node, xyz);
+			SetPositionL(CameraControllers[Handle].Yaw_Node, xyz);
 		}
 
 
@@ -310,7 +171,7 @@ namespace FlexKit
 				return;
 
 			auto Pitch = CameraControllers[Handle].Pitch_Node;
-			SetPositionL(*Nodes, Pitch, Offset);
+			SetPositionL(Pitch, Offset);
 		}
 
 
@@ -320,7 +181,7 @@ namespace FlexKit
 				return float3(0);
 
 			float3 Forward(0, 0, -1);
-			Quaternion Q = GetOrientation(*Nodes, CameraControllers[Handle].Yaw_Node);
+			Quaternion Q = GetOrientation(CameraControllers[Handle].Yaw_Node);
 			return Q * Forward;
 		}
 
@@ -331,65 +192,25 @@ namespace FlexKit
 				return float3(0);
 
 			float3 Left(-1, 0, 0);
-			Quaternion Q = GetOrientation(*Nodes, CameraControllers[Handle].Yaw_Node);
+			Quaternion Q = GetOrientation(CameraControllers[Handle].Yaw_Node);
 			return Q * Left;
 		}
 
 
-		CameraControllerHandle CreateController(ComponentListInterface* GO, NodeHandle CameraNode)
+		CameraControllerHandle CreateController(NodeHandle Node)
 		{
 			CameraController Controller;
 
-			if (CameraNode == InvalidComponentHandle)
-				return InvalidComponentHandle;
+			auto Yaw	= GetZeroedNode();
+			auto Pitch	= GetZeroedNode();
+			auto Roll	= Node;
 
-			ReleaseNode(*Nodes, CameraNode);
-
-			auto Yaw	= GetZeroedNode(*Nodes);
-			auto Pitch	= GetZeroedNode(*Nodes);
-			auto Roll	= CameraNode;
-
-			Nodes->SetParentNode(GetNodeHandle(GO), Yaw);
-			Nodes->SetParentNode(Yaw, Pitch);
-			Nodes->SetParentNode(Pitch, Roll);
+			SetParentNode(Node, Yaw);
+			SetParentNode(Yaw, Pitch);
+			SetParentNode(Pitch, Roll);
 			
-			//C->Node					= Roll;
-			Nodes->SetParentNode(GetNodeHandle(GO), Yaw);
+			SetParentNode(Node, Yaw);
 
-			Controller.Pitch	    = 0;
-			Controller.Roll			= 0;
-			Controller.Yaw		    = 0;
-
-			Controller.Pitch_Node  = Pitch;
-			Controller.Roll_Node   = Roll;
-			Controller.Yaw_Node    = Yaw;
-
-			States.push_back(Dirty);
-			CameraControllers.push_back(Controller);
-
-			return CameraControllerHandle(CameraControllers.size() - 1);
-		}
-
-		CameraControllerHandle CreateController(SceneNodeBehavior* SNB, NodeHandle CameraNode)
-		{
-			CameraController Controller;
-
-			if (CameraNode == InvalidComponentHandle)
-				return InvalidComponentHandle;
-
-			ReleaseNode(*Nodes, CameraNode);
-
-			auto Yaw	= GetZeroedNode(*Nodes);
-			auto Pitch	= GetZeroedNode(*Nodes);
-			auto Roll	= CameraNode;
-
-			Nodes->SetParentNode(SNB->GetNodeHandle(), Yaw);
-			Nodes->SetParentNode(Yaw, Pitch);
-			Nodes->SetParentNode(Pitch, Roll);
-			
-			Nodes->SetParentNode(SNB->GetNodeHandle(), Yaw);
-
-			Controller.Node			= SNB;
 			Controller.Pitch	    = 0;
 			Controller.Roll			= 0;
 			Controller.Yaw		    = 0;
@@ -421,16 +242,10 @@ namespace FlexKit
 					C.Pitch = -45;
 
 
-				if (C.Node)
-				{
-				}
-				else
-				{
-					//Nodes->SetParentNode(GetNodeHandle(C.GO), C.Yaw_Node);
-					SetOrientationL(*Nodes, C.Yaw_Node,		Quaternion( 0,			C.Yaw,	0));
-					SetOrientationL(*Nodes, C.Pitch_Node,	Quaternion( C.Pitch,	0,		0));
-					SetOrientationL(*Nodes, C.Roll_Node,	Quaternion( 0,			0,		C.Roll));
-				}
+				//Nodes->SetParentNode(GetNodeHandle(C.GO), C.Yaw_Node);
+				SetOrientationL(C.Yaw_Node,		Quaternion( 0,			C.Yaw,	0));
+				SetOrientationL(C.Pitch_Node,	Quaternion( C.Pitch,	0,		0));
+				SetOrientationL(C.Roll_Node,	Quaternion( 0,			0,		C.Roll));
 			}
 		}
 
@@ -450,13 +265,9 @@ namespace FlexKit
 			NodeHandle Roll_Node;
 
 			float Yaw, Pitch, Roll;
-
-			SceneNodeBehavior*		Node;
 		};
 
 
-		CameraComponentSystem*		CameraSystem;
-		SceneNodeComponentSystem*	Nodes;
 		InputComponentSystem*		Input;
 
 		Vector<State>				States;
@@ -467,197 +278,48 @@ namespace FlexKit
 	const uint32_t ThirdPersonCameraComponentID = GetTypeGUID(ThirdPersonCameraComponent);
 
 
-	struct ThirdPersonCameraArgs
-	{
-		ThirdPersonCameraComponentSystem*	System;
-		ComponentHandle						Camera;
-	};
-
-
-	template<size_t SIZE>
-	void CreateComponent(ComponentList<SIZE>& GO, ThirdPersonCameraArgs& Args)
-	{
-		auto T			= (TansformComponent*)FindComponent(GO, TransformComponentID);
-		auto CameraNode = GetCameraSceneNode(GO);
-
-		if (!T)
-			CreateComponent(GO, TransformComponentArgs{ Args.System->Nodes, Args.System->Nodes->GetZeroedNode() });
-
-		auto Handle = Args.System->CreateController(GO, CameraNode);
-		GO.AddComponent(Component(Args.System, Handle, ThirdPersonCameraComponentID));
-		Args.System->Input->BindInput(Handle, Args.System);
-	}
-
-
-	ThirdPersonCameraArgs CreateThirdPersonCamera(ThirdPersonCameraComponentSystem* System);
-
-
-	void PitchCamera	(ComponentListInterface* GO, float R)
-	{
-		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-		if (C) {
-			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-			Component->Pitch(C->ComponentHandle, R);
-			//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
-		}
-	}
-
-
-	void YawCamera		(ComponentListInterface* GO, float R)
-	{
-		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-		if (C) {
-			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-			Component->Yaw(C->ComponentHandle, R);
-			//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
-		}
-	}
-
-
-	void RollCamera		(ComponentListInterface* GO, float R)
-	{
-		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-		if (C) {
-			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-			Component->Roll(C->ComponentHandle, R);
-			//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
-		}
-	}
-
-
-	void SetCameraOffset(ComponentListInterface* GO, float3 Offset)
-	{
-		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-		if (C) {
-			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-			Component->SetOffset(C->ComponentHandle, Offset);
-		}
-	}
-
-
-	void OffsetYawNode(ComponentListInterface* GO, float3 Offset)
-	{
-		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-		if (C) {
-			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-			Component->OffsetYawNode(C->ComponentHandle, Offset);
-		}
-	}
-
-
-	float3 GetForwardVector(ComponentListInterface* GO)
-	{
-		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-		if (C) {
-			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-			return Component->GetForwardVector(C->ComponentHandle);
-		}
-		return float3(0);
-	}
-
-
-	float3 GetLeftVector(ComponentListInterface* GO)
-	{
-		auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-		if (C) {
-			auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-			return Component->GetLeftVector(C->ComponentHandle);
-		}
-		return float3(0);
-	}
-
-
-	class ThirdPersonCameraBehavior :
-		public BehaviorBase
+	class ThirdPersonCameraBehavior
 	{
 	public:
-		ThirdPersonCameraBehavior(ComponentListInterface& GO) :
-			BehaviorBase(GO, GetTypeGUID(ThirdPersonCameraBehavior))
-		{
-			//FK_ASSERT(FindComponent(GO, ThirdPersonCameraComponentID) != nullptr);
-		}
-
-		bool Validate()
-		{
-			return
-				BehaviorBase::Validate() &
-				(FindComponent(GO, ThirdPersonCameraComponentID) != nullptr);
-		}
-
+		ThirdPersonCameraBehavior(ThirdPersonCamera_Handle Handle)	{}
 
 		void PitchCamera(float R)
 		{
-			auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-			if (C) {
-				auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-				Component->Pitch(C->ComponentHandle, R);
-				//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
-			}
 		}
 
 
 		void YawCamera(float R)
 		{
-			auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-			if (C) {
-				auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-				Component->Yaw(C->ComponentHandle, R);
-				//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
-			}
 		}
 
 
 		void RollCamera(float R)
 		{
-			auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-			if (C) {
-				auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-				Component->Roll(C->ComponentHandle, R);
-				//NotifyAll(GO, TransformComponentID, GetCRCGUID(ORIENTATION));
-			}
 		}
 
 
 		void SetCameraOffset(float3 Offset)
 		{
-			auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-			if (C) {
-				auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-				Component->SetOffset(C->ComponentHandle, Offset);
-			}
 		}
 
 
 		void OffsetYawNode(float3 Offset)
 		{
-			auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-			if (C) {
-				auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-				Component->OffsetYawNode(C->ComponentHandle, Offset);
-			}
 		}
 
 
 		float3 GetForwardVector()
 		{
-			auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-			if (C) {
-				auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-				return Component->GetForwardVector(C->ComponentHandle);
-			}
 			return float3(0);
 		}
 
 
 		float3 GetLeftVector()
 		{
-			auto C = FindComponent(GO, ThirdPersonCameraComponentID);
-			if (C) {
-				auto Component = (ThirdPersonCameraComponentSystem*)C->ComponentSystem;
-				return Component->GetLeftVector(C->ComponentHandle);
-			}
 			return float3(0);
 		}
+
+		ThirdPersonCamera_Handle Handle;
 	};
 
 

@@ -91,8 +91,8 @@ bool InitEngine(EngineCore*& Core, EngineMemory*& Memory, uint2 WH)
 
 void UpdateCoreComponents(EngineCore* Core, double dt)
 {
-	UpdateTransforms(Core->Nodes);
-	Core->Cameras.Update(dt);
+	UpdateTransforms();
+	//Core->Cameras.Update(dt);
 }
 
 

@@ -163,7 +163,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ForwardPass(PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT)
+	void ForwardPass(PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightList* PLB, GeometryTable* GT)
 	{
 		return;
 
@@ -180,7 +180,7 @@ namespace FlexKit
 		}
 
 		CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		CL->SetGraphicsRootShaderResourceView(4, PLB->Resource->GetGPUVirtualAddress());
+		//CL->SetGraphicsRootShaderResourceView(4, PLB->Resource->GetGPUVirtualAddress());
 
 		for(auto& PV : *_PVS)
 		{

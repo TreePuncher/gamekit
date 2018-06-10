@@ -120,12 +120,6 @@ namespace FlexKit
 			case KC_M:
 				_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
 				break;
-			case KC_V:
-			{
-				_ptr->DP_DrawMode = EDEFERREDPASSMODE(_ptr->DP_DrawMode + 1);
-				if (_ptr->DP_DrawMode == EDEFERREDPASSMODE::EDPM_COUNT)
-					_ptr->DP_DrawMode = EDEFERREDPASSMODE::EDPM_DEFAULT;
-			}	break;
 			case KC_TILDA:
 			{
 				FK_LOG_INFO("Console Key Pressed!");
@@ -180,11 +174,11 @@ namespace FlexKit
 			RItr++;
 		}
 
-		if(ActivePhysicsScene)
-			ActivePhysicsScene->UpdateSystem(dT);
+		//if(ActivePhysicsScene)
+		//	ActivePhysicsScene->UpdateSystem(dT);
 
-		UpdateTransforms(Core->Nodes);
-		Core->Cameras.Update(dT);
+		UpdateTransforms();
+		//Core->Cameras.Update(dT);
 		Core->End = Quit;
 	}
 
@@ -420,13 +414,13 @@ namespace FlexKit
 
 	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, const char* SceneName)
 	{
-		return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->GetTempMemory());
+		return LoadScene(Engine->RenderSystem, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->GetTempMemory());
 	}
 
 
 	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID)
 	{
-		return LoadScene(Engine->RenderSystem, Engine->Nodes, &Engine->Assets, &Engine->Geometry, SceneID, Scene, Engine->GetTempMemory());
+		return LoadScene(Engine->RenderSystem, &Engine->Assets, &Engine->Geometry, SceneID, Scene, Engine->GetTempMemory());
 	}
 
 
@@ -507,13 +501,6 @@ namespace FlexKit
 					Mode = *(size_t*)Var.Data_ptr;
 				}
 			}
-
-
-			if (Mode < EDEFERREDPASSMODE::EDPM_COUNT)
-			{
-				Framework->DP_DrawMode = (EDEFERREDPASSMODE)Mode;
-				return true;
-			}
 		}
 		return false;
 	}
@@ -535,7 +522,6 @@ namespace FlexKit
 		Framework.PhysicsUpdateTimer		= 0.0f;
 		Framework.TerrainSplits				= 12;
 		Framework.Core						= Core;
-		Framework.DP_DrawMode				= EDEFERREDPASSMODE::EDPM_DEFAULT;
 
 #ifdef _DEBUG
 		Framework.DrawDebug					= true;
@@ -545,7 +531,7 @@ namespace FlexKit
 		Framework.DrawDebugStats			= false;
 #endif
 
-		Framework.ActivePhysicsScene		= nullptr;
+		//Framework.ActivePhysicsScene		= nullptr;
 		Framework.ActiveScene				= nullptr;
 		Framework.ActiveWindow				= &Core->Window;
 
@@ -589,11 +575,6 @@ namespace FlexKit
 		BindBoolVar(&Framework.Console, "DrawDebug",		&Framework.DrawDebug);
 		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
 		BindBoolVar(&Framework.Console, "FrameLock",		&Core->FrameLock);
-
-		AddUIntVar(&Framework.Console, "RM_Default",	EDEFERREDPASSMODE::EDPM_DEFAULT);
-		AddUIntVar(&Framework.Console, "RM_Normals",	EDEFERREDPASSMODE::EDPM_SSNORMALS);
-		AddUIntVar(&Framework.Console, "RM_PositionWS", EDEFERREDPASSMODE::EDPM_POSITION);
-		AddUIntVar(&Framework.Console, "RM_Depth",		EDEFERREDPASSMODE::EDPM_LINEARDEPTH);
 
 		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});
 

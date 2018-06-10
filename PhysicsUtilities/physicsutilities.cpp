@@ -435,6 +435,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	/*
 
 	void CharacterControllerSystem::Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene)
 	{
@@ -445,7 +446,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	void CharacterControllerSystem::UpdateSystem(double dT)
@@ -485,7 +486,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	ComponentHandle CharacterControllerSystem::CreateCapsuleController(PhysicsSystem* PS, physx::PxScene* Scene, physx::PxMaterial* Mat,float R, float H, float3 InitialPosition, Quaternion Q)
@@ -514,7 +515,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	void ReleaseCapsule(CapsuleCharacterController* Capsule)
@@ -523,7 +524,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	void PhysicsComponentSystem::UpdateSystem(double dT)
@@ -560,7 +561,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	void PhysicsComponentSystem::UpdateSystem_PreDraw(double dT)
@@ -576,7 +577,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	void PhysicsComponentSystem::Release()
@@ -592,7 +593,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	StaticBoxColliderArgs	PhysicsComponentSystem::CreateStaticBoxCollider(float3 XYZ, float3 Pos)
@@ -620,7 +621,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	CubeColliderArgs PhysicsComponentSystem::CreateCubeComponent(float3 InitialP, float3 InitialV, float l, Quaternion Q)
@@ -660,7 +661,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
+	/************************************************************************************************\/
 
 
 	CapsuleCharacterArgs PhysicsComponentSystem::CreateCharacterController(float3 InitialP, float R, float H, Quaternion Q )

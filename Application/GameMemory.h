@@ -37,8 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\ForwardRendering.h"
 #include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\TiledRender.h"
-#include "..\graphicsutilities\SSReflections.h"
 #include "..\graphicsutilities\MeshUtils.h"
 
 #include "..\PhysicsUtilities\physicsutilities.h"
@@ -147,12 +145,13 @@ struct EngineCore
 		Time			(memory->BlockAllocator),
 		Threads			(memory->BlockAllocator),
 
-		Cameras			(&Nodes, memory->BlockAllocator),
-		Nodes			(memory->NodeMem, sizeof(EngineMemory::NodeMem)),
+		//Cameras			(&Nodes, memory->BlockAllocator),
 		Memory			(memory),
 		FrameLock		(true),
 		RenderSystem	(memory->BlockAllocator)
-	{}
+	{
+		InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
+	}
 
 
 	~EngineCore()
@@ -186,8 +185,8 @@ struct EngineCore
 	PhysicsSystem				Physics;
 
 	// Component Systems
-	SceneNodeComponentSystem	Nodes;
-	CameraComponentSystem		Cameras;
+	//SceneNodeComponentSystem	Nodes;
+	//CameraComponentSystem		Cameras;
 
 	Vector<const char*>			CmdArguments;
 

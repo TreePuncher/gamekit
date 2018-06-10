@@ -2312,14 +2312,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct PointLightBufferDesc
+	struct PointLightListDesc
 	{
 		size_t	MaxLightCount;
 	};
 
-	struct PointLightBuffer
+	struct PointLightList
 	{
-		ID3D12Resource*				Resource;
 		PLList*						Lights;
 		LightFlags*					Flags;
 		LightIDs*					IDs;
@@ -2342,14 +2341,17 @@ namespace FlexKit
 
 		size_t	size()	const {return Lights->size();}
 		size_t	max()	const {return Lights->max_length();}
-		void Release()	{Resource->Release();}
+
+		void Release()		
+		{
+		}
 	};
 
 
 	/************************************************************************************************/
 
 
-	struct SpotLightBuffer
+	struct SpotLightList
 	{
 		ID3D12Resource*				Resource;
 		SLList*						Lights;
@@ -3027,8 +3029,8 @@ namespace FlexKit
 	FLEXKITAPI void	Release( RenderWindow*		);
 	FLEXKITAPI void	Release( VertexBuffer*		);
 	FLEXKITAPI void	Release( Shader*			);
-	FLEXKITAPI void	Release( SpotLightBuffer*	);
-	FLEXKITAPI void	Release( PointLightBuffer*	);
+	FLEXKITAPI void	Release( SpotLightList*	);
+	FLEXKITAPI void	Release( PointLightList*	);
 	FLEXKITAPI void Release( DepthBuffer*		);
 
 
@@ -3095,19 +3097,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void CreatePointLightBuffer	( RenderSystem* RS, PointLightBuffer* out, PointLightBufferDesc Desc, iAllocator* Mem );
-	FLEXKITAPI void CreateSpotLightBuffer	( RenderSystem* RS, SpotLightBuffer* out, iAllocator* Memory, size_t Max = 512 );
+	FLEXKITAPI void CreatePointLightList	( PointLightList* out, PointLightListDesc Desc, iAllocator* Mem );
+	FLEXKITAPI void CreateSpotLightList	( SpotLightList* out, iAllocator* Memory, size_t Max = 512 );
 
-	FLEXKITAPI void Release	( PointLightBuffer* out,	iAllocator* Memory );
-	FLEXKITAPI void Release	( SpotLightBuffer* out,		iAllocator* Memory );
+	FLEXKITAPI void Release	( PointLightList* out,	iAllocator* Memory );
+	FLEXKITAPI void Release	( SpotLightList* out,		iAllocator* Memory );
 
-	FLEXKITAPI LightHandle CreateLight		( PointLightBuffer*	PL, LightDesc& in );
-	FLEXKITAPI LightHandle CreateLight		( SpotLightBuffer*	SL, LightDesc& in, float3 Dir, float p );
+	FLEXKITAPI LightHandle CreateLight		( PointLightList*	PL, LightDesc& in );
+	FLEXKITAPI LightHandle CreateLight		( SpotLightList*	SL, LightDesc& in, float3 Dir, float p );
 	
-	FLEXKITAPI void ReleaseLight(PointLightBuffer*	PL, LightHandle Handle);
-
-	FLEXKITAPI void UpdateSpotLightBuffer	( RenderSystem& RS, SceneNodes* nodes, SpotLightBuffer* out, iAllocator* TempMemory );
-	FLEXKITAPI void UpdatePointLightBuffer	( RenderSystem& RS, SceneNodes* nodes, PointLightBuffer* out, iAllocator* TempMemory );
+	FLEXKITAPI void ReleaseLight(PointLightList*	PL, LightHandle Handle);
 
 
 	/************************************************************************************************/

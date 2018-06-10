@@ -41,100 +41,118 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateSceneNodeBuffer(SceneNodes* Nodes, byte* pmem, size_t MemSize)
-	{
-		size_t NodeFootPrint = sizeof(SceneNodes::BOILERPLATE);
-		size_t NodeMax = (MemSize - sizeof(SceneNodes)) / NodeFootPrint  - 0x20;
-
-		Nodes->Nodes = (Node*)pmem;
-		{
-			const size_t aligment = 0x10;
-			auto Memory = pmem + NodeMax;
-			size_t alignoffset = (size_t)Memory % aligment;
-			if(alignoffset)
-				Memory += aligment - alignoffset;	// 16 Byte byte Align
-			Nodes->LT = (LT_Entry*)(Memory);
-			int c = 0; // Debug Point
-		}
-		{
-			const size_t aligment = 0x40;
-			char* Memory = (char*)Nodes->LT + NodeMax;
-			size_t alignoffset = (size_t)Memory % aligment; // Cache Align
-			if(alignoffset)
-				Memory += aligment - alignoffset;
-			Nodes->WT = (WT_Entry*)(Memory);
-			int c = 0; // Debug Point
-		}
-		{
-			Nodes->Flags = (char*)(Nodes->WT + NodeMax);
-			for (size_t I = 0; I < NodeMax; ++I)
-				Nodes->Flags[I] = SceneNodes::FREE;
-
-			int c = 0; // Debug Point
-		}
-		{
-			Nodes->Indexes = (uint16_t*)(Nodes->Flags + NodeMax);
-			for (size_t I = 0; I < NodeMax; ++I)
-				Nodes->Indexes[I] = 0xffff;
-
-			int c = 0; // Debug Point
-		}
-
-		for (size_t I = 0; I < NodeMax; ++I)
-		{
-			Nodes->LT[I].R = DirectX::XMQuaternionIdentity();
-			Nodes->LT[I].S = DirectX::XMVectorSet(1, 1, 1, 1);
-			Nodes->LT[I].T = DirectX::XMVectorSet(0, 0, 0, 0);
-		}
-
-		for (size_t I = 0; I < NodeMax; ++I)
-			Nodes->WT[I].m4x4 = DirectX::XMMatrixIdentity();
-
-		Nodes->used		= 0;
-		Nodes->max		= NodeMax;
+	inline size_t	_SNHandleToIndex(NodeHandle Node) 
+	{ 
+		return SceneNodeTable.Indexes[Node.INDEX]; 
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PushAllChildren(SceneNodes* Nodes, size_t CurrentNode, fixed_vector<size_t>& Out)
+	inline void		_SNSetHandleIndex(NodeHandle Node, size_t index) 
+	{ 
+		SceneNodeTable.Indexes[Node.INDEX] = index; 
+	}
+
+
+	/************************************************************************************************/
+
+
+	void InitiateSceneNodeBuffer(byte* pmem, size_t MemSize)
 	{
-		for (size_t I = 1; I < Nodes->used; ++I)
+		size_t NodeFootPrint = sizeof(SceneNodes::BOILERPLATE);
+		size_t NodeMax = (MemSize - sizeof(SceneNodes)) / NodeFootPrint  - 0x20;
+
+		SceneNodeTable.Nodes = (Node*)pmem;
 		{
-			auto ParentIndex = _SNHandleToIndex(Nodes, Nodes->Nodes[I].Parent);
+			const size_t aligment = 0x10;
+			auto Memory = pmem + NodeMax;
+			size_t alignoffset = (size_t)Memory % aligment;
+			if(alignoffset)
+				Memory += aligment - alignoffset;	// 16 Byte byte Align
+			SceneNodeTable.LT = (LT_Entry*)(Memory);
+			int c = 0; // Debug Point
+		}
+		{
+			const size_t aligment = 0x40;
+			char* Memory = (char*)SceneNodeTable.LT + NodeMax;
+			size_t alignoffset = (size_t)Memory % aligment; // Cache Align
+			if(alignoffset)
+				Memory += aligment - alignoffset;
+			SceneNodeTable.WT = (WT_Entry*)(Memory);
+			int c = 0; // Debug Point
+		}
+		{
+			SceneNodeTable.Flags = (char*)(SceneNodeTable.WT + NodeMax);
+			for (size_t I = 0; I < NodeMax; ++I)
+				SceneNodeTable.Flags[I] = SceneNodes::FREE;
+
+			int c = 0; // Debug Point
+		}
+		{
+			SceneNodeTable.Indexes = (uint16_t*)(SceneNodeTable.Flags + NodeMax);
+			for (size_t I = 0; I < NodeMax; ++I)
+				SceneNodeTable.Indexes[I] = 0xffff;
+
+			int c = 0; // Debug Point
+		}
+
+		for (size_t I = 0; I < NodeMax; ++I)
+		{
+			SceneNodeTable.LT[I].R = DirectX::XMQuaternionIdentity();
+			SceneNodeTable.LT[I].S = DirectX::XMVectorSet(1, 1, 1, 1);
+			SceneNodeTable.LT[I].T = DirectX::XMVectorSet(0, 0, 0, 0);
+		}
+
+		for (size_t I = 0; I < NodeMax; ++I)
+			SceneNodeTable.WT[I].m4x4 = DirectX::XMMatrixIdentity();
+
+		SceneNodeTable.used		= 0;
+		SceneNodeTable.max		= NodeMax;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void PushAllChildren(size_t CurrentNode, fixed_vector<size_t>& Out)
+	{
+		for (size_t I = 1; I < SceneNodeTable.used; ++I)
+		{
+			auto ParentIndex = _SNHandleToIndex(SceneNodeTable.Nodes[I].Parent);
 			if(ParentIndex == CurrentNode)
 			{
 				Out.push_back(I);
-				PushAllChildren(Nodes, I, Out);
+				PushAllChildren(I, Out);
 			}
 		}
 	}
 
-	void SwapNodeEntryies(SceneNodes* Nodes, size_t LHS, size_t RHS)
+	void SwapNodeEntryies(size_t LHS, size_t RHS)
 	{
-		LT_Entry	Local_Temp = Nodes->LT[LHS];
-		WT_Entry	World_Temp = Nodes->WT[LHS];
-		Node		Node_Temp  = Nodes->Nodes[LHS];
-		char		Flags_Temp = Nodes->Flags[LHS];
+		LT_Entry	Local_Temp = SceneNodeTable.LT[LHS];
+		WT_Entry	World_Temp = SceneNodeTable.WT[LHS];
+		Node		Node_Temp  = SceneNodeTable.Nodes[LHS];
+		char		Flags_Temp = SceneNodeTable.Flags[LHS];
 
-		Nodes->LT[LHS]		= Nodes->LT		[RHS];
-		Nodes->WT[LHS]		= Nodes->WT		[RHS];
-		Nodes->Nodes[LHS]	= Nodes->Nodes	[RHS];
-		Nodes->Flags[LHS]	= Nodes->Flags	[RHS];
+		SceneNodeTable.LT[LHS]		= SceneNodeTable.LT		[RHS];
+		SceneNodeTable.WT[LHS]		= SceneNodeTable.WT		[RHS];
+		SceneNodeTable.Nodes[LHS]	= SceneNodeTable.Nodes	[RHS];
+		SceneNodeTable.Flags[LHS]	= SceneNodeTable.Flags	[RHS];
 
-		Nodes->LT[RHS]		= Local_Temp;
-		Nodes->WT[RHS]		= World_Temp;
-		Nodes->Nodes[RHS]	= Node_Temp;
-		Nodes->Flags[RHS]	= Flags_Temp;
+		SceneNodeTable.LT[RHS]		= Local_Temp;
+		SceneNodeTable.WT[RHS]		= World_Temp;
+		SceneNodeTable.Nodes[RHS]	= Node_Temp;
+		SceneNodeTable.Flags[RHS]	= Flags_Temp;
 	}
 
-	size_t FindFreeIndex(SceneNodes* Nodes)
+	size_t FindFreeIndex()
 	{
 		size_t FreeIndex = -1;
-		for (size_t I = Nodes->used - 1; I >= 0; ++I)
+		for (size_t I = SceneNodeTable.used - 1; I >= 0; ++I)
 		{
-			if (Nodes->Flags[I] & SceneNodes::FREE) {
+			if (SceneNodeTable.Flags[I] & SceneNodes::FREE) {
 				FreeIndex = I;
 				break;
 			}
@@ -142,52 +160,52 @@ namespace FlexKit
 		return FreeIndex;
 	}
 
-	void SortNodes(SceneNodes* Nodes, StackAllocator* Temp)
+	void SortNodes(StackAllocator* Temp)
 	{
 		#ifdef _DEBUG
 			std::cout << "Node Usage Before\n";
-			for (size_t I = 0; I < Nodes->used; ++I)
-				if (Nodes->Flags[I] & SceneNodes::FREE)
+			for (size_t I = 0; I < SceneNodeTable.used; ++I)
+				if (SceneNodeTable.Flags[I] & SceneNodes::FREE)
 					std::cout << "Node: " << I << " Unused\n";
 				else
 					std::cout << "Node: " << I << " Used\n";
 		#endif
 
 		// Find Order
-		if (Nodes->used > 1)
+		if (SceneNodeTable.used > 1)
 		{
-			size_t NewLength = Nodes->used;
-			fixed_vector<size_t>& Out = fixed_vector<size_t>::Create(Nodes->used - 1, Temp);
-			for (size_t I = 1; I < Nodes->used; ++I)// First Node Is Always Root
+			size_t NewLength = SceneNodeTable.used;
+			fixed_vector<size_t>& Out = fixed_vector<size_t>::Create(SceneNodeTable.used - 1, Temp);
+			for (size_t I = 1; I < SceneNodeTable.used; ++I)// First Node Is Always Root
 			{
-				if (Nodes->Flags[I] & SceneNodes::FREE) {
+				if (SceneNodeTable.Flags[I] & SceneNodes::FREE) {
 					size_t II = I + 1;
-					for (; II < Nodes->used; ++II)
-						if (!(Nodes->Flags[II] & SceneNodes::FREE))
+					for (; II < SceneNodeTable.used; ++II)
+						if (!(SceneNodeTable.Flags[II] & SceneNodes::FREE))
 							break;
 					
-					SwapNodeEntryies(Nodes, I, II);
-					Nodes->Indexes[I] = I;
-					Nodes->Indexes[II]= II;
+					SwapNodeEntryies(I, II);
+					SceneNodeTable.Indexes[I] = I;
+					SceneNodeTable.Indexes[II]= II;
 					NewLength--;
 					int x = 0;
 				}
-				if(Nodes->Nodes[I].Parent == NodeHandle(-1))
+				if(SceneNodeTable.Nodes[I].Parent == NodeHandle(-1))
 					continue;
 
-				size_t ParentIndex = _SNHandleToIndex(Nodes, Nodes->Nodes[I].Parent);
+				size_t ParentIndex = _SNHandleToIndex(SceneNodeTable.Nodes[I].Parent);
 				if (ParentIndex > I)
 				{					
-					SwapNodeEntryies(Nodes, ParentIndex, I);
-					Nodes->Indexes[ParentIndex] = I;
-					Nodes->Indexes[I]			= ParentIndex;
+					SwapNodeEntryies(ParentIndex, I);
+					SceneNodeTable.Indexes[ParentIndex]	= I;
+					SceneNodeTable.Indexes[I]			= ParentIndex;
 				}
 			}
-			Nodes->used = NewLength + 1;
+			SceneNodeTable.used = NewLength + 1;
 #ifdef _DEBUG
 			std::cout << "Node Usage After\n";
-			for (size_t I = 0; I < Nodes->used; ++I)
-				if (Nodes->Flags[I] & SceneNodes::FREE)
+			for (size_t I = 0; I < SceneNodeTable.used; ++I)
+				if (SceneNodeTable.Flags[I] & SceneNodes::FREE)
 					std::cout << "Node: " << I << " Unused\n";
 				else
 					std::cout << "Node: " << I << " Used\n";
@@ -199,9 +217,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	// TODO: Search an optional Free List
-	NodeHandle GetNewNode(SceneNodes* Nodes )
+	NodeHandle GetNewNode()
 	{
-		if (Nodes->max < Nodes->used)
+		if (SceneNodeTable.max < SceneNodeTable.used)
 			FK_ASSERT(0);
 
 		auto HandleIndex	= 0;
@@ -209,10 +227,10 @@ namespace FlexKit
 
 		{
 			size_t itr = 0;
-			size_t end = Nodes->max;
+			size_t end = SceneNodeTable.max;
 			for (; itr < end; ++itr)
 			{
-				if (Nodes->Indexes[itr] == 0xffff)
+				if (SceneNodeTable.Indexes[itr] == 0xffff)
 					break;
 			}
 			NodeIndex = itr;
@@ -220,18 +238,18 @@ namespace FlexKit
 			itr = 0;
 			for (; itr < end; ++itr)
 			{
-				if (Nodes->Flags[itr] & SceneNodes::FREE) break;
+				if (SceneNodeTable.Flags[itr] & SceneNodes::FREE) break;
 			}
 
 			HandleIndex = itr;
 		}
 
-		Nodes->Flags[NodeIndex] = SceneNodes::DIRTY;
+		SceneNodeTable.Flags[NodeIndex] = SceneNodes::DIRTY;
 		auto node = NodeHandle(HandleIndex);
 
-		Nodes->Indexes[HandleIndex] = NodeIndex;
-		Nodes->Nodes[node.INDEX].TH	= node;
-		Nodes->used++;
+		SceneNodeTable.Indexes[HandleIndex] = NodeIndex;
+		SceneNodeTable.Nodes[node.INDEX].TH	= node;
+		SceneNodeTable.used++;
 
 		return node;
 	}
@@ -240,60 +258,60 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SwapNodes(SceneNodes* Nodes, NodeHandle lhs, NodeHandle rhs)
+	void SwapNodes(NodeHandle lhs, NodeHandle rhs)
 	{
-		auto lhs_Index = _SNHandleToIndex(Nodes, lhs);
-		auto rhs_Index = _SNHandleToIndex(Nodes, rhs);
-		SwapNodeEntryies(Nodes, lhs_Index, rhs_Index);
+		auto lhs_Index = _SNHandleToIndex(lhs);
+		auto rhs_Index = _SNHandleToIndex(rhs);
+		SwapNodeEntryies(lhs_Index, rhs_Index);
 
-		_SNSetHandleIndex(Nodes, lhs, rhs_Index);
-		_SNSetHandleIndex(Nodes, rhs, lhs_Index);
+		_SNSetHandleIndex(lhs, rhs_Index);
+		_SNSetHandleIndex(rhs, lhs_Index);
 	}
 
 	
 	/************************************************************************************************/
 
 
-	void ReleaseNode(SceneNodes* Nodes, NodeHandle handle)
+	void ReleaseNode(NodeHandle handle)
 	{
-		Nodes->Flags[_SNHandleToIndex(Nodes, handle)] = SceneNodes::FREE;
-		Nodes->Nodes[_SNHandleToIndex(Nodes, handle)].Parent = NodeHandle(-1);
-		_SNSetHandleIndex(Nodes, handle, -1);
+		SceneNodeTable.Flags[_SNHandleToIndex(handle)] = SceneNodes::FREE;
+		SceneNodeTable.Nodes[_SNHandleToIndex(handle)].Parent = NodeHandle(-1);
+		_SNSetHandleIndex(handle, -1);
 	}
 
 	
 	/************************************************************************************************/
 
 
-	NodeHandle GetParentNode(SceneNodes* Nodes, NodeHandle node )
+	NodeHandle GetParentNode(NodeHandle node )
 	{
-		return Nodes->Nodes[Nodes->Indexes[node.INDEX]].Parent;
+		return SceneNodeTable.Nodes[SceneNodeTable.Indexes[node.INDEX]].Parent;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetParentNode(SceneNodes* Nodes, NodeHandle parent, NodeHandle node)
+	void SetParentNode(NodeHandle parent, NodeHandle node)
 	{
-		auto ParentIndex	= _SNHandleToIndex(Nodes, parent);
-		auto ChildIndex		= _SNHandleToIndex(Nodes, node);
+		auto ParentIndex	= _SNHandleToIndex(parent);
+		auto ChildIndex		= _SNHandleToIndex(node);
 
 		if (ChildIndex < ParentIndex)
-			SwapNodes(Nodes, parent, node);
+			SwapNodes(parent, node);
 
-		Nodes->Nodes[Nodes->Indexes[node.INDEX]].Parent = parent;
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
+		SceneNodeTable.Nodes[SceneNodeTable.Indexes[node.INDEX]].Parent = parent;
+		SetFlag(node, SceneNodes::DIRTY);
 	}
 
 
 	/************************************************************************************************/
 
 
-	float3 GetPositionW(SceneNodes* Nodes, NodeHandle node)
+	float3 GetPositionW(NodeHandle node)
 	{
 		DirectX::XMMATRIX wt;
-		GetWT(Nodes, node, &wt);
+		GetTransform(node, &wt);
 		return float3( wt.r[0].m128_f32[3], wt.r[1].m128_f32[3], wt.r[2].m128_f32[3] );
 	}
 
@@ -301,9 +319,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 GetPositionL(SceneNodes* Nodes, NodeHandle Node)
+	float3 GetPositionL(NodeHandle Node)
 	{
-		auto Local = GetLocal(Nodes, Node);
+		auto Local = GetLocal(Node);
 		return Local.T;
 	}
 
@@ -311,7 +329,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetPositionW(SceneNodes* Nodes, NodeHandle node, float3 in) // Sets Position in World Space
+	void SetPositionW(NodeHandle node, float3 in) // Sets Position in World Space
 	{
 #if 0
 		using DirectX::XMQuaternionConjugate;
@@ -324,14 +342,14 @@ namespace FlexKit
 
 		// Gather
 		GetLocal(Nodes, node, &Local);
-		GetWT(Nodes, GetParentNode(Nodes, node), &Parent);
+		GetTransform(Nodes, GetParentNode(Nodes, node), &Parent);
 
 		// Calculate
 		Local.T = XMVectorSubtract( Parent.World.T, in.pfloats );
 		SetLocal(Nodes, node, &Local);
 #else
 		DirectX::XMMATRIX wt;
-		GetWT(Nodes, node, &wt);
+		GetTransform(node, &wt);
 		auto tmp =  DirectX::XMMatrixInverse(nullptr, wt) * DirectX::XMMatrixTranslation(in[0], in[1], in[2] );
 		float3 lPosition = float3( tmp.r[3].m128_f32[0], tmp.r[3].m128_f32[1], tmp.r[3].m128_f32[2] );
 
@@ -339,16 +357,16 @@ namespace FlexKit
 		wt.r[1].m128_f32[3] = in.y;
 		wt.r[2].m128_f32[3] = in.z;
 
-		SetWT(Nodes, node, &wt);
+		SetWT(node, &wt);
 		// Set New Local Position
-		LT_Entry Local(GetLocal(Nodes, node));
+		LT_Entry Local(GetLocal(node));
 
 		Local.T.m128_f32[0] = lPosition[0];
 		Local.T.m128_f32[1] = lPosition[1];
 		Local.T.m128_f32[2] = lPosition[2];
 
-		SetLocal(Nodes, node, &Local);
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
+		SetLocal	(node, &Local);
+		SetFlag		(node, SceneNodes::DIRTY);
 #endif
 	}
 
@@ -356,21 +374,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetPositionL(SceneNodes* Nodes, NodeHandle Node, float3 V)
+	void SetPositionL(NodeHandle Node, float3 V)
 	{
-		auto Local = GetLocal(Nodes, Node);
+		auto Local = GetLocal(Node);
 		Local.T = V;
-		SetLocal(Nodes, Node, &Local);
-		SetFlag(Nodes, Node, SceneNodes::DIRTY);
+		SetLocal	(Node, &Local);
+		SetFlag		(Node, SceneNodes::DIRTY);
 	}
 
 
 	/************************************************************************************************/
 
 
-	float3 LocalToGlobal(SceneNodes* Nodes, NodeHandle Node, float3 POS)
+	float3 LocalToGlobal(NodeHandle Node, float3 POS)
 	{
-		float4x4 WT; GetWT(Nodes, Node, &WT);
+		float4x4 WT; GetTransform(Node, &WT);
 		return (WT * float4(POS, 1)).xyz();
 	}
 
@@ -378,17 +396,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	LT_Entry GetLocal(SceneNodes* Nodes, NodeHandle Node){ 
-		return Nodes->LT[_SNHandleToIndex(Nodes, Node)]; 
+	LT_Entry GetLocal(NodeHandle Node){ 
+		return SceneNodeTable.LT[_SNHandleToIndex(Node)];
 	}
 
 
 	/************************************************************************************************/
 
 
-	float3 GetLocalScale(SceneNodes* Nodes, NodeHandle Node)
+	float3 GetLocalScale(NodeHandle Node)
 	{
-		float3 L_s = GetLocal(Nodes, Node).S;
+		float3 L_s = GetLocal(Node).S;
 		return L_s;
 	}
 
@@ -396,15 +414,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GetWT(SceneNodes* Nodes, NodeHandle node, DirectX::XMMATRIX* __restrict out)
+	void GetTransform(NodeHandle node, DirectX::XMMATRIX* __restrict out)
 	{
-		auto index		= _SNHandleToIndex(Nodes, node);
+		auto index		= _SNHandleToIndex(node);
 #if 0
 		auto WorldQRS	= Nodes->WT[index];
 		DirectX::XMMATRIX wt = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(WorldQRS.World.R) * DirectX::XMMatrixTranslationFromVector(WorldQRS.World.T)); // Seperate this
 		*out = wt;
 #else
-		*out = Nodes->WT[index].m4x4;
+		*out = SceneNodeTable.WT[index].m4x4;
 #endif
 	}
 
@@ -412,69 +430,60 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GetWT(SceneNodes* Nodes, NodeHandle node, float4x4* __restrict out)
+	void GetTransform(NodeHandle node, float4x4* __restrict out)
 	{
-		auto index		= _SNHandleToIndex(Nodes, node);
+		auto index		= _SNHandleToIndex(node);
 #if 0
 		auto WorldQRS	= Nodes->WT[index];
 		DirectX::XMMATRIX wt = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(WorldQRS.World.R) * DirectX::XMMatrixTranslationFromVector(WorldQRS.World.T)); // Seperate this
 		*out = wt;
 #else
-		*out = XMMatrixToFloat4x4(&Nodes->WT[index].m4x4).Transpose();
+		*out = XMMatrixToFloat4x4(&SceneNodeTable.WT[index].m4x4).Transpose();
 #endif
 	}
 
 
 	/************************************************************************************************/
-	
-	
-	void GetWT(SceneNodes* Nodes, NodeHandle node, WT_Entry* __restrict out )
+
+	void SetScale(NodeHandle Node, float3 XYZ)
 	{
-		*out = Nodes->WT[_SNHandleToIndex(Nodes, node)];
-	}
-
-
-	/************************************************************************************************/
-
-	void SetScale(SceneNodes* Nodes, NodeHandle Node, float3 XYZ)
-	{
-		LT_Entry Local(GetLocal(Nodes, Node));
+		LT_Entry Local(GetLocal(Node));
 
 		Local.S.m128_f32[0] *= XYZ.pfloats.m128_f32[0];
 		Local.S.m128_f32[1] *= XYZ.pfloats.m128_f32[1];
 		Local.S.m128_f32[2] *= XYZ.pfloats.m128_f32[2];
 
-		SetLocal(Nodes, Node, &Local);
+		SetLocal(Node, &Local);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetWT(SceneNodes* Nodes, NodeHandle node, DirectX::XMMATRIX* __restrict In)
+	void SetWT(NodeHandle node, DirectX::XMMATRIX* __restrict In)
 	{
-		Nodes->WT[_SNHandleToIndex(Nodes, node)].m4x4 = *In;
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
+		SceneNodeTable.WT[_SNHandleToIndex(node)].m4x4 = *In;
+		SetFlag(node, SceneNodes::DIRTY);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetLocal(SceneNodes* Nodes, NodeHandle node, LT_Entry* __restrict In)
+	void SetLocal(NodeHandle node, LT_Entry* __restrict In)
 	{
-		Nodes->LT[_SNHandleToIndex(Nodes, node)] = *In;
-		SetFlag(Nodes, node, SceneNodes::StateFlags::DIRTY);
+		SceneNodeTable.LT[_SNHandleToIndex(node)] = *In;
+		SetFlag(node, SceneNodes::StateFlags::DIRTY);
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool GetFlag(SceneNodes* Nodes, NodeHandle Node, size_t m)
+	bool GetFlag(NodeHandle Node, size_t m)
 	{
-		auto index = _SNHandleToIndex(Nodes, Node);
-		auto F = Nodes->Flags[index];
+		auto index	= _SNHandleToIndex(Node);
+		auto F		= SceneNodeTable.Flags[index];
 		return (F & m) != 0;
 	}
 
@@ -482,10 +491,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Quaternion GetOrientation(SceneNodes* Nodes, NodeHandle node)
+	Quaternion GetOrientation(NodeHandle node)
 	{
 		DirectX::XMMATRIX WT;
-		GetWT(Nodes, node, &WT);
+		GetTransform(node, &WT);
 
 		DirectX::XMVECTOR q = DirectX::XMQuaternionRotationMatrix(WT);
 
@@ -496,37 +505,37 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetOrientation(SceneNodes* Nodes, NodeHandle node, Quaternion& in)
+	void SetOrientation(NodeHandle node, Quaternion& in)
 	{
 		DirectX::XMMATRIX wt;
-		LT_Entry Local(GetLocal(Nodes, node));
-		GetWT(Nodes, FlexKit::GetParentNode(Nodes, node), &wt);
+		LT_Entry Local(GetLocal(node));
+		GetTransform(FlexKit::GetParentNode(node), &wt);
 
 		auto tmp2 = FlexKit::Matrix2Quat(FlexKit::XMMatrixToFloat4x4(&DirectX::XMMatrixTranspose(wt)));
 		tmp2 = tmp2.Inverse();
 
 		Local.R = DirectX::XMQuaternionMultiply(in, tmp2);
-		SetLocal(Nodes, node, &Local);
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
+		SetLocal(node, &Local);
+		SetFlag(node, SceneNodes::DIRTY);
 	}
 
 	
 	/************************************************************************************************/
 
 
-	void SetOrientationL(SceneNodes* Nodes, NodeHandle node, Quaternion& in)
+	void SetOrientationL(NodeHandle node, Quaternion& in)
 	{
-		LT_Entry Local(GetLocal(Nodes, node));
+		LT_Entry Local(GetLocal(node));
 		Local.R = in;
-		SetLocal(Nodes, node, &Local);
-		SetFlag(Nodes, node, SceneNodes::DIRTY);
+		SetLocal(node, &Local);
+		SetFlag(node, SceneNodes::DIRTY);
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool UpdateTransforms(SceneNodes* Nodes)
+	bool UpdateTransforms()
 	{
 		using DirectX::XMMatrixIdentity;
 		using DirectX::XMMatrixMultiply;
@@ -535,7 +544,7 @@ namespace FlexKit
 		using DirectX::XMMatrixScalingFromVector;
 		using DirectX::XMMatrixRotationQuaternion;
 
-		Nodes->WT[0].SetToIdentity();// Making sure root is Identity 
+		SceneNodeTable.WT[0].SetToIdentity();// Making sure root is Identity 
 #if 0
 		for (size_t itr = 1; itr < Nodes->used; ++itr)// Skip Root
 		{
@@ -549,7 +558,7 @@ namespace FlexKit
 				FlexKit::LT_Entry LIn;
 
 				// Gather
-				GetWT(Nodes, Nodes->Nodes[itr].Parent, &Parent);
+				GetTransform(Nodes, Nodes->Nodes[itr].Parent, &Parent);
 
 				WOut = Nodes->WT[itr];
 				LIn  = Nodes->LT[itr];
@@ -569,62 +578,62 @@ namespace FlexKit
 			}
 		}
 #else
-		for (size_t itr = 1; itr < Nodes->used; ++itr)
-			if (Nodes->Flags[itr] | SceneNodes::UPDATED && !(Nodes->Flags[itr] | SceneNodes::DIRTY))
-				Nodes->Flags[itr] ^= SceneNodes::CLEAR;
+		for (size_t itr = 1; itr < SceneNodeTable.used; ++itr)
+			if (SceneNodeTable.Flags[itr] | SceneNodes::UPDATED && !(SceneNodeTable.Flags[itr] | SceneNodes::DIRTY))
+				SceneNodeTable.Flags[itr] ^= SceneNodes::CLEAR;
 
 		size_t Unused_Nodes = 0;;
-		for (size_t itr = 1; itr < Nodes->used; ++itr)
+		for (size_t itr = 1; itr < SceneNodeTable.used; ++itr)
 		{
-			if (!(Nodes->Flags[itr] & SceneNodes::FREE)  && 
-				 (Nodes->Flags[itr] | SceneNodes::DIRTY) ||
-				  Nodes->Flags[_SNHandleToIndex(Nodes, Nodes->Nodes[itr].Parent)] | SceneNodes::UPDATED)
+			if (!(SceneNodeTable.Flags[itr] & SceneNodes::FREE)  &&
+				 (SceneNodeTable.Flags[itr] | SceneNodes::DIRTY) ||
+				SceneNodeTable.Flags[_SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent)] | SceneNodes::UPDATED)
 			{
-				Nodes->Flags[itr] ^= SceneNodes::DIRTY;		
-				Nodes->Flags[itr] |= SceneNodes::UPDATED; // Propagates Dirty Status of Panret to Children to update
+				SceneNodeTable.Flags[itr] ^= SceneNodes::DIRTY;
+				SceneNodeTable.Flags[itr] |= SceneNodes::UPDATED; // Propagates Dirty Status of Panret to Children to update
 
 				DirectX::XMMATRIX LT = XMMatrixIdentity();
-				LT_Entry TRS = GetLocal(Nodes, Nodes->Nodes[itr].TH);
+				LT_Entry TRS = GetLocal(SceneNodeTable.Nodes[itr].TH);
 
-				bool sf = (Nodes->Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
+				bool sf = (SceneNodeTable.Flags[itr] & SceneNodes::StateFlags::SCALE) != 0;
 				LT =(	XMMatrixRotationQuaternion(TRS.R) *
 						XMMatrixScalingFromVector(sf ? TRS.S : float3(1.0f, 1.0f, 1.0f).pfloats)) *
 						XMMatrixTranslationFromVector(TRS.T);
 
-				auto ParentIndex = _SNHandleToIndex(Nodes, Nodes->Nodes[itr].Parent);
-				auto PT = Nodes->WT[ParentIndex].m4x4;
+				auto ParentIndex = _SNHandleToIndex(SceneNodeTable.Nodes[itr].Parent);
+				auto PT = SceneNodeTable.WT[ParentIndex].m4x4;
 				auto WT = XMMatrixTranspose(XMMatrixMultiply(LT, XMMatrixTranspose(PT)));
 
-				auto temp	= Nodes->WT[itr].m4x4;
-				Nodes->WT[itr].m4x4 = WT;
+				auto temp						= SceneNodeTable.WT[itr].m4x4;
+				SceneNodeTable.WT[itr].m4x4	= WT;
 			}
 
-			Unused_Nodes += (Nodes->Flags[itr] & SceneNodes::FREE);
+			Unused_Nodes += (SceneNodeTable.Flags[itr] & SceneNodes::FREE);
 		}
 #endif
 
-		Nodes->WT[0].SetToIdentity();// Making sure root is Identity 
-		return ((float(Unused_Nodes) / float(Nodes->used)) > 0.25f);
+		SceneNodeTable.WT[0].SetToIdentity();// Making sure root is Identity 
+		return ((float(Unused_Nodes) / float(SceneNodeTable.used)) > 0.25f);
 	}
 
 
 	/************************************************************************************************/
 
 
-	NodeHandle ZeroNode(SceneNodes* Nodes, NodeHandle node)
+	NodeHandle ZeroNode(NodeHandle node)
 	{
 		FlexKit::LT_Entry LT;
 		LT.S = DirectX::XMVectorSet(1, 1, 1, 1);
 		LT.R = DirectX::XMQuaternionIdentity();
 		LT.T = DirectX::XMVectorZero();
-		FlexKit::SetLocal(Nodes, node, &LT);
+		FlexKit::SetLocal(node, &LT);
 
 		DirectX::XMMATRIX WT;
 		WT = DirectX::XMMatrixIdentity();
-		FlexKit::SetWT(Nodes, node, &WT);
+		FlexKit::SetWT(node, &WT);
 
-		Nodes->Nodes[_SNHandleToIndex(Nodes, node)].Scaleflag = false;
-		Nodes->Nodes[_SNHandleToIndex(Nodes, node)].Parent = NodeHandle(0);
+		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Scaleflag = false;
+		SceneNodeTable.Nodes[_SNHandleToIndex(node)].Parent = NodeHandle(0);
 
 		return node;
 	}
@@ -633,83 +642,70 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	NodeHandle	GetZeroedNode(SceneNodes* nodes)
+	NodeHandle	GetZeroedNode()
 	{
-		return ZeroNode(nodes, GetNewNode(nodes));
+		return ZeroNode(GetNewNode());
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetFlag(SceneNodes* Nodes, NodeHandle node, SceneNodes::StateFlags f)
+	void SetFlag(NodeHandle node, SceneNodes::StateFlags f)
 	{
-		auto index = _SNHandleToIndex(Nodes, node);
-		Nodes->Flags[index] = Nodes->Flags[index] | f;
+		auto index = _SNHandleToIndex(node);
+		SceneNodeTable.Flags[index] = SceneNodeTable.Flags[index] | f;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Scale(SceneNodes* Nodes, NodeHandle node, float3 XYZ)
+	void Scale(NodeHandle node, float3 XYZ)
 	{
-		LT_Entry Local(GetLocal(Nodes, node));
+		LT_Entry Local(GetLocal(node));
 
 		Local.S.m128_f32[0] *= XYZ.pfloats.m128_f32[0];
 		Local.S.m128_f32[1] *= XYZ.pfloats.m128_f32[1];
 		Local.S.m128_f32[2] *= XYZ.pfloats.m128_f32[2];
 
-		SetLocal(Nodes, node, &Local);
+		SetLocal(node, &Local);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void TranslateLocal(SceneNodes* Nodes, NodeHandle node, float3 XYZ)
+	void TranslateLocal(NodeHandle node, float3 XYZ)
 	{
-		LT_Entry Local(GetLocal(Nodes, node));
+		LT_Entry Local(GetLocal(node));
 
 		Local.T.m128_f32[0] += XYZ.pfloats.m128_f32[0];
 		Local.T.m128_f32[1] += XYZ.pfloats.m128_f32[1];
 		Local.T.m128_f32[2] += XYZ.pfloats.m128_f32[2];
 
-		SetLocal(Nodes, node, &Local);
+		SetLocal(node, &Local);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void TranslateWorld(SceneNodes* Nodes, NodeHandle Node, float3 XYZ)
+	void TranslateWorld(NodeHandle Node, float3 XYZ)
 	{
-		WT_Entry WT;
-		GetWT(Nodes, GetParentNode(Nodes, Node), &WT);
+		XMMATRIX WT;
+		GetTransform(GetParentNode(Node), &WT);
 
-		auto MI = DirectX::XMMatrixInverse(nullptr, WT.m4x4);
+		auto MI = DirectX::XMMatrixInverse(nullptr, WT);
 		auto V	= DirectX::XMVector4Transform(XYZ.pfloats, MI);
-		TranslateLocal(Nodes, Node, float3(V));
+		TranslateLocal(Node, float3(V));
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SceneNodeCtr::Rotate(Quaternion Q)
-	{
-		LT_Entry Local(GetLocal(SceneNodes, Node));
-		DirectX::XMVECTOR R = DirectX::XMQuaternionMultiply(Local.R, Q.floats);
-		Local.R = R;
-
-		SetLocal(SceneNodes, Node, &Local);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Yaw(FlexKit::SceneNodes* Nodes, NodeHandle Node, float r)
+	void Yaw(NodeHandle Node, float r)
 	{
 		DirectX::XMVECTOR rot;
 		rot.m128_f32[0] = 0;
@@ -717,18 +713,18 @@ namespace FlexKit
 		rot.m128_f32[2] = 0;
 		rot.m128_f32[3] = std::cos(r / 2);
 
-		FlexKit::LT_Entry Local(FlexKit::GetLocal(Nodes, Node));
+		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 
 		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
 
-		FlexKit::SetLocal(Nodes, Node, &Local);
+		FlexKit::SetLocal(Node, &Local);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Pitch(FlexKit::SceneNodes* Nodes, NodeHandle Node, float r)
+	void Pitch(NodeHandle Node, float r)
 	{
 		DirectX::XMVECTOR rot;
 		rot.m128_f32[0] = std::sin(r / 2);;
@@ -736,18 +732,18 @@ namespace FlexKit
 		rot.m128_f32[2] = 0;
 		rot.m128_f32[3] = std::cos(r / 2);
 
-		FlexKit::LT_Entry Local(FlexKit::GetLocal(Nodes, Node));
+		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 
 		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
 
-		FlexKit::SetLocal(Nodes, Node, &Local);
+		FlexKit::SetLocal(Node, &Local);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Roll(FlexKit::SceneNodes* Nodes, NodeHandle Node, float r)
+	void Roll(NodeHandle Node, float r)
 	{
 		DirectX::XMVECTOR rot;
 		rot.m128_f32[0] = 0;
@@ -755,11 +751,11 @@ namespace FlexKit
 		rot.m128_f32[2] = std::sin(r / 2);
 		rot.m128_f32[3] = std::cos(r / 2);
 
-		FlexKit::LT_Entry Local(FlexKit::GetLocal(Nodes, Node));
+		FlexKit::LT_Entry Local(FlexKit::GetLocal(Node));
 
 		Local.R = DirectX::XMQuaternionMultiply(rot, Local.R);
 
-		FlexKit::SetLocal(Nodes, Node, &Local);
+		FlexKit::SetLocal(Node, &Local);
 	}
 
 

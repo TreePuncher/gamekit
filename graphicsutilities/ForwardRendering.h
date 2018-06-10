@@ -57,7 +57,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI void InitiateForwardPass	( RenderSystem* RenderSystem, ForwardPass_DESC* GBdesc, ForwardRender* out );
-	FLEXKITAPI void ForwardPass			( PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightBuffer* PLB, GeometryTable* GT );
+	FLEXKITAPI void ForwardPass			( PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightList* PLB, GeometryTable* GT );
 	FLEXKITAPI void ReleaseForwardPass	( ForwardRender* FP );
 
 

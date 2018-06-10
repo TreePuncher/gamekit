@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\TiledRender.h"
 
 
 #include <DirectXMath.h>
@@ -111,11 +110,11 @@ namespace FlexKit
 	
 
 	FLEXKITAPI void InitiateLandscape	( RenderSystem* RS, NodeHandle node, Landscape_Desc* desc, iAllocator* alloc, Landscape* ls );
-	FLEXKITAPI void ReleaseTerrain		( SceneNodes* Nodes, Landscape* ls );
+	FLEXKITAPI void ReleaseTerrain		( Landscape* ls );
 	FLEXKITAPI void PushRegion			( Landscape* ls, Landscape::ViewableRegion R );
-	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12 );
-	FLEXKITAPI void UploadLandscape2	( RenderSystem* RS, Landscape* ls, SceneNodes* Nodes, Camera* c, Frustum F, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12 );
-	FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, TiledDeferredRender* PS, size_t splitcount, Camera* C, bool DrawWireframe = false );
+	FLEXKITAPI void UploadLandscape		( RenderSystem* RS, Landscape* ls, Camera* c, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12 );
+	FLEXKITAPI void UploadLandscape2	( RenderSystem* RS, Landscape* ls, Camera* c, Frustum F, bool UploadRegions = false, bool UploadConstants = true, int PassCount = 12 );
+	//FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, TiledDeferredRender* PS, size_t splitcount, Camera* C, bool DrawWireframe = false );
 
 
 	/************************************************************************************************/

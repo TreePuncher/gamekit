@@ -84,11 +84,10 @@ namespace FlexKit
 		MouseInputState			MouseState;
 
 		GraphicScene*			ActiveScene;
-		PhysicsComponentSystem*	ActivePhysicsScene;
+		//PhysicsComponentSystem*	ActivePhysicsScene;
 		RenderWindow*			ActiveWindow;
 
 		float4					ClearColor;
-		EDEFERREDPASSMODE		DP_DrawMode;
 
 		Console					Console;
 		EngineCore*				Core;

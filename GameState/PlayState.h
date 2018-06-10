@@ -89,6 +89,7 @@ public:
 
 /************************************************************************************************/
 
+/*
 class PlayerCameraController : 
 	public FlexKit::CameraBehavior,
 	public FlexKit::SceneNodeBehavior
@@ -125,21 +126,16 @@ ComponentListInterface& InitiatePlayerCameraController(
 
 	return Components;
 }
-
+*/
 
 /************************************************************************************************/
 
 
-
-class DebugCameraController :
-	public FlexKit::CameraBehavior,
-	public FlexKit::SceneNodeBehavior
+/*
+class DebugCameraController
 {
 public:
-	DebugCameraController(ComponentListInterface& IN_Components) :
-		Components			{ IN_Components },
-		CameraBehavior		{ IN_Components },
-		SceneNodeBehavior	{ IN_Components }
+	void Initiate()
 	{
 		//auto YawNode = CreateNode();
 		//SetParent(YawNode);
@@ -219,34 +215,12 @@ public:
 	bool		MoveLeft		= false;
 	bool		MoveRight		= false;
 };
-
-
-ComponentListInterface& InitiateDebugCameraController(
-	CameraComponentSystem*		CameraSystem,
-	SceneNodeComponentSystem*	SceneNodeSystem,
-	ComponentList<>&			Components)
-{
-	auto SceneNode = SceneNodeSystem->GetNewNode();
-
-	InitiateComponentList(Components,
-		CreateCameraComponent(
-			CameraSystem,
-			1.6666f,
-			0.01f,
-			10000.0f,
-			SceneNode,
-			false));
-
-	return Components;
-}
-
-
+*/
 /************************************************************************************************/
 
 
-class PlayerController : 
-	public FlexKit::SceneNodeBehavior,
-	public FlexKit::DrawableBehavior
+/*
+class PlayerController
 {
 public: 
 	PlayerController(ComponentListInterface& Components) : 
@@ -259,19 +233,7 @@ public:
 		Yaw(dt * pi);
 	}
 };
-
-
-ComponentListInterface& InitiatePlayerController(
-	DrawableComponentSystem*	DCS, 
-	SceneNodeComponentSystem*	SceneNodeSystem,
-	ComponentList<>&			Components)
-{
-	InitiateComponentList(Components,
-		CreateDrawableComponent(DCS, "Flower"));
-
-	return Components;
-}
-
+*/
 
 /************************************************************************************************/
 
@@ -307,7 +269,6 @@ public:
 	bool GameInPlay;
 
 	GraphicScene			Scene;
-	DrawableComponentSystem	SceneManager;
 
 	WorldRender*			Render;
 	TextureHandle			DepthBuffer;
@@ -322,16 +283,6 @@ public:
 	FMOD_SoundSystem	Sound;
 
 	FlexKit::CircularBuffer<GameGridFrame, 120>	FrameCache;
-
-	// Player State Controllers
-	ComponentList<>			PlayerCameraComponents;
-	ComponentList<>			PlayerComponents;
-	ComponentList<>			DEBUGComponents;
-
-	DebugCameraController	DebugCamera;
-
-	PlayerCameraController	LocalCamera;
-	PlayerController		LocalPlayer;
 
 	InputMap EventMap;
 };

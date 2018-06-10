@@ -43,12 +43,6 @@ namespace FlexKit
 		std::cout << "V: " << VerticalMouseMovement << "\n";
 #endif
 
-		for (size_t I = 0; I < this->Listeners.size(); ++I) {
-			auto& L			= Listeners[I];
-			auto& System	= this->TargetSystems[I];
-
-			System->HandleEvent(L, InputComponentID, this, GetTypeGUID(KEYINPUT), nullptr);
-		}
 	}
 
 
