@@ -141,11 +141,8 @@ struct EngineCore
 {
 	EngineCore(EngineMemory* memory) :
 		CmdArguments	(memory->BlockAllocator),
-		Geometry		(memory->BlockAllocator),
 		Time			(memory->BlockAllocator),
 		Threads			(memory->BlockAllocator),
-
-		//Cameras			(&Nodes, memory->BlockAllocator),
 		Memory			(memory),
 		FrameLock		(true),
 		RenderSystem	(memory->BlockAllocator)
@@ -180,8 +177,7 @@ struct EngineCore
 
 	RenderWindow				Window;
 	Time						Time;
-	Resources					Assets;
-	GeometryTable				Geometry;
+
 	PhysicsSystem				Physics;
 
 	// Component Systems

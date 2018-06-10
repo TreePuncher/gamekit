@@ -3514,7 +3514,7 @@ namespace FlexKit
 
 
 
-	void OcclusionPass(RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C)
+	void OcclusionPass(RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, Camera* C)
 	{
 		FK_ASSERT(0);
 		auto OCHeap = OC->Heap[OC->Idx];
@@ -3571,9 +3571,9 @@ namespace FlexKit
 			CL->SetGraphicsRootConstantBufferView(3, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView(4, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 
-			auto CurrentMesh	= GetMesh(GT, MeshHande);
+			auto CurrentMesh	= GetMesh(MeshHande);
 			size_t IBIndex		= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t IndexCount	= GetMesh(GT, P.D->MeshHandle)->IndexCount;
+			size_t IndexCount	= GetMesh(P.D->MeshHandle)->IndexCount;
 
 			D3D12_INDEX_BUFFER_VIEW		IndexView;
 			IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
@@ -4286,27 +4286,42 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GeometryTable::Release()
+	void InitiateGeometryTable(iAllocator* Memory)
 	{
-		for (auto G : Geometry)
-			ReleaseTriMesh(&G);
-
-		Geometry.Release();
-		ReferenceCounts.Release();
-		Guids.Release();
-		GeometryIDs.Release();
-		Handles.Release();
-		FreeList.Release();
+		GeometryTable.Handles.Initiate(Memory);
+		GeometryTable.Geometry			= Vector<TriMesh>(Memory);
+		GeometryTable.ReferenceCounts	= Vector<size_t>(Memory);
+		GeometryTable.Guids				= Vector<GUID_t>(Memory);
+		GeometryTable.GeometryIDs		= Vector<const char*>(Memory);
+		GeometryTable.FreeList			= Vector<size_t>(Memory);
+		GeometryTable.Memory			= Memory;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool IsMeshLoaded(GeometryTable* GT, GUID_t guid)
+	void ReleaseGeometryTable()
+	{
+		for (auto G : GeometryTable.Geometry)
+			ReleaseTriMesh(&G);
+
+		GeometryTable.Geometry.Release();
+		GeometryTable.ReferenceCounts.Release();
+		GeometryTable.Guids.Release();
+		GeometryTable.GeometryIDs.Release();
+		GeometryTable.Handles.Release();
+		GeometryTable.FreeList.Release();
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool IsMeshLoaded(GUID_t guid)
 	{
 		bool res = false;
-		for (auto Entry : GT->Guids)
+		for (auto Entry : GeometryTable.Guids)
 		{
 			if (Entry == guid){
 				res = true;
@@ -4321,15 +4336,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void AddRef(GeometryTable* GT, TriMeshHandle TMHandle)
+	void AddRef(TriMeshHandle TMHandle)
 	{
-		size_t Index = GT->Handles[TMHandle];
+		size_t Index = GeometryTable.Handles[TMHandle];
 
 #ifdef _DEBUG
 		if (Index != -1)
-			GT->ReferenceCounts[Index]++;
+			GeometryTable.ReferenceCounts[Index]++;
 #else
-		GT->ReferenceCounts[Index]++;
+		GeometryTable.ReferenceCounts[Index]++;
 #endif
 	}
 
@@ -4337,27 +4352,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseMesh(RenderSystem* RS, GeometryTable* GT, TriMeshHandle TMHandle)
+	void ReleaseMesh(RenderSystem* RS, TriMeshHandle TMHandle)
 	{
 		// TODO: MAKE ATOMIC
-		if (GT->Handles[TMHandle] == INVALIDMESHHANDLE)
+		if (GeometryTable.Handles[TMHandle] == INVALIDMESHHANDLE)
 			return;// Already Released
 
-		size_t Index	= GT->Handles[TMHandle];
-		auto Count		= --GT->ReferenceCounts[Index];
+		size_t Index	= GeometryTable.Handles[TMHandle];
+		auto Count		= --GeometryTable.ReferenceCounts[Index];
 
 		if (Count == 0) 
 		{
-			auto G = GetMesh(GT, TMHandle);
+			auto G = GetMesh(TMHandle);
 
 			DelayedReleaseTriMesh(RS, G);
 
 			if (G->Skeleton)
 				CleanUpSkeleton(G->Skeleton);
 
-			GT->FreeList.push_back(Index);
-			GT->Geometry[Index]   = TriMesh();
-			GT->Handles[TMHandle] = INVALIDMESHHANDLE;
+			GeometryTable.FreeList.push_back(Index);
+			GeometryTable.Geometry[Index]   = TriMesh();
+			GeometryTable.Handles[TMHandle] = INVALIDMESHHANDLE;
 		}
 	}
 
@@ -4365,48 +4380,48 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMesh* GetMesh(GeometryTable* GT, TriMeshHandle TMHandle){
-		return &GT->Geometry[GT->Handles[TMHandle]];
+	TriMesh* GetMesh(TriMeshHandle TMHandle){
+		return &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
 	}
 	
 
 	/************************************************************************************************/
 
 
-	Skeleton* GetSkeleton(GeometryTable* GT, TriMeshHandle TMHandle){
-		return GetMesh(GT, TMHandle)->Skeleton;
+	Skeleton* GetSkeleton(TriMeshHandle TMHandle){
+		return GetMesh(TMHandle)->Skeleton;
 	}
 
 
 	/************************************************************************************************/
 
 
-	size_t	GetSkeletonGUID(GeometryTable* GT, TriMeshHandle TMHandle){
-		return GetMesh(GT, TMHandle)->SkeletonGUID;
+	size_t	GetSkeletonGUID(TriMeshHandle TMHandle){
+		return GetMesh(TMHandle)->SkeletonGUID;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetSkeleton(GeometryTable* GT, TriMeshHandle TMHandle, Skeleton* S){
-		GetMesh(GT, TMHandle)->Skeleton = S;
+	void SetSkeleton(TriMeshHandle TMHandle, Skeleton* S){
+		GetMesh(TMHandle)->Skeleton = S;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool IsSkeletonLoaded(GeometryTable* GT, TriMeshHandle guid){
-		return (GetMesh(GT, guid)->Skeleton != nullptr);
+	bool IsSkeletonLoaded(TriMeshHandle guid){
+		return (GetMesh(guid)->Skeleton != nullptr);
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool HasAnimationData(GeometryTable* GT, TriMeshHandle RMeshHandle){
-		return GetSkeleton(GT, RMeshHandle)->Animations != nullptr;
+	bool HasAnimationData(TriMeshHandle RMeshHandle){
+		return GetSkeleton(RMeshHandle)->Animations != nullptr;
 	}
 
 
@@ -4414,18 +4429,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Pair<TriMeshHandle, bool>	FindMesh(GeometryTable* GT, GUID_t guid)
+	Pair<TriMeshHandle, bool>	FindMesh(GUID_t guid)
 	{
 		TriMeshHandle HandleOut;
 		size_t location		= 0;
 		size_t HandleIndex	= 0;
-		for (auto Entry : GT->Guids)
+		for (auto Entry : GeometryTable.Guids)
 		{
 			if (Entry == guid) {
-				for ( auto index : GT->Handles.Indexes)
+				for ( auto index : GeometryTable.Handles.Indexes)
 				{
 					if (index == location) {
-						HandleOut = TriMeshHandle(HandleIndex, GT->Handles.mType, 0x04);
+						HandleOut = TriMeshHandle(HandleIndex, GeometryTable.Handles.mType, 0x04);
 						break;
 					}
 					++HandleIndex;
@@ -4442,15 +4457,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Pair<TriMeshHandle, bool>	FindMesh(GeometryTable* GT, const char* ID)
+	Pair<TriMeshHandle, bool>	FindMesh(const char* ID)
 	{
 		TriMeshHandle HandleOut = INVALIDMESHHANDLE;
 		size_t location		= 0;
 		size_t HandleIndex	= 0;
-		for (auto Entry : GT->GeometryIDs)
+
+		for (auto Entry : GeometryTable.GeometryIDs)
 		{
 			if (!strncmp(Entry, ID, 64)) {
-				for (auto index : GT->Handles.Indexes)
+				for (auto index : GeometryTable.Handles.Indexes)
 				{
 					if (index == location) {
 						HandleOut.INDEX = HandleIndex;
@@ -5982,36 +5998,36 @@ namespace FlexKit
 	}
 
 
-	TriMeshHandle BuildMesh(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, GUID_t guid)
+	TriMeshHandle BuildMesh(RenderSystem* RS, Mesh_Description* Desc, GUID_t guid)
 	{
 		TriMesh* Mesh = nullptr;
 		TriMeshHandle Handle = INVALIDMESHHANDLE;
 
-		if (!GT->FreeList.size())
+		if (!GeometryTable.FreeList.size())
 		{
-			auto Index				= GT->Geometry.size();
-			TriMeshHandle	Handle	= GT->Handles.GetNewHandle();
+			auto Index				= GeometryTable.Geometry.size();
+			TriMeshHandle	Handle	= GeometryTable.Handles.GetNewHandle();
 
-			GT->Geometry.push_back(TriMesh());
-			GT->GeometryIDs.push_back(nullptr);
-			GT->Guids.push_back(guid);
-			GT->ReferenceCounts.push_back(1);
+			GeometryTable.Geometry.push_back(TriMesh());
+			GeometryTable.GeometryIDs.push_back(nullptr);
+			GeometryTable.Guids.push_back(guid);
+			GeometryTable.ReferenceCounts.push_back(1);
 
-			Mesh = &GT->Geometry.back();
+			Mesh = &GeometryTable.Geometry.back();
 		}
 		else
 		{
-			auto Index	= GT->FreeList.back();
-			GT->FreeList.pop_back();
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
 
-			Handle		= GT->Handles.GetNewHandle();
+			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			GT->Handles[Handle]			= Index;
-			GT->GeometryIDs[Index]		= nullptr;
-			GT->Guids[Index]			= guid;
-			GT->ReferenceCounts[Index]	= 1;
+			GeometryTable.Handles[Handle]			= Index;
+			GeometryTable.GeometryIDs[Index]		= nullptr;
+			GeometryTable.Guids[Index]			= guid;
+			GeometryTable.ReferenceCounts[Index]	= 1;
 
-			Mesh = &GT->Geometry[Index];
+			Mesh = &GeometryTable.Geometry[Index];
 		}
 
 		for( auto& V : Mesh->Buffers)
@@ -7323,7 +7339,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory, float R, GUID_t MeshID)
+	inline TriMeshHandle CreateCube(RenderSystem* RS, iAllocator* Memory, float R, GUID_t MeshID)
 	{
 		FlexKit::VertexBufferView* Views[3];
 
@@ -7484,7 +7500,7 @@ namespace FlexKit
 		Desc.BufferCount	= 3;
 		Desc.IndexBuffer	= 0;
 
-		auto MeshHandle		= BuildMesh(RS, GT, &Desc, MeshID);
+		auto MeshHandle		= BuildMesh(RS, &Desc, MeshID);
 
 		for(auto V : Views)
 			Memory->_aligned_free(V);

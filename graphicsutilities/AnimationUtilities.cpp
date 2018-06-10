@@ -66,11 +66,11 @@ namespace FlexKit
 		return (H != 0XFFFF)? IPose[H] : DirectX::XMMatrixIdentity();
 	}
 
-	DrawablePoseState* CreatePoseState(Drawable* E, GeometryTable* GT, iAllocator* MEM)
+	DrawablePoseState* CreatePoseState(Drawable* E, iAllocator* MEM)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
-		auto Mesh = GetMesh(GT, E->MeshHandle);
+		auto Mesh = GetMesh(E->MeshHandle);
 
 		if (!Mesh && !Mesh->Skeleton)
 			return nullptr;
@@ -505,7 +505,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	Pair<EPLAY_ANIMATION_RES, bool> CheckState_PlayAnimation(Drawable* E, GeometryTable* GT, iAllocator* MEM)
+	Pair<EPLAY_ANIMATION_RES, bool> CheckState_PlayAnimation(Drawable* E, iAllocator* MEM)
 	{
 		using FlexKit::DrawablePoseState;
 		if (!E || !(E->MeshHandle != INVALIDMESHHANDLE))
@@ -513,15 +513,15 @@ namespace FlexKit
 
 		auto MeshHandle = E->MeshHandle;
 
-		if (!IsSkeletonLoaded(GT, MeshHandle))
+		if (!IsSkeletonLoaded(MeshHandle))
 			return{ EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
 
-		auto Mesh = GetMesh(GT, MeshHandle);
+		auto Mesh = GetMesh(MeshHandle);
 
 		if (!E->PoseState)
 		{
 			Skeleton*	S		= (Skeleton*)Mesh->Skeleton;
-			auto NewPoseState	= CreatePoseState(E, GT, MEM);
+			auto NewPoseState	= CreatePoseState(E, MEM);
 
 			if (!NewPoseState)
 				return{ EPLAY_NOT_ANIMATABLE, false };
@@ -543,16 +543,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
 	{
 		using FlexKit::DrawablePoseState;
-		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
+		auto Res = CheckState_PlayAnimation(E, Allocator);
 
 		if (!Res)
 			return Res;
 
 		auto MeshHandle = E->MeshHandle;
-		auto Mesh		= GetMesh(GT, MeshHandle);
+		auto Mesh		= GetMesh(MeshHandle);
 
 		auto EPS = E->PoseState;
 		auto EAS = E->AnimationState;
@@ -588,16 +588,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, const char* Animation, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, const char* Animation, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
 	{
 		using FlexKit::DrawablePoseState;
-		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
+		auto Res = CheckState_PlayAnimation(E, Allocator);
 
 		if (!Res)
 			return Res;
 
 		auto MeshHandle = E->MeshHandle;
-		auto Mesh       = GetMesh(GT, MeshHandle);
+		auto Mesh       = GetMesh(MeshHandle);
 
 		auto EPS        = E->PoseState;
 		auto EAS        = E->AnimationState;
@@ -634,16 +634,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t& out)
+	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t& out)
 	{
 		using FlexKit::DrawablePoseState;
-		auto Res = CheckState_PlayAnimation(E, GT, Allocator);
+		auto Res = CheckState_PlayAnimation(E, Allocator);
 
 		if (!Res)
 			return Res;
 
 		auto MeshHandle = E->MeshHandle;
-		auto Mesh       = GetMesh(GT, MeshHandle);
+		auto Mesh       = GetMesh(MeshHandle);
 
 		auto EPS        = E->PoseState;
 		auto EAS        = E->AnimationState;
@@ -788,12 +788,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Pair<EPLAY_ANIMATION_RES, bool> StopAnimation_CheckState(Drawable* E, GeometryTable* GT)
+	Pair<EPLAY_ANIMATION_RES, bool> StopAnimation_CheckState(Drawable* E)
 	{
 		if (!E)
 			return { EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM, false };
 
-		if (E->MeshHandle == INVALIDMESHHANDLE || !IsSkeletonLoaded(GT, E->MeshHandle))
+		if (E->MeshHandle == INVALIDMESHHANDLE || !IsSkeletonLoaded(E->MeshHandle))
 			return { EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
 
 		if (!E->Posed)
@@ -803,13 +803,12 @@ namespace FlexKit
 	}
 
 
-	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GeometryTable* GT, GUID_t Guid)
+	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GUID_t Guid)
 	{
-		auto Status = StopAnimation_CheckState(E, GT);
+		auto Status = StopAnimation_CheckState(E);
 		if (!Status)
 			return Status;
 
-		auto Mesh	= GetMesh(GT, E->MeshHandle);
 		auto EAS	= E->AnimationState;
 		
 		for (auto& C : EAS->Clips)
@@ -826,13 +825,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GeometryTable* GT, uint32_t ID)
+	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, uint32_t ID)
 	{
-		auto Status = StopAnimation_CheckState(E, GT);
+		auto Status = StopAnimation_CheckState(E);
 		if (!Status)
 			return Status;
 
-		auto Mesh	= GetMesh(GT, E->MeshHandle);
+		auto Mesh	= GetMesh(E->MeshHandle);
 		auto EAS	= E->AnimationState;
 
 		for (auto& C : EAS->Clips)
@@ -850,13 +849,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GeometryTable* GT, const char* Animation)
+	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, const char* Animation)
 	{
-		auto Status = StopAnimation_CheckState(E, GT);
+		auto Status = StopAnimation_CheckState(E);
 		if (!Status)
 			return Status;
 
-		auto Mesh	= GetMesh(GT, E->MeshHandle);
 		auto EAS	= E->AnimationState;
 
 		for (auto& C : EAS->Clips)
@@ -874,13 +872,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadPose(RenderSystem* RS, Drawable* E, GeometryTable* GT, iAllocator* TEMP)
+	void UploadPose(RenderSystem* RS, Drawable* E, iAllocator* TEMP)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
 		using DirectX::XMMatrixInverse;
 
-		auto Mesh	= GetMesh(GT, E->MeshHandle);
+		auto Mesh	= GetMesh(E->MeshHandle);
 		auto PS		= E->PoseState;
 		auto S		= Mesh->Skeleton;
 
@@ -906,14 +904,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadPoses(RenderSystem* RS, PVS* Drawables, GeometryTable* GT, iAllocator* TEMP)
+	void UploadPoses(RenderSystem* RS, PVS* Drawables, iAllocator* TEMP)
 	{
 		for (PVEntry& d : *Drawables)
 		{
 			auto D = d.D;
 
 			if(D->PoseState && D->PoseState->Dirty)
-				UploadPose(RS, D, GT,TEMP);
+				UploadPose(RS, D, TEMP);
 		}
 	}
 
@@ -1003,7 +1001,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateAnimation(RenderSystem* RS, Drawable* E, GeometryTable* GT, double dT, iAllocator* TEMP, bool AdvanceOnly)
+	void UpdateAnimation(RenderSystem* RS, Drawable* E, double dT, iAllocator* TEMP, bool AdvanceOnly)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
@@ -1022,7 +1020,7 @@ namespace FlexKit
 
 			auto PS		= E->PoseState;
 			auto AS		= E->AnimationState;
-			auto Mesh	= GetMesh(GT, E->MeshHandle);
+			auto Mesh	= GetMesh(E->MeshHandle);
 			auto S		= Mesh->Skeleton;
 
 			XMMATRIX* M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));

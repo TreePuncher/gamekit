@@ -101,47 +101,59 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	
-	struct Resources
+
+
+	struct ResourceDirectory
 	{
-		struct DIR
-		{
-			char str[256];
-		};
-
-		BlockAllocator*						ResourceMemory;
-		static_vector<ResourceTable*, 16>	Tables;
-		static_vector<DIR, 16>				ResourceFiles;
-		static_vector<Resource*, 256>		ResourcesLoaded;
-		static_vector<GUID_t, 256>			ResourceGUIDs;
-
-		operator Resources* () { return this; }
+		char str[256];
 	};
+	
+	struct GlobalResourceTable
+	{
+		~GlobalResourceTable()
+		{
+			Tables.A			= nullptr;
+			ResourceFiles.A		= nullptr;
+			ResourcesLoaded.A	= nullptr;
+			ResourceGUIDs.A		= nullptr;
+
+			Tables.Allocator			= nullptr;
+			ResourceFiles.Allocator		= nullptr;
+			ResourcesLoaded.Allocator	= nullptr;
+			ResourceGUIDs.Allocator		= nullptr;
+		}
+
+		Vector<ResourceTable*>		Tables;
+		Vector<ResourceDirectory>	ResourceFiles;
+		Vector<Resource*>			ResourcesLoaded;
+		Vector<GUID_t>				ResourceGUIDs;
+		iAllocator*					ResourceMemory;
+	}Resources;
 
 
 	/************************************************************************************************/
 
-
+	FLEXKITAPI void			InitiateResourceTable	(iAllocator* Memory);
 	FLEXKITAPI size_t		ReadResourceTableSize	(FILE* F);
 	FLEXKITAPI size_t		ReadResourceSize		(FILE* F, ResourceTable* Table, size_t Index);
 
-	FLEXKITAPI void					AddResourceFile		(char* FILELOC, Resources* RM);
-	FLEXKITAPI Resource*			GetResource			(Resources* RM, ResourceHandle RHandle);
-	FLEXKITAPI Pair<GUID_t, bool>	FindResourceGUID	(Resources* RM, char* Str);
+	FLEXKITAPI void					AddResourceFile		(char* FILELOC);
+	FLEXKITAPI Resource*			GetResource			(ResourceHandle RHandle);
+	FLEXKITAPI Pair<GUID_t, bool>	FindResourceGUID	(char* Str);
 
 
 	FLEXKITAPI bool			ReadResourceTable	(FILE* F, ResourceTable* Out, size_t TableSize);
 	FLEXKITAPI bool			ReadResource		(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
 
-	FLEXKITAPI ResourceHandle LoadGameResource (Resources* RM, const char* ID);
-	FLEXKITAPI ResourceHandle LoadGameResource (Resources* RM, GUID_t GUID);
+	FLEXKITAPI ResourceHandle LoadGameResource (const char* ID);
+	FLEXKITAPI ResourceHandle LoadGameResource (GUID_t GUID);
 
-	FLEXKITAPI void FreeResource			(Resources* RM, ResourceHandle RHandle);
-	FLEXKITAPI void FreeAllResources		(Resources* RM);
-	FLEXKITAPI void FreeAllResourceFiles	(Resources* RM);
+	FLEXKITAPI void FreeResource			(ResourceHandle RHandle);
+	FLEXKITAPI void FreeAllResources		();
+	FLEXKITAPI void FreeAllResourceFiles	();
 
-	FLEXKITAPI bool isResourceAvailable		(Resources* RM, GUID_t ID);
-	FLEXKITAPI bool isResourceAvailable		(Resources* RM, const char* ID);
+	FLEXKITAPI bool isResourceAvailable		(GUID_t ID);
+	FLEXKITAPI bool isResourceAvailable		(const char* ID);
 
 
 	/************************************************************************************************/
@@ -421,15 +433,15 @@ namespace FlexKit
 
 
 	FLEXKITAPI AnimationClip	Resource2AnimationClip	( Resource* R, iAllocator* Memory );
-	FLEXKITAPI Skeleton*		Resource2Skeleton		( Resources* RM, ResourceHandle RHandle, iAllocator* Memory );
-	FLEXKITAPI bool				Resource2TriMesh		( RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
-	FLEXKITAPI TextureSet*		Resource2TextureSet		( Resources* RM, ResourceHandle RHandle, iAllocator* Memory );
+	FLEXKITAPI Skeleton*		Resource2Skeleton		( ResourceHandle RHandle, iAllocator* Memory );
+	FLEXKITAPI bool				Resource2TriMesh		( RenderSystem* RS, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
+	FLEXKITAPI TextureSet*		Resource2TextureSet		( ResourceHandle RHandle, iAllocator* Memory );
 
-	FLEXKITAPI TextureSet*		LoadTextureSet	 ( Resources* RM, GUID_t ID, iAllocator* Memory );
-	FLEXKITAPI void				LoadTriangleMesh ( Resources* RM, GUID_t ID, iAllocator* Memory, TriMesh* out );
+	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );
+	FLEXKITAPI void				LoadTriangleMesh ( GUID_t ID, iAllocator* Memory, TriMesh* out );
 
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, Resources* RM, GeometryTable*, size_t guid );
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, size_t guid );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, const char* ID );
 
 	typedef Pair<size_t, FlexKit::SpriteFontAsset*> LoadFontResult;
 

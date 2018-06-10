@@ -52,8 +52,7 @@ namespace FlexKit
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, GeometryTable* GT_IN) :
-			GT(GT_IN),
+		WorldRender(iAllocator* Memory, RenderSystem* RS_IN) :
 			RS(RS_IN),
 			ConstantBuffer	(RS->CreateConstantBuffer(64 * MEGABYTE, false)),
 			OcclusionBuffer	(RS->CreateDepthBuffer({1024, 1024}, true)),
@@ -80,7 +79,6 @@ namespace FlexKit
 
 	private:
 		RenderSystem*			RS;
-		GeometryTable*			GT;
 		ConstantBufferHandle	ConstantBuffer;
 		QueryBufferHandle		OcclusionQueries;
 		TextureHandle			OcclusionBuffer;

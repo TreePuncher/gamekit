@@ -257,7 +257,7 @@ namespace FlexKit
 
 			for (auto D : Data.Draws)
 			{
-				auto* TriMesh = &GT->Geometry[D.Mesh];
+				auto* TriMesh = GetMesh(D.Mesh);
 
 				//if(OcclusionCulling)
 				//	Ctx->SetPredicate(true, OcclusionQueries, D.OcclusionIdx * 8);

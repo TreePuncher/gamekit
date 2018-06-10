@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\PipelineState.h"
 
 
-#define DEBUGCAMERA
+//#define DEBUGCAMERA
 
 #pragma comment(lib, "fmod64_vc.lib")
 
@@ -63,12 +63,12 @@ PlayState::PlayState(
 	Grid.CreateGridObject({10, 5});
 
 #ifndef DEBUGCAMERA
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
-	Player1_Handler.Map.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
+	EventMap.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
+	EventMap.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
+	EventMap.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN);
+	EventMap.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
+	EventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
+	EventMap.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
 #endif
 
 	// Debug Orbit Camera
@@ -100,11 +100,12 @@ PlayState::~PlayState()
 bool PlayState::EventHandler(Event evt)
 {
 #ifndef DEBUGCAMERA
-	if (Player1_Handler.Enabled)
-		Player1_Handler.Handle(evt);
+	Event Remapped;
+	if (Player1_Handler.Enabled && EventMap.Map(evt, Remapped))
+		Player1_Handler.Handle(Remapped);
 
-	if (Player2_Handler.Enabled)
-		Player2_Handler.Handle(evt);
+	//if (Player2_Handler.Enabled)
+	//	Player2_Handler.Handle(evt);
 #else
 	Event Remapped;
 	//if(EventMap.Map(evt, Remapped))
@@ -190,8 +191,7 @@ bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
 	ClearBackBuffer	(FrameGraph, 0.0f);
 	ClearDepthBuffer(FrameGraph, DepthBuffer, 1.0f);
 
-#if 1
-
+#ifndef DEBUGCAMERA
 	DrawGameGrid_Debug(
 		dt,
 		GetWindowAspectRatio(Core),

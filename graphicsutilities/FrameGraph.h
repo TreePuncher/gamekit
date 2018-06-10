@@ -177,7 +177,6 @@ namespace FlexKit
 		PassObjectList		Resources;
 		PassObjectList		Textures;	// State should be mostly Static across frame
 		RenderSystem*		RenderSystem;
-		GeometryTable*		Geometry;
 
 		//  TODO: Move these to a Scene Structure
 		//	Why are these here again?

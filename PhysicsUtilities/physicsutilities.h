@@ -212,8 +212,8 @@ namespace FlexKit
 	FLEXKITAPI void AddRef(PhysicsSystem* PS, ColliderHandle);
 	FLEXKITAPI void Release(PhysicsSystem* PS, ColliderHandle);
 
-	FLEXKITAPI ColliderHandle			LoadTriMeshCollider			(PhysicsSystem* PS, Resources* RM, GUID_t Guid);
-	FLEXKITAPI physx::PxHeightField*	LoadHeightFieldCollider		(PhysicsSystem* PS, Resources* RM, GUID_t Guid);
+	FLEXKITAPI ColliderHandle			LoadTriMeshCollider			(PhysicsSystem* PS, GUID_t Guid);
+	FLEXKITAPI physx::PxHeightField*	LoadHeightFieldCollider		(PhysicsSystem* PS, GUID_t Guid);
 
 	/*
 	FLEXKITAPI size_t			CreateCubeActor			(physx::PxMaterial* material, PScene* scene, float l, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });

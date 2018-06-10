@@ -53,7 +53,6 @@ namespace FlexKit
 
 	// PreDeclarations
 	struct	Drawable;
-	struct	Resources;
 	struct	Skeleton;
 
 	struct Joint
@@ -449,7 +448,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* D, GeometryTable* GT, iAllocator* MEM );
+	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* D, iAllocator* MEM );
 	FLEXKITAPI bool					InitiatePoseState	( RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
 	FLEXKITAPI void					InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
 
@@ -467,9 +466,9 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,			iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f, int64_t* IDOut = nullptr );
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	const char* AnimationID,	iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f, int64_t* IDOut = nullptr );
-	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid,			iAllocator* MEM, bool ForceLoop, float Weight,				  int64_t& out );
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GUID_t Guid,			iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f, int64_t* IDOut = nullptr );
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, const char* AnimationID,	iAllocator* MEM, bool ForceLoop = false, float Weight = 1.0f, int64_t* IDOut = nullptr );
+	FLEXKITAPI EPLAY_ANIMATION_RES PlayAnimation			( Drawable* E, GUID_t		Guid,			iAllocator* MEM, bool ForceLoop, float Weight,				  int64_t& out );
 
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		int64_t		ID,				double Speed = 1.0f );
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationSpeed		( DrawableAnimationState* AE,		GUID_t		AnimationID,	double Speed = 1.0f );
@@ -479,9 +478,9 @@ namespace FlexKit
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationWeight		( DrawableAnimationState* AE,		GUID_t		AnimationID,	float Weight = 1.0f );
 	FLEXKITAPI EPLAY_ANIMATION_RES SetAnimationWeight		( DrawableAnimationState* AE,		const char*	AnimationID,	float Weight = 1.0f );
 
-	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	GUID_t		Guid);
-	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	const char*	Animation);
-	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GeometryTable* GT,	uint64_t	ID);
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GUID_t		Guid);
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, const char*	Animation);
+	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, uint64_t	ID);
 	FLEXKITAPI EPLAY_ANIMATION_RES ClearAnimationPose		( DrawablePoseState* DPS, iAllocator* TEMP );
 	
 	FLEXKITAPI size_t				GetAnimationCount			( Drawable* E );
@@ -493,9 +492,9 @@ namespace FlexKit
 
 
 	// Advance skip updating Joint, updates timers
-	FLEXKITAPI void UpdateAnimation	( RenderSystem* RS, Drawable* E,		GeometryTable* GT, double dT, iAllocator* TEMP, bool AdvanceOnly = false );
-	FLEXKITAPI void UploadPose		( RenderSystem* RS, Drawable* E,		GeometryTable* GT, iAllocator* TEMP);
-	FLEXKITAPI void UploadPoses		( RenderSystem* RS, PVS* Drawables,		GeometryTable* GT, iAllocator* TEMP);
+	FLEXKITAPI void UpdateAnimation	( RenderSystem* RS, Drawable* E,	double dT, iAllocator* TEMP, bool AdvanceOnly = false );
+	FLEXKITAPI void UploadPose		( RenderSystem* RS, Drawable* E,	iAllocator* TEMP);
+	FLEXKITAPI void UploadPoses		( RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
 
 	//	Call After Updating PoseState
 	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, DrawablePoseState* DPS );

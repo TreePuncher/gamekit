@@ -163,7 +163,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ForwardPass(PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightList* PLB, GeometryTable* GT)
+	void ForwardPass(PVS* _PVS, ForwardRender* Pass, RenderSystem* RS, Camera* C, float4& ClearColor, PointLightList* PLB)
 	{
 		return;
 
@@ -185,7 +185,7 @@ namespace FlexKit
 		for(auto& PV : *_PVS)
 		{
 			auto E                  = (Drawable*)PV.D;
-			TriMesh* CurrentMesh	= GetMesh(GT, E->MeshHandle);
+			TriMesh* CurrentMesh	= GetMesh(E->MeshHandle);
 			size_t IBIndex          = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
 			size_t IndexCount       = CurrentMesh->IndexCount;
 

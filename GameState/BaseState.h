@@ -44,8 +44,7 @@ public:
 
 			Render	{
 				Framework->Core->GetTempMemory(),
-				Framework->Core->RenderSystem,
-				Framework->Core->Geometry}
+				Framework->Core->RenderSystem}
 	{
 	}
 

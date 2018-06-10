@@ -2493,27 +2493,9 @@ namespace FlexKit
 
 	typedef FlexKit::Handle_t<16> TriMeshHandle;
 	const TriMeshHandle INVALIDMESHHANDLE = TriMeshHandle(-1);
-	struct GeometryTable
+
+	struct 
 	{
-		operator GeometryTable* () { return this; }
-
-		GeometryTable(iAllocator* memory = nullptr) : 
-			FreeList		(memory),
-			Geometry		(memory),
-			GeometryIDs		(memory),
-			Guids			(memory),
-			Handles			(memory, GetTypeGUID(GeometryTable)),
-			Memory			(memory),
-			ReferenceCounts	(memory)
-		{}
-
-		GeometryTable() 
-		{
-			Release();
-		}
-
-		void Release();
-
 		HandleUtilities::HandleTable<TriMeshHandle>		Handles;
 		Vector<TriMesh>									Geometry;
 		Vector<size_t>									ReferenceCounts;
@@ -2521,27 +2503,27 @@ namespace FlexKit
 		Vector<const char*>								GeometryIDs;
 		Vector<size_t>									FreeList;
 		iAllocator*										Memory;
-	};
+	}GeometryTable;
 
 
 	/************************************************************************************************/
 
+	FLEXKITAPI void							InitiateGeometryTable	(iAllocator* memory = nullptr);
+	FLEXKITAPI void							ReleaseGeometryTable	();
 
-	FLEXKITAPI void							ReleaseGeometryTable	( GeometryTable* GT );
+	FLEXKITAPI void							AddRef					( TriMeshHandle  TMHandle );
+	FLEXKITAPI void							ReleaseMesh				( RenderSystem* RS, TriMeshHandle  TMHandle );
 
-	FLEXKITAPI void							AddRef					( GeometryTable* GT, TriMeshHandle  TMHandle );
-	FLEXKITAPI void							ReleaseMesh				( RenderSystem* RS, GeometryTable* GT, TriMeshHandle  TMHandle );
+	FLEXKITAPI TriMesh*						GetMesh					( TriMeshHandle  TMHandle );
+	FLEXKITAPI Skeleton*					GetSkeleton				( TriMeshHandle  TMHandle );
+	FLEXKITAPI size_t						GetSkeletonGUID			( TriMeshHandle  TMHandle );
+	FLEXKITAPI void							SetSkeleton				( TriMeshHandle  TMHandle, Skeleton* S );
 
-	FLEXKITAPI TriMesh*						GetMesh					( GeometryTable* GT, TriMeshHandle  TMHandle );
-	FLEXKITAPI Skeleton*					GetSkeleton				( GeometryTable* GT, TriMeshHandle  TMHandle );
-	FLEXKITAPI size_t						GetSkeletonGUID			( GeometryTable* GT, TriMeshHandle  TMHandle );
-	FLEXKITAPI void							SetSkeleton				( GeometryTable* GT, TriMeshHandle  TMHandle, Skeleton* S );
-
-	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GeometryTable* GT, GUID_t			guid );
-	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GeometryTable* GT, const char*	ID   );
-	FLEXKITAPI bool							IsMeshLoaded			( GeometryTable* GT, GUID_t			guid );
-	FLEXKITAPI bool							IsSkeletonLoaded		( GeometryTable* GT, TriMeshHandle	guid );
-	FLEXKITAPI bool							HasAnimationData		( GeometryTable* GT, TriMeshHandle	guid );
+	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( GUID_t			guid );
+	FLEXKITAPI Pair<TriMeshHandle, bool>	FindMesh				( const char*	ID   );
+	FLEXKITAPI bool							IsMeshLoaded			( GUID_t			guid );
+	FLEXKITAPI bool							IsSkeletonLoaded		( TriMeshHandle	guid );
+	FLEXKITAPI bool							HasAnimationData		( TriMeshHandle	guid );
 
 
 
@@ -2556,7 +2538,7 @@ namespace FlexKit
 		VertexBufferView** Buffers;
 	};
 
-	FLEXKITAPI TriMeshHandle	BuildMesh	(RenderSystem* RS, GeometryTable* GT, Mesh_Description* Desc, TriMeshHandle guid);
+	FLEXKITAPI TriMeshHandle	BuildMesh	(RenderSystem* RS, Mesh_Description* Desc, TriMeshHandle guid);
 
 
 	/************************************************************************************************/
@@ -2621,7 +2603,7 @@ namespace FlexKit
 	}
 
 
-	inline TriMeshHandle CreateCube(RenderSystem* RS, GeometryTable* GT, iAllocator* Memory, float R, GUID_t MeshID);
+	TriMeshHandle CreateCube(RenderSystem* RS, iAllocator* Memory, float R, GUID_t MeshID);
 
 
 
@@ -2678,9 +2660,6 @@ namespace FlexKit
 		GUID_t		ResourceID;
 	};
 
-
-	struct Resources;
-
 	struct FrameBufferedRenderTarget
 	{
 		FrameBufferedResource RenderTargets;
@@ -2720,8 +2699,6 @@ namespace FlexKit
 		ConstantBuffer				Constants;
 		StreamOutBuffer				ReadBackBuffer;
 
-		// 
-		Resources*		ResourceTable;
 		iAllocator*		Memory;
 	};
 
@@ -2733,7 +2710,6 @@ namespace FlexKit
 	{
 		uint2			PageSize;
 		uint2			PageCount;
-		Resources*		Resources;
 		iAllocator*		Memory; // Needs to be persistent memory
 	};
 

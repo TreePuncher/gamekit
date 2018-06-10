@@ -29,6 +29,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void InitiateResourceTable(iAllocator* Memory)
+	{
+		Resources.Tables			= Vector<ResourceTable*>(Memory);
+		Resources.ResourceFiles		= Vector<ResourceDirectory>(Memory);
+		Resources.ResourcesLoaded	= Vector<Resource*>(Memory);
+		Resources.ResourceGUIDs		= Vector<GUID_t>(Memory);
+		Resources.ResourceMemory	= Memory;
+	}
+
+
+	/************************************************************************************************/
+
+
 	size_t ReadResourceTableSize(FILE* F)
 	{
 		byte Buffer[128];
@@ -99,33 +112,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void AddResourceFile(char* FILELOC, Resources* RM)
+	void AddResourceFile(char* FILELOC)
 	{
-		Resources::DIR Dir;
+		ResourceDirectory Dir;
 		strcpy_s(Dir.str, FILELOC);
 
 		FILE* F = 0;
 		int S   = fopen_s(&F, FILELOC, "rb");
 
 		size_t TableSize	 = ReadResourceTableSize(F);
-		ResourceTable* Table = (ResourceTable*)RM->ResourceMemory->_aligned_malloc(TableSize);
+		ResourceTable* Table = (ResourceTable*)Resources.ResourceMemory->_aligned_malloc(TableSize);
 
 		if (ReadResourceTable(F, Table, TableSize))
 		{
-			RM->ResourceFiles.push_back(Dir);
-			RM->Tables.push_back(Table);
+			Resources.ResourceFiles.push_back(Dir);
+			Resources.Tables.push_back(Table);
 		}
 		else
-			RM->ResourceMemory->_aligned_free(Table);
+			Resources.ResourceMemory->_aligned_free(Table);
 	}
 
 
-	Pair<GUID_t, bool>	FindResourceGUID(Resources* RM, char* Str)
+	Pair<GUID_t, bool>	FindResourceGUID(char* Str)
 	{
 		bool Found = false;
 		GUID_t Guid = INVALIDHANDLE;
 
-		for (auto T : RM->Tables)
+		for (auto T : Resources.Tables)
 		{
 			auto end = T->ResourceCount;
 			for (size_t I = 0; I < end; ++I)
@@ -146,43 +159,43 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Resource* GetResource(Resources* RM, ResourceHandle RHandle)
+	Resource* GetResource(ResourceHandle RHandle)
 	{
 		if (RHandle == INVALIDHANDLE)
 			return nullptr;
 
-		RM->ResourcesLoaded[RHandle]->RefCount++;
-		return RM->ResourcesLoaded[RHandle];
+		Resources.ResourcesLoaded[RHandle]->RefCount++;
+		return Resources.ResourcesLoaded[RHandle];
 	}
 
 
 	/************************************************************************************************/
 
 
-	void FreeAllResources(Resources* RM)
+	void FreeAllResources()
 	{
-		for (auto R : RM->ResourcesLoaded)
-			if(RM->ResourceMemory) RM->ResourceMemory->_aligned_free(R);
+		//for (auto R : Resources.ResourcesLoaded)
+		//	if(Resources.ResourceMemory) Resources.ResourceMemory->_aligned_free(R);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void FreeAllResourceFiles(Resources* RM)
+	void FreeAllResourceFiles()
 	{
-		for (auto T : RM->Tables)
-			RM->ResourceMemory->_aligned_free(T);
+		//for (auto T : Resources.Tables)
+		//	Resources.ResourceMemory->_aligned_free(T);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void FreeResource(Resources* RM, ResourceHandle RHandle)
+	void FreeResource(ResourceHandle RHandle)
 	{
-		RM->ResourcesLoaded[RHandle]->RefCount--;
-		if (RM->ResourcesLoaded[RHandle]->RefCount == 0)
+		Resources.ResourcesLoaded[RHandle]->RefCount--;
+		if (Resources.ResourcesLoaded[RHandle]->RefCount == 0)
 		{
 			// Evict
 			// TODO: Resource Eviction
@@ -193,26 +206,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle LoadGameResource(Resources* RM, GUID_t guid)
+	ResourceHandle LoadGameResource(GUID_t guid)
 	{
-		for (size_t I = 0; I < RM->ResourcesLoaded.size(); ++I)
-			if (RM->ResourceGUIDs[I] == guid)
+		for (size_t I = 0; I < Resources.ResourcesLoaded.size(); ++I)
+			if (Resources.ResourceGUIDs[I] == guid)
 				return I;
 
 		ResourceHandle RHandle = INVALIDHANDLE;
-		for (size_t TI = 0; TI < RM->Tables.size(); ++TI)
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
-			auto& t = RM->Tables[TI];
+			auto& t = Resources.Tables[TI];
 			for (size_t I = 0; I < t->ResourceCount; ++I)
 			{
 				if (t->Entries[I].GUID == guid)
 				{
 
 					FILE* F             = 0;
-					int S               = fopen_s(&F, RM->ResourceFiles[TI].str, "rb");
+					int S               = fopen_s(&F, Resources.ResourceFiles[TI].str, "rb");
 					size_t ResourceSize = ReadResourceSize(F, t, I);
 
-					Resource* NewResource = (Resource*)RM->ResourceMemory->_aligned_malloc(ResourceSize);
+					Resource* NewResource = (Resource*)Resources.ResourceMemory->_aligned_malloc(ResourceSize);
 					if (!NewResource)
 					{
 						// Memory Full
@@ -223,7 +236,7 @@ namespace FlexKit
 
 					if (!ReadResource(F, t, I, NewResource))
 					{
-						RM->ResourceMemory->_aligned_free(NewResource);
+						Resources.ResourceMemory->_aligned_free(NewResource);
 
 						FK_ASSERT(false, "FAILED TO LOAD RESOURCE!");
 					}
@@ -231,9 +244,9 @@ namespace FlexKit
 					{
 						NewResource->State		= Resource::EResourceState_LOADED;
 						NewResource->RefCount	= 0;
-						RHandle					= RM->ResourcesLoaded.size();
-						RM->ResourcesLoaded.push_back(NewResource);
-						RM->ResourceGUIDs.push_back(NewResource->GUID);
+						RHandle					= Resources.ResourcesLoaded.size();
+						Resources.ResourcesLoaded.push_back(NewResource);
+						Resources.ResourceGUIDs.push_back(NewResource->GUID);
 					}
 
 					::fclose(F);
@@ -249,25 +262,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle LoadGameResource(Resources* RM, const char* ID)
+	ResourceHandle LoadGameResource(const char* ID)
 	{
-		for (size_t I = 0; I < RM->ResourcesLoaded.size(); ++I)
-			if (!strcmp(RM->ResourcesLoaded[I]->ID, ID))
+		for (size_t I = 0; I < Resources.ResourcesLoaded.size(); ++I)
+			if (!strcmp(Resources.ResourcesLoaded[I]->ID, ID))
 				return I;
 
 		ResourceHandle RHandle = 0xFFFFFFFFFFFFFFFF;
-		for (size_t TI = 0; TI < RM->Tables.size(); ++TI)
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
-			auto& t = RM->Tables[TI];
+			auto& t = Resources.Tables[TI];
 			for (size_t I = 0; I < t->ResourceCount; ++I)
 			{
 				if (!strcmp(t->Entries[I].ID, ID))
 				{
 					FILE* F             = 0;
-					int S               = fopen_s(&F, RM->ResourceFiles[TI].str, "rb");
+					int S               = fopen_s(&F, Resources.ResourceFiles[TI].str, "rb");
 					size_t ResourceSize = FlexKit::ReadResourceSize(F, t, I);
 
-					Resource* NewResource = (Resource*)RM->ResourceMemory->_aligned_malloc(ResourceSize);
+					Resource* NewResource = (Resource*)Resources.ResourceMemory->_aligned_malloc(ResourceSize);
 					if (!NewResource)
 					{
 						// Memory Full
@@ -284,9 +297,9 @@ namespace FlexKit
 					{
 						NewResource->State		= Resource::EResourceState_LOADED;
 						NewResource->RefCount	= 0;
-						RHandle					= RM->ResourcesLoaded.size();
-						RM->ResourcesLoaded.push_back(NewResource);
-						RM->ResourceGUIDs.push_back(NewResource->GUID);
+						RHandle					= Resources.ResourcesLoaded.size();
+						Resources.ResourcesLoaded.push_back(NewResource);
+						Resources.ResourceGUIDs.push_back(NewResource->GUID);
 					}
 
 					::fclose(F);
@@ -302,16 +315,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool isResourceAvailable(Resources* RM, GUID_t ID)
+	bool isResourceAvailable(GUID_t ID)
 	{
-		for (size_t I = 0; I < RM->ResourcesLoaded.size(); ++I)
-			if (RM->ResourcesLoaded[I]->GUID == ID)
+		for (size_t I = 0; I < Resources.ResourcesLoaded.size(); ++I)
+			if (Resources.ResourcesLoaded[I]->GUID == ID)
 				return true;
 
 		ResourceHandle RHandle = 0xFFFFFFFFFFFFFFFF;
-		for (size_t TI = 0; TI < RM->Tables.size(); ++TI)
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
-			auto& t = RM->Tables[TI];
+			auto& t = Resources.Tables[TI];
 			for (size_t I = 0; I < t->ResourceCount; ++I)
 			{
 				if (t->Entries[I].GUID == ID)
@@ -323,16 +336,16 @@ namespace FlexKit
 	}
 
 
-	bool isResourceAvailable(Resources* RM, const char* ID)
+	bool isResourceAvailable(const char* ID)
 	{
-			for (size_t I = 0; I < RM->ResourcesLoaded.size(); ++I)
-			if (!strcmp(RM->ResourcesLoaded[I]->ID, ID))
+			for (size_t I = 0; I < Resources.ResourcesLoaded.size(); ++I)
+			if (!strcmp(Resources.ResourcesLoaded[I]->ID, ID))
 				return true;
 
 		ResourceHandle RHandle = 0xFFFFFFFFFFFFFFFF;
-		for (size_t TI = 0; TI < RM->Tables.size(); ++TI)
+		for (size_t TI = 0; TI < Resources.Tables.size(); ++TI)
 		{
-			auto& t = RM->Tables[TI];
+			auto& t = Resources.Tables[TI];
 			for (size_t I = 0; I < t->ResourceCount; ++I)
 			{
 				if (!strcmp(t->Entries[I].ID, ID))
@@ -347,9 +360,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool Resource2TriMesh(RenderSystem* RS, Resources* RM, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
+	bool Resource2TriMesh(RenderSystem* RS, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
 	{
-		Resource* R = FlexKit::GetResource(RM, RHandle);
+		Resource* R = FlexKit::GetResource(RHandle);
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
 		{
 			TriMeshResourceBlob* Blob = (TriMeshResourceBlob*)R;
@@ -417,7 +430,7 @@ namespace FlexKit
 					Out->Buffers[I] = nullptr;
 				}
 				++Index;
-				FreeResource(RM, RHandle);
+				FreeResource(RHandle);
 			}
 		
 			Out->TriMeshID = R->GUID;
@@ -430,9 +443,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Skeleton* Resource2Skeleton(Resources* RM, ResourceHandle RHandle, iAllocator* Memory)
+	Skeleton* Resource2Skeleton(ResourceHandle RHandle, iAllocator* Memory)
 	{
-		SkeletonResourceBlob* Blob = (SkeletonResourceBlob*)GetResource(RM, RHandle);
+		SkeletonResourceBlob* Blob = (SkeletonResourceBlob*)GetResource(RHandle);
 		Skeleton*	S = &Memory->allocate_aligned<Skeleton, 0x40>();
 		S->InitiateSkeleton(Memory, Blob->JointCount);
 
@@ -453,7 +466,7 @@ namespace FlexKit
 			S->AddJoint(J, *(XMMATRIX*)&IP);
 		}
 
-		FreeResource(RM, RHandle);
+		FreeResource(RHandle);
 		return S;
 	}
 
@@ -492,12 +505,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureSet* Resource2TextureSet(Resources* RM, ResourceHandle RHandle, iAllocator* Memory)
+	TextureSet* Resource2TextureSet(ResourceHandle RHandle, iAllocator* Memory)
 	{	
 		using FlexKit::TextureSet;
 
 		TextureSet* NewTextureSet	= &Memory->allocate<TextureSet>();
-		TextureSetBlob* Blob		= (TextureSetBlob*)GetResource(RM, RHandle);
+		TextureSetBlob* Blob		= (TextureSetBlob*)GetResource(RHandle);
 
 		if (!Blob)
 			return nullptr;
@@ -507,7 +520,7 @@ namespace FlexKit
 			NewTextureSet->TextureGuids[I] = Blob->Textures[I].guid;
 		}
 
-		FreeResource(RM, RHandle);
+		FreeResource(RHandle);
 		return NewTextureSet;
 	}
 
@@ -515,16 +528,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureSet* LoadTextureSet(Resources* RM, GUID_t ID, iAllocator* Memory)
+	TextureSet* LoadTextureSet(GUID_t ID, iAllocator* Memory)
 	{
-		bool Available = isResourceAvailable(RM, ID);
+		bool Available = isResourceAvailable(ID);
 		TextureSet* Set = nullptr;
 
 		if (Available)
 		{
-			auto Handle = LoadGameResource(RM, ID);
+			auto Handle = LoadGameResource(ID);
 			if (Handle != INVALIDHANDLE) {
-				Set = Resource2TextureSet(RM, Handle, Memory);
+				Set = Resource2TextureSet(Handle, Memory);
 			}
 		}
 
@@ -535,33 +548,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, Resources* RM, GeometryTable* GT, size_t GUID)
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, size_t GUID)
 	{	// Make this atomic
 		TriMeshHandle Handle;
 
-		if(!GT->FreeList.size())
+		if(!GeometryTable.FreeList.size())
 		{
-			auto Index	= GT->Geometry.size();
-			Handle		= GT->Handles.GetNewHandle();
+			auto Index	= GeometryTable.Geometry.size();
+			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			GT->Geometry.push_back			(TriMesh());
-			GT->GeometryIDs.push_back		(nullptr);
-			GT->Guids.push_back				(0);
-			GT->ReferenceCounts.push_back	(0);
+			GeometryTable.Geometry.push_back(TriMesh());
+			GeometryTable.GeometryIDs.push_back(nullptr);
+			GeometryTable.Guids.push_back(0);
+			GeometryTable.ReferenceCounts.push_back	(0);
 
-			auto Available = isResourceAvailable(RM, GUID);
+			auto Available = isResourceAvailable(GUID);
 			FK_ASSERT(Available);
 
-			auto RHandle = LoadGameResource(RM, GUID);
-			auto GameRes = GetResource(RM, RHandle);
-			if( Resource2TriMesh(RS, RM, RHandle, GT->Memory, &GT->Geometry[Index]))
+			auto RHandle = LoadGameResource(GUID);
+			auto GameRes = GetResource(RHandle);
+			if( Resource2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
-				FreeResource(RM, RHandle);
+				FreeResource(RHandle);
 
-				GT->Handles[Handle]			= Index;
-				GT->GeometryIDs[Index]		= GameRes->ID;
-				GT->Guids[Index]			= GUID;
-				GT->ReferenceCounts[Index]	= 1;
+				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.GeometryIDs[Index]		= GameRes->ID;
+				GeometryTable.Guids[Index]				= GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
 			}
 			else
 			{
@@ -570,25 +583,25 @@ namespace FlexKit
 		}
 		else
 		{
-			auto Index	= GT->FreeList.back();
-			GT->FreeList.pop_back();
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
 
-			Handle		= GT->Handles.GetNewHandle();
+			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			auto Available = isResourceAvailable(RM, GUID);
+			auto Available = isResourceAvailable(GUID);
 			FK_ASSERT(Available);
 
-			auto RHandle = LoadGameResource(RM, GUID);
-			auto GameRes = GetResource(RM, RHandle);
+			auto RHandle = LoadGameResource(GUID);
+			auto GameRes = GetResource(RHandle);
 			
-			if(Resource2TriMesh(RS, RM, RHandle, GT->Memory, &GT->Geometry[Index]))
+			if(Resource2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
-				FreeResource(RM, RHandle);
+				FreeResource(RHandle);
 
-				GT->Handles[Handle]			= Index;
-				GT->GeometryIDs[Index]		= GameRes->ID;
-				GT->Guids[Index]			= GUID;
-				GT->ReferenceCounts[Index]	= 1;
+				GeometryTable.Handles			[Handle]	= Index;
+				GeometryTable.GeometryIDs		[Index]		= GameRes->ID;
+				GeometryTable.Guids				[Index]		= GUID;
+				GeometryTable.ReferenceCounts	[Index]		= 1;
 			}
 			else
 			{
@@ -603,34 +616,34 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, Resources* RM, GeometryTable* GT, const char* ID)
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, const char* ID)
 	{	// Make this atomic
 		TriMeshHandle Handle;
 
-		if(!GT->FreeList.size())
+		if(!GeometryTable.FreeList.size())
 		{
-			auto Index	= GT->Geometry.size();
-			Handle		= GT->Handles.GetNewHandle();
+			auto Index	= GeometryTable.Geometry.size();
+			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			GT->Geometry.push_back			(TriMesh());
-			GT->GeometryIDs.push_back		(nullptr);
-			GT->Guids.push_back				(0);
-			GT->ReferenceCounts.push_back	(0);
+			GeometryTable.Geometry.push_back		(TriMesh());
+			GeometryTable.GeometryIDs.push_back		(nullptr);
+			GeometryTable.Guids.push_back			(0);
+			GeometryTable.ReferenceCounts.push_back	(0);
 
-			auto Available = isResourceAvailable(RM, ID);
+			auto Available = isResourceAvailable(ID);
 			FK_ASSERT(Available);
 
-			auto RHandle = LoadGameResource(RM, ID);
-			auto GameRes = GetResource(RM, RHandle);
+			auto RHandle = LoadGameResource(ID);
+			auto GameRes = GetResource(RHandle);
 			
-			if(Resource2TriMesh(RS, RM, RHandle, GT->Memory, &GT->Geometry[Index]))
+			if(Resource2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
-				FreeResource(RM, RHandle);
+				FreeResource(RHandle);
 
-				GT->Handles[Handle]			= Index;
-				GT->GeometryIDs[Index]		= ID;
-				GT->Guids[Index]			= GameRes->GUID;
-				GT->ReferenceCounts[Index]	= 1;
+				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.GeometryIDs[Index]		= ID;
+				GeometryTable.Guids[Index]				= GameRes->GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
 			}
 			else
 			{
@@ -639,24 +652,25 @@ namespace FlexKit
 		}
 		else
 		{
-			auto Index	= GT->FreeList.back();
-			GT->FreeList.pop_back();
+			auto Index	= GeometryTable.FreeList.back();
+			GeometryTable.FreeList.pop_back();
 
-			Handle		= GT->Handles.GetNewHandle();
+			Handle		= GeometryTable.Handles.GetNewHandle();
 
-			auto Available = isResourceAvailable(RM, ID);
+			auto Available = isResourceAvailable(ID);
 			FK_ASSERT(Available);
 
-			auto RHandle = LoadGameResource(RM, ID);
-			auto GameRes = GetResource(RM, RHandle);
-			if(Resource2TriMesh(RS, RM, RHandle, GT->Memory, &GT->Geometry[Index]))
-			{
-				FreeResource(RM, RHandle);
+			auto RHandle = LoadGameResource(ID);
+			auto GameRes = GetResource(RHandle);
 
-				GT->Handles[Handle]			= Index;
-				GT->GeometryIDs[Index]		= GameRes->ID;
-				GT->Guids[Index]			= GameRes->GUID;
-				GT->ReferenceCounts[Index]	= 1;
+			if(Resource2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			{
+				FreeResource(RHandle);
+
+				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.GeometryIDs[Index]		= GameRes->ID;
+				GeometryTable.Guids[Index]				= GameRes->GUID;
+				GeometryTable.ReferenceCounts[Index]	= 1;
 			}
 			else
 			{

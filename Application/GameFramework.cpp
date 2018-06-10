@@ -318,8 +318,8 @@ namespace FlexKit
 		Free_DelayedReleaseResources(Core->RenderSystem);
 		Free_DelayedReleaseResources(Core->RenderSystem);
 
-		FreeAllResourceFiles	(&Core->Assets);
-		FreeAllResources		(&Core->Assets);
+		FreeAllResourceFiles	();
+		FreeAllResources		();
 
 		Core->GetBlockMemory().release_allocation(*Core);
 
@@ -414,13 +414,13 @@ namespace FlexKit
 
 	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, const char* SceneName)
 	{
-		return LoadScene(Engine->RenderSystem, &Engine->Assets, &Engine->Geometry, SceneName, Scene, Engine->GetTempMemory());
+		return LoadScene(Engine->RenderSystem, SceneName, Scene, Engine->GetTempMemory());
 	}
 
 
 	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID)
 	{
-		return LoadScene(Engine->RenderSystem, &Engine->Assets, &Engine->Geometry, SceneID, Scene, Engine->GetTempMemory());
+		return LoadScene(Engine->RenderSystem, SceneID, Scene, Engine->GetTempMemory());
 	}
 
 
@@ -513,9 +513,9 @@ namespace FlexKit
 	{
 		SetDebugMemory(Core->GetDebugMemory());
 
-		AddResourceFile("assets\\assets.gameres",				&Core->Assets);
-		AddResourceFile("assets\\ResourceFile.gameres",			&Core->Assets);
-		AddResourceFile("assets\\ShaderBallTestScene.gameres",	&Core->Assets);
+		AddResourceFile("assets\\assets.gameres");
+		AddResourceFile("assets\\ResourceFile.gameres");
+		AddResourceFile("assets\\ShaderBallTestScene.gameres");
 
 		Framework.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
 		Framework.Quit						= false;

@@ -156,7 +156,7 @@ bool InitiateCoreSystems(uint2 WH, EngineCore*& Engine)
 	SetInputWIndow		( &Engine->Window );
 	InitiatePhysics		( &Engine->Physics, gCORECOUNT, Engine->GetBlockMemory() );
 
-	Engine->Assets.ResourceMemory = &Engine->GetBlockMemory();
+	InitiateResourceTable(Engine->GetBlockMemory());
 
 	return Out;
 }

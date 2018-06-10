@@ -120,7 +120,7 @@ namespace FlexKit
 		void		 Update			();
 
 		Drawable&	GetDrawable			( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]);										}
-		Skeleton*	GetSkeleton			( EntityHandle EHandle ) { return FlexKit::GetSkeleton(GT, Drawables.at(HandleTable[EHandle]).MeshHandle);	}
+		Skeleton*	GetSkeleton			( EntityHandle EHandle ) { return FlexKit::GetSkeleton(Drawables.at(HandleTable[EHandle]).MeshHandle);	}
 		float4		GetMaterialColour	( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).MatProperties.Albedo;					}
 		float4		GetMaterialSpec		( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).MatProperties.Spec;					}
 		NodeHandle	GetNode				( EntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).Node;									}
@@ -194,8 +194,6 @@ namespace FlexKit
 		iAllocator*					TempMemory;
 		iAllocator*					Memory;
 		RenderSystem*				RS;
-		Resources*					RM;
-		GeometryTable*				GT;
 		PVS							_PVS;
 
 		HandleUtilities::HandleTable<EntityHandle, 16> HandleTable;
@@ -216,7 +214,7 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI void InitiateGraphicScene			( GraphicScene* Out, RenderSystem* in_RS, Resources* in_RM, SceneNodeComponentSystem* in_SN, GeometryTable* GT, iAllocator* Memory, iAllocator* TempMemory );
+	FLEXKITAPI void InitiateGraphicScene			( GraphicScene* Out, RenderSystem* in_RS, SceneNodeComponentSystem* in_SN, iAllocator* Memory, iAllocator* TempMemory );
 
 	FLEXKITAPI void UpdateGraphicScene				( GraphicScene* SM );
 	FLEXKITAPI void UpdateAnimationsGraphicScene	( GraphicScene* SM, double dt );
@@ -228,8 +226,8 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseGraphicScene				( GraphicScene* SM );
 	FLEXKITAPI void BindJoint						( GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode );
 
-	FLEXKITAPI bool LoadScene ( RenderSystem* RS, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
-	FLEXKITAPI bool LoadScene ( RenderSystem* RS, Resources* RM, GeometryTable*, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
+	FLEXKITAPI bool LoadScene ( RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
+	FLEXKITAPI bool LoadScene ( RenderSystem* RS, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
 
 	void Release(DrawablePoseState* EPS, iAllocator* allocator)
 	{

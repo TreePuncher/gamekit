@@ -58,7 +58,7 @@ namespace FlexKit
 		auto& Drawable = GetDrawable(E);
 		Drawable.Release();
 
-		ReleaseMesh(RS, GT, Drawable.MeshHandle);
+		ReleaseMesh(RS, Drawable.MeshHandle);
 
 		Drawable.MeshHandle		 = INVALIDMESHHANDLE;
 		DrawableVisibility[E]	 = false;
@@ -99,7 +99,7 @@ namespace FlexKit
 		for (auto& D : this->Drawables)
 		{
 			ReleaseNode(D.Node);
-			ReleaseMesh(RS, GT, D.MeshHandle);
+			ReleaseMesh(RS, D.MeshHandle);
 		}
 
 		SceneManagement.Release();
@@ -128,9 +128,9 @@ namespace FlexKit
 		auto Index = HandleTable[EHandle];
 		if (Drawables.at(Index).MeshHandle != INVALIDMESHHANDLE)
 		{
-			auto Mesh		= GetMesh(GT, Drawables.at(Index).MeshHandle);
+			auto Mesh		= GetMesh(Drawables.at(Index).MeshHandle);
 			auto ID			= Mesh->TriMeshID;
-			bool Available	= isResourceAvailable(RM, ID);
+			bool Available	= isResourceAvailable(ID);
 			return Available;
 		}
 		return false;
@@ -148,23 +148,23 @@ namespace FlexKit
 		auto MeshHandle			= GetDrawable(EHandle).MeshHandle;
 
 		if (Available) {
-			auto Mesh = GetMesh(GT, MeshHandle);
-			SkeletonAvailable = isResourceAvailable(RM, Mesh->TriMeshID);
+			auto Mesh = GetMesh(MeshHandle);
+			SkeletonAvailable = isResourceAvailable(Mesh->TriMeshID);
 		}
 
 		bool ret = false;
 		if (Available && SkeletonAvailable)
 		{
-			if(!IsSkeletonLoaded(GT, MeshHandle))
+			if(!IsSkeletonLoaded(MeshHandle))
 			{
-				auto SkeletonGUID	= GetSkeletonGUID(GT, MeshHandle);
-				auto Handle			= LoadGameResource(RM, SkeletonGUID);
-				auto S				= Resource2Skeleton(RM, Handle, Memory);
-				SetSkeleton(GT, MeshHandle, S);
+				auto SkeletonGUID	= GetSkeletonGUID(MeshHandle);
+				auto Handle			= LoadGameResource(SkeletonGUID);
+				auto S				= Resource2Skeleton(Handle, Memory);
+				SetSkeleton(MeshHandle, S);
 			}
 
 			auto& E = GetDrawable(EHandle);
-			E.PoseState	= CreatePoseState(&E, GT, Memory);
+			E.PoseState	= CreatePoseState(&E, Memory);
 			E.Posed		= true;
 			ret = true;
 		}
@@ -177,13 +177,13 @@ namespace FlexKit
 
 	bool LoadAnimation(GraphicScene* GS, EntityHandle EHandle, ResourceHandle RHndl, TriMeshHandle MeshHandle, float w = 1.0f)
 	{
-		auto Resource = GetResource(GS->RM, RHndl);
+		auto Resource = GetResource(RHndl);
 		if (Resource->Type == EResourceType::EResource_SkeletalAnimation)
 		{
 			auto AC = Resource2AnimationClip(Resource, GS->Memory);
-			FreeResource(GS->RM, RHndl);// No longer in memory once loaded
+			FreeResource(RHndl);// No longer in memory once loaded
 
-			auto mesh = GetMesh(GS->GT, MeshHandle);
+			auto mesh = GetMesh(MeshHandle);
 			mesh->AnimationData |= FlexKit::TriMesh::AnimationData::EAD_Skin;
 			AC.Skeleton = mesh->Skeleton;
 
@@ -218,13 +218,13 @@ namespace FlexKit
 	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, GUID_t Guid, float W, bool Loop)
 	{
 		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
-		bool SkeletonLoaded = IsSkeletonLoaded(GT, MeshHandle);
+		bool SkeletonLoaded = IsSkeletonLoaded(MeshHandle);
 		if (!SkeletonLoaded)
 			return { false, -1 };
 
 		if (SkeletonLoaded)
 		{
-			auto S = FlexKit::GetSkeleton(GT, MeshHandle);
+			auto S = FlexKit::GetSkeleton(MeshHandle);
 			Skeleton::AnimationList* I = S->Animations;
 			bool AnimationLoaded = false;
 
@@ -244,9 +244,9 @@ namespace FlexKit
 			if (!AnimationLoaded)
 			{
 				// Search Resources for Animation
-				if (isResourceAvailable(RM, Guid))
+				if (isResourceAvailable(Guid))
 				{
-					auto RHndl = LoadGameResource(RM, Guid);
+					auto RHndl = LoadGameResource(Guid);
 					auto Res = LoadAnimation(this, EHandle, RHndl, MeshHandle, W);
 					if(!Res)
 						return{ false, -1 };
@@ -256,7 +256,7 @@ namespace FlexKit
 			}
 
 			int64_t ID = INVALIDHANDLE;
-			auto Res = PlayAnimation(&GetDrawable(EHandle), GT, Guid, Memory, Loop, W, ID);
+			auto Res = PlayAnimation(&GetDrawable(EHandle), Guid, Memory, Loop, W, ID);
 			if(Res == EPLAY_ANIMATION_RES::EPLAY_SUCCESS)
 				return { true, ID };
 
@@ -272,30 +272,30 @@ namespace FlexKit
 	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation, float W, bool Loop)
 	{
 		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
-		bool SkeletonLoaded = IsSkeletonLoaded(GT, MeshHandle);
+		bool SkeletonLoaded = IsSkeletonLoaded(MeshHandle);
 		if (!SkeletonLoaded)
 			return { false, -1 };
 
-		if (SkeletonLoaded && HasAnimationData(GT, MeshHandle))
+		if (SkeletonLoaded && HasAnimationData(MeshHandle))
 		{
 			// TODO: Needs to Iterate Over Clips
-			auto S = FlexKit::GetSkeleton(GT, MeshHandle);
+			auto S = FlexKit::GetSkeleton(MeshHandle);
 			if (!strcmp(S->Animations->Clip.mID, Animation))
 			{
 				int64_t AnimationID = -1;
-				if(PlayAnimation(&GetDrawable(EHandle), GT, Animation, Memory, Loop, W, &AnimationID))
+				if(PlayAnimation(&GetDrawable(EHandle), Animation, Memory, Loop, W, &AnimationID))
 					return { true, AnimationID };
 				return{ false, -1 };
 			}
 		}
 
 		// Search Resources for Animation
-		if(isResourceAvailable(RM, Animation))
+		if(isResourceAvailable(Animation))
 		{
-			auto RHndl = LoadGameResource(RM, Animation);
+			auto RHndl = LoadGameResource(Animation);
 			int64_t AnimationID = -1;
 			if (LoadAnimation(this, EHandle, RHndl, MeshHandle, W)) {
-				if(PlayAnimation(&GetDrawable(EHandle), GT, Animation, Memory, Loop, W, &AnimationID) == EPLAY_SUCCESS)
+				if(PlayAnimation(&GetDrawable(EHandle), Animation, Memory, Loop, W, &AnimationID) == EPLAY_SUCCESS)
 					return { true, AnimationID };
 				return{ false, -1};
 			}
@@ -336,8 +336,8 @@ namespace FlexKit
 	{
 		auto EHandle = CreateDrawable();
 
-		auto		Geo = FindMesh(GT, Mesh);
-		if (!Geo)	Geo = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
+		auto		Geo = FindMesh(Mesh);
+		if (!Geo)	Geo = LoadTriMeshIntoTable(RS, Mesh);
 
 		auto& Drawble       = GetDrawable(EHandle);
 		SetVisability(EHandle, true);
@@ -360,9 +360,9 @@ namespace FlexKit
 	{
 		auto EHandle = CreateDrawable();
 
-		TriMeshHandle MeshHandle = FindMesh(GT, Mesh);
+		TriMeshHandle MeshHandle = FindMesh(Mesh);
 		if (MeshHandle == INVALIDMESHHANDLE)	
-			MeshHandle = LoadTriMeshIntoTable(RS, RM, GT, Mesh);
+			MeshHandle = LoadTriMeshIntoTable(RS, Mesh);
 
 #ifdef _DEBUG
 		FK_ASSERT(MeshHandle != INVALIDMESHHANDLE, "FAILED TO FIND MESH IN RESOURCES!");
@@ -537,7 +537,7 @@ namespace FlexKit
 		{
 			if (E.Posed) {
 				if (E.AnimationState && GetAnimationCount(&E))
-					UpdateAnimation(SM->RS, &E, SM->GT, dt, SM->TempMemory);
+					UpdateAnimation(SM->RS, &E, dt, SM->TempMemory);
 				else
 					ClearAnimationPose(E.PoseState, SM->TempMemory);
 			}
@@ -604,7 +604,7 @@ namespace FlexKit
 		for (size_t I = 0; I < End; ++I)
 		{
 			auto &E = SM->Drawables[I];
-			auto Mesh	= GetMesh(SM->GT, E.MeshHandle);
+			auto Mesh	= GetMesh			(E.MeshHandle);
 			auto Ls		= GetLocalScale		(E.Node).x;
 			auto Pw		= GetPositionW		(E.Node);
 			auto Lq		= GetOrientation	(E.Node);
@@ -657,7 +657,7 @@ namespace FlexKit
 	{
 		for (auto E : SM->Drawables)
 		{
-			ReleaseMesh(SM->RS, SM->GT, E.MeshHandle);
+			ReleaseMesh(SM->RS, E.MeshHandle);
 
 			if (E.PoseState) 
 			{
@@ -701,17 +701,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, Resources* RM, GeometryTable*, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp)
+	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp)
 	{
-		bool Available = isResourceAvailable(RM, Guid);
+		bool Available = isResourceAvailable(Guid);
 		if (Available)
 		{
-			auto RHandle = LoadGameResource(RM, Guid);
-			auto R		 = GetResource(RM, RHandle);
+			auto RHandle = LoadGameResource(Guid);
+			auto R		 = GetResource(RHandle);
 
 			FINALLY
 			{
-				FreeResource(RM, RHandle);
+				FreeResource(RHandle);
 			}
 			FINALLYOVER
 
@@ -770,20 +770,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, Resources* RM, GeometryTable* GT, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp)
+	bool LoadScene(RenderSystem* RS, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp)
 	{
-		if (isResourceAvailable(RM, LevelName))
+		if (isResourceAvailable(LevelName))
 		{
-			auto RHandle = LoadGameResource(RM, LevelName);
-			auto R = GetResource(RM, RHandle);
+			auto RHandle = LoadGameResource(LevelName);
+			auto R = GetResource(RHandle);
 
 			FINALLY
 			{
-				FreeResource(RM, RHandle);
+				FreeResource(RHandle);
 			}
 			FINALLYOVER
 
-			return LoadScene(RS, RM, GT, R->GUID, GS_out, Temp);
+			return LoadScene(RS, R->GUID, GS_out, Temp);
 		}
 		return false;
 	}
