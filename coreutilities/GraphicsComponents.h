@@ -25,66 +25,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#include "Components.h"
+#include "memoryutilities.h"
 
 namespace FlexKit
 {
-	struct FLEXKITAPI SceneNodeComponentSystem
-	{
-	public:
-		void Initiate(byte* Memory, size_t BufferSize)
-		{
-			InitiateSceneNodeBuffer(Memory, BufferSize);
-			Root = FlexKit::GetZeroedNode();
-		}
+	typedef Handle_t<32> Camera_Handle;
 
-		// Interface Methods
-		void Release();
+	void InitiateCameras(iAllocator* Memory);
+	void ReleaseCameras();
 
-		NodeHandle GetRoot();
-		NodeHandle GetNewNode();
-		NodeHandle GetZeroedNode();
-
-		NodeHandle Root;
-
-		void SetParentNode(NodeHandle Parent, NodeHandle Node)
-		{
-			FlexKit::SetParentNode(Parent, Node);
-		}
-
-		float3 GetLocalScale(NodeHandle Node)
-		{
-			return FlexKit::GetLocalScale(Node);
-		}
-
-		float3 GetPositionW(NodeHandle Node)
-		{
-			return FlexKit::GetPositionW(Node);
-		}
-
-		float3 GetPositionL(NodeHandle Node)
-		{
-			return FlexKit::GetPositionL(Node);
-		}
-
-		void SetPositionW(NodeHandle Node, float3 xyz)
-		{
-			FlexKit::SetPositionW(Node, xyz);
-		}
-
-		void SetPositionL(NodeHandle Node, float3 xyz)
-		{
-			FlexKit::SetPositionL(Node, xyz);
-		}
-
-		Quaternion GetOrientation(NodeHandle Node)
-		{
-			return FlexKit::GetOrientation(Node);
-		}
-
-		operator SceneNodeComponentSystem* () { return this; }
-	};
-
-	SceneNodeComponentSystem	SceneNodes;
+	Camera_Handle CreateCamera();
 }// FlexKit
 
 #endif // GRAPHICSCOMPONENTS_H

@@ -131,8 +131,8 @@ ComponentListInterface& InitiatePlayerCameraController(
 /************************************************************************************************/
 
 
-/*
-class DebugCameraController
+class DebugCameraController : 
+	public OrbitCameraBehavior
 {
 public:
 	void Initiate()
@@ -142,8 +142,6 @@ public:
 		TranslateWorld({ 0, 0, -10 });
 		Yaw(pi);
 	}
-
-	ComponentListInterface& Components;
 
 	bool EventHandler(Event evt)
 	{
@@ -215,7 +213,8 @@ public:
 	bool		MoveLeft		= false;
 	bool		MoveRight		= false;
 };
-*/
+
+
 /************************************************************************************************/
 
 

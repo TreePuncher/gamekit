@@ -60,7 +60,6 @@ namespace FlexKit
 	{
 	public:
 		virtual ~ComponentSystemInterface() {}
-		virtual void ReleaseHandle(ComponentHandle Handle) = 0;
 		virtual void Update(double dt) {}
 		
 		const Vector<ComponentSystemInterface*> GetSystemDependencies() { return {}; }

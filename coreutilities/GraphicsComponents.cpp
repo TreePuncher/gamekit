@@ -28,4 +28,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	struct CameraSystem : public ComponentSystemInterface
+	{
+		CameraSystem(iAllocator* Memory) :
+			Cameras(Memory)
+		{}
+
+		~CameraSystem()
+		{}
+
+		const	Vector<ComponentSystemInterface*> GetSystemDependencies() { return {}; }
+		void	Update(double dT) {}
+
+		Vector<Camera>	Cameras;
+	}*CameraTable;
 }// FlexKit

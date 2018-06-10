@@ -28,113 +28,296 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-void InitiateCamera3rdPersonContoller(Camera* C, Camera3rdPersonContoller* Out)
-{
-	ReleaseNode(C->Node);
-
-	auto Yaw	= GetZeroedNode();
-	auto Pitch	= GetZeroedNode();
-	auto Roll	= GetZeroedNode();
-
-	SetParentNode(Pitch, Roll);
-	SetParentNode(Yaw, Pitch);
-
-
-	C->Node		= Roll;
-	Out->C		= C;
-
-	Out->Pitch	= 0;
-	Out->Roll	= 0;
-	Out->Yaw	= 0;
-
-	Out->Pitch_Node = Pitch;
-	Out->Roll_Node  = Roll;
-	Out->Yaw_Node   = Yaw;
-}
-
-void UpdateCameraController(Camera3rdPersonContoller* Controller, double dT)
-{
-}
-
-void SetCameraOffset(Camera3rdPersonContoller* Controller, float3 xyz)
-{
-	TranslateWorld(Controller->Pitch_Node, float3(0.0f, 1.0f, 0.0f) * xyz);
-	TranslateWorld(Controller->Roll_Node,  float3(0.0f, 0.0f, 1.0f) * xyz);
-
-}
-
-void SetCameraPosition(Camera3rdPersonContoller* Controller, float3 xyz)
-{
-	SetPositionW(Controller->Yaw_Node, xyz);
-}
-
-void TranslateCamera(Camera3rdPersonContoller* Controller, float3 xyz)
-{
-	TranslateWorld(Controller->Yaw_Node, xyz);
-}
-
-void YawCamera(Camera3rdPersonContoller* Controller, float Degree)
-{
-	Controller->Yaw += Degree;
-}
-
-void PitchCamera(Camera3rdPersonContoller* Controller, float Degree)
-{
-	Controller->Pitch += Degree;
-}
-
-void RollCamera(Camera3rdPersonContoller* Controller, float Degree)
-{
-	Controller->Roll += Degree;
-}
-
-float3 GetForwardVector(Camera3rdPersonContoller* Controller)
-{
-	Quaternion Q = GetOrientation( Controller->Yaw_Node);
-	return -(Q * float3(0, 0, 1)).normal();
-}
-
-float3 GetRightVector(Camera3rdPersonContoller* Controller)
-{
-	Quaternion Q = GetOrientation(Controller->Yaw_Node);
-	return -(Q * float3(-1, 0, 0)).normal();
-}
-
-
 namespace FlexKit
 {
-	void OrbitCameraSystem::ReleaseHandle(ComponentHandle Handle)
+	/************************************************************************************************/
+
+
+	struct OrbitCameraSystem : public ComponentSystemInterface
+	{
+		OrbitCameraSystem(iAllocator* Memory) :
+			Controllers(Memory) 
+		{}
+
+		~OrbitCameraSystem()
+		{}
+
+		const	Vector<ComponentSystemInterface*> GetSystemDependencies() { return {}; }
+		void	Update(double dT) {}
+
+		Vector<Camera>					Cameras;
+		Vector<CameraOrbitController>	Controllers;
+	}*OrbitCameras;
+
+
+	/************************************************************************************************/
+
+
+	void InitiateOrbitCameras(iAllocator* Memory)
+	{
+		OrbitCameras = &Memory->allocate<OrbitCameraSystem>(Memory);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ReleaseOrbitCameras(iAllocator* Memory)
+	{
+		OrbitCameras->~OrbitCameraSystem();
+		Memory->free(OrbitCameras);
+		OrbitCameras = nullptr;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void UpdateOrbitCamera(OrbitCameraInputState& Input, double dt)
 	{
 
 	}
 
-	void OrbitCameraSystem::HandleEvent(ComponentHandle Handle, ComponentType EventSource, EventTypeID)
+
+	/************************************************************************************************/
+
+
+	OrbitCamera_Handle CreateOrbitCamera(NodeHandle Node, NodeHandle CameraNode, float MoveRate)
+	{
+		FK_ASSERT(OrbitCameras != nullptr);
+		FK_ASSERT(Node != CameraNode);
+
+		CameraOrbitController Controller;
+		Controller.CameraNode	= CameraNode;
+		Controller.YawNode		= Node;
+		Controller.PitchNode	= GetZeroedNode();
+		Controller.RollNode		= GetZeroedNode();
+		Controller.MoveRate		= MoveRate;
+
+		SetParentNode(Controller.YawNode, Controller.PitchNode);
+		SetParentNode(Controller.PitchNode, Controller.RollNode);
+		SetParentNode(Controller.RollNode, CameraNode);
+
+		OrbitCameras->Controllers.push_back(Controller);
+
+		return OrbitCamera_Handle(OrbitCameras->Controllers.size() - 1);
+	}
+
+
+	/************************************************************************************************/
+
+
+	NodeHandle GetNode(OrbitCamera_Handle Handle)
+	{
+		FK_ASSERT(OrbitCameras != nullptr);
+		return OrbitCameras->Controllers[Handle].YawNode;
+	}
+
+
+	/************************************************************************************************/
+
+
+	CameraOrbitController GetOrbitController(OrbitCamera_Handle Handle)
+	{
+		FK_ASSERT(OrbitCameras != nullptr);
+		return OrbitCameras->Controllers[Handle];
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetCameraNode(OrbitCamera_Handle Handle, NodeHandle Node)
+	{
+		FK_ASSERT(OrbitCameras != nullptr);
+
+		OrbitCameras->Controllers[Handle].CameraNode = Node;
+
+		SetParentNode(
+			OrbitCameras->Controllers[Handle].CameraNode,
+			OrbitCameras->Controllers[Handle].PitchNode);
+	}
+
+
+	/************************************************************************************************/
+
+
+	Quaternion GetCameraOrientation(OrbitCamera_Handle handle)
+	{
+		return GetOrientation(
+			OrbitCameras->Controllers[handle].CameraNode);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void SetCameraPosition(OrbitCamera_Handle Handle, float3 xyz)
+	{
+		FK_ASSERT(OrbitCameras != nullptr);
+
+		auto& OrbitCamera = OrbitCameras->Controllers[Handle];
+		SetPositionW(OrbitCamera.YawNode, xyz);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void TranslateCamera(OrbitCamera_Handle Handle, float3 xyz)
+	{
+		FK_ASSERT(OrbitCameras != nullptr);
+
+		auto& OrbitCamera = OrbitCameras->Controllers[Handle];
+		TranslateWorld(OrbitCamera.YawNode, xyz);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RotateCamera(OrbitCamera_Handle Handle, float3 xyz)
+	{
+		FK_ASSERT(OrbitCameras != nullptr);
+
+		auto& OrbitCamera = OrbitCameras->Controllers[Handle];
+
+		if(xyz[0] != 0.0f)
+			Pitch(OrbitCamera.PitchNode, xyz[0]);
+
+		if(xyz[1] != 0.0f)
+			Yaw(OrbitCamera.YawNode, xyz[1]);
+
+		if (xyz[2] != 0.0f)
+			Roll(OrbitCamera.PitchNode, xyz[2]);
+	}
+
+
+	/************************************************************************************************/
+
+
+	OrbitCameraBehavior::OrbitCameraBehavior(float MovementSpeed, float3 InitialPos)
+	{
+
+	}
+	
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraBehavior::Update(const OrbitCameraInputState& Input)
 	{
 
 	}
 
-	void OrbitCameraSystem::Update(double dT)
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraBehavior::SetCameraPosition(float3 xyz)
 	{
-		for (auto Controller : this->Controllers) {
-			Quaternion Q = ::GetOrientation(Controller.CameraNode);
+		FlexKit::SetCameraPosition(Handle, xyz);
+	}
 
-			float3 dP = 0;
 
-			/*
-			auto MouseState = InputSystem->GetMouseState();
+	/************************************************************************************************/
 
-			dP += InputSystem->KeyState.Forward		? float3(0, 0, -1)	: float3(0, 0, 0);
-			dP += InputSystem->KeyState.Backward	? float3(0, 0, 1)	: float3(0, 0, 0);
-			dP += InputSystem->KeyState.Left		? float3(-1, 0, 0)	: float3(0, 0, 0);
-			dP += InputSystem->KeyState.Right		? float3(1, 0, 0)	: float3(0, 0, 0);
 
-			dP = Q * dP;
+	void OrbitCameraBehavior::TranslateWorld(float3 xyz)
+	{
+		FlexKit::TranslateCamera(Handle, xyz);
+	}
 
-			Translate	(Controller.ParentGO, dP * dT * Controller.MoveRate);
-			Pitch		(*Nodes, Controller.PitchNode,	MouseState.Normalized_dPos[1] * dT * 256.0f);
-			Yaw			(*Nodes, Controller.YawNode,	MouseState.Normalized_dPos[0] * dT * 256.0f);
-			*/
-		}
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraBehavior::Rotate(float3 xyz)
+	{
+		FlexKit::RotateCamera(Handle, xyz);
+	}
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraBehavior::Yaw(float Theta)
+	{
+		Rotate({ 0, Theta, 0 });
+	}
+
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraBehavior::Pitch(float Theta)
+	{
+		Rotate({ Theta, 0, 0 });
+	}
+
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraBehavior::Roll(float Theta)
+	{
+		Rotate({ 0, 0, Theta });
+	}
+
+	/************************************************************************************************/
+
+
+	Quaternion	OrbitCameraBehavior::GetOrientation()
+	{
+		return GetCameraOrientation(Handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 OrbitCameraBehavior::GetForwardVector()
+	{
+		Quaternion Q = GetCameraOrientation(Handle);
+		return -(Q * float3(0, 0, 1)).normal();
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 OrbitCameraBehavior::GetRightVector()
+	{
+		Quaternion Q = GetCameraOrientation(Handle);
+		return -(Q * float3(-1, 0, 0)).normal();
+	}
+
+
+	/************************************************************************************************/
+
+
+	void OrbitCameraBehavior::SetCameraNode(NodeHandle Node)
+	{
 
 	}
-}
+
+
+	/************************************************************************************************/
+
+
+	NodeHandle	OrbitCameraBehavior::GetCameraNode()
+	{
+		auto& Controller = GetControllerEntry();
+		return Controller.CameraNode;
+	}
+
+
+	/************************************************************************************************/
+
+
+	CameraOrbitController OrbitCameraBehavior::GetControllerEntry()
+	{
+		return GetOrbitController(Handle);
+	}
+
+
+}	/************************************************************************************************/

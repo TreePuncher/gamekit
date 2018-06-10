@@ -210,8 +210,8 @@ namespace FlexKit
 			pvs->push_back(PVEntry( e, 0xffffffffffffffff, 0u));
 	}
 
-	FLEXKITAPI void SortPVS				(SceneNodes* Nodes, PVS* PVS_, Camera* C);
-	FLEXKITAPI void SortPVSTransparent	(SceneNodes* Nodes, PVS* PVS_, Camera* C);
+	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);
+	FLEXKITAPI void SortPVSTransparent	(PVS* PVS_, Camera* C);
 
 
 	/************************************************************************************************/

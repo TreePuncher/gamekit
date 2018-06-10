@@ -59,6 +59,8 @@ PlayState::PlayState(
 				Framework->Core->GetTempMemory()
 			}
 {
+	InitiateOrbitCameras(Framework->Core->GetBlockMemory());
+
 	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
 	Grid.CreateGridObject({10, 5});
 
@@ -89,6 +91,8 @@ PlayState::PlayState(
 
 PlayState::~PlayState()
 {
+	ReleaseOrbitCameras(Framework->Core->GetBlockMemory());
+
 	// TODO: Make this not stoopid 
 	Framework->Core->GetBlockMemory().free(this);
 }
