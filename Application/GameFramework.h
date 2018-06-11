@@ -63,7 +63,6 @@ namespace FlexKit
 	public:
 		void Update				(double dT);
 		void UpdateFixed		(double dT);
-		void UpdateAnimations	(iAllocator* TempMemory, double dT);
 		void UpdatePreDraw		(iAllocator* TempMemory, double dT);
 		void Draw				(iAllocator* TempMemory);
 		void PostDraw			(iAllocator* TempMemory, double dT);

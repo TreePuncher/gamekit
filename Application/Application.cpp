@@ -82,7 +82,6 @@ namespace FlexKit
 
 				Framework.Update			(dT);
 				Framework.UpdateFixed		(StepSize);
-				Framework.UpdateAnimations	(Core->GetTempMemory(), dT);
 				Framework.UpdatePreDraw		(Core->GetTempMemory(), dT);
 				Framework.Draw				(Core->GetTempMemory());
 				Framework.PostDraw			(Core->GetTempMemory(), dT);

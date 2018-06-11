@@ -138,58 +138,7 @@ bool PlayState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double 
 		Player2_Handler.Update(dT);
 	Grid.Update(dT, Engine->GetTempMemory());
 
-	Sound.Update();
-
-
-	struct SoundUpdateData
-	{
-		FMOD_SoundSystem* Sounds;
-	};
-
-	FMOD_SoundSystem* Sounds_ptr = nullptr;
-	auto& SoundUpdate = Dispatcher.Add<SoundUpdateData>(
-		[&](auto& Builder, SoundUpdateData& Data)
-		{
-			Data.Sounds = &Sound;
-			Builder.SetDebugString("UpdateSound");
-	},
-		[](auto& Data)
-		{
-			Data.Sounds->Update();
-			std::cout << "Updating Sound!\n";
-		});
-
-	struct SomeAfterSoundUpdateTask
-	{
-	};
-
-	auto& RandomTask1 = Dispatcher.Add<SomeAfterSoundUpdateTask>(
-		[&](auto& Builder, SomeAfterSoundUpdateTask& Data)
-		{
-			Builder.AddInput(SoundUpdate);
-			Builder.SetDebugString("SomeAfterSoundUpdateTask");
-	},
-		[](SomeAfterSoundUpdateTask& Data)
-		{
-			std::cout << "This happened after sound update!\n";
-		});
-
-
-	struct SomeBeforeSoundUpdateTask
-	{
-	};
-
-	auto& RandomTask2 = Dispatcher.Add<SomeBeforeSoundUpdateTask>(
-		[&](auto& Builder, SomeBeforeSoundUpdateTask& Data)
-		{
-			Builder.AddOutput(SoundUpdate);
-			Builder.SetDebugString("SomeBeforeSoundUpdateTask");
-		}, 
-		[](SomeBeforeSoundUpdateTask& Data)
-		{
-			std::cout << "This happened before sound update even though I was scheduled after the sound Update!\n";
-		});
-
+	QueueSoundUpdate(Dispatcher, &Sound);
 #else
 	float HorizontalMouseMovement	= float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
 	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];

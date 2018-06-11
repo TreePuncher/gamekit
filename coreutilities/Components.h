@@ -41,16 +41,16 @@ namespace FlexKit
 	public:
 		typedef size_t	UpdateID_t;
 
-		class UpdateNode
+		class UpdateTask
 		{
 		public:
-			typedef std::function<void(UpdateNode& Node)>	FN_NodeAction;
+			typedef std::function<void(UpdateTask& Node)>	FN_NodeAction;
 
-			UpdateNode(iAllocator* Memory) :
-				Inputs	{ Memory },
-				Executed{ false } {}
+			UpdateTask(iAllocator* Memory) :
+				Inputs		{ Memory },
+				Executed	{ false } {}
 
-			Vector<UpdateNode*> Inputs;
+			Vector<UpdateTask*> Inputs;
 			UpdateID_t			ID;
 			FN_NodeAction		Update;
 			char*				Data;
@@ -58,13 +58,13 @@ namespace FlexKit
 			bool				Executed;
 		};
 
-		using			FN_NodeAction = UpdateNode::FN_NodeAction;
+		using			FN_NodeAction = UpdateTask::FN_NodeAction;
 
 		UpdateDispatcher(iAllocator* IN_Memory) :
 			Nodes	{ IN_Memory },
 			Memory	{ IN_Memory }{}
 
-		static void VisitInputs(UpdateNode* Node, Vector<UpdateNode*>& out)
+		static void VisitInputs(UpdateTask* Node, Vector<UpdateTask*>& out)
 		{
 			if (Node->Executed)
 				return;
@@ -81,7 +81,7 @@ namespace FlexKit
 		{
 			// TODO: Detect multi-threadable sections
 
-			Vector<UpdateNode*> NodesSorted{Memory};
+			Vector<UpdateTask*> NodesSorted{Memory};
 
 			for (auto& Node : Nodes)
 				VisitInputs(Node, NodesSorted);
@@ -93,7 +93,7 @@ namespace FlexKit
 		class UpdateBuilder
 		{
 		public:
-			UpdateBuilder(UpdateNode& IN_Node) :
+			UpdateBuilder(UpdateTask& IN_Node) :
 				NewNode{IN_Node}{}
 
 			void SetDebugString(const char* str)
@@ -101,35 +101,34 @@ namespace FlexKit
 				NewNode.DebugID = str;
 			}
 
-			void AddOutput(UpdateNode& Node)
+			void AddOutput(UpdateTask& Node)
 			{
 				Node.Inputs.push_back(&NewNode);
 			}
 
-			void AddInput(UpdateNode& Node)
+			void AddInput(UpdateTask& Node)
 			{
 				NewNode.Inputs.push_back(&Node);
 			}
 
-
 		private:
-			UpdateNode& NewNode;
+			UpdateTask& NewNode;
 		};
 
 		template<
 			typename TY_NODEDATA,
 			typename FN_LINKAGE,
 			typename FN_UPDATE>
-		UpdateNode&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
+		UpdateTask&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
 		{
 			auto& Data = Memory->allocate<TY_NODEDATA>();
-			UpdateNode& NewNode = Memory->allocate<UpdateNode>(Memory);
+			UpdateTask& NewNode = Memory->allocate<UpdateTask>(Memory);
 
 			UpdateBuilder Builder{ NewNode };
 			LinkageSetup(Builder, Data);
 
 			NewNode.Data	= (char*)&Data;
-			NewNode.Update	= [UpdateFN](UpdateNode& Node)
+			NewNode.Update	= [UpdateFN](UpdateTask& Node)
 				{
 					TY_NODEDATA& Data = *(TY_NODEDATA*)Node.Data;
 					UpdateFN(Data);
@@ -140,9 +139,13 @@ namespace FlexKit
 			return NewNode;
 		}
 
-		Vector<UpdateNode*> Nodes;
+		Vector<UpdateTask*> Nodes;
 		iAllocator*			Memory;
 	};
+
+
+	using UpdateTask = UpdateDispatcher::UpdateTask;
+
 
 }	/************************************************************************************************/
 

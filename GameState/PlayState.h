@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\Application\CameraUtilities.h"
 #include "..\Application\GameMemory.h"
 #include "..\Application\WorldRender.h"
+#include "..\coreutilities\Components.h"
 
 #include "Gameplay.h"
 
@@ -85,6 +86,30 @@ public:
 	FMOD_RESULT       result;
 	unsigned int      version;
 };
+
+
+FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, FMOD_SoundSystem* Sounds)
+{
+	struct SoundUpdateData
+	{
+		FMOD_SoundSystem* Sounds;
+	};
+
+	FMOD_SoundSystem* Sounds_ptr = nullptr;
+	auto& SoundUpdate = Dispatcher.Add<SoundUpdateData>(
+		[&](auto& Builder, SoundUpdateData& Data)
+		{
+			Data.Sounds = Sounds;
+			Builder.SetDebugString("UpdateSound");
+		},
+		[](auto& Data)
+		{
+			Data.Sounds->Update();
+			std::cout << "Updating Sound!\n";
+		});
+
+	return &SoundUpdate;
+}
 
 
 /************************************************************************************************/

@@ -178,12 +178,6 @@ namespace FlexKit
 		}
 
 		Dispatcher.Execute();
-
-		//if(ActivePhysicsScene)
-		//	ActivePhysicsScene->UpdateSystem(dT);
-
-		UpdateTransforms();
-		//Core->Cameras.Update(dT);
 		Core->End = Quit;
 	}
 
@@ -191,12 +185,6 @@ namespace FlexKit
 	void GameFramework::UpdateFixed(double dt)
 	{
 		UpdateMouseInput(&MouseState, &Core->Window);
-	}
-
-
-	void GameFramework::UpdateAnimations(iAllocator* TempMemory, double dt)
-	{
-
 	}
 
 

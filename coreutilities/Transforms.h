@@ -171,8 +171,10 @@ namespace FlexKit
 	FLEXKITAPI void			Scale						( NodeHandle Node,	float3 In );
 	FLEXKITAPI void			TranslateLocal				( NodeHandle Node,	float3 In );
 	FLEXKITAPI void			TranslateWorld				( NodeHandle Node,	float3 In );
-	FLEXKITAPI bool			UpdateTransforms			();
 	FLEXKITAPI NodeHandle	ZeroNode					( NodeHandle Node );
+
+
+	FLEXKITAPI UpdateTask*	QueueTransformUpdateTask	(UpdateDispatcher& Dispatcher);
 
 	FLEXKITAPI inline void Yaw							( NodeHandle Node,	float r );
 	FLEXKITAPI inline void Roll							( NodeHandle Node,	float r );
