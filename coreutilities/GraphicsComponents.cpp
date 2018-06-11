@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	struct CameraSystem : public ComponentSystemInterface
+	struct CameraSystem
 	{
 		CameraSystem(iAllocator* Memory) :
 			Cameras(Memory)
@@ -36,9 +36,6 @@ namespace FlexKit
 
 		~CameraSystem()
 		{}
-
-		const	Vector<ComponentSystemInterface*> GetSystemDependencies() { return {}; }
-		void	Update(double dT) {}
 
 		Vector<Camera>	Cameras;
 	}*CameraTable;

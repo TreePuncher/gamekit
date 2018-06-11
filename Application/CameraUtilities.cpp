@@ -33,20 +33,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct OrbitCameraSystem : public ComponentSystemInterface
+	struct OrbitCameraSystem
 	{
 		OrbitCameraSystem(iAllocator* Memory) :
-			Controllers(Memory) 
-		{}
+			Controllers			{Memory},
+			Memory				{Memory}
+		{
+		}
 
 		~OrbitCameraSystem()
 		{}
 
-		const	Vector<ComponentSystemInterface*> GetSystemDependencies() { return {}; }
-		void	Update(double dT) {}
-
 		Vector<Camera>					Cameras;
 		Vector<CameraOrbitController>	Controllers;
+
+		iAllocator*						Memory;
 	}*OrbitCameras;
 
 
@@ -73,7 +74,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UpdateOrbitCamera(OrbitCameraInputState& Input, double dt)
+	void UpdateOrbitCamera(const MouseInputState& MouseInput, double dt)
 	{
 
 	}
@@ -205,7 +206,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void OrbitCameraBehavior::Update(const OrbitCameraInputState& Input)
+	void OrbitCameraBehavior::Update(const MouseInputState& MouseInput)
 	{
 
 	}

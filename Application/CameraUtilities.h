@@ -33,11 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../coreutilities/Transforms.h"
 #include "../coreutilities/MathUtils.h"
 
-using FlexKit::NodeHandle;
-using FlexKit::SceneNodes;
-using FlexKit::Camera;
-using FlexKit::ComponentSystemInterface;
-
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -53,16 +48,6 @@ namespace FlexKit
 		float MoveRate;
 	};
 
-
-	struct OrbitCameraInputState
-	{
-		MouseInputState Mouse;
-		bool Forward;
-		bool Backward;
-		bool Left;
-		bool Right;
-	};
-
 	
 	/************************************************************************************************/
 
@@ -71,7 +56,7 @@ namespace FlexKit
 
 	void InitiateOrbitCameras	(iAllocator* Memory);
 	void ReleaseOrbitCameras	(iAllocator* Memory);
-	void UpdateOrbitCamera		(OrbitCameraInputState& Input, double dt);
+	void UpdateOrbitCamera		(MouseInputState& Mouse, double dt);
 
 	OrbitCamera_Handle CreateOrbitCamera(NodeHandle Node, NodeHandle CameraNode, float MoveRate);
 
@@ -98,7 +83,7 @@ namespace FlexKit
 	public:
 		OrbitCameraBehavior(float MovementSpeed, float3 InitialPos);
 
-		void Update				(const OrbitCameraInputState& Input);
+		void Update				(const MouseInputState& MouseInput);
 
 		void SetCameraPosition	(float3 xyz);
 		void TranslateWorld		(float3 xyz);

@@ -251,11 +251,10 @@ public:
 
 	~PlayState();
 
-	bool Update			(EngineCore* Engine, double dT) final;
-
-	bool PreDrawUpdate	(EngineCore* Engine, double dT) final;
-	bool Draw			(EngineCore* Engine, double dT, FrameGraph& Graph) final;
-	bool DebugDraw		(EngineCore* Engine, double dT) final;
+	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
+	bool PreDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
+	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+	bool DebugDraw		(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
 
 	bool EventHandler	(Event evt)	final;
 

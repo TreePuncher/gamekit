@@ -30,7 +30,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::Update(EngineCore* Engine, double dT)
+	bool  ConsoleSubState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
 	{
 		return !PauseBackgroundLogic;
 	}
@@ -39,7 +39,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::DebugDraw(EngineCore* Engine, double dT)
+	bool  ConsoleSubState::DebugDraw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
 	{
 		return false;
 	}
@@ -47,7 +47,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::Draw(EngineCore* Engine, double dT, FrameGraph& Graph) 
+	bool  ConsoleSubState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 	{
 		/*
 		FlexKit::Draw_RECT Rect;

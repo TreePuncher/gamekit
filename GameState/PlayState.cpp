@@ -123,7 +123,7 @@ bool PlayState::EventHandler(Event evt)
 /************************************************************************************************/
 
 
-bool PlayState::Update(EngineCore* Engine, double dT)	
+bool PlayState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
 {
 #ifndef DEBUGCAMERA
 	// Check if any players Died
@@ -139,6 +139,57 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 	Grid.Update(dT, Engine->GetTempMemory());
 
 	Sound.Update();
+
+
+	struct SoundUpdateData
+	{
+		FMOD_SoundSystem* Sounds;
+	};
+
+	FMOD_SoundSystem* Sounds_ptr = nullptr;
+	auto& SoundUpdate = Dispatcher.Add<SoundUpdateData>(
+		[&](auto& Builder, SoundUpdateData& Data)
+		{
+			Data.Sounds = &Sound;
+			Builder.SetDebugString("UpdateSound");
+	},
+		[](auto& Data)
+		{
+			Data.Sounds->Update();
+			std::cout << "Updating Sound!\n";
+		});
+
+	struct SomeAfterSoundUpdateTask
+	{
+	};
+
+	auto& RandomTask1 = Dispatcher.Add<SomeAfterSoundUpdateTask>(
+		[&](auto& Builder, SomeAfterSoundUpdateTask& Data)
+		{
+			Builder.AddInput(SoundUpdate);
+			Builder.SetDebugString("SomeAfterSoundUpdateTask");
+	},
+		[](SomeAfterSoundUpdateTask& Data)
+		{
+			std::cout << "This happened after sound update!\n";
+		});
+
+
+	struct SomeBeforeSoundUpdateTask
+	{
+	};
+
+	auto& RandomTask2 = Dispatcher.Add<SomeBeforeSoundUpdateTask>(
+		[&](auto& Builder, SomeBeforeSoundUpdateTask& Data)
+		{
+			Builder.AddOutput(SoundUpdate);
+			Builder.SetDebugString("SomeBeforeSoundUpdateTask");
+		}, 
+		[](SomeBeforeSoundUpdateTask& Data)
+		{
+			std::cout << "This happened before sound update even though I was scheduled after the sound Update!\n";
+		});
+
 #else
 	float HorizontalMouseMovement	= float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
 	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
@@ -159,7 +210,7 @@ bool PlayState::Update(EngineCore* Engine, double dT)
 
 /************************************************************************************************/
 
-bool PlayState::DebugDraw(EngineCore* Core, double dT)
+bool PlayState::DebugDraw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
 {
 	return true;
 }
@@ -168,7 +219,7 @@ bool PlayState::DebugDraw(EngineCore* Core, double dT)
 /************************************************************************************************/
 
 
-bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
+bool PlayState::PreDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
 {
 	return false;
 }
@@ -177,7 +228,7 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, double dT)
 /************************************************************************************************/
 
 
-bool PlayState::Draw(EngineCore* Core, double dt, FrameGraph& FrameGraph)
+bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, FrameGraph& FrameGraph)
 {
 	FrameGraph.Resources.AddDepthBuffer(DepthBuffer);
 

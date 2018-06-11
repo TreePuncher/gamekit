@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MathUtils.h"
 #include "Handle.h"
+#include "Components.h"
 
 #include <DirectXMath.h>
 
@@ -129,6 +130,7 @@ namespace FlexKit
 			char		State;
 		};
 		#pragma pack(pop)
+
 	}SceneNodeTable;
 
 

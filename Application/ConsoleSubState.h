@@ -58,9 +58,9 @@ namespace FlexKit
 		void IncrementRecallIndex();
 		void DecrementRecallIndex();
 
-		bool  Update			(EngineCore* Engine, double dT) override;
-		bool  DebugDraw			(EngineCore* Engine, double dT) override;
-		bool  Draw				(EngineCore* Engine, double dT, FrameGraph& Graph) override;
+		bool  Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
+		bool  DebugDraw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
+		bool  Draw				(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
 
 		bool  EventHandler		(Event evt)	override;
 

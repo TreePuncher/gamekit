@@ -36,6 +36,8 @@ namespace FlexKit
 	void ReleaseCameras();
 
 	Camera_Handle CreateCamera();
+
+	void UpdateCameras();
 }// FlexKit
 
 #endif // GRAPHICSCOMPONENTS_H

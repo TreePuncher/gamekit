@@ -23,66 +23,126 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "..\buildsettings.h"
-#include "..\graphicsutilities\graphics.h"
 #include "..\coreutilities\containers.h"
-#include "..\coreutilities\GraphicScene.h"
-#include "..\coreutilities\Events.h"
 #include "..\coreutilities\Handle.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\type.h"
-
-
+#include "..\coreutilities\MemoryUtilities.h"
 
 #ifndef COMPONENT_H
 #define COMPONENT_H
 
 namespace FlexKit
-{
-	// GOAL: Help reduce code involved to do shit which is currently excessive 
-	/************************************************************************************************/
-
-	// Components store all data needed for a component
-	typedef FlexKit::Handle_t<32> ComponentHandle;
-
-	const ComponentHandle InvalidComponentHandle(-1);
-
-	typedef uint32_t EventTypeID;
-
-	typedef uint32_t ComponentType;
-
-	const	uint32_t UnknownComponentID = GetTypeGUID(Component);
-	
-
-	/************************************************************************************************/
+{	/************************************************************************************************/
 
 
-	class ComponentSystemInterface
+	class UpdateDispatcher
 	{
 	public:
-		virtual ~ComponentSystemInterface() {}
-		virtual void Update(double dt) {}
-		
-		const Vector<ComponentSystemInterface*> GetSystemDependencies() { return {}; }
+		typedef size_t	UpdateID_t;
+
+		class UpdateNode
+		{
+		public:
+			typedef std::function<void(UpdateNode& Node)>	FN_NodeAction;
+
+			UpdateNode(iAllocator* Memory) :
+				Inputs	{ Memory },
+				Executed{ false } {}
+
+			Vector<UpdateNode*> Inputs;
+			UpdateID_t			ID;
+			FN_NodeAction		Update;
+			char*				Data;
+			const char*			DebugID;
+			bool				Executed;
+		};
+
+		using			FN_NodeAction = UpdateNode::FN_NodeAction;
+
+		UpdateDispatcher(iAllocator* IN_Memory) :
+			Nodes	{ IN_Memory },
+			Memory	{ IN_Memory }{}
+
+		static void VisitInputs(UpdateNode* Node, Vector<UpdateNode*>& out)
+		{
+			if (Node->Executed)
+				return;
+
+			Node->Executed = true;
+
+			for (auto& Node : Node->Inputs)
+				VisitInputs(Node, out);
+
+			out.push_back(Node);
+		};
+
+		void Execute()
+		{
+			// TODO: Detect multi-threadable sections
+
+			Vector<UpdateNode*> NodesSorted{Memory};
+
+			for (auto& Node : Nodes)
+				VisitInputs(Node, NodesSorted);
+
+			for (auto& Node : NodesSorted)
+				Node->Update(*Node);
+		}
+
+		class UpdateBuilder
+		{
+		public:
+			UpdateBuilder(UpdateNode& IN_Node) :
+				NewNode{IN_Node}{}
+
+			void SetDebugString(const char* str)
+			{
+				NewNode.DebugID = str;
+			}
+
+			void AddOutput(UpdateNode& Node)
+			{
+				Node.Inputs.push_back(&NewNode);
+			}
+
+			void AddInput(UpdateNode& Node)
+			{
+				NewNode.Inputs.push_back(&Node);
+			}
+
+
+		private:
+			UpdateNode& NewNode;
+		};
+
+		template<
+			typename TY_NODEDATA,
+			typename FN_LINKAGE,
+			typename FN_UPDATE>
+		UpdateNode&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
+		{
+			auto& Data = Memory->allocate<TY_NODEDATA>();
+			UpdateNode& NewNode = Memory->allocate<UpdateNode>(Memory);
+
+			UpdateBuilder Builder{ NewNode };
+			LinkageSetup(Builder, Data);
+
+			NewNode.Data	= (char*)&Data;
+			NewNode.Update	= [UpdateFN](UpdateNode& Node)
+				{
+					TY_NODEDATA& Data = *(TY_NODEDATA*)Node.Data;
+					UpdateFN(Data);
+				};
+
+			Nodes.push_back(&NewNode);
+
+			return NewNode;
+		}
+
+		Vector<UpdateNode*> Nodes;
+		iAllocator*			Memory;
 	};
-
-
-	/************************************************************************************************/
-
-
-	class BehaviorBase
-	{
-	public:
-		virtual void Release() {}
-	};
-
-
-	class iEventReceiver
-	{
-	public:
-		virtual void Handle(const Event& evt) {}
-	};
-
-
 
 }	/************************************************************************************************/
 

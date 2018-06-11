@@ -48,31 +48,12 @@ struct PlayerInputState
 
 namespace FlexKit
 {
-	struct InputComponentSystem : public ComponentSystemInterface
+	struct InputComponentSystem
 	{
-		InputComponentSystem(GameFramework* F)
-		{
-			Listeners.Allocator		= F->Core->GetBlockMemory();
-			TargetSystems.Allocator = F->Core->GetBlockMemory();
-			Framework				= F;
-		}
 
 		void Update			(double dt, MouseInputState MouseInput, GameFramework* Framework);
 
-		ComponentHandle BindInput(ComponentHandle Handle, ComponentSystemInterface* System)
-		{
-			Listeners.push_back(Handle);
-			TargetSystems.push_back(System);
-
-			return ComponentHandle(Listeners.size() - 1);
-		}
-
 		MouseInputState	GetMouseState();
-
-		void ReleaseHandle	(ComponentHandle Handle){}
-
-		Vector<ComponentHandle>				Listeners;
-		Vector<ComponentSystemInterface*>	TargetSystems;
 
 		GameFramework*						Framework;
 		PlayerInputState					KeyState;

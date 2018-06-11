@@ -154,6 +154,7 @@ namespace FlexKit
 	{
 		TimeRunning += dT;
 
+
 		UpdateMouseInput(&MouseState, &Core->Window);
 
 		if (!SubStates.size()) {
@@ -161,18 +162,22 @@ namespace FlexKit
 			return;
 		}
 
+		UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
 
 		auto RItr = SubStates.rbegin();
 		auto REnd = SubStates.rend();
 
 		while (RItr != REnd)
 		{
+
 			auto State = *RItr;
-			if (!State->Update(Core, dT))
+			if (!State->Update(Core, Dispatcher, dT))
 				break;
 
 			RItr++;
 		}
+
+		Dispatcher.Execute();
 
 		//if(ActivePhysicsScene)
 		//	ActivePhysicsScene->UpdateSystem(dT);
@@ -202,30 +207,42 @@ namespace FlexKit
 			return;
 		}
 
-		if (DrawDebug) {
+		{
+			UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
+
+			if (DrawDebug) {
+				auto RItr = SubStates.rbegin();
+				auto REnd = SubStates.rend();
+				while (RItr != REnd)
+				{
+
+					auto State = *RItr;
+					if (!State->DebugDraw(Core, Dispatcher, dT))
+						break;
+
+					RItr++;
+				}
+			}
+
+			Dispatcher.Execute();
+		}
+
+		{
+			UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
+
 			auto RItr = SubStates.rbegin();
 			auto REnd = SubStates.rend();
 			while (RItr != REnd)
 			{
 				auto State = *RItr;
-				if (!State->DebugDraw(Core, dT))
+				if (!State->PreDrawUpdate(Core, Dispatcher, dT))
 					break;
 
 				RItr++;
 			}
+
+			Dispatcher.Execute();
 		}
-
-		auto RItr = SubStates.rbegin();
-		auto REnd = SubStates.rend();
-		while (RItr != REnd)
-		{
-			auto State = *RItr;
-			if (!State->PreDrawUpdate(Core, dT))
-				break;
-
-			RItr++;
-		}
-
 
 		if (Stats.Fps_T > 1.0)
 		{
@@ -258,6 +275,8 @@ namespace FlexKit
 		// Add in Base Resources
 		FrameGraph.Resources.AddRenderTarget(Core->Window.GetBackBuffer());
 
+		UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
+
 		{
 			auto Itr = SubStates.begin();
 			auto End = SubStates.end();
@@ -265,12 +284,14 @@ namespace FlexKit
 			while (Itr != End)
 			{
 				auto Framework = *Itr;		
-				if (!Framework->Draw(Core, 0, FrameGraph))
+				if (!Framework->Draw(Core, Dispatcher, 0, FrameGraph))
 					break;
 
 				Itr++;
 			}
 		}
+
+		Dispatcher.Execute();
 
 		ProfileBegin(PROFILE_SUBMISSION);
 
