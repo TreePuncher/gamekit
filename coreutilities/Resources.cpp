@@ -38,6 +38,18 @@ namespace FlexKit
 		Resources.ResourceMemory	= Memory;
 	}
 
+	
+	/************************************************************************************************/
+
+
+	void ReleaseResourceTable()
+	{
+		Resources.Tables.Release();
+		Resources.ResourceFiles.Release();
+		Resources.ResourcesLoaded.Release();
+		Resources.ResourceGUIDs.Release();
+	}
+
 
 	/************************************************************************************************/
 

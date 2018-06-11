@@ -90,7 +90,7 @@ namespace FlexKit
 
 		Console					Console;
 		EngineCore*				Core;
-
+		NodeHandle				RootNode;
 
 		static_vector<MouseHandler>		MouseHandlers;
 		static_vector<FrameworkState*>	SubStates;

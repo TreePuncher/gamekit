@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\coreutilities\MathUtils.h"
 
+
 namespace FlexKit
 {
 	/************************************************************************************************/
@@ -167,9 +168,17 @@ namespace FlexKit
 
 	FLEXKITAPI inline float3 DirectionVector(float3 A, float3 B) {return float3{ B - A }.normal();}
 
-	class Camera;
-	FLEXKITAPI Frustum GetFrustum(Camera* C, float3 Position, Quaternion Q);
 
+	/************************************************************************************************/
+
+
+	Frustum GetFrustum(
+		const float AspectRatio,
+		const float Near,
+		const float Far,
+		const float FOV,
+		float3 Position,
+		Quaternion Q);
 
 	/************************************************************************************************/
 

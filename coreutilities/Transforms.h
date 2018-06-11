@@ -33,10 +33,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	const	size_t							NodeHandleSize = 16;
-	typedef Handle_t<NodeHandleSize>		NodeHandle;
-	typedef Handle_t<16>					TextureSetHandle;
-	typedef static_vector<NodeHandle, 32>	ChildrenVector;
+	const	size_t											NodeHandleSize = 16;
+	typedef Handle_t<NodeHandleSize, GetCRCGUID(SCENENODE)>	NodeHandle;
+	typedef Handle_t<16, GetCRCGUID(TextureSet)>			TextureSetHandle;
+	typedef static_vector<NodeHandle, 32>					ChildrenVector;
 
 
 	struct Node
@@ -174,7 +174,7 @@ namespace FlexKit
 	FLEXKITAPI NodeHandle	ZeroNode					( NodeHandle Node );
 
 
-	FLEXKITAPI UpdateTask*	QueueTransformUpdateTask	(UpdateDispatcher& Dispatcher);
+	FLEXKITAPI UpdateTask*	QueueTransformUpdateTask	( UpdateDispatcher& Dispatcher );
 
 	FLEXKITAPI inline void Yaw							( NodeHandle Node,	float r );
 	FLEXKITAPI inline void Roll							( NodeHandle Node,	float r );
@@ -182,7 +182,68 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-}
+
+
+	class SceneNodeBehavior
+	{
+	public:
+		SceneNodeBehavior(NodeHandle IN_Node = NodeHandle{(unsigned int)INVALIDHANDLE})
+		{
+			if (IN_Node == NodeHandle{ (unsigned int)INVALIDHANDLE })
+				Node = GetZeroedNode();
+			else
+				Node = IN_Node;
+		}
+
+		NodeHandle GetParentNode()
+		{
+			FlexKit::GetParentNode(Node);
+		}
+
+		void SetParentNode(NodeHandle Parent)
+		{
+			FlexKit::SetParentNode(Parent, Node);
+		}
+
+		void Yaw(float r)
+		{
+			FlexKit::Yaw(Node, r);
+		}
+
+
+		void Roll	(float r)
+		{
+			FlexKit::Roll(Node, r);
+		}
+
+
+		void Pitch(float r)
+		{
+			FlexKit::Pitch(Node, r);
+		}
+
+		void Scale(float3 xyz)
+		{
+			FlexKit::Scale(Node, xyz);
+		}
+
+
+		void TranslateLocal(float3 xyz)
+		{
+			FlexKit::TranslateLocal(Node, xyz);
+		}
+
+
+		void TranslateWorld(float3 xyz)
+		{
+			FlexKit::TranslateWorld(Node, xyz);
+		}
+
+
+		NodeHandle Node;
+	};
+
+}	/************************************************************************************************/
 
 
 #endif

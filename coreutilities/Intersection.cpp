@@ -68,16 +68,22 @@ namespace FlexKit
 		return (Bottom & Near & Far & Left & Right & Top);
 	}
 
-	Frustum GetFrustum(Camera* C, float3 Position, Quaternion Q)
+	Frustum GetFrustum(
+		const float AspectRatio, 
+		const float FOV, 
+		const float Near, 
+		const float Far, 
+		float3 Position, 
+		Quaternion Q)
 	{
 		float3 FTL(0);
 		float3 FTR(0);
 		float3 FBL(0);
 		float3 FBR(0);
 
-		FTL.z = -C->Far;
-		FTL.y = tan(C->FOV) * C->Far;
-		FTL.x = -FTL.y * C->AspectRatio;
+		FTL.z = -Far;
+		FTL.y = tan(FOV) * Far;
+		FTL.x = -FTL.y * AspectRatio;
 
 		FTR ={ -FTL.x,  FTL.y, FTL.z };
 		FBL ={ FTL.x, -FTL.y, FTL.z };
@@ -88,9 +94,9 @@ namespace FlexKit
 		float3 NBL(0);
 		float3 NBR(0);
 
-		NTL.z = -C->Near;
-		NTL.y = tan(C->FOV / 2) * C->Near;
-		NTL.x = NTL.y * C->AspectRatio;
+		NTL.z = -Near;
+		NTL.y = tan(FOV / 2) * Near;
+		NTL.x = NTL.y * AspectRatio;
 
 		NTR ={ -NTL.x,  NTL.y, NTL.z };
 		NBL ={ -NTL.x, -NTL.y, NTL.z };

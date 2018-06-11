@@ -119,6 +119,12 @@ namespace FlexKit
 			EventMap{ Memory }{}
 
 
+		~InputMap()
+		{
+			EventMap.Release();
+		}
+
+
 		bool Map(const Event& evt_in, Event& evt_out)
 		{
 			if (evt_in.InputSource != Event::Keyboard)

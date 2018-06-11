@@ -37,7 +37,7 @@ namespace FlexKit
 	class FLEXKITAPI Camera
 	{
 	public:
-		struct __declspec(align(16)) BufferLayout
+		struct __declspec(align(16)) CameraConstantBuffer
 		{
 			XMMATRIX	View;
 			XMMATRIX	ViewI;
@@ -47,10 +47,6 @@ namespace FlexKit
 			float4		WPOS;
 			float		MinZ;
 			float		MaxZ;
-			float		PointLightCount;
-			float		SpotLightCount;
-			float		WindowWidth;
-			float		WindowHeight;
 
 			float Padding[2];
 
@@ -72,9 +68,10 @@ namespace FlexKit
 
 		};
 
-		FustrumPoints	GetFrustumPoints	(float3 XYZ, Quaternion Q);
-		BufferLayout	GetConstants		(double dt, uint2 HW = { 1u, 1u });
-		NodeHandle		Node;
+
+		FustrumPoints			GetFrustumPoints	(float3 XYZ, Quaternion Q);
+		CameraConstantBuffer	GetConstants		();
+		NodeHandle				Node;
 
 		float FOV;
 		float AspectRatio;
@@ -90,7 +87,10 @@ namespace FlexKit
 		float4x4 PV;	// Projection x View
 		float4x4 IV;	// Inverse Transform
 
-		static MinMax	GetAABS_XZ			(FustrumPoints Points);
+
+		void UpdateMatrices();
+
+		static MinMax	GetAABS_XZ(FustrumPoints Points);
 	};
 
 

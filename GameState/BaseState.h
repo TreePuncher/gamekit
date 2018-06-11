@@ -46,6 +46,8 @@ public:
 				Framework->Core->GetTempMemory(),
 				Framework->Core->RenderSystem}
 	{
+		InitiateCameraTable(Framework->Core->GetBlockMemory());
+		InitiateOrbitCameras(Framework->Core->GetBlockMemory());
 	}
 
 	~BaseState()
@@ -54,6 +56,10 @@ public:
 		Framework->Core->RenderSystem.ReleaseVB(TextBuffer);
 		Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
 
+		ReleaseOrbitCameras(Framework->Core->GetBlockMemory());
+		ReleaseCameraTable();
+
+		std::cout << "TESTING\n";
 		// TODO: Release this Depth Buffer
 		//Framework->Core->RenderSystem.ReleaseDp
 	}

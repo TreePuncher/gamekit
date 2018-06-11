@@ -273,5 +273,101 @@ namespace FlexKit
 	}
 
 
+
+	/************************************************************************************************/
+
+
+	DirectX::XMMATRIX CreatePerspective(Camera* camera, bool Invert = false)
+	{
+		DirectX::XMMATRIX InvertPersepective(DirectX::XMMatrixIdentity());
+		if (Invert)
+		{
+			InvertPersepective.r[2].m128_f32[2] = -1;
+			InvertPersepective.r[2].m128_f32[3] = 1;
+			InvertPersepective.r[3].m128_f32[2] = 1;
+		}
+
+		DirectX::XMMATRIX proj = InvertPersepective * XMMatrixTranspose(DirectX::XMMatrixPerspectiveFovRH(camera->FOV, camera->AspectRatio, camera->Near, camera->Far));
+
+		return XMMatrixTranspose(proj);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Camera::UpdateMatrices()
+	{
+		using DirectX::XMMATRIX;
+		using DirectX::XMMatrixTranspose;
+		using DirectX::XMMatrixInverse;
+		
+		XMMATRIX XMView;
+		XMMATRIX XMWT;
+		XMMATRIX XMPV;
+		XMMATRIX XMIV;
+		XMMATRIX XMProj;
+
+		if (Node != NodeHandle{ (unsigned int)-1 })
+			GetTransform(Node, &XMWT);
+		else
+			XMWT = DirectX::XMMatrixIdentity();
+
+		XMView		= XMMatrixInverse(nullptr, XMWT);
+		XMProj		= CreatePerspective(this, invert);
+		XMView		= XMView;
+		XMPV		= XMMatrixTranspose(XMMatrixTranspose(XMProj)* XMView);
+		XMIV		= XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
+		XMWT		= XMWT;
+		
+		WT	 = XMMatrixToFloat4x4(&XMWT);
+		View = XMMatrixToFloat4x4(&XMView);
+		PV	 = XMMatrixToFloat4x4(&XMPV);
+		Proj = XMMatrixToFloat4x4(&XMProj);
+		IV	 = XMMatrixToFloat4x4(&XMIV);
+	}
+
+
+	/************************************************************************************************/
+
+
+	Camera::CameraConstantBuffer Camera::GetConstants()
+	{
+		UpdateMatrices();
+
+		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&WT);
+		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
+
+		Camera::CameraConstantBuffer NewData;
+		NewData.Proj            = Float4x4ToXMMATIRX(&Proj);
+		NewData.View			= XMMatrixTranspose(Float4x4ToXMMATIRX(&View));
+		NewData.ViewI           = XMWT;
+		NewData.PV              = XMMatrixTranspose(XMMatrixTranspose(NewData.Proj) * XMView);
+		NewData.PVI             = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(NewData.Proj) * XMView));
+		NewData.MinZ            = Near;
+		NewData.MaxZ            = Far;
+
+		NewData.WPOS[0]         = XMWT.r[0].m128_f32[3];
+		NewData.WPOS[1]         = XMWT.r[1].m128_f32[3];
+		NewData.WPOS[2]         = XMWT.r[2].m128_f32[3];
+		NewData.WPOS[3]         = 0;
+		
+		Quaternion Q			= GetOrientation(Node);
+		auto CameraPoints		= GetFrustumPoints(NewData.WPOS.xyz(), Q);
+
+		NewData.WSTopLeft     = CameraPoints.FTL;
+		NewData.WSTopRight    = CameraPoints.FTR;
+		NewData.WSBottomLeft  = CameraPoints.FBL;
+		NewData.WSBottomRight = CameraPoints.FBR;
+
+		NewData.WSTopLeft_Near		= CameraPoints.NTL;
+		NewData.WSTopRight_Near		= CameraPoints.NTR;
+		NewData.WSBottomLeft_Near	= CameraPoints.NBL;
+		NewData.WSBottomRight_Near	= CameraPoints.NBR;
+
+		return NewData;
+	}
+
+
 	/************************************************************************************************/
 }

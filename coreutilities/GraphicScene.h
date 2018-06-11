@@ -73,28 +73,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
 	class GraphicScene
 	{
 	public:
-		GraphicScene(int x)
-		{
-			std::cout << "STUFF HAPPENED";
-		}
-
 		GraphicScene(
-			iAllocator*					memory, 
-			iAllocator*					tempmemory) :
-				Memory						(memory),
-				TempMemory					(tempmemory),
-				HandleTable					(memory),
-				DrawableHandles				(memory),
-				Drawables					(memory),
-				DrawableVisibility			(memory),
-				DrawableRayVisibility		(memory),
-				//SpotLightCasters			(memory),
-				TaggedJoints				(memory),
-				_PVS						(tempmemory)
+			RenderSystem*	IN_RS,
+			iAllocator*		memory, 
+			iAllocator*		tempmemory) :
+				Memory						{memory},
+				TempMemory					{tempmemory},
+				HandleTable					{memory},
+				DrawableHandles				{memory},
+				Drawables					{memory},
+				DrawableVisibility			{memory},
+				DrawableRayVisibility		{memory},
+				//SpotLightCasters			{memory},
+				TaggedJoints				{memory},
+				RS							{IN_RS},
+				_PVS						{tempmemory}
 		{
 			using FlexKit::CreateSpotLightList;
 			using FlexKit::CreatePointLightList;
@@ -214,12 +210,10 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI void InitiateGraphicScene			( GraphicScene* Out, RenderSystem* in_RS, SceneNodeComponentSystem* in_SN, iAllocator* Memory, iAllocator* TempMemory );
-
 	FLEXKITAPI void UpdateGraphicScene				( GraphicScene* SM );
 	FLEXKITAPI void UpdateAnimationsGraphicScene	( GraphicScene* SM, double dt );
 	FLEXKITAPI void UpdateGraphicScenePoseTransform	( GraphicScene* SM );
-	FLEXKITAPI void GetGraphicScenePVS				( GraphicScene* SM, Camera* C, PVS* __restrict out, PVS* __restrict T_out );
+	FLEXKITAPI void GetGraphicScenePVS				( GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out );
 	FLEXKITAPI void UploadGraphicScene				( GraphicScene* SM, PVS* , PVS* );
 	FLEXKITAPI void UpdateShadowCasters				( GraphicScene* SM );
 
@@ -228,6 +222,10 @@ namespace FlexKit
 
 	FLEXKITAPI bool LoadScene ( RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp );
 	FLEXKITAPI bool LoadScene ( RenderSystem* RS, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp );
+
+
+	/************************************************************************************************/
+
 
 	void Release(DrawablePoseState* EPS, iAllocator* allocator)
 	{
@@ -238,6 +236,35 @@ namespace FlexKit
 		EPS->CurrentPose = nullptr;
 	}
 
-}
+
+	/************************************************************************************************/
+
+
+	class DrawableBehavior
+	{
+	public:
+		DrawableBehavior(GraphicScene* IN_ParentScene = nullptr, EntityHandle Handle = EntityHandle(-1)) :
+			ParentScene	{IN_ParentScene},
+			Entity		{Handle}	{}
+
+
+		void		SetNode(NodeHandle Handle) 
+		{
+			ParentScene->SetNode(Entity, Handle);
+		}
+
+
+		NodeHandle	GetNode() 
+		{ 
+			return ParentScene->GetNode(Entity); 
+		}
+
+
+		GraphicScene*	ParentScene;
+		EntityHandle	Entity;
+	};
+
+
+}	/************************************************************************************************/
 
 #endif

@@ -654,6 +654,7 @@ namespace FlexKit
 			},
 			[](auto& Data)
 			{
+				FK_LOG_9("Transform Update");
 				UpdateTransforms();
 			});
 

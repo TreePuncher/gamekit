@@ -88,7 +88,10 @@ public:
 };
 
 
-FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, FMOD_SoundSystem* Sounds)
+/************************************************************************************************/
+
+
+inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, FMOD_SoundSystem* Sounds)
 {
 	struct SoundUpdateData
 	{
@@ -104,8 +107,8 @@ FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, FMO
 		},
 		[](auto& Data)
 		{
+			FK_LOG_9("Sound Update");
 			Data.Sounds->Update();
-			std::cout << "Updating Sound!\n";
 		});
 
 	return &SoundUpdate;
@@ -162,10 +165,6 @@ class DebugCameraController :
 public:
 	void Initiate()
 	{
-		//auto YawNode = CreateNode();
-		//SetParent(YawNode);
-		TranslateWorld({ 0, 0, -10 });
-		Yaw(pi);
 	}
 
 	bool EventHandler(Event evt)
@@ -243,21 +242,42 @@ public:
 /************************************************************************************************/
 
 
-/*
-class PlayerController
+class PlayerPuppet:
+		public DrawableBehavior,
+		public SceneNodeBehavior
 {
 public: 
-	PlayerController(ComponentListInterface& Components) : 
-		SceneNodeBehavior	{Components},
-		DrawableBehavior	{Components}
-	{}
+	PlayerPuppet(GraphicScene* ParentScene, EntityHandle Handle) :
+		DrawableBehavior	{ParentScene, Handle},
+		SceneNodeBehavior	{GetNode()}
+	{
+	}
+
+
+	PlayerPuppet(const PlayerPuppet&) = delete;
+
+
+	PlayerPuppet(PlayerPuppet && rhs)
+	{
+		Node		 = rhs.Node;
+		Entity		 = rhs.Entity;
+		ParentScene	 = rhs.ParentScene;
+	}
 
 	void Update(float dt)
 	{
 		Yaw(dt * pi);
 	}
 };
-*/
+
+
+PlayerPuppet&& CreatePlayerPuppet(GraphicScene* ParentScene)
+{
+	return PlayerPuppet(
+		ParentScene,
+		ParentScene->CreateDrawableAndSetMesh("Flower"));
+}
+
 
 /************************************************************************************************/
 
@@ -299,11 +319,13 @@ public:
 	VertexBufferHandle		VertexBuffer;
 	VertexBufferHandle		TextBuffer;
 
-	GameGrid			Grid;
-	LocalPlayerHandler	Player1_Handler;
-	LocalPlayerHandler	Player2_Handler;
+	GameGrid				Grid;
+	LocalPlayerHandler		Player1_Handler;
+	LocalPlayerHandler		Player2_Handler;
+	DebugCameraController	OrbitCamera;
 
 	FMOD_SoundSystem	Sound;
+	PlayerPuppet		Puppet;
 
 	FlexKit::CircularBuffer<GameGridFrame, 120>	FrameCache;
 

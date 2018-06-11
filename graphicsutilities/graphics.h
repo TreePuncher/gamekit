@@ -2853,7 +2853,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Upload					(RenderSystem* RS, SceneNodes* Nodes, iAllocator* Temp, Camera* C);
 	void BuildGeometryTable		(RenderSystem* RS, iAllocator* TempMemory, StaticMeshBatcher* Batcher);
 	void CleanUpStaticBatcher	(StaticMeshBatcher* Batcher);
 
@@ -2870,10 +2869,7 @@ namespace FlexKit
 
 	FLEXKITAPI size_t GetVidMemUsage	( RenderSystem* RS);
 
-	FLEXKITAPI void	Release			( RenderSystem* System );
-	FLEXKITAPI void	ReleaseCamera	( SceneNodes* Nodes, Camera* camera );
-
-
+	FLEXKITAPI void	Release						( RenderSystem* System );
 	FLEXKITAPI void Push_DelayedRelease			( RenderSystem* RS, ID3D12Resource* Res);
 	FLEXKITAPI void Free_DelayedReleaseResources( RenderSystem* RS);
 
@@ -2919,13 +2915,11 @@ namespace FlexKit
 	FLEXKITAPI bool					ResizeRenderWindow			( RenderSystem*, RenderWindow* Window, uint2 HW );
 	FLEXKITAPI void					SetInputWIndow				( RenderWindow* );
 	FLEXKITAPI void					UpdateInput					( void );
-	FLEXKITAPI void					UpdateCamera				( SceneNodes* Nodes, Camera* camera, double dt);
 
 	
 	/************************************************************************************************/
 	// Depreciated API
 
-	FLEXKITAPI void					InitiateCamera				( SceneNodes* Nodes, Camera* out, float AspectRatio = 1.0f, float Near = 0.01, float Far = 10000.0f, bool invert = false );
 	FLEXKITAPI bool					CreateDepthBuffer			( RenderSystem* RS, uint2				Dimensions,	DepthBuffer_Desc&	DepthDesc,	DepthBuffer* out, ID3D12GraphicsCommandList* CL = nullptr );
 	FLEXKITAPI Texture2D			CreateDepthBufferResource	( RenderSystem* RS, Texture2D_Desc*		desc_in,	bool				Float32);
 	FLEXKITAPI bool					CreateInputLayout			( RenderSystem* RS, VertexBufferView**,  size_t count, Shader*, VertexBuffer* OUT );		// Expects Index buffer in index 15

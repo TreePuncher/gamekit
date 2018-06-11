@@ -45,6 +45,8 @@ namespace FlexKit
 		NodeHandle PitchNode;
 		NodeHandle RollNode;
 
+		CameraHandle Camera;
+
 		float MoveRate;
 	};
 
@@ -52,16 +54,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef Handle_t<32> OrbitCamera_Handle;
+	typedef Handle_t<32, GetCRCGUID(OrbitCamera_Handle)> OrbitCamera_Handle;
 
 	void InitiateOrbitCameras	(iAllocator* Memory);
 	void ReleaseOrbitCameras	(iAllocator* Memory);
 	void UpdateOrbitCamera		(MouseInputState& Mouse, double dt);
 
-	OrbitCamera_Handle CreateOrbitCamera(NodeHandle Node, NodeHandle CameraNode, float MoveRate);
+	OrbitCamera_Handle CreateOrbitCamera(float MoveRate = 100);
 
-	void		SetCameraNode			(OrbitCamera_Handle Handle, NodeHandle Node);
+	void					SetCameraNode			(OrbitCamera_Handle Handle, NodeHandle Node);
 
+	CameraHandle			GetCamera				(OrbitCamera_Handle Handle);
 	NodeHandle				GetNode					(OrbitCamera_Handle Handle);
 	Quaternion				GetCameraOrientation	(OrbitCamera_Handle handle);
 	CameraOrbitController	GetOrbitController		(OrbitCamera_Handle Handle);
@@ -78,10 +81,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class OrbitCameraBehavior
+	class OrbitCameraBehavior :
+		public CameraBehavior
 	{
 	public:
-		OrbitCameraBehavior(float MovementSpeed, float3 InitialPos);
+		OrbitCameraBehavior(OrbitCamera_Handle Handle = CreateOrbitCamera(), float MovementSpeed = 100, float3 InitialPos = {0, 0, 0});
 
 		void Update				(const MouseInputState& MouseInput);
 
@@ -105,6 +109,7 @@ namespace FlexKit
 	private:
 		OrbitCamera_Handle	Handle;
 	};
+
 
 }	/************************************************************************************************/
 

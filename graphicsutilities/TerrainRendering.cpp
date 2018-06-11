@@ -830,7 +830,7 @@ namespace FlexKit
 	};
 	*/
 
-	void UploadLandscape(RenderSystem* RS, Landscape* ls, Camera* Camera, bool UploadRegions, bool UploadConstants, int PassCount)
+	void UploadLandscape(RenderSystem* RS, Landscape* ls, CameraHandle Camera, bool UploadRegions, bool UploadConstants, int PassCount)
 	{
 		if (!ls->Regions.size())
 			return;
@@ -839,13 +839,14 @@ namespace FlexKit
 		{
 			Landscape::ConstantBufferLayout Buffer;
 
-			float3 POS      = GetPositionW(Camera->Node);
-			Quaternion Q    = GetOrientation(Camera->Node);
+			auto CameraNode = GetCameraNode(Camera);
+			float3 POS      = GetPositionW		(CameraNode);
+			Quaternion Q    = GetOrientation	(CameraNode);
 			Buffer.Albedo	= {1, 1, 1, 0.9f};
 			Buffer.Specular = {1, 1, 1, 1};
 
 			Buffer.RegionDimensions = {};
-			Buffer.Frustum			= GetFrustum(Camera, POS, Q);
+			Buffer.Frustum			= GetFrustum(Camera);
 			Buffer.PassCount		= PassCount;
 			UpdateResourceByTemp(RS, &ls->ConstantBuffer, &Buffer, sizeof(Buffer), 1, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 		}
@@ -866,7 +867,7 @@ namespace FlexKit
 		UploadLandscape2
 			Allows use of a different Frustum for debugging purposes.
 	*/
-	void UploadLandscape2(RenderSystem* RS, Landscape* ls, Camera* Camera, Frustum F, bool UploadRegions, bool UploadConstants, int PassCount)
+	void UploadLandscape2(RenderSystem* RS, Landscape* ls, CameraHandle Camera, Frustum F, bool UploadRegions, bool UploadConstants, int PassCount)
 	{
 		if (!ls->Regions.size())
 			return;
@@ -875,8 +876,9 @@ namespace FlexKit
 		{
 			Landscape::ConstantBufferLayout Buffer;
 
-			float3 POS = GetPositionW(Camera->Node);
-			Quaternion Q = GetOrientation(Camera->Node);
+			auto CameraNode = GetCameraNode	(Camera);
+			float3 POS		= GetPositionW	(CameraNode);
+			Quaternion Q	= GetOrientation(CameraNode);
 			Buffer.Albedo = { 1, 1, 1, 0.9f };
 			Buffer.Specular = { 1, 1, 1, 1 };
 

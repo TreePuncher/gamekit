@@ -588,17 +588,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GetGraphicScenePVS(GraphicScene* SM, Camera* C, PVS* __restrict out, PVS* __restrict T_out)
+	void GetGraphicScenePVS(GraphicScene* SM, CameraHandle Camera, PVS* __restrict out, PVS* __restrict T_out)
 	{
-		FK_ASSERT(out   != T_out);
-		FK_ASSERT(C     != nullptr);
-		FK_ASSERT(SM    != nullptr);
-		FK_ASSERT(out   != nullptr);
-		FK_ASSERT(T_out != nullptr);
+		FK_ASSERT(out		!= T_out);
+		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
+		FK_ASSERT(SM		!= nullptr);
+		FK_ASSERT(out		!= nullptr);
+		FK_ASSERT(T_out		!= nullptr);
 
 
-		Quaternion Q = FlexKit::GetOrientation(C->Node);
-		auto F = GetFrustum(C, GetPositionW(C->Node), Q);
+		auto CameraNode = GetCameraNode(Camera);
+		float3	POS		= GetPositionW(CameraNode);
+		Quaternion Q	= GetOrientation(CameraNode);
+
+		auto F			= GetFrustum(Camera);
 
 		auto End = SM->Drawables.size();
 		for (size_t I = 0; I < End; ++I)
@@ -608,7 +611,6 @@ namespace FlexKit
 			auto Ls		= GetLocalScale		(E.Node).x;
 			auto Pw		= GetPositionW		(E.Node);
 			auto Lq		= GetOrientation	(E.Node);
-
 			auto BS		= Mesh->BS;
 
 			BoundingSphere BoundingVolume = float4((Lq * BS.xyz()) + Pw, BS.w * Ls);

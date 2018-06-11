@@ -35,7 +35,7 @@ namespace FlexKit
 {
 	typedef uint32_t index_t;
 
-	template< typename int HandleSize = 32 >
+	template< typename int HandleSize = 32, typename int ID = -1>
 	class Handle_t
 	{
 	public:

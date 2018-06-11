@@ -80,11 +80,15 @@ namespace FlexKit
 			{	// Game Tick  -----------------------------------------------------------------------------------
 				::UpdateInput();
 
+				FK_LOG_9("Frame Begin");
+
 				Framework.Update			(dT);
 				Framework.UpdateFixed		(StepSize);
 				Framework.UpdatePreDraw		(Core->GetTempMemory(), dT);
 				Framework.Draw				(Core->GetTempMemory());
 				Framework.PostDraw			(Core->GetTempMemory(), dT);
+
+				FK_LOG_9("Frame End");
 
 				// Memory -----------------------------------------------------------------------------------
 				//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks

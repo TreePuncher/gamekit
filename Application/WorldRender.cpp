@@ -156,7 +156,7 @@ namespace FlexKit
 	}
 
 
-	void WorldRender::DefaultRender(PVS& Drawables, Camera& Camera, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
+	void WorldRender::DefaultRender(PVS& Drawables, CameraHandle Camera, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
 	{
 		//ClearDepthBuffer(Graph, Targets.DepthTarget,	1.0f);
 		//ClearDepthBuffer(Graph, OcclusionBuffer,		1.0f);
@@ -166,7 +166,7 @@ namespace FlexKit
 
 	void WorldRender::RenderDrawabledPBR_Forward(
 		PVS&					Drawables, 
-		Camera&					Camera,
+		CameraHandle			Camera,
 		WorldRender_Targets&	Targets,
 		FrameGraph&				Graph, 
 		iAllocator*				Memory)
@@ -207,7 +207,7 @@ namespace FlexKit
 			//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
 
 			Data.Draws = ForwardDrawableList{ Memory };
-			Camera::BufferLayout CameraConstants = Camera.GetConstants(0.0f);
+			Camera::CameraConstantBuffer CameraConstants = GetCameraConstantBuffer(Camera);
 
 			auto CameraConsantsOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
 			PushConstantBufferData(CameraConstants, ConstantBuffer, Graph.Resources);

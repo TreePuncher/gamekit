@@ -69,8 +69,8 @@ namespace FlexKit
 			RS->ReleaseCB(ConstantBuffer);
 		}
 
-		void DefaultRender				(PVS& Objects, Camera& Camera, WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
-		void RenderDrawabledPBR_Forward	(PVS& Objects, Camera& Camera_ptr, WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
+		void DefaultRender				(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
+		void RenderDrawabledPBR_Forward	(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
 
 		void ClearGBuffer				(FrameGraph& Graph);
 		void RenderDrawabledPBR_Main	(PVS& Objects, FrameGraph& Graph);

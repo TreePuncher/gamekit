@@ -455,7 +455,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseGameFramework(EngineCore* Engine, GameFramework* State)
+	void ReleaseGameFramework(EngineCore* Core, GameFramework* State)
 	{
 		auto RItr = State->SubStates.rbegin();
 		auto REnd = State->SubStates.rend();
@@ -464,6 +464,10 @@ namespace FlexKit
 			(*RItr)->~FrameworkState();
 			RItr++;
 		}
+
+
+		ReleaseGeometryTable();
+		ReleaseResourceTable();
 
 		//Release(State->DefaultAssets.Font);
 		Release(State->DefaultAssets.Terrain);
@@ -521,6 +525,9 @@ namespace FlexKit
 	void InitiateFramework(EngineCore* Core, GameFramework& Framework)
 	{
 		SetDebugMemory(Core->GetDebugMemory());
+		InitiateResourceTable(Core->GetBlockMemory());
+		InitiateGeometryTable(Core->GetBlockMemory());
+		InitiateCameraTable(Core->GetBlockMemory());
 
 		AddResourceFile("assets\\assets.gameres");
 		AddResourceFile("assets\\ResourceFile.gameres");
@@ -550,7 +557,7 @@ namespace FlexKit
 		Framework.Stats.FPS_Counter				= 0;
 		Framework.Stats.Fps_T					= 0.0;
 		Framework.Stats.ObjectsDrawnLastFrame	= 0;
-
+		Framework.RootNode						= GetZeroedNode();
 
 		{
 			uint2	WindowRect	   = Core->Window.WH;

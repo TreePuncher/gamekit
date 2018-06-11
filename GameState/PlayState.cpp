@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\PipelineState.h"
 
 
-//#define DEBUGCAMERA
+#define DEBUGCAMERA
 
 #pragma comment(lib, "fmod64_vc.lib")
 
@@ -55,14 +55,19 @@ PlayState::PlayState(
 		EventMap		{Framework->Core->GetBlockMemory()},
 		Scene			
 			{
+				Framework->Core->RenderSystem,
 				Framework->Core->GetBlockMemory(),
 				Framework->Core->GetTempMemory()
-			}
+			},
+		Puppet{CreatePlayerPuppet(Scene)}
 {
-	InitiateOrbitCameras(Framework->Core->GetBlockMemory());
-
 	Player1_Handler.SetActive(Grid.CreatePlayer({ 11, 11 }));
 	Grid.CreateGridObject({10, 5});
+
+	OrbitCamera.SetCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
+	OrbitCamera.TranslateWorld({0, 2, -5});
+	OrbitCamera.Yaw(pi);
+
 
 #ifndef DEBUGCAMERA
 	EventMap.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
@@ -91,8 +96,6 @@ PlayState::PlayState(
 
 PlayState::~PlayState()
 {
-	ReleaseOrbitCameras(Framework->Core->GetBlockMemory());
-
 	// TODO: Make this not stoopid 
 	Framework->Core->GetBlockMemory().free(this);
 }
@@ -112,8 +115,8 @@ bool PlayState::EventHandler(Event evt)
 	//	Player2_Handler.Handle(evt);
 #else
 	Event Remapped;
-	//if(EventMap.Map(evt, Remapped))
-	//	DebugCamera.EventHandler(Remapped);
+	if(EventMap.Map(evt, Remapped))
+		OrbitCamera.EventHandler(Remapped);
 #endif
 
 	return true;
@@ -138,19 +141,24 @@ bool PlayState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double 
 		Player2_Handler.Update(dT);
 	Grid.Update(dT, Engine->GetTempMemory());
 
-	QueueSoundUpdate(Dispatcher, &Sound);
+
 #else
 	float HorizontalMouseMovement	= float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
 	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
 
 	Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
-	//DebugCamera.Yaw(Framework->MouseState.Normalized_dPos[0]);
-	//DebugCamera.Pitch(Framework->MouseState.Normalized_dPos[1]);
+	OrbitCamera.Yaw(Framework->MouseState.Normalized_dPos[0]);
+	OrbitCamera.Pitch(Framework->MouseState.Normalized_dPos[1]);
 
-	//DebugCamera.Update(dT);
+	OrbitCamera.Update(dT);
 	//LocalPlayer.Update(dT);
 #endif
 
+	//TranslateWorld(GetCameraNode(OrbitCamera), { 0, 0, (float)(-10.0f * dT) });
+
+	QueueSoundUpdate(Dispatcher, &Sound);
+	auto TransformTask = QueueTransformUpdateTask(Dispatcher);
+	QueueCameraUpdate(Dispatcher, TransformTask);
 
 
 	return false;
@@ -158,6 +166,7 @@ bool PlayState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double 
 
 
 /************************************************************************************************/
+
 
 bool PlayState::DebugDraw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
 {
@@ -207,15 +216,14 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		Core->GetTempMemory()
 	);
 #else
-	Camera* ActiveCamera = nullptr;
 	PVS Drawables				{Core->GetTempMemory()};
 	PVS TransparentDrawables	{Core->GetTempMemory()};
 
-	GetGraphicScenePVS(Scene, ActiveCamera, &Drawables, &TransparentDrawables);
+	GetGraphicScenePVS(Scene, OrbitCamera, &Drawables, &TransparentDrawables);
 
 	Render->DefaultRender(
 		Drawables, 
-		*ActiveCamera, 
+		OrbitCamera,
 		Targets,
 		FrameGraph, 
 		Core->GetTempMemory());

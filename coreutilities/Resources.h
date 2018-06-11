@@ -133,7 +133,10 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	FLEXKITAPI void			InitiateResourceTable	(iAllocator* Memory);
+	FLEXKITAPI void			ReleaseResourceTable	();
+
 	FLEXKITAPI size_t		ReadResourceTableSize	(FILE* F);
 	FLEXKITAPI size_t		ReadResourceSize		(FILE* F, ResourceTable* Table, size_t Index);
 
