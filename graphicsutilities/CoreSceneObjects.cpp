@@ -333,8 +333,6 @@ namespace FlexKit
 
 	Camera::CameraConstantBuffer Camera::GetConstants()
 	{
-		UpdateMatrices();
-
 		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&WT);
 		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
 
