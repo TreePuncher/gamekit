@@ -59,7 +59,6 @@ public:
 		ReleaseOrbitCameras(Framework->Core->GetBlockMemory());
 		ReleaseCameraTable();
 
-		std::cout << "TESTING\n";
 		// TODO: Release this Depth Buffer
 		//Framework->Core->RenderSystem.ReleaseDp
 	}

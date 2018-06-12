@@ -24,6 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Gameplay.h"
 #include "..\coreutilities\containers.h"
+#include <algorithm>
 
 
 /************************************************************************************************/
@@ -51,6 +52,21 @@ GridObject_Handle GameGrid::CreateGridObject(GridID_t CellID)
 	MarkCell(CellID, EState::Object);
 
 	return Objects.size() - 1;
+}
+
+
+/************************************************************************************************/
+
+
+GridSpace_Handle GameGrid::CreateGridSpace(GridID_t CellID)
+{
+	Spaces.push_back(GridSpace());
+
+	Spaces.back().XY = CellID;
+	MarkCell(CellID, EState::Destroyed);
+
+	return Spaces.size() - 1;
+
 }
 
 
@@ -158,6 +174,15 @@ bool GameGrid::IsCellDestroyed(GridID_t GridID)
 void GameGrid::Update(const double dt, iAllocator* TempMemory)
 {
 	auto RemoveList = FlexKit::Vector<iGridTask**>(TempMemory);
+
+	std::stable_sort(
+		Tasks.begin(), 
+		Tasks.end(), 
+		[](auto& lhs, auto& rhs) -> bool
+		{
+			return lhs->UpdatePriority > rhs->UpdatePriority;
+		});
+
 
 	for (auto& Task : Tasks)
 	{
@@ -289,7 +314,18 @@ void MovePlayerTask::Update(const double dt)
 			(float)temp[0], 
 			(float)temp[1] };
 
-		Grid->Players[Player].Offset = { C * T };
+		auto State = Grid->GetCellState(B);
+		if (State != EState::InUse)
+		{
+			Grid->MarkCell(A, EState::Player);
+
+			Grid->Players[Player].State		= GridPlayer::PS_Idle;
+			Grid->Players[Player].XY		= A;
+			Grid->Players[Player].Offset	= { 0.f, 0.f };
+			complete = true;
+		}
+		else
+			Grid->Players[Player].Offset = { C * T };
 	}
 	else
 	{
@@ -367,17 +403,17 @@ void RegularBombTask::Update(const double dt)
 		Grid->MarkCell(BombEntry.XY + int2{  0,  1 }, EState::Destroyed);
 		Grid->MarkCell(BombEntry.XY + int2{  1,  1 }, EState::Destroyed);
 
-		Grid->CreateGridObject(BombEntry.XY + int2{ -1, -1 });
-		Grid->CreateGridObject(BombEntry.XY + int2{ -0, -1 });
-		Grid->CreateGridObject(BombEntry.XY + int2{  1, -1 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{ -1, -1 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{ -0, -1 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{  1, -1 });
 
-		Grid->CreateGridObject(BombEntry.XY + int2{ -1, -0 });
-		Grid->CreateGridObject(BombEntry.XY + int2{ -0, -0 });
-		Grid->CreateGridObject(BombEntry.XY + int2{  1, -0 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{ -1, -0 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{ -0, -0 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{  1, -0 });
 
-		Grid->CreateGridObject(BombEntry.XY + int2{ -1,  1 });
-		Grid->CreateGridObject(BombEntry.XY + int2{  0,  1 });
-		Grid->CreateGridObject(BombEntry.XY + int2{  1,  1 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{ -1,  1 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{  0,  1 });
+		Grid->CreateGridSpace(BombEntry.XY + int2{  1,  1 });
 	}
 
 	Grid->SetBomb(Bomb, BombEntry);
@@ -450,6 +486,15 @@ void DrawGameGrid_Debug(
 				Object.XY[1] * RStep }, 
 				{ CStep , RStep },
 				{0.5f, 0.5f, 0.5f, 1.0f}));
+
+
+	for (auto Object : Grid.Spaces)
+		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+			RectangleShape(float2{
+				Object.XY[0] * CStep,
+				Object.XY[1] * RStep },
+				{ CStep , RStep },
+				{ 0.5f, 0.0f, 0.0f, 1.0f }));
 }
 
 

@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\PipelineState.h"
 
 
-#define DEBUGCAMERA
+//#define DEBUGCAMERA
 
 #pragma comment(lib, "fmod64_vc.lib")
 
@@ -147,6 +147,7 @@ bool PlayState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double 
 	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
 
 	Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
+
 	OrbitCamera.Yaw(Framework->MouseState.Normalized_dPos[0]);
 	OrbitCamera.Pitch(Framework->MouseState.Normalized_dPos[1]);
 

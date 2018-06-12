@@ -45,6 +45,7 @@ using FlexKit::GameFramework;
 
 typedef size_t Player_Handle;
 typedef size_t GridObject_Handle;
+typedef size_t GridSpace_Handle;
 
 
 /************************************************************************************************/
@@ -125,7 +126,12 @@ typedef uint64_t		BombID_t;
 
 struct GridObject
 {
-	FlexKit::int2 XY = {0, 0};
+	FlexKit::int2 XY = { 0, 0 };
+};
+
+struct GridSpace
+{
+	FlexKit::int2 XY = { 0, 0 };
 };
 
 
@@ -146,7 +152,9 @@ struct GridBomb
 class iGridTask
 {
 public:
-	iGridTask() {}
+	iGridTask() : UpdatePriority{ 0 } {}
+
+	int UpdatePriority;
 
 	virtual ~iGridTask() {}
 
@@ -195,6 +203,7 @@ public:
 		Memory { memory },
 		Players{ memory },
 		Objects{ memory },
+		Spaces { memory },
 		Tasks  { memory },
 		Grid   { memory },
 		WH	   { 20, 20 }
@@ -209,6 +218,7 @@ public:
 
 	Player_Handle		CreatePlayer	(GridID_t CellID);
 	GridObject_Handle	CreateGridObject(GridID_t CellID);
+	GridObject_Handle	CreateGridSpace (GridID_t CellID);
 	void				CreateBomb		(EBombType Type, GridID_t CellID, BombID_t ID, Player_Handle PlayerID);
 
 	bool MovePlayer		(Player_Handle Player, GridID_t GridID);
@@ -231,6 +241,7 @@ public:
 	FlexKit::Vector<GridPlayer>		Players;
 	FlexKit::Vector<GridBomb>		Bombs;
 	FlexKit::Vector<GridObject>		Objects;
+	FlexKit::Vector<GridSpace>		Spaces;
 	FlexKit::Vector<iGridTask*>		Tasks;
 	FlexKit::Vector<EState>			Grid;
 
@@ -553,8 +564,9 @@ public:
 			T			{0.0f},
 			Grid		{grid}
 	{
+		UpdatePriority = 10;
 		Grid->Players[Player].State = GridPlayer::PS_Moving;
-		Grid->MarkCell(A, EState::InUse);
+		Grid->MarkCell(B, EState::InUse);
 	}
 
 	MovePlayerTask& operator = (MovePlayerTask& rhs) = delete;
