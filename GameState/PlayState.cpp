@@ -258,15 +258,17 @@ void DrawGame(
 /************************************************************************************************/
 
 
-FrameSnapshot::FrameSnapshot(Game* IN_Game, size_t IN_FrameID, iAllocator* IN_Memory) :
+FrameSnapshot::FrameSnapshot(Game* IN_Game, EventList* IN_FrameEvents, size_t IN_FrameID, iAllocator* IN_Memory) :
 	FrameID		{  IN_FrameID	},
 	FrameCopy	{  IN_Memory	},
-	Memory		{  IN_Memory	}
+	Memory		{  IN_Memory	},
+	FrameEvents {  IN_Memory	}
 {
 	if (!IN_Memory)
 		return;
 
-	FrameCopy = *IN_Game;
+	FrameEvents = *IN_FrameEvents;
+	FrameCopy   = *IN_Game;
 }
 
 
@@ -298,7 +300,8 @@ PlayState::PlayState(
 	VertexBufferHandle		IN_TextBuffer,
 	ConstantBufferHandle	IN_ConstantBuffer) :
 		FrameworkState	{IN_Framework},
-		
+
+		FrameEvents		{Framework->Core->GetBlockMemory()},
 		FrameID			{0},
 		Sound			{Framework->Core->Threads},
 		DepthBuffer		{IN_DepthBuffer},
@@ -363,18 +366,7 @@ PlayState::~PlayState()
 
 bool PlayState::EventHandler(Event evt)
 {
-#ifndef DEBUGCAMERA
-	Event Remapped;
-	if (Player1_Handler.Enabled && EventMap.Map(evt, Remapped))
-		Player1_Handler.Handle(Remapped);
-
-	//if (Player2_Handler.Enabled)
-	//	Player2_Handler.Handle(evt);
-#else
-	Event Remapped;
-	if(EventMap.Map(evt, Remapped))
-		OrbitCamera.EventHandler(Remapped);
-#endif
+	FrameEvents.push_back(evt);
 
 	return true;
 }
@@ -385,13 +377,26 @@ bool PlayState::EventHandler(Event evt)
 
 bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
 {
-	for (auto rhs : LocalGame.Tasks)
+	FrameCache.push_back(FrameSnapshot(&LocalGame, &FrameEvents, ++FrameID, Core->GetBlockMemory()));
+
+	for (auto& evt : FrameEvents)
 	{
-		if (!rhs)
-			int x = 0;
+#ifndef DEBUGCAMERA
+		Event Remapped;
+		if (Player1_Handler.Enabled && EventMap.Map(evt, Remapped))
+			Player1_Handler.Handle(Remapped);
+
+		//if (Player2_Handler.Enabled)
+		//	Player2_Handler.Handle(evt);
+#else
+		Event Remapped;
+		if (EventMap.Map(evt, Remapped))
+			OrbitCamera.EventHandler(Remapped);
+#endif
 	}
 
-	FrameCache.push_back(FrameSnapshot(&LocalGame, ++FrameID, Core->GetBlockMemory()));
+	FrameEvents.clear();
+
 
 #ifndef DEBUGCAMERA
 	// Check if any players Died

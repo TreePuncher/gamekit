@@ -688,35 +688,6 @@ private:
 };
 
 
-/************************************************************************************************/
-
-
-class FrameSnapshot
-{
-public:
-	FrameSnapshot(Game* IN = nullptr, size_t IN_FrameID = (size_t)-1, iAllocator* IN_Memory = nullptr);
-	~FrameSnapshot();
-
-	FrameSnapshot(const FrameSnapshot&)					= delete;
-	FrameSnapshot& operator = (const FrameSnapshot&)	= delete;
-
-	FrameSnapshot& operator = (FrameSnapshot&& rhs)
-	{
-		FrameCopy = std::move(rhs.FrameCopy);
-		return *this;
-	}
-
-	void Restore	(Game* out);
-	
-	Game	FrameCopy;
-	size_t	FrameID;
-
-	iAllocator* Memory;
-};
-
-
-/************************************************************************************************/
-
 
 
 #endif

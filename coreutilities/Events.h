@@ -37,6 +37,12 @@ namespace FlexKit
 {
 	struct FLEXKITAPI Event
 	{
+		Event& operator = (const Event& rhs)
+		{
+			memcpy(this, &rhs, sizeof(Event));
+			return *this;
+		}
+
 		enum EventType
 		{
 			Input,

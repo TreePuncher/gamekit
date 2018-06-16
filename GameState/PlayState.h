@@ -299,6 +299,38 @@ enum ModelHandles
 /************************************************************************************************/
 
 
+typedef Vector<Event> EventList;
+
+class FrameSnapshot
+{
+public:
+	FrameSnapshot(Game* IN = nullptr, EventList* IN_FrameEvents = nullptr, size_t IN_FrameID = (size_t)-1, iAllocator* IN_Memory = nullptr);
+	~FrameSnapshot();
+
+	FrameSnapshot(const FrameSnapshot&)					= delete;
+	FrameSnapshot& operator = (const FrameSnapshot&)	= delete;
+
+	FrameSnapshot& operator = (FrameSnapshot&& rhs)
+	{
+		FrameCopy	= std::move(rhs.FrameCopy);
+		FrameEvents = std::move(rhs.FrameEvents);
+
+		return *this;
+	}
+
+	void Restore	(Game* out);
+	
+	EventList		FrameEvents;
+	Game			FrameCopy;
+	size_t			FrameID;
+
+	iAllocator* Memory;
+};
+
+
+/************************************************************************************************/
+
+
 class PlayState : public FrameworkState
 {
 public:
@@ -343,6 +375,7 @@ public:
 	FMOD_SoundSystem	Sound;
 	PlayerPuppet		Puppet;
 
+	EventList									FrameEvents;
 	FlexKit::CircularBuffer<FrameSnapshot, 120>	FrameCache;
 
 	InputMap	EventMap;
