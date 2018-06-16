@@ -149,14 +149,16 @@ struct GridBomb
 /************************************************************************************************/
 
 
-class iGridTask
+class iGameTask
 {
 public:
-	iGridTask() : UpdatePriority{ 0 } {}
+	iGameTask() : UpdatePriority{ 0 } {}
 
 	int UpdatePriority;
 
-	virtual ~iGridTask() {}
+	virtual ~iGameTask() {}
+
+	virtual iGameTask* MakeCopy(iAllocator* Memory) const = 0;
 
 	virtual void Update(const double dt)	{}
 	virtual bool Complete()					{ return true; }
@@ -180,25 +182,10 @@ enum class EState
 /************************************************************************************************/
 
 
-class GameGridFrame
+class Game
 {
 public:
-	FlexKit::uint2					WH;	
-	FlexKit::Vector<GridPlayer>		Players;
-	FlexKit::Vector<GridBomb>		Bombs;
-	FlexKit::Vector<GridObject>		Objects;
-	FlexKit::Vector<iGridTask*>		Tasks;
-	FlexKit::Vector<EState>			Grid;
-};
-
-
-/************************************************************************************************/
-
-
-class GameGrid
-{
-public:
-	GameGrid(FlexKit::iAllocator* memory) :
+	Game(FlexKit::iAllocator* memory) :
 		Bombs  { memory },
 		Memory { memory },
 		Players{ memory },
@@ -208,12 +195,70 @@ public:
 		Grid   { memory },
 		WH	   { 20, 20 }
 	{
+		if (!memory)
+		{
+			WH = { 0, 0 };
+			return;
+		}
+
 		Grid.resize(WH.Product());
 
 		for (auto& Cell : Grid)
 			Cell = EState::Empty;
 	}
 
+	Game& operator = (Game& rhs)
+	{
+		Release();
+
+		Bombs	= rhs.Bombs;
+		Memory	= rhs.Memory;
+		Players	= rhs.Players;
+		Objects = rhs.Objects;
+		Spaces	= rhs.Spaces;
+		Grid	= rhs.Grid;
+		Tasks	= rhs.Memory;
+		WH		= rhs.WH;
+
+		Tasks.reserve(rhs.Tasks.size());
+
+		for (auto Task : rhs.Tasks)
+				Tasks.push_back(Task->MakeCopy(Memory));
+
+		return *this;
+	}
+
+
+	Game& operator = (Game&& rhs)
+	{
+		Release();
+
+		Bombs	= std::move(rhs.Bombs);
+		Memory	= std::move(rhs.Memory);
+		Players	= std::move(rhs.Players);
+		Objects = std::move(rhs.Objects);
+		Spaces	= std::move(rhs.Spaces);
+		Grid	= std::move(rhs.Grid);
+		WH		= std::move(rhs.WH);
+		Tasks	= std::move(rhs.Tasks);
+
+		return *this;
+	}
+
+
+	void Release()
+	{
+		Players.Release();
+		Bombs.Release();
+		Objects.Release();
+		Spaces.Release();
+		Grid.Release();
+
+		for (auto& T : Tasks)
+			Memory->free(T);
+
+		Tasks.Release();
+	}
 
 
 	Player_Handle		CreatePlayer	(GridID_t CellID);
@@ -242,7 +287,7 @@ public:
 	FlexKit::Vector<GridBomb>		Bombs;
 	FlexKit::Vector<GridObject>		Objects;
 	FlexKit::Vector<GridSpace>		Spaces;
-	FlexKit::Vector<iGridTask*>		Tasks;
+	FlexKit::Vector<iGameTask*>		Tasks;
 	FlexKit::Vector<EState>			Grid;
 
 	iAllocator* Memory;
@@ -268,7 +313,7 @@ public:
 void DrawGameGrid_Debug(
 	double					dt,
 	float					AspectRatio,
-	GameGrid&				Grid,
+	Game&				Grid,
 	FrameGraph&				FrameGraph,
 	ConstantBufferHandle	ConstantBuffer,
 	VertexBufferHandle		VertexBuffer,
@@ -305,7 +350,7 @@ enum PLAYER_EVENTS : int64_t
 class LocalPlayerHandler
 {
 public:
-	LocalPlayerHandler(GameGrid& grid, iAllocator* memory) :
+	LocalPlayerHandler(Game& grid, iAllocator* memory) :
 		Game		{ grid },
 		//Map			{ memory },
 		InputState	{ false, false, false, false, -1 }
@@ -538,7 +583,7 @@ public:
 	FlexKit::CircularBuffer<KeyEventList, 120>	FrameCache;
 
 	Player_Handle	Player;
-	GameGrid&		Game;
+	Game&		Game;
 };
 
 
@@ -546,30 +591,45 @@ public:
 
 
 class MovePlayerTask : 
-	public iGridTask
+	public iGameTask
 {
 public:
-	explicit MovePlayerTask(
+	MovePlayerTask(
 		FlexKit::int2	a, 
 		FlexKit::int2	b,
 		Player_Handle	player,
 		float			Duration,
-		GameGrid*		grid
-			) :
-			A			{a},
-			B			{b},
-			D			{Duration},
-			Player		{player},
-			complete	{false},
-			T			{0.0f},
-			Grid		{grid}
+		Game*			grid) :
+			A			{a				},
+			B			{b				},
+			D			{Duration		},
+			Player		{player			},
+			complete	{false			},
+			T			{0.0f			},
+			Grid		{grid			}
 	{
 		UpdatePriority = 10;
 		Grid->Players[Player].State = GridPlayer::PS_Moving;
 		Grid->MarkCell(B, EState::InUse);
 	}
 
-	MovePlayerTask& operator = (MovePlayerTask& rhs) = delete;
+
+	MovePlayerTask(const MovePlayerTask& Rhs) :
+		T				{Rhs.T				},
+		D				{Rhs.D				},
+		A				{Rhs.A				},
+		Grid			{Rhs.Grid			},
+		Player			{Rhs.Player			},
+		complete		{Rhs.complete		}
+	{
+		UpdatePriority = Rhs.UpdatePriority;
+	}
+
+
+	iGameTask* MakeCopy(iAllocator* Memory) const
+	{
+		return static_cast<iGameTask*>(&Memory->allocate<MovePlayerTask>(*this));
+	}
 
 	void Update(const double dt) override;
 
@@ -580,7 +640,7 @@ public:
 
 	FlexKit::int2	A, B;
 
-	GameGrid*		Grid;
+	Game*			Grid;
 	Player_Handle	Player;
 	bool			complete;
 };
@@ -590,10 +650,10 @@ public:
 
 
 class RegularBombTask :
-	public iGridTask
+	public iGameTask
 {
 public:
-	explicit RegularBombTask(BombID_t IN_Bomb, GameGrid* IN_Grid) :
+	explicit RegularBombTask(BombID_t IN_Bomb, Game* IN_Grid) :
 		Bomb		{ IN_Bomb	},
 		T			{ 0.0f		},
 		T2			{ 0.0f		},
@@ -602,19 +662,61 @@ public:
 	{}
 
 
+	RegularBombTask(const RegularBombTask& Rhs) :
+		Bomb		{ Rhs.Bomb			},
+		T			{ Rhs.T				},
+		T2			{ Rhs.T2			},
+		Completed	{ Rhs.Completed		},
+		Grid		{ Rhs.Grid			}
+	{}
+
+
 	void Update(const double dt) override;
 	bool Complete() { return Completed; }
 
+	iGameTask* MakeCopy(iAllocator* Memory) const
+	{
+		return static_cast<iGameTask*>(&Memory->allocate<RegularBombTask>(*this));
+	}
 
 private:
 	bool		Completed;
 	float		T;
 	float		T2;
 	BombID_t	Bomb;
-	GameGrid*	Grid;
+	Game*		Grid;
 };
 
 
 /************************************************************************************************/
+
+
+class FrameSnapshot
+{
+public:
+	FrameSnapshot(Game* IN = nullptr, size_t IN_FrameID = (size_t)-1, iAllocator* IN_Memory = nullptr);
+	~FrameSnapshot();
+
+	FrameSnapshot(const FrameSnapshot&)					= delete;
+	FrameSnapshot& operator = (const FrameSnapshot&)	= delete;
+
+	FrameSnapshot& operator = (FrameSnapshot&& rhs)
+	{
+		FrameCopy = std::move(rhs.FrameCopy);
+		return *this;
+	}
+
+	void Restore	(Game* out);
+	
+	Game	FrameCopy;
+	size_t	FrameID;
+
+	iAllocator* Memory;
+};
+
+
+/************************************************************************************************/
+
+
 
 #endif

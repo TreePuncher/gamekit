@@ -61,7 +61,7 @@ namespace FlexKit
 			count	= 0;
 		}
 
-		void push_back(const Ty& in)
+		void push_back(const Ty&& in)
 		{
 			_t[end++] = in;
 			end = end % SIZE;
@@ -164,7 +164,7 @@ namespace FlexKit
 		THISTYPE& operator =(const THISTYPE& RHS)
 		{
 			if (!Allocator) Allocator = RHS.Allocator;
-
+			
 			Release();
 			reserve(RHS.size());
 

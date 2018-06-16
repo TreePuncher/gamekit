@@ -58,10 +58,10 @@ namespace FlexKit
 		float3 OP = PV.cross(QV);
 		float  IP = DotProduct3(PV, QV);
 
-		Quaternion out = OP + PV * Q.w + QV * P.w;
-		out.w = IP + P.w * Q.w;
+		float3  Vout = OP + PV * Q.w + QV * P.w;
+		float   Wout = IP + P.w * Q.w;
 		
-		return out;
+		return Quaternion{Vout, Wout};
 #else
 		__m128 lhs = in_1.XYZ();
 		__m128 rhs = in_2.XYZ();
@@ -90,8 +90,8 @@ namespace FlexKit
 		float w = rhs.m128_f32[3] * rhs.m128_f32[3] - DP;
 		out.m128_f32[3] = w;
 
-#endif
 		return out;
+#endif
 	}
 
 

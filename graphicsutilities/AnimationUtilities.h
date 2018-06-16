@@ -47,6 +47,10 @@ namespace FlexKit
 {
 	using DirectX::XMMATRIX;
 
+
+	class GraphicScene;
+
+
 	/************************************************************************************************/
 
 	typedef uint16_t	JointHandle;
@@ -394,7 +398,6 @@ namespace FlexKit
 	FLEXKITAPI void ASDisableCondition	( DAConditionHandle H, AnimationStateMachine* ASM );
 
 
-	struct GraphicScene;
 	FLEXKITAPI void UpdateASM(double dt, AnimationStateMachine* ASM, iAllocator* TempMemory, iAllocator* Memory, GraphicScene* Scene);
 
 	/************************************************************************************************/

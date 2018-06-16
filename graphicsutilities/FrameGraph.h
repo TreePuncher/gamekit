@@ -234,6 +234,10 @@ namespace FlexKit
 			return RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
 		}
 
+		size_t					GetVertexBufferOffset(VertexBufferHandle Handle)
+		{
+			return RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle);
+		}
 
 		DeviceResourceState		GetResourceObjectState(FrameResourceHandle Handle)
 		{

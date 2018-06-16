@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-Player_Handle GameGrid::CreatePlayer(GridID_t CellID)
+Player_Handle Game::CreatePlayer(GridID_t CellID)
 {
 	Players.push_back(GridPlayer());
 	Players.back().XY = CellID;
@@ -44,7 +44,7 @@ Player_Handle GameGrid::CreatePlayer(GridID_t CellID)
 /************************************************************************************************/
 
 
-GridObject_Handle GameGrid::CreateGridObject(GridID_t CellID)
+GridObject_Handle Game::CreateGridObject(GridID_t CellID)
 {
 	Objects.push_back(GridObject());
 
@@ -58,7 +58,7 @@ GridObject_Handle GameGrid::CreateGridObject(GridID_t CellID)
 /************************************************************************************************/
 
 
-GridSpace_Handle GameGrid::CreateGridSpace(GridID_t CellID)
+GridSpace_Handle Game::CreateGridSpace(GridID_t CellID)
 {
 	Spaces.push_back(GridSpace());
 
@@ -73,7 +73,11 @@ GridSpace_Handle GameGrid::CreateGridSpace(GridID_t CellID)
 /************************************************************************************************/
 
 
-void GameGrid::CreateBomb(EBombType Type, GridID_t CellID, BombID_t ID, Player_Handle PlayerID)
+void Game::CreateBomb(
+	EBombType Type, 
+	GridID_t CellID, 
+	BombID_t ID, 
+	Player_Handle PlayerID)
 {
 	if (!Players[PlayerID].DecrementBombSlot(Type))
 		return;
@@ -97,7 +101,7 @@ void GameGrid::CreateBomb(EBombType Type, GridID_t CellID, BombID_t ID, Player_H
 /************************************************************************************************/
 
 
-bool GameGrid::MovePlayer(Player_Handle Player, GridID_t GridID)
+bool Game::MovePlayer(Player_Handle Player, GridID_t GridID)
 {
 	if (Players[Player].State != GridPlayer::PS_Idle)
 		return false;
@@ -123,7 +127,7 @@ bool GameGrid::MovePlayer(Player_Handle Player, GridID_t GridID)
 /************************************************************************************************/
 
 
-bool GameGrid::MoveBomb(GridID_t GridID, int2 Direction)
+bool Game::MoveBomb(GridID_t GridID, int2 Direction)
 {
 	if (GetCellState(GridID) != EState::Bomb)
 		return false;
@@ -143,7 +147,7 @@ bool GameGrid::MoveBomb(GridID_t GridID, int2 Direction)
 /************************************************************************************************/
 
 
-bool GameGrid::IsCellClear(GridID_t GridID)
+bool Game::IsCellClear(GridID_t GridID)
 {
 	if (!IDInGrid(GridID))
 		return false;
@@ -157,7 +161,7 @@ bool GameGrid::IsCellClear(GridID_t GridID)
 /************************************************************************************************/
 
 
-bool GameGrid::IsCellDestroyed(GridID_t GridID)
+bool Game::IsCellDestroyed(GridID_t GridID)
 {
 	if (!IDInGrid(GridID))
 		return false;
@@ -171,9 +175,9 @@ bool GameGrid::IsCellDestroyed(GridID_t GridID)
 /************************************************************************************************/
 
 
-void GameGrid::Update(const double dt, iAllocator* TempMemory)
+void Game::Update(const double dt, iAllocator* TempMemory)
 {
-	auto RemoveList = FlexKit::Vector<iGridTask**>(TempMemory);
+	auto RemoveList = FlexKit::Vector<iGameTask**>(TempMemory);
 
 	std::stable_sort(
 		Tasks.begin(), 
@@ -194,7 +198,7 @@ void GameGrid::Update(const double dt, iAllocator* TempMemory)
 
 	for (auto* Task : RemoveList)
 	{	// Ugh!
-		(*Task)->~iGridTask();
+		(*Task)->~iGameTask();
 		Memory->free(*Task);
 		Tasks.remove_stable(Task);
 	}
@@ -204,7 +208,7 @@ void GameGrid::Update(const double dt, iAllocator* TempMemory)
 /************************************************************************************************/
 
 
-bool GameGrid::MarkCell(GridID_t CellID, EState State)
+bool Game::MarkCell(GridID_t CellID, EState State)
 {
 	size_t Idx = GridID2Index(CellID);
 
@@ -220,7 +224,7 @@ bool GameGrid::MarkCell(GridID_t CellID, EState State)
 /************************************************************************************************/
 
 // Certain State will be lost
-void GameGrid::Resize(uint2 wh)
+void Game::Resize(uint2 wh)
 {
 	WH = wh;
 	Grid.resize(WH.Product());
@@ -239,7 +243,7 @@ void GameGrid::Resize(uint2 wh)
 /************************************************************************************************/
 
 
-bool GameGrid::GetBomb(BombID_t ID, GridBomb& Out)
+bool Game::GetBomb(BombID_t ID, GridBomb& Out)
 {
 	auto Res = FlexKit::find(Bombs, 
 		[this, ID](auto res) 
@@ -256,7 +260,7 @@ bool GameGrid::GetBomb(BombID_t ID, GridBomb& Out)
 /************************************************************************************************/
 
 
-bool GameGrid::SetBomb(BombID_t ID, const GridBomb& In)
+bool Game::SetBomb(BombID_t ID, const GridBomb& In)
 {
 	auto Res = FlexKit::find(Bombs,
 		[this, ID](auto res)
@@ -273,7 +277,7 @@ bool GameGrid::SetBomb(BombID_t ID, const GridBomb& In)
 /************************************************************************************************/
 
 
-EState GameGrid::GetCellState(GridID_t CellID)
+EState Game::GetCellState(GridID_t CellID)
 {
 	size_t Idx = WH[0] * CellID[1] + CellID[0];
 
@@ -284,7 +288,7 @@ EState GameGrid::GetCellState(GridID_t CellID)
 /************************************************************************************************/
 
 
-bool GameGrid::RemoveBomb(BombID_t ID) 
+bool Game::RemoveBomb(BombID_t ID) 
 {
 	auto Res = FlexKit::find(Bombs,
 		[this, ID](auto res)
@@ -426,7 +430,7 @@ void RegularBombTask::Update(const double dt)
 void DrawGameGrid_Debug(
 	double					dt,
 	float					AspectRatio,
-	GameGrid&				Grid,
+	Game&				Grid,
 	FrameGraph&				FrameGraph,
 	ConstantBufferHandle	ConstantBuffer,
 	VertexBufferHandle		VertexBuffer,
@@ -443,12 +447,20 @@ void DrawGameGrid_Debug(
 	const auto RStep = 1.0f / RowCount;
 
 	for (size_t I = 1; I < RowCount; ++I)
-		Lines.push_back({ {0, RStep  * I,1}, {1.0f, 1.0f, 1.0f}, { 1, RStep  * I, 1, 1 }, {1, 1, 1, 1} });
+		Lines.push_back(
+			{	{0, RStep  * I,1}, 
+				{1.0f, 1.0f, 1.0f}, 
+				{ 1, RStep  * I, 1, 1 }, 
+				{1, 1, 1, 1} });
 
 
 	const auto CStep = 1.0f / ColumnCount;
 	for (size_t I = 1; I < ColumnCount; ++I)
-		Lines.push_back({ { CStep  * I, 0, 0 },{ 1.0f, 1.0f, 1.0f },{ CStep  * I, 1, 0 },{ 1, 1, 1, 1 } });
+		Lines.push_back(
+			{	{ CStep  * I, 0, 0 },
+				{ 1.0f, 1.0f, 1.0f },
+				{ CStep  * I, 1, 0 },
+				{ 1, 1, 1, 1 } });
 
 
 	DrawShapes(EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
@@ -496,6 +508,3 @@ void DrawGameGrid_Debug(
 				{ CStep , RStep },
 				{ 0.5f, 0.0f, 0.0f, 1.0f }));
 }
-
-
-/************************************************************************************************/

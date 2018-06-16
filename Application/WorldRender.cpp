@@ -201,7 +201,7 @@ namespace FlexKit
 				Graph.Resources.RenderSystem,
 				Graph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
 				Memory);
-
+			Data.Heap.NullFill(Graph.Resources.RenderSystem);
 
 			//if(OcclusionCulling)
 			//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
@@ -227,8 +227,7 @@ namespace FlexKit
 			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
 			Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
 
-			/*
-			if (OcclusionCulling)
+			if (false)
 			{
 				Ctx->SetScissorAndViewports({ Targets.RenderTarget });
 				Ctx->SetRenderTargets(
@@ -237,12 +236,8 @@ namespace FlexKit
 			}
 			else
 				Ctx->SetPredicate(false);
-			*/
 
-			Data.Heap.NullFill(Resources.RenderSystem);
-			//Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
 
-			Ctx->SetPredicate(false);
 
 			// Setup Initial Shading State
 			Ctx->SetScissorAndViewports({Targets.RenderTarget});
@@ -250,10 +245,11 @@ namespace FlexKit
 				{ (DescHeapPOS)Resources.GetRenderTargetObject(Data.BackBuffer) }, true, 
 				  (DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
 
-			auto temp = Resources.GetPipelineState(FORWARDDRAW);
 			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-			Ctx->SetGraphicsConstantBufferView(1, Data.ConstantBuffer, Data.CameraConsantsOffset);
-			Ctx->SetGraphicsConstantBufferView(3, Data.ConstantBuffer, Data.CameraConsantsOffset);
+
+			Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
+			Ctx->SetGraphicsConstantBufferView	(1, Data.ConstantBuffer, Data.CameraConsantsOffset);
+			Ctx->SetGraphicsConstantBufferView	(3, Data.ConstantBuffer, Data.CameraConsantsOffset);
 
 			for (auto D : Data.Draws)
 			{

@@ -1021,17 +1021,17 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4 operator* ( const float4 a ) const
-		{
+		//inline float4 operator* ( const float4 a ) const
+		//{
 #if USING(FASTMATH)
-			return _mm_mul_ps(pFloats, a);
+		//	return _mm_mul_ps(pFloats, a);
 #else
 			return float4(	x * a.x, 
 							y * a.y, 
 							z * a.z, 
 							w * a.w );
 #endif
-		}
+		//}
 
 		inline float4 operator* ( const float a ) const
 		{
@@ -1207,24 +1207,6 @@ namespace FlexKit
 			( *this ) = X * Y * Z;
 		}
 
-		inline Quaternion	operator * ( Quaternion& q ) {return GrassManProduct(*this, q);}
-
-		inline float3		operator * ( float3& V )
-		{
-			auto v = XYZ() * -1;
-			auto vXV = v.cross(V);
-			auto ret = float3(V + (vXV * (2 * w)) + (v.cross(vXV) * 2));
-
-			return ret;
-		}
-
-		inline Quaternion operator * ( float scaler )
-		{
-			__m128 r = floats; 
-			__m128 s = _mm_set1_ps(scaler); 
-			return _mm_mul_ps(r, s);
-		}
-
 		inline Quaternion& operator *= ( Quaternion& rhs )
 		{
 			(*this) = GrassManProduct(*this, rhs);
@@ -1242,6 +1224,13 @@ namespace FlexKit
 			floats = rhs;
 			return (*this);
 		}
+
+
+		inline Quaternion operator * (Quaternion q)
+		{
+			return GrassManProduct(*this, q);
+		}
+
 
 		inline float& operator [] ( const size_t index )		{ return GetElement_ref	(floats, index); }
 		inline float operator  [] ( const size_t index ) const	{ return GetElement		(floats, index); }
@@ -1368,6 +1357,27 @@ namespace FlexKit
 
 		 __m128	floats;
 	};
+
+
+	/************************************************************************************************/
+
+
+	inline float3		operator * (Quaternion P, float3 V)
+	{
+		auto v = P.XYZ() * -1;
+		auto vXV = v.cross(V);
+		auto ret = float3(V + (vXV * (2 * P.w)) + (v.cross(vXV) * 2));
+
+		return ret;
+	}
+
+
+	inline Quaternion operator * (Quaternion Q, float scaler)
+	{
+		__m128 r = Q;
+		__m128 s = _mm_set1_ps(scaler);
+		return _mm_mul_ps(r, s);
+	}
 
 
 	/************************************************************************************************/

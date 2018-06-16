@@ -37,7 +37,7 @@ namespace FlexKit
 	typedef size_t SpotLightHandle;
 	typedef Pair<bool, int64_t> GSPlayAnimation_RES;
 
-	struct GraphicScene;
+	class  GraphicScene;
 	struct SceneNodeComponentSystem;
 
 	struct QuadTreeNode

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2018 Robert May
+Copyright (c) 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -25,35 +25,67 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Logging.h"
 #include "..\buildsettings.h"
 #include "..\Application\Application.h"
-#include "HostState.cpp"
-#include "ClientState.cpp"
-#include "MenuState.cpp"
-#include "PlayState.cpp"
-#include "BaseState.h"
-#include "Gameplay.cpp"
+
 #include <iostream>
+
+
+/************************************************************************************************/
+
+
+class BenchmarkState :
+	public FlexKit::FrameworkState
+{
+public:
+	BenchmarkState(GameFramework* framework) :
+		FlexKit::FrameworkState{framework}
+
+	{
+
+	}
+
+
+	bool Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) 
+	{ 
+		return true; 
+	}
+
+
+	bool Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) 
+	{ 
+		return true; 
+	}
+
+
+	bool EventHandler(Event evt) 
+	{ 
+		return true; 
+	};
+
+	bool UseGeometryShader = false;
+
+	VertexBufferHandle		VertexBuffer;
+	ConstantBufferHandle	ConstantBuffer;
+};
+
+
+/************************************************************************************************/
 
 
 int main(int argc, char* argv[])
 {
 	FlexKit::InitLog(argc, argv);
 	FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
-	FlexKit::AddLogFile("GameState.log", FlexKit::Verbosity_INFO);
+	FlexKit::AddLogFile("benchmark.log", FlexKit::Verbosity_INFO);
 	FK_LOG_INFO("Logging initialized started.");
 
 	FlexKit::FKApplication App;
 
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);
+	
+	auto& GameBase = App.PushState<BenchmarkState>();
 
-	auto& GameBase = App.PushState<BaseState>(&App);
-
-	App.PushState<PlayState>(
-			&GameBase.Render,
-			GameBase.DepthBuffer,
-			GameBase.VertexBuffer,
-			GameBase.TextBuffer,
-			GameBase.ConstantBuffer);
+	App.PushState<BenchmarkState>();
 
 	FK_LOG_INFO("Set initial PlayState state.");
 

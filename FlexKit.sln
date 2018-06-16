@@ -14,11 +14,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FlexKitResourceCompiler", "FlexKitResourceCompiler\FlexKitResourceCompiler.vcxproj", "{2994D4AB-F8E7-4617-909E-6BD87E211C6F}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestState", "GameState\GameState.vcxproj", "{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestGame", "GameState\GameState.vcxproj", "{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}"
 EndProject
 Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "MayaToolsetPlugin", "FlexKitMayaPlug\MayaToolsetPlugin.pyproj", "{7828BEEE-4732-47F4-BE45-9B13F8EF33C9}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiThreadTesting", "MultiThreadTesting\MultiThreadTesting.vcxproj", "{A2502145-C5CF-4FDB-964B-82DF93342054}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GeometryShaderBenchmark", "GeometryShaderBenchmark\GeometryShaderBenchmark.vcxproj", "{078C9529-96C1-40D9-B9A3-16E67CF81E94}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -80,6 +82,14 @@ Global
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x64.Build.0 = Release|x64
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x86.ActiveCfg = Release|Win32
 		{A2502145-C5CF-4FDB-964B-82DF93342054}.Release|x86.Build.0 = Release|Win32
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Debug|Any CPU.ActiveCfg = Debug|Win32
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Debug|x64.ActiveCfg = Debug|x64
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Debug|x86.ActiveCfg = Debug|Win32
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Debug|x86.Build.0 = Debug|Win32
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Release|Any CPU.ActiveCfg = Release|Win32
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Release|x64.ActiveCfg = Release|x64
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Release|x86.ActiveCfg = Release|Win32
+		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

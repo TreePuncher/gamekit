@@ -598,8 +598,9 @@ namespace FlexKit
 
 			if (!mBufferinError)
 			{
-				char Val[128]
-					memcpy(Val, &in, mBufferFormat);
+				char Val[128];
+				memcpy(Val, &in, mBufferFormat);
+
 				for (size_t itr = 0; itr < static_cast<uint32_t>(mBufferFormat); itr++)
 					mBuffer.push_back(Val[itr]);
 			}
@@ -1400,6 +1401,7 @@ namespace FlexKit
 	{
 		VertexBufferHandle	VertexBuffer;
 		UINT				Stride;
+		UINT				Offset = 0;
 	};
 
 	typedef static_vector<VertexBufferEntry, 16>	VertexBufferList;
@@ -1926,6 +1928,7 @@ namespace FlexKit
 	// Basic Draw States
 	ID3D12PipelineState* CreateDrawTriStatePSO(RenderSystem* RS);
 	ID3D12PipelineState* CreateDrawLineStatePSO(RenderSystem* RS);
+	ID3D12PipelineState* CreateDraw2StatePSO(RenderSystem* RS);
 
 
 	/************************************************************************************************/
@@ -1969,6 +1972,7 @@ namespace FlexKit
 
 			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_PSO,			CreateDrawTriStatePSO);
 			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_LINE_PSO,	CreateDrawLineStatePSO);
+			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_LINE3D_PSO,	CreateDraw2StatePSO);
 		}
 
 		bool	Initiate(Graphics_Desc* desc_in);

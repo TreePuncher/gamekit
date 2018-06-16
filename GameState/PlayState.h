@@ -176,16 +176,16 @@ public:
 				switch (evt.mData1.mINT[0])
 				{
 				case PLAYER_EVENTS::DEBUG_PLAYER_UP:
-					MoveForward = true;
+					MoveForward		= true;
 					break;
 				case PLAYER_EVENTS::DEBUG_PLAYER_LEFT:
-					MoveLeft = true;
+					MoveLeft		= true;
 					break;
 				case PLAYER_EVENTS::DEBUG_PLAYER_DOWN:
-					MoveBackward = true;
+					MoveBackward	= true;
 					break;
 				case PLAYER_EVENTS::DEBUG_PLAYER_RIGHT:
-					MoveRight = true;
+					MoveRight		= true;
 					break;
 				default:
 					break;
@@ -197,13 +197,17 @@ public:
 				switch (evt.mData1.mINT[0])
 				{
 				case PLAYER_EVENTS::DEBUG_PLAYER_UP:
-					MoveForward = false;
+					MoveForward		= false;
+					break;
 				case PLAYER_EVENTS::DEBUG_PLAYER_DOWN:
-					MoveBackward = false;
+					MoveBackward	= false;
+					break;
 				case PLAYER_EVENTS::DEBUG_PLAYER_LEFT:
-					MoveLeft	= false;
+					MoveLeft		= false;
+					break;
 				case PLAYER_EVENTS::DEBUG_PLAYER_RIGHT:
-					MoveRight = false;
+					MoveRight		= false;
+					break;
 				default:
 					break;
 				}
@@ -250,8 +254,7 @@ public:
 	PlayerPuppet(GraphicScene* ParentScene, EntityHandle Handle) :
 		DrawableBehavior	{ParentScene, Handle},
 		SceneNodeBehavior	{GetNode()}
-	{
-	}
+	{}
 
 
 	PlayerPuppet(const PlayerPuppet&) = delete;
@@ -264,6 +267,7 @@ public:
 		ParentScene	 = rhs.ParentScene;
 	}
 
+
 	void Update(float dt)
 	{
 		Yaw(dt * pi);
@@ -271,9 +275,9 @@ public:
 };
 
 
-PlayerPuppet&& CreatePlayerPuppet(GraphicScene* ParentScene)
+PlayerPuppet CreatePlayerPuppet(GraphicScene* ParentScene)
 {
-	return PlayerPuppet(
+	return 	PlayerPuppet(
 		ParentScene,
 		ParentScene->CreateDrawableAndSetMesh("Flower"));
 }
@@ -281,6 +285,18 @@ PlayerPuppet&& CreatePlayerPuppet(GraphicScene* ParentScene)
 
 /************************************************************************************************/
 
+
+enum ModelHandles
+{
+	MH_Floor,
+	MH_BrokenFloor,
+	MH_Obstacle,
+	MH_Player,
+	MH_RegularBomb,
+};
+
+
+/************************************************************************************************/
 
 
 class PlayState : public FrameworkState
@@ -319,7 +335,7 @@ public:
 	VertexBufferHandle		VertexBuffer;
 	VertexBufferHandle		TextBuffer;
 
-	GameGrid				Grid;
+	Game					LocalGame;
 	LocalPlayerHandler		Player1_Handler;
 	LocalPlayerHandler		Player2_Handler;
 	DebugCameraController	OrbitCamera;
@@ -327,9 +343,10 @@ public:
 	FMOD_SoundSystem	Sound;
 	PlayerPuppet		Puppet;
 
-	FlexKit::CircularBuffer<GameGridFrame, 120>	FrameCache;
+	FlexKit::CircularBuffer<FrameSnapshot, 120>	FrameCache;
 
-	InputMap EventMap;
+	InputMap	EventMap;
+	size_t		FrameID;
 };
 
 

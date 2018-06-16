@@ -41,6 +41,7 @@ using std::mutex;
 struct ID3D12Device;
 struct ID3D12PipelineState;
 
+
 namespace FlexKit
 {
 	class RenderSystem;
@@ -61,6 +62,7 @@ namespace FlexKit
 		SSREFLECTIONS,
 		DRAW_PSO,
 		DRAW_LINE_PSO,
+		DRAW_LINE3D_PSO,
 		DRAW_SPRITE_TEXT_PSO,
 		EPSO_COUNT,
 		EPSO_ERROR

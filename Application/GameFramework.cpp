@@ -262,6 +262,7 @@ namespace FlexKit
 
 		// Add in Base Resources
 		FrameGraph.Resources.AddRenderTarget(Core->Window.GetBackBuffer());
+		FrameGraph.UpdateFrameGraph(Core->RenderSystem, ActiveWindow, Core->GetTempMemory());
 
 		UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
 
@@ -285,7 +286,6 @@ namespace FlexKit
 
 		if(	ActiveWindow )
 		{
-			FrameGraph.UpdateFrameGraph(Core->RenderSystem, ActiveWindow, Core->GetTempMemory());
 			FrameGraph.SubmitFrameGraph(Core->RenderSystem, ActiveWindow);
 
 			Free_DelayedReleaseResources(Core->RenderSystem);
