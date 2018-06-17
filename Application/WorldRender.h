@@ -39,8 +39,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	ID3D12PipelineState* CreateForwardDrawPSO	(RenderSystem* RS);
-	ID3D12PipelineState* CreateOcclusionDrawPSO	(RenderSystem* RS);
+	ID3D12PipelineState* CreateForwardDrawPSO			(RenderSystem* RS);
+	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
+	ID3D12PipelineState* CreateOcclusionDrawPSO			(RenderSystem* RS);
 
 	struct WorldRender_Targets
 	{
@@ -60,8 +61,10 @@ namespace FlexKit
 			OcclusionQueries(RS->CreateOcclusionBuffer(4096))
 		{
 			RS->RegisterPSOLoader(FORWARDDRAW,			CreateForwardDrawPSO);
+			RS->RegisterPSOLoader(FORWARDDRAWINSTANCED,	CreateForwardDrawInstancedPSO);
 			RS->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	CreateOcclusionDrawPSO);
 			RS->QueuePSOLoad(FORWARDDRAW);
+			RS->QueuePSOLoad(FORWARDDRAWINSTANCED);
 		}
 
 		~WorldRender()
