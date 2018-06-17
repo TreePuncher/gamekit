@@ -182,6 +182,8 @@ enum class EState
 /************************************************************************************************/
 
 
+typedef FlexKit::Vector<GridPlayer> PlayerList;
+
 class Game
 {
 public:
@@ -223,7 +225,7 @@ public:
 		Tasks.reserve(rhs.Tasks.size());
 
 		for (auto Task : rhs.Tasks)
-				Tasks.push_back(Task->MakeCopy(Memory));
+  			Tasks.push_back(Task->MakeCopy(Memory));
 
 		return *this;
 	}
@@ -283,7 +285,7 @@ public:
 
 
 	FlexKit::uint2					WH;	// Width Height
-	FlexKit::Vector<GridPlayer>		Players;
+	PlayerList						Players;
 	FlexKit::Vector<GridBomb>		Bombs;
 	FlexKit::Vector<GridObject>		Objects;
 	FlexKit::Vector<GridSpace>		Spaces;
@@ -686,6 +688,7 @@ private:
 	BombID_t	Bomb;
 	Game*		Grid;
 };
+
 
 
 

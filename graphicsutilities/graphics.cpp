@@ -1130,12 +1130,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::AddVertexBuffers(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers)
+	void Context::AddVertexBuffers(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers)
 	{
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 
 		for(auto& I : Buffers)
 			FK_ASSERT(AddVertexBuffer(I, Mesh, VBViews));
+
+		if (InstanceBuffers)
+		{
+			for (auto& IB : *InstanceBuffers)
+			{
+				VBViews.push_back({
+					RS->GetVertexBufferAddress(IB.VertexBuffer)		+ IB.Offset,
+					(UINT)RS->GetVertexBufferSize(IB.VertexBuffer)	- IB.Offset,
+					IB.Stride });
+			}
+		}
 
 		DeviceContext->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
 	}

@@ -1607,6 +1607,15 @@ namespace FlexKit
 
 	typedef FlexKit::Matrix<4,4> float4x4;
 
+	float4x4 TranslationMatrix(float3 POS)
+	{
+		float4x4 Out = float4x4::Identity();
+		
+		Out[3] = float4(POS, 1);
+
+		return Out;
+	}
+
 	FLEXKITAPI inline float CalcMatrixTrace( float in[Matrix_Size] )
 	{
 		float sum = 0.0f;
@@ -1675,16 +1684,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	/*
 	inline FlexKit::float4x4 TranslationMatrix(float3 XYZ)
 	{
 		FlexKit::float4x4 out(float4x4::Identity());
 		out[3][0] = XYZ.x;
 		out[3][1] = XYZ.y;
 		out[3][2] = XYZ.z;
+		out[3][3] = 1.0f;
 
 		return out;
 	}
-
+	*
 
 	/************************************************************************************************/
 

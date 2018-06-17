@@ -378,8 +378,9 @@ public:
 	EventList									FrameEvents;
 	FlexKit::CircularBuffer<FrameSnapshot, 120>	FrameCache;
 
-	InputMap	EventMap;
-	size_t		FrameID;
+	InputMap EventMap;
+	InputMap DebugCameraInputMap;
+	size_t	 FrameID;
 };
 
 

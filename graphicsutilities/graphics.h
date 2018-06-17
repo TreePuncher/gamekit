@@ -1500,7 +1500,7 @@ namespace FlexKit
 
 
 		void AddIndexBuffer			(TriMesh* Mesh);
-		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers);
+		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
 		void SetVertexBuffers		(VertexBufferList& List);
 
 		void Draw					(size_t VertexCount, size_t BaseVertex = 0);

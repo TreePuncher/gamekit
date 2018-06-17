@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\PipelineState.h"
 
 
-//#define DEBUGCAMERA
+#define DEBUGCAMERA
 
 #pragma comment(lib, "fmod64_vc.lib")
 
@@ -159,7 +159,7 @@ void Draw3DGrid(
 					(DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
 
 			Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
-			Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(VertexLayout) } });
+			Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(VertexLayout), (UINT)Data.VertexBufferOffset } });
 
 			Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
 			Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
@@ -173,10 +173,140 @@ void Draw3DGrid(
 /************************************************************************************************/
 
 
+template<typename CONTAINER_TY, typename POSITION_FN>
+void DrawCollection(
+	FrameGraph&				FrameGraph, 
+	CONTAINER_TY&			Entities,
+	POSITION_FN				GetPosition,
+	TriMeshHandle			Mesh,
+	TextureHandle			RenderTarget,
+	TextureHandle			DepthBuffer,
+	VertexBufferHandle		VertexBuffer, 
+	ConstantBufferHandle	Constants, 
+	CameraHandle			Camera,
+	iAllocator*				TempMem)
+{
+	struct DrawGrid
+	{
+		FrameResourceHandle		RenderTarget;
+		FrameResourceHandle		DepthBuffer;
+
+		size_t					InstanceCount;
+		VertexBufferHandle		InstanceBuffer;
+		size_t					InstanceBufferOffset;
+
+		TriMeshHandle			Mesh;
+		ConstantBufferHandle	CB;
+
+		size_t CameraConstantsOffset;
+		size_t LocalConstantsOffset;
+
+		FlexKit::DesciptorHeap	Heap; // Null Filled
+	};
+
+	struct InstanceLayout
+	{
+		float4x4 WorldTransform;
+	};
+
+	FrameGraph.AddNode<DrawGrid>(0,
+		[&](FrameGraphNodeBuilder& Builder, auto& Data)
+		{
+			Data.RenderTarget	= Builder.WriteRenderTarget	(FrameGraph.Resources.RenderSystem->GetTag(RenderTarget));
+			Data.DepthBuffer	= Builder.WriteDepthBuffer	(FrameGraph.Resources.RenderSystem->GetTag(DepthBuffer));
+
+			Data.Heap.Init(
+				FrameGraph.Resources.RenderSystem,
+				FrameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+				TempMem);
+			Data.Heap.NullFill(FrameGraph.Resources.RenderSystem);
+
+			Data.InstanceBuffer			= VertexBuffer;
+			Data.InstanceBufferOffset	= FrameGraph.Resources.GetVertexBufferOffset(VertexBuffer);
+			Data.Mesh					= Mesh;
+
+			for (auto& Entity : Entities)
+			{
+				float3 Position{ GetPosition(Entity) };
+					//(Player.XY[0] + Player.Offset.x) * GridWH.x / ColumnCount, 
+					//0.0,
+					//(Player.XY[1] + Player.Offset.y) * GridWH.y / RowCount };
+
+
+				float4x4 WT = FlexKit::TranslationMatrix(Position);
+
+				InstanceLayout InstanceData;
+				InstanceData.WorldTransform = WT.Transpose(); // Transpose to GPU Layout
+				PushVertex(WT, VertexBuffer, FrameGraph.Resources);
+
+				++Data.InstanceCount;
+			}
+
+			Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
+			PushConstantBufferData(
+				GetCameraConstantBuffer(Camera),
+				Constants,
+				FrameGraph.Resources);
+
+			Drawable::VConsantsLayout	InstanceConstants =
+			{
+				Drawable::MaterialProperties(),
+				{}
+			};
+
+			Data.LocalConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
+			PushConstantBufferData(InstanceConstants, Constants, FrameGraph.Resources);
+		},
+		[](auto& Data, const FrameResources& Resources, Context* Ctx)
+		{
+			auto* TriMesh			= FlexKit::GetMesh(Data.Mesh);
+			size_t MeshVertexCount	= TriMesh->IndexCount;
+
+			// Setup state
+			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+			Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAWINSTANCED));
+
+			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+			Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });
+			Ctx->SetRenderTargets(
+				{	(DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, true,
+					(DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
+
+			// Bind Resources
+
+			VertexBufferList InstancedBuffers;
+			InstancedBuffers.push_back(VertexBufferEntry{	
+					Data.InstanceBuffer, 
+					sizeof(InstanceLayout), 
+					(UINT)Data.InstanceBufferOffset });
+
+			Ctx->AddIndexBuffer(TriMesh);
+			Ctx->AddVertexBuffers(TriMesh,
+				{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+					VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+					VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+				}, 
+				&InstancedBuffers);
+
+
+			Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
+			Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
+			Ctx->SetGraphicsConstantBufferView(2, Data.CB, Data.LocalConstantsOffset);
+
+			Ctx->SetGraphicsConstantBufferView(3, Data.CB, Data.CameraConstantsOffset); // Leave no root descriptor un-bound
+
+			Ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, Data.InstanceCount);
+		});
+}
+
+
+/************************************************************************************************/
+
+
 void DrawGame(
 	double					dt,
 	float					AspectRatio,
-	Game&				Grid,
+	Game&					Grid,
 	FrameGraph&				FrameGraph,
 	ConstantBufferHandle	ConstantBuffer,
 	VertexBufferHandle		VertexBuffer,
@@ -204,13 +334,17 @@ void DrawGame(
 		Camera,
 		TempMem);
 
-	/*
-	DrawBrokenFloorTiles(
+	DrawCollection(
 		FrameGraph,
-		Grid.Spaces,
-		ColumnCount,
-		RowCount,
-		GridWH,
+		Grid.Players,
+		[&](auto& Player) -> float3
+		{
+			return { 
+				(Player.XY[0] + Player.Offset.x) * GridWH.x / ColumnCount, 
+				0.0,
+				(Player.XY[1] + Player.Offset.y) * GridWH.y / RowCount };
+		},
+		TriMeshHandle(0),
 		RenderTarget,
 		DepthBuffer,
 		VertexBuffer,
@@ -218,15 +352,18 @@ void DrawGame(
 		Camera,
 		TempMem
 	);
-	*/
 
-	/*
-	DrawObstacleTiles(
+	DrawCollection(
 		FrameGraph,
 		Grid.Objects,
-		ColumnCount,
-		RowCount,
-		GridWH,
+		[&](auto& Objects) -> float3
+		{
+			return { 
+				(Objects.XY[0]) * GridWH.x / ColumnCount,
+				0.0,
+				(Objects.XY[1]) * GridWH.y / RowCount };
+		},
+		TriMeshHandle(0),
 		RenderTarget,
 		DepthBuffer,
 		VertexBuffer,
@@ -234,15 +371,37 @@ void DrawGame(
 		Camera,
 		TempMem
 	);
-	*/
 
-	/*
-	DrawRegularBombs(
+	DrawCollection(
+		FrameGraph,
+		Grid.Spaces,
+		[&](auto& Space) -> float3
+		{
+			return { 
+				(Space.XY[0]) * GridWH.x / ColumnCount,
+				0.0,
+				(Space.XY[1]) * GridWH.y / RowCount };
+		},
+		TriMeshHandle(0),
+		RenderTarget,
+		DepthBuffer,
+		VertexBuffer,
+		ConstantBuffer,
+		Camera,
+		TempMem
+	);
+
+	DrawCollection(
 		FrameGraph,
 		Grid.Bombs,
-		ColumnCount,
-		RowCount,
-		GridWH,
+		[&](auto& Bomb) -> float3
+		{
+			return { 
+				(Bomb.XY[0] + Bomb.Offset.x) * GridWH.x / ColumnCount,
+				0.0,
+				(Bomb.XY[1] + Bomb.Offset.y) * GridWH.y / RowCount };
+		},
+		TriMeshHandle(0),
 		RenderTarget,
 		DepthBuffer,
 		VertexBuffer,
@@ -250,7 +409,6 @@ void DrawGame(
 		Camera,
 		TempMem
 	);
-	*/
 }
 
 
@@ -313,6 +471,7 @@ PlayState::PlayState(
 		TextBuffer		{IN_TextBuffer},
 		VertexBuffer	{IN_VertexBuffer},
 		EventMap		{Framework->Core->GetBlockMemory()},
+		DebugCameraInputMap{ Framework->Core->GetBlockMemory() },
 		Scene			
 			{
 				Framework->Core->RenderSystem,
@@ -329,22 +488,18 @@ PlayState::PlayState(
 	OrbitCamera.Yaw(pi);
 
 
-#ifndef DEBUGCAMERA
 	EventMap.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
 	EventMap.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
 	EventMap.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN);
 	EventMap.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
 	EventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
 	EventMap.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
-#endif
 
 	// Debug Orbit Camera
-#ifdef DEBUGCAMERA
-	EventMap.MapKeyToEvent(KEYCODES::KC_W, PLAYER_EVENTS::DEBUG_PLAYER_UP);
-	EventMap.MapKeyToEvent(KEYCODES::KC_A, PLAYER_EVENTS::DEBUG_PLAYER_LEFT);
-	EventMap.MapKeyToEvent(KEYCODES::KC_S, PLAYER_EVENTS::DEBUG_PLAYER_DOWN);
-	EventMap.MapKeyToEvent(KEYCODES::KC_D, PLAYER_EVENTS::DEBUG_PLAYER_RIGHT);
-#endif
+	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_I, PLAYER_EVENTS::DEBUG_PLAYER_UP);
+	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_J, PLAYER_EVENTS::DEBUG_PLAYER_LEFT);
+	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_K, PLAYER_EVENTS::DEBUG_PLAYER_DOWN);
+	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_L, PLAYER_EVENTS::DEBUG_PLAYER_RIGHT);
 
 	Framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO );
 	Framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO);
@@ -381,24 +536,18 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 
 	for (auto& evt : FrameEvents)
 	{
-#ifndef DEBUGCAMERA
 		Event Remapped;
 		if (Player1_Handler.Enabled && EventMap.Map(evt, Remapped))
 			Player1_Handler.Handle(Remapped);
 
 		//if (Player2_Handler.Enabled)
 		//	Player2_Handler.Handle(evt);
-#else
-		Event Remapped;
-		if (EventMap.Map(evt, Remapped))
+		if (DebugCameraInputMap.Map(evt, Remapped))
 			OrbitCamera.EventHandler(Remapped);
-#endif
 	}
 
 	FrameEvents.clear();
 
-
-#ifndef DEBUGCAMERA
 	// Check if any players Died
 	for (auto& P : LocalGame.Players)
 		if (LocalGame.IsCellDestroyed(P.XY))
@@ -413,7 +562,6 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 
 	LocalGame.Update(dT, Core->GetTempMemory());
 
-#else
 	float HorizontalMouseMovement	= float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
 	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
 
@@ -424,7 +572,6 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 
 	OrbitCamera.Update(dT);
 	Puppet.Update(dT);
-#endif
 
 
 	QueueSoundUpdate(Dispatcher, &Sound);
@@ -474,6 +621,16 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 	ClearBackBuffer	(FrameGraph, 0.0f);
 	ClearDepthBuffer(FrameGraph, DepthBuffer, 1.0f);
 
+
+	DrawSprite_Text(
+		"Build Date: " __DATE__ "\n",
+		FrameGraph, 
+		*Framework->DefaultAssets.Font,
+		TextBuffer,
+		GetCurrentBackBuffer(&Core->Window),
+		Core->GetTempMemory());
+
+
 #ifndef DEBUGCAMERA
 #if 1
 	DrawGameGrid_Debug(
@@ -505,6 +662,18 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 
 	GetGraphicScenePVS(Scene, OrbitCamera, &Drawables, &TransparentDrawables);
 
+
+	DrawGameGrid_Debug(
+		dt,
+		GetWindowAspectRatio(Core),
+		LocalGame,
+		FrameGraph,
+		ConstantBuffer,
+		VertexBuffer,
+		GetCurrentBackBuffer(&Core->Window),
+		Core->GetTempMemory()
+	);
+
 	DrawGame(
 		dt,
 		GetWindowAspectRatio(Core),
@@ -517,21 +686,17 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		OrbitCamera,
 		Core->GetTempMemory());
 
+	
 	Render->DefaultRender(
 		Drawables, 
 		OrbitCamera,
 		Targets,
 		FrameGraph, 
 		Core->GetTempMemory());
+	
 #endif
 
-	DrawSprite_Text(
-		"Build Date: " __DATE__ "\n",
-		FrameGraph, 
-		*Framework->DefaultAssets.Font,
-		TextBuffer,
-		GetCurrentBackBuffer(&Core->Window),
-		Core->GetTempMemory());
+
 
 	PresentBackBuffer	(FrameGraph, &Core->Window);
 
