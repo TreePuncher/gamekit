@@ -947,12 +947,13 @@ namespace FlexKit
 
 		bool push_back(Ty&& Item) noexcept
 		{
-			if (_Size + 1 > SIZE)// Call Destructor on Tail
-				back().~Ty();
-
 			_Size = min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
+
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
+				Buffer[idx].~Ty();
+
 			Buffer[idx] = std::move(Item);
 
 			return false;
