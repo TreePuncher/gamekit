@@ -184,9 +184,9 @@ void DrawGame(
 	iAllocator*				TempMem)
 {
 	const size_t ColumnCount = Grid.WH[1];
-	const size_t RowCount = Grid.WH[0];
-	const float2 GridWH = { 50.0, 50.0 };
-	const float4 GridColor = { 1, 1, 1, 1 };
+	const size_t RowCount 	 = Grid.WH[0];
+	const float2 GridWH		 = { 50.0, 50.0 };
+	const float4 GridColor	 = { 1, 1, 1, 1 };
 
 
 	struct InstanceConstantLayout
@@ -353,30 +353,35 @@ PlayState::PlayState(
 	VertexBufferHandle		IN_VertexBuffer,
 	VertexBufferHandle		IN_TextBuffer,
 	ConstantBufferHandle	IN_ConstantBuffer) :
-	FrameworkState{ IN_Framework },
 
-	FrameEvents{ Framework->Core->GetBlockMemory() },
-	FrameID{ 0 },
-	Sound{ Framework->Core->Threads },
-	DepthBuffer{ IN_DepthBuffer },
-	Render{ IN_Render },
-	LocalGame{ Framework->Core->GetBlockMemory() },
-	Player1_Handler{ LocalGame, Framework->Core->GetBlockMemory() },
-	Player2_Handler{ LocalGame, Framework->Core->GetBlockMemory() },
-	GameInPlay{ true },
-	TextBuffer{ IN_TextBuffer },
-	VertexBuffer{ IN_VertexBuffer },
-	EventMap{ Framework->Core->GetBlockMemory() },
-	DebugCameraInputMap{ Framework->Core->GetBlockMemory() },
+	FrameworkState		{ IN_Framework },
+	FrameEvents			{ Framework->Core->GetBlockMemory() },
+	FrameID				{ 0 },
+	Sound				{ Framework->Core->Threads },
+	DepthBuffer			{ IN_DepthBuffer },
+	Render				{ IN_Render },
+	LocalGame			{ Framework->Core->GetBlockMemory() },
+	Player1_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
+	Player2_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
+	GameInPlay			{ true },
+	UseDebugCamera		{ false },
+	DebugOverlay		{ false },
+	TextBuffer			{ IN_TextBuffer },
+	VertexBuffer		{ IN_VertexBuffer },
+	EventMap			{ Framework->Core->GetBlockMemory() },
+	DebugCameraInputMap	{ Framework->Core->GetBlockMemory() },
+	DebugEventsInputMap	{ Framework->Core->GetBlockMemory() },
+	Puppet				{ CreatePlayerPuppet(Scene) },
 	Scene
-{
-	Framework->Core->RenderSystem,
-	Framework->Core->GetBlockMemory(),
-	Framework->Core->GetTempMemory()
-},
-Puppet{ CreatePlayerPuppet(Scene) }
+						{
+							Framework->Core->RenderSystem,
+							Framework->Core->GetBlockMemory(),
+							Framework->Core->GetTempMemory()
+						}
 {
 	Player1_Handler.SetActive(LocalGame.CreatePlayer({ 11, 11 }));
+	Player1_Handler.SetPlayerCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
+
 	LocalGame.CreateGridObject({ 10, 5 });
 
 	OrbitCamera.SetCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
@@ -388,6 +393,8 @@ Puppet{ CreatePlayerPuppet(Scene) }
 	EventMap.MapKeyToEvent(KEYCODES::KC_A, PLAYER_EVENTS::PLAYER_LEFT);
 	EventMap.MapKeyToEvent(KEYCODES::KC_S, PLAYER_EVENTS::PLAYER_DOWN);
 	EventMap.MapKeyToEvent(KEYCODES::KC_D, PLAYER_EVENTS::PLAYER_RIGHT);
+	EventMap.MapKeyToEvent(KEYCODES::KC_Q, PLAYER_EVENTS::PLAYER_ROTATE_LEFT);
+	EventMap.MapKeyToEvent(KEYCODES::KC_E, PLAYER_EVENTS::PLAYER_ROTATE_RIGHT);
 	EventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT, PLAYER_EVENTS::PLAYER_HOLD);
 	EventMap.MapKeyToEvent(KEYCODES::KC_SPACE, PLAYER_EVENTS::PLAYER_ACTION1);
 
@@ -396,6 +403,11 @@ Puppet{ CreatePlayerPuppet(Scene) }
 	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_J, PLAYER_EVENTS::DEBUG_PLAYER_LEFT);
 	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_K, PLAYER_EVENTS::DEBUG_PLAYER_DOWN);
 	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_L, PLAYER_EVENTS::DEBUG_PLAYER_RIGHT);
+
+
+	// Debug Events, are not stored in Frame cache
+	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_C, DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA);
+	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_X, DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY);
 
 	Framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO);
 	Framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO);
@@ -417,7 +429,27 @@ PlayState::~PlayState()
 
 bool PlayState::EventHandler(Event evt)
 {
-	FrameEvents.push_back(evt);
+	Event Remapped;
+	if (DebugEventsInputMap.Map(evt, Remapped))
+	{
+		if (Remapped.InputSource == Event::Keyboard &&
+			Remapped.Action		== Event::Pressed)
+		{
+			switch ((DEBUG_EVENTS)Remapped.mData1.mINT[0])
+			{
+			case DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA:
+				UseDebugCamera	= !UseDebugCamera;
+				break;
+			case DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY:
+				DebugOverlay	= !DebugOverlay;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	else
+		FrameEvents.push_back(evt);
 
 	return true;
 }
@@ -449,6 +481,8 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 		if (LocalGame.IsCellDestroyed(P.XY))
 			Framework->PopState();
 
+	LocalGame.Update(dT, Core->GetTempMemory());
+
 	if (Player1_Handler.Enabled)
 		Player1_Handler.Update(dT);
 
@@ -456,10 +490,8 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 		Player2_Handler.Update(dT);
 
 
-	LocalGame.Update(dT, Core->GetTempMemory());
-
-	float HorizontalMouseMovement = float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
-	float VerticalMouseMovement = float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
+	float HorizontalMouseMovement	= float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
+	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
 
 	Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
 
@@ -468,7 +500,6 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 
 	OrbitCamera.Update(dT);
 	Puppet.Update(dT);
-
 
 	QueueSoundUpdate(Dispatcher, &Sound);
 	auto TransformTask = QueueTransformUpdateTask(Dispatcher);
@@ -556,19 +587,24 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 	PVS Drawables{ Core->GetTempMemory() };
 	PVS TransparentDrawables{ Core->GetTempMemory() };
 
-	GetGraphicScenePVS(Scene, OrbitCamera, &Drawables, &TransparentDrawables);
+	CameraHandle ActiveCamera = UseDebugCamera ? (CameraHandle)OrbitCamera : (CameraHandle)Player1_Handler.GameCamera;
+
+	GetGraphicScenePVS(Scene, ActiveCamera, &Drawables, &TransparentDrawables);
 
 
-	DrawGameGrid_Debug(
-		dt,
-		GetWindowAspectRatio(Core),
-		LocalGame,
-		FrameGraph,
-		ConstantBuffer,
-		VertexBuffer,
-		GetCurrentBackBuffer(&Core->Window),
-		Core->GetTempMemory()
-	);
+	if(DebugOverlay)
+	{
+		DrawGameGrid_Debug(
+			dt,
+			GetWindowAspectRatio(Core),
+			LocalGame,
+			FrameGraph,
+			ConstantBuffer,
+			VertexBuffer,
+			GetCurrentBackBuffer(&Core->Window),
+			Core->GetTempMemory()
+		);
+	}
 
 	DrawGame(
 		dt,
@@ -579,13 +615,13 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		VertexBuffer,
 		GetCurrentBackBuffer(&Core->Window),
 		DepthBuffer,
-		OrbitCamera,
+		ActiveCamera,
 		Core->GetTempMemory());
 
 
 	Render->DefaultRender(
 		Drawables,
-		OrbitCamera,
+		ActiveCamera,
 		Targets,
 		FrameGraph,
 		Core->GetTempMemory());

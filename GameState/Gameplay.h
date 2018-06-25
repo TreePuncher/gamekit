@@ -284,6 +284,22 @@ public:
 	bool	SetBomb(BombID_t ID, const GridBomb& In);
 
 
+	// Returns Player Position Between {0 - Width, 0 - Height}
+	// World Position can be produced by scaling by Cell Size
+	float3 GetPlayerPosition(Player_Handle PlayerHandle)
+	{
+		auto& Player = Players[PlayerHandle];
+
+		float3 Position = {
+			(Player.XY[0] + Player.Offset.x),
+			0.0,
+			(Player.XY[1] + Player.Offset.y)};
+
+		return Position;
+	}
+
+
+	float2							Scale = { 50, 50 };
 	FlexKit::uint2					WH;	// Width Height
 	PlayerList						Players;
 	FlexKit::Vector<GridBomb>		Bombs;
@@ -326,6 +342,16 @@ void DrawGameGrid_Debug(
 /************************************************************************************************/
 
 
+enum PLAYER_FACING_DIRECTION : size_t
+{
+	PF_UP		= 0, 
+	PF_RIGHT	= 1,
+	PF_DOWN		= 2, 
+	PF_LEFT		= 3,
+	PF_UNKNOWN	= -1
+};
+
+
 enum PLAYER_EVENTS : int64_t
 {
 	PLAYER_UP		= GetCRCGUID(PLAYER_UP),
@@ -334,6 +360,9 @@ enum PLAYER_EVENTS : int64_t
 	PLAYER_RIGHT	= GetCRCGUID(PLAYER_RIGHT),
 	PLAYER_ACTION1	= GetCRCGUID(PLAYER_ACTION1),
 	PLAYER_HOLD		= GetCRCGUID(PLAYER_HOLD),
+
+	PLAYER_ROTATE_LEFT	= GetCRCGUID(PLAYER_ROTATE_LEFT),
+	PLAYER_ROTATE_RIGHT = GetCRCGUID(PLAYER_ROTATE_RIGHT),
 
 	DEBUG_PLAYER_UP			= GetCRCGUID(DEBUG_PLAYER_UP),
 	DEBUG_PLAYER_LEFT		= GetCRCGUID(DEBUG_PLAYER_LEFT),
@@ -346,246 +375,10 @@ enum PLAYER_EVENTS : int64_t
 };
 
 
-/************************************************************************************************/
-
-
-class LocalPlayerHandler
+enum DEBUG_EVENTS : int64_t
 {
-public:
-	LocalPlayerHandler(Game& grid, iAllocator* memory) :
-		Game		{ grid },
-		//Map			{ memory },
-		InputState	{ false, false, false, false, -1 }
-	{}
-
-
-	void Handle(const Event& evt)
-	{
-		CurrentFrameEvents.push_back(evt);
-
-		if (evt.InputSource == Event::Keyboard)
-		{
-			switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
-			{
-			case PLAYER_EVENTS::PLAYER_UP:
-				InputState.UP		=	
-						(evt.Action == Event::Pressed) ? true : 
-					((evt.Action == Event::Release) ? false : InputState.UP);
-				break;
-			case PLAYER_EVENTS::PLAYER_LEFT:
-				InputState.LEFT		= 
-						(evt.Action == Event::Pressed) ? true : 
-					((evt.Action == Event::Release) ? false : InputState.LEFT);
-				break;
-			case PLAYER_EVENTS::PLAYER_DOWN:
-				InputState.DOWN		= 
-						(evt.Action == Event::Pressed) ? true : 
-					((evt.Action == Event::Release) ? false : InputState.DOWN);
-				break;
-			case PLAYER_EVENTS::PLAYER_RIGHT:
-				InputState.RIGHT	= 
-						(evt.Action == Event::Pressed) ? true : 
- 					((evt.Action == Event::Release) ? false : InputState.RIGHT);
-				break;
-			case PLAYER_EVENTS::PLAYER_ACTION1:
-			{
-				if (Game.Players[Player].State != GridPlayer::PS_Idle)
-					return;
-
-				if ((evt.Action == Event::Release))
-				{
-					int2 Offset = {0, 0};
-
-					switch (Game.Players[Player].FacingDirection)
-					{
-					case UP:
-						Offset += int2{ 0, -1 };
-						break;
-					case DOWN:
-						Offset += int2{ 0,  1 };
-						break;
-					case LEFT:
-						Offset += int2{ -1,  0 };
-						break;
-					case RIGHT:
-						Offset += int2{ 1,  0 };
-						break;
-					default:
-						FK_ASSERT(0, "!!!!!");
-					}
-
-					int2 GridPOS = Game.Players[Player].XY + Offset;
-
-					//if (!Game.IsCellClear(GridPOS))
-					//	return;
-
-					size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
-
-					auto State = Game.GetCellState(GridPOS);
-					if (State == EState::Bomb)
-					{
-						Game.MoveBomb(GridPOS, Offset);
-					}
-					else
-					{
-						Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
-						Game.MarkCell(GridPOS, EState::Bomb);
-					}
-					break;
-				}
-			}	break;
-			default:
-				break;
-			}
-
-
-			if (evt.Action == Event::Release)
-			{
-				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
-				{
-				case PLAYER_EVENTS::PLAYER_UP:
-				case PLAYER_EVENTS::PLAYER_DOWN:
-				case PLAYER_EVENTS::PLAYER_LEFT:
-				case PLAYER_EVENTS::PLAYER_RIGHT:
-					InputState.PreferredDirection = -1;
-					break;
-				default:
-					break;
-				}
-			}
-
-
-			if (evt.Action == Event::Pressed)
-			{
-				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
-				{
-				case PLAYER_EVENTS::PLAYER_UP:
-					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_UP;			break;
-				case PLAYER_EVENTS::PLAYER_LEFT:
-					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_LEFT;		break;
-				case PLAYER_EVENTS::PLAYER_DOWN:
-					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_DOWN;		break;
-				case PLAYER_EVENTS::PLAYER_RIGHT:
-					InputState.PreferredDirection = (int64_t)PLAYER_EVENTS::PLAYER_RIGHT;		break;
-				default:
-					break;
-				}
-			}
-		}
-	}
-
-
-	void SetActive(Player_Handle P)
-	{
-		Player	= P;
-		Enabled = true;
-	}
-
-
-	void MovePlayer(FlexKit::int2 XY)
-	{
-		Game.MovePlayer(Player, XY);
-	}
-
-
-	void MoveUp()
-	{
-		auto POS = Game.Players[Player].XY;
-		MovePlayer(POS + FlexKit::int2{  0, -1 });
-		Game.Players[Player].FacingDirection = PlayerDirection::UP;
-	}
-
-
-	void MoveDown()
-	{
-		auto POS = Game.Players[Player].XY;
-		MovePlayer(POS + FlexKit::int2{  0,  1 });
-		Game.Players[Player].FacingDirection = PlayerDirection::DOWN;
-	}
-
-
-	void MoveLeft()
-	{
-		auto POS = Game.Players[Player].XY;
-		MovePlayer(POS + FlexKit::int2{ -1,  0 });
-		Game.Players[Player].FacingDirection = PlayerDirection::LEFT;
-	}
-
-
-	void MoveRight()
-	{
-		auto POS = Game.Players[Player].XY;
-		MovePlayer(POS + FlexKit::int2{  1,  0 });
-		Game.Players[Player].FacingDirection = PlayerDirection::RIGHT;
-	}
-
-
-	bool Enabled = false;
-
-
-	void Update(const double dt)
-	{
-		if (InputState.PreferredDirection != -1)
-		{
-			switch ((int64_t)InputState.PreferredDirection)
-			{
-				case (int64_t)PLAYER_EVENTS::PLAYER_UP:
-					MoveUp();
-					break;
-				case (int64_t)PLAYER_EVENTS::PLAYER_LEFT:
-					MoveLeft();
-					break;
-				case (int64_t)PLAYER_EVENTS::PLAYER_DOWN:
-					MoveDown();
-					break;
-				case (int64_t)PLAYER_EVENTS::PLAYER_RIGHT:
-					MoveRight();
-					break;
-			}
-		}
-		else
-		{
-			if		(InputState.UP)
-			{
-				MoveUp();
-			}
-			else if (InputState.DOWN)
-			{
-				MoveDown();
-			}
-			else if (InputState.LEFT)
-			{
-				MoveLeft();
-			}
-			else if (InputState.RIGHT)
-			{
-				MoveRight();
-			}
-		}
-
-		FrameCache.push_back(CurrentFrameEvents);
-		CurrentFrameEvents.clear();
-	}
-
-
-	struct
-	{
-		bool UP;
-		bool DOWN;
-		bool LEFT;
-		bool RIGHT;
-
-		int64_t	PreferredDirection;// if -1 then a preferred direction is ignored
-
-		operator bool()	{ return UP | DOWN | LEFT | RIGHT; }
-	}InputState;
-
-	typedef static_vector<Event, 12>			KeyEventList;
-	KeyEventList								CurrentFrameEvents;
-	FlexKit::CircularBuffer<KeyEventList, 120>	FrameCache;
-
-	Player_Handle	Player;
-	Game&		Game;
+	TOGGLE_DEBUG_CAMERA  = GetCRCGUID(TOGGLE_DEBUG_CAMERA),
+	TOGGLE_DEBUG_OVERLAY = GetCRCGUID(TOGGLE_DEBUG_OVERLAY)
 };
 
 
