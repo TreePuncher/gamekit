@@ -1481,8 +1481,10 @@ namespace FlexKit
 
 		void SetRootSignature		(RootSignature& RS);
 		void SetPipelineState		(ID3D12PipelineState* PSO);
+
 		void SetRenderTargets		(static_vector<Texture2D*,16>	RTs);
-		void SetRenderTargets		(static_vector<DescHeapPOS, 16> RTs, bool DepthStecil, DescHeapPOS DepthStencil = DescHeapPOS());
+		void SetRenderTargets		(const static_vector<DescHeapPOS, 16>	RTs, bool DepthStecil, DescHeapPOS DepthStencil = DescHeapPOS());
+		//void SetRenderTargets		(const static_vector<TextureObject>		RTs, bool DepthStecil, DescHeapPOS DepthStencil = DescHeapPOS());
 
 		void SetViewports			(static_vector<D3D12_VIEWPORT, 16>	VPs);
 		void SetScissorRects		(static_vector<D3D12_RECT, 16>		Rects);

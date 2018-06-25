@@ -217,9 +217,19 @@ namespace FlexKit
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
 
-		TextureObject			GetRenderTargetObject(FrameResourceHandle Handle) const
+		TextureObject					GetRenderTargetObject(FrameResourceHandle Handle) const
 		{
 			return { Resources[Handle].RenderTarget.HeapPOS, Resources[Handle].RenderTarget.Texture };
+		}
+
+
+		static_vector<DescHeapPOS>	GetRenderTargetObjects(const static_vector<FrameResourceHandle> Handles) const
+		{
+			static_vector<DescHeapPOS> Out;
+			for (auto Handle : Handles)
+				Out.push_back(Resources[Handle].RenderTarget.HeapPOS);
+
+			return Out;
 		}
 
 
@@ -368,10 +378,13 @@ namespace FlexKit
 	}
 
 
-	//inline size_t GetCurrentConstantBufferOffset(ConstantBufferHandle Buffer, FrameResources& Resources)
-	//{
+	inline bool PushConstantBufferData(char* _ptr, size_t Size, ConstantBufferHandle Buffer, FrameResources& Resources)
+	{
+		bool res = Resources.RenderSystem->ConstantBuffers.Push(Buffer, _ptr, Size);
+		FK_ASSERT(res, "Failed to Push Constants!");
+		return res;
+	}
 
-//	}
 
 	template<typename TY_CB>
 	bool PushConstantBufferData(const TY_CB& Constants, ConstantBufferHandle Buffer, FrameResources& Resources)
@@ -1060,7 +1073,9 @@ namespace FlexKit
 				auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
 
 				Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
-				Ctx->SetRenderTargets({ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
+				Ctx->SetRenderTargets(
+					{	Resources.GetRenderTargetObject(Data.RenderTarget) }, 
+					false);
 
 				Ctx->SetRootSignature		(Resources.RenderSystem->Library.RS4CBVs4SRVs);
 				Ctx->SetPipelineState		(Resources.GetPipelineState(State));
@@ -1092,6 +1107,140 @@ namespace FlexKit
 				}
 			});
 	} 
+
+
+
+	/************************************************************************************************/
+
+
+	struct DrawCollection_Desc
+	{
+		TriMeshHandle			Mesh;
+		TextureHandle			RenderTarget;
+		TextureHandle			DepthBuffer;
+		VertexBufferHandle		VertexBuffer;
+		ConstantBufferHandle	Constants;
+		EPIPELINESTATES			PSO;
+
+		size_t	InstanceElementSize;
+		size_t	ConstantsSize[2];
+		char*	ConstantData[2];
+	};
+
+
+	template<typename CONTAINER_TY, typename GETCONSTANTS_FN>
+	void DrawCollection(
+		FrameGraph&					FrameGraph,
+		const CONTAINER_TY&			Entities,
+		const GETCONSTANTS_FN		GetConstants,
+		const DrawCollection_Desc&	Desc,
+		iAllocator*					TempMem)
+	{
+		struct DrawGrid
+		{
+			FrameResourceHandle		RenderTarget;
+			FrameResourceHandle		DepthBuffer;
+
+			size_t					InstanceCount;
+			VertexBufferHandle		InstanceBuffer;
+			size_t					InstanceBufferOffset;
+
+			TriMeshHandle			Mesh;
+			ConstantBufferHandle	CB;
+
+			size_t InstanceElementSize;
+			size_t ConstantOffsets[2];
+
+			EPIPELINESTATES			PSO;
+			FlexKit::DesciptorHeap	Heap; // Null Filled
+		};
+
+
+		FrameGraph.AddNode<DrawGrid>(0,
+			[&](FrameGraphNodeBuilder& Builder, auto& Data)
+			{
+				Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.RenderSystem->GetTag(Desc.RenderTarget));
+				Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.RenderSystem->GetTag(Desc.DepthBuffer));
+
+				Data.Heap.Init(
+					FrameGraph.Resources.RenderSystem,
+					FrameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					TempMem);
+				Data.Heap.NullFill(FrameGraph.Resources.RenderSystem);
+
+				Data.CB		= Desc.Constants;
+				Data.Mesh	= Desc.Mesh;
+				Data.PSO	= Desc.PSO;
+
+				Data.InstanceBuffer			= Desc.VertexBuffer;
+				Data.InstanceBufferOffset	= FrameGraph.Resources.GetVertexBufferOffset(Desc.VertexBuffer);
+				Data.InstanceElementSize	= Desc.InstanceElementSize;
+
+
+				for (auto& Entity : Entities) {
+					PushVertex(GetConstants(Entity), Desc.VertexBuffer, FrameGraph.Resources);
+				}
+
+
+				for (
+					size_t I = 0;
+					I < sizeof(Desc.ConstantsSize) / sizeof(*Desc.ConstantsSize);
+					++I)
+				{
+					Data.ConstantOffsets[I] = BeginNewConstantBuffer(
+						Desc.Constants, 
+						FrameGraph.Resources);
+
+					PushConstantBufferData(
+						Desc.ConstantData[I],
+						Desc.ConstantsSize[I],
+						Desc.Constants,
+						FrameGraph.Resources);
+				}
+
+
+				Data.InstanceCount = Entities.size();
+			},
+			[](auto& Data, const FrameResources& Resources, Context* Ctx)
+			{
+				auto* TriMesh = GetMesh(Data.Mesh);
+				size_t MeshVertexCount = TriMesh->IndexCount;
+
+				// Setup state
+				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetPipelineState(Resources.GetPipelineState(Data.PSO));
+
+				Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+				Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });
+				Ctx->SetRenderTargets(
+					{	(DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, true,
+						(DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
+
+				// Bind Resources
+
+				VertexBufferList InstancedBuffers;
+				InstancedBuffers.push_back(VertexBufferEntry{
+					Data.InstanceBuffer,
+					(UINT)Data.InstanceElementSize,
+					(UINT)Data.InstanceBufferOffset });
+
+				Ctx->AddIndexBuffer(TriMesh);
+				Ctx->AddVertexBuffers(TriMesh,
+					{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+					},
+					&InstancedBuffers);
+
+
+				Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
+				Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.ConstantOffsets[0]);
+				Ctx->SetGraphicsConstantBufferView(2, Data.CB, Data.ConstantOffsets[1]);
+				Ctx->SetGraphicsConstantBufferView(3, Data.CB, Data.ConstantOffsets[1]); // Leave no root descriptor un-bound
+
+				Ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, Data.InstanceCount);
+			});
+	}
 
 
 }	/************************************************************************************************/

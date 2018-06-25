@@ -960,10 +960,32 @@ namespace FlexKit
 	}
 
 
+	/*
+	void Context::SetRenderTargets(const static_vector<TextureObject> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
+	{
+		DSVPOSCPU = DepthStencil;
+
+		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTVHandles;
+
+		for (auto RT : RTs)
+			RTVHandles.push_back((DescHeapPOS)RT);
+
+		DeviceContext->OMSetRenderTargets(
+			RTs.size(),
+			RTVHandles.begin(),
+			false,
+			DepthStecil ? &(D3D12_CPU_DESCRIPTOR_HANDLE)DepthStencil : nullptr);
+
+		UpdateRTVState();
+	}
+	*/
+	
+
+
 	/************************************************************************************************/
 
 
-	void Context::SetRenderTargets(static_vector<DescHeapPOS, 16> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
+	void Context::SetRenderTargets(const static_vector<DescHeapPOS, 16> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
 	{
 		DSVPOSCPU = DepthStencil;
 
@@ -978,7 +1000,6 @@ namespace FlexKit
 			false,
 			DepthStecil ? &(D3D12_CPU_DESCRIPTOR_HANDLE)DepthStencil : nullptr);
 	}
-
 
 
 	/************************************************************************************************/
