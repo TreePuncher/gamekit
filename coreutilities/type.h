@@ -152,8 +152,10 @@ namespace FlexKit
 		//return GetCRC32(A);
 	}
 
-#define GetTypeGUID(A) GenerateTypeGUID<sizeof(#A)>(#A)
-#define GetCRCGUID(A) GenerateTypeGUID<sizeof(#A)>(#A)
+#define GetTypeGUID(A)	FlexKit::GenerateTypeGUID<sizeof(#A)>(#A)
+#define GetCRCGUID(A)	FlexKit::GenerateTypeGUID<sizeof(#A)>(#A)
 
 }
+
+
 #endif

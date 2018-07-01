@@ -29,6 +29,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
+using FlexKit::float2;
+using FlexKit::float3;
+using FlexKit::float4;
+using FlexKit::Quaternion;
+using FlexKit::uint2;
+using FlexKit::RenderSystem;
+using FlexKit::RenderWindow;
+
+
+/************************************************************************************************/
+
+
 void ReleaseCore			(EngineCore*		Game);
 bool InitiateCoreSystems	(uint2 WH,			EngineCore*& Game);
 bool InitiateEngineMemory	(EngineMemory*&	Game);

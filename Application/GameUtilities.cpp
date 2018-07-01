@@ -29,8 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\SSReflections.h"
 #include <cstdio>
 
-using namespace FlexKit;
-
 
 /************************************************************************************************/
 
@@ -91,7 +89,7 @@ bool InitEngine(EngineCore*& Core, EngineMemory*& Memory, uint2 WH)
 
 void UpdateCoreComponents(EngineCore* Core, double dt)
 {
-	UpdateTransforms();
+	FlexKit::UpdateTransforms();
 	//Core->Cameras.Update(dt);
 }
 
@@ -216,6 +214,8 @@ void ClearMouseButtonStates(MouseInputState* State)
 void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 {
 	using FlexKit::int2;
+	using FlexKit::min;
+	using FlexKit::max;
 
 	if (!State->Enabled) {
 		State->dPos = { 0, 0 };

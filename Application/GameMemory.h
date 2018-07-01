@@ -44,12 +44,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-using namespace FlexKit;
-
-
-/************************************************************************************************/
-
-
 struct sKeyState
 {
 	sKeyState()
@@ -87,10 +81,10 @@ struct sKeyState
 
 struct MouseInputState
 {
-	int2	dPos			= { 0, 0 };
-	float2	Normalized_dPos	= { 0, 0 };
-	float2	Position		= { 0, 0 };
-	float2	NormalizedPos	= { 0, 0 };
+	FlexKit::int2	dPos			= { 0, 0 };
+	FlexKit::float2	Normalized_dPos	= { 0, 0 };
+	FlexKit::float2	Position		= { 0, 0 };
+	FlexKit::float2	NormalizedPos	= { 0, 0 };
 
 	bool LMB_Pressed = false;
 	bool RMB_Pressed = false;
@@ -122,11 +116,11 @@ static const size_t BLOCKALLOCSIZE	= MEGABYTE * 768;
 struct EngineMemory
 {
 	// Allocators
-	BlockAllocator	BlockAllocator;
-	StackAllocator	TempAllocator;
-	StackAllocator	LevelAllocator;
+	FlexKit::BlockAllocator	BlockAllocator;
+	FlexKit::StackAllocator	TempAllocator;
+	FlexKit::StackAllocator	LevelAllocator;
 
-	EngineMemory_DEBUG	Debug;
+	FlexKit::EngineMemory_DEBUG	Debug;
 
 	// Memory Pools
 	FlexKit::byte	NodeMem		[NODEBUFFERSIZE];
@@ -147,7 +141,7 @@ struct EngineCore
 		FrameLock		(true),
 		RenderSystem	(memory->BlockAllocator)
 	{
-		InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
+		FlexKit::InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
 	}
 
 
@@ -157,9 +151,9 @@ struct EngineCore
 		using FlexKit::PrintBlockStatus;
 
 	#if USING(PHYSX)
-		ReleasePhysics( &Physics );
+		FlexKit::ReleasePhysics( &Physics );
 	#endif
-		Release(&Window);
+		FlexKit::Release(&Window);
 		RenderSystem.Release();
 
 		for(auto Arg : CmdArguments)
@@ -173,69 +167,24 @@ struct EngineCore
 	bool			FrameLock;
 	bool			End;
 		
-	RenderSystem				RenderSystem;
+	FlexKit::RenderSystem				RenderSystem;
 
-	RenderWindow				Window;
-	Time						Time;
+	FlexKit::RenderWindow				Window;
+	FlexKit::Time						Time;
 
-	PhysicsSystem				Physics;
+	FlexKit::PhysicsSystem				Physics;
 
-	// Component Systems
-	//SceneNodeComponentSystem	Nodes;
-	//CameraComponentSystem		Cameras;
+	FlexKit::Vector<const char*>		CmdArguments;
 
-	Vector<const char*>			CmdArguments;
-
-	ThreadManager				Threads;
+	FlexKit::ThreadManager		Threads;
 	EngineMemory*				Memory;
 
-	BlockAllocator& GetBlockMemory()	{ return  Memory->BlockAllocator; }
-	StackAllocator& GetLevelMemory()	{ return  Memory->LevelAllocator; }
-	StackAllocator& GetTempMemory()		{ return  Memory->TempAllocator;  }
+	FlexKit::BlockAllocator& GetBlockMemory()		{ return  Memory->BlockAllocator; }
+	FlexKit::StackAllocator& GetLevelMemory()		{ return  Memory->LevelAllocator; }
+	FlexKit::StackAllocator& GetTempMemory()		{ return  Memory->TempAllocator;  }
 
-	EngineMemory_DEBUG* GetDebugMemory() { return &Memory->Debug; }
+	FlexKit::EngineMemory_DEBUG* GetDebugMemory()	{ return &Memory->Debug; }
 };
-
-
-/************************************************************************************************/
-
-
-typedef void (*MouseEventHandler)		(EngineCore* Core, const FlexKit::Event& in);
-typedef void*(*InitiateGameStateFN)		(EngineCore* Core);
-typedef bool (*InitiateEngineFN)		(EngineCore*& Core, EngineMemory*& Memory);
-typedef void (*OnHotReloadFN)			(EngineCore*, double dt, void* _ptr);
-
-typedef void (*UpdateFN)				(EngineCore* Core, void* _ptr, double dt);
-typedef void (*FixedUpdateFN)			(EngineCore*, double dt, void* _ptr);
-
-typedef void (*UpdateAnimationsFN)		(EngineCore* RS,	iAllocator* TempMemory, double dt,	void* _ptr);
-typedef	void (*UpdatePreDrawFN)			(EngineCore* Core,	iAllocator* TempMemory, double dt,	void* _ptr);
-typedef	void (*DrawFN)					(EngineCore* RS,	iAllocator* TempMemory,				void* _ptr);
-typedef void (*PostDrawFN)				(EngineCore* Core,	iAllocator* TempMemory, double dt,	void* _ptr);
-typedef void (*CleanUpFN)				(EngineCore* Core,	void* _ptr);
-
-typedef void (*PostPhysicsUpdateFN)	(void*);
-typedef void (*PrePhysicsUpdateFN)	(void*);
-
-
-
-/************************************************************************************************/
-
-
-struct CodeTable
-{
-	InitiateGameStateFN	Init;
-	InitiateEngineFN	InitEngine;
-	UpdateFN			Update;
-	FixedUpdateFN		UpdateFixed;
-	UpdateAnimationsFN	UpdateAnimations;
-	UpdatePreDrawFN		UpdatePreDraw;
-	DrawFN				Draw;
-	PostDrawFN			PostDraw;
-	CleanUpFN			Cleanup;
-};
-
-typedef void (*GetStateTableFN)(CodeTable* out);
 
 
 /************************************************************************************************/

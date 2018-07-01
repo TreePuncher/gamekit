@@ -60,6 +60,8 @@ namespace FlexKit
 
 	void FKApplication::Run()
 	{
+		using FlexKit::UpdateInput;
+
 		const double StepSize	= 1 / 60.0f;
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
@@ -78,7 +80,7 @@ namespace FlexKit
 
 			//if (T > StepSize)
 			{	// Game Tick  -----------------------------------------------------------------------------------
-				::UpdateInput();
+				UpdateInput();
 
 				FK_LOG_9("Frame Begin");
 
