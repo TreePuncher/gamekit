@@ -115,6 +115,7 @@ namespace FlexKit
 
 
 	// NOTE: Doesn't call destructors automatically, but does free held memory!
+	// Release will Call destructors
 	template<typename Ty, size_t MINSIZE = 0>
 	struct Vector
 	{
@@ -880,6 +881,20 @@ namespace FlexKit
 	{
 		CircularBuffer() : _Head(0), _Size(0)
 		{}
+
+
+		~CircularBuffer()
+		{
+			Release();
+		}
+
+		void Release()
+		{
+			for (auto& Element : *this)
+				Element.~Ty();
+
+			_Size = 0;
+		}
 
 		Ty& operator [](size_t idx)
 		{
