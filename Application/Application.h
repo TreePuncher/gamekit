@@ -65,6 +65,8 @@ namespace FlexKit
 
 		void PushArgument(const char* Str);
 
+		GameFramework&	GetFramework() { return Framework; }
+
 	private:
 		EngineMemory*	Memory;
 		EngineCore*		Core;
