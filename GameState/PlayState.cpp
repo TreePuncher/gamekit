@@ -101,8 +101,9 @@ void Draw3DGrid(
 	FrameGraph.AddNode<DrawGrid>(0,
 		[&](FrameGraphNodeBuilder& Builder, auto& Data)
 	{
-		Data.RenderTarget = Builder.WriteRenderTarget(FrameGraph.Resources.RenderSystem->GetTag(RenderTarget));
-		Data.DepthBuffer = Builder.WriteDepthBuffer(FrameGraph.Resources.RenderSystem->GetTag(DepthBuffer));
+		Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.RenderSystem->GetTag(RenderTarget));
+		Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.RenderSystem->GetTag(DepthBuffer));
+		Data.CB				= Constants;
 
 		Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
 		PushConstantBufferData(
@@ -256,6 +257,7 @@ void DrawGame(
 		DrawDesc,
 		TempMem
 		);
+
 	DrawCollection(
 		FrameGraph,
 		Grid.Objects,
@@ -347,31 +349,28 @@ void FrameSnapshot::Restore(Game* out)
 
 
 PlayState::PlayState(
-	GameFramework*			IN_Framework,
-	WorldRender*			IN_Render,
-	TextureHandle			IN_DepthBuffer,
-	VertexBufferHandle		IN_VertexBuffer,
-	VertexBufferHandle		IN_TextBuffer,
-	ConstantBufferHandle	IN_ConstantBuffer) :
-
-	FrameworkState		{ IN_Framework },
+		GameFramework*			IN_Framework,
+		BaseState*				Base) : 
+	FrameworkState		{ IN_Framework						},
 	FrameEvents			{ Framework->Core->GetBlockMemory() },
 	FrameID				{ 0 },
-	Sound				{ Framework->Core->Threads },
-	DepthBuffer			{ IN_DepthBuffer },
-	Render				{ IN_Render },
+	Sound				{ Framework->Core->Threads	},
+	Render				{ &Base->Render				},
 	LocalGame			{ Framework->Core->GetBlockMemory() },
 	Player1_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
 	Player2_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
-	GameInPlay			{ true },
-	UseDebugCamera		{ false },
-	DebugOverlay		{ false },
-	TextBuffer			{ IN_TextBuffer },
-	VertexBuffer		{ IN_VertexBuffer },
+	GameInPlay			{ true					},
+	UseDebugCamera		{ false					},
+
+	ConstantBuffer		{ Base->ConstantBuffer	}, 
+	DepthBuffer			{ Base->DepthBuffer		},
+	TextBuffer			{ Base->TextBuffer		},
+	VertexBuffer		{ Base->VertexBuffer	},
+
 	EventMap			{ Framework->Core->GetBlockMemory() },
 	DebugCameraInputMap	{ Framework->Core->GetBlockMemory() },
 	DebugEventsInputMap	{ Framework->Core->GetBlockMemory() },
-	Puppet				{ CreatePlayerPuppet(Scene) },
+	Puppet				{ CreatePlayerPuppet(Scene)			},
 	Scene
 						{
 							Framework->Core->RenderSystem,
@@ -441,7 +440,7 @@ bool PlayState::EventHandler(Event evt)
 				UseDebugCamera	= !UseDebugCamera;
 				break;
 			case DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY:
-				DebugOverlay	= !DebugOverlay;
+				Framework->DrawDebug = !Framework->DrawDebug;
 				break;
 			default:
 				break;
@@ -549,15 +548,6 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 	ClearDepthBuffer(FrameGraph, DepthBuffer, 1.0f);
 
 
-	DrawSprite_Text(
-		"Build Date: " __DATE__ "\n",
-		FrameGraph,
-		*Framework->DefaultAssets.Font,
-		TextBuffer,
-		GetCurrentBackBuffer(&Core->Window),
-		Core->GetTempMemory());
-
-
 #ifndef DEBUGCAMERA
 #if 1
 	DrawGameGrid_Debug(
@@ -592,7 +582,7 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 	GetGraphicScenePVS(Scene, ActiveCamera, &Drawables, &TransparentDrawables);
 
 
-	if(DebugOverlay)
+	if(Framework->DrawDebug)
 	{
 		DrawGameGrid_Debug(
 			dt,
@@ -628,8 +618,20 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 
 #endif
 
-	PresentBackBuffer(FrameGraph, &Core->Window);
 
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool PlayState::PostDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+{
+	if (Framework->DrawDebugStats)
+		Framework->DrawDebugHUD(dT, TextBuffer, Graph);
+
+	PresentBackBuffer(Graph, &Core->Window);
 	return true;
 }
 

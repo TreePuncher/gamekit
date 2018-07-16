@@ -47,13 +47,7 @@ int main(int argc, char* argv[])
 		App.PushArgument(argv[I]);
 
 	auto& GameBase = App.PushState<BaseState>(&App);
-
-	App.PushState<PlayState>(
-			&GameBase.Render,
-			GameBase.DepthBuffer,
-			GameBase.VertexBuffer,
-			GameBase.TextBuffer,
-			GameBase.ConstantBuffer);
+	App.PushState<PlayState>(&GameBase);
 
 	FK_LOG_INFO("Set initial PlayState state.");
 

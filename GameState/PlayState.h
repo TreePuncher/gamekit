@@ -32,18 +32,21 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Components.h"
 
 #include "Gameplay.h"
+#include "BaseState.h"
 
 #include <fmod.hpp>
 
 /************************************************************************************************/
 
 
+using namespace FlexKit;
+
 typedef uint32_t SoundHandle;
 
 class FMOD_SoundSystem
 {
 public:
-	FMOD_SoundSystem(FlexKit::ThreadManager& IN_Threads) : 
+	FMOD_SoundSystem(ThreadManager& IN_Threads) : 
 		Threads	{	IN_Threads	}
 	{
 		result			= FMOD::System_Create(&system);
@@ -78,7 +81,7 @@ public:
 
 	Vector<FMOD::Sound*> Sounds;
 
-	FlexKit::ThreadManager& Threads;
+	ThreadManager& Threads;
 
 	FMOD::System     *system;
 	FMOD::Sound      *sound1, *sound2, *sound3;
@@ -114,47 +117,6 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 	return &SoundUpdate;
 }
 
-
-/************************************************************************************************/
-
-/*
-class PlayerCameraController : 
-	public FlexKit::CameraBehavior,
-	public FlexKit::SceneNodeBehavior
-{
-public:
-	PlayerCameraController(ComponentListInterface& IN_Components) :
-			Components			{IN_Components},
-			CameraBehavior		{IN_Components},
-			SceneNodeBehavior	{IN_Components}{}
-
-	ComponentListInterface& Components;
-
-	void Update(float dt)
-	{
-
-	}
-};
-
-ComponentListInterface& InitiatePlayerCameraController(
-	CameraComponentSystem*		CameraSystem,
-	SceneNodeComponentSystem*	SceneNodeSystem,
-	ComponentList<>&			Components)
-{
-	auto SceneNode = SceneNodeSystem->GetNewNode();
-
-	InitiateComponentList(Components,
-		CreateCameraComponent(
-			CameraSystem,
-			1.6666f,
-			0.01f,
-			10000.0f,
-			SceneNode,
-			false));
-
-	return Components;
-}
-*/
 
 /************************************************************************************************/
 
@@ -250,9 +212,10 @@ class GameCameraController
 {
 public:
 	GameCameraController() :
-		CameraOffset{ 0.0f, 10.0f, 5.0f },
-		Yaw			{0},
-		Pitch		{-45}
+		CameraOffset	{ 0.0f, 10.0f, 5.0f },
+		FacingDirection	{PF_UP},
+		YawOffset		{0.0f},
+		Pitch			{-45.0f}
 	{
 		Camera.SetCameraNode(GetZeroedNode());
 	}
@@ -265,13 +228,14 @@ public:
 
 	void Rotate_Clockwise()
 	{
-		Yaw -= 90;
+		FacingDirection = (FacingDirection + 1) % PLAYER_FACING_DIRECTION::PF_COUNT;
 	}
 
 
 	void Rotate_CounterClockwise()
 	{
-		Yaw += 90;
+		FacingDirection = (PLAYER_FACING_DIRECTION::PF_COUNT + FacingDirection - 1) % PLAYER_FACING_DIRECTION::PF_COUNT;
+		int x = 0;
 	}
 
 	void Track()
@@ -282,6 +246,7 @@ public:
 
 	void Update(float dt, const float3 PlayerPosition)
 	{
+		float Yaw = FacingDirection * -90.0f + YawOffset;
 		auto RotatedOffset = Quaternion(0, 360 - Yaw, 0) * CameraOffset;
 		SetOrientation(Camera.GetCameraNode(), Quaternion(0, Yaw, 0) * Quaternion(Pitch, 0, 0));
 		SetPositionW(Camera.GetCameraNode(), PlayerPosition + RotatedOffset);
@@ -293,11 +258,12 @@ public:
 		return Camera;
 	}
 
-	float			MovementFactor;
-	float			Yaw;
-	float			Pitch;
-	float3			CameraOffset;
-	CameraBehavior	Camera;
+	int							FacingDirection;
+	float						MovementFactor;
+	float						YawOffset;
+	float						Pitch;
+	float3						CameraOffset;
+	CameraBehavior				Camera;
 };
 
 
@@ -361,138 +327,132 @@ public:
 	void Handle(const Event& evt)
 	{
 		CurrentFrameEvents.push_back(evt);
+	}
 
-		if (evt.InputSource == Event::Keyboard)
+	void ProcessEvents()
+	{
+		for(auto& evt : CurrentFrameEvents)
 		{
-			switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
+			if (evt.InputSource == Event::Keyboard)
 			{
-			case PLAYER_EVENTS::PLAYER_UP:
-				InputState.UP		=	
-						(evt.Action == Event::Pressed) ? true : 
-					((evt.Action == Event::Release) ? false : InputState.UP);
-				break;
-			case PLAYER_EVENTS::PLAYER_LEFT:
-				InputState.LEFT		= 
-						(evt.Action == Event::Pressed) ? true : 
-					((evt.Action == Event::Release) ? false : InputState.LEFT);
-				break;
-			case PLAYER_EVENTS::PLAYER_DOWN:
-				InputState.DOWN		= 
-						(evt.Action == Event::Pressed) ? true : 
-					((evt.Action == Event::Release) ? false : InputState.DOWN);
-				break;
-			case PLAYER_EVENTS::PLAYER_RIGHT:
-				InputState.RIGHT	= 
-						(evt.Action == Event::Pressed) ? true : 
- 					((evt.Action == Event::Release) ? false : InputState.RIGHT);
-				break;
-
-			case PLAYER_EVENTS::PLAYER_ROTATE_LEFT:
-				if(evt.Action == Event::Pressed)
-					GameCamera.Rotate_CounterClockwise();
-				break;
-			case PLAYER_EVENTS::PLAYER_ROTATE_RIGHT:
-				if (evt.Action == Event::Pressed)
-					GameCamera.Rotate_Clockwise();
-				break;
-			case PLAYER_EVENTS::PLAYER_ACTION1:
-			{
-				if (Game.Players[Player].State != GridPlayer::PS_Idle)
-					return;
-
-				if ((evt.Action == Event::Release))
+				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
 				{
-					int2 Offset = {0, 0};
-
-					switch (Game.Players[Player].FacingDirection)
+				case PLAYER_EVENTS::PLAYER_UP:
+					InputState.UP		=	
+							(evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.UP);
+					break;
+				case PLAYER_EVENTS::PLAYER_LEFT:
+					InputState.LEFT		= 
+							(evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.LEFT);
+					break;
+				case PLAYER_EVENTS::PLAYER_DOWN:
+					InputState.DOWN		= 
+							(evt.Action == Event::Pressed) ? true : 
+						((evt.Action == Event::Release) ? false : InputState.DOWN);
+					break;
+				case PLAYER_EVENTS::PLAYER_RIGHT:
+					InputState.RIGHT	= 
+							(evt.Action == Event::Pressed) ? true : 
+ 						((evt.Action == Event::Release) ? false : InputState.RIGHT);
+					break;
+				case PLAYER_EVENTS::PLAYER_ROTATE_LEFT:
+					if (evt.Action == Event::Pressed)
 					{
-					case UP:
-						Offset += int2{ 0, -1 };
+						GameCamera.Rotate_CounterClockwise();
+						Game.SetPlayerDirection(Player, GameCamera.FacingDirection);
+					}
+					break;
+				case PLAYER_EVENTS::PLAYER_ROTATE_RIGHT:
+					if (evt.Action == Event::Pressed) {
+						GameCamera.Rotate_Clockwise();
+						Game.SetPlayerDirection(Player, GameCamera.FacingDirection);
+					}
+					break;
+				case PLAYER_EVENTS::PLAYER_ACTION1:
+				{
+					if (Game.Players[Player].State != GridPlayer::PS_Idle)
+						return;
+
+					if ((evt.Action == Event::Release))
+					{
+						int2 Offset = {0, 0};
+
+						switch (Game.Players[Player].FacingDirection)
+						{
+						case PF_UP:
+							Offset += int2{ 0, -1 };
+							break;
+						case PF_DOWN:
+							Offset += int2{ 0,  1 };
+							break;
+						case PF_LEFT:
+							Offset += int2{ -1,  0 };
+							break;
+						case PF_RIGHT:
+							Offset += int2{ 1,  0 };
+							break;
+						default:
+							FK_ASSERT(0, "!!!!!");
+						}
+
+						int2 GridPOS = Game.Players[Player].XY + Offset;
+
+						size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
+
+						auto State = Game.GetCellState(GridPOS);
+						if (State == EState::Bomb)
+						{
+							Game.MoveBomb(GridPOS, Offset);
+						}
+						else
+						{
+							Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
+							Game.MarkCell(GridPOS, EState::Bomb);
+						}
 						break;
-					case DOWN:
-						Offset += int2{ 0,  1 };
-						break;
-					case LEFT:
-						Offset += int2{ -1,  0 };
-						break;
-					case RIGHT:
-						Offset += int2{ 1,  0 };
+					}
+				}	break;
+				default:
+					break;
+				}
+
+
+				if (evt.Action == Event::Release)
+				{
+					switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
+					{
+					case PLAYER_EVENTS::PLAYER_UP:
+					case PLAYER_EVENTS::PLAYER_DOWN:
+					case PLAYER_EVENTS::PLAYER_LEFT:
+					case PLAYER_EVENTS::PLAYER_RIGHT:
+						InputState.PreferredDirection = PF_UNKNOWN;
 						break;
 					default:
-						FK_ASSERT(0, "!!!!!");
+						break;
 					}
-
-					int2 GridPOS = Game.Players[Player].XY + Offset;
-
-					size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
-
-					auto State = Game.GetCellState(GridPOS);
-					if (State == EState::Bomb)
-					{
-						Game.MoveBomb(GridPOS, Offset);
-					}
-					else
-					{
-						Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
-						Game.MarkCell(GridPOS, EState::Bomb);
-					}
-					break;
 				}
-			}	break;
-			default:
-				break;
-			}
 
 
-			if (evt.Action == Event::Release)
-			{
-				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
+				if (evt.Action == Event::Pressed)
 				{
-				case PLAYER_EVENTS::PLAYER_UP:
-				case PLAYER_EVENTS::PLAYER_DOWN:
-				case PLAYER_EVENTS::PLAYER_LEFT:
-				case PLAYER_EVENTS::PLAYER_RIGHT:
-					InputState.PreferredDirection = PF_UNKNOWN;
-					break;
-				default:
-					break;
-				}
-			}
-
-
-			if (evt.Action == Event::Pressed)
-			{
-				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
-				{
-				case PLAYER_EVENTS::PLAYER_UP:
-					InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_UP;			break;
-				case PLAYER_EVENTS::PLAYER_LEFT:
-					InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_LEFT;		break;
-				case PLAYER_EVENTS::PLAYER_DOWN:
-					InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_DOWN;		break;
-				case PLAYER_EVENTS::PLAYER_RIGHT:
-					InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_RIGHT;		break;
-				default:
-					break;
+					switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
+					{
+					case PLAYER_EVENTS::PLAYER_UP:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_UP;			break;
+					case PLAYER_EVENTS::PLAYER_LEFT:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_LEFT;		break;
+					case PLAYER_EVENTS::PLAYER_DOWN:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_DOWN;		break;
+					case PLAYER_EVENTS::PLAYER_RIGHT:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_RIGHT;		break;
+					default:
+						break;
+					}
 				}
 			}
 		}
-	}
-
-
-	void Rotate(size_t I)
-	{
-	}
-
-	void Rotate_Clockwise()
-	{
-
-	}
-
-
-	void Rotate_CounterClockwise()
-	{
-
 	}
 
 
@@ -519,7 +479,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  0, -1 });
-		Game.Players[Player].FacingDirection = PlayerDirection::UP;
+		Game.Players[Player].FacingDirection = PF_UP;
 	}
 
 
@@ -527,7 +487,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  0,  1 });
-		Game.Players[Player].FacingDirection = PlayerDirection::DOWN;
+		Game.Players[Player].FacingDirection = PF_DOWN;
 	}
 
 
@@ -535,7 +495,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{ -1,  0 });
-		Game.Players[Player].FacingDirection = PlayerDirection::LEFT;
+		Game.Players[Player].FacingDirection = PF_LEFT;
 	}
 
 
@@ -543,7 +503,7 @@ public:
 	{
 		auto POS = Game.Players[Player].XY;
 		MovePlayer(POS + FlexKit::int2{  1,  0 });
-		Game.Players[Player].FacingDirection = PlayerDirection::RIGHT;
+		Game.Players[Player].FacingDirection = PF_RIGHT;
 	}
 
 
@@ -552,41 +512,50 @@ public:
 
 	void Update(const double dt)
 	{
-		if (InputState.PreferredDirection != PF_UNKNOWN)
+		ProcessEvents();
+		
+		int Direction = -1;
+
+		if (InputState.PreferredDirection == PF_UNKNOWN)
 		{
-			switch ((int64_t)InputState.PreferredDirection)
+			if (InputState.UP)
 			{
-				case PLAYER_FACING_DIRECTION::PF_UP:
-					MoveUp();
-					break;
-				case PLAYER_FACING_DIRECTION::PF_LEFT:
-					MoveLeft();
-					break;
-				case PLAYER_FACING_DIRECTION::PF_DOWN:
-					MoveDown();
-					break;
-				case PLAYER_FACING_DIRECTION::PF_RIGHT:
-					MoveRight();
-					break;
+				Direction = PF_UP;
+			}
+			else if (InputState.DOWN)
+			{
+				Direction = PF_DOWN;
+			}
+			else if (InputState.LEFT)
+			{
+				Direction = PF_LEFT;
+			}
+			else if (InputState.RIGHT)
+			{
+				Direction = PF_RIGHT;
 			}
 		}
 		else
 		{
-			if		(InputState.UP)
+			Direction = InputState.PreferredDirection;
+		}
+
+		if (Direction >= 0)
+		{
+			switch ((Direction + GameCamera.FacingDirection) % PF_COUNT)
 			{
+			case PLAYER_FACING_DIRECTION::PF_UP:
 				MoveUp();
-			}
-			else if (InputState.DOWN)
-			{
-				MoveDown();
-			}
-			else if (InputState.LEFT)
-			{
+				break;
+			case PLAYER_FACING_DIRECTION::PF_LEFT:
 				MoveLeft();
-			}
-			else if (InputState.RIGHT)
-			{
+				break;
+			case PLAYER_FACING_DIRECTION::PF_DOWN:
+				MoveDown();
+				break;
+			case PLAYER_FACING_DIRECTION::PF_RIGHT:
 				MoveRight();
+				break;
 			}
 		}
 
@@ -606,7 +575,7 @@ public:
 		bool LEFT;
 		bool RIGHT;
 
-		PLAYER_FACING_DIRECTION	PreferredDirection;// if -1 then a preferred direction is ignored
+		int	PreferredDirection;// if -1 then a preferred direction is ignored
 
 		operator bool()	{ return UP | DOWN | LEFT | RIGHT; }
 	}InputState;
@@ -674,18 +643,17 @@ class PlayState : public FrameworkState
 {
 public:
 	PlayState(
-		GameFramework*			Framework,
-		WorldRender*			Render,
-		TextureHandle			DepthBuffer,
-		VertexBufferHandle		VertexBuffer,
-		VertexBufferHandle		TextBuffer,
-		ConstantBufferHandle	ConstantBuffer);
+		GameFramework*	IN_Framework, 
+		BaseState*		Base);
+	
 
 	~PlayState();
 
 	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
 	bool PreDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
-	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
+	bool PostDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
+
 	bool DebugDraw		(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
 
 	bool EventHandler	(Event evt)	final;
@@ -698,7 +666,7 @@ public:
 
 	bool GameInPlay;
 	bool UseDebugCamera;
-	bool DebugOverlay;
+
 
 	GraphicScene			Scene;
 
