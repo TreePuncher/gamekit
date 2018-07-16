@@ -27,7 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\Application\GameFramework.h"
 #include "..\Application\CameraUtilities.h"
-	
+
+using FlexKit::iAllocator;
+using FlexKit::FrameworkState;
+using FlexKit::GameFramework;
+
 struct MenuState;
 
 struct CBArguements
@@ -45,13 +49,13 @@ struct MenuState : public FrameworkState
 	{
 	}
 
-	MenuState(const MenuState& rhs) : FrameworkState(rhs.Framework), BettererWindow(rhs.BettererWindow)
+	MenuState(const MenuState& rhs) : 
+		FrameworkState(rhs.Framework), 
+		BettererWindow(rhs.BettererWindow)
 	{
-		Window			= rhs.Window;
 		CursorSize		= rhs.CursorSize;
 	}
 
-	FlexKit::SimpleWindow	Window;
 	FlexKit::float2			CursorSize;
 	FlexKit::ComplexGUI		BettererWindow;
 

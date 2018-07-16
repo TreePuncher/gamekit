@@ -109,15 +109,12 @@ namespace FlexKit
 	};
 
 	// CallBacks Definitions
-	//typedef bool (*EnteredEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	//typedef bool (*GenericGUIEventFN)	( 				 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	//typedef bool (*TextInputEventFN)	( char*, size_t, void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-	//typedef bool (*SliderEventFN)		( float,		 void* _ptr, size_t GUIElement ); // If True Begins Immediate Return
-
 	typedef std::function<bool (char*, size_t,	size_t GUIElement)>	TextInputEventFN;
 	typedef std::function<bool (				size_t GUIElement)> EnteredEventFN;
 	typedef std::function<bool (				size_t GUIElement)> GenericGUIEventFN;
 	typedef std::function<bool (float,			size_t GUIElement)> SliderEventFN;
+
+	typedef uint32_t GUIElementHandle;
 
 	struct TextInputState{
 		bool RemainActive = true;
@@ -125,6 +122,7 @@ namespace FlexKit
 	};
 
 	typedef TextInputState (*TextInputUpdateFN) ( TextArea* TextArea, char* str, size_t strBufferSize, void* _ptr );
+
 
 	struct GUIElement_TexuredButton
 	{
@@ -142,6 +140,7 @@ namespace FlexKit
 		GenericGUIEventFN	OnEntered_CB		= nullptr;
 		GenericGUIEventFN	OnExit_CB			= nullptr;
 	};
+
 
 	struct GUIElement_TextButton
 	{
@@ -162,6 +161,7 @@ namespace FlexKit
 
 		EGUI_FORMATTING		Formatting = EGF_FORMAT_DEFAULT;
 	};
+
 
 	struct GUIElement_TextInput
 	{
@@ -185,6 +185,7 @@ namespace FlexKit
 		iAllocator*		Memory;
 	};
 
+
 	struct GUIElement_TextBox
 	{
 		float2		WH;
@@ -195,6 +196,7 @@ namespace FlexKit
 
 		iAllocator*	Memory;
 	};
+
 
 	struct GUIElement_Slider
 	{
@@ -212,6 +214,7 @@ namespace FlexKit
 
 	};
 
+
 	struct GUIElement_RadioButton
 	{
 		float2			WH;
@@ -222,9 +225,11 @@ namespace FlexKit
 		bool Toggled;
 	};
 
+
 	struct GUIElement_Graph
 	{
 	};
+
 
 	struct GUIElement_Div
 	{
@@ -232,52 +237,11 @@ namespace FlexKit
 	};
 
 
-	/************************************************************************************************/
-
-
-	typedef uint32_t GUIElementHandle;
-
-	struct SimpleWindow
-	{
-		GUIChildList						Root;
-		Vector<GUIElement>				Elements;
-		Vector<GUIElement_List>			Lists;
-		Vector<GUIElement_TexuredButton>	TexturedButtons;
-		Vector<GUIElement_TextButton>		TextButtons;
-		Vector<GUIElement_TextInput>		TextInputs;
-		Vector<GUIElement_TextBox>		TextBoxes;
-		Vector<GUIElement_Slider>			Slider;
-		Vector<GUIElement_RadioButton>	RadioButton;
-		Vector<GUIElement_Graph>			Graphs;
-		Vector<GUIElement_Div>			Dividers;
-
-		Vector<int32_t> CellState;// Marks Owner, -1 if Unused
-
-		size_t RowCount;
-		size_t ColumnCount;
-
-		float2 TitleBarWH;
-		float2 CellBorder;
-
-		float4 PanelColor;
-		float4 CellColor;
-
-		float2 WH;
-		float2 Position;
-		float  AspectRatio;
-
-#if 0
-		static_vector<float, 16> RHeights;
-		static_vector<float, 16> CWidths;
-#endif
-		iAllocator*	Memory;
-	};
-
 
 	/************************************************************************************************/
 	
 
-	struct SimpleWindowInput
+	struct WindowInput
 	{
 		float2	MousePosition;
 		float2	CursorWH;
@@ -372,26 +336,6 @@ namespace FlexKit
 	};
 
 
-	struct SimpleWindow_Desc
-	{
-		SimpleWindow_Desc(float width, float height, size_t ColumnCount, size_t RowCount = 1, float aspectratio = 1.0f) :
-			RowCount		(RowCount),
-			ColumnCount		(ColumnCount),
-			Width			(width),
-			Height			(height),
-			AspectRatio		(aspectratio)
-		{}
-
-		float	Width;
-		float	Height;
-		float	AspectRatio;
-
-		size_t	RowCount;
-		size_t	ColumnCount;
-
-		float2  CellDividerSize;
-	};
-
 	struct ParentInfo 
 	{
 		float2 ClipArea_BL;
@@ -400,12 +344,14 @@ namespace FlexKit
 		float2 ParentPosition;
 	};
 
+
 	enum EDrawDirection
 	{
 		DD_Rows,
 		DD_Columns,
 		DD_Grid,
 	};
+
 
 	enum EOverFlowOption
 	{
@@ -415,6 +361,7 @@ namespace FlexKit
 		OF_Exlude,
 	};
 
+
 	struct FormattingOptions
 	{
 		EDrawDirection	DrawDirection	 = DD_Columns;
@@ -422,40 +369,6 @@ namespace FlexKit
 
 		float2			CellDividerSize	= float2(0.01f, 0.01f);
 	};
-
-
-	/************************************************************************************************/
-
-
-	FLEXKITAPI void		InitiateSimpleWindow	( iAllocator*		Memory,		SimpleWindow* Out,		SimpleWindow_Desc& Desc );
-	FLEXKITAPI void		CleanUpSimpleWindow		( SimpleWindow* Out, RenderSystem* RS = nullptr);
-	//FLEXKITAPI void		DrawChildren			( GUIChildList&		Elements,	SimpleWindow* Window,	ImmediateRender* Out, ParentInfo& P, FormattingOptions& Formatting = FormattingOptions());
-	//FLEXKITAPI void		DrawSimpleWindow		( SimpleWindowInput	Input,		SimpleWindow* Window,	ImmediateRender* Out );
-
-	FLEXKITAPI void		UpdateSimpleWindow		( SimpleWindowInput* Input, SimpleWindow* Window);
-
-	FLEXKITAPI GUIElementHandle	SimpleWindowAddVerticalList		( SimpleWindow*	Window, GUIList& Desc, GUIElementHandle Parent = -1 );
-	FLEXKITAPI GUIElementHandle	SimpleWindowAddHorizonalList	( SimpleWindow*	Window, GUIList& Desc, GUIElementHandle Parent = -1 );
-
-	FLEXKITAPI GUIElementHandle	SimpleWindowAddTexturedButton	( SimpleWindow*	Window, GUITexturedButton_Desc&	Desc,					GUIElementHandle Parent = -1);
-	FLEXKITAPI GUIElementHandle	SimpleWindowAddTextButton		( SimpleWindow*	Window, GUITextButton_Desc&		Desc, RenderSystem* RS, GUIElementHandle Parent = -1);
-
-	FLEXKITAPI GUIElementHandle	SimpleWindowAddTextInput		( SimpleWindow*	Window, GUITextInput_Desc&		Desc, RenderSystem* RS, GUIElementHandle Parent = -1);
-
-
-	FLEXKITAPI void				SimpleWindowAddDivider			( SimpleWindow*	Window, float2 Size,				  GUIElementHandle Parent );
-
-	FLEXKITAPI GUIElementHandle	SimpleWindowAddHorizontalSlider ( SimpleWindow*	Window, GUISlider_Desc			Desc, GUIElementHandle Parent);
-
-
-	FLEXKITAPI bool	CursorInside	 ( float2 CursorPos, float2 CursorWH, float2 POS, float2 WH );
-	FLEXKITAPI bool	CursorInsideCell ( SimpleWindow* Window, float2 CursorPos, float2 CursorWH, uint2 Cell);
-
-	FLEXKITAPI void				SetCellState ( uint2 Cell, int32_t S, SimpleWindow* W);
-	FLEXKITAPI void				SetCellState ( uint2 Cell, uint2 WH, int32_t S, SimpleWindow* W);
-	FLEXKITAPI GUIElementHandle	GetCellState ( uint2 Cell, SimpleWindow* W);
-
-	FLEXKITAPI void SetSliderPosition(float R, GUIElementHandle, SimpleWindow* W);
 
 
 	/************************************************************************************************/
@@ -473,6 +386,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct LayoutEngine_Desc
+	{
+		FrameGraph*			FrameGraph;
+		TextureHandle		RenderTarget;
+		VertexBufferHandle	VertexBuffer;
+		VertexBufferHandle	TextBuffer;
+		float2				PixelSize;
+	};
+
+
 	struct LayoutEngine
 	{
 		struct Draw_RECT
@@ -482,9 +405,14 @@ namespace FlexKit
 			float4 Color;
 		};
 
-		LayoutEngine(iAllocator* tempmemory, iAllocator* Memory, RenderSystem* RS, float2 pixelsize);
+		LayoutEngine(iAllocator* tempmemory, iAllocator* Memory, LayoutEngine_Desc& RS);
 
-		RenderSystem*		RS;
+		FrameGraph*				FrameGraph;
+		TextureHandle			RenderTarget;
+		VertexBufferHandle		VertexBuffer;
+		VertexBufferHandle		TextBuffer;
+		ConstantBufferHandle	ConstantBuffer;
+
 		iAllocator*			Memory;
 		iAllocator*			TempMemory;
 
@@ -496,7 +424,14 @@ namespace FlexKit
 		static float2 Position2SS(float2);
 		static float3 Position2SS(float3);
 
-		void PrintLine(const char* Str, float2 WH, SpriteFontAsset* Font, float2 Offset = { 0.0f, 0.0f }, float2 Scale = { 1.0f, 1.0f }, bool CenterX = false, bool CenterY = false);
+		void PrintLine(
+			const char* Str, 
+			float2 WH, 
+			SpriteFontAsset* Font, 
+			float2 Offset	= { 0.0f, 0.0f }, 
+			float2 Scale	= { 1.0f, 1.0f },
+			bool CenterX	= false, 
+			bool CenterY	= false);
 
 		void PushLineSegments	( FlexKit::LineSegments& );
 		void PushRect			( Draw_RECT Rect );
@@ -575,7 +510,7 @@ namespace FlexKit
 		static void Draw		( GUIButtonHandle button, LayoutEngine* Layout );
 		static void Draw_DEBUG	( GUIButtonHandle button, LayoutEngine* Layout );
 
-		static void Update		( GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in );
+		static void Update		( GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const WindowInput in );
 	};
 
 
@@ -646,7 +581,7 @@ namespace FlexKit
 		SpriteFontAsset*	Font;
 		iAllocator*		Memory;
 
-		static void Update		(GUITextBoxHandle  TextBox, LayoutEngine* Layout, double dT, const SimpleWindowInput Input);
+		static void Update		(GUITextBoxHandle  TextBox, LayoutEngine* Layout, double dT, const WindowInput Input);
 		static void Draw		(GUITextBoxHandle  button, LayoutEngine* Layout);
 		static void Draw_DEBUG	(GUITextBoxHandle  button, LayoutEngine* Layout);
 	};
@@ -673,8 +608,8 @@ namespace FlexKit
 		float2						GetChildPosition(GUIElementHandle Element);
 		float4						GetBackgroundColor();
 
-		void						SetBackgroundColor(float4 K);
-		void						SetPosition(float2 XY);
+		void						SetBackgroundColor	(float4 K);
+		void						SetPosition			(float2 XY);
 
 		GUIGrid&							_GetGrid();
 		Vector<Vector<GUIElementHandle>>	_GetChildren();
@@ -793,7 +728,7 @@ namespace FlexKit
 				LayoutEngine.PopOffset();
 		}
 
-		static void Update		( GUIGridHandle Grid, LayoutEngine* LayoutEngine, double dt, const SimpleWindowInput in );
+		static void Update		( GUIGridHandle Grid, LayoutEngine* LayoutEngine, double dt, const WindowInput in );
 		static void Draw		( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
 		static void Draw_DEBUG	( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
 
@@ -810,6 +745,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct DrawUI_Desc
+	{
+		FrameGraph*			FrameGraph;
+		TextureHandle		RenderTarget;
+		VertexBufferHandle	VertexBuffer;
+		VertexBufferHandle	TextBuffer;
+	};
+
+
 	class ComplexGUI
 	{
 	public:
@@ -821,15 +765,15 @@ namespace FlexKit
 
 		void Release();
 
-		void Update		( double dt, const SimpleWindowInput in, float2 PixelSize, iAllocator* TempMemory );
+		void Update		( double dt, const WindowInput in, float2 PixelSize, iAllocator* TempMemory );
 
-		//void Draw		( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
+		void Draw			( DrawUI_Desc& Desc, iAllocator* Temp );
 		//void Draw_DEBUG	( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
 
 		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
 		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );
 
-		void UpdateElement		( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	SimpleWindowInput Input );
+		void UpdateElement		( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	WindowInput Input );
 
 		GUIGridHandle		CreateGrid		( uint2 ID = {0, 0} );
 		GUIGridHandle		CreateGrid		( GUIElementHandle	Parent, uint2 ID = {0, 0} );
@@ -847,7 +791,7 @@ namespace FlexKit
 		Vector<GUITextBox>					TextBoxes;
 		Vector<Vector<GUIElementHandle>>	Children;
 
-		iAllocator* Memory;
+		iAllocator*							Memory;
 	};
 
 

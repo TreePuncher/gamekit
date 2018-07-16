@@ -117,7 +117,7 @@ bool OnExitLeft(void* _ptr, size_t GUIElement)
 bool PreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
-	SimpleWindowInput	Input	  = {};
+	WindowInput	Input	  = {};
 
 	Input.LeftMouseButtonPressed  = ThisState->Framework->MouseState.LMB_Pressed;
 	Input.MousePosition			  = ThisState->Framework->MouseState.NormalizedPos;
@@ -134,7 +134,7 @@ bool PreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
-	SimpleWindowInput	Input	  = {};
+	WindowInput	Input	  = {};
 	GameFramework*		Framework	  = ThisState->Framework;
 
 	ThisState->T += dT;
@@ -172,7 +172,7 @@ bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 void ReleaseMenu	(FrameworkState* StateMemory)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
-	CleanUpSimpleWindow(&ThisState->Window, ThisState->Framework->Core->RenderSystem);
+
 	ThisState->BettererWindow.Release();
 	ThisState->Framework->Core->GetBlockMemory().free(ThisState);
 }
@@ -321,7 +321,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 bool JoinScreenUpdate(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 {
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
-	SimpleWindowInput	Input = {};
+	WindowInput	Input = {};
 	GameFramework*		Framework = ThisState->Framework;
 
 	Input.LeftMouseButtonPressed = ThisState->Framework->MouseState.LMB_Pressed;
@@ -340,7 +340,7 @@ bool JoinScreenUpdate(FrameworkState* StateMemory, EngineCore* Engine, double dT
 bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 {
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
-	SimpleWindowInput	Input = {};
+	WindowInput	Input = {};
 
 	FK_ASSERT(0);
 	//ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));

@@ -28,6 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\Application\GameFramework.h"
 #include "..\Application\GameMemory.h"
+#include "..\Application\WorldRender.h"
+
+using FlexKit::WorldRender;
+using FlexKit::ReleaseCameraTable;
 
 class BaseState : public FlexKit::FrameworkState
 {
