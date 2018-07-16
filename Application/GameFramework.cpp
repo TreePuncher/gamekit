@@ -131,8 +131,10 @@ namespace FlexKit
 			}	break;
 			case KC_F1:
 			{
-				_ptr->DrawDebug			= !_ptr->DrawDebug;
-				_ptr->DrawDebugStats	= !_ptr->DrawDebugStats;
+				auto Temp1 = _ptr->DrawDebug;
+				auto Temp2 = _ptr->DrawDebugStats;
+				_ptr->DrawDebug			= !_ptr->DrawDebug		| (_ptr->DrawDebugStats	& !(Temp1 & Temp2));
+				_ptr->DrawDebugStats	= !_ptr->DrawDebugStats | (_ptr->DrawDebug		& !(Temp1 & Temp2));
 			}	break;
 			case KC_F2:
 			{
@@ -241,18 +243,6 @@ namespace FlexKit
 
 		Stats.FPS_Counter++;
 		Stats.Fps_T += dT;
-
-		if (DrawDebugStats && false)
-		{
-			uint32_t VRamUsage = GetVidMemUsage(Core->RenderSystem) / MEGABYTE;
-			char* TempBuffer   = (char*)Core->GetTempMemory().malloc(512);
-			auto DrawTiming    = float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
-
-			sprintf_s(TempBuffer, 512, "Current VRam Usage: %u MB\nFPS: %u\nDraw Time: %fms\nObjects Drawn: %u", VRamUsage, (uint32_t)Stats.FPS, DrawTiming, (uint32_t)Stats.ObjectsDrawnLastFrame);
-
-			FK_ASSERT(0);
-			//PrintText(&Framework->Immediate, TempBuffer, Framework->DefaultAssets.Font, { 0.0f, 0.0f }, { 0.5f, 0.5f }, float4(WHITE, 1), GetPixelSize(Core));
-		}
 	}
 
 
@@ -274,6 +264,20 @@ namespace FlexKit
 			{
 				auto Framework = *Itr;		
 				if (!Framework->Draw(Core, Dispatcher, 0, FrameGraph))
+					break;
+
+				Itr++;
+			}
+		}
+
+		{
+			auto Itr = SubStates.rbegin();
+			auto End = SubStates.rend();
+
+			while (Itr != End)
+			{
+				auto Framework = *Itr;
+				if (!Framework->PostDrawUpdate(Core, Dispatcher, 0, FrameGraph))
 					break;
 
 				Itr++;
@@ -336,17 +340,47 @@ namespace FlexKit
 	}
 
 
-	void GameFramework::DispatchEvent(const Event& evt)
+	bool GameFramework::DispatchEvent(const Event& evt)
 	{
 		auto itr = SubStates.rbegin();
 		while (itr != SubStates.rend())
 		{
 			if (!(*itr)->EventHandler(evt))
-				break;
+				return false;
 			itr++;
 		}
+		return true;
 	}
 
+
+	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, FrameGraph& Graph)
+	{
+		uint32_t VRamUsage	= GetVidMemUsage(Core->RenderSystem) / MEGABYTE;
+		char* TempBuffer	= (char*)Core->GetTempMemory().malloc(512);
+		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
+
+		sprintf_s(TempBuffer, 512, 
+			"Current VRam Usage: %u MB\n"
+			"FPS: %u\n"
+			"Draw Time: %fms\n"
+			"Objects Drawn: %u\n"
+			"Build Date: " __DATE__ "\n",
+			VRamUsage, 
+			(uint32_t)Stats.FPS, DrawTiming, 
+			(uint32_t)Stats.ObjectsDrawnLastFrame);
+
+
+		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
+
+		DrawSprite_Text(
+				TempBuffer, 
+				Graph, 
+				*DefaultAssets.Font, 
+				TextBuffer, 
+				GetCurrentBackBuffer(&Core->Window), 
+				Core->GetTempMemory(), 
+				Format);
+	}
 
 	void GameFramework::PostPhysicsUpdate()
 	{
@@ -405,16 +439,18 @@ namespace FlexKit
 
 		auto itr = base->SubStates.rbegin();
 
-		switch (evt.InputSource)
+		if (base->DispatchEvent(evt))
 		{
-		case Event::Keyboard:
-			HandleKeyEvents(evt, base);
-		case Event::Mouse:
-			HandleMouseEvents(evt, reinterpret_cast<GameFramework*>(_ptr));
-			break;
+			switch (evt.InputSource)
+			{
+			case Event::Keyboard:
+				HandleKeyEvents(evt, base);
+			case Event::Mouse:
+				HandleMouseEvents(evt, reinterpret_cast<GameFramework*>(_ptr));
+				break;
+			}
 		}
 
-		base->DispatchEvent(evt);
 	}
 
 
@@ -539,11 +575,11 @@ namespace FlexKit
 		Framework.TerrainSplits				= 12;
 		Framework.Core						= Core;
 
+		Framework.DrawDebug					= false;
+
 #ifdef _DEBUG
-		Framework.DrawDebug					= true;
 		Framework.DrawDebugStats			= true;
 #else
-		Framework.DrawDebug					= false;
 		Framework.DrawDebugStats			= false;
 #endif
 
@@ -589,7 +625,7 @@ namespace FlexKit
 		BindUIntVar(&Framework.Console, "FPS",				&Framework.Stats.FPS);
 		BindBoolVar(&Framework.Console, "HUD",				&Framework.DrawDebugStats);
 		BindBoolVar(&Framework.Console, "DrawDebug",		&Framework.DrawDebug);
-		BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
+		//BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
 		BindBoolVar(&Framework.Console, "FrameLock",		&Core->FrameLock);
 
 		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});

@@ -71,7 +71,9 @@ namespace FlexKit
 		void PostDraw			(iAllocator* TempMemory, double dT);
 		void Cleanup			();
 
-		void DispatchEvent(const Event& evt);
+		bool DispatchEvent(const Event& evt);
+
+		void DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, FrameGraph& Graph);
 
 		void PostPhysicsUpdate	();
 		void PrePhysicsUpdate	();
@@ -86,11 +88,9 @@ namespace FlexKit
 		MouseInputState			MouseState;
 
 		GraphicScene*			ActiveScene;
-		//PhysicsComponentSystem*	ActivePhysicsScene;
 		RenderWindow*			ActiveWindow;
 
 		float4					ClearColor;
-
 		Console					Console;
 		EngineCore*				Core;
 		NodeHandle				RootNode;
@@ -137,7 +137,7 @@ namespace FlexKit
 		virtual bool DebugDraw		(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
 		virtual bool PreDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
 		virtual bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
-		virtual bool PostDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
+		virtual bool PostDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
 
 		virtual bool EventHandler	(Event evt) { return true; };
 
