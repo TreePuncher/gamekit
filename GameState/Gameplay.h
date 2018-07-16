@@ -37,7 +37,19 @@ TODO's
 #include "..\graphicsutilities\FrameGraph.h"
 
 
+/************************************************************************************************/
+
+
+using FlexKit::Event;
+using FlexKit::FrameGraph;
 using FlexKit::GameFramework;
+
+using FlexKit::ConstantBufferHandle;
+using FlexKit::VertexBufferHandle;
+using FlexKit::TextureHandle;
+
+using FlexKit::int2;
+using FlexKit::uint2;
 
 
 /************************************************************************************************/
@@ -51,15 +63,20 @@ typedef size_t GridSpace_Handle;
 /************************************************************************************************/
 
 
-enum PlayerDirection
-{
-	UP, DOWN, LEFT, RIGHT
-};
-
-
 enum class EBombType
 {
 	Regular
+};
+
+
+enum PLAYER_FACING_DIRECTION : int
+{
+	PF_UP		= 0, 
+	PF_RIGHT	= 1,
+	PF_DOWN		= 2, 
+	PF_LEFT		= 3,
+	PF_COUNT	= 4,
+	PF_UNKNOWN	= -1
 };
 
 
@@ -113,7 +130,7 @@ public:
 	FlexKit::static_vector<EBombType, 4>	BombSlots;
 	FlexKit::static_vector<size_t, 4>		BombCounts;
 
-	PlayerDirection	FacingDirection = PlayerDirection::DOWN;
+	int	FacingDirection = PLAYER_FACING_DIRECTION::PF_DOWN;
 };
 
 
@@ -213,19 +230,18 @@ public:
 	{
 		Release();
 
+		for (auto Task : rhs.Tasks)
+		{
+			auto Copy = Task->MakeCopy(Memory);
+			Tasks.push_back(Copy);
+		}
+
 		Bombs	= rhs.Bombs;
-		Memory	= rhs.Memory;
 		Players	= rhs.Players;
 		Objects = rhs.Objects;
 		Spaces	= rhs.Spaces;
 		Grid	= rhs.Grid;
-		Tasks	= rhs.Memory;
 		WH		= rhs.WH;
-
-		Tasks.reserve(rhs.Tasks.size());
-
-		for (auto Task : rhs.Tasks)
-  			Tasks.push_back(Task->MakeCopy(Memory));
 
 		return *this;
 	}
@@ -273,7 +289,6 @@ public:
 
 	bool IsCellClear		(GridID_t GridID);
 	bool IsCellDestroyed	(GridID_t GridID);
-	void Update				(const double dt, iAllocator* Memory);
 	bool MarkCell			(GridID_t CellID, EState State);
 	void Resize				(uint2 wh);
 	bool RemoveBomb			(BombID_t ID);
@@ -281,8 +296,9 @@ public:
 	bool	GetBomb			(BombID_t ID, GridBomb& out);
 	EState	GetCellState	(GridID_t GridPOS);
 
-	bool	SetBomb(BombID_t ID, const GridBomb& In);
+	bool	SetBomb	(BombID_t ID, const GridBomb& In);
 
+	void	Update	(const double dt, iAllocator* Memory);
 
 	// Returns Player Position Between {0 - Width, 0 - Height}
 	// World Position can be produced by scaling by Cell Size
@@ -296,6 +312,14 @@ public:
 			(Player.XY[1] + Player.Offset.y)};
 
 		return Position;
+	}
+
+
+	void SetPlayerDirection(Player_Handle PlayerHandle, int Direction)
+	{
+		auto& Player = Players[PlayerHandle];
+
+		Player.FacingDirection = Direction;
 	}
 
 
@@ -341,15 +365,6 @@ void DrawGameGrid_Debug(
 
 /************************************************************************************************/
 
-
-enum PLAYER_FACING_DIRECTION : size_t
-{
-	PF_UP		= 0, 
-	PF_RIGHT	= 1,
-	PF_DOWN		= 2, 
-	PF_LEFT		= 3,
-	PF_UNKNOWN	= -1
-};
 
 
 enum PLAYER_EVENTS : int64_t

@@ -245,7 +245,7 @@ void Game::Resize(uint2 wh)
 
 bool Game::GetBomb(BombID_t ID, GridBomb& Out)
 {
-	auto Res = FlexKit::find(Bombs, 
+	auto Res = find(Bombs, 
 		[this, ID](auto res) 
 		{ 
 			return (res.ID == ID);
@@ -262,7 +262,7 @@ bool Game::GetBomb(BombID_t ID, GridBomb& Out)
 
 bool Game::SetBomb(BombID_t ID, const GridBomb& In)
 {
-	auto Res = FlexKit::find(Bombs,
+	auto Res = find(Bombs,
 		[this, ID](auto res)
 	{
 		return (res.ID == ID);
@@ -290,7 +290,7 @@ EState Game::GetCellState(GridID_t CellID)
 
 bool Game::RemoveBomb(BombID_t ID) 
 {
-	auto Res = FlexKit::find(Bombs,
+	auto Res = find(Bombs,
 		[this, ID](auto res)
 	{
 		return (res.ID == ID);
