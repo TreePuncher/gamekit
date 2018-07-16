@@ -55,10 +55,14 @@ namespace FlexKit
 
 	enum class ConsoleSyntax
 	{
+		VARIABLEDECLARATION,
+		VARIABLEASSIGNMENT,
 		FUNCTIONCALL,
 		IDENTIFIER,
 		UNKNOWNIDENTIFIER,
 		CONSTVARIABLE,
+		CONSTNUMBER,
+		CONSTFLOAT,
 		ARGUEMENTSBEGIN,
 		ARGUEMENTSEND,
 		OPERATOR,
@@ -78,6 +82,7 @@ namespace FlexKit
 
 	enum class ConsoleVariableType
 	{
+		CONSOLE_IDENTIFIER,
 		CONSOLE_FLOAT,
 		CONSOLE_STRING,
 		CONSOLE_INT,
@@ -97,6 +102,7 @@ namespace FlexKit
 	enum class IdentifierType
 	{
 		FUNCTION,
+		OPERATOR,
 		VARIABLE,
 		TYPE,
 	};
@@ -126,6 +132,7 @@ namespace FlexKit
 
 	typedef bool Console_FN(Console* C, ConsoleVariable*, size_t ArguementCount, void* USER);
 
+
 	struct ConsoleFunction
 	{
 		const char*								FunctionName;
@@ -135,12 +142,27 @@ namespace FlexKit
 		static_vector<ConsoleVariableType, 6>	ExpectedArguementTypes;
 	};
 
-	struct ErrorTable
+	struct ErrorEntry
 	{
+		const char* ErrorString;
+		enum ErrorType
+		{
+			InvalidSyntax, 
+			UnknownIdentified,
+			InvalidOperation,
+			InvalidArguments
+		}ErrorCode;
 	};
 
-	typedef FlexKit::Vector<Identifier>			ConsoleIdentifierTable;
-	typedef FlexKit::Vector<ConsoleFunction>	ConsoleFunctionTable;
+
+	struct ErrorTable
+	{
+		Vector<ErrorEntry> ErrorStack;
+	};
+
+
+	typedef Vector<Identifier>			ConsoleIdentifierTable;
+	typedef Vector<ConsoleFunction>		ConsoleFunctionTable;
 
 	struct ConsoleLine
 	{
@@ -151,6 +173,9 @@ namespace FlexKit
 		{
 			if (Memory)
 				Memory->free((void*)Str);
+
+			Memory	= nullptr;
+			Str		= nullptr;
 		}
 
 		ConsoleLine(ConsoleLine&& rhs)
@@ -179,10 +204,11 @@ namespace FlexKit
 		operator const char* (){return Str; }
 	};
 
+
 	struct Console
 	{
-		VertexBufferHandle		VertexBuffer;// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-		VertexBufferHandle		TextBuffer;// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		VertexBufferHandle		VertexBuffer;	// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		VertexBufferHandle		TextBuffer;		// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
 		ConstantBufferHandle	ConstantBuffer;
 
 		CircularBuffer<ConsoleLine, 32>	Lines;
@@ -210,12 +236,12 @@ namespace FlexKit
 	void InitateConsole ( Console* out, SpriteFontAsset* Font, EngineMemory* Engine);
 	void ReleaseConsole	( Console* out );
 
-	//void DrawConsole	( Console* C, ImmediateRender* IR, uint2 Window_WH );
-	void DrawConsole	( Console* C, FrameGraph& Graph, TextureHandle RenderTarget);
+
+	void DrawConsole	( Console* C, FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory);
 
 
 	void InputConsole		( Console* C, char InputCharacter );
-	void EnterLineConsole	( Console* C );
+	void EnterLineConsole	( Console* C, iAllocator* Memory );
 	void BackSpaceConsole	( Console* C );
 
 
@@ -231,6 +257,8 @@ namespace FlexKit
 	void				PushCommandToHistory( Console* C, const char* str, size_t StrLen );
 
 	void				AddConsoleFunction	( Console* C, ConsoleFunction NewFunc );
+	void				AddConsoleOperator	( Console* C, ConsoleFunction NewFunc );
+
 	ConsoleFunction*	FindConsoleFunction	( Console* C, const char* str, size_t StrLen );
 
 	void ConsolePrint	( Console* out, const char* _ptr, iAllocator* Memory = nullptr );

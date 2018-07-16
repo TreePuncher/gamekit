@@ -79,7 +79,6 @@ namespace FlexKit
 
 		KC_OTHER,
 
-		KC_INPUTCHARACTERCOUNT = 36,
 
 		KC_ENTER,
 		KC_ESC,

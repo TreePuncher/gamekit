@@ -28,10 +28,47 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {	/************************************************************************************************/
 
+
 	bool PrintVar		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
 	bool ListVars		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
 	bool ListFunctions	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
 	bool ToggleBool		(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
+
+
+	bool OperatorAssign	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*);
+
+
+	/************************************************************************************************/
+
+
+
+	void InitateConsole(Console* Out, SpriteFontAsset* Font, EngineMemory* Memory)
+	{
+		Out->Lines.clear();
+		Out->Memory                       = Memory->BlockAllocator;
+		Out->Font                         = Font;
+		Out->InputBufferSize              = 0;
+		Out->Variables.Allocator          = Out->Memory;
+		Out->FunctionTable.Allocator      = Out->Memory;
+		Out->BuiltInIdentifiers.Allocator = Out->Memory;
+		Out->ConsoleUInts.Allocator		  = Out->Memory;
+
+		AddConsoleFunction(Out, { "PrintVar",		PrintVar,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
+		AddConsoleFunction(Out, { "ListVars",		ListVars,		nullptr, 0, {} });
+		AddConsoleFunction(Out, { "ListFunctions",	ListFunctions,	nullptr, 0, {} });
+		AddConsoleFunction(Out, { "Toggle",			ToggleBool,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
+
+		AddConsoleOperator(Out, { "=",				OperatorAssign,	nullptr, 2, { ConsoleVariableType::CONSOLE_IDENTIFIER, ConsoleVariableType::STACK_INT } });
+
+
+		AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
+		AddStringVar(Out, "BuildDate", __DATE__);
+
+		ConsolePrint(Out, "Type ListFunctions() for a list of Commands\n", Out->Memory);
+		ConsolePrint(Out, "Up and Down Keys to go through history\n", Out->Memory);
+
+		::memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
+	}
 
 
 	/************************************************************************************************/
@@ -52,13 +89,18 @@ namespace FlexKit
 		Out->BuiltInIdentifiers.Allocator = Out->Memory;
 		Out->ConsoleUInts.Allocator		  = Out->Memory;
 
-		AddConsoleFunction(Out, { "PrintVar",		PrintVar, nullptr, 1,{ ConsoleVariableType::CONSOLE_STRING } });
-		AddConsoleFunction(Out, { "ListVars",		ListVars, nullptr, 0,{} });
-		AddConsoleFunction(Out, { "ListFunctions",	ListFunctions, nullptr, 0,{} });
-		AddConsoleFunction(Out, { "Toggle",			ToggleBool, nullptr, 1,{ ConsoleVariableType::CONSOLE_STRING } });
+		AddConsoleFunction(Out, { "PrintVar",		PrintVar,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
+		AddConsoleFunction(Out, { "ListVars",		ListVars,		nullptr, 0, {} });
+		AddConsoleFunction(Out, { "ListFunctions",	ListFunctions,	nullptr, 0, {} });
+		AddConsoleFunction(Out, { "Toggle",			ToggleBool,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
+
+		AddConsoleOperator(Out, { "=",				OperatorAssign,	nullptr, 2, { ConsoleVariableType::CONSOLE_IDENTIFIER, ConsoleVariableType::STACK_INT } });
 
 		AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
 		AddStringVar(Out, "BuildDate", __DATE__);
+
+		ConsolePrint(Out, "Type ListFunctions() for a list of Commands\n", Out->Memory);
+		ConsolePrint(Out, "Up and Down Keys to go through history\n", Out->Memory);
 
 		::memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
 	}
@@ -69,8 +111,8 @@ namespace FlexKit
 
 	void ReleaseConsole(Console* C)
 	{
-		//ConsolePrintf(out, 1, 2, 3, 4);
-
+		C->Lines.Release();
+		C->CommandHistory.Release();
 		C->ConsoleUInts.Release();
 		C->Variables.Release();
 		C->FunctionTable.Release();
@@ -80,21 +122,41 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	void DrawConsole(Console* C, FrameGraph& Graph, TextureHandle RenderTarget)
+	void DrawConsole(Console* C, FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory)
 	{
-		auto WindowWH			= Graph.Resources.RenderSystem->GetRenderTargetWH(RenderTarget);
-		const float LineHeight	= (float(C->Font->FontSize[1]) / WindowWH[1]) / 4;
-		const float AspectRatio = float(WindowWH[0]) / float(WindowWH[1]);
-		size_t	itr				= 0;
+		auto WindowWH = Graph.Resources.RenderSystem->GetRenderTargetWH(RenderTarget);
+
+		ClearVertexBuffer(Graph, C->VertexBuffer);
+		ClearVertexBuffer(Graph, C->TextBuffer);
+
+		const float		HeightScale			= 0.5f;
+		const auto		FontSize			= C->Font->FontSize;
+		const float2	PixelSize			= { 0.5f / (float)WindowWH[0],  0.5f / (float)WindowWH[1]};
+		const float		LineHeight			= FontSize[1] * PixelSize[1] * HeightScale;
+		const float		AspectRatio			= float(WindowWH[0]) / float(WindowWH[1]);
+		const float2	StartingPosition	= float2{ 1	, 0.5f + (FontSize[1] * PixelSize[1]) };
+
+
+		DrawShapes(
+				EPIPELINESTATES::DRAW_PSO, Graph, 
+				C->VertexBuffer,
+				C->ConstantBuffer,
+				RenderTarget,
+				TempMemory,
+			RectangleShape(
+				float2{0.0f	, 0.0f},
+				StartingPosition, //
+				{ 0.25f, 0.25f, 0.25f, 1.0f }));
+
+		size_t	itr				= 1;
 		float	y				= 0.5f - float(1 + (itr)) * LineHeight;
 
-		PrintTextFormatting Format;
-		Format.StartingPOS = { 0, y };
-		Format.TextArea    = float2(1.0f, 1.0f) - float2(0.0f, y);
-		Format.Color       = float4(WHITE, 1.0f);
-		Format.Scale       = { 0.5f / AspectRatio, 0.5f };
-		Format.PixelSize   = float2(1.0f,1.0f ) / WindowWH;
+		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
+		Format.StartingPOS = {0, 0.5f};
+		Format.TextArea    = float2(1,1);
+		Format.Color       = float4(1.0f, 1.0f, 1.0f, 1.0f);
+		Format.Scale       = { 1.0f / AspectRatio, 1.0f };
+		Format.PixelSize   = float2{ 1.0f, 1.0f } / WindowWH;
 		Format.CenterX	   = false;
 		Format.CenterY	   = false;
 
@@ -102,9 +164,34 @@ namespace FlexKit
 				C->InputBuffer, 
 				Graph, 
 				*C->Font, 
-				C->VertexBuffer, 
+				C->TextBuffer, 
 				RenderTarget, 
-				C->Memory, Format);
+				TempMemory, 
+				Format);
+
+		for (auto& Line : C->Lines) {
+			float y = 0.5f - LineHeight * itr * 2;
+
+			if (y > 0) {
+				float2 Position(0.0f, y);
+				Format.StartingPOS	= Position;
+				Format.TextArea		= float2(1.0f, 1.0f) - Position;
+				Format.CurrentX		= 0;
+				Format.CurrentY		= 0;
+				DrawSprite_Text(
+					Line.Str,
+					Graph,
+					*C->Font,
+					C->TextBuffer,
+					RenderTarget,
+					TempMemory, 
+					Format);
+
+				itr++;
+			}
+			else
+				break;
+		}
 	}
 
 
@@ -121,43 +208,6 @@ namespace FlexKit
 		return true;
 	}
 
-
-	/************************************************************************************************/
-
-
-	/*
-	void DrawConsole(Console* C, ImmediateRender* IR, uint2 Window_WH)
-	{
-		const float LineHeight = (float(C->Font->FontSize[1]) / Window_WH[1]) / 4;
-		const float AspectRatio = float(Window_WH[0]) / float(Window_WH[1]);
-		size_t itr = 0;
-
-		float y = 0.5f - float(1 + (itr)) * LineHeight;
-		PrintTextFormatting Format;
-		Format.StartingPOS = { 0, y };
-		Format.TextArea    = float2(1.0f, 1.0f) - float2(0.0f, y);
-		Format.Color       = float4(WHITE, 1.0f);
-		Format.Scale       = { 0.5f / AspectRatio, 0.5f };
-		Format.PixelSize   = float2(1.0f,1.0f ) / Window_WH;
-		Format.CenterX	   = false;
-		Format.CenterY	   = false;
-		PrintText(IR, C->InputBuffer, C->Font, Format, C->Memory);
-
-		for (auto& Line : C->Lines) {
-			float y = 0.5f - float(2 + (itr)) * LineHeight ;
-
-			if (y > 0) {
-				float2 Position(0.0f, y);
-				Format.StartingPOS = Position;
-				Format.TextArea = float2(1.0f, 1.0f) - Position;
-				PrintText(IR, Line, C->Font, Format, C->Memory);
-				itr++;
-			}
-			else
-				break;
-		}
-	}
-	*/
 
 	/************************************************************************************************/
 
@@ -262,6 +312,43 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	bool OperatorAssign(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
+	{
+		if	((ArguementCount != 2) &&
+			(	(Arguments[0].Type != ConsoleVariableType::CONSOLE_IDENTIFIER) &&
+			(
+				Arguments[1].Type != ConsoleVariableType::STACK_INT ||
+				Arguments[1].Type != ConsoleVariableType::STACK_STRING)))
+		{
+			return false;
+		}
+		
+		if (Arguments[1].Type == ConsoleVariableType::STACK_INT)
+		{
+			AddUIntVar(C, Arguments[0].VariableIdentifier.str, size_t(*(int*)Arguments[1].Data_ptr));
+			return true;
+		}
+
+		if (Arguments[1].Type == ConsoleVariableType::STACK_STRING)
+		{
+			const char*		Str		= (const char*)Arguments[1].Data_ptr;
+			const size_t	StrSize	= Arguments[1].Data_size;
+
+			char*	Str2 = (char*)C->Memory->malloc(StrSize);
+			memset(Str2, '\0', StrSize);
+			memcpy(Str2, Str, StrSize);
+
+			AddStringVar(C, Arguments[0].VariableIdentifier.str, Str2);
+			return true;
+		}
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
 	Vector<InputToken> GetTokens(iAllocator* Memory, const char* Str, ErrorTable)
 	{
 		Vector<InputToken> Out(Memory);
@@ -282,12 +369,14 @@ namespace FlexKit
 			case ' ':	// Space Reached
 			case '\n':	// EndLine Reached
 			case '\t':	// Tab Reached
+			case '\0':	// Str End Reached
 			{
 				size_t Length = (Str + I) - TokenStrBegin;
-				Out.push_back({ TokenStrBegin, Length, InputToken::CT_UNKNOWN });
-				TokenStrBegin = Str + I;
+				if(Length)
+					Out.push_back({ TokenStrBegin, Length, InputToken::CT_UNKNOWN });
+
+				TokenStrBegin = Str + I + 1;
 			}	break;
-			case '\0':	// Str End Reached
 				break;
 			case '(':	// 
 			{
@@ -314,8 +403,16 @@ namespace FlexKit
 				Out.push_back({ Str + I + 1, Length - 1, InputToken::CT_STRINGLITERAL });
 				TokenStrBegin = Str + I;
 				I = II;
-			}
+			}	break;
+
+			// Operators
+			case '=':
+			{
+				Out.push_back({ Str + I, 1, InputToken::CT_SYMBOL });
+				TokenStrBegin = Str + I + 1;
+			}	break;
 			default:
+				int x = 0;
 				break;
 			}
 			++I;
@@ -323,6 +420,49 @@ namespace FlexKit
 
 		return Out;
 	}
+
+
+	/************************************************************************************************/
+
+
+	struct NumberInfo
+	{
+		bool IsNumber;
+		bool IsFloat;
+	};
+
+	NumberInfo IsNumber(const char* str, size_t len)
+	{
+		bool DecimalReached = false;
+
+		for (size_t I = 0; I < len; ++I)
+		{
+			switch (str[I])
+			{
+			case '0':
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+				break;
+			case '.':
+				DecimalReached = true;
+			default:
+				return {false, false};
+			};
+		}
+
+		return {true, DecimalReached};
+	}
+
+
+	/************************************************************************************************/
+
 
 	ConsoleSyntax IdentifyToken(Vector<InputToken>& in, size_t i, ConsoleIdentifierTable& Identifiers, TokenList& Tokens, ErrorTable& ErrorHandler)
 	{
@@ -349,8 +489,8 @@ namespace FlexKit
 							(in[i + 1].Str[0] == '('))
 						{
 							size_t ii = 0;
-							while ((i + ii) < in.size()) 
-							{ 
+							while ((i + ii) < in.size())
+							{
 								if (in[i + ii].Type == InputToken::CT_SYMBOL && in[i + ii].Str[0] != ')')
 									return ConsoleSyntax::FUNCTIONCALL;
 								++ii;
@@ -368,6 +508,14 @@ namespace FlexKit
 					}
 				}
 			}
+
+			{
+				auto [Number, Float] = IsNumber(in[i].Str, in[i].StrLen);
+			if (Number && !Float)
+				return ConsoleSyntax::CONSTNUMBER;
+			else if(Number && Float)
+				return ConsoleSyntax::CONSTFLOAT;
+			}
 			return ConsoleSyntax::UNKNOWNIDENTIFIER;
 		case InputToken::CT_NUMBER:
 		case InputToken::CT_STRINGLITERAL:
@@ -378,11 +526,10 @@ namespace FlexKit
 			{
 			case '(':
 				return ConsoleSyntax::ARGUEMENTSBEGIN;
-				break;
 			case ')':
 				return ConsoleSyntax::ARGUEMENTSEND;
-				break;
-
+			case '=':
+				return ConsoleSyntax::OPERATOR;
 			default:
 				break;
 			}
@@ -395,8 +542,67 @@ namespace FlexKit
 	}
 
 
-	bool ExecuteGrammerTokens(Vector<GrammerToken>& Tokens, Console* C, Vector<ConsoleVariable>& TempVariables)
+	/************************************************************************************************/
+
+
+	bool ExecuteGrammerTokens(Vector<GrammerToken>& Tokens, Console* C, Vector<ConsoleVariable>& TempVariables, iAllocator* Stack)
 	{
+		struct ScanContext
+		{
+
+		};
+
+
+		struct TranslationRes
+		{
+			bool			Success;
+			ConsoleVariable Var;
+		};
+
+
+		auto& TranslateTokenToVar = [&](Token& T) -> TranslationRes
+		{
+			return { false };
+		};
+
+
+		auto& GetVars = [&](auto& Begin, auto& End, auto& Out)
+		{
+
+		};
+		
+		struct TokenRange
+		{
+			Vector<Token>::Iterator Begin;
+			Vector<Token>::Iterator End;
+
+			operator bool()
+			{
+				return (Begin != End);
+			}
+		};
+
+
+		auto& GetArguements = [&](auto Itr) -> TokenRange
+		{
+			auto Begin = (SyntaxType == ConsoleSyntax::ARGUEMENTSBEGIN) 
+				? (Itr + 1) : Itr;
+
+			do
+			{
+				if (itr->SyntaxType == ConsoleSyntax::ARGUEMENTSBEGIN)
+				{
+					return { Begin, itr - 1 };
+				}
+			} while (true);
+
+			return {Itr, Itr};
+		};
+
+
+		auto begin	= Tokens.begin();
+		auto end	= Tokens.end();
+
 		for (size_t I = 0; I < Tokens.size(); ++I)
 		{
 			switch (Tokens[I].SyntaxType)
@@ -433,6 +639,57 @@ namespace FlexKit
 			}	break;
 			case ConsoleSyntax::ENDSTATEMENT:
 				return true;
+			case ConsoleSyntax::UNKNOWNIDENTIFIER:
+			case ConsoleSyntax::IDENTIFIER:
+				continue;
+			case ConsoleSyntax::OPERATOR:
+			{
+				auto Token = &Tokens[I];
+				auto Fn = FindConsoleFunction(C, Token->Token->Str, Token->Token->StrLen);
+				if (Fn)
+				{
+					static_vector<ConsoleVariable> Arguments;
+					if ((Tokens[I - 1].SyntaxType == ConsoleSyntax::UNKNOWNIDENTIFIER) ||
+						(Tokens[I - 1].SyntaxType == ConsoleSyntax::IDENTIFIER))
+					{
+						size_t StrLen = Tokens[I - 1].Token->StrLen + 1;
+						char* Str = (char*)C->Memory->malloc(StrLen);
+						memset(Str, '\0', StrLen);
+						memcpy(Str, Tokens[I - 1].Token->Str, StrLen - 1);
+						
+						ConsoleVariable IDVar;
+						IDVar.Type						= ConsoleVariableType::CONSOLE_IDENTIFIER;
+						IDVar.VariableIdentifier.str	= Str;
+						IDVar.Data_ptr					= nullptr;
+						IDVar.Data_size					= 0;
+
+						TempVariables.push_back(IDVar);
+						Arguments.push_back(TempVariables.back());
+					}
+
+					if (Tokens[I + 1].SyntaxType == ConsoleSyntax::CONSTNUMBER)
+					{
+						char temp[64];
+						memset(temp, '\n', sizeof(temp));
+						memcpy(temp, Tokens[I + 1].Token->Str, Tokens[I + 1].Token->StrLen);
+
+						ConsoleVariable IDVar;
+						IDVar.Type						= ConsoleVariableType::STACK_INT;
+						IDVar.VariableIdentifier.str	= nullptr;
+						IDVar.Data_ptr					= &Stack->allocate_aligned<size_t>(atoi(temp));
+						IDVar.Data_size					= sizeof(size_t);
+
+						TempVariables.push_back(IDVar);
+						Arguments.push_back(TempVariables.back());
+					}
+					else if (Tokens[I + 1].SyntaxType == ConsoleSyntax::CONSTVARIABLE)
+						Arguments.push_back(TempVariables[Tokens[I + 1].Usr]);
+
+					if(Arguments.size() == 2)
+						Fn->FN_Ptr(C, Arguments.begin(), Arguments.size(), Fn->USER);
+				}
+				int x = 0;
+			}	return false;
 			default:
 				//ConsolePrint(C, "INVALID STATEMENT!");
 
@@ -443,12 +700,16 @@ namespace FlexKit
 		return false;
 	}
 
-	bool ProcessTokens(iAllocator* Memory, Vector<InputToken>& in, Console* C, ErrorTable& ErrorHandler )
+
+	/************************************************************************************************/
+
+
+	bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, Vector<InputToken>& in, Console* C, ErrorTable& ErrorHandler )
 	{
 		bool Success = true;
 
 		Vector<GrammerToken>		Tokens(Memory);
-		Vector<ConsoleVariable>	TempVariables(Memory);
+		Vector<ConsoleVariable>		TempVariables(Memory);
 
 		// Translate Tokens into Grammer Objects
 		for (size_t I = 0; I < in.size(); ++I)
@@ -459,9 +720,7 @@ namespace FlexKit
 			{
 				auto TokenType = IdentifyToken(in, I, C->BuiltInIdentifiers, Tokens, ErrorHandler);
 				Tokens.push_back({ &in[I], 0, TokenType });
-				int x = 0;
 			}	break;
-
 			case InputToken::CT_SYMBOL:
 			{
 				auto TokenType = IdentifyToken(in, I, C->BuiltInIdentifiers, Tokens, ErrorHandler);
@@ -502,33 +761,48 @@ namespace FlexKit
 		if( Tokens.size() && Tokens.back().SyntaxType != ConsoleSyntax::ENDSTATEMENT)
 			Tokens.push_back({ nullptr, 0, ConsoleSyntax::ENDSTATEMENT });
 
-		Success = ExecuteGrammerTokens(Tokens, C, TempVariables);
+		Success = ExecuteGrammerTokens(Tokens, C, TempVariables, TempMemory);
 
 		return Success;
 	}
 
-	void EnterLineConsole(Console* C)
+
+	/************************************************************************************************/
+
+
+	void EnterLineConsole(Console* C, iAllocator* TempMemory)
 	{
+		if (!C->InputBufferSize)
+			return;
+
 		C->InputBuffer[C->InputBufferSize++] = '\0';
-		size_t BufferSize = C->InputBufferSize + 256;
+
+		size_t BufferSize = C->InputBufferSize;
 		char* str = (char*)C->Memory->malloc(BufferSize);
 		strcpy_s(str, BufferSize, C->InputBuffer);
 
-		PushCommandToHistory(C, str, C->InputBufferSize + 256);
+		PushCommandToHistory(C, str, C->InputBufferSize);
 		ConsolePrint(C, str, C->Memory);
-
-		C->InputBufferSize = 0;
 
 		ErrorTable ErrorHandler;
 
+		std::cout << C->InputBuffer << "\n";
 
 		auto Tokens = GetTokens(C->Memory, C->InputBuffer, ErrorHandler);
-		if (!ProcessTokens(C->Memory, Tokens, C, ErrorHandler))
+		if (!ProcessTokens(
+							C->Memory, 
+							TempMemory, 
+							Tokens, 
+							C, 
+							ErrorHandler))
 		{
 			// Handle Errors
 		}
 
-		memset(C->InputBuffer, '\0', sizeof(C->InputBuffer));
+
+		memset(C->InputBuffer, '\0', C->InputBufferSize);
+		C->InputBufferSize = 0;
+
 	}
 
 
@@ -635,12 +909,7 @@ namespace FlexKit
 
 	void PushCommandToHistory(Console* C, const char* Str, size_t StrLen)
 	{
-		size_t BufferSize = StrLen + 1;
-		char* NewStr = (char*)C->Memory->malloc(BufferSize);
-
-		strcpy_s(NewStr, BufferSize, Str);
-
-		C->CommandHistory.push_back(ConsoleLine(NewStr, C->Memory));
+		C->CommandHistory.push_back(std::move(ConsoleLine(Str, C->Memory)));
 	}
 
 
@@ -653,6 +922,15 @@ namespace FlexKit
 		C->BuiltInIdentifiers.push_back({ NewFunc.FunctionName, strlen(NewFunc.FunctionName),	IdentifierType::FUNCTION });
 	}
 
+
+	/************************************************************************************************/
+
+
+	void AddConsoleOperator(Console* C, ConsoleFunction NewFunc)
+	{
+		C->FunctionTable.push_back(NewFunc);
+		C->BuiltInIdentifiers.push_back({ NewFunc.FunctionName, strlen(NewFunc.FunctionName),	IdentifierType::OPERATOR });
+	}
 
 	/************************************************************************************************/
 

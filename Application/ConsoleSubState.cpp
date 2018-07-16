@@ -49,30 +49,7 @@ namespace FlexKit
 
 	bool  ConsoleSubState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 	{
-		/*
-		FlexKit::Draw_RECT Rect;
-		Rect.BLeft	= { 0, 0.5 };
-		Rect.TRight = { 1, 1 };
-		Rect.Color  = float4(Grey(0.0f), 0.5f);
-		//PushRect(Framework->Immediate, Rect);
-		//DrawConsole(C, Framework->Immediate, GetWindowWH(Engine));
-		*/
-
-		ClearVertexBuffer(Graph, Console->VertexBuffer);
-		ClearVertexBuffer(Graph, Console->TextBuffer);
-
-		DrawShapes(
-				EPIPELINESTATES::DRAW_PSO, Graph, 
-				Console->VertexBuffer,
-				Console->ConstantBuffer,
-				GetCurrentBackBuffer(&Core->Window),
-				Core->GetTempMemory(),
-			RectangleShape(
-				float2{0, 0},
-				float2{0, 0},
-				{ 0.5f, 0.5f, 0.5f, 1.0f }));
-
-		DrawConsole(Console, Graph, GetCurrentBackBuffer(&Core->Window));
+		DrawConsole(Console, Graph, GetCurrentBackBuffer(&Core->Window), Engine->GetTempMemory());
 
 		return false;
 	}
@@ -102,7 +79,7 @@ namespace FlexKit
 				case KC_ENTER:
 				{
 					RecallIndex = 0;
-					EnterLineConsole(&Framework->Console);
+					EnterLineConsole(&Framework->Console, Framework->Core->GetTempMemory());
 				}	break;
 				case KC_ARROWUP:
 				{
