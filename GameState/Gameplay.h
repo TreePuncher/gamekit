@@ -50,6 +50,8 @@ using FlexKit::TextureHandle;
 
 using FlexKit::int2;
 using FlexKit::uint2;
+using FlexKit::float2;
+using FlexKit::float3;
 
 
 /************************************************************************************************/
@@ -135,6 +137,7 @@ public:
 
 
 /************************************************************************************************/
+
 
 
 typedef FlexKit::uint2	GridID_t;

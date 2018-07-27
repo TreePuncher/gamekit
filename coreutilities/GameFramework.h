@@ -31,8 +31,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GAMESTATEAPI __declspec(dllimport)
 #endif
 
-#include "..\Application\GameMemory.h"
-#include "..\Application\GameUtilities.h"
+#include "..\coreutilities\GameMemory.h"
+#include "..\coreutilities\GameUtilities.h"
 
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\Resources.h"

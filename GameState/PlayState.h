@@ -25,10 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\Application\GameFramework.h"
-#include "..\Application\CameraUtilities.h"
-#include "..\Application\GameMemory.h"
-#include "..\Application\WorldRender.h"
+#include "..\coreutilities\GameFramework.h"
+#include "..\coreutilities\CameraUtilities.h"
+#include "..\coreutilities\GameMemory.h"
+#include "..\coreutilities\WorldRender.h"
 #include "..\coreutilities\Components.h"
 
 #include "Gameplay.h"

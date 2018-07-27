@@ -22,39 +22,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "stdafx.h"
-#include "InputComponent.h"
-
-#include <iostream>
-
-namespace FlexKit
-{
-	/************************************************************************************************/
+#ifndef APPSOURCE_INCLUDED
+#define APPSOURCE_INCLUDED
 
 
-	void InputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* Framework)
-	{
-		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Core)[0];
-		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Core)[1];
+#include "..\coreutilities\CameraUtilities.cpp"
+#include "..\coreutilities\Console.cpp"
+#include "..\coreutilities\ConsoleSubState.cpp"
+#include "..\coreutilities\GameFramework.cpp"
+#include "..\coreutilities\GameUtilities.cpp"
+#include "..\coreutilities\InputComponent.cpp"
+#include "..\coreutilities\NetworkUtilities.cpp"
+#include "..\coreutilities\WorldRender.cpp"
 
-		Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
-#if 0
-		std::cout << "H: " << HorizontalMouseMovement << "\n";
-		std::cout << "V: " << VerticalMouseMovement << "\n";
 #endif
-
-	}
-
-
-	/************************************************************************************************/
-
-
-	MouseInputState	InputComponentSystem::GetMouseState()
-	{
-		return Framework->MouseState;
-	}
-
-
-	/************************************************************************************************/
-
-}

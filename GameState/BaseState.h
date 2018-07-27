@@ -26,9 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\Application\GameFramework.h"
-#include "..\Application\GameMemory.h"
-#include "..\Application\WorldRender.h"
+#include "..\coreutilities\GameFramework.h"
+#include "..\coreutilities\GameMemory.h"
+#include "..\coreutilities\WorldRender.h"
 
 using FlexKit::WorldRender;
 using FlexKit::ReleaseCameraTable;
@@ -41,10 +41,10 @@ public:
 		FlexKit::FKApplication* IN_App	) :
 			App				{IN_App},
 			FrameworkState	{Framework},
-			DepthBuffer		{Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 },	true)},
-			VertexBuffer	{Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64,		false)},
-			TextBuffer		{Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64,		false)},
-			ConstantBuffer	{Framework->Core->RenderSystem.CreateConstantBuffer(8096 * 2000,	false)},
+			DepthBuffer		{Framework->Core->RenderSystem.CreateDepthBuffer(	{ 1920, 1080 },		true)},
+			VertexBuffer	{Framework->Core->RenderSystem.CreateVertexBuffer(		8096 * 64,		false)},
+			TextBuffer		{Framework->Core->RenderSystem.CreateVertexBuffer(		8096 * 64,		false)},
+			ConstantBuffer	{Framework->Core->RenderSystem.CreateConstantBuffer(	8096 * 2000,	false)},
 
 			Render	{
 				Framework->Core->GetTempMemory(),

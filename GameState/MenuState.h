@@ -25,19 +25,20 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\Application\GameFramework.h"
-#include "..\Application\CameraUtilities.h"
+#include "..\coreutilities\GameFramework.h"
+#include "..\coreutilities\CameraUtilities.h"
 
 using FlexKit::iAllocator;
 using FlexKit::FrameworkState;
 using FlexKit::GameFramework;
+using FlexKit::EngineCore;
 
 struct MenuState;
 
 struct CBArguements
 {
-	EngineCore*	Engine;
-	MenuState*	State;
+	EngineCore*		Engine;
+	MenuState*		State;
 };
 
 

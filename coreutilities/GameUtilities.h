@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2015 - 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,17 +22,32 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef APPSOURCE_INCLUDED
-#define APPSOURCE_INCLUDED
+#pragma once
+
+#include "GameMemory.h"
 
 
-#include "..\Application\CameraUtilities.cpp"
-#include "..\Application\Console.cpp"
-#include "..\Application\ConsoleSubState.cpp"
-#include "..\Application\GameFramework.cpp"
-#include "..\Application\GameUtilities.cpp"
-#include "..\Application\InputComponent.cpp"
-#include "..\Application\NetworkUtilities.cpp"
-#include "..\Application\WorldRender.cpp"
+namespace FlexKit
+{	/************************************************************************************************/
 
-#endif
+	void ReleaseCore			(EngineCore*		Game);
+	bool InitiateCoreSystems	(uint2 WH,			EngineCore*& Game);
+	bool InitiateEngineMemory	(EngineMemory*&	Game);
+
+	bool InitEngine				(EngineCore*& Core, EngineMemory*& Engine, uint2 WH);
+	void UpdateCoreComponents	(EngineCore* Core, double dt);
+
+
+	/************************************************************************************************/
+
+
+	float GetWindowAspectRatio	(EngineCore* Engine);
+	uint2 GetWindowWH			(EngineCore* Engine);
+
+	float2	GetPixelSize	(EngineCore*);
+
+	void UpdateMouseInput	(MouseInputState* State,	RenderWindow* Window);
+	void PushCmdArg			(EngineCore* Engine,		const char* arg);
+
+
+}	/************************************************************************************************/

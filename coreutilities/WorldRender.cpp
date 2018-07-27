@@ -23,7 +23,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#include "stdafx.h"
 #include "WorldRender.h"
 
 #include <d3d12.h>

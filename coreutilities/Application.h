@@ -28,8 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma warning( disable : 4251 )
 
-#include "stdafx.h"
-
 #include "..\buildsettings.h"
 #include "..\coreutilities\AllSourceFiles.cpp"
 #include "FrameworkSourceFiles.cpp"

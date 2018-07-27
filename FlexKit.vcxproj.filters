@@ -127,9 +127,6 @@
     <ClInclude Include="graphicsutilities\ImageUtilities.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\Transforms.h">
-      <Filter>coreutilities\source</Filter>
-    </ClInclude>
     <ClInclude Include="graphicsutilities\FrameGraph.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
@@ -147,6 +144,48 @@
     </ClInclude>
     <ClInclude Include="graphicsutilities\TextRendering.h">
       <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Application.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\CameraUtilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\CommonStructs.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Console.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\ConsoleSubState.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GameFramework.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GameMemory.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GameUtilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GUIInputState.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\InputComponent.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\NetworkUtilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\physicsutilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\WorldRender.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Transforms.h">
+      <Filter>coreutilities\headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -189,9 +228,6 @@
     <ClCompile Include="coreutilities\Resources.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
-    <ClCompile Include="coreutilities\GraphicScene.cpp">
-      <Filter>coreutilities\source</Filter>
-    </ClCompile>
     <ClCompile Include="coreutilities\Intersection.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
@@ -211,9 +247,6 @@
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="coreutilities\ProfilingUtilities.cpp">
-      <Filter>coreutilities\source</Filter>
-    </ClCompile>
-    <ClCompile Include="coreutilities\GraphicsComponents.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="graphicsutilities\SSReflections.cpp">
@@ -244,6 +277,60 @@
       <Filter>coreutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="graphicsutilities\TextRendering.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Application.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\CommonUtilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Components.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Console.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\ConsoleSubState.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\FlexKitApplication.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\FrameworkSourceFiles.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GameFramework.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GameMemory.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GameUtilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GUIInputState.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\InputComponent.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\NetworkUtilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\physicsutilities.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\WorldRender.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GraphicsComponents.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\GraphicScene.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\CameraUtilities.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>

@@ -22,7 +22,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "stdafx.h"
 #include "ConsoleSubState.h"
 #include "GameFramework.h"
 #include "..\graphicsutilities\graphics.h"

@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "..\buildsettings.h"	
-#include "..\Application\GameMemory.h"
+#include "..\coreutilities\GameMemory.h"
 #include "..\graphicsutilities\Graphics.h"
 #include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\GuiUtilities.h"

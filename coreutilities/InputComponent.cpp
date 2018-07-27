@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2017 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,11 +22,38 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef TESTMODE_H
-#define TESTMODE_H
+#include "InputComponent.h"
 
-#include "GameMemory.h"
+#include <iostream>
 
-void TestMode(EngineMemory* Game);
+namespace FlexKit
+{
+	/************************************************************************************************/
 
+
+	void InputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* Framework)
+	{
+		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Core)[0];
+		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Core)[1];
+
+		Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
+#if 0
+		std::cout << "H: " << HorizontalMouseMovement << "\n";
+		std::cout << "V: " << VerticalMouseMovement << "\n";
 #endif
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	MouseInputState	InputComponentSystem::GetMouseState()
+	{
+		return Framework->MouseState;
+	}
+
+
+	/************************************************************************************************/
+
+}
