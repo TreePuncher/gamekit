@@ -418,8 +418,8 @@ namespace FlexKit
 				const UINT64	uploadBufferSize	= GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
 
 				ID3D12Resource* textureUploadHeap	= nullptr;
-				ID3D12GraphicsCommandList* cmdList	= RS->_GetCurrentUploadQueue()->UploadList[0];
-				RS->_GetCurrentUploadQueue()->UploadCount++;
+				ID3D12GraphicsCommandList* cmdList	= RS->_GetCurrentUploadQueue().UploadList[0];
+				RS->_GetCurrentUploadQueue().UploadCount++;
 
 
 				hr = RS->pDevice->CreateCommittedResource(

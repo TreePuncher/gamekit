@@ -440,8 +440,8 @@ namespace FlexKit
 	union float2
 	{
 	public:
-		float2() : x(0), y(0) {}
-		float2( float X, float Y )
+		float2() noexcept : x(0), y(0) {}
+		float2( float X, float Y ) noexcept
 		{
 			x = X;
 			y = Y;
@@ -590,10 +590,10 @@ namespace FlexKit
 #endif
 	{
 	public:
-		float3() {}
+		float3() noexcept {}
 
 		template<class TY = float>
-		float3(std::initializer_list<TY> il)
+		float3(std::initializer_list<TY> il) noexcept
 		{
 			pfloats = _mm_set1_ps(0.0f);
 			auto i = il.begin();

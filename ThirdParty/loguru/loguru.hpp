@@ -313,11 +313,13 @@ namespace loguru
 	public:
 		explicit Text(char* owned_str) : _str(owned_str) {}
 		~Text();
-		Text(Text&& t)
+
+		Text(Text&& t) noexcept
 		{
 			_str = t._str;
 			t._str = nullptr;
 		}
+
 		Text(Text& t) = delete;
 		Text& operator=(Text& t) = delete;
 		void operator=(Text&& t) = delete;

@@ -405,12 +405,14 @@ namespace FlexKit
 		TY_*& operator [] (size_t Index) { return Resources[Index]; }
 
 		//operator ID3D12Resource*()				{ return Get(); }
-		TY_* operator -> () { return Get(); }
-		TY_* operator -> () const { return Get(); }
-		operator bool() { return (Resources[0] != nullptr); }
-		size_t	size() { return BufferCount; }
-		TY_*	Get() { return Resources[Idx]; }
-		TY_*	Get() const { return Resources[Idx]; }
+		TY_* operator -> ()				{ return Get(); }
+		const TY_* operator -> () const	{ return Get(); }
+
+		operator bool()				{ return (Resources[0] != nullptr); }
+		size_t		size()			{ return BufferCount; }
+
+		TY_*		Get()			{ return Resources[Idx]; }
+		TY_*		Get() const		{ return Resources[Idx]; }
 
 		void IncrementCounter() { Idx = (Idx + 1) % BufferCount; };
 		void Release()
@@ -913,12 +915,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef	fixed_vector<ID3D12Resource*> TempResourceList;
-	const static int QueueSize = 3;
-	const static int MaxThreadCount = 8;
+	typedef	Vector<ID3D12Resource*> TempResourceList;
+	const static int QueueSize		= 3;
+	const static int MaxThreadCount = 6;
 
 	struct DescHeapStack
 	{
+		void Release()
+		{
+			if (DescHeap) 
+				DescHeap->Release();
+
+			DescHeap	= nullptr;
+			CPU_HeapPOS = { 0 };
+			GPU_HeapPOS = { 0 };
+		}
+
 		D3D12_CPU_DESCRIPTOR_HANDLE CPU_HeapPOS;
 		D3D12_GPU_DESCRIPTOR_HANDLE GPU_HeapPOS;
 		ID3D12DescriptorHeap*		DescHeap;
@@ -926,26 +938,184 @@ namespace FlexKit
 
 	struct PerFrameUploadQueue
 	{
+		PerFrameUploadQueue()
+		{
+		}
+
+
+		~PerFrameUploadQueue()
+		{
+			Release();
+		}
+
+
+		void Open()
+		{
+			UploadList[0]->Close();
+		}
+
+		void Close()
+		{
+			UploadList[0]->Close();
+		}
+
+
+		void Reset()
+		{
+			UploadCount = 0;
+
+			HRESULT HR	= UploadCLAllocator[0]->Reset();						FK_ASSERT(SUCCEEDED(HR));
+			HR			= UploadList[0]->Reset(UploadCLAllocator[0], nullptr);	FK_ASSERT(SUCCEEDED(HR));
+		}
+
+
+		void Release()
+		{
+			for (auto& UL : UploadList) {
+				if (UL)
+					UL->Release();
+
+				UL = nullptr;
+			}
+
+			for (auto& alloc : UploadCLAllocator)
+			{
+				if (alloc)
+					alloc->Release();
+
+				alloc = nullptr;
+			}
+		}
+
+		bool Initiate(ID3D12Device* Device, Vector<ID3D12DeviceChild*>& ObjectsCreated)
+		{
+			bool Success = true;
+
+			for (size_t I = 0; I < MaxThreadCount && Success; ++I)
+			{
+				ID3D12CommandAllocator*		NewUploadAllocator	= nullptr;
+				ID3D12GraphicsCommandList2*	NewUploadList		= nullptr;
+
+				auto HR = Device->CreateCommandAllocator(
+					D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,
+					IID_PPV_ARGS(&NewUploadAllocator));
+
+				ObjectsCreated.push_back(NewUploadAllocator);
+				
+
+#ifdef _DEBUG
+				FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
+				Success &= !FAILED(HR);
+#endif
+				if (!Success)
+					break;
+
+
+				HR = Device->CreateCommandList(
+					0,
+					D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,
+					NewUploadAllocator,
+					nullptr,
+					__uuidof(ID3D12CommandList),
+					(void**)&NewUploadList);
+
+
+				ObjectsCreated.push_back(NewUploadList);
+				FK_ASSERT	(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+				SETDEBUGNAME(NewUploadAllocator, "UPLOAD ALLOCATOR");
+				FK_VLOG		(10, "GRAPHICS COMMANDLIST COPY CREATED: %u", NewUploadList);
+
+
+				Success &= !FAILED(HR);
+
+				NewUploadList->Close();
+				NewUploadAllocator->Reset();
+
+				UploadCount				= 0;
+				UploadCLAllocator[I]	= NewUploadAllocator;
+				UploadList[I]			= NewUploadList;
+			}
+
+			return Success;
+		}
+
 		size_t						UploadCount;
-		ID3D12CommandAllocator*		UploadCLAllocator[MaxThreadCount];
-		ID3D12GraphicsCommandList*	UploadList[MaxThreadCount];
+		ID3D12CommandAllocator*		UploadCLAllocator	[MaxThreadCount];
+		ID3D12GraphicsCommandList*	UploadList			[MaxThreadCount];
 	};
+
 
 	struct PerFrameResources
 	{
-		TempResourceList*			TempBuffers;
-		ID3D12GraphicsCommandList*	CommandLists[MaxThreadCount];
-		ID3D12CommandAllocator*		GraphicsCLAllocator[MaxThreadCount];
-		ID3D12CommandAllocator*		ComputeCLAllocator[MaxThreadCount];
-		ID3D12GraphicsCommandList*	ComputeList[MaxThreadCount];
-		bool						CommandListsUsed[MaxThreadCount];
+		~PerFrameResources()
+		{
+			
+		}
+
+		bool Initiate(ID3D12Device* Device, Vector<ID3D12DeviceChild*>& ObjectsCreated)
+		{
+
+		}
+
+		void Close()
+		{
+		}
+
+		void Release()
+		{
+			DSVHeap.Release();
+			DescHeap.Release();
+			GPUDescHeap.Release();
+			RTVHeap.Release();
+
+			for (auto& CL : CommandLists)
+			{
+				if (CL)
+					CL->Release();
+				CL = nullptr;
+			}
+
+			for (auto& alloc : GraphicsCLAllocator)
+			{
+				if (alloc)
+					alloc->Release();
+				alloc = nullptr;
+			}
+
+			for (auto& CL : ComputeList)
+			{
+				if (CL)
+					CL->Release();
+				CL = nullptr;
+			}
+
+			for (auto& alloc : ComputeCLAllocator)
+			{
+				if (alloc)
+					alloc->Release();
+				alloc = nullptr;
+			}
+
+			for (auto& CLUsed : CommandListsUsed)
+				CLUsed = false;
+
+			ThreadsIssued = 0;
+		}
+
+
+		TempResourceList			TempBuffers;
+		ID3D12GraphicsCommandList*	CommandLists		[MaxThreadCount];
+		ID3D12CommandAllocator*		GraphicsCLAllocator	[MaxThreadCount];
+		ID3D12CommandAllocator*		ComputeCLAllocator	[MaxThreadCount];
+		ID3D12GraphicsCommandList*	ComputeList			[MaxThreadCount];
+		bool						CommandListsUsed	[MaxThreadCount];
 
 		DescHeapStack RTVHeap;
 		DescHeapStack DSVHeap;
 		DescHeapStack DescHeap;
 		DescHeapStack GPUDescHeap;
 
-		size_t						ThreadsIssued;
+		size_t		ThreadsIssued;
 	};
 
 
@@ -1473,6 +1643,11 @@ namespace FlexKit
 		}
 
 
+
+		Context				(const Context& RHS) = delete;
+		Context& operator = (const Context& RHS) = delete;
+
+
 		void AddRenderTargetBarrier	(TextureHandle Handle, DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
 		void AddPresentBarrier		(TextureHandle Handle, DeviceResourceState Before);
 
@@ -1582,7 +1757,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class VertexBufferStateTable
+	FLEXKITAPI class VertexBufferStateTable
 	{
 	public:
 
@@ -1604,9 +1779,9 @@ namespace FlexKit
 		void				LockUntil	(size_t Frame);// Locks all in use Buffers until given Frame
 		void				Reset		(VertexBufferHandle Handle);
 
-		ID3D12Resource*		GetResource	(VertexBufferHandle Handle);
-		size_t				GetCurrentVertexBufferOffset(VertexBufferHandle Handle) const;
-		size_t				GetBufferSize				(VertexBufferHandle Handle) const;
+		ID3D12Resource*		GetResource						(VertexBufferHandle Handle);
+		size_t				GetCurrentVertexBufferOffset	(VertexBufferHandle Handle) const;
+		size_t				GetBufferSize					(VertexBufferHandle Handle) const;
 
 
 		void				Release();
@@ -1670,7 +1845,7 @@ namespace FlexKit
 
 	typedef Handle_t<16> SubBufferHandle;
 	
-	struct ConstantBufferTable
+	FLEXKITAPI struct ConstantBufferTable
 	{
 		ConstantBufferTable(iAllocator* Memory, RenderSystem* RS_IN) :
 			ConstantBuffers(Memory),
@@ -1779,7 +1954,7 @@ namespace FlexKit
 	};
 
 
-	struct QueryTable
+	FLEXKITAPI struct QueryTable
 	{
 		QueryTable(iAllocator* Memory, RenderSystem* RS_in) :
 			Users{Memory},
@@ -1847,7 +2022,7 @@ namespace FlexKit
 		TF_DepthBuffer	= 0x08,
 	};
 
-	class TextureStateTable
+	FLEXKITAPI class TextureStateTable
 	{
 	public:
 		TextureStateTable(iAllocator* memory) :
@@ -1976,6 +2151,14 @@ namespace FlexKit
 			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_LINE_PSO,	CreateDrawLineStatePSO);
 			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_LINE3D_PSO,	CreateDraw2StatePSO);
 		}
+		
+		~RenderSystem()
+		{
+			Release();
+		}
+
+		RenderSystem				(const RenderSystem&) = delete;
+		RenderSystem& operator =	(const RenderSystem&) = delete;
 
 		bool	Initiate(Graphics_Desc* desc_in);
 		void	Release();
@@ -2059,7 +2242,7 @@ namespace FlexKit
 		ID3D12GraphicsCommandList*	_GetCurrentCommandList();
 		PerFrameResources*			_GetCurrentFrameResources();
 		ID3D12GraphicsCommandList*	_GetCommandList_1();
-		PerFrameUploadQueue*		_GetCurrentUploadQueue();
+		PerFrameUploadQueue&		_GetCurrentUploadQueue();
 
 		void						_IncrementRSIndex() { CurrentIndex = (CurrentIndex + 1) % 3; }
 
@@ -2079,8 +2262,8 @@ namespace FlexKit
 		ID3D12Fence* Fence;
 		ID3D12Fence* CopyFence;
 
-		PerFrameResources		FrameResources[QueueSize];
-		PerFrameUploadQueue		UploadQueues[QueueSize];
+		PerFrameResources		FrameResources	[QueueSize];
+		PerFrameUploadQueue		UploadQueues	[QueueSize];
 
 		IDXGIFactory5*			pGIFactory;
 		IDXGIAdapter4*			pDXGIAdapter;
@@ -2120,6 +2303,20 @@ namespace FlexKit
 			size_t			Last;
 			size_t			Size;
 			char*			Buffer;
+
+			void Release()
+			{
+				if (!TempBuffer)
+					return;
+
+				TempBuffer->Unmap(0, nullptr);
+				TempBuffer->Release();
+
+				TempBuffer	= 0;
+				Position	= 0;
+				Size		= 0;
+				Buffer		= nullptr;
+			}
 		}CopyEngine;
 
 		struct RootSigLibrary

@@ -50,31 +50,31 @@ namespace FlexKit
 		virtual void  clear(void) {};
 
 		template<typename T, typename ... Params>
-		T& allocate(Params ... Args)
+		T& allocate(Params&& ... Args)
 		{
 			auto mem = malloc(sizeof(T));
 
-			auto t = new (mem) T(Args...);
+			auto t = new (mem) T(std::forward<Params>(Args)...);
 			return *t;
 		}
 
 		template<typename T, size_t a = 16, typename ... Params>
-		T& allocate_aligned(Params ... Args)
+		T& allocate_aligned(Params&& ... Args)
 		{
 			auto mem = _aligned_malloc(sizeof(T), a);
 
-			auto t = new (mem) T(Args...);
+			auto t = new (mem) T(std::forward<Params>(Args)...);
 			return *t;
 		}
 
 	protected:
-		iAllocator() {}
+		iAllocator() noexcept {}
 	};
 
 	class _SystemAllocator : public iAllocator
 	{
 	public:
-		_SystemAllocator() {}
+		_SystemAllocator() noexcept {}
 
 		void* malloc(size_t n)
 		{
@@ -103,14 +103,14 @@ namespace FlexKit
 	class FLEXKITAPI StackAllocator
 	{
 	public:
-		StackAllocator()
+		StackAllocator() noexcept
 		{
 			used	= 0;
 			size	= 0;
 			Buffer	= 0;
 		}
 
-		StackAllocator(StackAllocator&& RHS)
+		StackAllocator(StackAllocator&& RHS) noexcept
 		{
 			used   = RHS.used;
 			size   = RHS.size;
@@ -154,7 +154,7 @@ namespace FlexKit
 
 		struct iStackAllocator : public iAllocator
 		{	
-			iStackAllocator(StackAllocator* Allocator = nullptr) : ParentAllocator(Allocator){}
+			iStackAllocator(StackAllocator* Allocator = nullptr) noexcept : ParentAllocator(Allocator){}
 
 			void* malloc(size_t size){
 				return ParentAllocator->malloc(size);
@@ -522,7 +522,7 @@ namespace FlexKit
 
 	struct BlockAllocator
 	{
-		BlockAllocator(){}
+		BlockAllocator() noexcept {}
 
 		BlockAllocator(BlockAllocator&) = delete;
 		BlockAllocator& operator = (const BlockAllocator&) = delete;
@@ -679,7 +679,7 @@ namespace FlexKit
 
 		struct iBlockAllocator : public iAllocator
 		{
-			iBlockAllocator(BlockAllocator* parent = nullptr) : ParentAllocator(parent){}
+			iBlockAllocator(BlockAllocator* parent = nullptr) noexcept : ParentAllocator(parent){}
 
 			void* malloc(size_t size)
 			{

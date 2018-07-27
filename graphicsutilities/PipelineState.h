@@ -74,18 +74,26 @@ namespace FlexKit
 	class LoadState
 	{
 	public:
-		LoadState() : State(EPSO_ERROR)
+		LoadState() noexcept : 
+			State		{EPSO_ERROR},
+			Finished	{false}
 		{
 			FK_ASSERT(false);
 		}
 
-		LoadState(const LoadState& rhs) : State( rhs.State )
-		{}
 
-		LoadState(EPIPELINESTATES s) : State(s)
-		{}
+		LoadState(const LoadState& rhs) noexcept :
+			State		{rhs.State},
+			Finished	{false}{}
 
-		bool operator == (EPIPELINESTATES rhs)
+
+
+		LoadState(EPIPELINESTATES PSOID) noexcept :
+			State		{PSOID},
+			Finished	{false} {}
+
+
+		bool operator == (EPIPELINESTATES rhs) noexcept
 		{
 			return State == rhs;
 		}

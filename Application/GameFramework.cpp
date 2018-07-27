@@ -166,17 +166,13 @@ namespace FlexKit
 
 		UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
 
-		auto RItr = SubStates.rbegin();
-		auto REnd = SubStates.rend();
-
-		while (RItr != REnd)
+		for(size_t I = 1; I <= SubStates.size(); ++I)
 		{
 
-			auto State = *RItr;
+			auto& State = SubStates[SubStates.size() - I];
+
 			if (!State->Update(Core, Dispatcher, dT))
 				break;
-
-			RItr++;
 		}
 
 		Dispatcher.Execute();
@@ -200,17 +196,14 @@ namespace FlexKit
 		{
 			UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
 
-			if (DrawDebug) {
-				auto RItr = SubStates.rbegin();
-				auto REnd = SubStates.rend();
-				while (RItr != REnd)
+			if (DrawDebug) 
+			{
+				for(size_t I = 1; I <= SubStates.size(); ++I)
 				{
+					auto& State = SubStates[SubStates.size() - I];
 
-					auto State = *RItr;
 					if (!State->DebugDraw(Core, Dispatcher, dT))
 						break;
-
-					RItr++;
 				}
 			}
 
@@ -220,15 +213,11 @@ namespace FlexKit
 		{
 			UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
 
-			auto RItr = SubStates.rbegin();
-			auto REnd = SubStates.rend();
-			while (RItr != REnd)
+			for (size_t I = 1; I <= SubStates.size(); ++I)
 			{
-				auto State = *RItr;
+				auto& State = SubStates[SubStates.size() - I];
 				if (!State->PreDrawUpdate(Core, Dispatcher, dT))
 					break;
-
-				RItr++;
 			}
 
 			Dispatcher.Execute();
@@ -256,32 +245,18 @@ namespace FlexKit
 
 		UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
 
+		for (size_t I = 0; I < SubStates.size(); ++I)
 		{
-			auto Itr = SubStates.begin();
-			auto End = SubStates.end();
-
-			while (Itr != End)
-			{
-				auto Framework = *Itr;		
-				if (!Framework->Draw(Core, Dispatcher, 0, FrameGraph))
-					break;
-
-				Itr++;
-			}
+			auto& SubState = SubStates[I];
+			if (!SubState->Draw(Core, Dispatcher, 0, FrameGraph))
+				break;
 		}
 
+		for (size_t I = 1; I <= SubStates.size(); ++I)
 		{
-			auto Itr = SubStates.rbegin();
-			auto End = SubStates.rend();
-
-			while (Itr != End)
-			{
-				auto Framework = *Itr;
-				if (!Framework->PostDrawUpdate(Core, Dispatcher, 0, FrameGraph))
-					break;
-
-				Itr++;
-			}
+			auto& State = SubStates[SubStates.size() - I]; 
+			if (!State->PostDrawUpdate(Core, Dispatcher, 0, FrameGraph))
+				break;
 		}
 
 		Dispatcher.Execute();
@@ -302,9 +277,6 @@ namespace FlexKit
 	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
 	{
 		Core->RenderSystem.PresentWindow(&Core->Window);
-
-		for (;PopCount && SubStates.size(); --PopCount)
-			PopSubState(this);
 	}
 
 
@@ -402,7 +374,6 @@ namespace FlexKit
 
 	void GameFramework::PopState()
 	{
-		++PopCount;
 	}
 
 
@@ -505,6 +476,7 @@ namespace FlexKit
 		ReleaseGeometryTable();
 		ReleaseResourceTable();
 
+		//TODO
 		//Release(State->DefaultAssets.Font);
 		Release(State->DefaultAssets.Terrain);
 	}
@@ -522,13 +494,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PopSubState(GameFramework* State)
+	void PopSubState(GameFramework* Framework)
 	{
-		if (!State->SubStates.size())
+		if (!Framework->SubStates.size())
 			return;
 
-		State->SubStates.back()->~FrameworkState();
-		State->SubStates.pop_back();
+		FrameworkState* State = Framework->SubStates.back();
+		State->~FrameworkState();
+
+		Framework->Core->GetBlockMemory().free(State);
+		Framework->SubStates.pop_back();
 	}
 
 

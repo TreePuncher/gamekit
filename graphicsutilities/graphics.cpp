@@ -1588,30 +1588,6 @@ namespace FlexKit
 			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0);
 			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 4, 4);
 
-			/*
-			CD3DX12_ROOT_PARAMETER Parameters[5];
-			Parameters[0].InitAsDescriptorTable(2, ranges, D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[1].InitAsConstantBufferView(0, 0,   D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[2].InitAsConstantBufferView(1, 0,   D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[3].InitAsConstantBufferView(2, 0,   D3D12_SHADER_VISIBILITY_ALL);
-			Parameters[4].InitAsConstantBufferView(3, 0,   D3D12_SHADER_VISIBILITY_ALL);
-
-			ID3DBlob* Signature = nullptr;
-			ID3DBlob* ErrorBlob = nullptr;
-			D3D12_ROOT_SIGNATURE_DESC	RootSignatureDesc;
-
-			CD3DX12_ROOT_SIGNATURE_DESC::Init(RootSignatureDesc, 5, Parameters, 2, Samplers, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-			CheckHR(D3D12SerializeRootSignature(&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &Signature, &ErrorBlob),
-												PRINTERRORBLOB(ErrorBlob));
-
-			ID3D12RootSignature* NewRootSig = nullptr;
-			CheckHR(Device->CreateRootSignature(0, Signature->GetBufferPointer(), Signature->GetBufferSize(), IID_PPV_ARGS(&NewRootSig)),
-												ASSERTONFAIL("FAILED TO CREATE ROOT SIGNATURE"));
-
-			RS->Library.RS4CBVs4SRVs = NewRootSig;
-			SETDEBUGNAME(NewRootSig, "RS4CBVs4SRVs");
-			*/
-
 			RS->Library.RS4CBVs4SRVs.AllowIA = true;
 			DesciptorHeapLayout<2> DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 4);
@@ -1834,7 +1810,7 @@ namespace FlexKit
 		gInstance			= GetModuleHandle( 0 );
 #endif
 
-		static_vector<ID3D12DeviceChild*, 256> ObjectsCreated;
+		Vector<ID3D12DeviceChild*> ObjectsCreated(in->Memory);
 
 		RegisterWindowClass(gInstance);
 
@@ -1868,6 +1844,7 @@ namespace FlexKit
 
 			FK_LOG_INFO("Failed to create A DX12 Device!");
 			MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
+
 			return false;
 		}
 
@@ -1906,16 +1883,17 @@ namespace FlexKit
 			CopyFences[I].FenceValue  = 0;
 		}
 			
-		D3D12_COMMAND_QUEUE_DESC CQD ={};
+		D3D12_COMMAND_QUEUE_DESC CQD		= {};
 		CQD.Flags							            = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		CQD.Type								        = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT;
-		D3D12_COMMAND_QUEUE_DESC UploadCQD ={};
+
+		D3D12_COMMAND_QUEUE_DESC UploadCQD	= {};
 		UploadCQD.Flags							        = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		UploadCQD.Type								    = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY;
 
 		D3D12_COMMAND_QUEUE_DESC ComputeCQD = {};
-		ComputeCQD.Flags	= D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
-		ComputeCQD.Type		= D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
+		ComputeCQD.Flags								= D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
+		ComputeCQD.Type									= D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE;
 
 		IDXGIFactory5*				DXGIFactory         = nullptr;
 		IDXGIAdapter4*				DXGIAdapter			= nullptr;
@@ -1977,56 +1955,46 @@ namespace FlexKit
 		{
 			for(size_t I = 0; I < QueueSize; ++I)
 			{
+				UploadQueues[I].Initiate(Device, ObjectsCreated);
+
 				for(size_t II = 0; II < MaxThreadCount; ++II)
 				{
 					ID3D12GraphicsCommandList2*	CommandList			= nullptr;
 					ID3D12CommandAllocator*		GraphicsAllocator	= nullptr;
-					ID3D12CommandAllocator*		UploadAllocator		= nullptr;
 					ID3D12CommandAllocator*		ComputeAllocator	= nullptr;
-					ID3D12GraphicsCommandList2*	UploadList			= nullptr;
 					ID3D12GraphicsCommandList2*	ComputeList			= nullptr;
 
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,		IID_PPV_ARGS(&GraphicsAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
-					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,			IID_PPV_ARGS(&UploadAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 					HR = Device->CreateCommandAllocator	(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,		IID_PPV_ARGS(&ComputeAllocator));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT,	GraphicsAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&CommandList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COMPUTE,	ComputeAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&ComputeList);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
-					HR = Device->CreateCommandList		(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_COPY,		UploadAllocator,	nullptr, __uuidof(ID3D12CommandList), (void**)&UploadList);		FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 
-					FK_LOG_INFO("GRAPHICS COMMANDLIST DIRECT  CREATED: %u", CommandList);
-					FK_LOG_INFO("GRAPHICS COMMANDLIST COPY    CREATED: %u", UploadList);
-					FK_LOG_INFO("GRAPHICS COMMANDLIST COMPUTE CREATED: %u", ComputeList);
+					FK_VLOG(10, "GRAPHICS COMMANDLIST DIRECT  CREATED: %u", CommandList);
+					FK_VLOG(10, "GRAPHICS COMMANDLIST COMPUTE CREATED: %u", ComputeList);
 
 					FK_ASSERT(CommandList != nullptr, "FAILED TO CREATE COMMAND LIST");
 
 					SETDEBUGNAME(ComputeAllocator,	"COMPUTE ALLOCATOR");
 					SETDEBUGNAME(GraphicsAllocator, "GRAPHICS ALLOCATOR");
-					SETDEBUGNAME(UploadAllocator,	"UPLOAD ALLOCATOR");
+
 
 					ObjectsCreated.push_back(GraphicsAllocator);
-					ObjectsCreated.push_back(UploadAllocator);
 					ObjectsCreated.push_back(ComputeAllocator);
 
 					ObjectsCreated.push_back(ComputeList);
 					ObjectsCreated.push_back(CommandList);
-					ObjectsCreated.push_back(UploadList);
 
-					FK_LOG_INFO("CLOSING AND RESETING COMMAND LISTS");
+					FK_VLOG(10, "CLOSING AND RESETING COMMAND LISTS");
 
 					CommandList->Close();
-					UploadList->Close();
 					ComputeList->Close();
 
-					FK_LOG_INFO("RESETING COMMAND LIST ALLOCACTORS");
+					FK_VLOG(10, "RESETING COMMAND LIST ALLOCACTORS");
 
 					GraphicsAllocator->Reset();
-					UploadAllocator->Reset();
 					ComputeAllocator->Reset();
 
-					FK_LOG_INFO("FINISHED RESETING COMMAND LISTS");
-
-					UploadQueues[I].UploadList[II]				= static_cast<ID3D12GraphicsCommandList*>(UploadList);
-					UploadQueues[I].UploadCLAllocator[II]		= UploadAllocator;
+					FK_VLOG(10, "FINISHED RESETING COMMAND LISTS");
 
 					FrameResources[I].TempBuffers				= nullptr;
 					FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
@@ -2041,7 +2009,7 @@ namespace FlexKit
 				ID3D12DescriptorHeap* RTVHeap		= nullptr;
 				ID3D12DescriptorHeap* DSVHeap		= nullptr;									
 
-				FK_LOG_INFO("Creating Descriptor Heaps");
+				FK_VLOG(10, "Creating Descriptor Heaps");
 
 				HR = Device->CreateDescriptorHeap(&FrameTextureHeap_DESC,		IID_PPV_ARGS(&SRVHeap));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
 				HR = Device->CreateDescriptorHeap(&GPUFrameTextureHeap_DESC,	IID_PPV_ARGS(&GPUSRVHeap));	FK_ASSERT(FAILED(HR), "FAILED TO CREATE SRV Heap HEAP!");
@@ -2072,7 +2040,7 @@ namespace FlexKit
 
 			HR = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&DXGIFactory));
 
-			FK_LOG_INFO("FAILED TO CREATE DXGIFactory!");
+			FK_LOG_ERROR("FAILED TO CREATE DXGIFactory!");
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
 
 			auto DeviceID = Device->GetAdapterLuid();
@@ -2086,8 +2054,8 @@ namespace FlexKit
 				DXGIFactory->Release();
 		FINALLYOVER
 
-		// Copy Resources Over
 		{
+			// Copy temp resources over
 			pDevice					= Device;
 			pGIFactory				= DXGIFactory;
 			pDXGIAdapter			= DXGIAdapter;
@@ -2101,9 +2069,8 @@ namespace FlexKit
 			DescriptorDSVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 			DescriptorCBVSRVUAVSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
-
-		// Initiate Null Resources
 		{
+			// Initiate null resources
 			ConstantBuffer_desc NullBuffer_Desc;
 			NullBuffer_Desc.InitialSize	= 1024;
 			NullBuffer_Desc.pInital		= nullptr;
@@ -2203,57 +2170,31 @@ namespace FlexKit
 	{
 		FK_LOG_INFO("Releasing RenderSystem");
 
+		for (auto& UQ : UploadQueues)
+			UQ.Release();
 
-		for(auto FR : FrameResources)
-		{
-			FR.DSVHeap.DescHeap->Release();
-			FR.DescHeap.DescHeap->Release();
-			FR.GPUDescHeap.DescHeap->Release();
-			FR.RTVHeap.DescHeap->Release();
+		for (auto& FR : FrameResources)
+			FR.Release();
 
-			for (auto CL : FR.CommandLists)
-				if(CL)CL->Release();
-		
-			for (auto alloc : FR.GraphicsCLAllocator)
-				if (alloc)alloc->Release();
-
-			for (auto CL : FR.ComputeList)
-				if (CL)CL->Release();
-			
-			for (auto alloc : FR.ComputeCLAllocator)
-				if (alloc)alloc->Release();
-
-			if(FR.TempBuffers)
-				Memory->_aligned_free(FR.TempBuffers);
-		}
-
-		for(auto FR : UploadQueues)
-		{
-			for (auto CL : FR.UploadList)
-				if (CL)CL->Release();
-
-			for (auto alloc : FR.UploadCLAllocator)
-				if (alloc)alloc->Release();
-		}
 
 		PipelineStates.ReleasePSOs();
 
-		CopyEngine.TempBuffer->Unmap(0, nullptr);
-		CopyEngine.TempBuffer->Release();
+		CopyEngine.Release();
 
 		NullConstantBuffer.Release();
-		NullUAV->Release();
-		NullSRV->Release();
 		NullSRV1D.Release();
 
-		GraphicsQueue->Release();
-		UploadQueue->Release();
-		ComputeQueue->Release();
-		pGIFactory->Release();
-		pDXGIAdapter->Release();
-		pDevice->Release();
-		Fence->Release();
-		CopyFence->Release();
+		if(NullUAV) NullUAV->Release();
+		if(NullSRV) NullSRV->Release();
+
+		if(GraphicsQueue)	GraphicsQueue->Release();
+		if(UploadQueue)		UploadQueue->Release();
+		if(ComputeQueue)	ComputeQueue->Release();
+		if(pGIFactory)		pGIFactory->Release();
+		if(pDXGIAdapter)	pDXGIAdapter->Release();
+		if(pDevice)			pDevice->Release();
+		if(Fence)			Fence->Release();
+		if(CopyFence)		CopyFence->Release();
 
 		FreeList.Release();
 
@@ -2263,6 +2204,8 @@ namespace FlexKit
 		pDebugDevice->Release();
 		pDebug->Release();
 #endif
+
+		memset(this, 0, sizeof(this));
 	}
 
 
@@ -2907,13 +2850,12 @@ namespace FlexKit
 
 	void RenderSystem::ReleaseTempResources()
 	{
-		auto TempBuffer = FrameResources[CurrentIndex].TempBuffers;
-		if (TempBuffer)	{
-			for (auto r : *TempBuffer)
-				r->Release();
+		auto& TempBuffers = FrameResources[CurrentIndex].TempBuffers;
 
-			TempBuffer->clear();
-		}
+		for (auto Res : TempBuffers)
+			Res->Release();
+
+		TempBuffers.clear();
 	}
 
 
@@ -3313,8 +3255,8 @@ namespace FlexKit
 		const size_t SubResCount = Desc->SubResourceCount;
 		const size_t SubResStart = Desc->SubResourceStart;
 
-		PerFrameUploadQueue* UploadQueue	= RS->_GetCurrentUploadQueue();
-		ID3D12GraphicsCommandList* CS		= UploadQueue->UploadList[0];
+		PerFrameUploadQueue& UploadQueue	= RS->_GetCurrentUploadQueue();
+		ID3D12GraphicsCommandList* CS		= UploadQueue.UploadList[0];
 
 		for (size_t I = 0; I < SubResCount + SubResStart; ++I) 
 		{
@@ -3360,8 +3302,8 @@ namespace FlexKit
 		FK_ASSERT(Dest);
 
 		auto& CopyEngine = RS->CopyEngine;
-		PerFrameUploadQueue* UploadQueue	= RS->_GetCurrentUploadQueue();
-		ID3D12GraphicsCommandList* CS		= UploadQueue->UploadList[0];
+		PerFrameUploadQueue& UploadQueue	= RS->_GetCurrentUploadQueue();
+		ID3D12GraphicsCommandList* CS		= UploadQueue.UploadList[0];
 
 		void* _ptr = nullptr;
 		size_t Offset = 0;
@@ -3371,7 +3313,7 @@ namespace FlexKit
 
 		memcpy(_ptr, Data, Size);
 		CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, Offset, Size);
-		UploadQueue->UploadCount++;
+		UploadQueue.UploadCount++;
 	}
 
 
@@ -3395,14 +3337,7 @@ namespace FlexKit
 	void AddTempBuffer(ID3D12Resource* _ptr, RenderSystem* RS)
 	{
 		auto& TempBuffers = RS->FrameResources[RS->CurrentIndex].TempBuffers;
-
-		if (!TempBuffers)
-			TempBuffers = &TempResourceList::Create_Aligned(128, RS->Memory);
-
-		if (TempBuffers->full())
-			TempBuffers = ExpandFixedBuffer(RS->Memory, TempBuffers);
-
-		TempBuffers->push_back(_ptr);
+		TempBuffers.push_back(_ptr);
 	}
 
 
@@ -4866,9 +4801,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PerFrameUploadQueue* RenderSystem::_GetCurrentUploadQueue()
+	PerFrameUploadQueue& RenderSystem::_GetCurrentUploadQueue()
 	{
-		return UploadQueues + CurrentUploadIndex;
+		return UploadQueues[CurrentUploadIndex];
 	}
 
 
@@ -4951,13 +4886,7 @@ namespace FlexKit
 
 	void RenderSystem::ReadyUploadQueues()
 	{
-		auto UploadQueue         = _GetCurrentUploadQueue();
-		auto UploadCLAllocator   = UploadQueue->UploadCLAllocator[0];
-		auto UploadCL            = UploadQueue->UploadList[0];
-		UploadQueue->UploadCount = 0;
-
-		HRESULT HR               = UploadCLAllocator->Reset();					FK_ASSERT(SUCCEEDED(HR));
-		HR                       = UploadCL->Reset(UploadCLAllocator, nullptr);	FK_ASSERT(SUCCEEDED(HR));
+		_GetCurrentUploadQueue().Reset();
 	}
 
 
@@ -4966,16 +4895,16 @@ namespace FlexKit
 
 	void RenderSystem::SubmitUploadQueues()
 	{
-		auto CurrentUploadQueue	= _GetCurrentUploadQueue();
-		auto Fence				= CopyFence;
+		auto& CurrentUploadQueue	= _GetCurrentUploadQueue();
+		auto Fence					= CopyFence;
 
-		if (CurrentUploadQueue->UploadCount) {
+		if (CurrentUploadQueue.UploadCount) {
 			WaitForUploadQueue();
 
-			auto HR			= CurrentUploadQueue->UploadList[0]->Close();
+			auto HR			= CurrentUploadQueue.UploadList[0]->Close();
 			size_t Value	= CopyFences[CurrentUploadIndex].FenceValue = ++FenceUploadCounter;
 
-			UploadQueue->ExecuteCommandLists(1, (ID3D12CommandList**)CurrentUploadQueue->UploadList);
+			UploadQueue->ExecuteCommandLists(1, (ID3D12CommandList**)CurrentUploadQueue.UploadList);
 			UploadQueue->Signal(Fence, Value);
 
 			CurrentUploadIndex = (CurrentUploadIndex + 1) % 3;
@@ -4990,8 +4919,7 @@ namespace FlexKit
 
 	void RenderSystem::ShutDownUploadQueues()
 	{
-		auto UploadQueue	= _GetCurrentUploadQueue();
-		auto UploadCL		= UploadQueue->UploadList[0];
+		auto& UploadQueue	= _GetCurrentUploadQueue();
 
 		WaitForUploadQueue();
 		CurrentUploadIndex = (CurrentUploadIndex + 1) % 3;
@@ -5000,9 +4928,8 @@ namespace FlexKit
 		WaitForUploadQueue();
 		CurrentUploadIndex = (CurrentUploadIndex + 1) % 3;
 
-		UploadCL->Close();
-		UploadCL->Reset(UploadQueue->UploadCLAllocator[0], nullptr);
-		UploadQueue->UploadCLAllocator[0]->Reset();
+		UploadQueue.Close();
+		UploadQueue.Reset();
 	}
 
 

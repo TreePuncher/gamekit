@@ -129,7 +129,7 @@ bool InitiateCoreSystems(uint2 WH, EngineCore*& Engine)
 	using FlexKit::ForwardPass_DESC;
 
 
-	bool Out						= false;
+	bool Sucess						= false;
 	uint32_t width					= WH[0];
 	uint32_t height					= WH[1];
 	bool InvertDepth				= true;
@@ -141,9 +141,9 @@ bool InitiateCoreSystems(uint2 WH, EngineCore*& Engine)
 		return false;
 
 	Engine->Window.Close = false;
-	Out = CreateRenderWindow( Engine, height, width, false );
+	Sucess = CreateRenderWindow( Engine, height, width, false );
 
-	if (!Out)
+	if (!Sucess)
 	{
 		Engine->RenderSystem.Release();
 		cout << "Failed to Create Render Window!\n";
@@ -156,7 +156,7 @@ bool InitiateCoreSystems(uint2 WH, EngineCore*& Engine)
 
 	InitiateResourceTable(Engine->GetBlockMemory());
 
-	return Out;
+	return Sucess;
 }
 
 

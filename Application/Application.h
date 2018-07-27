@@ -49,15 +49,10 @@ namespace FlexKit
 		FKApplication(uint2 WindowResolution = { 1920, 1080 });
 		~FKApplication();
 
-		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
-		TY_INITIALSTATE& PushState(TY_ARGS ... ARGS)
+		template<typename TY_STATE, typename ... TY_ARGS>
+		TY_STATE& PushState(TY_ARGS&& ... ARGS)
 		{
-			FK_LOG_INFO("Pushing New State");
-
-			auto& State = Core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(&Framework, ARGS...);
-
-			Framework.SubStates.push_back(&State);
-			return State;
+			return Framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
 		}
 
 		void Run();

@@ -80,6 +80,19 @@ namespace FlexKit
 
 		void PopState();
 
+		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
+		TY_INITIALSTATE& PushState(TY_ARGS&& ... ARGS)
+		{
+			FK_LOG_INFO("Pushing New State");
+
+			auto& State = Core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(
+				this, std::forward<TY_ARGS>(ARGS)...);
+
+			SubStates.push_back(&State);
+
+			return State;
+		}
+
 		struct {
 			SpriteFontAsset*	Font;
 			Texture2D			Terrain;
@@ -106,7 +119,6 @@ namespace FlexKit
 		bool	Quit;
 
 		size_t	TerrainSplits;
-		size_t  PopCount;
 
 		double TimeRunning;
 

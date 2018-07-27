@@ -226,6 +226,10 @@ public:
 			Cell = EState::Empty;
 	}
 
+
+	/************************************************************************************************/
+
+
 	Game& operator = (Game& rhs)
 	{
 		Release();
@@ -247,6 +251,9 @@ public:
 	}
 
 
+	/************************************************************************************************/
+
+
 	Game& operator = (Game&& rhs)
 	{
 		Release();
@@ -264,6 +271,9 @@ public:
 	}
 
 
+	/************************************************************************************************/
+
+
 	void Release()
 	{
 		Players.Release();
@@ -277,6 +287,9 @@ public:
 
 		Tasks.Release();
 	}
+
+
+	/************************************************************************************************/
 
 
 	Player_Handle		CreatePlayer	(GridID_t CellID);
@@ -300,6 +313,8 @@ public:
 
 	void	Update	(const double dt, iAllocator* Memory);
 
+
+	/************************************************************************************************/
 	// Returns Player Position Between {0 - Width, 0 - Height}
 	// World Position can be produced by scaling by Cell Size
 	float3 GetPlayerPosition(Player_Handle PlayerHandle)
@@ -315,12 +330,18 @@ public:
 	}
 
 
+	/************************************************************************************************/
+
+
 	void SetPlayerDirection(Player_Handle PlayerHandle, int Direction)
 	{
 		auto& Player = Players[PlayerHandle];
 
 		Player.FacingDirection = Direction;
 	}
+
+
+	/************************************************************************************************/
 
 
 	float2							Scale = { 50, 50 };
@@ -338,6 +359,10 @@ public:
 	{
 		return WH[0] * ID[1] + ID[0];;
 	}
+
+
+	/************************************************************************************************/
+
 
 	bool IDInGrid(GridID_t ID)
 	{

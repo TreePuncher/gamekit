@@ -153,8 +153,7 @@ struct EngineCore
 	#if USING(PHYSX)
 		FlexKit::ReleasePhysics( &Physics );
 	#endif
-		FlexKit::Release(&Window);
-		RenderSystem.Release();
+		Release(&Window);
 
 		for(auto Arg : CmdArguments)
 			GetBlockMemory().free((void*)Arg);
