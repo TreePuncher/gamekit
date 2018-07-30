@@ -163,12 +163,6 @@
     <ClInclude Include="coreutilities\GameFramework.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\GameMemory.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\GameUtilities.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="coreutilities\GUIInputState.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
@@ -185,6 +179,9 @@
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="coreutilities\Transforms.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\EngineCore.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -303,12 +300,6 @@
     <ClCompile Include="coreutilities\GameFramework.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
-    <ClCompile Include="coreutilities\GameMemory.cpp">
-      <Filter>coreutilities\source</Filter>
-    </ClCompile>
-    <ClCompile Include="coreutilities\GameUtilities.cpp">
-      <Filter>coreutilities\source</Filter>
-    </ClCompile>
     <ClCompile Include="coreutilities\GUIInputState.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
@@ -332,6 +323,9 @@
     </ClCompile>
     <ClCompile Include="coreutilities\CameraUtilities.cpp">
       <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\EngineCore.cpp">
+      <Filter>coreutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

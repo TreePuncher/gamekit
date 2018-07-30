@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2016 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,14 +22,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "GameUtilities.h"
-#include "..\graphicsutilities\AnimationUtilities.h"
-#include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\SSReflections.h"
-#include <cstdio>
+#include "EngineCore.h"
+
 
 namespace FlexKit
-{	/************************************************************************************************/
+{
+	/************************************************************************************************/
 
 
 	void ReleaseCore(EngineCore* Engine)
@@ -48,10 +46,10 @@ namespace FlexKit
 
 		bool Out = false;
 		BlockAllocator_desc BAdesc;
-		BAdesc._ptr = (FlexKit::byte*)Memory->BlockMem;
-		BAdesc.SmallBlock = MEGABYTE * 64;
-		BAdesc.MediumBlock = MEGABYTE * 64;
-		BAdesc.LargeBlock = MEGABYTE * 512;
+		BAdesc._ptr			= (FlexKit::byte*)Memory->BlockMem;
+		BAdesc.SmallBlock	= MEGABYTE * 64;
+		BAdesc.MediumBlock	= MEGABYTE * 64;
+		BAdesc.LargeBlock	= MEGABYTE * 512;
 
 		Memory->BlockAllocator.Init(BAdesc);
 		Memory->LevelAllocator.Init(Memory->LevelMem, LEVELBUFFERSIZE);
@@ -139,10 +137,9 @@ namespace FlexKit
 		}
 
 
-		SetInputWIndow(&Engine->Window);
-		InitiatePhysics(&Engine->Physics, gCORECOUNT, Engine->GetBlockMemory());
-
-		InitiateResourceTable(Engine->GetBlockMemory());
+		SetInputWIndow			(&Engine->Window);
+		InitiatePhysics			(&Engine->Physics, gCORECOUNT, Engine->GetBlockMemory());
+		InitiateResourceTable	(Engine->GetBlockMemory());
 
 		return Sucess;
 	}
@@ -236,6 +233,5 @@ namespace FlexKit
 	{
 		Engine->CmdArguments.push_back(str);
 	}
-
 
 }	/************************************************************************************************/

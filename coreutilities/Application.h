@@ -32,7 +32,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\AllSourceFiles.cpp"
 #include "FrameworkSourceFiles.cpp"
 
-#include "GameMemory.h"
+#include "EngineCore.h"
 #include "GameFramework.h"
 
 #include <Windows.h>

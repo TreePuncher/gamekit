@@ -31,9 +31,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GAMESTATEAPI __declspec(dllimport)
 #endif
 
-#include "..\coreutilities\GameMemory.h"
-#include "..\coreutilities\GameUtilities.h"
-
+#include "..\coreutilities\EngineCore.h"
+#include "..\coreutilities\Logging.h"
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\Resources.h"
 
@@ -64,6 +63,11 @@ namespace FlexKit
 	class GameFramework
 	{
 	public:
+		GameFramework();
+
+		GameFramework				(const GameFramework&) = delete;
+		GameFramework& operator =	(const GameFramework&) = delete;
+
 		void Update				(double dT);
 		void UpdateFixed		(double dT);
 		void UpdatePreDraw		(iAllocator* TempMemory, double dT);
@@ -104,7 +108,10 @@ namespace FlexKit
 		RenderWindow*			ActiveWindow;
 
 		float4					ClearColor;
+
 		Console					Console;
+		LogCallback				LogMessagePipe;
+
 		EngineCore*				Core;
 		NodeHandle				RootNode;
 
@@ -139,9 +146,9 @@ namespace FlexKit
 	class FrameworkState
 	{
 	public:
-		FrameworkState(const FrameworkState& in) = delete;
+		FrameworkState(const FrameworkState& in)				= delete;
 
-		FrameworkState& operator = (const FrameworkState& in) = delete;
+		FrameworkState& operator = (const FrameworkState& in)	= delete;
 
 		virtual ~FrameworkState() {}
 

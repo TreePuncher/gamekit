@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "stdafx.h"
 
 #include "..\Application\GameUtilities.cpp"
-#include "..\Application\GameMemory.h"
+#include "..\Application\EngineCore.h"
 #include "..\coreutilities\AllSourceFiles.cpp"
 #include "..\graphicsutilities\ImageUtilities.h"
 

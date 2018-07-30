@@ -19,6 +19,31 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	
+	void AddLogCallback(LogCallback* CB_Data, int Verbosity)
+	{
+		auto CallbackWrapper = [](void* user_data, const loguru::Message& message)
+		{
+			LogCallback* Data = reinterpret_cast<LogCallback*>(user_data);
+
+			Data->Callback(Data->User, message.message, strnlen_s(message.message, 1024));
+		};
+
+		loguru::add_callback(CB_Data->ID, CallbackWrapper, CB_Data, Verbosity);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void ClearLogCallbacks()
+	{
+		loguru::remove_all_callbacks();
+	}
+
+
+	/************************************************************************************************/
+
 
 	void SetShellVerbocity(Verbosity verbosity)
 	{

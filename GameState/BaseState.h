@@ -27,24 +27,25 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "..\coreutilities\GameFramework.h"
-#include "..\coreutilities\GameMemory.h"
+#include "..\coreutilities\EngineCore.h"
 #include "..\coreutilities\WorldRender.h"
 
 using FlexKit::WorldRender;
 using FlexKit::ReleaseCameraTable;
+using FlexKit::FKApplication;
 
 class BaseState : public FlexKit::FrameworkState
 {
 public:
 	BaseState(	
-		GameFramework*			Framework,
-		FlexKit::FKApplication* IN_App	) :
+		GameFramework* IN_Framework,
+		FKApplication* IN_App	) :
 			App				{IN_App},
-			FrameworkState	{Framework},
-			DepthBuffer		{Framework->Core->RenderSystem.CreateDepthBuffer(	{ 1920, 1080 },		true)},
-			VertexBuffer	{Framework->Core->RenderSystem.CreateVertexBuffer(		8096 * 64,		false)},
-			TextBuffer		{Framework->Core->RenderSystem.CreateVertexBuffer(		8096 * 64,		false)},
-			ConstantBuffer	{Framework->Core->RenderSystem.CreateConstantBuffer(	8096 * 2000,	false)},
+			FrameworkState	{IN_Framework},
+			DepthBuffer		{IN_Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 },	true)},
+			VertexBuffer	{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
+			TextBuffer		{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
+			ConstantBuffer	{IN_Framework->Core->RenderSystem.CreateConstantBuffer(	8096 * 2000, false)},
 
 			Render	{
 				Framework->Core->GetTempMemory(),
@@ -68,7 +69,7 @@ public:
 	}
 
 
-	FlexKit::FKApplication* App;
+	FKApplication* App;
 
 	WorldRender				Render;
 	TextureHandle			DepthBuffer;

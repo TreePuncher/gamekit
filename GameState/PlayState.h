@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\coreutilities\GameFramework.h"
 #include "..\coreutilities\CameraUtilities.h"
-#include "..\coreutilities\GameMemory.h"
+#include "..\coreutilities\EngineCore.h"
 #include "..\coreutilities\WorldRender.h"
 #include "..\coreutilities\Components.h"
 

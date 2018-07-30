@@ -73,7 +73,21 @@ namespace FlexKit
 		Verbosity_MAX     = +9,
 	};
 
+
+	typedef void (*FNLOG_Callback)(void* User, const char* Str, size_t StrLen);
+
+	struct LogCallback
+	{
+		char*			ID;
+		void*			User;
+		FNLOG_Callback Callback;
+	};
+
 	void InitLog(int argc, char* argv[]);
+
+	void AddLogCallback(LogCallback* LogCallback, int Verbosity);
+	void ClearLogCallbacks();
+
 	void SetShellVerbocity(Verbosity verbosity);
 	void AddLogFile(char* file, Verbosity verbosity);
 	Verbosity VerbosityCutof();

@@ -188,8 +188,7 @@
     <ClInclude Include="coreutilities\Events.h" />
     <ClInclude Include="coreutilities\fixed_vector.h" />
     <ClInclude Include="coreutilities\GameFramework.h" />
-    <ClInclude Include="coreutilities\GameMemory.h" />
-    <ClInclude Include="coreutilities\GameUtilities.h" />
+    <ClInclude Include="coreutilities\EngineCore.h" />
     <ClInclude Include="coreutilities\GUIInputState.h" />
     <ClInclude Include="coreutilities\Handle.h" />
     <ClInclude Include="coreutilities\Input.h" />
@@ -267,11 +266,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="coreutilities\GameMemory.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="coreutilities\GameUtilities.cpp">
+    <ClCompile Include="coreutilities\EngineCore.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>

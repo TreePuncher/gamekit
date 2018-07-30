@@ -133,15 +133,16 @@ namespace FlexKit
 
 
 
-	struct EngineCore
+	class EngineCore
 	{
+	public:
 		EngineCore(EngineMemory* memory) :
-			CmdArguments(memory->BlockAllocator),
-			Time(memory->BlockAllocator),
-			Threads(memory->BlockAllocator),
-			Memory(memory),
-			FrameLock(true),
-			RenderSystem(memory->BlockAllocator)
+			Memory			(memory),
+			CmdArguments	(memory->BlockAllocator),
+			Time			(memory->BlockAllocator),
+			Threads			(memory->BlockAllocator),
+			RenderSystem	(memory->BlockAllocator),
+			FrameLock		(true)
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
 		}
@@ -162,6 +163,10 @@ namespace FlexKit
 
 			Threads.Release();
 		}
+
+
+		EngineCore				(const EngineCore&) = delete;
+		EngineCore& operator =	(const EngineCore&) = delete;
 
 		bool			FrameLock;
 		bool			End;
@@ -184,6 +189,28 @@ namespace FlexKit
 
 		EngineMemory_DEBUG* GetDebugMemory() { return &Memory->Debug; }
 	};
+
+
+	
+	void ReleaseCore			(EngineCore*		Game);
+	bool InitiateCoreSystems	(uint2 WH,			EngineCore*& Game);
+	bool InitiateEngineMemory	(EngineMemory*&	Game);
+
+	bool InitEngine				(EngineCore*& Core, EngineMemory*& Engine, uint2 WH);
+	void UpdateCoreComponents	(EngineCore* Core, double dt);
+
+
+	/************************************************************************************************/
+
+
+	float GetWindowAspectRatio	(EngineCore* Engine);
+	uint2 GetWindowWH			(EngineCore* Engine);
+
+	float2	GetPixelSize	(EngineCore*);
+
+	void UpdateMouseInput	(MouseInputState* State,	RenderWindow* Window);
+	void PushCmdArg			(EngineCore* Engine,		const char* arg);
+
 
 
 }	/************************************************************************************************/

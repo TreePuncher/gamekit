@@ -151,6 +151,30 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void PushMessageToConsole(void* User, const char* Str, size_t StrLen)
+	{
+		GameFramework* Framework = reinterpret_cast<GameFramework*>(User);
+
+		char* NewStr = (char*)Framework->Core->GetBlockMemory().malloc(StrLen + 1);
+		memset((void*)NewStr, '\0', StrLen + 1);
+		strncpy(NewStr, Str, StrLen);
+
+		ConsolePrint(&Framework->Console, NewStr, Framework->Core->GetBlockMemory());
+	}
+
+
+
+	GameFramework::GameFramework()
+	{
+		LogMessagePipe.ID			= "INFO";
+		LogMessagePipe.User			= this;
+		LogMessagePipe.Callback		= &PushMessageToConsole;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void GameFramework::Update(double dT)
 	{
 		TimeRunning += dT;
@@ -463,6 +487,8 @@ namespace FlexKit
 
 	void ReleaseGameFramework(EngineCore* Core, GameFramework* State)
 	{
+		ClearLogCallbacks();
+
 		auto RItr = State->SubStates.rbegin();
 		auto REnd = State->SubStates.rend();
 		while (RItr != REnd)
@@ -603,6 +629,8 @@ namespace FlexKit
 		BindBoolVar(&Framework.Console, "FrameLock",		&Core->FrameLock);
 
 		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});
+		AddLogCallback(&Framework.LogMessagePipe, Verbosity_INFO);
+
 
 		Core->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
 	}
