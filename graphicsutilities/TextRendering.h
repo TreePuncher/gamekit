@@ -23,6 +23,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
+#ifndef TEXTRENDERING_H
+#define TEXTRENDERING_H
+
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\Fonts.h"
@@ -40,3 +43,5 @@ namespace FlexKit
 		iAllocator*				TempMemory,
 		PrintTextFormatting&	Formatting = PrintTextFormatting::DefaultParams());
 }
+
+#endif // TEXTRENDERING_H

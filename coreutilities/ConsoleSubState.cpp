@@ -68,7 +68,6 @@ namespace FlexKit
 				switch (evt.mData1.mKC[0])
 				{
 				case KC_TILDA: {
-					std::cout << "Popping Console State\n";
 					PopSubState(Framework);
 					return false;
 				}	break;

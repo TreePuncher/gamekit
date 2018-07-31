@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Logging.h"
 #include "..\buildsettings.h"
 #include "..\coreutilities\Application.h"
+
 #include "HostState.cpp"
 #include "ClientState.cpp"
 #include "MenuState.cpp"

@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\AllSourceFiles.cpp"
-#include "FrameworkSourceFiles.cpp"
 
 #include "EngineCore.h"
 #include "GameFramework.h"

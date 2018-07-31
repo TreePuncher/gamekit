@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\ImageUtilities.h"
 #include "..\coreutilities\Logging.h"
 
+
 // Todo List
 //	Gameplay:
 //		Entity Model
@@ -121,7 +122,7 @@ namespace FlexKit
 				break;
 			case KC_TILDA:
 			{
-				FK_LOG_INFO("Console Key Pressed!");
+				FK_VLOG(Verbosity_9, "Console Key Pressed!");
 
 				if (!_ptr->ConsoleActive) {
 					PushSubState(_ptr, &_ptr->Core->GetBlockMemory().allocate<ConsoleSubState>(_ptr));
@@ -136,6 +137,10 @@ namespace FlexKit
 				_ptr->DrawDebugStats	= !_ptr->DrawDebugStats | (_ptr->DrawDebug		& !(Temp1 & Temp2));
 			}	break;
 			case KC_F2:
+			{
+				_ptr->DrawDebugStats	= !_ptr->DrawDebugStats;
+			}	break;
+			case KC_F3:
 			{
 			}	break;
 			default:
@@ -162,6 +167,8 @@ namespace FlexKit
 		ConsolePrint(&Framework->Console, NewStr, Framework->Core->GetBlockMemory());
 	}
 
+
+	/************************************************************************************************/
 
 
 	GameFramework::GameFramework()
@@ -203,10 +210,16 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void GameFramework::UpdateFixed(double dt)
 	{
 		UpdateMouseInput(&MouseState, &Core->Window);
 	}
+
+
+	/************************************************************************************************/
 
 
 	void GameFramework::UpdatePreDraw(iAllocator* TempMemory, double dT)
@@ -258,6 +271,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void GameFramework::Draw(iAllocator* TempMemory)
 	{
 		FrameGraph		FrameGraph(Core->RenderSystem, TempMemory);
@@ -297,10 +313,16 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
 	{
 		Core->RenderSystem.PresentWindow(&Core->Window);
 	}
+
+
+	/************************************************************************************************/
 
 
 	void GameFramework::Cleanup()
@@ -335,6 +357,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	bool GameFramework::DispatchEvent(const Event& evt)
 	{
 		auto itr = SubStates.rbegin();
@@ -346,6 +371,9 @@ namespace FlexKit
 		}
 		return true;
 	}
+
+
+	/************************************************************************************************/
 
 
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, FrameGraph& Graph)
@@ -376,6 +404,10 @@ namespace FlexKit
 				Core->GetTempMemory(), 
 				Format);
 	}
+
+
+	/************************************************************************************************/
+
 
 	void GameFramework::PostPhysicsUpdate()
 	{
@@ -455,6 +487,9 @@ namespace FlexKit
 	{
 		return LoadScene(Engine->RenderSystem, SceneName, Scene, Engine->GetTempMemory());
 	}
+
+
+	/************************************************************************************************/
 
 
 	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID)

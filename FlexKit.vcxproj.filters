@@ -294,9 +294,6 @@
     <ClCompile Include="coreutilities\FlexKitApplication.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
-    <ClCompile Include="coreutilities\FrameworkSourceFiles.cpp">
-      <Filter>coreutilities\source</Filter>
-    </ClCompile>
     <ClCompile Include="coreutilities\GameFramework.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>

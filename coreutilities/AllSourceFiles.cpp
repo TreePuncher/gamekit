@@ -24,15 +24,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 
+
+#include "..\coreutilities\CameraUtilities.cpp"
+#include "..\coreutilities\Console.cpp"
+#include "..\coreutilities\ConsoleSubState.cpp"
 #include "..\coreutilities\Logging.h"
 //#include "..\coreutilities\DungeonGen.cpp"
 #include "..\coreutilities\Components.cpp"
+#include "..\coreutilities\EngineCore.cpp"
+#include "..\coreutilities\GameFramework.cpp"
 #include "..\coreutilities\GraphicsComponents.cpp"
 #include "..\coreutilities\GraphicScene.cpp"
 #include "..\coreutilities\Handle.cpp"
+#include "..\coreutilities\InputComponent.cpp"
 #include "..\coreutilities\intersection.cpp"
 #include "..\coreutilities\MathUtils.cpp"
 #include "..\coreutilities\memoryutilities.cpp"
+#include "..\coreutilities\NetworkUtilities.cpp"
 #include "..\coreutilities\ProfilingUtilities.cpp"
 #include "..\coreutilities\Resources.cpp"
 //#include "..\coreutilities\signal.cpp"
@@ -40,6 +48,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Transforms.cpp"
 #include "..\coreutilities\timeutilities.cpp"
 #include "..\coreutilities\type.cpp"
+#include "..\coreutilities\WorldRender.cpp"
 
 #include "..\graphicsutilities\AnimationUtilities.cpp"
 #include "..\graphicsutilities\CoreSceneObjects.cpp"

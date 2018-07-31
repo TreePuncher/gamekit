@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "EngineCore.h"
-
+#include "../coreutilities/Transforms.h"
 
 namespace FlexKit
 {
@@ -82,7 +82,6 @@ namespace FlexKit
 
 	void UpdateCoreComponents(EngineCore* Core, double dt)
 	{
-		FlexKit::UpdateTransforms();
 		//Core->Cameras.Update(dt);
 	}
 

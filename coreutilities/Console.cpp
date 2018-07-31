@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Console.h"
+#include "../graphicsutilities/TextRendering.h"
 
 namespace FlexKit
 {	/************************************************************************************************/

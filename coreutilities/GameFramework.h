@@ -181,10 +181,6 @@ namespace FlexKit
 	void PreDrawGameFramework (EngineCore* Engine, GameFramework* _ptr, double dT);
 	void ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr);
 
-
-	/************************************************************************************************/
-
-
 	void InitiateFramework	(EngineCore* Engine, GameFramework& Framework);
 
 
