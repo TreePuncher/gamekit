@@ -68,6 +68,8 @@ namespace FlexKit
 		GameFramework				(const GameFramework&) = delete;
 		GameFramework& operator =	(const GameFramework&) = delete;
 
+		void Initiate(EngineCore* Engine);
+
 		void Update				(double dT);
 		void UpdateFixed		(double dT);
 		void UpdatePreDraw		(iAllocator* TempMemory, double dT);
@@ -87,7 +89,7 @@ namespace FlexKit
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
 		TY_INITIALSTATE& PushState(TY_ARGS&& ... ARGS)
 		{
-			FK_LOG_INFO("Pushing New State");
+			FK_LOG_9("Pushing New State");
 
 			auto& State = Core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(
 				this, std::forward<TY_ARGS>(ARGS)...);

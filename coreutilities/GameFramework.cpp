@@ -87,10 +87,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //		(DONE) Meta-Data for Resource Compiling
 //		(PARTLY) TTF Loading
 //
+// Fix Resource Table leak
 
 
-namespace FlexKit 
+namespace FlexKit
 {	/************************************************************************************************/
+
+
+	bool SetDebugRenderMode	(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void* USR);
+	void EventsWrapper		(const Event& evt, void* _ptr);
+
+
+	/************************************************************************************************/
 
 
 	void HandleKeyEvents(const Event& in, GameFramework* _ptr)
@@ -133,12 +141,12 @@ namespace FlexKit
 			{
 				auto Temp1 = _ptr->DrawDebug;
 				auto Temp2 = _ptr->DrawDebugStats;
-				_ptr->DrawDebug			= !_ptr->DrawDebug		| (_ptr->DrawDebugStats	& !(Temp1 & Temp2));
-				_ptr->DrawDebugStats	= !_ptr->DrawDebugStats | (_ptr->DrawDebug		& !(Temp1 & Temp2));
+				_ptr->DrawDebug = !_ptr->DrawDebug | (_ptr->DrawDebugStats & !(Temp1 & Temp2));
+				_ptr->DrawDebugStats = !_ptr->DrawDebugStats | (_ptr->DrawDebug & !(Temp1 & Temp2));
 			}	break;
 			case KC_F2:
 			{
-				_ptr->DrawDebugStats	= !_ptr->DrawDebugStats;
+				_ptr->DrawDebugStats = !_ptr->DrawDebugStats;
 			}	break;
 			case KC_F3:
 			{
@@ -173,9 +181,91 @@ namespace FlexKit
 
 	GameFramework::GameFramework()
 	{
-		LogMessagePipe.ID			= "INFO";
-		LogMessagePipe.User			= this;
-		LogMessagePipe.Callback		= &PushMessageToConsole;
+		LogMessagePipe.ID = "INFO";
+		LogMessagePipe.User = this;
+		LogMessagePipe.Callback = &PushMessageToConsole;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GameFramework::Initiate(EngineCore* IN_Core)
+	{
+		Core = IN_Core;
+
+		SetDebugMemory			(Core->GetDebugMemory());
+		InitiateResourceTable	(Core->GetBlockMemory());
+		InitiateGeometryTable	(Core->GetBlockMemory());
+		InitiateCameraTable		(Core->GetBlockMemory());
+
+		AddResourceFile("assets\\assets.gameres");
+		AddResourceFile("assets\\ResourceFile.gameres");
+		AddResourceFile("assets\\ShaderBallTestScene.gameres");
+
+		ClearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
+		Quit						= false;
+		PhysicsUpdateTimer			= 0.0f;
+		TerrainSplits				= 12;
+
+		DrawDebug					= false;
+
+#ifdef _DEBUG
+		DrawDebugStats			= true;
+#else
+		Framework.DrawDebugStats			= false;
+#endif
+
+		//Framework.ActivePhysicsScene		= nullptr;
+		ActiveScene					= nullptr;
+		ActiveWindow				= &Core->Window;
+
+		DrawPhysicsDebug			= false;
+
+		Stats.FPS						= 0;
+		Stats.FPS_Counter				= 0;
+		Stats.Fps_T						= 0.0;
+		Stats.ObjectsDrawnLastFrame		= 0;
+		RootNode						= GetZeroedNode();
+
+		{
+			uint2	WindowRect	   = Core->Window.WH;
+			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
+
+			MouseState.NormalizedPos	= { 0.5f, 0.5f };
+			MouseState.Position			= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
+		}
+
+		/*
+		{
+			TextureBuffer TempBuffer;
+			LoadBMP("assets\\textures\\TestMap.bmp", Core->GetTempMemory(), &TempBuffer);
+			Texture2D	HeightMap = LoadTexture(&TempBuffer, Core->RenderSystem, Core->GetTempMemory());
+
+			Framework.DefaultAssets.Terrain = HeightMap;
+		}
+		*/
+
+		EventNotifier<>::Subscriber sub;
+		sub.Notify = &EventsWrapper;
+		sub._ptr   = this;
+		Core->Window.Handler.Subscribe(sub);
+
+		DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Core->RenderSystem, Core->GetTempMemory(), Core->GetBlockMemory());
+		
+		InitateConsole(&Console, DefaultAssets.Font, Core);
+		BindUIntVar(&Console, "TerrainSplits",	&TerrainSplits);
+		BindUIntVar(&Console, "FPS",			&Stats.FPS);
+		BindBoolVar(&Console, "HUD",			&DrawDebugStats);
+		BindBoolVar(&Console, "DrawDebug",		&DrawDebug);
+		//BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
+		BindBoolVar(&Console, "FrameLock",		&Core->FrameLock);
+
+		AddConsoleFunction(&Console, { "SetRenderMode", &SetDebugRenderMode, this, 1, { ConsoleVariableType::CONSOLE_UINT }});
+		AddLogCallback(&LogMessagePipe, Verbosity_INFO);
+
+
+		Core->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
 	}
 
 
@@ -327,10 +417,13 @@ namespace FlexKit
 
 	void GameFramework::Cleanup()
 	{
-		Core->RenderSystem.ShutDownUploadQueues();
+		auto end  = SubStates.rend();
+		auto itr = SubStates.rbegin();
+
+		ReleaseGameFramework(Core, this);
 
 		ReleaseConsole(&Console);
-		//Release(DefaultAssets.Font);
+		Release(DefaultAssets.Font, Core->RenderSystem);
 
 		// wait for last Frame to finish Rendering
 		auto CL = Core->RenderSystem._GetCurrentCommandList();
@@ -341,7 +434,6 @@ namespace FlexKit
 			Core->RenderSystem._IncrementRSIndex();
 		}
 
-		ReleaseGameFramework(Core, this);
 
 		// Counters are at Max 3
 		Free_DelayedReleaseResources(Core->RenderSystem);
@@ -351,9 +443,6 @@ namespace FlexKit
 		FreeAllResourceFiles	();
 		FreeAllResources		();
 
-		Core->GetBlockMemory().release_allocation(*Core);
-
-		DEBUGBLOCK(PrintBlockStatus(&Core->GetBlockMemory()));
 	}
 
 
@@ -529,6 +618,8 @@ namespace FlexKit
 		while (RItr != REnd)
 		{
 			(*RItr)->~FrameworkState();
+			Core->GetBlockMemory().free(*RItr);
+
 			RItr++;
 		}
 
@@ -595,79 +686,7 @@ namespace FlexKit
 
 	void InitiateFramework(EngineCore* Core, GameFramework& Framework)
 	{
-		SetDebugMemory(Core->GetDebugMemory());
-		InitiateResourceTable(Core->GetBlockMemory());
-		InitiateGeometryTable(Core->GetBlockMemory());
-		InitiateCameraTable(Core->GetBlockMemory());
 
-		AddResourceFile("assets\\assets.gameres");
-		AddResourceFile("assets\\ResourceFile.gameres");
-		AddResourceFile("assets\\ShaderBallTestScene.gameres");
-
-		Framework.ClearColor				= { 0.0f, 0.2f, 0.4f, 1.0f };
-		Framework.Quit						= false;
-		Framework.PhysicsUpdateTimer		= 0.0f;
-		Framework.TerrainSplits				= 12;
-		Framework.Core						= Core;
-
-		Framework.DrawDebug					= false;
-
-#ifdef _DEBUG
-		Framework.DrawDebugStats			= true;
-#else
-		Framework.DrawDebugStats			= false;
-#endif
-
-		//Framework.ActivePhysicsScene		= nullptr;
-		Framework.ActiveScene				= nullptr;
-		Framework.ActiveWindow				= &Core->Window;
-
-		Framework.DrawPhysicsDebug			= false;
-
-		Framework.Stats.FPS						= 0;
-		Framework.Stats.FPS_Counter				= 0;
-		Framework.Stats.Fps_T					= 0.0;
-		Framework.Stats.ObjectsDrawnLastFrame	= 0;
-		Framework.RootNode						= GetZeroedNode();
-
-		{
-			uint2	WindowRect	   = Core->Window.WH;
-			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
-
-			Framework.MouseState.NormalizedPos	= { 0.5f, 0.5f };
-			Framework.MouseState.Position		= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
-		}
-
-		/*
-		{
-			TextureBuffer TempBuffer;
-			LoadBMP("assets\\textures\\TestMap.bmp", Core->GetTempMemory(), &TempBuffer);
-			Texture2D	HeightMap = LoadTexture(&TempBuffer, Core->RenderSystem, Core->GetTempMemory());
-
-			Framework.DefaultAssets.Terrain = HeightMap;
-		}
-		*/
-
-		FlexKit::EventNotifier<>::Subscriber sub;
-		sub.Notify = &EventsWrapper;
-		sub._ptr   = &Framework;
-		Core->Window.Handler.Subscribe(sub);
-
-		Framework.DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Core->RenderSystem, Core->GetTempMemory(), Core->GetBlockMemory());
-		
-		InitateConsole(&Framework.Console, Framework.DefaultAssets.Font, Core);
-		BindUIntVar(&Framework.Console, "TerrainSplits",	&Framework.TerrainSplits);
-		BindUIntVar(&Framework.Console, "FPS",				&Framework.Stats.FPS);
-		BindBoolVar(&Framework.Console, "HUD",				&Framework.DrawDebugStats);
-		BindBoolVar(&Framework.Console, "DrawDebug",		&Framework.DrawDebug);
-		//BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
-		BindBoolVar(&Framework.Console, "FrameLock",		&Core->FrameLock);
-
-		AddConsoleFunction(&Framework.Console, { "SetRenderMode", &SetDebugRenderMode, &Framework, 1, { ConsoleVariableType::CONSOLE_UINT }});
-		AddLogCallback(&Framework.LogMessagePipe, Verbosity_INFO);
-
-
-		Core->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
 	}
 
 

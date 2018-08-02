@@ -51,7 +51,8 @@ namespace FlexKit
 
 	void InitiateCameraTable(iAllocator* Memory)
 	{
-		CameraTable = &Memory->allocate<CameraSystem>(Memory);
+		if(!CameraTable)
+			CameraTable = &Memory->allocate<CameraSystem>(Memory);
 	}
 
 

@@ -96,6 +96,10 @@ namespace FlexKit
 
 	void GraphicScene::ClearScene()
 	{
+		PLights.Release();
+		SPLights.Release();
+
+
 		for (auto& D : this->Drawables)
 		{
 			ReleaseNode(D.Node);
@@ -672,10 +676,6 @@ namespace FlexKit
 		}
 
 		SM->Drawables.Release();
-
-		Release(&SM->PLights, SM->Memory);
-		Release(&SM->SPLights, SM->Memory);
-
 		SM->TaggedJoints.Release();
 		SM->PLights.Lights	= nullptr;
 		SM->Drawables		= nullptr;

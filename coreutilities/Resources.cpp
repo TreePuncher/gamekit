@@ -44,6 +44,12 @@ namespace FlexKit
 
 	void ReleaseResourceTable()
 	{
+		for (auto* Table : Resources.Tables)
+			Resources.ResourceMemory->free(Table);
+
+		for (auto* Resource : Resources.ResourcesLoaded)
+			Resources.ResourceMemory->free(Resource);
+
 		Resources.Tables.Release();
 		Resources.ResourceFiles.Release();
 		Resources.ResourcesLoaded.Release();
@@ -374,7 +380,7 @@ namespace FlexKit
 
 	bool Resource2TriMesh(RenderSystem* RS, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
 	{
-		Resource* R = FlexKit::GetResource(RHandle);
+		Resource* R = GetResource(RHandle);
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
 		{
 			TriMeshResourceBlob* Blob = (TriMeshResourceBlob*)R;
@@ -431,7 +437,7 @@ namespace FlexKit
 				Out->Buffers[15] = View;
 			}
 
-			FlexKit::CreateVertexBuffer(RS, Out->Buffers, BufferCount, Out->VertexBuffer);
+			CreateVertexBuffer(RS, Out->Buffers, BufferCount, Out->VertexBuffer);
 
 			if (ClearBuffers)
 			{
@@ -903,10 +909,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(SpriteFontAsset* asset)
+	void Release(SpriteFontAsset* asset, RenderSystem* RS)
 	{
-		FK_ASSERT(0);
-		//FreeTexture(&asset->Texture);
+		RS->ReleaseTexture(asset->Texture);
 		asset->Memory->free(asset->FontDir);
 		asset->Memory->free(asset);
 	}

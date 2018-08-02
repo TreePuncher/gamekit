@@ -270,17 +270,24 @@ namespace FlexKit
 		{
 			std::cout << "Medium Blocks Allocated\n";
 
-			auto MB = BlockAlloc->MediumBlockAlloc.BlockTable;
-			size_t MB_size_t = BlockAlloc->MediumBlockAlloc.Size;
+			auto MB				= BlockAlloc->MediumBlockAlloc.BlockTable;
+			size_t MB_size_t	= BlockAlloc->MediumBlockAlloc.Size;
 			for (size_t I = 0; I < MB_size_t; ++I)
 			{
 				if (!MB[I].state)
 					continue;
-				std::cout << "Block: " << I;
+
+				std::cout << "Block: " << I << " : " << BlockAlloc->MediumBlockAlloc.Blocks + I;
 				if (MB[I].state & FlexKit::MediumBlockAllocator::BlockData::Aligned)
 					std::cout << " Aligned\n";
 				else
 					std::cout << " Allocated\n";
+
+				if (MB[I].state & FlexKit::MediumBlockAllocator::BlockData::DebugMD) {
+					std::cout << "Meta Data Found: \n";
+					BlockAlloc->MediumBlockAlloc.Blocks[I].data[0x41] = '\0';
+					std::cout << BlockAlloc->MediumBlockAlloc.Blocks[I].data << "\n";
+				}
 			}
 		}
 

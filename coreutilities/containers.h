@@ -339,7 +339,12 @@ namespace FlexKit
 				FK_ASSERT(Allocator);
 #endif			
 				auto NewSize = ((Max < 1) ? 2 : (2 * Max));
+
+#if USING(DEBUGMEMORY)
+				Ty* NewMem = (Ty*)Allocator->malloc_Debug(sizeof(Ty) * NewSize, "TEST", 4);
+#else
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
+#endif
 				{
 					size_t itr = 0;
 					size_t End = Size;

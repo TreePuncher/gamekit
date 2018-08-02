@@ -27,6 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool fullscreen = false);
+
+
 	/************************************************************************************************/
 
 
@@ -39,9 +42,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool InitiateEngineMemory(EngineMemory*& Memory)
+
+	EngineMemory* CreateEngineMemory()
 	{
-		Memory = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
+		bool ThrowAway;
+		return CreateEngineMemory(ThrowAway);
+	}
+
+
+	EngineMemory* CreateEngineMemory(bool& Sucess)
+	{
+		auto* Memory = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
+		FK_ASSERT(Memory, "Memory Allocation Error!");
+
 		memset(Memory, 0, PRE_ALLOC_SIZE);
 
 		bool Out = false;
@@ -57,23 +70,76 @@ namespace FlexKit
 
 		InitDebug(&Memory->Debug);
 
-		return true;
+		return Memory;
+	}
+
+
+	void ReleaseEngineMemory(EngineMemory* Memory)
+	{
+		DEBUGBLOCK(PrintBlockStatus(&Memory->GetBlockMemory()));
+		_aligned_free(Memory);
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool InitEngine(EngineCore*& Core, EngineMemory*& Memory, uint2 WH)
+	bool EngineCore::Initate(EngineMemory* Memory, uint2 WH)
 	{
-		InitiateEngineMemory(Memory);
+		bool Sucess						= false;
+		FlexKit::Graphics_Desc	desc	= { 0 };
+		desc.Memory						= GetBlockMemory();
+		uint32_t width					= WH[0];
+		uint32_t height					= WH[1];
+		bool InvertDepth				= true;
 
-		Core = &Memory->BlockAllocator.allocate<EngineCore>(Memory);
-		auto RES = InitiateCoreSystems(WH, Core);
+		if (!RenderSystem.Initiate(&desc))
+			return false;
 
-		FK_ASSERT(RES, "FAILED TO INITIATE ENGINE!");
+		Window.Close = false;
+		Sucess = CreateRenderWindow(this, height, width, false);
 
-		return RES;
+		if (!Sucess)
+		{
+			RenderSystem.Release();
+			cout << "Failed to Create Render Window!\n";
+			return false;
+		}
+
+
+		SetInputWIndow			(&Window);
+		InitiatePhysics			(&Physics, gCORECOUNT, GetBlockMemory());
+		InitiateResourceTable	(GetBlockMemory());
+
+		FK_ASSERT(Sucess, "FAILED TO INITIATE ENGINE!");
+
+		return Sucess;
+	}
+
+
+
+	/************************************************************************************************/
+
+
+	void EngineCore::Release()
+	{
+		RenderSystem.ShutDownUploadQueues();
+
+
+	#if USING(PHYSX)
+			ReleasePhysics(&Physics);
+	#endif
+		FlexKit::Release(&Window);
+
+		for (auto Arg : CmdArguments)
+			GetBlockMemory().free((void*)Arg);
+
+		CmdArguments.Release();
+		RenderSystem.Release();
+
+		Threads.Release();
+
+		Memory = nullptr;
 	}
 
 
@@ -89,18 +155,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool fullscreen = false)
+	bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool fullscreen)
 	{
-		using FlexKit::CreateRenderWindow;
-		using FlexKit::RenderWindowDesc;
-
 		// Initiate Render Window
 		RenderWindowDesc	WinDesc = { 0 };
-		WinDesc.POS_X = 0;
-		WinDesc.POS_Y = 0;
-		WinDesc.height = height;
-		WinDesc.width = width;
-		WinDesc.fullscreen = fullscreen;
+		WinDesc.POS_X		= 0;
+		WinDesc.POS_Y		= 0;
+		WinDesc.height		= height;
+		WinDesc.width		= width;
+		WinDesc.fullscreen	= fullscreen;
 
 		if (CreateRenderWindow(Game->RenderSystem, &WinDesc, &Game->Window))
 			FK_ASSERT(false, "RENDER WINDOW FAILED TO INITIALIZE!");
@@ -108,40 +171,6 @@ namespace FlexKit
 		return true;
 	}
 
-
-	/************************************************************************************************/
-
-
-	bool InitiateCoreSystems(uint2 WH, EngineCore*& Engine)
-	{
-		bool Sucess						= false;
-		uint32_t width					= WH[0];
-		uint32_t height					= WH[1];
-		bool InvertDepth				= true;
-		FlexKit::Graphics_Desc	desc	= { 0 };
-		desc.Memory						= Engine->GetBlockMemory();
-
-
-		if (!Engine->RenderSystem.Initiate(&desc))
-			return false;
-
-		Engine->Window.Close = false;
-		Sucess = CreateRenderWindow(Engine, height, width, false);
-
-		if (!Sucess)
-		{
-			Engine->RenderSystem.Release();
-			cout << "Failed to Create Render Window!\n";
-			return false;
-		}
-
-
-		SetInputWIndow			(&Engine->Window);
-		InitiatePhysics			(&Engine->Physics, gCORECOUNT, Engine->GetBlockMemory());
-		InitiateResourceTable	(Engine->GetBlockMemory());
-
-		return Sucess;
-	}
 
 
 	/************************************************************************************************/

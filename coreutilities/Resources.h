@@ -69,6 +69,7 @@ namespace FlexKit
 			EResourceState_LOADED,
 			EResourceState_EVICTED,
 		};
+
 		ResourceState	State;
 		uint32_t		RefCount;
 
@@ -449,7 +450,7 @@ namespace FlexKit
 	typedef Pair<size_t, FlexKit::SpriteFontAsset*> LoadFontResult;
 
 	FLEXKITAPI LoadFontResult	LoadFontAsset	( char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
-	FLEXKITAPI void				Release			(SpriteFontAsset* asset );
+	FLEXKITAPI void				Release			( SpriteFontAsset* asset, RenderSystem* RS);
 
 
 	/************************************************************************************************/

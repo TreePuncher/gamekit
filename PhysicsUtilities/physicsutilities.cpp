@@ -355,6 +355,9 @@ namespace FlexKit
 
 	void ReleasePhysics(PhysicsSystem* Physics)
 	{
+		if (!Physics)
+			return;
+
 		Physics->CPUDispatcher->release();// Physx
 		Physics->DefaultMaterial->release();
 		if (Physics->RemoteDebuggerEnabled)	Physics->VisualDebuggerConnection->release();
@@ -362,6 +365,8 @@ namespace FlexKit
 		if (Physics->Physx)					Physics->Physx->release();
 		if (Physics->ProfileZoneManager)	Physics->ProfileZoneManager->release();
 		if (Physics->Foundation)			Physics->Foundation->release();
+
+		Physics = nullptr;
 	}
 
 

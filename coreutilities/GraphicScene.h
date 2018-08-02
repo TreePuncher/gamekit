@@ -99,7 +99,7 @@ namespace FlexKit
 			FlexKit::PointLightListDesc Desc;
 			Desc.MaxLightCount = 512;
 
-			CreatePointLightList	(&PLights, Desc, Memory);
+			CreatePointLightList(&PLights, Desc, Memory);
 			CreateSpotLightList	(&SPLights, Memory);
 
 			SceneManagement.Initiate(Memory);

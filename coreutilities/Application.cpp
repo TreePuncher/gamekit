@@ -26,27 +26,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	FKApplication::FKApplication(uint2 WindowResolution)
+	FKApplication::FKApplication(uint2 WindowResolution, EngineMemory* IN_Memory) :
+		Memory		{ IN_Memory },
+		Core		{ IN_Memory }
 	{
-		bool Success = InitEngine(Core, Memory, WindowResolution);
+		bool Success = Core.Initate(Memory, WindowResolution);
 		FK_ASSERT(Success);
 
-		InitiateFramework(Core, Framework);
+		Framework.Initiate(&Core);
 	}
 
 
 	FKApplication::~FKApplication()
 	{
-		Cleanup();
+		Release();
 	}
 
 
-	void FKApplication::Cleanup()
+	void FKApplication::Release()
 	{
 		if (Memory)
 		{
 			Framework.Cleanup();
-			_aligned_free(Memory);
+			Core.Release();
 			Memory = nullptr;
 		}
 	}
@@ -54,7 +56,7 @@ namespace FlexKit
 
 	void FKApplication::PushArgument(const char* Str)
 	{
-		Core->CmdArguments.push_back(Str);
+		Core.CmdArguments.push_back(Str);
 	}
 
 
@@ -69,9 +71,9 @@ namespace FlexKit
 		double CodeCheckTimer	= 0.0f;
 		double dT				= StepSize;
 
-		while (!Core->End && !Core->Window.Close && Framework.SubStates.size())
+		while (!Core.End && !Core.Window.Close && Framework.SubStates.size())
 		{
-			Core->Time.Before();
+			Core.Time.Before();
 
 			auto FrameStart = std::chrono::system_clock::now();
 			CodeCheckTimer += dT;
@@ -86,22 +88,22 @@ namespace FlexKit
 
 				Framework.Update			(dT);
 				Framework.UpdateFixed		(StepSize);
-				Framework.UpdatePreDraw		(Core->GetTempMemory(), dT);
-				Framework.Draw				(Core->GetTempMemory());
-				Framework.PostDraw			(Core->GetTempMemory(), dT);
+				Framework.UpdatePreDraw		(Memory->GetTempMemory(), dT);
+				Framework.Draw				(Memory->GetTempMemory());
+				Framework.PostDraw			(Memory->GetTempMemory(), dT);
 
 				FK_LOG_9("Frame End");
 
 				// Memory -----------------------------------------------------------------------------------
 				//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
-				Core->GetTempMemory().clear();
+				Memory->GetTempMemory().clear();
 				T -= dT;
 			}
 
 			auto FrameEnd = std::chrono::system_clock::now();
 			auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
 
-			if (Core->FrameLock)// FPS Locked
+			if (Core.FrameLock)// FPS Locked
 				std::this_thread::sleep_for(chrono::microseconds(16000) - Duration);
 
 			FrameEnd = std::chrono::system_clock::now();
@@ -109,12 +111,10 @@ namespace FlexKit
 
 			dT = double(Duration.count()) / 1000000.0;
 
-			Core->Time.After();
-			Core->Time.Update();
+			Core.Time.After();
+			Core.Time.Update();
 
 			T += dT;
-
-			
 		}
 			// End Update  -----------------------------------------------------------------------------------------
 	}

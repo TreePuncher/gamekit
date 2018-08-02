@@ -2062,7 +2062,9 @@ namespace FlexKit
 		DeviceResourceState GetState	(TextureHandle Handle);
 		ID3D12Resource*		GetResource	(TextureHandle Handle);
 
-		void LockUntil(size_t FrameID);
+
+		void ReleaseTexture	(TextureHandle Handle);
+		void LockUntil		(size_t FrameID);
 
 	private:
 
@@ -2073,7 +2075,7 @@ namespace FlexKit
 			uint32_t			FrameGraphIndex;
 			uint32_t			Flags;
 			uint32_t			Tag;
-			uint32_t			Padding;
+			TextureHandle		Handle;
 		};
 
 		struct ResourceEntry
@@ -2200,6 +2202,7 @@ namespace FlexKit
 		void ReleaseCB(ConstantBufferHandle);
 		void ReleaseVB(VertexBufferHandle);
 		void ReleaseDB(TextureHandle);
+		void ReleaseTexture(TextureHandle Handle);
 		void ReleaseTempResources();
 
 		// Upload Queues
@@ -2504,12 +2507,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef fixed_vector<PointLight>		PLList;
-	typedef fixed_vector<PointLightEntry>	PLBuffer;
-	typedef fixed_vector<SpotLight>			SLList;
-	typedef fixed_vector<SpotLightEntry>	SLBuffer;
-	typedef fixed_vector<char>				LightFlags;
-	typedef fixed_vector<char*>				LightIDs;
+	typedef Vector<PointLight>			PLList;
+	typedef Vector<PointLightEntry>		PLBuffer;
+	typedef Vector<SpotLight>			SLList;
+	typedef Vector<SpotLightEntry>		SLBuffer;
+	typedef Vector<char>				LightFlags;
+	typedef Vector<char*>				LightIDs;
 
 
 	/************************************************************************************************/
@@ -2522,31 +2525,29 @@ namespace FlexKit
 
 	struct PointLightList
 	{
-		PLList*						Lights;
-		LightFlags*					Flags;
-		LightIDs*					IDs;
+		PLList						Lights;
+		LightFlags					Flags;
+		LightIDs					IDs;
 
 		PointLight&	operator []( size_t index )	{
-			FK_ASSERT (!Lights->full());
-			return Lights->at(index);
+			return Lights[index];
 		}
 
 		void push_back( PointLight PL )	{
-			FK_ASSERT (!Lights->full());
-			Lights->push_back(PL);
+			Lights.push_back(PL);
 		}
 
 		void Swap( size_t i1, size_t i2 ) {
-			auto Temp = Lights->at(i1);
-			Lights->at(i1) = Lights->at(i2);
-			Lights->at(i2) = Temp;
+			auto Temp = Lights[i1];
+			Lights[i1] = Lights[i2];
+			Lights[i2] = Temp;
 		}
 
-		size_t	size()	const {return Lights->size();}
-		size_t	max()	const {return Lights->max_length();}
+		size_t	size()	const {return Lights.size();}
 
 		void Release()		
 		{
+			Lights.Release();
 		}
 	};
 
@@ -2556,33 +2557,31 @@ namespace FlexKit
 
 	struct SpotLightList
 	{
-		ID3D12Resource*				Resource;
-		SLList*						Lights;
-		LightFlags*					Flags;
-		LightIDs*					IDs;
+		SLList						Lights;
+		LightFlags					Flags;
+		LightIDs					IDs;
 
 		SpotLight&	operator []( size_t index )
 		{
-			FK_ASSERT (index < Lights->size());
-			return Lights->at(index);
+			FK_ASSERT (index < Lights.size());
+			return Lights.at(index);
 		}
 
 		void push_back( SpotLight PL )
 		{
-			FK_ASSERT (!Lights->full());
-			Lights->push_back(PL);
+			Lights.push_back(PL);
 		}
 
 		void Swap( size_t i1, size_t i2 )
 		{
-			auto Temp	 = Lights->at(i1);
-			Lights->at(i1) = Lights->at(i2);
-			Lights->at(i2) = Temp;
+			auto Temp	 = Lights.at(i1);
+			Lights.at(i1) = Lights.at(i2);
+			Lights.at(i2) = Temp;
 		}
 
-		size_t size() const {return Lights->size();}
+		size_t size() const {return Lights.size();}
 
-		void Release(){Resource->Release();}
+		void Release(){ Lights.Release();}
 	};
 
 
@@ -3286,7 +3285,7 @@ namespace FlexKit
 	
 
 	template<typename Ty>
-	void SetLightFlag( Ty* out, LightHandle light, LightBufferFlags flag )	{out->Flags->at(light.INDEX) ^= flag;}
+	void SetLightFlag( Ty* out, LightHandle light, LightBufferFlags flag )	{out->Flags.at(light.INDEX) ^= flag;}
 
 
 	/************************************************************************************************/

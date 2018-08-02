@@ -2168,6 +2168,9 @@ namespace FlexKit
 
 	void RenderSystem::Release()
 	{
+		if (!Memory)
+			return;
+
 		FK_LOG_INFO("Releasing RenderSystem");
 
 		for (auto& UQ : UploadQueues)
@@ -2205,7 +2208,7 @@ namespace FlexKit
 		pDebug->Release();
 #endif
 
-		memset(this, 0, sizeof(this));
+		Memory = nullptr;
 	}
 
 
@@ -2458,6 +2461,15 @@ namespace FlexKit
 	{
 		FK_LOG_INFO("Leaking DepthBuffer!");
 		//TODO: Release DepthBuffer Properly!
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::ReleaseTexture(TextureHandle Handle)
+	{
+		Textures.ReleaseTexture(Handle);
 	}
 
 
@@ -4138,6 +4150,7 @@ namespace FlexKit
 		Entry.FrameGraphIndex	= -1;
 		Entry.FGI_FrameStamp    = -1;
 		Entry.Flags				= Flags_IN;
+		Entry.Handle            = Handle;
 
 		UserEntries.push_back(Entry);
 
@@ -4264,6 +4277,32 @@ namespace FlexKit
 		}
 	}
 	
+
+	/************************************************************************************************/
+
+
+	void TextureStateTable::ReleaseTexture(TextureHandle Handle)
+	{
+		auto UserIdx		= Handles[Handle];
+		auto& UserEntry		= UserEntries[UserIdx];
+		const auto ResIdx	= UserEntry.ResourceIdx;
+		auto& Resource		= Resources[ResIdx];
+
+		Resource.Release();
+
+		auto TempHandle		= UserEntries.back().Handle;
+		UserEntry			= UserEntries.back();
+
+		Resource				= Resources[UserEntry.ResourceIdx];
+		UserEntry.ResourceIdx	= ResIdx;
+		Handles[TempHandle]		= UserIdx;
+
+		UserEntries.pop_back();
+		Resources.pop_back();
+
+		Handles.RemoveHandle(Handle);
+	}
+
 
 	/************************************************************************************************/
 
@@ -5831,41 +5870,9 @@ namespace FlexKit
 	{
 		FK_ASSERT( Desc.MaxLightCount > 0, "INVALID PARAMS" );
 
-		out->Lights	= &fixed_vector<PointLight>::Create_Aligned(Desc.MaxLightCount, Memory, 0x10);
-		out->Flags	= &LightFlags::Create_Aligned(Desc.MaxLightCount, Memory, 0x10);
-		out->IDs	= &LightIDs::Create_Aligned(Desc.MaxLightCount, Memory, 0x10);
-
-		FK_ASSERT(out->Lights);
-		FK_ASSERT(out->Flags);
-		FK_ASSERT(out->IDs);
-
-
-		for ( size_t itr = 0; itr < Desc.MaxLightCount; itr++ )
-			out->IDs->at(itr) = nullptr;
-	}
-
-
-	void Release(PointLightList* out, iAllocator* Memory)
-	{
-		Memory->_aligned_free(out->Lights);
-		Memory->_aligned_free(out->Flags);
-		Memory->_aligned_free(out->IDs);
-
-		out->Lights   = nullptr;
-		out->Flags    = nullptr;
-		out->IDs      = nullptr;
-	}
-
-
-	void Release(SpotLightList* out, iAllocator* Memory)
-	{
-		Memory->_aligned_free(out->Lights);
-		Memory->_aligned_free(out->Flags);
-		Memory->_aligned_free(out->IDs);
-
-		out->Lights   = nullptr;
-		out->Flags    = nullptr;
-		out->IDs      = nullptr;
+		out->Lights	= PLList		(Memory);
+		out->Flags	= LightFlags	(Memory);
+		out->IDs	= LightIDs		(Memory);
 	}
 
 
@@ -5926,8 +5933,8 @@ namespace FlexKit
 	LightHandle CreateLight(PointLightList* PL, LightDesc& in)
 	{
 		return LightHandle(0);
-		auto HandleIndex = PL->Lights->size();
-		PL->Lights->push_back({in.K, in.I, in.R, in.Hndl});
+		auto HandleIndex = PL->Lights.size();
+		PL->Lights.push_back({in.K, in.I, in.R, in.Hndl});
 
 		LightHandle Handle;
 		Handle.INDEX = HandleIndex;
@@ -5966,15 +5973,9 @@ namespace FlexKit
 
 	void CreateSpotLightList(SpotLightList* out, iAllocator* Memory, size_t Max)
 	{
-		out->Lights		= &SLList::		Create_Aligned(Max, Memory, 0x10);
-		out->Flags		= &LightFlags::	Create_Aligned(Max, Memory, 0x10);
-		out->IDs		= &LightIDs::	Create_Aligned(Max, Memory, 0x10);
-
-		for (size_t itr = 0; itr < Max; itr++)
-			out->IDs->at(itr) = nullptr;
-
-		for (auto& F : *out->Flags)
-			F = LightBufferFlags::Dirty;
+		out->Lights		= SLList		(Memory);
+		out->Flags		= LightFlags	(Memory);
+		out->IDs		= LightIDs		(Memory);
 	}
 
 
@@ -5983,9 +5984,9 @@ namespace FlexKit
 
 	void ReleaseLight(PointLightList*	PL, LightHandle Handle)
 	{
-		PL->Lights->at(Handle).I	= 0.0f;
-		PL->Lights->at(Handle).R	= 0.0f;
-		PL->Flags->at(Handle)		= LightBufferFlags::Unused;
+		PL->Lights.at(Handle).I		= 0.0f;
+		PL->Lights.at(Handle).R		= 0.0f;
+		PL->Flags.at(Handle)		= LightBufferFlags::Unused;
 	}
 
 

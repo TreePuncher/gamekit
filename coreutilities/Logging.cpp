@@ -5,10 +5,7 @@
 #include <string>
 
 namespace FlexKit
-{
-
-
-	/************************************************************************************************/
+{	/************************************************************************************************/
 
 
 	void InitLog(int argc, char * argv[])
@@ -54,9 +51,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void AddLogFile(char * file, Verbosity verbosity)
+	void AddLogFile(char * file, Verbosity verbosity, bool Append )
 	{
-		loguru::add_file(file, loguru::Append, verbosity);
+		loguru::add_file(file, Append ? loguru::Append : loguru::Truncate, verbosity);
 	}
 
 
@@ -117,4 +114,5 @@ namespace FlexKit
 		return loguru::current_verbosity_cutoff();
 	}
 
-}
+
+}	/************************************************************************************************/

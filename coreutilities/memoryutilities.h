@@ -49,6 +49,9 @@ namespace FlexKit
 		virtual void  _aligned_free(void* _ptr) = 0;
 		virtual void  clear(void) {};
 
+		virtual void* malloc_Debug(size_t, const char* MD, size_t MDSectionSize) = 0;
+
+
 		template<typename T, typename ... Params>
 		T& allocate(Params&& ... Args)
 		{
@@ -94,6 +97,13 @@ namespace FlexKit
 		{
 			::_aligned_free(_ptr);
 		}
+
+
+		void* malloc_Debug(size_t n, const char* MD, size_t MDSectionSize)
+		{
+			return ::malloc(n);
+		}
+
 
 		operator iAllocator* (){return this;}
 	};
@@ -174,6 +184,11 @@ namespace FlexKit
 				ParentAllocator->clear();
 			}
 
+
+			void* malloc_Debug(size_t n, const char* MD, size_t MDSectionSize)
+			{
+				return malloc(n);
+			}
 
 			StackAllocator*	ParentAllocator;
 		}AllocatorInterface;
@@ -303,7 +318,7 @@ namespace FlexKit
 		}
 
 		// TODO: maybe Multi-Thread?
-		byte* malloc(size_t size, bool ALIGNED = false)
+		byte* malloc(size_t size, bool ALIGNED = false, bool DebugMetaData = false)
 		{
 #ifdef _DEBUG
 			if (size > MaxBlockSize())
@@ -316,13 +331,18 @@ namespace FlexKit
 			for (size_t i = 0; i < Size; ++i)
 				if (BlockTable[i].state == BlockData::Free)
 				{
-					BlockTable[i].state = BlockData::Allocated | (ALIGNED ? BlockData::Aligned : 0);
+					BlockTable[i].state = 
+						BlockData::Allocated | 
+						(ALIGNED		? BlockData::Aligned : 0) | 
+						(DebugMetaData	? BlockData::DebugMD : 0);
 					return Blocks[i].data;
 				}
 
 			FK_ASSERT(0);
+
 			return nullptr;
 		}
+
 
 		static size_t MaxBlockSize()
 		{
@@ -363,6 +383,7 @@ namespace FlexKit
 				Free		= 0x00,
 				Allocated	= 0x01,
 				Aligned		= 0x02,
+				DebugMD		= 0x04,
 			};
 			byte state;
 		}*BlockTable;
@@ -545,23 +566,48 @@ namespace FlexKit
 			new(&AllocatorInterface) iBlockAllocator(this);
 		}
 
-		byte* malloc(size_t size, bool MarkAllocated = false)
+		byte* malloc(const size_t size, bool MarkAligned = false, bool MarkDebugMetaData = false)
 		{
 			byte* ret = nullptr;
 
 			if (size <= SmallBlockAllocator::MaxAllocationSize())
-				ret = SmallBlockAlloc.malloc(size, MarkAllocated);
+				ret = SmallBlockAlloc.malloc(size, MarkAligned);
 			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
-				ret = MediumBlockAlloc.malloc(size, MarkAllocated);
+				ret = MediumBlockAlloc.malloc(size, MarkAligned, MarkDebugMetaData);
 			if (!ret)
-				ret = LargeBlockAlloc.malloc(size, MarkAllocated);
+				ret = LargeBlockAlloc.malloc(size, MarkAligned);
 
 			return ret;
 		}
 
-		char*	_aligned_malloc(size_t s, size_t alignement = 0x10)
+		// Debug String Must be below 64 Bytes
+		byte* malloc_debug(const size_t size, const char* Debug, size_t DebugSize, bool Aligned)
 		{
-			char* _ptr = (char*)malloc(s + alignement, true);
+			byte* ret = nullptr;
+			const size_t MetaDataSectionSize = 0x40;
+
+			if (size <= SmallBlockAllocator::MaxAllocationSize())
+				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
+			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
+				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40, true);
+			if (!ret)
+				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
+
+			if (	
+				size > SmallBlockAllocator::MaxAllocationSize() && 
+				size < MediumBlockAllocator::MaxBlockSize())
+			{
+				auto DebugSectionSize = (DebugSize < MetaDataSectionSize ? DebugSize : MetaDataSectionSize);
+				auto test = strlen("DEBUG ALLOCATION");
+				memcpy(ret, "DEBUG ALLOCATION", test);
+			}
+
+			return ret + MetaDataSectionSize;
+		}
+
+		char*	_aligned_malloc(size_t s, size_t alignement = 0x10, bool MarkDebugMetaData = false)
+		{
+			char* _ptr = (char*)malloc(s + alignement, true, MarkDebugMetaData);
 			size_t alignoffset = (size_t)_ptr % alignement;
 
 			if(alignoffset)
@@ -681,25 +727,31 @@ namespace FlexKit
 		{
 			iBlockAllocator(BlockAllocator* parent = nullptr) noexcept : ParentAllocator(parent){}
 
-			void* malloc(size_t size)
+			void* malloc(size_t size) override
 			{
 				return ParentAllocator->malloc(size);
 			}
 
-			void free(void* _ptr)
+			void free(void* _ptr) override
 			{
 				ParentAllocator->free(_ptr);
 			}
 
-			void* _aligned_malloc(size_t size, size_t A)
+			void* _aligned_malloc(size_t size, size_t A) override
 			{
 				return ParentAllocator->_aligned_malloc(size, A);
 			}
 
-			void _aligned_free(void* _ptr)
+			void _aligned_free(void* _ptr) override
 			{
 				ParentAllocator->_aligned_free(_ptr);
 			}
+
+			void* malloc_Debug(size_t n, const char* MD, size_t MDSectionSize) override
+			{
+				return ParentAllocator->malloc_debug(n, MD, MDSectionSize, true);
+			}
+
 
 			BlockAllocator* ParentAllocator;
 

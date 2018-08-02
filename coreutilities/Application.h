@@ -43,7 +43,7 @@ namespace FlexKit
 	class FKApplication
 	{
 	public:
-		FKApplication(uint2 WindowResolution = { 1920, 1080 });
+		FKApplication(uint2 WindowResolution, EngineMemory* Memory);
 		~FKApplication();
 
 		template<typename TY_STATE, typename ... TY_ARGS>
@@ -53,7 +53,7 @@ namespace FlexKit
 		}
 
 		void Run();
-		void Cleanup();
+		void Release();
 
 		void PushArgument(const char* Str);
 
@@ -61,7 +61,7 @@ namespace FlexKit
 
 	private:
 		EngineMemory*	Memory;
-		EngineCore*		Core;
+		EngineCore		Core;
 		GameFramework	Framework;
 	};
 

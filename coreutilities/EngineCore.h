@@ -124,6 +124,12 @@ namespace FlexKit
 
 		EngineMemory_DEBUG	Debug;
 
+
+		auto GetBlockMemory() -> decltype(BlockAllocator)&	 { return BlockAllocator; }
+		auto GetLevelMemory() -> decltype(LevelAllocator)&	 { return LevelAllocator; }
+		auto GetTempMemory()  -> decltype(TempAllocator)&	 { return TempAllocator;  }
+
+
 		// Memory Pools
 		byte	NodeMem[NODEBUFFERSIZE];
 		byte	BlockMem[BLOCKALLOCSIZE];
@@ -150,20 +156,17 @@ namespace FlexKit
 
 		~EngineCore()
 		{
+			if (!Memory)
+				return;
 
-#if USING(PHYSX)
-			ReleasePhysics(&Physics);
-#endif
-			Release(&Window);
+			Release();
 
-			for (auto Arg : CmdArguments)
-				GetBlockMemory().free((void*)Arg);
-
-			CmdArguments.Release();
-
-			Threads.Release();
+			Memory = nullptr;
 		}
 
+
+		bool Initate(EngineMemory* Memory, uint2 WH);
+		void Release();
 
 		EngineCore				(const EngineCore&) = delete;
 		EngineCore& operator =	(const EngineCore&) = delete;
@@ -191,12 +194,12 @@ namespace FlexKit
 	};
 
 
+	EngineMemory*	CreateEngineMemory();
+	EngineMemory*	CreateEngineMemory(bool&);
 	
 	void ReleaseCore			(EngineCore*		Game);
 	bool InitiateCoreSystems	(uint2 WH,			EngineCore*& Game);
-	bool InitiateEngineMemory	(EngineMemory*&	Game);
 
-	bool InitEngine				(EngineCore*& Core, EngineMemory*& Engine, uint2 WH);
 	void UpdateCoreComponents	(EngineCore* Core, double dt);
 
 

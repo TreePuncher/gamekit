@@ -60,12 +60,10 @@ public:
 		Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
 		Framework->Core->RenderSystem.ReleaseVB(TextBuffer);
 		Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
+		Framework->Core->RenderSystem.ReleaseDB(DepthBuffer);
 
 		ReleaseOrbitCameras(Framework->Core->GetBlockMemory());
 		ReleaseCameraTable();
-
-		// TODO: Release this Depth Buffer
-		//Framework->Core->RenderSystem.ReleaseDp
 	}
 
 
