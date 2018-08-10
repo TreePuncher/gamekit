@@ -179,6 +179,23 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+		THISTYPE& operator =(std::initializer_list<Ty>&& ilist)
+		{
+			clear();
+
+			if (ilist.size() > size())
+				reserve(ilist.size());
+
+			for (auto&& i : ilist)
+				push_back(std::move(i));
+
+			return *this;
+		}
+
+
+		/************************************************************************************************/
+
+
 		THISTYPE& operator =(THISTYPE&& RHS)
 		{
 			if (!Allocator) Allocator = RHS.Allocator;
