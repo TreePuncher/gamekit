@@ -148,7 +148,7 @@ namespace FlexKit
 			inline index_t&	operator[] ( const HANDLE in )
 			{
 				#ifdef _DEBUG
-				FlexKit::HandleUtilities::CheckType( in, mType );
+				//HandleUtilities::CheckType(in, mType);
 				#endif
 				return Indexes[ in.INDEX ];
 			}
@@ -228,8 +228,8 @@ namespace FlexKit
 				return HANDLE(-1);
 			}
 
-			HandleTable( const HandleTable<HANDLE,SIZE>& in )	= delete;	// Do not allow Table copying
-			HandleTable& operator = ( const HandleTable& rhs )	= delete;	// Do not allow Table copying
+			HandleTable( const HandleTable<HANDLE>& in )				= delete;	// Do not allow Table copying
+			HandleTable& operator = ( const HandleTable<HANDLE>& rhs )	= delete;	// Do not allow Table copying
 
 			Vector<index_t> FreeList;
 			Vector<index_t> Indexes;
@@ -240,11 +240,10 @@ namespace FlexKit
 				Indexes.Release();
 			}
 
-			const FlexKit::Type_t mType;
+			const Type_t mType;
 		};
 
-		template<int Size>
-		inline void CheckType( Handle_t<Size> hdnl_in, FlexKit::Type_t type_in )
+		inline void CheckType(HANDLE hdnl_in, Type_t type_in )
 		{
 #if USING( DEBUGHANDLES )
 			FK_ASSERT(type_in == hdnl_in.TYPE);

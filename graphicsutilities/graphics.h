@@ -449,12 +449,12 @@ namespace FlexKit
 	typedef	FrameBufferedObject<ID3D12QueryHeap>							QueryResource;
 
 	// New
-	typedef Handle_t<32>													ConstantBufferHandle;
 	typedef Pair<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE>	DescHeapPOS;
-	typedef Handle_t<32>													VertexBufferHandle;
-	typedef Handle_t<32>													TextureHandle;
-	typedef Handle_t<32>													QueryBufferHandle;
-	typedef Handle_t<32>													VertexBufferHandle;
+
+	typedef Handle_t<32, GetTypeGUID(ConstantBuffer)>						ConstantBufferHandle;
+	typedef Handle_t<32, GetTypeGUID(VertexBuffer)>							VertexBufferHandle;
+	typedef Handle_t<32, GetTypeGUID(TextureHandle)>						TextureHandle;
+	typedef Handle_t<32, GetTypeGUID(QueryBuffer)>							QueryBufferHandle;
 	typedef ID3D12Resource*													VertexResourceBuffer;
 
 	/************************************************************************************************/
