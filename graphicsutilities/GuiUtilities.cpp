@@ -204,6 +204,7 @@ namespace FlexKit
 		LayoutEngine_Desc LE_Desc = 
 		{
 			Desc.FrameGraph, 
+			Desc.ConstantBuffer,
 			Desc.RenderTarget,
 			Desc.VertexBuffer,
 			Desc.TextBuffer,
@@ -300,21 +301,32 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-	/*
-
-	void ComplexGUI::Draw_DEBUG(RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize)
+	
+	void ComplexGUI::Draw_DEBUG(DrawUI_Desc& Desc, iAllocator* Temp)
 	{
-		LayoutEngine Layout(Temp, Memory, RS, out, PixelSize);
+		auto WH			= Desc.FrameGraph->Resources.RenderSystem->GetRenderTargetWH(Desc.RenderTarget);
+		auto PixelSize	= float2{ 1.0f / WH[0], 1.0f / WH[1] };
+
+		LayoutEngine_Desc LE_Desc =
+		{
+			Desc.FrameGraph,
+			Desc.ConstantBuffer,
+			Desc.RenderTarget,
+			Desc.VertexBuffer,
+			Desc.TextBuffer,
+			PixelSize
+		};
+
+		LayoutEngine Layout(Temp, Memory, LE_Desc);
 
 		for(size_t I = 0; I < Elements.size(); ++I)
 		{
-			if (Elements[I].UpdatePriority == 0) {
+			if (Elements[I].UpdatePriority == 0) 
 				DrawElement_DEBUG(I, &Layout);
-			}
 		}
 	}
 
-	*/
+
 	/************************************************************************************************/
 
 
@@ -336,7 +348,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GUIGridHandle ComplexGUI::CreateGrid(uint2 ID)
+	GUIGridHandle ComplexGUI::CreateGrid(uint2 ID, uint2 CellCounts)
 	{
 		GUIElementHandle BaseIndex = Elements.size();
 
@@ -344,9 +356,13 @@ namespace FlexKit
 			Grids.size(), 
 			0x00, true, 
 			EGUI_ELEMENT_TYPE::EGE_GRID });
+
 		Grids.push_back(GUIGrid(Memory, BaseIndex));
 
-		return{ this, BaseIndex };
+		GUIGridHandle Grid = { this, BaseIndex };
+		Grid.SetGridDimensions(CellCounts[0], CellCounts[1]);
+
+		return Grid;
 	}
 
 
@@ -432,10 +448,14 @@ namespace FlexKit
 
 
 	LayoutEngine::LayoutEngine(iAllocator* tempmemory, iAllocator* IN_Memory, LayoutEngine_Desc& Desc) :
-		PositionStack	{ IN_Memory },
-		Memory			{ IN_Memory },
-		PixelSize		{ Desc.PixelSize },
-		TempMemory		{ tempmemory }
+		PositionStack	{IN_Memory},
+		Memory			{IN_Memory},
+		PixelSize		{Desc.PixelSize},
+		TempMemory		{tempmemory},
+		FrameGraph		{Desc.FrameGraph},
+		RenderTarget    {Desc.RenderTarget},
+		VertexBuffer    {Desc.VertexBuffer},
+		ConstantBuffer  {Desc.ConstantBuffer}
 	{
 	}
 
@@ -490,15 +510,23 @@ namespace FlexKit
 			Offset = { Temp2.x, Temp2.y, 0.0f };
 		}
 
-		for (auto& L : Temp) {
+		for (auto& L : Temp) 
+		{
 			L.A += Offset;
 			L.B += Offset;
 
-			L.A = Position2SS(L.A);
-			L.B = Position2SS(L.B);
+			//L.A = Position2SS(L.A);
+			//L.B = Position2SS(L.B);
 		}
 
-		//PushLineSet2D(GUI, Temp);
+		DrawShapes(
+			EPIPELINESTATES::DRAW_LINE_PSO,
+			*FrameGraph, 
+			VertexBuffer, 
+			ConstantBuffer, 
+			RenderTarget, 
+			TempMemory, 
+			LineShape(Temp));
 	}
 
 
@@ -627,10 +655,10 @@ namespace FlexKit
 			Lines.push_back(Line);
 
 
-			Line.A = float3{ 0, 0, 0 };
-			Line.B = float3{ 0, ColumnHeight, 0 };
-			Line.AColour = float3(0, 1, 0);
-			Line.BColour = float3(1, 0, 0);
+			Line.A			= float3{ 0, 0, 0 };
+			Line.B			= float3{ 0, ColumnHeight, 0 };
+			Line.AColour	= float3(0, 1, 0);
+			Line.BColour	= float3(1, 0, 0);
 
 			Lines.push_back(Line);
 		}
@@ -644,10 +672,10 @@ namespace FlexKit
 				Y += Width;
 
 				LineSegment Line;
-				Line.A		 = float3{ 0,			Y, 0 };
-				Line.B		 = float3{ RowWidth,	Y, 0 };
-				Line.AColour = float3(0, 0.5 + Y/2, 0);
-				Line.BColour = float3(0, 0.5 + Y/2, 0);
+				Line.A		 = float3{ 0,			Y,			0 };
+				Line.B		 = float3{ RowWidth,	Y,			0 };
+				Line.AColour = float3( 0,			0.5 + Y/2,	0 );
+				Line.BColour = float3( 0,			0.5 + Y/2,	0 );
 
 				Lines.push_back(Line);
 			}
@@ -655,27 +683,29 @@ namespace FlexKit
 			LineSegment Line;
 			Line.A			= float3{ 0,		0, 0 };
 			Line.B			= float3{ RowWidth,	0, 0 };
-			Line.AColour	= float3(0, 1, 0);
-			Line.BColour	= float3(1, 0, 0);
+			Line.AColour	= float3( 0,		1, 0 );
+			Line.BColour	= float3( 1,		0, 0 );
 
 			Lines.push_back(Line);
 
-			Line.A			= float3{ 0,		ColumnHeight, 0 };
-			Line.B			= float3{ RowWidth,	ColumnHeight, 0 };
-			Line.AColour	= float3(0, 1, 0);
-			Line.BColour	= float3(1, 0, 0);
+			Line.A			= float3{ 0,		ColumnHeight,	0 };
+			Line.B			= float3{ RowWidth,	ColumnHeight,	0 };
+			Line.AColour	= float3( 0,		1,				0 );
+			Line.BColour	= float3( 1,		0,				0 );
 
 			Lines.push_back(Line);
 		}
 
 		LayoutEngine->PushLineSegments(Lines);
 
-		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
-		{
-			Grid.mWindow->DrawElement_DEBUG(hndl, LayoutEngine);
-		};
+		ScanElements(
+			Grid, 
+			*LayoutEngine,
+			[&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
+			{
+				Grid.mWindow->DrawElement_DEBUG(hndl, LayoutEngine);
+			});
 
-		ScanElements(Grid, *LayoutEngine, ScanFunction);
 		LayoutEngine->PopOffset();
 	}
 
@@ -693,7 +723,13 @@ namespace FlexKit
 		Layout->PushRect(Rect);
 
 		if(button.Text() && button._IMPL().Font)
-			Layout->PrintLine(button.Text(), button.WH(), button._IMPL().Font, { 0, 0 }, {1, 1}, true, true);
+			Layout->PrintLine(
+				button.Text(), 
+				button.WH(), button._IMPL().Font, 
+				{ 0, 0 }, 
+				{1, 1}, 
+				true, 
+				true);
 	}
 
 
@@ -864,7 +900,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const GUIBaseElement GUIHandle::Framework() const		{ return mWindow->Elements[mBase];  }
+	const GUIBaseElement	GUIHandle::Framework() const	{ return mWindow->Elements[mBase];  }
 	Vector<GUIDimension>&	GUIGridHandle::RowHeights()		{ return _GetGrid().RowHeights;		}
 	Vector<GUIDimension>&	GUIGridHandle::ColumnWidths()	{ return _GetGrid().ColumnWidths;	}
 
@@ -962,10 +998,10 @@ namespace FlexKit
 		Grid.RowHeights.resize(Rows);
 
 		for (auto& W : Grid.ColumnWidths)
-			W = Grid.WH[0]  / float(Columns);
+			W = float(Grid.WH[0])  / float(Columns);
 
 		for (auto& H : Grid.RowHeights)
-			H = Grid.WH[1] / float(Rows);
+			H = float(Grid.WH[1]) / float(Rows);
 	}
 
 
@@ -1047,10 +1083,10 @@ namespace FlexKit
 			auto TextBox = mWindow->CreateTextBox(mBase);
 
 			float2 WH = GetCellWH(CellID);
-			TextBox._IMPL().Dimensions		= WH;
+			TextBox._IMPL().Dimensions			= WH;
 			TextBox._IMPL().Color				= float4(Grey(0.5f), 1);
 
-			TextBox._IMPL().Highlighted		= false;
+			TextBox._IMPL().Highlighted			= false;
 			TextBox._IMPL().HighlightedColor	= float4(Grey(0.8f), 1);
 
 			TextBox.SetCellID(CellID);

@@ -388,11 +388,12 @@ namespace FlexKit
 
 	struct LayoutEngine_Desc
 	{
-		FrameGraph*			FrameGraph;
-		TextureHandle		RenderTarget;
-		VertexBufferHandle	VertexBuffer;
-		VertexBufferHandle	TextBuffer;
-		float2				PixelSize;
+		FrameGraph*				FrameGraph;
+		ConstantBufferHandle	ConstantBuffer;
+		TextureHandle			RenderTarget;
+		VertexBufferHandle		VertexBuffer;
+		VertexBufferHandle		TextBuffer;
+		float2					PixelSize;
 	};
 
 
@@ -461,8 +462,11 @@ namespace FlexKit
 
 	struct GUIDimension
 	{
+		GUIDimension(float f = 0.0f) : D{ f } {}
+
 		float D;
 		GUIDimension& operator = (float f) { D = f; return *this; }
+
 		operator float () {
 			return D;
 		}
@@ -667,7 +671,9 @@ namespace FlexKit
 			Cells				(nullptr),
 			XY					(0.0f, 0.0f),
 			Framework			((uint32_t)-1),
-			BackgroundColor		(Grey(0.5f), 1){}
+			BackgroundColor		(Grey(0.5f), 1),
+			WH					{1, 1}
+		{}
 
 
 		GUIGrid( iAllocator* memory, uint32_t base ) : 
@@ -676,7 +682,9 @@ namespace FlexKit
 			Cells			(memory),
 			XY				(0.0f, 0.0f),
 			Framework		(base),
-			BackgroundColor	(Grey(0.5f), 1) {}
+			BackgroundColor	(Grey(0.5f), 1),
+			WH				{1, 1}
+		{}
 
 
 		GUIGrid(const GUIGrid& rhs)
@@ -687,6 +695,7 @@ namespace FlexKit
 			Framework		= rhs.Framework;
 			XY				= rhs.XY;
 			BackgroundColor	= rhs.BackgroundColor;
+			WH				= rhs.WH;
 		}
 
 		template<typename FN>
@@ -747,10 +756,11 @@ namespace FlexKit
 
 	struct DrawUI_Desc
 	{
-		FrameGraph*			FrameGraph;
-		TextureHandle		RenderTarget;
-		VertexBufferHandle	VertexBuffer;
-		VertexBufferHandle	TextBuffer;
+		FrameGraph*				FrameGraph;
+		TextureHandle			RenderTarget;
+		VertexBufferHandle		VertexBuffer;
+		VertexBufferHandle		TextBuffer;
+		ConstantBufferHandle	ConstantBuffer;
 	};
 
 
@@ -767,20 +777,21 @@ namespace FlexKit
 
 		void Update		( double dt, const WindowInput in, float2 PixelSize, iAllocator* TempMemory );
 
-		void Draw			( DrawUI_Desc& Desc, iAllocator* Temp );
-		//void Draw_DEBUG	( RenderSystem* RS, ImmediateRender* out, iAllocator* Temp, float2 PixelSize);
+		void Draw			(DrawUI_Desc& Desc, iAllocator* Temp);
+		void Draw_DEBUG		(DrawUI_Desc& Desc,	iAllocator* Temp);
 
 		void DrawElement		( GUIElementHandle Element, LayoutEngine* Layout );
 		void DrawElement_DEBUG	( GUIElementHandle Element, LayoutEngine* Layout );
 
 		void UpdateElement		( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	WindowInput Input );
 
-		GUIGridHandle		CreateGrid		( uint2 ID = {0, 0} );
+		GUIGridHandle		CreateGrid		( uint2 ID = {0, 0}, uint2 CellCounts = {1, 1} );
 		GUIGridHandle		CreateGrid		( GUIElementHandle	Parent, uint2 ID = {0, 0} );
 		GUIButtonHandle		CreateButton	( GUIElementHandle Parent );
 		GUITextBoxHandle	CreateTextBox	( GUIElementHandle Parent );
 		void				CreateTextInputBox();
 
+		// to be implemented
 		void CreateTexturedButton();
 		void CreateHorizontalSlider();
 		void CreateVerticalSlider();
