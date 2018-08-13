@@ -155,7 +155,7 @@ namespace FlexKit
 	{
 		//Buttons.Release();
 		//Children.Release();
-		//Grids.Release();
+		Grids.Release();
 		//Elements.Release();
 	}
 
@@ -922,7 +922,9 @@ namespace FlexKit
 
 	float2 GUIGridHandle::GetCellWH(uint2 ID){
 		auto temp = _GetGrid().ColumnWidths[ID[1]];
-		return float2 { _GetGrid().ColumnWidths[ID[0]], _GetGrid().RowHeights[ID[1]] } * _GetGrid().WH;
+		return float2 { 
+			_GetGrid().ColumnWidths[ID[0]], 
+			_GetGrid().RowHeights[ID[1]] } * _GetGrid().WH;
 	}
 
 
