@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning( disable : 4267 )
 
 #include "..\buildsettings.h"
+#include "..\coreutilities\Logging.h"
 #include <mutex>
 
 namespace FlexKit
@@ -79,27 +80,27 @@ namespace FlexKit
 	public:
 		_SystemAllocator() noexcept {}
 
-		void* malloc(size_t n)
+		void* malloc(size_t n) override
 		{
 			return ::malloc(n);
 		}
 
-		void  free(void* _ptr)
+		void  free(void* _ptr) override
 		{
 			::free(_ptr);
 		}
-		void* _aligned_malloc(size_t n, size_t A = 0x10)
+		void* _aligned_malloc(size_t n, size_t A = 0x10) override
 		{
 			return ::_aligned_malloc(n, A);
 		}
 
-		void  _aligned_free(void* _ptr)
+		void  _aligned_free(void* _ptr) override
 		{
 			::_aligned_free(_ptr);
 		}
 
 
-		void* malloc_Debug(size_t n, const char* MD, size_t MDSectionSize)
+		void* malloc_Debug(size_t n, const char*, size_t) override
 		{
 			return ::malloc(n);
 		}
@@ -113,14 +114,16 @@ namespace FlexKit
 	class FLEXKITAPI StackAllocator
 	{
 	public:
-		StackAllocator() noexcept
+		StackAllocator() noexcept :
+			critsection{}
 		{
 			used	= 0;
 			size	= 0;
 			Buffer	= 0;
 		}
 
-		StackAllocator(StackAllocator&& RHS) noexcept
+		StackAllocator(StackAllocator&& RHS) noexcept :
+			critsection{}
 		{
 			used   = RHS.used;
 			size   = RHS.size;
@@ -164,20 +167,21 @@ namespace FlexKit
 
 		struct iStackAllocator : public iAllocator
 		{	
-			iStackAllocator(StackAllocator* Allocator = nullptr) noexcept : ParentAllocator(Allocator){}
+			explicit iStackAllocator(StackAllocator* Allocator = nullptr) noexcept : 
+				ParentAllocator(Allocator){}
 
 			void* malloc(size_t size){
 				return ParentAllocator->malloc(size);
 			}
 
-			void free(void* _ptr){
+			void free(void*){
 			}
 
 			void* _aligned_malloc(size_t size, size_t A){
 				return ParentAllocator->_aligned_malloc(size, A);
 			}
 
-			void _aligned_free(void* _ptr){
+			void _aligned_free(void*){
 			}
 
 			void clear(void){ 
@@ -185,7 +189,7 @@ namespace FlexKit
 			}
 
 
-			void* malloc_Debug(size_t n, const char* MD, size_t MDSectionSize)
+			void* malloc_Debug(size_t n, const char*, size_t)
 			{
 				return malloc(n);
 			}
@@ -202,12 +206,17 @@ namespace FlexKit
 
 	struct SmallBlockAllocator
 	{
+		SmallBlockAllocator() : 
+			Blocks	{nullptr},
+			Size	{0}{}
+
 		static int MaxAllocationSize() { return sizeof(Block::BlockSize); }
+
 		void Initialise( size_t BufferSize, byte* Buffer )// Size in Bytes
 		{
 			size_t AllocationFootPrint = sizeof(Block);
 			Size = BufferSize / AllocationFootPrint;
-			Blocks = (Block*)Buffer;
+			Blocks = reinterpret_cast<Block*>(Buffer);
 
 #ifdef _DEBUG
 			for (size_t itr = 0; itr < Size; ++itr)
@@ -283,6 +292,7 @@ namespace FlexKit
 		{
 			static const size_t BlockSize  = 64;
 			static const size_t BlockCount = 7;
+
 			struct c
 			{
 				byte v[BlockSize];
@@ -310,9 +320,10 @@ namespace FlexKit
 		void Initialise(size_t BufferSize, byte* Buffer)// Size in Bytes
 		{
 			size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
-			Size = BufferSize / AllocationFootPrint;
-			Blocks = (Block*)Buffer;
-			BlockTable = (BlockData*)(Blocks + Size);
+			Size		= BufferSize / AllocationFootPrint;
+			Blocks		= reinterpret_cast<Block*>(Buffer);
+			BlockTable	= reinterpret_cast<BlockData*>(Blocks + Size);
+
 			for (size_t I = 0; I < Size; ++I)
 				BlockTable[I].state = BlockData::Free;
 		}
@@ -402,10 +413,10 @@ namespace FlexKit
 
 			size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
 			Size		= BufferSize / AllocationFootPrint;
-			Blocks		= (Block*)Buffer;
+			Blocks		= reinterpret_cast<Block*>(Buffer);
 			size_t temp = (size_t)(Blocks + Size);
 
-			BlockTable	= (BlockData*)(temp + (temp && 0x3f));
+			BlockTable	= reinterpret_cast<BlockData*>(temp + (temp & 0x3f));
 
 			for (size_t itr = 0; itr < Size; ++itr)
 				BlockTable[itr] = { BlockData::UNUSED, 0 };
@@ -543,7 +554,16 @@ namespace FlexKit
 
 	struct BlockAllocator
 	{
-		BlockAllocator() noexcept {}
+		BlockAllocator() noexcept :
+			Buffer_ptr{ nullptr },
+			SmallBlockAlloc{},
+			MediumBlockAlloc{},
+			LargeBlockAlloc{},
+
+			Small{0}, 
+			Medium{0}, 
+			Large{0}
+		{}
 
 		BlockAllocator(BlockAllocator&) = delete;
 		BlockAllocator& operator = (const BlockAllocator&) = delete;
@@ -551,16 +571,15 @@ namespace FlexKit
 
 		void Init( BlockAllocator_desc& in )
 		{
-			char* Position = (char*)in._ptr;
-			SmallBlockAlloc.Initialise(in.SmallBlock, in._ptr);
-			MediumBlockAlloc.Initialise(in.MediumBlock,	((byte*)in._ptr + in.SmallBlock));
-			LargeBlockAlloc.Initialise(in.LargeBlock,	((byte*)in._ptr + in.SmallBlock + in.MediumBlock));
+			SmallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr);
+			MediumBlockAlloc.Initialise	(in.MediumBlock,	(static_cast<byte*>(in._ptr + in.SmallBlock)));
+			LargeBlockAlloc.Initialise	(in.LargeBlock,		((byte*)in._ptr + in.SmallBlock + in.MediumBlock));
 
-			Small = in.SmallBlock;
-			Medium = in.MediumBlock;
-			Large = in.LargeBlock;
+			Small	= in.SmallBlock;
+			Medium	= in.MediumBlock;
+			Large	= in.LargeBlock;
 
-			_ptr = (char*)in._ptr;
+			Buffer_ptr  = (char*)in._ptr;
 			in.PoolSize = Small + Medium + Large;
 
 			new(&AllocatorInterface) iBlockAllocator(this);
@@ -583,8 +602,13 @@ namespace FlexKit
 		// Debug String Must be below 64 Bytes
 		byte* malloc_debug(const size_t size, const char* Debug, size_t DebugSize, bool Aligned)
 		{
+			if (Debug != nullptr && DebugSize != 0)
+			{
+				FK_LOG_WARNING("Invalid Debug Section Header passed allocator!");
+			}
+
 			byte* ret = nullptr;
-			const size_t MetaDataSectionSize = 0x40;
+			const size_t MetaDataSectionSize = Aligned ? 0x40 : 0x00;
 
 			if (size <= SmallBlockAllocator::MaxAllocationSize())
 				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
@@ -597,9 +621,9 @@ namespace FlexKit
 				size > SmallBlockAllocator::MaxAllocationSize() && 
 				size < MediumBlockAllocator::MaxBlockSize())
 			{
-				auto DebugSectionSize = (DebugSize < MetaDataSectionSize ? DebugSize : MetaDataSectionSize);
-				auto test = strlen("DEBUG ALLOCATION");
-				memcpy(ret, "DEBUG ALLOCATION", test);
+				auto DebugSectionSize	= (DebugSize < MetaDataSectionSize ? DebugSize : MetaDataSectionSize);
+				auto DebugStringLen		= strlen("DEBUG ALLOCATION");
+				strncpy_s(reinterpret_cast<char*>(ret), DebugStringLen, "DEBUG ALLOCATION", DebugSectionSize);
 			}
 
 			return ret + MetaDataSectionSize;
@@ -607,23 +631,23 @@ namespace FlexKit
 
 		char*	_aligned_malloc(size_t s, size_t alignement = 0x10, bool MarkDebugMetaData = false)
 		{
-			char* _ptr = (char*)malloc(s + alignement, true, MarkDebugMetaData);
-			size_t alignoffset = (size_t)_ptr % alignement;
+			char* buffer_ptr = (char*)malloc(s + alignement, true, MarkDebugMetaData);
+			size_t alignoffset = (size_t)buffer_ptr % alignement;
 
 			if(alignoffset)
-				_ptr += alignement - alignoffset;
+				Buffer_ptr += alignement - alignoffset;
 
-			return _ptr;
+			return Buffer_ptr;
 		}
 
 		void free(void* _ptr)
 		{
-			if (InSmallRange((byte*)_ptr))
-				SmallBlockAlloc.free((void*)_ptr);
-			else if (InMediumRange((byte*)_ptr))
-				MediumBlockAlloc.free((void*)_ptr);
-			else if (InLargeRange((byte*)_ptr))
-				LargeBlockAlloc.free((void*)_ptr);
+			if (InSmallRange(reinterpret_cast<byte*>(_ptr)))
+				SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
+			else if (InMediumRange(reinterpret_cast<byte*>(_ptr)))
+				MediumBlockAlloc.free(reinterpret_cast<void*>(_ptr));
+			else if (InLargeRange(reinterpret_cast<byte*>(_ptr)))
+				LargeBlockAlloc.free(reinterpret_cast<void*>(_ptr));
 		}
 
 		template<typename TY>
@@ -643,9 +667,9 @@ namespace FlexKit
 		{
 			if (InSmallRange((byte*)_ptr))
 				SmallBlockAlloc._aligned_free(_ptr);
-			else if (InMediumRange((byte*)_ptr))
+			else if (InMediumRange(static_cast<byte*>(_ptr)))
 				MediumBlockAlloc._aligned_free(_ptr);
-			else if (InLargeRange((byte*)_ptr))
+			else if (InLargeRange(static_cast<byte*>(_ptr)))
 				LargeBlockAlloc._aligned_free(_ptr);
 		}
 
@@ -696,7 +720,7 @@ namespace FlexKit
 		MediumBlockAllocator	MediumBlockAlloc;
 		LargeBlockAllocator		LargeBlockAlloc;
 
-		char*	_ptr;
+		char*	Buffer_ptr;
 		size_t	Small, Medium, Large;
 
 		bool InSmallRange(byte* a_ptr)
@@ -725,7 +749,7 @@ namespace FlexKit
 
 		struct iBlockAllocator : public iAllocator
 		{
-			iBlockAllocator(BlockAllocator* parent = nullptr) noexcept : ParentAllocator(parent){}
+			explicit iBlockAllocator(BlockAllocator* parent = nullptr) noexcept : ParentAllocator(parent){}
 
 			void* malloc(size_t size) override
 			{

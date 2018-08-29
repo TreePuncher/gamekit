@@ -116,7 +116,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PushAllChildren(size_t CurrentNode, fixed_vector<size_t>& Out)
+	void PushAllChildren(size_t CurrentNode, Vector<size_t>& Out)
 	{
 		for (size_t I = 1; I < SceneNodeTable.used; ++I)
 		{
@@ -175,7 +175,8 @@ namespace FlexKit
 		if (SceneNodeTable.used > 1)
 		{
 			size_t NewLength = SceneNodeTable.used;
-			fixed_vector<size_t>& Out = fixed_vector<size_t>::Create(SceneNodeTable.used - 1, Temp);
+			Vector<size_t> Out{ *Temp, SceneNodeTable.used - 1 };
+
 			for (size_t I = 1; I < SceneNodeTable.used; ++I)// First Node Is Always Root
 			{
 				if (SceneNodeTable.Flags[I] & SceneNodes::FREE) {

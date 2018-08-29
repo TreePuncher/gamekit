@@ -6135,9 +6135,9 @@ namespace FlexKit
 			return false;
 		}
 		
-		TokenList&				TL			= TokenList::Create_Aligned(64000, TempSpace);
-		CombinedVertexBuffer&	out_buffer	= CombinedVertexBuffer::Create_Aligned(64000, TempSpace);
-		IndexList&				out_indexes	= IndexList::Create_Aligned(64000, TempSpace);
+		TokenList				TL			{ TempSpace, 64000 };
+		CombinedVertexBuffer	out_buffer	{ TempSpace, 16000 };
+		IndexList				out_indexes	{ TempSpace, 64000 };
 
 		TL.push_back(s_TokenValue::Empty());
 		LoaderState S;

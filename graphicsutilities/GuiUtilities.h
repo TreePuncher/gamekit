@@ -417,7 +417,7 @@ namespace FlexKit
 		iAllocator*			Memory;
 		iAllocator*			TempMemory;
 
-		Vector<float2, 128> PositionStack;
+		Vector<float2>	PositionStack;
 		
 		float2 PixelSize;
 		float2 GetCurrentPosition();

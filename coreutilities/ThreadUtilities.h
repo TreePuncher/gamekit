@@ -149,10 +149,11 @@ namespace FlexKit
 	class WorkerThread
 	{
 	public:
-		WorkerThread(iAllocator* Memory = nullptr) :
-			Thread([this] {Run(); }),
-			Running(false),
-			Quit(false)
+		WorkerThread(iAllocator* ThreadMemory = nullptr) :
+			Thread		{ [this] {Run(); } },
+			Running		{ false },
+			Quit		{ false },
+			Allocator	{ ThreadMemory }
 		{}
 
 		bool AddItem(iWork* Item);
@@ -170,6 +171,8 @@ namespace FlexKit
 		std::mutex				CBLock;
 		std::mutex				AddLock;
 		std::thread				Thread;
+
+		iAllocator*				Allocator;
 	};
 
 
@@ -235,9 +238,11 @@ namespace FlexKit
 		};
 
 
-		WorkerList(iAllocator* Memory, const size_t ThreadCount = 2) :
-			Begin	{ nullptr },
-			End		{ nullptr }
+		WorkerList(iAllocator* Memory, const size_t IN_ThreadCount = 2) :
+			ThreadCount	{ IN_ThreadCount },
+			Allocator	{ Memory },
+			Begin		{ nullptr },
+			End			{ nullptr }
 		{
 		}
 
@@ -284,7 +289,7 @@ namespace FlexKit
 		}
 
 
-		void AddThread(iAllocator* Memory)
+		void AddThread(iAllocator*)
 		{
 			std::unique_lock<std::mutex> Lock(M);
 
@@ -307,6 +312,7 @@ namespace FlexKit
 		Element * Begin;
 		Element*	End;
 		size_t		ThreadCount;
+		iAllocator*	Allocator;
 		std::mutex	M;
 	};
 

@@ -5,7 +5,7 @@
     <ProjectGuid>7828beee-4732-47f4-be45-9b13f8ef33c9</ProjectGuid>
     <ProjectHome>.</ProjectHome>
     <StartupFile>MayaToolsetPlugin.py</StartupFile>
-    <SearchPath>..\FlexKitMayaPlug;..\..\..\..\..\Program Files\Autodesk\Maya2017\Python\Lib\site-packages;dependencies\devkitBase\devkit\other\pymel\extras\completion\py</SearchPath>
+    <SearchPath>..\FlexKitMayaPlug;..\..\..\Program Files\Autodesk\Maya2017\Python\Lib\site-packages;dependencies\devkitBase\devkit\other\pymel\extras\completion\py</SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <Name>MayaToolsetPlugin</Name>

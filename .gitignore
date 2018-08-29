@@ -33,3 +33,4 @@
 *.iobj
 *.ipdb
 *.htm
+/x64/Debug

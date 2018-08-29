@@ -88,9 +88,6 @@
     <ClInclude Include="graphicsutilities\AnimationUtilities.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\fixed_vector.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="coreutilities\MeshUtils.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>

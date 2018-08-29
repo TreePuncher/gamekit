@@ -28,18 +28,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\fixed_vector.h"
 #include "..\coreutilities\static_vector.h"
 
 #if USING(USESTL)
 
+#include <atomic>
 #include <deque>
 #include <list>
 #include <new>
 #include <map>
-#include <vector>
 #include <stdint.h>
-#include <atomic>
+#include <utility>
+#include <vector>
 
 template<typename Ty>					using deque_t	= std::deque<Ty>;
 template<typename Ty>					using vector_t	= std::vector<Ty>;
@@ -116,7 +116,7 @@ namespace FlexKit
 
 	// NOTE: Doesn't call destructors automatically, but does free held memory!
 	// Release will Call destructors
-	template<typename Ty, size_t MINSIZE = 0>
+	template<typename Ty>
 	struct Vector
 	{
 		typedef Vector<Ty> THISTYPE;
@@ -124,10 +124,16 @@ namespace FlexKit
 		typedef Ty*			Iterator;
 		typedef const Ty*	Iterator_const;
 
-		inline  Vector(iAllocator* Alloc = nullptr) : Allocator(Alloc), Max(0), Size(0), A(nullptr) 
+		inline  Vector(
+			iAllocator*		Alloc				= nullptr, 
+			const size_t	InitialReservation	= 0) : 
+				Allocator	(Alloc), 
+				Max			(InitialReservation),
+				Size		(0),
+				A			(nullptr) 
 		{
-			if (MINSIZE > 0)
-				reserve(MINSIZE);
+			if (InitialReservation > 0)
+				reserve(InitialReservation);
 		}
 
 
@@ -232,9 +238,9 @@ namespace FlexKit
 
 		Ty PopVect()
 		{
-			FK_ASSERT(C->Size >= 1);
-			auto temp = C->A[--C->Size];
-			A[C->Size].~Ty();
+			FK_ASSERT(Size >= 1);
+			auto temp = A[--Size];
+			A[Size].~Ty();
 			return temp;
 		}
 
@@ -559,39 +565,6 @@ namespace FlexKit
 	};
 
 
-	template<typename Ty>
-	void MoveVector(Vector<Ty>& Dest, Vector<Ty>& Source)
-	{
-		FK_ASSERT(&Dest != &Source);
-		Dest.Release();
-
-		Dest.A			= Source.A;
-		Dest.Allocator	= Source.Allocator;
-		Dest.Size		= Source.Size;
-		Dest.Max		= Source.Max;
-
-		Source.A		= nullptr;
-		Source.Size		= 0;
-		Source.Max		= 0;
-	}
-
-
-	template<typename Ty>
-	fixed_vector<Ty>* MakeStaticCopy(const Vector<Ty>& Src)
-	{
-
-		fixed_vector<Ty>* Out = &fixed_vector<Ty>::Create(Src.size(), Src.Allocator);
-
-		for (auto e : Src)
-			Out->push_back(e);
-
-		return Out;
-	}
-
-
-	/************************************************************************************************/
-
-
 	template< typename Ty_Get, template<typename Ty, typename... Ty_V> class TC, typename Ty_, typename... TV2> Ty_Get GetByType(TC<Ty_, TV2...>& in)	{ return in.GetByType<Ty_Get>(); }
 
 	template<typename Ty_1, typename Ty_2>
@@ -798,9 +771,9 @@ namespace FlexKit
 
 		};
 
-		void Insert(Iterator Itr, TY)
+		void Insert(Iterator Itr, TY&& e)
 		{
-			Node* NewNode  = &Memory->allocate_aligned<Node>(e);
+			Node* NewNode  = &Memory->allocate_aligned<Node>(std::move(e));
 
 			NullCheck(NewNode);
 
@@ -1056,7 +1029,226 @@ namespace FlexKit
 	};
 
 
+	
+	// Intrusive, Thread-Safe, Double Linked List
+	template<typename TY>
+	class Deque_MT
+	{
+	public:
+		/************************************************************************************************/
+
+
+		template<typename TY>
+		class Element_t
+		{
+		public:
+			typedef Element_t<TY>	ThisType;
+
+			Element_t(const Element_t& E)			= delete;
+			ThisType& operator = (const ThisType& ) = delete; // No copying allowed, this class does no memory management
+			
+			bool operator == (const ThisType& rhs)	{ return this == &rhs; }
+
+			template<typename ... ARGS_TY>
+			Element_t(ARGS_TY&& ... args) :
+				Element			{ std::forward<ARGS_TY>(args)... },
+				Prev			{ nullptr },
+				Next			{ nullptr }{}
+
+
+
+			~Element_t() = default;
+
+			TY			Element;
+			ThisType*	Prev;
+			ThisType*	Next;
+		};
+
+
+		using Element_TY = Element_t<TY>;
+
+
+		class Iterator
+		{
+		public:
+			Iterator(Element_TY* _ptr) : I{ _ptr } {}
+
+			Iterator operator ++ (int)
+			{ 
+				return Iterator(I->Next ? I->Next : nullptr);
+			}
+
+			Iterator operator -- (int)
+			{ 
+				return Iterator(I->Prev ? I->Prev : nullptr);
+			}
+
+			void operator ++ () 
+			{ 
+				I = I->Next ? I->Next : nullptr; 
+			}
+			void operator -- () 
+			{ 
+				I = I->Prev ? I->Prev : nullptr; 
+			}
+
+
+			bool operator !=(const Iterator& rhs) { return I != rhs.I; }
+
+			TY& operator* ()				{ return  I->Element; }
+			TY* operator-> ()				{ return &I->Element; }
+
+			const TY* operator& () const	{ return &I->Element; }
+		private:
+
+			Element_TY* I;
+		};
+
+		/************************************************************************************************/
+
+
+		Deque_MT()	= default;
+		~Deque_MT() = default;
+
+
+		/************************************************************************************************/
+
+
+		Iterator begin()	{ return First; }
+		Iterator end()		{ return nullptr; }
+
+
+		/************************************************************************************************/
+
+
+		void push_back(Element_TY& E)
+		{
+			std::unique_lock<std::mutex> Lock(RearLock);
+
+			if (ElementCount <= 2)
+			{
+				std::unique_lock<std::mutex> Lock(FrontLock);
+
+				++ElementCount;
+
+				if (!First)
+					First = &E;
+
+				if (Last)
+					Last->Next = &E;
+
+				E.Prev = Last;
+				Last = &E;
+			}
+			else
+			{
+				++ElementCount;
+
+				if (!First)
+					First = &E;
+
+				if (Last)
+					Last->Next = &E;
+
+				E.Prev = Last;
+				Last = &E;
+			}
+		}
+
+
+		/************************************************************************************************/
+
+
+		void push_front(Element_TY& E)
+		{
+			std::unique_lock<std::mutex> OuterLock(FrontLock);
+
+			if (ElementCount <= 2)
+			{
+				std::unique_lock<std::mutex> InnerLock(RearLock);
+
+				++ElementCount;
+				
+				if(First)
+					First->Prev = &E;
+
+				if (!Last)
+					Last = &E;
+
+				E.Next = First;
+				First = &E;
+			}
+			else
+			{
+				++ElementCount;
+
+				if (First)
+					First->Prev = &E;
+
+				if (!Last)
+					Last = &E;
+
+				E.Next = First;
+				First = &E;
+			}
+		}
+
+
+		/************************************************************************************************/
+
+
+		Element_TY& pop_front()
+		{
+			std::unique_lock<std::mutex> Lock{ FrontLock };
+			auto Element = First;
+			First = First->Next;
+			First->Prev = nullptr;
+			ElementCount--;
+
+			return *Element;
+		}
+
+
+		/************************************************************************************************/
+
+
+		bool try_pop_front(Element_TY*& Out)
+		{
+			if (ElementCount == 0)
+				return false;
+
+			auto res = FrontLock.try_lock();
+			if (!res)
+				return false;
+
+			ElementCount--;
+			auto Element = First;
+			First = First->Next;
+
+			if(First)
+				First->Prev = nullptr;
+
+			Out = Element;
+
+			FrontLock.unlock();
+			return true;
+		}
+
+
+		/************************************************************************************************/
+
+	private:
+		std::mutex				FrontLock;
+		std::mutex				RearLock;
+		std::atomic_int64_t		ElementCount	= 0u;
+
+		Element_TY* First						= nullptr;
+		Element_TY* Last						= nullptr;
+	};
+
+
+
+}	// namespace FlexKit;
 	/************************************************************************************************/
-}
 #endif
 #endif

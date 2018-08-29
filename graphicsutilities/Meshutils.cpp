@@ -44,16 +44,15 @@ namespace FlexKit
 		Pair<bool, MeshBuildInfo>
 		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool DoWeights )
 		{
-			
-			auto& position		= fixed_vector<float3>::Create_Aligned(128000, ScratchSpace);
-			auto& normal		= fixed_vector<float3>::Create_Aligned(128000, ScratchSpace);
-			auto& UV			= fixed_vector<float2>::Create_Aligned(128000, ScratchSpace);
-			auto* Weights		= (DoWeights) ? &fixed_vector<float3>::Create_Aligned(128000,   ScratchSpace) : nullptr;
-			auto* WIndexes		= (DoWeights) ? &fixed_vector<uint4_16>::Create_Aligned(128000, ScratchSpace) : nullptr;
+			Vector<float3>		position	{ ScratchSpace, 128000 };
+			Vector<float3>		normal		{ ScratchSpace, 128000 };
+			Vector<float2>		UV			{ ScratchSpace, 128000 };
+			Vector<float3>		Weights		{ ScratchSpace, (DoWeights) ? 128000u : 0u };
+			Vector<uint4_16>	WIndexes	{ ScratchSpace, (DoWeights) ? 128000u : 0u };
 
 			IndexList&	Indexes	= out_indexes;
 			MeshBuildInfo MBI	= {0};
-			std::vector<size_t>	NormalTable;
+			Vector<size_t>	NormalTable(ScratchSpace, 128000);
 
 			map_t<CombinedVertex::IndexBitlayout, unsigned int>	IndexMap;
 			auto& FinalVerts = out_buffer;
@@ -88,8 +87,8 @@ namespace FlexKit
 
 
 					if (DoWeights) {
-						memcpy(&TempFVert.WEIGHTS,  &(*Weights )[TempFVert.index.p_Index], sizeof(TempFVert.POS));
-						memcpy(&TempFVert.WIndices, &(*WIndexes)[TempFVert.index.p_Index], sizeof(uint4_16));
+						memcpy(&TempFVert.WEIGHTS,  &Weights[TempFVert.index.p_Index],  sizeof(TempFVert.POS));
+						memcpy(&TempFVert.WIndices, &WIndexes[TempFVert.index.p_Index], sizeof(uint4_16));
 					}
 					if (normal.size() != 0)
 						memcpy(&TempFVert.NORMAL, &normal[TempFVert.index.n_Index], sizeof(TempFVert.NORMAL));
@@ -148,17 +147,18 @@ namespace FlexKit
 				case WEIGHT:
 				{
 					if(DoWeights)
-						Weights->push_back(*(float3*)itr.buffer);
+						Weights.push_back(*(float3*)itr.buffer);
 				}	break;
 				case WEIGHTINDEX:
 				{
-					if (DoWeights){
+					if (DoWeights)
+					{
 						auto Indexes = *(uint4_32*)itr.buffer;
 						for(size_t itr = 0; itr < 4; ++itr)
 							Indexes[itr] = (Indexes[itr] == -1) ? 0 : Indexes[itr];
 
-						WIndexes->push_back(Indexes);
-						}
+						WIndexes.push_back(Indexes);
+					}
 				}	break;
 				case UV_COORD:
 					UV.push_back( *(float2*)itr.buffer );

@@ -318,7 +318,7 @@ public:
 		//Map			{ memory },
 		InputState	{ false, false, false, false, PF_UNKNOWN }
 	{
-		SetCameraFOV(GameCamera, pi/3);
+		SetCameraFOV(GameCamera, pi/3.0f);
 		Yaw			(GetCameraNode(GameCamera), pi);
 		SetPositionW(GetCameraNode(GameCamera), { 0, 2, -5 });
 	}

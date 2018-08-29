@@ -719,7 +719,11 @@ namespace FlexKit
 
 			if (R != nullptr) {
 				SceneResourceBlob* SceneBlob = (SceneResourceBlob*)R;
-				auto& CreatedNodes = fixed_vector<NodeHandle>::Create(SceneBlob->SceneTable.NodeCount, Temp);
+
+				auto& CreatedNodes = 
+						Vector<NodeHandle>(
+							Temp, 
+							SceneBlob->SceneTable.NodeCount);
 
 				{
 					CompiledScene::SceneNode* Nodes = (CompiledScene::SceneNode*)(SceneBlob->Buffer + SceneBlob->SceneTable.NodeOffset);

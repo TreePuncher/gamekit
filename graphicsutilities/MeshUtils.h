@@ -136,9 +136,9 @@ namespace FlexKit
 	namespace MeshUtilityFunctions
 	{
 		// RETURNS FALSE ON FAILURE
-		typedef fixed_vector<s_TokenValue>		TokenList;
-		typedef fixed_vector<uint32_t>			IndexList;
-		typedef fixed_vector<CombinedVertex>	CombinedVertexBuffer;
+		typedef Vector<s_TokenValue>		TokenList;
+		typedef Vector<uint32_t>			IndexList;
+		typedef Vector<CombinedVertex>		CombinedVertexBuffer;
 
 		struct MeshBuildInfo
 		{

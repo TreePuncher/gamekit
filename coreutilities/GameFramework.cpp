@@ -213,7 +213,7 @@ namespace FlexKit
 #ifdef _DEBUG
 		DrawDebugStats			= true;
 #else
-		Framework.DrawDebugStats			= false;
+		DrawDebugStats			= false;
 #endif
 
 		//Framework.ActivePhysicsScene		= nullptr;
@@ -228,7 +228,7 @@ namespace FlexKit
 		Stats.ObjectsDrawnLastFrame		= 0;
 		RootNode						= GetZeroedNode();
 
-		{
+		{	
 			uint2	WindowRect	   = Core->Window.WH;
 			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
 
