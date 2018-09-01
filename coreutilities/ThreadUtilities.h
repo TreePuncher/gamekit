@@ -54,65 +54,6 @@ namespace FlexKit
 
 	class ThreadManager;
 
-	template<typename Ty_1, unsigned int MAX = 16>
-	class SRSW_Queue
-	{
-	public:
-		SRSW_Queue()
-		{
-			ZeroMemory( m_Waiting, sizeof( m_Waiting ) );
-
-			m_writer_index = 0;
-			m_reader_index = 0;
-		}
-		/************************************************************************************************/
-		bool Push( Ty_1& in )
-		{
-			if( IsFull() )
-				return false;
-	
-			unsigned int index = m_writer_index;
-			m_Waiting[index % MAX] = in;
-	
-			//_WriteBarrier();
-			m_writer_index = index + 1;
-	
-			return true;
-		}
-		/************************************************************************************************/
-		bool Pop( Ty_1& out )
-		{
-			if( !IsEmpty() )
-			{
-				unsigned int index = m_reader_index;
-				out = m_Waiting[ m_reader_index % MAX ];
-				m_reader_index = index + 1;
-	
-				return true;
-			}
-			return false;
-		}
-	private:
-		/************************************************************************************************/
-		bool IsEmpty()
-		{
-			return ( m_writer_index == m_reader_index );
-		}
-		/************************************************************************************************/
-		bool IsFull()
-		{
-			return ( m_writer_index - m_reader_index  == MAX );
-		}	 
-		/************************************************************************************************/
-	
-	private:
-		__declspec(align(4))	std::atomic_char32_t m_writer_index;
-		__declspec(align(4))	std::atomic_char32_t m_reader_index;
-	
-		Ty_1 m_Waiting[MAX]; // Buffer 
-	};
-
-
 	typedef std::function<void()> OnCompletionEvent;
 
 
