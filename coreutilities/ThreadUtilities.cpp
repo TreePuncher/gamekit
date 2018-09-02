@@ -88,6 +88,7 @@ namespace FlexKit
 
 					(*work)->Run();
 					(*work)->NotifyWatchers();
+					work->Release();
 
 					Manager->DecrementActiveWorkerCount();
 				}

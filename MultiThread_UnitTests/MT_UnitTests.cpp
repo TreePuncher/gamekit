@@ -43,31 +43,18 @@ namespace UnitTests
 				x{ X } 
 			{
 				SetX(x);
-				//Logger::WriteMessage( "TestClass(int)\n" );
 			}
 
 
 			~TestClass() // Destructor
 			{
-				//Logger::WriteMessage( "~TestClass()\n" );
 			}
 
 
 			TestClass(TestClass&& in) = default;
-
-			/*
-			TestClass(TestClass&& in) 
-				: TestClass(in.x) // Move Constructor
-			{
-				Logger::WriteMessage( "TestClass(TestClass&& rhs)\n" );
-			}
-			*/
-
 			TestClass(TestClass& in) 
 				: TestClass(in.x) // Copy Constructor
-			{
-				//Logger::WriteMessage( "TestClass(TestClass& rhs)\n" );
-			}
+			{}
 
 			void SetX(int new_x)
 			{
@@ -79,11 +66,7 @@ namespace UnitTests
 
 			void print()
 			{
-				
-				//Logger::WriteMessage("print(TestClass& rhs)\n");
 				Logger::WriteMessage(Message.c_str());
-
-				//std::cout << x << "\n";
 			}
 
 			std::string Message;
@@ -265,34 +248,26 @@ namespace UnitTests
 				Thread8{ CV, Queue };
 
 
-			FlexKit::WorkItem Work1{ &Thread1 };
-			FlexKit::WorkItem Work2{ &Thread2 };
-			FlexKit::WorkItem Work3{ &Thread3 };
-			FlexKit::WorkItem Work4{ &Thread4 };
-			FlexKit::WorkItem Work5{ &Thread5 };
-			FlexKit::WorkItem Work6{ &Thread6 };
-			FlexKit::WorkItem Work7{ &Thread7 };
-			FlexKit::WorkItem Work8{ &Thread8 };
-
-			Threads.AddWork(&Work1);
-			Threads.AddWork(&Work2);
-			Threads.AddWork(&Work3);
-			Threads.AddWork(&Work4);
+			Threads.AddWork(&Thread1);
+			Threads.AddWork(&Thread2);
+			Threads.AddWork(&Thread3);
+			Threads.AddWork(&Thread4);
 
 			CV.notify_all();
 			Sleep(1000);
 
-			Threads.AddWork(&Work5);
-			Threads.AddWork(&Work6);
-			Threads.AddWork(&Work7);
-			Threads.AddWork(&Work8);
-
+			Threads.AddWork(&Thread5);
+			Threads.AddWork(&Thread6);
+			Threads.AddWork(&Thread7);
+			Threads.AddWork(&Thread8);
 
 			Sleep(1000);
 
 			CV.notify_all();
 
 			Sleep(1000);
+
+			CV.notify_all();
 
 			Threads.Release();
 

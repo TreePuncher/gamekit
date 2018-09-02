@@ -87,15 +87,27 @@ namespace FlexKit
 
 	struct WorkContainer
 	{
-		WorkContainer(iWork* IN_ptr) :
-			ptr{ IN_ptr } {}
+		WorkContainer(iWork* IN_ptr, iAllocator* Allocator = nullptr) :
+			Allocator	{ Allocator },
+			ptr			{ IN_ptr } {}
+
 
 		iWork* operator -> ()
 		{
 			return ptr;
 		}
 
-		iWork* ptr;
+		void Release()
+		{
+			if(Allocator)
+				Allocator->free(this);
+
+			Allocator = nullptr;
+		}
+
+
+		iWork*		ptr;
+		iAllocator* Allocator;
 	};
 
 	typedef Deque_MT<WorkContainer>::Element_TY WorkItem;
@@ -160,12 +172,12 @@ namespace FlexKit
 	}
 
 	template<typename TY_FN>
-	WorkItem& CreateLambdaWork_New(
+	iWork& CreateLambdaWork_New(
 		TY_FN FNIN, 
 		iAllocator* Memory_1 = FlexKit::SystemAllocator,
 		iAllocator* Memory_2 = FlexKit::SystemAllocator)
 	{
-		return Memory_1->allocate<WorkItem>(Memory_1->allocate<LambdaWork<TY_FN>>(FNIN, Memory_2));
+		return Memory_1->allocate<LambdaWork<TY_FN>>(FNIN, Memory_2);
 	}
 
 	/************************************************************************************************/
@@ -203,19 +215,20 @@ namespace FlexKit
 		}
 
 
-		void AddWork(WorkItem* NewWork)
+		void AddWork(iWork* NewWork, iAllocator* Memory = SystemAllocator)
 		{
+			auto& WorkItem = Memory->allocate<FlexKit::WorkItem>(NewWork);
 			if (!Threads.empty())
 			{
 				bool success = false;
 				do {
-					success = Threads.begin()->AddItem(NewWork);
+					success = Threads.begin()->AddItem(&WorkItem);
 					RotateThreads();
 				} while (!success);
 			}
 			else
 			{
-				Work.push_back(*NewWork);
+				Work.push_back(WorkItem);
 			}
 		}
 

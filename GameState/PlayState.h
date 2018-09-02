@@ -59,7 +59,7 @@ public:
 			//	system->playSound(sound1, nullptr, false, &channel);
 		});
 
-		Threads.AddWork(&Work);
+		Threads.AddWork(Work);
 		
 	}
 
