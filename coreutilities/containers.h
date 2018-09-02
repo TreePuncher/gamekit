@@ -1028,7 +1028,10 @@ namespace FlexKit
 		Ty Buffer[SIZE];
 	};
 
-
+	struct test
+	{
+		int x;
+	};
 	
 	// Intrusive, Thread-Safe, Double Linked List
 	// Destructor does not free elements!!
@@ -1046,6 +1049,7 @@ namespace FlexKit
 
 		Deque_MT(Deque_MT&&)					= delete;
 		Deque_MT& operator =(Deque_MT&&)		= delete;
+
 
 		template<typename TY>
 		class Element_t : public TY
@@ -1090,6 +1094,9 @@ namespace FlexKit
 		};
 
 
+		/************************************************************************************************/
+
+
 		using Element_TY = Element_t<TY>;
 
 
@@ -1132,6 +1139,7 @@ namespace FlexKit
 
 			Element_TY* I;
 		};
+
 
 		/************************************************************************************************/
 
@@ -1182,18 +1190,18 @@ namespace FlexKit
 			do
 			{
 				auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
-				E.SetLinks(CurrentFirstLast.Last, nullptr);
+				E.SetLinks(nullptr, CurrentFirstLast.First);
 
-				auto NewLinkage = (!CurrentFirstLast.First == !CurrentFirstLast.Last) ?
-					NodeLinkage_BEGINEND{ &E, CurrentFirstLast.Last } : 
-					NodeLinkage_BEGINEND{ &E, &E };
+				auto NewLinkage = (!CurrentFirstLast.First && !CurrentFirstLast.Last) ?
+					NodeLinkage_BEGINEND{ &E, &E } :
+					NodeLinkage_BEGINEND{ &E, CurrentFirstLast.Last };
 
 				if (CurrentFirstLast.First && CurrentFirstLast.Last)
 				{
 					auto Temp = CurrentFirstLast.First ? CurrentFirstLast.First->GetNext() : nullptr;
 					if (BeginEnd.compare_exchange_weak(CurrentFirstLast, NewLinkage, std::memory_order_acquire))
 					{
-						CurrentFirstLast.First->SetLinks(Temp, &E);
+						CurrentFirstLast.First->SetLinks(&E, Temp);
 						return;
 					}
 				}
@@ -1233,17 +1241,18 @@ namespace FlexKit
 		{
 			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
 			
-			if ((CurrentFirstLast.First == nullptr && CurrentFirstLast.Last == nullptr))
+			if (CurrentFirstLast.First == nullptr || CurrentFirstLast.Last == nullptr)
 				return false;
 
 			auto NextNode	=  CurrentFirstLast.First->GetNext();
 			auto NewLinkage = (CurrentFirstLast.First == CurrentFirstLast.Last) ?
-				NodeLinkage_BEGINEND{ nullptr, nullptr } : NodeLinkage_BEGINEND{ NextNode, CurrentFirstLast.Last };
+				NodeLinkage_BEGINEND{ nullptr, nullptr } : 
+				NodeLinkage_BEGINEND{ NextNode, CurrentFirstLast.Last };
 
-			if (BeginEnd.compare_exchange_weak(
+			if (BeginEnd.compare_exchange_strong(
 				CurrentFirstLast,
 				NewLinkage,
-				std::memory_order_acquire))
+				std::memory_order_release))
 			{
 				if(NextNode)
 					NextNode->SetLinks(nullptr, NextNode->GetNext());
@@ -1264,20 +1273,21 @@ namespace FlexKit
 		{
 			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
 			
-			if ((CurrentFirstLast.First == nullptr && CurrentFirstLast.Last == nullptr))
+			if ((CurrentFirstLast.First == nullptr || CurrentFirstLast.Last == nullptr))
 				return false;
 
-			auto PrevNode	=  CurrentFirstLast.First->GetPrev();
+			auto PrevNode	=  CurrentFirstLast.Last->GetPrev();
 			auto NewLinkage = (CurrentFirstLast.First == CurrentFirstLast.Last) ?
-				NodeLinkage_BEGINEND{ nullptr, nullptr } : NodeLinkage_BEGINEND{ CurrentFirstLast.First, PrevNode };
+				NodeLinkage_BEGINEND{ nullptr, nullptr } : 
+				NodeLinkage_BEGINEND{ CurrentFirstLast.First, PrevNode };
 
-			if (BeginEnd.compare_exchange_weak(
+			if (BeginEnd.compare_exchange_strong(
 				CurrentFirstLast,
 				NewLinkage,
-				std::memory_order_acquire))
+				std::memory_order_release))
 			{
 				if(PrevNode)
-					PrevNode->SetLinks(NextNode->GetPrev(), nullptr);
+					PrevNode->SetLinks(PrevNode->GetPrev(), nullptr);
 			}
 			else
 				return false;
@@ -1295,7 +1305,7 @@ namespace FlexKit
 		{
 			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
 
-			return (CurrentFirstLast.First == nullptr && CurrentFirstLast.Last == nullptr);
+			return (CurrentFirstLast.First == nullptr || CurrentFirstLast.Last == nullptr);
 		}
 
 
@@ -1322,7 +1332,6 @@ namespace FlexKit
 		};
 
 		std::atomic<NodeLinkage_BEGINEND>	BeginEnd;
-		std::condition_variable				CV;
 	};
 
 
