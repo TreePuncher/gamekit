@@ -94,6 +94,22 @@ namespace FlexKit
 				}
 			}
 
+			const auto Try_Count = Manager->GetThreadCount();
+			for(auto I = 0; I < Try_Count; ++I)
+			{
+				WorkItem* work = Manager->StealSomeWork();
+
+				if (work) {
+					Manager->IncrementActiveWorkerCount();
+
+					(*work)->Run();
+					(*work)->NotifyWatchers();
+					work->Release();
+
+					Manager->DecrementActiveWorkerCount();
+				}
+			}
+
 
 			if (WorkList.empty() && Quit)
 				return;
@@ -116,6 +132,16 @@ namespace FlexKit
 		CV.notify_all();
 	}
 
+
+	/************************************************************************************************/
+
+
+	WorkItem* WorkerThread::Steal()
+	{
+		WorkItem* work = nullptr;
+
+		return WorkList.try_pop_front(&work) ? work : nullptr;
+	}
 
 	/************************************************************************************************/
 

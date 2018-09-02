@@ -1129,6 +1129,11 @@ namespace FlexKit
 			}
 
 
+			Element_TY* GetPtr()
+			{
+				return I;
+			}
+
 			bool operator !=(const Iterator& rhs) { return I != rhs.I; }
 
 			TY& operator* ()				{ return *static_cast<TY*>(I);	}

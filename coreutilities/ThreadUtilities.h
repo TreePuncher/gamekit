@@ -87,9 +87,10 @@ namespace FlexKit
 
 	struct WorkContainer
 	{
-		WorkContainer(iWork* IN_ptr, iAllocator* Allocator = nullptr) :
-			Allocator	{ Allocator },
-			ptr			{ IN_ptr } {}
+		WorkContainer(iWork* IN_ptr, iAllocator* IN_Allocator = nullptr) :
+			Allocator	{ IN_Allocator },
+			ptr			{ IN_ptr } 
+		{}
 
 
 		iWork* operator -> ()
@@ -130,7 +131,7 @@ namespace FlexKit
 		bool IsRunning();
 		void Wake();
 
-		//iWork* Steal();
+		WorkItem* Steal();
 
 		static ThreadManager*	Manager;
 
@@ -189,7 +190,8 @@ namespace FlexKit
 		ThreadManager(size_t ThreadCount = 4, iAllocator* memory = FlexKit::SystemAllocator) :
 			Threads				{},
 			Memory				{memory},
-			WorkingThreadCount	{0}
+			WorkingThreadCount	{0},
+			WorkerCount			{ThreadCount}
 		{
 			WorkerThread::Manager = this;
 
@@ -215,9 +217,10 @@ namespace FlexKit
 		}
 
 
-		void AddWork(iWork* NewWork, iAllocator* Memory = SystemAllocator)
+		void AddWork(iWork* NewWork, iAllocator* Allocator = SystemAllocator)
 		{
-			auto& WorkItem = Memory->allocate<FlexKit::WorkItem>(NewWork);
+			auto& WorkItem = Memory->allocate<FlexKit::WorkItem>(NewWork, Allocator);
+
 			if (!Threads.empty())
 			{
 				bool success = false;
@@ -295,6 +298,19 @@ namespace FlexKit
 			CV.notify_all();
 		}
 
+		WorkItem* StealSomeWork()
+		{
+			WorkItem* StolenWork = Threads.begin()->Steal();
+			RotateThreads();
+
+			return StolenWork;
+		}
+
+		size_t GetThreadCount() const
+		{
+			return WorkerCount;
+		}
+
 
 	private:
 
@@ -305,6 +321,7 @@ namespace FlexKit
 		std::condition_variable		CV;
 		std::atomic_int				WorkingThreadCount;
 
+		const size_t	WorkerCount;
 		iAllocator*		Memory;
 	};
 
