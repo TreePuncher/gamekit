@@ -196,17 +196,6 @@ namespace FlexKit
 		}
 
 
-		/*
-		template<typename TY_FN>
-		void AddWork(TY_FN FN, iAllocator* Memory = nullptr)
-		{
-			LambdaWork<TY_FN>* Item = &Memory->allocate<LambdaWork<TY_FN>>(FN, Memory);
-
-			AddWork(static_cast<iWork*>(Item));
-		}
-		*/
-
-
 		void SendShutdown()
 		{
 			for (auto& I : Threads)
@@ -214,22 +203,44 @@ namespace FlexKit
 		}
 
 
-		void AddWork(WorkItem* Work)
+		void AddWork(WorkItem* NewWork)
 		{
-			bool success = false;
-			do {
-				success = Threads.begin()->AddItem(Work);
-				RotateThreads();
-			} while (!success);
+			if (!Threads.empty())
+			{
+				bool success = false;
+				do {
+					success = Threads.begin()->AddItem(NewWork);
+					RotateThreads();
+				} while (!success);
+			}
+			else
+			{
+				Work.push_back(*NewWork);
+			}
 		}
 
 
 		void WaitForWorkersToComplete()
 		{
-			std::mutex						M;
-			std::unique_lock<std::mutex>	Lock(M);
+			if (!Threads.empty())
+			{
+				std::mutex						M;
+				std::unique_lock<std::mutex>	Lock(M);
 
-			CV.wait(Lock, [this]{ return WorkingThreadCount <= 0; });
+				CV.wait(Lock, [this] { return WorkingThreadCount <= 0; });
+			}
+			else
+			{
+				while(!Work.empty())
+				{
+					WorkItem* WorkItem = nullptr;
+					if (Work.try_pop_front(&WorkItem))
+					{
+						WorkItem->ptr->Run();
+						WorkItem->ptr->NotifyWatchers();
+					}
+				}
+			}
 		}
 
 
@@ -271,9 +282,12 @@ namespace FlexKit
 			CV.notify_all();
 		}
 
+
 	private:
 
 		Deque_MT<WorkerThread>		Threads;
+		Deque_MT<WorkContainer>		Work; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
+
 
 		std::condition_variable		CV;
 		std::atomic_int				WorkingThreadCount;
