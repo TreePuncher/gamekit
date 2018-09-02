@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <utility>
 #include <vector>
+#include <condition_variable>
 
 template<typename Ty>					using deque_t	= std::deque<Ty>;
 template<typename Ty>					using vector_t	= std::vector<Ty>;
@@ -115,7 +116,6 @@ namespace FlexKit
 
 
 	// NOTE: Doesn't call destructors automatically, but does free held memory!
-	// Release will Call destructors
 	template<typename Ty>
 	struct Vector
 	{
@@ -1031,15 +1031,24 @@ namespace FlexKit
 
 	
 	// Intrusive, Thread-Safe, Double Linked List
-	template<typename TY>
+	// Destructor does not free elements!!
+	template<typename TY> 
 	class Deque_MT
 	{
 	public:
 		/************************************************************************************************/
+		
+		Deque_MT()	= default;
+		~Deque_MT() = default;
 
+		Deque_MT(const Deque_MT&)				= delete;
+		Deque_MT& operator =(const Deque_MT&)   = delete;
+
+		Deque_MT(Deque_MT&&)					= delete;
+		Deque_MT& operator =(Deque_MT&&)		= delete;
 
 		template<typename TY>
-		class Element_t
+		class Element_t : public TY
 		{
 		public:
 			typedef Element_t<TY>	ThisType;
@@ -1051,17 +1060,33 @@ namespace FlexKit
 
 			template<typename ... ARGS_TY>
 			Element_t(ARGS_TY&& ... args) :
-				Element			{ std::forward<ARGS_TY>(args)... },
-				Prev			{ nullptr },
-				Next			{ nullptr }{}
-
-
+				TY				{ std::forward<ARGS_TY>(args)... },
+				PrevNext		{ {nullptr, nullptr} }{}
 
 			~Element_t() = default;
 
-			TY			Element;
-			ThisType*	Prev;
-			ThisType*	Next;
+			ThisType* GetNext()
+			{
+				return PrevNext.load().Next;
+			}
+
+			ThisType* GetPrev()
+			{
+				return PrevNext.load().Prev;
+			}
+
+			void SetLinks(ThisType* NewPrev, ThisType* NewNext)
+			{
+				PrevNext.store({NewNext, NewPrev});
+			}
+
+			struct NodeLinkage
+			{
+				ThisType* Next = nullptr;
+				ThisType* Prev = nullptr;
+			};
+
+			std::atomic<NodeLinkage> PrevNext;
 		};
 
 
@@ -1075,30 +1100,34 @@ namespace FlexKit
 
 			Iterator operator ++ (int)
 			{ 
-				return Iterator(I->Next ? I->Next : nullptr);
+				auto Next = I->GetNext();
+				return Iterator(Next ? Next : nullptr);
 			}
 
 			Iterator operator -- (int)
 			{ 
-				return Iterator(I->Prev ? I->Prev : nullptr);
+				auto Prev = I->GetNext();
+				return Iterator(Prev ? Prev : nullptr);
 			}
 
 			void operator ++ () 
 			{ 
-				I = I->Next ? I->Next : nullptr; 
+				auto Next = I->GetNext();
+				I = Next ? Next : nullptr;
 			}
 			void operator -- () 
 			{ 
-				I = I->Prev ? I->Prev : nullptr; 
+				auto Prev = I->GetNext();
+				I = Prev ? Prev : nullptr; 
 			}
 
 
 			bool operator !=(const Iterator& rhs) { return I != rhs.I; }
 
-			TY& operator* ()				{ return  I->Element; }
-			TY* operator-> ()				{ return &I->Element; }
+			TY& operator* ()				{ return *static_cast<TY*>(I);	}
+			TY* operator-> ()				{ return  static_cast<TY*>(I);	}
 
-			const TY* operator& () const	{ return &I->Element; }
+			const TY* operator& () const	{ return static_cast<TY*>(I); }
 		private:
 
 			Element_TY* I;
@@ -1107,52 +1136,41 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		Deque_MT()	= default;
-		~Deque_MT() = default;
-
-
-		/************************************************************************************************/
-
-
-		Iterator begin()	{ return First; }
+		Iterator begin()	{ return _GetFirst(); }
 		Iterator end()		{ return nullptr; }
 
 
 		/************************************************************************************************/
 
 
-		void push_back(Element_TY& E)
+ 		void push_back(Element_TY& E)
 		{
-			std::unique_lock<std::mutex> Lock(RearLock);
-
-			if (ElementCount <= 2)
+			do
 			{
-				std::unique_lock<std::mutex> Lock(FrontLock);
+				auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
+				E.SetLinks(CurrentFirstLast.Last, nullptr);
 
-				++ElementCount;
+				auto NewLinkage =
+					(!CurrentFirstLast.First && !CurrentFirstLast.Last) ?
+						NodeLinkage_BEGINEND{ &E, &E } :
+						NodeLinkage_BEGINEND{ CurrentFirstLast.First, &E };
 
-				if (!First)
-					First = &E;
-
-				if (Last)
-					Last->Next = &E;
-
-				E.Prev = Last;
-				Last = &E;
-			}
-			else
-			{
-				++ElementCount;
-
-				if (!First)
-					First = &E;
-
-				if (Last)
-					Last->Next = &E;
-
-				E.Prev = Last;
-				Last = &E;
-			}
+				if (CurrentFirstLast.First && CurrentFirstLast.Last)
+				{
+					auto Temp = CurrentFirstLast.Last ? CurrentFirstLast.Last->GetPrev() : nullptr;
+					if (BeginEnd.compare_exchange_weak(CurrentFirstLast, NewLinkage, std::memory_order_acquire))
+					{
+						CurrentFirstLast.Last->SetLinks(Temp, &E);
+						return;
+					}
+				}
+				else
+				{
+					if (BeginEnd.compare_exchange_weak(
+							CurrentFirstLast, NewLinkage, std::memory_order_acquire))
+						return;
+				}
+			} while (true);
 		}
 
 
@@ -1161,89 +1179,125 @@ namespace FlexKit
 
 		void push_front(Element_TY& E)
 		{
-			std::unique_lock<std::mutex> OuterLock(FrontLock);
-
-			if (ElementCount <= 2)
+			do
 			{
-				std::unique_lock<std::mutex> InnerLock(RearLock);
+				auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
+				E.SetLinks(CurrentFirstLast.Last, nullptr);
 
-				++ElementCount;
-				
-				if(First)
-					First->Prev = &E;
+				auto NewLinkage = (!CurrentFirstLast.First == !CurrentFirstLast.Last) ?
+					NodeLinkage_BEGINEND{ &E, CurrentFirstLast.Last } : 
+					NodeLinkage_BEGINEND{ &E, &E };
 
-				if (!Last)
-					Last = &E;
-
-				E.Next = First;
-				First = &E;
-			}
-			else
-			{
-				++ElementCount;
-
-				if (First)
-					First->Prev = &E;
-
-				if (!Last)
-					Last = &E;
-
-				E.Next = First;
-				First = &E;
-			}
+				if (CurrentFirstLast.First && CurrentFirstLast.Last)
+				{
+					auto Temp = CurrentFirstLast.First ? CurrentFirstLast.First->GetNext() : nullptr;
+					if (BeginEnd.compare_exchange_weak(CurrentFirstLast, NewLinkage, std::memory_order_acquire))
+					{
+						CurrentFirstLast.First->SetLinks(Temp, &E);
+						return;
+					}
+				}
+				else
+				{
+					if (BeginEnd.compare_exchange_weak(
+						CurrentFirstLast, NewLinkage, std::memory_order_acquire))
+						return;
+				}
+			} while (true);
 		}
 
 
 		/************************************************************************************************/
-
-
+		/*
+		// Note, THIS WILL BLOCK IF THERE ARE NO ELEMENTS!
 		Element_TY& pop_front()
 		{
-			std::unique_lock<std::mutex> Lock{ FrontLock };
-			auto Element = First;
-			First = First->Next;
-			First->Prev = nullptr;
-			ElementCount--;
+			std::mutex M;
+			std::unique_lock Lock(M);
 
-			return *Element;
+			Element_TY* Out;
+
+			do
+			{
+				CV.wait(Lock, [&] { return !empty(); });
+			} while (!try_pop_front(Out));
+
+			return *Out;
 		}
-
+		*/
 
 		/************************************************************************************************/
 
 
 		bool try_pop_front(Element_TY*& Out)
 		{
-			if (ElementCount == 0)
+			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
+			
+			if (!CurrentFirstLast.First && !CurrentFirstLast.Last)
 				return false;
 
-			auto res = FrontLock.try_lock();
-			if (!res)
+			auto NextNode = CurrentFirstLast.First->GetNext();
+
+			/*
+								(!FirstLast.First == !FirstLast.Last) ?
+						{ NextNode, FirstLast.Last } : {nullptr, nullptr},
+
+			*/
+
+			auto NewLinkage = (CurrentFirstLast.First == CurrentFirstLast.Last) ?
+				NodeLinkage_BEGINEND{ nullptr, nullptr } : NodeLinkage_BEGINEND{ NextNode, CurrentFirstLast.Last };
+
+			if (BeginEnd.compare_exchange_weak(
+				CurrentFirstLast,
+				NewLinkage,
+				std::memory_order_acquire))
+			{
+				if(NextNode)
+					NextNode->SetLinks(nullptr, NextNode->GetNext());
+			}
+			else
 				return false;
 
-			ElementCount--;
-			auto Element = First;
-			First = First->Next;
+			Out = CurrentFirstLast.First;
 
-			if(First)
-				First->Prev = nullptr;
-
-			Out = Element;
-
-			FrontLock.unlock();
 			return true;
 		}
 
 
 		/************************************************************************************************/
 
-	private:
-		std::mutex				FrontLock;
-		std::mutex				RearLock;
-		std::atomic_int64_t		ElementCount	= 0u;
 
-		Element_TY* First						= nullptr;
-		Element_TY* Last						= nullptr;
+		bool empty()
+		{
+			auto Links = BeginEnd.load(std::memory_order_acquire);
+			return !Links.First;
+		}
+
+
+	private:
+
+		Element_TY* _GetFirst()
+		{
+			auto Links = BeginEnd.load(std::memory_order_acquire);
+			return Links.First;
+		}
+
+
+		Element_TY* _GetLast()
+		{
+			auto Links = BeginEnd.load(std::memory_order_acquire);
+			return Links.Last;
+		}
+
+
+		struct NodeLinkage_BEGINEND
+		{
+			Element_TY* First		= nullptr;
+			Element_TY* Last		= nullptr;
+		};
+
+		std::atomic<NodeLinkage_BEGINEND>	BeginEnd;
+		std::condition_variable				CV;
 	};
 
 

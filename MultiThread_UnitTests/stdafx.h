@@ -6,7 +6,7 @@
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\coreutilities\ThreadUtilities.h"
-#include "..\coreutilities\ThreadUtilities.cpp"
+//#include "..\coreutilities\ThreadUtilities.cpp"
 
 #include <Windows.h>
 #include <mutex>

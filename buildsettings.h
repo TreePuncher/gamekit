@@ -150,7 +150,7 @@ template<typename TY>
 struct FINAL_CONTAINER
 {
 	template<typename TY_1>
-	explicit FINAL_CONTAINER(TY_1 fn) : FN(fn) {}
+	FINAL_CONTAINER(TY_1 fn) : FN(fn) {}
 
 	~FINAL_CONTAINER()	{ FN();	}
 
@@ -188,7 +188,7 @@ static const size_t KILOBYTE	= 1024;
 static const size_t MEGABYTE	= 1024 * KILOBYTE;
 static const size_t GIGABYTE	= 1024 * MEGABYTE;
 
-const size_t INVALIDHANDLE = static_cast<size_t>(-1);
+const size_t INVALIDHANDLE = -1;
 
 namespace FlexKit {
 	typedef uint8_t	 byte;

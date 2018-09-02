@@ -146,7 +146,7 @@ namespace FlexKit
 			Memory			(memory),
 			CmdArguments	(memory->BlockAllocator),
 			Time			(memory->BlockAllocator),
-			Threads			(memory->BlockAllocator),
+			Threads			(4, memory->BlockAllocator),// TODO: Get System Thread Count.
 			RenderSystem	(memory->BlockAllocator),
 			FrameLock		(true)
 		{

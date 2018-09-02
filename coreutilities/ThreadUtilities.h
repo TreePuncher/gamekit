@@ -297,7 +297,7 @@ namespace FlexKit
 	class ThreadManager
 	{
 	public:
-		ThreadManager(iAllocator* memory, size_t ThreadCount = 4) :
+		ThreadManager(size_t ThreadCount = 4, iAllocator* memory = FlexKit::SystemAllocator) :
 			Threads(memory),
 			Memory(memory)
 		{
