@@ -18,6 +18,7 @@ namespace UnitTests
 			TestClass(int X = 0) :
 				x{ X } 
 			{
+				SetX(x);
 				//Logger::WriteMessage( "TestClass(int)\n" );
 			}
 
@@ -28,12 +29,15 @@ namespace UnitTests
 			}
 
 
+			TestClass(TestClass&& in) = default;
+
+			/*
 			TestClass(TestClass&& in) 
 				: TestClass(in.x) // Move Constructor
 			{
 				Logger::WriteMessage( "TestClass(TestClass&& rhs)\n" );
 			}
-
+			*/
 
 			TestClass(TestClass& in) 
 				: TestClass(in.x) // Copy Constructor
@@ -53,7 +57,7 @@ namespace UnitTests
 			{
 				
 				//Logger::WriteMessage("print(TestClass& rhs)\n");
-				//Logger::WriteMessage(Message.c_str());
+				Logger::WriteMessage(Message.c_str());
 
 				//std::cout << x << "\n";
 			}
@@ -87,17 +91,17 @@ namespace UnitTests
 				// Test One
 				{
 					ElementType* E;
-					auto res = deque.try_pop_front(E);
+					auto res = deque.try_pop_front(&E);
 					if (res != false)
 						throw;
 
 					deque.push_back(N1);
-					res = deque.try_pop_front(E);
+					res = deque.try_pop_front(&E);
 
 					if (res != true) // Container should be return one element
 						throw;
 
-					res = deque.try_pop_front(E);
+					res = deque.try_pop_front(&E);
 					if (res != false) // Container should be empty
 						throw;
 				}
@@ -110,7 +114,7 @@ namespace UnitTests
 				while (!deque.empty())
 				{
 					ElementType* E_ptr = nullptr;
-					if (deque.try_pop_front(E_ptr))
+					if (deque.try_pop_front(&E_ptr))
 						E_ptr->print();
 				}
 			}
@@ -143,8 +147,8 @@ namespace UnitTests
 					Queue		{ IN_Queue }
 				{
 					size_t itr = 0;
-					for (auto& I : Test)
-						I.SetX(N + itr++);
+					for (size_t itr = 0; itr < 4000; ++itr)
+						Test.push_back(itr + N);
 				}
 
 
@@ -157,15 +161,15 @@ namespace UnitTests
 					for(auto& I : Test)
 						Queue.push_back(I);
 
-					//Logger::WriteMessage("Hello World from AddThread\n");
-					//std::cout << "Hello World!\n";
+					Logger::WriteMessage("Hello World from AddThread\n");
+					std::cout << "Hello World!\n";
 				}
 
 				std::condition_variable&		CV;
 				Deque<TestClass>&				Queue;
-				Deque<TestClass>::Element_TY	Test[1000];
+				std::vector<Deque<TestClass>::Element_TY>	Test;
 
-			}Thread1{ 0, CV, Queue }, Thread2{ 1000, CV, Queue }, Thread3{ 2000, CV, Queue }, Thread4{ 3000, CV, Queue };
+			}Thread1{ 0, CV, Queue }, Thread2{ 4000, CV, Queue }, Thread3{ 8000, CV, Queue }, Thread4{ 12000, CV, Queue };
 
 			class PopThread: public FlexKit::iWork
 			{
@@ -185,12 +189,12 @@ namespace UnitTests
 					std::unique_lock	UL{ M };
 					CV.wait(UL);
 
-					Sleep(1);
+					Sleep(5);
 
 					while (!Queue.empty())
 					{
 						ElementType* E_ptr = nullptr;
-						if (Queue.try_pop_front(E_ptr))
+						if (Queue.try_pop_front(&E_ptr))
 							E_ptr->print();
 					}
 
@@ -202,31 +206,42 @@ namespace UnitTests
 				Deque<TestClass>&			Queue;
 			}Thread5{ CV, Queue }, Thread6{ CV, Queue }, Thread7{ CV, Queue }, Thread8{ CV, Queue };
 
+			
+			FlexKit::WorkItem Work1{ &Thread1 };
+			FlexKit::WorkItem Work2{ &Thread2 };
+			FlexKit::WorkItem Work3{ &Thread3 };
+			FlexKit::WorkItem Work4{ &Thread4 };
+			FlexKit::WorkItem Work5{ &Thread5 };
+			FlexKit::WorkItem Work6{ &Thread6 };
+			FlexKit::WorkItem Work7{ &Thread7 };
+			FlexKit::WorkItem Work8{ &Thread8 };
+
 			Deque<TestClass>::Element_TY	Test{ 4000 };
 			Test.SetX(4001);
 
-			Threads.AddWork(&Thread1);
-			Threads.AddWork(&Thread2);
-			Threads.AddWork(&Thread3);
-			Threads.AddWork(&Thread4);
-			Threads.AddWork(&Thread5);
-			Threads.AddWork(&Thread6);
-			Threads.AddWork(&Thread7);
-			Threads.AddWork(&Thread8);
+
+			Threads.AddWork(&Work1);
+			Threads.AddWork(&Work2);
+			Threads.AddWork(&Work3);
+			Threads.AddWork(&Work4);
+			Threads.AddWork(&Work5);
+			Threads.AddWork(&Work6);
+			Threads.AddWork(&Work7);
+			Threads.AddWork(&Work8);
 
 
-			Logger::WriteMessage("Waiting 1 second.\n");
+			Logger::WriteMessage("Waiting 1 second.");
 
 			Sleep(1000);
 
 			Queue.push_back(Test);
 			CV.notify_all();
 
-			Threads.WaitForWorkersToComplete();
-			//Threads.WaitForShutdown();
-
 			Sleep(1000);
 
+			Threads.Release();
+
+			Logger::WriteMessage("Test Complete");
 			Assert::IsTrue(Queue.empty());
 		}
 

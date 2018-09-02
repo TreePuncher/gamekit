@@ -38,14 +38,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool WorkerThread::AddItem(iWork* Item)
+	bool WorkerThread::AddItem(WorkItem* Work)
 	{
 		if (!Running || Quit)
 			return false;
 
-		std::unique_lock<std::mutex> Lock(AddLock);
-
-		WorkList.push_back(Item);
+		WorkList.push_back(*Work);
 		CV.notify_all();
 
 		return true;
@@ -76,27 +74,27 @@ namespace FlexKit
 
 		while (true)
 		{
-			std::unique_lock<std::mutex> Lock(CBLock);
+			std::mutex	M;
+			std::unique_lock<std::mutex> Lock(M);
 			CV.wait(Lock);
 
 
-			while (WorkList.size())
+			while (!WorkList.empty())
 			{
-				auto WorkItem = WorkList.front();
-				WorkList.pop_front();
-
-				if (WorkItem) {
+				WorkItem* work;
+				
+				if (WorkList.try_pop_front(&work)) {
 					Manager->IncrementActiveWorkerCount();
 
-					WorkItem->Run();
-					WorkItem->NotifyWatchers();
+					(*work)->Run();
+					(*work)->NotifyWatchers();
 
 					Manager->DecrementActiveWorkerCount();
 				}
 			}
 
 
-			if (!WorkList.size() && Quit)
+			if (WorkList.empty() && Quit)
 				return;
 		}
 
@@ -109,6 +107,12 @@ namespace FlexKit
 	bool WorkerThread::IsRunning()
 	{
 		return Running.load();
+	}
+
+
+	void WorkerThread::Wake()
+	{
+		CV.notify_all();
 	}
 
 

@@ -1229,21 +1229,14 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		bool try_pop_front(Element_TY*& Out)
+		bool try_pop_front(Element_TY** Out)
 		{
 			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
 			
-			if (!CurrentFirstLast.First && !CurrentFirstLast.Last)
+			if ((CurrentFirstLast.First == nullptr && CurrentFirstLast.Last == nullptr))
 				return false;
 
-			auto NextNode = CurrentFirstLast.First->GetNext();
-
-			/*
-								(!FirstLast.First == !FirstLast.Last) ?
-						{ NextNode, FirstLast.Last } : {nullptr, nullptr},
-
-			*/
-
+			auto NextNode	=  CurrentFirstLast.First->GetNext();
 			auto NewLinkage = (CurrentFirstLast.First == CurrentFirstLast.Last) ?
 				NodeLinkage_BEGINEND{ nullptr, nullptr } : NodeLinkage_BEGINEND{ NextNode, CurrentFirstLast.Last };
 
@@ -1258,7 +1251,38 @@ namespace FlexKit
 			else
 				return false;
 
-			Out = CurrentFirstLast.First;
+			*Out = CurrentFirstLast.First;
+
+			return true;
+		}
+
+
+		/************************************************************************************************/
+
+
+		bool try_pop_back(Element_TY** Out)
+		{
+			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
+			
+			if ((CurrentFirstLast.First == nullptr && CurrentFirstLast.Last == nullptr))
+				return false;
+
+			auto PrevNode	=  CurrentFirstLast.First->GetPrev();
+			auto NewLinkage = (CurrentFirstLast.First == CurrentFirstLast.Last) ?
+				NodeLinkage_BEGINEND{ nullptr, nullptr } : NodeLinkage_BEGINEND{ CurrentFirstLast.First, PrevNode };
+
+			if (BeginEnd.compare_exchange_weak(
+				CurrentFirstLast,
+				NewLinkage,
+				std::memory_order_acquire))
+			{
+				if(PrevNode)
+					PrevNode->SetLinks(NextNode->GetPrev(), nullptr);
+			}
+			else
+				return false;
+
+			*Out = CurrentFirstLast.Last;
 
 			return true;
 		}
@@ -1269,8 +1293,9 @@ namespace FlexKit
 
 		bool empty()
 		{
-			auto Links = BeginEnd.load(std::memory_order_acquire);
-			return !Links.First;
+			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
+
+			return (CurrentFirstLast.First == nullptr && CurrentFirstLast.Last == nullptr);
 		}
 
 

@@ -52,12 +52,14 @@ public:
 		result			= FMOD::System_Create(&system);
 		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
 
-		Threads.AddWork(CreateLambdaWork_New(
+		auto& Work = CreateLambdaWork_New(
 			[this]() {
-				//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
-				//if(sound1)
-				//	system->playSound(sound1, nullptr, false, &channel);
-		}));
+			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+			//if(sound1)
+			//	system->playSound(sound1, nullptr, false, &channel);
+		});
+
+		Threads.AddWork(&Work);
 		
 	}
 

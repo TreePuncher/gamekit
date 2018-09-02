@@ -85,6 +85,21 @@ namespace FlexKit
 		Vector<OnCompletionEvent> Watchers;
 	};
 
+	struct WorkContainer
+	{
+		WorkContainer(iWork* IN_ptr) :
+			ptr{ IN_ptr } {}
+
+		iWork* operator -> ()
+		{
+			return ptr;
+		}
+
+		iWork* ptr;
+	};
+
+	typedef Deque_MT<WorkContainer>::Element_TY WorkItem;
+	typedef	Deque_MT<WorkContainer>				WorkQueue;
 
 	//__declspec(align(64))
 	class WorkerThread
@@ -97,10 +112,13 @@ namespace FlexKit
 			Allocator	{ ThreadMemory }
 		{}
 
-		bool AddItem(iWork* Item);
+		bool AddItem(WorkItem* Work);
 		void Shutdown();
 		void Run();
 		bool IsRunning();
+		void Wake();
+
+		//iWork* Steal();
 
 		static ThreadManager*	Manager;
 
@@ -108,154 +126,13 @@ namespace FlexKit
 		std::condition_variable	CV;
 		std::atomic_bool		Running;
 		std::atomic_bool		Quit;
-		std::deque<iWork*>		WorkList;
-		std::mutex				CBLock;
-		std::mutex				AddLock;
 		std::thread				Thread;
+
+		WorkQueue				WorkList;
 
 		iAllocator*				Allocator;
 	};
 
-
-	/************************************************************************************************/
-
-
-	class WorkerList
-	{
-	public:
-		struct Element
-		{
-			Element*		_Prev = nullptr;
-			Element*		_Next = nullptr;
-			WorkerThread	Thread;
-		};
-
-		struct ElementIterator
-		{
-			ElementIterator(Element* i) : I{ i } {}
-
-			ElementIterator operator ++()
-			{
-				if (I->_Next)
-					I = I->_Next;
-				else
-					I = nullptr;
-
-				return *this;
-			}
-
-			ElementIterator operator --()
-			{
-				if (I->_Prev)
-					I = I->_Prev;
-				else
-					I = nullptr;
-
-				return *this;
-			}
-
-			bool operator == (const ElementIterator& rhs) const
-			{
-				return (rhs.I == I);
-			}
-
-			bool operator != (const ElementIterator& rhs) const
-			{
-				return !(rhs == *this);
-			}
-
-			WorkerThread& operator* ()
-			{
-				return I->Thread;
-			}
-
-			WorkerThread* operator -> ()
-			{
-				return &I->Thread;
-			}
-
-
-			Element* I;
-		};
-
-
-		WorkerList(iAllocator* Memory, const size_t IN_ThreadCount = 2) :
-			ThreadCount	{ IN_ThreadCount },
-			Allocator	{ Memory },
-			Begin		{ nullptr },
-			End			{ nullptr }
-		{
-		}
-
-
-		ElementIterator begin()
-		{
-			return { Begin };
-		}
-
-
-		ElementIterator end()
-		{
-			return { nullptr };
-		}
-
-
-		void Rotate()
-		{
-			MoveToBack(begin());
-		}
-
-
-		void MoveToBack(ElementIterator Itr)
-		{
-			std::unique_lock<std::mutex> Lock(M);
-
-			if (Begin == Itr.I)
-				Begin = Itr.I->_Next;
-
-			if (Itr.I->_Prev)
-				Itr.I->_Prev->_Next = Itr.I->_Next;
-
-			if (Itr.I->_Next)
-				Itr.I->_Next->_Prev = Itr.I->_Prev;
-
-			if (End)
-			{
-				Itr.I->_Prev = End;
-				End->_Next = Itr.I;
-				Itr.I->_Next = nullptr;
-			}
-
-			End = Itr.I;
-		}
-
-
-		void AddThread(iAllocator*)
-		{
-			std::unique_lock<std::mutex> Lock(M);
-
-			auto NewThread = new Element;
-
-			if (End)
-			{
-				NewThread->_Prev = End;
-				End->_Next = NewThread;
-			}
-
-			if (!Begin)
-				Begin = NewThread;
-
-			End = NewThread;
-		}
-
-
-	private:
-		Element * Begin;
-		Element*	End;
-		size_t		ThreadCount;
-		iAllocator*	Allocator;
-		std::mutex	M;
-	};
 
 	/************************************************************************************************/
 
@@ -283,12 +160,12 @@ namespace FlexKit
 	}
 
 	template<typename TY_FN>
-	LambdaWork<TY_FN>& CreateLambdaWork_New(
+	WorkItem& CreateLambdaWork_New(
 		TY_FN FNIN, 
 		iAllocator* Memory_1 = FlexKit::SystemAllocator,
 		iAllocator* Memory_2 = FlexKit::SystemAllocator)
 	{
-		return Memory_1->allocate<LambdaWork<TY_FN>>(FNIN, Memory_2);
+		return Memory_1->allocate<WorkItem>(Memory_1->allocate<LambdaWork<TY_FN>>(FNIN, Memory_2));
 	}
 
 	/************************************************************************************************/
@@ -298,13 +175,14 @@ namespace FlexKit
 	{
 	public:
 		ThreadManager(size_t ThreadCount = 4, iAllocator* memory = FlexKit::SystemAllocator) :
-			Threads(memory),
-			Memory(memory)
+			Threads				{},
+			Memory				{memory},
+			WorkingThreadCount	{0}
 		{
 			WorkerThread::Manager = this;
 
 			for (size_t I = 0; I < ThreadCount; ++I)
-				Threads.AddThread(memory);
+				Threads.push_back(memory->allocate<Deque_MT<WorkerThread>::Element_TY>(memory));
 		}
 
 
@@ -312,8 +190,7 @@ namespace FlexKit
 		{
 			WaitForWorkersToComplete();
 
-			for (auto& I : Threads)
-				I.Shutdown();
+			SendShutdown();
 
 			WaitForShutdown();
 		}
@@ -329,12 +206,20 @@ namespace FlexKit
 		}
 		*/
 
-		void AddWork(iWork* Work)
+
+		void SendShutdown()
+		{
+			for (auto& I : Threads)
+				I.Shutdown();
+		}
+
+
+		void AddWork(WorkItem* Work)
 		{
 			bool success = false;
 			do {
 				success = Threads.begin()->AddItem(Work);
-				Threads.Rotate();
+				RotateThreads();
 			} while (!success);
 		}
 
@@ -348,14 +233,27 @@ namespace FlexKit
 		}
 
 
-		void WaitForShutdown()
+		void RotateThreads()
+		{
+			Deque_MT<WorkerThread>::Element_TY* Ptr = nullptr;
+
+			auto success = Threads.try_pop_front(&Ptr);
+
+			if (success)
+				Threads.push_back(*Ptr);
+		}
+
+
+		void WaitForShutdown() // TODO: this does not work!
 		{
 			bool ThreadRunning = false;
 			do
 			{
 				ThreadRunning = false;
-				for (auto& I : Threads)
+				for (auto& I : Threads) {
 					ThreadRunning |= I.IsRunning();
+					I.Shutdown();
+				}
 			} while (ThreadRunning);
 		}
 
@@ -374,7 +272,8 @@ namespace FlexKit
 		}
 
 	private:
-		WorkerList					Threads;
+
+		Deque_MT<WorkerThread>		Threads;
 
 		std::condition_variable		CV;
 		std::atomic_int				WorkingThreadCount;
