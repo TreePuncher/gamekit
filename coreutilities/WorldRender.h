@@ -56,15 +56,15 @@ namespace FlexKit
 		WorldRender(iAllocator* Memory, RenderSystem* RS_IN) :
 			RS(RS_IN),
 			ConstantBuffer	(RS->CreateConstantBuffer(64 * MEGABYTE, false)),
-			OcclusionBuffer	(RS->CreateDepthBuffer({1024, 1024}, true)),
-			OcclusionCulling(false),
-			OcclusionQueries(RS->CreateOcclusionBuffer(4096))
+			//OcclusionBuffer	(RS->CreateDepthBuffer({1024, 1024}, true)),
+			OcclusionCulling(false)
+			//OcclusionQueries(RS->CreateOcclusionBuffer(4096))
 		{
-			RS->RegisterPSOLoader(FORWARDDRAW,			CreateForwardDrawPSO);
-			RS->RegisterPSOLoader(FORWARDDRAWINSTANCED,	CreateForwardDrawInstancedPSO);
-			RS->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	CreateOcclusionDrawPSO);
-			RS->QueuePSOLoad(FORWARDDRAW);
-			RS->QueuePSOLoad(FORWARDDRAWINSTANCED);
+			RS_IN->RegisterPSOLoader(FORWARDDRAW,			CreateForwardDrawPSO);
+			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	CreateForwardDrawInstancedPSO);
+			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	CreateOcclusionDrawPSO);
+			RS_IN->QueuePSOLoad(FORWARDDRAW);
+			RS_IN->QueuePSOLoad(FORWARDDRAWINSTANCED);
 		}
 
 		~WorldRender()

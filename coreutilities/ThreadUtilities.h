@@ -81,7 +81,6 @@ namespace FlexKit
 		operator iWork* () { return this; }
 
 	private:
-
 		Vector<OnCompletionEvent> Watchers;
 	};
 

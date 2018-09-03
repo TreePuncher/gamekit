@@ -304,7 +304,7 @@ namespace UnitTests
 				Logger::WriteMessage(Temp);
 			}
 
-			//Logger::WriteMessage("Test Complete");
+			Logger::WriteMessage("Test Successful");
 			Assert::IsTrue(Queue.empty(), L"Queue is not empty");
 		}
 

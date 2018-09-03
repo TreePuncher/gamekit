@@ -733,6 +733,7 @@ namespace FlexKit
 	struct Graphics_Desc
 	{
 		iAllocator*		Memory;
+		iAllocator*		TempMemory;
 		bool			DebugRenderMode;
 		bool			Fullscreen;
 		uint32_t		SlaveThreadCount;
@@ -2116,7 +2117,7 @@ namespace FlexKit
 	FLEXKITAPI class RenderSystem
 	{
 	public:
-		RenderSystem(iAllocator* Memory_IN) :
+		RenderSystem(iAllocator* Memory_IN, ThreadManager* Threads) :
 			Memory			(Memory_IN),
 			Library			(Memory_IN),
 			Queries			(Memory_IN, this),
@@ -2124,7 +2125,7 @@ namespace FlexKit
 			Textures		(Memory_IN),
 			VertexBuffers	(Memory_IN),
 			ConstantBuffers	(Memory_IN, this),
-			PipelineStates	(Memory_IN, this)
+			PipelineStates	(Memory_IN, this, Threads)
 		{
 			pDevice                = nullptr;
 			pDebug                 = nullptr;
@@ -2331,7 +2332,7 @@ namespace FlexKit
 				RS4CBVs4SRVs		(Memory),
 				RS2UAVs4SRVs4CBs	(Memory) {}
 
-			void Initiate(RenderSystem* RS);
+			void Initiate(RenderSystem* RS, iAllocator* TempMemory);
 
 			RootSignature RS2UAVs4SRVs4CBs; // 4CBVs On all Stages, 4 SRV On all Stages
 			RootSignature RS4CBVs4SRVs;		// 4CBVs On all Stages, 4 SRV On all Stages

@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
+#include "..\coreutilities\ThreadUtilities.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -45,6 +46,7 @@ struct ID3D12PipelineState;
 namespace FlexKit
 {
 	class RenderSystem;
+	class PipelineStateTable;
 
 
 	enum EPIPELINESTATES
@@ -108,27 +110,69 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	class PipelineStateObject
+	{
+	public:
+		ID3D12PipelineState* PSO	= nullptr;
+		enum class States
+		{
+			LoadInProgress,
+			LoadQueued,
+			Loaded,
+			Failed,
+			Unloaded
+		}CurretState = States::Unloaded;
+
+		std::condition_variable		CV;
+	};
+
+
+	/************************************************************************************************/
+
+
+	class LoadTask : public iWork
+	{
+	public:
+		LoadTask(iAllocator* Memory, PipelineStateTable* IN_PST, EPIPELINESTATES IN_State) :
+			iWork	{ Memory	},
+			PST		{ IN_PST	},
+			State	{ IN_State	}
+		{}
+
+		void Run() override;
+
+		PipelineStateTable*			PST;
+		EPIPELINESTATES				State;
+	};
+
+
+	/************************************************************************************************/
+
+
 	class FLEXKITAPI PipelineStateTable
 	{
 	public:
-		PipelineStateTable(iAllocator* Memory, RenderSystem* RS);
+		PipelineStateTable(iAllocator* Memory, RenderSystem* RS, ThreadManager* Threads);
 		
 		void ReleasePSOs();
 		void LoadPSOs();
 
+		void					QueuePSOLoad	( EPIPELINESTATES State, iAllocator* Allocator );
 		bool					ReloadLoadPSO	( EPIPELINESTATES State );
-		void					QueuePSOLoad	( EPIPELINESTATES State );
 		ID3D12PipelineState*	GetPSO			( EPIPELINESTATES State );
 
 		void RegisterPSOLoader( EPIPELINESTATES State, LOADSTATE_FN Loader );
 
 	private:
-		static_vector<ID3D12PipelineState*, EPSO_COUNT>		States;
-		static_vector<LOADSTATE_FN*, EPSO_COUNT>			StateLoaders;
-		SL_list<LoadState>									LoadsInProgress;
+		static_vector<PipelineStateObject,	EPSO_COUNT>		States;
+		static_vector<LOADSTATE_FN*,		EPSO_COUNT>		StateLoaders;
+
+		ThreadManager*										WorkQueue;
 		ID3D12Device*										Device;
 		RenderSystem*										RS;
 		iAllocator*											Memory;
+
+		friend LoadTask;
 	};
 
 

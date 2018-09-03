@@ -28,11 +28,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 
-	PipelineStateTable::PipelineStateTable(iAllocator* Memory_IN, RenderSystem* RS_IN) :
-		LoadsInProgress(Memory_IN),
-		Device(RS_IN->pDevice),
-		Memory(Memory_IN),
-		RS(RS_IN)
+	PipelineStateTable::PipelineStateTable(iAllocator* Memory_IN, RenderSystem* RS_IN, ThreadManager* IN_Threads) :
+		Device		{ RS_IN->pDevice },
+		Memory		{ Memory_IN		 },
+		RS			{ RS_IN			 },
+		WorkQueue	{ IN_Threads	 }
 	{
 		States.SetFull();
 	}
@@ -45,10 +45,8 @@ namespace FlexKit
 	{
 		FK_LOG_INFO("Releasing Pipeline State Objects");
 
-		for (auto s : States)
-			SAFERELEASE(s);
-
-		LoadsInProgress.Release();
+		for (auto& s : States)
+			SAFERELEASE(s.PSO);
 	}
 
 
@@ -66,8 +64,9 @@ namespace FlexKit
 
 	void PipelineStateTable::LoadPSOs()
 	{
-		while (LoadsInProgress.size()) {
-
+#if 0
+		while (LoadsInProgress.size()) 
+		{
 #if 1
 			std::chrono::system_clock Clock;
 			auto Before = Clock.now();
@@ -95,14 +94,20 @@ namespace FlexKit
 			if(LoadsInProgress.size())
 				LoadsInProgress.pop_front();
 		}
+#endif
+
+
+		int x = 0;
+
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PipelineStateTable::QueuePSOLoad(EPIPELINESTATES State)
+	void PipelineStateTable::QueuePSOLoad(EPIPELINESTATES State, iAllocator* Allocator)
 	{
+#if 0
 		if (!LoadsInProgress.size()) {
 
 			auto Load = LoadsInProgress.push_back({ State });
@@ -118,6 +123,14 @@ namespace FlexKit
 		{
 			LoadsInProgress.push_back({ State });
 		}
+#endif
+		if (States[(int)State].CurretState == PipelineStateObject::States::Unloaded)
+		{
+			States[(int)State].CurretState = PipelineStateObject::States::LoadQueued;
+			LoadTask*	NewTask = &Allocator->allocate_aligned<LoadTask>(Allocator, this, State);
+
+			WorkQueue->AddWork(NewTask, Allocator);
+		}
 	}
 
 
@@ -126,9 +139,9 @@ namespace FlexKit
 	
 	ID3D12PipelineState*	PipelineStateTable::GetPSO( EPIPELINESTATES State )
 	{
-		ID3D12PipelineState*	PSO_Out = nullptr;
-		PSO_Out = States[(int)State];
+		auto PSO_State = States[(int)State].CurretState;
 
+#if 0
 		while (PSO_Out == nullptr)
 		{
 			if (LoadsInProgress.size())
@@ -153,8 +166,40 @@ namespace FlexKit
 			if (!PSO_Out)
 				QueuePSOLoad(State);
 		}
+#endif
 
-		return PSO_Out;
+		while (true)
+		{
+			switch (PSO_State)
+			{
+			case PipelineStateObject::States::LoadInProgress: {
+				std::mutex			M;
+				std::unique_lock	UL(M);
+
+				States[(int)State].CV.wait(UL, [&]{
+					return
+						!(States[(int)State].CurretState == PipelineStateObject::States::LoadInProgress); });
+			}	break;
+
+			case PipelineStateObject::States::Loaded:
+				return States[(int)State].PSO;
+				break;
+			case PipelineStateObject::States::Failed:
+			{
+				// TODO: Handle Load Failures
+			}	return nullptr;
+			case PipelineStateObject::States::Unloaded:
+			{
+				// TODO: Load Here
+				return nullptr;
+			}
+
+			default: 
+				return nullptr;
+			}
+		}
+
+		return nullptr;
 	}
 
 
@@ -177,4 +222,38 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-}
+
+
+	void LoadTask::Run()
+	{
+		std::chrono::system_clock Clock;
+		auto Before = Clock.now();
+
+		FINALLY
+			auto After = Clock.now();
+			auto Duration = chrono::duration_cast<chrono::milliseconds>(After - Before);
+		FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
+		FINALLYOVER
+
+		PST->States[State].CurretState = PipelineStateObject::States::LoadInProgress;
+
+		auto Loader = PST->StateLoaders[State];
+		auto res	= Loader(PST->RS);
+
+
+		if (!res) {
+			PST->States[State].CurretState = PipelineStateObject::States::Failed;
+			FK_LOG_ERROR("PSO Load FAILED!");
+			return;
+		}
+
+
+		FK_LOG_INFO("Finished PSO Load");
+
+		PST->States[State].CurretState = PipelineStateObject::States::Loaded;
+		PST->States[State].CV.notify_all();
+	}
+
+
+}	/************************************************************************************************/
+

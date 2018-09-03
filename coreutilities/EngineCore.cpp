@@ -89,6 +89,7 @@ namespace FlexKit
 		bool Sucess						= false;
 		FlexKit::Graphics_Desc	desc	= { 0 };
 		desc.Memory						= GetBlockMemory();
+		desc.TempMemory					= GetTempMemory();
 		uint32_t width					= WH[0];
 		uint32_t height					= WH[1];
 		bool InvertDepth				= true;

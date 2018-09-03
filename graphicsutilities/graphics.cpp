@@ -803,8 +803,8 @@ namespace FlexKit
 						RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 						break;
 					case DescHeapEntryType::HeapError:
-						FK_ASSERT(false);
 					default:
+						FK_ASSERT(false);
 						break;
 					}
 
@@ -1557,7 +1557,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::RootSigLibrary::Initiate(RenderSystem* RS)
+	void RenderSystem::RootSigLibrary::Initiate(RenderSystem* RS, iAllocator* TempMemory)
 	{
 		ID3D12Device* Device = RS->pDevice;
 
@@ -1598,7 +1598,7 @@ namespace FlexKit
 			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs4SRVs.Build(RS, RS->Memory);
+			RS->Library.RS4CBVs4SRVs.Build(RS, TempMemory);
 			SETDEBUGNAME(RS->Library.RS4CBVs4SRVs, "RS4CBVs4SRVs");
 		}
 		{
@@ -1611,7 +1611,7 @@ namespace FlexKit
 			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(2, 2, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs_SO.SetParameterAsDescriptorTable	(3, DescriptorHeap, -1);
 			RS->Library.RS4CBVs_SO.SetParameterAsUAV				(4, 0, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs_SO.Build(RS, RS->Memory);
+			RS->Library.RS4CBVs_SO.Build(RS, TempMemory);
 
 			SETDEBUGNAME(RS->Library.RS4CBVs_SO, "RS4CBVs4SRVs");
 		}
@@ -1625,7 +1625,7 @@ namespace FlexKit
 
 			RS->Library.RS2UAVs4SRVs4CBs.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
 			RS->Library.RS2UAVs4SRVs4CBs.SetParameterAsCBV(1, 0, 3, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-			RS->Library.RS2UAVs4SRVs4CBs.Build(RS, RS->Memory);
+			RS->Library.RS2UAVs4SRVs4CBs.Build(RS, TempMemory);
 
 			SETDEBUGNAME(RS->Library.RS2UAVs4SRVs4CBs, "RS2UAVs4SRVs4CBs");
 		}
@@ -1639,7 +1639,7 @@ namespace FlexKit
 			FK_ASSERT(DescriptorHeap.Check());
 
 			RS->Library.ShadingRTSig.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
-			RS->Library.ShadingRTSig.Build(RS, RS->Memory);
+			RS->Library.ShadingRTSig.Build(RS, TempMemory);
 
 			SETDEBUGNAME(RS->Library.ShadingRTSig, "ShadingRTSig");
 		}
@@ -1655,7 +1655,7 @@ namespace FlexKit
 			RS->Library.RSDefault.SetParameterAsCBV				(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
 			RS->Library.RSDefault.SetParameterAsSRV				(3, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_VS);
 			RS->Library.RSDefault.SetParameterAsDescriptorTable	(4, DescriptorHeap, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
-			RS->Library.RSDefault.Build(RS, RS->Memory);
+			RS->Library.RSDefault.Build(RS, TempMemory);
 
 			SETDEBUGNAME(RS->Library.RSDefault, "RSDefault");
 		}
@@ -2069,6 +2069,7 @@ namespace FlexKit
 			DescriptorDSVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 			DescriptorCBVSRVUAVSize = Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		}
+
 		{
 			// Initiate null resources
 			ConstantBuffer_desc NullBuffer_Desc;
@@ -2127,7 +2128,7 @@ namespace FlexKit
 		InitiateComplete = true;
 		InitiateCopyEngine(this);
 		
-		Library.Initiate(this);
+		Library.Initiate(this, in->TempMemory);
 
 		FreeList.Allocator = in->Memory;
 
@@ -2237,7 +2238,7 @@ namespace FlexKit
 	{
 		FK_LOG_INFO("Reloading PSO!");
 
-		PipelineStates.QueuePSOLoad(State);
+		PipelineStates.QueuePSOLoad(State, Memory);
 	}
 
 

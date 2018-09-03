@@ -48,8 +48,8 @@ public:
 			ConstantBuffer	{IN_Framework->Core->RenderSystem.CreateConstantBuffer(	8096 * 2000, false)},
 
 			Render	{
-				Framework->Core->GetTempMemory(),
-				Framework->Core->RenderSystem}
+				IN_Framework->Core->GetTempMemory(),
+				IN_Framework->Core->RenderSystem}
 	{
 		InitiateCameraTable(Framework->Core->GetBlockMemory());
 		InitiateOrbitCameras(Framework->Core->GetBlockMemory());
