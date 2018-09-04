@@ -46,7 +46,7 @@ typedef uint32_t SoundHandle;
 class FMOD_SoundSystem
 {
 public:
-	FMOD_SoundSystem(ThreadManager& IN_Threads) : 
+	FMOD_SoundSystem(ThreadManager& IN_Threads, iAllocator* Memory) : 
 		Threads	{	IN_Threads	}
 	{
 		result			= FMOD::System_Create(&system);
@@ -54,12 +54,12 @@ public:
 
 		auto& Work = CreateLambdaWork_New(
 			[this]() {
-			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
-			//if(sound1)
-			//	system->playSound(sound1, nullptr, false, &channel);
+			auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+			if(sound1)
+				system->playSound(sound1, nullptr, false, &channel);
 		});
 
-		Threads.AddWork(Work);
+		Threads.AddWork(Work, Memory);
 		
 	}
 

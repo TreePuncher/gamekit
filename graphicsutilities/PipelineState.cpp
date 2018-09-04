@@ -186,12 +186,32 @@ namespace FlexKit
 				break;
 			case PipelineStateObject::States::Failed:
 			{
+				FK_LOG_ERROR("TRYING TO LOAD A UNLOADABLE PSO!");
 				// TODO: Handle Load Failures
 			}	return nullptr;
 			case PipelineStateObject::States::Unloaded:
 			{
 				// TODO: Load Here
-				return nullptr;
+				States[State].CurretState = PipelineStateObject::States::LoadInProgress;
+
+				auto Loader = StateLoaders[State];
+				auto res	= Loader(RS);
+
+
+				if (!res) {
+					States[State].CurretState = PipelineStateObject::States::Failed;
+					FK_LOG_ERROR("PSO Load FAILED!");
+					return nullptr;
+				}
+
+
+				FK_LOG_INFO("Finished PSO Load");
+
+				States[State].CurretState	= PipelineStateObject::States::Loaded;
+				States[State].PSO			= res;
+				States[State].CV.notify_all();
+
+				return res;
 			}
 
 			default: 
@@ -247,10 +267,10 @@ namespace FlexKit
 			return;
 		}
 
-
 		FK_LOG_INFO("Finished PSO Load");
 
-		PST->States[State].CurretState = PipelineStateObject::States::Loaded;
+		PST->States[State].PSO			= res;
+		PST->States[State].CurretState	= PipelineStateObject::States::Loaded;
 		PST->States[State].CV.notify_all();
 	}
 

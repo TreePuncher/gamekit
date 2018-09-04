@@ -354,7 +354,7 @@ PlayState::PlayState(
 	FrameworkState		{ IN_Framework						},
 	FrameEvents			{ Framework->Core->GetBlockMemory() },
 	FrameID				{ 0 },
-	Sound				{ Framework->Core->Threads	},
+	Sound				{ Framework->Core->Threads, Framework->Core->GetBlockMemory() },
 	Render				{ &Base->Render				},
 	LocalGame			{ Framework->Core->GetBlockMemory() },
 	Player1_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
