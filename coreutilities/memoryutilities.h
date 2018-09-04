@@ -346,7 +346,7 @@ namespace FlexKit
 						BlockData::Allocated | 
 						(ALIGNED		? BlockData::Aligned : 0) | 
 						(DebugMetaData	? BlockData::DebugMD : 0);
-					return Blocks[i].data;
+					return (byte*)&Blocks[i];
 				}
 
 			FK_ASSERT(0);
@@ -589,8 +589,8 @@ namespace FlexKit
 		{
 			byte* ret = nullptr;
 
-			if (size <= SmallBlockAllocator::MaxAllocationSize())
-				ret = SmallBlockAlloc.malloc(size, MarkAligned);
+			//if (size <= SmallBlockAllocator::MaxAllocationSize())
+			//	ret = SmallBlockAlloc.malloc(size, MarkAligned);
 			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
 				ret = MediumBlockAlloc.malloc(size, MarkAligned, MarkDebugMetaData);
 			if (!ret)
@@ -610,8 +610,8 @@ namespace FlexKit
 			byte* ret = nullptr;
 			const size_t MetaDataSectionSize = Aligned ? 0x40 : 0x00;
 
-			if (size <= SmallBlockAllocator::MaxAllocationSize())
-				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
+			//if (size <= SmallBlockAllocator::MaxAllocationSize())
+			//	ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
 			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
 				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40, true);
 			if (!ret)
@@ -631,18 +631,16 @@ namespace FlexKit
 
 		char*	_aligned_malloc(size_t s, size_t alignement = 0x10, bool MarkDebugMetaData = false)
 		{
-			char* buffer_ptr = (char*)malloc(s + alignement, true, MarkDebugMetaData);
-			size_t alignoffset = (size_t)buffer_ptr % alignement;
+			const char* NewBuffer		= (char*)malloc(s + alignement, true, MarkDebugMetaData);
+			const size_t alignoffset	= (size_t)(NewBuffer) % alignement;
+			const size_t Offset			= alignoffset  ? (alignement - alignoffset) : 0;
 
-			if(alignoffset)
-				Buffer_ptr += alignement - alignoffset;
-
-			return Buffer_ptr;
+			return (char*)(NewBuffer + Offset);
 		}
-
+		
 		void free(void* _ptr)
 		{
-			if (InSmallRange(reinterpret_cast<byte*>(_ptr)))
+			if (InSmallRange(reinterpret_cast<byte*>(_ptr)) && false)
 				SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
 			else if (InMediumRange(reinterpret_cast<byte*>(_ptr)))
 				MediumBlockAlloc.free(reinterpret_cast<void*>(_ptr));
@@ -655,7 +653,7 @@ namespace FlexKit
 		{
 			_ptr->~TY();
 
-			if (InSmallRange((byte*)_ptr))
+			if (InSmallRange((byte*)_ptr) && false)
 				SmallBlockAlloc.free((void*)_ptr);
 			else if (InMediumRange((byte*)_ptr))
 				MediumBlockAlloc.free((void*)_ptr);
@@ -665,7 +663,7 @@ namespace FlexKit
 
 		void _aligned_free(void* _ptr)
 		{
-			if (InSmallRange((byte*)_ptr))
+			if (InSmallRange((byte*)_ptr) && false)
 				SmallBlockAlloc._aligned_free(_ptr);
 			else if (InMediumRange(static_cast<byte*>(_ptr)))
 				MediumBlockAlloc._aligned_free(_ptr);
@@ -728,7 +726,7 @@ namespace FlexKit
 			byte* bottom = (byte*)(SmallBlockAlloc.Blocks);
 			byte* top    = ((byte*)SmallBlockAlloc.Blocks) + Small;
 
-			return(bottom <= a_ptr && a_ptr < top);
+			return (bottom <= a_ptr) && (a_ptr < top) && false;
 		}
 
 		bool InMediumRange(byte* a_ptr)
