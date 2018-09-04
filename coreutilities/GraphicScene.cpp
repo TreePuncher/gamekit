@@ -346,7 +346,7 @@ namespace FlexKit
 		auto& Drawble       = GetDrawable(EHandle);
 		SetVisability(EHandle, true);
 
-		Drawble.MeshHandle	= Geo;
+		Drawble.MeshHandle	= (TriMeshHandle)Geo;
 		Drawble.Dirty		= true;
 		Drawble.Textured	= false;
 		Drawble.Textures	= nullptr;

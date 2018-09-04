@@ -291,6 +291,10 @@ public:
 		Node		 = rhs.Node;
 		Entity		 = rhs.Entity;
 		ParentScene	 = rhs.ParentScene;
+		
+		rhs.Entity		= InvalidHandle_t;
+		rhs.Node		= InvalidHandle_t;
+		rhs.ParentScene = nullptr;
 	}
 
 
@@ -299,6 +303,9 @@ public:
 		Yaw(dt * pi);
 	}
 };
+
+
+/************************************************************************************************/
 
 
 PlayerPuppet CreatePlayerPuppet(GraphicScene* ParentScene)

@@ -35,6 +35,10 @@ namespace FlexKit
 {
 	typedef uint32_t index_t;
 
+	struct _InvalidHandle_t
+	{
+	}InvalidHandle_t;
+
 	template< typename int HandleSize = 32, typename int ID = -1>
 	class Handle_t
 	{
@@ -73,6 +77,12 @@ namespace FlexKit
 			INDEX = in;
 		}
 
+		explicit Handle_t(_InvalidHandle_t)
+		{
+			INDEX = 0XFFFFFFFF;
+		}
+
+
 		operator uint32_t&() { return INDEX; }
 		operator uint32_t() const { return this->to_uint(); }
 		bool				operator ==	(const Handle_t<HandleSize> in) const
@@ -95,6 +105,13 @@ namespace FlexKit
 		const uint32_t	to_uint() const
 		{
 			return INDEX;
+		}
+
+
+		Handle_t<HandleSize, ID> operator = (_InvalidHandle_t)
+		{
+			INDEX = 0XFFFFFFFF;
+			return {};
 		}
 
 		operator uint32_t(){ return INDEX; }
@@ -121,6 +138,9 @@ namespace FlexKit
 	{
 		return lhs.to_uint() < rhs.to_uint();
 	}
+
+
+
 
 	/************************************************************************************************/
 	typedef Handle_t<32>					Handle;
