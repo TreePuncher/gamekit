@@ -38,12 +38,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool WorkerThread::AddItem(WorkItem* Work)
+	bool WorkerThread::AddItem(iWork* Work)
 	{
 		if (!Running || Quit)
 			return false;
 
-		WorkList.push_back(*Work);
+		WorkList.push_back(Work);
 		CV.notify_all();
 
 		return true;
@@ -81,13 +81,13 @@ namespace FlexKit
 
 			while (!WorkList.empty())
 			{
-				WorkItem* work;
+				iWork* work;
 				
-				if (WorkList.try_pop_front(&work)) {
+				if (WorkList.try_pop_front(work)) {
 					Manager->IncrementActiveWorkerCount();
 
-					(*work)->Run();
-					(*work)->NotifyWatchers();
+					work->Run();
+					work->NotifyWatchers();
 					work->Release();
 
 					Manager->DecrementActiveWorkerCount();
@@ -97,13 +97,13 @@ namespace FlexKit
 			const auto Try_Count = Manager->GetThreadCount();
 			for(auto I = 0; I < Try_Count; ++I)
 			{
-				WorkItem* work = Manager->StealSomeWork();
+				iWork* work = Manager->StealSomeWork();
 
 				if (work) {
 					Manager->IncrementActiveWorkerCount();
 
-					(*work)->Run();
-					(*work)->NotifyWatchers();
+					work->Run();
+					work->NotifyWatchers();
 					work->Release();
 
 					Manager->DecrementActiveWorkerCount();
@@ -136,11 +136,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	WorkItem* WorkerThread::Steal()
+	iWork* WorkerThread::Steal()
 	{
-		WorkItem* work = nullptr;
+		iWork* work = nullptr;
 
-		return WorkList.try_pop_front(&work) ? work : nullptr;
+		return WorkList.try_pop_front(work) ? work : nullptr;
 	}
 
 	/************************************************************************************************/

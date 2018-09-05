@@ -133,16 +133,22 @@ namespace FlexKit
 	class LoadTask : public iWork
 	{
 	public:
-		LoadTask(iAllocator* Memory, PipelineStateTable* IN_PST, EPIPELINESTATES IN_State) :
-			iWork	{ Memory	},
-			PST		{ IN_PST	},
-			State	{ IN_State	}
-		{}
+		LoadTask(iAllocator* IN_Allocator, PipelineStateTable* IN_PST, EPIPELINESTATES IN_State) :
+			Allocator	{ IN_Allocator	},
+			iWork		{ IN_Allocator	},
+			PST			{ IN_PST		},
+			State		{ IN_State		}{}
 
 		void Run() override;
 
+		void Release() override
+		{
+			Allocator->free(this);
+		}
+
 		PipelineStateTable*			PST;
 		EPIPELINESTATES				State;
+		iAllocator*					Allocator;
 	};
 
 

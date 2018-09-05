@@ -36,6 +36,7 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
+
 	class iAllocator
 	{
 	public:
@@ -75,6 +76,7 @@ namespace FlexKit
 		iAllocator() noexcept {}
 	};
 
+
 	class _SystemAllocator : public iAllocator
 	{
 	public:
@@ -108,6 +110,7 @@ namespace FlexKit
 
 		operator iAllocator* (){return this;}
 	};
+
 
 	static _SystemAllocator SystemAllocator;
 
@@ -200,6 +203,7 @@ namespace FlexKit
 
 		std::mutex	critsection;
 	};
+
 
 	/************************************************************************************************/
 	// 64 Byte Allocator
@@ -312,6 +316,7 @@ namespace FlexKit
 		size_t Size;
 	};
 
+
 	/************************************************************************************************/
 	// 2048 Byte Allocator
 
@@ -402,6 +407,7 @@ namespace FlexKit
 		size_t Size;
 	};
 
+
 	/************************************************************************************************/
 	// 1 MB MultiBlock Allocator
 
@@ -480,6 +486,7 @@ namespace FlexKit
 			return nullptr;
 		}
 
+
 		void free(void* _ptr)
 		{
 			size_t temp  = (size_t)_ptr;
@@ -494,6 +501,7 @@ namespace FlexKit
 			Collapse(index);
 		}
 
+
 		void _aligned_free(void* _ptr)
 		{
 			size_t temp  = (size_t)_ptr;
@@ -503,6 +511,7 @@ namespace FlexKit
 			BlockTable[index].state = BlockData::Free;
 			Collapse(index);
 		}
+
 
 		void Collapse(size_t block = 0)
 		{
@@ -542,6 +551,7 @@ namespace FlexKit
 		size_t Size;
 	};
 
+
 	struct BlockAllocator_desc
 	{
 		byte* _ptr;
@@ -551,6 +561,7 @@ namespace FlexKit
 		size_t MediumBlock;
 		size_t LargeBlock;
 	};
+
 
 	struct BlockAllocator
 	{
@@ -589,8 +600,8 @@ namespace FlexKit
 		{
 			byte* ret = nullptr;
 
-			//if (size <= SmallBlockAllocator::MaxAllocationSize())
-			//	ret = SmallBlockAlloc.malloc(size, MarkAligned);
+			if (size <= SmallBlockAllocator::MaxAllocationSize())
+				ret = SmallBlockAlloc.malloc(size, MarkAligned);
 			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
 				ret = MediumBlockAlloc.malloc(size, MarkAligned, MarkDebugMetaData);
 			if (!ret)
@@ -610,8 +621,8 @@ namespace FlexKit
 			byte* ret = nullptr;
 			const size_t MetaDataSectionSize = Aligned ? 0x40 : 0x00;
 
-			//if (size <= SmallBlockAllocator::MaxAllocationSize())
-			//	ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
+			if (size <= SmallBlockAllocator::MaxAllocationSize())
+				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40);
 			if (size <=  MediumBlockAllocator::MaxBlockSize() && !ret)
 				ret = (byte*)_aligned_malloc(size + MetaDataSectionSize, 0x40, true);
 			if (!ret)

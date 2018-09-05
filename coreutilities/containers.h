@@ -1032,13 +1032,58 @@ namespace FlexKit
 	{
 		int x;
 	};
+
+
+	/************************************************************************************************/
+
+
+	class DequeNode_MT
+	{
+	public:
+		DequeNode_MT(const DequeNode_MT& E)				= delete;
+		DequeNode_MT& operator = (const DequeNode_MT&)	= delete; // No copying allowed, this class does no memory management
+
+		bool operator == (const DequeNode_MT& rhs) { return this == &rhs; }
+
+		DequeNode_MT() :
+			PrevNext{ {nullptr, nullptr} }{}
+
+		virtual ~DequeNode_MT() {}
+
+
+		DequeNode_MT* GetNext()
+		{
+			return PrevNext.load().Next;
+		}
+
+		DequeNode_MT* GetPrev()
+		{
+			return PrevNext.load().Prev;
+		}
+
+		void SetLinks(DequeNode_MT* NewPrev, DequeNode_MT* NewNext)
+		{
+			PrevNext.store({ NewNext, NewPrev });
+		}
+
+		struct NodeLinkage
+		{
+			DequeNode_MT* Next = nullptr;
+			DequeNode_MT* Prev = nullptr;
+		};
+
+		std::atomic<NodeLinkage> PrevNext;
+	};
+
 	
 	// Intrusive, Thread-Safe, Double Linked List
+	// This Class assumes nodes have inherited the from DequeNode_MT 
 	// Destructor does not free elements!!
 	template<typename TY> 
 	class Deque_MT
 	{
 	public:
+
 		/************************************************************************************************/
 		
 		Deque_MT()	= default;
@@ -1051,59 +1096,13 @@ namespace FlexKit
 		Deque_MT& operator =(Deque_MT&&)		= delete;
 
 
-		template<typename TY>
-		class Element_t : public TY
-		{
-		public:
-			typedef Element_t<TY>	ThisType;
-
-			Element_t(const Element_t& E)			= delete;
-			ThisType& operator = (const ThisType& ) = delete; // No copying allowed, this class does no memory management
-			
-			bool operator == (const ThisType& rhs)	{ return this == &rhs; }
-
-			template<typename ... ARGS_TY>
-			Element_t(ARGS_TY&& ... args) :
-				TY				{ std::forward<ARGS_TY>(args)... },
-				PrevNext		{ {nullptr, nullptr} }{}
-
-			~Element_t() = default;
-
-			ThisType* GetNext()
-			{
-				return PrevNext.load().Next;
-			}
-
-			ThisType* GetPrev()
-			{
-				return PrevNext.load().Prev;
-			}
-
-			void SetLinks(ThisType* NewPrev, ThisType* NewNext)
-			{
-				PrevNext.store({NewNext, NewPrev});
-			}
-
-			struct NodeLinkage
-			{
-				ThisType* Next = nullptr;
-				ThisType* Prev = nullptr;
-			};
-
-			std::atomic<NodeLinkage> PrevNext;
-		};
-
-
 		/************************************************************************************************/
-
-
-		using Element_TY = Element_t<TY>;
 
 
 		class Iterator
 		{
 		public:
-			Iterator(Element_TY* _ptr) : I{ _ptr } {}
+			Iterator(DequeNode_MT* _ptr) : I{ _ptr } {}
 
 			Iterator operator ++ (int)
 			{ 
@@ -1128,8 +1127,7 @@ namespace FlexKit
 				I = Prev ? Prev : nullptr; 
 			}
 
-
-			Element_TY* GetPtr()
+			DequeNode_MT* GetPtr()
 			{
 				return I;
 			}
@@ -1142,7 +1140,7 @@ namespace FlexKit
 			const TY* operator& () const	{ return static_cast<TY*>(I); }
 		private:
 
-			Element_TY* I;
+			DequeNode_MT* I;
 		};
 
 
@@ -1155,25 +1153,29 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
+		void push_back(TY& E)
+		{
+			push_back(&E);
+		}
 
- 		void push_back(Element_TY& E)
+ 		void push_back(TY* E)
 		{
 			do
 			{
 				auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
-				E.SetLinks(CurrentFirstLast.Last, nullptr);
+				E->SetLinks(CurrentFirstLast.Last, nullptr);
 
 				auto NewLinkage =
 					(!CurrentFirstLast.First && !CurrentFirstLast.Last) ?
-						NodeLinkage_BEGINEND{ &E, &E } :
-						NodeLinkage_BEGINEND{ CurrentFirstLast.First, &E };
+						NodeLinkage_BEGINEND{ E, E } :
+						NodeLinkage_BEGINEND{ CurrentFirstLast.First, E };
 
 				if (CurrentFirstLast.First && CurrentFirstLast.Last)
 				{
 					auto Temp = CurrentFirstLast.Last ? CurrentFirstLast.Last->GetPrev() : nullptr;
 					if (BeginEnd.compare_exchange_weak(CurrentFirstLast, NewLinkage, std::memory_order_acquire))
 					{
-						CurrentFirstLast.Last->SetLinks(Temp, &E);
+						CurrentFirstLast.Last->SetLinks(Temp, E);
 						return;
 					}
 				}
@@ -1190,23 +1192,29 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void push_front(Element_TY& E)
+		void push_front(TY& E)
+		{
+			push_front(&E);
+		}
+
+
+		void push_front(TY* E)
 		{
 			do
 			{
 				auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
-				E.SetLinks(nullptr, CurrentFirstLast.First);
+				E->SetLinks(nullptr, CurrentFirstLast.First);
 
 				auto NewLinkage = (!CurrentFirstLast.First && !CurrentFirstLast.Last) ?
-					NodeLinkage_BEGINEND{ &E, &E } :
-					NodeLinkage_BEGINEND{ &E, CurrentFirstLast.Last };
+					NodeLinkage_BEGINEND{ E, E } :
+					NodeLinkage_BEGINEND{ E, CurrentFirstLast.Last };
 
 				if (CurrentFirstLast.First && CurrentFirstLast.Last)
 				{
 					auto Temp = CurrentFirstLast.First ? CurrentFirstLast.First->GetNext() : nullptr;
 					if (BeginEnd.compare_exchange_weak(CurrentFirstLast, NewLinkage, std::memory_order_acquire))
 					{
-						CurrentFirstLast.First->SetLinks(&E, Temp);
+						CurrentFirstLast.First->SetLinks(E, Temp);
 						return;
 					}
 				}
@@ -1242,7 +1250,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		bool try_pop_front(Element_TY** Out)
+		bool try_pop_front(TY*& Out)
 		{
 			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
 			
@@ -1265,7 +1273,7 @@ namespace FlexKit
 			else
 				return false;
 
-			*Out = CurrentFirstLast.First;
+			Out = static_cast<TY*>(CurrentFirstLast.First);
 
 			return true;
 		}
@@ -1274,7 +1282,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		bool try_pop_back(Element_TY** Out)
+		bool try_pop_back(TY*& Out)
 		{
 			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
 			
@@ -1297,7 +1305,7 @@ namespace FlexKit
 			else
 				return false;
 
-			*Out = CurrentFirstLast.Last;
+			Out = static_cast<TY*>(CurrentFirstLast.Last);
 
 			return true;
 		}
@@ -1316,14 +1324,14 @@ namespace FlexKit
 
 	private:
 
-		Element_TY* _GetFirst()
+		DequeNode_MT* _GetFirst()
 		{
 			auto Links = BeginEnd.load(std::memory_order_acquire);
 			return Links.First;
 		}
 
 
-		Element_TY* _GetLast()
+		DequeNode_MT* _GetLast()
 		{
 			auto Links = BeginEnd.load(std::memory_order_acquire);
 			return Links.Last;
@@ -1332,8 +1340,8 @@ namespace FlexKit
 
 		struct NodeLinkage_BEGINEND
 		{
-			Element_TY* First		= nullptr;
-			Element_TY* Last		= nullptr;
+			DequeNode_MT* First		= nullptr;
+			DequeNode_MT* Last		= nullptr;
 		};
 
 		std::atomic<NodeLinkage_BEGINEND>	BeginEnd;

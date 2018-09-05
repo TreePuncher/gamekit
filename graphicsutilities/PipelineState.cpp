@@ -127,9 +127,9 @@ namespace FlexKit
 		if (States[(int)State].CurretState == PipelineStateObject::States::Unloaded)
 		{
 			States[(int)State].CurretState = PipelineStateObject::States::LoadQueued;
-			LoadTask*	NewTask = &Allocator->allocate_aligned<LoadTask>(Allocator, this, State);
+			auto& NewTask	= Allocator->allocate_aligned<LoadTask>(Allocator, this, State);
 
-			WorkQueue->AddWork(NewTask, Allocator);
+			WorkQueue->AddWork(&NewTask, Allocator);
 		}
 	}
 

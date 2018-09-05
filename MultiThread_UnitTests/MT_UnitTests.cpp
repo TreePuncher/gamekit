@@ -36,7 +36,7 @@ namespace UnitTests
 	{
 	public:
 
-		class TestClass
+		class TestClass : public FlexKit::DequeNode_MT
 		{
 		public:
 			TestClass(int X = 0) :
@@ -75,7 +75,6 @@ namespace UnitTests
 
 		template<class TY>
 		using Deque			= FlexKit::Deque_MT<TY>;
-		using ElementType	= Deque<TestClass>::Element_TY;
 
 
 		// Tests if removing from ends will cause obvious failures
@@ -83,28 +82,28 @@ namespace UnitTests
 		{
 			try
 			{
-				ElementType N1(1);
-				ElementType N2(2);
-				ElementType N3(3);
-				ElementType N4(4);
+				TestClass N1(1);
+				TestClass N2(2);
+				TestClass N3(3);
+				TestClass N4(4);
 
 				Deque<TestClass> deque;
 
 				// Test One
 				{
-					ElementType* E;
-					auto res = deque.try_pop_front(&E);
+					TestClass* E;
+					auto res = deque.try_pop_front(E);
 					if (res != false)
 						Assert::IsTrue(false, L"Container returned a non-existing element!");
 
-					deque.push_back(N1);
-					res = deque.try_pop_front(&E);
+					deque.push_back(&N1);
+					res = deque.try_pop_front(E);
 
 					if (res != true) // Container should be return one element
 						Assert::IsTrue(false, L"Container failed to pop element!");
 
 
-					res = deque.try_pop_front(&E);
+					res = deque.try_pop_front(E);
 					if (res != false) // Container should be empty
 						Assert::IsTrue(false, L"Container failed to pop element!");
 				}
@@ -116,20 +115,20 @@ namespace UnitTests
 
 				while (!deque.empty())
 				{
-					ElementType* E_ptr = nullptr;
-					if (deque.try_pop_front(&E_ptr))
+					TestClass* E_ptr = nullptr;
+					if (deque.try_pop_front(E_ptr))
 						E_ptr->print();
 				}
 
 				deque.push_front(N1);
-				deque.push_back(N2);
+				deque.push_back	(N2);
 				deque.push_front(N3);
-				deque.push_back(N4);
+				deque.push_back	(N4);
 
 				while (!deque.empty())
 				{
-					ElementType* E_ptr = nullptr;
-					if (deque.try_pop_back(&E_ptr))
+					TestClass* E_ptr = nullptr;
+					if (deque.try_pop_back(E_ptr))
 						E_ptr->print();
 				}
 			}
@@ -146,7 +145,7 @@ namespace UnitTests
 		{
 			Deque<TestClass> Queue;
 
-			FlexKit::ThreadManager Threads{ 8 };
+			FlexKit::ThreadManager Threads{ 4 };
 
 			std::condition_variable CV;
 
@@ -190,9 +189,9 @@ namespace UnitTests
 					}
 				}
 
-				std::condition_variable&		CV;
-				Deque<TestClass>&				Queue;
-				std::vector<Deque<TestClass>::Element_TY>	Test;
+				std::condition_variable&	CV;
+				Deque<TestClass>&			Queue;
+				std::vector<TestClass>		Test;
 
 			}Thread1{ 0, CV, Queue }, Thread2{ 4000, CV, Queue }, Thread3{ 8000, CV, Queue }, Thread4{ 12000, CV, Queue };
 
@@ -222,15 +221,15 @@ namespace UnitTests
 					int n = 0;
 					while (!Queue.empty())
 					{
-						ElementType* E_ptr = nullptr;
+						TestClass* E_ptr = nullptr;
 
 						bool front_or_back = (n % 2) == 0;
 						bool success = false;
 
 						if (front_or_back)
-							success = Queue.try_pop_back(&E_ptr);
+							success = Queue.try_pop_back(E_ptr);
 						else
-							success = Queue.try_pop_front(&E_ptr);
+							success = Queue.try_pop_front(E_ptr);
 
 						if (success)
 							Ints.push_back(E_ptr->x);
@@ -250,16 +249,16 @@ namespace UnitTests
 
 			Threads.AddWork(&Thread1);
 			Threads.AddWork(&Thread2);
-			Threads.AddWork(&Thread3);
-			Threads.AddWork(&Thread4);
+			//Threads.AddWork(&Thread3);
+			//Threads.AddWork(&Thread4);
 
 			CV.notify_all();
 			Sleep(1000);
 
 			Threads.AddWork(&Thread5);
 			Threads.AddWork(&Thread6);
-			Threads.AddWork(&Thread7);
-			Threads.AddWork(&Thread8);
+			//Threads.AddWork(&Thread7);
+			//Threads.AddWork(&Thread8);
 
 			Sleep(1000);
 

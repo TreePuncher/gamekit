@@ -57,7 +57,10 @@ namespace FlexKit
 	typedef std::function<void()> OnCompletionEvent;
 
 
-	class iWork
+	/************************************************************************************************/
+
+
+	class iWork : public DequeNode_MT
 	{
 	public:
 		iWork & operator = (iWork& rhs) = delete;
@@ -66,6 +69,7 @@ namespace FlexKit
 		~iWork()					{ Watchers.Release();}
 
 		virtual void Run() {}
+		virtual void Release() {}
 
 		void NotifyWatchers()
 		{
@@ -84,37 +88,13 @@ namespace FlexKit
 		Vector<OnCompletionEvent> Watchers;
 	};
 
-	struct WorkContainer
-	{
-		WorkContainer(iWork* IN_ptr, iAllocator* IN_Allocator = nullptr) :
-			Allocator	{ IN_Allocator },
-			ptr			{ IN_ptr } 
-		{}
+
+	/************************************************************************************************/
 
 
-		iWork* operator -> ()
-		{
-			return ptr;
-		}
+	typedef	Deque_MT<iWork>	WorkQueue;
 
-		void Release()
-		{
-			if(Allocator)
-				Allocator->free(this);
-
-			Allocator = nullptr;
-		}
-
-
-		iWork*		ptr;
-		iAllocator* Allocator;
-	};
-
-	typedef Deque_MT<WorkContainer>::Element_TY WorkItem;
-	typedef	Deque_MT<WorkContainer>				WorkQueue;
-
-	//__declspec(align(64))
-	class WorkerThread
+	class WorkerThread : public DequeNode_MT
 	{
 	public:
 		WorkerThread(iAllocator* ThreadMemory = nullptr) :
@@ -124,13 +104,13 @@ namespace FlexKit
 			Allocator	{ ThreadMemory }
 		{}
 
-		bool AddItem(WorkItem* Work);
+		bool AddItem(iWork* Work);
 		void Shutdown();
 		void Run();
 		bool IsRunning();
 		void Wake();
 
-		WorkItem* Steal();
+		iWork* Steal();
 
 		static ThreadManager*	Manager;
 
@@ -195,7 +175,7 @@ namespace FlexKit
 			WorkerThread::Manager = this;
 
 			for (size_t I = 0; I < ThreadCount; ++I)
-				Threads.push_back(memory->allocate<Deque_MT<WorkerThread>::Element_TY>(memory));
+				Threads.push_back(memory->allocate<WorkerThread>(memory));
 		}
 
 
@@ -206,6 +186,14 @@ namespace FlexKit
 			SendShutdown();
 
 			WaitForShutdown();
+
+			while (!Threads.empty())
+			{
+				WorkerThread* Worker = nullptr;
+				if (Threads.try_pop_back(Worker))
+					Memory->free(Worker);
+			}
+
 		}
 
 
@@ -218,19 +206,17 @@ namespace FlexKit
 
 		void AddWork(iWork* NewWork, iAllocator* Allocator = SystemAllocator)
 		{
-			auto& WorkItem = Memory->allocate<FlexKit::WorkItem>(NewWork, Allocator);
-
 			if (!Threads.empty())
 			{
 				bool success = false;
 				do {
-					success = Threads.begin()->AddItem(&WorkItem);
+					success = Threads.begin()->AddItem(NewWork);
 					RotateThreads();
 				} while (!success);
 			}
 			else
 			{
-				Work.push_back(WorkItem);
+				Work.push_back(NewWork);
 			}
 		}
 
@@ -248,11 +234,11 @@ namespace FlexKit
 			{
 				while(!Work.empty())
 				{
-					WorkItem* WorkItem = nullptr;
-					if (Work.try_pop_front(&WorkItem))
+					iWork* WorkItem = nullptr;
+					if (Work.try_pop_front(WorkItem))
 					{
-						WorkItem->ptr->Run();
-						WorkItem->ptr->NotifyWatchers();
+						WorkItem->Run();
+						WorkItem->NotifyWatchers();
 					}
 				}
 			}
@@ -261,12 +247,12 @@ namespace FlexKit
 
 		void RotateThreads()
 		{
-			Deque_MT<WorkerThread>::Element_TY* Ptr = nullptr;
+			WorkerThread* Ptr = nullptr;
 
-			auto success = Threads.try_pop_front(&Ptr);
+			auto success = Threads.try_pop_front(Ptr);
 
 			if (success)
-				Threads.push_back(*Ptr);
+				Threads.push_back(Ptr);
 		}
 
 
@@ -297,9 +283,9 @@ namespace FlexKit
 			CV.notify_all();
 		}
 
-		WorkItem* StealSomeWork()
+		iWork* StealSomeWork()
 		{
-			WorkItem* StolenWork = Threads.begin()->Steal();
+			iWork* StolenWork = Threads.begin()->Steal();
 			RotateThreads();
 
 			return StolenWork;
@@ -314,7 +300,7 @@ namespace FlexKit
 	private:
 
 		Deque_MT<WorkerThread>		Threads;
-		Deque_MT<WorkContainer>		Work; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
+		Deque_MT<iWork>				Work; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
 
 
 		std::condition_variable		CV;
