@@ -258,8 +258,13 @@ namespace FlexKit
 		PST->States[State].CurretState = PipelineStateObject::States::LoadInProgress;
 
 		auto Loader = PST->StateLoaders[State];
-		auto res	= Loader(PST->RS);
 
+		if (!Loader) // No Loader Registered!
+		{
+			FK_LOG_WARNING("Tried to Load PSO with no loader registered!");
+			return;
+		}
+		auto res = Loader(PST->RS);
 
 		if (!res) {
 			PST->States[State].CurretState = PipelineStateObject::States::Failed;
