@@ -403,7 +403,8 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-		void emplace_back(Ty&& in) {
+		template<typename ... ARGS_t>
+		void emplace_back(ARGS_t&& ... in) {
 			if (Size + 1 > Max)
 			{// Increase Size
 #ifdef _DEBUG
@@ -437,7 +438,7 @@ namespace FlexKit
 				Max = NewSize;
 			}
 
-			new(A + Size++) Ty(std::move(in));
+			new(A + Size++) Ty(std::forward<ARGS_t>(in)...);
 		}
 
 		/************************************************************************************************/
@@ -1348,6 +1349,87 @@ namespace FlexKit
 	};
 
 
+	/************************************************************************************************/
+
+	template<typename TY>
+	class ObjectPool
+	{
+	public:
+		ObjectPool(iAllocator* Allocator, const size_t PoolSize) :
+			Pool			{ Allocator },
+			FreeObjectList	{ Allocator },
+			PoolMaxSize		{ PoolSize }
+		{
+			Pool.reserve(PoolSize);
+			FreeObjectList.reserve(PoolSize);
+		}
+
+
+		template<typename ... TY_ARGS>
+		TY& Allocate(TY_ARGS&& ... Args)
+		{
+			for (auto& B : FreeObjectList)
+			{
+				if (B)
+				{
+					B = false;
+					new(&Pool[FreeObjectList.back()]) TY(std::forward<TY_ARGS>(Args)...);
+					return Pool[FreeObjectList.back()];
+				}
+			}
+
+
+			if (PoolMaxSize > Pool.size())
+			{
+				Pool.emplace_back(std::forward<TY_ARGS>(Args)...);
+				FreeObjectList.push_back(false);
+
+				return Pool.back();
+			}
+
+			FK_ASSERT(false, "ERROR: POOL OUT OF OBJECTS!");
+			return *(TY*)nullptr;
+		}
+
+
+		void Release(TY& Object)
+		{
+			if (&Object >= Pool.begin() &&
+				&Object < Pool.end())
+			{
+				size_t Idx = (
+					reinterpret_cast<size_t>(&Object) -
+					reinterpret_cast<size_t>(Pool.begin())) / sizeof(TY);
+
+				Pool[Idx].~TY();
+				FreeObjectList[Idx] = true;
+			}
+		}
+
+
+		template<typename VISIT_FN>
+		void Visit(VISIT_FN& FN_Visitor)
+		{
+			for (auto Idx = 0; Idx < Pool.size(); ++Idx)
+				if (!FreeObjectList[Idx])
+					FN_Visitor(Pool[Idx]);
+		}
+
+
+		template<typename VISIT_FN>
+		void Visit(VISIT_FN& FN_Visitor) const
+		{
+			for (auto Idx = 0; Idx < Pool.size(); ++Idx)
+				if (!FreeObjectList[Idx])
+					FN_Visitor(const_cast<const TY>(Pool[Idx]));
+		}
+
+
+	public:
+		Vector<TY>		Pool;
+		Vector<bool>	FreeObjectList;
+		const size_t	PoolMaxSize;
+	};
 
 }	// namespace FlexKit;
 	/************************************************************************************************/
