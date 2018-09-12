@@ -139,7 +139,6 @@ namespace FlexKit
 	
 	ID3D12PipelineState*	PipelineStateTable::GetPSO( EPIPELINESTATES State )
 	{
-		auto PSO_State = States[(int)State].CurretState;
 
 #if 0
 		while (PSO_Out == nullptr)
@@ -170,6 +169,8 @@ namespace FlexKit
 
 		while (true)
 		{
+			auto PSO_State = States[(int)State].CurretState;
+
 			switch (PSO_State)
 			{
 			case PipelineStateObject::States::LoadInProgress: {
@@ -261,6 +262,8 @@ namespace FlexKit
 
 		if (!Loader) // No Loader Registered!
 		{
+			PST->States[State].CurretState = PipelineStateObject::States::Unloaded;
+			PST->States[State].CV.notify_all();
 			FK_LOG_WARNING("Tried to Load PSO with no loader registered!");
 			return;
 		}
