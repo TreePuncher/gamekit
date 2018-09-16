@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Resources.h"
+#include "..\graphicsutilities\graphics.h"
 
 namespace FlexKit
 {
@@ -56,78 +57,6 @@ namespace FlexKit
 		Resources.ResourceGUIDs.Release();
 	}
 
-
-	/************************************************************************************************/
-
-
-	size_t ReadResourceTableSize(FILE* F)
-	{
-		byte Buffer[128];
-
-		int s = fseek(F, 0, SEEK_SET);
-		s = fread(Buffer, 1, 128, F);
-
-		ResourceTable* T = (ResourceTable*)Buffer;
-		return T->ResourceCount * sizeof(ResourceEntry) + sizeof(ResourceTable);
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool ReadResourceTable(FILE* F, ResourceTable* Out, size_t TableSize)
-	{
-		int s = fseek(F, 0, SEEK_SET);
-		s = fread(Out, 1, TableSize, F);
-		return (s == TableSize);
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t ReadResourceSize(FILE* F, ResourceTable* Table, size_t Index)
-	{
-		byte Buffer[8];
-
-		int s = fseek(F, Table->Entries[Index].ResourcePosition, SEEK_SET);
-		s = fread(Buffer, 1, 8, F);
-
-		Resource* R = (Resource*)Buffer;
-		return R->ResourceSize;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool ReadResource(FILE* F, ResourceTable* Table, size_t Index, Resource* out)
-	{
-		size_t ResourceSize = 0;
-		size_t Position = Table->Entries[Index].ResourcePosition;
-
-#if _DEBUG
-		std::chrono::system_clock Clock;
-		auto Before = Clock.now();
-		FINALLY
-			auto After = Clock.now();
-			auto Duration = chrono::duration_cast<chrono::microseconds>( After - Before );
-			std::cout << "Loading Resource: " << Table->Entries[Index].ID << " : ResourceID: "<< Table->Entries[Index].GUID << "\n";
-			std::cout << "Resource Load Duration: " << Duration.count() << "microseconds\n";
-		FINALLYOVER
-#endif
-
-		int s = fseek(F, Position, SEEK_SET);
-		s = fread(&ResourceSize, 1, 8, F);
-
-		s = fseek(F, Position, SEEK_SET);
-		s = fread(out, 1, ResourceSize, F);
-
-		return (s == out->ResourceSize);
-	}
-
-
-	/************************************************************************************************/
 
 
 	void AddResourceFile(char* FILELOC)
@@ -596,7 +525,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = INVALIDMESHHANDLE;
+				Handle = InvalidHandle_t;
 			}
 		}
 		else
@@ -623,7 +552,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = INVALIDMESHHANDLE;
+				Handle = InvalidHandle_t;
 			}
 		}
 
@@ -665,7 +594,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = INVALIDMESHHANDLE;
+				Handle = InvalidHandle_t;
 			}
 		}
 		else
@@ -692,7 +621,7 @@ namespace FlexKit
 			}
 			else
 			{
-				Handle = INVALIDMESHHANDLE;
+				Handle = InvalidHandle_t;
 			}
 		}
 

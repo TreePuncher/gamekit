@@ -201,6 +201,7 @@
     <ClInclude Include="coreutilities\NetworkUtilities.h" />
     <ClInclude Include="coreutilities\physicsutilities.h" />
     <ClInclude Include="coreutilities\ProfilingUtilities.h" />
+    <ClInclude Include="coreutilities\ResourceHandles.h" />
     <ClInclude Include="coreutilities\Resources.h" />
     <ClInclude Include="coreutilities\GraphicScene.h" />
     <ClInclude Include="coreutilities\Signal.h" />
@@ -211,10 +212,15 @@
     <ClInclude Include="coreutilities\Transforms.h" />
     <ClInclude Include="coreutilities\type.h" />
     <ClInclude Include="coreutilities\WorldRender.h" />
+    <ClInclude Include="graphicsutilities\AnimationRuntimeUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="graphicsutilities\AnimationUtilities.h" />
     <ClInclude Include="graphicsutilities\CoreSceneObjects.h" />
     <ClInclude Include="graphicsutilities\DDSUtilities.h" />
     <ClInclude Include="graphicsutilities\Fonts.h" />
+    <ClInclude Include="graphicsutilities\Geometry.h" />
     <ClInclude Include="graphicsutilities\graphics.h" />
     <ClInclude Include="graphicsutilities\GuiUtilities.h" />
     <ClInclude Include="graphicsutilities\ImageUtilities.h" />
@@ -232,7 +238,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="coreutilities\CameraUtilities.cpp" />
+    <ClCompile Include="coreutilities\CameraUtilities.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="coreutilities\CommonUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -349,6 +358,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="graphicsutilities\AnimationRuntimeUtilities.H" />
     <ClCompile Include="graphicsutilities\AnimationUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -380,6 +390,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="graphicsutilities\ForwardRendering.h" />
+    <ClCompile Include="graphicsutilities\Geometry.cpp" />
     <ClCompile Include="graphicsutilities\graphics.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>

@@ -141,6 +141,7 @@ namespace UnitTests
 		}
 
 
+
 		TEST_METHOD(Deque_SingleReaderSingleWriterTest)
 		{
 			Deque<TestClass> Queue;
@@ -148,6 +149,8 @@ namespace UnitTests
 			FlexKit::ThreadManager Threads{ 4 };
 
 			std::condition_variable CV;
+
+			Logger::WriteMessage(L"Setting up test");
 
 			class AddThread : public FlexKit::iWork
 			{
@@ -161,7 +164,7 @@ namespace UnitTests
 					Queue{ IN_Queue }
 				{
 					size_t itr = 0;
-					for (size_t itr = 0; itr < 4000; ++itr)
+					for (size_t itr = 0; itr < 400'000; ++itr)
 						Test.push_back(itr + N);
 				}
 
@@ -193,7 +196,7 @@ namespace UnitTests
 				Deque<TestClass>&			Queue;
 				std::vector<TestClass>		Test;
 
-			}Thread1{ 0, CV, Queue }, Thread2{ 4000, CV, Queue }, Thread3{ 8000, CV, Queue }, Thread4{ 12000, CV, Queue };
+			}Thread1{ 0, CV, Queue }, Thread2{ 400'000, CV, Queue }, Thread3{ 800'000, CV, Queue }, Thread4{ 1200'000, CV, Queue };
 
 
 			class PopThread : public FlexKit::iWork
@@ -206,7 +209,7 @@ namespace UnitTests
 					CV{ IN_CV },
 					Queue{ IN_Queue }
 				{
-					Ints.reserve(4000);
+					Ints.reserve(40000);
 				}
 
 
@@ -246,19 +249,20 @@ namespace UnitTests
 				Thread7{ CV, Queue },
 				Thread8{ CV, Queue };
 
+			Logger::WriteMessage(L"Beginning test");
 
 			Threads.AddWork(&Thread1);
 			Threads.AddWork(&Thread2);
-			//Threads.AddWork(&Thread3);
-			//Threads.AddWork(&Thread4);
+			Threads.AddWork(&Thread3);
+			Threads.AddWork(&Thread4);
 
 			CV.notify_all();
 			Sleep(1000);
 
 			Threads.AddWork(&Thread5);
 			Threads.AddWork(&Thread6);
-			//Threads.AddWork(&Thread7);
-			//Threads.AddWork(&Thread8);
+			Threads.AddWork(&Thread7);
+			Threads.AddWork(&Thread8);
 
 			Sleep(1000);
 

@@ -35,15 +35,15 @@ namespace FlexKit
 	};
 
 
-	typedef Vector<MD_Token> TokenList;
+	typedef Vector<MD_Token> MeshTokenList;
 
 
 	/************************************************************************************************/
 
 
-	TokenList* GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
+	MeshTokenList* GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
 	{
-		Vector<MD_Token>* Tokens = &Memory->allocate_aligned<Vector<MD_Token>>(Memory);
+		MeshTokenList* Tokens = &Memory->allocate_aligned<MeshTokenList>(Memory);
 
 		size_t StartPos = 0;
 		size_t CurrentPos = 0;
@@ -182,7 +182,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens, size_t StartingPosition)
+	FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocator* TempMemory, MeshTokenList* Tokens, size_t StartingPosition)
 	{
 		ValueList Values;
 		size_t itr2 = StartingPosition;
@@ -260,7 +260,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t SkipBrackets(TokenList* Tokens, size_t StartingPosition)
+	size_t SkipBrackets(MeshTokenList* Tokens, size_t StartingPosition)
 	{
 		size_t itr2 = StartingPosition;
 
@@ -293,7 +293,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, TokenList* Tokens, MD_Vector& MD_Out)
+	bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, MeshTokenList* Tokens, MD_Vector& MD_Out)
 	{
 		struct Value
 		{
@@ -470,25 +470,25 @@ namespace FlexKit
 					TextureSet_Meta->Guid = AssetGUID->Data.I;
 
 				if (Albedo && Albedo->Type == Value::STRING){
-					auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ALBEDO].Directory;
-					strncpy(dest, Albedo->Data.S.S, Albedo->Data.S.size);
+					//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ALBEDO].Directory;
+					//strncpy(dest, Albedo->Data.S.S, Albedo->Data.S.size);
 				}
 
 				if (AlbedoID && AlbedoID->Type == Value::INT) {
-					TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = AlbedoID->Data.I;
+					//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = AlbedoID->Data.I;
 				} else {
-					TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = INVALIDHANDLE;
+					//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = INVALIDHANDLE;
 				}
 
 				if (RoughMetal && RoughMetal->Type == Value::STRING){
-					auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ROUGHSMOOTH].Directory;
-					strncpy(dest, RoughMetal->Data.S.S, RoughMetal->Data.S.size);
+					//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ROUGHSMOOTH].Directory;
+					//strncpy(dest, RoughMetal->Data.S.S, RoughMetal->Data.S.size);
 				}
 
 				if (RoughMetalID && RoughMetalID->Type == Value::INT) {
-					TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = RoughMetalID->Data.I;
+					//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = RoughMetalID->Data.I;
 				} else {
-					TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = INVALIDHANDLE;
+					//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = INVALIDHANDLE;
 				}
 
 				MD_Out.push_back(TextureSet_Meta);

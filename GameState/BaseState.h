@@ -53,6 +53,11 @@ public:
 	{
 		InitiateCameraTable(Framework->Core->GetBlockMemory());
 		InitiateOrbitCameras(Framework->Core->GetBlockMemory());
+
+		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_PSO);
+		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
+		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE3D_PSO);
+		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_SPRITE_TEXT_PSO);
 	}
 
 	~BaseState()

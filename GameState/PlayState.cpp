@@ -352,6 +352,12 @@ PlayState::PlayState(
 		GameFramework*			IN_Framework,
 		BaseState*				Base) : 
 	FrameworkState		{ IN_Framework						},
+
+	UI					{ FlexKit::GuiSystem_Desc{}, Framework->Core->GetBlockMemory() },
+	UIMainGrid			{ nullptr },
+	UISubGrid_1			{ nullptr },
+	UISubGrid_2			{ nullptr },
+
 	FrameEvents			{ Framework->Core->GetBlockMemory() },
 	FrameID				{ 0 },
 	Sound				{ Framework->Core->Threads, Framework->Core->GetBlockMemory() },
@@ -410,6 +416,23 @@ PlayState::PlayState(
 
 	Framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO);
 	Framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO, Framework->Core->GetBlockMemory());
+
+	UIMainGrid	= &UI.CreateGrid(nullptr);
+	UIMainGrid->SetGridDimensions({ 3, 3 });
+
+
+	UIMainGrid->WH = { 0.5f, 1.0f };
+	UIMainGrid->XY = { 0.25f, 0.0f };
+
+	UISubGrid_1 = &UI.CreateGrid(UIMainGrid, { 0, 0 });
+	UISubGrid_1->SetGridDimensions({ 2, 2 });
+	UISubGrid_1->WH = { 1.0f, 1.0f };
+	UISubGrid_1->XY = { 0.0f, 0.0f };
+	
+	UISubGrid_2 = &UI.CreateGrid(UIMainGrid, {2, 2});
+	UISubGrid_2->SetGridDimensions({ 5, 5 });
+	UISubGrid_2->WH = { 1.0f, 1.0f };
+	UISubGrid_2->XY = { 0.0f, 0.0f };
 }
 
 
@@ -548,6 +571,16 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 	ClearDepthBuffer(FrameGraph, DepthBuffer, 1.0f);
 
 
+	FlexKit::DrawUI_Desc DrawDesk
+	{
+		&FrameGraph, 
+		Targets.RenderTarget,
+		VertexBuffer, 
+		TextBuffer, 
+		ConstantBuffer
+	};
+
+
 #ifndef DEBUGCAMERA
 #if 1
 	DrawGameGrid_Debug(
@@ -617,6 +650,8 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		Core->GetTempMemory());
 
 #endif
+	
+	UI.Draw(DrawDesk, Core->GetTempMemory());
 
 
 	return true;

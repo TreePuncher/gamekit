@@ -45,20 +45,21 @@ struct CBArguements
 struct MenuState : public FrameworkState
 {
 	MenuState(GameFramework* framework, iAllocator* Memory) : 
-		FrameworkState(framework), 
-		BettererWindow(Memory)
+		FrameworkState	{ framework },
+		UISystem		{ FlexKit::GuiSystem_Desc{}, Memory }
 	{
 	}
 
-	MenuState(const MenuState& rhs) : 
-		FrameworkState(rhs.Framework), 
-		BettererWindow(rhs.BettererWindow)
+	MenuState(MenuState& rhs) :
+		FrameworkState	(std::move(rhs.Framework)),
+		UISystem		(std::move(rhs.UISystem))
 	{
 		CursorSize		= rhs.CursorSize;
 	}
 
+
 	FlexKit::float2			CursorSize;
-	FlexKit::ComplexGUI		BettererWindow;
+	FlexKit::GuiSystem		UISystem;
 
 	double T;
 
@@ -72,22 +73,22 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine);
 struct JoinScreen : public FrameworkState
 {
 	JoinScreen(GameFramework* framework, iAllocator* Memory) : 
-		FrameworkState(framework), 
-		BettererWindow(Memory)
+		FrameworkState	{ framework },
+		UISystem		{ FlexKit::GuiSystem_Desc{}, Memory }
 	{
 		memset(Name, '\0', 32);
 		memset(Server, '\0', 64);
 	}
 
-	JoinScreen(const JoinScreen& rhs) : 
-		FrameworkState(rhs.Framework),
-		BettererWindow(rhs.BettererWindow)
+	JoinScreen(JoinScreen&& rhs) : 
+		FrameworkState	{rhs.Framework},
+		UISystem		{std::move(rhs.UISystem)}
 	{
 		CursorSize = rhs.CursorSize;
 	}
 
 	FlexKit::float2			CursorSize;
-	FlexKit::ComplexGUI		BettererWindow;
+	FlexKit::GuiSystem		UISystem;
 
 	char	Name	[32];
 	char	Server	[64];

@@ -30,7 +30,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
-#include "..\graphicsutilities\graphics.h"
 
 #include "Scenes.h"
 #include "MeshProcessing.h"
@@ -117,13 +116,13 @@ struct Compiler
 };
 
 
-typedef Vector<TriMesh> GeometryList;
+typedef Vector<TriMeshResource> GeometryList;
 
 
 /************************************************************************************************/
 
 
-TriMesh* FindGeoByID(GeometryList* GB, size_t ID)
+TriMeshResource* FindGeoByID(GeometryList* GB, size_t ID)
 {
 	for (auto& I : *GB)
 	{
@@ -182,9 +181,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 #endif
 			if (MD)
 			{
-				MoveVector(	
-					RelatedMetaData, 
-					FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName, TempMem ));
+				RelatedMetaData = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, MeshName, TempMem );
 			}
 			else
 				LoadMesh = true;
@@ -202,8 +199,7 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 					NameLen	= strlen( Name );
 				}
 
-				TriMesh	out;
-				TriMesh Test = out;
+				TriMeshResource	out;
 				memset(&out, 0, sizeof(out));
 				char* ID = nullptr;
 				if ( NameLen++ ) {
@@ -254,7 +250,7 @@ TY& _AlignedAllocate()
 /************************************************************************************************/
 
 
-size_t CalculateTriMeshSize(TriMesh* TriMesh)
+size_t CalculateTriResourceMeshSize(TriMeshResource* TriMesh)
 {
 	size_t Size = 0;
 	for (auto B : TriMesh->Buffers)
@@ -267,7 +263,7 @@ size_t CalculateTriMeshSize(TriMesh* TriMesh)
 /************************************************************************************************/
 
 
-void FillTriMeshBlob(TriMeshResourceBlob* out, TriMesh* Mesh)
+void FillTriMeshBlob(TriMeshResourceBlob* out, TriMeshResource* Mesh)
 {
 	size_t BufferPosition = 0;
 	out->GUID			= Mesh->TriMeshID;
@@ -319,9 +315,9 @@ void FillTriMeshBlob(TriMeshResourceBlob* out, TriMesh* Mesh)
 /************************************************************************************************/
 
 
-Resource* CreateTriMeshResourceBlob(TriMesh* Mesh, iAllocator* MemoryOut)
+Resource* CreateTriMeshResourceBlob(TriMeshResource* Mesh, iAllocator* MemoryOut)
 {
-	size_t BlobSize          = CalculateTriMeshSize(Mesh);
+	size_t BlobSize          = CalculateTriResourceMeshSize(Mesh);
 	BlobSize				+= sizeof(TriMeshResourceBlob);
 	char* Blob               = (char*)MemoryOut->_aligned_malloc(BlobSize);
 	TriMeshResourceBlob* Res = (TriMeshResourceBlob*)Blob;
@@ -595,7 +591,7 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 						}
 					}
 
-					auto IndexBuffer		  = Mesh.VertexBuffer.MD.IndexBuffer_Index;
+					auto IndexBuffer		  = Mesh.IndexBuffer_Idx;
 					meshDesc.triangles.count  = Mesh.IndexCount / 3;
 					meshDesc.triangles.stride = Mesh.Buffers[15]->GetElementSize() * 3;
 					meshDesc.triangles.data   = Indexes;

@@ -304,8 +304,8 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 			{
 				Clip.Frames[I].Joints[II]	= JointHandle(II);
 				
-				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetTransform(S->JointPoses[II]));
-				auto Pose					= GetTransform(Joints[II].Animation.Poses[I + Begin].JPose);
+				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(S->JointPoses[II]));
+				auto Pose					= GetPoseTransform(Joints[II].Animation.Poses[I + Begin].JPose);
 				auto LocalPose				= GetPose(Pose * Inverse);
 				Clip.Frames[I].Poses[II]	= LocalPose;
 			}

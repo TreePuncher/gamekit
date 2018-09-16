@@ -58,11 +58,9 @@ int main(int argc, char* argv[])
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);
 
+	FK_LOG_INFO("Set initial PlayState state.");
 	auto& GameBase = App.PushState<BaseState>(&App);
 	App.PushState<PlayState>(&GameBase);
-
-
-	FK_LOG_INFO("Set initial PlayState state.");
 
 	FK_LOG_INFO("Running application...");
 	App.Run();

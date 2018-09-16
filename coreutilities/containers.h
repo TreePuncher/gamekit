@@ -133,7 +133,17 @@ namespace FlexKit
 				A			(nullptr) 
 		{
 			if (InitialReservation > 0)
-				reserve(InitialReservation);
+			{
+				FK_ASSERT(Allocator);
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * InitialReservation);
+				FK_ASSERT(NewMem);
+
+				if (A)
+				{
+					A	= NewMem;
+					Max = InitialReservation;
+				}
+			}
 		}
 
 
@@ -412,12 +422,6 @@ namespace FlexKit
 #endif			
 				auto NewSize = ((Max < 1) ? 2 : (2 * Max));
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
-				{
-					size_t itr = 0;
-					size_t End = Size;
-					for (; itr < End; ++itr)
-						new(NewMem + itr) Ty();
-				}
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
 				if (Size)
@@ -429,7 +433,7 @@ namespace FlexKit
 					size_t itr = 0;
 					size_t End = Size;
 					for (; itr < End; ++itr)
-						NewMem[itr] = std::move(A[itr]);
+						new(NewMem + itr) Ty{ std::move(A[itr]) };
 
 					Allocator->_aligned_free(A);
 				}
@@ -499,7 +503,7 @@ namespace FlexKit
 					size_t itr = 0;
 					size_t End = Size;
 					for (; itr < End; ++itr) 
-						NewMem[itr] = std::move(A[itr]); // move if Possible
+						new(NewMem + itr) Ty(std::move(A[itr])); // move if Possible
 
 					Allocator->_aligned_free(A);
 				}
@@ -1356,35 +1360,38 @@ namespace FlexKit
 	{
 	public:
 		ObjectPool(iAllocator* Allocator, const size_t PoolSize) :
-			Pool			{ Allocator },
+			Pool			{ reinterpret_cast<TY*>(Allocator->_aligned_malloc(sizeof(TY) * PoolSize)) },
 			FreeObjectList	{ Allocator },
-			PoolMaxSize		{ PoolSize }
+			PoolMaxSize		{ PoolSize	},
+			Allocator		{ Allocator }
 		{
-			Pool.reserve(PoolSize);
-			FreeObjectList.reserve(PoolSize);
+			FreeObjectList.resize(PoolSize);
+
+			for (auto& FreeState : FreeObjectList)
+				FreeState = true;
 		}
 
+		~ObjectPool()
+		{
+			Visit([&](auto& Element)
+			{
+				Element.~TY();
+			});
+
+			Allocator->free(Pool);
+		}
 
 		template<typename ... TY_ARGS>
 		TY& Allocate(TY_ARGS&& ... Args)
 		{
-			for (auto& B : FreeObjectList)
+			for (auto Idx = 0; Idx < FreeObjectList.size(); ++Idx)
 			{
-				if (B)
+				if (FreeObjectList[Idx])
 				{
-					B = false;
-					new(&Pool[FreeObjectList.back()]) TY(std::forward<TY_ARGS>(Args)...);
-					return Pool[FreeObjectList.back()];
+					FreeObjectList[Idx] = false;
+					new(Pool + Idx) TY(std::forward<TY_ARGS>(Args)...);
+					return Pool[Idx];
 				}
-			}
-
-
-			if (PoolMaxSize > Pool.size())
-			{
-				Pool.emplace_back(std::forward<TY_ARGS>(Args)...);
-				FreeObjectList.push_back(false);
-
-				return Pool.back();
 			}
 
 			FK_ASSERT(false, "ERROR: POOL OUT OF OBJECTS!");
@@ -1410,7 +1417,7 @@ namespace FlexKit
 		template<typename VISIT_FN>
 		void Visit(VISIT_FN& FN_Visitor)
 		{
-			for (auto Idx = 0; Idx < Pool.size(); ++Idx)
+			for (auto Idx = 0; Idx < FreeObjectList.size(); ++Idx)
 				if (!FreeObjectList[Idx])
 					FN_Visitor(Pool[Idx]);
 		}
@@ -1419,16 +1426,17 @@ namespace FlexKit
 		template<typename VISIT_FN>
 		void Visit(VISIT_FN& FN_Visitor) const
 		{
-			for (auto Idx = 0; Idx < Pool.size(); ++Idx)
+			for (auto Idx = 0; Idx < FreeObjectList.size(); ++Idx)
 				if (!FreeObjectList[Idx])
 					FN_Visitor(const_cast<const TY>(Pool[Idx]));
 		}
 
 
 	public:
-		Vector<TY>		Pool;
+		TY*				Pool;
 		Vector<bool>	FreeObjectList;
 		const size_t	PoolMaxSize;
+		iAllocator*		Allocator;
 	};
 
 }	// namespace FlexKit;

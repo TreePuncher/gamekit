@@ -34,6 +34,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	//Forward Declarations 
+	struct DrawablePoseState;
+
+
 	typedef size_t SpotLightHandle;
 	typedef Pair<bool, int64_t> GSPlayAnimation_RES;
 
@@ -227,14 +231,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(DrawablePoseState* EPS, iAllocator* allocator)
-	{
-		if(EPS->Joints)			allocator->free(EPS->Joints);
-		if(EPS->CurrentPose)	allocator->free(EPS->CurrentPose);
-
-		EPS->Joints		 = nullptr;
-		EPS->CurrentPose = nullptr;
-	}
+	inline void Release(DrawablePoseState* EPS, iAllocator* allocator);
 
 
 	/************************************************************************************************/

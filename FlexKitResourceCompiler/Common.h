@@ -29,8 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../coreutilities/MathUtils.h"
 #include "../coreutilities/MemoryUtilities.h"
-#include "../graphicsutilities/graphics.h"
 #include "../graphicsutilities/MeshUtils.h"
+#include "../graphicsutilities/AnimationUtilities.h"
+
 
 #include <DirectXMath.h>
 
@@ -64,7 +65,6 @@ using FlexKit::uint4_32;
 using FlexKit::iAllocator;
 
 using FlexKit::Skeleton;
-
 using DirectX::XMMATRIX;
 
 using FlexKit::MeshUtilityFunctions::IndexList;

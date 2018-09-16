@@ -743,7 +743,6 @@ namespace FlexKit
 		return {TextureOut, res};
 	}
 
-	typedef FlexKit::Pair<TextureHandle, bool> LoadDDSTexture2DFromFile_RES;
 
 	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS)
 	{

@@ -32,7 +32,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\coreutilities\Resources.h"
-#include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 
 #include "PxPhysicsAPI.h"
@@ -41,7 +40,6 @@ using FlexKit::iAllocator;
 using FlexKit::BlockAllocator;
 using FlexKit::StackAllocator;
 using FlexKit::static_vector;
-using FlexKit::fixed_vector;
 
 struct Scene;
 struct EngineMemory;
@@ -52,14 +50,10 @@ using FlexKit::float2;
 using FlexKit::float3;
 using FlexKit::ID_LENGTH;
 using FlexKit::Drawable;
-using FlexKit::NodeHandle;
 using FlexKit::Quaternion;
 using FlexKit::Pair;
-using FlexKit::PointLight;
-using FlexKit::PointLightList;
 using FlexKit::Resource;
 using FlexKit::RenderSystem;
-using FlexKit::SceneNodes;
 using FlexKit::TriMesh;
 
 struct FileDir
@@ -72,7 +66,8 @@ struct FileDir
 
 
 typedef FlexKit::Handle_t<16> SceneHandle;
-using FlexKit::ShaderSetHandle;
+typedef FlexKit::Handle_t<16> NodeHandle;
+typedef FlexKit::Handle_t<16> ShaderSetHandle;
 
 struct Scene_Desc
 {
@@ -109,7 +104,7 @@ struct CompileSceneFromFBXFile_DESC
 	FlexKit::BlockAllocator* BlockMemory;
 	FlexKit::StackAllocator* TempMem; 
 	FlexKit::StackAllocator* LevelMem; 
-	FlexKit::NodeHandle		 SceneRoot;
+	NodeHandle				SceneRoot;
 
 	physx::PxCooking*		Cooker		= nullptr;
 	physx::PxFoundation*	Foundation	= nullptr;

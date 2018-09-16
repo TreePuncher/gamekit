@@ -25,7 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\MathUtils.h"
-#include "..\graphicsutilities\graphics.h"
 
 #ifndef IMAGEUTILITIES_H
 #define IMAGEUTILITIES_H

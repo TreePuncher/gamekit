@@ -54,13 +54,12 @@ public:
 
 		auto& Work = CreateLambdaWork_New(
 			[this]() {
-			auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
+			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
 			if(sound1)
 				system->playSound(sound1, nullptr, false, &channel);
 		});
 
 		Threads.AddWork(Work, Memory);
-		
 	}
 
 	~FMOD_SoundSystem()
@@ -695,6 +694,11 @@ public:
 
 	EventList									FrameEvents;
 	FlexKit::CircularBuffer<FrameSnapshot, 120>	FrameCache;
+
+	FlexKit::GuiSystem	UI;
+	FlexKit::GUIGrid*	UIMainGrid;
+	FlexKit::GUIGrid*	UISubGrid_1;
+	FlexKit::GUIGrid*	UISubGrid_2;
 
 	InputMap EventMap;
 	InputMap DebugCameraInputMap;

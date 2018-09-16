@@ -24,11 +24,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "stdafx.h"
 
-#include "..\Application\GameUtilities.cpp"
-#include "..\Application\EngineCore.h"
-#include "..\coreutilities\AllSourceFiles.cpp"
-#include "..\graphicsutilities\ImageUtilities.h"
+// Headers
+#include "..\buildsettings.h"
+#include "..\graphicsutilities\Geometry.h"
 
+// Sources Files
 #include "common.cpp"
 #include "Animation.cpp"
 #include "MeshProcessing.cpp"
@@ -36,10 +36,31 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceUtilities.cpp"
 #include "TTFontLoader.cpp"
 
+#include "..\graphicsutilities\AnimationUtilities.cpp"
+#include "..\graphicsutilities\MeshUtils.cpp"
+#include "..\graphicsutilities\Geometry.cpp"
+#include "..\coreutilities\memoryutilities.cpp"
+#include "..\coreutilities\Logging.cpp"
+#include "..\coreutilities\MathUtils.cpp"
+
+
 #include <algorithm>
 #include <initializer_list>
+#include <PxDefaultAllocator.h>
+#include <PxErrorCallback.h>
 
 using namespace FlexKit;
+
+
+class PhysXErrorCallback : public physx::PxErrorCallback
+{
+public:
+	PhysXErrorCallback() {}
+
+	void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
+	{
+	}
+};
 
 int main(int argc, char* argv[])
 {
@@ -172,8 +193,8 @@ int main(int argc, char* argv[])
 
 				physx::PxCooking*				Cooker			= nullptr;
 				physx::PxFoundation*			Foundation		= nullptr;
-				physx::PxDefaultErrorCallback	DefaultErrorCallback;
 				physx::PxDefaultAllocator		DefaultAllocatorCallback;
+				PhysXErrorCallback				DefaultErrorCallback;
 
 				Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, DefaultErrorCallback);
 				FK_ASSERT(Foundation);
@@ -208,6 +229,7 @@ int main(int argc, char* argv[])
 							}* Samples;
 
 
+							/*
 							FlexKit::TextureBuffer Buffer;
 							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc, BlockMemory, &Buffer);
 
@@ -244,6 +266,7 @@ int main(int argc, char* argv[])
 							Blob->Type = EResourceType::EResource_TerrainCollider;
 
 							ResourcesFound.push_back(Blob);
+							*/
 						}
 					}
 				}

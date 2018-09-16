@@ -27,8 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\\buildsettings.h"
 #include "..\\coreutilities\MathUtils.h"
-#include "..\\graphicsutilities\graphics.h"
+#include "..\\coreutilities\ResourceHandles.h"
 
+#include <DirectXMath.h>
+
+using DirectX::XMMATRIX;
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -98,6 +101,7 @@ namespace FlexKit
 
 	struct DrawableAnimationState;
 	struct DrawablePoseState;
+	struct TextureSet;
 
 	struct FLEXKITAPI Drawable
 	{
@@ -109,8 +113,8 @@ namespace FlexKit
 			Posed			   = false; // Use Vertex Palette Skinning
 			PoseState		   = nullptr;
 			AnimationState	   = nullptr;
-			Occluder		   = INVALIDMESHHANDLE;
-			MeshHandle		   = INVALIDMESHHANDLE;
+			Occluder		   = InvalidHandle_t;
+			MeshHandle		   = InvalidHandle_t;
 		}
 
 		~Drawable()

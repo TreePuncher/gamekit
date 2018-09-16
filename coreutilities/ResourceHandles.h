@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,18 +22,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#pragma once
+#ifndef RESOURCEHANDLES_H_INCLUDED
+#define RESOURCEHANDLES_H_INCLUDED
 
-#include "targetver.h"
+#include "..\coreutilities\Handle.h"
+#include "..\coreutilities\type.h"
 
-#include <stdio.h>
-#include <tchar.h>
+namespace FlexKit
+{
+	typedef Handle_t<32, GetTypeGUID(ConstantBuffer)>						ConstantBufferHandle;
+	typedef Handle_t<32, GetTypeGUID(VertexBuffer)>							VertexBufferHandle;
+	typedef Handle_t<32, GetTypeGUID(TextureHandle)>						TextureHandle;
+	typedef Handle_t<32, GetTypeGUID(QueryBuffer)>							QueryBufferHandle;
+	typedef Handle_t<16, GetTypeGUID(TriMesh)>								TriMeshHandle;
+}
 
-
-#if 0
-#ifdef _DEBUG
-#pragma comment(lib, "flexkitd.lib")
-#else
-#pragma comment(lib, "flexkit.lib")
-#endif
 #endif

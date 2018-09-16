@@ -43,6 +43,8 @@ namespace FlexKit
 	class Handle_t
 	{
 	public:
+		typedef Handle_t<HandleSize, ID> THISTYPE_t;
+
 		Handle_t()
 		{
 #if USING( DEBUGHANDLES )
@@ -77,7 +79,7 @@ namespace FlexKit
 			INDEX = in;
 		}
 
-		explicit Handle_t(_InvalidHandle_t)
+		Handle_t(_InvalidHandle_t)
 		{
 			INDEX = 0XFFFFFFFF;
 		}
@@ -85,7 +87,7 @@ namespace FlexKit
 
 		operator uint32_t&() { return INDEX; }
 		operator uint32_t() const { return this->to_uint(); }
-		bool				operator ==	(const Handle_t<HandleSize> in) const
+		bool				operator ==	(const THISTYPE_t in) const
 		{
 #if USING( DEBUGHANDLES )
 			if (TYPE == in.TYPE && FLAGS == in.FLAGS && INDEX == in.INDEX)
@@ -97,7 +99,7 @@ namespace FlexKit
 			return false;
 		}
 
-		bool operator !=	(const Handle_t<HandleSize> in) const
+		bool operator !=	(const THISTYPE_t in) const
 		{
 			return !(*this == in);
 		}
@@ -112,6 +114,17 @@ namespace FlexKit
 		{
 			INDEX = 0XFFFFFFFF;
 			return {};
+		}
+		
+
+		bool operator == (_InvalidHandle_t)
+		{
+			return (*this == THISTYPE_t(InvalidHandle_t));
+		}
+
+		bool operator != (_InvalidHandle_t handle)
+		{
+			return !(*this == handle);
 		}
 
 		operator uint32_t(){ return INDEX; }

@@ -146,7 +146,7 @@ bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 	//Yaw(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 );
 	//Pitch(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 * ThisState->Framework->MouseState.dPos[1] * dT);
 	
-	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
+	ThisState->UISystem.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
 
 	//UpdateSimpleWindow(&Input, &ThisState->Window);
 
@@ -173,7 +173,7 @@ void ReleaseMenu	(FrameworkState* StateMemory)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 
-	ThisState->BettererWindow.Release();
+	ThisState->UISystem.Release();
 	ThisState->Framework->Core->GetBlockMemory().free(ThisState);
 }
 
@@ -328,7 +328,7 @@ bool JoinScreenUpdate(FrameworkState* StateMemory, EngineCore* Engine, double dT
 	Input.MousePosition			 = ThisState->Framework->MouseState.NormalizedPos;
 	Input.CursorWH				 = ThisState->CursorSize;
 
-	ThisState->BettererWindow.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
+	ThisState->UISystem.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
 
 	return false;
 }
@@ -359,7 +359,7 @@ void ReleaseJoinScreen(FrameworkState* StateMemory)
 {
 	JoinScreen*	ThisState = (JoinScreen*)StateMemory;
 	
-	ThisState->BettererWindow.Release();
+	ThisState->UISystem.Release();
 	ThisState->~JoinScreen();
 }
 
@@ -404,32 +404,32 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
 	memset(State->Name, '\0',	sizeof(JoinScreen::Name));
 	memset(State->Server, '\0', sizeof(JoinScreen::Server));
 
-	auto  Grid = State->BettererWindow.CreateGrid();
-	auto& GridImpl = Grid._GetGrid();
-	Grid.resize				(0.3f, 0.2f);
-	Grid.SetPosition		({ 0.3f, 0.35f});
-	Grid.SetGridDimensions	(1, 5);
-	Grid.SetActive			(true);
+	auto&  Grid = State->UISystem.CreateGrid();
 
-	GridImpl.RowHeights[0] = 0.20f;
-	GridImpl.RowHeights[1] = 0.20f;
-	GridImpl.RowHeights[2] = 0.20f;
-	GridImpl.RowHeights[3] = 0.20f;
-	GridImpl.RowHeights[4] = 0.20f;
+	//Grid.resize				(0.3f, 0.2f);
+	//Grid.SetPosition		({ 0.3f, 0.35f});
+	//Grid.SetGridDimensions	(1, 5);
+	//Grid.SetActive			(true);
 
-	GridImpl.ColumnWidths[0] = 1.0f;
+	Grid.RowHeights[0] = 0.20f;
+	Grid.RowHeights[1] = 0.20f;
+	Grid.RowHeights[2] = 0.20f;
+	Grid.RowHeights[3] = 0.20f;
+	Grid.RowHeights[4] = 0.20f;
 
-	auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter Server IP", Framework->DefaultAssets.Font);
-	TextLabel1.SetActive(true);
+	Grid.ColumnWidths[0] = 1.0f;
 
-	auto TextLabel2		= Grid.CreateTextBox({0, 2}, "Enter Name", Framework->DefaultAssets.Font);
-	TextLabel2.SetActive(true);
+	//auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter Server IP", Framework->DefaultAssets.Font);
+	//TextLabel1.SetActive(true);
 
-	auto IPInput		= Grid.CreateTextBox({ 0, 1 }, State->Name, Framework->DefaultAssets.Font);
-	IPInput.SetActive(true);
-	IPInput._IMPL().Clicked		= [](size_t x) -> bool{return false;};
-	auto NameInput				= Grid.CreateTextBox({ 0, 3 }, State->Server, Framework->DefaultAssets.Font);
-	NameInput.SetActive(true);
+	//auto TextLabel2		= Grid.CreateTextBox({0, 2}, "Enter Name", Framework->DefaultAssets.Font);
+	//TextLabel2.SetActive(true);
+
+	//auto IPInput		= Grid.CreateTextBox({ 0, 1 }, State->Name, Framework->DefaultAssets.Font);
+	//IPInput.SetActive(true);
+	//IPInput._IMPL().Clicked		= [](size_t x) -> bool{return false;};
+	//auto NameInput				= Grid.CreateTextBox({ 0, 3 }, State->Server, Framework->DefaultAssets.Font);
+	//NameInput.SetActive(true);
 	//NameInput._IMPL().Clicked	= NameFieldClicked;
 
 	//auto AcceptButton	= Grid.CreateButton({ 0, 4 }, "Accept", Framework->DefaultAssets.Font);

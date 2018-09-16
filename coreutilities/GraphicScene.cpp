@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphicsComponents.h"
 #include "intersection.h"
 
+#include "..\graphicsutilities\AnimationRuntimeUtilities.H"
+
 namespace FlexKit
 {
 	/************************************************************************************************/
@@ -60,7 +62,7 @@ namespace FlexKit
 
 		ReleaseMesh(RS, Drawable.MeshHandle);
 
-		Drawable.MeshHandle		 = INVALIDMESHHANDLE;
+		Drawable.MeshHandle		 = InvalidHandle_t;
 		DrawableVisibility[E]	 = false;
 		DrawableRayVisibility[E] = false;
 
@@ -130,7 +132,7 @@ namespace FlexKit
 	bool GraphicScene::isEntitySkeletonAvailable(EntityHandle EHandle)
 	{
 		auto Index = HandleTable[EHandle];
-		if (Drawables.at(Index).MeshHandle != INVALIDMESHHANDLE)
+		if (Drawables.at(Index).MeshHandle != InvalidHandle_t)
 		{
 			auto Mesh		= GetMesh(Drawables.at(Index).MeshHandle);
 			auto ID			= Mesh->TriMeshID;
@@ -188,7 +190,7 @@ namespace FlexKit
 			FreeResource(RHndl);// No longer in memory once loaded
 
 			auto mesh = GetMesh(MeshHandle);
-			mesh->AnimationData |= FlexKit::TriMesh::AnimationData::EAD_Skin;
+			mesh->AnimationData |= EAnimationData::EAD_Skin;
 			AC.Skeleton = mesh->Skeleton;
 
 			if (AC.Skeleton->Animations)
@@ -340,13 +342,15 @@ namespace FlexKit
 	{
 		auto EHandle = CreateDrawable();
 
-		auto		Geo = FindMesh(Mesh);
-		if (!Geo)	Geo = LoadTriMeshIntoTable(RS, Mesh);
+		auto [Geo, Result]	= FindMesh(Mesh);
+
+		if (!Result)
+			Geo	= LoadTriMeshIntoTable(RS, Mesh);
 
 		auto& Drawble       = GetDrawable(EHandle);
 		SetVisability(EHandle, true);
 
-		Drawble.MeshHandle	= (TriMeshHandle)Geo;
+		Drawble.MeshHandle	= Geo;
 		Drawble.Dirty		= true;
 		Drawble.Textured	= false;
 		Drawble.Textures	= nullptr;
@@ -365,11 +369,11 @@ namespace FlexKit
 		auto EHandle = CreateDrawable();
 
 		TriMeshHandle MeshHandle = FindMesh(Mesh);
-		if (MeshHandle == INVALIDMESHHANDLE)	
+		if (MeshHandle == InvalidHandle_t)	
 			MeshHandle = LoadTriMeshIntoTable(RS, Mesh);
 
 #ifdef _DEBUG
-		FK_ASSERT(MeshHandle != INVALIDMESHHANDLE, "FAILED TO FIND MESH IN RESOURCES!");
+		FK_ASSERT(MeshHandle != InvalidHandle_t, "FAILED TO FIND MESH IN RESOURCES!");
 #endif
 
 		auto& Drawble       = GetDrawable(EHandle);
@@ -830,9 +834,7 @@ namespace FlexKit
 	void GraphicScene::SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ FlexKit::ReleaseNode		(PLights[Handle].Position); PLights[Handle].Position = Node;	   }
 
 
-
-	
-
+	/************************************************************************************************/
 
 
 	Drawable::VConsantsLayout Drawable::GetConstants()
@@ -847,6 +849,19 @@ namespace FlexKit
 		Constants.Transform = DirectX::XMMatrixTranspose(WT);
 
 		return Constants;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Release(DrawablePoseState* EPS, iAllocator* allocator)
+	{
+		if (EPS->Joints)			allocator->free(EPS->Joints);
+		if (EPS->CurrentPose)	allocator->free(EPS->CurrentPose);
+
+		EPS->Joints = nullptr;
+		EPS->CurrentPose = nullptr;
 	}
 
 }	/************************************************************************************************/

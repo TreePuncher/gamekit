@@ -29,6 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MeshProcessing.h"
 #include "Animation.h"
+#include "..\coreutilities\intersection.h"
+
+#include <iostream>
 
 #if USING(TOOTLE)
 #include <tootlelib.h>
@@ -530,7 +533,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CompiledMeshInfo CompileMeshResource(TriMesh& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MD_Vector* MD = nullptr)
+	CompiledMeshInfo CompileMeshResource(TriMeshResource& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MD_Vector* MD = nullptr)
 	{
 #if USING(TOOTLE)
 		Memory  = SystemAllocator;// It will Leak, I know
@@ -547,11 +550,11 @@ namespace FlexKit
 		using MeshUtilityFunctions::MeshBuildInfo;
 
 		Skeleton*	S		= LoadSkeleton(Mesh, Memory, TempMem, ID, MD);
-		TokenList& Tokens	= TokenList::Create_Aligned(2048000, TempMem);
+		TokenList Tokens	= TokenList(TempMem, 2048000);
 		auto MeshInfo		= TranslateToTokens(Mesh, TempMem, Tokens, S);
 
-		CombinedVertexBuffer& CVB = CombinedVertexBuffer::Create_Aligned(1024000, TempMem);
-		IndexList& IB			  = IndexList::Create_Aligned(MeshInfo.FaceCount * 8, TempMem);
+		CombinedVertexBuffer CVB(TempMem, 1024000);
+		IndexList IB(TempMem, MeshInfo.FaceCount * 8);
 
 		auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, TempMem, TempMem, MeshInfo.Weights);
 		FK_ASSERT(BuildRes.V1 == true, "Mesh Failed to Build");
@@ -598,12 +601,14 @@ namespace FlexKit
 		}
 #endif
 
-		for (size_t i = 0; i < BuffersFound.size(); ++i) {
+		for (size_t i = 0; i < BuffersFound.size(); ++i) 
+		{
+			VertexBufferView* Temp;
 			CreateBufferView(VertexCount, Memory, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
 
-			switch ((VERTEXBUFFER_TYPE)BuffersFound[i])
+			switch ((FlexKit::VERTEXBUFFER_TYPE)BuffersFound[i])
 			{
-			case  VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
+			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
 				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexPOS);		break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
 				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexNormal);	break;
@@ -611,9 +616,9 @@ namespace FlexKit
 				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteUV, FetchVertexUV);			break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
 				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchFloat3ZERO);		break;
-			case  VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
+			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
 				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchWeights);		break;
-			case  VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
+			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
 				FillBufferView(&CVB, CVB.size(), out.Buffers[i], Writeuint4, FetchWeightIndices);	break;
 			default:
 				break;
@@ -639,7 +644,7 @@ namespace FlexKit
 
 
 		//Calculate AABB
-		AABB AxisAlignedBoundingBox;
+		FlexKit::AABB AxisAlignedBoundingBox;
 		AxisAlignedBoundingBox.BottomLeft	= MeshInfo.MinV;
 		AxisAlignedBoundingBox.TopRight		= MeshInfo.MaxV;
 
@@ -651,7 +656,7 @@ namespace FlexKit
 
 		out.IndexCount    = IndexCount;
 		out.Skeleton      = S;
-		out.AnimationData = MeshInfo.Weights ? TriMesh::EAD_Skin : 0;
+		out.AnimationData = MeshInfo.Weights ? EAnimationData::EAD_Skin : 0;
 		out.Info.max	  = MeshInfo.MaxV;
 		out.Info.min	  = MeshInfo.MinV;
 		out.Info.r		  = MeshInfo.R;

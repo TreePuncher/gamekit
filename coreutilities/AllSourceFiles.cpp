@@ -51,8 +51,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\WorldRender.cpp"
 
 #include "..\graphicsutilities\AnimationUtilities.cpp"
+#include "..\graphicsutilities\AnimationRuntimeUtilities.cpp"
 #include "..\graphicsutilities\CoreSceneObjects.cpp"
 #include "..\graphicsutilities\DDSUtilities.cpp"
+#include "..\graphicsutilities\geometry.cpp"
 #include "..\graphicsutilities\ForwardRendering.cpp"
 #include "..\graphicsutilities\FrameGraph.cpp"
 #include "..\graphicsutilities\Fonts.cpp"

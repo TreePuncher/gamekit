@@ -31,6 +31,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../buildsettings.h"
 #include "../coreutilities/MathUtils.h"
 #include "../coreutilities/memoryutilities.h"
+#include "../coreutilities/ResourceHandles.h"
+
 
 namespace FlexKit
 {	/************************************************************************************************/

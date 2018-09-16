@@ -28,7 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "Common.h"
-
+#include "MetaData.h"
+#include "..\graphicsutilities\Geometry.h"
 
 namespace FlexKit
 {
@@ -110,7 +111,7 @@ namespace FlexKit
 
 	FBXSkinDeformer		CreateSkin			( fbxsdk::FbxMesh* Mesh, iAllocator* TempMem );
 	FBXMeshDesc			TranslateToTokens	( fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false );
-	CompiledMeshInfo	CompileMeshResource	( TriMesh& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv, const char* ID, MD_Vector* MD );
+	CompiledMeshInfo	CompileMeshResource	( TriMeshResource& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv, const char* ID, MD_Vector* MD );
 
 
 	/************************************************************************************************/

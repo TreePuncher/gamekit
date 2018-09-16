@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
+#include "..\buildsettings.h"
 #include "Common.h"
 #include "MeshProcessing.h"
 
@@ -35,6 +36,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using FlexKit::Joint;
 using FlexKit::JointPose;
 using FlexKit::JointHandle;
+
+using FlexKit::GUID_t;
+using FlexKit::MD_Vector;
+
+using namespace FlexKit;
 
 struct	JointAnimation
 {

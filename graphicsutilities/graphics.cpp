@@ -30,6 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\intersection.h"
 #include "..\graphicsutilities\MeshUtils.h"
+#include "..\graphicsutilities\DDSUtilities.h"
+
 
 #include "AnimationUtilities.h"
 #include "graphics.h"
@@ -2933,200 +2935,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferView::VertexBufferView()
-	{
-
-		mBufferinError     = true;
-		mBufferFormat      = VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_UNKNOWN;
-		mBufferType        = VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR;
-		mBufferElementSize = 0;
-		mBuffer			   = nullptr;
-		mBufferUsed		   = 0;
-		mBufferSize        = 0;
-	}
-
-
-	/************************************************************************************************/
-
-
-	VertexBufferView::VertexBufferView(FlexKit::byte* _ptr, size_t size )
-	{
-		mBufferinError     = true;
-		mBufferFormat      = VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_UNKNOWN;
-		mBufferType        = VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ERROR;
-		mBufferElementSize = 0;
-		mBuffer			   = _ptr;
-		mBufferUsed		   = 0;
-		mBufferSize        = size;
-		mBufferLock        = false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	VertexBufferView::~VertexBufferView( void )
-	{}
-
-
-	/************************************************************************************************/
-
-
-	VertexBufferView VertexBufferView::operator + ( const VertexBufferView& RHS )
-	{	//TODO: THIS FUNCTION
-		FK_ASSERT(0); 
-		//if( RHS.GetBufferSize() != GetBufferSize() )
-		//	FK_ASSERT( 0 );
-		//if( RHS.GetBufferType() != VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX ) // Un-Combinable
-		//	FK_ASSERT( 0 );
-
-		//VertexBufferView combined;
-		//combined.Begin( VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_COMBINED, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_COMBINED );
-		//combined.SetElementSize( mBufferElementSize + RHS.GetElementSize() );
-		////combined._combine( *this, RHS );
-		//
-		//return combined;
-		return VertexBufferView(nullptr, 0);
-	}
-
-
-	/************************************************************************************************/
-
-
-	VertexBufferView& VertexBufferView::operator = ( const VertexBufferView& RHS )
-	{
-		if( &RHS != this )
-		{
-			mBufferFormat      = RHS.GetBufferFormat();
-			mBufferType        = RHS.GetBufferType();
-			mBufferElementSize = RHS.GetElementSize();
-			mBufferinError     = false;
-			memcpy( &mBuffer[0], RHS.GetBuffer(), mBufferUsed );
-		}
-		return *this;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void VertexBufferView::Begin( VERTEXBUFFER_TYPE Type, VERTEXBUFFER_FORMAT Format )
-	{
-		mBufferinError         = false;
-		mBufferType            = Type;
-		mBufferFormat          = Format;
-		mBufferUsed			   = 0;
-		mBufferElementSize     = static_cast<uint32_t>( Format );
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool VertexBufferView::End()
-	{
-		return !mBufferinError;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool VertexBufferView::UnloadBuffer()
-	{
-		mBufferUsed = 0;
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FlexKit::byte* VertexBufferView::GetBuffer() const
-	{
-		return mBuffer;
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t VertexBufferView::GetElementSize() const
-	{
-		return mBufferElementSize;
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t VertexBufferView::GetBufferSize() const // Size of elements
-	{
-		return mBufferSize / static_cast<uint32_t>( mBufferFormat );
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t VertexBufferView::GetBufferSizeUsed() const
-	{
-		return mBufferUsed / static_cast<uint32_t>( mBufferFormat );
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t VertexBufferView::GetBufferSizeRaw() const // Size of buffer in bytes
-	{
-		return mBufferUsed;
-	}
-
-
-	/************************************************************************************************/
-	
-
-	VERTEXBUFFER_FORMAT VertexBufferView::GetBufferFormat() const
-	{
-		return mBufferFormat;
-	}
-	
-
-	/************************************************************************************************/
-	
-
-	VERTEXBUFFER_TYPE VertexBufferView::GetBufferType() const
-	{
-		return mBufferType;
-	}
-	
-
-	/************************************************************************************************/
-
-
-	void VertexBufferView::SetTypeFormatSize(VERTEXBUFFER_TYPE Type, VERTEXBUFFER_FORMAT Format, size_t count)
-	{
-		mBufferinError         = false;
-		mBufferType            = Type;
-		mBufferFormat          = Format;
-		mBufferElementSize     = static_cast<uint32_t>( Format );
-		mBufferUsed			   = mBufferElementSize * count;
-	}
-
-
-	/************************************************************************************************/
-	
-
-	FLEXKITAPI VertexBufferView* CreateVertexBufferView( byte* Memory, size_t BufferLength )
-	{
-		return new (Memory - sizeof( VertexBufferView ) + BufferLength) VertexBufferView( Memory, BufferLength - sizeof(VertexBufferView));
-	}
-	
-
-	/************************************************************************************************/
-	
-
 	DXGI_FORMAT TextureFormat2DXGIFormat(FORMAT_2D F)
 	{
 		switch (F)
@@ -3583,7 +3391,7 @@ namespace FlexKit
 
 			CL->BeginQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
 
-			auto MeshHande		= (P.D->Occluder == INVALIDMESHHANDLE) ? P.D->MeshHandle : P.D->Occluder;
+			auto MeshHande		= (P.D->Occluder == InvalidHandle_t) ? P.D->MeshHandle : P.D->Occluder;
 			auto DHeapPosition	= RS->_GetDescTableCurrentPosition_GPU();
 			auto DHeap			= RS->_ReserveDescHeap(8);
 			auto DTable			= DHeap;
@@ -4416,7 +4224,7 @@ namespace FlexKit
 	void ReleaseMesh(RenderSystem* RS, TriMeshHandle TMHandle)
 	{
 		// TODO: MAKE ATOMIC
-		if (GeometryTable.Handles[TMHandle] == INVALIDMESHHANDLE)
+		if (GeometryTable.Handles[TMHandle] == -1)
 			return;// Already Released
 
 		size_t Index	= GeometryTable.Handles[TMHandle];
@@ -4433,7 +4241,7 @@ namespace FlexKit
 
 			GeometryTable.FreeList.push_back(Index);
 			GeometryTable.Geometry[Index]   = TriMesh();
-			GeometryTable.Handles[TMHandle] = INVALIDMESHHANDLE;
+			GeometryTable.Handles[TMHandle] = -1;
 		}
 	}
 
@@ -4520,9 +4328,9 @@ namespace FlexKit
 
 	Pair<TriMeshHandle, bool>	FindMesh(const char* ID)
 	{
-		TriMeshHandle HandleOut = INVALIDMESHHANDLE;
-		size_t location		= 0;
-		size_t HandleIndex	= 0;
+		TriMeshHandle HandleOut = InvalidHandle_t;
+		size_t location			= 0;
+		size_t HandleIndex		= 0;
 
 		for (auto Entry : GeometryTable.GeometryIDs)
 		{
@@ -5880,7 +5688,7 @@ namespace FlexKit
 	TriMeshHandle BuildMesh(RenderSystem* RS, Mesh_Description* Desc, GUID_t guid)
 	{
 		TriMesh* Mesh = nullptr;
-		TriMeshHandle Handle = INVALIDMESHHANDLE;
+		TriMeshHandle Handle = InvalidHandle_t;
 
 		if (!GeometryTable.FreeList.size())
 		{

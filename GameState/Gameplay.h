@@ -127,8 +127,8 @@ public:
 	}
 
 
-	FlexKit::int2	XY				= {1, 1};
-	FlexKit::float2 Offset			= {0.f, 0.f};
+	FlexKit::int2	XY						= {1, 1};
+	FlexKit::float2 Offset					= {0.f, 0.f};
 	FlexKit::static_vector<EBombType, 4>	BombSlots;
 	FlexKit::static_vector<size_t, 4>		BombCounts;
 
