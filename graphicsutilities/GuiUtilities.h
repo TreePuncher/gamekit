@@ -70,16 +70,8 @@ namespace FlexKit
 		float	Columns[10];
 	};
 
-	struct GUIElement
-	{
-		EGUI_ELEMENT_TYPE	Type;
-		size_t				Index;
-		uint2				Position;
-		uint2				RC;// ROW - COLUMN
-	};
-
-	typedef Vector<size_t> GUIChildList;
-
+	typedef Vector<size_t>	GUIChildList;
+	typedef size_t			UIElementID_t;
 	struct GUIElement_List{
 		GUIElement_List(GUIElement_List&& in) {
 			WH			= in.WH;
@@ -109,10 +101,10 @@ namespace FlexKit
 	};
 
 	// CallBacks Definitions
-	typedef std::function<bool (char*, size_t,	size_t GUIElement)>	TextInputEventFN;
-	typedef std::function<bool (				size_t GUIElement)> EnteredEventFN;
-	typedef std::function<bool (				size_t GUIElement)> GenericGUIEventFN;
-	typedef std::function<bool (float,			size_t GUIElement)> SliderEventFN;
+	typedef std::function<bool (char*, size_t,	size_t )>	TextInputEventFN;
+	typedef std::function<bool (				size_t )> EnteredEventFN;
+	typedef std::function<bool (				size_t )> GenericGUIEventFN;
+	typedef std::function<bool (float,			size_t )> SliderEventFN;
 
 	typedef uint32_t GUIElementHandle;
 
@@ -374,13 +366,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class ComplexGUI;
+	class GuiSystem;
 
 	struct GUIGrid;
 	struct GUIGridCell;
-
-	struct GUIButton;
-	class GUIButtonHandle;
 
 
 	/************************************************************************************************/
@@ -418,9 +407,11 @@ namespace FlexKit
 		iAllocator*			TempMemory;
 
 		Vector<float2>	PositionStack;
+		Vector<float2>	AreaStack;
 		
 		float2 PixelSize;
 		float2 GetCurrentPosition();
+		float2 GetDrawArea();
 
 		static float2 Position2SS(float2);
 		static float3 Position2SS(float3);
@@ -439,6 +430,9 @@ namespace FlexKit
 		void PushOffset			( float2 XY );
 		void PopOffset			( );
 
+		void PushDrawArea(float2 XY);
+		void PopDrawArea();
+
 		void Begin		();
 		void End		();
 	};
@@ -447,13 +441,34 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct GUIBaseElement
+	class GUIElement
 	{
-		size_t Index;
-		size_t UpdatePriority;
+	public:
+		GUIElement(const UIElementID_t id, EGUI_ELEMENT_TYPE in_type) :
+			type			{ in_type	},
+			elementID		{ id		},	
+			active			{ false		}, 
+			cellID			{ 0u, 0u	},
+			updatePriority	{ 0			}{}
 
-		bool				Active;
-		EGUI_ELEMENT_TYPE	Type;
+		virtual ~GUIElement() {};
+
+		virtual void Update	(LayoutEngine* layoutEngine, double dt, const WindowInput& input) = 0;
+		virtual void Draw	(LayoutEngine* LayoutEngine) = 0;
+
+		// No slicing
+					GUIElement	(const GUIElement&)		= delete;
+		GUIElement& operator =	(const GUIElement&)		= delete;
+
+		// No Moving
+					GUIElement	(GUIElement&&)			= delete;
+		GUIElement& operator =	(const GUIElement&&)	= delete;
+
+		uint2					cellID;
+		const UIElementID_t		elementID;
+		size_t					updatePriority;
+		bool					active;
+		const EGUI_ELEMENT_TYPE	type;
 	};
 
 
@@ -464,34 +479,52 @@ namespace FlexKit
 	{
 		GUIDimension(float f = 0.0f) : D{ f } {}
 
-		float D;
 		GUIDimension& operator = (float f) { D = f; return *this; }
 
-		operator float () {
+		operator float () const {
 			return D;
 		}
+
+		float D;
 	};
 	
 	
 	/************************************************************************************************/
 
 
-	struct GUIButton
+	class GUIButton : public GUIElement
 	{
-		GUIButton() :
-			CellID			({}),
-			Dimensions		({}),
-			Entered			(nullptr),
-			Clicked			(nullptr),
-			Released		(nullptr),
-			Hover			(nullptr),
-			Text			(nullptr),
-			Memory			(nullptr),
-			USR				(nullptr),
-			HoverDuration	(0.0),
-			HoverLength		(1.0f),
-			ClickState		(false)
-		{}
+	public:
+		GUIButton(UIElementID_t in_ID) :
+			GUIElement		{ in_ID, EGUI_ELEMENT_TYPE::EGE_BUTTON_TEXT},
+
+			CellID			{ {}			},
+			Dimensions		{ 0.0f, 0.0f	},
+			Entered			{ nullptr		},
+			Clicked			{ nullptr		},
+			Released		{ nullptr		},
+			Hover			{ nullptr		},
+			Text			{ nullptr		},
+			Memory			{ nullptr		},
+			USR				{ nullptr		},
+			HoverDuration	{ 0.0			},
+			HoverLength		{ 1.0f			},
+			ClickState		{ false			}{}
+
+
+		~GUIButton() override {}
+		
+
+		void Update(LayoutEngine* layoutEngine, double dt, const WindowInput& input) override
+		{
+
+		}
+
+
+		void Draw(LayoutEngine* LayoutEngine) override
+		{
+			FK_ASSERT(0, "Not Implemented!");
+		}
 
 
 		uint2	CellID;
@@ -511,61 +544,24 @@ namespace FlexKit
 		double	HoverLength;
 		bool	ClickState;
 
-		static void Draw		( GUIButtonHandle button, LayoutEngine* Layout );
-		static void Draw_DEBUG	( GUIButtonHandle button, LayoutEngine* Layout );
+		//static void Draw		( GUIButtonHandle button, LayoutEngine* Layout );
+		//static void Draw_DEBUG	( GUIButtonHandle button, LayoutEngine* Layout );
 
-		static void Update		( GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const WindowInput in );
+		//static void Update		( GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const WindowInput in );
 	};
 
 
 	/************************************************************************************************/
 
 
-
-	class GUIHandle
+	class GUITextBox : public GUIElement
 	{
 	public:
-		GUIHandle() {}
-		GUIHandle(ComplexGUI* window, GUIElementHandle hndl) : mWindow(window), mBase(hndl) {}
+		GUITextBox(UIElementID_t in_ID) : 
+			GUIElement	{ in_ID, EGUI_ELEMENT_TYPE::EGE_TEXTBOX },
+			Dimensions	{ 0.0f, 0.0f }
+		{}
 
-		GUIElementHandle	mBase;
-		ComplexGUI*			mWindow;
-
-		void SetActive(bool);
-
-		const EGUI_ELEMENT_TYPE	Type();
-		const EGUI_ELEMENT_TYPE	Type() const;
-
-		const GUIBaseElement	Framework() const;
-		GUIBaseElement&			Framework();
-	};
-
-
-	/************************************************************************************************/
-
-	struct GUITextBox;
-
-	class GUITextBoxHandle : public GUIHandle
-	{
-	public:
-		GUITextBoxHandle	( GUIHandle );
-		GUITextBoxHandle	( ComplexGUI* Window, GUIElementHandle In );
-		
-		void SetText	( const char* Text );
-		void SetTextFont( SpriteFontAsset* Font );
-		void SetCellID	( uint2 CellID );
-
-		float2 WH();
-
-		GUITextBox& _IMPL();
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct GUITextBox
-	{
 		uint2	CellID;
 		float2	Dimensions;
 		float4	Color;
@@ -585,71 +581,20 @@ namespace FlexKit
 		SpriteFontAsset*	Font;
 		iAllocator*		Memory;
 
-		static void Update		(GUITextBoxHandle  TextBox, LayoutEngine* Layout, double dT, const WindowInput Input);
-		static void Draw		(GUITextBoxHandle  button, LayoutEngine* Layout);
-		static void Draw_DEBUG	(GUITextBoxHandle  button, LayoutEngine* Layout);
-	};
+		void Update(LayoutEngine* layoutEngine, double dt, const WindowInput& input) override
+		{
+
+		}
 
 
-	/************************************************************************************************/
+		void Draw(LayoutEngine* LayoutEngine) override
+		{
+			FK_ASSERT(0, "Not Implemented!");
+		}
 
-
-	class GUIGridHandle : public GUIHandle
-	{
-	public:
-		GUIGridHandle(GUIHandle);
-		GUIGridHandle(ComplexGUI* Window, GUIElementHandle In);
-
-		Vector<GUIDimension>&		RowHeights		();
-		Vector<GUIDimension>&		ColumnWidths	();
-		GUIGridCell*				CreateCell		(uint2);
-		GUIGridCell&				GetCell			(uint2 ID, bool& Found);
-		float2						GetCellWH		(uint2 ID);
-
-
-		float2						GetWH();
-		float2						GetPosition();
-		float2						GetChildPosition(GUIElementHandle Element);
-		float4						GetBackgroundColor();
-
-		void						SetBackgroundColor	(float4 K);
-		void						SetPosition			(float2 XY);
-
-		GUIGrid&							_GetGrid();
-		Vector<Vector<GUIElementHandle>>	_GetChildren();
-
-		operator GUIElementHandle () { return mBase; }
-
-		void resize				( float Width_percent, float Height_percent );
-		void SetGridDimensions	( size_t Width, size_t Height );
-		void SetCellFormatting	( uint2, EDrawDirection );
-		
-
-		GUIButtonHandle		CreateButton	(uint2 CellID, const char* Str = nullptr, SpriteFontAsset* font = nullptr);
-		GUITextBoxHandle	CreateTextBox	(uint2 CellID, const char* Str = nullptr, SpriteFontAsset* font = nullptr);
-	};
-
-
-	/************************************************************************************************/
-
-
-	class GUIButtonHandle : public GUIHandle
-	{
-	public:
-		GUIButtonHandle(ComplexGUI* Window, GUIElementHandle In);
-
-		operator GUIElementHandle () { return mBase; }
-
-		void resize(float Width_percent, float Height_percent);
-		void SetCellID(uint2 CellID);
-		void SetUSR(void*);
-
-		float2 WH();
-
-		const char* Text();
-		GUIButton& _IMPL();
-
-	private:
+		//static void Update		(LayoutEngine* Layout, double dT, const WindowInput Input);
+		//static void Draw		(LayoutEngine* Layout);
+		//static void Draw_DEBUG	(LayoutEngine* Layout);
 	};
 
 
@@ -663,89 +608,249 @@ namespace FlexKit
 		EDrawDirection	StackFormatting;
 	};
 
-	struct GUIGrid
+	struct GUIGrid : public GUIElement
 	{
-		GUIGrid() : 
-			RowHeights			(nullptr), 
-			ColumnWidths		(nullptr),
-			Cells				(nullptr),
-			XY					(0.0f, 0.0f),
-			Framework			((uint32_t)-1),
-			BackgroundColor		(Grey(0.5f), 1),
-			WH					{1, 1}
+		GUIGrid(UIElementID_t in_id, iAllocator* allocator ) :
+			GUIElement			{ in_id, EGUI_ELEMENT_TYPE::EGE_GRID	},
+			Children			{ allocator								},
+			RowHeights			{ allocator								},
+			ColumnWidths		{ allocator								},
+			Cells				{ allocator								},
+			XY					{ 0.0f, 0.0f							},
+			Framework			{ (uint32_t) -1							},
+			BackgroundColor		{ Grey(0.5f), 1							},
+			WH					{ 1, 1									}
 		{}
 
-
-		GUIGrid( iAllocator* memory, uint32_t base ) : 
-			RowHeights		(memory), 
-			ColumnWidths	(memory),
-			Cells			(memory),
-			XY				(0.0f, 0.0f),
-			Framework		(base),
-			BackgroundColor	(Grey(0.5f), 1),
-			WH				{1, 1}
-		{}
-
-
-		GUIGrid(const GUIGrid& rhs)
-		{
-			RowHeights		= rhs.RowHeights;
-			ColumnWidths	= rhs.ColumnWidths;
-			Cells			= rhs.Cells;
-			Framework		= rhs.Framework;
-			XY				= rhs.XY;
-			BackgroundColor	= rhs.BackgroundColor;
-			WH				= rhs.WH;
-		}
+		GUIGrid(const GUIGrid& rhs) = delete;
 
 		template<typename FN>
-		static void ScanElements(GUIGridHandle Grid, LayoutEngine& LayoutEngine, FN ScanFunction)
+		void Visit(LayoutEngine& LayoutEngine, FN Visitor)
 		{
-			float Y = 0;
-			uint32_t Y_ID = 0;
+			float Y			= 0;
+			uint32_t Y_ID	= 0;
 
-			float RowWidth		= Grid._GetGrid().WH[0];
-			float ColumnHeight	= Grid._GetGrid().WH[1];
+			float RowWidth		= WH[0];
+			float ColumnHeight	= WH[1];
 
-			for (auto& h : Grid.RowHeights())
+			for (const auto& h : RowHeights)
 			{
 				uint32_t  X_ID = 0;
 
-				for (auto& w : Grid.ColumnWidths()) {
-					bool Result = false;
-					auto& Cell	= Grid.GetCell({ X_ID, Y_ID }, Result);
-					if (Result)
+				for (const auto& w : ColumnWidths) {
+					GUIGridCell* Cell = nullptr;
+
+					if (GetCell({ X_ID, Y_ID }, Cell))
 					{
-						auto& Children = Grid.mWindow->Children[Cell.Children];
-						if (&Children && Children.size())
-							for (auto& C : Children)
-								ScanFunction(C, LayoutEngine);
+						auto const CurrentID = uint2{ X_ID, Y_ID };
+
+						LayoutEngine.PushDrawArea(GetCellDimension(CurrentID));
+
+						for (auto& C : Children)
+						{
+							if (C->cellID == CurrentID)
+								Visitor(C, CurrentID);
+						}
+
+						LayoutEngine.PopDrawArea();
 					}
 
 					LayoutEngine.PushOffset({ w * RowWidth, 0 });
 					X_ID++;
 				}
 
-				for (auto& w : Grid.ColumnWidths())
+				for (const auto& w : ColumnWidths)
 					LayoutEngine.PopOffset();
 
 				LayoutEngine.PushOffset({ 0, h * ColumnHeight });
 				Y_ID++;
 			}
 
-			for (auto& h : Grid.RowHeights())
+			for (const auto& h : RowHeights)
 				LayoutEngine.PopOffset();
 		}
 
-		static void Update		( GUIGridHandle Grid, LayoutEngine* LayoutEngine, double dt, const WindowInput in );
-		static void Draw		( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
-		static void Draw_DEBUG	( GUIGridHandle Grid, LayoutEngine* LayoutEngine );
+
+		void SetGridDimensions(uint2 CR)// CR = {Columns, Rows}
+		{
+			ColumnWidths.resize(CR[0]);
+			RowHeights.resize(CR[1]);
+
+			for (auto& W : ColumnWidths)
+				W = float(WH[0]) / float(CR[0]);
+
+			for (auto& H : RowHeights)
+				H = float(WH[1]) / float(CR[1]);
+
+			Cells.resize(CR.Product());
+
+			for (auto Column = 0u; Column < CR[0]; ++Column)
+			{
+				for (auto Row = 0u; Row < CR[1]; ++Row)
+				{
+					GUIGridCell Cell = 
+					{
+						{ Column, Row},
+						0u,
+						DD_Grid
+					};
+
+					Cells[Column * CR[1] + Row] = Cell;
+				}
+			}
+		}
+
+		void Update(LayoutEngine* layoutEngine, double dt, const WindowInput&) override
+		{}
+
+		void Draw(LayoutEngine* LayoutEngine) override
+		{
+			Debug_Draw(LayoutEngine);
+		}
+
+		void Debug_Draw(LayoutEngine* LayoutEngine)
+		{
+			LayoutEngine->PushOffset(XY);
+			LayoutEngine->PushDrawArea(WH);
+
+
+			float RowWidth		= WH[0];
+			float ColumnHeight	= WH[1];
+
+			Vector<LineSegment> Lines(LayoutEngine->Memory);
+
+			{	// Draw Vertical Lines
+				float X = 0;
+
+				for (const auto& ColumnWidth : ColumnWidths) {
+					float Width = ColumnWidth;
+					X += Width;
+
+					LineSegment Line;
+					Line.A       = float3{ X, 0, 0 };
+					Line.B       = float3{ X, ColumnHeight, 0 };
+					Line.AColour = float3( 1, 1, 1);
+					Line.BColour = float3( 1, 1, 1);
+
+					Lines.push_back(Line);
+				}
+
+				LineSegment Line;
+				Line.A       = float3{ 0, 0, 0 };
+				Line.B       = float3{ 0, 1, 0 };
+				Line.AColour = float3( 1, 0, 0);
+				Line.BColour = float3( 0, 1, 0);
+
+				Lines.push_back(Line);
+
+
+				Line.A			= float3{ 0, 0, 0 };
+				Line.B			= float3{ 0, 1, 0 };
+				Line.AColour	= float3( 1, 1, 1);
+				Line.BColour	= float3( 1, 1, 1);
+
+				Lines.push_back(Line);
+			}
+
+			{	// Draw Horizontal Lines
+				float Y = 0;
+				const auto& Heights = RowHeights;
+
+				for (const auto& RowHeight : Heights) {
+					float Width = RowHeight;
+					Y += Width;
+
+					LineSegment Line;
+					Line.A		 = float3{ 0,	Y,		0 };
+					Line.B		 = float3{ 1,	Y,		0 };
+					Line.AColour = float3( 1,	1.0f,	1 );
+					Line.BColour = float3( 1,	1.0f,	1 );
+
+					Lines.push_back(Line);
+				}
+
+				LineSegment Line;
+				Line.A			= float3{ 0, 0, 0 };
+				Line.B			= float3{ 1, 0, 0 };
+				Line.AColour	= float3( 1, 1, 1 );
+				Line.BColour	= float3( 1, 1, 1 );
+
+				Lines.push_back(Line);
+
+				Line.A			= float3{ 0, 1,	0 };
+				Line.B			= float3{ 1, 1,	0 };
+				Line.AColour	= float3( 1, 1, 1 );
+				Line.BColour	= float3( 1, 1,	1 );
+
+				Lines.push_back(Line);
+			}
+
+			LayoutEngine->PushLineSegments(Lines);
+
+			Visit(
+				*LayoutEngine,
+				[&](auto* Element, const auto cellID)
+				{
+					Element->Draw(LayoutEngine);
+
+				});
+
+			LayoutEngine->PopDrawArea();
+			LayoutEngine->PopOffset();
+		}
+
+
+		void AddChild(GUIElement* Element, uint2 ID)
+		{
+			GUIGridCell* Cell = nullptr;
+			if (GetCell(ID, Cell))
+				Cell->Children++;
+
+			Children.push_back(Element);
+		}
+
+
+		bool& GetCell(uint2 ID, GUIGridCell*& Cell)
+		{
+			auto res = find(Cells, [&](auto& I) { return I.ID == ID; });
+			bool Found = res != Cells.end();
+
+			if(res)
+				Cell = res;
+
+			return Found;
+		}
+
+
+		float2 GetCellDimension(const uint2 cellID)
+		{
+			return { ColumnWidths[cellID[0]], RowHeights[cellID[1]] };
+		}
+
+
+		float2 GetCellPosition(const uint2 cellID)
+		{
+			float CellX = XY[0];
+			float CellY = XY[1];
+
+			// Get X Position
+			for (size_t idx = 0; idx < cellID[0]; ++idx)
+				CellX += ColumnWidths[idx];
+
+			// Get Y Position
+			for (size_t idx = 0; idx < cellID[1]; ++idx)
+				CellY += RowHeights[idx];
+
+			return {CellX, CellY};
+		}
+
 
 		Vector<GUIDimension>	RowHeights;
 		Vector<GUIDimension>	ColumnWidths;
 		Vector<GUIGridCell>		Cells;
+		Vector<GUIElement*>		Children;
 		float2					WH;
-		float2					XY;
+		float2					XY; // Relative to parent
 		float4					BackgroundColor;
 		uint32_t				Framework;
 	};
@@ -764,14 +869,24 @@ namespace FlexKit
 	};
 
 
-	class ComplexGUI
+	struct GuiSystem_Desc
+	{
+		size_t GridCount	= 10;
+		size_t ButtonCount	= 25;
+		size_t TextBoxes	= 25;
+	};
+
+
+	/************************************************************************************************/
+
+
+	class GuiSystem
 	{
 	public:
-		ComplexGUI ( iAllocator* memory );
-		ComplexGUI ( const ComplexGUI& );
+		GuiSystem ( GuiSystem_Desc desc, iAllocator* memory );
+		GuiSystem ( GuiSystem&& ); // Moves are allowed
 
-		~ComplexGUI() { Release(); }
-
+		~GuiSystem() { Release(); }
 
 		void Release();
 
@@ -785,10 +900,9 @@ namespace FlexKit
 
 		void UpdateElement		( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	WindowInput Input );
 
-		GUIGridHandle		CreateGrid		( uint2 ID = {0, 0}, uint2 CellCounts = {1, 1} );
-		GUIGridHandle		CreateGrid		( GUIElementHandle	Parent, uint2 ID = {0, 0} );
-		GUIButtonHandle		CreateButton	( GUIElementHandle Parent );
-		GUITextBoxHandle	CreateTextBox	( GUIElementHandle Parent );
+		GUIGrid&			CreateGrid		( GUIGrid* Parent = nullptr, uint2 ID = {0, 0} );
+		GUIButton&			CreateButton	( GUIElement* Parent );
+		GUITextBox&			CreateTextBox	( GUIElement* Parent );
 		void				CreateTextInputBox();
 
 		// to be implemented
@@ -796,12 +910,11 @@ namespace FlexKit
 		void CreateHorizontalSlider();
 		void CreateVerticalSlider();
 
-		Vector<GUIBaseElement>				Elements;
-		Vector<GUIGrid>						Grids;
-		Vector<GUIButton>					Buttons;
-		Vector<GUITextBox>					TextBoxes;
-		Vector<Vector<GUIElementHandle>>	Children;
+		ObjectPool<GUIGrid>					Grids;
+		ObjectPool<GUIButton>				Buttons;
+		ObjectPool<GUITextBox>				TextBoxes;
 
+		Vector<GUIElement*>					Elements;
 		iAllocator*							Memory;
 	};
 
