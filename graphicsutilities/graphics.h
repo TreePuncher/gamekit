@@ -54,6 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\type.h"
 #include "..\coreutilities\KeycodesEnums.h"
 #include "..\graphicsutilities\Geometry.h"
+#include "..\graphicsutilities\TextureUtilities.h"
 
 
 #include <iso646.h>
@@ -517,39 +518,6 @@ namespace FlexKit
 	{
 		size_t X, Y, Height, Width;
 		float  Min, Max;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct TextureBuffer
-	{
-		byte*		Buffer;
-		uint2		WH;
-		size_t		Size;
-		size_t		ElementSize;
-		iAllocator* Memory;
-
-		void Release()
-		{
-			Memory->_aligned_free(Buffer);
-		}
-	};
-
-
-	template<typename TY>
-	struct TextureBufferView
-	{
-		TextureBufferView(TextureBuffer* Buffer) : Texture(Buffer) {}
-
-		TY& operator [](uint2 XY)
-		{
-			TY* buffer = (TY*)Texture->Buffer;
-			return buffer[Texture->WH[1] * XY[1] + XY[0]];
-		}
-
-		TextureBuffer* Texture;
 	};
 
 

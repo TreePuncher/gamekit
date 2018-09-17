@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\AnimationUtilities.cpp"
 #include "..\graphicsutilities\MeshUtils.cpp"
 #include "..\graphicsutilities\Geometry.cpp"
+#include "..\graphicsutilities\TextureUtilities.cpp"
 #include "..\coreutilities\memoryutilities.cpp"
 #include "..\coreutilities\Logging.cpp"
 #include "..\coreutilities\MathUtils.cpp"
@@ -229,7 +230,6 @@ int main(int argc, char* argv[])
 							}* Samples;
 
 
-							/*
 							FlexKit::TextureBuffer Buffer;
 							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc, BlockMemory, &Buffer);
 
@@ -266,7 +266,6 @@ int main(int argc, char* argv[])
 							Blob->Type = EResourceType::EResource_TerrainCollider;
 
 							ResourcesFound.push_back(Blob);
-							*/
 						}
 					}
 				}

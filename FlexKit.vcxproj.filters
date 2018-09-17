@@ -121,9 +121,6 @@
     <ClInclude Include="graphicsutilities\SSReflections.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\ImageUtilities.h">
-      <Filter>graphicsutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="graphicsutilities\FrameGraph.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
@@ -189,6 +186,9 @@
     </ClInclude>
     <ClInclude Include="coreutilities\ResourceHandles.h">
       <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\TextureUtilities.h">
+      <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -259,9 +259,6 @@
       <Filter>graphicsutilities\headers</Filter>
     </ClCompile>
     <ClCompile Include="graphicsutilities\ForwardRendering.cpp">
-      <Filter>graphicsutilities\source</Filter>
-    </ClCompile>
-    <ClCompile Include="graphicsutilities\ImageUtilities.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="coreutilities\Transforms.cpp">
@@ -335,6 +332,9 @@
     </ClCompile>
     <ClCompile Include="graphicsutilities\AnimationRuntimeUtilities.H">
       <Filter>graphicsutilities\headers</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\TextureUtilities.cpp">
+      <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

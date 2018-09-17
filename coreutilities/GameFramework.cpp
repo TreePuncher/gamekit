@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ConsoleSubState.h"
 #include "GameFramework.h"
 #include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\ImageUtilities.h"
+#include "..\graphicsutilities\TextureUtilities.h"
 #include "..\coreutilities\Logging.h"
 
 

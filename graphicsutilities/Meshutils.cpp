@@ -91,14 +91,17 @@ namespace FlexKit
 					}
 					if (normal.size() != 0)
 						memcpy(&TempFVert.NORMAL, &normal[TempFVert.index.n_Index], sizeof(TempFVert.NORMAL));
-					else
-						memcpy(&TempFVert.NORMAL, &float3(0), sizeof(TempFVert.NORMAL));
-
+					else {
+						float3 Temp{0};
+						memcpy(&TempFVert.NORMAL, &Temp, sizeof(TempFVert.NORMAL));
+					}
 					if (UV.size() != 0)
 						memcpy(&TempFVert.TEXCOORD, &UV[TempFVert.index.t_Index], sizeof(TempFVert.NORMAL));
 					else
-						memcpy(&TempFVert.TEXCOORD, &float2(), sizeof(TempFVert.TEXCOORD));
-
+					{
+						float2 Temp;
+						memcpy(&TempFVert.TEXCOORD, &Temp, sizeof(TempFVert.TEXCOORD));
+					}
 					{
 						if (IndexMap.find(TempFVert.index) == IndexMap.end())
 						{

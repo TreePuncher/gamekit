@@ -704,6 +704,7 @@ public:
 	InputMap DebugCameraInputMap;
 	InputMap DebugEventsInputMap;
 	size_t	 FrameID;
+	TriMeshHandle	CharacterModel;
 };
 
 

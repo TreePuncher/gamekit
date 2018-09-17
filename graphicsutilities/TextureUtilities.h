@@ -26,11 +26,47 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\MathUtils.h"
 
-#ifndef IMAGEUTILITIES_H
-#define IMAGEUTILITIES_H
+#ifndef TEXTUREUTILITIES_H
+#define TEXTUREUTILITIES_H
 
 namespace FlexKit
 {
+	/************************************************************************************************/
+
+
+	struct TextureBuffer
+	{
+		byte*		Buffer;
+		uint2		WH;
+		size_t		Size;
+		size_t		ElementSize;
+		iAllocator* Memory;
+
+		void Release()
+		{
+			Memory->_aligned_free(Buffer);
+		}
+	};
+
+
+	template<typename TY>
+	struct TextureBufferView
+	{
+		TextureBufferView(TextureBuffer* Buffer) : Texture(Buffer) {}
+
+		TY& operator [](uint2 XY)
+		{
+			TY* buffer = (TY*)Texture->Buffer;
+			return buffer[Texture->WH[1] * XY[1] + XY[0]];
+		}
+
+		TextureBuffer* Texture;
+	};
+
+
+	/************************************************************************************************/
+
+
 	struct RGBA
 	{
 		byte Red;

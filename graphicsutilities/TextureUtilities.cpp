@@ -22,12 +22,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "ImageUtilities.h"
-
+#include "TextureUtilities.h"
 
 namespace FlexKit
 {
-
 	bool LoadBMP(const char* File, iAllocator* Memory, TextureBuffer* Out)
 	{
 #pragma pack(push, 1)

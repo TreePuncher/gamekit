@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "PlayState.h"
 #include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\PipelineState.h"
-#include "..\graphicsutilities\ImageUtilities.h"
+#include "..\graphicsutilities\TextureUtilities.h"
 #include "..\coreutilities\GraphicsComponents.h"
 #include "..\graphicsutilities\PipelineState.h"
 
@@ -182,6 +182,7 @@ void DrawGame(
 	TextureHandle			RenderTarget,
 	TextureHandle			DepthBuffer,
 	CameraHandle			Camera,
+	TriMeshHandle			PlayerModel,
 	iAllocator*				TempMem)
 {
 	const size_t ColumnCount = Grid.WH[1];
@@ -205,7 +206,7 @@ void DrawGame(
 
 	DrawCollection_Desc DrawDesc =
 	{
-		TriMeshHandle(0),
+		PlayerModel,
 		RenderTarget,
 		DepthBuffer,
 		VertexBuffer,
@@ -384,6 +385,9 @@ PlayState::PlayState(
 							Framework->Core->GetTempMemory()
 						}
 {
+	AddResourceFile("CharacterBase.gameres");
+	CharacterModel = FlexKit::LoadTriMeshIntoTable(Framework->Core->RenderSystem, 789);
+
 	Player1_Handler.SetActive(LocalGame.CreatePlayer({ 11, 11 }));
 	Player1_Handler.SetPlayerCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
 
@@ -639,6 +643,7 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		GetCurrentBackBuffer(&Core->Window),
 		DepthBuffer,
 		ActiveCamera,
+		CharacterModel,
 		Core->GetTempMemory());
 
 

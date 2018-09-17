@@ -223,7 +223,7 @@
     <ClInclude Include="graphicsutilities\Geometry.h" />
     <ClInclude Include="graphicsutilities\graphics.h" />
     <ClInclude Include="graphicsutilities\GuiUtilities.h" />
-    <ClInclude Include="graphicsutilities\ImageUtilities.h" />
+    <ClInclude Include="graphicsutilities\TextureUtilities.h" />
     <ClInclude Include="graphicsutilities\PipelineState.h" />
     <ClInclude Include="graphicsutilities\FrameGraph.h" />
     <ClInclude Include="graphicsutilities\SSReflections.h" />
@@ -403,7 +403,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="graphicsutilities\ImageUtilities.cpp">
+    <ClCompile Include="graphicsutilities\TextureUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

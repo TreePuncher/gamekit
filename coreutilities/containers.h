@@ -138,11 +138,8 @@ namespace FlexKit
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * InitialReservation);
 				FK_ASSERT(NewMem);
 
-				if (A)
-				{
-					A	= NewMem;
-					Max = InitialReservation;
-				}
+				A	= NewMem;
+				Max = InitialReservation;
 			}
 		}
 

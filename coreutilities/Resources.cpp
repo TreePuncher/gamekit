@@ -121,8 +121,8 @@ namespace FlexKit
 
 	void FreeAllResources()
 	{
-		//for (auto R : Resources.ResourcesLoaded)
-		//	if(Resources.ResourceMemory) Resources.ResourceMemory->_aligned_free(R);
+		for (auto R : Resources.ResourcesLoaded)
+			if(Resources.ResourceMemory) Resources.ResourceMemory->_aligned_free(R);
 	}
 
 
@@ -131,8 +131,8 @@ namespace FlexKit
 
 	void FreeAllResourceFiles()
 	{
-		//for (auto T : Resources.Tables)
-		//	Resources.ResourceMemory->_aligned_free(T);
+		for (auto T : Resources.Tables)
+			Resources.ResourceMemory->_aligned_free(T);
 	}
 
 

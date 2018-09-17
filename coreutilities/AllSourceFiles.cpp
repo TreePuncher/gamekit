@@ -60,7 +60,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\Fonts.cpp"
 #include "..\graphicsutilities\graphics.cpp"
 #include "..\graphicsutilities\GuiUtilities.cpp"
-#include "..\graphicsutilities\ImageUtilities.cpp"
+#include "..\graphicsutilities\TextureUtilities.cpp"
 #include "..\graphicsutilities\TextRendering.cpp"
 #include "..\graphicsutilities\Meshutils.cpp"
 #include "..\graphicsutilities\PipelineState.cpp"
