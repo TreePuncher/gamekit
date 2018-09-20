@@ -177,8 +177,6 @@ bool Game::IsCellDestroyed(GridID_t GridID)
 
 void Game::Update(const double dt, iAllocator* TempMemory)
 {
-	auto RemoveList = FlexKit::Vector<iGameTask**>(TempMemory);
-
 	std::stable_sort(
 		Tasks.begin(), 
 		Tasks.end(), 
@@ -193,15 +191,16 @@ void Game::Update(const double dt, iAllocator* TempMemory)
 		Task->Update(dt);
 
 		if (Task->Complete())
-			RemoveList.push_back(&Task);
+		{
+			(Task)->~iGameTask();
+			Memory->free(Task);
+			Task = nullptr;
+		}
 	}
 
-	for (auto* Task : RemoveList)
-	{	// Ugh!
-		(*Task)->~iGameTask();
-		Memory->free(*Task);
-		Tasks.remove_stable(Task);
-	}
+	Tasks.erase(
+		std::remove(Tasks.begin(), Tasks.end(), nullptr), 
+		Tasks.end());
 }
 
 
@@ -325,18 +324,18 @@ void MovePlayerTask::Update(const double dt)
 
 			Grid->Players[Player].State		= GridPlayer::PS_Idle;
 			Grid->Players[Player].XY		= A;
-			Grid->Players[Player].Offset	= { 0.f, 0.f };
+			Grid->Players[Player].Offset	= float2{ 0.f, 0.f };
 			complete = true;
 		}
 		else
-			Grid->Players[Player].Offset = { C * T };
+			Grid->Players[Player].Offset = float2{ C * T };
 	}
 	else
 	{
 		Grid->MarkCell(A, EState::Empty);
 		Grid->MarkCell(B, EState::Player);
 
-		Grid->Players[Player].Offset = { 0.f, 0.f };
+		Grid->Players[Player].Offset = float2{ 0.f, 0.f };
 		Grid->Players[Player].XY	 = B;
 		Grid->Players[Player].State	 = GridPlayer::PS_Idle;
 		complete = true;
@@ -371,7 +370,7 @@ void RegularBombTask::Update(const double dt)
 		{
 
 			int2 temp = B - A;
-			float2 C = {
+			float2 C{
 				(float)temp[0],
 				(float)temp[1] };
 
@@ -379,19 +378,20 @@ void RegularBombTask::Update(const double dt)
 		}
 		else
 		{
-			Grid->MarkCell(A, EState::Empty);
+   			Grid->MarkCell(A, EState::Empty);
 			Grid->MarkCell(B, EState::Bomb);
 
 			T2					= 0.0f;
 			BombEntry.Offset	= { 0.f, 0.f };
 			BombEntry.XY		= B;
 		}
+
+		Grid->SetBomb(Bomb, BombEntry);
 	}
 
 	if (T >= 2.0f)
 	{
 		Completed = true;
-
 
 		Grid->RemoveBomb(Bomb);
 
@@ -403,7 +403,7 @@ void RegularBombTask::Update(const double dt)
 		Grid->MarkCell(BombEntry.XY + int2{  0,  0 }, EState::Destroyed);
 		Grid->MarkCell(BombEntry.XY + int2{  1,  0 }, EState::Destroyed);
 
-		Grid->MarkCell(BombEntry.XY + int2{ -1,  1 }, EState::Destroyed);
+  		Grid->MarkCell(BombEntry.XY + int2{ -1,  1 }, EState::Destroyed);
 		Grid->MarkCell(BombEntry.XY + int2{  0,  1 }, EState::Destroyed);
 		Grid->MarkCell(BombEntry.XY + int2{  1,  1 }, EState::Destroyed);
 
@@ -419,8 +419,6 @@ void RegularBombTask::Update(const double dt)
 		Grid->CreateGridSpace(BombEntry.XY + int2{  0,  1 });
 		Grid->CreateGridSpace(BombEntry.XY + int2{  1,  1 });
 	}
-
-	Grid->SetBomb(Bomb, BombEntry);
 }
 
 

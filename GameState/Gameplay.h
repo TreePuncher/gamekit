@@ -277,6 +277,21 @@ public:
 	/************************************************************************************************/
 
 
+	Game(Game&& rhs) :
+		Bombs	{std::move(rhs.Bombs)},
+		Memory	{std::move(rhs.Memory)},
+		Players	{std::move(rhs.Players)},
+		Objects {std::move(rhs.Objects)},
+		Spaces	{std::move(rhs.Spaces)},
+		Grid	{std::move(rhs.Grid)},
+		WH		{std::move(rhs.WH)},
+		Tasks	{std::move(rhs.Tasks)}
+	{}
+
+
+	/************************************************************************************************/
+
+
 	void Release()
 	{
 		Players.Release();
@@ -360,7 +375,7 @@ public:
 
 	size_t GridID2Index(GridID_t ID)
 	{
-		return WH[0] * ID[1] + ID[0];;
+		return WH[0] * ID[1] + ID[0];
 	}
 
 
