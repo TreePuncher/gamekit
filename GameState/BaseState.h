@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GameFramework.h"
 #include "..\coreutilities\EngineCore.h"
 #include "..\coreutilities\WorldRender.h"
+#include "..\graphicsutilities\TextRendering.h"
 
 using FlexKit::WorldRender;
 using FlexKit::ReleaseCameraTable;
@@ -38,21 +39,23 @@ class BaseState : public FlexKit::FrameworkState
 {
 public:
 	BaseState(	
-		GameFramework* IN_Framework,
-		FKApplication* IN_App	) :
+		FlexKit::GameFramework* IN_Framework,
+		FlexKit::FKApplication* IN_App	) :
 			App				{IN_App},
 			FrameworkState	{IN_Framework},
-			DepthBuffer		{IN_Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 },	true)},
-			VertexBuffer	{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
-			TextBuffer		{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
-			ConstantBuffer	{IN_Framework->Core->RenderSystem.CreateConstantBuffer(	8096 * 2000, false)},
+			depthBuffer		{IN_Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 },	true)},
+			vertexBuffer	{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
+			textBuffer		{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
+			constantBuffer	{IN_Framework->Core->RenderSystem.CreateConstantBuffer(	8096 * 2000, false)},
 
-			Render	{
+			render	{
 				IN_Framework->Core->GetTempMemory(),
 				IN_Framework->Core->RenderSystem}
 	{
 		InitiateCameraTable(Framework->Core->GetBlockMemory());
 		InitiateOrbitCameras(Framework->Core->GetBlockMemory());
+
+		IN_Framework->Core->RenderSystem.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO, FlexKit::LoadSpriteTextPSO);
 
 		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_PSO);
 		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
@@ -62,10 +65,10 @@ public:
 
 	~BaseState()
 	{
-		Framework->Core->RenderSystem.ReleaseVB(VertexBuffer);
-		Framework->Core->RenderSystem.ReleaseVB(TextBuffer);
-		Framework->Core->RenderSystem.ReleaseCB(ConstantBuffer);
-		Framework->Core->RenderSystem.ReleaseDB(DepthBuffer);
+		Framework->Core->RenderSystem.ReleaseVB(vertexBuffer);
+		Framework->Core->RenderSystem.ReleaseVB(textBuffer);
+		Framework->Core->RenderSystem.ReleaseCB(constantBuffer);
+		Framework->Core->RenderSystem.ReleaseDB(depthBuffer);
 
 		ReleaseOrbitCameras(Framework->Core->GetBlockMemory());
 		ReleaseCameraTable();
@@ -74,9 +77,9 @@ public:
 
 	FKApplication* App;
 
-	WorldRender				Render;
-	TextureHandle			DepthBuffer;
-	VertexBufferHandle		VertexBuffer;
-	VertexBufferHandle		TextBuffer;
-	ConstantBufferHandle	ConstantBuffer;
+	FlexKit::WorldRender				render;
+	FlexKit::TextureHandle				depthBuffer;
+	FlexKit::VertexBufferHandle			vertexBuffer;
+	FlexKit::VertexBufferHandle			textBuffer;
+	FlexKit::ConstantBufferHandle		constantBuffer;
 };

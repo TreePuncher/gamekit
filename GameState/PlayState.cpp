@@ -171,6 +171,8 @@ void Draw3DGrid(
 }
 
 
+/************************************************************************************************/
+
 
 void DrawGame(
 	double					dt,
@@ -316,16 +318,16 @@ void DrawGame(
 
 
 FrameSnapshot::FrameSnapshot(Game* IN_Game, EventList* IN_FrameEvents, size_t IN_FrameID, iAllocator* IN_Memory) :
-	FrameID{ IN_FrameID },
-	FrameCopy{ IN_Memory },
-	Memory{ IN_Memory },
-	FrameEvents{ IN_Memory }
+	FrameID		{ IN_FrameID },
+	FrameCopy	{ IN_Memory },
+	Memory		{ IN_Memory },
+	FrameEvents	{ IN_Memory }
 {
 	if (!IN_Memory)
 		return;
 
 	FrameEvents = *IN_FrameEvents;
-	FrameCopy = *IN_Game;
+	FrameCopy	= *IN_Game;
 }
 
 
@@ -362,19 +364,19 @@ PlayState::PlayState(
 	FrameEvents			{ Framework->Core->GetBlockMemory() },
 	FrameID				{ 0 },
 	Sound				{ Framework->Core->Threads, Framework->Core->GetBlockMemory() },
-	Render				{ &Base->Render				},
+	Render				{ &Base->render				},
 	LocalGame			{ Framework->Core->GetBlockMemory() },
 	Player1_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
 	Player2_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
 	GameInPlay			{ true					},
 	UseDebugCamera		{ false					},
 
-	ConstantBuffer		{ Base->ConstantBuffer	}, 
-	DepthBuffer			{ Base->DepthBuffer		},
-	TextBuffer			{ Base->TextBuffer		},
-	VertexBuffer		{ Base->VertexBuffer	},
+	ConstantBuffer		{ Base->constantBuffer	}, 
+	DepthBuffer			{ Base->depthBuffer		},
+	TextBuffer			{ Base->textBuffer		},
+	VertexBuffer		{ Base->vertexBuffer	},
 
-	EventMap			{ Framework->Core->GetBlockMemory() },
+	eventMap			{ Framework->Core->GetBlockMemory() },
 	DebugCameraInputMap	{ Framework->Core->GetBlockMemory() },
 	DebugEventsInputMap	{ Framework->Core->GetBlockMemory() },
 	Puppet				{ CreatePlayerPuppet(Scene)			},
@@ -386,7 +388,7 @@ PlayState::PlayState(
 						}
 {
 	AddResourceFile("CharacterBase.gameres");
-	CharacterModel = FlexKit::LoadTriMeshIntoTable(Framework->Core->RenderSystem, 789);
+	CharacterModel = FlexKit::LoadTriMeshIntoTable(Framework->Core->RenderSystem, "Flower");
 
 	Player1_Handler.SetActive(LocalGame.CreatePlayer({ 11, 11 }));
 	Player1_Handler.SetPlayerCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
@@ -398,14 +400,14 @@ PlayState::PlayState(
 	OrbitCamera.Yaw(pi);
 
 
-	EventMap.MapKeyToEvent(KEYCODES::KC_W, PLAYER_EVENTS::PLAYER_UP);
-	EventMap.MapKeyToEvent(KEYCODES::KC_A, PLAYER_EVENTS::PLAYER_LEFT);
-	EventMap.MapKeyToEvent(KEYCODES::KC_S, PLAYER_EVENTS::PLAYER_DOWN);
-	EventMap.MapKeyToEvent(KEYCODES::KC_D, PLAYER_EVENTS::PLAYER_RIGHT);
-	EventMap.MapKeyToEvent(KEYCODES::KC_Q, PLAYER_EVENTS::PLAYER_ROTATE_LEFT);
-	EventMap.MapKeyToEvent(KEYCODES::KC_E, PLAYER_EVENTS::PLAYER_ROTATE_RIGHT);
-	EventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT, PLAYER_EVENTS::PLAYER_HOLD);
-	EventMap.MapKeyToEvent(KEYCODES::KC_SPACE, PLAYER_EVENTS::PLAYER_ACTION1);
+	eventMap.MapKeyToEvent(KEYCODES::KC_W, PLAYER_EVENTS::PLAYER_UP);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A, PLAYER_EVENTS::PLAYER_LEFT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S, PLAYER_EVENTS::PLAYER_DOWN);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D, PLAYER_EVENTS::PLAYER_RIGHT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_Q, PLAYER_EVENTS::PLAYER_ROTATE_LEFT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_E, PLAYER_EVENTS::PLAYER_ROTATE_RIGHT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT, PLAYER_EVENTS::PLAYER_HOLD);
+	eventMap.MapKeyToEvent(KEYCODES::KC_SPACE, PLAYER_EVENTS::PLAYER_ACTION1);
 
 	// Debug Orbit Camera
 	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_I, PLAYER_EVENTS::DEBUG_PLAYER_UP);
@@ -428,7 +430,7 @@ PlayState::PlayState(
 	UIMainGrid->WH = { 0.5f, 1.0f };
 	UIMainGrid->XY = { 0.25f, 0.0f };
 
-	UISubGrid_1 = &UI.CreateGrid(UIMainGrid, { 0, 0 });
+	UISubGrid_1		= &UI.CreateGrid(UIMainGrid, { 0, 0 });
 	UISubGrid_1->SetGridDimensions({ 2, 2 });
 	UISubGrid_1->WH = { 1.0f, 1.0f };
 	UISubGrid_1->XY = { 0.0f, 0.0f };
@@ -437,6 +439,8 @@ PlayState::PlayState(
 	UISubGrid_2->SetGridDimensions({ 5, 5 });
 	UISubGrid_2->WH = { 1.0f, 1.0f };
 	UISubGrid_2->XY = { 0.0f, 0.0f };
+	
+	auto& Btn = UI.CreateButton(UISubGrid_2, {0, 0});
 }
 
 
@@ -491,11 +495,11 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 	for (auto& evt : FrameEvents)
 	{
 		Event Remapped;
-		if (Player1_Handler.Enabled && EventMap.Map(evt, Remapped))
+		if (Player1_Handler.Enabled && eventMap.Map(evt, Remapped))
 			Player1_Handler.Handle(Remapped);
 
-		//if (Player2_Handler.Enabled)
-		//	Player2_Handler.Handle(evt);
+		if (Player2_Handler.Enabled)
+			Player2_Handler.Handle(evt);
 		if (DebugCameraInputMap.Map(evt, Remapped))
 			OrbitCamera.EventHandler(Remapped);
 	}
@@ -565,14 +569,14 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		DepthBuffer
 	};
 
-	PVS	Drawables_Solid(Core->GetTempMemory());
-	PVS	Drawables_Transparent(Core->GetTempMemory());
+	PVS	Drawables_Solid			(Core->GetTempMemory());
+	PVS	Drawables_Transparent	(Core->GetTempMemory());
 
 	ClearVertexBuffer(FrameGraph, VertexBuffer);
 	ClearVertexBuffer(FrameGraph, TextBuffer);
 
-	ClearBackBuffer(FrameGraph, 0.0f);
-	ClearDepthBuffer(FrameGraph, DepthBuffer, 1.0f);
+	ClearBackBuffer		(FrameGraph, 0.0f);
+	ClearDepthBuffer	(FrameGraph, DepthBuffer, 1.0f);
 
 
 	FlexKit::DrawUI_Desc DrawDesk

@@ -634,6 +634,12 @@ public:
 		return *this;
 	}
 
+
+	FrameSnapshot	(FrameSnapshot&& rhs) :
+		FrameCopy	{ std::move(rhs.FrameCopy)		},
+		FrameEvents { std::move(rhs.FrameEvents)	}
+	{}
+
 	void Restore	(Game* out);
 	
 	EventList		FrameEvents;
@@ -700,10 +706,10 @@ public:
 	FlexKit::GUIGrid*	UISubGrid_1;
 	FlexKit::GUIGrid*	UISubGrid_2;
 
-	InputMap EventMap;
-	InputMap DebugCameraInputMap;
-	InputMap DebugEventsInputMap;
-	size_t	 FrameID;
+	InputMap		eventMap;
+	InputMap		DebugCameraInputMap;
+	InputMap		DebugEventsInputMap;
+	size_t			FrameID;
 	TriMeshHandle	CharacterModel;
 };
 

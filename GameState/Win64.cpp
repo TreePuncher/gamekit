@@ -28,7 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "HostState.cpp"
 #include "ClientState.cpp"
-#include "MenuState.cpp"
+#include "MainMenu.cpp"
 #include "PlayState.cpp"
 #include "BaseState.h"
 #include "Gameplay.cpp"
@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 
 	FK_LOG_INFO("Set initial PlayState state.");
 	auto& GameBase = App.PushState<BaseState>(&App);
-	App.PushState<PlayState>(&GameBase);
+	App.PushState<MainMenu>(&GameBase);
 
 	FK_LOG_INFO("Running application...");
 	App.Run();

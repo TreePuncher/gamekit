@@ -499,6 +499,14 @@ namespace FlexKit
 	{	// Make this atomic
 		TriMeshHandle Handle;
 
+		for (size_t idx = 0;
+			 idx < GeometryTable.Geometry.size();
+			 ++idx)
+		{
+			if (GeometryTable.Guids[idx] == GUID)
+				return GeometryTable.Handle[idx];
+		}
+
 		if(!GeometryTable.FreeList.size())
 		{
 			auto Index	= GeometryTable.Geometry.size();
@@ -508,6 +516,7 @@ namespace FlexKit
 			GeometryTable.GeometryIDs.push_back(nullptr);
 			GeometryTable.Guids.push_back(0);
 			GeometryTable.ReferenceCounts.push_back	(0);
+			GeometryTable.Handle.push_back(Handle);
 
 			auto Available = isResourceAvailable(GUID);
 			FK_ASSERT(Available);
@@ -549,6 +558,7 @@ namespace FlexKit
 				GeometryTable.GeometryIDs		[Index]		= GameRes->ID;
 				GeometryTable.Guids				[Index]		= GUID;
 				GeometryTable.ReferenceCounts	[Index]		= 1;
+				GeometryTable.Handle			[Index]		= Handle;
 			}
 			else
 			{

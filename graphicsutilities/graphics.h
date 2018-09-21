@@ -2369,6 +2369,7 @@ namespace FlexKit
 		Vector<size_t>									ReferenceCounts;
 		Vector<GUID_t>									Guids;
 		Vector<const char*>								GeometryIDs;
+		Vector<TriMeshHandle>							Handle;
 		Vector<size_t>									FreeList;
 		iAllocator*										Memory;
 	}GeometryTable;

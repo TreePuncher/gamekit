@@ -176,6 +176,8 @@ namespace FlexKit
 				Grid.Update(&layoutEngine, dt, input);
 			});
 
+
+		// Update nodes with children first
 		for (auto E : Elements)
 		{
 			switch (E->type)
@@ -187,15 +189,6 @@ namespace FlexKit
 				E->Update(&layoutEngine, dt, input);
 			}
 		}
-
-		// update Leaf types
-		Buttons.Visit(
-			[&](auto& Btn)
-			{
-				Btn.Update(&layoutEngine, dt, input);
-			});
-
-
 	}
 
 
@@ -375,12 +368,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GUIButton& GuiSystem::CreateButton(GUIElement* Parent)
+	GUIButton& GuiSystem::CreateButton(GUIGrid* parent, uint2 cellID)
 	{
 		GUIButton& newButton		= Buttons.Allocate(GenerateRandomID());
-		newButton.updatePriority	= Parent->updatePriority + 1;
+		newButton.updatePriority	= parent->updatePriority + 1;
 		newButton.active			= true;
+		newButton.cellID			= cellID;
 
+		parent->AddChild(&newButton, cellID);
+		
 		Elements.push_back(&newButton);
 
 		return newButton;
@@ -449,6 +445,7 @@ namespace FlexKit
 		FrameGraph		{Desc.FrameGraph},
 		RenderTarget    {Desc.RenderTarget},
 		VertexBuffer    {Desc.VertexBuffer},
+		TextBuffer		{Desc.TextBuffer},
 		ConstantBuffer  {Desc.ConstantBuffer}
 	{}
 
@@ -496,12 +493,19 @@ namespace FlexKit
 		PrintTextFormatting Formatting = PrintTextFormatting::DefaultParams();
 		Formatting.PixelSize           = PixelSize;
 		Formatting.StartingPOS         = GetCurrentPosition() + Offset;
-		Formatting.TextArea            = WH;
+		Formatting.TextArea            = GetDrawArea() * WH;
 		Formatting.Color               = float4(WHITE, 1);
-		Formatting.CenterX			   = CenterX;
-		Formatting.CenterY			   = CenterY;
-		
-		//PrintText(GUI, Str, Font, Formatting, TempMemory);
+		Formatting.CenterX			   = true;
+		Formatting.CenterY			   = false;
+
+		DrawSprite_Text(
+			Str,
+			*FrameGraph, 
+			*Font, 
+			TextBuffer, 
+			RenderTarget, 
+			TempMemory, 
+			Formatting);
 	}
 
 
@@ -527,9 +531,6 @@ namespace FlexKit
 		{
 			L.A = L.A * CurrentDrawArea + Offset;
 			L.B = L.B * CurrentDrawArea + Offset;
-
-			//L.A = Position2SS(L.A);
-			//L.B = Position2SS(L.B);
 		}
 
 		DrawShapes(
@@ -546,31 +547,33 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	void LayoutEngine::PushRect(Draw_RECT Rect)	{
-		auto Offset = GetCurrentPosition();
+		float3 Offset;
+		{
+			float2 Temp2 = GetCurrentPosition();
+			Offset = { Temp2.x, Temp2.y, 0.0f };
+		}
 
-		FK_ASSERT(0, "Not Implemented!");
+		float3 CurrentDrawArea;  
+		{
+			float2 Temp2 = GetDrawArea();
+			CurrentDrawArea = { Temp2.x, Temp2.y, 0.0f };
+		}
 
-		Rect.XY+= Offset;
-
-		// Change Cordinate System From Top Down, to Buttom Up
-		Draw_RECT Out = Rect;
-		//Out.BLeft	= { Rect.BLeft[0], 1 - Rect.TRight[1] };
-		//Out.TRight  = { Rect.TRight[0], 1 - Rect.BLeft[1] };
-		//FlexKit::PushRect(GUI, Out);
+		Rect.XY = Rect.XY * CurrentDrawArea + Offset;
+		Rect.WH = Rect.WH * CurrentDrawArea;
 
 		
-		/*
 		DrawShapes(
 			EPIPELINESTATES::DRAW_PSO,
 			*FrameGraph,
 			VertexBuffer,
 			ConstantBuffer,
 			RenderTarget,
+			TempMemory,
 			RectangleShape(
 				Rect.XY,
 				Rect.WH,
 				Rect.Color));
-				*/
 	}
 
 
@@ -611,68 +614,87 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	/*
-	void GUIGrid::Update(LayoutEngine* LayoutEngine, double dt, const WindowInput in)
+	bool LayoutEngine::IsInside(float2 POS, float2 WH)
 	{
-		LayoutEngine->PushOffset(Grid.GetPosition());
+		POS.y -= WH.y;
 
-		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
-		{
-			Grid.mWindow->UpdateElement(hndl, LayoutEngine, dt, in);
-		};
+		auto BottomLeft	= this->GetCurrentPosition();
+		auto TopRight	= this->GetDrawArea() + BottomLeft;
 
-		ScanElements(Grid, *LayoutEngine, ScanFunction);
-		LayoutEngine->PopOffset();
+		return (POS > BottomLeft && POS.y < TopRight.y && POS.x < TopRight.x);
 	}
-	*/
 
 
 	/************************************************************************************************/
 
 
-	/*
-	void GUIGrid::Draw(GUIGridHandle Grid, LayoutEngine* LayoutEngine)
+	void GUIButton::Update(LayoutEngine* layoutEngine, double dt, const WindowInput& input)
 	{
-		LayoutEngine::Draw_RECT Rect;
-		Rect.XY		= {0, 0};
-		Rect.WH		= Grid.GetWH();
-		Rect.Color	= Grid.GetBackgroundColor();
+		if (customUpdate)
+		{
+			customUpdate(*this, layoutEngine, dt, input);
+			return;
+		}
 
-		LayoutEngine->PushOffset(Grid.GetPosition());
+		auto CursorInButton = layoutEngine->IsInside(input.MousePosition, input.CursorWH);
+
+		if (CursorInButton)
+		{
+			HoverDuration += dt;
+
+			if (Entered)
+				Entered();
+			if (!ClickState && input.LeftMouseButtonPressed)
+			{
+				if (Clicked)
+					Clicked();
+
+				ClickState = true;
+			}
+			else if (ClickState && !input.LeftMouseButtonPressed) {
+				if(Released)
+					Released();
+
+				ClickState = false;
+			}
+
+			if (HoverDuration > HoverLength && HoverLength > 0 && Hover)
+				Hover();
+		}
+		else
+		{
+			if (input.LeftMouseButtonPressed)
+				ClickState = true;
+			else
+				ClickState = false;
+
+			HoverDuration = 0;
+		}
+
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GUIButton::Draw(LayoutEngine* LayoutEngine)
+	{
+		if (customDraw) {
+			customDraw(*this, LayoutEngine);
+			return;
+		}
+
+		LayoutEngine::Draw_RECT Rect;
+		Rect.XY = { 0.0f, 0.0f };
+		Rect.WH = WH;
+		Rect.Color = Color;
+
 		LayoutEngine->PushRect(Rect);
 
-		auto ScanFunction = [&](GUIElementHandle hndl, FlexKit::LayoutEngine& Layout)
-		{
-			Grid.mWindow->DrawElement(hndl, LayoutEngine);
-		};
-
-		ScanElements(Grid, *LayoutEngine, ScanFunction);
-		LayoutEngine->PopOffset();
+		if (Font != nullptr &&
+			Text != nullptr)
+			LayoutEngine->PrintLine(Text, WH, Font, { 0, 0 }, { 1.0f, 1.0f }, true, true);
 	}
-	*/
-
-
-
-	/*
-	void GUIButton::Draw(GUIButtonHandle button, LayoutEngine* Layout)
-	{
-		LayoutEngine::Draw_RECT Rect;
-		Rect.XY		= { 0.0f, 0.0f };
-		Rect.WH		= button.WH();
-		Rect.Color  = float4(Grey(0.5f), 1.0f);
-	
-		Layout->PushRect(Rect);
-
-		if(button.Text() && button._IMPL().Font)
-			Layout->PrintLine(
-				button.Text(), 
-				button.WH(), button._IMPL().Font, 
-				{ 0, 0 }, 
-				{1, 1}, 
-				true, 
-				true);
-	}
-	*/
 
 
 	/************************************************************************************************/

@@ -228,6 +228,7 @@ namespace FlexKit
 	void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 	{
 		if (!State->Enabled) {
+			ShowCursor(true);
 			State->dPos = { 0, 0 };
 			return;
 		}
@@ -241,8 +242,9 @@ namespace FlexKit
 			State->Position[0] = max(0.0f, min((float)State->Position[0], (float)Window->WH[0]));
 			State->Position[1] = max(0.0f, min((float)State->Position[1], (float)Window->WH[1]));
 
-			State->NormalizedPos[0] = max(0.0f, min((float)State->Position[0] / (float)Window->WH[0], 1));
-			State->NormalizedPos[1] = max(0.0f, min((float)State->Position[1] / (float)Window->WH[1], 1));
+			State->NormalizedPos[0]			= max(0.0f, min((float)State->Position[0] / (float)Window->WH[0], 1));
+			State->NormalizedPos[1]			= max(0.0f, min((float)State->Position[1] / (float)Window->WH[1], 1));
+			State->NormalizedScreenCord		= Position2SS(State->NormalizedPos);
 
 			SetSystemCursorToWindowCenter(Window);
 			ShowCursor(false);

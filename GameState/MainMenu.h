@@ -25,25 +25,36 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#include "..\Application\GameFramework.h"
+#ifndef MAINMENU_H_INCLUDED
+#define MAINMENU_H_INCLUDED
 
+#include "..\coreutilities\GameFramework.h"
+#include "..\graphicsutilities\GuiUtilities.h"
+
+#include "BaseState.h"
 
 class MainMenu : public FlexKit::FrameworkState
 {
 public:
 	MainMenu(
-		GameFramework*			IN_Framework,
-		ConstantBufferHandle	Contsants, 
-		VertexBufferHandle		VertexBuffer, 
-		VertexBufferHandle		TextBuffer);
+		FlexKit::GameFramework*		IN_Framework,
+		BaseState*					IN_Base	);
 
-	bool  Update	(EngineCore* Engine, double dT)						override;
-	bool  Draw		(EngineCore* Engine, double dT, FrameGraph& Graph)	override;
-
+	bool Update			(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
+	bool Draw			(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
+	bool PostDrawUpdate	(FlexKit::EngineCore* Core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
 
 private:
-	ConstantBufferHandle	Constants;
-	VertexBufferHandle		VertexBuffer;
-	VertexBufferHandle		TextBuffer;
+	FlexKit::ConstantBufferHandle	constantBuffer;
+	FlexKit::VertexBufferHandle		vertexBuffer;
+	FlexKit::VertexBufferHandle		textBuffer;
 
+
+	FlexKit::GuiSystem	gui;
+	FlexKit::GUIGrid*	menuGrid;
+	FlexKit::GUIButton*	menuQuitButton;
+	FlexKit::GUIButton*	menuJoinButton;
+	FlexKit::GUIButton*	menuHostButton;
 };
+
+#endif

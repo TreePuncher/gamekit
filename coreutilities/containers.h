@@ -457,6 +457,18 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
+		void erase(Iterator first, Iterator last)
+		{
+			auto itr = first;
+			while (itr != last)
+			{
+				remove_stable(first);
+				++itr;
+			}
+		}
+
+		/************************************************************************************************/
+
 
 		void remove_stable(Iterator I)
 		{
@@ -966,7 +978,7 @@ namespace FlexKit
 			if (_Size + 1 > SIZE)// Call Destructor on Tail
 				Buffer[idx].~Ty();
 
-			Buffer[idx] = std::move(Item);
+			new(Buffer + idx) Ty(std::move(Item));
 
 			return false;
 		}

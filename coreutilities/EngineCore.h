@@ -83,10 +83,13 @@ namespace FlexKit
 
 	struct MouseInputState
 	{
-		FlexKit::int2	dPos = { 0, 0 };
-		FlexKit::float2	Normalized_dPos = { 0, 0 };
-		FlexKit::float2	Position = { 0, 0 };
-		FlexKit::float2	NormalizedPos = { 0, 0 };
+		FlexKit::int2	dPos					= { 0, 0 };
+		FlexKit::float2	Normalized_dPos			= { 0, 0 };
+		FlexKit::float2	Position				= { 0, 0 };
+		FlexKit::float2	NormalizedPos			= { 0, 0 };
+		FlexKit::float2	NormalizedScreenCord	= { 0, 0 };
+
+
 
 		bool LMB_Pressed = false;
 		bool RMB_Pressed = false;

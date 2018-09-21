@@ -101,10 +101,10 @@ namespace FlexKit
 	};
 
 	// CallBacks Definitions
-	typedef std::function<bool (char*, size_t,	size_t )>	TextInputEventFN;
-	typedef std::function<bool (				size_t )> EnteredEventFN;
-	typedef std::function<bool (				size_t )> GenericGUIEventFN;
-	typedef std::function<bool (float,			size_t )> SliderEventFN;
+	typedef std::function<bool (char*, size_t)>	TextInputEventFN;
+	typedef std::function<bool ()>				EnteredEventFN;
+	typedef std::function<bool ()>				GenericGUIEventFN;
+	typedef std::function<bool (float)>			SliderEventFN;
 
 	typedef uint32_t GUIElementHandle;
 
@@ -425,6 +425,7 @@ namespace FlexKit
 			bool CenterX	= false, 
 			bool CenterY	= false);
 
+
 		void PushLineSegments	( FlexKit::LineSegments& );
 		void PushRect			( Draw_RECT Rect );
 		void PushOffset			( float2 XY );
@@ -432,6 +433,8 @@ namespace FlexKit
 
 		void PushDrawArea(float2 XY);
 		void PopDrawArea();
+
+		bool IsInside(float2 POS, float2 WH);
 
 		void Begin		();
 		void End		();
@@ -498,8 +501,8 @@ namespace FlexKit
 		GUIButton(UIElementID_t in_ID) :
 			GUIElement		{ in_ID, EGUI_ELEMENT_TYPE::EGE_BUTTON_TEXT},
 
-			CellID			{ {}			},
-			Dimensions		{ 0.0f, 0.0f	},
+			Color			{ Grey(0.1f), 1 },
+			WH				{ 1.0f, 1.0f	},
 			Entered			{ nullptr		},
 			Clicked			{ nullptr		},
 			Released		{ nullptr		},
@@ -515,27 +518,25 @@ namespace FlexKit
 		~GUIButton() override {}
 		
 
-		void Update(LayoutEngine* layoutEngine, double dt, const WindowInput& input) override
-		{
-
-		}
-
-
-		void Draw(LayoutEngine* LayoutEngine) override
-		{
-			FK_ASSERT(0, "Not Implemented!");
-		}
-
-
-		uint2	CellID;
-		float2	Dimensions;
+		void Update	(LayoutEngine* layoutEngine, double dt, const WindowInput& input) override;
+		void Draw	(LayoutEngine* LayoutEngine) override;
 
 		EnteredEventFN		Entered;
 		GenericGUIEventFN	Clicked;
 		GenericGUIEventFN	Released;
 		GenericGUIEventFN	Hover;	
 
-		const char*			Text; 
+		typedef std::function<
+			void(GUIButton& button, LayoutEngine* LayoutEngine)>										FN_CustomDraw;
+		typedef std::function<
+			void(GUIButton& button, LayoutEngine* layoutEngine, double dt, const WindowInput& input)>	FN_CustomUpdate;
+
+		FN_CustomDraw	customDraw;
+		FN_CustomUpdate customUpdate;
+
+		float2				WH;
+		float4				Color;
+		const char*			Text;
 		SpriteFontAsset*	Font;
 		iAllocator*			Memory;
 
@@ -543,11 +544,6 @@ namespace FlexKit
 		double	HoverDuration;
 		double	HoverLength;
 		bool	ClickState;
-
-		//static void Draw		( GUIButtonHandle button, LayoutEngine* Layout );
-		//static void Draw_DEBUG	( GUIButtonHandle button, LayoutEngine* Layout );
-
-		//static void Update		( GUIButtonHandle Grid, LayoutEngine* LayoutEngine, double dt, const WindowInput in );
 	};
 
 
@@ -700,8 +696,19 @@ namespace FlexKit
 			}
 		}
 
-		void Update(LayoutEngine* layoutEngine, double dt, const WindowInput&) override
-		{}
+		void Update(LayoutEngine* layoutEngine, double dt, const WindowInput& windowInput) override
+		{
+			layoutEngine->PushOffset(XY);
+			layoutEngine->PushDrawArea(WH);
+
+			Visit(*layoutEngine, [&](auto Child, auto ID)
+				{
+					Child->Update(layoutEngine, dt, windowInput);
+				});
+
+			layoutEngine->PopDrawArea();
+			layoutEngine->PopOffset();
+		}
 
 		void Draw(LayoutEngine* LayoutEngine) override
 		{
@@ -901,7 +908,7 @@ namespace FlexKit
 		void UpdateElement		( GUIElementHandle Element, LayoutEngine* Layout, double dt, const	WindowInput Input );
 
 		GUIGrid&			CreateGrid		( GUIGrid* Parent = nullptr, uint2 ID = {0, 0} );
-		GUIButton&			CreateButton	( GUIElement* Parent );
+		GUIButton&			CreateButton	( GUIGrid* Parent, uint2 CellID = { 0, 0 });
 		GUITextBox&			CreateTextBox	( GUIElement* Parent );
 		void				CreateTextInputBox();
 
@@ -911,8 +918,8 @@ namespace FlexKit
 		void CreateVerticalSlider();
 
 		ObjectPool<GUIGrid>					Grids;
-		ObjectPool<GUIButton>				Buttons;
 		ObjectPool<GUITextBox>				TextBoxes;
+		ObjectPool<GUIButton>				Buttons;
 
 		Vector<GUIElement*>					Elements;
 		iAllocator*							Memory;

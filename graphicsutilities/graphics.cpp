@@ -4158,6 +4158,7 @@ namespace FlexKit
 	void InitiateGeometryTable(iAllocator* Memory)
 	{
 		GeometryTable.Handles.Initiate(Memory);
+		GeometryTable.Handle			= Vector<TriMeshHandle>(Memory);
 		GeometryTable.Geometry			= Vector<TriMesh>(Memory);
 		GeometryTable.ReferenceCounts	= Vector<size_t>(Memory);
 		GeometryTable.Guids				= Vector<GUID_t>(Memory);
@@ -4181,6 +4182,7 @@ namespace FlexKit
 		GeometryTable.GeometryIDs.Release();
 		GeometryTable.Handles.Release();
 		GeometryTable.FreeList.Release();
+		GeometryTable.Handle.Release();
 	}
 
 

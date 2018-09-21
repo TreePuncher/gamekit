@@ -44,6 +44,7 @@ using FlexKit::Event;
 using FlexKit::FrameGraph;
 using FlexKit::GameFramework;
 
+using FlexKit::iAllocator;
 using FlexKit::ConstantBufferHandle;
 using FlexKit::VertexBufferHandle;
 using FlexKit::TextureHandle;
@@ -178,7 +179,7 @@ public:
 
 	virtual ~iGameTask() {}
 
-	virtual iGameTask* MakeCopy(iAllocator* Memory) const = 0;
+	virtual iGameTask* MakeCopy(FlexKit::iAllocator* Memory) const = 0;
 
 	virtual void Update(const double dt)	{}
 	virtual bool Complete()					{ return true; }
@@ -329,7 +330,7 @@ public:
 
 	bool	SetBomb	(BombID_t ID, const GridBomb& In);
 
-	void	Update	(const double dt, iAllocator* Memory);
+	void	Update	(const double dt, FlexKit::iAllocator* Memory);
 
 
 	/************************************************************************************************/
@@ -371,7 +372,7 @@ public:
 	FlexKit::Vector<iGameTask*>		Tasks;
 	FlexKit::Vector<EState>			Grid;
 
-	iAllocator* Memory;
+	FlexKit::iAllocator* Memory;
 
 	size_t GridID2Index(GridID_t ID)
 	{
@@ -398,12 +399,12 @@ public:
 void DrawGameGrid_Debug(
 	double					dt,
 	float					AspectRatio,
-	Game&				Grid,
+	Game&					Grid,
 	FrameGraph&				FrameGraph,
 	ConstantBufferHandle	ConstantBuffer,
 	VertexBufferHandle		VertexBuffer,
 	TextureHandle			RenderTarget,
-	iAllocator*				TempMem);
+	FlexKit::iAllocator*	TempMem);
 
 
 /************************************************************************************************/
