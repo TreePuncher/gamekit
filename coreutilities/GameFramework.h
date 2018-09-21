@@ -174,7 +174,6 @@ namespace FlexKit
 
 	bool LoadScene		 (EngineCore* Engine, GraphicScene* Scene, const char* SceneName);
 	bool LoadScene		 (EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID);
-	void DrawMouseCursor (EngineCore* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize);
  
 	void PushSubState	 (GameFramework* _ptr, FrameworkState* SS);
 	void PopSubState	 (GameFramework* _ptr);
@@ -185,6 +184,15 @@ namespace FlexKit
 
 	void InitiateFramework	(EngineCore* Engine, GameFramework& Framework);
 
+
+	void DrawMouseCursor(
+		float2					CursorPos,
+		float2					CursorSize,
+		VertexBufferHandle		vertexBuffer,
+		ConstantBufferHandle	constantBuffer,
+		TextureHandle			renderTarget,
+		iAllocator*				tempMemory,
+		FrameGraph*				frameGraph);
 
 }	/************************************************************************************************/
 #endif

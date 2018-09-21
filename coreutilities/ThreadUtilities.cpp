@@ -78,41 +78,39 @@ namespace FlexKit
 			std::unique_lock<std::mutex> Lock(M);
 			CV.wait(Lock);
 
-
-			while (!WorkList.empty())
 			{
-				iWork* work;
+				EXITSCOPE({
+					Manager->DecrementActiveWorkerCount();
+				});
+
+				Manager->IncrementActiveWorkerCount();
+
+				while (!WorkList.empty())
+				{
+					iWork* work;
 				
-				if (WorkList.try_pop_front(work)) {
-					Manager->IncrementActiveWorkerCount();
-
-					work->Run();
-					work->NotifyWatchers();
-					work->Release();
-
-					Manager->DecrementActiveWorkerCount();
+					if (WorkList.try_pop_front(work)) {
+						work->Run();
+						work->NotifyWatchers();
+						work->Release();
+					}
 				}
-			}
 
-			const auto Try_Count = Manager->GetThreadCount();
-			for(auto I = 0; I < Try_Count; ++I)
-			{
-				iWork* work = Manager->StealSomeWork();
+				const auto Try_Count = Manager->GetThreadCount();
+				for(auto I = 0; I < Try_Count; ++I)
+				{
+					iWork* work = Manager->StealSomeWork();
 
-				if (work) {
-					Manager->IncrementActiveWorkerCount();
-
-					work->Run();
-					work->NotifyWatchers();
-					work->Release();
-
-					Manager->DecrementActiveWorkerCount();
+					if (work) {
+						work->Run();
+						work->NotifyWatchers();
+						work->Release();
+					}
 				}
+
+				if (WorkList.empty() && Quit)
+					return;
 			}
-
-
-			if (WorkList.empty() && Quit)
-				return;
 		}
 
 	}

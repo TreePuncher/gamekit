@@ -285,6 +285,9 @@ namespace FlexKit
 
 		iWork* StealSomeWork()
 		{
+			if (!Threads.empty())
+				return nullptr;
+
 			iWork* StolenWork = Threads.begin()->Steal();
 			RotateThreads();
 

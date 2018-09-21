@@ -127,6 +127,12 @@ namespace FlexKit
 				break;
 			case KC_M:
 				_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
+
+				if (_ptr->MouseState.Enabled)
+					FK_LOG_INFO("Mouse Enabled");
+				else
+					FK_LOG_INFO("Mouse Disabled");
+
 				break;
 			case KC_TILDA:
 			{
@@ -420,7 +426,6 @@ namespace FlexKit
 		auto end  = SubStates.rend();
 		auto itr = SubStates.rbegin();
 
-		ReleaseGameFramework(Core, this);
 
 		ReleaseConsole(&Console);
 		Release(DefaultAssets.Font, Core->RenderSystem);
@@ -442,7 +447,8 @@ namespace FlexKit
 
 		FreeAllResourceFiles	();
 		FreeAllResources		();
-
+	
+		ReleaseGameFramework(Core, this);
 	}
 
 
@@ -590,19 +596,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DrawMouseCursor(EngineCore* Engine, GameFramework* State, float2 CursorPos, float2 CursorSize)
+	void DrawMouseCursor(
+		float2					CursorPos, 
+		float2					CursorSize, 
+		VertexBufferHandle		vertexBuffer, 
+		ConstantBufferHandle	constantBuffer,
+		TextureHandle			renderTarget,
+		iAllocator*				tempMemory,
+		FrameGraph*				frameGraph)
 	{
-		using FlexKit::Conversion::Vect2TOfloat2;
-
-
-		FK_ASSERT(0);
-
-		//FlexKit::Draw_RECT Cursor;
-		//Cursor.BLeft  = CursorPos - CursorSize		* float2(0, 1);
-		//Cursor.TRight = Cursor.BLeft + CursorSize;
-		//Cursor.Color  = float4(1, 1, 1, 1);
-
-		//PushRect(State->Immediate, Cursor);
+		DrawShapes(
+			EPIPELINESTATES::DRAW_PSO,
+			*frameGraph,
+			vertexBuffer,
+			constantBuffer,
+			renderTarget,
+			tempMemory,
+			RectangleShape(
+				CursorPos,
+				CursorSize,
+				{Grey(1.0f), 1.0f}));
 	}
 
 
@@ -630,6 +643,9 @@ namespace FlexKit
 		//TODO
 		//Release(State->DefaultAssets.Font);
 		Release(State->DefaultAssets.Terrain);
+
+		Core->Threads.SendShutdown();
+		Core->Threads.WaitForWorkersToComplete();
 	}
 
 
