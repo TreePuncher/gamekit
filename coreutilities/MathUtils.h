@@ -490,6 +490,17 @@ namespace FlexKit
 			return *this;
 		}
 
+		inline bool operator > (const float2& rhs) const
+		{
+			return (x > rhs.x) && (y > rhs.y);
+		}
+
+		inline bool operator < (const float2& rhs) const
+		{
+			auto temp = !(*this > rhs);
+			return temp;
+		}
+
 		inline void Add( const float2& lhs, const float2& rhs )
 		{
 			x = lhs.x + rhs.x;
