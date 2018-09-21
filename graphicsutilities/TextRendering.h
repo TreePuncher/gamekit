@@ -42,6 +42,15 @@ namespace FlexKit
 		TextureHandle			RenderTarget,
 		iAllocator*				TempMemory,
 		PrintTextFormatting&	Formatting = PrintTextFormatting::DefaultParams());
-}
 
+	void DrawSprite_Text(
+		const char*				Str,
+		FrameGraph&				FGraph,
+		SpriteFontAsset&		Font,
+		VertexBufferHandle		Buffer,
+		TextureHandle			RenderTarget,
+		iAllocator*				TempMemory,
+		PrintTextFormatting&	Formatting);
+
+}
 #endif // TEXTRENDERING_H

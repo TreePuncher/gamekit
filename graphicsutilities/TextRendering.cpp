@@ -201,7 +201,8 @@ namespace FlexKit
 					const float2 UVTL	= XY;
 					const float2 UVBR	= XY + WH;
 
-					if (C == '\n' || CurrentX + XAdvance > Formatting.TextArea.x)
+					if (C == '\n' || 
+						CurrentX + XAdvance > Formatting.TextArea.x)
 					{
 						CenterLine();
 
@@ -225,6 +226,9 @@ namespace FlexKit
 					CurrentX += XAdvance * Formatting.Scale.x;
 					itr_2++;
 				}
+
+				CenterLine();
+
 
 				Formatting.CurrentX = CurrentX;
 				Formatting.CurrentY = CurrentY;
