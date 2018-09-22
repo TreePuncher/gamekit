@@ -621,13 +621,12 @@ namespace FlexKit
 		GUIGrid(const GUIGrid& rhs) = delete;
 
 		template<typename FN>
-		void Visit(LayoutEngine& LayoutEngine, FN Visitor)
+		void Visit(LayoutEngine& layoutEngine, FN Visitor)
 		{
 			float Y			= 0;
 			uint32_t Y_ID	= 0;
 
-			float RowWidth		= WH[0];
-			float ColumnHeight	= WH[1];
+			float2 Area = layoutEngine.GetDrawArea();
 
 			for (const auto& h : RowHeights)
 			{
@@ -640,7 +639,8 @@ namespace FlexKit
 					{
 						auto const CurrentID = uint2{ X_ID, Y_ID };
 
-						LayoutEngine.PushDrawArea(GetCellDimension(CurrentID));
+						layoutEngine.PushDrawArea(GetCellDimension(CurrentID));
+						layoutEngine.PushOffset(GetCellPosition(CurrentID) * Area);
 
 						for (auto& C : Children)
 						{
@@ -648,22 +648,14 @@ namespace FlexKit
 								Visitor(C, CurrentID);
 						}
 
-						LayoutEngine.PopDrawArea();
+						layoutEngine.PopOffset();
+						layoutEngine.PopDrawArea();
 					}
-
-					LayoutEngine.PushOffset({ w * RowWidth, 0 });
 					X_ID++;
 				}
 
-				for (const auto& w : ColumnWidths)
-					LayoutEngine.PopOffset();
-
-				LayoutEngine.PushOffset({ 0, h * ColumnHeight });
 				Y_ID++;
 			}
-
-			for (const auto& h : RowHeights)
-				LayoutEngine.PopOffset();
 		}
 
 
@@ -717,13 +709,21 @@ namespace FlexKit
 
 		void Debug_Draw(LayoutEngine* LayoutEngine)
 		{
-			LayoutEngine->PushOffset(XY);
+			float3 Area = { LayoutEngine->GetDrawArea(), 0 };
+			LayoutEngine->PushOffset(XY * Area);
 			LayoutEngine->PushDrawArea(WH);
+
+			Visit(
+				*LayoutEngine,
+				[&](auto* Element, const auto cellID)
+				{
+					Element->Draw(LayoutEngine);
+
+				});
 
 
 			float RowWidth		= WH[0];
 			float ColumnHeight	= WH[1];
-
 			Vector<LineSegment> Lines(LayoutEngine->Memory);
 
 			{	// Draw Vertical Lines
@@ -734,27 +734,27 @@ namespace FlexKit
 					X += Width;
 
 					LineSegment Line;
-					Line.A       = float3{ X, 0, 0 };
-					Line.B       = float3{ X, ColumnHeight, 0 };
-					Line.AColour = float3( 1, 1, 1);
-					Line.BColour = float3( 1, 1, 1);
+					Line.A       = float3{ X, 0, 0};
+					Line.B       = float3{ X, 1, 0};
+					Line.AColour = float3{ 1, 1, 1};
+					Line.BColour = float3{ 1, 1, 1};
 
 					Lines.push_back(Line);
 				}
 
 				LineSegment Line;
-				Line.A       = float3{ 0, 0, 0 };
-				Line.B       = float3{ 0, 1, 0 };
-				Line.AColour = float3( 1, 0, 0);
-				Line.BColour = float3( 0, 1, 0);
+				Line.A       = float3{ 0, 0, 0};
+				Line.B       = float3{ 0, 1, 0};
+				Line.AColour = float3{ 1, 0, 0};
+				Line.BColour = float3{ 0, 1, 0};
 
 				Lines.push_back(Line);
 
 
-				Line.A			= float3{ 0, 0, 0 };
-				Line.B			= float3{ 0, 1, 0 };
-				Line.AColour	= float3( 1, 1, 1);
-				Line.BColour	= float3( 1, 1, 1);
+				Line.A			= float3{0, 0, 0};
+				Line.B			= float3{0, 1, 0};
+				Line.AColour	= float3{1, 1, 1};
+				Line.BColour	= float3{1, 1, 1};
 
 				Lines.push_back(Line);
 			}
@@ -768,39 +768,31 @@ namespace FlexKit
 					Y += Width;
 
 					LineSegment Line;
-					Line.A		 = float3{ 0,	Y,		0 };
-					Line.B		 = float3{ 1,	Y,		0 };
-					Line.AColour = float3( 1,	1.0f,	1 );
-					Line.BColour = float3( 1,	1.0f,	1 );
+					Line.A		 = float3{ 0,	Y,		0};
+					Line.B		 = float3{ 1,	Y,		0};
+					Line.AColour = float3{ 1,	1.0f,	1};
+					Line.BColour = float3{ 1,	1.0f,	1};
 
 					Lines.push_back(Line);
 				}
 
 				LineSegment Line;
-				Line.A			= float3{ 0, 0, 0 };
-				Line.B			= float3{ 1, 0, 0 };
-				Line.AColour	= float3( 1, 1, 1 );
-				Line.BColour	= float3( 1, 1, 1 );
+				Line.A			= float3{0, 0, 0};
+				Line.B			= float3{1, 0, 0};
+				Line.AColour	= float3{1, 1, 1};
+				Line.BColour	= float3{1, 1, 1};
 
 				Lines.push_back(Line);
 
-				Line.A			= float3{ 0, 1,	0 };
-				Line.B			= float3{ 1, 1,	0 };
-				Line.AColour	= float3( 1, 1, 1 );
-				Line.BColour	= float3( 1, 1,	1 );
+				Line.A			= float3{0, 1, 0};
+				Line.B			= float3{1, 1, 0};
+				Line.AColour	= float3{1, 1, 1};
+				Line.BColour	= float3{1, 1, 1};
 
 				Lines.push_back(Line);
 			}
 
 			LayoutEngine->PushLineSegments(Lines);
-
-			Visit(
-				*LayoutEngine,
-				[&](auto* Element, const auto cellID)
-				{
-					Element->Draw(LayoutEngine);
-
-				});
 
 			LayoutEngine->PopDrawArea();
 			LayoutEngine->PopOffset();
@@ -817,7 +809,7 @@ namespace FlexKit
 		}
 
 
-		bool& GetCell(uint2 ID, GUIGridCell*& Cell)
+		bool GetCell(uint2 ID, GUIGridCell*& Cell)
 		{
 			auto res = find(Cells, [&](auto& I) { return I.ID == ID; });
 			bool Found = res != Cells.end();
@@ -837,8 +829,8 @@ namespace FlexKit
 
 		float2 GetCellPosition(const uint2 cellID)
 		{
-			float CellX = XY[0];
-			float CellY = XY[1];
+			float CellX = 0;
+			float CellY = 0;
 
 			// Get X Position
 			for (size_t idx = 0; idx < cellID[0]; ++idx)

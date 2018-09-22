@@ -685,9 +685,9 @@ namespace FlexKit
 		}
 
 		LayoutEngine::Draw_RECT Rect;
-		Rect.XY = { 0.0f, 0.0f };
-		Rect.WH = WH;
-		Rect.Color = Color;
+		Rect.XY		= { 0.0f, 0.0f };
+		Rect.WH		= WH;
+		Rect.Color	= Color;
 
 		LayoutEngine->PushRect(Rect);
 
