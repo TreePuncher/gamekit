@@ -43,17 +43,17 @@ MainMenu::MainMenu(
 	menuGrid->XY = { 0.4f, 0.2f };
 	menuGrid->WH = { 0.2f, 0.5f };
 
+	menuJoinButton = &gui.CreateButton(menuGrid, { 0, 0 });
+	menuJoinButton->Text	= "Join";
+	menuJoinButton->WH		= {1, 1};
+	menuJoinButton->Font	= IN_Framework->DefaultAssets.Font;
+
 	menuQuitButton = &gui.CreateButton(menuGrid, { 0, 2 });
 	menuQuitButton->Text	= "Quit";
 	menuQuitButton->Font	= IN_Framework->DefaultAssets.Font;
 	menuQuitButton->Clicked = [&]() { 
-		//Framework->Quit = true; 
+		Framework->Quit = true; 
 		return false; 
-	};
-
-	menuQuitButton->Released = [&]() {
-		std::cout << "mouse button released!\n";
-		return false;
 	};
 }
 

@@ -1,5 +1,3 @@
-#pragma once
-
 /**********************************************************************
 
 Copyright (c) 2018 Robert May
@@ -24,37 +22,4 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-
-#ifndef MAINMENU_H_INCLUDED
-#define MAINMENU_H_INCLUDED
-
-#include "..\coreutilities\GameFramework.h"
-#include "..\graphicsutilities\GuiUtilities.h"
-
-#include "BaseState.h"
-
-class MainMenu : public FlexKit::FrameworkState
-{
-public:
-	MainMenu(
-		FlexKit::GameFramework*		IN_Framework,
-		BaseState*					IN_Base	);
-
-	bool Update			(FlexKit::EngineCore* Engine,	FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
-	bool Draw			(FlexKit::EngineCore* Engine,	FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
-	bool PostDrawUpdate	(FlexKit::EngineCore* Core,		FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
-
-private:
-	FlexKit::ConstantBufferHandle	constantBuffer;
-	FlexKit::VertexBufferHandle		vertexBuffer;
-	FlexKit::VertexBufferHandle		textBuffer;
-
-
-	FlexKit::GuiSystem	gui;
-	FlexKit::GUIGrid*	menuGrid;
-	FlexKit::GUIButton*	menuQuitButton;
-	FlexKit::GUIButton*	menuJoinButton;
-	FlexKit::GUIButton*	menuHostButton;
-};
-
-#endif
+#include "MultiplayerState.h"

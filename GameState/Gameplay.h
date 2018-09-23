@@ -53,6 +53,7 @@ using FlexKit::int2;
 using FlexKit::uint2;
 using FlexKit::float2;
 using FlexKit::float3;
+using FlexKit::float4;
 
 
 /************************************************************************************************/

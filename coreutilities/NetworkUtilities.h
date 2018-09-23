@@ -130,14 +130,15 @@ struct Network
 		FlexKit::StackAllocator	Allocator;
 		FlexKit::byte _p[1024];
 	}*ServerState;
+
 	bool			isServer;
 	unsigned short  ServerPort;
 };
 
 /************************************************************************************************/
 
-void CleanupNetwork(Network* Net);
-void InitiateNetwork(Network* Net, FlexKit::StackAllocator* alloc, bool isServer, unsigned short ServerPort);
+void CleanupNetwork		(Network* Net);
+void InitiateNetwork	(Network* Net, FlexKit::StackAllocator* alloc, bool isServer, unsigned short ServerPort);
 
 /************************************************************************************************/
 

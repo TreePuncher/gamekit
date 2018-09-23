@@ -26,12 +26,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\Application.h"
 
-#include "HostState.cpp"
-#include "ClientState.cpp"
-#include "MainMenu.cpp"
-#include "PlayState.cpp"
 #include "BaseState.h"
+#include "client.cpp"
 #include "Gameplay.cpp"
+#include "host.cpp"
+#include "lobbygui.cpp"
+#include "MainMenu.cpp"
+#include "MultiplayerState.cpp"
+#include "PlayState.cpp"
+
 #include <iostream>
 
 
@@ -59,8 +62,30 @@ int main(int argc, char* argv[])
 		App.PushArgument(argv[I]);
 
 	FK_LOG_INFO("Set initial PlayState state.");
-	auto& GameBase = App.PushState<BaseState>(&App);
-	App.PushState<MainMenu>(&GameBase);
+	auto& gameBase = App.PushState<BaseState>(&App);
+	//App.PushState<MainMenu>(&GameBase);
+	//App.PushState<PlayState>(&GameBase);
+	auto& networkState = App.PushState<NetworkState>(&gameBase);
+
+	bool isHost = true;
+
+	for (size_t I = 0; I < argc; ++I)
+	{
+		if (strncmp(argv[I], "-c", 2) == 0) {
+			isHost = false;
+			FK_LOG_INFO("Client mode toggled");
+		}
+	}
+
+	if (isHost) {
+		FK_LOG_INFO("Starting Server.");
+		App.PushState<GameHostState>(&gameBase, &networkState).InitiateGame();
+	}
+	else
+	{
+		FK_LOG_INFO("Starting Client");
+		App.PushState<GameClientState>(&gameBase, &networkState);
+	}
 
 	FK_LOG_INFO("Running application...");
 	App.Run();

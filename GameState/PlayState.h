@@ -80,7 +80,7 @@ public:
 		auto result = system->update();
 	}
 
-	Vector<FMOD::Sound*> Sounds;
+	FlexKit::Vector<FMOD::Sound*> Sounds;
 
 	ThreadManager& Threads;
 
@@ -326,8 +326,8 @@ public:
 		//Map			{ memory },
 		InputState	{ false, false, false, false, PF_UNKNOWN }
 	{
-		SetCameraFOV(GameCamera, pi/3.0f);
-		Yaw			(GetCameraNode(GameCamera), pi);
+		SetCameraFOV(GameCamera, float(pi)/3.0f);
+		Yaw			(GetCameraNode(GameCamera), float(pi));
 		SetPositionW(GetCameraNode(GameCamera), { 0, 2, -5 });
 	}
 
@@ -615,7 +615,7 @@ enum ModelHandles
 /************************************************************************************************/
 
 
-typedef Vector<Event> EventList;
+typedef FlexKit::Vector<Event> EventList;
 
 class FrameSnapshot
 {

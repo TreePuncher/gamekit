@@ -439,7 +439,7 @@ void DrawGameGrid_Debug(
 	const size_t ColumnCount	= Grid.WH[1];
 	const size_t RowCount		= Grid.WH[0];
 
-	LineSegments Lines(TempMem);
+	FlexKit::LineSegments Lines(TempMem);
 	Lines.reserve(ColumnCount + RowCount);
 
 	const auto RStep = 1.0f / RowCount;
@@ -461,13 +461,13 @@ void DrawGameGrid_Debug(
 				{ 1, 1, 1, 1 } });
 
 
-	DrawShapes(EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-		LineShape(Lines));
+	DrawShapes(FlexKit::EPIPELINESTATES::DRAW_LINE_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+		FlexKit::LineShape(Lines));
 
 
 	for (auto Player : Grid.Players)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-			CircleShape(
+		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+			FlexKit::CircleShape(
 				float2{	
 					CStep / 2 + Player.XY[0] * CStep + Player.Offset.x * CStep,
 					RStep / 2 + Player.XY[1] * RStep + Player.Offset.y * RStep },
@@ -478,8 +478,8 @@ void DrawGameGrid_Debug(
 
 
 	for (auto Bombs : Grid.Bombs)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-			CircleShape(
+		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+			FlexKit::CircleShape(
 				float2{
 					CStep / 2 + Bombs.XY[0] * CStep + Bombs.Offset.x * CStep,
 					RStep / 2 + Bombs.XY[1] * RStep + Bombs.Offset.y * RStep },
@@ -490,8 +490,8 @@ void DrawGameGrid_Debug(
 
 
 	for (auto Object : Grid.Objects)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-			RectangleShape(float2{ 
+		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+			FlexKit::RectangleShape(float2{
 				Object.XY[0] * CStep, 
 				Object.XY[1] * RStep }, 
 				{ CStep , RStep },
@@ -499,8 +499,8 @@ void DrawGameGrid_Debug(
 
 
 	for (auto Object : Grid.Spaces)
-		DrawShapes(EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
-			RectangleShape(float2{
+		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, FrameGraph, VertexBuffer, ConstantBuffer, RenderTarget, TempMem,
+			FlexKit::RectangleShape(float2{
 				Object.XY[0] * CStep,
 				Object.XY[1] * RStep },
 				{ CStep , RStep },

@@ -1,5 +1,3 @@
-#pragma once
-
 /**********************************************************************
 
 Copyright (c) 2018 Robert May
@@ -24,37 +22,53 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#ifndef LOBBYGUI_H_INCLUDED
+#define LOBBYGUI_H_INCLUDED
 
-#ifndef MAINMENU_H_INCLUDED
-#define MAINMENU_H_INCLUDED
 
-#include "..\coreutilities\GameFramework.h"
+#include "..\coreutilities\EngineCore.h"
+#include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\GuiUtilities.h"
+#include "..\graphicsutilities\Fonts.h"
 
-#include "BaseState.h"
 
-class MainMenu : public FlexKit::FrameworkState
+typedef size_t LobbyRowID;
+
+struct LobbyScreenDrawDesc
 {
-public:
-	MainMenu(
-		FlexKit::GameFramework*		IN_Framework,
-		BaseState*					IN_Base	);
-
-	bool Update			(FlexKit::EngineCore* Engine,	FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
-	bool Draw			(FlexKit::EngineCore* Engine,	FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
-	bool PostDrawUpdate	(FlexKit::EngineCore* Core,		FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
-
-private:
-	FlexKit::ConstantBufferHandle	constantBuffer;
 	FlexKit::VertexBufferHandle		vertexBuffer;
 	FlexKit::VertexBufferHandle		textBuffer;
-
-
-	FlexKit::GuiSystem	gui;
-	FlexKit::GUIGrid*	menuGrid;
-	FlexKit::GUIButton*	menuQuitButton;
-	FlexKit::GUIButton*	menuJoinButton;
-	FlexKit::GUIButton*	menuHostButton;
+	FlexKit::ConstantBufferHandle	constantBuffer;
+	FlexKit::TextureHandle			renderTarget;
+	FlexKit::iAllocator*			allocator;
 };
+
+class MultiplayerLobbyScreen
+{
+public:
+	MultiplayerLobbyScreen(FlexKit::iAllocator* memory, FlexKit::SpriteFontAsset* IN_font);
+
+	void Update	(double dt, FlexKit::WindowInput& input, float2 pixelSize, FlexKit::iAllocator* allocator);
+	void Draw	(LobbyScreenDrawDesc& desc, FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph);
+
+	void CreateRow(LobbyRowID id);
+	void SetPlayerName	(LobbyRowID id, char*	name	);
+	void SetPlayerReady	(LobbyRowID id, bool	ready	);
+
+	struct Row
+	{
+		LobbyRowID			ID;
+		FlexKit::GUIButton* Name;
+		FlexKit::GUIButton* Ready;
+	};
+
+	FlexKit::Vector<Row>		Rows;
+
+	FlexKit::GuiSystem			gui;
+	FlexKit::GUIGrid*			PlayerList;
+	FlexKit::GUIGrid*			PlayerScreen;
+	FlexKit::SpriteFontAsset*	font;
+};
+
 
 #endif

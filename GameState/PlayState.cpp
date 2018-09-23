@@ -397,7 +397,7 @@ PlayState::PlayState(
 
 	OrbitCamera.SetCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
 	OrbitCamera.TranslateWorld({ 0, 2, -5 });
-	OrbitCamera.Yaw(pi);
+	OrbitCamera.Yaw(float(pi));
 
 
 	eventMap.MapKeyToEvent(KEYCODES::KC_W, PLAYER_EVENTS::PLAYER_UP);
