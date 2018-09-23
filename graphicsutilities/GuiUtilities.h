@@ -799,13 +799,19 @@ namespace FlexKit
 		}
 
 
-		void AddChild(GUIElement* Element, uint2 ID)
+		void AddChild(GUIElement* element, uint2 ID)
 		{
 			GUIGridCell* Cell = nullptr;
 			if (GetCell(ID, Cell))
 				Cell->Children++;
 
-			Children.push_back(Element);
+			Children.push_back(element);
+		}
+
+
+		void RemoveChild(GUIElement* element)
+		{
+			Children.erase(std::remove(Children.begin(), Children.end(), element), Children.end());
 		}
 
 
@@ -903,6 +909,8 @@ namespace FlexKit
 		GUIButton&			CreateButton	( GUIGrid* Parent, uint2 CellID = { 0, 0 });
 		GUITextBox&			CreateTextBox	( GUIElement* Parent );
 		void				CreateTextInputBox();
+
+		void Release(GUIButton*);
 
 		// to be implemented
 		void CreateTexturedButton();

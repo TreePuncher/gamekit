@@ -436,6 +436,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void GuiSystem::Release(GUIButton* btn)
+	{
+		Buttons.Release(*btn);
+	}
+
+
+	/************************************************************************************************/
+
+
 	LayoutEngine::LayoutEngine(iAllocator* tempmemory, iAllocator* IN_Memory, LayoutEngine_Desc& Desc) :
 		AreaStack		{IN_Memory},
 		PositionStack	{IN_Memory},
