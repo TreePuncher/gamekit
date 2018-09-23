@@ -1410,12 +1410,12 @@ namespace FlexKit
 
 		void Release(TY& Object)
 		{
-			if (&Object >= Pool.begin() &&
-				&Object < Pool.end())
+			if (&Object < Pool + PoolMaxSize &&
+				&Object >= Pool )
 			{
 				size_t Idx = (
 					reinterpret_cast<size_t>(&Object) -
-					reinterpret_cast<size_t>(Pool.begin())) / sizeof(TY);
+					reinterpret_cast<size_t>(Pool)) / sizeof(TY);
 
 				Pool[Idx].~TY();
 				FreeObjectList[Idx] = true;
