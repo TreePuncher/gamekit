@@ -52,7 +52,7 @@ public:
 
 	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
 	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
-	bool PostDrawUpdate	(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
+	bool PostDrawUpdate	(EngineCore* Core,	 UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
 
 private:
 

@@ -26,29 +26,29 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 MultiplayerLobbyScreen::MultiplayerLobbyScreen(FlexKit::iAllocator* memory, FlexKit::SpriteFontAsset* IN_font) :
-	Rows	{memory},
+	rows	{memory},
 	gui		{{}, memory},
 	font	{IN_font}
 {
-	PlayerScreen = &gui.CreateGrid(nullptr, {});
-	PlayerScreen->SetGridDimensions({ 2, 2 });
-	PlayerScreen->XY = { 0.0f, 0.0f };
-	PlayerScreen->WH = { 1.0f, 1.0f };
+	playerScreen = &gui.CreateGrid(nullptr, {});
+	playerScreen->SetGridDimensions({ 2, 2 });
+	playerScreen->XY = { 0.0f, 0.0f };
+	playerScreen->WH = { 1.0f, 1.0f };
 
-	PlayerList = &gui.CreateGrid(PlayerScreen, {0, 0});
-	PlayerList->SetGridDimensions({ 3, 9 });
-	PlayerList->XY = { 0.05f, 0.05f };
-	PlayerList->WH = { 0.9f, 0.59f };
+	playerList = &gui.CreateGrid(playerScreen, {0, 0});
+	playerList->SetGridDimensions({ 3, 9 });
+	playerList->XY = { 0.05f, 0.05f };
+	playerList->WH = { 0.9f, 0.59f };
 
-	auto Temp = &gui.CreateButton(PlayerList, { 0,0 });
+	auto Temp = &gui.CreateButton(playerList, { 0,0 });
 	Temp->Text = "Players";
 	Temp->Font = font;
 
-	auto Temp2 = &gui.CreateButton(PlayerList, { 1,0 });
+	auto Temp2 = &gui.CreateButton(playerList, { 1,0 });
 	Temp2->Text = "test";
 	Temp2->Font = font;
 
-	Temp = &gui.CreateButton(PlayerList, { 2,0 });
+	Temp = &gui.CreateButton(playerList, { 2,0 });
 	Temp->Text = "Ready";
 	Temp->Font = font;
 }
@@ -81,20 +81,40 @@ void MultiplayerLobbyScreen::Draw(
 /************************************************************************************************/
 
 
+
+void MultiplayerLobbyScreen::ClearRows()
+{
+	for (auto& row : rows)
+	{
+		playerList->RemoveChild(row.name);
+		playerList->RemoveChild(row.ready);
+
+		gui.Release(row.name);
+		gui.Release(row.ready);
+	}
+
+	rows.clear();
+}
+
+
+/************************************************************************************************/
+
+
+
 void MultiplayerLobbyScreen::CreateRow(LobbyRowID id)
 { 
 	Row newRow;
-	newRow.ID		= id;
-	newRow.Name		= &gui.CreateButton(PlayerList, { 0, 1 + Rows.size() });
-	newRow.Ready	= &gui.CreateButton(PlayerList, { 2, 1 + Rows.size() });
+	newRow.id		= id;
+	newRow.name		= &gui.CreateButton(playerList, { 0, 1 + rows.size() });
+	newRow.ready	= &gui.CreateButton(playerList, { 2, 1 + rows.size() });
 
-	newRow.Name->Text   = "...";
-	newRow.Ready->Text  = "...";
+	newRow.name->Text   = "...";
+	newRow.ready->Text  = "...";
 
-	newRow.Name->Font	= font;
-	newRow.Ready->Font	= font;
+	newRow.name->Font	= font;
+	newRow.ready->Font	= font;
 
-	Rows.push_back(newRow);
+	rows.push_back(newRow);
 }
 
 
@@ -103,11 +123,11 @@ void MultiplayerLobbyScreen::CreateRow(LobbyRowID id)
 
 void MultiplayerLobbyScreen::SetPlayerName(LobbyRowID id, char*	name)
 {
-	for (auto& row : Rows)
+	for (auto& row : rows)
 	{
-		if (row.ID == id)
+		if (row.id == id)
 		{
-			row.Name->Text = name;
+			row.name->Text = name;
 			return;
 		}
 	}
@@ -119,14 +139,14 @@ void MultiplayerLobbyScreen::SetPlayerName(LobbyRowID id, char*	name)
 
 void MultiplayerLobbyScreen::SetPlayerReady(LobbyRowID id, bool	ready)
 {
-	for (auto& row : Rows)
+	for (auto& row : rows)
 	{
-		if (row.ID == id)
+		if (row.id == id)
 		{
 			if (ready)
-				row.Ready->Text = "Ready";
+				row.ready->Text = "Ready";
 			else
-				row.Ready->Text = "Not Ready";
+				row.ready->Text = "Not Ready";
 			return;
 		}
 	}

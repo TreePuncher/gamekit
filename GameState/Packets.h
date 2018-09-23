@@ -30,6 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\type.h"
 
 
+/************************************************************************************************/
+
+
 typedef uint64_t MultiplayerPlayerID_t;
 
 
@@ -39,6 +42,9 @@ enum LobbyPacketIDs : PacketID_t
 	RequestPlayerList			= GetCRCGUID(RequestPlayerList),
 	RequestPlayerListResponse	= GetCRCGUID(PlayerList),
 };
+
+
+/************************************************************************************************/
 
 
 class RequestClientDataPacket
@@ -60,6 +66,9 @@ public:
 };
 
 
+/************************************************************************************************/
+
+
 class ClientReady
 {
 public:
@@ -79,6 +88,10 @@ public:
 	MultiplayerPlayerID_t	playerID;
 	bool					ready;
 };
+
+
+/************************************************************************************************/
+
 
 class ClientDataPacket
 {
@@ -103,4 +116,69 @@ public:
 	uint16_t					playerNameLength;
 };
 
+
+/************************************************************************************************/
+
+
+class RequestPlayerListPacket
+{
+public:
+	RequestPlayerListPacket(MultiplayerPlayerID_t IN_id) :
+		Header{	{ sizeof(RequestPlayerListPacket) },
+				{ RequestPlayerList } },
+		playerID{ IN_id }{}
+
+	UserPacketHeader* GetRawPacket()
+	{
+		return &Header;
+	}
+
+	UserPacketHeader			Header;
+	const MultiplayerPlayerID_t	playerID;
+};
+
+
+/************************************************************************************************/
+
+
+class PlayerListPacket
+{
+public:
+	PlayerListPacket(MultiplayerPlayerID_t IN_id, size_t playerCount) :
+		Header{	{ GetPacketSize(playerCount)},
+				{ RequestPlayerListResponse } },
+		playerID	{ IN_id			},
+		playerCount	{ playerCount	}{}
+
+
+	UserPacketHeader			Header;
+	const MultiplayerPlayerID_t	playerID;
+	size_t						playerCount;
+
+
+	struct entry
+	{
+		MultiplayerPlayerID_t	playerID;
+		char					playerName[32];
+		bool					ready;
+	}Players[];
+
+
+	UserPacketHeader* GetRawPacket()
+	{
+		return &Header;
+	}
+
+	static size_t GetPacketSize(size_t playerCount)
+	{
+		return 
+			sizeof(entry) * playerCount + 
+			sizeof(UserPacketHeader) + 
+			sizeof(MultiplayerPlayerID_t) + 
+			sizeof(size_t);
+	}
+};
+
+
+/************************************************************************************************/
 #endif

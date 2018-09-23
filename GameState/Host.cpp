@@ -40,6 +40,9 @@ MultiplayerPlayerID_t GeneratePlayerID()
 }
 
 
+/************************************************************************************************/
+
+
 bool GameHostLobbyState::Update(EngineCore* core, UpdateDispatcher& Dispatcher, double dT)
 {
 	for (auto player : playerLobbyState)
@@ -138,7 +141,8 @@ GameHostLobbyState::GameHostLobbyState(
 						ClientData->playerID, 
 						ClientData->playerName, 
 						ClientData->playerNameLength);
-					FK_LOG_INFO("Player: %s joined game", ClientData->playerName);
+
+					FK_LOG_9("Player: %s joined game", ClientData->playerName);
 				}
 			}, 
 			IN_framework->Core->GetBlockMemory()));
@@ -158,14 +162,55 @@ GameHostLobbyState::GameHostLobbyState(
 				{
 					for (auto& playerLobby : playerLobbyState)
 					{
-						playerLobby.Ready = readyPacket->ready;
+						if (playerLobby.ID == readyPacket->playerID)
+						{
+							playerLobby.Ready = readyPacket->ready;
 
-						if(readyPacket->ready)
-							FK_LOG_INFO("Player: %s is now ready", playerState->Name);
-						else
-							FK_LOG_INFO("Player: %s is now not ready", playerState->Name);
+#ifdef _DEBUG
+							if (readyPacket->ready)
+								FK_LOG_9("Player: %s is now ready", playerState->Name);
+							else
+								FK_LOG_9("Player: %s is now not ready", playerState->Name);
+#endif
+						}
 					}
 				}
+			}, 
+			IN_framework->Core->GetBlockMemory()));
+
+	packetHandlers.push_back(
+		CreatePacketHandler(
+			RequestPlayerList,
+			[&](UserPacketHeader* packetContents, RakNet::Packet* incomingPacket, NetworkState* network)
+			{
+				FK_LOG_9("Player list requested");
+
+				auto request				= (RequestPlayerListPacket*)(packetContents);
+				auto packetSize				= PlayerListPacket::GetPacketSize(playerLobbyState.size() - 1);
+				auto packetBuffer			= Framework->Core->GetTempMemory()._aligned_malloc(packetSize);
+				PlayerListPacket* newPacket = new(packetBuffer)	PlayerListPacket(request->playerID, playerLobbyState.size() - 1);
+
+				size_t idx = 0;
+				for (auto& playerState : playerLobbyState)
+				{
+					if (playerState.ID == newPacket->playerID)
+						continue;
+
+					auto player = host->GetPlayer(playerState.ID);
+
+					newPacket->Players[idx].playerID	= playerState.ID;
+					newPacket->Players[idx].ready		= playerState.Ready;
+
+					if (player)
+						strncpy(
+							newPacket->Players[idx].playerName, 
+							player->Name, 
+							sizeof(PlayerListPacket::entry::playerName));
+
+					idx++;
+				}
+
+				host->network->SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
 			}, 
 			IN_framework->Core->GetBlockMemory()));
 
@@ -179,6 +224,8 @@ GameHostLobbyState::GameHostLobbyState(
 GameHostLobbyState::~GameHostLobbyState()
 {
 	host->network->PopHandler();
+	for (auto handler : packetHandlers)
+		Framework->Core->GetBlockMemory().free(handler);
 }
 
 

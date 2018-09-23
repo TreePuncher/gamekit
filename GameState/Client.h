@@ -24,6 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MultiplayerState.h"
 #include "Packets.h"
+#include "LobbyGUI.h"
+
 
 /************************************************************************************************/
 
@@ -47,14 +49,30 @@ public:
 		char*					IN_localPlayerName);
 
 
-	bool EventHandler(FlexKit::Event evt) override;
+	~ClientLobbyState();
 
 
+	bool Update			(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT);
+	bool Draw			(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph&);
+	bool PostDrawUpdate	(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph&);
+
+	bool EventHandler	(FlexKit::Event evt) override;
+
+	size_t					refreshCounter;
+
+	struct RemotePlayer
+	{
+		MultiplayerPlayerID_t	id;
+		char					name[32];
+	};
+
+	Vector<RemotePlayer>	remotePlayers;
 	Vector<PacketHandler*>	packetHandlers;
 	NetworkState*			network;
 	GameClientState*		client;
+	MultiplayerLobbyScreen	screen;
 
-	bool					Ready;
+	bool					ready;
 	char*					localPlayerName;
 };
 
@@ -75,17 +93,21 @@ public:
 			packetHandlers		{ IN_framework->Core->GetBlockMemory() },
 			base				{ IN_base }
 	{
+		char	Address[256];
 		std::cout << "Please Enter Name: \n";
 		std::cin >> localName;
+		std::cout << "Please Address: \n";
+		std::cin >> Address;
 		std::cout << "Connecting now\n";
 
 		RakNet::SocketDescriptor desc;
 
 		network->localPeer->Startup(1, &desc, 1);
-		RakNet::ConnectionAttemptResult res = network->localPeer->Connect("127.0.0.1", 1337, nullptr, 0);
+		RakNet::ConnectionAttemptResult res = network->localPeer->Connect(Address, 1337, nullptr, 0);
 		network->ConnectionAcceptedHandler	= [&](auto packet) {ConnectionSuccess(packet); };
 		network->DisconnectHandler			= [&](auto packet) {ServerLost(packet); };
 	}
+
 
 	~GameClientState()
 	{

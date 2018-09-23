@@ -22,7 +22,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+
 #include "Client.h"
+#include "..\coreutilities\MathUtils.h"
 
 
 /************************************************************************************************/
@@ -34,11 +36,15 @@ ClientLobbyState::ClientLobbyState(
 	NetworkState*			IN_network, 
 	char*					IN_localPlayerName) :
 		FrameworkState	{IN_framework},
+
+		client			{IN_client},
+		localPlayerName {IN_localPlayerName},
 		network			{IN_network},
 		packetHandlers	{IN_framework->Core->GetBlockMemory()},
-		localPlayerName {IN_localPlayerName},
-		client			{IN_client},
-		Ready			{false}
+		ready			{false},
+		refreshCounter	{0},
+		remotePlayers	{IN_framework->Core->GetBlockMemory()},
+		screen			{IN_framework->Core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
 {
 	packetHandlers.push_back(
 		CreatePacketHandler(
@@ -66,7 +72,54 @@ ClientLobbyState::ClientLobbyState(
 			},
 			IN_framework->Core->GetBlockMemory()));
 
+
+	packetHandlers.push_back(
+		CreatePacketHandler(
+			RequestPlayerListResponse,
+			[&](UserPacketHeader* incomingPacket, RakNet::Packet* P, NetworkState* network)
+			{
+				FK_LOG_INFO("Player List Received");
+
+				screen.ClearRows();
+				remotePlayers.clear();
+
+				auto playerList				= reinterpret_cast<PlayerListPacket*>(incomingPacket);
+				const size_t playerCount	= FlexKit::max(FlexKit::min(playerList->playerCount, 3u), 0u);
+
+				screen.CreateRow		(client->localID);
+				screen.SetPlayerName	(client->localID, localPlayerName);
+				screen.SetPlayerReady	(client->localID, ready);
+
+				for (size_t idx = 0; idx < playerCount; ++idx)
+				{
+					auto nameStr	= playerList->Players[idx].playerName;
+					auto id			= playerList->Players[idx].playerID;
+					auto ready		= playerList->Players[idx].ready;
+
+					remotePlayers.push_back({ playerList->Players[idx].playerID });
+					strncpy(remotePlayers.back().name, nameStr, sizeof(RemotePlayer::name));
+
+					screen.CreateRow(id);
+					screen.SetPlayerName(id, remotePlayers.back().name);
+					screen.SetPlayerReady(id, ready);
+				}
+			},
+			IN_framework->Core->GetBlockMemory()));
+
+
 	network->PushHandler(&packetHandlers);
+}
+
+
+/************************************************************************************************/
+
+
+ClientLobbyState::~ClientLobbyState()
+{
+	client->network->PopHandler();
+
+	for (auto handler : packetHandlers)
+		Framework->Core->GetBlockMemory().free(handler);
 }
 
 
@@ -75,8 +128,6 @@ ClientLobbyState::ClientLobbyState(
 
 bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 {
-	std::cout << "event recieved!\n";
-
 	if (evt.InputSource == FlexKit::Event::InputType::Keyboard)
 	{
 		if (evt.Action == FlexKit::Event::InputAction::Release)
@@ -85,8 +136,8 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 			{
 			case FlexKit::KC_R:
 			{
-				Ready = !Ready;
-				ClientReady packet(client->localID, Ready);
+				ready = !ready;
+				ClientReady packet(client->localID, ready);
 				network->SendPacket(packet.GetRawPacket(), client->ServerAddress);
 			}
 			}
@@ -94,3 +145,68 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 	}
 	return true;
 }
+
+
+/************************************************************************************************/
+
+
+bool ClientLobbyState::Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT)
+{
+	if (refreshCounter++ > 10)
+	{
+		refreshCounter = 0;
+
+		RequestPlayerListPacket packet{ client->localID };
+		client->network->SendPacket(packet.GetRawPacket(), client->ServerAddress);
+	}
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+{
+	auto currentRenderTarget = GetCurrentBackBuffer(&core->Window);
+
+	ClearVertexBuffer	(frameGraph, client->base->vertexBuffer);
+	ClearVertexBuffer	(frameGraph, client->base->textBuffer);
+	ClearBackBuffer		(frameGraph, { 0.0f, 0.0f, 0.0f, 0.0f });
+
+	LobbyScreenDrawDesc Desc;
+	Desc.allocator			= core->GetTempMemory();
+	Desc.constantBuffer		= client->base->constantBuffer;
+	Desc.vertexBuffer		= client->base->vertexBuffer;
+	Desc.textBuffer			= client->base->textBuffer;
+	Desc.renderTarget		= currentRenderTarget;
+	screen.Draw(Desc, dispatcher, frameGraph);
+
+	FlexKit::DrawMouseCursor(
+		Framework->MouseState.NormalizedScreenCord,
+		{ 0.05f, 0.05f },
+		client->base->vertexBuffer,
+		client->base->constantBuffer,
+		currentRenderTarget,
+		core->GetTempMemory(),
+		&frameGraph);
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool ClientLobbyState::PostDrawUpdate(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+{
+	if (Framework->DrawDebugStats)
+		Framework->DrawDebugHUD(dT, client->base->textBuffer, frameGraph);
+
+	PresentBackBuffer(frameGraph, &core->Window);
+	return true;
+}
+
+
+/************************************************************************************************/

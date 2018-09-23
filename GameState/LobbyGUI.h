@@ -32,6 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\Fonts.h"
 
 
+/************************************************************************************************/
+
+
 typedef size_t LobbyRowID;
 
 struct LobbyScreenDrawDesc
@@ -43,32 +46,38 @@ struct LobbyScreenDrawDesc
 	FlexKit::iAllocator*			allocator;
 };
 
+
+/************************************************************************************************/
+
+
 class MultiplayerLobbyScreen
 {
 public:
 	MultiplayerLobbyScreen(FlexKit::iAllocator* memory, FlexKit::SpriteFontAsset* IN_font);
 
-	void Update	(double dt, FlexKit::WindowInput& input, float2 pixelSize, FlexKit::iAllocator* allocator);
+	void Update	(double dt, FlexKit::WindowInput& input, FlexKit::float2 pixelSize, FlexKit::iAllocator* allocator);
 	void Draw	(LobbyScreenDrawDesc& desc, FlexKit::UpdateDispatcher& Dispatcher, FlexKit::FrameGraph& frameGraph);
 
-	void CreateRow(LobbyRowID id);
+	void ClearRows		();
+	void CreateRow		(LobbyRowID id);
 	void SetPlayerName	(LobbyRowID id, char*	name	);
 	void SetPlayerReady	(LobbyRowID id, bool	ready	);
 
 	struct Row
 	{
-		LobbyRowID			ID;
-		FlexKit::GUIButton* Name;
-		FlexKit::GUIButton* Ready;
+		LobbyRowID			id;
+		FlexKit::GUIButton* name;
+		FlexKit::GUIButton* ready;
 	};
 
-	FlexKit::Vector<Row>		Rows;
+	FlexKit::Vector<Row>		rows;
 
 	FlexKit::GuiSystem			gui;
-	FlexKit::GUIGrid*			PlayerList;
-	FlexKit::GUIGrid*			PlayerScreen;
+	FlexKit::GUIGrid*			playerList;
+	FlexKit::GUIGrid*			playerScreen;
 	FlexKit::SpriteFontAsset*	font;
 };
 
 
+/************************************************************************************************/
 #endif

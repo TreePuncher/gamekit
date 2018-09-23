@@ -72,11 +72,9 @@ class UserPacketHeader
 {
 public:
 	UserPacketHeader(const size_t IN_size, PacketID_t IN_id) :
-		EBasePacketIDs{ EBP_USERPACKET },
-		packetSize	{IN_size},
-		id			{IN_id}
-	{
-	}
+		EBasePacketIDs	{EBP_USERPACKET},
+		packetSize		{IN_size},
+		id				{IN_id}{}
 
 	PacketID_t GetID() 
 	{ 
@@ -179,26 +177,24 @@ public:
 			packet = localPeer->Receive(); 
 			packet; localPeer->DeallocatePacket(packet), packet = localPeer->Receive())
 		{
-			std::cout << "Packet Recieved!\n";
-
 			switch (packet->data[0])
 			{
 			case DefaultMessageIDTypes::ID_NEW_INCOMING_CONNECTION:
-				FK_LOG_INFO("New Connection Incoming");
+				FK_LOG_9("New Connection Incoming");
 
 				if (NewConnectionHandler)
 					NewConnectionHandler(packet);
 
 				break;
 			case DefaultMessageIDTypes::ID_CONNECTION_REQUEST_ACCEPTED:
-				FK_LOG_INFO("Connection Accepted");
+				FK_LOG_9("Connection Accepted");
 
 				if (ConnectionAcceptedHandler)
 					ConnectionAcceptedHandler(packet);
 
 				break;
 			case DefaultMessageIDTypes::ID_CONNECTION_LOST:
-				FK_LOG_INFO("Disconnect Detected");
+				FK_LOG_9("Disconnect Detected");
 
 				if (DisconnectHandler)
 					DisconnectHandler(packet);
