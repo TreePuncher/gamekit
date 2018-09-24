@@ -101,9 +101,9 @@ struct SceneStats
 
 struct CompileSceneFromFBXFile_DESC
 {
-	FlexKit::BlockAllocator* BlockMemory;
-	FlexKit::StackAllocator* TempMem; 
-	FlexKit::StackAllocator* LevelMem; 
+	FlexKit::iAllocator*	BlockMemory;
+	FlexKit::iAllocator*	TempMem;
+	FlexKit::iAllocator*	LevelMem;
 	NodeHandle				SceneRoot;
 
 	physx::PxCooking*		Cooker		= nullptr;

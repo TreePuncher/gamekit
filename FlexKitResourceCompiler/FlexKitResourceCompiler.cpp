@@ -138,25 +138,13 @@ int main(int argc, char* argv[])
 			if(RES != TOOTLE_OK)
 				return -1;
 #endif
-			FlexKit::BlockAllocator_desc BlockDesc;
-			BlockDesc.LargeBlock  = MEGABYTE * 500;
-			BlockDesc.MediumBlock = MEGABYTE * 200;
-			BlockDesc.SmallBlock  = MEGABYTE * 150;
-			BlockDesc.PoolSize	  = BlockDesc.LargeBlock + BlockDesc.MediumBlock + BlockDesc.SmallBlock;
-			BlockDesc._ptr		  = (FlexKit::byte*)_aligned_malloc(BlockDesc.PoolSize + MEGABYTE, 0x40);
-
-			FlexKit::BlockAllocator BlockMemory;
-			BlockMemory.Init(BlockDesc);
-
-			FlexKit::StackAllocator TempMemory;
-			TempMemory.Init((FlexKit::byte*)_aligned_malloc(MEGABYTE, 0x40), MEGABYTE);
 
 			{
 				static_vector<LoadGeometryRES_ptr, 16>	Resources;
 
-				MD_Vector MetaData(BlockMemory);
+				MD_Vector MetaData(FlexKit::SystemAllocator);
 				for (auto MD_Location : MetaDataFiles)
-					ReadMetaData(MD_Location, BlockMemory, TempMemory, MetaData);
+					ReadMetaData(MD_Location, FlexKit::SystemAllocator, FlexKit::SystemAllocator, MetaData);
 
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "FOUND FOLLOWING METADATA:\n";
@@ -174,7 +162,7 @@ int main(int argc, char* argv[])
 				for (auto MD : MetaData)
 				{
 					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE) {
-						auto NewResource = MetaDataToBlob(MD, BlockMemory);
+						auto NewResource = MetaDataToBlob(MD, FlexKit::SystemAllocator);
 						if(NewResource)
 							ResourcesFound.push_back(NewResource);
 					}
@@ -187,7 +175,7 @@ int main(int argc, char* argv[])
 					if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
 					{
 						auto* Font = (Font_MetaData*)MD;
-						auto res = LoadTTFFile(Font->FontFile, BlockMemory);
+						auto res = LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
 					}
 				}
 #endif
@@ -220,7 +208,7 @@ int main(int argc, char* argv[])
 							std::cout << "Cooking HeightField!\n";
 
 							auto* TerrainCollider = (TerrainCollider_MetaData*)MD;
-							ColliderStream Stream = ColliderStream(BlockMemory, 4096);
+							ColliderStream Stream = ColliderStream(FlexKit::SystemAllocator, 4096);
 
 							struct TerrainSample{
 								int16_t Height;
@@ -231,9 +219,9 @@ int main(int argc, char* argv[])
 
 
 							FlexKit::TextureBuffer Buffer;
-							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc, BlockMemory, &Buffer);
+							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc, FlexKit::SystemAllocator, &Buffer);
 
-							Samples = (TerrainSample*)BlockMemory.malloc(Buffer.WH[0] * Buffer.WH[1] * sizeof(TerrainSample));
+							Samples = (TerrainSample*)FlexKit::SystemAllocator.malloc(Buffer.WH[0] * Buffer.WH[1] * sizeof(TerrainSample));
 
 							FlexKit::TextureBufferView<RGBA> View(&Buffer);
 							auto SampleCount = Buffer.WH[0] * Buffer.WH[1];
@@ -259,10 +247,10 @@ int main(int argc, char* argv[])
 							int c = 0;
 
 							Buffer.Release();
-							BlockMemory.free(Samples);
+							FlexKit::SystemAllocator.free(Samples);
 							std::cout << "Done Cooking HeightField!\n";
 
-							auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, TerrainCollider->Guid, TerrainCollider->ColliderID, BlockMemory);
+							auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, TerrainCollider->Guid, TerrainCollider->ColliderID, FlexKit::SystemAllocator);
 							Blob->Type = EResourceType::EResource_TerrainCollider;
 
 							ResourcesFound.push_back(Blob);
@@ -274,7 +262,7 @@ int main(int argc, char* argv[])
 				for (auto Input : Inputs)
 				{
 					CompileSceneFromFBXFile_DESC Desc;
-					Desc.BlockMemory	= &BlockMemory;
+					Desc.BlockMemory	= FlexKit::SystemAllocator;
 					Desc.CloseFBX		= true;
 					Desc.IncludeShaders = false;
 					Desc.CookingEnabled = true;
@@ -332,7 +320,7 @@ int main(int argc, char* argv[])
 				fclose(F);
 				free(Table);
 			}
-			_aligned_free(BlockDesc._ptr);
+			//_aligned_free(BlockDesc._ptr);
 	}	break;
 	case TOOL_MODE::ETOOLMODE_LISTCONTENTS:
 	{	if (FileChosen)
@@ -343,7 +331,7 @@ int main(int argc, char* argv[])
 				auto openRes				= fopen_s(&F, i, "rb");
 				size_t TableSize			= ReadResourceTableSize(F);
 				FlexKit::byte* TableMemory	= (FlexKit::byte*)malloc(TableSize);
-				ResourceTable* RT = (ResourceTable*)TableMemory;
+				ResourceTable* RT			= (ResourceTable*)TableMemory;
 
 				ReadResourceTable(F, RT, TableSize);
 

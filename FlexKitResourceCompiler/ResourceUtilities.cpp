@@ -514,11 +514,7 @@ public :
 
 ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker, iAllocator* MemoryOut, FBXIDTranslationTable* Table, bool LoadSkeletalData = false, MD_Vector* MD = nullptr, bool SUBDIV = false)
 {
-	size_t TempMemorySize = MEGABYTE * 256;
-	StackAllocator TempMemory;
-	TempMemory.Init((FlexKit::byte*)_aligned_malloc(TempMemorySize, 0x40), TempMemorySize);
-
-	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, TempMemory, Table, MD);
+	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, MemoryOut, Table, MD);
 
 #if USING(RESCOMPILERVERBOSE)
 	std::cout << "CompileAllGeometry Compiled " << (size_t)Res << " Resources\n";
@@ -551,7 +547,7 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 			}
 
 			auto& Mesh		= G->at(I);
-			auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, Mesh.ID, TempMemory);
+			auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, Mesh.ID, MemoryOut);
 			for(size_t J = 0; J < RelatedMD.size(); ++J)
 			{
 				switch (MD->at(RelatedMD[J])->type)
@@ -570,7 +566,7 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 					meshDesc.points.stride    = Mesh.Buffers[0]->GetElementSize();
 					meshDesc.points.data      = Mesh.Buffers[0]->GetBuffer();
 
-					uint32_t* Indexes = (uint32_t*)TempMemory._aligned_malloc(Mesh.Buffers[15]->GetBufferSizeRaw());
+					uint32_t* Indexes = (uint32_t*)MemoryOut->_aligned_malloc(Mesh.Buffers[15]->GetBufferSizeRaw());
 
 					{
 						struct Tri {
@@ -906,12 +902,12 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 	if (res)
 	{
 		SceneList Scenes;
-		FBXIDTranslationTable Table(*Desc->BlockMemory);
-		GetScenes(res, *Desc->BlockMemory, *Desc->BlockMemory, METAINFO, &Scenes);
-		ResourceList LoadRes = GatherSceneResources((FbxScene*)res, Desc->Cooker, *Desc->BlockMemory, &Table, true, METAINFO);
+		FBXIDTranslationTable Table(Desc->BlockMemory);
+		GetScenes(res, Desc->BlockMemory, Desc->BlockMemory, METAINFO, &Scenes);
+		ResourceList LoadRes = GatherSceneResources((FbxScene*)res, Desc->Cooker, Desc->BlockMemory, &Table, true, METAINFO);
 
 		for (auto Scene : Scenes){
-			auto res = CreateSceneResourceBlob(*Desc->BlockMemory, Scene, &Table);
+			auto res = CreateSceneResourceBlob(Desc->BlockMemory, Scene, &Table);
 			LoadRes.push_back(res);
 		}
 

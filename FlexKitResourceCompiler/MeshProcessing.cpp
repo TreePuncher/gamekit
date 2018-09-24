@@ -366,8 +366,9 @@ namespace FlexKit
 			size_t VCount = Mesh->GetControlPointsCount();
 			auto CPs = Mesh->mControlPoints;
 
-			for (int itr = 0; itr < VCount; ++itr) {
-				auto V = CPs[itr];
+			for (int itr = 0; itr < VCount; ++itr) 
+			{
+				auto V	= CPs[itr];
 				auto V2 = TranslateToFloat3(V);
 
 				MinV.x = min(V2.x, MinV.x);
@@ -411,8 +412,8 @@ namespace FlexKit
 		// Get Use-able Deformers
 		if (Mesh->GetDeformerCount() && S)
 		{
-			size_t		VCount = Mesh->GetControlPointsCount();
-			float4*		Weights = (float4*)TempMem->_aligned_malloc(sizeof(float4)    * VCount);
+			size_t		VCount		= Mesh->GetControlPointsCount();
+			float4*		Weights		= (float4*)TempMem->_aligned_malloc(sizeof(float4)    * VCount);
 			uint4_32*	BoneIndices = (uint4_32*)TempMem->_aligned_malloc(sizeof(uint4_32) * VCount);
 
 			for (size_t I = 0; I < VCount; ++I)	Weights[I] = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -445,16 +446,16 @@ namespace FlexKit
 				AddWeightToken({ Weights[I].pFloats, BoneIndices[I] }, TokensOut);
 
 			out.Weights = true;
-			out.Skin = Skin;
+			out.Skin	= Skin;
 		}
 		{	// Calculate Indices
-			auto Normals = Mesh->GetElementNormal();
-			auto UVs = Mesh->GetElementUV(0);
+			auto Normals	= Mesh->GetElementNormal();
+			auto UVs		= Mesh->GetElementUV(0);
 
-			size_t NormalCount = Mesh->GetElementNormalCount();
-			size_t TriCount = Mesh->GetPolygonCount();
-			size_t IndexCount = 0;
-			size_t FaceCount = 0;
+			size_t NormalCount	= Mesh->GetElementNormalCount();
+			size_t TriCount		= Mesh->GetPolygonCount();
+			size_t IndexCount	= 0;
+			size_t FaceCount	= 0;
 
 			// Iterate through each Tri
 			for (size_t I = 0; I < TriCount; ++I)
@@ -463,21 +464,22 @@ namespace FlexKit
 				++FaceCount;
 
 				size_t	NC = Mesh->GetElementNormal()->GetDirectArray().GetCount();
-				if (SubDiv_Enabled)	AddPatchBeginToken(TokensOut);
+				if (SubDiv_Enabled)	
+					AddPatchBeginToken(TokensOut);
 
 				if (size == 3)
 				{
-					auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
-					auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
-					auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
+					size_t VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
+					size_t NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
+					size_t UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
 
-					auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
-					auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
-					auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
+					size_t VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
+					size_t NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
+					size_t UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
 
-					auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
-					auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
-					auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
+					size_t VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
+					size_t NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
+					size_t UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
 
 					AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, TokensOut);
 					AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, TokensOut);
@@ -510,8 +512,8 @@ namespace FlexKit
 					auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, Mesh) : 0;
 
 					AddIndexToken(VertexIndex1, NormalIndex1, 0, TokensOut);
-					AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
 					AddIndexToken(VertexIndex2, NormalIndex2, 0, TokensOut);
+					AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
 					AddIndexToken(VertexIndex4, NormalIndex4, 0, TokensOut);
 
 					IndexCount += 6;
@@ -550,11 +552,11 @@ namespace FlexKit
 		using MeshUtilityFunctions::MeshBuildInfo;
 
 		Skeleton*	S		= LoadSkeleton(Mesh, Memory, TempMem, ID, MD);
-		TokenList Tokens	= TokenList(TempMem, 2048000);
+		TokenList Tokens	= TokenList(TempMem);
 		auto MeshInfo		= TranslateToTokens(Mesh, TempMem, Tokens, S);
 
-		CombinedVertexBuffer CVB(TempMem, 1024000);
-		IndexList IB(TempMem, MeshInfo.FaceCount * 8);
+		CombinedVertexBuffer CVB(TempMem);
+		IndexList IB(TempMem, MeshInfo.FaceCount * 4);
 
 		auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, TempMem, TempMem, MeshInfo.Weights);
 		FK_ASSERT(BuildRes.V1 == true, "Mesh Failed to Build");
