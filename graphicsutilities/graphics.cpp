@@ -1729,6 +1729,7 @@ namespace FlexKit
 			CD3DX12_RANGE Range(0, 0);
 			HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
 
+
 			return ReserveTempSpace(RS, Size, CPUMem, Offset);
 		};
 
@@ -1747,6 +1748,8 @@ namespace FlexKit
 		{	// Safe, Do Upload
 
 			size_t AlignmentOffset = 512 - (size_t(CopyEngine.Buffer + CopyEngine.Position) % 512);
+			AlignmentOffset = (AlignmentOffset == 512) ? 0 : AlignmentOffset;
+
 			CPUMem = CopyEngine.Buffer + CopyEngine.Position + AlignmentOffset;
 			Offset = CopyEngine.Position + AlignmentOffset;
 			CopyEngine.Position += SizePlusOffset;
@@ -1998,7 +2001,7 @@ namespace FlexKit
 
 					FK_VLOG(10, "FINISHED RESETING COMMAND LISTS");
 
-					FrameResources[I].TempBuffers				= nullptr;
+					FrameResources[I].TempBuffers				= TempResourceList(in->Memory);
 					FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
 					FrameResources[I].CommandListsUsed[II]		= false;
 					FrameResources[I].ComputeCLAllocator[II]	= ComputeAllocator;
@@ -3122,13 +3125,13 @@ namespace FlexKit
 		FK_ASSERT(Data);
 		FK_ASSERT(Dest);
 
-		auto& CopyEngine = RS->CopyEngine;
 		PerFrameUploadQueue& UploadQueue	= RS->_GetCurrentUploadQueue();
 		ID3D12GraphicsCommandList* CS		= UploadQueue.UploadList[0];
 
 		void* _ptr = nullptr;
 		size_t Offset = 0;
 		ReserveTempSpace(RS, Size, _ptr, Offset);
+		auto& CopyEngine = RS->CopyEngine;
 
 		FK_ASSERT(_ptr, "UPLOAD ERROR!");
 

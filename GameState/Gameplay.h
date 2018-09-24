@@ -45,15 +45,20 @@ using FlexKit::FrameGraph;
 using FlexKit::GameFramework;
 
 using FlexKit::iAllocator;
+using FlexKit::CameraHandle;
 using FlexKit::ConstantBufferHandle;
 using FlexKit::VertexBufferHandle;
 using FlexKit::TextureHandle;
+using FlexKit::static_vector;
+
+using FlexKit::CameraBehavior;
 
 using FlexKit::int2;
 using FlexKit::uint2;
 using FlexKit::float2;
 using FlexKit::float3;
 using FlexKit::float4;
+using FlexKit::Quaternion;
 
 
 /************************************************************************************************/
@@ -543,7 +548,554 @@ private:
 };
 
 
+/************************************************************************************************/
+
+
+class GameCameraController
+{
+public:
+	GameCameraController() :
+		CameraOffset{ 0.0f, 10.0f, 5.0f },
+		FacingDirection{ PF_UP },
+		YawOffset{ 0.0f },
+		Pitch{ -45.0f }
+	{
+		Camera.SetCameraNode(FlexKit::GetZeroedNode());
+	}
+
+	void SetAngle(float Degree)
+	{
+
+	}
+
+
+	void Rotate_Clockwise()
+	{
+		FacingDirection = (FacingDirection + 1) % PLAYER_FACING_DIRECTION::PF_COUNT;
+	}
+
+
+	void Rotate_CounterClockwise()
+	{
+		FacingDirection = (PLAYER_FACING_DIRECTION::PF_COUNT + FacingDirection - 1) % PLAYER_FACING_DIRECTION::PF_COUNT;
+		int x = 0;
+	}
+
+	void Track()
+	{
+
+	}
+
+
+	void Update(float dt, const float3 PlayerPosition)
+	{
+		float Yaw = FacingDirection * -90.0f + YawOffset;
+		auto RotatedOffset = Quaternion(0, 360 - Yaw, 0) * CameraOffset;
+		SetOrientation(Camera.GetCameraNode(), Quaternion(0, Yaw, 0) * Quaternion(Pitch, 0, 0));
+		SetPositionW(Camera.GetCameraNode(), PlayerPosition + RotatedOffset);
+	}
+
+
+	operator CameraHandle ()
+	{
+		return Camera;
+	}
+
+	int							FacingDirection;
+	float						MovementFactor;
+	float						YawOffset;
+	float						Pitch;
+	float3						CameraOffset;
+	CameraBehavior				Camera;
+};
+
+
+/************************************************************************************************/
+
+
+class LocalPlayerHandler
+{
+public:
+	LocalPlayerHandler(Game& grid, iAllocator* memory) :
+		Game{ grid },
+		//Map			{ memory },
+		InputState{ false, false, false, false, PF_UNKNOWN }
+	{
+		FlexKit::SetCameraFOV(GameCamera, float(FlexKit::pi) / 3.0f);
+		FlexKit::Yaw(FlexKit::GetCameraNode(GameCamera), float(FlexKit::pi));
+		FlexKit::SetPositionW(FlexKit::GetCameraNode(GameCamera), { 0, 2, -5 });
+	}
+
+
+	void Handle(const Event& evt)
+	{
+		CurrentFrameEvents.push_back(evt);
+	}
+
+	void ProcessEvents()
+	{
+		for (auto& evt : CurrentFrameEvents)
+		{
+			if (evt.InputSource == Event::Keyboard)
+			{
+				switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
+				{
+				case PLAYER_EVENTS::PLAYER_UP:
+					InputState.UP =
+						(evt.Action == Event::Pressed) ? true :
+						((evt.Action == Event::Release) ? false : InputState.UP);
+					break;
+				case PLAYER_EVENTS::PLAYER_LEFT:
+					InputState.LEFT =
+						(evt.Action == Event::Pressed) ? true :
+						((evt.Action == Event::Release) ? false : InputState.LEFT);
+					break;
+				case PLAYER_EVENTS::PLAYER_DOWN:
+					InputState.DOWN =
+						(evt.Action == Event::Pressed) ? true :
+						((evt.Action == Event::Release) ? false : InputState.DOWN);
+					break;
+				case PLAYER_EVENTS::PLAYER_RIGHT:
+					InputState.RIGHT =
+						(evt.Action == Event::Pressed) ? true :
+						((evt.Action == Event::Release) ? false : InputState.RIGHT);
+					break;
+				case PLAYER_EVENTS::PLAYER_ROTATE_LEFT:
+					if (evt.Action == Event::Pressed)
+					{
+						GameCamera.Rotate_CounterClockwise();
+						Game.SetPlayerDirection(Player, GameCamera.FacingDirection);
+					}
+					break;
+				case PLAYER_EVENTS::PLAYER_ROTATE_RIGHT:
+					if (evt.Action == Event::Pressed) {
+						GameCamera.Rotate_Clockwise();
+						Game.SetPlayerDirection(Player, GameCamera.FacingDirection);
+					}
+					break;
+				case PLAYER_EVENTS::PLAYER_ACTION1:
+				{
+					if (Game.Players[Player].State != GridPlayer::PS_Idle)
+						return;
+
+					if ((evt.Action == Event::Release))
+					{
+						int2 Offset = { 0, 0 };
+
+						switch (Game.Players[Player].FacingDirection)
+						{
+						case PF_UP:
+							Offset += int2{ 0, -1 };
+							break;
+						case PF_DOWN:
+							Offset += int2{ 0,  1 };
+							break;
+						case PF_LEFT:
+							Offset += int2{ -1,  0 };
+							break;
+						case PF_RIGHT:
+							Offset += int2{ 1,  0 };
+							break;
+						default:
+							FK_ASSERT(0, "!!!!!");
+						}
+
+						int2 GridPOS = Game.Players[Player].XY + Offset;
+
+						size_t ID = chrono::high_resolution_clock::now().time_since_epoch().count();
+
+						auto State = Game.GetCellState(GridPOS);
+						if (State == EState::Bomb)
+						{
+							Game.MoveBomb(GridPOS, Offset);
+						}
+						else
+						{
+							Game.CreateBomb(EBombType::Regular, GridPOS, ID, Player);
+							Game.MarkCell(GridPOS, EState::Bomb);
+						}
+						break;
+					}
+				}	break;
+				default:
+					break;
+				}
+
+
+				if (evt.Action == Event::Release)
+				{
+					switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
+					{
+					case PLAYER_EVENTS::PLAYER_UP:
+					case PLAYER_EVENTS::PLAYER_DOWN:
+					case PLAYER_EVENTS::PLAYER_LEFT:
+					case PLAYER_EVENTS::PLAYER_RIGHT:
+						InputState.PreferredDirection = PF_UNKNOWN;
+						break;
+					default:
+						break;
+					}
+				}
+
+
+				if (evt.Action == Event::Pressed)
+				{
+					switch ((PLAYER_EVENTS)evt.mData1.mINT[0])
+					{
+					case PLAYER_EVENTS::PLAYER_UP:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_UP;			break;
+					case PLAYER_EVENTS::PLAYER_LEFT:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_LEFT;		break;
+					case PLAYER_EVENTS::PLAYER_DOWN:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_DOWN;		break;
+					case PLAYER_EVENTS::PLAYER_RIGHT:
+						InputState.PreferredDirection = PLAYER_FACING_DIRECTION::PF_RIGHT;		break;
+					default:
+						break;
+					}
+				}
+			}
+		}
+	}
+
+
+	void SetPlayerCameraAspectRatio(float AR)
+	{
+		FlexKit::SetCameraAspectRatio(GameCamera, AR);
+	}
+
+
+	void SetActive(Player_Handle P)
+	{
+		Player = P;
+		Enabled = true;
+	}
+
+
+	void MovePlayer(FlexKit::int2 XY)
+	{
+		Game.MovePlayer(Player, XY);
+	}
+
+
+	void MoveUp()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{ 0, -1 });
+		Game.Players[Player].FacingDirection = PF_UP;
+	}
+
+
+	void MoveDown()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{ 0,  1 });
+		Game.Players[Player].FacingDirection = PF_DOWN;
+	}
+
+
+	void MoveLeft()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{ -1,  0 });
+		Game.Players[Player].FacingDirection = PF_LEFT;
+	}
+
+
+	void MoveRight()
+	{
+		auto POS = Game.Players[Player].XY;
+		MovePlayer(POS + FlexKit::int2{ 1,  0 });
+		Game.Players[Player].FacingDirection = PF_RIGHT;
+	}
+
+
+	bool Enabled = false;
+
+
+	void Update(const double dt)
+	{
+		ProcessEvents();
+
+		int Direction = -1;
+
+		if (InputState.PreferredDirection == PF_UNKNOWN)
+		{
+			if (InputState.UP)
+			{
+				Direction = PF_UP;
+			}
+			else if (InputState.DOWN)
+			{
+				Direction = PF_DOWN;
+			}
+			else if (InputState.LEFT)
+			{
+				Direction = PF_LEFT;
+			}
+			else if (InputState.RIGHT)
+			{
+				Direction = PF_RIGHT;
+			}
+		}
+		else
+		{
+			Direction = InputState.PreferredDirection;
+		}
+
+		if (Direction >= 0)
+		{
+			switch ((Direction + GameCamera.FacingDirection) % PF_COUNT)
+			{
+			case PLAYER_FACING_DIRECTION::PF_UP:
+				MoveUp();
+				break;
+			case PLAYER_FACING_DIRECTION::PF_LEFT:
+				MoveLeft();
+				break;
+			case PLAYER_FACING_DIRECTION::PF_DOWN:
+				MoveDown();
+				break;
+			case PLAYER_FACING_DIRECTION::PF_RIGHT:
+				MoveRight();
+				break;
+			}
+		}
+
+		FrameCache.push_back(CurrentFrameEvents);
+		CurrentFrameEvents.clear();
+
+		const float3 SceneScale = float3{ Game.Scale.x / Game.WH[0], 1, Game.Scale.y / Game.WH[1] };
+
+		GameCamera.Update(dt, Game.GetPlayerPosition(Player) * SceneScale);
+	}
+
+
+	struct
+	{
+		bool UP;
+		bool DOWN;
+		bool LEFT;
+		bool RIGHT;
+
+		int	PreferredDirection;// if -1 then a preferred direction is ignored
+
+		operator bool() { return UP | DOWN | LEFT | RIGHT; }
+	}InputState;
+
+	GameCameraController						GameCamera;
+
+	typedef static_vector<Event, 12>			KeyEventList;
+	KeyEventList								CurrentFrameEvents;
+	FlexKit::CircularBuffer<KeyEventList, 120>	FrameCache;
+
+	Player_Handle	Player;
+	Game&			Game;
+};
 
 
 
+/************************************************************************************************/
+
+
+class DebugCameraController : 
+	public FlexKit::OrbitCameraBehavior
+{
+public:
+	void Initiate()
+	{
+	}
+
+	bool EventHandler(Event evt)
+	{
+		if (evt.InputSource == Event::Keyboard)
+		{
+			if (evt.Action == Event::Pressed)
+			{
+				switch (evt.mData1.mINT[0])
+				{
+				case PLAYER_EVENTS::DEBUG_PLAYER_UP:
+					MoveForward		= true;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_LEFT:
+					MoveLeft		= true;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_DOWN:
+					MoveBackward	= true;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_RIGHT:
+					MoveRight		= true;
+					break;
+				default:
+					break;
+				};
+			}
+
+			if (evt.Action == Event::Release)
+			{
+				switch (evt.mData1.mINT[0])
+				{
+				case PLAYER_EVENTS::DEBUG_PLAYER_UP:
+					MoveForward		= false;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_DOWN:
+					MoveBackward	= false;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_LEFT:
+					MoveLeft		= false;
+					break;
+				case PLAYER_EVENTS::DEBUG_PLAYER_RIGHT:
+					MoveRight		= false;
+					break;
+				default:
+					break;
+				}
+			}
+		}
+		return false;
+	}
+
+
+	void Update(float dt)
+	{
+		FlexKit::float3 Direction = { 0, 0, 0 };
+
+		if (MoveForward)
+			Direction += float3( 0,  0, -1);
+		if (MoveBackward)
+			Direction += float3( 0,  0,  1);
+		if (MoveLeft)
+			Direction += float3(-1, 0, 0);
+		if (MoveRight)
+			Direction += float3( 1, 0, 0);
+
+		Direction = GetOrientation() * Direction;
+
+		TranslateWorld(Direction * dt * MovingSpeed);
+	}
+
+	float		MovingSpeed		= 30.0f;
+	bool		MoveForward		= false;
+	bool		MoveBackward	= false;
+	bool		MoveLeft		= false;
+	bool		MoveRight		= false;
+};
+
+
+/************************************************************************************************/
+
+
+class PlayerPuppet:
+		public FlexKit::DrawableBehavior,
+		public FlexKit::SceneNodeBehavior
+{
+public: 
+	PlayerPuppet(FlexKit::GraphicScene* ParentScene, FlexKit::EntityHandle Handle) :
+		FlexKit::DrawableBehavior	{ParentScene, Handle},
+		FlexKit::SceneNodeBehavior	{GetNode()}
+	{}
+
+
+	PlayerPuppet(const PlayerPuppet&) = delete;
+
+
+	PlayerPuppet(PlayerPuppet && rhs)
+	{
+		Node		 = rhs.Node;
+		Entity		 = rhs.Entity;
+		ParentScene	 = rhs.ParentScene;
+		
+		rhs.Entity		= FlexKit::InvalidHandle_t;
+		rhs.Node		= FlexKit::InvalidHandle_t;
+		rhs.ParentScene = nullptr;
+	}
+
+
+	void Update(float dt)
+	{
+		Yaw(dt * FlexKit::pi);
+	}
+};
+
+
+/************************************************************************************************/
+
+
+PlayerPuppet CreatePlayerPuppet(FlexKit::GraphicScene* ParentScene)
+{
+	return 	PlayerPuppet(
+		ParentScene,
+		ParentScene->CreateDrawableAndSetMesh("Flower"));
+}
+
+
+/************************************************************************************************/
+
+
+enum ModelHandles
+{
+	MH_Floor,
+	MH_BrokenFloor,
+	MH_Obstacle,
+	MH_Player,
+	MH_RegularBomb,
+};
+
+
+/************************************************************************************************/
+
+
+typedef FlexKit::Vector<Event> EventList;
+
+class FrameSnapshot
+{
+public:
+	FrameSnapshot(Game* IN = nullptr, EventList* IN_FrameEvents = nullptr, size_t IN_FrameID = (size_t)-1, iAllocator* IN_Memory = nullptr);
+	~FrameSnapshot();
+
+	FrameSnapshot(const FrameSnapshot&)					= delete;
+	FrameSnapshot& operator = (const FrameSnapshot&)	= delete;
+
+	FrameSnapshot& operator = (FrameSnapshot&& rhs)
+	{
+		FrameCopy	= std::move(rhs.FrameCopy);
+		FrameEvents = std::move(rhs.FrameEvents);
+
+		return *this;
+	}
+
+
+	FrameSnapshot	(FrameSnapshot&& rhs) :
+		FrameCopy	{ std::move(rhs.FrameCopy)		},
+		FrameEvents { std::move(rhs.FrameEvents)	}
+	{}
+
+	void Restore	(Game* out);
+	
+	EventList		FrameEvents;
+	Game			FrameCopy;
+	size_t			FrameID;
+
+	iAllocator* Memory;
+};
+
+
+/************************************************************************************************/
+
+
+void DrawGame(
+	double							dt,
+	float							AspectRatio,
+	Game&							game,
+	FlexKit::FrameGraph&			FrameGraph,
+	FlexKit::ConstantBufferHandle	ConstantBuffer,
+	FlexKit::VertexBufferHandle		VertexBuffer,
+	FlexKit::TextureHandle			RenderTarget,
+	FlexKit::TextureHandle			DepthBuffer,
+	FlexKit::CameraHandle			Camera,
+	FlexKit::TriMeshHandle			PlayerModel,
+	FlexKit::iAllocator*			TempMem);
+
+
+/************************************************************************************************/
 #endif

@@ -25,6 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "LobbyGUI.h"
 
 
+/************************************************************************************************/
+
+
 MultiplayerLobbyScreen::MultiplayerLobbyScreen(FlexKit::iAllocator* memory, FlexKit::SpriteFontAsset* IN_font) :
 	rows	{memory},
 	gui		{{}, memory},
@@ -54,10 +57,16 @@ MultiplayerLobbyScreen::MultiplayerLobbyScreen(FlexKit::iAllocator* memory, Flex
 }
 
 
+/************************************************************************************************/
+
+
 void MultiplayerLobbyScreen::Update(double dt, FlexKit::WindowInput& input, float2 pixelSize, FlexKit::iAllocator* allocator)
 {
 	gui.Update(dt, input, pixelSize, allocator);
 }
+
+
+/************************************************************************************************/
 
 
 void MultiplayerLobbyScreen::Draw(
@@ -151,3 +160,6 @@ void MultiplayerLobbyScreen::SetPlayerReady(LobbyRowID id, bool	ready)
 		}
 	}
 }
+
+
+/************************************************************************************************/

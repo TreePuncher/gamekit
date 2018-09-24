@@ -158,6 +158,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="MultiplayerGameState.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="MultiplayerState.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -176,6 +180,7 @@
     <ClInclude Include="LobbyGUI.h" />
     <ClInclude Include="MainMenu.h" />
     <ClInclude Include="MenuState.h" />
+    <ClInclude Include="MultiplayerGameState.h" />
     <ClInclude Include="MultiplayerState.h" />
     <ClInclude Include="Packets.h" />
     <ClInclude Include="PlayState.h" />

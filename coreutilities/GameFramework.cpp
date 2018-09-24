@@ -489,7 +489,7 @@ namespace FlexKit
 
 
 		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
-
+		Format.Scale = { 0.5f, 0.5f};
 		DrawSprite_Text(
 				TempBuffer, 
 				Graph, 
@@ -524,6 +524,9 @@ namespace FlexKit
 
 	void GameFramework::PopState()
 	{
+		SubStates.back()->~FrameworkState();
+		Core->GetBlockMemory().free(SubStates.back());
+		SubStates.pop_back();
 	}
 
 

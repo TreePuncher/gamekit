@@ -39,6 +39,7 @@ typedef uint64_t MultiplayerPlayerID_t;
 enum LobbyPacketIDs : PacketID_t
 {
 	_LobbyPacketID_Begin		= UserPacketIDCount,
+	StartGame					= GetCRCGUID(StartGame),
 	RequestPlayerList			= GetCRCGUID(RequestPlayerList),
 	RequestPlayerListResponse	= GetCRCGUID(PlayerList),
 };
@@ -181,4 +182,20 @@ public:
 
 
 /************************************************************************************************/
+
+
+class StartGamePacket
+{
+public:
+	StartGamePacket() :
+		Header	{ sizeof(StartGamePacket),
+				{ StartGame } }
+	{}
+
+	UserPacketHeader	Header;
+};
+
+
+/************************************************************************************************/
+
 #endif

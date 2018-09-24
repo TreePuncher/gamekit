@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "lobbygui.cpp"
 #include "MainMenu.cpp"
 #include "MultiplayerState.cpp"
+#include "MultiplayerGameState.cpp"
 #include "PlayState.cpp"
 
 #include <iostream>
@@ -42,8 +43,7 @@ int main(int argc, char* argv[])
 {
 	FlexKit::InitLog(argc, argv);
 	FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
-	FlexKit::AddLogFile("GameState.log", 
-		FlexKit::Verbosity_INFO);
+	FlexKit::AddLogFile("GameState.log", FlexKit::Verbosity_INFO);
 
 #ifdef _DEBUG
 	FlexKit::AddLogFile("GameState_Detailed.log", 
@@ -63,8 +63,10 @@ int main(int argc, char* argv[])
 
 	FK_LOG_INFO("Set initial PlayState state.");
 	auto& gameBase = App.PushState<BaseState>(&App);
-	//App.PushState<MainMenu>(&GameBase);
-	//App.PushState<PlayState>(&GameBase);
+#if 1
+	//App.PushState<MainMenu>(&gameBase);
+	App.PushState<PlayState>(&gameBase);
+#else
 	auto& networkState = App.PushState<NetworkState>(&gameBase);
 
 	bool isHost = true;
@@ -86,7 +88,7 @@ int main(int argc, char* argv[])
 		FK_LOG_INFO("Starting Client");
 		App.PushState<GameClientState>(&gameBase, &networkState);
 	}
-
+#endif
 	FK_LOG_INFO("Running application...");
 	App.Run();
 	FK_LOG_INFO("Completed running application");

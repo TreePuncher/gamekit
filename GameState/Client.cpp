@@ -43,7 +43,6 @@ ClientLobbyState::ClientLobbyState(
 		packetHandlers	{IN_framework->Core->GetBlockMemory()},
 		ready			{false},
 		refreshCounter	{0},
-		remotePlayers	{IN_framework->Core->GetBlockMemory()},
 		screen			{IN_framework->Core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
 {
 	packetHandlers.push_back(
@@ -81,7 +80,7 @@ ClientLobbyState::ClientLobbyState(
 				FK_LOG_INFO("Player List Received");
 
 				screen.ClearRows();
-				remotePlayers.clear();
+				client->remotePlayers.clear();
 
 				auto playerList				= reinterpret_cast<PlayerListPacket*>(incomingPacket);
 				const size_t playerCount	= FlexKit::max(FlexKit::min(playerList->playerCount, 3u), 0u);
@@ -96,16 +95,25 @@ ClientLobbyState::ClientLobbyState(
 					auto id			= playerList->Players[idx].playerID;
 					auto ready		= playerList->Players[idx].ready;
 
-					remotePlayers.push_back({ playerList->Players[idx].playerID });
-					strncpy(remotePlayers.back().name, nameStr, sizeof(RemotePlayer::name));
+					client->remotePlayers.push_back({ playerList->Players[idx].playerID });
+					strncpy(client->remotePlayers.back().name, nameStr, sizeof(RemotePlayer::name));
 
-					screen.CreateRow(id);
-					screen.SetPlayerName(id, remotePlayers.back().name);
-					screen.SetPlayerReady(id, ready);
+					screen.CreateRow		(id);
+					screen.SetPlayerName	(id, client->remotePlayers.back().name);
+					screen.SetPlayerReady	(id, ready);
 				}
 			},
 			IN_framework->Core->GetBlockMemory()));
 
+		packetHandlers.push_back(
+		CreatePacketHandler(
+			StartGame,
+			[&](UserPacketHeader* incomingPacket, RakNet::Packet* P, NetworkState* network)
+			{
+				FK_LOG_INFO("Starting Game");
+				client->StartGame();
+			},
+			IN_framework->Core->GetBlockMemory()));
 
 	network->PushHandler(&packetHandlers);
 }
@@ -137,6 +145,7 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 			case FlexKit::KC_R:
 			{
 				ready = !ready;
+				
 				ClientReady packet(client->localID, ready);
 				network->SendPacket(packet.GetRawPacket(), client->ServerAddress);
 			}

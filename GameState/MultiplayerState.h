@@ -29,11 +29,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <WindowsIncludes.h>
 #include <functional>
 
+#include "MultiplayerGameState.h"
 #include "MessageIdentifiers.h"
 #include "RakPeerInterface.h"
 #include "RakNetTypes.h"
 #include "BitStream.h"
 #include "BaseState.h"
+
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\EngineCore.h"
 #include "..\coreutilities\GameFramework.h"

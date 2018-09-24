@@ -27,7 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
+
 #include <algorithm>
+#include <functional>
 
 namespace FlexKit
 {
@@ -50,8 +52,6 @@ namespace FlexKit
 		END
 	};
 	
-	const size_t MAXSIZE = 24000;
-
 	// Structs
 	struct s_TokenVertexLayout
 	{
@@ -66,7 +66,7 @@ namespace FlexKit
 
 	struct s_TokenValue
 	{
-		FlexKit::byte	buffer[31];
+		FlexKit::byte	buffer[256];
 		Token			token;
 
 		static s_TokenValue Empty()
@@ -91,6 +91,13 @@ namespace FlexKit
 		uint4_16	Joints;
 	};
 
+	template <class T>
+	inline void hash_combine(std::size_t& seed, const T& v)
+	{
+		std::hash<T> hasher;
+		seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
+
 	struct CombinedVertex
 	{
 		CombinedVertex() : NORMAL(0), POS(0), TEXCOORD(0), WEIGHTS(0) {}
@@ -102,14 +109,18 @@ namespace FlexKit
 
 		struct IndexBitlayout
 		{
-			unsigned int p_Index : 24;
-			unsigned int n_Index : 24;
-			unsigned int t_Index : 24;
+			size_t p_Index;
+			size_t n_Index;
+			size_t t_Index;
 
 			size_t Hash() const 
 			{ 
-				size_t H = size_t(p_Index) << 40 | size_t(n_Index) << 24 | t_Index;
-				return H; 
+				size_t hash = 0;
+				hash_combine(hash, p_Index);
+				hash_combine(hash, n_Index);
+				hash_combine(hash, t_Index);
+
+				return hash;
 			};
 
 			bool operator == (const IndexBitlayout in) const { return (in.Hash() == Hash()); }

@@ -26,6 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <random>
 #include <limits>
 
+
+using FlexKit::GameFramework;
+
 /************************************************************************************************/
 
 
@@ -114,9 +117,32 @@ bool GameHostLobbyState::PostDrawUpdate(EngineCore* Core, UpdateDispatcher& Disp
 /************************************************************************************************/
 
 
+bool GameHostLobbyState::EventHandler(FlexKit::Event evt)
+{
+	if (evt.InputSource == Event::Keyboard &&
+		evt.Action == Event::Pressed)
+	{
+		switch ((DEBUG_EVENTS)evt.mData1.mINT[0])
+		{
+		case FlexKit::KC_SPACE:
+		{
+			host->BeginGame();
+		}	break;
+		default:
+			break;
+		}
+	}
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
 GameHostLobbyState::GameHostLobbyState(
-	FlexKit::GameFramework* IN_framework,
-	GameHostState*			IN_host) :
+	GameFramework*	IN_framework,
+	GameHostState*	IN_host) :
 		FrameworkState		{IN_framework}, 
 		packetHandlers		{IN_framework->Core->GetBlockMemory()},
 		host				{IN_host},
@@ -126,6 +152,7 @@ GameHostLobbyState::GameHostLobbyState(
 	IN_host->network->NewConnectionHandler = [this](RakNet::Packet* packet) {
 		HandleNewConnection(packet); 
 	};
+
 
 	packetHandlers.push_back(
 		CreatePacketHandler(
@@ -178,6 +205,7 @@ GameHostLobbyState::GameHostLobbyState(
 			}, 
 			IN_framework->Core->GetBlockMemory()));
 
+
 	packetHandlers.push_back(
 		CreatePacketHandler(
 			RequestPlayerList,
@@ -213,6 +241,7 @@ GameHostLobbyState::GameHostLobbyState(
 				host->network->SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
 			}, 
 			IN_framework->Core->GetBlockMemory()));
+
 
 	host->network->PushHandler(&packetHandlers);
 }

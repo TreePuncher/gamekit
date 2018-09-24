@@ -43,15 +43,15 @@ namespace FlexKit
 		Pair<bool, MeshBuildInfo>
 		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool DoWeights )
 		{
-			Vector<float3>		position	{ ScratchSpace, 128000 };
-			Vector<float3>		normal		{ ScratchSpace, 128000 };
-			Vector<float2>		UV			{ ScratchSpace, 128000 };
-			Vector<float3>		Weights		{ ScratchSpace, (DoWeights) ? 128000u : 0u };
-			Vector<uint4_16>	WIndexes	{ ScratchSpace, (DoWeights) ? 128000u : 0u };
+			Vector<float3>		position	{ ScratchSpace };
+			Vector<float3>		normal		{ ScratchSpace };
+			Vector<float2>		UV			{ ScratchSpace };
+			Vector<float3>		Weights		{ ScratchSpace };
+			Vector<uint4_16>	WIndexes	{ ScratchSpace };
 
 			IndexList&	Indexes	= out_indexes;
 			MeshBuildInfo MBI	= {0};
-			Vector<size_t>	NormalTable(ScratchSpace, 128000);
+			Vector<size_t>	NormalTable(ScratchSpace);
 
 			map_t<CombinedVertex::IndexBitlayout, unsigned int>	IndexMap;
 			auto& FinalVerts = out_buffer;
@@ -105,7 +105,7 @@ namespace FlexKit
 					{
 						if (IndexMap.find(TempFVert.index) == IndexMap.end())
 						{
-							Indexes.push_back(static_cast< uint16_t >(FinalVerts.size()));
+							Indexes.push_back(static_cast< uint32_t >(FinalVerts.size()));
 							IndexMap[TempFVert.index] = static_cast<unsigned int>(FinalVerts.size());
 							FinalVerts.push_back(TempFVert);
 							count++;
@@ -127,15 +127,19 @@ namespace FlexKit
 					float3 newNormal = *(float3*)itr.buffer;
 					newNormal[3] = 0.0f;
 					newNormal = newNormal.normal();
+					
+
+					/*
 					for (size_t I= 0; I < normal.size(); ++I)
 					{
-						if ( 1 - normal[I].dot( newNormal ) < 0.0001f)
+						if ( 1 - normal[I].dot( newNormal ) < 0.00001f)
 						{
 							unqiue = false;
 							NormalTable.push_back(I);
 							break;
 						}
 					}
+					*/
 					if (unqiue) {
 						NormalTable.push_back(normal.size());
 						normal.push_back(newNormal);
@@ -496,6 +500,7 @@ namespace FlexKit
 
 					break;
 				case 2:
+
 					ExtractIndice( itr, str, LineLength, out, 0 );
 					ExtractIndice( itr, str, LineLength, out, 1 );
 					ExtractIndice( itr, str, LineLength, out, 2 );
@@ -606,10 +611,12 @@ namespace FlexKit
 				CombinedVertex::IndexBitlayout*	BitLayout = (CombinedVertex::IndexBitlayout*)Token.buffer;
 				
 				Token.token = Token::INDEX;
+
 				CombinedVertex::IndexBitlayout Temp;
-				Temp.p_Index = uint32_t(V);
-				Temp.n_Index = uint32_t(N);
-				Temp.t_Index = uint32_t(T);
+				Temp.p_Index = uint64_t(V);
+				Temp.n_Index = uint64_t(N);
+				Temp.t_Index = uint64_t(T);
+
 				memcpy(Token.buffer, &Temp, sizeof(Temp));
 				out.push_back(Token);
 			}

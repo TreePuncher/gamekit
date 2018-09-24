@@ -36,316 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 
-/************************************************************************************************/
-
-
-void Draw3DGrid(
-	FrameGraph&				FrameGraph,
-	const size_t			ColumnCount,
-	const size_t			RowCount,
-	const float2			GridWH,
-	const float4			GridColor,
-	TextureHandle			RenderTarget,
-	TextureHandle			DepthBuffer,
-	VertexBufferHandle		VertexBuffer,
-	ConstantBufferHandle	Constants,
-	CameraHandle			Camera,
-	iAllocator*				TempMem)
-{
-	LineSegments Lines(TempMem);
-	Lines.reserve(ColumnCount + RowCount);
-
-	const auto RStep = 1.0f / RowCount;
-
-	//  Vertical Lines on ground
-	for (size_t I = 1; I < RowCount; ++I)
-		Lines.push_back(
-			{ { RStep  * I * GridWH.x, 0, 0 },
-			GridColor,
-			{ RStep  * I * GridWH.x, 0, GridWH.y },
-			GridColor });
-
-
-	// Horizontal lines on ground
-	const auto CStep = 1.0f / ColumnCount;
-	for (size_t I = 1; I < ColumnCount; ++I)
-		Lines.push_back(
-			{ { 0,			0, CStep  * I * GridWH.y },
-			GridColor,
-			{ GridWH.x,		0, CStep  * I * GridWH.y },
-			GridColor });
-
-	struct DrawGrid
-	{
-		FrameResourceHandle		RenderTarget;
-		FrameResourceHandle		DepthBuffer;
-
-		size_t					VertexBufferOffset;
-		size_t					VertexCount;
-		VertexBufferHandle		VertexBuffer;
-		ConstantBufferHandle	CB;
-
-		size_t CameraConstantsOffset;
-		size_t LocalConstantsOffset;
-
-		FlexKit::DesciptorHeap	Heap; // Null Filled
-	};
-
-	struct VertexLayout
-	{
-		float4 POS;
-		float2 UV;
-		float4 Color;
-	};
-
-	FrameGraph.AddNode<DrawGrid>(0,
-		[&](FrameGraphNodeBuilder& Builder, auto& Data)
-	{
-		Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.RenderSystem->GetTag(RenderTarget));
-		Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.RenderSystem->GetTag(DepthBuffer));
-		Data.CB				= Constants;
-
-		Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
-		PushConstantBufferData(
-			GetCameraConstantBuffer(Camera),
-			Constants,
-			FrameGraph.Resources);
-
-		Data.Heap.Init(
-			FrameGraph.Resources.RenderSystem,
-			FrameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
-			TempMem);
-		Data.Heap.NullFill(FrameGraph.Resources.RenderSystem);
-
-		Drawable::VConsantsLayout DrawableConstants;
-		DrawableConstants.Transform = DirectX::XMMatrixIdentity();
-
-		Data.LocalConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
-		PushConstantBufferData(
-			DrawableConstants,
-			Constants,
-			FrameGraph.Resources);
-
-		Data.VertexBuffer = VertexBuffer;
-		Data.VertexBufferOffset = FrameGraph.Resources.GetVertexBufferOffset(VertexBuffer);
-
-		// Fill Vertex Buffer Section
-		for (auto& LineSegment : Lines)
-		{
-			VertexLayout Vertex;
-			Vertex.POS = float4(LineSegment.A, 1);
-			Vertex.Color = float4(LineSegment.AColour, 1) * float4 { 1.0f, 0.0f, 0.0f, 1.0f };
-			Vertex.UV = { 0.0f, 0.0f };
-
-			PushVertex(Vertex, VertexBuffer, FrameGraph.Resources);
-
-			Vertex.POS = float4(LineSegment.B, 1);
-			Vertex.Color = float4(LineSegment.BColour, 1) * float4 { 0.0f, 1.0f, 0.0f, 1.0f };
-			Vertex.UV = { 1.0f, 1.0f };
-
-			PushVertex(Vertex, VertexBuffer, FrameGraph.Resources);
-		}
-
-		Data.VertexCount = Lines.size() * 2;
-
-	},
-		[](auto& Data, const FrameResources& Resources, Context* Ctx)
-	{
-		Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-		Ctx->SetPipelineState(Resources.GetPipelineState(DRAW_LINE3D_PSO));
-
-		Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });
-		Ctx->SetRenderTargets(
-			{ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false,
-			(DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
-
-		Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
-		Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(VertexLayout), (UINT)Data.VertexBufferOffset } });
-
-		Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
-		Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
-		Ctx->SetGraphicsConstantBufferView(2, Data.CB, Data.LocalConstantsOffset);
-
-		Ctx->Draw(Data.VertexCount, 0);
-	});
-}
-
-
-/************************************************************************************************/
-
-
-void DrawGame(
-	double					dt,
-	float					AspectRatio,
-	Game&					Grid,
-	FrameGraph&				FrameGraph,
-	ConstantBufferHandle	ConstantBuffer,
-	VertexBufferHandle		VertexBuffer,
-	TextureHandle			RenderTarget,
-	TextureHandle			DepthBuffer,
-	CameraHandle			Camera,
-	TriMeshHandle			PlayerModel,
-	iAllocator*				TempMem)
-{
-	const size_t ColumnCount = Grid.WH[1];
-	const size_t RowCount 	 = Grid.WH[0];
-	const float2 GridWH		 = { 50.0, 50.0 };
-	const float4 GridColor	 = { 1, 1, 1, 1 };
-
-
-	struct InstanceConstantLayout
-	{
-		float4x4 WorldTransform;
-	};
-
-	Drawable::VConsantsLayout Constants_1 =
-	{
-		Drawable::MaterialProperties(),
-		DirectX::XMMatrixIdentity()
-	};
-
-	auto CameraConstants = GetCameraConstantBuffer(Camera);
-
-	DrawCollection_Desc DrawDesc =
-	{
-		PlayerModel,
-		RenderTarget,
-		DepthBuffer,
-		VertexBuffer,
-		ConstantBuffer,
-
-		FORWARDDRAWINSTANCED,
-
-		sizeof(InstanceConstantLayout),
-
-		{
-			sizeof(CameraConstants),
-			sizeof(Drawable::VConsantsLayout)
-		},
-
-		{
-			(char*)&CameraConstants,
-			(char*)&Constants_1
-		}
-	};
-
-
-	Draw3DGrid(
-		FrameGraph,
-		ColumnCount,
-		RowCount,
-		GridWH,
-		GridColor,
-		RenderTarget,
-		DepthBuffer,
-		VertexBuffer,
-		ConstantBuffer,
-		Camera,
-		TempMem);
-
-	DrawCollection(
-		FrameGraph,
-		Grid.Players,
-		[&](auto& Player) -> InstanceConstantLayout
-		{
-			float3 Position = {
-				(Player.XY[0] + Player.Offset.x) * GridWH.x / ColumnCount,
-				0.0,
-				(Player.XY[1] + Player.Offset.y) * GridWH.y / RowCount };
-
-			auto Transform = TranslationMatrix(Position);
-
-			return  { Transform };
-		},
-		DrawDesc,
-		TempMem
-		);
-
-	DrawCollection(
-		FrameGraph,
-		Grid.Objects,
-		[&](auto& Entity) -> InstanceConstantLayout
-		{
-			float3 Position = {
-				(Entity.XY[0]) * GridWH.x / ColumnCount,
-				0.0,
-				(Entity.XY[1]) * GridWH.y / RowCount };
-
-			auto Transform = TranslationMatrix(Position);
-
-			return  { Transform };
-		},
-		DrawDesc,
-		TempMem
-	);
-
-	DrawCollection(
-		FrameGraph,
-		Grid.Spaces,
-		[&](auto& Entity) -> InstanceConstantLayout
-		{
-			float3 Position = {
-				(Entity.XY[0]) * GridWH.x / ColumnCount,
-				0.0,
-				(Entity.XY[1]) * GridWH.y / RowCount };
-
-			return  { TranslationMatrix(Position) };
-		},
-		DrawDesc,
-		TempMem
-	);
-
-	DrawCollection(
-		FrameGraph,
-		Grid.Bombs,
-		[&](auto& Entity) -> InstanceConstantLayout
-		{
-			float3 Position = {
-				(Entity.XY[0] + Entity.Offset.x) * GridWH.x / ColumnCount,
-				0.0,
-				(Entity.XY[1] + Entity.Offset.y) * GridWH.y / RowCount };
-
-			return  { TranslationMatrix(Position) };
-		},
-		DrawDesc,
-		TempMem
-	);
-}
-
-
-
-/************************************************************************************************/
-
-
-FrameSnapshot::FrameSnapshot(Game* IN_Game, EventList* IN_FrameEvents, size_t IN_FrameID, iAllocator* IN_Memory) :
-	FrameID		{ IN_FrameID },
-	FrameCopy	{ IN_Memory },
-	Memory		{ IN_Memory },
-	FrameEvents	{ IN_Memory }
-{
-	if (!IN_Memory)
-		return;
-
-	FrameEvents = *IN_FrameEvents;
-	FrameCopy	= *IN_Game;
-}
-
-
-/************************************************************************************************/
-
-
-FrameSnapshot::~FrameSnapshot()
-{
-	FrameCopy.Release();
-}
-
-
-/************************************************************************************************/
-
-
-void FrameSnapshot::Restore(Game* out)
-{
-}
 
 
 /************************************************************************************************/
@@ -388,7 +78,7 @@ PlayState::PlayState(
 						}
 {
 	AddResourceFile("CharacterBase.gameres");
-	CharacterModel = FlexKit::LoadTriMeshIntoTable(Framework->Core->RenderSystem, "Flower");
+	CharacterModel = FlexKit::LoadTriMeshIntoTable(Framework->Core->RenderSystem, "PlayerMesh");
 
 	Player1_Handler.SetActive(LocalGame.CreatePlayer({ 11, 11 }));
 	Player1_Handler.SetPlayerCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
@@ -400,14 +90,15 @@ PlayState::PlayState(
 	OrbitCamera.Yaw(float(pi));
 
 
-	eventMap.MapKeyToEvent(KEYCODES::KC_W, PLAYER_EVENTS::PLAYER_UP);
-	eventMap.MapKeyToEvent(KEYCODES::KC_A, PLAYER_EVENTS::PLAYER_LEFT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_S, PLAYER_EVENTS::PLAYER_DOWN);
-	eventMap.MapKeyToEvent(KEYCODES::KC_D, PLAYER_EVENTS::PLAYER_RIGHT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_Q, PLAYER_EVENTS::PLAYER_ROTATE_LEFT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_E, PLAYER_EVENTS::PLAYER_ROTATE_RIGHT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT, PLAYER_EVENTS::PLAYER_HOLD);
-	eventMap.MapKeyToEvent(KEYCODES::KC_SPACE, PLAYER_EVENTS::PLAYER_ACTION1);
+	eventMap.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_Q,			PLAYER_EVENTS::PLAYER_ROTATE_LEFT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_E,			PLAYER_EVENTS::PLAYER_ROTATE_RIGHT);
+	eventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
+	eventMap.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
+
 
 	// Debug Orbit Camera
 	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_I, PLAYER_EVENTS::DEBUG_PLAYER_UP);
@@ -651,16 +342,17 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		Core->GetTempMemory());
 
 
+	/*
 	Render->DefaultRender(
 		Drawables,
 		ActiveCamera,
 		Targets,
 		FrameGraph,
 		Core->GetTempMemory());
-
+	*/
 #endif
 	
-	UI.Draw(DrawDesk, Core->GetTempMemory());
+	//UI.Draw(DrawDesk, Core->GetTempMemory());
 
 
 	return true;

@@ -54,8 +54,10 @@ public:
 	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
 	bool PostDrawUpdate	(EngineCore* Core,	 UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
 
-private:
+	bool EventHandler(FlexKit::Event evt) override;
 
+
+private:
 
 	struct PlayerLobbyEntry
 	{
@@ -63,8 +65,8 @@ private:
 		bool					Ready;
 	};
 
-	Vector<PacketHandler*>		packetHandlers;
-	Vector<PlayerLobbyEntry>	playerLobbyState;
+	FlexKit::Vector<PacketHandler*>		packetHandlers;
+	FlexKit::Vector<PlayerLobbyEntry>	playerLobbyState;
 
 	GameHostState*			host;
 	MultiplayerLobbyScreen	screen;
@@ -77,7 +79,9 @@ private:
 enum PlayerNetState : uint32_t
 {
 	Joining,
-	Lobby
+	Lobby,
+	StartingGame,
+	InGame
 };
 
 
@@ -105,18 +109,18 @@ public:
 		BaseState*				IN_base,
 		NetworkState*			IN_Network,
 		GameDescription			IN_GameDesc = GameDescription{}) :
-		FrameworkState{ IN_framework },
-		players{ IN_framework->Core->GetBlockMemory() },
-		network{ IN_Network },
-		base{ IN_base }
+			FrameworkState{ IN_framework					},
+			players	{ IN_framework->Core->GetBlockMemory()	},
+			network	{ IN_Network							},
+			base	{ IN_base								}
 	{
 		RakNet::SocketDescriptor sd(IN_GameDesc.Port, 0);
 		network->localPeer->Startup(IN_GameDesc.MaxPlayerCount, &sd, 1);
 	}
 
 
-	~GameHostState()
-	{}
+	~GameHostState(){}
+
 
 	GameHostState& InitiateGame()
 	{
@@ -140,6 +144,13 @@ public:
 				return &player;
 
 		return nullptr;
+	}
+
+
+	void BeginGame()
+	{
+		Framework->PopState();
+		Framework->PushState<MultiplayerGame>(network, players.size(), base);
 	}
 
 
@@ -181,9 +192,9 @@ public:
 	}
 
 
-	Vector<MultiPlayerEntry>	players;
-	BaseState*					base;
-	NetworkState*				network;
+	FlexKit::Vector<MultiPlayerEntry>	players;
+	BaseState*							base;
+	NetworkState*						network;
 };
 
 

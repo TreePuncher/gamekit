@@ -39,6 +39,13 @@ struct ClientGameDescription
 };
 
 
+struct RemotePlayer
+{
+	MultiplayerPlayerID_t	id;
+	char					name[32];
+};
+
+
 class ClientLobbyState : public FlexKit::FrameworkState
 {
 public:
@@ -59,14 +66,6 @@ public:
 	bool EventHandler	(FlexKit::Event evt) override;
 
 	size_t					refreshCounter;
-
-	struct RemotePlayer
-	{
-		MultiplayerPlayerID_t	id;
-		char					name[32];
-	};
-
-	Vector<RemotePlayer>	remotePlayers;
 	Vector<PacketHandler*>	packetHandlers;
 	NetworkState*			network;
 	GameClientState*		client;
@@ -88,10 +87,11 @@ public:
 		BaseState*				IN_base,
 		NetworkState*			IN_network,
 		ClientGameDescription	IN_desc = ClientGameDescription{}) :
-			FrameworkState		{ IN_framework },
-			network				{ IN_network },
-			packetHandlers		{ IN_framework->Core->GetBlockMemory() },
-			base				{ IN_base }
+			FrameworkState		{ IN_framework							},
+			base				{ IN_base								},
+			network				{ IN_network							},
+			packetHandlers		{ IN_framework->Core->GetBlockMemory()	},
+			remotePlayers		{ IN_framework->Core->GetBlockMemory()	}
 	{
 		char	Address[256];
 		std::cout << "Please Enter Name: \n";
@@ -116,6 +116,12 @@ public:
 	}
 
 
+	void StartGame()
+	{
+		Framework->PopState();
+	}
+
+
 	void ConnectionSuccess(RakNet::Packet* packet)
 	{
 		ServerAddress = packet->systemAddress;
@@ -136,6 +142,7 @@ public:
 		return true;
 	}
 
+	Vector<RemotePlayer>	remotePlayers;
 	RakNet::SystemAddress	ServerAddress;
 	Vector<PacketHandler*>	packetHandlers;
 	NetworkState*			network;
