@@ -808,11 +808,6 @@ namespace FlexKit
 		ShapeList(iAllocator* Memory = SystemAllocator) :
 			Shapes{ Memory } {}
 
-		ShapeList(const ShapeList& rhs)
-		{
-		}
-
-
 		~ShapeList()
 		{
 			Shapes.Release();
@@ -877,14 +872,6 @@ namespace FlexKit
 				Divisions	{Divisions_IN},
 				AspectRatio {AspectRatio_IN}{}
 
-		CircleShape(const CircleShape& rhs):
-				Color		{rhs.Color},
-				POS			{rhs.POS}, 
-				R			{rhs.R},
-				Divisions	{rhs.Divisions},
-				AspectRatio {rhs.AspectRatio}
-		{}
-
 		void AddShapeDraw(
 			DrawList&				DrawList, 
 			VertexBufferHandle		PushBuffer, 
@@ -931,12 +918,6 @@ namespace FlexKit
 			LineSegments& lines
 		) : Lines{lines} {}
 
-		LineShape(const LineShape& rhs)
-			: Lines{ rhs.Lines }{}
-
-		LineShape(const LineShape&& rhs)
-			: Lines{ rhs.Lines }{}
-
 		void AddShapeDraw(
 			DrawList&				DrawList,
 			VertexBufferHandle		PushBuffer,
@@ -947,8 +928,10 @@ namespace FlexKit
 
 			for (auto Segment : Lines)
 			{
-				PushVertex(ShapeVert{ Position2SS(Segment.A),{ 0.0f, 0.0f }, Segment.AColour }, PushBuffer, Resources);
-				PushVertex(ShapeVert{ Position2SS(Segment.B),{ 0.0f, 0.0f }, Segment.BColour }, PushBuffer, Resources);
+				ShapeVert Vert1 = { Position2SS(Segment.A),{ 0.0f, 0.0f }, float4(Segment.AColour, 1) };
+				ShapeVert Vert2 = { Position2SS(Segment.B),{ 0.0f, 0.0f }, float4(Segment.BColour, 1) };
+				PushVertex(Vert1, PushBuffer, Resources);
+				PushVertex(Vert2, PushBuffer, Resources);
 			}
 
 			Constants CB_Data = {
@@ -977,10 +960,6 @@ namespace FlexKit
 			WH(WH_IN),
 			Color(Color_IN){}
 
-		RectangleShape(const RectangleShape& rhs) :
-			POS		{ rhs.POS		},
-			WH		{ rhs.WH		},
-			Color	{ rhs.Color		}{}
 
 		void AddShapeDraw(
 			DrawList&				DrawList, 
@@ -1020,6 +999,54 @@ namespace FlexKit
 		float4 Color;
 	};
 
+
+	class RectangleListShape final : public ShapeProtoType
+	{
+	public:
+		RectangleListShape(Vector<FlexKit::Rectangle>& rects_in) :
+			rects{rects_in}{}
+
+		
+		~RectangleListShape() {}
+
+		void AddShapeDraw(
+			DrawList&				drawList, 
+			VertexBufferHandle		pushBuffer, 
+			ConstantBufferHandle	CB,
+			FrameResources&			resources) override
+		{
+			const size_t VBOffset = resources.GetVertexBufferOffset(pushBuffer, sizeof(ShapeVert));
+
+			for(auto rect : rects)
+			{
+				float2 rectUpperLeft	= rect.Position;
+				float2 rectBottomRight	= rect.Position + rect.WH;
+				float2 rectUpperRight	= { rectBottomRight.x,	rectUpperLeft.y };
+				float2 rectBottomLeft	= { rectUpperLeft.x,	rectBottomRight.y };
+
+				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectBottomLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+
+				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectUpperRight),	{ 1.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
+			}
+
+			Constants CB_Data = {
+				float4(1, 1, 1, 1),
+				float4(1, 1, 1, 1),
+				float4x4::Identity()};
+
+			auto CBOffset = BeginNewConstantBuffer(CB, resources);
+			PushConstantBufferData(CB_Data, CB, resources);
+
+			drawList.push_back({ CBOffset, VBOffset, 6 * rects.size() });
+		}
+
+		Vector<FlexKit::Rectangle>& rects;
+	};
+
 	inline void AddShapes(
 		DrawList&				List, 
 		VertexBufferHandle		VertexBuffer,
@@ -1033,16 +1060,16 @@ namespace FlexKit
 		VertexBufferHandle		VertexBuffer, 
 		ConstantBufferHandle	CB,
 		FrameResources&			Resources,
-		TY_1					Shape, 
-		TY_OTHER_SHAPES&& ...	ShapePack)
+		TY_1&					Shape, 
+		TY_OTHER_SHAPES ...		ShapePack)
 	{
 		Shape.AddShapeDraw(List, VertexBuffer, CB, Resources);
-		AddShapes(List, VertexBuffer, CB, Resources, ShapePack...);
+		AddShapes(List, VertexBuffer, CB, Resources, std::forward<TY_OTHER_SHAPES&&>(ShapePack)...);
 	}
 
 
 	template<typename ... TY_OTHER>
-	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER&& ... Args)
+	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER ... Args)
 	{
 		struct DrawRect
 		{
@@ -1064,7 +1091,7 @@ namespace FlexKit
 				Data.ConstantBuffer = CB;
 				Data.Draws			= DrawList(Memory);
 
-				AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, Args...);
+				AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, std::forward<TY_OTHER&&>(Args)...);
 			},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
 			{
