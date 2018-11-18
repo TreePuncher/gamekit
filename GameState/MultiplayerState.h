@@ -154,7 +154,7 @@ public:
 		FlexKit::GameFramework* IN_framework, 
 		BaseState*	IN_base) :
 			FrameworkState	{ IN_framework },
-			handlerStack	{ IN_framework->Core->GetBlockMemory() }
+			handlerStack	{ IN_framework->core->GetBlockMemory() }
 	{
 		localPeer = RakNet::RakPeerInterface::GetInstance();
 		localPeer->SetMaximumIncomingConnections(16);

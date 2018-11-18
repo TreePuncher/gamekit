@@ -28,13 +28,8 @@ namespace FlexKit
 {
 	FKApplication::FKApplication(uint2 WindowResolution, EngineMemory* IN_Memory) :
 		Memory		{ IN_Memory },
-		Core		{ IN_Memory }
-	{
-		bool Success = Core.Initate(Memory, WindowResolution);
-		FK_ASSERT(Success);
-
-		Framework.Initiate(&Core);
-	}
+		Core		{ IN_Memory, WindowResolution },
+		framework	{ &Core }{}
 
 
 	FKApplication::~FKApplication()
@@ -47,7 +42,7 @@ namespace FlexKit
 	{
 		if (Memory)
 		{
-			Framework.Cleanup();
+			framework.Cleanup();
 			Core.Release();
 			Memory = nullptr;
 		}
@@ -71,7 +66,7 @@ namespace FlexKit
 		double CodeCheckTimer	= 0.0f;
 		double dT				= StepSize;
 
-		while (!Core.End && !Core.Window.Close && Framework.SubStates.size())
+		while (!Core.End && !Core.Window.Close && framework.subStates.size())
 		{
 			Core.Time.Before();
 
@@ -86,11 +81,11 @@ namespace FlexKit
 
 				FK_LOG_9("Frame Begin");
 
-				Framework.Update			(dT);
-				Framework.UpdateFixed		(StepSize);
-				Framework.UpdatePreDraw		(Memory->GetTempMemory(), dT);
-				Framework.Draw				(Memory->GetTempMemory());
-				Framework.PostDraw			(Memory->GetTempMemory(), dT);
+				framework.Update			(dT);
+				framework.UpdateFixed		(StepSize);
+				framework.UpdatePreDraw		(Memory->GetTempMemory(), dT);
+				framework.Draw				(Memory->GetTempMemory());
+				framework.PostDraw			(Memory->GetTempMemory(), dT);
 
 				FK_LOG_9("Frame End");
 

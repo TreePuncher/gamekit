@@ -31,12 +31,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* Framework)
+	void InputComponentSystem::Update(double dt, MouseInputState MouseInput, GameFramework* framework)
 	{
-		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(Framework->Core)[0];
-		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(Framework->Core)[1];
+		float HorizontalMouseMovement	= float(MouseInput.dPos[0]) / GetWindowWH(framework->core)[0];
+		float VerticalMouseMovement		= float(MouseInput.dPos[1]) / GetWindowWH(framework->core)[1];
 
-		Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
+		framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
 #if 0
 		std::cout << "H: " << HorizontalMouseMovement << "\n";
 		std::cout << "V: " << VerticalMouseMovement << "\n";
@@ -50,7 +50,7 @@ namespace FlexKit
 
 	MouseInputState	InputComponentSystem::GetMouseState()
 	{
-		return Framework->MouseState;
+		return framework->MouseState;
 	}
 
 

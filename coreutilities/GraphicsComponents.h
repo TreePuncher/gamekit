@@ -71,74 +71,93 @@ namespace FlexKit
 	void QueueCameraUpdate(UpdateDispatcher&, UpdateTask* TransformDependency);
 
 
-	class CameraBehavior
+	struct DefaultCameraInteractor
+	{
+		using ParentType_t = void*;
+		void OnDirty(void*, void*) {}
+	};
+
+	template<typename TY_Interactor = DefaultCameraInteractor>
+	class CameraBehavior_t : public DefaultCameraInteractor
 	{
 	public:
-		CameraBehavior(CameraHandle IN_Camera = CreateCamera()) : 
-			Camera{IN_Camera}{}
+		CameraBehavior_t(CameraHandle IN_camera = CreateCamera()) :
+			camera{IN_camera}{}
 
 
 		void SetCameraAspectRatio(float AspectRatio)
 		{
-			FlexKit::SetCameraAspectRatio(Camera, AspectRatio);
+			FlexKit::SetCameraAspectRatio(camera, AspectRatio);
+			_CameraDirty();
 		}
 
 
 		void SetCameraNode(NodeHandle Node)
 		{
-			FlexKit::SetCameraNode(Camera, Node);
+			FlexKit::SetCameraNode(camera, Node);
+			_CameraDirty();
 		}
 
 
 		void SetCameraFOV(float r)
 		{
-			FlexKit::SetCameraFOV(Camera, r);
+			FlexKit::SetCameraFOV(camera, r);
+			_CameraDirty();
 		}
 
 
 		NodeHandle GetCameraNode()
 		{
-			return FlexKit::GetCameraNode(Camera);
+			return FlexKit::GetCameraNode(camera);
 		}
 
 
 		float GetCameraFov()
 		{
-			return FlexKit::GetCameraFOV(Camera);
+			return FlexKit::GetCameraFOV(camera);
 		}
 
 
 		Camera::CameraConstantBuffer	GetCameraConstantBuffer()
 		{
-			return FlexKit::GetCameraConstantBuffer(Camera);
+			return FlexKit::GetCameraConstantBuffer(camera);
 		}
 
 
 		operator CameraHandle () {
-			return Camera;
+			return camera;
 		}
 
 
-		CameraHandle Camera;
+		CameraHandle camera;
+
+	private:
+
+		void _CameraDirty()
+		{
+			OnDirty(this, static_cast<TY_Interactor::ParentType_t>(this));
+		}
 	};
 
 
 	/************************************************************************************************/
 
 
-	inline Frustum GetFrustum(CameraHandle Camera)
+	inline Frustum GetFrustum(CameraHandle camera)
 	{
-		auto Node = GetCameraNode(Camera);
+		auto Node = GetCameraNode(camera);
 
 		return GetFrustum(
-			GetCameraAspectRatio(Camera),
-			GetCameraFOV		(Camera),
-			GetCameraNear		(Camera),
-			GetCameraFar		(Camera),
+			GetCameraAspectRatio(camera),
+			GetCameraFOV		(camera),
+			GetCameraNear		(camera),
+			GetCameraFar		(camera),
 			GetPositionW		(Node),
 			GetOrientation		(Node));
 	}
 
+
+	using CameraBehavior = CameraBehavior_t<>;
 
 	/************************************************************************************************/
 }// FlexKit

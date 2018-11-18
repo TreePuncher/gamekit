@@ -40,10 +40,10 @@ ClientLobbyState::ClientLobbyState(
 		client			{IN_client},
 		localPlayerName {IN_localPlayerName},
 		network			{IN_network},
-		packetHandlers	{IN_framework->Core->GetBlockMemory()},
+		packetHandlers	{IN_framework->core->GetBlockMemory()},
 		ready			{false},
 		refreshCounter	{0},
-		screen			{IN_framework->Core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
+		screen			{IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
 {
 	packetHandlers.push_back(
 		CreatePacketHandler(
@@ -52,7 +52,7 @@ ClientLobbyState::ClientLobbyState(
 			{
 				std::cout << "Message Received!\n";
 			}, 
-			IN_framework->Core->GetBlockMemory()));
+			IN_framework->core->GetBlockMemory()));
 
 
 	packetHandlers.push_back(
@@ -69,7 +69,7 @@ ClientLobbyState::ClientLobbyState(
 				std::cout << "playerID set to: " << request->playerID << "\n";
 				network->SendPacket(responsePacket.GetRawPacket(), P->systemAddress);
 			},
-			IN_framework->Core->GetBlockMemory()));
+			IN_framework->core->GetBlockMemory()));
 
 
 	packetHandlers.push_back(
@@ -103,7 +103,7 @@ ClientLobbyState::ClientLobbyState(
 					screen.SetPlayerReady	(id, ready);
 				}
 			},
-			IN_framework->Core->GetBlockMemory()));
+			IN_framework->core->GetBlockMemory()));
 
 		packetHandlers.push_back(
 		CreatePacketHandler(
@@ -113,7 +113,7 @@ ClientLobbyState::ClientLobbyState(
 				FK_LOG_INFO("Starting Game");
 				client->StartGame();
 			},
-			IN_framework->Core->GetBlockMemory()));
+			IN_framework->core->GetBlockMemory()));
 
 	network->PushHandler(&packetHandlers);
 }
@@ -127,7 +127,7 @@ ClientLobbyState::~ClientLobbyState()
 	client->network->PopHandler();
 
 	for (auto handler : packetHandlers)
-		Framework->Core->GetBlockMemory().free(handler);
+		framework->core->GetBlockMemory().free(handler);
 }
 
 
@@ -193,7 +193,7 @@ bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher
 	screen.Draw(Desc, dispatcher, frameGraph);
 
 	FlexKit::DrawMouseCursor(
-		Framework->MouseState.NormalizedScreenCord,
+		framework->MouseState.NormalizedScreenCord,
 		{ 0.05f, 0.05f },
 		client->base->vertexBuffer,
 		client->base->constantBuffer,
@@ -210,8 +210,8 @@ bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher
 
 bool ClientLobbyState::PostDrawUpdate(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	if (Framework->DrawDebugStats)
-		Framework->DrawDebugHUD(dT, client->base->textBuffer, frameGraph);
+	if (framework->drawDebugStats)
+		framework->DrawDebugHUD(dT, client->base->textBuffer, frameGraph);
 
 	PresentBackBuffer(frameGraph, &core->Window);
 	return true;

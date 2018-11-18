@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -233,7 +233,7 @@ namespace FlexKit
 		}
 
 
-		ID3D12PipelineState*	GetPipelineState(EPIPELINESTATES State)	const
+		ID3D12PipelineState*	GetPipelineState(PSOHandle State)	const
 		{
 			return RenderSystem->GetPSO(State);
 		}
@@ -765,16 +765,17 @@ namespace FlexKit
 
 	struct ShapeDraw
 	{
-		size_t ConstantBufferOffset;
-		size_t VertexBufferOffset;
-		size_t VertexCount;
-
 		enum class RenderMode
 		{
 			Line,
 			Triangle,
 			Textured,
 		}Mode = RenderMode::Triangle;
+
+		size_t ConstantBufferOffset	= 0;
+		size_t VertexBufferOffset	= 0;
+		size_t VertexCount			= 0;
+		size_t VertexOffset			= 0;
 	};
 
 	typedef Vector<ShapeDraw> DrawList;
@@ -900,7 +901,7 @@ namespace FlexKit
 			auto CBOffset = BeginNewConstantBuffer(CB, Resources);
 			PushConstantBufferData(CB_Data, CB, Resources);
 
-			DrawList.push_back({ CBOffset, VBOffset, Divisions * 3});
+			DrawList.push_back({ ShapeDraw::RenderMode::Triangle, CBOffset, VBOffset, Divisions * 3});
 		}
 
 		float2	POS;
@@ -943,7 +944,7 @@ namespace FlexKit
 			auto CBOffset = BeginNewConstantBuffer(CB, Resources);
 			PushConstantBufferData(CB_Data, CB, Resources);
 
-			DrawList.push_back({ CBOffset, VBOffset, Lines.size() * 2, ShapeDraw::RenderMode::Line });
+			DrawList.push_back({ ShapeDraw::RenderMode::Line, CBOffset, VBOffset, Lines.size() * 2 });
 		}
 
 
@@ -991,7 +992,7 @@ namespace FlexKit
 			auto CBOffset = BeginNewConstantBuffer(CB, Resources);
 			PushConstantBufferData(CB_Data, CB, Resources);
 
-			DrawList.push_back({ CBOffset, VBOffset, 6 });
+			DrawList.push_back({ ShapeDraw::RenderMode::Triangle, CBOffset, VBOffset, 6 });
 		}
 
 		float2 POS;
@@ -1015,7 +1016,17 @@ namespace FlexKit
 			ConstantBufferHandle	CB,
 			FrameResources&			resources) override
 		{
+
+			Constants CB_Data = {
+			float4(1, 1, 1, 1),
+			float4(1, 1, 1, 1),
+			float4x4::Identity() };
+
+			auto CBOffset = BeginNewConstantBuffer(CB, resources);
+			PushConstantBufferData(CB_Data, CB, resources);
+
 			const size_t VBOffset = resources.GetVertexBufferOffset(pushBuffer, sizeof(ShapeVert));
+			size_t vertexOffset = 0;
 
 			for(auto rect : rects)
 			{
@@ -1031,17 +1042,10 @@ namespace FlexKit
 				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
 				PushVertex(ShapeVert{ Position2SS(rectUpperRight),	{ 1.0f, 1.0f }, rect.Color }, pushBuffer, resources);
 				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
+
+				drawList.push_back({ ShapeDraw::RenderMode::Triangle, CBOffset, VBOffset, 6, vertexOffset });
+				vertexOffset += 6;
 			}
-
-			Constants CB_Data = {
-				float4(1, 1, 1, 1),
-				float4(1, 1, 1, 1),
-				float4x4::Identity()};
-
-			auto CBOffset = BeginNewConstantBuffer(CB, resources);
-			PushConstantBufferData(CB_Data, CB, resources);
-
-			drawList.push_back({ CBOffset, VBOffset, 6 * rects.size() });
 		}
 
 		Vector<FlexKit::Rectangle>& rects;
@@ -1069,10 +1073,11 @@ namespace FlexKit
 
 
 	template<typename ... TY_OTHER>
-	void DrawShapes(EPIPELINESTATES State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER ... Args)
+	void DrawShapes(PSOHandle State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER ... Args)
 	{
 		struct DrawRect
 		{
+			PSOHandle				State;
 			FrameResourceHandle		RenderTarget;
 			VertexBufferHandle		VertexBuffer;
 			ConstantBufferHandle	ConstantBuffer;
@@ -1090,6 +1095,7 @@ namespace FlexKit
 				Data.VertexBuffer	= PushBuffer;
 				Data.ConstantBuffer = CB;
 				Data.Draws			= DrawList(Memory);
+				Data.State			= State;
 
 				AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, std::forward<TY_OTHER&&>(Args)...);
 			},
@@ -1105,7 +1111,7 @@ namespace FlexKit
 					false);
 
 				Ctx->SetRootSignature		(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-				Ctx->SetPipelineState		(Resources.GetPipelineState(State));
+				Ctx->SetPipelineState		(Resources.GetPipelineState(Data.State));
 				Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 				Ctx->SetVertexBuffers		(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
 
@@ -1128,7 +1134,7 @@ namespace FlexKit
 					}
 
 					Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
-					Ctx->Draw(D.VertexCount, D.VertexBufferOffset);
+					Ctx->Draw(D.VertexCount, D.VertexOffset);
 
 					PreviousMode = D.Mode;
 				}
@@ -1147,7 +1153,7 @@ namespace FlexKit
 		TextureHandle			DepthBuffer;
 		VertexBufferHandle		VertexBuffer;
 		ConstantBufferHandle	Constants;
-		EPIPELINESTATES			PSO;
+		PSOHandle				PSO;
 
 		size_t	InstanceElementSize;
 		size_t	ConstantsSize[2];
@@ -1178,7 +1184,7 @@ namespace FlexKit
 			size_t InstanceElementSize;
 			size_t ConstantOffsets[2];
 
-			EPIPELINESTATES			PSO;
+			PSOHandle				PSO;
 			FlexKit::DesciptorHeap	Heap; // Null Filled
 		};
 

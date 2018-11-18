@@ -51,7 +51,7 @@ struct MenuState : public FrameworkState
 	}
 
 	MenuState(MenuState& rhs) :
-		FrameworkState	(std::move(rhs.Framework)),
+		FrameworkState	(std::move(rhs.framework)),
 		UISystem		(std::move(rhs.UISystem))
 	{
 		CursorSize		= rhs.CursorSize;
@@ -67,7 +67,7 @@ struct MenuState : public FrameworkState
 };
 
 
-MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine);
+MenuState* CreateMenuState(GameFramework* framework, EngineCore* Engine);
 
 
 struct JoinScreen : public FrameworkState
@@ -81,7 +81,7 @@ struct JoinScreen : public FrameworkState
 	}
 
 	JoinScreen(JoinScreen&& rhs) : 
-		FrameworkState	{rhs.Framework},
+		FrameworkState	{rhs.framework},
 		UISystem		{std::move(rhs.UISystem)}
 	{
 		CursorSize = rhs.CursorSize;
@@ -104,7 +104,7 @@ struct JoinScreen : public FrameworkState
 };
 
 
-JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine);
+JoinScreen* CreateJoinScreenState(GameFramework* framework, EngineCore* Engine);
 
 
 #endif

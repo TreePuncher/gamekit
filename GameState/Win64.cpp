@@ -22,8 +22,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\coreutilities\Logging.h"
 #include "..\buildsettings.h"
+#include "..\coreutilities\Logging.h"
 #include "..\coreutilities\Application.h"
 
 #include "BaseState.h"

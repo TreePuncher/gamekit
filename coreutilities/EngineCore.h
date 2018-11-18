@@ -148,7 +148,7 @@ namespace FlexKit
 	class EngineCore
 	{
 	public:
-		EngineCore(EngineMemory* memory) :
+		EngineCore(EngineMemory* memory, uint2 WH) :
 			Memory			(memory),
 			CmdArguments	(memory->BlockAllocator),
 			Time			(memory->BlockAllocator),
@@ -157,6 +157,7 @@ namespace FlexKit
 			FrameLock		(true)
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
+			Initiate(memory, WH);
 		}
 
 
@@ -171,7 +172,7 @@ namespace FlexKit
 		}
 
 
-		bool Initate(EngineMemory* Memory, uint2 WH);
+		bool Initiate(EngineMemory* Memory, uint2 WH);
 		void Release();
 
 		EngineCore				(const EngineCore&) = delete;

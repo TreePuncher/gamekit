@@ -110,7 +110,7 @@ public:
 		NetworkState*			IN_Network,
 		GameDescription			IN_GameDesc = GameDescription{}) :
 			FrameworkState{ IN_framework					},
-			players	{ IN_framework->Core->GetBlockMemory()	},
+			players	{ IN_framework->core->GetBlockMemory()	},
 			network	{ IN_Network							},
 			base	{ IN_base								}
 	{
@@ -124,7 +124,7 @@ public:
 
 	GameHostState& InitiateGame()
 	{
-		Framework->PushState<GameHostLobbyState>(this);
+		framework->PushState<GameHostLobbyState>(this);
 
 		players.push_back({
 			true,
@@ -149,8 +149,8 @@ public:
 
 	void BeginGame()
 	{
-		Framework->PopState();
-		Framework->PushState<MultiplayerGame>(network, players.size(), base);
+		framework->PopState();
+		framework->PushState<MultiplayerGame>(network, players.size(), base);
 	}
 
 

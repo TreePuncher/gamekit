@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "CameraUtilities.h"
-
+#include "EngineCore.h"
 
 
 namespace FlexKit
@@ -32,200 +32,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct OrbitCameraSystem
+	OrbitCameraBehavior::OrbitCameraBehavior(CameraHandle handle, float movementSpeed, float3 initialPos) :
+		CameraBehavior{ handle }
+
 	{
-		OrbitCameraSystem(iAllocator* Memory) :
-			Controllers			{Memory},
-			Memory				{Memory}
-		{
-		}
+		yawNode		= GetZeroedNode();
+		pitchNode	= GetZeroedNode();
+		rollNode	= GetZeroedNode();
+		moveRate	= movementSpeed;
 
-		~OrbitCameraSystem()
-		{}
+		SetParentNode(pitchNode, rollNode);
+		SetParentNode(yawNode, pitchNode);
 
-		Vector<CameraOrbitController>	Controllers;
-
-		iAllocator*						Memory;
-	}*OrbitCameras;
-
-
-	/************************************************************************************************/
-
-
-	void InitiateOrbitCameras(iAllocator* Memory)
-	{
-		if (OrbitCameras)
-			return;
-
-		OrbitCameras = &Memory->allocate<OrbitCameraSystem>(Memory);
+		FlexKit::SetCameraNode(camera, rollNode);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void ReleaseOrbitCameras(iAllocator* Memory)
+	void OrbitCameraBehavior::Update(const MouseInputState& mouseInput, double dt)
 	{
-		if (!OrbitCameras)
-			return;
-
-		OrbitCameras->~OrbitCameraSystem();
-		Memory->free(OrbitCameras);
-		OrbitCameras = nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateOrbitCamera(const MouseInputState& MouseInput, double dt)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-
-
-	OrbitCamera_Handle CreateOrbitCamera(float MoveRate)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-
-		auto NewCamera = CreateCamera();
-
-		CameraOrbitController Controller;
-		Controller.YawNode		= GetZeroedNode();
-		Controller.PitchNode	= GetZeroedNode();
-		Controller.RollNode		= GetZeroedNode();
-		Controller.MoveRate		= MoveRate;
-		Controller.Camera		= NewCamera;
-
-		SetParentNode(Controller.PitchNode, Controller.RollNode);
-		SetParentNode(Controller.YawNode, Controller.PitchNode);
-
-		OrbitCameras->Controllers.push_back(Controller);
-
-		SetCameraNode(NewCamera, Controller.RollNode);
-
-		return OrbitCamera_Handle(OrbitCameras->Controllers.size() - 1);
-	}
-
-
-	/************************************************************************************************/
-
-
-	CameraHandle GetCamera(OrbitCamera_Handle Handle)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-		return OrbitCameras->Controllers[Handle].Camera;
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	NodeHandle GetNode(OrbitCamera_Handle Handle)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-		return OrbitCameras->Controllers[Handle].YawNode;
-	}
-
-
-	/************************************************************************************************/
-
-
-	CameraOrbitController GetOrbitController(OrbitCamera_Handle Handle)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-		return OrbitCameras->Controllers[Handle];
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetCameraNode(OrbitCamera_Handle Handle, NodeHandle Node)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-
-		OrbitCameras->Controllers[Handle].CameraNode = Node;
-
-		SetParentNode(
-			OrbitCameras->Controllers[Handle].CameraNode,
-			OrbitCameras->Controllers[Handle].PitchNode);
-	}
-
-
-	/************************************************************************************************/
-
-
-	Quaternion GetCameraOrientation(OrbitCamera_Handle handle)
-	{
-		return GetOrientation(
-			OrbitCameras->Controllers[handle].PitchNode);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void SetCameraPosition(OrbitCamera_Handle Handle, float3 xyz)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-
-		auto& OrbitCamera = OrbitCameras->Controllers[Handle];
-		SetPositionW(OrbitCamera.YawNode, xyz);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void TranslateCamera(OrbitCamera_Handle Handle, float3 xyz)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-
-		auto& OrbitCamera = OrbitCameras->Controllers[Handle];
-		TranslateWorld(OrbitCamera.YawNode, xyz);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void RotateCamera(OrbitCamera_Handle Handle, float3 xyz)
-	{
-		FK_ASSERT(OrbitCameras != nullptr);
-
-		auto& OrbitCamera = OrbitCameras->Controllers[Handle];
-
-		if(xyz[0] != 0.0f)
-			Pitch(OrbitCamera.PitchNode, xyz[0]);
-
-		if(xyz[1] != 0.0f)
-			Yaw(OrbitCamera.YawNode, xyz[1]);
-
-		if (xyz[2] != 0.0f)
-			Roll(OrbitCamera.PitchNode, xyz[2]);
-	}
-
-
-	/************************************************************************************************/
-
-
-	OrbitCameraBehavior::OrbitCameraBehavior(OrbitCamera_Handle Handle, float MovementSpeed, float3 InitialPos) :
-		CameraBehavior{GetCamera(Handle)}
-	{
-
-	}
-	
-
-	/************************************************************************************************/
-
-
-	void OrbitCameraBehavior::Update(const MouseInputState& MouseInput)
-	{
+		Yaw(mouseInput.Normalized_dPos[0] * dt * pi);
+		Pitch(mouseInput.Normalized_dPos[1] * dt * pi);
 
 	}
 
@@ -235,7 +64,7 @@ namespace FlexKit
 
 	void OrbitCameraBehavior::SetCameraPosition(float3 xyz)
 	{
-		FlexKit::SetCameraPosition(Handle, xyz);
+		SetPositionW(yawNode, xyz);
 	}
 
 
@@ -244,7 +73,7 @@ namespace FlexKit
 
 	void OrbitCameraBehavior::TranslateWorld(float3 xyz)
 	{
-		FlexKit::TranslateCamera(Handle, xyz);
+		FlexKit::TranslateWorld(yawNode, xyz);
 	}
 
 
@@ -253,8 +82,43 @@ namespace FlexKit
 
 	void OrbitCameraBehavior::Rotate(float3 xyz)
 	{
-		FlexKit::RotateCamera(Handle, xyz);
+		if (xyz[0] != 0.0f)
+			FlexKit::Pitch(pitchNode, xyz[0]);
+
+		if (xyz[1] != 0.0f)
+			FlexKit::Yaw(yawNode, xyz[1]);
+
+		if (xyz[2] != 0.0f)
+			FlexKit::Roll(pitchNode, xyz[2]);
 	}
+
+
+	/************************************************************************************************/
+
+	void OrbitCameraBehavior::HandleEvent(FlexKit::Event evt)
+	{
+		if (evt.InputSource == FlexKit::Event::Keyboard)
+		{
+			bool Pressed = evt.Action == Event::Pressed ? true : false;
+
+			switch (evt.mData1.mINT[0])
+			{
+			case OCE_MoveForward:
+				keyStates.forward	= Pressed;
+				break;
+			case OCE_MoveBackward:
+				keyStates.backward	= Pressed;
+				break;
+			case OCE_MoveLeft:
+				keyStates.left		= Pressed;
+				break;
+			case OCE_MoveRight:
+				keyStates.right		= Pressed;
+				break;
+			}
+		}
+	}
+
 
 	/************************************************************************************************/
 
@@ -287,7 +151,7 @@ namespace FlexKit
 
 	Quaternion	OrbitCameraBehavior::GetOrientation()
 	{
-		return GetCameraOrientation(Handle);
+		return FlexKit::GetOrientation(pitchNode);
 	}
 
 
@@ -296,7 +160,7 @@ namespace FlexKit
 
 	float3 OrbitCameraBehavior::GetForwardVector()
 	{
-		Quaternion Q = GetCameraOrientation(Handle);
+		Quaternion Q = GetOrientation();
 		return -(Q * float3(0, 0, 1)).normal();
 	}
 
@@ -306,17 +170,8 @@ namespace FlexKit
 
 	float3 OrbitCameraBehavior::GetRightVector()
 	{
-		Quaternion Q = GetCameraOrientation(Handle);
+		Quaternion Q = GetOrientation();
 		return -(Q * float3(-1, 0, 0)).normal();
-	}
-
-
-	/************************************************************************************************/
-
-
-	void OrbitCameraBehavior::SetCameraNode(NodeHandle Node)
-	{
-		FlexKit::SetCameraNode(Handle, Node);
 	}
 
 
@@ -325,17 +180,7 @@ namespace FlexKit
 
 	NodeHandle	OrbitCameraBehavior::GetCameraNode()
 	{
-		auto& Controller = GetControllerEntry();
-		return Controller.CameraNode;
-	}
-
-
-	/************************************************************************************************/
-
-
-	CameraOrbitController OrbitCameraBehavior::GetControllerEntry()
-	{
-		return GetOrbitController(Handle);
+		return FlexKit::GetCameraNode(camera);
 	}
 
 

@@ -38,56 +38,22 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	struct CameraOrbitController
+	enum OrbitCameraEvents
 	{
-		NodeHandle CameraNode;
-		NodeHandle YawNode;
-		NodeHandle PitchNode;
-		NodeHandle RollNode;
-
-		CameraHandle Camera;
-
-		float MoveRate;
+		OCE_MoveForward,
+		OCE_MoveBackward,
+		OCE_MoveLeft,
+		OCE_MoveRight
 	};
-
-	
-	/************************************************************************************************/
-
-
-	typedef Handle_t<32, GetCRCGUID(OrbitCamera_Handle)> OrbitCamera_Handle;
-
-	void InitiateOrbitCameras	(iAllocator* Memory);
-	void ReleaseOrbitCameras	(iAllocator* Memory);
-	void UpdateOrbitCamera		(MouseInputState& Mouse, double dt);
-
-	OrbitCamera_Handle CreateOrbitCamera(float MoveRate = 100);
-
-	void					SetCameraNode			(OrbitCamera_Handle Handle, NodeHandle Node);
-
-	CameraHandle			GetCamera				(OrbitCamera_Handle Handle);
-	NodeHandle				GetNode					(OrbitCamera_Handle Handle);
-	Quaternion				GetCameraOrientation	(OrbitCamera_Handle handle);
-	CameraOrbitController	GetOrbitController		(OrbitCamera_Handle Handle);
-
-
-	/************************************************************************************************/
-
-
-	void SetCameraPosition	(OrbitCamera_Handle Handle, float3 xyz);
-	void TranslateCamera	(OrbitCamera_Handle Handle, float3 xyz);
-	void RotateCamera		(OrbitCamera_Handle Handle, float3 xyz); // Three Angles
-
-
-	/************************************************************************************************/
 
 
 	class OrbitCameraBehavior :
 		public CameraBehavior
 	{
 	public:
-		OrbitCameraBehavior(OrbitCamera_Handle Handle = CreateOrbitCamera(), float MovementSpeed = 100, float3 InitialPos = {0, 0, 0});
+		OrbitCameraBehavior(CameraHandle Handle = CreateCamera(), float MovementSpeed = 100, float3 InitialPos = {0, 0, 0});
 
-		void Update				(const MouseInputState& MouseInput);
+		void Update				(const MouseInputState& MouseInput, double dt);
 
 		void SetCameraPosition	(float3 xyz);
 		void TranslateWorld		(float3 xyz);
@@ -97,17 +63,28 @@ namespace FlexKit
 		void Roll				(float Degree);
 		void Rotate				(float3 xyz); // Three Angles
 
+		void HandleEvent(FlexKit::Event evt);
+
 		Quaternion	GetOrientation();
 		float3		GetForwardVector();
 		float3		GetRightVector();
 
-		void		SetCameraNode(NodeHandle Node);
 		NodeHandle	GetCameraNode();
 
-		CameraOrbitController	GetControllerEntry();
-
 	private:
-		OrbitCamera_Handle	Handle;
+		NodeHandle		cameraNode;
+		NodeHandle		yawNode;
+		NodeHandle		pitchNode;
+		NodeHandle		rollNode;
+		float			moveRate;
+
+		struct KeyStates
+		{
+			bool forward	= false;
+			bool backward	= false;
+			bool left		= false;
+			bool right		= false;
+		}keyStates;
 	};
 
 

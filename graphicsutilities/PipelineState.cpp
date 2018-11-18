@@ -28,10 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 
-	PipelineStateTable::PipelineStateTable(iAllocator* Memory_IN, RenderSystem* RS_IN, ThreadManager* IN_Threads) :
-		Device		{ RS_IN->pDevice },
-		Memory		{ Memory_IN		 },
-		RS			{ RS_IN			 },
+	PipelineStateTable::PipelineStateTable(iAllocator* IN_allocator, RenderSystem* IN_RS, ThreadManager* IN_Threads) :
+		Device		{ IN_RS->pDevice },
+		allocator	{ IN_allocator	 },
+		RS			{ IN_RS			 },
 		WorkQueue	{ IN_Threads	 }
 	{
 		States.SetFull();
@@ -46,14 +46,15 @@ namespace FlexKit
 		FK_LOG_INFO("Releasing Pipeline State Objects");
 
 		for (auto& s : States)
-			SAFERELEASE(s.PSO);
+			for(auto itr = &s;itr != nullptr; itr = itr->next)
+				SAFERELEASE(itr->PSO);
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool PipelineStateTable::ReloadLoadPSO( EPIPELINESTATES State )
+	bool PipelineStateTable::ReloadLoadPSO( PSOHandle handle )
 	{
 		return false;
 	}
@@ -62,157 +63,105 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PipelineStateTable::LoadPSOs()
+	bool PipelineStateTable::QueuePSOLoad(PSOHandle handle, iAllocator* queueAllocator)
 	{
-#if 0
-		while (LoadsInProgress.size()) 
-		{
-#if 1
-			std::chrono::system_clock Clock;
-			auto Before = Clock.now();
-			FINALLY
-				auto After = Clock.now();
-			auto Duration = chrono::duration_cast<chrono::milliseconds>(After - Before);
-			FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
-			FINALLYOVER
-#endif
+		PipelineStateObject* PSO = _GetStateObject(handle);
+		if (!PSO)
+			return false;
 
-			auto& LoadRequest = LoadsInProgress.first();
-			std::lock_guard<mutex> lk(LoadRequest.Mutex);
-
-			auto Res = StateLoaders[LoadRequest.State](RS);
-			if (Res) {
-				//SAFERELEASE(States->States[LoadRequest.State]); // Not Safe to do, just leak and disable during release mode
-				States[LoadRequest.State] = Res;
-			}
-#if _DEBUG
-			FK_LOG_INFO("Finished PSO Load");
-#endif
-
-			LoadRequest.CV.notify_all();
-
-			if(LoadsInProgress.size())
-				LoadsInProgress.pop_front();
-		}
-#endif
-
-
-		int x = 0;
-
-	}
-
-
-	/************************************************************************************************/
-
-
-	void PipelineStateTable::QueuePSOLoad(EPIPELINESTATES State, iAllocator* Allocator)
-	{
-#if 0
-		if (!LoadsInProgress.size()) {
-
-			auto Load = LoadsInProgress.push_back({ State });
-
-			std::thread Thread([this, State]
-			{
-				LoadPSOs();
-			});
-
-			Thread.detach();
-		}
-		else
-		{
-			LoadsInProgress.push_back({ State });
-		}
-#endif
-		if (States[(int)State].CurretState == PipelineStateObject::States::Unloaded)
-		{
-			States[(int)State].CurretState = PipelineStateObject::States::LoadQueued;
-			auto& NewTask	= Allocator->allocate_aligned<LoadTask>(Allocator, this, State);
-
-			WorkQueue->AddWork(&NewTask, Allocator);
-		}
-	}
-
-
-	/************************************************************************************************/
-	
-	
-	ID3D12PipelineState*	PipelineStateTable::GetPSO( EPIPELINESTATES State )
-	{
-
-#if 0
-		while (PSO_Out == nullptr)
-		{
-			if (LoadsInProgress.size())
-			{
-				LoadsInProgress.For_Each([&](auto& e)
-				{
-					if (e == State) {
-						{
-							std::unique_lock<mutex> lk(e.Mutex);
-							e.CV.wait(lk, [&] {return States[(size_t)State] != nullptr; });
-						}
-						PSO_Out = States[(size_t)State];
-						return false;
-					}
-
-					return true;
-				});
-			}
-			else
-				PSO_Out = States[(size_t)State];
-
-			if (!PSO_Out)
-				QueuePSOLoad(State);
-		}
-#endif
+		auto& NewTask = allocator->allocate_aligned<LoadTask>(queueAllocator, this, PSO);
 
 		while (true)
 		{
-			auto PSO_State = States[(int)State].CurretState;
-
-			switch (PSO_State)
+			auto state = PSO->state.load(std::memory_order_acquire);
+			if(	(	state == PipelineStateObject::PSO_States::Unloaded || 
+					state == PipelineStateObject::PSO_States::Loaded ) &&
+				(	state != PipelineStateObject::PSO_States::LoadInProgress &&
+					state != PipelineStateObject::PSO_States::LoadQueued))
 			{
-			case PipelineStateObject::States::LoadInProgress: {
+				if (PSO->changeState(PipelineStateObject::PSO_States::LoadQueued))
+					WorkQueue->AddWork(&NewTask, queueAllocator);
+				else
+					continue;
+				return true;
+			}
+
+			else return false;
+		}
+
+
+		// un-reachable
+		FK_ASSERT(false, "!!!!!!!!! The unreachable has been reached !!!!!!!!!");
+		exit(-1);
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+	
+	
+	ID3D12PipelineState*	PipelineStateTable::GetPSO(PSOHandle handle)
+	{
+		while (true)
+		{
+			PipelineStateObject* PSO = _GetStateObject(handle);
+
+			if (!PSO)
+				return nullptr;
+
+			switch (PSO->state)
+			{
+			case PipelineStateObject::PSO_States::LoadInProgress: 
+			{
 				std::mutex			M;
 				std::unique_lock	UL(M);
 
-				States[(int)State].CV.wait(UL, [&]{
+				PSO->CV.wait(UL, [&]{
 					return
-						!(States[(int)State].CurretState == PipelineStateObject::States::LoadInProgress); });
+						!(PSO->state == PipelineStateObject::PSO_States::LoadInProgress); });
 			}	break;
 
-			case PipelineStateObject::States::Loaded:
-				return States[(int)State].PSO;
-				break;
-			case PipelineStateObject::States::Failed:
+			case PipelineStateObject::PSO_States::Loaded:
+			{
+				return PSO->PSO;
+			}	break;
+			case PipelineStateObject::PSO_States::Failed:
 			{
 				FK_LOG_ERROR("TRYING TO LOAD A UNLOADABLE PSO!");
 				// TODO: Handle Load Failures
 			}	return nullptr;
-			case PipelineStateObject::States::Unloaded:
+			case PipelineStateObject::PSO_States::Unloaded:
 			{
-				// TODO: Load Here
-				States[State].CurretState = PipelineStateObject::States::LoadInProgress;
+				while (true)
+				{
+					PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
-				auto Loader = StateLoaders[State];
-				auto res	= Loader(RS);
+					auto loader = PSO->loader;
+					auto res	= loader(RS);
 
+					PSO->stale = false;
 
-				if (!res) {
-					States[State].CurretState = PipelineStateObject::States::Failed;
-					FK_LOG_ERROR("PSO Load FAILED!");
-					return nullptr;
+					if (!res) {
+						PSO->state = PipelineStateObject::PSO_States::Failed;
+						FK_LOG_ERROR("PSO Load FAILED!");
+						return nullptr;
+					}
+
+					if (PSO->stale && PSO->loader != loader)
+					{
+						FK_LOG_INFO("Stale PSO LOADED!");
+						continue;
+					}
+
+					FK_LOG_INFO("Finished PSO Load");
+
+					PSO->state = PipelineStateObject::PSO_States::Loaded;
+					PSO->PSO = res;
+					PSO->CV.notify_all();
+
+					return res;
 				}
-
-
-				FK_LOG_INFO("Finished PSO Load");
-
-				States[State].CurretState	= PipelineStateObject::States::Loaded;
-				States[State].PSO			= res;
-				States[State].CV.notify_all();
-
-				return res;
 			}
 
 			default: 
@@ -227,8 +176,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool GetPSOReadyState( RenderSystem* RS, PipelineStateTable* States, EPIPELINESTATES State )
+	bool GetPSOReadyState( RenderSystem* RS, PipelineStateTable* States, PSOHandle State )
 	{
+		FK_ASSERT(false, "GETPSOREADYSTATE");
+
 		return false;
 	}
 
@@ -236,10 +187,102 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PipelineStateTable::RegisterPSOLoader( EPIPELINESTATES State, LOADSTATE_FN Loader )
+	void PipelineStateTable::RegisterPSOLoader( PSOHandle handle, LOADSTATE_FN IN_loader )
 	{
-		StateLoaders[State] = Loader;
+		PipelineStateObject* PSO = _GetNearestStateObject(handle);
+
+		if (!PSO)
+		{
+			FK_LOG_INFO("Adding State Node!");
+			// add new node
+			PSO			= &allocator->allocate<PipelineStateObject>();
+			PSO->id		= handle;
+			PSO->state	= PipelineStateObject::PSO_States::Unloaded;
+			PSO->loader = IN_loader;
+
+			_AddStateObject(PSO);
+			return;
+		}
+
+		if (PSO->id == InvalidHandle_t)
+		{
+			// First node in chain
+			PSO->id		= handle;
+			PSO->state	= PipelineStateObject::PSO_States::Unloaded;
+			PSO->loader = IN_loader;
+			return;
+		}
+
+		if (PSO->id == handle)
+		{
+			// node exists
+			PSO->stale		= true;
+			PSO->loader		= IN_loader;
+			return;
+		}
 	}
+
+
+	/************************************************************************************************/
+
+
+	PipelineStateObject* PipelineStateTable::_GetStateObject(PSOHandle handle)
+	{
+		PipelineStateObject* PSO = &States[handle.INDEX % States.size()];
+		for (; PSO && PSO->id != handle; PSO = PSO->next);
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	PipelineStateObject* PipelineStateTable::_GetNearestStateObject(PSOHandle handle)
+	{
+		PipelineStateObject* PSO = &States[handle.INDEX % States.size()];
+		for (; PSO && PSO->id != handle && PSO->next != nullptr; PSO = PSO->next);
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool PipelineStateTable::_AddStateObject(PipelineStateObject*	PSO)
+	{
+		const auto handle = PSO->id;
+		PipelineStateObject* node = &States[handle.INDEX % States.size()];
+		for (; node && node->next; node = node->next);
+
+		while (true)
+		{
+			auto next = node->next.load(std::memory_order_acquire);
+			if (next == nullptr)
+			{
+				if (node->next.compare_exchange_strong(next, PSO, std::memory_order_release))
+					return true;
+			}
+			else
+			{
+				node = next;
+				continue;
+			}
+		}
+
+		return false;
+	}
+
+
+	/************************************************************************************************/
+
+
+	LoadTask::LoadTask(iAllocator* IN_allocator, PipelineStateTable* IN_PST, PipelineStateObject* IN_PSO) :
+			allocator	{ IN_allocator	},
+			iWork		{ IN_allocator	},
+			RS			{ IN_PST->RS	},
+			PSO			{ IN_PSO		}{}
 
 
 	/************************************************************************************************/
@@ -255,31 +298,51 @@ namespace FlexKit
 			auto Duration = chrono::duration_cast<chrono::milliseconds>(After - Before);
 		FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
 		FINALLYOVER
+	
+		PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
-		PST->States[State].CurretState = PipelineStateObject::States::LoadInProgress;
-
-		auto Loader = PST->StateLoaders[State];
-
-		if (!Loader) // No Loader Registered!
+		while (true)
 		{
-			PST->States[State].CurretState = PipelineStateObject::States::Unloaded;
-			PST->States[State].CV.notify_all();
-			FK_LOG_WARNING("Tried to Load PSO with no loader registered!");
-			return;
-		}
-		auto res = Loader(PST->RS);
+			auto loader = PSO->loader;
+			PSO->stale	= false;
 
-		if (!res) {
-			PST->States[State].CurretState = PipelineStateObject::States::Failed;
-			FK_LOG_ERROR("PSO Load FAILED!");
-			return;
+			if (!loader) // No Loader Registered!
+			{
+				PSO->state = PipelineStateObject::PSO_States::Unloaded;
+				PSO->CV.notify_all();
+				FK_LOG_WARNING("Tried to Load PSO with no loader registered!");
+				return;
+			}
+
+			auto res = loader(RS);
+
+			if (!res) {
+				PSO->state = PipelineStateObject::PSO_States::Failed;
+				FK_LOG_ERROR("PSO Load FAILED!");
+				return;
+			}
+
+			PSO->PSO	= res;
+
+			if (PSO->stale && loader != PSO->loader)
+				continue;
+
+			PSO->state	= PipelineStateObject::PSO_States::Loaded;
+			PSO->CV.notify_all();
+
+			break;
 		}
 
 		FK_LOG_INFO("Finished PSO Load");
+	}
 
-		PST->States[State].PSO			= res;
-		PST->States[State].CurretState	= PipelineStateObject::States::Loaded;
-		PST->States[State].CV.notify_all();
+
+	/************************************************************************************************/
+
+
+	void LoadTask::Release()
+	{
+		allocator->free(this);
 	}
 
 

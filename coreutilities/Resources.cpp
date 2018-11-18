@@ -666,7 +666,7 @@ namespace FlexKit
 	struct COMMONBLOCK
 	{
 		uint16_t	lineHeight;
-		uint16_t	Framework;
+		uint16_t	framework;
 		uint16_t	ScaleW;
 		uint16_t	ScaleH;
 		uint16_t	Pages;

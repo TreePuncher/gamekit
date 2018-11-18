@@ -986,13 +986,11 @@ public:
 
 
 class PlayerPuppet:
-		public FlexKit::DrawableBehavior,
-		public FlexKit::SceneNodeBehavior
+		public FlexKit::DrawableBehavior
 {
 public: 
-	PlayerPuppet(FlexKit::GraphicScene* ParentScene, FlexKit::EntityHandle Handle) :
-		FlexKit::DrawableBehavior	{ParentScene, Handle},
-		FlexKit::SceneNodeBehavior	{GetNode()}
+	PlayerPuppet(FlexKit::GraphicScene* ParentScene, FlexKit::SceneEntityHandle Handle) :
+		FlexKit::DrawableBehavior		{ParentScene, Handle}
 	{}
 
 
@@ -1025,7 +1023,7 @@ PlayerPuppet CreatePlayerPuppet(FlexKit::GraphicScene* ParentScene)
 {
 	return 	PlayerPuppet(
 		ParentScene,
-		ParentScene->CreateDrawableAndSetMesh("Flower"));
+		ParentScene->CreateSceneEntityAndSetMesh("Flower"));
 }
 
 

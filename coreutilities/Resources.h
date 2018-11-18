@@ -381,7 +381,7 @@ namespace FlexKit
 		size_t							IDSize;
 	};
 
-	typedef static_vector<CompiledScene*> SceneList;
+	typedef Vector<CompiledScene*> SceneList;
 
 
 	/************************************************************************************************/

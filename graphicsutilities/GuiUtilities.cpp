@@ -543,7 +543,7 @@ namespace FlexKit
 		}
 
 		DrawShapes(
-			EPIPELINESTATES::DRAW_LINE_PSO,
+			DRAW_LINE_PSO,
 			*FrameGraph, 
 			VertexBuffer, 
 			ConstantBuffer, 
@@ -573,7 +573,7 @@ namespace FlexKit
 
 		
 		DrawShapes(
-			EPIPELINESTATES::DRAW_PSO,
+			DRAW_PSO,
 			*FrameGraph,
 			VertexBuffer,
 			ConstantBuffer,

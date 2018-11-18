@@ -101,7 +101,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void HandleKeyEvents(const Event& in, GameFramework* _ptr)
+	void HandleKeyEvents(const Event& in, GameFramework* framework)
 	{
 		switch (in.Action)
 		{
@@ -110,25 +110,25 @@ namespace FlexKit
 			switch (in.mData1.mKC[0])
 			{
 			case KC_ESC:
-				_ptr->Quit = true;
+				framework->quit = true;
 				break;
 			case KC_R:
-				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::DRAW_LINE_PSO);
-				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_CULL_PSO);
-				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO);
-				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_PSO_DEBUG);
-				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TERRAIN_DRAW_WIRE_PSO);
+				framework->core->RenderSystem.QueuePSOLoad(DRAW_LINE_PSO);
+				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_CULL_PSO);
+				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_DRAW_PSO);
+				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_DRAW_PSO_DEBUG);
+				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_DRAW_WIRE_PSO);
 				break;
 			case KC_E:
 			{
 			}	break;
 			case KC_T:
-				_ptr->Core->RenderSystem.QueuePSOLoad(EPIPELINESTATES::TILEDSHADING_SHADE);
+				framework->core->RenderSystem.QueuePSOLoad(TILEDSHADING_SHADE);
 				break;
 			case KC_M:
-				_ptr->MouseState.Enabled = !_ptr->MouseState.Enabled;
+				framework->MouseState.Enabled = !framework->MouseState.Enabled;
 
-				if (_ptr->MouseState.Enabled)
+				if (framework->MouseState.Enabled)
 					FK_LOG_INFO("Mouse Enabled");
 				else
 					FK_LOG_INFO("Mouse Disabled");
@@ -138,21 +138,21 @@ namespace FlexKit
 			{
 				FK_VLOG(Verbosity_9, "Console Key Pressed!");
 
-				if (!_ptr->ConsoleActive) {
-					PushSubState(_ptr, &_ptr->Core->GetBlockMemory().allocate<ConsoleSubState>(_ptr));
-					_ptr->ConsoleActive = true;
+				if (!framework->consoleActive) {
+					PushSubState(framework, &framework->core->GetBlockMemory().allocate<ConsoleSubState>(framework));
+					framework->consoleActive = true;
 				}
 			}	break;
 			case KC_F1:
 			{
-				auto Temp1 = _ptr->DrawDebug;
-				auto Temp2 = _ptr->DrawDebugStats;
-				_ptr->DrawDebug = !_ptr->DrawDebug | (_ptr->DrawDebugStats & !(Temp1 & Temp2));
-				_ptr->DrawDebugStats = !_ptr->DrawDebugStats | (_ptr->DrawDebug & !(Temp1 & Temp2));
+				auto temp1 = framework->drawDebug;
+				auto temp2 = framework->drawDebugStats;
+				framework->drawDebug		= !framework->drawDebug		 | (framework->drawDebugStats & !(temp1 & temp2));
+				framework->drawDebugStats	= !framework->drawDebugStats | (framework->drawDebug		 & !(temp1 & temp2));
 			}	break;
 			case KC_F2:
 			{
-				_ptr->DrawDebugStats = !_ptr->DrawDebugStats;
+				framework->drawDebugStats = !framework->drawDebugStats;
 			}	break;
 			case KC_F3:
 			{
@@ -172,106 +172,94 @@ namespace FlexKit
 
 	void PushMessageToConsole(void* User, const char* Str, size_t StrLen)
 	{
-		GameFramework* Framework = reinterpret_cast<GameFramework*>(User);
+		GameFramework* framework = reinterpret_cast<GameFramework*>(User);
 
-		char* NewStr = (char*)Framework->Core->GetBlockMemory().malloc(StrLen + 1);
+		char* NewStr = (char*)framework->core->GetBlockMemory().malloc(StrLen + 1);
 		memset((void*)NewStr, '\0', StrLen + 1);
-		strncpy(NewStr, Str, StrLen);
+		strncpy_s(NewStr, StrLen + 1, Str, StrLen);
 
-		ConsolePrint(&Framework->Console, NewStr, Framework->Core->GetBlockMemory());
+		framework->console.PrintLine(NewStr, framework->core->GetBlockMemory());
 	}
 
 
 	/************************************************************************************************/
 
 
-	GameFramework::GameFramework()
+	GameFramework::GameFramework(EngineCore* IN_core) :
+		console	{DefaultAssets.Font, IN_core->GetBlockMemory()},
+		core	{IN_core}
 	{
-		LogMessagePipe.ID = "INFO";
-		LogMessagePipe.User = this;
-		LogMessagePipe.Callback = &PushMessageToConsole;
+		Initiate();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void GameFramework::Initiate(EngineCore* IN_Core)
+	void GameFramework::Initiate()
 	{
-		Core = IN_Core;
-
-		SetDebugMemory			(Core->GetDebugMemory());
-		InitiateResourceTable	(Core->GetBlockMemory());
-		InitiateGeometryTable	(Core->GetBlockMemory());
-		InitiateCameraTable		(Core->GetBlockMemory());
+		SetDebugMemory			(core->GetDebugMemory());
+		InitiateResourceTable	(core->GetBlockMemory());
+		InitiateGeometryTable	(core->GetBlockMemory());
+		InitiateCameraTable		(core->GetBlockMemory());
 
 		AddResourceFile("assets\\assets.gameres");
 		AddResourceFile("assets\\ResourceFile.gameres");
 		AddResourceFile("assets\\ShaderBallTestScene.gameres");
 
-		ClearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
-		Quit						= false;
-		PhysicsUpdateTimer			= 0.0f;
-		TerrainSplits				= 12;
+		clearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
+		quit						= false;
+		physicsUpdateTimer			= 0.0f;
 
-		DrawDebug					= false;
+		drawDebug					= false;
 
 #ifdef _DEBUG
-		DrawDebugStats			= true;
+		drawDebugStats			= true;
 #else
 		DrawDebugStats			= false;
 #endif
 
-		//Framework.ActivePhysicsScene		= nullptr;
+		//framework.ActivePhysicsScene		= nullptr;
 		ActiveScene					= nullptr;
-		ActiveWindow				= &Core->Window;
+		ActiveWindow				= &core->Window;
 
-		DrawPhysicsDebug			= false;
+		drawPhysicsDebug			= false;
 
-		Stats.FPS						= 0;
-		Stats.FPS_Counter				= 0;
-		Stats.Fps_T						= 0.0;
-		Stats.ObjectsDrawnLastFrame		= 0;
-		RootNode						= GetZeroedNode();
+		stats.fps						= 0;
+		stats.fpsCounter				= 0;
+		stats.fpsT						= 0.0;
+		stats.objectsDrawnLastFrame		= 0;
+		rootNode						= GetZeroedNode();
 
-		{	
-			uint2	WindowRect	   = Core->Window.WH;
-			float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
+		uint2	WindowRect	   = core->Window.WH;
+		float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
 
-			MouseState.NormalizedPos	= { 0.5f, 0.5f };
-			MouseState.Position			= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
-		}
+		MouseState.NormalizedPos	= { 0.5f, 0.5f };
+		MouseState.Position			= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
 
-		/*
-		{
-			TextureBuffer TempBuffer;
-			LoadBMP("assets\\textures\\TestMap.bmp", Core->GetTempMemory(), &TempBuffer);
-			Texture2D	HeightMap = LoadTexture(&TempBuffer, Core->RenderSystem, Core->GetTempMemory());
-
-			Framework.DefaultAssets.Terrain = HeightMap;
-		}
-		*/
 
 		EventNotifier<>::Subscriber sub;
 		sub.Notify = &EventsWrapper;
 		sub._ptr   = this;
-		Core->Window.Handler.Subscribe(sub);
+		core->Window.Handler.Subscribe(sub);
 
-		DefaultAssets.Font = LoadFontAsset	("assets\\fonts\\", "fontTest.fnt", Core->RenderSystem, Core->GetTempMemory(), Core->GetBlockMemory());
+		DefaultAssets.Font = LoadFontAsset	(
+			"assets\\fonts\\", 
+			"fontTest.fnt", 
+			core->RenderSystem, 
+			core->GetTempMemory(), 
+			core->GetBlockMemory());
 		
-		InitateConsole(&Console, DefaultAssets.Font, Core);
-		BindUIntVar(&Console, "TerrainSplits",	&TerrainSplits);
-		BindUIntVar(&Console, "FPS",			&Stats.FPS);
-		BindBoolVar(&Console, "HUD",			&DrawDebugStats);
-		BindBoolVar(&Console, "DrawDebug",		&DrawDebug);
-		//BindBoolVar(&Framework.Console, "DrawPhysicsDebug",	&Framework.DrawPhysicsDebug);
-		BindBoolVar(&Console, "FrameLock",		&Core->FrameLock);
+		console.BindUIntVar("FPS",			&stats.fps);
+		console.BindBoolVar("HUD",			&drawDebugStats);
+		console.BindBoolVar("DrawDebug",	&drawDebug);
+		//BindBoolVar(&framework.Console, "DrawPhysicsDebug",	&framework.DrawPhysicsDebug);
+		console.BindBoolVar("FrameLock",		&core->FrameLock);
 
-		AddConsoleFunction(&Console, { "SetRenderMode", &SetDebugRenderMode, this, 1, { ConsoleVariableType::CONSOLE_UINT }});
-		AddLogCallback(&LogMessagePipe, Verbosity_INFO);
+		console.AddFunction({ "SetRenderMode", &SetDebugRenderMode, this, 1, { ConsoleVariableType::CONSOLE_UINT }});
+		AddLogCallback(&logMessagePipe, Verbosity_INFO);
 
-
-		Core->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
+		core->RenderSystem.UploadResources();// Uploads fresh Resources to GPU
 	}
 
 
@@ -280,29 +268,29 @@ namespace FlexKit
 
 	void GameFramework::Update(double dT)
 	{
-		TimeRunning += dT;
+		timeRunning += dT;
 
 
-		UpdateMouseInput(&MouseState, &Core->Window);
+		UpdateMouseInput(&MouseState, &core->Window);
 
-		if (!SubStates.size()) {
-			Quit = true;
+		if (!subStates.size()) {
+			quit = true;
 			return;
 		}
 
-		UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
+		UpdateDispatcher Dispatcher{ core->GetTempMemory() };
 
-		for(size_t I = 1; I <= SubStates.size(); ++I)
+		for(size_t I = 1; I <= subStates.size(); ++I)
 		{
 
-			auto& State = SubStates[SubStates.size() - I];
+			auto& State = subStates[subStates.size() - I];
 
-			if (!State->Update(Core, Dispatcher, dT))
+			if (!State->Update(core, Dispatcher, dT))
 				break;
 		}
 
 		Dispatcher.Execute();
-		Core->End = Quit;
+		core->End = quit;
 	}
 
 
@@ -311,7 +299,7 @@ namespace FlexKit
 
 	void GameFramework::UpdateFixed(double dt)
 	{
-		UpdateMouseInput(&MouseState, &Core->Window);
+		UpdateMouseInput(&MouseState, &core->Window);
 	}
 
 
@@ -320,50 +308,50 @@ namespace FlexKit
 
 	void GameFramework::UpdatePreDraw(iAllocator* TempMemory, double dT)
 	{
-		if (!SubStates.size()) {
-			Quit = true;
+		if (!subStates.size()) {
+			quit = true;
 			return;
 		}
 
 		{
-			UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
+			UpdateDispatcher dispatcher{ core->GetTempMemory() };
 
-			if (DrawDebug) 
+			if (drawDebug) 
 			{
-				for(size_t I = 1; I <= SubStates.size(); ++I)
+				for(size_t I = 1; I <= subStates.size(); ++I)
 				{
-					auto& State = SubStates[SubStates.size() - I];
+					auto& State = subStates[subStates.size() - I];
 
-					if (!State->DebugDraw(Core, Dispatcher, dT))
+					if (!State->DebugDraw(core, dispatcher, dT))
 						break;
 				}
 			}
 
-			Dispatcher.Execute();
+			dispatcher.Execute();
 		}
 
 		{
-			UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
+			UpdateDispatcher dispatcher{ core->GetTempMemory() };
 
-			for (size_t I = 1; I <= SubStates.size(); ++I)
+			for (size_t I = 1; I <= subStates.size(); ++I)
 			{
-				auto& State = SubStates[SubStates.size() - I];
-				if (!State->PreDrawUpdate(Core, Dispatcher, dT))
+				auto& State = subStates[subStates.size() - I];
+				if (!State->PreDrawUpdate(core, dispatcher, dT))
 					break;
 			}
 
-			Dispatcher.Execute();
+			dispatcher.Execute();
 		}
 
-		if (Stats.Fps_T > 1.0)
+		if (stats.fpsT > 1.0)
 		{
-			Stats.FPS         = Stats.FPS_Counter;
-			Stats.FPS_Counter = 0;
-			Stats.Fps_T       = 0.0;
+			stats.fps         = stats.fpsCounter;
+			stats.fpsCounter = 0;
+			stats.fpsT       = 0.0;
 		}
 
-		Stats.FPS_Counter++;
-		Stats.Fps_T += dT;
+		stats.fpsCounter++;
+		stats.fpsT += dT;
 	}
 
 
@@ -372,25 +360,25 @@ namespace FlexKit
 
 	void GameFramework::Draw(iAllocator* TempMemory)
 	{
-		FrameGraph		FrameGraph(Core->RenderSystem, TempMemory);
+		FrameGraph		FrameGraph(core->RenderSystem, TempMemory);
 
 		// Add in Base Resources
-		FrameGraph.Resources.AddRenderTarget(Core->Window.GetBackBuffer());
-		FrameGraph.UpdateFrameGraph(Core->RenderSystem, ActiveWindow, Core->GetTempMemory());
+		FrameGraph.Resources.AddRenderTarget(core->Window.GetBackBuffer());
+		FrameGraph.UpdateFrameGraph(core->RenderSystem, ActiveWindow, core->GetTempMemory());
 
-		UpdateDispatcher Dispatcher{ Core->GetTempMemory() };
+		UpdateDispatcher Dispatcher{ core->GetTempMemory() };
 
-		for (size_t I = 0; I < SubStates.size(); ++I)
+		for (size_t I = 0; I < subStates.size(); ++I)
 		{
-			auto& SubState = SubStates[I];
-			if (!SubState->Draw(Core, Dispatcher, 0, FrameGraph))
+			auto& SubState = subStates[I];
+			if (!SubState->Draw(core, Dispatcher, 0, FrameGraph))
 				break;
 		}
 
-		for (size_t I = 1; I <= SubStates.size(); ++I)
+		for (size_t I = 1; I <= subStates.size(); ++I)
 		{
-			auto& State = SubStates[SubStates.size() - I]; 
-			if (!State->PostDrawUpdate(Core, Dispatcher, 0, FrameGraph))
+			auto& State = subStates[subStates.size() - I]; 
+			if (!State->PostDrawUpdate(core, Dispatcher, 0, FrameGraph))
 				break;
 		}
 
@@ -400,9 +388,9 @@ namespace FlexKit
 
 		if(	ActiveWindow )
 		{
-			FrameGraph.SubmitFrameGraph(Core->RenderSystem, ActiveWindow);
+			FrameGraph.SubmitFrameGraph(core->RenderSystem, ActiveWindow);
 
-			Free_DelayedReleaseResources(Core->RenderSystem);
+			Free_DelayedReleaseResources(core->RenderSystem);
 		}
 
 		ProfileEnd(PROFILE_SUBMISSION);
@@ -414,7 +402,7 @@ namespace FlexKit
 
 	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
 	{
-		Core->RenderSystem.PresentWindow(&Core->Window);
+		core->RenderSystem.PresentWindow(&core->Window);
 	}
 
 
@@ -423,32 +411,32 @@ namespace FlexKit
 
 	void GameFramework::Cleanup()
 	{
-		auto end  = SubStates.rend();
-		auto itr = SubStates.rbegin();
+		auto end = subStates.rend();
+		auto itr = subStates.rbegin();
 
 
-		ReleaseConsole(&Console);
-		Release(DefaultAssets.Font, Core->RenderSystem);
+		console.Release();
+		Release(DefaultAssets.Font, core->RenderSystem);
 
 		// wait for last Frame to finish Rendering
-		auto CL = Core->RenderSystem._GetCurrentCommandList();
+		auto CL = core->RenderSystem._GetCurrentCommandList();
 
 		for (size_t I = 0; I < 4; ++I) 
 		{
-			Core->RenderSystem.WaitforGPU();
-			Core->RenderSystem._IncrementRSIndex();
+			core->RenderSystem.WaitforGPU();
+			core->RenderSystem._IncrementRSIndex();
 		}
 
 
 		// Counters are at Max 3
-		Free_DelayedReleaseResources(Core->RenderSystem);
-		Free_DelayedReleaseResources(Core->RenderSystem);
-		Free_DelayedReleaseResources(Core->RenderSystem);
+		Free_DelayedReleaseResources(core->RenderSystem);
+		Free_DelayedReleaseResources(core->RenderSystem);
+		Free_DelayedReleaseResources(core->RenderSystem);
 
 		FreeAllResourceFiles	();
 		FreeAllResources		();
 	
-		ReleaseGameFramework(Core, this);
+		ReleaseGameFramework(core, this);
 	}
 
 
@@ -457,8 +445,8 @@ namespace FlexKit
 
 	bool GameFramework::DispatchEvent(const Event& evt)
 	{
-		auto itr = SubStates.rbegin();
-		while (itr != SubStates.rend())
+		auto itr = subStates.rbegin();
+		while (itr != subStates.rend())
 		{
 			if (!(*itr)->EventHandler(evt))
 				return false;
@@ -471,10 +459,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, FrameGraph& Graph)
+	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, FrameGraph& graph)
 	{
-		uint32_t VRamUsage	= GetVidMemUsage(Core->RenderSystem) / MEGABYTE;
-		char* TempBuffer	= (char*)Core->GetTempMemory().malloc(512);
+		uint32_t VRamUsage	= GetVidMemUsage(core->RenderSystem) / MEGABYTE;
+		char* TempBuffer	= (char*)core->GetTempMemory().malloc(512);
 		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
 		sprintf_s(TempBuffer, 512, 
@@ -484,19 +472,19 @@ namespace FlexKit
 			"Objects Drawn: %u\n"
 			"Build Date: " __DATE__ "\n",
 			VRamUsage, 
-			(uint32_t)Stats.FPS, DrawTiming, 
-			(uint32_t)Stats.ObjectsDrawnLastFrame);
+			(uint32_t)stats.fps, DrawTiming, 
+			(uint32_t)stats.objectsDrawnLastFrame);
 
 
 		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
 		Format.Scale = { 0.5f, 0.5f};
 		DrawSprite_Text(
 				TempBuffer, 
-				Graph, 
+				graph, 
 				*DefaultAssets.Font, 
-				TextBuffer, 
-				GetCurrentBackBuffer(&Core->Window), 
-				Core->GetTempMemory(), 
+				textBuffer, 
+				GetCurrentBackBuffer(&core->Window), 
+				core->GetTempMemory(), 
 				Format);
 	}
 
@@ -524,28 +512,28 @@ namespace FlexKit
 
 	void GameFramework::PopState()
 	{
-		SubStates.back()->~FrameworkState();
-		Core->GetBlockMemory().free(SubStates.back());
-		SubStates.pop_back();
+		subStates.back()->~FrameworkState();
+		core->GetBlockMemory().free(subStates.back());
+		subStates.pop_back();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void HandleMouseEvents(const Event& in, GameFramework* _ptr) {
+	void HandleMouseEvents(const Event& in, GameFramework* framework) {
 	switch (in.Action)
 	{
 	case Event::InputAction::Pressed:
 	{
 		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			_ptr->MouseState.LMB_Pressed = true;
+			framework->MouseState.LMB_Pressed = true;
 		}
 	}	break;
 	case Event::InputAction::Release:
 	{
 		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			_ptr->MouseState.LMB_Pressed = false;
+			framework->MouseState.LMB_Pressed = false;
 		}
 	}	break;
 	default:
@@ -559,18 +547,18 @@ namespace FlexKit
 
 	void EventsWrapper(const Event& evt, void* _ptr)
 	{
-		auto* base = reinterpret_cast<GameFramework*>(_ptr);
+		auto* framework = reinterpret_cast<GameFramework*>(_ptr);
 
-		auto itr = base->SubStates.rbegin();
+		auto itr = framework->subStates.rbegin();
 
-		if (base->DispatchEvent(evt))
+		if (framework->DispatchEvent(evt))
 		{
 			switch (evt.InputSource)
 			{
 			case Event::Keyboard:
-				HandleKeyEvents(evt, base);
+				HandleKeyEvents(evt, framework);
 			case Event::Mouse:
-				HandleMouseEvents(evt, reinterpret_cast<GameFramework*>(_ptr));
+				HandleMouseEvents(evt, framework);
 				break;
 			}
 		}
@@ -581,18 +569,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, const char* SceneName)
+	bool LoadScene(EngineCore* core, GraphicScene* scene, const char* sceneName)
 	{
-		return LoadScene(Engine->RenderSystem, SceneName, Scene, Engine->GetTempMemory());
+		return LoadScene(core->RenderSystem, sceneName, scene, core->GetTempMemory());
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool LoadScene(EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID)
+	bool LoadScene(EngineCore* core, GraphicScene* scene, GUID_t sceneID)
 	{
-		return LoadScene(Engine->RenderSystem, SceneID, Scene, Engine->GetTempMemory());
+		return LoadScene(core->RenderSystem, sceneID, scene, core->GetTempMemory());
 	}
 
 
@@ -609,7 +597,7 @@ namespace FlexKit
 		FrameGraph*				frameGraph)
 	{
 		DrawShapes(
-			EPIPELINESTATES::DRAW_PSO,
+			DRAW_PSO,
 			*frameGraph,
 			vertexBuffer,
 			constantBuffer,
@@ -629,8 +617,8 @@ namespace FlexKit
 	{
 		ClearLogCallbacks();
 
-		auto RItr = State->SubStates.rbegin();
-		auto REnd = State->SubStates.rend();
+		auto RItr = State->subStates.rbegin();
+		auto REnd = State->subStates.rend();
 		while (RItr != REnd)
 		{
 			(*RItr)->~FrameworkState();
@@ -657,23 +645,23 @@ namespace FlexKit
 
 	inline void PushSubState(GameFramework* _ptr, FrameworkState* SS)
 	{
-		_ptr->SubStates.push_back(SS);
+		_ptr->subStates.push_back(SS);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PopSubState(GameFramework* Framework)
+	void PopSubState(GameFramework* framework)
 	{
-		if (!Framework->SubStates.size())
+		if (!framework->subStates.size())
 			return;
 
-		FrameworkState* State = Framework->SubStates.back();
+		FrameworkState* State = framework->subStates.back();
 		State->~FrameworkState();
 
-		Framework->Core->GetBlockMemory().free(State);
-		Framework->SubStates.pop_back();
+		framework->core->GetBlockMemory().free(State);
+		framework->subStates.pop_back();
 	}
 
 
@@ -682,12 +670,12 @@ namespace FlexKit
 
 	bool SetDebugRenderMode(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void* USR)
 	{
-		GameFramework* Framework = (GameFramework*)USR;
+		GameFramework* framework = (GameFramework*)USR;
 		if (ArguementCount == 1 && Arguments->Type == ConsoleVariableType::STACK_STRING) {
 			size_t Mode = 0;
 
 			const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
-			for (auto Var : C->Variables)
+			for (auto Var : C->variables)
 			{
 				if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
 				{
@@ -703,7 +691,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InitiateFramework(EngineCore* Core, GameFramework& Framework)
+	void InitiateFramework(EngineCore* Core, GameFramework& framework)
 	{
 
 	}

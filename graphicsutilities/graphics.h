@@ -1859,10 +1859,6 @@ namespace FlexKit
 			DescriptorRTVSize       = 0;
 			DescriptorDSVSize       = 0;
 			DescriptorCBVSRVUAVSize = 0;
-
-			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_PSO,			CreateDrawTriStatePSO);
-			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_LINE_PSO,	CreateDrawLineStatePSO);
-			PipelineStates.RegisterPSOLoader(EPIPELINESTATES::DRAW_LINE3D_PSO,	CreateDraw2StatePSO);
 		}
 		
 		~RenderSystem()
@@ -1877,9 +1873,9 @@ namespace FlexKit
 		void	Release();
 
 		// Pipeline State
-		ID3D12PipelineState*	GetPSO				(EPIPELINESTATES StateID);
-		void					RegisterPSOLoader	(EPIPELINESTATES State, LOADSTATE_FN Loader);
-		void					QueuePSOLoad		(EPIPELINESTATES State);
+		ID3D12PipelineState*	GetPSO				(PSOHandle StateID);
+		void					RegisterPSOLoader	(PSOHandle State, LOADSTATE_FN Loader);
+		void					QueuePSOLoad		(PSOHandle State);
 
 		size_t					GetCurrentFrame();
 
@@ -1907,7 +1903,7 @@ namespace FlexKit
 		VertexBufferHandle		CreateVertexBuffer		(size_t BufferSize, bool GPUResident = true);
 		TextureHandle			CreateDepthBuffer		(uint2 WH, bool UseFloat = false);
 		TextureHandle			CreateTexture2D			(uint2 WH, FORMAT_2D Format, size_t MipLevels = 0);
-		TextureHandle			CreateTexture2D			(uint2 WH, FORMAT_2D Format, size_t MipLevels = 0, ID3D12Resource** Resources = nullptr, size_t ResourceCount = 1);
+		TextureHandle			CreateTexture2D			(uint2 WH, FORMAT_2D Format, size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
 		QueryBufferHandle		CreateOcclusionBuffer	(size_t Size);
 
 		void ReleaseCB(ConstantBufferHandle);
@@ -2384,6 +2380,8 @@ namespace FlexKit
 	FLEXKITAPI void							ReleaseMesh				( RenderSystem* RS, TriMeshHandle  TMHandle );
 
 	FLEXKITAPI TriMesh*						GetMesh					( TriMeshHandle  TMHandle );
+	FLEXKITAPI BoundingSphere				GetMeshBoundingSphere	( TriMeshHandle  TMHandle );
+
 	FLEXKITAPI Skeleton*					GetSkeleton				( TriMeshHandle  TMHandle );
 	FLEXKITAPI size_t						GetSkeletonGUID			( TriMeshHandle  TMHandle );
 	FLEXKITAPI void							SetSkeleton				( TriMeshHandle  TMHandle, Skeleton* S );

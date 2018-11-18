@@ -171,8 +171,8 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 			auto Mesh	  = (fbxsdk::FbxMesh*)Attr;
 			bool found	  = false;
 			bool LoadMesh = false;
-			size_t ID	  = (size_t)Mesh->GetUniqueID();
-			auto Geo	  = FindGeoByID( GL, ID );
+			size_t uniqueID	  = (size_t)Mesh->GetUniqueID();
+			auto Geo	  = FindGeoByID( GL, uniqueID);
 
 			Vector<size_t> RelatedMetaData;
 
@@ -187,14 +187,14 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 				LoadMesh = true;
 
 			auto MeshInfo = FlexKit::GetMeshMetaData(MD, RelatedMetaData);
-			LoadMesh = MeshInfo != nullptr;
 
-			if ( !Geo && LoadMesh)
+			auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
+			size_t NameLen	= strlen( Name );
+
+			if (!FBXIDPresentInTable(Mesh->GetUniqueID(), *Table))
 			{
-				auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
-				size_t NameLen	= strlen( Name );
-
-				if (!NameLen) {
+				if (!NameLen) 
+				{
 					Name = node->GetName();
 					NameLen	= strlen( Name );
 				}
@@ -202,7 +202,9 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 				TriMeshResource	out;
 				memset(&out, 0, sizeof(out));
 				char* ID = nullptr;
-				if ( NameLen++ ) {
+
+				if ( NameLen++ ) 
+				{
 					ID = (char*)Memory->malloc( NameLen );
 					strcpy_s( (char*)ID, NameLen, Name );
 				}
@@ -210,17 +212,20 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 				auto Res = CompileMeshResource(out, TempMem, Memory, Mesh, false, ID, MD);
 				
 				if(MeshInfo){
-					auto Info = MeshInfo;
-					out.TriMeshID	= Info->guid;
-					out.ID			= Info->MeshID;
+					out.TriMeshID	= MeshInfo->guid;
+					out.ID			= MeshInfo->MeshID;
+				}
+				else
+				{
+					out.TriMeshID = CreateRandomID();
+					out.ID = Mesh->GetName();
 				}
 
-				if (!FBXIDPresentInTable(Mesh->GetUniqueID(), *Table))
 					Table->push_back({ Mesh->GetUniqueID(), out.TriMeshID });
 
-#if USING(RESCOMPILERVERBOSE)
+	#if USING(RESCOMPILERVERBOSE)
 				std::cout << "Compiled Resource: " << Name << "\n";
-#endif
+	#endif
 
 				GL->push_back(out);
 			}
@@ -548,6 +553,7 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 
 			auto& Mesh		= G->at(I);
 			auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, Mesh.ID, MemoryOut);
+
 			for(size_t J = 0; J < RelatedMD.size(); ++J)
 			{
 				switch (MD->at(RelatedMD[J])->type)
@@ -901,7 +907,7 @@ LoadGeometryRES_ptr CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFro
 	auto res = LoadFBXScene( AssetLocation, Manager, Settings );
 	if (res)
 	{
-		SceneList Scenes;
+		SceneList Scenes(Desc->BlockMemory);
 		FBXIDTranslationTable Table(Desc->BlockMemory);
 		GetScenes(res, Desc->BlockMemory, Desc->BlockMemory, METAINFO, &Scenes);
 		ResourceList LoadRes = GatherSceneResources((FbxScene*)res, Desc->Cooker, Desc->BlockMemory, &Table, true, METAINFO);

@@ -35,6 +35,7 @@ using FlexKit::WorldRender;
 using FlexKit::ReleaseCameraTable;
 using FlexKit::FKApplication;
 
+
 class BaseState : public FlexKit::FrameworkState
 {
 public:
@@ -43,34 +44,32 @@ public:
 		FlexKit::FKApplication* IN_App	) :
 			App				{IN_App},
 			FrameworkState	{IN_Framework},
-			depthBuffer		{IN_Framework->Core->RenderSystem.CreateDepthBuffer({ 1920, 1080 },	true)},
-			vertexBuffer	{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
-			textBuffer		{IN_Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
-			constantBuffer	{IN_Framework->Core->RenderSystem.CreateConstantBuffer(	8096 * 2000, false)},
+			depthBuffer		{IN_Framework->core->RenderSystem.CreateDepthBuffer({ 1920, 1080 },	true)},
+			vertexBuffer	{IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
+			textBuffer		{IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)},
+			constantBuffer	{IN_Framework->core->RenderSystem.CreateConstantBuffer(	8096 * 2000, false)},
 
 			render	{
-				IN_Framework->Core->GetTempMemory(),
-				IN_Framework->Core->RenderSystem}
+				IN_Framework->core->GetTempMemory(),
+				IN_Framework->core->RenderSystem}
 	{
-		InitiateCameraTable(Framework->Core->GetBlockMemory());
-		InitiateOrbitCameras(Framework->Core->GetBlockMemory());
+		InitiateCameraTable(framework->core->GetBlockMemory());
 
-		IN_Framework->Core->RenderSystem.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO, FlexKit::LoadSpriteTextPSO);
+		IN_Framework->core->RenderSystem.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO, FlexKit::LoadSpriteTextPSO);
 
-		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_PSO);
-		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
-		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE3D_PSO);
-		IN_Framework->Core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_SPRITE_TEXT_PSO);
+		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_PSO);
+		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
+		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE3D_PSO);
+		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_SPRITE_TEXT_PSO);
 	}
 
 	~BaseState()
 	{
-		Framework->Core->RenderSystem.ReleaseVB(vertexBuffer);
-		Framework->Core->RenderSystem.ReleaseVB(textBuffer);
-		Framework->Core->RenderSystem.ReleaseCB(constantBuffer);
-		Framework->Core->RenderSystem.ReleaseDB(depthBuffer);
+		framework->core->RenderSystem.ReleaseVB(vertexBuffer);
+		framework->core->RenderSystem.ReleaseVB(textBuffer);
+		framework->core->RenderSystem.ReleaseCB(constantBuffer);
+		framework->core->RenderSystem.ReleaseDB(depthBuffer);
 
-		ReleaseOrbitCameras(Framework->Core->GetBlockMemory());
 		ReleaseCameraTable();
 	}
 

@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphicsComponents.h"
 #include "intersection.h"
 
+#include "..\coreutilities\Components.h"
 #include "..\graphicsutilities\AnimationRuntimeUtilities.H"
 
 namespace FlexKit
@@ -33,19 +34,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateDrawable()
+	SceneEntityHandle GraphicScene::CreateDrawable(TriMeshHandle mesh, NodeHandle node)
 	{
-		EntityHandle Out = HandleTable.GetNewHandle();
+		SceneEntityHandle Out = HandleTable.GetNewHandle();
 
 		Drawable		D;
-		NodeHandle N  = GetZeroedNode();
+		NodeHandle N  = (node == InvalidHandle_t) ? GetZeroedNode() : node;
 
-		D.Node = N;
+		D.Node			= N;
+		D.MeshHandle	= mesh;
 		_PushEntity(D, Out);
 
 		HandleTable[Out] = Drawables.size() - 1;
 
-		SceneManagement.CreateNode(Out);
+		if (mesh == InvalidHandle_t || node == InvalidHandle_t)
+			SceneManagement.allEntities.push_back(Out);
+		else
+			SceneManagement.CreateNode(Out, *this);
+		
 		return Out;
 	}
 
@@ -53,7 +59,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::RemoveEntity(EntityHandle E)
+	void GraphicScene::RemoveEntity(SceneEntityHandle E)
 	{
 		ReleaseNode(GetDrawable(E).Node);
 
@@ -120,16 +126,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::Update()
-	{
-		SceneManagement.Update();
+	Drawable&	GraphicScene::GetDrawable(SceneEntityHandle EHandle) 
+	{ 
+		return Drawables.at(HandleTable[EHandle]); 
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool GraphicScene::isEntitySkeletonAvailable(EntityHandle EHandle)
+	BoundingSphere	GraphicScene::GetBoundingSphere(SceneEntityHandle EHandle)
+	{
+		BoundingSphere out;
+
+		float3		position = GetEntityPosition(EHandle);
+		Quaternion	orientation = GetOrientation(EHandle);
+		auto BS = GetMeshBoundingSphere(GetMeshHandle(EHandle));
+
+		return BoundingSphere{ orientation * position + BS.xyz(), BS.w };
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool GraphicScene::isEntitySkeletonAvailable(SceneEntityHandle EHandle)
 	{
 		auto Index = HandleTable[EHandle];
 		if (Drawables.at(Index).MeshHandle != InvalidHandle_t)
@@ -146,7 +167,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool GraphicScene::EntityEnablePosing(EntityHandle EHandle)
+	bool GraphicScene::EntityEnablePosing(SceneEntityHandle EHandle)
 	{
 		auto Index				= HandleTable[EHandle];
 		bool Available			= isEntitySkeletonAvailable(EHandle);
@@ -181,7 +202,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	bool LoadAnimation(GraphicScene* GS, EntityHandle EHandle, ResourceHandle RHndl, TriMeshHandle MeshHandle, float w = 1.0f)
+	bool LoadAnimation(GraphicScene* GS, SceneEntityHandle EHandle, ResourceHandle RHndl, TriMeshHandle MeshHandle, float w = 1.0f)
 	{
 		auto Resource = GetResource(RHndl);
 		if (Resource->Type == EResourceType::EResource_SkeletalAnimation)
@@ -221,7 +242,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, GUID_t Guid, float W, bool Loop)
+	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(SceneEntityHandle EHandle, GUID_t Guid, float W, bool Loop)
 	{
 		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
 		bool SkeletonLoaded = IsSkeletonLoaded(MeshHandle);
@@ -275,7 +296,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(EntityHandle EHandle, const char* Animation, float W, bool Loop)
+	GSPlayAnimation_RES GraphicScene::EntityPlayAnimation(SceneEntityHandle EHandle, const char* Animation, float W, bool Loop)
 	{
 		auto MeshHandle		= GetDrawable(EHandle).MeshHandle;
 		bool SkeletonLoaded = IsSkeletonLoaded(MeshHandle);
@@ -315,7 +336,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t	GraphicScene::GetEntityAnimationPlayCount(EntityHandle EHandle)
+	size_t	GraphicScene::GetEntityAnimationPlayCount(SceneEntityHandle EHandle)
 	{
 		size_t Out = 0;
 		Out = GetAnimationCount(&Drawables.at(HandleTable[EHandle]));
@@ -326,7 +347,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Drawable& GraphicScene::SetNode(EntityHandle EHandle, NodeHandle Node) 
+	Drawable& GraphicScene::SetNode(SceneEntityHandle EHandle, NodeHandle Node)
 	{
 		FlexKit::ReleaseNode(GetNode(EHandle));
 		auto& Drawable = Drawables.at(HandleTable[EHandle]);
@@ -338,19 +359,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateDrawableAndSetMesh(GUID_t Mesh)
+	SceneEntityHandle GraphicScene::CreateSceneEntityAndSetMesh(GUID_t Mesh, NodeHandle node)
 	{
-		auto EHandle = CreateDrawable();
-
 		auto [Geo, Result]	= FindMesh(Mesh);
 
 		if (!Result)
 			Geo	= LoadTriMeshIntoTable(RS, Mesh);
 
+		auto EHandle		= CreateDrawable(Geo, node);
 		auto& Drawble       = GetDrawable(EHandle);
 		SetVisability(EHandle, true);
 
-		Drawble.MeshHandle	= Geo;
 		Drawble.Dirty		= true;
 		Drawble.Textured	= false;
 		Drawble.Textures	= nullptr;
@@ -364,7 +383,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EntityHandle GraphicScene::CreateDrawableAndSetMesh(const char* Mesh)
+	SceneEntityHandle GraphicScene::CreateSceneEntityAndSetMesh(const char* Mesh, NodeHandle node)
 	{
 		auto EHandle = CreateDrawable();
 
@@ -450,7 +469,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::_PushEntity(Drawable E, EntityHandle Handle)
+	void GraphicScene::_PushEntity(Drawable E, SceneEntityHandle Handle)
 	{
 		Drawables.push_back(E);
 		DrawableVisibility.push_back(false);
@@ -486,15 +505,166 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void QuadTreeNode::ExpandNode(iAllocator* allocator)
+	{
+		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>());
+		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>());
+		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>());
+		ChildNodes.push_back(&allocator->allocate_aligned<QuadTreeNode>());
+
+		const auto SpanVector	= upperRight - lowerLeft;
+		const auto CenterPoint	= (lowerLeft + upperRight) / 2;
+
+		ChildNodes[(int)QuadTreeNodeLocation::UpperRight]->upperRight	= CenterPoint + SpanVector / 2;
+		ChildNodes[(int)QuadTreeNodeLocation::UpperRight]->lowerLeft	= CenterPoint;
+
+		ChildNodes[(int)QuadTreeNodeLocation::UpperLeft]->upperRight	= CenterPoint + (SpanVector / 2) * float2( 0.0f,  1.0f);
+		ChildNodes[(int)QuadTreeNodeLocation::UpperLeft]->lowerLeft		= CenterPoint + (SpanVector / 2) * float2(-1.0f,  0.0f);
+
+		ChildNodes[(int)QuadTreeNodeLocation::LowerLeft]->upperRight	= CenterPoint;
+		ChildNodes[(int)QuadTreeNodeLocation::LowerLeft]->lowerLeft		= CenterPoint - (SpanVector / 2);
+
+		ChildNodes[(int)QuadTreeNodeLocation::LowerRight]->upperRight	= CenterPoint + (SpanVector / 2) * float2( 1.0f,  0.0f);
+		ChildNodes[(int)QuadTreeNodeLocation::LowerRight]->lowerLeft	= CenterPoint + (SpanVector / 2) * float2( 0.0f, -1.0f);
+
+		for (auto& node : ChildNodes)
+			node->centerPoint = (node->upperRight + node->lowerLeft) / 2;
+	}
+
+	float4 QuadTreeNode::GetArea() const
+	{
+		const auto areaLL = (lowerLeft.y <  upperRight.y) ? lowerLeft : upperRight;
+		const auto areaUR = (lowerLeft.y >= upperRight.y) ? lowerLeft : upperRight;
+
+		return { areaLL, areaUR };
+	}
+
+	/************************************************************************************************/
+
+
 	void QuadTree::Release()
 	{
+		root.Clear(allocator);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void QuadTree::CreateNode(EntityHandle Handle)
+	void QuadTreeNode::AddChild(SceneEntityHandle entityHandle, GraphicScene& parentScene, iAllocator* allocator)
+	{
+		if (ChildNodes.empty() && !Contents.full())
+		{
+			Contents.push_back(entityHandle);
+		}
+		else
+		{
+			if (ChildNodes.empty()) 
+			{
+				ExpandNode(allocator);
+
+				for (auto C : Contents)
+					AddChild(C, parentScene, allocator);
+
+				Contents.clear();
+			}
+
+			// Get Nearest Node
+
+			auto& drawable	= parentScene.GetDrawable(entityHandle);
+			auto position	= GetPositionW(drawable.Node);
+
+			float2 pos_f2{position.x, position.z};
+
+			float			l = 1000000000.0f;
+			QuadTreeNode*	nearestNode = ChildNodes.front();
+
+			for (auto child : ChildNodes)
+			{
+				float d = (child->centerPoint - pos_f2).Magnitude();
+				if (d < l)
+				{
+					l = d;
+					nearestNode = child;
+				}
+			}
+
+			nearestNode->AddChild(entityHandle, parentScene, allocator);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	QuadTreeNode::SphereTestRes QuadTreeNode::IsSphereInside(float r, float3 pos)
+	{
+		float nodeSpan			= (lowerLeft - upperRight).Magnitude();
+		float l					= (float2(pos.x, pos.z) - centerPoint).Magnitude();
+
+		bool OutSideNode		= (l > (nodeSpan / 2));
+
+		return OutSideNode ? Failed : Fully;
+	}
+
+	/************************************************************************************************/
+
+	void QuadTreeNode::UpdateBounds(GraphicScene& parentScene)
+	{
+		for (auto child : ChildNodes) 
+		{
+			child->UpdateBounds(parentScene);
+
+			upperRight.x = (child->upperRight.x > upperRight.x) ? child->upperRight.x : upperRight.x;
+			upperRight.y = (child->upperRight.y > upperRight.y) ? child->upperRight.y : upperRight.y;
+
+			lowerLeft.x = (child->lowerLeft.x > lowerLeft.x) ? child->lowerLeft.x : lowerLeft.x;
+			lowerLeft.y = (child->lowerLeft.y > lowerLeft.y) ? child->lowerLeft.y : lowerLeft.y;
+		}
+
+		for(auto entityHandle : Contents)
+		{
+			auto& drawable	= parentScene.GetDrawable(entityHandle);
+			bool isNullNode = drawable.MeshHandle == InvalidHandle_t;
+			auto* triMesh	= isNullNode ? nullptr : FlexKit::GetMesh(drawable.MeshHandle);
+			auto r			= isNullNode ? 0 : triMesh->Info.r;
+			auto max		= isNullNode ? 0 : triMesh->Info.max;
+			auto min		= isNullNode ? 0 : triMesh->Info.min;
+			//auto offset		= isNullNode ? 0 : triMesh->Info.Offset;
+			auto position	= GetPositionW(drawable.Node);
+
+			float2 vectorToNode				= centerPoint - float2{position.x, position.z};
+			
+			float2 vectorToNodeNormalized	= vectorToNode / vectorToNode.Magnitude();
+			
+			if ((vectorToNode * vectorToNode).Sum() < 0.00001f)
+				vectorToNodeNormalized = float2{ 0, 0 };
+
+			float2 newUR					= centerPoint + vectorToNodeNormalized * -r;
+
+			upperRight.x = (newUR.y > upperRight.y) ? newUR.x : upperRight.x;
+			upperRight.y = (newUR.y > upperRight.y) ? newUR.y : upperRight.y;
+
+			lowerLeft.x = (newUR.y < lowerLeft.y) ? newUR.x : lowerLeft.x;
+			lowerLeft.y = (newUR.y < lowerLeft.y) ? newUR.y : lowerLeft.y;
+		}
+	}
+
+	/************************************************************************************************/
+
+
+	void QuadTree::CreateNode(SceneEntityHandle entityHandle, GraphicScene& parentScene)
+	{
+		allEntities.push_back(entityHandle);
+		root.AddChild(entityHandle, parentScene, allocator);
+		//UpdateBounds(parentScene);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QuadTree::ReleaseNode(SceneEntityHandle Handle)
 	{
 
 	}
@@ -503,27 +673,96 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void QuadTree::ReleaseNode(EntityHandle Handle)
+	void QuadTree::Rebuild(GraphicScene& parentScene) 
 	{
+		RebuildCounter = 0;
+		root.Clear(allocator);
 
+		float2 lowerLeft	{ 0, 0 };
+		float2 upperRight	{ 0, 0 };
+			
+		for (auto item : allEntities)
+		{
+			auto boundingSphere = parentScene.GetBoundingSphere(item);
+			float r = boundingSphere.w;
+
+			upperRight.x = boundingSphere.x + r > upperRight.x ? boundingSphere.x + r : upperRight.x;
+			upperRight.y = boundingSphere.z + r > upperRight.y ? boundingSphere.z + r : upperRight.y;
+
+			lowerLeft.x = boundingSphere.x - r < lowerLeft.x ? boundingSphere.x - r : lowerLeft.x;
+			lowerLeft.y = boundingSphere.z - r < lowerLeft.y ? boundingSphere.z - r : lowerLeft.y;
+		}
+
+		auto centerPoint	= (upperRight - lowerLeft) / 2;
+		root.centerPoint	= centerPoint;
+		root.lowerLeft		= lowerLeft;
+		root.upperRight		= upperRight;
+
+		for (auto item : allEntities)
+			root.AddChild(item, parentScene, allocator);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void QuadTree::Update()
+	float4	QuadTree::GetArea()
 	{
+		return root.GetArea();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void QuadTree::Initiate(iAllocator* memory, float2 AreaDimensions)
+	UpdateTask* QuadTree::Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask* transformDependency)
 	{
-		Memory = memory;
-		Area = AreaDimensions;
+		struct QuadTreeUpdate
+		{
+			QuadTree*		QTree;
+			GraphicScene*	parentScene;
+		};
+
+		auto Task = &dispatcher.Add<QuadTreeUpdate>(
+			[&](DependencyBuilder& builder, auto& QuadTreeUpdate)
+			{
+				builder.AddInput(*transformDependency);
+				builder.SetDebugString("QuadTree Update!");
+
+				QuadTreeUpdate.QTree		= this;
+				QuadTreeUpdate.parentScene	= parentScene;
+
+			},
+			[](auto& QuadTreeUpdate)
+			{
+				FK_LOG_INFO("QuadTree::Update");
+
+				const int period  = QuadTreeUpdate.QTree->RebuildPeriod;
+				const int counter = QuadTreeUpdate.QTree->RebuildCounter;
+
+				//if (period <= counter)
+				//	QuadTreeUpdate.QTree->Rebuild(*QuadTreeUpdate.parentScene);
+				//else
+				//	QuadTreeUpdate.QTree->root.UpdateBounds(*QuadTreeUpdate.parentScene);
+
+				//QuadTreeUpdate.QTree->RebuildCounter++;
+			});
+
+		return Task;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QuadTree::Initiate(float2 AreaDimensions, iAllocator* memory)
+	{
+		allocator				= memory;
+		allEntities.Allocator	= memory;
+		area					= float2{0, 0};
+
+		root.upperRight = AreaDimensions;
+		root.lowerLeft	= AreaDimensions * -1;
 	}
 
 
@@ -580,16 +819,6 @@ namespace FlexKit
 		//{
 		//	UpdateCamera(GS->RS, *GS->SN, &Caster.C, 0.00f);
 		//}
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateGraphicScene(GraphicScene* SM)
-	{
-		SM->SceneManagement.Update();
-		UpdateShadowCasters(SM);
 	}
 
 
@@ -689,7 +918,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void BindJoint(GraphicScene* SM, JointHandle Joint, EntityHandle Entity, NodeHandle TargetNode)
+	void BindJoint(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode)
 	{
 		SM->TaggedJoints.push_back({ Entity, Joint, TargetNode });
 	}
@@ -745,6 +974,8 @@ namespace FlexKit
 
 						CreatedNodes.push_back(NewNode);
 					}
+
+					UpdateTransforms();
 				}
 
 				{
@@ -752,9 +983,14 @@ namespace FlexKit
 					for (size_t I = 0; I < SceneBlob->SceneTable.EntityCount; ++I)
 					{
 						if (Entities[I].MeshGuid != INVALIDHANDLE) {
-							auto NewEntity = GS_out->CreateDrawableAndSetMesh(Entities[I].MeshGuid);
-							GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
-							auto Position_DEBUG = GetPositionW(CreatedNodes[Entities[I].Node]);
+							auto node = CreatedNodes[Entities[I].Node];
+							auto Position_DEBUG = GetPositionW(node);
+
+							auto NewEntity = GS_out->CreateSceneEntityAndSetMesh(
+								Entities[I].MeshGuid, 
+								node);
+
+							//GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
 							SetFlag(CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
 							int x = 0;
 						}
@@ -769,9 +1005,13 @@ namespace FlexKit
 						auto NewEntity	= GS_out->AddPointLight(Light.K, CreatedNodes[Light.Node], Light.I, Light.R * 10);
 					}
 				}
+
+				//GS_out->SceneManagement.Rebuild(*GS_out);
+
 				return true;
 			}
 		}
+
 
 		return false;
 	}
@@ -802,7 +1042,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 GraphicScene::GetEntityPosition(EntityHandle EHandle) 
+	float3 GraphicScene::GetEntityPosition(SceneEntityHandle EHandle)
 	{ 
 		return GetPositionW(Drawables.at(EHandle).Node); 
 	}
@@ -811,7 +1051,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Quaternion GraphicScene::GetOrientation(EntityHandle Handle)
+	Quaternion GraphicScene::GetOrientation(SceneEntityHandle Handle)
 	{
 		return FlexKit::GetOrientation(GetNode(Handle));
 	}
@@ -819,17 +1059,41 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	/*
-	void GraphicScene::Yaw					(EntityHandle Handle, float a)				{ FlexKit::Yaw	(*SN, GetDrawable(Handle).Node, a);												   }
-	void GraphicScene::Pitch				(EntityHandle Handle, float a)				{ FlexKit::Pitch(*SN, GetDrawable(Handle).Node, a);												   }
-	void GraphicScene::Roll					(EntityHandle Handle, float a)				{ FlexKit::Roll	(*SN, GetDrawable(Handle).Node, a);												   }
-	void GraphicScene::TranslateEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateLocal	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
-	void GraphicScene::TranslateEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::TranslateWorld	(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
-	void GraphicScene::SetPositionEntity_WT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionW		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
-	void GraphicScene::SetPositionEntity_LT	(EntityHandle Handle, float3 V)				{ FlexKit::SetPositionL		(*SN, GetDrawable(Handle).Node, V);  GetDrawable(Handle).Dirty = true; }
-	void GraphicScene::SetOrientation		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientation	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true; }
-	void GraphicScene::SetOrientationL		(EntityHandle Handle, Quaternion Q)			{ FlexKit::SetOrientationL	(*SN, GetDrawable(Handle).Node, Q);  GetDrawable(Handle).Dirty = true; }
-	*/
+
+	UpdateTask* GraphicScene::Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask* transformDependency)
+	{
+		struct SceneUpdateData
+		{
+			GraphicScene* scene;
+		};
+
+
+		auto& Task1 =
+		Dispatcher.Add<SceneUpdateData>(
+			[&](DependencyBuilder& builder, SceneUpdateData& data)
+			{
+				builder.AddInput(*SceneManagement.Update(
+													Dispatcher, 
+													this, 
+													transformDependency));
+
+				builder.SetDebugString("SceneUpdate");
+
+				data.scene = this;
+			},
+			[](auto& data)
+			{
+				// Post transform update of scene management structure
+				UpdateShadowCasters(data.scene);
+			}
+		);
+
+		return &Task1;
+	}
+
+
+	/************************************************************************************************/
+
 
 	void GraphicScene::SetLightNodeHandle	(SpotLightHandle Handle, NodeHandle Node)	{ FlexKit::ReleaseNode		(PLights[Handle].Position); PLights[Handle].Position = Node;	   }
 

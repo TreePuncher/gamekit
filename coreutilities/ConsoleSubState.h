@@ -38,22 +38,22 @@ namespace FlexKit
 		{
 			FK_LOG_INFO("Creating Console State!");
 
-			Console              = &Framework->Console;
-			Framework            = Framework;
-			Core				 = Framework->Core;
-			PauseBackgroundLogic = true;
+			console              = &framework->console;
+			framework            = framework;
+			core				 = framework->core;
+			pauseBackgroundLogic = true;
 		}
 
 		~ConsoleSubState()
 		{
-			Framework->ConsoleActive = false;
-			Console->Memory->free(this); // Not sure what to do about this. Seems like a poor design implication
+			framework->consoleActive = false;
+			console->allocator->free(this); // Not sure what to do about this. Seems like a poor design implication
 		}
 
-		bool			PauseBackgroundLogic;
-		size_t			RecallIndex;
-		Console*		Console;
-		EngineCore*		Core;
+		bool			pauseBackgroundLogic;
+		size_t			recallIndex;
+		Console*		console;
+		EngineCore*		core;
 
 		void IncrementRecallIndex();
 		void DecrementRecallIndex();

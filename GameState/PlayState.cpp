@@ -46,18 +46,18 @@ PlayState::PlayState(
 		BaseState*				Base) : 
 	FrameworkState		{ IN_Framework						},
 
-	UI					{ FlexKit::GuiSystem_Desc{}, Framework->Core->GetBlockMemory() },
+	UI					{ FlexKit::GuiSystem_Desc{}, framework->core->GetBlockMemory() },
 	UIMainGrid			{ nullptr },
 	UISubGrid_1			{ nullptr },
 	UISubGrid_2			{ nullptr },
 
-	FrameEvents			{ Framework->Core->GetBlockMemory() },
+	FrameEvents			{ framework->core->GetBlockMemory() },
 	FrameID				{ 0 },
-	Sound				{ Framework->Core->Threads, Framework->Core->GetBlockMemory() },
+	Sound				{ framework->core->Threads, framework->core->GetBlockMemory() },
 	Render				{ &Base->render				},
-	LocalGame			{ Framework->Core->GetBlockMemory() },
-	Player1_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
-	Player2_Handler		{ LocalGame, Framework->Core->GetBlockMemory() },
+	LocalGame			{ framework->core->GetBlockMemory() },
+	Player1_Handler		{ LocalGame, framework->core->GetBlockMemory() },
+	Player2_Handler		{ LocalGame, framework->core->GetBlockMemory() },
 	GameInPlay			{ true					},
 	UseDebugCamera		{ false					},
 
@@ -66,26 +66,26 @@ PlayState::PlayState(
 	TextBuffer			{ Base->textBuffer		},
 	VertexBuffer		{ Base->vertexBuffer	},
 
-	eventMap			{ Framework->Core->GetBlockMemory() },
-	DebugCameraInputMap	{ Framework->Core->GetBlockMemory() },
-	DebugEventsInputMap	{ Framework->Core->GetBlockMemory() },
+	eventMap			{ framework->core->GetBlockMemory() },
+	DebugCameraInputMap	{ framework->core->GetBlockMemory() },
+	DebugEventsInputMap	{ framework->core->GetBlockMemory() },
 	Puppet				{ CreatePlayerPuppet(Scene)			},
 	Scene
 						{
-							Framework->Core->RenderSystem,
-							Framework->Core->GetBlockMemory(),
-							Framework->Core->GetTempMemory()
+							framework->core->RenderSystem,
+							framework->core->GetBlockMemory(),
+							framework->core->GetTempMemory()
 						}
 {
 	AddResourceFile("CharacterBase.gameres");
-	CharacterModel = FlexKit::LoadTriMeshIntoTable(Framework->Core->RenderSystem, "PlayerMesh");
+	CharacterModel = FlexKit::LoadTriMeshIntoTable(framework->core->RenderSystem, "Flower");
 
 	Player1_Handler.SetActive(LocalGame.CreatePlayer({ 11, 11 }));
-	Player1_Handler.SetPlayerCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
+	Player1_Handler.SetPlayerCameraAspectRatio(GetWindowAspectRatio(framework->core));
 
 	LocalGame.CreateGridObject({ 10, 5 });
 
-	OrbitCamera.SetCameraAspectRatio(GetWindowAspectRatio(Framework->Core));
+	OrbitCamera.SetCameraAspectRatio(GetWindowAspectRatio(framework->core));
 	OrbitCamera.TranslateWorld({ 0, 2, -5 });
 	OrbitCamera.Yaw(float(pi));
 
@@ -111,14 +111,13 @@ PlayState::PlayState(
 	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_C, DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA);
 	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_X, DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY);
 
-	Framework->Core->RenderSystem.PipelineStates.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO);
-	Framework->Core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO, Framework->Core->GetBlockMemory());
+	framework->core->RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO);
+	framework->core->RenderSystem.PipelineStates.QueuePSOLoad		(DRAW_SPRITE_TEXT_PSO, framework->core->GetBlockMemory());
 
 	UIMainGrid	= &UI.CreateGrid(nullptr);
 	UIMainGrid->SetGridDimensions({ 3, 3 });
 
-
-	UIMainGrid->WH = { 0.5f, 1.0f };
+	UIMainGrid->WH = { 0.5f, 1.0f  };
 	UIMainGrid->XY = { 0.25f, 0.0f };
 
 	UISubGrid_1		= &UI.CreateGrid(UIMainGrid, { 0, 0 });
@@ -141,7 +140,7 @@ PlayState::PlayState(
 PlayState::~PlayState()
 {
 	// TODO: Make this not stoopid 
-	Framework->Core->GetBlockMemory().free(this);
+	framework->core->GetBlockMemory().free(this);
 }
 
 
@@ -162,7 +161,7 @@ bool PlayState::EventHandler(Event evt)
 				UseDebugCamera	= !UseDebugCamera;
 				break;
 			case DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY:
-				Framework->DrawDebug = !Framework->DrawDebug;
+				framework->drawDebug = !framework->drawDebug;
 				break;
 			default:
 				break;
@@ -200,7 +199,7 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 	// Check if any players Died
 	for (auto& P : LocalGame.Players)
 		if (LocalGame.IsCellDestroyed(P.XY))
-			Framework->PopState();
+			framework->PopState();
 
 	LocalGame.Update(dT, Core->GetTempMemory());
 
@@ -211,15 +210,17 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT
 		Player2_Handler.Update(dT);
 
 
-	float HorizontalMouseMovement	= float(Framework->MouseState.dPos[0]) / GetWindowWH(Framework->Core)[0];
-	float VerticalMouseMovement		= float(Framework->MouseState.dPos[1]) / GetWindowWH(Framework->Core)[1];
+	float HorizontalMouseMovement	= float(framework->MouseState.dPos[0]) / GetWindowWH(framework->core)[0];
+	float VerticalMouseMovement		= float(framework->MouseState.dPos[1]) / GetWindowWH(framework->core)[1];
 
-	Framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
+	framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
 
-	OrbitCamera.Yaw(Framework->MouseState.Normalized_dPos[0]);
-	OrbitCamera.Pitch(Framework->MouseState.Normalized_dPos[1]);
+	OrbitCamera.Yaw(framework->MouseState.Normalized_dPos[0]);
+	OrbitCamera.Pitch(framework->MouseState.Normalized_dPos[1]);
 
 	OrbitCamera.Update(dT);
+
+	Puppet.Yaw(dT);
 	Puppet.Update(dT);
 
 	QueueSoundUpdate(Dispatcher, &Sound);
@@ -314,7 +315,7 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 	GetGraphicScenePVS(Scene, ActiveCamera, &Drawables, &TransparentDrawables);
 
 
-	if(Framework->DrawDebug)
+	if(framework->drawDebug)
 	{
 		DrawGameGrid_Debug(
 			dt,
@@ -342,14 +343,13 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 		Core->GetTempMemory());
 
 
-	/*
 	Render->DefaultRender(
 		Drawables,
 		ActiveCamera,
 		Targets,
 		FrameGraph,
 		Core->GetTempMemory());
-	*/
+
 #endif
 	
 	//UI.Draw(DrawDesk, Core->GetTempMemory());
@@ -364,8 +364,8 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 
 bool PlayState::PostDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
-	if (Framework->DrawDebugStats)
-		Framework->DrawDebugHUD(dT, TextBuffer, Graph);
+	if (framework->drawDebugStats)
+		framework->DrawDebugHUD(dT, TextBuffer, Graph);
 
 	PresentBackBuffer(Graph, &Core->Window);
 	return true;

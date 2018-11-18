@@ -39,6 +39,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
+	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
+	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
+
 	ID3D12PipelineState* CreateForwardDrawPSO			(RenderSystem* RS);
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
 	ID3D12PipelineState* CreateOcclusionDrawPSO			(RenderSystem* RS);
@@ -47,6 +51,22 @@ namespace FlexKit
 	{
 		TextureHandle RenderTarget;
 		TextureHandle DepthTarget;
+	};
+
+
+	struct ObjectDrawState
+	{
+		bool transparent	: 1;
+		bool posed			: 1;
+	};
+
+
+	struct ObjectDraw
+	{
+		TriMeshHandle	mesh;
+		TriMeshHandle	occluder;
+		ObjectDrawState states;
+		byte*			constantBuffers[4];
 	};
 
 
@@ -63,6 +83,7 @@ namespace FlexKit
 			RS_IN->RegisterPSOLoader(FORWARDDRAW,			CreateForwardDrawPSO);
 			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	CreateForwardDrawInstancedPSO);
 			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	CreateOcclusionDrawPSO);
+
 			RS_IN->QueuePSOLoad(FORWARDDRAW);
 			RS_IN->QueuePSOLoad(FORWARDDRAWINSTANCED);
 		}

@@ -362,7 +362,7 @@ namespace FlexKit
 		}
 #else
 
-		void push_back(const Ty& in) {
+		size_t push_back(const Ty& in) {
 			if (Size + 1 > Max)
 			{// Increase Size
 #ifdef _DEBUG
@@ -402,7 +402,9 @@ namespace FlexKit
 				Max = NewSize;
 			}
 
-			new(A + Size++) Ty(in); // 
+			const size_t idx = Size++;
+			new(A + idx) Ty(in); // 
+			return idx;
 		}
 
 #endif
@@ -411,7 +413,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 		template<typename ... ARGS_t>
-		void emplace_back(ARGS_t&& ... in) {
+		size_t emplace_back(ARGS_t&& ... in) {
 			if (Size + 1 > Max)
 			{// Increase Size
 #ifdef _DEBUG
@@ -438,8 +440,11 @@ namespace FlexKit
 				A = NewMem;
 				Max = NewSize;
 			}
+			
+			const size_t idx = Size++;
 
-			new(A + Size++) Ty(std::forward<ARGS_t>(in)...);
+			new(A + idx) Ty(std::forward<ARGS_t>(in)...);
+			return idx;
 		}
 
 		/************************************************************************************************/
@@ -977,6 +982,41 @@ namespace FlexKit
 
 			if (_Size + 1 > SIZE)// Call Destructor on Tail
 				Buffer[idx].~Ty();
+
+			new(Buffer + idx) Ty(std::move(Item));
+
+			return false;
+		}
+
+		template<typename FN>
+		bool push_back(const Ty& Item, FN callOnTail) noexcept
+		{
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
+			{
+				callOnTail(back());
+				back().~Ty();
+			}
+
+			_Size		= min(++_Size, SIZE);
+			size_t idx	= _Head++;
+			_Head		= _Head % SIZE;
+			Buffer[idx] = Item;
+
+			return false;
+		}
+
+		template<typename FN>
+		bool push_back(Ty&& Item, FN callOnTail) noexcept
+		{
+			_Size		= min(++_Size, SIZE);
+			size_t idx	= _Head++;
+			_Head		= _Head % SIZE;
+
+			if (_Size + 1 > SIZE)// Call Destructor on Tail
+			{
+				callOnTail(back());
+				Buffer[idx].~Ty();
+			}
 
 			new(Buffer + idx) Ty(std::move(Item));
 

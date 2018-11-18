@@ -613,7 +613,7 @@ namespace FlexKit
 			ColumnWidths		{ allocator								},
 			Cells				{ allocator								},
 			XY					{ 0.0f, 0.0f							},
-			Framework			{ (uint32_t) -1							},
+			framework			{ (uint32_t) -1							},
 			BackgroundColor		{ Grey(0.5f), 1							},
 			WH					{ 1, 1									}
 		{}
@@ -857,7 +857,7 @@ namespace FlexKit
 		float2					WH;
 		float2					XY; // Relative to parent
 		float4					BackgroundColor;
-		uint32_t				Framework;
+		uint32_t				framework;
 	};
 
 

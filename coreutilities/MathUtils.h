@@ -441,13 +441,21 @@ namespace FlexKit
 	{
 	public:
 		float2() noexcept : x(0), y(0) {}
-		float2( float X, float Y ) noexcept
+		float2( const float X, const float Y ) noexcept
 		{
 			x = X;
 			y = Y;
 		}
 
+		float2(const float in_f) noexcept
+		{
+			x = in_f;
+			y = in_f;
+		}
+
 		inline bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
+
+
 
 		inline float&	operator[] ( size_t i )
 		{	
@@ -475,31 +483,41 @@ namespace FlexKit
 		inline float2 operator / ( const float   a ) const { return float2( this->x / a,	this->y / a );					}
 		inline float2 operator % ( const float2& a ) const { return float2( std::fmod(x, a.x), std::fmod(y, a.y));	}
 
+		inline float2 operator = (const float2& a) { x = a.x; y = a.y; return *this; }
+
 		inline float2 operator *= (const float2& a) 
 		{ 
 			*this = *this * a;
 			return *this; 
 		}
 
-		inline float2 operator = (const float2& a) { x = a.x; y = a.y; return *this; }
 
-		inline float2 operator +=(const float2& a) 
-		{ 
-			x += a.x;
-			y += a.y;
+		inline float2&	operator -= (const float2& rhs)
+		{
+			*this = *this - rhs;
 			return *this;
 		}
+
+
+		inline float2&	operator += (const float2& rhs)
+		{
+			*this = *this + rhs;
+			return *this;
+		}
+
 
 		inline bool operator > (const float2& rhs) const
 		{
 			return (x > rhs.x) && (y > rhs.y);
 		}
 
+
 		inline bool operator < (const float2& rhs) const
 		{
 			auto temp = !(*this > rhs);
 			return temp;
 		}
+
 
 		inline void Add( const float2& lhs, const float2& rhs )
 		{
@@ -514,7 +532,15 @@ namespace FlexKit
 			float x, y;
 		};
 
-		float Product() { return x * y;	}
+		float Product() { return x * y; }
+		float Sum()		{ return x + y;	}
+
+		float Magnitude() 
+		{ 
+			auto V_2 = (*this * *this);
+			return  sqrt(V_2.Sum());
+		}
+
 
 		float XY[2];
 
@@ -524,6 +550,9 @@ namespace FlexKit
 	template<typename TY_> float2 operator - (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x - RHS[0], LHS.y - RHS[1] };}
 	template<typename TY_> float2 operator * (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x * RHS[0], LHS.y * RHS[1] };}
 	template<typename TY_> float2 operator / (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x / RHS[0], LHS.y / RHS[1] };}
+
+	inline float2 operator * (const float   lhs, const float2 rhs) { return float2(lhs) * rhs; }
+
 
 	/************************************************************************************************/
 
@@ -554,7 +583,7 @@ namespace FlexKit
 		return ( lhs.m128_f32[0] * rhs.m128_f32[0] ) + ( lhs.m128_f32[1] * rhs.m128_f32[1] ) + ( lhs.m128_f32[2] * rhs.m128_f32[2] );
 #endif
 	}
-	
+
 	inline float DotProduct4(const __m128& lhs, const __m128& rhs)
 	{
 #if USING(FASTMATH)
@@ -588,6 +617,7 @@ namespace FlexKit
 		return CrossProductSlow(a, b);
 #endif
 	}
+
 
 	union Quaternion;
 	FLEXKITAPI Quaternion GrassManProduct( Quaternion& lhs, Quaternion& rhs );
@@ -906,6 +936,23 @@ namespace FlexKit
 	const float3 BLUE	= float3(0.0f, 0.0f, 1.0f);
 	const float3 GREEN	= float3(0.0f, 1.0f, 0.0f);
 	const float3 PURPLE	= float3(1.0f, 0.0f, 1.0f);
+
+
+	float saturate(float x)
+	{
+		return min(max(x, 0.0f), 1.0f);
+	}
+
+
+	float3 saturate(float3 v)
+	{
+		float3 out = v;
+		v.x = min(max(v.x, 0.0f), 1.0f);
+		v.y = min(max(v.y, 0.0f), 1.0f);
+		v.z = min(max(v.z, 0.0f), 1.0f);
+
+		return out;
+	}
 
 	/************************************************************************************************/
 
@@ -1492,6 +1539,19 @@ namespace FlexKit
 	public:
 		Matrix(){}
 
+
+		Matrix<ROW, COL> operator*(const float rhs)
+		{
+			Matrix<ROW, COL> out = *this;
+
+			for (auto& c : out.matrix)
+				for(auto& e : c)
+					e = e * rhs;
+
+			return out;
+		}
+
+
 		template< const int RHS_COL >
 		Matrix<ROW, RHS_COL>	operator*( const Matrix<ROW, RHS_COL>& rhs )
 		{
@@ -1617,6 +1677,7 @@ namespace FlexKit
 
 
 	typedef FlexKit::Matrix<4,4> float4x4;
+	typedef FlexKit::Matrix<3,3> float3x3;
 
 	float4x4 TranslationMatrix(float3 POS)
 	{
@@ -1643,6 +1704,9 @@ namespace FlexKit
 
 	template<typename TY>
 	inline TY Lerp(const TY A, const TY B, float t){ return A * (1.0f - t) + t*B; }
+
+	template<typename TY>
+	inline TY lerp(const TY A, const TY B, float t) { return A * (1.0f - t) + t * B; }
 
 	namespace Conversion
 	{
@@ -1691,6 +1755,25 @@ namespace FlexKit
 	FLEXKITAPI void printfloat4(const float4& in);
 	FLEXKITAPI void printQuaternion(const Quaternion in);
 
+
+	template<typename TY>
+	float dot(const TY lhs, const TY rhs)
+	{
+		return 0;
+	}
+
+
+	template<>
+	float dot<float3>(const float3 lhs, const float3 rhs)
+	{
+		return DotProduct3(lhs, rhs);
+	}
+
+	template<>
+	float dot<float4>(const float4 lhs, const float4 rhs)
+	{
+		return DotProduct4(lhs, rhs);
+	}
 
 	/************************************************************************************************/
 

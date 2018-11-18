@@ -190,6 +190,9 @@
     <ClInclude Include="graphicsutilities\TextureUtilities.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="graphicsutilities\defaultpipelinestates.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="graphicsutilities\graphics.cpp">
@@ -334,6 +337,9 @@
       <Filter>graphicsutilities\headers</Filter>
     </ClCompile>
     <ClCompile Include="graphicsutilities\TextureUtilities.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\defaultpipelinestates.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
   </ItemGroup>

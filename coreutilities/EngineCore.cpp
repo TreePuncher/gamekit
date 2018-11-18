@@ -65,8 +65,8 @@ namespace FlexKit
 		BAdesc.LargeBlock	= MEGABYTE * 512;
 
 		Memory->BlockAllocator.Init(BAdesc);
-		Memory->LevelAllocator.Init(Memory->LevelMem, LEVELBUFFERSIZE);
-		Memory->TempAllocator.Init(Memory->TempMem, TEMPBUFFERSIZE);
+		Memory->LevelAllocator.Init(Memory->LevelMem,	LEVELBUFFERSIZE);
+		Memory->TempAllocator.Init(Memory->TempMem,		TEMPBUFFERSIZE);
 
 		InitDebug(&Memory->Debug);
 
@@ -84,7 +84,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool EngineCore::Initate(EngineMemory* Memory, uint2 WH)
+	bool EngineCore::Initiate(EngineMemory* Memory, uint2 WH)
 	{
 		bool Sucess						= false;
 		FlexKit::Graphics_Desc	desc	= { 0 };

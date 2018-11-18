@@ -51,11 +51,11 @@ namespace FlexKit
 	struct InputComponentSystem
 	{
 
-		void Update			(double dt, MouseInputState MouseInput, GameFramework* Framework);
+		void Update			(double dt, MouseInputState MouseInput, GameFramework* framework);
 
 		MouseInputState	GetMouseState();
 
-		GameFramework*						Framework;
+		GameFramework*						framework;
 		PlayerInputState					KeyState;
 
 		operator InputComponentSystem* (){return this;}

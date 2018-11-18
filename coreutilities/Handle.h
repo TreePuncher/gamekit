@@ -40,12 +40,12 @@ namespace FlexKit
 	}InvalidHandle_t;
 
 	template< typename int HandleSize = 32, typename int ID = -1>
-	class Handle_t
+	 class Handle_t
 	{
 	public:
 		typedef Handle_t<HandleSize, ID> THISTYPE_t;
 
-		Handle_t()
+		constexpr Handle_t()
 		{
 #if USING( DEBUGHANDLES )
 			INDEX = 0XFFFFFFFF;
@@ -53,7 +53,7 @@ namespace FlexKit
 			FLAGS = HANDLE_FLAGS::HF_ERROR;
 #endif
 		}
-		Handle_t(unsigned int index, unsigned int type, unsigned int flags)
+		constexpr Handle_t(unsigned int index, unsigned int type, unsigned int flags)
 			: INDEX(index)
 #if USING( DEBUGHANDLES )
 			, TYPE(type)
@@ -61,7 +61,7 @@ namespace FlexKit
 #endif
 		{}
 
-		Handle_t(const Handle_t<HandleSize>& in)
+		constexpr Handle_t(const Handle_t<HandleSize>& in)
 		{
 			INDEX = in.INDEX;
 #if USING( DEBUGHANDLES )
@@ -70,7 +70,7 @@ namespace FlexKit
 #endif
 		}
 
-		explicit Handle_t(unsigned int in)
+		constexpr explicit Handle_t(unsigned int in)
 		{
 #if USING( DEBUGHANDLES )
 			TYPE = 0XFFFF;

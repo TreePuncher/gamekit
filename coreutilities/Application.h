@@ -49,7 +49,7 @@ namespace FlexKit
 		template<typename TY_STATE, typename ... TY_ARGS>
 		TY_STATE& PushState(TY_ARGS&& ... ARGS)
 		{
-			return Framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
+			return framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
 		}
 
 		void Run();
@@ -57,12 +57,12 @@ namespace FlexKit
 
 		void PushArgument(const char* Str);
 
-		GameFramework&	GetFramework() { return Framework; }
+		GameFramework&	GetFramework() { return framework; }
 
 	private:
 		EngineMemory*	Memory;
 		EngineCore		Core;
-		GameFramework	Framework;
+		GameFramework	framework;
 	};
 
 }

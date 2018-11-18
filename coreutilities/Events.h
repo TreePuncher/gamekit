@@ -130,7 +130,6 @@ namespace FlexKit
 			EventMap.Release();
 		}
 
-
 		bool Map(const Event& evt_in, Event& evt_out)
 		{
 			if (evt_in.InputSource != Event::Keyboard)
@@ -152,10 +151,42 @@ namespace FlexKit
 			return true;
 		}
 
+
+		template<typename TY_FN>
+		void Handle(const Event& evt_in, TY_FN handler)
+		{
+			if (evt_in.InputSource != Event::Keyboard)
+				return;
+
+			auto itr = EventMap.begin();
+
+			do {
+				auto res = std::find_if(
+					itr, 
+					EventMap.end(),
+					[&](auto& rhs) -> bool
+					{
+						return evt_in.mData1.mKC[0] == rhs.EventKC;
+					});
+
+				if (itr != EventMap.end())
+				{
+					auto evt = evt_in;
+					evt.mData1.mINT[0] = (*itr).EventID;
+					handler(evt);
+				}
+
+				itr++;
+			} while (itr != EventMap.end());
+
+		}
+
+
 		void MapKeyToEvent(KEYCODES KC, int64_t EventID)
 		{
 			EventMap.push_back({ EventID, KC });
 		}
+
 
 		bool operator ()(const Event& evt_in, Event& evt_out)
 		{

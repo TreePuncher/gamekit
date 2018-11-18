@@ -463,7 +463,7 @@ void DrawGameGrid_Debug(
 				{ 1, 1, 1, 1 } });
 
 
-	DrawShapes(FlexKit::EPIPELINESTATES::DRAW_LINE_PSO, 
+	DrawShapes(FlexKit::DRAW_LINE_PSO, 
 		FrameGraph, 
 		VertexBuffer, 
 		ConstantBuffer, 
@@ -473,7 +473,7 @@ void DrawGameGrid_Debug(
 
 
 	for (auto Player : Grid.Players)
-		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, 
+		DrawShapes(FlexKit::DRAW_PSO, 
 			FrameGraph, 
 			VertexBuffer, 
 			ConstantBuffer, 
@@ -490,7 +490,7 @@ void DrawGameGrid_Debug(
 
 
 	for (auto Bombs : Grid.Bombs)
-		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, 
+		DrawShapes(FlexKit::DRAW_PSO, 
 			FrameGraph, 
 			VertexBuffer, 
 			ConstantBuffer, 
@@ -507,7 +507,7 @@ void DrawGameGrid_Debug(
 
 
 	for (auto Object : Grid.Objects)
-		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, 
+		DrawShapes(FlexKit::DRAW_PSO, 
 			FrameGraph, 
 			VertexBuffer, 
 			ConstantBuffer, 
@@ -521,7 +521,7 @@ void DrawGameGrid_Debug(
 
 
 	for (auto Object : Grid.Spaces)
-		DrawShapes(FlexKit::EPIPELINESTATES::DRAW_PSO, 
+		DrawShapes(FlexKit::DRAW_PSO, 
 			FrameGraph, 
 			VertexBuffer, 
 			ConstantBuffer, 

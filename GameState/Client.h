@@ -90,8 +90,8 @@ public:
 			FrameworkState		{ IN_framework							},
 			base				{ IN_base								},
 			network				{ IN_network							},
-			packetHandlers		{ IN_framework->Core->GetBlockMemory()	},
-			remotePlayers		{ IN_framework->Core->GetBlockMemory()	}
+			packetHandlers		{ IN_framework->core->GetBlockMemory()	},
+			remotePlayers		{ IN_framework->core->GetBlockMemory()	}
 	{
 		char	Address[256];
 		std::cout << "Please Enter Name: \n";
@@ -112,26 +112,26 @@ public:
 	~GameClientState()
 	{
 		for (auto handler : packetHandlers)
-			Framework->Core->GetBlockMemory().free(handler);
+			framework->core->GetBlockMemory().free(handler);
 	}
 
 
 	void StartGame()
 	{
-		Framework->PopState();
+		framework->PopState();
 	}
 
 
 	void ConnectionSuccess(RakNet::Packet* packet)
 	{
 		ServerAddress = packet->systemAddress;
-		Framework->PushState<ClientLobbyState>(this, network, localName);
+		framework->PushState<ClientLobbyState>(this, network, localName);
 	}
 
 
 	void ServerLost(RakNet::Packet* packet)
 	{
-		Framework->Quit = true;
+		framework->quit = true;
 	}
 
 

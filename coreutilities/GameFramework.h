@@ -60,15 +60,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void PushMessageToConsole(void* User, const char* Str, size_t StrLen);
+
+
 	class GameFramework
 	{
 	public:
-		GameFramework();
+		GameFramework(EngineCore* core);
 
 		GameFramework				(const GameFramework&) = delete;
 		GameFramework& operator =	(const GameFramework&) = delete;
 
-		void Initiate(EngineCore* Engine);
+		void Initiate();
 
 		void Update				(double dT);
 		void UpdateFixed		(double dT);
@@ -91,10 +94,10 @@ namespace FlexKit
 		{
 			FK_LOG_9("Pushing New State");
 
-			auto& State = Core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(
+			auto& State = core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(
 				this, std::forward<TY_ARGS>(ARGS)...);
 
-			SubStates.push_back(&State);
+			subStates.push_back(&State);
 
 			return State;
 		}
@@ -109,36 +112,39 @@ namespace FlexKit
 		GraphicScene*			ActiveScene;
 		RenderWindow*			ActiveWindow;
 
-		float4					ClearColor;
+		float4					clearColor;
 
-		Console					Console;
-		LogCallback				LogMessagePipe;
+		Console					console;
+		LogCallback				logMessagePipe = {
+			"INFO",
+			this,
+			PushMessageToConsole
+		};
 
-		EngineCore*				Core;
-		NodeHandle				RootNode;
+		EngineCore*				core;
+		NodeHandle				rootNode;
 
-		static_vector<MouseHandler>		MouseHandlers;
-		static_vector<FrameworkState*>	SubStates;
+		static_vector<MouseHandler>		mouseHandlers;
+		static_vector<FrameworkState*>	subStates;
 
-		double	PhysicsUpdateTimer;
-		bool	ConsoleActive;
-		bool	DrawDebug;
-		bool	DrawDebugStats;
-		bool	DrawPhysicsDebug;
-		bool	Quit;
+		double	physicsUpdateTimer;
+		bool	consoleActive;
+		bool	drawDebug;
+		bool	drawDebugStats;
+		bool	drawPhysicsDebug;
+		bool	quit;
 
-		size_t	TerrainSplits;
 
-		double TimeRunning;
+		double timeRunning;
 
 		struct FrameStats
 		{
-			double T;
-			double Fps_T;
-			size_t FPS;
-			size_t FPS_Counter;
-			size_t ObjectsDrawnLastFrame;
-		}Stats;
+			double t;
+			double fpsT;
+			size_t fps;
+			size_t fpsCounter;
+			size_t objectsDrawnLastFrame;
+		}stats;
 	};
 
 
@@ -162,10 +168,10 @@ namespace FlexKit
 
 		virtual bool EventHandler	(Event evt) { return true; };
 
-		GameFramework*	Framework;
+		GameFramework*	framework;
 
 	protected: 		
-		FrameworkState(GameFramework* framework) : Framework(framework) {}
+		FrameworkState(GameFramework* in_framework) : framework(in_framework) {}
 	};
 
 
@@ -182,7 +188,7 @@ namespace FlexKit
 	void PreDrawGameFramework (EngineCore* Engine, GameFramework* _ptr, double dT);
 	void ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr);
 
-	void InitiateFramework	(EngineCore* Engine, GameFramework& Framework);
+	void InitiateFramework	(EngineCore* Engine, GameFramework& framework);
 
 
 	void DrawMouseCursor(

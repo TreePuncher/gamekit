@@ -174,6 +174,8 @@ namespace FlexKit
 	FLEXKITAPI NodeHandle	ZeroNode					( NodeHandle Node );
 
 
+
+	FLEXKITAPI bool UpdateTransforms();
 	FLEXKITAPI UpdateTask*	QueueTransformUpdateTask	( UpdateDispatcher& Dispatcher );
 
 	FLEXKITAPI inline void Yaw							( NodeHandle Node,	float r );
@@ -184,9 +186,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class SceneNodeBehavior
+	struct  NullSceneNodeBehaviorOverrides
+	{
+		template<typename ... discard>
+		void SetDirty(discard ...){}
+	};
+
+	template<typename Overrides_TY = NullSceneNodeBehaviorOverrides>
+	class SceneNodeBehavior : public Overrides_TY
 	{
 	public:
+
 		SceneNodeBehavior(NodeHandle IN_Node = NodeHandle{(unsigned int)INVALIDHANDLE})
 		{
 			if (IN_Node == NodeHandle{ (unsigned int)INVALIDHANDLE })
@@ -203,40 +213,47 @@ namespace FlexKit
 		void SetParentNode(NodeHandle Parent)
 		{
 			FlexKit::SetParentNode(Parent, Node);
+			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 		void Yaw(float r)
 		{
 			FlexKit::Yaw(Node, r);
+			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void Roll	(float r)
 		{
 			FlexKit::Roll(Node, r);
+			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void Pitch(float r)
 		{
 			FlexKit::Pitch(Node, r);
+			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 		void Scale(float3 xyz)
 		{
 			FlexKit::Scale(Node, xyz);
+			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void TranslateLocal(float3 xyz)
 		{
 			FlexKit::TranslateLocal(Node, xyz);
+			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void TranslateWorld(float3 xyz)
 		{
 			FlexKit::TranslateWorld(Node, xyz);
+			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 

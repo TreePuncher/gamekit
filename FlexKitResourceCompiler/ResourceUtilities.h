@@ -36,6 +36,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "PxPhysicsAPI.h"
 
+#include <random>
+#include <limits>
+
 using FlexKit::iAllocator;
 using FlexKit::BlockAllocator;
 using FlexKit::StackAllocator;
@@ -61,6 +64,21 @@ struct FileDir
 	char str[256]; 
 	bool Valid	= false;
 };
+
+
+/************************************************************************************************/
+
+
+size_t CreateRandomID()
+{
+	std::random_device generator;
+	std::uniform_int_distribution<size_t> distribution(
+		std::numeric_limits<size_t>::min(),
+		std::numeric_limits<size_t>::max());
+
+	return distribution(generator);
+}
+
 
 /************************************************************************************************/
 

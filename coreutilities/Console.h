@@ -207,72 +207,67 @@ namespace FlexKit
 
 	struct Console
 	{
-		VertexBufferHandle		VertexBuffer;	// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-		VertexBufferHandle		TextBuffer;		// (Framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-		ConstantBufferHandle	ConstantBuffer;
+		Console(SpriteFontAsset* font, iAllocator* allocator);
+		~Console();
 
-		CircularBuffer<ConsoleLine, 32>	Lines;
-		CircularBuffer<ConsoleLine, 32>	CommandHistory;
-		SpriteFontAsset*				Font;
 
-		Vector<ConsoleVariable>		Variables;
-		ConsoleFunctionTable		FunctionTable;
-		ConsoleIdentifierTable		BuiltInIdentifiers;
+		void Release();
 
-		Vector<size_t>			ConsoleUInts;
+		void Draw( FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory);
 
-		char	InputBuffer[1024];
-		size_t	InputBufferSize;
 
-		iAllocator*	Memory;
+		void Input( char InputCharacter );
+		void EnterLine( iAllocator* Memory );
+		void BackSpace();
 
-		const char* EngineVersion = "Version: Pre-Alpha 0.0.0.2:" __DATE__;
+
+		size_t AddStringVar	( const char* Identifier, const char* Str );
+		size_t AddUIntVar	( const char* Identifier, size_t uint );
+
+		size_t BindIntVar	( const char* Identifier, int* _ptr		);
+		size_t BindUIntVar	( const char* Identifier, size_t* _ptr	);
+		size_t BindBoolVar	( const char* Identifier, bool* _ptr	);
+
+
+		void				PushCommandToHistory( const char* str, size_t StrLen );
+
+		void				AddFunction	( ConsoleFunction NewFunc );
+		void				AddOperator	( ConsoleFunction NewFunc );
+
+		ConsoleFunction*	FindFunction			( const char* str, size_t StrLen );
+		bool				ExecuteGrammerTokens	(Vector<GrammerToken>& Tokens, Vector<ConsoleVariable>& TempVariables, iAllocator* Stack);
+		bool				ProcessTokens			(iAllocator* persistent, iAllocator* temporary, Vector<InputToken>& in, ErrorTable& errorHandler);
+
+
+		void				PrintLine( const char* _ptr, iAllocator* Memory = nullptr );
+
+		/************************************************************************************************/
+
+
+		VertexBufferHandle		vertexBuffer;	// (framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		VertexBufferHandle		textBuffer;		// (framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		ConstantBufferHandle	constantBuffer;
+
+		CircularBuffer<ConsoleLine, 32>	lines;
+		CircularBuffer<ConsoleLine, 32>	commandHistory;
+		SpriteFontAsset*				font;
+
+		Vector<ConsoleVariable>		variables;
+		ConsoleFunctionTable		functionTable;
+		ConsoleIdentifierTable		builtInIdentifiers;
+
+		Vector<size_t>				consoleUInts;
+
+		char	inputBuffer[1024];
+		size_t	inputBufferSize;
+
+		iAllocator*	allocator;
+
+		const char* engineVersion = "Version: Pre-Alpha 0.0.0.2:" __DATE__;
 	};
 
 
 	/************************************************************************************************/
-
-
-	void InitateConsole ( Console* out, SpriteFontAsset* Font, EngineMemory* Engine);
-	void ReleaseConsole	( Console* out );
-
-
-	void DrawConsole	( Console* C, FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory);
-
-
-	void InputConsole		( Console* C, char InputCharacter );
-	void EnterLineConsole	( Console* C, iAllocator* Memory );
-	void BackSpaceConsole	( Console* C );
-
-
-	size_t AddStringVar	( Console* C, const char* Identifier, const char* Str );
-	size_t AddUIntVar	( Console* C, const char* Identifier, size_t uint );
-
-	size_t BindIntVar	( Console* C, const char* Identifier, int* _ptr );
-	size_t BindUIntVar	( Console* C, const char* Identifier, size_t* _ptr );
-
-	size_t BindBoolVar ( Console* C, const char* Identifier, bool* _ptr );
-
-
-	void				PushCommandToHistory( Console* C, const char* str, size_t StrLen );
-
-	void				AddConsoleFunction	( Console* C, ConsoleFunction NewFunc );
-	void				AddConsoleOperator	( Console* C, ConsoleFunction NewFunc );
-
-	ConsoleFunction*	FindConsoleFunction	( Console* C, const char* str, size_t StrLen );
-
-	void ConsolePrint	( Console* out, const char* _ptr, iAllocator* Memory = nullptr );
-	void ConsolePrintf	( Console* out );
-
-
-	/************************************************************************************************/
-
-
-	template<typename Ty, typename ... Ty_Args >
-	void ConsolePrintf(Console* out, const char* _ptr, Ty, Ty_Args ... Args )
-	{
-		ConsolePrintf(out, Args...);
-	}
 
 } // namespace FlexKit;
 

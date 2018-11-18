@@ -31,7 +31,7 @@ namespace FlexKit
 
 	bool  ConsoleSubState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
 	{
-		return !PauseBackgroundLogic;
+		return !pauseBackgroundLogic;
 	}
 
 
@@ -46,9 +46,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+	bool  ConsoleSubState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& graph)
 	{
-		DrawConsole(Console, Graph, GetCurrentBackBuffer(&Core->Window), Engine->GetTempMemory());
+		console->Draw(graph, GetCurrentBackBuffer(&core->Window), Engine->GetTempMemory());
 
 		return false;
 	}
@@ -68,44 +68,44 @@ namespace FlexKit
 				switch (evt.mData1.mKC[0])
 				{
 				case KC_TILDA: {
-					PopSubState(Framework);
+					PopSubState(framework);
 					return false;
 				}	break;
 				case KC_BACKSPACE:
-					BackSpaceConsole(&Framework->Console);
+					framework->console.BackSpace();
 					break;
 				case KC_ENTER:
 				{
-					RecallIndex = 0;
-					EnterLineConsole(&Framework->Console, Framework->Core->GetTempMemory());
+					recallIndex = 0;
+					framework->console.EnterLine(framework->core->GetTempMemory());
 				}	break;
 				case KC_ARROWUP:
 				{
-					if(Console->CommandHistory.size()){
-						auto line	  = Console->CommandHistory[RecallIndex].Str;
+					if(console->commandHistory.size()){
+						auto line	  = console->commandHistory[recallIndex].Str;
 						auto LineSize = strlen(line);
 
-						strcpy_s(Console->InputBuffer, Console->CommandHistory[RecallIndex]);
+						strcpy_s(console->inputBuffer, console->commandHistory[recallIndex]);
 
-						Console->InputBufferSize = LineSize;
+						console->inputBufferSize = LineSize;
 						IncrementRecallIndex();
 					}
 				}	break;
 				case KC_ARROWDOWN:
 				{
-					if (Console->CommandHistory.size()) {
-						auto line		= Console->CommandHistory[RecallIndex].Str;
-						auto LineSize	= strlen(line);
+					if (console->commandHistory.size()) {
+						auto line		= console->commandHistory[recallIndex].Str;
+						auto lineSize	= strlen(line);
 
-						strcpy_s(Console->InputBuffer, Console->CommandHistory[RecallIndex]);
+						strcpy_s(console->inputBuffer, console->commandHistory[recallIndex]);
 
-						Console->InputBufferSize = LineSize;
+						console->inputBufferSize = lineSize;
 						DecrementRecallIndex();
 					}
 				}	break;
 				case KC_SPACE:
 				{
-					InputConsole(&Framework->Console, ' ');
+					framework->console.Input(' ');
 				}	break;
 				default:
 				{
@@ -115,7 +115,7 @@ namespace FlexKit
 						(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
 						(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
 						(evt.mData1.mKC[0] == KC_SYMBOL ))
-						InputConsole(&Framework->Console, (char)evt.mData2.mINT[0]);
+						framework->console.Input((char)evt.mData2.mINT[0]);
 
 				}	break;
 				}
@@ -131,7 +131,7 @@ namespace FlexKit
 
 	void ConsoleSubState::IncrementRecallIndex()
 	{
-		RecallIndex = (RecallIndex + 1) % Console->CommandHistory.size();
+		recallIndex = (recallIndex + 1) % console->commandHistory.size();
 	}
 
 
@@ -140,7 +140,7 @@ namespace FlexKit
 
 	void ConsoleSubState::DecrementRecallIndex()
 	{
-		RecallIndex = (Console->CommandHistory.size() + RecallIndex - 1) % Console->CommandHistory.size();
+		recallIndex = (console->commandHistory.size() + recallIndex - 1) % console->commandHistory.size();
 	}
 
 

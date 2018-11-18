@@ -18,6 +18,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GeometryShaderBenchmark", "
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiThread_UnitTests", "MultiThread_UnitTests\MultiThread_UnitTests.vcxproj", "{6B0D1EEB-82E4-4B7E-B05F-5AD513433686}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GraphicsTests", "GraphicsTests\GraphicsTests.vcxproj", "{529B3F46-20B6-47AD-9281-536AF858BECF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -38,6 +40,10 @@ Global
 		{078C9529-96C1-40D9-B9A3-16E67CF81E94}.Release|x64.ActiveCfg = Release|x64
 		{6B0D1EEB-82E4-4B7E-B05F-5AD513433686}.Debug|x64.ActiveCfg = Debug|x64
 		{6B0D1EEB-82E4-4B7E-B05F-5AD513433686}.Release|x64.ActiveCfg = Release|x64
+		{529B3F46-20B6-47AD-9281-536AF858BECF}.Debug|x64.ActiveCfg = Debug|x64
+		{529B3F46-20B6-47AD-9281-536AF858BECF}.Debug|x64.Build.0 = Debug|x64
+		{529B3F46-20B6-47AD-9281-536AF858BECF}.Release|x64.ActiveCfg = Release|x64
+		{529B3F46-20B6-47AD-9281-536AF858BECF}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

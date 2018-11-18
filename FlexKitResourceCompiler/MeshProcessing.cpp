@@ -590,14 +590,17 @@ namespace FlexKit
 			if (Efficiency > 0.8f) {
 				std::cout << "Optimizing Mesh!\n";
 
-				CombinedVertexBuffer* NewCVB = &CombinedVertexBuffer::Create_Aligned(1024000, TempMem); NewCVB->SetFull();
-				IndexList* NewIB = &IndexList::Create_Aligned(IndexCount * 8 * 1.2, TempMem); NewIB->SetFull();
+				CombinedVertexBuffer	NewCVB	{ TempMem, CVB.size() };	NewCVB.resize(CVB.size());
+				IndexList				NewIB	{ TempMem, IB.size() };		NewIB.resize(IB.size());
 
-				auto OptimizeRes = TootleOptimize(CVB.begin(), IB.begin(), VertexCount, IndexCount / 3, sizeof(CombinedVertex), TOOTLE_DEFAULT_VCACHE_SIZE, nullptr, 0, TOOTLE_CW, NewIB->begin(), nullptr, TOOTLE_VCACHE_LSTRIPS, TOOTLE_OVERDRAW_FAST);
-				//auto Res = TootleOptimizeVertexMemory(CVB.begin(), IB.begin(), IndexCount / 3, VertexCount, sizeof(CombinedVertex), NewCVB->begin(), NewIB->begin(), nullptr);
+				auto OptimizeRes = TootleOptimize(CVB.begin(), IB.begin(), VertexCount, IndexCount / 3, sizeof(CombinedVertex), TOOTLE_DEFAULT_VCACHE_SIZE, nullptr, 0, TOOTLE_CW, NewIB.begin(), nullptr, TOOTLE_VCACHE_LSTRIPS, TOOTLE_OVERDRAW_FAST);
+				auto Res = TootleOptimizeVertexMemory(CVB.begin(), IB.begin(), IndexCount / 3, VertexCount, sizeof(CombinedVertex), NewCVB.begin(), NewIB.begin(), nullptr);
 
-				auto RES = TootleMeasureCacheEfficiency(NewIB->begin(), IndexCount / 3, TOOTLE_DEFAULT_VCACHE_SIZE, &Efficiency);
+				auto RES = TootleMeasureCacheEfficiency(NewIB.begin(), IndexCount / 3, TOOTLE_DEFAULT_VCACHE_SIZE, &Efficiency);
 				std::cout << "New Mesh Efficiency: " << Efficiency << "\n";
+
+				IB = std::move(NewIB);
+				CVB = std::move(NewCVB);
 				int x = 0;
 			}
 		}
@@ -605,7 +608,6 @@ namespace FlexKit
 
 		for (size_t i = 0; i < BuffersFound.size(); ++i) 
 		{
-			VertexBufferView* Temp;
 			CreateBufferView(VertexCount, Memory, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
 
 			switch ((FlexKit::VERTEXBUFFER_TYPE)BuffersFound[i])

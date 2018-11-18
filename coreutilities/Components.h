@@ -28,6 +28,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\type.h"
 #include "..\coreutilities\MemoryUtilities.h"
+#include "..\coreutilities\logging.h"
+
+#include <iostream>
 
 #ifndef COMPONENT_H
 #define COMPONENT_H
@@ -47,8 +50,9 @@ namespace FlexKit
 			typedef std::function<void(UpdateTask& Node)>	FN_NodeAction;
 
 			UpdateTask(iAllocator* Memory) :
-				Inputs		{ Memory },
-				Executed	{ false } {}
+				Inputs		{ Memory	},
+				Executed	{ false		},
+				DebugID		{ nullptr	}{}
 
 			Vector<UpdateTask*> Inputs;
 			UpdateID_t			ID;
@@ -86,8 +90,13 @@ namespace FlexKit
 			for (auto& Node : Nodes)
 				VisitInputs(Node, NodesSorted);
 
-			for (auto& Node : NodesSorted)
+			for (auto& Node : NodesSorted) {
+
+				if(Node->DebugID)
+					FK_LOG_INFO("Running task %s", Node->DebugID);
+
 				Node->Update(*Node);
+			}
 		}
 
 		class UpdateBuilder
@@ -144,7 +153,8 @@ namespace FlexKit
 	};
 
 
-	using UpdateTask = UpdateDispatcher::UpdateTask;
+	using DependencyBuilder = UpdateDispatcher::UpdateBuilder;
+	using UpdateTask		= UpdateDispatcher::UpdateTask;
 
 
 }	/************************************************************************************************/

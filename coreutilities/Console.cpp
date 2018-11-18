@@ -24,6 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Console.h"
 #include "../graphicsutilities/TextRendering.h"
+#include "../graphicsutilities/defaultpipelinestates.h"
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -42,96 +44,69 @@ namespace FlexKit
 
 
 
-	void InitateConsole(Console* Out, SpriteFontAsset* Font, EngineMemory* Memory)
+	Console::Console(SpriteFontAsset* font, iAllocator* IN_allocator)
 	{
-		Out->Lines.clear();
-		Out->Memory                       = Memory->BlockAllocator;
-		Out->Font                         = Font;
-		Out->InputBufferSize              = 0;
-		Out->Variables.Allocator          = Out->Memory;
-		Out->FunctionTable.Allocator      = Out->Memory;
-		Out->BuiltInIdentifiers.Allocator = Out->Memory;
-		Out->ConsoleUInts.Allocator		  = Out->Memory;
+		lines.clear();
+		allocator					 = IN_allocator;
+		font                         = font;
+		inputBufferSize              = 0;
+		variables.Allocator          = allocator;
+		functionTable.Allocator      = allocator;
+		builtInIdentifiers.Allocator = allocator;
+		consoleUInts.Allocator		 = allocator;
 
-		AddConsoleFunction(Out, { "PrintVar",		PrintVar,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
-		AddConsoleFunction(Out, { "ListVars",		ListVars,		nullptr, 0, {} });
-		AddConsoleFunction(Out, { "ListFunctions",	ListFunctions,	nullptr, 0, {} });
-		AddConsoleFunction(Out, { "Toggle",			ToggleBool,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
+		AddFunction({ "PrintVar",		PrintVar,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
+		AddFunction({ "ListVars",		ListVars,		nullptr, 0, {} });
+		AddFunction({ "ListFunctions",	ListFunctions,	nullptr, 0, {} });
+		AddFunction({ "Toggle",			ToggleBool,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
 
-		AddConsoleOperator(Out, { "=",				OperatorAssign,	nullptr, 2, { ConsoleVariableType::CONSOLE_IDENTIFIER, ConsoleVariableType::STACK_INT } });
+		AddOperator({ "=",				OperatorAssign,	nullptr, 2, { ConsoleVariableType::CONSOLE_IDENTIFIER, ConsoleVariableType::STACK_INT } });
 
 
-		AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
-		AddStringVar(Out, "BuildDate", __DATE__);
+		AddStringVar("Version", "Pre-Alpha 0.0.0.1");
+		AddStringVar("BuildDate", __DATE__);
 
-		ConsolePrint(Out, "Type ListFunctions() for a list of Commands\n", Out->Memory);
-		ConsolePrint(Out, "Up and Down Keys to go through history\n", Out->Memory);
+		PrintLine("Type ListFunctions() for a list of Commands\n",	allocator);
+		PrintLine("Up and Down Keys to go through history\n",		allocator);
 
-		::memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
+		::memset(inputBuffer, '\0', sizeof(inputBuffer));
 	}
 
 
 	/************************************************************************************************/
 
 
-	void InitateConsole(Console* Out, SpriteFontAsset* Font, EngineCore* Engine)
+	Console::~Console()
 	{
-		Out->ConstantBuffer				  = Engine->RenderSystem.CreateConstantBuffer(8096 * 2000, false);
-		Out->VertexBuffer				  = Engine->RenderSystem.CreateVertexBuffer	 (8096 * 2000, false);
-		Out->TextBuffer					  = Engine->RenderSystem.CreateVertexBuffer	 (8096 * 2000, false);
-
-		Out->Lines.clear();
-		Out->Memory                       = Engine->GetBlockMemory();
-		Out->Font                         = Font;
-		Out->InputBufferSize              = 0;
-		Out->Variables.Allocator          = Out->Memory;
-		Out->FunctionTable.Allocator      = Out->Memory;
-		Out->BuiltInIdentifiers.Allocator = Out->Memory;
-		Out->ConsoleUInts.Allocator		  = Out->Memory;
-
-		AddConsoleFunction(Out, { "PrintVar",		PrintVar,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
-		AddConsoleFunction(Out, { "ListVars",		ListVars,		nullptr, 0, {} });
-		AddConsoleFunction(Out, { "ListFunctions",	ListFunctions,	nullptr, 0, {} });
-		AddConsoleFunction(Out, { "Toggle",			ToggleBool,		nullptr, 1, { ConsoleVariableType::CONSOLE_STRING } });
-
-		AddConsoleOperator(Out, { "=",				OperatorAssign,	nullptr, 2, { ConsoleVariableType::CONSOLE_IDENTIFIER, ConsoleVariableType::STACK_INT } });
-
-		AddStringVar(Out, "Version", "Pre-Alpha 0.0.0.1");
-		AddStringVar(Out, "BuildDate", __DATE__);
-
-		ConsolePrint(Out, "Type ListFunctions() for a list of Commands\n", Out->Memory);
-		ConsolePrint(Out, "Up and Down Keys to go through history\n", Out->Memory);
-
-		::memset(Out->InputBuffer, '\0', sizeof(Out->InputBuffer));
+		Release();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void ReleaseConsole(Console* C)
+	void Console::Release()
 	{
-		C->Lines.Release();
-		C->CommandHistory.Release();
-		C->ConsoleUInts.Release();
-		C->Variables.Release();
-		C->FunctionTable.Release();
-		C->BuiltInIdentifiers.Release();
-
+		lines.Release();
+		commandHistory.Release();
+		consoleUInts.Release();
+		variables.Release();
+		functionTable.Release();
+		builtInIdentifiers.Release();
 	}
 
 
 	/************************************************************************************************/
 
-	void DrawConsole(Console* C, FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory)
+	void Console::Draw(FrameGraph& graph, TextureHandle renderTarget, iAllocator* allocator)
 	{
-		auto WindowWH = Graph.Resources.RenderSystem->GetRenderTargetWH(RenderTarget);
+		auto WindowWH = graph.Resources.RenderSystem->GetRenderTargetWH(renderTarget);
 
-		ClearVertexBuffer(Graph, C->VertexBuffer);
-		ClearVertexBuffer(Graph, C->TextBuffer);
+		ClearVertexBuffer(graph, vertexBuffer);
+		ClearVertexBuffer(graph, textBuffer);
 
 		const float		HeightScale			= 0.5f;
-		const auto		FontSize			= C->Font->FontSize;
+		const auto		FontSize			= font->FontSize;
 		const float2	PixelSize			= { 0.5f / (float)WindowWH[0],  0.5f / (float)WindowWH[1]};
 		const float		LineHeight			= FontSize[1] * PixelSize[1] * HeightScale;
 		const float		AspectRatio			= float(WindowWH[0]) / float(WindowWH[1]);
@@ -139,11 +114,11 @@ namespace FlexKit
 
 
 		DrawShapes(
-				EPIPELINESTATES::DRAW_PSO, Graph, 
-				C->VertexBuffer,
-				C->ConstantBuffer,
-				RenderTarget,
-				TempMemory,
+				DRAW_PSO, graph, 
+				vertexBuffer,
+				constantBuffer,
+				renderTarget,
+				allocator,
 			RectangleShape(
 				float2{0.0f	, 0.0f},
 				StartingPosition, //
@@ -152,41 +127,41 @@ namespace FlexKit
 		size_t	itr				= 1;
 		float	y				= 0.5f - float(1 + (itr)) * LineHeight;
 
-		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
-		Format.StartingPOS = {0, 0.5f};
-		Format.TextArea    = float2(1,1);
-		Format.Color       = float4(1.0f, 1.0f, 1.0f, 1.0f);
-		Format.Scale       = { 1.0f / AspectRatio, 1.0f };
-		Format.PixelSize   = float2{ 1.0f, 1.0f } / WindowWH;
-		Format.CenterX	   = false;
-		Format.CenterY	   = false;
+		PrintTextFormatting format = PrintTextFormatting::DefaultParams();
+		format.StartingPOS = {0, 0.5f};
+		format.TextArea    = float2(1,1);
+		format.Color       = float4(1.0f, 1.0f, 1.0f, 1.0f);
+		format.Scale       = { 1.0f / AspectRatio, 1.0f };
+		format.PixelSize   = float2{ 1.0f, 1.0f } / WindowWH;
+		format.CenterX	   = false;
+		format.CenterY	   = false;
 
 		DrawSprite_Text(
-				C->InputBuffer, 
-				Graph, 
-				*C->Font, 
-				C->TextBuffer, 
-				RenderTarget, 
-				TempMemory, 
-				Format);
+				inputBuffer, 
+				graph, 
+				*font, 
+				textBuffer, 
+				renderTarget, 
+				allocator, 
+				format);
 
-		for (auto& Line : C->Lines) {
+		for (auto& Line : lines) {
 			float y = 0.5f - LineHeight * itr * 2;
 
 			if (y > 0) {
 				float2 Position(0.0f, y);
-				Format.StartingPOS	= Position;
-				Format.TextArea		= float2(1.0f, 1.0f) - Position;
-				Format.CurrentX		= 0;
-				Format.CurrentY		= 0;
+				format.StartingPOS	= Position;
+				format.TextArea		= float2(1.0f, 1.0f) - Position;
+				format.CurrentX		= 0;
+				format.CurrentY		= 0;
 				DrawSprite_Text(
 					Line.Str,
-					Graph,
-					*C->Font,
-					C->TextBuffer,
-					RenderTarget,
-					TempMemory, 
-					Format);
+					graph,
+					*font,
+					textBuffer,
+					renderTarget,
+					allocator, 
+					format);
 
 				itr++;
 			}
@@ -199,12 +174,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ListFunctions(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
+	bool ListFunctions(Console* C, ConsoleVariable* arguments, size_t arguementCount, void*)
 	{
-		ConsolePrint(C, "Function List:", nullptr);
+		C->PrintLine("Function List:", nullptr);
 
-		for (auto& V : C->FunctionTable)
-			ConsolePrint(C, V.FunctionName, nullptr);
+		for (auto& function : C->functionTable)
+			C->PrintLine(function.FunctionName, nullptr);
 
 		return true;
 	}
@@ -213,36 +188,40 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void InputConsole(Console* C, char InputCharacter)
+	void Console::Input(char inputCharacter)
 	{
-		C->InputBuffer[C->InputBufferSize++] = InputCharacter;
+		inputBuffer[inputBufferSize++] = inputCharacter;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool ToggleBool(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
+	bool ToggleBool(Console* console, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 	{
 		if (ArguementCount != 1 &&
 			(Arguments->Type != ConsoleVariableType::CONSOLE_STRING) ||
 			(Arguments->Type != ConsoleVariableType::STACK_STRING)) {
-			ConsolePrint(C, "INVALID NUMBER OF ARGUMENTS OR INVALID ARGUMENT!");
+			console->PrintLine("INVALID NUMBER OF ARGUMENTS OR INVALID ARGUMENT!");
 			return false;
 		}
 
-		const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
-		for (auto Var : C->Variables)
+		const char* variableIdentifier = (const char*)Arguments->Data_ptr;
+		for (auto& variable : console->variables)
 		{
-			if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
+			if (!strncmp(
+				variable.VariableIdentifier.str, 
+				variableIdentifier, 
+				min(strlen(
+					variable.VariableIdentifier.str), Arguments->Data_size)))
 			{
-				if (Var.Type == ConsoleVariableType::CONSOLE_BOOL) {
-					*(bool*)Var.Data_ptr = !(*(bool*)Var.Data_ptr);
+				if (variable.Type == ConsoleVariableType::CONSOLE_BOOL) {
+					*(bool*)variable.Data_ptr = !(*(bool*)variable.Data_ptr);
 					return true;
 				}
 				else
 				{
-					ConsolePrint(C, "Invalid Target Variable!");
+					console->PrintLine("Invalid Target Variable!");
 					return false;
 				}
 			}
@@ -251,29 +230,29 @@ namespace FlexKit
 	}
 
 
-	bool ListVars(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
+	bool ListVars(Console* console, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 	{
-		ConsolePrint(C, "Listing Variables:", nullptr);
+		console->PrintLine("Listing Variables:", nullptr);
 
-		for (auto& V : C->Variables)
+		for (auto& variable : console->variables)
 		{
-			ConsolePrint(C, V.VariableIdentifier.str, nullptr);
+			console->PrintLine(variable.VariableIdentifier.str, nullptr);
 		}
 		return true;
 	}
 
 
-	bool PrintVar(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
+	bool PrintVar(Console* console, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 	{
 		if (ArguementCount != 1 && 
 			(Arguments->Type != ConsoleVariableType::CONSOLE_STRING) || 
 			(Arguments->Type != ConsoleVariableType::STACK_STRING)) {
-			ConsolePrint(C, "INVALID NUMBER OF ARGUMENTS OR INVALID ARGUMENT!");
+			console->PrintLine("INVALID NUMBER OF ARGUMENTS OR INVALID ARGUMENT!");
 			return false;
 		}
 
 		const char* VariableIdentifier = (const char*)Arguments->Data_ptr;
-		for (auto Var : C->Variables)
+		for (auto Var : console->variables)
 		{
 			if (!strncmp(Var.VariableIdentifier.str, VariableIdentifier, min(strlen(Var.VariableIdentifier.str), Arguments->Data_size)))
 			{
@@ -281,22 +260,22 @@ namespace FlexKit
 				switch (Var.Type)
 				{
 				case ConsoleVariableType::CONSOLE_STRING:
-					ConsolePrint(C, (const char*)Var.Data_ptr);
+					console->PrintLine((const char*)Var.Data_ptr);
 					break;
 				case ConsoleVariableType::CONSOLE_UINT:
 				{
-					char* Str = (char*)C->Memory->malloc(64);
+					char* Str = (char*)console->allocator->malloc(64);
 					memset(Str, '\0', 64);
 
 					_itoa_s(*(size_t*)Var.Data_ptr, Str, 64, 10);
-					ConsolePrint(C, Str, C->Memory);
+					console->PrintLine(Str, console->allocator);
 				}	break;
 				case ConsoleVariableType::CONSOLE_BOOL:
 				{
 					if(*(bool*)Var.Data_ptr)
-						ConsolePrint(C, "True", C->Memory);
+						console->PrintLine("True", console->allocator);
 					else
-						ConsolePrint(C, "False", C->Memory);
+						console->PrintLine("False", console->allocator);
 				}	break;
 				default:
 					break;
@@ -305,7 +284,7 @@ namespace FlexKit
 			}
 		}
 
-		ConsolePrint(C, "Variable Not Found!");
+		console->PrintLine("Variable Not Found!");
 		return false;
 	}
 
@@ -313,7 +292,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool OperatorAssign(Console* C, ConsoleVariable* Arguments, size_t ArguementCount, void*)
+	bool OperatorAssign(Console* console, ConsoleVariable* Arguments, size_t ArguementCount, void*)
 	{
 		if	((ArguementCount != 2) &&
 			(	(Arguments[0].Type != ConsoleVariableType::CONSOLE_IDENTIFIER) &&
@@ -326,7 +305,7 @@ namespace FlexKit
 		
 		if (Arguments[1].Type == ConsoleVariableType::STACK_INT)
 		{
-			AddUIntVar(C, Arguments[0].VariableIdentifier.str, size_t(*(int*)Arguments[1].Data_ptr));
+			console->AddUIntVar(Arguments[0].VariableIdentifier.str, size_t(*(int*)Arguments[1].Data_ptr));
 			return true;
 		}
 
@@ -335,11 +314,11 @@ namespace FlexKit
 			const char*		Str		= (const char*)Arguments[1].Data_ptr;
 			const size_t	StrSize	= Arguments[1].Data_size;
 
-			char*	Str2 = (char*)C->Memory->malloc(StrSize);
+			char*	Str2 = (char*)console->allocator->malloc(StrSize);
 			memset(Str2, '\0', StrSize);
 			memcpy(Str2, Str, StrSize);
 
-			AddStringVar(C, Arguments[0].VariableIdentifier.str, Str2);
+			console->AddStringVar(Arguments[0].VariableIdentifier.str, Str2);
 			return true;
 		}
 
@@ -546,7 +525,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ExecuteGrammerTokens(Vector<GrammerToken>& Tokens, Console* C, Vector<ConsoleVariable>& TempVariables, iAllocator* Stack)
+	bool Console::ExecuteGrammerTokens(Vector<GrammerToken>& Tokens, Vector<ConsoleVariable>& TempVariables, iAllocator* Stack)
 	{
 		struct ScanContext
 		{
@@ -611,7 +590,7 @@ namespace FlexKit
 			case ConsoleSyntax::FUNCTIONCALL:
 			{
 				auto Token = &Tokens[I];
-				auto Fn = FindConsoleFunction(C, Token->Token->Str, Token->Token->StrLen);
+				auto Fn = FindFunction(Token->Token->Str, Token->Token->StrLen);
 				if (Fn)
 				{
 					static_vector<ConsoleVariable> Arguments;
@@ -631,11 +610,11 @@ namespace FlexKit
 						}
 					}
 
-					Fn->FN_Ptr(C, Arguments.begin(), Arguments.size(), Fn->USER);
+					Fn->FN_Ptr(this, Arguments.begin(), Arguments.size(), Fn->USER);
 				}
 				else
 				{
-					ConsolePrint(C, "Function Not Found");
+					PrintLine("Function Not Found");
 				}
 			}	break;
 			case ConsoleSyntax::ENDSTATEMENT:
@@ -646,7 +625,7 @@ namespace FlexKit
 			case ConsoleSyntax::OPERATOR:
 			{
 				auto Token = &Tokens[I];
-				auto Fn = FindConsoleFunction(C, Token->Token->Str, Token->Token->StrLen);
+				auto Fn = FindFunction(Token->Token->Str, Token->Token->StrLen);
 				if (Fn)
 				{
 					static_vector<ConsoleVariable> Arguments;
@@ -654,7 +633,7 @@ namespace FlexKit
 						(Tokens[I - 1].SyntaxType == ConsoleSyntax::IDENTIFIER))
 					{
 						size_t StrLen = Tokens[I - 1].Token->StrLen + 1;
-						char* Str = (char*)C->Memory->malloc(StrLen);
+						char* Str = (char*)allocator->malloc(StrLen);
 						memset(Str, '\0', StrLen);
 						memcpy(Str, Tokens[I - 1].Token->Str, StrLen - 1);
 						
@@ -687,7 +666,7 @@ namespace FlexKit
 						Arguments.push_back(TempVariables[Tokens[I + 1].Usr]);
 
 					if(Arguments.size() == 2)
-						Fn->FN_Ptr(C, Arguments.begin(), Arguments.size(), Fn->USER);
+						Fn->FN_Ptr(this, Arguments.begin(), Arguments.size(), Fn->USER);
 				}
 				int x = 0;
 			}	return false;
@@ -705,12 +684,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, Vector<InputToken>& in, Console* C, ErrorTable& ErrorHandler )
+	bool Console::ProcessTokens(iAllocator* persistent, iAllocator* temporary, Vector<InputToken>& in, ErrorTable& errorHandler )
 	{
 		bool Success = true;
 
-		Vector<GrammerToken>		Tokens(Memory);
-		Vector<ConsoleVariable>		TempVariables(Memory);
+		Vector<GrammerToken>		tokens			(persistent);
+		Vector<ConsoleVariable>		tempVariables	(persistent);
 
 		// Translate Tokens into Grammer Objects
 		for (size_t I = 0; I < in.size(); ++I)
@@ -719,50 +698,50 @@ namespace FlexKit
 			{
 			case InputToken::CT_UNKNOWN:
 			{
-				auto TokenType = IdentifyToken(in, I, C->BuiltInIdentifiers, Tokens, ErrorHandler);
-				Tokens.push_back({ &in[I], 0, TokenType });
+				auto tokenType = IdentifyToken(in, I, builtInIdentifiers, tokens, errorHandler);
+				tokens.push_back({ &in[I], 0, tokenType });
 			}	break;
 			case InputToken::CT_SYMBOL:
 			{
-				auto TokenType = IdentifyToken(in, I, C->BuiltInIdentifiers, Tokens, ErrorHandler);
+				auto TokenType = IdentifyToken(in, I, builtInIdentifiers, tokens, errorHandler);
 				if(TokenType != ConsoleSyntax::UNUSEDSYMBOL)
-					Tokens.push_back({ &in[I], 0, TokenType });
+					tokens.push_back({ &in[I], 0, TokenType });
 			}	break;
 			case InputToken::CT_NUMBER:
-				{
-				Tokens.push_back({ &in[I], TempVariables.size(), ConsoleSyntax::CONSTVARIABLE });
+			{
+				tokens.push_back({ &in[I], tempVariables.size(), ConsoleSyntax::CONSTVARIABLE });
 				ConsoleVariable Var;
 				Var.Data_ptr	= &in[I].Str;
 				Var.Data_size	=  in[I].StrLen;
 
 				Var.Type					 = ConsoleVariableType::STACK_INT;
-				Var.VariableIdentifier.Index = TempVariables.size();
+				Var.VariableIdentifier.Index = tempVariables.size();
 
-				TempVariables.push_back(Var);
+				tempVariables.push_back(Var);
 			}	break;
 			case InputToken::CT_STRINGLITERAL:
 			{
-				Tokens.push_back({ &in[I], TempVariables.size(), ConsoleSyntax::CONSTVARIABLE });
+				tokens.push_back({ &in[I], tempVariables.size(), ConsoleSyntax::CONSTVARIABLE });
 				ConsoleVariable Var;
 				Var.Data_ptr	= (void*)in[I].Str;
 				Var.Data_size	= in[I].StrLen;
 
 				Var.Type					 = ConsoleVariableType::STACK_STRING;
-				Var.VariableIdentifier.Index = TempVariables.size();
+				Var.VariableIdentifier.Index = tempVariables.size();
 
-				TempVariables.push_back(Var);
+				tempVariables.push_back(Var);
 			}	break;
 			case InputToken::CT_IDENTIFIER:
-				Tokens.push_back({ &in[I], 0, ConsoleSyntax::IDENTIFIER });
+				tokens.push_back({ &in[I], 0, ConsoleSyntax::IDENTIFIER });
 			default:
 				break;
 			}
 		}
 
-		if( Tokens.size() && Tokens.back().SyntaxType != ConsoleSyntax::ENDSTATEMENT)
-			Tokens.push_back({ nullptr, 0, ConsoleSyntax::ENDSTATEMENT });
+		if( tokens.size() && tokens.back().SyntaxType != ConsoleSyntax::ENDSTATEMENT)
+			tokens.push_back({ nullptr, 0, ConsoleSyntax::ENDSTATEMENT });
 
-		Success = ExecuteGrammerTokens(Tokens, C, TempVariables, TempMemory);
+		Success = ExecuteGrammerTokens(tokens, tempVariables, temporary);
 
 		return Success;
 	}
@@ -771,78 +750,71 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void EnterLineConsole(Console* C, iAllocator* TempMemory)
+	void Console::EnterLine(iAllocator* temporary)
 	{
-		if (!C->InputBufferSize)
+		if (!inputBufferSize)
 			return;
 
-		C->InputBuffer[C->InputBufferSize++] = '\0';
+		inputBuffer[inputBufferSize++] = '\0';
 
-		size_t BufferSize = C->InputBufferSize;
-		char* str = (char*)C->Memory->malloc(BufferSize);
-		strcpy_s(str, BufferSize, C->InputBuffer);
+		size_t bufferSize	= inputBufferSize;
+		char* str			= (char*)allocator->malloc(bufferSize);
+		strcpy_s(str, bufferSize, inputBuffer);
 
-		PushCommandToHistory(C, str, C->InputBufferSize);
-		ConsolePrint(C, str, C->Memory);
+		PushCommandToHistory	(str, inputBufferSize);
+		PrintLine(str, allocator);
 
 		ErrorTable ErrorHandler;
 
-		std::cout << C->InputBuffer << "\n";
+		std::cout << inputBuffer << "\n";
 
-		auto Tokens = GetTokens(C->Memory, C->InputBuffer, ErrorHandler);
+		auto Tokens = GetTokens(allocator, inputBuffer, ErrorHandler);
 		if (!ProcessTokens(
-							C->Memory, 
-							TempMemory, 
+							allocator, 
+							temporary, 
 							Tokens, 
-							C, 
 							ErrorHandler))
 		{
 			// Handle Errors
 		}
 
 
-		memset(C->InputBuffer, '\0', C->InputBufferSize);
-		C->InputBufferSize = 0;
-
+		memset(inputBuffer, '\0', inputBufferSize);
+		inputBufferSize = 0;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void BackSpaceConsole(Console* C)
+	void Console::BackSpace()
 	{
-		if(C->InputBufferSize)
-			C->InputBuffer[--C->InputBufferSize] = '\0';
+		if(inputBufferSize)
+			inputBuffer[--inputBufferSize] = '\0';
 	}
 
 
 	/************************************************************************************************/
 
-	size_t AddStringVar(Console* C, const char* Identifier, const char* Str)
+	size_t Console::AddStringVar(const char* Identifier, const char* Str)
 	{
-		size_t Out = C->Variables.size();
-
 		ConsoleVariable NewVar;
 		NewVar.Data_ptr					= (void*)Str;
 		NewVar.Data_size				= strlen(Str);
 		NewVar.VariableIdentifier.str	= Identifier;
 		NewVar.Type						= ConsoleVariableType::CONSOLE_STRING;
 
-		C->Variables.push_back(NewVar);
-		return Out;
+		return variables.push_back(NewVar);
 	}
 
 
 	/************************************************************************************************/
 
 
-	size_t AddUIntVar(Console* C, const char* Identifier, size_t uint )
+	size_t Console::AddUIntVar(const char* Identifier, size_t uint )
 	{
-		size_t Out = C->Variables.size();
-
-		C->ConsoleUInts.push_back(uint);
-		size_t& Value = C->ConsoleUInts.back();
+		consoleUInts.push_back(uint);
+		size_t& Value = consoleUInts.back();
 
 		ConsoleVariable NewVar;
 		NewVar.Data_ptr					= &Value;
@@ -850,95 +822,95 @@ namespace FlexKit
 		NewVar.VariableIdentifier.str	= Identifier;
 		NewVar.Type						= ConsoleVariableType::CONSOLE_UINT;
 
-		C->Variables.push_back(NewVar);
-		return Out;
+		return variables.push_back(NewVar);;
 	}
 
 
 	/************************************************************************************************/
 
 
-	size_t BindIntVar(Console* C, const char* Identifier, int* _ptr)
+	size_t Console::BindIntVar(const char* Identifier, int* _ptr)
 	{
-		size_t Out = C->Variables.size();
 		ConsoleVariable NewVar;
 		NewVar.Data_ptr					= (void*)_ptr;
 		NewVar.Data_size				= sizeof(int);
 		NewVar.VariableIdentifier.str	= Identifier;
 		NewVar.Type						= ConsoleVariableType::CONSOLE_INT;
 
-		C->Variables.push_back(NewVar);
-		return Out;
+		return variables.push_back(NewVar);
 	}
 
 
 	/************************************************************************************************/
 
 
-	size_t BindUIntVar(Console* C, const char* Identifier, size_t* _ptr)
+	size_t Console::BindUIntVar(const char* Identifier, size_t* _ptr)
 	{
-		size_t Out = C->Variables.size();
+		size_t OUT_idx = variables.size();
 		ConsoleVariable NewVar;
 		NewVar.Data_ptr					= (void*)_ptr;
 		NewVar.Data_size				= sizeof(size_t);
 		NewVar.VariableIdentifier.str	= Identifier;
 		NewVar.Type						= ConsoleVariableType::CONSOLE_UINT;
 
-		C->Variables.push_back(NewVar);
-		return Out;
+		variables.push_back(NewVar);
+
+		return OUT_idx;
 	}
 
 
 	/************************************************************************************************/
 
 
-	size_t BindBoolVar(Console* C, const char* Identifier, bool* _ptr)
+	size_t Console::BindBoolVar(const char* Identifier, bool* _ptr)
 	{
-		size_t Out = C->Variables.size();
+		size_t OUT_idx = variables.size();
 		ConsoleVariable NewVar;
 		NewVar.Data_ptr					= (void*)_ptr;
 		NewVar.Data_size				= sizeof(size_t);
 		NewVar.VariableIdentifier.str	= Identifier;
 		NewVar.Type						= ConsoleVariableType::CONSOLE_BOOL;
 
-		C->Variables.push_back(NewVar);
-		return Out;
-	}
+		variables.push_back(NewVar);
 
-	/************************************************************************************************/
-
-
-	void PushCommandToHistory(Console* C, const char* Str, size_t StrLen)
-	{
-		C->CommandHistory.push_back(std::move(ConsoleLine(Str, C->Memory)));
+		return OUT_idx;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void AddConsoleFunction(Console* C, ConsoleFunction NewFunc)
+	void Console::PushCommandToHistory(const char* Str, size_t StrLen)
 	{
-		C->FunctionTable.push_back(NewFunc);
-		C->BuiltInIdentifiers.push_back({ NewFunc.FunctionName, strlen(NewFunc.FunctionName),	IdentifierType::FUNCTION });
+		commandHistory.push_back(std::move(ConsoleLine(Str, allocator)));
 	}
 
 
 	/************************************************************************************************/
 
 
-	void AddConsoleOperator(Console* C, ConsoleFunction NewFunc)
+	void Console::AddFunction(ConsoleFunction NewFunc)
 	{
-		C->FunctionTable.push_back(NewFunc);
-		C->BuiltInIdentifiers.push_back({ NewFunc.FunctionName, strlen(NewFunc.FunctionName),	IdentifierType::OPERATOR });
+		functionTable.push_back(NewFunc);
+		builtInIdentifiers.push_back({ NewFunc.FunctionName, strlen(NewFunc.FunctionName),	IdentifierType::FUNCTION });
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Console::AddOperator(ConsoleFunction NewFunc)
+	{
+		functionTable.push_back(NewFunc);
+		builtInIdentifiers.push_back({ NewFunc.FunctionName, strlen(NewFunc.FunctionName),	IdentifierType::OPERATOR });
 	}
 
 	/************************************************************************************************/
 
 
-	ConsoleFunction*	FindConsoleFunction(Console* C, const char* str, size_t StrLen)
+	ConsoleFunction* Console::FindFunction(const char* str, size_t StrLen)
 	{
-		for (auto& fn : C->FunctionTable)
+		for (auto& fn : functionTable)
 			if (!strncmp(fn.FunctionName, str, min(StrLen, strlen(fn.FunctionName))))
 				return &fn;
 
@@ -949,9 +921,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ConsolePrint(Console* out, const char* _ptr, iAllocator* Allocator)
+	void Console::PrintLine(const char* _ptr, iAllocator* Allocator)
 	{
-		out->Lines.push_back({ _ptr, Allocator });
+		lines.push_back({ _ptr, Allocator });
 	}
 
 

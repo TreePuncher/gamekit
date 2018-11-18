@@ -60,8 +60,8 @@ bool GameHostLobbyState::Update(EngineCore* core, UpdateDispatcher& Dispatcher, 
 
 	FlexKit::WindowInput windowInput;
 	windowInput.CursorWH = { 0.05f, 0.05f };
-	windowInput.MousePosition = Framework->MouseState.NormalizedScreenCord;
-	windowInput.LeftMouseButtonPressed = Framework->MouseState.LMB_Pressed;
+	windowInput.MousePosition = framework->MouseState.NormalizedScreenCord;
+	windowInput.LeftMouseButtonPressed = framework->MouseState.LMB_Pressed;
 
 	screen.Update(dT, windowInput, GetPixelSize(&core->Window), core->GetTempMemory());
 
@@ -89,7 +89,7 @@ bool GameHostLobbyState::Draw(EngineCore* core, UpdateDispatcher& Dispatcher, do
 	screen.Draw(Desc, Dispatcher, frameGraph);
 
 	FlexKit::DrawMouseCursor(
-		Framework->MouseState.NormalizedScreenCord,
+		framework->MouseState.NormalizedScreenCord,
 		{ 0.05f, 0.05f },
 		host->base->vertexBuffer,
 		host->base->constantBuffer,
@@ -104,12 +104,12 @@ bool GameHostLobbyState::Draw(EngineCore* core, UpdateDispatcher& Dispatcher, do
 /************************************************************************************************/
 
 
-bool GameHostLobbyState::PostDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+bool GameHostLobbyState::PostDrawUpdate(EngineCore* core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
-	if (Framework->DrawDebugStats)
-		Framework->DrawDebugHUD(dT, host->base->textBuffer, Graph);
+	if (framework->drawDebugStats)
+		framework->DrawDebugHUD(dT, host->base->textBuffer, Graph);
 
-	PresentBackBuffer(Graph, &Core->Window);
+	PresentBackBuffer(Graph, &core->Window);
 	return true;
 }
 
@@ -144,10 +144,10 @@ GameHostLobbyState::GameHostLobbyState(
 	GameFramework*	IN_framework,
 	GameHostState*	IN_host) :
 		FrameworkState		{IN_framework}, 
-		packetHandlers		{IN_framework->Core->GetBlockMemory()},
+		packetHandlers		{IN_framework->core->GetBlockMemory()},
 		host				{IN_host},
-		playerLobbyState	{IN_framework->Core->GetBlockMemory()},
-		screen				{IN_framework->Core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
+		playerLobbyState	{IN_framework->core->GetBlockMemory()},
+		screen				{IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
 {
 	IN_host->network->NewConnectionHandler = [this](RakNet::Packet* packet) {
 		HandleNewConnection(packet); 
@@ -172,7 +172,7 @@ GameHostLobbyState::GameHostLobbyState(
 					FK_LOG_9("Player: %s joined game", ClientData->playerName);
 				}
 			}, 
-			IN_framework->Core->GetBlockMemory()));
+			IN_framework->core->GetBlockMemory()));
 
 
 	packetHandlers.push_back(
@@ -203,7 +203,7 @@ GameHostLobbyState::GameHostLobbyState(
 					}
 				}
 			}, 
-			IN_framework->Core->GetBlockMemory()));
+			IN_framework->core->GetBlockMemory()));
 
 
 	packetHandlers.push_back(
@@ -215,7 +215,7 @@ GameHostLobbyState::GameHostLobbyState(
 
 				auto request				= (RequestPlayerListPacket*)(packetContents);
 				auto packetSize				= PlayerListPacket::GetPacketSize(playerLobbyState.size() - 1);
-				auto packetBuffer			= Framework->Core->GetTempMemory()._aligned_malloc(packetSize);
+				auto packetBuffer			= framework->core->GetTempMemory()._aligned_malloc(packetSize);
 				PlayerListPacket* newPacket = new(packetBuffer)	PlayerListPacket(request->playerID, playerLobbyState.size() - 1);
 
 				size_t idx = 0;
@@ -240,7 +240,7 @@ GameHostLobbyState::GameHostLobbyState(
 
 				host->network->SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
 			}, 
-			IN_framework->Core->GetBlockMemory()));
+			IN_framework->core->GetBlockMemory()));
 
 
 	host->network->PushHandler(&packetHandlers);
@@ -254,7 +254,7 @@ GameHostLobbyState::~GameHostLobbyState()
 {
 	host->network->PopHandler();
 	for (auto handler : packetHandlers)
-		Framework->Core->GetBlockMemory().free(handler);
+		framework->core->GetBlockMemory().free(handler);
 }
 
 

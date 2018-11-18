@@ -124,12 +124,10 @@ namespace FlexKit
 				case Normal_COORD:
 				{
 					bool unqiue = true;
-					float3 newNormal = *(float3*)itr.buffer;
-					newNormal[3] = 0.0f;
-					newNormal = newNormal.normal();
+					float3 newNormal	= *(float3*)itr.buffer;
+					newNormal[3]		= 0.0f;
+					newNormal			= newNormal.normal();
 					
-
-					/*
 					for (size_t I= 0; I < normal.size(); ++I)
 					{
 						if ( 1 - normal[I].dot( newNormal ) < 0.00001f)
@@ -139,7 +137,7 @@ namespace FlexKit
 							break;
 						}
 					}
-					*/
+
 					if (unqiue) {
 						NormalTable.push_back(normal.size());
 						normal.push_back(newNormal);

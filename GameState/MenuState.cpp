@@ -38,14 +38,14 @@ bool OnHostPressed(void* _ptr, size_t GUIElement)
 	std::cout << "Host Pressed\n";
 	auto* Args = (CBArguements*)_ptr;
 
-	Args->State->Framework->ActiveScene->ClearScene();
+	Args->State->framework->ActiveScene->ClearScene();
 
-	PopSubState(Args->State->Framework);
+	PopSubState(Args->State->framework);
 	PushSubState(
-		Args->State->Framework, 
-		&Args->State->Framework->Core->GetBlockMemory().allocate_aligned<HostState>(
+		Args->State->framework, 
+		&Args->State->framework->Core->GetBlockMemory().allocate_aligned<HostState>(
 			Args->Engine, 
-			Args->State->Framework));
+			Args->State->framework));
 
 	//Args->Engine->GetBlockMemory().free(_ptr);
 	return true;
@@ -66,12 +66,12 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 		auto* Args = (CBArguements*)_ptr;
 		auto ThisState = Args->State;
 
-		//Args->State->Framework->ActiveScene->ClearScene();
-		auto Framework = Args->State->Framework;
+		//Args->State->framework->ActiveScene->ClearScene();
+		auto framework = Args->State->framework;
 
-		PopSubState	(Framework);
-		//PushSubState(Args->State->Framework, CreateClientState(Args->Engine, Args->State->Framework));
-		PushSubState(Framework, CreateJoinScreenState(Framework, Framework->Core));
+		PopSubState	(framework);
+		//PushSubState(Args->State->framework, CreateClientState(Args->Engine, Args->State->framework));
+		PushSubState(framework, CreateJoinScreenState(framework, framework->Core));
 	}
 	return true;
 	*/
@@ -84,7 +84,7 @@ bool OnJoinPressed(void* _ptr, size_t GUIElement)
 bool OnExitPressed(void* _ptr, size_t GUIElement)
 {
 	auto* Args = (CBArguements*)_ptr;
-	Args->State->Framework->Quit = true;
+	Args->State->framework->Quit = true;
 	return true;
 }
 
@@ -119,8 +119,8 @@ bool PreDraw(FrameworkState* StateMemory, EngineCore* Engine, double DT)
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	WindowInput	Input	  = {};
 
-	Input.LeftMouseButtonPressed  = ThisState->Framework->MouseState.LMB_Pressed;
-	Input.MousePosition			  = ThisState->Framework->MouseState.NormalizedPos;
+	Input.LeftMouseButtonPressed  = ThisState->framework->MouseState.LMB_Pressed;
+	Input.MousePosition			  = ThisState->framework->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
 
@@ -135,16 +135,16 @@ bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 {
 	MenuState*			ThisState = (MenuState*)StateMemory;
 	WindowInput	Input	  = {};
-	GameFramework*		Framework	  = ThisState->Framework;
+	GameFramework*		framework	  = ThisState->framework;
 
 	ThisState->T += dT;
 
-	Input.LeftMouseButtonPressed  = ThisState->Framework->MouseState.LMB_Pressed;
-	Input.MousePosition			  = ThisState->Framework->MouseState.NormalizedPos;
+	Input.LeftMouseButtonPressed  = ThisState->framework->MouseState.LMB_Pressed;
+	Input.MousePosition			  = ThisState->framework->MouseState.NormalizedPos;
 	Input.CursorWH				  = ThisState->CursorSize;
 
-	//Yaw(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 );
-	//Pitch(Engine->Nodes, Framework->ActiveCamera->Node, pi / 8 * ThisState->Framework->MouseState.dPos[1] * dT);
+	//Yaw(Engine->Nodes, framework->ActiveCamera->Node, pi / 8 );
+	//Pitch(Engine->Nodes, framework->ActiveCamera->Node, pi / 8 * ThisState->framework->MouseState.dPos[1] * dT);
 	
 	ThisState->UISystem.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
 
@@ -152,7 +152,7 @@ bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 
 	/*
 	auto Model = ThisState->Model;
-	Framework->GScene.SetMaterialParams(
+	framework->GScene.SetMaterialParams(
 		Model, 
 		float4(
 			std::abs(std::sin(ThisState->T * 2)), 	0, 0, 
@@ -160,7 +160,7 @@ bool Update			(FrameworkState* StateMemory, EngineCore* Engine, double dT)
 		float4(1, 1, 1, 0));
 	*/
 
-	//DEBUG_DrawCameraFrustum(Framework->ImmediateRender, Framework->ActiveCamera);
+	//DEBUG_DrawCameraFrustum(framework->ImmediateRender, framework->ActiveCamera);
 
 	return true;
 }
@@ -174,27 +174,27 @@ void ReleaseMenu	(FrameworkState* StateMemory)
 	MenuState*			ThisState = (MenuState*)StateMemory;
 
 	ThisState->UISystem.Release();
-	ThisState->Framework->Core->GetBlockMemory().free(ThisState);
+	ThisState->framework->Core->GetBlockMemory().free(ThisState);
 }
 
 
 /************************************************************************************************/
 
 
-MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
+MenuState* CreateMenuState(GameFramework* framework, EngineCore* Engine)
 {
 	/*
-	FK_ASSERT(Framework != nullptr);
+	FK_ASSERT(framework != nullptr);
 	auto* State	= &Engine->GetBlockMemory().allocate_aligned<MenuState>(&Engine->GetBlockMemory().AllocatorInterface);
 
 	//State->VTable.PreDrawUpdate = PreDraw;
 	//State->VTable.Update        = Update;
 	//State->VTable.Release       = ReleaseMenu;
 	State->T                    = 0;
-	State->Framework            = Framework;
+	State->framework            = framework;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 
-	Framework->MouseState.Enabled   = true;
+	framework->MouseState.Enabled   = true;
 
 	if(1)
 	{
@@ -203,7 +203,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 		Grid.SetGridDimensions(3, 5);
 		Grid.SetPosition({0.7f, 0.1f});
 
-		auto Font = Framework->DefaultAssets.Font;
+		auto Font = framework->DefaultAssets.Font;
 
 		auto C = Grid.ColumnWidths();
 		Grid.ColumnWidths()[0] = 0.05f;
@@ -226,11 +226,11 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 
 		std::cout << Args->Engine;
 		std::cout << Args->State;
-		std::cout << Args->State->Framework;
+		std::cout << Args->State->framework;
 
 		Btn1.SetActive(true);
 		auto& Btn1_Ref		= Btn1._IMPL();
-		auto DefaultFont	= State->Framework->DefaultAssets.Font;
+		auto DefaultFont	= State->framework->DefaultAssets.Font;
 
 		Btn1_Ref.Clicked = OnHostPressed;
 		Btn1_Ref.USR     = Args;
@@ -281,7 +281,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 		SimpleWindowAddDivider(Window, {0.0f, 0.01f}, ButtonStack);
 
 		GUITextButton_Desc TextButton{};
-		TextButton.Font			   = Framework->DefaultAssets.Font;
+		TextButton.Font			   = framework->DefaultAssets.Font;
 		TextButton.Text			   = "Host";
 		TextButton.WH			   = float2(0.2f, 0.1f);
 		TextButton.WindowSize	   = {(float)WindowSize[0], (float)WindowSize[1]};
@@ -289,7 +289,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 		TextButton.OnClicked_CB    = OnHostPressed;
 
 		TextButton.BackGroundColor = float4(Grey(.5), 1);
-		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(Framework->DefaultAssets.Font->FontSize);
+		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(framework->DefaultAssets.Font->FontSize);
 		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
 
 		SimpleWindowAddDivider(Window, { 0.0f, 0.005f }, ButtonStack);
@@ -297,7 +297,7 @@ MenuState* CreateMenuState(GameFramework* Framework, EngineCore* Engine)
 		TextButton.Text			   = "Join";
 		TextButton.OnClicked_CB    = OnJoinPressed;
 		TextButton.BackGroundColor = float4(Grey(.5), 1);
-		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(Framework->DefaultAssets.Font->FontSize);
+		TextButton.CharacterScale  = float2(16, 32) / Conversion::Vect2TOfloat2(framework->DefaultAssets.Font->FontSize);
 		SimpleWindowAddTextButton(Window, TextButton, Engine->RenderSystem, ButtonStack);
 
 		SimpleWindowAddDivider(Window, {0.0f, 0.005f}, ButtonStack);
@@ -322,10 +322,10 @@ bool JoinScreenUpdate(FrameworkState* StateMemory, EngineCore* Engine, double dT
 {
 	JoinScreen*			ThisState = (JoinScreen*)StateMemory;
 	WindowInput	Input = {};
-	GameFramework*		Framework = ThisState->Framework;
+	GameFramework*		framework = ThisState->framework;
 
-	Input.LeftMouseButtonPressed = ThisState->Framework->MouseState.LMB_Pressed;
-	Input.MousePosition			 = ThisState->Framework->MouseState.NormalizedPos;
+	Input.LeftMouseButtonPressed = ThisState->framework->MouseState.LMB_Pressed;
+	Input.MousePosition			 = ThisState->framework->MouseState.NormalizedPos;
 	Input.CursorWH				 = ThisState->CursorSize;
 
 	ThisState->UISystem.Update(dT, Input, GetPixelSize(&Engine->Window), Engine->GetTempMemory());
@@ -343,10 +343,10 @@ bool JoinScreenPreDraw(FrameworkState* StateMemory, EngineCore* Engine, double D
 	WindowInput	Input = {};
 
 	FK_ASSERT(0);
-	//ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
-	//ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->Framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+	//ThisState->BettererWindow.Draw(Engine->RenderSystem, ThisState->framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
+	//ThisState->BettererWindow.Draw_DEBUG(Engine->RenderSystem, ThisState->framework->Immediate, Engine->GetTempMemory(), GetPixelSize(Engine));
 
-	DrawMouseCursor(Engine, ThisState->Framework, ThisState->Framework->MouseState.NormalizedPos, { 0.02f / GetWindowAspectRatio(Engine), 0.02f});
+	DrawMouseCursor(Engine, ThisState->framework, ThisState->framework->MouseState.NormalizedPos, { 0.02f / GetWindowAspectRatio(Engine), 0.02f});
 
 	return false;
 }
@@ -387,18 +387,18 @@ bool NameFieldClicked(void* _ptr, size_t GUIElement)
 /************************************************************************************************/
 
 
-JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
+JoinScreen* CreateJoinScreenState(GameFramework* framework, EngineCore* Engine)
 {
-	FK_ASSERT(Framework != nullptr);
+	FK_ASSERT(framework != nullptr);
 	FK_ASSERT(Engine != nullptr);
 
 	auto* State	= &Engine->GetBlockMemory().allocate_aligned<JoinScreen>(
-													Framework, 
+													framework, 
 													(iAllocator*)Engine->GetBlockMemory());
 
-	Framework->MouseState.Enabled = true;
+	framework->MouseState.Enabled = true;
 
-	State->Framework            = Framework;
+	State->framework            = framework;
 	State->CursorSize           = float2{ 0.03f / GetWindowAspectRatio(Engine), 0.03f };
 
 	memset(State->Name, '\0',	sizeof(JoinScreen::Name));
@@ -419,20 +419,20 @@ JoinScreen* CreateJoinScreenState(GameFramework* Framework, EngineCore* Engine)
 
 	Grid.ColumnWidths[0] = 1.0f;
 
-	//auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter Server IP", Framework->DefaultAssets.Font);
+	//auto TextLabel1		= Grid.CreateTextBox({0, 0}, "Enter Server IP", framework->DefaultAssets.Font);
 	//TextLabel1.SetActive(true);
 
-	//auto TextLabel2		= Grid.CreateTextBox({0, 2}, "Enter Name", Framework->DefaultAssets.Font);
+	//auto TextLabel2		= Grid.CreateTextBox({0, 2}, "Enter Name", framework->DefaultAssets.Font);
 	//TextLabel2.SetActive(true);
 
-	//auto IPInput		= Grid.CreateTextBox({ 0, 1 }, State->Name, Framework->DefaultAssets.Font);
+	//auto IPInput		= Grid.CreateTextBox({ 0, 1 }, State->Name, framework->DefaultAssets.Font);
 	//IPInput.SetActive(true);
 	//IPInput._IMPL().Clicked		= [](size_t x) -> bool{return false;};
-	//auto NameInput				= Grid.CreateTextBox({ 0, 3 }, State->Server, Framework->DefaultAssets.Font);
+	//auto NameInput				= Grid.CreateTextBox({ 0, 3 }, State->Server, framework->DefaultAssets.Font);
 	//NameInput.SetActive(true);
 	//NameInput._IMPL().Clicked	= NameFieldClicked;
 
-	//auto AcceptButton	= Grid.CreateButton({ 0, 4 }, "Accept", Framework->DefaultAssets.Font);
+	//auto AcceptButton	= Grid.CreateButton({ 0, 4 }, "Accept", framework->DefaultAssets.Font);
 	//AcceptButton.SetActive(true);
 	//sAcceptButton.SetUSR(State);
 

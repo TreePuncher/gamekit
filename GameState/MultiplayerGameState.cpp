@@ -39,16 +39,16 @@ MultiplayerGame::MultiplayerGame(
 			BaseState* base) :
 		FrameworkState	{IN_framework},
 		
-		frameEvents		{IN_framework->Core->GetBlockMemory()},
+		frameEvents		{IN_framework->core->GetBlockMemory()},
 		frameID			{0},
 		base			{base},
-		localHandler	{localGame, IN_framework->Core->GetBlockMemory()},
-		localGame		{IN_framework->Core->GetBlockMemory()},
+		localHandler	{localGame, IN_framework->core->GetBlockMemory()},
+		localGame		{IN_framework->core->GetBlockMemory()},
 		network			{IN_network},
-		handler			{IN_framework->Core->GetBlockMemory()}
+		handler			{IN_framework->core->GetBlockMemory()}
 {
 	AddResourceFile("CharacterBase.gameres");
-	characterModel = FlexKit::LoadTriMeshIntoTable(Framework->Core->RenderSystem, "PlayerMesh");
+	characterModel = FlexKit::LoadTriMeshIntoTable(framework->core->RenderSystem, "PlayerMesh");
 
 	network->PushHandler(&handler);
 }
@@ -73,9 +73,9 @@ bool MultiplayerGame::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, d
 			&localGame, 
 			&frameEvents, 
 			frameID, 
-			Framework->Core->GetBlockMemory()));
+			framework->core->GetBlockMemory()));
 
-	localGame.Update(dT, Framework->Core->GetTempMemory());
+	localGame.Update(dT, framework->core->GetTempMemory());
 
 	frameID++;
 
@@ -97,7 +97,7 @@ bool MultiplayerGame::PreDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispat
 
 bool MultiplayerGame::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = GetCurrentBackBuffer(&Framework->Core->Window);
+	auto currentRenderTarget = GetCurrentBackBuffer(&framework->core->Window);
 	CameraHandle ActiveCamera = (CameraHandle)localHandler.GameCamera;
 
 	ClearVertexBuffer	(frameGraph, base->vertexBuffer);
@@ -107,19 +107,19 @@ bool MultiplayerGame::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, dou
 
 	DrawGame(
 		dT,
-		GetWindowAspectRatio(Framework->Core),
+		GetWindowAspectRatio(framework->core),
 		localGame,
 		frameGraph,
 		base->constantBuffer,
 		base->vertexBuffer,
-		GetCurrentBackBuffer(&Framework->Core->Window),
+		GetCurrentBackBuffer(&framework->core->Window),
 		base->depthBuffer,
 		ActiveCamera,
 		characterModel,
-		Framework->Core->GetTempMemory());
+		framework->core->GetTempMemory());
 
 
-	PresentBackBuffer(frameGraph, &Framework->Core->Window);
+	PresentBackBuffer(frameGraph, &framework->core->Window);
 
 	return true;
 }

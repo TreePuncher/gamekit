@@ -49,81 +49,50 @@ namespace FlexKit
 	class PipelineStateTable;
 
 
-	enum EPIPELINESTATES
-	{
-		TERRAIN_DRAW_PSO = 0,
-		TERRAIN_DRAW_PSO_DEBUG,
-		TERRAIN_DRAW_WIRE_PSO, // Debug State
-		TERRAIN_CULL_PSO,
-		FORWARDDRAW,
-		FORWARDDRAWINSTANCED,
-		FORWARDDRAW_OCCLUDE,
-		TILEDSHADING_SHADE,
-		TILEDSHADING_LIGHTPREPASS,
-		TILEDSHADING_COPYOUT,
-		OCCLUSION_CULLING,
-		SSREFLECTIONS,
-		DRAW_PSO,
-		DRAW_LINE_PSO,
-		DRAW_LINE3D_PSO,
-		DRAW_SPRITE_TEXT_PSO,
-		EPSO_COUNT,
-		EPSO_ERROR
-	};
-
 	typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
-
-	class LoadState
-	{
-	public:
-		LoadState() noexcept : 
-			State		{EPSO_ERROR},
-			Finished	{false}
-		{
-			FK_ASSERT(false);
-		}
-
-
-		LoadState(const LoadState& rhs) noexcept :
-			State		{rhs.State},
-			Finished	{false}{}
-
-
-
-		LoadState(EPIPELINESTATES PSOID) noexcept :
-			State		{PSOID},
-			Finished	{false} {}
-
-
-		bool operator == (EPIPELINESTATES rhs) noexcept
-		{
-			return State == rhs;
-		}
-
-		const EPIPELINESTATES	State;
-		mutex					Mutex;
-		condition_variable		CV;
-		bool					Finished;
-	};
 
 
 	/************************************************************************************************/
 
+	typedef Handle_t<32, GetTypeGUID(PSOHandle)> PSOHandle;
 
 	class PipelineStateObject
 	{
 	public:
-		ID3D12PipelineState* PSO	= nullptr;
-		enum class States
+		enum class PSO_States
 		{
 			LoadInProgress,
 			LoadQueued,
 			Loaded,
 			Failed,
-			Unloaded
-		}CurretState = States::Unloaded;
+			Stale,
+			Unloaded,
+			Undefined
+		};
 
-		std::condition_variable		CV;
+		bool changeState(const PipelineStateObject::PSO_States newState)
+		{
+			auto currentState = state.load(std::memory_order_acquire);
+
+			if (currentState == PipelineStateObject::PSO_States::Unloaded)
+			{
+				if (state.compare_exchange_strong(currentState, newState, std::memory_order_release))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+
+		ID3D12PipelineState*				PSO		= nullptr;
+		PSOHandle							id		= InvalidHandle_t;
+		std::atomic<PSO_States>				state	= PSO_States::Unloaded;
+		std::atomic <PipelineStateObject*>	next	= nullptr;
+		LOADSTATE_FN*						loader	= nullptr;
+		bool								stale	= false;
+		std::condition_variable				CV;
 	};
 
 
@@ -133,22 +102,15 @@ namespace FlexKit
 	class LoadTask : public iWork
 	{
 	public:
-		LoadTask(iAllocator* IN_Allocator, PipelineStateTable* IN_PST, EPIPELINESTATES IN_State) :
-			Allocator	{ IN_Allocator	},
-			iWork		{ IN_Allocator	},
-			PST			{ IN_PST		},
-			State		{ IN_State		}{}
+		LoadTask(iAllocator* IN_allocator, PipelineStateTable* IN_PST, PipelineStateObject* IN_PSO);
 
-		void Run() override;
+		void Run()		override;
+		void Release()	override;
 
-		void Release() override
-		{
-			Allocator->free(this);
-		}
 
-		PipelineStateTable*			PST;
-		EPIPELINESTATES				State;
-		iAllocator*					Allocator;
+		RenderSystem*			RS;
+		PipelineStateObject*	PSO;
+		iAllocator*				allocator;
 	};
 
 
@@ -158,25 +120,27 @@ namespace FlexKit
 	class FLEXKITAPI PipelineStateTable
 	{
 	public:
-		PipelineStateTable(iAllocator* Memory, RenderSystem* RS, ThreadManager* Threads);
+		PipelineStateTable(iAllocator* allocator, RenderSystem* RS, ThreadManager* Threads);
 		
 		void ReleasePSOs();
-		void LoadPSOs();
 
-		void					QueuePSOLoad	( EPIPELINESTATES State, iAllocator* Allocator );
-		bool					ReloadLoadPSO	( EPIPELINESTATES State );
-		ID3D12PipelineState*	GetPSO			( EPIPELINESTATES State );
+		bool					QueuePSOLoad	( PSOHandle handle, iAllocator* Allocator );
+		bool					ReloadLoadPSO	( PSOHandle handle );
+		ID3D12PipelineState*	GetPSO			( PSOHandle handle );
 
-		void RegisterPSOLoader( EPIPELINESTATES State, LOADSTATE_FN Loader );
+		void					RegisterPSOLoader	( PSOHandle handle, LOADSTATE_FN Loader );
 
 	private:
-		static_vector<PipelineStateObject,	EPSO_COUNT>		States;
-		static_vector<LOADSTATE_FN*,		EPSO_COUNT>		StateLoaders;
+		PipelineStateObject*	_GetStateObject			(PSOHandle				handle);
+		PipelineStateObject*	_GetNearestStateObject	(PSOHandle				handle);
+		bool					_AddStateObject			(PipelineStateObject*	PSO);
+
+		static_vector<PipelineStateObject,	1024>			States;
 
 		ThreadManager*										WorkQueue;
 		ID3D12Device*										Device;
 		RenderSystem*										RS;
-		iAllocator*											Memory;
+		iAllocator*											allocator;
 
 		friend LoadTask;
 	};

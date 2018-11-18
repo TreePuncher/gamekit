@@ -59,7 +59,7 @@ namespace FlexKit
 		void* USR;
 	};
 
-	InputState*	CreateTextBoxInputState(GameFramework* Framework, GUITextBoxHandle Handle, iAllocator* Memory, size_t BufferSize);
+	InputState*	CreateTextBoxInputState(GameFramework* framework, GUITextBoxHandle Handle, iAllocator* Memory, size_t BufferSize);
 
 	bool GUIInputEventHandler_Helper(FrameworkState* StateMemory, Event evt);
 }
