@@ -44,11 +44,11 @@ namespace FlexKit
 
 
 
-	Console::Console(SpriteFontAsset* font, iAllocator* IN_allocator)
+	Console::Console(SpriteFontAsset* IN_font, iAllocator* IN_allocator)
 	{
 		lines.clear();
 		allocator					 = IN_allocator;
-		font                         = font;
+		font                         = IN_font;
 		inputBufferSize              = 0;
 		variables.Allocator          = allocator;
 		functionTable.Allocator      = allocator;
@@ -100,6 +100,10 @@ namespace FlexKit
 
 	void Console::Draw(FrameGraph& graph, TextureHandle renderTarget, iAllocator* allocator)
 	{
+		if (!font) {
+			FK_LOG_ERROR("Console has Null font, aborting draw!");
+			return;
+		}
 		auto WindowWH = graph.Resources.RenderSystem->GetRenderTargetWH(renderTarget);
 
 		ClearVertexBuffer(graph, vertexBuffer);

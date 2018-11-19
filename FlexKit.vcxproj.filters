@@ -160,9 +160,6 @@
     <ClInclude Include="coreutilities\GUIInputState.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\InputComponent.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="coreutilities\NetworkUtilities.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
@@ -304,9 +301,6 @@
       <Filter>coreutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="coreutilities\GUIInputState.cpp">
-      <Filter>coreutilities\source</Filter>
-    </ClCompile>
-    <ClCompile Include="coreutilities\InputComponent.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="coreutilities\NetworkUtilities.cpp">

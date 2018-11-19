@@ -202,6 +202,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	bool LoadAnimation(GraphicScene* GS, SceneEntityHandle EHandle, ResourceHandle RHndl, TriMeshHandle MeshHandle, float w = 1.0f)
 	{
 		auto Resource = GetResource(RHndl);
@@ -727,7 +728,7 @@ namespace FlexKit
 			[&](DependencyBuilder& builder, auto& QuadTreeUpdate)
 			{
 				builder.AddInput(*transformDependency);
-				builder.SetDebugString("QuadTree Update!");
+				//builder.SetDebugString("QuadTree Update!");
 
 				QuadTreeUpdate.QTree		= this;
 				QuadTreeUpdate.parentScene	= parentScene;
@@ -735,7 +736,7 @@ namespace FlexKit
 			},
 			[](auto& QuadTreeUpdate)
 			{
-				FK_LOG_INFO("QuadTree::Update");
+				//FK_LOG_INFO("QuadTree::Update");
 
 				const int period  = QuadTreeUpdate.QTree->RebuildPeriod;
 				const int counter = QuadTreeUpdate.QTree->RebuildCounter;
@@ -1077,7 +1078,7 @@ namespace FlexKit
 													this, 
 													transformDependency));
 
-				builder.SetDebugString("SceneUpdate");
+				//builder.SetDebugString("SceneUpdate");
 
 				data.scene = this;
 			},

@@ -53,9 +53,30 @@ namespace FlexKit
 
 	void OrbitCameraBehavior::Update(const MouseInputState& mouseInput, double dt)
 	{
-		Yaw(mouseInput.Normalized_dPos[0] * dt * pi);
-		Pitch(mouseInput.Normalized_dPos[1] * dt * pi);
+		Yaw(mouseInput.Normalized_dPos[0] * dt * pi * 50);
+		Pitch(mouseInput.Normalized_dPos[1] * dt * pi * 50);
 
+		float3 movementVector	{ 0 };
+		float3 forward			{ GetForwardVector() };
+		float3 right			{ GetRightVector() };
+
+		if (keyStates.forward)
+			movementVector +=  forward;
+
+		if (keyStates.backward)
+			movementVector += -forward;
+
+		if (keyStates.right)
+			movementVector +=  right;
+
+		if (keyStates.left)
+			movementVector += -right;
+
+		if (movementVector.magnitudesquared() > 0.0001f)
+		{
+			movementVector = movementVector.normal();
+			TranslateWorld(movementVector * dt * 100);
+		}
 	}
 
 
@@ -95,25 +116,26 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	void OrbitCameraBehavior::HandleEvent(FlexKit::Event evt)
 	{
 		if (evt.InputSource == FlexKit::Event::Keyboard)
 		{
-			bool Pressed = evt.Action == Event::Pressed ? true : false;
+			bool state = evt.Action == Event::Pressed ? true : false;
 
 			switch (evt.mData1.mINT[0])
 			{
 			case OCE_MoveForward:
-				keyStates.forward	= Pressed;
+				keyStates.forward	= state;
 				break;
 			case OCE_MoveBackward:
-				keyStates.backward	= Pressed;
+				keyStates.backward	= state;
 				break;
 			case OCE_MoveLeft:
-				keyStates.left		= Pressed;
+				keyStates.left		= state;
 				break;
 			case OCE_MoveRight:
-				keyStates.right		= Pressed;
+				keyStates.right		= state;
 				break;
 			}
 		}

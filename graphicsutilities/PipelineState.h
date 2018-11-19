@@ -88,10 +88,10 @@ namespace FlexKit
 
 		ID3D12PipelineState*				PSO		= nullptr;
 		PSOHandle							id		= InvalidHandle_t;
+		bool								stale	= false;
 		std::atomic<PSO_States>				state	= PSO_States::Unloaded;
 		std::atomic <PipelineStateObject*>	next	= nullptr;
 		LOADSTATE_FN*						loader	= nullptr;
-		bool								stale	= false;
 		std::condition_variable				CV;
 	};
 
@@ -135,7 +135,7 @@ namespace FlexKit
 		PipelineStateObject*	_GetNearestStateObject	(PSOHandle				handle);
 		bool					_AddStateObject			(PipelineStateObject*	PSO);
 
-		static_vector<PipelineStateObject,	1024>			States;
+		static_vector<PipelineStateObject,	128>			States;
 
 		ThreadManager*										WorkQueue;
 		ID3D12Device*										Device;

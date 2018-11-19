@@ -29,6 +29,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 
 
+/************************************************************************************************/
+
+
 namespace FlexKit
 {
 	enum RenderObjectState
@@ -40,6 +43,9 @@ namespace FlexKit
 	};
 
 
+	/************************************************************************************************/
+
+
 	enum RenderTargetFormat
 	{
 		TRF_INT4,
@@ -49,6 +55,9 @@ namespace FlexKit
 		TRF_Float4,
 		TRF_Auto,
 	};
+
+
+	/************************************************************************************************/
 
 
 	enum FrameObjectResourceType
@@ -64,6 +73,8 @@ namespace FlexKit
 		OT_UnorderedAccessView
 	};
 
+
+	/************************************************************************************************/
 	typedef Handle_t<16> FrameResourceHandle;
 	typedef Handle_t<16> StaticFrameResourceHandle;
 
@@ -185,6 +196,9 @@ namespace FlexKit
 		//
 
 
+		/************************************************************************************************/
+
+
 		void AddRenderTarget(TextureHandle Handle)
 		{
 			AddRenderTarget(
@@ -192,6 +206,10 @@ namespace FlexKit
 				RenderSystem->GetTag(Handle),
 				RenderSystem->RenderTargets.GetState(Handle));
 		}
+
+
+		/************************************************************************************************/
+
 
 		void AddRenderTarget(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
 		{
@@ -201,6 +219,10 @@ namespace FlexKit
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
 
+
+		/************************************************************************************************/
+
+
 		void AddDepthBuffer(TextureHandle Handle)
 		{
 			AddDepthBuffer(
@@ -208,6 +230,10 @@ namespace FlexKit
 				RenderSystem->GetTag(Handle),
 				RenderSystem->RenderTargets.GetState(Handle));
 		}
+
+
+		/************************************************************************************************/
+
 
 		void AddDepthBuffer(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
 		{
@@ -217,10 +243,17 @@ namespace FlexKit
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
 
-		TextureObject					GetRenderTargetObject(FrameResourceHandle Handle) const
+
+		/************************************************************************************************/
+
+
+		TextureObject				GetRenderTargetObject(FrameResourceHandle Handle) const
 		{
 			return { Resources[Handle].RenderTarget.HeapPOS, Resources[Handle].RenderTarget.Texture };
 		}
+
+
+		/************************************************************************************************/
 
 
 		static_vector<DescHeapPOS>	GetRenderTargetObjects(const static_vector<FrameResourceHandle> Handles) const
@@ -233,10 +266,16 @@ namespace FlexKit
 		}
 
 
+		/************************************************************************************************/
+
+
 		ID3D12PipelineState*	GetPipelineState(PSOHandle State)	const
 		{
 			return RenderSystem->GetPSO(State);
 		}
+
+
+		/************************************************************************************************/
 
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle Handle, size_t VertexSize)
@@ -244,15 +283,26 @@ namespace FlexKit
 			return RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
 		}
 
+
+		/************************************************************************************************/
+
+
 		size_t					GetVertexBufferOffset(VertexBufferHandle Handle)
 		{
 			return RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle);
 		}
 
+
+		/************************************************************************************************/
+
+
 		DeviceResourceState		GetResourceObjectState(FrameResourceHandle Handle)
 		{
 			return Resources[Handle].State;
 		}
+
+
+		/************************************************************************************************/
 
 
 		FrameObject*			GetResourceObject(FrameResourceHandle Handle)
@@ -261,10 +311,16 @@ namespace FlexKit
 		}
 
 
+		/************************************************************************************************/
+
+
 		TextureHandle			GetRenderTarget(FrameResourceHandle Handle) const
 		{
 			return Resources[Handle].RenderTarget.Texture;
 		}
+
+
+		/************************************************************************************************/
 
 
 		uint2					GetRenderTargetWH(FrameResourceHandle Handle) const
@@ -272,10 +328,17 @@ namespace FlexKit
 			return RenderSystem->GetRenderTargetWH(GetRenderTarget(Handle));
 		}
 
+
+		/************************************************************************************************/
+
+
 		DescHeapPOS				GetRenderTargetDescHeapEntry(FrameResourceHandle Handle)
 		{
 			return Resources[Handle].RenderTarget.HeapPOS;
 		}
+
+
+		/************************************************************************************************/
 
 
 		TextureHandle GetTexture(StaticFrameResourceHandle Handle) const
@@ -284,10 +347,16 @@ namespace FlexKit
 		}
 
 
+		/************************************************************************************************/
+
+
 		StaticFrameResourceHandle AddTexture(TextureHandle Handle, uint32_t Tag)
 		{
 			FK_ASSERT(0);
 		}
+
+
+		/************************************************************************************************/
 
 
 		FrameResourceHandle	FindRenderTargetResource(uint32_t Tag)
@@ -312,6 +381,10 @@ namespace FlexKit
 
 			return NewResource;
 		}
+
+
+		/************************************************************************************************/
+
 
 		FrameResourceHandle	FindRenderTargetResource(TextureHandle Handle)
 		{
@@ -378,12 +451,18 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	inline bool PushConstantBufferData(char* _ptr, size_t Size, ConstantBufferHandle Buffer, FrameResources& Resources)
 	{
 		bool res = Resources.RenderSystem->ConstantBuffers.Push(Buffer, _ptr, Size);
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res;
 	}
+
+
+	/************************************************************************************************/
 
 
 	template<typename TY_CB>
@@ -396,6 +475,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
 
 	class FrameGraphNode;
 
@@ -736,6 +816,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	struct Rectangle
 	{
 		float4 Color	= { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -744,6 +825,10 @@ namespace FlexKit
 	};
 
 	typedef Vector<Rectangle> RectangleList;
+
+
+	/************************************************************************************************/
+
 
 	void ClearBackBuffer	(FrameGraph& Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
 	void ClearDepthBuffer	(FrameGraph& Graph, TextureHandle Handle, float D);
@@ -763,6 +848,10 @@ namespace FlexKit
 		float4 Color;
 	};
 
+
+	/************************************************************************************************/
+
+
 	struct ShapeDraw
 	{
 		enum class RenderMode
@@ -780,12 +869,19 @@ namespace FlexKit
 
 	typedef Vector<ShapeDraw> DrawList;
 
+
+	/************************************************************************************************/
+
+
 	struct Constants
 	{
 		float4		Albedo;
 		float4		Specular;
 		float4x4	WT;
 	};
+
+
+	/************************************************************************************************/
 
 
 	class ShapeProtoType
@@ -801,6 +897,9 @@ namespace FlexKit
 			ConstantBufferHandle	CB,
 			FrameResources&			Resources) = 0;
 	};
+
+
+	/************************************************************************************************/
 
 
 	class ShapeList final : public ShapeProtoType
@@ -836,6 +935,10 @@ namespace FlexKit
 
 		FlexKit::Vector<ShapeProtoType*> Shapes;
 	};
+
+
+	/************************************************************************************************/
+
 
 	/*
 	void AddShape2List(ShapeList&)
@@ -910,6 +1013,9 @@ namespace FlexKit
 		float	AspectRatio;
 		size_t	Divisions;
 	};
+
+
+	/************************************************************************************************/
 
 
 	class LineShape final : public ShapeProtoType
@@ -1001,14 +1107,17 @@ namespace FlexKit
 	};
 
 
-	class RectangleListShape final : public ShapeProtoType
+	/************************************************************************************************/
+
+
+	class SolidRectangleListShape final : public ShapeProtoType
 	{
 	public:
-		RectangleListShape(Vector<FlexKit::Rectangle>& rects_in) :
-			rects{rects_in}{}
+		SolidRectangleListShape(Vector<FlexKit::Rectangle>&& rects_in) :
+			rects{std::move(rects_in)}{}
 
 		
-		~RectangleListShape() {}
+		~SolidRectangleListShape() {}
 
 		void AddShapeDraw(
 			DrawList&				drawList, 
@@ -1048,14 +1157,21 @@ namespace FlexKit
 			}
 		}
 
-		Vector<FlexKit::Rectangle>& rects;
+		Vector<FlexKit::Rectangle> rects;
 	};
+
+
+	/************************************************************************************************/
+
 
 	inline void AddShapes(
 		DrawList&				List, 
 		VertexBufferHandle		VertexBuffer,
 		ConstantBufferHandle	CB,
 		FrameResources&			Resources) {}
+
+
+	/************************************************************************************************/
 
 
 	template<typename TY_1, typename ... TY_OTHER_SHAPES>
@@ -1070,6 +1186,9 @@ namespace FlexKit
 		Shape.AddShapeDraw(List, VertexBuffer, CB, Resources);
 		AddShapes(List, VertexBuffer, CB, Resources, std::forward<TY_OTHER_SHAPES&&>(ShapePack)...);
 	}
+
+
+	/************************************************************************************************/
 
 
 	template<typename ... TY_OTHER>
@@ -1198,8 +1317,7 @@ namespace FlexKit
 				Data.Heap.Init(
 					FrameGraph.Resources.RenderSystem,
 					FrameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
-					TempMem);
-				Data.Heap.NullFill(FrameGraph.Resources.RenderSystem);
+					TempMem).NullFill(FrameGraph.Resources.RenderSystem);
 
 				Data.CB		= Desc.Constants;
 				Data.Mesh	= Desc.Mesh;
@@ -1275,6 +1393,129 @@ namespace FlexKit
 			});
 	}
 
+
+	/************************************************************************************************/
+
+
+	struct DrawWireframeRectangle_Desc
+	{
+		TextureHandle			RenderTarget;
+		VertexBufferHandle		VertexBuffer;
+		ConstantBufferHandle	constantBuffer;
+		CameraHandle			camera;
+		PSOHandle				PSO;
+	};
+
+
+	void WireframeRectangleList(
+		FrameGraph&						frameGraph,
+		DrawWireframeRectangle_Desc&	desc,
+		Vector<Rectangle>&				rects,
+		iAllocator*						TempMem
+	)
+	{
+		struct DrawWireframes
+		{
+			FrameResourceHandle		RenderTarget;
+
+			ConstantBufferHandle	CB;
+			VertexBufferHandle		VB;
+
+			size_t cameraOffset;
+			size_t constantsOffset;
+			size_t vertexCount;
+			size_t vertexOffset;
+
+			PSOHandle PSO;	
+			FlexKit::DesciptorHeap	Heap; // Null Filled
+		};
+	
+
+		struct Vertex
+		{
+			float4 POS;
+			float4 Color;
+			float2 UV;
+		};
+
+		frameGraph.AddNode<DrawWireframes>(0,
+			[&](FrameGraphNodeBuilder& Builder, auto& Data)
+			{
+				Data.RenderTarget	= Builder.WriteRenderTarget(frameGraph.Resources.RenderSystem->GetTag(desc.RenderTarget));
+
+				Data.CB		= desc.constantBuffer;
+				Data.VB		= desc.VertexBuffer;
+				Data.PSO	= desc.PSO;
+
+				Data.Heap.Init(
+					frameGraph.Resources.RenderSystem,
+					frameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					TempMem).NullFill(frameGraph.Resources.RenderSystem);
+
+				struct LocalConstants// Register b1
+				{
+					float4	 Color; // + roughness
+					float4	 Padding;
+					float4x4 WT;
+				}locals{
+					{1, 1, 1, 1},
+					{1, 1, 1, 1},
+					float4x4::Identity()
+				};
+
+				auto cameraBuffer	= GetCameraConstantBuffer(desc.camera);
+				auto pushBuffer		= desc.VertexBuffer;
+				Data.vertexOffset	= frameGraph.Resources.GetVertexBufferOffset(pushBuffer, sizeof(Vertex));
+
+				Data.constantsOffset	= BeginNewConstantBuffer(desc.constantBuffer,frameGraph.Resources);
+				PushConstantBufferData(locals, desc.constantBuffer, frameGraph.Resources);
+				Data.cameraOffset		= BeginNewConstantBuffer(desc.constantBuffer, frameGraph.Resources);
+				PushConstantBufferData	(cameraBuffer, desc.constantBuffer, frameGraph.Resources);
+
+				for (const Rectangle& rect : rects)
+				{
+					float4 upperLeft	= { rect.Position.x, 0, rect.Position.y,		1};
+					float4 bottomRight	=   upperLeft + float4{rect.WH.x, 0, rect.WH.y, 0};
+					float4 upperRight	= { bottomRight.x,	0, upperLeft.z,				1};
+					float4 bottomLeft	= { upperLeft.x,	0, bottomRight.z,			1};
+
+					// Top
+					PushVertex(Vertex{ upperLeft,	rect.Color, { 0.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
+					PushVertex(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
+
+					// Right
+					PushVertex(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
+					PushVertex(Vertex{ bottomRight,	rect.Color, { 1.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
+
+					// Bottom
+					PushVertex(Vertex{ bottomRight,	rect.Color, { 0.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
+					PushVertex(Vertex{ bottomLeft,	rect.Color, { 1.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
+
+					// Left
+					PushVertex(Vertex{ bottomLeft,	rect.Color, { 0.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
+					PushVertex(Vertex{ upperLeft,	rect.Color, { 0.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
+				}
+
+				Data.vertexCount = rects.size() * 8;
+			},
+			[](auto& Data, const FrameResources& Resources, Context* ctx)
+			{
+				auto test = Resources.GetPipelineState(Data.PSO);
+				ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				ctx->SetPipelineState(test);
+				ctx->SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
+
+				ctx->SetRenderTargets(
+					{ (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
+
+				ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
+				ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
+				ctx->SetGraphicsConstantBufferView	(1, Data.CB, Data.cameraOffset);
+				ctx->SetGraphicsConstantBufferView	(2, Data.CB, Data.constantsOffset);
+
+				ctx->Draw(Data.vertexCount, 0);
+			});
+	}
 
 }	/************************************************************************************************/
 #endif

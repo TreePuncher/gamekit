@@ -68,7 +68,7 @@ namespace FlexKit
 	FLEXKITAPI Camera::CameraConstantBuffer	GetCameraConstantBuffer	(CameraHandle);
 
 
-	void QueueCameraUpdate(UpdateDispatcher&, UpdateTask* TransformDependency);
+	UpdateTask* QueueCameraUpdate(UpdateDispatcher&, UpdateTask* TransformDependency);
 
 
 	struct DefaultCameraInteractor

@@ -117,6 +117,12 @@ namespace FlexKit
 	//FLEXKITAPI void DrawLandscape		( RenderSystem* RS, Landscape* ls, TiledDeferredRender* PS, size_t splitcount, Camera* C, bool DrawWireframe = false );
 
 
+	const PSOHandle TERRAIN_DRAW_PSO				= PSOHandle(GetTypeGUID(TERRAIN_DRAW_PSO));
+	const PSOHandle TERRAIN_DRAW_PSO_DEBUG			= PSOHandle(GetTypeGUID(TERRAIN_DRAW_PSO_DEBUG));
+	const PSOHandle TERRAIN_DRAW_WIRE_PSO			= PSOHandle(GetTypeGUID(TERRAIN_DRAW_WIRE_PSO));
+	const PSOHandle TERRAIN_CULL_PSO				= PSOHandle(GetTypeGUID(TERRAIN_CULL_PSO));
+
+
 	/************************************************************************************************/
 
 }

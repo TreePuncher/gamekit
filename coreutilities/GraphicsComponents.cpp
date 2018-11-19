@@ -218,12 +218,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask* TransformDependency)
+	UpdateTask* QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask* TransformDependency)
 	{
 		struct UpdateData
 		{};
 
-		Dispatcher.Add<UpdateData>(
+		auto& task = Dispatcher.Add<UpdateData>(
 			[&](auto& Builder, auto& Data)
 			{
 				Builder.AddInput(*TransformDependency);
@@ -231,7 +231,7 @@ namespace FlexKit
 			[](auto& Data)
 			{
 				FK_ASSERT(CameraTable != nullptr);
-				FK_LOG_9("Updating Cameras");
+				//FK_LOG_9("Updating Cameras");
 
 				size_t End = CameraTable->Cameras.size();
 				for (size_t I = 0; I < End; ++I)
@@ -243,6 +243,8 @@ namespace FlexKit
 				}
 			}
 			);
+
+		return &task;
 	}
 
 

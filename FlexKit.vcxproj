@@ -191,7 +191,6 @@
     <ClInclude Include="coreutilities\GUIInputState.h" />
     <ClInclude Include="coreutilities\Handle.h" />
     <ClInclude Include="coreutilities\Input.h" />
-    <ClInclude Include="coreutilities\InputComponent.h" />
     <ClInclude Include="coreutilities\intersection.h" />
     <ClInclude Include="coreutilities\KeycodesEnums.h" />
     <ClInclude Include="coreutilities\Logging.h" />
@@ -282,10 +281,6 @@
     <ClCompile Include="coreutilities\Handle.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="coreutilities\InputComponent.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="coreutilities\Intersection.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

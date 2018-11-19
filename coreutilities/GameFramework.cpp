@@ -243,13 +243,6 @@ namespace FlexKit
 		sub._ptr   = this;
 		core->Window.Handler.Subscribe(sub);
 
-		DefaultAssets.Font = LoadFontAsset	(
-			"assets\\fonts\\", 
-			"fontTest.fnt", 
-			core->RenderSystem, 
-			core->GetTempMemory(), 
-			core->GetBlockMemory());
-		
 		console.BindUIntVar("FPS",			&stats.fps);
 		console.BindBoolVar("HUD",			&drawDebugStats);
 		console.BindBoolVar("DrawDebug",	&drawDebug);
@@ -461,7 +454,7 @@ namespace FlexKit
 
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, FrameGraph& graph)
 	{
-		uint32_t VRamUsage	= GetVidMemUsage(core->RenderSystem) / MEGABYTE;
+		uint32_t VRamUsage	= core->RenderSystem._GetVidMemUsage() / MEGABYTE;
 		char* TempBuffer	= (char*)core->GetTempMemory().malloc(512);
 		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 

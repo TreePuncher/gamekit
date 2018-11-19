@@ -26,7 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CAMERAUTILITIES
 
 #include "GameFramework.h"
-#include "InputComponent.h"
 
 #include "../graphicsutilities/graphics.h"
 #include "../coreutilities/GraphicsComponents.h"
@@ -86,6 +85,44 @@ namespace FlexKit
 			bool right		= false;
 		}keyStates;
 	};
+
+
+	/************************************************************************************************/
+
+
+	inline UpdateTask*	QueueOrbitCameraUpdateTask(
+		UpdateDispatcher&		dispatcher, 
+		UpdateTask*				transformUpdateDependency,
+		UpdateTask*				cameraUpdateDependency,
+		OrbitCameraBehavior&	orbitCamera, 
+		MouseInputState			mouseState, 
+		float dt)
+	{
+		struct OrbitCameraUpdateData
+		{
+			MouseInputState			mouseState;
+			OrbitCameraBehavior*	orbitCamera;
+			float					dt;
+		};
+
+		auto& Data = dispatcher.Add<OrbitCameraUpdateData>(
+			[&](auto& Builder, OrbitCameraUpdateData& Data)
+			{
+				Builder.SetDebugString("OrbitCamera Update");
+				Builder.AddOutput(*transformUpdateDependency);
+				Builder.AddOutput(*cameraUpdateDependency);
+				Data.mouseState		= mouseState;
+				Data.dt				= dt;
+				Data.orbitCamera	= &orbitCamera;
+			},
+			[](auto& data)
+			{
+				FK_LOG_9("OrbitCamera Update");
+				data.orbitCamera->Update(data.mouseState, data.dt);
+			});
+
+		return &Data;
+	}
 
 
 }	/************************************************************************************************/

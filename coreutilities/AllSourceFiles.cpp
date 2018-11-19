@@ -36,7 +36,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GraphicsComponents.cpp"
 #include "..\coreutilities\GraphicScene.cpp"
 #include "..\coreutilities\Handle.cpp"
-#include "..\coreutilities\InputComponent.cpp"
 #include "..\coreutilities\intersection.cpp"
 #include "..\coreutilities\MathUtils.cpp"
 #include "..\coreutilities\memoryutilities.cpp"

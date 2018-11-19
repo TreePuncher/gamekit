@@ -207,8 +207,6 @@ namespace FlexKit
 	void ReleaseCore			(EngineCore*		Game);
 	bool InitiateCoreSystems	(uint2 WH,			EngineCore*& Game);
 
-	void UpdateCoreComponents	(EngineCore* Core, double dt);
-
 
 	/************************************************************************************************/
 

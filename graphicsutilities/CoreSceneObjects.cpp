@@ -308,7 +308,7 @@ namespace FlexKit
 		XMMATRIX XMIV;
 		XMMATRIX XMProj;
 
-		if (Node != NodeHandle{ (unsigned int)-1 })
+		if (Node != InvalidHandle_t)
 			GetTransform(Node, &XMWT);
 		else
 			XMWT = DirectX::XMMatrixIdentity();
@@ -320,11 +320,11 @@ namespace FlexKit
 		XMIV		= XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
 		XMWT		= XMWT;
 		
-		WT	 = XMMatrixToFloat4x4(&XMWT);
-		View = XMMatrixToFloat4x4(&XMView);
-		PV	 = XMMatrixToFloat4x4(&XMPV);
-		Proj = XMMatrixToFloat4x4(&XMProj);
-		IV	 = XMMatrixToFloat4x4(&XMIV);
+		WT		= XMMatrixToFloat4x4(&XMWT);
+		View	= XMMatrixToFloat4x4(&XMView);
+		PV		= XMMatrixToFloat4x4(&XMPV);
+		Proj	= XMMatrixToFloat4x4(&XMProj);
+		IV		= XMMatrixToFloat4x4(&XMIV);
 	}
 
 

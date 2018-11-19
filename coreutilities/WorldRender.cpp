@@ -32,7 +32,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <d3d11shader.h>
 
 namespace FlexKit
-{
+{	/************************************************************************************************/
+
+
 	ID3D12PipelineState* CreateForwardDrawPSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\forwardRender.hlsl");
@@ -97,6 +99,9 @@ namespace FlexKit
 
 		return PSO;
 	}
+
+
+	/************************************************************************************************/
 
 
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO(RenderSystem* RS)
@@ -167,6 +172,10 @@ namespace FlexKit
 		return PSO;
 	}
 
+
+	/************************************************************************************************/
+
+
 	ID3D12PipelineState* CreateOcclusionDrawPSO(RenderSystem* RS)
 	{
 		auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\forwardRender.hlsl");
@@ -223,6 +232,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void WorldRender::DefaultRender(PVS& Drawables, CameraHandle Camera, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
 	{
 		//ClearDepthBuffer(Graph, Targets.DepthTarget,	1.0f);
@@ -230,6 +242,10 @@ namespace FlexKit
 
 		RenderDrawabledPBR_Forward(Drawables, Camera, Targets, Graph, Memory);
 	}
+
+
+	/************************************************************************************************/
+	
 
 	void WorldRender::RenderDrawabledPBR_Forward(
 		PVS&					Drawables, 
@@ -260,84 +276,85 @@ namespace FlexKit
 
 		auto& Pass = Graph.AddNode<ForwardDrawPass>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, ForwardDrawPass& Data)
-		{
-			Data.BackBuffer		 = Builder.WriteRenderTarget(RS->GetTag(Targets.RenderTarget));
-			Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
-			Data.ConstantBuffer	 = ConstantBuffer;
-			Data.Heap.Init(
-				Graph.Resources.RenderSystem,
-				Graph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
-				Memory);
-			Data.Heap.NullFill(Graph.Resources.RenderSystem);
-
-			//if(OcclusionCulling)
-			//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
-
-			Data.Draws = ForwardDrawableList{ Memory };
-			Camera::CameraConstantBuffer CameraConstants = GetCameraConstantBuffer(Camera);
-
-			auto CameraConsantsOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
-			PushConstantBufferData(CameraConstants, ConstantBuffer, Graph.Resources);
-
-			for (auto Viewable : Drawables)
 			{
-				Drawable::VConsantsLayout	Constants = Viewable.D->GetConstants();
+				Data.BackBuffer		 = Builder.WriteRenderTarget(RS->GetTag(Targets.RenderTarget));
+				Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+				Data.ConstantBuffer	 = ConstantBuffer;
+				Data.Heap.Init(
+					Graph.Resources.RenderSystem,
+					Graph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					Memory);
+				Data.Heap.NullFill(Graph.Resources.RenderSystem);
 
-				auto CBOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
-				PushConstantBufferData(Constants, ConstantBuffer, Graph.Resources);
+				//if(OcclusionCulling)
+				//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
+
+				Data.Draws = ForwardDrawableList{ Memory };
+				Camera::CameraConstantBuffer CameraConstants = GetCameraConstantBuffer(Camera);
+
+				auto CameraConsantsOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
+				PushConstantBufferData(CameraConstants, ConstantBuffer, Graph.Resources);
+
+				for (auto Viewable : Drawables)
+				{
+					Drawable::VConsantsLayout	Constants = Viewable.D->GetConstants();
+
+					auto CBOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
+					PushConstantBufferData(Constants, ConstantBuffer, Graph.Resources);
 				
-				Data.Draws.push_back({ Viewable.D->MeshHandle, CBOffset });
-			}
-		},
+					Data.Draws.push_back({ Viewable.D->MeshHandle, CBOffset });
+				}
+			},
 			[=](ForwardDrawPass& Data, const FrameResources& Resources, Context* Ctx)
-		{
-			Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-			Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
-
-			if (false)
 			{
-				Ctx->SetScissorAndViewports({ Targets.RenderTarget });
+				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
+
+				if (false)
+				{
+					Ctx->SetScissorAndViewports({ Targets.RenderTarget });
+					Ctx->SetRenderTargets(
+						{	Resources.GetRenderTargetObject(Data.BackBuffer) }, 
+						true,
+						(DescHeapPOS)Resources.GetRenderTargetObject(Data.OcclusionBuffer));
+				}
+				else
+					Ctx->SetPredicate(false);
+
+
+
+				// Setup Initial Shading State
+				Ctx->SetScissorAndViewports({Targets.RenderTarget});
 				Ctx->SetRenderTargets(
 					{	Resources.GetRenderTargetObject(Data.BackBuffer) }, 
 					true,
-					(DescHeapPOS)Resources.GetRenderTargetObject(Data.OcclusionBuffer));
-			}
-			else
-				Ctx->SetPredicate(false);
+					 (DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
 
+				Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
+				Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
+				Ctx->SetGraphicsConstantBufferView	(1, Data.ConstantBuffer, Data.CameraConsantsOffset);
+				Ctx->SetGraphicsConstantBufferView	(3, Data.ConstantBuffer, Data.CameraConsantsOffset);
 
-			// Setup Initial Shading State
-			Ctx->SetScissorAndViewports({Targets.RenderTarget});
-			Ctx->SetRenderTargets(
-				{	Resources.GetRenderTargetObject(Data.BackBuffer) }, 
-				true,
-				 (DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
+				for (auto D : Data.Draws)
+				{
+					auto* TriMesh = GetMesh(D.Mesh);
 
-			Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+					//if(OcclusionCulling)
+					//	Ctx->SetPredicate(true, OcclusionQueries, D.OcclusionIdx * 8);
 
-			Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
-			Ctx->SetGraphicsConstantBufferView	(1, Data.ConstantBuffer, Data.CameraConsantsOffset);
-			Ctx->SetGraphicsConstantBufferView	(3, Data.ConstantBuffer, Data.CameraConsantsOffset);
+					Ctx->AddIndexBuffer(TriMesh);
+					Ctx->AddVertexBuffers(TriMesh, 
+						{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+							//VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+						});
 
-			for (auto D : Data.Draws)
-			{
-				auto* TriMesh = GetMesh(D.Mesh);
-
-				//if(OcclusionCulling)
-				//	Ctx->SetPredicate(true, OcclusionQueries, D.OcclusionIdx * 8);
-
-				Ctx->AddIndexBuffer(TriMesh);
-				Ctx->AddVertexBuffers(TriMesh, 
-					{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-						//VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-					});
-
-				Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
-				Ctx->DrawIndexedInstanced(TriMesh->IndexCount, 0, 0, 1, 0);
-			}
-		});
+					Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
+					Ctx->DrawIndexedInstanced(TriMesh->IndexCount, 0, 0, 1, 0);
+				}
+			});
 	}
 
-}
+
+}	/************************************************************************************************/

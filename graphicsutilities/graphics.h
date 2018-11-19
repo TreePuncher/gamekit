@@ -1059,8 +1059,8 @@ namespace FlexKit
 		DesciptorHeap() {}
 		DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
-		void Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
-		void NullFill	(RenderSystem* RS);
+		DesciptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DesciptorHeap& NullFill	(RenderSystem* RS);
 
 		bool SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle);
 
@@ -1389,7 +1389,8 @@ namespace FlexKit
 
 		void AddIndexBuffer			(TriMesh* Mesh);
 		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
-		void SetVertexBuffers		(VertexBufferList& List);
+		void SetVertexBuffers		(VertexBufferList&	List);
+		void SetVertexBuffers		(VertexBufferList	List);
 
 		void Draw					(size_t VertexCount, size_t BaseVertex = 0);
 		void DrawIndexed			(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0);
@@ -1936,6 +1937,8 @@ namespace FlexKit
 		void _ResetGPUDescHeap();
 		void _ResetDSVHeap();
 
+		size_t _GetVidMemUsage();
+
 		ID3D12DescriptorHeap*		_GetCurrentRTVTable();
 		ID3D12DescriptorHeap*		_GetCurrentDescriptorTable();
 		ID3D12DescriptorHeap*		_GetCurrentDSVTable();
@@ -2057,6 +2060,11 @@ namespace FlexKit
 
 		struct FreeEntry
 		{
+			bool operator == (const FreeEntry& rhs)
+			{
+				return rhs.Resource == Resource;
+			}
+
 			ID3D12Resource* Resource;
 			size_t			Counter;
 		};
@@ -2595,43 +2603,6 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseTextureSet	( TextureSet* TS, iAllocator* Memory );
 
 
-	FLEXKITAPI struct OcclusionCuller
-	{
-		/*
-		OcclusionCuller(OcclusionCuller& rhs) : 
-			Head(rhs.Head), 
-			Max(rhs.Max), 
-			Heap(rhs.Heap),
-			Predicates(rhs.Predicates) {}
-		*/
-
-		size_t					Head;
-		size_t					Max;
-		size_t					Idx;
-
-		ID3D12QueryHeap*		Heap[3];
-		FrameBufferedResource	Predicates;		
-		DepthBuffer				OcclusionBuffer;
-		uint2					HW;
-
-		ID3D12PipelineState*	PSO;
-
-		ID3D12Resource* Get();
-		size_t			GetNext();
-
-		void Clear();
-		void Increment();
-		void Release();
-
-	};
-
-	/************************************************************************************************/
-
-
-	//FLEXKITAPI OcclusionCuller	CreateOcclusionCuller	( RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true );
-	//FLEXKITAPI void				OcclusionPass			( RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C );
-
-
 	/************************************************************************************************/
 	
 	const size_t MAXINSTANCES = 1024 * 1;
@@ -2733,8 +2704,6 @@ namespace FlexKit
 	FLEXKITAPI VertexBuffer::BuffEntry* GetBuffer( VertexBuffer*, VERTEXBUFFER_TYPE ); // return nullptr if not found
 	
 	FLEXKITAPI void ReserveTempSpace	( RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset );
-
-	FLEXKITAPI size_t GetVidMemUsage	( RenderSystem* RS);
 
 	FLEXKITAPI void	Release						( RenderSystem* System );
 	FLEXKITAPI void Push_DelayedRelease			( RenderSystem* RS, ID3D12Resource* Res);

@@ -33,21 +33,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleaseCore(EngineCore* Engine)
-	{
-
-	}
-
-
-	/************************************************************************************************/
-
-
-
 	EngineMemory* CreateEngineMemory()
 	{
 		bool ThrowAway;
 		return CreateEngineMemory(ThrowAway);
 	}
+
+
+	/************************************************************************************************/
 
 
 	EngineMemory* CreateEngineMemory(bool& Sucess)
@@ -72,6 +65,9 @@ namespace FlexKit
 
 		return Memory;
 	}
+
+
+	/************************************************************************************************/
 
 
 	void ReleaseEngineMemory(EngineMemory* Memory)
@@ -141,15 +137,6 @@ namespace FlexKit
 		Threads.Release();
 
 		Memory = nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void UpdateCoreComponents(EngineCore* Core, double dt)
-	{
-		//Core->Cameras.Update(dt);
 	}
 
 
@@ -246,6 +233,12 @@ namespace FlexKit
 			State->NormalizedPos[1]			= max(0.0f, min((float)State->Position[1] / (float)Window->WH[1], 1));
 			State->NormalizedScreenCord		= Position2SS(State->NormalizedPos);
 
+			auto WH = Window->WH;
+			float HorizontalMouseMovement	= float(State->dPos[0]) / WH[0];
+			float VerticalMouseMovement		= float(State->dPos[1]) / WH[1];
+
+			State->Normalized_dPos ={ HorizontalMouseMovement, VerticalMouseMovement };
+
 			SetSystemCursorToWindowCenter(Window);
 			ShowCursor(false);
 		}
@@ -264,5 +257,6 @@ namespace FlexKit
 	{
 		Engine->CmdArguments.push_back(str);
 	}
+
 
 }	/************************************************************************************************/

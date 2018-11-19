@@ -25,14 +25,16 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DEFAULTPIPELINESTATES
 #define DEFAULTPIPELINESTATES
 
+#include "../graphicsutilities/graphics.h"
 #include "../graphicsutilities/PipelineState.h"
+#include "../coreutilities/ResourceHandles.h"
+
 
 namespace FlexKit
 {
-	const PSOHandle TERRAIN_DRAW_PSO				= PSOHandle(GetTypeGUID(TERRAIN_DRAW_PSO));
-	const PSOHandle TERRAIN_DRAW_PSO_DEBUG			= PSOHandle(GetTypeGUID(TERRAIN_DRAW_PSO_DEBUG));
-	const PSOHandle TERRAIN_DRAW_WIRE_PSO			= PSOHandle(GetTypeGUID(TERRAIN_DRAW_WIRE_PSO));
-	const PSOHandle TERRAIN_CULL_PSO				= PSOHandle(GetTypeGUID(TERRAIN_CULL_PSO));
+	/************************************************************************************************/
+
+
 	const PSOHandle TILEDSHADING_SHADE				= PSOHandle(GetTypeGUID(TILEDSHADING_SHADE));
 	const PSOHandle TILEDSHADING_LIGHTPREPASS		= PSOHandle(GetTypeGUID(TILEDSHADING_LIGHTPREPASS));
 	const PSOHandle TILEDSHADING_COPYOUT			= PSOHandle(GetTypeGUID(TILEDSHADING_COPYOUT));
@@ -44,11 +46,51 @@ namespace FlexKit
 	const PSOHandle DRAW_LINE3D_PSO					= PSOHandle(GetTypeGUID(DRAW_LINE3D_PSO));
 	const PSOHandle DRAW_SPRITE_TEXT_PSO			= PSOHandle(GetTypeGUID(DRAW_SPRITE_TEXT_PSO));
 
-
 	ID3D12PipelineState* CreateDrawTriStatePSO	(RenderSystem* RS);
 	ID3D12PipelineState* CreateDrawLineStatePSO	(RenderSystem* RS);
 	ID3D12PipelineState* CreateDraw2StatePSO	(RenderSystem* RS);
 
+
+	/************************************************************************************************/
+	// TODO: move this to a frame graph function
+
+
+	FLEXKITAPI struct OcclusionCuller
+	{
+		/*
+		OcclusionCuller(OcclusionCuller& rhs) :
+			Head(rhs.Head),
+			Max(rhs.Max),
+			Heap(rhs.Heap),
+			Predicates(rhs.Predicates) {}
+		*/
+
+		size_t					Head;
+		size_t					Max;
+		size_t					Idx;
+
+		ID3D12QueryHeap*		Heap[3];
+		FrameBufferedResource	Predicates;
+		DepthBuffer				OcclusionBuffer;
+		uint2					HW;
+
+		ID3D12PipelineState*	PSO;
+
+		ID3D12Resource* Get();
+		size_t			GetNext();
+
+		void Clear();
+		void Increment();
+		void Release();
+
+	};
+
+
+	/************************************************************************************************/
+
+
+	//FLEXKITAPI OcclusionCuller	CreateOcclusionCuller	( RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool UseFloat = true );
+	//FLEXKITAPI void				OcclusionPass			( RenderSystem* RS, PVS* Set, OcclusionCuller* OC, ID3D12GraphicsCommandList* CL, GeometryTable* GT, Camera* C );
 }
 
 #endif

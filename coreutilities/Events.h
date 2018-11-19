@@ -161,10 +161,10 @@ namespace FlexKit
 			auto itr = EventMap.begin();
 
 			do {
-				auto res = std::find_if(
+				itr = std::find_if(
 					itr, 
 					EventMap.end(),
-					[&](auto& rhs) -> bool
+					[&](const auto& rhs) -> bool
 					{
 						return evt_in.mData1.mKC[0] == rhs.EventKC;
 					});
@@ -174,9 +174,9 @@ namespace FlexKit
 					auto evt = evt_in;
 					evt.mData1.mINT[0] = (*itr).EventID;
 					handler(evt);
+					itr++;
 				}
 
-				itr++;
 			} while (itr != EventMap.end());
 
 		}

@@ -102,11 +102,6 @@ namespace FlexKit
 			return State;
 		}
 
-		struct {
-			SpriteFontAsset*	Font;
-			Texture2D			Terrain;
-		}DefaultAssets;
-
 		MouseInputState			MouseState;
 
 		GraphicScene*			ActiveScene;
@@ -114,7 +109,6 @@ namespace FlexKit
 
 		float4					clearColor;
 
-		Console					console;
 		LogCallback				logMessagePipe = {
 			"INFO",
 			this,
@@ -145,6 +139,21 @@ namespace FlexKit
 			size_t fpsCounter;
 			size_t objectsDrawnLastFrame;
 		}stats;
+
+		struct {
+			SpriteFontAsset*	Font;
+			Texture2D			Terrain;
+		}DefaultAssets =
+		{
+			LoadFontAsset(
+				"assets\\fonts\\",
+				"fontTest.fnt",
+				core->RenderSystem,
+				core->GetTempMemory(),
+				core->GetBlockMemory())
+		};
+
+		Console					console;
 	};
 
 

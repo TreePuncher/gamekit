@@ -93,7 +93,7 @@ namespace FlexKit
 			for (auto& Node : NodesSorted) {
 
 				if(Node->DebugID)
-					FK_LOG_INFO("Running task %s", Node->DebugID);
+					FK_LOG_9("Running task %s", Node->DebugID);
 
 				Node->Update(*Node);
 			}

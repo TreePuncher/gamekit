@@ -38,7 +38,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../graphicsutilities/CoreSceneObjects.h"
 
 namespace FlexKit
-{
+{	/************************************************************************************************/
+
+
 	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
 	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
 	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
@@ -68,6 +70,9 @@ namespace FlexKit
 		ObjectDrawState states;
 		byte*			constantBuffers[4];
 	};
+
+
+	/************************************************************************************************/
 
 
 	class FLEXKITAPI WorldRender
@@ -116,6 +121,7 @@ namespace FlexKit
 		//RenderTargetHandle		Depth;
 	};
 
-}
+
+}	/************************************************************************************************/
 
 #endif
