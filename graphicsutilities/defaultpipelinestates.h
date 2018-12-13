@@ -41,14 +41,16 @@ namespace FlexKit
 	const PSOHandle OCCLUSION_CULLING				= PSOHandle(GetTypeGUID(OCCLUSION_CULLING));
 	const PSOHandle SSREFLECTIONS					= PSOHandle(GetTypeGUID(SSREFLECTIONS));
 	const PSOHandle DRAW_PSO						= PSOHandle(GetTypeGUID(DRAW_PSO));
+	const PSOHandle DRAW_TEXTURED_PSO				= PSOHandle(GetTypeGUID(DRAW_TEXTURED_PSO));
 	const PSOHandle DRAW_3D_PSO						= PSOHandle(GetTypeGUID(DRAW_3D_PSO));
 	const PSOHandle DRAW_LINE_PSO					= PSOHandle(GetTypeGUID(DRAW_LINE_PSO));
 	const PSOHandle DRAW_LINE3D_PSO					= PSOHandle(GetTypeGUID(DRAW_LINE3D_PSO));
 	const PSOHandle DRAW_SPRITE_TEXT_PSO			= PSOHandle(GetTypeGUID(DRAW_SPRITE_TEXT_PSO));
 
-	ID3D12PipelineState* CreateDrawTriStatePSO	(RenderSystem* RS);
-	ID3D12PipelineState* CreateDrawLineStatePSO	(RenderSystem* RS);
-	ID3D12PipelineState* CreateDraw2StatePSO	(RenderSystem* RS);
+	ID3D12PipelineState* CreateDrawTriStatePSO		(RenderSystem* RS);
+	ID3D12PipelineState* CreateTexturedTriStatePSO	(RenderSystem* RS);
+	ID3D12PipelineState* CreateDrawLineStatePSO		(RenderSystem* RS);
+	ID3D12PipelineState* CreateDraw2StatePSO		(RenderSystem* RS);
 
 
 	/************************************************************************************************/

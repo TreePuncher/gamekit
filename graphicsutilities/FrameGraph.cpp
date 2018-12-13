@@ -550,10 +550,47 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(TextureHandle Handle)
 	{
 		return AddWriteableResource(Handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE, FrameObjectResourceType::OT_DepthBuffer);
 	}
+
+
+	/************************************************************************************************/
+
+
+	size_t FrameGraphNodeBuilder::GetDescriptorTableSize(PSOHandle State, size_t idx) const
+	{
+		auto rootSig	= Resources->RenderSystem->GetPSORootSignature(State);
+		auto tableSize	= rootSig->GetDesciptorTableSize(idx);
+
+		return tableSize;
+	}
+
+
+	const DesciptorHeapLayout<16>&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
+	{
+		auto rootSig = Resources->RenderSystem->GetPSORootSignature(State);
+		return rootSig->GetDescHeap(idx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DesciptorHeap	FrameGraphNodeBuilder::ReserveDescriptorTableSpaces(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory)
+	{
+		DesciptorHeap newHeap;
+		newHeap.Init(
+			Resources->RenderSystem,
+			IN_layout,
+			requiredTables,
+			tempMemory);
+
+		return newHeap;
+	}
+
 
 	/************************************************************************************************/
 

@@ -58,10 +58,10 @@ namespace FlexKit
 		float2		CharacterScale;
 		uint2		ScreenWH; // Screen Width - In Pixels
 
-		size_t				 CharacterCount;
-		size_t				 Dirty;
+		size_t		CharacterCount;
+		size_t		Dirty;
 
-		iAllocator*			 Memory;
+		iAllocator*	Memory;
 	};
 
 

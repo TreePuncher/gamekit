@@ -124,6 +124,148 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	constexpr size_t GetFormatElementSize(const DXGI_FORMAT format)
+	{
+		switch (format)
+		{
+		case DXGI_FORMAT_R32G32B32A32_TYPELESS:
+			return sizeof(int32_t) * 4;
+		case DXGI_FORMAT_R32G32B32A32_FLOAT:
+			return sizeof(float) * 4;
+		case DXGI_FORMAT_R32G32B32A32_UINT:
+			return sizeof(uint32_t) * 4;
+		case DXGI_FORMAT_R32G32B32A32_SINT:
+			return sizeof(int32_t) * 4;
+		case DXGI_FORMAT_R32G32B32_TYPELESS:
+			return sizeof(int32_t) * 4;// 1 Pad
+		case DXGI_FORMAT_R32G32B32_FLOAT:
+			return sizeof(float) * 3;// assuming 1 Pad
+		case DXGI_FORMAT_R32G32B32_UINT:
+			return sizeof(float) * 3;// assuming 1 Pad
+		case DXGI_FORMAT_R32G32B32_SINT:
+		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
+		case DXGI_FORMAT_R16G16B16A16_FLOAT:
+		case DXGI_FORMAT_R16G16B16A16_UNORM:
+		case DXGI_FORMAT_R16G16B16A16_UINT:
+		case DXGI_FORMAT_R16G16B16A16_SNORM:
+		case DXGI_FORMAT_R16G16B16A16_SINT:
+		case DXGI_FORMAT_R32G32_TYPELESS:
+		case DXGI_FORMAT_R32G32_FLOAT:
+		case DXGI_FORMAT_R32G32_UINT:
+		case DXGI_FORMAT_R32G32_SINT:
+		case DXGI_FORMAT_R32G8X24_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+		case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+		case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+		case DXGI_FORMAT_R10G10B10A2_TYPELESS:
+		case DXGI_FORMAT_R10G10B10A2_UNORM:
+		case DXGI_FORMAT_R10G10B10A2_UINT:
+		case DXGI_FORMAT_R11G11B10_FLOAT:
+			return -1;
+		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
+		case DXGI_FORMAT_R8G8B8A8_UNORM:
+		case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+		case DXGI_FORMAT_R8G8B8A8_UINT:
+		case DXGI_FORMAT_R8G8B8A8_SNORM:
+		case DXGI_FORMAT_R8G8B8A8_SINT:
+			return 4;
+		case DXGI_FORMAT_R16G16_TYPELESS:
+		case DXGI_FORMAT_R16G16_FLOAT:
+		case DXGI_FORMAT_R16G16_UNORM:
+		case DXGI_FORMAT_R16G16_UINT:
+		case DXGI_FORMAT_R16G16_SNORM:
+		case DXGI_FORMAT_R16G16_SINT:
+		case DXGI_FORMAT_R32_TYPELESS:
+		case DXGI_FORMAT_D32_FLOAT:
+		case DXGI_FORMAT_R32_FLOAT:
+		case DXGI_FORMAT_R32_UINT:
+		case DXGI_FORMAT_R32_SINT:
+		case DXGI_FORMAT_R24G8_TYPELESS:
+		case DXGI_FORMAT_D24_UNORM_S8_UINT:
+		case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+		case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+		case DXGI_FORMAT_R8G8_TYPELESS:
+		case DXGI_FORMAT_R8G8_UNORM:
+		case DXGI_FORMAT_R8G8_UINT:
+		case DXGI_FORMAT_R8G8_SNORM:
+		case DXGI_FORMAT_R8G8_SINT:
+		case DXGI_FORMAT_R16_TYPELESS:
+		case DXGI_FORMAT_R16_FLOAT:
+		case DXGI_FORMAT_D16_UNORM:
+		case DXGI_FORMAT_R16_UNORM:
+		case DXGI_FORMAT_R16_UINT:
+		case DXGI_FORMAT_R16_SNORM:
+		case DXGI_FORMAT_R16_SINT:
+		case DXGI_FORMAT_R8_TYPELESS:
+		case DXGI_FORMAT_R8_UNORM:
+		case DXGI_FORMAT_R8_UINT:
+		case DXGI_FORMAT_R8_SNORM:
+		case DXGI_FORMAT_R8_SINT:
+		case DXGI_FORMAT_A8_UNORM:
+		case DXGI_FORMAT_R1_UNORM:
+		case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+		case DXGI_FORMAT_R8G8_B8G8_UNORM:
+		case DXGI_FORMAT_G8R8_G8B8_UNORM:
+		case DXGI_FORMAT_BC1_TYPELESS:
+		case DXGI_FORMAT_BC1_UNORM:
+		case DXGI_FORMAT_BC1_UNORM_SRGB:
+		case DXGI_FORMAT_BC2_TYPELESS:
+		case DXGI_FORMAT_BC2_UNORM:
+		case DXGI_FORMAT_BC2_UNORM_SRGB:
+		case DXGI_FORMAT_BC3_TYPELESS:
+		case DXGI_FORMAT_BC3_UNORM:
+		case DXGI_FORMAT_BC3_UNORM_SRGB:
+		case DXGI_FORMAT_BC4_TYPELESS:
+		case DXGI_FORMAT_BC4_UNORM:
+		case DXGI_FORMAT_BC4_SNORM:
+		case DXGI_FORMAT_BC5_TYPELESS:
+		case DXGI_FORMAT_BC5_UNORM:
+		case DXGI_FORMAT_BC5_SNORM:
+		case DXGI_FORMAT_B5G6R5_UNORM:
+		case DXGI_FORMAT_B5G5R5A1_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_UNORM:
+		case DXGI_FORMAT_B8G8R8X8_UNORM:
+		case DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM:
+		case DXGI_FORMAT_B8G8R8A8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+		case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+		case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+		case DXGI_FORMAT_BC6H_TYPELESS:
+		case DXGI_FORMAT_BC6H_UF16:
+		case DXGI_FORMAT_BC6H_SF16:
+		case DXGI_FORMAT_BC7_TYPELESS:
+		case DXGI_FORMAT_BC7_UNORM:
+		case DXGI_FORMAT_BC7_UNORM_SRGB:
+		case DXGI_FORMAT_AYUV:
+		case DXGI_FORMAT_Y410:
+		case DXGI_FORMAT_Y416:
+		case DXGI_FORMAT_NV12:
+		case DXGI_FORMAT_P010:
+		case DXGI_FORMAT_P016:
+		case DXGI_FORMAT_420_OPAQUE:
+		case DXGI_FORMAT_YUY2:
+		case DXGI_FORMAT_Y210:
+		case DXGI_FORMAT_Y216:
+		case DXGI_FORMAT_NV11:
+		case DXGI_FORMAT_AI44:
+		case DXGI_FORMAT_IA44:
+		case DXGI_FORMAT_P8:
+		case DXGI_FORMAT_A8P8:
+		case DXGI_FORMAT_B4G4R4A4_UNORM:
+		case DXGI_FORMAT_P208:
+		case DXGI_FORMAT_V208:
+		case DXGI_FORMAT_V408:
+		case DXGI_FORMAT_FORCE_UINT:
+		case DXGI_FORMAT_UNKNOWN:
+		default:
+			return -1;
+			break;
+		}
+	}
+
+
+	/************************************************************************************************/
+
 
 	enum PIPELINE_DESTINATION : unsigned char
 	{
@@ -138,6 +280,10 @@ namespace FlexKit
 		PIPELINE_DEST_DS = 0x40,
 		PIPELINE_DEST_ALL = 0xFF
 	};
+
+
+	/************************************************************************************************/
+
 
 	inline D3D12_SHADER_VISIBILITY PipelineDest2ShaderVis(PIPELINE_DESTINATION PD)
 	{
@@ -169,11 +315,14 @@ namespace FlexKit
 		return D3D12_SHADER_VISIBILITY_ALL;
 	}
 
+
 	/************************************************************************************************/
 
 
 	enum class FORMAT_2D
 	{
+		R8_UINT,
+		R16_UINT,
 		R16G16_UINT,
 		R8G8B8A_UINT,
 		R8G8B8A8_UINT,
@@ -489,7 +638,8 @@ namespace FlexKit
 		SHADER_TYPE_Geometry,
 		SHADER_TYPE_Hull,
 		SHADER_TYPE_Pixel,
-		SHADER_TYPE_Vertex
+		SHADER_TYPE_Vertex,
+		SHADER_TYPE_Unknown
 	};
 
 	struct ShaderDesc
@@ -1060,11 +1210,20 @@ namespace FlexKit
 		DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
 		DesciptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DesciptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory);
 		DesciptorHeap& NullFill	(RenderSystem* RS);
 
 		bool SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle);
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () { return DescriptorHeap; }
+
+		DesciptorHeap	GetHeapOffsetted(size_t)
+		{
+			DesciptorHeap out(*this);
+			FK_ASSERT(0);
+
+			return out;
+		}
 
 	private:
 		DescHeapPOS						DescriptorHeap;
@@ -1213,6 +1372,15 @@ namespace FlexKit
 		const DesciptorHeapLayout<16>& GetDescHeap(size_t idx) const { return Heaps[idx].Heap; }
 
 
+		size_t GetDesciptorTableSize(size_t idx) const
+		{
+			FK_ASSERT(RootEntries[idx].Type == RootSignatureEntryType::DescriptorHeap, "INVALID ARGUEMENT!");
+			auto heapIdx = RootEntries[idx].DescriptorHeap.HeapIdx;
+
+			return  Heaps[heapIdx].Heap.size();
+		}
+
+
 		bool AllowIA	= true;
 
 	private:
@@ -1280,9 +1448,9 @@ namespace FlexKit
 
 	struct VertexBufferEntry
 	{
-		VertexBufferHandle	VertexBuffer;
-		UINT				Stride;
-		UINT				Offset = 0;
+		VertexBufferHandle	VertexBuffer	= InvalidHandle_t;
+		UINT				Stride			= 0;
+		UINT				Offset			= 0;
 	};
 
 	typedef static_vector<VertexBufferEntry, 16>	VertexBufferList;
@@ -1671,14 +1839,10 @@ namespace FlexKit
 		QueryTable(iAllocator* Memory, RenderSystem* RS_in) :
 			Users{Memory},
 			Resources{Memory},
-			RS{RS_in}
-		{
-		}
+			RS{RS_in}{}
 
 
-		~QueryTable()
-		{
-		}
+		~QueryTable(){}
 
 
 		QueryBufferHandle	CreateQueryBuffer	(size_t Count, QueryType type);
@@ -1740,9 +1904,7 @@ namespace FlexKit
 		TextureStateTable(iAllocator* memory) :
 			Handles		{memory},
 			UserEntries	{memory},
-			Resources	{memory}
-		{
-		}
+			Resources	{memory}{}
 
 
 		~TextureStateTable()
@@ -1761,17 +1923,19 @@ namespace FlexKit
 		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource** Resource, uint32_t ResourceCount, DeviceResourceState InitialState, uint32_t Flags_IN = 0);
 		void			SetState		(TextureHandle Handle, DeviceResourceState State);
 
-		uint2			GetWH(TextureHandle Handle);
-		size_t			GetFrameGraphIndex(TextureHandle Texture, size_t FrameID);
+		uint2			GetWH(TextureHandle Handle) const;
+		size_t			GetFrameGraphIndex(TextureHandle Texture, size_t FrameID) const;
 		void			SetFrameGraphIndex(TextureHandle Texture, size_t FrameID, size_t Index);
 
-		uint32_t		GetTag(TextureHandle Handle);
+		DXGI_FORMAT		GetFormat(TextureHandle handle) const;
+
+		uint32_t		GetTag(TextureHandle Handle) const;
 		void			SetTag(TextureHandle Handle, uint32_t Tag);
 
 
 		void			MarkRTUsed		(TextureHandle Handle);
 
-		DeviceResourceState GetState	(TextureHandle Handle);
+		DeviceResourceState GetState	(TextureHandle Handle) const;
 		ID3D12Resource*		GetResource	(TextureHandle Handle);
 
 
@@ -1788,6 +1952,8 @@ namespace FlexKit
 			uint32_t			Flags;
 			uint32_t			Tag;
 			TextureHandle		Handle;
+			DXGI_FORMAT			Format;
+			uint32_t			Pad;
 		};
 
 		struct ResourceEntry
@@ -1836,36 +2002,9 @@ namespace FlexKit
 			Textures		(Memory_IN),
 			VertexBuffers	(Memory_IN),
 			ConstantBuffers	(Memory_IN, this),
-			PipelineStates	(Memory_IN, this, Threads)
-		{
-			pDevice                = nullptr;
-			pDebug                 = nullptr;
-			pDebugDevice           = nullptr;
-
-			pGIFactory		       = nullptr;
-			pDXGIAdapter	       = nullptr;
-			GraphicsQueue	       = nullptr;
-			UploadQueue		       = nullptr;
-			ComputeQueue	       = nullptr;
-
-			ID3D12Fence* Fence	   = nullptr;
-			ID3D12Fence* CopyFence = nullptr;
-
-			CurrentIndex			= 0;
-			CurrentUploadIndex		= 0;
-			FenceCounter			= 0;
-			FenceUploadCounter		= 0;
-
-			BufferCount             = 0;
-			DescriptorRTVSize       = 0;
-			DescriptorDSVSize       = 0;
-			DescriptorCBVSRVUAVSize = 0;
-		}
+			PipelineStates	(Memory_IN, this, Threads){}
 		
-		~RenderSystem()
-		{
-			Release();
-		}
+		~RenderSystem() { Release(); }
 
 		RenderSystem				(const RenderSystem&) = delete;
 		RenderSystem& operator =	(const RenderSystem&) = delete;
@@ -1874,11 +2013,12 @@ namespace FlexKit
 		void	Release();
 
 		// Pipeline State
-		ID3D12PipelineState*	GetPSO				(PSOHandle StateID);
-		void					RegisterPSOLoader	(PSOHandle State, LOADSTATE_FN Loader);
-		void					QueuePSOLoad		(PSOHandle State);
+		size_t						GetCurrentFrame();
+		ID3D12PipelineState*		GetPSO				(PSOHandle StateID);
+		RootSignature const * const GetPSORootSignature	(PSOHandle StateID) const;
 
-		size_t					GetCurrentFrame();
+		void					RegisterPSOLoader	(PSOHandle State, PipelineStateDescription desc);
+		void					QueuePSOLoad		(PSOHandle State);
 
 		void BeginSubmission	(RenderWindow* Window);
 		void Submit				(static_vector<ID3D12CommandList*>& CLs);
@@ -1890,14 +2030,18 @@ namespace FlexKit
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);
 
 
-
 		size_t	GetTextureFrameGraphIndex(TextureHandle);
 		void	SetTextureFrameGraphIndex(TextureHandle, size_t);
 
 		uint32_t	GetTag(TextureHandle Handle);
 		void		SetTag(TextureHandle Handle, uint32_t);
 
-		uint2		GetRenderTargetWH(TextureHandle Handle);
+		const size_t	GetTextureElementSize	(TextureHandle Handle) const;
+		const uint2		GetTextureWH			(TextureHandle Handle) const;
+		const uint2		GetRenderTargetWH		(TextureHandle Handle) const;
+		
+		void			UploadTexture				(TextureHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
+		void			UpdateResourceByUploadQueue	(ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
 
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer	(size_t BufferSize, bool GPUResident = true);
@@ -1932,6 +2076,8 @@ namespace FlexKit
 		DescHeapPOS				_ReserveRTVHeap				(size_t SlotCount );
 		DescHeapPOS				_ReserveDSVHeap				(size_t SlotCount );
 
+		ID3D12Resource*			_GetTextureResource(TextureHandle handle);
+
 		void _ResetDescHeap();
 		void _ResetRTVHeap();
 		void _ResetGPUDescHeap();
@@ -1961,25 +2107,25 @@ namespace FlexKit
 
 		operator RenderSystem* () { return this; }
 
-		ID3D12Device*			pDevice;
-		ID3D12CommandQueue*		GraphicsQueue;
-		ID3D12CommandQueue*		UploadQueue;
-		ID3D12CommandQueue*		ComputeQueue;
+		ID3D12Device*			pDevice			= nullptr;
+		ID3D12CommandQueue*		GraphicsQueue	= nullptr;
+		ID3D12CommandQueue*		UploadQueue		= nullptr;
+		ID3D12CommandQueue*		ComputeQueue	= nullptr;
 
-		size_t CurrentFrame;
- 		size_t CurrentIndex;
-		size_t CurrentUploadIndex;
-		size_t FenceCounter;
-		size_t FenceUploadCounter;
+		size_t CurrentFrame			= 0;
+ 		size_t CurrentIndex			= 0;
+		size_t CurrentUploadIndex	= 0;
+		size_t FenceCounter			= 0;
+		size_t FenceUploadCounter	= 0;
 
-		ID3D12Fence* Fence;
-		ID3D12Fence* CopyFence;
+		ID3D12Fence* Fence			= nullptr;
+		ID3D12Fence* CopyFence		= nullptr;
 
 		PerFrameResources		FrameResources	[QueueSize];
 		PerFrameUploadQueue		UploadQueues	[QueueSize];
 
-		IDXGIFactory5*			pGIFactory;
-		IDXGIAdapter4*			pDXGIAdapter;
+		IDXGIFactory5*			pGIFactory		= nullptr;
+		IDXGIAdapter4*			pDXGIAdapter	= nullptr;
 
 		ConstantBuffer			NullConstantBuffer; // Zero Filled Constant Buffer
 		Texture2D				NullUAV; // 1x1 Zero UAV
@@ -1998,24 +2144,24 @@ namespace FlexKit
 			HANDLE			FenceHandle;
 		}CopyFences[QueueSize];
 
-		size_t BufferCount;
-		size_t DescriptorRTVSize;
-		size_t DescriptorDSVSize;
-		size_t DescriptorCBVSRVUAVSize;
+		size_t BufferCount				= 0;
+		size_t DescriptorRTVSize		= 0;
+		size_t DescriptorDSVSize		= 0;
+		size_t DescriptorCBVSRVUAVSize	= 0;
 
 		struct
 		{
-			size_t AASamples;
-			size_t AAQuality;
+			size_t AASamples	= 0;
+			size_t AAQuality	= 1;
 		}Settings;
 
 		struct
 		{
-			ID3D12Resource* TempBuffer;
-			size_t			Position;
-			size_t			Last;
-			size_t			Size;
-			char*			Buffer;
+			ID3D12Resource* TempBuffer	= nullptr;
+			size_t			Position	= 0;
+			size_t			Last		= 0;
+			size_t			Size		= 0;
+			char*			Buffer		= nullptr;
 
 			void Release()
 			{
@@ -2065,16 +2211,15 @@ namespace FlexKit
 				return rhs.Resource == Resource;
 			}
 
-			ID3D12Resource* Resource;
-			size_t			Counter;
+			ID3D12Resource* Resource	= nullptr;
+			size_t			Counter		= 0;
 		};
 
 		Vector<FreeEntry>	FreeList;
 
-
-		ID3D12Debug*			pDebug;
-		ID3D12DebugDevice*		pDebugDevice;
-		iAllocator*				Memory;
+		ID3D12Debug*			pDebug			= nullptr;
+		ID3D12DebugDevice*		pDebugDevice	= nullptr;
+		iAllocator*				Memory			= nullptr;
 	};
 
 
@@ -2123,10 +2268,6 @@ namespace FlexKit
 
 	struct Shader
 	{
-		Shader() {
-			Blob = nullptr;
-		}
-
 		operator bool() {
 			return ( Blob != nullptr );
 		}
@@ -2146,8 +2287,8 @@ namespace FlexKit
 			return *this;
 		}
 
-		ID3DBlob*			Blob;
-		SHADER_TYPE			Type;
+		ID3DBlob*			Blob = nullptr;
+		SHADER_TYPE			Type = SHADER_TYPE::SHADER_TYPE_Unknown;
 	};
 
 
@@ -2419,12 +2560,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t Buffer)	{
-		return Mesh->VertexBuffer[Buffer];
-	}
+	inline ID3D12Resource* GetBuffer(TriMesh* Mesh, size_t Buffer)	{ return Mesh->VertexBuffer[Buffer]; }
 
 
-	inline ID3D12Resource* FindBuffer(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) {
+	inline ID3D12Resource* FindBuffer(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) 
+	{
 		ID3D12Resource* Buffer = nullptr;
 		auto& VertexBuffers = Mesh->VertexBuffer.VertexBuffers;
 		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
@@ -2436,7 +2576,11 @@ namespace FlexKit
 	}
 
 
-	inline VertexBuffer::BuffEntry* FindBufferEntry(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) {
+	/************************************************************************************************/
+
+
+	inline VertexBuffer::BuffEntry* FindBufferEntry(TriMesh* Mesh, VERTEXBUFFER_TYPE Type) 
+	{
 		ID3D12Resource* Buffer = nullptr;
 		auto& VertexBuffers = Mesh->VertexBuffer.VertexBuffers;
 		auto RES = find(VertexBuffers, [Type](auto& V) -> bool {return V.Type == Type;});
@@ -2448,7 +2592,11 @@ namespace FlexKit
 	}
 
 
-	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) {
+	/************************************************************************************************/
+
+
+	inline bool AddVertexBuffer(VERTEXBUFFER_TYPE Type, TriMesh* Mesh, static_vector<D3D12_VERTEX_BUFFER_VIEW>& out) 
+	{
 		auto* VB = FindBufferEntry(Mesh, Type);
 
 		if (VB == Mesh->VertexBuffer.VertexBuffers.end() || VB->Buffer == nullptr) {
@@ -2479,7 +2627,6 @@ namespace FlexKit
 
 
 	TriMeshHandle CreateCube(RenderSystem* RS, iAllocator* Memory, float R, GUID_t MeshID);
-
 
 
 	/************************************************************************************************/
@@ -2778,7 +2925,8 @@ namespace FlexKit
 		uint2	WH;
 		size_t	SubResourceStart;
 		size_t	SubResourceCount;
-		size_t* SubResourceSizes;
+		size_t*	SubResourceSizes;
+		size_t	ElementSize;
 	};
 
 	FLEXKITAPI void UpdateResourceByTemp			( RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);

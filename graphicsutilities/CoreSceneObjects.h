@@ -133,7 +133,6 @@ namespace FlexKit
 		NodeHandle			Node;				// 2
 		TriMeshHandle		Occluder;			// 2
 
-		//TriMesh*				Mesh;			// 8
 		TriMeshHandle			MeshHandle;		// 2
 		bool					DrawLast;		// 1
 		bool					Transparent;	// 1
@@ -145,6 +144,7 @@ namespace FlexKit
 		DrawablePoseState*		PoseState;		// 8 16
 		DrawableAnimationState*	AnimationState; // 8 24
 		TextureSet*				Textures;		// 8 32
+		char*					id;				// 8 40 -- string ID, null terminated 
 
 		struct MaterialProperties
 		{
@@ -157,7 +157,7 @@ namespace FlexKit
 			{}
 			float4		Albedo;		// Term 4 is Roughness
 			float4		Spec;		// Metal Is first 4, Specular is rgb
-		}MatProperties;	// 32 64
+		}MatProperties;	// 32 
 
 		Drawable&	SetAlbedo(float4 RGBA)		{ MatProperties.Albedo	= RGBA; return *this; }
 		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }

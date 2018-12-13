@@ -313,6 +313,8 @@ int main(int argc, char* argv[])
 				auto openRes = fopen_s(&F, Out, "wb");
 				fwrite(Table, sizeof(char), TableSize, F);
 
+				std::cout << "writing resource " << Out << '\n';
+
 				for (auto& res : ResourcesFound)
 					fwrite(res, sizeof(char), res->ResourceSize, F);
 

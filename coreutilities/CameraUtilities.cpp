@@ -34,7 +34,6 @@ namespace FlexKit
 
 	OrbitCameraBehavior::OrbitCameraBehavior(CameraHandle handle, float movementSpeed, float3 initialPos) :
 		CameraBehavior{ handle }
-
 	{
 		yawNode		= GetZeroedNode();
 		pitchNode	= GetZeroedNode();

@@ -595,8 +595,8 @@ void Draw3DGrid(
 	struct VertexLayout
 	{
 		float4 POS;
-		float2 UV;
 		float4 Color;
+		float2 UV;
 	};
 
 	FrameGraph.AddNode<DrawGrid>(0,

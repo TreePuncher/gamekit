@@ -176,6 +176,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	RootSignature const * const PipelineStateTable::GetPSORootSig(PSOHandle handle) const
+	{
+		auto PSO = _GetStateObject(handle);
+		return PSO->rootSignature;
+	}
+
+	/************************************************************************************************/
+
+
 	bool GetPSOReadyState( RenderSystem* RS, PipelineStateTable* States, PSOHandle State )
 	{
 		FK_ASSERT(false, "GETPSOREADYSTATE");
@@ -187,7 +196,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PipelineStateTable::RegisterPSOLoader( PSOHandle handle, LOADSTATE_FN IN_loader )
+	void PipelineStateTable::RegisterPSOLoader( PSOHandle handle, PipelineStateDescription PSODesc)
 	{
 		PipelineStateObject* PSO = _GetNearestStateObject(handle);
 
@@ -198,8 +207,8 @@ namespace FlexKit
 			PSO			= &allocator->allocate<PipelineStateObject>();
 			PSO->id		= handle;
 			PSO->state	= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader = IN_loader;
-
+			PSO->loader			= PSODesc.loadState;
+			PSO->rootSignature	= PSODesc.rootSignature;
 			_AddStateObject(PSO);
 			return;
 		}
@@ -207,17 +216,32 @@ namespace FlexKit
 		if (PSO->id == InvalidHandle_t)
 		{
 			// First node in chain
-			PSO->id		= handle;
-			PSO->state	= PipelineStateObject::PSO_States::Unloaded;
-			PSO->loader = IN_loader;
+			PSO->id				= handle;
+			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
+			PSO->loader			= PSODesc.loadState;
+			PSO->rootSignature	= PSODesc.rootSignature;
 			return;
 		}
 
 		if (PSO->id == handle)
 		{
 			// node exists
-			PSO->stale		= true;
-			PSO->loader		= IN_loader;
+			PSO->stale			= true;
+			PSO->loader			= PSODesc.loadState;
+			PSO->rootSignature	= PSODesc.rootSignature;
+			return;
+		}
+
+		if (!PSO->next)
+		{
+			FK_LOG_INFO("Adding State Node!");
+			// add new node
+			PSO					= &allocator->allocate<PipelineStateObject>();
+			PSO->id				= handle;
+			PSO->state			= PipelineStateObject::PSO_States::Unloaded;
+			PSO->loader			= PSODesc.loadState;
+			PSO->rootSignature	= PSODesc.rootSignature;
+			_AddStateObject(PSO);
 			return;
 		}
 	}
@@ -241,6 +265,27 @@ namespace FlexKit
 	PipelineStateObject* PipelineStateTable::_GetNearestStateObject(PSOHandle handle)
 	{
 		PipelineStateObject* PSO = &States[handle.INDEX % States.size()];
+		for (; PSO && PSO->id != handle && PSO->next != nullptr; PSO = PSO->next);
+
+		return PSO;
+	}
+
+
+	/************************************************************************************************/
+	// Less then Ideal
+
+	PipelineStateObject const*	PipelineStateTable::_GetStateObject(PSOHandle handle) const
+	{
+		PipelineStateObject const* PSO = &States[handle.INDEX % States.size()];
+		for (; PSO && PSO->id != handle; PSO = PSO->next);
+
+		return PSO;
+	}
+
+
+	PipelineStateObject const*	PipelineStateTable::_GetNearestStateObject(PSOHandle handle) const
+	{
+		PipelineStateObject const* PSO = &States[handle.INDEX % States.size()];
 		for (; PSO && PSO->id != handle && PSO->next != nullptr; PSO = PSO->next);
 
 		return PSO;

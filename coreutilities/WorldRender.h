@@ -85,9 +85,9 @@ namespace FlexKit
 			OcclusionCulling	{ false },
 			OcclusionQueries	{ RS->CreateOcclusionBuffer(4096) }
 		{
-			RS_IN->RegisterPSOLoader(FORWARDDRAW,			CreateForwardDrawPSO);
-			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	CreateForwardDrawInstancedPSO);
-			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	CreateOcclusionDrawPSO);
+			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS4CBVs4SRVs, CreateForwardDrawPSO,			});
+			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS4CBVs4SRVs, CreateForwardDrawInstancedPSO	});
+			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN->Library.RS4CBVs4SRVs, CreateOcclusionDrawPSO			});
 
 			RS_IN->QueuePSOLoad(FORWARDDRAW);
 			RS_IN->QueuePSOLoad(FORWARDDRAWINSTANCED);

@@ -687,6 +687,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	DesciptorHeap& DesciptorHeap::Init(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory)
+	{
+		FK_ASSERT(TempMemory);
+		FillState = Vector<bool>(TempMemory);
+
+		const size_t EntryCount = Layout_IN.size() * reserveCount;
+		DescriptorHeap = RS->_ReserveDescHeap(EntryCount);
+		Layout = &Layout_IN;
+
+		for (size_t I = 0; I < EntryCount; I++)
+			FillState.push_back(false);
+
+		return *this;
+	}
+
+
+	/************************************************************************************************/
+
+
 	DesciptorHeap& DesciptorHeap::NullFill(RenderSystem* RS)
 	{
 		auto& Entries = Layout->Entries;
@@ -2096,9 +2115,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::RegisterPSOLoader(PSOHandle State, LOADSTATE_FN Loader)
+	RootSignature const * const RenderSystem::GetPSORootSignature(PSOHandle handle) const
 	{
-		PipelineStates.RegisterPSOLoader(State, Loader);
+		return PipelineStates.GetPSORootSig(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::RegisterPSOLoader(PSOHandle State, PipelineStateDescription desc)
+	{
+		PipelineStates.RegisterPSOLoader(State, desc);
 	}
 
 
@@ -2200,9 +2228,70 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint2	RenderSystem::GetRenderTargetWH(TextureHandle Handle)
+
+	const size_t	RenderSystem::GetTextureElementSize(TextureHandle Handle) const
+	{
+		auto Format = Textures.GetFormat(Handle);
+		return GetFormatElementSize(Format);
+	}
+
+
+	/************************************************************************************************/
+
+
+	const uint2	RenderSystem::GetTextureWH(TextureHandle handle) const
+	{
+		return Textures.GetWH(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	const uint2	RenderSystem::GetRenderTargetWH(TextureHandle Handle) const
 	{
 		return RenderTargets.GetWH(Handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::UploadTexture(TextureHandle handle, byte* buffer, size_t bufferSize)
+	{
+		auto resource	= _GetTextureResource(handle);
+		auto wh			= GetTextureWH(handle);
+		auto formatSize = GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
+
+		/*
+		struct SubResourceUpload_Desc
+		{
+			const void* Data; 
+			size_t	Size;
+			size_t	RowSize;
+			size_t	RowCount;
+			uint2	WH;
+			size_t	SubResourceStart;
+			size_t	SubResourceCount;
+			size_t*	SubResourceSizes;
+			size_t	ElementSize;
+		};
+		*/
+
+		size_t subResourceSizes = bufferSize;
+
+		SubResourceUpload_Desc desc;
+		desc.Data				= buffer;
+		desc.RowSize			= wh[1] * formatSize;
+		desc.RowCount			= wh[0];
+		desc.Size				= bufferSize;
+		desc.SubResourceCount	= 1;
+		desc.SubResourceSizes	= &subResourceSizes;
+		desc.SubResourceStart	= 0;
+		desc.WH					= wh;
+		desc.ElementSize		= formatSize;
+
+		UpdateSubResourceByUploadQueue(this, resource, &desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	}
 
 
@@ -2278,14 +2367,27 @@ namespace FlexKit
 
 	TextureHandle RenderSystem::CreateTexture2D(uint2 WH, FORMAT_2D Format, size_t MipLevels)
 	{
+		Texture2D_Desc desc;
+		desc.CV				= false;
+		desc.Format			= Format;
+		desc.Height			= WH[1];
+		desc.Width			= WH[0];
+		desc.initialData	= nullptr;
+		desc.MipLevels		= MipLevels;
+		desc.Read			= false;
+		desc.RenderTarget	= false;
+		desc.UAV			= false;
+		desc.Write			= false;
+
+		auto newTexture = FlexKit::CreateTexture2D(this, &desc);
+		
 		ID3D12Resource* Resources[] = {
-			nullptr
+			newTexture.Texture
 		};
 
 		Texture2D_Desc Desc(WH[1], WH[0], Format, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL, MipLevels);
-
-		FK_ASSERT(0);
 		auto Texture = Textures.AddResource(Desc, Resources, 1, DRS_ShaderResource, TF_NONE);
+
 		return Texture;
 	}
 
@@ -2927,7 +3029,6 @@ namespace FlexKit
 	void UpdateResourceByTemp(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
 	{
 		UpdateGPUResource(RS, Data, SourceSize, Dest);
-		// NOT SURE IF NEEDED, RUNS CORRECTLY WITHOUT FOR THE MOMENT
 
 		auto& CopyEngine = RS->CopyEngine;
 		ID3D12GraphicsCommandList* CS = RS->_GetCurrentCommandList();
@@ -2936,6 +3037,10 @@ namespace FlexKit
 				&CD3DX12_RESOURCE_BARRIER::Transition(Dest, D3D12_RESOURCE_STATE_COPY_DEST, EndState, -1,
 				D3D12_RESOURCE_BARRIER_FLAGS::D3D12_RESOURCE_BARRIER_FLAG_NONE));
 	}
+
+
+	/************************************************************************************************/
+
 
 	FLEXKITAPI void UpdateSubResourceByUploadQueue(RenderSystem* RS, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState)
 	{
@@ -2957,10 +3062,9 @@ namespace FlexKit
 			R.Begin     = 0;
 			R.End	    = Desc->Size;
 
-
 			void* pData		= nullptr;
 			size_t Offset	= 0;
-			ReserveTempSpace(RS, Desc->WH[0] * Desc->WH[1] * 4, pData, Offset);
+			ReserveTempSpace(RS, Desc->WH[0] * Desc->WH[1] * Desc->ElementSize, pData, Offset);
 
 			D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
 			SubRegion.Footprint.Depth    = 1;
@@ -2989,18 +3093,18 @@ namespace FlexKit
 		}
 	}
 
-	void UpdateResourceByUploadQueue(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
+
+	void RenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
 	{
 		FK_ASSERT(Data);
 		FK_ASSERT(Dest);
 
-		PerFrameUploadQueue& UploadQueue	= RS->_GetCurrentUploadQueue();
+		PerFrameUploadQueue& UploadQueue	= _GetCurrentUploadQueue();
 		ID3D12GraphicsCommandList* CS		= UploadQueue.UploadList[0];
 
 		void* _ptr = nullptr;
 		size_t Offset = 0;
-		ReserveTempSpace(RS, Size, _ptr, Offset);
-		auto& CopyEngine = RS->CopyEngine;
+		ReserveTempSpace(this, Size, _ptr, Offset);
 
 		FK_ASSERT(_ptr, "UPLOAD ERROR!");
 
@@ -3228,7 +3332,7 @@ namespace FlexKit
 				D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
 #else
-				UpdateResourceByUploadQueue(RS, NewBuffer, Buffers[itr]->GetBuffer(),
+				RS->UpdateResourceByUploadQueue(NewBuffer, Buffers[itr]->GetBuffer(),
 					Buffers[itr]->GetBufferSizeRaw(), 1, 
 					D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 #endif
@@ -3249,9 +3353,12 @@ namespace FlexKit
 			ID3D12Resource* NewBuffer = nullptr;
 
 			HRESULT HR = RS->pDevice->CreateCommittedResource(
-				&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
-				&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, 
-				nullptr, IID_PPV_ARGS(&NewBuffer));
+				&HEAP_Props, 
+				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
+				&Resource_DESC, 
+				D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, 
+				nullptr, 
+				IID_PPV_ARGS(&NewBuffer));
 			
 			if (FAILED(HR))
 			{// TODO!
@@ -3259,11 +3366,15 @@ namespace FlexKit
 			}
 
 #if 0
-			UpdateResourceByTemp(RS, NewBuffer, Buffers[15]->GetBuffer(), 
+			RS->UpdateResourceByTemp(
+				NewBuffer, 
+				Buffers[15]->GetBuffer(), 
 				Buffers[0x0f]->GetBufferSizeRaw(), 1, 
 				D3D12_RESOURCE_STATE_INDEX_BUFFER);
 #else
-			UpdateResourceByUploadQueue(RS, NewBuffer, Buffers[15]->GetBuffer(),
+			RS->UpdateResourceByUploadQueue(
+				NewBuffer, 
+				Buffers[15]->GetBuffer(),
 				Buffers[15]->GetBufferSizeRaw(), 1,
 				D3D12_RESOURCE_STATE_INDEX_BUFFER);
 #endif
@@ -3601,6 +3712,7 @@ namespace FlexKit
 		Entry.FGI_FrameStamp    = -1;
 		Entry.Flags				= Flags_IN;
 		Entry.Handle            = Handle;
+		Entry.Format			= Desc.GetFormat();
 
 		UserEntries.push_back(Entry);
 
@@ -3653,7 +3765,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint32_t TextureStateTable::GetTag(TextureHandle Handle)
+	uint32_t TextureStateTable::GetTag(TextureHandle Handle) const
 	{
 		auto UserIdx = Handles[Handle];
 		return UserEntries[UserIdx].Tag;
@@ -3670,7 +3782,7 @@ namespace FlexKit
 	}
 
 
-	size_t TextureStateTable::GetFrameGraphIndex(TextureHandle Handle, size_t FrameID)
+	size_t TextureStateTable::GetFrameGraphIndex(TextureHandle Handle, size_t FrameID) const
 	{
 		auto UserIdx	= Handles[Handle];
 		auto FrameStamp	= UserEntries[UserIdx].FGI_FrameStamp;
@@ -3682,6 +3794,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void TextureStateTable::SetFrameGraphIndex(TextureHandle Handle, size_t FrameID, size_t Index)
 	{
 		auto UserIdx = Handles[Handle];
@@ -3690,11 +3805,22 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
 
-	uint2 TextureStateTable::GetWH(TextureHandle Handle)
+
+	DXGI_FORMAT TextureStateTable::GetFormat(TextureHandle handle) const
+	{
+		auto UserIdx = Handles[handle];
+		return UserEntries[UserIdx].Format;
+	}
+
+
+	/************************************************************************************************/
+
+
+	uint2 TextureStateTable::GetWH(TextureHandle Handle) const
 	{
 		auto UserIdx = Handles[Handle];
-
 		return Resources[UserEntries[UserIdx].ResourceIdx].WH;
 	}
 
@@ -3772,7 +3898,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceResourceState TextureStateTable::GetState(TextureHandle Handle)
+	DeviceResourceState TextureStateTable::GetState(TextureHandle Handle) const
 	{
 		auto Idx			= Handles[Handle];
 		auto ResourceIdx	= UserEntries[Idx].ResourceIdx;
@@ -3953,7 +4079,6 @@ namespace FlexKit
 
 	Pair<TriMeshHandle, bool>	FindMesh(GUID_t guid)
 	{
-		TriMeshHandle HandleOut;
 		size_t location		= 0;
 		size_t HandleIndex	= 0;
 		for (auto Entry : GeometryTable.Guids)
@@ -3962,7 +4087,7 @@ namespace FlexKit
 				for ( auto index : GeometryTable.Handles.Indexes)
 				{
 					if (index == location) {
-						HandleOut = TriMeshHandle(HandleIndex, GeometryTable.Handles.mType, 0x04);
+						return { TriMeshHandle(HandleIndex, GeometryTable.Handles.mType, 0x04), true };
 						break;
 					}
 					++HandleIndex;
@@ -3972,7 +4097,7 @@ namespace FlexKit
 			++location;
 		}
 
-		return { HandleOut, 0 };
+		return { InvalidHandle_t, false };
 	}
 	
 
@@ -4157,6 +4282,15 @@ namespace FlexKit
 		FrameResources->DSVHeap.GPU_HeapPOS.ptr = FrameResources->DSVHeap.GPU_HeapPOS.ptr + DescriptorDSVSize * SlotCount;
 
 		return{ CPU , GPU };
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource* RenderSystem::_GetTextureResource(TextureHandle handle)
+	{
+		return Textures.GetResource(handle);
 	}
 
 
@@ -6596,6 +6730,31 @@ namespace FlexKit
 
 
 		return Texture;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle MoveTextureBufferToVRAM(TextureBuffer* buffer, RenderSystem* RS, iAllocator* tempMemory)
+	{
+		auto textureHandle = RS->CreateTexture2D(buffer->WH, FORMAT_2D::R8G8B8A8_UINT);
+		RS->UploadTexture(textureHandle, buffer->Buffer, buffer->Size);
+
+		return textureHandle;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle MoveTextureBufferToVRAM(TextureBuffer** buffer, size_t bufferCount, RenderSystem* RS, iAllocator* tempMemory)
+	{
+		//auto textureHandle = RS->CreateTexture2D(buffer->WH, FORMAT_2D::R8G8B8A8_UINT, bufferCount);
+		//RS->UploadTexture(textureHandle, buffer->Buffer, buffer->Size);
+
+		//return textureHandle;
+		return InvalidHandle_t;
 	}
 
 

@@ -203,10 +203,6 @@ namespace FlexKit
 		InitiateGeometryTable	(core->GetBlockMemory());
 		InitiateCameraTable		(core->GetBlockMemory());
 
-		AddResourceFile("assets\\assets.gameres");
-		AddResourceFile("assets\\ResourceFile.gameres");
-		AddResourceFile("assets\\ShaderBallTestScene.gameres");
-
 		clearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
 		quit						= false;
 		physicsUpdateTimer			= 0.0f;
@@ -216,7 +212,7 @@ namespace FlexKit
 #ifdef _DEBUG
 		drawDebugStats			= true;
 #else
-		DrawDebugStats			= false;
+		drawDebugStats			= false;
 #endif
 
 		//framework.ActivePhysicsScene		= nullptr;

@@ -712,6 +712,11 @@ namespace FlexKit
 		//FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
 		FrameResourceHandle	WriteDepthBuffer	(TextureHandle Handle);
 
+		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
+		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
+
+		DesciptorHeap					ReserveDescriptorTableSpaces	(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory);
+
 	private:
 		FrameResourceHandle AddReadableResource		(uint32_t Tag, DeviceResourceState State);
 		FrameResourceHandle AddWriteableResource	(uint32_t Tag, DeviceResourceState State);
@@ -865,6 +870,7 @@ namespace FlexKit
 		size_t VertexBufferOffset	= 0;
 		size_t VertexCount			= 0;
 		size_t VertexOffset			= 0;
+		TextureHandle texture		= InvalidHandle_t;
 	};
 
 	typedef Vector<ShapeDraw> DrawList;
@@ -1163,6 +1169,70 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	using TextureList = Vector<TextureHandle>;
+
+	class TexturedRectangleListShape final : public ShapeProtoType
+	{
+	public:
+		TexturedRectangleListShape(RectangleList&& rects_in, TextureList&& textures_in) :
+			rects		{ std::move(rects_in)		},
+			textures	{ std::move(textures_in )	}{}
+
+
+		~TexturedRectangleListShape() {}
+
+		void AddShapeDraw(
+			DrawList&				drawList,
+			VertexBufferHandle		pushBuffer,
+			ConstantBufferHandle	CB,
+			FrameResources&			resources) override
+		{
+			FK_ASSERT(rects.size() == textures.size());
+			if (rects.size() != textures.size())
+				return;
+
+			Constants CB_Data = {
+			float4(1, 1, 1, 1),
+			float4(1, 1, 1, 1),
+			float4x4::Identity() };
+
+			auto CBOffset = BeginNewConstantBuffer(CB, resources);
+			PushConstantBufferData(CB_Data, CB, resources);
+
+			const size_t VBOffset = resources.GetVertexBufferOffset(pushBuffer, sizeof(ShapeVert));
+			size_t vertexOffset = 0;
+
+			const size_t rectCount = rects.size();
+			for (size_t I = 0; I < rectCount; ++I)
+			{
+				auto rect		= rects[I];
+				auto texture	= textures[I];
+			
+				float2 rectUpperLeft = rect.Position;
+				float2 rectBottomRight = rect.Position + rect.WH;
+				float2 rectUpperRight = { rectBottomRight.x,	rectUpperLeft.y };
+				float2 rectBottomLeft = { rectUpperLeft.x,	rectBottomRight.y };
+
+				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectBottomLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+
+				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectUpperRight),	{ 1.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
+
+				drawList.push_back({ ShapeDraw::RenderMode::Textured, CBOffset, VBOffset, 6, vertexOffset,  });
+				vertexOffset += 6;
+			}
+		}
+
+		Vector<Rectangle>		rects;
+		Vector<TextureHandle>	textures;
+	};
+
+
+	/************************************************************************************************/
+
 
 	inline void AddShapes(
 		DrawList&				List, 
@@ -1200,6 +1270,7 @@ namespace FlexKit
 			FrameResourceHandle		RenderTarget;
 			VertexBufferHandle		VertexBuffer;
 			ConstantBufferHandle	ConstantBuffer;
+			DesciptorHeap			descriptorTables;
 			DrawList				Draws;
 		};
 
@@ -1217,6 +1288,17 @@ namespace FlexKit
 				Data.State			= State;
 
 				AddShapes(Data.Draws, PushBuffer, CB, Graph.Resources, std::forward<TY_OTHER&&>(Args)...);
+
+				// Reserve needed Descriptor Table Space
+				size_t textureCount = 0;
+				for (const auto& Draw : Data.Draws)
+					if (Draw.Mode == ShapeDraw::RenderMode::Textured)
+						++textureCount;
+
+				if (textureCount){
+					auto& desciptorTableLayout	= Builder.GetDescriptorTableLayout(State, 0);
+					Data.descriptorTables		= Builder.ReserveDescriptorTableSpaces(desciptorTableLayout ,textureCount, Memory);
+				}
 			},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
 			{
@@ -1234,6 +1316,7 @@ namespace FlexKit
 				Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 				Ctx->SetVertexBuffers		(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
 
+				size_t TextureDrawCount = 0;
 				ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
 				for (auto D : Data.Draws)
 				{
@@ -1248,7 +1331,8 @@ namespace FlexKit
 						}	break;
 						case ShapeDraw::RenderMode::Textured:
 						{
-							FK_ASSERT(0, "UNHANDLED CASE!");
+							Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+							//Ctx->SetGraphicsDescriptorTable(1, Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++));
 						}	break;
 					}
 
@@ -1500,9 +1584,8 @@ namespace FlexKit
 			},
 			[](auto& Data, const FrameResources& Resources, Context* ctx)
 			{
-				auto test = Resources.GetPipelineState(Data.PSO);
 				ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-				ctx->SetPipelineState(test);
+				ctx->SetPipelineState(Resources.GetPipelineState(Data.PSO));
 				ctx->SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
 
 				ctx->SetRenderTargets(

@@ -55,12 +55,8 @@ public:
 	{
 		InitiateCameraTable(framework->core->GetBlockMemory());
 
-		IN_Framework->core->RenderSystem.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO, FlexKit::LoadSpriteTextPSO);
-
-		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_PSO);
-		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE_PSO);
-		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_LINE3D_PSO);
-		IN_Framework->core->RenderSystem.QueuePSOLoad(FlexKit::DRAW_SPRITE_TEXT_PSO);
+		auto RS = IN_Framework->GetRenderSystem();
+		RS->RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO, {&RS->Library.RS4CBVs4SRVs, FlexKit::LoadSpriteTextPSO });
 	}
 
 	~BaseState()

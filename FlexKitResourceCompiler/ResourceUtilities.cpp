@@ -519,15 +519,16 @@ public :
 
 ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker, iAllocator* MemoryOut, FBXIDTranslationTable* Table, bool LoadSkeletalData = false, MD_Vector* MD = nullptr, bool SUBDIV = false)
 {
-	auto Res = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, MemoryOut, Table, MD);
+	ResourceList ResourcesFound;
+
+	auto& [resourceCount, resourceList] = CompileAllGeometry(S->GetRootNode(), MemoryOut, nullptr, MemoryOut, Table, MD);
 
 #if USING(RESCOMPILERVERBOSE)
-	std::cout << "CompileAllGeometry Compiled " << (size_t)Res << " Resources\n";
+	std::cout << "CompileAllGeometry Compiled " << (size_t)resourceCount << " Resources\n";
 #endif
-	ResourceList ResourcesFound;
-	if ((size_t)Res > 0)
+	if ((size_t)resourceCount > 0)
 	{
-		auto G = (GeometryList*)(GBAPair)Res;
+		auto G = (GeometryList*)resourceList;
 		for (size_t I = 0; I < G->size(); ++I)
 		{
 			ResourcesFound.push_back(CreateTriMeshResourceBlob(&G->at(I), MemoryOut));
@@ -563,7 +564,7 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 					if (!Cooker)
 						continue;
 
-					Collider_MetaData* ColliderInfo = (Collider_MetaData*)MD->at(RelatedMD[J]);
+					Collider_MetaData* ColliderInfo = (Collider_MetaData*)MD->at(RelatedMD [J]);
 					ColliderStream Stream = ColliderStream(MemoryOut, 2048);
 
 					using physx::PxTriangleMeshDesc;
@@ -711,6 +712,9 @@ size_t CalculateSceneResourceSize(CompiledScene* SceneIn)
 	BlobSize += SceneIn->SceneLights.size()		* sizeof(CompiledScene::PointLight);
 	BlobSize += SceneIn->SceneStatics.size()	* sizeof(CompiledScene::Entity);
 
+	for (auto E : SceneIn->SceneEntities)
+		BlobSize += E.idlength + 1;
+
 	return BlobSize;
 }
 
@@ -720,8 +724,34 @@ size_t CalculateSceneResourceSize(CompiledScene* SceneIn)
 
 Resource* CreateSceneResourceBlob(iAllocator* Memory, CompiledScene* SceneIn, FBXIDTranslationTable* Table)
 {
-	size_t ResourceSize = CalculateSceneResourceSize(SceneIn);
-	SceneResourceBlob* SceneBlob		= (SceneResourceBlob*)Memory->malloc(ResourceSize);
+	size_t sceneTableOffset			= 0;
+	size_t lightTableOffset			= SceneIn->SceneEntities.size()							* sizeof(CompiledScene::Entity);;
+	size_t nodeTableOffset			= lightTableOffset		+ SceneIn->SceneLights.size()	* sizeof(CompiledScene::PointLight);
+	size_t staticsTableOffset		= nodeTableOffset		+ SceneIn->Nodes.size()			* sizeof(CompiledScene::SceneNode);
+	size_t stringTableOffset		= staticsTableOffset	+ SceneIn->SceneStatics.size()	* sizeof(CompiledScene::Entity);;
+
+	size_t ResourceSize				= CalculateSceneResourceSize(SceneIn);
+	SceneResourceBlob* SceneBlob	= (SceneResourceBlob*)Memory->malloc(ResourceSize);
+	auto blob						= SceneBlob->Buffer;
+
+	size_t strOffset	= stringTableOffset;
+	size_t strCount		= 0;
+	for (auto& entity : SceneIn->SceneEntities)
+	{
+		entity.MeshGuid = TranslateID(entity.MeshGuid, *Table);
+
+		if (entity.idlength) {
+			strCount++;
+			memcpy(blob + strOffset, entity.id, entity.idlength - 1);// discarding the null terminator
+
+			entity.id = reinterpret_cast<const char*>(strOffset);
+			strOffset += entity.idlength - 1;
+		}
+	}
+
+	memset(SceneBlob->ID, 0, 64);
+	strncpy(SceneBlob->ID, SceneIn->ID, SceneIn->IDSize);
+
 	SceneBlob->SceneTable.EntityCount	= SceneIn->SceneEntities.size();
 	SceneBlob->SceneTable.NodeCount		= SceneIn->Nodes.size();
 	SceneBlob->SceneTable.LightCount	= SceneIn->SceneLights.size();
@@ -730,31 +760,19 @@ Resource* CreateSceneResourceBlob(iAllocator* Memory, CompiledScene* SceneIn, FB
 	SceneBlob->RefCount					= 0;
 	SceneBlob->State					= Resource::EResourceState_UNLOADED;
 	SceneBlob->Type						= EResource_Scene;
-	
-	for (auto& A : SceneIn->SceneEntities)
-		A.MeshGuid = TranslateID(A.MeshGuid, *Table);
 
-	memset(SceneBlob->ID, 0, 64);
-	strncpy(SceneBlob->ID, SceneIn->ID, SceneIn->IDSize);
-	
-	size_t Offset = 0;
-	auto Data = SceneBlob->Buffer;
+	SceneBlob->SceneTable.SceneStringCount		= strCount;
+	SceneBlob->SceneTable.SceneStringsOffset	= stringTableOffset;
 
-	SceneBlob->SceneTable.EntityOffset = Offset;
-	memcpy(Data + Offset, SceneIn->SceneEntities.begin(), SceneIn->SceneEntities.size() * sizeof(CompiledScene::Entity));
-	Offset += SceneIn->SceneEntities.size() * sizeof(CompiledScene::Entity);
+	SceneBlob->SceneTable.EntityOffset			= sceneTableOffset;
+	SceneBlob->SceneTable.LightOffset			= lightTableOffset;
+	SceneBlob->SceneTable.NodeOffset			= nodeTableOffset;
+	SceneBlob->SceneTable.StaticsOffset			= staticsTableOffset;
 
-	SceneBlob->SceneTable.LightOffset = Offset;
-	memcpy(Data + Offset, SceneIn->SceneLights.begin(), SceneIn->SceneLights.size() * sizeof(CompiledScene::PointLight));
-	Offset += SceneIn->SceneLights.size() * sizeof(CompiledScene::PointLight);
-
-	SceneBlob->SceneTable.NodeOffset = Offset;
-	memcpy(Data + Offset, SceneIn->Nodes.begin(), SceneIn->Nodes.size() * sizeof(CompiledScene::SceneNode));
-	Offset += SceneIn->Nodes.size() * sizeof(CompiledScene::SceneNode);
-
-	SceneBlob->SceneTable.StaticsOffset = Offset;
-	memcpy(Data + Offset, SceneIn->SceneStatics.begin(), SceneIn->SceneStatics.size() * sizeof(CompiledScene::Entity));
-	Offset += SceneIn->SceneStatics.size() * sizeof(CompiledScene::Entity);
+	memcpy(blob + sceneTableOffset, SceneIn->SceneEntities.begin(), SceneIn->SceneEntities.size() * sizeof(CompiledScene::Entity));
+	memcpy(blob + lightTableOffset, SceneIn->SceneLights.begin(), SceneIn->SceneLights.size() * sizeof(CompiledScene::PointLight));
+	memcpy(blob + nodeTableOffset, SceneIn->Nodes.begin(), SceneIn->Nodes.size() * sizeof(CompiledScene::SceneNode));
+	memcpy(blob + staticsTableOffset, SceneIn->SceneStatics.begin(), SceneIn->SceneStatics.size() * sizeof(CompiledScene::Entity));
 
 	return (Resource*)SceneBlob;
 }
@@ -802,8 +820,9 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 
 			CompiledScene::Entity Entity;
 			Entity.MeshGuid = UniqueID;
-			Entity.Node = Nodehndl;
-
+			Entity.Node		= Nodehndl;
+			Entity.id		= name;
+			Entity.idlength = strnlen(Entity.id, 128);
 			AddEntity(Entity, SceneOut);
 
 		}	break;

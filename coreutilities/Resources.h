@@ -358,10 +358,12 @@ namespace FlexKit
 
 		struct Entity
 		{
-			GUID_t MeshGuid;
-			GUID_t TextureSet;
-			size_t Node;
-			GUID_t Collider;
+			GUID_t		MeshGuid;
+			GUID_t		TextureSet;
+			size_t		Node;
+			GUID_t		Collider;
+			size_t		idlength;
+			const char*	id;
 		};
 
 		struct SceneGeometryTable
@@ -418,6 +420,9 @@ namespace FlexKit
 
 			size_t StaticsCount;
 			size_t StaticsOffset;
+
+			size_t SceneStringCount;
+			size_t SceneStringsOffset;
 		}SceneTable;
 		
 		char Buffer[];

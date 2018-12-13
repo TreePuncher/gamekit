@@ -546,10 +546,10 @@ namespace FlexKit
 
 	};
 
-	template<typename TY_> float2 operator + (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x + RHS[0], LHS.y + RHS[1] };}
-	template<typename TY_> float2 operator - (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x - RHS[0], LHS.y - RHS[1] };}
-	template<typename TY_> float2 operator * (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x * RHS[0], LHS.y * RHS[1] };}
-	template<typename TY_> float2 operator / (float2& LHS, Vect<2, TY_>& RHS){ return{ LHS.x / RHS[0], LHS.y / RHS[1] };}
+	template<typename TY_> float2 operator + (const float2& LHS, const Vect<2, TY_>& RHS){ return{ LHS.x + RHS[0], LHS.y + RHS[1] };}
+	template<typename TY_> float2 operator - (const float2& LHS, const Vect<2, TY_>& RHS){ return{ LHS.x - RHS[0], LHS.y - RHS[1] };}
+	template<typename TY_> float2 operator * (const float2& LHS, const Vect<2, TY_>& RHS){ return{ LHS.x * RHS[0], LHS.y * RHS[1] };}
+	template<typename TY_> float2 operator / (const float2& LHS, const Vect<2, TY_>& RHS){ return{ LHS.x / RHS[0], LHS.y / RHS[1] };}
 
 	inline float2 operator * (const float   lhs, const float2 rhs) { return float2(lhs) * rhs; }
 

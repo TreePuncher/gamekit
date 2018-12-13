@@ -46,7 +46,7 @@ namespace FlexKit
 
 
 	CameraHandle CreateCamera(
-		float	FOV			= pi/2.5,
+		float	FOV			= pi/3,
 		float	AspectRatio = 1.0f,
 		float	Near		= 0.1f,
 		float	Far			= 10000.0f,
@@ -158,6 +158,7 @@ namespace FlexKit
 
 
 	using CameraBehavior = CameraBehavior_t<>;
+
 
 	/************************************************************************************************/
 }// FlexKit

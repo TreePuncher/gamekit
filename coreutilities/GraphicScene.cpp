@@ -43,6 +43,8 @@ namespace FlexKit
 
 		D.Node			= N;
 		D.MeshHandle	= mesh;
+		D.id			= nullptr;
+
 		_PushEntity(D, Out);
 
 		HandleTable[Out] = Drawables.size() - 1;
@@ -928,15 +930,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	//bool LoadScene(RenderSystem* RS, Resources* RM, GeometryTable*, const char* ID, GraphicScene* GS_out)
-	//{
-	//	return false;
-	//}
-
-
-	/************************************************************************************************/
-
-
 	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp)
 	{
 		bool Available = isResourceAvailable(Guid);
@@ -991,7 +984,19 @@ namespace FlexKit
 								Entities[I].MeshGuid, 
 								node);
 
-							//GS_out->SetNode(NewEntity, CreatedNodes[Entities[I].Node]);
+							size_t idLength = Entities[I].idlength;
+
+							if (idLength)
+							{
+								const size_t string_offset	= (size_t)Entities[I].id;
+								char* stringBuffer			= (char*)GS_out->Memory->malloc(idLength + 1);// Adding 1 byte for null terminator
+								stringBuffer[idLength]		= '\0';
+
+								strncpy(stringBuffer, SceneBlob->Buffer + SceneBlob->SceneTable.SceneStringsOffset, idLength);
+
+								GS_out->SetEntityId(NewEntity, nullptr);
+							}
+
 							SetFlag(CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
 							int x = 0;
 						}
@@ -1090,6 +1095,21 @@ namespace FlexKit
 		);
 
 		return &Task1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GraphicScene::ListEntities()
+	{
+		for (auto& d : Drawables)
+		{
+			if (d.id)
+				std::cout << d.id << "\n";
+			else
+				std::cout << "entity with no id\n";
+		}
 	}
 
 

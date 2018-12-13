@@ -89,6 +89,8 @@ namespace FlexKit
 
 		void PopState();
 
+		RenderSystem*	GetRenderSystem() { return core->RenderSystem; }
+
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
 		TY_INITIALSTATE& PushState(TY_ARGS&& ... ARGS)
 		{
@@ -178,7 +180,6 @@ namespace FlexKit
 		virtual bool EventHandler	(Event evt) { return true; };
 
 		GameFramework*	framework;
-
 	protected: 		
 		FrameworkState(GameFramework* in_framework) : framework(in_framework) {}
 	};

@@ -46,10 +46,17 @@ struct ID3D12PipelineState;
 namespace FlexKit
 {
 	class RenderSystem;
+	class RootSignature;
 	class PipelineStateTable;
 
 
 	typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
+
+	struct PipelineStateDescription
+	{
+		RootSignature*	rootSignature;
+		LOADSTATE_FN*	loadState;
+	};
 
 
 	/************************************************************************************************/
@@ -91,6 +98,7 @@ namespace FlexKit
 		bool								stale	= false;
 		std::atomic<PSO_States>				state	= PSO_States::Unloaded;
 		std::atomic <PipelineStateObject*>	next	= nullptr;
+		RootSignature*						rootSignature;
 		LOADSTATE_FN*						loader	= nullptr;
 		std::condition_variable				CV;
 	};
@@ -124,15 +132,21 @@ namespace FlexKit
 		
 		void ReleasePSOs();
 
-		bool					QueuePSOLoad	( PSOHandle handle, iAllocator* Allocator );
-		bool					ReloadLoadPSO	( PSOHandle handle );
-		ID3D12PipelineState*	GetPSO			( PSOHandle handle );
+		bool							QueuePSOLoad	( PSOHandle handle, iAllocator* Allocator );
+		bool							ReloadLoadPSO	( PSOHandle handle );
 
-		void					RegisterPSOLoader	( PSOHandle handle, LOADSTATE_FN Loader );
+		ID3D12PipelineState*			GetPSO			( PSOHandle handle );
+		RootSignature const * const 	GetPSORootSig	( PSOHandle handle ) const;
+
+		void							RegisterPSOLoader( PSOHandle handle, PipelineStateDescription Loader );
 
 	private:
 		PipelineStateObject*	_GetStateObject			(PSOHandle				handle);
 		PipelineStateObject*	_GetNearestStateObject	(PSOHandle				handle);
+
+		PipelineStateObject const*	_GetStateObject			(PSOHandle				handle) const;
+		PipelineStateObject const*	_GetNearestStateObject	(PSOHandle				handle) const;
+
 		bool					_AddStateObject			(PipelineStateObject*	PSO);
 
 		static_vector<PipelineStateObject,	128>			States;

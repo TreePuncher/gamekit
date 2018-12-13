@@ -193,6 +193,9 @@ namespace FlexKit
 		inline void SetRayVisability	(SceneEntityHandle EHandle, bool Visable = true )		{ DrawableRayVisibility.at(EHandle) = Visable; }
 		inline bool GetRayVisability	(SceneEntityHandle EHandle )							{ return DrawableRayVisibility.at(EHandle);	}
 
+		inline void				SetEntityId(SceneEntityHandle EHandle, char* IN_id)				{ Drawables.at(EHandle).id = IN_id; }
+
+
 		inline void				SetMeshHandle(SceneEntityHandle EHandle, TriMeshHandle M)		{ Drawables.at(EHandle).MeshHandle = M;		}
 		inline TriMeshHandle	GetMeshHandle(SceneEntityHandle EHandle)							{ return Drawables.at(EHandle).MeshHandle;	}
 
@@ -225,6 +228,8 @@ namespace FlexKit
 
 		UpdateTask* Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask* transformDependency);
 
+
+		void ListEntities();
 
 		void SetDirty(SceneEntityHandle handle)
 		{}
@@ -323,6 +328,21 @@ namespace FlexKit
 
 		GraphicScene*		ParentScene;
 		SceneEntityHandle	Entity;
+	};
+
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY_Interactor = DefaultCameraInteractor>
+	class PointLightBehavior
+	{
+	public:
+		PointLightBehavior();
+
+		GraphicScene*		parentScene;
+		//PointLightHandle	handle;
 	};
 
 

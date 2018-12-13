@@ -111,8 +111,10 @@ PlayState::PlayState(
 	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_C, DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA);
 	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_X, DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY);
 
-	framework->core->RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO);
-	framework->core->RenderSystem.PipelineStates.QueuePSOLoad		(DRAW_SPRITE_TEXT_PSO, framework->core->GetBlockMemory());
+	FK_ASSERT(0);
+
+	//framework->core->RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO);
+	framework->core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO, framework->core->GetBlockMemory());
 
 	UIMainGrid	= &UI.CreateGrid(nullptr);
 	UIMainGrid->SetGridDimensions({ 3, 3 });

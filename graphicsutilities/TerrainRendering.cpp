@@ -398,10 +398,10 @@ namespace FlexKit
 		out->HeightMap			= desc->HeightMap;
 
 
-		RS->RegisterPSOLoader( TERRAIN_DRAW_PSO,		LoadTerrainPSO_Generate			);
-		RS->RegisterPSOLoader( TERRAIN_DRAW_WIRE_PSO,	LoadTerrainPSO_WireDebug		);
-		RS->RegisterPSOLoader( TERRAIN_DRAW_PSO_DEBUG,	LoadTerrainPSO_GenerateDebug	);
-		RS->RegisterPSOLoader( TERRAIN_CULL_PSO,		LoadTerrainPSO_CULL				);
+		RS->RegisterPSOLoader( TERRAIN_DRAW_PSO,		{&RS->Library.RS4CBVs_SO, LoadTerrainPSO_Generate});
+		RS->RegisterPSOLoader( TERRAIN_DRAW_WIRE_PSO,	{&RS->Library.RS4CBVs_SO, LoadTerrainPSO_WireDebug});
+		RS->RegisterPSOLoader( TERRAIN_DRAW_PSO_DEBUG,	{&RS->Library.RS4CBVs_SO, LoadTerrainPSO_GenerateDebug});
+		RS->RegisterPSOLoader( TERRAIN_CULL_PSO,		{&RS->Library.RS4CBVs_SO, LoadTerrainPSO_CULL});
 
 		RS->QueuePSOLoad( TERRAIN_DRAW_PSO );
 		RS->QueuePSOLoad( TERRAIN_DRAW_WIRE_PSO );
