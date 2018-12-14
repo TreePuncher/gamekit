@@ -588,6 +588,7 @@ namespace FlexKit
 			requiredTables,
 			tempMemory);
 
+
 		return newHeap;
 	}
 

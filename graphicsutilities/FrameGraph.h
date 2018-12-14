@@ -827,6 +827,15 @@ namespace FlexKit
 		float4 Color	= { 1.0f, 1.0f, 1.0f, 1.0f };
 		float2 Position;
 		float2 WH;
+
+		static Rectangle FullScreenQuad()
+		{
+			return Rectangle{ 
+				{ 1.0f, 1.0f, 1.0f, 1.0f },
+				{0.0f, 0.0f},
+				{1.0f, 1.0f}
+			};
+		}
 	};
 
 	typedef Vector<Rectangle> RectangleList;
@@ -1199,7 +1208,7 @@ namespace FlexKit
 			auto CBOffset = BeginNewConstantBuffer(CB, resources);
 			PushConstantBufferData(CB_Data, CB, resources);
 
-			const size_t VBOffset = resources.GetVertexBufferOffset(pushBuffer, sizeof(ShapeVert));
+			const size_t VBOffset = resources.GetVertexBufferOffset(pushBuffer);
 			size_t vertexOffset = 0;
 
 			const size_t rectCount = rects.size();
@@ -1208,20 +1217,20 @@ namespace FlexKit
 				auto rect		= rects[I];
 				auto texture	= textures[I];
 			
-				float2 rectUpperLeft = rect.Position;
-				float2 rectBottomRight = rect.Position + rect.WH;
-				float2 rectUpperRight = { rectBottomRight.x,	rectUpperLeft.y };
-				float2 rectBottomLeft = { rectUpperLeft.x,	rectBottomRight.y };
+				float2 rectUpperLeft	= rect.Position;
+				float2 rectBottomRight	= rect.Position + rect.WH;
+				float2 rectUpperRight	= { rectBottomRight.x,	rectUpperLeft.y };
+				float2 rectBottomLeft	= { rectUpperLeft.x,	rectBottomRight.y };
 
 				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
 				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectBottomLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
+				PushVertex(ShapeVert{ Position2SS(rectBottomLeft),	{ 0.0f, 0.0f }, rect.Color }, pushBuffer, resources);
 
 				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
 				PushVertex(ShapeVert{ Position2SS(rectUpperRight),	{ 1.0f, 1.0f }, rect.Color }, pushBuffer, resources);
 				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
 
-				drawList.push_back({ ShapeDraw::RenderMode::Textured, CBOffset, VBOffset, 6, vertexOffset,  });
+				drawList.push_back({ ShapeDraw::RenderMode::Textured, CBOffset, VBOffset, 6, vertexOffset, texture });
 				vertexOffset += 6;
 			}
 		}
@@ -1262,7 +1271,14 @@ namespace FlexKit
 
 
 	template<typename ... TY_OTHER>
-	void DrawShapes(PSOHandle State, FrameGraph& Graph, VertexBufferHandle PushBuffer, ConstantBufferHandle CB, TextureHandle RenderTarget, iAllocator* Memory, TY_OTHER ... Args)
+	void DrawShapes(
+		PSOHandle State, 
+		FrameGraph& Graph, 
+		VertexBufferHandle PushBuffer,
+		ConstantBufferHandle CB, 
+		TextureHandle RenderTarget, 
+		iAllocator* Memory, 
+		TY_OTHER ... Args)
 	{
 		struct DrawRect
 		{
@@ -1297,7 +1313,8 @@ namespace FlexKit
 
 				if (textureCount){
 					auto& desciptorTableLayout	= Builder.GetDescriptorTableLayout(State, 0);
-					Data.descriptorTables		= Builder.ReserveDescriptorTableSpaces(desciptorTableLayout ,textureCount, Memory);
+					Data.descriptorTables		= Builder.ReserveDescriptorTableSpaces(desciptorTableLayout, textureCount, Memory);
+					Data.descriptorTables.NullFill(Graph.Resources.RenderSystem);
 				}
 			},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
@@ -1314,12 +1331,13 @@ namespace FlexKit
 				Ctx->SetRootSignature		(Resources.RenderSystem->Library.RS4CBVs4SRVs);
 				Ctx->SetPipelineState		(Resources.GetPipelineState(Data.State));
 				Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
-				Ctx->SetVertexBuffers		(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert)} });
 
 				size_t TextureDrawCount = 0;
 				ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
 				for (auto D : Data.Draws)
 				{
+					Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert), (UINT)D.VertexBufferOffset} });
+
 					switch (D.Mode) {
 						case ShapeDraw::RenderMode::Line:
 						{
@@ -1331,8 +1349,10 @@ namespace FlexKit
 						}	break;
 						case ShapeDraw::RenderMode::Textured:
 						{
+							auto table = Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++, Resources.RenderSystem);
+							table.SetSRV(Resources.RenderSystem, 0, D.texture);
 							Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-							//Ctx->SetGraphicsDescriptorTable(1, Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++));
+							Ctx->SetGraphicsDescriptorTable(0, table);
 						}	break;
 					}
 
@@ -1549,7 +1569,7 @@ namespace FlexKit
 
 				auto cameraBuffer	= GetCameraConstantBuffer(desc.camera);
 				auto pushBuffer		= desc.VertexBuffer;
-				Data.vertexOffset	= frameGraph.Resources.GetVertexBufferOffset(pushBuffer, sizeof(Vertex));
+				Data.vertexOffset	= frameGraph.Resources.GetVertexBufferOffset(pushBuffer);
 
 				Data.constantsOffset	= BeginNewConstantBuffer(desc.constantBuffer,frameGraph.Resources);
 				PushConstantBufferData(locals, desc.constantBuffer, frameGraph.Resources);

@@ -791,6 +791,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	DesciptorHeap	DesciptorHeap::GetHeapOffsetted(size_t offset, RenderSystem* RS) const
+	{
+		DesciptorHeap subHeap(*this);
+		subHeap.DescriptorHeap = IncrementHeapPOS(
+										DescriptorHeap,
+										RS->DescriptorCBVSRVUAVSize,
+										offset);
+
+		return subHeap;
+	}
+
+
+	/************************************************************************************************/
+
+
 	bool RootSignature::Build(RenderSystem* RS, iAllocator* TempMemory)
 	{
 		if (Signature)
@@ -1134,7 +1149,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetGraphicsDescriptorTable(size_t idx, DesciptorHeap& DH)
+	void Context::SetGraphicsDescriptorTable(size_t idx, const DesciptorHeap& DH)
 	{
 		DeviceContext->SetGraphicsRootDescriptorTable(idx, DH);
 	}
@@ -6738,7 +6753,7 @@ namespace FlexKit
 
 	TextureHandle MoveTextureBufferToVRAM(TextureBuffer* buffer, RenderSystem* RS, iAllocator* tempMemory)
 	{
-		auto textureHandle = RS->CreateTexture2D(buffer->WH, FORMAT_2D::R8G8B8A8_UINT);
+		auto textureHandle = RS->CreateTexture2D(buffer->WH, FORMAT_2D::R8G8B8A8_UNORM);
 		RS->UploadTexture(textureHandle, buffer->Buffer, buffer->Size);
 
 		return textureHandle;

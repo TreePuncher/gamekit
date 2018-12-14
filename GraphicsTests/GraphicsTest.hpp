@@ -348,6 +348,7 @@ public:
 
 
 void DrawTerrain_Forward(
+	TerrainEngine&					terrainEngine,
 	FlexKit::FrameGraph&			frameGraph,
 	FlexKit::CameraHandle			camera,
 	FlexKit::VertexBufferHandle		vertexBuffer,
@@ -355,19 +356,25 @@ void DrawTerrain_Forward(
 	FlexKit::TextureHandle			renderTarget,
 	FlexKit::iAllocator*			tempMemory)
 {
-	RectangleList rects		{ tempMemory };
-	TextureList	  textures	{ tempMemory };
+	if (terrainEngine.tileTextures.size())
+	{
+		RectangleList rects{ tempMemory };
+		TextureList	  textures{ tempMemory };
 
-	DrawShapes(
-		DRAW_TEXTURED_PSO,
-		frameGraph, 
-		vertexBuffer, 
-		constantBuffer,
-		renderTarget, 
-		tempMemory,
-		TexturedRectangleListShape{
-			std::move(rects),
-			std::move(textures)});
+		rects.push_back(Rectangle::FullScreenQuad());
+		textures.push_back(terrainEngine.tileTextures.back().heightMap);
+
+		DrawShapes(
+			DRAW_TEXTURED_DEBUG_PSO,
+			frameGraph,
+			vertexBuffer,
+			constantBuffer,
+			renderTarget,
+			tempMemory,
+			TexturedRectangleListShape{
+				std::move(rects),
+				std::move(textures) });
+	}
 }
 
 
@@ -396,13 +403,14 @@ public:
 		//ltcLookup_2{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
 		auto& RS = IN_framework->core->RenderSystem;
-		RS.RegisterPSOLoader(DRAW_PSO,				{&RS.Library.RS4CBVs4SRVs, CreateDrawTriStatePSO});
-		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,		{&RS.Library.RS4CBVs4SRVs, CreateTexturedTriStatePSO});
-		RS.RegisterPSOLoader(DRAW_LINE_PSO,			{&RS.Library.RS4CBVs4SRVs, CreateDrawLineStatePSO});
-		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,		{&RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO});
-		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO, { &RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO });
+		RS.RegisterPSOLoader(DRAW_PSO,					{&RS.Library.RS4CBVs4SRVs, CreateDrawTriStatePSO});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,			{&RS.Library.RS4CBVs4SRVs, CreateTexturedTriStatePSO});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{&RS.Library.RS4CBVs4SRVs, CreateTexturedTriStateDEBUGPSO});
+		RS.RegisterPSOLoader(DRAW_LINE_PSO,				{&RS.Library.RS4CBVs4SRVs, CreateDrawLineStatePSO});
+		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{&RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO});
+		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{&RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO });
 
-		FlexKit::AddResourceFile("testScene.gameres");
+		AddResourceFile("testScene.gameres");
 
 		if (!FlexKit::LoadScene(IN_framework->core, &scene, 6001))
 		{
@@ -566,23 +574,25 @@ public:
 				frameGraph,
 				core->GetTempMemory());
 
-		if(true)
+		if (true)
 			DEBUG_DrawQuadTree(
-				scene, 
-				frameGraph, 
+				scene,
+				frameGraph,
 				activeCamera,
-				vertexBuffer, 
-				constantBuffer, 
+				vertexBuffer,
+				constantBuffer,
 				core->Window.GetBackBuffer(),
 				core->GetTempMemory());
 
-		DrawTerrain_Forward(
-			frameGraph,
-			activeCamera,
-			vertexBuffer,
-			constantBuffer,
-			core->Window.GetBackBuffer(),
-			core->GetTempMemory());
+		if(true)
+			DrawTerrain_Forward(
+				terrain,
+				frameGraph,
+				activeCamera,
+				vertexBuffer,
+				constantBuffer,
+				core->Window.GetBackBuffer(),
+				core->GetTempMemory());
 
 		return true; 
 	}

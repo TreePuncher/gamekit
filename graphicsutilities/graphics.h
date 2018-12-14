@@ -1215,15 +1215,9 @@ namespace FlexKit
 
 		bool SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle);
 
-		operator D3D12_GPU_DESCRIPTOR_HANDLE () { return DescriptorHeap; }
+		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return DescriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
-		DesciptorHeap	GetHeapOffsetted(size_t)
-		{
-			DesciptorHeap out(*this);
-			FK_ASSERT(0);
-
-			return out;
-		}
+		DesciptorHeap	GetHeapOffsetted(size_t offset, RenderSystem* RS) const;
 
 	private:
 		DescHeapPOS						DescriptorHeap;
@@ -1550,7 +1544,7 @@ namespace FlexKit
 
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
-		void SetGraphicsDescriptorTable		(size_t idx, DesciptorHeap& DH);
+		void SetGraphicsDescriptorTable		(size_t idx, const DesciptorHeap& DH);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
 

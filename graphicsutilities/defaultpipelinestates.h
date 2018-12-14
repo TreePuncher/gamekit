@@ -42,6 +42,7 @@ namespace FlexKit
 	const PSOHandle SSREFLECTIONS					= PSOHandle(GetTypeGUID(SSREFLECTIONS));
 	const PSOHandle DRAW_PSO						= PSOHandle(GetTypeGUID(DRAW_PSO));
 	const PSOHandle DRAW_TEXTURED_PSO				= PSOHandle(GetTypeGUID(DRAW_TEXTURED_PSO));
+	const PSOHandle DRAW_TEXTURED_DEBUG_PSO			= PSOHandle(GetTypeGUID(DRAW_TEXTURED_DEBUG_PSO));
 	const PSOHandle DRAW_3D_PSO						= PSOHandle(GetTypeGUID(DRAW_3D_PSO));
 	const PSOHandle DRAW_LINE_PSO					= PSOHandle(GetTypeGUID(DRAW_LINE_PSO));
 	const PSOHandle DRAW_LINE3D_PSO					= PSOHandle(GetTypeGUID(DRAW_LINE3D_PSO));
