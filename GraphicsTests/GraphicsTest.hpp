@@ -301,20 +301,50 @@ public:
 	}
 
 
-
-	TerrainTileHandle AddTile(int2 tileID, const char* HeightMap, RenderSystem* RS)
+	TerrainTileHandle AddTile(int2 tileID, const char* HeightMap, RenderSystem* RS, iAllocator* tempMemory)
 	{
-		TextureBuffer	heightMap;
-		LoadBMP(HeightMap, allocator, &heightMap);
+		static_vector<TextureBuffer> Textures;
+		Textures.push_back(TextureBuffer{});
+		LoadBMP(HeightMap, tempMemory, &Textures.back());
 
 		//Build Mip Maps
-
-		auto BuildMips = [&](int MipCount)
+		auto BuildMipMap = [](TextureBuffer& sourceMap, iAllocator* memory) -> TextureBuffer
 		{
+			using RBGA = Vect<4, uint8_t>;
 
+			TextureBuffer		MIPMap	= TextureBuffer( sourceMap.WH / 2, sizeof(RGBA), memory );
+			TextureBufferView	View	= TextureBufferView<RBGA>(&sourceMap);
+			TextureBufferView	MipView = TextureBufferView<RBGA>(&MIPMap);
+
+			const auto WH = MIPMap.WH;
+			for (size_t Y = 0; Y < WH[0]; Y++)
+			{
+				for (size_t X = 0; X < WH[1]; X++)
+				{
+					uint2 Cord = uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
+
+					auto Sample = 
+						View[Cord + uint2{0, 0}] +
+						View[Cord + uint2{0, 1}] +
+						View[Cord + uint2{1, 0}] +
+						View[Cord + uint2{1, 1}];
+
+					Sample = Sample / 4;
+
+					MipView[Cord] = Sample;
+				}
+			}
+
+			return MIPMap;
 		};
 
-		auto textureHandle	= MoveTextureBufferToVRAM(&heightMap, RS, allocator);
+
+		Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+		Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+		Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+		Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+
+		auto textureHandle	= MoveTextureBufferToVRAM(&Textures.front(), RS, allocator);
 		auto tileMaps		= tileTextures.push_back(TileMaps{textureHandle, HeightMap});
 		tiles.push_back(Tile{ tileID, tileMaps });
 
@@ -381,7 +411,6 @@ void DrawTerrain_Forward(
 /************************************************************************************************/
 
 
-
 class GraphicsTest : public FrameworkState
 {
 public:
@@ -410,6 +439,10 @@ public:
 		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{&RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO});
 		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{&RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO });
 
+		RS.QueuePSOLoad(DRAW_PSO);
+		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
+		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
+
 		AddResourceFile("testScene.gameres");
 
 		if (!FlexKit::LoadScene(IN_framework->core, &scene, 6001))
@@ -434,7 +467,7 @@ public:
 		const int TileSize = 1024;
 		terrain.SetTileOffset	(int2{-TileSize/2, -TileSize/2});
 		terrain.SetTileSize		(TileSize); // will assume square tiles
-		terrain.AddTile			({ 0, 0 }, "assets/textures/tiles/tile_0_0.bmp", framework->core->RenderSystem);
+		terrain.AddTile			({ 0, 0 }, "assets/textures/tiles/tile_0_0.bmp", framework->GetRenderSystem(), framework->core->GetTempMemory());
 
 		/*
 		float3x3*	ltc_Table		= (float3x3*)	IN_framework->Core->GetTempMemory()._aligned_malloc(sizeof(FlexKit::float3x3[lookupTableSize*lookupTableSize]));
@@ -566,6 +599,16 @@ public:
 
 		GetGraphicScenePVS(scene, activeCamera, &solidDrawables, &transparentDrawables);
 
+		if (true)
+			DrawTerrain_Forward(
+				terrain,
+				frameGraph,
+				activeCamera,
+				vertexBuffer,
+				constantBuffer,
+				core->Window.GetBackBuffer(),
+				core->GetTempMemory());
+
 		if(true)
 			render.DefaultRender(
 				solidDrawables,
@@ -584,15 +627,7 @@ public:
 				core->Window.GetBackBuffer(),
 				core->GetTempMemory());
 
-		if(true)
-			DrawTerrain_Forward(
-				terrain,
-				frameGraph,
-				activeCamera,
-				vertexBuffer,
-				constantBuffer,
-				core->Window.GetBackBuffer(),
-				core->GetTempMemory());
+
 
 		return true; 
 	}

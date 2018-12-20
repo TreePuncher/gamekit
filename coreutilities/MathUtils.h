@@ -361,7 +361,17 @@ namespace FlexKit
 		}
 
 		template<typename TY_2>
-		THISTYPE& operator / (TY_2 in)
+		THISTYPE operator / (TY_2 in)
+		{
+			THISTYPE temp = *this;
+			for (auto I = 0; I < SIZE; ++I)
+				temp[I] /= in;
+
+			return temp;
+		}
+
+		template<typename TY_2>
+		THISTYPE& operator /= (TY_2 in)
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] /= in;
@@ -370,7 +380,7 @@ namespace FlexKit
 		}
 
 		template<typename TY_2>
-		THISTYPE operator / (const Vect<SIZE, TY_2> in)
+		THISTYPE operator /= (const Vect<SIZE, TY_2> in)
 		{
 			THISTYPE Out;
 			for (auto I = 0; I < SIZE; ++I)

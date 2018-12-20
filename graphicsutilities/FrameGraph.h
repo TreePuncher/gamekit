@@ -439,6 +439,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename TY_FN_V>
+	bool PushRectToVertexBuffer(TY_FN_V FN_PointConvert, VertexBufferHandle buffer, FrameResources& resources)
+	{
+		auto upperLeft		= FN_PointConvert(float2{ 0, 1 }, float2{0, 1});
+		auto bottomRight	= FN_PointConvert(float2{ 1, 0 }, float2{1, 0});
+		auto upperRight		= FN_PointConvert(float2{ 1, 1 }, float2{1, 1});
+		auto bottomLeft		= FN_PointConvert(float2{ 0, 0 }, float2{0, 0});
+
+		bool res = true;
+		res |= PushVertex(upperLeft,	buffer, resources);
+		res |= PushVertex(bottomRight,	buffer, resources);
+		res |= PushVertex(bottomLeft,	buffer, resources);
+
+		res |= PushVertex(upperLeft,	buffer, resources);
+		res |= PushVertex(upperRight,	buffer, resources);
+		res |= PushVertex(bottomRight,	buffer, resources);
+		return res;
+	}
+
+
+	/************************************************************************************************/
+
+
 	template<typename TY_V>
 	inline size_t GetCurrentVBufferOffset(VertexBufferHandle Buffer, FrameResources& Resources)
 	{
@@ -767,10 +790,10 @@ namespace FlexKit
 	{
 	public:
 		FrameGraph(RenderSystem* RS, iAllocator* Temp) :
-			Nodes			{ Temp },
-			Memory			{ Temp },
 			Resources		{ RS,	Temp },
-			ResourceContext	{ Temp } {}
+			ResourceContext	{ Temp },
+			Memory			{ Temp },
+			Nodes			{ Temp }{}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
@@ -832,8 +855,8 @@ namespace FlexKit
 		{
 			return Rectangle{ 
 				{ 1.0f, 1.0f, 1.0f, 1.0f },
-				{0.0f, 0.0f},
-				{1.0f, 1.0f}
+				{ 0.0f, 0.0f },
+				{ 1.0f, 1.0f }
 			};
 		}
 	};
@@ -1222,13 +1245,15 @@ namespace FlexKit
 				float2 rectUpperRight	= { rectBottomRight.x,	rectUpperLeft.y };
 				float2 rectBottomLeft	= { rectUpperLeft.x,	rectBottomRight.y };
 
-				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectBottomLeft),	{ 0.0f, 0.0f }, rect.Color }, pushBuffer, resources);
-
-				PushVertex(ShapeVert{ Position2SS(rectUpperLeft),	{ 0.0f, 1.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectUpperRight),	{ 1.0f, 1.0f }, rect.Color }, pushBuffer, resources);
-				PushVertex(ShapeVert{ Position2SS(rectBottomRight),	{ 1.0f, 0.0f }, rect.Color }, pushBuffer, resources);
+				PushRectToVertexBuffer(
+					[&](float2 POS, float2 UV) -> ShapeVert {
+						return {
+							Position2SS(float2(
+								rect.Position.x + rect.WH.x * POS.x,
+								rect.Position.y + rect.WH.y * (1 - POS.y))),
+							UV, 
+							rect.Color};
+					}, pushBuffer, resources);
 
 				drawList.push_back({ ShapeDraw::RenderMode::Textured, CBOffset, VBOffset, 6, vertexOffset, texture });
 				vertexOffset += 6;
@@ -1353,12 +1378,13 @@ namespace FlexKit
 							table.SetSRV(Resources.RenderSystem, 0, D.texture);
 							Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 							Ctx->SetGraphicsDescriptorTable(0, table);
+							
 						}	break;
 					}
 
 					Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
 					Ctx->Draw(D.VertexCount, D.VertexOffset);
-
+					
 					PreviousMode = D.Mode;
 				}
 			});
@@ -1472,12 +1498,12 @@ namespace FlexKit
 						(DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
 
 				// Bind Resources
-
 				VertexBufferList InstancedBuffers;
 				InstancedBuffers.push_back(VertexBufferEntry{
 					Data.InstanceBuffer,
 					(UINT)Data.InstanceElementSize,
 					(UINT)Data.InstanceBufferOffset });
+
 
 				Ctx->AddIndexBuffer(TriMesh);
 				Ctx->AddVertexBuffers(TriMesh,

@@ -6765,11 +6765,10 @@ namespace FlexKit
 
 	TextureHandle MoveTextureBufferToVRAM(TextureBuffer** buffer, size_t bufferCount, RenderSystem* RS, iAllocator* tempMemory)
 	{
-		//auto textureHandle = RS->CreateTexture2D(buffer->WH, FORMAT_2D::R8G8B8A8_UINT, bufferCount);
+		auto textureHandle = RS->CreateTexture2D(buffer[0]->WH, FORMAT_2D::R8G8B8A8_UINT, bufferCount);
 		//RS->UploadTexture(textureHandle, buffer->Buffer, buffer->Size);
 
-		//return textureHandle;
-		return InvalidHandle_t;
+		return textureHandle;
 	}
 
 

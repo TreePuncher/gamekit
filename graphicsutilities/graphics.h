@@ -161,6 +161,7 @@ namespace FlexKit
 		case DXGI_FORMAT_R10G10B10A2_UNORM:
 		case DXGI_FORMAT_R10G10B10A2_UINT:
 		case DXGI_FORMAT_R11G11B10_FLOAT:
+			throw; // unimplemented argument
 			return -1;
 		case DXGI_FORMAT_R8G8B8A8_TYPELESS:
 		case DXGI_FORMAT_R8G8B8A8_UNORM:
@@ -257,7 +258,9 @@ namespace FlexKit
 		case DXGI_FORMAT_V408:
 		case DXGI_FORMAT_FORCE_UINT:
 		case DXGI_FORMAT_UNKNOWN:
+			throw; // unimplemented argument
 		default:
+			throw; // invalid argument 
 			return -1;
 			break;
 		}

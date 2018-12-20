@@ -34,8 +34,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct TextureBuffer
+	class TextureBuffer
 	{
+	public:
+		TextureBuffer() {}
+
+		TextureBuffer(uint2 IN_WH, size_t IN_elementSize, iAllocator* IN_Memory) : 
+			Buffer		{ (byte*)IN_Memory->malloc(IN_WH.Product() * IN_elementSize) },
+			WH			{ IN_WH },
+			ElementSize	{ IN_elementSize },
+			Memory		{ IN_Memory },
+			Size		{ IN_WH.Product() * IN_elementSize }
+		{
+		}
+
 		byte*		Buffer;
 		uint2		WH;
 		size_t		Size;
@@ -47,6 +59,9 @@ namespace FlexKit
 			Memory->_aligned_free(Buffer);
 		}
 	};
+
+
+	/************************************************************************************************/
 
 
 	template<typename TY>
