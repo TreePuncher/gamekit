@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\type.h"
 #include "..\coreutilities\MemoryUtilities.h"
 #include "..\coreutilities\logging.h"
+#include "..\coreutilities\ThreadUtilities.h"
 
 #include <iostream>
 
@@ -49,31 +50,95 @@ namespace FlexKit
 		public:
 			typedef std::function<void(UpdateTask& Node)>	FN_NodeAction;
 
-			UpdateTask(iAllocator* Memory) :
-				Inputs		{ Memory	},
-				Executed	{ false		},
-				DebugID		{ nullptr	}{}
+			UpdateTask(ThreadManager* IN_manager, iAllocator* IN_allocator) :
+				Inputs		{ IN_allocator	},
+				visited		{ false			},
+				DebugID		{ nullptr		},
+				threadTask	{ this, IN_manager, IN_allocator }{}
 
-			Vector<UpdateTask*> Inputs;
+			// No Copy
+			UpdateTask(const UpdateTask&)				= delete;
+			UpdateTask& operator = (const UpdateTask&)	= delete;
+
+			class UpdateThreadTask : public iWork
+			{
+			public:
+				UpdateThreadTask(UpdateTask* IN_task, ThreadManager* threads, iAllocator* memory) :
+					iWork	{ memory		},
+					task	{ IN_task		},
+					wait	{ *this, threads, memory }{}
+
+				// No Copy
+				UpdateThreadTask				(const UpdateThreadTask&) = delete;
+				UpdateThreadTask& operator =	(const UpdateThreadTask&) = delete;
+
+				UpdateTask*	task;
+
+				void Run() override
+				{
+					task->Run();
+				}
+
+				WorkDependencyWait wait;
+			}threadTask;
+
+
+			void Run()
+			{
+				Update(*this);
+			}
+
+
+			void AddInput(UpdateTask& task)
+			{
+				Inputs.push_back(&task);
+				threadTask.wait.AddDependency(task.threadTask);
+			}
+
+			bool isLeaf()
+			{
+				return Inputs.size() == 0;
+			}
+
+
+			void MarkVisited()
+			{
+				visited = true;
+			}
+
+
+			bool Visited()
+			{
+				return visited;
+			}
+
 			UpdateID_t			ID;
 			FN_NodeAction		Update;
 			char*				Data;
 			const char*			DebugID;
-			bool				Executed;
+			bool				visited;
+			Vector<UpdateTask*> Inputs;
 		};
 
 		using			FN_NodeAction = UpdateTask::FN_NodeAction;
 
-		UpdateDispatcher(iAllocator* IN_Memory) :
-			Nodes	{ IN_Memory },
-			Memory	{ IN_Memory }{}
+
+		UpdateDispatcher(ThreadManager* IN_threads, iAllocator* IN_allocator) :
+			nodes		{ IN_allocator	},
+			allocator	{ IN_allocator	},
+			threads		{ IN_threads	}{}
+
+
+		// No Copy
+		UpdateDispatcher					(const UpdateDispatcher&) = delete;
+		const UpdateDispatcher& operator =	(const UpdateDispatcher&) = delete;
 
 		static void VisitInputs(UpdateTask* Node, Vector<UpdateTask*>& out)
 		{
-			if (Node->Executed)
+			if (Node->visited)
 				return;
 
-			Node->Executed = true;
+			Node->visited = true;
 
 			for (auto& Node : Node->Inputs)
 				VisitInputs(Node, out);
@@ -81,47 +146,77 @@ namespace FlexKit
 			out.push_back(Node);
 		};
 
+
+		static void VisitAndScheduleLeafs(UpdateTask* node, ThreadManager* threads, iAllocator* allocator)
+		{
+			if (node->Visited())
+				return;
+
+			node->MarkVisited();
+
+			for (auto& childNode : node->Inputs)
+				VisitAndScheduleLeafs(childNode, threads, allocator);
+
+			if (node->isLeaf())
+				threads->AddWork(node->threadTask, allocator);
+		}
+
+
 		void Execute()
 		{
-			// TODO: Detect multi-threadable sections
+			if(true)
+			{
+				// Multi Thread
+				WorkBarrier barrier{allocator};
 
-			Vector<UpdateTask*> NodesSorted{Memory};
+				for (auto& node : nodes) {
+					barrier.AddDependentWork(&node->threadTask);
+					VisitAndScheduleLeafs(node, threads, allocator);
+				}
 
-			for (auto& Node : Nodes)
-				VisitInputs(Node, NodesSorted);
+				barrier.Wait();
+			}
+			else
+			{
+				// Single Thread
+				Vector<UpdateTask*> NodesSorted{ allocator };
+				for (auto& node : nodes)
+					VisitInputs(node, NodesSorted);
 
-			for (auto& Node : NodesSorted) {
+				for (auto& node : NodesSorted) 
+				{
+					if (node->DebugID)
+						FK_LOG_9("Running task %s", node->DebugID);
 
-				if(Node->DebugID)
-					FK_LOG_9("Running task %s", Node->DebugID);
-
-				Node->Update(*Node);
+					node->Update(*node);
+				}
 			}
 		}
+
 
 		class UpdateBuilder
 		{
 		public:
-			UpdateBuilder(UpdateTask& IN_Node) :
-				NewNode{IN_Node}{}
+			UpdateBuilder(UpdateTask& IN_node) :
+				newNode{ IN_node	} {}
 
 			void SetDebugString(const char* str)
 			{
-				NewNode.DebugID = str;
+				newNode.DebugID = str;
 			}
 
-			void AddOutput(UpdateTask& Node)
+			void AddOutput(UpdateTask& node)
 			{
-				Node.Inputs.push_back(&NewNode);
+				node.AddInput(newNode);
 			}
 
-			void AddInput(UpdateTask& Node)
+			void AddInput(UpdateTask& node)
 			{
-				NewNode.Inputs.push_back(&Node);
+				newNode.AddInput(node);
 			}
 
 		private:
-			UpdateTask& NewNode;
+			UpdateTask& newNode;
 		};
 
 		template<
@@ -130,26 +225,28 @@ namespace FlexKit
 			typename FN_UPDATE>
 		UpdateTask&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
 		{
-			auto& Data = Memory->allocate<TY_NODEDATA>();
-			UpdateTask& NewNode = Memory->allocate<UpdateTask>(Memory);
+			auto& data			= allocator->allocate<TY_NODEDATA>();
+			UpdateTask& newNode = allocator->allocate<UpdateTask>(threads, allocator);
 
-			UpdateBuilder Builder{ NewNode };
-			LinkageSetup(Builder, Data);
+			UpdateBuilder Builder{ newNode };
+			LinkageSetup(Builder, data);
 
-			NewNode.Data	= (char*)&Data;
-			NewNode.Update	= [UpdateFN](UpdateTask& Node)
+			newNode.Data	= (char*)&data;
+			newNode.Update	= 
+				[UpdateFN](UpdateTask& node)
 				{
-					TY_NODEDATA& Data = *(TY_NODEDATA*)Node.Data;
-					UpdateFN(Data);
+					TY_NODEDATA& data = *(TY_NODEDATA*)node.Data;
+					UpdateFN(data);
 				};
 
-			Nodes.push_back(&NewNode);
+			nodes.push_back(&newNode);
 
-			return NewNode;
+			return newNode;
 		}
 
-		Vector<UpdateTask*> Nodes;
-		iAllocator*			Memory;
+		ThreadManager*		threads;
+		Vector<UpdateTask*> nodes;
+		iAllocator*			allocator;
 	};
 
 

@@ -153,7 +153,8 @@ namespace FlexKit
 			[this]
 			{
 				TaskInProgress--; 
-				CV.notify_all(); 
+				if(TaskInProgress == 0)
+					CV.notify_all(); 
 			});
 	}
 
@@ -172,6 +173,9 @@ namespace FlexKit
 
 	void WorkBarrier::Wait()
 	{
+		if (TaskInProgress == 0)
+			return;
+
 		std::mutex M;
 		std::unique_lock<std::mutex> Lock(M);
 

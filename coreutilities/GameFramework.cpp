@@ -267,7 +267,7 @@ namespace FlexKit
 			return;
 		}
 
-		UpdateDispatcher Dispatcher{ core->GetTempMemory() };
+		UpdateDispatcher Dispatcher{ &core->Threads, core->GetTempMemory() };
 
 		for(size_t I = 1; I <= subStates.size(); ++I)
 		{
@@ -303,7 +303,7 @@ namespace FlexKit
 		}
 
 		{
-			UpdateDispatcher dispatcher{ core->GetTempMemory() };
+			UpdateDispatcher dispatcher{ &core->Threads, core->GetTempMemory() };
 
 			if (drawDebug) 
 			{
@@ -320,7 +320,7 @@ namespace FlexKit
 		}
 
 		{
-			UpdateDispatcher dispatcher{ core->GetTempMemory() };
+			UpdateDispatcher dispatcher{ &core->Threads, core->GetTempMemory() };;
 
 			for (size_t I = 1; I <= subStates.size(); ++I)
 			{
@@ -355,7 +355,7 @@ namespace FlexKit
 		FrameGraph.Resources.AddRenderTarget(core->Window.GetBackBuffer());
 		FrameGraph.UpdateFrameGraph(core->RenderSystem, ActiveWindow, core->GetTempMemory());
 
-		UpdateDispatcher Dispatcher{ core->GetTempMemory() };
+		UpdateDispatcher Dispatcher{ &core->Threads, core->GetTempMemory() };
 
 		for (size_t I = 0; I < subStates.size(); ++I)
 		{

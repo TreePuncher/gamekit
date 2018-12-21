@@ -226,6 +226,7 @@ namespace FlexKit
 		auto& task = Dispatcher.Add<UpdateData>(
 			[&](auto& Builder, auto& Data)
 			{
+				Builder.SetDebugString("QueueCameraUpdate");
 				Builder.AddInput(*TransformDependency);
 			},
 			[](auto& Data)
@@ -241,6 +242,8 @@ namespace FlexKit
 						CameraTable->Cameras[I].UpdateMatrices();
 					}
 				}
+
+				return;
 			}
 			);
 

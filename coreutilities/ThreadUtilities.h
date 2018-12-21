@@ -323,8 +323,7 @@ namespace FlexKit
 		WorkBarrier(
 			iAllocator* Memory = FlexKit::SystemAllocator) :
 				PostEvents{ Memory }
-		{
-		}
+		{}
 
 		~WorkBarrier() {}
 
@@ -341,6 +340,46 @@ namespace FlexKit
 
 		std::condition_variable		CV;
 		std::atomic_int				TaskInProgress;
+	};
+
+
+	/************************************************************************************************/
+
+
+	class WorkDependencyWait
+	{
+	public:
+		WorkDependencyWait(iWork& IN_work, ThreadManager* IN_threads, iAllocator* IN_allocator = SystemAllocator) :
+			work			{ IN_work		},
+			allocator		{ IN_allocator	},
+			threads			{ IN_threads	},
+			dependentCount	{ 0 }{}
+
+		WorkDependencyWait				(const WorkDependencyWait&) = delete;
+		WorkDependencyWait& operator =	(const WorkDependencyWait&) = delete;
+
+
+		void AddDependency(iWork& waitsOn)
+		{
+			dependentCount++;
+
+			waitsOn.Subscribe(
+				[this]() {
+					dependentCount--;
+					if (dependentCount == 0)
+						if (scheduleLock.try_lock()) { // Leave locked!
+							FK_LOG_9("ADDING WORK!");
+							threads->AddWork(&work, allocator);
+						}
+					});
+		}
+
+		iWork&						work;
+		ThreadManager*				threads;
+		iAllocator*					allocator;
+		std::atomic_int				dependentCount;
+		std::mutex					scheduleLock;
+		Vector<OnCompletionEvent>	PostEvents;
 	};
 
 
