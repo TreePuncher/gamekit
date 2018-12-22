@@ -54,6 +54,7 @@ namespace FlexKit
 				Inputs		{ IN_allocator	},
 				visited		{ false			},
 				DebugID		{ nullptr		},
+				completed	{ false			},
 				threadTask	{ this, IN_manager, IN_allocator }{}
 
 			// No Copy
@@ -77,6 +78,7 @@ namespace FlexKit
 				void Run() override
 				{
 					task->Run();
+					task->completed = true;
 				}
 
 				WorkDependencyWait wait;
@@ -116,6 +118,7 @@ namespace FlexKit
 			FN_NodeAction		Update;
 			char*				Data;
 			const char*			DebugID;
+			bool				completed;
 			bool				visited;
 			Vector<UpdateTask*> Inputs;
 		};
@@ -161,12 +164,10 @@ namespace FlexKit
 				threads->AddWork(node->threadTask, allocator);
 		}
 
-
 		void Execute()
 		{
 			if(true)
-			{
-				// Multi Thread
+			{	// Multi Thread
 				WorkBarrier barrier{allocator};
 
 				for (auto& node : nodes) {
@@ -179,15 +180,15 @@ namespace FlexKit
 			else
 			{
 				// Single Thread
-				Vector<UpdateTask*> NodesSorted{ allocator };
+				Vector<UpdateTask*> nodesSorted{ allocator };
 				for (auto& node : nodes)
-					VisitInputs(node, NodesSorted);
+					VisitInputs(node, nodesSorted);
 
-				for (auto& node : NodesSorted) 
+				for (auto& node : nodesSorted) 
 				{
-					if (node->DebugID)
+					if (node->DebugID) {
 						FK_LOG_9("Running task %s", node->DebugID);
-
+					}
 					node->Update(*node);
 				}
 			}

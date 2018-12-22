@@ -141,6 +141,7 @@ namespace FlexKit
 		return WorkList.try_pop_front(work) ? work : nullptr;
 	}
 
+
 	/************************************************************************************************/
 
 
@@ -148,13 +149,14 @@ namespace FlexKit
 	{
 		FK_ASSERT(Work != nullptr);
 
-		++TaskInProgress;
+		++TasksInProgress;
+
 		Work->Subscribe(
 			[this]
 			{
-				TaskInProgress--; 
-				if(TaskInProgress == 0)
-					CV.notify_all(); 
+				TasksInProgress--;
+				if (TasksInProgress == 0)
+					CV.notify_all();
 			});
 	}
 
@@ -173,16 +175,18 @@ namespace FlexKit
 
 	void WorkBarrier::Wait()
 	{
-		if (TaskInProgress == 0)
+		if (TasksInProgress == 0)
 			return;
 
 		std::mutex M;
-		std::unique_lock<std::mutex> Lock(M);
+		std::unique_lock<std::mutex> lock(M);
 
-		CV.wait(Lock, [this]()->bool
-		{
-			return TaskInProgress == 0;
-		});
+		CV.wait(
+			lock, 
+			[this]()->bool
+			{
+				return TasksInProgress == 0;
+			});
 
 		for (auto Evt : PostEvents)
 			Evt();

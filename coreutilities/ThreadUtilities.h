@@ -40,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <functional>
 #include <stdint.h>
+#include <iostream>
 
 #define MAXTHREADCOUNT 3
 
@@ -73,8 +74,10 @@ namespace FlexKit
 
 		void NotifyWatchers()
 		{
-			for (auto& Watcher : Watchers)
-				Watcher();
+			for (size_t itr = 0; itr < Watchers.size(); ++itr)
+				Watchers[itr]();
+
+			Watchers.clear();
 		}
 
 		void Subscribe(OnCompletionEvent CallMeLater) 
@@ -85,7 +88,7 @@ namespace FlexKit
 		operator iWork* () { return this; }
 
 	private:
-		Vector<OnCompletionEvent> Watchers;
+		Vector<OnCompletionEvent>			Watchers;
 	};
 
 
@@ -123,6 +126,7 @@ namespace FlexKit
 		WorkQueue				WorkList;
 
 		iAllocator*				Allocator;
+		std::atomic_bool		pad;
 	};
 
 
@@ -330,6 +334,7 @@ namespace FlexKit
 		WorkBarrier(const WorkBarrier&)					= delete;
 		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
+		int  GetDependentCount		(){ return TasksInProgress; }
 		void AddDependentWork		(iWork* Work);
 		void AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void Wait					();
@@ -339,7 +344,7 @@ namespace FlexKit
 		Vector<OnCompletionEvent>	PostEvents;
 
 		std::condition_variable		CV;
-		std::atomic_int				TaskInProgress;
+		std::atomic_int				TasksInProgress	= 0;
 	};
 
 
@@ -368,7 +373,6 @@ namespace FlexKit
 					dependentCount--;
 					if (dependentCount == 0)
 						if (scheduleLock.try_lock()) { // Leave locked!
-							FK_LOG_9("ADDING WORK!");
 							threads->AddWork(&work, allocator);
 						}
 					});

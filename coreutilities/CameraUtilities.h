@@ -100,28 +100,34 @@ namespace FlexKit
 	{
 		struct OrbitCameraUpdateData
 		{
+			bool					started;
+			bool					completed;
 			MouseInputState			mouseState;
 			OrbitCameraBehavior*	orbitCamera;
 			float					dt;
 		};
 
-		auto& Data = dispatcher.Add<OrbitCameraUpdateData>(
-			[&](auto& Builder, OrbitCameraUpdateData& Data)
+		auto& data = dispatcher.Add<OrbitCameraUpdateData>(
+			[&](auto& Builder, OrbitCameraUpdateData& data)
 			{
 				Builder.SetDebugString("OrbitCamera Update");
 				Builder.AddOutput(*transformUpdateDependency);
 				Builder.AddOutput(*cameraUpdateDependency);
-				Data.mouseState		= mouseState;
-				Data.dt				= dt;
-				Data.orbitCamera	= &orbitCamera;
+				data.mouseState		= mouseState;
+				data.dt				= dt;
+				data.orbitCamera	= &orbitCamera;
+				data.started		= false;
+				data.completed		= false;
 			},
 			[](auto& data)
 			{
 				FK_LOG_9("OrbitCamera Update");
+				data.started		= true;
 				data.orbitCamera->Update(data.mouseState, data.dt);
+				data.completed		= true;
 			});
 
-		return &Data;
+		return &data;
 	}
 
 

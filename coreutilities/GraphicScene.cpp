@@ -730,7 +730,7 @@ namespace FlexKit
 			[&](DependencyBuilder& builder, auto& QuadTreeUpdate)
 			{
 				builder.AddInput(*transformDependency);
-				//builder.SetDebugString("QuadTree Update!");
+				builder.SetDebugString("QuadTree Update!");
 
 				QuadTreeUpdate.QTree		= this;
 				QuadTreeUpdate.parentScene	= parentScene;
@@ -1083,7 +1083,7 @@ namespace FlexKit
 													this, 
 													transformDependency));
 
-				//builder.SetDebugString("SceneUpdate");
+				builder.SetDebugString("SceneUpdate");
 
 				data.scene = this;
 			},
