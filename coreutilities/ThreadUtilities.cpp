@@ -154,8 +154,9 @@ namespace FlexKit
 		Work->Subscribe(
 			[this]
 			{
-				TasksInProgress--;
-				if (TasksInProgress == 0)
+				TasksInProgress.fetch_sub(1, std::memory_order_acq_rel);
+
+				if (TasksInProgress.load(std::memory_order_acquire) == 0)
 					CV.notify_all();
 			});
 	}
@@ -185,7 +186,7 @@ namespace FlexKit
 			lock, 
 			[this]()->bool
 			{
-				return TasksInProgress == 0;
+				return TasksInProgress.load(std::memory_order_acquire) == 0;
 			});
 
 		for (auto Evt : PostEvents)

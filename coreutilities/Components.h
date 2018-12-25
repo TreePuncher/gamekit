@@ -170,10 +170,11 @@ namespace FlexKit
 			{	// Multi Thread
 				WorkBarrier barrier{allocator};
 
-				for (auto& node : nodes) {
+				for (auto& node : nodes)
 					barrier.AddDependentWork(&node->threadTask);
+
+				for (auto& node : nodes)
 					VisitAndScheduleLeafs(node, threads, allocator);
-				}
 
 				barrier.Wait();
 			}
@@ -226,8 +227,8 @@ namespace FlexKit
 			typename FN_UPDATE>
 		UpdateTask&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
 		{
-			auto& data			= allocator->allocate<TY_NODEDATA>();
-			UpdateTask& newNode = allocator->allocate<UpdateTask>(threads, allocator);
+			auto& data			= allocator->allocate_aligned<TY_NODEDATA>();
+			UpdateTask& newNode = allocator->allocate_aligned<UpdateTask>(threads, allocator);
 
 			UpdateBuilder Builder{ newNode };
 			LinkageSetup(Builder, data);

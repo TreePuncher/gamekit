@@ -66,18 +66,26 @@ namespace FlexKit
 	public:
 		iWork & operator = (iWork& rhs) = delete;
 
-		iWork(iAllocator* Memory) : Watchers{Memory}	{}
-		~iWork()					{ Watchers.Release();}
+		//iWork(iAllocator* Memory) : 
+		//	Watchers{Memory}	{}
+
+		iWork(iAllocator* Memory) {}
+
+		//~iWork()					{ Watchers.Release();}
 
 		virtual void Run() {}
 		virtual void Release() {}
 
 		void NotifyWatchers()
 		{
-			for (size_t itr = 0; itr < Watchers.size(); ++itr)
-				Watchers[itr]();
+			if (!Watchers.size())
+				return;
 
-			Watchers.clear();
+			size_t end = Watchers.size();
+			for (size_t itr = 0; itr < end; ++itr) {
+				test++;
+				Watchers[itr]();
+			}
 		}
 
 		void Subscribe(OnCompletionEvent CallMeLater) 
@@ -88,7 +96,10 @@ namespace FlexKit
 		operator iWork* () { return this; }
 
 	private:
-		Vector<OnCompletionEvent>			Watchers;
+		atomic_int					test = 0;
+		bool						notifiedWatchers = false;
+		//Vector<OnCompletionEvent>	Watchers;
+		static_vector<OnCompletionEvent>	Watchers;
 	};
 
 
@@ -340,7 +351,6 @@ namespace FlexKit
 		void Wait					();
 
 	private:
-		ThreadManager*				Threads;
 		Vector<OnCompletionEvent>	PostEvents;
 
 		std::condition_variable		CV;
@@ -371,10 +381,8 @@ namespace FlexKit
 			waitsOn.Subscribe(
 				[this]() {
 					dependentCount--;
-					if (dependentCount == 0)
-						if (scheduleLock.try_lock()) { // Leave locked!
-							threads->AddWork(&work, allocator);
-						}
+					if (!dependentCount && scheduleLock.try_lock()) // Leave locked!
+						threads->AddWork(&work, allocator);
 					});
 		}
 
