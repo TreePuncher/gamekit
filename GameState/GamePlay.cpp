@@ -588,7 +588,7 @@ void Draw3DGrid(
 		size_t CameraConstantsOffset;
 		size_t LocalConstantsOffset;
 
-		FlexKit::DesciptorHeap	Heap; // Null Filled
+		FlexKit::DescriptorHeap	Heap; // Null Filled
 	};
 
 
@@ -602,8 +602,8 @@ void Draw3DGrid(
 	FrameGraph.AddNode<DrawGrid>(0,
 		[&](FlexKit::FrameGraphNodeBuilder& Builder, auto& Data)
 	{
-		Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.RenderSystem->GetTag(RenderTarget));
-		Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.RenderSystem->GetTag(DepthBuffer));
+		Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.renderSystem->GetTag(RenderTarget));
+		Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.renderSystem->GetTag(DepthBuffer));
 		Data.CB				= Constants;
 
 		Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
@@ -613,10 +613,10 @@ void Draw3DGrid(
 			FrameGraph.Resources);
 
 		Data.Heap.Init(
-			FrameGraph.Resources.RenderSystem,
-			FrameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+			FrameGraph.Resources.renderSystem,
+			FrameGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
 			TempMem);
-		Data.Heap.NullFill(FrameGraph.Resources.RenderSystem);
+		Data.Heap.NullFill(FrameGraph.Resources.renderSystem);
 
 		Drawable::VConsantsLayout DrawableConstants;
 		DrawableConstants.Transform = DirectX::XMMatrixIdentity();
@@ -652,7 +652,7 @@ void Draw3DGrid(
 	},
 		[](auto& Data, const FlexKit::FrameResources& Resources, FlexKit::Context* Ctx)
 	{
-		Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+		Ctx->SetRootSignature(Resources.renderSystem->Library.RS4CBVs4SRVs);
 		Ctx->SetPipelineState(Resources.GetPipelineState(DRAW_LINE3D_PSO));
 
 		Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });

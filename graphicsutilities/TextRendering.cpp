@@ -135,18 +135,18 @@ namespace FlexKit
 			size_t					VertexCount;
 			size_t					VertexOffset;
 
-			FlexKit::DesciptorHeap	Heap;
+			FlexKit::DescriptorHeap	Heap;
 		};
 
 		FGraph.AddNode<DrawSpriteText>(GetCRCGUID(DRAWSPRITETEXT),
 			[&](FrameGraphNodeBuilder& Builder, DrawSpriteText& Data)
 			{
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })
-					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.RenderSystem->GetRenderTargetWH(RenderTarget);
+					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.renderSystem->GetRenderTargetWH(RenderTarget);
 
 				Data.Heap.Init(
-					FGraph.Resources.RenderSystem, 
-					FGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0), 
+					FGraph.Resources.renderSystem, 
+					FGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0), 
 					TempMemory);
 
 				Data.TextSheet		= Builder.ReadTexture(GetCRCGUID(FONTSHEET), Font.Texture);
@@ -245,10 +245,10 @@ namespace FlexKit
 			{
 				auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
 				
-				Data.Heap.SetSRV(Resources.RenderSystem, 0, Resources.GetTexture(Data.TextSheet));
-				Data.Heap.NullFill(Resources.RenderSystem);
+				Data.Heap.SetSRV(Resources.renderSystem, 0, Resources.GetTexture(Data.TextSheet));
+				Data.Heap.NullFill(Resources.renderSystem);
 
-				Ctx->SetRootSignature				(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetRootSignature				(Resources.renderSystem->Library.RS4CBVs4SRVs);
 				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
 				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.RenderTarget) });

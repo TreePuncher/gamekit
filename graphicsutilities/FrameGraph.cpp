@@ -15,32 +15,40 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ResourceTransition::ProcessTransition(FrameResources& Resources, Context* Ctx) const
+	void ResourceTransition::ProcessTransition(FrameResources& Resources, Context* ctx) const
 	{
-		switch (AfterState)
+		switch (Object->Type)
 		{
-		case DRS_Present:
-		{
-			Ctx->AddPresentBarrier(
-				Resources.GetRenderTarget(Object->Handle),
-				BeforeState);
-		}	break;
-		case DRS_DEPTHBUFFERWRITE:
-		case DRS_RenderTarget:
-			Ctx->AddRenderTargetBarrier(
-				Resources.GetRenderTarget(Object->Handle),
-				BeforeState,
-				AfterState);
-			break;
-
-		case DRS_ShaderResource:
-		case DRS_UAV:
-		case DRS_CONSTANTBUFFER:
-		case DRS_PREDICATE:
-		case DRS_INDIRECTARGS:
-		case DRS_UNKNOWN:
-		default:
-			FK_ASSERT(0); // Unimplemented
+			default:
+				switch (AfterState)
+				{
+				case DRS_Present:
+				{
+					ctx->AddPresentBarrier(
+						Resources.GetRenderTarget(Object->Handle),
+						BeforeState);
+				}	break;
+				case DRS_DEPTHBUFFERWRITE:
+				case DRS_RenderTarget:
+					ctx->AddRenderTargetBarrier(
+						Resources.GetRenderTarget(Object->Handle),
+						BeforeState,
+						AfterState);
+					break;
+				case DRS_UAV:
+					ctx->AddUAVBarrier(
+						Object->UAVBuffer,
+						BeforeState,
+						AfterState);
+					break;
+				case DRS_ShaderResource:
+				case DRS_CONSTANTBUFFER:
+				case DRS_PREDICATE:
+				case DRS_INDIRECTARGS:
+				case DRS_UNKNOWN:
+				default:
+					FK_ASSERT(0); // Unimplemented
+				}
 		}
 	}
 
@@ -52,8 +60,6 @@ namespace FlexKit
 	{
 		for (const auto& T : Transitions)
 			T.ProcessTransition(Resources, Ctx);
-
-
 	}
 
 
@@ -216,205 +222,12 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
-
-	Pair<bool, FrameObjectDependency&>	FrameGraphResourceContext::IsTrackedWriteable(uint32_t Tag)
-	{
-		auto Pred = [&](auto& lhs)
-		{	return (lhs.Tag == Tag); };
-
-		auto Res = find(Writables, Pred);
-		return {Res != Writables.end(), *Res};
-	}
-
-
-	Pair<bool, FrameObjectDependency&>	FrameGraphResourceContext::IsTrackedReadable(uint32_t Tag)
-	{
-		auto Pred = [&](auto& lhs)
-		{	return (lhs.Tag == Tag); };
-
-		auto Res = find(Readables, Pred);
-		return { Res != Readables.end(), *Res };
-	}
-
-
-	/************************************************************************************************/
-
-
-	Pair<bool, FrameObjectDependency&> FrameGraphResourceContext::IsTrackedReadable(TextureHandle Handle, FrameObjectResourceType Type)
-	{
-		auto Pred = [&](auto& lhs)
-		{
-			auto A = lhs.FO->Type == Type;
-			return A && (lhs.ID == Handle);
-		};
-
-		auto Res = find(Readables, Pred);
-		return { Res != Readables.end(), *Res };
-	}
-
-
-	/************************************************************************************************/
-
-
-	Pair<bool, FrameObjectDependency&>	FrameGraphResourceContext::IsTrackedWriteable(TextureHandle Handle, FrameObjectResourceType Type)
-	{
-		auto Pred = [&](auto& lhs)
-		{	
-			
-			auto A = lhs.FO->Type == Type;
-			return A && (lhs.ID == Handle);
-		};
-
-		auto Res = find(Writables, Pred);
-		return { Res != Writables.end(), *Res };
-	}
-
-
-	/************************************************************************************************/
-
-
-	FrameResourceHandle FrameGraphNodeBuilder::AddReadableResource(uint32_t Tag, DeviceResourceState State)
-	{
-		bool TrackedReadable = Context.IsTrackedReadable(Tag);
-		bool TrackedWritable = Context.IsTrackedWriteable(Tag);
-
-		if (!TrackedReadable && !TrackedWritable)
-		{
-			FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
-
-			LocalInputs.push_back(
-				FrameObjectDependency{
-					Resources->GetResourceObject(Resource),
-					nullptr,
-					Resources->GetResourceObjectState(Resource),
-					State });
-
-			Context.AddReadable(LocalOutputs.back());
-			Transitions.push_back(LocalOutputs.back());
-
-			return Resource;
-		}
-		else
-		{
-			auto Object				= TrackedReadable ? 
-				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
-
-			Object.ExpectedState	= Object.State;
-			Object.State			= State;
-			LocalOutputs.push_back(Object);
-
-			if (TrackedWritable) {
-				Context.RemoveWriteable(Tag);
-				Context.AddReadable(Object);
-				Transitions.push_back(Object);
-			}
-
-			return Object.FO->Handle;
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(uint32_t Tag, DeviceResourceState State)
-	{
-		bool TrackedReadable = Context.IsTrackedReadable	(Tag);
-		bool TrackedWritable = Context.IsTrackedWriteable	(Tag);
-
-		if (!TrackedReadable && !TrackedWritable)
-		{
-			FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
-
-			LocalOutputs.push_back(
-				FrameObjectDependency{
-					Resources->GetResourceObject(Resource),
-					nullptr,
-					Resources->GetResourceObjectState(Resource),
-					State });
-
-			Context.AddWriteable(LocalOutputs.back());
-			Transitions.push_back(LocalOutputs.back());
-
-			return Resource;
-		}
-		else
-		{
-			auto Object				= TrackedReadable ? 
-				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
-
-			Object.ExpectedState	= Object.State;
-			Object.State			= State;
-			LocalOutputs.push_back(Object);
-
-			if (TrackedReadable) {
-				Context.RemoveReadable(Tag);
-				Context.AddWriteable(Object);
-				Transitions.push_back(Object);
-			}
-
-			return Object.FO->Handle;
-		}
-	}
-
-
-	/************************************************************************************************/
-
-
-	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(TextureHandle Handle, DeviceResourceState State, FrameObjectResourceType Type)
-	{
-		bool TrackedReadable = Context.IsTrackedReadable	(Handle, Type);
-		bool TrackedWritable = Context.IsTrackedWriteable	(Handle, Type);
-
-		if (!TrackedReadable && !TrackedWritable)
-		{
-			FrameResourceHandle Resource = Resources->FindRenderTargetResource(Handle);
-
-			LocalOutputs.push_back(
-				FrameObjectDependency{
-					Resources->GetResourceObject(Resource),
-					nullptr,
-					Resources->GetResourceObjectState(Resource),
-					State });
-
-			Context.AddWriteable(LocalOutputs.back());
-			Transitions.push_back(LocalOutputs.back());
-
-			return Resource;
-		}
-		else
-		{
-			FK_ASSERT(0);
-			/*
-			auto Object = TrackedReadable ?
-				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
-
-			Object.ExpectedState = Object.State;
-			Object.State = State;
-			LocalOutputs.push_back(Object);
-
-			if (TrackedReadable) {
-				Context.RemoveReadable(Tag);
-				Context.AddWriteable(Object);
-				Transitions.push_back(Object);
-			}
-
-			return Object.FO->Handle;
-			*/
-		}
-
-		return FrameResourceHandle(0);
-	}
-
-
-	/************************************************************************************************/
 	
 	
 	StaticFrameResourceHandle FrameGraphNodeBuilder::ReadTexture(uint32_t Tag, TextureHandle Texture)
 	{
 		FrameResourceHandle Handle_Out{ 0xffff };
-		auto State = Resources->RenderSystem->Textures.GetState(Texture);
+		auto State = Resources->renderSystem->Textures.GetState(Texture);
 
 		if (!(State | DRS_Read))
 		{	// Auto Barrier Insertion
@@ -422,11 +235,11 @@ namespace FlexKit
 			//Context.AddReadable({});
 		}
 
-		auto Index = Resources->RenderSystem->GetTextureFrameGraphIndex(Texture);
+		auto Index = Resources->renderSystem->GetTextureFrameGraphIndex(Texture);
 		if (Index != INVALIDHANDLE)
 		{
 			size_t Index = 0;
-			Resources->RenderSystem->SetTextureFrameGraphIndex(Texture, Index);
+			Resources->renderSystem->SetTextureFrameGraphIndex(Texture, Index);
 			Handle_Out = FrameResourceHandle{ static_cast<unsigned int>(Index) };
 		}
 		else
@@ -452,7 +265,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::ReadRenderTarget(TextureHandle RenderTarget)
 	{
-		return ReadRenderTarget(Resources->RenderSystem->GetTag(RenderTarget));
+		return ReadRenderTarget(Resources->renderSystem->GetTag(RenderTarget));
 	}
 
 
@@ -468,7 +281,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(TextureHandle RenderTarget)
 	{
-		return WriteRenderTarget(Resources->RenderSystem->GetTag(RenderTarget));
+		return WriteRenderTarget(Resources->renderSystem->GetTag(RenderTarget));
 	}
 
 
@@ -496,7 +309,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::ReadBackBuffer(uint32_t Tag)
 	{
-		FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
+		FrameResourceHandle Resource = Resources->FindFrameResource(Tag);
 		LocalInputs.push_back(FrameObjectDependency{
 			Resources->GetResourceObject(Resource),
 			nullptr,
@@ -512,7 +325,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::ReadDepthBuffer(uint32_t Tag)
 	{
-		FrameResourceHandle Resource = Resources->FindRenderTargetResource(Tag);
+		FrameResourceHandle Resource = Resources->FindFrameResource(Tag);
 		LocalInputs.push_back(FrameObjectDependency{
 			Resources->GetResourceObject(Resource),
 			nullptr,
@@ -551,9 +364,82 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(TextureHandle Handle)
+	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(TextureHandle handle)
 	{
-		return AddWriteableResource(Handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE, FrameObjectResourceType::OT_DepthBuffer);
+		return AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE, FrameObjectResourceType::OT_DepthBuffer);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::ReadWriteUAVBuffer(UAVResourceHandle handle)
+	{
+		return AddWriteableResource(handle, DeviceResourceState::DRS_Write);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::ReadSOBuffer(SOResourceHandle handle)
+	{
+		return AddReadableResource(handle, DeviceResourceState::DRS_GENERIC);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::WriteSOBuffer(SOResourceHandle handle)
+	{
+		return AddWriteableResource(handle, DeviceResourceState::DRS_GENERIC);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(TextureHandle handle, DeviceResourceState state, FrameObjectResourceType type)
+	{
+		bool TrackedReadable = Context.IsTrackedReadable	(handle, type);
+		bool TrackedWritable = Context.IsTrackedWriteable	(handle, type);
+
+		if (!TrackedReadable && !TrackedWritable)
+		{
+			FrameResourceHandle Resource = Resources->FindFrameResource(handle);
+
+			LocalOutputs.push_back(
+				FrameObjectDependency{
+					Resources->GetResourceObject(Resource),
+					nullptr,
+					Resources->GetResourceObjectState(Resource),
+					state });
+
+			Context.AddWriteable(LocalOutputs.back());
+			Transitions.push_back(LocalOutputs.back());
+
+			return Resource;
+		}
+		else
+		{
+			FK_ASSERT(0);
+			/*
+			auto Object = TrackedReadable ?
+				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
+			Object.ExpectedState = Object.State;
+			Object.State = State;
+			LocalOutputs.push_back(Object);
+			if (TrackedReadable) {
+				Context.RemoveReadable(Tag);
+				Context.AddWriteable(Object);
+				Transitions.push_back(Object);
+			}
+			return Object.FO->Handle;
+			*/
+		}
+
+		return FrameResourceHandle(0);
 	}
 
 
@@ -562,7 +448,7 @@ namespace FlexKit
 
 	size_t FrameGraphNodeBuilder::GetDescriptorTableSize(PSOHandle State, size_t idx) const
 	{
-		auto rootSig	= Resources->RenderSystem->GetPSORootSignature(State);
+		auto rootSig	= Resources->renderSystem->GetPSORootSignature(State);
 		auto tableSize	= rootSig->GetDesciptorTableSize(idx);
 
 		return tableSize;
@@ -571,7 +457,7 @@ namespace FlexKit
 
 	const DesciptorHeapLayout<16>&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
 	{
-		auto rootSig = Resources->RenderSystem->GetPSORootSignature(State);
+		auto rootSig = Resources->renderSystem->GetPSORootSignature(State);
 		return rootSig->GetDescHeap(idx);
 	}
 
@@ -579,11 +465,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DesciptorHeap	FrameGraphNodeBuilder::ReserveDescriptorTableSpaces(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory)
+	DescriptorHeap	FrameGraphNodeBuilder::ReserveDescriptorTableSpaces(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory)
 	{
-		DesciptorHeap newHeap;
+		DescriptorHeap newHeap;
 		newHeap.Init(
-			Resources->RenderSystem,
+			Resources->renderSystem,
 			IN_layout,
 			requiredTables,
 			tempMemory);
@@ -652,8 +538,12 @@ namespace FlexKit
 		Contexts.emplace_back(Context(CL, RS, Memory));
 		ReadyResources();
 
-		for (auto& N : Nodes)
+		for (auto& N : Nodes) 
+		{
 			ProcessNode(&N, Resources, Contexts.back());
+		}
+
+		Contexts.back().FlushBarriers();
 
 		static_vector<ID3D12CommandList*> CLs = { Contexts.back().GetCommandList() };
 
@@ -687,7 +577,7 @@ namespace FlexKit
 				DepthBuffers.push_back(&Resource);
 		}
 
-		auto RS			= Resources.RenderSystem;
+		auto RS			= Resources.renderSystem;
 
 		{	// Push RenderTargets
 			auto Table		= RS->_ReserveRTVHeap(RenderTargets.size());
@@ -696,7 +586,7 @@ namespace FlexKit
 			for (auto RT : RenderTargets)
 			{
 				auto Handle			= RT->RenderTarget.Texture;
-				auto Texture		= Resources.RenderSystem->RenderTargets[Handle];
+				auto Texture		= Resources.renderSystem->RenderTargets[Handle];
 
 				RT->RenderTarget.HeapPOS	= TablePOS;
 				TablePOS					= PushRenderTarget(RS, &Texture, TablePOS);
@@ -709,7 +599,7 @@ namespace FlexKit
 			for (auto RT : DepthBuffers)
 			{
 				auto Handle		= RT->RenderTarget.Texture;
-				auto Texture	= Resources.RenderSystem->RenderTargets[Handle];
+				auto Texture	= Resources.renderSystem->RenderTargets[Handle];
 
 				RT->RenderTarget.HeapPOS	= TableDepthPOS;
 				TableDepthPOS				= PushDepthStencil(RS, &Texture, TableDepthPOS);
@@ -727,35 +617,30 @@ namespace FlexKit
 
 		for (auto& I : Objects)
 		{
-			switch (I.State)
+			switch (I.FO->Type)
 			{
-			case DRS_RenderTarget:
-			case DRS_Present:
+			case OT_UAVBuffer:
 			{
-				if (I.FO->Type == FrameObjectResourceType::OT_BackBuffer ||
-					I.FO->Type == FrameObjectResourceType::OT_RenderTarget)
-				{
-					Resources.RenderSystem->RenderTargets.SetState(
-						I.FO->RenderTarget.Texture, 
-						I.State);
-				}
+				auto UAV	= I.FO->UAVBuffer;
+				auto state	= I.State;
+				Resources.renderSystem->SetObjectState(UAV, state);
 			}	break;
-			case DRS_ShaderResource:
-			{	FK_ASSERT(0, "Not Implemented!");
-			}	break;
-			case DRS_UAV:
+			case OT_BackBuffer:
+			case OT_DepthBuffer:
+			case OT_RenderTarget:
 			{
-				FK_ASSERT(0, "Not Implemented!");
+				Resources.renderSystem->RenderTargets.SetState(
+					I.FO->RenderTarget.Texture, 
+					I.State);
 			}	break;
-			case DRS_VERTEXBUFFER: // & DRS_CONSTANTBUFFER
-			{	FK_ASSERT(0, "Not Implemented!");
+			case OT_StreamOut:
+			{
+				auto SOBuffer	= I.FO->SOBuffer;
+				auto state		= I.State;
+				Resources.renderSystem->SetObjectState(SOBuffer, state);
 			}	break;
-			case DRS_PREDICATE:
-			{	FK_ASSERT(0, "Not Implemented!");
-			}	break;
-			case DRS_INDIRECTARGS:
-			{	FK_ASSERT(0, "Not Implemented!");
-			}	break;
+			default:
+				FK_ASSERT(false, "UN-IMPLEMENTED BLOCK!");
 			}
 		}
 	}
@@ -856,7 +741,7 @@ namespace FlexKit
 
 	void ClearVertexBuffer(FrameGraph& FG, VertexBufferHandle PushBuffer)
 	{
-		FG.Resources.RenderSystem->VertexBuffers.Reset(PushBuffer);
+		FG.Resources.renderSystem->VertexBuffers.Reset(PushBuffer);
 	}
 
 

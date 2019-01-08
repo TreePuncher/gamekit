@@ -67,10 +67,14 @@ namespace FlexKit
 		OT_RenderTarget,
 		OT_ConstantBuffer,
 		OT_PVS,
+		OT_Query,
+		OT_StreamOut,
 		OT_Texture,
 		OT_VertexBuffer,
 		OT_IndirectArguments,
-		OT_UnorderedAccessView
+		OT_UnorderedAccessView,
+		OT_UAVBuffer,
+		OT_UAVTexture,
 	};
 
 
@@ -86,9 +90,10 @@ namespace FlexKit
 		{}
 
 		FrameObject(const FrameObject& rhs) :
-			Type	(rhs.Type),
-			State	(rhs.State),
-			Tag		(rhs.Tag)
+			Type	{ rhs.Type		},
+			State	{ rhs.State		},
+			Tag		{ rhs.Tag		},
+			Handle	{ rhs.Handle	}
 		{
 			Buffer = rhs.Buffer;
 		}
@@ -105,7 +110,11 @@ namespace FlexKit
 				DescHeapPOS		HeapPOS;
 			}RenderTarget;
 
-			TextureHandle Texture;
+			QueryHandle			query;
+			TextureHandle		Texture;
+			SOResourceHandle	SOBuffer;
+			UAVResourceHandle	UAVBuffer;
+			UAVResourceHandle	UAVTexture;
 
 			struct {
 				char	buff[256];
@@ -167,6 +176,39 @@ namespace FlexKit
 
 			return RenderTarget;
 		}
+
+		static FrameObject UAVBufferObject(uint32_t Tag, UAVResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_UAV)
+		{
+			FrameObject UnorderedAccessViewObject;
+			UnorderedAccessViewObject.State                = InitialState;
+			UnorderedAccessViewObject.Type                 = OT_UAVBuffer;
+			UnorderedAccessViewObject.Tag                  = Tag;
+			UnorderedAccessViewObject.UAVBuffer			   = Handle;
+
+			return UnorderedAccessViewObject;
+		}
+
+		static FrameObject SOBufferObject(uint32_t Tag, SOResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_GENERIC)
+		{
+			FrameObject Streamout;
+			Streamout.State                = InitialState;
+			Streamout.Type                 = OT_StreamOut;
+			Streamout.Tag                  = Tag;
+			Streamout.SOBuffer			   = Handle;
+
+			return Streamout;
+		}
+
+		static FrameObject QueryObject(QueryHandle handle, DeviceResourceState initialState = DeviceResourceState::DRS_GENERIC)
+		{
+			FrameObject query;
+			query.State		= initialState;
+			query.Type		= OT_Query;
+			query.Tag		= 0;
+			query.query		= handle;
+
+			return query;
+		}
 	};
 
 
@@ -179,22 +221,17 @@ namespace FlexKit
 	FLEXKITAPI class FrameResources
 	{
 	public:
-		FrameResources(RenderSystem* rendersystem, iAllocator* Memory) : 
-			Resources		(Memory), 
-			Textures		(Memory),
-			RenderSystem	(rendersystem)
+		FrameResources(RenderSystem* IN_renderSystem, iAllocator* IN_allocator) : 
+			Resources		(IN_allocator),
+			Textures		(IN_allocator),
+			SubNodeTracking	(IN_allocator),
+			renderSystem	(IN_renderSystem)
 		{}
 
-		PassObjectList		Resources;
-		PassObjectList		Textures;	// State should be mostly Static across frame
-		RenderSystem*		RenderSystem;
-
-		//  TODO: Move these to a Scene Structure
-		//	Why are these here again?
-		PointLightList*	PointLights;
-		SpotLightList*	SpotLights;
-		//
-
+		PassObjectList			Resources;
+		PassObjectList			Textures;	// State should be mostly Static across frame
+		mutable PassObjectList	SubNodeTracking;
+		RenderSystem*			renderSystem;
 
 		/************************************************************************************************/
 
@@ -203,8 +240,8 @@ namespace FlexKit
 		{
 			AddRenderTarget(
 				Handle,
-				RenderSystem->GetTag(Handle),
-				RenderSystem->RenderTargets.GetState(Handle));
+				renderSystem->GetTag(Handle),
+				renderSystem->RenderTargets.GetState(Handle));
 		}
 
 
@@ -227,8 +264,8 @@ namespace FlexKit
 		{
 			AddDepthBuffer(
 				Handle,
-				RenderSystem->GetTag(Handle),
-				RenderSystem->RenderTargets.GetState(Handle));
+				renderSystem->GetTag(Handle),
+				renderSystem->RenderTargets.GetState(Handle));
 		}
 
 
@@ -243,6 +280,62 @@ namespace FlexKit
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
 
+
+		/************************************************************************************************/
+
+
+		void AddUAVResource(UAVResourceHandle handle, uint32_t tag, DeviceResourceState InitialState = DeviceResourceState::DRS_Write)
+		{
+			Resources.push_back(
+				FrameObject::UAVBufferObject(tag, handle, InitialState));
+
+			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+		}
+
+
+		/************************************************************************************************/
+
+
+		void AddSOResource(SOResourceHandle handle, uint32_t tag)
+		{
+			DeviceResourceState initialState = renderSystem->GetObjectState(handle);
+
+			Resources.push_back(
+				FrameObject::SOBufferObject(tag, handle, initialState));
+
+			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+		}
+
+
+		/************************************************************************************************/
+
+
+		void AddQuery(QueryHandle handle)
+		{
+			DeviceResourceState initialState = renderSystem->GetObjectState(handle);
+
+			Resources.push_back(
+				FrameObject::QueryObject(handle, initialState));
+
+			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+		}
+
+
+		/************************************************************************************************/
+
+
+		template<typename TY>
+		ID3D12Resource* GetObjectResource(TY handle) const
+		{
+			return renderSystem->GetObjectDeviceResource(handle);
+		}
+
+
+		ID3D12Resource* GetUAVDeviceResource(FrameResourceHandle handle) const
+		{
+			auto res = _FindSubNodeResource(handle);
+			return GetObjectResource(res->UAVBuffer);
+		}
 
 		/************************************************************************************************/
 
@@ -271,7 +364,7 @@ namespace FlexKit
 
 		ID3D12PipelineState*	GetPipelineState(PSOHandle State)	const
 		{
-			return RenderSystem->GetPSO(State);
+			return renderSystem->GetPSO(State);
 		}
 
 
@@ -280,7 +373,7 @@ namespace FlexKit
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle Handle, size_t VertexSize)
 		{
-			return RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
+			return renderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
 		}
 
 
@@ -289,7 +382,7 @@ namespace FlexKit
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle Handle)
 		{
-			return RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle);
+			return renderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle);
 		}
 
 
@@ -325,7 +418,7 @@ namespace FlexKit
 
 		uint2					GetRenderTargetWH(FrameResourceHandle Handle) const
 		{
-			return RenderSystem->GetRenderTargetWH(GetRenderTarget(Handle));
+			return renderSystem->GetRenderTargetWH(GetRenderTarget(Handle));
 		}
 
 
@@ -353,13 +446,221 @@ namespace FlexKit
 		StaticFrameResourceHandle AddTexture(TextureHandle Handle, uint32_t Tag)
 		{
 			FK_ASSERT(0);
+			return InvalidHandle_t;
 		}
 
 
 		/************************************************************************************************/
 
 
-		FrameResourceHandle	FindRenderTargetResource(uint32_t Tag)
+		D3D12_VERTEX_BUFFER_VIEW ReadStreamOut(FrameResourceHandle handle, Context* ctx, size_t vertexSize) const
+		{
+			/*
+			typedef struct D3D12_VERTEX_BUFFER_VIEW
+			{
+			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
+			UINT SizeInBytes;
+			UINT StrideInBytes;
+			} 	D3D12_VERTEX_BUFFER_VIEW;
+			*/
+
+			auto res			= _FindSubNodeResource(handle);
+			auto SOHandle		= res->SOBuffer;
+			auto deviceResource = renderSystem->GetObjectDeviceResource(SOHandle);
+
+			if (res->State != DRS_VERTEXBUFFER) 
+				ctx->AddStreamOutBarrier(SOHandle, res->State, DRS_VERTEXBUFFER);
+
+			res->State = DRS_VERTEXBUFFER;
+
+			D3D12_VERTEX_BUFFER_VIEW view = {
+				deviceResource->GetGPUVirtualAddress(),
+				renderSystem->GetStreamOutBufferSize(SOHandle),
+vertexSize
+			};
+
+			return view;
+		}
+
+
+		/************************************************************************************************/
+
+
+		SOResourceHandle GetSOResource(ResourceHandle handle) const
+		{
+			FrameObject* resource = nullptr;
+			auto res = find(SubNodeTracking,
+				[&](const FrameObject& rhs) -> bool
+				{
+					return rhs.Handle == handle;
+				});
+
+			if (res == SubNodeTracking.end())
+			{
+				auto res = find(Resources,
+					[&](const FrameObject& rhs) -> bool
+					{
+						return rhs.Handle == handle;
+					});
+
+				FK_ASSERT(res != Resources.end());
+				SubNodeTracking.push_back(*res);
+				resource = &SubNodeTracking.back();
+			}
+			else
+				resource = res;
+
+			return resource->SOBuffer;
+		}
+
+
+		/************************************************************************************************/
+
+
+		UAVResourceHandle GetUAVBufferResource(FrameResourceHandle handle) const
+		{
+			FrameObject* resource = nullptr;
+			auto res = find(SubNodeTracking,
+				[&](const FrameObject& rhs) -> bool
+				{
+					return rhs.Handle == handle;
+				});
+
+			if (res == SubNodeTracking.end())
+			{
+				auto res = find(Resources,
+					[&](const FrameObject& rhs) -> bool
+					{
+						return rhs.Handle == handle;
+					});
+
+				FK_ASSERT(res != Resources.end());
+				SubNodeTracking.push_back(*res);
+				resource = &SubNodeTracking.back();
+			}
+			else
+				resource = res;
+
+			return resource->UAVBuffer;
+		}
+
+
+		/************************************************************************************************/
+
+
+		UAVResourceHandle ReadUAVBuffer(FrameResourceHandle resource, DeviceResourceState state, Context* ctx) const
+		{
+			auto res = _FindSubNodeResource(resource);
+			if (res->State != state)
+				ctx->AddUAVBarrier(res->UAVBuffer, res->State, state);
+
+			res->State = state;
+
+			return res->UAVBuffer;
+		}
+
+
+		/************************************************************************************************/
+
+
+		UAVResourceHandle ReadIndirectArgs(FrameResourceHandle resource, Context* ctx) const
+		{
+			auto res = _FindSubNodeResource(resource);
+			if (res->State != DRS_INDIRECTARGS)
+				ctx->AddUAVBarrier(res->UAVBuffer, res->State, DRS_INDIRECTARGS);
+
+			res->State = DRS_INDIRECTARGS;
+
+			return res->UAVBuffer;
+		}
+
+
+		/************************************************************************************************/
+
+
+		UAVResourceHandle WriteUAV(FrameResourceHandle resource, Context* ctx) const
+		{
+			auto res = _FindSubNodeResource(resource);
+			if (res->State != DRS_Write)
+				ctx->AddUAVBarrier(res->UAVBuffer, res->State, DRS_Write);
+
+			res->State = DRS_Write;
+
+			return res->UAVBuffer;
+		}
+
+
+		/************************************************************************************************/
+
+
+		DeviceResourceState GetObjectState(FrameResourceHandle handle) const
+		{
+			FrameObject* resource = nullptr;
+			auto res = find(SubNodeTracking, 
+				[&](const FrameObject& rhs) -> bool
+				{
+					return rhs.Handle == handle;
+				});
+
+			if (res == SubNodeTracking.end())
+			{
+				auto res = find(Resources,
+					[&](const FrameObject& rhs) -> bool
+					{
+						return rhs.Handle == handle;
+					});
+
+				FK_ASSERT(res != Resources.end());
+				SubNodeTracking.push_back(*res);
+				resource = &SubNodeTracking.back();
+			}
+			else
+				resource = res;
+
+			return resource->State;
+		}
+
+
+		/************************************************************************************************/
+
+
+		D3D12_STREAM_OUTPUT_BUFFER_VIEW WriteStreamOut(FrameResourceHandle handle, Context* ctx, size_t inputStride) const
+		{
+			auto resource = _FindSubNodeResource(handle);
+
+			if (resource->State != DRS_STREAMOUT)
+				ctx->AddStreamOutBarrier(resource->SOBuffer, resource->State, DRS_STREAMOUT);
+
+			resource->State = DRS_STREAMOUT;
+
+			/*
+			typedef struct D3D12_STREAM_OUTPUT_BUFFER_VIEW
+			{
+			D3D12_GPU_VIRTUAL_ADDRESS BufferLocation;
+			UINT64 SizeInBytes;
+			D3D12_GPU_VIRTUAL_ADDRESS BufferFilledSizeLocation;
+			} 	D3D12_STREAM_OUTPUT_BUFFER_VIEW;
+			*/
+
+			auto SOHandle			= resource->SOBuffer;
+			auto deviceResource		= renderSystem->GetObjectDeviceResource(SOHandle);
+			auto counterResource	= renderSystem->GetSOCounterResource(SOHandle);
+
+			D3D12_STREAM_OUTPUT_BUFFER_VIEW view =
+			{
+				deviceResource->GetGPUVirtualAddress(),
+				renderSystem->GetStreamOutBufferSize(SOHandle),
+				counterResource->GetGPUVirtualAddress(),
+			};
+
+			return view;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameResourceHandle	FindFrameResource(uint32_t Tag)
 		{
 			auto res = find(Resources, 
 				[&](const auto& LHS)
@@ -386,7 +687,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		FrameResourceHandle	FindRenderTargetResource(TextureHandle Handle)
+		FrameResourceHandle	FindFrameResource(TextureHandle Handle)
 		{
 			auto res = find(Resources, 
 				[&](const auto& LHS)
@@ -409,6 +710,160 @@ namespace FlexKit
 
 			return NewResource;
 		}
+
+
+		/************************************************************************************************/
+
+
+		FrameResourceHandle	FindFrameResource(UAVResourceHandle handle)
+		{
+			auto res = find(Resources, 
+				[&](const auto& LHS)
+				{
+					auto CorrectType = (
+						LHS.Type == OT_UAVBuffer ||
+						LHS.Type == OT_UAVTexture);
+
+					return (CorrectType && LHS.UAVBuffer == handle);
+				});
+
+			if (res != Resources.end())
+				return res->Handle;
+
+			// Create New Resource
+			FrameResourceHandle NewResource;
+
+			FK_ASSERT(0);
+
+			return NewResource;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameResourceHandle	FindFrameResource(SOResourceHandle handle)
+		{
+			auto res = find(Resources,
+				[&](const auto& LHS)
+				{
+					auto CorrectType = LHS.Type == OT_StreamOut;
+
+					return (CorrectType && LHS.SOBuffer == handle);
+				});
+
+			if (res != Resources.end())
+				return res->Handle;
+
+			// Create New Resource
+			FrameResourceHandle NewResource;
+
+			FK_ASSERT(0);
+
+			return NewResource;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameResourceHandle	FindFrameResource(QueryHandle handle)
+		{
+			auto res = find(Resources,
+				[&](const auto& LHS)
+				{
+					auto CorrectType = LHS.Type == FrameObjectResourceType::OT_Query;
+
+					return (CorrectType && LHS.query == handle);
+				});
+
+			if (res != Resources.end())
+				return res->Handle;
+
+			// Create New Resource
+			FrameResourceHandle NewResource;
+
+			FK_ASSERT(0);
+
+			return NewResource;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameObject* _FindSubNodeResource(FrameResourceHandle handle) const
+		{
+			FrameObject* resource = nullptr;
+			auto res = find(SubNodeTracking,
+				[&](const FrameObject& rhs) -> bool
+				{
+					return rhs.Handle == handle;
+				});
+
+			if (res == SubNodeTracking.end())
+			{
+				auto res = find(Resources,
+					[&](const FrameObject& rhs) -> bool
+					{
+						return rhs.Handle == handle;
+					});
+
+				FK_ASSERT(res != Resources.end());
+				SubNodeTracking.push_back(*res);
+				resource = &SubNodeTracking.back();
+			}
+			else
+				resource = res;
+
+			FK_ASSERT(resource != nullptr);
+
+			return resource;
+		}
+
+
+		/************************************************************************************************/
+
+
+		void _RestoreNodeStates(Context* ctx)
+		{
+			for (auto& Node : SubNodeTracking)
+			{
+				auto res = find(Resources,
+					[&](const FrameObject& rhs) -> bool
+					{
+						return rhs.Handle == Node.Handle;
+					});
+
+				if (res!= Resources.end() && res->State != Node.State)
+				{
+					switch (Node.Type)
+					{
+					case FrameObjectResourceType::OT_StreamOut:
+						ctx->AddStreamOutBarrier(Node.SOBuffer, Node.State, res->State);
+						break;
+					case FrameObjectResourceType::OT_UAVBuffer:
+					case FrameObjectResourceType::OT_UnorderedAccessView:
+						ctx->AddUAVBarrier(Node.UAVBuffer, Node.State, res->State);
+						break;
+					case FrameObjectResourceType::OT_BackBuffer:
+					case FrameObjectResourceType::OT_ConstantBuffer:
+					case FrameObjectResourceType::OT_DepthBuffer:
+					case FrameObjectResourceType::OT_IndirectArguments:
+					case FrameObjectResourceType::OT_PVS:
+					case FrameObjectResourceType::OT_RenderTarget:
+					case FrameObjectResourceType::OT_Texture:
+					case FrameObjectResourceType::OT_UAVTexture:
+					case FrameObjectResourceType::OT_VertexBuffer:
+						FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
+					}
+				}
+			}
+
+			SubNodeTracking.clear();
+
+			return;
+		}
 	};
 
 
@@ -418,7 +873,7 @@ namespace FlexKit
 	template<typename TY_V>
 	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources)
 	{
-		bool res = Resources.RenderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, sizeof(TY_V));
+		bool res = Resources.renderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, sizeof(TY_V));
 		FK_ASSERT(res, "Failed to Push Vertex!");
 		return res;
 	}
@@ -430,7 +885,7 @@ namespace FlexKit
 	template<typename TY_V>
 	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources, size_t PushSize)
 	{
-		bool res = Resources.RenderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, PushSize);
+		bool res = Resources.renderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, PushSize);
 		FK_ASSERT(res, "Failed to Push Vertex!");
 		return res;
 	}
@@ -455,6 +910,7 @@ namespace FlexKit
 		res |= PushVertex(upperLeft,	buffer, resources);
 		res |= PushVertex(upperRight,	buffer, resources);
 		res |= PushVertex(bottomRight,	buffer, resources);
+
 		return res;
 	}
 
@@ -465,12 +921,12 @@ namespace FlexKit
 	template<typename TY_V>
 	inline size_t GetCurrentVBufferOffset(VertexBufferHandle Buffer, FrameResources& Resources)
 	{
-		return Resources.RenderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Buffer) / sizeof(TY_V);
+		return Resources.renderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Buffer) / sizeof(TY_V);
 	}
 
 	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
 	{
-		return Resources.RenderSystem->ConstantBuffers.BeginNewBuffer(CB);
+		return Resources.renderSystem->ConstantBuffers.BeginNewBuffer(CB);
 	}
 
 
@@ -479,7 +935,7 @@ namespace FlexKit
 
 	inline bool PushConstantBufferData(char* _ptr, size_t Size, ConstantBufferHandle Buffer, FrameResources& Resources)
 	{
-		bool res = Resources.RenderSystem->ConstantBuffers.Push(Buffer, _ptr, Size);
+		bool res = Resources.renderSystem->ConstantBuffers.Push(Buffer, _ptr, Size);
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res;
 	}
@@ -491,7 +947,7 @@ namespace FlexKit
 	template<typename TY_CB>
 	bool PushConstantBufferData(const TY_CB& Constants, ConstantBufferHandle Buffer, FrameResources& Resources)
 	{
-		bool res = Resources.RenderSystem->ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB));
+		bool res = Resources.renderSystem->ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB));
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res;
 	}
@@ -515,7 +971,9 @@ namespace FlexKit
 				ExpectedState	(ExpectedState_IN),
 				State			(State_IN),
 				Tag				(FO_IN ? FO_IN->Tag : -1)
-		{}
+		{
+			SOHandle = InvalidHandle_t;
+		}
 
 		bool TransitionNeeded()
 		{
@@ -525,7 +983,13 @@ namespace FlexKit
 		FrameObject*		FO;
 		FrameGraphNode*		Source;
 		uint32_t			Tag;
-		uint32_t			ID;	// Extra ID
+
+		union {
+			uint32_t			ID;	// Extra ID
+			UAVResourceHandle	UAVHandle;
+			SOResourceHandle	SOHandle;
+		};
+
 		DeviceResourceState	ExpectedState;
 		DeviceResourceState	State;
 	};
@@ -605,6 +1069,64 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	auto MakePred(QueryHandle handle)
+	{
+		return [handle](FrameObjectDependency& lhs)
+		{
+			auto A = lhs.FO->Type == OT_Query;
+			if (A && lhs.UAVHandle == InvalidHandle_t)
+				lhs.UAVHandle = lhs.FO->UAVBuffer;
+
+			return A && (lhs.UAVHandle == handle);
+		};
+	}
+
+
+	auto MakePred(uint32_t tag)
+	{
+		return [tag](auto& lhs)
+		{
+			return (lhs.Tag == tag);
+		};
+	}
+
+	template<typename TY>
+	auto MakePred(TY handle, FrameObjectResourceType type)
+	{
+		return [handle, type](auto& lhs)
+		{
+			auto A = lhs.FO->Type == type;
+			return A && (lhs.ID == handle);
+		};
+	}
+
+
+	auto MakePred(UAVResourceHandle handle)
+	{
+		return [handle](FrameObjectDependency& lhs)
+		{
+			auto A = lhs.FO->Type == OT_UAVBuffer;
+			if (A && lhs.UAVHandle == InvalidHandle_t)
+				lhs.UAVHandle = lhs.FO->UAVBuffer;
+
+			return A && (lhs.UAVHandle == handle);
+		};
+	}
+
+
+	auto MakePred(SOResourceHandle handle)
+	{
+		return [handle](FrameObjectDependency& lhs)
+		{
+			auto A = lhs.FO->Type == OT_StreamOut;
+			if (A && lhs.SOHandle == InvalidHandle_t)
+				lhs.SOHandle = lhs.FO->SOBuffer;
+
+			return A && (lhs.SOHandle == handle);
+		};
+	}
+
+
 	FLEXKITAPI class FrameGraphResourceContext
 	{
 	public:
@@ -627,17 +1149,17 @@ namespace FlexKit
 		}
 
 
-		void RemoveReadable(uint32_t Tag)
+		template<typename TY>
+		void RemoveWriteable(TY handle)
 		{
-			auto Pred = [&](auto& lhs) { return (lhs.Tag == Tag);	};
-			Readables.remove_unstable(find(Readables, Pred));
+			Writables.remove_unstable(find(Writables, MakePred(handle)));
 		}
 
 
-		void RemoveWriteable(uint32_t Tag)
+		template<typename TY>
+		void RemoveReadable(TY handle)
 		{
-			auto Pred = [&](auto& lhs) { return (lhs.Tag == Tag);	};
-			Writables.remove_unstable(find(Writables, Pred));
+			Readables.remove_unstable(find(Readables, MakePred(handle)));
 		}
 
 
@@ -651,22 +1173,19 @@ namespace FlexKit
 		}
 
 
-		FrameObjectDependency& GetReadable(uint32_t Tag)
+		template<typename TY>
+		FrameObjectDependency& GetReadable(TY handle)
 		{
-			auto Pred = [&](auto& lhs) { return (lhs.Tag == Tag);	};
-			auto Res = find(Readables, Pred);
-
-			return *Res;
+			return *find(Readables, MakePred(handle));
 		}
 
 
-		FrameObjectDependency& GetWriteable(uint32_t Tag)
+		template<typename TY>
+		FrameObjectDependency& GetWriteable(TY handle)
 		{
-			auto Pred = [&](auto& lhs) { return (lhs.Tag == Tag);	};
-			auto Res = find(Writables, Pred);
-
-			return *Res;
+			return *find(Writables, MakePred(handle));
 		}
+
 
 		Vector<FrameObjectDependency>	GetFinalStates()
 		{
@@ -680,10 +1199,49 @@ namespace FlexKit
 			return std::move(Objects);
 		}
 
-		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(uint32_t Tag);
-		Pair<bool, FrameObjectDependency&> IsTrackedReadable	(uint32_t Tag);
-		Pair<bool, FrameObjectDependency&> IsTrackedReadable	(TextureHandle Handle, FrameObjectResourceType Type);
-		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(TextureHandle Handle, FrameObjectResourceType Type);
+
+		template<typename _pred>
+		Pair<bool, FrameObjectDependency&> _IsTrackedReadable(_pred pred)
+		{
+			auto Res = find(Readables, pred);
+			return { Res != Readables.end(), *Res };
+		}
+
+
+		template<typename _pred>
+		Pair<bool, FrameObjectDependency&> _IsTrackedWriteable(_pred pred)
+		{
+			auto Res = find(Writables, pred);
+			return { Res != Writables.end(), *Res };
+		}
+
+
+		template<typename TY>
+		Pair<bool, FrameObjectDependency&> IsTrackedReadable	(TY handle)
+		{
+			return _IsTrackedReadable(MakePred(handle));
+		}
+
+
+		template<typename TY>
+		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(TY handle)
+		{
+			return _IsTrackedWriteable(MakePred(handle));
+		}
+
+
+		template<typename TY>
+		Pair<bool, FrameObjectDependency&> IsTrackedReadable	(TY handle, FrameObjectResourceType type)
+		{
+			return _IsTrackedReadable(MakePred(handle, type));
+		}
+
+
+		template<typename TY>
+		Pair<bool, FrameObjectDependency&> IsTrackedWriteable	(TY handle, FrameObjectResourceType type)
+		{
+			return _IsTrackedWriteable(MakePred(handle, type));
+		}
 
 		Vector<FrameObjectDependency>	Writables;
 		Vector<FrameObjectDependency>	Readables;
@@ -735,19 +1293,115 @@ namespace FlexKit
 		//FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
 		FrameResourceHandle	WriteDepthBuffer	(TextureHandle Handle);
 
+		FrameResourceHandle	ReadWriteUAVBuffer	(UAVResourceHandle);
+
+		FrameResourceHandle	ReadSOBuffer	(SOResourceHandle);
+		FrameResourceHandle	WriteSOBuffer	(SOResourceHandle);
+
 		size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 		const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
-		DesciptorHeap					ReserveDescriptorTableSpaces	(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory);
+		DescriptorHeap					ReserveDescriptorTableSpaces	(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory);
 
 	private:
-		FrameResourceHandle AddReadableResource		(uint32_t Tag, DeviceResourceState State);
-		FrameResourceHandle AddWriteableResource	(uint32_t Tag, DeviceResourceState State);
 
-		FrameResourceHandle AddWriteableResource	(TextureHandle Handle, DeviceResourceState State, FrameObjectResourceType Type);
+		template<typename TY>
+		FrameResourceHandle AddReadableResource		(TY handle, DeviceResourceState state)
+		{
+			bool TrackedReadable = Context.IsTrackedReadable	(handle);
+			bool TrackedWritable = Context.IsTrackedWriteable	(handle);
+
+			if (!TrackedReadable && !TrackedWritable)
+			{
+				FrameResourceHandle Resource = Resources->FindFrameResource(handle);
+
+				LocalInputs.push_back(
+					FrameObjectDependency{
+						Resources->GetResourceObject(Resource),
+						nullptr,
+						Resources->GetResourceObjectState(Resource),
+						state });
+
+				Context.AddReadable(LocalOutputs.back());
+				Transitions.push_back(LocalOutputs.back());
+
+				return Resource;
+			}
+			else
+			{
+				auto Object = TrackedReadable ?
+					Context.GetReadable(handle) : Context.GetWriteable(handle);
+
+				Object.ExpectedState	= Object.State;
+				Object.State			= state;
+				LocalOutputs.push_back(Object);
+
+				if (TrackedWritable) {
+					Context.RemoveWriteable(handle);
+					Context.AddReadable(Object);
+					Transitions.push_back(Object);
+				}
+
+				return Object.FO->Handle;
+			}
+		}
 
 
+		template<typename TY>
+		FrameResourceHandle AddWriteableResource	(TY handle, DeviceResourceState state)
+		{
+			bool TrackedReadable = Context.IsTrackedReadable	(handle);
+			bool TrackedWritable = Context.IsTrackedWriteable	(handle);
 
+			if (!TrackedReadable && !TrackedWritable)
+			{
+				FrameResourceHandle Resource = Resources->FindFrameResource(handle);
+
+				LocalOutputs.push_back(
+					FrameObjectDependency{
+						Resources->GetResourceObject(Resource),
+						nullptr,
+						Resources->GetResourceObjectState(Resource),
+						state });
+
+				Context.AddWriteable(LocalOutputs.back());
+				Transitions.push_back(LocalOutputs.back());
+
+				return Resource;
+			}
+			else
+			{
+				auto Object = TrackedReadable ?
+					Context.GetReadable(handle) : Context.GetWriteable(handle);
+
+				Object.ExpectedState	= Object.State;
+				Object.State			= state;
+				LocalOutputs.push_back(Object);
+
+				if (TrackedReadable) {
+					Context.RemoveReadable(handle);
+					Context.AddWriteable(Object);
+					Transitions.push_back(Object);
+				}
+
+				return Object.FO->Handle;
+			}
+		}
+
+		FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(TextureHandle handle, DeviceResourceState state, FrameObjectResourceType type);
+
+		/*
+		FrameResourceHandle AddWriteableResource	(UAVResourceHandle	handle, DeviceResourceState state);
+
+
+		FrameResourceHandle AddReadableResource		(SOResourceHandle	handle, DeviceResourceState state);
+		FrameResourceHandle AddWriteableResource	(SOResourceHandle	handle, DeviceResourceState state);
+
+		FrameResourceHandle AddReadableResource		(QueryHandle handle, DeviceResourceState state);
+		FrameResourceHandle AddWriteableResource	(QueryHandle Handlh, DeviceResourceState state);
+		*/
+
+		/*
 		template<typename FN_Create>
 		FrameResourceHandle AddWriteableResource(uint32_t Tag, DeviceResourceState State, FN_Create CreateResource)
 		{
@@ -757,7 +1411,7 @@ namespace FlexKit
 
 			return Res;
 		}
-
+		*/
 
 		enum class CheckStateRes
 		{
@@ -809,11 +1463,11 @@ namespace FlexKit
 
 			Node.NodeAction = [=, &Data, &Node](
 				FrameResources& Resources, 
-				Context* Ctx) 
+				Context* ctx) 
 			{
-				Node.HandleBarriers(Resources, Ctx);
-				Draw(Data, Resources, Ctx);
-				Ctx->FlushBarriers();
+				Node.HandleBarriers(Resources, ctx);
+				Draw(Data, Resources, ctx);
+				Resources._RestoreNodeStates(ctx);
 			};
 
 			Setup(Builder, Data);
@@ -1051,6 +1705,32 @@ namespace FlexKit
 		float	AspectRatio;
 		size_t	Divisions;
 	};
+
+
+
+	/************************************************************************************************/
+
+
+	size_t LoadCameraConstants(CameraHandle camera, ConstantBufferHandle constantBuffer, FrameResources& resources)
+	{
+		auto CBOffset = BeginNewConstantBuffer(constantBuffer, resources);
+		PushConstantBufferData(FlexKit::GetCameraConstantBuffer(camera), constantBuffer, resources);
+
+		return CBOffset;
+	}
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY>
+	size_t LoadConstants(const TY& data, ConstantBufferHandle constantBuffer, FrameResources& resources)
+	{
+		auto CBOffset = BeginNewConstantBuffer(constantBuffer, resources);
+		PushConstantBufferData(data, constantBuffer, resources);
+
+		return CBOffset;
+	}
 
 
 	/************************************************************************************************/
@@ -1311,7 +1991,7 @@ namespace FlexKit
 			FrameResourceHandle		RenderTarget;
 			VertexBufferHandle		VertexBuffer;
 			ConstantBufferHandle	ConstantBuffer;
-			DesciptorHeap			descriptorTables;
+			DescriptorHeap			descriptorTables;
 			DrawList				Draws;
 		};
 
@@ -1339,7 +2019,7 @@ namespace FlexKit
 				if (textureCount){
 					auto& desciptorTableLayout	= Builder.GetDescriptorTableLayout(State, 0);
 					Data.descriptorTables		= Builder.ReserveDescriptorTableSpaces(desciptorTableLayout, textureCount, Memory);
-					Data.descriptorTables.NullFill(Graph.Resources.RenderSystem);
+					Data.descriptorTables.NullFill(Graph.Resources.renderSystem);
 				}
 			},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
@@ -1353,7 +2033,7 @@ namespace FlexKit
 					{	Resources.GetRenderTargetObject(Data.RenderTarget) }, 
 					false);
 
-				Ctx->SetRootSignature		(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetRootSignature		(Resources.renderSystem->Library.RS4CBVs4SRVs);
 				Ctx->SetPipelineState		(Resources.GetPipelineState(Data.State));
 				Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 
@@ -1374,8 +2054,8 @@ namespace FlexKit
 						}	break;
 						case ShapeDraw::RenderMode::Textured:
 						{
-							auto table = Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++, Resources.RenderSystem);
-							table.SetSRV(Resources.RenderSystem, 0, D.texture);
+							auto table = Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++, Resources.renderSystem);
+							table.SetSRV(Resources.renderSystem, 0, D.texture);
 							Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 							Ctx->SetGraphicsDescriptorTable(0, table);
 							
@@ -1412,11 +2092,11 @@ namespace FlexKit
 
 	template<typename CONTAINER_TY, typename GETCONSTANTS_FN>
 	void DrawCollection(
-		FrameGraph&					FrameGraph,
-		const CONTAINER_TY&			Entities,
+		FrameGraph&					frameGraph,
+		const CONTAINER_TY&			entities,
 		const GETCONSTANTS_FN		GetConstants,
-		const DrawCollection_Desc&	Desc,
-		iAllocator*					TempMem)
+		const DrawCollection_Desc&	desc,
+		iAllocator*					tempAllocator)
 	{
 		struct DrawGrid
 		{
@@ -1434,79 +2114,77 @@ namespace FlexKit
 			size_t ConstantOffsets[2];
 
 			PSOHandle				PSO;
-			FlexKit::DesciptorHeap	Heap; // Null Filled
+			FlexKit::DescriptorHeap	Heap; // Null Filled
 		};
 
 
-		FrameGraph.AddNode<DrawGrid>(0,
-			[&](FrameGraphNodeBuilder& Builder, auto& Data)
+		frameGraph.AddNode<DrawGrid>(0,
+			[&](FrameGraphNodeBuilder& builder, auto& data)
 			{
-				Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.RenderSystem->GetTag(Desc.RenderTarget));
-				Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.RenderSystem->GetTag(Desc.DepthBuffer));
+				data.RenderTarget	= builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
+				data.DepthBuffer	= builder.WriteDepthBuffer(frameGraph.Resources.renderSystem->GetTag(desc.DepthBuffer));
 
-				Data.Heap.Init(
-					FrameGraph.Resources.RenderSystem,
-					FrameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
-					TempMem).NullFill(FrameGraph.Resources.RenderSystem);
+				data.Heap.Init(
+					frameGraph.Resources.renderSystem,
+					frameGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					tempAllocator).NullFill(frameGraph.Resources.renderSystem);
 
-				Data.CB		= Desc.Constants;
-				Data.Mesh	= Desc.Mesh;
-				Data.PSO	= Desc.PSO;
+				data.CB		= desc.Constants;
+				data.Mesh	= desc.Mesh;
+				data.PSO	= desc.PSO;
 
-				Data.InstanceBuffer			= Desc.VertexBuffer;
-				Data.InstanceBufferOffset	= FrameGraph.Resources.GetVertexBufferOffset(Desc.VertexBuffer);
-				Data.InstanceElementSize	= Desc.InstanceElementSize;
+				data.InstanceBuffer			= desc.VertexBuffer;
+				data.InstanceBufferOffset	= frameGraph.Resources.GetVertexBufferOffset(desc.VertexBuffer);
+				data.InstanceElementSize	= desc.InstanceElementSize;
 
 
-				for (auto& Entity : Entities) {
-					PushVertex(GetConstants(Entity), Desc.VertexBuffer, FrameGraph.Resources);
-				}
-
+				for (auto& Entity : entities)
+					PushVertex(GetConstants(Entity), desc.VertexBuffer, frameGraph.Resources);
 
 				for (
 					size_t I = 0;
-					I < sizeof(Desc.ConstantsSize) / sizeof(*Desc.ConstantsSize);
+					I < sizeof(desc.ConstantsSize) / sizeof(*desc.ConstantsSize);
 					++I)
 				{
-					Data.ConstantOffsets[I] = BeginNewConstantBuffer(
-						Desc.Constants, 
-						FrameGraph.Resources);
+					data.ConstantOffsets[I] = BeginNewConstantBuffer(
+						desc.Constants, 
+						frameGraph.Resources);
 
 					PushConstantBufferData(
-						Desc.ConstantData[I],
-						Desc.ConstantsSize[I],
-						Desc.Constants,
-						FrameGraph.Resources);
+						desc.ConstantData[I],
+						desc.ConstantsSize[I],
+						desc.Constants,
+						frameGraph.Resources);
 				}
 
 
-				Data.InstanceCount = Entities.size();
+				data.InstanceCount = entities.size();
 			},
-			[](auto& Data, const FrameResources& Resources, Context* Ctx)
+			[](auto& data, const FrameResources& resources, Context* ctx)
 			{
-				auto* TriMesh = GetMesh(Data.Mesh);
+				auto* TriMesh = GetMesh(data.Mesh);
 				size_t MeshVertexCount = TriMesh->IndexCount;
 
 				// Setup state
-				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
-				Ctx->SetPipelineState(Resources.GetPipelineState(Data.PSO));
+				ctx->SetRootSignature(resources.renderSystem->Library.RS4CBVs4SRVs);
+				ctx->SetPipelineState(resources.GetPipelineState(data.PSO));
 
-				Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
-				Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });
-				Ctx->SetRenderTargets(
-					{	(DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, true,
-						(DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
+				ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.RenderTarget) });
+				ctx->SetRenderTargets(
+					{	(DescHeapPOS)resources.GetRenderTargetObject(data.RenderTarget) }, true,
+						(DescHeapPOS)resources.GetRenderTargetObject(data.DepthBuffer));
 
-				// Bind Resources
+				// Bind resources
 				VertexBufferList InstancedBuffers;
 				InstancedBuffers.push_back(VertexBufferEntry{
-					Data.InstanceBuffer,
-					(UINT)Data.InstanceElementSize,
-					(UINT)Data.InstanceBufferOffset });
+					data.InstanceBuffer,
+					(UINT)data.InstanceElementSize,
+					(UINT)data.InstanceBufferOffset });
 
 
-				Ctx->AddIndexBuffer(TriMesh);
-				Ctx->AddVertexBuffers(TriMesh,
+				ctx->AddIndexBuffer(TriMesh);
+				ctx->AddVertexBuffers(TriMesh,
 					{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
@@ -1514,12 +2192,12 @@ namespace FlexKit
 					&InstancedBuffers);
 
 
-				Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
-				Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.ConstantOffsets[0]);
-				Ctx->SetGraphicsConstantBufferView(2, Data.CB, Data.ConstantOffsets[1]);
-				Ctx->SetGraphicsConstantBufferView(3, Data.CB, Data.ConstantOffsets[1]); // Leave no root descriptor un-bound
+				ctx->SetGraphicsDescriptorTable(0, data.Heap);
+				ctx->SetGraphicsConstantBufferView(1, data.CB, data.ConstantOffsets[0]);
+				ctx->SetGraphicsConstantBufferView(2, data.CB, data.ConstantOffsets[1]);
+				ctx->SetGraphicsConstantBufferView(3, data.CB, data.ConstantOffsets[1]); // Leave no root descriptor un-bound
 
-				Ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, Data.InstanceCount);
+				ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, data.InstanceCount);
 			});
 	}
 
@@ -1557,7 +2235,7 @@ namespace FlexKit
 			size_t vertexOffset;
 
 			PSOHandle PSO;	
-			FlexKit::DesciptorHeap	Heap; // Null Filled
+			FlexKit::DescriptorHeap	Heap; // Null Filled
 		};
 	
 
@@ -1571,16 +2249,16 @@ namespace FlexKit
 		frameGraph.AddNode<DrawWireframes>(0,
 			[&](FrameGraphNodeBuilder& Builder, auto& Data)
 			{
-				Data.RenderTarget	= Builder.WriteRenderTarget(frameGraph.Resources.RenderSystem->GetTag(desc.RenderTarget));
+				Data.RenderTarget	= Builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
 
 				Data.CB		= desc.constantBuffer;
 				Data.VB		= desc.VertexBuffer;
 				Data.PSO	= desc.PSO;
 
 				Data.Heap.Init(
-					frameGraph.Resources.RenderSystem,
-					frameGraph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
-					TempMem).NullFill(frameGraph.Resources.RenderSystem);
+					frameGraph.Resources.renderSystem,
+					frameGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					TempMem).NullFill(frameGraph.Resources.renderSystem);
 
 				struct LocalConstants// Register b1
 				{
@@ -1630,7 +2308,7 @@ namespace FlexKit
 			},
 			[](auto& Data, const FrameResources& Resources, Context* ctx)
 			{
-				ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				ctx->SetRootSignature(Resources.renderSystem->Library.RS4CBVs4SRVs);
 				ctx->SetPipelineState(Resources.GetPipelineState(Data.PSO));
 				ctx->SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
 

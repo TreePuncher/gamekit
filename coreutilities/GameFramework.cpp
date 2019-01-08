@@ -316,7 +316,7 @@ namespace FlexKit
 				}
 			}
 
-			dispatcher.Execute();
+			//dispatcher.Execute();
 		}
 
 		{
@@ -329,7 +329,7 @@ namespace FlexKit
 					break;
 			}
 
-			dispatcher.Execute();
+			//dispatcher.Execute();
 		}
 
 		if (stats.fpsT > 1.0)
@@ -371,7 +371,7 @@ namespace FlexKit
 				break;
 		}
 
-		Dispatcher.Execute();
+		//Dispatcher.Execute();
 
 		ProfileBegin(PROFILE_SUBMISSION);
 

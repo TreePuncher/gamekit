@@ -208,7 +208,7 @@ namespace FlexKit
 			};
 		*/
 
-		auto WH			= Desc.FrameGraph->Resources.RenderSystem->GetRenderTargetWH(Desc.RenderTarget);
+		auto WH			= Desc.FrameGraph->Resources.renderSystem->GetRenderTargetWH(Desc.RenderTarget);
 		auto PixelSize	= float2{ 1.0f / WH[0], 1.0f / WH[1] };
 
 		LayoutEngine_Desc LE_Desc = 

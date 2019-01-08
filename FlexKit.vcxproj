@@ -73,14 +73,14 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LibraryPath>$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\release;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\lib\debug_x64;$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH);$(LibraryPath);C:\Program Files %28x86%29\Visual Leak Detector\lib\Win64;Debug\</LibraryPath>
-    <IncludePath>$(SolutionDir)Dependencies\include;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\include;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)\builds\debug_x64\</OutDir>
     <TargetName>$(ProjectName)d</TargetName>
     <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
     <PostBuildEventUseInBuild>false</PostBuildEventUseInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)Dependencies\include;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\include;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\release;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\lib\release_x64;$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH);$(LibraryPath);C:\Program Files %28x86%29\Visual Leak Detector\lib\Win64;Debug\;$(SolutionDir)Dependencies\lib\release_x64;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)\builds\release_x64\</OutDir>
     <PreBuildEventUseInBuild>false</PreBuildEventUseInBuild>
@@ -153,7 +153,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PrecompiledHeaderFile>..\coreutils\pch.h</PrecompiledHeaderFile>
-      <PreprocessorDefinitions>FLEXKITAPI_COMPILE;_MBCS;_CRT_SECURE_NO_WARNINGS;COMPILE64;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FLEXKITAPI_COMPILE;_MBCS;_CRT_SECURE_NO_WARNINGS;COMPILE64;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <OmitFramePointers>false</OmitFramePointers>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>

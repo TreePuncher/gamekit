@@ -26,6 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\Resources.h"
 #include "physicsutilities.h"
+#include <PhysX_sdk/physx/include/PxFoundation.h>
+#include <PhysX_sdk/physx/include/PxPhysics.h>
+#include <PhysX_sdk/physx/include/extensions/PxExtensionsAPI.h>
 
 using namespace physx;
 
@@ -49,58 +52,42 @@ namespace FlexKit
 #else
 		bool recordMemoryAllocations = false;
 #endif
-
-
 		Physics->Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, gDefaultAllocatorCallback, gDefaultErrorCallback);
 		if (!Physics->Foundation)
 			FK_ASSERT(0); // Failed to init
-		Physics->ProfileZoneManager = &physx::PxProfileZoneManager::createProfileZoneManager(Physics->Foundation);
-		if (!Physics->ProfileZoneManager)
-			FK_ASSERT(0); // Failed to init
-		Physics->Physx = PxCreatePhysics(PX_PHYSICS_VERSION, *Physics->Foundation, physx::PxTolerancesScale(), recordMemoryAllocations, Physics->ProfileZoneManager);
+
+
+#if USING(PHYSX_PVD)
+		if (Physics->RemoteDebuggerEnabled)
+		{
+			physx::PxPvd*				pvd			= physx::PxCreatePvd(*Physics->Foundation);
+			physx::PxPvdTransport*		transport	= physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+
+			pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eALL);
+
+			Physics->VisualDebugger				= pvd;
+			Physics->VisualDebuggerConnection	= transport;
+		}
+		else
+		{
+		}
+#endif
+
+		Physics->Physx = PxCreatePhysics(PX_PHYSICS_VERSION, *Physics->Foundation, physx::PxTolerancesScale(), recordMemoryAllocations);
+
 		if (!Physics->Physx)
 			FK_ASSERT(0); // Failed to init
-		if (!PxInitExtensions(*Physics->Physx))
+		if (!PxInitExtensions(*Physics->Physx, nullptr))
 			FK_ASSERT(0);
 
 
-#ifdef PHYSXREMOTEDB
+#ifdef USING(PHYSX_PVD)
 		Physics->RemoteDebuggerEnabled = true;
 #else
 		Physics->RemoteDebuggerEnabled = false;
 #endif
 
 
-		if (Physics->RemoteDebuggerEnabled)
-		{
-			if (Physics->Physx->getPvdConnectionManager())
-			{
-				const char*     pvd_host_ip = "127.0.0.1";
-				int             port        = 5425;
-				unsigned int    timeout     = 100;
-
-				physx::PxVisualDebuggerConnectionFlags connectionFlags = physx::PxVisualDebuggerExt::getAllConnectionFlags();
-				Physics->VisualDebuggerConnection = physx::PxVisualDebuggerExt::createConnection(Physics->Physx->getPvdConnectionManager(),
-																								 pvd_host_ip, port, timeout, connectionFlags);
-
-				if (!Physics->VisualDebuggerConnection) {
-					Physics->RemoteDebuggerEnabled = false; // No remote Debugger Available
-					FK_LOG_WARNING("PVD failed to Connect!");
-				}
-
-				Physics->Physx->getVisualDebugger()->setVisualizeConstraints(true);
-				Physics->Physx->getVisualDebugger()->setVisualDebuggerFlag(PxVisualDebuggerFlag::eTRANSMIT_CONTACTS, true);
-				Physics->Physx->getVisualDebugger()->setVisualDebuggerFlag(PxVisualDebuggerFlag::eTRANSMIT_SCENEQUERIES, true);
-			} else
-			{
-				std::cout << "PVD Disabled!\n";
-				Physics->RemoteDebuggerEnabled = false;
-			}
-		}
-		else
-		{
-			std::cout << "PVD Disabled!\n";
-		}
 
 		Physics->CPUDispatcher = physx::PxDefaultCpuDispatcherCreate(CoreCount);
 
@@ -360,10 +347,9 @@ namespace FlexKit
 
 		Physics->CPUDispatcher->release();// Physx
 		Physics->DefaultMaterial->release();
-		if (Physics->RemoteDebuggerEnabled)	Physics->VisualDebuggerConnection->release();
 		PxCloseExtensions();
+
 		if (Physics->Physx)					Physics->Physx->release();
-		if (Physics->ProfileZoneManager)	Physics->ProfileZoneManager->release();
 		if (Physics->Foundation)			Physics->Foundation->release();
 
 		Physics = nullptr;

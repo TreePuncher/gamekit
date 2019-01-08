@@ -968,10 +968,10 @@ namespace FlexKit
 
 
 		TempResourceList			TempBuffers;
-		ID3D12GraphicsCommandList*	CommandLists		[MaxThreadCount];
+		ID3D12GraphicsCommandList3*	CommandLists		[MaxThreadCount];
 		ID3D12CommandAllocator*		GraphicsCLAllocator	[MaxThreadCount];
 		ID3D12CommandAllocator*		ComputeCLAllocator	[MaxThreadCount];
-		ID3D12GraphicsCommandList*	ComputeList			[MaxThreadCount];
+		ID3D12GraphicsCommandList3*	ComputeList			[MaxThreadCount];
 		bool						CommandListsUsed	[MaxThreadCount];
 
 		DescHeapStack RTVHeap;
@@ -1138,7 +1138,9 @@ namespace FlexKit
 		{
 			size_t out = 0;
 			for (auto& e : Entries)
-				out += (e.Space > 0) ? e.Space : 1;
+				out += e.Count + e.Space;
+
+			FK_ASSERT(out);
 
 			return out;
 		}
@@ -1162,6 +1164,7 @@ namespace FlexKit
 		DRS_RenderTarget	 = 0x0006, // Implied write
 		DRS_ShaderResource	 = 0x0009, // Implied Read
 		DRS_UAV				 = 0x000A, // Implied Write
+		DRS_STREAMOUT		 = 0x000B, // Implied Write
 		DRS_VERTEXBUFFER	 = 0x000C, // Implied Read
 		DRS_CONSTANTBUFFER	 = 0x000C, // Implied Read
 		DRS_DEPTHBUFFER		 = 0x0030,
@@ -1171,6 +1174,7 @@ namespace FlexKit
 		DRS_PREDICATE		 = 0x0015, // Implied Read
 		DRS_INDIRECTARGS	 = 0x0019, // Implied Read
 		DRS_UNKNOWN			 = 0x0020, 
+		DRS_GENERIC			 = 0x0020, 
 		DRS_ERROR			 = 0xFFFF 
 	};
 
@@ -1178,9 +1182,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline D3D12_RESOURCE_STATES DRS2D3DState(DeviceResourceState State)
+	inline D3D12_RESOURCE_STATES DRS2D3DState(DeviceResourceState state)
 	{
-		switch (State)
+		switch (state)
 		{
 		case DeviceResourceState::DRS_Present:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PRESENT;
@@ -1194,36 +1198,68 @@ namespace FlexKit
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST;
 		case DeviceResourceState::DRS_Read:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_SOURCE;
+		case DeviceResourceState::DRS_VERTEXBUFFER:
+			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER;
 		case DeviceResourceState::DRS_Free:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
-		default:
-			FK_ASSERT(0);
+		case DeviceResourceState::DRS_UNKNOWN:
+			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+		case DeviceResourceState::DRS_INDIRECTARGS:
+			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
+		case DeviceResourceState::DRS_STREAMOUT:
+			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_STREAM_OUT;
 		}
 		return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+	}
+
+	/************************************************************************************************/
+
+
+	inline DeviceResourceState D3DState2DRS(D3D12_RESOURCE_STATES state)
+	{
+		switch (state)
+		{
+		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PRESENT:
+			return DeviceResourceState::DRS_Present;
+		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET:
+			return DeviceResourceState::DRS_RenderTarget;
+		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE:
+			return DeviceResourceState::DRS_ShaderResource;
+		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_UNORDERED_ACCESS:
+			return DeviceResourceState::DRS_UAV;
+		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST:
+			return DeviceResourceState::DRS_Write;
+		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_SOURCE:
+			return DeviceResourceState::DRS_Read;
+		case D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER:
+			return DeviceResourceState::DRS_VERTEXBUFFER;
+		}
+
+		return DeviceResourceState::DRS_GENERIC;
 	}
 
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI class DesciptorHeap
+	FLEXKITAPI class DescriptorHeap
 	{
 	public:
-		DesciptorHeap() {}
-		DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeap() {}
+		DescriptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
-		DesciptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
-		DesciptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory);
-		DesciptorHeap& NullFill	(RenderSystem* RS);
+		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
+		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory);
+		DescriptorHeap& NullFill	(RenderSystem* RS);
 
 		bool SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle);
 
-		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return DescriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
+		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
-		DesciptorHeap	GetHeapOffsetted(size_t offset, RenderSystem* RS) const;
+		DescriptorHeap	GetHeapOffsetted(size_t offset, RenderSystem* RS) const;
 
 	private:
-		DescHeapPOS						DescriptorHeap;
+		DescHeapPOS						descriptorHeap;
 		const DesciptorHeapLayout<>*	Layout;
 		Vector<bool>					FillState;
 	};
@@ -1379,6 +1415,7 @@ namespace FlexKit
 
 
 		bool AllowIA	= true;
+		bool AllowSO	= false;
 
 	private:
 		struct HeapEntry
@@ -1443,6 +1480,62 @@ namespace FlexKit
 
 
 
+	enum IndirectLayoutEntry
+	{
+		ILE_DrawCall,
+	};
+
+
+	// Non-copyable
+	FLEXKITAPI class IndirectLayout
+	{
+	public:
+		IndirectLayout() : 
+			entries		{ nullptr },
+			signature	{ nullptr }{}
+
+		IndirectLayout(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectLayoutEntry>&& IN_Entries) :
+			signature	{ IN_signature			},
+			stride		{ IN_stride				},
+			entries		{ std::move(IN_Entries) } {}
+
+		~IndirectLayout() 
+		{
+			signature->Release();
+		}
+
+
+		IndirectLayout(const IndirectLayout& rhs) : 
+			signature	{ rhs.signature },
+			entries		{ rhs.entries	},
+			stride		{ rhs.stride	}
+		{
+			signature->AddRef();
+		}
+
+		IndirectLayout& operator =	(const IndirectLayout& rhs)
+		{
+			rhs.signature->AddRef();
+
+			if(signature)
+				signature->Release();
+
+			signature	= rhs.signature;
+			stride		= rhs.stride;
+			entries		= rhs.entries;
+
+			return (*this);
+		}
+
+		ID3D12CommandSignature*		signature;
+		size_t						stride;
+		Vector<IndirectLayoutEntry>	entries;
+	};
+
+
+	/************************************************************************************************/
+
+
 	struct VertexBufferEntry
 	{
 		VertexBufferHandle	VertexBuffer	= InvalidHandle_t;
@@ -1457,17 +1550,17 @@ namespace FlexKit
 	{
 	public:
 		Context(
-				ID3D12GraphicsCommandList* Context_IN = nullptr, 
-				RenderSystem* RS_IN = nullptr, 
-				iAllocator* TempMemory = nullptr) :
+				ID3D12GraphicsCommandList3*	Context_IN = nullptr, 
+				RenderSystem*				RS_IN = nullptr, 
+				iAllocator*					TempMemory = nullptr) :
 			CurrentRootSignature	(nullptr),
 			DeviceContext			(Context_IN),
 			PendingBarriers			(TempMemory),
 			RS						(RS_IN),
 			Memory					(TempMemory),
 			RenderTargetCount		(0),
-			DepthStencilEnabled		(false)
-			{}
+			DepthStencilEnabled		(false),
+			TrackedSOBuffers		{TempMemory}{}
 			
 		Context(Context&& RHS) : 
 			CurrentRootSignature	(RHS.CurrentRootSignature),
@@ -1479,6 +1572,7 @@ namespace FlexKit
 		{
 			RHS.DeviceContext = nullptr;
 		}
+
 
 		Context& operator = (Context&& RHS)// Moves only
 		{
@@ -1519,18 +1613,20 @@ namespace FlexKit
 		}
 
 
-
 		Context				(const Context& RHS) = delete;
 		Context& operator = (const Context& RHS) = delete;
 
+		void AddUAVBarrier			(UAVResourceHandle, DeviceResourceState, DeviceResourceState);
 
-		void AddRenderTargetBarrier	(TextureHandle Handle, DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
 		void AddPresentBarrier		(TextureHandle Handle, DeviceResourceState Before);
+		void AddRenderTargetBarrier	(TextureHandle Handle, DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
+		void AddStreamOutBarrier	(SOResourceHandle, DeviceResourceState Before, DeviceResourceState State);
 
 		void ClearDepthBuffer		(TextureObject Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
 		void ClearRenderTarget		(TextureObject Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
 
 		void SetRootSignature		(RootSignature& RS);
+		void SetComputeRootSignature(RootSignature& RS);
 		void SetPipelineState		(ID3D12PipelineState* PSO);
 
 		void SetRenderTargets		(static_vector<Texture2D*,16>	RTs);
@@ -1547,24 +1643,66 @@ namespace FlexKit
 
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
-		void SetGraphicsDescriptorTable		(size_t idx, const DesciptorHeap& DH);
+		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
 		void SetGraphicsShaderResourceView	(size_t idx, Texture2D& Texture);
 
+		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
+		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
+		void SetComputeShaderResourceView	(size_t idx, Texture2D&			Texture);
+		void SetComputeUnorderedAccessView	(size_t idx, UAVResourceHandle& Texture);
+
+		void BeginQuery	(QueryHandle query, size_t idx);
+		void EndQuery	(QueryHandle query, size_t idx);
+
+		void CopyBufferRegion(
+			static_vector<ID3D12Resource*>		sources,
+			static_vector<size_t>				sourceOffset,
+			static_vector<ID3D12Resource*>		destinations,
+			static_vector<size_t>				destinationOffset,
+			static_vector<size_t>				copySize,
+			static_vector<DeviceResourceState>	currentStates,
+			static_vector<DeviceResourceState>	finalStates);
+
+		void ImmediateWrite(
+			static_vector<UAVResourceHandle>	handles,
+			static_vector<size_t>				value,
+			static_vector<DeviceResourceState>	currentStates,
+			static_vector<DeviceResourceState>	finalStates);
+
+		void ClearSOCounters(
+			static_vector<SOResourceHandle>		handles, 
+			static_vector<DeviceResourceState>	currentStates);
+
+		void CopyUInt64(
+			static_vector<ID3D12Resource*>			source,
+			static_vector<DeviceResourceState>		sourceState,
+			static_vector<size_t>					sourceoffsets,
+			static_vector<ID3D12Resource*>			destination,
+			static_vector<DeviceResourceState>		destinationState,
+			static_vector<size_t>					destinationoffset);
 
 		void AddIndexBuffer			(TriMesh* Mesh);
 		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
 		void SetVertexBuffers		(VertexBufferList&	List);
 		void SetVertexBuffers		(VertexBufferList	List);
+		void SetVertexBuffers2		(static_vector<D3D12_VERTEX_BUFFER_VIEW>	List);
+
+		void SetSOTargets		(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews);
 
 		void Draw					(size_t VertexCount, size_t BaseVertex = 0);
 		void DrawIndexed			(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0);
 		void DrawIndexedInstanced	(size_t IndexCount, size_t IndexOffet = 0, size_t BaseVertex = 0, size_t InstanceCount = 1, size_t InstanceOffset = 0);
 		void Clear					();
 
+		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, UAVResourceHandle destination, size_t destOffset);
+
+		void ExecuteIndirect		(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0);
+		void Dispatch				(uint3);
+
 		void FlushBarriers();
 
-		void SetPredicate(bool Enable, QueryBufferHandle Handle = {}, size_t = 0);
+		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
 
 		void SetRTRead	(TextureHandle Handle);
 		void SetRTWrite	(TextureHandle Handle);
@@ -1579,16 +1717,22 @@ namespace FlexKit
 
 	private:
 
+		void _AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState);
+
 		struct Barrier
 		{
 			Barrier() {}
+
+			/*
 			Barrier(const Barrier& rhs) 
 			{
 				Type		= rhs.Type;
-				Resource	= rhs.Resource;
 				NewState	= rhs.NewState;
 				OldState	= rhs.OldState;
+
+				memcpy(&resource, &rhs.resource, sizeof(resource));
 			}
+			*/
 
 			DeviceResourceState OldState;
 			DeviceResourceState NewState;
@@ -1598,23 +1742,31 @@ namespace FlexKit
 				BT_RenderTarget,
 				BT_ConstantBuffer,
 				BT_UAV,
+				BT_QueryBuffer,
 				BT_VertexBuffer,
+				BT_StreamOut,
+				BT_Generic,
+				BT_
 			}Type;
 
 			union 
 			{
-				TextureHandle		RenderTarget;
-				ID3D12Resource*		Resource;
+				UAVResourceHandle	UAV;
+				TextureHandle		renderTarget;
+				SOResourceHandle	streamOut;
+				ID3D12Resource*		resource;
+				QueryHandle			query;
 			};
 		};
+
 
 		void UpdateResourceStates();
 		void UpdateRTVState();
 
-		ID3D12GraphicsCommandList*	DeviceContext;
-		RootSignature*				CurrentRootSignature;
-		ID3D12PipelineState*		CurrentPipelineState;
-		RenderSystem*				RS;
+		ID3D12GraphicsCommandList3*		DeviceContext;
+		RootSignature*					CurrentRootSignature;
+		ID3D12PipelineState*			CurrentPipelineState;
+		RenderSystem*					RS;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
 		D3D12_CPU_DESCRIPTOR_HANDLE DSVPOSCPU;
@@ -1624,8 +1776,14 @@ namespace FlexKit
 
 		static_vector<TextureHandle, 16>		RenderTargets;
 		static_vector<D3D12_VIEWPORT, 16>		Viewports;
-		static_vector<DesciptorHeap*>			DesciptorHeaps;
+		static_vector<DescriptorHeap*>			DesciptorHeaps;
 		static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
+
+		struct StreamOutResource {
+			SOResourceHandle	handle;
+		};
+
+		Vector<StreamOutResource>				TrackedSOBuffers;
 		Vector<Barrier>							PendingBarriers;
 		iAllocator*								Memory;
 	};
@@ -1795,9 +1953,9 @@ namespace FlexKit
 		ConstantBufferHandle	CreateConstantBuffer	(size_t BufferSize, bool GPUResident = false);
 		void					ReleaseBuffer			(ConstantBufferHandle Handle);
 
-		ID3D12Resource*			GetBufferResource		(ConstantBufferHandle Handle);
-		size_t					GetBufferOffset			(ConstantBufferHandle Handle);
-		size_t					GetBufferBeginOffset	(ConstantBufferHandle Handle);
+		ID3D12Resource*			GetBufferResource		(const ConstantBufferHandle Handle) const;
+		size_t					GetBufferOffset			(const ConstantBufferHandle Handle) const;
+		size_t					GetBufferBeginOffset	(const ConstantBufferHandle Handle) const;
 
 		size_t					BeginNewBuffer	(ConstantBufferHandle Handle);
 		bool					Push			(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
@@ -1834,52 +1992,72 @@ namespace FlexKit
 	FLEXKITAPI struct QueryTable
 	{
 		QueryTable(iAllocator* Memory, RenderSystem* RS_in) :
-			Users{Memory},
-			Resources{Memory},
+			users{Memory},
+			resources{Memory},
 			RS{RS_in}{}
 
 
 		~QueryTable(){}
 
 
-		QueryBufferHandle	CreateQueryBuffer	(size_t Count, QueryType type);
-		void				LockUntil			(size_t FrameID);
+		QueryHandle			CreateQueryBuffer	(size_t Count, QueryType type);
+		QueryHandle			CreateSOQueryBuffer	(size_t count, size_t SOIndex);
+		void				LockUntil			(QueryHandle, size_t FrameID);
 
 
-		void				SetUsed		(QueryBufferHandle Handle)
+		void				SetUsed		(QueryHandle Handle)
 		{
-			Users[Handle].Used = true;
+			users[Handle].used = true;
 		}
 
 
-		ID3D12Resource*		GetResource	(QueryBufferHandle Handle)
+		DeviceResourceState GetResourceState(const QueryHandle handle) const
 		{
-			auto& Res = Resources[Users[Handle].ResourceIdx];
+			return D3DState2DRS(_GetResourceState(handle));
+		}
 
-			return Res.Resources[Res.CurrentResource];
+		D3D12_RESOURCE_STATES _GetResourceState(const QueryHandle handle) const
+		{
+			auto& res = resources[users[handle].resourceIdx];
+			return res.resourceState[res.currentResource];
+		}
+
+		ID3D12QueryHeap*	GetResource	(QueryHandle handle)
+		{
+			auto& res = resources[users[handle].resourceIdx];
+
+			return res.resources[res.currentResource];
+		}
+
+		D3D12_QUERY_TYPE	GetType(QueryHandle handle)
+		{
+			auto& res = resources[users[handle].resourceIdx];
+
+			return res.type;
 		}
 
 
 		struct UserEntry
 		{
-			size_t ResourceIdx;
-			size_t ResourceSize;
-			size_t CurrentOffset;
-			bool   Used;
+			size_t resourceIdx;
+			size_t resourceSize;
+			size_t currentOffset;
+			bool   used;
 		};
 
 
 		struct ResourceEntry
 		{
-			ID3D12Resource* Resources[3];
-			size_t			ResourceLocks[3];
-			size_t			CurrentResource;
-			size_t			Padding[1];
+			ID3D12QueryHeap*		resources[3];
+			D3D12_RESOURCE_STATES	resourceState[3];
+			size_t					resourceLocks[3];
+			size_t					currentResource;
+			D3D12_QUERY_TYPE		type;
 		};
 
 		RenderSystem*			RS;
-		Vector<UserEntry>		Users;
-		Vector<ResourceEntry>	Resources;
+		Vector<UserEntry>		users;
+		Vector<ResourceEntry>	resources;
 	};
 
 
@@ -1894,6 +2072,10 @@ namespace FlexKit
 		TF_BackBuffer	= 0x04,
 		TF_DepthBuffer	= 0x08,
 	};
+
+
+	/************************************************************************************************/
+
 
 	FLEXKITAPI class TextureStateTable
 	{
@@ -1979,10 +2161,210 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	FLEXKITAPI class UAVResourceTable
+	{
+	public:
+		UAVResourceTable(iAllocator* IN_allocator) :
+			resources	{ IN_allocator	},
+			handles		{ IN_allocator	}{}
+
+
+		struct UAVResource
+		{
+			static_vector<ID3D12Resource*, 3>	resources;	// assumes triple buffering
+			size_t								resourceSize;
+			DeviceResourceState					resourceStates[3];
+			UAVResourceHandle					resourceHandle;
+			uint8_t								resourceIdx;
+		};
+
+
+		UAVResourceHandle AddResource(static_vector<ID3D12Resource*,3> newResources, size_t resourceSize, DeviceResourceState initialState)
+		{
+			auto newHandle		= handles.GetNewHandle();
+			handles[newHandle]	= 
+					resources.push_back({
+						newResources,
+						resourceSize,
+						{initialState, initialState, initialState},
+						newHandle,
+						0 });
+
+			return newHandle;
+		}
+
+
+		ID3D12Resource*	GetResource(const UAVResourceHandle handle) const
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			return resourceEntry.resources[resourceEntry.resourceIdx];
+		}
+
+
+		DeviceResourceState	GetResourceState(const UAVResourceHandle handle) const
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			return resourceEntry.resourceStates[resourceEntry.resourceIdx];
+		}
+
+		void SetResourceState(UAVResourceHandle handle, DeviceResourceState state)
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			resourceEntry.resourceStates[resourceEntry.resourceIdx] = state;
+		}
+
+
+		void ReleaseResource(UAVResourceHandle handle)
+		{
+			size_t idx = handles[handle];
+			handles.RemoveHandle(handle);
+
+			for (auto resource : resources[idx].resources)
+				resource->Release();
+
+			resources[idx] = resources.back();
+			handles[resources.back().resourceHandle] = idx;
+			resources.pop_back();
+		}
+
+
+		void ReleaseAll()
+		{
+			for (auto resourceEntry : resources) 
+			{
+				for (auto resource : resourceEntry.resources)
+					resource->Release();
+			}
+
+			resources.clear();
+			handles.Clear();
+		}
+
+		HandleUtilities::HandleTable<UAVResourceHandle, 32>	handles;
+		Vector<UAVResource>									resources;
+		iAllocator*											allocator;
+	};
+
+
+	/************************************************************************************************/
+
+
+	FLEXKITAPI class SOResourceTable
+	{
+	public:
+		SOResourceTable(iAllocator* IN_allocator) :
+			resources	{ IN_allocator	},
+			handles		{ IN_allocator	}{}
+
+
+		struct SOResource
+		{
+			static_vector<ID3D12Resource*, 3>	resources;			// assumes triple buffering
+			static_vector<ID3D12Resource*, 3>	resourceCounters;	// assumes triple buffering
+			size_t								resourceSize;
+			DeviceResourceState					resourceStates[3];
+			SOResourceHandle					resourceHandle;
+			uint8_t								resourceIdx;
+		};
+
+
+		SOResourceHandle AddResource(
+			static_vector<ID3D12Resource*,3>	newResources, 
+			static_vector<ID3D12Resource*, 3>	counters, 
+			size_t resourceSize, 
+			DeviceResourceState initialState)
+		{
+			auto newHandle		= handles.GetNewHandle();
+			handles[newHandle]	= 
+					resources.push_back({
+						newResources,
+						counters,
+						resourceSize,
+						{initialState, initialState, initialState},
+						newHandle,
+						0 });
+
+			return newHandle;
+		}
+
+
+		ID3D12Resource*	GetResource(SOResourceHandle handle) const
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			return resourceEntry.resources[resourceEntry.resourceIdx];
+		}
+
+
+		ID3D12Resource* GetResourceCounter(SOResourceHandle handle) const
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			return resourceEntry.resourceCounters[resourceEntry.resourceIdx];
+		}
+
+
+		size_t GetResourceSize(SOResourceHandle handle) const
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			return resourceEntry.resourceSize;
+		}
+
+
+		DeviceResourceState	GetResourceState(SOResourceHandle handle) const
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			return resourceEntry.resourceStates[resourceEntry.resourceIdx];
+		}
+
+
+		void SetResourceState(SOResourceHandle handle, DeviceResourceState state)
+		{
+			auto& resourceEntry = resources[handles[handle]];
+			resourceEntry.resourceStates[resourceEntry.resourceIdx] = state;
+		}
+
+
+		void ReleaseResource(SOResourceHandle handle)
+		{
+			size_t idx = handles[handle];
+			handles.RemoveHandle(handle);
+
+			for (auto resource : resources[idx].resources)
+				resource->Release();
+
+			resources[idx] = resources.back();
+			//handles[resources.back().resourceHandle] = idx;
+			resources.pop_back();
+		}
+
+
+		void ReleaseAll()
+		{
+			for (auto resourceEntry : resources) 
+			{
+				for (auto resource : resourceEntry.resources)
+					resource->Release();
+
+				for (auto resource : resourceEntry.resourceCounters)
+					resource->Release();
+			}
+
+			resources.clear();
+			handles.Clear();
+		}
+
+		HandleUtilities::HandleTable<SOResourceHandle, 32>	handles;
+		Vector<SOResource>									resources;
+		iAllocator*											allocator;
+	};
+
+
+	/************************************************************************************************/
+
+
 	// Basic Draw States
-	ID3D12PipelineState* CreateDrawTriStatePSO(RenderSystem* RS);
-	ID3D12PipelineState* CreateDrawLineStatePSO(RenderSystem* RS);
-	ID3D12PipelineState* CreateDraw2StatePSO(RenderSystem* RS);
+	ID3D12PipelineState* CreateDrawTriStatePSO	( RenderSystem* RS );
+	ID3D12PipelineState* CreateDrawLineStatePSO	( RenderSystem* RS );
+	ID3D12PipelineState* CreateDraw2StatePSO	( RenderSystem* RS );
 
 
 	/************************************************************************************************/
@@ -1992,14 +2374,18 @@ namespace FlexKit
 	{
 	public:
 		RenderSystem(iAllocator* Memory_IN, ThreadManager* Threads) :
-			Memory			(Memory_IN),
-			Library			(Memory_IN),
-			Queries			(Memory_IN, this),
-			RenderTargets	(Memory_IN),
-			Textures		(Memory_IN),
-			VertexBuffers	(Memory_IN),
-			ConstantBuffers	(Memory_IN, this),
-			PipelineStates	(Memory_IN, this, Threads){}
+			Memory			{ Memory_IN					},
+			Library			{ Memory_IN					},
+			Queries			{ Memory_IN, this			},
+			RenderTargets	{ Memory_IN					},
+			Textures		{ Memory_IN					},
+			VertexBuffers	{ Memory_IN					},
+			ConstantBuffers	{ Memory_IN, this			},
+			PipelineStates	{ Memory_IN, this, Threads	},
+			BufferUAVs		{ Memory_IN					},
+			Texture2DUAVs	{ Memory_IN					},
+			StreamOutTable	{ Memory_IN					}{}
+
 		
 		~RenderSystem() { Release(); }
 
@@ -2041,12 +2427,32 @@ namespace FlexKit
 		void			UpdateResourceByUploadQueue	(ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
 
 		// Resource Creation and Destruction
-		ConstantBufferHandle	CreateConstantBuffer	(size_t BufferSize, bool GPUResident = true);
-		VertexBufferHandle		CreateVertexBuffer		(size_t BufferSize, bool GPUResident = true);
-		TextureHandle			CreateDepthBuffer		(uint2 WH, bool UseFloat = false);
-		TextureHandle			CreateTexture2D			(uint2 WH, FORMAT_2D Format, size_t MipLevels = 0);
-		TextureHandle			CreateTexture2D			(uint2 WH, FORMAT_2D Format, size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
-		QueryBufferHandle		CreateOcclusionBuffer	(size_t Size);
+		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
+		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
+		TextureHandle			CreateDepthBuffer				(uint2 WH, bool UseFloat = false);
+		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels = 0);
+		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
+		QueryHandle				CreateOcclusionBuffer			(size_t Size);
+		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
+		SOResourceHandle		CreateStreamOutResource			(size_t bufferHandle, bool tripleBuffer = true);
+		QueryHandle				CreateSOQuery					(size_t SOIndex,			size_t count);
+		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectLayoutEntry> entries, iAllocator* allocator);
+
+		void SetObjectState(SOResourceHandle handle,	DeviceResourceState state);
+		void SetObjectState(UAVResourceHandle handle,	DeviceResourceState state);
+
+		DeviceResourceState GetObjectState			(const QueryHandle			handle) const;
+		DeviceResourceState GetObjectState			(const SOResourceHandle		handle) const;
+		DeviceResourceState GetObjectState			(const UAVResourceHandle	handle) const;
+
+		ID3D12Resource*		GetObjectDeviceResource	(const ConstantBufferHandle	handle) const;
+		ID3D12Resource*		GetObjectDeviceResource (const SOResourceHandle		handle) const;
+		ID3D12Resource*		GetObjectDeviceResource	(const UAVResourceHandle	handle) const;
+
+		ID3D12Resource*	GetSOCounterResource	(const SOResourceHandle handle) const;
+		size_t			GetStreamOutBufferSize	(const SOResourceHandle handle) const;
+
+		void ResetQuery(QueryHandle handle);
 
 		void ReleaseCB(ConstantBufferHandle);
 		void ReleaseVB(VertexBufferHandle);
@@ -2092,12 +2498,12 @@ namespace FlexKit
 		D3D12_GPU_DESCRIPTOR_HANDLE	_GetDSVTableCurrentPosition_GPU();
 		D3D12_GPU_DESCRIPTOR_HANDLE	_GetGPUDescTableCurrentPosition_GPU();
 
-		ID3D12Resource*				_GetQueryResource(QueryBufferHandle Handle);
+		ID3D12QueryHeap*			_GetQueryResource(QueryHandle handle);
 
 		ID3D12CommandAllocator*		_GetCurrentCommandAllocator();
-		ID3D12GraphicsCommandList*	_GetCurrentCommandList();
+		ID3D12GraphicsCommandList3*	_GetCurrentCommandList();
 		PerFrameResources*			_GetCurrentFrameResources();
-		ID3D12GraphicsCommandList*	_GetCommandList_1();
+		ID3D12GraphicsCommandList3*	_GetCommandList_1();
 		PerFrameUploadQueue&		_GetCurrentUploadQueue();
 
 		void						_IncrementRSIndex() { CurrentIndex = (CurrentIndex + 1) % 3; }
@@ -2199,6 +2605,9 @@ namespace FlexKit
 		VertexBufferStateTable	VertexBuffers;
 		TextureStateTable		RenderTargets;
 		TextureStateTable		Textures;
+		UAVResourceTable		BufferUAVs;
+		UAVResourceTable		Texture2DUAVs;
+		SOResourceTable			StreamOutTable;
 		PipelineStateTable		PipelineStates;
 
 		struct FreeEntry
@@ -2519,6 +2928,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	FLEXKITAPI void							InitiateGeometryTable	(iAllocator* memory = nullptr);
 	FLEXKITAPI void							ReleaseGeometryTable	();
 
@@ -2537,7 +2947,6 @@ namespace FlexKit
 	FLEXKITAPI bool							IsMeshLoaded			( GUID_t			guid );
 	FLEXKITAPI bool							IsSkeletonLoaded		( TriMeshHandle	guid );
 	FLEXKITAPI bool							HasAnimationData		( TriMeshHandle	guid );
-
 
 
 	/************************************************************************************************/

@@ -501,7 +501,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12Resource* ConstantBufferTable::GetBufferResource(ConstantBufferHandle Handle)
+	ID3D12Resource* ConstantBufferTable::GetBufferResource(const ConstantBufferHandle Handle) const
 	{
 		size_t UserIdx		= Handles[Handle];
 		uint32_t Idx		= UserBufferEntries[UserIdx].CurrentBuffer;
@@ -513,7 +513,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t ConstantBufferTable::GetBufferOffset(ConstantBufferHandle Handle)
+	size_t ConstantBufferTable::GetBufferOffset(const ConstantBufferHandle Handle) const
 	{
 		return UserBufferEntries[Handles[Handle]].Offset;
 	}
@@ -522,7 +522,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t ConstantBufferTable::GetBufferBeginOffset(ConstantBufferHandle Handle)
+	size_t ConstantBufferTable::GetBufferBeginOffset(const ConstantBufferHandle Handle) const
 	{
 		return UserBufferEntries[Handles[Handle]].BeginOffset;
 	}
@@ -545,11 +545,9 @@ namespace FlexKit
 		uint32_t BufferSize		= UserBufferEntries[UserIdx].BufferSize;
 		uint32_t BufferOffset	= UserBufferEntries[UserIdx].Offset;
 
-		size_t OffsetToNextAlignment = 256 - (BufferOffset % 256);
+		size_t offset				 = 256 - BufferOffset % 256;
+		size_t OffsetToNextAlignment = (offset == 256) ? 0 : offset;
 		size_t NewOffset			 = BufferOffset + OffsetToNextAlignment;
-
-		if (OffsetToNextAlignment == 256)
-			return 0;
 
 		UserBufferEntries[UserIdx].BeginOffset	= NewOffset;
 		UserBufferEntries[UserIdx].Offset		= NewOffset;
@@ -651,13 +649,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DesciptorHeap::DesciptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
+	DescriptorHeap::DescriptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory) :
 		FillState(TempMemory)
 	{
 		FK_ASSERT(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size();
-		DescriptorHeap	= RS->_ReserveDescHeap(EntryCount);
+		descriptorHeap	= RS->_ReserveDescHeap(EntryCount);
 		Layout			= &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -668,13 +666,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DesciptorHeap& DesciptorHeap::Init(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
 	{
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size();
-		DescriptorHeap = RS->_ReserveDescHeap(EntryCount);
+		descriptorHeap = RS->_ReserveDescHeap(EntryCount);
 		Layout = &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -687,13 +685,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DesciptorHeap& DesciptorHeap::Init(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory)
+	DescriptorHeap& DescriptorHeap::Init(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory)
 	{
 		FK_ASSERT(TempMemory);
 		FillState = Vector<bool>(TempMemory);
 
 		const size_t EntryCount = Layout_IN.size() * reserveCount;
-		DescriptorHeap = RS->_ReserveDescHeap(EntryCount);
+		descriptorHeap = RS->_ReserveDescHeap(EntryCount);
 		Layout = &Layout_IN;
 
 		for (size_t I = 0; I < EntryCount; I++)
@@ -706,7 +704,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DesciptorHeap& DesciptorHeap::NullFill(RenderSystem* RS)
+	DescriptorHeap& DescriptorHeap::NullFill(RenderSystem* RS)
 	{
 		auto& Entries = Layout->Entries;
 		for (size_t I = 0, Idx = 0; I < FillState.size(); I++)
@@ -722,7 +720,7 @@ namespace FlexKit
 					case DescHeapEntryType::ConstantBuffer:
 					{
 						auto POS = IncrementHeapPOS(
-							DescriptorHeap,
+							descriptorHeap,
 							RS->DescriptorCBVSRVUAVSize,
 							Idx);
 
@@ -733,7 +731,7 @@ namespace FlexKit
 					case DescHeapEntryType::ShaderResource:
 					{
 						auto POS = IncrementHeapPOS(
-							DescriptorHeap,
+							descriptorHeap,
 							RS->DescriptorCBVSRVUAVSize,
 							Idx);
 
@@ -744,7 +742,7 @@ namespace FlexKit
 					case DescHeapEntryType::UAVBuffer:
 					{
 						auto POS = IncrementHeapPOS(
-							DescriptorHeap,
+							descriptorHeap,
 							RS->DescriptorCBVSRVUAVSize,
 							Idx);
 
@@ -771,7 +769,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DesciptorHeap::SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle)
+	bool DescriptorHeap::SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle)
 	{
 		if (Layout->Entries[Index].Type != DescHeapEntryType::ShaderResource)
 			return false;
@@ -780,7 +778,7 @@ namespace FlexKit
 		PushTextureToDescHeap(
 			RS, 
 			RS->Textures[Handle], 
-			IncrementHeapPOS(DescriptorHeap, 
+			IncrementHeapPOS(descriptorHeap, 
 				RS->DescriptorCBVSRVUAVSize, 
 				Index));
 
@@ -791,11 +789,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DesciptorHeap	DesciptorHeap::GetHeapOffsetted(size_t offset, RenderSystem* RS) const
+	DescriptorHeap	DescriptorHeap::GetHeapOffsetted(size_t offset, RenderSystem* RS) const
 	{
-		DesciptorHeap subHeap(*this);
-		subHeap.DescriptorHeap = IncrementHeapPOS(
-										DescriptorHeap,
+		DescriptorHeap subHeap(*this);
+		subHeap.descriptorHeap = IncrementHeapPOS(
+										descriptorHeap,
 										RS->DescriptorCBVSRVUAVSize,
 										offset);
 
@@ -903,6 +901,11 @@ namespace FlexKit
 			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT : 
 			D3D12_ROOT_SIGNATURE_FLAG_NONE;
 		
+		RootSignatureDesc.Flags |= AllowSO ? 
+			D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT :
+			D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+
 		HRESULT HR = D3D12SerializeRootSignature(
 			&RootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, 
 			&SignatureBlob,		&ErrorBlob);
@@ -941,7 +944,21 @@ namespace FlexKit
 		NewBarrier.OldState				= Before;
 		NewBarrier.NewState				= New;
 		NewBarrier.Type					= Barrier::BT_RenderTarget;
-		NewBarrier.RenderTarget			= Handle;
+		NewBarrier.renderTarget			= Handle;
+
+		PendingBarriers.push_back(NewBarrier);
+	}
+
+	/************************************************************************************************/
+
+
+	void Context::AddUAVBarrier(UAVResourceHandle handle, DeviceResourceState priorState, DeviceResourceState desiredState)
+	{
+		Barrier NewBarrier;
+		NewBarrier.OldState		= priorState;
+		NewBarrier.NewState		= desiredState;
+		NewBarrier.Type			= Barrier::BT_UAV;
+		NewBarrier.UAV			= handle;
 
 		PendingBarriers.push_back(NewBarrier);
 	}
@@ -953,10 +970,10 @@ namespace FlexKit
 	void Context::AddPresentBarrier(TextureHandle Handle, DeviceResourceState Before)
 	{
 		Barrier NewBarrier;
-		NewBarrier.OldState				= Before;
-		NewBarrier.NewState				= DeviceResourceState::DRS_Present;
-		NewBarrier.Type					= Barrier::BT_RenderTarget;
-		NewBarrier.RenderTarget			= Handle;
+		NewBarrier.OldState		= Before;
+		NewBarrier.NewState		= DeviceResourceState::DRS_Present;
+		NewBarrier.Type			= Barrier::BT_RenderTarget;
+		NewBarrier.renderTarget	= Handle;
 
 		PendingBarriers.push_back(NewBarrier);
 	}
@@ -965,9 +982,48 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::AddStreamOutBarrier(SOResourceHandle streamOut, DeviceResourceState Before, DeviceResourceState State)
+	{
+		auto res = find(PendingBarriers, 
+			[&](Barrier& rhs) -> bool
+			{
+				return
+					rhs.Type		== Barrier::BT_StreamOut &&
+					rhs.streamOut	== streamOut;
+			});
+
+		if (res != PendingBarriers.end() &&
+			res->NewState == Before ) {
+			res->NewState = State;
+		}
+		else
+		{
+			Barrier NewBarrier;
+			NewBarrier.OldState		= Before;
+			NewBarrier.NewState		= State;
+			NewBarrier.Type			= Barrier::BT_StreamOut;
+			NewBarrier.streamOut	= streamOut;
+			PendingBarriers.push_back(NewBarrier);
+		}
+	}
+
+
+
+	/************************************************************************************************/
+
+
 	void Context::SetRootSignature(RootSignature& RS)
 	{
 		DeviceContext->SetGraphicsRootSignature(RS);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputeRootSignature(RootSignature& RS)
+	{
+		DeviceContext->SetComputeRootSignature(RS);
 	}
 
 
@@ -1149,7 +1205,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetGraphicsDescriptorTable(size_t idx, const DesciptorHeap& DH)
+	void Context::SetGraphicsDescriptorTable(size_t idx, const DescriptorHeap& DH)
 	{
 		DeviceContext->SetGraphicsRootDescriptorTable(idx, DH);
 	}
@@ -1169,6 +1225,311 @@ namespace FlexKit
 	void Context::SetGraphicsShaderResourceView(size_t idx, Texture2D& Texture)
 	{
 		DeviceContext->SetGraphicsRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputeDescriptorTable(size_t idx, const DescriptorHeap& DH)
+	{
+		DeviceContext->SetComputeRootDescriptorTable(idx, DH);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
+	{
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->GetConstantBufferAddress(CB) + offset);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputeShaderResourceView(size_t idx, Texture2D&			Texture)
+	{
+		DeviceContext->SetComputeRootShaderResourceView(idx, Texture->GetGPUVirtualAddress());
+	}
+
+	/************************************************************************************************/
+
+
+	void Context::SetComputeUnorderedAccessView(size_t idx, UAVResourceHandle& UAVResource)
+	{
+		auto resource = RS->BufferUAVs.GetResource(UAVResource);
+		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::BeginQuery(QueryHandle query, size_t idx)
+	{
+		auto resource	= RS->Queries.GetResource(query);
+		auto queryType	= RS->Queries.GetType(query);
+		DeviceContext->BeginQuery(resource, queryType, idx);
+	}
+
+
+	void Context::EndQuery(QueryHandle query, size_t idx)
+	{
+		auto resource	= RS->Queries.GetResource(query);
+		auto queryType	= RS->Queries.GetType(query);
+		DeviceContext->EndQuery(resource, queryType, idx);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::CopyBufferRegion(
+			static_vector<ID3D12Resource*>		sources,
+			static_vector<size_t>				sourceOffset,
+			static_vector<ID3D12Resource*>		destinations,
+			static_vector<size_t>				destinationOffset,
+			static_vector<size_t>				copySize,
+			static_vector<DeviceResourceState>	currentStates,
+			static_vector<DeviceResourceState>	finalStates)
+	{
+		FK_ASSERT(sources.size() == destinations.size(), "Invalid argument!");
+
+		/*
+		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
+		{
+		D3D12_GPU_VIRTUAL_ADDRESS Dest;
+		UINT32 Value;
+		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
+		*/
+
+		ID3D12Resource*		prevResource	= nullptr;
+
+		for (size_t itr = 0; itr < sources.size(); ++itr)
+		{
+			auto resource	= destinations[itr];
+			auto state		= currentStates[itr];
+
+			if(prevResource != resource && state != DeviceResourceState::DRS_Write)
+				_AddBarrier(resource, state, DeviceResourceState::DRS_Write);
+
+			prevResource	= resource;
+		}
+
+		FlushBarriers();
+
+		for (size_t itr = 0; itr < sources.size(); ++itr)
+		{
+			auto sourceResource			= sources[itr];
+			auto destinationResource	= destinations[itr];
+
+			DeviceContext->CopyBufferRegion(
+				destinationResource,
+				destinationOffset[itr],
+				sourceResource,
+				sourceOffset[itr],
+				copySize[itr]);
+		}
+
+		DeviceResourceState prevState	= DeviceResourceState::DRS_ERROR;
+		prevResource					= nullptr;
+
+		for (size_t itr = 0; itr < destinations.size(); ++itr)
+		{
+			auto resource	= destinations[itr];
+			auto state		= finalStates[itr];
+
+			if (prevResource != resource && prevState != state)
+				_AddBarrier(resource, DeviceResourceState::DRS_Write, state);
+
+			prevResource	= resource;
+			prevState		= prevState;
+		}
+	}
+
+
+	void Context::ImmediateWrite(
+		static_vector<UAVResourceHandle>		handles,
+		static_vector<size_t>					value,
+		static_vector<DeviceResourceState>		currentStates,
+		static_vector<DeviceResourceState>		finalStates)
+	{
+		FK_ASSERT(handles.size() == currentStates.size(), "Invalid argument!");
+
+		/*
+		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
+		{
+		D3D12_GPU_VIRTUAL_ADDRESS Dest;
+		UINT32 Value;
+		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
+		*/
+
+		DeviceResourceState prevState		= DeviceResourceState::DRS_ERROR;
+		ID3D12Resource*		prevResource	= nullptr;
+
+		for (size_t itr = 0; itr < handles.size(); ++itr)
+		{
+			auto resource	= RS->GetObjectDeviceResource(handles[itr]);
+			auto state		= currentStates[itr];
+
+			if(prevResource != resource && prevState != state)
+				_AddBarrier(resource, state, DeviceResourceState::DRS_Write);
+
+			prevResource	= resource;
+			prevState		= prevState;
+		}
+
+		FlushBarriers();
+
+		for (size_t itr = 0; itr < handles.size(); ++itr)
+		{
+			auto resource = RS->GetObjectDeviceResource(handles[itr]);
+
+			D3D12_WRITEBUFFERIMMEDIATE_PARAMETER params[] = {
+				{resource->GetGPUVirtualAddress() + 0, 0u },
+			};
+
+			D3D12_WRITEBUFFERIMMEDIATE_MODE modes[] = {
+				D3D12_WRITEBUFFERIMMEDIATE_MODE_MARKER_OUT
+			};
+
+			DeviceContext->WriteBufferImmediate(1, params, nullptr);
+		}
+
+		prevState		= DeviceResourceState::DRS_ERROR;
+		prevResource	= nullptr;
+
+		for (size_t itr = 0; itr < handles.size(); ++itr)
+		{
+			auto resource	= RS->GetObjectDeviceResource(handles[itr]);
+			auto state		= currentStates[itr];
+
+			if (prevResource != resource && prevState != state)
+				_AddBarrier(resource, DeviceResourceState::DRS_Write, state);
+
+			prevResource	= resource;
+			prevState		= prevState;
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::ClearSOCounters(
+		static_vector<SOResourceHandle>		handles, 
+		static_vector<DeviceResourceState>	currentStates)
+	{
+		FK_ASSERT(handles.size() == currentStates.size(), "Invalid argument!");
+
+		/*
+		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
+		{
+		D3D12_GPU_VIRTUAL_ADDRESS Dest;
+		UINT32 Value;
+		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
+		*/
+
+
+
+		for (size_t itr = 0; itr < handles.size(); ++itr) 
+		{
+			auto resource	= RS->GetSOCounterResource(handles[itr]);
+			auto state		= currentStates[itr];
+			_AddBarrier(resource, state, DeviceResourceState::DRS_Write);
+		}
+
+		FlushBarriers();
+
+		for (size_t itr = 0; itr < handles.size(); ++itr)
+		{
+			auto resource = RS->GetSOCounterResource(handles[itr]);
+			D3D12_WRITEBUFFERIMMEDIATE_PARAMETER params[] = {
+				{resource->GetGPUVirtualAddress() + 0, 0u},
+				{resource->GetGPUVirtualAddress() + 4, 0u},
+			};
+
+			DeviceContext->WriteBufferImmediate(2, params, nullptr);
+		}
+
+		for (size_t itr = 0; itr < handles.size(); ++itr)
+		{
+			auto resource	= RS->GetSOCounterResource(handles[itr]);
+			auto state		= currentStates[itr];
+			_AddBarrier(resource, DeviceResourceState::DRS_Write, state);
+		}
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::CopyUInt64(
+		static_vector<ID3D12Resource*>			sources,
+		static_vector<DeviceResourceState>		sourceState,
+		static_vector<size_t>					sourceOffsets,
+		static_vector<ID3D12Resource*>			destinations,
+		static_vector<DeviceResourceState>		destinationState,
+		static_vector<size_t>					destinationOffset)
+	{
+		FK_ASSERT(sources.size()		== sourceState.size(),			"Invalid argument!");
+		FK_ASSERT(sources.size()		== sourceOffsets.size(),		"Invalid argument!");
+		FK_ASSERT(destinations.size()	== destinationState.size(),		"Invalid argument!");
+		FK_ASSERT(destinations.size()	== destinationOffset.size(),	"Invalid argument!");
+		FK_ASSERT(sources.size()		== destinations.size(),			"Invalid argument!");
+
+		/*
+		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
+		{
+		D3D12_GPU_VIRTUAL_ADDRESS Dest;
+		UINT32 Value;
+		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
+		*/
+
+		// transition source resources
+		for (size_t itr = 0; itr < sources.size(); ++itr) 
+		{
+			auto resource	= sources[itr];
+			auto state		= sourceState[itr];
+			_AddBarrier(resource, state, DeviceResourceState::DRS_Read);
+		}
+
+		for (size_t itr = 0; itr < sources.size(); ++itr)
+		{
+			auto resource	= destinations[itr];
+			auto state		= destinationState[itr];
+			_AddBarrier(resource, state, DeviceResourceState::DRS_Write);
+		}
+
+		FlushBarriers();
+
+		for (size_t itr = 0; itr < sources.size(); ++itr)
+		{
+			DeviceContext->AtomicCopyBufferUINT64(
+				destinations[itr],
+				destinationOffset[itr], 
+				sources[itr], 
+				sourceOffsets[itr], 
+				0, 
+				nullptr, 
+				nullptr);
+		}
+
+		for (size_t itr = 0; itr < sources.size(); ++itr) 
+		{
+			auto resource	= sources[itr];
+			auto state		= sourceState[itr];
+			_AddBarrier(resource, DeviceResourceState::DRS_Read, state);
+		}
+
+		for (size_t itr = 0; itr < sources.size(); ++itr)
+		{
+			auto resource	= destinations[itr];
+			auto state		= destinationState[itr];
+			_AddBarrier(resource, DeviceResourceState::DRS_Write, state);
+		}
 	}
 
 
@@ -1272,6 +1633,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::SetVertexBuffers2(static_vector<D3D12_VERTEX_BUFFER_VIEW>	List)
+	{
+		DeviceContext->IASetVertexBuffers(0, List.size(), List.begin());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetSOTargets(static_vector<D3D12_STREAM_OUTPUT_BUFFER_VIEW, 4> SOViews)
+	{
+		DeviceContext->SOSetTargets(0, SOViews.size(), SOViews.begin());
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::ClearDepthBuffer(TextureObject Texture, float ClearDepth)
 	{
 		UpdateResourceStates();
@@ -1292,6 +1671,33 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, UAVResourceHandle destination, size_t destOffset)
+	{
+		auto res			= RS->GetObjectDeviceResource(destination);
+		auto type			= RS->Queries.GetType(query);
+		auto queryResource	= RS->Queries.GetResource(query);
+
+		UpdateResourceStates();
+		DeviceContext->ResolveQueryData(queryResource, type, begin, end - begin, res, destOffset);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::ExecuteIndirect(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset)
+	{
+		UpdateResourceStates();
+		DeviceContext->ExecuteIndirect(
+			layout.signature, 
+			layout.entries.size(), 
+			RS->GetObjectDeviceResource(args),
+			argumentBufferOffset,
+			nullptr, 
+			0);
+	}
 
 
 	void Context::Draw(size_t VertexCount, size_t BaseVertex)
@@ -1324,6 +1730,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::Dispatch(uint3 xyz)
+	{
+		DeviceContext->Dispatch((UINT)xyz[0], (UINT)xyz[1], (UINT)xyz[2]);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::FlushBarriers()
 	{
 		UpdateResourceStates();
@@ -1332,10 +1747,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetPredicate(bool Enabled, QueryBufferHandle Handle, size_t Offset)
+	void Context::SetPredicate(bool Enabled, QueryHandle Handle, size_t Offset)
 	{
 		if (Enabled)
-			DeviceContext->SetPredication(RS->_GetQueryResource(Handle), Offset, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
+			DeviceContext->SetPredication(
+				reinterpret_cast<ID3D12Resource*>(RS->_GetQueryResource(Handle)),
+				Offset, 
+				D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
 		else
 			DeviceContext->SetPredication(nullptr, 0, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
 	}
@@ -1404,6 +1822,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::_AddBarrier(ID3D12Resource* resource, DeviceResourceState currentState, DeviceResourceState newState)
+	{
+		Barrier barrier;
+		barrier.Type		= Barrier::BT_Generic;
+		barrier.resource	= resource;
+		barrier.OldState	= currentState;
+		barrier.NewState	= newState;
+
+		PendingBarriers.push_back(barrier);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::UpdateResourceStates()
 	{
 		if (!PendingBarriers.size())
@@ -1416,12 +1849,30 @@ namespace FlexKit
 			switch(B.Type)
 			{
 				case Barrier::BT_RenderTarget:
+				{
+					auto handle			= B.renderTarget;
+					auto resource		= RS->RenderTargets.GetResource(handle);
+					auto currentState	= DRS2D3DState(B.OldState);
+					auto newState		= DRS2D3DState(B.NewState);
+
+					/*
+					#ifdef _DEBUG
+						std::cout << "Transitioning Resource: " << Resource
+							<< " From State: " << CurrentState << " To State: "
+							<< NewState << "\n";
+					#endif
+					*/
+
+					if (B.OldState != B.NewState)
+						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+							resource, currentState, newState));
+				}	break;
 				case Barrier::BT_UAV:
 				{
-					auto Handle			= B.RenderTarget;
-					auto Resource		= RS->RenderTargets.GetResource(Handle);
-					auto CurrentState	= DRS2D3DState(B.OldState);
-					auto NewState		= DRS2D3DState(B.NewState);
+					auto handle			= B.UAV;
+					auto resource		= RS->GetObjectDeviceResource(handle);
+					auto currentState	= DRS2D3DState(B.OldState);
+					auto newState		= DRS2D3DState(B.NewState);
 
 					/*
 					#ifdef _DEBUG
@@ -1433,13 +1884,48 @@ namespace FlexKit
 
 					if (B.OldState != B.NewState)
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							Resource, CurrentState, NewState));
-
+							resource, currentState, newState));
 				}	break;
-					break;
 				case Barrier::BT_ConstantBuffer:
 				case Barrier::BT_VertexBuffer:
 					break;
+				case Barrier::BT_StreamOut:
+				{
+					auto handle			= B.streamOut;
+					auto resource		= RS->GetObjectDeviceResource(handle);
+					auto currentState	= DRS2D3DState(B.OldState);
+					auto newState		= DRS2D3DState(B.NewState);
+
+					/*
+					#ifdef _DEBUG
+						std::cout << "Transitioning Resource: " << Resource 
+							<< " From State: " << CurrentState << " To State: " 
+							<< NewState << "\n";
+					#endif
+					*/
+
+					if (B.OldState != B.NewState)
+						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+							resource, currentState, newState));
+				}	break;
+				case Barrier::BT_Generic:
+				{
+					auto resource		= B.resource;
+					auto currentState	= DRS2D3DState(B.OldState);
+					auto newState		= DRS2D3DState(B.NewState);
+
+					/*
+					#ifdef _DEBUG
+						std::cout << "Transitioning Resource: " << Resource
+							<< " From State: " << CurrentState << " To State: "
+							<< NewState << "\n";
+					#endif
+					*/
+
+					if (B.OldState != B.NewState)
+						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+							resource, currentState, newState));
+				}	break;
 			};
 		}
 
@@ -1511,9 +1997,10 @@ namespace FlexKit
 			SETDEBUGNAME(RS->Library.RS4CBVs4SRVs, "RS4CBVs4SRVs");
 		}
 		{
-			RS->Library.RS4CBVs_SO.AllowIA	= false;
+			RS->Library.RS4CBVs_SO.AllowIA	= true;
+			RS->Library.RS4CBVs_SO.AllowSO	= true;
 			DesciptorHeapLayout<1> DescriptorHeap;
-			DescriptorHeap.SetParameterAsSRV(0, 3, 4);
+			DescriptorHeap.SetParameterAsSRV(0, 0, 8);
 
 			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(0, 0, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs_SO.SetParameterAsCBV				(1, 1, 0, PIPELINE_DEST_ALL);
@@ -1522,12 +2009,12 @@ namespace FlexKit
 			RS->Library.RS4CBVs_SO.SetParameterAsUAV				(4, 0, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs_SO.Build(RS, TempMemory);
 
-			SETDEBUGNAME(RS->Library.RS4CBVs_SO, "RS4CBVs4SRVs");
+			SETDEBUGNAME(RS->Library.RS4CBVs_SO, "RS4CBVs_SO");
 		}
 		{
 			RS->Library.RS2UAVs4SRVs4CBs.AllowIA = true;
 			DesciptorHeapLayout<16> DescriptorHeap;
-			DescriptorHeap.SetParameterAsShaderUAV	(0, 0, 2);
+			DescriptorHeap.SetParameterAsShaderUAV	(0, 0, 4);
 			DescriptorHeap.SetParameterAsSRV		(1, 0, 4);
 			DescriptorHeap.SetParameterAsCBV		(2, 4, 4);
 			FK_ASSERT(DescriptorHeap.Check());
@@ -1748,7 +2235,7 @@ namespace FlexKit
 		
 		bool InitiateComplete = false;
 
-		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
+		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
 		{
 			// Trying again with a DX11 Feature Level
@@ -1909,11 +2396,11 @@ namespace FlexKit
 					FK_VLOG(10, "FINISHED RESETING COMMAND LISTS");
 
 					FrameResources[I].TempBuffers				= TempResourceList(in->Memory);
-					FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList*>(ComputeList);
+					FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList3*>(ComputeList);
 					FrameResources[I].CommandListsUsed[II]		= false;
 					FrameResources[I].ComputeCLAllocator[II]	= ComputeAllocator;
 					FrameResources[I].GraphicsCLAllocator[II]	= GraphicsAllocator;
-					FrameResources[I].CommandLists[II]			= static_cast<ID3D12GraphicsCommandList*>(CommandList);
+					FrameResources[I].CommandLists[II]			= static_cast<ID3D12GraphicsCommandList3*>(CommandList);
 				}
 
 				ID3D12DescriptorHeap* SRVHeap		= nullptr;
@@ -1952,13 +2439,7 @@ namespace FlexKit
 
 			HR = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&DXGIFactory));
 
-			FK_LOG_ERROR("FAILED TO CREATE DXGIFactory!");
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
-
-			auto DeviceID = Device->GetAdapterLuid();
-
-			DXGIFactory->EnumAdapterByLuid(DeviceID, IID_PPV_ARGS(&DXGIAdapter));
-
 		}
 
 		FINALLY
@@ -2422,9 +2903,259 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	QueryBufferHandle	RenderSystem::CreateOcclusionBuffer(size_t Counts)
+	QueryHandle	RenderSystem::CreateOcclusionBuffer(size_t Counts)
 	{
 		return Queries.CreateQueryBuffer(Counts, QueryType::OcclusionQuery);
+	}
+
+
+	/************************************************************************************************/
+
+
+	UAVResourceHandle RenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
+	{
+		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(resourceSize);
+		Resource_DESC.Alignment          = 0;
+		Resource_DESC.DepthOrArraySize   = 1;
+		Resource_DESC.Dimension          = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
+		Resource_DESC.Layout             = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+		Resource_DESC.Width              = resourceSize;
+		Resource_DESC.Height             = 1;
+		Resource_DESC.Format             = DXGI_FORMAT_UNKNOWN;
+		Resource_DESC.SampleDesc.Count   = 1;
+		Resource_DESC.SampleDesc.Quality = 0;
+		Resource_DESC.Flags              = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+		D3D12_HEAP_PROPERTIES HEAP_Props = {};
+		HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type                  = D3D12_HEAP_TYPE_DEFAULT;
+		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		HEAP_Props.CreationNodeMask      = 0;
+		HEAP_Props.VisibleNodeMask       = 0;
+
+		static_vector<ID3D12Resource*, 3> buffers;
+
+		for (size_t I = 0; I < (tripleBuffer ? BufferCount : 1); ++I)
+		{
+			ID3D12Resource* Resource = nullptr;
+			HRESULT HR = pDevice->CreateCommittedResource(
+								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+								IID_PPV_ARGS(&Resource));
+
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
+			buffers.push_back(Resource);
+
+			SETDEBUGNAME(Resource, __func__);
+		}
+
+		return BufferUAVs.AddResource(buffers, resourceSize, DeviceResourceState::DRS_Write); // DRS Write assumed on first use, ignores initial state specified above!
+	}
+
+
+	/************************************************************************************************/
+
+
+
+	SOResourceHandle RenderSystem::CreateStreamOutResource(size_t resourceSize, bool tripleBuffered)
+	{
+		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(resourceSize);
+		Resource_DESC.Width              = resourceSize;
+		Resource_DESC.Format             = DXGI_FORMAT_UNKNOWN;
+		Resource_DESC.Flags              = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+		D3D12_RESOURCE_DESC Counter_DESC = CD3DX12_RESOURCE_DESC::Buffer(resourceSize);
+		Counter_DESC.Width              = 512;
+		Counter_DESC.Format             = DXGI_FORMAT_UNKNOWN;
+		Counter_DESC.Flags              = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+		D3D12_HEAP_PROPERTIES HEAP_Props = {};
+		HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type                  = D3D12_HEAP_TYPE_DEFAULT;
+		HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+
+		static_vector<ID3D12Resource*>	resources;
+		static_vector<ID3D12Resource*>	counters;
+		for (size_t I = 0; I < (tripleBuffered ? BufferCount : 1); ++I)
+		{
+			ID3D12Resource* Resource	= nullptr;
+			ID3D12Resource* Counter		= nullptr;
+
+			HRESULT HR;
+
+			HR = pDevice->CreateCommittedResource(
+								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
+								IID_PPV_ARGS(&Resource));
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STREAMOUT RESOURCE!"));
+
+			HR = pDevice->CreateCommittedResource(
+								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
+								IID_PPV_ARGS(&Counter));
+
+			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STREAMOUT RESOURCE!"));
+			resources.push_back(Resource);
+			counters.push_back(Counter);
+
+			SETDEBUGNAME(Resource, __func__);
+		}
+
+		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceResourceState::DRS_GENERIC);
+	}
+
+
+	/************************************************************************************************/
+
+
+
+	QueryHandle RenderSystem::CreateSOQuery(size_t SOIndex, size_t count)
+	{
+		return Queries.CreateSOQueryBuffer(count, SOIndex);
+	}
+
+
+	/************************************************************************************************/
+
+
+	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectLayoutEntry> entries, iAllocator* allocator)
+	{
+		ID3D12CommandSignature* signature = nullptr;
+		
+		Vector<IndirectLayoutEntry>					layout{allocator};
+		static_vector<D3D12_INDIRECT_ARGUMENT_DESC> signatureEntries;
+
+		size_t entryStride = 0;
+
+		for (size_t itr = 0; itr < entries.size(); ++itr)
+		{
+			switch (entries[itr])
+			{
+			case ILE_DrawCall:
+			{
+				D3D12_INDIRECT_ARGUMENT_DESC desc;
+				desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
+
+				signatureEntries.push_back(desc);
+				layout.push_back(ILE_DrawCall);
+				entryStride = max(entryStride, sizeof(uint64_t) * 4); // uses 4 8byte values
+			}	break;
+			}
+		}
+
+		D3D12_COMMAND_SIGNATURE_DESC desc;
+		desc.ByteStride			= entryStride;
+		desc.NumArgumentDescs	= entries.size();
+		desc.pArgumentDescs		= signatureEntries.begin();
+		desc.NodeMask			= 0;
+
+		auto HR = pDevice->CreateCommandSignature(
+			&desc,
+			nullptr,
+			IID_PPV_ARGS(&signature));
+
+		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE CONSTANT BUFFER"));
+
+		return { signature, entryStride, std::move(layout) };
+	}
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::SetObjectState(SOResourceHandle handle, DeviceResourceState state)
+	{
+		StreamOutTable.SetResourceState(handle, state);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::SetObjectState(UAVResourceHandle handle, DeviceResourceState state)
+	{
+		BufferUAVs.SetResourceState(handle, state);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DeviceResourceState RenderSystem::GetObjectState(const QueryHandle handle) const
+	{
+		return Queries.GetResourceState(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DeviceResourceState RenderSystem::GetObjectState(const SOResourceHandle handle) const
+	{
+		return StreamOutTable.GetResourceState(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DeviceResourceState RenderSystem::GetObjectState(const UAVResourceHandle	handle) const
+	{
+		return BufferUAVs.GetResourceState(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource* RenderSystem::GetObjectDeviceResource(const ConstantBufferHandle handle) const
+	{
+		return ConstantBuffers.GetBufferResource(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource*	RenderSystem::GetObjectDeviceResource(const SOResourceHandle handle) const
+	{
+		return StreamOutTable.GetResource(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource*	RenderSystem::GetObjectDeviceResource(const UAVResourceHandle	handle) const
+	{
+		return BufferUAVs.GetResource(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource*	RenderSystem::GetSOCounterResource(const SOResourceHandle handle) const
+	{
+		return StreamOutTable.GetResourceCounter(handle);
+	}
+
+
+
+	/************************************************************************************************/
+
+
+	size_t RenderSystem::GetStreamOutBufferSize(const SOResourceHandle handle) const
+	{
+		return StreamOutTable.GetResourceSize(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void RenderSystem::ResetQuery(QueryHandle handle)
+	{
+		Queries.LockUntil(handle, CurrentFrame);
 	}
 
 
@@ -2512,7 +3243,7 @@ namespace FlexKit
 		Clear.Color[2] = 0.0f;
 		Clear.Color[3] = 0.0f;
 
-		Clear.DepthStencil.Depth	= 0.0f;
+		Clear.DepthStencil.Depth	= 1.0f;
 		Clear.DepthStencil.Stencil	= 0;
 
 		if (Float32){
@@ -3633,55 +4364,91 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	QueryBufferHandle QueryTable::CreateQueryBuffer(size_t Count, QueryType type)
+	QueryHandle QueryTable::CreateQueryBuffer(size_t count, QueryType type)
 	{
-		D3D12_QUERY_HEAP_DESC Desc;
-		Desc.Count = Count;
-		Desc.NodeMask = 0;
+		D3D12_QUERY_HEAP_DESC desc;
+		desc.Count			= count;
+		desc.NodeMask		= 0;
+
+		ResourceEntry newResEntry = { 0 };
 
 		switch (type)
 		{
 		case QueryType::OcclusionQuery:
-			Desc.Type = D3D12_QUERY_HEAP_TYPE_OCCLUSION;
+			desc.Type			= D3D12_QUERY_HEAP_TYPE_OCCLUSION;
+			newResEntry.type	= D3D12_QUERY_TYPE_OCCLUSION;
 			break;
 		case QueryType::PipelineStats:
-			Desc.Type = D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
+			desc.Type			= D3D12_QUERY_HEAP_TYPE_PIPELINE_STATISTICS;
+			newResEntry.type	= D3D12_QUERY_TYPE_PIPELINE_STATISTICS;
 			break;
 		default:
 			break;
 		}
 
-		ResourceEntry NewResEntry = { 0 };
 
-		for (auto& Res : NewResEntry.Resources)
-			RS->pDevice->CreateQueryHeap(&Desc, IID_PPV_ARGS(&Res));
+		for (auto& Res : newResEntry.resources)
+			RS->pDevice->CreateQueryHeap(&desc, IID_PPV_ARGS(&Res));
 
-		size_t		UserIdx = Users.size();
-		UserEntry	NewUserEntry = { 0, 0, 0, false };
+		size_t		userIdx = users.size();
+		UserEntry	newUserEntry = { 0, 0, 0, false };
 
-		NewUserEntry.ResourceIdx = Resources.size();
+		newUserEntry.resourceIdx	= resources.size();
+		users.push_back(newUserEntry);
+		resources.push_back(newResEntry);
 
-		Users.push_back(NewUserEntry);
-		Resources.push_back(NewResEntry);
-
-		return QueryBufferHandle(UserIdx);
+		return QueryHandle(userIdx);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void QueryTable::LockUntil(size_t FrameID)
+	QueryHandle	QueryTable::CreateSOQueryBuffer(size_t count, size_t SOIndex)
 	{
-		for (auto& User : Users)
-		{
-			if (User.Used)
-			{
-				size_t ResourceIdx			= User.ResourceIdx;
-				size_t CurrentResourceIdx	= Resources[ResourceIdx].CurrentResource;
+		FK_ASSERT(SOIndex < D3D12_QUERY_TYPE_SO_STATISTICS_STREAM3 - D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0, "invalid argument");
 
-				Resources[ResourceIdx].CurrentResource = (CurrentResourceIdx + 2 % 3);
-			}
+		D3D12_QUERY_HEAP_DESC	heapDesc = {};
+		
+		heapDesc.Count	= count;
+		heapDesc.Type	= static_cast<D3D12_QUERY_HEAP_TYPE>(D3D12_QUERY_HEAP_TYPE_SO_STATISTICS);
+
+		ResourceEntry newResEntry	= { 0 };
+		newResEntry.currentResource = 0;
+		newResEntry.type			= static_cast<D3D12_QUERY_TYPE>(D3D12_QUERY_TYPE_SO_STATISTICS_STREAM0 + SOIndex);
+
+		for (size_t itr = 0; itr < 3; ++itr)
+		{
+			newResEntry.resourceState[itr] = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
+			newResEntry.resourceLocks[itr] = 0;
+			RS->pDevice->CreateQueryHeap(
+				&heapDesc,
+				IID_PPV_ARGS(&newResEntry.resources[itr]));
+		}
+
+		size_t resourceIdx = resources.push_back(newResEntry);
+
+		return QueryHandle(users.push_back(
+								{	resourceIdx,
+									count,
+									0,
+									false}));
+	}
+
+
+	/************************************************************************************************/
+
+
+	void QueryTable::LockUntil(QueryHandle handle, size_t FrameID)
+	{
+		auto user = users[handle];
+
+		if (user.used)
+		{
+			size_t resourceIdx			= user.resourceIdx;
+			size_t currentResourceIdx	= resources[resourceIdx].currentResource;
+
+			resources[resourceIdx].currentResource = (currentResourceIdx + 2 % 3);
 		}
 	}
 
@@ -4417,7 +5184,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12Resource*	RenderSystem::_GetQueryResource(QueryBufferHandle Handle)
+	ID3D12QueryHeap* RenderSystem::_GetQueryResource(QueryHandle Handle)
 	{
 		return Queries.GetResource(Handle);
 	}
@@ -4434,7 +5201,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12GraphicsCommandList*	RenderSystem::_GetCurrentCommandList()
+	ID3D12GraphicsCommandList3*	RenderSystem::_GetCurrentCommandList()
 	{
 		return FrameResources[CurrentIndex].CommandLists[0];
 	}
@@ -4451,7 +5218,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12GraphicsCommandList*	RenderSystem::_GetCommandList_1()
+	ID3D12GraphicsCommandList3*	RenderSystem::_GetCommandList_1()
 	{
 		_GetCurrentFrameResources()->CommandListsUsed[1] = true;
 
@@ -4520,7 +5287,6 @@ namespace FlexKit
 		VertexBuffers.LockUntil(GetCurrentFrame() + 2);
 		ConstantBuffers.LockUntil(GetCurrentFrame() + 2);
 		RenderTargets.LockUntil(GetCurrentFrame() + 2);
-		Queries.LockUntil(GetCurrentFrame() + 2);
 	}
 
 
@@ -5110,7 +5876,7 @@ namespace FlexKit
 
 		HRESULT HR = D3DCompileFromFile(WString, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
 		if (FAILED(HR))	{
-			printf((char*)Errors->GetBufferPointer());
+			FK_LOG_INFO((char*)Errors->GetBufferPointer());
 			return false;
 		}
 
@@ -5141,7 +5907,7 @@ namespace FlexKit
 #if USING( EDITSHADERCONTINUE )
 			if (!res)
 			{
-				std::cout << "Failed to Load\n Press Enter to try again\n";
+				std::cout << "Failed to Compile Shader\n Press Enter to try again\n";
 				char str[100];
 				std::cin >> str;
 			}

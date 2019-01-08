@@ -31,33 +31,26 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\graphics.h"
 
 #include "PxPhysicsAPI.h"
-#include <physx\Include\characterkinematic\PxController.h>
-#include <typeinfo>
+#include <PhysX_sdk/physx/include/characterkinematic/PxController.h>
+#include <PhysX_sdk/physx/include/extensions/PxDefaultAllocator.h>
+#include <PhysX_sdk/physx/include/pvd/PxPvd.h>
+#include <PhysX_sdk/physx/include/pvd/PxPvdTransport.h>
+
 
 #ifdef _DEBUG
-#pragma comment(lib,	"LowLevelDebug.lib"						)
-#pragma comment(lib,	"LowLevelClothDEBUG.lib"				)
-#pragma comment(lib,	"PhysX3DEBUG_x64.lib"					)
-#pragma comment(lib,	"PhysX3CharacterKinematicDebug_x64.lib"	)
-#pragma comment(lib,	"PhysX3CommonDEBUG_x64.lib"				)
-#pragma comment(lib,	"PhysX3ExtensionsDEBUG.lib"				)
-#pragma comment(lib,	"PhysXProfileSDKDEBUG.lib"				)
-#pragma comment(lib,	"PhysXVisualDebuggerSDKDEBUG.lib"		)
-#pragma comment(lib,	"legacy_stdio_definitions.lib"			)
-#pragma comment(lib,	"SceneQueryDEBUG.lib"					)
-#pragma comment(lib,	"SimulationControllerDEBUG.lib"			)
+#pragma comment(lib,	"LowLevel_static_64.lib"			)
+#pragma comment(lib,	"PhysX_64.lib"						)
+#pragma comment(lib,	"PhysXFoundation_64.lib"			)
+#pragma comment(lib,	"PhysXCommon_64.lib"				)
+#pragma comment(lib,	"PhysXExtensions_static_64.lib"		)
+#pragma comment(lib,	"PhysXPvdSDK_static_64.lib"			)
 #else
-#pragma comment(lib,	"LowLevel.lib"						)
-#pragma comment(lib,	"LowLevelCloth.lib"					)
-#pragma comment(lib,	"PhysX3_x64.lib"					)
-#pragma comment(lib,	"PhysX3CharacterKinematic_x64.lib"	)
-#pragma comment(lib,	"PhysX3Common_x64.lib"				)
-#pragma comment(lib,	"PhysX3Cooking_x64.lib"				)
-#pragma comment(lib,	"PhysX3Extensions.lib"				)
-#pragma comment(lib,	"PhysXProfileSDK.lib"				)
-#pragma comment(lib,	"PhysX3Vehicle.lib"					)
-#pragma comment(lib,	"PhysXVisualDebuggerSDK.lib"		)
-#pragma comment(lib,	"legacy_stdio_definitions.lib"		)
+#pragma comment(lib,	"LowLevel_static_64.lib"			)
+#pragma comment(lib,	"PhysX_64.lib"						)
+#pragma comment(lib,	"PhysXFoundation_64.lib"			)
+#pragma comment(lib,	"PhysXCommon_64.lib"				)
+#pragma comment(lib,	"PhysXExtensions_static_64.lib"		)
+#pragma comment(lib,	"PhysXPvdSDK_static_64.lib"			)
 #endif
 
 namespace FlexKit
@@ -94,15 +87,15 @@ namespace FlexKit
 	struct PhysicsSystem
 	{
 		physx::PxFoundation*			Foundation;
-		physx::PxProfileZoneManager*	ProfileZoneManager;
+		//physx::PxProfileZoneManager*	ProfileZoneManager;
 		physx::PxPhysics*				Physx;
-		physx::PxCooking*				Oven;
+		//physx::PxCooking*				Oven;
 
 		physx::PxDefaultCpuDispatcher*	CPUDispatcher;
 
 		bool								RemoteDebuggerEnabled;
-		physx::PxVisualDebugger*			VisualDebugger;
-		physx::PxVisualDebuggerConnection*	VisualDebuggerConnection;
+		physx::PxPvd*						VisualDebugger;
+		physx::PxPvdTransport*				VisualDebuggerConnection;
 		physx::PxGpuDispatcher*				GPUDispatcher;
 		physx::PxMaterial*					DefaultMaterial;
 

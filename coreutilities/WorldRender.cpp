@@ -271,7 +271,7 @@ namespace FlexKit
 			ConstantBufferHandle	ConstantBuffer;
 			ForwardDrawableList		Draws;
 			size_t					CameraConsantsOffset;
-			FlexKit::DesciptorHeap	Heap; // Null Filled
+			FlexKit::DescriptorHeap	Heap; // Null Filled
 		};
 
 		auto& Pass = Graph.AddNode<ForwardDrawPass>(GetCRCGUID(PRESENT),
@@ -281,10 +281,10 @@ namespace FlexKit
 				Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
 				Data.ConstantBuffer	 = ConstantBuffer;
 				Data.Heap.Init(
-					Graph.Resources.RenderSystem,
-					Graph.Resources.RenderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					Graph.Resources.renderSystem,
+					Graph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
 					Memory);
-				Data.Heap.NullFill(Graph.Resources.RenderSystem);
+				Data.Heap.NullFill(Graph.Resources.renderSystem);
 
 				//if(OcclusionCulling)
 				//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
@@ -307,7 +307,7 @@ namespace FlexKit
 			},
 			[=](ForwardDrawPass& Data, const FrameResources& Resources, Context* Ctx)
 			{
-				Ctx->SetRootSignature(Resources.RenderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetRootSignature(Resources.renderSystem->Library.RS4CBVs4SRVs);
 				Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
 
 				if (false)

@@ -88,7 +88,7 @@ namespace FlexKit
 			Size = 0;
 		}
 
-		static_vector(std::initializer_list<TY_> list) : static_vector()
+		static_vector(const std::initializer_list<TY_> list) : static_vector()
 		{
 			for( auto e : list )
 				push_back( e );

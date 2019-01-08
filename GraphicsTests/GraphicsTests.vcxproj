@@ -70,12 +70,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Dependencies\lib\debug_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\debug;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)\builds\debug_x64\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx\include\;$(SolutionDir)Dependencies\sdks\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx\include\common;$(SolutionDir)Dependencies\sdks\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Dependencies\lib\release_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\release;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)\builds\release_x64\</OutDir>
   </PropertyGroup>
@@ -121,6 +121,8 @@
       <ConformanceMode>false</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

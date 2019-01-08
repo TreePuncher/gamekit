@@ -30,11 +30,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	typedef Handle_t<32, GetTypeGUID(ConstantBuffer)>						ConstantBufferHandle;
-	typedef Handle_t<32, GetTypeGUID(VertexBuffer)>							VertexBufferHandle;
-	typedef Handle_t<32, GetTypeGUID(TextureHandle)>						TextureHandle;
-	typedef Handle_t<32, GetTypeGUID(QueryBuffer)>							QueryBufferHandle;
-	typedef Handle_t<16, GetTypeGUID(TriMesh)>								TriMeshHandle;
+	typedef Handle_t<32, GetTypeGUID(ConstantBuffer)>		ConstantBufferHandle;
+	typedef Handle_t<32, GetTypeGUID(VertexBuffer)>			VertexBufferHandle;
+	typedef Handle_t<32, GetTypeGUID(TextureHandle)>		TextureHandle;
+	typedef Handle_t<32, GetTypeGUID(UAVResourceHandle)>	UAVResourceHandle;
+	typedef Handle_t<32, GetTypeGUID(SOResourceHandle)>		SOResourceHandle;
+	typedef Handle_t<32, GetTypeGUID(QueryBuffer)>			QueryHandle;
+	typedef Handle_t<16, GetTypeGUID(TriMesh)>				TriMeshHandle;
 }
 
 #endif

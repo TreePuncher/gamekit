@@ -109,7 +109,7 @@ namespace FlexKit
 	private:
 		RenderSystem*			RS;
 		ConstantBufferHandle	ConstantBuffer;
-		QueryBufferHandle		OcclusionQueries;
+		QueryHandle		OcclusionQueries;
 		TextureHandle			OcclusionBuffer;
 		uint2					WH;// Output Size
 
