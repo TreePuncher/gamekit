@@ -44,8 +44,6 @@ int main(int argc, char* argv[])
 	auto* Memory = CreateEngineMemory();
 	FKApplication App({1920, 1080}, Memory);
 
-	InitiateCameraTable(Memory->GetBlockMemory());
-
 	App.PushState<GraphicsTest>();
 	App.Run();
 	App.Release();

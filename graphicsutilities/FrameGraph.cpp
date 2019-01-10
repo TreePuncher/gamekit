@@ -19,37 +19,54 @@ namespace FlexKit
 	{
 		switch (Object->Type)
 		{
+		case OT_StreamOut:
+		{
+			switch (AfterState)
+			{
+			case DRS_VERTEXBUFFER:
+			case DRS_STREAMOUT: {
+				ctx->AddStreamOutBarrier(
+					Object->SOBuffer,
+					BeforeState,
+					AfterState);
+			}	break;
+			}
+		}	break;
+		default:
+			switch (AfterState)
+			{
+			case DRS_Present:
+			{
+				ctx->AddPresentBarrier(
+					Resources.GetRenderTarget(Object->Handle),
+					BeforeState);
+			}	break;
+			case DRS_DEPTHBUFFERWRITE:
+			case DRS_RenderTarget:
+				ctx->AddRenderTargetBarrier(
+					Resources.GetRenderTarget(Object->Handle),
+					BeforeState,
+					AfterState);
+				break;
+			case DRS_UAV:
+				ctx->AddUAVBarrier(
+					Object->UAVBuffer,
+					BeforeState,
+					AfterState);
+				break;
+			case DRS_STREAMOUT:
+			case DRS_ShaderResource:
+			case DRS_CONSTANTBUFFER:
+			case DRS_PREDICATE:
+			case DRS_INDIRECTARGS:
+			case DRS_UNKNOWN:
 			default:
-				switch (AfterState)
-				{
-				case DRS_Present:
-				{
-					ctx->AddPresentBarrier(
-						Resources.GetRenderTarget(Object->Handle),
-						BeforeState);
-				}	break;
-				case DRS_DEPTHBUFFERWRITE:
-				case DRS_RenderTarget:
-					ctx->AddRenderTargetBarrier(
-						Resources.GetRenderTarget(Object->Handle),
-						BeforeState,
-						AfterState);
-					break;
-				case DRS_UAV:
-					ctx->AddUAVBarrier(
-						Object->UAVBuffer,
-						BeforeState,
-						AfterState);
-					break;
-				case DRS_ShaderResource:
-				case DRS_CONSTANTBUFFER:
-				case DRS_PREDICATE:
-				case DRS_INDIRECTARGS:
-				case DRS_UNKNOWN:
-				default:
-					FK_ASSERT(0); // Unimplemented
-				}
+				FK_ASSERT(0); // Unimplemented
+			}
+
 		}
+
+
 	}
 
 
@@ -58,8 +75,13 @@ namespace FlexKit
 
 	void FrameGraphNode::HandleBarriers(FrameResources& Resources, Context* Ctx)
 	{
-		for (const auto& T : Transitions)
+		for (const auto& T : Transitions) {
 			T.ProcessTransition(Resources, Ctx);
+
+			auto stateObject	= *T.Object;
+			stateObject.State = T.AfterState;
+			auto idx			= Resources.SubNodeTracking.push_back(stateObject);
+		}
 	}
 
 
@@ -91,6 +113,50 @@ namespace FlexKit
 		auto Pred = [&](const auto& RHS) -> bool {	return RHS.FO->Tag == Tag;	};
 
 		return (find(OutputObjects, Pred) != OutputObjects.end());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void FrameGraphNode::RestoreResourceStates(Context* ctx, PassObjectList& locallyTrackedObjects)
+	{
+		for (auto& resNode : locallyTrackedObjects)
+		{
+			auto res = find(OutputObjects,
+				[&](FrameObjectDependency& rhs) -> bool
+				{
+					return rhs.FO->Handle == resNode.Handle;
+				});
+
+			if (res!= OutputObjects.end() && res->State != resNode.State)
+			{
+				switch (resNode.Type)
+				{
+				case FrameObjectResourceType::OT_StreamOut:
+					ctx->AddStreamOutBarrier(resNode.SOBuffer, resNode.State, res->State);
+					break;
+				case FrameObjectResourceType::OT_UAVBuffer:
+				case FrameObjectResourceType::OT_UnorderedAccessView:
+					ctx->AddUAVBarrier(resNode.UAVBuffer, resNode.State, res->State);
+					break;
+				case FrameObjectResourceType::OT_BackBuffer:
+				case FrameObjectResourceType::OT_ConstantBuffer:
+				case FrameObjectResourceType::OT_DepthBuffer:
+				case FrameObjectResourceType::OT_IndirectArguments:
+				case FrameObjectResourceType::OT_PVS:
+				case FrameObjectResourceType::OT_RenderTarget:
+				case FrameObjectResourceType::OT_Texture:
+				case FrameObjectResourceType::OT_UAVTexture:
+				case FrameObjectResourceType::OT_VertexBuffer:
+					FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
+				}
+			}
+		}
+
+		locallyTrackedObjects.clear();
+
+		return;
 	}
 
 
@@ -384,7 +450,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::ReadSOBuffer(SOResourceHandle handle)
 	{
-		return AddReadableResource(handle, DeviceResourceState::DRS_GENERIC);
+		return AddReadableResource(handle, DeviceResourceState::DRS_VERTEXBUFFER);
 	}
 
 
@@ -393,7 +459,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::WriteSOBuffer(SOResourceHandle handle)
 	{
-		return AddWriteableResource(handle, DeviceResourceState::DRS_GENERIC);
+		return AddWriteableResource(handle, DeviceResourceState::DRS_STREAMOUT);
 	}
 
 

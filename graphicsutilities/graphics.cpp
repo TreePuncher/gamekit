@@ -992,8 +992,7 @@ namespace FlexKit
 					rhs.streamOut	== streamOut;
 			});
 
-		if (res != PendingBarriers.end() &&
-			res->NewState == Before ) {
+		if (res != PendingBarriers.end()) {
 			res->NewState = State;
 		}
 		else
@@ -1341,7 +1340,7 @@ namespace FlexKit
 			auto resource	= destinations[itr];
 			auto state		= finalStates[itr];
 
-			if (prevResource != resource && prevState != state)
+			if (prevResource != resource && prevState != state && state != DeviceResourceState::DRS_Write)
 				_AddBarrier(resource, DeviceResourceState::DRS_Write, state);
 
 			prevResource	= resource;
@@ -1418,12 +1417,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ClearSOCounters(
-		static_vector<SOResourceHandle>		handles, 
-		static_vector<DeviceResourceState>	currentStates)
+	// Requires SO resources to be in DeviceResourceState::DRS::STREAMOUTCLEAR!
+	void Context::ClearSOCounters(static_vector<SOResourceHandle> handles)
 	{
-		FK_ASSERT(handles.size() == currentStates.size(), "Invalid argument!");
-
 		/*
 		typedef struct D3D12_WRITEBUFFERIMMEDIATE_PARAMETER
 		{
@@ -1432,34 +1428,46 @@ namespace FlexKit
 		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
 		*/
 
+		auto nullSource = RS->NullConstantBuffer.Get();
+
+		static_vector<ID3D12Resource*>		sources;
+		static_vector<size_t>				sourceOffset;
+		static_vector<ID3D12Resource*>		destinations;
+		static_vector<size_t>				destinationOffset;
+		static_vector<size_t>				copySize;
+		static_vector<DeviceResourceState>	currentSOStates;
+		static_vector<DeviceResourceState>	finalStates;
+
+		for (auto& s : handles)
+			sources.push_back(nullSource);
+
+		for (auto& s : handles)
+			sourceOffset.push_back(0);
+
+		for (auto& s : handles)
+			destinations.push_back(RS->GetSOCounterResource(s));
+
+		for (auto& s : handles)
+			destinationOffset.push_back(0);
+
+		for (auto& s : destinations)
+			copySize.push_back(16);
+
+		for (auto& s : handles)
+			currentSOStates.push_back(DeviceResourceState::DRS_Write);
+
+		for (auto& s : handles)
+			finalStates.push_back(DeviceResourceState::DRS_Write);
 
 
-		for (size_t itr = 0; itr < handles.size(); ++itr) 
-		{
-			auto resource	= RS->GetSOCounterResource(handles[itr]);
-			auto state		= currentStates[itr];
-			_AddBarrier(resource, state, DeviceResourceState::DRS_Write);
-		}
-
-		FlushBarriers();
-
-		for (size_t itr = 0; itr < handles.size(); ++itr)
-		{
-			auto resource = RS->GetSOCounterResource(handles[itr]);
-			D3D12_WRITEBUFFERIMMEDIATE_PARAMETER params[] = {
-				{resource->GetGPUVirtualAddress() + 0, 0u},
-				{resource->GetGPUVirtualAddress() + 4, 0u},
-			};
-
-			DeviceContext->WriteBufferImmediate(2, params, nullptr);
-		}
-
-		for (size_t itr = 0; itr < handles.size(); ++itr)
-		{
-			auto resource	= RS->GetSOCounterResource(handles[itr]);
-			auto state		= currentStates[itr];
-			_AddBarrier(resource, DeviceResourceState::DRS_Write, state);
-		}
+		CopyBufferRegion(
+			sources,			// sources
+			sourceOffset,		// source offsets
+			destinations,		// destinations
+			destinationOffset,  // destination offsets
+			copySize,			// copy sizes
+			currentSOStates,	// source initial state
+			finalStates);		// source final	state
 	}
 
 
@@ -1687,12 +1695,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::ExecuteIndirect(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset)
+	void Context::ExecuteIndirect(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset, size_t executionCount)
 	{
 		UpdateResourceStates();
 		DeviceContext->ExecuteIndirect(
 			layout.signature, 
-			layout.entries.size(), 
+			min(layout.entries.size(), executionCount), 
 			RS->GetObjectDeviceResource(args),
 			argumentBufferOffset,
 			nullptr, 
@@ -1891,22 +1899,33 @@ namespace FlexKit
 					break;
 				case Barrier::BT_StreamOut:
 				{
-					auto handle			= B.streamOut;
-					auto resource		= RS->GetObjectDeviceResource(handle);
-					auto currentState	= DRS2D3DState(B.OldState);
-					auto newState		= DRS2D3DState(B.NewState);
 
-					/*
-					#ifdef _DEBUG
-						std::cout << "Transitioning Resource: " << Resource 
-							<< " From State: " << CurrentState << " To State: " 
-							<< NewState << "\n";
-					#endif
-					*/
+					if (DeviceResourceState::DRS_STREAMOUTCLEAR == B.OldState || DeviceResourceState::DRS_STREAMOUTCLEAR == B.NewState) {
+						auto handle				= B.streamOut;
+						auto SOresource			= RS->GetObjectDeviceResource(handle);
+						auto resource			= RS->GetSOCounterResource(handle);
+						auto currentState		= DRS2D3DState((B.OldState == DeviceResourceState::DRS_VERTEXBUFFER) ? DeviceResourceState::DRS_STREAMOUT : B.OldState);
+						auto newState			= DRS2D3DState((B.NewState == DeviceResourceState::DRS_VERTEXBUFFER) ? DeviceResourceState::DRS_STREAMOUT : B.NewState);
 
-					if (B.OldState != B.NewState)
-						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
-							resource, currentState, newState));
+						auto currentSOState		= DRS2D3DState((B.OldState == DeviceResourceState::DRS_STREAMOUTCLEAR) ? DeviceResourceState::DRS_STREAMOUT : B.OldState);
+						auto newSOState			= DRS2D3DState((B.NewState == DeviceResourceState::DRS_STREAMOUTCLEAR) ? DeviceResourceState::DRS_STREAMOUT : B.NewState);
+
+						if (B.OldState != B.NewState)
+							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource,	currentState, newState));
+
+						if(currentSOState != newSOState)
+							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(SOresource, currentSOState, newSOState));
+					}
+					else
+					{
+						auto handle				= B.streamOut;
+						auto resource			= RS->GetObjectDeviceResource(handle);
+						auto currentState		= DRS2D3DState(B.OldState);
+						auto newState			= DRS2D3DState(B.NewState);
+
+						if (B.OldState != B.NewState)
+							Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, currentState, newState));
+					}
 				}	break;
 				case Barrier::BT_Generic:
 				{
@@ -2946,7 +2965,7 @@ namespace FlexKit
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE SHADERRESOURCE!"));
 			buffers.push_back(Resource);
 
-			SETDEBUGNAME(Resource, __func__);
+			//SETDEBUGNAME(Resource, __func__);
 		}
 
 		return BufferUAVs.AddResource(buffers, resourceSize, DeviceResourceState::DRS_Write); // DRS Write assumed on first use, ignores initial state specified above!
@@ -2985,23 +3004,24 @@ namespace FlexKit
 
 			HR = pDevice->CreateCommittedResource(
 								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
-								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_STREAM_OUT, nullptr,
 								IID_PPV_ARGS(&Resource));
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STREAMOUT RESOURCE!"));
 
 			HR = pDevice->CreateCommittedResource(
 								&HEAP_Props, D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ALL_BUFFERS_AND_TEXTURES,
-								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON, nullptr,
+								&Resource_DESC, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_STREAM_OUT, nullptr,
 								IID_PPV_ARGS(&Counter));
 
 			CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE STREAMOUT RESOURCE!"));
 			resources.push_back(Resource);
 			counters.push_back(Counter);
 
-			SETDEBUGNAME(Resource, __func__);
+			SETDEBUGNAME(Resource, "StreamOutResource" );
+			SETDEBUGNAME(Counter, "StreamOutCounter" );
 		}
 
-		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceResourceState::DRS_GENERIC);
+		return StreamOutTable.AddResource(resources, counters, resourceSize, DeviceResourceState::DRS_STREAMOUT);
 	}
 
 
@@ -3018,18 +3038,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectLayoutEntry> entries, iAllocator* allocator)
+	IndirectLayout RenderSystem::CreateIndirectLayout(static_vector<IndirectDrawDescription> entries, iAllocator* allocator)
 	{
 		ID3D12CommandSignature* signature = nullptr;
 		
-		Vector<IndirectLayoutEntry>					layout{allocator};
+		Vector<IndirectDrawDescription>				layout{allocator};
 		static_vector<D3D12_INDIRECT_ARGUMENT_DESC> signatureEntries;
 
 		size_t entryStride = 0;
 
 		for (size_t itr = 0; itr < entries.size(); ++itr)
 		{
-			switch (entries[itr])
+			switch (entries[itr].type)
 			{
 			case ILE_DrawCall:
 			{

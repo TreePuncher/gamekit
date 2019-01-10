@@ -1165,6 +1165,7 @@ namespace FlexKit
 		DRS_ShaderResource	 = 0x0009, // Implied Read
 		DRS_UAV				 = 0x000A, // Implied Write
 		DRS_STREAMOUT		 = 0x000B, // Implied Write
+		DRS_STREAMOUTCLEAR	 = 0x000D, // Implied Write
 		DRS_VERTEXBUFFER	 = 0x000C, // Implied Read
 		DRS_CONSTANTBUFFER	 = 0x000C, // Implied Read
 		DRS_DEPTHBUFFER		 = 0x0030,
@@ -1208,6 +1209,8 @@ namespace FlexKit
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT;
 		case DeviceResourceState::DRS_STREAMOUT:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_STREAM_OUT;
+		case DeviceResourceState::DRS_STREAMOUTCLEAR:
+			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST;
 		}
 		return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 	}
@@ -1479,63 +1482,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
-	enum IndirectLayoutEntry
-	{
-		ILE_DrawCall,
-	};
-
-
-	// Non-copyable
-	FLEXKITAPI class IndirectLayout
-	{
-	public:
-		IndirectLayout() : 
-			entries		{ nullptr },
-			signature	{ nullptr }{}
-
-		IndirectLayout(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectLayoutEntry>&& IN_Entries) :
-			signature	{ IN_signature			},
-			stride		{ IN_stride				},
-			entries		{ std::move(IN_Entries) } {}
-
-		~IndirectLayout() 
-		{
-			signature->Release();
-		}
-
-
-		IndirectLayout(const IndirectLayout& rhs) : 
-			signature	{ rhs.signature },
-			entries		{ rhs.entries	},
-			stride		{ rhs.stride	}
-		{
-			signature->AddRef();
-		}
-
-		IndirectLayout& operator =	(const IndirectLayout& rhs)
-		{
-			rhs.signature->AddRef();
-
-			if(signature)
-				signature->Release();
-
-			signature	= rhs.signature;
-			stride		= rhs.stride;
-			entries		= rhs.entries;
-
-			return (*this);
-		}
-
-		ID3D12CommandSignature*		signature;
-		size_t						stride;
-		Vector<IndirectLayoutEntry>	entries;
-	};
-
-
-	/************************************************************************************************/
-
-
 	struct VertexBufferEntry
 	{
 		VertexBufferHandle	VertexBuffer	= InvalidHandle_t;
@@ -1545,6 +1491,79 @@ namespace FlexKit
 
 	typedef static_vector<VertexBufferEntry, 16>	VertexBufferList;
 	typedef static_vector<DescHeapPOS, 16>			RenderTargetList;
+
+
+	/************************************************************************************************/
+
+
+	enum IndirectLayoutEntryType
+	{
+		ILE_DrawCall,
+		ILE_UpdateVBBindings,
+		ILE_UNKNOWN,
+	};
+
+	class IndirectDrawDescription
+	{
+	public:
+		IndirectDrawDescription(IndirectLayoutEntryType IN_type = ILE_UNKNOWN) : type{IN_type} {}
+
+		IndirectLayoutEntryType type;
+	};
+
+
+	// Non-copyable
+	FLEXKITAPI class IndirectLayout
+	{
+	public:
+		IndirectLayout() :
+			entries{ nullptr },
+			signature{ nullptr }{}
+
+		IndirectLayout(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectDrawDescription>&& IN_Entries) :
+			signature{ IN_signature },
+			stride{ IN_stride },
+			entries{ std::move(IN_Entries) } {}
+
+		~IndirectLayout()
+		{
+			signature->Release();
+		}
+
+
+		IndirectLayout(const IndirectLayout& rhs) :
+			signature{ rhs.signature },
+			entries{ rhs.entries },
+			stride{ rhs.stride }
+		{
+			signature->AddRef();
+		}
+
+		IndirectLayout& operator =	(const IndirectLayout& rhs)
+		{
+			if(rhs.signature)
+				rhs.signature->AddRef();
+
+			if (signature)
+				signature->Release();
+
+			signature = rhs.signature;
+			stride = rhs.stride;
+			entries = rhs.entries;
+
+			return (*this);
+		}
+
+		operator bool () { return signature != nullptr; }
+
+		ID3D12CommandSignature*			signature;
+		size_t							stride;
+		Vector<IndirectDrawDescription>	entries;
+	};
+
+
+	/************************************************************************************************/
+
 
 	FLEXKITAPI class Context
 	{
@@ -1670,9 +1689,7 @@ namespace FlexKit
 			static_vector<DeviceResourceState>	currentStates,
 			static_vector<DeviceResourceState>	finalStates);
 
-		void ClearSOCounters(
-			static_vector<SOResourceHandle>		handles, 
-			static_vector<DeviceResourceState>	currentStates);
+		void ClearSOCounters(static_vector<SOResourceHandle> handles);
 
 		void CopyUInt64(
 			static_vector<ID3D12Resource*>			source,
@@ -1697,7 +1714,7 @@ namespace FlexKit
 
 		void ResolveQuery			(QueryHandle query, size_t begin, size_t end, UAVResourceHandle destination, size_t destOffset);
 
-		void ExecuteIndirect		(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0);
+		void ExecuteIndirect		(UAVResourceHandle args, const IndirectLayout& layout, size_t argumentBufferOffset = 0, size_t executionCount = 1);
 		void Dispatch				(uint3);
 
 		void FlushBarriers();
@@ -2436,7 +2453,7 @@ namespace FlexKit
 		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
 		SOResourceHandle		CreateStreamOutResource			(size_t bufferHandle, bool tripleBuffer = true);
 		QueryHandle				CreateSOQuery					(size_t SOIndex,			size_t count);
-		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectLayoutEntry> entries, iAllocator* allocator);
+		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
 
 		void SetObjectState(SOResourceHandle handle,	DeviceResourceState state);
 		void SetObjectState(UAVResourceHandle handle,	DeviceResourceState state);

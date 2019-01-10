@@ -657,6 +657,23 @@ vertexSize
 		}
 
 
+
+		/************************************************************************************************/
+
+
+		SOResourceHandle ClearStreamOut(FrameResourceHandle handle, Context* ctx) const
+		{
+			auto resource = _FindSubNodeResource(handle);
+
+			if (resource->State != DRS_STREAMOUTCLEAR)
+				ctx->AddStreamOutBarrier(resource->SOBuffer, resource->State, DRS_STREAMOUTCLEAR);
+
+			resource->State = DRS_STREAMOUTCLEAR;
+
+			return GetSOResource(handle);
+		}
+
+
 		/************************************************************************************************/
 
 
@@ -822,49 +839,8 @@ vertexSize
 		}
 
 
-		/************************************************************************************************/
 
-
-		void _RestoreNodeStates(Context* ctx)
-		{
-			for (auto& Node : SubNodeTracking)
-			{
-				auto res = find(Resources,
-					[&](const FrameObject& rhs) -> bool
-					{
-						return rhs.Handle == Node.Handle;
-					});
-
-				if (res!= Resources.end() && res->State != Node.State)
-				{
-					switch (Node.Type)
-					{
-					case FrameObjectResourceType::OT_StreamOut:
-						ctx->AddStreamOutBarrier(Node.SOBuffer, Node.State, res->State);
-						break;
-					case FrameObjectResourceType::OT_UAVBuffer:
-					case FrameObjectResourceType::OT_UnorderedAccessView:
-						ctx->AddUAVBarrier(Node.UAVBuffer, Node.State, res->State);
-						break;
-					case FrameObjectResourceType::OT_BackBuffer:
-					case FrameObjectResourceType::OT_ConstantBuffer:
-					case FrameObjectResourceType::OT_DepthBuffer:
-					case FrameObjectResourceType::OT_IndirectArguments:
-					case FrameObjectResourceType::OT_PVS:
-					case FrameObjectResourceType::OT_RenderTarget:
-					case FrameObjectResourceType::OT_Texture:
-					case FrameObjectResourceType::OT_UAVTexture:
-					case FrameObjectResourceType::OT_VertexBuffer:
-						FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
-					}
-				}
-			}
-
-			SubNodeTracking.clear();
-
-			return;
-		}
-	};
+	};/************************************************************************************************/
 
 
 	/************************************************************************************************/
@@ -1009,7 +985,6 @@ vertexSize
 		ResourceTransition		(FrameObjectDependency& Dep);
 		void ProcessTransition	(FrameResources& Resources, Context* Ctx) const;
 
-	private:
 		FrameObject*		Object;
 		DeviceResourceState	BeforeState;
 		DeviceResourceState	AfterState;
@@ -1052,6 +1027,8 @@ vertexSize
 		void AddTransition	(FrameObjectDependency& Dep);
 		bool DependsOn		(uint32_t Tag);
 		bool Outputs		(uint32_t Tag);
+
+		void RestoreResourceStates(Context* ctx, PassObjectList& locallyTrackedObjects);
 
 
 		Vector<FrameGraphNode*>		GetNodeDependencies()	{ return (nullptr); } 
@@ -1390,29 +1367,6 @@ vertexSize
 
 		FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(TextureHandle handle, DeviceResourceState state, FrameObjectResourceType type);
 
-		/*
-		FrameResourceHandle AddWriteableResource	(UAVResourceHandle	handle, DeviceResourceState state);
-
-
-		FrameResourceHandle AddReadableResource		(SOResourceHandle	handle, DeviceResourceState state);
-		FrameResourceHandle AddWriteableResource	(SOResourceHandle	handle, DeviceResourceState state);
-
-		FrameResourceHandle AddReadableResource		(QueryHandle handle, DeviceResourceState state);
-		FrameResourceHandle AddWriteableResource	(QueryHandle Handlh, DeviceResourceState state);
-		*/
-
-		/*
-		template<typename FN_Create>
-		FrameResourceHandle AddWriteableResource(uint32_t Tag, DeviceResourceState State, FN_Create CreateResource)
-		{
-			auto Res = AddWriteableResource(Tag, State);
-			if (Res == -1)
-				Res = CreateResource();
-
-			return Res;
-		}
-		*/
-
 		enum class CheckStateRes
 		{
 			TransitionNeeded,
@@ -1467,7 +1421,8 @@ vertexSize
 			{
 				Node.HandleBarriers(Resources, ctx);
 				Draw(Data, Resources, ctx);
-				Resources._RestoreNodeStates(ctx);
+				Node.RestoreResourceStates(ctx, Resources.SubNodeTracking);
+				Data.~TY();
 			};
 
 			Setup(Builder, Data);
@@ -1475,6 +1430,7 @@ vertexSize
 
 			return Data;
 		}
+
 
 		void AddRenderTarget	(TextureHandle Texture);
 
@@ -1491,8 +1447,6 @@ vertexSize
 	private:
 		void ReadyResources();
 		void UpdateResourceFinalState();
-
-
 	};
 
 
