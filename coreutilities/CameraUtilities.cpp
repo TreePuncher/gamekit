@@ -74,7 +74,7 @@ namespace FlexKit
 		if (movementVector.magnitudesquared() > 0.0001f)
 		{
 			movementVector = movementVector.normal();
-			TranslateWorld(movementVector * dt * 100);
+			TranslateWorld(movementVector * dt * 1000);
 		}
 	}
 

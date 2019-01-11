@@ -267,20 +267,6 @@ void DEBUG_DrawQuadTree(
 /************************************************************************************************/
 
 
-struct TileMaps
-{
-	FlexKit::TextureHandle heightMap;
-	const char*	File;
-};
-
-
-struct Tile
-{
-	int2	tileID;
-	size_t	textureMaps;
-};
-
-
 using TerrainTileHandle = FlexKit::Handle_t<16, GetTypeGUID(TerrainTileHandle)>;
 const FlexKit::PSOHandle TERRAIN_COMPUTE_CULL_PSO	= PSOHandle(GetTypeGUID(TERRAIN_COMPUTE_CULL_PSO));
 const FlexKit::PSOHandle TERRAIN_RENDER_FOWARD_PSO	= PSOHandle(GetTypeGUID(TERRAIN_RENDER_FOWARD_PSO));
@@ -410,6 +396,20 @@ ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
 }
 
 
+struct TileMaps
+{
+	FlexKit::TextureHandle heightMap;
+	const char*	File;
+};
+
+
+struct Tile
+{
+	int2	tileID;
+	size_t	textureMaps;
+};
+
+
 class TerrainEngine
 {
 public:
@@ -420,9 +420,9 @@ public:
 		tileHeight					{ IN_tileHeight															}, 
 		tileOffset					{ IN_tileOffset															},
 		allocator					{ IN_allocator															},
-		finalBuffer					{ RS->CreateStreamOutResource(MEGABYTE)									},
-		intermdediateBuffer1		{ RS->CreateStreamOutResource(MEGABYTE)									},
-		intermdediateBuffer2		{ RS->CreateStreamOutResource(MEGABYTE)									},
+		finalBuffer					{ RS->CreateStreamOutResource(MEGABYTE * 8)								},
+		intermdediateBuffer1		{ RS->CreateStreamOutResource(MEGABYTE * 8)								},
+		intermdediateBuffer2		{ RS->CreateStreamOutResource(MEGABYTE * 8)								},
 		queryBufferFinalBuffer		{ RS->CreateSOQuery(1,1)												},
 		queryBufferIntermediate		{ RS->CreateSOQuery(0,1)												},
 		indirectArgs				{ RS->CreateUAVBufferResource(512)										},
@@ -525,7 +525,7 @@ public:
 	QueryHandle			queryBufferFinalBuffer;
 	QueryHandle			queryBufferIntermediate;
 
-	RenderSystem*	renderSystem;
+	RenderSystem*		renderSystem;
 
 	Vector<Tile>		tiles;
 	Vector<TileMaps>	tileTextures;
@@ -596,6 +596,8 @@ struct TerrainCullerData
 	size_t					terrainConstants;
 	size_t					inputVertices;
 	size_t					indirectArgsInitial;
+
+	Vector<size_t>			tileHeightMaps;
 };
 
 
@@ -639,7 +641,12 @@ TerrainCullerData* const CullTerrain(
 			auto tableLayout			= renderSystem->Library.RS4CBVs_SO.GetDescHeap(0);
 			data.heap.Init(renderSystem, tableLayout, tempMemory);
 			data.heap.NullFill(renderSystem);
-			data.splitCount				= 4;
+
+			for(auto& tileMap : terrainEngine.tileTextures)
+				data.heap.SetSRV(renderSystem, 0, tileMap.heightMap);
+
+
+			data.splitCount				= 10;
 
 			TerrainConstantBufferLayout constants;
 			uint32_t					indirectArgsInitial[] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -662,16 +669,20 @@ TerrainCullerData* const CullTerrain(
 			data.vertexBuffer		= vertexBuffer;
 			data.inputVertices		= frameGraph.Resources.GetVertexBufferOffset(vertexBuffer);
 
-			data.regionCount = terrainEngine.tiles.size();
+			data.regionCount		= terrainEngine.tiles.size();
 			
+			data.tileHeightMaps = Vector<size_t>{tempMemory};
+
 			for (auto& tile: terrainEngine.tiles) 
 			{
 				Region_CP tile_CP;
 				tile_CP.parentID = { 0, 0, 0, 0 };
-				tile_CP.UVs		 = { 0, 1, 1, 0 };
-				tile_CP.d		 = { 1, 0, 0, 1 };
+				tile_CP.UVs		 = { 0, 0, 1, 1 };
+				tile_CP.d		 = { 1, 0, 0, static_cast<int32_t>(tile.textureMaps) };
 				tile_CP.regionID = {tile.tileID[0], 0, tile.tileID[1], 2048 };
 				PushVertex(tile_CP, vertexBuffer, frameGraph.Resources);
+
+				data.tileHeightMaps.push_back(tile.textureMaps);
 			}
 		},
 		[=](const TerrainCullerData& data, const FrameResources& resources, Context* ctx)
@@ -820,7 +831,7 @@ auto DrawTerrain_Forward(
 		FrameResourceHandle		intermediateBuffer2;
 		FrameResourceHandle		querySpace;
 
-		DescriptorHeap			heap;
+		DescriptorHeap*			heap;
 		FrameResourceHandle		indirectArgs; // UAV Buffer
 
 		QueryHandle				queryFinal;
@@ -854,10 +865,8 @@ auto DrawTerrain_Forward(
 			data.indirectArgsInitial	= culledTerrain->indirectArgsInitial;
 			data.indirectLayout			= culledTerrain->indirectLayout;
 
-			auto tableLayout = renderSystem->Library.RS4CBVs_SO.GetDescHeap(0);
-			data.heap.Init(renderSystem, tableLayout, tempMemory);
-			data.heap.NullFill(renderSystem);
-			data.splitCount = culledTerrain->splitCount;
+			data.heap					= &culledTerrain->heap;
+
 		},
 		[=](const RenderTerrainForward& data, const FrameResources& resources, Context* ctx)
 		{
@@ -875,7 +884,7 @@ auto DrawTerrain_Forward(
 			ctx->SetGraphicsConstantBufferView(0, data.constantBuffer, data.cameraConstants);
 			ctx->SetGraphicsConstantBufferView(1, data.constantBuffer, data.terrainConstants);
 			ctx->SetGraphicsConstantBufferView(2, data.constantBuffer, data.terrainConstants);
-			ctx->SetGraphicsDescriptorTable(3, data.heap);
+			ctx->SetGraphicsDescriptorTable(3, *data.heap);
 
 			ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 			ctx->SetRenderTargets(
@@ -886,9 +895,13 @@ auto DrawTerrain_Forward(
 			const size_t inputArray					= (data.splitCount + 1) % 2;
 			FrameResourceHandle	intermediateSOs[]	= { data.intermediateBuffer1, data.intermediateBuffer2 };
 
+			//ctx->SetVertexBuffers2({
+			//		resources.ReadStreamOut(
+			//			intermediateSOs[inputArray], ctx, sizeof(Region_CP)) });
 			ctx->SetVertexBuffers2({
 					resources.ReadStreamOut(
-						intermediateSOs[inputArray], ctx, sizeof(Region_CP)) });
+						data.finalBuffer, ctx, sizeof(Region_CP)) });
+
 
 			auto destResource	= resources.GetObjectResource(resources.WriteUAV(data.indirectArgs, ctx));
 			auto querySpace		= resources.GetObjectResource(resources.ReadUAVBuffer(data.querySpace, DRS_Read, ctx));
@@ -896,13 +909,13 @@ auto DrawTerrain_Forward(
 			auto iaState		= resources.GetObjectState(data.indirectArgs);
 
 			ctx->CopyBufferRegion(
-				{ querySpace					},  // sources
-				{ 0								},	// source offset
-				{ destResource					},  // destinations
-				{ 0								},  // destination offsets
-				{ 4								},  // copy sizes
-				{ iaState						},  // source initial	state
-				{ iaState						}); // source final		state
+				{ querySpace, querySpace		},  // sources
+				{ 16,			0				},	// source offset
+				{ destResource, destResource	},  // destinations
+				{ 0,			32				},  // destination offsets
+				{ 4, 			4				},  // copy sizes
+				{ iaState,		iaState			},  // source initial state
+				{ iaState,		iaState			}); // destination final state
 
 			ctx->ExecuteIndirect(
 				resources.ReadIndirectArgs(data.indirectArgs, ctx),
@@ -967,7 +980,7 @@ public:
 
 		scene.ListEntities();
 
-		orbitCamera.TranslateWorld({0, 2.5, 0});
+		orbitCamera.TranslateWorld({0, 500, 0});
 
 		eventMap.MapKeyToEvent(KEYCODES::KC_R, ReloadShaders_1);
 		eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
@@ -1190,7 +1203,16 @@ public:
 			[&](auto evt)
 			{
 				orbitCamera.HandleEvent(evt);
+
+				if (evt.mData1.mINT[0] == ReloadShaders_1)
+				{
+					//framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
+					//framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);
+				}
 			});
+
+
+
 
 		return true; 
 	}
