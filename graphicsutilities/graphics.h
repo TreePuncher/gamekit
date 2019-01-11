@@ -773,6 +773,7 @@ namespace FlexKit
 		EIT_TRIANGLELIST,
 		EIT_TRIANGLE,
 		EIT_POINT,
+		EIT_PATCH_CP_1,
 	};
 
 

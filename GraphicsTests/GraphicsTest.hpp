@@ -350,9 +350,19 @@ ID3D12PipelineState* CreateCullTerrainComputePSO(RenderSystem* renderSystem)
 
 ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
 {
-	auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS", "CP_PassThroughVS", "vs_5_0", "assets\\forwardRenderTerrain.hlsl");
-	auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain", "GS_RenderTerrain", "gs_5_0", "assets\\forwardRenderTerrain.hlsl");
-	auto forwardRenderTerrain_shader_PS = LoadShader("PS_RenderTerrain", "PS_RenderTerrain", "ps_5_0", "assets\\forwardRenderTerrain.hlsl");
+	auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",		"vs_5_0", "assets\\forwardRenderTerrain.hlsl");
+	auto ShaderQuad2Tri					= LoadShader("QuadPatchToTris",		"QuadPatchToTris",		"ds_5_0", "assets\\forwardRenderTerrain.hlsl");
+	auto ShaderRegion2Quad				= LoadShader("RegionToQuadPatch",	"RegionToQuadPatch",	"hs_5_0", "assets\\forwardRenderTerrain.hlsl");
+	auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",		"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
+	auto forwardRenderTerrain_shader_PS = LoadShader("PS_RenderTerrain",	"PS_RenderTerrain",		"ps_5_0", "assets\\forwardRenderTerrain.hlsl");
+
+	EXITSCOPE(
+		Release(forwardRenderTerrain_shader_VS);
+		Release(ShaderQuad2Tri);
+		Release(ShaderRegion2Quad);
+		Release(forwardRenderTerrain_shader_GS);
+		Release(forwardRenderTerrain_shader_PS);
+		);
 
 	D3D12_INPUT_ELEMENT_DESC InputElements[] =
 	{
@@ -373,11 +383,13 @@ ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
 		PSO_Desc.pRootSignature                = renderSystem->Library.RS4CBVs_SO;
 		PSO_Desc.VS                            = forwardRenderTerrain_shader_VS;
-		PSO_Desc.GS                            = forwardRenderTerrain_shader_GS;
+		PSO_Desc.DS                            = ShaderQuad2Tri;
+		PSO_Desc.HS                            = ShaderRegion2Quad;
+		//PSO_Desc.GS                            = forwardRenderTerrain_shader_GS;
 		PSO_Desc.PS							   = forwardRenderTerrain_shader_PS;
 		PSO_Desc.RasterizerState			   = Rast_Desc;
 		PSO_Desc.SampleMask                    = UINT_MAX;
-		PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+		PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
 		PSO_Desc.NumRenderTargets              = 1;
 		PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R16G16B16A16_FLOAT;
 		PSO_Desc.SampleDesc.Count              = 1;
@@ -880,7 +892,7 @@ auto DrawTerrain_Forward(
 			ctx->SetRootSignature(rootSig);
 			ctx->SetPipelineState(PSO);
 
-			ctx->SetPrimitiveTopology(EInputTopology::EIT_POINT);
+			ctx->SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_1);
 			ctx->SetGraphicsConstantBufferView(0, data.constantBuffer, data.cameraConstants);
 			ctx->SetGraphicsConstantBufferView(1, data.constantBuffer, data.terrainConstants);
 			ctx->SetGraphicsConstantBufferView(2, data.constantBuffer, data.terrainConstants);

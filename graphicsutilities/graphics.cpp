@@ -1175,6 +1175,8 @@ namespace FlexKit
 		case EIT_POINT:
 			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 			break;
+		case EInputTopology::EIT_PATCH_CP_1:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST;
 		}
 
 		DeviceContext->IASetPrimitiveTopology(D3DTopology);
