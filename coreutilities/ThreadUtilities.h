@@ -169,8 +169,8 @@ namespace FlexKit
 	template<typename TY_FN>
 	iWork& CreateLambdaWork_New(
 		TY_FN FNIN, 
-		iAllocator* Memory_1 = FlexKit::SystemAllocator,
-		iAllocator* Memory_2 = FlexKit::SystemAllocator)
+		iAllocator* Memory_1 = SystemAllocator,
+		iAllocator* Memory_2 = SystemAllocator)
 	{
 		return Memory_1->allocate<LambdaWork<TY_FN>>(FNIN, Memory_2);
 	}
@@ -181,7 +181,7 @@ namespace FlexKit
 	class ThreadManager
 	{
 	public:
-		ThreadManager(size_t ThreadCount = 4, iAllocator* memory = FlexKit::SystemAllocator) :
+		ThreadManager(size_t ThreadCount = 4, iAllocator* memory = SystemAllocator) :
 			Threads				{},
 			Memory				{memory},
 			WorkingThreadCount	{0},
@@ -225,7 +225,12 @@ namespace FlexKit
 			{
 				bool success = false;
 				do {
-					success = Threads.begin()->AddItem(NewWork);
+					auto& thread = Threads.begin();
+					success = thread->AddItem(NewWork);
+
+					if (success)
+						thread->Wake();
+
 					RotateThreads();
 				} while (!success);
 			}
@@ -266,8 +271,10 @@ namespace FlexKit
 
 			auto success = Threads.try_pop_front(Ptr);
 
-			if (success)
+			if (success) {
 				Threads.push_back(Ptr);
+				Ptr->Wake();
+			}
 		}
 
 

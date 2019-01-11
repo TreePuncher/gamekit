@@ -76,7 +76,13 @@ namespace FlexKit
 		{
 			std::mutex	M;
 			std::unique_lock<std::mutex> Lock(M);
-			CV.wait(Lock);
+
+			if (WorkList.empty())
+				CV.wait(Lock, 
+					[this]() -> bool 
+					{
+						return !WorkList.empty() || Quit;
+					});
 
 			{
 				EXITSCOPE({
