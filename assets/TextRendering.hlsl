@@ -122,7 +122,7 @@ Texture2D Text : register(t0);
 
 float4 PTextMain(TextVertex V) : SV_TARGET
 {
-	float4 Color = Text.Sample(MeshTextureSampler, V.UV) * V.Color;
+	float4 Color = Text.Sample(MeshTextureSampler, V.UV).a * V.Color;
 
 	if(length(Color.xyz) < .5)
 		Color.w = 0.0f;

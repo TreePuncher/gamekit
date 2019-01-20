@@ -26,13 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef GRAPHICSTEST_INCLUDED
 #define GRAPHICSTEST_INCLUDED
 
-#include "..\coreutilities\GameFramework.h"
+#include "../coreutilities/GameFramework.h"
+#include "../physicsUtilities/physicsUtilities.h"
 
 const size_t lookupTableSize	= 128;
 
 enum TestEvents
 {
-	ReloadShaders_1,
+	ReloadShaders_1 = 20,
 	Forward,
 	Backward,
 	Left,
@@ -219,11 +220,11 @@ void DEBUG_DrawQuadTree(
 		{1, 0, 0, 1}
 	};
 
-	const auto area		= scene.SceneManagement.GetArea();
-	const auto areaLL	= (area.y <  area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
-	const auto areaUR	= (area.y >= area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
-	const auto areaSpan = (areaUR - areaLL);
-	int itr = 0;
+	const auto	area		= scene.SceneManagement.GetArea();
+	const auto	areaLL		= (area.y <  area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
+	const auto	areaUR		= (area.y >= area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
+	const auto	areaSpan	= (areaUR - areaLL);
+	int			itr			= 0;
 
 	auto drawNode = [&](auto& self, const QuadTreeNode& Node, const int depth) -> void
 	{
@@ -268,8 +269,9 @@ void DEBUG_DrawQuadTree(
 
 
 using TerrainTileHandle = FlexKit::Handle_t<16, GetTypeGUID(TerrainTileHandle)>;
-const FlexKit::PSOHandle TERRAIN_COMPUTE_CULL_PSO	= PSOHandle(GetTypeGUID(TERRAIN_COMPUTE_CULL_PSO));
-const FlexKit::PSOHandle TERRAIN_RENDER_FOWARD_PSO	= PSOHandle(GetTypeGUID(TERRAIN_RENDER_FOWARD_PSO));
+const FlexKit::PSOHandle TERRAIN_COMPUTE_CULL_PSO				= PSOHandle(GetTypeGUID(TERRAIN_COMPUTE_CULL_PSO));
+const FlexKit::PSOHandle TERRAIN_RENDER_FOWARD_PSO				= PSOHandle(GetTypeGUID(TERRAIN_RENDER_FOWARD_PSO));
+const FlexKit::PSOHandle TERRAIN_RENDER_FOWARD_WIREFRAME_PSO	= PSOHandle(GetTypeGUID(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO));
 
 
 ID3D12PipelineState* CreateCullTerrainComputePSO(RenderSystem* renderSystem)
@@ -408,6 +410,71 @@ ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
 }
 
 
+ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem)
+{
+	auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",			"vs_5_0", "assets\\forwardRenderTerrain.hlsl");
+	auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",			"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
+
+
+	auto ShaderRegion2Quad				= LoadShader("RegionToQuadPatchDEBUG",	"RegionToQuadPatchDEBUG",	"hs_5_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
+	auto ShaderQuad2Tri_Debug			= LoadShader("QuadPatchToTrisDEBUG",	"QuadPatchToTrisDEBUG",		"ds_5_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
+	auto ShaderPaint_Wire				= LoadShader("PS_RenderTerrainDEBUG",	"PS_RenderTerrainDEBUG",	"ps_5_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
+
+
+	EXITSCOPE(
+		Release(forwardRenderTerrain_shader_VS);
+		Release(ShaderQuad2Tri_Debug);
+		Release(ShaderRegion2Quad);
+		Release(forwardRenderTerrain_shader_GS);
+		Release(ShaderPaint_Wire);
+		);
+
+	D3D12_INPUT_ELEMENT_DESC InputElements[] =
+	{
+		{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	48, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+	};
+
+
+	D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
+		Rast_Desc.FillMode	= D3D12_FILL_MODE_WIREFRAME;
+	}
+
+	D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); {
+		Depth_Desc.DepthEnable	= false;
+		Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
+	}
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+		PSO_Desc.pRootSignature                = renderSystem->Library.RS4CBVs_SO;
+		PSO_Desc.VS                            = forwardRenderTerrain_shader_VS;
+		PSO_Desc.DS                            = ShaderQuad2Tri_Debug;
+		PSO_Desc.HS                            = ShaderRegion2Quad;
+		//PSO_Desc.GS                            = forwardRenderTerrain_shader_GS;
+		PSO_Desc.PS							   = ShaderPaint_Wire;
+		PSO_Desc.RasterizerState			   = Rast_Desc;
+		PSO_Desc.SampleMask                    = UINT_MAX;
+		PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
+		PSO_Desc.NumRenderTargets              = 1;
+		PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		PSO_Desc.SampleDesc.Count              = 1;
+		PSO_Desc.SampleDesc.Quality            = 0;
+		PSO_Desc.RasterizerState               = Rast_Desc;
+		PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+		PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
+		PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements) / sizeof(InputElements[0]) };
+		PSO_Desc.DepthStencilState			   = Depth_Desc;
+	}
+
+	ID3D12PipelineState* PSO = nullptr;
+	auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+
+	return PSO;
+}
+
+
 struct TileMaps
 {
 	FlexKit::TextureHandle heightMap;
@@ -451,8 +518,14 @@ public:
 			{	&renderSystem->Library.RS4CBVs_SO,
 				CreateForwardRenderTerrainPSO });
 
+		renderSystem->RegisterPSOLoader(
+			TERRAIN_RENDER_FOWARD_WIREFRAME_PSO,
+			{ &renderSystem->Library.RS4CBVs_SO,
+				CreateForwardRenderTerrainWireFramePSO });
+
 		renderSystem->QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
 		renderSystem->QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);
+		renderSystem->QueuePSOLoad(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
 	}
 
 
@@ -482,17 +555,16 @@ public:
 			{
 				for (size_t X = 0; X < WH[1]; X++)
 				{
-					uint2 Cord = uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
+					uint2 in_Cord	= uint2{ min(X, WH[0] - 1) * 2, min(Y, WH[1] - 1) * 2 };
+					uint2 out_Cord	= uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
 
 					auto Sample = 
-						View[Cord + uint2{0, 0}] +
-						View[Cord + uint2{0, 1}] +
-						View[Cord + uint2{1, 0}] +
-						View[Cord + uint2{1, 1}];
+						View[in_Cord + uint2{0, 0}]/ 4 +
+						View[in_Cord + uint2{0, 1}]/ 4 +
+						View[in_Cord + uint2{1, 0}]/ 4 +
+						View[in_Cord + uint2{1, 1}]/ 4;
 
-					Sample = Sample / 4;
-
-					MipView[Cord] = Sample;
+					MipView[out_Cord] = Sample;
 				}
 			}
 
@@ -505,7 +577,8 @@ public:
 		Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
 		Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
 
-		auto textureHandle	= MoveTextureBufferToVRAM(&Textures.front(), RS, allocator);
+		auto textureHandle	= MoveTextureBuffersToVRAM(Textures.begin(), Textures.size(), RS, allocator);
+		//auto textureHandle	= MoveTextureBufferToVRAM(&Textures[0], RS, allocator);
 		auto tileMaps		= tileTextures.push_back(TileMaps{textureHandle, HeightMap});
 		tiles.push_back(Tile{ tileID, tileMaps });
 
@@ -542,10 +615,16 @@ public:
 	Vector<Tile>		tiles;
 	Vector<TileMaps>	tileTextures;
 
-	int2		tileOffset;
-	size_t		tileEdgeSize;
-	size_t		tileHeight;
-	iAllocator* allocator;
+	enum TERRAINDEBUGRENDERMODE
+	{
+		DISABLED,
+		WIREFRAME,
+	}				DebugMode = DISABLED;
+
+	int2			tileOffset;
+	size_t			tileEdgeSize;
+	size_t			tileHeight;
+	iAllocator*		allocator;
 };
 
 
@@ -565,12 +644,13 @@ struct ViewableRegion
 
 struct TerrainConstantBufferLayout
 {
-	float4	 Padding;
-	float4	 Albedo;   // + roughness
-	float4	 Specular; // + metal factor
-	float2	 RegionDimensions;
-	Frustum	 Frustum;
-	int      PassCount;
+	float4		Padding;
+	float4		Albedo;   // + roughness
+	float4		Specular; // + metal factor
+	float2		RegionDimensions;
+	Frustum		Frustum;
+	uint32_t	PassCount;
+	uint32_t	debugMode;
 };
 
 
@@ -658,7 +738,7 @@ TerrainCullerData* const CullTerrain(
 				data.heap.SetSRV(renderSystem, 0, tileMap.heightMap);
 
 
-			data.splitCount				= 10;
+			data.splitCount				= 12;
 
 			TerrainConstantBufferLayout constants;
 			uint32_t					indirectArgsInitial[] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -672,6 +752,8 @@ TerrainCullerData* const CullTerrain(
 			constants.RegionDimensions = { 2048, 2048 };
 			constants.Frustum			= GetFrustum(camera);
 			constants.PassCount			= data.splitCount;
+			constants.debugMode			= terrainEngine.DebugMode;
+
 
 			data.constantBuffer			= constantBuffer;
 			data.terrainConstants		= LoadConstants			(constants,				constantBuffer, frameGraph.Resources);
@@ -813,8 +895,6 @@ TerrainCullerData* const CullTerrain(
 
 
 
-
-
 auto DrawTerrain_Forward(
 	TerrainCullerData* const	culledTerrain,
 	TerrainEngine&				terrainEngine,
@@ -855,12 +935,15 @@ auto DrawTerrain_Forward(
 		size_t					terrainConstants;
 		size_t					inputVertices;
 		size_t					indirectArgsInitial;
+
+		TerrainEngine::TERRAINDEBUGRENDERMODE debugMode;
 	};
 
 	auto& renderStage = frameGraph.AddNode<RenderTerrainForward>(
 		GetCRCGUID(TERRAINCOMPUTEVISABLETILES),
 		[&](FrameGraphNodeBuilder& builder, RenderTerrainForward& data)
 		{
+			data.debugMode				= terrainEngine.DebugMode;
 			data.renderTarget			= builder.WriteRenderTarget(renderTarget);
 			data.depthTarget			= builder.WriteDepthBuffer(depthTarget);
 
@@ -934,6 +1017,19 @@ auto DrawTerrain_Forward(
 				data.indirectLayout);
 
 
+			switch (data.debugMode)
+			{
+			case TerrainEngine::TERRAINDEBUGRENDERMODE::WIREFRAME:
+			{
+				auto PSO = resources.GetPipelineState(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
+
+				ctx->SetPipelineState(PSO);
+				ctx->ExecuteIndirect(
+					resources.ReadIndirectArgs(data.indirectArgs, ctx),
+					data.indirectLayout);
+			}	break;
+			}
+
 			ctx->ClearSOCounters(
 				{	resources.ClearStreamOut(intermediateSOs[0],	ctx),
 					resources.ClearStreamOut(intermediateSOs[1],	ctx),
@@ -953,35 +1049,49 @@ public:
 
 	GraphicsTest(GameFramework* IN_framework) :
 		FrameworkState(IN_framework),
-		render			{IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem},
-		depthBuffer		{IN_framework->core->RenderSystem.CreateDepthBuffer		({ 1920, 1080 },	true)},
-		vertexBuffer	{IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)},
-		textBuffer		{IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)},
-		constantBuffer	{IN_framework->core->RenderSystem.CreateConstantBuffer	(8096 * 2000,		false)},
-		eventMap		{IN_framework->core->GetBlockMemory()},
-		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()},
+		render			{ IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem			},
+		depthBuffer		{ IN_framework->core->RenderSystem.CreateDepthBuffer	({ 2560, 1440},		true)	},
+		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)	},
+		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)	},
+		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(8096 * 2000,		false)	},
+		eventMap		{ IN_framework->core->GetBlockMemory()												},
+		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()				},
 		scene			{	
 			IN_framework->core->RenderSystem, 
 			IN_framework->core->GetBlockMemory(),
-			IN_framework->core->GetTempMemory()}
+			IN_framework->core->GetTempMemory()	},
+		PScene			{ IN_framework->GetPhysx()->CreateScene()														},
+		floor			{ IN_framework->GetPhysx()->CreateStaticBoxCollider		(PScene, {500, 10, 500}, {0, -10, 0})	},
+		orbitCamera		{ CreateCamera(pi / 3, 16.0f/9.0f), 100, {0, 50, 50} }
 		//ltcLookup_1{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
 		//ltcLookup_2{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
+		AddResourceFile("testScene.gameres");
+		AddResourceFile("testHead.gameres");
+
+		obj = LoadMesh(IN_framework->GetRenderSystem(), 10000);
+
+		for (size_t itr = 0; itr < 256; itr++) {
+			box[itr] = CreateRBCube(&scene, obj, IN_framework->GetPhysx(), PScene, 1, {0, 1.1f  + 1.1f * itr * 2, 0});
+			box[itr].SetVisable(true);
+			box[itr].SetMeshScale(10);
+		}
+
 		auto& RS = IN_framework->core->RenderSystem;
-		RS.RegisterPSOLoader(DRAW_PSO,					{&RS.Library.RS4CBVs4SRVs, CreateDrawTriStatePSO});
-		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,			{&RS.Library.RS4CBVs4SRVs, CreateTexturedTriStatePSO});
-		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{&RS.Library.RS4CBVs4SRVs, CreateTexturedTriStateDEBUGPSO});
-		RS.RegisterPSOLoader(DRAW_LINE_PSO,				{&RS.Library.RS4CBVs4SRVs, CreateDrawLineStatePSO});
-		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{&RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO});
-		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{&RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO });
+		RS.RegisterPSOLoader(DRAW_PSO,					{ &RS.Library.RS4CBVs4SRVs, CreateDrawTriStatePSO			});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStatePSO		});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
+		RS.RegisterPSOLoader(DRAW_LINE_PSO,				{ &RS.Library.RS4CBVs4SRVs, CreateDrawLineStatePSO			});
+		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO				});
+		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO				});
 
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
 		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
 
-		AddResourceFile("testScene.gameres");
 
-		if (!FlexKit::LoadScene(IN_framework->core, &scene, 6001))
+		/*
+		if (!LoadScene(IN_framework->core, &scene, 6001))
 		{
 			std::cerr << "Failed to Load Scene!\n";
 			IN_framework->quit = true;
@@ -991,8 +1101,9 @@ public:
 		std::cout << "Lights in Scene: "	<< scene.PLights.size() << "\n";
 
 		scene.ListEntities();
+		*/
 
-		orbitCamera.TranslateWorld({0, 500, 0});
+		orbitCamera.TranslateWorld({0, 50, 50});
 
 		eventMap.MapKeyToEvent(KEYCODES::KC_R, ReloadShaders_1);
 		eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
@@ -1004,6 +1115,7 @@ public:
 		terrain.SetTileOffset	(int2{-TileSize/2, -TileSize/2});
 		terrain.SetTileSize		(TileSize); // will assume square tiles
 		terrain.AddTile			({ 0, 0 }, "assets/textures/tiles/tile_0_0.bmp", framework->GetRenderSystem(), framework->core->GetTempMemory());
+		//terrain.DebugMode	= TerrainEngine::WIREFRAME;
 
 		/*
 		float3x3*	ltc_Table		= (float3x3*)	IN_framework->Core->GetTempMemory()._aligned_malloc(sizeof(FlexKit::float3x3[lookupTableSize*lookupTableSize]));
@@ -1218,13 +1330,11 @@ public:
 
 				if (evt.mData1.mINT[0] == ReloadShaders_1)
 				{
-					//framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
-					//framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);
+					framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
+					framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);
+					framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
 				}
 			});
-
-
-
 
 		return true; 
 	}
@@ -1234,8 +1344,6 @@ public:
 
 
 private:
-	TerrainEngine						terrain;
-
 	FlexKit::InputMap					eventMap;
 
 	FlexKit::TextureHandle				ltcLookup_1;
@@ -1248,8 +1356,13 @@ private:
 	FlexKit::VertexBufferHandle			vertexBuffer;
 	FlexKit::VertexBufferHandle			textBuffer;
 	FlexKit::ConstantBufferHandle		constantBuffer;
+	FlexKit::TriMeshHandle				obj;
+
+	TerrainEngine						terrain;
+
+	PhysicsSceneHandle					PScene;
+	StaticColliderHandle				floor;
+	RigidBodyDrawableBehavior			box[256];
 };
-
-
 /************************************************************************************************/
 #endif

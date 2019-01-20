@@ -52,6 +52,8 @@ namespace FlexKit
 		LowerRight
 	};
 
+	const float MinNodeSize = 1;
+
 	struct QuadTreeNode
 	{
 		void Clear(iAllocator* memory)
@@ -300,34 +302,44 @@ namespace FlexKit
 		template<typename ... discard>
 		static void SetDirty(TY* drawable) 
 		{
-			std::cout << "SceneNodeMoved!\n";
-			drawable->ParentScene->SetDirty(drawable->Entity);
+			drawable->parentScene->SetDirty(drawable->entity);
 		}
 	};
 
-	class DrawableBehavior : public SceneNodeBehavior<SceneNodeBehaviorOverrides<DrawableBehavior>>
+	class DrawableBehavior : 
+		public SceneNodeBehavior<SceneNodeBehaviorOverrides<DrawableBehavior>>
 	{
 	public:
-		DrawableBehavior(GraphicScene* IN_ParentScene = nullptr, SceneEntityHandle Handle = InvalidHandle_t) :
-			SceneNodeBehavior	{ InvalidHandle_t },
-			ParentScene			{IN_ParentScene},
-			Entity				{Handle}	{}
+		DrawableBehavior(GraphicScene* IN_ParentScene = nullptr, SceneEntityHandle handle = InvalidHandle_t, NodeHandle node = InvalidHandle_t) :
+			SceneNodeBehavior	{ node						},
+			parentScene			{ IN_ParentScene			},
+			entity				{ handle					}	{}
 
 
 		void		SetNode(NodeHandle Handle) 
 		{
-			ParentScene->SetNode(Entity, Handle);
+			parentScene->SetNode(entity, Handle);
 		}
 
+
+		void		SetVisable(bool visable)
+		{
+			parentScene->SetVisability(entity, visable);
+		}
 
 		NodeHandle	GetNode() 
 		{ 
-			return ParentScene->GetNode(Entity); 
+			return parentScene->GetNode(entity); 
+		}
+
+		bool		GetVisable()
+		{
+			parentScene->GetVisability(entity);
 		}
 
 
-		GraphicScene*		ParentScene;
-		SceneEntityHandle	Entity;
+		GraphicScene*		parentScene;
+		SceneEntityHandle	entity;
 	};
 
 

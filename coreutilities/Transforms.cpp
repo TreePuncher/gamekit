@@ -286,6 +286,9 @@ namespace FlexKit
 
 	NodeHandle GetParentNode(NodeHandle node )
 	{
+		if (node == FlexKit::InvalidHandle_t)
+			return FlexKit::InvalidHandle_t;
+
 		return SceneNodeTable.Nodes[SceneNodeTable.Indexes[node.INDEX]].Parent;
 	}
 

@@ -70,6 +70,7 @@ namespace FlexKit
 		{
 			LoadInProgress,
 			LoadQueued,
+			ReLoadQueued,
 			Loaded,
 			Failed,
 			Stale,
@@ -81,7 +82,8 @@ namespace FlexKit
 		{
 			auto currentState = state.load(std::memory_order_acquire);
 
-			if (currentState == PipelineStateObject::PSO_States::Unloaded)
+			if (currentState == PipelineStateObject::PSO_States::Unloaded || 
+				currentState == PipelineStateObject::PSO_States::Loaded)
 			{
 				if (state.compare_exchange_strong(currentState, newState, std::memory_order_release))
 				{

@@ -32,124 +32,137 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace physx;
 
+
 /************************************************************************************************/
 
+
 namespace FlexKit
-{
-	/************************************************************************************************/
+{	/************************************************************************************************/
 
 
-	FLEXKITINTERNAL physx::PxTriangleMesh*	GetCollider(PhysicsSystem* PS, ColliderHandle CHandle);
-
-
-	/************************************************************************************************/
-
-
-	void InitiatePhysics(PhysicsSystem* Physics, uint32_t CoreCount, iAllocator* allocator)
+	PhysicsSystem::PhysicsSystem(iAllocator* allocator) :
+		scenes{ allocator },
+		memory{ allocator }
 	{
 #ifdef _DEBUG
 		bool recordMemoryAllocations = true;
 #else
 		bool recordMemoryAllocations = false;
 #endif
-		Physics->Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, gDefaultAllocatorCallback, gDefaultErrorCallback);
-		if (!Physics->Foundation)
+
+		foundation = PxCreateFoundation(PX_PHYSICS_VERSION, gDefaultAllocatorCallback, gDefaultErrorCallback);
+		if (!foundation)
 			FK_ASSERT(0); // Failed to init
 
+		physxAPI = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, physx::PxTolerancesScale(), recordMemoryAllocations);
 
 #if USING(PHYSX_PVD)
-		if (Physics->RemoteDebuggerEnabled)
+		if (remoteDebuggerEnabled || true)
 		{
-			physx::PxPvd*				pvd			= physx::PxCreatePvd(*Physics->Foundation);
+			physx::PxPvd*				pvd			= physx::PxCreatePvd(*foundation);
 			physx::PxPvdTransport*		transport	= physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
 
-			pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eALL);
+			bool res = pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eDEBUG);
 
-			Physics->VisualDebugger				= pvd;
-			Physics->VisualDebuggerConnection	= transport;
+			if (!res) {
+				pvd->release();
+				transport->release();
+				FK_LOG_WARNING("FAILED TO CONNECT TO PHYSX REMOVE DEBUGGER");
+			}
+
+			visualDebugger				= pvd;
+			visualDebuggerConnection	= transport;
 		}
 		else
 		{
 		}
 #endif
 
-		Physics->Physx = PxCreatePhysics(PX_PHYSICS_VERSION, *Physics->Foundation, physx::PxTolerancesScale(), recordMemoryAllocations);
-
-		if (!Physics->Physx)
+		if (!physxAPI)
 			FK_ASSERT(0); // Failed to init
-		if (!PxInitExtensions(*Physics->Physx, nullptr))
+		if (!PxInitExtensions(*physxAPI, nullptr))
 			FK_ASSERT(0);
 
 
 #ifdef USING(PHYSX_PVD)
-		Physics->RemoteDebuggerEnabled = true;
+		remoteDebuggerEnabled = visualDebugger != nullptr;
 #else
-		Physics->RemoteDebuggerEnabled = false;
+		remoteDebuggerEnabled = false;
 #endif
 
 
-
-		Physics->CPUDispatcher = physx::PxDefaultCpuDispatcherCreate(CoreCount);
+		CPUDispatcher = physx::PxDefaultCpuDispatcherCreate(4);
 
 		// Create Default Material
-		auto DefaultMaterial = Physics->Physx->createMaterial(0.5f, 0.5f, .1f);
+		auto DefaultMaterial = physxAPI->createMaterial(0.5f, 0.5f, .1f);
 		if (!DefaultMaterial)
 			assert(0);
 
-		Physics->DefaultMaterial									= DefaultMaterial;
-
-		Physics->Colliders.FreeSlots.Allocator						= allocator;
-		Physics->Colliders.TriMeshColliders.Allocator				= allocator;
-		Physics->Colliders.TriMeshColliderTable.FreeList.Allocator	= allocator;
-		Physics->Colliders.TriMeshColliderTable.Indexes.Allocator	= allocator;
+		defaultMaterial	= DefaultMaterial;
+		T				= 0.0;
+		updateColliders	= false;
 	}
 
 
 	/************************************************************************************************/
 
-	/*
-	size_t CreateCubeActor(physx::PxMaterial* material, PScene* scene, float l, float3 initialP, FlexKit::Quaternion initialQ, float3 InitialV)
+
+	PhysicsSceneHandle PhysicsSystem::CreateScene()
 	{
-		physx::PxVec3 pV;
-		pV.x = initialP.x;
-		pV.y = initialP.y;
-		pV.z = initialP.z;
+		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
+		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
+		//desc.gravity		= physx::PxVec3(0.0f, 0.0f, 0.0f);
+		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
+		desc.cpuDispatcher	= CPUDispatcher;
 
-		physx::PxQuat pQ;
-		pQ.x = initialQ.x;
-		pQ.y = initialQ.y;
-		pQ.z = initialQ.z;
-		pQ.w = initialQ.w;
+		//if (!desc.gpuDispatcher && game->Physics->GpuContextManger)
+		//{
+		//	desc.gpuDispatcher = game->Physics->GpuContextManger->getGpuDispatcher();
+		//}
 
-		physx::PxRigidDynamic* Cube = scene->Scene->getPhysics().createRigidDynamic(physx::PxTransform(pV, pQ));
-		physx::PxShape* Shape = Cube->createShape(physx::PxBoxGeometry(l, l, l), *material);
-		Cube->setLinearVelocity({ InitialV.x, InitialV.y, InitialV.z }, true);
-		Cube->setOwnerClient(scene->CID);
+		auto pScene	= physxAPI->createScene(desc);
+		auto Idx	= scenes.emplace_back(pScene, this, memory);
 
-		//scene->Colliders.push_back({Cube, NodeHandle() });
-		//scene->Scene->addActor(*Cube);
-
-		return -1;//scene->Colliders.size() - 1;
+		return PhysicsSceneHandle(Idx);
 	}
-	*/
+
 
 	/************************************************************************************************/
 
-	/*
-	size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene, SceneNodes* SN, NodeHandle Nodes)
+
+	StaticColliderHandle PhysicsSystem::CreateStaticBoxCollider(PhysicsSceneHandle sceneHandle, float3 xyz, float3 pos, Quaternion q)
 	{
-		auto Static = physx::PxCreateStatic(scene->Scene->getPhysics(), { 0, -0.5f, 0 }, PxBoxGeometry(50000.0f, 1.0f, 50000.0f), *material);
-
-		//scene->Scene->addActor(*Static);
-		//scene->Colliders.push_back({ Static, Nodes });
-
-		return -1;//scene->Colliders.size() - 1;
+		StaticColliderEntityHandle collider = scenes[sceneHandle.INDEX].CreateStaticBoxCollider(xyz, pos, q);
+		return { sceneHandle,  collider };
 	}
-	*/
+
 
 	/************************************************************************************************/
 
 
+	rbColliderHandle PhysicsSystem::CreateRigidBodyBoxCollider(PhysicsSceneHandle sceneHandle, float3 xyz, float3 pos, Quaternion q, NodeHandle node)
+	{
+		rbColliderEntityHandle colliderHandle = scenes[sceneHandle.INDEX].CreateRigidBodyBoxCollider(xyz, pos, q, node);
+
+		return { sceneHandle, colliderHandle };
+	}
+
+	/************************************************************************************************/
+
+
+	void PhysicsSystem::Simulate(double dt)
+	{
+		const double StepSize = 1 / 60.0f;
+		T += dt;
+
+		for (auto& scene : scenes)
+			scene.Update(dt);
+	}
+
+
+	/************************************************************************************************/
+
+/*
 	physx::PxFilterFlags Test(
 		physx::PxFilterObjectAttributes attributes0,
 		physx::PxFilterData filterData0,
@@ -164,6 +177,7 @@ namespace FlexKit
 		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
 		return physx::PxFilterFlag::eDEFAULT;
 	}
+*/
 
 	/************************************************************************************************/
 
@@ -189,6 +203,8 @@ namespace FlexKit
 		return NewHandle;
 	}
 
+
+	/************************************************************************************************/
 
 
 	void ReleaseAllColliders(TriMeshColliderList* ColliderList)
@@ -222,12 +238,13 @@ namespace FlexKit
 
 #pragma warning(disable : 4309)
 
+	/*
 	ColliderHandle LoadTriMeshCollider(FlexKit::PhysicsSystem* PS, GUID_t Guid)
 	{
 		if (isResourceAvailable(Guid))
 		{
-			auto RHandle = LoadGameResource(Guid);
-			auto Resource = (ColliderResourceBlob*)GetResource(RHandle);
+			auto RHandle		= LoadGameResource(Guid);
+			auto Resource		= (ColliderResourceBlob*)GetResource(RHandle);
 			size_t ResourceSize = Resource->ResourceSize - sizeof(ColliderResourceBlob);
 
 			PxDefaultMemoryInputData readBuffer(Resource->Buffer, ResourceSize);
@@ -240,6 +257,7 @@ namespace FlexKit
 
 		return static_cast<ColliderHandle>(INVALIDHANDLE);
 	}
+	*/
 
 
 	physx::PxHeightField*	LoadHeightFieldCollider(PhysicsSystem* PS, GUID_t Guid)
@@ -250,11 +268,12 @@ namespace FlexKit
 			auto Resource		= (ColliderResourceBlob*)GetResource(RHandle);
 			size_t ResourceSize = Resource->ResourceSize - sizeof(ColliderResourceBlob);
 
-			PxDefaultMemoryInputData readBuffer(Resource->Buffer, ResourceSize);
-			auto HeightField = PS->Physx->createHeightField(readBuffer);
+			//PxDefaultMemoryInputData readBuffer(Resource->Buffer, ResourceSize);
+			//auto HeightField	= PS->physxAPI->createHeightField(readBuffer);
 
 			FreeResource(RHandle);
-			return HeightField;
+			return nullptr;
+			//return HeightField;
 			//return AddCollider(&PS->Colliders, { Mesh, 1 });
 		}
 		return nullptr;
@@ -264,39 +283,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	physx::PxTriangleMesh*	GetCollider(PhysicsSystem* PS, ColliderHandle CHandle)
-	{
-		return PS->Colliders.TriMeshColliders[PS->Colliders.TriMeshColliderTable[CHandle]].Mesh;
-	}
-
-
-	/************************************************************************************************/
-
-	
-	void AddRef(PhysicsSystem* PS, ColliderHandle CHandle)
-	{
-		PS->Colliders.TriMeshColliders[PS->Colliders.TriMeshColliderTable[CHandle]].RefCount++;
-	}
-	
-	
-	/************************************************************************************************/
-
-
-	void Release(PhysicsSystem* PS, ColliderHandle CHandle)
-	{
-		size_t RefCount = --PS->Colliders.TriMeshColliders[PS->Colliders.TriMeshColliderTable[CHandle]].RefCount;
-		if (RefCount == 0)
-		{
-			size_t Index = PS->Colliders.TriMeshColliderTable[CHandle];
-			PS->Colliders.FreeSlots.push_back( PS->Colliders.TriMeshColliderTable[CHandle]);
-			PS->Colliders.TriMeshColliderTable.RemoveHandle(CHandle);
-			PS->Colliders.TriMeshColliders[Index].Mesh->release();
-		}
-	}
-
-
-	/************************************************************************************************/
 
 	/*
 	size_t CreateStaticActor(PhysicsSystem* PS, FlexKit::PScene* Scene, ColliderHandle CHandle, float3 POS, Quaternion Q)
@@ -340,19 +326,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ReleasePhysics(PhysicsSystem* Physics)
+	PhysicsSystem::~PhysicsSystem()
 	{
-		if (!Physics)
-			return;
+		for (auto& scene : scenes)
+			scene.Release();
 
-		Physics->CPUDispatcher->release();// Physx
-		Physics->DefaultMaterial->release();
+		CPUDispatcher->release();// Physx
+		defaultMaterial->release();
 		PxCloseExtensions();
 
-		if (Physics->Physx)					Physics->Physx->release();
-		if (Physics->Foundation)			Physics->Foundation->release();
-
-		Physics = nullptr;
+		if (physxAPI)	physxAPI->release();
+		if (foundation)	foundation->release();
 	}
 
 
@@ -516,145 +500,144 @@ namespace FlexKit
 
 
 	/************************************************************************************************\/
+	*/
 
 
-	void PhysicsComponentSystem::UpdateSystem(double dT)
+	void PhysicsScene::Update(double dT)
 	{
-		if (!Scene)
-			return;
-
-		const double StepSize = 1 / 60.0f;
-		T += dT;
-
-		CharacterControllers.UpdateSystem(dT);
-
-		while (T > StepSize)
+		do
 		{
-			T -= StepSize;
-			if (!Scene->checkResults() && !UpdateColliders)
+			if (T > stepSize && !updateColliders)
 			{
-				if (PreUpdate)	PreUpdate(User);
-				Scene->simulate(StepSize);
-				UpdateColliders	= true;
-				if (PostUpdate)	PostUpdate(User);
+				scene->simulate(stepSize);
+				updateColliders = true;
+				T -= stepSize;
 			}
-		}
 
-		if (UpdateColliders) 
-		{
-			if (!Scene->checkResults())
-				return;
 
-			Scene->fetchResults();
-			Base.UpdateSystem();
-			UpdateColliders = false;
-		}
+			if (updateColliders && scene->checkResults())
+			{
+				updateColliders = false;
+
+				if (scene->fetchResults(true)) {
+					UpdateColliders();
+				}
+			}
+
+		} while ((T > stepSize));
+
+		T += dT;
 	}
 
 
-	/************************************************************************************************\/
+	/************************************************************************************************/
 
 
-	void PhysicsComponentSystem::UpdateSystem_PreDraw(double dT)
+	void PhysicsScene::UpdateColliders()
 	{
+		staticColliders.UpdateColliders();
+		rbColliders.UpdateColliders();
 	}
 
 
-	void PhysicsComponentSystem::DebugDraw(FlexKit::FrameGraph* FGraph, iAllocator* TempMemory)
+	/************************************************************************************************/
+
+
+	StaticColliderEntityHandle	PhysicsScene::CreateStaticBoxCollider(float3 dimensions, float3 initialPosition, Quaternion initialQ)
 	{
-		CharacterControllers.DebugDraw(FGraph, TempMemory);
-		//CubeColliders.DrawDebug(FR);
-		//StaticBoxColliders.DrawDebug(FR);
+		physx::PxTransform pxInitialPose =
+			physx::PxTransform{ PxMat44(PxIdentity) };
+		
+		pxInitialPose.q = physx::PxQuat{ initialQ.x, initialQ.y, initialQ.z, initialQ.w};
+		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
+
+		auto rigidStaticActor	= system->physxAPI->createRigidStatic(pxInitialPose);
+		
+		PxShape* boxShape = PxRigidActorExt::createExclusiveShape(	*rigidStaticActor,
+																	 physx::PxBoxGeometry(dimensions.x, dimensions.y, dimensions.z),
+																	*system->defaultMaterial );
+
+		size_t handleIdx		= staticColliders.colliders.push_back({	GetZeroedNode(),
+																		rigidStaticActor,
+																		boxShape});
+
+		scene->addActor(*rigidStaticActor);
+
+		return StaticColliderEntityHandle{ static_cast<unsigned int>(handleIdx) };
 	}
 
 
-	/************************************************************************************************\/
+	/************************************************************************************************/
 
 
-	void PhysicsComponentSystem::Release()
+	rbColliderEntityHandle PhysicsScene::CreateRigidBodyBoxCollider(float3 dimensions, float3 initialPosition, Quaternion initialQ, NodeHandle node)
 	{
-		CubeColliders.Release();
-		StaticBoxColliders.Release();
-		Base.Release();
+		SetOrientation	(node, initialQ);
+		SetPositionW	(node, initialPosition);
 
-		Scene->fetchResults(true);
-		ControllerManager->purgeControllers();
-		ControllerManager->release();
-		Scene->release();
+		physx::PxTransform pxInitialPose = physx::PxTransform{ PxMat44(PxIdentity) };
+
+		pxInitialPose.q = physx::PxQuat{ initialQ.x, initialQ.y, initialQ.z, initialQ.w };
+		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
+
+		PxRigidDynamic* rigidBodyActor = system->physxAPI->createRigidDynamic(pxInitialPose);
+
+		PxShape* shape = PxRigidActorExt::createExclusiveShape(	*rigidBodyActor,
+																physx::PxBoxGeometry(dimensions.x, dimensions.y, dimensions.z),
+																*system->defaultMaterial);
+
+		size_t handleIdx = rbColliders.colliders.push_back({	node,
+																rigidBodyActor,
+																shape });
+
+		rigidBodyActor->setMass(10.0f);
+		scene->addActor(*rigidBodyActor);
+
+		return rbColliderEntityHandle{ static_cast<unsigned int>(handleIdx) };
 	}
 
 
-	/************************************************************************************************\/
+	/************************************************************************************************/
 
 
-	StaticBoxColliderArgs	PhysicsComponentSystem::CreateStaticBoxCollider(float3 XYZ, float3 Pos)
+	void PhysicsScene::SetPosition(rbColliderEntityHandle collider, float3 xyz)
 	{
-		auto Static = physx::PxCreateStatic(
-						*System->Physx, 
-						{ Pos.x, Pos.y, Pos.z },
-						physx::PxBoxGeometry(XYZ.x, XYZ.y, XYZ.z), 
-						*System->DefaultMaterial);
+		auto& colliderIMPL	= rbColliders.colliders[collider.INDEX];
+		auto pose			= colliderIMPL.dynamicActor->getGlobalPose();
 
-		Scene->addActor(*Static);
-
-		auto BaseCollider	= Base.CreateCollider(Static, System->DefaultMaterial);
-		auto BoxCollider	= StaticBoxColliders.CreateStaticBoxCollider(BaseCollider, Static);
-
-		SetPositionW(*Nodes, Base.GetNode(BaseCollider), Pos);
-
-		StaticBoxColliderArgs Out;
-		Out.Base				= &Base;
-		Out.System				= &StaticBoxColliders;
-		Out.ColliderHandle		= BaseCollider;
-		Out.BoxColliderHandle	= BoxCollider;
-
-		return Out;
+		pose.p = {xyz.x, xyz.y, xyz.z};
+		colliderIMPL.dynamicActor->setGlobalPose(pose);
 	}
 
 
-	/************************************************************************************************\/
+	/************************************************************************************************/
 
 
-	CubeColliderArgs PhysicsComponentSystem::CreateCubeComponent(float3 InitialP, float3 InitialV, float l, Quaternion Q)
+	RigidBodyDrawableBehavior CreateRBCube(
+		GraphicScene*		gScene,
+		TriMeshHandle		mesh,
+		PhysicsSystem*		physicsSystem,
+		PhysicsSceneHandle	pScene,
+		float				hR,
+		float3				pos)
 	{
-		physx::PxVec3 pV;
-		pV.x = InitialP.x;
-		pV.y = InitialP.y;
-		pV.z = InitialP.z;
+		NodeHandle			node		= GetZeroedNode();
+		SceneEntityHandle	entity		= gScene->CreateDrawable(mesh, node);
+		rbColliderHandle	collider	= 
+			physicsSystem->CreateRigidBodyBoxCollider(
+													pScene, 
+													{ hR, hR, hR },
+													pos,
+													{0, 0, 0, 1},
+													node);
 
-		physx::PxQuat pQ;
-		pQ.x = Q.x;
-		pQ.y = Q.y;
-		pQ.z = Q.z;
-		pQ.w = Q.w;
-
-		physx::PxRigidDynamic*	Cube	= Scene->getPhysics().createRigidDynamic(physx::PxTransform(pV, pQ));
-		physx::PxShape*			Shape	= Cube->createShape(physx::PxBoxGeometry(l, l, l), *System->DefaultMaterial);
-		Cube->setLinearVelocity({ InitialV.x, InitialV.y, InitialV.z }, true);
-		Cube->setOwnerClient(CID);
-
-		Scene->addActor(*Cube);
-
-		auto BaseCollider	= Base.CreateCollider(Cube, System->DefaultMaterial);
-		auto CubeCollider	= CubeColliders.CreateCubeCollider(BaseCollider, Cube, Shape);
-
-		auto Node = Base.GetNode(BaseCollider);
-		SetPositionW	(*Nodes, Node, InitialP);
-		SetOrientation	(*Nodes, Node, Q);
-
-		CubeColliderArgs Out;
-		Out.Base              = &Base;
-		Out.System            = &CubeColliders;
-		Out.ColliderHandle    = BaseCollider;
-		Out.CubeHandle		  = CubeCollider;
-
-		return Out;
+		return { physicsSystem, collider,  gScene, entity, node };
 	}
 
 
-	/************************************************************************************************\/
+	/************************************************************************************************/
 
-
+	/*
 	CapsuleCharacterArgs PhysicsComponentSystem::CreateCharacterController(float3 InitialP, float R, float H, Quaternion Q )
 	{
 		auto CapsuleCharacter = CharacterControllers.CreateCapsuleController(System, Scene, System->DefaultMaterial, R, H, InitialP, Q);
@@ -665,7 +648,7 @@ namespace FlexKit
 
 		return Args;
 	}
-
+	*/
 
 	/************************************************************************************************/
 }// Namespace FlexKit

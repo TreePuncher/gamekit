@@ -196,6 +196,7 @@ float3 CalculateNormal(float3 V0, float3 V1, float3 V2)
 	return normal;
 }
 
+
 float3 calculateCornerNormal(float UVSpan, float regionSpan, Corner Point)
 {
 	// Center point
@@ -249,11 +250,11 @@ float3 calculateCornerNormal(float UVSpan, float regionSpan, Corner Point)
 
 float GetRegionSpan(Region_CP CP)
 {
-	float4 TL = mul(Proj, mul(View, float4(GetTopLeftPoint(CP).pos	* float3(1, 1, 1), 1)));
-	float4 TR = mul(Proj, mul(View, float4(GetTopRightPoint(CP).pos * float3(1, 1, 1), 1)));
+	float4 TL = mul(Proj, mul(View, float4(GetTopLeftPoint(CP).pos,			1)));
+	float4 TR = mul(Proj, mul(View, float4(GetTopRightPoint(CP).pos,		1)));
 
-	float4 BL = mul(Proj, mul(View, float4(GetBottomLeftPoint(CP).pos  * float3(1, 1, 1), 1)));
-	float4 BR = mul(Proj, mul(View, float4(GetBottomRightPoint(CP).pos * float3(1, 1, 1), 1)));
+	float4 BL = mul(Proj, mul(View, float4(GetBottomLeftPoint(CP).pos,		1)));
+	float4 BR = mul(Proj, mul(View, float4(GetBottomRightPoint(CP).pos,		1)));
 
 	float3 TLSS = (TL.xyz / TL.w);
 	float3 BRSS = (BR.xyz / BR.w);

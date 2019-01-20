@@ -129,12 +129,34 @@ PS_IN V2Main( VIN2 In )
 	float3x3 rot = WT;
 	PS_IN Out;
 	Out.WPOS 	= mul(WT, In.POS);
-	//Out.POS 	= mul(PV, mul(WT, In.POS));
 	Out.POS 	= mul(mul(PV, WT), In.POS);
 
 	Out.N   	= normalize(mul(rot, In.N.xyz));
 	Out.UV		= In.UV;
     Out.Depth   = Out.POS.z / Out.POS.w;
+
+	return Out;
+}
+
+
+/************************************************************************************************/
+
+
+struct VIN10
+{
+	float4 POS 		: POSITION;
+	float4 Color	: COLOR;
+	float2 UV		: TEXCOORD;
+};
+
+
+RectPoint_PS V10Main( VIN10 In )
+{
+	RectPoint_PS Out;
+	Out.POS 	= mul(mul(PV, WT), In.POS);
+
+	Out.UV		= In.UV;
+	Out.Color	= In.Color;
 
 	return Out;
 }

@@ -313,7 +313,6 @@ namespace FlexKit
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
 		{
 			TriMeshResourceBlob* Blob = (TriMeshResourceBlob*)R;
-			//TriMesh* Out              = &Memory->allocate_aligned<TriMesh>();
 			size_t BufferCount        = 0;
 			size_t Index              = 0; 
 

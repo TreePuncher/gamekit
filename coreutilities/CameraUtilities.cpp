@@ -74,7 +74,7 @@ namespace FlexKit
 		if (movementVector.magnitudesquared() > 0.0001f)
 		{
 			movementVector = movementVector.normal();
-			TranslateWorld(movementVector * dt * 1000);
+			TranslateWorld(movementVector * dt * moveRate);
 		}
 	}
 
@@ -94,6 +94,8 @@ namespace FlexKit
 	void OrbitCameraBehavior::TranslateWorld(float3 xyz)
 	{
 		FlexKit::TranslateWorld(yawNode, xyz);
+
+		_CameraDirty();
 	}
 
 
@@ -110,6 +112,8 @@ namespace FlexKit
 
 		if (xyz[2] != 0.0f)
 			FlexKit::Roll(pitchNode, xyz[2]);
+
+		_CameraDirty();
 	}
 
 

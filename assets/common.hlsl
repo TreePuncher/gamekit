@@ -37,10 +37,6 @@ cbuffer CameraConstants : register( b0 )
 	float4   CameraPOS;
 	float  	 MinZ;
 	float  	 MaxZ;
-	float 	 PointLightCount;
-	float 	 SpotLightCount;
-    float    WindowWidth;
-    float    WindowHeight;
 
 	float4  WSTopLeft;
 	float4  WSTopRight;
@@ -70,12 +66,12 @@ struct PS_IN2
 	float3 T 		: TEXCOORD2;
 	float3 B 		: TEXCOORD3;
 	float4 POS 	 	: SV_POSITION;
-	float Depth     : TEXCOORD3;
+	float Depth     : TEXCOORD4;
 };
 
 struct RectPoint_PS
 {
-	float4 Color	: Color;
+	float4 Color	: COLOR;
 	float2 UV		: TEXCOORD;
 	float4 POS 		: SV_POSITION;
 };
@@ -148,15 +144,15 @@ float2 PixelCordToCameraCord(int2 UV, float2 WH)
 }
 
 
-float2 GetTextureSpaceCord(float2 UV)
-{
-    return UV / float2(WindowWidth, WindowHeight);
-}
+//float2 GetTextureSpaceCord(float2 UV)
+//{
+ //   return UV / float2(WindowWidth, WindowHeight);
+//}
 
-float2 ViewToTextureSpace(float2 CoordDS)
-{
-    return float2((CoordDS.x + 1) / 2, (1 - CoordDS.y) / 2) * float2(WindowWidth, WindowHeight);
-}
+//float2 ViewToTextureSpace(float2 CoordDS)
+//{
+//   return float2((CoordDS.x + 1) / 2, (1 - CoordDS.y) / 2) * float2(WindowWidth, WindowHeight);
+//}
 
 
 float NormalizeAndRescaleZ(float Z_in, float Scale)

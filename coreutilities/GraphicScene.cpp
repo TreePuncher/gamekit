@@ -659,7 +659,7 @@ namespace FlexKit
 	void QuadTree::CreateNode(SceneEntityHandle entityHandle, GraphicScene& parentScene)
 	{
 		allEntities.push_back(entityHandle);
-		root.AddChild(entityHandle, parentScene, allocator);
+		//root.AddChild(entityHandle, parentScene, allocator);
 		//UpdateBounds(parentScene);
 	}
 

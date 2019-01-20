@@ -212,7 +212,7 @@ namespace FlexKit
 #ifdef _DEBUG
 		drawDebugStats			= true;
 #else
-		drawDebugStats			= false;
+		drawDebugStats			= true;
 #endif
 
 		//framework.ActivePhysicsScene		= nullptr;
@@ -288,6 +288,7 @@ namespace FlexKit
 
 	void GameFramework::UpdateFixed(double dt)
 	{
+		core->Physics.Simulate(dt);
 		UpdateMouseInput(&MouseState, &core->Window);
 	}
 
@@ -450,7 +451,7 @@ namespace FlexKit
 
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, FrameGraph& graph)
 	{
-		uint32_t VRamUsage	= core->RenderSystem._GetVidMemUsage() / MEGABYTE;
+		uint32_t VRamUsage	= 0;//core->RenderSystem._GetVidMemUsage() / MEGABYTE;
 		char* TempBuffer	= (char*)core->GetTempMemory().malloc(512);
 		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 

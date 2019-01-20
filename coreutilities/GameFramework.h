@@ -32,8 +32,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 
 #include "..\coreutilities\EngineCore.h"
-#include "..\coreutilities\Logging.h"
+#include "..\coreutilities\Components.h"
 #include "..\coreutilities\GraphicScene.h"
+#include "..\coreutilities\GraphicsComponents.h"
+#include "..\coreutilities\Logging.h"
 #include "..\coreutilities\Resources.h"
 
 #include "..\graphicsutilities\FrameGraph.h"
@@ -89,7 +91,8 @@ namespace FlexKit
 
 		void PopState();
 
-		RenderSystem*	GetRenderSystem() { return core->RenderSystem; }
+		RenderSystem*	GetRenderSystem()	{ return core->RenderSystem; }
+		PhysicsSystem*	GetPhysx()			{ return core->Physics; }
 
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
 		TY_INITIALSTATE& PushState(TY_ARGS&& ... ARGS)

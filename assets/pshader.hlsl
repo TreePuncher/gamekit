@@ -168,8 +168,22 @@ float4 DrawRect(RectPoint_PS IN) : SV_TARGET
 
 float4 DrawRectTextured(RectPoint_PS IN) : SV_TARGET
 {
-	float4 Sample = AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
+	float4 Sample = float4(0, 0, 0, 1);// AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
+	Sample += float4(0, 1, 1, 1);
 	return Sample * IN.Color;
+}
+
+
+/************************************************************************************************/
+
+
+
+float4 DrawRectTextured_DEBUGUV(RectPoint_PS IN) : SV_TARGET
+{
+	//float4 Sample = float4(0, 0, 0, 1);
+	float4 Sample = AlbedoTexture.Sample(DefaultSampler, float3(IN.UV.xy, 1));
+	//Sample += float4(0, 1, 1, 1);
+	return Sample;//  *float4(IN.UV.xy, 1, 1);
 }
 
 

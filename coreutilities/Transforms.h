@@ -197,67 +197,73 @@ namespace FlexKit
 	{
 	public:
 
-		SceneNodeBehavior(NodeHandle IN_Node = NodeHandle{(unsigned int)INVALIDHANDLE})
-		{
-			if (IN_Node == NodeHandle{ (unsigned int)INVALIDHANDLE })
-				Node = GetZeroedNode();
-			else
-				Node = IN_Node;
-		}
+		SceneNodeBehavior(NodeHandle IN_Node = InvalidHandle_t) : 
+			node{ IN_Node }{}
 
 		NodeHandle GetParentNode()
 		{
-			FlexKit::GetParentNode(Node);
+			FlexKit::GetParentNode(node);
 		}
 
 		void SetParentNode(NodeHandle Parent)
 		{
-			FlexKit::SetParentNode(Parent, Node);
+			FlexKit::SetParentNode(Parent, node);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 		void Yaw(float r)
 		{
-			FlexKit::Yaw(Node, r);
+			FlexKit::Yaw(node, r);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void Roll	(float r)
 		{
-			FlexKit::Roll(Node, r);
+			FlexKit::Roll(node, r);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void Pitch(float r)
 		{
-			FlexKit::Pitch(Node, r);
+			FlexKit::Pitch(node, r);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 		void Scale(float3 xyz)
 		{
-			FlexKit::Scale(Node, xyz);
+			FlexKit::Scale(node, xyz);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void TranslateLocal(float3 xyz)
 		{
-			FlexKit::TranslateLocal(Node, xyz);
+			FlexKit::TranslateLocal(node, xyz);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
 		void TranslateWorld(float3 xyz)
 		{
-			FlexKit::TranslateWorld(Node, xyz);
+			FlexKit::TranslateWorld(node, xyz);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
 
 
-		NodeHandle Node;
+		void ToggleScaling(bool scalable)
+		{
+			SetFlag(node, SceneNodes::SCALE);
+		}
+
+
+		float3	GetPosition() const
+		{
+			return FlexKit::GetPositionW(node);
+		}
+
+		NodeHandle node;
 	};
 
 }	/************************************************************************************************/

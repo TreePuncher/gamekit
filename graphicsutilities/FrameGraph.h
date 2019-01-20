@@ -86,8 +86,8 @@ namespace FlexKit
 	struct FrameObject
 	{
 		FrameObject() :
-			Handle{ (uint32_t)INVALIDHANDLE }
-		{}
+			Handle{ (uint32_t)INVALIDHANDLE }{}
+
 
 		FrameObject(const FrameObject& rhs) :
 			Type	{ rhs.Type		},
@@ -222,16 +222,17 @@ namespace FlexKit
 	{
 	public:
 		FrameResources(RenderSystem* IN_renderSystem, iAllocator* IN_allocator) : 
-			Resources		(IN_allocator),
-			Textures		(IN_allocator),
-			SubNodeTracking	(IN_allocator),
-			renderSystem	(IN_renderSystem)
-		{}
+			Resources		{ IN_allocator		},
+			Textures		{ IN_allocator		},
+			SubNodeTracking	{ IN_allocator		},
+			renderSystem	{ IN_renderSystem	}{}
+
 
 		PassObjectList			Resources;
 		PassObjectList			Textures;	// State should be mostly Static across frame
 		mutable PassObjectList	SubNodeTracking;
 		RenderSystem*			renderSystem;
+
 
 		/************************************************************************************************/
 
@@ -476,7 +477,7 @@ namespace FlexKit
 			D3D12_VERTEX_BUFFER_VIEW view = {
 				deviceResource->GetGPUVirtualAddress(),
 				renderSystem->GetStreamOutBufferSize(SOHandle),
-vertexSize
+				vertexSize
 			};
 
 			return view;
@@ -999,28 +1000,25 @@ vertexSize
 	public:
 		typedef std::function<void (FrameResources& Resources, Context* Ctx)> FN_NodeAction;
 
-		FrameGraphNode(iAllocator* TempMemory = nullptr) :
-			InputObjects	(TempMemory),
-			OutputObjects	(TempMemory),
-			Sources			(TempMemory),
-			Transitions		(TempMemory),
-			NodeAction		([](auto, auto) {}),
-			Executed		(false)
-		{}
+		FrameGraphNode(iAllocator* IN_allocator = nullptr) :
+			InputObjects	{ IN_allocator		},
+			OutputObjects	{ IN_allocator		},
+			Sources			{ IN_allocator		},
+			Transitions		{ IN_allocator		},
+			NodeAction		{ [](auto, auto) {} },
+			Executed		{ false				}{}
 
 
 		FrameGraphNode(const FrameGraphNode& RHS) : 
-			Sources			(RHS.Sources),
-			InputObjects	(RHS.InputObjects),
-			OutputObjects	(RHS.OutputObjects),
-			Transitions		(RHS.Transitions),
-			NodeAction		(RHS.NodeAction),
-			Executed		(false)
-		{}
+			Sources			{ RHS.Sources		},
+			InputObjects	{ RHS.InputObjects	},
+			OutputObjects	{ RHS.OutputObjects	},
+			Transitions		{ RHS.Transitions	},
+			NodeAction		{ RHS.NodeAction	},
+			Executed		{ false				}{}
 
 
-		~FrameGraphNode()
-		{}
+		~FrameGraphNode() = default;
 
 
 		void HandleBarriers	(FrameResources& Resouces, Context* Ctx);
@@ -1110,8 +1108,7 @@ vertexSize
 		FrameGraphResourceContext(iAllocator* Temp) :
 			Writables	{Temp},
 			Readables	{Temp},
-			Retirees	{Temp}
-		{}
+			Retirees	{Temp}{}
 
 
 		void AddWriteable(const FrameObjectDependency& NewObject)
@@ -1233,17 +1230,16 @@ vertexSize
 	{
 	public:
 		FrameGraphNodeBuilder(
-			FrameResources*				Resources_IN, 
-			FrameGraphNode&				Node_IN,
-			FrameGraphResourceContext&	Context_IN,
-			iAllocator*					Temp) :
-				Context			{Context_IN},
-				LocalInputs		{Temp},
-				LocalOutputs	{Temp},
-				Node			{Node_IN},
-				Resources		{Resources_IN},
-				Transitions		{Temp}
-		{}
+			FrameResources*				IN_Resources, 
+			FrameGraphNode&				IN_Node,
+			FrameGraphResourceContext&	IN_context,
+			iAllocator*					IN_allocator) :
+				Context			{ IN_context	},
+				LocalInputs		{ IN_allocator	},
+				LocalOutputs	{ IN_allocator	},
+				Node			{ IN_Node		},
+				Resources		{ IN_Resources	},
+				Transitions		{ IN_allocator	}{}
 
 
 		// No Copying
@@ -1586,41 +1582,20 @@ vertexSize
 	/************************************************************************************************/
 
 
-	/*
-	void AddShape2List(ShapeList&)
-	{
-	}
-
-	template<typename TY_Shape, typename ... SHAPE_PACK>
-	void AddShape2List(ShapeList& List, TY_Shape& Shape, SHAPE_PACK&& ..SHAPE_PACK)
-	{
-		List.AddShape(Shape);
-		AddShape2List(List);
-	}
-
-	template<typename ... SHAPE_PACK>
-	ShapeList&& CreateShapeList(iAllocator* Memory, SHAPE_PACK&& ... Shape_Pack)
-	{
-		ShapeList Out;
-		AddShape2List(Out, Shape_Pack...);
-		return std::move(Out);
-	}
-	*/
-
 	class CircleShape final : public ShapeProtoType
 	{
 	public:
 		CircleShape(
-			float2	POS_IN, 
-			float	Radius, 
-			float4	Color_IN		= float4(1.0f), 
-			float	AspectRatio_IN	= 16.0f/9.0f,
-			size_t	Divisions_IN	= 64) : 
-				Color		{Color_IN},
-				POS			{POS_IN}, 
-				R			{Radius},
-				Divisions	{Divisions_IN},
-				AspectRatio {AspectRatio_IN}{}
+			float2	IN_POS, 
+			float	IN_Radius, 
+			float4	IN_Color		= float4(1.0f),
+			float	IN_AspectRatio	= 16.0f/9.0f,
+			size_t	IN_Divisions	= 64) :
+				Color		{ IN_Color			},
+				POS			{ IN_POS			},
+				R			{ IN_Radius			},
+				Divisions	{ IN_Divisions		},
+				AspectRatio { IN_AspectRatio	}{}
 
 		void AddShapeDraw(
 			DrawList&				DrawList, 
@@ -1693,9 +1668,8 @@ vertexSize
 	class LineShape final : public ShapeProtoType
 	{
 	public:
-		LineShape(
-			LineSegments& lines
-		) : Lines{lines} {}
+		LineShape(LineSegments& lines) : 
+			Lines	{ lines } {}
 
 		void AddShapeDraw(
 			DrawList&				DrawList,
@@ -1735,9 +1709,9 @@ vertexSize
 	{
 	public:
 		RectangleShape(float2 POS_IN, float2 WH_IN, float4 Color_IN = float4(1.0f)) :
-			POS(POS_IN),
-			WH(WH_IN),
-			Color(Color_IN){}
+			POS		{ POS_IN	},
+			WH		{ WH_IN		},
+			Color	{ Color_IN	}{}
 
 
 		void AddShapeDraw(
@@ -1786,7 +1760,7 @@ vertexSize
 	{
 	public:
 		SolidRectangleListShape(Vector<FlexKit::Rectangle>&& rects_in) :
-			rects{std::move(rects_in)}{}
+			rects	{ std::move(rects_in) }{}
 
 		
 		~SolidRectangleListShape() {}

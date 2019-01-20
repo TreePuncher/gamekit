@@ -105,7 +105,6 @@ namespace FlexKit
 
 
 		SetInputWIndow			(&Window);
-		InitiatePhysics			(&Physics, gCORECOUNT, GetBlockMemory());
 		InitiateResourceTable	(GetBlockMemory());
 
 		FK_ASSERT(Sucess, "FAILED TO INITIATE ENGINE!");
@@ -122,10 +121,6 @@ namespace FlexKit
 	{
 		RenderSystem.ShutDownUploadQueues();
 
-
-	#if USING(PHYSX)
-			ReleasePhysics(&Physics);
-	#endif
 		FlexKit::Release(&Window);
 
 		for (auto Arg : CmdArguments)

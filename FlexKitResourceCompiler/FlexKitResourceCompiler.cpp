@@ -48,11 +48,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <algorithm>
 #include <initializer_list>
 #include <PxDefaultAllocator.h>
-#include <PxErrorCallback.h>
 
 using namespace FlexKit;
 
-
+/*
 class PhysXErrorCallback : public physx::PxErrorCallback
 {
 public:
@@ -62,6 +61,7 @@ public:
 	{
 	}
 };
+*/
 
 int main(int argc, char* argv[])
 {
@@ -180,12 +180,27 @@ int main(int argc, char* argv[])
 				}
 #endif
 
+				class NullErrorCallback : 
+					public physx::PxErrorCallback
+				{
+				public:
+
+					virtual ~NullErrorCallback() {}
+
+					virtual void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
+					{
+
+					}
+
+				};
+
+
 				physx::PxCooking*				Cooker			= nullptr;
 				physx::PxFoundation*			Foundation		= nullptr;
 				physx::PxDefaultAllocator		DefaultAllocatorCallback;
-				PhysXErrorCallback				DefaultErrorCallback;
+				NullErrorCallback				errorCallback;
 
-				Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, DefaultErrorCallback);
+				Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, errorCallback);
 				FK_ASSERT(Foundation);
 
 				Cooker = PxCreateCooking(PX_PHYSICS_VERSION, *Foundation, physx::PxCookingParams(physx::PxTolerancesScale()));

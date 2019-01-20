@@ -690,6 +690,7 @@ namespace FlexKit
 
 		ID3D12Resource*		Texture;
 		uint2				WH;
+		uint8_t				mipCount;
 		DXGI_FORMAT			Format;
 	};
 
@@ -2117,7 +2118,7 @@ namespace FlexKit
 
 		Texture2D		operator[]		(TextureHandle Handle);
 
-		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource** Resource, uint32_t ResourceCount, DeviceResourceState InitialState, uint32_t Flags_IN = 0);
+		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource** Resource, uint32_t ResourceCount, uint8_t mipCount, DeviceResourceState InitialState, uint32_t Flags_IN = 0);
 		void			SetState		(TextureHandle Handle, DeviceResourceState State);
 
 		uint2			GetWH(TextureHandle Handle) const;
@@ -2167,6 +2168,7 @@ namespace FlexKit
 			size_t				FrameLocks[3];
 			DeviceResourceState	States[3];
 			DXGI_FORMAT			Format;
+			uint8_t				mipCount;
 			uint2				WH;
 		};
 			
@@ -2418,8 +2420,8 @@ namespace FlexKit
 		ID3D12PipelineState*		GetPSO				(PSOHandle StateID);
 		RootSignature const * const GetPSORootSignature	(PSOHandle StateID) const;
 
-		void					RegisterPSOLoader	(PSOHandle State, PipelineStateDescription desc);
-		void					QueuePSOLoad		(PSOHandle State);
+		void RegisterPSOLoader	(PSOHandle State, PipelineStateDescription desc);
+		void QueuePSOLoad		(PSOHandle State);
 
 		void BeginSubmission	(RenderWindow* Window);
 		void Submit				(static_vector<ID3D12CommandList*>& CLs);
@@ -2440,15 +2442,17 @@ namespace FlexKit
 		const size_t	GetTextureElementSize	(TextureHandle Handle) const;
 		const uint2		GetTextureWH			(TextureHandle Handle) const;
 		const uint2		GetRenderTargetWH		(TextureHandle Handle) const;
-		
+		FORMAT_2D		GetTextureFormat		(TextureHandle Handle) const;
+
 		void			UploadTexture				(TextureHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
+		void			UploadTexture				(TextureHandle handle, byte* buffer, size_t bufferSize, uint2 WH, size_t resourceCount, size_t* mipOffsets, iAllocator* temp); // Uses Upload Queue
 		void			UpdateResourceByUploadQueue	(ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
 
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
 		TextureHandle			CreateDepthBuffer				(uint2 WH, bool UseFloat = false);
-		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels = 0);
+		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels = 1);
 		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
 		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
@@ -2654,6 +2658,12 @@ namespace FlexKit
 	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap		(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, D3D12_BUFFER_SRV_FLAGS = D3D12_BUFFER_SRV_FLAG_NONE);
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	(RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		(RenderSystem* RS, Texture2D tex, DescHeapPOS POS, DXGI_FORMAT F = DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM);
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle MoveTextureBuffersToVRAM(TextureBuffer* buffer, size_t bufferCount, RenderSystem* RS, iAllocator* tempMemory);
 
 
 	/************************************************************************************************/
@@ -2953,6 +2963,8 @@ namespace FlexKit
 	FLEXKITAPI void							AddRef					( TriMeshHandle  TMHandle );
 	FLEXKITAPI void							ReleaseMesh				( RenderSystem* RS, TriMeshHandle  TMHandle );
 
+	FLEXKITAPI TriMeshHandle				LoadMesh				( GUID_t TMHandle );
+
 	FLEXKITAPI TriMesh*						GetMesh					( TriMeshHandle  TMHandle );
 	FLEXKITAPI BoundingSphere				GetMeshBoundingSphere	( TriMeshHandle  TMHandle );
 
@@ -2972,10 +2984,11 @@ namespace FlexKit
 
 	struct Mesh_Description
 	{
-		size_t IndexBuffer;
-		size_t BufferCount;
+		size_t				IndexBuffer;
+		size_t				BufferCount;
 
-		VertexBufferView** Buffers;
+		VertexBufferView**	Buffers;
+		iAllocator*			memory;
 	};
 
 	FLEXKITAPI TriMeshHandle	BuildMesh	(RenderSystem* RS, Mesh_Description* Desc, TriMeshHandle guid);
@@ -3287,7 +3300,7 @@ namespace FlexKit
 
 	inline DescHeapPOS IncrementHeapPOS(DescHeapPOS POS, size_t Size, size_t INC) {
 		const size_t Offset = Size * INC;
-		return{ POS.V1.ptr + Offset , POS.V2.ptr + Offset };
+		return{ POS.V1.ptr + Offset, POS.V2.ptr + Offset };
 	}
 
 
@@ -3315,6 +3328,7 @@ namespace FlexKit
 	FLEXKITAPI void ClearDepthBuffers		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, static_vector<Texture2D> DB, const float ClearValue[] = DefaultClearDepthValues_1, const int Stencil[] = DefaultClearStencilValues, const size_t count = 1);
 	//FLEXKITAPI void ClearDepthBuffer		( RenderSystem* RS, ID3D12GraphicsCommandList* CL, Texture2D* DB, float ClearValue = 1.0f, int Stencil = 0);
 	
+
 	/************************************************************************************************/
 
 	
@@ -3350,6 +3364,7 @@ namespace FlexKit
 		size_t	SubResourceStart;
 		size_t	SubResourceCount;
 		size_t*	SubResourceSizes;
+		size_t*	SubResourceOffset;
 		size_t	ElementSize;
 	};
 
@@ -3410,7 +3425,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef FlexKit::Handle_t<16>	LightHandle;
+	typedef Handle_t<16> LightHandle;
 
 	struct LightDesc{
 		NodeHandle	Hndl;
@@ -3480,14 +3495,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct CubeDesc
-	{
-		float r;
-
-		FlexKit::Shader VertexShader;
-	};
-
-
 	struct PlaneDesc
 	{
 		PlaneDesc(float R, Shader V) : VertexShader{ V }
@@ -3526,12 +3533,12 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-	
 
-	FLEXKITAPI void CreateCubeMesh		( RenderSystem* RS, TriMesh* r,		StackAllocator* mem, CubeDesc& desc );
-	FLEXKITAPI void CreatePlaneMesh		( RenderSystem* RS, TriMesh* out,	StackAllocator* mem, PlaneDesc desc );
 
-	FLEXKITAPI bool LoadObjMesh			( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
+	FLEXKITAPI TriMeshHandle CreateCube(RenderSystem* RS, iAllocator* Memory, float R, GUID_t MeshID);
+
+
+	FLEXKITAPI bool LoadObjMesh				( RenderSystem* RS, char* File_Loc,	Obj_Desc IN desc, TriMesh ROUT out, StackAllocator RINOUT LevelSpace, StackAllocator RINOUT TempSpace, bool DiscardBuffers );
 
 
 	/************************************************************************************************/

@@ -69,20 +69,34 @@ namespace FlexKit
 		if (!PSO)
 			return false;
 
+		if (PSO->state == PipelineStateObject::PSO_States::LoadInProgress ||
+			PSO->state == PipelineStateObject::PSO_States::LoadQueued ||
+			PSO->state == PipelineStateObject::PSO_States::ReLoadQueued )
+				return false;
+
 		auto& NewTask = allocator->allocate_aligned<LoadTask>(queueAllocator, this, PSO);
 
 		while (true)
 		{
 			auto state = PSO->state.load(std::memory_order_acquire);
+
 			if(	(	state == PipelineStateObject::PSO_States::Unloaded || 
 					state == PipelineStateObject::PSO_States::Loaded ) &&
 				(	state != PipelineStateObject::PSO_States::LoadInProgress &&
 					state != PipelineStateObject::PSO_States::LoadQueued))
 			{
-				if (PSO->changeState(PipelineStateObject::PSO_States::LoadQueued))
+				auto prevPSO								= PSO->PSO;
+				PipelineStateObject::PSO_States newState	= 
+					(prevPSO == nullptr) ?
+						PipelineStateObject::PSO_States::LoadQueued : 
+						PipelineStateObject::PSO_States::ReLoadQueued;
+
+
+				if (PSO->changeState(newState))
 					WorkQueue->AddWork(&NewTask, queueAllocator);
 				else
 					continue;
+
 				return true;
 			}
 
@@ -122,6 +136,7 @@ namespace FlexKit
 						!(PSO->state == PipelineStateObject::PSO_States::LoadInProgress); });
 			}	break;
 
+			case PipelineStateObject::PSO_States::ReLoadQueued:
 			case PipelineStateObject::PSO_States::Loaded:
 			{
 				return PSO->PSO;
@@ -338,12 +353,13 @@ namespace FlexKit
 		std::chrono::system_clock Clock;
 		auto Before = Clock.now();
 
-		FINALLY
+		EXITSCOPE(
 			auto After = Clock.now();
 			auto Duration = chrono::duration_cast<chrono::milliseconds>(After - Before);
-		FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
-		FINALLYOVER
-	
+			FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
+		);
+		
+		auto previousState = PSO->PSO;
 		PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
 		while (true)
@@ -374,6 +390,9 @@ namespace FlexKit
 
 			PSO->state	= PipelineStateObject::PSO_States::Loaded;
 			PSO->CV.notify_all();
+
+			//if(previousState)
+			//	previousState->Release();
 
 			break;
 		}

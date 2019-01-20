@@ -129,7 +129,6 @@ struct Region_CP
 	int4    Parent	        : TEXCOORD0;
     float4  UVCords         : TEXCOORD1;
     int4    TerrainInfo     : TEXCOORD2;
-
 };
 
 
@@ -174,67 +173,6 @@ struct SO_OUT
 // ---------------------------------------------------------------------------
 
 
-bool CompareAgainstFrustum(float3 V, float r)
-{
-	bool Near	= false;
-	bool Far	= false;
-	bool Left	= false;
-	bool Right	= false;
-    bool Top    = false;
-    bool Bottom = false;
-
-
-	{
-		float3 P = V -	Frustum[EPlane_NEAR].Orgin.xyz;
-		float3 N =		Frustum[EPlane_NEAR].Normal.xyz;
-
-		float NdP	= dot(N, P);
-		float D		= NdP - r;
-		Near		= D <= 0;
-	}
-	{
-		float3 P = V -	Frustum[EPlane_FAR].Orgin.xyz;
-		float3 N =		Frustum[EPlane_FAR].Normal.xyz;
-
-		float NdP	= dot(N,P);
-		float D		= NdP - r;
-		Far			= D <= 0;
-	}
-	{
-		float3 P = V -	Frustum[EPlane_LEFT].Orgin.xyz;
-		float3 N =		Frustum[EPlane_LEFT].Normal.xyz;
-
-		float NdP	= dot(N,P);
-		float D		= NdP - r;
-		Left		= D <= 0;
-	}
-	{
-		float3 P = V -	Frustum[EPlane_RIGHT].Orgin.xyz;
-		float3 N =		Frustum[EPlane_RIGHT].Normal.xyz;
-
-		float NdP	= dot(N,P);
-		float D		= NdP - r;
-		Right		= D <= 0;
-	}
-    {
-        float3 P = V - Frustum[EPlane_TOP].Orgin.xyz;
-        float3 N =     Frustum[EPlane_TOP].Normal.xyz;
-
-        float NdP = dot(N, P);
-        float D = NdP - r;
-        Top = D <= 0;
-    }
-    {
-        float3 P = V - Frustum[EPlane_BOTTOM].Orgin.xyz;
-        float3 N =     Frustum[EPlane_BOTTOM].Normal.xyz;
-
-        float NdP = dot(N, P);
-        float D = NdP - r;
-        Bottom  = D <= 0;
-    }
-
-	return !(Near & Far & Left & Right & Bottom);
-}
 
 
 // ---------------------------------------------------------------------------

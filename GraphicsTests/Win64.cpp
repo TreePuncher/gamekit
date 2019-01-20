@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 	AddLogFile("GraphicsTests.log", FlexKit::Verbosity_INFO);
 
 	auto* Memory = CreateEngineMemory();
-	FKApplication App({1920, 1080}, Memory);
+	FKApplication App({2560, 1440}, Memory);
 
 	App.PushState<GraphicsTest>();
 	App.Run();

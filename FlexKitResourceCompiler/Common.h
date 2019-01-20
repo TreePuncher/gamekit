@@ -46,14 +46,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // PhysX Cooking Deps
 #ifdef _DEBUG
-#pragma comment(lib,	"legacy_stdio_definitions.lib"		)
-#pragma comment(lib,	"PhysX3CommonDEBUG_x64.lib"			)
-#pragma comment(lib,	"PhysX3CookingDEBUG_x64.lib"		)
+#pragma comment(lib,	"PhysXFoundation_64.lib"	)
+#pragma comment(lib,	"PhysXCommon_64.lib"		)
+#pragma comment(lib,	"PhysXCooking_64.lib"		)
 
 #else
-#pragma comment(lib,	"legacy_stdio_definitions.lib"		)
-#pragma comment(lib,	"PhysX3Common_x64.lib"				)
-#pragma comment(lib,	"PhysX3Cooking_x64.lib"				)
+#pragma comment(lib,	"PhysXFoundation_64.lib"	)
+#pragma comment(lib,	"PhysXCommon_64.lib"		)
+#pragma comment(lib,	"PhysXCooking_64.lib"		)
 #endif
 
 

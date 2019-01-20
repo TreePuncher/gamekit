@@ -110,6 +110,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void MarkDirty(CameraHandle handle)
+	{
+		CameraTable->DirtyFlags[handle] = true;
+	}
+
+
+	/************************************************************************************************/
+
+
 	void SetCameraNode(CameraHandle Handle, NodeHandle Node)
 	{
 		FK_ASSERT(CameraTable != nullptr);
@@ -232,7 +241,7 @@ namespace FlexKit
 			[](auto& Data)
 			{
 				FK_ASSERT(CameraTable != nullptr);
-				//FK_LOG_9("Updating Cameras");
+				FK_LOG_9("Updating Cameras");
 
 				size_t End = CameraTable->Cameras.size();
 				for (size_t I = 0; I < End; ++I)
@@ -240,6 +249,7 @@ namespace FlexKit
 					if (CameraTable->DirtyFlags[I])
 					{
 						CameraTable->Cameras[I].UpdateMatrices();
+						CameraTable->DirtyFlags[I] = false;
 					}
 				}
 

@@ -52,7 +52,9 @@ namespace FlexKit
 		float	Far			= 10000.0f,
 		bool	Invert		= false);
 
-	FLEXKITAPI void							SetCameraNode(CameraHandle, NodeHandle);
+
+	FLEXKITAPI void							MarkDirty		(CameraHandle);
+	FLEXKITAPI void							SetCameraNode	(CameraHandle, NodeHandle);
 
 	FLEXKITAPI void							SetCameraAspectRatio	(CameraHandle, float);
 	FLEXKITAPI void							SetCameraNode			(CameraHandle, NodeHandle);
@@ -74,7 +76,12 @@ namespace FlexKit
 	struct DefaultCameraInteractor
 	{
 		using ParentType_t = void*;
-		void OnDirty(void*, void*) {}
+
+		template<typename TY>
+		void OnDirty(TY* cameraBehavior, void*)
+		{
+			MarkDirty(cameraBehavior->camera);
+		}
 	};
 
 	template<typename TY_Interactor = DefaultCameraInteractor>
@@ -131,7 +138,7 @@ namespace FlexKit
 
 		CameraHandle camera;
 
-	private:
+	protected:
 
 		void _CameraDirty()
 		{

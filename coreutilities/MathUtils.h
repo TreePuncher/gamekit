@@ -940,6 +940,12 @@ namespace FlexKit
 
 	};
 
+	std::ostream& operator << (std::ostream& stream, float3 xyz)
+	{
+		stream << "{" << xyz.x << "," << xyz.y << "," << xyz.z << "}";
+		return stream;
+	}
+
 	const float3 BLACK	= float3(0.0f, 0.0f, 0.0f);
 	const float3 WHITE	= float3(1.0f, 1.0f, 1.0f);
 	const float3 RED	= float3(1.0f, 0.0f, 0.0f);

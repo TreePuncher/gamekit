@@ -231,7 +231,7 @@ Vertex QuadPatchToTris(
 
 	Point.normal = calculateCornerNormal(
 		bezPatch[0].UVSpan,
-		bezPatch[0].regionSpan,
+		bezPatch[0].regionSpan * 2,
 		C);
 
 
@@ -256,7 +256,7 @@ RegionTessFactors ScreenSpaceFactors(InputPatch<Region_CP, 1> ip)
 	RegionTessFactors factors;
 
 	int4	Region      = ip[0].POS;
-	int	    RegionWidth = Region.w * 2; 
+	int	    RegionWidth = Region.w * 4; 
 
 	const int MinDepth  = log2(MaxSpan);
 	const int MaxDepth  = log2(MinSpan);
@@ -479,8 +479,10 @@ HS_Corner RegionToQuadPatch(
 
 float4 PS_RenderTerrain(Vertex input) : SV_TARGET
 {
-	float A = dot(float3(0, 1, 0), input.normal);
-	return  pow(A * input.color, 2.1);
+	return  float4(input.normal, 1);
+
+	//float A = dot(float3(0, 1, 0), input.normal);
+	//return  pow(A * input.color, 2.1);
 }
 
 
