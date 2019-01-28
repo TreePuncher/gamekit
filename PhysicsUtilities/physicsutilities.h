@@ -72,64 +72,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct TriangleCollider
-	{
-		physx::PxTriangleMesh*	Mesh;
-		size_t					RefCount;
-	};
-
-
-	/************************************************************************************************/
-
-
-	typedef Handle_t<16>	 ColliderHandle;
-
-	struct TriMeshColliderList
-	{
-		Vector<TriangleCollider>						TriMeshColliders;
-		Vector<size_t>									FreeSlots;
-		HandleUtilities::HandleTable<ColliderHandle>	TriMeshColliderTable;
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct PActor
-	{
-		enum EACTORTYPE
-		{
-			EA_TRIMESH,
-			EA_PRIMITIVE
-		}type;
-
-		void*			_ptr;
-		ColliderHandle	CHandle;
-	};
-
-
-	struct Collider
-	{
-		physx::PxActor* Actor;
-		NodeHandle		Node;
-
-		PActor	ExtraData;
-	};
-
-
-	struct PRagdoll
-	{
-
-	};
-
-
-	struct SceneDesc
-	{
-		physx::PxTolerancesScale		tolerances;
-		physx::PxDefaultCpuDispatcher*	CPUDispatcher;
-	};
-
-
 	class CCHitReport : public physx::PxUserControllerHitReport, public physx::PxControllerBehaviorCallback
 	{
 	public:
@@ -447,6 +389,16 @@ namespace FlexKit
 			IN_staticColliders.parentScene = nullptr;
 		}
 
+
+		void Release()
+		{
+			for (auto& collider : colliders)
+				collider.staticActor->release();
+
+			colliders.clear();
+		}
+
+
 		void UpdateColliders()
 		{
 			for (auto& collider : colliders) 
@@ -460,12 +412,14 @@ namespace FlexKit
 			}
 		}
 
+
 		struct StaticColliderObject
 		{
 			NodeHandle				sceneNode;
 			physx::PxRigidStatic*	staticActor;
 			physx::PxShape*			shape;
 		};
+
 
 		Vector<StaticColliderObject>	colliders;
 		PhysicsScene*					parentScene;
@@ -480,6 +434,16 @@ namespace FlexKit
 			colliders	{ IN_memory }
 		{
 		}
+
+
+		void Release()
+		{
+			for (auto& collider : colliders)
+				collider.dynamicActor->release();
+
+			colliders.clear();
+		}
+
 
 		void UpdateColliders()
 		{
@@ -541,16 +505,38 @@ namespace FlexKit
 
 
 		~PhysicsScene()
-		{}
+		{
+			Release();
+		}
 
 
 		void Release()
 		{
+			while (updateColliders)
+			{
+				if (scene->checkResults())
+				{
+					updateColliders = false;
+
+					if (scene->fetchResults(true)) {
+						UpdateColliders();
+					}
+				}
+			}
+
+
+			staticColliders.Release();
+			rbColliders.Release();
+
 			if(scene)
 				scene->release();
 			if(controllerManager)
 				controllerManager->release();
+
+			scene				= nullptr;
+			controllerManager	= nullptr;
 		}
+
 
 		void Update(double dT);
 		void UpdateColliders		();
@@ -594,7 +580,10 @@ namespace FlexKit
 		PhysicsSystem(iAllocator* allocator);
 		~PhysicsSystem();
 
-		void Simulate(double dt);
+		void							Release();
+		void							ReleaseScene				(PhysicsSceneHandle);
+
+		void							Simulate					(double dt);
 
 		PhysicsSceneHandle				CreateScene();
 		StaticColliderHandle			CreateStaticBoxCollider		(PhysicsSceneHandle, float3 xyz = { 10, 10, 10 }, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
@@ -623,7 +612,6 @@ namespace FlexKit
 		physx::PxGpuDispatcher*			GPUDispatcher;
 		physx::PxMaterial*				defaultMaterial;
 
-		double							T;
 		bool							remoteDebuggerEnabled;
 
 		Vector<PhysicsScene>			scenes;
@@ -656,9 +644,35 @@ namespace FlexKit
 	class RigidBodyObjectBehavior
 	{
 	public:
-		RigidBodyObjectBehavior(PhysicsSystem* IN_system, rbColliderHandle IN_collider) :
-			collider	{ IN_collider	},
-			system		{ IN_system		}{}
+		RigidBodyObjectBehavior(
+			PhysicsSystem* IN_system		= nullptr, 
+			rbColliderHandle IN_collider	= { InvalidHandle_t, InvalidHandle_t }) :
+				collider	{ IN_collider	},
+				system		{ IN_system		}{}
+
+		RigidBodyObjectBehavior(RigidBodyObjectBehavior&& rhs) :
+			system		{ rhs.system	},
+			collider	{ rhs.collider	}
+		{
+			rhs.system		= nullptr;
+			rhs.collider	= { InvalidHandle_t, InvalidHandle_t };
+		}
+
+		RigidBodyObjectBehavior& operator = (RigidBodyObjectBehavior&& rhs)
+		{
+			system		= rhs.system;
+			collider	= rhs.collider;
+
+			rhs.system		= nullptr;
+			rhs.collider	= { InvalidHandle_t, InvalidHandle_t };
+
+			return *this;
+		}
+
+		// non-copyable
+		RigidBodyObjectBehavior				(RigidBodyObjectBehavior&) = delete;
+		RigidBodyObjectBehavior& operator = (RigidBodyObjectBehavior&) = delete;
+
 
 		bool GetSleeping() { return false; }
 
@@ -685,6 +699,28 @@ namespace FlexKit
 		{
 			drawable.ToggleScaling(true);
 		}
+
+
+		RigidBodyDrawableBehavior(RigidBodyDrawableBehavior&& rhs) : 
+			drawable{ std::move(rhs.drawable) }{}
+
+
+		RigidBodyDrawableBehavior& operator =	(RigidBodyDrawableBehavior&& rhs)
+		{
+			collider	= rhs.collider;
+			system		= rhs.system;
+			drawable	= std::move(rhs.drawable);
+			
+			rhs.collider	= { InvalidHandle_t, InvalidHandle_t };
+			rhs.system		= nullptr;
+
+			return *this;
+		}
+
+		// non-copyable
+		RigidBodyDrawableBehavior				(RigidBodyDrawableBehavior&) = delete;
+		RigidBodyDrawableBehavior& operator =	(RigidBodyDrawableBehavior&) = delete;
+
 
 		void SetPosition(float3 xyz)
 		{
@@ -727,7 +763,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI ColliderHandle			LoadTriMeshCollider		(PhysicsSystem* PS, GUID_t Guid);
+	//FLEXKITAPI ColliderHandle			LoadTriMeshCollider		(PhysicsSystem* PS, GUID_t Guid);
 	FLEXKITAPI physx::PxHeightField*	LoadHeightFieldCollider	(PhysicsSystem* PS, GUID_t Guid);
 
 

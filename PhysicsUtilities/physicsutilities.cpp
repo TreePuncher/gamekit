@@ -99,7 +99,6 @@ namespace FlexKit
 			assert(0);
 
 		defaultMaterial	= DefaultMaterial;
-		T				= 0.0;
 		updateColliders	= false;
 	}
 
@@ -152,9 +151,6 @@ namespace FlexKit
 
 	void PhysicsSystem::Simulate(double dt)
 	{
-		const double StepSize = 1 / 60.0f;
-		T += dt;
-
 		for (auto& scene : scenes)
 			scene.Update(dt);
 	}
@@ -178,45 +174,6 @@ namespace FlexKit
 		return physx::PxFilterFlag::eDEFAULT;
 	}
 */
-
-	/************************************************************************************************/
-
-
-	ColliderHandle AddCollider(TriMeshColliderList* ColliderList, TriangleCollider Collider)
-	{
-		auto NewHandle = ColliderList->TriMeshColliderTable.GetNewHandle();
-
-		if (!ColliderList->FreeSlots.size())
-		{
-			size_t Index = ColliderList->TriMeshColliders.size();
-			ColliderList->TriMeshColliderTable[NewHandle]	= Index;
-			ColliderList->TriMeshColliders.push_back		(Collider);
-		}
-		else
-		{
-			size_t Index = ColliderList->FreeSlots.back();
-			ColliderList->FreeSlots.pop_back();
-			ColliderList->TriMeshColliderTable[NewHandle]	= Index;
-			ColliderList->TriMeshColliders[Index]			= Collider;
-		}
-
-		return NewHandle;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReleaseAllColliders(TriMeshColliderList* ColliderList)
-	{
-		for (auto C : ColliderList->TriMeshColliders){
-			C.Mesh->release();
-		}
-
-		ColliderList->FreeSlots.Release();
-		ColliderList->TriMeshColliders.Release();
-		ColliderList->TriMeshColliderTable.Release();
-	}
 
 
 	/************************************************************************************************/
@@ -259,7 +216,7 @@ namespace FlexKit
 	}
 	*/
 
-
+	/*
 	physx::PxHeightField*	LoadHeightFieldCollider(PhysicsSystem* PS, GUID_t Guid)
 	{
 		if (isResourceAvailable(Guid))
@@ -279,7 +236,7 @@ namespace FlexKit
 		return nullptr;
 		//return static_cast<ColliderHandle>(INVALIDHANDLE);
 	}
-
+	*/
 
 	/************************************************************************************************/
 
@@ -328,48 +285,42 @@ namespace FlexKit
 
 	PhysicsSystem::~PhysicsSystem()
 	{
-		for (auto& scene : scenes)
-			scene.Release();
-
-		CPUDispatcher->release();// Physx
-		defaultMaterial->release();
-		PxCloseExtensions();
-
-		if (physxAPI)	physxAPI->release();
-		if (foundation)	foundation->release();
+		Release();
 	}
 
 
 	/************************************************************************************************/
 
 
-	//void ReleaseScene(PScene* Scn, PhysicsSystem* PS)
-	//{
-		/*
-		for (auto c : Scn->Colliders) {
-			auto SceneData = (PActor*)c.Actor->userData;
-			if (SceneData)
-			{
-				switch (SceneData->type)
-				{
-				case PActor::EA_PRIMITIVE:
-					// NOTHING TO BE DONE
-					break;
-				case PActor::EA_TRIMESH:
-					Release(PS, SceneData->CHandle);
-					break;
-				}
-			}
-			if(c.Actor) c.Actor->release();
-		}
+	void PhysicsSystem::Release()
+	{
+		for (auto& scene : scenes)
+			scene.Release();
 
-		Scn->Scene->fetchResults(true);
-		Scn->ControllerManager->purgeControllers();
-		Scn->ControllerManager->release();
-		Scn->Colliders.Release();
-		Scn->Scene->release();
-		*/
-	//}
+		if(CPUDispatcher)	CPUDispatcher->release();// Physx
+		if(defaultMaterial) defaultMaterial->release();
+
+		PxCloseExtensions();
+
+		if (physxAPI)	physxAPI->release();
+		if (foundation)	foundation->release();
+
+		for (auto& scene : scenes)
+			scene.Release();
+
+		CPUDispatcher	= nullptr;
+		defaultMaterial = nullptr;
+		physxAPI		= nullptr;
+		foundation		= nullptr;
+	}
+
+	/************************************************************************************************/
+
+
+	void PhysicsSystem::ReleaseScene(PhysicsSceneHandle handle)
+	{
+		scenes[handle.INDEX].Release();
+	}
 
 
 	/************************************************************************************************/
@@ -590,7 +541,7 @@ namespace FlexKit
 																rigidBodyActor,
 																shape });
 
-		rigidBodyActor->setMass(10.0f);
+		rigidBodyActor->setMass(100.0f);
 		scene->addActor(*rigidBodyActor);
 
 		return rbColliderEntityHandle{ static_cast<unsigned int>(handleIdx) };
@@ -634,21 +585,6 @@ namespace FlexKit
 		return { physicsSystem, collider,  gScene, entity, node };
 	}
 
-
-	/************************************************************************************************/
-
-	/*
-	CapsuleCharacterArgs PhysicsComponentSystem::CreateCharacterController(float3 InitialP, float R, float H, Quaternion Q )
-	{
-		auto CapsuleCharacter = CharacterControllers.CreateCapsuleController(System, Scene, System->DefaultMaterial, R, H, InitialP, Q);
-
-		CapsuleCharacterArgs Args;
-		Args.CapsuleController = CapsuleCharacter;
-		Args.System = &CharacterControllers;
-
-		return Args;
-	}
-	*/
 
 	/************************************************************************************************/
 }// Namespace FlexKit
