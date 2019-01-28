@@ -2252,5 +2252,143 @@ namespace FlexKit
 			});
 	}
 
+
+	/************************************************************************************************/
+
+	// Requires a registered DRAW_LINE3D_PSO pipeline state!
+	void Draw3DGrid(
+		FrameGraph&				FrameGraph,
+		const size_t			ColumnCount,
+		const size_t			RowCount,
+		const float2			GridWH,
+		const float4			GridColor,
+		TextureHandle			RenderTarget,
+		TextureHandle			DepthBuffer,
+		VertexBufferHandle		VertexBuffer,
+		ConstantBufferHandle	Constants,
+		CameraHandle			Camera,
+		iAllocator*				TempMem)
+	{
+		LineSegments Lines(TempMem);
+		Lines.reserve(ColumnCount + RowCount);
+
+		const auto RStep = 1.0f / RowCount;
+
+		//  Vertical Lines on ground
+		for (size_t I = 1; I < RowCount; ++I)
+			Lines.push_back(
+				{ { RStep  * I * GridWH.x, 0, 0 },
+				GridColor,
+				{ RStep  * I * GridWH.x, 0, GridWH.y },
+				GridColor });
+
+
+		// Horizontal lines on ground
+		const auto CStep = 1.0f / ColumnCount;
+		for (size_t I = 1; I < ColumnCount; ++I)
+			Lines.push_back(
+				{ { 0,			0, CStep  * I * GridWH.y },
+				GridColor,
+				{ GridWH.x,		0, CStep  * I * GridWH.y },
+				GridColor });
+
+
+		struct DrawGrid
+		{
+			FrameResourceHandle		RenderTarget;
+			FrameResourceHandle		DepthBuffer;
+
+			size_t					VertexBufferOffset;
+			size_t					VertexCount;
+			VertexBufferHandle		VertexBuffer;
+			ConstantBufferHandle	CB;
+
+			size_t					CameraConstantsOffset;
+			size_t					LocalConstantsOffset;
+
+			DescriptorHeap	Heap; // Null Filled
+		};
+
+
+		struct VertexLayout
+		{
+			float4 POS;
+			float4 Color;
+			float2 UV;
+		};
+
+		FrameGraph.AddNode<DrawGrid>(0,
+			[&](FrameGraphNodeBuilder& Builder, auto& Data)
+		{
+			Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.renderSystem->GetTag(RenderTarget));
+			Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.renderSystem->GetTag(DepthBuffer));
+			Data.CB				= Constants;
+
+			Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
+			PushConstantBufferData(
+				GetCameraConstantBuffer(Camera),
+				Constants,
+				FrameGraph.Resources);
+
+			Data.Heap.Init(
+				FrameGraph.Resources.renderSystem,
+				FrameGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+				TempMem);
+			Data.Heap.NullFill(FrameGraph.Resources.renderSystem);
+
+			Drawable::VConsantsLayout DrawableConstants;
+			DrawableConstants.Transform = DirectX::XMMatrixIdentity();
+
+			Data.LocalConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
+			PushConstantBufferData(
+				DrawableConstants,
+				Constants,
+				FrameGraph.Resources);
+
+			Data.VertexBuffer = VertexBuffer;
+			Data.VertexBufferOffset = FrameGraph.Resources.GetVertexBufferOffset(VertexBuffer);
+
+			// Fill Vertex Buffer Section
+			for (auto& LineSegment : Lines)
+			{
+				VertexLayout Vertex;
+				Vertex.POS		= float4(LineSegment.A, 1);
+				Vertex.Color	= float4(LineSegment.AColour, 1) * float4 { 1.0f, 0.0f, 0.0f, 1.0f };
+				Vertex.UV		= { 0.0f, 0.0f };
+
+				PushVertex(Vertex, VertexBuffer, FrameGraph.Resources);
+
+				Vertex.POS		= float4(LineSegment.B, 1);
+				Vertex.Color	= float4(LineSegment.BColour, 1) * float4 { 0.0f, 1.0f, 0.0f, 1.0f };
+				Vertex.UV		= { 1.0f, 1.0f };
+
+				PushVertex(Vertex, VertexBuffer, FrameGraph.Resources);
+			}
+
+			Data.VertexCount = Lines.size() * 2;
+
+		},
+			[](auto& Data, const FlexKit::FrameResources& Resources, FlexKit::Context* Ctx)
+		{
+			Ctx->SetRootSignature(Resources.renderSystem->Library.RS4CBVs4SRVs);
+			Ctx->SetPipelineState(Resources.GetPipelineState(DRAW_LINE3D_PSO));
+
+			Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });
+			Ctx->SetRenderTargets(
+				{	(DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false,
+					(DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
+
+			Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
+			Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(VertexLayout), (UINT)Data.VertexBufferOffset } });
+
+			Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
+			Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
+			Ctx->SetGraphicsConstantBufferView(2, Data.CB, Data.LocalConstantsOffset);
+
+			Ctx->Draw(Data.VertexCount, 0);
+		});
+	}
+
+
 }	/************************************************************************************************/
 #endif
