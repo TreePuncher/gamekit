@@ -196,20 +196,32 @@ namespace FlexKit
 	class SceneNodeBehavior : public Overrides_TY
 	{
 	public:
-
 		SceneNodeBehavior(NodeHandle IN_Node = InvalidHandle_t) : 
 			node{ IN_Node }{}
+
+
+		SceneNodeBehavior(SceneNodeBehavior&& rhs)
+		{
+			node		= rhs.node;
+			rhs.node	= InvalidHandle_t;
+		}
+
+		SceneNodeBehavior(SceneNodeBehavior&)				= delete;
+		SceneNodeBehavior& operator = (SceneNodeBehavior&)	= delete;
+
 
 		NodeHandle GetParentNode()
 		{
 			FlexKit::GetParentNode(node);
 		}
 
+
 		void SetParentNode(NodeHandle Parent)
 		{
 			FlexKit::SetParentNode(Parent, node);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
 		}
+
 
 		void Yaw(float r)
 		{
