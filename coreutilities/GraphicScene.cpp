@@ -63,6 +63,9 @@ namespace FlexKit
 
 	void GraphicScene::RemoveEntity(SceneEntityHandle E)
 	{
+		if (E == InvalidHandle_t)
+			return;
+
 		ReleaseNode(GetDrawable(E).Node);
 
 		auto& Drawable = GetDrawable(E);
@@ -157,7 +160,7 @@ namespace FlexKit
 		auto Index = HandleTable[EHandle];
 		if (Drawables.at(Index).MeshHandle != InvalidHandle_t)
 		{
-			auto Mesh		= GetMesh(Drawables.at(Index).MeshHandle);
+			auto Mesh		= GetMeshResource(Drawables.at(Index).MeshHandle);
 			auto ID			= Mesh->TriMeshID;
 			bool Available	= isResourceAvailable(ID);
 			return Available;
@@ -177,8 +180,8 @@ namespace FlexKit
 		auto MeshHandle			= GetDrawable(EHandle).MeshHandle;
 
 		if (Available) {
-			auto Mesh = GetMesh(MeshHandle);
-			SkeletonAvailable = isResourceAvailable(Mesh->TriMeshID);
+			auto Mesh			= GetMeshResource(MeshHandle);
+			SkeletonAvailable	= isResourceAvailable(Mesh->TriMeshID);
 		}
 
 		bool ret = false;
@@ -213,9 +216,9 @@ namespace FlexKit
 			auto AC = Resource2AnimationClip(Resource, GS->Memory);
 			FreeResource(RHndl);// No longer in memory once loaded
 
-			auto mesh = GetMesh(MeshHandle);
-			mesh->AnimationData |= EAnimationData::EAD_Skin;
-			AC.Skeleton = mesh->Skeleton;
+			auto mesh				= GetMeshResource(MeshHandle);
+			AC.Skeleton				= mesh->Skeleton;
+			mesh->AnimationData    |= EAnimationData::EAD_Skin;
 
 			if (AC.Skeleton->Animations)
 			{
@@ -629,7 +632,7 @@ namespace FlexKit
 		{
 			auto& drawable	= parentScene.GetDrawable(entityHandle);
 			bool isNullNode = drawable.MeshHandle == InvalidHandle_t;
-			auto* triMesh	= isNullNode ? nullptr : FlexKit::GetMesh(drawable.MeshHandle);
+			auto* triMesh	= isNullNode ? nullptr : GetMeshResource(drawable.MeshHandle);
 			auto r			= isNullNode ? 0 : triMesh->Info.r;
 			auto max		= isNullNode ? 0 : triMesh->Info.max;
 			auto min		= isNullNode ? 0 : triMesh->Info.min;
@@ -847,17 +850,17 @@ namespace FlexKit
 		for (size_t I = 0; I < End; ++I)
 		{
 			auto &E = SM->Drawables[I];
-			auto Mesh	= GetMesh			(E.MeshHandle);
+			auto mesh	= GetMeshResource	(E.MeshHandle);
 			auto Ls		= GetLocalScale		(E.Node).x;
 			auto Pw		= GetPositionW		(E.Node);
 			auto Lq		= GetOrientation	(E.Node);
-			auto BS		= Mesh->BS;
+			auto BS		= mesh->BS;
 
 			BoundingSphere BoundingVolume = float4((Lq * BS.xyz()) + Pw, BS.w * Ls);
 
 			auto DrawableVisibility = SM->DrawableVisibility[I];
 
-			if (DrawableVisibility && Mesh && CompareBSAgainstFrustum(&F, BoundingVolume))
+			if (DrawableVisibility && mesh && CompareBSAgainstFrustum(&F, BoundingVolume))
 			{
 				if (!E.Transparent)
 					PushPV(&E, out);

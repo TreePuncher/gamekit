@@ -44,7 +44,7 @@ namespace FlexKit
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
-		auto Mesh = GetMesh(E->MeshHandle);
+		auto Mesh = GetMeshResource(E->MeshHandle);
 
 		if (!Mesh && !Mesh->Skeleton)
 			return nullptr;
@@ -409,7 +409,7 @@ namespace FlexKit
 		if (!IsSkeletonLoaded(MeshHandle))
 			return{ EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
 
-		auto Mesh = GetMesh(MeshHandle);
+		auto Mesh = GetMeshResource(MeshHandle);
 
 		if (!E->PoseState)
 		{
@@ -445,7 +445,7 @@ namespace FlexKit
 			return Res;
 
 		auto MeshHandle = E->MeshHandle;
-		auto Mesh		= GetMesh(MeshHandle);
+		auto Mesh		= GetMeshResource(MeshHandle);
 
 		auto EPS = E->PoseState;
 		auto EAS = E->AnimationState;
@@ -490,7 +490,7 @@ namespace FlexKit
 			return Res;
 
 		auto MeshHandle = E->MeshHandle;
-		auto Mesh       = GetMesh(MeshHandle);
+		auto Mesh       = GetMeshResource(MeshHandle);
 
 		auto EPS        = E->PoseState;
 		auto EAS        = E->AnimationState;
@@ -536,7 +536,7 @@ namespace FlexKit
 			return Res;
 
 		auto MeshHandle = E->MeshHandle;
-		auto Mesh       = GetMesh(MeshHandle);
+		auto Mesh       = GetMeshResource(MeshHandle);
 
 		auto EPS        = E->PoseState;
 		auto EAS        = E->AnimationState;
@@ -724,7 +724,7 @@ namespace FlexKit
 		if (!Status)
 			return Status;
 
-		auto Mesh	= GetMesh(E->MeshHandle);
+		auto Mesh	= GetMeshResource(E->MeshHandle);
 		auto EAS	= E->AnimationState;
 
 		for (auto& C : EAS->Clips)
@@ -771,7 +771,7 @@ namespace FlexKit
 		using DirectX::XMMatrixIdentity;
 		using DirectX::XMMatrixInverse;
 
-		auto Mesh	= GetMesh(E->MeshHandle);
+		auto Mesh	= GetMeshResource(E->MeshHandle);
 		auto PS		= E->PoseState;
 		auto S		= Mesh->Skeleton;
 
@@ -913,7 +913,7 @@ namespace FlexKit
 
 			auto PS		= E->PoseState;
 			auto AS		= E->AnimationState;
-			auto Mesh	= GetMesh(E->MeshHandle);
+			auto Mesh	= GetMeshResource(E->MeshHandle);
 			auto S		= Mesh->Skeleton;
 
 			XMMATRIX* M = (XMMATRIX*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));

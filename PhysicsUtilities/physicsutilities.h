@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\coreutilities\graphicScene.h"
+#include "..\coreutilities\ThreadUtilities.h"
 
 #include "PxPhysicsAPI.h"
 #include <PhysX_sdk/physx/include/characterkinematic/PxController.h>
@@ -449,6 +450,9 @@ namespace FlexKit
 		{
 			for (auto& collider : colliders) 
 			{
+				if (collider.dynamicActor->isSleeping())
+					continue;
+
 				physx::PxTransform pose		= collider.dynamicActor->getGlobalPose();
 				Quaternion	orientation		= Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
 				float3		position		= float3(pose.p.x, pose.p.y, pose.p.z);
@@ -544,10 +548,11 @@ namespace FlexKit
 		void DebugDraw				(FrameGraph* FGraph, iAllocator* TempMemory);
 
 		StaticColliderEntityHandle	CreateStaticBoxCollider		(float3 dimensions, float3 initialPosition, Quaternion initialQ);
-
 		rbColliderEntityHandle		CreateRigidBodyBoxCollider	(float3 dimensions, float3 initialPosition, Quaternion initialQ, NodeHandle node);
 
-		void						SetPosition(rbColliderEntityHandle, float3 xyz);
+		void						SetPosition	(rbColliderEntityHandle, float3 xyz);
+		void						SetMass(rbColliderEntityHandle, float m);
+
 
 	private:
 		physx::PxScene*				scene				= nullptr;
@@ -577,7 +582,7 @@ namespace FlexKit
 	FLEXKITAPI class PhysicsSystem
 	{
 	public:
-		PhysicsSystem(iAllocator* allocator);
+		PhysicsSystem(ThreadManager& threads, iAllocator* allocator);
 		~PhysicsSystem();
 
 		void							Release();
@@ -606,7 +611,6 @@ namespace FlexKit
 
 
 		bool							updateColliders;
-		physx::PxDefaultCpuDispatcher*	CPUDispatcher;
 		physx::PxPvd*					visualDebugger;
 		physx::PxPvdTransport*			visualDebuggerConnection;
 		physx::PxGpuDispatcher*			GPUDispatcher;
@@ -614,9 +618,89 @@ namespace FlexKit
 
 		bool							remoteDebuggerEnabled;
 
+
+		class CpuDispatcher : 
+			public physx::PxCpuDispatcher
+		{
+		public:
+			CpuDispatcher(ThreadManager& IN_threads, iAllocator* persistent_memory = nullptr) :
+				threads		{ IN_threads		},
+				freeList	{ persistent_memory },
+				memory		{ persistent_memory }{}
+
+			~CpuDispatcher(){}
+
+
+			class PhysXTask : public iWork
+			{
+			public:
+				PhysXTask(physx::PxBaseTask& IN_task, iAllocator* IN_memory) :
+					iWork	{ IN_memory	},
+					memory	{ IN_memory	},
+					task	{ IN_task	} {}
+
+
+				virtual ~PhysXTask() 
+				{
+				}
+
+
+				void Run()		override 
+				{
+					task.run();
+					task.release();
+				}
+
+
+				void Release()	override 
+				{
+					if (memory)
+					{
+						this->~PhysXTask();
+						memory->free(this);
+					}
+				}
+
+			private:
+				physx::PxBaseTask&	task;
+				iAllocator*			memory;
+			};
+
+
+			void submitTask(physx::PxBaseTask& pxTask)
+			{
+				jobsInProgress++;
+				auto& newTask = memory->allocate_aligned<PhysXTask>(pxTask, memory);
+				newTask.Subscribe([&] {jobsInProgress--; });
+
+				FK_ASSERT(newTask != nullptr);
+
+				threads.AddWork(&newTask, memory);
+			}
+
+
+			uint32_t getWorkerCount() const
+			{
+				return threads.GetThreadCount();
+			}
+
+
+			void ReleaseDelayedFrees()
+			{
+			}
+
+
+		private:
+			atomic_int			jobsInProgress = 0;
+			ThreadManager&		threads;
+			Vector<PhysXTask*>	freeList; // TODO: thread safe memory releasing!
+			iAllocator*			memory;
+		} dispatcher;
+
+
 		Vector<PhysicsScene>			scenes;
 		iAllocator*						memory;
-
+		ThreadManager&					threads;
 		friend PhysicsScene;
 	};
 
@@ -731,6 +815,13 @@ namespace FlexKit
 		void SetMeshScale(float r)
 		{
 			drawable.Scale(float3{ r, r, r });
+		}
+
+
+		void SetMass(float m)
+		{
+			system->GetOwningScene(collider)->SetMass(collider, m);
+
 		}
 
 

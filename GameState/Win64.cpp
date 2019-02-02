@@ -63,32 +63,11 @@ int main(int argc, char* argv[])
 
 	FK_LOG_INFO("Set initial PlayState state.");
 	auto& gameBase = App.PushState<BaseState>(&App);
-#if 1
+
 	//App.PushState<MainMenu>(&gameBase);
 	App.PushState<PlayState>(&gameBase);
-#else
-	auto& networkState = App.PushState<NetworkState>(&gameBase);
 
-	bool isHost = true;
 
-	for (size_t I = 0; I < argc; ++I)
-	{
-		if (strncmp(argv[I], "-c", 2) == 0) {
-			isHost = false;
-			FK_LOG_INFO("Client mode toggled");
-		}
-	}
-
-	if (isHost) {
-		FK_LOG_INFO("Starting Server.");
-		App.PushState<GameHostState>(&gameBase, &networkState).InitiateGame();
-	}
-	else
-	{
-		FK_LOG_INFO("Starting Client");
-		App.PushState<GameClientState>(&gameBase, &networkState);
-	}
-#endif
 	FK_LOG_INFO("Running application...");
 	App.Run();
 	FK_LOG_INFO("Completed running application");

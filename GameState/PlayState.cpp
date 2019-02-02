@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2017 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #include "PlayState.h"
 #include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\PipelineState.h"
@@ -32,107 +8,76 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define DEBUGCAMERA
 
-#pragma comment(lib, "fmod64_vc.lib")
-
-
-
-
 
 /************************************************************************************************/
 
 
 PlayState::PlayState(
 		GameFramework*			IN_Framework,
-		BaseState*				Base) : 
+		BaseState*				IN_base) : 
 	FrameworkState		{ IN_Framework						},
 
-	UI					{ FlexKit::GuiSystem_Desc{}, framework->core->GetBlockMemory() },
-	UIMainGrid			{ nullptr },
-	UISubGrid_1			{ nullptr },
-	UISubGrid_2			{ nullptr },
+	ui					{ FlexKit::GuiSystem_Desc{}, framework->core->GetBlockMemory()	},
+	uiMainGrid			{ nullptr														},
+	uiSubGrid_1			{ nullptr														},
+	uiSubGrid_2			{ nullptr														},
 
-	FrameEvents			{ framework->core->GetBlockMemory() },
-	FrameID				{ 0 },
-	Sound				{ framework->core->Threads, framework->core->GetBlockMemory() },
-	Render				{ &Base->render				},
-	LocalGame			{ framework->core->GetBlockMemory() },
-	Player1_Handler		{ LocalGame, framework->core->GetBlockMemory() },
-	Player2_Handler		{ LocalGame, framework->core->GetBlockMemory() },
-	GameInPlay			{ true					},
-	UseDebugCamera		{ false					},
+	frameID				{ 0 },
+	sound				{ framework->core->Threads, framework->core->GetBlockMemory()	},
+	render				{ IN_base->render												},
+	base				{ *IN_base														},
+	eventMap			{ framework->core->GetBlockMemory()								},
+	debugCameraInputMap	{ framework->core->GetBlockMemory()								},
+	debugEventsInputMap	{ framework->core->GetBlockMemory()								},
 
-	ConstantBuffer		{ Base->constantBuffer	}, 
-	DepthBuffer			{ Base->depthBuffer		},
-	TextBuffer			{ Base->textBuffer		},
-	VertexBuffer		{ Base->vertexBuffer	},
-
-	eventMap			{ framework->core->GetBlockMemory() },
-	DebugCameraInputMap	{ framework->core->GetBlockMemory() },
-	DebugEventsInputMap	{ framework->core->GetBlockMemory() },
-	Puppet				{ CreatePlayerPuppet(Scene)			},
-	Scene
-						{
+	scene				{
 							framework->core->RenderSystem,
 							framework->core->GetBlockMemory(),
 							framework->core->GetTempMemory()
 						}
 {
 	AddResourceFile("CharacterBase.gameres");
-	CharacterModel = FlexKit::LoadTriMeshIntoTable(framework->core->RenderSystem, "Flower");
+	characterModel = FlexKit::GetMesh(GetRenderSystem(), "Flower");
 
-	Player1_Handler.SetActive(LocalGame.CreatePlayer({ 11, 11 }));
-	Player1_Handler.SetPlayerCameraAspectRatio(GetWindowAspectRatio(framework->core));
-
-	LocalGame.CreateGridObject({ 10, 5 });
-
-	OrbitCamera.SetCameraAspectRatio(GetWindowAspectRatio(framework->core));
-	OrbitCamera.TranslateWorld({ 0, 2, -5 });
-	OrbitCamera.Yaw(float(pi));
-
-
-	eventMap.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP);
-	eventMap.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN);
-	eventMap.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_Q,			PLAYER_EVENTS::PLAYER_ROTATE_LEFT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_E,			PLAYER_EVENTS::PLAYER_ROTATE_RIGHT);
-	eventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD);
-	eventMap.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1);
-
+	eventMap.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP			);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT			);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN			);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT			);
+	eventMap.MapKeyToEvent(KEYCODES::KC_Q,			PLAYER_EVENTS::PLAYER_ROTATE_LEFT	);
+	eventMap.MapKeyToEvent(KEYCODES::KC_E,			PLAYER_EVENTS::PLAYER_ROTATE_RIGHT	);
+	eventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD			);
+	eventMap.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1		);
 
 	// Debug Orbit Camera
-	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_I, PLAYER_EVENTS::DEBUG_PLAYER_UP);
-	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_J, PLAYER_EVENTS::DEBUG_PLAYER_LEFT);
-	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_K, PLAYER_EVENTS::DEBUG_PLAYER_DOWN);
-	DebugCameraInputMap.MapKeyToEvent(KEYCODES::KC_L, PLAYER_EVENTS::DEBUG_PLAYER_RIGHT);
-
+	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_I, PLAYER_EVENTS::DEBUG_PLAYER_UP	);
+	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_J, PLAYER_EVENTS::DEBUG_PLAYER_LEFT	);
+	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_K, PLAYER_EVENTS::DEBUG_PLAYER_DOWN	);
+	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_L, PLAYER_EVENTS::DEBUG_PLAYER_RIGHT	);
 
 	// Debug Events, are not stored in Frame cache
-	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_C, DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA);
-	DebugEventsInputMap.MapKeyToEvent(KEYCODES::KC_X, DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY);
+	debugEventsInputMap.MapKeyToEvent(KEYCODES::KC_C, DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA		);
+	debugEventsInputMap.MapKeyToEvent(KEYCODES::KC_X, DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY	);
 
-	FK_ASSERT(0);
+	framework->core->RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, { nullptr, LoadSpriteTextPSO });
+	framework->core->RenderSystem.PipelineStates.QueuePSOLoad		(DRAW_SPRITE_TEXT_PSO, framework->core->GetBlockMemory());
 
-	//framework->core->RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, LoadSpriteTextPSO);
-	framework->core->RenderSystem.PipelineStates.QueuePSOLoad(DRAW_SPRITE_TEXT_PSO, framework->core->GetBlockMemory());
+	uiMainGrid	= &ui.CreateGrid(nullptr);
+	uiMainGrid->SetGridDimensions({ 3, 3 });
 
-	UIMainGrid	= &UI.CreateGrid(nullptr);
-	UIMainGrid->SetGridDimensions({ 3, 3 });
+	uiMainGrid->WH = { 0.5f, 1.0f  };
+	uiMainGrid->XY = { 0.25f, 0.0f };
 
-	UIMainGrid->WH = { 0.5f, 1.0f  };
-	UIMainGrid->XY = { 0.25f, 0.0f };
-
-	UISubGrid_1		= &UI.CreateGrid(UIMainGrid, { 0, 0 });
-	UISubGrid_1->SetGridDimensions({ 2, 2 });
-	UISubGrid_1->WH = { 1.0f, 1.0f };
-	UISubGrid_1->XY = { 0.0f, 0.0f };
+	uiSubGrid_1		= &ui.CreateGrid(uiMainGrid, { 0, 0 });
+	uiSubGrid_1->SetGridDimensions({ 2, 2 });
+	uiSubGrid_1->WH = { 1.0f, 1.0f };
+	uiSubGrid_1->XY = { 0.0f, 0.0f };
 	
-	UISubGrid_2 = &UI.CreateGrid(UIMainGrid, {2, 2});
-	UISubGrid_2->SetGridDimensions({ 5, 5 });
-	UISubGrid_2->WH = { 1.0f, 1.0f };
-	UISubGrid_2->XY = { 0.0f, 0.0f };
+	uiSubGrid_2 = &ui.CreateGrid(uiMainGrid, {2, 2});
+	uiSubGrid_2->SetGridDimensions({ 5, 5 });
+	uiSubGrid_2->WH = { 1.0f, 1.0f };
+	uiSubGrid_2->XY = { 0.0f, 0.0f };
 	
-	auto& Btn = UI.CreateButton(UISubGrid_2, {0, 0});
+	auto& Btn = ui.CreateButton(uiSubGrid_2, {0, 0});
 }
 
 
@@ -141,8 +86,6 @@ PlayState::PlayState(
 
 PlayState::~PlayState()
 {
-	// TODO: Make this not stoopid 
-	framework->core->GetBlockMemory().free(this);
 }
 
 
@@ -151,28 +94,6 @@ PlayState::~PlayState()
 
 bool PlayState::EventHandler(Event evt)
 {
-	Event Remapped;
-	if (DebugEventsInputMap.Map(evt, Remapped))
-	{
-		if (Remapped.InputSource == Event::Keyboard &&
-			Remapped.Action		== Event::Pressed)
-		{
-			switch ((DEBUG_EVENTS)Remapped.mData1.mINT[0])
-			{
-			case DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA:
-				UseDebugCamera	= !UseDebugCamera;
-				break;
-			case DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY:
-				framework->drawDebug = !framework->drawDebug;
-				break;
-			default:
-				break;
-			}
-		}
-	}
-	else
-		FrameEvents.push_back(evt);
-
 	return true;
 }
 
@@ -182,53 +103,6 @@ bool PlayState::EventHandler(Event evt)
 
 bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
 {
-	FrameCache.push_back(FrameSnapshot(&LocalGame, &FrameEvents, ++FrameID, Core->GetBlockMemory()));
-
-	for (auto& evt : FrameEvents)
-	{
-		Event Remapped;
-		if (Player1_Handler.Enabled && eventMap.Map(evt, Remapped))
-			Player1_Handler.Handle(Remapped);
-
-		if (Player2_Handler.Enabled)
-			Player2_Handler.Handle(evt);
-		if (DebugCameraInputMap.Map(evt, Remapped))
-			OrbitCamera.EventHandler(Remapped);
-	}
-
-	FrameEvents.clear();
-
-	// Check if any players Died
-	for (auto& P : LocalGame.Players)
-		if (LocalGame.IsCellDestroyed(P.XY))
-			framework->PopState();
-
-	LocalGame.Update(dT, Core->GetTempMemory());
-
-	if (Player1_Handler.Enabled)
-		Player1_Handler.Update(dT);
-
-	if (Player2_Handler.Enabled)
-		Player2_Handler.Update(dT);
-
-
-	float HorizontalMouseMovement	= float(framework->MouseState.dPos[0]) / GetWindowWH(framework->core)[0];
-	float VerticalMouseMovement		= float(framework->MouseState.dPos[1]) / GetWindowWH(framework->core)[1];
-
-	framework->MouseState.Normalized_dPos = { HorizontalMouseMovement, VerticalMouseMovement };
-
-	OrbitCamera.Yaw(framework->MouseState.Normalized_dPos[0]);
-	OrbitCamera.Pitch(framework->MouseState.Normalized_dPos[1]);
-
-	OrbitCamera.Update(dT);
-
-	Puppet.Yaw(dT);
-	Puppet.Update(dT);
-
-	QueueSoundUpdate(Dispatcher, &Sound);
-	auto TransformTask = QueueTransformUpdateTask(Dispatcher);
-	QueueCameraUpdate(Dispatcher, TransformTask);
-
 	return false;
 }
 
@@ -256,107 +130,6 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, do
 
 bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, FrameGraph& FrameGraph)
 {
-	FrameGraph.Resources.AddDepthBuffer(DepthBuffer);
-
-	WorldRender_Targets Targets = {
-		GetCurrentBackBuffer(&Core->Window),
-		DepthBuffer
-	};
-
-	PVS	Drawables_Solid			(Core->GetTempMemory());
-	PVS	Drawables_Transparent	(Core->GetTempMemory());
-
-	ClearVertexBuffer(FrameGraph, VertexBuffer);
-	ClearVertexBuffer(FrameGraph, TextBuffer);
-
-	ClearBackBuffer		(FrameGraph, 0.0f);
-	ClearDepthBuffer	(FrameGraph, DepthBuffer, 1.0f);
-
-
-	FlexKit::DrawUI_Desc DrawDesk
-	{
-		&FrameGraph, 
-		Targets.RenderTarget,
-		VertexBuffer, 
-		TextBuffer, 
-		ConstantBuffer
-	};
-
-
-#ifndef DEBUGCAMERA
-#if 1
-	DrawGameGrid_Debug(
-		dt,
-		GetWindowAspectRatio(Core),
-		LocalGame,
-		FrameGraph,
-		ConstantBuffer,
-		VertexBuffer,
-		GetCurrentBackBuffer(&Core->Window),
-		Core->GetTempMemory()
-	);
-#else
-	DrawGame(
-		dt,
-		GetWindowAspectRatio(Core),
-		LocalGame,
-		FrameGraph,
-		ConstantBuffer,
-		VertexBuffer,
-		GetCurrentBackBuffer(&Core->Window),
-		DepthBuffer,
-		OrbitCamera,
-		Core->GetTempMemory());
-#endif
-#else
-	PVS Drawables{ Core->GetTempMemory() };
-	PVS TransparentDrawables{ Core->GetTempMemory() };
-
-	CameraHandle ActiveCamera = UseDebugCamera ? (CameraHandle)OrbitCamera : (CameraHandle)Player1_Handler.GameCamera;
-
-	GetGraphicScenePVS(Scene, ActiveCamera, &Drawables, &TransparentDrawables);
-
-
-	if(framework->drawDebug)
-	{
-		DrawGameGrid_Debug(
-			dt,
-			GetWindowAspectRatio(Core),
-			LocalGame,
-			FrameGraph,
-			ConstantBuffer,
-			VertexBuffer,
-			GetCurrentBackBuffer(&Core->Window),
-			Core->GetTempMemory()
-		);
-	}
-
-	DrawGame(
-		dt,
-		GetWindowAspectRatio(Core),
-		LocalGame,
-		FrameGraph,
-		ConstantBuffer,
-		VertexBuffer,
-		GetCurrentBackBuffer(&Core->Window),
-		DepthBuffer,
-		ActiveCamera,
-		CharacterModel,
-		Core->GetTempMemory());
-
-
-	Render->DefaultRender(
-		Drawables,
-		ActiveCamera,
-		Targets,
-		FrameGraph,
-		Core->GetTempMemory());
-
-#endif
-	
-	//UI.Draw(DrawDesk, Core->GetTempMemory());
-
-
 	return true;
 }
 
@@ -366,47 +139,30 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 
 bool PlayState::PostDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
-	if (framework->drawDebugStats)
-		framework->DrawDebugHUD(dT, TextBuffer, Graph);
-
-	PresentBackBuffer(Graph, &Core->Window);
 	return true;
 }
 
 
-/************************************************************************************************/
+/**********************************************************************
 
+Copyright (c) 2019 Robert May
 
-void PlayState::BindPlayer1()
-{
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
 
-}
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
 
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-/************************************************************************************************/
-
-
-void PlayState::BindPlayer2()
-{
-
-}
-
-
-/************************************************************************************************/
-
-
-void PlayState::ReleasePlayer1()
-{
-}
-
-
-/************************************************************************************************/
-
-
-void PlayState::ReleasePlayer2()
-{
-
-}
-
-
-/************************************************************************************************/
+**********************************************************************/

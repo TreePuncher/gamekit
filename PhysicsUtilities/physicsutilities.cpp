@@ -40,9 +40,11 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	PhysicsSystem::PhysicsSystem(iAllocator* allocator) :
-		scenes{ allocator },
-		memory{ allocator }
+	PhysicsSystem::PhysicsSystem(ThreadManager& IN_threads, iAllocator* IN_allocator) :
+		threads		{ IN_threads				},
+		scenes		{ IN_allocator				},
+		memory		{ IN_allocator				},
+		dispatcher	{ IN_threads, IN_allocator	}
 	{
 #ifdef _DEBUG
 		bool recordMemoryAllocations = true;
@@ -59,8 +61,8 @@ namespace FlexKit
 #if USING(PHYSX_PVD)
 		if (remoteDebuggerEnabled || true)
 		{
-			physx::PxPvd*				pvd			= physx::PxCreatePvd(*foundation);
-			physx::PxPvdTransport*		transport	= physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+			physx::PxPvd*			pvd			= physx::PxCreatePvd(*foundation);
+			physx::PxPvdTransport*	transport	= physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
 
 			bool res = pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eDEBUG);
 
@@ -78,11 +80,11 @@ namespace FlexKit
 		}
 #endif
 
+		// TODO: gracefull handling of errors maybe?
 		if (!physxAPI)
-			FK_ASSERT(0); // Failed to init
+			FK_ASSERT(0); 
 		if (!PxInitExtensions(*physxAPI, nullptr))
 			FK_ASSERT(0);
-
 
 #ifdef USING(PHYSX_PVD)
 		remoteDebuggerEnabled = visualDebugger != nullptr;
@@ -91,14 +93,8 @@ namespace FlexKit
 #endif
 
 
-		CPUDispatcher = physx::PxDefaultCpuDispatcherCreate(4);
-
 		// Create Default Material
-		auto DefaultMaterial = physxAPI->createMaterial(0.5f, 0.5f, .1f);
-		if (!DefaultMaterial)
-			assert(0);
-
-		defaultMaterial	= DefaultMaterial;
+		defaultMaterial = physxAPI->createMaterial(0.5f, 0.5f, .1f);
 		updateColliders	= false;
 	}
 
@@ -110,17 +106,11 @@ namespace FlexKit
 	{
 		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
 		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
-		//desc.gravity		= physx::PxVec3(0.0f, 0.0f, 0.0f);
 		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
-		desc.cpuDispatcher	= CPUDispatcher;
+		desc.cpuDispatcher	= &dispatcher;
 
-		//if (!desc.gpuDispatcher && game->Physics->GpuContextManger)
-		//{
-		//	desc.gpuDispatcher = game->Physics->GpuContextManger->getGpuDispatcher();
-		//}
-
-		auto pScene	= physxAPI->createScene(desc);
-		auto Idx	= scenes.emplace_back(pScene, this, memory);
+		auto pScene			= physxAPI->createScene(desc);
+		auto Idx			= scenes.emplace_back(pScene, this, memory);
 
 		return PhysicsSceneHandle(Idx);
 	}
@@ -153,6 +143,8 @@ namespace FlexKit
 	{
 		for (auto& scene : scenes)
 			scene.Update(dt);
+
+		dispatcher.ReleaseDelayedFrees();
 	}
 
 
@@ -297,7 +289,6 @@ namespace FlexKit
 		for (auto& scene : scenes)
 			scene.Release();
 
-		if(CPUDispatcher)	CPUDispatcher->release();// Physx
 		if(defaultMaterial) defaultMaterial->release();
 
 		PxCloseExtensions();
@@ -308,7 +299,6 @@ namespace FlexKit
 		for (auto& scene : scenes)
 			scene.Release();
 
-		CPUDispatcher	= nullptr;
 		defaultMaterial = nullptr;
 		physxAPI		= nullptr;
 		foundation		= nullptr;
@@ -559,6 +549,16 @@ namespace FlexKit
 		pose.p = {xyz.x, xyz.y, xyz.z};
 		colliderIMPL.dynamicActor->setGlobalPose(pose);
 	}
+
+
+	/************************************************************************************************/
+
+	void PhysicsScene::SetMass(rbColliderEntityHandle collider, float m)
+	{
+		auto& colliderIMPL = rbColliders.colliders[collider.INDEX];
+		colliderIMPL.dynamicActor->setMass(m);
+	}
+
 
 
 	/************************************************************************************************/

@@ -52,6 +52,8 @@ namespace FlexKit
 
 	typedef ID3D12PipelineState* LOADSTATE_FN(RenderSystem* RS);
 
+	/************************************************************************************************/
+
 	struct PipelineStateDescription
 	{
 		RootSignature*	rootSignature;

@@ -33,7 +33,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
-
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -41,6 +40,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <stdint.h>
 #include <iostream>
+#include <random>
 
 #define MAXTHREADCOUNT 3
 
@@ -54,6 +54,7 @@ namespace FlexKit
 	using std::atomic_bool;
 
 	class ThreadManager;
+	class WorkerThread;
 
 	typedef std::function<void()> OnCompletionEvent;
 
@@ -66,40 +67,43 @@ namespace FlexKit
 	public:
 		iWork & operator = (iWork& rhs) = delete;
 
-		//iWork(iAllocator* Memory) : 
-		//	Watchers{Memory}	{}
+		iWork(iAllocator* Memory) : 
+			watchers{Memory}	
+		{
+			watchers.reserve(8);
+		}
 
-		iWork(iAllocator* Memory) {}
 
-		//~iWork()					{ Watchers.Release();}
+		~iWork()					
+		{ 
+			watchers.Release();
+		}
+
 
 		virtual void Run() {}
 		virtual void Release() {}
 
+
 		void NotifyWatchers()
 		{
-			if (!Watchers.size())
-				return;
+			for (auto& watcher : watchers)
+				watcher();
 
-			size_t end = Watchers.size();
-			for (size_t itr = 0; itr < end; ++itr) {
-				test++;
-				Watchers[itr]();
-			}
+			watchers.Release();
 		}
+
 
 		void Subscribe(OnCompletionEvent CallMeLater) 
 		{ 
-			Watchers.push_back(CallMeLater);
+			watchers.push_back(CallMeLater);
 		}
+
 
 		operator iWork* () { return this; }
 
 	private:
-		atomic_int					test = 0;
 		bool						notifiedWatchers = false;
-		//Vector<OnCompletionEvent>	Watchers;
-		static_vector<OnCompletionEvent>	Watchers;
+		Vector<OnCompletionEvent>	watchers;
 	};
 
 
@@ -183,14 +187,17 @@ namespace FlexKit
 	public:
 		ThreadManager(size_t ThreadCount = 4, iAllocator* memory = SystemAllocator) :
 			Threads				{},
-			Memory				{memory},
-			WorkingThreadCount	{0},
-			WorkerCount			{ThreadCount}
+			Memory				{ memory			},
+			WorkingThreadCount	{ 0					},
+			WorkerCount			{ ThreadCount		},
+			lastThread			{ nullptr			}
 		{
 			WorkerThread::Manager = this;
 
 			for (size_t I = 0; I < ThreadCount; ++I)
 				Threads.push_back(memory->allocate<WorkerThread>(memory));
+
+			lastThread = Threads.begin();
 		}
 
 
@@ -225,13 +232,11 @@ namespace FlexKit
 			{
 				bool success = false;
 				do {
-					auto& thread = Threads.begin();
+					auto& thread = Threads.begin() + randomDevice() % GetThreadCount();
 					success = thread->AddItem(NewWork);
 
 					if (success)
 						thread->Wake();
-
-					RotateThreads();
 				} while (!success);
 			}
 			else
@@ -310,10 +315,13 @@ namespace FlexKit
 			if (!Threads.empty())
 				return nullptr;
 
-			iWork* StolenWork = Threads.begin()->Steal();
-			RotateThreads();
+			for(auto& thread : Threads)
+			{
+				if (auto res = thread.Steal())
+					return res;
+			}
 
-			return StolenWork;
+			return nullptr;
 		}
 
 		size_t GetThreadCount() const
@@ -322,14 +330,23 @@ namespace FlexKit
 		}
 
 
-	private:
+		Deque_MT<WorkerThread>::Iterator GetThreadsBegin() {
+			return Threads.begin();
+		}
 
+		Deque_MT<WorkerThread>::Iterator GetThreadsEnd() {
+			return Threads.end();
+		}
+
+	private:
 		Deque_MT<WorkerThread>		Threads;
 		Deque_MT<iWork>				Work; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
 
+		Deque_MT<WorkerThread>::Iterator lastThread;
 
-		std::condition_variable		CV;
-		std::atomic_int				WorkingThreadCount;
+		std::condition_variable				CV;
+		std::atomic_int						WorkingThreadCount;
+		std::default_random_engine			randomDevice;
 
 		const size_t	WorkerCount;
 		iAllocator*		Memory;

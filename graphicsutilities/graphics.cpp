@@ -2936,17 +2936,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle RenderSystem::CreateDepthBuffer(uint2 WH, bool UseFloat)
+	TextureHandle RenderSystem::CreateDepthBuffer(uint2 WH, bool UseFloat, size_t bufferCount)
 	{
 		Texture2D_Desc Desc(WH[1], WH[0], FORMAT_2D::D32_FLOAT, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL);
 
-		ID3D12Resource* Resources[] = { 
-			CreateDepthBufferResource(this, &Desc, UseFloat), 
-			CreateDepthBufferResource(this, &Desc, UseFloat), 
-			CreateDepthBufferResource(this, &Desc, UseFloat) 
-		};
+		ID3D12Resource* Resources[3];
 
-		auto DepthBuffer = RenderTargets.AddResource(Desc, Resources, 3, 1, DRS_DEPTHBUFFERWRITE, TF_RenderTarget);
+		for(size_t itr = 0; itr < bufferCount; ++itr)
+			Resources[itr] = CreateDepthBufferResource(this, &Desc, UseFloat);
+
+		auto DepthBuffer = RenderTargets.AddResource(Desc, Resources, bufferCount, 1, DRS_DEPTHBUFFERWRITE, TF_RenderTarget);
 
 		return DepthBuffer;
 	}
@@ -4880,7 +4879,7 @@ namespace FlexKit
 
 		if (Count == 0) 
 		{
-			auto G = GetMesh(TMHandle);
+			auto G = GetMeshResource(TMHandle);
 
 			DelayedReleaseTriMesh(RS, G);
 
@@ -4897,7 +4896,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadMesh(RenderSystem* rs, GUID_t guid)
+	TriMeshHandle GetMesh(RenderSystem* rs, GUID_t guid)
 	{
 		if (IsMeshLoaded(guid))
 		{
@@ -4907,8 +4906,7 @@ namespace FlexKit
 				return mesh;
 		}
 
-		TriMeshHandle triMesh = InvalidHandle_t;
-		triMesh = LoadTriMeshIntoTable(rs, guid);
+		TriMeshHandle triMesh = LoadTriMeshIntoTable(rs, guid);
 
 		return triMesh;
 	}
@@ -4917,7 +4915,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMesh* GetMesh(TriMeshHandle TMHandle){
+	TriMeshHandle GetMesh(RenderSystem* rs, const char* meshID)
+	{
+		auto [mesh, result] = FindMesh(meshID);
+
+		if(result)
+			return mesh;
+
+		return LoadTriMeshIntoTable(rs, meshID);
+	}
+
+
+	/************************************************************************************************/
+
+
+	TriMesh* GetMeshResource(TriMeshHandle TMHandle){
 		FK_ASSERT(TMHandle != InvalidHandle_t);
 
 		return &GeometryTable.Geometry[GeometryTable.Handles[TMHandle]];
@@ -4938,7 +4950,7 @@ namespace FlexKit
 
 
 	Skeleton* GetSkeleton(TriMeshHandle TMHandle){
-		return GetMesh(TMHandle)->Skeleton;
+		return GetMeshResource(TMHandle)->Skeleton;
 	}
 
 
@@ -4946,7 +4958,7 @@ namespace FlexKit
 
 
 	size_t	GetSkeletonGUID(TriMeshHandle TMHandle){
-		return GetMesh(TMHandle)->SkeletonGUID;
+		return GetMeshResource(TMHandle)->SkeletonGUID;
 	}
 
 
@@ -4954,7 +4966,7 @@ namespace FlexKit
 
 
 	void SetSkeleton(TriMeshHandle TMHandle, Skeleton* S){
-		GetMesh(TMHandle)->Skeleton = S;
+		GetMeshResource(TMHandle)->Skeleton = S;
 	}
 
 
@@ -4962,7 +4974,7 @@ namespace FlexKit
 
 
 	bool IsSkeletonLoaded(TriMeshHandle guid){
-		return (GetMesh(guid)->Skeleton != nullptr);
+		return (GetMeshResource(guid)->Skeleton != nullptr);
 	}
 
 
@@ -7863,7 +7875,7 @@ namespace FlexKit
 		Desc.memory			= memory;
 
 		auto meshHandle		= BuildMesh(RS, &Desc, MeshID);
-		auto triMesh		= GetMesh(meshHandle);
+		auto triMesh		= GetMeshResource(meshHandle);
 
 		triMesh->Info.max		= float3{  R,  R,  R };
 		triMesh->Info.min		= float3{ -R, -R, -R };

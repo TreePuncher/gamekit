@@ -2451,7 +2451,7 @@ namespace FlexKit
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
-		TextureHandle			CreateDepthBuffer				(uint2 WH, bool UseFloat = false);
+		TextureHandle			CreateDepthBuffer				(uint2 WH, bool UseFloat = false, size_t bufferCount = 3);
 		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels = 1);
 		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
@@ -2965,7 +2965,11 @@ namespace FlexKit
 
 	FLEXKITAPI TriMeshHandle				LoadMesh				( GUID_t TMHandle );
 
-	FLEXKITAPI TriMesh*						GetMesh					( TriMeshHandle  TMHandle );
+	FLEXKITAPI TriMeshHandle				GetMesh					( RenderSystem* rs, const char* meshID );
+	FLEXKITAPI TriMeshHandle				GetMesh					( RenderSystem* rs, const char* meshID );
+
+
+	FLEXKITAPI TriMesh*						GetMeshResource			( TriMeshHandle  TMHandle );
 	FLEXKITAPI BoundingSphere				GetMeshBoundingSphere	( TriMeshHandle  TMHandle );
 
 	FLEXKITAPI Skeleton*					GetSkeleton				( TriMeshHandle  TMHandle );

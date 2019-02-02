@@ -57,6 +57,8 @@ namespace FlexKit
 		BAdesc.MediumBlock	= MEGABYTE * 64;
 		BAdesc.LargeBlock	= MEGABYTE * 512;
 
+		new(&Memory->BlockAllocator) BlockAllocator();
+
 		Memory->BlockAllocator.Init(BAdesc);
 		Memory->LevelAllocator.Init(Memory->LevelMem,	LEVELBUFFERSIZE);
 		Memory->TempAllocator.Init(Memory->TempMem,		TEMPBUFFERSIZE);

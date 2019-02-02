@@ -1,6 +1,30 @@
+#ifndef THIRDPERSONCHARACTERRIG_H
+#define THIRDPERSONCHARACTERRIG_H
+
+#include "..\coreutilities\CameraUtilities.h"
+#include "..\coreutilities\GraphicsComponents.h"
+#include "..\coreutilities\GraphicScene.h"
+
+
+class ThirdPersonCharacterRig
+{
+public:
+	DrawableBehavior	characterModel;
+	CameraBehavior		camera;
+};
+
+
+ThirdPersonCharacterRig CreateCharacterRig()
+{
+	ThirdPersonCharacterRig rig;
+
+	return rig;
+}
+
+
 /**********************************************************************
 
-Copyright (c) 2018 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -22,31 +46,4 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-
-#define _CRT_SECURE_NO_WARNINGS
-
-#include "..\buildsettings.h"
-#include "..\coreutilities\Application.h"
-#include "..\coreutilities\Logging.h"
-#include "..\coreutilities\Logging.cpp"
-
-#include "GraphicsTest.hpp"
-
-
-using namespace FlexKit;
-
-int main(int argc, char* argv[])
-{
-	InitLog(argc, argv);
-	SetShellVerbocity(FlexKit::Verbosity_1);
-	AddLogFile("GraphicsTests.log", FlexKit::Verbosity_INFO);
-
-	auto* Memory = CreateEngineMemory();
-	FKApplication App({1920, 1080}, Memory);
-
-	App.PushState<GraphicsTest>();
-	App.Run();
-	App.Release();
-
-	return 0;
-}
+#endif

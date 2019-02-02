@@ -102,17 +102,36 @@ namespace FlexKit
 					}
 				}
 
-				const auto Try_Count = Manager->GetThreadCount();
-				for(auto I = 0; I < Try_Count; ++I)
+				auto doWork = [&](auto work)
 				{
-					iWork* work = Manager->StealSomeWork();
-
 					if (work) {
 						work->Run();
 						work->NotifyWatchers();
 						work->Release();
+						return true;
 					}
-				}
+					return false;
+				};
+
+				auto stealWork = [&](auto& begin, auto& end)
+				{
+					for (auto worker = begin; worker != end && worker != nullptr; ++worker)
+					{
+						iWork* work = worker->Steal();
+						if (work) {
+							doWork(work);
+							return;
+						}
+					}
+				};
+
+				stealWork(
+					Deque_MT<WorkerThread>::Iterator{ this },
+					Manager->GetThreadsEnd());
+
+				stealWork(
+					Manager->GetThreadsBegin(),
+					Deque_MT<WorkerThread>::Iterator{ this });
 
 				if (WorkList.empty() && Quit)
 					return;
@@ -158,7 +177,7 @@ namespace FlexKit
 		++TasksInProgress;
 
 		Work->Subscribe(
-			[this]
+			[&]
 			{
 				TasksInProgress.fetch_sub(1, std::memory_order_acq_rel);
 

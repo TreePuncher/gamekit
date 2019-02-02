@@ -468,9 +468,9 @@ namespace FlexKit
 			CL->SetGraphicsRootConstantBufferView(3, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 			CL->SetGraphicsRootConstantBufferView(4, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 
-			auto CurrentMesh	= GetMesh(MeshHande);
+			auto CurrentMesh	= GetMeshResource(MeshHande);
 			size_t IBIndex		= CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
-			size_t IndexCount	= GetMesh(P.D->MeshHandle)->IndexCount;
+			size_t IndexCount	= GetMeshResource(P.D->MeshHandle)->IndexCount;
 
 			D3D12_INDEX_BUFFER_VIEW		IndexView;
 			IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();

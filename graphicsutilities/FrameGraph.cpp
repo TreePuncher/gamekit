@@ -643,7 +643,7 @@ namespace FlexKit
 				DepthBuffers.push_back(&Resource);
 		}
 
-		auto RS			= Resources.renderSystem;
+		auto RS	= Resources.renderSystem;
 
 		{	// Push RenderTargets
 			auto Table		= RS->_ReserveRTVHeap(RenderTargets.size());

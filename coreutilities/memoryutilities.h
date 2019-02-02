@@ -598,6 +598,8 @@ namespace FlexKit
 
 		byte* malloc(const size_t size, bool MarkAligned = false, bool MarkDebugMetaData = false)
 		{
+			std::unique_lock ul{ mu };
+
 			byte* ret = nullptr;
 
 			if (size <= SmallBlockAllocator::MaxAllocationSize())
@@ -651,6 +653,8 @@ namespace FlexKit
 		
 		void free(void* _ptr)
 		{
+			std::unique_lock ul(mu);
+
 			if (InSmallRange(reinterpret_cast<byte*>(_ptr)) && false)
 				SmallBlockAlloc.free(reinterpret_cast<void*>(_ptr));
 			else if (InMediumRange(reinterpret_cast<byte*>(_ptr)))
@@ -663,17 +667,13 @@ namespace FlexKit
 		void Delete(TY* _ptr)
 		{
 			_ptr->~TY();
-
-			if (InSmallRange((byte*)_ptr) && false)
-				SmallBlockAlloc.free((void*)_ptr);
-			else if (InMediumRange((byte*)_ptr))
-				MediumBlockAlloc.free((void*)_ptr);
-			else if (InLargeRange((byte*)_ptr))
-				LargeBlockAlloc.free((void*)_ptr);
+			free(_ptr);
 		}
 
 		void _aligned_free(void* _ptr)
 		{
+			std::unique_lock ul(mu);
+
 			if (InSmallRange((byte*)_ptr) && false)
 				SmallBlockAlloc._aligned_free(_ptr);
 			else if (InMediumRange(static_cast<byte*>(_ptr)))
@@ -728,6 +728,7 @@ namespace FlexKit
 		SmallBlockAllocator		SmallBlockAlloc;
 		MediumBlockAllocator	MediumBlockAlloc;
 		LargeBlockAllocator		LargeBlockAlloc;
+		std::mutex				mu;
 
 		char*	Buffer_ptr;
 		size_t	Small, Medium, Large;

@@ -316,6 +316,36 @@ namespace FlexKit
 			entity				{ handle					}	{}
 
 
+		~DrawableBehavior()
+		{
+			parentScene->RemoveEntity(entity);
+		}
+
+		DrawableBehavior(DrawableBehavior&& rhs)
+		{
+			entity		= rhs.entity;
+			rhs.entity	= InvalidHandle_t;
+		}
+
+
+		DrawableBehavior& operator = (DrawableBehavior&& rhs)
+		{
+			parentScene = rhs.parentScene;
+			entity		= rhs.entity;
+			node		= rhs.node;
+
+			rhs.entity		= InvalidHandle_t;
+			rhs.parentScene = nullptr;
+			rhs.node		= InvalidHandle_t;
+
+			return *this;
+		}
+
+
+		// non-copyable
+		DrawableBehavior(DrawableBehavior&)					= delete;
+		DrawableBehavior& operator = (DrawableBehavior&)	= delete;
+
 		void		SetNode(NodeHandle Handle) 
 		{
 			parentScene->SetNode(entity, Handle);

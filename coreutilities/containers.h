@@ -1181,12 +1181,31 @@ namespace FlexKit
 				I = Prev ? Prev : nullptr; 
 			}
 
+			Iterator operator + (const int n)
+			{
+				auto itr = *this;
+
+				for (size_t i = 0; i < n; itr++, i++);
+
+				return itr;
+			}
+
+			Iterator operator - (const int n)
+			{
+				auto itr = *this;
+
+				for (size_t i = 0; i < n; itr--, i++);
+
+				return itr;
+			}
+
 			DequeNode_MT* GetPtr()
 			{
 				return I;
 			}
 
 			bool operator !=(const Iterator& rhs) { return I != rhs.I; }
+			bool operator ==(const Iterator& rhs) { return I == rhs.I; }
 
 			TY& operator* ()				{ return *static_cast<TY*>(I);	}
 			TY* operator-> ()				{ return  static_cast<TY*>(I);	}
@@ -1306,7 +1325,7 @@ namespace FlexKit
 
 		bool try_pop_front(TY*& Out)
 		{
-			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
+			auto CurrentFirstLast = BeginEnd.load(std::memory_order_seq_cst);
 			
 			if (CurrentFirstLast.First == nullptr || CurrentFirstLast.Last == nullptr)
 				return false;

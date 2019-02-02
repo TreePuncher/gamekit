@@ -155,7 +155,7 @@ namespace FlexKit
 			Threads			{ 4, memory->BlockAllocator				},// TODO: Get System Thread Count.
 			RenderSystem	{ memory->BlockAllocator, &Threads		},
 			FrameLock		{ true									},
-			Physics			{ memory->BlockAllocator				}
+			Physics			{ Threads, memory->BlockAllocator		}
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
 			Initiate(memory, WH);

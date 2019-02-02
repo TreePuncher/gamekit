@@ -183,8 +183,11 @@ namespace FlexKit
 		virtual bool EventHandler	(Event evt) { return true; };
 
 		GameFramework*	framework;
-	protected: 		
+	protected:
+
 		FrameworkState(GameFramework* in_framework) : framework(in_framework) {}
+
+		RenderSystem*	GetRenderSystem() { return framework->GetRenderSystem(); }
 	};
 
 

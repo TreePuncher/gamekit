@@ -83,5 +83,8 @@
     <ClInclude Include="MultiplayerGameState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ThirdPersonCharacterRig.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

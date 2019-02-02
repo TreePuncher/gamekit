@@ -185,7 +185,7 @@ namespace FlexKit
 		for(auto& PV : *_PVS)
 		{
 			auto E                  = (Drawable*)PV.D;
-			TriMesh* CurrentMesh	= GetMesh(E->MeshHandle);
+			TriMesh* CurrentMesh	= GetMeshResource(E->MeshHandle);
 			size_t IBIndex          = CurrentMesh->VertexBuffer.MD.IndexBuffer_Index;
 			size_t IndexCount       = CurrentMesh->IndexCount;
 
