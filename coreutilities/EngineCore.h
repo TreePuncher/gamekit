@@ -111,7 +111,7 @@ namespace FlexKit
 
 	static const size_t PRE_ALLOC_SIZE = GIGABYTE * 2;
 	static const size_t LEVELBUFFERSIZE = MEGABYTE * 64;
-	static const size_t NODEBUFFERSIZE = MEGABYTE * 64;
+	static const size_t NODEBUFFERSIZE = MEGABYTE * 128;
 	static const size_t TEMPBUFFERSIZE = MEGABYTE * 128;
 	static const size_t BLOCKALLOCSIZE = MEGABYTE * 768;
 
@@ -179,8 +179,8 @@ namespace FlexKit
 		EngineCore				(const EngineCore&) = delete;
 		EngineCore& operator =	(const EngineCore&) = delete;
 
-		bool			FrameLock;
-		bool			End;
+		bool					FrameLock;
+		bool					End;
 
 		RenderSystem			RenderSystem;
 

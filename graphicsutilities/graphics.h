@@ -2650,6 +2650,9 @@ namespace FlexKit
 		iAllocator*				Memory			= nullptr;
 	};
 
+	
+	/************************************************************************************************/
+
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushDepthStencil			(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS);
@@ -2663,7 +2666,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle MoveTextureBuffersToVRAM(TextureBuffer* buffer, size_t bufferCount, RenderSystem* RS, iAllocator* tempMemory);
+	TextureHandle MoveTextureBuffersToVRAM	(TextureBuffer* buffer, size_t bufferCount, RenderSystem* RS, iAllocator* tempMemory);
+	TextureHandle MoveTextureBufferToVRAM	(TextureBuffer* buffer, RenderSystem* RS, iAllocator* tempMemory);
 
 
 	/************************************************************************************************/

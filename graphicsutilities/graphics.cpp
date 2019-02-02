@@ -2276,13 +2276,16 @@ namespace FlexKit
 		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
 		{
+			FK_LOG_INFO("Failed to create A DX12 Device!");
+
 			// Trying again with a DX11 Feature Level
 			HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
-
-			FK_LOG_INFO("Failed to create A DX12 Device!");
-			MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
-
-			return false;
+			if (FAILED(HR))
+			{
+				FK_LOG_INFO("Failed to create A DX11 Device!");
+				MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
+				return false;
+			}
 		}
 
 #if USING( DEBUGGRAPHICS )

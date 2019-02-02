@@ -112,13 +112,6 @@ namespace FlexKit
 			case KC_ESC:
 				framework->quit = true;
 				break;
-			case KC_R:
-				framework->core->RenderSystem.QueuePSOLoad(DRAW_LINE_PSO);
-				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_CULL_PSO);
-				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_DRAW_PSO);
-				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_DRAW_PSO_DEBUG);
-				framework->core->RenderSystem.QueuePSOLoad(TERRAIN_DRAW_WIRE_PSO);
-				break;
 			case KC_E:
 			{
 			}	break;
