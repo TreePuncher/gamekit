@@ -186,11 +186,13 @@ namespace FlexKit
 	public:
 		Vect(){}
 
+
 		Vect( TY n )
 		{
 			for( auto e : Vector )
 				e = n;
 		}
+
 
 		template<typename TY_2>
 		Vect( Vect<SIZE, TY_2> in)
@@ -198,6 +200,7 @@ namespace FlexKit
 			for (size_t I=0; I<SIZE; ++I)
 				Vector[I] = in[I];
 		}
+
 
 		Vect( std::initializer_list<TY> il )
 		{
@@ -210,8 +213,20 @@ namespace FlexKit
 			}
 		}
 
+
+		TY* begin()
+		{
+			return Vector;
+		}
+
+		TY* end()
+		{
+			return Vector + SIZE;
+		}
+
+		/*
 		template< typename TY_i >
-		Vect<SIZE, TY>	operator *( TY_i scaler )
+		Vect<SIZE, TY>	operator * ( TY_i scaler )
 		{
 			Vect<SIZE, TY>	out;
 			size_t i = 0;
@@ -224,13 +239,16 @@ namespace FlexKit
 		}
 
 		template< typename TY_i >
-		Vect<SIZE, TY>	operator *( Vect<SIZE, TY_i> rhs )
+		Vect<SIZE, TY>	operator * ( Vect<SIZE, TY_i> rhs )
 		{
 			Vect<SIZE, TY>	out;
 			for (auto i = 0; i < SIZE; ++i)
 				out[i]= Vector[i] * rhs[i];
+
 			return out;
 		}
+		*/
+
 
 		template< typename TY_i >
 		Vect<3, TY>	Cross( Vect<3, TY_i> rhs )
@@ -240,6 +258,7 @@ namespace FlexKit
 				out[i] = ( Vector[(1+i)%SIZE] * rhs[(2+i)%SIZE] ) - ( rhs[(1+i)%SIZE] * Vector[(2+i)%SIZE] );
 			return out;
 		}
+
 
 		template< typename TY_i >
 		TY Dot( const Vect<SIZE, TY_i>& rhs ) const
@@ -251,6 +270,7 @@ namespace FlexKit
 			return dotproduct;
 		}
 
+
 		template< typename TY_i >
 		TY Dot( const Vect<SIZE, TY_i>* rhs_ptr )
 		{
@@ -261,6 +281,7 @@ namespace FlexKit
 
 			return products.Sum();
 		}
+
 
 		TY Norm( unsigned int exp = 2 )
 		{
@@ -276,6 +297,7 @@ namespace FlexKit
 			return pow( sum, 1/SIZE );
 		}
 
+
 		TY Magnitude()
 		{
 			TY sum = 0;
@@ -287,15 +309,18 @@ namespace FlexKit
 			return sqrt( sum );
 		}
 
+
 		TY& operator []( size_t index )
 		{
 			return Vector[index];
 		}
 
+
 		const TY& operator []( size_t index ) const
 		{
 			return Vector[index];
 		}
+
 
 		TY Sum() const
 		{
@@ -305,6 +330,7 @@ namespace FlexKit
 			return sum;
 		}
 
+
 		TY Product() const
 		{
 			TY Product = 1;
@@ -312,6 +338,7 @@ namespace FlexKit
 				Product *= element;
 			return Product;
 		}
+
 
 		template<typename TY_2>
 		THISTYPE operator + (const Vect<SIZE, TY_2>& in)
@@ -323,6 +350,7 @@ namespace FlexKit
 			return temp;
 		}
 
+
 		template<typename TY_2>
 		THISTYPE& operator += (const Vect<SIZE, TY_2>& in)
 		{
@@ -331,6 +359,7 @@ namespace FlexKit
 			
 			return *this;
 		}
+
 
 		template<typename TY_2>
 		THISTYPE operator - (const Vect<SIZE, TY_2>& in)
@@ -342,6 +371,7 @@ namespace FlexKit
 			return temp;
 		}
 
+
 		template<typename TY_2>
 		THISTYPE& operator -= ( const Vect<SIZE, TY_2>& in )
 		{
@@ -351,6 +381,7 @@ namespace FlexKit
 			return *this;
 		}
 
+
 		template<typename TY_2>
 		THISTYPE& operator = (const Vect<SIZE, TY_2>& in)
 		{
@@ -359,6 +390,7 @@ namespace FlexKit
 			
 			return *this;
 		}
+
 
 		template<typename TY_2>
 		THISTYPE operator / (TY_2 in)
@@ -370,6 +402,7 @@ namespace FlexKit
 			return temp;
 		}
 
+
 		template<typename TY_2>
 		THISTYPE& operator /= (TY_2 in)
 		{
@@ -378,6 +411,7 @@ namespace FlexKit
 
 			return *this;
 		}
+
 
 		template<typename TY_2>
 		THISTYPE operator /= (const Vect<SIZE, TY_2> in)
@@ -389,6 +423,7 @@ namespace FlexKit
 			return Out;
 		}
 
+
 		template<typename TY_2>
 		bool operator == (const Vect<SIZE, TY_2>& in)
 		{
@@ -398,6 +433,7 @@ namespace FlexKit
 
 			return res;
 		}
+
 
 		template<typename TY_2>
 		THISTYPE& operator = ( const std::initializer_list<TY_2>& il )
@@ -411,6 +447,7 @@ namespace FlexKit
 			}
 			return *this;
 		}
+
 
 		static THISTYPE Zero()
 		{
@@ -427,6 +464,52 @@ namespace FlexKit
 	};
 
 	/************************************************************************************************/
+
+
+	template<typename TY_S, size_t ELEMENT_COUNT = 1>
+	Vect<ELEMENT_COUNT, TY_S> operator* (const Vect<ELEMENT_COUNT, TY_S> lhs, const Vect<ELEMENT_COUNT, TY_S> rhs)// vector multiply
+	{
+		auto V_out = v;
+
+		for (size_t i = 0; i < rhs.size(); ++i)
+			v[i] = lhs[i] * rhs[i];
+
+		return V_out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
+	Vect<ELEMENT_COUNT, TY_Vs> operator* (TY_S scaler, const Vect<ELEMENT_COUNT, TY_Vs>& v)// scaler multiply
+	{
+		auto V_out = v;
+
+		for (auto& Vs : V_out)
+			Vs *= scaler;
+
+		return V_out;
+	}
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
+	Vect<ELEMENT_COUNT, TY_Vs> operator* (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
+	{
+		auto V_out = v;
+
+		for (auto& Vs : V_out)
+			Vs *= scaler;
+
+		return V_out;
+	}
+
+
+	/************************************************************************************************/
+
 
 	typedef Vect<2> Vect2;
 	typedef Vect<3> Vect3;
@@ -445,19 +528,22 @@ namespace FlexKit
 	typedef Vect<3, int> int3;
 	typedef Vect<4, int> int4;
 
+
 	/************************************************************************************************/
 
 	union float2
 	{
 	public:
 		float2() noexcept : x(0), y(0) {}
+
+
 		float2( const float X, const float Y ) noexcept
 		{
 			x = X;
 			y = Y;
 		}
 
-		float2(const float in_f) noexcept
+		explicit float2(const float in_f) noexcept
 		{
 			x = in_f;
 			y = in_f;
@@ -892,6 +978,7 @@ namespace FlexKit
 #endif
 		}
 
+
 		inline float3 normal() 
 		{
 #if USING(FASTMATH)
@@ -970,7 +1057,9 @@ namespace FlexKit
 		return out;
 	}
 
+
 	/************************************************************************************************/
+
 
 	inline float3 operator* ( float s, float3 V )
 	{
@@ -980,6 +1069,7 @@ namespace FlexKit
 		return V*s;
 #endif
 	}
+
 
 	inline float3 RotateVectorAxisAngle( float3 N, float a, float3 V ) { return V*cos(a) + (V.dot(N) * N * (1-cos(a)) + (N.cross(V)*sin(a)));	}
 	
@@ -1185,7 +1275,7 @@ namespace FlexKit
 		__m128 pFloats;
 	};
 
-	inline float F4Dot(float4 rhs, float4 lhs)						{ return DotProduct4(lhs, rhs); }
+	inline float  F4Dot		(float4 rhs, float4 lhs)				{ return DotProduct4(lhs, rhs); }
 	inline float4 operator* (float4 lhs, float4 rhs)				{ return _mm_mul_ps(lhs, rhs); }
 	inline float4 F4MUL		(const float4 lhs, const float4 rhs)	{ return _mm_mul_ps(lhs, rhs); }
 
@@ -1438,9 +1528,9 @@ namespace FlexKit
 
 	inline float3		operator * (Quaternion P, float3 V)
 	{
-		auto v = P.XYZ() * -1;
-		auto vXV = v.cross(V);
-		auto ret = float3(V + (vXV * (2 * P.w)) + (v.cross(vXV) * 2));
+		auto v		= -1 * P.XYZ();
+		auto vXV	= v.cross(V);
+		auto ret	= float3(V + (vXV * (2 * P.w)) + (v.cross(vXV) * 2));
 
 		return ret;
 	}
