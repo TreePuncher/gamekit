@@ -422,6 +422,11 @@ namespace FlexKit
 		};
 
 
+		StaticColliderObject GetAPIObject(StaticColliderEntityHandle collider)
+		{
+			return colliders[collider];
+		}
+
 		Vector<StaticColliderObject>	colliders;
 		PhysicsScene*					parentScene;
 	};
@@ -462,6 +467,7 @@ namespace FlexKit
 			}
 		}
 
+
 		struct rbColliderObject
 		{
 			NodeHandle				sceneNode;
@@ -469,6 +475,11 @@ namespace FlexKit
 			physx::PxShape*			shape;
 		};
 
+
+		rbColliderObject GetAPIObject(rbColliderEntityHandle collider)
+		{
+			return colliders[collider];
+		}
 
 		Vector<rbColliderObject>	colliders;
 		PhysicsScene*				parentScene;
@@ -682,11 +693,6 @@ namespace FlexKit
 			uint32_t getWorkerCount() const
 			{
 				return threads.GetThreadCount();
-			}
-
-
-			void ReleaseDelayedFrees()
-			{
 			}
 
 

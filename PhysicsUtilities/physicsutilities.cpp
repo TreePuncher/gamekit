@@ -143,8 +143,6 @@ namespace FlexKit
 	{
 		for (auto& scene : scenes)
 			scene.Update(dt);
-
-		dispatcher.ReleaseDelayedFrees();
 	}
 
 
@@ -171,21 +169,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	/*
-	size_t CreatePlaneCollider(physx::PxMaterial* material, PScene* scene)
-	{
-		auto Static = physx::PxCreateStatic(scene->Scene->getPhysics(), { 0, -0.5f, 0 }, PxBoxGeometry(50000.0f, 1.0f, 50000.0f), *material);
-
-		scene->Scene->addActor(*Static);
-		//scene->Colliders.push_back({ Static });
-
-		return -1;//scene->Colliders.size() - 1;
-	}
-	*/
-
-	/************************************************************************************************/
-
-#pragma warning(disable : 4309)
 
 	/*
 	ColliderHandle LoadTriMeshCollider(FlexKit::PhysicsSystem* PS, GUID_t Guid)
@@ -316,20 +299,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	/*
-	void MakeCube(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Drawable* E, NodeHandle node, float3 initialP, FlexKit::Quaternion initialQ)
-	{
-		auto index                                 = CreateCubeActor(Material, scene, cdesc.r, initialP, initialQ);
-		//scene->Colliders[index].Node               = node;
-		//scene->Colliders[index].Actor->userData	   = E;
-		E->Node                                    = node;
-
-		ZeroNode(Nodes, node);
-	}
-	*/
-
-	/************************************************************************************************/
-
-	/*
 	void Initiate(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc)
 	{
 		PxCapsuleControllerDesc CCDesc;
@@ -352,7 +321,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	/*
-
 	void CharacterControllerSystem::Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene)
 	{
 		Nodes					= nodes;
