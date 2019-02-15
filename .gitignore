@@ -30,3 +30,4 @@ Release/
 *.ib_pdb_index
 *.ib_tag
 *.sdf
+/assets
