@@ -149,7 +149,7 @@ namespace FlexKit
 					FGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0), 
 					TempMemory);
 
-				Data.TextSheet		= Builder.ReadTexture(GetCRCGUID(FONTSHEET), Font.Texture);
+				Data.TextSheet		= Builder.ReadShaderResource(Font.Texture);
 				size_t StrLen		= strlen(Str);
 				size_t BufferSize	= StrLen * sizeof(TextEntry);
 				Vector<TextEntry>	Text{ TempMemory };

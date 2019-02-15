@@ -38,11 +38,13 @@ using namespace FlexKit;
 int main(int argc, char* argv[])
 {
 	InitLog(argc, argv);
-	SetShellVerbocity(FlexKit::Verbosity_1);
-	AddLogFile("GraphicsTests.log", FlexKit::Verbosity_INFO);
+	SetShellVerbocity(Verbosity_1);
+	AddLogFile("GraphicsTests.log", Verbosity_INFO);
 
-	auto* Memory = CreateEngineMemory();
-	FKApplication App({1920, 1080}, Memory);
+	auto* Memory	= CreateEngineMemory();
+	auto WH			= uint2{ 1920, 1080 } * 1.4; // 
+
+	FKApplication App(WH, Memory);
 
 	App.PushState<GraphicsTest>();
 	App.Run();

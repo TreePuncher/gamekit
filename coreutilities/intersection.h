@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2014-2017 Robert May
+Copyright (c) 2014-2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -160,7 +160,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool CompareBSAgainstFrustum(Frustum* F, BoundingSphere BS);
+	FLEXKITAPI bool CompareBSAgainstFrustum(const Frustum* F, BoundingSphere BS);
 
 
 	/************************************************************************************************/
@@ -179,6 +179,18 @@ namespace FlexKit
 		const float FOV,
 		float3 Position,
 		Quaternion Q);
+
+
+	Frustum GetSubFrustum(
+		const float AspectRatio,
+		const float Near,
+		const float Far,
+		const float FOV,
+		float3		Position,
+		Quaternion	Q,
+		float2		TopLeft,
+		float2		BottomRight);
+
 
 	/************************************************************************************************/
 

@@ -44,6 +44,7 @@ namespace FlexKit
 	{
 	public:
 		typedef Handle_t<HandleSize, ID> THISTYPE_t;
+		constexpr static const size_t GetHandleSize() { return HandleSize; }
 
 		constexpr Handle_t()
 		{
@@ -152,6 +153,15 @@ namespace FlexKit
 		return lhs.to_uint() < rhs.to_uint();
 	}
 
+	template<
+		typename TY_HANDLE_OUT,
+		typename TY_HANDLE_IN>
+		TY_HANDLE_OUT handle_cast(TY_HANDLE_IN in)
+	{
+		static_assert(TY_HANDLE_OUT::GetHandleSize() == TY_HANDLE_IN::GetHandleSize(), "Handles must be equal size!");
+
+		return TY_HANDLE_OUT{ in.INDEX };
+	}
 
 
 

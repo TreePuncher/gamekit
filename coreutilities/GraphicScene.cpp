@@ -115,6 +115,10 @@ namespace FlexKit
 
 		for (auto& D : this->Drawables)
 		{
+			if (D.id)
+				Memory->free(D.id);
+			D.id = nullptr;
+
 			ReleaseNode(D.Node);
 			ReleaseMesh(RS, D.MeshHandle);
 		}
@@ -980,7 +984,7 @@ namespace FlexKit
 					for (size_t I = 0; I < SceneBlob->SceneTable.EntityCount; ++I)
 					{
 						if (Entities[I].MeshGuid != INVALIDHANDLE) {
-							auto node = CreatedNodes[Entities[I].Node];
+							auto node			= CreatedNodes[Entities[I].Node];
 							auto Position_DEBUG = GetPositionW(node);
 
 							auto NewEntity = GS_out->CreateSceneEntityAndSetMesh(
@@ -997,8 +1001,13 @@ namespace FlexKit
 
 								strncpy(stringBuffer, SceneBlob->Buffer + SceneBlob->SceneTable.SceneStringsOffset, idLength);
 
-								GS_out->SetEntityId(NewEntity, nullptr);
+								GS_out->SetEntityId(NewEntity, stringBuffer);
 							}
+
+							//float4 albedo;
+							//float4 specular;
+
+							//GS_out->SetMaterialParams(NewEntity, albedo, specular);
 
 							SetFlag(CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
 							int x = 0;
@@ -1011,7 +1020,7 @@ namespace FlexKit
 					for (size_t I = 0; I < SceneBlob->SceneTable.LightCount; ++I)
 					{
 						auto Light		= Lights[I];
-						auto NewEntity	= GS_out->AddPointLight(Light.K, CreatedNodes[Light.Node], Light.I, Light.R * 10);
+						auto NewEntity	= GS_out->AddPointLight(Light.K, CreatedNodes[Light.Node], Light.I, Light.R);
 					}
 				}
 
@@ -1098,6 +1107,66 @@ namespace FlexKit
 		);
 
 		return &Task1;
+	}
+
+
+	/************************************************************************************************/
+
+
+	float3 GraphicScene::GetPointLightPosition(LightHandle light)
+	{
+		return GetPositionW(PLights[light].Position);
+	}
+
+
+	/************************************************************************************************/
+
+
+	NodeHandle GraphicScene::GetPointLightNode(LightHandle light)
+	{
+		return PLights[light].Position;
+	}
+
+
+	/************************************************************************************************/
+
+
+	float GraphicScene::GetPointLightRadius(LightHandle light)
+	{
+		return PLights[light].R;
+	}
+
+
+	/************************************************************************************************/
+
+
+
+	size_t GraphicScene::GetPointLightCount()
+	{
+		return PLights.size();
+	}
+
+
+	/************************************************************************************************/
+
+
+	Vector<LightHandle> GraphicScene::FindPointLights(const Frustum &f, iAllocator* tempMemory)
+	{
+		Vector<LightHandle> lights{tempMemory};
+
+		for (unsigned int itr = 0; itr < PLights.size(); ++itr) {
+			auto& light = PLights[itr];
+			auto Pw		= GetPositionW(light.Position);
+			auto Ps		= GetLocalScale(light.Position).x;
+
+			//BoundingSphere BoundingVolume = float4(Pw, light.R * Ps);
+			BoundingSphere BoundingVolume = float4(Pw, 1);
+
+			if (CompareBSAgainstFrustum(&f, BoundingVolume))
+				lights.emplace_back(LightHandle{ itr });
+		}
+
+		return lights;
 	}
 
 

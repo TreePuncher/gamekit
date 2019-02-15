@@ -109,9 +109,9 @@ namespace FlexKit
 
 		struct IndexBitlayout
 		{
-			size_t p_Index;
-			size_t n_Index;
-			size_t t_Index;
+			size_t p_Index = 0;
+			size_t n_Index = 0;
+			size_t t_Index = 0;
 
 			size_t Hash() const 
 			{ 

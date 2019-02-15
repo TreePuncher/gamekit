@@ -32,6 +32,23 @@ namespace FlexKit
 			}	break;
 			}
 		}	break;
+
+		case OT_ShaderResource:
+		{
+			switch (AfterState)
+			{
+			case DRS_Write:
+			case DRS_ShaderResource:
+				ctx->AddShaderResourceBarrier(
+					handle_cast<TextureHandle>(Object->ShaderResource),
+					BeforeState,
+					AfterState);
+				break;
+			default:
+				FK_ASSERT(0);
+			}
+		}	break;
+
 		default:
 			switch (AfterState)
 			{
@@ -55,7 +72,6 @@ namespace FlexKit
 					AfterState);
 				break;
 			case DRS_STREAMOUT:
-			case DRS_ShaderResource:
 			case DRS_CONSTANTBUFFER:
 			case DRS_PREDICATE:
 			case DRS_INDIRECTARGS:
@@ -79,7 +95,7 @@ namespace FlexKit
 			T.ProcessTransition(Resources, Ctx);
 
 			auto stateObject	= *T.Object;
-			stateObject.State = T.AfterState;
+			stateObject.State	= T.AfterState;
 			auto idx			= Resources.SubNodeTracking.push_back(stateObject);
 		}
 	}
@@ -146,7 +162,7 @@ namespace FlexKit
 				case FrameObjectResourceType::OT_IndirectArguments:
 				case FrameObjectResourceType::OT_PVS:
 				case FrameObjectResourceType::OT_RenderTarget:
-				case FrameObjectResourceType::OT_Texture:
+				case FrameObjectResourceType::OT_ShaderResource:
 				case FrameObjectResourceType::OT_UAVTexture:
 				case FrameObjectResourceType::OT_VertexBuffer:
 					FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
@@ -288,33 +304,24 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-	
-	
-	StaticFrameResourceHandle FrameGraphNodeBuilder::ReadTexture(uint32_t Tag, TextureHandle Texture)
+
+
+	FrameResourceHandle FrameGraphNodeBuilder::ReadShaderResource(TextureHandle handle)
 	{
-		FrameResourceHandle Handle_Out{ 0xffff };
-		auto State = Resources->renderSystem->Textures.GetState(Texture);
+		return AddReadableResource(
+						handle_cast<ShaderResourceHandle>(handle), 
+						DeviceResourceState::DRS_ShaderResource);
+	}
 
-		if (!(State | DRS_Read))
-		{	// Auto Barrier Insertion
-			FK_ASSERT(0);
-			//Context.AddReadable({});
-		}
 
-		auto Index = Resources->renderSystem->GetTextureFrameGraphIndex(Texture);
-		if (Index != INVALIDHANDLE)
-		{
-			size_t Index = 0;
-			Resources->renderSystem->SetTextureFrameGraphIndex(Texture, Index);
-			Handle_Out = FrameResourceHandle{ static_cast<unsigned int>(Index) };
-		}
-		else
-		{
-			Handle_Out = FrameResourceHandle{ static_cast<unsigned int>(Resources->Textures.size()) };
-			Resources->Textures.push_back(FrameObject::TextureObject(Tag, Texture));
-		}
+	/************************************************************************************************/
 
-		return Handle_Out;
+
+	FrameResourceHandle FrameGraphNodeBuilder::WriteShaderResource(TextureHandle  handle)
+	{
+		return AddWriteableResource(
+						handle_cast<ShaderResourceHandle>(handle), 
+						DeviceResourceState::DRS_Write);
 	}
 
 
@@ -705,6 +712,14 @@ namespace FlexKit
 				auto state		= I.State;
 				Resources.renderSystem->SetObjectState(SOBuffer, state);
 			}	break;
+			case OT_ShaderResource:
+			{
+				auto shaderResource = handle_cast<TextureHandle>(I.FO->ShaderResource);
+				auto state			= I.State;
+
+				Resources.renderSystem->SetObjectState(shaderResource, state);
+			}	break;
+
 			default:
 				FK_ASSERT(false, "UN-IMPLEMENTED BLOCK!");
 			}

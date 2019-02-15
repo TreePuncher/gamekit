@@ -1020,6 +1020,33 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
+	void Context::AddShaderResourceBarrier(TextureHandle resource, DeviceResourceState Before, DeviceResourceState State)
+	{
+		auto res = find(PendingBarriers, 
+			[&](Barrier& rhs) -> bool
+			{
+				return
+					rhs.Type			== Barrier::BT_ShaderResource &&
+					rhs.shaderResource	== resource;
+			});
+
+		if (res != PendingBarriers.end()) {
+			res->NewState = State;
+		}
+		else
+		{
+			Barrier NewBarrier;
+			NewBarrier.OldState			= Before;
+			NewBarrier.NewState			= State;
+			NewBarrier.Type				= Barrier::BT_ShaderResource;
+			NewBarrier.shaderResource	= resource;
+			PendingBarriers.push_back(NewBarrier);
+		}
+	}
+
 
 	/************************************************************************************************/
 
@@ -1960,6 +1987,18 @@ namespace FlexKit
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 							resource, currentState, newState));
 				}	break;
+				case Barrier::BT_ShaderResource:
+				{
+					auto resource		= RS->Textures.GetResource(B.shaderResource);
+					auto currentState	= DRS2D3DState(B.OldState);
+					auto newState		= DRS2D3DState(B.NewState);
+
+					if (B.OldState != B.NewState)
+						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
+							resource, currentState, newState));
+				}	break;
+				default:
+					FK_ASSERT(0);
 			};
 		}
 
@@ -2031,6 +2070,7 @@ namespace FlexKit
 			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(4, 3, 0, PIPELINE_DEST_ALL);
 			RS->Library.RS4CBVs4SRVs.Build(RS, TempMemory);
 			SETDEBUGNAME(RS->Library.RS4CBVs4SRVs, "RS4CBVs4SRVs");
 		}
@@ -3177,6 +3217,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void RenderSystem::SetObjectState(TextureHandle handle, DeviceResourceState state)
+	{
+		Textures.SetState(handle, state);
+	}
+
+
+	/************************************************************************************************/
+
+
 	DeviceResourceState RenderSystem::GetObjectState(const QueryHandle handle) const
 	{
 		return Queries.GetResourceState(handle);
@@ -3198,6 +3247,15 @@ namespace FlexKit
 	DeviceResourceState RenderSystem::GetObjectState(const UAVResourceHandle	handle) const
 	{
 		return BufferUAVs.GetResourceState(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DeviceResourceState RenderSystem::GetObjectState(const TextureHandle		handle) const
+	{
+		return Textures.GetState(handle);
 	}
 
 
@@ -4038,10 +4096,10 @@ namespace FlexKit
 
 		CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
 
-		Texture2D NewTexture = {NewResource, 
-								{desc_in->Width, desc_in->Height}, 
-								desc_in->MipLevels,
-								TextureFormat2DXGIFormat(desc_in->Format)};
+		Texture2D NewTexture = { NewResource, 
+								 { desc_in->Width, desc_in->Height }, 
+								 static_cast<uint8_t>(desc_in->MipLevels),
+								 TextureFormat2DXGIFormat(desc_in->Format)};
 
 		FK_LOG_INFO("Creating Texture!");
 
@@ -6158,7 +6216,7 @@ namespace FlexKit
 			ViewDesc.Format                        = tex.Format;
 			ViewDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 			ViewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-			ViewDesc.Texture2D.MipLevels           = tex.mipCount;
+			ViewDesc.Texture2D.MipLevels           = -1;//tex.mipCount;
 			ViewDesc.Texture2D.MostDetailedMip     = 0;
 			ViewDesc.Texture2D.PlaneSlice          = 0;
 			ViewDesc.Texture2D.ResourceMinLODClamp = 0;
@@ -7587,7 +7645,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle MoveTextureBufferToVRAM(TextureBuffer* buffer, RenderSystem* RS, iAllocator* tempMemory)
+	TextureHandle MoveTextureBufferToVRAM(RenderSystem* RS, TextureBuffer* buffer,  iAllocator* tempMemory)
 	{
 		auto textureHandle = RS->CreateTexture2D(buffer->WH, FORMAT_2D::R8G8B8A8_UNORM);
 		RS->UploadTexture(textureHandle, buffer->Buffer, buffer->Size);
@@ -7599,12 +7657,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle MoveTextureBuffersToVRAM(TextureBuffer* buffer, size_t MIPCount, RenderSystem* RS, iAllocator* tempMemory)
+	TextureHandle MoveTextureBuffersToVRAM(RenderSystem* RS, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory)
 	{
 		size_t bufferSize = 0;
-		for (size_t itr = 0; itr < MIPCount; ++itr) {
+		for (size_t itr = 0; itr < MIPCount; ++itr)
 			bufferSize += buffer[itr].Size;
-		}
 
 		byte* textureBuffer = (byte*)tempMemory->malloc(bufferSize);
 

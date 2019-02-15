@@ -180,6 +180,11 @@ int main(int argc, char* argv[])
 				}
 #endif
 
+
+				physx::PxCooking*				Cooker		= nullptr;
+				physx::PxFoundation*			Foundation	= nullptr;
+				physx::PxDefaultAllocator		DefaultAllocatorCallback;
+
 				class NullErrorCallback : 
 					public physx::PxErrorCallback
 				{
@@ -192,13 +197,9 @@ int main(int argc, char* argv[])
 
 					}
 
-				};
+				}errorCallback;
 
 
-				physx::PxCooking*				Cooker			= nullptr;
-				physx::PxFoundation*			Foundation		= nullptr;
-				physx::PxDefaultAllocator		DefaultAllocatorCallback;
-				NullErrorCallback				errorCallback;
 
 				Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, errorCallback);
 				FK_ASSERT(Foundation);

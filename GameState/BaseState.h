@@ -142,15 +142,27 @@ public:
 			depthBuffer		{ IN_Framework->core->RenderSystem.CreateDepthBuffer(IN_Framework->ActiveWindow->WH,	true)	},
 			vertexBuffer	{ IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
 			textBuffer		{ IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
-			constantBuffer	{ IN_Framework->core->RenderSystem.CreateConstantBuffer(	8096 * 2000, false)					},
+			constantBuffer	{ IN_Framework->core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
 
 			render	{	IN_Framework->core->GetTempMemory(),
 						IN_Framework->core->RenderSystem	}
 	{
 		InitiateCameraTable(framework->core->GetBlockMemory());
 		
-		auto RS = IN_Framework->GetRenderSystem();
-		RS->RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO, {&RS->Library.RS4CBVs4SRVs, FlexKit::LoadSpriteTextPSO });
+		auto& RS = *IN_Framework->GetRenderSystem();
+		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS4CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
+		RS.RegisterPSOLoader(FlexKit::DRAW_PSO,					{ &RS.Library.RS4CBVs4SRVs, CreateDrawTriStatePSO			});
+		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,		{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStatePSO		});
+		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
+		RS.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateDrawLineStatePSO			});
+		RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO				});
+		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO				});
+
+		RS.QueuePSOLoad(DRAW_PSO);
+		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
+		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
+
+		AddResourceFile("assets\\testScene.gameres");
 	}
 
 

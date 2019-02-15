@@ -1639,9 +1639,11 @@ namespace FlexKit
 
 		void AddUAVBarrier			(UAVResourceHandle, DeviceResourceState, DeviceResourceState);
 
-		void AddPresentBarrier		(TextureHandle Handle, DeviceResourceState Before);
-		void AddRenderTargetBarrier	(TextureHandle Handle, DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
-		void AddStreamOutBarrier	(SOResourceHandle, DeviceResourceState Before, DeviceResourceState State);
+		void AddPresentBarrier			(TextureHandle Handle,	DeviceResourceState Before);
+		void AddRenderTargetBarrier		(TextureHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
+		void AddStreamOutBarrier		(SOResourceHandle,		DeviceResourceState Before, DeviceResourceState State);
+		void AddShaderResourceBarrier	(TextureHandle Handle,	DeviceResourceState Before, DeviceResourceState State);
+
 
 		void ClearDepthBuffer		(TextureObject Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
 		void ClearRenderTarget		(TextureObject Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
@@ -1764,6 +1766,7 @@ namespace FlexKit
 				BT_QueryBuffer,
 				BT_VertexBuffer,
 				BT_StreamOut,
+				BT_ShaderResource,
 				BT_Generic,
 				BT_
 			}Type;
@@ -1772,6 +1775,7 @@ namespace FlexKit
 			{
 				UAVResourceHandle	UAV;
 				TextureHandle		renderTarget;
+				TextureHandle		shaderResource;
 				SOResourceHandle	streamOut;
 				ID3D12Resource*		resource;
 				QueryHandle			query;
@@ -2460,12 +2464,15 @@ namespace FlexKit
 		QueryHandle				CreateSOQuery					(size_t SOIndex,			size_t count);
 		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
 
-		void SetObjectState(SOResourceHandle handle,	DeviceResourceState state);
-		void SetObjectState(UAVResourceHandle handle,	DeviceResourceState state);
+		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
+		void SetObjectState(UAVResourceHandle	handle, DeviceResourceState state);
+		void SetObjectState(TextureHandle		handle,	DeviceResourceState state);
 
 		DeviceResourceState GetObjectState			(const QueryHandle			handle) const;
 		DeviceResourceState GetObjectState			(const SOResourceHandle		handle) const;
 		DeviceResourceState GetObjectState			(const UAVResourceHandle	handle) const;
+		DeviceResourceState GetObjectState			(const TextureHandle		handle) const;
+
 
 		ID3D12Resource*		GetObjectDeviceResource	(const ConstantBufferHandle	handle) const;
 		ID3D12Resource*		GetObjectDeviceResource (const SOResourceHandle		handle) const;
@@ -2666,8 +2673,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle MoveTextureBuffersToVRAM	(TextureBuffer* buffer, size_t bufferCount, RenderSystem* RS, iAllocator* tempMemory);
-	TextureHandle MoveTextureBufferToVRAM	(TextureBuffer* buffer, RenderSystem* RS, iAllocator* tempMemory);
+	TextureHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, TextureBuffer* buffer, size_t bufferCount, iAllocator* tempMemory);
+	TextureHandle MoveTextureBufferToVRAM	(RenderSystem* RS, TextureBuffer* buffer, iAllocator* tempMemory);
 
 
 	/************************************************************************************************/

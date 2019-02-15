@@ -201,27 +201,27 @@ float ComputeBRDFNorm(const float3& v, const float alpha, const int sampleCount 
 
 /************************************************************************************************/
 
-const size_t cubeCount = 1024 * 2;
+const size_t CubeCount = 8;
 
 class GraphicsTest : public FrameworkState
 {
 public:
 	GraphicsTest(GameFramework* IN_framework) :
 		FrameworkState(IN_framework),
-		render			{ IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem			},
+		render			{ IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem						},
 		depthBuffer		{ IN_framework->core->RenderSystem.CreateDepthBuffer	(GetWindowWH(IN_framework->core), true)	},
-		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)	},
-		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)	},
-		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 512,	false)	},
-		eventMap		{ IN_framework->core->GetBlockMemory()												},
-		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()				},
+		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)				},
+		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)				},
+		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 256,	false)				},
+		eventMap		{ IN_framework->core->GetBlockMemory()															},
+		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()							},
 		scene			{	
 			IN_framework->core->RenderSystem, 
 			IN_framework->core->GetBlockMemory(),
 			IN_framework->core->GetTempMemory()	},
 		PScene			{ IN_framework->GetPhysx()->CreateScene()														},
 		floor			{ IN_framework->GetPhysx()->CreateStaticBoxCollider		(PScene, {1000, 10, 1000}, {0, -10, 0})	},
-		orbitCamera		{ CreateCamera(pi / 3, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 3000, {0, 50, 50} }
+		orbitCamera		{ CreateCamera(pi / 3.0f, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 3000, {0, 50, 50} }
 		//ltcLookup_1{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
 		//ltcLookup_2{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
@@ -230,7 +230,7 @@ public:
 		
 		obj = GetMesh(GetRenderSystem(), 10000);
 
-		for (size_t itr = 0; itr < cubeCount; itr++) {
+		for (size_t itr = 0; itr < CubeCount; itr++) {
 			box[itr] = std::move(CreateRBCube(&scene, obj, IN_framework->GetPhysx(), PScene, 1, {0, 1.1f  + 1.1f * itr * 2, 0}));
 			box[itr].SetVisable(true);
 			box[itr].SetMeshScale(10);
@@ -275,7 +275,7 @@ public:
 		const int TileSize = 1024 * 8;
 		terrain.SetTileOffset	(int2{-TileSize/2, -TileSize/2});
 		terrain.SetTileSize		(TileSize); // will assume square tiles
-		terrain.AddTile			({ 0, 0 }, "assets/textures/tiles/tile_0_0.bmp", framework->GetRenderSystem(), framework->core->GetTempMemory());
+		terrain.AddTile			({ 0, 0 }, "assets/textures/heightmap.dds", framework->GetRenderSystem(), framework->core->GetTempMemory());
 		terrain.DebugMode	= TerrainEngine::WIREFRAME;
 
 		/*
@@ -331,14 +331,14 @@ public:
 
 	bool Update(
 		EngineCore*			Engine, 
-		UpdateDispatcher&	Dispatcher, 
+		UpdateDispatcher&	dispatcher, 
 		double				dT) override
 	{
-		auto transformTask = QueueTransformUpdateTask	(Dispatcher);
-		auto cameraUpdate  = QueueCameraUpdate			(Dispatcher, transformTask);
-		auto orbitUpdate   = QueueOrbitCameraUpdateTask	(Dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
-		auto sceneUpdate   = scene.Update				(Dispatcher, transformTask);
-		auto terrainUpdate = terrain.Update				(Dispatcher);
+		auto transformTask = QueueTransformUpdateTask	(dispatcher);
+		auto cameraUpdate  = QueueCameraUpdate			(dispatcher, transformTask);
+		auto orbitUpdate   = QueueOrbitCameraUpdateTask	(dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
+		auto sceneUpdate   = scene.Update				(dispatcher, transformTask);
+		auto terrainUpdate = terrain.Update				(dispatcher);
 
 		return true;
 	}
@@ -394,6 +394,7 @@ public:
 		ClearBackBuffer		(frameGraph, 0.0f);
 		ClearDepthBuffer	(frameGraph, depthBuffer, 1.0f);
 
+
 		DrawUI_Desc DrawDesk
 		{
 			&frameGraph, 
@@ -403,21 +404,12 @@ public:
 			constantBuffer
 		};
 
-
 		CameraHandle activeCamera = (CameraHandle)orbitCamera;
 
 		GetGraphicScenePVS(scene, activeCamera, &solidDrawables, &transparentDrawables);
 
 		const bool renderTerrainEnabled = true;
 		TerrainCullerData* culledTerrain = nullptr;
-
-		if(true)
-			render.DefaultRender(
-				solidDrawables,
-				activeCamera,
-				targets,
-				frameGraph,
-				core->GetTempMemory());
 
 		if (renderTerrainEnabled) {
 			culledTerrain = CullTerrain(
@@ -530,7 +522,7 @@ private:
 
 	PhysicsSceneHandle					PScene;
 	StaticColliderHandle				floor;
-	RigidBodyDrawableBehavior			box[cubeCount];
+	RigidBodyDrawableBehavior			box[CubeCount];
 };
 /************************************************************************************************/
 #endif

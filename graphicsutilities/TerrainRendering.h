@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\graphics.h"
+#include "..\graphicsutilities\DDSUtilities.h"
 
 #include <d3dx12.h>
 #include <DirectXMath.h>
@@ -40,8 +41,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {	/************************************************************************************************/
-
-
 	using TerrainTileHandle = FlexKit::Handle_t<16, GetTypeGUID(TerrainTileHandle)>;
 	const FlexKit::PSOHandle TERRAIN_COMPUTE_CULL_PSO				= PSOHandle(GetTypeGUID(TERRAIN_COMPUTE_CULL_PSO));
 	const FlexKit::PSOHandle TERRAIN_RENDER_FOWARD_PSO				= PSOHandle(GetTypeGUID(TERRAIN_RENDER_FOWARD_PSO));
@@ -112,7 +111,7 @@ namespace FlexKit
 	ID3D12PipelineState* CreateCullTerrainComputePSO(RenderSystem* renderSystem)
 	{
 		auto cullTerrain_shader_VS = LoadShader("CP_PassThroughVS", "CP_PassThroughVS", "vs_5_0", "assets\\cullterrain.hlsl");
-		auto cullTerrain_shader_GS = LoadShader("CullTerrain",		"CullTerrain", "gs_5_0", "assets\\cullterrain.hlsl");
+		auto cullTerrain_shader_GS = LoadShader("CullTerrain",		"CullTerrain",		"gs_5_0", "assets\\cullterrain.hlsl");
 
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
@@ -335,9 +334,9 @@ namespace FlexKit
 			tileHeight					{ IN_tileHeight															}, 
 			tileOffset					{ IN_tileOffset															},
 			allocator					{ IN_allocator															},
-			finalBuffer					{ RS->CreateStreamOutResource(MEGABYTE * 24)							},
-			intermdediateBuffer1		{ RS->CreateStreamOutResource(MEGABYTE * 24)							},
-			intermdediateBuffer2		{ RS->CreateStreamOutResource(MEGABYTE * 24)							},
+			finalBuffer					{ RS->CreateStreamOutResource(MEGABYTE * 64)							},
+			intermdediateBuffer1		{ RS->CreateStreamOutResource(MEGABYTE * 64)							},
+			intermdediateBuffer2		{ RS->CreateStreamOutResource(MEGABYTE * 64)							},
 			queryBufferFinalBuffer		{ RS->CreateSOQuery(1,1)												},
 			queryBufferIntermediate		{ RS->CreateSOQuery(0,1)												},
 			indirectArgs				{ RS->CreateUAVBufferResource(512)										},
@@ -371,51 +370,56 @@ namespace FlexKit
 		}
 
 
-		TerrainTileHandle AddTile(int2 tileID, const char* HeightMap, RenderSystem* RS, iAllocator* tempMemory)
+		TerrainTileHandle AddTile(int2 tileID, const char* heightMap, RenderSystem* RS, iAllocator* tempMemory)
 		{
-			static_vector<TextureBuffer> Textures;
-			Textures.push_back(TextureBuffer{});
-			LoadBMP(HeightMap, tempMemory, &Textures.back());
-
-			//Build Mip Maps
-			auto BuildMipMap = [](TextureBuffer& sourceMap, iAllocator* memory) -> TextureBuffer
+			if(false)
 			{
-				using RBGA = Vect<4, uint8_t>;
+				static_vector<TextureBuffer> Textures;
+				Textures.push_back(TextureBuffer{});
+				LoadBMP(heightMap, tempMemory, &Textures.back());
 
-				TextureBuffer		MIPMap	= TextureBuffer( sourceMap.WH / 2, sizeof(RGBA), memory );
-				TextureBufferView	View	= TextureBufferView<RBGA>(&sourceMap);
-				TextureBufferView	MipView = TextureBufferView<RBGA>(&MIPMap);
 
-				const auto WH = MIPMap.WH;
-				for (size_t Y = 0; Y < WH[0]; Y++)
+				//Build Mip Maps
+				auto BuildMipMap = [](TextureBuffer& sourceMap, iAllocator* memory) -> TextureBuffer
 				{
-					for (size_t X = 0; X < WH[1]; X++)
+					using RBGA = Vect<4, uint8_t>;
+
+					TextureBuffer		MIPMap	= TextureBuffer( sourceMap.WH / 2, sizeof(RGBA), memory );
+					TextureBufferView	View	= TextureBufferView<RBGA>(&sourceMap);
+					TextureBufferView	MipView = TextureBufferView<RBGA>(&MIPMap);
+
+					const auto WH = MIPMap.WH;
+					for (size_t Y = 0; Y < WH[0]; Y++)
 					{
-						uint2 in_Cord	= uint2{ min(X, WH[0] - 1) * 2, min(Y, WH[1] - 1) * 2 };
-						uint2 out_Cord	= uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
+						for (size_t X = 0; X < WH[1]; X++)
+						{
+							uint2 in_Cord	= uint2{ min(X, WH[0] - 1) * 2, min(Y, WH[1] - 1) * 2 };
+							uint2 out_Cord	= uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
 
-						auto Sample = 
-							View[in_Cord + uint2{0, 0}]/ 4 +
-							View[in_Cord + uint2{0, 1}]/ 4 +
-							View[in_Cord + uint2{1, 0}]/ 4 +
-							View[in_Cord + uint2{1, 1}]/ 4;
+							auto Sample = 
+								View[in_Cord + uint2{0, 0}]/ 4 +
+								View[in_Cord + uint2{0, 1}]/ 4 +
+								View[in_Cord + uint2{1, 0}]/ 4 +
+								View[in_Cord + uint2{1, 1}]/ 4;
 
-						MipView[out_Cord] = Sample;
+							MipView[out_Cord] = Sample;
+						}
 					}
-				}
 
-				return MIPMap;
-			};
+					return MIPMap;
+				};
+
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				auto textureHandle	= MoveTextureBuffersToVRAM(RS, Textures.begin(), Textures.size(), allocator);
+				//auto textureHandle	= MoveTextureBufferToVRAM(RS, &Textures[0], allocator);
+			}
 
 
-			Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-			Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-			Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-			Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-
-			//auto textureHandle	= MoveTextureBuffersToVRAM(Textures.begin(), Textures.size(), RS, allocator);
-			auto textureHandle	= MoveTextureBufferToVRAM(&Textures[0], RS, allocator);
-			auto tileMaps		= tileTextures.push_back(TileMaps{textureHandle, HeightMap});
+			auto [textureHandle, res] = LoadDDSTexture2DFromFile_2(heightMap, tempMemory, RS);
+			auto tileMaps = tileTextures.push_back(TileMaps{ textureHandle, heightMap });
 			tiles.push_back(Tile{ tileID, tileMaps });
 
 			return InvalidHandle_t;
@@ -429,6 +433,7 @@ namespace FlexKit
 		// No update dependencies
 		FlexKit::UpdateTask* Update(FlexKit::UpdateDispatcher& Dispatcher)
 		{
+			// TODO: Streaming textures
 			// Make sure textures are loaded
 			return nullptr;
 		}

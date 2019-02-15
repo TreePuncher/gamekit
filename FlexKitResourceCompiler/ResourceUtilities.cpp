@@ -162,17 +162,19 @@ CompileAllGeometry(fbxsdk::FbxNode* node, iAllocator* Memory, GeometryList* GL, 
 	auto AttributeCount = node->GetNodeAttributeCount();
 	for (int itr = 0; itr < AttributeCount; ++itr){
 		auto Attr = node->GetNodeAttributeByIndex(itr);
+		auto nodeName = node->GetName();
+
 		switch (Attr->GetAttributeType())
 		{
 		case fbxsdk::FbxNodeAttribute::EType::eMesh:
 		{
 			const char* MeshName = node->GetName();
-			auto test     = Attr->GetUniqueID();
-			auto Mesh	  = (fbxsdk::FbxMesh*)Attr;
-			bool found	  = false;
-			bool LoadMesh = false;
-			size_t uniqueID	  = (size_t)Mesh->GetUniqueID();
-			auto Geo	  = FindGeoByID( GL, uniqueID);
+			auto test		= Attr->GetUniqueID();
+			auto Mesh		= (fbxsdk::FbxMesh*)Attr;
+			bool found		= false;
+			bool LoadMesh	= false;
+			size_t uniqueID	= (size_t)Mesh->GetUniqueID();
+			auto Geo		= FindGeoByID( GL, uniqueID);
 
 			Vector<size_t> RelatedMetaData;
 

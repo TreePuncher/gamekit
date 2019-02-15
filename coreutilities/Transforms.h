@@ -206,6 +206,15 @@ namespace FlexKit
 			rhs.node	= InvalidHandle_t;
 		}
 
+		SceneNodeBehavior& operator = (SceneNodeBehavior&& rhs)
+		{
+			node		= rhs.node;
+			rhs.node	= InvalidHandle_t;
+
+			return *this;
+		}
+
+
 		SceneNodeBehavior(SceneNodeBehavior&)				= delete;
 		SceneNodeBehavior& operator = (SceneNodeBehavior&)	= delete;
 

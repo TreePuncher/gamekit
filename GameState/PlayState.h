@@ -7,7 +7,7 @@
 #include "..\coreutilities\WorldRender.h"
 #include "..\coreutilities\Components.h"
 
-#include "ThirdPersonCharacterRig.h"
+#include "ThirdPersonUtilities.h"
 
 #include "Gameplay.h"
 #include "BaseState.h"
@@ -22,6 +22,7 @@ public:
 	
 
 	~PlayState();
+
 
 	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
 	bool PreDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
@@ -39,16 +40,22 @@ public:
 
 	SoundSystem			sound;
 
+	/*
 	FlexKit::GuiSystem	ui;
 	FlexKit::GUIGrid*	uiMainGrid;
 	FlexKit::GUIGrid*	uiSubGrid_1;
 	FlexKit::GUIGrid*	uiSubGrid_2;
+	*/
 
 	InputMap		eventMap;
 	InputMap		debugCameraInputMap;
 	InputMap		debugEventsInputMap;
 	size_t			frameID;
 	TriMeshHandle	characterModel;
+	TriMeshHandle	LightModel;
+
+	FlexKit::OrbitCameraBehavior	debugCamera;
+	//FlexKit::ThirdPersonCameraRig	thirdPersonCamera;
 };
 
 

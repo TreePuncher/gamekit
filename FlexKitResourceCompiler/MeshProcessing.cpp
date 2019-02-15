@@ -386,7 +386,7 @@ namespace FlexKit
 		{	// Get Normals
 			size_t	NormalCount = Mesh->GetElementNormalCount();
 			auto	Normals = Mesh->GetElementNormal();
-			size_t	NCount = Mesh->GetPolygonVertexCount();
+			size_t	NCount	= Mesh->GetPolygonVertexCount();
 			auto	mapping = Normals->GetMappingMode();
 
 			if (NormalCount)
@@ -490,33 +490,60 @@ namespace FlexKit
 				else if (size == 4)
 				{	// Quads
 					bool QuadsEnabled = false | SubDiv_Enabled;
-					if (QuadsEnabled) {
+					if (!QuadsEnabled) {
 						std::cout << "Quads Disabled!\n";
-						FK_ASSERT(false);
 					}
 
-					auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
-					auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
-					auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
+					if(QuadsEnabled)
+					{
+						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
 
-					auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
-					auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
-					auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
+						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
 
-					auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
-					auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
-					auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
+						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
 
-					auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, Mesh);
-					auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, Mesh) : 0;
-					auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, Mesh) : 0;
+						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, Mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, Mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, Mesh) : 0;
 
-					AddIndexToken(VertexIndex1, NormalIndex1, 0, TokensOut);
-					AddIndexToken(VertexIndex2, NormalIndex2, 0, TokensOut);
-					AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
-					AddIndexToken(VertexIndex4, NormalIndex4, 0, TokensOut);
+						AddIndexToken(VertexIndex1, NormalIndex1, 0, TokensOut);
+						AddIndexToken(VertexIndex2, NormalIndex2, 0, TokensOut);
+						AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
+						AddIndexToken(VertexIndex4, NormalIndex4, 0, TokensOut);
 
-					IndexCount += 6;
+						IndexCount += 4;
+					}
+					else
+					{
+						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
+
+						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
+
+						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
+
+						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, Mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, Mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, Mesh) : 0;
+
+						AddIndexToken(VertexIndex1, NormalIndex1, 0, TokensOut);
+						AddIndexToken(VertexIndex2, NormalIndex2, 0, TokensOut);
+						AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
+
+						IndexCount += 3;
+					}
+
 				}
 
 				if (SubDiv_Enabled)	AddPatchEndToken(TokensOut);

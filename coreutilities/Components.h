@@ -164,9 +164,10 @@ namespace FlexKit
 				threads->AddWork(node->threadTask, allocator);
 		}
 
+
 		void Execute()
 		{
-			if(true)
+			if(threads->GetThreadCount())
 			{	// Multi Thread
 				WorkBarrier barrier{allocator};
 

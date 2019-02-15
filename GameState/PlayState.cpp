@@ -17,10 +17,12 @@ PlayState::PlayState(
 		BaseState*				IN_base) : 
 	FrameworkState		{ IN_Framework						},
 
+	/*
 	ui					{ FlexKit::GuiSystem_Desc{}, framework->core->GetBlockMemory()	},
 	uiMainGrid			{ nullptr														},
 	uiSubGrid_1			{ nullptr														},
 	uiSubGrid_2			{ nullptr														},
+	*/
 
 	frameID				{ 0 },
 	sound				{ framework->core->Threads, framework->core->GetBlockMemory()	},
@@ -30,37 +32,38 @@ PlayState::PlayState(
 	debugCameraInputMap	{ framework->core->GetBlockMemory()								},
 	debugEventsInputMap	{ framework->core->GetBlockMemory()								},
 
-	scene				{
-							framework->core->RenderSystem,
+	scene				{	framework->core->RenderSystem,
 							framework->core->GetBlockMemory(),
-							framework->core->GetTempMemory()
-						}
+							framework->core->GetTempMemory()	},
+
+	debugCamera			{ }
+	//thirdPersonCamera	{ CreateCharacterRig(GetMesh(GetRenderSystem(), "Flower"), &scene) }
 {
-	AddResourceFile("CharacterBase.gameres");
-	characterModel = FlexKit::GetMesh(GetRenderSystem(), "Flower");
+	debugCamera.SetCameraAspectRatio(GetWindowAspectRatio(framework->core));
+	debugCamera.TranslateWorld({0, 100, 0});
 
-	eventMap.MapKeyToEvent(KEYCODES::KC_W,			PLAYER_EVENTS::PLAYER_UP			);
-	eventMap.MapKeyToEvent(KEYCODES::KC_A,			PLAYER_EVENTS::PLAYER_LEFT			);
-	eventMap.MapKeyToEvent(KEYCODES::KC_S,			PLAYER_EVENTS::PLAYER_DOWN			);
-	eventMap.MapKeyToEvent(KEYCODES::KC_D,			PLAYER_EVENTS::PLAYER_RIGHT			);
-	eventMap.MapKeyToEvent(KEYCODES::KC_Q,			PLAYER_EVENTS::PLAYER_ROTATE_LEFT	);
-	eventMap.MapKeyToEvent(KEYCODES::KC_E,			PLAYER_EVENTS::PLAYER_ROTATE_RIGHT	);
-	eventMap.MapKeyToEvent(KEYCODES::KC_LEFTSHIFT,	PLAYER_EVENTS::PLAYER_HOLD			);
-	eventMap.MapKeyToEvent(KEYCODES::KC_SPACE,		PLAYER_EVENTS::PLAYER_ACTION1		);
+	LoadScene(IN_Framework->core, &scene, "TestScene");
 
-	// Debug Orbit Camera
-	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_I, PLAYER_EVENTS::DEBUG_PLAYER_UP	);
-	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_J, PLAYER_EVENTS::DEBUG_PLAYER_LEFT	);
-	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_K, PLAYER_EVENTS::DEBUG_PLAYER_DOWN	);
-	debugCameraInputMap.MapKeyToEvent(KEYCODES::KC_L, PLAYER_EVENTS::DEBUG_PLAYER_RIGHT	);
+	LightModel = GetMesh(GetRenderSystem(), "LightModel");
 
-	// Debug Events, are not stored in Frame cache
+	eventMap.MapKeyToEvent(KEYCODES::KC_W, ThirdPersonCameraRig::Forward		);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A, ThirdPersonCameraRig::Left			);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S, ThirdPersonCameraRig::Backward		);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D, ThirdPersonCameraRig::Right			);
+	eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward	);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward	);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft		);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight	);
+
+
 	debugEventsInputMap.MapKeyToEvent(KEYCODES::KC_C, DEBUG_EVENTS::TOGGLE_DEBUG_CAMERA		);
 	debugEventsInputMap.MapKeyToEvent(KEYCODES::KC_X, DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY	);
+
 
 	framework->core->RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, { nullptr, LoadSpriteTextPSO });
 	framework->core->RenderSystem.PipelineStates.QueuePSOLoad		(DRAW_SPRITE_TEXT_PSO, framework->core->GetBlockMemory());
 
+	/*
 	uiMainGrid	= &ui.CreateGrid(nullptr);
 	uiMainGrid->SetGridDimensions({ 3, 3 });
 
@@ -78,6 +81,7 @@ PlayState::PlayState(
 	uiSubGrid_2->XY = { 0.0f, 0.0f };
 	
 	auto& Btn = ui.CreateButton(uiSubGrid_2, {0, 0});
+	*/
 }
 
 
@@ -94,6 +98,15 @@ PlayState::~PlayState()
 
 bool PlayState::EventHandler(Event evt)
 {
+	eventMap.Handle(
+		evt, 
+		[&](auto& evt)
+		{
+			debugCamera.HandleEvent(evt);
+
+			//thirdPersonCamera.HandleEvents(evt);
+		});
+
 	return true;
 }
 
@@ -101,9 +114,18 @@ bool PlayState::EventHandler(Event evt)
 /************************************************************************************************/
 
 
-bool PlayState::Update(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
+bool PlayState::Update(EngineCore* Core, UpdateDispatcher& dispatcher, double dT)
 {
-	return false;
+	//debugCamera.Yaw(dT * pi/8);
+
+	auto transformTask			= QueueTransformUpdateTask	(dispatcher);
+	auto cameraUpdate			= QueueCameraUpdate			(dispatcher, transformTask);
+	auto sceneUpdate			= scene.Update				(dispatcher, transformTask);
+	auto orbitUpdate			= QueueOrbitCameraUpdateTask(dispatcher, transformTask, cameraUpdate, debugCamera, framework->MouseState, dT);
+
+	//auto cameraRigUpdateTask	= UpdateThirdPersonRig		(dispatcher, thirdPersonCamera, *transformTask, *cameraUpdate, dT);
+
+	return true;
 }
 
 
@@ -128,8 +150,70 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, do
 /************************************************************************************************/
 
 
-bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, FrameGraph& FrameGraph)
+bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dt, FrameGraph& frameGraph)
 {
+	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
+
+
+	FlexKit::WorldRender_Targets targets = {
+		GetCurrentBackBuffer(&core->Window),
+		base.depthBuffer
+	};
+
+	PVS	solidDrawables			(core->GetTempMemory());
+	PVS	transparentDrawables	(core->GetTempMemory());
+
+	ClearVertexBuffer	(frameGraph, base.vertexBuffer);
+	ClearVertexBuffer	(frameGraph, base.textBuffer);
+
+	ClearBackBuffer		(frameGraph, 0.0f);
+	ClearDepthBuffer	(frameGraph, base.depthBuffer, 1.0f);
+
+	CameraHandle activeCamera	= (CameraHandle)debugCamera;
+	auto cameraConstants		= GetCameraConstantBuffer(activeCamera);
+
+	GetGraphicScenePVS(scene, activeCamera, &solidDrawables, &transparentDrawables);
+
+	LighBufferDebugDraw debugDraw;
+	debugDraw.constantBuffer = base.constantBuffer;
+	debugDraw.renderTarget   = targets.RenderTarget;
+	debugDraw.vertexBuffer	 = base.vertexBuffer;
+
+	base.render.updateLightBuffers(activeCamera, scene, frameGraph, core->GetTempMemory());
+	base.render.DefaultRender(solidDrawables, activeCamera, targets, frameGraph, SceneDescription{ scene.GetPointLightCount() }, core->GetTempMemory());
+
+	FlexKit::DrawCollection_Desc DrawCollectionDesc{};
+
+	DrawCollectionDesc.ConstantData[0]		= reinterpret_cast<char*>(&cameraConstants);
+	DrawCollectionDesc.ConstantsSize[0]		= sizeof(cameraConstants);
+	DrawCollectionDesc.ConstantData[1]		= reinterpret_cast<char*>(&cameraConstants);
+	DrawCollectionDesc.ConstantsSize[1]		= sizeof(cameraConstants);
+	DrawCollectionDesc.DepthBuffer			= targets.DepthTarget;
+	DrawCollectionDesc.RenderTarget			= targets.RenderTarget;
+	DrawCollectionDesc.VertexBuffer			= base.vertexBuffer;
+	DrawCollectionDesc.Mesh					= LightModel;
+	DrawCollectionDesc.Constants			= base.constantBuffer;
+	DrawCollectionDesc.PSO					= FORWARDDRAWINSTANCED;
+	DrawCollectionDesc.InstanceElementSize	= sizeof(float4x4);
+
+	auto f		= GetFrustum(activeCamera);
+	auto lights = scene.FindPointLights(f, core->GetTempMemory());
+
+	if(false)
+	{
+		DrawCollection(
+				frameGraph, 
+				lights,
+				[&](auto& light) -> float4x4
+				{
+					XMMATRIX m;
+					GetTransform(scene.GetPointLightNode(light), &m);
+					return float4x4{ XMMatrixToFloat4x4(&m) }.Transpose();
+				},
+				DrawCollectionDesc,
+				core->GetTempMemory());
+	}
+
 	return true;
 }
 
@@ -137,8 +221,13 @@ bool PlayState::Draw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dt, 
 /************************************************************************************************/
 
 
-bool PlayState::PostDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+bool PlayState::PostDrawUpdate(EngineCore* core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
+	if (framework->drawDebug)
+		framework->DrawDebugHUD(dT, base.textBuffer, frameGraph);
+
+	PresentBackBuffer(frameGraph, &core->Window);
+
 	return true;
 }
 

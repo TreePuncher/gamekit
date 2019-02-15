@@ -69,7 +69,7 @@ namespace FlexKit
 		OT_PVS,
 		OT_Query,
 		OT_StreamOut,
-		OT_Texture,
+		OT_ShaderResource,
 		OT_VertexBuffer,
 		OT_IndirectArguments,
 		OT_UnorderedAccessView,
@@ -110,11 +110,11 @@ namespace FlexKit
 				DescHeapPOS		HeapPOS;
 			}RenderTarget;
 
-			QueryHandle			query;
-			TextureHandle		Texture;
-			SOResourceHandle	SOBuffer;
-			UAVResourceHandle	UAVBuffer;
-			UAVResourceHandle	UAVTexture;
+			QueryHandle				query;
+			ShaderResourceHandle	ShaderResource;
+			SOResourceHandle		SOBuffer;
+			UAVResourceHandle		UAVBuffer;
+			UAVResourceHandle		UAVTexture;
 
 			struct {
 				char	buff[256];
@@ -166,15 +166,15 @@ namespace FlexKit
 			return RenderTarget;
 		}
 
-		static FrameObject TextureObject(uint32_t Tag, TextureHandle Handle )
+		static FrameObject TextureObject(uint32_t Tag, TextureHandle Handle, DeviceResourceState InitialState)
 		{
-			FrameObject RenderTarget;
-			RenderTarget.State                = DeviceResourceState::DRS_ShaderResource;
-			RenderTarget.Type                 = OT_Texture;
-			RenderTarget.Tag                  = Tag;
-			RenderTarget.RenderTarget.Texture = Handle;
+			FrameObject shaderResource;
+			shaderResource.State                = InitialState;
+			shaderResource.Type                 = OT_ShaderResource;
+			shaderResource.Tag                  = Tag;
+			shaderResource.ShaderResource		= handle_cast<ShaderResourceHandle>(Handle);
 
-			return RenderTarget;
+			return shaderResource;
 		}
 
 		static FrameObject UAVBufferObject(uint32_t Tag, UAVResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_UAV)
@@ -311,6 +311,20 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+		void AddShaderResource(TextureHandle handle, uint32_t tag = 0)
+		{
+			DeviceResourceState initialState = renderSystem->GetObjectState(handle);
+
+			Resources.push_back(
+				FrameObject::TextureObject(tag, handle, initialState));
+
+			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+		}
+
+
+		/************************************************************************************************/
+
+
 		void AddQuery(QueryHandle handle)
 		{
 			DeviceResourceState initialState = renderSystem->GetObjectState(handle);
@@ -435,9 +449,9 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		TextureHandle GetTexture(StaticFrameResourceHandle Handle) const
+		TextureHandle GetTexture(FrameResourceHandle Handle) const
 		{
-			return Textures[Handle].Texture;
+			return handle_cast<TextureHandle>(Textures[Handle].ShaderResource);
 		}
 
 
@@ -476,8 +490,8 @@ namespace FlexKit
 
 			D3D12_VERTEX_BUFFER_VIEW view = {
 				deviceResource->GetGPUVirtualAddress(),
-				renderSystem->GetStreamOutBufferSize(SOHandle),
-				vertexSize
+				static_cast<UINT>(renderSystem->GetStreamOutBufferSize(SOHandle)),
+				static_cast<UINT>(vertexSize)
 			};
 
 			return view;
@@ -711,11 +725,37 @@ namespace FlexKit
 				[&](const auto& LHS)
 				{
 					auto CorrectType = (
-						LHS.Type == OT_RenderTarget ||
-						LHS.Type == OT_BackBuffer	||
+						LHS.Type == OT_ShaderResource	||
+						LHS.Type == OT_RenderTarget		||
+						LHS.Type == OT_BackBuffer		||
 						LHS.Type == OT_DepthBuffer);
 
-					return (CorrectType && LHS.Texture == Handle);
+					return (CorrectType && LHS.ShaderResource == Handle);
+				});
+
+			if (res != Resources.end())
+				return res->Handle;
+
+			// Create New Resource
+			FrameResourceHandle NewResource;
+
+			FK_ASSERT(0);
+
+			return NewResource;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameResourceHandle	FindFrameResource(ShaderResourceHandle Handle)
+		{
+			auto res = find(Resources,
+				[&](const auto& LHS)
+				{
+					auto CorrectType = LHS.Type == OT_ShaderResource;
+
+					return (CorrectType && LHS.ShaderResource == Handle);
 				});
 
 			if (res != Resources.end())
@@ -932,6 +972,32 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct UploadData{
+		size_t offset;
+		size_t dataSize;
+	};
+
+	UploadData MoveTexture2UploadBuffer(
+		char* const		data,
+		size_t			dataSize,
+		TextureHandle	destTexture,
+		FrameResources& resources)
+	{
+		FK_ASSERT(false, "UN_IMPLEMENTED!");
+
+		UploadData upload { 0 };
+
+		return upload;
+	}
+
+	void UploadTexture(UploadData& data, Context* ctx)
+	{
+		FK_ASSERT(false, "UN_IMPLEMENTED!");
+	}
+
+
+	/************************************************************************************************/
+
 
 	class FrameGraphNode;
 
@@ -962,9 +1028,10 @@ namespace FlexKit
 		uint32_t			Tag;
 
 		union {
-			uint32_t			ID;	// Extra ID
-			UAVResourceHandle	UAVHandle;
-			SOResourceHandle	SOHandle;
+			uint32_t				ID;	// Extra ID
+			UAVResourceHandle		UAVHandle;
+			SOResourceHandle		SOHandle;
+			ShaderResourceHandle	ShaderResource;
 		};
 
 		DeviceResourceState	ExpectedState;
@@ -1096,6 +1163,19 @@ namespace FlexKit
 			auto A = lhs.FO->Type == OT_StreamOut;
 			if (A && lhs.SOHandle == InvalidHandle_t)
 				lhs.SOHandle = lhs.FO->SOBuffer;
+
+			return A && (lhs.SOHandle == handle);
+		};
+	}
+
+
+	auto MakePred(ShaderResourceHandle handle)
+	{
+		return [handle](FrameObjectDependency& lhs)
+		{
+			auto A = lhs.FO->Type == OT_ShaderResource;
+			if (A && lhs.ShaderResource == InvalidHandle_t)
+				lhs.ShaderResource = lhs.FO->ShaderResource;
 
 			return A && (lhs.SOHandle == handle);
 		};
@@ -1248,7 +1328,9 @@ namespace FlexKit
 
 		void BuildNode(FrameGraph* FrameGraph);
 
-		StaticFrameResourceHandle ReadTexture	(uint32_t Tag, TextureHandle Texture);
+
+		FrameResourceHandle ReadShaderResource	(TextureHandle Handle);
+		FrameResourceHandle WriteShaderResource	(TextureHandle Handle);
 
 		FrameResourceHandle ReadRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 		FrameResourceHandle WriteRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
@@ -2090,8 +2172,8 @@ namespace FlexKit
 			},
 			[](auto& data, const FrameResources& resources, Context* ctx)
 			{
-				auto* TriMesh = GetMesh(data.Mesh);
-				size_t MeshVertexCount = TriMesh->IndexCount;
+				auto* TriMesh			= GetMeshResource(data.Mesh);
+				size_t MeshVertexCount	= TriMesh->IndexCount;
 
 				// Setup state
 				ctx->SetRootSignature(resources.renderSystem->Library.RS4CBVs4SRVs);

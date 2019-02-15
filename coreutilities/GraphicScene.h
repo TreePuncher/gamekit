@@ -232,6 +232,15 @@ namespace FlexKit
 		UpdateTask* Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask* transformDependency);
 
 
+		float3				GetPointLightPosition	(LightHandle light);
+		NodeHandle			GetPointLightNode		(LightHandle light);
+		float				GetPointLightRadius		(LightHandle light);
+
+		size_t				GetPointLightCount();
+		Vector<LightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory);
+
+
+
 		void ListEntities();
 
 		void SetDirty(SceneEntityHandle handle)

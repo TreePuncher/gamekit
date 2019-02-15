@@ -70,7 +70,8 @@ namespace FlexKit
 	FLEXKITAPI DDSTexture3DLoad_RES LoadDDSTexture3DFromFile();
 
 	typedef FlexKit::Pair<TextureHandle, bool> LoadDDSTexture2DFromFile_RES;
-	FLEXKITAPI LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS);
+	FLEXKITAPI	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS);
+
 	FLEXKITAPI Texture2D LoadDDSIntoResource();
 }
 

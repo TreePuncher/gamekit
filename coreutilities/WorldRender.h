@@ -75,15 +75,41 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct LightBufferUpdate 
+	{
+		TextureHandle			lightMap;
+		ConstantBufferHandle	lightBuffer;		
+		ConstantBufferHandle	pointLightBuffer;
+		FrameResourceHandle		lightMapObject;
+		UploadData				lightMapUpdate;	// immediate update
+	};
+
+
+	struct LighBufferDebugDraw
+	{
+		VertexBufferHandle		vertexBuffer;
+		ConstantBufferHandle	constantBuffer;
+		TextureHandle			renderTarget;
+	};
+
+
+	struct SceneDescription
+	{
+		size_t pointLightCount;
+	};
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* Memory, RenderSystem* RS_IN) :
+		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, uint2 IN_lightSplits = {20, 20}) :
 			RS(RS_IN),
-			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false) },
-			OcclusionBuffer		{ RS->CreateDepthBuffer({1024, 1024}, true) },
-			OcclusionCulling	{ false },
-			OcclusionQueries	{ RS->CreateOcclusionBuffer(4096) }
+			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)					},
+			OcclusionBuffer		{ RS->CreateDepthBuffer({1024, 1024}, true)							},
+			OcclusionCulling	{ false																},
+			OcclusionQueries	{ RS->CreateOcclusionBuffer(4096)									},
+			lightMap			{ RS->CreateTexture2D(IN_lightSplits, FORMAT_2D::R16G16_UINT, 1)	},
+			lightIDBuffer		{ RS->CreateConstantBuffer(MEGABYTE, false)							},
+			pointLightBuffer	{ RS->CreateConstantBuffer(MEGABYTE, false)							}
 		{
 			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS4CBVs4SRVs, CreateForwardDrawPSO,			});
 			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS4CBVs4SRVs, CreateForwardDrawInstancedPSO	});
@@ -96,10 +122,15 @@ namespace FlexKit
 		~WorldRender()
 		{
 			RS->ReleaseCB(ConstantBuffer);
+			RS->ReleaseCB(pointLightBuffer);
+			RS->ReleaseCB(lightIDBuffer);
+			RS->ReleaseTexture(lightMap);
 		}
 
-		void DefaultRender				(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
-		void RenderDrawabledPBR_Forward	(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, iAllocator* Memory);
+		void DefaultRender					(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
+		void RenderDrawabledPBR_ForwardPLUS	(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
+
+		LightBufferUpdate* updateLightBuffers	(CameraHandle Camera, GraphicScene& scene, FrameGraph& graph, iAllocator* tempMemory, LighBufferDebugDraw* drawDebug = nullptr);
 
 		void ClearGBuffer				(FrameGraph& Graph);
 		void RenderDrawabledPBR_Main	(PVS& Objects, FrameGraph& Graph);
@@ -109,8 +140,12 @@ namespace FlexKit
 	private:
 		RenderSystem*			RS;
 		ConstantBufferHandle	ConstantBuffer;
-		QueryHandle		OcclusionQueries;
+		QueryHandle				OcclusionQueries;
 		TextureHandle			OcclusionBuffer;
+
+		TextureHandle			lightMap;			// GPU
+		ConstantBufferHandle	lightIDBuffer;		// GPU
+		ConstantBufferHandle	pointLightBuffer;	// GPU
 		uint2					WH;// Output Size
 
 		bool OcclusionCulling;

@@ -127,15 +127,31 @@ namespace FlexKit
 
 	inline Frustum GetFrustum(CameraHandle camera)
 	{
-		auto Node = GetCameraNode(camera);
+		auto node = GetCameraNode(camera);
 
 		return GetFrustum(
 			GetCameraAspectRatio(camera),
 			GetCameraFOV		(camera),
 			GetCameraNear		(camera),
 			GetCameraFar		(camera),
-			GetPositionW		(Node),
-			GetOrientation		(Node));
+			GetPositionW		(node),
+			GetOrientation		(node));
+	}
+
+
+	inline Frustum GetSubFrustum(CameraHandle camera, float2 UL, float2 BR)
+	{
+		auto node = GetCameraNode(camera);
+
+		return GetSubFrustum(
+			GetCameraAspectRatio(camera),
+			GetCameraFOV		(camera),
+			GetCameraNear		(camera),
+			GetCameraFar		(camera),
+			GetPositionW		(node),
+			GetOrientation		(node), 
+			UL, 
+			BR);
 	}
 
 

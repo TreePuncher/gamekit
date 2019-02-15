@@ -106,8 +106,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO(RenderSystem* RS)
 	{
-		auto VShader = LoadShader("VMain",		"InstanceForward_VS", "vs_5_0",	"assets\\DrawInstancedVShader.hlsl");
-		auto PShader = LoadShader("Forward_PS", "Forward_PS", "ps_5_0",			"assets\\forwardRender.hlsl");
+		auto VShader = LoadShader("VMain",		"InstanceForward_VS",	"vs_5_0", "assets\\DrawInstancedVShader.hlsl");
+		auto PShader = LoadShader("Forward_PS", "Forward_PS",			"ps_5_0", "assets\\forwardRender.hlsl");
 
 		EXITSCOPE(
 			Release(&VShader);
@@ -235,23 +235,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void WorldRender::DefaultRender(PVS& Drawables, CameraHandle Camera, WorldRender_Targets& Targets, FrameGraph& Graph, iAllocator* Memory)
+	void WorldRender::DefaultRender(PVS& Drawables, CameraHandle Camera, WorldRender_Targets& Targets, FrameGraph& Graph, SceneDescription& scene, iAllocator* Memory)
 	{
-		//ClearDepthBuffer(Graph, Targets.DepthTarget,	1.0f);
-		//ClearDepthBuffer(Graph, OcclusionBuffer,		1.0f);
-
-		RenderDrawabledPBR_Forward(Drawables, Camera, Targets, Graph, Memory);
+		RenderDrawabledPBR_ForwardPLUS(Drawables, Camera, Targets, Graph, scene, Memory);
 	}
 
 
 	/************************************************************************************************/
 	
 
-	void WorldRender::RenderDrawabledPBR_Forward(
+	void WorldRender::RenderDrawabledPBR_ForwardPLUS(
 		PVS&					Drawables, 
 		CameraHandle			Camera,
 		WorldRender_Targets&	Targets,
 		FrameGraph&				Graph, 
+		SceneDescription&		desc,
 		iAllocator*				Memory)
 	{
 		struct ForwardDraw
@@ -261,25 +259,36 @@ namespace FlexKit
 			size_t			OcclusionIdx;
 		};
 
+		struct ForwardDrawConstants
+		{
+			float LightCount = 10;
+		};
+
 		typedef Vector<ForwardDraw> ForwardDrawableList;
 		struct ForwardDrawPass
 		{
 			FrameResourceHandle		BackBuffer;
 			FrameResourceHandle		DepthBuffer;
 			FrameResourceHandle		OcclusionBuffer;
+			FrameResourceHandle		lightMap;
 			VertexBufferHandle		VertexBuffer;
 			ConstantBufferHandle	ConstantBuffer;
+			ConstantBufferHandle	pointLightBuffer;
 			ForwardDrawableList		Draws;
-			size_t					CameraConsantsOffset;
+			size_t					ConstantsOffset;
+			size_t					CameraConstantsOffset;
 			FlexKit::DescriptorHeap	Heap; // Null Filled
 		};
 
 		auto& Pass = Graph.AddNode<ForwardDrawPass>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, ForwardDrawPass& Data)
 			{
-				Data.BackBuffer		 = Builder.WriteRenderTarget(RS->GetTag(Targets.RenderTarget));
-				Data.DepthBuffer	 = Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
-				Data.ConstantBuffer	 = ConstantBuffer;
+				Data.BackBuffer			= Builder.WriteRenderTarget(RS->GetTag(Targets.RenderTarget));
+				Data.DepthBuffer		= Builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+				Data.ConstantBuffer		= ConstantBuffer;
+				Data.pointLightBuffer	= pointLightBuffer;
+				//Data.lightMap		 = Builder.ReadShaderResource(lightMap);
+
 				Data.Heap.Init(
 					Graph.Resources.renderSystem,
 					Graph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
@@ -289,19 +298,17 @@ namespace FlexKit
 				//if(OcclusionCulling)
 				//	Data.OcclusionBuffer = Builder.WriteDepthBuffer	(RS->GetTag(OcclusionBuffer));
 
+				ForwardDrawConstants constants	= { desc.pointLightCount };
+				Data.ConstantsOffset			= LoadConstants(constants, ConstantBuffer, Graph.Resources);
+
 				Data.Draws = ForwardDrawableList{ Memory };
 				Camera::CameraConstantBuffer CameraConstants = GetCameraConstantBuffer(Camera);
-
-				auto CameraConsantsOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
-				PushConstantBufferData(CameraConstants, ConstantBuffer, Graph.Resources);
+				Data.CameraConstantsOffset = LoadConstants(CameraConstants, ConstantBuffer, Graph.Resources);
 
 				for (auto Viewable : Drawables)
 				{
-					Drawable::VConsantsLayout	Constants = Viewable.D->GetConstants();
-
-					auto CBOffset = BeginNewConstantBuffer(ConstantBuffer, Graph.Resources);
-					PushConstantBufferData(Constants, ConstantBuffer, Graph.Resources);
-				
+					auto constants = Viewable.D->GetConstants();
+					auto CBOffset = LoadConstants(constants, ConstantBuffer, Graph.Resources);
 					Data.Draws.push_back({ Viewable.D->MeshHandle, CBOffset });
 				}
 			},
@@ -333,8 +340,10 @@ namespace FlexKit
 				Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
 				Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
-				Ctx->SetGraphicsConstantBufferView	(1, Data.ConstantBuffer, Data.CameraConsantsOffset);
-				Ctx->SetGraphicsConstantBufferView	(3, Data.ConstantBuffer, Data.CameraConsantsOffset);
+				Ctx->SetGraphicsConstantBufferView	(1, Data.ConstantBuffer,	Data.CameraConstantsOffset);
+				Ctx->SetGraphicsConstantBufferView	(3, Data.ConstantBuffer,	Data.ConstantsOffset);
+				Ctx->SetGraphicsConstantBufferView	(4, Data.pointLightBuffer);
+				//Ctx->SetGraphicsConstantBufferView	(4, Data.ConstantBuffer, Data.ConstantsOffset);
 
 				for (auto D : Data.Draws)
 				{
@@ -354,6 +363,233 @@ namespace FlexKit
 					Ctx->DrawIndexedInstanced(TriMesh->IndexCount, 0, 0, 1, 0);
 				}
 			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	LightBufferUpdate* WorldRender::updateLightBuffers(
+		CameraHandle			camera, 
+		GraphicScene&			scene, 
+		FrameGraph&				graph, 
+		iAllocator*				tempMemory, 
+		LighBufferDebugDraw*	drawDebug)
+	{
+		graph.Resources.AddShaderResource(lightMap);
+
+		const size_t viewSplits		= 30;
+		const float  splitSpan		= 1.0f / float(viewSplits);
+		const size_t sceneLghtCount = scene.GetPointLightCount();
+
+		Vector<Vector<Vector<LightHandle>>> LightBuckets{ tempMemory };
+		LightBuckets.reserve(viewSplits);
+
+		for (size_t itr = 0; itr < viewSplits; itr++) 
+		{
+			LightBuckets.emplace_back(tempMemory);
+			LightBuckets.reserve(viewSplits);
+		}
+
+		for (auto& column : LightBuckets) 
+		{
+			column.reserve(viewSplits);
+
+			for (size_t itr = 0; itr < viewSplits; itr++)
+				column.emplace_back(tempMemory);
+		}
+
+		auto cameraConstants = GetCameraConstantBuffer(camera);
+
+		auto f		= GetFrustum(camera);
+		auto lights = scene.FindPointLights(f, tempMemory);
+
+		auto view			= XMMatrixToFloat4x4(&cameraConstants.View);
+		auto perspective	= XMMatrixToFloat4x4(&cameraConstants.Proj);
+
+		for (auto light : lights) 
+		{
+			auto pos		= scene.GetPointLightPosition(light);
+			auto temp1		= view * float4(pos, 1);
+			auto screenCord = perspective * temp1;
+			float w			= screenCord.w;
+			screenCord		= screenCord / w;
+
+			const float r				= 10;//scene.GetPointLightRadius(light);
+			const float screenSpaceSize = r / w;
+
+			if (screenCord.x + screenSpaceSize > -1 && screenCord.x - screenSpaceSize < 1 &&
+				screenCord.y + screenSpaceSize > -1 && screenCord.y - screenSpaceSize < 1 &&
+				screenCord.z > 0 )
+			{
+				const float x = (screenCord.x + 1) / 2;
+				const float y = (1 - screenCord.y) / 2;
+
+				const float TileX = min(x * viewSplits, viewSplits - 1);
+				const float TileY = min(y * viewSplits, viewSplits - 1);
+
+				const float tileSpan = 2.0f * min(screenSpaceSize * viewSplits, viewSplits);
+
+				for (int itr_x = 0; itr_x <= tileSpan + 1; ++itr_x) {
+					const float offsetX = itr_x - tileSpan / 2.0f;
+
+					for (int itr_y = 0; itr_y <= tileSpan + 1; ++itr_y)
+					{
+						const float offsetY = itr_y - tileSpan / 2.0f;
+						const float idx_x	= TileX + offsetX;
+						const float idx_y	= TileY + offsetY;
+
+						if (idx_x < viewSplits && idx_x >= 0 &&
+							idx_y < viewSplits && idx_y >= 0)
+							LightBuckets[idx_x][idx_y].push_back(light);
+					}
+				}
+			}
+		}
+
+
+		if(drawDebug)
+		{
+			Vector<FlexKit::Rectangle> rectangles{ tempMemory };
+			rectangles.reserve(viewSplits * viewSplits);
+
+
+			for (size_t columnIdx = 0; columnIdx < viewSplits; columnIdx++)
+			{
+				for (size_t rowIdx = 0; rowIdx < viewSplits; rowIdx++)
+				{
+					auto lightCount = LightBuckets[columnIdx][rowIdx].size();
+
+					FlexKit::Rectangle rect;
+					auto temp = FlexKit::Grey(float(lightCount) / float(sceneLghtCount));
+					rect.Color = float4(temp, 0);
+					rect.Position = float2{ float(columnIdx), float(rowIdx) } / viewSplits;
+					rect.WH = float2(1, 1) / viewSplits;
+
+					if (lightCount)
+						rectangles.push_back(rect);
+
+				}
+			}
+
+			if (rectangles.size())
+			{
+				DrawShapes(
+					DRAW_PSO,
+					graph,
+					drawDebug->vertexBuffer,
+					drawDebug->constantBuffer,
+					drawDebug->renderTarget,
+					tempMemory,
+					SolidRectangleListShape{ std::move(rectangles) });
+			}
+		}
+
+		return &graph.AddNode<LightBufferUpdate>(0,
+			[&](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
+			{
+				data.lightMapObject = builder.WriteShaderResource(lightMap);
+
+				// Build Tile Buffer
+				size_t a = 0;
+				for (size_t columnIdx = 0; columnIdx < viewSplits; columnIdx++)
+					for (size_t rowIdx = 0; rowIdx < viewSplits; rowIdx++)
+						a += LightBuckets[columnIdx][rowIdx].size();
+
+				struct pointLightID
+				{
+					uint16_t idx;
+				};
+
+				struct TileMapEntry
+				{
+					uint16_t lightCount;
+					uint16_t offset;
+				};
+
+
+				Vector<pointLightID>	lightIdsBuffer	{ tempMemory };
+				Vector<TileMapEntry>	tileMap			{ tempMemory };
+				lightIdsBuffer.reserve(a);
+				tileMap.reserve(viewSplits * viewSplits);
+
+				uint16_t offset = 0;
+
+				for (size_t columnIdx = 0; columnIdx < viewSplits; columnIdx++) 
+				{
+					for (size_t rowIdx = 0; rowIdx < viewSplits; rowIdx++)
+					{
+						auto lightCount = LightBuckets[columnIdx][rowIdx].size();
+
+						for (auto& light : LightBuckets[columnIdx][rowIdx])
+							lightIdsBuffer.push_back({ static_cast<uint16_t>(light.INDEX) });
+
+						tileMap.push_back(
+							{ 
+								static_cast<uint16_t>(lightCount), 
+								offset
+							});
+
+						offset += lightCount;
+					}
+				}
+
+				struct pointLight
+				{
+					float4 KI;	// Color + intensity in W
+					float4 P;	//
+				};
+
+				Vector<pointLight> pointLights{ tempMemory };
+				pointLights.reserve(scene.PLights.size());
+
+				for (auto pointLight : scene.PLights.Lights) {
+					pointLights.push_back(
+						{
+							GetPositionW(pointLight.Position),
+							{pointLight.K, pointLight.I}
+						});
+				}
+
+
+				BeginNewConstantBuffer(
+					lightIDBuffer,
+					graph.Resources);
+
+
+				PushConstantBufferData(
+					reinterpret_cast<char*>(lightIdsBuffer.begin()), 
+					lightIdsBuffer.size() * sizeof(pointLightID), 
+					lightIDBuffer,
+					graph.Resources);
+
+
+				BeginNewConstantBuffer(
+					pointLightBuffer,
+					graph.Resources);
+
+
+				PushConstantBufferData(
+					reinterpret_cast<char*>(pointLights.begin()),
+					pointLights.size() * sizeof(pointLight),
+					pointLightBuffer,
+					graph.Resources);
+
+
+				/*
+				data.lightMapUpdate = MoveTexture2UploadBuffer(
+					reinterpret_cast<char*>(tileMap.begin()),
+					tileMap.size() * sizeof(TileMapEntry),
+					lightMap,
+					graph.Resources);
+					*/
+			},
+			[](LightBufferUpdate& data, const FrameResources& resources, Context* ctx)
+			{
+				//UploadTexture(data.lightMapUpdate, ctx);
+			});
+
+
 	}
 
 

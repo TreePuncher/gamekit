@@ -624,7 +624,6 @@ namespace FlexKit
 		size_t BufferSize = FlexKit::GetFileSize(Location);
 
 #if USING(RESCOMPILERVERBOSE)
-
 		if(!BufferSize)
 			std::cout << "Empty File Found!\nThis is Probably an Error.\n";
 		else

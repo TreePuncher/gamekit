@@ -129,10 +129,10 @@ namespace FlexKit
 		{
 			return 
 			{
-				{0, 0},
-				{1, 1},
-				{1, 1},
-				{1, 1},
+				{ 0, 0 },
+				{ 1, 1 },
+				{ 1, 1 },
+				{ 1, 1 },
 				float4(WHITE, 1),
 				0.0f, 0.0f, 0.0f,
 				false, false
