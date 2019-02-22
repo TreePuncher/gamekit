@@ -54,7 +54,7 @@ namespace FlexKit
 				Inputs		{ IN_allocator	},
 				visited		{ false			},
 				DebugID		{ nullptr		},
-				completed	{ false			},
+				completed	{ 0				},
 				threadTask	{ this, IN_manager, IN_allocator }{}
 
 			// No Copy
@@ -78,7 +78,7 @@ namespace FlexKit
 				void Run() override
 				{
 					task->Run();
-					task->completed = true;
+					task->completed++;
 				}
 
 				WorkDependencyWait wait;
@@ -118,7 +118,7 @@ namespace FlexKit
 			FN_NodeAction		Update;
 			char*				Data;
 			const char*			DebugID;
-			bool				completed;
+			int					completed;
 			bool				visited;
 			Vector<UpdateTask*> Inputs;
 		};
@@ -169,7 +169,7 @@ namespace FlexKit
 		{
 			if(threads->GetThreadCount())
 			{	// Multi Thread
-				WorkBarrier barrier{allocator};
+				WorkBarrier barrier{ *threads, allocator };
 
 				for (auto& node : nodes)
 					barrier.AddDependentWork(&node->threadTask);
@@ -177,7 +177,8 @@ namespace FlexKit
 				for (auto& node : nodes)
 					VisitAndScheduleLeafs(node, threads, allocator);
 
-				barrier.Wait();
+				barrier.Join();
+				nodes.clear();
 			}
 			else
 			{
@@ -193,7 +194,10 @@ namespace FlexKit
 					}
 					node->Update(*node);
 				}
+
+				nodesSorted.clear();
 			}
+
 		}
 
 

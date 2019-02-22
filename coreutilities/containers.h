@@ -37,15 +37,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <list>
 #include <new>
 #include <map>
+#include <mutex>
+#include <shared_mutex>
 #include <stdint.h>
 #include <utility>
 #include <vector>
 #include <condition_variable>
+#include <random>
 
-template<typename Ty>					using deque_t	= std::deque<Ty>;
-template<typename Ty>					using vector_t	= std::vector<Ty>;
-template<typename Ty, typename Ty_key>	using map_t		= std::map<Ty, Ty_key>;
-template<typename Ty>					using list_t	= std::list<Ty>;
+template<typename Ty>					using deque_t = std::deque<Ty>;
+template<typename Ty>					using vector_t = std::vector<Ty>;
+template<typename Ty, typename Ty_key>	using map_t = std::map<Ty, Ty_key>;
+template<typename Ty>					using list_t = std::list<Ty>;
 
 namespace FlexKit
 {
@@ -57,9 +60,9 @@ namespace FlexKit
 	{
 		RingBuffer()
 		{
-			head	= 0;
-			end		= 0;
-			count	= 0;
+			head = 0;
+			end = 0;
+			count = 0;
 		}
 
 		void push_back(const Ty&& in)
@@ -75,7 +78,7 @@ namespace FlexKit
 		Ty pop_front()
 		{
 			size_t i = end;
-			if (count){
+			if (count) {
 				--count;
 				count = count % SIZE;
 
@@ -85,23 +88,23 @@ namespace FlexKit
 			return _t[i];
 		}
 
-		Ty& back(){
+		Ty& back() {
 			return _t[end];
 		}
 
-		Ty& front(){
+		Ty& front() {
 			return _t[head];
 		}
 
-		Ty& operator[] (uint32_t i)	{return _t[i];}
+		Ty& operator[] (uint32_t i) { return _t[i]; }
 
-		void clear(){
+		void clear() {
 			count = 0;
-			head  = 0;
-			end   = 0;
+			head = 0;
+			end = 0;
 		}
 
-		uint32_t size(){
+		uint32_t size() {
 			return count;
 		}
 
@@ -125,12 +128,12 @@ namespace FlexKit
 		typedef const Ty*	Iterator_const;
 
 		inline  Vector(
-			iAllocator*		Alloc				= nullptr, 
-			const size_t	InitialReservation	= 0) : 
-				Allocator	(Alloc), 
-				Max			(InitialReservation),
-				Size		(0),
-				A			(nullptr) 
+			iAllocator*		Alloc = nullptr,
+			const size_t	InitialReservation = 0) :
+			Allocator(Alloc),
+			Max(InitialReservation),
+			Size(0),
+			A(nullptr)
 		{
 			if (InitialReservation > 0)
 			{
@@ -138,38 +141,38 @@ namespace FlexKit
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * InitialReservation);
 				FK_ASSERT(NewMem);
 
-				A	= NewMem;
+				A = NewMem;
 				Max = InitialReservation;
 			}
 		}
 
 
 		inline  Vector(const THISTYPE& RHS) :
-			Allocator	(RHS.Allocator),
-			Max			(RHS.Max),
-			Size		(RHS.Size) 
-		{ 
-			(*this) = RHS; 
+			Allocator(RHS.Allocator),
+			Max(RHS.Max),
+			Size(RHS.Size)
+		{
+			(*this) = RHS;
 		}
 
 
-		inline  Vector(THISTYPE&& RHS) : 
-			A			(RHS.A),
-			Allocator	(RHS.Allocator),
-			Max			(RHS.Max),
-			Size		(RHS.Size)
+		inline  Vector(THISTYPE&& RHS) :
+			A(RHS.A),
+			Allocator(RHS.Allocator),
+			Max(RHS.Max),
+			Size(RHS.Size)
 		{
-			RHS.A	 = nullptr;
-			RHS.Max  = 0;
+			RHS.A = nullptr;
+			RHS.Max = 0;
 			RHS.Size = 0;
 		}
 
 
-		inline ~Vector(){if(A)Allocator->_aligned_free(A);}
+		inline ~Vector() { if (A)Allocator->_aligned_free(A); }
 
 
-		inline			Ty& operator [](size_t index)		{return A[index];}
-		inline const	Ty& operator [](size_t index) const {return A[index];}
+		inline			Ty& operator [](size_t index) { return A[index]; }
+		inline const	Ty& operator [](size_t index) const { return A[index]; }
 
 
 		/************************************************************************************************/
@@ -178,7 +181,7 @@ namespace FlexKit
 		THISTYPE& operator =(const THISTYPE& RHS)
 		{
 			if (!Allocator) Allocator = RHS.Allocator;
-			
+
 			Release();
 			reserve(RHS.size());
 
@@ -215,13 +218,13 @@ namespace FlexKit
 
 			Release();
 
-			A        = RHS.A;
-			Max      = RHS.Max;
-			Size     = RHS.Size;
+			A = RHS.A;
+			Max = RHS.Max;
+			Size = RHS.Size;
 
 			RHS.Size = 0;
-			RHS.Max  = 0;
-			RHS.A    = nullptr;
+			RHS.Max = 0;
+			RHS.A = nullptr;
 
 			return *this;
 		}
@@ -253,9 +256,9 @@ namespace FlexKit
 
 
 		/************************************************************************************************/
-		
-		
-		Ty& front()	
+
+
+		Ty& front()
 		{
 			FK_ASSERT(Size > 0);
 			return A[0];
@@ -282,10 +285,10 @@ namespace FlexKit
 
 			if (newSize > size()) {
 				auto I = newSize - size();
-				while(I--)
+				while (I--)
 					push_back(Ty());
 			}
-			else if(newSize < size())
+			else if (newSize < size())
 			{
 				auto I = size() - newSize;
 				while (I--)
@@ -337,25 +340,25 @@ namespace FlexKit
 #ifdef _DEBUG
 				FK_ASSERT(Allocator);
 #endif			
-				auto NewSize = sizeof(Ty) * 2 * (Max < 1)? 1 : Max;
+				auto NewSize = sizeof(Ty) * 2 * (Max < 1) ? 1 : Max;
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(NewSize);
-				
+
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
 				FK_ASSERT(NewMem != A);
 #endif
 
-				if(A){
+				if (A) {
 					size_t itr = 0;
 					size_t End = Size;
-					for (;itr < End; ++itr) 
+					for (; itr < End; ++itr)
 						NewMem[itr] = A[itr];
 
 					Allocator->_aligned_free(A);
 				}
 
-				A	  = NewMem;
-				Max   = (Max) ? Max * 2 : 1;
+				A = NewMem;
+				Max = (Max) ? Max * 2 : 1;
 			}
 
 			A[Size++] = in;
@@ -385,7 +388,7 @@ namespace FlexKit
 				}
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
-				if(Size)
+				if (Size)
 					FK_ASSERT(NewMem != A);
 #endif
 
@@ -427,7 +430,7 @@ namespace FlexKit
 					FK_ASSERT(NewMem != A);
 #endif
 
-				if (A) 
+				if (A)
 				{
 					size_t itr = 0;
 					size_t End = Size;
@@ -440,7 +443,7 @@ namespace FlexKit
 				A = NewMem;
 				Max = NewSize;
 			}
-			
+
 			const size_t idx = Size++;
 
 			new(A + idx) Ty(std::forward<ARGS_t>(in)...);
@@ -450,7 +453,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 		// Order Not Preserved
-		void remove_unstable(Iterator I) 
+		void remove_unstable(Iterator I)
 		{
 			if (I == end())
 				return;
@@ -516,7 +519,7 @@ namespace FlexKit
 				{
 					size_t itr = 0;
 					size_t End = Size;
-					for (; itr < End; ++itr) 
+					for (; itr < End; ++itr)
 						new(NewMem + itr) Ty(std::move(A[itr])); // move if Possible
 
 					Allocator->_aligned_free(A);
@@ -533,7 +536,7 @@ namespace FlexKit
 
 		void clear()
 		{
-			for (size_t i = 0; i < size(); ++i){
+			for (size_t i = 0; i < size(); ++i) {
 				(A + i)->~Ty();
 			}
 			Size = 0;
@@ -547,10 +550,10 @@ namespace FlexKit
 		{
 			clear();
 
-			if(A && Allocator)
+			if (A && Allocator)
 				Allocator->_aligned_free(A);
 
-			A	= nullptr;
+			A = nullptr;
 			Max = 0;
 		}
 
@@ -561,8 +564,8 @@ namespace FlexKit
 		Ty& at(size_t index) { return A[index]; }
 
 
-		Iterator begin()	{ return A;			}
-		Iterator end()		{ return A + Size;	}
+		Iterator begin() { return A; }
+		Iterator end() { return A + Size; }
 
 		Iterator_const begin()	const { return A; }
 		Iterator_const end()	const { return A + Size; }
@@ -570,8 +573,8 @@ namespace FlexKit
 
 
 		/************************************************************************************************/
-		
-		
+
+
 		Ty*	A;
 
 		size_t Size;
@@ -584,22 +587,22 @@ namespace FlexKit
 	};
 
 
-	template< typename Ty_Get, template<typename Ty, typename... Ty_V> class TC, typename Ty_, typename... TV2> Ty_Get GetByType(TC<Ty_, TV2...>& in)	{ return in.GetByType<Ty_Get>(); }
+	template< typename Ty_Get, template<typename Ty, typename... Ty_V> class TC, typename Ty_, typename... TV2> Ty_Get GetByType(TC<Ty_, TV2...>& in) { return in.GetByType<Ty_Get>(); }
 
 	template<typename Ty_1, typename Ty_2>
 	struct Pair
 	{
 		typedef Pair<Ty_1, Ty_2> ThisType;
-		
-		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType (Pair<Ty_Get, Ty_2>&		in)	{ return in.V1; }
-		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType (Pair<Ty_2, Ty_Get>&		in)	{ return in.V2; }
-		template<typename Ty_Get>					static  inline Ty_Get& _GetByType (Pair<Ty_Get, Ty_Get>&	in)	{ static_assert(false, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
-		template<typename Ty_Get>							inline Ty_Get&  GetByType ()							{ return _GetByType<Ty_Get>(*this); }
 
-		template<typename Ty_Assign> ThisType operator = (const Ty_Assign& in)	{ Ty_Assign& thisVar = GetByType<Ty_Assign>(); thisVar = in; return *this;}
+		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_2>&		in) { return in.V1; }
+		template<typename Ty_Get, typename Ty_2>	static  inline Ty_Get& _GetByType(Pair<Ty_2, Ty_Get>&		in) { return in.V2; }
+		template<typename Ty_Get>					static  inline Ty_Get& _GetByType(Pair<Ty_Get, Ty_Get>&	in) { static_assert(false, "NON_UNIQUE TYPES IN Pair!");  return in.V2; }
+		template<typename Ty_Get>							inline Ty_Get&  GetByType() { return _GetByType<Ty_Get>(*this); }
 
-		explicit operator bool()					{ return GetByType<bool>(); }
-		template<typename Ty_1>	operator Ty_1()		{ return GetByType<Ty_1>(); }
+		template<typename Ty_Assign> ThisType operator = (const Ty_Assign& in) { Ty_Assign& thisVar = GetByType<Ty_Assign>(); thisVar = in; return *this; }
+
+		explicit operator bool() { return GetByType<bool>(); }
+		template<typename Ty_1>	operator Ty_1() { return GetByType<Ty_1>(); }
 
 		Ty_1 V1;
 		Ty_2 V2;
@@ -699,8 +702,8 @@ namespace FlexKit
 		SL_list(iAllocator* M = nullptr) : Memory(M)
 		{
 			FirstNode = nullptr;
-			LastNode  = nullptr;
-			Count     = 0;
+			LastNode = nullptr;
+			Count = 0;
 		}
 
 		~SL_list()
@@ -792,20 +795,20 @@ namespace FlexKit
 
 		void Insert(Iterator Itr, TY&& e)
 		{
-			Node* NewNode  = &Memory->allocate_aligned<Node>(std::move(e));
+			Node* NewNode = &Memory->allocate_aligned<Node>(std::move(e));
 
 			NullCheck(NewNode);
 
 			Node* PrevNext = Itr._ptr->Next;
 			Itr._ptr->Next = NewNode;
-			NewNode->Next  = PrevNext;
+			NewNode->Next = PrevNext;
 
 			Itr->Container->Count++;
 		}
 
 		Iterator push_back(TY e)
 		{
-			Node* NewNode	= &Memory->allocate_aligned<Node>(e);
+			Node* NewNode = &Memory->allocate_aligned<Node>(e);
 
 			NullCheck(NewNode);
 
@@ -822,8 +825,9 @@ namespace FlexKit
 
 			Count++;
 
-			return {NewNode, this};
-;		}
+			return { NewNode, this };
+			;
+		}
 
 		TY pop_front()
 		{
@@ -850,9 +854,9 @@ namespace FlexKit
 		Iterator begin()
 		{
 			FK_ASSERT(Count != 0);
-			return {FirstNode, this};
+			return { FirstNode, this };
 		}
-		
+
 		Iterator end()
 		{
 			return{ LastNode, this };
@@ -865,7 +869,7 @@ namespace FlexKit
 				return;
 
 			Iterator Itr = begin();
-			
+
 			while (size() && (Itr != nullptr))
 			{
 				if (!DoThis(Itr->Data))
@@ -922,7 +926,7 @@ namespace FlexKit
 		}
 
 		bool full() noexcept {
-			return (_Size > 0);
+			return (_Size == SIZE);
 		}
 
 		bool empty() noexcept {
@@ -966,7 +970,7 @@ namespace FlexKit
 			if (_Size + 1 > SIZE)// Call Destructor on Tail
 				back().~Ty();
 
-			_Size = min(++_Size, SIZE);
+			_Size = std::min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
@@ -976,7 +980,7 @@ namespace FlexKit
 
 		bool push_back(Ty&& Item) noexcept
 		{
-			_Size = min(++_Size, SIZE);
+			_Size = std::min(++_Size, SIZE);
 			size_t idx = _Head++;
 			_Head = _Head % SIZE;
 
@@ -997,9 +1001,9 @@ namespace FlexKit
 				back().~Ty();
 			}
 
-			_Size		= min(++_Size, SIZE);
-			size_t idx	= _Head++;
-			_Head		= _Head % SIZE;
+			_Size = min(++_Size, SIZE);
+			size_t idx = _Head++;
+			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
 
 			return false;
@@ -1008,9 +1012,9 @@ namespace FlexKit
 		template<typename FN>
 		bool push_back(Ty&& Item, FN callOnTail) noexcept
 		{
-			_Size		= min(++_Size, SIZE);
-			size_t idx	= _Head++;
-			_Head		= _Head % SIZE;
+			_Size = min(++_Size, SIZE);
+			size_t idx = _Head++;
+			_Head = _Head % SIZE;
 
 			if (_Size + 1 > SIZE)// Call Destructor on Tail
 			{
@@ -1060,11 +1064,11 @@ namespace FlexKit
 				Idx--;;
 			}
 
-			CircularIterator operator ++ (int)	{ auto Temp = *this; Increment(); return Temp; }
-			CircularIterator operator ++ ()		{ Increment(); return (*this); }
+			CircularIterator operator ++ (int) { auto Temp = *this; Increment(); return Temp; }
+			CircularIterator operator ++ () { Increment(); return (*this); }
 
-			CircularIterator operator -- (int)	{ auto Temp = *this; Decrement(); return Temp; }
-			CircularIterator operator -- ()		{ Decrement(); return (*this); }
+			CircularIterator operator -- (int) { auto Temp = *this; Decrement(); return Temp; }
+			CircularIterator operator -- () { Decrement(); return (*this); }
 
 		};
 
@@ -1091,63 +1095,118 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+
+	class DequeNode_MT;
+
+	struct _Node
+	{
+		_Node(DequeNode_MT* IN_ptr, uint32_t IN_flag = 0) :
+			_ptr{ IN_ptr },
+			flag{ IN_flag } {}
+
+		bool isLocked()
+		{
+			return flag != 0;
+		}
+
+		DequeNode_MT*	_ptr;
+		uint32_t		flag;
+		operator DequeNode_MT* () { return _ptr; }
+		DequeNode_MT* operator -> () { return _ptr; }
+	};
+
+
+	typedef std::atomic<_Node> DEQ_Node_ptr;
+
+
 	class DequeNode_MT
 	{
+		struct _Linkage
+		{
+			DequeNode_MT* prev;
+			DequeNode_MT* next;
+		};
+
+
 	public:
-		DequeNode_MT(const DequeNode_MT& E)				= delete;
-		DequeNode_MT& operator = (const DequeNode_MT&)	= delete; // No copying allowed, this class does no memory management
+		DequeNode_MT(const DequeNode_MT& E) = delete;
+		DequeNode_MT& operator = (const DequeNode_MT&) = delete; // No copying allowed, this class does no memory management
 
 		bool operator == (const DequeNode_MT& rhs) { return this == &rhs; }
 
-		DequeNode_MT() :
-			PrevNext{ {nullptr, nullptr} }{}
+		DequeNode_MT() = default;
 
 		virtual ~DequeNode_MT() {}
 
 
-		DequeNode_MT* GetNext()
+		DequeNode_MT* GetNext() const
 		{
-			return PrevNext.load().Next;
+			return links.load(std::memory_order_acquire).next;
 		}
 
-		DequeNode_MT* GetPrev()
+
+		DequeNode_MT* GetPrev() const
 		{
-			return PrevNext.load().Prev;
+			return links.load(std::memory_order_acquire).prev;
 		}
 
-		void SetLinks(DequeNode_MT* NewPrev, DequeNode_MT* NewNext)
+
+		_Linkage GetLinks()
 		{
-			PrevNext.store({ NewNext, NewPrev });
+			return links.load(std::memory_order_acquire);
 		}
 
-		struct NodeLinkage
+		bool TrySetNext(DequeNode_MT* _ptr)
 		{
-			DequeNode_MT* Next = nullptr;
-			DequeNode_MT* Prev = nullptr;
-		};
+			auto current = links.load(std::memory_order_acquire);
+			return links.compare_exchange_strong(current, { current.prev, _ptr }, std::memory_order_acq_rel);
+		}
 
-		std::atomic<NodeLinkage> PrevNext;
+
+		bool TrySetPrev(DequeNode_MT* _ptr)
+		{
+			auto current = links.load(std::memory_order_acquire);
+			return links.compare_exchange_strong(current, { _ptr, current.next }, std::memory_order_acq_rel);
+		}
+
+
+		bool CMPExchangeLinks(_Linkage newState, _Linkage expected)
+		{
+			return links.compare_exchange_strong(expected, newState);
+		}
+
+		void Clear()
+		{
+			links.store({ nullptr, nullptr }, std::memory_order_release);
+		}
+
+	private:
+
+		std::atomic<_Linkage>	links = { { nullptr, nullptr } };
 	};
 
-	
+
 	// Intrusive, Thread-Safe, Double Linked List
 	// This Class assumes nodes have inherited the from DequeNode_MT 
 	// Destructor does not free elements!!
-	template<typename TY> 
+
+	static const bool DEBUG_MUTEX_DEQUE_MT = true;
+
+	template<typename TY>
 	class Deque_MT
 	{
 	public:
 
 		/************************************************************************************************/
-		
-		Deque_MT()	= default;
-		~Deque_MT() = default;
 
-		Deque_MT(const Deque_MT&)				= delete;
-		Deque_MT& operator =(const Deque_MT&)   = delete;
+		Deque_MT()	noexcept = default;
+		~Deque_MT() noexcept = default;
 
-		Deque_MT(Deque_MT&&)					= delete;
-		Deque_MT& operator =(Deque_MT&&)		= delete;
+		Deque_MT(const Deque_MT&) = delete;
+		Deque_MT& operator =(const Deque_MT&) = delete;
+
+		Deque_MT(Deque_MT&&) = delete;
+		Deque_MT& operator =(Deque_MT&&) = delete;
 
 
 		/************************************************************************************************/
@@ -1156,32 +1215,37 @@ namespace FlexKit
 		class Iterator
 		{
 		public:
-			Iterator(DequeNode_MT* _ptr) : I{ _ptr } {}
+			Iterator(DequeNode_MT* _ptr) noexcept : I{ _ptr } {}
 
-			Iterator operator ++ (int)
-			{ 
-				auto Next = I->GetNext();
-				return Iterator(Next ? Next : nullptr);
+			Iterator operator ++ (int) noexcept
+			{
+				auto prevI = I;
+				I = I ? I->GetNext() : nullptr;
+				return { prevI };
 			}
 
-			Iterator operator -- (int)
-			{ 
-				auto Prev = I->GetNext();
-				return Iterator(Prev ? Prev : nullptr);
+
+			Iterator operator -- (int) noexcept
+			{
+				auto prevI = I;
+				I = I ? I->GetPrev() : nullptr;
+				return { prevI };
 			}
 
-			void operator ++ () 
-			{ 
-				auto Next = I->GetNext();
-				I = Next ? Next : nullptr;
-			}
-			void operator -- () 
-			{ 
-				auto Prev = I->GetNext();
-				I = Prev ? Prev : nullptr; 
+
+			void operator ++ () noexcept
+			{
+				I = I ? I->GetNext() : nullptr;
 			}
 
-			Iterator operator + (const int n)
+
+			void operator -- () noexcept
+			{
+				I = I ? I->GetPrev() : nullptr;
+			}
+
+
+			Iterator operator + (const int n) noexcept
 			{
 				auto itr = *this;
 
@@ -1190,7 +1254,8 @@ namespace FlexKit
 				return itr;
 			}
 
-			Iterator operator - (const int n)
+
+			Iterator operator - (const int n) noexcept
 			{
 				auto itr = *this;
 
@@ -1199,18 +1264,32 @@ namespace FlexKit
 				return itr;
 			}
 
-			DequeNode_MT* GetPtr()
+
+			DequeNode_MT* GetPtr() noexcept
 			{
 				return I;
 			}
 
-			bool operator !=(const Iterator& rhs) { return I != rhs.I; }
-			bool operator ==(const Iterator& rhs) { return I == rhs.I; }
 
-			TY& operator* ()				{ return *static_cast<TY*>(I);	}
-			TY* operator-> ()				{ return  static_cast<TY*>(I);	}
+			bool hasNext() noexcept
+			{
+				return I ? I->GetNext() != nullptr : false;
+			}
 
-			const TY* operator& () const	{ return static_cast<TY*>(I); }
+
+			bool hasPrev() noexcept
+			{
+				return I ? I->GetPrev() != nullptr : false;
+			}
+
+
+			bool operator !=(const Iterator& rhs) const noexcept { return I != rhs.I; }
+			bool operator ==(const Iterator& rhs) const noexcept { return I == rhs.I; }
+
+			TY& operator* ()	noexcept { return *static_cast<TY*>(I); }
+			TY* operator-> ()	noexcept { return  static_cast<TY*>(I); }
+
+			const TY* operator& () const noexcept { return static_cast<TY*>(I); }
 		private:
 
 			DequeNode_MT* I;
@@ -1220,45 +1299,193 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		Iterator begin()	{ return _GetFirst(); }
-		Iterator end()		{ return nullptr; }
+		Iterator begin()	noexcept 
+		{ 
+			auto current = links.load(std::memory_order_acquire);
+			return { current.left };
+		}
+
+
+		Iterator end()		noexcept { return { nullptr }; }
 
 
 		/************************************************************************************************/
 
-		void push_back(TY& E)
-		{
-			push_back(&E);
-		}
 
- 		void push_back(TY* E)
+		void push_back(TY* node) noexcept
 		{
+			uint32_t flag = CreateRandomNumber();
+			std::unique_lock lock{ m };
+
+			_Linkage current = links.load(std::memory_order_acquire);
+
 			do
 			{
-				auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
-				E->SetLinks(CurrentFirstLast.Last, nullptr);
+				while (!node->TrySetPrev(current.right));
 
-				auto NewLinkage =
-					(!CurrentFirstLast.First && !CurrentFirstLast.Last) ?
-						NodeLinkage_BEGINEND{ E, E } :
-						NodeLinkage_BEGINEND{ CurrentFirstLast.First, E };
+				if (!current.isLocked() && current.isEmpty() && links.compare_exchange_strong(current, { node, node, 0 })) // Empty Case handled here!
+					return;
 
-				if (CurrentFirstLast.First && CurrentFirstLast.Last)
-				{
-					auto Temp = CurrentFirstLast.Last ? CurrentFirstLast.Last->GetPrev() : nullptr;
-					if (BeginEnd.compare_exchange_weak(CurrentFirstLast, NewLinkage, std::memory_order_acquire))
-					{
-						CurrentFirstLast.Last->SetLinks(Temp, E);
-						return;
-					}
-				}
-				else
-				{
-					if (BeginEnd.compare_exchange_weak(
-							CurrentFirstLast, NewLinkage, std::memory_order_acquire))
-						return;
-				}
+				// normal push Handled HERE!
+				if (!current.isLocked() && !current.isEmpty() && links.compare_exchange_strong(current, { current.left, node, flag })) // exchange and LOCK!
+					break;
+
+				current = links.load(std::memory_order_acquire);
 			} while (true);
+
+			if (!current.isEmpty())
+				while (!current.right->TrySetNext(node));
+			while (!links.compare_exchange_strong(current,{ current.left, node, 0 })); // UNLOCK!
+		}
+
+
+		/************************************************************************************************/
+
+
+		void push_front(TY* node) noexcept
+		{
+			uint32_t flag = CreateRandomNumber();
+			std::unique_lock lock{ m };
+
+			_Linkage current = links.load(std::memory_order_acquire);
+
+			do
+			{
+				while (!node->TrySetNext(current.left));
+
+				if (!current.isLocked() && current.isEmpty() && links.compare_exchange_strong(current, { node, node, 0 })) // Empty Case handled here!
+					return;
+
+				// normal push Handled HERE!
+				if (!current.isLocked() && !current.isEmpty() && links.compare_exchange_strong(current, { node, current.right, flag }))// exchange and LOCK!
+					break;
+
+				current = links.load(std::memory_order_acquire);
+			} while (true);
+
+			if(!current.isEmpty())
+				while (!current.left->TrySetPrev(node));
+			while (!links.compare_exchange_strong(current, { node, current.right, 0 })); // UNLOCK!
+		}
+
+
+		/************************************************************************************************/
+
+
+		bool try_pop_front(TY*& out)
+		{
+			uint32_t flag		= CreateRandomNumber();
+			_Linkage current	= links.load(std::memory_order_acquire);
+
+			std::unique_lock lock{ m };
+
+			if (current.isEmpty())
+				return false;
+
+			auto leftLinks = current.left->GetLinks();
+
+			if (!current.isLocked() && leftLinks.prev == nullptr)
+			{
+				// 1 Nodes
+				if (current.isSingle() && leftLinks.next == nullptr && leftLinks.prev == nullptr)
+				{
+					if (!links.compare_exchange_strong(current, { 0, 0, 0 }))
+						return false;
+
+					current.left->Clear();
+					out = static_cast<TY*>((DequeNode_MT*)current.left);
+					current.left->Clear();
+
+					return true;
+				}// 2 Nodes
+
+				if (leftLinks.next == current.right && links.compare_exchange_strong(current, { current.right, current.right, flag }, std::memory_order_acq_rel)) // ALSO LOCKS
+				{
+					out = static_cast<TY*>((DequeNode_MT*)current.left);
+					current.left->Clear();
+					current.right->Clear();
+
+					links.exchange({ current.right, current.right, 0 }, std::memory_order_release); // UNLOCK
+
+					return true;
+				}// N - Nodes
+				else if(links.compare_exchange_strong(current, { leftLinks.next, current.right, 0 }, std::memory_order_acq_rel))
+				{
+					do
+					{
+						auto leftNeighborLinks = leftLinks.next->GetLinks();
+						if (leftNeighborLinks.prev != current.left || 
+							leftLinks.next->CMPExchangeLinks({ nullptr, leftNeighborLinks.next }, leftNeighborLinks))
+							break;
+					} while (true);
+
+					out = static_cast<TY*>((DequeNode_MT*)current.left);
+					current.left->Clear();
+
+					return true;
+				}
+			}
+
+			return false;
+		}
+
+
+		/************************************************************************************************/
+
+
+		bool try_pop_back(TY*& out)
+		{
+			uint32_t flag		= CreateRandomNumber();
+			_Linkage current	= links.load(std::memory_order_acquire);
+
+			std::unique_lock lock{ m };
+
+			if (current.isEmpty())
+				return false;
+
+			auto rightLinks = current.right->GetLinks();
+
+			if (!current.isLocked() && rightLinks.next == nullptr)
+			{
+				if (current.isSingle() && rightLinks.next == nullptr && rightLinks.prev == nullptr)
+				{
+					if (!links.compare_exchange_strong(current, { 0, 0, 0 }))
+						return false;
+
+					out = static_cast<TY*>((DequeNode_MT*)current.right);
+					current.right->Clear();
+
+					return true;
+				}// 2 Nodes
+				if (rightLinks.prev == current.left && links.compare_exchange_strong(current, { current.left, current.left, flag }, std::memory_order_acq_rel)) // ALSO LOCKS
+				{
+					out = static_cast<TY*>((DequeNode_MT*)current.right);
+					current.right->Clear();
+					current.left->Clear();
+
+					links.exchange({ current.left, current.left, 0 }, std::memory_order_release); // UNLOCK
+
+					return true;
+				}
+				else if (links.compare_exchange_strong(current, { current.left, rightLinks.prev, 0 }, std::memory_order_acq_rel))
+				{
+					do
+					{
+						auto rightNeighborLinks = rightLinks.prev->GetLinks();
+						if (rightNeighborLinks.next != current.right ||
+							rightLinks.prev->CMPExchangeLinks({ rightNeighborLinks.prev, nullptr}, rightNeighborLinks))
+							break;
+
+						int x = 0;
+					} while (true);
+
+					out = static_cast<TY*>((DequeNode_MT*)current.right);
+					current.right->Clear();
+
+					return true;
+				}
+			}
+			return false;
 		}
 
 
@@ -1270,117 +1497,9 @@ namespace FlexKit
 			push_front(&E);
 		}
 
-
-		void push_front(TY* E)
+		void push_back(TY& E)
 		{
-			do
-			{
-				auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
-				E->SetLinks(nullptr, CurrentFirstLast.First);
-
-				auto NewLinkage = (!CurrentFirstLast.First && !CurrentFirstLast.Last) ?
-					NodeLinkage_BEGINEND{ E, E } :
-					NodeLinkage_BEGINEND{ E, CurrentFirstLast.Last };
-
-				if (CurrentFirstLast.First && CurrentFirstLast.Last)
-				{
-					auto Temp = CurrentFirstLast.First ? CurrentFirstLast.First->GetNext() : nullptr;
-					if (BeginEnd.compare_exchange_weak(CurrentFirstLast, NewLinkage, std::memory_order_acquire))
-					{
-						CurrentFirstLast.First->SetLinks(E, Temp);
-						return;
-					}
-				}
-				else
-				{
-					if (BeginEnd.compare_exchange_weak(
-						CurrentFirstLast, NewLinkage, std::memory_order_acquire))
-						return;
-				}
-			} while (true);
-		}
-
-
-		/************************************************************************************************/
-		/*
-		// Note, THIS WILL BLOCK IF THERE ARE NO ELEMENTS!
-		Element_TY& pop_front()
-		{
-			std::mutex M;
-			std::unique_lock Lock(M);
-
-			Element_TY* Out;
-
-			do
-			{
-				CV.wait(Lock, [&] { return !empty(); });
-			} while (!try_pop_front(Out));
-
-			return *Out;
-		}
-		*/
-
-		/************************************************************************************************/
-
-
-		bool try_pop_front(TY*& Out)
-		{
-			auto CurrentFirstLast = BeginEnd.load(std::memory_order_seq_cst);
-			
-			if (CurrentFirstLast.First == nullptr || CurrentFirstLast.Last == nullptr)
-				return false;
-
-			auto NextNode	=  CurrentFirstLast.First->GetNext();
-			auto NewLinkage = (CurrentFirstLast.First == CurrentFirstLast.Last) ?
-				NodeLinkage_BEGINEND{ nullptr, nullptr } : 
-				NodeLinkage_BEGINEND{ NextNode, CurrentFirstLast.Last };
-
-			if (BeginEnd.compare_exchange_strong(
-				CurrentFirstLast,
-				NewLinkage,
-				std::memory_order_release))
-			{
-				if(NextNode)
-					NextNode->SetLinks(nullptr, NextNode->GetNext());
-			}
-			else
-				return false;
-
-			Out = static_cast<TY*>(CurrentFirstLast.First);
-
-			return true;
-		}
-
-
-		/************************************************************************************************/
-
-
-		bool try_pop_back(TY*& Out)
-		{
-			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
-			
-			if ((CurrentFirstLast.First == nullptr || CurrentFirstLast.Last == nullptr))
-				return false;
-
-			auto PrevNode	=  CurrentFirstLast.Last->GetPrev();
-			auto NewLinkage = (CurrentFirstLast.First == CurrentFirstLast.Last) ?
-				NodeLinkage_BEGINEND{ nullptr, nullptr } : 
-				NodeLinkage_BEGINEND{ CurrentFirstLast.First, PrevNode };
-
-			if (BeginEnd.compare_exchange_strong(
-				CurrentFirstLast,
-				NewLinkage,
-				std::memory_order_release))
-			{
-				if(PrevNode)
-					PrevNode->SetLinks(PrevNode->GetPrev(), nullptr);
-			}
-			else
-				return false;
-
-			Out = static_cast<TY*>(CurrentFirstLast.Last);
-
-			return true;
+			push_back(&E);
 		}
 
 
@@ -1389,35 +1508,46 @@ namespace FlexKit
 
 		bool empty()
 		{
-			auto CurrentFirstLast = BeginEnd.load(std::memory_order_acquire);
+			_Linkage current = links.load(std::memory_order_acquire);
 
-			return (CurrentFirstLast.First == nullptr || CurrentFirstLast.Last == nullptr);
+			return current.isEmpty() && !current.isLocked();
 		}
-
 
 	private:
 
-		DequeNode_MT* _GetFirst()
+		static inline uint32_t CreateRandomNumber()
 		{
-			auto Links = BeginEnd.load(std::memory_order_acquire);
-			return Links.First;
+			static std::random_device rd;
+			return rd();
 		}
 
-
-		DequeNode_MT* _GetLast()
+		struct _Linkage
 		{
-			auto Links = BeginEnd.load(std::memory_order_acquire);
-			return Links.Last;
-		}
+			DequeNode_MT*	left;
+			DequeNode_MT*	right;
+			uint32_t		flag;
 
+			bool try_LockLeft(uint32_t flag)
+			{
+				return !left->Lock(flag);
+			}
 
-		struct NodeLinkage_BEGINEND
-		{
-			DequeNode_MT* First		= nullptr;
-			DequeNode_MT* Last		= nullptr;
+			bool try_LockRight(uint32_t flag)
+			{
+				return !right->Lock(flag);
+			}
+
+			bool isLocked()
+			{
+				return flag != 0;
+			}
+
+			bool isSingle() { return right == left; }
+			bool isEmpty()	{ return isSingle() && right == nullptr; }
 		};
 
-		std::atomic<NodeLinkage_BEGINEND>	BeginEnd;
+		std::atomic< _Linkage>	links = { { nullptr, nullptr, 0 } };
+		std::mutex				m;
 	};
 
 
@@ -1428,10 +1558,10 @@ namespace FlexKit
 	{
 	public:
 		ObjectPool(iAllocator* Allocator, const size_t PoolSize) :
-			Pool			{ reinterpret_cast<TY*>(Allocator->_aligned_malloc(sizeof(TY) * PoolSize)) },
-			FreeObjectList	{ Allocator },
-			PoolMaxSize		{ PoolSize	},
-			Allocator		{ Allocator }
+			Pool{ reinterpret_cast<TY*>(Allocator->_aligned_malloc(sizeof(TY) * PoolSize)) },
+			FreeObjectList{ Allocator },
+			PoolMaxSize{ PoolSize },
+			Allocator{ Allocator }
 		{
 			FreeObjectList.resize(PoolSize);
 
@@ -1439,15 +1569,17 @@ namespace FlexKit
 				FreeState = true;
 		}
 
+
 		~ObjectPool()
 		{
 			Visit([&](auto& Element)
-			{
-				Element.~TY();
-			});
+				{
+					Element.~TY();
+				});
 
 			Allocator->free(Pool);
 		}
+
 
 		template<typename ... TY_ARGS>
 		TY& Allocate(TY_ARGS&& ... Args)
@@ -1470,7 +1602,7 @@ namespace FlexKit
 		void Release(TY& Object)
 		{
 			if (&Object < Pool + PoolMaxSize &&
-				&Object >= Pool )
+				&Object >= Pool)
 			{
 				size_t Idx = (
 					reinterpret_cast<size_t>(&Object) -

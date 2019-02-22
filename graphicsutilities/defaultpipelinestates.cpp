@@ -58,7 +58,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable = false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -110,7 +110,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -163,7 +163,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -217,7 +217,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -276,7 +276,7 @@ namespace FlexKit
 		Depth_Desc.DepthEnable	= false;
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                    = DrawRectVShader;
 			PSO_Desc.PS                    = DrawRectPShader;
 			PSO_Desc.RasterizerState       = Rast_Desc;
@@ -322,7 +322,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC GDesc = {};
-		GDesc.pRootSignature        = RS->Library.RS4CBVs4SRVs;
+		GDesc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
 		GDesc.VS                    = VShader;
 		GDesc.PS                    = { nullptr, 0 };
 		GDesc.RasterizerState       = Rast_Desc;
@@ -436,7 +436,7 @@ namespace FlexKit
 		CL->RSSetViewports(1, VPs);
 		CL->OMSetRenderTargets(0, nullptr, false, &(D3D12_CPU_DESCRIPTOR_HANDLE)DSV);
 		//CL->SetPipelineState(GetPSO(RS, EPIPELINESTATES::OCCLUSION_CULLING));
-		CL->SetGraphicsRootSignature(RS->Library.RS4CBVs4SRVs);
+		CL->SetGraphicsRootSignature(RS->Library.RS6CBVs4SRVs);
 
 		for (size_t I = 0; I < Set->size(); ++I) {
 			size_t QueryID = OC->GetNext();

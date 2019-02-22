@@ -201,7 +201,7 @@ float ComputeBRDFNorm(const float3& v, const float alpha, const int sampleCount 
 
 /************************************************************************************************/
 
-const size_t CubeCount = 8;
+const size_t CubeCount = 1;
 
 class GraphicsTest : public FrameworkState
 {
@@ -210,8 +210,8 @@ public:
 		FrameworkState(IN_framework),
 		render			{ IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem						},
 		depthBuffer		{ IN_framework->core->RenderSystem.CreateDepthBuffer	(GetWindowWH(IN_framework->core), true)	},
-		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)				},
-		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 64,			false)				},
+		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
+		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
 		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 256,	false)				},
 		eventMap		{ IN_framework->core->GetBlockMemory()															},
 		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()							},
@@ -238,12 +238,12 @@ public:
 		}
 
 		auto& RS = IN_framework->core->RenderSystem;
-		RS.RegisterPSOLoader(DRAW_PSO,					{ &RS.Library.RS4CBVs4SRVs, CreateDrawTriStatePSO			});
-		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStatePSO		});
-		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
-		RS.RegisterPSOLoader(DRAW_LINE_PSO,				{ &RS.Library.RS4CBVs4SRVs, CreateDrawLineStatePSO			});
-		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO				});
-		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO				});
+		RS.RegisterPSOLoader(DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
+		RS.RegisterPSOLoader(DRAW_LINE_PSO,				{ &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO			});
+		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO				});
+		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO				});
 
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
@@ -334,6 +334,8 @@ public:
 		UpdateDispatcher&	dispatcher, 
 		double				dT) override
 	{
+		FK_LOG_1("Begin Update");
+
 		auto transformTask = QueueTransformUpdateTask	(dispatcher);
 		auto cameraUpdate  = QueueCameraUpdate			(dispatcher, transformTask);
 		auto orbitUpdate   = QueueOrbitCameraUpdateTask	(dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
@@ -377,6 +379,10 @@ public:
 		double				dT, 
 		FrameGraph&			frameGraph) override
 	{
+		FK_LOG_1("End Update");
+
+		FK_LOG_1("Begin Draw");
+
 		frameGraph.Resources.AddDepthBuffer(depthBuffer);
 
 
@@ -447,6 +453,7 @@ public:
 				core->Window.GetBackBuffer(),
 				core->GetTempMemory());
 
+
 		return true; 
 	}
 
@@ -465,6 +472,7 @@ public:
 			framework->DrawDebugHUD(dT, textBuffer, frameGraph);
 
 		PresentBackBuffer(frameGraph, &core->Window);
+		FK_LOG_1("End Draw");
 
 		return true; 
 	}

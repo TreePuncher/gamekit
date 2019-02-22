@@ -179,8 +179,10 @@ namespace FlexKit
 
 
 	GameFramework::GameFramework(EngineCore* IN_core) :
-		console	{DefaultAssets.Font, IN_core->GetBlockMemory()},
-		core	{IN_core}
+		console				{ DefaultAssets.Font, IN_core->GetBlockMemory() },
+		core				{ IN_core	},
+		fixStepAccumulator	{ 0.0		}
+
 	{
 		Initiate();
 	}
@@ -248,11 +250,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::Update(double dT)
+	void GameFramework::Update(UpdateDispatcher& dispatcher, double dT)
 	{
-		timeRunning += dT;
+		runningTime += dT;
 
-
+		UpdateInput();
 		UpdateMouseInput(&MouseState, &core->Window);
 
 		if (!subStates.size()) {
@@ -260,18 +262,14 @@ namespace FlexKit
 			return;
 		}
 
-		UpdateDispatcher Dispatcher{ &core->Threads, core->GetTempMemory() };
-
 		for(size_t I = 1; I <= subStates.size(); ++I)
 		{
-
 			auto& State = subStates[subStates.size() - I];
 
-			if (!State->Update(core, Dispatcher, dT))
+			if (!State->Update(core, dispatcher, dT))
 				break;
 		}
 
-		Dispatcher.Execute();
 		core->End = quit;
 	}
 
@@ -279,17 +277,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::UpdateFixed(double dt)
+	void GameFramework::UpdateFixed(UpdateDispatcher& dispatcher, double dt)
 	{
 		core->Physics.Simulate(dt);
-		UpdateMouseInput(&MouseState, &core->Window);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void GameFramework::UpdatePreDraw(iAllocator* TempMemory, double dT)
+	void GameFramework::UpdatePreDraw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
 	{
 		if (!subStates.size()) {
 			quit = true;
@@ -310,7 +307,7 @@ namespace FlexKit
 				}
 			}
 
-			//dispatcher.Execute();
+			dispatcher.Execute();
 		}
 
 		{
@@ -323,7 +320,7 @@ namespace FlexKit
 					break;
 			}
 
-			//dispatcher.Execute();
+			dispatcher.Execute();
 		}
 
 		if (stats.fpsT > 1.0)
@@ -341,51 +338,88 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::Draw(iAllocator* TempMemory)
+	void GameFramework::Draw(UpdateDispatcher& dispatcher, iAllocator* TempMemory)
 	{
-		FrameGraph		FrameGraph(core->RenderSystem, TempMemory);
+		FK_LOG_9("Frame Draw Begin");
+
+		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core->RenderSystem, TempMemory);
 
 		// Add in Base Resources
-		FrameGraph.Resources.AddRenderTarget(core->Window.GetBackBuffer());
-		FrameGraph.UpdateFrameGraph(core->RenderSystem, ActiveWindow, core->GetTempMemory());
+		frameGraph.Resources.AddRenderTarget(core->Window.GetBackBuffer());
+		frameGraph.UpdateFrameGraph(core->RenderSystem, ActiveWindow, core->GetTempMemory());
 
-		UpdateDispatcher Dispatcher{ &core->Threads, core->GetTempMemory() };
 
 		for (size_t I = 0; I < subStates.size(); ++I)
 		{
 			auto& SubState = subStates[I];
-			if (!SubState->Draw(core, Dispatcher, 0, FrameGraph))
+			if (!SubState->Draw(core, dispatcher, 0, frameGraph))
 				break;
 		}
 
 		for (size_t I = 1; I <= subStates.size(); ++I)
 		{
 			auto& State = subStates[subStates.size() - I]; 
-			if (!State->PostDrawUpdate(core, Dispatcher, 0, FrameGraph))
+			if (!State->PostDrawUpdate(core, dispatcher, 0, frameGraph))
 				break;
 		}
 
-		//Dispatcher.Execute();
 
 		ProfileBegin(PROFILE_SUBMISSION);
 
 		if(	ActiveWindow )
 		{
-			FrameGraph.SubmitFrameGraph(core->RenderSystem, ActiveWindow);
-
+			frameGraph.SubmitFrameGraph(dispatcher, core->RenderSystem, ActiveWindow);
 			Free_DelayedReleaseResources(core->RenderSystem);
 		}
 
 		ProfileEnd(PROFILE_SUBMISSION);
+
+		FK_LOG_9("Frame Draw Begin");
 	}
 
 
 	/************************************************************************************************/
 
 
-	void GameFramework::PostDraw(iAllocator* TempMemory, double dt)
+	void GameFramework::PostDraw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dt)
 	{
 		core->RenderSystem.PresentWindow(&core->Window);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void GameFramework::DrawFrame(double dT)
+	{
+
+		FK_LOG_9("Frame Begin");
+
+		UpdateDispatcher dispatcher{ &core->Threads, core->GetTempMemory() };
+
+
+		while(fixStepAccumulator >= fixedTimeStep) {
+			UpdateFixed(dispatcher, fixedTimeStep);
+			dispatcher.Execute();
+			fixStepAccumulator -= fixedTimeStep;
+		}
+
+		Update			(dispatcher, dT);
+		UpdatePreDraw	(dispatcher, core->GetTempMemory(), dT);
+		Draw			(dispatcher, core->GetTempMemory());
+
+		dispatcher.Execute();
+
+		PostDraw		(dispatcher, core->GetTempMemory(), dT);
+
+		core->GetTempMemory().clear();
+
+		fixStepAccumulator += dT;
+
+		FK_LOG_9("Frame End");
+
+		// Memory -----------------------------------------------------------------------------------
+		//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
 	}
 
 

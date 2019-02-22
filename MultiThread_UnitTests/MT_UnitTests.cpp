@@ -31,7 +31,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
-{		
+{	
+	static std::atomic_int readyCount = 0;
+
 	TEST_CLASS(MultiThreadUnitTests)
 	{
 	public:
@@ -39,7 +41,7 @@ namespace UnitTests
 		class TestClass : public FlexKit::DequeNode_MT
 		{
 		public:
-			TestClass(int X = 0) :
+			TestClass(size_t X = 0) :
 				x{ X } 
 			{
 				SetX(x);
@@ -70,7 +72,7 @@ namespace UnitTests
 			}
 
 			std::string Message;
-			int x;
+			size_t x;
 		};
 
 		template<class TY>
@@ -94,24 +96,24 @@ namespace UnitTests
 					TestClass* E;
 					auto res = deque.try_pop_front(E);
 					if (res != false)
-						Assert::IsTrue(false, L"Container returned a non-existing element!");
+						Assert::IsTrue(false, L"Container returned a non-existing element!\n");
 
 					deque.push_back(&N1);
 					res = deque.try_pop_front(E);
 
 					if (res != true) // Container should be return one element
-						Assert::IsTrue(false, L"Container failed to pop element!");
+						Assert::IsTrue(false, L"Container failed to pop element!\n");
 
 
 					res = deque.try_pop_front(E);
 					if (res != false) // Container should be empty
-						Assert::IsTrue(false, L"Container failed to pop element!");
+						Assert::IsTrue(false, L"Container failed to pop element!\n");
 				}
 
 				deque.push_front(N1);
-				deque.push_back	(N2);
+				deque.push_front(N2);
 				deque.push_front(N3);
-				deque.push_back	(N4);
+				deque.push_front(N4);
 
 				while (!deque.empty())
 				{
@@ -120,9 +122,9 @@ namespace UnitTests
 						E_ptr->print();
 				}
 
-				deque.push_front(N1);
+				deque.push_back	(N1);
 				deque.push_back	(N2);
-				deque.push_front(N3);
+				deque.push_back	(N3);
 				deque.push_back	(N4);
 
 				while (!deque.empty())
@@ -140,175 +142,320 @@ namespace UnitTests
 			Assert::IsTrue(true);
 		}
 
+		static const size_t testSize	= 1000u;
+		static const size_t passCount	= 100;
 
-
-		TEST_METHOD(Deque_SingleReaderSingleWriterTest)
+		TEST_METHOD(Deque_MultiReaderMultiWriterTest)
 		{
-			Deque<TestClass> Queue;
+			FlexKit::ThreadManager Threads{ 6 };
 
-			FlexKit::ThreadManager Threads{ 4 };
-
-			std::condition_variable CV;
-
-			Logger::WriteMessage(L"Setting up test");
-
-			class AddThread : public FlexKit::iWork
+			for (size_t i = 0; i < passCount; ++i)
 			{
-			public:
-				AddThread(
-					int							N,
-					std::condition_variable&	IN_CV,
-					Deque<TestClass>&			IN_Queue) :
-					iWork{ FlexKit::SystemAllocator },
-					CV{ IN_CV },
-					Queue{ IN_Queue }
+				Deque<TestClass> Queue;
+
+				std::condition_variable CV;
+
+				Logger::WriteMessage(L"Setting up test\n");
+
+				class AddThread : public FlexKit::iWork
 				{
-					size_t itr = 0;
-					for (size_t itr = 0; itr < 400'000; ++itr)
-						Test.push_back(itr + N);
+				public:
+					AddThread(
+						size_t						IN_N,
+						std::condition_variable&	IN_CV,
+						Deque<TestClass>&			IN_Queue) :
+						iWork	{ FlexKit::SystemAllocator	},
+						CV		{ IN_CV						},
+						Queue	{ IN_Queue					},
+						N		{ IN_N						}
+					{
+					}
+
+
+					void Run() override
+					{
+						Test.reserve(testSize);
+
+						Logger::WriteMessage(L"Thread Creating number Set\n");
+
+						for (size_t itr = 0; itr < testSize; ++itr)
+							Test.push_back(itr + N);
+
+						Logger::WriteMessage(L"Thread Finished Creating number Set\n");
+
+						std::mutex			M;
+						std::unique_lock	UL{ M };
+
+						readyCount++;
+						CV.wait(UL);
+
+						size_t i = 0;
+
+						for (auto& I : Test)
+						{
+							bool front_or_back = (i % 2) == 0;
+
+							if (front_or_back)
+								Queue.push_back(&I);
+							else
+								Queue.push_front(&I);
+
+							i++;
+						}
+					}
+
+					const size_t				N;
+					std::condition_variable&	CV;
+					Deque<TestClass>&			Queue;
+					std::vector<TestClass>		Test;
+
+				}	threadGroup1[] = {
+					{ 0	* testSize, CV, Queue },
+					{ 1	* testSize, CV, Queue },
+					{ 2	* testSize, CV, Queue },
+					{ 3	* testSize, CV, Queue }};
+
+
+				class PopThread : public FlexKit::iWork
+				{
+				public:
+					PopThread(
+						std::condition_variable&	IN_CV,
+						Deque<TestClass>&			IN_Queue ) :
+						iWork{ FlexKit::SystemAllocator },
+						CV{ IN_CV },
+						Queue{ IN_Queue }
+					{
+						Ints.reserve(testSize);
+						Nodes.reserve(testSize);
+					}
+
+
+					void Run() override
+					{
+						std::mutex			M;
+						std::unique_lock	UL{ M };
+
+						readyCount++;
+						CV.wait(UL);
+
+						int n = std::random_device{}() % 159;
+
+						try
+						{
+							while(true)
+							{
+								do
+								{
+									TestClass* E_ptr = nullptr;
+
+									bool front_or_back	= (n % 2)	== 0;
+									bool push_or_pull	= (n % 13)	== 0;
+
+
+									if (push_or_pull && Nodes.size())
+									{
+										auto node = Nodes.back();
+										Nodes.pop_back();
+
+										Queue.push_back(node);
+									}
+									else
+									{
+										bool success = false;
+
+										if (front_or_back)
+											success = Queue.try_pop_back(E_ptr);
+										else
+											success = Queue.try_pop_front(E_ptr);
+
+										if (success)
+										{
+											Assert::IsTrue(E_ptr != nullptr, L"Returned Invalid Value!\n");
+											Nodes.push_back(E_ptr);
+										}
+									}
+
+									n++;
+								} while (!Queue.empty());
+
+
+								for (auto& node : Nodes)
+									Ints.push_back(node->x);
+
+								if (Queue.empty())
+									return;
+							}
+						}
+						catch (...) 
+						{
+							Assert::IsTrue(false, L"Crash Detected\n");
+						}
+					}
+
+					std::condition_variable&	CV;
+					Deque<TestClass>&			Queue;
+					std::vector<int>			Ints;
+					std::vector<TestClass*>		Nodes;
+				}	Thread5{ CV, Queue },
+					Thread6{ CV, Queue },
+					Thread7{ CV, Queue },
+					Thread8{ CV, Queue };
+
+				Logger::WriteMessage(L"Beginning tests\n");
+
+				Logger::WriteMessage("Begin stage 1\n");
+				Logger::WriteMessage("Preparing...\n");
+
+				for(auto& work : threadGroup1)
+					Threads.AddWork(&work);
+
+				{
+					FlexKit::WorkBarrier barrier{ Threads };
+					readyCount = 0;
+
+					for (auto& work : threadGroup1)
+						barrier.AddDependentWork(&work);
+
+					while(readyCount != 4)
+						Sleep(1);
+
+					Logger::WriteMessage("Starting Test\n");
+
+					CV.notify_all();
+					readyCount = 0;
+
+					barrier.Wait();
+					Logger::WriteMessage("Completed Test\n");
 				}
 
+				Logger::WriteMessage("Verifying stage 1\n");
 
-				void Run() override
+				// Verify Contents 1
 				{
-					std::mutex			M;
-					std::unique_lock	UL{ M };
-					CV.wait(UL);
+					std::vector<int> Sorted;
+					for (auto& element : Queue)
+						Sorted.push_back(element.x);
 
+					std::sort(Sorted.begin(), Sorted.end());
 
-
-					int n = 0;
-
-					for (auto& I : Test)
+					size_t Last = 0;
+					for (size_t idx = 1; idx < Sorted.size(); idx++)
 					{
-						bool front_or_back = (n % 2) == 0;
+						if (Sorted[idx] - Last > 1)
+						{
+							for (size_t i = idx - 10; i <= idx; ++i)
+							{
+								char Temp[50];
+								itoa(Sorted[i], Temp, 10);
+								Logger::WriteMessage(Temp);
+								Logger::WriteMessage("\n");
+							}
 
-						if (front_or_back)
-							Queue.push_back(I);
-						else
-							Queue.push_front(I);
+							Assert::IsTrue(false, L"Missing Element Detected\n");
+						}
 
-						n++;
+						if (Sorted[idx] - Last == 0) 
+						{
+							for (size_t i = idx - 10; i <= idx; ++i)
+							{
+								char Temp[50];
+								itoa(Sorted[i], Temp, 10);
+								Logger::WriteMessage(Temp);
+								Logger::WriteMessage("\n");
+							}
+
+							Assert::IsTrue(false, L"Double Element Detected\n");
+						}
+
+						Last = Sorted[idx];
 					}
 				}
 
-				std::condition_variable&	CV;
-				Deque<TestClass>&			Queue;
-				std::vector<TestClass>		Test;
+				Logger::WriteMessage("Stage 1 Complete\n");
+				Logger::WriteMessage("Begin stage 2\n");
+				Logger::WriteMessage("Preparing...\n");
 
-			}Thread1{ 0, CV, Queue }, Thread2{ 400'000, CV, Queue }, Thread3{ 800'000, CV, Queue }, Thread4{ 1200'000, CV, Queue };
+				Threads.AddWork(&Thread5);
+				Threads.AddWork(&Thread6);
+				Threads.AddWork(&Thread7);
+				Threads.AddWork(&Thread8);
 
-
-			class PopThread : public FlexKit::iWork
-			{
-			public:
-				PopThread(
-					std::condition_variable&	IN_CV,
-					Deque<TestClass>&			IN_Queue ) :
-					iWork{ FlexKit::SystemAllocator },
-					CV{ IN_CV },
-					Queue{ IN_Queue }
 				{
-					Ints.reserve(40000);
+					FlexKit::WorkBarrier barrier{ Threads };
+					barrier.AddDependentWork(&Thread5);
+					barrier.AddDependentWork(&Thread6);
+					barrier.AddDependentWork(&Thread7);
+					barrier.AddDependentWork(&Thread8);
+
+					while(readyCount != 4)
+						Sleep(1);
+
+					Logger::WriteMessage("Starting Test\n");
+
+					CV.notify_all();
+					readyCount = 0;
+
+					barrier.Wait();
+					Logger::WriteMessage("Completed Test\n");
 				}
 
 
-				void Run() override
+				std::vector<size_t> Sorted;
+
+				Logger::WriteMessage("verifying stage 2\n");
+				// Verify Contents 2
+				for (auto& I : Thread5.Ints)
+					Sorted.push_back(I);
+				for (auto& I : Thread6.Ints)
+					Sorted.push_back(I);
+				for (auto& I : Thread7.Ints)
+					Sorted.push_back(I);
+				for (auto& I : Thread8.Ints)
+					Sorted.push_back(I);
+
+				Assert::IsTrue(Sorted.size() == testSize * 4, L"Missing Element Detected\n");
+				std::sort(Sorted.begin(), Sorted.end());
+
+
+				size_t Last = 0;
+				for (size_t idx = 1; idx < Sorted.size(); idx++)
 				{
-					std::mutex			M;
-					std::unique_lock	UL{ M };
-					CV.wait(UL);
-
-					Sleep(5);
-
-					int n = 0;
-					while (!Queue.empty())
+					if (Sorted[idx] - Last > 1)
 					{
-						TestClass* E_ptr = nullptr;
+						for (size_t i = idx - 10; i <= idx; ++i)
+						{
+							char Temp[50];
+							itoa(Sorted[i], Temp, 10);
+							std::cout << (Temp) << "\n";
+							Logger::WriteMessage("\n");
+						}
 
-						bool front_or_back = (n % 2) == 0;
-						bool success = false;
-
-						if (front_or_back)
-							success = Queue.try_pop_back(E_ptr);
-						else
-							success = Queue.try_pop_front(E_ptr);
-
-						if (success)
-							Ints.push_back(E_ptr->x);
-
-						n++;
+						Assert::IsTrue(false, L"Missing Element Detected\n");
 					}
+
+					if (Sorted[idx] - Last == 0)
+					{
+						for (size_t i = idx - 10; i <= idx; ++i)
+						{
+							char Temp[50];
+							itoa(Sorted[i], Temp, 10);
+							Logger::WriteMessage(Temp);
+							Logger::WriteMessage("\n");
+						}
+
+						Assert::IsTrue(false, L"Double Element Detected\n");
+					}
+
+					Last = Sorted[idx];
 				}
 
-				std::condition_variable&	CV;
-				Deque<TestClass>&			Queue;
-				std::vector<int>			Ints;
-			}	Thread5{ CV, Queue },
-				Thread6{ CV, Queue },
-				Thread7{ CV, Queue },
-				Thread8{ CV, Queue };
-
-			Logger::WriteMessage(L"Beginning test");
-
-			Threads.AddWork(&Thread1);
-			Threads.AddWork(&Thread2);
-			Threads.AddWork(&Thread3);
-			Threads.AddWork(&Thread4);
-
-			CV.notify_all();
-			Sleep(1000);
-
-			Threads.AddWork(&Thread5);
-			Threads.AddWork(&Thread6);
-			Threads.AddWork(&Thread7);
-			Threads.AddWork(&Thread8);
-
-			Sleep(1000);
-
-			CV.notify_all();
-
-			Sleep(1000);
-
-			CV.notify_all();
+				Assert::IsTrue(Queue.empty(), L"Queue is not empty\n");
+				Logger::WriteMessage("Test pass Successful\n");
+			}
+			Logger::WriteMessage("all passes Successful\n");
 
 			Threads.Release();
-
-			std::vector<int> Sorted;
-
-			for (auto& I : Thread5.Ints)
-				Sorted.push_back(I);
-			for (auto& I : Thread6.Ints)
-				Sorted.push_back(I);
-			for (auto& I : Thread7.Ints)
-				Sorted.push_back(I);
-			for (auto& I : Thread8.Ints)
-				Sorted.push_back(I);
-
-			std::sort(Sorted.begin(), Sorted.end());
-
-			int Last = 0;
-			for (int idx = 1; idx < Sorted.size(); idx++)
-			{
-				if (Sorted[idx] - Last > 1)
-					Assert::IsTrue(false, L"Missing Element Detected");
-
-				if (Sorted[idx] - Last == 0)
-					Assert::IsTrue(false, L"Double Element Detected");
-
-				Last = Sorted[idx];
-			}
-
-			for (auto I : Sorted)
-			{
-				char Temp[50];
-				itoa(I, Temp, 10);
-
-				Logger::WriteMessage(Temp);
-			}
-
-			Logger::WriteMessage("Test Successful");
-			Assert::IsTrue(Queue.empty(), L"Queue is not empty");
 		}
 
 	};

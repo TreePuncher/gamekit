@@ -62,7 +62,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class iWork : public DequeNode_MT
+	class iWork
 	{
 	public:
 		iWork & operator = (iWork& rhs) = delete;
@@ -86,20 +86,24 @@ namespace FlexKit
 
 		void NotifyWatchers()
 		{
+
 			for (auto& watcher : watchers)
 				watcher();
 
 			watchers.Release();
+			notifiedWatchers = true;
 		}
 
 
 		void Subscribe(OnCompletionEvent CallMeLater) 
 		{ 
-			watchers.push_back(CallMeLater);
+			watchers.emplace_back(std::move(CallMeLater));
 		}
 
 
 		operator iWork* () { return this; }
+
+		bool						scheduled = false;
 
 	private:
 		bool						notifiedWatchers = false;
@@ -110,22 +114,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	typedef	Deque_MT<iWork>	WorkQueue;
-
 	class WorkerThread : public DequeNode_MT
 	{
 	public:
-		WorkerThread(iAllocator* ThreadMemory = nullptr) :
-			Thread		{ [this] {Run(); } },
-			Running		{ false },
-			Quit		{ false },
-			Allocator	{ ThreadMemory }
-		{}
+		WorkerThread(iAllocator* ThreadMemory = SystemAllocator) :
+			Thread		{ [this] {Run(); }	},
+			Running		{ false				},
+			Quit		{ false				},
+			hasJob		{ false				},
+			Allocator	{ ThreadMemory		} {}
 
 		bool AddItem(iWork* Work);
 		void Shutdown();
 		void Run();
 		bool IsRunning();
+		bool HasJob();
+		bool hasWork();
 		void Wake();
 
 		iWork* Steal();
@@ -135,13 +139,15 @@ namespace FlexKit
 	private:
 		std::condition_variable	CV;
 		std::atomic_bool		Running;
+		std::atomic_bool		hasJob;
 		std::atomic_bool		Quit;
-		std::thread				Thread;
-
-		WorkQueue				WorkList;
 
 		iAllocator*				Allocator;
-		std::atomic_bool		pad;
+
+		std::mutex					exclusive;
+		CircularBuffer<iWork*, 128>	workList;
+
+		std::thread					Thread;
 	};
 
 
@@ -185,19 +191,16 @@ namespace FlexKit
 	class ThreadManager
 	{
 	public:
-		ThreadManager(size_t ThreadCount = 4, iAllocator* memory = SystemAllocator) :
-			Threads				{},
-			Memory				{ memory			},
-			WorkingThreadCount	{ 0					},
-			WorkerCount			{ ThreadCount		},
-			lastThread			{ nullptr			}
+		ThreadManager(size_t ThreadCount = 6, iAllocator* IN_allocator = SystemAllocator) :
+			threads				{ },
+			allocator			{ IN_allocator		},
+			workingThreadCount	{ 0					},
+			workerCount			{ ThreadCount		}
 		{
 			WorkerThread::Manager = this;
 
 			for (size_t I = 0; I < ThreadCount; ++I)
-				Threads.push_back(memory->allocate<WorkerThread>(memory));
-
-			lastThread = Threads.begin();
+				threads.push_back(&allocator->allocate<WorkerThread>(allocator));
 		}
 
 
@@ -209,11 +212,11 @@ namespace FlexKit
 
 			WaitForShutdown();
 
-			while (!Threads.empty())
+			while (!threads.empty())
 			{
-				WorkerThread* Worker = nullptr;
-				if (Threads.try_pop_back(Worker))
-					Memory->free(Worker);
+				WorkerThread* worker = nullptr;
+				if (threads.try_pop_back(worker))
+					allocator->free(worker);
 			}
 
 		}
@@ -221,49 +224,77 @@ namespace FlexKit
 
 		void SendShutdown()
 		{
-			for (auto& I : Threads)
+			for (auto& I : threads)
 				I.Shutdown();
 		}
 
 
-		void AddWork(iWork* NewWork, iAllocator* Allocator = SystemAllocator)
+		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator)
 		{
-			if (!Threads.empty())
+			if (!threads.empty())
 			{
-				bool success = false;
-				do {
-					auto& thread = Threads.begin() + randomDevice() % GetThreadCount();
-					success = thread->AddItem(NewWork);
+				size_t	startPoint = 0;// randomDevice();
 
-					if (success)
-						thread->Wake();
-				} while (!success);
+				auto _AddWork = [](iWork* newWork, auto& thread)
+				{
+					if (!thread->AddItem(newWork))
+						assert(0);
+					newWork->scheduled = true;
+				};
+
+				for(size_t itr = 0; itr < workerCount; ++itr)
+				{
+					size_t	threadidx	= (startPoint + itr) % workerCount;
+					auto& thread		= threads.begin() + threadidx;
+
+					if (!thread->IsRunning())
+					{
+						_AddWork(newWork, thread);
+						return;
+					}
+				}
+
+				for (size_t itr = 0; itr < workerCount; ++itr)
+				{
+					size_t	threadidx = (startPoint + itr) % workerCount;
+					auto& thread = threads.begin() + threadidx;
+
+					if (!thread->HasJob())
+					{
+						_AddWork(newWork, thread);
+						return;
+					}
+				}
+
+				_AddWork(newWork, threads.begin() + startPoint % workerCount);
 			}
 			else
 			{
-				Work.push_back(NewWork);
+				std::scoped_lock lock{ exclusive };
+				workList.push_back(newWork);
 			}
 		}
 
 
 		void WaitForWorkersToComplete()
 		{
-			if (!Threads.empty())
+			if (!threads.empty())
 			{
 				std::mutex						M;
-				std::unique_lock<std::mutex>	Lock(M);
+				std::unique_lock<std::mutex>	lock(M);
 
-				CV.wait(Lock, [this] { return WorkingThreadCount <= 0; });
+				CV.wait(lock, [this] { return workingThreadCount <= 0; });
 			}
 			else
 			{
-				while(!Work.empty())
+				while(!workList.empty())
 				{
-					iWork* WorkItem = nullptr;
-					if (Work.try_pop_front(WorkItem))
+					std::scoped_lock lock{ exclusive };
+
+					if (auto workItem = workList.pop_front(); workItem != nullptr)
 					{
-						WorkItem->Run();
-						WorkItem->NotifyWatchers();
+						workItem->Run();
+						workItem->NotifyWatchers();
 					}
 				}
 			}
@@ -274,10 +305,10 @@ namespace FlexKit
 		{
 			WorkerThread* Ptr = nullptr;
 
-			auto success = Threads.try_pop_front(Ptr);
+			auto success = threads.try_pop_front(Ptr);
 
 			if (success) {
-				Threads.push_back(Ptr);
+				threads.push_back(Ptr);
 				Ptr->Wake();
 			}
 		}
@@ -285,37 +316,45 @@ namespace FlexKit
 
 		void WaitForShutdown() // TODO: this does not work!
 		{
-			bool ThreadRunning = false;
+			bool threadRunnings = false;
 			do
 			{
-				ThreadRunning = false;
-				for (auto& I : Threads) {
-					ThreadRunning |= I.IsRunning();
+				threadRunnings = false;
+				for (auto& I : threads) {
+					threadRunnings |= I.IsRunning();
 					I.Shutdown();
 				}
-			} while (ThreadRunning);
+			} while (threadRunnings);
 		}
 
 
 		void IncrementActiveWorkerCount()
 		{
-			WorkingThreadCount++;
+			workingThreadCount++;
 			CV.notify_all();
 		}
 
 
 		void DecrementActiveWorkerCount()
 		{
-			WorkingThreadCount--;
+			workingThreadCount--;
 			CV.notify_all();
 		}
 
+
 		iWork* StealSomeWork()
 		{
-			if (!Threads.empty())
+			if (threads.empty()) 
+			{
+				if (!workList.size())
+				{
+					std::scoped_lock lock{ exclusive };
+					return workList.pop_front();
+				}
 				return nullptr;
+			}
 
-			for(auto& thread : Threads)
+			for(auto& thread : threads)
 			{
 				if (auto res = thread.Steal())
 					return res;
@@ -326,30 +365,30 @@ namespace FlexKit
 
 		size_t GetThreadCount() const
 		{
-			return WorkerCount;
+			return workerCount;
 		}
 
 
 		Deque_MT<WorkerThread>::Iterator GetThreadsBegin() {
-			return Threads.begin();
+			return threads.begin();
 		}
 
+
 		Deque_MT<WorkerThread>::Iterator GetThreadsEnd() {
-			return Threads.end();
+			return threads.end();
 		}
 
 	private:
-		Deque_MT<WorkerThread>		Threads;
-		Deque_MT<iWork>				Work; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
+		Deque_MT<WorkerThread>		threads;
 
-		Deque_MT<WorkerThread>::Iterator lastThread;
+		std::condition_variable		CV;
+		std::atomic_int				workingThreadCount;
+		std::default_random_engine	randomDevice;
 
-		std::condition_variable				CV;
-		std::atomic_int						WorkingThreadCount;
-		std::default_random_engine			randomDevice;
-
-		const size_t	WorkerCount;
-		iAllocator*		Memory;
+		const size_t				workerCount;
+		iAllocator*					allocator;
+		std::mutex					exclusive;
+		CircularBuffer<iWork*, 128>	workList; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
 	};
 
 
@@ -360,8 +399,10 @@ namespace FlexKit
 	{
 	public:
 		WorkBarrier(
-			iAllocator* Memory = FlexKit::SystemAllocator) :
-				PostEvents{ Memory }
+			ThreadManager&	IN_threads,
+			iAllocator*		Memory = FlexKit::SystemAllocator) :
+				PostEvents	{ Memory		},
+				threads		{ IN_threads	}
 		{}
 
 		~WorkBarrier() {}
@@ -373,12 +414,14 @@ namespace FlexKit
 		void AddDependentWork		(iWork* Work);
 		void AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void Wait					();
-
+		void Join					();
 	private:
+		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;
 
 		std::condition_variable		CV;
 		std::atomic_int				TasksInProgress	= 0;
+		std::mutex					m;
 	};
 
 
@@ -403,8 +446,9 @@ namespace FlexKit
 			dependentCount++;
 
 			waitsOn.Subscribe(
-				[this]() {
+				[&]() {
 					dependentCount--;
+
 					if (!dependentCount && scheduleLock.try_lock()) // Leave locked!
 						threads->AddWork(&work, allocator);
 					});

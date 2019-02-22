@@ -363,6 +363,8 @@ namespace FlexKit
 			size_t		Node;
 			GUID_t		Collider;
 			size_t		idlength;
+			//float4		albedo;
+			//float4		specular;
 			const char*	id;
 		};
 

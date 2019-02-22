@@ -89,7 +89,7 @@ namespace FlexKit
 		}
 
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC PSO_Desc = {};{
-			PSO_Desc.pRootSignature             = RS->Library.RS4CBVs4SRVs;
+			PSO_Desc.pRootSignature             = RS->Library.RS6CBVs4SRVs;
 			PSO_Desc.VS                         = DrawTextVShader;
 			PSO_Desc.GS                         = DrawTextGShader;
 			PSO_Desc.PS                         = DrawTextPShader;
@@ -146,7 +146,7 @@ namespace FlexKit
 
 				Data.Heap.Init(
 					FGraph.Resources.renderSystem, 
-					FGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0), 
+					FGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMemory);
 
 				Data.TextSheet		= Builder.ReadShaderResource(Font.Texture);
@@ -248,7 +248,7 @@ namespace FlexKit
 				Data.Heap.SetSRV(Resources.renderSystem, 0, Resources.GetTexture(Data.TextSheet));
 				Data.Heap.NullFill(Resources.renderSystem);
 
-				Ctx->SetRootSignature				(Resources.renderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetRootSignature				(Resources.renderSystem->Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
 				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.RenderTarget) });
@@ -257,6 +257,13 @@ namespace FlexKit
 				Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
 				Ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);
 				Ctx->SetVertexBuffers				(VertexBufferList{ { Data.VertexBuffer, sizeof(TextEntry) } });
+
+				Ctx->NullGraphicsConstantBufferView	(1);
+				Ctx->NullGraphicsConstantBufferView	(2);
+				Ctx->NullGraphicsConstantBufferView	(3);
+				Ctx->NullGraphicsConstantBufferView	(4);
+				Ctx->NullGraphicsConstantBufferView	(5);
+				Ctx->NullGraphicsConstantBufferView	(6);
 
 				Ctx->Draw							(Data.VertexCount, Data.VertexOffset);
 			});

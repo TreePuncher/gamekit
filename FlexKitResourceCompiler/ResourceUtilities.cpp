@@ -815,18 +815,19 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 			auto FBXMesh  = static_cast<fbxsdk::FbxMesh*>(Attr);
 			auto UniqueID = FBXMesh->GetUniqueID();
 			auto name     = Node->GetName();
-			auto name2    = FBXMesh->GetName();
 
 			auto Related	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, Node->GetName(), Memory);
 			auto MeshData	= (Mesh_MetaData*)ScanForRelated(MD, Related, MetaData::EMETAINFOTYPE::EMI_MESH);
 
-			CompiledScene::Entity Entity;
-			Entity.MeshGuid = UniqueID;
-			Entity.Node		= Nodehndl;
-			Entity.id		= name;
-			Entity.idlength = strnlen(Entity.id, 128);
-			AddEntity(Entity, SceneOut);
+			CompiledScene::Entity entity;
+			entity.MeshGuid = UniqueID;
+			entity.Node		= Nodehndl;
+			entity.id		= name;
+			entity.idlength = strnlen(name, 128);
+			//entity.albedo	= { 0.8f, 0.8f, 0.8f, 0.8f };
+			//entity.specular = { 0.8f, 0.8f, 0.8f, 0.0f };
 
+			AddEntity(entity, SceneOut);
 		}	break;
 		case FbxNodeAttribute::eLight:
 		{
@@ -844,7 +845,7 @@ void ProcessNodes(fbxsdk::FbxNode* Node, iAllocator* Memory, CompiledScene* Scen
 			Light.K        = TranslateToFloat3(K);			// COLOR for the Confused
 			Light.I        = I;
 			Light.Node	   = Nodehndl;
-			Light.R        = I * 100;
+			Light.R        = I;
 
 			AddPointLight(Light, SceneOut);
 		}	break;

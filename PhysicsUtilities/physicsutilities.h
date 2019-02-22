@@ -634,7 +634,7 @@ namespace FlexKit
 			public physx::PxCpuDispatcher
 		{
 		public:
-			CpuDispatcher(ThreadManager& IN_threads, iAllocator* persistent_memory = nullptr) :
+			CpuDispatcher(ThreadManager& IN_threads, iAllocator* persistent_memory = FlexKit::SystemAllocator) :
 				threads		{ IN_threads		},
 				freeList	{ persistent_memory },
 				memory		{ persistent_memory }{}
@@ -645,7 +645,7 @@ namespace FlexKit
 			class PhysXTask : public iWork
 			{
 			public:
-				PhysXTask(physx::PxBaseTask& IN_task, iAllocator* IN_memory) :
+				PhysXTask(physx::PxBaseTask& IN_task, iAllocator* IN_memory = FlexKit::SystemAllocator) :
 					iWork	{ IN_memory	},
 					memory	{ IN_memory	},
 					task	{ IN_task	} {}
@@ -668,8 +668,12 @@ namespace FlexKit
 					if (memory)
 					{
 						this->~PhysXTask();
-						memory->free(this);
+						memory->_aligned_free(this);
+						//delete this;
+						memory = nullptr;
 					}
+					else
+						FK_LOG_ERROR("DOUBLE FREE DETECTTED!");
 				}
 
 			private:
@@ -682,11 +686,12 @@ namespace FlexKit
 			{
 				jobsInProgress++;
 				auto& newTask = memory->allocate_aligned<PhysXTask>(pxTask, memory);
+				//auto newTask = new PhysXTask(pxTask, memory);
 				newTask.Subscribe([&] {jobsInProgress--; });
 
 				FK_ASSERT(newTask != nullptr);
 
-				threads.AddWork(&newTask, memory);
+				threads.AddWork(newTask, memory);
 			}
 
 
@@ -703,6 +708,7 @@ namespace FlexKit
 			iAllocator*			memory;
 		} dispatcher;
 
+		physx::PxDefaultCpuDispatcher*	pxDispatcher;
 
 		Vector<PhysicsScene>			scenes;
 		iAllocator*						memory;

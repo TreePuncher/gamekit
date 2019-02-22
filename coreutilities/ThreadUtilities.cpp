@@ -40,10 +40,15 @@ namespace FlexKit
 
 	bool WorkerThread::AddItem(iWork* Work)
 	{
-		if (!Running || Quit)
+		std::scoped_lock lock{ exclusive };
+
+		if (Quit)
 			return false;
 
-		WorkList.push_back(Work);
+		if (workList.full())
+			return false;
+
+		workList.push_back(Work);
 		CV.notify_all();
 
 		return true;
@@ -74,16 +79,20 @@ namespace FlexKit
 
 		while (true)
 		{
-			std::mutex	M;
-			std::unique_lock<std::mutex> Lock(M);
+			std::mutex						M;
+			std::unique_lock<std::mutex>	lock{ M };
 
-			if (WorkList.empty())
-				CV.wait(Lock, 
-					[this]() -> bool 
+			if (workList.empty() && !Quit) {
+				Running.store(false, std::memory_order_release);
+
+				CV.wait(lock,
+					[this]() -> bool
 					{
-						return !WorkList.empty() || Quit;
+						return !workList.empty() || Quit;
 					});
 
+				Running.store(true, std::memory_order_release);
+			}
 			{
 				EXITSCOPE({
 					Manager->DecrementActiveWorkerCount();
@@ -91,39 +100,54 @@ namespace FlexKit
 
 				Manager->IncrementActiveWorkerCount();
 
-				while (!WorkList.empty())
+				auto doWork = [&](iWork* work)
 				{
-					iWork* work;
-				
-					if (WorkList.try_pop_front(work)) {
-						work->Run();
-						work->NotifyWatchers();
-						work->Release();
-					}
-				}
+					if (work) 
+					{
+						hasJob.store(true, std::memory_order_release);
 
-				auto doWork = [&](auto work)
-				{
-					if (work) {
 						work->Run();
 						work->NotifyWatchers();
 						work->Release();
+
+						hasJob.store(false, std::memory_order_release);
+
 						return true;
 					}
 					return false;
 				};
 
+				auto getWorkItem = [&]()  -> iWork*
+				{
+					std::scoped_lock lock{ exclusive };
+					if (workList.empty())
+						return nullptr;
+
+					return workList.pop_front();
+				};
+
+
+				while (!workList.empty())
+				{
+					auto workItem = getWorkItem();
+
+					if (workItem)
+						doWork(workItem);
+				}
+
+
 				auto stealWork = [&](auto& begin, auto& end)
 				{
-					for (auto worker = begin; worker != end && worker != nullptr; ++worker)
+					for (auto worker = begin; workList.empty() && worker != end && worker != nullptr; ++worker)
 					{
-						iWork* work = worker->Steal();
-						if (work) {
+						if (iWork* work = worker->Steal(); work )
+						{
 							doWork(work);
 							return;
 						}
 					}
 				};
+
 
 				stealWork(
 					Deque_MT<WorkerThread>::Iterator{ this },
@@ -133,7 +157,8 @@ namespace FlexKit
 					Manager->GetThreadsBegin(),
 					Deque_MT<WorkerThread>::Iterator{ this });
 
-				if (WorkList.empty() && Quit)
+
+				if (workList.empty() && Quit)
 					return;
 			}
 		}
@@ -150,20 +175,35 @@ namespace FlexKit
 	}
 
 
+	bool WorkerThread::HasJob()
+	{
+		return hasJob;
+	}
+
+
 	void WorkerThread::Wake()
 	{
 		CV.notify_all();
 	}
 
 
+	bool WorkerThread::hasWork()
+	{
+		return !workList.empty();
+	}
+
+	
 	/************************************************************************************************/
 
 
 	iWork* WorkerThread::Steal()
 	{
-		iWork* work = nullptr;
 
-		return WorkList.try_pop_front(work) ? work : nullptr;
+		if (workList.empty())
+			return nullptr;
+
+		std::scoped_lock lock{ exclusive };
+		return (!workList.empty()) ? workList.pop_back() : nullptr;
 	}
 
 
@@ -179,9 +219,7 @@ namespace FlexKit
 		Work->Subscribe(
 			[&]
 			{
-				TasksInProgress.fetch_sub(1, std::memory_order_acq_rel);
-
-				if (TasksInProgress.load(std::memory_order_acquire) == 0)
+				if(--TasksInProgress == 0)
 					CV.notify_all();
 			});
 	}
@@ -211,12 +249,32 @@ namespace FlexKit
 			lock, 
 			[this]()->bool
 			{
-				return TasksInProgress.load(std::memory_order_acquire) == 0;
+				return TasksInProgress.load(std::memory_order_seq_cst) == 0;
 			});
 
 		for (auto Evt : PostEvents)
 			Evt();
 	}
+
+
+	void WorkBarrier::Join()
+	{
+		do
+		{
+			if (TasksInProgress.load(std::memory_order_relaxed) == 0)
+				return;
+
+			auto work = threads.StealSomeWork();
+
+			if (work)
+			{
+				work->Run();
+				work->NotifyWatchers();
+				work->Release();
+			}
+		} while (true);
+	}
+
 
 
 	ThreadManager* WorkerThread::Manager = nullptr;

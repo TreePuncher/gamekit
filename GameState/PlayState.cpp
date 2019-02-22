@@ -117,12 +117,7 @@ bool PlayState::EventHandler(Event evt)
 bool PlayState::Update(EngineCore* Core, UpdateDispatcher& dispatcher, double dT)
 {
 	//debugCamera.Yaw(dT * pi/8);
-
-	auto transformTask			= QueueTransformUpdateTask	(dispatcher);
-	auto cameraUpdate			= QueueCameraUpdate			(dispatcher, transformTask);
-	auto sceneUpdate			= scene.Update				(dispatcher, transformTask);
-	auto orbitUpdate			= QueueOrbitCameraUpdateTask(dispatcher, transformTask, cameraUpdate, debugCamera, framework->MouseState, dT);
-
+	debugCamera.Update(framework->MouseState, dT);
 	//auto cameraRigUpdateTask	= UpdateThirdPersonRig		(dispatcher, thirdPersonCamera, *transformTask, *cameraUpdate, dT);
 
 	return true;
@@ -150,18 +145,23 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, do
 /************************************************************************************************/
 
 
-bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dt, FrameGraph& frameGraph)
+bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
+	CameraHandle activeCamera = (CameraHandle)debugCamera;
+
+	auto transforms			= QueueTransformUpdateTask	(dispatcher);
+	auto cameras			= QueueCameraUpdate			(dispatcher, transforms);
+	auto sceneUpdate		= scene.Update				(dispatcher, transforms);
+	auto orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
+	auto& cameraConstants	= MakeHeapCopy(GetCameraConstantBuffer(activeCamera), core->GetTempMemory());
+	auto& PVS				= GetGraphicScenePVSTask(dispatcher, *sceneUpdate, scene, activeCamera, core->GetTempMemory());
 
 	FlexKit::WorldRender_Targets targets = {
 		GetCurrentBackBuffer(&core->Window),
 		base.depthBuffer
 	};
-
-	PVS	solidDrawables			(core->GetTempMemory());
-	PVS	transparentDrawables	(core->GetTempMemory());
 
 	ClearVertexBuffer	(frameGraph, base.vertexBuffer);
 	ClearVertexBuffer	(frameGraph, base.textBuffer);
@@ -169,25 +169,27 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dt, 
 	ClearBackBuffer		(frameGraph, 0.0f);
 	ClearDepthBuffer	(frameGraph, base.depthBuffer, 1.0f);
 
-	CameraHandle activeCamera	= (CameraHandle)debugCamera;
-	auto cameraConstants		= GetCameraConstantBuffer(activeCamera);
-
-	GetGraphicScenePVS(scene, activeCamera, &solidDrawables, &transparentDrawables);
 
 	LighBufferDebugDraw debugDraw;
 	debugDraw.constantBuffer = base.constantBuffer;
 	debugDraw.renderTarget   = targets.RenderTarget;
 	debugDraw.vertexBuffer	 = base.vertexBuffer;
 
-	base.render.updateLightBuffers(activeCamera, scene, frameGraph, core->GetTempMemory());
-	base.render.DefaultRender(solidDrawables, activeCamera, targets, frameGraph, SceneDescription{ scene.GetPointLightCount() }, core->GetTempMemory());
+	SceneDescription sceneDesc;
+	sceneDesc.pointLightCount	= scene.GetPointLightCount();
+	sceneDesc.transforms		= transforms;
+	sceneDesc.cameras			= cameras;
+	sceneDesc.PVS				= PVS;
+
+	base.render.updateLightBuffers				(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory());
+	base.render.RenderDrawabledPBR_ForwardPLUS	(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
+
 
 	FlexKit::DrawCollection_Desc DrawCollectionDesc{};
-
 	DrawCollectionDesc.ConstantData[0]		= reinterpret_cast<char*>(&cameraConstants);
-	DrawCollectionDesc.ConstantsSize[0]		= sizeof(cameraConstants);
+	DrawCollectionDesc.ConstantSize[0]		= sizeof(cameraConstants);
 	DrawCollectionDesc.ConstantData[1]		= reinterpret_cast<char*>(&cameraConstants);
-	DrawCollectionDesc.ConstantsSize[1]		= sizeof(cameraConstants);
+	DrawCollectionDesc.ConstantSize[1]		= sizeof(cameraConstants);
 	DrawCollectionDesc.DepthBuffer			= targets.DepthTarget;
 	DrawCollectionDesc.RenderTarget			= targets.RenderTarget;
 	DrawCollectionDesc.VertexBuffer			= base.vertexBuffer;
@@ -196,14 +198,12 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dt, 
 	DrawCollectionDesc.PSO					= FORWARDDRAWINSTANCED;
 	DrawCollectionDesc.InstanceElementSize	= sizeof(float4x4);
 
-	auto f		= GetFrustum(activeCamera);
-	auto lights = scene.FindPointLights(f, core->GetTempMemory());
 
 	if(false)
 	{
 		DrawCollection(
 				frameGraph, 
-				lights,
+				scene.FindPointLights(GetFrustum(activeCamera), core->GetTempMemory()),
 				[&](auto& light) -> float4x4
 				{
 					XMMATRIX m;
@@ -213,6 +213,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dt, 
 				DrawCollectionDesc,
 				core->GetTempMemory());
 	}
+
 
 	return true;
 }

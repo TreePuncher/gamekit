@@ -52,7 +52,7 @@ typedef uint32_t SoundHandle;
 class SoundSystem
 {
 public:
-	SoundSystem(ThreadManager& IN_Threads, iAllocator* Memory) :
+	SoundSystem(ThreadManager& IN_Threads, iAllocator* memory) :
 		threads	{	IN_Threads	}
 	{
 		result			= FMOD::System_Create(&system);
@@ -63,9 +63,9 @@ public:
 			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
 			if(sound1)
 				system->playSound(sound1, nullptr, false, &channel);
-		});
+		}, memory, memory);
 
-		threads.AddWork(Work, Memory);
+		threads.AddWork(Work, memory);
 	}
 
 
@@ -150,13 +150,13 @@ public:
 		InitiateCameraTable(framework->core->GetBlockMemory());
 		
 		auto& RS = *IN_Framework->GetRenderSystem();
-		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS4CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
-		RS.RegisterPSOLoader(FlexKit::DRAW_PSO,					{ &RS.Library.RS4CBVs4SRVs, CreateDrawTriStatePSO			});
-		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,		{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStatePSO		});
-		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS4CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
-		RS.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateDrawLineStatePSO			});
-		RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO,			{ &RS.Library.RS4CBVs4SRVs, CreateDraw2StatePSO				});
-		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS4CBVs4SRVs, LoadSpriteTextPSO				});
+		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
+		RS.RegisterPSOLoader(FlexKit::DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
+		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
+		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
+		RS.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO			});
+		RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO				});
+		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO				});
 
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);

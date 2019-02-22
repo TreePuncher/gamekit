@@ -232,16 +232,16 @@ namespace FlexKit
 		UpdateTask* Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask* transformDependency);
 
 
-		float3				GetPointLightPosition	(LightHandle light);
-		NodeHandle			GetPointLightNode		(LightHandle light);
-		float				GetPointLightRadius		(LightHandle light);
+		float3				GetPointLightPosition	(LightHandle light) const;
+		NodeHandle			GetPointLightNode		(LightHandle light) const;
+		float				GetPointLightRadius		(LightHandle light) const;
 
-		size_t				GetPointLightCount();
-		Vector<LightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory);
+		size_t				GetPointLightCount() const;
+		Vector<LightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
 
 
-		void ListEntities();
+		void ListEntities() const;
 
 		void SetDirty(SceneEntityHandle handle)
 		{}
@@ -279,18 +279,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct GetPVSTaskData
+	{
+		CameraHandle	camera;
+		GraphicScene*	scene; // Source Scene
+		StackAllocator	taskMemory;
+		PVS				solid;
+		PVS				transparent;
+
+		UpdateTask*		task;
+
+		operator UpdateTask*() { return task; }
+	};
+
+
+	/************************************************************************************************/
+
+
 	FLEXKITAPI void UpdateGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void UpdateAnimationsGraphicScene	(GraphicScene* SM, double dt);
 	FLEXKITAPI void UpdateGraphicScenePoseTransform	(GraphicScene* SM );
-	FLEXKITAPI void GetGraphicScenePVS				(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
-	FLEXKITAPI void UploadGraphicScene				(GraphicScene* SM, PVS* , PVS*);
 	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
+
+	FLEXKITAPI void				GetGraphicScenePVS		(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
+	FLEXKITAPI GetPVSTaskData&	GetGraphicScenePVSTask	(UpdateDispatcher& dispatcher, UpdateTask& sceneUpdate, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
 
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
-	FLEXKITAPI bool LoadScene (RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp);
-	FLEXKITAPI bool LoadScene (RenderSystem* RS, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp);
 
 
 	/************************************************************************************************/
@@ -315,6 +333,7 @@ namespace FlexKit
 			drawable->parentScene->SetDirty(drawable->entity);
 		}
 	};
+
 
 	class DrawableBehavior : 
 		public SceneNodeBehavior<SceneNodeBehaviorOverrides<DrawableBehavior>>

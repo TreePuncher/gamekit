@@ -113,6 +113,7 @@ namespace FlexKit
 				Builder.SetDebugString("OrbitCamera Update");
 				Builder.AddOutput(*transformUpdateDependency);
 				Builder.AddOutput(*cameraUpdateDependency);
+
 				data.mouseState		= mouseState;
 				data.dt				= dt;
 				data.orbitCamera	= &orbitCamera;
@@ -121,7 +122,8 @@ namespace FlexKit
 			},
 			[](auto& data)
 			{
-				FK_LOG_9("OrbitCamera Update");
+				FK_LOG_INFO("OrbitCamera Update");
+
 				data.started		= true;
 				data.orbitCamera->Update(data.mouseState, data.dt);
 				data.completed		= true;

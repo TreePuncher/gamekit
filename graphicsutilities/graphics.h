@@ -1664,6 +1664,7 @@ namespace FlexKit
 		void SetDepthStencil		(Texture2D* DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
+		void NullGraphicsConstantBufferView	(size_t idx);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
@@ -1831,6 +1832,13 @@ namespace FlexKit
 			Release();
 		}
 
+		struct SubAllocation
+		{
+			char*	Data;
+			size_t	offsetBegin;
+			size_t	reserveSize;
+		};
+
 		VertexBufferHandle	CreateVertexBuffer	(size_t BufferSize, bool GPUResident, RenderSystem* RS); // Creates Using Placed Resource
 		bool				PushVertex			(VertexBufferHandle Handle, void* _ptr, size_t ElementSize);
 
@@ -1840,6 +1848,8 @@ namespace FlexKit
 		ID3D12Resource*		GetResource						(VertexBufferHandle Handle);
 		size_t				GetCurrentVertexBufferOffset	(VertexBufferHandle Handle) const;
 		size_t				GetBufferSize					(VertexBufferHandle Handle) const;
+
+		SubAllocation		Reserve							(VertexBufferHandle Handle, size_t size);
 
 
 		void				Release();
@@ -1934,6 +1944,9 @@ namespace FlexKit
 
 		struct SubAllocation
 		{
+			char*	Data;
+			size_t	offsetBegin;
+			size_t	reserveSize;
 		};
 
 		struct BufferResourceSet
@@ -1983,7 +1996,7 @@ namespace FlexKit
 		size_t					BeginNewBuffer	(ConstantBufferHandle Handle);
 		bool					Push			(ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
 		
-		SubBufferHandle			Reserve					(ConstantBufferHandle Handle, size_t Size);
+		SubAllocation			Reserve					(ConstantBufferHandle Handle, size_t Size);
 		size_t					GetSubAllocationSize	(ConstantBufferHandle Handle, SubBufferHandle);
 		void					PushSuballocation		(ConstantBufferHandle Handle, SubBufferHandle, void*, size_t PushSize);
 
@@ -2616,13 +2629,13 @@ namespace FlexKit
 				RSDefault			(Memory),
 				ShadingRTSig		(Memory),
 				RS4CBVs_SO			(Memory),
-				RS4CBVs4SRVs		(Memory),
+				RS6CBVs4SRVs		(Memory),
 				RS2UAVs4SRVs4CBs	(Memory) {}
 
 			void Initiate(RenderSystem* RS, iAllocator* TempMemory);
 
 			RootSignature RS2UAVs4SRVs4CBs; // 4CBVs On all Stages, 4 SRV On all Stages
-			RootSignature RS4CBVs4SRVs;		// 4CBVs On all Stages, 4 SRV On all Stages
+			RootSignature RS6CBVs4SRVs;		// 4CBVs On all Stages, 4 SRV On all Stages
 			RootSignature RS4CBVs_SO;		// Stream Out Enabled
 			RootSignature ShadingRTSig;		// Signature For Compute Based Deferred Shading
 			RootSignature RSDefault;		// Default Signature for Rasting
@@ -2808,6 +2821,183 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	class CBPushBuffer
+	{
+	public:
+		CBPushBuffer(ConstantBufferHandle cBuffer = InvalidHandle_t, char* IN_buffer = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) :
+			CB				{ cBuffer		},
+			buffer			{ IN_buffer		},
+			pushBufferSize	{ reservedSize	},
+			pushBufferBegin	{ offsetBegin	} {}
+
+
+		CBPushBuffer(const CBPushBuffer&)							= delete;
+		CBPushBuffer& operator = (const CBPushBuffer& pushBuffer)	= delete;
+
+
+		CBPushBuffer(CBPushBuffer&& pushBuffer) 
+		{
+			CB				= pushBuffer.CB;
+			buffer			= pushBuffer.buffer;
+			pushBufferBegin = pushBuffer.pushBufferBegin;
+			pushBufferSize	= pushBuffer.pushBufferSize;
+			pushBufferUsed	= pushBuffer.pushBufferUsed;
+
+			pushBuffer.CB				= InvalidHandle_t;
+			pushBuffer.buffer			= nullptr;
+			pushBuffer.pushBufferBegin	= 0;
+			pushBuffer.pushBufferSize	= 0;
+			pushBuffer.pushBufferUsed	= 0;
+		}
+
+
+		CBPushBuffer& operator = (CBPushBuffer&& pushBuffer)
+		{
+			CB				= pushBuffer.CB;
+			buffer			= pushBuffer.buffer;
+			pushBufferBegin = pushBuffer.pushBufferBegin;
+			pushBufferSize	= pushBuffer.pushBufferSize;
+			pushBufferUsed	= pushBuffer.pushBufferUsed;
+
+			pushBuffer.CB				= InvalidHandle_t;
+			pushBuffer.buffer			= nullptr;
+			pushBuffer.pushBufferBegin	= 0;
+			pushBuffer.pushBufferSize	= 0;
+			pushBuffer.pushBufferUsed	= 0;
+
+			return *this; 
+		}
+
+		operator ConstantBufferHandle () { return CB; }
+
+
+		template<typename _TY>
+		size_t Push(_TY& data)
+		{
+			if (pushBufferUsed + sizeof(data) > pushBufferSize)
+				return -1;
+
+			size_t offset = pushBufferUsed;
+			memcpy(pushBufferBegin + buffer + pushBufferUsed, (char*)&data, sizeof(data));
+			pushBufferUsed += (sizeof(data) / 256 + 1) * 256;
+
+			return offset + pushBufferBegin;
+		}
+
+		size_t Push(char* _ptr, size_t size)
+		{
+			if (pushBufferUsed + size > pushBufferSize)
+				return -1;
+
+			size_t offset = pushBufferUsed;
+			memcpy(pushBufferBegin + buffer + pushBufferUsed, _ptr, size);
+			pushBufferUsed += (size / 256 + 1) * 256;
+
+			return offset + pushBufferBegin;
+		}
+
+
+		size_t begin() { return pushBufferBegin; }
+
+	private:
+		ConstantBufferHandle	CB				= InvalidHandle_t;
+		char*					buffer			= nullptr;
+		size_t					pushBufferBegin = 0;
+		size_t					pushBufferSize	= 0;
+		size_t					pushBufferUsed	= 0;
+	};
+
+
+	class VBPushBuffer
+	{
+	public:
+		VBPushBuffer(VertexBufferHandle vBuffer = InvalidHandle_t, char* buffer_ptr = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) :
+			VB					{ vBuffer		},
+			buffer				{ buffer_ptr	},
+			pushBufferSize		{ reservedSize	},
+			pushBufferOffset	{ offsetBegin	} {}
+
+
+		VBPushBuffer(const VBPushBuffer&)						= delete;
+		VBPushBuffer& operator = (VBPushBuffer& pushBuffer)		= delete;
+
+
+		VBPushBuffer(VBPushBuffer&& pushBuffer)
+		{
+			VB				 = pushBuffer.VB;
+			buffer			 = pushBuffer.buffer;
+			pushBufferOffset = pushBuffer.pushBufferOffset;
+			pushBufferSize	 = pushBuffer.pushBufferSize;
+			pushBufferUsed	 = pushBuffer.pushBufferUsed;
+
+			pushBuffer.VB				= InvalidHandle_t;
+			pushBuffer.buffer			= nullptr;
+			pushBuffer.pushBufferOffset	= 0;
+			pushBuffer.pushBufferSize	= 0;
+			pushBuffer.pushBufferUsed	= 0;
+		};
+
+		VBPushBuffer& operator = (VBPushBuffer&& pushBuffer) 
+		{ 
+			VB				 = pushBuffer.VB;
+			buffer			 = pushBuffer.buffer;
+			pushBufferOffset = pushBuffer.pushBufferOffset;
+			pushBufferSize	 = pushBuffer.pushBufferSize;
+			pushBufferUsed	 = pushBuffer.pushBufferUsed;
+
+			pushBuffer.VB				= InvalidHandle_t;
+			pushBuffer.buffer			= nullptr;
+			pushBuffer.pushBufferOffset	= 0;
+			pushBuffer.pushBufferSize	= 0;
+			pushBuffer.pushBufferUsed	= 0;
+
+			return *this; 
+		}
+
+		operator VertexBufferHandle () { return VB; }
+
+
+		template<typename _TY>
+		size_t Push(_TY& data)
+		{
+			if (pushBufferUsed + sizeof(data) > pushBufferSize)
+				return -1;
+
+			size_t offset = pushBufferUsed;
+			memcpy(pushBufferOffset + buffer + pushBufferUsed, (char*)&data, sizeof(data));
+			pushBufferUsed += sizeof(data);
+
+			return offset;
+		}
+
+
+		size_t Push(char* _ptr, size_t size)
+		{
+			if (pushBufferUsed + size > pushBufferSize)
+				return -1;
+
+			size_t offset = pushBufferUsed;
+			memcpy(pushBufferOffset + buffer + pushBufferUsed, _ptr, size);
+			pushBufferUsed += std::ceil(size / 512) * 512;
+
+			return offset;
+		}
+
+
+		size_t begin() { return pushBufferOffset; }
+
+
+		VertexBufferHandle	VB					= InvalidHandle_t;
+		char*				buffer				= 0;
+		size_t				pushBufferOffset	= 0;
+		size_t				pushBufferSize		= 0;
+		size_t				pushBufferUsed		= 0;
+	};
+
+
+	/************************************************************************************************/
+
+
 	typedef Vector<PointLight>			PLList;
 	typedef Vector<PointLightEntry>		PLBuffer;
 	typedef Vector<SpotLight>			SLList;
@@ -2831,6 +3021,11 @@ namespace FlexKit
 		LightIDs					IDs;
 
 		PointLight&	operator []( size_t index )	{
+			return Lights[index];
+		}
+
+
+		PointLight	operator [](size_t index) const {
 			return Lights[index];
 		}
 

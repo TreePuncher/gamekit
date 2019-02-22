@@ -75,12 +75,14 @@ namespace FlexKit
 
 		void Initiate();
 
-		void Update				(double dT);
-		void UpdateFixed		(double dT);
-		void UpdatePreDraw		(iAllocator* TempMemory, double dT);
-		void Draw				(iAllocator* TempMemory);
-		void PostDraw			(iAllocator* TempMemory, double dT);
+		void Update				(UpdateDispatcher& dispatcher, double dT);
+		void UpdateFixed		(UpdateDispatcher& dispatcher, double dT); // called at fixed time rate
+		void UpdatePreDraw		(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
+		void Draw				(UpdateDispatcher& dispatcher, iAllocator* TempMemory);
+		void PostDraw			(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
 		void Cleanup			();
+
+		void DrawFrame(double dT);
 
 		bool DispatchEvent(const Event& evt);
 
@@ -134,7 +136,9 @@ namespace FlexKit
 		bool	quit;
 
 
-		double timeRunning;
+		double runningTime			= 0.0;
+		double fixStepAccumulator	= 0.0;
+		double fixedTimeStep		= 1.0 / 60.0;
 
 		struct FrameStats
 		{

@@ -241,7 +241,7 @@ namespace FlexKit
 			[](auto& Data)
 			{
 				FK_ASSERT(CameraTable != nullptr);
-				FK_LOG_9("Updating Cameras");
+				FK_LOG_INFO("Updating Cameras");
 
 				size_t End = CameraTable->Cameras.size();
 				for (size_t I = 0; I < End; ++I)

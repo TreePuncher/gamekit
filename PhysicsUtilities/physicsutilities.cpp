@@ -96,6 +96,7 @@ namespace FlexKit
 		// Create Default Material
 		defaultMaterial = physxAPI->createMaterial(0.5f, 0.5f, .1f);
 		updateColliders	= false;
+		pxDispatcher	= physx::PxDefaultCpuDispatcherCreate(4);
 	}
 
 
@@ -107,7 +108,8 @@ namespace FlexKit
 		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
 		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
 		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
-		desc.cpuDispatcher	= &dispatcher;
+		//desc.cpuDispatcher	= &dispatcher;
+		desc.cpuDispatcher	= pxDispatcher;
 
 		auto pScene			= physxAPI->createScene(desc);
 		auto Idx			= scenes.emplace_back(pScene, this, memory);

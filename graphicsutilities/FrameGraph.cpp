@@ -210,78 +210,6 @@ namespace FlexKit
 			}
 		};
 
-		/*
-		for (auto& Object : LocalInputs)
-		{
-			if (!Object.Source)
-				Object.Source= &Node;
-
-			auto Res = CheckResourceSituation(
-						Context.Writables, 
-						Context.Readables, 
-						Object);
-
-			switch (Res)
-			{
-			case CheckStateRes::TransitionNeeded:
-				Transitions.push_back(Object);
-				break;
-			case CheckStateRes::CorrectState:
-				CheckNodeSource(Node, Object);
-				break;
-			case CheckStateRes::ResourceNotTracked:
-			{	// Begin Tracking Resource
-				auto ResState = Object.FO->State;	
-
-				Transitions.push_back(
-					FrameObjectDependency(
-						Object.FO,
-						&Node,
-						ResState,
-						Object.State));
-			}	break;
-			case CheckStateRes::Error:
-				FK_ASSERT(0);
-				break;
-			}
-		}
-
-		for (auto& Object : LocalOutputs)
-		{
-			Object.Source = &Node;
-			auto Res = CheckResourceSituation(
-						Context.Readables, 
-						Context.Writables, 
-						Object);
-
-			switch (Res)
-			{
-			case CheckStateRes::TransitionNeeded:
-				Transitions.push_back(Object);
-				break;
-			case CheckStateRes::CorrectState:
-				CheckNodeSource(Node, Object);
-				break;
-			case CheckStateRes::ResourceNotTracked:
-			{	// Begin Tracking Resource
-				auto ResState = Object.FO->State;	
-				Object.Source = &Node;
-
-				Transitions.push_back(
-					FrameObjectDependency(
-						Object.FO,
-						&Node,
-						ResState,
-						Object.State));
-			}	break;
-			case CheckStateRes::Error:
-				FK_ASSERT(0);
-				break;
-			}
-		}
-
-		*/
-
 		// Process Transitions
 		for (auto& Object : Transitions)
 		{
@@ -304,6 +232,12 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+	void FrameGraphNodeBuilder::AddDataDependency(UpdateTask& task)
+	{
+		DataDependencies.push_back(&task);
+	}
 
 
 	FrameResourceHandle FrameGraphNodeBuilder::ReadShaderResource(TextureHandle handle)
@@ -602,28 +536,62 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	void FrameGraph::SubmitFrameGraph(RenderSystem* RS, RenderWindow* RenderWindow)
+	 void FrameGraph::_SubmitFrameGraph(Vector<Context>& contexts)
 	{
-		Vector<Context>	Contexts(Memory);
-		auto CL = RS->_GetCurrentCommandList();
+		for (auto& N : Nodes)
+			ProcessNode(&N, Resources, contexts.back());
+	}
 
-		Contexts.emplace_back(Context(CL, RS, Memory));
-		ReadyResources();
 
-		for (auto& N : Nodes) 
+	void FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, RenderWindow* renderWindow)
+	{
+
+		struct SubmitData
 		{
-			ProcessNode(&N, Resources, Contexts.back());
-		}
+			Vector<Context>				contexts;
+			FrameGraph*					frameGraph;
+			RenderSystem*				renderSystem;
+			RenderWindow*				renderWindow;
+		};
 
-		Contexts.back().FlushBarriers();
+		auto framegraph = this;
 
-		static_vector<ID3D12CommandList*> CLs = { Contexts.back().GetCommandList() };
+		dispatcher.Add<SubmitData>(
+			[&](auto& builder, SubmitData& data)
+			{
+				FK_LOG_9("Frame Graph Single-Thread Section Begin");
 
-		Close({ Contexts.back().GetCommandList() });
-		RS->Submit(CLs);
+				data.contexts		= Vector<Context>{ Memory };
+				data.contexts.emplace_back(renderSystem->_GetCurrentCommandList(), renderSystem, Memory);
 
-		UpdateResourceFinalState();
+				data.frameGraph		= framegraph;
+				data.renderSystem	= renderSystem;
+				data.renderWindow	= renderWindow;
+
+				std::sort(dataDependencies.begin(), dataDependencies.end());
+				dataDependencies.erase(std::unique(dataDependencies.begin(), dataDependencies.end()), dataDependencies.end());
+
+				for (auto dependency : dataDependencies)
+					builder.AddInput(*dependency);
+
+				ReadyResources();
+				FK_LOG_9("Frame Graph Single-Thread Section End");
+			},
+			[=](auto& data) 
+			{
+				FK_LOG_9("Frame Graph Multi-Thread Section Begin");
+
+				data.frameGraph->_SubmitFrameGraph(data.contexts);
+				data.contexts.back().FlushBarriers();
+
+				static_vector<ID3D12CommandList*> CLs = { data.contexts.back().GetCommandList() };
+
+				Close({ data.contexts.back().GetCommandList() });
+				data.renderSystem->Submit(CLs);
+
+				UpdateResourceFinalState();
+				FK_LOG_9("Frame Graph Multi-Thread Section End");
+			});
 	}
 
 

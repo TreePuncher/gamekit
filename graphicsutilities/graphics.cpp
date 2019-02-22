@@ -582,9 +582,27 @@ namespace FlexKit
 
 		UserBufferEntries[UserIdx].Offset += PushSize;
 		UserBufferEntries[UserIdx].WrittenTo = true;
-		memcpy(Mapped_Ptr + BufferOffset, _Ptr, PushSize);
+
+		if(_Ptr)
+			memcpy(Mapped_Ptr + BufferOffset, _Ptr, PushSize);
 
 		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	ConstantBufferTable::SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize)
+	{
+		size_t offsetBegin = GetBufferOffset(CB);
+		FK_ASSERT(Push(CB, nullptr, reserveSize));
+
+		size_t		UserIdx		= Handles[CB];
+		uint32_t	Idx			= UserBufferEntries[UserIdx].CurrentBuffer;
+		void*		buffer		= UserBufferEntries[UserIdx].Mapped_ptr;
+
+		return { (char*)buffer, offsetBegin , reserveSize };
 	}
 
 
@@ -1220,6 +1238,15 @@ namespace FlexKit
 		}
 
 		DeviceContext->IASetPrimitiveTopology(D3DTopology);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::NullGraphicsConstantBufferView(size_t idx)
+	{
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 	}
 
 
@@ -2060,19 +2087,21 @@ namespace FlexKit
 			ranges[0].Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0);
 			ranges[1].Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 4, 4);
 
-			RS->Library.RS4CBVs4SRVs.AllowIA = true;
+			RS->Library.RS6CBVs4SRVs.AllowIA = true;
 			DesciptorHeapLayout<2> DescriptorHeap;
 			DescriptorHeap.SetParameterAsSRV(0, 0, 4);
-			DescriptorHeap.SetParameterAsCBV(1, 4, 4);
+			DescriptorHeap.SetParameterAsCBV(1, 6, 4);
 			FK_ASSERT(DescriptorHeap.Check());
 
-			RS->Library.RS4CBVs4SRVs.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
-			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs4SRVs.SetParameterAsCBV(4, 3, 0, PIPELINE_DEST_ALL);
-			RS->Library.RS4CBVs4SRVs.Build(RS, TempMemory);
-			SETDEBUGNAME(RS->Library.RS4CBVs4SRVs, "RS4CBVs4SRVs");
+			RS->Library.RS6CBVs4SRVs.SetParameterAsDescriptorTable(0, DescriptorHeap, -1);
+			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(1, 0, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(2, 1, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(3, 2, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(4, 3, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(5, 4, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS6CBVs4SRVs.SetParameterAsCBV(6, 5, 0, PIPELINE_DEST_ALL);
+			RS->Library.RS6CBVs4SRVs.Build(RS, TempMemory);
+			SETDEBUGNAME(RS->Library.RS6CBVs4SRVs, "RS4CBVs4SRVs");
 		}
 		{
 			RS->Library.RS4CBVs_SO.AllowIA	= true;
@@ -4463,6 +4492,24 @@ namespace FlexKit
 	{
 		return UserBuffers[Handles[Handle]].ResourceSize;
 	}
+
+
+	/************************************************************************************************/
+
+
+	VertexBufferStateTable::SubAllocation VertexBufferStateTable::Reserve(VertexBufferHandle Handle, size_t size)
+	{
+		auto	idx			= Handles[Handle];
+		auto&	userBuffer  = UserBuffers[idx];
+		auto	offset		= UserBuffers[idx].Offset;
+		auto	mapped_Ptr	= UserBuffers[idx].MappedPtr;
+
+		UserBuffers[idx].Offset		+= size;
+		UserBuffers[idx].WrittenTo	 = true;
+
+		return { mapped_Ptr, offset, size };
+	}
+
 
 
 	/************************************************************************************************/
@@ -7499,7 +7546,7 @@ namespace FlexKit
 			};
 
 			D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {};{
-				PSO_Desc.pRootSignature			= RenderSystem->Library.RS4CBVs4SRVs;
+				PSO_Desc.pRootSignature			= RenderSystem->Library.RS6CBVs4SRVs;
 				PSO_Desc.VS						= VertexShader_Static;
 				PSO_Desc.PS						= PixelShader;
 				PSO_Desc.RasterizerState		= Rast_Desc;

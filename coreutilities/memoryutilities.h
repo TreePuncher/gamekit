@@ -72,6 +72,21 @@ namespace FlexKit
 			return *t;
 		}
 
+		template<typename T>
+		T& release_aligned(T* _ptr)
+		{
+			_ptr->~T();
+			_aligned_free(_ptr);
+		}
+
+
+		template<typename T>
+		T& release(T* _ptr)
+		{
+			_ptr->~T();
+			free(_ptr);
+		}
+
 	protected:
 		iAllocator() noexcept {}
 	};
@@ -841,6 +856,16 @@ namespace FlexKit
 
 		return hash;
 	}
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY>
+	TY& MakeHeapCopy(TY& data, iAllocator* allocator)
+	{
+		return allocator->allocate_aligned<TY>(data);
+	};
 
 
 	/************************************************************************************************/

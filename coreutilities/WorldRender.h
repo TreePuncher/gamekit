@@ -33,9 +33,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "../buildsettings.h"
+#include "../coreutilities/Components.h"
 #include "../graphicsutilities/FrameGraph.h"
 #include "../graphicsutilities/graphics.h"
 #include "../graphicsutilities/CoreSceneObjects.h"
+
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -75,13 +77,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct LighBufferCPUUpdate
+	{
+		size_t			viewSplits;
+		float			splitSpan;
+		size_t			sceneLightCount;
+		CameraHandle	camera;
+		GraphicScene*	scene;
+
+		Vector<Vector<Vector<LightHandle>>> lightBuckets;
+		StackAllocator						tempMemory;
+	};
+
+
 	struct LightBufferUpdate 
 	{
 		TextureHandle			lightMap;
-		ConstantBufferHandle	lightBuffer;		
+		ConstantBufferHandle	lightListBuffer;		
 		ConstantBufferHandle	pointLightBuffer;
 		FrameResourceHandle		lightMapObject;
 		UploadData				lightMapUpdate;	// immediate update
+		LighBufferCPUUpdate*	lighBufferData;
 	};
 
 
@@ -95,8 +111,12 @@ namespace FlexKit
 
 	struct SceneDescription
 	{
-		size_t pointLightCount;
+		size_t		pointLightCount;
+		UpdateTask*	transforms;
+		UpdateTask*	cameras;
+		UpdateTask*	PVS;
 	};
+
 
 	class FLEXKITAPI WorldRender
 	{
@@ -108,12 +128,12 @@ namespace FlexKit
 			OcclusionCulling	{ false																},
 			OcclusionQueries	{ RS->CreateOcclusionBuffer(4096)									},
 			lightMap			{ RS->CreateTexture2D(IN_lightSplits, FORMAT_2D::R16G16_UINT, 1)	},
-			lightIDBuffer		{ RS->CreateConstantBuffer(MEGABYTE, false)							},
+			lightListBuffer		{ RS->CreateConstantBuffer(MEGABYTE, false)							},
 			pointLightBuffer	{ RS->CreateConstantBuffer(MEGABYTE, false)							}
 		{
-			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS4CBVs4SRVs, CreateForwardDrawPSO,			});
-			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS4CBVs4SRVs, CreateForwardDrawInstancedPSO	});
-			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN->Library.RS4CBVs4SRVs, CreateOcclusionDrawPSO			});
+			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawPSO,			});
+			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawInstancedPSO	});
+			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN->Library.RS6CBVs4SRVs, CreateOcclusionDrawPSO			});
 
 			RS_IN->QueuePSOLoad(FORWARDDRAW);
 			RS_IN->QueuePSOLoad(FORWARDDRAWINSTANCED);
@@ -123,14 +143,17 @@ namespace FlexKit
 		{
 			RS->ReleaseCB(ConstantBuffer);
 			RS->ReleaseCB(pointLightBuffer);
-			RS->ReleaseCB(lightIDBuffer);
+			RS->ReleaseCB(lightListBuffer);
 			RS->ReleaseTexture(lightMap);
 		}
 
-		void DefaultRender					(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
-		void RenderDrawabledPBR_ForwardPLUS	(PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
+		
+		void DefaultRender						(UpdateDispatcher& dispatcher, PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
+		void RenderDrawabledPBR_ForwardPLUS		(UpdateDispatcher& dispatcher, PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
 
-		LightBufferUpdate* updateLightBuffers	(CameraHandle Camera, GraphicScene& scene, FrameGraph& graph, iAllocator* tempMemory, LighBufferDebugDraw* drawDebug = nullptr);
+
+		LightBufferUpdate* updateLightBuffers	(UpdateDispatcher& dispatcher, CameraHandle Camera, GraphicScene& scene, FrameGraph& graph, SceneDescription& desc, iAllocator* tempMemory, LighBufferDebugDraw* drawDebug = nullptr);
+
 
 		void ClearGBuffer				(FrameGraph& Graph);
 		void RenderDrawabledPBR_Main	(PVS& Objects, FrameGraph& Graph);
@@ -144,7 +167,7 @@ namespace FlexKit
 		TextureHandle			OcclusionBuffer;
 
 		TextureHandle			lightMap;			// GPU
-		ConstantBufferHandle	lightIDBuffer;		// GPU
+		ConstantBufferHandle	lightListBuffer;	// GPU
 		ConstantBufferHandle	pointLightBuffer;	// GPU
 		uint2					WH;// Output Size
 

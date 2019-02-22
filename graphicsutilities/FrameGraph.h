@@ -27,6 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\graphicsutilities\graphics.h"
 #include "..\coreutilities\containers.h"
+#include "..\coreutilities\Components.h"
+
+#include <type_traits>
 
 
 /************************************************************************************************/
@@ -880,6 +883,21 @@ namespace FlexKit
 		}
 
 
+		CBPushBuffer Reserve(ConstantBufferHandle CB, size_t pushSize, size_t count)
+		{
+			size_t reserveSize	= (pushSize / 512 + 1) * 512 * count;
+			auto buffer			= renderSystem->ConstantBuffers.Reserve(CB, reserveSize);
+
+			return { CB, buffer.Data, buffer.offsetBegin, reserveSize };
+		}
+
+
+		VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize)
+		{
+			auto buffer = renderSystem->VertexBuffers.Reserve(VB, reserveSize);
+			return { VB, buffer.Data, buffer.offsetBegin, reserveSize };
+		}
+
 
 	};/************************************************************************************************/
 
@@ -1310,16 +1328,18 @@ namespace FlexKit
 	{
 	public:
 		FrameGraphNodeBuilder(
+			Vector<UpdateTask*>&		IN_DataDependencies,
 			FrameResources*				IN_Resources, 
 			FrameGraphNode&				IN_Node,
 			FrameGraphResourceContext&	IN_context,
 			iAllocator*					IN_allocator) :
-				Context			{ IN_context	},
-				LocalInputs		{ IN_allocator	},
-				LocalOutputs	{ IN_allocator	},
-				Node			{ IN_Node		},
-				Resources		{ IN_Resources	},
-				Transitions		{ IN_allocator	}{}
+				DataDependencies{ IN_DataDependencies	},
+				Context			{ IN_context			},
+				LocalInputs		{ IN_allocator			},
+				LocalOutputs	{ IN_allocator			},
+				Node			{ IN_Node				},
+				Resources		{ IN_Resources			},
+				Transitions		{ IN_allocator			}{}
 
 
 		// No Copying
@@ -1328,6 +1348,8 @@ namespace FlexKit
 
 		void BuildNode(FrameGraph* FrameGraph);
 
+
+		void AddDataDependency(UpdateTask& task);
 
 		FrameResourceHandle ReadShaderResource	(TextureHandle Handle);
 		FrameResourceHandle WriteShaderResource	(TextureHandle Handle);
@@ -1463,6 +1485,7 @@ namespace FlexKit
 		Vector<FrameObjectDependency>	LocalInputs;
 		Vector<FrameObjectDependency>	Transitions;
 
+		Vector<UpdateTask*>&			DataDependencies;
 		FrameGraphResourceContext&		Context;
 		FrameGraphNode&					Node;
 		FrameResources*					Resources;
@@ -1472,11 +1495,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	using DataDependencyList = Vector<UpdateTask*>;
+
+
 	FLEXKITAPI class FrameGraph
 	{
 	public:
 		FrameGraph(RenderSystem* RS, iAllocator* Temp) :
 			Resources		{ RS,	Temp },
+			dataDependencies{ Temp },
 			ResourceContext	{ Temp },
 			Memory			{ Temp },
 			Nodes			{ Temp }{}
@@ -1491,7 +1518,7 @@ namespace FlexKit
 
 			TY& Data				= Memory->allocate_aligned<TY>();
 			FrameGraphNode& Node	= Nodes.back();
-			FrameGraphNodeBuilder Builder(&Resources, Node, ResourceContext, Memory);
+			FrameGraphNodeBuilder Builder(dataDependencies, &Resources, Node, ResourceContext, Memory);
 
 			Node.NodeAction = [=, &Data, &Node](
 				FrameResources& Resources, 
@@ -1515,14 +1542,17 @@ namespace FlexKit
 		void ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Context& Context);
 		
 		void UpdateFrameGraph	(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp);// 
-		void SubmitFrameGraph	(RenderSystem* RS, RenderWindow* Window);
+		void SubmitFrameGraph	(UpdateDispatcher& dispatcher, RenderSystem* RS, RenderWindow* Window);
 
 		FrameResources				Resources;
 		FrameGraphResourceContext	ResourceContext;
 		iAllocator*					Memory;
 		Vector<FrameGraphNode>		Nodes;
+		DataDependencyList			dataDependencies;
 
+		void _SubmitFrameGraph(Vector<Context>& contexts);
 	private:
+
 		void ReadyResources();
 		void UpdateResourceFinalState();
 	};
@@ -2005,6 +2035,7 @@ namespace FlexKit
 			DrawList				Draws;
 		};
 
+
 		auto& Pass = Graph.AddNode<DrawRect>(GetCRCGUID(PRESENT),
 			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
 			{
@@ -2033,9 +2064,7 @@ namespace FlexKit
 				}
 			},
 			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
-			{
-				// Multi-threadable Section
-
+			{	// Multi-threadable Section
 				auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
 
 				Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
@@ -2043,7 +2072,7 @@ namespace FlexKit
 					{	Resources.GetRenderTargetObject(Data.RenderTarget) }, 
 					false);
 
-				Ctx->SetRootSignature		(Resources.renderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetRootSignature		(Resources.renderSystem->Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState		(Resources.GetPipelineState(Data.State));
 				Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 
@@ -2094,8 +2123,10 @@ namespace FlexKit
 		ConstantBufferHandle	Constants;
 		PSOHandle				PSO;
 
+		DataDependencyList		dependencies;
+
 		size_t	InstanceElementSize;
-		size_t	ConstantsSize[2];
+		size_t	ConstantSize[2];
 		char*	ConstantData[2];
 	};
 
@@ -2103,111 +2134,112 @@ namespace FlexKit
 	template<typename CONTAINER_TY, typename GETCONSTANTS_FN>
 	void DrawCollection(
 		FrameGraph&					frameGraph,
-		const CONTAINER_TY&			entities,
-		const GETCONSTANTS_FN		GetConstants,
+		CONTAINER_TY&&				entities,
+		const GETCONSTANTS_FN		fnGetInstanceData,
 		const DrawCollection_Desc&	desc,
 		iAllocator*					tempAllocator)
 	{
-		struct DrawGrid
+		struct _DrawGrid
 		{
-			FrameResourceHandle		RenderTarget;
-			FrameResourceHandle		DepthBuffer;
+			CONTAINER_TY				entities;
 
-			size_t					InstanceCount;
-			VertexBufferHandle		InstanceBuffer;
-			size_t					InstanceBufferOffset;
+			FrameResourceHandle			renderTarget;
+			FrameResourceHandle			depthBuffer;
 
-			TriMeshHandle			Mesh;
-			ConstantBufferHandle	CB;
+			size_t						instanceCount;
+			VBPushBuffer				instanceBuffer;
 
-			size_t InstanceElementSize;
-			size_t ConstantOffsets[2];
+			TriMeshHandle				mesh;
 
-			PSOHandle				PSO;
-			FlexKit::DescriptorHeap	Heap; // Null Filled
+			CBPushBuffer				constantBuffer;
+
+			size_t						instanceElementSize;
+			size_t						constantOffsets[2];
+
+			PSOHandle					PSO;
+			FlexKit::DescriptorHeap		heap; // Null Filled
 		};
 
 
-		frameGraph.AddNode<DrawGrid>(0,
+		size_t instanceElementSize = sizeof(decltype(fnGetInstanceData(entities[0])));
+
+
+		frameGraph.AddNode<_DrawGrid>(0,
 			[&](FrameGraphNodeBuilder& builder, auto& data)
 			{
-				data.RenderTarget	= builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
-				data.DepthBuffer	= builder.WriteDepthBuffer(frameGraph.Resources.renderSystem->GetTag(desc.DepthBuffer));
+				for (auto& dep : desc.dependencies)
+					builder.AddDataDependency(*dep);
 
-				data.Heap.Init(
+				data.renderTarget	= builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
+				data.depthBuffer	= builder.WriteDepthBuffer(frameGraph.Resources.renderSystem->GetTag(desc.DepthBuffer));
+
+				data.heap.Init(
 					frameGraph.Resources.renderSystem,
-					frameGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					frameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
 					tempAllocator).NullFill(frameGraph.Resources.renderSystem);
 
-				data.CB		= desc.Constants;
-				data.Mesh	= desc.Mesh;
-				data.PSO	= desc.PSO;
+				CBPushBuffer temp1 = frameGraph.Resources.Reserve(desc.Constants, std::max(desc.ConstantSize[0], desc.ConstantSize[1]), 2);
+				VBPushBuffer temp2 = frameGraph.Resources.Reserve(desc.VertexBuffer, instanceElementSize * entities.size());
 
-				data.InstanceBuffer			= desc.VertexBuffer;
-				data.InstanceBufferOffset	= frameGraph.Resources.GetVertexBufferOffset(desc.VertexBuffer);
-				data.InstanceElementSize	= desc.InstanceElementSize;
+				data.constantBuffer = std::move(temp1);
+				data.mesh			= desc.Mesh;
+				data.PSO			= desc.PSO;
 
-
-				for (auto& Entity : entities)
-					PushVertex(GetConstants(Entity), desc.VertexBuffer, frameGraph.Resources);
-
-				for (
-					size_t I = 0;
-					I < sizeof(desc.ConstantsSize) / sizeof(*desc.ConstantsSize);
-					++I)
-				{
-					data.ConstantOffsets[I] = BeginNewConstantBuffer(
-						desc.Constants, 
-						frameGraph.Resources);
-
-					PushConstantBufferData(
-						desc.ConstantData[I],
-						desc.ConstantsSize[I],
-						desc.Constants,
-						frameGraph.Resources);
-				}
-
-
-				data.InstanceCount = entities.size();
+				data.instanceBuffer			= std::move(temp2);
+				data.instanceElementSize	= instanceElementSize;
+				data.instanceCount			= entities.size();
+				data.entities				= std::move(entities);
 			},
-			[](auto& data, const FrameResources& resources, Context* ctx)
+			[=](auto& data, const FrameResources& resources, Context* ctx)
 			{
-				auto* TriMesh			= GetMeshResource(data.Mesh);
-				size_t MeshVertexCount	= TriMesh->IndexCount;
+				for (auto& entity : data.entities)
+					data.instanceBuffer.Push(fnGetInstanceData(entity));
+
+				const size_t end = sizeof(desc.ConstantSize) / sizeof(*desc.ConstantSize);
+				for (size_t I = 0; I < end; ++I)
+					data.constantOffsets[I] = data.constantBuffer.Push(desc.ConstantData[I], desc.ConstantSize[I]);
+
+
+				auto* triMesh			= GetMeshResource(data.mesh);
+				size_t MeshVertexCount	= triMesh->IndexCount;
+
 
 				// Setup state
-				ctx->SetRootSignature(resources.renderSystem->Library.RS4CBVs4SRVs);
+				ctx->SetRootSignature(resources.renderSystem->Library.RS6CBVs4SRVs);
 				ctx->SetPipelineState(resources.GetPipelineState(data.PSO));
 
 				ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
-				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.RenderTarget) });
+				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 				ctx->SetRenderTargets(
-					{	(DescHeapPOS)resources.GetRenderTargetObject(data.RenderTarget) }, true,
-						(DescHeapPOS)resources.GetRenderTargetObject(data.DepthBuffer));
+					{	(DescHeapPOS)resources.GetRenderTargetObject(data.renderTarget) }, true,
+						(DescHeapPOS)resources.GetRenderTargetObject(data.depthBuffer));
 
 				// Bind resources
-				VertexBufferList InstancedBuffers;
-				InstancedBuffers.push_back(VertexBufferEntry{
-					data.InstanceBuffer,
-					(UINT)data.InstanceElementSize,
-					(UINT)data.InstanceBufferOffset });
+				VertexBufferList instancedBuffers;
+				instancedBuffers.push_back(VertexBufferEntry{
+					data.instanceBuffer,
+					(UINT)data.instanceElementSize,
+					(UINT)data.instanceBuffer.begin() });
 
 
-				ctx->AddIndexBuffer(TriMesh);
-				ctx->AddVertexBuffers(TriMesh,
+				ctx->AddIndexBuffer(triMesh);
+				ctx->AddVertexBuffers(triMesh,
 					{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
 					},
-					&InstancedBuffers);
+					&instancedBuffers);
 
+				ctx->SetGraphicsDescriptorTable(0, data.heap);
+				ctx->SetGraphicsConstantBufferView(1,  data.constantBuffer, data.constantOffsets[0]);
+				ctx->SetGraphicsConstantBufferView(2,  data.constantBuffer, data.constantOffsets[1]);
 
-				ctx->SetGraphicsDescriptorTable(0, data.Heap);
-				ctx->SetGraphicsConstantBufferView(1, data.CB, data.ConstantOffsets[0]);
-				ctx->SetGraphicsConstantBufferView(2, data.CB, data.ConstantOffsets[1]);
-				ctx->SetGraphicsConstantBufferView(3, data.CB, data.ConstantOffsets[1]); // Leave no root descriptor un-bound
+				ctx->NullGraphicsConstantBufferView(3);
+				ctx->NullGraphicsConstantBufferView(4); // Leave no root descriptor un-bound
+				ctx->NullGraphicsConstantBufferView(5); // Leave no root descriptor un-bound
+				ctx->NullGraphicsConstantBufferView(6); // Leave no root descriptor un-bound
 
-				ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, data.InstanceCount);
+				ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, data.instanceCount);
 			});
 	}
 
@@ -2267,7 +2299,7 @@ namespace FlexKit
 
 				Data.Heap.Init(
 					frameGraph.Resources.renderSystem,
-					frameGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					frameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMem).NullFill(frameGraph.Resources.renderSystem);
 
 				struct LocalConstants// Register b1
@@ -2318,7 +2350,7 @@ namespace FlexKit
 			},
 			[](auto& Data, const FrameResources& Resources, Context* ctx)
 			{
-				ctx->SetRootSignature(Resources.renderSystem->Library.RS4CBVs4SRVs);
+				ctx->SetRootSignature(Resources.renderSystem->Library.RS6CBVs4SRVs);
 				ctx->SetPipelineState(Resources.GetPipelineState(Data.PSO));
 				ctx->SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
 
@@ -2329,6 +2361,10 @@ namespace FlexKit
 				ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
 				ctx->SetGraphicsConstantBufferView	(1, Data.CB, Data.cameraOffset);
 				ctx->SetGraphicsConstantBufferView	(2, Data.CB, Data.constantsOffset);
+
+				ctx->NullGraphicsConstantBufferView	(4);
+				ctx->NullGraphicsConstantBufferView	(5);
+				ctx->NullGraphicsConstantBufferView	(6);
 
 				ctx->Draw(Data.vertexCount, 0);
 			});
@@ -2414,7 +2450,7 @@ namespace FlexKit
 
 				Data.Heap.Init(
 					FrameGraph.Resources.renderSystem,
-					FrameGraph.Resources.renderSystem->Library.RS4CBVs4SRVs.GetDescHeap(0),
+					FrameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMem);
 				Data.Heap.NullFill(FrameGraph.Resources.renderSystem);
 
@@ -2452,7 +2488,7 @@ namespace FlexKit
 			},
 			[](auto& Data, const FlexKit::FrameResources& Resources, FlexKit::Context* Ctx)
 			{
-				Ctx->SetRootSignature(Resources.renderSystem->Library.RS4CBVs4SRVs);
+				Ctx->SetRootSignature(Resources.renderSystem->Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState(Resources.GetPipelineState(DRAW_LINE3D_PSO));
 
 				Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });
@@ -2466,6 +2502,12 @@ namespace FlexKit
 				Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
 				Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
 				Ctx->SetGraphicsConstantBufferView(2, Data.CB, Data.LocalConstantsOffset);
+
+				Ctx->NullGraphicsConstantBufferView(3);
+				Ctx->NullGraphicsConstantBufferView(4);
+				Ctx->NullGraphicsConstantBufferView(5);
+				Ctx->NullGraphicsConstantBufferView(6);
+
 
 				Ctx->Draw(Data.VertexCount, 0);
 			});

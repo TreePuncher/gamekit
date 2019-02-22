@@ -328,20 +328,20 @@ namespace FlexKit
 	{
 	public:
 		TerrainEngine(RenderSystem* RS, iAllocator* IN_allocator, size_t IN_tileEdgeSize = 128, size_t IN_tileHeight = 128, uint2 IN_tileOffset = {0, 0}) :
-			renderSystem				{ RS																	},
-			tiles						{ IN_allocator															},
-			tileTextures				{ IN_allocator															},
-			tileHeight					{ IN_tileHeight															}, 
-			tileOffset					{ IN_tileOffset															},
-			allocator					{ IN_allocator															},
-			finalBuffer					{ RS->CreateStreamOutResource(MEGABYTE * 64)							},
-			intermdediateBuffer1		{ RS->CreateStreamOutResource(MEGABYTE * 64)							},
-			intermdediateBuffer2		{ RS->CreateStreamOutResource(MEGABYTE * 64)							},
-			queryBufferFinalBuffer		{ RS->CreateSOQuery(1,1)												},
-			queryBufferIntermediate		{ RS->CreateSOQuery(0,1)												},
-			indirectArgs				{ RS->CreateUAVBufferResource(512)										},
-			querySpace					{ RS->CreateUAVBufferResource(512)										},
-			indirectLayout				{ RS->CreateIndirectLayout({ILE_DrawCall}, IN_allocator)				}
+			renderSystem				{ RS														},
+			tiles						{ IN_allocator												},
+			tileTextures				{ IN_allocator												},
+			tileHeight					{ IN_tileHeight												}, 
+			tileOffset					{ IN_tileOffset												},
+			allocator					{ IN_allocator												},
+			finalBuffer					{ RS->CreateStreamOutResource(MEGABYTE * 64)				},
+			intermdediateBuffer1		{ RS->CreateStreamOutResource(MEGABYTE * 64)				},
+			intermdediateBuffer2		{ RS->CreateStreamOutResource(MEGABYTE * 64)				},
+			queryBufferFinalBuffer		{ RS->CreateSOQuery(1,1)									},
+			queryBufferIntermediate		{ RS->CreateSOQuery(0,1)									},
+			indirectArgs				{ RS->CreateUAVBufferResource(512)							},
+			querySpace					{ RS->CreateUAVBufferResource(512)							},
+			indirectLayout				{ RS->CreateIndirectLayout({ILE_DrawCall}, IN_allocator)	}
 		{
 			renderSystem->RegisterPSOLoader(
 				TERRAIN_COMPUTE_CULL_PSO, 
@@ -433,6 +433,8 @@ namespace FlexKit
 		// No update dependencies
 		FlexKit::UpdateTask* Update(FlexKit::UpdateDispatcher& Dispatcher)
 		{
+			FK_LOG_9("Terrain Update");
+
 			// TODO: Streaming textures
 			// Make sure textures are loaded
 			return nullptr;
@@ -517,7 +519,7 @@ namespace FlexKit
 					data.heap.SetSRV(renderSystem, 0, tileMap.heightMap);
 
 
-				data.splitCount				= 12;
+				data.splitCount				= 16;
 
 				TerrainConstantBufferLayout constants;
 				uint32_t					indirectArgsInitial[] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };

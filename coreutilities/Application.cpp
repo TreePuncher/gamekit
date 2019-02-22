@@ -29,7 +29,7 @@ namespace FlexKit
 	FKApplication::FKApplication(uint2 WindowResolution, EngineMemory* IN_Memory) :
 		Memory		{ IN_Memory },
 		Core		{ IN_Memory, WindowResolution },
-		framework	{ &Core }{}
+		framework	{ &Core } {}
 
 
 	/************************************************************************************************/
@@ -71,12 +71,11 @@ namespace FlexKit
 	{
 		using FlexKit::UpdateInput;
 
-		const double StepSize	= 1 / 60.0f;
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
 		size_t FPSCounter		= 0;
 		double CodeCheckTimer	= 0.0f;
-		double dT				= StepSize;
+		double dT				= 1.0/60.0;
 
 		while (!Core.End && !Core.Window.Close && framework.subStates.size())
 		{
@@ -89,21 +88,7 @@ namespace FlexKit
 
 			//if (T > StepSize)
 			{	// Game Tick  -----------------------------------------------------------------------------------
-				UpdateInput();
-
-				FK_LOG_9("Frame Begin");
-
-				framework.Update			(dT);
-				framework.UpdateFixed		(StepSize);
-				framework.UpdatePreDraw		(Memory->GetTempMemory(), dT);
-				framework.Draw				(Memory->GetTempMemory());
-				framework.PostDraw			(Memory->GetTempMemory(), dT);
-
-				FK_LOG_9("Frame End");
-
-				// Memory -----------------------------------------------------------------------------------
-				//Engine->GetBlockMemory().LargeBlockAlloc.Collapse(); // Coalesce blocks
-				Memory->GetTempMemory().clear();
+				framework.DrawFrame(dT);
 				T -= dT;
 			}
 

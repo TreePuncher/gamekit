@@ -745,7 +745,7 @@ namespace FlexKit
 			},
 			[](auto& QuadTreeUpdate)
 			{
-				//FK_LOG_INFO("QuadTree::Update");
+				FK_LOG_INFO("QuadTree::Update");
 
 				const int period  = QuadTreeUpdate.QTree->RebuildPeriod;
 				const int counter = QuadTreeUpdate.QTree->RebuildCounter;
@@ -878,8 +878,32 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void UploadGraphicScene(GraphicScene* SM, PVS* Dawables, PVS* Transparent_PVS)
+	GetPVSTaskData& GetGraphicScenePVSTask(UpdateDispatcher& dispatcher, UpdateTask& sceneUpdate, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
 	{
+		auto& task = dispatcher.Add<GetPVSTaskData>(
+			[&](auto& builder, auto& data)
+			{
+				builder.AddInput(sceneUpdate);
+
+				size_t taskMemorySize = KILOBYTE * 256;
+				data.taskMemory.Init((byte*)allocator->malloc(taskMemorySize), taskMemorySize);
+				data.scene			= scene;
+				data.solid			= PVS{ data.taskMemory };
+				data.transparent	= PVS{ data.taskMemory };
+			},
+			[](auto& data)
+			{
+				FK_LOG_9("Start PVS gather\n");
+
+				GetGraphicScenePVS(data.scene, data.camera, &data.solid, &data.transparent);
+
+				FK_LOG_9("End PVS gather\n");
+			});
+
+		auto* data = reinterpret_cast<GetPVSTaskData*>(task.Data);
+		data->task = &task;
+
+		return *data;
 	}
 
 
@@ -1085,15 +1109,16 @@ namespace FlexKit
 			GraphicScene* scene;
 		};
 
+		auto& sceneUpdate = *SceneManagement.Update(
+			Dispatcher,
+			this,
+			transformDependency);
 
 		auto& Task1 =
 		Dispatcher.Add<SceneUpdateData>(
 			[&](DependencyBuilder& builder, SceneUpdateData& data)
 			{
-				builder.AddInput(*SceneManagement.Update(
-													Dispatcher, 
-													this, 
-													transformDependency));
+				builder.AddInput(sceneUpdate);
 
 				builder.SetDebugString("SceneUpdate");
 
@@ -1101,6 +1126,7 @@ namespace FlexKit
 			},
 			[](auto& data)
 			{
+				FK_LOG_INFO("ShadowCaster Update");
 				// Post transform update of scene management structure
 				UpdateShadowCasters(data.scene);
 			}
@@ -1113,7 +1139,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float3 GraphicScene::GetPointLightPosition(LightHandle light)
+	float3 GraphicScene::GetPointLightPosition(LightHandle light) const
 	{
 		return GetPositionW(PLights[light].Position);
 	}
@@ -1122,7 +1148,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	NodeHandle GraphicScene::GetPointLightNode(LightHandle light)
+	NodeHandle GraphicScene::GetPointLightNode(LightHandle light) const
 	{
 		return PLights[light].Position;
 	}
@@ -1131,9 +1157,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float GraphicScene::GetPointLightRadius(LightHandle light)
+	float GraphicScene::GetPointLightRadius(LightHandle light) const
 	{
-		return PLights[light].R;
+		return PLights[light].I;
 	}
 
 
@@ -1141,7 +1167,7 @@ namespace FlexKit
 
 
 
-	size_t GraphicScene::GetPointLightCount()
+	size_t GraphicScene::GetPointLightCount() const
 	{
 		return PLights.size();
 	}
@@ -1150,12 +1176,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Vector<LightHandle> GraphicScene::FindPointLights(const Frustum &f, iAllocator* tempMemory)
+	Vector<LightHandle> GraphicScene::FindPointLights(const Frustum &f, iAllocator* tempMemory) const
 	{
 		Vector<LightHandle> lights{tempMemory};
 
 		for (unsigned int itr = 0; itr < PLights.size(); ++itr) {
-			auto& light = PLights[itr];
+			auto light  = PLights[itr];
 			auto Pw		= GetPositionW(light.Position);
 			auto Ps		= GetLocalScale(light.Position).x;
 
@@ -1173,7 +1199,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GraphicScene::ListEntities()
+	void GraphicScene::ListEntities() const
 	{
 		for (auto& d : Drawables)
 		{
