@@ -184,26 +184,34 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	base.render.updateLightBuffers				(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory());
 	base.render.RenderDrawabledPBR_ForwardPLUS	(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
 
-
 	FlexKit::DrawCollection_Desc DrawCollectionDesc{};
-	DrawCollectionDesc.ConstantData[0]		= reinterpret_cast<char*>(&cameraConstants);
-	DrawCollectionDesc.ConstantSize[0]		= sizeof(cameraConstants);
-	DrawCollectionDesc.ConstantData[1]		= reinterpret_cast<char*>(&cameraConstants);
-	DrawCollectionDesc.ConstantSize[1]		= sizeof(cameraConstants);
 	DrawCollectionDesc.DepthBuffer			= targets.DepthTarget;
 	DrawCollectionDesc.RenderTarget			= targets.RenderTarget;
-	DrawCollectionDesc.VertexBuffer			= base.vertexBuffer;
+	DrawCollectionDesc.instanceBuffer		= base.vertexBuffer;
 	DrawCollectionDesc.Mesh					= LightModel;
-	DrawCollectionDesc.Constants			= base.constantBuffer;
+	DrawCollectionDesc.constantBuffer		= base.constantBuffer;
 	DrawCollectionDesc.PSO					= FORWARDDRAWINSTANCED;
 	DrawCollectionDesc.InstanceElementSize	= sizeof(float4x4);
 
 
-	if(false)
+	if(true)
 	{
+		auto cameraConstanstSize = sizeof(decltype(GetCameraConstantBuffer(activeCamera)));
+
 		DrawCollection(
 				frameGraph, 
-				scene.FindPointLights(GetFrustum(activeCamera), core->GetTempMemory()),
+				{ sceneUpdate },
+				{	{ 0, (char*)&cameraConstants, cameraConstanstSize },
+					{ 0, (char*)&cameraConstants, cameraConstanstSize } },
+				{ },
+				[&, activeCamera](auto& data)
+				{
+					cameraConstants = GetCameraConstantBuffer(activeCamera); // update buffer with recent data
+				},
+				[this, core, activeCamera]()
+				{ 
+					return scene.FindPointLights(GetFrustum(activeCamera), core->GetTempMemory());
+				},
 				[&](auto& light) -> float4x4
 				{
 					XMMATRIX m;

@@ -497,7 +497,7 @@ namespace FlexKit
 		frameGraph.Resources.AddQuery(terrainEngine.queryBufferIntermediate);
 
 		auto& cullerStage = frameGraph.AddNode<TerrainCullerData>(
-			GetCRCGUID(TERRAINCOMPUTEVISABLETILES),
+			TerrainCullerData{},
 			[&](FrameGraphNodeBuilder& builder, TerrainCullerData& data)
 			{	
 				data.finalBuffer			= builder.WriteSOBuffer	(terrainEngine.finalBuffer);
@@ -720,7 +720,7 @@ namespace FlexKit
 		};
 
 		auto& renderStage = frameGraph.AddNode<RenderTerrainForward>(
-			GetCRCGUID(TERRAINCOMPUTEVISABLETILES),
+			RenderTerrainForward{},
 			[&](FrameGraphNodeBuilder& builder, RenderTerrainForward& data)
 			{
 				data.debugMode				= terrainEngine.DebugMode;
@@ -741,7 +741,6 @@ namespace FlexKit
 				data.indirectLayout			= culledTerrain->indirectLayout;
 
 				data.heap					= &culledTerrain->heap;
-
 			},
 			[=](const RenderTerrainForward& data, const FrameResources& resources, Context* ctx)
 			{

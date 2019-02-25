@@ -138,7 +138,8 @@ namespace FlexKit
 			FlexKit::DescriptorHeap	Heap;
 		};
 
-		FGraph.AddNode<DrawSpriteText>(GetCRCGUID(DRAWSPRITETEXT),
+		FGraph.AddNode<DrawSpriteText>(
+			DrawSpriteText{},
 			[&](FrameGraphNodeBuilder& Builder, DrawSpriteText& Data)
 			{
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })

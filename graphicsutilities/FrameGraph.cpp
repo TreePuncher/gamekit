@@ -706,11 +706,15 @@ namespace FlexKit
 			float4				ClearColor;
 		};
 
-		auto& Pass = Graph.AddNode<PassData>(GetCRCGUID(PRESENT),
+		auto& Pass = Graph.AddNode<PassData>(
+			PassData
+			{
+				InvalidHandle_t,
+				Color
+			},
 			[=](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
 				Data.BackBuffer = Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
-				Data.ClearColor = Color;
 			},
 			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
 			{	// do clear here
@@ -724,7 +728,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearDepthBuffer(FrameGraph& Graph, TextureHandle Handle, float D)
+	void ClearDepthBuffer(FrameGraph& Graph, TextureHandle Handle, float clearDepth)
 	{
 		FK_VLOG(Verbosity_9, "Clearing depth buffer.");
 
@@ -734,11 +738,14 @@ namespace FlexKit
 			float				ClearDepth;
 		};
 
-		auto& Pass = Graph.AddNode<ClearDepthBuffer>(GetCRCGUID(PRESENT),
+		auto& Pass = Graph.AddNode<ClearDepthBuffer>(
+			ClearDepthBuffer{
+				InvalidHandle_t,
+				clearDepth
+			},
 			[=](FrameGraphNodeBuilder& Builder, ClearDepthBuffer& Data)
 			{
 				Data.DepthBuffer = Builder.WriteDepthBuffer(Handle);
-				Data.ClearDepth = D;
 			},
 			[=](const ClearDepthBuffer& Data, const FrameResources& Resources, Context* Ctx)
 			{	// do clear here
@@ -758,7 +765,8 @@ namespace FlexKit
 		{
 			FrameResourceHandle BackBuffer;
 		};
-		auto& Pass = Graph.AddNode<PassData>(GetCRCGUID(PRESENT),
+		auto& Pass = Graph.AddNode<PassData>(
+			PassData{},
 			[&](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
 				Data.BackBuffer = Builder.PresentBackBuffer(GetCRCGUID(BACKBUFFER));

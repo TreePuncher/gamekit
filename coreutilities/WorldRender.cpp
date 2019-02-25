@@ -288,12 +288,13 @@ namespace FlexKit
 
 			ConstantBufferHandle	pointLightBuffer;
 			ConstantBufferHandle	lightListBuffer;
-			PVS*					drawables;
+			PVS const*				drawables;
 			FlexKit::DescriptorHeap	Heap; // Null Filled
 		};
 
 
-		auto& Pass = frameGraph.AddNode<ForwardDrawPass>(GetCRCGUID(PRESENT),
+		auto& Pass = frameGraph.AddNode<ForwardDrawPass>(
+			ForwardDrawPass{},
 			[&](FrameGraphNodeBuilder& builder, ForwardDrawPass& data)
 			{
 				builder.AddDataDependency(*desc.PVS);
@@ -476,7 +477,8 @@ namespace FlexKit
 			});
 
 
-		auto lightBufferData = &graph.AddNode<LightBufferUpdate>(0,
+		auto lightBufferData = &graph.AddNode<LightBufferUpdate>(
+			LightBufferUpdate{},
 			[&](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
 			{
 				builder.AddDataDependency(lightBufferUpdate);

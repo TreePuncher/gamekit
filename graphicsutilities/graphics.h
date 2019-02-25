@@ -2491,8 +2491,8 @@ namespace FlexKit
 		ID3D12Resource*		GetObjectDeviceResource (const SOResourceHandle		handle) const;
 		ID3D12Resource*		GetObjectDeviceResource	(const UAVResourceHandle	handle) const;
 
-		ID3D12Resource*	GetSOCounterResource	(const SOResourceHandle handle) const;
-		size_t			GetStreamOutBufferSize	(const SOResourceHandle handle) const;
+		ID3D12Resource*		GetSOCounterResource	(const SOResourceHandle handle) const;
+		size_t				GetStreamOutBufferSize	(const SOResourceHandle handle) const;
 
 		void ResetQuery(QueryHandle handle);
 

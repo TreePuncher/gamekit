@@ -885,7 +885,7 @@ namespace FlexKit
 
 		CBPushBuffer Reserve(ConstantBufferHandle CB, size_t pushSize, size_t count)
 		{
-			size_t reserveSize	= (pushSize / 512 + 1) * 512 * count;
+			size_t reserveSize	= (pushSize / 256 + 1) * 256 * count;
 			auto buffer			= renderSystem->ConstantBuffers.Reserve(CB, reserveSize);
 
 			return { CB, buffer.Data, buffer.offsetBegin, reserveSize };
@@ -1511,18 +1511,19 @@ namespace FlexKit
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
 
-		template<typename TY, typename SetupFN, typename DrawFN>
-		TY& AddNode(uint32_t Tag, SetupFN Setup, DrawFN Draw)
+
+		template<typename TY, typename INITIAL_TY, typename SetupFN, typename DrawFN>
+		TY& AddNode(INITIAL_TY&& initial, SetupFN Setup, DrawFN Draw)
 		{
 			Nodes.push_back(FrameGraphNode(Memory));
 
-			TY& Data				= Memory->allocate_aligned<TY>();
+			TY& Data				= Memory->allocate_aligned<TY>(std::move(std::forward<INITIAL_TY>(initial)));
 			FrameGraphNode& Node	= Nodes.back();
 			FrameGraphNodeBuilder Builder(dataDependencies, &Resources, Node, ResourceContext, Memory);
 
 			Node.NodeAction = [=, &Data, &Node](
-				FrameResources& Resources, 
-				Context* ctx) 
+				FrameResources& Resources,
+				Context* ctx)
 			{
 				Node.HandleBarriers(Resources, ctx);
 				Draw(Data, Resources, ctx);
@@ -2036,7 +2037,8 @@ namespace FlexKit
 		};
 
 
-		auto& Pass = Graph.AddNode<DrawRect>(GetCRCGUID(PRESENT),
+		auto& Pass = Graph.AddNode<DrawRect>(
+			DrawRect{},
 			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
 			{
 				// Single Thread Section
@@ -2119,55 +2121,78 @@ namespace FlexKit
 		TriMeshHandle			Mesh;
 		TextureHandle			RenderTarget;
 		TextureHandle			DepthBuffer;
-		VertexBufferHandle		VertexBuffer;
-		ConstantBufferHandle	Constants;
+		VertexBufferHandle		instanceBuffer;
+		ConstantBufferHandle	constantBuffer;
 		PSOHandle				PSO;
 
-		DataDependencyList		dependencies;
-
+		size_t	reserveCount	= 512;
 		size_t	InstanceElementSize;
-		size_t	ConstantSize[2];
-		char*	ConstantData[2];
 	};
 
 
-	template<typename CONTAINER_TY, typename GETCONSTANTS_FN>
-	void DrawCollection(
-		FrameGraph&					frameGraph,
-		CONTAINER_TY&&				entities,
-		const GETCONSTANTS_FN		fnGetInstanceData,
-		const DrawCollection_Desc&	desc,
-		iAllocator*					tempAllocator)
+	struct _DCConstantData
 	{
-		struct _DrawGrid
+		size_t	idx;
+		char*	buffer;
+		size_t	bufferSize;
+	};
+
+	struct _DCConstantBuffer
+	{
+		size_t					idx;
+		ConstantBufferHandle	constantBuffer;
+		size_t					offset;
+	};
+
+	template<typename FETCHINSTANCES_FN, typename FETCHCONSTANTS_FN, typename FORMATINSTANCE_FN>
+	void DrawCollection(
+		FrameGraph&							frameGraph,
+		static_vector<UpdateTask*>			dependencies,
+		static_vector<_DCConstantData>		constantData,
+		static_vector<_DCConstantBuffer>	constantBuffers,
+		FETCHCONSTANTS_FN					fetchConstants,
+		FETCHINSTANCES_FN					fetchInstances,
+		FORMATINSTANCE_FN					formatInstanceData,
+		const DrawCollection_Desc&			desc,
+		iAllocator*							tempAllocator)
+	{
+		using FetchInstancesFN_t	= decltype(fetchInstances);
+		using FetchConstantsFN_t	= decltype(fetchConstants);
+
+
+		struct _DrawCollection
 		{
-			CONTAINER_TY				entities;
+			_DrawCollection(FETCHINSTANCES_FN&& in_fetchInstances, FETCHCONSTANTS_FN&& in_fetchConstants) :
+				fetchInstances{ std::move(in_fetchInstances) },
+				fetchConstants{ std::move(in_fetchConstants) }{}
 
-			FrameResourceHandle			renderTarget;
-			FrameResourceHandle			depthBuffer;
 
-			size_t						instanceCount;
-			VBPushBuffer				instanceBuffer;
+			FETCHCONSTANTS_FN					fetchConstants;
+			FETCHINSTANCES_FN					fetchInstances;
 
-			TriMeshHandle				mesh;
+			FrameResourceHandle					renderTarget;
+			FrameResourceHandle					depthBuffer;
 
-			CBPushBuffer				constantBuffer;
+			TriMeshHandle						mesh;
+			VBPushBuffer						instanceBuffer;
+			CBPushBuffer						constantBuffer;
 
-			size_t						instanceElementSize;
-			size_t						constantOffsets[2];
+			static_vector<_DCConstantData>		constants;
+			static_vector<_DCConstantBuffer>	constantBuffers;
 
-			PSOHandle					PSO;
-			FlexKit::DescriptorHeap		heap; // Null Filled
+			size_t								instanceElementSize;
+
+			PSOHandle							PSO;
+			FlexKit::DescriptorHeap				heap; // Null Filled
 		};
 
+		const size_t instanceElementSize = sizeof(decltype(formatInstanceData(fetchInstances())));
 
-		size_t instanceElementSize = sizeof(decltype(fnGetInstanceData(entities[0])));
-
-
-		frameGraph.AddNode<_DrawGrid>(0,
+		frameGraph.AddNode<_DrawCollection>(
+			_DrawCollection{ std::move(fetchInstances), std::move(fetchConstants) },
 			[&](FrameGraphNodeBuilder& builder, auto& data)
 			{
-				for (auto& dep : desc.dependencies)
+				for (auto& dep : dependencies)
 					builder.AddDataDependency(*dep);
 
 				data.renderTarget	= builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
@@ -2178,26 +2203,28 @@ namespace FlexKit
 					frameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
 					tempAllocator).NullFill(frameGraph.Resources.renderSystem);
 
-				CBPushBuffer temp1 = frameGraph.Resources.Reserve(desc.Constants, std::max(desc.ConstantSize[0], desc.ConstantSize[1]), 2);
-				VBPushBuffer temp2 = frameGraph.Resources.Reserve(desc.VertexBuffer, instanceElementSize * entities.size());
+				size_t MaxElementSize = 0;
+				for (auto& i : constantData)
+					MaxElementSize = std::max(MaxElementSize, i.bufferSize);
 
-				data.constantBuffer = std::move(temp1);
-				data.mesh			= desc.Mesh;
-				data.PSO			= desc.PSO;
+				CBPushBuffer temp1 = frameGraph.Resources.Reserve(desc.constantBuffer, MaxElementSize,	constantData.size());
+				VBPushBuffer temp2 = frameGraph.Resources.Reserve(desc.instanceBuffer, instanceElementSize * desc.reserveCount);
 
+				data.constantBuffer			= std::move(temp1);
+				data.mesh					= desc.Mesh;
+				data.PSO					= desc.PSO;
 				data.instanceBuffer			= std::move(temp2);
 				data.instanceElementSize	= instanceElementSize;
-				data.instanceCount			= entities.size();
-				data.entities				= std::move(entities);
+				data.constants				= constantData;
+				data.constantBuffers		= constantBuffers;
 			},
-			[=](auto& data, const FrameResources& resources, Context* ctx)
+			[=](_DrawCollection& data, const FrameResources& resources, Context* ctx)
 			{
-				for (auto& entity : data.entities)
-					data.instanceBuffer.Push(fnGetInstanceData(entity));
+				data.fetchConstants(data);
+				auto entities = data.fetchInstances();
 
-				const size_t end = sizeof(desc.ConstantSize) / sizeof(*desc.ConstantSize);
-				for (size_t I = 0; I < end; ++I)
-					data.constantOffsets[I] = data.constantBuffer.Push(desc.ConstantData[I], desc.ConstantSize[I]);
+				for (auto& entity : entities)
+					data.instanceBuffer.Push(formatInstanceData(entity));
 
 
 				auto* triMesh			= GetMeshResource(data.mesh);
@@ -2231,15 +2258,18 @@ namespace FlexKit
 					&instancedBuffers);
 
 				ctx->SetGraphicsDescriptorTable(0, data.heap);
-				ctx->SetGraphicsConstantBufferView(1,  data.constantBuffer, data.constantOffsets[0]);
-				ctx->SetGraphicsConstantBufferView(2,  data.constantBuffer, data.constantOffsets[1]);
 
-				ctx->NullGraphicsConstantBufferView(3);
-				ctx->NullGraphicsConstantBufferView(4); // Leave no root descriptor un-bound
-				ctx->NullGraphicsConstantBufferView(5); // Leave no root descriptor un-bound
-				ctx->NullGraphicsConstantBufferView(6); // Leave no root descriptor un-bound
+				for (auto& CBEntry : data.constants) 
+				{
+					size_t offset = data.constantBuffer.Push(CBEntry.buffer, CBEntry.bufferSize);
+					ctx->SetGraphicsConstantBufferView(1u + CBEntry.idx, data.constantBuffer, offset);
+				}
 
-				ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, data.instanceCount);
+
+				for (auto& constantBuffer : data.constantBuffers)
+					ctx->SetGraphicsConstantBufferView(1u + constantBuffer.idx, data.constantBuffer, constantBuffer.offset);
+
+				ctx->DrawIndexedInstanced(MeshVertexCount, 0, 0, entities.size());
 			});
 	}
 
@@ -2288,7 +2318,8 @@ namespace FlexKit
 			float2 UV;
 		};
 
-		frameGraph.AddNode<DrawWireframes>(0,
+		frameGraph.AddNode<DrawWireframes>(
+			DrawWireframes{},
 			[&](FrameGraphNodeBuilder& Builder, auto& Data)
 			{
 				Data.RenderTarget	= Builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
@@ -2435,7 +2466,8 @@ namespace FlexKit
 			float2 UV;
 		};
 
-		FrameGraph.AddNode<DrawGrid>(0,
+		FrameGraph.AddNode<DrawGrid>(
+			DrawGrid{},
 			[&](FrameGraphNodeBuilder& Builder, auto& Data)
 			{
 				Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.renderSystem->GetTag(RenderTarget));
