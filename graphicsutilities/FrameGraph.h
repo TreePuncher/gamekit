@@ -883,21 +883,10 @@ namespace FlexKit
 		}
 
 
-		CBPushBuffer Reserve(ConstantBufferHandle CB, size_t pushSize, size_t count)
+		operator RenderSystem& ()
 		{
-			size_t reserveSize	= (pushSize / 256 + 1) * 256 * count;
-			auto buffer			= renderSystem->ConstantBuffers.Reserve(CB, reserveSize);
-
-			return { CB, buffer.Data, buffer.offsetBegin, reserveSize };
+			return *renderSystem;
 		}
-
-
-		VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize)
-		{
-			auto buffer = renderSystem->VertexBuffers.Reserve(VB, reserveSize);
-			return { VB, buffer.Data, buffer.offsetBegin, reserveSize };
-		}
-
 
 	};/************************************************************************************************/
 
@@ -2207,8 +2196,8 @@ namespace FlexKit
 				for (auto& i : constantData)
 					MaxElementSize = std::max(MaxElementSize, i.bufferSize);
 
-				CBPushBuffer temp1 = frameGraph.Resources.Reserve(desc.constantBuffer, MaxElementSize,	constantData.size());
-				VBPushBuffer temp2 = frameGraph.Resources.Reserve(desc.instanceBuffer, instanceElementSize * desc.reserveCount);
+				CBPushBuffer temp1 = Reserve(desc.constantBuffer, MaxElementSize,	constantData.size(),	frameGraph.Resources);
+				VBPushBuffer temp2 = Reserve(desc.instanceBuffer, instanceElementSize * desc.reserveCount,	frameGraph.Resources);
 
 				data.constantBuffer			= std::move(temp1);
 				data.mesh					= desc.Mesh;
@@ -2260,10 +2249,10 @@ namespace FlexKit
 				ctx->SetGraphicsDescriptorTable(0, data.heap);
 
 				for (auto& CBEntry : data.constants) 
-				{
-					size_t offset = data.constantBuffer.Push(CBEntry.buffer, CBEntry.bufferSize);
-					ctx->SetGraphicsConstantBufferView(1u + CBEntry.idx, data.constantBuffer, offset);
-				}
+					ctx->SetGraphicsConstantBufferView(
+						1u + CBEntry.idx, 
+						data.constantBuffer, 
+						data.constantBuffer.Push(CBEntry.buffer, CBEntry.bufferSize));
 
 
 				for (auto& constantBuffer : data.constantBuffers)

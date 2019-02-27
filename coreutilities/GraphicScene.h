@@ -406,7 +406,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename TY_Interactor = DefaultCameraInteractor>
+	struct DefaultLightInteractor
+	{
+
+	};
+
+	template<typename TY_Interactor = DefaultLightInteractor>
 	class PointLightBehavior
 	{
 	public:
@@ -420,6 +425,8 @@ namespace FlexKit
 
 	inline void DEBUG_DrawQuadTree(
 		GraphicScene&			scene, 
+		UpdateDispatcher&		dispatcher,
+		UpdateTask&				sceneUpdate,
 		FrameGraph&				graph, 
 		CameraHandle			camera,
 		VertexBufferHandle		vertexBuffer, 

@@ -1100,22 +1100,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::SetRenderTargets(static_vector<Texture2D*, 16> RTs)
-	{
-		RTVPOSCPU			= RS->_GetRTVTableCurrentPosition_CPU(); // _Ptr to Current POS On RTV heap on CPU
-		auto RTVPOS			= RS->_ReserveRTVHeap(RTs.size());
-		auto RTVHeap		= RS->_GetCurrentRTVTable();
-		RenderTargetCount	= RTs.size();
-
-		for (auto I : RTs)
-			RTVPOS = PushRenderTarget(RS, I, RTVPOS);
-		
-		UpdateRTVState();
-	}
-
-
-	/*
-	void Context::SetRenderTargets(const static_vector<TextureObject> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
+	void Context::SetRenderTargets(const static_vector<DescHeapPOS> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
 	{
 		DSVPOSCPU = DepthStencil;
 
@@ -1129,32 +1114,8 @@ namespace FlexKit
 			RTVHandles.begin(),
 			false,
 			DepthStecil ? &(D3D12_CPU_DESCRIPTOR_HANDLE)DepthStencil : nullptr);
-
-		UpdateRTVState();
 	}
-	*/
 	
-
-
-	/************************************************************************************************/
-
-
-	void Context::SetRenderTargets(const static_vector<DescHeapPOS, 16> RTs, bool DepthStecil, DescHeapPOS DepthStencil)
-	{
-		DSVPOSCPU = DepthStencil;
-
-		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTVHandles;
-
-		for (auto RT : RTs) 
-			RTVHandles.push_back(RT);
-
-		DeviceContext->OMSetRenderTargets(
-			RTs.size(),
-			RTVHandles.begin(),
-			false,
-			DepthStecil ? &(D3D12_CPU_DESCRIPTOR_HANDLE)DepthStencil : nullptr);
-	}
-
 
 	/************************************************************************************************/
 
@@ -2779,9 +2740,9 @@ namespace FlexKit
 
 	void RenderSystem::WaitforGPU()
 	{
-		size_t Index	= CurrentIndex;
-		auto Fence		= this->Fence;
-		size_t CompleteValue = Fence->GetCompletedValue();
+		size_t Index			= CurrentIndex;
+		auto Fence				= this->Fence;
+		size_t CompleteValue	= Fence->GetCompletedValue();
 
 		if (CompleteValue < Fences[Index].FenceValue) {
 			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
@@ -2864,6 +2825,15 @@ namespace FlexKit
 	FORMAT_2D RenderSystem::GetTextureFormat(TextureHandle handle) const
 	{
 		return DXGIFormat2TextureFormat(RenderTargets.GetFormat(handle));
+	}
+
+
+	/************************************************************************************************/
+
+
+	DXGI_FORMAT RenderSystem::_GetDXGITextureFormat(TextureHandle handle) const
+	{
+		return RenderTargets.GetFormat(handle);
 	}
 
 
@@ -3294,6 +3264,15 @@ namespace FlexKit
 	ID3D12Resource* RenderSystem::GetObjectDeviceResource(const ConstantBufferHandle handle) const
 	{
 		return ConstantBuffers.GetBufferResource(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource* RenderSystem::GetObjectDeviceResource(const TextureHandle	handle) const
+	{
+		return Textures.GetResource(handle);
 	}
 
 
@@ -4896,7 +4875,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12Resource*		TextureStateTable::GetResource(TextureHandle Handle)
+	ID3D12Resource*		TextureStateTable::GetResource(TextureHandle Handle) const
 	{
 		auto Idx			= Handles[Handle];
 		auto ResourceIdx	= UserEntries[Idx].ResourceIdx;
@@ -6174,6 +6153,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+
 	DescHeapPOS PushRenderTarget(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS)
 	{
 		D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
@@ -6188,6 +6168,27 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
+	DescHeapPOS PushRenderTarget(RenderSystem* RS, TextureHandle target, DescHeapPOS POS)
+	{
+		D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
+		TargetDesc.Format				= RS->_GetDXGITextureFormat(target);
+		TargetDesc.Texture2D.MipSlice	= 0;
+		TargetDesc.Texture2D.PlaneSlice = 0;
+		TargetDesc.ViewDimension		= D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;
+
+		auto resource = RS->GetObjectDeviceResource(target);
+		RS->pDevice->CreateRenderTargetView(resource, &TargetDesc, POS);
+
+		return IncrementHeapPOS(POS, RS->DescriptorRTVSize, 1);
+	}
+
+
+	/************************************************************************************************/
+
+
 	DescHeapPOS PushDepthStencil(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS)
 	{
 		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
@@ -6199,6 +6200,7 @@ namespace FlexKit
 
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
+
 
 	/************************************************************************************************/
 

@@ -779,7 +779,7 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
-
+	/*
 	void SetRenderTargets(
 		Context* Ctx, 
 		static_vector<FrameResourceHandle> RenderTargets, 
@@ -791,7 +791,7 @@ namespace FlexKit
 
 		Ctx->SetRenderTargets(Targets, false, DescHeapPOS());
 	}
-
+	*/
 
 	/************************************************************************************************/
 

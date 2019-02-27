@@ -27,10 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
-#include "..\coreutilities\MathUtils.h"
+#include "..\coreutilities\mathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\coreutilities\graphicScene.h"
-#include "..\coreutilities\ThreadUtilities.h"
+#include "..\coreutilities\threadUtilities.h"
 
 #include "PxPhysicsAPI.h"
 #include <PhysX_sdk/physx/include/characterkinematic/PxController.h>
@@ -107,6 +107,7 @@ namespace FlexKit
 	protected:
 	};
 
+
 	struct CapsuleCharacterController
 	{
 		physx::PxControllerFilters  characterControllerFilters;
@@ -127,122 +128,6 @@ namespace FlexKit
 		float3 FootPos;
 	};
 
-
-	/************************************************************************************************/
-
-
-	/*
-	FLEXKITAPI size_t			CreateCubeActor			(physx::PxMaterial* material, PScene* scene, float l, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
-	FLEXKITAPI size_t			CreatePlaneCollider		(physx::PxMaterial* material, PScene* scene);
-	FLEXKITAPI size_t			CreateSphereActor		(physx::PxMaterial* material, PScene* scene, float3 initialP = float3(), FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity(), float3 InitialV ={ 0, 0, 0 });
-	FLEXKITAPI size_t			CreateStaticActor		(PhysicsSystem* PS, PScene* Scene, NodeHandle Node, float3 POS = { 0, 0, 0 }, Quaternion Q = Quaternion::Identity());
-
-
-	FLEXKITAPI void Initiate		(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc);
-	FLEXKITAPI void ReleaseCapsule	(CapsuleCharacterController* Capsule);
-	FLEXKITAPI void	ReleaseScene	(PScene* mat);
-	FLEXKITAPI void	InitiateScene	(PhysicsSystem* System, PScene* scn, iAllocator* allocator);
-
-
-
-	FLEXKITAPI void	MakeCube		(CubeDesc& cdesc, SceneNodes* Nodes, PScene* scene, physx::PxMaterial* Material, Drawable* E, NodeHandle node, float3 initialP ={ 0, 0, 0 }, FlexKit::Quaternion initialQ = FlexKit::Quaternion::Identity());
-
-
-	FLEXKITAPI void	UpdateScene		(PScene* scn, double dt, FNPSCENECALLBACK_POSTUPDATE, FNPSCENECALLBACK_PREUPDATE, void* P);
-	FLEXKITAPI void	UpdateColliders	(PScene* scn, FlexKit::SceneNodes* nodes);
-	*/
-
-
-	/************************************************************************************************/
-
-	/*
-
-	struct ColliderBaseSystem
-	{
-		void Initiate(
-			SceneNodeComponentSystem* nodes,
-			iAllocator* Memory) 
-		{
-			Nodes				= nodes;
-			Colliders.Allocator = Memory;
-		}
-
-		void Release()
-		{
-			for (auto C : Colliders) 
-			{
-				if (C.Actor) 
-					C.Actor->release();
-			}
-
-			Colliders.Release();
-		}
-
-
-
-		struct Collider
-		{
-			Collider() :
-				Actor		(nullptr),
-				Node		(NodeHandle(-1)),
-				Material	(nullptr) {}
-
-			Collider(NodeHandle node, physx::PxMaterial* Mat = nullptr, physx::PxActor* actor = nullptr) :
-				Actor(actor),
-				Material(Mat),
-				Node(node) {}
-
-			physx::PxActor*		Actor;
-			physx::PxMaterial*	Material;
-			NodeHandle			Node;
-		};
-		ComponentHandle CreateCollider(
-			physx::PxActor*		actor,
-			physx::PxMaterial*	mat
-		)
-		{
-			ComponentHandle Handle(Colliders.size());
-			
-			Colliders.push_back(Collider(Nodes->GetNewNode(), mat, actor));
-
-			return Handle;
-		}
-
-
-		void UpdateSystem()
-		{
-			for (auto c : Colliders)
-			{
-				if (c.Actor->isRigidBody())
-				{
-					physx::PxRigidDynamic* o = static_cast<physx::PxRigidDynamic*>(c.Actor);
-					auto pose = o->getGlobalPose();
-
-					LT_Entry LT(GetLocal(*Nodes, c.Node));
-					LT.T = float3		(pose.p.x, pose.p.y, pose.p.z );
-					LT.R = Quaternion	(pose.q.x, pose.q.y, pose.q.z, pose.q.w);
-
-					SetLocal(*Nodes, c.Node, &LT);
-				}
-			}
-		}
-
-
-		NodeHandle GetNode(ComponentHandle C)
-		{
-			return Colliders[C].Node;
-		}
-
-
-		SceneNodeComponentSystem*	Nodes;
-		Vector<Collider>			Colliders;
-		Vector<Collider>			FreeColliders;
-	};
-		*/
-
-	//const uint32_t ColliderComponentID = GetTypeGUID(ColliderSystem);
-
-	/************************************************************************************************/
 
 	/*
 	struct CharacterControllerSystem : public FlexKit::ComponentSystemInterface

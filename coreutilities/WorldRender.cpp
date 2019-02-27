@@ -303,8 +303,8 @@ namespace FlexKit
 				data.DepthBuffer		= builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
 
 				size_t localBufferSize  = std::max(sizeof(Camera::CameraConstantBuffer), sizeof(ForwardDrawConstants));
-				data.entityConstants	= std::move(frameGraph.Resources.Reserve(ConstantBuffer, sizeof(ForwardDrawConstants),	1024 ));
-				data.localConstants		= std::move(frameGraph.Resources.Reserve(ConstantBuffer, localBufferSize, 2));
+				data.entityConstants	= std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants),	1024, frameGraph.Resources));
+				data.localConstants		= std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
 
 				data.pointLightBuffer	= pointLightBuffer;
 				data.lightListBuffer	= lightListBuffer;
@@ -329,9 +329,9 @@ namespace FlexKit
 				// Setup Initial Shading State
 				Ctx->SetScissorAndViewports({Targets.RenderTarget});
 				Ctx->SetRenderTargets(
-					{	Resources.GetRenderTargetObject(data.BackBuffer) }, 
+					{ Resources.GetRenderTargetObject(data.BackBuffer) }, 
 					true,
-					 (DescHeapPOS)Resources.GetRenderTargetObject(data.DepthBuffer));
+					Resources.GetRenderTargetObject(data.DepthBuffer));
 
 				Ctx->SetPrimitiveTopology			(EInputTopology::EIT_TRIANGLE);
 				Ctx->SetGraphicsDescriptorTable		(0, data.Heap);
@@ -346,7 +346,6 @@ namespace FlexKit
 					auto constantData	= drawable.D->GetConstants();
 					auto* triMesh		= GetMeshResource(drawable.D->MeshHandle);
 					size_t constants	= data.entityConstants.Push(constantData);
-
 
 					Ctx->AddIndexBuffer(triMesh);
 					Ctx->AddVertexBuffers(triMesh,
@@ -388,16 +387,15 @@ namespace FlexKit
 				data.viewSplits			= 16;
 				data.splitSpan			= 1.0f / float(data.viewSplits);
 				data.sceneLightCount	= scene.GetPointLightCount();
-				data.lightBuckets		= Vector<Vector<Vector<LightHandle>>>{ tempMemory };
+				data.lightBuckets		= Vector<Vector<Vector<LightHandle>>>{ tempMemory, data.viewSplits };
 				data.scene				= &scene;
-				
-				data.lightBuckets.reserve(data.viewSplits);
 
 				for (size_t itr = 0; itr < data.viewSplits; itr++)
 				{
 					data.lightBuckets.emplace_back(tempMemory);
 					data.lightBuckets.reserve(data.viewSplits);
 				}
+
 
 				for (auto& column : data.lightBuckets)
 				{
@@ -519,6 +517,7 @@ namespace FlexKit
 					uint16_t offset;
 				};
 
+
 				auto&		lightBufferData	= *data.lighBufferData;
 				auto&		tempMemory		= lightBufferData.tempMemory;
 
@@ -560,6 +559,7 @@ namespace FlexKit
 						offset += lightCount;
 					}
 				}
+
 
 				struct pointLight
 				{

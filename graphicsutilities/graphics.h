@@ -1519,17 +1519,18 @@ namespace FlexKit
 	{
 	public:
 		IndirectLayout() :
-			entries{ nullptr },
-			signature{ nullptr }{}
+			entries		{ nullptr },
+			signature	{ nullptr }{}
 
 		IndirectLayout(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectDrawDescription>&& IN_Entries) :
-			signature{ IN_signature },
-			stride{ IN_stride },
-			entries{ std::move(IN_Entries) } {}
+			signature	{ IN_signature },
+			stride		{ IN_stride },
+			entries		{ std::move(IN_Entries) } {}
 
 		~IndirectLayout()
 		{
-			signature->Release();
+			if (signature)
+				signature->Release();
 		}
 
 
@@ -1538,7 +1539,8 @@ namespace FlexKit
 			entries{ rhs.entries },
 			stride{ rhs.stride }
 		{
-			signature->AddRef();
+			if(signature)
+				signature->AddRef();
 		}
 
 		IndirectLayout& operator =	(const IndirectLayout& rhs)
@@ -1549,9 +1551,9 @@ namespace FlexKit
 			if (signature)
 				signature->Release();
 
-			signature = rhs.signature;
-			stride = rhs.stride;
-			entries = rhs.entries;
+			signature	= rhs.signature;
+			stride		= rhs.stride;
+			entries		= rhs.entries;
 
 			return (*this);
 		}
@@ -1652,9 +1654,7 @@ namespace FlexKit
 		void SetComputeRootSignature(RootSignature& RS);
 		void SetPipelineState		(ID3D12PipelineState* PSO);
 
-		void SetRenderTargets		(static_vector<Texture2D*,16>	RTs);
-		void SetRenderTargets		(const static_vector<DescHeapPOS, 16>	RTs, bool DepthStecil, DescHeapPOS DepthStencil = DescHeapPOS());
-		//void SetRenderTargets		(const static_vector<TextureObject>		RTs, bool DepthStecil, DescHeapPOS DepthStencil = DescHeapPOS());
+		void SetRenderTargets		(const static_vector<DescHeapPOS> RTs, bool DepthStecil, DescHeapPOS DepthStencil = DescHeapPOS());
 
 		void SetViewports			(static_vector<D3D12_VIEWPORT, 16>	VPs);
 		void SetScissorRects		(static_vector<D3D12_RECT, 16>		Rects);
@@ -2151,7 +2151,7 @@ namespace FlexKit
 		void			MarkRTUsed		(TextureHandle Handle);
 
 		DeviceResourceState GetState	(TextureHandle Handle) const;
-		ID3D12Resource*		GetResource	(TextureHandle Handle);
+		ID3D12Resource*		GetResource	(TextureHandle Handle) const;
 
 
 		void ReleaseTexture	(TextureHandle Handle);
@@ -2460,6 +2460,7 @@ namespace FlexKit
 		const uint2		GetTextureWH			(TextureHandle Handle) const;
 		const uint2		GetRenderTargetWH		(TextureHandle Handle) const;
 		FORMAT_2D		GetTextureFormat		(TextureHandle Handle) const;
+		DXGI_FORMAT		_GetDXGITextureFormat	(TextureHandle Handle) const;
 
 		void			UploadTexture				(TextureHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
 		void			UploadTexture				(TextureHandle handle, byte* buffer, size_t bufferSize, uint2 WH, size_t resourceCount, size_t* mipOffsets, iAllocator* temp); // Uses Upload Queue
@@ -2488,6 +2489,7 @@ namespace FlexKit
 
 
 		ID3D12Resource*		GetObjectDeviceResource	(const ConstantBufferHandle	handle) const;
+		ID3D12Resource*		GetObjectDeviceResource	(const TextureHandle		handle) const;
 		ID3D12Resource*		GetObjectDeviceResource (const SOResourceHandle		handle) const;
 		ID3D12Resource*		GetObjectDeviceResource	(const UAVResourceHandle	handle) const;
 
@@ -2674,7 +2676,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, Texture2D*		target, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, TextureHandle	target, DescHeapPOS POS);
+
 	FLEXKITAPI DescHeapPOS PushDepthStencil			(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushCBToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize);
 	FLEXKITAPI DescHeapPOS PushSRVToDescHeap		(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAG_NONE);
@@ -2993,6 +2997,25 @@ namespace FlexKit
 		size_t				pushBufferSize		= 0;
 		size_t				pushBufferUsed		= 0;
 	};
+
+
+	/************************************************************************************************/
+
+
+	CBPushBuffer Reserve(ConstantBufferHandle CB, size_t pushSize, size_t count, RenderSystem& renderSystem)
+	{
+		size_t reserveSize = (pushSize / 256 + 1) * 256 * count;
+		auto buffer = renderSystem.ConstantBuffers.Reserve(CB, reserveSize);
+
+		return { CB, buffer.Data, buffer.offsetBegin, reserveSize };
+	}
+
+
+	VBPushBuffer Reserve(VertexBufferHandle VB, size_t reserveSize, RenderSystem& renderSystem)
+	{
+		auto buffer = renderSystem.VertexBuffers.Reserve(VB, reserveSize);
+		return { VB, buffer.Data, buffer.offsetBegin, reserveSize };
+	}
 
 
 	/************************************************************************************************/

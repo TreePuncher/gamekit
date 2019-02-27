@@ -1031,10 +1031,8 @@ namespace FlexKit
 							//float4 albedo;
 							//float4 specular;
 
-							//GS_out->SetMaterialParams(NewEntity, albedo, specular);
-
+							GS_out->SetMaterialParams(NewEntity, { 1, 1, 1, 0.75f }, {0, 1, 1, 0});
 							SetFlag(CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
-							int x = 0;
 						}
 					}
 				}
@@ -1227,7 +1225,7 @@ namespace FlexKit
 
 		Drawable::VConsantsLayout	Constants;
 
-		Constants.MP.Albedo = float4(0, 1, 1, 0.5f);// E->MatProperties.Albedo;
+		Constants.MP.Albedo = MatProperties.Albedo;
 		Constants.MP.Spec	= MatProperties.Spec;
 		Constants.Transform = DirectX::XMMatrixTranspose(WT);
 

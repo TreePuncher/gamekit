@@ -122,7 +122,7 @@ namespace FlexKit
 			},
 			[](auto& data)
 			{
-				FK_LOG_INFO("OrbitCamera Update");
+				FK_LOG_9("OrbitCamera Update");
 
 				data.started		= true;
 				data.orbitCamera->Update(data.mouseState, data.dt);

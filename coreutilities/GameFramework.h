@@ -78,7 +78,7 @@ namespace FlexKit
 		void Update				(UpdateDispatcher& dispatcher, double dT);
 		void UpdateFixed		(UpdateDispatcher& dispatcher, double dT); // called at fixed time rate
 		void UpdatePreDraw		(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
-		void Draw				(UpdateDispatcher& dispatcher, iAllocator* TempMemory);
+		void Draw				(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
 		void PostDraw			(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
 		void Cleanup			();
 

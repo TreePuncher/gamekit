@@ -103,8 +103,6 @@ bool PlayState::EventHandler(Event evt)
 		[&](auto& evt)
 		{
 			debugCamera.HandleEvent(evt);
-
-			//thirdPersonCamera.HandleEvents(evt);
 		});
 
 	return true;
@@ -116,10 +114,6 @@ bool PlayState::EventHandler(Event evt)
 
 bool PlayState::Update(EngineCore* Core, UpdateDispatcher& dispatcher, double dT)
 {
-	//debugCamera.Yaw(dT * pi/8);
-	debugCamera.Update(framework->MouseState, dT);
-	//auto cameraRigUpdateTask	= UpdateThirdPersonRig		(dispatcher, thirdPersonCamera, *transformTask, *cameraUpdate, dT);
-
 	return true;
 }
 
@@ -151,12 +145,13 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 
 	CameraHandle activeCamera = (CameraHandle)debugCamera;
 
-	auto transforms			= QueueTransformUpdateTask	(dispatcher);
-	auto cameras			= QueueCameraUpdate			(dispatcher, transforms);
-	auto sceneUpdate		= scene.Update				(dispatcher, transforms);
-	auto orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
-	auto& cameraConstants	= MakeHeapCopy(GetCameraConstantBuffer(activeCamera), core->GetTempMemory());
-	auto& PVS				= GetGraphicScenePVSTask(dispatcher, *sceneUpdate, scene, activeCamera, core->GetTempMemory());
+	auto transforms				= QueueTransformUpdateTask	(dispatcher);
+	auto cameras				= QueueCameraUpdate			(dispatcher, transforms);
+	auto sceneUpdate			= scene.Update				(dispatcher, transforms);
+	auto orbitUpdate			= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
+	auto& PVS					= GetGraphicScenePVSTask	(dispatcher, *sceneUpdate, scene, activeCamera, core->GetTempMemory());
+	//auto cameraRigUpdateTask	= UpdateThirdPersonRig		(dispatcher, thirdPersonCamera, *transforms, *cameras, dT);
+	auto& cameraConstants		= MakeHeapCopy				(GetCameraConstantBuffer(activeCamera), core->GetTempMemory());
 
 	FlexKit::WorldRender_Targets targets = {
 		GetCurrentBackBuffer(&core->Window),

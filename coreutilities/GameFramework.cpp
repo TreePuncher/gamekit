@@ -338,7 +338,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::Draw(UpdateDispatcher& dispatcher, iAllocator* TempMemory)
+	void GameFramework::Draw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT)
 	{
 		FK_LOG_9("Frame Draw Begin");
 
@@ -352,14 +352,14 @@ namespace FlexKit
 		for (size_t I = 0; I < subStates.size(); ++I)
 		{
 			auto& SubState = subStates[I];
-			if (!SubState->Draw(core, dispatcher, 0, frameGraph))
+			if (!SubState->Draw(core, dispatcher, dT, frameGraph))
 				break;
 		}
 
 		for (size_t I = 1; I <= subStates.size(); ++I)
 		{
 			auto& State = subStates[subStates.size() - I]; 
-			if (!State->PostDrawUpdate(core, dispatcher, 0, frameGraph))
+			if (!State->PostDrawUpdate(core, dispatcher, dT, frameGraph))
 				break;
 		}
 
@@ -406,7 +406,7 @@ namespace FlexKit
 
 		Update			(dispatcher, dT);
 		UpdatePreDraw	(dispatcher, core->GetTempMemory(), dT);
-		Draw			(dispatcher, core->GetTempMemory());
+		Draw			(dispatcher, core->GetTempMemory(), dT);
 
 		dispatcher.Execute();
 
