@@ -31,3 +31,4 @@ Release/
 *.ib_tag
 *.sdf
 /assets
+/flxBlenderTools/__pycache__
