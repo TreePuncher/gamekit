@@ -133,6 +133,7 @@ namespace FlexKit
 	{
 	public:
 		StackAllocator() noexcept :
+			AllocatorInterface{ this },
 			critsection{}
 		{
 			used	= 0;
@@ -141,6 +142,7 @@ namespace FlexKit
 		}
 
 		StackAllocator(StackAllocator&& RHS) noexcept :
+			AllocatorInterface{ this },
 			critsection{}
 		{
 			used   = RHS.used;
@@ -152,12 +154,20 @@ namespace FlexKit
 			RHS.Buffer = nullptr;
 		}
 
+
+		bool operator == (const StackAllocator& rhs) const
+		{
+			return rhs.Buffer == Buffer;
+		}
+
+
 		void	Init				(byte* memory, size_t);
 		void*	malloc				(size_t s);
 		void*	malloc_MT			(size_t s);
 		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
 		void*	_aligned_malloc_MT	(size_t s, size_t alignement = 0x10);
 		void	clear				();
+
 
 		template<typename T>
 		T& allocate()
@@ -177,7 +187,7 @@ namespace FlexKit
 			return *t;
 		}
 
-		operator iAllocator* ()	{return &AllocatorInterface;}
+		operator iAllocator* ()	{ return &AllocatorInterface; }
 	private:
 		size_t used		= 0;
 		size_t size		= 0;

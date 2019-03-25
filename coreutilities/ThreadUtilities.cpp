@@ -48,10 +48,12 @@ namespace FlexKit
 		if (workList.full())
 			return false;
 
-		workList.push_back(Work);
-		CV.notify_all();
+		auto res = workList.push_back(Work);
 
-		return true;
+		if(res)
+			CV.notify_all();
+
+		return res;
 	}
 
 
@@ -107,8 +109,8 @@ namespace FlexKit
 						hasJob.store(true, std::memory_order_release);
 
 						work->Run();
-						work->NotifyWatchers();
 						work->Release();
+						work->NotifyWatchers();
 
 						hasJob.store(false, std::memory_order_release);
 
@@ -269,8 +271,8 @@ namespace FlexKit
 			if (work)
 			{
 				work->Run();
-				work->NotifyWatchers();
 				work->Release();
+				work->NotifyWatchers();
 			}
 		} while (true);
 	}

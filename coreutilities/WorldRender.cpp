@@ -480,7 +480,7 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
 			{
 				builder.AddDataDependency(lightBufferUpdate);
-				auto& lightBufferData = *reinterpret_cast<LighBufferCPUUpdate*>(lightBufferUpdate.Data);
+				auto& lightBufferData	= *reinterpret_cast<LighBufferCPUUpdate*>(lightBufferUpdate.Data);
 
 				data.lightMapObject		= builder.WriteShaderResource(lightMap);
 				data.lighBufferData		= &lightBufferData;

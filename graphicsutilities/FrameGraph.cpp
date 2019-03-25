@@ -575,6 +575,7 @@ namespace FlexKit
 					builder.AddInput(*dependency);
 
 				ReadyResources();
+
 				FK_LOG_9("Frame Graph Single-Thread Section End");
 			},
 			[=](auto& data) 
@@ -590,6 +591,7 @@ namespace FlexKit
 				data.renderSystem->Submit(CLs);
 
 				UpdateResourceFinalState();
+
 				FK_LOG_9("Frame Graph Multi-Thread Section End");
 			});
 	}

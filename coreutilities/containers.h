@@ -975,7 +975,7 @@ namespace FlexKit
 			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
 
-			return false;
+			return true;
 		}
 
 		bool push_back(Ty&& Item) noexcept
@@ -989,7 +989,7 @@ namespace FlexKit
 
 			new(Buffer + idx) Ty(std::move(Item));
 
-			return false;
+			return true;
 		}
 
 		template<typename FN>
@@ -1006,7 +1006,7 @@ namespace FlexKit
 			_Head = _Head % SIZE;
 			Buffer[idx] = Item;
 
-			return false;
+			return true;
 		}
 
 		template<typename FN>
@@ -1024,7 +1024,7 @@ namespace FlexKit
 
 			new(Buffer + idx) Ty(std::move(Item));
 
-			return false;
+			return true;
 		}
 
 		Ty& front() noexcept

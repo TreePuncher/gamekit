@@ -443,6 +443,7 @@ public:
 				core->GetTempMemory());
 		}
 
+		/*
 		if (true)
 			DEBUG_DrawQuadTree(
 				scene,
@@ -452,7 +453,7 @@ public:
 				constantBuffer,
 				core->Window.GetBackBuffer(),
 				core->GetTempMemory());
-
+		*/
 
 		return true; 
 	}

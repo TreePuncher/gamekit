@@ -880,6 +880,8 @@ namespace FlexKit
 
 	GetPVSTaskData& GetGraphicScenePVSTask(UpdateDispatcher& dispatcher, UpdateTask& sceneUpdate, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
 	{
+		GetPVSTaskData* returnValue = nullptr;
+
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
 			{
@@ -890,6 +892,9 @@ namespace FlexKit
 				data.scene			= scene;
 				data.solid			= PVS{ data.taskMemory };
 				data.transparent	= PVS{ data.taskMemory };
+				data.camera			= C;
+
+				returnValue = &data;
 			},
 			[](auto& data)
 			{
@@ -900,10 +905,8 @@ namespace FlexKit
 				FK_LOG_9("End PVS gather\n");
 			});
 
-		auto* data = reinterpret_cast<GetPVSTaskData*>(task.Data);
-		data->task = &task;
-
-		return *data;
+		returnValue->task = &task;
+		return *returnValue;
 	}
 
 

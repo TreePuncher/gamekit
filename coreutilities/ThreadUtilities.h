@@ -233,13 +233,18 @@ namespace FlexKit
 		{
 			if (!threads.empty())
 			{
-				size_t	startPoint = 0;// randomDevice();
+				size_t	startPoint = randomDevice();
 
 				auto _AddWork = [](iWork* newWork, auto& thread)
 				{
-					if (!thread->AddItem(newWork))
-						assert(0);
-					newWork->scheduled = true;
+					FK_ASSERT(newWork->scheduled == false);
+
+					if (thread->AddItem(newWork))// committed to adding work here
+					{
+						newWork->scheduled = true;
+						return true;
+					}
+					return false;
 				};
 
 				for(size_t itr = 0; itr < workerCount; ++itr)
@@ -249,8 +254,8 @@ namespace FlexKit
 
 					if (!thread->IsRunning())
 					{
-						_AddWork(newWork, thread);
-						return;
+						if(_AddWork(newWork, thread))
+							return;
 					}
 				}
 
@@ -261,12 +266,16 @@ namespace FlexKit
 
 					if (!thread->HasJob())
 					{
-						_AddWork(newWork, thread);
-						return;
+						if(_AddWork(newWork, thread))
+							return;
 					}
 				}
 
-				_AddWork(newWork, threads.begin() + startPoint % workerCount);
+				for(size_t I = 0; true; I = (I + 1) % workerCount)
+				{
+					if (_AddWork(newWork, threads.begin() + ((I + startPoint - 1) % workerCount )))
+						return;
+				}
 			}
 			else
 			{
@@ -294,6 +303,7 @@ namespace FlexKit
 					if (auto workItem = workList.pop_front(); workItem != nullptr)
 					{
 						workItem->Run();
+						workItem->Release();
 						workItem->NotifyWatchers();
 					}
 				}
@@ -363,6 +373,7 @@ namespace FlexKit
 			return nullptr;
 		}
 
+
 		size_t GetThreadCount() const
 		{
 			return workerCount;
@@ -415,6 +426,7 @@ namespace FlexKit
 		void AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void Wait					();
 		void Join					();
+
 	private:
 		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;

@@ -48,9 +48,13 @@ namespace FlexKit
 		class UpdateTask
 		{
 		public:
-			typedef std::function<void(UpdateTask& Node)>	FN_NodeAction;
+			struct iUpdateFN
+			{
+				virtual void operator () (UpdateTask& task) = 0;
+			};
 
-			UpdateTask(ThreadManager* IN_manager, iAllocator* IN_allocator) :
+			UpdateTask(ThreadManager* IN_manager, iUpdateFN& IN_updateFn, iAllocator* IN_allocator) :
+				Update		{ IN_updateFn	},
 				Inputs		{ IN_allocator	},
 				visited		{ false			},
 				DebugID		{ nullptr		},
@@ -115,15 +119,13 @@ namespace FlexKit
 			}
 
 			UpdateID_t			ID;
-			FN_NodeAction		Update;
+			iUpdateFN&			Update;
 			char*				Data;
 			const char*			DebugID;
 			int					completed;
 			bool				visited;
 			Vector<UpdateTask*> Inputs;
 		};
-
-		using			FN_NodeAction = UpdateTask::FN_NodeAction;
 
 
 		UpdateDispatcher(ThreadManager* IN_threads, iAllocator* IN_allocator) :
@@ -232,19 +234,26 @@ namespace FlexKit
 			typename FN_UPDATE>
 		UpdateTask&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
 		{
-			auto& data			= allocator->allocate_aligned<TY_NODEDATA>();
-			UpdateTask& newNode = allocator->allocate_aligned<UpdateTask>(threads, allocator);
+			struct data_BoilderPlate : UpdateTask::iUpdateFN
+			{
+				data_BoilderPlate(FN_UPDATE&& IN_fn) :
+					function{ std::move(IN_fn) } {}
+
+				virtual void operator() (UpdateTask& task) override
+				{
+					function(locals);
+				}
+
+				TY_NODEDATA locals;
+				FN_UPDATE	function;
+			};
+
+			auto& functor		= allocator->allocate_aligned<data_BoilderPlate>(std::move(UpdateFN));
+			UpdateTask& newNode = allocator->allocate_aligned<UpdateTask>(threads, functor, allocator);
+			newNode.Data		= reinterpret_cast<char*>(&functor.locals);
 
 			UpdateBuilder Builder{ newNode };
-			LinkageSetup(Builder, data);
-
-			newNode.Data	= (char*)&data;
-			newNode.Update	= 
-				[UpdateFN](UpdateTask& node)
-				{
-					TY_NODEDATA& data = *(TY_NODEDATA*)node.Data;
-					UpdateFN(data);
-				};
+			LinkageSetup(Builder, functor.locals);
 
 			nodes.push_back(&newNode);
 
