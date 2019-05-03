@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\Logging.h"
+#include <atomic>
 #include <mutex>
 
 namespace FlexKit
@@ -81,7 +82,7 @@ namespace FlexKit
 
 
 		template<typename T>
-		T& release(T* _ptr)
+		void release(T* _ptr)
 		{
 			_ptr->~T();
 			free(_ptr);
@@ -829,6 +830,64 @@ namespace FlexKit
 	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, byte* out, size_t strlenmax, bool textfile = true);
 	FLEXKITAPI size_t	GetFileSize			(const char* strLoc);
 	FLEXKITAPI size_t	GetLineToBuffer		(const char* Buffer, size_t position, char* out, size_t OutBuffSize);
+
+	/************************************************************************************************/
+
+
+	template<typename TYPE_FN, typename DELETER_FN>
+	class Smart_ref
+	{
+	public:
+		Smart_ref(TYPE_FN& IN_reference, DELETER_FN&& deleter_fn) :
+			deleter		{ deleter_fn	},
+			reference	{ IN_reference	}, 
+			counter_ref	{ counter		},
+			counter		{ 1				} {}
+
+
+		~Smart_ref()
+		{
+			counter_ref--;
+
+			if (counter_ref == 0)
+				deleter(&reference);
+		}
+
+
+		Smart_ref(Smart_ref& r_ref) :
+			reference	{ r_ref.reference	},
+			deleter		{ r_ref.deleter		},
+			counter_ref { r_ref.counter		},
+			counter		{ -1				} 
+		{
+			++counter_ref;
+		}
+
+
+		Smart_ref(Smart_ref&& r_ref) :
+			reference	{ r_ref.reference	},
+			deleter		{ r_ref.deleter		},
+			counter_ref { counter			},
+			counter		{ 1					} 
+		{
+#ifdef _DEBUG
+			r_ref.counter = -1;// NOTE(R.M): This shouldn't stick around long after move. For debugging only!
+#endif
+		}
+
+
+		TYPE_FN& Get()			{ return reference; }
+		operator TYPE_FN& ()	{ return reference; }
+		
+		bool isValid ()			{ return counter_ref > 0 && counter_ref != -1; }
+
+	protected:
+		TYPE_FN&			reference;
+		DELETER_FN			deleter;
+		std::atomic_int&	counter_ref;
+		std::atomic_int		counter;
+	};
+
 
 	/************************************************************************************************/
 
