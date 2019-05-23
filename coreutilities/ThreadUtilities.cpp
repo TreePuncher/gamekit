@@ -38,9 +38,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool WorkerThread::AddItem(iWork* Work)
+	bool _WorkerThread::AddItem(iWork* Work) noexcept
 	{
-		std::scoped_lock lock{ exclusive };
+		std::unique_lock lock{ exclusive };
 
 		if (Quit)
 			return false;
@@ -48,19 +48,22 @@ namespace FlexKit
 		if (workList.full())
 			return false;
 
-		auto res = workList.push_back(Work);
+		if (!workList.push_back(Work))
+			return false;
 
-		if(res)
+		workCount++;
+
+		while (!Running)
 			CV.notify_all();
 
-		return res;
+		return true;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void WorkerThread::Shutdown()
+	void _WorkerThread::Shutdown() noexcept
 	{
 		Quit = true;
 		CV.notify_all();
@@ -70,7 +73,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void WorkerThread::Run()
+	void _WorkerThread::_Run()
 	{
 		Running.store(true);
 
@@ -81,20 +84,6 @@ namespace FlexKit
 
 		while (true)
 		{
-			std::mutex						M;
-			std::unique_lock<std::mutex>	lock{ M };
-
-			if (workList.empty() && !Quit) {
-				Running.store(false, std::memory_order_release);
-
-				CV.wait(lock,
-					[this]() -> bool
-					{
-						return !workList.empty() || Quit;
-					});
-
-				Running.store(true, std::memory_order_release);
-			}
 			{
 				EXITSCOPE({
 					Manager->DecrementActiveWorkerCount();
@@ -109,8 +98,10 @@ namespace FlexKit
 						hasJob.store(true, std::memory_order_release);
 
 						work->Run();
-						work->Release();
 						work->NotifyWatchers();
+						work->Release();
+
+						tasksCompleted++;
 
 						hasJob.store(false, std::memory_order_release);
 
@@ -119,17 +110,22 @@ namespace FlexKit
 					return false;
 				};
 
+
 				auto getWorkItem = [&]()  -> iWork*
 				{
-					std::scoped_lock lock{ exclusive };
-					if (workList.empty())
+					std::unique_lock lock{ exclusive };
+
+					if (!workCount)
 						return nullptr;
 
-					return workList.pop_front();
+					auto work		= workList.pop_back();
+					workCount--;
+
+					return work;
 				};
 
 
-				while (!workList.empty())
+				while (workCount)
 				{
 					auto workItem = getWorkItem();
 
@@ -152,16 +148,35 @@ namespace FlexKit
 
 
 				stealWork(
-					Deque_MT<WorkerThread>::Iterator{ this },
+					WorkerList::Iterator{ this },
 					Manager->GetThreadsEnd());
 
 				stealWork(
 					Manager->GetThreadsBegin(),
-					Deque_MT<WorkerThread>::Iterator{ this });
-
+					WorkerList::Iterator{ this });
 
 				if (workList.empty() && Quit)
 					return;
+
+				if (!workCount && !Quit)
+				{
+					std::mutex						M;
+					std::unique_lock<std::mutex>	lock{ M };
+
+					if (!workCount || !Quit)
+					{
+						Running.store(false);
+
+						CV.wait(
+							lock,
+							[this]() -> bool
+							{
+								return workCount || Quit;
+							});
+
+						Running.store(true);
+					}
+				}
 			}
 		}
 
@@ -171,25 +186,25 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool WorkerThread::IsRunning()
+	bool _WorkerThread::IsRunning() noexcept
 	{
-		return Running.load();
+		return Running.load(std::memory_order_relaxed);
 	}
 
 
-	bool WorkerThread::HasJob()
+	bool _WorkerThread::HasJob() noexcept
 	{
 		return hasJob;
 	}
 
 
-	void WorkerThread::Wake()
+	void _WorkerThread::Wake() noexcept
 	{
 		CV.notify_all();
 	}
 
 
-	bool WorkerThread::hasWork()
+	bool _WorkerThread::hasWork() noexcept
 	{
 		return !workList.empty();
 	}
@@ -198,14 +213,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	iWork* WorkerThread::Steal()
+	iWork* _WorkerThread::Steal() noexcept
 	{
-
-		if (workList.empty())
+		if (!workCount)
 			return nullptr;
 
-		std::scoped_lock lock{ exclusive };
-		return (!workList.empty()) ? workList.pop_back() : nullptr;
+		std::unique_lock lock{ exclusive };
+
+		if (workCount)
+		{
+			auto work = workList.pop_front();
+			workCount--;
+
+			return work;
+		}
+		else
+			return nullptr;
 	}
 
 
@@ -263,20 +286,27 @@ namespace FlexKit
 	{
 		do
 		{
-			if (TasksInProgress.load(std::memory_order_relaxed) == 0)
+			if (TasksInProgress == 0)
 				return;
 
-			auto work = threads.StealSomeWork();
-
-			if (work)
+			for(auto work = threads.StealSomeWork(); work; work = threads.StealSomeWork())
 			{
 				work->Run();
-				work->Release();
 				work->NotifyWatchers();
+				work->Release();
 			}
+
+			std::mutex						M;
+			std::unique_lock<std::mutex>	lock(M);
+
+			CV.wait(
+				lock,
+				[&, this]()->bool
+				{
+					return TasksInProgress == 0;
+				});
 		} while (true);
 	}
-
 
 
 	ThreadManager* WorkerThread::Manager = nullptr;

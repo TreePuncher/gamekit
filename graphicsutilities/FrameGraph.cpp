@@ -560,6 +560,7 @@ namespace FlexKit
 			[&](auto& builder, SubmitData& data)
 			{
 				FK_LOG_9("Frame Graph Single-Thread Section Begin");
+				builder.DebugID		= "Frame Graph Task";
 
 				data.contexts		= Vector<Context>{ Memory };
 				data.contexts.emplace_back(renderSystem->_GetCurrentCommandList(), renderSystem, Memory);

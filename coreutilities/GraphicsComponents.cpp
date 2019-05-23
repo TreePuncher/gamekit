@@ -1,28 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2018 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #include "GraphicScene.h"
 
 namespace FlexKit
@@ -217,7 +192,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Camera::CameraConstantBuffer GetCameraConstantBuffer(CameraHandle Handle)
+	Camera::CameraConstantBuffer GetCameraConstants(CameraHandle Handle)
 	{
 		FK_ASSERT(CameraTable != nullptr);
 		return CameraTable->Cameras[Handle].GetConstants();
@@ -227,7 +202,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask* QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask* TransformDependency)
+	UpdateTask& QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask& TransformDependency)
 	{
 		struct UpdateData
 		{};
@@ -236,7 +211,7 @@ namespace FlexKit
 			[&](auto& Builder, auto& Data)
 			{
 				Builder.SetDebugString("QueueCameraUpdate");
-				Builder.AddInput(*TransformDependency);
+				Builder.AddInput(TransformDependency);
 			},
 			[](auto& Data)
 			{
@@ -257,9 +232,34 @@ namespace FlexKit
 			}
 			);
 
-		return &task;
+		return task;
 	}
 
 
 	/************************************************************************************************/
 }// nemespace FlexKit
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2019 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

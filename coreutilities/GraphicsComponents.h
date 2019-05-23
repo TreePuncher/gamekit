@@ -42,10 +42,10 @@ namespace FlexKit
 	FLEXKITAPI float						GetCameraFOV			(CameraHandle);
 	FLEXKITAPI NodeHandle					GetCameraNode			(CameraHandle);
 	FLEXKITAPI float						GetCameraNear			(CameraHandle);
-	FLEXKITAPI Camera::CameraConstantBuffer	GetCameraConstantBuffer	(CameraHandle);
+	FLEXKITAPI Camera::CameraConstantBuffer	GetCameraConstants		(CameraHandle);
 
 
-	UpdateTask* QueueCameraUpdate(UpdateDispatcher&, UpdateTask* TransformDependency);
+	UpdateTask& QueueCameraUpdate(UpdateDispatcher&, UpdateTask& TransformDependency);
 
 
 	struct DefaultCameraInteractor
@@ -100,9 +100,9 @@ namespace FlexKit
 		}
 
 
-		Camera::CameraConstantBuffer	GetCameraConstantBuffer()
+		Camera::CameraConstantBuffer	GetCameraConstants()
 		{
-			return FlexKit::GetCameraConstantBuffer(camera);
+			return FlexKit::GetCameraConstants(camera);
 		}
 
 

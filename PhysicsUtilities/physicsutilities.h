@@ -455,8 +455,8 @@ namespace FlexKit
 		physx::PxControllerManager*	controllerManager	= nullptr;
 		physx::PxClientID			CID;
 
-		double	stepSize = 1.0 / 60.0;
-		double	T;
+		double	stepSize	= 1.0 / 60.0;
+		double	T			= 0.0;
 		bool	updateColliders;
 
 		StaticColliderSystem		staticColliders;
@@ -519,24 +519,25 @@ namespace FlexKit
 			public physx::PxCpuDispatcher
 		{
 		public:
-			CpuDispatcher(ThreadManager& IN_threads, iAllocator* persistent_memory = FlexKit::SystemAllocator) :
-				threads		{ IN_threads		},
-				freeList	{ persistent_memory },
-				memory		{ persistent_memory }{}
+			CpuDispatcher(ThreadManager& IN_threads, iAllocator* persistent_allocator = FlexKit::SystemAllocator) :
+				threads		{ IN_threads			},
+				freeList	{ persistent_allocator	},
+				allocator	{ persistent_allocator	}
+			{}
 
-			~CpuDispatcher(){}
+			~CpuDispatcher() {}
 
 
 			class PhysXTask : public iWork
 			{
 			public:
 				PhysXTask(physx::PxBaseTask& IN_task, iAllocator* IN_memory = FlexKit::SystemAllocator) :
-					iWork	{ IN_memory	},
-					memory	{ IN_memory	},
-					task	{ IN_task	} {}
+					iWork		{ IN_memory	},
+					allocator	{ IN_memory	},
+					task		{ IN_task	} {}
 
 
-				virtual ~PhysXTask() 
+				virtual ~PhysXTask() final
 				{
 				}
 
@@ -550,33 +551,26 @@ namespace FlexKit
 
 				void Release()	override 
 				{
-					if (memory)
-					{
-						this->~PhysXTask();
-						memory->_aligned_free(this);
-						//delete this;
-						memory = nullptr;
-					}
-					else
-						FK_LOG_ERROR("DOUBLE FREE DETECTTED!");
+					allocator->release_aligned(this);
 				}
 
 			private:
 				physx::PxBaseTask&	task;
-				iAllocator*			memory;
+				iAllocator*			allocator;
 			};
 
 
 			void submitTask(physx::PxBaseTask& pxTask)
 			{
 				jobsInProgress++;
-				auto& newTask = memory->allocate_aligned<PhysXTask>(pxTask, memory);
-				//auto newTask = new PhysXTask(pxTask, memory);
-				newTask.Subscribe([&] {jobsInProgress--; });
+				auto* newTask = &allocator->allocate_aligned<PhysXTask>(pxTask, allocator);
 
-				FK_ASSERT(newTask != nullptr);
+				newTask->Subscribe([&]
+					{
+						jobsInProgress--; 
+					});
 
-				threads.AddWork(newTask, memory);
+				threads.AddWork(*newTask, allocator);
 			}
 
 
@@ -590,13 +584,12 @@ namespace FlexKit
 			atomic_int			jobsInProgress = 0;
 			ThreadManager&		threads;
 			Vector<PhysXTask*>	freeList; // TODO: thread safe memory releasing!
-			iAllocator*			memory;
+			iAllocator*			allocator;
 		} dispatcher;
 
-		physx::PxDefaultCpuDispatcher*	pxDispatcher;
 
 		Vector<PhysicsScene>			scenes;
-		iAllocator*						memory;
+		iAllocator*						allocator;
 		ThreadManager&					threads;
 		friend PhysicsScene;
 	};

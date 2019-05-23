@@ -32,3 +32,5 @@ Release/
 *.sdf
 /assets
 /flxBlenderTools/__pycache__
+/GraphicsTests/My Advisor Results - GraphicsTests
+/GraphicsTests/VTune Amplifier Results/GraphicsTests/r000hs

@@ -602,7 +602,7 @@ namespace FlexKit
 		uint32_t	Idx			= UserBufferEntries[UserIdx].CurrentBuffer;
 		void*		buffer		= UserBufferEntries[UserIdx].Mapped_ptr;
 
-		return { (char*)buffer, offsetBegin , reserveSize };
+		return { static_cast<char*>(buffer), offsetBegin, reserveSize };
 	}
 
 
@@ -612,8 +612,7 @@ namespace FlexKit
 	void ConstantBufferTable::LockUntil(size_t FrameID)
 	{
 		for (auto& Buffer : UserBufferEntries) 
-		{
-			// TODO: handle WrittenTo Flags
+		{	// TODO: handle WrittenTo Flags
 			auto BufferIdx		= Buffer.CurrentBuffer;
 
 			Buffer.Locks[BufferIdx] = FrameID;
@@ -626,9 +625,16 @@ namespace FlexKit
 
 	void ConstantBufferTable::ReleaseBuffer(ConstantBufferHandle Handle)
 	{
-		size_t UserIdx = Handles[Handle];
+		size_t UserIdx		= Handles[Handle];
+		size_t BufferIdx	= UserBufferEntries[UserIdx].BufferSet;
 
+		for (auto& res : ConstantBuffers[BufferIdx].Resources)
+		{
+			if (res)
+				res->Release();
 
+			res = nullptr;
+		}
 	}
 
 
@@ -1089,8 +1095,10 @@ namespace FlexKit
 
 	void Context::SetPipelineState(ID3D12PipelineState* PSO)
 	{
-		//if (CurrentPipelineState == PSO)
-		//	return;
+		FK_ASSERT(PSO);
+
+		if (CurrentPipelineState == PSO)
+			return;
 
 		CurrentPipelineState = PSO;
 		DeviceContext->SetPipelineState(PSO);
@@ -1228,6 +1236,15 @@ namespace FlexKit
 	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBuffer& CB)
 	{
 		DeviceContext->SetGraphicsRootConstantBufferView(idx, CB.Get()->GetGPUVirtualAddress());
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
+	{
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->GetConstantBufferAddress((ConstantBufferHandle)CB) + (size_t)CB);
 	}
 
 
@@ -1803,6 +1820,7 @@ namespace FlexKit
 	void Context::Clear()
 	{
 		PendingBarriers.Release();
+		CurrentPipelineState = nullptr;
 	}
 
 
@@ -3169,12 +3187,12 @@ namespace FlexKit
 			{
 			case ILE_DrawCall:
 			{
-				D3D12_INDIRECT_ARGUMENT_DESC desc;
+				D3D12_INDIRECT_ARGUMENT_DESC desc = {};
 				desc.Type = D3D12_INDIRECT_ARGUMENT_TYPE::D3D12_INDIRECT_ARGUMENT_TYPE_DRAW;
 
 				signatureEntries.push_back(desc);
 				layout.push_back(ILE_DrawCall);
-				entryStride = max(entryStride, sizeof(uint64_t) * 4); // uses 4 8byte values
+				entryStride = max(entryStride, sizeof(uint32_t) * 4); // uses 4 8byte values
 			}	break;
 			}
 		}
@@ -4476,7 +4494,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	VertexBufferStateTable::SubAllocation VertexBufferStateTable::Reserve(VertexBufferHandle Handle, size_t size)
+	VertexBufferStateTable::SubAllocation VertexBufferStateTable::Reserve(VertexBufferHandle Handle, size_t size) noexcept
 	{
 		auto	idx			= Handles[Handle];
 		auto&	userBuffer  = UserBuffers[idx];

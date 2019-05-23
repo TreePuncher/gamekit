@@ -57,9 +57,8 @@ namespace FlexKit
 				Update		{ IN_updateFn	},
 				Inputs		{ IN_allocator	},
 				visited		{ false			},
-				DebugID		{ nullptr		},
 				completed	{ 0				},
-				threadTask	{ this, IN_manager, IN_allocator }{}
+				threadTask	{ this, IN_manager, IN_allocator } {}
 
 			// No Copy
 			UpdateTask(const UpdateTask&)				= delete;
@@ -69,9 +68,9 @@ namespace FlexKit
 			{
 			public:
 				UpdateThreadTask(UpdateTask* IN_task, ThreadManager* threads, iAllocator* memory) :
-					iWork	{ memory		},
-					task	{ IN_task		},
-					wait	{ *this, threads, memory }{}
+					iWork	{ memory					},
+					task	{ IN_task					},
+					wait	{ *this, threads, memory	} {}
 
 				// No Copy
 				UpdateThreadTask				(const UpdateThreadTask&) = delete;
@@ -83,6 +82,10 @@ namespace FlexKit
 				{
 					task->Run();
 					task->completed++;
+				}
+
+				void Release() override
+				{
 				}
 
 				WorkDependencyWait wait;
@@ -121,7 +124,6 @@ namespace FlexKit
 			UpdateID_t			ID;
 			iUpdateFN&			Update;
 			char*				Data;
-			const char*			DebugID;
 			int					completed;
 			bool				visited;
 			Vector<UpdateTask*> Inputs;
@@ -191,9 +193,6 @@ namespace FlexKit
 
 				for (auto& node : nodesSorted) 
 				{
-					if (node->DebugID) {
-						FK_LOG_9("Running task %s", node->DebugID);
-					}
 					node->Update(*node);
 				}
 
@@ -211,7 +210,7 @@ namespace FlexKit
 
 			void SetDebugString(const char* str)
 			{
-				newNode.DebugID = str;
+				newNode.threadTask.SetDebugID(str);
 			}
 
 			void AddOutput(UpdateTask& node)
@@ -224,6 +223,7 @@ namespace FlexKit
 				newNode.AddInput(node);
 			}
 
+			const char* DebugID = "UNIDENTIFIED TASK";
 		private:
 			UpdateTask& newNode;
 		};
@@ -254,6 +254,8 @@ namespace FlexKit
 
 			UpdateBuilder Builder{ newNode };
 			LinkageSetup(Builder, functor.locals);
+
+			//newNode; = Builder.DebugID;
 
 			nodes.push_back(&newNode);
 

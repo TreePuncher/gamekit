@@ -151,12 +151,12 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 
 	CameraHandle activeCamera = (CameraHandle)debugCamera;
 
-	auto transforms			= QueueTransformUpdateTask	(dispatcher);
-	auto cameras			= QueueCameraUpdate			(dispatcher, transforms);
-	auto sceneUpdate		= scene.Update				(dispatcher, transforms);
-	auto orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
-	auto& cameraConstants	= MakeHeapCopy(GetCameraConstantBuffer(activeCamera), core->GetTempMemory());
-	auto& PVS				= GetGraphicScenePVSTask(dispatcher, *sceneUpdate, scene, activeCamera, core->GetTempMemory());
+	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
+	auto& cameras			= QueueCameraUpdate			(dispatcher, transforms);
+	auto& sceneUpdate		= scene.Update				(dispatcher, transforms);
+	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
+	auto& cameraConstants	= MakeHeapCopy				(GetCameraConstants(activeCamera), core->GetTempMemory());
+	auto& PVS				= GetGraphicScenePVSTask	(dispatcher, sceneUpdate, scene, activeCamera, core->GetTempMemory());
 
 	FlexKit::WorldRender_Targets targets = {
 		GetCurrentBackBuffer(&core->Window),
@@ -177,11 +177,11 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 
 	SceneDescription sceneDesc;
 	sceneDesc.pointLightCount	= scene.GetPointLightCount();
-	sceneDesc.transforms		= transforms;
-	sceneDesc.cameras			= cameras;
+	sceneDesc.transforms		= &transforms;
+	sceneDesc.cameras			= &cameras;
 	sceneDesc.PVS				= PVS;
 
-	base.render.updateLightBuffers				(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory());
+	base.render.updateLightBuffers				(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
 	base.render.RenderDrawabledPBR_ForwardPLUS	(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
 
 	FlexKit::DrawCollection_Desc DrawCollectionDesc{};
@@ -196,17 +196,17 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 
 	if(true)
 	{
-		auto cameraConstanstSize = sizeof(decltype(GetCameraConstantBuffer(activeCamera)));
+		auto cameraConstanstSize = sizeof(decltype(GetCameraConstants(activeCamera)));
 
 		DrawCollection(
 				frameGraph, 
-				{ sceneUpdate },
+				{ &sceneUpdate },
 				{	{ 0, (char*)&cameraConstants, cameraConstanstSize },
 					{ 0, (char*)&cameraConstants, cameraConstanstSize } },
 				{ },
 				[&, activeCamera](auto& data)
 				{
-					cameraConstants = GetCameraConstantBuffer(activeCamera); // update buffer with recent data
+					cameraConstants = GetCameraConstants(activeCamera); // update buffer with recent data
 				},
 				[this, core, activeCamera]()
 				{ 

@@ -279,7 +279,7 @@ namespace FlexKit
 
 	void GameFramework::UpdateFixed(UpdateDispatcher& dispatcher, double dt)
 	{
-		core->Physics.Simulate(dt);
+		//core->Physics.Simulate(dt);
 	}
 
 
@@ -392,11 +392,11 @@ namespace FlexKit
 
 	void GameFramework::DrawFrame(double dT)
 	{
-
 		FK_LOG_9("Frame Begin");
 
 		UpdateDispatcher dispatcher{ &core->Threads, core->GetTempMemory() };
 
+		core->Physics.Simulate(dT);
 
 		while(fixStepAccumulator >= fixedTimeStep) {
 			UpdateFixed(dispatcher, fixedTimeStep);

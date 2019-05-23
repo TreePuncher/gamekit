@@ -452,7 +452,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		TextureHandle GetTexture(FrameResourceHandle Handle) const
+		TextureHandle			GetTexture(FrameResourceHandle Handle) const
 		{
 			return handle_cast<TextureHandle>(Textures[Handle].ShaderResource);
 		}
@@ -661,14 +661,12 @@ namespace FlexKit
 			*/
 
 			auto SOHandle			= resource->SOBuffer;
-			auto deviceResource		= renderSystem->GetObjectDeviceResource(SOHandle);
-			auto counterResource	= renderSystem->GetSOCounterResource(SOHandle);
 
 			D3D12_STREAM_OUTPUT_BUFFER_VIEW view =
 			{
-				deviceResource->GetGPUVirtualAddress(),
+				renderSystem->GetObjectDeviceResource(SOHandle)->GetGPUVirtualAddress(),
 				renderSystem->GetStreamOutBufferSize(SOHandle),
-				counterResource->GetGPUVirtualAddress(),
+				renderSystem->GetSOCounterResource(SOHandle)->GetGPUVirtualAddress(),
 			};
 
 			return view;
@@ -1369,6 +1367,9 @@ namespace FlexKit
 
 		DescriptorHeap					ReserveDescriptorTableSpaces	(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory);
 
+		operator FrameResources&	() const	{ return *Resources; }
+		operator RenderSystem&		()			{ return *Resources->renderSystem;}
+
 	private:
 
 		template<typename TY>
@@ -1745,7 +1746,7 @@ namespace FlexKit
 	size_t LoadCameraConstants(CameraHandle camera, ConstantBufferHandle constantBuffer, FrameResources& resources)
 	{
 		auto CBOffset = BeginNewConstantBuffer(constantBuffer, resources);
-		PushConstantBufferData(FlexKit::GetCameraConstantBuffer(camera), constantBuffer, resources);
+		PushConstantBufferData(FlexKit::GetCameraConstants(camera), constantBuffer, resources);
 
 		return CBOffset;
 	}
@@ -2333,7 +2334,7 @@ namespace FlexKit
 					float4x4::Identity()
 				};
 
-				auto cameraBuffer	= GetCameraConstantBuffer(desc.camera);
+				auto cameraBuffer	= GetCameraConstants(desc.camera);
 				auto pushBuffer		= desc.VertexBuffer;
 				Data.vertexOffset	= frameGraph.Resources.GetVertexBufferOffset(pushBuffer);
 
@@ -2465,7 +2466,7 @@ namespace FlexKit
 
 				Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
 				PushConstantBufferData(
-					GetCameraConstantBuffer(Camera),
+					GetCameraConstants(Camera),
 					Constants,
 					FrameGraph.Resources);
 
@@ -2475,8 +2476,11 @@ namespace FlexKit
 					TempMem);
 				Data.Heap.NullFill(FrameGraph.Resources.renderSystem);
 
-				Drawable::VConsantsLayout DrawableConstants;
-				DrawableConstants.Transform = DirectX::XMMatrixIdentity();
+				Drawable::VConsantsLayout DrawableConstants = 
+				{	// Someday
+					/*.MP			= */Drawable::MaterialProperties{},
+					/*.Transform	= */DirectX::XMMatrixIdentity()
+				};
 
 				Data.LocalConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
 				PushConstantBufferData(
@@ -2505,7 +2509,6 @@ namespace FlexKit
 				}
 
 				Data.VertexCount = Lines.size() * 2;
-
 			},
 			[](auto& Data, const FlexKit::FrameResources& Resources, FlexKit::Context* Ctx)
 			{
@@ -2528,7 +2531,6 @@ namespace FlexKit
 				Ctx->NullGraphicsConstantBufferView(4);
 				Ctx->NullGraphicsConstantBufferView(5);
 				Ctx->NullGraphicsConstantBufferView(6);
-
 
 				Ctx->Draw(Data.VertexCount, 0);
 			});

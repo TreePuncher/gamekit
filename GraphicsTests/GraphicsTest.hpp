@@ -29,6 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../coreutilities/GameFramework.h"
 #include "../physicsUtilities/physicsUtilities.h"
 
+#include <condition_variable>
+
 const size_t lookupTableSize	= 128;
 
 enum TestEvents
@@ -157,8 +159,9 @@ public:
 		float LdotH = dot(L, (V+L).normal());
 		float perceptualRoughness = sqrtf(alpha);
 		float fd90 = 0.5 + 2 * LdotH * LdotH * perceptualRoughness;
-		float lightScatter    = (1 + (fd90 - 1) * powf(1 - NdotL, 5.0f));
-		float viewScatter    = (1 + (fd90 - 1) * powf(1 - NdotV, 5.0f));
+		float lightScatter	= (1 + (fd90 - 1) * powf(1 - NdotL, 5.0f));
+		float viewScatter	= (1 + (fd90 - 1) * powf(1 - NdotV, 5.0f));
+
 		return lightScatter * viewScatter * L.z / 3.14159f;
 	}
 
@@ -201,7 +204,7 @@ float ComputeBRDFNorm(const float3& v, const float alpha, const int sampleCount 
 
 /************************************************************************************************/
 
-const size_t CubeCount = 1;
+const size_t CubeCount = 8000;
 
 class GraphicsTest : public FrameworkState
 {
@@ -212,7 +215,7 @@ public:
 		depthBuffer		{ IN_framework->core->RenderSystem.CreateDepthBuffer	(GetWindowWH(IN_framework->core), true)	},
 		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
 		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
-		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 256,	false)				},
+		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 128,	false)				},
 		eventMap		{ IN_framework->core->GetBlockMemory()															},
 		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()							},
 		scene			{	
@@ -221,7 +224,7 @@ public:
 			IN_framework->core->GetTempMemory()	},
 		PScene			{ IN_framework->GetPhysx()->CreateScene()														},
 		floor			{ IN_framework->GetPhysx()->CreateStaticBoxCollider		(PScene, {1000, 10, 1000}, {0, -10, 0})	},
-		orbitCamera		{ CreateCamera(pi / 3.0f, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 3000, {0, 50, 50} }
+		orbitCamera		{ CreateCamera(float(pi) / 3.0f, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 3000, {0, 50, 50} }
 		//ltcLookup_1{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
 		//ltcLookup_2{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
@@ -334,14 +337,6 @@ public:
 		UpdateDispatcher&	dispatcher, 
 		double				dT) override
 	{
-		FK_LOG_1("Begin Update");
-
-		auto transformTask = QueueTransformUpdateTask	(dispatcher);
-		auto cameraUpdate  = QueueCameraUpdate			(dispatcher, transformTask);
-		auto orbitUpdate   = QueueOrbitCameraUpdateTask	(dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
-		auto sceneUpdate   = scene.Update				(dispatcher, transformTask);
-		auto terrainUpdate = terrain.Update				(dispatcher);
-
 		return true;
 	}
 
@@ -354,6 +349,8 @@ public:
 		UpdateDispatcher&	dispatcher, 
 		double dT) override
 	{
+		FK_LOG_1("Begin Update");
+
 		return true;
 	}
 
@@ -379,8 +376,13 @@ public:
 		double				dT, 
 		FrameGraph&			frameGraph) override
 	{
-		FK_LOG_1("End Update");
+		auto& transformTask = QueueTransformUpdateTask	(dispatcher);
+		auto& cameraUpdate  = QueueCameraUpdate			(dispatcher, transformTask);
+		auto& orbitUpdate   = QueueOrbitCameraUpdateTask(dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
+		auto& sceneUpdate   = scene.Update				(dispatcher, transformTask);
+		//auto& terrainUpdate = terrain.Update			(dispatcher);
 
+		FK_LOG_1("End Update");
 		FK_LOG_1("Begin Draw");
 
 		frameGraph.Resources.AddDepthBuffer(depthBuffer);
@@ -400,7 +402,6 @@ public:
 		ClearBackBuffer		(frameGraph, 0.0f);
 		ClearDepthBuffer	(frameGraph, depthBuffer, 1.0f);
 
-
 		DrawUI_Desc DrawDesk
 		{
 			&frameGraph, 
@@ -410,37 +411,51 @@ public:
 			constantBuffer
 		};
 
-		CameraHandle activeCamera = (CameraHandle)orbitCamera;
+		CameraHandle activeCamera = static_cast<CameraHandle>(orbitCamera);
 
-		GetGraphicScenePVS(scene, activeCamera, &solidDrawables, &transparentDrawables);
+		auto& PVS = GetGraphicScenePVSTask(dispatcher, sceneUpdate, scene, activeCamera, core->GetTempMemory());
 
-		const bool renderTerrainEnabled = true;
-		TerrainCullerData* culledTerrain = nullptr;
+		const bool renderTerrainEnabled		= true;
+		TerrainCullerData* culledTerrain	= nullptr;
 
-		if (renderTerrainEnabled) {
-			culledTerrain = CullTerrain(
-				terrain,
-				core->RenderSystem,
-				frameGraph,
-				activeCamera,
-				vertexBuffer,
-				constantBuffer,
-				core->GetTempMemory());
+		if (true)
+		{
+			SceneDescription sceneDesc;
+			sceneDesc.pointLightCount	= scene.GetPointLightCount();
+			sceneDesc.transforms		= &transformTask;
+			sceneDesc.cameras			= &cameraUpdate;
+			sceneDesc.PVS				= PVS;
+
+			//render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory());
+			//render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
 		}
 
-		if (renderTerrainEnabled)
+		if (renderTerrainEnabled) 
 		{
-			DrawTerrain_Forward(
-				culledTerrain,
-				terrain,
-				core->RenderSystem,
-				frameGraph,
-				activeCamera,
-				vertexBuffer,
-				constantBuffer,
-				core->Window.GetBackBuffer(),
-				depthBuffer,
-				core->GetTempMemory());
+			TerrainRenderResources terrainResources = {
+				/*.vertexBuffer		= */ vertexBuffer,
+				/*.constantBuffer	= */ constantBuffer,
+				/*.renderTarget		= */ core->Window.GetBackBuffer(),
+				/*.depthTarget		= */ depthBuffer,
+				/*.renderSystem		= */ core->RenderSystem,
+			};
+
+
+			auto FetchCameraConstants =
+				MakeLazyObject<ConstantBufferDataSet> (
+					core->GetTempMemory(),
+					[activeCamera](CBPushBuffer& pushBuffer) -> ConstantBufferDataSet 
+					{ 
+						return { FlexKit::GetCameraConstants(activeCamera), pushBuffer };
+					});
+				
+			auto FetchTerrainConstants = CreateDefaultTerrainConstants(activeCamera, terrain);
+
+			ForwardTerrainRenderer terrainRender{ FetchCameraConstants, FetchTerrainConstants, terrain, core->GetTempMemory() };
+			terrainRender.DependsOn(cameraUpdate);
+
+			auto& cullResults	= terrainRender.Cull(frameGraph, activeCamera, terrainResources);
+			auto& renderResults	= terrainRender.Draw(frameGraph, cullResults, targets.RenderTarget, targets.DepthTarget, terrainResources);
 		}
 
 		/*

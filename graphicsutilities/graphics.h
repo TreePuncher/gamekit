@@ -87,6 +87,8 @@ namespace FlexKit
 
 	class StackAllocator;
 	class RenderSystem;
+	class ConstantBufferDataSet;
+	class VertexBufferDataSet;
 
 	using DirectX::XMMATRIX;
 
@@ -1514,36 +1516,35 @@ namespace FlexKit
 	};
 
 
-	// Non-copyable
 	FLEXKITAPI class IndirectLayout
 	{
 	public:
-		IndirectLayout() :
+		IndirectLayout() noexcept :
 			entries		{ nullptr },
 			signature	{ nullptr }{}
 
-		IndirectLayout(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectDrawDescription>&& IN_Entries) :
+		IndirectLayout(ID3D12CommandSignature* IN_signature, size_t IN_stride, Vector<IndirectDrawDescription>&& IN_Entries) noexcept :
 			signature	{ IN_signature },
 			stride		{ IN_stride },
 			entries		{ std::move(IN_Entries) } {}
 
-		~IndirectLayout()
+		~IndirectLayout() noexcept
 		{
 			if (signature)
 				signature->Release();
 		}
 
 
-		IndirectLayout(const IndirectLayout& rhs) :
-			signature{ rhs.signature },
-			entries{ rhs.entries },
-			stride{ rhs.stride }
+		IndirectLayout(const IndirectLayout& rhs) noexcept :
+			signature	{ rhs.signature },
+			entries		{ rhs.entries	},
+			stride		{ rhs.stride	}
 		{
 			if(signature)
 				signature->AddRef();
 		}
 
-		IndirectLayout& operator =	(const IndirectLayout& rhs)
+		IndirectLayout& operator =	(const IndirectLayout& rhs) noexcept
 		{
 			if(rhs.signature)
 				rhs.signature->AddRef();
@@ -1558,10 +1559,10 @@ namespace FlexKit
 			return (*this);
 		}
 
-		operator bool () { return signature != nullptr; }
+		operator bool () noexcept { return signature != nullptr; }
 
-		ID3D12CommandSignature*			signature;
-		size_t							stride;
+		ID3D12CommandSignature*			signature	= nullptr;
+		size_t							stride		= 0;
 		Vector<IndirectDrawDescription>	entries;
 	};
 
@@ -1573,9 +1574,9 @@ namespace FlexKit
 	{
 	public:
 		Context(
-				ID3D12GraphicsCommandList3*	Context_IN = nullptr, 
-				RenderSystem*				RS_IN = nullptr, 
-				iAllocator*					TempMemory = nullptr) :
+				ID3D12GraphicsCommandList3*	Context_IN	= nullptr, 
+				RenderSystem*				RS_IN		= nullptr, 
+				iAllocator*					TempMemory	= nullptr) :
 			CurrentRootSignature	(nullptr),
 			DeviceContext			(Context_IN),
 			PendingBarriers			(TempMemory),
@@ -1666,6 +1667,7 @@ namespace FlexKit
 
 		void NullGraphicsConstantBufferView	(size_t idx);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferHandle CB, size_t Offset = 0);
+		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBufferDataSet& CB);
 		void SetGraphicsConstantBufferView	(size_t idx, const ConstantBuffer& CB);
 		void SetGraphicsDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetGraphicsShaderResourceView	(size_t idx, FrameBufferedResource* Resource, size_t Count, size_t ElementSize);
@@ -1787,10 +1789,10 @@ namespace FlexKit
 		void UpdateResourceStates();
 		void UpdateRTVState();
 
-		ID3D12GraphicsCommandList3*		DeviceContext;
-		RootSignature*					CurrentRootSignature;
-		ID3D12PipelineState*			CurrentPipelineState;
-		RenderSystem*					RS;
+		ID3D12GraphicsCommandList3*		DeviceContext			= nullptr;
+		RootSignature*					CurrentRootSignature	= nullptr;
+		ID3D12PipelineState*			CurrentPipelineState	= nullptr;
+		RenderSystem*					RS						= nullptr;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
 		D3D12_CPU_DESCRIPTOR_HANDLE DSVPOSCPU;
@@ -1849,7 +1851,7 @@ namespace FlexKit
 		size_t				GetCurrentVertexBufferOffset	(VertexBufferHandle Handle) const;
 		size_t				GetBufferSize					(VertexBufferHandle Handle) const;
 
-		SubAllocation		Reserve							(VertexBufferHandle Handle, size_t size);
+		SubAllocation		Reserve							(VertexBufferHandle Handle, size_t size) noexcept;
 
 
 		void				Release();
@@ -2835,6 +2837,17 @@ namespace FlexKit
 			pushBufferBegin	{ offsetBegin	} {}
 
 
+		CBPushBuffer(ConstantBufferHandle IN_CB, size_t reserveSize, RenderSystem& renderSystem)
+		{
+			auto reserverdBuffer = renderSystem.ConstantBuffers.Reserve(IN_CB, reserveSize);
+
+			CB				= IN_CB;
+			buffer			= reserverdBuffer.Data;
+			pushBufferSize	= reserveSize;
+			pushBufferBegin	= reserverdBuffer.offsetBegin;
+		}
+
+
 		CBPushBuffer(const CBPushBuffer&)							= delete;
 		CBPushBuffer& operator = (const CBPushBuffer& pushBuffer)	= delete;
 
@@ -2915,11 +2928,21 @@ namespace FlexKit
 	class VBPushBuffer
 	{
 	public:
-		VBPushBuffer(VertexBufferHandle vBuffer = InvalidHandle_t, char* buffer_ptr = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) :
+		VBPushBuffer(VertexBufferHandle vBuffer = InvalidHandle_t, char* buffer_ptr = nullptr, size_t offsetBegin = 0, size_t reservedSize = 0) noexcept :
 			VB					{ vBuffer		},
 			buffer				{ buffer_ptr	},
 			pushBufferSize		{ reservedSize	},
 			pushBufferOffset	{ offsetBegin	} {}
+
+
+		VBPushBuffer(VertexBufferHandle IN_VB, size_t IN_reserveSize, RenderSystem& renderSystem)
+		{
+			auto reservedBuffer = renderSystem.VertexBuffers.Reserve(IN_VB, IN_reserveSize);
+			VB					= IN_VB;
+			pushBufferSize		= IN_reserveSize;
+			buffer				= reservedBuffer.Data;
+			pushBufferOffset	= reservedBuffer.offsetBegin;
+		}
 
 
 		VBPushBuffer(const VBPushBuffer&)						= delete;
@@ -2939,7 +2962,8 @@ namespace FlexKit
 			pushBuffer.pushBufferOffset	= 0;
 			pushBuffer.pushBufferSize	= 0;
 			pushBuffer.pushBufferUsed	= 0;
-		};
+		}
+
 
 		VBPushBuffer& operator = (VBPushBuffer&& pushBuffer) 
 		{ 
@@ -3016,6 +3040,83 @@ namespace FlexKit
 		auto buffer = renderSystem.VertexBuffers.Reserve(VB, reserveSize);
 		return { VB, buffer.Data, buffer.offsetBegin, reserveSize };
 	}
+
+
+	/************************************************************************************************/
+
+
+	class ConstantBufferDataSet
+	{
+	public:
+		ConstantBufferDataSet() {}
+
+		template<typename TY>
+		ConstantBufferDataSet(TY& initialData, CBPushBuffer& buffer) :
+			constantBuffer	{ buffer },
+			constantsOffset	{ buffer.Push(initialData) }	{}
+
+		~ConstantBufferDataSet() = default;
+
+		ConstantBufferDataSet(const ConstantBufferDataSet& rhs)					= default;
+		ConstantBufferDataSet& operator = (const ConstantBufferDataSet& rhs)	= default;
+
+		operator ConstantBufferHandle	() const { return constantBuffer;	}
+		operator size_t					() const { return constantsOffset;	}
+
+	private:
+		ConstantBufferHandle	constantBuffer		= InvalidHandle_t;
+		size_t					constantsOffset		= 0;
+	};
+
+
+	/************************************************************************************************/
+
+
+	class VertexBufferDataSet
+	{
+	public:
+		VertexBufferDataSet() {}
+
+		template<typename TY>
+		VertexBufferDataSet(TY& initialData, VBPushBuffer& buffer) :
+			vertexBuffer	{ buffer					},
+			offsetBegin		{ buffer.pushBufferOffset	}
+		{
+			for (auto& vertex : initialData) 
+				buffer.Push(vertex);
+		}
+
+		template<typename TY, typename FN_TransformVertex>
+		VertexBufferDataSet(TY& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
+			vertexBuffer	{ buffer					},
+			offsetBegin		{ buffer.pushBufferOffset	}
+		{
+			vertexStride = sizeof(decltype(TransformVertex(initialData.front())));
+			for (auto& vertex : initialData) {
+				auto transformedVertex = TransformVertex(vertex);
+				buffer.Push(transformedVertex);
+			}
+		}
+
+		~VertexBufferDataSet() = default;
+
+		VertexBufferDataSet(const VertexBufferDataSet& rhs)					= default;
+		VertexBufferDataSet& operator = (const VertexBufferDataSet& rhs)	= default;
+
+		operator VertexBufferEntry () const
+		{
+			return { vertexBuffer, (UINT)vertexStride, (UINT)offsetBegin };
+		}
+
+
+		operator VertexBufferHandle const ()	{ return vertexBuffer;	}
+		operator size_t const ()				{ return offsetBegin;	}
+
+	private:
+		uint64_t			offsetBegin		= 0;
+		uint64_t			vertexStride	= 0;
+		VertexBufferHandle	vertexBuffer	= InvalidHandle_t;
+	};
 
 
 	/************************************************************************************************/

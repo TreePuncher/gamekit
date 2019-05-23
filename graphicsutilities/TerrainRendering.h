@@ -36,15 +36,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <DirectXMath.h>
 
 
-/************************************************************************************************/
-
-
 namespace FlexKit
 {	/************************************************************************************************/
+
+
 	using TerrainTileHandle = FlexKit::Handle_t<16, GetTypeGUID(TerrainTileHandle)>;
 	const FlexKit::PSOHandle TERRAIN_COMPUTE_CULL_PSO				= PSOHandle(GetTypeGUID(TERRAIN_COMPUTE_CULL_PSO));
 	const FlexKit::PSOHandle TERRAIN_RENDER_FOWARD_PSO				= PSOHandle(GetTypeGUID(TERRAIN_RENDER_FOWARD_PSO));
 	const FlexKit::PSOHandle TERRAIN_RENDER_FOWARD_WIREFRAME_PSO	= PSOHandle(GetTypeGUID(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO));
+
 
 	struct ViewableRegion
 	{
@@ -108,206 +108,9 @@ namespace FlexKit
 	};
 
 
-	ID3D12PipelineState* CreateCullTerrainComputePSO(RenderSystem* renderSystem)
-	{
-		auto cullTerrain_shader_VS = LoadShader("CP_PassThroughVS", "CP_PassThroughVS", "vs_5_0", "assets\\cullterrain.hlsl");
-		auto cullTerrain_shader_GS = LoadShader("CullTerrain",		"CullTerrain",		"gs_5_0", "assets\\cullterrain.hlsl");
-
-
-		D3D12_INPUT_ELEMENT_DESC InputElements[] =
-		{
-			{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	48, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-
-		/*
-		typedef struct D3D12_SO_DECLARATION_ENTRY
-		{
-		UINT Stream;
-		LPCSTR SemanticName;
-		UINT SemanticIndex;
-		BYTE StartComponent;
-		BYTE ComponentCount;
-		BYTE OutputSlot;
-		} 	D3D12_SO_DECLARATION_ENTRY;
-		*/
-
-		D3D12_SO_DECLARATION_ENTRY SO_Entries[] = {
-			{ 0, "REGION",		0, 0, 4, 0 },
-			{ 0, "TEXCOORD",	0, 0, 4, 0 },
-			{ 0, "TEXCOORD",	1, 0, 4, 0 },
-			{ 0, "TEXCOORD",	2, 0, 4, 0 },
-			{ 1, "REGION",		0, 0, 4, 1 },
-			{ 1, "TEXCOORD",	0, 0, 4, 1 },
-			{ 1, "TEXCOORD",	1, 0, 4, 1 },
-			{ 1, "TEXCOORD",	2, 0, 4, 1 },
-		};
-
-		UINT Strides = sizeof(ViewableRegion);
-		UINT SO_Strides[] = {
-			Strides,
-			Strides,
-			Strides,
-			Strides,
-		};
-
-		D3D12_STREAM_OUTPUT_DESC SO_Desc = {};{
-			SO_Desc.NumEntries		= 8;
-			SO_Desc.NumStrides		= 4;
-			SO_Desc.pBufferStrides	= SO_Strides;
-			SO_Desc.pSODeclaration	= SO_Entries;
-		}
-
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                = renderSystem->Library.RS4CBVs_SO;
-			PSO_Desc.VS                            = cullTerrain_shader_VS;
-			PSO_Desc.GS                            = cullTerrain_shader_GS;
-			PSO_Desc.SampleMask                    = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
-			PSO_Desc.NumRenderTargets              = 0;
-			PSO_Desc.SampleDesc.Count              = 1;
-			PSO_Desc.SampleDesc.Quality            = 0;
-			PSO_Desc.RasterizerState               = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements) / sizeof(InputElements[0]) };
-			PSO_Desc.DepthStencilState.DepthEnable = false;
-			PSO_Desc.StreamOutput				   = SO_Desc;
-		}
-
-		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-
-		return PSO;
-	}
-
-
-	ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
-	{
-		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",		"vs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto ShaderQuad2Tri					= LoadShader("QuadPatchToTris",		"QuadPatchToTris",		"ds_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto ShaderRegion2Quad				= LoadShader("RegionToQuadPatch",	"RegionToQuadPatch",	"hs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",		"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_PS = LoadShader("PS_RenderTerrain",	"PS_RenderTerrain",		"ps_5_0", "assets\\forwardRenderTerrain.hlsl");
-
-		EXITSCOPE(
-			Release(forwardRenderTerrain_shader_VS);
-			Release(ShaderQuad2Tri);
-			Release(ShaderRegion2Quad);
-			Release(forwardRenderTerrain_shader_GS);
-			Release(forwardRenderTerrain_shader_PS);
-			);
-
-		D3D12_INPUT_ELEMENT_DESC InputElements[] =
-		{
-			{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	48, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-
-
-		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
-		}
-
-		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); {
-			Depth_Desc.DepthFunc = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-		}
-
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                = renderSystem->Library.RS4CBVs_SO;
-			PSO_Desc.VS                            = forwardRenderTerrain_shader_VS;
-			PSO_Desc.DS                            = ShaderQuad2Tri;
-			PSO_Desc.HS                            = ShaderRegion2Quad;
-			//PSO_Desc.GS                            = forwardRenderTerrain_shader_GS;
-			PSO_Desc.PS							   = forwardRenderTerrain_shader_PS;
-			PSO_Desc.RasterizerState			   = Rast_Desc;
-			PSO_Desc.SampleMask                    = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-			PSO_Desc.NumRenderTargets              = 1;
-			PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R16G16B16A16_FLOAT;
-			PSO_Desc.SampleDesc.Count              = 1;
-			PSO_Desc.SampleDesc.Quality            = 0;
-			PSO_Desc.RasterizerState               = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-			PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements) / sizeof(InputElements[0]) };
-			PSO_Desc.DepthStencilState			   = Depth_Desc;
-		}
-
-		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-
-		return PSO;
-	}
-
-
-	ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem)
-	{
-		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",			"vs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",			"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
-
-
-		auto ShaderRegion2Quad				= LoadShader("RegionToQuadPatchDEBUG",	"RegionToQuadPatchDEBUG",	"hs_5_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
-		auto ShaderQuad2Tri_Debug			= LoadShader("QuadPatchToTrisDEBUG",	"QuadPatchToTrisDEBUG",		"ds_5_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
-		auto ShaderPaint_Wire				= LoadShader("PS_RenderTerrainDEBUG",	"PS_RenderTerrainDEBUG",	"ps_5_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
-
-
-		EXITSCOPE(
-			Release(forwardRenderTerrain_shader_VS);
-			Release(ShaderQuad2Tri_Debug);
-			Release(ShaderRegion2Quad);
-			Release(forwardRenderTerrain_shader_GS);
-			Release(ShaderPaint_Wire);
-			);
-
-		D3D12_INPUT_ELEMENT_DESC InputElements[] =
-		{
-			{ "REGION",	  0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	16, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 1, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT,	0,	32, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 2, DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_SINT,	0,	48, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		};
-
-
-		D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT); {
-			Rast_Desc.FillMode	= D3D12_FILL_MODE_WIREFRAME;
-			Rast_Desc.DepthBias = -10;
-		}
-
-		D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); {
-			Depth_Desc.DepthEnable	= true;
-			Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS_EQUAL;
-		}
-
-		D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-			PSO_Desc.pRootSignature                = renderSystem->Library.RS4CBVs_SO;
-			PSO_Desc.VS                            = forwardRenderTerrain_shader_VS;
-			PSO_Desc.DS                            = ShaderQuad2Tri_Debug;
-			PSO_Desc.HS                            = ShaderRegion2Quad;
-			//PSO_Desc.GS                            = forwardRenderTerrain_shader_GS;
-			PSO_Desc.PS							   = ShaderPaint_Wire;
-			PSO_Desc.RasterizerState			   = Rast_Desc;
-			PSO_Desc.SampleMask                    = UINT_MAX;
-			PSO_Desc.PrimitiveTopologyType         = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
-			PSO_Desc.NumRenderTargets              = 1;
-			PSO_Desc.RTVFormats[0]				   = DXGI_FORMAT_R16G16B16A16_FLOAT;
-			PSO_Desc.SampleDesc.Count              = 1;
-			PSO_Desc.SampleDesc.Quality            = 0;
-			PSO_Desc.RasterizerState               = Rast_Desc;
-			PSO_Desc.BlendState                    = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-			PSO_Desc.DSVFormat                     = DXGI_FORMAT_D32_FLOAT;
-			PSO_Desc.InputLayout                   = { InputElements, sizeof(InputElements) / sizeof(InputElements[0]) };
-			PSO_Desc.DepthStencilState			   = Depth_Desc;
-		}
-
-		ID3D12PipelineState* PSO = nullptr;
-		auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-
-		return PSO;
-	}
+	ID3D12PipelineState* CreateCullTerrainComputePSO			(RenderSystem* renderSystem);
+	ID3D12PipelineState* CreateForwardRenderTerrainPSO			(RenderSystem* renderSystem);
+	ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO	(RenderSystem* renderSystem);
 
 
 	struct TileMaps
@@ -431,7 +234,8 @@ namespace FlexKit
 		}
 
 		// No update dependencies
-		FlexKit::UpdateTask* Update(FlexKit::UpdateDispatcher& Dispatcher)
+		/*
+		FlexKit::UpdateTask& Update(FlexKit::UpdateDispatcher& Dispatcher)
 		{
 			FK_LOG_9("Terrain Update");
 
@@ -439,7 +243,7 @@ namespace FlexKit
 			// Make sure textures are loaded
 			return nullptr;
 		}
-
+		*/
 
 		SOResourceHandle	finalBuffer;
 		SOResourceHandle	intermdediateBuffer1;
@@ -471,351 +275,465 @@ namespace FlexKit
 	};
 
 
-	/************************************************************************************************/
-
-
-	TerrainCullerData* const CullTerrain(
-		TerrainEngine&			terrainEngine,
-		RenderSystem*			renderSystem,
-		FrameGraph&				frameGraph,
-		CameraHandle			camera,
-		VertexBufferHandle		vertexBuffer,
-		ConstantBufferHandle	constantBuffer,
-		iAllocator*				tempMemory)
+	struct TerrainRenderResources
 	{
-		//renderSystem->ResetQuery(terrainEngine.queryBufferFinalBuffer);
-		//renderSystem->ResetQuery(terrainEngine.queryBufferIntermediate);
-
-		frameGraph.Resources.AddSOResource(terrainEngine.finalBuffer,			0);
-		frameGraph.Resources.AddSOResource(terrainEngine.intermdediateBuffer1,	0);
-		frameGraph.Resources.AddSOResource(terrainEngine.intermdediateBuffer2,	0);
-
-		frameGraph.Resources.AddUAVResource(terrainEngine.indirectArgs, 0, renderSystem->GetObjectState(terrainEngine.indirectArgs));
-		frameGraph.Resources.AddUAVResource(terrainEngine.querySpace,	0, renderSystem->GetObjectState(terrainEngine.querySpace));
-
-		frameGraph.Resources.AddQuery(terrainEngine.queryBufferFinalBuffer);
-		frameGraph.Resources.AddQuery(terrainEngine.queryBufferIntermediate);
-
-		auto& cullerStage = frameGraph.AddNode<TerrainCullerData>(
-			TerrainCullerData{},
-			[&](FrameGraphNodeBuilder& builder, TerrainCullerData& data)
-			{	
-				data.finalBuffer			= builder.WriteSOBuffer	(terrainEngine.finalBuffer);
-				data.intermediateBuffer1	= builder.WriteSOBuffer	(terrainEngine.intermdediateBuffer1);
-				data.intermediateBuffer2	= builder.WriteSOBuffer	(terrainEngine.intermdediateBuffer2);
-
-				data.indirectLayout			= terrainEngine.indirectLayout;
-				data.indirectArgs			= builder.ReadWriteUAVBuffer(terrainEngine.indirectArgs);
-
-				data.queryFinal				= terrainEngine.queryBufferFinalBuffer;
-				data.queryIntermediate		= terrainEngine.queryBufferIntermediate;
-				data.querySpace				= builder.ReadWriteUAVBuffer(terrainEngine.querySpace);
-
-				auto tableLayout			= renderSystem->Library.RS4CBVs_SO.GetDescHeap(0);
-				data.heap.Init(renderSystem, tableLayout, tempMemory);
-				data.heap.NullFill(renderSystem);
-
-				for(auto& tileMap : terrainEngine.tileTextures)
-					data.heap.SetSRV(renderSystem, 0, tileMap.heightMap);
+		VertexBufferHandle		vertexBuffer;
+		ConstantBufferHandle	constantBuffer;
+		TextureHandle			renderTarget;
+		TextureHandle			depthTarget;
+		RenderSystem&			renderSystem;
+	};
 
 
-				data.splitCount				= 16;
+	auto CreateDefaultTerrainConstants(CameraHandle camera, const TerrainEngine& terrainEngine)
+	{
+		return [&, camera](CBPushBuffer& pushBuffer) -> ConstantBufferDataSet {
+			uint32_t indirectArgsInitial[] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-				TerrainConstantBufferLayout constants;
-				uint32_t					indirectArgsInitial[] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+			TerrainConstantBufferLayout constants;
+			constants.Albedo           = { 0.0f, 1.0f, 1.0f, 0.9f };
+			constants.Specular         = { 1, 1, 1, 1 };
+			constants.RegionDimensions = { 4096, 4096 };
+			constants.Frustum          = GetFrustum(camera);
+			constants.PassCount        = 16;
+			constants.debugMode        = terrainEngine.DebugMode;
 
-				auto cameraNode		= GetCameraNode		(camera);
-				float3 POS			= GetPositionW		(cameraNode);
-				Quaternion Q		= GetOrientation	(cameraNode);
-				constants.Albedo	= {0.0f, 1.0f, 1.0f, 0.9f};
-				constants.Specular	= {1, 1, 1, 1};
-
-
-				constants.RegionDimensions	= { 4096, 4096 };
-				constants.Frustum			= GetFrustum(camera);
-				constants.PassCount			= data.splitCount;
-				constants.debugMode			= terrainEngine.DebugMode;
-
-
-				data.constantBuffer			= constantBuffer;
-				data.terrainConstants		= LoadConstants			(constants,				constantBuffer, frameGraph.Resources);
-				data.cameraConstants		= LoadCameraConstants	(camera,				constantBuffer, frameGraph.Resources);
-				data.indirectArgsInitial	= LoadConstants			(indirectArgsInitial,	constantBuffer, frameGraph.Resources);
-
-				data.vertexBuffer		= vertexBuffer;
-				data.inputVertices		= frameGraph.Resources.GetVertexBufferOffset(vertexBuffer);
-
-				data.regionCount		= terrainEngine.tiles.size();
-			
-				data.tileHeightMaps = Vector<size_t>{tempMemory};
-
-				for (auto& tile: terrainEngine.tiles) 
-				{
-					Region_CP tile_CP;
-					tile_CP.parentID = { 0, 0, 0, 0 };
-					tile_CP.UVs		 = { 0, 0, 1, 1 };
-					tile_CP.d		 = { 1, 0, 0, static_cast<int32_t>(tile.textureMaps) };
-					tile_CP.regionID = {tile.tileID[0], 0, tile.tileID[1], 1024 * 16};
-					PushVertex(tile_CP, vertexBuffer, frameGraph.Resources);
-
-					data.tileHeightMaps.push_back(tile.textureMaps);
-				}
-			},
-			[=](const TerrainCullerData& data, const FrameResources& resources, Context* ctx)
-			{
-				auto PSO = resources.GetPipelineState(TERRAIN_COMPUTE_CULL_PSO);
-
-				if (!PSO)
-					return;
-
-				auto& rootSig = resources.renderSystem->Library.RS4CBVs_SO;
-			
-				ctx->SetRootSignature(rootSig);
-				ctx->SetPipelineState(PSO);
-
-				FrameResourceHandle	intermediateSOs[]	= { data.intermediateBuffer1, data.intermediateBuffer2 };
-				int					offset				= 0;
-
-				ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);
-				ctx->SetGraphicsConstantBufferView	(0, data.constantBuffer, data.cameraConstants);
-				ctx->SetGraphicsConstantBufferView	(1, data.constantBuffer, data.terrainConstants);
-				ctx->SetGraphicsConstantBufferView	(2, data.constantBuffer, data.terrainConstants);
-				ctx->SetGraphicsDescriptorTable		(3, data.heap);
-
-
-				{	// Clear counters
-					auto constants		= resources.GetObjectResource(data.constantBuffer);
-					auto indirectArgs	= resources.GetUAVDeviceResource(data.indirectArgs);
-					auto querySpace		= resources.GetUAVDeviceResource(data.querySpace);
-					auto UAV			= resources.WriteUAV(data.indirectArgs, ctx);
-
-					auto iaState = resources.GetObjectState(data.indirectArgs);
-					auto qsState = resources.GetObjectState(data.querySpace);
-
-
-					ctx->CopyBufferRegion(
-						{ constants, constants										}, // source 
-						{ data.indirectArgsInitial, data.indirectArgsInitial + 8,	}, // source offset
-						{ indirectArgs, querySpace									}, // destinations
-						{ 0, 16														}, // dest offset
-						{ sizeof(uint4), 16											}, // copy sizes
-						{ iaState, qsState											},
-						{ iaState, qsState											});
-				}
-				// prime pipeline
-				ctx->SetVertexBuffers({
-					{ data.vertexBuffer, sizeof(ViewableRegion), (UINT)data.inputVertices}});
-
-				ctx->SetSOTargets({
-						resources.WriteStreamOut(intermediateSOs[0],	ctx, sizeof(Region_CP)),
-						resources.WriteStreamOut(data.finalBuffer,		ctx, sizeof(Region_CP)) });
-
-				ctx->BeginQuery(data.queryFinal, 0);
-				ctx->BeginQuery(data.queryIntermediate, 0);
-				ctx->Draw(data.regionCount);
-
-				for (size_t I = 1; I < data.splitCount; ++I) 
-				{
-					size_t SO1 =   offset % 2;
-					size_t SO2 = ++offset % 2;
-
-
-					ctx->EndQuery(data.queryIntermediate, 0);
-
-					ctx->ResolveQuery(
-						data.queryIntermediate, 0, 1,
-						resources.WriteUAV(data.querySpace, ctx), 0);
-
-					auto resource		= resources.GetObjectResource	(resources.WriteUAV(data.indirectArgs, ctx));
-					auto querySpace		= resources.GetObjectResource	(resources.ReadUAVBuffer(data.querySpace, DRS_Read, ctx));
-					auto constants		= resources.GetObjectResource	(data.constantBuffer);
-					auto iaState		= resources.GetObjectState		(data.indirectArgs);
-
-					ctx->CopyBufferRegion(
-						{ querySpace				},	// sources
-						{ 0							},  // source offsets
-						{ resource					},  // destinations
-						{ 0							},  // destination offsets
-						{ 4							},  // copy sizes
-						{ iaState					},  // source initial state
-						{ iaState					}); // source final	state
-
-
-					ctx->BeginQuery(data.queryIntermediate, 0);
-
-					ctx->ClearSOCounters({ resources.ClearStreamOut(intermediateSOs[SO2], ctx) });
-
-					ctx->SetVertexBuffers2({
-						resources.ReadStreamOut(
-							intermediateSOs[SO1], ctx, sizeof(Region_CP)) });
-
-					ctx->SetSOTargets({
-						resources.WriteStreamOut(intermediateSOs[SO2],	ctx, sizeof(Region_CP)),
-						resources.WriteStreamOut(data.finalBuffer,		ctx, sizeof(Region_CP)) });
-
-					ctx->ExecuteIndirect(
-						resources.ReadIndirectArgs(data.indirectArgs, ctx),
-						data.indirectLayout);
-				}
-
-				ctx->EndQuery(data.queryFinal, 0);
-				ctx->EndQuery(data.queryIntermediate, 0);
-
-				ctx->ResolveQuery(
-					data.queryIntermediate, 0, 1,
-					resources.WriteUAV(data.querySpace, ctx), 0);
-
-				ctx->ResolveQuery(
-					data.queryFinal, 0, 1,
-					resources.WriteUAV(data.querySpace, ctx), 16);
-
-				ctx->SetSOTargets({});
-			});
-
-			return &cullerStage;
+			return { constants, pushBuffer };
+		};
 	}
 
-	auto DrawTerrain_Forward(
-		TerrainCullerData* const	culledTerrain,
-		TerrainEngine&				terrainEngine,
-		RenderSystem*				renderSystem,
-		FrameGraph&					frameGraph,
-		CameraHandle				camera,
-		VertexBufferHandle			vertexBuffer,
-		ConstantBufferHandle		constantBuffer,
-		TextureHandle				renderTarget,
-		TextureHandle				depthTarget,
-		iAllocator*					tempMemory)
+
+	template<
+		typename TY_GetCameraConstantSetFN,
+		typename TY_GetTerrainConstantSetFN>	
+	class ForwardTerrainRenderer
 	{
-		struct RenderTerrainForward
+		using TY_Renderer = ForwardTerrainRenderer<TY_GetCameraConstantSetFN, TY_GetTerrainConstantSetFN>;
+
+	public:
+		ForwardTerrainRenderer(
+				TY_GetCameraConstantSetFN&	IN_GetCameraConstantSet, 
+				TY_GetTerrainConstantSetFN& IN_GetTerrainConstantSet, 
+				TerrainEngine&				IN_terrainEngine, 
+				iAllocator* IN_tempMemory) :
+			GetCameraConstants	{ IN_GetCameraConstantSet	},
+			GetTerrainConstants	{ IN_GetTerrainConstantSet	},
+			tempMemory			{ IN_tempMemory				},
+			terrainEngine		{ IN_terrainEngine			},
+			dataDependencies	{ IN_tempMemory				} {}
+
+
+		void DependsOn(UpdateTask& task)
 		{
-			uint16_t				regionCount;
-			uint16_t				splitCount;
-			size_t					outputBuffer;
+			dataDependencies.push_back(&task);
+		}
+
+
+		struct TerrainCullerResults
+		{
+			TerrainCullerResults(
+				const uint16_t				IN_regionCount,
+				TerrainRenderResources&		IN_resources, 
+				TerrainEngine&				IN_terrainEngine,
+				TY_GetCameraConstantSetFN	IN_GetCameraConstants,
+				TY_GetTerrainConstantSetFN	IN_GetTerrainConstants,
+				iAllocator*					IN_allocator
+			) noexcept :
+					GetCameraConstants	{ IN_GetCameraConstants													},
+					GetTerrainConstants	{ IN_GetTerrainConstants												},
+					regionCount			{ IN_regionCount														},
+					terrainEngine		{ IN_terrainEngine														},
+					vertexBuffer		{ IN_resources.vertexBuffer,	512 * 12,	IN_resources.renderSystem	},
+					constantBuffer		{ IN_resources.constantBuffer,	2048,		IN_resources.renderSystem	},
+					tileHeightMaps		{ IN_allocator,								IN_regionCount				} {}
+
+			TY_GetCameraConstantSetFN	GetCameraConstants;
+			TY_GetTerrainConstantSetFN	GetTerrainConstants;
+
+			size_t						GetOutputBuffer() const
+			{
+				return (splitCount + 1) % 2;
+			}
+
+			TerrainEngine&			terrainEngine;
+
+			const uint16_t			regionCount;
+			const uint16_t			splitCount		= 12;
 
 			IndirectLayout			indirectLayout;
-
-			FrameResourceHandle		renderTarget;
-			FrameResourceHandle		depthTarget;
 
 			FrameResourceHandle		finalBuffer;
 			FrameResourceHandle		intermediateBuffer1;
 			FrameResourceHandle		intermediateBuffer2;
 			FrameResourceHandle		querySpace;
 
-			DescriptorHeap*			heap;
+			DescriptorHeap			heap;
 			FrameResourceHandle		indirectArgs; // UAV Buffer
 
 			QueryHandle				queryFinal;
 			QueryHandle				queryIntermediate;
-	
-			VertexBufferHandle		vertexBuffer;
-			ConstantBufferHandle	constantBuffer;
-			size_t					cameraConstants;
-			size_t					terrainConstants;
-			size_t					inputVertices;
-			size_t					indirectArgsInitial;
 
-			TerrainEngine::TERRAINDEBUGRENDERMODE debugMode;
+			VBPushBuffer			vertexBuffer;
+			CBPushBuffer			constantBuffer;
+
+			Vector<size_t>			tileHeightMaps;
 		};
 
-		auto& renderStage = frameGraph.AddNode<RenderTerrainForward>(
-			RenderTerrainForward{},
-			[&](FrameGraphNodeBuilder& builder, RenderTerrainForward& data)
-			{
-				data.debugMode				= terrainEngine.DebugMode;
-				data.renderTarget			= builder.WriteRenderTarget(renderTarget);
-				data.depthTarget			= builder.WriteDepthBuffer(depthTarget);
 
-				data.indirectArgs			= builder.ReadWriteUAVBuffer(terrainEngine.indirectArgs);
-				data.querySpace				= builder.ReadWriteUAVBuffer(terrainEngine.querySpace);
-				data.finalBuffer			= builder.ReadSOBuffer(terrainEngine.finalBuffer);
-				data.intermediateBuffer1	= builder.ReadSOBuffer(terrainEngine.intermdediateBuffer1);
-				data.intermediateBuffer2	= builder.ReadSOBuffer(terrainEngine.intermdediateBuffer2);
+		auto& Cull(
+			FrameGraph&				frameGraph, 
+			CameraHandle&			camera,
+			TerrainRenderResources&	resources)
+		{
+			frameGraph.Resources.AddSOResource(terrainEngine.finalBuffer,			0);
+			frameGraph.Resources.AddSOResource(terrainEngine.intermdediateBuffer1,	0);
+			frameGraph.Resources.AddSOResource(terrainEngine.intermdediateBuffer2,	0);
 
-				data.constantBuffer			= culledTerrain->constantBuffer;
-				data.cameraConstants		= culledTerrain->cameraConstants;
-				data.terrainConstants		= culledTerrain->terrainConstants;
+			frameGraph.Resources.AddUAVResource(terrainEngine.indirectArgs, 0, resources.renderSystem.GetObjectState(terrainEngine.indirectArgs));
+			frameGraph.Resources.AddUAVResource(terrainEngine.querySpace,	0, resources.renderSystem.GetObjectState(terrainEngine.querySpace));
+				
+			frameGraph.Resources.AddQuery(terrainEngine.queryBufferFinalBuffer);
+			frameGraph.Resources.AddQuery(terrainEngine.queryBufferIntermediate);
+
+			auto& terrainEngine_ref = terrainEngine;
 			
-				data.indirectArgsInitial	= culledTerrain->indirectArgsInitial;
-				data.indirectLayout			= culledTerrain->indirectLayout;
-
-				data.heap					= &culledTerrain->heap;
-			},
-			[=](const RenderTerrainForward& data, const FrameResources& resources, Context* ctx)
-			{
-				auto PSO = resources.GetPipelineState(TERRAIN_RENDER_FOWARD_PSO);
-
-				if (!PSO)
-					return;
-
-				auto& rootSig = resources.renderSystem->Library.RS4CBVs_SO;
-
-				ctx->SetRootSignature(rootSig);
-				ctx->SetPipelineState(PSO);
-
-				ctx->SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_1);
-				ctx->SetGraphicsConstantBufferView(0, data.constantBuffer, data.cameraConstants);
-				ctx->SetGraphicsConstantBufferView(1, data.constantBuffer, data.terrainConstants);
-				ctx->SetGraphicsConstantBufferView(2, data.constantBuffer, data.terrainConstants);
-				ctx->SetGraphicsDescriptorTable(3, *data.heap);
-
-				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
-				ctx->SetRenderTargets(
-					{ resources.GetRenderTargetObject(data.renderTarget) },
-					true,
-					resources.GetRenderTargetObject(data.depthTarget));
-
-				const size_t inputArray					= (data.splitCount + 1) % 2;
-				FrameResourceHandle	intermediateSOs[]	= { data.intermediateBuffer1, data.intermediateBuffer2 };
-
-				//ctx->SetVertexBuffers2({
-				//		resources.ReadStreamOut(
-				//			intermediateSOs[inputArray], ctx, sizeof(Region_CP)) });
-				ctx->SetVertexBuffers2({
-						resources.ReadStreamOut(
-							data.finalBuffer, ctx, sizeof(Region_CP)) });
-
-
-				auto destResource	= resources.GetObjectResource(resources.WriteUAV(data.indirectArgs, ctx));
-				auto querySpace		= resources.GetObjectResource(resources.ReadUAVBuffer(data.querySpace, DRS_Read, ctx));
-				auto constants		= resources.GetObjectResource(data.constantBuffer);
-				auto iaState		= resources.GetObjectState(data.indirectArgs);
-
-				ctx->CopyBufferRegion(
-					{ querySpace, querySpace		},  // sources
-					{ 16,			0				},	// source offset
-					{ destResource, destResource	},  // destinations
-					{ 0,			32				},  // destination offsets
-					{ 4, 			4				},  // copy sizes
-					{ iaState,		iaState			},  // source initial state
-					{ iaState,		iaState			}); // destination final state
-
-				ctx->ExecuteIndirect(
-					resources.ReadIndirectArgs(data.indirectArgs, ctx),
-					data.indirectLayout);
-
-
-				switch (data.debugMode)
+			auto& cullerStage = frameGraph.AddNode<TerrainCullerResults>(
+				TerrainCullerResults{
+					1,
+					resources,
+					terrainEngine,
+					GetCameraConstants,
+					GetTerrainConstants,
+					tempMemory
+				},
+				[&, terrainEngine_ref, resources](FrameGraphNodeBuilder& builder, TerrainCullerResults& data)
 				{
-				case TerrainEngine::TERRAINDEBUGRENDERMODE::WIREFRAME:
-				{
-					auto PSO = resources.GetPipelineState(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
+					for(auto dependency : dataDependencies)
+						builder.AddDataDependency(*dependency);
 
+					data.finalBuffer			= builder.WriteSOBuffer	(terrainEngine_ref.finalBuffer);
+					data.intermediateBuffer1	= builder.WriteSOBuffer	(terrainEngine_ref.intermdediateBuffer1);
+					data.intermediateBuffer2	= builder.WriteSOBuffer	(terrainEngine_ref.intermdediateBuffer2);
+
+					data.indirectLayout			= terrainEngine_ref.indirectLayout;
+					data.indirectArgs			= builder.ReadWriteUAVBuffer(terrainEngine_ref.indirectArgs);
+
+					data.queryFinal				= terrainEngine_ref.queryBufferFinalBuffer;
+					data.queryIntermediate		= terrainEngine_ref.queryBufferIntermediate;
+					data.querySpace				= builder.ReadWriteUAVBuffer(terrainEngine_ref.querySpace);
+
+					auto tableLayout			= resources.renderSystem.Library.RS4CBVs_SO.GetDescHeap(0);
+					data.heap.Init(resources.renderSystem, tableLayout, tempMemory);
+					data.heap.NullFill(resources.renderSystem);
+
+					for(auto& tileMap : terrainEngine.tileTextures)
+						data.heap.SetSRV(resources.renderSystem, 0, tileMap.heightMap);
+				},
+				[=](TerrainCullerResults& data, const FrameResources& resources, Context* ctx)
+				{
+					uint32_t				indirectArgsValues[]	= { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+					ConstantBufferDataSet	terrainConstants		= data.GetTerrainConstants(data.constantBuffer);
+					ConstantBufferDataSet	cameraConstants			= data.GetCameraConstants(data.constantBuffer);
+					ConstantBufferDataSet	indirectArgs			= { indirectArgsValues, data.constantBuffer };
+
+					VertexBufferDataSet		initialVertices			= {	
+							data.terrainEngine.tiles, 
+							[&](auto& tile) -> Region_CP
+							{ 
+								Region_CP tile_CP;
+								tile_CP.parentID	= { 0, 0, 0, 0 };
+								tile_CP.UVs			= { 0, 0, 1, 1 };
+								tile_CP.d			= { 1, 0, 0, static_cast<int32_t>(tile.textureMaps) };
+								tile_CP.regionID	= { tile.tileID[0], 0, tile.tileID[1], 1024 * 16 };
+
+								data.tileHeightMaps.push_back(tile.textureMaps);
+
+								return tile_CP;
+							}, 
+							data.vertexBuffer 
+						};
+
+					auto PSO = resources.GetPipelineState(TERRAIN_COMPUTE_CULL_PSO);
+
+					if (!PSO)
+						return;
+
+					auto& rootSig = resources.renderSystem->Library.RS4CBVs_SO;
+			
+					ctx->SetRootSignature(rootSig);
 					ctx->SetPipelineState(PSO);
+
+					FrameResourceHandle	intermediateSOs[]	= { data.intermediateBuffer1, data.intermediateBuffer2 };
+					int					offset				= 0;
+
+					ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);
+					ctx->SetGraphicsConstantBufferView	(0, cameraConstants);
+					ctx->SetGraphicsConstantBufferView	(1, terrainConstants);
+					ctx->SetGraphicsConstantBufferView	(2, terrainConstants);
+					ctx->SetGraphicsDescriptorTable		(3, data.heap);
+
+					{	// Clear counters
+						auto constantBufferResource	= resources.GetObjectResource((ConstantBufferHandle)data.constantBuffer);
+						auto indirectArgsResource	= resources.GetUAVDeviceResource(data.indirectArgs);
+						auto querySpaceResource		= resources.GetUAVDeviceResource(data.querySpace);
+						auto UAV					= resources.WriteUAV(data.indirectArgs, ctx);
+
+						auto iaState = resources.GetObjectState(data.indirectArgs);
+						auto qsState = resources.GetObjectState(data.querySpace);
+
+						ctx->CopyBufferRegion(
+							{ constantBufferResource,	constantBufferResource			}, // source 
+							{ indirectArgs,				indirectArgs + 8,				}, // source offset
+							{ indirectArgsResource,		querySpaceResource				}, // destinations
+							{ 0, 16														}, // dest offset
+							{ sizeof(uint4), sizeof(uint4)								}, // copy sizes
+							{ iaState, qsState											},
+							{ iaState, qsState											});
+					}
+
+					// prime pipeline
+					ctx->SetVertexBuffers({ initialVertices });
+					
+					ctx->SetSOTargets({
+							resources.WriteStreamOut(intermediateSOs[0],	ctx, sizeof(Region_CP)),
+							resources.WriteStreamOut(data.finalBuffer,		ctx, sizeof(Region_CP)) });
+
+					ctx->BeginQuery(data.queryFinal, 0);
+					ctx->BeginQuery(data.queryIntermediate, 0);
+					ctx->Draw(data.regionCount);
+
+					for (size_t I = 1; I < data.splitCount; ++I) 
+					{
+						size_t SO1 =   offset % 2;
+						size_t SO2 = ++offset % 2;
+
+
+						ctx->EndQuery(data.queryIntermediate, 0);
+
+						ctx->ResolveQuery(
+							data.queryIntermediate, 0, 1,
+							resources.WriteUAV(data.querySpace, ctx), 0);
+
+						auto resource		= resources.GetObjectResource	(resources.WriteUAV(data.indirectArgs, ctx));
+						auto querySpace		= resources.GetObjectResource	(resources.ReadUAVBuffer(data.querySpace, DRS_Read, ctx));
+						auto constants		= resources.GetObjectResource	((ConstantBufferHandle)data.constantBuffer);
+						auto iaState		= resources.GetObjectState		(data.indirectArgs);
+
+						ctx->CopyBufferRegion(
+							{ querySpace				},	// sources
+							{ 0							},  // source offsets
+							{ resource					},  // destinations
+							{ 0							},  // destination offsets
+							{ 4							},  // copy sizes
+							{ iaState					},  // source initial state
+							{ iaState					}); // source final	state
+
+
+						ctx->BeginQuery(data.queryIntermediate, 0);
+
+						ctx->ClearSOCounters({ resources.ClearStreamOut(intermediateSOs[SO2], ctx) });
+
+						ctx->SetVertexBuffers2({
+							resources.ReadStreamOut(
+								intermediateSOs[SO1], ctx, sizeof(Region_CP)) });
+
+						ctx->SetSOTargets({
+							resources.WriteStreamOut(intermediateSOs[SO2],	ctx, sizeof(Region_CP)),
+							resources.WriteStreamOut(data.finalBuffer,		ctx, sizeof(Region_CP)) });
+
+						ctx->ExecuteIndirect(
+							resources.ReadIndirectArgs(data.indirectArgs, ctx),
+							data.indirectLayout);
+					}
+
+					ctx->EndQuery(data.queryIntermediate, 0);
+					ctx->EndQuery(data.queryFinal, 0);
+
+					ctx->ResolveQuery(
+						data.queryIntermediate, 0, 1,
+						resources.WriteUAV(data.querySpace, ctx), 0);
+					ctx->ResolveQuery(
+						data.queryFinal, 0, 1,
+						resources.WriteUAV(data.querySpace, ctx), 16);
+
+					{
+						auto indirectArgs	= resources.GetObjectResource(resources.WriteUAV(data.indirectArgs, ctx));
+						auto queryResults	= resources.GetObjectResource(resources.ReadUAVBuffer(data.querySpace, DRS_Read, ctx));
+						auto iaState		= resources.GetObjectState(data.indirectArgs);
+
+						ctx->CopyBufferRegion(
+							{ queryResults,	},  // sources
+							{ 16,			},	// source offset
+							{ indirectArgs, },  // destinations
+							{ 0,			},  // destination offsets
+							{ 4, 			},  // copy sizes
+							{ iaState,		},  // source initial state
+							{ iaState,		}); // destination final state
+					}
+					ctx->SetSOTargets({});
+
+					ctx->ClearSOCounters(
+						{	resources.ClearStreamOut(intermediateSOs[0],	ctx),
+							resources.ClearStreamOut(intermediateSOs[1],	ctx),
+							resources.ClearStreamOut(data.finalBuffer,		ctx) });
+				});
+
+			return cullerStage;
+		}
+
+
+		// Will take ownership of cullerResults
+		template<typename TY_CULLERRESULTS>
+		auto& Draw(
+			FrameGraph&				frameGraph,
+			TY_CULLERRESULTS&		culledInput,
+			TextureHandle			renderTarget, 
+			TextureHandle			depthTarget,
+			TerrainRenderResources&	resources)
+		{
+			struct _RenderTerrainForward
+			{
+				_RenderTerrainForward(
+					TerrainRenderResources		IN_resources, 
+					TY_CULLERRESULTS&			IN_culledInput,
+					IndirectLayout&				IN_indirectLayout, 
+					DescriptorHeap&				IN_descriptorHeap,
+					TY_GetCameraConstantSetFN&	IN_GetCameraConstants,
+					TY_GetTerrainConstantSetFN&	IN_GetTerrainConstants
+				) noexcept :
+					resoures			{ IN_resources															},
+					culledTerrain		{ IN_culledInput														},
+					indirectLayout		{ IN_indirectLayout														},
+					regionCount			{ IN_culledInput.regionCount											},
+					splitCount			{ IN_culledInput.splitCount												},
+					heap				{ IN_descriptorHeap														},
+					vertexBuffer		{ IN_resources.vertexBuffer,	512 * 12,	IN_resources.renderSystem	},
+					constantBuffer		{ IN_resources.constantBuffer,	2048,		IN_resources.renderSystem	},
+					GetCameraConstants	{ IN_GetCameraConstants													},
+					GetTerrainConstants	{ IN_GetTerrainConstants												} {}
+
+				IndirectLayout&				indirectLayout;
+
+				TY_GetCameraConstantSetFN	GetCameraConstants;
+				TY_GetTerrainConstantSetFN	GetTerrainConstants;
+
+				TY_CULLERRESULTS&			culledTerrain;
+				TerrainRenderResources		resoures;
+
+
+				const uint16_t				regionCount;
+				const uint16_t				splitCount;
+
+
+				FrameResourceHandle			renderTarget;
+				FrameResourceHandle			depthTarget;
+
+				FrameResourceHandle			finalBuffer;
+				FrameResourceHandle			intermediateBuffer1;
+				FrameResourceHandle			intermediateBuffer2;
+				FrameResourceHandle			querySpace;
+				DescriptorHeap&				heap;
+				FrameResourceHandle			indirectArgs; // UAV Buffer
+
+				QueryHandle					queryFinal;
+				QueryHandle					queryIntermediate;
+	
+				VBPushBuffer				vertexBuffer;
+				CBPushBuffer				constantBuffer;
+
+				TerrainEngine::TERRAINDEBUGRENDERMODE debugMode;
+			};
+			
+			auto& renderStage = frameGraph.AddNode<_RenderTerrainForward>(
+				_RenderTerrainForward{
+					resources, 
+					culledInput,
+					terrainEngine.indirectLayout,
+					culledInput.heap,
+					GetCameraConstants,
+					GetTerrainConstants
+				},
+				[&](FrameGraphNodeBuilder& builder, _RenderTerrainForward& data)
+				{
+					data.debugMode				= terrainEngine.DebugMode;
+					data.renderTarget			= builder.WriteRenderTarget(renderTarget);
+					data.depthTarget			= builder.WriteDepthBuffer(depthTarget);
+
+					data.indirectArgs			= builder.ReadWriteUAVBuffer(terrainEngine.indirectArgs);
+					data.querySpace				= builder.ReadWriteUAVBuffer(terrainEngine.querySpace);
+					data.finalBuffer			= builder.ReadSOBuffer(terrainEngine.finalBuffer);
+					data.intermediateBuffer1	= builder.ReadSOBuffer(terrainEngine.intermdediateBuffer1);
+					data.intermediateBuffer2	= builder.ReadSOBuffer(terrainEngine.intermdediateBuffer2);
+				},
+				[=](_RenderTerrainForward& data, const FrameResources& resources, Context* ctx)
+				{
+					ConstantBufferDataSet	terrainConstants			= data.GetTerrainConstants(data.constantBuffer);
+					ConstantBufferDataSet	cameraConstants				= data.GetCameraConstants(data.constantBuffer);
+
+					auto PSO = resources.GetPipelineState(TERRAIN_RENDER_FOWARD_PSO);
+
+					if (!PSO)
+						return;
+
+					auto& rootSig = resources.renderSystem->Library.RS4CBVs_SO;
+
+					ctx->SetRootSignature(rootSig);
+					ctx->SetPipelineState(PSO);
+
+					ctx->SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_1);
+					ctx->SetGraphicsConstantBufferView(0, cameraConstants);
+					ctx->SetGraphicsConstantBufferView(1, terrainConstants);
+					ctx->SetGraphicsConstantBufferView(2, terrainConstants);
+					ctx->SetGraphicsDescriptorTable(3, data.heap);
+
+					ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
+					ctx->SetRenderTargets(
+						{ resources.GetRenderTargetObject(data.renderTarget) },
+						true,
+						resources.GetRenderTargetObject(data.depthTarget));
+
+					const size_t inputArray					= (data.splitCount + 1) % 2;
+					FrameResourceHandle	intermediateSOs[]	= { data.intermediateBuffer1, data.intermediateBuffer2 };
+
+					ctx->SetVertexBuffers2({
+							resources.ReadStreamOut(
+								data.finalBuffer, ctx, sizeof(Region_CP)) });
+
 					ctx->ExecuteIndirect(
 						resources.ReadIndirectArgs(data.indirectArgs, ctx),
 						data.indirectLayout);
-				}	break;
-				}
 
-				ctx->ClearSOCounters(
-					{	resources.ClearStreamOut(intermediateSOs[0],	ctx),
-						resources.ClearStreamOut(intermediateSOs[1],	ctx),
-						resources.ClearStreamOut(data.finalBuffer,		ctx) });
-			});
+					switch (data.debugMode)
+					{
+					case TerrainEngine::TERRAINDEBUGRENDERMODE::WIREFRAME:
+					{
+						auto PSO = resources.GetPipelineState(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
 
-		return &renderStage;
+						ctx->SetPipelineState(PSO);
+						ctx->ExecuteIndirect(
+							resources.ReadIndirectArgs(data.indirectArgs, ctx),
+							data.indirectLayout);
+					}	break;
+					}
+
+					});
+			return renderStage;
+		}
+
+	private:
+		TerrainEngine&				terrainEngine;
+		Vector<UpdateTask*>			dataDependencies;
+		iAllocator*					tempMemory;
+
+		TY_GetCameraConstantSetFN	GetCameraConstants;
+		TY_GetTerrainConstantSetFN	GetTerrainConstants;
+	};
+
+
+	template<typename TY_GetCameraConstantsFN>
+	auto& CreateForwardTerrainRender(TY_GetCameraConstantsFN& getCameraConstantsFN, TerrainEngine& IN_terrainEngine, iAllocator* tempAllocator)
+	{
+		return tempAllocator->allocate<ForwardTerrainRenderer<TY_GetCameraConstantsFN>>(getCameraConstantsFN, IN_terrainEngine, tempAllocator);
 	}
 
 	/************************************************************************************************/

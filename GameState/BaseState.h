@@ -32,6 +32,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\TextRendering.h"
 #include "..\graphicsutilities\defaultpipelinestates.h"
 
+#include <angelscript.h>
+#include <scriptstdstring/scriptstdstring.h>
+#include <scriptbuilder/scriptbuilder.h>
+
 #include <fmod.hpp>
 
 using FlexKit::WorldRender;
@@ -43,6 +47,12 @@ using FlexKit::FKApplication;
 
 
 #pragma comment(lib, "fmod64_vc.lib")
+
+#ifdef _DEBUG
+#pragma comment(lib, "angelscript64d.lib")
+#else
+#pragma comment(lib, "angelscript64.lib")
+#endif
 
 using namespace FlexKit;
 
@@ -83,9 +93,16 @@ public:
 	}
 
 
-	void Update()
+	void Update(iAllocator* memory)
 	{
-		auto result = system->update();
+		auto& Work = CreateLambdaWork_New(
+			[this]() {
+				auto result = system->update();
+			}, 
+			memory);
+
+		threads.AddWork(Work, memory);
+
 	}
 
 
@@ -93,9 +110,11 @@ public:
 
 	ThreadManager&	threads;
 
-	FMOD::System     *system;
-	FMOD::Sound      *sound1, *sound2, *sound3;
-	FMOD::Channel    *channel = 0;
+	FMOD::System*	system	= nullptr;
+	FMOD::Sound*	sound1	= nullptr;
+	FMOD::Sound*	sound2	= nullptr;
+	FMOD::Sound*	sound3	= nullptr;
+	FMOD::Channel*	channel = nullptr;
 	FMOD_RESULT       result;
 	unsigned int      version;
 };
@@ -104,7 +123,7 @@ public:
 /************************************************************************************************/
 
 
-inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, SoundSystem* Sounds)
+inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatcher, SoundSystem* Sounds, iAllocator* allocator)
 {
 	struct SoundUpdateData
 	{
@@ -118,10 +137,10 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 			Data.Sounds = Sounds;
 			Builder.SetDebugString("UpdateSound");
 		},
-		[](auto& Data)
+		[allocator](auto& Data)
 		{
 			FK_LOG_9("Sound Update");
-			Data.Sounds->Update();
+			Data.Sounds->Update(allocator);
 		});
 
 	return &SoundUpdate;
@@ -143,6 +162,7 @@ public:
 			vertexBuffer	{ IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
 			textBuffer		{ IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
 			constantBuffer	{ IN_Framework->core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
+			asEngine		{ asCreateScriptEngine()																		},
 
 			render	{	IN_Framework->core->GetTempMemory(),
 						IN_Framework->core->RenderSystem	}
@@ -176,6 +196,7 @@ public:
 		ReleaseCameraTable();
 	}
 
+	asIScriptEngine* asEngine;
 
 	FKApplication* App;
 

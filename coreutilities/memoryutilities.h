@@ -46,21 +46,20 @@ namespace FlexKit
 
 		virtual ~iAllocator() {}
 
-		virtual void* malloc(size_t)	= 0;
-		virtual void  free(void* _ptr)	= 0;
-		virtual void* _aligned_malloc(size_t, size_t A = 0x10) = 0;
-		virtual void  _aligned_free(void* _ptr) = 0;
+		virtual void* malloc(size_t)							= 0;
+		virtual void  free(void* _ptr)							= 0;
+		virtual void* _aligned_malloc(size_t, size_t A = 0x10)	= 0;
+		virtual void  _aligned_free(void* _ptr)					= 0;
 		virtual void  clear(void) {};
 
 		virtual void* malloc_Debug(size_t, const char* MD, size_t MDSectionSize) = 0;
-
 
 		template<typename T, typename ... Params>
 		T& allocate(Params&& ... Args)
 		{
 			auto mem = malloc(sizeof(T));
 
-			auto t = new (mem) T(std::forward<Params>(Args)...);
+			auto t = new (mem) T( std::forward<Params>(Args)... );
 			return *t;
 		}
 
@@ -74,12 +73,11 @@ namespace FlexKit
 		}
 
 		template<typename T>
-		T& release_aligned(T* _ptr)
+		void release_aligned(T* _ptr)
 		{
 			_ptr->~T();
 			_aligned_free(_ptr);
 		}
-
 
 		template<typename T>
 		void release(T* _ptr)
@@ -107,6 +105,7 @@ namespace FlexKit
 		{
 			::free(_ptr);
 		}
+
 		void* _aligned_malloc(size_t n, size_t A = 0x10) override
 		{
 			return ::_aligned_malloc(n, A);
@@ -117,12 +116,10 @@ namespace FlexKit
 			::_aligned_free(_ptr);
 		}
 
-
 		void* malloc_Debug(size_t n, const char*, size_t) override
 		{
 			return ::malloc(n);
 		}
-
 
 		operator iAllocator* (){return this;}
 	};
@@ -134,12 +131,23 @@ namespace FlexKit
 	{
 	public:
 		StackAllocator() noexcept :
-			AllocatorInterface{ this },
-			critsection{}
+			AllocatorInterface	{ this },
+			critsection			{}
 		{
 			used	= 0;
 			size	= 0;
 			Buffer	= 0;
+		}
+
+		StackAllocator(iAllocator* allocator, size_t bufferSize) noexcept :
+			AllocatorInterface	{ this },
+			critsection			{}
+		{
+			used	= 0;
+			size	= 0;
+			Buffer	= 0;
+
+			Init((byte*)allocator->_aligned_malloc(bufferSize), bufferSize);
 		}
 
 		StackAllocator(StackAllocator&& RHS) noexcept :
@@ -155,12 +163,10 @@ namespace FlexKit
 			RHS.Buffer = nullptr;
 		}
 
-
 		bool operator == (const StackAllocator& rhs) const
 		{
 			return rhs.Buffer == Buffer;
 		}
-
 
 		void	Init				(byte* memory, size_t);
 		void*	malloc				(size_t s);
@@ -168,7 +174,6 @@ namespace FlexKit
 		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
 		void*	_aligned_malloc_MT	(size_t s, size_t alignement = 0x10);
 		void	clear				();
-
 
 		template<typename T>
 		T& allocate()
@@ -178,6 +183,7 @@ namespace FlexKit
 			auto t = new (mem) T();
 			return *t;
 		}
+
 
 		template<typename T, size_t a = 16>
 		T& allocate_aligned()
@@ -351,9 +357,9 @@ namespace FlexKit
 		void Initialise(size_t BufferSize, byte* Buffer)// Size in Bytes
 		{
 			size_t AllocationFootPrint = sizeof(Block) + sizeof(BlockData);
-			Size		= BufferSize / AllocationFootPrint;
+			Size		= (BufferSize / AllocationFootPrint) - 1;
 			Blocks		= reinterpret_cast<Block*>(Buffer);
-			BlockTable	= reinterpret_cast<BlockData*>(Blocks + Size);
+			BlockTable	= reinterpret_cast<BlockData*>(Blocks + Size + 1);
 
 			for (size_t I = 0; I < Size; ++I)
 				BlockTable[I].state = BlockData::Free;
@@ -380,7 +386,7 @@ namespace FlexKit
 					return (byte*)&Blocks[i];
 				}
 
-			FK_ASSERT(0);
+			throw(std::bad_alloc());
 
 			return nullptr;
 		}
@@ -397,6 +403,9 @@ namespace FlexKit
 			size_t temp2 = (size_t)Blocks;
 			size_t index = (temp - temp2) / sizeof(Block);
 
+			if (index > Size)
+				throw(std::runtime_error("Invalid Free"));
+
 			BlockTable[index].state = BlockData::Free;
 		}
 
@@ -405,6 +414,9 @@ namespace FlexKit
 			size_t temp  = (size_t)_ptr;
 			size_t temp2 = (size_t)Blocks;
 			size_t index = (temp - temp2) / sizeof(Block);
+
+			if (index > Size)
+				throw(std::runtime_error("Invalid Free"));
 
 #ifdef _DEBUG
 			FK_ASSERT(BlockTable[index].state & BlockData::Aligned, "_ALIGNED_FREE CALLED ON NON_ALIGNED FLAGGED BLOCK!!");
@@ -592,7 +604,6 @@ namespace FlexKit
 	struct BlockAllocator
 	{
 		BlockAllocator() noexcept :
-			Buffer_ptr{ nullptr },
 			SmallBlockAlloc{},
 			MediumBlockAlloc{},
 			LargeBlockAlloc{},
@@ -608,16 +619,13 @@ namespace FlexKit
 
 		void Init( BlockAllocator_desc& in )
 		{
-			SmallBlockAlloc.Initialise	(in.SmallBlock,		in._ptr);
-			MediumBlockAlloc.Initialise	(in.MediumBlock,	(static_cast<byte*>(in._ptr + in.SmallBlock)));
-			LargeBlockAlloc.Initialise	(in.LargeBlock,		((byte*)in._ptr + in.SmallBlock + in.MediumBlock));
-
 			Small	= in.SmallBlock;
 			Medium	= in.MediumBlock;
 			Large	= in.LargeBlock;
 
-			Buffer_ptr  = (char*)in._ptr;
-			in.PoolSize = Small + Medium + Large;
+			SmallBlockAlloc.Initialise	(in.SmallBlock,		(byte*)::_aligned_malloc(Small,		0x40));
+			MediumBlockAlloc.Initialise	(in.MediumBlock,	(byte*)::_aligned_malloc(Medium,	0x40));
+			LargeBlockAlloc.Initialise	(in.LargeBlock,		(byte*)::_aligned_malloc(Large,		0x40));
 
 			new(&AllocatorInterface) iBlockAllocator(this);
 		}
@@ -635,6 +643,11 @@ namespace FlexKit
 			if (!ret)
 				ret = LargeBlockAlloc.malloc(size, MarkAligned);
 
+			if (ret == nullptr) {
+				throw std::bad_alloc();
+				FK_ASSERT(false, "BAD ALLOC!");
+			}
+
 			return ret;
 		}
 
@@ -643,7 +656,8 @@ namespace FlexKit
 		{
 			if (Debug != nullptr && DebugSize != 0)
 			{
-				FK_LOG_WARNING("Invalid Debug Section Header passed allocator!");
+				FK_LOG_ERROR("Invalid Debug Section Header passed into allocator!");
+				throw std::invalid_argument("Invalid Debug Section Header passed into allocator!");
 			}
 
 			byte* ret = nullptr;
@@ -826,67 +840,115 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	FLEXKITAPI void		PrintBlockStatus	(FlexKit::BlockAllocator* BlockAlloc);
 	FLEXKITAPI bool		LoadFileIntoBuffer	(const char* strLoc, byte* out, size_t strlenmax, bool textfile = true);
 	FLEXKITAPI size_t	GetFileSize			(const char* strLoc);
 	FLEXKITAPI size_t	GetLineToBuffer		(const char* Buffer, size_t position, char* out, size_t OutBuffSize);
 
+
 	/************************************************************************************************/
 
 
-	template<typename TYPE_FN, typename DELETER_FN>
-	class Smart_ref
+	template<typename REF_TY, typename DELETER_FN>
+	class Shared_ref
 	{
 	public:
-		Smart_ref(TYPE_FN& IN_reference, DELETER_FN&& deleter_fn) :
-			deleter		{ deleter_fn	},
-			reference	{ IN_reference	}, 
-			counter_ref	{ counter		},
-			counter		{ 1				} {}
+		Shared_ref() = delete;
+
+		Shared_ref(REF_TY& IN_reference, DELETER_FN&& IN_deleter_fn, iAllocator* IN_allocator) :
+			allocator	{ IN_allocator									},
+			counter_ref	{ IN_allocator->allocate<std::atomic_int>(1)	},
+			deleter		{ IN_deleter_fn									},
+			reference	{ IN_reference									}	{}
 
 
-		~Smart_ref()
+		~Shared_ref()
+		{
+			Release();
+		}
+
+
+		Shared_ref(const Shared_ref& r_ref) :
+			allocator	{ r_ref.allocator	},
+			counter_ref { r_ref.counter_ref	},
+			deleter		{ r_ref.deleter		},
+			reference	{ r_ref.reference	}
+		{
+			AddRef();
+		}
+
+		Shared_ref& operator = (Shared_ref& rhs)	= delete;
+		Shared_ref& operator = (Shared_ref&& rhs)	= delete;
+
+		bool operator == (Shared_ref& rhs) const noexcept
+		{
+			return reference == rhs.Get();
+		}
+
+		operator	REF_TY& ()	noexcept { return reference; }
+		REF_TY&		Get()		noexcept { return reference; }
+
+		REF_TY*		ptr()	noexcept { return &reference; }
+
+		void AddRef()
+		{
+#ifdef _DEBUG
+			if (counter_ref < 0)
+				throw(std::runtime_error("invalid reference detected!")); // dangling reference detected
+#endif
+			counter_ref++;
+		}
+
+		void Release()
 		{
 			counter_ref--;
 
 			if (counter_ref == 0)
+			{
 				deleter(&reference);
+				counter_ref.store(-INFINITY);
+				allocator->release(&counter_ref);
+			}
 		}
-
-
-		Smart_ref(Smart_ref& r_ref) :
-			reference	{ r_ref.reference	},
-			deleter		{ r_ref.deleter		},
-			counter_ref { r_ref.counter		},
-			counter		{ -1				} 
-		{
-			++counter_ref;
-		}
-
-
-		Smart_ref(Smart_ref&& r_ref) :
-			reference	{ r_ref.reference	},
-			deleter		{ r_ref.deleter		},
-			counter_ref { counter			},
-			counter		{ 1					} 
-		{
-#ifdef _DEBUG
-			r_ref.counter = -1;// NOTE(R.M): This shouldn't stick around long after move. For debugging only!
-#endif
-		}
-
-
-		TYPE_FN& Get()			{ return reference; }
-		operator TYPE_FN& ()	{ return reference; }
-		
-		bool isValid ()			{ return counter_ref > 0 && counter_ref != -1; }
 
 	protected:
-		TYPE_FN&			reference;
 		DELETER_FN			deleter;
+		iAllocator*			allocator;
+		REF_TY&				reference;
 		std::atomic_int&	counter_ref;
-		std::atomic_int		counter;
 	};
+
+
+	/************************************************************************************************/
+
+
+	template<typename REF_TY, typename ... TY_ARGS>
+	auto MakeSharedRef(iAllocator* allocator, TY_ARGS ... constructor_args)
+	{
+		auto deleter = [allocator](REF_TY* ptr)
+		{
+			ptr->~REF_TY();
+			allocator->free(ptr);
+		};
+
+		return Shared_ref<REF_TY, decltype(deleter)>(allocator->allocate<REF_TY>(std::forward<TY_ARGS>(constructor_args)...), std::move(deleter), allocator);
+	}
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY, typename ... TY_ARGS>
+	auto MakeSharedPtr(iAllocator* allocator, TY_ARGS ... constructor_args)
+	{
+		return shared_ptr<TY>(
+				&allocator->allocate_aligned<TY>(std::forward<TY_ARGS>(constructor_args)..., 
+					[=](TY* _ptr)
+					{
+						allocator->free(_ptr);
+					}));
+	}
 
 
 	/************************************************************************************************/

@@ -21,33 +21,33 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{DAB74D51-2C9A-4BCD-B572-E9F29F7BCADF}</ProjectGuid>
     <RootNamespace>GameState</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>TestGame</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -72,11 +72,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ExecutablePath>$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH);</ExecutablePath>
     <LibraryPath>$(SolutionDir)Dependencies\lib\release_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\release;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\lib;$(LibraryPath)</LibraryPath>
-    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\sdks\angelscript\angelscript\include;$(SolutionDir)Dependencies\sdks\angelscript\add_on;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)\builds\release_x64\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\sdks\angelscript\add_on;$(SolutionDir)Dependencies\sdks\angelscript\angelscript\include;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\PhysX_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\PhysX_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\raknet\source\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Dependencies\lib\debug_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\debug;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)\builds\debug_x64\</OutDir>
   </PropertyGroup>

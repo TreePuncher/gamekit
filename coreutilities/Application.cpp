@@ -86,11 +86,7 @@ namespace FlexKit
 			FPSTimer += dT;
 			FPSCounter++;
 
-			//if (T > StepSize)
-			{	// Game Tick  -----------------------------------------------------------------------------------
-				framework.DrawFrame(dT);
-				T -= dT;
-			}
+			framework.DrawFrame(dT);
 
 			auto FrameEnd = std::chrono::system_clock::now();
 			auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);

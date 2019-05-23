@@ -124,9 +124,9 @@ namespace FlexKit
 		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, uint2 IN_lightSplits = {20, 20}) :
 			RS(RS_IN),
 			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)					},
-			OcclusionBuffer		{ RS->CreateDepthBuffer({1024, 1024}, true)							},
+			//OcclusionBuffer		{ RS->CreateDepthBuffer({1024, 1024}, true)							},
+			//OcclusionQueries	{ RS->CreateOcclusionBuffer(4096)									},
 			OcclusionCulling	{ false																},
-			OcclusionQueries	{ RS->CreateOcclusionBuffer(4096)									},
 			lightMap			{ RS->CreateTexture2D(IN_lightSplits, FORMAT_2D::R16G16_UINT, 1)	},
 			lightListBuffer		{ RS->CreateConstantBuffer(MEGABYTE, false)							},
 			pointLightBuffer	{ RS->CreateConstantBuffer(MEGABYTE, false)							}
@@ -163,8 +163,8 @@ namespace FlexKit
 	private:
 		RenderSystem*			RS;
 		ConstantBufferHandle	ConstantBuffer;
-		QueryHandle				OcclusionQueries;
-		TextureHandle			OcclusionBuffer;
+		//QueryHandle				OcclusionQueries;
+		//TextureHandle			OcclusionBuffer;
 
 		TextureHandle			lightMap;			// GPU
 		ConstantBufferHandle	lightListBuffer;	// GPU

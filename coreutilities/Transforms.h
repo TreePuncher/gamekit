@@ -176,7 +176,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI bool UpdateTransforms();
-	FLEXKITAPI UpdateTask*	QueueTransformUpdateTask	( UpdateDispatcher& Dispatcher );
+	FLEXKITAPI UpdateTask&	QueueTransformUpdateTask	( UpdateDispatcher& Dispatcher );
 
 	FLEXKITAPI inline void Yaw							( NodeHandle Node,	float r );
 	FLEXKITAPI inline void Roll							( NodeHandle Node,	float r );

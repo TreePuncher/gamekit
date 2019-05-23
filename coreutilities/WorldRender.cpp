@@ -260,6 +260,8 @@ namespace FlexKit
 		SceneDescription&		desc,
 		iAllocator*				Memory)
 	{
+		const size_t MaxEntityDrawCount = 10000;
+
 		struct ForwardDraw
 		{
 			TriMeshHandle	Mesh;
@@ -289,7 +291,7 @@ namespace FlexKit
 			ConstantBufferHandle	pointLightBuffer;
 			ConstantBufferHandle	lightListBuffer;
 			PVS const*				drawables;
-			FlexKit::DescriptorHeap	Heap; // Null Filled
+			DescriptorHeap			Heap; // Null Filled
 		};
 
 
@@ -303,7 +305,7 @@ namespace FlexKit
 				data.DepthBuffer		= builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
 
 				size_t localBufferSize  = std::max(sizeof(Camera::CameraConstantBuffer), sizeof(ForwardDrawConstants));
-				data.entityConstants	= std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants),	1024, frameGraph.Resources));
+				data.entityConstants	= std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources));
 				data.localConstants		= std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
 
 				data.pointLightBuffer	= pointLightBuffer;
@@ -324,7 +326,7 @@ namespace FlexKit
 				Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
 
 				size_t localconstants	= data.localConstants.Push(ForwardDrawConstants{ float(desc.pointLightCount) });
-				size_t cameraConstants	= data.localConstants.Push(GetCameraConstantBuffer(Camera));
+				size_t cameraConstants	= data.localConstants.Push(GetCameraConstants(Camera));
 
 				// Setup Initial Shading State
 				Ctx->SetScissorAndViewports({Targets.RenderTarget});
@@ -341,21 +343,25 @@ namespace FlexKit
 				Ctx->SetGraphicsConstantBufferView	(5, data.lightListBuffer);
 				Ctx->NullGraphicsConstantBufferView	(6);
 
+				TriMesh* prevMesh = nullptr;
+
 				for (auto& drawable : *data.drawables)
 				{
-					auto constantData	= drawable.D->GetConstants();
-					auto* triMesh		= GetMeshResource(drawable.D->MeshHandle);
-					size_t constants	= data.entityConstants.Push(constantData);
+					TriMesh* triMesh		= GetMeshResource(drawable.D->MeshHandle);
 
-					Ctx->AddIndexBuffer(triMesh);
-					Ctx->AddVertexBuffers(triMesh,
-						{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-							VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-							//VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-						});
+					if (triMesh != prevMesh)
+					{
+						prevMesh = triMesh;
 
+						Ctx->AddIndexBuffer(triMesh);
+						Ctx->AddVertexBuffers(triMesh,
+							{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+								VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+								//VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+							});
+					}
 
-					Ctx->SetGraphicsConstantBufferView(2, data.localConstants, constants);
+					Ctx->SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstants });
 					Ctx->DrawIndexedInstanced(triMesh->IndexCount, 0, 0, 1, 0);
 				}
 			});
@@ -421,7 +427,7 @@ namespace FlexKit
 			},
 			[=](LighBufferCPUUpdate& data)
 			{
-				auto cameraConstants	= GetCameraConstantBuffer(data.camera);
+				auto cameraConstants	= GetCameraConstants(data.camera);
 
 				auto f					= GetFrustum(data.camera);
 				auto lights				= data.scene->FindPointLights(f, data.tempMemory);
@@ -598,10 +604,10 @@ namespace FlexKit
 			});
 
 
-
-		/*
+#if 0
 		if(drawDebug)
 		{
+			const size_t viewSplits = 16;
 			Vector<FlexKit::Rectangle> rectangles{ tempMemory };
 			rectangles.reserve(viewSplits * viewSplits);
 
@@ -638,8 +644,7 @@ namespace FlexKit
 
 			return nullptr;
 		}
-		*/
-
+#endif
 
 		return lightBufferData;
 	}

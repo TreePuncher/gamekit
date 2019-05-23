@@ -725,7 +725,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask* QuadTree::Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask* transformDependency)
+	UpdateTask& QuadTree::Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask& transformDependency)
 	{
 		struct QuadTreeUpdate
 		{
@@ -733,10 +733,10 @@ namespace FlexKit
 			GraphicScene*	parentScene;
 		};
 
-		auto Task = &dispatcher.Add<QuadTreeUpdate>(
+		auto& task = dispatcher.Add<QuadTreeUpdate>(
 			[&](DependencyBuilder& builder, auto& QuadTreeUpdate)
 			{
-				builder.AddInput(*transformDependency);
+				builder.AddInput(transformDependency);
 				builder.SetDebugString("QuadTree Update!");
 
 				QuadTreeUpdate.QTree		= this;
@@ -758,7 +758,7 @@ namespace FlexKit
 				//QuadTreeUpdate.QTree->RebuildCounter++;
 			});
 
-		return Task;
+		return task;
 	}
 
 
@@ -887,7 +887,7 @@ namespace FlexKit
 			{
 				builder.AddInput(sceneUpdate);
 
-				size_t taskMemorySize = KILOBYTE * 256;
+				size_t taskMemorySize = KILOBYTE * 2048;
 				data.taskMemory.Init((byte*)allocator->malloc(taskMemorySize), taskMemorySize);
 				data.scene			= scene;
 				data.solid			= PVS{ data.taskMemory };
@@ -1103,14 +1103,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask* GraphicScene::Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask* transformDependency)
+	UpdateTask& GraphicScene::Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask& transformDependency)
 	{
 		struct SceneUpdateData
 		{
 			GraphicScene* scene;
 		};
 
-		auto& sceneUpdate = *SceneManagement.Update(
+		auto& sceneUpdate = SceneManagement.Update(
 			Dispatcher,
 			this,
 			transformDependency);
@@ -1133,7 +1133,7 @@ namespace FlexKit
 			}
 		);
 
-		return &Task1;
+		return Task1;
 	}
 
 

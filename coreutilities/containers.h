@@ -1639,6 +1639,250 @@ namespace FlexKit
 		iAllocator*		Allocator;
 	};
 
+
+	/************************************************************************************************/
+
+
+	template<typename TY>
+	class IntrusiveLinkedList
+	{
+	public:
+
+		class Iterator;
+
+		class node : public TY
+		{
+		public:
+			template<typename ... TY_ARGS>
+			node(TY_ARGS... args) : TY{ std::forward<TY_ARGS>(args)... } {}
+
+			// this class is non-copyable, non-moveable
+			node(const node&	rhs) = delete;
+			node(const node&&	rhs) = delete;
+
+			node& operator = (const node&	rhs) = delete;
+			node& operator = (const node&&	rhs) = delete;
+
+		private:
+			node* prev_ptr	= nullptr;
+			node* next_ptr	= nullptr;
+
+			friend Iterator;
+			friend IntrusiveLinkedList;
+		};
+
+		class Iterator
+		{
+		public:
+			Iterator() = default;
+
+
+			Iterator(TY* IN_ptr) : 
+				_ptr{ static_cast<node*>(IN_ptr) } {}
+
+
+			Iterator operator + (size_t rhs) const noexcept
+			{
+				auto itr = _ptr;
+
+				for (size_t i = 0; i < rhs; ++i)
+					itr = itr ? itr->next_ptr : nullptr;
+
+				return { itr };
+			}
+
+
+			Iterator operator - (size_t rhs) const noexcept
+			{
+				auto itr = _ptr;
+
+				for (size_t i = 0; i < rhs; ++i)
+					itr = ? itr->prev_ptr : nullptr;
+
+				return { itr };
+			}
+
+
+			Iterator operator ++ (int) const noexcept
+			{
+				return { _ptr ? _ptr->next_ptr : nullptr };
+			}
+
+
+			Iterator& operator ++ () noexcept
+			{
+				_ptr = { _ptr ? _ptr->next_ptr : nullptr };
+				return *this;
+			}
+
+
+			Iterator operator -- (int) const noexcept
+			{
+
+				return { _ptr ? _ptr->prev_ptr : nullptr };
+			}
+
+
+			Iterator& operator -- () noexcept
+			{
+				_ptr = { _ptr ? _ptr->prev_ptr : nullptr };
+				return *this;
+			}
+
+
+			Iterator& operator += (size_t rhs) noexcept
+			{
+				for (size_t i = 0; i < rhs; ++i)
+					_ptr = ? _ptr->prev_ptr : nullptr;
+
+				return *this;
+			}
+
+
+			Iterator& operator -= (size_t rhs) noexcept
+			{
+				for (size_t i = 0; i < rhs; ++i)
+					_ptr = ? _ptr->prev_ptr : nullptr;
+
+				return { itr };
+			}
+
+
+			node* operator -> ()
+			{
+				return _ptr;
+			}
+
+
+			node& operator * ()
+			{
+				return *_ptr;
+			}
+
+
+			bool operator != (const Iterator& rhs) const
+			{
+				return rhs._ptr != _ptr;
+			}
+
+
+			operator bool()
+			{
+				return _ptr != nullptr;
+			}
+
+		private: 
+			node* _ptr;
+		};
+
+		using TY_Element = node;
+
+
+		Iterator begin()
+		{
+			return { first };
+		}
+
+		Iterator end()
+		{
+			return { nullptr };
+		}
+
+		const Iterator begin() const
+		{
+			return { first };
+		}
+
+		const Iterator end() const
+		{
+			return { nullptr };
+		}
+
+		void push_back(TY_Element& element)
+		{
+			if(last)
+			{
+				last->next_ptr		= &element;
+				element.prev_ptr	= last;
+			}
+
+			last = &element;
+
+			if (first == nullptr)
+				first = &element;
+		}
+
+		void push_front(TY_Element& element)
+		{
+			if (first) 
+			{
+				first->prev_ptr		= &element;
+				element.next_ptr	= first;
+			}
+
+			first = &element;
+
+			if (last == nullptr)
+				last = &element;
+		}
+		
+		bool try_pop_front(TY_Element*& out)
+		{
+			if (empty())
+				return false;
+
+			out		= first;
+
+			if (last == first)
+			{
+				last	= nullptr;
+				first	= nullptr;
+			}
+			else
+			{
+				first = first->next_ptr;
+
+				if (first)
+					first->prev_ptr = nullptr;
+			}
+			return true;
+		}
+
+		bool try_pop_back(TY_Element*& out)
+		{
+
+
+			if (empty())
+				return false;
+
+			out		= last;
+
+			if (last == first) 
+			{
+				last	= nullptr;
+				first	= nullptr;
+			}
+			else
+			{
+				last = last->prev_ptr;
+
+				if (last)
+					last->next_ptr = nullptr;
+			}
+
+			return true;
+		}
+
+		bool empty()
+		{
+			return first == nullptr;
+		}
+
+		private:
+			TY_Element* first	= nullptr;
+			TY_Element* last	= nullptr;
+	};
+
 }	// namespace FlexKit;
 	/************************************************************************************************/
 #endif

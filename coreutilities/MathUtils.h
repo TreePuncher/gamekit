@@ -42,6 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <smmintrin.h>
 #include <xmmintrin.h>
 #include <initializer_list>
+#include <ostream>
 
 using namespace std;
 
@@ -1026,12 +1027,6 @@ namespace FlexKit
 		}
 
 	};
-
-	std::ostream& operator << (std::ostream& stream, float3 xyz)
-	{
-		stream << "{" << xyz.x << "," << xyz.y << "," << xyz.z << "}";
-		return stream;
-	}
 
 	const float3 BLACK	= float3(0.0f, 0.0f, 0.0f);
 	const float3 WHITE	= float3(1.0f, 1.0f, 1.0f);
@@ -2078,6 +2073,33 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
+	std::ostream& operator << (std::ostream& stream, float2 xyz)
+	{
+		stream << "{ " << xyz.x << ", " << xyz.y << " }";
+		return stream;
+	}
+
+	std::ostream& operator << (std::ostream& stream, float3 xyz)
+	{
+		stream << "{ " << xyz.x << ", " << xyz.y << ", " << xyz.z << " }";
+		return stream;
+	}
+
+	std::ostream& operator << (std::ostream& stream, float4 xyz)
+	{
+		stream << "{ " << xyz.x << ", " << xyz.y << ", " << xyz.z << ", " << xyz.w << " }";
+		return stream;
+	}
+
+	std::ostream& operator << (std::ostream& stream, Quaternion q)
+	{
+		stream << "{ i * " << q.x << ", k * " << q.y << ", k * " << q.z << ", " << q.w << " }";
+		return stream;
+	}
+
+
+	/************************************************************************************************/
 }
 
 #endif

@@ -107,7 +107,7 @@ namespace FlexKit
 
 		float4		GetArea();
 
-		UpdateTask* Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask* transformDependency);
+		UpdateTask& Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask& transformDependency);
 
 		const size_t NodeSize = 16;
 
@@ -229,7 +229,7 @@ namespace FlexKit
 
 		Quaternion GetOrientation	(SceneEntityHandle Handle );
 
-		UpdateTask* Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask* transformDependency);
+		UpdateTask& Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask& transformDependency);
 
 
 		float3				GetPointLightPosition	(LightHandle light) const;

@@ -43,11 +43,11 @@ namespace FlexKit
 	PhysicsSystem::PhysicsSystem(ThreadManager& IN_threads, iAllocator* IN_allocator) :
 		threads		{ IN_threads				},
 		scenes		{ IN_allocator				},
-		memory		{ IN_allocator				},
+		allocator	{ IN_allocator				},
 		dispatcher	{ IN_threads, IN_allocator	}
 	{
 #ifdef _DEBUG
-		bool recordMemoryAllocations = true;
+		bool recordMemoryAllocations = false;
 #else
 		bool recordMemoryAllocations = false;
 #endif
@@ -96,7 +96,8 @@ namespace FlexKit
 		// Create Default Material
 		defaultMaterial = physxAPI->createMaterial(0.5f, 0.5f, .1f);
 		updateColliders	= false;
-		pxDispatcher	= physx::PxDefaultCpuDispatcherCreate(4);
+
+		//pxDispatcher	= physx::PxDefaultCpuDispatcherCreate(4);
 	}
 
 
@@ -108,11 +109,11 @@ namespace FlexKit
 		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
 		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
 		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
-		//desc.cpuDispatcher	= &dispatcher;
-		desc.cpuDispatcher	= pxDispatcher;
+		desc.cpuDispatcher	= &dispatcher;
+		//desc.cpuDispatcher	= pxDispatcher;
 
 		auto pScene			= physxAPI->createScene(desc);
-		auto Idx			= scenes.emplace_back(pScene, this, memory);
+		auto Idx			= scenes.emplace_back(pScene, this, allocator);
 
 		return PhysicsSceneHandle(Idx);
 	}
@@ -143,7 +144,7 @@ namespace FlexKit
 
 	void PhysicsSystem::Simulate(double dt)
 	{
-		for (auto& scene : scenes)
+		for (PhysicsScene& scene : scenes)
 			scene.Update(dt);
 	}
 
@@ -416,28 +417,31 @@ namespace FlexKit
 
 	void PhysicsScene::Update(double dT)
 	{
+		EXITSCOPE( T += dT; );
+
 		do
 		{
-			if (T > stepSize && !updateColliders)
+			if (T >= stepSize && !updateColliders)
 			{
 				scene->simulate(stepSize);
 				updateColliders = true;
-				T -= stepSize;
 			}
 
 
-			if (updateColliders && scene->checkResults())
+			if (updateColliders)
 			{
-				updateColliders = false;
-
-				if (scene->fetchResults(true)) {
+				if (scene->fetchResults())
+				{
 					UpdateColliders();
+					updateColliders = false;
+
+					T -= stepSize;
 				}
+				else
+					return;
 			}
 
 		} while ((T > stepSize));
-
-		T += dT;
 	}
 
 

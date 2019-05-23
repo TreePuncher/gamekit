@@ -54,7 +54,6 @@ namespace FlexKit
 	using std::atomic_bool;
 
 	class ThreadManager;
-	class WorkerThread;
 
 	typedef std::function<void()> OnCompletionEvent;
 
@@ -67,37 +66,43 @@ namespace FlexKit
 	public:
 		iWork & operator = (iWork& rhs) = delete;
 
-		iWork(iAllocator* Memory) : 
-			watchers{Memory}	
+		iWork(iAllocator* Memory) :
+			_debugID	{ "UNIDENTIFIED!" }
+			//: subscribers{Memory}
 		{
-			watchers.reserve(8);
+			//subscribers.reserve(8);
 		}
 
 
-		~iWork()					
+		virtual ~iWork()					
 		{ 
-			watchers.Release();
+			//subscribers.Release();
 		}
 
 
-		virtual void Run() {}
-		virtual void Release() {}
+		virtual void Run()		{ FK_ASSERT(0); }
+		virtual void Release()	= 0;
 
 
 		void NotifyWatchers()
 		{
-
-			for (auto& watcher : watchers)
+			for (auto& watcher : subscribers)
+			{
+				if (!watcher)
+					FK_ASSERT(0);
 				watcher();
+			}
 
-			watchers.Release();
-			notifiedWatchers = true;
+			subscribers.clear();
+			notifiedSubs = true;
 		}
 
 
-		void Subscribe(OnCompletionEvent CallMeLater) 
+		void Subscribe(OnCompletionEvent subscriber) 
 		{ 
-			watchers.emplace_back(std::move(CallMeLater));
+			if (!subscriber)
+				FK_ASSERT(0);
+			subscribers.push_back(subscriber);
 		}
 
 
@@ -105,50 +110,68 @@ namespace FlexKit
 
 		bool						scheduled = false;
 
+		void SetDebugID(const char* IN_debugID)
+		{
+			_debugID = IN_debugID;
+		}
+
+	protected:
+		const char*							_debugID;
+
 	private:
-		bool						notifiedWatchers = false;
-		Vector<OnCompletionEvent>	watchers;
+		bool								notifiedSubs = false;
+		static_vector<OnCompletionEvent, 8>	subscribers;
 	};
 
 
 	/************************************************************************************************/
 
 
-	class WorkerThread : public DequeNode_MT
+	class _WorkerThread
 	{
 	public:
-		WorkerThread(iAllocator* ThreadMemory = SystemAllocator) :
-			Thread		{ [this] {Run(); }	},
+		_WorkerThread(iAllocator* ThreadMemory = SystemAllocator) :
+			Thread		{ [this] { _Run(); }	},
 			Running		{ false				},
 			Quit		{ false				},
 			hasJob		{ false				},
 			Allocator	{ ThreadMemory		} {}
 
-		bool AddItem(iWork* Work);
-		void Shutdown();
-		void Run();
-		bool IsRunning();
-		bool HasJob();
-		bool hasWork();
-		void Wake();
 
-		iWork* Steal();
+		void Shutdown()	noexcept;
+		void Wake()		noexcept;
+
+		bool IsRunning()	noexcept;
+		bool HasJob()		noexcept;
+		bool hasWork()		noexcept;
+
+		bool	AddItem(iWork* Work)	noexcept;
+		iWork*	Steal()					noexcept;
 
 		static ThreadManager*	Manager;
 
 	private:
+		void _Run();
+
 		std::condition_variable	CV;
 		std::atomic_bool		Running;
 		std::atomic_bool		hasJob;
 		std::atomic_bool		Quit;
+		std::atomic_int			workCount = 0;
 
 		iAllocator*				Allocator;
 
 		std::mutex					exclusive;
-		CircularBuffer<iWork*, 128>	workList;
+		CircularBuffer<iWork*, 32>	workList;
 
 		std::thread					Thread;
+
+		size_t tasksCompleted = 0;
 	};
+
+
+	using WorkerList	= IntrusiveLinkedList<_WorkerThread>;
+	using WorkerThread	= WorkerList::TY_Element;
 
 
 	/************************************************************************************************/
@@ -158,9 +181,14 @@ namespace FlexKit
 	class LambdaWork : public iWork
 	{
 	public:
-		LambdaWork(TY_FN& FNIN, iAllocator* Memory = FlexKit::SystemAllocator) :
-			iWork{ Memory },
-			Callback{ FNIN } {}
+		LambdaWork(TY_FN& FNIN, iAllocator* Memory = FlexKit::SystemAllocator) noexcept :
+			iWork		{ Memory },
+			Callback	{ FNIN } {}
+
+		void Release() noexcept
+		{
+
+		}
 
 		void Run()
 		{
@@ -171,7 +199,7 @@ namespace FlexKit
 	};
 
 	template<typename TY_FN>
-	LambdaWork<TY_FN> CreateLambdaWork(TY_FN FNIN, iAllocator* Memory = FlexKit::SystemAllocator)
+	LambdaWork<TY_FN> CreateLambdaWork(TY_FN FNIN, iAllocator* Memory = FlexKit::SystemAllocator) noexcept
 	{
 		return LambdaWork<TY_FN>(FNIN, Memory);
 	}
@@ -179,10 +207,18 @@ namespace FlexKit
 	template<typename TY_FN>
 	iWork& CreateLambdaWork_New(
 		TY_FN FNIN, 
-		iAllocator* Memory_1 = SystemAllocator,
-		iAllocator* Memory_2 = SystemAllocator)
+		iAllocator* Memory_1,
+		iAllocator* Memory_2)
 	{
 		return Memory_1->allocate<LambdaWork<TY_FN>>(FNIN, Memory_2);
+	}
+
+	template<typename TY_FN>
+	iWork& CreateLambdaWork_New(
+		TY_FN&		FNIN,
+		iAllocator* allocator = SystemAllocator)
+	{
+		return CreateLambdaWork_New(FNIN, allocator, allocator);
 	}
 
 	/************************************************************************************************/
@@ -200,7 +236,7 @@ namespace FlexKit
 			WorkerThread::Manager = this;
 
 			for (size_t I = 0; I < ThreadCount; ++I)
-				threads.push_back(&allocator->allocate<WorkerThread>(allocator));
+				threads.push_back(allocator->allocate<WorkerThread>(allocator));
 		}
 
 
@@ -229,15 +265,16 @@ namespace FlexKit
 		}
 
 
-		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator)
+		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept
 		{
+			FK_ASSERT(newWork->scheduled == false);
+
 			if (!threads.empty())
 			{
 				size_t	startPoint = randomDevice();
 
 				auto _AddWork = [](iWork* newWork, auto& thread)
 				{
-					FK_ASSERT(newWork->scheduled == false);
 
 					if (thread->AddItem(newWork))// committed to adding work here
 					{
@@ -303,15 +340,15 @@ namespace FlexKit
 					if (auto workItem = workList.pop_front(); workItem != nullptr)
 					{
 						workItem->Run();
-						workItem->Release();
 						workItem->NotifyWatchers();
+						workItem->Release();
 					}
 				}
 			}
 		}
 
-
-		void RotateThreads()
+		/*
+		void RotateThreads() noexcept
 		{
 			WorkerThread* Ptr = nullptr;
 
@@ -322,9 +359,10 @@ namespace FlexKit
 				Ptr->Wake();
 			}
 		}
+		*/
 
 
-		void WaitForShutdown() // TODO: this does not work!
+		void WaitForShutdown() noexcept // TODO: this does not work!
 		{
 			bool threadRunnings = false;
 			do
@@ -338,14 +376,14 @@ namespace FlexKit
 		}
 
 
-		void IncrementActiveWorkerCount()
+		void IncrementActiveWorkerCount() noexcept
 		{
 			workingThreadCount++;
 			CV.notify_all();
 		}
 
 
-		void DecrementActiveWorkerCount()
+		void DecrementActiveWorkerCount() noexcept
 		{
 			workingThreadCount--;
 			CV.notify_all();
@@ -380,17 +418,11 @@ namespace FlexKit
 		}
 
 
-		Deque_MT<WorkerThread>::Iterator GetThreadsBegin() {
-			return threads.begin();
-		}
-
-
-		Deque_MT<WorkerThread>::Iterator GetThreadsEnd() {
-			return threads.end();
-		}
+		auto GetThreadsBegin()	{ return threads.begin(); }
+		auto GetThreadsEnd()	{ return threads.end(); }
 
 	private:
-		Deque_MT<WorkerThread>		threads;
+		WorkerList	threads;
 
 		std::condition_variable		CV;
 		std::atomic_int				workingThreadCount;
@@ -413,15 +445,14 @@ namespace FlexKit
 			ThreadManager&	IN_threads,
 			iAllocator*		Memory = FlexKit::SystemAllocator) :
 				PostEvents	{ Memory		},
-				threads		{ IN_threads	}
-		{}
+				threads		{ IN_threads	} {}
 
 		~WorkBarrier() {}
 
 		WorkBarrier(const WorkBarrier&)					= delete;
 		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
-		int  GetDependentCount		(){ return TasksInProgress; }
+		int  GetDependentCount		() { return TasksInProgress; }
 		void AddDependentWork		(iWork* Work);
 		void AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void Wait					();
@@ -473,6 +504,52 @@ namespace FlexKit
 		std::mutex					scheduleLock;
 		Vector<OnCompletionEvent>	PostEvents;
 	};
+
+
+	/************************************************************************************************/
+
+
+	// Thread safe lazy object constructor, returns callable that returns the same object everytime, for every calling thread.  Will block during construction.
+	template<typename TY, typename FN_Constructor>
+	auto MakeLazyObject(iAllocator* allocator, FN_Constructor FN_Construct)
+	{
+		struct _State
+		{
+			atomic_bool inProgress	= false;
+			atomic_bool ready		= false;
+
+			std::condition_variable		cv;
+			TY							constructable;
+		};
+
+		auto lazyConstructor = [FN_Construct, _state = MakeSharedRef<_State>(allocator)](auto&& ... args) mutable
+		{
+			if (!_state.Get().ready)
+			{
+				if (!_state.Get().inProgress)
+				{
+					_state.Get().inProgress		= true;
+
+					_state.Get().constructable	= FN_Construct(std::forward<decltype(args)>(args)...);
+
+					_state.Get().inProgress		= false;
+					_state.Get().ready			= true;
+					_state.Get().cv.notify_all();
+				}
+				else
+				{
+					std::mutex m;
+					std::unique_lock ul{ m };
+
+					_state.Get().cv.wait(ul, [&]() -> bool { return _state.Get().ready; });
+				}
+			}
+
+			return _state.Get().constructable;
+		};
+
+		return lazyConstructor;
+	}
 
 
 	/************************************************************************************************/
