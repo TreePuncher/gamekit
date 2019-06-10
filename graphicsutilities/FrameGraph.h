@@ -224,7 +224,7 @@ namespace FlexKit
 	FLEXKITAPI class FrameResources
 	{
 	public:
-		FrameResources(RenderSystem* IN_renderSystem, iAllocator* IN_allocator) : 
+		FrameResources(RenderSystem& IN_renderSystem, iAllocator* IN_allocator) : 
 			Resources		{ IN_allocator		},
 			Textures		{ IN_allocator		},
 			SubNodeTracking	{ IN_allocator		},
@@ -234,7 +234,7 @@ namespace FlexKit
 		PassObjectList			Resources;
 		PassObjectList			Textures;	// State should be mostly Static across frame
 		mutable PassObjectList	SubNodeTracking;
-		RenderSystem*			renderSystem;
+		RenderSystem&			renderSystem;
 
 
 		/************************************************************************************************/
@@ -244,8 +244,8 @@ namespace FlexKit
 		{
 			AddRenderTarget(
 				Handle,
-				renderSystem->GetTag(Handle),
-				renderSystem->RenderTargets.GetState(Handle));
+				renderSystem.GetTag(Handle),
+				renderSystem.RenderTargets.GetState(Handle));
 		}
 
 
@@ -268,8 +268,8 @@ namespace FlexKit
 		{
 			AddDepthBuffer(
 				Handle,
-				renderSystem->GetTag(Handle),
-				renderSystem->RenderTargets.GetState(Handle));
+				renderSystem.GetTag(Handle),
+				renderSystem.RenderTargets.GetState(Handle));
 		}
 
 
@@ -302,7 +302,7 @@ namespace FlexKit
 
 		void AddSOResource(SOResourceHandle handle, uint32_t tag)
 		{
-			DeviceResourceState initialState = renderSystem->GetObjectState(handle);
+			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
 			Resources.push_back(
 				FrameObject::SOBufferObject(tag, handle, initialState));
@@ -316,7 +316,7 @@ namespace FlexKit
 
 		void AddShaderResource(TextureHandle handle, uint32_t tag = 0)
 		{
-			DeviceResourceState initialState = renderSystem->GetObjectState(handle);
+			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
 			Resources.push_back(
 				FrameObject::TextureObject(tag, handle, initialState));
@@ -330,7 +330,7 @@ namespace FlexKit
 
 		void AddQuery(QueryHandle handle)
 		{
-			DeviceResourceState initialState = renderSystem->GetObjectState(handle);
+			DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
 			Resources.push_back(
 				FrameObject::QueryObject(handle, initialState));
@@ -345,7 +345,7 @@ namespace FlexKit
 		template<typename TY>
 		ID3D12Resource* GetObjectResource(TY handle) const
 		{
-			return renderSystem->GetObjectDeviceResource(handle);
+			return renderSystem.GetObjectDeviceResource(handle);
 		}
 
 
@@ -382,7 +382,7 @@ namespace FlexKit
 
 		ID3D12PipelineState*	GetPipelineState(PSOHandle State)	const
 		{
-			return renderSystem->GetPSO(State);
+			return renderSystem.GetPSO(State);
 		}
 
 
@@ -391,7 +391,7 @@ namespace FlexKit
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle Handle, size_t VertexSize)
 		{
-			return renderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
+			return renderSystem.VertexBuffers.GetCurrentVertexBufferOffset(Handle) / VertexSize;
 		}
 
 
@@ -400,7 +400,7 @@ namespace FlexKit
 
 		size_t					GetVertexBufferOffset(VertexBufferHandle Handle)
 		{
-			return renderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Handle);
+			return renderSystem.VertexBuffers.GetCurrentVertexBufferOffset(Handle);
 		}
 
 
@@ -436,14 +436,14 @@ namespace FlexKit
 
 		uint2					GetRenderTargetWH(FrameResourceHandle Handle) const
 		{
-			return renderSystem->GetRenderTargetWH(GetRenderTarget(Handle));
+			return renderSystem.GetRenderTargetWH(GetRenderTarget(Handle));
 		}
 
 
 		/************************************************************************************************/
 
 
-		DescHeapPOS				GetRenderTargetDescHeapEntry(FrameResourceHandle Handle)
+		DescHeapPOS				GetRenderTargetDescHeapEntry(FrameResourceHandle Handle) const
 		{
 			return Resources[Handle].RenderTarget.HeapPOS;
 		}
@@ -484,7 +484,7 @@ namespace FlexKit
 
 			auto res			= _FindSubNodeResource(handle);
 			auto SOHandle		= res->SOBuffer;
-			auto deviceResource = renderSystem->GetObjectDeviceResource(SOHandle);
+			auto deviceResource = renderSystem.GetObjectDeviceResource(SOHandle);
 
 			if (res->State != DRS_VERTEXBUFFER) 
 				ctx->AddStreamOutBarrier(SOHandle, res->State, DRS_VERTEXBUFFER);
@@ -493,7 +493,7 @@ namespace FlexKit
 
 			D3D12_VERTEX_BUFFER_VIEW view = {
 				deviceResource->GetGPUVirtualAddress(),
-				static_cast<UINT>(renderSystem->GetStreamOutBufferSize(SOHandle)),
+				static_cast<UINT>(renderSystem.GetStreamOutBufferSize(SOHandle)),
 				static_cast<UINT>(vertexSize)
 			};
 
@@ -664,9 +664,9 @@ namespace FlexKit
 
 			D3D12_STREAM_OUTPUT_BUFFER_VIEW view =
 			{
-				renderSystem->GetObjectDeviceResource(SOHandle)->GetGPUVirtualAddress(),
-				renderSystem->GetStreamOutBufferSize(SOHandle),
-				renderSystem->GetSOCounterResource(SOHandle)->GetGPUVirtualAddress(),
+				renderSystem.GetObjectDeviceResource(SOHandle)->GetGPUVirtualAddress(),
+				renderSystem.GetStreamOutBufferSize(SOHandle),
+				renderSystem.GetSOCounterResource(SOHandle)->GetGPUVirtualAddress(),
 			};
 
 			return view;
@@ -895,7 +895,7 @@ namespace FlexKit
 	template<typename TY_V>
 	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources)
 	{
-		bool res = Resources.renderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, sizeof(TY_V));
+		bool res = Resources.renderSystem.VertexBuffers.PushVertex(Buffer, (void*)&Vertex, sizeof(TY_V));
 		FK_ASSERT(res, "Failed to Push Vertex!");
 		return res;
 	}
@@ -907,7 +907,7 @@ namespace FlexKit
 	template<typename TY_V>
 	bool PushVertex(const TY_V& Vertex, VertexBufferHandle Buffer, FrameResources& Resources, size_t PushSize)
 	{
-		bool res = Resources.renderSystem->VertexBuffers.PushVertex(Buffer, (void*)&Vertex, PushSize);
+		bool res = Resources.renderSystem.VertexBuffers.PushVertex(Buffer, (void*)&Vertex, PushSize);
 		FK_ASSERT(res, "Failed to Push Vertex!");
 		return res;
 	}
@@ -943,12 +943,12 @@ namespace FlexKit
 	template<typename TY_V>
 	inline size_t GetCurrentVBufferOffset(VertexBufferHandle Buffer, FrameResources& Resources)
 	{
-		return Resources.renderSystem->VertexBuffers.GetCurrentVertexBufferOffset(Buffer) / sizeof(TY_V);
+		return Resources.renderSystem.VertexBuffers.GetCurrentVertexBufferOffset(Buffer) / sizeof(TY_V);
 	}
 
 	inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
 	{
-		return Resources.renderSystem->ConstantBuffers.BeginNewBuffer(CB);
+		return Resources.renderSystem.ConstantBuffers.BeginNewBuffer(CB);
 	}
 
 
@@ -957,7 +957,7 @@ namespace FlexKit
 
 	inline bool PushConstantBufferData(char* _ptr, size_t Size, ConstantBufferHandle Buffer, FrameResources& Resources)
 	{
-		bool res = Resources.renderSystem->ConstantBuffers.Push(Buffer, _ptr, Size);
+		bool res = Resources.renderSystem.ConstantBuffers.Push(Buffer, _ptr, Size);
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res;
 	}
@@ -969,7 +969,7 @@ namespace FlexKit
 	template<typename TY_CB>
 	bool PushConstantBufferData(const TY_CB& Constants, ConstantBufferHandle Buffer, FrameResources& Resources)
 	{
-		bool res = Resources.renderSystem->ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB));
+		bool res = Resources.renderSystem.ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB));
 		FK_ASSERT(res, "Failed to Push Constants!");
 		return res;
 	}
@@ -1491,12 +1491,12 @@ namespace FlexKit
 	FLEXKITAPI class FrameGraph
 	{
 	public:
-		FrameGraph(RenderSystem* RS, iAllocator* Temp) :
-			Resources		{ RS,	Temp },
+		FrameGraph(RenderSystem& RS, iAllocator* Temp) :
+			Resources		{ RS, Temp },
 			dataDependencies{ Temp },
 			ResourceContext	{ Temp },
 			Memory			{ Temp },
-			Nodes			{ Temp }{}
+			Nodes			{ Temp } {}
 
 		FrameGraph				(const FrameGraph& RHS) = delete;
 		FrameGraph& operator =	(const FrameGraph& RHS) = delete;
@@ -1514,12 +1514,12 @@ namespace FlexKit
 			Node.NodeAction = [=, &Data, &Node](
 				FrameResources& Resources,
 				Context* ctx)
-			{
-				Node.HandleBarriers(Resources, ctx);
-				Draw(Data, Resources, ctx);
-				Node.RestoreResourceStates(ctx, Resources.SubNodeTracking);
-				Data.~TY();
-			};
+				{
+					Node.HandleBarriers(Resources, ctx);
+					Draw(Data, Resources, ctx);
+					Node.RestoreResourceStates(ctx, Resources.SubNodeTracking);
+					Data.~TY();
+				};
 
 			Setup(Builder, Data);
 			Builder.BuildNode(this);
@@ -1534,6 +1534,8 @@ namespace FlexKit
 		
 		void UpdateFrameGraph	(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp);// 
 		void SubmitFrameGraph	(UpdateDispatcher& dispatcher, RenderSystem* RS, RenderWindow* Window);
+
+		RenderSystem& GetRenderSystem() { return Resources.renderSystem; }
 
 		FrameResources				Resources;
 		FrameGraphResourceContext	ResourceContext;
@@ -2064,7 +2066,7 @@ namespace FlexKit
 					{	Resources.GetRenderTargetObject(Data.RenderTarget) }, 
 					false);
 
-				Ctx->SetRootSignature		(Resources.renderSystem->Library.RS6CBVs4SRVs);
+				Ctx->SetRootSignature		(Resources.renderSystem.Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState		(Resources.GetPipelineState(Data.State));
 				Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 
@@ -2185,12 +2187,12 @@ namespace FlexKit
 				for (auto& dep : dependencies)
 					builder.AddDataDependency(*dep);
 
-				data.renderTarget	= builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
-				data.depthBuffer	= builder.WriteDepthBuffer(frameGraph.Resources.renderSystem->GetTag(desc.DepthBuffer));
+				data.renderTarget	= builder.WriteRenderTarget(frameGraph.Resources.renderSystem.GetTag(desc.RenderTarget));
+				data.depthBuffer	= builder.WriteDepthBuffer(frameGraph.Resources.renderSystem.GetTag(desc.DepthBuffer));
 
 				data.heap.Init(
 					frameGraph.Resources.renderSystem,
-					frameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
+					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					tempAllocator).NullFill(frameGraph.Resources.renderSystem);
 
 				size_t MaxElementSize = 0;
@@ -2222,7 +2224,7 @@ namespace FlexKit
 
 
 				// Setup state
-				ctx->SetRootSignature(resources.renderSystem->Library.RS6CBVs4SRVs);
+				ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
 				ctx->SetPipelineState(resources.GetPipelineState(data.PSO));
 
 				ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
@@ -2312,7 +2314,7 @@ namespace FlexKit
 			DrawWireframes{},
 			[&](FrameGraphNodeBuilder& Builder, auto& Data)
 			{
-				Data.RenderTarget	= Builder.WriteRenderTarget(frameGraph.Resources.renderSystem->GetTag(desc.RenderTarget));
+				Data.RenderTarget	= Builder.WriteRenderTarget(frameGraph.Resources.renderSystem.GetTag(desc.RenderTarget));
 
 				Data.CB		= desc.constantBuffer;
 				Data.VB		= desc.VertexBuffer;
@@ -2320,7 +2322,7 @@ namespace FlexKit
 
 				Data.Heap.Init(
 					frameGraph.Resources.renderSystem,
-					frameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
+					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMem).NullFill(frameGraph.Resources.renderSystem);
 
 				struct LocalConstants// Register b1
@@ -2371,7 +2373,7 @@ namespace FlexKit
 			},
 			[](auto& Data, const FrameResources& Resources, Context* ctx)
 			{
-				ctx->SetRootSignature(Resources.renderSystem->Library.RS6CBVs4SRVs);
+				ctx->SetRootSignature(Resources.renderSystem.Library.RS6CBVs4SRVs);
 				ctx->SetPipelineState(Resources.GetPipelineState(Data.PSO));
 				ctx->SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
 
@@ -2460,8 +2462,8 @@ namespace FlexKit
 			DrawGrid{},
 			[&](FrameGraphNodeBuilder& Builder, auto& Data)
 			{
-				Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.renderSystem->GetTag(RenderTarget));
-				Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.renderSystem->GetTag(DepthBuffer));
+				Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.renderSystem.GetTag(RenderTarget));
+				Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.renderSystem.GetTag(DepthBuffer));
 				Data.CB				= Constants;
 
 				Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
@@ -2472,7 +2474,7 @@ namespace FlexKit
 
 				Data.Heap.Init(
 					FrameGraph.Resources.renderSystem,
-					FrameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
+					FrameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMem);
 				Data.Heap.NullFill(FrameGraph.Resources.renderSystem);
 
@@ -2512,7 +2514,7 @@ namespace FlexKit
 			},
 			[](auto& Data, const FlexKit::FrameResources& Resources, FlexKit::Context* Ctx)
 			{
-				Ctx->SetRootSignature(Resources.renderSystem->Library.RS6CBVs4SRVs);
+				Ctx->SetRootSignature(Resources.renderSystem.Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState(Resources.GetPipelineState(DRAW_LINE3D_PSO));
 
 				Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });

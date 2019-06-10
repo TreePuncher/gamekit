@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 	auto* Memory = CreateEngineMemory();
 	EXITSCOPE(ReleaseEngineMemory(Memory));
 
-	FlexKit::FKApplication App{ uint2{ 1920, 1080 } * 1.4f, Memory };
+	FlexKit::FKApplication App{ uint2{ 1920, 1080 }, Memory };
 
 	for (size_t I = 0; I < argc; ++I)
 		App.PushArgument(argv[I]);

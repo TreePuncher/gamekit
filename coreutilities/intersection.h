@@ -35,6 +35,11 @@ namespace FlexKit
 
 	struct AABB // Axis Aligned Bounding Box
 	{
+		float3 Position() const noexcept
+		{
+			return (BottomLeft + TopRight) / 2;
+		}
+
 		float3 BottomLeft, TopRight;
 	};
 
@@ -161,6 +166,30 @@ namespace FlexKit
 
 
 	FLEXKITAPI bool CompareBSAgainstFrustum(const Frustum* F, BoundingSphere BS);
+
+
+	/************************************************************************************************/
+
+
+	inline bool Intersects(const Frustum frustum, const AABB aabb)
+	{
+		int Result = 1;
+
+		for (int I = 0; I < 6; ++I)
+		{
+			float px = (frustum.Planes[I].Normal.x >= 0.0f) ? aabb.BottomLeft.x : aabb.TopRight.x;
+			float py = (frustum.Planes[I].Normal.y >= 0.0f) ? aabb.BottomLeft.y : aabb.TopRight.y;
+			float pz = (frustum.Planes[I].Normal.z >= 0.0f) ? aabb.BottomLeft.z : aabb.TopRight.z;
+
+			float3 pV = float3{ px, py, pz } -frustum.Planes[I].Orgin;
+			float dP = dot(frustum.Planes[I].Normal, pV);
+
+			if (dP >= 0)
+				return false;
+		}
+
+		return true;
+	}
 
 
 	/************************************************************************************************/

@@ -143,11 +143,11 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& Builder, DrawSpriteText& Data)
 			{
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })
-					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.renderSystem->GetRenderTargetWH(RenderTarget);
+					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.renderSystem.GetRenderTargetWH(RenderTarget);
 
 				Data.Heap.Init(
 					FGraph.Resources.renderSystem, 
-					FGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
+					FGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMemory);
 
 				Data.TextSheet		= Builder.ReadShaderResource(Font.Texture);
@@ -249,7 +249,7 @@ namespace FlexKit
 				Data.Heap.SetSRV(Resources.renderSystem, 0, Resources.GetTexture(Data.TextSheet));
 				Data.Heap.NullFill(Resources.renderSystem);
 
-				Ctx->SetRootSignature				(Resources.renderSystem->Library.RS6CBVs4SRVs);
+				Ctx->SetRootSignature				(Resources.renderSystem.Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
 				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.RenderTarget) });

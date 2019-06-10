@@ -43,6 +43,7 @@ namespace FlexKit
 	FLEXKITAPI NodeHandle					GetCameraNode			(CameraHandle);
 	FLEXKITAPI float						GetCameraNear			(CameraHandle);
 	FLEXKITAPI Camera::CameraConstantBuffer	GetCameraConstants		(CameraHandle);
+	FLEXKITAPI float4x4						GetCameraPV				(CameraHandle);
 
 
 	UpdateTask& QueueCameraUpdate(UpdateDispatcher&, UpdateTask& TransformDependency);

@@ -336,6 +336,7 @@ namespace FlexKit
 		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&WT);
 		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
 
+
 		Camera::CameraConstantBuffer NewData;
 		NewData.Proj            = Float4x4ToXMMATIRX(&Proj);
 		NewData.View			= XMMatrixTranspose(Float4x4ToXMMATIRX(&View));
@@ -344,6 +345,8 @@ namespace FlexKit
 		NewData.PVI             = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(NewData.Proj) * XMView));
 		NewData.MinZ            = Near;
 		NewData.MaxZ            = Far;
+
+		PV = XMMatrixToFloat4x4(&NewData.PV);
 
 		NewData.WPOS[0]         = XMWT.r[0].m128_f32[3];
 		NewData.WPOS[1]         = XMWT.r[1].m128_f32[3];
@@ -365,6 +368,12 @@ namespace FlexKit
 
 		return NewData;
 	}
+
+	float4x4				Camera::GetPV()
+	{
+		return PV;
+	}
+
 
 
 	/************************************************************************************************/

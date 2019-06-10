@@ -74,6 +74,7 @@ namespace FlexKit
 
 		FustrumPoints			GetFrustumPoints	(float3 XYZ, Quaternion Q);
 		CameraConstantBuffer	GetConstants		();
+		float4x4				GetPV				();
 		NodeHandle				Node;
 
 		float FOV;

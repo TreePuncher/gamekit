@@ -199,6 +199,13 @@ namespace FlexKit
 	}
 
 
+	float4x4 GetCameraPV(CameraHandle handle)
+	{
+		FK_ASSERT(CameraTable != nullptr);
+		return CameraTable->Cameras[handle].GetPV();
+	}
+
+
 	/************************************************************************************************/
 
 

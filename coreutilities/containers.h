@@ -122,6 +122,7 @@ namespace FlexKit
 	template<typename Ty>
 	struct Vector
 	{
+		typedef Vector<Ty> ELEMENT_TYPE;
 		typedef Vector<Ty> THISTYPE;
 
 		typedef Ty*			Iterator;
@@ -603,6 +604,14 @@ namespace FlexKit
 
 		explicit operator bool() { return GetByType<bool>(); }
 		template<typename Ty_1>	operator Ty_1() { return GetByType<Ty_1>(); }
+
+		template<size_t index>	auto& Get() { static_assert(false, "Invalid Index"); }
+		template<>	constexpr auto& Get<0>() noexcept { return V1; }
+		template<>	constexpr auto& Get<1>() noexcept { return V2 ;}
+
+		template<size_t index>	const auto& Get() const { static_assert(false, "Invalid Index"); }
+		template<> const auto& Get<0>() const noexcept { return V1 }
+		template<> const auto& Get<1>() const noexcept { return V2 }
 
 		Ty_1 V1;
 		Ty_2 V2;

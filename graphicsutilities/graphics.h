@@ -2986,7 +2986,7 @@ namespace FlexKit
 
 
 		template<typename _TY>
-		size_t Push(_TY& data)
+		size_t Push(_TY& data) noexcept
 		{
 			if (pushBufferUsed + sizeof(data) > pushBufferSize)
 				return -1;
@@ -2999,7 +2999,7 @@ namespace FlexKit
 		}
 
 
-		size_t Push(char* _ptr, size_t size)
+		size_t Push(char* _ptr, size_t size) noexcept
 		{
 			if (pushBufferUsed + size > pushBufferSize)
 				return -1;
@@ -3071,6 +3071,13 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	struct SET_MAP_t{
+
+	}const SET_MAP_OP;
+
+	struct SET_TRANSFORM_t {
+
+	}const SET_TRANSFORM_OP;
 
 	class VertexBufferDataSet
 	{
@@ -3087,15 +3094,42 @@ namespace FlexKit
 		}
 
 		template<typename TY, typename FN_TransformVertex>
-		VertexBufferDataSet(TY& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
+		VertexBufferDataSet(const SET_MAP_t, TY& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
 			vertexBuffer	{ buffer					},
 			offsetBegin		{ buffer.pushBufferOffset	}
 		{
 			vertexStride = sizeof(decltype(TransformVertex(initialData.front())));
+
 			for (auto& vertex : initialData) {
 				auto transformedVertex = TransformVertex(vertex);
-				buffer.Push(transformedVertex);
+				if (buffer.Push(transformedVertex) == -1)
+					throw std::exception("buffer too short to accomdate push!");
 			}
+		}
+
+		template<typename TY_CONTAINER, typename FN_TransformVertex, typename TY>
+		VertexBufferDataSet(const SET_TRANSFORM_t, TY_CONTAINER& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer, TY) :
+			vertexBuffer	{ buffer					},
+			offsetBegin		{ buffer.pushBufferOffset	}
+		{
+			vertexStride = sizeof(TY);
+
+			struct adapter
+			{
+				VBPushBuffer& buffer;
+
+				adapter(VBPushBuffer& IN_buffer) : buffer{ IN_buffer } {}
+
+				void append(TY vertex)
+				{
+					if(buffer.Push(vertex) == -1)
+						throw std::exception("buffer too short to accomdate push!");
+				}
+
+			}_adapter{ buffer };
+
+			for (auto& vertex : initialData)
+				TransformVertex(vertex, _adapter);
 		}
 
 		~VertexBufferDataSet() = default;

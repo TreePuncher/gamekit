@@ -272,7 +272,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::ReadRenderTarget(TextureHandle RenderTarget)
 	{
-		return ReadRenderTarget(Resources->renderSystem->GetTag(RenderTarget));
+		return ReadRenderTarget(Resources->renderSystem.GetTag(RenderTarget));
 	}
 
 
@@ -288,7 +288,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(TextureHandle RenderTarget)
 	{
-		return WriteRenderTarget(Resources->renderSystem->GetTag(RenderTarget));
+		return WriteRenderTarget(Resources->renderSystem.GetTag(RenderTarget));
 	}
 
 
@@ -455,7 +455,7 @@ namespace FlexKit
 
 	size_t FrameGraphNodeBuilder::GetDescriptorTableSize(PSOHandle State, size_t idx) const
 	{
-		auto rootSig	= Resources->renderSystem->GetPSORootSignature(State);
+		auto rootSig	= Resources->renderSystem.GetPSORootSignature(State);
 		auto tableSize	= rootSig->GetDesciptorTableSize(idx);
 
 		return tableSize;
@@ -464,7 +464,7 @@ namespace FlexKit
 
 	const DesciptorHeapLayout<16>&	FrameGraphNodeBuilder::GetDescriptorTableLayout(PSOHandle State, size_t idx) const
 	{
-		auto rootSig = Resources->renderSystem->GetPSORootSignature(State);
+		auto rootSig = Resources->renderSystem.GetPSORootSignature(State);
 		return rootSig->GetDescHeap(idx);
 	}
 
@@ -621,32 +621,32 @@ namespace FlexKit
 				DepthBuffers.push_back(&Resource);
 		}
 
-		auto RS	= Resources.renderSystem;
+		auto& renderSystem	= Resources.renderSystem;
 
 		{	// Push RenderTargets
-			auto Table		= RS->_ReserveRTVHeap(RenderTargets.size());
+			auto Table		= renderSystem._ReserveRTVHeap(RenderTargets.size());
 			auto TablePOS	= Table;
 
 			for (auto RT : RenderTargets)
 			{
 				auto Handle			= RT->RenderTarget.Texture;
-				auto Texture		= Resources.renderSystem->RenderTargets[Handle];
+				auto Texture		= renderSystem.RenderTargets[Handle];
 
 				RT->RenderTarget.HeapPOS	= TablePOS;
-				TablePOS					= PushRenderTarget(RS, &Texture, TablePOS);
+				TablePOS					= PushRenderTarget(renderSystem, &Texture, TablePOS);
 			}
 		}
 		{	// Push Depth Stencils
-			auto TableDepth = RS->_ReserveDSVHeap(DepthBuffers.size());
+			auto TableDepth = renderSystem._ReserveDSVHeap(DepthBuffers.size());
 			auto TableDepthPOS = TableDepth;
 
 			for (auto RT : DepthBuffers)
 			{
 				auto Handle		= RT->RenderTarget.Texture;
-				auto Texture	= Resources.renderSystem->RenderTargets[Handle];
+				auto Texture	= renderSystem.RenderTargets[Handle];
 
 				RT->RenderTarget.HeapPOS	= TableDepthPOS;
-				TableDepthPOS				= PushDepthStencil(RS, &Texture, TableDepthPOS);
+				TableDepthPOS				= PushDepthStencil(renderSystem, &Texture, TableDepthPOS);
 			}
 		}
 	}
@@ -667,13 +667,13 @@ namespace FlexKit
 			{
 				auto UAV	= I.FO->UAVBuffer;
 				auto state	= I.State;
-				Resources.renderSystem->SetObjectState(UAV, state);
+				Resources.renderSystem.SetObjectState(UAV, state);
 			}	break;
 			case OT_BackBuffer:
 			case OT_DepthBuffer:
 			case OT_RenderTarget:
 			{
-				Resources.renderSystem->RenderTargets.SetState(
+				Resources.renderSystem.RenderTargets.SetState(
 					I.FO->RenderTarget.Texture, 
 					I.State);
 			}	break;
@@ -681,14 +681,14 @@ namespace FlexKit
 			{
 				auto SOBuffer	= I.FO->SOBuffer;
 				auto state		= I.State;
-				Resources.renderSystem->SetObjectState(SOBuffer, state);
+				Resources.renderSystem.SetObjectState(SOBuffer, state);
 			}	break;
 			case OT_ShaderResource:
 			{
 				auto shaderResource = handle_cast<TextureHandle>(I.FO->ShaderResource);
 				auto state			= I.State;
 
-				Resources.renderSystem->SetObjectState(shaderResource, state);
+				Resources.renderSystem.SetObjectState(shaderResource, state);
 			}	break;
 
 			default:
@@ -801,7 +801,7 @@ namespace FlexKit
 
 	void ClearVertexBuffer(FrameGraph& FG, VertexBufferHandle PushBuffer)
 	{
-		FG.Resources.renderSystem->VertexBuffers.Reset(PushBuffer);
+		FG.Resources.renderSystem.VertexBuffers.Reset(PushBuffer);
 	}
 
 

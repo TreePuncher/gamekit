@@ -204,7 +204,7 @@ float ComputeBRDFNorm(const float3& v, const float alpha, const int sampleCount 
 
 /************************************************************************************************/
 
-const size_t CubeCount = 8000;
+const size_t CubeCount = 0001;
 
 class GraphicsTest : public FrameworkState
 {
@@ -213,7 +213,7 @@ public:
 		FrameworkState(IN_framework),
 		render			{ IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem						},
 		depthBuffer		{ IN_framework->core->RenderSystem.CreateDepthBuffer	(GetWindowWH(IN_framework->core), true)	},
-		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
+		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(MEGABYTE * 8,			false)				},
 		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
 		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 128,	false)				},
 		eventMap		{ IN_framework->core->GetBlockMemory()															},
@@ -224,22 +224,29 @@ public:
 			IN_framework->core->GetTempMemory()	},
 		PScene			{ IN_framework->GetPhysx()->CreateScene()														},
 		floor			{ IN_framework->GetPhysx()->CreateStaticBoxCollider		(PScene, {1000, 10, 1000}, {0, -10, 0})	},
-		orbitCamera		{ CreateCamera(float(pi) / 3.0f, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 3000, {0, 50, 50} }
+		orbitCamera		{ CreateCamera(float(pi) / 3.0f, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 300, { 0, 240, 0 } },
+		Object1			{ scene, scene.CreateSceneEntityAndSetMesh(10000) },
+		Object2			{ scene, scene.CreateSceneEntityAndSetMesh(10000) },
+		Object3			{ scene, scene.CreateSceneEntityAndSetMesh(10000) }
 		//ltcLookup_1{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
 		//ltcLookup_2{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
-		AddResourceFile("testScene.gameres");
-		AddResourceFile("testHead.gameres");
-		
+		orbitCamera.Pitch(-pi / 2);
+
+		Object1.TranslateWorld({ 0, 0, 0 });
+		Object2.TranslateWorld({ 0, 0, 10 });
+		Object3.TranslateWorld({ 10, 0, 0 });
+
 		obj = GetMesh(GetRenderSystem(), 10000);
 
+		/*
 		for (size_t itr = 0; itr < CubeCount; itr++) {
 			box[itr] = std::move(CreateRBCube(&scene, obj, IN_framework->GetPhysx(), PScene, 1, {0, 1.1f  + 1.1f * itr * 2, 0}));
 			box[itr].SetVisable(true);
 			box[itr].SetMeshScale(10);
 			box[itr].SetMass(10);
 		}
-
+		*/
 		auto& RS = IN_framework->core->RenderSystem;
 		RS.RegisterPSOLoader(DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
 		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
@@ -266,8 +273,6 @@ public:
 		scene.ListEntities();
 		*/
 
-		orbitCamera.TranslateWorld({0, 50, 50});
-
 		eventMap.MapKeyToEvent(KEYCODES::KC_R, ReloadShaders_1);
 		eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
 		eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
@@ -275,10 +280,9 @@ public:
 		eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
 		eventMap.MapKeyToEvent(KEYCODES::KC_Q, ToggleWireframe);
 
-		const int TileSize = 1024 * 8;
-		terrain.SetTileOffset	(int2{-TileSize/2, -TileSize/2});
-		terrain.SetTileSize		(TileSize); // will assume square tiles
-		terrain.AddTile			({ 0, 0 }, "assets/textures/heightmap.dds", framework->GetRenderSystem(), framework->core->GetTempMemory());
+		const uint64_t TileSize = 1024 * 2;
+		terrain.SetMainHeightMap("assets/textures/testmap.bmp", framework->GetRenderSystem(), framework->core->GetTempMemory());
+		terrain.SetRegionDimensions(TileSize);
 		terrain.DebugMode	= TerrainEngine::WIREFRAME;
 
 		/*
@@ -337,6 +341,8 @@ public:
 		UpdateDispatcher&	dispatcher, 
 		double				dT) override
 	{
+		Object1.Yaw(dT * pi);
+
 		return true;
 	}
 
@@ -380,7 +386,6 @@ public:
 		auto& cameraUpdate  = QueueCameraUpdate			(dispatcher, transformTask);
 		auto& orbitUpdate   = QueueOrbitCameraUpdateTask(dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
 		auto& sceneUpdate   = scene.Update				(dispatcher, transformTask);
-		//auto& terrainUpdate = terrain.Update			(dispatcher);
 
 		FK_LOG_1("End Update");
 		FK_LOG_1("Begin Draw");
@@ -388,7 +393,7 @@ public:
 		frameGraph.Resources.AddDepthBuffer(depthBuffer);
 
 
-		FlexKit::WorldRender_Targets targets = {
+		WorldRender_Targets targets = {
 			GetCurrentBackBuffer(&core->Window),
 			depthBuffer
 		};
@@ -413,22 +418,19 @@ public:
 
 		CameraHandle activeCamera = static_cast<CameraHandle>(orbitCamera);
 
-		auto& PVS = GetGraphicScenePVSTask(dispatcher, sceneUpdate, scene, activeCamera, core->GetTempMemory());
+		auto& PVS				= GetGraphicScenePVSTask(dispatcher, sceneUpdate, scene, activeCamera, core->GetTempMemory());
+		auto& terrainPatches	= terrain.CreatePatchList(activeCamera, 1.0f, dispatcher, cameraUpdate, core->GetTempMemory());
 
 		const bool renderTerrainEnabled		= true;
-		TerrainCullerData* culledTerrain	= nullptr;
 
-		if (true)
-		{
-			SceneDescription sceneDesc;
-			sceneDesc.pointLightCount	= scene.GetPointLightCount();
-			sceneDesc.transforms		= &transformTask;
-			sceneDesc.cameras			= &cameraUpdate;
-			sceneDesc.PVS				= PVS;
+		SceneDescription sceneDesc;
+		sceneDesc.pointLightCount	= scene.GetPointLightCount();
+		sceneDesc.transforms		= &transformTask;
+		sceneDesc.cameras			= &cameraUpdate;
+		sceneDesc.PVS				= PVS;
 
-			//render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory());
-			//render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
-		}
+		render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory());
+		render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
 
 		if (renderTerrainEnabled) 
 		{
@@ -453,22 +455,20 @@ public:
 
 			ForwardTerrainRenderer terrainRender{ FetchCameraConstants, FetchTerrainConstants, terrain, core->GetTempMemory() };
 			terrainRender.DependsOn(cameraUpdate);
+			terrainRender.DependsOn(terrainPatches);
 
-			auto& cullResults	= terrainRender.Cull(frameGraph, activeCamera, terrainResources);
-			auto& renderResults	= terrainRender.Draw(frameGraph, cullResults, targets.RenderTarget, targets.DepthTarget, terrainResources);
-		}
-
-		/*
-		if (true)
-			DEBUG_DrawQuadTree(
-				scene,
+			if(1)
+			DEBUG_DrawTerrainPatches(
+				terrainPatches,
 				frameGraph,
-				activeCamera,
 				vertexBuffer,
 				constantBuffer,
 				core->Window.GetBackBuffer(),
-				core->GetTempMemory());
-		*/
+				core->GetTempMemory(),
+				FetchCameraConstants);
+
+			auto& renderResults	= terrainRender.Draw(frameGraph, terrainPatches, targets.RenderTarget, targets.DepthTarget, terrainResources);
+		}
 
 		return true; 
 	}
@@ -483,7 +483,6 @@ public:
 		double				dT, 
 		FrameGraph&			frameGraph)
 	{ 
-
 		if (framework->drawDebug)
 			framework->DrawDebugHUD(dT, textBuffer, frameGraph);
 
@@ -528,23 +527,26 @@ public:
 
 
 private:
-	FlexKit::InputMap					eventMap;
+	InputMap							eventMap;
 
-	FlexKit::TextureHandle				ltcLookup_1;
-	FlexKit::TextureHandle				ltcLookup_2;
+	TextureHandle						ltcLookup_1;
+	TextureHandle						ltcLookup_2;
 
-	FlexKit::OrbitCameraBehavior		orbitCamera;
-	FlexKit::GraphicScene				scene;
-	FlexKit::WorldRender				render;
-	FlexKit::TextureHandle				depthBuffer;
-	FlexKit::VertexBufferHandle			vertexBuffer;
-	FlexKit::VertexBufferHandle			textBuffer;
-	FlexKit::ConstantBufferHandle		constantBuffer;
-	FlexKit::TriMeshHandle				obj;
+	OrbitCameraBehavior					orbitCamera;
+	GraphicScene						scene;
+	WorldRender							render;
+	TextureHandle						depthBuffer;
+	VertexBufferHandle					vertexBuffer;
+	VertexBufferHandle					textBuffer;
+	ConstantBufferHandle				constantBuffer;
+	TriMeshHandle						obj;
 
 	TerrainEngine						terrain;
 
 	PhysicsSceneHandle					PScene;
+	DrawableBehavior					Object1; // Center
+	DrawableBehavior					Object2; // North
+	DrawableBehavior					Object3; // East
 	StaticColliderHandle				floor;
 	RigidBodyDrawableBehavior			box[CubeCount];
 };

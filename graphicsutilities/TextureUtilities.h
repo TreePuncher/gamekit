@@ -93,6 +93,70 @@ namespace FlexKit
 
 	FLEXKITAPI bool LoadBMP			( const char* File, iAllocator* Memory, TextureBuffer* Out );
 	FLEXKITAPI bool CheckerBoard	( int XSize, int YSize, TextureBuffer* Out );
+
+	Pair<uint16_t, uint16_t> GetMinMax(TextureBuffer& sourceMap)
+	{
+		using RBGA						= Vect<4, uint8_t>;
+		TextureBufferView	view		= TextureBufferView<RBGA>(&sourceMap);
+		const uint2			WH			= sourceMap.WH;
+
+		uint16_t minY = 0;
+		uint16_t maxY = 0;
+
+		for (size_t Y = 0; Y < WH[0]; Y++)
+		{
+			for (size_t X = 0; X < WH[1]; X++) 
+			{
+				minY = min(view[{X, Y}][1], minY);
+				maxY = max(view[{X, Y}][1], maxY);
+			}
+		}
+
+		return { minY, maxY };
+	};
+
+	template<typename TY_sample = Vect<4, uint8_t>>
+	auto AverageSampler (
+		TY_sample Sample1, 
+		TY_sample Sample2, 
+		TY_sample Sample3, 
+		TY_sample Sample4) noexcept
+	{
+		return (
+			Sample1 +
+			Sample2 +
+			Sample3 +
+			Sample4) / 4;
+	}
+
+	template<typename FN_Sampler = decltype(AverageSampler<>)>
+	TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, FN_Sampler sampler = AverageSampler<>)
+	{
+		using RBGA = Vect<4, uint8_t>;
+
+		TextureBuffer		MIPMap	= TextureBuffer( sourceMap.WH / 2, sizeof(RGBA), memory );
+		TextureBufferView	View	= TextureBufferView<RBGA>(&sourceMap);
+		TextureBufferView	MipView = TextureBufferView<RBGA>(&MIPMap);
+
+		const auto WH = MIPMap.WH;
+		for (size_t Y = 0; Y < WH[0]; Y++)
+		{
+			for (size_t X = 0; X < WH[1]; X++)
+			{
+				uint2 in_Cord	= uint2{ min(X, WH[0] - 1) * 2, min(Y, WH[1] - 1) * 2 };
+				uint2 out_Cord	= uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
+
+				MipView[out_Cord] = 
+					sampler(
+						View[in_Cord + uint2{ 0, 0 }],
+						View[in_Cord + uint2{ 0, 1 }],
+						View[in_Cord + uint2{ 1, 0 }],
+						View[in_Cord + uint2{ 1, 1 }]);
+			}
+		}
+
+		return MIPMap;
+	}
 }
 
 

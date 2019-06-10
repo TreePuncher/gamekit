@@ -252,7 +252,7 @@ namespace FlexKit
 
 
 		template< typename TY_i >
-		Vect<3, TY>	Cross( Vect<3, TY_i> rhs )
+		Vect<3, TY>	Cross( Vect<3, TY_i> rhs ) noexcept
 		{
 			Vect<SIZE, TY> out;
 			for( size_t i = 0; i < SIZE; ++i )
@@ -262,7 +262,7 @@ namespace FlexKit
 
 
 		template< typename TY_i >
-		TY Dot( const Vect<SIZE, TY_i>& rhs ) const
+		TY Dot( const Vect<SIZE, TY_i>& rhs ) const noexcept
 		{
 			TY dotproduct = 0;
 			for( size_t i = 0; i < SIZE; ++i )
@@ -273,7 +273,7 @@ namespace FlexKit
 
 
 		template< typename TY_i >
-		TY Dot( const Vect<SIZE, TY_i>* rhs_ptr )
+		TY Dot( const Vect<SIZE, TY_i>* rhs_ptr ) noexcept
 		{
 			auto& rhs = *rhs_ptr;
 			Vect<SIZE> products;
@@ -284,7 +284,7 @@ namespace FlexKit
 		}
 
 
-		TY Norm( unsigned int exp = 2 )
+		TY Norm( unsigned int exp = 2 ) noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -299,7 +299,7 @@ namespace FlexKit
 		}
 
 
-		TY Magnitude()
+		TY Magnitude() noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -311,19 +311,19 @@ namespace FlexKit
 		}
 
 
-		TY& operator []( size_t index )
+		TY& operator []( size_t index ) noexcept
 		{
 			return Vector[index];
 		}
 
 
-		const TY& operator []( size_t index ) const
+		const TY& operator []( size_t index ) const noexcept
 		{
 			return Vector[index];
 		}
 
 
-		TY Sum() const
+		TY Sum() const noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -332,7 +332,7 @@ namespace FlexKit
 		}
 
 
-		TY Product() const
+		TY Product() const noexcept
 		{
 			TY Product = 1;
 			for( auto element : Vector )
@@ -342,7 +342,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator + (const Vect<SIZE, TY_2>& in)
+		THISTYPE operator + (const Vect<SIZE, TY_2>& in) noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -353,7 +353,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator += (const Vect<SIZE, TY_2>& in)
+		THISTYPE& operator += (const Vect<SIZE, TY_2>& in) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] += in[I];
@@ -363,7 +363,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator - (const Vect<SIZE, TY_2>& in)
+		THISTYPE operator - (const Vect<SIZE, TY_2>& in) noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -374,7 +374,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator -= ( const Vect<SIZE, TY_2>& in )
+		THISTYPE& operator -= ( const Vect<SIZE, TY_2>& in ) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] -= in[I];
@@ -384,7 +384,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator = (const Vect<SIZE, TY_2>& in)
+		THISTYPE& operator = (const Vect<SIZE, TY_2>& in) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] = in[I];
@@ -394,7 +394,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator / (TY_2 in)
+		THISTYPE operator / (TY_2 in) noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -405,7 +405,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator /= (TY_2 in)
+		THISTYPE& operator /= (TY_2 in) noexcept
 		{
 			for (auto I = 0; I < SIZE; ++I)
 				Vector[I] /= in;
@@ -415,7 +415,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator /= (const Vect<SIZE, TY_2> in)
+		THISTYPE operator /= (const Vect<SIZE, TY_2> in) noexcept
 		{
 			THISTYPE Out;
 			for (auto I = 0; I < SIZE; ++I)
@@ -426,7 +426,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		bool operator == (const Vect<SIZE, TY_2>& in)
+		bool operator == (const Vect<SIZE, TY_2>& in) noexcept
 		{
 			bool res = true;
 			for (auto I = 0; I < SIZE; ++I)
@@ -437,7 +437,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE& operator = ( const std::initializer_list<TY_2>& il )
+		THISTYPE& operator = ( const std::initializer_list<TY_2>& il ) noexcept
 		{
 			size_t itr = 0;
 			for( auto n : il )
@@ -450,7 +450,7 @@ namespace FlexKit
 		}
 
 
-		static THISTYPE Zero()
+		static THISTYPE Zero() noexcept
 		{
 			THISTYPE zero;
 			for( auto element : zero.Vector )
@@ -553,22 +553,40 @@ namespace FlexKit
 		inline bool		operator == ( const float2& rhs ) const { return ( rhs.x == x && rhs.y == y ) ? true : false; }
 
 
-
-		inline float&	operator[] ( size_t i )
-		{	
-		#ifdef _DEBUG
-			FK_ASSERT( i < 2 );
-		#endif
-			return i ? y : x;
-		}
-
-		inline float operator[] ( size_t i ) const
-		{
 #ifdef _DEBUG
+
+		inline float&	operator[] ( const size_t i ) 
+		{	
 			FK_ASSERT( i < 2 );
-#endif
 			return i ? y : x;
 		}
+
+#else
+
+		inline float& operator[] (const size_t i) noexcept
+		{
+			return i ? y : x;
+		}
+
+#endif
+
+#ifdef _DEBUG
+
+		inline float operator[] (const size_t i ) const
+		{
+			FK_ASSERT( i < 2 );
+			return i ? y : x;
+		}
+
+#else
+
+		inline float operator[] (const size_t i) const noexcept
+		{
+			FK_ASSERT(i < 2);
+			return i ? y : x;
+		}
+
+#endif
 
 		inline float2 operator + ( const float2& a ) const { return float2( this->x + a.x,	this->y + a.y );				}
 		inline float2 operator + ( const float   a ) const { return float2( x + a, y + a );								}
@@ -1229,6 +1247,20 @@ namespace FlexKit
 #endif
 		}
 
+		inline float4& operator /= ( const float a ) 
+		{
+#if USING(FASTMATH)
+			pFloats = _mm_div_ps(pFloats, _mm_set1_ps(a));
+
+			return *this;
+#else
+			return float4(	x / a.x, 
+							y / a.y, 
+							z / a.z, 
+							w / a.w );
+#endif
+		}
+
 		inline float4 operator / ( const float a ) const
 		{
 #if USING(FASTMATH)
@@ -1860,6 +1892,8 @@ namespace FlexKit
 	template<typename TY>
 	float dot(const TY lhs, const TY rhs)
 	{
+		static_assert(false, "NO DOT PRODUCT AVAILABLE FOR THIS COMBINATION!");
+
 		return 0;
 	}
 

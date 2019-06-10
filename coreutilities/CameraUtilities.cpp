@@ -44,6 +44,8 @@ namespace FlexKit
 		SetParentNode(yawNode, pitchNode);
 
 		FlexKit::SetCameraNode(camera, rollNode);
+
+		TranslateWorld(initialPos);
 	}
 
 

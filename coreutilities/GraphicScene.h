@@ -340,9 +340,9 @@ namespace FlexKit
 	{
 	public:
 		DrawableBehavior(GraphicScene* IN_ParentScene = nullptr, SceneEntityHandle handle = InvalidHandle_t, NodeHandle node = InvalidHandle_t) :
-			SceneNodeBehavior	{ node						},
-			parentScene			{ IN_ParentScene			},
-			entity				{ handle					}	{}
+			SceneNodeBehavior	{ IN_ParentScene ? (node == InvalidHandle_t ? IN_ParentScene->GetNode(handle) : node ) : InvalidHandle_t	},
+			parentScene			{ IN_ParentScene																							},
+			entity				{ handle																									} {}
 
 
 		~DrawableBehavior()

@@ -316,13 +316,13 @@ namespace FlexKit
 
 				data.Heap.Init(
 					frameGraph.Resources.renderSystem,
-					frameGraph.Resources.renderSystem->Library.RS6CBVs4SRVs.GetDescHeap(0),
+					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					Memory);
 				data.Heap.NullFill(frameGraph.Resources.renderSystem);
 			},
 			[=](ForwardDrawPass& data, const FrameResources& Resources, Context* Ctx)
 			{
-				Ctx->SetRootSignature(Resources.renderSystem->Library.RS6CBVs4SRVs);
+				Ctx->SetRootSignature(Resources.renderSystem.Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState(Resources.GetPipelineState(FORWARDDRAW));
 
 				size_t localconstants	= data.localConstants.Push(ForwardDrawConstants{ float(desc.pointLightCount) });
@@ -395,6 +395,7 @@ namespace FlexKit
 				data.sceneLightCount	= scene.GetPointLightCount();
 				data.lightBuckets		= Vector<Vector<Vector<LightHandle>>>{ tempMemory, data.viewSplits };
 				data.scene				= &scene;
+				data.camera				= camera;
 
 				for (size_t itr = 0; itr < data.viewSplits; itr++)
 				{

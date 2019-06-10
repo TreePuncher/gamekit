@@ -267,7 +267,7 @@ namespace FlexKit
 
 		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept
 		{
-			FK_ASSERT(newWork->scheduled == false);
+			//FK_ASSERT(newWork->scheduled == false);
 
 			if (!threads.empty())
 			{

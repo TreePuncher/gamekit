@@ -6112,7 +6112,7 @@ namespace FlexKit
 
 		HRESULT HR = D3DCompileFromFile(WString, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
 		if (FAILED(HR))	{
-			FK_LOG_INFO((char*)Errors->GetBufferPointer());
+			FK_LOG_ERROR((char*)Errors->GetBufferPointer());
 			return false;
 		}
 

@@ -104,7 +104,7 @@ namespace FlexKit
 			FK_LOG_ERROR("Console has Null font, aborting draw!");
 			return;
 		}
-		auto WindowWH = graph.Resources.renderSystem->GetRenderTargetWH(renderTarget);
+		auto WindowWH = graph.Resources.renderSystem.GetRenderTargetWH(renderTarget);
 
 		ClearVertexBuffer(graph, vertexBuffer);
 		ClearVertexBuffer(graph, textBuffer);

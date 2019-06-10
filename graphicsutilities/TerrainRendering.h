@@ -27,6 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
+#include "..\coreutilities\intersection.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\graphics.h"
@@ -78,36 +79,6 @@ namespace FlexKit
 	};
 
 
-	struct TerrainCullerData
-	{
-		uint16_t				regionCount;
-		uint16_t				splitCount;
-		size_t					outputBuffer;
-
-		IndirectLayout			indirectLayout;
-
-		FrameResourceHandle		finalBuffer;
-		FrameResourceHandle		intermediateBuffer1;
-		FrameResourceHandle		intermediateBuffer2;
-		FrameResourceHandle		querySpace;
-
-		DescriptorHeap			heap;
-		FrameResourceHandle		indirectArgs; // UAV Buffer
-
-		QueryHandle				queryFinal;
-		QueryHandle				queryIntermediate;
-
-		VertexBufferHandle		vertexBuffer;
-		ConstantBufferHandle	constantBuffer;
-		size_t					cameraConstants;
-		size_t					terrainConstants;
-		size_t					inputVertices;
-		size_t					indirectArgsInitial;
-
-		Vector<size_t>			tileHeightMaps;
-	};
-
-
 	ID3D12PipelineState* CreateCullTerrainComputePSO			(RenderSystem* renderSystem);
 	ID3D12PipelineState* CreateForwardRenderTerrainPSO			(RenderSystem* renderSystem);
 	ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO	(RenderSystem* renderSystem);
@@ -115,16 +86,254 @@ namespace FlexKit
 
 	struct TileMaps
 	{
-		FlexKit::TextureHandle heightMap;
-		const char*	File;
+		FlexKit::TextureHandle	heightMap;
+		const char*				File;
 	};
 
 
-	struct Tile
+	using TileMapHandle = Handle_t<16, GetTypeGUID(TileMaps)>;
+
+	class TileID
 	{
-		int2	tileID;
-		size_t	textureMaps;
+	public:
+		static const size_t sBitFields = 56 / 2;
+
+		enum TerrainTileBitSection : uint8_t
+		{
+			NorthEast,
+			NorthWest,
+			SouthWest,
+			SouthEast,
+			MASK
+		};
+
+
+		template<size_t size = 0>
+		TileID(TerrainTileBitSection ID[size]) : 
+			tileDepth		{ size													},
+			tileIDBitField	{ _GenerateBitField(static_cast<uint8_t*>(ID, size))	}
+		{
+			static_assert(size < sBitFields, "Too many bit fields!");
+
+			tileIDBitField	= tileIDBitField | id[0];
+			size_t i		= 0;
+
+			do
+			{
+				tileIDBitField = (tileIDBitField << 2) | ID[i];
+			} while (i < size);
+		}
+
+
+		TileID(uint64_t bitField = 0, size_t depth = 0) :
+			tileDepth		{ depth		},
+			tileIDBitField	{ bitField	} {}
+
+
+		TileID CreateChildID(TerrainTileBitSection localID) const
+		{
+			uint64_t temp = tileIDBitField;
+			temp <<= 2;
+			temp |= localID;
+
+			return { temp, tileDepth + 1u };
+		}
+
+		TileID GetParentID() const
+		{
+			uint64_t temp = tileIDBitField;
+			return { _GenerateBitField(
+						reinterpret_cast<uint8_t*>(&temp), tileDepth - 1), 
+						isRoot() ? 0u : tileDepth - 1u };
+		}
+
+		bool isRoot() const
+		{
+			return { tileDepth == 0 };
+		}
+
+		TileID(const TileID& rhs)				= default;
+		TileID& operator = (const TileID& rhs)	= default;
+
+
+		bool operator == (const TileID& rhs) const
+		{
+			return rhs.tileDepth == tileDepth && tileIDBitField == rhs.tileIDBitField;
+		}
+
+
+		bool operator != (const TileID& rhs) const
+		{
+			return !(*this == rhs);
+		}
+	
+
+		TerrainTileBitSection operator [](size_t idx)
+		{
+			return static_cast<TerrainTileBitSection>(tileIDBitField >> (tileDepth - idx));
+		}
+
+
+		uint8_t GetDepth() { return static_cast<uint8_t>(tileDepth); }
+
+	private:
+
+		static uint64_t _GenerateBitField(uint8_t* bitFields, const uint8_t fieldCount)
+		{
+			uint64_t bitField	= 0;
+			bitField			= bitField | bitFields[0];
+			size_t i			= 0;
+
+			do
+			{
+				bitField = (bitField << 2) | bitFields[i];
+			} while (i < fieldCount);
+
+			return bitField;
+		}
+
+		const size_t	tileDepth		: 8;
+		const size_t	tileIDBitField	: 56;
 	};
+
+
+	struct TerrainPatch
+	{
+		AABB GetAABB() const noexcept
+		{
+			return { 
+				{ static_cast<float>(SWPoint[0]), static_cast<float>(lowerHeight), static_cast<float>(SWPoint[1]) },
+				{ static_cast<float>(NEPoint[0]), static_cast<float>(upperHeight), static_cast<float>(NEPoint[1]) } };
+		}
+
+		static_vector<float3, 4> GetPointList(const float terrainHeight = 512) const noexcept
+		{
+			// TODO: Sample Height Map
+			float HeightSamples[] = { 0, 0, 0, 0 };
+
+			return {
+				{ float(NEPoint[0]),	float(HeightSamples[0]) * terrainHeight, float(NEPoint[1]) },
+				{ float(SWPoint[0]),	float(HeightSamples[1]) * terrainHeight, float(NEPoint[1]) },
+				{ float(SWPoint[0]),	float(HeightSamples[2]) * terrainHeight, float(SWPoint[1]) },
+				{ float(NEPoint[0]),	float(HeightSamples[3]) * terrainHeight, float(SWPoint[1]) } };
+		}
+
+		static_vector<float3, 4> GetUVList(const float terrainHeight = 512) const noexcept
+		{
+			return {
+				{ float(NEUV[0]), float(NEUV[1]) },
+				{ float(SWUV[0]), float(NEUV[1]) },
+				{ float(SWUV[0]), float(SWUV[1]) },
+				{ float(NEUV[0]), float(SWUV[1]) } };
+		}
+
+		uint16_t		upperHeight	= 0u;
+		uint16_t		lowerHeight	= 0u;
+		int2			SWPoint		= { 0, 0 };
+		int2			NEPoint		= { 0, 0 };
+		float2			SWUV		= { 0.0f, 0.0f };
+		float2			NEUV		= { 1.0f, 1.0f };
+
+		TextureHandle	HeightMap			= InvalidHandle_t;
+		int				HeightMapSampleBias = 0;
+	};
+
+
+	class TerrainPayload // Interface
+	{
+	public:
+		virtual void Release() {};
+		virtual void Load()	{};
+	};
+
+
+	struct TerrainNode
+	{
+		AABB GetAABB() const noexcept
+		{
+			return patch.GetAABB();
+		}
+
+		struct Edge
+		{
+			float3 A = { 0, 0, 0 };
+			float3 B = { 0, 0, 0 };
+		};
+
+		
+		TerrainPatch	patch;
+		TileID			id;
+
+		typedef static_vector<TerrainNode*, 4> TNodeList;
+
+		TNodeList		children;
+		TileMapHandle	heightMap;
+
+		TerrainPayload* payload = nullptr;
+
+		void Split(iAllocator* allocator)
+		{
+
+		}
+
+		TileID GetNearestID(const TileID ID)
+		{
+			return {};
+		}
+
+		TerrainNode& GetNearestNode(const TileID)
+		{
+			return *this;
+		}
+	};
+
+
+	static_vector<TerrainPatch, 4> CreateSubPatches(const TerrainPatch& patch)
+	{
+		auto NWPatch = patch;
+		auto NEPatch = patch;
+		auto SWPatch = patch;
+		auto SEPatch = patch;
+
+		auto parentPatchWidth	= (patch.NEPoint[0]	- patch.SWPoint[0]) / 2;
+		auto parentUVWidth		= (patch.NEUV[0]	- patch.SWUV[0]) / 2;
+
+		if (parentPatchWidth == 16)
+			return {};
+
+		NWPatch.SWPoint[1]	+= parentPatchWidth;
+		NWPatch.NEPoint[0]	-= parentPatchWidth;
+		NWPatch.SWUV[1]		+= parentUVWidth;
+		NWPatch.NEUV[0]		-= parentUVWidth;
+
+		NEPatch.SWPoint[0]	+= parentPatchWidth;
+		NEPatch.SWPoint[1]	+= parentPatchWidth;
+		NEPatch.SWUV[0]		+= parentUVWidth;
+		NEPatch.SWUV[1]		+= parentUVWidth;
+
+		SWPatch.NEPoint[0]	-= parentPatchWidth;
+		SWPatch.NEPoint[1]	-= parentPatchWidth;
+		SWPatch.NEUV[0]		-= parentUVWidth;
+		SWPatch.NEUV[1]		-= parentUVWidth;
+
+		SEPatch.SWPoint[0]	+= parentPatchWidth;
+		SEPatch.NEPoint[1]	-= parentPatchWidth;
+		SEPatch.SWUV[0]		+= parentUVWidth;
+		SEPatch.NEUV[1]		-= parentUVWidth;
+
+		return { NWPatch, NEPatch, SWPatch, SEPatch };
+	}
+
+	enum ECORNERID
+	{
+		EC_NW, 
+		EC_NE, 
+		EC_SW, 
+		EC_SE
+	};
+
+	using TNodeList = TerrainNode::TNodeList;
+	using PatchList = Vector<TerrainPatch>;
 
 
 	class TerrainEngine
@@ -132,19 +341,10 @@ namespace FlexKit
 	public:
 		TerrainEngine(RenderSystem* RS, iAllocator* IN_allocator, size_t IN_tileEdgeSize = 128, size_t IN_tileHeight = 128, uint2 IN_tileOffset = {0, 0}) :
 			renderSystem				{ RS														},
-			tiles						{ IN_allocator												},
 			tileTextures				{ IN_allocator												},
 			tileHeight					{ IN_tileHeight												}, 
 			tileOffset					{ IN_tileOffset												},
-			allocator					{ IN_allocator												},
-			finalBuffer					{ RS->CreateStreamOutResource(MEGABYTE * 64)				},
-			intermdediateBuffer1		{ RS->CreateStreamOutResource(MEGABYTE * 64)				},
-			intermdediateBuffer2		{ RS->CreateStreamOutResource(MEGABYTE * 64)				},
-			queryBufferFinalBuffer		{ RS->CreateSOQuery(1,1)									},
-			queryBufferIntermediate		{ RS->CreateSOQuery(0,1)									},
-			indirectArgs				{ RS->CreateUAVBufferResource(512)							},
-			querySpace					{ RS->CreateUAVBufferResource(512)							},
-			indirectLayout				{ RS->CreateIndirectLayout({ILE_DrawCall}, IN_allocator)	}
+			allocator					{ IN_allocator												}
 		{
 			renderSystem->RegisterPSOLoader(
 				TERRAIN_COMPUTE_CULL_PSO, 
@@ -158,115 +358,197 @@ namespace FlexKit
 
 			renderSystem->RegisterPSOLoader(
 				TERRAIN_RENDER_FOWARD_WIREFRAME_PSO,
-				{ &renderSystem->Library.RS4CBVs_SO,
+				{	&renderSystem->Library.RS4CBVs_SO,
 					CreateForwardRenderTerrainWireFramePSO });
 
 			renderSystem->QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
 			renderSystem->QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);
 			renderSystem->QueuePSOLoad(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
+
+			root.Split(IN_allocator);
 		}
 
 
-		void SetTileSize(size_t tileEdgeSize)
+		void SetMainHeightMap(const char* heightMap, RenderSystem* RS, iAllocator* tempMemory)
 		{
-
-		}
-
-
-		TerrainTileHandle AddTile(int2 tileID, const char* heightMap, RenderSystem* RS, iAllocator* tempMemory)
-		{
-			if(false)
+			if(true)
 			{
+				// Load bitmap
 				static_vector<TextureBuffer> Textures;
 				Textures.push_back(TextureBuffer{});
 				LoadBMP(heightMap, tempMemory, &Textures.back());
+				
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
+
+				//auto textureHandle	= MoveTextureBuffersToVRAM(RS, Textures.begin(), Textures.size(), allocator);
+				auto textureHandle		= MoveTextureBufferToVRAM(RS, &Textures[0], allocator);
+				
+				unsigned int tileMap	= tileTextures.push_back(TileMaps{ textureHandle, heightMap });
+				auto minMax				= GetMinMax(Textures.front());
+
+				root.heightMap			= TileMapHandle{ tileMap };
+				root.patch.lowerHeight	= minMax.Get<0>();
+				root.patch.upperHeight	= minMax.Get<1>();
+			}
+			else
+			{
+				// Load DDS
+				auto [textureHandle, res] = LoadDDSTexture2DFromFile_2(heightMap, tempMemory, RS);
+
+				if (!res)
+					throw std::runtime_error("Failed to created texture!");
+
+				unsigned int tileMap = tileTextures.push_back(TileMaps{ textureHandle, heightMap });
+
+				root.heightMap = TileMapHandle{ tileMap };
+			}
+		}
+
+		void SetRegionDimensions(size_t width)
+		{
+			// TODO: propogate changes to chilren
+			root.patch.NEPoint = {  int(width) / 2,	 int(width) / 2 };
+			root.patch.SWPoint = { -int(width) / 2, -int(width) / 2 };
+		}
+
+		struct TerrainUpdate
+		{
+			CameraHandle			camera;
+			TerrainEngine*			engine;
+			Vector<TerrainPatch>	patches; //Patch list ready for rendering
+			StackAllocator			localMemory;
+		};
 
 
-				//Build Mip Maps
-				auto BuildMipMap = [](TextureBuffer& sourceMap, iAllocator* memory) -> TextureBuffer
+		UpdateTask& CreatePatchList(CameraHandle camera, float maxPatchEdgeSize, UpdateDispatcher& dispatcher, UpdateTask& cameraUpdate, iAllocator* tempMemory)
+		{
+			// constants
+			static const size_t TempMemorySize = 512 * KILOBYTE;
+
+			return dispatcher.Add<TerrainUpdate>(
+				[&, this](auto& builder, TerrainUpdate& data)
 				{
-					using RBGA = Vect<4, uint8_t>;
+					builder.AddInput(cameraUpdate);
 
-					TextureBuffer		MIPMap	= TextureBuffer( sourceMap.WH / 2, sizeof(RGBA), memory );
-					TextureBufferView	View	= TextureBufferView<RBGA>(&sourceMap);
-					TextureBufferView	MipView = TextureBufferView<RBGA>(&MIPMap);
+					data.localMemory.Init((byte*)tempMemory->malloc(TempMemorySize), TempMemorySize);
 
-					const auto WH = MIPMap.WH;
-					for (size_t Y = 0; Y < WH[0]; Y++)
+					data.camera				= camera;
+					data.patches			= Vector<TerrainPatch>(data.localMemory);
+					data.engine				= this;
+				},
+				[camera, maxPatchEdgeSize, this](TerrainUpdate& data)
+				{
+					FK_LOG_9("Begin Terrain Patch Generation");
+
+					auto frustum	= GetFrustum(camera);
+					auto transform	= GetCameraPV(camera);
+
+					_GatherPatches(root, frustum, transform, maxPatchEdgeSize, data.patches);
+
+					FK_LOG_9("End Terrain Patch Generation");
+				});
+		}
+
+
+		static bool _CreateSubPatches(TerrainPatch patch, const Frustum frustum, const float4x4 transform, float maxPatchEdgeSize, Vector<TerrainPatch>& out_patche)
+		{
+			return false;
+		}
+
+		
+		static bool _GatherPatches(TerrainNode& node, const Frustum frustum, const float4x4 transform, float maxPatchEdgeSize, Vector<TerrainPatch>& out_patches)
+		{
+			if (auto aabb = node.GetAABB(); Intersects(frustum, aabb))
+			{
+				const float longestEdgeSize = _GetLargestEdgeSize(node.patch, transform);
+				const float minSize = 0.25f;
+
+				if (longestEdgeSize > minSize)
+				{
+					bool res = false;
+
+					if (node.children.size())
+					{	// use child node payloads instead
+						for (auto child : node.children)
+							res |= _GatherPatches(*child, frustum, transform, maxPatchEdgeSize, out_patches);
+					}
+					else// Create virtual nodes
 					{
-						for (size_t X = 0; X < WH[1]; X++)
+						auto addSubPatches = [&](TerrainPatch& patch, auto& addSubPatches) ->bool
 						{
-							uint2 in_Cord	= uint2{ min(X, WH[0] - 1) * 2, min(Y, WH[1] - 1) * 2 };
-							uint2 out_Cord	= uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
+							bool addedPatches			= false;
+							auto patches				= CreateSubPatches(patch);
+							const float largestEdgeSize = _GetLargestEdgeSize(patch, transform);
 
-							auto Sample = 
-								View[in_Cord + uint2{0, 0}]/ 4 +
-								View[in_Cord + uint2{0, 1}]/ 4 +
-								View[in_Cord + uint2{1, 0}]/ 4 +
-								View[in_Cord + uint2{1, 1}]/ 4;
+							if (largestEdgeSize < minSize)
+								return false;
 
-							MipView[out_Cord] = Sample;
-						}
+							for (auto childPatch : patches)
+							{
+								if (Intersects(frustum, childPatch.GetAABB())) {
+									const bool res = addSubPatches(childPatch, addSubPatches);
+									addedPatches |= res;
+
+									if(!res)
+										out_patches.push_back(childPatch);
+								}
+							}
+
+							return addedPatches;
+						};
+
+						res |= addSubPatches(node.patch, addSubPatches);
 					}
 
-					return MIPMap;
-				};
-
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
-				auto textureHandle	= MoveTextureBuffersToVRAM(RS, Textures.begin(), Textures.size(), allocator);
-				//auto textureHandle	= MoveTextureBufferToVRAM(RS, &Textures[0], allocator);
+					return res;
+				}
+				else 
+				{
+					out_patches.push_back(node.patch);
+					return true;
+				}
 			}
 
-
-			auto [textureHandle, res] = LoadDDSTexture2DFromFile_2(heightMap, tempMemory, RS);
-			auto tileMaps = tileTextures.push_back(TileMaps{ textureHandle, heightMap });
-			tiles.push_back(Tile{ tileID, tileMaps });
-
-			return InvalidHandle_t;
+			return false;
 		}
 
-		void SetTileOffset(int2 IN_tileOffset)
+		// Edge Size in Screen Space
+		static float _GetLargestEdgeSize(TerrainPatch& patch, const float4x4 transform)
 		{
-			tileOffset = IN_tileOffset;
+			float longestEdge	= 0.0f;
+			const auto WSPoints = patch.GetPointList();
+
+			auto point1 = Vect4ToFloat4(transform * float4(WSPoints[0], 1));
+			auto point2 = Vect4ToFloat4(transform * float4(WSPoints[1], 1));
+			auto point3 = Vect4ToFloat4(transform * float4(WSPoints[2], 1));
+			auto point4 = Vect4ToFloat4(transform * float4(WSPoints[3], 1));
+
+			point1 /= max(0.000001f, point1.w);
+			point2 /= max(0.000001f, point2.w);
+			point3 /= max(0.000001f, point3.w);
+			point4 /= max(0.000001f, point4.w);
+
+			longestEdge = max(longestEdge, (point1 - point2).xyz().magnitude()) / 2;
+			longestEdge = max(longestEdge, (point2 - point3).xyz().magnitude()) / 2;
+			longestEdge = max(longestEdge, (point3 - point4).xyz().magnitude()) / 2;
+			longestEdge = max(longestEdge, (point4 - point1).xyz().magnitude()) / 2;
+
+			return longestEdge;
 		}
-
-		// No update dependencies
-		/*
-		FlexKit::UpdateTask& Update(FlexKit::UpdateDispatcher& Dispatcher)
-		{
-			FK_LOG_9("Terrain Update");
-
-			// TODO: Streaming textures
-			// Make sure textures are loaded
-			return nullptr;
-		}
-		*/
-
-		SOResourceHandle	finalBuffer;
-		SOResourceHandle	intermdediateBuffer1;
-		SOResourceHandle	intermdediateBuffer2;
-
-		UAVResourceHandle	querySpace;
-		UAVResourceHandle	indirectArgs;
-
-		IndirectLayout		indirectLayout;
-
-		QueryHandle			queryBufferFinalBuffer;
-		QueryHandle			queryBufferIntermediate;
 
 		RenderSystem*		renderSystem;
 
-		Vector<Tile>		tiles;
+		TerrainNode			root;
 		Vector<TileMaps>	tileTextures;
 
 		enum TERRAINDEBUGRENDERMODE
 		{
 			DISABLED,
 			WIREFRAME,
-		}				DebugMode = DISABLED;
+		} DebugMode = DISABLED;
 
 		int2			tileOffset;
 		size_t			tileEdgeSize;
@@ -285,18 +567,136 @@ namespace FlexKit
 	};
 
 
+	template<typename _GETCAMERACONSTANTS>
+	auto& DEBUG_DrawTerrainPatches(
+		UpdateTask&				gatherPatches,
+		FrameGraph&				frameGraph,
+		VertexBufferHandle		vertexBuffer,
+		ConstantBufferHandle	constantBuffer,
+		TextureHandle			renderTarget,
+		iAllocator*				tempMemory,
+		_GETCAMERACONSTANTS		GetCameraConstants)
+	{
+		static_assert(std::is_same<decltype(GetCameraConstants(CBPushBuffer{})), ConstantBufferDataSet > (), "GetCameraConstants is required to return a ConstantBufferDataSet has one argument of type CBPushBuffer!");
+
+		struct debugDraw
+		{
+			debugDraw(
+				RenderSystem&			renderSystem,
+				VertexBufferHandle		vertexBuffer, 
+				ConstantBufferHandle	constantBuffer,
+				_GETCAMERACONSTANTS		IN_GetCameraConstants
+			) : 
+				GetConstants	{ IN_GetCameraConstants					},
+				patches			{ vertexBuffer,		4096 * KILOBYTE, renderSystem	},
+				constants		{ constantBuffer,	1024, renderSystem	} {}
+
+			FlexKit::DescriptorHeap	heap; // Null Filled
+
+			FrameResourceHandle		renderTarget;
+			VBPushBuffer			patches;
+			CBPushBuffer			constants;
+			_GETCAMERACONSTANTS		GetConstants;
+		};
+
+		auto& update = *reinterpret_cast<TerrainEngine::TerrainUpdate*>(gatherPatches.Data);
+
+		return frameGraph.AddNode<debugDraw>(
+			debugDraw{
+				frameGraph.GetRenderSystem(),
+				vertexBuffer, 
+				constantBuffer,
+				GetCameraConstants
+			},
+			[&](FrameGraphNodeBuilder& builder, debugDraw& data)
+			{
+				builder.AddDataDependency(gatherPatches);
+
+				data.renderTarget = builder.WriteRenderTarget(renderTarget);
+
+				data.heap.Init(
+					frameGraph.Resources.renderSystem,
+					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+					tempMemory).NullFill(frameGraph.Resources.renderSystem);
+			}, 
+			[&patches = update.patches](debugDraw& data, const FrameResources& resources, Context* ctx)
+			{
+				struct Vertex
+				{
+					float4 POS;
+					float4 Color;
+					float2 UV;
+				};
+
+				struct LocalConstants
+				{
+					float4		unused1;
+					float4		unused2;
+					float4x4	worldTransform = float4x4::Identity();
+				};
+
+
+				VertexBufferDataSet	vertices = {
+						SET_TRANSFORM_OP,
+						patches,
+						[&](const TerrainPatch& patch, auto& out)
+						{
+							Vertex v;
+							v.Color = float4(WHITE, 1);
+
+							const auto points	= patch.GetPointList();
+							const auto UVs		= patch.GetUVList();
+
+							for (size_t i = 0; i < points.size(); ++i)
+							{
+								v.Color = float4{ UVs[i].y, UVs[i].x, 1, 0 };
+								v.UV	= UVs[i];
+								v.POS	= { points[i], 1 };
+								out.append(v);
+
+								size_t nextIdx	= (i + points.size() + 1) % points.size();
+								v.Color			= float4{ UVs[nextIdx].y, UVs[nextIdx].x, 1, 0 };
+								v.UV			= UVs[nextIdx];
+								v.POS			= { points[nextIdx], 1 };
+								out.append(v);
+							}
+						},
+						data.patches,
+						Vertex{}
+					};
+
+				ConstantBufferDataSet localConstants	= ConstantBufferDataSet{ LocalConstants{}, data.constants };
+				ConstantBufferDataSet cameraConstants	= data.GetConstants(data.constants);
+
+				ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+
+				ctx->SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
+				ctx->SetRenderTargets({ resources.GetRenderTargetDescHeapEntry(data.renderTarget) }, false);
+
+				ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
+				ctx->SetVertexBuffers({ vertices });
+
+				ctx->SetGraphicsDescriptorTable(0, data.heap);
+				ctx->SetGraphicsConstantBufferView(1, cameraConstants);
+				ctx->SetGraphicsConstantBufferView(2, localConstants);
+
+				ctx->Draw(patches.size() * 2 * 4, 0);
+			});
+	}
+
+
 	auto CreateDefaultTerrainConstants(CameraHandle camera, const TerrainEngine& terrainEngine)
 	{
-		return [&, camera](CBPushBuffer& pushBuffer) -> ConstantBufferDataSet {
+		return [debugMode = terrainEngine.DebugMode, camera](CBPushBuffer& pushBuffer) -> ConstantBufferDataSet {
 			uint32_t indirectArgsInitial[] = { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
 			TerrainConstantBufferLayout constants;
 			constants.Albedo           = { 0.0f, 1.0f, 1.0f, 0.9f };
-			constants.Specular         = { 1, 1, 1, 1 };
-			constants.RegionDimensions = { 4096, 4096 };
+			constants.Specular         = { 1.0f, 1.0f, 1.0f, 1.0f };
+			constants.RegionDimensions = { 4096.0f, 4096.0f };
 			constants.Frustum          = GetFrustum(camera);
 			constants.PassCount        = 16;
-			constants.debugMode        = terrainEngine.DebugMode;
+			constants.debugMode        = debugMode;
 
 			return { constants, pushBuffer };
 		};
@@ -315,7 +715,7 @@ namespace FlexKit
 				TY_GetCameraConstantSetFN&	IN_GetCameraConstantSet, 
 				TY_GetTerrainConstantSetFN& IN_GetTerrainConstantSet, 
 				TerrainEngine&				IN_terrainEngine, 
-				iAllocator* IN_tempMemory) :
+				iAllocator*					IN_tempMemory) :
 			GetCameraConstants	{ IN_GetCameraConstantSet	},
 			GetTerrainConstants	{ IN_GetTerrainConstantSet	},
 			tempMemory			{ IN_tempMemory				},
@@ -328,265 +728,9 @@ namespace FlexKit
 			dataDependencies.push_back(&task);
 		}
 
-
-		struct TerrainCullerResults
-		{
-			TerrainCullerResults(
-				const uint16_t				IN_regionCount,
-				TerrainRenderResources&		IN_resources, 
-				TerrainEngine&				IN_terrainEngine,
-				TY_GetCameraConstantSetFN	IN_GetCameraConstants,
-				TY_GetTerrainConstantSetFN	IN_GetTerrainConstants,
-				iAllocator*					IN_allocator
-			) noexcept :
-					GetCameraConstants	{ IN_GetCameraConstants													},
-					GetTerrainConstants	{ IN_GetTerrainConstants												},
-					regionCount			{ IN_regionCount														},
-					terrainEngine		{ IN_terrainEngine														},
-					vertexBuffer		{ IN_resources.vertexBuffer,	512 * 12,	IN_resources.renderSystem	},
-					constantBuffer		{ IN_resources.constantBuffer,	2048,		IN_resources.renderSystem	},
-					tileHeightMaps		{ IN_allocator,								IN_regionCount				} {}
-
-			TY_GetCameraConstantSetFN	GetCameraConstants;
-			TY_GetTerrainConstantSetFN	GetTerrainConstants;
-
-			size_t						GetOutputBuffer() const
-			{
-				return (splitCount + 1) % 2;
-			}
-
-			TerrainEngine&			terrainEngine;
-
-			const uint16_t			regionCount;
-			const uint16_t			splitCount		= 12;
-
-			IndirectLayout			indirectLayout;
-
-			FrameResourceHandle		finalBuffer;
-			FrameResourceHandle		intermediateBuffer1;
-			FrameResourceHandle		intermediateBuffer2;
-			FrameResourceHandle		querySpace;
-
-			DescriptorHeap			heap;
-			FrameResourceHandle		indirectArgs; // UAV Buffer
-
-			QueryHandle				queryFinal;
-			QueryHandle				queryIntermediate;
-
-			VBPushBuffer			vertexBuffer;
-			CBPushBuffer			constantBuffer;
-
-			Vector<size_t>			tileHeightMaps;
-		};
-
-
-		auto& Cull(
-			FrameGraph&				frameGraph, 
-			CameraHandle&			camera,
-			TerrainRenderResources&	resources)
-		{
-			frameGraph.Resources.AddSOResource(terrainEngine.finalBuffer,			0);
-			frameGraph.Resources.AddSOResource(terrainEngine.intermdediateBuffer1,	0);
-			frameGraph.Resources.AddSOResource(terrainEngine.intermdediateBuffer2,	0);
-
-			frameGraph.Resources.AddUAVResource(terrainEngine.indirectArgs, 0, resources.renderSystem.GetObjectState(terrainEngine.indirectArgs));
-			frameGraph.Resources.AddUAVResource(terrainEngine.querySpace,	0, resources.renderSystem.GetObjectState(terrainEngine.querySpace));
-				
-			frameGraph.Resources.AddQuery(terrainEngine.queryBufferFinalBuffer);
-			frameGraph.Resources.AddQuery(terrainEngine.queryBufferIntermediate);
-
-			auto& terrainEngine_ref = terrainEngine;
-			
-			auto& cullerStage = frameGraph.AddNode<TerrainCullerResults>(
-				TerrainCullerResults{
-					1,
-					resources,
-					terrainEngine,
-					GetCameraConstants,
-					GetTerrainConstants,
-					tempMemory
-				},
-				[&, terrainEngine_ref, resources](FrameGraphNodeBuilder& builder, TerrainCullerResults& data)
-				{
-					for(auto dependency : dataDependencies)
-						builder.AddDataDependency(*dependency);
-
-					data.finalBuffer			= builder.WriteSOBuffer	(terrainEngine_ref.finalBuffer);
-					data.intermediateBuffer1	= builder.WriteSOBuffer	(terrainEngine_ref.intermdediateBuffer1);
-					data.intermediateBuffer2	= builder.WriteSOBuffer	(terrainEngine_ref.intermdediateBuffer2);
-
-					data.indirectLayout			= terrainEngine_ref.indirectLayout;
-					data.indirectArgs			= builder.ReadWriteUAVBuffer(terrainEngine_ref.indirectArgs);
-
-					data.queryFinal				= terrainEngine_ref.queryBufferFinalBuffer;
-					data.queryIntermediate		= terrainEngine_ref.queryBufferIntermediate;
-					data.querySpace				= builder.ReadWriteUAVBuffer(terrainEngine_ref.querySpace);
-
-					auto tableLayout			= resources.renderSystem.Library.RS4CBVs_SO.GetDescHeap(0);
-					data.heap.Init(resources.renderSystem, tableLayout, tempMemory);
-					data.heap.NullFill(resources.renderSystem);
-
-					for(auto& tileMap : terrainEngine.tileTextures)
-						data.heap.SetSRV(resources.renderSystem, 0, tileMap.heightMap);
-				},
-				[=](TerrainCullerResults& data, const FrameResources& resources, Context* ctx)
-				{
-					uint32_t				indirectArgsValues[]	= { 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-					ConstantBufferDataSet	terrainConstants		= data.GetTerrainConstants(data.constantBuffer);
-					ConstantBufferDataSet	cameraConstants			= data.GetCameraConstants(data.constantBuffer);
-					ConstantBufferDataSet	indirectArgs			= { indirectArgsValues, data.constantBuffer };
-
-					VertexBufferDataSet		initialVertices			= {	
-							data.terrainEngine.tiles, 
-							[&](auto& tile) -> Region_CP
-							{ 
-								Region_CP tile_CP;
-								tile_CP.parentID	= { 0, 0, 0, 0 };
-								tile_CP.UVs			= { 0, 0, 1, 1 };
-								tile_CP.d			= { 1, 0, 0, static_cast<int32_t>(tile.textureMaps) };
-								tile_CP.regionID	= { tile.tileID[0], 0, tile.tileID[1], 1024 * 16 };
-
-								data.tileHeightMaps.push_back(tile.textureMaps);
-
-								return tile_CP;
-							}, 
-							data.vertexBuffer 
-						};
-
-					auto PSO = resources.GetPipelineState(TERRAIN_COMPUTE_CULL_PSO);
-
-					if (!PSO)
-						return;
-
-					auto& rootSig = resources.renderSystem->Library.RS4CBVs_SO;
-			
-					ctx->SetRootSignature(rootSig);
-					ctx->SetPipelineState(PSO);
-
-					FrameResourceHandle	intermediateSOs[]	= { data.intermediateBuffer1, data.intermediateBuffer2 };
-					int					offset				= 0;
-
-					ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);
-					ctx->SetGraphicsConstantBufferView	(0, cameraConstants);
-					ctx->SetGraphicsConstantBufferView	(1, terrainConstants);
-					ctx->SetGraphicsConstantBufferView	(2, terrainConstants);
-					ctx->SetGraphicsDescriptorTable		(3, data.heap);
-
-					{	// Clear counters
-						auto constantBufferResource	= resources.GetObjectResource((ConstantBufferHandle)data.constantBuffer);
-						auto indirectArgsResource	= resources.GetUAVDeviceResource(data.indirectArgs);
-						auto querySpaceResource		= resources.GetUAVDeviceResource(data.querySpace);
-						auto UAV					= resources.WriteUAV(data.indirectArgs, ctx);
-
-						auto iaState = resources.GetObjectState(data.indirectArgs);
-						auto qsState = resources.GetObjectState(data.querySpace);
-
-						ctx->CopyBufferRegion(
-							{ constantBufferResource,	constantBufferResource			}, // source 
-							{ indirectArgs,				indirectArgs + 8,				}, // source offset
-							{ indirectArgsResource,		querySpaceResource				}, // destinations
-							{ 0, 16														}, // dest offset
-							{ sizeof(uint4), sizeof(uint4)								}, // copy sizes
-							{ iaState, qsState											},
-							{ iaState, qsState											});
-					}
-
-					// prime pipeline
-					ctx->SetVertexBuffers({ initialVertices });
-					
-					ctx->SetSOTargets({
-							resources.WriteStreamOut(intermediateSOs[0],	ctx, sizeof(Region_CP)),
-							resources.WriteStreamOut(data.finalBuffer,		ctx, sizeof(Region_CP)) });
-
-					ctx->BeginQuery(data.queryFinal, 0);
-					ctx->BeginQuery(data.queryIntermediate, 0);
-					ctx->Draw(data.regionCount);
-
-					for (size_t I = 1; I < data.splitCount; ++I) 
-					{
-						size_t SO1 =   offset % 2;
-						size_t SO2 = ++offset % 2;
-
-
-						ctx->EndQuery(data.queryIntermediate, 0);
-
-						ctx->ResolveQuery(
-							data.queryIntermediate, 0, 1,
-							resources.WriteUAV(data.querySpace, ctx), 0);
-
-						auto resource		= resources.GetObjectResource	(resources.WriteUAV(data.indirectArgs, ctx));
-						auto querySpace		= resources.GetObjectResource	(resources.ReadUAVBuffer(data.querySpace, DRS_Read, ctx));
-						auto constants		= resources.GetObjectResource	((ConstantBufferHandle)data.constantBuffer);
-						auto iaState		= resources.GetObjectState		(data.indirectArgs);
-
-						ctx->CopyBufferRegion(
-							{ querySpace				},	// sources
-							{ 0							},  // source offsets
-							{ resource					},  // destinations
-							{ 0							},  // destination offsets
-							{ 4							},  // copy sizes
-							{ iaState					},  // source initial state
-							{ iaState					}); // source final	state
-
-
-						ctx->BeginQuery(data.queryIntermediate, 0);
-
-						ctx->ClearSOCounters({ resources.ClearStreamOut(intermediateSOs[SO2], ctx) });
-
-						ctx->SetVertexBuffers2({
-							resources.ReadStreamOut(
-								intermediateSOs[SO1], ctx, sizeof(Region_CP)) });
-
-						ctx->SetSOTargets({
-							resources.WriteStreamOut(intermediateSOs[SO2],	ctx, sizeof(Region_CP)),
-							resources.WriteStreamOut(data.finalBuffer,		ctx, sizeof(Region_CP)) });
-
-						ctx->ExecuteIndirect(
-							resources.ReadIndirectArgs(data.indirectArgs, ctx),
-							data.indirectLayout);
-					}
-
-					ctx->EndQuery(data.queryIntermediate, 0);
-					ctx->EndQuery(data.queryFinal, 0);
-
-					ctx->ResolveQuery(
-						data.queryIntermediate, 0, 1,
-						resources.WriteUAV(data.querySpace, ctx), 0);
-					ctx->ResolveQuery(
-						data.queryFinal, 0, 1,
-						resources.WriteUAV(data.querySpace, ctx), 16);
-
-					{
-						auto indirectArgs	= resources.GetObjectResource(resources.WriteUAV(data.indirectArgs, ctx));
-						auto queryResults	= resources.GetObjectResource(resources.ReadUAVBuffer(data.querySpace, DRS_Read, ctx));
-						auto iaState		= resources.GetObjectState(data.indirectArgs);
-
-						ctx->CopyBufferRegion(
-							{ queryResults,	},  // sources
-							{ 16,			},	// source offset
-							{ indirectArgs, },  // destinations
-							{ 0,			},  // destination offsets
-							{ 4, 			},  // copy sizes
-							{ iaState,		},  // source initial state
-							{ iaState,		}); // destination final state
-					}
-					ctx->SetSOTargets({});
-
-					ctx->ClearSOCounters(
-						{	resources.ClearStreamOut(intermediateSOs[0],	ctx),
-							resources.ClearStreamOut(intermediateSOs[1],	ctx),
-							resources.ClearStreamOut(data.finalBuffer,		ctx) });
-				});
-
-			return cullerStage;
-		}
-
-
-		// Will take ownership of cullerResults
-		template<typename TY_CULLERRESULTS>
 		auto& Draw(
 			FrameGraph&				frameGraph,
-			TY_CULLERRESULTS&		culledInput,
+			UpdateTask&				gatherPatches,
 			TextureHandle			renderTarget, 
 			TextureHandle			depthTarget,
 			TerrainRenderResources&	resources)
@@ -594,129 +738,53 @@ namespace FlexKit
 			struct _RenderTerrainForward
 			{
 				_RenderTerrainForward(
-					TerrainRenderResources		IN_resources, 
-					TY_CULLERRESULTS&			IN_culledInput,
-					IndirectLayout&				IN_indirectLayout, 
-					DescriptorHeap&				IN_descriptorHeap,
-					TY_GetCameraConstantSetFN&	IN_GetCameraConstants,
-					TY_GetTerrainConstantSetFN&	IN_GetTerrainConstants
-				) noexcept :
-					resoures			{ IN_resources															},
-					culledTerrain		{ IN_culledInput														},
-					indirectLayout		{ IN_indirectLayout														},
-					regionCount			{ IN_culledInput.regionCount											},
-					splitCount			{ IN_culledInput.splitCount												},
-					heap				{ IN_descriptorHeap														},
-					vertexBuffer		{ IN_resources.vertexBuffer,	512 * 12,	IN_resources.renderSystem	},
-					constantBuffer		{ IN_resources.constantBuffer,	2048,		IN_resources.renderSystem	},
-					GetCameraConstants	{ IN_GetCameraConstants													},
-					GetTerrainConstants	{ IN_GetTerrainConstants												} {}
+					RenderSystem&				renderSystem,
+					PatchList&					IN_patches,
+					TY_GetCameraConstantSetFN	IN_GetCameraConstants,
+					TY_GetTerrainConstantSetFN	IN_GetTerrainConstants,
+					ConstantBufferHandle		IN_constantBuffer) : 
+					GetCameraConstants	{ IN_GetCameraConstants							},
+					GetTerrainConstants	{ IN_GetTerrainConstants						},
+					pushBuffer			{ IN_constantBuffer, 2 * KILOBYTE, renderSystem	},
+					patches				{ IN_patches									} {}
 
-				IndirectLayout&				indirectLayout;
-
-				TY_GetCameraConstantSetFN	GetCameraConstants;
-				TY_GetTerrainConstantSetFN	GetTerrainConstants;
-
-				TY_CULLERRESULTS&			culledTerrain;
-				TerrainRenderResources		resoures;
-
-
-				const uint16_t				regionCount;
-				const uint16_t				splitCount;
-
-
+				PatchList&					patches;
 				FrameResourceHandle			renderTarget;
 				FrameResourceHandle			depthTarget;
-
-				FrameResourceHandle			finalBuffer;
-				FrameResourceHandle			intermediateBuffer1;
-				FrameResourceHandle			intermediateBuffer2;
-				FrameResourceHandle			querySpace;
-				DescriptorHeap&				heap;
-				FrameResourceHandle			indirectArgs; // UAV Buffer
-
-				QueryHandle					queryFinal;
-				QueryHandle					queryIntermediate;
-	
-				VBPushBuffer				vertexBuffer;
-				CBPushBuffer				constantBuffer;
-
-				TerrainEngine::TERRAINDEBUGRENDERMODE debugMode;
+				CBPushBuffer				pushBuffer;
+				TY_GetCameraConstantSetFN	GetCameraConstants;
+				TY_GetTerrainConstantSetFN	GetTerrainConstants;
 			};
 			
+			auto& gatherResults		= *reinterpret_cast<TerrainEngine::TerrainUpdate*>(gatherPatches.Data);
+			PatchList patches		= gatherResults.patches;
+
 			auto& renderStage = frameGraph.AddNode<_RenderTerrainForward>(
 				_RenderTerrainForward{
-					resources, 
-					culledInput,
-					terrainEngine.indirectLayout,
-					culledInput.heap,
+					frameGraph.GetRenderSystem(),
+					patches,
 					GetCameraConstants,
-					GetTerrainConstants
+					GetTerrainConstants,
+					resources.constantBuffer
 				},
 				[&](FrameGraphNodeBuilder& builder, _RenderTerrainForward& data)
 				{
-					data.debugMode				= terrainEngine.DebugMode;
-					data.renderTarget			= builder.WriteRenderTarget(renderTarget);
-					data.depthTarget			= builder.WriteDepthBuffer(depthTarget);
-
-					data.indirectArgs			= builder.ReadWriteUAVBuffer(terrainEngine.indirectArgs);
-					data.querySpace				= builder.ReadWriteUAVBuffer(terrainEngine.querySpace);
-					data.finalBuffer			= builder.ReadSOBuffer(terrainEngine.finalBuffer);
-					data.intermediateBuffer1	= builder.ReadSOBuffer(terrainEngine.intermdediateBuffer1);
-					data.intermediateBuffer2	= builder.ReadSOBuffer(terrainEngine.intermdediateBuffer2);
+					data.renderTarget	= builder.WriteRenderTarget(renderTarget);
+					data.depthTarget	= builder.WriteDepthBuffer(depthTarget);
 				},
 				[=](_RenderTerrainForward& data, const FrameResources& resources, Context* ctx)
 				{
-					ConstantBufferDataSet	terrainConstants			= data.GetTerrainConstants(data.constantBuffer);
-					ConstantBufferDataSet	cameraConstants				= data.GetCameraConstants(data.constantBuffer);
+					// TODO: convert patches
 
-					auto PSO = resources.GetPipelineState(TERRAIN_RENDER_FOWARD_PSO);
-
-					if (!PSO)
-						return;
-
-					auto& rootSig = resources.renderSystem->Library.RS4CBVs_SO;
-
-					ctx->SetRootSignature(rootSig);
-					ctx->SetPipelineState(PSO);
-
+					//ctx->SetRootSignature();
+					//ctx->SetPipelineState();
 					ctx->SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_1);
-					ctx->SetGraphicsConstantBufferView(0, cameraConstants);
-					ctx->SetGraphicsConstantBufferView(1, terrainConstants);
-					ctx->SetGraphicsConstantBufferView(2, terrainConstants);
-					ctx->SetGraphicsDescriptorTable(3, data.heap);
-
-					ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 					ctx->SetRenderTargets(
-						{ resources.GetRenderTargetObject(data.renderTarget) },
-						true,
-						resources.GetRenderTargetObject(data.depthTarget));
+						{ resources.GetRenderTargetDescHeapEntry(data.renderTarget) }, 
+						true, 
+						resources.GetRenderTargetDescHeapEntry(data.depthTarget));
+				});
 
-					const size_t inputArray					= (data.splitCount + 1) % 2;
-					FrameResourceHandle	intermediateSOs[]	= { data.intermediateBuffer1, data.intermediateBuffer2 };
-
-					ctx->SetVertexBuffers2({
-							resources.ReadStreamOut(
-								data.finalBuffer, ctx, sizeof(Region_CP)) });
-
-					ctx->ExecuteIndirect(
-						resources.ReadIndirectArgs(data.indirectArgs, ctx),
-						data.indirectLayout);
-
-					switch (data.debugMode)
-					{
-					case TerrainEngine::TERRAINDEBUGRENDERMODE::WIREFRAME:
-					{
-						auto PSO = resources.GetPipelineState(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
-
-						ctx->SetPipelineState(PSO);
-						ctx->ExecuteIndirect(
-							resources.ReadIndirectArgs(data.indirectArgs, ctx),
-							data.indirectLayout);
-					}	break;
-					}
-
-					});
 			return renderStage;
 		}
 
