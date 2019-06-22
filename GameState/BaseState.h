@@ -39,7 +39,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fmod.hpp>
 
 using FlexKit::WorldRender;
-using FlexKit::ReleaseCameraTable;
 using FlexKit::FKApplication;
 
 
@@ -163,12 +162,15 @@ public:
 			textBuffer		{ IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
 			constantBuffer	{ IN_Framework->core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
 			asEngine		{ asCreateScriptEngine()																		},
+			streamingEngine	{ IN_Framework->core->RenderSystem, IN_Framework->core->GetBlockMemory()						},
 
 			render	{	IN_Framework->core->GetTempMemory(),
-						IN_Framework->core->RenderSystem	}
+						IN_Framework->core->RenderSystem,
+						streamingEngine	
+					},
+
+			cameras	{ framework->core->GetBlockMemory() }
 	{
-		InitiateCameraTable(framework->core->GetBlockMemory());
-		
 		auto& RS = *IN_Framework->GetRenderSystem();
 		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
 		RS.RegisterPSOLoader(FlexKit::DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
@@ -192,8 +194,6 @@ public:
 		framework->core->RenderSystem.ReleaseVB(textBuffer);
 		framework->core->RenderSystem.ReleaseCB(constantBuffer);
 		framework->core->RenderSystem.ReleaseDB(depthBuffer);
-
-		ReleaseCameraTable();
 	}
 
 	asIScriptEngine* asEngine;
@@ -205,6 +205,12 @@ public:
 	FlexKit::VertexBufferHandle			vertexBuffer;
 	FlexKit::VertexBufferHandle			textBuffer;
 	FlexKit::ConstantBufferHandle		constantBuffer;
+	
+	// Components
+	SceneNodeComponent					transforms;
+	CameraComponent						cameras;
+
+	TextureStreamingEngine				streamingEngine;
 };
 
 

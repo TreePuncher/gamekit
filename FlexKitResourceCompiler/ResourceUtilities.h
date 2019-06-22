@@ -119,9 +119,6 @@ struct SceneStats
 
 struct CompileSceneFromFBXFile_DESC
 {
-	FlexKit::iAllocator*	BlockMemory;
-	FlexKit::iAllocator*	TempMem;
-	FlexKit::iAllocator*	LevelMem;
 	NodeHandle				SceneRoot;
 
 	physx::PxCooking*		Cooker		= nullptr;
@@ -133,9 +130,7 @@ struct CompileSceneFromFBXFile_DESC
 	bool					 CookingEnabled;
 };
 
-struct	LoadGeometry_RES;
-typedef LoadGeometry_RES*				LoadGeometryRES_ptr;
-typedef static_vector<Resource*, 256>	ResourceList;
+typedef std::vector<Resource*>		ResourceList;
 
 FileDir SelectFile();
 

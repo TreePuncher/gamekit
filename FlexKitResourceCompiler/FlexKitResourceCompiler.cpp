@@ -28,6 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\graphicsutilities\Geometry.h"
 
+
 // Sources Files
 #include "common.cpp"
 #include "Animation.cpp"
@@ -43,7 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\memoryutilities.cpp"
 #include "..\coreutilities\Logging.cpp"
 #include "..\coreutilities\MathUtils.cpp"
-
+#include "..\coreutilities\ThreadUtilities.h"
 
 #include <algorithm>
 #include <initializer_list>
@@ -140,9 +141,10 @@ int main(int argc, char* argv[])
 #endif
 
 			{
-				static_vector<LoadGeometryRES_ptr, 16>	Resources;
+				std::vector<LoadGeometry_RES> Resources;
 
-				MD_Vector MetaData(FlexKit::SystemAllocator);
+				MetaDataList MetaData;
+
 				for (auto MD_Location : MetaDataFiles)
 					ReadMetaData(MD_Location, FlexKit::SystemAllocator, FlexKit::SystemAllocator, MetaData);
 
@@ -194,11 +196,10 @@ int main(int argc, char* argv[])
 
 					virtual void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
 					{
-
+						std::cout << message << " : " << file << " : Line: " << line << "\n";
 					}
 
 				}errorCallback;
-
 
 
 				Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, errorCallback);
@@ -215,6 +216,9 @@ int main(int argc, char* argv[])
 						Cooker->release();
 				}FINALLYOVER;
 
+
+				constexpr bool terrainCookingEnabled = false;
+				if constexpr(terrainCookingEnabled)
 				{
 					// Load Terrain Collider
 					for (auto MD : MetaData)
@@ -226,11 +230,11 @@ int main(int argc, char* argv[])
 							auto* TerrainCollider = (TerrainCollider_MetaData*)MD;
 							ColliderStream Stream = ColliderStream(FlexKit::SystemAllocator, 4096);
 
-							struct TerrainSample{
+							struct TerrainSample
+							{
 								int16_t Height;
 								int8_t Material_1;
 								int8_t RESERVED;
-
 							}* Samples;
 
 
@@ -278,17 +282,17 @@ int main(int argc, char* argv[])
 				for (auto Input : Inputs)
 				{
 					CompileSceneFromFBXFile_DESC Desc;
-					Desc.BlockMemory	= FlexKit::SystemAllocator;
 					Desc.CloseFBX		= true;
 					Desc.IncludeShaders = false;
 					Desc.CookingEnabled = true;
 					Desc.Foundation;
 					Desc.Cooker;
 					std::cout << "Compiling File: " << Input << "\n";
-					Resources.push_back(CompileSceneFromFBXFile(Input, &Desc, &MetaData));
+					
+					auto compiledScene = CompileSceneFromFBXFile(Input, &Desc, MetaData);
 
-					if(Resources.back())
-						ResourcesFound += Resources.back()->Resources;
+					for (auto& resource : compiledScene.Resources)
+						ResourcesFound.push_back(resource);
 				}
 
 				size_t ResourceCount = ResourcesFound.size();

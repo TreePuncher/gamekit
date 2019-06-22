@@ -93,7 +93,22 @@ namespace FlexKit
 		char					ID[ID_LENGTH];	// Specifies the Asset that uses the meta data
 	};
 
-	typedef FlexKit::Vector<MetaData*> MD_Vector;
+	typedef std::vector<MetaData*> MetaDataList;
+
+	auto SkeletonFilter = [](MetaData* const in) {
+		return (in->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL);
+	};
+
+	template<typename TY_Filter>
+	MetaDataList FilterList(TY_Filter& filter, const MetaDataList& metaDatas)
+	{
+		MetaDataList out;
+		for (auto meta : metaDatas)
+			if (filter(meta))
+				out.push_back(meta);
+
+		return out;
+	}
 
 
 	/************************************************************************************************/
@@ -256,24 +271,19 @@ namespace FlexKit
 		FlexKit::TextureSet_Locations Textures;
 	};
 
-	typedef Vector<size_t> RelatedMetaData;
-
 
 	/************************************************************************************************/
 
 
-	bool			ReadMetaData		( const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out );
-	RelatedMetaData	FindRelatedMetaData ( MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem );
-	MetaData*		ScanForRelated		( MD_Vector* MetaData, RelatedMetaData& Related, MetaData::EMETAINFOTYPE Type );
-	Resource*		MetaDataToBlob		( MetaData* Meta, iAllocator* Mem );
+	std::pair<MetaDataList, bool>	ReadMetaData		(const char* Location);
+	MetaDataList					FindRelatedMetaData (const MetaDataList& MetaData, const MetaData::EMETA_RECIPIENT_TYPE Type, const std::string& ID);
+	MetaDataList					ScanForRelated		(const MetaDataList& MetaData, const MetaData::EMETAINFOTYPE Type);
 
-	Resource*		MetaDataToBlob		( MetaData* Meta, iAllocator* Mem );
+	Resource*						MetaDataToBlob		(MetaData* Meta, iAllocator* Mem);
 
-	Mesh_MetaData*	GetMeshMetaData		( MD_Vector* MetaData, Vector<size_t>& related );
-	Vector<size_t>	FindRelatedMetaData	( MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem );
-	MetaData*		ScanForRelated		( MD_Vector* MetaData, RelatedMetaData& Related, MetaData::EMETAINFOTYPE Type );
+	Mesh_MetaData*					GetMeshMetaData		(MetaDataList& relatedMetaData);
 
-	void			PrintMetaDataList(MD_Vector& MD);
+	void							PrintMetaDataList	(const MetaDataList& MD);
 	/************************************************************************************************/
 }
 

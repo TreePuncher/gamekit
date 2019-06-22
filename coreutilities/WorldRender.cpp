@@ -428,7 +428,7 @@ namespace FlexKit
 			},
 			[=](LighBufferCPUUpdate& data)
 			{
-				auto cameraConstants	= GetCameraConstants(data.camera);
+				auto cameraConstants	= CameraComponent::GetComponent().GetCameraConstants(data.camera);
 
 				auto f					= GetFrustum(data.camera);
 				auto lights				= data.scene->FindPointLights(f, data.tempMemory);
@@ -500,7 +500,7 @@ namespace FlexKit
 					tileMap.size() * sizeof(TileMapEntry),
 					lightMap,
 					graph.Resources);
-					*/
+				*/
 
 				BeginNewConstantBuffer(
 					data.lightListBuffer,

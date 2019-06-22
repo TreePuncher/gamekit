@@ -50,7 +50,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //				(DONE) CULLING
 //				Texture Splatting
 //				Normal Generation
-//		(DONE) Occlusion Culling
+//		TODO: Occlusion Culling
 //		(TODO:)(Partly Done)Animation State Machine
 //		(DONE/PARTLY) 3rd Person Camera Handler
 //		(DONE) Object -> Bone Attachment
@@ -196,7 +196,6 @@ namespace FlexKit
 		SetDebugMemory			(core->GetDebugMemory());
 		InitiateResourceTable	(core->GetBlockMemory());
 		InitiateGeometryTable	(core->GetBlockMemory());
-		InitiateCameraTable		(core->GetBlockMemory());
 
 		clearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
 		quit						= false;

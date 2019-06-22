@@ -15,38 +15,73 @@ namespace FlexKit
 
 	typedef Handle_t<32, GetCRCGUID(CameraHandle)> CameraHandle;
 
+	constexpr ComponentID CameraComponentID = GetTypeGUID(CameraComponentID);
 
-	void InitiateCameraTable(iAllocator* Memory);
-	void ReleaseCameraTable();
+	class CameraComponent : public Component<CameraComponent, CameraHandle, CameraComponentID>
+	{
+	public:
+		CameraComponent(iAllocator* allocator) : 
+			handles		{ allocator },
+			DirtyFlags	{ allocator },
+			handleRef	{ allocator },
+			Cameras		{ allocator } {}
 
+		~CameraComponent() {}
 
-	CameraHandle CreateCamera(
-		float	FOV			= pi/3,
-		float	AspectRatio = 1.0f,
-		float	Near		= 0.1f,
-		float	Far			= 10000.0f,
-		bool	Invert		= false);
+		CameraHandle CreateCamera(
+			float	FOV			= pi/3,
+			float	AspectRatio = 1.0f,
+			float	Near		= 0.1f,
+			float	Far			= 10000.0f,
+			bool	Invert		= false);
 
+		void							ReleaseCamera(CameraHandle camera);
 
-	FLEXKITAPI void							MarkDirty				(CameraHandle);
-	FLEXKITAPI void							SetCameraNode			(CameraHandle, NodeHandle);
+		Camera&							GetCamera(CameraHandle);
 
-	FLEXKITAPI void							SetCameraAspectRatio	(CameraHandle, float);
-	FLEXKITAPI void							SetCameraNode			(CameraHandle, NodeHandle);
-	FLEXKITAPI void							SetCameraFOV			(CameraHandle, float);
-	FLEXKITAPI void							SetCameraNear			(CameraHandle, float);
-	FLEXKITAPI void							SetCameraFar			(CameraHandle, float);
+		void							MarkDirty				(CameraHandle);
+
+		void							SetCameraAspectRatio	(CameraHandle, float);
+		void							SetCameraNode			(CameraHandle, NodeHandle);
+		void							SetCameraFOV			(CameraHandle, float);
+		void							SetCameraNear			(CameraHandle, float);
+		void							SetCameraFar			(CameraHandle, float);
 	
-	FLEXKITAPI float						GetCameraAspectRatio	(CameraHandle);
-	FLEXKITAPI float						GetCameraFar			(CameraHandle);
-	FLEXKITAPI float						GetCameraFOV			(CameraHandle);
-	FLEXKITAPI NodeHandle					GetCameraNode			(CameraHandle);
-	FLEXKITAPI float						GetCameraNear			(CameraHandle);
-	FLEXKITAPI Camera::CameraConstantBuffer	GetCameraConstants		(CameraHandle);
-	FLEXKITAPI float4x4						GetCameraPV				(CameraHandle);
+		float							GetCameraAspectRatio	(CameraHandle);
+		float							GetCameraFar			(CameraHandle);
+		float							GetCameraFOV			(CameraHandle);
+		NodeHandle						GetCameraNode			(CameraHandle);
+		float							GetCameraNear			(CameraHandle);
+		Camera::CameraConstantBuffer	GetCameraConstants		(CameraHandle);
+		float4x4						GetCameraPV				(CameraHandle);
+
+		UpdateTask& QueueCameraUpdate(UpdateDispatcher&, UpdateTask& TransformDependency);
+
+		Vector<bool>								DirtyFlags;
+		Vector<Camera>								Cameras;
+		Vector<CameraHandle>						handleRef;
+		HandleUtilities::HandleTable<CameraHandle>	handles;
+	};
+
+	/************************************************************************************************/
 
 
-	UpdateTask& QueueCameraUpdate(UpdateDispatcher&, UpdateTask& TransformDependency);
+	inline void								SetCameraAspectRatio	(CameraHandle camera, float a)				{ CameraComponent::GetComponent().SetCameraAspectRatio(camera, a);	}
+	inline void								SetCameraNode			(CameraHandle camera, NodeHandle node)		{ CameraComponent::GetComponent().SetCameraNode(camera, node);		}
+	inline void								SetCameraFOV			(CameraHandle camera, float a)				{ CameraComponent::GetComponent().SetCameraFOV(camera, a);			}
+	inline void								SetCameraNear			(CameraHandle camera, float a)				{ CameraComponent::GetComponent().SetCameraNear(camera, a);			}
+	inline void								SetCameraFar			(CameraHandle camera, float a)				{ CameraComponent::GetComponent().SetCameraFar(camera, a);			}
+		
+	inline float							GetCameraAspectRatio	(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraAspectRatio(camera);	}
+	inline float							GetCameraFar			(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraFar(camera);			}
+	inline float							GetCameraFOV			(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraFOV(camera);			}
+	inline NodeHandle						GetCameraNode			(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraNode(camera);			}
+	inline float							GetCameraNear			(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraNear(camera);			}
+	inline Camera::CameraConstantBuffer		GetCameraConstants		(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraConstants(camera);		}
+	inline float4x4							GetCameraPV				(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPV(camera);				}
+
+
+	/************************************************************************************************/
 
 
 	struct DefaultCameraInteractor
@@ -56,58 +91,61 @@ namespace FlexKit
 		template<typename TY>
 		void OnDirty(TY* cameraBehavior, void*)
 		{
-			MarkDirty(cameraBehavior->camera);
+			CameraComponent::GetComponent().MarkDirty(cameraBehavior->camera);
 		}
 	};
 
 	template<typename TY_Interactor = DefaultCameraInteractor>
-	class CameraBehavior_t : public DefaultCameraInteractor
+	class CameraBehavior_t : 
+		public Behavior_t<CameraComponent>,
+		public DefaultCameraInteractor
 	{
 	public:
-		CameraBehavior_t(CameraHandle IN_camera = CreateCamera()) :
+		CameraBehavior_t(CameraHandle IN_camera = CameraComponent::GetComponent().CreateCamera()) :
 			camera{IN_camera}{}
+
+
+		~CameraBehavior_t()
+		{
+			GetComponent().ReleaseCamera(camera);
+		}
 
 
 		void SetCameraAspectRatio(float AspectRatio)
 		{
-			FlexKit::SetCameraAspectRatio(camera, AspectRatio);
+			GetComponent().SetCameraAspectRatio(camera, AspectRatio);
 			_CameraDirty();
 		}
 
 
 		void SetCameraNode(NodeHandle Node)
 		{
-			FlexKit::SetCameraNode(camera, Node);
+			GetComponent().SetCameraNode(camera, Node);
 			_CameraDirty();
 		}
 
 
 		void SetCameraFOV(float r)
 		{
-			FlexKit::SetCameraFOV(camera, r);
+			GetComponent().SetCameraFOV(camera, r);
 			_CameraDirty();
 		}
 
 
 		NodeHandle GetCameraNode()
 		{
-			return FlexKit::GetCameraNode(camera);
+			return GetCameraNode(camera);
 		}
 
 
 		float GetCameraFov()
 		{
-			return FlexKit::GetCameraFOV(camera);
+			return GetCameraConstants(camera);
 		}
 
 
-		Camera::CameraConstantBuffer	GetCameraConstants()
+		operator CameraHandle () 
 		{
-			return FlexKit::GetCameraConstants(camera);
-		}
-
-
-		operator CameraHandle () {
 			return camera;
 		}
 
@@ -142,7 +180,8 @@ namespace FlexKit
 
 	inline Frustum GetSubFrustum(CameraHandle camera, float2 UL, float2 BR)
 	{
-		auto node = GetCameraNode(camera);
+		auto& sceneNodeComponent	= SceneNodeComponent::GetComponent();
+		auto node					= GetCameraNode(camera);
 
 		return GetSubFrustum(
 			GetCameraAspectRatio(camera),

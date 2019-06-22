@@ -43,7 +43,7 @@ namespace FlexKit
 		SetParentNode(pitchNode, rollNode);
 		SetParentNode(yawNode, pitchNode);
 
-		FlexKit::SetCameraNode(camera, rollNode);
+		CameraComponent::GetComponent().SetCameraNode(camera, rollNode);
 
 		TranslateWorld(initialPos);
 	}
@@ -207,7 +207,7 @@ namespace FlexKit
 
 	NodeHandle	OrbitCameraBehavior::GetCameraNode()
 	{
-		return FlexKit::GetCameraNode(camera);
+		return CameraComponent::GetComponent().GetCameraNode(camera);
 	}
 
 
@@ -224,10 +224,7 @@ namespace FlexKit
 	{
 		struct OrbitCameraUpdateData
 		{
-			bool					started;
-			bool					completed;
 			MouseInputState			mouseState;
-			OrbitCameraBehavior*	orbitCamera;
 			float					dt;
 		};
 
@@ -240,17 +237,12 @@ namespace FlexKit
 
 				data.mouseState		= mouseState;
 				data.dt				= dt;
-				data.orbitCamera	= &orbitCamera;
-				data.started		= false;
-				data.completed		= false;
 			},
-			[](auto& data)
+			[&orbitCamera](auto& data)
 			{
 				FK_LOG_9("OrbitCamera Update");
 
-				data.started		= true;
-				data.orbitCamera->Update(data.mouseState, data.dt);
-				data.completed		= true;
+				orbitCamera.Update(data.mouseState, data.dt);
 			});
 
 		return data;

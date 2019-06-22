@@ -165,7 +165,7 @@ namespace FlexKit
 	FLEXKITAPI void			SetParentNode				( NodeHandle Parent, NodeHandle Node );
 	FLEXKITAPI void			SetPositionW				( NodeHandle Node,	float3 in );
 	FLEXKITAPI void			SetPositionL				( NodeHandle Node,	float3 in );
-	FLEXKITAPI void			SetWT						( NodeHandle Node,	DirectX::XMMATRIX* __restrict in  );				// Set World Transfo
+	FLEXKITAPI void			SetWT						( NodeHandle Node,	DirectX::XMMATRIX* __restrict in  ); // Set World Transform
 	FLEXKITAPI void			SetScale					( NodeHandle Node,	float3 In );
 
 	FLEXKITAPI void			Scale						( NodeHandle Node,	float3 In );
@@ -186,18 +186,53 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	constexpr ComponentID TransformComponentID = GetTypeGUID(TransformComponentID);
+
+	class SceneNodeComponent : 
+		public Component<SceneNodeComponent, NodeHandle, TransformComponentID>
+	{
+	public:
+
+		~SceneNodeComponent()
+		{
+
+		}
+
+		NodeHandle GetZeroedNode()
+		{
+			return FlexKit::GetZeroedNode();
+		}
+	};
+
+
+	/************************************************************************************************/
+
+
 	struct  NullSceneNodeBehaviorOverrides
 	{
 		template<typename ... discard>
-		void SetDirty(discard ...){}
+		void SetDirty(discard ...) {}
 	};
 
+
+	/************************************************************************************************/
+
+
 	template<typename Overrides_TY = NullSceneNodeBehaviorOverrides>
-	class SceneNodeBehavior : public Overrides_TY
+	class SceneNodeBehavior : 
+		public Behavior_t<SceneNodeComponent>,
+		public Overrides_TY
 	{
 	public:
-		SceneNodeBehavior(NodeHandle IN_Node = InvalidHandle_t) : 
-			node{ IN_Node }{}
+		SceneNodeBehavior(NodeHandle IN_Node = GetComponent().GetZeroedNode()) :
+			node{ IN_Node } {}
+
+
+		~SceneNodeBehavior()
+		{
+			if (node != InvalidHandle_t)
+				ReleaseNode(node);
+		}
 
 
 		SceneNodeBehavior(SceneNodeBehavior&& rhs)
@@ -205,6 +240,7 @@ namespace FlexKit
 			node		= rhs.node;
 			rhs.node	= InvalidHandle_t;
 		}
+
 
 		SceneNodeBehavior& operator = (SceneNodeBehavior&& rhs)
 		{
@@ -214,9 +250,11 @@ namespace FlexKit
 			return *this;
 		}
 
+		SceneNodeBehavior				(SceneNodeBehavior&) = delete;
+		SceneNodeBehavior& operator =	(SceneNodeBehavior&) = delete;
 
-		SceneNodeBehavior(SceneNodeBehavior&)				= delete;
-		SceneNodeBehavior& operator = (SceneNodeBehavior&)	= delete;
+
+		operator NodeHandle () { return node; }
 
 
 		NodeHandle GetParentNode()
@@ -239,7 +277,7 @@ namespace FlexKit
 		}
 
 
-		void Roll	(float r)
+		void Roll(float r)
 		{
 			FlexKit::Roll(node, r);
 			Overrides_TY::SetDirty(static_cast<Overrides_TY::Parent_TY*>(this));
@@ -286,6 +324,7 @@ namespace FlexKit
 
 		NodeHandle node;
 	};
+
 
 }	/************************************************************************************************/
 

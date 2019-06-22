@@ -38,7 +38,7 @@ using FlexKit::JointPose;
 using FlexKit::JointHandle;
 
 using FlexKit::GUID_t;
-using FlexKit::MD_Vector;
+using FlexKit::MetaDataList;
 
 using namespace FlexKit;
 
@@ -49,7 +49,9 @@ struct	JointAnimation
 		JointPose	JPose;
 		double		T;
 		double		_PAD;
-	}* Poses;
+	};// *Poses;
+
+	std::vector<Pose> Poses;
 
 	size_t FPS;
 	size_t FrameCount;
@@ -73,24 +75,24 @@ struct AnimationCut
 };
 
 
-typedef static_vector<JointInfo, 1024> JointList;
-typedef Vector<AnimationCut> CutList;
+typedef std::vector<JointInfo>		JointList;
+typedef std::vector<AnimationCut>	CutList;
 
 
 /************************************************************************************************/
 
 
 fbxsdk::FbxNode*	FindSkeletonRoot	( fbxsdk::FbxMesh* M );
-void				FindAllJoints		( JointList& Out, FbxNode* N, iAllocator* MEM, size_t Parent = 0xFFFF );
+void				FindAllJoints		( JointList& Out, FbxNode* N, size_t Parent = 0xFFFF );
 
-void				GetAnimationCuts			( CutList* out, MD_Vector* MD, const char* ID, iAllocator* Mem );
-JointAnimation		GetJointAnimation			( FbxNode* N, iAllocator* M );
+void				GetAnimationCuts			( CutList* out, MetaDataList& MD, const std::string& id);
+JointAnimation		GetJointAnimation			( FbxNode* N );
 JointHandle			GetJoint					( static_vector<JointInfo, 1024>& Out, const char* ID );
 void				GetJointTransforms			( JointList& Out, FbxMesh* M, iAllocator* MEM );
 FbxAMatrix			GetGeometryTransformation	( FbxNode* inNode );	
-Skeleton_MetaData*	GetSkeletonMetaData			( MD_Vector* MD, RelatedMetaData* RD );
+Skeleton_MetaData*	GetSkeletonMetaData			( const MetaDataList& relatedMetaData);
 
-FlexKit::Skeleton*	LoadSkeleton				( FbxMesh* M, iAllocator* Mem, iAllocator* Temp, const char* ParentID = nullptr, MD_Vector* MD = nullptr );
+FlexKit::Skeleton*	LoadSkeleton				( FbxMesh* M, const char* ParentID = nullptr, MetaDataList& related = MetaDataList{});
 
 
 /************************************************************************************************/

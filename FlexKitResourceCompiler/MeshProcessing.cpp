@@ -288,7 +288,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FBXSkinDeformer CreateSkin(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem)
+	FBXSkinDeformer CreateSkin(fbxsdk::FbxMesh* Mesh)
 	{	// Get Weights
 		FBXSkinDeformer	Out = {};
 
@@ -298,42 +298,38 @@ namespace FlexKit
 			fbxsdk::FbxStatus S;
 			auto D		= Mesh->GetDeformer(I, &S);
 			auto Type	= D->GetDeformerType();
-			switch ( Type ) {
+			switch ( Type ) 
+			{
 			case fbxsdk::FbxDeformer::EDeformerType::eSkin:
 			{
 				auto Skin			= (FbxSkin*)D;
 				auto ClusterCount	= Skin->GetClusterCount();
-			
-				Out.Bones = (FBXSkinDeformer::BoneWeights*)TempMem->malloc( sizeof( FBXSkinDeformer::BoneWeights ) * ClusterCount );
+				
+				Out.bones.reserve(ClusterCount);
 				for ( size_t II = 0; II < ClusterCount; ++II)
 				{
-					Out.BoneCount++;
+					const auto Cluster			= Skin->GetCluster( II );
+					const auto ClusterName		= Cluster->GetLink()->GetName();
+					const auto CPIndices		= Cluster->GetControlPointIndices();
+					const auto Weights			= Cluster->GetControlPointWeights();
+					const size_t CPICount		= Cluster->GetControlPointIndicesCount();
 
-					auto Cluster		= Skin->GetCluster( II );
-					auto ClusterName	= Cluster->GetLink()->GetName();
-					size_t CPICount		= Cluster->GetControlPointIndicesCount();
-					auto CPIndices		= Cluster->GetControlPointIndices();
-					auto Weights		= Cluster->GetControlPointWeights();
+					auto* const fbxBone			= Cluster->GetLink();
+					const auto	fbxBoneAttrib	= fbxBone->GetNodeAttribute();
 
-					auto Bone = Cluster->GetLink();
-					auto BoneAttrib = Bone->GetNodeAttribute();
-					if (BoneAttrib->GetAttributeType() == FbxNodeAttribute::eSkeleton)
-						auto Name	= Bone->GetName();
+					//if (fbxBoneAttrib->GetAttributeType() == FbxNodeAttribute::eSkeleton)
+					//	auto Name	= Bone->GetName();
 
-					Out.Bones[II].Name			= ClusterName;
-					Out.Bones[II].Weights		= (float*)TempMem->malloc( sizeof( float ) * CPICount );
-					Out.Bones[II].WeightIndices	= (size_t*)TempMem->malloc( sizeof( size_t ) * CPICount );
-					Out.Bones[II].WeightCount	= CPICount;
+					FBXSkinDeformer::BoneWeights bone;
+					bone.name			= ClusterName;
 
-					for ( size_t III = 0; III < CPICount; ++III ){
-						Out.Bones[II].Weights		[III] = 0.0f;
-						Out.Bones[II].WeightIndices	[III] = 0;
+					for ( size_t III = 0; III < CPICount; ++III )
+					{
+						bone.weights.push_back(Weights[III]);
+						bone.indices.push_back(CPIndices[III]);
 					}
 
-					for ( size_t III = 0; III < CPICount; ++III ){
-						Out.Bones[II].Weights		[III] = Weights		[III];
-						Out.Bones[II].WeightIndices	[III] = CPIndices	[III];
-					}
+					Out.bones.emplace_back(std::move(bone));
 				}
 
 			}	break;
@@ -346,7 +342,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, FlexKit::MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S, bool SubDiv_Enabled)
+	FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, FlexKit::MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S, bool SubDiv_Enabled)
 	{
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddIndexToken;
@@ -412,41 +408,45 @@ namespace FlexKit
 		// Get Use-able Deformers
 		if (Mesh->GetDeformerCount() && S)
 		{
-			size_t		VCount		= Mesh->GetControlPointsCount();
-			float4*		Weights		= (float4*)TempMem->_aligned_malloc(sizeof(float4)    * VCount);
-			uint4_32*	BoneIndices = (uint4_32*)TempMem->_aligned_malloc(sizeof(uint4_32) * VCount);
+			const size_t			VCount		= size_t(Mesh->GetControlPointsCount());
+			std::vector<float4>		Weights;
+			std::vector<uint4_32>	boneIndices;
 
-			for (size_t I = 0; I < VCount; ++I)	Weights[I] = { 0.0f, 0.0f, 0.0f, 0.0f };
-			for (size_t I = 0; I < VCount; ++I)	BoneIndices[I] = { -1, -1, -1, -1 };
+			boneIndices.resize(VCount);
+			Weights.resize(VCount);
 
-			auto Skin = CreateSkin(Mesh, TempMem);
-			Skin.WeightIndices = BoneIndices;
+			for (size_t I = 0; I < VCount; ++I)	Weights[I]		= { 0.0f, 0.0f, 0.0f, 0.0f };
+			for (size_t I = 0; I < VCount; ++I)	boneIndices[I]	= { -1, -1, -1, -1 };
 
-			for (size_t I = 0; I < Skin.BoneCount; ++I)
+			auto skin		= CreateSkin(Mesh);
+
+			for (size_t I = 0; I < skin.bones.size(); ++I)
 			{
-				JointHandle Handle = S->FindJoint(Skin.Bones[I].Name);
-				for (size_t II = 0; II < Skin.Bones[I].WeightCount; ++II)
+				JointHandle Handle = S->FindJoint(skin.bones[I].name);
+
+				for (size_t II = 0; II < skin.bones[I].weights.size(); ++II)
 				{
 					size_t III = 0;
 					for (; III < 4; ++III)
 					{
-						size_t Index = Skin.Bones[I].WeightIndices[II];
-						if (BoneIndices[Index][III] == -1)
+						size_t Index = skin.bones[I].weights[II];
+						if (boneIndices[Index][III] == -1)
 							break;
 					}
 
 					if (III != 4) {
-						Weights[Skin.Bones[I].WeightIndices[II]][III] = Skin.Bones[I].Weights[II];
-						BoneIndices[Skin.Bones[I].WeightIndices[II]][III] = Handle;
+						Weights[skin.bones[I].indices[II]][III] = skin.bones[I].weights[II];
+						boneIndices[skin.bones[I].indices[II]][III] = Handle;
 					}
 				}
 			}
 
 			for (size_t I = 0; I < VCount; ++I)
-				AddWeightToken({ Weights[I].pFloats, BoneIndices[I] }, TokensOut);
+				AddWeightToken({ Weights[I].pFloats, boneIndices[I] }, TokensOut);
 
-			out.Weights = true;
-			out.Skin	= Skin;
+			out.Weights		= true;
+			skin.indices	= std::move(boneIndices);
+			out.Skin		= std::move(skin);
 		}
 		{	// Calculate Indices
 			auto Normals	= Mesh->GetElementNormal();
@@ -552,9 +552,10 @@ namespace FlexKit
 			out.FaceCount = FaceCount;
 		}
 
-		out.MinV = MinV;
-		out.MaxV = MaxV;
-		out.R = R;
+		out.MinV	= MinV;
+		out.MaxV	= MaxV;
+		out.R		= R;
+
 		return out;
 	}
 
@@ -562,7 +563,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CompiledMeshInfo CompileMeshResource(TriMeshResource& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv = false, const char* ID = nullptr, MD_Vector* MD = nullptr)
+	CompiledMeshInfo CompileMeshResource(TriMeshResource& out, FbxMesh* Mesh, bool EnableSubDiv = false, const std::string& ID = std::string{}, MetaDataList& MD = MetaDataList{})
 	{
 #if USING(TOOTLE)
 		Memory  = SystemAllocator;// It will Leak, I know
@@ -578,14 +579,14 @@ namespace FlexKit
 		using MeshUtilityFunctions::TokenList;
 		using MeshUtilityFunctions::MeshBuildInfo;
 
-		Skeleton*	S		= LoadSkeleton(Mesh, Memory, TempMem, ID, MD);
-		TokenList Tokens	= TokenList(TempMem);
-		auto MeshInfo		= TranslateToTokens(Mesh, TempMem, Tokens, S);
+		Skeleton*	S		= LoadSkeleton(Mesh, ID, MD);
+		TokenList Tokens	= TokenList{ SystemAllocator };
+		auto MeshInfo		= TranslateToTokens(Mesh, Tokens, S);
 
-		CombinedVertexBuffer CVB(TempMem);
-		IndexList IB(TempMem, MeshInfo.FaceCount * 4);
+		CombinedVertexBuffer	CVB{ SystemAllocator };
+		IndexList				IB{ SystemAllocator, MeshInfo.FaceCount * 4 };
 
-		auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, TempMem, TempMem, MeshInfo.Weights);
+		auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, SystemAllocator, SystemAllocator, MeshInfo.Weights);
 		FK_ASSERT(BuildRes.V1 == true, "Mesh Failed to Build");
 
 		size_t IndexCount  = GetByType<MeshBuildInfo>(BuildRes).IndexCount;
@@ -635,7 +636,7 @@ namespace FlexKit
 
 		for (size_t i = 0; i < BuffersFound.size(); ++i) 
 		{
-			CreateBufferView(VertexCount, Memory, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
+			CreateBufferView(VertexCount, SystemAllocator, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
 
 			switch ((FlexKit::VERTEXBUFFER_TYPE)BuffersFound[i])
 			{
@@ -656,7 +657,7 @@ namespace FlexKit
 			}
 		}
 
-		CreateBufferView(IB.size(), Memory, out.Buffers[15], VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32);
+		CreateBufferView(IB.size(), SystemAllocator, out.Buffers[15], VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32);
 		FillBufferView(&IB, IB.size(), out.Buffers[15], WriteIndex, FetchIndex2);
 
 
@@ -683,8 +684,6 @@ namespace FlexKit
 		{
 		}
 
-		TempMem->clear();
-
 		out.IndexCount    = IndexCount;
 		out.Skeleton      = S;
 		out.AnimationData = MeshInfo.Weights ? EAnimationData::EAD_Skin : 0;
@@ -692,11 +691,13 @@ namespace FlexKit
 		out.Info.min	  = MeshInfo.MinV;
 		out.Info.r		  = MeshInfo.R;
 		out.TriMeshID	  = Mesh->GetUniqueID();
-		out.ID			  = ID;
+		//out.ID			  = ID;
 		out.SkeletonGUID  = S ? S->guid : -1;
 		out.BS			  = BoundingSphere(BSCenter, BSRadius);
 		out.AABB		  = AxisAlignedBoundingBox;
 
+
+		FK_ASSERT(false);
 
 		return {true, BuffersFound.size()};
 	}

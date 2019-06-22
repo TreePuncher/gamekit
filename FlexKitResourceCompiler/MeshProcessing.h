@@ -65,16 +65,15 @@ namespace FlexKit
 	{
 		struct BoneWeights
 		{
-			const char*	Name;
-			float*		Weights;
-			size_t*		WeightIndices;
-			size_t		WeightCount;
-		}*Bones;
+			const char*				name;
+			std::vector<float>		weights = std::vector<float>	{ 4 };
+			std::vector<size_t>		indices = std::vector<size_t>	{ 4 };
+		};
 
-		uint4_32* WeightIndices;
-		size_t size;
+		std::vector<BoneWeights>	bones;
+		std::vector<uint4_32>		indices;
 
-		size_t BoneCount;
+		size_t						size;
 	};
 
 	struct FBXMeshDesc
@@ -109,9 +108,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FBXSkinDeformer		CreateSkin			( fbxsdk::FbxMesh* Mesh, iAllocator* TempMem );
-	FBXMeshDesc			TranslateToTokens	( fbxsdk::FbxMesh* Mesh, iAllocator* TempMem, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false );
-	CompiledMeshInfo	CompileMeshResource	( TriMeshResource& out, iAllocator* TempMem, iAllocator* Memory, FbxMesh* Mesh, bool EnableSubDiv, const char* ID, MD_Vector* MD );
+	FBXSkinDeformer		CreateSkin			(fbxsdk::FbxMesh* Mesh);
+	FBXMeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false);
+	CompiledMeshInfo	CompileMeshResource	(TriMeshResource& out, FbxMesh* Mesh, bool EnableSubDiv, const char* ID, const MetaDataList& MD);
 
 
 	/************************************************************************************************/

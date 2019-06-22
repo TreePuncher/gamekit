@@ -293,7 +293,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, MeshTokenList* Tokens, MD_Vector& MD_Out)
+	bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, MeshTokenList* Tokens, MetaDataList& MD_Out)
 	{
 		struct Value
 		{
@@ -619,7 +619,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ReadMetaData(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MD_Vector& MD_Out)
+	bool ReadMetaData(const char* Location, iAllocator* Memory, iAllocator* TempMemory, MetaDataList& MD_Out)
 	{
 		size_t BufferSize = FlexKit::GetFileSize(Location);
 
@@ -649,7 +649,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PrintMetaDataList(MD_Vector& MD)
+	void PrintMetaDataList(const MetaDataList& MD)
 	{
 		for (auto& MetaData : MD)
 		{
@@ -682,17 +682,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Vector<size_t> FindRelatedMetaData(MD_Vector* MetaData, MetaData::EMETA_RECIPIENT_TYPE Type, const char* ID, iAllocator* TempMem)
+	MetaDataList FindRelatedMetaData(const MetaDataList& MetaData, const MetaData::EMETA_RECIPIENT_TYPE Type, const std::string& ID)
 	{
-		Vector<size_t> RelatedData(TempMem);
-		size_t IDLength = strlen(ID);
+		MetaDataList RelatedData;
 
-		for (size_t I = 0; I < MetaData->size(); ++I)
+		for (auto* meta : MetaData)
 		{
-			auto& MD = (*MetaData)[I];
-			if (MD->UserType == Type)
-				if (!strncmp(MD->ID, ID, IDLength))
-					RelatedData.push_back(I);
+			if (meta->UserType == Type && ID == meta->ID)
+					RelatedData.push_back(meta);
 		}
 
 		return RelatedData;
@@ -702,11 +699,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Mesh_MetaData* GetMeshMetaData(MD_Vector* MetaData, Vector<size_t>& related)
+	Mesh_MetaData* GetMeshMetaData(MetaDataList& MetaData)
 	{
-		for (auto I : related)
-			if (MetaData->at(I)->type == MetaData::EMETAINFOTYPE::EMI_MESH)
-				return (Mesh_MetaData*)MetaData->at(I);
+		for (auto meta : MetaData)
+			if (meta->type == MetaData::EMETAINFOTYPE::EMI_MESH)
+				return static_cast<Mesh_MetaData*>(meta);
 
 		return nullptr;
 	}
@@ -714,13 +711,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ScanForRelated(MD_Vector* MetaData, RelatedMetaData& Related, MetaData::EMETAINFOTYPE Type)
-	{
-		for (auto I : Related)
-			if (MetaData->at(I)->type == Type)
-				return (Mesh_MetaData*)MetaData->at(I);
 
-		return nullptr;
+
+	MetaDataList ScanForRelated(const MetaDataList& metaData, const MetaData::EMETAINFOTYPE type)
+	{
+		return FilterList(
+			[&](auto* metaData)
+			{
+				return (metaData->type == type);
+			},
+			metaData);
 	}
 
 	/************************************************************************************************/

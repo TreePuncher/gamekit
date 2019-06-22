@@ -50,7 +50,7 @@ namespace FlexKit
 		public CameraBehavior
 	{
 	public:
-		OrbitCameraBehavior(CameraHandle Handle = CreateCamera(), float MovementSpeed = 100, float3 InitialPos = {0, 0, 0});
+		OrbitCameraBehavior(CameraHandle Handle = CameraComponent::GetComponent().CreateCamera(), float MovementSpeed = 100, float3 InitialPos = {0, 0, 0});
 
 		void Update				(const MouseInputState& MouseInput, double dt);
 

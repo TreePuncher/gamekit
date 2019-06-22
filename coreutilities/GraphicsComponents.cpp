@@ -4,58 +4,14 @@ namespace FlexKit
 {
 	/************************************************************************************************/
 
-
-	struct CameraSystem
-	{
-		CameraSystem(iAllocator* IN_Memory) :
-			Cameras		{IN_Memory},
-			DirtyFlags	{IN_Memory},
-			Memory		{IN_Memory}{}
-
-		~CameraSystem()
-		{}
-
-		Vector<bool>	DirtyFlags;
-		Vector<Camera>	Cameras;
-		iAllocator*		Memory;
-	}*CameraTable;
-
-
-	/************************************************************************************************/
-
-
-	void InitiateCameraTable(iAllocator* Memory)
-	{
-		if(!CameraTable)
-			CameraTable = &Memory->allocate<CameraSystem>(Memory);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void ReleaseCameraTable()
-	{
-		FK_ASSERT(CameraTable != nullptr);
-
-		CameraTable->~CameraSystem();
-		CameraTable->Memory->free(CameraTable);
-
-		CameraTable = nullptr;
-	}
-
-
-	/************************************************************************************************/
-
-
-	CameraHandle CreateCamera(
+	CameraHandle CameraComponent::CreateCamera(
 		float	FOV,			
 		float	AspectRatio,
 		float	Near,	
 		float	Far,			
 		bool	Invert)
 	{
-		FK_ASSERT(CameraTable != nullptr);
+		auto handle = handles.GetNewHandle();
 
 		Camera NewCamera;
 		NewCamera.FOV			= FOV;
@@ -65,151 +21,151 @@ namespace FlexKit
 		NewCamera.AspectRatio	= AspectRatio;
 		NewCamera.Node			= NodeHandle{(unsigned int)-1};
 
-		CameraTable->DirtyFlags.push_back(true);
-		CameraTable->Cameras.push_back(NewCamera);
+		DirtyFlags.push_back(true);
+		handleRef.push_back(handle);
+		handles[handle] = Cameras.push_back(NewCamera);
 
-		return CameraHandle{ (unsigned int)CameraTable->Cameras.size() - 1 };
+		return handle;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetCameraAspectRatio(CameraHandle Handle, float A)
+	void CameraComponent::ReleaseCamera(CameraHandle camera)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		CameraTable->Cameras[Handle].AspectRatio = A;
+		GetCamera(handleRef.back()) = Cameras.back();
+		handles[handleRef.back()]	= handles[camera];
+
+		Cameras.pop_back();
+		handles.RemoveHandle(camera);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void MarkDirty(CameraHandle handle)
+	Camera& CameraComponent::GetCamera(CameraHandle handle)
 	{
-		CameraTable->DirtyFlags[handle] = true;
+		return Cameras[handles[handle]];
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetCameraNode(CameraHandle Handle, NodeHandle Node)
+	void CameraComponent::SetCameraAspectRatio(CameraHandle handle, float A)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		CameraTable->Cameras[Handle].Node = Node;
+		GetCamera(handle).AspectRatio = A;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetCameraFOV(CameraHandle Handle, float f)
+	void CameraComponent::MarkDirty(CameraHandle handle)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		CameraTable->Cameras[Handle].FOV = f;
-	}
-
-
-	void SetCameraNear(CameraHandle Handle, float f)
-	{
-		FK_ASSERT(CameraTable != nullptr);
-		CameraTable->Cameras[Handle].Near = f;
+		DirtyFlags[handles[handle]] = true;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void SetCameraFar(CameraHandle Handle, float f)
+	void CameraComponent::SetCameraNode(CameraHandle handle, NodeHandle Node)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		CameraTable->Cameras[Handle].Far = f;
-
+		GetCamera(handle).Node = Node;
 	}
 
 
 	/************************************************************************************************/
 
 
-	float GetCameraAspectRatio(CameraHandle Handle)
+	void CameraComponent::SetCameraFOV(CameraHandle handle, float f)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[Handle].AspectRatio;
+		GetCamera(handle).FOV = f;
+	}
+
+
+	void CameraComponent::SetCameraNear(CameraHandle handle, float f)
+	{
+		GetCamera(handle).Near = f;
 	}
 
 
 	/************************************************************************************************/
 
 
-	float GetCameraFar(CameraHandle Handle)
+	void CameraComponent::SetCameraFar(CameraHandle handle, float f)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[Handle].Far;
+		GetCamera(handle).Far = f;
 	}
 
 
 	/************************************************************************************************/
 
 
-	float GetCameraFOV(CameraHandle Handle)
+	float CameraComponent::GetCameraAspectRatio(CameraHandle handle)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[Handle].FOV;
+		return GetCamera(handle).AspectRatio;
 	}
 
 
 	/************************************************************************************************/
 
 
-	float GetCameraNear(CameraHandle Handle)
+	float CameraComponent::GetCameraFar(CameraHandle handle)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[Handle].Near;
+		return GetCamera(handle).Far;
 	}
 
 
 	/************************************************************************************************/
 
 
-	NodeHandle GetCameraNode(CameraHandle Handle)
+	float CameraComponent::GetCameraFOV(CameraHandle handle)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[Handle].Node;
+		return GetCamera(handle).FOV;
 	}
 
 
 	/************************************************************************************************/
 
 
-	float GetCameraFov(CameraHandle Handle)
+	float CameraComponent::GetCameraNear(CameraHandle handle)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[Handle].FOV;
+		return GetCamera(handle).Near;
 	}
 
 
 	/************************************************************************************************/
 
 
-	Camera::CameraConstantBuffer GetCameraConstants(CameraHandle Handle)
+	NodeHandle CameraComponent::GetCameraNode(CameraHandle handle)
 	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[Handle].GetConstants();
-	}
-
-
-	float4x4 GetCameraPV(CameraHandle handle)
-	{
-		FK_ASSERT(CameraTable != nullptr);
-		return CameraTable->Cameras[handle].GetPV();
+		return GetCamera(handle).Node;
 	}
 
 
 	/************************************************************************************************/
 
 
-	UpdateTask& QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask& TransformDependency)
+	Camera::CameraConstantBuffer CameraComponent::GetCameraConstants(CameraHandle handle)
+	{
+		return GetCamera(handle).GetConstants();
+	}
+
+
+	float4x4 CameraComponent::GetCameraPV(CameraHandle handle)
+	{
+		return GetCamera(handle).GetPV();
+	}
+
+
+	/************************************************************************************************/
+
+
+	UpdateTask& CameraComponent::QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask& TransformDependency)
 	{
 		struct UpdateData
 		{};
@@ -220,18 +176,17 @@ namespace FlexKit
 				Builder.SetDebugString("QueueCameraUpdate");
 				Builder.AddInput(TransformDependency);
 			},
-			[](auto& Data)
+			[this](auto& Data)
 			{
-				FK_ASSERT(CameraTable != nullptr);
 				FK_LOG_INFO("Updating Cameras");
 
-				size_t End = CameraTable->Cameras.size();
+				size_t End = Cameras.size();
 				for (size_t I = 0; I < End; ++I)
 				{
-					if (CameraTable->DirtyFlags[I])
+					if (DirtyFlags[I])
 					{
-						CameraTable->Cameras[I].UpdateMatrices();
-						CameraTable->DirtyFlags[I] = false;
+						Cameras[I].UpdateMatrices();
+						DirtyFlags[I] = false;
 					}
 				}
 

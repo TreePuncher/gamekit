@@ -977,12 +977,16 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	struct UploadData{
+
+	struct UploadSegment{
 		size_t offset;
 		size_t dataSize;
 	};
 
-	UploadData MoveTexture2UploadBuffer(
+
+	// single thread only
+	// Copies a buffer into a GPU visable memory section in the temp memory section
+	UploadSegment MoveTexture2UploadBuffer(
 		char* const		data,
 		size_t			dataSize,
 		TextureHandle	destTexture,
@@ -990,12 +994,14 @@ namespace FlexKit
 	{
 		FK_ASSERT(false, "UN_IMPLEMENTED!");
 
-		UploadData upload { 0 };
+		UploadSegment upload { 0 };
 
 		return upload;
 	}
 
-	void UploadTexture(UploadData& data, Context* ctx)
+	// thread safe
+	// Moves a CPU visable block of memory into a GPU memory block
+	void UploadTexture(UploadSegment& data, Context* ctx)
 	{
 		FK_ASSERT(false, "UN_IMPLEMENTED!");
 	}
@@ -1012,8 +1018,7 @@ namespace FlexKit
 			FrameObject*		FO_IN				= nullptr,
 			FrameGraphNode*		SourceObject_IN		= nullptr,
 			DeviceResourceState	ExpectedState_IN	= DRS_UNKNOWN,
-			DeviceResourceState	State_IN			= DRS_UNKNOWN)
-			:
+			DeviceResourceState	State_IN			= DRS_UNKNOWN) :
 				FO				(FO_IN),
 				Source			(SourceObject_IN),
 				ExpectedState	(ExpectedState_IN),
@@ -1747,8 +1752,9 @@ namespace FlexKit
 
 	size_t LoadCameraConstants(CameraHandle camera, ConstantBufferHandle constantBuffer, FrameResources& resources)
 	{
+
 		auto CBOffset = BeginNewConstantBuffer(constantBuffer, resources);
-		PushConstantBufferData(FlexKit::GetCameraConstants(camera), constantBuffer, resources);
+		PushConstantBufferData(CameraComponent::GetComponent().GetCameraConstants(camera), constantBuffer, resources);
 
 		return CBOffset;
 	}

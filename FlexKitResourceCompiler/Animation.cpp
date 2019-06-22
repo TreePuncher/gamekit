@@ -73,20 +73,20 @@ fbxsdk::FbxNode* FindSkeletonRoot(fbxsdk::FbxMesh* M)
 /************************************************************************************************/
 
 
-JointAnimation GetJointAnimation(FbxNode* N, iAllocator* M)
+JointAnimation GetJointAnimation(FbxNode* N)
 {
-	auto Scene = N->GetScene();
+	auto Scene			= N->GetScene();
 	auto AnimationStack = Scene->GetCurrentAnimationStack();
-	auto TakeInfo = Scene->GetTakeInfo(AnimationStack->GetName());
-	auto Begin = TakeInfo->mLocalTimeSpan.GetStart();
-	auto End = TakeInfo->mLocalTimeSpan.GetStop();
-	auto Duration = End - Begin;
-	auto FrameRate = 1.0f / 60.0f;
+	auto TakeInfo		= Scene->GetTakeInfo(AnimationStack->GetName());
+	auto Begin			= TakeInfo->mLocalTimeSpan.GetStart();
+	auto End			= TakeInfo->mLocalTimeSpan.GetStop();
+	auto Duration		= End - Begin;
+	auto FrameRate		= 1.0f / 60.0f;
 
 	JointAnimation	A;
-	A.FPS = 60;
-	A.Poses = (JointAnimation::Pose*)M->_aligned_malloc(sizeof(JointAnimation::Pose) * Duration.GetFrameCount(FbxTime::eFrames60));
-	A.FrameCount = Duration.GetFrameCount(FbxTime::eFrames60);
+	A.FPS			= 60;
+	A.FrameCount	= Duration.GetFrameCount(FbxTime::eFrames60);
+	A.Poses.reserve(Duration.GetFrameCount(FbxTime::eFrames60));
 
 	for (size_t I = 0; I < size_t(Duration.GetFrameCount(FbxTime::eFrames60)); ++I)
 	{
@@ -102,7 +102,7 @@ JointAnimation GetJointAnimation(FbxNode* N, iAllocator* M)
 /************************************************************************************************/
 
 
-JointHandle GetJoint(static_vector<JointInfo, 1024>& Out, const char* ID)
+JointHandle GetJoint(JointList& Out, const char* ID)
 {
 	for (size_t I = 0; I < Out.size(); ++I)
 		if (!strcmp(Out[I].Joint.mID, ID))
@@ -128,7 +128,7 @@ FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
 /************************************************************************************************/
 
 
-void GetJointTransforms(JointList& Out, FbxMesh* M, iAllocator* MEM)
+void GetJointTransforms(JointList& Out, FbxMesh* M)
 {
 	using DirectX::XMMatrixRotationQuaternion;
 
@@ -165,7 +165,7 @@ void GetJointTransforms(JointList& Out, FbxMesh* M, iAllocator* MEM)
 /************************************************************************************************/
 
 
-void FindAllJoints(JointList& Out, FbxNode* N, iAllocator* MEM, size_t Parent )
+void FindAllJoints(JointList& Out, FbxNode* N, size_t Parent )
 {
 	if (N->GetNodeAttribute() && N->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton )
 	{
@@ -175,14 +175,13 @@ void FindAllJoints(JointList& Out, FbxNode* N, iAllocator* MEM, size_t Parent )
 		int ChildCount = N->GetChildCount();
 
 		Joint NewJoint;
-		NewJoint.mID		= N->GetName();
-		NewJoint.mParent	= JointHandle(Parent);
-		JointAnimation& Animations = GetJointAnimation(N, MEM);
+		NewJoint.mID				= N->GetName();
+		NewJoint.mParent			= JointHandle(Parent);
 
-		Out.push_back({ {NewJoint}, Animations, DirectX::XMMatrixIdentity() });
+		Out.emplace_back(JointInfo{ {NewJoint}, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
 
 		for ( size_t I = 0; I < ChildCount; ++I )
-			FindAllJoints(Out, N->GetChild( I ), MEM, JointIndex);
+			FindAllJoints(Out, N->GetChild( I ), JointIndex);
 	}
 }
 
@@ -190,38 +189,35 @@ void FindAllJoints(JointList& Out, FbxNode* N, iAllocator* MEM, size_t Parent )
 /************************************************************************************************/
 
 
-RelatedMetaData GetAllAnimationClipMetaData(MD_Vector* MD, RelatedMetaData* RD, iAllocator* Memory)
+MetaDataList GetAllAnimationClipMetaData(const MetaDataList& metaDatas)
 {
-	RelatedMetaData Out(Memory);
-
-	for (auto I : *RD)
-		if (MD->at(I)->type == MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP)
-			Out.push_back(I);
-
-	return Out;
+	return FilterList(
+			[](auto* metaData) 
+			{ 
+				return (metaData->type == MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP); 
+			}, 
+			metaDatas);
 }
 
 
 /************************************************************************************************/
 
 
-void GetAnimationCuts(CutList* out, MD_Vector* MD, const char* ID, iAllocator* Mem)
+void GetAnimationCuts(CutList* out, const MetaDataList& metaData, const std::string& ID)
 {
-	if (MD)
+	auto Related		= FindRelatedMetaData(metaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION, ID);
+	auto AnimationClips = GetAllAnimationClipMetaData(metaData);
+
+	for (auto clip : AnimationClips)
 	{
-		auto Related = FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION, ID, Mem);
-		auto AnimationClips = GetAllAnimationClipMetaData(MD, &Related, Mem);
+		AnimationClip_MetaData* ClipMetaData = (AnimationClip_MetaData*)clip;
+		AnimationCut NewCut = {};
+		NewCut.ID			= ClipMetaData->ClipID;
+		NewCut.T_Start		= ClipMetaData->T_Start;
+		NewCut.T_End		= ClipMetaData->T_End;
+		NewCut.guid			= ClipMetaData->guid;
 
-		for (auto I : AnimationClips)
-		{
-			AnimationClip_MetaData* Clip = (AnimationClip_MetaData*)MD->at(I);
-			AnimationCut	NewCut = {};
-			NewCut.ID = Clip->ClipID;
-			NewCut.T_Start = Clip->T_Start;
-			NewCut.T_End = Clip->T_End;
-			NewCut.guid = Clip->guid;
-			out->push_back(NewCut);
-		}
+		out->push_back(NewCut);
 	}
 }
 
@@ -229,11 +225,11 @@ void GetAnimationCuts(CutList* out, MD_Vector* MD, const char* ID, iAllocator* M
 /************************************************************************************************/
 
 
-Skeleton_MetaData* GetSkeletonMetaData(MD_Vector* MD, RelatedMetaData* RD)
+Skeleton_MetaData* GetSkeletonMetaData(const MetaDataList& metaDatas)
 {
-	for (auto I : *RD)
-		if (MD->at(I)->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL)
-			return (Skeleton_MetaData*)MD->at(I);
+	for (auto metaData : metaDatas)
+		if (metaData->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL)
+			return static_cast<Skeleton_MetaData*>(metaData);
 
 	return nullptr;
 }
@@ -242,43 +238,43 @@ Skeleton_MetaData* GetSkeletonMetaData(MD_Vector* MD, RelatedMetaData* RD)
 /************************************************************************************************/
 
 
-FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, const char* ParentID, MD_Vector* MD)
+FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, const std::string& parentID, const MetaDataList& MD)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
 
 	// Gather MetaData
-	auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, ParentID, Temp);
-	auto SkeletonInfo	= GetSkeletonMetaData(MD, &Related);
+	auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, parentID);
+	auto SkeletonInfo	= GetSkeletonMetaData(MD);
 
 	auto Root	= FindSkeletonRoot(M);
 	if (!Root || !SkeletonInfo)
 		return nullptr;
 
-	auto& Joints = Mem->allocate_aligned<static_vector<JointInfo, 1024>>();
-	FindAllJoints		(Joints, Root, Temp);
-	GetJointTransforms	(Joints, M, Temp);
+	std::vector<JointInfo> Joints;
+	FindAllJoints		(Joints, Root);
+	GetJointTransforms	(Joints, M);
 
-	Skeleton* S = (Skeleton*)Mem->_aligned_malloc(0x40);
-	S->InitiateSkeleton(Mem, Joints.size());
+	Skeleton& skeleton = *(new Skeleton);
+	skeleton.InitiateSkeleton(SystemAllocator, Joints.size());
 
 	for (auto J : Joints)
-		S->AddJoint(J.Joint, J.Inverse);
+		skeleton.AddJoint(J.Joint, J.Inverse);
 	
-	char* ID = SkeletonInfo->SkeletonID;
-	S->guid  = SkeletonInfo->SkeletonGUID;
+	const std::string ID = SkeletonInfo->SkeletonID;
+	skeleton.guid  = SkeletonInfo->SkeletonGUID;
 
 	for (size_t I = 0; I < Joints.size(); ++I)
 	{
-		size_t ID_Length = strnlen_s(S->Joints[I].mID, 64) + 1;
-		char* ID		 = (char*)Mem->malloc(ID_Length);
+		size_t ID_Length = strnlen_s(skeleton.Joints[I].mID, 64) + 1;
+		char* ID		 = (char*)SystemAllocator.malloc(ID_Length);
 
-		strcpy_s(ID, ID_Length, S->Joints[I].mID);
-		S->Joints[I].mID = ID;
+		strcpy_s(ID, ID_Length, skeleton.Joints[I].mID);
+		skeleton.Joints[I].mID = ID;
 	}
 
-	CutList Cuts(Mem);
-	GetAnimationCuts(&Cuts, MD, ID, Mem);
+	CutList Cuts;
+	GetAnimationCuts(&Cuts, MD, ID);
 
 	for(auto Cut : Cuts)
 	{
@@ -286,36 +282,35 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, iAllocator* Mem, iAllocator* Temp, c
 		size_t End		= Cut.T_End / (1.0f / 60.0f);
 
 		AnimationClip Clip;
-		Clip.Skeleton	= S;
+		Clip.Skeleton	= &skeleton;
 		Clip.FPS		= 60;
 		Clip.FrameCount	= End - Begin;
 		Clip.mID		= Cut.ID;
 		Clip.guid		= Cut.guid;
 		Clip.isLooping	= false;
-		Clip.Frames		= (AnimationClip::KeyFrame*)Mem->_aligned_malloc(Clip.FrameCount * sizeof(AnimationClip::KeyFrame));
+		Clip.Frames		= (AnimationClip::KeyFrame*)SystemAllocator._aligned_malloc(Clip.FrameCount * sizeof(AnimationClip::KeyFrame));
 
 		for (size_t I = 0; I < Clip.FrameCount; ++I)
 		{
-			Clip.Frames[I].Joints		= (JointHandle*)Mem->_aligned_malloc(sizeof(JointHandle) * Joints.size());
-			Clip.Frames[I].Poses		=   (JointPose*)Mem->_aligned_malloc(sizeof(JointPose)	 * Joints.size());
+			Clip.Frames[I].Joints		= (JointHandle*)SystemAllocator._aligned_malloc(sizeof(JointHandle) * Joints.size());
+			Clip.Frames[I].Poses		= (JointPose*)SystemAllocator._aligned_malloc(sizeof(JointPose)	 * Joints.size());
 			Clip.Frames[I].JointCount	= Joints.size();
 
 			for (size_t II = 0; II < Joints.size(); ++II)
 			{
 				Clip.Frames[I].Joints[II]	= JointHandle(II);
 				
-				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(S->JointPoses[II]));
+				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(skeleton.JointPoses[II]));
 				auto Pose					= GetPoseTransform(Joints[II].Animation.Poses[I + Begin].JPose);
 				auto LocalPose				= GetPose(Pose * Inverse);
 				Clip.Frames[I].Poses[II]	= LocalPose;
 			}
 		}
 
-		Skeleton_PushAnimation(S, Mem, Clip);
+		skeleton.AddAnimationClip(SystemAllocator, Clip);
 	}
-	Temp->clear();
 
-	return S;
+	return &skeleton;
 }
 
 

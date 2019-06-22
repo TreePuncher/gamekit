@@ -775,7 +775,8 @@ namespace FlexKit
 				[=](_RenderTerrainForward& data, const FrameResources& resources, Context* ctx)
 				{
 					// TODO: convert patches
-
+					// TODO: look into fork and join threading on patches
+					
 					//ctx->SetRootSignature();
 					//ctx->SetPipelineState();
 					ctx->SetPrimitiveTopology(EInputTopology::EIT_PATCH_CP_1);

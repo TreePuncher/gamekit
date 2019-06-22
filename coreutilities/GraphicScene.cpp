@@ -844,7 +844,9 @@ namespace FlexKit
 		FK_ASSERT(T_out		!= nullptr);
 
 
-		auto CameraNode = GetCameraNode(Camera);
+		auto& cameraComponent = CameraComponent::GetComponent();
+
+		auto CameraNode = cameraComponent.GetCameraNode(Camera);
 		float3	POS		= GetPositionW(CameraNode);
 		Quaternion Q	= GetOrientation(CameraNode);
 

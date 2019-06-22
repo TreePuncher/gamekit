@@ -221,14 +221,14 @@ namespace FlexKit
 		SceneNodeComponentSystem*						Nodes;
 	};
 
-	const uint32_t CharacterControllerSystemID = GetTypeGUID(CharacterControllerSystem);
+	const uint32_t CharacterControllerComponentID = GetTypeGUID(CharacterControllerSystem);
 
 	/************************************************************************************************\/
 
 
 	bool GetFloorContact(ComponentListInterface* GO, bool& out)
 	{
-		auto C = FindComponent(GO, CharacterControllerSystemID);
+		auto C = FindComponent(GO, CharacterControllerComponentID);
 		if (C) {
 			auto System = (CharacterControllerSystem*)C->ComponentSystem;
 			out = System->Controllers[C->ComponentHandle].FloorContact;
@@ -619,8 +619,8 @@ namespace FlexKit
 	{
 	public:
 		RigidBodyObjectBehavior(
-			PhysicsSystem* IN_system		= nullptr, 
-			rbColliderHandle IN_collider	= { InvalidHandle_t, InvalidHandle_t }) :
+			PhysicsSystem*		IN_system		= nullptr, 
+			rbColliderHandle	IN_collider		= { InvalidHandle_t, InvalidHandle_t }) :
 				collider	{ IN_collider	},
 				system		{ IN_system		}{}
 
@@ -719,6 +719,7 @@ namespace FlexKit
 		{
 			drawable.SetVisable(b);
 		}
+
 
 		float3 GetPosition()
 		{

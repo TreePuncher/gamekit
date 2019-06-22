@@ -96,7 +96,7 @@ namespace FlexKit
 		ConstantBufferHandle	lightListBuffer;		
 		ConstantBufferHandle	pointLightBuffer;
 		FrameResourceHandle		lightMapObject;
-		UploadData				lightMapUpdate;	// immediate update
+		//UploadData				lightMapUpdate;	// immediate update
 		LighBufferCPUUpdate*	lighBufferData;
 	};
 
@@ -118,10 +118,160 @@ namespace FlexKit
 	};
 
 
+	/************************************************************************************************/
+
+
+	class FLEXKITAPI ReadBack
+	{
+	public:
+	};
+
+
+	/************************************************************************************************/
+
+
+	struct StreamingTextureDesc
+	{
+		static_vector<ResourceHandle> resourceHandles;
+	};
+
+	class FLEXKITAPI StreamingTexture
+	{
+	public:
+		uint16_t GetHighestResidentMip()
+		{
+			return -1;
+		}
+
+
+		bool isMipLoadinProgress(uint16_t mip)
+		{
+			return false;
+		}
+
+
+		void QueueMipLoad(ThreadManager& threads)
+		{
+		}
+
+
+	private:
+		bool							evicted		= true;
+		ID3D12Resource*					tiledResource;
+		static_vector<char*>			buffers;	// Nulls for unmapped buffers
+		uint16_t						highestMappedMip = -1;
+		static_vector<ResourceHandle>	backingResources;
+	};
+
+
+	/************************************************************************************************/
+
+
+	class FLEXKITAPI TiledResource
+	{
+	public:
+		TiledResource(iAllocator* IN_allocator) {}
+
+	};
+
+
+	/************************************************************************************************/
+
+
+	/************************************************************************************************/
+
+
+	constexpr size_t GetMinBlockSize()
+	{
+		return ct_sqrt(64 * KILOBYTE / sizeof(uint8_t[4])); // assuming RGBA pixel, and a 64 KB texture alignment
+	}
+
+	struct TextureCacheDesc
+	{
+		const size_t textureCacheSize	= MEGABYTE * 16; // Very small for debugging purposes forces resource eviction and prioritisation, should be changed to a reasonable value
+		const size_t blockSize			= GetMinBlockSize();
+	};
+
+
+	/************************************************************************************************/
+
+
+	class TextureStreamingEngine;
+
+	class TextureBlockAllocator
+	{
+	public:
+		TextureBlockAllocator(iAllocator* IN_allocator) : 
+			allocator{ IN_allocator } {}
+
+		iAllocator* allocator;
+	};
+
+
+	/************************************************************************************************/
+
+
+	class FLEXKITAPI TextureStreamingEngine
+	{
+	public:
+		TextureStreamingEngine(RenderSystem& IN_renderSystem, iAllocator* IN_allocator, const TextureCacheDesc& desc = {}) : 
+			allocator		{ IN_allocator		},
+			mappedTextures	{ IN_allocator		},
+			renderSystem	{ IN_renderSystem	},
+			settings		{ desc				} 
+		{
+			FK_ASSERT(desc.textureCacheSize % desc.blockSize == 0, "INVALID POOL SIZE! MUST BE MULTIPLE OF BLOCK SIZE!");
+
+			renderSystem.pDevice->CreateCommittedResource(
+				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES,
+				&CD3DX12_RESOURCE_DESC::Buffer(desc.textureCacheSize),
+				D3D12_RESOURCE_STATE_COMMON,
+				nullptr, IID_PPV_ARGS(&resourcePool));
+		}
+
+
+		UpdateTask& update(UpdateDispatcher& dispatcher)
+		{
+			struct _update
+			{
+
+			};
+
+			return dispatcher.Add<_update>(
+				[&](auto& threadBuilder, _update& data)
+				{
+				},
+				[this](auto&) 
+				{
+				}
+			);
+		}
+
+
+		StreamingTexture2DHandle CreateStreamingTexture()
+		{
+			return InvalidHandle_t;
+		}
+
+	private:
+		RenderSystem&				renderSystem;
+		ID3D12Resource*				resourcePool	= nullptr;
+		Vector<StreamingTexture>	mappedTextures;
+		Vector<StreamingTexture*>	loadList; // updated every frame
+		TextureBlockAllocator		allocator;
+		const TextureCacheDesc		settings;
+	};
+
+
+	/************************************************************************************************/
+
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, uint2 IN_lightSplits = {20, 20}) :
+		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, TextureStreamingEngine& IN_streamingEngine, uint2 IN_lightSplits = {20, 20}) :
+
 			RS(RS_IN),
 			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)					},
 			//OcclusionBuffer		{ RS->CreateDepthBuffer({1024, 1024}, true)							},
@@ -129,7 +279,8 @@ namespace FlexKit
 			OcclusionCulling	{ false																},
 			lightMap			{ RS->CreateTexture2D(IN_lightSplits, FORMAT_2D::R16G16_UINT, 1)	},
 			lightListBuffer		{ RS->CreateConstantBuffer(MEGABYTE, false)							},
-			pointLightBuffer	{ RS->CreateConstantBuffer(MEGABYTE, false)							}
+			pointLightBuffer	{ RS->CreateConstantBuffer(MEGABYTE, false)							},
+			streamingEngine		{ IN_streamingEngine												}
 		{
 			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawPSO,			});
 			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawInstancedPSO	});
@@ -138,6 +289,7 @@ namespace FlexKit
 			RS_IN->QueuePSOLoad(FORWARDDRAW);
 			RS_IN->QueuePSOLoad(FORWARDDRAWINSTANCED);
 		}
+
 
 		~WorldRender()
 		{
@@ -171,6 +323,7 @@ namespace FlexKit
 		ConstantBufferHandle	pointLightBuffer;	// GPU
 		uint2					WH;// Output Size
 
+		TextureStreamingEngine&	streamingEngine;
 		bool OcclusionCulling;
 		// GBuffer
 		//RenderTargetHandle		Albedo;
