@@ -25,13 +25,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\Handle.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\type.h"
-#include "..\coreutilities\MemoryUtilities.h"
 #include "..\coreutilities\logging.h"
+#include "..\coreutilities\MathUtils.h"
+#include "..\coreutilities\MemoryUtilities.h"
 #include "..\coreutilities\ThreadUtilities.h"
+#include "..\coreutilities\type.h"
+
 
 #include <iostream>
+#include <type_traits>
 #include <tuple>
 
 #ifndef COMPONENT_H
@@ -192,7 +194,6 @@ namespace FlexKit
 	};
 
 
-
 	template<typename ComponentTY>
 	class Behavior_t : public BehaviorBase
 	{
@@ -252,34 +253,37 @@ namespace FlexKit
 	};
 
 
-	template<typename TY_component>
+	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
 	bool hasSources(GameObject& go)
 	{
-		return go.hasBehavior(TY_component::GetComponentID());
-	}
+		using TY_COMPONENT = typename std::remove_pointer<TY_COMPONENT_ARG>::type;
+		static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
 
-
-	template<typename TY_component, typename TY_PACKED_ARGS>
-	bool hasSources(GameObject& go)
-	{
-		return go.hasBehavior(TY_component::GetComponentID()) && hasSources<TY_PACKED_ARGS>(go);
+		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
+			return go.hasBehavior(TY_COMPONENT::GetComponentID());
+		else
+			return go.hasBehavior(TY_COMPONENT::GetComponentID()) && hasSources<TY_PACKED_ARGS...>(go);
 	}
 
 
 	template<typename TY_COMPONENT>
-	std::tuple<TY_COMPONENT*> GetSources(GameObject& go)
+	auto GetSource(GameObject& go) -> std::tuple<TY_COMPONENT*>
 	{
-		return std::tuple<TY_COMPONENT*>(
-			static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID())));
+		return { static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID())) };
 	}
 
-
-	template<typename TY_COMPONENT, typename TY_PACKED_ARGS>
+	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
 	auto GetSources(GameObject& go)
 	{
-		return std::tuple_cat(
-			std::tuple<TY_COMPONENT*>(static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID()))), 
-			GetSources<TY_PACKED_ARGS>(go));
+		using TY_COMPONENT = typename std::remove_pointer<TY_COMPONENT_ARG>::type;
+		static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
+
+		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
+			return GetSource<TY_COMPONENT>(go);
+		else
+			return std::tuple_cat(
+				GetSource<TY_COMPONENT>(go),
+				GetSources<TY_PACKED_ARGS...>(go) );
 	}
 
 
@@ -289,9 +293,40 @@ namespace FlexKit
 		if (!hasSources<TY_PACKED_ARGS...>(go))
 			return false;
 
-		fn(GetSources<TY_PACKED_ARGS...>(go));
+		std::apply(fn, GetSources<TY_PACKED_ARGS...>(go));
 
 		return true;
+	}
+
+	// Thank Columbo for this idea, https://stackoverflow.com/a/28213747
+
+	template <typename T>
+	struct ExecuterProxy : ExecuterProxy<decltype(&T::operator())> {};
+
+	#define REM_CTOR(...) __VA_ARGS__
+	#define SPEC(cv, var, is_var)										\
+	template <typename C, typename R, typename... Args>					\
+	struct ExecuterProxy<R (C::*) (Args... REM_CTOR var) cv>			\
+	{																	\
+		template<typename TY> static bool run(GameObject& go, TY& fn)	\
+		{																\
+			return Execute<Args...>(go, fn);							\
+		}																\
+	};																	\
+
+	SPEC(const, (,...), 1)
+	SPEC(const, (), 0)
+	SPEC(, (,...), 1)
+	SPEC(, (), 0)
+
+
+	/************************************************************************************************/
+
+
+	template<typename FN>
+	bool ExecuteAuto(GameObject& go, FN& fn)
+	{
+		return ExecuterProxy<FN>::run(go, fn);
 	}
 
 
@@ -325,8 +360,10 @@ namespace FlexKit
 		Vector<Entity> entities;
 	};
 
+
 	constexpr ComponentID SampleComponent2ID = GetTypeGUID(SampleComponent2ID);
 	using Sample2Handle = Handle_t <32, GetTypeGUID(Sample2Handle)>;
+
 
 	class SampleComponent2 : public Component<SampleComponent2, Sample2Handle, SampleComponent2ID>
 	{
@@ -351,6 +388,35 @@ namespace FlexKit
 		Vector<Entity> entities;
 	};
 
+	constexpr ComponentID SampleComponent3ID = GetTypeGUID(SampleComponent3ID);
+	using Sample3Handle = Handle_t <32, GetTypeGUID(Sample3Handle)>;
+
+
+	class SampleComponent3 : public Component<SampleComponent3, Sample3Handle, SampleComponent3ID>
+	{
+	public:
+		SampleComponent3(iAllocator* allocator = SystemAllocator) : entities{ allocator } { }
+
+		ComponetHandle_t CreateComponent()
+		{
+			return ComponetHandle_t{ unsigned int(entities.push_back({})) };
+		}
+
+		void ReleaseEntity(Sample3Handle handle)
+		{
+			// do release
+		}
+
+		struct Entity
+		{
+			int x;
+		};
+
+		Vector<Entity> entities;
+	};
+
+
+
 	class SampleBehavior : public Behavior_t<SampleComponent>
 	{
 	public:
@@ -366,6 +432,7 @@ namespace FlexKit
 
 		void DoSomething()
 		{
+			std::cout << "SampleBehavior1::DoSomething()\n";
 			GetComponent().entities[handle].x++;
 		}
 
@@ -388,10 +455,33 @@ namespace FlexKit
 
 		void DoSomething()
 		{
+			std::cout << "SampleBehavior2::DoSomething()\n";
 			GetComponent().entities[handle].x++;
 		}
 
 		Sample2Handle handle;
+	};
+
+	class SampleBehavior3 : public Behavior_t<SampleComponent3>
+	{
+	public:
+		SampleBehavior3() :
+			handle{ GetComponent().CreateComponent() } {}
+
+
+		~SampleBehavior3()
+		{
+			GetComponent().ReleaseEntity(handle);
+		}
+
+
+		void DoSomething()
+		{
+			std::cout << "SampleBehavior3::DoSomething()\n";
+			GetComponent().entities[handle].x++;
+		}
+
+		Sample3Handle handle;
 	};
 	
 
@@ -402,21 +492,37 @@ namespace FlexKit
 	{
 		SampleComponent		sample1(allocator);
 		SampleComponent2	sample2(allocator);
+		SampleComponent3	sample3(allocator);
 
 		GameObject go;
 		go.AddBehavior(&allocator->allocate<SampleBehavior>());
 		go.AddBehavior(&allocator->allocate<SampleBehavior2>());
 
-		Execute<SampleBehavior, SampleBehavior2>(go,
-			[](auto& inputs)
-			{
-				SampleBehavior*		sample1 = get<SampleBehavior*>(inputs);
-				SampleBehavior2*	sample2 = get<SampleBehavior2*>(inputs);
-
+		ExecuteAuto(go,
+			[](	// Function Sources
+				SampleBehavior*		sample1,
+				SampleBehavior2*	sample2,
+				SampleBehavior3*	sample3
+			)
+			{	// do things with behaviors
+				// JK doesn't run, not all inputs satisfied!
 				sample1->DoSomething();
 				sample2->DoSomething();
+				sample3->DoSomething();
+			});
 
-				// do things with behaviors
+		go.AddBehavior(&allocator->allocate<SampleBehavior3>());
+
+		ExecuteAuto(go,
+			[](	// Function Sources
+				SampleBehavior*		sample1,
+				SampleBehavior2*	sample2,
+				SampleBehavior3*	sample3
+				)
+			{	// do things with behaviors
+				sample1->DoSomething();
+				sample2->DoSomething();
+				sample3->DoSomething();
 			});
 	}
 
