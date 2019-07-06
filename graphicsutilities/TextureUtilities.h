@@ -37,27 +37,114 @@ namespace FlexKit
 	class TextureBuffer
 	{
 	public:
-		TextureBuffer() {}
+		TextureBuffer(int i = 0) {}
 
 		TextureBuffer(uint2 IN_WH, size_t IN_elementSize, iAllocator* IN_Memory) : 
-			Buffer		{ (byte*)IN_Memory->malloc(IN_WH.Product() * IN_elementSize) },
-			WH			{ IN_WH },
-			ElementSize	{ IN_elementSize },
-			Memory		{ IN_Memory },
-			Size		{ IN_WH.Product() * IN_elementSize }
+			Buffer		{ (byte*)IN_Memory->malloc(IN_WH.Product() * IN_elementSize)	},
+			WH			{ IN_WH															},
+			ElementSize	{ IN_elementSize												},
+			Memory		{ IN_Memory														},
+			Size		{ IN_WH.Product() * IN_elementSize								} {}
+
+
+		~TextureBuffer()
 		{
+			Release();
 		}
 
-		byte*		Buffer;
-		uint2		WH;
-		size_t		Size;
-		size_t		ElementSize;
-		iAllocator* Memory;
+		// Copy Operators
+		TextureBuffer(const TextureBuffer& rhs)
+		{
+			if (Buffer)
+				Memory->free(Buffer);
+
+			if (!rhs.Memory)
+				return;
+
+			Memory			= rhs.Memory;
+			Buffer			= (byte*)Memory->_aligned_malloc(Size);
+			WH				= rhs.WH;
+			ElementSize		= rhs.ElementSize;
+
+			memcpy(Buffer, rhs.Buffer, Size);
+		}
+
+
+		TextureBuffer& operator =(const TextureBuffer& rhs)
+		{
+			if (Buffer)
+				Memory->free(Buffer);
+
+			Memory		= rhs.Memory;
+			Buffer		= (byte*)Memory->_aligned_malloc(Size);
+			WH			= rhs.WH;
+			Size		= rhs.Size;
+			ElementSize = rhs.ElementSize;
+
+			memcpy(Buffer, rhs.Buffer, Size);
+
+			return *this;
+		}
+
+
+		// Move Operators
+		TextureBuffer(TextureBuffer&& rhs) noexcept
+		{
+			Buffer		= rhs.Buffer;
+			WH			= rhs.WH;
+			Size		= rhs.Size;
+			ElementSize = rhs.ElementSize;
+			Memory		= rhs.Memory;
+
+			rhs.Buffer		= nullptr;
+			rhs.WH			= { 0, 0 };
+			rhs.Size		= 0;
+			rhs.ElementSize	= 0;
+			rhs.Memory		= nullptr;
+		}
+
+
+		TextureBuffer& operator =(TextureBuffer&& rhs) noexcept
+		{
+			Buffer		= rhs.Buffer;
+			WH			= rhs.WH;
+			Size		= rhs.Size;
+			ElementSize = rhs.ElementSize;
+			Memory		= rhs.Memory;
+
+			rhs.Buffer		= nullptr;
+			rhs.WH			= { 0, 0 };
+			rhs.Size		= 0;
+			rhs.ElementSize	= 0;
+			rhs.Memory		= nullptr;
+
+			return *this;
+		}
+
 
 		void Release()
 		{
+			if (!Memory)
+				return;
+
 			Memory->_aligned_free(Buffer);
+			Buffer			= nullptr;
+			WH				= { 0, 0 };
+			Size			= 0;
+			ElementSize		= 0;
+			Memory			= nullptr;
 		}
+
+
+		operator byte* ()	{ return Buffer; }
+		size_t BufferSize() { return Size; }
+
+
+		byte*		Buffer			= nullptr;
+		uint2		WH				= { 0, 0 };
+		size_t		Size			= 0;
+		size_t		ElementSize		= 0;
+		iAllocator* Memory			= nullptr;
 	};
 
 
@@ -67,15 +154,19 @@ namespace FlexKit
 	template<typename TY>
 	struct TextureBufferView
 	{
-		TextureBufferView(TextureBuffer* Buffer) : Texture(Buffer) {}
+		TextureBufferView(TextureBuffer& Buffer) : Texture(Buffer) {}
 
 		TY& operator [](uint2 XY)
 		{
-			TY* buffer = (TY*)Texture->Buffer;
-			return buffer[Texture->WH[1] * XY[1] + XY[0]];
+			TY* buffer = (TY*)Texture.Buffer;
+			return buffer[Texture.WH[1] * XY[1] + XY[0]];
 		}
 
-		TextureBuffer* Texture;
+		operator byte* () { return Texture.Buffer;  }
+
+		size_t BufferSize() { return Texture.Size;  }
+
+		TextureBuffer& Texture;
 	};
 
 
@@ -97,7 +188,7 @@ namespace FlexKit
 	Pair<uint16_t, uint16_t> GetMinMax(TextureBuffer& sourceMap)
 	{
 		using RBGA						= Vect<4, uint8_t>;
-		TextureBufferView	view		= TextureBufferView<RBGA>(&sourceMap);
+		TextureBufferView	view		= TextureBufferView<RBGA>(sourceMap);
 		const uint2			WH			= sourceMap.WH;
 
 		uint16_t minY = 0;
@@ -126,7 +217,7 @@ namespace FlexKit
 			Sample1 +
 			Sample2 +
 			Sample3 +
-			Sample4) / 4;
+			Sample4) * 0.25f;
 	}
 
 	template<typename FN_Sampler = decltype(AverageSampler<>)>
@@ -135,8 +226,8 @@ namespace FlexKit
 		using RBGA = Vect<4, uint8_t>;
 
 		TextureBuffer		MIPMap	= TextureBuffer( sourceMap.WH / 2, sizeof(RGBA), memory );
-		TextureBufferView	View	= TextureBufferView<RBGA>(&sourceMap);
-		TextureBufferView	MipView = TextureBufferView<RBGA>(&MIPMap);
+		TextureBufferView	View	= TextureBufferView<RBGA>(sourceMap);
+		TextureBufferView	MipView = TextureBufferView<RBGA>(MIPMap);
 
 		const auto WH = MIPMap.WH;
 		for (size_t Y = 0; Y < WH[0]; Y++)

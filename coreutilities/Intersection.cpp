@@ -187,9 +187,6 @@ namespace FlexKit
 		float3 NBL(0);
 		float3 NBR(0);
 
-		TopLeft		= TopLeft * 1.0f/2.0f;
-		BottomRight = BottomRight * 1.0f / 2.0f;
-
 		{
 			float3 FTL_FULL(0);
 			float3 FTR_FULL(0);

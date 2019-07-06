@@ -80,10 +80,17 @@ namespace FlexKit
 	};
 
 
-	inline float4x4 XMMatrixToFloat4x4(DirectX::XMMATRIX* M)
+	inline float4x4 XMMatrixToFloat4x4(const DirectX::XMMATRIX* const M)
 	{
 		float4x4 Mout;
 		Mout = *(float4x4*)M;
+		return Mout;
+	}
+
+	inline float4x4 XMMatrixToFloat4x4(const DirectX::XMMATRIX& M)
+	{
+		float4x4 Mout;
+		Mout = *(float4x4*)&M;
 		return Mout;
 	}
 

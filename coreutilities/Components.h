@@ -517,8 +517,7 @@ namespace FlexKit
 			[](	// Function Sources
 				SampleBehavior*		sample1,
 				SampleBehavior2*	sample2,
-				SampleBehavior3*	sample3
-				)
+				SampleBehavior3*	sample3	)
 			{	// do things with behaviors
 				sample1->DoSomething();
 				sample2->DoSomething();

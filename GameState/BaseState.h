@@ -166,7 +166,8 @@ public:
 
 			render	{	IN_Framework->core->GetTempMemory(),
 						IN_Framework->core->RenderSystem,
-						streamingEngine	
+						streamingEngine,
+						IN_Framework->ActiveWindow->WH / 64
 					},
 
 			cameras	{ framework->core->GetBlockMemory() }
@@ -200,17 +201,17 @@ public:
 
 	FKApplication* App;
 
-	FlexKit::WorldRender				render;
-	FlexKit::TextureHandle				depthBuffer;
-	FlexKit::VertexBufferHandle			vertexBuffer;
-	FlexKit::VertexBufferHandle			textBuffer;
-	FlexKit::ConstantBufferHandle		constantBuffer;
+	WorldRender					render;
+	TextureHandle				depthBuffer;
+	VertexBufferHandle			vertexBuffer;
+	VertexBufferHandle			textBuffer;
+	ConstantBufferHandle		constantBuffer;
 	
 	// Components
-	SceneNodeComponent					transforms;
-	CameraComponent						cameras;
+	SceneNodeComponent			transforms;
+	CameraComponent				cameras;
 
-	TextureStreamingEngine				streamingEngine;
+	TextureStreamingEngine		streamingEngine;
 };
 
 

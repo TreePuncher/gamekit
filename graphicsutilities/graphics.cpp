@@ -793,18 +793,55 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool DescriptorHeap::SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle)
+	bool DescriptorHeap::SetSRV(RenderSystem* RS, size_t idx, TextureHandle handle)
 	{
-		if (Layout->Entries[Index].Type != DescHeapEntryType::ShaderResource)
-			return false;
+		for (auto entry : Layout->Entries)
+		{
+			if ((entry.Register <= idx && entry.Register + entry.Count > idx) &&
+				(entry.Type == DescHeapEntryType::ShaderResource))
+				break;
 
+			if (entry.Register > idx)
+				return false;
+		}
 
 		PushTextureToDescHeap(
 			RS, 
-			RS->Textures[Handle], 
+			RS->Textures[handle],
 			IncrementHeapPOS(descriptorHeap, 
 				RS->DescriptorCBVSRVUAVSize, 
-				Index));
+				idx));
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool DescriptorHeap::SetStructuredResource(RenderSystem* RS, size_t idx, TextureHandle handle, size_t stride)
+	{
+		for (auto entry : Layout->Entries)
+		{
+			if ((entry.Register <= idx && entry.Register + entry.Count > idx) &&
+				(entry.Type == DescHeapEntryType::ShaderResource) ) 
+				break;
+
+			if (entry.Register > idx)
+				return false;
+		}
+
+		auto WH = RS->GetTextureWH(handle);
+
+		PushSRVToDescHeap(
+			RS,
+			RS->Textures[handle],
+			IncrementHeapPOS(descriptorHeap,
+				RS->DescriptorCBVSRVUAVSize,
+				idx),
+			WH[0],
+			stride);
+			
 
 		return true;
 	}
@@ -921,10 +958,10 @@ namespace FlexKit
 		CD3DX12_ROOT_SIGNATURE_DESC RootSignatureDesc;
 
 		CD3DX12_STATIC_SAMPLER_DESC	 Samplers[] = {
-			CD3DX12_STATIC_SAMPLER_DESC(0, D3D12_FILTER_ANISOTROPIC,
+			CD3DX12_STATIC_SAMPLER_DESC{0, D3D12_FILTER_ANISOTROPIC,
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP,
-											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP),
+											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_CLAMP},
 
 			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR }
 		};
@@ -1154,7 +1191,7 @@ namespace FlexKit
 
 		for (auto RT : RenderTargets)
 		{
-			auto WH = RS->GetRenderTargetWH(RT);
+			auto WH = renderSystem->GetRenderTargetWH(RT);
 			VPs.push_back	({ 0, 0,	(FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
 			Rects.push_back	({ 0,0,	(LONG)WH[0], (LONG)WH[1] });
 		}
@@ -1171,10 +1208,10 @@ namespace FlexKit
 	{
 		if (DS)
 		{
-			DSVPOSCPU		= RS->_GetDSVTableCurrentPosition_CPU(); // _Ptr to Current POS On DSV heap on CPU
-			auto DSVPOS		= RS->_ReserveDSVHeap(1);
-			auto DSVHeap	= RS->_GetCurrentRTVTable();
-			PushDepthStencil(RS, DS, DSVPOS);
+			DSVPOSCPU		= renderSystem->_GetDSVTableCurrentPosition_CPU(); // _Ptr to Current POS On DSV heap on CPU
+			auto DSVPOS		= renderSystem->_ReserveDSVHeap(1);
+			auto DSVHeap	= renderSystem->_GetCurrentRTVTable();
+			PushDepthStencil(renderSystem, DS, DSVPOS);
 		}
 
 		DepthStencilEnabled = DS != nullptr;
@@ -1215,7 +1252,7 @@ namespace FlexKit
 
 	void Context::NullGraphicsConstantBufferView(size_t idx)
 	{
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->NullConstantBuffer.Get()->GetGPUVirtualAddress());
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->NullConstantBuffer.Get()->GetGPUVirtualAddress());
 	}
 
 
@@ -1226,7 +1263,7 @@ namespace FlexKit
 	{
 		FK_ASSERT(!(Offset % 256), "Incorrect CB Offset!");
 
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->GetConstantBufferAddress(CB) + Offset);
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB) + Offset);
 	}
 
 
@@ -1244,7 +1281,7 @@ namespace FlexKit
 
 	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
 	{
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->GetConstantBufferAddress((ConstantBufferHandle)CB) + (size_t)CB);
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress((ConstantBufferHandle)CB) + (size_t)CB);
 	}
 
 
@@ -1288,7 +1325,7 @@ namespace FlexKit
 
 	void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
 	{
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, RS->GetConstantBufferAddress(CB) + offset);
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB) + offset);
 	}
 
 
@@ -1305,7 +1342,7 @@ namespace FlexKit
 
 	void Context::SetComputeUnorderedAccessView(size_t idx, UAVResourceHandle& UAVResource)
 	{
-		auto resource = RS->BufferUAVs.GetResource(UAVResource);
+		auto resource = renderSystem->BufferUAVs.GetResource(UAVResource);
 		DeviceContext->SetComputeRootUnorderedAccessView(idx, resource->GetGPUVirtualAddress());
 	}
 
@@ -1315,16 +1352,16 @@ namespace FlexKit
 
 	void Context::BeginQuery(QueryHandle query, size_t idx)
 	{
-		auto resource	= RS->Queries.GetResource(query);
-		auto queryType	= RS->Queries.GetType(query);
+		auto resource	= renderSystem->Queries.GetResource(query);
+		auto queryType	= renderSystem->Queries.GetType(query);
 		DeviceContext->BeginQuery(resource, queryType, idx);
 	}
 
 
 	void Context::EndQuery(QueryHandle query, size_t idx)
 	{
-		auto resource	= RS->Queries.GetResource(query);
-		auto queryType	= RS->Queries.GetType(query);
+		auto resource	= renderSystem->Queries.GetResource(query);
+		auto queryType	= renderSystem->Queries.GetType(query);
 		DeviceContext->EndQuery(resource, queryType, idx);
 	}
 
@@ -1417,7 +1454,7 @@ namespace FlexKit
 
 		for (size_t itr = 0; itr < handles.size(); ++itr)
 		{
-			auto resource	= RS->GetObjectDeviceResource(handles[itr]);
+			auto resource	= renderSystem->GetObjectDeviceResource(handles[itr]);
 			auto state		= currentStates[itr];
 
 			if(prevResource != resource && prevState != state)
@@ -1431,7 +1468,7 @@ namespace FlexKit
 
 		for (size_t itr = 0; itr < handles.size(); ++itr)
 		{
-			auto resource = RS->GetObjectDeviceResource(handles[itr]);
+			auto resource = renderSystem->GetObjectDeviceResource(handles[itr]);
 
 			D3D12_WRITEBUFFERIMMEDIATE_PARAMETER params[] = {
 				{resource->GetGPUVirtualAddress() + 0, 0u },
@@ -1449,7 +1486,7 @@ namespace FlexKit
 
 		for (size_t itr = 0; itr < handles.size(); ++itr)
 		{
-			auto resource	= RS->GetObjectDeviceResource(handles[itr]);
+			auto resource	= renderSystem->GetObjectDeviceResource(handles[itr]);
 			auto state		= currentStates[itr];
 
 			if (prevResource != resource && prevState != state)
@@ -1475,7 +1512,7 @@ namespace FlexKit
 		} 	D3D12_WRITEBUFFERIMMEDIATE_PARAMETER;
 		*/
 
-		auto nullSource = RS->NullConstantBuffer.Get();
+		auto nullSource = renderSystem->NullConstantBuffer.Get();
 
 		static_vector<ID3D12Resource*>		sources;
 		static_vector<size_t>				sourceOffset;
@@ -1492,7 +1529,7 @@ namespace FlexKit
 			sourceOffset.push_back(0);
 
 		for (auto& s : handles)
-			destinations.push_back(RS->GetSOCounterResource(s));
+			destinations.push_back(renderSystem->GetSOCounterResource(s));
 
 		for (auto& s : handles)
 			destinationOffset.push_back(0);
@@ -1620,8 +1657,8 @@ namespace FlexKit
 			for (auto& IB : *InstanceBuffers)
 			{
 				VBViews.push_back({
-					RS->GetVertexBufferAddress(IB.VertexBuffer)		+ IB.Offset,
-					(UINT)RS->GetVertexBufferSize(IB.VertexBuffer)	- IB.Offset,
+					renderSystem->GetVertexBufferAddress(IB.VertexBuffer)		+ IB.Offset,
+					(UINT)renderSystem->GetVertexBufferSize(IB.VertexBuffer)	- IB.Offset,
 					IB.Stride });
 			}
 		}
@@ -1648,8 +1685,8 @@ namespace FlexKit
 			*/
 
 			VBViews.push_back({
-				RS->GetVertexBufferAddress(VB.VertexBuffer) + VB.Offset,
-				(UINT)RS->GetVertexBufferSize(VB.VertexBuffer) - +VB.Offset,
+				renderSystem->GetVertexBufferAddress(VB.VertexBuffer) + VB.Offset,
+				(UINT)renderSystem->GetVertexBufferSize(VB.VertexBuffer) - +VB.Offset,
 				VB.Stride});
 		}
 
@@ -1676,8 +1713,8 @@ namespace FlexKit
 			*/
 
 			VBViews.push_back({
-				RS->GetVertexBufferAddress(VB.VertexBuffer) + VB.Offset,
-				(UINT)RS->GetVertexBufferSize(VB.VertexBuffer) - +VB.Offset,
+				renderSystem->GetVertexBufferAddress(VB.VertexBuffer) + VB.Offset,
+				(UINT)renderSystem->GetVertexBufferSize(VB.VertexBuffer) - VB.Offset,
 				VB.Stride});
 		}
 
@@ -1711,7 +1748,7 @@ namespace FlexKit
 		UpdateResourceStates();
 		DeviceContext->ClearDepthStencilView(Texture.GPUHandle, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
 
-		RS->RenderTargets.MarkRTUsed(Texture.CPUHandle);
+		renderSystem->RenderTargets.MarkRTUsed(Texture.CPUHandle);
 	}
 
 
@@ -1730,9 +1767,9 @@ namespace FlexKit
 
 	void Context::ResolveQuery(QueryHandle query, size_t begin, size_t end, UAVResourceHandle destination, size_t destOffset)
 	{
-		auto res			= RS->GetObjectDeviceResource(destination);
-		auto type			= RS->Queries.GetType(query);
-		auto queryResource	= RS->Queries.GetResource(query);
+		auto res			= renderSystem->GetObjectDeviceResource(destination);
+		auto type			= renderSystem->Queries.GetType(query);
+		auto queryResource	= renderSystem->Queries.GetResource(query);
 
 		UpdateResourceStates();
 		DeviceContext->ResolveQueryData(queryResource, type, begin, end - begin, res, destOffset);
@@ -1748,7 +1785,7 @@ namespace FlexKit
 		DeviceContext->ExecuteIndirect(
 			layout.signature, 
 			min(layout.entries.size(), executionCount), 
-			RS->GetObjectDeviceResource(args),
+			renderSystem->GetObjectDeviceResource(args),
 			argumentBufferOffset,
 			nullptr, 
 			0);
@@ -1806,11 +1843,54 @@ namespace FlexKit
 	{
 		if (Enabled)
 			DeviceContext->SetPredication(
-				reinterpret_cast<ID3D12Resource*>(RS->_GetQueryResource(Handle)),
+				reinterpret_cast<ID3D12Resource*>(renderSystem->_GetQueryResource(Handle)),
 				Offset, 
 				D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_NOT_EQUAL_ZERO);
 		else
 			DeviceContext->SetPredication(nullptr, 0, D3D12_PREDICATION_OP::D3D12_PREDICATION_OP_EQUAL_ZERO);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::CopyBuffer(const UploadSegment src, TextureHandle destination)
+	{
+		const auto destinationResource		= renderSystem->GetObjectDeviceResource(destination);
+		const auto sourceResource			= renderSystem->GetUploadResource();
+
+		DeviceContext->CopyBufferRegion(destinationResource, 0, sourceResource, src.offset, src.uploadSize);
+	}
+
+
+	/************************************************************************************************/
+
+
+	void Context::CopyTexture2D(const UploadSegment src, TextureHandle destination, uint2 BufferSize)
+	{
+		const auto destinationResource		= renderSystem->GetObjectDeviceResource(destination);
+		const auto sourceResource			= renderSystem->GetUploadResource();
+		const auto WH						= renderSystem->GetTextureWH(destination);
+		const auto format					= renderSystem->GetTextureDeviceFormat(destination);
+		const auto texelSize				= renderSystem->GetTextureElementSize(destination);
+
+		D3D12_TEXTURE_COPY_LOCATION destLocation{};
+		destLocation.pResource			= destinationResource;
+		destLocation.SubresourceIndex	= 0;
+		destLocation.Type				= D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+
+
+		D3D12_TEXTURE_COPY_LOCATION srcLocation{};
+		srcLocation.pResource							= sourceResource;
+		srcLocation.Type								= D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+		srcLocation.PlacedFootprint.Offset				= src.offset;
+		srcLocation.PlacedFootprint.Footprint.Depth		= 1;
+		srcLocation.PlacedFootprint.Footprint.Format	= format;
+		srcLocation.PlacedFootprint.Footprint.Height	= WH[1];
+		srcLocation.PlacedFootprint.Footprint.Width		= WH[0];
+		srcLocation.PlacedFootprint.Footprint.RowPitch	= BufferSize[0] * texelSize;
+
+		DeviceContext->CopyTextureRegion(&destLocation, 0, 0, 0, &srcLocation, nullptr);
 	}
 
 
@@ -1907,7 +1987,7 @@ namespace FlexKit
 				case Barrier::BT_RenderTarget:
 				{
 					auto handle			= B.renderTarget;
-					auto resource		= RS->RenderTargets.GetResource(handle);
+					auto resource		= renderSystem->RenderTargets.GetResource(handle);
 					auto currentState	= DRS2D3DState(B.OldState);
 					auto newState		= DRS2D3DState(B.NewState);
 
@@ -1926,7 +2006,7 @@ namespace FlexKit
 				case Barrier::BT_UAV:
 				{
 					auto handle			= B.UAV;
-					auto resource		= RS->GetObjectDeviceResource(handle);
+					auto resource		= renderSystem->GetObjectDeviceResource(handle);
 					auto currentState	= DRS2D3DState(B.OldState);
 					auto newState		= DRS2D3DState(B.NewState);
 
@@ -1950,8 +2030,8 @@ namespace FlexKit
 
 					if (DeviceResourceState::DRS_STREAMOUTCLEAR == B.OldState || DeviceResourceState::DRS_STREAMOUTCLEAR == B.NewState) {
 						auto handle				= B.streamOut;
-						auto SOresource			= RS->GetObjectDeviceResource(handle);
-						auto resource			= RS->GetSOCounterResource(handle);
+						auto SOresource			= renderSystem->GetObjectDeviceResource(handle);
+						auto resource			= renderSystem->GetSOCounterResource(handle);
 						auto currentState		= DRS2D3DState((B.OldState == DeviceResourceState::DRS_VERTEXBUFFER) ? DeviceResourceState::DRS_STREAMOUT : B.OldState);
 						auto newState			= DRS2D3DState((B.NewState == DeviceResourceState::DRS_VERTEXBUFFER) ? DeviceResourceState::DRS_STREAMOUT : B.NewState);
 
@@ -1967,7 +2047,7 @@ namespace FlexKit
 					else
 					{
 						auto handle				= B.streamOut;
-						auto resource			= RS->GetObjectDeviceResource(handle);
+						auto resource			= renderSystem->GetObjectDeviceResource(handle);
 						auto currentState		= DRS2D3DState(B.OldState);
 						auto newState			= DRS2D3DState(B.NewState);
 
@@ -1995,7 +2075,7 @@ namespace FlexKit
 				}	break;
 				case Barrier::BT_ShaderResource:
 				{
-					auto resource		= RS->Textures.GetResource(B.shaderResource);
+					auto resource		= renderSystem->Textures.GetResource(B.shaderResource);
 					auto currentState	= DRS2D3DState(B.OldState);
 					auto newState		= DRS2D3DState(B.NewState);
 
@@ -2059,6 +2139,7 @@ namespace FlexKit
 											D3D12_TEXTURE_ADDRESS_MODE::D3D12_TEXTURE_ADDRESS_MODE_BORDER),
 
 			CD3DX12_STATIC_SAMPLER_DESC{1, D3D12_FILTER::D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR },
+			CD3DX12_STATIC_SAMPLER_DESC{2, D3D12_FILTER::D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT},
 		};
 
 		{
@@ -2842,14 +2923,23 @@ namespace FlexKit
 
 	FORMAT_2D RenderSystem::GetTextureFormat(TextureHandle handle) const
 	{
-		return DXGIFormat2TextureFormat(RenderTargets.GetFormat(handle));
+		return DXGIFormat2TextureFormat(Textures.GetFormat(handle));
 	}
 
 
 	/************************************************************************************************/
 
 
-	DXGI_FORMAT RenderSystem::_GetDXGITextureFormat(TextureHandle handle) const
+	DXGI_FORMAT RenderSystem::GetTextureDeviceFormat(TextureHandle handle) const
+	{
+		return Textures.GetFormat(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	DXGI_FORMAT RenderSystem::_GetDXGIRenderTargetFormat(TextureHandle handle) const
 	{
 		return RenderTargets.GetFormat(handle);
 	}
@@ -2996,7 +3086,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle RenderSystem::CreateDepthBuffer(uint2 WH, bool UseFloat, size_t bufferCount)
+	TextureHandle RenderSystem::CreateDepthBuffer( const uint2 WH, const bool UseFloat, const size_t bufferCount)
 	{
 		Texture2D_Desc Desc(WH[1], WH[0], FORMAT_2D::D32_FLOAT, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL);
 
@@ -3014,7 +3104,38 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle RenderSystem::CreateTexture2D(uint2 WH, FORMAT_2D Format, size_t mipLevels)
+	TextureHandle RenderSystem::CreateStructuredResource(const size_t size, const size_t elementSize)
+	{
+		Texture2D_Desc desc;
+		desc.CV				= false;
+		desc.Format			= FORMAT_2D::UNKNOWN;
+		desc.Height			= 1;
+		desc.Width			= size * elementSize;
+		desc.initialData	= nullptr;
+		desc.MipLevels		= 1;
+		desc.Read			= false;
+		desc.RenderTarget	= false;
+		desc.UAV			= false;
+		desc.Write			= false;
+		desc.FLAGS			= SPECIALFLAGS::Structred1D;
+
+		auto newTexture = FlexKit::CreateTexture2D(this, &desc);
+
+		ID3D12Resource* Resources[] = {
+			newTexture.Texture
+		};
+
+		Texture2D_Desc Desc(1, size, FORMAT_2D::UNKNOWN, CPUACCESSMODE::NONE, SPECIALFLAGS::NONE, 1);
+		auto Texture = Textures.AddResource(Desc, Resources, 1, 1, DRS_ShaderResource, TF_NONE);
+
+		return Texture;
+	}
+
+
+	/************************************************************************************************/
+
+
+	TextureHandle RenderSystem::CreateTexture2D(const uint2 WH, const FORMAT_2D Format, const size_t mipLevels)
 	{
 		Texture2D_Desc desc;
 		desc.CV				= false;
@@ -3034,7 +3155,7 @@ namespace FlexKit
 			newTexture.Texture
 		};
 
-		Texture2D_Desc Desc(WH[1], WH[0], Format, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL, mipLevels);
+		Texture2D_Desc Desc(WH[1], WH[0], Format, CPUACCESSMODE::NONE, SPECIALFLAGS::NONE, mipLevels);
 		auto Texture = Textures.AddResource(Desc, Resources, 1, mipLevels, DRS_ShaderResource, TF_NONE);
 
 		return Texture;
@@ -3044,7 +3165,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TextureHandle RenderSystem::CreateTexture2D(uint2 WH, FORMAT_2D Format, size_t mipLevels, ID3D12Resource** Resources, size_t ResourceCount)
+	TextureHandle RenderSystem::CreateTexture2D(const uint2 WH, const FORMAT_2D Format, const size_t mipLevels, ID3D12Resource** Resources, size_t ResourceCount)
 	{
 		Texture2D_Desc Desc(WH[1], WH[0], Format, CPUACCESSMODE::NONE, SPECIALFLAGS::DEPTHSTENCIL, mipLevels);
 
@@ -3328,6 +3449,15 @@ namespace FlexKit
 	size_t RenderSystem::GetStreamOutBufferSize(const SOResourceHandle handle) const
 	{
 		return StreamOutTable.GetResourceSize(handle);
+	}
+
+
+	/************************************************************************************************/
+
+
+	ID3D12Resource* RenderSystem::GetUploadResource()
+	{
+		return CopyEngine.TempBuffer;
 	}
 
 
@@ -3840,6 +3970,8 @@ namespace FlexKit
 	{
 		switch (F)
 		{
+		case FlexKit::FORMAT_2D::R16_UINT:
+			return DXGI_FORMAT::DXGI_FORMAT_R16_UINT;
 		case FlexKit::FORMAT_2D::R16G16_UINT:
 			return DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT;
 		case FlexKit::FORMAT_2D::R8G8B8A8_UNORM:
@@ -4020,6 +4152,9 @@ namespace FlexKit
 	}
 
 
+	/************************************************************************************************/
+
+
 	void RenderSystem::UpdateResourceByUploadQueue(ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState)
 	{
 		FK_ASSERT(Data);
@@ -4037,6 +4172,35 @@ namespace FlexKit
 		memcpy(_ptr, Data, Size);
 		CS->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, Offset, Size);
 		UploadQueue.UploadCount++;
+	}
+
+
+	
+	/************************************************************************************************/
+
+
+	UploadSegment ReserveUploadBuffer(
+		const size_t	uploadSize, 
+		RenderSystem&	renderSystem)
+	{
+		size_t	Offset	= 0;
+		void*	_ptr	= nullptr;
+
+		ReserveTempSpace(renderSystem, uploadSize + 512, _ptr, Offset);
+		
+		size_t alignmentOffset = Offset % 512;
+		Offset += alignmentOffset;
+
+		return { .offset = Offset, .uploadSize = uploadSize + 512, .buffer = (char*)_ptr };
+	}
+
+
+	/************************************************************************************************/
+
+
+	void MoveTexture2UploadBuffer(const UploadSegment& data, byte* source, size_t uploadSize)
+	{
+		memcpy(data.buffer, source, data.uploadSize > uploadSize ? uploadSize : data.uploadSize);
 	}
 
 
@@ -4080,8 +4244,15 @@ namespace FlexKit
 
 	Texture2D CreateTexture2D( RenderSystem* RS, Texture2D_Desc* desc_in )
 	{	
-		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormat2DXGIFormat(desc_in->Format), 
-																		   desc_in->Width, desc_in->Height, desc_in->MipLevels);
+		D3D12_RESOURCE_DESC   Resource_DESC = 
+			(desc_in->FLAGS & Structred1D) ? 
+				CD3DX12_RESOURCE_DESC::Buffer(desc_in->Width)
+			:
+				CD3DX12_RESOURCE_DESC::Tex2D(
+					TextureFormat2DXGIFormat(desc_in->Format), 
+					desc_in->Width, 
+					desc_in->Height, 
+					desc_in->MipLevels);
 
 		D3D12_RESOURCE_STATES InitialState = desc_in->RenderTarget ?
 			D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
@@ -6192,7 +6363,7 @@ namespace FlexKit
 	DescHeapPOS PushRenderTarget(RenderSystem* RS, TextureHandle target, DescHeapPOS POS)
 	{
 		D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
-		TargetDesc.Format				= RS->_GetDXGITextureFormat(target);
+		TargetDesc.Format				= RS->_GetDXGIRenderTargetFormat(target);
 		TargetDesc.Texture2D.MipSlice	= 0;
 		TargetDesc.Texture2D.PlaneSlice = 0;
 		TargetDesc.ViewDimension		= D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;

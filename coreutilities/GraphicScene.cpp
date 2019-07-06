@@ -1188,8 +1188,8 @@ namespace FlexKit
 			auto Pw		= GetPositionW(light.Position);
 			auto Ps		= GetLocalScale(light.Position).x;
 
-			//BoundingSphere BoundingVolume = float4(Pw, light.R * Ps);
-			BoundingSphere BoundingVolume = float4(Pw, 1);
+			BoundingSphere BoundingVolume = float4(Pw, light.R * Ps);
+			//BoundingSphere BoundingVolume = float4(Pw, 1);
 
 			if (CompareBSAgainstFrustum(&f, BoundingVolume))
 				lights.emplace_back(LightHandle{ itr });

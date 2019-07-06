@@ -527,36 +527,11 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	void PhysicsScene::SetMass(rbColliderEntityHandle collider, float m)
 	{
 		auto& colliderIMPL = rbColliders.colliders[collider.INDEX];
 		colliderIMPL.dynamicActor->setMass(m);
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	RigidBodyDrawableBehavior CreateRBCube(
-		GraphicScene*		gScene,
-		TriMeshHandle		mesh,
-		PhysicsSystem*		physicsSystem,
-		PhysicsSceneHandle	pScene,
-		float				hR,
-		float3				pos)
-	{
-		NodeHandle			node		= GetZeroedNode();
-		SceneEntityHandle	entity		= gScene->CreateDrawable(mesh, node);
-		rbColliderHandle	collider	= 
-			physicsSystem->CreateRigidBodyBoxCollider(
-													pScene, 
-													{ hR, hR, hR },
-													pos,
-													{0, 0, 0, 1},
-													node);
-
-		return { physicsSystem, collider,  gScene, entity, node };
 	}
 
 

@@ -214,7 +214,7 @@ public:
 		textureEngine	{ IN_framework->core->RenderSystem, IN_framework->core->GetBlockMemory() },
 		render			{ IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem, textureEngine			},
 		depthBuffer		{ IN_framework->core->RenderSystem.CreateDepthBuffer	(GetWindowWH(IN_framework->core), true)	},
-		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(MEGABYTE * 8,			false)			},
+		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(MEGABYTE * 8,		false)				},
 		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
 		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 128,	false)				},
 		eventMap		{ IN_framework->core->GetBlockMemory()															},
@@ -438,11 +438,11 @@ public:
 		if (renderTerrainEnabled) 
 		{
 			TerrainRenderResources terrainResources = {
-				/*.vertexBuffer		= */ vertexBuffer,
-				/*.constantBuffer	= */ constantBuffer,
-				/*.renderTarget		= */ core->Window.GetBackBuffer(),
-				/*.depthTarget		= */ depthBuffer,
-				/*.renderSystem		= */ core->RenderSystem,
+				.vertexBuffer		= vertexBuffer,
+				.constantBuffer		= constantBuffer,
+				.renderTarget		= core->Window.GetBackBuffer(),
+				.depthTarget		= depthBuffer,
+				.renderSystem		= core->RenderSystem,
 			};
 
 
@@ -553,7 +553,7 @@ private:
 	DrawableBehavior					Object2; // North
 	DrawableBehavior					Object3; // East
 	StaticColliderHandle				floor;
-	RigidBodyDrawableBehavior			box[CubeCount];
+	//RigidBodyDrawableBehavior			box[CubeCount];
 };
 /************************************************************************************************/
 #endif

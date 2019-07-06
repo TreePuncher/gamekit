@@ -172,10 +172,11 @@ namespace FlexKit
 		case DXGI_FORMAT_R8G8B8A8_SNORM:
 		case DXGI_FORMAT_R8G8B8A8_SINT:
 			return 4;
+		case DXGI_FORMAT_R16G16_UINT:
+			return sizeof(uint16_t[2]);
 		case DXGI_FORMAT_R16G16_TYPELESS:
 		case DXGI_FORMAT_R16G16_FLOAT:
 		case DXGI_FORMAT_R16G16_UNORM:
-		case DXGI_FORMAT_R16G16_UINT:
 		case DXGI_FORMAT_R16G16_SNORM:
 		case DXGI_FORMAT_R16G16_SINT:
 		case DXGI_FORMAT_R32_TYPELESS:
@@ -374,9 +375,10 @@ namespace FlexKit
 
 	enum SPECIALFLAGS
 	{
-		BACKBUFFER = 1,
-		DEPTHSTENCIL = 2,
-		NONE = 0
+		BACKBUFFER		= 1,
+		DEPTHSTENCIL	= 2,
+		Structred1D		= 4,
+		NONE			= 0
 	};
 
 
@@ -427,10 +429,12 @@ namespace FlexKit
 		byte*			initialData;
 		SPECIALFLAGS	FLAGS;
 
-		inline DXGI_FORMAT	GetFormat()
+		constexpr DXGI_FORMAT GetFormat()
 		{
 			switch (Format)
 			{
+			case FlexKit::FORMAT_2D::R16G16_UINT:
+				return DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT;
 			case FlexKit::FORMAT_2D::R8G8B8A_UINT:
 				return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UINT;
 			case FlexKit::FORMAT_2D::R8G8B8A8_UINT:
@@ -1259,7 +1263,8 @@ namespace FlexKit
 		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory);
 		DescriptorHeap& NullFill	(RenderSystem* RS);
 
-		bool SetSRV(RenderSystem* RS, size_t Index, TextureHandle Handle);
+		bool SetSRV					(RenderSystem* RS, size_t idx, TextureHandle Handle);
+		bool SetStructuredResource	(RenderSystem* RS, size_t idx, TextureHandle Handle, size_t stride);
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
@@ -1570,27 +1575,35 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	struct UploadSegment 
+	{
+		size_t	offset		= 0;
+		size_t	uploadSize	= 0;
+		char*	buffer		= nullptr;
+	};
+
+
 	FLEXKITAPI class Context
 	{
 	public:
 		Context(
-				ID3D12GraphicsCommandList3*	Context_IN	= nullptr, 
-				RenderSystem*				RS_IN		= nullptr, 
-				iAllocator*					TempMemory	= nullptr) :
-			CurrentRootSignature	(nullptr),
-			DeviceContext			(Context_IN),
-			PendingBarriers			(TempMemory),
-			RS						(RS_IN),
-			Memory					(TempMemory),
-			RenderTargetCount		(0),
-			DepthStencilEnabled		(false),
-			TrackedSOBuffers		{TempMemory}{}
+				ID3D12GraphicsCommandList3*	context_IN		= nullptr, 
+				RenderSystem*				renderSystem_IN	= nullptr, 
+				iAllocator*					allocator		= nullptr) :
+			CurrentRootSignature	{ nullptr			},
+			DeviceContext			{ context_IN		},
+			PendingBarriers			{ allocator			},
+			renderSystem			{ renderSystem_IN	},
+			Memory					{ allocator			},
+			RenderTargetCount		{ 0					},
+			DepthStencilEnabled		{ false				},
+			TrackedSOBuffers		{ allocator			}{}
 			
 		Context(Context&& RHS) : 
 			CurrentRootSignature	(RHS.CurrentRootSignature),
 			DeviceContext			(RHS.DeviceContext),
 			PendingBarriers			(std::move(RHS.PendingBarriers)),
-			RS						(RHS.RS),
+			renderSystem			(RHS.renderSystem),
 			Memory					(RHS.Memory)
 
 		{
@@ -1603,7 +1616,7 @@ namespace FlexKit
 			DeviceContext			= RHS.DeviceContext;
 			CurrentRootSignature	= RHS.CurrentRootSignature;
 			CurrentPipelineState	= RHS.CurrentPipelineState;
-			RS						= RHS.RS;
+			renderSystem			= RHS.renderSystem;
 
 			RTVPOSCPU				= RHS.RTVPOSCPU;
 			DSVPOSCPU				= RHS.DSVPOSCPU;
@@ -1621,8 +1634,8 @@ namespace FlexKit
 			RHS.DeviceContext			= nullptr;
 			RHS.CurrentRootSignature	= nullptr;
 
-			RHS.RTVPOSCPU               = {0};
-			RHS.DSVPOSCPU               = {0};
+			RHS.RTVPOSCPU               = { 0 };
+			RHS.DSVPOSCPU               = { 0 };
 
 			RHS.RenderTargetCount	    = 0;
 			RHS.DepthStencilEnabled     = false;
@@ -1728,6 +1741,9 @@ namespace FlexKit
 
 		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
 
+		void CopyBuffer		(const UploadSegment src, TextureHandle destination);
+		void CopyTexture2D	(const UploadSegment src, TextureHandle destination, uint2 BufferSize);
+
 		void SetRTRead	(TextureHandle Handle);
 		void SetRTWrite	(TextureHandle Handle);
 		void SetRTFree	(TextureHandle Handle);
@@ -1792,7 +1808,7 @@ namespace FlexKit
 		ID3D12GraphicsCommandList3*		DeviceContext			= nullptr;
 		RootSignature*					CurrentRootSignature	= nullptr;
 		ID3D12PipelineState*			CurrentPipelineState	= nullptr;
-		RenderSystem*					RS						= nullptr;
+		RenderSystem*					renderSystem			= nullptr;
 
 		D3D12_CPU_DESCRIPTOR_HANDLE RTVPOSCPU;
 		D3D12_CPU_DESCRIPTOR_HANDLE DSVPOSCPU;
@@ -2458,11 +2474,12 @@ namespace FlexKit
 		uint32_t	GetTag(TextureHandle Handle);
 		void		SetTag(TextureHandle Handle, uint32_t);
 
-		const size_t	GetTextureElementSize	(TextureHandle Handle) const;
-		const uint2		GetTextureWH			(TextureHandle Handle) const;
-		const uint2		GetRenderTargetWH		(TextureHandle Handle) const;
-		FORMAT_2D		GetTextureFormat		(TextureHandle Handle) const;
-		DXGI_FORMAT		_GetDXGITextureFormat	(TextureHandle Handle) const;
+		const size_t	GetTextureElementSize		(TextureHandle Handle) const;
+		const uint2		GetTextureWH				(TextureHandle Handle) const;
+		const uint2		GetRenderTargetWH			(TextureHandle Handle) const;
+		FORMAT_2D		GetTextureFormat			(TextureHandle Handle) const;
+		DXGI_FORMAT		GetTextureDeviceFormat		(TextureHandle Handle) const;
+		DXGI_FORMAT		_GetDXGIRenderTargetFormat	(TextureHandle Handle) const;
 
 		void			UploadTexture				(TextureHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
 		void			UploadTexture				(TextureHandle handle, byte* buffer, size_t bufferSize, uint2 WH, size_t resourceCount, size_t* mipOffsets, iAllocator* temp); // Uses Upload Queue
@@ -2471,9 +2488,10 @@ namespace FlexKit
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
-		TextureHandle			CreateDepthBuffer				(uint2 WH, bool UseFloat = false, size_t bufferCount = 3);
-		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels = 1);
-		TextureHandle			CreateTexture2D					(uint2 WH, FORMAT_2D Format, size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
+		TextureHandle			CreateDepthBuffer				(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
+		TextureHandle			CreateStructuredResource		(const size_t size, const size_t elementSize);
+		TextureHandle			CreateTexture2D					(const uint2 WH, const FORMAT_2D Format, const size_t MipLevels = 1);
+		TextureHandle			CreateTexture2D					(const uint2 WH, const FORMAT_2D Format, const size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
 		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
 		SOResourceHandle		CreateStreamOutResource			(size_t bufferHandle, bool tripleBuffer = true);
@@ -2497,6 +2515,9 @@ namespace FlexKit
 
 		ID3D12Resource*		GetSOCounterResource	(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize	(const SOResourceHandle handle) const;
+
+		ID3D12Resource*		GetUploadResource();
+
 
 		void ResetQuery(QueryHandle handle);
 
@@ -2677,6 +2698,9 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
+
+	FLEXKITAPI UploadSegment	ReserveUploadBuffer			(const size_t uploadSize, RenderSystem& renderSystem);
+	FLEXKITAPI void				MoveTexture2UploadBuffer	(const UploadSegment& data, byte* source, size_t uploadSize);
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, Texture2D*		target, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, TextureHandle	target, DescHeapPOS POS);

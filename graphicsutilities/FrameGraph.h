@@ -723,7 +723,7 @@ namespace FlexKit
 		FrameResourceHandle	FindFrameResource(TextureHandle Handle)
 		{
 			auto res = find(Resources, 
-				[&](const auto& LHS)
+				[&](const FrameObject& LHS)
 				{
 					auto CorrectType = (
 						LHS.Type == OT_ShaderResource	||
@@ -731,7 +731,7 @@ namespace FlexKit
 						LHS.Type == OT_BackBuffer		||
 						LHS.Type == OT_DepthBuffer);
 
-					return (CorrectType && LHS.ShaderResource == Handle);
+					return (CorrectType && LHS.ShaderResource.to_uint() == Handle.to_uint());
 				});
 
 			if (res != Resources.end())
@@ -978,38 +978,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct UploadSegment{
-		size_t offset;
-		size_t dataSize;
-	};
-
-
-	// single thread only
-	// Copies a buffer into a GPU visable memory section in the temp memory section
-	UploadSegment MoveTexture2UploadBuffer(
-		char* const		data,
-		size_t			dataSize,
-		TextureHandle	destTexture,
-		FrameResources& resources)
-	{
-		FK_ASSERT(false, "UN_IMPLEMENTED!");
-
-		UploadSegment upload { 0 };
-
-		return upload;
-	}
-
-	// thread safe
-	// Moves a CPU visable block of memory into a GPU memory block
-	void UploadTexture(UploadSegment& data, Context* ctx)
-	{
-		FK_ASSERT(false, "UN_IMPLEMENTED!");
-	}
-
-
-	/************************************************************************************************/
-
-
 	class FrameGraphNode;
 
 	struct FrameObjectDependency
@@ -1129,7 +1097,7 @@ namespace FlexKit
 			if (A && lhs.UAVHandle == InvalidHandle_t)
 				lhs.UAVHandle = lhs.FO->UAVBuffer;
 
-			return A && (lhs.UAVHandle == handle);
+			return A && (lhs.UAVHandle.to_uint() == handle.to_uint());
 		};
 	}
 
@@ -1187,7 +1155,7 @@ namespace FlexKit
 			if (A && lhs.ShaderResource == InvalidHandle_t)
 				lhs.ShaderResource = lhs.FO->ShaderResource;
 
-			return A && (lhs.SOHandle == handle);
+			return A && (lhs.SOHandle.to_uint() == handle.to_uint());
 		};
 	}
 

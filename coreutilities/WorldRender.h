@@ -43,84 +43,6 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
-	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
-	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
-
-	ID3D12PipelineState* CreateForwardDrawPSO			(RenderSystem* RS);
-	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
-	ID3D12PipelineState* CreateOcclusionDrawPSO			(RenderSystem* RS);
-
-	struct WorldRender_Targets
-	{
-		TextureHandle RenderTarget;
-		TextureHandle DepthTarget;
-	};
-
-
-	struct ObjectDrawState
-	{
-		bool transparent	: 1;
-		bool posed			: 1;
-	};
-
-
-	struct ObjectDraw
-	{
-		TriMeshHandle	mesh;
-		TriMeshHandle	occluder;
-		ObjectDrawState states;
-		byte*			constantBuffers[4];
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct LighBufferCPUUpdate
-	{
-		size_t			viewSplits;
-		float			splitSpan;
-		size_t			sceneLightCount;
-		CameraHandle	camera;
-		GraphicScene*	scene;
-
-		Vector<Vector<Vector<LightHandle>>> lightBuckets;
-		StackAllocator						tempMemory;
-	};
-
-
-	struct LightBufferUpdate 
-	{
-		TextureHandle			lightMap;
-		ConstantBufferHandle	lightListBuffer;		
-		ConstantBufferHandle	pointLightBuffer;
-		FrameResourceHandle		lightMapObject;
-		//UploadData				lightMapUpdate;	// immediate update
-		LighBufferCPUUpdate*	lighBufferData;
-	};
-
-
-	struct LighBufferDebugDraw
-	{
-		VertexBufferHandle		vertexBuffer;
-		ConstantBufferHandle	constantBuffer;
-		TextureHandle			renderTarget;
-	};
-
-
-	struct SceneDescription
-	{
-		size_t		pointLightCount;
-		UpdateTask*	transforms;
-		UpdateTask*	cameras;
-		UpdateTask*	PVS;
-	};
-
-
-	/************************************************************************************************/
-
-
 	class FLEXKITAPI ReadBack
 	{
 	public:
@@ -178,9 +100,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	/************************************************************************************************/
-
-
 	constexpr size_t GetMinBlockSize()
 	{
 		return ct_sqrt(64 * KILOBYTE / sizeof(uint8_t[4])); // assuming RGBA pixel, and a 64 KB texture alignment
@@ -224,7 +143,7 @@ namespace FlexKit
 
 			renderSystem.pDevice->CreateCommittedResource(
 				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES,
+				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
 				&CD3DX12_RESOURCE_DESC::Buffer(desc.textureCacheSize),
 				D3D12_RESOURCE_STATE_COMMON,
 				nullptr, IID_PPV_ARGS(&resourcePool));
@@ -266,21 +185,125 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
+	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
+	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
+
+	ID3D12PipelineState* CreateForwardDrawPSO			(RenderSystem* RS);
+	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
+	ID3D12PipelineState* CreateOcclusionDrawPSO			(RenderSystem* RS);
+
+	struct WorldRender_Targets
+	{
+		TextureHandle RenderTarget;
+		TextureHandle DepthTarget;
+	};
+
+
+	struct ObjectDrawState
+	{
+		bool transparent	: 1;
+		bool posed			: 1;
+	};
+
+
+	struct ObjectDraw
+	{
+		TriMeshHandle	mesh;
+		TriMeshHandle	occluder;
+		ObjectDrawState states;
+		byte*			constantBuffers[4];
+	};
+
+
+	/************************************************************************************************/
+
+	struct GPUPointLightLayout
+	{
+		float4 KI;	// Color + intensity in W
+		float4 P;	//
+	};
+
+	struct RG16LightMap
+	{
+		uint16_t offset = 0;
+		uint16_t count = 0;
+	};
+
+
+	struct LighBufferCPUUpdate
+	{
+		struct visableLightEntry
+		{
+			uint2		pixel;
+			LightHandle light;
+			uint32_t	ID(uint2 wh) { return pixel[0] + pixel[1] * wh[0]; };
+		};
+
+		Vector<visableLightEntry> samples;
+
+		uint2			viewSplits;
+		float2			splitSpan;
+		size_t			sceneLightCount;
+		CameraHandle	camera;
+		GraphicScene*	scene;
+
+		TextureBuffer				lightMapBuffer;
+		Vector<uint32_t>			lightLists;
+		Vector<GPUPointLightLayout>	pointLights;
+
+		StackAllocator	tempMemory;
+	};
+
+
+	struct LightBufferUpdate 
+	{
+		TextureHandle			lightMap;
+		TextureHandle			lightListBuffer;
+		ConstantBufferHandle	pointLightBuffer;
+		FrameResourceHandle		lightMapObject;
+		FrameResourceHandle		lightListObject;
+		UploadSegment			lightMapUpdate;	// immediate update
+		UploadSegment			lightListUpdate;	// immediate update
+		LighBufferCPUUpdate*	lighBufferData;
+	};
+
+
+	struct LighBufferDebugDraw
+	{
+		VertexBufferHandle		vertexBuffer;
+		ConstantBufferHandle	constantBuffer;
+		TextureHandle			renderTarget;
+	};
+
+
+	struct SceneDescription
+	{
+		size_t		pointLightCount;
+		UpdateTask*	transforms;
+		UpdateTask*	cameras;
+		UpdateTask*	PVS;
+	};
+
+
+	/************************************************************************************************/
+
 
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, TextureStreamingEngine& IN_streamingEngine, uint2 IN_lightSplits = {20, 20}) :
+		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 IN_lightMapWH = { 64, 64 }) :
 
 			RS(RS_IN),
 			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)					},
 			//OcclusionBuffer		{ RS->CreateDepthBuffer({1024, 1024}, true)							},
 			//OcclusionQueries	{ RS->CreateOcclusionBuffer(4096)									},
 			OcclusionCulling	{ false																},
-			lightMap			{ RS->CreateTexture2D(IN_lightSplits, FORMAT_2D::R16G16_UINT, 1)	},
-			lightListBuffer		{ RS->CreateConstantBuffer(MEGABYTE, false)							},
+			lightLists			{ RS->CreateStructuredResource(1024 * 8, sizeof(uint32_t))			},
+			lightMap			{ RS->CreateTexture2D(IN_lightMapWH , FORMAT_2D::R16G16_UINT, 1)	},
 			pointLightBuffer	{ RS->CreateConstantBuffer(MEGABYTE, false)							},
-			streamingEngine		{ IN_streamingEngine												}
+			streamingEngine		{ IN_streamingEngine												},
+			lightMapWH			{ IN_lightMapWH														}
 		{
 			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawPSO,			});
 			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawInstancedPSO	});
@@ -295,7 +318,7 @@ namespace FlexKit
 		{
 			RS->ReleaseCB(ConstantBuffer);
 			RS->ReleaseCB(pointLightBuffer);
-			RS->ReleaseCB(lightListBuffer);
+			RS->ReleaseTexture(lightLists);
 			RS->ReleaseTexture(lightMap);
 		}
 
@@ -319,12 +342,15 @@ namespace FlexKit
 		//TextureHandle			OcclusionBuffer;
 
 		TextureHandle			lightMap;			// GPU
-		ConstantBufferHandle	lightListBuffer;	// GPU
+		TextureHandle			lightLists;			// GPU
 		ConstantBufferHandle	pointLightBuffer;	// GPU
-		uint2					WH;// Output Size
+
+		uint2					WH;					// Output Size
+		uint2					lightMapWH;			// Output Size
 
 		TextureStreamingEngine&	streamingEngine;
 		bool OcclusionCulling;
+
 		// GBuffer
 		//RenderTargetHandle		Albedo;
 		//RenderTargetHandle		Color;

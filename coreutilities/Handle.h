@@ -86,8 +86,8 @@ namespace FlexKit
 		}
 
 
-		operator uint32_t&() { return INDEX; }
-		operator uint32_t() const { return this->to_uint(); }
+		operator uint32_t() const { return to_uint(); }
+
 		bool				operator ==	(const THISTYPE_t in) const
 		{
 #if USING( DEBUGHANDLES )
@@ -147,11 +147,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	template<int Size>
-	inline bool operator < ( const Handle_t<Size>& lhs,  const Handle_t<Size>& rhs )
-	{
-		return lhs.to_uint() < rhs.to_uint();
-	}
 
 	template<
 		typename TY_HANDLE_OUT,

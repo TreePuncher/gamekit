@@ -215,7 +215,7 @@ namespace FlexKit
 
 		Vect( TY n )
 		{
-			for( auto e : Vector )
+			for( auto& e : Vector )
 				e = n;
 		}
 
@@ -424,6 +424,17 @@ namespace FlexKit
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
 				temp[I] /= in;
+
+			return temp;
+		}
+
+
+		template<typename TY_2>
+		THISTYPE operator % (TY_2 in) noexcept
+		{
+			THISTYPE temp = *this;
+			for (auto I = 0; I < SIZE; ++I)
+				temp[I] %= in;
 
 			return temp;
 		}

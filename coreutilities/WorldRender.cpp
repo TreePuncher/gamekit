@@ -283,13 +283,14 @@ namespace FlexKit
 			FrameResourceHandle		DepthBuffer;
 			FrameResourceHandle		OcclusionBuffer;
 			FrameResourceHandle		lightMap;
+			FrameResourceHandle		lightLists;
 			VertexBufferHandle		VertexBuffer;
 
 			CBPushBuffer			entityConstants;
 			CBPushBuffer			localConstants;
 
 			ConstantBufferHandle	pointLightBuffer;
-			ConstantBufferHandle	lightListBuffer;
+			TextureHandle			lightListBuffer;
 			PVS const*				drawables;
 			DescriptorHeap			Heap; // Null Filled
 		};
@@ -309,8 +310,9 @@ namespace FlexKit
 				data.localConstants		= std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
 
 				data.pointLightBuffer	= pointLightBuffer;
-				data.lightListBuffer	= lightListBuffer;
+				data.lightListBuffer	= lightLists;
 				data.lightMap			= builder.ReadShaderResource(lightMap);
+				data.lightLists			= builder.ReadShaderResource(lightLists);
 
 				data.drawables			= &drawables;
 
@@ -318,6 +320,10 @@ namespace FlexKit
 					frameGraph.Resources.renderSystem,
 					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					Memory);
+
+				data.Heap.SetSRV(frameGraph.GetRenderSystem(), 0, lightMap);
+				data.Heap.SetStructuredResource(frameGraph.GetRenderSystem(), 1, data.lightListBuffer, sizeof(uint32_t));
+
 				data.Heap.NullFill(frameGraph.Resources.renderSystem);
 			},
 			[=](ForwardDrawPass& data, const FrameResources& Resources, Context* Ctx)
@@ -340,7 +346,6 @@ namespace FlexKit
 				Ctx->SetGraphicsConstantBufferView	(1, data.localConstants,	cameraConstants);
 				Ctx->SetGraphicsConstantBufferView	(3, data.localConstants,	localconstants);
 				Ctx->SetGraphicsConstantBufferView	(4, data.pointLightBuffer);
-				Ctx->SetGraphicsConstantBufferView	(5, data.lightListBuffer);
 				Ctx->NullGraphicsConstantBufferView	(6);
 
 				TriMesh* prevMesh = nullptr;
@@ -381,228 +386,157 @@ namespace FlexKit
 		LighBufferDebugDraw*	drawDebug)
 	{
 		graph.Resources.AddShaderResource(lightMap);
+		graph.Resources.AddShaderResource(lightLists);
 
 		auto& lightBufferUpdate = dispatcher.Add<LighBufferCPUUpdate>(
-			[&](auto& builder, LighBufferCPUUpdate& data)
-			{
-				builder.AddInput(*sceneDescription.transforms);
-				builder.AddInput(*sceneDescription.cameras);
+		[&](auto& builder, LighBufferCPUUpdate& data)
+		{
+			builder.AddInput(*sceneDescription.transforms);
+			builder.AddInput(*sceneDescription.cameras);
 
-				size_t tempBufferSize = KILOBYTE * 512;
-				data.tempMemory.Init((byte*)tempMemory->malloc(tempBufferSize), tempBufferSize);
-				data.viewSplits			= 16;
-				data.splitSpan			= 1.0f / float(data.viewSplits);
-				data.sceneLightCount	= scene.GetPointLightCount();
-				data.lightBuckets		= Vector<Vector<Vector<LightHandle>>>{ tempMemory, data.viewSplits };
-				data.scene				= &scene;
-				data.camera				= camera;
+			const size_t tempBufferSize = KILOBYTE * 1024;
+			const uint2 WH = lightMapWH + uint2( 64 )  - lightMapWH % 64; // add additional padding for upload alignment requirements
 
-				for (size_t itr = 0; itr < data.viewSplits; itr++)
-				{
-					data.lightBuckets.emplace_back(tempMemory);
-					data.lightBuckets.reserve(data.viewSplits);
-				}
+			data.tempMemory.Init((byte*)tempMemory->malloc(tempBufferSize), tempBufferSize);
+			data.viewSplits			= lightMapWH;
+			data.splitSpan			= { 1.0f / float(data.viewSplits[0]), 1.0f / float(data.viewSplits[1]) };
+			data.sceneLightCount	= scene.GetPointLightCount();
+			data.scene				= &scene;
+			data.camera				= camera;
 
+			data.lightMapBuffer		= TextureBuffer(WH, sizeof(uint16_t[2]), tempMemory);
+			data.lightLists			= { data.tempMemory, 0		};
+			data.pointLights		= { data.tempMemory, scene.GetPointLightCount() };
+			data.samples			= { data.tempMemory, 8096	};
+		},
+		[](LighBufferCPUUpdate& data)
+		{
+			const auto frustum		= GetFrustum(data.camera);
+			const auto lights		= data.scene->FindPointLights(frustum, data.tempMemory);
 
-				for (auto& column : data.lightBuckets)
-				{
-					column.reserve(data.viewSplits);
+			const auto cameraConstants	= CameraComponent::GetComponent().GetCameraConstants(data.camera);
+			const auto PV				= XMMatrixToFloat4x4(&cameraConstants.PV);
+			const auto view				= XMMatrixToFloat4x4(&cameraConstants.View);
+			const auto projection		= XMMatrixToFloat4x4(&cameraConstants.Proj);
 
-					for (size_t itr = 0; itr < data.viewSplits; itr++)
-						column.emplace_back(tempMemory);
-				}
-
-				for (size_t itr = 0; itr < data.viewSplits; itr++)
-				{
-					data.lightBuckets.emplace_back(tempMemory);
-					data.lightBuckets.reserve(data.viewSplits);
-				}
-
-				for (auto& column : data.lightBuckets)
-				{
-					column.reserve(data.viewSplits);
-
-					for (size_t itr = 0; itr < data.viewSplits; itr++)
-						column.emplace_back(data.tempMemory);
-				}
-			},
-			[=](LighBufferCPUUpdate& data)
-			{
-				auto cameraConstants	= CameraComponent::GetComponent().GetCameraConstants(data.camera);
-
-				auto f					= GetFrustum(data.camera);
-				auto lights				= data.scene->FindPointLights(f, data.tempMemory);
-
-				auto view				= XMMatrixToFloat4x4(&cameraConstants.View);
-				auto perspective		= XMMatrixToFloat4x4(&cameraConstants.Proj);
-
-				const auto viewSplits	= data.viewSplits;
-				auto& lightBuckets		= data.lightBuckets;
-
-
-				for (auto light : lights) 
-				{
-					auto pos		= data.scene->GetPointLightPosition(light);
-					auto temp1		= view * float4(pos, 1);
-					auto screenCord = perspective * temp1;
-					float w			= screenCord.w;
-					screenCord		= screenCord / w;
-
-					const float r				= data.scene->GetPointLightRadius(light) / 10.0f;
-					const float screenSpaceSize = r / w;
-
-					if (screenCord.x + screenSpaceSize > -1 && screenCord.x - screenSpaceSize < 1 &&
-						screenCord.y + screenSpaceSize > -1 && screenCord.y - screenSpaceSize < 1 &&
-						screenCord.z > 0 )
+			for (auto pointLight : data.scene->PLights.Lights)
+				data.pointLights.push_back(
 					{
-						const float x = (screenCord.x + 1) / 2;
-						const float y = (1 - screenCord.y) / 2;
+						GetPositionW(pointLight.Position),
+						{	pointLight.K, pointLight.I / 10.0f	}
+					});
 
-						const float TileX = min(x * viewSplits, viewSplits - 1);
-						const float TileY = min(y * viewSplits, viewSplits - 1);
 
-						const float tileSpan = 2.0f * min(screenSpaceSize * viewSplits, viewSplits);
+			auto lightMapView	= FlexKit::TextureBufferView<RG16LightMap>(data.lightMapBuffer);
 
-						for (int itr_x = 0; itr_x <= tileSpan + 1; ++itr_x) {
-							const float offsetX = itr_x - tileSpan / 2.0f;
+			const uint2		viewSplits	= data.viewSplits;
+			const float2	stepSize	= { 1.0f / viewSplits[0], 1.0f / viewSplits[1] };
 
-							for (int itr_y = 0; itr_y <= tileSpan + 1; ++itr_y)
-							{
-								const float offsetY = itr_y - tileSpan / 2.0f;
-								const float idx_x	= TileX + offsetX;
-								const float idx_y	= TileY + offsetY;
+			for (auto light : lights) 
+			{
+				auto pos		= data.scene->GetPointLightPosition(light);
+				auto temp1		= view * float4(pos, 1);
+				auto screenCord = projection * temp1;
+				const float w	= screenCord.w;
+				screenCord		= screenCord / w;
 
-								if (idx_x < viewSplits && idx_x >= 0 &&
-									idx_y < viewSplits && idx_y >= 0)
-									lightBuckets[idx_x][idx_y].push_back(light);
-							}
-						}
-					}
-				}
+				const float r				 = data.scene->GetPointLightRadius(light);
+				const float screenSpaceSizeX = abs(r / w) * (float(viewSplits[0]) / float(viewSplits[1]));
+				const float screenSpaceSizeY = screenSpaceSizeX;
+
+				const float x = (screenCord.x + 1);
+				const float y = (1 - screenCord.y);
+
+				const int32_t TileX = x * viewSplits[0] / 2;
+				const int32_t TileY = y * viewSplits[1] / 2;
+
+				const uint32_t XBegin = max(min(TileX - screenSpaceSizeX - 1, viewSplits[0]), 0);
+				const uint32_t YBegin = max(min(TileY - screenSpaceSizeY - 1, viewSplits[1]), 0);
+
+				const uint32_t XEnd = max(min(TileX + screenSpaceSizeX + 1, viewSplits[0]), 0);
+				const uint32_t YEnd = max(min(TileY + screenSpaceSizeY + 1, viewSplits[1]), 0);
+
+				for (uint32_t Yitr = YBegin; Yitr < YEnd; Yitr++)
+					for (uint32_t Xitr = XBegin; Xitr < XEnd; Xitr++)
+						data.samples.push_back({ { Xitr, Yitr }, light });
+			}
+
+			std::sort(data.samples.begin(), data.samples.end(), [&](auto& lhs, auto& rhs) { return lhs.ID(viewSplits) < rhs.ID(viewSplits); });
+
+			size_t	offset		= 0;
+			size_t	prevPixelID	= -1;
+
+			for (auto sample : data.samples)
+			{
+				data.lightLists.push_back(sample.light);
+				lightMapView[sample.pixel].count++;
+
+				if(prevPixelID != sample.ID(viewSplits))
+					lightMapView[sample.pixel].offset = offset;
+
+				prevPixelID = sample.ID(viewSplits);
+				offset++;
+			}
+		});
+
+
+		struct Clear
+		{
+			TextureBuffer* lightMapBuffer = nullptr;
+		};
+
+		auto ClearTask = &dispatcher.Add<Clear>(
+			[&](auto& builder, Clear& data)
+			{
+				builder.AddOutput(lightBufferUpdate);
+				LighBufferCPUUpdate& lightBufferUpdate_ref = *(LighBufferCPUUpdate*)lightBufferUpdate.Data;
+				data.lightMapBuffer = &lightBufferUpdate_ref.lightMapBuffer;
+			},
+			[](Clear& data)
+			{
+				memset(data.lightMapBuffer->Buffer, 0, data.lightMapBuffer->BufferSize());
 			});
-
+		
 
 		auto lightBufferData = &graph.AddNode<LightBufferUpdate>(
-			LightBufferUpdate{},
-			[&](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
-			{
-				builder.AddDataDependency(lightBufferUpdate);
-				auto& lightBufferData	= *reinterpret_cast<LighBufferCPUUpdate*>(lightBufferUpdate.Data);
+		LightBufferUpdate{},
+		[&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
+		{
+			builder.AddDataDependency(lightBufferUpdate);
+			auto& lightBufferData	= *reinterpret_cast<LighBufferCPUUpdate*>(lightBufferUpdate.Data);
 
-				data.lightMapObject		= builder.WriteShaderResource(lightMap);
-				data.lighBufferData		= &lightBufferData;
-				data.pointLightBuffer	= pointLightBuffer;
-				data.lightListBuffer	= lightListBuffer;
+			data.lightMap			= lightMap;
+			data.lightMapObject		= builder.WriteShaderResource(lightMap);
+			data.lightListObject	= builder.WriteShaderResource(lightLists);
+			data.lighBufferData		= &lightBufferData;
+			data.pointLightBuffer	= pointLightBuffer;
+			data.lightListBuffer	= lightLists;
+			data.lightMapUpdate		= ReserveUploadBuffer(data.lighBufferData->lightMapBuffer.Size, graph.GetRenderSystem());
+			data.lightListUpdate	= ReserveUploadBuffer(1024 * 4 * sizeof(uint32_t), graph.GetRenderSystem());
 
-				/*
-				data.lightMapUpdate = MoveTexture2UploadBuffer(
-					reinterpret_cast<char*>(tileMap.begin()),
-					tileMap.size() * sizeof(TileMapEntry),
-					lightMap,
-					graph.Resources);
-				*/
+			BeginNewConstantBuffer(
+				data.pointLightBuffer,
+				graph.Resources);
+		},
+		[](LightBufferUpdate& data, FrameResources& resources, Context* ctx)
+		{
+			auto& lightBufferData	= *data.lighBufferData;
+			auto& lightMapBuffer	= lightBufferData.lightMapBuffer;
+			auto& lightListBuffer	= lightBufferData.lightLists;
+			auto& pointLights		= lightBufferData.pointLights;
 
-				BeginNewConstantBuffer(
-					data.lightListBuffer,
-					graph.Resources);
+			PushConstantBufferData(
+				reinterpret_cast<char*>(pointLights.begin()),
+				pointLights.size() * sizeof(GPUPointLightLayout),
+				data.pointLightBuffer,
+				resources);
 
-				BeginNewConstantBuffer(
-					data.pointLightBuffer,
-					graph.Resources);
-			},
-			[](LightBufferUpdate& data, FrameResources& resources, Context* ctx)
-			{
-				struct pointLightID
-				{
-					uint16_t idx;
-				};
+			MoveTexture2UploadBuffer(data.lightMapUpdate,	lightMapBuffer, lightMapBuffer.BufferSize());
+			MoveTexture2UploadBuffer(data.lightListUpdate,	(byte*)lightListBuffer.begin(), lightListBuffer.size() * sizeof(uint32_t));
 
-
-				struct TileMapEntry
-				{
-					uint16_t lightCount;
-					uint16_t offset;
-				};
-
-
-				auto&		lightBufferData	= *data.lighBufferData;
-				auto&		tempMemory		= lightBufferData.tempMemory;
-
-
-				const auto& scene			= *lightBufferData.scene;
-				const auto	viewSplits		= lightBufferData.viewSplits;
-				auto&		lightBuckets	= lightBufferData.lightBuckets;
-
-
-				Vector<pointLightID>	lightIdsBuffer	{ tempMemory };
-				Vector<TileMapEntry>	tileMap			{ tempMemory };
-
-				// Build Tile Buffer
-				size_t a = 0;
-				for (size_t columnIdx = 0; columnIdx < viewSplits; columnIdx++)
-					for (size_t rowIdx = 0; rowIdx < viewSplits; rowIdx++)
-						a += lightBuckets[columnIdx][rowIdx].size();
-
-				lightIdsBuffer.reserve(a);
-				tileMap.reserve(viewSplits * viewSplits);
-
-				uint16_t offset = 0;
-
-				for (size_t columnIdx = 0; columnIdx < viewSplits; columnIdx++) 
-				{
-					for (size_t rowIdx = 0; rowIdx < viewSplits; rowIdx++)
-					{
-						auto lightCount = lightBuckets[columnIdx][rowIdx].size();
-
-						for (auto& light : lightBuckets[columnIdx][rowIdx])
-							lightIdsBuffer.push_back({ static_cast<uint16_t>(light.INDEX) });
-
-						tileMap.push_back(
-							{ 
-								static_cast<uint16_t>(lightCount), 
-								offset
-							});
-
-						offset += lightCount;
-					}
-				}
-
-
-				struct pointLight
-				{
-					float4 KI;	// Color + intensity in W
-					float4 P;	//
-				};
-
-
-				Vector<pointLight> pointLights{ tempMemory };
-				pointLights.reserve(scene.PLights.size());
-
-
-				for (auto pointLight : scene.PLights.Lights) {
-					pointLights.push_back(
-						{
-							GetPositionW(pointLight.Position),
-							{pointLight.K, pointLight.I / 10.0f}
-						});
-				}
-
-
-
-				PushConstantBufferData(
-					reinterpret_cast<char*>(lightIdsBuffer.begin()),
-					lightIdsBuffer.size() * sizeof(pointLightID),
-					data.lightListBuffer,
-					resources);
-
-				PushConstantBufferData(
-					reinterpret_cast<char*>(pointLights.begin()),
-					pointLights.size() * sizeof(pointLight),
-					data.pointLightBuffer,
-					resources);
-
-				//UploadTexture(data.lightMapUpdate, ctx);
-			});
+			ctx->CopyTexture2D	(data.lightMapUpdate,	data.lightMap,			lightMapBuffer.WH);
+			ctx->CopyBuffer		(data.lightListUpdate,	data.lightListBuffer);
+		});
 
 
 #if 0
