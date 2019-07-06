@@ -329,6 +329,11 @@ namespace FlexKit
 			return FlexKit::GetPositionW(node);
 		}
 
+		void Parent(NodeHandle child)
+		{
+			FlexKit::SetParentNode(node, child);
+		}
+
 		NodeHandle node;
 	};
 

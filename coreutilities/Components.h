@@ -217,14 +217,28 @@ namespace FlexKit
 
 		~GameObject()
 		{
-			for (BehaviorBase* behaviors : behaviors)
-				behaviors->~BehaviorBase();
+			Release();
 		}
 
 
 		void AddBehavior(BehaviorBase* behavior)
 		{
 			behaviors.push_back(behavior);
+		}
+
+
+		void AddBehavior(BehaviorBase& behavior)
+		{
+			behaviors.push_back(&behavior);
+		}
+
+
+		void Release()
+		{
+			for (BehaviorBase* behaviors : behaviors)
+				behaviors->~BehaviorBase();
+
+			behaviors.clear();
 		}
 
 
@@ -254,7 +268,7 @@ namespace FlexKit
 
 
 	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
-	bool hasSources(GameObject& go)
+	bool hasBehaviors(GameObject& go)
 	{
 		using TY_COMPONENT = typename std::remove_pointer<TY_COMPONENT_ARG>::type;
 		static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
@@ -262,38 +276,38 @@ namespace FlexKit
 		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
 			return go.hasBehavior(TY_COMPONENT::GetComponentID());
 		else
-			return go.hasBehavior(TY_COMPONENT::GetComponentID()) && hasSources<TY_PACKED_ARGS...>(go);
+			return go.hasBehavior(TY_COMPONENT::GetComponentID()) && hasBehaviors<TY_PACKED_ARGS...>(go);
 	}
 
 
 	template<typename TY_COMPONENT>
-	auto GetSource(GameObject& go) -> std::tuple<TY_COMPONENT*>
+	auto GetBehavior(GameObject& go)
 	{
-		return { static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID())) };
+		return static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID()));
 	}
 
 	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
-	auto GetSources(GameObject& go)
+	auto GetBehaviors(GameObject& go)
 	{
 		using TY_COMPONENT = typename std::remove_pointer<TY_COMPONENT_ARG>::type;
 		static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
 
 		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
-			return GetSource<TY_COMPONENT>(go);
+			return std::tuple<TY_COMPONENT*>{ GetBehavior<TY_COMPONENT>(go) };
 		else
 			return std::tuple_cat(
-				GetSource<TY_COMPONENT>(go),
-				GetSources<TY_PACKED_ARGS...>(go) );
+				std::tuple<TY_COMPONENT*>{ GetBehavior<TY_COMPONENT>(go) },
+				GetBehaviors<TY_PACKED_ARGS...>(go) );
 	}
 
 
 	template<typename ... TY_PACKED_ARGS, typename FN>
 	bool Execute(GameObject& go, FN fn)
 	{
-		if (!hasSources<TY_PACKED_ARGS...>(go))
+		if (!hasBehaviors<TY_PACKED_ARGS...>(go))
 			return false;
 
-		std::apply(fn, GetSources<TY_PACKED_ARGS...>(go));
+		std::apply(fn, GetBehaviors<TY_PACKED_ARGS...>(go));
 
 		return true;
 	}
@@ -324,7 +338,7 @@ namespace FlexKit
 
 
 	template<typename FN>
-	bool ExecuteAuto(GameObject& go, FN& fn)
+	bool Apply(GameObject& go, FN& fn)
 	{
 		return ExecuterProxy<FN>::run(go, fn);
 	}
@@ -498,7 +512,7 @@ namespace FlexKit
 		go.AddBehavior(&allocator->allocate<SampleBehavior>());
 		go.AddBehavior(&allocator->allocate<SampleBehavior2>());
 
-		ExecuteAuto(go,
+		Apply(go,
 			[](	// Function Sources
 				SampleBehavior*		sample1,
 				SampleBehavior2*	sample2,
@@ -513,7 +527,7 @@ namespace FlexKit
 
 		go.AddBehavior(&allocator->allocate<SampleBehavior3>());
 
-		ExecuteAuto(go,
+		Apply(go,
 			[](	// Function Sources
 				SampleBehavior*		sample1,
 				SampleBehavior2*	sample2,

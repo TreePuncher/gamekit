@@ -13,6 +13,74 @@
 #include "BaseState.h"
 
 
+class thirdPersonCamera final
+{
+public:
+	thirdPersonCamera(iAllocator* IN_allocator) : allocator{ IN_allocator }
+	{
+		// Add behaviors
+		gameObject.AddBehavior(allocator->allocate<CameraBehavior>());
+		gameObject.AddBehavior(allocator->allocate<SceneNodeBehavior<>>());
+
+		// Tie nodes together
+		Apply(gameObject, []
+			(	CameraBehavior*			camera,
+				SceneNodeBehavior<>*	node)
+			{
+				auto cameraNode = camera->GetCameraNode();
+				node->Parent(cameraNode);
+			});
+	}
+
+	~thirdPersonCamera()
+	{
+		auto node	= &GetNode();
+		auto camera	= &GetCamera();
+		gameObject.Release();
+		allocator->release(node);
+		allocator->release(camera);
+	}
+
+	SceneNodeBehavior<>&	GetNode()	{ return *GetBehavior<SceneNodeBehavior<>>(gameObject); }
+	CameraBehavior&			GetCamera() { return *GetBehavior<CameraBehavior>(gameObject);		}
+
+	operator GameObject&			() { return gameObject; }
+	operator SceneNodeBehavior<>&	() { return *GetBehavior<SceneNodeBehavior<>>(gameObject);	}
+	operator CameraBehavior&		() { return *GetBehavior<CameraBehavior>(gameObject);		}
+
+private:
+	GameObject	gameObject;
+	iAllocator* allocator;
+};
+
+
+class thirdPersonCamera2 final : 
+	public CameraBehavior,
+	public SceneNodeBehavior<>
+{
+public:
+	thirdPersonCamera2()
+	{
+		// Add behaviors
+		gameObject.AddBehavior((CameraBehavior*)this);
+		gameObject.AddBehavior((SceneNodeBehavior<>*)this);
+
+		// Tie nodes together
+		Apply(gameObject, []
+			(	CameraBehavior*			camera,
+				SceneNodeBehavior<>*	node)
+			{
+				auto cameraNode = camera->GetCameraNode();
+				node->Parent(cameraNode);
+			});
+	}
+
+	operator GameObject& () { return gameObject; }
+private:
+	GameObject gameObject;
+};
+
+
 class PlayState : public FrameworkState
 {
 public:

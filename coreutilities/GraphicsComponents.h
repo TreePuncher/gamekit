@@ -134,13 +134,13 @@ namespace FlexKit
 
 		NodeHandle GetCameraNode()
 		{
-			return GetCameraNode(camera);
+			return GetComponent().GetCameraNode(camera);
 		}
 
 
 		float GetCameraFov()
 		{
-			return GetCameraConstants(camera);
+			return GetComponent().GetCameraFOV();
 		}
 
 
