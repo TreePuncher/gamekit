@@ -48,6 +48,9 @@
     <ClInclude Include="PhysicsUtilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SceneResource.cpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -56,19 +59,7 @@
     <ClCompile Include="FlexKitResourceCompiler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ResourceUtilities.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="TTFontLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MeshProcessing.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="MetaData.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Scenes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Common.cpp">
@@ -77,7 +68,22 @@
     <ClCompile Include="Animation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="SceneResource.h">
+      <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshProcessing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MetaData.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="PhysicsUtilities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ResourceUtilities.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scenes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

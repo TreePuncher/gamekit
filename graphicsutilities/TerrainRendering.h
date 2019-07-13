@@ -409,7 +409,7 @@ namespace FlexKit
 
 		void SetRegionDimensions(size_t width)
 		{
-			// TODO: propogate changes to chilren
+			// TODO: propagate changes to chilren
 			root.patch.NEPoint = {  int(width) / 2,	 int(width) / 2 };
 			root.patch.SWPoint = { -int(width) / 2, -int(width) / 2 };
 		}

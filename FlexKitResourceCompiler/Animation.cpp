@@ -238,7 +238,7 @@ Skeleton_MetaData* GetSkeletonMetaData(const MetaDataList& metaDatas)
 /************************************************************************************************/
 
 
-FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, const std::string& parentID, const MetaDataList& MD)
+SkeletonResource_ptr LoadSkeletonResource(FbxMesh* M, const std::string& parentID, const MetaDataList& MD)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
@@ -255,22 +255,21 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, const std::string& parentID, const M
 	FindAllJoints		(Joints, Root);
 	GetJointTransforms	(Joints, M);
 
-	Skeleton& skeleton = *(new Skeleton);
-	skeleton.InitiateSkeleton(SystemAllocator, Joints.size());
+	auto skeleton = std::make_unique<SkeletonResource>();
 
 	for (auto J : Joints)
-		skeleton.AddJoint(J.Joint, J.Inverse);
+		skeleton->AddJoint(J.Joint, J.Inverse);
 	
 	const std::string ID = SkeletonInfo->SkeletonID;
-	skeleton.guid  = SkeletonInfo->SkeletonGUID;
+	skeleton->guid  = SkeletonInfo->SkeletonGUID;
 
 	for (size_t I = 0; I < Joints.size(); ++I)
 	{
-		size_t ID_Length = strnlen_s(skeleton.Joints[I].mID, 64) + 1;
+		size_t ID_Length = strnlen_s(skeleton->joints[I].mID, 64) + 1;
 		char* ID		 = (char*)SystemAllocator.malloc(ID_Length);
 
-		strcpy_s(ID, ID_Length, skeleton.Joints[I].mID);
-		skeleton.Joints[I].mID = ID;
+		strcpy_s(ID, ID_Length, skeleton->joints[I].mID);
+		skeleton->joints[I].mID = ID;
 	}
 
 	CutList Cuts;
@@ -281,36 +280,35 @@ FlexKit::Skeleton* LoadSkeleton(FbxMesh* M, const std::string& parentID, const M
 		size_t Begin	= Cut.T_Start / (1.0f / 60.0f);
 		size_t End		= Cut.T_End / (1.0f / 60.0f);
 
-		AnimationClip Clip;
-		Clip.Skeleton	= &skeleton;
+		AnimationClipResource Clip;
 		Clip.FPS		= 60;
-		Clip.FrameCount	= End - Begin;
 		Clip.mID		= Cut.ID;
 		Clip.guid		= Cut.guid;
 		Clip.isLooping	= false;
-		Clip.Frames		= (AnimationClip::KeyFrame*)SystemAllocator._aligned_malloc(Clip.FrameCount * sizeof(AnimationClip::KeyFrame));
 
-		for (size_t I = 0; I < Clip.FrameCount; ++I)
+		size_t clipFrameCount = Cut.T_End - Cut.T_Start;
+
+		for (size_t I = 0; I < clipFrameCount; ++I)
 		{
-			Clip.Frames[I].Joints		= (JointHandle*)SystemAllocator._aligned_malloc(sizeof(JointHandle) * Joints.size());
-			Clip.Frames[I].Poses		= (JointPose*)SystemAllocator._aligned_malloc(sizeof(JointPose)	 * Joints.size());
-			Clip.Frames[I].JointCount	= Joints.size();
+			AnimationKeyFrame keyFrame;
+			keyFrame.FrameNumber = 1;
 
 			for (size_t II = 0; II < Joints.size(); ++II)
 			{
-				Clip.Frames[I].Joints[II]	= JointHandle(II);
-				
-				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(skeleton.JointPoses[II]));
+				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(skeleton->jointPoses[II]));
 				auto Pose					= GetPoseTransform(Joints[II].Animation.Poses[I + Begin].JPose);
 				auto LocalPose				= GetPose(Pose * Inverse);
-				Clip.Frames[I].Poses[II]	= LocalPose;
+
+				keyFrame.AddJointPose(JointHandle(II), LocalPose);
 			}
+
+			Clip.AddKeyFrame(keyFrame);
 		}
 
-		skeleton.AddAnimationClip(SystemAllocator, Clip);
+		skeleton->AddAnimationClip(Clip);
 	}
 
-	return &skeleton;
+	return skeleton;
 }
 
 

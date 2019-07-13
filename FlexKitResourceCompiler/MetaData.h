@@ -63,34 +63,9 @@ namespace FlexKit
 			EMR_NONE,
 		};
 
-		void SetID(char* Str, size_t StrSize)
-		{
-			memset(ID, 0x00, ID_LENGTH);
-
-		
-			strncpy(ID, Str, StrSize);
-
-			for (auto I = StrSize; I > 0; --I)
-			{
-				if (ID[I] == ' ')
-				{
-					ID[I] = '\0';
-					StrSize--;
-				}
-				else if (ID[I] == '\n')
-				{
-					ID[I] = '\0';
-					StrSize--;
-				}
-			}
-			ID[StrSize] = '\0';
-			size = StrSize;
-		}
-
-		size_t					size;
 		EMETA_RECIPIENT_TYPE	UserType;
 		EMETAINFOTYPE			type;
-		char					ID[ID_LENGTH];	// Specifies the Asset that uses the meta data
+		std::string				ID;	// Specifies the Asset that uses the meta data
 	};
 
 	typedef std::vector<MetaData*> MetaDataList;
@@ -119,11 +94,10 @@ namespace FlexKit
 		Skeleton_MetaData(){
 			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON;
 			type		= MetaData::EMETAINFOTYPE::EMI_SKELETAL;
-			size		= 0;
 		}
 
-		char	SkeletonID[ID_LENGTH];
-		GUID_t	SkeletonGUID;			
+		std::string	SkeletonID;
+		GUID_t		SkeletonGUID;			
 	};
 
 
@@ -135,13 +109,12 @@ namespace FlexKit
 		AnimationClip_MetaData() {
 			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
 			type	 = MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP;
-			size	 = 0;
 		}
 
-		char	ClipID[ID_LENGTH];// Mesh Name
-		double	T_Start;
-		double	T_End;
-		GUID_t	guid;
+		std::string	ClipID;// Mesh Name
+		double		T_Start;
+		double		T_End;
+		GUID_t		guid;
 	};
 
 
@@ -153,10 +126,9 @@ namespace FlexKit
 		AnimationEvent_MetaData() {
 			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
 			type	 = MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT;
-			size	 = 0;
 		}
 
-		char		ClipID[ID_LENGTH];//
+		std::string	ClipID;//
 		uint32_t	EventID;//
 		double		EventT;// Location of Event relative to Beginning of Clip
 	};
@@ -170,12 +142,11 @@ namespace FlexKit
 		Mesh_MetaData(){
 			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH;
 			type		= MetaData::EMETAINFOTYPE::EMI_MESH;
-			size		= 0;
 		}
 
-		GUID_t	guid;
-		GUID_t	ColliderGUID;
-		char	MeshID[ID_LENGTH];//
+		GUID_t		guid;
+		GUID_t		ColliderGUID;
+		std::string MeshID;//
 	};
 
 
@@ -187,14 +158,13 @@ namespace FlexKit
 		Scene_MetaData(){
 			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
 			type		= MetaData::EMETAINFOTYPE::EMI_SCENE;
-			size		= 0;
-			SceneIDSize = 0;
 			Guid		= INVALIDHANDLE;
 		}
 
-		GUID_t	Guid;
-		char	SceneID		[64];
-		size_t	SceneIDSize;
+		GUID_t		Guid;
+		std::string	SceneID;
+
+		MetaDataList sceneMetaData;
 	};
 
 
@@ -206,14 +176,11 @@ namespace FlexKit
 		Collider_MetaData(){
 			UserType		= MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
 			type			= MetaData::EMETAINFOTYPE::EMI_COLLIDER;
-			size			= 0;
-			ColliderIDSize	= 0;
 			Guid			= INVALIDHANDLE;
 		}
 
-		GUID_t	Guid;
-		char	ColliderID		[64];
-		size_t	ColliderIDSize;
+		GUID_t		Guid;
+		std::string	ColliderID;
 	};
 
 
@@ -225,18 +192,13 @@ namespace FlexKit
 		TerrainCollider_MetaData() {
 			UserType	      = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
 			type		      = MetaData::EMETAINFOTYPE::EMI_TERRAINCOLLIDER;
-			size              = 0;
-			ColliderIDSize    = 0;
-			BitmapFileLocSize = 0;
 			Guid              = INVALIDHANDLE;
 		}
 
 
-		GUID_t	Guid;
-		char	ColliderID[64];
-		size_t	ColliderIDSize;
-		char	BitmapFileLoc[256];
-		size_t	BitmapFileLocSize;
+		GUID_t		Guid;
+		std::string	ColliderID;
+		std::string	BitmapFileLoc;
 
 	};
 
@@ -247,10 +209,8 @@ namespace FlexKit
 	struct Font_MetaData : public MetaData
 	{
 		GUID_t	Guid;
-		char	FontID[64];
-		size_t	FontIDSize;
-
-		char FontFile[256];
+		std::string	FontID;
+		std::string	FontFile;
 	};
 
 
@@ -262,7 +222,6 @@ namespace FlexKit
 		TextureSet_MetaData() {
 			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
 			type     = MetaData::EMETAINFOTYPE::EMI_TEXTURESET;
-			size     = 0;
 			Guid     = 0;
 			memset(&Textures, 0, sizeof(Textures));
 		}
@@ -284,7 +243,8 @@ namespace FlexKit
 	Mesh_MetaData*					GetMeshMetaData		(MetaDataList& relatedMetaData);
 
 	void							PrintMetaDataList	(const MetaDataList& MD);
-	/************************************************************************************************/
-}
+
+
+}	/************************************************************************************************/
 
 #endif

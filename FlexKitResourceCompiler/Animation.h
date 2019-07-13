@@ -28,8 +28,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "Common.h"
-#include "MeshProcessing.h"
-
+#include "MetaData.h"
 
 /************************************************************************************************/
 
@@ -68,15 +67,136 @@ struct JointInfo
 
 struct AnimationCut
 {
-	double	T_Start;
-	double	T_End;
-	char*	ID;
-	GUID_t	guid;
+	double		T_Start;
+	double		T_End;
+	std::string	ID;
+	GUID_t		guid;
 };
 
 
-typedef std::vector<JointInfo>		JointList;
-typedef std::vector<AnimationCut>	CutList;
+struct SkeletonResource;
+
+using JointList				= std::vector<JointInfo>;
+using CutList				= std::vector<AnimationCut>;
+using SkeletonResource_ptr	= std::shared_ptr<SkeletonResource>;
+
+
+struct AnimationKeyFrame
+{
+	size_t			FrameNumber = 0;
+	size_t			JointCount = 0;
+
+	void AddJointPose(JointHandle joint, JointPose pose)
+	{
+		joints.push_back(joint);
+		poses.push_back(pose);
+	}
+
+	bool hasJoint(JointHandle joint)
+	{
+		return joints.end() != 
+			std::find_if(
+				joints.begin(),
+				joints.end(),
+				[&](auto ajoint)
+				{
+					return ajoint == joint;
+				});
+	}
+
+	std::vector<JointHandle>	joints;
+	std::vector<JointPose>		poses;
+};
+
+
+struct AnimationClipResource : public iResource
+{
+	ResourceBlob CreateBlob()
+	{
+		FK_ASSERT(0);
+
+		return {};
+	}
+	
+
+	void AddKeyFrame(AnimationKeyFrame keyFrame)
+	{
+		Frames.push_back(keyFrame);
+	}
+
+
+	std::vector<AnimationKeyFrame>	Frames;
+	uint32_t						FPS				= 0;
+	size_t							guid			= 0;
+	size_t							skeletonGuid	= 0;
+	std::string						mID				= nullptr;
+	bool							isLooping		= false;
+};
+
+
+struct SkeletonResource : public iResource
+{
+	ResourceBlob CreateBlob() override
+	{
+		FK_ASSERT(0);
+
+		return {};
+	}
+
+
+	Skeleton CreateSkeletonProxy() // Creates a Skeleton that accesses the Values seen here
+	{
+		Skeleton skeleton;
+
+		return skeleton;
+	}
+
+
+	JointHandle	FindJoint			(const char* id)
+	{
+		for (size_t itr = 0; itr < joints.size(); itr++)
+		{
+			auto& joint = joints[itr];
+
+			if (!strncmp(joint.mID, id, 32))
+				return JointHandle(itr);
+		}
+	}
+
+
+	void AddAnimationClip(AnimationClipResource clip)
+	{
+		animations.push_back(clip);
+	}
+
+
+	void AddJoint(Joint joint, XMMATRIX IPose)
+	{
+		IPoses.push_back(IPose);
+		joints.push_back(joint);
+		jointIDs.push_back("");
+
+		JointCount++;
+	}
+
+
+	void SetJointID(JointHandle joint, std::string& ID)
+	{
+		jointIDs[joint] = ID;
+	}
+
+
+	size_t								JointCount;
+	GUID_t								guid;
+
+	std::vector<DirectX::XMMATRIX>		IPoses; // Global Inverse Space Pose
+	std::vector<Joint>					joints;
+	std::vector<std::string>			jointIDs;
+	std::vector<JointPose>				jointPoses;
+	std::vector<AnimationClipResource>	animations;
+};
+
+
 
 
 /************************************************************************************************/
@@ -85,14 +205,14 @@ typedef std::vector<AnimationCut>	CutList;
 fbxsdk::FbxNode*	FindSkeletonRoot	( fbxsdk::FbxMesh* M );
 void				FindAllJoints		( JointList& Out, FbxNode* N, size_t Parent = 0xFFFF );
 
-void				GetAnimationCuts			( CutList* out, MetaDataList& MD, const std::string& id);
-JointAnimation		GetJointAnimation			( FbxNode* N );
-JointHandle			GetJoint					( static_vector<JointInfo, 1024>& Out, const char* ID );
-void				GetJointTransforms			( JointList& Out, FbxMesh* M, iAllocator* MEM );
-FbxAMatrix			GetGeometryTransformation	( FbxNode* inNode );	
-Skeleton_MetaData*	GetSkeletonMetaData			( const MetaDataList& relatedMetaData);
+void						GetAnimationCuts			( CutList* out, MetaDataList& MD, const std::string& id);
+JointAnimation				GetJointAnimation			( FbxNode* N );
+JointHandle					GetJoint					( static_vector<JointInfo, 1024>& Out, const char* ID );
+void						GetJointTransforms			( JointList& Out, FbxMesh* M, iAllocator* MEM );
+FbxAMatrix					GetGeometryTransformation	( FbxNode* inNode );	
+Skeleton_MetaData*			GetSkeletonMetaData			( const MetaDataList& relatedMetaData);
 
-FlexKit::Skeleton*	LoadSkeleton				( FbxMesh* M, const char* ParentID = nullptr, MetaDataList& related = MetaDataList{});
+SkeletonResource_ptr		LoadSkeletonResource		( FbxMesh* M, const char* ParentID = nullptr, MetaDataList& related = MetaDataList{});
 
 
 /************************************************************************************************/

@@ -40,7 +40,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DrawablePoseState* CreatePoseState(Drawable* E, iAllocator* MEM)
+	DrawablePoseState* CreatePoseState(Drawable* E, iAllocator* allocator)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
@@ -51,10 +51,9 @@ namespace FlexKit
 
 		size_t JointCount = Mesh->Skeleton->JointCount;
 
-		auto New_EAS = (DrawablePoseState*)MEM->_aligned_malloc(sizeof(DrawablePoseState));
-		New_EAS->Resource		= FrameBufferedResource();
-		New_EAS->Joints			= (JointPose*)MEM->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
-		New_EAS->CurrentPose	= (XMMATRIX*)MEM->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
+		auto New_EAS = (DrawablePoseState*)		allocator->_aligned_malloc(sizeof(DrawablePoseState));
+		New_EAS->Joints			= (JointPose*)	allocator->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
+		New_EAS->CurrentPose	= (XMMATRIX*)	allocator->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
 		New_EAS->JointCount		= JointCount;
 		New_EAS->Sk				= Mesh->Skeleton;
 		New_EAS->Dirty			= true; // Forces First Upload
@@ -79,34 +78,8 @@ namespace FlexKit
 
 	bool InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState)
 	{
-		bool ReturnState = false;
 		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint) * 2;
-		ShaderResourceBuffer NewResource = CreateShaderResource(RS, ResourceSize, "POSESTATE");
-		
-		if (NewResource)
-		{
-			ReturnState = true;
-
-			UpdateResourceByTemp(RS, &NewResource, InitialState, ResourceSize, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-			EAS->Resource = NewResource;
-		}
-		else
-			NewResource.Release();
-
-		return (ReturnState);
-	}
-
-
-	/************************************************************************************************/
-
-
-
-	void DelayedRelease(RenderSystem* RS, DrawablePoseState* EPS)
-	{
-		for (size_t itr = 0; itr < EPS->Resource.BufferCount; ++itr) {
-			Push_DelayedRelease(RS, EPS->Resource[itr]);
-			EPS->Resource[itr] = nullptr;
-		}
+		return true;
 	}
 
 
@@ -137,7 +110,6 @@ namespace FlexKit
 		ASM->StateCount			= 0;
 		ASM->MaxConditionCount	= 16;
 		ASM->MaxStateCount		= 16;
-		ASM->TargetDrawable		= Target;
 
 		for (auto& S : ASM->States) {
 			S = SetDefaultState();
@@ -230,6 +202,7 @@ namespace FlexKit
 
 	void UpdateASM( double dt, AnimationStateMachine* ASM, iAllocator* TempMemory, iAllocator* Memory, GraphicScene* Scene)
 	{
+		/*
 		// Set all States to False
 		for (auto& S : ASM->States) 
 			S.Active = true;
@@ -361,6 +334,7 @@ namespace FlexKit
 				}
 			}
 		}
+		*/
 	}
 
 
@@ -782,14 +756,15 @@ namespace FlexKit
 		for (size_t I = 0; I < S->JointCount; ++I)
 			Out[I] = { S->IPose[I], PS->CurrentPose[I] };
 
-		if (!PS->Resource)
+		FK_ASSERT(0);
+		//if (!PS->Resource)
 		{	// Create Animation State with Data as Initial
-			FlexKit::PoseState_DESC	Desc = { S->JointCount };
-			auto RES = InitiatePoseState(RS, PS, Desc, Out);
+			//FlexKit::PoseState_DESC	Desc = { S->JointCount };
+			//auto RES = InitiatePoseState(RS, PS, Desc, Out);
 		}
-		else
+		//else
 		{
-			UpdateResourceByTemp(RS, &PS->Resource, Out, sizeof(VShaderJoint) * S->JointCount, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+			//UpdateResourceByTemp(RS, &PS->Resource, Out, sizeof(VShaderJoint) * S->JointCount, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		}
 	}
 

@@ -119,18 +119,15 @@ struct Compiler
 };
 
 
-typedef std::vector<TriMeshResource> GeometryList;
-
-
 /************************************************************************************************/
 
 
-TriMeshResource* FindGeoByID(GeometryList& geometry, size_t ID)
+MeshResource_ptr FindGeoByID(GeometryList& geometry, size_t ID)
 {
 	for (auto& I : geometry)
 	{
-		if (I.TriMeshID == ID)
-			return &I;
+		if (I->TriMeshID == ID)
+			return I;
 	}
 
 	return nullptr;
@@ -148,12 +145,12 @@ struct CompiledMeshInfo
 /************************************************************************************************/
 
 
-GeometryList CompileAllGeometry(
+void CompileAllGeometry(
+	GeometryList&			geometry,
 	fbxsdk::FbxNode*		node, 
-	FBXIDTranslationTable*	Table, 
+	FBXIDTranslationTable&	Table, 
 	MetaDataList&			MD			= MetaDataList{}, 
-	bool					subDiv		= false, 
-	GeometryList&			geometry	= GeometryList{})
+	bool					subDiv		= false)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
@@ -166,8 +163,8 @@ GeometryList CompileAllGeometry(
 	auto AttributeCount = node->GetNodeAttributeCount();
 	for (int itr = 0; itr < AttributeCount; ++itr)
 	{
-		auto Attr = node->GetNodeAttributeByIndex(itr);
-		auto nodeName = node->GetName();
+		auto Attr		= node->GetNodeAttributeByIndex(itr);
+		auto nodeName	= node->GetName();
 
 		switch (Attr->GetAttributeType())
 		{
@@ -191,43 +188,33 @@ GeometryList CompileAllGeometry(
 			if(!RelatedMetaData.size())
 				LoadMesh = true;
 
-			auto MeshInfo = FlexKit::GetMeshMetaData(RelatedMetaData);
-
+			auto MeshInfo	= FlexKit::GetMeshMetaData(RelatedMetaData);
 			auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
-			size_t NameLen	= strlen( Name );
 
-			if (!FBXIDPresentInTable(Mesh->GetUniqueID(), *Table))
+			if (!FBXIDPresentInTable(Mesh->GetUniqueID(), Table))
 			{
-				if (!NameLen) 
-				{
-					Name = node->GetName();
-					NameLen	= strlen( Name );
-				}
+				Name = node->GetName();
 
-				TriMeshResource	out;
-				memset(&out, 0, sizeof(out));
-				std::string ID;
-				ID = Name;
-
-				auto Res = CompileMeshResource(out, Mesh, false, ID, MD);
+				MeshResource_ptr resource = CompileMeshResource(Mesh, Name, MD, false);
 				
-				if(MeshInfo){
-					out.TriMeshID	= MeshInfo->guid;
-					out.ID			= MeshInfo->MeshID;
+				if(MeshInfo)
+				{
+					resource->TriMeshID		= MeshInfo->guid;
+					resource->ID			= MeshInfo->MeshID;
 				}
 				else
 				{
-					out.TriMeshID = CreateRandomID();
-					out.ID = Mesh->GetName();
+					resource->TriMeshID		= CreateRandomID();
+					resource->ID			= Mesh->GetName();
 				}
 
-					Table->push_back({ Mesh->GetUniqueID(), out.TriMeshID });
+				Table.push_back({ Mesh->GetUniqueID(), resource->TriMeshID });
 
 	#if USING(RESCOMPILERVERBOSE)
 				std::cout << "Compiled Resource: " << Name << "\n";
 	#endif
 
-				geometry.push_back(out);
+				geometry.push_back(resource);
 			}
 		}	break;
 		}
@@ -235,20 +222,7 @@ GeometryList CompileAllGeometry(
 
 	size_t NodeCount = node->GetChildCount();
 	for(int itr = 0; itr < NodeCount; ++itr)
-		CompileAllGeometry(node->GetChild(itr), Table, MD, subDiv, geometry);
-
-	return geometry;
-}
-
-
-/************************************************************************************************/
-
-
-template<typename TY, size_t ALIGNMENT = 0x40>
-TY& _AlignedAllocate()
-{
-	TY& V = new(_aligned_malloc(sizeof(TY, ALIGNMENT))) TY();
-	return V;
+		CompileAllGeometry(geometry, node->GetChild(itr), Table, MD, subDiv);
 }
 
 
@@ -262,78 +236,6 @@ size_t CalculateTriResourceMeshSize(TriMeshResource* TriMesh)
 		Size += B ? B->GetBufferSizeRaw() : 0;
 
 	return Size;
-}
-
-
-/************************************************************************************************/
-
-
-void FillTriMeshBlob(TriMeshResourceBlob* out, TriMeshResource* Mesh)
-{
-	size_t BufferPosition = 0;
-	out->GUID			= Mesh->TriMeshID;
-	out->HasAnimation	= Mesh->AnimationData > 0;
-	out->HasIndexBuffer = true;
-	out->BufferCount	= 0;
-	out->SkeletonGuid	= Mesh->SkeletonGUID;
-	out->Type			= EResourceType::EResource_TriMesh;
-
-	out->IndexCount = Mesh->IndexCount;
-	out->Info.minx  = Mesh->Info.min.x;
-	out->Info.miny  = Mesh->Info.min.y;
-	out->Info.minz  = Mesh->Info.min.z;
-	out->Info.maxx  = Mesh->Info.max.x;
-	out->Info.maxy  = Mesh->Info.max.y;
-	out->Info.maxz  = Mesh->Info.max.z;
-	out->Info.r	    = Mesh->Info.r;
-	
-	memcpy(out->BS, &Mesh->BS, sizeof(BoundingSphere));
-	out->AABB[0] = Mesh->AABB.BottomLeft[0];
-	out->AABB[1] = Mesh->AABB.BottomLeft[1];
-	out->AABB[2] = Mesh->AABB.BottomLeft[2];
-	out->AABB[3] = Mesh->AABB.TopRight[0];
-	out->AABB[4] = Mesh->AABB.TopRight[1];
-	out->AABB[5] = Mesh->AABB.TopRight[2];
-
-	if(Mesh->ID)
-		strcpy_s(out->ID, ID_LENGTH, Mesh->ID);
-
-	for (size_t I = 0; I < 16; ++I)
-	{
-		if (Mesh->Buffers[I])
-		{
-			memcpy(out->Memory + BufferPosition, Mesh->Buffers[I]->GetBuffer(), Mesh->Buffers[I]->GetBufferSizeRaw());
-
-			auto View = Mesh->Buffers[I];
-			out->Buffers[I].Begin  = BufferPosition;
-			out->Buffers[I].Format = (size_t)Mesh->Buffers[I]->GetElementSize();
-			out->Buffers[I].Type   = (size_t)Mesh->Buffers[I]->GetBufferType();
-			out->Buffers[I].size   = (size_t)Mesh->Buffers[I]->GetBufferSizeRaw();
-			BufferPosition		  += Mesh->Buffers[I]->GetBufferSizeRaw();
-
-			out->BufferCount++;
-		}
-	}
-}
-
-
-/************************************************************************************************/
-
-
-Resource* CreateTriMeshResourceBlob(TriMeshResource* Mesh, iAllocator* MemoryOut)
-{
-	size_t BlobSize          = CalculateTriResourceMeshSize(Mesh);
-	BlobSize				+= sizeof(TriMeshResourceBlob);
-	char* Blob               = (char*)MemoryOut->_aligned_malloc(BlobSize);
-	TriMeshResourceBlob* Res = (TriMeshResourceBlob*)Blob;
-
-
-	memset(Blob, 0, BlobSize);
-	Res->ResourceSize = BlobSize;
-
-	FillTriMeshBlob(Res, Mesh);
-
-	return (Resource*)Res;
 }
 
 
@@ -514,139 +416,6 @@ public :
 };
 
 
-/************************************************************************************************/
-
-
-ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker, FBXIDTranslationTable* Table, bool LoadSkeletalData = false, MetaDataList& MD = MetaDataList{}, bool subDivEnabled = false)
-{
-	ResourceList ResourcesFound;
-	
-	auto sceneGeometry = CompileAllGeometry(S->GetRootNode(), Table, MD, subDivEnabled);
-
-#if USING(RESCOMPILERVERBOSE)
-	std::cout << "CompileAllGeometry Compiled " << sceneGeometry.size() << " Resources\n";
-#endif
-	if (sceneGeometry.size())
-	{
-		for (auto& geometry : sceneGeometry)
-		{
-			ResourcesFound.push_back(CreateTriMeshResourceBlob(&geometry, SystemAllocator));
-
-			if (geometry.Skeleton) {
-				auto skeletonBlob = CreateSkeletonResourceBlob(geometry.Skeleton, SystemAllocator);
-				ResourcesFound.push_back(skeletonBlob);
-
-				auto CurrentClip	= geometry.Skeleton->Animations;
-				auto SkeletonID		= skeletonBlob->GUID;
-					
-				while (true)
-				{
-					if (CurrentClip)
-					{
-						auto blob = CreateSkeletalAnimationResourceBlob(&CurrentClip->Clip, SkeletonID, SystemAllocator);
-						ResourcesFound.push_back(blob);
-					} else
-						break;
-					CurrentClip = CurrentClip->Next;
-				}
-			}
-
-			auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, geometry.ID);
-
-			for(size_t J = 0; J < RelatedMD.size(); ++J)
-			{
-				switch (RelatedMD[J]->type)
-				{
-				case MetaData::EMETAINFOTYPE::EMI_COLLIDER:
-				{
-					if (!Cooker)
-						continue;
-
-					Collider_MetaData*	ColliderInfo	= (Collider_MetaData*)RelatedMD[J];
-					ColliderStream		Stream			= ColliderStream(SystemAllocator, 2048);
-
-					using physx::PxTriangleMeshDesc;
-					PxTriangleMeshDesc meshDesc;
-					meshDesc.points.count     = geometry.Buffers[0]->GetBufferSizeUsed();
-					meshDesc.points.stride    = geometry.Buffers[0]->GetElementSize();
-					meshDesc.points.data      = geometry.Buffers[0]->GetBuffer();
-
-					uint32_t* Indexes = (uint32_t*)SystemAllocator._aligned_malloc(geometry.Buffers[15]->GetBufferSizeRaw());
-
-					{
-						struct Tri {
-							uint32_t Indexes[3];
-						};
-
-						auto Proxy		= geometry.Buffers[15]->CreateTypedProxy<Tri>();
-						size_t Position = 0;
-						auto itr		= Proxy.begin();
-						auto end		= Proxy.end();
-
-						while(itr < end) {
-							Indexes[Position + 0] = (*itr).Indexes[1];
-							Indexes[Position + 2] = (*itr).Indexes[2];
-							Indexes[Position + 1] = (*itr).Indexes[0];
-							Position += 3;
-							itr++;
-						}
-					}
-
-					auto IndexBuffer		  = geometry.IndexBuffer_Idx;
-					meshDesc.triangles.count  = geometry.IndexCount / 3;
-					meshDesc.triangles.stride = geometry.Buffers[15]->GetElementSize() * 3;
-					meshDesc.triangles.data   = Indexes;
-
-#if USING(RESCOMPILERVERBOSE)
-					printf("BEGINNING MODEL BAKING!\n");
-					std::cout << "Baking: " << geometry.ID << "\n";
-#endif
-					bool success = false;
-					if(Cooker) success = Cooker->cookTriangleMesh(meshDesc, Stream);
-
-#if USING(RESCOMPILERVERBOSE)
-					if(success)
-						printf("MODEL FINISHED BAKING!\n");
-					else
-						printf("MODEL FAILED BAKING!\n");
-
-#else
-					FK_ASSERT(success, "FAILED TO COOK MESH!");
-#endif
-
-					if(success)
-					{
-						auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, ColliderInfo->Guid, ColliderInfo->ColliderID, SystemAllocator);
-						ResourcesFound.push_back(Blob);
-					}
-				}	break;
-				default:
-					break;
-				} 
-			}
-		}
-	}
-
-#if USING(RESCOMPILERVERBOSE)
-	std::cout << "Created "<< ResourcesFound.size() << " Resource Blobs\n";
-#endif
-
-	return ResourcesFound;
-}
-
-
-/************************************************************************************************/
-
-
-struct LoadGeometry_RES
-{
-	fbxsdk::FbxManager*		Manager;
-	fbxsdk::FbxIOSettings*	Settings;
-	fbxsdk::FbxScene*		LoadedFbxScene;
-
-	ResourceList Resources;
-};
-
 
 /************************************************************************************************/
 
@@ -682,316 +451,6 @@ void AddEntity(CompiledScene::Entity Entity, CompiledScene* Scene)
 void AddStaticEntity(CompiledScene::Entity Static, CompiledScene* Scene)
 {
 	Scene->SceneStatics.push_back(Static);
-}
-
-
-/************************************************************************************************/
-
-
-size_t CalculateSceneResourceSize(CompiledScene& scene)
-{
-	size_t BlobSize = sizeof(SceneResourceBlob);
-
-	BlobSize += scene.Nodes.size()			* sizeof(CompiledScene::SceneNode);
-	BlobSize += scene.SceneEntities.size()	* sizeof(CompiledScene::Entity);
-	BlobSize += scene.SceneGeometry.size()	* sizeof(CompiledScene::SceneGeometry);
-	BlobSize += scene.SceneLights.size()	* sizeof(CompiledScene::PointLight);
-	BlobSize += scene.SceneStatics.size()	* sizeof(CompiledScene::Entity);
-
-	for (auto E : scene.SceneEntities)
-		BlobSize += E.idlength + 1;
-
-	return BlobSize;
-}
-
-
-/************************************************************************************************/
-
-
-Resource* CreateSceneResourceBlob(iAllocator* Memory, CompiledScene& scene, FBXIDTranslationTable* Table)
-{
-	size_t sceneTableOffset			= 0;
-	size_t lightTableOffset			= scene.SceneEntities.size()						* sizeof(CompiledScene::Entity);;
-	size_t nodeTableOffset			= lightTableOffset		+ scene.SceneLights.size()	* sizeof(CompiledScene::PointLight);
-	size_t staticsTableOffset		= nodeTableOffset		+ scene.Nodes.size()		* sizeof(CompiledScene::SceneNode);
-	size_t stringTableOffset		= staticsTableOffset	+ scene.SceneStatics.size()	* sizeof(CompiledScene::Entity);;
-
-	size_t ResourceSize				= CalculateSceneResourceSize(scene);
-	SceneResourceBlob* SceneBlob	= (SceneResourceBlob*)Memory->malloc(ResourceSize);
-	auto blob						= SceneBlob->Buffer;
-
-	size_t strOffset	= stringTableOffset;
-	size_t strCount		= 0;
-	for (auto& entity : scene.SceneEntities)
-	{
-		entity.MeshGuid = TranslateID(entity.MeshGuid, *Table);
-
-		if (entity.idlength) {
-			strCount++;
-			memcpy(blob + strOffset, entity.id, entity.idlength - 1);// discarding the null terminator
-
-			entity.id = reinterpret_cast<const char*>(strOffset);
-			strOffset += entity.idlength - 1;
-		}
-	}
-
-	memset(SceneBlob->ID, 0, 64);
-	strncpy(SceneBlob->ID, scene.ID, scene.IDSize);
-
-	SceneBlob->SceneTable.EntityCount	= scene.SceneEntities.size();
-	SceneBlob->SceneTable.NodeCount		= scene.Nodes.size();
-	SceneBlob->SceneTable.LightCount	= scene.SceneLights.size();
-	SceneBlob->ResourceSize				= ResourceSize;
-	SceneBlob->GUID						= scene.Guid;
-	SceneBlob->RefCount					= 0;
-	SceneBlob->State					= Resource::EResourceState_UNLOADED;
-	SceneBlob->Type						= EResource_Scene;
-
-	SceneBlob->SceneTable.SceneStringCount		= strCount;
-	SceneBlob->SceneTable.SceneStringsOffset	= stringTableOffset;
-
-	SceneBlob->SceneTable.EntityOffset			= sceneTableOffset;
-	SceneBlob->SceneTable.LightOffset			= lightTableOffset;
-	SceneBlob->SceneTable.NodeOffset			= nodeTableOffset;
-	SceneBlob->SceneTable.StaticsOffset			= staticsTableOffset;
-
-	memcpy(blob + sceneTableOffset,		&scene.SceneEntities.front(),	scene.SceneEntities.size() * sizeof(CompiledScene::Entity));
-	memcpy(blob + lightTableOffset,		&scene.SceneLights.front(),		scene.SceneLights.size() * sizeof(CompiledScene::PointLight));
-	memcpy(blob + nodeTableOffset,		&scene.Nodes.front(),			scene.Nodes.size() * sizeof(CompiledScene::SceneNode));
-	memcpy(blob + staticsTableOffset,	&scene.SceneStatics.front(),	scene.SceneStatics.size() * sizeof(CompiledScene::Entity));
-
-	return (Resource*)SceneBlob;
-}
-
-
-/************************************************************************************************/
-
-
-void ProcessNodes(fbxsdk::FbxNode* Node, CompiledScene* SceneOut, const MetaDataList& MD = MetaDataList{}, size_t Parent = -1)
-{
-	bool SkipChildren = false;
-	size_t AttributeCount = Node->GetNodeAttributeCount();
-	CompiledScene::SceneNode NewNode;
-	
-	auto Position = Node->LclTranslation.	Get();
-	auto LclScale = Node->LclScaling.		Get();
-	auto rotation = Node->LclRotation.		Get();
-	auto NodeName = Node->GetName();
-
-	NewNode.Parent	= Parent;
-	NewNode.TS		= float4(TranslateToFloat3(Position), LclScale.mData[0]);
-	NewNode.Q		= Quaternion(rotation.mData[0], rotation.mData[1], rotation.mData[2]);
-
-	size_t Nodehndl = AddSceneNode(&NewNode, SceneOut);
-	SceneOut->Nodes.push_back(NewNode);
-
-	for (size_t i= 0; i < AttributeCount; ++i)
-	{
-		auto Attr = Node->GetNodeAttributeByIndex(i);
-		auto AttrType = Attr->GetAttributeType();
-		switch (AttrType)
-		{
-		case FbxNodeAttribute::eMesh:
-		{
-#if USING(RESCOMPILERVERBOSE)
-			std::cout << "Entity Found: " << Node->GetName() << "\n";
-#endif
-			auto FBXMesh  = static_cast<fbxsdk::FbxMesh*>(Attr);
-			auto UniqueID = FBXMesh->GetUniqueID();
-			auto name     = Node->GetName();
-
-			auto Related	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_MESH, Node->GetName());
-			auto MeshData	= (Mesh_MetaData*)ScanForRelated(Related, MetaData::EMETAINFOTYPE::EMI_MESH).front();
-
-			CompiledScene::Entity entity;
-			entity.MeshGuid = UniqueID;
-			entity.Node		= Nodehndl;
-			entity.id		= name;
-			entity.idlength = strnlen(name, 128);
-			//entity.albedo	= { 0.8f, 0.8f, 0.8f, 0.8f };
-			//entity.specular = { 0.8f, 0.8f, 0.8f, 0.0f };
-
-			AddEntity(entity, SceneOut);
-		}	break;
-		case FbxNodeAttribute::eLight:
-		{
-#if USING(RESCOMPILERVERBOSE)
-			std::cout << "Light Found: " << Node->GetName() << "\n";
-#endif
-			auto FBXLight    = static_cast<fbxsdk::FbxLight*>(Attr);
-			auto Type        = FBXLight->LightType.Get();
-			auto Cast        = FBXLight->CastLight.Get();
-			auto I           = FBXLight->Intensity.Get()/10;
-			auto K           = FBXLight->Color.Get();
-			auto R           = FBXLight->OuterAngle.Get();
-
-			CompiledScene::PointLight Light;
-			Light.K        = TranslateToFloat3(K);			// COLOR for the Confused
-			Light.I        = I;
-			Light.Node	   = Nodehndl;
-			Light.R        = I;
-
-			AddPointLight(Light, SceneOut);
-		}	break;
-		case FbxNodeAttribute::eMarker:
-		case FbxNodeAttribute::eUnknown:
-		default:
-			break;
-		}
-	}
-
-	if (!SkipChildren)
-	{
-		size_t ChildCount = Node->GetChildCount();
-		for (size_t I = 0; I < ChildCount; ++I)
-			ProcessNodes(Node->GetChild(I), SceneOut, MD, Nodehndl);
-	}
-}
-
-
-/************************************************************************************************/
-
-
-void ScanChildrenNodesForScene(fbxsdk::FbxNode* Node, const MetaDataList& MetaData, SceneList& Out)
-{
-	auto nodeName			= Node->GetName();
-	auto RelatedMetaData	= FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName());
-	auto NodeCount			= Node->GetChildCount();
-
-	if (RelatedMetaData.size())
-	{
-		for (auto& i : RelatedMetaData)
-		{
-			if (i->type == MetaData::EMETAINFOTYPE::EMI_SCENE)
-			{
-				Scene_MetaData* MD		= (Scene_MetaData*)i;
-				CompiledScene Scene;
-				Scene.Guid = MD->Guid;
-				strncpy(Scene.ID, MD->SceneID, MD->SceneIDSize);
-				Scene.IDSize = MD->SceneIDSize;
-
-				ProcessNodes(Node, &Scene, MetaData);
-				Out.push_back(&Scene);
-			}
-		}
-		// Get Scene
-	}
-	else
-	{
-		for (int itr = 0; itr < NodeCount; ++itr) {
-			auto Child = Node->GetChild(itr);
-			ScanChildrenNodesForScene(Child, MetaData, Out);
-		}
-	}
-}
-
-
-/************************************************************************************************/
-
-
-void GetScenes(fbxsdk::FbxScene* S, const MetaDataList& MetaData, SceneList& Out)
-{
-	auto Root = S->GetRootNode();
-	ScanChildrenNodesForScene(Root, MetaData, Out);
-}
-
-
-/************************************************************************************************/
-
-
-LoadGeometry_RES CompileSceneFromFBXFile(char* AssetLocation, CompileSceneFromFBXFile_DESC* Desc, MetaDataList& METAINFO)
-{
-	size_t MaxMeshCount				= 100;
-	fbxsdk::FbxManager* Manager		= fbxsdk::FbxManager::Create();
-	fbxsdk::FbxIOSettings* Settings = fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
-	fbxsdk::FbxScene* Scene			= nullptr;
-
-	Manager->SetIOSettings(Settings);
-
-	auto res = LoadFBXScene(AssetLocation, Manager, Settings);
-	if (res)
-	{
-		SceneList				Scenes;
-		FBXIDTranslationTable	Table;
-
-		GetScenes(res, METAINFO, Scenes);
-		ResourceList LoadRes = GatherSceneResources((FbxScene*)res, Desc->Cooker, &Table, true, METAINFO);
-
-		for (auto scene : Scenes)
-		{
-			auto res = CreateSceneResourceBlob(SystemAllocator, *scene, &Table);
-			LoadRes.push_back(res);
-		}
-
-		size_t ResourceCount = 0;
-		size_t FileSize = 0;
-
-		for (auto& G : LoadRes) {
-			ResourceCount++;
-			FileSize += G->ResourceSize;
-		}
-
-		LoadGeometry_RES G;
-		G.Manager			= Manager;
-		G.LoadedFbxScene	= Scene;
-		G.Resources			= LoadRes;
-		G.Settings			= Settings;
-
-		return G;
-	}
-	else
-	{
-		std::cout << "Failed to Open FBX File: " << AssetLocation << "\n";
-		MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
-	}
-
-	return {};
-}
-
-
-/************************************************************************************************/
-
-
-struct SceneGeometry
-{
-	TriMesh*	Meshes;
-	size_t		MeshCount;
-};
-
-void CountNodeContents(fbxsdk::FbxNode* N, Scene_Desc& Desc)
-{
-	size_t AttribCount = N->GetNodeAttributeCount();
-	for (size_t I = 0; I < AttribCount; ++I)
-	{
-		auto A = N->GetNodeAttributeByIndex(I);
-		switch (A->GetAttributeType())
-		{
-		case fbxsdk::FbxNodeAttribute::EType::eLight:
-			Desc.MaxPointLightCount++; 	break;
-		case fbxsdk::FbxNodeAttribute::EType::eSkeleton:
-			Desc.MaxSkeletonCount++;	break;
-		case fbxsdk::FbxNodeAttribute::EType::eMesh:
-			Desc.MaxTriMeshCount++;		break;
-		}
-	}
-
-	size_t NodeCount = N->GetChildCount();
-	for (size_t I = 0; I < NodeCount; ++I)
-		CountNodeContents(N->GetChild(I), Desc);
-}
-
-
-/************************************************************************************************/
-
-
-Scene_Desc CountSceneContents(fbxsdk::FbxScene* S)
-{
-	Scene_Desc	Desc = {};
-	size_t NodeCount = S->GetNodeCount();
-	for (size_t I = 0; I < NodeCount; ++I)
-		CountNodeContents(S->GetNode(I), Desc);
-
-	return Desc;
 }
 
 

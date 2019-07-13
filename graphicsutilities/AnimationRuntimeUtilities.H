@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -49,8 +49,6 @@ namespace FlexKit
 	class GraphicScene;
 
 
-
-
 	FLEXKITAPI void Skeleton_PushAnimation	( Skeleton* S, iAllocator* Allocator, AnimationClip AC );
 	FLEXKITAPI void CleanUpSkeleton			( Skeleton* S );
 
@@ -93,12 +91,6 @@ namespace FlexKit
 
 	struct DrawablePoseState
 	{
-		void Release()
-		{
-			Resource.Release();
-		}
-
-		FrameBufferedResource	Resource;
 		JointPose*				Joints		= nullptr;
 		DirectX::XMMATRIX*		CurrentPose	= nullptr;
 		Skeleton*				Sk			= nullptr;
@@ -214,6 +206,7 @@ namespace FlexKit
 	typedef uint16_t DAStateHandle;
 	typedef uint16_t DAConditionHandle;
 
+
 	struct AnimationStateMachine
 	{
 		uint16_t StateCount;
@@ -221,8 +214,6 @@ namespace FlexKit
 
 		uint16_t MaxConditionCount;
 		uint16_t MaxStateCount;
-
-		EntityHandle TargetDrawable;
 
 		struct AnimationState
 		{
@@ -415,5 +406,8 @@ namespace FlexKit
 	FLEXKITAPI void DEBUG_DrawSkeleton				( Skeleton* S,				NodeHandle Node, iAllocator* TEMP, LineSegments* Out );
 	FLEXKITAPI void DEBUG_DrawPoseState				( DrawablePoseState* DPS,	NodeHandle Node, LineSegments* Out ) ;
 	FLEXKITAPI void DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
+
+
+	/************************************************************************************************/
 }
 #endif

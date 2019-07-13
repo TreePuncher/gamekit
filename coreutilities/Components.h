@@ -60,7 +60,7 @@ namespace FlexKit
 
 		ComponentBase() {}
 		// no moving
-		ComponentBase& operator =	(ComponentBase&&	rhs)	= delete; 
+		ComponentBase& operator =	(ComponentBase&& rhs)		= delete; 
 		ComponentBase				(const ComponentBase&&)		= delete;
 
 		// no copying
@@ -68,33 +68,33 @@ namespace FlexKit
 		ComponentBase				(const ComponentBase&)		= delete;
 
 
-		void AddComponent(ComponentBase& system)
+		void AddComponent(ComponentBase& component)
 		{
-			const auto ID = system.GetID();
-			auto res = find(Systems, [&](auto value)
+			const auto ID = component.GetID();
+			auto res = find(Components, [&](auto value)
 				{
 					return value.ID == ID;
 				});
 
-			if (res != Systems.end())
+			if (res != Components.end())
 				FK_LOG_WARNING("Component System Adding already added System!");
 
-			Systems.push_back({ &system, system.GetID() });
+			Components.push_back({ &component, component.GetID() });
 		}
 
 
 		void RemoveComponent(ComponentBase& system) noexcept
 		{
 			const auto ID = system.GetID();
-			auto res = find(Systems, [&](auto value)
+			auto res = find(Components, [&](auto value)
 				{
 					return value.ID == ID;
 				});
 
-			if (res != Systems.end()) 
+			if (res != Components.end())
 			{
-				*res = Systems.back();
-				Systems.pop_back();
+				*res = Components.back();
+				Components.pop_back();
 			}
 			else
 				FK_LOG_WARNING("Component System Releasing Already Released System!");
@@ -104,13 +104,13 @@ namespace FlexKit
 		static ComponentBase& GetComponent(ComponentID ID)
 		{
 			auto res = find(
-				Systems,
+				Components,
 				[&](auto e)
 				{
 					return e.ID == ID;
 				});
 
-			if (res == Systems.end())
+			if (res == Components.end())
 			{
 				FK_LOG_ERROR("Component System Not Initialized!");
 				throw(std::runtime_error("Component System Not Initialized!"));
@@ -120,13 +120,13 @@ namespace FlexKit
 		}
 
 
-		static static_vector<ComponentEntry, 128> GetSystemList()
+		static static_vector<ComponentEntry, 128> GetComponentList()
 		{
-			return Systems;
+			return Components;
 		}
 
 
-		inline static static_vector<ComponentEntry, 128> Systems = static_vector<ComponentBase::ComponentEntry, 128>();
+		inline static static_vector<ComponentEntry, 128> Components = static_vector<ComponentBase::ComponentEntry, 128>();
 	};
 
 
@@ -286,6 +286,7 @@ namespace FlexKit
 		return static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID()));
 	}
 
+
 	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
 	auto GetBehaviors(GameObject& go)
 	{
@@ -302,7 +303,7 @@ namespace FlexKit
 
 
 	template<typename ... TY_PACKED_ARGS, typename FN>
-	bool Execute(GameObject& go, FN fn)
+	bool Apply_t(GameObject& go, FN fn)
 	{
 		if (!hasBehaviors<TY_PACKED_ARGS...>(go))
 			return false;
@@ -315,16 +316,16 @@ namespace FlexKit
 	// Thank Columbo for this idea, https://stackoverflow.com/a/28213747
 
 	template <typename T>
-	struct ExecuterProxy : ExecuterProxy<decltype(&T::operator())> {};
+	struct ApplyProxy : ApplyProxy<decltype(&T::operator())> {};
 
 	#define REM_CTOR(...) __VA_ARGS__
 	#define SPEC(cv, var, is_var)										\
 	template <typename C, typename R, typename... Args>					\
-	struct ExecuterProxy<R (C::*) (Args... REM_CTOR var) cv>			\
+	struct ApplyProxy<R (C::*) (Args... REM_CTOR var) cv>			\
 	{																	\
 		template<typename TY> static bool run(GameObject& go, TY& fn)	\
 		{																\
-			return Execute<Args...>(go, fn);							\
+			return Apply_t<Args...>(go, fn);							\
 		}																\
 	};																	\
 
@@ -340,7 +341,7 @@ namespace FlexKit
 	template<typename FN>
 	bool Apply(GameObject& go, FN& fn)
 	{
-		return ExecuterProxy<FN>::run(go, fn);
+		return ApplyProxy<FN>::run(go, fn);
 	}
 
 

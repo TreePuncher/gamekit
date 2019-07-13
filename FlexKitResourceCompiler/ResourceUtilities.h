@@ -3,7 +3,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -59,6 +59,12 @@ using FlexKit::Resource;
 using FlexKit::RenderSystem;
 using FlexKit::TriMesh;
 
+typedef FlexKit::Handle_t<16> ShaderSetHandle;
+
+
+/************************************************************************************************/
+
+
 struct FileDir
 {	
 	char str[256]; 
@@ -82,55 +88,6 @@ size_t CreateRandomID()
 
 /************************************************************************************************/
 
-
-typedef FlexKit::Handle_t<16> SceneHandle;
-typedef FlexKit::Handle_t<16> NodeHandle;
-typedef FlexKit::Handle_t<16> ShaderSetHandle;
-
-struct Scene_Desc
-{
-	size_t			MaxTriMeshCount		= 0;
-	size_t			MaxEntityCount		= 0;
-	size_t			MaxPointLightCount	= 0;
-	size_t			MaxSkeletonCount	= 0;
-	iAllocator*		SceneMemory			= nullptr;
-	iAllocator*		AssetMemory			= nullptr;
-	NodeHandle		Root;
-	ShaderSetHandle DefaultMaterial;
-};
-
-struct SceneStats
-{
-	size_t EntityCount	= 0;
-	size_t LightCount	= 0;
-
-	SceneStats& operator += (const SceneStats& in)
-	{
-		EntityCount += in.EntityCount;
-		LightCount	+= in.LightCount;
-		return *this;
-	}
-};
-
-
-
-/************************************************************************************************/
-
-
-struct CompileSceneFromFBXFile_DESC
-{
-	NodeHandle				SceneRoot;
-
-	physx::PxCooking*		Cooker		= nullptr;
-	physx::PxFoundation*	Foundation	= nullptr;
-
-	bool					 SUBDIVEnabled;
-	bool					 CloseFBX;
-	bool					 IncludeShaders;
-	bool					 CookingEnabled;
-};
-
-typedef std::vector<Resource*>		ResourceList;
 
 FileDir SelectFile();
 

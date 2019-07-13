@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -100,19 +100,29 @@ namespace FlexKit
 
 	struct FLEXKITAPI Skeleton
 	{
+		Skeleton() = default;
+
+		Skeleton(iAllocator* allocator, size_t jointCount = 64) 
+		{
+			InitiateSkeleton(allocator, jointCount);
+		}
+
 		Joint&			operator [] (JointHandle hndl);
 
-		JointHandle		AddJoint(Joint J, XMMATRIX& I);
-		void			InitiateSkeleton(iAllocator* Allocator, size_t jointcount = 64);
-		XMMATRIX		GetInversePose(JointHandle H);
-		JointHandle		FindJoint(const char*);
+		void			InitiateSkeleton	(iAllocator* Allocator, size_t jointCount = 64);
 
-		DirectX::XMMATRIX*	IPose; // Global Inverse Space Pose
-		Joint*				Joints;
-		JointPose*			JointPoses;
-		size_t				JointCount;
-		GUID_t				guid;
-		iAllocator*			Memory;
+		JointHandle		AddJoint			(Joint J, XMMATRIX& I);
+		void			AddAnimationClip	(AnimationClip, iAllocator* allocator);
+
+		XMMATRIX		GetInversePose		(JointHandle H);
+		JointHandle		FindJoint			(const char*);
+
+		DirectX::XMMATRIX*	IPose		= nullptr; // Global Inverse Space Pose
+		Joint*				Joints		= nullptr;
+		JointPose*			JointPoses	= nullptr;
+		size_t				JointCount	= 0;
+		GUID_t				guid		= INVALIDHANDLE;
+		iAllocator*			Memory		= nullptr;
 
 		struct AnimationList
 		{
@@ -121,12 +131,10 @@ namespace FlexKit
 			iAllocator*		Memory;
 		};
 
-		AnimationList* Animations;
+		AnimationList* Animations		= nullptr;
 	};
 
 
-	FLEXKITAPI void Skeleton_PushAnimation(Skeleton* S, iAllocator* Allocator, AnimationClip AC);
-
-}
+}	/************************************************************************************************/
 
 #endif

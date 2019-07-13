@@ -641,11 +641,11 @@ struct OS2
 class TTF_File
 {
 public:
-	TTF_File(const char* File, iAllocator* Memory)
+	TTF_File(std::string& File, iAllocator* Memory)
 	{
-		auto FileSize	= GetFileSize(File);
+		auto FileSize	= GetFileSize(File.c_str());
 		Buffer			= (FlexKit::byte*)Memory->_aligned_malloc(FileSize + 1);
-		auto res		= LoadFileIntoBuffer(File, Buffer, FileSize, false);
+		auto res		= LoadFileIntoBuffer(File.c_str(), Buffer, FileSize, false);
 		FK_ASSERT(res, "failed to Load File!");
 
 		FileDirectory	= (TTF_Directory*)Buffer;
@@ -863,10 +863,10 @@ size_t GetGlyphCode(
 /************************************************************************************************/
 
 
-Pair<bool, TTFont*> LoadTTFFile(const char* File, iAllocator* Memory)
+Pair<bool, TTFont*> LoadTTFFile(std::string& file, iAllocator* Memory)
 {
 	TTFont*		Out = nullptr;
-	TTF_File	Font(File, Memory);
+	TTF_File	Font(file, Memory);
 
 	// Tables
 	std::cout << "Tables in Font:\n";

@@ -152,7 +152,7 @@ namespace FlexKit
 			Memory			{ memory								},
 			CmdArguments	{ memory->BlockAllocator				},
 			Time			{ memory->BlockAllocator				},
-			Threads			{ 8, memory->BlockAllocator				},// TODO: Get System Thread Count.
+			Threads			{ 4, memory->BlockAllocator				},// TODO: Get System Thread Count.
 			RenderSystem	{ memory->BlockAllocator, &Threads		},
 			FrameLock		{ true									},
 			Physics			{ Threads, memory->BlockAllocator		}

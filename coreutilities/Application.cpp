@@ -77,6 +77,9 @@ namespace FlexKit
 		double CodeCheckTimer	= 0.0f;
 		double dT				= 1.0/60.0;
 
+
+		double temp = 0.0f;
+
 		while (!Core.End && !Core.Window.Close && framework.subStates.size())
 		{
 			Core.Time.Before();
@@ -91,6 +94,8 @@ namespace FlexKit
 			auto FrameEnd = std::chrono::system_clock::now();
 			auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
 
+			temp += double(Duration.count()) / 1000000.0;;
+
 			if (Core.FrameLock)// FPS Locked
 				std::this_thread::sleep_for(chrono::milliseconds(10) - Duration);
 
@@ -103,6 +108,12 @@ namespace FlexKit
 			Core.Time.Update();
 
 			T += dT;
+			FPSCounter++;
+
+			if (FPSCounter % 60 == 0) {
+				std::cout << "Frame Time average: " << temp / 60.0f << "\n";
+				temp = 0.0f;
+			}
 		}
 			// End Update  -----------------------------------------------------------------------------------------
 	}

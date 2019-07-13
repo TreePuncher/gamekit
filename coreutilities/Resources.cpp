@@ -357,14 +357,6 @@ namespace FlexKit
 				++Index;
 			}
 
-			if (Blob->HasIndexBuffer)
-			{
-				auto b = Blob->Buffers[15];
-				auto View = new(Memory->_aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)(Blob->Memory + b.Begin), b.size);
-				View->SetTypeFormatSize((VERTEXBUFFER_TYPE)b.Type, (VERTEXBUFFER_FORMAT)b.Format, b.size/b.Format );
-				Out->Buffers[15] = View;
-			}
-
 			CreateVertexBuffer(RS, Out->Buffers, BufferCount, Out->VertexBuffer);
 
 			if (ClearBuffers)

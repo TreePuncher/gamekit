@@ -211,6 +211,7 @@
     <ClInclude Include="coreutilities\Transforms.h" />
     <ClInclude Include="coreutilities\type.h" />
     <ClInclude Include="coreutilities\WorldRender.h" />
+    <ClInclude Include="graphicsutilities\AnimationComponents.h" />
     <ClInclude Include="graphicsutilities\AnimationRuntimeUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -354,6 +355,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="graphicsutilities\AnimationComponents.cpp" />
     <ClCompile Include="graphicsutilities\AnimationRuntimeUtilities.H" />
     <ClCompile Include="graphicsutilities\AnimationUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

@@ -191,6 +191,7 @@ namespace FlexKit
 		bool	HasIndexBuffer;
 		size_t	BufferCount;
 		size_t	IndexCount;
+		size_t	IndexBuffer;
 		size_t	SkeletonGuid;
 		GUID_t	ColliderGuid;
 
@@ -250,6 +251,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	struct FontResourceBlob
 	{
 #pragma warning(disable:4200)
@@ -261,6 +263,7 @@ namespace FlexKit
 
 		char	ID[FlexKit::ID_LENGTH];
 	};
+
 
 	/************************************************************************************************/
 
@@ -294,6 +297,7 @@ namespace FlexKit
 		char	Buffer[];
 	};
 
+
 	struct TextureSet_Locations
 	{
 		GUID_t TextureID[16];
@@ -301,6 +305,7 @@ namespace FlexKit
 			char Directory[64];
 		}TextureLocation[16];
 	};
+
 
 	struct TextureSetBlob
 	{
@@ -337,9 +342,9 @@ namespace FlexKit
 		{
 			SceneNode& operator = (const SceneNode& RHS)
 			{
-				Q = RHS.Q;
-				TS = RHS.TS;
-				Parent = RHS.Parent;
+				Q		= RHS.Q;
+				TS		= RHS.TS;
+				Parent	= RHS.Parent;
 				return *this;
 			}
 
@@ -363,8 +368,8 @@ namespace FlexKit
 			size_t		Node;
 			GUID_t		Collider;
 			size_t		idlength;
-			//float4		albedo;
-			//float4		specular;
+			float4		albedo;
+			float4		specular;
 			const char*	id;
 		};
 
@@ -375,11 +380,11 @@ namespace FlexKit
 			char*	ID;
 		};
 
-		Vector<SceneNode>				Nodes;
-		Vector<PointLight>			SceneLights;
-		Vector<SceneGeometryTable>	SceneGeometry;
-		Vector<Entity>				SceneEntities;
-		Vector<Entity>				SceneStatics;
+		Vector<SceneNode>				Nodes			= { SystemAllocator };
+		Vector<PointLight>				SceneLights		= { SystemAllocator };
+		Vector<SceneGeometryTable>		SceneGeometry	= { SystemAllocator };
+		Vector<Entity>					SceneEntities	= { SystemAllocator };
+		Vector<Entity>					SceneStatics	= { SystemAllocator };
 		GUID_t							Guid;
 		char							ID[64];
 		size_t							IDSize;
@@ -500,10 +505,10 @@ namespace FlexKit
 
 	inline size_t ReadResourceSize(FILE* F, ResourceTable* Table, size_t Index)
 	{
-		byte Buffer[8];
+		byte Buffer[64];
 
 		int s = fseek(F, Table->Entries[Index].ResourcePosition, SEEK_SET);
-		s = fread(Buffer, 1, 8, F);
+		s = fread(Buffer, 1, 64, F);
 
 		Resource* R = (Resource*)Buffer;
 		return R->ResourceSize;
@@ -538,7 +543,7 @@ namespace FlexKit
 		return (s == out->ResourceSize);
 	}
 
-	/************************************************************************************************/
-}
+
+}	/************************************************************************************************/
 
 #endif

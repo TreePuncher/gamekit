@@ -97,66 +97,11 @@ namespace FlexKit
 					break;
 				}
 			}
-
-			//Normals->GetReferenceMode();
 		}
 		default:
 			break;
 		}
 		return out;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float3 TranslateToFloat3(FbxVector4& in)
-	{
-		return float3(
-			in.mData[0], 
-			in.mData[1], 
-			in.mData[2]);
-	}
-
-	float3 TranslateToFloat3(FbxDouble3& in)
-	{
-		return float3(
-			in.mData[0],
-			in.mData[1],
-			in.mData[2]);
-	}
-
-	float4 TranslateToFloat4(FbxVector4& in)
-	{
-		return float4(
-			in.mData[0],
-			in.mData[1],
-			in.mData[2],
-			in.mData[3]);
-	}
-
-
-	/************************************************************************************************/
-
-
-	XMMATRIX FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM)
-	{
-		XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
-		for (size_t I = 0; I < 4; ++I)
-			for (size_t II = 0; II < 4; ++II)
-				M.r[I].m128_f32[II] = AM[I][II];
-
-		return M;
-	}
-
-	FbxAMatrix XMMATRIX_2_FBXMATRIX(XMMATRIX& M)
-	{
-		FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
-		for (size_t I = 0; I < 4; ++I)
-			for (size_t II = 0; II < 4; ++II)
-				AM[I][II] = M.r[I].m128_f32[II];
-
-		return AM;
 	}
 
 
@@ -404,8 +349,7 @@ namespace FlexKit
 					AddTexCordToken({ float(UV[0]), float(UV[1]), 0.0f }, TokensOut);
 				}
 			}
-		}
-		// Get Use-able Deformers
+		}	// Get Use-able Deformers
 		if (Mesh->GetDeformerCount() && S)
 		{
 			const size_t			VCount		= size_t(Mesh->GetControlPointsCount());
@@ -563,7 +507,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	CompiledMeshInfo CompileMeshResource(TriMeshResource& out, FbxMesh* Mesh, bool EnableSubDiv = false, const std::string& ID = std::string{}, MetaDataList& MD = MetaDataList{})
+	MeshResource_ptr CompileMeshResource(FbxMesh* Mesh, const std::string& ID, MetaDataList& MD, bool EnableSubDiv = false)
 	{
 #if USING(TOOTLE)
 		Memory  = SystemAllocator;// It will Leak, I know
@@ -579,12 +523,14 @@ namespace FlexKit
 		using MeshUtilityFunctions::TokenList;
 		using MeshUtilityFunctions::MeshBuildInfo;
 
-		Skeleton*	S		= LoadSkeleton(Mesh, ID, MD);
-		TokenList Tokens	= TokenList{ SystemAllocator };
-		auto MeshInfo		= TranslateToTokens(Mesh, Tokens, S);
+		MeshResource_ptr meshOut		= std::make_shared<MeshResource>();
 
-		CombinedVertexBuffer	CVB{ SystemAllocator };
-		IndexList				IB{ SystemAllocator, MeshInfo.FaceCount * 4 };
+		SkeletonResource_ptr skeleton	= LoadSkeletonResource(Mesh, ID, MD);
+		TokenList Tokens				= TokenList{ SystemAllocator };
+		auto MeshInfo					= TranslateToTokens(Mesh, Tokens, &skeleton.get()->CreateSkeletonProxy());
+
+		CombinedVertexBuffer	CVB	{ SystemAllocator };
+		IndexList				IB	{ SystemAllocator, MeshInfo.FaceCount * 4 };
 
 		auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, SystemAllocator, SystemAllocator, MeshInfo.Weights);
 		FK_ASSERT(BuildRes.V1 == true, "Mesh Failed to Build");
@@ -592,7 +538,7 @@ namespace FlexKit
 		size_t IndexCount  = GetByType<MeshBuildInfo>(BuildRes).IndexCount;
 		size_t VertexCount = GetByType<MeshBuildInfo>(BuildRes).VertexCount;
 
-		static_vector<Pair<VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT>> BuffersFound ={
+		static_vector<Pair<VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT>> BuffersFound = {
 			{VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32}
 		};
 
@@ -618,8 +564,8 @@ namespace FlexKit
 			if (Efficiency > 0.8f) {
 				std::cout << "Optimizing Mesh!\n";
 
-				CombinedVertexBuffer	NewCVB	{ TempMem, CVB.size() };	NewCVB.resize(CVB.size());
-				IndexList				NewIB	{ TempMem, IB.size() };		NewIB.resize(IB.size());
+				CombinedVertexBuffer	NewCVB	{ SystemAllocator, CVB.size() };	NewCVB.resize(CVB.size());
+				IndexList				NewIB	{ SystemAllocator, IB.size() };		NewIB.resize(IB.size());
 
 				auto OptimizeRes = TootleOptimize(CVB.begin(), IB.begin(), VertexCount, IndexCount / 3, sizeof(CombinedVertex), TOOTLE_DEFAULT_VCACHE_SIZE, nullptr, 0, TOOTLE_CW, NewIB.begin(), nullptr, TOOTLE_VCACHE_LSTRIPS, TOOTLE_OVERDRAW_FAST);
 				auto Res = TootleOptimizeVertexMemory(CVB.begin(), IB.begin(), IndexCount / 3, VertexCount, sizeof(CombinedVertex), NewCVB.begin(), NewIB.begin(), nullptr);
@@ -627,79 +573,77 @@ namespace FlexKit
 				auto RES = TootleMeasureCacheEfficiency(NewIB.begin(), IndexCount / 3, TOOTLE_DEFAULT_VCACHE_SIZE, &Efficiency);
 				std::cout << "New Mesh Efficiency: " << Efficiency << "\n";
 
-				IB = std::move(NewIB);
+				IB	= std::move(NewIB);
 				CVB = std::move(NewCVB);
 				int x = 0;
 			}
 		}
 #endif
 
+
 		for (size_t i = 0; i < BuffersFound.size(); ++i) 
 		{
-			CreateBufferView(VertexCount, SystemAllocator, out.Buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
+			CreateBufferView(VertexCount, SystemAllocator, meshOut->buffers[i], (VERTEXBUFFER_TYPE)BuffersFound[i], (VERTEXBUFFER_FORMAT)BuffersFound[i]);
 
 			switch ((FlexKit::VERTEXBUFFER_TYPE)BuffersFound[i])
 			{
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
-				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexPOS);		break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchVertexPOS);		break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
-				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchVertexNormal);	break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchVertexNormal);	break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
-				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteUV, FetchVertexUV);			break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteUV, FetchVertexUV);			break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
-				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchFloat3ZERO);		break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchFloat3ZERO);		break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
-				FillBufferView(&CVB, CVB.size(), out.Buffers[i], WriteVertex, FetchWeights);		break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchWeights);		break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
-				FillBufferView(&CVB, CVB.size(), out.Buffers[i], Writeuint4, FetchWeightIndices);	break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], Writeuint4, FetchWeightIndices);	break;
 			default:
 				break;
 			}
 		}
 
-		CreateBufferView(IB.size(), SystemAllocator, out.Buffers[15], VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32);
-		FillBufferView(&IB, IB.size(), out.Buffers[15], WriteIndex, FetchIndex2);
-
+		CreateBufferView(IB.size(), SystemAllocator, meshOut->buffers[BuffersFound.size()], VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32);
+		FillBufferView(&IB, IB.size(), meshOut->buffers[BuffersFound.size()], WriteIndex, FetchIndex2);
 
 		//Calculate Bounding Sphere
 		const float3	BSCenter = (MeshInfo.MaxV + MeshInfo.MinV) / 2;
 		float			BSRadius = 0;//(MeshInfo.MaxV - MeshInfo.MinV).magnitude() / 2;
 		const float		BSR_Ref  = (MeshInfo.MaxV - MeshInfo.MinV).magnitude() / 2;
 
-		ProcessBufferView(&CVB, CVB.size(), WriteVertex, FetchVertexPOS, [&](auto V)
-		{
-			V[3] = 0;
-			auto Temp = (V - BSCenter);
-			auto L = Temp.magnitude();
-			BSRadius = (BSRadius > L)? BSRadius : L;
-		});
-
+		ProcessBufferView(
+			&CVB, 
+			CVB.size(), 
+			WriteVertex, 
+			FetchVertexPOS, 
+			[&](auto V)
+			{
+				V[3]		= 0;
+				auto Temp	= (V - BSCenter);
+				auto L		= Temp.magnitude();
+				BSRadius	= (BSRadius > L)? BSRadius : L;
+			});
 
 		//Calculate AABB
 		FlexKit::AABB AxisAlignedBoundingBox;
 		AxisAlignedBoundingBox.BottomLeft	= MeshInfo.MinV;
 		AxisAlignedBoundingBox.TopRight		= MeshInfo.MaxV;
 
-		if (EnableSubDiv)
-		{
-		}
+		meshOut->IndexBuffer_Idx	= BuffersFound.size();
+		meshOut->IndexCount			= IndexCount;
+		meshOut->Skeleton			= skeleton;
+		meshOut->AnimationData		= MeshInfo.Weights ? EAnimationData::EAD_Skin : 0;
+		meshOut->Info.max			= MeshInfo.MaxV;
+		meshOut->Info.min			= MeshInfo.MinV;
+		meshOut->Info.r				= MeshInfo.R;
+		meshOut->TriMeshID			= Mesh->GetUniqueID();
+		meshOut->ID					= ID;
+		meshOut->SkeletonGUID		= skeleton ? skeleton->guid : -1;
+		meshOut->BS					= BoundingSphere(BSCenter, BSRadius);
+		meshOut->AABB				= AxisAlignedBoundingBox;
 
-		out.IndexCount    = IndexCount;
-		out.Skeleton      = S;
-		out.AnimationData = MeshInfo.Weights ? EAnimationData::EAD_Skin : 0;
-		out.Info.max	  = MeshInfo.MaxV;
-		out.Info.min	  = MeshInfo.MinV;
-		out.Info.r		  = MeshInfo.R;
-		out.TriMeshID	  = Mesh->GetUniqueID();
-		//out.ID			  = ID;
-		out.SkeletonGUID  = S ? S->guid : -1;
-		out.BS			  = BoundingSphere(BSCenter, BSRadius);
-		out.AABB		  = AxisAlignedBoundingBox;
-
-
-		FK_ASSERT(false);
-
-		return {true, BuffersFound.size()};
+		return meshOut;
 	}
 
 

@@ -126,11 +126,10 @@ namespace FlexKit
 
 	void UpdateQuadTree		( QuadTreeNode* Node, GraphicScene* Scene );
 
-
 	
 	/************************************************************************************************/
 
-
+	// TODO: move this to only handle Visibility and scene queries
 	class GraphicScene
 	{
 	public:

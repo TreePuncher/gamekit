@@ -28,30 +28,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	struct MD_Token
-	{
-		char*	SubStr;
-		size_t	size;
-	};
-
-
-	typedef Vector<MD_Token> MeshTokenList;
+	typedef std::vector<std::string_view> MeshTokenList;
 
 
 	/************************************************************************************************/
 
 
-	MeshTokenList* GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
+	MeshTokenList GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
 	{
-		MeshTokenList* Tokens = &Memory->allocate_aligned<MeshTokenList>(Memory);
+		MeshTokenList Tokens;
 
 		size_t StartPos = 0;
 		size_t CurrentPos = 0;
 
-		auto RemoveWhiteSpaces = [&]()
+		auto SkipWhiteSpaces = [&]()
 		{
-			bool WhitespaceSkipped = false;
-			while (CurrentPos < BufferSize && !WhitespaceSkipped)
+			while (CurrentPos < BufferSize)
 			{
 				char CurrentChar = Buffer[CurrentPos];
 				switch (CurrentChar)
@@ -63,7 +55,7 @@ namespace FlexKit
 					++CurrentPos;
 					break;
 				default:
-					WhitespaceSkipped = true;
+					return;
 					break;
 				}
 			}
@@ -71,24 +63,19 @@ namespace FlexKit
 
 		while (CurrentPos < BufferSize)
 		{
-			auto C = Buffer[CurrentPos];
-			if (Buffer[CurrentPos] == ' ' || Buffer[CurrentPos] == '\n' || Buffer[CurrentPos] == '\t')
+			auto C						= Buffer[CurrentPos];
+
+			if (Buffer[CurrentPos] == ' ' || Buffer[CurrentPos] == '\n' || Buffer[CurrentPos] == '\t' || Buffer[CurrentPos] == '\0')
 			{
-				RemoveWhiteSpaces();
+				std::string_view NewToken = { Buffer + StartPos, CurrentPos - StartPos };
 
-				char CurrentChar = Buffer[CurrentPos];
-
-				MD_Token NewToken = { Buffer + StartPos, CurrentPos - StartPos - 1 }; // -1 to remove Whitespace at end
-
-				if (NewToken.size)
-					Tokens->push_back(NewToken);
+				if( NewToken.size() )
+					Tokens.push_back(NewToken);
+				
+				SkipWhiteSpaces();
 
 				StartPos = CurrentPos;
-
-				RemoveWhiteSpaces();
 			}
-			else if (Buffer[CurrentPos] == '\0')
-				break;
 			else
 				++CurrentPos;
 		}
@@ -133,142 +120,48 @@ namespace FlexKit
 
 	struct Value
 	{
+		Value() {}
+
 		enum TYPE
 		{
 			INT,
 			STRING,
 			FLOAT,
-		}Type;
+			INVALID
+		}Type = INVALID;
 
-		union
+		union _
 		{
-			float	F;
-			int		I;
-			struct
-			{
-				char*	S;
-				size_t	size;
-			}S;
-		}Data;
+			_() : S{ nullptr, 0 } {}
 
-		char*	ID;
-		size_t	ID_Size;
+			float				F;
+			int					I;
+			std::string_view	S;
+		}Data = _{};
+
+		std::string_view		ID;
 	};
 
-	typedef static_vector<Value> ValueList;
+	typedef std::vector<Value> ValueList;
 
 
+	
 	/************************************************************************************************/
 
 
-	void MoveTokenStr(MD_Token T, char* out)
+	size_t SkipBrackets(MeshTokenList& Tokens, size_t StartingPosition)
 	{
-		memset(out, 0x00, T.size + 1);
-		strncpy(out, T.SubStr, T.size);
+		size_t itr2			= StartingPosition;
+		size_t bracketCount = 1;
 
-		for (size_t I = T.size; I > 0; --I)
+		for (; itr2 < Tokens.size(); ++itr2)
 		{
-			switch (out[I])
-			{
-			case '\n':
-			case ' ':
-				out[I] = '\0';
-				T.size--;
-			}
-		}
-	}
+			auto T = Tokens[itr2];
 
+			if (T.size() && (T == "};" || T == "}"))
+				bracketCount--;
 
-	/************************************************************************************************/
-
-
-	FlexKit::Pair<ValueList, size_t> ProcessDeclaration(iAllocator* Memory, iAllocator* TempMemory, MeshTokenList* Tokens, size_t StartingPosition)
-	{
-		ValueList Values;
-		size_t itr2 = StartingPosition;
-
-		for (; itr2 < Tokens->size(); ++itr2)
-		{
-			auto T = Tokens->at(itr2);
-
-			if (T.size)
-				if (!strncmp(T.SubStr, "int", 3))
-				{
-					Value NewValue;
-					NewValue.Type = Value::INT;
-
-					auto IDToken    = Tokens->at(itr2 - 2);
-					auto ValueToken = Tokens->at(itr2 + 2);
-
-					char ValueBuffer[16];
-					MoveTokenStr(ValueToken, ValueBuffer);
-					int V				= atoi(ValueBuffer);
-					NewValue.Data.I		= V;
-					NewValue.ID			= (char*)TempMemory->malloc(IDToken.size + 1); // 1 Extra for the Null Terminator
-					NewValue.ID_Size	= ValueToken.size;
-					MoveTokenStr(IDToken, NewValue.ID);
-
-					Values.push_back(NewValue);
-				}
-				else if (!strncmp(T.SubStr, "string", 6))
-				{
-					Value NewValue;
-					NewValue.Type = Value::STRING;
-
-					auto IDToken		= Tokens->at(itr2 - 2);
-					auto ValueToken		= Tokens->at(itr2 + 2);
-
-					size_t IDSize		= IDToken.size;
-					NewValue.ID			= (char*)TempMemory->malloc(IDSize + 1); // 
-					NewValue.ID_Size	= IDSize;
-					MoveTokenStr(IDToken, NewValue.ID);
-
-					size_t StrSize       = ValueToken.size;
-					NewValue.Data.S.S    = (char*)TempMemory->malloc(StrSize + 1); // 
-					NewValue.Data.S.size = StrSize;
-					MoveTokenStr(ValueToken, NewValue.Data.S.S);
-
-					Values.push_back(NewValue);
-				}
-				else if (!strncmp(T.SubStr, "float", 5))
-				{
-					Value NewValue;
-					NewValue.Type = Value::FLOAT;
-
-					auto IDToken = Tokens->at(itr2 - 2);
-					auto ValueToken = Tokens->at(itr2 + 2);
-
-					char ValueBuffer[16];
-					MoveTokenStr(ValueToken, ValueBuffer);
-					float V         = atof(ValueBuffer);
-					NewValue.Data.F = V;
-
-					NewValue.ID = (char*)TempMemory->malloc(IDToken.size + 1); // 
-					MoveTokenStr(IDToken, NewValue.ID);
-
-					Values.push_back(NewValue);
-				}
-				else if (!strncmp(T.SubStr, "};", min(T.size, 2)))
-					return{ Values, itr2 };
-		}
-
-		// Should Be Un-reachable
-		return{ Values, itr2 };
-	}
-
-
-	/************************************************************************************************/
-
-
-	size_t SkipBrackets(MeshTokenList* Tokens, size_t StartingPosition)
-	{
-		size_t itr2 = StartingPosition;
-
-		for (; itr2 < Tokens->size(); ++itr2)
-		{
-			auto T = Tokens->at(itr2);
-
-			if (T.size && (!strncmp(T.SubStr, "};", min(T.size, 2))))
+			if(bracketCount == 0)
 				return itr2;
 		}
 
@@ -281,19 +174,114 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Value* FindValue(static_vector<Value>& Values, char* ValueID)
+	FlexKit::Pair<ValueList, size_t> ProcessDeclaration(MeshTokenList& Tokens, size_t StartingPosition, size_t endPosition)
 	{
-		auto res = FlexKit::find(Values, [&](Value& V) {
-			return (!strncmp(V.ID, ValueID, strlen(ValueID))); });
+		ValueList Values;
+		size_t itr2 = StartingPosition;
 
-		return (res == Values.end()) ? nullptr : res;
+		for (; itr2 < endPosition; ++itr2)
+		{
+			auto T = Tokens[itr2];
+
+			if (T.size())
+				if (T == "int")
+				{
+					Value NewValue;
+					NewValue.Type = Value::INT;
+
+					auto IDToken    = Tokens[itr2 - 2];
+					auto ValueToken = Tokens[itr2 + 2];
+
+					char ValueBuffer[16];
+					strncpy_s(ValueBuffer, &ValueToken.front(), ValueToken.size());
+					
+					int V				= atoi(ValueBuffer);
+					NewValue.Data.I		= V;
+					NewValue.ID			= IDToken;
+
+					Values.push_back(NewValue);
+				}
+				else if (T == "string")
+				{
+					Value NewValue;
+					NewValue.Type = Value::STRING;
+
+					auto IDToken		= Tokens[itr2 - 2];
+					auto ValueToken		= Tokens[itr2 + 2];
+
+					NewValue.ID		= IDToken;
+					NewValue.Data.S	= ValueToken;
+
+					Values.push_back(NewValue);
+				}
+				else if (T == "float")
+				{
+					Value NewValue;
+					NewValue.Type = Value::FLOAT;
+
+					auto IDToken	= Tokens[itr2 - 2];
+					auto ValueToken = Tokens[itr2 + 2];
+
+					char ValueBuffer[16];
+					strncpy_s(ValueBuffer, &ValueToken.front(), ValueToken.size());
+
+					NewValue.Data.F = atof(ValueBuffer);
+					NewValue.ID		= IDToken; 
+
+					Values.push_back(NewValue);
+				}
+				else if (T == "{")
+					itr2 = SkipBrackets(Tokens, StartingPosition);
+				else if (T == "};")
+					return{ Values, itr2 };
+		}
+
+		// Should Be Un-reachable
+		return{ Values, itr2 };
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool ProcessTokens(iAllocator* Memory, iAllocator* TempMemory, MeshTokenList* Tokens, MetaDataList& MD_Out)
+	Value* FindValue(std::vector<Value>& Values, char* ValueID)
+	{
+		auto res = 
+			FlexKit::find(
+				Values,
+				[&](auto& V) { return (V.ID == ValueID); });
+
+		return { (res != Values.end() ? &*res : nullptr) };
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool ParseTokens(MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end);
+
+	std::pair<bool,size_t>  DetectSubContainer(MeshTokenList& Tokens, const size_t begin, const size_t end)
+	{
+		for (size_t itr = begin; itr < end; ++itr)
+		{
+			if (Tokens[itr] == "MetaDataCollection")
+				return { true, itr };
+		}
+
+		return { false, 0 };
+	}
+
+	/*
+	class TokenHandler
+	{
+	public:
+		virtual void Handle(MeshTokenList& Tokens, size_t begin, size_t end) = 0;
+	};
+
+	using TokenHandlerTable = std::vector<TokenHandler>;
+	*/
+
+	bool ParseTokens(MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end)
 	{
 		struct Value
 		{
@@ -307,29 +295,30 @@ namespace FlexKit
 			Token T;
 		};
 
-		// Metadata Format
-		// {Identifier} : {type} = {Value(s)};
+		// Metadata Formats
+		// MetaData Declaration			= "[Identifier] : [type] = [Value(s)];"
+		// Sub Container definition		= [Identifier] : [ContainerTypeIdentier] { [MetaData Declaration]; };
+
 
 		ValueList Values;
-		for (size_t itr = 0; itr < Tokens->size(); ++itr)
+		for (size_t itr = begin; itr < end && itr < Tokens.size(); ++itr)
 		{
-			auto T = Tokens->at(itr);
+			std::string_view token = Tokens.at(itr);
 
 	#define DOSTRCMP(A) (T.size && !strncmp(T.SubStr, A, max(strlen(A), T.size)))
 	#define CHECKTAG(A, TYPE) ((A != nullptr) && (A->Type == TYPE))
 
 			// TODO: Reform this into a table
-			if(DOSTRCMP("AnimationClip"))
+			if(token == "AnimationClip")
 			{
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "Animation Clip Meta Data Found\n";
 #endif
-				auto res    = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values = res.V1;
-				auto ID     = FindValue(Values, "ID");			
-				auto begin  = FindValue(Values, "Begin");		
-				auto end    = FindValue(Values, "End");			
-				auto GUID   = FindValue(Values, "AssetGUID");	
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
+				auto ID					= FindValue(Values, "ID");			
+				auto begin				= FindValue(Values, "Begin");		
+				auto end				= FindValue(Values, "End");			
+				auto GUID				= FindValue(Values, "AssetGUID");	
 
 				// Check for ill formed data
 	#if _DEBUG
@@ -349,30 +338,28 @@ namespace FlexKit
 					return false;
 	#endif
 
-				AnimationClip_MetaData* NewAnimationClip = &Memory->allocate_aligned<AnimationClip_MetaData>();
+				AnimationClip_MetaData* NewAnimationClip = new AnimationClip_MetaData;
 
-				auto Target = Tokens->at(itr - 2);
+				auto Target = Tokens[itr - 2];
 
-				strncpy(NewAnimationClip->ClipID, ID->Data.S.S, ID->Data.S.size);
-
-				NewAnimationClip->SetID(Target.SubStr, Target.size);
+				NewAnimationClip->ClipID	= ID->Data.S;
+				NewAnimationClip->ID		= Target;
 				NewAnimationClip->T_Start	= begin->Data.F;
 				NewAnimationClip->T_End		= end->Data.F;
 				NewAnimationClip->guid		= GUID->Data.I;
 
 				MD_Out.push_back(NewAnimationClip);
 
-				itr = res;
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("Skeleton"))
+			else if (token == "Skeleton")
 			{
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "Skeleton Meta Data Found\n";
 #endif
-				auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values		= res.V1;
-				auto AssetID	= FindValue(Values, "AssetID");		
-				auto AssetGUID	= FindValue(Values, "AssetGUID");	
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
+				auto AssetID			= FindValue(Values, "AssetID");		
+				auto AssetGUID			= FindValue(Values, "AssetGUID");	
 
 	#if _DEBUG
 				FK_ASSERT((AssetID			!= nullptr), "MISSING ID!");
@@ -385,32 +372,29 @@ namespace FlexKit
 					return false;
 	#endif
 
-				Skeleton_MetaData* Skeleton = &Memory->allocate_aligned<Skeleton_MetaData>();
+				Skeleton_MetaData* Skeleton = new Skeleton_MetaData;
 
-				auto Target = Tokens->at(itr - 2);
+				auto Target = Tokens[itr - 2];
 
-				strncpy(Skeleton->SkeletonID, AssetID->Data.S.S, AssetID->Data.S.size);
-
-
-				Skeleton->SetID(Target.SubStr, Target.size);
+				Skeleton->SkeletonID	= AssetID->Data.S;
 				Skeleton->SkeletonGUID	= AssetGUID->Data.I;
+				Skeleton->ID			= Target;
 
 				MD_Out.push_back(Skeleton);
 
-				itr = res;
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("Model"))
+			else if (token == "Model")
 			{
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "Model Meta Data Found\n";
 #endif
 
-				auto res			= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values			= res.V1;
-				auto AssetID		= FindValue(Values, "AssetID");
-				auto AssetGUID		= FindValue(Values, "AssetGUID");
-				auto ColliderGUID	= FindValue(Values, "ColliderGUID");
-				auto Target			= Tokens->at(itr - 2);
+				auto [Values, innerEnd]	= ProcessDeclaration(Tokens, itr + 3, end);
+				auto AssetID			= FindValue(Values, "AssetID");
+				auto AssetGUID			= FindValue(Values, "AssetGUID");
+				auto ColliderGUID		= FindValue(Values, "ColliderGUID");
+				auto Target				= Tokens[itr - 2];
 
 	#if _DEBUG
 				FK_ASSERT((AssetID != nullptr), "MISSING ID!");
@@ -423,48 +407,35 @@ namespace FlexKit
 					return false;
 	#endif
 
-				Mesh_MetaData* Model = &Memory->allocate_aligned<Mesh_MetaData>();
+				Mesh_MetaData* Model = new Mesh_MetaData;
 
 				if (ColliderGUID != nullptr && ColliderGUID->Type == Value::INT)
 					Model->ColliderGUID = ColliderGUID->Data.I;
 				else
 					Model->ColliderGUID = INVALIDHANDLE;
 
-				strncpy(Model->MeshID, AssetID->Data.S.S, AssetID->Data.S.size);
-
-				for (size_t I = AssetID->Data.S.size; I > 0; --I)
-				{
-					switch (Model->MeshID[I])
-					{
-						case '\n':
-						case ' ':
-							Model->MeshID[I] = '\0';
-							AssetID->Data.S.size--;
-					}
-				}
-
-				Model->SetID(Target.SubStr, Target.size + 1);
-				Model->guid = AssetGUID->Data.I;
+				Model->MeshID	= AssetID->Data.S;
+				Model->guid		= AssetGUID->Data.I;
+				Model->ID		= Target;
 
 				MD_Out.push_back(Model);
 
-				itr = res;
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("TextureSet"))
+			else if (token == "TextureSet")
 			{
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "TextureSet Meta Data Found\n";
 #endif
-				auto res		  = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values		  = res.V1;
-				auto AssetID	  = Tokens->at(itr - 2);
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
+				auto AssetID	  = Tokens[itr - 2];
 				auto AssetGUID	  = FindValue(Values, "AssetGUID");
 				auto Albedo		  = FindValue(Values, "Albedo");
 				auto AlbedoID	  = FindValue(Values, "AlbedoGUID");
 				auto RoughMetal	  = FindValue(Values, "RoughMetal");
 				auto RoughMetalID = FindValue(Values, "RoughMetalGUID");
 
-				TextureSet_MetaData* TextureSet_Meta = &Memory->allocate_aligned<TextureSet_MetaData>();
+				TextureSet_MetaData* TextureSet_Meta = new TextureSet_MetaData;
 
 				if (AssetGUID && AssetGUID->Type == Value::INT) 
 					TextureSet_Meta->Guid = AssetGUID->Data.I;
@@ -492,94 +463,101 @@ namespace FlexKit
 				}
 
 				MD_Out.push_back(TextureSet_Meta);
-				itr = res;
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("Scene"))
+			else if (token == "Scene")
 			{
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "Scene Meta Data Found\n";
 #endif
-				auto res        = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values     = res.V1;
-				auto Target		= Tokens->at(itr - 2);
-				auto AssetGUID  = FindValue(Values, "AssetGUID");
-				auto AssetID	= FindValue(Values, "AssetID");
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
+				auto Target				= Tokens[itr - 2];
+				auto AssetGUID			= FindValue(Values, "AssetGUID");
+				auto AssetID			= FindValue(Values, "AssetID");
 
-				Scene_MetaData& Scene		= Memory->allocate<Scene_MetaData>();
-				Scene.SetID(Target.SubStr, Target.size);
+				Scene_MetaData* Scene	= new Scene_MetaData;
+				Scene->ID				= Target;
 
-				if(AssetGUID != nullptr && AssetGUID->Type == Value::INT)
-					Scene.Guid = AssetGUID->Data.I;
+				size_t itr2 = itr;
+				while(true)
+				{
+					auto [res, begin] = DetectSubContainer(Tokens, itr2, innerEnd);
 
-				if (AssetID != nullptr && AssetID->Type == Value::STRING) {
-					strncpy(Scene.SceneID, AssetID->Data.S.S, min(AssetID->Data.S.size, 64));
-					Scene.SceneIDSize = AssetID->Data.S.size;
+					if (Tokens[begin + 1] != "{")
+						break;
+
+					if (res) 
+					{
+						size_t end = SkipBrackets(Tokens, begin + 1);
+						ParseTokens(Tokens, Scene->sceneMetaData, begin + 2, innerEnd - 1);
+						itr = end;
+					}
+					else
+						break;
 				}
 
-				MD_Out.push_back(&Scene);
-				itr = res;
+				if(AssetGUID != nullptr && AssetGUID->Type == Value::INT)
+					Scene->Guid = AssetGUID->Data.I;
+
+				if (AssetID != nullptr && AssetID->Type == Value::STRING)
+					Scene->SceneID = AssetID->Data.S;
+
+				MD_Out.push_back(Scene);
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("Collider"))
+			else if (token == "Collider")
 			{
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "Collider Meta Data Found\n";
 #endif
-				auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values		= res.V1;
-				auto Target		= Tokens->at(itr - 2);
-				auto AssetGUID	= FindValue(Values,	"AssetGUID");
-				auto AssetID	= FindValue(Values,	"AssetID");
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
+				auto Target				= Tokens[itr - 2];
+				auto AssetGUID			= FindValue(Values,	"AssetGUID");
+				auto AssetID			= FindValue(Values,	"AssetID");
 
-				Collider_MetaData& Collider = Memory->allocate<Collider_MetaData>();
-				Collider.SetID(Target.SubStr, Target.size);
+				Collider_MetaData& Collider = *new Collider_MetaData;
+				Collider.ID = Target;
 
 				if (AssetGUID != nullptr && AssetGUID->Type == Value::INT)
 					Collider.Guid = AssetGUID->Data.I;
 
-				if (AssetID != nullptr && AssetID->Type == Value::STRING) {
-					strncpy(Collider.ColliderID, AssetID->Data.S.S, min(AssetID->Data.S.size, 64));
-					Collider.ColliderIDSize = AssetID->Data.S.size;
-				}
+				if (AssetID != nullptr && AssetID->Type == Value::STRING) 
+					Collider.ColliderID = AssetID->Data.S;
 
 				MD_Out.push_back(&Collider);
-				itr = res;
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("TerrainCollider"))
+			else if (token == "TerrainCollider")
 			{
-				auto res       = ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values    = res.V1;
-				auto Target    = Tokens->at(itr - 2);
-				auto AssetGUID = FindValue(Values, "AssetGUID");
-				auto AssetID   = FindValue(Values, "AssetID");
-				auto BitMapLoc = FindValue(Values, "BitMapLocation");
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
+				auto Target				= Tokens[itr - 2];
+				auto AssetGUID			= FindValue(Values, "AssetGUID");
+				auto AssetID			= FindValue(Values, "AssetID");
+				auto BitMapLoc			= FindValue(Values, "BitMapLocation");
 
-				TerrainCollider_MetaData TerrainCollider = Memory->allocate<TerrainCollider_MetaData>();
+				TerrainCollider_MetaData* TerrainCollider = new TerrainCollider_MetaData;
 
 				if (AssetGUID != nullptr && AssetGUID->Type == Value::INT)
-					TerrainCollider.Guid = AssetGUID->Data.I;
+					TerrainCollider->Guid = AssetGUID->Data.I;
 
-				if (AssetID != nullptr && AssetID->Type == Value::STRING) {
-					strncpy(TerrainCollider.ColliderID, AssetID->Data.S.S, min(AssetID->Data.S.size, 64));
-					TerrainCollider.ColliderIDSize = AssetID->Data.S.size;
-				}
+				if (AssetID != nullptr && AssetID->Type == Value::STRING) 
+					TerrainCollider->ColliderID	= AssetID->Data.S;
 
-				if (BitMapLoc != nullptr && BitMapLoc->Type == Value::STRING) {
-					strncpy(TerrainCollider.BitmapFileLoc, BitMapLoc->Data.S.S, min(BitMapLoc->Data.S.size, 256));
-					TerrainCollider.BitmapFileLocSize = BitMapLoc->Data.S.size;
-				}
-				MD_Out.push_back(&TerrainCollider);
-				itr = res;
+				if (BitMapLoc != nullptr && BitMapLoc->Type == Value::STRING) 					
+					TerrainCollider->BitmapFileLoc = BitMapLoc->Data.S;
+
+				MD_Out.push_back(TerrainCollider);
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("Font")) 
+			else if (token == "Font")
 			{
 #if USING(RESCOMPILERVERBOSE)
 				std::cout << "Font Meta Data Found\n";
 #endif
-				auto res		= ProcessDeclaration(Memory, TempMemory, Tokens, itr);
-				auto Values		= res.V1;
-				auto AssetID	= Tokens->at(itr - 2);
-				auto AssetGUID	= FindValue(Values,	"AssetGUID");
-				auto FontFile	= FindValue(Values, "File");
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
+				auto AssetID			= Tokens[itr - 2];
+				auto AssetGUID			= FindValue(Values,	"AssetGUID");
+				auto FontFile			= FindValue(Values, "File");
 
 				// Check for ill formed data
 	#if _DEBUG
@@ -591,21 +569,21 @@ namespace FlexKit
 					return false;
 	#endif
 
-				Font_MetaData& FontData = Memory->allocate<Font_MetaData>();
-				FontData.UserType       = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
-				FontData.type           = MetaData::EMETAINFOTYPE::EMI_FONT;
-				FontData.SetID(AssetID.SubStr, AssetID.size);
+				Font_MetaData* FontData		= new Font_MetaData;
+				FontData->UserType			= MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
+				FontData->type				= MetaData::EMETAINFOTYPE::EMI_FONT;
+				FontData->ID				= AssetID;
 
 				if (CHECKTAG(FontFile, Value::STRING))
-					strncpy(FontData.FontFile, FontFile->Data.S.S, min(FontFile->Data.S.size, sizeof(FontData.FontFile)));
+					FontData->FontFile		= FontFile->Data.S;
 
 				if (CHECKTAG(AssetGUID, Value::INT))
-					FontData.Guid = AssetGUID->Data.I;
+					FontData->Guid			= AssetGUID->Data.I;
 
-				MD_Out.push_back(&FontData);
-				itr = res;
+				MD_Out.push_back(FontData);
+				itr = innerEnd;
 			}
-			else if (DOSTRCMP("{"))
+			else if (token =="{")
 				itr = SkipBrackets(Tokens, itr);
 
 	#undef CHECKTAG
@@ -637,10 +615,10 @@ namespace FlexKit
 		auto Tokens = GetMetaDataTokens(Buffer, BufferSize, TempMemory);
 
 #if USING(RESCOMPILERVERBOSE)
-		std::cout << "Found " << Tokens->size() << " TOkens\n";
+		std::cout << "Found " << Tokens.size() << " TOkens\n";
 #endif
 
-		auto res = ProcessTokens(Memory, TempMemory, Tokens, MD_Out);
+		auto res = ParseTokens(Tokens, MD_Out, 0, Tokens.size());
 
 		return res;
 	}

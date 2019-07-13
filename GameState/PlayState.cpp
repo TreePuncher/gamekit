@@ -13,8 +13,8 @@
 
 
 PlayState::PlayState(
-		GameFramework*			IN_Framework,
-		BaseState*				IN_base) : 
+		GameFramework*	IN_Framework,
+		BaseState*		IN_base) : 
 	FrameworkState		{ IN_Framework						},
 
 	/*
@@ -43,7 +43,6 @@ PlayState::PlayState(
 	debugCamera.TranslateWorld({0, 100, 0});
 
 	LoadScene(IN_Framework->core, &scene, "TestScene");
-
 	LightModel = GetMesh(GetRenderSystem(), "LightModel");
 
 	eventMap.MapKeyToEvent(KEYCODES::KC_W, ThirdPersonCameraRig::Forward		);
@@ -175,7 +174,6 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	sceneDesc.cameras			= &cameras;
 	sceneDesc.PVS				= PVS;
 	base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
-
 
 	ClearVertexBuffer(frameGraph, base.vertexBuffer);
 	ClearVertexBuffer(frameGraph, base.textBuffer);

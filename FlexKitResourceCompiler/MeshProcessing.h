@@ -30,25 +30,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.h"
 #include "MetaData.h"
 #include "..\graphicsutilities\Geometry.h"
+#include "Animation.h"
+
+#include <array>
+
 
 namespace FlexKit
 {
 	/************************************************************************************************/
 
-
-	float3 TranslateToFloat3(FbxVector4& in);
-	float3 TranslateToFloat3(FbxDouble3& in);
-	float4 TranslateToFloat4(FbxVector4& in);
-
-
-	/************************************************************************************************/
-
-
-	XMMATRIX	FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM);
-	FbxAMatrix	XMMATRIX_2_FBXMATRIX(XMMATRIX& M);
-
-
-	/************************************************************************************************/
 
 
 	struct FBXVertexLayout
@@ -90,11 +80,118 @@ namespace FlexKit
 		FBXSkinDeformer Skin;
 	};
 
-	struct CompiledMeshInfo
+
+	/************************************************************************************************/
+
+
+	struct MeshResource : public iResource
 	{
-		bool   Success;
-		size_t BuffersFound;
+		ResourceBlob CreateBlob() override 
+		{ 
+			size_t bufferSize			= CalculateResourceSize();
+			TriMeshResourceBlob* blob	= reinterpret_cast<TriMeshResourceBlob*>(malloc(bufferSize));
+
+			blob->GUID				= TriMeshID;
+			blob->HasAnimation		= AnimationData > 0;
+			blob->HasIndexBuffer	= true;
+			blob->BufferCount		= 0;
+			blob->SkeletonGuid		= SkeletonGUID;
+			blob->Type				= EResourceType::EResource_TriMesh;
+			blob->ResourceSize		= bufferSize;
+
+			blob->IndexCount	= IndexCount;
+			blob->IndexBuffer	= IndexBuffer_Idx;
+			blob->Info.minx		= Info.min.x;
+			blob->Info.miny		= Info.min.y;
+			blob->Info.minz		= Info.min.z;
+			blob->Info.maxx		= Info.max.x;
+			blob->Info.maxy		= Info.max.y;
+			blob->Info.maxz		= Info.max.z;
+			blob->Info.r		= Info.r;
+	
+			memcpy(blob->BS, &BS, sizeof(BoundingSphere));
+			blob->AABB[0] = AABB.BottomLeft[0];
+			blob->AABB[1] = AABB.BottomLeft[1];
+			blob->AABB[2] = AABB.BottomLeft[2];
+			blob->AABB[3] = AABB.TopRight[0];
+			blob->AABB[4] = AABB.TopRight[1];
+			blob->AABB[5] = AABB.TopRight[2];
+
+			strcpy_s(blob->ID, ID_LENGTH > ID.size() ? ID_LENGTH : ID.size(), ID.c_str());
+
+			size_t bufferPosition = 0;
+			for (size_t I = 0; I < 16; ++I)
+			{
+				if (buffers[I])
+				{
+					memcpy(blob->Memory + bufferPosition, buffers[I]->GetBuffer(), buffers[I]->GetBufferSizeRaw());
+
+					auto View = buffers[I];
+					blob->Buffers[I].Begin  = bufferPosition;
+					blob->Buffers[I].Format = (size_t)buffers[I]->GetElementSize();
+					blob->Buffers[I].Type   = (size_t)buffers[I]->GetBufferType();
+					blob->Buffers[I].size   = (size_t)buffers[I]->GetBufferSizeRaw();
+					bufferPosition		  += buffers[I]->GetBufferSizeRaw();
+
+					blob->BufferCount++;
+				}
+			}
+
+			ResourceBlob out;
+			out.GUID			= TriMeshID;
+			out.ID				= ID;
+			out.resourceType	= EResourceType::EResource_TriMesh;
+			out.buffer			= reinterpret_cast<char*>(blob);
+			out.bufferSize		= bufferSize;
+
+			return out;
+		}
+
+		size_t CalculateResourceSize()
+		{
+			size_t Size = 0;
+			for (auto B : buffers)
+				Size += B ? B->GetBufferSizeRaw() : 0;
+
+			return Size + sizeof(TriMeshResourceBlob);
+		}
+
+		size_t AnimationData;
+		size_t IndexCount;
+		size_t TriMeshID;
+		size_t IndexBuffer_Idx;
+
+		struct SubDivInfo
+		{
+			size_t  numVertices;
+			size_t  numFaces;
+			int*	numVertsPerFace;
+			int*	IndicesPerFace;
+		};
+
+		std::string			ID;
+
+		struct RInfo
+		{
+			float3 Offset;
+			float3 min, max;
+			float  r;
+		}Info;
+
+		// Visibility Information
+		AABB			AABB;
+		BoundingSphere	BS;
+
+		SkeletonResource_ptr	Skeleton;
+		size_t					SkeletonGUID;
+
+		std::vector<SubDivInfo>				subDivs;
+		std::array<VertexBufferView*, 16>	buffers;
 	};
+
+
+	using MeshResource_ptr	= std::shared_ptr<MeshResource>;
+	using GeometryList		= std::vector<MeshResource_ptr>;
 
 
 	/************************************************************************************************/
@@ -110,7 +207,8 @@ namespace FlexKit
 
 	FBXSkinDeformer		CreateSkin			(fbxsdk::FbxMesh* Mesh);
 	FBXMeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false);
-	CompiledMeshInfo	CompileMeshResource	(TriMeshResource& out, FbxMesh* Mesh, bool EnableSubDiv, const char* ID, const MetaDataList& MD);
+	
+	MeshResource_ptr	CompileMeshResource	(FbxMesh* Mesh, const std::string& ID = std::string{}, const MetaDataList& MD = MetaDataList{}, bool EnableSubDiv = false);
 
 
 	/************************************************************************************************/

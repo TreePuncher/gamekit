@@ -4382,7 +4382,50 @@ namespace FlexKit
 
 		for (uint32_t itr = 0; itr < BufferCount; ++itr)
 		{
-			if (Buffers[itr] && Buffers[itr]->GetBufferSize())
+			if (nullptr != Buffers[itr] && Buffers[itr]->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+			{
+				// Create the Vertex Buffer
+				FK_ASSERT(Buffers[itr]->GetBufferSizeRaw());// ERROR BUFFER EMPTY;
+				Resource_DESC.Width	= Buffers[itr]->GetBufferSizeRaw();
+
+				ID3D12Resource* NewBuffer = nullptr;
+
+				HRESULT HR = RS->pDevice->CreateCommittedResource(
+					&HEAP_Props, 
+					D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
+					&Resource_DESC, 
+					D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, 
+					nullptr, 
+					IID_PPV_ARGS(&NewBuffer));
+			
+				if (FAILED(HR))
+				{// TODO!
+					FK_ASSERT(0);
+				}
+
+	#if 0
+				RS->UpdateResourceByTemp(
+					NewBuffer, 
+					Buffers[15]->GetBuffer(), 
+					Buffers[0x0f]->GetBufferSizeRaw(), 1, 
+					D3D12_RESOURCE_STATE_INDEX_BUFFER);
+	#else
+				RS->UpdateResourceByUploadQueue(
+					NewBuffer, 
+					Buffers[itr]->GetBuffer(),
+					Buffers[itr]->GetBufferSizeRaw(), 1,
+					D3D12_RESOURCE_STATE_INDEX_BUFFER);
+	#endif
+
+				SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
+
+				DVB_Out.VertexBuffers[itr].Buffer				= NewBuffer;
+				DVB_Out.VertexBuffers[itr].BufferSizeInBytes	= Buffers[itr]->GetBufferSizeRaw();
+				DVB_Out.VertexBuffers[itr].BufferStride			= Buffers[itr]->GetElementSize();
+				DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
+				DVB_Out.MD.IndexBuffer_Index					= itr;
+			}
+			else if (Buffers[itr] && Buffers[itr]->GetBufferSize())
 			{
 				ID3D12Resource* NewBuffer = nullptr;
 				// Create the Vertex Buffer
@@ -4441,49 +4484,6 @@ namespace FlexKit
 			DVB_Out.VertexBuffers[itr].Type					= Buffers[itr]->GetBufferType();
 
 		}
-		}
-		if (nullptr != Buffers[0x0f] && Buffers[0x0f]->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
-		{
-			// Create the Vertex Buffer
-			FK_ASSERT(Buffers[0x0f]->GetBufferSizeRaw());// ERROR BUFFER EMPTY;
-			Resource_DESC.Width	= Buffers[0x0f]->GetBufferSizeRaw();
-
-			ID3D12Resource* NewBuffer = nullptr;
-
-			HRESULT HR = RS->pDevice->CreateCommittedResource(
-				&HEAP_Props, 
-				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE, 
-				&Resource_DESC, 
-				D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, 
-				nullptr, 
-				IID_PPV_ARGS(&NewBuffer));
-			
-			if (FAILED(HR))
-			{// TODO!
-				FK_ASSERT(0);
-			}
-
-#if 0
-			RS->UpdateResourceByTemp(
-				NewBuffer, 
-				Buffers[15]->GetBuffer(), 
-				Buffers[0x0f]->GetBufferSizeRaw(), 1, 
-				D3D12_RESOURCE_STATE_INDEX_BUFFER);
-#else
-			RS->UpdateResourceByUploadQueue(
-				NewBuffer, 
-				Buffers[15]->GetBuffer(),
-				Buffers[15]->GetBufferSizeRaw(), 1,
-				D3D12_RESOURCE_STATE_INDEX_BUFFER);
-#endif
-
-			SETDEBUGNAME(NewBuffer, "INDEXBUFFER");
-
-			DVB_Out.VertexBuffers[0x0f].Buffer				= NewBuffer;
-			DVB_Out.VertexBuffers[0x0f].BufferSizeInBytes	= Buffers[0x0f]->GetBufferSizeRaw();
-			DVB_Out.VertexBuffers[0x0f].BufferStride		= Buffers[0x0f]->GetElementSize();
-			DVB_Out.VertexBuffers[0x0f].Type				= Buffers[0x0f]->GetBufferType();
-			DVB_Out.MD.IndexBuffer_Index					= 0x0f;
 		}
 	}
 	

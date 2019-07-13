@@ -71,6 +71,25 @@ namespace FlexKit
 
 		return JointCount++;
 	}
+	
+
+	/************************************************************************************************/
+
+
+	void Skeleton::AddAnimationClip(AnimationClip clip, iAllocator* allocator)
+	{
+		auto& AL	= allocator->allocate_aligned<Skeleton::AnimationList>();
+		AL.Next		= nullptr;
+		AL.Clip		= clip;
+		AL.Memory	= allocator;
+
+		auto I		= &Animations;
+
+		while (*I != nullptr)
+			I = &(*I)->Next;
+
+		(*I) = &AL;
+	}
 
 
 	/************************************************************************************************/
@@ -139,24 +158,6 @@ namespace FlexKit
 		}
 
 		return -1;
-	}
-
-	/************************************************************************************************/
-
-
-	void Skeleton_PushAnimation(Skeleton* S, iAllocator* Allocator, AnimationClip AC)
-	{
-		auto& AL	= Allocator->allocate_aligned<Skeleton::AnimationList>();
-		AL.Next		= nullptr;
-		AL.Clip		= AC;
-		AL.Memory	= Allocator;
-
-		auto I		= &S->Animations;
-
-		while (*I != nullptr)
-			I = &(*I)->Next;
-
-		(*I) = &AL;
 	}
 
 

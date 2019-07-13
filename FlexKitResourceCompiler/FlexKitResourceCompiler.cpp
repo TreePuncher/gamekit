@@ -36,6 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MetaData.cpp"
 #include "ResourceUtilities.cpp"
 #include "TTFontLoader.cpp"
+#include "SceneResource.cpp"
 
 #include "..\graphicsutilities\AnimationUtilities.cpp"
 #include "..\graphicsutilities\MeshUtils.cpp"
@@ -52,17 +53,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using namespace FlexKit;
 
-/*
-class PhysXErrorCallback : public physx::PxErrorCallback
-{
-public:
-	PhysXErrorCallback() {}
-
-	void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
-	{
-	}
-};
-*/
 
 int main(int argc, char* argv[])
 {
@@ -141,8 +131,7 @@ int main(int argc, char* argv[])
 #endif
 
 			{
-				std::vector<LoadGeometry_RES> Resources;
-
+				ResourceList resources;
 				MetaDataList MetaData;
 
 				for (auto MD_Location : MetaDataFiles)
@@ -160,27 +149,29 @@ int main(int argc, char* argv[])
 					return -1;
 				}
 
-				ResourceList ResourcesFound;
 				for (auto MD : MetaData)
 				{
 					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE) {
-						auto NewResource = MetaDataToBlob(MD, FlexKit::SystemAllocator);
-						if(NewResource)
-							ResourcesFound.push_back(NewResource);
+						FK_ASSERT(0);
+						//auto NewResource = MetaDataToBlob(MD, FlexKit::SystemAllocator);
+						//if(NewResource)
+						//	resources.push_back(NewResource);
 					}
 				}
 
 				// Load Fonts
-#ifdef _DEBUG
-				for (auto MD : MetaData)
+				constexpr bool FontLoadingEnabled = false;
+				if constexpr (FontLoadingEnabled)
 				{
-					if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
+					for (auto MD : MetaData)
 					{
-						auto* Font = (Font_MetaData*)MD;
-						auto res = LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
+						if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
+						{
+							auto* Font	= (Font_MetaData*)MD;
+							auto res	= LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
+						}
 					}
 				}
-#endif
 
 
 				physx::PxCooking*				Cooker		= nullptr;
@@ -239,11 +230,11 @@ int main(int argc, char* argv[])
 
 
 							FlexKit::TextureBuffer Buffer;
-							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc, FlexKit::SystemAllocator, &Buffer);
+							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc.c_str(), FlexKit::SystemAllocator, &Buffer);
 
 							Samples = (TerrainSample*)FlexKit::SystemAllocator.malloc(Buffer.WH[0] * Buffer.WH[1] * sizeof(TerrainSample));
 
-							FlexKit::TextureBufferView<RGBA> View(&Buffer);
+							FlexKit::TextureBufferView<RGBA> View(Buffer);
 							auto SampleCount = Buffer.WH[0] * Buffer.WH[1];
 							for (size_t I = 0; I < SampleCount; ++I){
 								double Height = ((RGBA*)Buffer.Buffer)[I].Red;
@@ -259,6 +250,7 @@ int main(int argc, char* argv[])
 							Desc.nbRows			= Buffer.WH[1];
 							Desc.samples.data	= Samples;
 							Desc.samples.stride	= 4;
+
 							auto RES = Cooker->cookHeightField(Desc, Stream);
 							if (!RES)
 							{
@@ -270,16 +262,17 @@ int main(int argc, char* argv[])
 							FlexKit::SystemAllocator.free(Samples);
 							std::cout << "Done Cooking HeightField!\n";
 
-							auto Blob = CreateColliderResourceBlob(Stream.Buffer, Stream.used, TerrainCollider->Guid, TerrainCollider->ColliderID, FlexKit::SystemAllocator);
-							Blob->Type = EResourceType::EResource_TerrainCollider;
+							FK_ASSERT(0);
+							//auto Blob	= CreateColliderResourceBlob(Stream.Buffer, Stream.used, TerrainCollider->Guid, TerrainCollider->ColliderID, FlexKit::SystemAllocator);
+							//Blob->Type	= EResourceType::EResource_TerrainCollider;
 
-							ResourcesFound.push_back(Blob);
+							//ResourcesFound.push_back(Blob);
 						}
 					}
 				}
 
 				// Scan Input Files for Resources
-				for (auto Input : Inputs)
+				for (auto assetLocation : Inputs)
 				{
 					CompileSceneFromFBXFile_DESC Desc;
 					Desc.CloseFBX		= true;
@@ -287,62 +280,86 @@ int main(int argc, char* argv[])
 					Desc.CookingEnabled = true;
 					Desc.Foundation;
 					Desc.Cooker;
-					std::cout << "Compiling File: " << Input << "\n";
+					std::cout << "Compiling File: " << assetLocation << "\n";
 					
-					auto compiledScene = CompileSceneFromFBXFile(Input, &Desc, MetaData);
+					fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
+					fbxsdk::FbxIOSettings*	Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
+					Manager->SetIOSettings(Settings);
 
-					for (auto& resource : compiledScene.Resources)
-						ResourcesFound.push_back(resource);
+					auto [res, scene] = LoadFBXScene(assetLocation, Manager, Settings);
+					if(res)
+					{
+						ResourceList sceneResources = CompileSceneFromFBXFile(scene, Desc, MetaData);
+
+						for (auto& resource : sceneResources)
+							resources.push_back(resource);
+					}
+					else
+					{
+						std::cout << "Failed to Open FBX File: " << assetLocation << "\n";
+						MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
+					}
 				}
 
-				size_t ResourceCount = ResourcesFound.size();
-				size_t ResourceSize  = 0;
-
-				if (!ResourceCount) {
+				if (!resources.size()) 
+				{
 					std::cout << "No Resources Found!\n";
-					break;
+					return -1;
 				}
 
-				size_t TableSize     = sizeof(ResourceEntry) * ResourceCount + sizeof(ResourceTable);
-				ResourceTable* Table = (ResourceTable*)malloc(TableSize);
-				memset(Table, 0, TableSize);
-				Table->MagicNumber	 = 0xF4F3F2F1F4F3F2F1;
-				Table->Version       = 0x0000000000000001;
-				Table->ResourceCount = ResourceCount;
+				std::vector<ResourceBlob> blobs;
 
-				std::cout << "Resources Found: " << ResourceCount << "\n";
+				for (auto resource : resources)
+					blobs.push_back(resource->CreateBlob());
+
+				sort(blobs.begin(),
+					blobs.end(),
+					[](auto& lhs, auto& rhs) 
+					{
+						return lhs.GUID < rhs.GUID;
+					});
+
+
+				size_t TableSize     = sizeof(ResourceEntry) * resources.size() + sizeof(ResourceTable);
+				ResourceTable& Table = *(ResourceTable*)malloc(TableSize);
+				EXITSCOPE(free(&Table));
+
+				FK_ASSERT(&Table != nullptr, "Allocation Error!");
+
+				memset(&Table, 0, TableSize);
+				Table.MagicNumber	= 0xF4F3F2F1F4F3F2F1;
+				Table.Version       = 0x0000000000000002;
+				Table.ResourceCount = resources.size();
+
+				std::cout << "Resources Found: " << resources.size() << "\n";
 
 				size_t Position = TableSize;
 
-				for(size_t I = 0; I < ResourcesFound.size(); ++I)
+				for(size_t I = 0; I < blobs.size(); ++I)
 				{
-					if (!ResourcesFound[I])
-						continue;
+					Table.Entries[I].ResourcePosition	= Position;
+					Table.Entries[I].GUID				= blobs[I].GUID;
+					Table.Entries[I].Type				= blobs[I].resourceType;
+					
+					memcpy(Table.Entries[I].ID, blobs[I].ID.c_str(), ID_LENGTH);
 
-					auto& res = ResourcesFound[I];
-					Table->Entries[I].ResourcePosition  = Position;
-					Table->Entries[I].GUID				= res->GUID;
-					Table->Entries[I].Type				= res->Type;
-					memcpy(Table->Entries[I].ID, res->ID, ID_LENGTH);
-
-					Position += res->ResourceSize;
-					std::cout << "Resource Found: " << res->ID << " ID: " << Table->Entries[I].GUID << "\n";
+					Position += blobs[I].bufferSize;
+					std::cout << "Resource Found: " << blobs[I].ID << " ID: " << Table.Entries[I].GUID << "\n";
 				}
 
-				FILE* F = nullptr;
-				auto openRes = fopen_s(&F, Out, "wb");
-				fwrite(Table, sizeof(char), TableSize, F);
+				FILE* F			= nullptr;
+				if (fopen_s(&F, Out, "wb") == EINVAL)
+					return -1;
+
+				EXITSCOPE(fclose(F));
+
+				fwrite(&Table, sizeof(char), TableSize, F);
 
 				std::cout << "writing resource " << Out << '\n';
 
-				for (auto& res : ResourcesFound)
-					fwrite(res, sizeof(char), res->ResourceSize, F);
-
-
-				fclose(F);
-				free(Table);
+				for (auto& blob : blobs)
+					fwrite(blob.buffer, sizeof(char), blob.bufferSize, F);
 			}
-			//_aligned_free(BlockDesc._ptr);
 	}	break;
 	case TOOL_MODE::ETOOLMODE_LISTCONTENTS:
 	{	if (FileChosen)
@@ -350,10 +367,19 @@ int main(int argc, char* argv[])
 			for(auto i : Inputs)
 			{
 				FILE* F						= nullptr;
-				auto openRes				= fopen_s(&F, i, "rb");
+				if (fopen_s(&F, i, "rb") == EINVAL)
+					return -1;
+
+				EXITSCOPE(fclose(F));
+
 				size_t TableSize			= ReadResourceTableSize(F);
 				FlexKit::byte* TableMemory	= (FlexKit::byte*)malloc(TableSize);
 				ResourceTable* RT			= (ResourceTable*)TableMemory;
+
+				if (TableMemory == nullptr)
+					return -1;
+
+				EXITSCOPE(free(TableMemory));
 
 				ReadResourceTable(F, RT, TableSize);
 
@@ -386,8 +412,6 @@ int main(int argc, char* argv[])
 						break;
 					}
 				}
-				fclose(F);
-				free(TableMemory);
 			}
 	}	}	break;
 	case TOOL_MODE::ETOOLMODE_HELP:

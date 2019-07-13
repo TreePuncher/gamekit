@@ -13,10 +13,10 @@
 #include "BaseState.h"
 
 
-class thirdPersonCamera final
+class thirdPersonActor final
 {
 public:
-	thirdPersonCamera(iAllocator* IN_allocator) : allocator{ IN_allocator }
+	thirdPersonActor(iAllocator* IN_allocator) : allocator{ IN_allocator }
 	{
 		// Add behaviors
 		gameObject.AddBehavior(allocator->allocate<CameraBehavior>());
@@ -32,7 +32,7 @@ public:
 			});
 	}
 
-	~thirdPersonCamera()
+	~thirdPersonActor()
 	{
 		auto node	= &GetNode();
 		auto camera	= &GetCamera();
@@ -51,33 +51,6 @@ public:
 private:
 	GameObject	gameObject;
 	iAllocator* allocator;
-};
-
-
-class thirdPersonCamera2 final : 
-	public CameraBehavior,
-	public SceneNodeBehavior<>
-{
-public:
-	thirdPersonCamera2()
-	{
-		// Add behaviors
-		gameObject.AddBehavior((CameraBehavior*)this);
-		gameObject.AddBehavior((SceneNodeBehavior<>*)this);
-
-		// Tie nodes together
-		Apply(gameObject, []
-			(	CameraBehavior*			camera,
-				SceneNodeBehavior<>*	node)
-			{
-				auto cameraNode = camera->GetCameraNode();
-				node->Parent(cameraNode);
-			});
-	}
-
-	operator GameObject& () { return gameObject; }
-private:
-	GameObject gameObject;
 };
 
 
