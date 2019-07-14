@@ -192,7 +192,7 @@ void FindAllJoints(JointList& Out, FbxNode* N, size_t Parent )
 MetaDataList GetAllAnimationClipMetaData(const MetaDataList& metaDatas)
 {
 	return FilterList(
-			[](auto* metaData) 
+			[](auto metaData) 
 			{ 
 				return (metaData->type == MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP); 
 			}, 
@@ -210,12 +210,12 @@ void GetAnimationCuts(CutList* out, const MetaDataList& metaData, const std::str
 
 	for (auto clip : AnimationClips)
 	{
-		AnimationClip_MetaData* ClipMetaData = (AnimationClip_MetaData*)clip;
-		AnimationCut NewCut = {};
-		NewCut.ID			= ClipMetaData->ClipID;
-		NewCut.T_Start		= ClipMetaData->T_Start;
-		NewCut.T_End		= ClipMetaData->T_End;
-		NewCut.guid			= ClipMetaData->guid;
+		auto			ClipMetaData = std::static_pointer_cast<AnimationClip_MetaData>(clip);
+		AnimationCut	NewCut	= {};
+		NewCut.ID				= ClipMetaData->ClipID;
+		NewCut.T_Start			= ClipMetaData->T_Start;
+		NewCut.T_End			= ClipMetaData->T_End;
+		NewCut.guid				= ClipMetaData->guid;
 
 		out->push_back(NewCut);
 	}
@@ -225,11 +225,11 @@ void GetAnimationCuts(CutList* out, const MetaDataList& metaData, const std::str
 /************************************************************************************************/
 
 
-Skeleton_MetaData* GetSkeletonMetaData(const MetaDataList& metaDatas)
+std::shared_ptr<Skeleton_MetaData> GetSkeletonMetaData(const MetaDataList& metaDatas)
 {
 	for (auto metaData : metaDatas)
 		if (metaData->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL)
-			return static_cast<Skeleton_MetaData*>(metaData);
+			return std::static_pointer_cast<Skeleton_MetaData>(metaData);
 
 	return nullptr;
 }

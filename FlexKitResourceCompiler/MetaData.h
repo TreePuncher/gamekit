@@ -68,7 +68,8 @@ namespace FlexKit
 		std::string				ID;	// Specifies the Asset that uses the meta data
 	};
 
-	typedef std::vector<MetaData*> MetaDataList;
+	using MetaData_ptr = std::shared_ptr<MetaData>;
+	using MetaDataList = std::vector<MetaData_ptr>;
 
 	auto SkeletonFilter = [](MetaData* const in) {
 		return (in->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL);
@@ -234,13 +235,90 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	enum class ValueType
+	{
+		INT,
+		STRING,
+		FLOAT,
+		INVALID
+	};
+
+
+	union ValueTypeUnion
+	{
+		ValueTypeUnion() : S{ nullptr, 0 } {}
+
+		explicit ValueTypeUnion(float f)			: F{ f } {}
+		explicit ValueTypeUnion(int i)				: I{ i } {}
+		explicit ValueTypeUnion(std::string_view s)	: S{ s } {}
+
+		float				F;
+		int					I;
+		std::string_view	S;
+	};
+
+
+	struct Value
+	{
+		ValueType Type = ValueType::INVALID;
+		ValueTypeUnion			Data;
+		std::string_view		ID;
+	};
+
+
+
+	/************************************************************************************************/
+
+
+	typedef std::vector<Value> ValueList;
+	typedef std::vector<std::string_view> MeshTokenList;
+
+
+	/************************************************************************************************/
+
+
+	using MetaDataParserFN_ptr	= MetaData* (*)(const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end);
+	using MetaDataParserTable	= std::map<std::string, MetaDataParserFN_ptr>;
+
+	const MetaDataParserTable CreateDefaultParser();
+	const MetaDataParserTable CreateSceneParser();
+
+	inline const MetaDataParserTable DefaultParser	= CreateDefaultParser();
+	inline const MetaDataParserTable SceneParser	= CreateSceneParser();
+
+	/*
+
+	constexpr class ValueProtoType
+	{
+	public:
+		std::string_view	ID;
+		ValueType			type = ValueType::INVALID;
+		ValueTypeUnion		defaultValue;
+	};
+
+	// WIP 
+	template<typename TY>
+	constexpr MetaDataParserFN_ptr CreateParser(const TY Values)
+	{
+		return [](const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end) -> MetaData*
+			{
+				return nullptr;
+			};
+	}
+	*/
+
+	/************************************************************************************************/
+
+
+	bool							ParseTokens(const MetaDataParserTable& parser, const MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end);
+
 	std::pair<MetaDataList, bool>	ReadMetaData		(const char* Location);
 	MetaDataList					FindRelatedMetaData (const MetaDataList& MetaData, const MetaData::EMETA_RECIPIENT_TYPE Type, const std::string& ID);
 	MetaDataList					ScanForRelated		(const MetaDataList& MetaData, const MetaData::EMETAINFOTYPE Type);
 
 	Resource*						MetaDataToBlob		(MetaData* Meta, iAllocator* Mem);
 
-	Mesh_MetaData*					GetMeshMetaData		(MetaDataList& relatedMetaData);
+	std::shared_ptr<Mesh_MetaData>	GetMeshMetaData		(MetaDataList& relatedMetaData);
 
 	void							PrintMetaDataList	(const MetaDataList& MD);
 
