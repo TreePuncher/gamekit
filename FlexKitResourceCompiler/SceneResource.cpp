@@ -234,7 +234,7 @@ void ScanChildrenNodesForScene(
 		{
 			if (i->type == MetaData::EMETAINFOTYPE::EMI_SCENE)
 			{
-				Scene_MetaData*		MD		= (Scene_MetaData*)i;
+				auto				MD		= std::static_pointer_cast<Scene_MetaData>(i);
 				SceneResource_ptr	scene	= std::make_shared<SceneResource>();
 
 				scene->GUID				= MD->Guid;

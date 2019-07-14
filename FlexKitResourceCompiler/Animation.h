@@ -205,12 +205,12 @@ struct SkeletonResource : public iResource
 fbxsdk::FbxNode*	FindSkeletonRoot	( fbxsdk::FbxMesh* M );
 void				FindAllJoints		( JointList& Out, FbxNode* N, size_t Parent = 0xFFFF );
 
-void						GetAnimationCuts			( CutList* out, MetaDataList& MD, const std::string& id);
-JointAnimation				GetJointAnimation			( FbxNode* N );
-JointHandle					GetJoint					( static_vector<JointInfo, 1024>& Out, const char* ID );
-void						GetJointTransforms			( JointList& Out, FbxMesh* M, iAllocator* MEM );
-FbxAMatrix					GetGeometryTransformation	( FbxNode* inNode );	
-Skeleton_MetaData*			GetSkeletonMetaData			( const MetaDataList& relatedMetaData);
+void								GetAnimationCuts			( CutList* out, MetaDataList& MD, const std::string& id);
+JointAnimation						GetJointAnimation			( FbxNode* N );
+JointHandle							GetJoint					( static_vector<JointInfo, 1024>& Out, const char* ID );
+void								GetJointTransforms			( JointList& Out, FbxMesh* M, iAllocator* MEM );
+FbxAMatrix							GetGeometryTransformation	( FbxNode* inNode );	
+std::shared_ptr<Skeleton_MetaData>	GetSkeletonMetaData			(const MetaDataList& metaDatas);
 
 SkeletonResource_ptr		LoadSkeletonResource		( FbxMesh* M, const char* ParentID = nullptr, MetaDataList& related = MetaDataList{});
 

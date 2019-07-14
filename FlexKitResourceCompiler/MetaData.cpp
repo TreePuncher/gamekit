@@ -28,9 +28,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	typedef std::vector<std::string_view> MeshTokenList;
-
-
 	/************************************************************************************************/
 
 
@@ -114,42 +111,11 @@ namespace FlexKit
 		return Result;
 	}
 
-
-	/************************************************************************************************/
-
-
-	struct Value
-	{
-		Value() {}
-
-		enum TYPE
-		{
-			INT,
-			STRING,
-			FLOAT,
-			INVALID
-		}Type = INVALID;
-
-		union _
-		{
-			_() : S{ nullptr, 0 } {}
-
-			float				F;
-			int					I;
-			std::string_view	S;
-		}Data = _{};
-
-		std::string_view		ID;
-	};
-
-	typedef std::vector<Value> ValueList;
-
-
 	
 	/************************************************************************************************/
 
 
-	size_t SkipBrackets(MeshTokenList& Tokens, size_t StartingPosition)
+	size_t SkipBrackets(const MeshTokenList& Tokens, size_t StartingPosition)
 	{
 		size_t itr2			= StartingPosition;
 		size_t bracketCount = 1;
@@ -174,7 +140,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::Pair<ValueList, size_t> ProcessDeclaration(MeshTokenList& Tokens, size_t StartingPosition, size_t endPosition)
+	FlexKit::Pair<ValueList, size_t> ProcessDeclaration(const MeshTokenList& Tokens, size_t StartingPosition, size_t endPosition)
 	{
 		ValueList Values;
 		size_t itr2 = StartingPosition;
@@ -244,7 +210,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Value* FindValue(std::vector<Value>& Values, char* ValueID)
+	const Value* FindValue(const std::vector<Value>& Values, char* ValueID)
 	{
 		auto res = 
 			FlexKit::find(
@@ -258,9 +224,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ParseTokens(MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end);
-
-	std::pair<bool,size_t>  DetectSubContainer(MeshTokenList& Tokens, const size_t begin, const size_t end)
+	std::pair<bool,size_t>  DetectSubContainer(const MeshTokenList& Tokens, const size_t begin, const size_t end)
 	{
 		for (size_t itr = begin; itr < end; ++itr)
 		{
@@ -271,17 +235,257 @@ namespace FlexKit
 		return { false, 0 };
 	}
 
-	/*
-	class TokenHandler
+
+	MetaData* ParseScene(const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
-	public:
-		virtual void Handle(MeshTokenList& Tokens, size_t begin, size_t end) = 0;
-	};
+		auto Target				= Tokens[begin - 2];
+		auto AssetGUID			= FindValue(values, "AssetGUID");
+		auto AssetID			= FindValue(values, "AssetID");
 
-	using TokenHandlerTable = std::vector<TokenHandler>;
-	*/
+		Scene_MetaData* scene	= new Scene_MetaData;
+		scene->ID				= Target;
 
-	bool ParseTokens(MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end)
+		size_t itr2 = begin;
+		while(true)
+		{
+			auto [res, begin] = DetectSubContainer(Tokens, itr2, end);
+
+			if (Tokens[begin + 1] != "{")
+				break;
+
+			if (res) 
+			{
+				size_t end = SkipBrackets(Tokens, begin + 1);
+				ParseTokens(DefaultParser(), Tokens, scene->sceneMetaData, begin + 2, end - 1);
+				itr2 = end;
+			}
+			else
+				break;
+		}
+
+		if(AssetGUID != nullptr && AssetGUID->Type == Value::INT)
+			scene->Guid = AssetGUID->Data.I;
+
+		if (AssetID != nullptr && AssetID->Type == Value::STRING)
+			scene->SceneID = AssetID->Data.S;
+
+		return scene;
+	}
+	
+
+	MetaData* ParseModel(const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto AssetID			= FindValue(values, "AssetID");
+		auto AssetGUID			= FindValue(values, "AssetGUID");
+		auto ColliderGUID		= FindValue(values, "ColliderGUID");
+		auto Target				= Tokens[begin - 2];
+
+#if _DEBUG
+		FK_ASSERT((AssetID != nullptr), "MISSING ID!");
+		FK_ASSERT((AssetID->Type == Value::STRING));
+
+		FK_ASSERT((AssetGUID != nullptr), "MISSING GUID!");
+		FK_ASSERT((AssetGUID->Type == Value::INT));
+#else
+		if ((!AssetID || AssetID->Type != Value::STRING) || (!AssetGUID || AssetGUID->Type != Value::INT))
+			return false;
+#endif
+
+		Mesh_MetaData* model = new Mesh_MetaData;
+
+		if (ColliderGUID != nullptr && ColliderGUID->Type == Value::INT)
+			model->ColliderGUID = ColliderGUID->Data.I;
+		else
+			model->ColliderGUID = INVALIDHANDLE;
+
+		model->MeshID	= AssetID->Data.S;
+		model->guid		= AssetGUID->Data.I;
+		model->ID		= Target;
+
+		return model;
+	}
+
+
+	MetaData* ParseSkeleton(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto AssetID			= FindValue(values, "AssetID");		
+		auto AssetGUID			= FindValue(values, "AssetGUID");	
+
+#if _DEBUG
+		FK_ASSERT((AssetID			!= nullptr), "MISSING ID!");
+		FK_ASSERT((AssetID->Type	== Value::STRING));
+
+		FK_ASSERT((AssetGUID		!= nullptr), "MISSING GUID!");
+		FK_ASSERT((AssetGUID->Type	== Value::INT));
+#else
+		if ((!AssetID || AssetID->Type != Value::STRING) || (!AssetGUID || AssetGUID->Type != Value::INT))
+			return false;
+#endif
+
+		Skeleton_MetaData* Skeleton = new Skeleton_MetaData;
+
+		auto Target = tokens[ begin - 2];
+
+		Skeleton->SkeletonID	= AssetID->Data.S;
+		Skeleton->SkeletonGUID	= AssetGUID->Data.I;
+		Skeleton->ID			= Target;
+
+		return Skeleton;
+	}
+
+
+	MetaData* ParseAnimationClip(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto ID					= FindValue(values, "ID");
+		auto beginFrame			= FindValue(values, "Begin");
+		auto endFrame			= FindValue(values, "End");
+		auto GUID				= FindValue(values, "AssetGUID");
+
+		// Check for ill formed data
+		FK_ASSERT((ID			!= nullptr), "MISSING ID TAG!");
+		FK_ASSERT((beginFrame	!= nullptr), "MISSING Begin	Value!");
+		FK_ASSERT((endFrame		!= nullptr), "MISSING End Value!");
+		FK_ASSERT((GUID			!= nullptr), "MISSING GUID!");
+		FK_ASSERT((ID->Type			== Value::STRING));
+		FK_ASSERT((beginFrame->Type == Value::FLOAT));
+		FK_ASSERT((endFrame->Type   == Value::FLOAT));
+		FK_ASSERT((GUID->Type		== Value::INT));
+
+		AnimationClip_MetaData* NewAnimationClip = new AnimationClip_MetaData;
+
+		auto Target = tokens[begin - 2];
+
+		NewAnimationClip->ClipID	= ID->Data.S;
+		NewAnimationClip->ID		= Target;
+		NewAnimationClip->T_Start	= beginFrame->Data.F;
+		NewAnimationClip->T_End		= endFrame->Data.F;
+		NewAnimationClip->guid		= GUID->Data.I;
+
+		return NewAnimationClip;
+	}
+
+
+	MetaData* ParseTextureSet(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		FK_ASSERT(0);
+
+		auto AssetID	  = tokens[begin - 2];
+		auto AssetGUID	  = FindValue(values, "AssetGUID");
+		auto Albedo		  = FindValue(values, "Albedo");
+		auto AlbedoID	  = FindValue(values, "AlbedoGUID");
+		auto RoughMetal	  = FindValue(values, "RoughMetal");
+		auto RoughMetalID = FindValue(values, "RoughMetalGUID");
+
+		TextureSet_MetaData* TextureSet_Meta = new TextureSet_MetaData;
+
+		if (AssetGUID && AssetGUID->Type == Value::INT) 
+			TextureSet_Meta->Guid = AssetGUID->Data.I;
+
+		if (Albedo && Albedo->Type == Value::STRING){
+			//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ALBEDO].Directory;
+			//strncpy(dest, Albedo->Data.S.S, Albedo->Data.S.size);
+		}
+
+		if (AlbedoID && AlbedoID->Type == Value::INT) {
+			//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = AlbedoID->Data.I;
+		} else {
+			//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = INVALIDHANDLE;
+		}
+
+		if (RoughMetal && RoughMetal->Type == Value::STRING){
+			//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ROUGHSMOOTH].Directory;
+			//strncpy(dest, RoughMetal->Data.S.S, RoughMetal->Data.S.size);
+		}
+
+		if (RoughMetalID && RoughMetalID->Type == Value::INT) {
+			//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = RoughMetalID->Data.I;
+		} else {
+			//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = INVALIDHANDLE;
+		}
+
+		return TextureSet_Meta;
+	}
+
+
+	MetaData* ParseFontSet(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto AssetID			= tokens[begin - 2];
+		auto AssetGUID			= FindValue(values,	"AssetGUID");
+		auto FontFile			= FindValue(values, "File");
+
+		// Check for ill formed data
+		FK_ASSERT(FontFile);
+		FK_ASSERT(AssetGUID);
+
+		Font_MetaData* FontData		= new Font_MetaData;
+		FontData->UserType			= MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
+		FontData->type				= MetaData::EMETAINFOTYPE::EMI_FONT;
+		FontData->ID				= AssetID;
+		FontData->FontFile			= FontFile->Data.S;
+		FontData->Guid				= AssetGUID->Data.I;
+
+		return FontData;
+	}
+
+
+	MetaData* ParseCollider(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto Target				= tokens[begin - 2];
+		auto AssetGUID			= FindValue(values,	"AssetGUID");
+		auto AssetID			= FindValue(values,	"AssetID");
+
+		Collider_MetaData* Collider = new Collider_MetaData;
+		Collider->ID = Target;
+
+		if (AssetGUID != nullptr && AssetGUID->Type == Value::INT)
+			Collider->Guid = AssetGUID->Data.I;
+
+		if (AssetID != nullptr && AssetID->Type == Value::STRING) 
+			Collider->ColliderID = AssetID->Data.S;
+
+		return Collider;
+	}
+
+
+	MetaData* ParseTerrainCollider(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto Target				= tokens[begin - 2];
+		auto AssetGUID			= FindValue(values, "AssetGUID");
+		auto AssetID			= FindValue(values, "AssetID");
+		auto BitMapLoc			= FindValue(values, "BitMapLocation");
+
+		TerrainCollider_MetaData* TerrainCollider = new TerrainCollider_MetaData;
+
+		if (AssetGUID != nullptr && AssetGUID->Type == Value::INT)
+			TerrainCollider->Guid = AssetGUID->Data.I;
+
+		if (AssetID != nullptr && AssetID->Type == Value::STRING) 
+			TerrainCollider->ColliderID	= AssetID->Data.S;
+
+		if (BitMapLoc != nullptr && BitMapLoc->Type == Value::STRING) 					
+			TerrainCollider->BitmapFileLoc = BitMapLoc->Data.S;
+
+		return TerrainCollider;
+	}
+
+	
+	MetaDataParserTable DefaultParser()
+	{
+		MetaDataParserTable table;
+		table["AnimationClip"]		= ParseAnimationClip;
+		table["Collider"]			= ParseCollider;
+		table["Font"]				= ParseFontSet;
+		table["Model"]				= ParseModel;
+		table["Skeleton"]			= ParseSkeleton;
+		table["Scene"]				= ParseScene;
+		table["TerrainCollider"]	= ParseTerrainCollider;
+		//table["TextureSet"]		= ParseTextureSet;
+
+		return table;
+	}
+
+
+	bool ParseTokens(const MetaDataParserTable& parser, const MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end)
 	{
 		struct Value
 		{
@@ -295,299 +499,36 @@ namespace FlexKit
 			Token T;
 		};
 
-		// Metadata Formats
-		// MetaData Declaration			= "[Identifier] : [type] = [Value(s)];"
-		// Sub Container definition		= [Identifier] : [ContainerTypeIdentier] { [MetaData Declaration]; };
+		// Metadata Format
+		// String					= {{ A-Z, a-z, 0-9 }...}
+		// Number					= { 0-9... "." 0-9... }
+		// Identifier				= Any String that is not a keyword or operator symbol
+		// keyword_valuetype		= { integer, string, float }
+		// keyword_metatype			= { AnimationClip, Collider, Font, Model, Skeleton, Scene, TerrainCollider}
+		// keyword_containertype	= { MetaDataCollection[parent container is Scene]}
+		// Value_Declaration		= [Identifier] : keyword_valuetype	= [String,Number];
+		// MetaDataDeclaration		= [Identifier] : [keyword_metatype] = { [Value_Declaration, SubContainerDeclaration]... };
+		// SubContainerDeclaration	= [Identifier] : [keyword_containertype] ] { [MetaData Declaration]... };
 
 
 		ValueList Values;
 		for (size_t itr = begin; itr < end && itr < Tokens.size(); ++itr)
 		{
-			std::string_view token = Tokens.at(itr);
-
-	#define DOSTRCMP(A) (T.size && !strncmp(T.SubStr, A, max(strlen(A), T.size)))
-	#define CHECKTAG(A, TYPE) ((A != nullptr) && (A->Type == TYPE))
-
-			// TODO: Reform this into a table
-			if(token == "AnimationClip")
+			if (std::string str = std::string(Tokens[itr]); 
+				parser.find(string(Tokens[itr])) == parser.end()		&& // Check Identifer
+				Tokens[itr + 1] == ":"									&& // Check for Operator
+				parser.find(string(Tokens[itr + 2])) != parser.end()	&& // Check keyword_metatype
+				Tokens[itr + 3] == "=")
 			{
-#if USING(RESCOMPILERVERBOSE)
-				std::cout << "Animation Clip Meta Data Found\n";
-#endif
-				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
-				auto ID					= FindValue(Values, "ID");			
-				auto begin				= FindValue(Values, "Begin");		
-				auto end				= FindValue(Values, "End");			
-				auto GUID				= FindValue(Values, "AssetGUID");	
+				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 5, end);
 
-				// Check for ill formed data
-	#if _DEBUG
-				FK_ASSERT((ID != nullptr),		"MISSING ID		TAG!");
-				FK_ASSERT((begin != nullptr),	"MISSING Begin	Value!");
-				FK_ASSERT((end != nullptr),		"MISSING End	Value!");
-				FK_ASSERT((GUID != nullptr),	"MISSING GUID!");
-				FK_ASSERT((ID->Type    == Value::STRING));
-				FK_ASSERT((begin->Type == Value::FLOAT));
-				FK_ASSERT((end->Type   == Value::FLOAT));
-				FK_ASSERT((GUID->Type  == Value::INT));
-	#else	
-				if ((!ID	|| ID->Type		!= Value::STRING) ||
-					(!begin || begin->Type	!= Value::FLOAT)  ||
-					(!end	|| end->Type	!= Value::FLOAT)  ||
-					(!GUID	|| GUID->Type	!= Value::INT))
-					return false;
-	#endif
-
-				AnimationClip_MetaData* NewAnimationClip = new AnimationClip_MetaData;
-
-				auto Target = Tokens[itr - 2];
-
-				NewAnimationClip->ClipID	= ID->Data.S;
-				NewAnimationClip->ID		= Target;
-				NewAnimationClip->T_Start	= begin->Data.F;
-				NewAnimationClip->T_End		= end->Data.F;
-				NewAnimationClip->guid		= GUID->Data.I;
-
-				MD_Out.push_back(NewAnimationClip);
+				if(auto res = parser.at(string(Tokens[itr + 2]))(Tokens, Values, itr + 2, innerEnd); res != nullptr)
+					MD_Out.push_back(std::shared_ptr<MetaData>{ res });
 
 				itr = innerEnd;
 			}
-			else if (token == "Skeleton")
-			{
-#if USING(RESCOMPILERVERBOSE)
-				std::cout << "Skeleton Meta Data Found\n";
-#endif
-				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
-				auto AssetID			= FindValue(Values, "AssetID");		
-				auto AssetGUID			= FindValue(Values, "AssetGUID");	
-
-	#if _DEBUG
-				FK_ASSERT((AssetID			!= nullptr), "MISSING ID!");
-				FK_ASSERT((AssetID->Type	== Value::STRING));
-
-				FK_ASSERT((AssetGUID		!= nullptr), "MISSING GUID!");
-				FK_ASSERT((AssetGUID->Type	== Value::INT));
-	#else
-				if ((!AssetID || AssetID->Type != Value::STRING) || (!AssetGUID || AssetGUID->Type != Value::INT))
-					return false;
-	#endif
-
-				Skeleton_MetaData* Skeleton = new Skeleton_MetaData;
-
-				auto Target = Tokens[itr - 2];
-
-				Skeleton->SkeletonID	= AssetID->Data.S;
-				Skeleton->SkeletonGUID	= AssetGUID->Data.I;
-				Skeleton->ID			= Target;
-
-				MD_Out.push_back(Skeleton);
-
-				itr = innerEnd;
-			}
-			else if (token == "Model")
-			{
-#if USING(RESCOMPILERVERBOSE)
-				std::cout << "Model Meta Data Found\n";
-#endif
-
-				auto [Values, innerEnd]	= ProcessDeclaration(Tokens, itr + 3, end);
-				auto AssetID			= FindValue(Values, "AssetID");
-				auto AssetGUID			= FindValue(Values, "AssetGUID");
-				auto ColliderGUID		= FindValue(Values, "ColliderGUID");
-				auto Target				= Tokens[itr - 2];
-
-	#if _DEBUG
-				FK_ASSERT((AssetID != nullptr), "MISSING ID!");
-				FK_ASSERT((AssetID->Type == Value::STRING));
-
-				FK_ASSERT((AssetGUID != nullptr), "MISSING GUID!");
-				FK_ASSERT((AssetGUID->Type == Value::INT));
-	#else
-				if ((!AssetID || AssetID->Type != Value::STRING) || (!AssetGUID || AssetGUID->Type != Value::INT))
-					return false;
-	#endif
-
-				Mesh_MetaData* Model = new Mesh_MetaData;
-
-				if (ColliderGUID != nullptr && ColliderGUID->Type == Value::INT)
-					Model->ColliderGUID = ColliderGUID->Data.I;
-				else
-					Model->ColliderGUID = INVALIDHANDLE;
-
-				Model->MeshID	= AssetID->Data.S;
-				Model->guid		= AssetGUID->Data.I;
-				Model->ID		= Target;
-
-				MD_Out.push_back(Model);
-
-				itr = innerEnd;
-			}
-			else if (token == "TextureSet")
-			{
-#if USING(RESCOMPILERVERBOSE)
-				std::cout << "TextureSet Meta Data Found\n";
-#endif
-				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
-				auto AssetID	  = Tokens[itr - 2];
-				auto AssetGUID	  = FindValue(Values, "AssetGUID");
-				auto Albedo		  = FindValue(Values, "Albedo");
-				auto AlbedoID	  = FindValue(Values, "AlbedoGUID");
-				auto RoughMetal	  = FindValue(Values, "RoughMetal");
-				auto RoughMetalID = FindValue(Values, "RoughMetalGUID");
-
-				TextureSet_MetaData* TextureSet_Meta = new TextureSet_MetaData;
-
-				if (AssetGUID && AssetGUID->Type == Value::INT) 
-					TextureSet_Meta->Guid = AssetGUID->Data.I;
-
-				if (Albedo && Albedo->Type == Value::STRING){
-					//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ALBEDO].Directory;
-					//strncpy(dest, Albedo->Data.S.S, Albedo->Data.S.size);
-				}
-
-				if (AlbedoID && AlbedoID->Type == Value::INT) {
-					//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = AlbedoID->Data.I;
-				} else {
-					//TextureSet_Meta->Textures.TextureID[ETT_ALBEDO] = INVALIDHANDLE;
-				}
-
-				if (RoughMetal && RoughMetal->Type == Value::STRING){
-					//auto dest = TextureSet_Meta->Textures.TextureLocation[ETT_ROUGHSMOOTH].Directory;
-					//strncpy(dest, RoughMetal->Data.S.S, RoughMetal->Data.S.size);
-				}
-
-				if (RoughMetalID && RoughMetalID->Type == Value::INT) {
-					//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = RoughMetalID->Data.I;
-				} else {
-					//TextureSet_Meta->Textures.TextureID[ETT_ROUGHSMOOTH] = INVALIDHANDLE;
-				}
-
-				MD_Out.push_back(TextureSet_Meta);
-				itr = innerEnd;
-			}
-			else if (token == "Scene")
-			{
-#if USING(RESCOMPILERVERBOSE)
-				std::cout << "Scene Meta Data Found\n";
-#endif
-				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
-				auto Target				= Tokens[itr - 2];
-				auto AssetGUID			= FindValue(Values, "AssetGUID");
-				auto AssetID			= FindValue(Values, "AssetID");
-
-				Scene_MetaData* Scene	= new Scene_MetaData;
-				Scene->ID				= Target;
-
-				size_t itr2 = itr;
-				while(true)
-				{
-					auto [res, begin] = DetectSubContainer(Tokens, itr2, innerEnd);
-
-					if (Tokens[begin + 1] != "{")
-						break;
-
-					if (res) 
-					{
-						size_t end = SkipBrackets(Tokens, begin + 1);
-						ParseTokens(Tokens, Scene->sceneMetaData, begin + 2, innerEnd - 1);
-						itr = end;
-					}
-					else
-						break;
-				}
-
-				if(AssetGUID != nullptr && AssetGUID->Type == Value::INT)
-					Scene->Guid = AssetGUID->Data.I;
-
-				if (AssetID != nullptr && AssetID->Type == Value::STRING)
-					Scene->SceneID = AssetID->Data.S;
-
-				MD_Out.push_back(Scene);
-				itr = innerEnd;
-			}
-			else if (token == "Collider")
-			{
-#if USING(RESCOMPILERVERBOSE)
-				std::cout << "Collider Meta Data Found\n";
-#endif
-				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
-				auto Target				= Tokens[itr - 2];
-				auto AssetGUID			= FindValue(Values,	"AssetGUID");
-				auto AssetID			= FindValue(Values,	"AssetID");
-
-				Collider_MetaData& Collider = *new Collider_MetaData;
-				Collider.ID = Target;
-
-				if (AssetGUID != nullptr && AssetGUID->Type == Value::INT)
-					Collider.Guid = AssetGUID->Data.I;
-
-				if (AssetID != nullptr && AssetID->Type == Value::STRING) 
-					Collider.ColliderID = AssetID->Data.S;
-
-				MD_Out.push_back(&Collider);
-				itr = innerEnd;
-			}
-			else if (token == "TerrainCollider")
-			{
-				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
-				auto Target				= Tokens[itr - 2];
-				auto AssetGUID			= FindValue(Values, "AssetGUID");
-				auto AssetID			= FindValue(Values, "AssetID");
-				auto BitMapLoc			= FindValue(Values, "BitMapLocation");
-
-				TerrainCollider_MetaData* TerrainCollider = new TerrainCollider_MetaData;
-
-				if (AssetGUID != nullptr && AssetGUID->Type == Value::INT)
-					TerrainCollider->Guid = AssetGUID->Data.I;
-
-				if (AssetID != nullptr && AssetID->Type == Value::STRING) 
-					TerrainCollider->ColliderID	= AssetID->Data.S;
-
-				if (BitMapLoc != nullptr && BitMapLoc->Type == Value::STRING) 					
-					TerrainCollider->BitmapFileLoc = BitMapLoc->Data.S;
-
-				MD_Out.push_back(TerrainCollider);
-				itr = innerEnd;
-			}
-			else if (token == "Font")
-			{
-#if USING(RESCOMPILERVERBOSE)
-				std::cout << "Font Meta Data Found\n";
-#endif
-				auto [Values, innerEnd] = ProcessDeclaration(Tokens, itr + 3, end);
-				auto AssetID			= Tokens[itr - 2];
-				auto AssetGUID			= FindValue(Values,	"AssetGUID");
-				auto FontFile			= FindValue(Values, "File");
-
-				// Check for ill formed data
-	#if _DEBUG
-				FK_ASSERT(CHECKTAG(FontFile,	Value::STRING));
-				FK_ASSERT(CHECKTAG(AssetGUID,	Value::INT));
-	#else	
-				if	  (	CHECKTAG(FontFile, Value::STRING) &&
-						CHECKTAG(AssetGUID, Value::INT))
-					return false;
-	#endif
-
-				Font_MetaData* FontData		= new Font_MetaData;
-				FontData->UserType			= MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
-				FontData->type				= MetaData::EMETAINFOTYPE::EMI_FONT;
-				FontData->ID				= AssetID;
-
-				if (CHECKTAG(FontFile, Value::STRING))
-					FontData->FontFile		= FontFile->Data.S;
-
-				if (CHECKTAG(AssetGUID, Value::INT))
-					FontData->Guid			= AssetGUID->Data.I;
-
-				MD_Out.push_back(FontData);
-				itr = innerEnd;
-			}
-			else if (token =="{")
+			else if (Tokens[itr] =="{")
 				itr = SkipBrackets(Tokens, itr);
-
-	#undef CHECKTAG
-	#undef DOSTRCMP
 		}
 
 		return true;
@@ -613,12 +554,7 @@ namespace FlexKit
 		LoadFileIntoBuffer(Location, (byte*)Buffer, BufferSize);
 
 		auto Tokens = GetMetaDataTokens(Buffer, BufferSize, TempMemory);
-
-#if USING(RESCOMPILERVERBOSE)
-		std::cout << "Found " << Tokens.size() << " TOkens\n";
-#endif
-
-		auto res = ParseTokens(Tokens, MD_Out, 0, Tokens.size());
+		auto res	= ParseTokens(DefaultParser(), Tokens, MD_Out, 0, Tokens.size());
 
 		return res;
 	}
@@ -664,7 +600,7 @@ namespace FlexKit
 	{
 		MetaDataList RelatedData;
 
-		for (auto* meta : MetaData)
+		for (auto meta : MetaData)
 		{
 			if (meta->UserType == Type && ID == meta->ID)
 					RelatedData.push_back(meta);
@@ -677,11 +613,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Mesh_MetaData* GetMeshMetaData(MetaDataList& MetaData)
+	std::shared_ptr<Mesh_MetaData> GetMeshMetaData(MetaDataList& MetaData)
 	{
 		for (auto meta : MetaData)
 			if (meta->type == MetaData::EMETAINFOTYPE::EMI_MESH)
-				return static_cast<Mesh_MetaData*>(meta);
+				return std::static_pointer_cast<Mesh_MetaData>(meta);
 
 		return nullptr;
 	}
@@ -694,7 +630,7 @@ namespace FlexKit
 	MetaDataList ScanForRelated(const MetaDataList& metaData, const MetaData::EMETAINFOTYPE type)
 	{
 		return FilterList(
-			[&](auto* metaData)
+			[&](auto metaData)
 			{
 				return (metaData->type == type);
 			},

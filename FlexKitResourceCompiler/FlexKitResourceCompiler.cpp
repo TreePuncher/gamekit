@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
 					{
 						if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
 						{
-							auto* Font	= (Font_MetaData*)MD;
+							auto Font	= std::static_pointer_cast<Font_MetaData>(MD);
 							auto res	= LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
 						}
 					}
@@ -218,8 +218,9 @@ int main(int argc, char* argv[])
 						{
 							std::cout << "Cooking HeightField!\n";
 
-							auto* TerrainCollider = (TerrainCollider_MetaData*)MD;
-							ColliderStream Stream = ColliderStream(FlexKit::SystemAllocator, 4096);
+
+							auto TerrainCollider	= std::static_pointer_cast<TerrainCollider_MetaData>(MD);
+							ColliderStream Stream	= ColliderStream(FlexKit::SystemAllocator, 4096);
 
 							struct TerrainSample
 							{
