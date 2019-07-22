@@ -14,122 +14,22 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	class ThirdPersonCameraRig
+	enum Events
 	{
-	public:
-		ThirdPersonCameraRig(SceneEntityHandle modelHandle, GraphicScene* scene)
-		{
-
-		}
-
-
-		~ThirdPersonCameraRig()
-		{
-
-		}
-
-
-		/************************************************************************************************/
-
-
-		ThirdPersonCameraRig& operator = (ThirdPersonCameraRig&& rhs)
-		{
-			characterModel	= std::move(rhs.characterModel);
-			camera			= std::move(rhs.camera);
-			node			= std::move(rhs.node);
-			yaw				= rhs.yaw;
-			pitch			= rhs.pitch;
-
-			return *this;
-		}
-
-
-		/************************************************************************************************/
-
-
-		ThirdPersonCameraRig(ThirdPersonCameraRig&& rhs) : 
-			characterModel	{ std::move(rhs.characterModel) },
-			camera			{ std::move(rhs.camera)			},
-			node			{ std::move(rhs.node)			},
-			yaw				{ rhs.yaw						},
-			pitch			{ rhs.pitch						} {}
-
-
-		/************************************************************************************************/
-
-
-		void Update(float dT)
-		{
-		}
-
-
-		/************************************************************************************************/
-
-
-		void HandleEvents(Event evt)
-		{
-		}
-
-
-		/************************************************************************************************/
-
-
-		enum Events
-		{
-			Forward,
-			Backward,
-			Left,
-			Right,
-			yawView,
-			pitchView
-		};
-
-
-		DrawableBehavior	characterModel;
-		CameraBehavior		camera;
-		SceneNodeBehavior<>	node;
-
-		float yaw;
-		float pitch;
+		Forward,
+		Backward,
+		Left,
+		Right,
+		yawView,
+		pitchView
 	};
 
 
 	/************************************************************************************************/
 
+}
 
-	inline ThirdPersonCameraRig CreateCharacterRig(TriMeshHandle modelHandle, GraphicScene* scene)
-	{
-		ThirdPersonCameraRig rig{scene->CreateSceneEntityAndSetMesh(modelHandle), scene};
-
-		return rig;
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline UpdateTask* UpdateThirdPersonRig(UpdateDispatcher& dipatcher, ThirdPersonCameraRig& rig, UpdateTask& transform, UpdateTask& cameras, double dT)
-	{
-		struct Data {
-			ThirdPersonCameraRig* rig;
-		};
-
-		return &dipatcher.Add<Data>(
-			[&](auto& linkageBuilder, auto& data) 
-			{
-				linkageBuilder.AddOutput(transform);
-				linkageBuilder.AddOutput(cameras);
-
-				data.rig = &rig;
-			}, 
-			[=](auto& data) 
-			{
-				data.rig->Update(dT);
-			});
-	}
-
-
-}	/**********************************************************************
+/**********************************************************************
 
 Copyright (c) 2019 Robert May
 

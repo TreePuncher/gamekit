@@ -170,7 +170,11 @@ public:
 						IN_Framework->ActiveWindow->WH / 64
 					},
 
-			cameras	{ framework->core->GetBlockMemory() }
+			cameras		{ framework->core->GetBlockMemory() },
+			ids			{ framework->core->GetBlockMemory() },
+			drawables	{ framework->core->GetBlockMemory() },
+			visables	{ framework->core->GetBlockMemory() },
+			pointLights	{ framework->core->GetBlockMemory() }
 	{
 		auto& RS = *IN_Framework->GetRenderSystem();
 		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
@@ -210,6 +214,10 @@ public:
 	// Components
 	SceneNodeComponent			transforms;
 	CameraComponent				cameras;
+	StringIDComponent			ids;
+	DrawableComponent			drawables;
+	SceneVisibilityComponent	visables;
+	PointLightComponent			pointLights;
 
 	TextureStreamingEngine		streamingEngine;
 };

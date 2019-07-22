@@ -106,46 +106,16 @@ namespace FlexKit
 
 	struct FLEXKITAPI Drawable
 	{
-		// TODO: move state flags into a single byte 
-		Drawable(float4 Albedo = 1.0f, float4 Specular = 1.0f) 
-		{
-			DrawLast		   = false;
-			Transparent		   = false;
-			Posed			   = false; // Use Vertex Palette Skinning
-			PoseState		   = nullptr;
-			AnimationState	   = nullptr;
-			Occluder		   = InvalidHandle_t;
-			MeshHandle		   = InvalidHandle_t;
-		}
+		NodeHandle			Node				= InvalidHandle_t;	// 2
+		TriMeshHandle		Occluder			= InvalidHandle_t;	// 2
+		TriMeshHandle		MeshHandle			= InvalidHandle_t;	// 2
 
-		~Drawable()
-		{
-			Release();
-		}
-
-		void Release()
-		{
-			//if (PoseState)
-			//	PoseState->Release();
-
-			PoseState = nullptr;
-		}
-
-		NodeHandle			Node;				// 2
-		TriMeshHandle		Occluder;			// 2
-
-		TriMeshHandle			MeshHandle;		// 2
-		bool					DrawLast;		// 1
-		bool					Transparent;	// 1
-		bool					Textured;		// 1
-		bool					Posed;			// 1
-		bool					Dirty;			// 1
-		bool					Padding;		// 1
-
-		DrawablePoseState*		PoseState;		// 8 16
-		DrawableAnimationState*	AnimationState; // 8 24
-		TextureSet*				Textures;		// 8 32
-		char*					id;				// 8 40 -- string ID, null terminated 
+		bool					DrawLast		= false; // 1
+		bool					Transparent		= false; // 1
+		bool					Textured		= false; // 1
+		bool					Dirty			= false; // 1
+		bool					Padding[5];		// 5
+		char*					id;				// 8 - string ID, null terminated 
 
 		struct MaterialProperties
 		{
@@ -154,8 +124,9 @@ namespace FlexKit
 				Albedo.w = min(a.w, 1.0f);
 				Spec.w	 = min(m.w, 1.0f);
 			}
-			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.5f), Spec(0)
-			{}
+
+			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.5f), Spec(0) {}
+
 			float4		Albedo;		// Term 4 is Roughness
 			float4		Spec;		// Metal Is first 4, Specular is rgb
 		}MatProperties;	// 32 
@@ -194,8 +165,8 @@ namespace FlexKit
 	struct PVEntry
 	{
 		PVEntry() {}
-		PVEntry(Drawable* d) : OcclusionID(-1), D(d){}
-		PVEntry(Drawable* d, size_t ID, size_t sortID) : OcclusionID(ID), D(d), SortID(sortID) {}
+		PVEntry(Drawable& d) : OcclusionID(-1), D(&d){}
+		PVEntry(Drawable& d, size_t ID, size_t sortID) : OcclusionID(ID), D(&d), SortID(sortID) {}
 
 		size_t		SortID;
 		size_t		OcclusionID;
@@ -209,9 +180,9 @@ namespace FlexKit
 	
 	typedef Vector<PVEntry> PVS;
 
-	inline void PushPV(Drawable* e, PVS* pvs)
+	inline void PushPV(Drawable& e, PVS* pvs)
 	{
-		if (e && e->MeshHandle.to_uint() != INVALIDHANDLE)
+		if (e.MeshHandle.to_uint() != INVALIDHANDLE)
 			pvs->push_back(PVEntry( e, 0xffffffffffffffff, 0u));
 	}
 

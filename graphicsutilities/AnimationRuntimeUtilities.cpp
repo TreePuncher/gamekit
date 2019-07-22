@@ -385,7 +385,7 @@ namespace FlexKit
 
 		auto Mesh = GetMeshResource(MeshHandle);
 
-		if (!E->PoseState)
+		if (false)//!E->PoseState)
 		{
 			Skeleton*	S		= (Skeleton*)Mesh->Skeleton;
 			auto NewPoseState	= CreatePoseState(E, MEM);
@@ -393,15 +393,15 @@ namespace FlexKit
 			if (!NewPoseState)
 				return{ EPLAY_NOT_ANIMATABLE, false };
 
-			E->PoseState = NewPoseState;
+			//E->PoseState = NewPoseState;
 		}// Create Animation State
 
-		if (!E->AnimationState)
-		{
-			auto New_EAS = (DrawableAnimationState*)MEM->_aligned_malloc(sizeof(DrawableAnimationState));
-			E->AnimationState = New_EAS;
-			New_EAS->Clips = {};
-		}
+		//if (!E->AnimationState)
+		//{
+		//	auto New_EAS = (DrawableAnimationState*)MEM->_aligned_malloc(sizeof(DrawableAnimationState));
+		//	E->AnimationState = New_EAS;
+		//	New_EAS->Clips = {};
+		//}
 
 		return{ EPLAY_ANIMATION_RES::EPLAY_SUCCESS, true };
 	}
@@ -421,10 +421,11 @@ namespace FlexKit
 		auto MeshHandle = E->MeshHandle;
 		auto Mesh		= GetMeshResource(MeshHandle);
 
-		auto EPS = E->PoseState;
-		auto EAS = E->AnimationState;
-		auto S	 = Mesh->Skeleton;
+		//auto EPS = E->PoseState;
+		//auto EAS = E->AnimationState;
+		//auto S	 = Mesh->Skeleton;
 
+		/*
 		Skeleton::AnimationList* I = S->Animations;
 
 		while (I)
@@ -447,8 +448,10 @@ namespace FlexKit
 			}
 			I = I->Next;
 		}
+		*/
 
-		return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+		//return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
 	}
 
 
@@ -466,6 +469,7 @@ namespace FlexKit
 		auto MeshHandle = E->MeshHandle;
 		auto Mesh       = GetMeshResource(MeshHandle);
 
+		/*
 		auto EPS        = E->PoseState;
 		auto EAS        = E->AnimationState;
 		auto S          = Mesh->Skeleton;
@@ -493,8 +497,9 @@ namespace FlexKit
 			}
 			I = I->Next;
 		}
-
-		return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+		*/
+		//return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
 	}
 
 
@@ -512,6 +517,7 @@ namespace FlexKit
 		auto MeshHandle = E->MeshHandle;
 		auto Mesh       = GetMeshResource(MeshHandle);
 
+		/*
 		auto EPS        = E->PoseState;
 		auto EAS        = E->AnimationState;
 		auto S          = Mesh->Skeleton;
@@ -542,6 +548,8 @@ namespace FlexKit
 		}
 
 		return EPLAY_ANIMATION_RES::EPLAY_ANIMATION_NOT_FOUND;
+		*/
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
 	}
 
 
@@ -657,14 +665,16 @@ namespace FlexKit
 
 	Pair<EPLAY_ANIMATION_RES, bool> StopAnimation_CheckState(Drawable* E)
 	{
+		return { EPLAY_ANIMATION_RES::EPLAY_FAILED, false };
+
 		if (!E)
 			return { EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM, false };
 
 		if (E->MeshHandle == InvalidHandle_t || !IsSkeletonLoaded(E->MeshHandle))
 			return { EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
 
-		if (!E->Posed)
-			return { EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
+		//if (!E->Posed)
+		//	return { EPLAY_ANIMATION_RES::EPLAY_NOT_ANIMATABLE, false };
 
 		return { EPLAY_ANIMATION_RES::EPLAY_SUCCESS, true };
 	}
@@ -672,20 +682,22 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, GUID_t Guid)
 	{
-		auto Status = StopAnimation_CheckState(E);
-		if (!Status)
-			return Status;
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
 
-		auto EAS	= E->AnimationState;
+		//auto Status = StopAnimation_CheckState(E);
+		//if (!Status)
+		//	return Status;
+
+		//auto EAS	= E->AnimationState;
 		
-		for (auto& C : EAS->Clips)
-		{
-			if (C.Clip->guid == Guid) {
-				C.Playing = false;
-				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
-			}
-		}
-		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+		//for (auto& C : EAS->Clips)
+		//{
+		//	if (C.Clip->guid == Guid) {
+		//		C.Playing = false;
+		//		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+		//	}
+		//}
+		//return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 	}
 
 
@@ -694,22 +706,24 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, uint32_t ID)
 	{
-		auto Status = StopAnimation_CheckState(E);
-		if (!Status)
-			return Status;
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
 
-		auto Mesh	= GetMeshResource(E->MeshHandle);
-		auto EAS	= E->AnimationState;
+		//auto Status = StopAnimation_CheckState(E);
+		//if (!Status)
+		//	return Status;
 
-		for (auto& C : EAS->Clips)
-		{
-			if (C.ID == ID) {
-				C.Playing = false;
-				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
-			}
-		}
+		//auto Mesh	= GetMeshResource(E->MeshHandle);
+		//auto EAS	= E->AnimationState;
 
-		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+		//for (auto& C : EAS->Clips)
+		//{
+		//	if (C.ID == ID) {
+		//		C.Playing = false;
+		//		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+		//	}
+		//}
+
+		//return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 	}
 
 
@@ -718,21 +732,23 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES StopAnimation(Drawable* E, const char* Animation)
 	{
-		auto Status = StopAnimation_CheckState(E);
-		if (!Status)
-			return Status;
+		return EPLAY_ANIMATION_RES::EPLAY_FAILED;
 
-		auto EAS	= E->AnimationState;
+		//auto Status = StopAnimation_CheckState(E);
+		//if (!Status)
+		//	return Status;
 
-		for (auto& C : EAS->Clips)
-		{
-			if (!strcmp(C.Clip->mID, Animation)) {
-				C.Playing = false;
-				return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
-			}
-		}
+		//auto EAS	= E->AnimationState;
 
-		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+		//for (auto& C : EAS->Clips)
+		//{
+		//	if (!strcmp(C.Clip->mID, Animation)) {
+		//		C.Playing = false;
+		//		return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
+		//	}
+		//}
+
+		//return EPLAY_ANIMATION_RES::EPLAY_SUCCESS;
 	}
 
 
@@ -745,16 +761,16 @@ namespace FlexKit
 		using DirectX::XMMatrixIdentity;
 		using DirectX::XMMatrixInverse;
 
-		auto Mesh	= GetMeshResource(E->MeshHandle);
-		auto PS		= E->PoseState;
-		auto S		= Mesh->Skeleton;
+		//auto Mesh	= GetMeshResource(E->MeshHandle);
+		//auto PS		= E->PoseState;
+		//auto S		= Mesh->Skeleton;
 
-		VShaderJoint* Out = (VShaderJoint*)TEMP->_aligned_malloc(sizeof(VShaderJoint) * S->JointCount);
+		//VShaderJoint* Out = (VShaderJoint*)TEMP->_aligned_malloc(sizeof(VShaderJoint) * S->JointCount);
 
-		PS->Dirty = false;
+		//PS->Dirty = false;
 
-		for (size_t I = 0; I < S->JointCount; ++I)
-			Out[I] = { S->IPose[I], PS->CurrentPose[I] };
+		//for (size_t I = 0; I < S->JointCount; ++I)
+		//	Out[I] = { S->IPose[I], PS->CurrentPose[I] };
 
 		FK_ASSERT(0);
 		//if (!PS->Resource)
@@ -778,8 +794,8 @@ namespace FlexKit
 		{
 			auto D = d.D;
 
-			if(D->PoseState && D->PoseState->Dirty)
-				UploadPose(RS, D, TEMP);
+			//if(D->PoseState && D->PoseState->Dirty)
+			//	UploadPose(RS, D, TEMP);
 		}
 	}
 
@@ -827,10 +843,10 @@ namespace FlexKit
 	size_t GetAnimationCount(Drawable* E)
 	{
 		size_t Count = 0;
-		if(E && E->AnimationState)
-			for (auto Clip : E->AnimationState->Clips)
-				if (Clip.Playing)
-					Count++;
+		//if(E && E->AnimationState)
+		//	for (auto Clip : E->AnimationState->Clips)
+		//		if (Clip.Playing)
+		//			Count++;
 
 		return Count;
 	}
@@ -879,6 +895,9 @@ namespace FlexKit
 		using DirectX::XMMatrixTranslationFromVector;
 		using DirectX::XMVectorSet;
 
+
+		FK_ASSERT(false);
+		/*
 		if (E && E->Posed)
 		{
 			if (!E->PoseState || !E->AnimationState) {
@@ -975,6 +994,7 @@ namespace FlexKit
 				PS->Dirty = true;
 			}
 		}
+		*/
 	}
 
 

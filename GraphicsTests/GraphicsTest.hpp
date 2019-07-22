@@ -219,25 +219,22 @@ public:
 		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 128,	false)				},
 		eventMap		{ IN_framework->core->GetBlockMemory()															},
 		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()							},
-		scene			{	
-			IN_framework->core->RenderSystem, 
-			IN_framework->core->GetBlockMemory(),
-			IN_framework->core->GetTempMemory()	},
+		scene			{ IN_framework->core->GetBlockMemory()															},
 		PScene			{ IN_framework->GetPhysx()->CreateScene()														},
 		floor			{ IN_framework->GetPhysx()->CreateStaticBoxCollider		(PScene, {1000, 10, 1000}, {0, -10, 0})	},
 		orbitCamera		{ cameras.CreateCamera(float(pi) / 3.0f, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 300, { 0, 240, 0 } },
-		Object1			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
-		Object2			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
-		Object3			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
+		//Object1			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
+		//Object2			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
+		//Object3			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
 		cameras			{ IN_framework->core->GetBlockMemory()				}
 		//ltcLookup_1{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
 		//ltcLookup_2{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
 		orbitCamera.Pitch(-pi / 2);
 
-		Object1.TranslateWorld({ 0, 0, 0 });
-		Object2.TranslateWorld({ 0, 0, 10 });
-		Object3.TranslateWorld({ 10, 0, 0 });
+		//Object1.TranslateWorld({ 0, 0, 0 });
+		//Object2.TranslateWorld({ 0, 0, 10 });
+		//Object3.TranslateWorld({ 10, 0, 0 });
 
 		obj = GetMesh(GetRenderSystem(), 10000);
 
@@ -344,7 +341,7 @@ public:
 		UpdateDispatcher&	dispatcher, 
 		double				dT) override
 	{
-		Object1.Yaw(dT * pi);
+		//Object1.Yaw(dT * pi);
 
 		return true;
 	}
@@ -388,7 +385,6 @@ public:
 		auto& transformTask = QueueTransformUpdateTask							(dispatcher);
 		auto& cameraUpdate  = CameraComponent::GetComponent().QueueCameraUpdate	(dispatcher, transformTask);
 		auto& orbitUpdate   = QueueOrbitCameraUpdateTask						(dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
-		auto& sceneUpdate   = scene.Update										(dispatcher, transformTask);
 
 		FK_LOG_1("End Update");
 		FK_LOG_1("Begin Draw");
@@ -421,7 +417,7 @@ public:
 
 		CameraHandle activeCamera = static_cast<CameraHandle>(orbitCamera);
 
-		auto& PVS				= GetGraphicScenePVSTask(dispatcher, sceneUpdate, scene, activeCamera, core->GetTempMemory());
+		auto& PVS				= GetGraphicScenePVSTask(dispatcher, scene, activeCamera, core->GetTempMemory());
 		auto& terrainPatches	= terrain.CreatePatchList(activeCamera, 1.0f, dispatcher, cameraUpdate, core->GetTempMemory());
 
 		const bool renderTerrainEnabled		= true;
@@ -549,9 +545,9 @@ private:
 	TriMeshHandle						obj;
 	OrbitCameraBehavior					orbitCamera;
 	PhysicsSceneHandle					PScene;
-	DrawableBehavior					Object1; // Center
-	DrawableBehavior					Object2; // North
-	DrawableBehavior					Object3; // East
+	//DrawableBehavior					Object1; // Center
+	//DrawableBehavior					Object2; // North
+	//DrawableBehavior					Object3; // East
 	StaticColliderHandle				floor;
 	//RigidBodyDrawableBehavior			box[CubeCount];
 };

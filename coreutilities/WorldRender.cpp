@@ -405,9 +405,9 @@ namespace FlexKit
 			data.camera				= camera;
 
 			data.lightMapBuffer		= TextureBuffer(WH, sizeof(uint16_t[2]), tempMemory);
-			data.lightLists			= { data.tempMemory, 0		};
-			data.pointLights		= { data.tempMemory, scene.GetPointLightCount() };
-			data.samples			= { data.tempMemory, 8096	};
+			data.lightLists			= { data.tempMemory, 0						};
+			data.pointLights		= { data.tempMemory, data.sceneLightCount	};
+			data.samples			= { data.tempMemory, 8096					};
 		},
 		[](LighBufferCPUUpdate& data)
 		{
@@ -418,12 +418,13 @@ namespace FlexKit
 			const auto PV				= XMMatrixToFloat4x4(&cameraConstants.PV);
 			const auto view				= XMMatrixToFloat4x4(&cameraConstants.View);
 			const auto projection		= XMMatrixToFloat4x4(&cameraConstants.Proj);
+			const auto& pointLights		= PointLightComponent::GetComponent();
 
-			for (auto pointLight : data.scene->PLights.Lights)
+			for (auto pointLight : pointLights.GetElements_copy(data.tempMemory))
 				data.pointLights.push_back(
 					{
 						GetPositionW(pointLight.Position),
-						{	pointLight.K, pointLight.I / 10.0f	}
+						{ pointLight.K, pointLight.I / 10.0f }
 					});
 
 
@@ -432,15 +433,16 @@ namespace FlexKit
 			const uint2		viewSplits	= data.viewSplits;
 			const float2	stepSize	= { 1.0f / viewSplits[0], 1.0f / viewSplits[1] };
 
-			for (auto light : lights) 
+			for (auto handle : lights) 
 			{
-				auto pos		= data.scene->GetPointLightPosition(light);
+				auto pointLight = pointLights[handle];
+				auto pos		= GetPositionW(pointLight.Position);
 				auto temp1		= view * float4(pos, 1);
 				auto screenCord = projection * temp1;
 				const float w	= screenCord.w;
 				screenCord		= screenCord / w;
 
-				const float r				 = data.scene->GetPointLightRadius(light);
+				const float r				 = pointLight.I;
 				const float screenSpaceSizeX = abs(r / w) * (float(viewSplits[0]) / float(viewSplits[1]));
 				const float screenSpaceSizeY = screenSpaceSizeX;
 
@@ -458,7 +460,7 @@ namespace FlexKit
 
 				for (uint32_t Yitr = YBegin; Yitr < YEnd; Yitr++)
 					for (uint32_t Xitr = XBegin; Xitr < XEnd; Xitr++)
-						data.samples.push_back({ { Xitr, Yitr }, light });
+						data.samples.push_back({ { Xitr, Yitr }, handle });
 			}
 
 			std::sort(data.samples.begin(), data.samples.end(), [&](auto& lhs, auto& rhs) { return lhs.ID(viewSplits) < rhs.ID(viewSplits); });

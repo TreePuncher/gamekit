@@ -587,7 +587,7 @@ namespace FlexKit
 
 	bool LoadScene(EngineCore* core, GraphicScene* scene, const char* sceneName)
 	{
-		return LoadScene(core->RenderSystem, sceneName, scene, core->GetTempMemory());
+		return LoadScene(core->RenderSystem, sceneName, scene, core->GetBlockMemory(), core->GetTempMemory());
 	}
 
 
@@ -596,7 +596,7 @@ namespace FlexKit
 
 	bool LoadScene(EngineCore* core, GraphicScene* scene, GUID_t sceneID)
 	{
-		return LoadScene(core->RenderSystem, sceneID, scene, core->GetTempMemory());
+		return LoadScene(core->RenderSystem, sceneID, scene, core->GetBlockMemory(), core->GetTempMemory());
 	}
 
 
@@ -701,15 +701,6 @@ namespace FlexKit
 			}
 		}
 		return false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void InitiateFramework(EngineCore* Core, GameFramework& framework)
-	{
-
 	}
 
 

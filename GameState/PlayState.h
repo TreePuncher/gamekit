@@ -19,8 +19,8 @@ public:
 	thirdPersonActor(iAllocator* IN_allocator) : allocator{ IN_allocator }
 	{
 		// Add behaviors
-		gameObject.AddBehavior(allocator->allocate<CameraBehavior>());
-		gameObject.AddBehavior(allocator->allocate<SceneNodeBehavior<>>());
+		gameObject.AddBehavior<CameraBehavior>();
+		gameObject.AddBehavior<SceneNodeBehavior<>>();
 
 		// Tie nodes together
 		Apply(gameObject, []
@@ -29,7 +29,8 @@ public:
 			{
 				auto cameraNode = camera->GetCameraNode();
 				node->Parent(cameraNode);
-			});
+			}, 
+			[] {});
 	}
 
 	~thirdPersonActor()

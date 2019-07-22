@@ -206,6 +206,12 @@ namespace FlexKit
 			return Elements - 1;
 		}
 
+		void remove_unstable(iterator i)
+		{
+			*i = back();
+			pop_back();
+		}
+
 		iterator erase(iterator i, iterator _end)
 		{
 			size_t count = _end - i;
@@ -231,7 +237,7 @@ namespace FlexKit
 		{
 			i->~TY_();
 			*i++ = back();
-			--Size;
+			pop_back();
 
 			return i;
 		}

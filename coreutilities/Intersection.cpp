@@ -5,7 +5,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	bool CompareBSAgainstFrustum(const Frustum* F, BoundingSphere BS)
+	bool CompareBSAgainstFrustum(const Frustum* F, const BoundingSphere BS)
 	{
 		bool Bottom = false;
 		bool Near	= false;

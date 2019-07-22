@@ -51,7 +51,7 @@ namespace FlexKit
 			auto P = FlexKit::GetPositionW( E->Node );
 
 			auto Depth = (size_t)abs(float3(CP - P).magnitudesquared() * 10000);
-			auto SortID = CreateSortingID(E->Posed, E->Textured, Depth);
+			auto SortID = CreateSortingID(false, E->Textured, Depth);
 			v.SortID = SortID;
 		}
 		

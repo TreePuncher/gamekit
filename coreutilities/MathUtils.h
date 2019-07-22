@@ -1155,7 +1155,7 @@ namespace FlexKit
 #endif
 		}
 
-		inline float4( const float3& V, float W  ) 
+		inline float4( const float3& V,  const float W  ) 
 		{
 			x = V[0];
 			y = V[1];
@@ -1327,7 +1327,7 @@ namespace FlexKit
 			float r, g, b, a;
 		};
 
-		float3 xyz()
+		float3 xyz() const 
 		{
 			return { x, y, z, 0 };
 		}

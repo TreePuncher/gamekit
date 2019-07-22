@@ -32,9 +32,7 @@ PlayState::PlayState(
 	debugCameraInputMap	{ framework->core->GetBlockMemory()								},
 	debugEventsInputMap	{ framework->core->GetBlockMemory()								},
 
-	scene				{	framework->core->RenderSystem,
-							framework->core->GetBlockMemory(),
-							framework->core->GetTempMemory()	},
+	scene				{ framework->core->GetBlockMemory()								},
 
 	debugCamera			{ }
 	//thirdPersonCamera	{ CreateCharacterRig(GetMesh(GetRenderSystem(), "Flower"), &scene) }
@@ -45,10 +43,10 @@ PlayState::PlayState(
 	LoadScene(IN_Framework->core, &scene, "TestScene");
 	LightModel = GetMesh(GetRenderSystem(), "LightModel");
 
-	eventMap.MapKeyToEvent(KEYCODES::KC_W, ThirdPersonCameraRig::Forward		);
-	eventMap.MapKeyToEvent(KEYCODES::KC_A, ThirdPersonCameraRig::Left			);
-	eventMap.MapKeyToEvent(KEYCODES::KC_S, ThirdPersonCameraRig::Backward		);
-	eventMap.MapKeyToEvent(KEYCODES::KC_D, ThirdPersonCameraRig::Right			);
+	//eventMap.MapKeyToEvent(KEYCODES::KC_W, ThirdPersonCameraRig::Forward		);
+	//eventMap.MapKeyToEvent(KEYCODES::KC_A, ThirdPersonCameraRig::Left			);
+	//eventMap.MapKeyToEvent(KEYCODES::KC_S, ThirdPersonCameraRig::Backward		);
+	//eventMap.MapKeyToEvent(KEYCODES::KC_D, ThirdPersonCameraRig::Right			);
 	eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward	);
 	eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward	);
 	eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft		);
@@ -89,6 +87,17 @@ PlayState::PlayState(
 
 PlayState::~PlayState()
 {
+	iAllocator* allocator	= base.framework->core->GetBlockMemory();
+	auto entities			= scene.sceneEntities;
+
+	for (auto entity : entities)
+	{
+		auto entityGO = SceneVisibilityBehavior::GetComponent()[entity].entity;
+		scene.RemoveEntity(*entityGO);
+
+		entityGO->Release();
+		allocator->free(entityGO);
+	}
 }
 
 
@@ -152,10 +161,10 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
 	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher, transforms);
-	auto& sceneUpdate		= scene.Update				(dispatcher, transforms);
+	//auto& sceneUpdate		= scene.Update				(dispatcher, transforms);
 	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
 	auto& cameraConstants	= MakeHeapCopy				(GetCameraConstants(activeCamera), core->GetTempMemory());
-	auto& PVS				= GetGraphicScenePVSTask	(dispatcher, sceneUpdate, scene, activeCamera, core->GetTempMemory());
+	auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
 	auto& textureStreams	= base.streamingEngine.update(dispatcher);
 
 	FlexKit::WorldRender_Targets targets = {
@@ -196,10 +205,10 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	if(true)
 	{
 		auto cameraConstanstSize = sizeof(decltype(GetCameraConstants(activeCamera)));
-
+		
 		DrawCollection(
 				frameGraph, 
-				{ &sceneUpdate },
+				{ /*&sceneUpdate*/ },
 				{	{ 0, (char*)&cameraConstants, cameraConstanstSize },
 					{ 0, (char*)&cameraConstants, cameraConstanstSize } },
 				{ },
@@ -211,10 +220,10 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 				{ 
 					return scene.FindPointLights(GetFrustum(activeCamera), core->GetTempMemory());
 				},
-				[&](auto& light) -> float4x4
+				[&, &lights = PointLightComponent::GetComponent()](auto& light) -> float4x4
 				{
 					XMMATRIX m;
-					GetTransform(scene.GetPointLightNode(light), &m);
+					GetTransform(lights[light].Position, &m);
 					return float4x4{ XMMatrixToFloat4x4(&m) }.Transpose();
 				},
 				DrawCollectionDesc,

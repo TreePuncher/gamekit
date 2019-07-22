@@ -55,22 +55,187 @@ namespace FlexKit
 
 	const float MinNodeSize = 1;
 
+
+	/************************************************************************************************/
+
+
+	constexpr ComponentID DrawableComponentID	= GetTypeGUID(DrawableID);
+	using DrawableHandle						= Handle_t <32, GetTypeGUID(DrawableID)>;
+
+	using DrawableComponent = BasicComponent_t<Drawable, DrawableHandle, DrawableComponentID>;
+
+
+	class DrawableBehavior : public Behavior_t<DrawableComponent>
+	{
+	public:
+		DrawableBehavior(TriMeshHandle	triMesh, NodeHandle node)
+		{
+			GetComponent()[drawable].MeshHandle = triMesh;
+			GetComponent()[drawable].Node		= node;
+		}
+
+		TriMeshHandle	GetTriMesh()
+		{
+			return GetComponent()[drawable].MeshHandle;
+		}
+
+		operator Drawable& ()
+		{
+			return GetComponent()[drawable];
+		}
+
+		BoundingSphere GetBoundingSphere()
+		{
+			auto meshHandle = GetComponent()[drawable].MeshHandle;
+			auto mesh		= GetMeshResource(meshHandle);
+
+			return mesh->BS;
+		}
+
+		DrawableHandle	drawable = GetComponent().Create(Drawable{});
+	};
+
+
+	TriMeshHandle GetTriMesh(GameObject& go)
+	{
+		return Apply(go,
+			[&](DrawableBehavior* drawable)
+			{
+				return drawable->GetTriMesh();
+			}, 
+			[]() -> TriMeshHandle
+			{
+				return TriMeshHandle{ InvalidHandle_t };
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
+	constexpr ComponentID PointLightComponentID	= GetTypeGUID(PointLightID);
+	using PointLightHandle						= Handle_t <32, GetTypeGUID(PointLightID)>;
+	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID>;
+
+
+	class PointLightBehavior : public Behavior_t<PointLightComponent>
+	{
+	public:
+		PointLightBehavior(float3 color, float intensity, NodeHandle node) : light{ GetComponent().Create({}) } 
+		{
+			auto& poingLight = GetComponent()[light];
+			poingLight.K			= color;
+			poingLight.I			= intensity;
+			poingLight.Position		= node;
+		}
+
+		float GetRadius()
+		{
+			return GetComponent()[light].I;
+		}
+
+		void SetNode(NodeHandle node)
+		{
+			GetComponent()[light].Position = node;
+		}
+
+
+		operator PointLightHandle () { return light; }
+
+		PointLightHandle	light;
+	};
+
+
+	/************************************************************************************************/
+
+
+	constexpr ComponentID SceneVisibilityComponentID	= GetTypeGUID(SceneVisibilityComponentID);
+	using VisibilityHandle								= Handle_t <32, GetTypeGUID(DrawableID)>;
+	using SceneHandle									= Handle_t <32, GetTypeGUID(SceneID)>;
+
+	struct VisibilityFields
+	{
+		GameObject*		entity		= nullptr;	// to get parents in raycast results
+		SceneHandle		scene		= InvalidHandle_t;
+		NodeHandle		node		= InvalidHandle_t;
+
+		bool			visable		= true;
+		bool			rayVisible	= false;
+		bool			transparent = false;
+
+		BoundingSphere	boundingSphere = { 0, 0, 0, 0 }; // model space
+	};
+
+	using SceneVisibilityComponent = BasicComponent_t<VisibilityFields, VisibilityHandle, SceneVisibilityComponentID>;
+
+	class SceneVisibilityBehavior : public Behavior_t<SceneVisibilityComponent>
+	{
+	public:
+		SceneVisibilityBehavior(GameObject& go, NodeHandle node, SceneHandle scene) :
+			visibility	{ GetComponent().Create(VisibilityFields{}) }
+		{
+			auto& vis_ref	= GetComponent()[visibility];
+			vis_ref.entity	= &go;
+			vis_ref.node	= node;
+			vis_ref.scene	= scene;
+		}
+
+
+		void SetBoundingSphere(BoundingSphere boundingSphere)
+		{
+			GetComponent()[visibility].boundingSphere = boundingSphere;
+		}
+
+
+		operator VisibilityHandle() { return visibility; }
+
+		VisibilityHandle visibility;
+	};
+
+
+	/************************************************************************************************/
+
+
+	void SetBoundingSphereFromMesh(GameObject& go)
+	{
+		Apply(
+			go,
+			[](	SceneVisibilityBehavior*	visibility,
+				DrawableBehavior*			drawable)
+			{
+				visibility->SetBoundingSphere(drawable->GetBoundingSphere());
+			});
+	}
+
+
+	/************************************************************************************************/
+
+
 	struct QuadTreeNode
 	{
-		void Clear(iAllocator* memory)
+		QuadTreeNode(iAllocator* in_allocator) : 
+			allocator{ in_allocator } {}
+
+		~QuadTreeNode()
+		{
+
+		}
+
+		void Clear()
 		{
 			for (auto child : ChildNodes) 
 			{
-				child->Clear(memory);
+				child->Clear();
 				child->Contents.clear();
-				memory->free(child);
+				allocator->free(child);
 			}
 
 			ChildNodes.clear();
 			Contents.clear();
 		}
 
-		void AddChild(SceneEntityHandle, GraphicScene& parentScene, iAllocator* memory);
+		void AddEntity		(VisibilityHandle visable);
+		void RemoveEntity	(VisibilityHandle visable);
 		
 		enum SphereTestRes
 		{
@@ -81,7 +246,8 @@ namespace FlexKit
 
 		SphereTestRes IsSphereInside(float r, float3 pos);
 
-		void UpdateBounds(GraphicScene& parentScene);
+		// requires SceneVisibilityComponent
+		void UpdateBounds();
 		void ExpandNode(iAllocator* allocator);
 
 		float4								GetArea() const;
@@ -90,18 +256,30 @@ namespace FlexKit
 		float2								upperRight;
 		float2								centerPoint;
 
-		static_vector<SceneEntityHandle, 4>	Contents;
+		static_vector<VisibilityHandle, 4>	Contents;
 		static_vector<QuadTreeNode*,4>		ChildNodes;
+
+		iAllocator*							allocator;
 	};
 
 
 	struct QuadTree
 	{
-		void Initiate(float2 AreaDimensions, iAllocator* memory);
-		void Release();
+		QuadTree(SceneHandle in_scene, float2 AreaDimensions, iAllocator* in_allocator) :
+			allocator	{ in_allocator	},
+			scene		{ in_scene		},
+			root		{ in_allocator	}
+		{
+			area					= float2{0, 0};
+
+			root.upperRight = AreaDimensions;
+			root.lowerLeft	= AreaDimensions * -1;
+		}
+
+		void clear();
 		
-		void CreateNode		(SceneEntityHandle Handle, GraphicScene& parentScene);
-		void ReleaseNode	(SceneEntityHandle Handle);
+		void AddEntity		(VisibilityHandle handle);
+		void RemoveEntity	(VisibilityHandle handle);
 
 		void Rebuild		(GraphicScene& parentScene);
 
@@ -109,7 +287,8 @@ namespace FlexKit
 
 		UpdateTask& Update(FlexKit::UpdateDispatcher& dispatcher, GraphicScene* parentScene, UpdateTask& transformDependency);
 
-		const size_t NodeSize = 16;
+		const SceneHandle			scene;
+		const size_t				NodeSize = 16;
 
 
 		size_t						RebuildPeriod	= 10;
@@ -117,10 +296,7 @@ namespace FlexKit
 
 		float2						area;
 		QuadTreeNode				root;
-		Vector<SceneEntityHandle>	allEntities;
 		iAllocator*					allocator;
-
-		
 	};
 
 
@@ -129,147 +305,40 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
-	// TODO: move this to only handle Visibility and scene queries
 	class GraphicScene
 	{
 	public:
 		GraphicScene(
-			RenderSystem*	IN_RS,
-			iAllocator*		memory, 
-			iAllocator*		tempmemory) :
-				Memory						{memory},
-				TempMemory					{tempmemory},
-				HandleTable					{memory},
-				DrawableHandles				{memory},
-				Drawables					{memory},
-				DrawableVisibility			{memory},
-				DrawableRayVisibility		{memory},
-				//SpotLightCasters			{memory},
-				TaggedJoints				{memory},
-				RS							{IN_RS},
-				_PVS						{tempmemory}
-		{
-			using FlexKit::CreateSpotLightList;
-			using FlexKit::CreatePointLightList;
-			using FlexKit::PointLightListDesc;
-
-			FlexKit::PointLightListDesc Desc;
-			Desc.MaxLightCount = 512;
-
-			CreatePointLightList(&PLights, Desc, Memory);
-			CreateSpotLightList	(&SPLights, Memory);
-
-			SceneManagement.Initiate({1024, 1024}, Memory);
-		}
-
+			iAllocator*		in_allocator ) :
+				allocator					{ in_allocator							},
+				HandleTable					{ in_allocator							},
+				sceneID						{ rand()								},
+				sceneManagement				{ sceneID, {1024, 1024}, in_allocator	},
+				sceneEntities				{ in_allocator							} {}
+				
 		~GraphicScene()
 		{
 			ClearScene();
 		}
 
-		SceneEntityHandle CreateDrawable	(TriMeshHandle mesh = InvalidHandle_t, NodeHandle node = InvalidHandle_t);
-		void		 RemoveEntity	(SceneEntityHandle E );
-		void		 ClearScene		();
+		void				AddGameObject	(GameObject& go, NodeHandle node);
+		void				RemoveEntity	(GameObject& go);
 
-		Drawable&		GetDrawable			(SceneEntityHandle EHandle );
-		BoundingSphere	GetBoundingSphere	(SceneEntityHandle EHandle);
+		void				ClearScene			();
 
-		Skeleton*	GetSkeleton			(SceneEntityHandle EHandle ) { return FlexKit::GetSkeleton(Drawables.at(HandleTable[EHandle]).MeshHandle);		}
-		float4		GetMaterialColour	(SceneEntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).MatProperties.Albedo;					}
-		float4		GetMaterialSpec		(SceneEntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).MatProperties.Spec;					}
-		NodeHandle	GetNode				(SceneEntityHandle EHandle ) { return Drawables.at(HandleTable[EHandle]).Node;									}
-		float3		GetEntityPosition	(SceneEntityHandle EHandle );
+		Drawable&	SetNode(SceneEntityHandle EHandle, NodeHandle Node);
 
-		bool isEntitySkeletonAvailable			(SceneEntityHandle EHandle );
-		bool EntityEnablePosing					(SceneEntityHandle EHandle );
+		Vector<PointLightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
-		inline DrawableAnimationState*	GetEntityAnimationState(SceneEntityHandle EHandle) { return Drawables.at(EHandle).AnimationState; }
+		size_t				GetPointLightCount();
 
-		GSPlayAnimation_RES EntityPlayAnimation	(SceneEntityHandle EHandle, const char*	Animation,	float w = 1.0f, bool Loop = false );
-		GSPlayAnimation_RES EntityPlayAnimation	(SceneEntityHandle EHandle, GUID_t		Guid,		float w = 1.0f, bool Loop = false );
-		size_t				GetEntityAnimationPlayCount	(SceneEntityHandle EHandle );
-
-		inline void SetVisability		(SceneEntityHandle EHandle, bool Visable = true )		{ DrawableVisibility.at(EHandle) = Visable; }
-		inline bool GetVisability		(SceneEntityHandle EHandle )							{ return DrawableVisibility.at(EHandle);	}
-
-		inline void SetRayVisability	(SceneEntityHandle EHandle, bool Visable = true )		{ DrawableRayVisibility.at(EHandle) = Visable; }
-		inline bool GetRayVisability	(SceneEntityHandle EHandle )							{ return DrawableRayVisibility.at(EHandle);	}
-
-		inline void				SetEntityId(SceneEntityHandle EHandle, char* IN_id)				{ Drawables.at(EHandle).id = IN_id; }
-
-
-		inline void				SetMeshHandle(SceneEntityHandle EHandle, TriMeshHandle M)		{ Drawables.at(EHandle).MeshHandle = M;		}
-		inline TriMeshHandle	GetMeshHandle(SceneEntityHandle EHandle)							{ return Drawables.at(EHandle).MeshHandle;	}
-
-		inline void				SetTextureSet		(SceneEntityHandle EHandle, TextureSet* Set)	{ Drawables.at(EHandle).Textures = Set; Drawables.at(EHandle).Textured = true; }
-		inline TextureSet*		GetTextureSet		(SceneEntityHandle EHandle)					{ return Drawables.at(EHandle).Textures; }
-
-		inline void SetMaterialParams	(SceneEntityHandle EHandle, float4 RGBA = float4(1.0f, 1.0f, 1.0f, 0.5f), float4 Spec = float4(1.0f, 1.0f, 1.0f, 0.5f))
-		{
-			Drawables.at(EHandle).MatProperties.Albedo		 = RGBA;
-			Drawables.at(EHandle).MatProperties.Spec		 = Spec;
-		}
-
-		Drawable& SetNode(SceneEntityHandle EHandle, NodeHandle Node);
-
-		SceneEntityHandle CreateSceneEntityAndSetMesh(GUID_t Mesh,		NodeHandle node = InvalidHandle_t);
-		SceneEntityHandle CreateSceneEntityAndSetMesh(const char* Mesh, NodeHandle node = InvalidHandle_t);
-		
-		LightHandle	AddPointLight(float3 Color, float3 POS, float I = 10, float R = 10);
-		LightHandle	AddPointLight(float3 Color, NodeHandle, float I = 10, float R = 10);
-
-		void EnableShadowCasting(SpotLightHandle SpotLight);
-
-		SpotLightHandle AddSpotLight (NodeHandle		Node,	float3 Color, float3 Dir, float t = pi / 4, float I = 10.0f, float R = 10.0f);
-		SpotLightHandle AddSpotLight (float3			POS,	float3 Color, float3 Dir, float t = pi / 4, float I = 10, float R = 10);
-
-		void _PushEntity(Drawable E, SceneEntityHandle Handle);
-		void SetLightNodeHandle		(SpotLightHandle Handle, NodeHandle Node	);
-
-		Quaternion GetOrientation	(SceneEntityHandle Handle );
-
-		UpdateTask& Update(FlexKit::UpdateDispatcher& Dispatcher, UpdateTask& transformDependency);
-
-
-		float3				GetPointLightPosition	(LightHandle light) const;
-		NodeHandle			GetPointLightNode		(LightHandle light) const;
-		float				GetPointLightRadius		(LightHandle light) const;
-
-		size_t				GetPointLightCount() const;
-		Vector<LightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
-
-
-
-		void ListEntities() const;
-
-		void SetDirty(SceneEntityHandle handle)
-		{}
-
-		struct TaggedJoint
-		{
-			SceneEntityHandle	Source;
-			JointHandle			Joint;
-			NodeHandle			Target;
-		};
-
-		iAllocator*					TempMemory;
-		iAllocator*					Memory;
-		RenderSystem*				RS;
-		PVS							_PVS;
+		const SceneHandle					sceneID;
 
 		HandleUtilities::HandleTable<SceneEntityHandle, 16> HandleTable;
-
-		//Vector<SpotLightShadowCaster>		SpotLightCasters;
-		Vector<Drawable>					Drawables;
-		Vector<bool>						DrawableVisibility;
-		Vector<bool>						DrawableRayVisibility;
-		Vector<SceneEntityHandle>			DrawableHandles;
-		Vector<TaggedJoint>					TaggedJoints;
-
-		PointLightList	PLights;
-		SpotLightList	SPLights;
-
-		QuadTree	SceneManagement;
+			
+		Vector<VisibilityHandle>			sceneEntities;
+		QuadTree							sceneManagement;
+		iAllocator*							allocator;
 
 		operator GraphicScene* () { return this; }
 	};
@@ -301,13 +370,13 @@ namespace FlexKit
 	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
 
 	FLEXKITAPI void				GetGraphicScenePVS		(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
-	FLEXKITAPI GetPVSTaskData&	GetGraphicScenePVSTask	(UpdateDispatcher& dispatcher, UpdateTask& sceneUpdate, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
+	FLEXKITAPI GetPVSTaskData&	GetGraphicScenePVSTask	(UpdateDispatcher& dispatcher, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
 
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* Temp);
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName, GraphicScene* GS_out, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			GraphicScene* GS_out, iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	GraphicScene* GS_out, iAllocator* allocator, iAllocator* Temp);
 
 
 	/************************************************************************************************/
@@ -317,109 +386,6 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
-
-	class DrawableBehavior;
-
-	template<typename TY>
-	struct SceneNodeBehaviorOverrides
-	{
-		using Parent_TY = TY;
-
-		template<typename ... discard>
-		static void SetDirty(TY* drawable) 
-		{
-			drawable->parentScene->SetDirty(drawable->entity);
-		}
-	};
-
-
-	class DrawableBehavior : 
-		public SceneNodeBehavior<SceneNodeBehaviorOverrides<DrawableBehavior>>
-	{
-	public:
-		DrawableBehavior(GraphicScene* IN_ParentScene = nullptr, SceneEntityHandle handle = InvalidHandle_t, NodeHandle node = InvalidHandle_t) :
-			SceneNodeBehavior	{ IN_ParentScene ? (node == InvalidHandle_t ? IN_ParentScene->GetNode(handle) : node ) : InvalidHandle_t	},
-			parentScene			{ IN_ParentScene																							},
-			entity				{ handle																									} {}
-
-
-		~DrawableBehavior()
-		{
-			parentScene->RemoveEntity(entity);
-		}
-
-		DrawableBehavior(DrawableBehavior&& rhs)
-		{
-			entity		= rhs.entity;
-			rhs.entity	= InvalidHandle_t;
-		}
-
-
-		DrawableBehavior& operator = (DrawableBehavior&& rhs)
-		{
-			parentScene = rhs.parentScene;
-			entity		= rhs.entity;
-			node		= rhs.node;
-
-			rhs.entity		= InvalidHandle_t;
-			rhs.parentScene = nullptr;
-			rhs.node		= InvalidHandle_t;
-
-			return *this;
-		}
-
-
-		// non-copyable
-		DrawableBehavior(DrawableBehavior&)					= delete;
-		DrawableBehavior& operator = (DrawableBehavior&)	= delete;
-
-		void		SetNode(NodeHandle Handle) 
-		{
-			parentScene->SetNode(entity, Handle);
-		}
-
-
-		void		SetVisable(bool visable)
-		{
-			parentScene->SetVisability(entity, visable);
-		}
-
-		NodeHandle	GetNode() 
-		{ 
-			return parentScene->GetNode(entity); 
-		}
-
-		bool		GetVisable()
-		{
-			parentScene->GetVisability(entity);
-		}
-
-
-		GraphicScene*		parentScene;
-		SceneEntityHandle	entity;
-	};
-
-
-
-	/************************************************************************************************/
-
-
-	struct DefaultLightInteractor
-	{
-
-	};
-
-	template<typename TY_Interactor = DefaultLightInteractor>
-	class PointLightBehavior
-	{
-	public:
-		PointLightBehavior();
-
-		GraphicScene*		parentScene;
-		//PointLightHandle	handle;
-	};
-
 
 
 	inline void DEBUG_DrawQuadTree(
@@ -443,7 +409,7 @@ namespace FlexKit
 			{1, 0, 0, 1}
 		};
 
-		const auto	area		= scene.SceneManagement.GetArea();
+		const auto	area		= scene.sceneManagement.GetArea();
 		const auto	areaLL		= (area.y <  area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
 		const auto	areaUR		= (area.y >= area.z) ? float2{ area.x, area.y } : float2{ area.z, area.w };
 		const auto	areaSpan	= (areaUR - areaLL);
@@ -469,7 +435,7 @@ namespace FlexKit
 				self(self, *child, depth + 1 + itr++);
 		};
 
-		drawNode(drawNode, scene.SceneManagement.root, 0);
+		drawNode(drawNode, scene.sceneManagement.root, 0);
 
 		DrawWireframeRectangle_Desc drawDesc =
 		{

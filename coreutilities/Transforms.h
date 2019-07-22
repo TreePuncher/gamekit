@@ -329,6 +329,13 @@ namespace FlexKit
 			return FlexKit::GetPositionW(node);
 		}
 
+
+		float3	GetScale() const
+		{
+			return { 1, 1, 1 };
+		}
+
+
 		void Parent(NodeHandle child)
 		{
 			FlexKit::SetParentNode(node, child);
@@ -336,6 +343,15 @@ namespace FlexKit
 
 		NodeHandle node;
 	};
+
+
+	float3 GetWorldPosition(GameObject& go)
+	{
+		return Apply(go, 
+			[&](SceneNodeBehavior<>* node)
+			{	return node->GetPosition(); }, 
+			[]{ return float3{ 0, 0, 0 }; });
+	}
 
 
 }	/************************************************************************************************/

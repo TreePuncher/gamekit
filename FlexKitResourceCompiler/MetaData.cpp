@@ -558,14 +558,25 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+	MetaData* ParseSceneComponentRequirement(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		FK_ASSERT(0);
+
+		return nullptr;
+	}
+
+
+	/************************************************************************************************/
+
 
 	const MetaDataParserTable CreateSceneParser()
 	{
 		return {
-				{ "Entity",		ParseSceneEntity		},
-				{ "Light",		ParseSceneLight			},
-				{ "Node",		ParseSceneTerrainCollider },
-				{ "Terrain",	ParseSceneTerrainCollider },
+				{ "Entity",		ParseSceneEntity				},
+				{ "Light",		ParseSceneLight					},
+				{ "Node",		ParseSceneTerrainCollider		},
+				{ "Terrain",	ParseSceneTerrainCollider		},
+				{ "Component",	ParseSceneComponentRequirement	},
 		};
 	}
 

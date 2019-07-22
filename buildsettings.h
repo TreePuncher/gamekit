@@ -163,7 +163,7 @@ auto BuildFinal(FN_TYPE FN) -> FINAL_CONTAINER<decltype(FN)> { return FINAL_CONT
 #define FINALLY auto FINALLABEL = BuildFinal([&]()->void {
 #define FINALLYOVER });
 
-#define FINAL(a) FINALLY{ a }FINALLYOVER
+#define FINAL(a) FINALLY a FINALLYOVER
 
 #define EXITSCOPE(a) FINAL(a;)
 

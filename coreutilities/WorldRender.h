@@ -235,9 +235,9 @@ namespace FlexKit
 	{
 		struct visableLightEntry
 		{
-			uint2		pixel;
-			LightHandle light;
-			uint32_t	ID(uint2 wh) { return pixel[0] + pixel[1] * wh[0]; };
+			uint2				pixel;
+			PointLightHandle	light;
+			uint32_t			ID(uint2 wh) { return pixel[0] + pixel[1] * wh[0]; };
 		};
 
 		Vector<visableLightEntry> samples;
