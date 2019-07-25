@@ -15,11 +15,9 @@ class flxDrawSceneOperator(Operator):
     bl_idname = "object.draw_op"
     bl_label = "Toggle Draw Scene Quad Tree"
     bl_description = "Operator for toggling rendering of scene Quad Tree"
-    #bl_options = {'REGISTER'}
+    bl_options = {'REGISTER'}
 
     def __init__(self):
-        print("Hello DrawSceneOperator")
-
         self.draw_handle = None
         self.draw_event = None
         self.widgets = []
@@ -28,11 +26,7 @@ class flxDrawSceneOperator(Operator):
         return False
 
     def invoke(self, context, event):
-        print("Hello DrawSceneOperator.invoke()")
-
-        return {"CANCELLED"}
-
-        if not hasattr(context.active_object, "flxScene"):
+        if not hasattr(context.active_object, "flxScene") and context.active_object.flxScene.Enabled:
             self.report({'INFO'}, "Please Select a flxScene first!")
             return {"CANCELLED"}
 
@@ -40,6 +34,7 @@ class flxDrawSceneOperator(Operator):
 
         args = (self, context)
         self.register_handlers(args, context)
+        
         return {"RUNNING_MODAL"}
 
     def register_handlers(self, args, context):
@@ -121,7 +116,7 @@ class flxCreateSceneOperator(bpy.types.Operator):
         context.active_object.lock_scale[1] = True
         context.active_object.lock_scale[2] = True
 
-        context.active_object.hide_viewport = True
+        #context.active_object.hide_viewport = True
 
         return {'FINISHED'}
 
@@ -161,9 +156,9 @@ class flxScenePanel(bpy.types.Panel):
         row.operator("scene.flx_export")
         row.operator("object.draw_op")
 
-        if bpy.context.active_object != None:
-            if(bpy.context.active_object.flxScene.Enabled):
-                print("Hello Scene!")
+        #if bpy.context.active_object != None:
+        #    if(bpy.context.active_object.flxScene.Enabled):
+        #        print("Hello Scene!")
 
 
 def register():

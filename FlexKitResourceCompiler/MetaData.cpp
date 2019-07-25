@@ -118,13 +118,15 @@ namespace FlexKit
 	size_t SkipBrackets(const MeshTokenList& Tokens, size_t StartingPosition)
 	{
 		size_t itr2			= StartingPosition;
-		size_t bracketCount = 1;
+		size_t bracketCount = 0;
 
 		for (; itr2 < Tokens.size(); ++itr2)
 		{
 			auto T = Tokens[itr2];
 
-			if (T.size() && (T == "};" || T == "}"))
+			if (T == "{")
+				bracketCount++;
+			else if (T == "};" || T == "}")
 				bracketCount--;
 
 			if(bracketCount == 0)
@@ -145,7 +147,7 @@ namespace FlexKit
 		ValueList Values;
 		size_t itr2 = StartingPosition;
 
-		for (; itr2 < endPosition; ++itr2)
+		for (; itr2 < endPosition;)
 		{
 			auto T = Tokens[itr2];
 
@@ -166,6 +168,27 @@ namespace FlexKit
 					NewValue.ID			= IDToken;
 
 					Values.push_back(NewValue);
+
+					itr2 += 3;
+				}
+				if (T == "uint")
+				{
+					Value NewValue;
+					NewValue.Type = ValueType::UINT;
+
+					auto IDToken = Tokens[itr2 - 2];
+					auto ValueToken = Tokens[itr2 + 2];
+
+					char ValueBuffer[16];
+					strncpy_s(ValueBuffer, &ValueToken.front(), ValueToken.size());
+
+					auto V = atoll(ValueBuffer);
+					NewValue.Data.UI = V;
+					NewValue.ID = IDToken;
+
+					Values.push_back(NewValue);
+
+					itr2 += 3;
 				}
 				else if (T == "string")
 				{
@@ -179,6 +202,8 @@ namespace FlexKit
 					NewValue.Data.S	= ValueToken != "_" ? ValueToken : "";
 
 					Values.push_back(NewValue);
+
+					itr2 += 3;
 				}
 				else if (T == "float")
 				{
@@ -195,11 +220,35 @@ namespace FlexKit
 					NewValue.ID		= IDToken; 
 
 					Values.push_back(NewValue);
+
+					itr2 += 3;
+				}
+				else if (T == "float3")
+				{
+					Value NewValue;
+					NewValue.Type = ValueType::FLOAT;
+
+					auto		IDToken			= Tokens[itr2 - 2];
+					string_view	ValueTokens[]	= { Tokens[itr2 + 3], Tokens[itr2 + 5], Tokens[itr2 + 7] };
+
+					for (size_t itr3 = 0; itr3 < 3; ++itr3) {
+						char ValueBuffer[16];
+						strncpy_s(ValueBuffer, ValueTokens[itr3].data(), ValueTokens[itr3].size());
+						NewValue.Data.F3[itr3] = atof(ValueBuffer);
+					}
+
+					NewValue.ID = IDToken;
+
+					Values.push_back(NewValue);
+
+					itr2 += 8;
 				}
 				else if (T == "{")
-					itr2 = SkipBrackets(Tokens, StartingPosition);
+					itr2 = SkipBrackets(Tokens, itr2);
 				else if (T == "};")
 					return{ Values, itr2 };
+				else
+					itr2++;
 		}
 
 		// Should Be Un-reachable
@@ -228,7 +277,7 @@ namespace FlexKit
 	{
 		for (size_t itr = begin; itr < end; ++itr)
 		{
-			if (Tokens[itr] == "MetaDataCollection")
+			if (Tokens[itr] == "Set")
 				return { true, itr };
 		}
 
@@ -238,33 +287,45 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-
-	MetaData* ParseScene(const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaDataList ParseSubContainer(const MetaDataParserTable& parser, const MeshTokenList& Tokens, const size_t begin, const size_t end)
 	{
-		auto Target				= Tokens[begin - 2];
+		MetaDataList metaData;
+
+		size_t itr = begin;
+		while (true)
+		{
+			auto [res, begin] = DetectSubContainer(Tokens, itr, end);
+
+			if (Tokens[begin + 1] != "{")
+				break;
+
+			if (res)
+			{
+				size_t end = SkipBrackets(Tokens, begin + 1);
+				ParseTokens(parser, Tokens, metaData, begin + 2, end - 1);
+				itr = end;
+			}
+			else
+				break;
+			}
+
+		return metaData;
+	}
+
+	/************************************************************************************************/
+
+
+
+	MetaData* ParseScene(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto Target				= tokens[begin - 2];
 		auto AssetGUID			= FindValue(values, "AssetGUID");
 		auto AssetID			= FindValue(values, "AssetID");
 
 		Scene_MetaData* scene	= new Scene_MetaData;
 		scene->ID				= Target;
 
-		size_t itr2 = begin;
-		while(true)
-		{
-			auto [res, begin] = DetectSubContainer(Tokens, itr2, end);
-
-			if (Tokens[begin + 1] != "{")
-				break;
-
-			if (res) 
-			{
-				size_t end = SkipBrackets(Tokens, begin + 1);
-				ParseTokens(SceneParser, Tokens, scene->sceneMetaData, begin + 2, end - 1);
-				itr2 = end;
-			}
-			else
-				break;
-		}
+		scene->sceneMetaData = ParseSubContainer(SceneParser, tokens, begin, end);
 
 		if(AssetGUID != nullptr && AssetGUID->Type == ValueType::INT)
 			scene->Guid = AssetGUID->Data.I;
@@ -517,9 +578,16 @@ namespace FlexKit
 
 	MetaData* ParseSceneEntity(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
-		FK_ASSERT(0);
+		auto Target		= tokens[begin - 2];
+		auto id			= FindValue(values, "ID");
 
-		return nullptr;
+		SceneElementMeta* element  = new SceneElementMeta;
+		*element = SceneElementMeta::Entity();
+
+		element->id			= (id != nullptr && id->Type == ValueType::STRING)? id->Data.S : "";
+		element->metaData	= ParseSubContainer(EntityParser, tokens, begin, end);
+
+		return element;
 	}
 
 
@@ -539,9 +607,16 @@ namespace FlexKit
 
 	MetaData* ParseSceneNode(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
-		FK_ASSERT(0);
+		auto Target		= tokens[begin - 2];
+		auto id			= FindValue(values, "ID");
 
-		return nullptr;
+		SceneElementMeta* element  = new SceneElementMeta;
+		*element = SceneElementMeta::Node();
+
+		element->id			= (id != nullptr && id->Type == ValueType::STRING)? id->Data.S : "";
+		element->metaData	= ParseSubContainer(NodeParser, tokens, begin, end);
+
+		return element;
 	}
 
 
@@ -569,16 +644,76 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	MetaData* ParseSceneEntityComponent(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto						componentIDValue = FindValue(values, "ComponentID");
+		FNComponentBlobFormatter	formatter	= nullptr;
+		uint32_t					componentID = 0;
+
+		if (componentIDValue == nullptr)
+			return nullptr;
+
+		if (componentIDValue->Type == ValueType::UINT)
+		{
+			auto res =  ComponentBlobFormatters.find(componentIDValue->Data.UI);
+			if (res == ComponentBlobFormatters.end())
+				return nullptr;
+
+			componentID = componentIDValue->Data.UI;
+		}
+		if (componentIDValue->Type == ValueType::STRING)
+		{
+			auto res = ComponentIDMap.find(std::string(componentIDValue->Data.S));
+			
+			if (res == ComponentIDMap.end())
+				return nullptr;
+
+			componentID = res->second;
+		}
+
+		auto res2 = ComponentBlobFormatters.find(componentID);
+		if (res2 == ComponentBlobFormatters.end())
+			return nullptr;
+
+		formatter = res2->second;
+
+		SceneComponentMeta* component = new SceneComponentMeta;
+		component->metaData		= ParseSubContainer(NodeParser, tokens, begin, end);
+		component->CreateBlob	= formatter;
+
+		return component;
+	}
+
+
+	/************************************************************************************************/
+
+
 	const MetaDataParserTable CreateSceneParser()
 	{
 		return {
-				{ "Entity",		ParseSceneEntity				},
-				{ "Light",		ParseSceneLight					},
-				{ "Node",		ParseSceneTerrainCollider		},
+				{ "Node",		ParseSceneNode					},
 				{ "Terrain",	ParseSceneTerrainCollider		},
 				{ "Component",	ParseSceneComponentRequirement	},
 		};
 	}
+
+	const MetaDataParserTable CreateNodeParser()
+	{
+		return {
+				{ "Entity",		ParseSceneEntity	},
+				{ "Light",		ParseSceneLight		},
+				{ "Node",		ParseSceneNode		},
+		};
+	}
+
+
+	const MetaDataParserTable CreateEntityParser()
+	{
+		return {
+				{ "Component",	ParseSceneEntityComponent		},
+		};
+	}
+
 
 
 	/************************************************************************************************/

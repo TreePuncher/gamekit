@@ -43,6 +43,19 @@ PlayState::PlayState(
 	LoadScene(IN_Framework->core, &scene, "TestScene");
 	LightModel = GetMesh(GetRenderSystem(), "LightModel");
 
+	// Print Scene entity list
+
+	auto& visibles = SceneVisibilityComponent::GetComponent();
+	for( auto& entity : scene.sceneEntities )
+	{
+		Apply(
+			*visibles[entity].entity, 
+			[](StringIDBehavior* id) 
+			{
+				std::cout << id->GetString() << "\n";
+			});
+	}
+
 	//eventMap.MapKeyToEvent(KEYCODES::KC_W, ThirdPersonCameraRig::Forward		);
 	//eventMap.MapKeyToEvent(KEYCODES::KC_A, ThirdPersonCameraRig::Left			);
 	//eventMap.MapKeyToEvent(KEYCODES::KC_S, ThirdPersonCameraRig::Backward		);
@@ -161,7 +174,6 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
 	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher, transforms);
-	//auto& sceneUpdate		= scene.Update				(dispatcher, transforms);
 	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
 	auto& cameraConstants	= MakeHeapCopy				(GetCameraConstants(activeCamera), core->GetTempMemory());
 	auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
@@ -208,7 +220,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 		
 		DrawCollection(
 				frameGraph, 
-				{ /*&sceneUpdate*/ },
+				{},
 				{	{ 0, (char*)&cameraConstants, cameraConstanstSize },
 					{ 0, (char*)&cameraConstants, cameraConstanstSize } },
 				{ },

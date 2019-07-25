@@ -60,6 +60,7 @@ namespace FlexKit
 			EMR_SKELETON,
 			EMR_SKELETALANIMATION,
 			EMR_NODE,
+			EMR_ENTITY,
 			EMR_NONE,
 		};
 
@@ -235,9 +236,78 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	class ScenePointLightMeta : public MetaData
+	{
+	public:
+		float3	color;
+		float	intensity;
+		float	radius;
+	};
+
+
+
+	class SceneElementMeta : public MetaData
+	{
+	public:
+		static SceneElementMeta Node() {
+			SceneElementMeta element;
+			element.UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
+			element.type		= MetaData::EMETAINFOTYPE::EMI_SCENE;
+
+			return element;
+		}
+
+		static SceneElementMeta Entity() {
+			SceneElementMeta element;
+			element.UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_ENTITY;
+			element.type		= MetaData::EMETAINFOTYPE::EMI_SCENE;
+
+			return element;
+		}
+
+		string			id = "";
+		MetaDataList	metaData;
+	};
+
+
+	/************************************************************************************************/
+
+	class SceneComponentMeta;
+	using FNComponentBlobFormatter = std::vector<byte> (*)(SceneComponentMeta*);
+
+	std::vector<byte> createTransformComponentBlob(SceneComponentMeta*)
+	{
+		return {};
+	}
+
+	inline const std::map<std::string, uint32_t> ComponentIDMap =
+	{
+		{ "Transform", GetTypeGUID(TransformComponent)	},
+	};
+
+	inline const std::map<uint32_t, FNComponentBlobFormatter> ComponentBlobFormatters =
+	{
+		{ GetTypeGUID(TransformComponent), createTransformComponentBlob },
+	};
+
+
+	class SceneComponentMeta : public MetaData
+	{
+	public:
+		FNComponentBlobFormatter CreateBlob;
+
+		string			id = "";
+		MetaDataList	metaData;
+	};
+
+
+	/************************************************************************************************/
+
+
 	enum class ValueType
 	{
 		INT,
+		UINT,
 		STRING,
 		FLOAT,
 		INVALID
@@ -248,12 +318,15 @@ namespace FlexKit
 	{
 		ValueTypeUnion() : S{ nullptr, 0 } {}
 
-		explicit ValueTypeUnion(float f)			: F{ f } {}
+		explicit ValueTypeUnion(float f)					: F{ f } {}
+		//explicit ValueTypeUnion(float3 f3 = { 0, 0, 0 })	: F3{ f3 } {}
 		explicit ValueTypeUnion(int i)				: I{ i } {}
-		explicit ValueTypeUnion(std::string_view s)	: S{ s } {}
+		explicit ValueTypeUnion(std::string_view s) : S{ s } {}
 
 		float				F;
+		float				F3[3];
 		int					I;
+		int					UI;
 		std::string_view	S;
 	};
 
@@ -282,9 +355,14 @@ namespace FlexKit
 
 	const MetaDataParserTable CreateDefaultParser();
 	const MetaDataParserTable CreateSceneParser();
+	const MetaDataParserTable CreateNodeParser();
+	const MetaDataParserTable CreateEntityParser();
+
 
 	inline const MetaDataParserTable DefaultParser	= CreateDefaultParser();
 	inline const MetaDataParserTable SceneParser	= CreateSceneParser();
+	inline const MetaDataParserTable NodeParser		= CreateNodeParser();
+	inline const MetaDataParserTable EntityParser	= CreateEntityParser();
 
 	/*
 

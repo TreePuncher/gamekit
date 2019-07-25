@@ -97,20 +97,13 @@ struct CompileSceneFromFBXFile_DESC
 struct SceneNode
 {
 	Quaternion	Q;
-	float4		TS;
-	size_t		Parent;
+	float3		position;
+	float3		scale;
+	size_t		parent;
 	size_t		pad;
 
-	std::string ID;
-
-	operator CompiledScene::SceneNode() const
-	{
-		return {
-			.Q		= Q,
-			.TS		= TS,
-			.Parent	= Parent
-		};
-	}
+	std::string		id;
+	MetaDataList	metaData;
 };
 
 
@@ -121,21 +114,9 @@ struct SceneEntity
 	GUID_t		Collider	= INVALIDHANDLE;
 	float4		albedo;
 	float4		specular;
-	std::string	id;
 
-	operator CompiledScene::Entity() const
-	{
-		return {
-			.MeshGuid	= MeshGuid,
-			.TextureSet	= INVALIDHANDLE,
-			.Node		= Node,
-			.Collider	= Collider,
-			.idlength	= id.size(),
-			.albedo		= albedo,
-			.specular	= specular,
-			.id			= id.c_str()
-		};
-	}
+	std::string		id;
+	MetaDataList	metaData;
 };
 
 
@@ -163,94 +144,7 @@ struct ScenePointLight
 class SceneResource : public iResource
 {
 public:
-	ResourceBlob CreateBlob() override 
-	{ 
-		const size_t bufferSize = CalculateResourceSize();
-		const size_t sceneTableOffset		= 0;
-		const size_t pointLightTableOffset	= entities.size()								* sizeof(CompiledScene::Entity);;
-		const size_t nodeTableOffset		= pointLightTableOffset + pointLights.size()	* sizeof(CompiledScene::PointLight);
-		const size_t staticsTableOffset		= nodeTableOffset		+ nodes.size()			* sizeof(CompiledScene::SceneNode);
-		const size_t stringTableOffset		= staticsTableOffset	+ staticEntities.size()	* sizeof(CompiledScene::Entity);;
-
-		SceneResourceBlob* blob	= (SceneResourceBlob*)malloc(bufferSize);
-		auto buffer				= blob->Buffer;
-
-		std::vector<CompiledScene::Entity>		convertedEntities;
-		std::vector<CompiledScene::Entity>		convertedStaticEntities;
-		std::vector<CompiledScene::PointLight>	convertedPointLights;
-		std::vector<CompiledScene::SceneNode>	convertedNodes;
-
-		for (auto& entity : entities)	convertedEntities.push_back(entity);
-		for (auto& light : pointLights)	convertedPointLights.push_back(light);
-		for (auto& node : nodes)		convertedNodes.push_back(node);
-
-		// Copy Strings
-		size_t strOffset	= stringTableOffset;
-		size_t strCount		= 0;
-		for (auto& entity : convertedEntities)
-		{
-			entity.MeshGuid = TranslateID(entity.MeshGuid, translationTable);
-
-			if (entity.idlength) {
-				strCount++;
-				memcpy(buffer + strOffset, entity.id, entity.idlength);// discarding the null terminator
-
-				entity.id = reinterpret_cast<const char*>(strOffset);
-				strOffset += entity.idlength;
-			}
-		}
-
-		memset(blob->ID, 0, 64);
-		strncpy(blob->ID, ID.c_str(), ID.size());
-
-		blob->SceneTable.EntityCount		= entities.size();
-		blob->SceneTable.NodeCount			= nodes.size();
-		blob->SceneTable.LightCount			= pointLights.size();
-		blob->ResourceSize					= bufferSize;
-		blob->GUID							= GUID;
-		blob->RefCount						= 0;
-		blob->State							= Resource::EResourceState_UNLOADED;
-		blob->Type							= EResource_Scene;
-
-		blob->SceneTable.SceneStringCount	= strCount;
-		blob->SceneTable.SceneStringsOffset	= stringTableOffset;
-
-		blob->SceneTable.EntityOffset	= sceneTableOffset;
-		blob->SceneTable.LightOffset	= pointLightTableOffset;
-		blob->SceneTable.NodeOffset		= nodeTableOffset;
-		blob->SceneTable.StaticsOffset	= staticsTableOffset;
-
-		if(convertedEntities.size())		memcpy(buffer + sceneTableOffset,		&convertedEntities.front(),			convertedEntities.size()		* sizeof(CompiledScene::Entity));
-		if(convertedPointLights.size())		memcpy(buffer + pointLightTableOffset,	&convertedPointLights.front(),		convertedPointLights.size()		* sizeof(CompiledScene::PointLight));
-		if(convertedNodes.size())			memcpy(buffer + nodeTableOffset,		&convertedNodes.front(),			convertedNodes.size()			* sizeof(CompiledScene::SceneNode));
-		if(convertedStaticEntities.size())	memcpy(buffer + staticsTableOffset,		&convertedStaticEntities.front(),	convertedStaticEntities.size()	* sizeof(CompiledScene::Entity));
-
-		ResourceBlob out;
-		out.GUID			= GUID;
-		out.ID				= ID;
-		out.resourceType	= EResourceType::EResource_Scene;
-		out.buffer			= reinterpret_cast<char*>(blob);
-		out.bufferSize		= bufferSize;
-
-		return out;
-	}
-
-
-	size_t CalculateResourceSize() const
-	{
-		size_t BlobSize = sizeof(SceneResourceBlob);
-
-		BlobSize += nodes.size()				* sizeof(CompiledScene::SceneNode);
-		BlobSize += entities.size()				* sizeof(CompiledScene::Entity);
-		//BlobSize += .SceneGeometry.size()		* sizeof(CompiledScene::SceneGeometry);
-		BlobSize += pointLights.size()			* sizeof(CompiledScene::PointLight);
-		BlobSize += staticEntities.size()		* sizeof(CompiledScene::Entity);
-
-		for (auto E : entities)
-			BlobSize += E.id.size() + 1;
-
-		return BlobSize;
-	}
+	ResourceBlob CreateBlob() override;
 
 
 	size_t AddSceneEntity(SceneEntity entity)

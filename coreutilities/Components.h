@@ -226,7 +226,7 @@ namespace FlexKit
 
 
 		template<typename TY_Behavior, typename ... TY_args>
-		void AddBehavior(TY_args& ... args)
+		void AddBehavior(TY_args&& ... args)
 		{
 			behaviors.push_back({ 
 				&allocator->allocate<TY_Behavior>(std::forward<TY_args>(args)...),
@@ -666,7 +666,7 @@ namespace FlexKit
 			newID.ID[length] = '\0';
 			strncpy(newID.ID, initial, min(sizeof(StringID), length));
 
-			IDs.push_back(newID);
+			handles[handle] = IDs.push_back(newID);
 
 			return handle;
 		}
@@ -700,6 +700,11 @@ namespace FlexKit
 	{
 	public:
 		StringIDBehavior(char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
+
+		char* GetString()
+		{
+			return GetComponent()[ID];
+		}
 
 		StringIDHandle ID;
 	};

@@ -394,7 +394,7 @@ namespace FlexKit
 			builder.AddInput(*sceneDescription.transforms);
 			builder.AddInput(*sceneDescription.cameras);
 
-			const size_t tempBufferSize = KILOBYTE * 1024;
+			const size_t tempBufferSize = KILOBYTE * 8192;
 			const uint2 WH = lightMapWH + uint2( 64 )  - lightMapWH % 64; // add additional padding for upload alignment requirements
 
 			data.tempMemory.Init((byte*)tempMemory->malloc(tempBufferSize), tempBufferSize);

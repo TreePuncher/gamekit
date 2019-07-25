@@ -669,7 +669,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* allocator, iAllocator* Temp)
+	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* allocator, iAllocator* temp)
 	{
 		bool Available = isResourceAvailable(Guid);
 		if (Available)
@@ -680,86 +680,96 @@ namespace FlexKit
 			EXITSCOPE(FreeResource(RHandle));
 
 			if (R != nullptr) {
-				SceneResourceBlob* SceneBlob = (SceneResourceBlob*)R;
+				SceneResourceBlob* sceneBlob = (SceneResourceBlob*)R;
 
-				auto& CreatedNodes = 
-						Vector<NodeHandle>(
-							Temp, 
-							SceneBlob->SceneTable.NodeCount);
+				const auto blockCount = sceneBlob->blockCount;
+				
+				size_t						offset = 0;
+				size_t						currentBlock = 0;
+				SceneNodeBlock*				nodeBlock = nullptr;
+				ComponentRequirementBlock*	componentRequirement = nullptr;
+				Vector<NodeHandle>			nodes{ temp };
 
+
+				while (offset < sceneBlob->ResourceSize && currentBlock < blockCount)
 				{
-					CompiledScene::SceneNode* Nodes = (CompiledScene::SceneNode*)(SceneBlob->Buffer + SceneBlob->SceneTable.NodeOffset);
-					for (size_t I = 0; I < SceneBlob->SceneTable.NodeCount; ++I)
+					SceneBlock* block = reinterpret_cast<SceneBlock*>(sceneBlob->Buffer + offset);
+					switch (block->blockType)
 					{
-						auto Node		= Nodes[I];
-						auto NewNode	= GetNewNode();
-						
-						SetOrientationL	(NewNode, Node.Q );
-						SetPositionL	(NewNode, Node.TS.xyz());
-						SetScale		(NewNode, { Node.TS.w, Node.TS.w, Node.TS.w });
+						case SceneBlockType::NodeTable:
+						{
+							// TODO: CRC Check
+							// TODO: more error checking
+							FK_ASSERT(nodeBlock == nullptr, "Multiple Node Blocks Defined!");
+							nodeBlock = reinterpret_cast<SceneNodeBlock*>(block);
 
-						if (Node.Parent != -1)
-							SetParentNode(CreatedNodes[Node.Parent], NewNode);
+							const auto nodeCount = nodeBlock->nodeCount;
+							nodes.reserve(nodeCount);
 
-						CreatedNodes.push_back(NewNode);
-					}
 
-					UpdateTransforms();
-				}
+							for (size_t itr = 0; itr < nodeCount; ++itr)
+							{
+								float3		position;
+								Quaternion	orientation;
+								float3		scale;
 
-				{
-					auto Entities = (CompiledScene::Entity*)(SceneBlob->Buffer + SceneBlob->SceneTable.EntityOffset);
-					for (size_t I = 0; I < SceneBlob->SceneTable.EntityCount; ++I)
-					{
-						if (Entities[I].MeshGuid != INVALIDHANDLE) {
-							auto node				= CreatedNodes[Entities[I].Node];
-							auto triMeshGUID		= Entities[I].MeshGuid;
+								auto sceneNode = &nodeBlock->nodes[itr];
+								memcpy(&position,		&sceneNode->position, sizeof(float3));
+								memcpy(&orientation,	&sceneNode->orientation, sizeof(orientation));
+								memcpy(&scale,			&sceneNode->scale, sizeof(float3));
 
-							auto [triMesh, Result]	= FindMesh(triMeshGUID);
+								if (itr == 0) // remove root scaling
+									scale = { 1, 1, 1 };
+
+								auto newNode = GetNewNode();
+								SetOrientationL	(newNode, orientation);
+								SetPositionL	(newNode, position);
+								SetScale		(newNode, { scale[0], scale[0], scale[0] }); // Engine only supports uniform scaling, still stores all 3 for future stuff
+								SetFlag			(newNode, SceneNodes::StateFlags::SCALE);
+
+								if (sceneNode->parent != INVALIDHANDLE)
+									SetParentNode(nodes[sceneNode->parent], newNode);
+
+								nodes.push_back(newNode);
+							}
+						}	break;
+						case SceneBlockType::ComponentRequirementTable:
+						case SceneBlockType::Entity:
+						{
+							FK_ASSERT(nodeBlock != nullptr, "No Node Block defined!");
+							//FK_ASSERT(componentRequirement != nullptr, "No Component Requirement Block defined!");
+
+							EntityBlock* entityBlock = reinterpret_cast<EntityBlock*>(block);
+
+							auto node			= nodes[entityBlock->nodeIdx];
+							auto triMeshGUID	= entityBlock->MeshHandle;
+
+							auto [triMesh, Result] = FindMesh(triMeshGUID);
 
 							if (!Result)
 								triMesh = LoadTriMeshIntoTable(RS, triMeshGUID);
 
-							auto& gameObject	= allocator->allocate<GameObject>(allocator);
+							auto& gameObject = allocator->allocate<GameObject>(allocator);
 							GS_out->AddGameObject(gameObject, node);
 
 							gameObject.AddBehavior<SceneNodeBehavior<>>(node);
 							gameObject.AddBehavior<DrawableBehavior>(triMesh, node);
+							gameObject.AddBehavior<PointLightBehavior>(float3(1, 1, 1), 50000, node);
 
 							SetBoundingSphereFromMesh(gameObject);
-
-							size_t idLength = Entities[I].idlength;
-
-							if (idLength)
-							{
-								const size_t string_offset	= (size_t)Entities[I].id;
-								char* id = (char*)SceneBlob->Buffer + string_offset;
-
-								gameObject.AddBehavior<StringIDBehavior>(id, idLength);
-							}
-
-
-							SetFlag(CreatedNodes[Entities[I].Node], SceneNodes::StateFlags::SCALE);
+							
+							if(auto idLength = strnlen(entityBlock->ID, 64); idLength)
+								gameObject.AddBehavior<StringIDBehavior>(entityBlock->ID, idLength);
 						}
+						case SceneBlockType::EntityComponent:
+							break;
+					default:
+						break;
 					}
+					currentBlock++;
+					offset += block->blockSize;
 				}
 
-				{
-					auto Lights = (CompiledScene::PointLight*)(SceneBlob->Buffer + SceneBlob->SceneTable.LightOffset);
-					for (size_t I = 0; I < SceneBlob->SceneTable.LightCount; ++I)
-					{
-						auto light			= Lights[I];
-						auto node			= CreatedNodes[light.Node];
-						auto& gameObject	= allocator->allocate<GameObject>(allocator);
-						GS_out->AddGameObject(gameObject, node);
-
-						// TODO: Set visibility BS radius
-						gameObject.AddBehavior<PointLightBehavior>(light.K, light.I, node);
-						gameObject.AddBehavior<SceneNodeBehavior<>>(node);
-					}
-				}
-
-				//GS_out->SceneManagement.Rebuild(*GS_out);
 
 				return true;
 			}

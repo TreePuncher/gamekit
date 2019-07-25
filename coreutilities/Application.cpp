@@ -110,7 +110,7 @@ namespace FlexKit
 			T += dT;
 			FPSCounter++;
 
-			if (FPSCounter % 60 == 0) {
+			if (FPSCounter % 60 == 0 && false) {
 				std::cout << "Frame Time average: " << temp / 60.0f << "\n";
 				temp = 0.0f;
 			}

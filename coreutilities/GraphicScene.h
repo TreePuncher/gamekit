@@ -196,7 +196,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetBoundingSphereFromMesh(GameObject& go)
+	inline void SetBoundingSphereFromMesh(GameObject& go)
 	{
 		Apply(
 			go,
@@ -207,6 +207,17 @@ namespace FlexKit
 			});
 	}
 
+
+	inline void SetBoundingSphereFromLight(GameObject& go)
+	{
+		Apply(
+			go,
+			[](	SceneVisibilityBehavior* visibility,
+				PointLightBehavior*		pointLight)
+			{
+				visibility->SetBoundingSphere({ 0, 0, 0, pointLight->GetRadius() });
+			});
+	}
 
 	/************************************************************************************************/
 

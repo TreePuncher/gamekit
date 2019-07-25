@@ -193,7 +193,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	constexpr ComponentID TransformComponentID = GetTypeGUID(TransformComponentID);
+	constexpr ComponentID TransformComponentID = GetTypeGUID(TransformComponent);
 
 	class SceneNodeComponent : 
 		public Component<SceneNodeComponent, NodeHandle, TransformComponentID>

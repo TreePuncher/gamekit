@@ -39,9 +39,10 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 	auto rotation = Node->LclRotation.		Get();
 	auto NodeName = Node->GetName();
 
-	NewNode.Parent	= Parent;
-	NewNode.TS		= float4(TranslateToFloat3(Position), LclScale.mData[0]);
-	NewNode.Q		= Quaternion(rotation.mData[0], rotation.mData[1], rotation.mData[2]);
+	NewNode.parent		= Parent;
+	NewNode.position	= TranslateToFloat3(Position); 
+	NewNode.scale		= TranslateToFloat3(LclScale);
+	NewNode.Q			= Quaternion(rotation.mData[0], rotation.mData[1], rotation.mData[2]);
 
 	size_t Nodehndl = scene->AddSceneNode(NewNode);
 
@@ -241,7 +242,7 @@ void ScanChildrenNodesForScene(
 				scene->ID				= MD->SceneID;
 				scene->translationTable = translationTable;
 
-				ProcessNodes(Node, scene, MetaData);
+				ProcessNodes(Node, scene, MD->sceneMetaData);
 				Out.push_back(scene);
 			}
 		}
@@ -277,6 +278,94 @@ ResourceList CompileSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileScene
 	GetScenes(scene, METAINFO, translationTable, resources);
 
 	return resources;
+}
+
+
+/************************************************************************************************/
+
+ResourceBlob SceneResource::CreateBlob()
+{ 
+	std::vector<char> buffer;
+	size_t currentBufferOffset = 0;
+	SceneResourceBlob	header;
+	SceneNodeBlock*		nodeblock			= nullptr;
+	size_t				nodeBlockSize		= 0;
+	EntityBlock*		entityBlock			= nullptr;
+	size_t				entityBlockSize		= 0;
+
+	{
+		// Create Scene Node Table
+			
+		nodeBlockSize	= SceneNodeBlock::GetHeaderSize() + nodes.size() * sizeof(SceneNodeBlock::SceneNode);
+		nodeblock		= reinterpret_cast<SceneNodeBlock*>(malloc(nodeBlockSize));
+
+		nodeblock->blockSize = nodeBlockSize;
+		nodeblock->blockType = SceneBlockType::NodeTable;
+		nodeblock->nodeCount = nodes.size();
+
+		for (size_t itr = 0; itr < nodes.size(); ++itr)
+		{
+			SceneNodeBlock::SceneNode n;
+
+			auto node = nodes[itr];
+			n.orientation	= node.Q;
+			n.position		= node.position;
+			n.scale			= node.scale;
+			n.parent		= node.parent;
+			nodeblock->nodes[itr] = n;
+		}
+	}
+
+	{
+		entityBlockSize = sizeof(EntityBlock) * entities.size();
+		entityBlock		= (EntityBlock*)malloc(entityBlockSize);
+
+		for (size_t itr = 0; itr < entities.size(); ++itr)
+		{
+			auto& entity = entities[itr];
+			memset(entityBlock + itr, 0, sizeof(EntityBlock));
+			// TODO: component blocks
+			entityBlock[itr].nodeIdx		= entity.Node;
+			entityBlock[itr].blockType		= SceneBlockType::Entity;
+			entityBlock[itr].componentCount	= 0;
+			entityBlock[itr].blockSize		= sizeof(EntityBlock);
+
+			entityBlock[itr].MeshHandle		= TranslateID(entity.MeshGuid, translationTable);	// TODO: move into a component block!
+			strncpy(entityBlock[itr].ID, entity.id.c_str(), min(64, entity.id.size()));			// TODO: move into a component block!
+		}
+	}
+
+
+	// Create Scene Resource Header
+	{
+		header.blockCount = 2 + entities.size();
+		header.GUID = GUID;
+		strncpy(header.ID, ID.c_str(), 64);
+		header.Type = EResourceType::EResource_Scene;
+		header.ResourceSize = sizeof(header) + nodeBlockSize + entityBlockSize;
+	}
+
+	buffer.resize(sizeof(header) + nodeBlockSize + entityBlockSize);
+	memcpy(&buffer[currentBufferOffset], &header, sizeof(header));
+	currentBufferOffset += sizeof(header);
+	memcpy(&buffer[currentBufferOffset], nodeblock, nodeBlockSize);
+	currentBufferOffset += nodeBlockSize;
+	memcpy(&buffer[currentBufferOffset], entityBlock, entityBlockSize);
+	currentBufferOffset += nodeBlockSize;
+
+	char* finalBuffer = (char*)malloc(buffer.size());
+	memcpy(finalBuffer, &buffer[0], buffer.size());
+
+	ResourceBlob out;
+	out.buffer			= finalBuffer;
+	out.bufferSize		= buffer.size();
+	out.GUID			= GUID;
+	out.ID				= ID;
+	out.resourceType	= EResourceType::EResource_Scene;
+
+	free(nodeblock);
+
+	return out;
 }
 
 
