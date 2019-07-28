@@ -149,13 +149,13 @@ namespace FlexKit
 	{
 	public:
 		EngineCore(EngineMemory* memory, uint2 WH) :
-			Memory			{ memory								},
-			CmdArguments	{ memory->BlockAllocator				},
-			Time			{ memory->BlockAllocator				},
-			Threads			{ 4, memory->BlockAllocator				},// TODO: Get System Thread Count.
-			RenderSystem	{ memory->BlockAllocator, &Threads		},
-			FrameLock		{ true									},
-			Physics			{ Threads, memory->BlockAllocator		}
+			Memory			{ memory										},
+			CmdArguments	{ memory->BlockAllocator						},
+			Time			{ memory->BlockAllocator						},
+			Threads			{ DefaultWorkerCount, memory->BlockAllocator	},// TODO: Get System Thread Count.
+			RenderSystem	{ memory->BlockAllocator, &Threads				},
+			FrameLock		{ true											},
+			Physics			{ Threads, memory->BlockAllocator				}
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
 			Initiate(memory, WH);
