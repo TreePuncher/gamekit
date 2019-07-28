@@ -128,12 +128,16 @@ struct ScenePointLight
 
 	operator CompiledScene::PointLight() const
 	{
+		/*
 		return {
 				.I		= I, 
 				.R		= R,
 				.K		= K,
 				.Node	= Node
 		};
+		*/
+
+		return { I, R, K, Node };
 	}
 };
 
