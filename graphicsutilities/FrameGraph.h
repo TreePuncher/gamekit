@@ -69,13 +69,13 @@ namespace FlexKit
 		OT_DepthBuffer,
 		OT_RenderTarget,
 		OT_ConstantBuffer,
+		OT_ByteBuffer,
 		OT_PVS,
 		OT_Query,
 		OT_StreamOut,
 		OT_ShaderResource,
 		OT_VertexBuffer,
 		OT_IndirectArguments,
-		OT_UnorderedAccessView,
 		OT_UAVBuffer,
 		OT_UAVTexture,
 	};
@@ -115,9 +115,10 @@ namespace FlexKit
 
 			QueryHandle				query;
 			ShaderResourceHandle	ShaderResource;
+			GPUResourceHandle		byteBuffer;
 			SOResourceHandle		SOBuffer;
 			UAVResourceHandle		UAVBuffer;
-			UAVResourceHandle		UAVTexture;
+			UAVTextureHandle		UAVTexture;
 
 			struct {
 				char	buff[256];
@@ -180,6 +181,19 @@ namespace FlexKit
 			return shaderResource;
 		}
 
+
+		static FrameObject GPUResourceObject(uint32_t Tag, GPUResourceHandle Handle, DeviceResourceState InitialState)
+		{
+			FrameObject shaderResource;
+			shaderResource.State			= InitialState;
+			shaderResource.Type				= OT_ByteBuffer;
+			shaderResource.Tag				= Tag;
+			shaderResource.ShaderResource	= handle_cast<ShaderResourceHandle>(Handle);
+
+			return shaderResource;
+		}
+
+
 		static FrameObject UAVBufferObject(uint32_t Tag, UAVResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_UAV)
 		{
 			FrameObject UnorderedAccessViewObject;
@@ -190,6 +204,19 @@ namespace FlexKit
 
 			return UnorderedAccessViewObject;
 		}
+
+
+		static FrameObject UAVTextureObject(uint32_t Tag, UAVTextureHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_UAV)
+		{
+			FrameObject UnorderedAccessViewObject;
+			UnorderedAccessViewObject.State             = InitialState;
+			UnorderedAccessViewObject.Type              = OT_UAVTexture;
+			UnorderedAccessViewObject.Tag               = Tag;
+			UnorderedAccessViewObject.UAVTexture		= Handle;
+
+			return UnorderedAccessViewObject;
+		}
+
 
 		static FrameObject SOBufferObject(uint32_t Tag, SOResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_GENERIC)
 		{
@@ -292,6 +319,14 @@ namespace FlexKit
 		{
 			Resources.push_back(
 				FrameObject::UAVBufferObject(tag, handle, InitialState));
+
+			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
+		}
+
+		void AddUAVResource(UAVTextureHandle handle, uint32_t tag, DeviceResourceState InitialState = DeviceResourceState::DRS_Write)
+		{
+			Resources.push_back(
+				FrameObject::UAVTextureObject(tag, handle, InitialState));
 
 			Resources.back().Handle = FrameResourceHandle{ (uint32_t)Resources.size() - 1 };
 		}
@@ -549,7 +584,7 @@ namespace FlexKit
 				auto res = find(Resources,
 					[&](const FrameObject& rhs) -> bool
 					{
-						return rhs.Handle == handle;
+						return rhs.Handle == handle && rhs.Type == OT_UAVBuffer;
 					});
 
 				FK_ASSERT(res != Resources.end());
@@ -565,6 +600,59 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
+
+		UAVTextureHandle GetUAVTextureResource(FrameResourceHandle handle) const
+		{
+			FrameObject* resource = nullptr;
+			auto res = find(SubNodeTracking,
+				[&](const FrameObject& rhs) -> bool
+				{
+					return rhs.Handle == handle;
+				});
+
+			if (res == SubNodeTracking.end())
+			{
+				auto res = find(Resources,
+					[&](const FrameObject& rhs) -> bool
+					{
+						return rhs.Handle == handle && rhs.Type == OT_UAVTexture;
+					});
+
+				FK_ASSERT(res != Resources.end());
+				SubNodeTracking.push_back(*res);
+				resource = &SubNodeTracking.back();
+			}
+			else
+				resource = res;
+
+			return resource->UAVTexture;
+		}
+
+
+		/************************************************************************************************/
+
+
+		UAVTextureHandle ReadWriteUAVTexture(FrameResourceHandle resource, Context* ctx) const
+		{
+			auto res = _FindSubNodeResource(resource);
+			if (res->State != DRS_UAV)
+				ctx->AddUAVBarrier(res->UAVTexture, res->State, DRS_UAV);
+
+			res->State = DRS_UAV;
+
+			return res->UAVTexture;
+		}
+
+		UAVResourceHandle ReadWriteUAVBuffer(FrameResourceHandle resource, Context* ctx) const
+		{
+			auto res = _FindSubNodeResource(resource);
+			if (res->State != DRS_UAV)
+				ctx->AddUAVBarrier(res->UAVBuffer, res->State, DRS_UAV);
+
+			res->State = DRS_UAV;
+
+			return res->UAVBuffer;
+		}
 
 		UAVResourceHandle ReadUAVBuffer(FrameResourceHandle resource, DeviceResourceState state, Context* ctx) const
 		{
@@ -693,6 +781,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
+
 		FrameResourceHandle	FindFrameResource(uint32_t Tag)
 		{
 			auto res = find(Resources, 
@@ -779,11 +868,34 @@ namespace FlexKit
 			auto res = find(Resources, 
 				[&](const auto& LHS)
 				{
-					auto CorrectType = (
-						LHS.Type == OT_UAVBuffer ||
-						LHS.Type == OT_UAVTexture);
+					auto CorrectType = LHS.Type == OT_UAVBuffer;
 
 					return (CorrectType && LHS.UAVBuffer == handle);
+				});
+
+			if (res != Resources.end())
+				return res->Handle;
+
+			// Create New Resource
+			FrameResourceHandle NewResource;
+
+			FK_ASSERT(0);
+
+			return NewResource;
+		}
+
+
+		/************************************************************************************************/
+
+
+		FrameResourceHandle	FindFrameResource(UAVTextureHandle handle)
+		{
+			auto res = find(Resources, 
+				[&](const auto& LHS)
+				{
+					auto CorrectType = LHS.Type == OT_UAVTexture;
+
+					return (CorrectType && LHS.UAVTexture == handle);
 				});
 
 			if (res != Resources.end())
@@ -1007,7 +1119,8 @@ namespace FlexKit
 
 		union {
 			uint32_t				ID;	// Extra ID
-			UAVResourceHandle		UAVHandle;
+			UAVResourceHandle		UAVBuffer;
+			UAVTextureHandle		UAVTexture;
 			SOResourceHandle		SOHandle;
 			ShaderResourceHandle	ShaderResource;
 		};
@@ -1094,10 +1207,10 @@ namespace FlexKit
 		return [handle](FrameObjectDependency& lhs)
 		{
 			auto A = lhs.FO->Type == OT_Query;
-			if (A && lhs.UAVHandle == InvalidHandle_t)
-				lhs.UAVHandle = lhs.FO->UAVBuffer;
+			if (A && lhs.UAVBuffer == InvalidHandle_t)
+				lhs.UAVBuffer = lhs.FO->UAVBuffer;
 
-			return A && (lhs.UAVHandle.to_uint() == handle.to_uint());
+			return A && (lhs.UAVBuffer.to_uint() == handle.to_uint());
 		};
 	}
 
@@ -1111,7 +1224,7 @@ namespace FlexKit
 	}
 
 	template<typename TY>
-	auto MakePred(TY handle, FrameObjectResourceType type)
+	auto MakePred(TY handle, const FrameObjectResourceType type)
 	{
 		return [handle, type](auto& lhs)
 		{
@@ -1126,10 +1239,23 @@ namespace FlexKit
 		return [handle](FrameObjectDependency& lhs)
 		{
 			auto A = lhs.FO->Type == OT_UAVBuffer;
-			if (A && lhs.UAVHandle == InvalidHandle_t)
-				lhs.UAVHandle = lhs.FO->UAVBuffer;
+			if (A && lhs.UAVBuffer == InvalidHandle_t)
+				lhs.UAVBuffer = lhs.FO->UAVBuffer;
 
-			return A && (lhs.UAVHandle == handle);
+			return A && (lhs.UAVBuffer == handle);
+		};
+	}
+
+
+	auto MakePred(UAVTextureHandle handle)
+	{
+		return [handle](FrameObjectDependency& lhs)
+		{
+			auto A = lhs.FO->Type == OT_UAVTexture;
+			if (A && lhs.UAVTexture == InvalidHandle_t)
+				lhs.UAVTexture = lhs.FO->UAVTexture;
+
+			return A && (lhs.UAVTexture == handle);
 		};
 	}
 
@@ -1314,6 +1440,8 @@ namespace FlexKit
 		FrameResourceHandle ReadShaderResource	(TextureHandle Handle);
 		FrameResourceHandle WriteShaderResource	(TextureHandle Handle);
 
+		FrameResourceHandle WriteShaderResource	(GPUResourceHandle Handle);
+
 		FrameResourceHandle ReadRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 		FrameResourceHandle WriteRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 
@@ -1330,7 +1458,8 @@ namespace FlexKit
 		//FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
 		FrameResourceHandle	WriteDepthBuffer	(TextureHandle Handle);
 
-		FrameResourceHandle	ReadWriteUAVBuffer	(UAVResourceHandle);
+		FrameResourceHandle	ReadWriteUAV(UAVResourceHandle, DeviceResourceState state = DeviceResourceState::DRS_Write);
+		FrameResourceHandle	ReadWriteUAV(UAVTextureHandle,	DeviceResourceState	state = DeviceResourceState::DRS_Write);
 
 		FrameResourceHandle	ReadSOBuffer	(SOResourceHandle);
 		FrameResourceHandle	WriteSOBuffer	(SOResourceHandle);
@@ -1418,8 +1547,12 @@ namespace FlexKit
 				Object.State			= state;
 				LocalOutputs.push_back(Object);
 
-				if (TrackedReadable) {
+				if (Object.ExpectedState != state) {
 					Context.RemoveReadable(handle);
+					
+					if (TrackedWritable)
+						Context.RemoveWriteable(handle);
+
 					Context.AddWriteable(Object);
 					Transitions.push_back(Object);
 				}

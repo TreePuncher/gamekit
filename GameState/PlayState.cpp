@@ -190,10 +190,11 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	debugDraw.vertexBuffer	 = base.vertexBuffer;
 
 	SceneDescription sceneDesc;
-	sceneDesc.pointLightCount	= scene.GetPointLightCount();
+	sceneDesc.lights			= scene.GetPointLights(dispatcher, core->GetTempMemory());
 	sceneDesc.transforms		= &transforms;
 	sceneDesc.cameras			= &cameras;
 	sceneDesc.PVS				= PVS;
+	
 	base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
 
 	ClearVertexBuffer(frameGraph, base.vertexBuffer);
@@ -202,7 +203,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	ClearBackBuffer(frameGraph, 0.0f);
 	ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
-	base.render.RenderDrawabledPBR_ForwardPLUS	(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
+	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
 
 	FlexKit::DrawCollection_Desc DrawCollectionDesc{};
 	DrawCollectionDesc.DepthBuffer			= targets.DepthTarget;

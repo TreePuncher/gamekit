@@ -48,7 +48,42 @@ namespace FlexKit
 				FK_ASSERT(0);
 			}
 		}	break;
-
+		case OT_UAVBuffer:
+		{
+			switch (AfterState)
+			{
+			case DRS_Write:
+			case DRS_ShaderResource:
+			case DRS_UAV:
+			case DRS_STREAMOUT:
+			case DRS_STREAMOUTCLEAR:
+			{
+				ctx->AddUAVBarrier(
+					Object->UAVBuffer,
+					BeforeState,
+					AfterState);
+			}	break;
+			default:
+				FK_ASSERT(0);
+			}
+		}	break;
+		case OT_UAVTexture:
+		{
+			switch (AfterState)
+			{
+			case DRS_Write:
+			case DRS_ShaderResource:
+			case DRS_UAV:
+			{
+				ctx->AddUAVBarrier(
+					Object->UAVTexture,
+					BeforeState,
+					AfterState);
+			}	break;
+			default:
+				FK_ASSERT(0);
+			}
+		}	break;
 		default:
 			switch (AfterState)
 			{
@@ -62,12 +97,6 @@ namespace FlexKit
 			case DRS_RenderTarget:
 				ctx->AddRenderTargetBarrier(
 					Resources.GetRenderTarget(Object->Handle),
-					BeforeState,
-					AfterState);
-				break;
-			case DRS_UAV:
-				ctx->AddUAVBarrier(
-					Object->UAVBuffer,
 					BeforeState,
 					AfterState);
 				break;
@@ -152,8 +181,10 @@ namespace FlexKit
 				case FrameObjectResourceType::OT_StreamOut:
 					ctx->AddStreamOutBarrier(resNode.SOBuffer, resNode.State, res->State);
 					break;
+				case FrameObjectResourceType::OT_UAVTexture:
+					ctx->AddUAVBarrier(resNode.UAVTexture, resNode.State, res->State);
+					break;
 				case FrameObjectResourceType::OT_UAVBuffer:
-				case FrameObjectResourceType::OT_UnorderedAccessView:
 					ctx->AddUAVBarrier(resNode.UAVBuffer, resNode.State, res->State);
 					break;
 				case FrameObjectResourceType::OT_BackBuffer:
@@ -163,7 +194,6 @@ namespace FlexKit
 				case FrameObjectResourceType::OT_PVS:
 				case FrameObjectResourceType::OT_RenderTarget:
 				case FrameObjectResourceType::OT_ShaderResource:
-				case FrameObjectResourceType::OT_UAVTexture:
 				case FrameObjectResourceType::OT_VertexBuffer:
 					FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
 				}
@@ -255,6 +285,17 @@ namespace FlexKit
 	{
 		return AddWriteableResource(
 						handle_cast<ShaderResourceHandle>(handle), 
+						DeviceResourceState::DRS_Write);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle FrameGraphNodeBuilder::WriteShaderResource(GPUResourceHandle handle)
+	{
+		return AddWriteableResource(
+						handle, 
 						DeviceResourceState::DRS_Write);
 	}
 
@@ -380,9 +421,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::ReadWriteUAVBuffer(UAVResourceHandle handle)
+	FrameResourceHandle	FrameGraphNodeBuilder::ReadWriteUAV(UAVResourceHandle handle, DeviceResourceState state)
 	{
-		return AddWriteableResource(handle, DeviceResourceState::DRS_Write);
+		return AddWriteableResource(handle, state);
+	}
+
+
+	/************************************************************************************************/
+
+
+	FrameResourceHandle	FrameGraphNodeBuilder::ReadWriteUAV(UAVTextureHandle handle, DeviceResourceState state)
+	{
+		return AddWriteableResource(handle, state);
 	}
 
 
@@ -666,6 +716,12 @@ namespace FlexKit
 			case OT_UAVBuffer:
 			{
 				auto UAV	= I.FO->UAVBuffer;
+				auto state	= I.State;
+				Resources.renderSystem.SetObjectState(UAV, state);
+			}	break;
+			case OT_UAVTexture:
+			{
+				auto UAV	= I.FO->UAVTexture;
 				auto state	= I.State;
 				Resources.renderSystem.SetObjectState(UAV, state);
 			}	break;

@@ -341,7 +341,8 @@ namespace FlexKit
 
 		Vector<PointLightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
-		size_t				GetPointLightCount();
+		UpdateTask*				GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
+		size_t					GetPointLightCount();
 
 		const SceneHandle					sceneID;
 

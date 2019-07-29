@@ -94,7 +94,6 @@ namespace FlexKit
 		return Mout;
 	}
 
-
 	inline DirectX::XMMATRIX Float4x4ToXMMATIRX(float4x4* M)
 	{
 		DirectX::XMMATRIX Mout;

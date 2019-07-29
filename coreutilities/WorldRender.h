@@ -186,12 +186,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
+	const PSOHandle LIGHTPREPASS			= PSOHandle(GetTypeGUID(LIGHTPREPASS));
 	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
 	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
 
 	ID3D12PipelineState* CreateForwardDrawPSO			(RenderSystem* RS);
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
 	ID3D12PipelineState* CreateOcclusionDrawPSO			(RenderSystem* RS);
+	ID3D12PipelineState* CreateLightPassPSO				(RenderSystem* RS);
 
 	struct WorldRender_Targets
 	{
@@ -255,17 +257,31 @@ namespace FlexKit
 		StackAllocator	tempMemory;
 	};
 
+	struct GPUPointLight
+	{
+		float4 KI;
+		float4 PositionR;
+	};
+
 
 	struct LightBufferUpdate 
 	{
+		Vector<GPUPointLight>		pointLights;
+		Vector<PointLightHandle>*	pointLightHandles;
+
+		CameraHandle				camera;
+
 		TextureHandle			lightMap;
 		TextureHandle			lightListBuffer;
-		ConstantBufferHandle	pointLightBuffer;
+		CBPushBuffer			constants;
+
 		FrameResourceHandle		lightMapObject;
 		FrameResourceHandle		lightListObject;
-		UploadSegment			lightMapUpdate;	// immediate update
-		UploadSegment			lightListUpdate;	// immediate update
-		LighBufferCPUUpdate*	lighBufferData;
+		FrameResourceHandle		lightBufferObject;
+
+		UploadSegment			lightBuffer;	// immediate update
+
+		FlexKit::DescriptorHeap	descHeap;
 	};
 
 
@@ -279,7 +295,7 @@ namespace FlexKit
 
 	struct SceneDescription
 	{
-		size_t		pointLightCount;
+		UpdateTask* lights;
 		UpdateTask*	transforms;
 		UpdateTask*	cameras;
 		UpdateTask*	PVS;
@@ -296,18 +312,17 @@ namespace FlexKit
 
 			RS(RS_IN),
 			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)					},
-			//OcclusionBuffer		{ RS->CreateDepthBuffer({1024, 1024}, true)							},
-			//OcclusionQueries	{ RS->CreateOcclusionBuffer(4096)									},
-			OcclusionCulling	{ false																},
-			lightLists			{ RS->CreateStructuredResource(1024 * 8, sizeof(uint32_t))			},
-			lightMap			{ RS->CreateTexture2D(IN_lightMapWH , FORMAT_2D::R16G16_UINT, 1)	},
-			pointLightBuffer	{ RS->CreateConstantBuffer(MEGABYTE, false)							},
-			streamingEngine		{ IN_streamingEngine												},
-			lightMapWH			{ IN_lightMapWH														}
+			OcclusionCulling	{ false																	},
+			lightLists			{ RS->CreateUAVBufferResource(KILOBYTE * 2048)							},
+			pointLightBuffer	{ RS->CreateUAVBufferResource(KILOBYTE * 512)							},
+			lightMap			{ RS->CreateUAVTextureResource(IN_lightMapWH, FORMAT_2D::R32G32_UINT)	},
+			streamingEngine		{ IN_streamingEngine													},
+			lightMapWH			{ IN_lightMapWH															}
 		{
-			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawPSO,			});
-			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS6CBVs4SRVs, CreateForwardDrawInstancedPSO	});
-			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN->Library.RS6CBVs4SRVs, CreateOcclusionDrawPSO			});
+			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,			});
+			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO	});
+			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN->Library.RS6CBVs4SRVs,		CreateOcclusionDrawPSO			});
+			RS_IN->RegisterPSOLoader(LIGHTPREPASS,			{ &RS_IN->Library.ComputeSignature, CreateLightPassPSO				});
 
 			RS_IN->QueuePSOLoad(FORWARDDRAW);
 			RS_IN->QueuePSOLoad(FORWARDDRAWINSTANCED);
@@ -317,9 +332,9 @@ namespace FlexKit
 		~WorldRender()
 		{
 			RS->ReleaseCB(ConstantBuffer);
-			RS->ReleaseCB(pointLightBuffer);
-			RS->ReleaseTexture(lightLists);
-			RS->ReleaseTexture(lightMap);
+			RS->ReleaseUAV(lightMap);
+			RS->ReleaseUAV(lightLists);
+			RS->ReleaseUAV(pointLightBuffer);
 		}
 
 		
@@ -341,9 +356,9 @@ namespace FlexKit
 		//QueryHandle				OcclusionQueries;
 		//TextureHandle			OcclusionBuffer;
 
-		TextureHandle			lightMap;			// GPU
-		TextureHandle			lightLists;			// GPU
-		ConstantBufferHandle	pointLightBuffer;	// GPU
+		UAVTextureHandle		lightMap;			// GPU
+		UAVResourceHandle		lightLists;			// GPU
+		UAVResourceHandle		pointLightBuffer;	// GPU
 
 		uint2					WH;					// Output Size
 		uint2					lightMapWH;			// Output Size

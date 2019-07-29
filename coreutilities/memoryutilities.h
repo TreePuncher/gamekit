@@ -150,17 +150,32 @@ namespace FlexKit
 			Init((byte*)allocator->_aligned_malloc(bufferSize), bufferSize);
 		}
 
-		StackAllocator(StackAllocator&& RHS) noexcept :
+		StackAllocator(StackAllocator&& rhs) noexcept :
 			AllocatorInterface{ this },
 			critsection{}
 		{
-			used   = RHS.used;
-			size   = RHS.size;
-			Buffer = RHS.Buffer;
+			used   = rhs.used;
+			size   = rhs.size;
+			Buffer = rhs.Buffer;
 
-			RHS.used   = 0;
-			RHS.size   = 0;
-			RHS.Buffer = nullptr;
+			rhs.used   = 0;
+			rhs.size   = 0;
+			rhs.Buffer = nullptr;
+		}
+
+		StackAllocator& operator = (StackAllocator&& rhs) noexcept
+		{
+			if (Buffer == nullptr)
+			{
+				used	= rhs.used;
+				size	= rhs.size;
+				Buffer	= rhs.Buffer;
+
+				rhs.used	= 0;
+				rhs.size	= 0;
+				rhs.Buffer	= nullptr;
+			}
+			return *this;
 		}
 
 		bool operator == (const StackAllocator& rhs) const

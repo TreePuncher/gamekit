@@ -55,7 +55,7 @@ namespace FlexKit
 	void GraphicScene::RemoveEntity(GameObject& go)
 	{
 		Apply(go, 
-		[&](SceneVisibilityBehavior* vis) 
+		[&, allocator = this->allocator](SceneVisibilityBehavior* vis) 
 		{
 			//sceneManagement.RemoveEntity(*vis);
 			go.RemoveBehavior(vis);
@@ -829,6 +829,46 @@ namespace FlexKit
 				});
 
 		return lights;
+	}
+
+
+	/************************************************************************************************/
+
+
+	UpdateTask* GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory)
+	{
+		GetPVSTaskData* returnValue = nullptr;
+
+		struct TaskData
+		{
+			Vector<PointLightHandle>	pointLights;
+			StackAllocator				temp;
+			GraphicScene*				scene;
+		};
+
+		return &dispatcher.Add<TaskData>(
+			[&](auto& builder, TaskData& data)
+			{
+				data.temp			= StackAllocator(tempMemory, KILOBYTE * 16);
+				data.pointLights	= Vector<PointLightHandle>{ data.temp, 1024 };
+				data.scene			= this;
+			},
+			[this](TaskData& data)
+			{
+				for (auto entity : sceneEntities)
+				{
+					auto& visables = SceneVisibilityComponent::GetComponent();
+
+					Apply(*visables[entity].entity,
+						[&](PointLightBehavior* pointLight,
+							SceneVisibilityBehavior* visibility,
+							SceneNodeBehavior<>* sceneNode)
+						{
+							data.pointLights.emplace_back(*pointLight);
+						});
+				}
+			}
+		);
 	}
 
 
