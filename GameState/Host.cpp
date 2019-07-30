@@ -78,7 +78,7 @@ bool GameHostLobbyState::Draw(EngineCore* core, UpdateDispatcher& Dispatcher, do
 
 	ClearVertexBuffer	(frameGraph, host->base->vertexBuffer);
 	ClearVertexBuffer	(frameGraph, host->base->textBuffer);
-	ClearBackBuffer		(frameGraph, { 0.0f, 0.0f, 0.0f, 0.0f });
+	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 	LobbyScreenDrawDesc Desc;
 	Desc.allocator			= core->GetTempMemory();

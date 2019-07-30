@@ -592,17 +592,18 @@ namespace FlexKit
 					Lq * potentialVisible.boundingSphere.xyz() + Pw, 
 					Ls * potentialVisible.boundingSphere.w };
 
-				if (CompareBSAgainstFrustum(&F, BS))
-				{
-					Apply(*potentialVisible.entity,
-						[&](DrawableBehavior* drawable)
+				Apply(*potentialVisible.entity,
+					[&](DrawableBehavior* drawable)
+					{
+
+						if (CompareBSAgainstFrustum(&F, BS))
 						{
-							if(potentialVisible.transparent)
+							if (potentialVisible.transparent)
 								PushPV(*drawable, T_out);
 							else
 								PushPV(*drawable, out);
-						});
-				}
+						}
+					});
 			}
 		}
 	}

@@ -337,27 +337,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::PresentBackBuffer(uint32_t Tag)
+	FrameResourceHandle	FrameGraphNodeBuilder::PresentBackBuffer(TextureHandle handle)
 	{
-		return AddReadableResource(Tag, DeviceResourceState::DRS_Present);
+		return AddReadableResource(handle, DeviceResourceState::DRS_Present);
 	}
 
 
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::WriteBackBuffer(uint32_t Tag)
+	FrameResourceHandle FrameGraphNodeBuilder::WriteBackBuffer(TextureHandle handle)
 	{
-		return AddWriteableResource(Tag, DeviceResourceState::DRS_RenderTarget);
+		return AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
 	}
 
 
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::ReadBackBuffer(uint32_t Tag)
+	FrameResourceHandle FrameGraphNodeBuilder::ReadBackBuffer(TextureHandle handle)
 	{
-		FrameResourceHandle Resource = Resources->FindFrameResource(Tag);
+		FrameResourceHandle Resource = Resources->FindFrameResource(handle);
 		LocalInputs.push_back(FrameObjectDependency{
 			Resources->GetResourceObject(Resource),
 			nullptr,
@@ -365,31 +365,6 @@ namespace FlexKit
 			DeviceResourceState::DRS_ShaderResource });
 
 		return Resource;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FrameResourceHandle	FrameGraphNodeBuilder::ReadDepthBuffer(uint32_t Tag)
-	{
-		FrameResourceHandle Resource = Resources->FindFrameResource(Tag);
-		LocalInputs.push_back(FrameObjectDependency{
-			Resources->GetResourceObject(Resource),
-			nullptr,
-			Resources->GetResourceObjectState(Resource),
-			DeviceResourceState::DRS_DEPTHBUFFERWRITE });
-
-		return Resource;
-	}
-
-
-	/************************************************************************************************/
-
-
-	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(uint32_t Tag)
-	{
-		return AddWriteableResource(Tag, DeviceResourceState::DRS_DEPTHBUFFERWRITE);
 	}
 
 
@@ -757,7 +732,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearBackBuffer(FrameGraph& Graph, float4 Color)
+	void ClearBackBuffer(FrameGraph& Graph, TextureHandle backBuffer, float4 Color)
 	{
 		struct PassData
 		{
@@ -773,7 +748,7 @@ namespace FlexKit
 			},
 			[=](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
-				Data.BackBuffer = Builder.WriteBackBuffer(GetCRCGUID(BACKBUFFER));
+				Data.BackBuffer = Builder.WriteBackBuffer(backBuffer);
 			},
 			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
 			{	// do clear here
@@ -828,7 +803,7 @@ namespace FlexKit
 			PassData{},
 			[&](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
-				Data.BackBuffer = Builder.PresentBackBuffer(GetCRCGUID(BACKBUFFER));
+				Data.BackBuffer = Builder.PresentBackBuffer(Window->GetBackBuffer());
 			},
 			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
 			{	

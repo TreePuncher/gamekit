@@ -85,7 +85,7 @@ bool MainMenu::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispat
 
 	ClearVertexBuffer	(frameGraph, vertexBuffer);
 	ClearVertexBuffer	(frameGraph, textBuffer);
-	ClearBackBuffer		(frameGraph, { 0.0f, 0.0f, 0.0f, 0.0f });
+	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 	FlexKit::DrawUI_Desc drawDesc = 
 	{

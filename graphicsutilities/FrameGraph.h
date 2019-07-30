@@ -119,6 +119,7 @@ namespace FlexKit
 			SOResourceHandle		SOBuffer;
 			UAVResourceHandle		UAVBuffer;
 			UAVTextureHandle		UAVTexture;
+			TextureHandle			Texture;
 
 			struct {
 				char	buff[256];
@@ -1123,6 +1124,7 @@ namespace FlexKit
 			UAVTextureHandle		UAVTexture;
 			SOResourceHandle		SOHandle;
 			ShaderResourceHandle	ShaderResource;
+			TextureHandle			Texture;
 		};
 
 		DeviceResourceState	ExpectedState;
@@ -1259,6 +1261,18 @@ namespace FlexKit
 		};
 	}
 
+
+	auto MakePred(TextureHandle handle)
+	{
+		return [handle](FrameObjectDependency& lhs)
+		{
+			auto A = lhs.FO->Type == OT_BackBuffer || lhs.FO->Type == OT_RenderTarget;
+			if (A && lhs.UAVTexture == InvalidHandle_t)
+				lhs.Texture = lhs.FO->Texture;
+
+			return A && (lhs.Texture == handle);
+		};
+	}
 
 	auto MakePred(SOResourceHandle handle)
 	{
@@ -1448,12 +1462,12 @@ namespace FlexKit
 		FrameResourceHandle ReadRenderTarget	(TextureHandle Handle);
 		FrameResourceHandle WriteRenderTarget	(TextureHandle Handle);
 
-		FrameResourceHandle	PresentBackBuffer	(uint32_t Tag);
-		FrameResourceHandle	ReadBackBuffer		(uint32_t Tag);
-		FrameResourceHandle	WriteBackBuffer		(uint32_t Tag);
+		FrameResourceHandle	PresentBackBuffer	(TextureHandle Tag);
+		FrameResourceHandle	ReadBackBuffer		(TextureHandle Tag);
+		FrameResourceHandle	WriteBackBuffer		(TextureHandle Tag);
 
-		FrameResourceHandle	ReadDepthBuffer		(uint32_t Tag);
-		FrameResourceHandle	WriteDepthBuffer	(uint32_t Tag);
+		//FrameResourceHandle	ReadDepthBuffer		(uint32_t Tag);
+		//FrameResourceHandle	WriteDepthBuffer	(uint32_t Tag);
 
 		//FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
 		FrameResourceHandle	WriteDepthBuffer	(TextureHandle Handle);
@@ -1682,7 +1696,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearBackBuffer	(FrameGraph& Graph, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
+	void ClearBackBuffer	(FrameGraph& Graph, TextureHandle backBuffer, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
 	void ClearDepthBuffer	(FrameGraph& Graph, TextureHandle Handle, float D);
 	void PresentBackBuffer	(FrameGraph& Graph, RenderWindow* Window);
 
@@ -2294,8 +2308,8 @@ namespace FlexKit
 				for (auto& dep : dependencies)
 					builder.AddDataDependency(*dep);
 
-				data.renderTarget	= builder.WriteRenderTarget(frameGraph.Resources.renderSystem.GetTag(desc.RenderTarget));
-				data.depthBuffer	= builder.WriteDepthBuffer(frameGraph.Resources.renderSystem.GetTag(desc.DepthBuffer));
+				data.renderTarget	= builder.WriteRenderTarget(desc.RenderTarget);
+				data.depthBuffer	= builder.WriteDepthBuffer(desc.DepthBuffer);
 
 				data.heap.Init(
 					frameGraph.Resources.renderSystem,
@@ -2569,8 +2583,8 @@ namespace FlexKit
 			DrawGrid{},
 			[&](FrameGraphNodeBuilder& Builder, auto& Data)
 			{
-				Data.RenderTarget	= Builder.WriteRenderTarget(FrameGraph.Resources.renderSystem.GetTag(RenderTarget));
-				Data.DepthBuffer	= Builder.WriteDepthBuffer(FrameGraph.Resources.renderSystem.GetTag(DepthBuffer));
+				Data.RenderTarget	= Builder.WriteRenderTarget(RenderTarget);
+				Data.DepthBuffer	= Builder.WriteDepthBuffer(DepthBuffer);
 				Data.CB				= Constants;
 
 				Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);

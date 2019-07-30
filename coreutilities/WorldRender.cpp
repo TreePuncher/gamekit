@@ -318,8 +318,8 @@ namespace FlexKit
 				builder.AddDataDependency(*desc.PVS);
 
 				data.pointLights		= reinterpret_cast<Vector<PointLightHandle>*>(desc.lights->Data);
-				data.BackBuffer			= builder.WriteRenderTarget	(RS->GetTag(Targets.RenderTarget));
-				data.DepthBuffer		= builder.WriteDepthBuffer	(RS->GetTag(Targets.DepthTarget));
+				data.BackBuffer			= builder.WriteRenderTarget	(Targets.RenderTarget);
+				data.DepthBuffer		= builder.WriteDepthBuffer	(Targets.DepthTarget);
 				size_t localBufferSize  = std::max(sizeof(Camera::CameraConstantBuffer), sizeof(ForwardDrawConstants));
 				data.entityConstants	= std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources));
 				data.localConstants		= std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
@@ -349,9 +349,10 @@ namespace FlexKit
 				// Setup Initial Shading State
 				Ctx->SetScissorAndViewports({Targets.RenderTarget});
 				Ctx->SetRenderTargets(
-					{ resources.GetRenderTargetObject(data.BackBuffer) }, 
+					{ resources.GetRenderTargetObject(data.BackBuffer) },
 					true,
 					resources.GetRenderTargetObject(data.DepthBuffer));
+
 
 				data.Heap.SetSRV(resources.renderSystem, 0, lightMap);
 				data.Heap.SetSRV(resources.renderSystem, 1, lightLists);

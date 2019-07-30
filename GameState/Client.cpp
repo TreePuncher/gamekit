@@ -182,7 +182,7 @@ bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher
 
 	ClearVertexBuffer	(frameGraph, client->base->vertexBuffer);
 	ClearVertexBuffer	(frameGraph, client->base->textBuffer);
-	ClearBackBuffer		(frameGraph, { 0.0f, 0.0f, 0.0f, 0.0f });
+	ClearBackBuffer		(frameGraph, currentRenderTarget);
 
 	LobbyScreenDrawDesc Desc;
 	Desc.allocator			= core->GetTempMemory();

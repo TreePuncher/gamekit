@@ -200,7 +200,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	ClearVertexBuffer(frameGraph, base.vertexBuffer);
 	ClearVertexBuffer(frameGraph, base.textBuffer);
 
-	ClearBackBuffer(frameGraph, 0.0f);
+	ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
 	ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
 	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
