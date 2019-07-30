@@ -719,8 +719,8 @@ namespace FlexKit
 								memcpy(&orientation,	&sceneNode->orientation, sizeof(orientation));
 								memcpy(&scale,			&sceneNode->scale, sizeof(float3));
 
-								if (itr == 0) // remove root scaling
-									scale = { 1, 1, 1 };
+								if (sceneNode->parent == INVALIDHANDLE) // remove root scaling
+									scale = scale / 100;
 
 								auto newNode = GetNewNode();
 								SetOrientationL	(newNode, orientation);

@@ -430,6 +430,7 @@ namespace FlexKit
 			struct ConstantsLayout
 			{
 				Frustum		fustrum;
+				float4x4	iproj;
 				float4x4	view;
 				uint32_t	LightMapWidthHeight[2];
 				uint32_t	lightCount;
@@ -438,7 +439,8 @@ namespace FlexKit
 			auto cameraConstants = GetCameraConstants(data.camera);
 			constantsValues.LightMapWidthHeight[0] = XY[0];
 			constantsValues.LightMapWidthHeight[1] = XY[1];
-			constantsValues.view		= XMMatrixToFloat4x4(cameraConstants.View).Transpose();
+			constantsValues.view		= XMMatrixToFloat4x4(cameraConstants.View);
+			constantsValues.iproj		= XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, cameraConstants.Proj));
 			constantsValues.lightCount	= uint32_t(data.pointLightHandles->size());
 
 			ConstantBufferDataSet constants{ constantsValues, data.constants };
@@ -468,49 +470,6 @@ namespace FlexKit
 
 			ctx->Dispatch({ XY[0], XY[1], 1 });
 		});
-
-
-#if 0
-		if(drawDebug)
-		{
-			const size_t viewSplits = 16;
-			Vector<FlexKit::Rectangle> rectangles{ tempMemory };
-			rectangles.reserve(viewSplits * viewSplits);
-
-
-			for (size_t columnIdx = 0; columnIdx < viewSplits; columnIdx++)
-			{
-				for (size_t rowIdx = 0; rowIdx < viewSplits; rowIdx++)
-				{
-					auto lightCount = LightBuckets[columnIdx][rowIdx].size();
-
-					FlexKit::Rectangle rect;
-					auto temp		= FlexKit::Grey(float(lightCount) / float(sceneLghtCount));
-					rect.Color		= float4(temp, 0.25f);
-					rect.Position	= float2{ float(columnIdx), float(rowIdx) } / viewSplits;
-					rect.WH			= float2(1, 1) / viewSplits;
-
-					if (lightCount)
-						rectangles.push_back(rect);
-
-				}
-			}
-
-			if (rectangles.size())
-			{
-				DrawShapes(
-					DRAW_PSO,
-					graph,
-					drawDebug->vertexBuffer,
-					drawDebug->constantBuffer,
-					drawDebug->renderTarget,
-					tempMemory,
-					SolidRectangleListShape{ std::move(rectangles) });
-			}
-
-			return nullptr;
-		}
-#endif
 
 		return lightBufferData;
 	}
