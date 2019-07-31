@@ -167,7 +167,7 @@ public:
 			render	{	IN_Framework->core->GetTempMemory(),
 						IN_Framework->core->RenderSystem,
 						streamingEngine,
-						IN_Framework->ActiveWindow->WH / 64
+						IN_Framework->ActiveWindow->WH / 10
 					},
 
 			cameras		{ framework->core->GetBlockMemory() },

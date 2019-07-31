@@ -23,12 +23,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#define	EPlane_FAR		0
-#define	EPlane_NEAR		1
-#define	EPlane_TOP		2
-#define	EPlane_BOTTOM	3 
-#define	EPlane_LEFT		4
-#define	EPlane_RIGHT	5
+
+#define	EPlane_TOP		0
+#define	EPlane_BOTTOM	1 
+#define	EPlane_LEFT		2
+#define	EPlane_RIGHT	3
+#define	EPlane_FAR		4
+#define	EPlane_NEAR		5
+
+#define GroupWidth 8
+#define GroupHeight 8
+#define GroupSize 64
 
 struct lightSample
 {
@@ -45,8 +50,8 @@ struct PointLight
 
 struct Plane
 {
-    float4 Normal;
-    float4 Origin;
+    float3 Normal;
+    float  d;
 };
 
 struct Fustrum
@@ -61,123 +66,78 @@ ByteAddressBuffer   pointLights : register(t0); // in
 
 cbuffer             constants   : register(b0)
 {
-    Plane       fustrum[6];
     float4x4    iproj;
     float4x4    view;
     uint2       LightMapWidthHeight;
     uint        lightCount;
 };
 
-bool CompareAgainstFrustum(float3 V, float r, Fustrum fustrum)
+
+bool CompareSphereAgainstPlane(float3 origin, float r, Plane P)
 {
-	bool Near = false;
-	bool Far = false;
-	bool Left = false;
-	bool Right = false;
-	bool Top = false;
-	bool Bottom = false;
-
-    {
-        float3 P = V -  fustrum.planes[EPlane_FAR].Origin.xyz;
-        float3 N =      fustrum.planes[EPlane_FAR].Normal.xyz;
-
-        float NdP = dot(N, P);
-        float D = NdP - r;
-        Far = D <= 0;
-    }
-	{
-        float3 P = V -  fustrum.planes[EPlane_NEAR].Origin.xyz;
-        float3 N =      fustrum.planes[EPlane_NEAR].Normal.xyz;
-
-		float NdP = dot(N, P);
-		float D = NdP - r;
-		Near = D <= 0;
-	}
-	{
-        float3 P = V -  fustrum.planes[EPlane_TOP].Origin.xyz;
-        float3 N =      fustrum.planes[EPlane_TOP].Normal.xyz;
-
-		float NdP = dot(N, P);
-		float D = NdP - r;
-		Top = D <= 0;
-	}
-	{
-        float3 P = V -  fustrum.planes[EPlane_BOTTOM].Origin.xyz;
-        float3 N =      fustrum.planes[EPlane_BOTTOM].Normal.xyz;
-
-		float NdP = dot(N, P);
-		float D = NdP - r;
-		Bottom = D <= 0;
-	}
-	{
-        float3 P = V -  fustrum.planes[EPlane_LEFT].Origin.xyz;
-        float3 N =      fustrum.planes[EPlane_LEFT].Normal.xyz;
-
-		float NdP = dot(N, P);
-		float D = NdP + r;
-		Left = D >= 0;
-	}
-	{
-        float3 P = V -  fustrum.planes[EPlane_RIGHT].Origin.xyz;
-        float3 N =      fustrum.planes[EPlane_RIGHT].Normal.xyz;
-
-		float NdP = dot(N, P);
-		float D = NdP + r;
-		Right = D >= 0;
-	}
-
-	return (Right && Left && Top && Bottom);
+    return dot(P.Normal, origin) - P.d <= -r;
 }
 
-Plane GetPlane(float3 point1, float3 point2, float3 point3)
+
+bool CompareAgainstFrustum(float3 O, float r, Fustrum fustrum)
+{
+    bool result = true;
+    [unroll]
+    for (uint i = 0; i < 4; ++i)
+        result = result & !CompareSphereAgainstPlane(O, r, fustrum.planes[i]);
+            
+    return result;
+}
+
+Plane GetPlane(float3 p0, float3 p1, float3 p2)
 {
     Plane plane;
 
-    float3 normal1 = normalize(point2 - point1);
-    float3 normal2 = normalize(point1 - point3);
+    float3 V1 = p1 - p0;
+    float3 V2 = p2 - p0;
 
-    plane.Normal = float4(normalize(cross(normal1, normal2)), 0);
-    plane.Origin = float4(point3, 1);
+    plane.Normal    = normalize(cross(V1, V2));
+    plane.d         = dot(plane.Normal, p0);
 
     return plane;
 }
 
+float2 GetScreenCord(uint2 pixel)
+{
+    const float2 TileSpan = 2.0f * float2(1, 1) / float2(LightMapWidthHeight);
+    return float2(-1, 1) + TileSpan * float2(pixel) * float2(1.0f, -1.0f);
+}
+
 Fustrum CreateSubFustrum(uint2 bucketID)
 {
-    const float2 TileSpan   = 2.0f * float2(1, 1) / LightMapWidthHeight;
-    const float2 begin      = float2(-1, 1) + TileSpan * bucketID * float2(1, -1);
+    float4 topLeftPoint     = mul(iproj, float4(GetScreenCord(bucketID + uint2(0,  0)), -0.1f, 1.0f));
+    float4 topRightPoint    = mul(iproj, float4(GetScreenCord(bucketID + uint2(1,  0)), -0.1f, 1.0f));
+    float4 bottomLeftPoint  = mul(iproj, float4(GetScreenCord(bucketID + uint2(0,  1)), -0.1f, 1.0f));
+    float4 bottomRightPoint = mul(iproj, float4(GetScreenCord(bucketID + uint2(1,  1)), -0.1f, 1.0f));
+    float3 Origin           = float3(0, 0, 0); // we are in screen space, duh, center is at 0, 0, 0
 
-    float4 topLeftPoint     = mul(iproj, float4(begin.x,                begin.y, 1.0f, 1.0f));
-    float4 topRightPoint    = mul(iproj, float4(begin.x + TileSpan.x,   begin.y, 1.0f, 1.0f));
-    float4 bottomLeftPoint  = mul(iproj, float4(begin.x,                begin.y - TileSpan.y, 1.0f, 1.0f));
-    float4 bottomRightPoint = mul(iproj, float4(begin.x + TileSpan.x,   begin.y - TileSpan.y, 1.0f, 1.0f));
-    float4 Origin           = mul(iproj, float4(begin.x,                begin.y, 0.001f, 1.0f));
-    
     topLeftPoint     /= topLeftPoint.w;
     topRightPoint    /= topRightPoint.w;
     bottomLeftPoint  /= bottomLeftPoint.w;
     bottomRightPoint /= bottomRightPoint.w;
-    Origin           /= Origin.w;
 
     //
-    Plane topPlane      = GetPlane(topLeftPoint,    topRightPoint,      Origin);
-    Plane bottomPlane   = GetPlane(bottomLeftPoint, bottomRightPoint,   Origin);    
+    Plane topPlane      = GetPlane(Origin,          topLeftPoint,       topRightPoint);
+    Plane bottomPlane   = GetPlane(Origin,          bottomRightPoint,   bottomLeftPoint); // Off
+    Plane leftPlane     = GetPlane(Origin,          topLeftPoint,       bottomLeftPoint); // Off
+    Plane rightPlane    = GetPlane(Origin,          bottomRightPoint,   topRightPoint);  
     Plane farPlane      = GetPlane(topRightPoint,   topLeftPoint,       bottomLeftPoint);
-    Plane leftPlane     = GetPlane(Origin,          topLeftPoint,       bottomLeftPoint);
-    Plane rightPlane    = GetPlane(Origin,          bottomRightPoint,   topRightPoint);
     Plane nearPlane;
 
-    nearPlane.Normal    = -farPlane.Normal;
-    nearPlane.Origin    = Origin;
-
+    nearPlane.d         = dot(nearPlane.Normal.xyz, Origin.xyz);
 
     Fustrum f_out;
     f_out.planes[EPlane_TOP]    = topPlane;
-    f_out.planes[EPlane_BOTTOM] = bottomPlane;
-    f_out.planes[EPlane_FAR]    = farPlane;
-    f_out.planes[EPlane_NEAR]   = nearPlane;
+    f_out.planes[EPlane_BOTTOM] = bottomPlane;// bugged
     f_out.planes[EPlane_LEFT]   = leftPlane;
     f_out.planes[EPlane_RIGHT]  = rightPlane;
+    f_out.planes[EPlane_NEAR]   = nearPlane;
+    f_out.planes[EPlane_FAR]    = farPlane;
 
     return f_out;
 }
@@ -192,14 +152,10 @@ PointLight ReadPointLight(uint idx)
     return pointLight;
 }
 
-#define GroupWidth 8
-#define GroupHeight 8
-#define GroupSize 64
-
 groupshared Fustrum f;
 groupshared uint    culledLightCount  = 0;
 groupshared uint    lightOffset       = 0;
-groupshared uint    lights[512];
+groupshared uint    lights[768];
 
 [numthreads(GroupWidth, GroupHeight, 1)]
 void tiledLightCulling(uint3 ID : SV_GroupID, uint3 TID : SV_GroupThreadID)
@@ -207,10 +163,10 @@ void tiledLightCulling(uint3 ID : SV_GroupID, uint3 TID : SV_GroupThreadID)
     if (TID.x == 0 && TID.y == 0)
         f = CreateSubFustrum(ID.xy);
 
-    const uint2 bucketID    = ID; 
-    const uint localIdx     = TID.x + (TID.y * GroupWidth);
-    const uint waveCount    = lightCount / GroupSize + 1;
-    const uint offset       = (ID.x + ID.y * GroupSize) * 512;
+    const uint2 bucketID     = ID; 
+    const uint  localIdx     = TID.x + (TID.y * GroupWidth);
+    const uint  waveCount    = lightCount / GroupSize + 1;
+    const uint  offset       = (ID.x + ID.y * 192) * 768;
 
     GroupMemoryBarrierWithGroupSync();
 
@@ -223,8 +179,7 @@ void tiledLightCulling(uint3 ID : SV_GroupID, uint3 TID : SV_GroupThreadID)
             PointLight light    = ReadPointLight(idx);
             float3 viewPosition = mul(view, float4(light.PositionR.xyz, 1));
 
-
-            if (CompareAgainstFrustum(viewPosition, 100, f))
+            if (CompareAgainstFrustum(viewPosition, light.PositionR.w, f))
             {
                 uint OutIdx;
                 InterlockedAdd(culledLightCount, 1, OutIdx);

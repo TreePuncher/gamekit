@@ -126,6 +126,7 @@ namespace FlexKit
 			auto& poingLight = GetComponent()[light];
 			poingLight.K			= color;
 			poingLight.I			= intensity;
+			poingLight.R			= intensity;
 			poingLight.Position		= node;
 		}
 

@@ -123,7 +123,7 @@ namespace FlexKit
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO(RenderSystem* RS)
 	{
 		auto VShader = LoadShader("VMain",		"InstanceForward_VS",	"vs_5_0", "assets\\DrawInstancedVShader.hlsl");
-		auto PShader = LoadShader("Forward_PS", "Forward_PS",			"ps_5_0", "assets\\forwardRender.hlsl");
+		auto PShader = LoadShader("FlatWhite",	"FlatWhite",			"ps_5_0", "assets\\forwardRender.hlsl");
 
 		EXITSCOPE(
 			Release(&VShader);
@@ -415,7 +415,7 @@ namespace FlexKit
 			data.lightMapObject		= builder.ReadWriteUAV(lightMap,		 DRS_UAV);
 			data.lightListObject	= builder.ReadWriteUAV(lightLists,		 DRS_UAV);
 			data.lightBufferObject	= builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
-			data.lightBuffer		= ReserveUploadBuffer(1024 * 8 * sizeof(uint32_t), graph.GetRenderSystem()); // max point light count of 512
+			data.lightBuffer		= ReserveUploadBuffer(1024 * sizeof(GPUPointLight), graph.GetRenderSystem()); // max point light count of 512
 			data.constants			= CBPushBuffer(ConstantBuffer, 2 * KILOBYTE, renderSystem);
 			data.camera				= camera;
 
@@ -429,7 +429,6 @@ namespace FlexKit
 		{
 			struct ConstantsLayout
 			{
-				Frustum		fustrum;
 				float4x4	iproj;
 				float4x4	view;
 				uint32_t	LightMapWidthHeight[2];
@@ -448,16 +447,17 @@ namespace FlexKit
 
 			for (auto light : *data.pointLightHandles)
 			{
-				PointLight pointLight = pointLights[light];
-				float3 position = GetPositionW(pointLight.Position);
+				PointLight pointLight	= pointLights[light];
+				float3 position			= GetPositionW(pointLight.Position);
 
 				data.pointLights.push_back(
-					{	{ pointLight.K, 1 }, 
-						{ position, 10 } });
+					{	{ pointLight.K, pointLight.I	},
+						{ position, pointLight.R		} });
 			}
 
-			MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)&data.pointLights.front(), data.pointLights.size() * sizeof(GPUPointLight));
-			ctx->CopyBuffer(data.lightBuffer, resources.WriteUAV(data.lightBufferObject, ctx));
+			const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
+			MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)&data.pointLights.front(), uploadSize);
+			ctx->CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, ctx));
 
 			ctx->SetPipelineState(resources.GetPipelineState(LIGHTPREPASS));
 			ctx->SetComputeRootSignature(resources.renderSystem.Library.ComputeSignature);

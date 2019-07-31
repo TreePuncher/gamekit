@@ -2009,6 +2009,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	void Context::CopyBuffer(const UploadSegment src, size_t uploadSize, UAVResourceHandle destination)
+	{
+		const auto destinationResource	= renderSystem->GetObjectDeviceResource(destination);
+		const auto sourceResource		= renderSystem->GetUploadResource();
+
+		UpdateResourceStates();
+		DeviceContext->CopyBufferRegion(destinationResource, 0, sourceResource, src.offset, uploadSize);
+	}
+
+
+	/************************************************************************************************/
+
+
 	void Context::CopyBuffer(const UploadSegment src, TextureHandle destination)
 	{
 		const auto destinationResource		= renderSystem->GetObjectDeviceResource(destination);

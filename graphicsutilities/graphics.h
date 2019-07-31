@@ -1768,6 +1768,7 @@ namespace FlexKit
 		void SetPredicate(bool Enable, QueryHandle Handle = {}, size_t = 0);
 
 		void CopyBuffer		(const UploadSegment src, UAVResourceHandle destination);
+		void CopyBuffer		(const UploadSegment src, size_t uploadSize, UAVResourceHandle destination);
 		void CopyBuffer		(const UploadSegment src, TextureHandle destination);
 		void CopyTexture2D	(const UploadSegment src, TextureHandle destination, uint2 BufferSize);
 

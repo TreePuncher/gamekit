@@ -172,9 +172,13 @@ namespace FlexKit
 		size_t		OcclusionID;
 		Drawable*	D;
 
-		operator Drawable* () {return D;}
-		operator size_t () { return SortID; }
+		operator Drawable* ()	{ return D;			}
+		operator size_t ()		{ return SortID;	}
 
+		bool operator < (PVEntry rhs)
+		{
+			return SortID < rhs.SortID;
+		}
 	};
 
 	
@@ -183,7 +187,7 @@ namespace FlexKit
 	inline void PushPV(Drawable& e, PVS* pvs)
 	{
 		if (e.MeshHandle.to_uint() != INVALIDHANDLE)
-			pvs->push_back(PVEntry( e, 0xffffffffffffffff, 0u));
+			pvs->push_back(PVEntry( e, pvs->size(), 0u));
 	}
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);

@@ -86,7 +86,7 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 	const float3 Ks			= Specular;//float3(1, 1, 1);
 
 
-	const uint2	lightMapCord	= IN.POS / 64.0f - uint2( 1, 1 );
+	const uint2	lightMapCord	= IN.POS / 10.0f;// - uint2( 1, 1 );
 	const uint2	lightList		= lightMap.Load(int3(lightMapCord, 0));
 	const int	lightBegin		= lightList.y;
 	const int	localLightCount	= lightList.x;
@@ -100,8 +100,8 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 		float3 Lc			= light.KI.xyz;
 		float3 Lv			= normalize(light.P.xyz - positionW);
 		float  ld			= length(positionW - light.P.xyz);
-		float  Li			= 1000;//sqrt(light.KI.w);
-		float  Lr			= 100;//light.KI.w;
+		float  Li			= light.KI.w;
+		float  Lr			= light.KI.w;
 		float  La			= Li / (ld * ld) * saturate(1 - (pow(ld, 10) / pow(Lr, 10)));
 
 		float3 Fr = 
@@ -120,11 +120,19 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
     }
 
 
-    //return pow(float4(1, 1, 1, 1) * localLightCount / lightCount, 1.0f / 2.1f); // Light Tiles
-    return pow(float4(Color * (localLightCount / lightCount), 1), 1.0f / 2.1f); // Light tiles overlayed on render
+    //return pow(float4(1, 0, 0, 0) * localLightCount / lightCount, 1.0f / 2.1f); // Light Tiles
+    //return pow(float4(Color * (localLightCount / lightCount), 1), 1.0f / 2.1f); // Light tiles overlayed on render
 	//return float4(pow(n * 0.5 + float3(0.1, 0.1f, 0.1f), 0.45f), 1);									        // Normal debug vis
-    //return float4(pow(pi * Color + float3(0, 0, 0), 1.0f / 2.1f), 1);
+    //return localLightCount == 0 ? float4(1, 0, 1, 1) : float4(0, 1, 1, 1);
+    return float4(pow(pi * Color, 1.0f / 2.1f), 1);
 }
+
+float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET
+{
+    return float4(1, 0, 1, 1);
+}
+
+
 
 /**********************************************************************
 

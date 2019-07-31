@@ -215,7 +215,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	DrawCollectionDesc.InstanceElementSize	= sizeof(float4x4);
 
 
-	if(true)
+	if(false)
 	{
 		auto cameraConstanstSize = sizeof(decltype(GetCameraConstants(activeCamera)));
 		
@@ -235,9 +235,15 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 				},
 				[&, &lights = PointLightComponent::GetComponent()](auto& light) -> float4x4
 				{
-					XMMATRIX m;
-					GetTransform(lights[light].Position, &m);
-					return float4x4{ XMMatrixToFloat4x4(&m) }.Transpose();
+					const float3 pos = GetPositionW(lights[light].Position);
+					const float scale = 10;
+					XMMATRIX m = DirectX::XMMatrixAffineTransformation(
+						{ scale, scale, scale, 1},
+						{ 0, 0, 0, 0 }, 
+						{ 0, 0, 0, 1 }, 
+						{pos.x, pos.y, pos.z });
+
+					return float4x4{ XMMatrixToFloat4x4(&m) };
 				},
 				DrawCollectionDesc,
 				core->GetTempMemory());

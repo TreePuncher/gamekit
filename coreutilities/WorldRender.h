@@ -311,13 +311,13 @@ namespace FlexKit
 		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 IN_lightMapWH = { 64, 64 }) :
 
 			RS(RS_IN),
-			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)					},
-			OcclusionCulling	{ false																	},
-			lightLists			{ RS->CreateUAVBufferResource(KILOBYTE * 2048)							},
-			pointLightBuffer	{ RS->CreateUAVBufferResource(KILOBYTE * 512)							},
-			lightMap			{ RS->CreateUAVTextureResource(IN_lightMapWH, FORMAT_2D::R32G32_UINT)	},
-			streamingEngine		{ IN_streamingEngine													},
-			lightMapWH			{ IN_lightMapWH															}
+			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)							},
+			OcclusionCulling	{ false																		},
+			lightLists			{ RS->CreateUAVBufferResource(sizeof(uint32_t) * IN_lightMapWH.Product() * 1024)	},
+			pointLightBuffer	{ RS->CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)					},
+			lightMap			{ RS->CreateUAVTextureResource(IN_lightMapWH, FORMAT_2D::R32G32_UINT)		},
+			streamingEngine		{ IN_streamingEngine														},
+			lightMapWH			{ IN_lightMapWH																}
 		{
 			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,			});
 			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO	});

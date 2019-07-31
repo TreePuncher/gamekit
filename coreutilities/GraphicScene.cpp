@@ -595,9 +595,9 @@ namespace FlexKit
 				Apply(*potentialVisible.entity,
 					[&](DrawableBehavior* drawable)
 					{
-
 						if (CompareBSAgainstFrustum(&F, BS))
 						{
+							float distance = 0;
 							if (potentialVisible.transparent)
 								PushPV(*drawable, T_out);
 							else
@@ -633,6 +633,7 @@ namespace FlexKit
 				FK_LOG_9("Start PVS gather\n");
 
 				GetGraphicScenePVS(data.scene, data.camera, &data.solid, &data.transparent);
+				SortPVS(&data.solid, &CameraComponent::GetComponent().GetCamera(data.camera));
 
 				FK_LOG_9("End PVS gather\n");
 			});
@@ -755,7 +756,7 @@ namespace FlexKit
 
 							gameObject.AddBehavior<SceneNodeBehavior<>>(node);
 							gameObject.AddBehavior<DrawableBehavior>(triMesh, node);
-							gameObject.AddBehavior<PointLightBehavior>(float3(1, 1, 1), 50000, node);
+							gameObject.AddBehavior<PointLightBehavior>(float3(1, 1, 1), 1000, node);
 
 							SetBoundingSphereFromMesh(gameObject);
 							
