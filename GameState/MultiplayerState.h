@@ -120,6 +120,34 @@ LambdaPacketHandler<FN_TY>* CreatePacketHandler(PacketID_t IN_id, FN_TY&& FN, Fl
 /************************************************************************************************/
 
 
+constexpr	ComponentID NetObjectComponentID	= GetTypeGUID(NetObjectComponentID);
+using		NetComponentHandle					= FlexKit::Handle_t<32, NetObjectComponentID>;
+
+
+class NetObjectReplicationComponent : FlexKit::Component<NetObjectReplicationComponent, NetComponentHandle, NetObjectComponentID>
+{
+public:
+	NetObjectReplicationComponent(iAllocator* IN_allocator) : 
+		allocator{ IN_allocator }
+	{
+
+	}
+
+
+	NetComponentHandle Create(FlexKit::GameObject* gameObject)
+	{
+		return InvalidHandle_t;
+	}
+
+public:
+
+	FlexKit::iAllocator* allocator;
+};
+
+
+/************************************************************************************************/
+
+
 class NetworkState : public FlexKit::FrameworkState
 {
 public:
@@ -127,7 +155,8 @@ public:
 		FlexKit::GameFramework* IN_framework, 
 		BaseState*	IN_base) :
 			FrameworkState	{ IN_framework },
-			handlerStack	{ IN_framework->core->GetBlockMemory() }
+			handlerStack	{ IN_framework->core->GetBlockMemory() },
+			netObjects		{ IN_framework->core->GetBlockMemory() }
 	{
 		localPeer = RakNet::RakPeerInterface::GetInstance();
 		localPeer->SetMaximumIncomingConnections(16);
@@ -239,6 +268,7 @@ public:
 	unsigned short						serverPort;
 	RakNet::RakPeerInterface*			localPeer;
 	Vector<Vector<PacketHandler*>*>		handlerStack;
+	NetObjectReplicationComponent		netObjects;
 };
 
 

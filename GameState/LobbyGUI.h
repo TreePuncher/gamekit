@@ -60,8 +60,8 @@ public:
 
 	void ClearRows		();
 	void CreateRow		(LobbyRowID id);
-	void SetPlayerName	(LobbyRowID id, char*	name	);
-	void SetPlayerReady	(LobbyRowID id, bool	ready	);
+	void SetPlayerName	(LobbyRowID id, const char*	name	);
+	void SetPlayerReady	(LobbyRowID id, bool		ready	);
 
 	struct Row
 	{

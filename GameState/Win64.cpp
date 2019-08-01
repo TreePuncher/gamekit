@@ -41,6 +41,64 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 int main(int argc, char* argv[])
 {
+	bool multiplayerMode	= false;
+	bool host				= true;
+	bool quit				= false;
+	std::string name;
+	std::string server;
+
+
+	auto menu = [&]
+	{
+		while (true)
+		{
+			std::cout << "Main Menu: \n1 - Play State\n2 - Multiplayer State\n3 - Quit\n";
+			int x = 0;
+			std::cin >> x;
+
+			switch (x)
+			{
+				case 1: 
+				{
+					std::cout << "Multiplayer menu\n1 - Host\n2 - Join\n";
+					std::cin >> x;
+					switch (x)
+					{
+					case 1:
+						std::cout << "hosting game\n";
+						host	= true;
+						return;
+					case 2:
+					{
+						std::cout << "Joining game\nEnter name: ";
+						std::cin >> name;
+						std::cout << "Enter server address: ";
+						std::cin >> server;
+
+						// TODO: better input scrubbing
+						if (!name.size() && !server.size()) // if they entered invalid inputs
+							continue;						// Goes back to main menu to try again
+						multiplayerMode		= true;
+						host				= false;
+					}	break;
+					default:
+						break;
+					}
+				}
+
+			default:
+				quit = true;
+				return;
+			}
+		}
+	};
+
+
+	menu();
+
+	if (quit)
+		return 0;
+
 	FlexKit::InitLog(argc, argv);
 	FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
 	FlexKit::AddLogFile("GameState.log", FlexKit::Verbosity_INFO);
@@ -63,7 +121,26 @@ int main(int argc, char* argv[])
 
 	FK_LOG_INFO("Set initial PlayState state.");
 	auto& gameBase = App.PushState<BaseState>(&App);
-	App.PushState<PlayState>(&gameBase);
+
+
+	if (multiplayerMode)
+	{
+		auto& NetState = App.PushState<NetworkState>(&gameBase);
+		if (host)
+		{
+			auto& hostState		= App.PushState<GameHostState>(&gameBase, &NetState);
+			auto& lobbyState	= App.PushState<GameHostLobbyState>(&hostState);
+		}
+		else
+		{
+			auto& clientState	= App.PushState<GameClientState>(&gameBase, &NetState, ClientGameDescription{ 1337, server.c_str() });
+			auto& lobbyState	= App.PushState<ClientLobbyState>(&clientState, &NetState, name.c_str());
+		}
+	}
+	else
+	{
+		auto& playState = App.PushState<PlayState>(&gameBase);
+	}
 
 	FK_LOG_INFO("Running application...");
 	App.Run();

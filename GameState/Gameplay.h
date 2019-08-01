@@ -64,39 +64,6 @@ using FlexKit::Quaternion;
 /************************************************************************************************/
 
 
-typedef size_t Player_Handle;
-typedef size_t GridObject_Handle;
-typedef size_t GridSpace_Handle;
-
-
-/************************************************************************************************/
-
-
-class GameplayModel
-{
-public:
-	GameplayModel(FlexKit::iAllocator* memory)	{}
-
-
-	GameplayModel& operator = (GameplayModel& rhs) = delete;// No Copy!
-
-
-	GameplayModel& operator = (GameplayModel&& rhs)
-	{
-		return *this;
-	}
-
-
-	GameplayModel(GameplayModel&& rhs)
-	{
-	}
-
-
-	void Release()
-	{
-	}
-};
-
 
 /************************************************************************************************/
 

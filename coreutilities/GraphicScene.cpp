@@ -746,9 +746,9 @@ namespace FlexKit
 							auto node			= nodes[entityBlock->nodeIdx];
 							auto triMeshGUID	= entityBlock->MeshHandle;
 
-							auto [triMesh, Result] = FindMesh(triMeshGUID);
+							auto [triMesh, loaded] = FindMesh(triMeshGUID);
 
-							if (!Result)
+							if (!loaded)
 								triMesh = LoadTriMeshIntoTable(RS, triMeshGUID);
 
 							auto& gameObject = allocator->allocate<GameObject>(allocator);

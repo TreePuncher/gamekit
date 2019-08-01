@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2018 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -34,8 +34,8 @@ class GameClientState;
 
 struct ClientGameDescription
 {
-	short	port			= 1337;
-	char*	serverAddress	= "127.0.0.1"; // no place like home
+	short		port			= 1337;
+	const char*	serverAddress	= "127.0.0.1"; // no place like home
 };
 
 
@@ -53,7 +53,7 @@ public:
 		FlexKit::GameFramework* IN_framework,
 		GameClientState*		IN_client,
 		NetworkState*			IN_network,
-		char*					IN_localPlayerName);
+		const char*				IN_localPlayerName);
 
 
 	~ClientLobbyState();
@@ -67,12 +67,12 @@ public:
 
 	size_t					refreshCounter;
 	Vector<PacketHandler*>	packetHandlers;
-	NetworkState*			network;
-	GameClientState*		client;
+	NetworkState&			network;
+	GameClientState&		client;
 	MultiplayerLobbyScreen	screen;
 
 	bool					ready;
-	char*					localPlayerName;
+	const char*				localPlayerName;
 };
 
 
@@ -88,8 +88,8 @@ public:
 		NetworkState*			IN_network,
 		ClientGameDescription	IN_desc = ClientGameDescription{}) :
 			FrameworkState		{ IN_framework							},
-			base				{ IN_base								},
-			network				{ IN_network							},
+			base				{ *IN_base								},
+			network				{ *IN_network							},
 			packetHandlers		{ IN_framework->core->GetBlockMemory()	},
 			remotePlayers		{ IN_framework->core->GetBlockMemory()	}
 	{
@@ -102,10 +102,10 @@ public:
 
 		RakNet::SocketDescriptor desc;
 
-		network->localPeer->Startup(1, &desc, 1);
-		RakNet::ConnectionAttemptResult res = network->localPeer->Connect(Address, 1337, nullptr, 0);
-		network->ConnectionAcceptedHandler	= [&](auto packet) {ConnectionSuccess(packet); };
-		network->DisconnectHandler			= [&](auto packet) {ServerLost(packet); };
+		network.localPeer->Startup(1, &desc, 1);
+		RakNet::ConnectionAttemptResult res = network.localPeer->Connect(Address, 1337, nullptr, 0);
+		network.ConnectionAcceptedHandler	= [&](auto packet) {ConnectionSuccess(packet); };
+		network.DisconnectHandler			= [&](auto packet) {ServerLost(packet); };
 	}
 
 
@@ -125,7 +125,7 @@ public:
 	void ConnectionSuccess(RakNet::Packet* packet)
 	{
 		ServerAddress = packet->systemAddress;
-		framework->PushState<ClientLobbyState>(this, network, localName);
+		framework->PushState<ClientLobbyState>(this, &network, localName);
 	}
 
 
@@ -145,8 +145,8 @@ public:
 	Vector<RemotePlayer>	remotePlayers;
 	RakNet::SystemAddress	ServerAddress;
 	Vector<PacketHandler*>	packetHandlers;
-	NetworkState*			network;
-	BaseState*				base;
+	NetworkState&			network;
+	BaseState&				base;
 
 	MultiplayerPlayerID_t	localID;
 	char					localName[32];

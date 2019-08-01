@@ -34,16 +34,16 @@ ClientLobbyState::ClientLobbyState(
 	FlexKit::GameFramework* IN_framework,
 	GameClientState*		IN_client,
 	NetworkState*			IN_network, 
-	char*					IN_localPlayerName) :
-		FrameworkState	{IN_framework},
+	const char*				IN_localPlayerName) :
+		FrameworkState	{ IN_framework },
 
-		client			{IN_client},
-		localPlayerName {IN_localPlayerName},
-		network			{IN_network},
-		packetHandlers	{IN_framework->core->GetBlockMemory()},
-		ready			{false},
-		refreshCounter	{0},
-		screen			{IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
+		client			{ *IN_client			},
+		localPlayerName { IN_localPlayerName	},
+		network			{ *IN_network			},
+		ready			{ false					},
+		refreshCounter	{ 0						},
+		packetHandlers	{ IN_framework->core->GetBlockMemory()										},
+		screen			{ IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font	}
 {
 	packetHandlers.push_back(
 		CreatePacketHandler(
@@ -63,7 +63,7 @@ ClientLobbyState::ClientLobbyState(
 				auto				request = reinterpret_cast<RequestClientDataPacket*>(incomingPacket);
 				ClientDataPacket	responsePacket(request->playerID, localPlayerName);
 
-				client->localID = request->playerID;
+				client.localID = request->playerID;
 
 				FK_LOG_INFO("Sending Client Info");
 				std::cout << "playerID set to: " << request->playerID << "\n";
@@ -80,14 +80,14 @@ ClientLobbyState::ClientLobbyState(
 				FK_LOG_INFO("Player List Received");
 
 				screen.ClearRows();
-				client->remotePlayers.clear();
+				client.remotePlayers.clear();
 
 				auto playerList				= reinterpret_cast<PlayerListPacket*>(incomingPacket);
 				const size_t playerCount	= FlexKit::max(FlexKit::min(playerList->playerCount, 3u), 0u);
 
-				screen.CreateRow		(client->localID);
-				screen.SetPlayerName	(client->localID, localPlayerName);
-				screen.SetPlayerReady	(client->localID, ready);
+				screen.CreateRow		(client.localID);
+				screen.SetPlayerName	(client.localID, localPlayerName);
+				screen.SetPlayerReady	(client.localID, ready);
 
 				for (size_t idx = 0; idx < playerCount; ++idx)
 				{
@@ -95,11 +95,11 @@ ClientLobbyState::ClientLobbyState(
 					auto id			= playerList->Players[idx].playerID;
 					auto ready		= playerList->Players[idx].ready;
 
-					client->remotePlayers.push_back({ playerList->Players[idx].playerID });
-					strncpy(client->remotePlayers.back().name, nameStr, sizeof(RemotePlayer::name));
+					client.remotePlayers.push_back({ playerList->Players[idx].playerID });
+					strncpy(client.remotePlayers.back().name, nameStr, sizeof(RemotePlayer::name));
 
 					screen.CreateRow		(id);
-					screen.SetPlayerName	(id, client->remotePlayers.back().name);
+					screen.SetPlayerName	(id, client.remotePlayers.back().name);
 					screen.SetPlayerReady	(id, ready);
 				}
 			},
@@ -111,11 +111,11 @@ ClientLobbyState::ClientLobbyState(
 			[&](UserPacketHeader* incomingPacket, RakNet::Packet* P, NetworkState* network)
 			{
 				FK_LOG_INFO("Starting Game");
-				client->StartGame();
+				client.StartGame();
 			},
 			IN_framework->core->GetBlockMemory()));
 
-	network->PushHandler(&packetHandlers);
+	network.PushHandler(&packetHandlers);
 }
 
 
@@ -124,7 +124,7 @@ ClientLobbyState::ClientLobbyState(
 
 ClientLobbyState::~ClientLobbyState()
 {
-	client->network->PopHandler();
+	network.PopHandler();
 
 	for (auto handler : packetHandlers)
 		framework->core->GetBlockMemory().free(handler);
@@ -146,8 +146,8 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 			{
 				ready = !ready;
 				
-				ClientReady packet(client->localID, ready);
-				network->SendPacket(packet.GetRawPacket(), client->ServerAddress);
+				ClientReady packet(client.localID, ready);
+				network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
 			}
 			}
 		}
@@ -165,8 +165,8 @@ bool ClientLobbyState::Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispat
 	{
 		refreshCounter = 0;
 
-		RequestPlayerListPacket packet{ client->localID };
-		client->network->SendPacket(packet.GetRawPacket(), client->ServerAddress);
+		RequestPlayerListPacket packet{ client.localID };
+		client.network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
 	}
 
 	return true;
@@ -180,23 +180,23 @@ bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher
 {
 	auto currentRenderTarget = GetCurrentBackBuffer(&core->Window);
 
-	ClearVertexBuffer	(frameGraph, client->base->vertexBuffer);
-	ClearVertexBuffer	(frameGraph, client->base->textBuffer);
+	ClearVertexBuffer	(frameGraph, client.base.vertexBuffer);
+	ClearVertexBuffer	(frameGraph, client.base.textBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget);
 
 	LobbyScreenDrawDesc Desc;
 	Desc.allocator			= core->GetTempMemory();
-	Desc.constantBuffer		= client->base->constantBuffer;
-	Desc.vertexBuffer		= client->base->vertexBuffer;
-	Desc.textBuffer			= client->base->textBuffer;
+	Desc.constantBuffer		= client.base.constantBuffer;
+	Desc.vertexBuffer		= client.base.vertexBuffer;
+	Desc.textBuffer			= client.base.textBuffer;
 	Desc.renderTarget		= currentRenderTarget;
 	screen.Draw(Desc, dispatcher, frameGraph);
 
 	FlexKit::DrawMouseCursor(
 		framework->MouseState.NormalizedScreenCord,
 		{ 0.05f, 0.05f },
-		client->base->vertexBuffer,
-		client->base->constantBuffer,
+		client.base.vertexBuffer,
+		client.base.constantBuffer,
 		currentRenderTarget,
 		core->GetTempMemory(),
 		&frameGraph);
@@ -211,7 +211,7 @@ bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher
 bool ClientLobbyState::PostDrawUpdate(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	if (framework->drawDebugStats)
-		framework->DrawDebugHUD(dT, client->base->textBuffer, frameGraph);
+		framework->DrawDebugHUD(dT, client.base.textBuffer, frameGraph);
 
 	PresentBackBuffer(frameGraph, &core->Window);
 	return true;

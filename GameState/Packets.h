@@ -97,7 +97,7 @@ public:
 class ClientDataPacket
 {
 public:
-	ClientDataPacket(MultiplayerPlayerID_t IN_id, char* PlayerName) :
+	ClientDataPacket(MultiplayerPlayerID_t IN_id, const char* PlayerName) :
 		Header			{	{sizeof(ClientDataPacket)},
 							{UserPacketIDs::ClientDataRequestResponse} },
 		playerNameLength{ uint16_t(strnlen(playerName, 128)) },

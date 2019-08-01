@@ -130,7 +130,7 @@ void MultiplayerLobbyScreen::CreateRow(LobbyRowID id)
 /************************************************************************************************/
 
 
-void MultiplayerLobbyScreen::SetPlayerName(LobbyRowID id, char*	name)
+void MultiplayerLobbyScreen::SetPlayerName(LobbyRowID id, const char*	name)
 {
 	for (auto& row : rows)
 	{
