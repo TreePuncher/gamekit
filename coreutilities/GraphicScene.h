@@ -317,6 +317,13 @@ namespace FlexKit
 	
 	/************************************************************************************************/
 
+	struct PointLightGather
+	{
+		Vector<PointLightHandle>	pointLights;
+		GraphicScene*				scene;
+		StackAllocator				temp;
+	};
+
 	class GraphicScene
 	{
 	public:
@@ -342,7 +349,7 @@ namespace FlexKit
 
 		Vector<PointLightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
-		UpdateTask*				GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
+		auto&					GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
 		size_t					GetPointLightCount();
 
 		const SceneHandle					sceneID;
@@ -382,8 +389,8 @@ namespace FlexKit
 	FLEXKITAPI void UpdateGraphicScenePoseTransform	(GraphicScene* SM );
 	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
 
-	FLEXKITAPI void				GetGraphicScenePVS		(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
-	FLEXKITAPI GetPVSTaskData&	GetGraphicScenePVSTask	(UpdateDispatcher& dispatcher, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
+	FLEXKITAPI void	 GetGraphicScenePVS		(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
+	FLEXKITAPI auto& GetGraphicScenePVSTask	(UpdateDispatcher& dispatcher, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
 
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);

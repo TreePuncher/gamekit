@@ -150,7 +150,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Camera::CameraConstantBuffer CameraComponent::GetCameraConstants(CameraHandle handle)
+	Camera::ConstantBuffer CameraComponent::GetCameraConstants(CameraHandle handle)
 	{
 		return GetCamera(handle).GetConstants();
 	}
@@ -165,7 +165,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask& CameraComponent::QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask& TransformDependency)
+	auto& CameraComponent::QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask& TransformDependency)
 	{
 		struct UpdateData
 		{};

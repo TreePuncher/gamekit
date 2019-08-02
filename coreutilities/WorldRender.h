@@ -295,10 +295,10 @@ namespace FlexKit
 
 	struct SceneDescription
 	{
-		UpdateTask* lights;
-		UpdateTask*	transforms;
-		UpdateTask*	cameras;
-		UpdateTask*	PVS;
+		UpdateTaskTyped<PointLightGather>*	lights;
+		UpdateTask*							transforms;
+		UpdateTask*							cameras;
+		UpdateTaskTyped<GetPVSTaskData>*	PVS;
 	};
 
 
@@ -339,7 +339,7 @@ namespace FlexKit
 
 		
 		void DefaultRender						(UpdateDispatcher& dispatcher, PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
-		void RenderDrawabledPBR_ForwardPLUS		(UpdateDispatcher& dispatcher, PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
+		void RenderDrawabledPBR_ForwardPLUS		(UpdateDispatcher& dispatcher, const PVS& Objects, const CameraHandle Camera, const WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
 
 
 		LightBufferUpdate* updateLightBuffers	(UpdateDispatcher& dispatcher, CameraHandle Camera, GraphicScene& scene, FrameGraph& graph, SceneDescription& desc, iAllocator* tempMemory, LighBufferDebugDraw* drawDebug = nullptr);

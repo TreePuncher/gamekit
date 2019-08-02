@@ -612,10 +612,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	GetPVSTaskData& GetGraphicScenePVSTask(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
+	auto& GetGraphicScenePVSTask(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
 	{
-		GetPVSTaskData* returnValue = nullptr;
-
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
 			{
@@ -625,8 +623,6 @@ namespace FlexKit
 				data.solid			= PVS{ data.taskMemory };
 				data.transparent	= PVS{ data.taskMemory };
 				data.camera			= C;
-
-				returnValue = &data;
 			},
 			[](auto& data)
 			{
@@ -638,8 +634,7 @@ namespace FlexKit
 				FK_LOG_9("End PVS gather\n");
 			});
 
-		returnValue->task = &task;
-		return *returnValue;
+		return task;
 	}
 
 
@@ -837,25 +832,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask* GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory)
+	auto& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory)
 	{
-		GetPVSTaskData* returnValue = nullptr;
-
-		struct TaskData
-		{
-			Vector<PointLightHandle>	pointLights;
-			StackAllocator				temp;
-			GraphicScene*				scene;
-		};
-
-		return &dispatcher.Add<TaskData>(
-			[&](auto& builder, TaskData& data)
+		return dispatcher.Add<PointLightGather>(
+			[&](auto& builder, PointLightGather& data)
 			{
 				data.temp			= StackAllocator(tempMemory, KILOBYTE * 16);
 				data.pointLights	= Vector<PointLightHandle>{ data.temp, 1024 };
 				data.scene			= this;
 			},
-			[this](TaskData& data)
+			[this](PointLightGather& data)
 			{
 				for (auto entity : sceneEntities)
 				{

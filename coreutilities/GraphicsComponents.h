@@ -52,10 +52,10 @@ namespace FlexKit
 		float							GetCameraFOV			(CameraHandle);
 		NodeHandle						GetCameraNode			(CameraHandle);
 		float							GetCameraNear			(CameraHandle);
-		Camera::CameraConstantBuffer	GetCameraConstants		(CameraHandle);
+		Camera::ConstantBuffer			GetCameraConstants		(CameraHandle);
 		float4x4						GetCameraPV				(CameraHandle);
 
-		UpdateTask& QueueCameraUpdate(UpdateDispatcher&, UpdateTask& TransformDependency);
+		auto&	QueueCameraUpdate(UpdateDispatcher&, UpdateTask& TransformDependency);
 
 		Vector<bool>								DirtyFlags;
 		Vector<Camera>								Cameras;
@@ -77,7 +77,7 @@ namespace FlexKit
 	inline float							GetCameraFOV			(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraFOV(camera);			}
 	inline NodeHandle						GetCameraNode			(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraNode(camera);			}
 	inline float							GetCameraNear			(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraNear(camera);			}
-	inline Camera::CameraConstantBuffer		GetCameraConstants		(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraConstants(camera);		}
+	inline Camera::ConstantBuffer			GetCameraConstants		(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraConstants(camera);		}
 	inline float4x4							GetCameraPV				(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPV(camera);				}
 
 

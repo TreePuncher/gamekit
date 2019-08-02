@@ -58,7 +58,11 @@ int main(int argc, char* argv[])
 
 			switch (x)
 			{
-				case 1: 
+				case 1:
+				multiplayerMode = false;
+				host = false;
+				return;
+				case 2: 
 				{
 					std::cout << "Multiplayer menu\n1 - Host\n2 - Join\n";
 					std::cin >> x;
@@ -85,9 +89,11 @@ int main(int argc, char* argv[])
 						break;
 					}
 				}
-
-			default:
+				case 3:
 				quit = true;
+				return;
+			default:
+				continue;
 				return;
 			}
 		}

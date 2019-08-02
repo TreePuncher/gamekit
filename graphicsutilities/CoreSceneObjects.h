@@ -40,7 +40,7 @@ namespace FlexKit
 	class FLEXKITAPI Camera
 	{
 	public:
-		struct __declspec(align(16)) CameraConstantBuffer
+		struct __declspec(align(16)) ConstantBuffer
 		{
 			XMMATRIX	View;
 			XMMATRIX	ViewI;
@@ -73,7 +73,7 @@ namespace FlexKit
 
 
 		FustrumPoints			GetFrustumPoints	(float3 XYZ, Quaternion Q);
-		CameraConstantBuffer	GetConstants		();
+		ConstantBuffer			GetConstants		();
 		float4x4				GetPV				();
 		NodeHandle				Node;
 

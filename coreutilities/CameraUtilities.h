@@ -90,7 +90,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask&	QueueOrbitCameraUpdateTask(
+	auto&	QueueOrbitCameraUpdateTask(
 		UpdateDispatcher&		dispatcher, 
 		UpdateTask&				transformUpdateDependency,
 		UpdateTask&				cameraUpdateDependency,

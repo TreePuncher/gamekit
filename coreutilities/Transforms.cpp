@@ -646,7 +646,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UpdateTask&	QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
+	auto& QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
 	{
 		struct TransformUpdateData
 		{};

@@ -718,16 +718,16 @@ namespace FlexKit
 	public:
 		typedef size_t	UpdateID_t;
 
-		class UpdateTask
+		class UpdateTaskBase
 		{
 		public:
 			struct iUpdateFN
 			{
-				virtual void operator () (UpdateTask& task) = 0;
+				virtual void operator () (UpdateTaskBase& task) = 0;
 			};
 
 
-			UpdateTask(ThreadManager* IN_manager, iUpdateFN& IN_updateFn, iAllocator* IN_allocator) :
+			UpdateTaskBase(ThreadManager* IN_manager, iUpdateFN& IN_updateFn, iAllocator* IN_allocator) :
 				Update		{ IN_updateFn						},
 				Inputs		{ IN_allocator						},
 				visited		{ false								},
@@ -735,14 +735,14 @@ namespace FlexKit
 				threadTask	{ this, IN_manager, IN_allocator	} {}
 
 			// No Copy
-			UpdateTask				(const UpdateTask&)	= delete;
-			UpdateTask& operator =	(const UpdateTask&)	= delete;
+			UpdateTaskBase				(const UpdateTaskBase&)	= delete;
+			UpdateTaskBase& operator =	(const UpdateTaskBase&)	= delete;
 
 
 			class UpdateThreadTask : public iWork
 			{
 			public:
-				UpdateThreadTask(UpdateTask* IN_task, ThreadManager* threads, iAllocator* memory) :
+				UpdateThreadTask(UpdateTaskBase* IN_task, ThreadManager* threads, iAllocator* memory) :
 					iWork	{ memory					},
 					task	{ IN_task					},
 					wait	{ *this, threads, memory	} {}
@@ -751,7 +751,7 @@ namespace FlexKit
 				UpdateThreadTask				(const UpdateThreadTask&) = delete;
 				UpdateThreadTask& operator =	(const UpdateThreadTask&) = delete;
 
-				UpdateTask*	task;
+				UpdateTaskBase*	task;
 
 				void Run() override
 				{
@@ -773,7 +773,7 @@ namespace FlexKit
 			}
 
 
-			void AddInput(UpdateTask& task)
+			void AddInput(UpdateTaskBase& task)
 			{
 				Inputs.push_back(&task);
 				threadTask.wait.AddDependency(task.threadTask);
@@ -797,12 +797,26 @@ namespace FlexKit
 				return visited;
 			}
 
-			UpdateID_t			ID;
-			iUpdateFN&			Update;
-			char*				Data;
-			int					completed;
-			bool				visited;
-			Vector<UpdateTask*> Inputs;
+			UpdateID_t				ID;
+			iUpdateFN&				Update;
+			char*					Data;
+			int						completed;
+			bool					visited;
+			Vector<UpdateTaskBase*> Inputs;
+		};
+
+		template<typename TY>
+		class UpdateTask : 
+			public UpdateTaskBase
+		{
+		public:
+			UpdateTask(ThreadManager* IN_manager, UpdateTaskBase::iUpdateFN& IN_updateFn, iAllocator* IN_allocator) :
+				UpdateTaskBase{	IN_manager, IN_updateFn, IN_allocator	} {}
+
+			const TY& GetData() const
+			{
+				return *(reinterpret_cast<TY*>(Data));
+			}
 		};
 
 
@@ -816,7 +830,7 @@ namespace FlexKit
 		UpdateDispatcher					(const UpdateDispatcher&) = delete;
 		const UpdateDispatcher& operator =	(const UpdateDispatcher&) = delete;
 
-		static void VisitInputs(UpdateTask* Node, Vector<UpdateTask*>& out)
+		static void VisitInputs(UpdateTaskBase* Node, Vector<UpdateTaskBase*>& out)
 		{
 			if (Node->visited)
 				return;
@@ -830,7 +844,7 @@ namespace FlexKit
 		};
 
 
-		static void VisitAndScheduleLeafs(UpdateTask* node, ThreadManager* threads, iAllocator* allocator)
+		static void VisitAndScheduleLeafs(UpdateTaskBase* node, ThreadManager* threads, iAllocator* allocator)
 		{
 			if (node->Visited())
 				return;
@@ -863,7 +877,7 @@ namespace FlexKit
 			else
 			{
 				// Single Thread
-				Vector<UpdateTask*> nodesSorted{ allocator };
+				Vector<UpdateTaskBase*> nodesSorted{ allocator };
 				for (auto& node : nodes)
 					VisitInputs(node, nodesSorted);
 
@@ -881,7 +895,7 @@ namespace FlexKit
 		class UpdateBuilder
 		{
 		public:
-			UpdateBuilder(UpdateTask& IN_node) :
+			UpdateBuilder(UpdateTaskBase& IN_node) :
 				newNode{ IN_node	} {}
 
 			void SetDebugString(const char* str) noexcept
@@ -889,33 +903,33 @@ namespace FlexKit
 				newNode.threadTask.SetDebugID(str);
 			}
 
-			void AddOutput(UpdateTask& node)
+			void AddOutput(UpdateTaskBase& node)
 			{
 				node.AddInput(newNode);
 			}
 
-			void AddInput(UpdateTask& node)
+			void AddInput(UpdateTaskBase& node)
 			{
 				newNode.AddInput(node);
 			}
 
 			const char* DebugID = "UNIDENTIFIED TASK";
 		private:
-			UpdateTask& newNode;
+			UpdateTaskBase& newNode;
 		};
 
 		template<
 			typename TY_NODEDATA,
 			typename FN_LINKAGE,
 			typename FN_UPDATE>
-		UpdateTask&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
+		UpdateTask<TY_NODEDATA>&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
 		{
-			struct data_BoilderPlate : UpdateTask::iUpdateFN
+			struct data_BoilderPlate : UpdateTaskBase::iUpdateFN
 			{
 				data_BoilderPlate(FN_UPDATE&& IN_fn) :
 					function{ std::move(IN_fn) } {}
 
-				virtual void operator() (UpdateTask& task) override
+				virtual void operator() (UpdateTaskBase& task) override
 				{
 					function(locals);
 				}
@@ -925,7 +939,7 @@ namespace FlexKit
 			};
 
 			auto& functor		= allocator->allocate_aligned<data_BoilderPlate>(std::move(UpdateFN));
-			UpdateTask& newNode = allocator->allocate_aligned<UpdateTask>(threads, functor, allocator);
+			auto& newNode		= allocator->allocate_aligned<UpdateTask<TY_NODEDATA>>(threads, functor, allocator);
 			newNode.Data		= reinterpret_cast<char*>(&functor.locals);
 
 			UpdateBuilder Builder{ newNode };
@@ -938,14 +952,17 @@ namespace FlexKit
 			return newNode;
 		}
 
-		ThreadManager*		threads;
-		Vector<UpdateTask*> nodes;
-		iAllocator*			allocator;
+		ThreadManager*				threads;
+		Vector<UpdateTaskBase*>		nodes;
+		iAllocator*					allocator;
 	};
 
 
 	using DependencyBuilder = UpdateDispatcher::UpdateBuilder;
-	using UpdateTask		= UpdateDispatcher::UpdateTask;
+	using UpdateTask		= UpdateDispatcher::UpdateTaskBase;
+
+	template<typename TY>
+	using UpdateTaskTyped	= UpdateDispatcher::UpdateTask<TY>;
 
 
 }	/************************************************************************************************/

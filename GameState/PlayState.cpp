@@ -175,7 +175,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
 	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher, transforms);
 	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
-	auto& cameraConstants	= MakeHeapCopy				(GetCameraConstants(activeCamera), core->GetTempMemory());
+	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core->GetTempMemory());
 	auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
 	auto& textureStreams	= base.streamingEngine.update(dispatcher);
 
@@ -190,10 +190,10 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	debugDraw.vertexBuffer	 = base.vertexBuffer;
 
 	SceneDescription sceneDesc;
-	sceneDesc.lights			= scene.GetPointLights(dispatcher, core->GetTempMemory());
+	sceneDesc.lights			= &scene.GetPointLights(dispatcher, core->GetTempMemory());
 	sceneDesc.transforms		= &transforms;
 	sceneDesc.cameras			= &cameras;
-	sceneDesc.PVS				= PVS;
+	sceneDesc.PVS				= &PVS;
 	
 	base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
 
@@ -203,7 +203,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
 	ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
-	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
+	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.GetData().solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
 
 	FlexKit::DrawCollection_Desc DrawCollectionDesc{};
 	DrawCollectionDesc.DepthBuffer			= targets.DepthTarget;

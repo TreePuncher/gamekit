@@ -268,13 +268,13 @@ namespace FlexKit
 	
 
 	void WorldRender::RenderDrawabledPBR_ForwardPLUS(
-		UpdateDispatcher&		dispatcher,
-		PVS&					drawables, 
-		CameraHandle			Camera,
-		WorldRender_Targets&	Targets,
-		FrameGraph&				frameGraph, 
-		SceneDescription&		desc,
-		iAllocator*				Memory)
+		UpdateDispatcher&			dispatcher,
+		const PVS&					drawables, 
+		const CameraHandle			Camera,
+		const WorldRender_Targets&	Targets,
+		FrameGraph&					frameGraph, 
+		SceneDescription&			desc,
+		iAllocator*					Memory)
 	{
 		const size_t MaxEntityDrawCount = 10000;
 
@@ -305,7 +305,7 @@ namespace FlexKit
 			CBPushBuffer				entityConstants;
 			CBPushBuffer				localConstants;
 
-			Vector<PointLightHandle>*	pointLights;
+			const Vector<PointLightHandle>*	pointLights;
 
 			PVS const*					drawables;
 			DescriptorHeap				Heap; // Null Filled
@@ -317,10 +317,10 @@ namespace FlexKit
 			{
 				builder.AddDataDependency(*desc.PVS);
 
-				data.pointLights		= reinterpret_cast<Vector<PointLightHandle>*>(desc.lights->Data);
+				data.pointLights		= &desc.lights->GetData().pointLights;
 				data.BackBuffer			= builder.WriteRenderTarget	(Targets.RenderTarget);
 				data.DepthBuffer		= builder.WriteDepthBuffer	(Targets.DepthTarget);
-				size_t localBufferSize  = std::max(sizeof(Camera::CameraConstantBuffer), sizeof(ForwardDrawConstants));
+				size_t localBufferSize  = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 				data.entityConstants	= std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources));
 				data.localConstants		= std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
 
@@ -435,7 +435,7 @@ namespace FlexKit
 				uint32_t	lightCount;
 			}constantsValues;
 
-			auto cameraConstants = GetCameraConstants(data.camera);
+			auto cameraConstants		= GetCameraConstants(data.camera);
 			constantsValues.LightMapWidthHeight[0] = XY[0];
 			constantsValues.LightMapWidthHeight[1] = XY[1];
 			constantsValues.view		= XMMatrixToFloat4x4(cameraConstants.View);

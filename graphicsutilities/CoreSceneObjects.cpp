@@ -331,13 +331,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Camera::CameraConstantBuffer Camera::GetConstants()
+	Camera::ConstantBuffer Camera::GetConstants()
 	{
 		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&WT);
 		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
 
 
-		Camera::CameraConstantBuffer NewData;
+		Camera::ConstantBuffer NewData;
 		NewData.Proj            = Float4x4ToXMMATIRX(&Proj);
 		NewData.View			= XMMatrixTranspose(Float4x4ToXMMATIRX(&View));
 		NewData.ViewI           = XMWT;
