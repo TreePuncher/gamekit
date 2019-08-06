@@ -46,8 +46,10 @@ namespace FlexKit
 		FK_LOG_INFO("Releasing Pipeline State Objects");
 
 		for (auto& s : States)
-			for(auto itr = &s;itr != nullptr; itr = itr->next)
-				SAFERELEASE(itr->PSO);
+		{
+			if (s)
+				s->Release(allocator);
+		}
 	}
 
 
@@ -74,7 +76,7 @@ namespace FlexKit
 			PSO->state == PipelineStateObject::PSO_States::ReLoadQueued )
 				return false;
 
-		auto& NewTask = allocator->allocate_aligned<LoadTask>(queueAllocator, this, PSO);
+		auto& NewTask = queueAllocator->allocate_aligned<LoadTask>(queueAllocator, this, PSO);
 
 		while (true)
 		{
@@ -267,7 +269,7 @@ namespace FlexKit
 
 	PipelineStateObject* PipelineStateTable::_GetStateObject(PSOHandle handle)
 	{
-		PipelineStateObject* PSO = &States[handle.INDEX % States.size()];
+		PipelineStateObject* PSO = States[handle.INDEX % States.size()];
 		for (; PSO && PSO->id != handle; PSO = PSO->next);
 
 		return PSO;
@@ -279,7 +281,7 @@ namespace FlexKit
 
 	PipelineStateObject* PipelineStateTable::_GetNearestStateObject(PSOHandle handle)
 	{
-		PipelineStateObject* PSO = &States[handle.INDEX % States.size()];
+		PipelineStateObject* PSO = States[handle.INDEX % States.size()];
 		for (; PSO && PSO->id != handle && PSO->next != nullptr; PSO = PSO->next);
 
 		return PSO;
@@ -291,7 +293,7 @@ namespace FlexKit
 
 	PipelineStateObject const*	PipelineStateTable::_GetStateObject(PSOHandle handle) const
 	{
-		PipelineStateObject const* PSO = &States[handle.INDEX % States.size()];
+		PipelineStateObject const* PSO = States[handle.INDEX % States.size()];
 		for (; PSO && PSO->id != handle; PSO = PSO->next);
 
 		return PSO;
@@ -300,7 +302,7 @@ namespace FlexKit
 
 	PipelineStateObject const*	PipelineStateTable::_GetNearestStateObject(PSOHandle handle) const
 	{
-		PipelineStateObject const* PSO = &States[handle.INDEX % States.size()];
+		PipelineStateObject const* PSO = States[handle.INDEX % States.size()];
 		for (; PSO && PSO->id != handle && PSO->next != nullptr; PSO = PSO->next);
 
 		return PSO;
@@ -310,25 +312,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool PipelineStateTable::_AddStateObject(PipelineStateObject*	PSO)
+	bool PipelineStateTable::_AddStateObject(PipelineStateObject* PSO)
 	{
 		const auto handle = PSO->id;
-		PipelineStateObject* node = &States[handle.INDEX % States.size()];
-		for (; node && node->next; node = node->next);
 
-		while (true)
+
+		PipelineStateObject** node = &States[handle.INDEX % States.size()];
+
+		constexpr size_t tryCount = 4;
+
+		for(size_t i = 0; i < tryCount; ++i)
 		{
-			auto next = node->next.load(std::memory_order_acquire);
-			if (next == nullptr)
-			{
-				if (node->next.compare_exchange_strong(next, PSO, std::memory_order_release))
-					return true;
-			}
-			else
-			{
-				node = next;
-				continue;
-			}
+			for (; *node; node = &(*node)->next)
+				std::atomic_thread_fence(std::memory_order_acquire);
+
+			*node = PSO;
+
+			std::atomic_thread_fence(std::memory_order_release);
+			std::atomic_thread_fence(std::memory_order_acquire);
+
+			if (*node == PSO)
+				return true;
 		}
 
 		return false;

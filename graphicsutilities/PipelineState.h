@@ -96,12 +96,20 @@ namespace FlexKit
 			return false;
 		}
 
+		void Release(iAllocator* allocator)
+		{
+			if(auto _ptr = next; _ptr)
+				_ptr->Release(allocator);
+
+			allocator->free(this);
+		}
+
 
 		ID3D12PipelineState*				PSO		= nullptr;
 		PSOHandle							id		= InvalidHandle_t;
 		bool								stale	= false;
 		std::atomic<PSO_States>				state	= PSO_States::Unloaded;
-		std::atomic <PipelineStateObject*>	next	= nullptr;
+		PipelineStateObject*				next	= nullptr;
 		RootSignature*						rootSignature;
 		LOADSTATE_FN*						loader	= nullptr;
 		std::condition_variable				CV;
@@ -153,7 +161,7 @@ namespace FlexKit
 
 		bool					_AddStateObject			(PipelineStateObject*	PSO);
 
-		static_vector<PipelineStateObject,	128>			States;
+		static_vector<PipelineStateObject*,	128>			States;
 
 		ThreadManager*										WorkQueue;
 		ID3D12Device*										Device;
