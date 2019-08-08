@@ -64,6 +64,7 @@ int main(int argc, char* argv[])
 				return;
 				case 2: 
 				{
+					multiplayerMode = true;
 					std::cout << "Multiplayer menu\n1 - Host\n2 - Join\n";
 					std::cin >> x;
 					switch (x)
@@ -79,11 +80,13 @@ int main(int argc, char* argv[])
 						std::cout << "Enter server address: ";
 						std::cin >> server;
 
+						name.push_back('\0'); 
 						// TODO: better input scrubbing
 						if (!name.size() && !server.size()) // if they entered invalid inputs
 							continue;						// Goes back to main menu to try again
 						multiplayerMode		= true;
 						host				= false;
+						return;
 					}	break;
 					default:
 						break;
@@ -133,19 +136,14 @@ int main(int argc, char* argv[])
 	{
 		auto& NetState = App.PushState<NetworkState>(&gameBase);
 		if (host)
-		{
-			auto& hostState		= App.PushState<GameHostState>(&gameBase, &NetState);
-			auto& lobbyState	= App.PushState<GameHostLobbyState>(&hostState);
-		}
+			auto& hostState		= App.PushState<GameHostState>(gameBase, NetState);
 		else
-		{
-			auto& clientState	= App.PushState<GameClientState>(&gameBase, &NetState, ClientGameDescription{ 1337, server.c_str() });
-			auto& lobbyState	= App.PushState<ClientLobbyState>(&clientState, &NetState, name.c_str());
-		}
+			auto& clientState	= App.PushState<GameClientState>(&gameBase, &NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
 	}
 	else
 	{
-		auto& playState = App.PushState<PlayState>(&gameBase);
+		auto& gameState = App.PushState<GameState>(gameBase);
+		auto& playState = App.PushState<LocalPlayerState>(gameBase, gameState);
 	}
 
 	FK_LOG_INFO("Running application...");

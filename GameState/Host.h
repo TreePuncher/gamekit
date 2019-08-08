@@ -41,13 +41,15 @@ class GameHostState;
 
 class GameHostLobbyState : public FlexKit::FrameworkState
 {
+
 public:
 	GameHostLobbyState(
 		FlexKit::GameFramework* IN_framework,
-		GameHostState*			IN_host);
+		GameHostState&			IN_host);
 
 	~GameHostLobbyState();
 
+	void AddLocalPlayer(MultiplayerPlayerID_t ID);
 	void HandleNewConnection(RakNet::Packet* packet);
 
 	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
@@ -57,18 +59,29 @@ public:
 	bool EventHandler(FlexKit::Event evt) override;
 
 
-private:
-
 	struct PlayerLobbyEntry
 	{
 		MultiplayerPlayerID_t	ID;
 		bool					Ready;
 	};
 
+	std::pair<PlayerLobbyEntry, bool> GetPlayerLobbyState(MultiplayerPlayerID_t id)
+	{
+		for (auto& player : playerLobbyState)
+			if(player.ID == id)
+			return { player, true };
+
+		return { {}, false };
+	}
+
+private:
+
+
 	FlexKit::Vector<PacketHandler*>		packetHandlers;
 	FlexKit::Vector<PlayerLobbyEntry>	playerLobbyState;
 
-	GameHostState*			host;
+	bool					localHostReady = false;
+	GameHostState&			host;
 	MultiplayerLobbyScreen	screen;
 };
 
@@ -106,32 +119,42 @@ class GameHostState : public FlexKit::FrameworkState
 public:
 	GameHostState(
 		FlexKit::GameFramework* IN_framework,
-		BaseState*				IN_base,
-		NetworkState*			IN_Network,
+		BaseState&				IN_base,
+		NetworkState&			IN_Network,
 		GameDescription			IN_GameDesc = GameDescription{}) :
 			FrameworkState{ IN_framework					},
-			players	{ IN_framework->core->GetBlockMemory()	},
 			network	{ IN_Network							},
 			base	{ IN_base								}
 	{
 		RakNet::SocketDescriptor sd(IN_GameDesc.Port, 0);
-		network->localPeer->Startup(IN_GameDesc.MaxPlayerCount, &sd, 1);
+		network.localPeer->Startup(IN_GameDesc.MaxPlayerCount, &sd, 1);
+
+		StartLobby();
 	}
 
 
 	~GameHostState(){}
 
 
-	GameHostState& InitiateGame()
+	GameHostState& StartLobby()
 	{
-		framework->PushState<GameHostLobbyState>(this);
-
+		auto localPlayer = GeneratePlayerID();
 		players.push_back({
 			true,
 			Lobby,
-			GeneratePlayerID(),
+			localPlayer,
 			RakNet::SystemAddress{},
 			"LocalPlayer" });
+
+
+		char name[32];
+		std::cout << "Please enter player name: ";
+		std::cin >> name;
+		std::cout << "\n";
+		SetPlayerName(localPlayer, name, strnlen(name, 32) + 1);
+
+		auto& lobby = framework->PushState<GameHostLobbyState>(*this);
+		lobby.AddLocalPlayer(localPlayer);
 
 		return *this;
 	}
@@ -150,7 +173,10 @@ public:
 	void BeginGame()
 	{
 		framework->PopState();
-		framework->PushState<MultiplayerGame>(network, players.size(), base);
+
+		FK_ASSERT(0);
+		//auto& gameState = framework->PushState<GameState>(base);
+		//framework->PushState<LocalPlayerState>(gameState);
 	}
 
 
@@ -192,9 +218,9 @@ public:
 	}
 
 
-	FlexKit::Vector<MultiPlayerEntry>	players;
-	BaseState*							base;
-	NetworkState*						network;
+	static_vector<MultiPlayerEntry>		players;
+	BaseState&							base;
+	NetworkState&						network;
 };
 
 

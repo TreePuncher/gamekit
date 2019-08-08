@@ -8,52 +8,44 @@ using namespace FlexKit;
 /************************************************************************************************/
 
 
-MultiplayerGame::MultiplayerGame(
+GameState::GameState(
 			FlexKit::GameFramework* IN_framework, 
-			NetworkState*			IN_network,
-			size_t					IN_playerCount, 
-			BaseState* base) :
+			BaseState&				IN_base) :
 		FrameworkState	{IN_framework},
 		
-		frameID			{0},
-		base			{base},
-		network			{IN_network}
+		frameID			{ 0										},
+		base			{ IN_base								},
+		scene			{ IN_framework->core->GetBlockMemory()	}
 {
-	AddResourceFile("CharacterBase.gameres");
-	characterModel = FlexKit::LoadTriMeshIntoTable(framework->core->RenderSystem, "PlayerMesh");
+	LoadScene(framework->core, &scene, "TestScene");
 }
 
 
 /************************************************************************************************/
 
 
-MultiplayerGame::~MultiplayerGame()
+GameState::~GameState()
 {
+	iAllocator* allocator = base.framework->core->GetBlockMemory();
+	auto entities = scene.sceneEntities;
+
+	for (auto entity : entities)
+	{
+		auto entityGO = SceneVisibilityBehavior::GetComponent()[entity].entity;
+		scene.RemoveEntity(*entityGO);
+
+		entityGO->Release();
+		allocator->free(entityGO);
+	}
+
+	scene.ClearScene();
 }
 
 
 /************************************************************************************************/
 
 
-bool MultiplayerGame::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
-{
-	return true;
-}
-
-
-/************************************************************************************************/
-
-
-bool MultiplayerGame::PreDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
-{
-	return true;
-}
-
-
-/************************************************************************************************/
-
-
-bool MultiplayerGame::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+bool GameState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
 {
 	return true;
 }
@@ -62,7 +54,25 @@ bool MultiplayerGame::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, dou
 /************************************************************************************************/
 
 
-bool MultiplayerGame::PostDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+bool GameState::PreDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
+{
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool GameState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+{
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool GameState::PostDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
 	return true;
 }

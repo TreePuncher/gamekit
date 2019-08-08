@@ -329,7 +329,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(TextureHandle RenderTarget)
 	{
-		return WriteRenderTarget(Resources->renderSystem.GetTag(RenderTarget));
+		return RenderTarget != InvalidHandle_t ? WriteRenderTarget(Resources->renderSystem.GetTag(RenderTarget)) : InvalidHandle_t;
 	}
 
 
@@ -337,9 +337,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::PresentBackBuffer(TextureHandle handle)
+	FrameResourceHandle	FrameGraphNodeBuilder::PresentBackBuffer(TextureHandle renderTarget)
 	{
-		return AddReadableResource(handle, DeviceResourceState::DRS_Present);
+		return renderTarget != InvalidHandle_t ? AddReadableResource(renderTarget, DeviceResourceState::DRS_Present) : InvalidHandle_t;
 	}
 
 
@@ -348,6 +348,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteBackBuffer(TextureHandle handle)
 	{
+		FK_ASSERT(handle != InvalidHandle_t);
 		return AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
 	}
 

@@ -122,20 +122,19 @@ namespace FlexKit
 		FrameGraph&				FGraph,
 		SpriteFontAsset&		Font,
 		VertexBufferHandle		Buffer, 
-		TextureHandle			RenderTarget,
+		TextureHandle			renderTarget,
 		iAllocator*				TempMemory,
 		PrintTextFormatting&	Formatting)
 	{
 		struct DrawSpriteText
 		{
-			FrameResourceHandle		RenderTarget;
+			FrameResourceHandle		renderTarget;
 			VertexBufferHandle		VertexBuffer;
 			ConstantBufferHandle	ConstantBuffer;
-			FrameResourceHandle		TextSheet;
 			size_t					VertexCount;
 			size_t					VertexOffset;
 
-			FlexKit::DescriptorHeap	Heap;
+			DescriptorHeap			Heap;
 		};
 
 		FGraph.AddNode<DrawSpriteText>(
@@ -143,14 +142,15 @@ namespace FlexKit
 			[&](FrameGraphNodeBuilder& Builder, DrawSpriteText& Data)
 			{
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })
-					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.renderSystem.GetRenderTargetWH(RenderTarget);
+					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.renderSystem.GetRenderTargetWH(renderTarget);
+
+				Data.renderTarget	= Builder.WriteRenderTarget(renderTarget);
 
 				Data.Heap.Init(
 					FGraph.Resources.renderSystem, 
 					FGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMemory);
 
-				Data.TextSheet		= Builder.ReadShaderResource(Font.Texture);
 				size_t StrLen		= strlen(Str);
 				size_t BufferSize	= StrLen * sizeof(TextEntry);
 				Vector<TextEntry>	Text{ TempMemory };
@@ -242,18 +242,18 @@ namespace FlexKit
 					FlexKit::PushVertex(Character2, Buffer, FGraph.Resources);
 				}
 			},
-			[](DrawSpriteText& Data, const FrameResources& Resources, Context* Ctx)
+			[spriteSheet = Font.Texture](DrawSpriteText& Data, const FrameResources& Resources, Context* Ctx)
 			{
-				auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
+				auto WH = Resources.GetRenderTargetWH(Data.renderTarget);
 				
-				Data.Heap.SetSRV(Resources.renderSystem, 0, Resources.GetTexture(Data.TextSheet));
+				Data.Heap.SetSRV(Resources.renderSystem, 0, spriteSheet);
 				Data.Heap.NullFill(Resources.renderSystem);
 
 				Ctx->SetRootSignature				(Resources.renderSystem.Library.RS6CBVs4SRVs);
 				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
-				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.RenderTarget) });
-				Ctx->SetRenderTargets				({ Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
+				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.renderTarget) });
+				Ctx->SetRenderTargets				({ Resources.GetRenderTargetObject(Data.renderTarget) }, false);
 
 				Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
 				Ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);

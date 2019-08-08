@@ -14,7 +14,7 @@
 
 PlayState::PlayState(
 		GameFramework*	IN_Framework,
-		BaseState*		IN_base) : 
+		BaseState&		IN_base) : 
 	FrameworkState		{ IN_Framework						},
 
 	/*
@@ -26,8 +26,8 @@ PlayState::PlayState(
 
 	frameID				{ 0 },
 	sound				{ framework->core->Threads, framework->core->GetBlockMemory()	},
-	render				{ IN_base->render												},
-	base				{ *IN_base														},
+	render				{ IN_base.render												},
+	base				{ IN_base														},
 	eventMap			{ framework->core->GetBlockMemory()								},
 	debugCameraInputMap	{ framework->core->GetBlockMemory()								},
 	debugEventsInputMap	{ framework->core->GetBlockMemory()								},
@@ -170,7 +170,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 {
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
-	CameraHandle activeCamera = (CameraHandle)debugCamera;
+	CameraHandle activeCamera = debugCamera;
 
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
 	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher, transforms);
@@ -241,9 +241,16 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 						{ scale, scale, scale, 1},
 						{ 0, 0, 0, 0 }, 
 						{ 0, 0, 0, 1 }, 
-						{pos.x, pos.y, pos.z });
+						{ pos.x, pos.y, pos.z });
 
 					return float4x4{ XMMatrixToFloat4x4(&m) };
+				},
+				[=](auto& defaultResources, auto& resources, auto& ctx)  // Do not setup render targets!
+				{
+					ctx->SetGraphicsDescriptorTable(0, defaultResources.heap);
+					ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+					ctx->SetPipelineState(resources.GetPipelineState(FORWARDDRAWINSTANCED));
+					ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 				},
 				DrawCollectionDesc,
 				core->GetTempMemory());

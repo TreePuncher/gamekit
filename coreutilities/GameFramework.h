@@ -97,12 +97,11 @@ namespace FlexKit
 		PhysicsSystem*	GetPhysx()			{ return core->Physics; }
 
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
-		TY_INITIALSTATE& PushState(TY_ARGS&& ... ARGS)
+		TY_INITIALSTATE& PushState(TY_ARGS&& ... args)
 		{
 			FK_LOG_9("Pushing New State");
 
-			auto& State = core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(
-				this, std::forward<TY_ARGS>(ARGS)...);
+			auto& State = core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(this, std::forward<TY_ARGS>(args)...);
 
 			subStates.push_back(&State);
 

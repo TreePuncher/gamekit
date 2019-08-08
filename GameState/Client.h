@@ -36,6 +36,7 @@ struct ClientGameDescription
 {
 	short		port			= 1337;
 	const char*	serverAddress	= "127.0.0.1"; // no place like home
+	const char* name			= nullptr;
 };
 
 
@@ -50,10 +51,10 @@ class ClientLobbyState : public FlexKit::FrameworkState
 {
 public:
 	ClientLobbyState(
-		FlexKit::GameFramework* IN_framework,
-		GameClientState*		IN_client,
-		NetworkState*			IN_network,
-		const char*				IN_localPlayerName);
+		GameFramework*		IN_framework,
+		GameClientState*	IN_client,
+		NetworkState*		IN_network,
+		const char*			IN_localPlayerName);
 
 
 	~ClientLobbyState();
@@ -94,18 +95,27 @@ public:
 			remotePlayers		{ IN_framework->core->GetBlockMemory()	}
 	{
 		char	Address[256];
-		std::cout << "Please Enter Name: \n";
-		std::cin >> localName;
-		std::cout << "Please Address: \n";
-		std::cin >> Address;
-		std::cout << "Connecting now\n";
+		if (!IN_desc.name)
+		{
+			std::cout << "Please Enter Name: \n";
+			std::cin >> localName;
+		}
+		else 
+			strncpy(localName, IN_desc.name, strnlen(IN_desc.name, 32) + 1);
 
+		if (!IN_desc.serverAddress)
+		{
+			std::cout << "Please Address: \n";
+			std::cin >> Address;
+		}
+
+		std::cout << "Connecting now\n";
 		RakNet::SocketDescriptor desc;
 
 		network.localPeer->Startup(1, &desc, 1);
-		RakNet::ConnectionAttemptResult res = network.localPeer->Connect(Address, 1337, nullptr, 0);
-		network.ConnectionAcceptedHandler	= [&](auto packet) {ConnectionSuccess(packet); };
-		network.DisconnectHandler			= [&](auto packet) {ServerLost(packet); };
+		RakNet::ConnectionAttemptResult res = network.localPeer->Connect(IN_desc.serverAddress, 1337, nullptr, 0);
+		network.ConnectionAcceptedHandler	= [&](auto packet) { ConnectionSuccess(packet); };
+		network.DisconnectHandler			= [&](auto packet) { ServerLost(packet); };
 	}
 
 
@@ -118,7 +128,10 @@ public:
 
 	void StartGame()
 	{
-		framework->PopState();
+		auto framework_temp = framework;
+		framework_temp->PopState();
+		//auto& predictedState		= framework_temp->PushState<GameState>();
+		//auto& localState			= framework_temp->PushState<RemotePlayerState>();
 	}
 
 

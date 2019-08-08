@@ -60,7 +60,7 @@ class PlayState : public FrameworkState
 public:
 	PlayState(
 		GameFramework*	IN_Framework, 
-		BaseState*		Base);
+		BaseState&		Base);
 	
 
 	~PlayState();

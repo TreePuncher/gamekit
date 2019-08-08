@@ -2237,8 +2237,9 @@ namespace FlexKit
 		VertexBufferHandle		instanceBuffer;
 		ConstantBufferHandle	constantBuffer;
 		PSOHandle				PSO;
+		bool					enableDepthBuffer = true;
 
-		size_t	reserveCount	= 512;
+		size_t	reserveCount			= 512;
 		size_t	InstanceElementSize;
 	};
 
@@ -2257,7 +2258,7 @@ namespace FlexKit
 		size_t					offset;
 	};
 
-	template<typename FETCHINSTANCES_FN, typename FETCHCONSTANTS_FN, typename FORMATINSTANCE_FN>
+	template<typename FETCHINSTANCES_FN, typename FETCHCONSTANTS_FN, typename FORMATINSTANCE_FN, typename PIPELINESETUP_FN>
 	void DrawCollection(
 		FrameGraph&							frameGraph,
 		static_vector<UpdateTask*>			dependencies,
@@ -2266,6 +2267,7 @@ namespace FlexKit
 		FETCHCONSTANTS_FN					fetchConstants,
 		FETCHINSTANCES_FN					fetchInstances,
 		FORMATINSTANCE_FN					formatInstanceData,
+		PIPELINESETUP_FN					setupPipeline,
 		const DrawCollection_Desc&			desc,
 		iAllocator*							tempAllocator)
 	{
@@ -2309,7 +2311,7 @@ namespace FlexKit
 					builder.AddDataDependency(*dep);
 
 				data.renderTarget	= builder.WriteRenderTarget(desc.RenderTarget);
-				data.depthBuffer	= builder.WriteDepthBuffer(desc.DepthBuffer);
+				data.depthBuffer	= desc.enableDepthBuffer ? builder.WriteDepthBuffer(desc.DepthBuffer) : InvalidHandle_t;
 
 				data.heap.Init(
 					frameGraph.Resources.renderSystem,
@@ -2343,16 +2345,12 @@ namespace FlexKit
 				auto* triMesh			= GetMeshResource(data.mesh);
 				size_t MeshVertexCount	= triMesh->IndexCount;
 
+				setupPipeline(data, resources, ctx);
 
-				// Setup state
-				ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
-				ctx->SetPipelineState(resources.GetPipelineState(data.PSO));
-
-				ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 				ctx->SetRenderTargets(
-					{	(DescHeapPOS)resources.GetRenderTargetObject(data.renderTarget) }, true,
-						(DescHeapPOS)resources.GetRenderTargetObject(data.depthBuffer));
+					{	resources.GetRenderTargetObject(data.renderTarget) }, true,
+						resources.GetRenderTargetObject(data.depthBuffer));
 
 				// Bind resources
 				VertexBufferList instancedBuffers;
@@ -2370,14 +2368,12 @@ namespace FlexKit
 					},
 					&instancedBuffers);
 
-				ctx->SetGraphicsDescriptorTable(0, data.heap);
 
 				for (auto& CBEntry : data.constants) 
 					ctx->SetGraphicsConstantBufferView(
 						1u + CBEntry.idx, 
 						data.constantBuffer, 
 						data.constantBuffer.Push(CBEntry.buffer, CBEntry.bufferSize));
-
 
 				for (auto& constantBuffer : data.constantBuffers)
 					ctx->SetGraphicsConstantBufferView(1u + constantBuffer.idx, data.constantBuffer, constantBuffer.offset);

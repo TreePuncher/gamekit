@@ -102,6 +102,8 @@ namespace FlexKit
 
 		char	FontName[128];
 		char*	FontDir; // Texture Directory
+
+		operator TextureHandle () { return Texture; }
 	};
 
 

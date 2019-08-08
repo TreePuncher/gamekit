@@ -101,11 +101,41 @@ enum DEBUG_EVENTS : int64_t
 /************************************************************************************************/
 
 
-class LocalPlayerHandler
+constexpr	FlexKit::ComponentID PlayerCameraComponentID	= GetTypeGUID(PlayerComponentID);
+using		PlayerCameraHandle								= FlexKit::Handle_t<32, PlayerComponentID>;
+
+
+struct PlayerCamera
 {
-public:
+	GameObject* gameObject;
+	size_t		health;
 };
 
+
+using PlayerCameraComponent = FlexKit::BasicComponent_t<PlayerCamera, PlayerCameraHandle, PlayerComponentID>;
+
+
+/************************************************************************************************/
+
+
+constexpr	FlexKit::ComponentID PlayerComponentID	= GetTypeGUID(PlayerComponentID);
+using		PlayerHandle							= FlexKit::Handle_t<32, PlayerComponentID>;
+
+
+struct Player
+{
+	GameObject* gameObject;
+	size_t		health;
+};
+
+
+using PlayerComponent = FlexKit::BasicComponent_t<Player, PlayerHandle, PlayerComponentID>;
+
+
+GameObject& CreatePlayer(iAllocator* allocator)
+{
+
+}
 
 /************************************************************************************************/
 

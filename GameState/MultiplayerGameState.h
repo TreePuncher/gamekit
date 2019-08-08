@@ -3,6 +3,7 @@
 
 #include "..\coreutilities\GameFramework.h"
 #include "..\coreutilities\containers.h"
+#include "..\coreutilities\Components.h"
 #include "..\coreutilities\EngineCore.h"
 #include "..\coreutilities\ResourceHandles.h"
 
@@ -21,25 +22,203 @@ class PacketHandler;
 /************************************************************************************************/
 
 
-class MultiplayerGame : public FlexKit::FrameworkState
+constexpr	ComponentID NetObjectComponentID	= GetTypeGUID(NetObjectComponentID);
+using		NetComponentHandle					= FlexKit::Handle_t<32, NetObjectComponentID>;
+using		NetObjectID							= size_t;
+
+struct NetObject
+{
+	GameObject* gameObject;
+	NetObjectID	netID;
+};
+
+using NetObjectReplicationComponent = FlexKit::BasicComponent_t<NetObject, NetComponentHandle, NetObjectComponentID>;
+
+
+/************************************************************************************************/
+
+
+constexpr	FlexKit::ComponentID	NetInputEventsComponentID	= GetTypeGUID(NetInputEventsComponentID);
+using								NetInputComponentHandle		= FlexKit::Handle_t<32, NetInputEventsComponentID>;
+
+struct NetInputFrame
+{
+	bool forward	= false;
+	bool backward	= false;
+	bool left		= false;
+	bool right		= false;
+};
+
+struct NetStateFrame
+{
+	float3	position;
+	size_t	frameID;
+};
+
+struct NetInput
+{
+	GameObject*							gameObject;
+	CircularBuffer<NetInputFrame, 60>	inputFrames;
+	CircularBuffer<NetInputFrame, 60>	stateFrames;
+};
+
+using NetObjectInputComponent = FlexKit::BasicComponent_t<NetInput, NetComponentHandle, NetObjectComponentID>;
+
+
+/************************************************************************************************/
+
+
+class GameState final : public FlexKit::FrameworkState 
 {
 public:
-	MultiplayerGame		(FlexKit::GameFramework* IN_framework, NetworkState* network, size_t playerCount, BaseState* base);
-	~MultiplayerGame	();
+	GameState(FlexKit::GameFramework* IN_framework, BaseState& base);
+
+	~GameState();
+
+	GameState				(const GameState&) = delete;
+	GameState& operator =	(const GameState&) = delete;
 
 	bool Update			(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) final;
 	bool PreDrawUpdate	(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) final;
 	bool Draw			(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) final;
 	bool PostDrawUpdate	(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) final;
 
+	GraphicScene	scene;
+	BaseState&		base;
+	size_t			frameID;
+};
 
-private:
-	FlexKit::TriMeshHandle							characterModel;
 
-	NetworkState*									network;
-	BaseState*										base;
+// Takes inputs,
+// passes inputs to GameState
+class LocalPlayerState : public FlexKit::FrameworkState
+{
+public:
+	LocalPlayerState(FlexKit::GameFramework* IN_framework, BaseState& IN_base, GameState& IN_game) : 
+		FrameworkState	{ IN_framework							},
+		game			{ IN_game								},
+		base			{ IN_base								},
+		eventMap		{ IN_framework->core->GetBlockMemory()	},
+		netInputObjects	{ IN_framework->core->GetBlockMemory()	},
+		netObjects		{ IN_framework->core->GetBlockMemory()	}
+	{
+		eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
+		eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
+		eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft);
+		eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
+	}
 
-	size_t											frameID;
+
+	/************************************************************************************************/
+
+
+	virtual ~LocalPlayerState() override
+	{
+	}
+
+	/************************************************************************************************/
+
+
+	bool Update			(EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT) final
+	{
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool PreDrawUpdate	(EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT) final
+	{
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool Draw			(EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final
+	{
+		frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
+
+		CameraHandle activeCamera = debugCamera;
+
+		auto& scene				= game.scene;
+		auto& transforms		= QueueTransformUpdateTask	(dispatcher);
+		auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher, transforms);
+		auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
+		auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core->GetTempMemory());
+		auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
+		auto& textureStreams	= base.streamingEngine.update(dispatcher);
+
+		FlexKit::WorldRender_Targets targets = {
+			GetCurrentBackBuffer(&core->Window),
+			base.depthBuffer
+		};
+
+		LighBufferDebugDraw debugDraw;
+		debugDraw.constantBuffer = base.constantBuffer;
+		debugDraw.renderTarget   = targets.RenderTarget;
+		debugDraw.vertexBuffer	 = base.vertexBuffer;
+
+		SceneDescription sceneDesc;
+		sceneDesc.lights			= &scene.GetPointLights(dispatcher, core->GetTempMemory());
+		sceneDesc.transforms		= &transforms;
+		sceneDesc.cameras			= &cameras;
+		sceneDesc.PVS				= &PVS;
+	
+		base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
+
+		ClearVertexBuffer(frameGraph, base.vertexBuffer);
+		ClearVertexBuffer(frameGraph, base.textBuffer);
+
+		ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
+		ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
+
+		base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.GetData().solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool EventHandler(Event evt) final
+	{
+		eventMap.Handle(evt, [&](auto& evt)
+			{
+				debugCamera.HandleEvent(evt);
+			});
+
+		return true;
+	}
+
+
+
+private:	/************************************************************************************************/
+
+	NetObjectInputComponent			netInputObjects;
+	NetObjectReplicationComponent	netObjects;
+	InputMap						eventMap;
+	OrbitCameraBehavior				debugCamera;
+	BaseState&						base;
+	GameState&						game;
+};
+
+
+/************************************************************************************************/
+
+
+// Takes inputs,
+// passes inputs to remote GameState and a local GameState
+// net object replication
+class RemotePlayerState : public FlexKit::FrameworkState
+{
+public:
+	RemotePlayerState(FlexKit::GameFramework* IN_framework) : FrameworkState{ IN_framework } {}
+
+	BaseState* base;
 };
 
 

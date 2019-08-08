@@ -5443,6 +5443,9 @@ namespace FlexKit
 		for (auto G : GeometryTable.Geometry)
 			ReleaseTriMesh(&G);
 
+		//for (auto id : GeometryTable.GeometryIDs)
+		//	GeometryTable.Memory->free((void*)id);
+
 		GeometryTable.Geometry.Release();
 		GeometryTable.ReferenceCounts.Release();
 		GeometryTable.Guids.Release();

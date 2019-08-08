@@ -640,6 +640,17 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename TY_Component>
+	class BasicBehavior_t : public Component<BasicBehavior_t<TY_Component>>
+	{
+	public:
+		TY_Component::TY_Handle handle;
+	};
+
+
+	/************************************************************************************************/
+
+
 	constexpr ComponentID StringComponentID = GetTypeGUID(StringID);
 	using StringIDHandle = Handle_t <32, GetTypeGUID(StringID)>;
 

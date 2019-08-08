@@ -50,7 +50,7 @@ bool GameHostLobbyState::Update(EngineCore* core, UpdateDispatcher& Dispatcher, 
 {
 	for (auto player : playerLobbyState)
 	{
-		auto playerHostState = host->GetPlayer(player.ID);
+		auto playerHostState = host.GetPlayer(player.ID);
 		if (playerHostState->State == Lobby)
 		{
 			screen.SetPlayerName(player.ID, playerHostState->Name);
@@ -76,23 +76,23 @@ bool GameHostLobbyState::Draw(EngineCore* core, UpdateDispatcher& Dispatcher, do
 {
 	auto currentRenderTarget = GetCurrentBackBuffer(&core->Window);
 
-	ClearVertexBuffer	(frameGraph, host->base->vertexBuffer);
-	ClearVertexBuffer	(frameGraph, host->base->textBuffer);
+	ClearVertexBuffer	(frameGraph, host.base.vertexBuffer);
+	ClearVertexBuffer	(frameGraph, host.base.textBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 	LobbyScreenDrawDesc Desc;
 	Desc.allocator			= core->GetTempMemory();
-	Desc.constantBuffer		= host->base->constantBuffer;
-	Desc.vertexBuffer		= host->base->vertexBuffer;
-	Desc.textBuffer			= host->base->textBuffer;
+	Desc.constantBuffer		= host.base.constantBuffer;
+	Desc.vertexBuffer		= host.base.vertexBuffer;
+	Desc.textBuffer			= host.base.textBuffer;
 	Desc.renderTarget		= currentRenderTarget;
 	screen.Draw(Desc, Dispatcher, frameGraph);
 
 	FlexKit::DrawMouseCursor(
 		framework->MouseState.NormalizedScreenCord,
 		{ 0.05f, 0.05f },
-		host->base->vertexBuffer,
-		host->base->constantBuffer,
+		host.base.vertexBuffer,
+		host.base.constantBuffer,
 		currentRenderTarget,
 		core->GetTempMemory(),
 		&frameGraph);
@@ -107,7 +107,7 @@ bool GameHostLobbyState::Draw(EngineCore* core, UpdateDispatcher& Dispatcher, do
 bool GameHostLobbyState::PostDrawUpdate(EngineCore* core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
 	if (framework->drawDebugStats)
-		framework->DrawDebugHUD(dT, host->base->textBuffer, Graph);
+		framework->DrawDebugHUD(dT, host.base.textBuffer, Graph);
 
 	PresentBackBuffer(Graph, &core->Window);
 	return true;
@@ -126,7 +126,7 @@ bool GameHostLobbyState::EventHandler(FlexKit::Event evt)
 		{
 		case FlexKit::KC_SPACE:
 		{
-			host->BeginGame();
+			host.BeginGame();
 		}	break;
 		default:
 			break;
@@ -142,14 +142,14 @@ bool GameHostLobbyState::EventHandler(FlexKit::Event evt)
 
 GameHostLobbyState::GameHostLobbyState(
 	GameFramework*	IN_framework,
-	GameHostState*	IN_host) :
-		FrameworkState		{IN_framework}, 
-		packetHandlers		{IN_framework->core->GetBlockMemory()},
-		host				{IN_host},
-		playerLobbyState	{IN_framework->core->GetBlockMemory()},
-		screen				{IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font}
+	GameHostState&	IN_host) :
+		FrameworkState		{ IN_framework																}, 
+		packetHandlers		{ IN_framework->core->GetBlockMemory()										},
+		host				{ IN_host																	},
+		playerLobbyState	{ IN_framework->core->GetBlockMemory()										},
+		screen				{ IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font	}
 {
-	IN_host->network->NewConnectionHandler = [this](RakNet::Packet* packet) {
+	IN_host.network.NewConnectionHandler = [this](RakNet::Packet* packet) {
 		HandleNewConnection(packet); 
 	};
 
@@ -161,10 +161,11 @@ GameHostLobbyState::GameHostLobbyState(
 			{
 				ClientDataPacket* ClientData = (ClientDataPacket*)packetContents;
 
-				if (host->GetPlayer(ClientData->playerID))
+				if (auto player = host.GetPlayer(ClientData->playerID); player)
 				{
-					host->SetState(ClientData->playerID, Lobby);
-					host->SetPlayerName(
+					player->State = Lobby;
+
+					host.SetPlayerName(
 						ClientData->playerID, 
 						ClientData->playerName, 
 						ClientData->playerNameLength);
@@ -183,7 +184,7 @@ GameHostLobbyState::GameHostLobbyState(
 				FK_LOG_INFO("ready packet recieved!");
 
 				ClientReady* readyPacket = (ClientReady*)packetContents;
-				auto playerState = host->GetPlayer(readyPacket->playerID);
+				auto playerState = host.GetPlayer(readyPacket->playerID);
 
 				if (playerState)
 				{
@@ -214,36 +215,43 @@ GameHostLobbyState::GameHostLobbyState(
 				FK_LOG_9("Player list requested");
 
 				auto request				= (RequestPlayerListPacket*)(packetContents);
-				auto packetSize				= PlayerListPacket::GetPacketSize(playerLobbyState.size() - 1);
+				auto packetSize				= PlayerListPacket::GetPacketSize(host.players.size() - 1);
 				auto packetBuffer			= framework->core->GetTempMemory()._aligned_malloc(packetSize);
-				PlayerListPacket* newPacket = new(packetBuffer)	PlayerListPacket(request->playerID, playerLobbyState.size() - 1);
+				PlayerListPacket* newPacket = new(packetBuffer)	PlayerListPacket(request->playerID, host.players.size() - 1);
 
 				size_t idx = 0;
-				for (auto& playerState : playerLobbyState)
+				for (auto& playerState : host.players)
 				{
-					if (playerState.ID == newPacket->playerID)
+
+					if (playerState.PlayerID == newPacket->playerID)
 						continue;
 
-					auto player = host->GetPlayer(playerState.ID);
 
-					newPacket->Players[idx].playerID	= playerState.ID;
-					newPacket->Players[idx].ready		= playerState.Ready;
+					newPacket->Players[idx].playerID	= playerState.PlayerID;
 
-					if (player)
-						strncpy(
-							newPacket->Players[idx].playerName, 
-							player->Name, 
-							sizeof(PlayerListPacket::entry::playerName));
+					if (playerState.Local)
+						newPacket->Players[idx].ready = localHostReady;
+					else
+					{
+						auto [player, found] = GetPlayerLobbyState(playerState.PlayerID);
+						if(found)
+							newPacket->Players[idx].ready = player.Ready;
+					}
+
+					strncpy(
+						newPacket->Players[idx].playerName, 
+						playerState.Name,
+						sizeof(PlayerListPacket::entry::playerName));
 
 					idx++;
 				}
 
-				host->network->SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
+				host.network.SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
 			}, 
 			IN_framework->core->GetBlockMemory()));
 
 
-	host->network->PushHandler(&packetHandlers);
+	host.network.PushHandler(&packetHandlers);
 }
 
 
@@ -252,7 +260,7 @@ GameHostLobbyState::GameHostLobbyState(
 
 GameHostLobbyState::~GameHostLobbyState()
 {
-	host->network->PopHandler();
+	host.network.PopHandler();
 	for (auto handler : packetHandlers)
 		framework->core->GetBlockMemory().free(handler);
 }
@@ -261,13 +269,28 @@ GameHostLobbyState::~GameHostLobbyState()
 /************************************************************************************************/
 
 
+void GameHostLobbyState::AddLocalPlayer(MultiplayerPlayerID_t ID)
+{
+	screen.CreateRow(ID);
+
+	const auto localPlayer	= host.GetPlayer(ID);
+	const auto nameLength	= strnlen(localPlayer->Name, 32);
+
+	host.SetState(ID, Lobby);
+	screen.SetPlayerName(ID, localPlayer->Name);
+}
+
+
+/************************************************************************************************/
+
+
 void GameHostLobbyState::HandleNewConnection(RakNet::Packet* packet)
 {
-	auto newID = host->GetNewID();
+	auto newID = host.GetNewID();
 
 	RequestClientDataPacket Packet(newID);
 
-	host->players.push_back({
+	host.players.push_back({
 					false,
 					Joining,
 					newID,
@@ -280,7 +303,7 @@ void GameHostLobbyState::HandleNewConnection(RakNet::Packet* packet)
 					newID, 
 					false});
 
-	host->network->SendPacket(Packet.GetRawPacket(), packet->systemAddress);
+	host.network.SendPacket(Packet.GetRawPacket(), packet->systemAddress);
 }
 
 

@@ -117,33 +117,6 @@ LambdaPacketHandler<FN_TY>* CreatePacketHandler(PacketID_t IN_id, FN_TY&& FN, Fl
 	return &allocator->allocate_aligned<LambdaPacketHandler<FN_TY>>(IN_id, std::move(FN));
 }
 
-/************************************************************************************************/
-
-
-constexpr	ComponentID NetObjectComponentID	= GetTypeGUID(NetObjectComponentID);
-using		NetComponentHandle					= FlexKit::Handle_t<32, NetObjectComponentID>;
-
-
-class NetObjectReplicationComponent : FlexKit::Component<NetObjectReplicationComponent, NetComponentHandle, NetObjectComponentID>
-{
-public:
-	NetObjectReplicationComponent(iAllocator* IN_allocator) : 
-		allocator{ IN_allocator }
-	{
-
-	}
-
-
-	NetComponentHandle Create(FlexKit::GameObject* gameObject)
-	{
-		return InvalidHandle_t;
-	}
-
-public:
-
-	FlexKit::iAllocator* allocator;
-};
-
 
 /************************************************************************************************/
 
@@ -155,8 +128,7 @@ public:
 		FlexKit::GameFramework* IN_framework, 
 		BaseState*	IN_base) :
 			FrameworkState	{ IN_framework },
-			handlerStack	{ IN_framework->core->GetBlockMemory() },
-			netObjects		{ IN_framework->core->GetBlockMemory() }
+			handlerStack	{ IN_framework->core->GetBlockMemory() }
 	{
 		localPeer = RakNet::RakPeerInterface::GetInstance();
 		localPeer->SetMaximumIncomingConnections(16);
@@ -175,15 +147,17 @@ public:
 	bool Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override
 	{
 		// Handle incoming Packets
+
 		RakNet::Packet *packet;
 		for (
 			packet = localPeer->Receive(); 
 			packet; localPeer->DeallocatePacket(packet), packet = localPeer->Receive())
 		{
+			FK_LOG_9("Packet Recieved!");
 			switch (packet->data[0])
 			{
 			case DefaultMessageIDTypes::ID_NEW_INCOMING_CONNECTION:
-				FK_LOG_9("New Connection Incoming");
+				FK_LOG_INFO("New Connection Incoming");
 
 				if (NewConnectionHandler)
 					NewConnectionHandler(packet);
@@ -268,7 +242,6 @@ public:
 	unsigned short						serverPort;
 	RakNet::RakPeerInterface*			localPeer;
 	Vector<Vector<PacketHandler*>*>		handlerStack;
-	NetObjectReplicationComponent		netObjects;
 };
 
 
