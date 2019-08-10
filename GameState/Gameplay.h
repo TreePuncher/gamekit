@@ -101,8 +101,8 @@ enum DEBUG_EVENTS : int64_t
 /************************************************************************************************/
 
 
-constexpr	FlexKit::ComponentID PlayerCameraComponentID	= GetTypeGUID(PlayerComponentID);
-using		PlayerCameraHandle								= FlexKit::Handle_t<32, PlayerComponentID>;
+constexpr	FlexKit::ComponentID PlayerCamerComponentID	= GetTypeGUID(PlayerCamerComponentID);
+using		PlayerCameraHandle							= FlexKit::Handle_t<32, PlayerCamerComponentID>;
 
 
 struct PlayerCamera
@@ -112,7 +112,7 @@ struct PlayerCamera
 };
 
 
-using PlayerCameraComponent = FlexKit::BasicComponent_t<PlayerCamera, PlayerCameraHandle, PlayerComponentID>;
+using PlayerCameraComponent = FlexKit::BasicComponent_t<PlayerCamera, PlayerCameraHandle, PlayerCamerComponentID>;
 
 
 /************************************************************************************************/
@@ -132,10 +132,12 @@ struct Player
 using PlayerComponent = FlexKit::BasicComponent_t<Player, PlayerHandle, PlayerComponentID>;
 
 
+/*
 GameObject& CreatePlayer(iAllocator* allocator)
 {
 
 }
+*/
 
 /************************************************************************************************/
 

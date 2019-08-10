@@ -202,8 +202,8 @@ namespace FlexKit
 	public:
 		Behavior_t() : BehaviorBase{ ComponentTY::GetComponentID() } {}
 
-		static ComponentID	GetComponentID()	{ return ComponentTY::GetComponentID(); }
-		static auto			GetComponent() -> decltype(ComponentTY::GetComponent())& { return ComponentTY::GetComponent(); }
+		static ComponentID		GetComponentID()	{ return ComponentTY::GetComponentID(); }
+		static decltype(auto)	GetComponent()		{ return ComponentTY::GetComponent(); }
 	};
 
 
@@ -228,9 +228,11 @@ namespace FlexKit
 		template<typename TY_Behavior, typename ... TY_args>
 		void AddBehavior(TY_args&& ... args)
 		{
-			behaviors.push_back({ 
-				&allocator->allocate<TY_Behavior>(std::forward<TY_args>(args)...),
-				TY_Behavior::GetComponentID() });
+			static_assert(std::is_base_of<BehaviorBase, TY_Behavior>(), "You can only add behavior types!");
+
+			behaviors.push_back({
+					&allocator->allocate<TY_Behavior>(std::forward<TY_args>(args)...),
+					TY_Behavior::GetComponentID() });
 		}
 
 
@@ -377,6 +379,165 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	template<typename TY, typename TY_Handle, ComponentID ID>
+	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID>, TY_Handle, ID>
+	{
+	public:
+		BasicComponent_t(iAllocator* allocator) :
+			elements	{ allocator },
+			handles		{ allocator } {}
+
+
+		struct elementData
+		{
+			TY_Handle		handle;
+			TY				componentData;
+		};
+
+
+		TY_Handle Create(const TY& initial)
+		{
+			auto handle		= handles.GetNewHandle();
+			handles[handle] = elements.push_back({ handle, initial });
+
+			return handle;
+		}
+
+
+		void Remove(TY_Handle handle)
+		{
+			auto lastElement			= elements.back();
+			elements[handles[handle]]	= lastElement;
+			elements.pop_back();
+
+			handles[lastElement.handle] = handles[handle];
+			handles.RemoveHandle(handle);
+		}
+
+
+		Vector<TY> GetElements_copy(iAllocator* tempMemory) const
+		{
+			Vector<TY>	out{ tempMemory };
+
+			for (auto& I : elements)
+				out.push_back({ I.componentData });
+
+			return out;
+		}
+
+
+		TY& operator[] (TY_Handle handle)
+		{
+			return elements[handles[handle]].componentData;
+		}
+
+		TY operator[] (TY_Handle handle) const
+		{
+			return elements[handles[handle]].componentData;
+		}
+
+		HandleUtilities::HandleTable<TY_Handle>	handles;
+		Vector<elementData>						elements;
+	};
+
+
+	/************************************************************************************************/
+
+
+	template<typename TY_Component>
+	class BasicBehavior_t : public Behavior_t<TY_Component>
+	{
+	public:
+		template<typename ... TY_Args>
+		BasicBehavior_t(TY_Args ... args) : handle{ GetComponent().Create(std::forward<TY_Args>(args)...) } {}
+
+		using ComponentHandle_t = typename TY_Component::ComponetHandle_t;
+
+		decltype(auto) GetData()
+		{
+			return GetComponent()[handle];
+		}
+
+		ComponentHandle_t handle;
+	};
+
+
+	/************************************************************************************************/
+
+
+	constexpr ComponentID StringComponentID = GetTypeGUID(StringID);
+	using StringIDHandle = Handle_t <32, GetTypeGUID(StringID)>;
+
+	class StringIDComponent : public Component<StringIDComponent, StringIDHandle, StringComponentID>
+	{
+	public:
+		StringIDComponent(iAllocator* allocator) : 
+			IDs			{ allocator },
+			handles		{ allocator } {}
+
+
+		struct StringID
+		{
+			StringIDHandle	handle;
+			char			ID[64];
+		};
+
+
+		StringIDHandle Create(char* initial = nullptr, size_t length = 0)
+		{
+			auto handle = handles.GetNewHandle();
+
+			StringID newID;
+			newID.ID[length] = '\0';
+			strncpy(newID.ID, initial, min(sizeof(StringID), length));
+
+			handles[handle] = IDs.push_back(newID);
+
+			return handle;
+		}
+
+
+		void Remove(StringIDHandle handle)
+		{
+			auto lastElement		= IDs.back();
+			IDs[handles[handle]]	= lastElement;
+			IDs.pop_back();
+
+			handles[lastElement.handle] = handles[handle];
+			handles.RemoveHandle(handle);
+		}
+
+
+		char* operator[] (StringIDHandle handle)
+		{
+			return IDs[handles[handle]].ID;
+		}
+
+		HandleUtilities::HandleTable<StringIDHandle>	handles;
+		Vector<StringID>								IDs;
+	};
+
+
+	/************************************************************************************************/
+
+
+	class StringIDBehavior : public Behavior_t<StringIDComponent>
+	{
+	public:
+		StringIDBehavior(char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
+
+		char* GetString()
+		{
+			return GetComponent()[ID];
+		}
+
+		StringIDHandle ID;
+	};
+
+	
+	/************************************************************************************************/
+
+
 	constexpr ComponentID SampleComponentID = GetTypeGUID(SampleComponentID);
 	using SampleHandle = Handle_t <32, GetTypeGUID(SampleHandle)>;
 
@@ -505,6 +666,7 @@ namespace FlexKit
 		Sample2Handle handle;
 	};
 
+
 	class SampleBehavior3 : public Behavior_t<SampleComponent3>
 	{
 	public:
@@ -531,15 +693,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	using TestBehavior = BasicBehavior_t<StringIDComponent>;
+
+
 	void GameOjectTest(iAllocator* allocator)
 	{
 		SampleComponent		sample1(allocator);
 		SampleComponent2	sample2(allocator);
 		SampleComponent3	sample3(allocator);
 
+		TestBehavior behavior1;
+
 		GameObject go;
 		go.AddBehavior<SampleBehavior>();
 		go.AddBehavior<SampleBehavior2>();
+		go.AddBehavior<TestBehavior>();
 
 		Apply(go,
 			[](	// Function Sources
@@ -561,164 +729,17 @@ namespace FlexKit
 			[](	// Function Sources
 				SampleBehavior*		sample1,
 				SampleBehavior2*	sample2,
-				SampleBehavior3*	sample3	)
+				SampleBehavior3*	sample3,
+				TestBehavior*		test1	)
 			{	// do things with behaviors
 				sample1->DoSomething();
 				sample2->DoSomething();
 				sample3->DoSomething();
+
+				auto val = test1->GetData();
 			}, 
 			[] {});
 	}
-
-
-	/************************************************************************************************/
-
-
-
-	template<typename TY, typename TY_Handle, ComponentID ID>
-	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID>, TY_Handle, ID>
-	{
-	public:
-		BasicComponent_t(iAllocator* allocator) :
-			elements	{ allocator },
-			handles		{ allocator } {}
-
-
-		struct elementData
-		{
-			TY_Handle		handle;
-			TY				componentData;
-		};
-
-
-		TY_Handle Create(const TY& initial)
-		{
-			auto handle		= handles.GetNewHandle();
-			handles[handle] = elements.push_back({ handle, initial });
-
-			return handle;
-		}
-
-
-		void Remove(TY_Handle handle)
-		{
-			auto lastElement			= elements.back();
-			elements[handles[handle]]	= lastElement;
-			elements.pop_back();
-
-			handles[lastElement.handle] = handles[handle];
-			handles.RemoveHandle(handle);
-		}
-
-
-		Vector<TY> GetElements_copy(iAllocator* tempMemory) const
-		{
-			Vector<TY>	out{ tempMemory };
-
-			for (auto& I : elements)
-				out.push_back({ I.componentData });
-
-			return out;
-		}
-
-
-		TY& operator[] (TY_Handle handle)
-		{
-			return elements[handles[handle]].componentData;
-		}
-
-		TY operator[] (TY_Handle handle) const
-		{
-			return elements[handles[handle]].componentData;
-		}
-
-		HandleUtilities::HandleTable<TY_Handle>	handles;
-		Vector<elementData>						elements;
-	};
-
-
-	/************************************************************************************************/
-
-
-	template<typename TY_Component>
-	class BasicBehavior_t : public Component<BasicBehavior_t<TY_Component>>
-	{
-	public:
-		TY_Component::TY_Handle handle;
-	};
-
-
-	/************************************************************************************************/
-
-
-	constexpr ComponentID StringComponentID = GetTypeGUID(StringID);
-	using StringIDHandle = Handle_t <32, GetTypeGUID(StringID)>;
-
-	class StringIDComponent : public Component<StringIDComponent, StringIDHandle, StringComponentID>
-	{
-	public:
-		StringIDComponent(iAllocator* allocator) : 
-			IDs			{ allocator },
-			handles		{ allocator } {}
-
-
-		struct StringID
-		{
-			StringIDHandle	handle;
-			char			ID[64];
-		};
-
-
-		StringIDHandle Create(char* initial, size_t length)
-		{
-			auto handle = handles.GetNewHandle();
-
-			StringID newID;
-			newID.ID[length] = '\0';
-			strncpy(newID.ID, initial, min(sizeof(StringID), length));
-
-			handles[handle] = IDs.push_back(newID);
-
-			return handle;
-		}
-
-
-		void Remove(StringIDHandle handle)
-		{
-			auto lastElement		= IDs.back();
-			IDs[handles[handle]]	= lastElement;
-			IDs.pop_back();
-
-			handles[lastElement.handle] = handles[handle];
-			handles.RemoveHandle(handle);
-		}
-
-
-		char* operator[] (StringIDHandle handle)
-		{
-			return IDs[handles[handle]].ID;
-		}
-
-		HandleUtilities::HandleTable<StringIDHandle>	handles;
-		Vector<StringID>								IDs;
-	};
-
-
-	/************************************************************************************************/
-
-
-	class StringIDBehavior : public Behavior_t<StringIDComponent>
-	{
-	public:
-		StringIDBehavior(char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
-
-		char* GetString()
-		{
-			return GetComponent()[ID];
-		}
-
-		StringIDHandle ID;
-	};
 
 
 	/************************************************************************************************/
