@@ -4,3 +4,6 @@
 [submodule "Dependencies/sdks/loguru"]
 	path = Dependencies/sdks/loguru
 	url = https://github.com/emilk/loguru
+[submodule "Dependencies/sdks/DirectXTK"]
+	path = Dependencies/sdks/DirectXTK
+	url = https://github.com/microsoft/DirectXTK.git
