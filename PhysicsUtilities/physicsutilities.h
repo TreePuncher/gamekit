@@ -509,7 +509,7 @@ namespace FlexKit
 		bool							updateColliders;
 		physx::PxPvd*					visualDebugger;
 		physx::PxPvdTransport*			visualDebuggerConnection;
-		physx::PxGpuDispatcher*			GPUDispatcher;
+		//physx::PxGpuDispatcher*			GPUDispatcher;
 		physx::PxMaterial*				defaultMaterial;
 
 		bool							remoteDebuggerEnabled;

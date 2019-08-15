@@ -1,0 +1,3 @@
+[submodule "Dependencies/sdks/physx_sdk"]
+	path = Dependencies/sdks/physx_sdk
+	url = https://github.com/NVIDIAGameWorks/PhysX.git
