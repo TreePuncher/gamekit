@@ -110,12 +110,8 @@ public:
 		}
 
 		std::cout << "Connecting now\n";
-		RakNet::SocketDescriptor desc;
 
-		network.localPeer->Startup(1, &desc, 1);
-		RakNet::ConnectionAttemptResult res = network.localPeer->Connect(IN_desc.serverAddress, 1337, nullptr, 0);
-		network.ConnectionAcceptedHandler	= [&](auto packet) { ConnectionSuccess(packet); };
-		network.DisconnectHandler			= [&](auto packet) { ServerLost(packet); };
+		FK_ASSERT(0);
 	}
 
 
@@ -135,15 +131,16 @@ public:
 	}
 
 
-	void ConnectionSuccess(RakNet::Packet* packet)
+	void ConnectionSuccess()
 	{
-		ServerAddress = packet->systemAddress;
+		FK_ASSERT(0);
 		framework->PushState<ClientLobbyState>(this, &network, localName);
 	}
 
 
-	void ServerLost(RakNet::Packet* packet)
+	void ServerLost()
 	{
+		FK_ASSERT(0);
 		framework->quit = true;
 	}
 
@@ -156,7 +153,6 @@ public:
 	}
 
 	Vector<RemotePlayer>	remotePlayers;
-	RakNet::SystemAddress	ServerAddress;
 	Vector<PacketHandler*>	packetHandlers;
 	NetworkState&			network;
 	BaseState&				base;

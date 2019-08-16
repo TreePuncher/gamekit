@@ -149,6 +149,8 @@ GameHostLobbyState::GameHostLobbyState(
 		playerLobbyState	{ IN_framework->core->GetBlockMemory()										},
 		screen				{ IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font	}
 {
+	FK_ASSERT(0);
+	/*
 	IN_host.network.NewConnectionHandler = [this](RakNet::Packet* packet) {
 		HandleNewConnection(packet); 
 	};
@@ -252,6 +254,7 @@ GameHostLobbyState::GameHostLobbyState(
 
 
 	host.network.PushHandler(&packetHandlers);
+	*/
 }
 
 
@@ -284,6 +287,7 @@ void GameHostLobbyState::AddLocalPlayer(MultiplayerPlayerID_t ID)
 /************************************************************************************************/
 
 
+/*
 void GameHostLobbyState::HandleNewConnection(RakNet::Packet* packet)
 {
 	auto newID = host.GetNewID();
@@ -305,6 +309,6 @@ void GameHostLobbyState::HandleNewConnection(RakNet::Packet* packet)
 
 	host.network.SendPacket(Packet.GetRawPacket(), packet->systemAddress);
 }
-
+*/
 
 /************************************************************************************************/

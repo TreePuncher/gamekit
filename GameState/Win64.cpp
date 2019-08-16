@@ -84,6 +84,7 @@ int main(int argc, char* argv[])
 						// TODO: better input scrubbing
 						if (!name.size() && !server.size()) // if they entered invalid inputs
 							continue;						// Goes back to main menu to try again
+
 						multiplayerMode		= true;
 						host				= false;
 						return;

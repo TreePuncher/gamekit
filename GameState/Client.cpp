@@ -55,6 +55,7 @@ ClientLobbyState::ClientLobbyState(
 			IN_framework->core->GetBlockMemory()));
 
 
+	/*
 	packetHandlers.push_back(
 		CreatePacketHandler(
 			ClientDataRequest,
@@ -116,6 +117,7 @@ ClientLobbyState::ClientLobbyState(
 			IN_framework->core->GetBlockMemory()));
 
 	network.PushHandler(&packetHandlers);
+	*/
 }
 
 
@@ -147,7 +149,8 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 				ready = !ready;
 				
 				ClientReady packet(client.localID, ready);
-				network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
+				FK_ASSERT(0);
+				//network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
 			}
 			}
 		}
@@ -166,7 +169,8 @@ bool ClientLobbyState::Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispat
 		refreshCounter = 0;
 
 		RequestPlayerListPacket packet{ client.localID };
-		client.network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
+		FK_ASSERT(0);
+		//client.network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
 	}
 
 	return true;
