@@ -7,3 +7,6 @@
 [submodule "Dependencies/sdks/DirectXTK"]
 	path = Dependencies/sdks/DirectXTK
 	url = https://github.com/microsoft/DirectXTK.git
+[submodule "Dependencies/sdks/Yojimbo"]
+	path = Dependencies/sdks/Yojimbo
+	url = https://github.com/networkprotocol/yojimbo
