@@ -13,6 +13,8 @@
 #include "..\graphicsutilities\GuiUtilities.h"
 
 #include <functional>
+#include <steam\isteamnetworkingsockets.h>
+#include <steam\isteamnetworkingutils.h>
 
 using FlexKit::EngineCore;
 using FlexKit::UpdateDispatcher;
@@ -25,12 +27,12 @@ using FlexKit::GameFramework;
 typedef size_t PacketID_t;
 
 
-
 enum EBasePacketIDs : unsigned char
 {
 	EBP_USERPACKET,
 	EBP_COUNT,
 };
+
 
 class UserPacketHeader
 {
@@ -130,6 +132,15 @@ public:
 	/************************************************************************************************/
 
 
+    void Connect()
+    {
+
+    }
+
+
+    /************************************************************************************************/
+
+
 	bool Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override
 	{
 		// Handle incoming Packets
@@ -166,6 +177,7 @@ public:
 	/************************************************************************************************/
 
 	unsigned short						serverPort;
+    ISteamNetworkingSockets*            steamSockets;
 	Vector<Vector<PacketHandler*>*>		handlerStack;
 };
 

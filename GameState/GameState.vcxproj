@@ -72,11 +72,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ExecutablePath>$(VC_ExecutablePath_x64);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH);</ExecutablePath>
     <LibraryPath>$(SolutionDir)Dependencies\lib\release_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\release;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\lib;$(LibraryPath)</LibraryPath>
-    <IncludePath>$(SolutionDir)Dependencies\sdks\angelscript\angelscript\include;$(SolutionDir)Dependencies\sdks\angelscript\add_on;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\sdks\angelscript\angelscript\include;$(SolutionDir)Dependencies\sdks\angelscript\add_on;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\pxshared\include\;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(SolutionDir)Dependencies\sdks\SteamSockets\include;$(SolutionDir)Dependencies\include;$(IncludePath)</IncludePath>
     <OutDir>$(SolutionDir)\builds\release_x64\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(SolutionDir)Dependencies\sdks\angelscript\add_on;$(SolutionDir)Dependencies\sdks\angelscript\angelscript\include;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\pxshared\include\;$(SolutionDir)Dependencies\sdks\OpenSubdiv-master;$(SolutionDir)Dependencies\include;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(IncludePath)</IncludePath>
+    <IncludePath>$(SolutionDir)Dependencies\sdks\angelscript\add_on;$(SolutionDir)Dependencies\sdks\angelscript\angelscript\include;$(SolutionDir)Dependencies\sdks;$(SolutionDir)Dependencies\sdks\fbxsdk\include;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\foundation;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\common;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\include\extensions;$(SolutionDir)Dependencies\sdks\physx_sdk\physx\source\foundation\include\;$(SolutionDir)Dependencies\sdks\physx_sdk\pxshared\include\;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\inc;$(SolutionDir)Dependencies\sdks\SteamSockets\include;$(SolutionDir)Dependencies\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)Dependencies\lib\debug_x64;$(SolutionDir)Dependencies\sdks\physx\lib\win64;$(SolutionDir)Dependencies\sdks\fbxsdk\lib\vs2013\x64\debug;C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio API Windows\api\lowlevel\lib;$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)\builds\debug_x64\</OutDir>
   </PropertyGroup>
@@ -97,7 +97,7 @@
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>ws2_32.lib;user32.lib;RakNet_VS2008_LibStatic_Debug_x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;user32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -128,7 +128,7 @@
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>RakNet_VS2008_DLL_Release_x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <Profile>true</Profile>
     </Link>
   </ItemDefinitionGroup>

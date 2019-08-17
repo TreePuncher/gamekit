@@ -13,3 +13,6 @@
 [submodule "Dependencies/sdks/SteamSockets"]
 	path = Dependencies/sdks/SteamSockets
 	url = https://github.com/ValveSoftware/GameNetworkingSockets.git
+[submodule "Dependencies/sdks/protobuf"]
+	path = Dependencies/sdks/protobuf
+	url = https://github.com/google/protobuf

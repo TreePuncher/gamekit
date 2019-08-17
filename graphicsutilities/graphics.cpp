@@ -49,8 +49,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <iostream>
 
-#include "..\Dependencies\include\DirectXTK\WICTextureLoader.h"
-#include "..\Dependencies\include\DirectXTK\DDSTextureLoader.h"
+#include "..\Dependencies\sdks\DirectXTK\Inc\WICTextureLoader.h"
+#include "..\Dependencies\sdks\DirectXTK\inc\DDSTextureLoader.h"
 
 #pragma warning( disable :4267 )
 
