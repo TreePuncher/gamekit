@@ -708,11 +708,11 @@ namespace FlexKit
 	{
 		typedef SL_list<TY>		This_Type;
 
-		SL_list(iAllocator* M = nullptr) : Memory(M)
+        SL_list(iAllocator* M = nullptr) : _allocator{ M }
 		{
-			FirstNode = nullptr;
-			LastNode = nullptr;
-			Count = 0;
+			FirstNode   = nullptr;
+			LastNode    = nullptr;
+			Count       = 0;
 		}
 
 		~SL_list()
@@ -728,9 +728,8 @@ namespace FlexKit
 
 		struct Node
 		{
-			Node(const TY& Initial) : Data(Initial)
-			{
-			}
+            Node(TY&& Initial)      : Data{ std::move(Initial) } {} // Move Constructor
+            Node(const TY& Initial) : Data{ Initial } {} // Copy Constructor
 
 			TY					Data;
 			std::atomic<Node*>	Next;
@@ -802,22 +801,24 @@ namespace FlexKit
 
 		};
 
+
 		void Insert(Iterator Itr, TY&& e)
 		{
-			Node* NewNode = &Memory->allocate_aligned<Node>(std::move(e));
+			Node* NewNode = &_allocator->allocate_aligned<Node>(std::move(e));
 
 			NullCheck(NewNode);
 
-			Node* PrevNext = Itr._ptr->Next;
-			Itr._ptr->Next = NewNode;
-			NewNode->Next = PrevNext;
+			Node* PrevNext  = Itr._ptr->Next;
+			Itr._ptr->Next  = NewNode;
+			NewNode->Next   = PrevNext;
 
 			Itr->Container->Count++;
 		}
 
-		Iterator push_back(TY e)
+
+		Iterator push_back(const TY e)
 		{
-			Node* NewNode = &Memory->allocate_aligned<Node>(e);
+			Node* NewNode = &_allocator->allocate_aligned<Node>(e);
 
 			NullCheck(NewNode);
 
@@ -835,10 +836,33 @@ namespace FlexKit
 			Count++;
 
 			return { NewNode, this };
-			;
 		}
 
-		TY pop_front()
+
+        Iterator emplace_back(TY&& e)
+		{
+			Node* NewNode = &_allocator->allocate_aligned<Node>(std::move(e));
+
+			NullCheck(NewNode);
+
+			if (!Count)
+			{
+				FirstNode.store(NewNode);
+				LastNode.store(NewNode);
+			}
+			else
+			{
+				LastNode.load()->Next.store(NewNode);
+				LastNode.store(NewNode);
+			}
+
+			Count++;
+
+			return { NewNode, this };
+		}
+
+
+		auto pop_front()
 		{
 			FK_ASSERT(Count != 0);
 
@@ -850,15 +874,17 @@ namespace FlexKit
 			if (First->Next.load() == nullptr)
 				LastNode.store(nullptr);
 
-			FINAL(Count--; Memory->free(First); );
+			FINAL(Count--; _allocator->free(First); );
 
-			return First->Data;
+			return std::move(First->Data);
 		}
+
 
 		TY& first()
 		{
 			return FirstNode.load()->Data;
 		}
+
 
 		Iterator begin()
 		{
@@ -866,10 +892,12 @@ namespace FlexKit
 			return { FirstNode, this };
 		}
 
+
 		Iterator end()
 		{
 			return{ LastNode, this };
 		}
+
 
 		template<typename FN>
 		void For_Each(FN DoThis)
@@ -887,15 +915,17 @@ namespace FlexKit
 			}
 		}
 
+
 		size_t size()
 		{
 			return Count;
 		}
 
+
 		Node_ptr FirstNode;
 		Node_ptr LastNode;
 
-		iAllocator* Memory;
+		iAllocator*         _allocator;
 		std::atomic<size_t>	Count;
 	};
 

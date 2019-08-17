@@ -23,32 +23,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 # gamekit
-A Very Simple Game Engine, very WIP, has a Deferred Render, Does skeletal Animation, has a mesh file format
+An open source game engine written in C++17.  The main renderer is written with DirectX12 and implements a frame graph.  Target platform is windows 10.
 
-Current Dependencies
-  * FBX SDK
-  * Physx
-  * RakNet
+external Dependencies
+  * Autodesk FBX 
+  * Nvidia PhysX
   * DirectX 12
   * fmod
+  * AngelScript
 
-Directory Layout
-  - Application
-  - assets
-  - Builds
-    - Debug_x64
-    - Release_x64
-  - coreutilities
-  - dependencies
-    - include
-    - lib
-      - debug_x64
-      - release_x64
-    - sdks
-      - physx
-      - raknet
-      - fbxsdk
-  - FlexKitResourceCompiler
-  - graphicsutilities
-  - physicsUtilities
-  - TestGameState
+Additional dependencies are pulled in automatically via git submodules.
