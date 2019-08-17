@@ -10,3 +10,6 @@
 [submodule "Dependencies/sdks/Yojimbo"]
 	path = Dependencies/sdks/Yojimbo
 	url = https://github.com/networkprotocol/yojimbo
+[submodule "Dependencies/sdks/SteamSockets"]
+	path = Dependencies/sdks/SteamSockets
+	url = https://github.com/ValveSoftware/GameNetworkingSockets.git
