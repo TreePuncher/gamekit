@@ -154,7 +154,7 @@ class BaseState : public FlexKit::FrameworkState
 public:
 	BaseState(	
 		FlexKit::GameFramework* IN_Framework,
-		FlexKit::FKApplication* IN_App	) :
+		FlexKit::FKApplication& IN_App	) :
 			App				{ IN_App																						},
 			FrameworkState	{ IN_Framework																					},
 			depthBuffer		{ IN_Framework->core->RenderSystem.CreateDepthBuffer(IN_Framework->ActiveWindow->WH,	true)	},
@@ -203,7 +203,7 @@ public:
 
 	asIScriptEngine* asEngine;
 
-	FKApplication* App;
+	FKApplication& App;
 
 	WorldRender					render;
 	TextureHandle				depthBuffer;

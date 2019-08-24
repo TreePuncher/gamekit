@@ -13,8 +13,6 @@
 #include "..\graphicsutilities\GuiUtilities.h"
 
 #include <functional>
-#include <steam\isteamnetworkingsockets.h>
-#include <steam\isteamnetworkingutils.h>
 
 using FlexKit::EngineCore;
 using FlexKit::UpdateDispatcher;
@@ -148,7 +146,7 @@ public:
 	const PacketID_t packetTypeID;
 
 	virtual ~PacketHandler() {};
-	virtual void HandlePacket(UserPacketHeader* incomingPacket, void* packet, NetworkState* network) = 0;
+	virtual void HandlePacket(UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network) = 0;
 };
 
 
@@ -167,7 +165,7 @@ public:
 
 	void HandlePacket(
 			UserPacketHeader*	header, 
-			void*				packet, 
+			Packet*				packet, 
 			NetworkState*		network) override
 	{
 		_FN(header, packet, network);
@@ -186,115 +184,33 @@ LambdaPacketHandler<FN_TY>* CreatePacketHandler(PacketID_t IN_id, FN_TY&& FN, Fl
 /************************************************************************************************/
 
 
+using ConnectionHandle = Handle_t<32, GetTypeGUID(ConnectionHandle)>;
+
 class NetworkState : public FlexKit::FrameworkState
 {
 protected:
+
+    struct openSocket
+    {
+        uint64_t                state;
+    };
+
+
     void PushIncomingPacket(Packet&& packet)
     {
        incomingPackets.emplace_back(std::move(packet));
     }
 
 
-    class SocketListenerThread
-    {
-    public:
-        SocketListenerThread(NetworkState& IN_network) :
-            network         { IN_network    } {}
-
-        void StartListener()
-        {
-            if (running)
-                return;
-
-            if (!network.steamSockets) // steam sockets not inialized!
-                return;
-
-            running = true;
-
-            // create socket
-            SteamNetworkingIPAddr listeningPort;
-            listeningPort.Clear();
-            listeningPort.m_port = network.port;
-
-            listeningSocket = network.steamSockets->CreateListenSocketIP(listeningPort);
-
-            if (listeningSocket == k_HSteamNetConnection_Invalid)
-            {
-                FK_ASSERT(false, "Failed to create valid listening socket!");
-                throw std::exception("Failed to create valid listening socket!");
-            }
-
-            workerThread = std::move(std::thread{ [&] { Listen(); } });
-        }
-
-
-        void Join()
-        {
-            if(workerThread.joinable())
-                workerThread.join();
-        }
-
-
-        void Listen()
-        {
-            while (network.running)
-            {
-                PollIncomingMessages();
-                PollConnectionStateChanges();
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
-
-            running = false;
-        }
-
-        void PollIncomingMessages()
-        {
-            while (true)
-            {
-                ISteamNetworkingMessage* pIncomingMsg = nullptr;
-                const size_t messageCount = network.steamSockets->ReceiveMessagesOnListenSocket(listeningSocket, &pIncomingMsg, 1);
-
-                if (!messageCount)
-                    return;
-
-                network.PushIncomingPacket(
-                    Packet::CopyCreate(
-                        pIncomingMsg->m_pData,
-                        pIncomingMsg->m_cbSize,
-                        nullptr,
-                        network.framework->core->GetBlockMemory()));
-
-                pIncomingMsg->Release();
-            }
-
-        }
-
-        void PollConnectionStateChanges()
-        {
-
-        }
-
-    private:
-        HSteamListenSocket      listeningSocket;
-        bool                    running = false;
-        NetworkState&           network;
-        std::thread             workerThread;
-    };
-
 public:
 	NetworkState(
 		GameFramework*	IN_framework, 
-		BaseState*		IN_base) :
+		BaseState&		IN_base) :
 			FrameworkState	{ IN_framework                          },
 			handlerStack	{ IN_framework->core->GetBlockMemory()  },
             incomingPackets { IN_framework->core->GetBlockMemory()  },
-            socketListener  { *this                                 }
+            openConnections { IN_framework->core->GetBlockMemory()  }
     {
-        SteamNetworkingSockets();
-        SteamDatagramErrMsg errMsg;
-        FK_ASSERT(GameNetworkingSockets_Init(nullptr, errMsg), "Unable to initialize Steam Sockets!");
-
-        socketListener.StartListener();
     }
 
 
@@ -305,8 +221,6 @@ public:
             auto packet = incomingPackets.pop_front();
             packet.Release();
         }
-
-        GameNetworkingSockets_Kill();
     }
 
 
@@ -336,7 +250,7 @@ public:
 	/************************************************************************************************/
 
 
-	void SendPacket(UserPacketHeader* packet)
+	void SendPacket(UserPacketHeader* packet, ConnectionHandle destination)
 	{
 	}
 
@@ -359,12 +273,21 @@ public:
 	}
 
 
+    /************************************************************************************************/
+
+
+    ConnectionHandle Connect(const char* address, uint16_t port)
+    {
+        return InvalidHandle_t;
+    }
+
+
 	/************************************************************************************************/
 
+
     SL_list<Packet>                     incomingPackets;
-    SocketListenerThread                socketListener;
-    ISteamNetworkingSockets*            steamSockets = nullptr;   
 	Vector<Vector<PacketHandler*>*>		handlerStack;
+    Vector<openSocket>		            openConnections;
 
     uint16_t                            port;
     bool                                running;

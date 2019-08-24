@@ -106,7 +106,7 @@ struct MultiPlayerEntry
 	bool									Local;
 	PlayerNetState							State;
 	MultiplayerPlayerID_t					PlayerID;
-	//RakNet::SystemAddress					Address;
+    ConnectionHandle                        Address;
 	char									Name[32];
 };
 
@@ -126,10 +126,6 @@ public:
 			network	{ IN_Network							},
 			base	{ IN_base								}
 	{
-		FK_ASSERT(0);
-		//RakNet::SocketDescriptor sd(IN_GameDesc.Port, 0);
-		//network.localPeer->Startup(IN_GameDesc.MaxPlayerCount, &sd, 1);
-
 		StartLobby();
 	}
 
@@ -139,14 +135,12 @@ public:
 
 	GameHostState& StartLobby()
 	{
-		FK_ASSERT(0);
-		/*
 		auto localPlayer = GeneratePlayerID();
 		players.push_back({
 			true,
 			Lobby,
 			localPlayer,
-			//RakNet::SystemAddress{},
+			InvalidHandle_t,
 			"LocalPlayer" });
 
 
@@ -158,7 +152,7 @@ public:
 
 		auto& lobby = framework->PushState<GameHostLobbyState>(*this);
 		lobby.AddLocalPlayer(localPlayer);
-		*/
+
 		return *this;
 	}
 

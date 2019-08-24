@@ -124,35 +124,35 @@ int main(int argc, char* argv[])
 	auto* Memory = CreateEngineMemory();
 	EXITSCOPE(ReleaseEngineMemory(Memory));
 
-	FlexKit::FKApplication App{ uint2{ 1920, 1080 }, Memory };
+	FlexKit::FKApplication app{ uint2{ 1920, 1080 }, Memory };
 
 	for (size_t I = 0; I < argc; ++I)
-		App.PushArgument(argv[I]);
+		app.PushArgument(argv[I]);
 
 	FK_LOG_INFO("Set initial PlayState state.");
-	auto& gameBase = App.PushState<BaseState>(&App);
+	auto& gameBase = app.PushState<BaseState>(app);
 
 
 	if (multiplayerMode)
 	{
-		auto& NetState = App.PushState<NetworkState>(&gameBase);
+		auto& NetState = app.PushState<NetworkState>(gameBase);
 		if (host)
-			auto& hostState		= App.PushState<GameHostState>(gameBase, NetState);
+			auto& hostState		= app.PushState<GameHostState>(gameBase, NetState);
 		else
-			auto& clientState	= App.PushState<GameClientState>(&gameBase, &NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
+			auto& clientState	= app.PushState<GameClientState>(gameBase, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
 	}
 	else
 	{
-		auto& gameState = App.PushState<GameState>(gameBase);
-		auto& playState = App.PushState<LocalPlayerState>(gameBase, gameState);
+		auto& gameState = app.PushState<GameState>(gameBase);
+		auto& playState = app.PushState<LocalPlayerState>(gameBase, gameState);
 	}
 
 	FK_LOG_INFO("Running application...");
-	App.Run();
+	app.Run();
 	FK_LOG_INFO("Completed running application");
 
 	FK_LOG_INFO("Started cleanup...");
-	App.Release();
+	app.Release();
 	FK_LOG_INFO("Completed cleanup.");
 
 	return 0;

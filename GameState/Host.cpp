@@ -149,17 +149,16 @@ GameHostLobbyState::GameHostLobbyState(
 		playerLobbyState	{ IN_framework->core->GetBlockMemory()										},
 		screen				{ IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font	}
 {
-	FK_ASSERT(0);
-	/*
-	IN_host.network.NewConnectionHandler = [this](RakNet::Packet* packet) {
-		HandleNewConnection(packet); 
-	};
+
+	//IN_host.network.NewConnectionHandler = [this](RakNet::Packet* packet) {
+	//	HandleNewConnection(packet); 
+	//};
 
 
 	packetHandlers.push_back(
 		CreatePacketHandler(
 			ClientDataRequestResponse,
-			[&](UserPacketHeader* packetContents, RakNet::Packet* incomingPacket, NetworkState* network)
+			[&](UserPacketHeader* packetContents, Packet* incomingPacket, NetworkState* network)
 			{
 				ClientDataPacket* ClientData = (ClientDataPacket*)packetContents;
 
@@ -181,7 +180,7 @@ GameHostLobbyState::GameHostLobbyState(
 	packetHandlers.push_back(
 		CreatePacketHandler(
 			ClientReadyEvent,
-			[&](UserPacketHeader* packetContents, RakNet::Packet* incomingPacket, NetworkState* network)
+			[&](UserPacketHeader* packetContents, Packet* incomingPacket, NetworkState* network)
 			{
 				FK_LOG_INFO("ready packet recieved!");
 
@@ -212,7 +211,7 @@ GameHostLobbyState::GameHostLobbyState(
 	packetHandlers.push_back(
 		CreatePacketHandler(
 			RequestPlayerList,
-			[&](UserPacketHeader* packetContents, RakNet::Packet* incomingPacket, NetworkState* network)
+			[&](UserPacketHeader* packetContents, Packet* incomingPacket, NetworkState* network)
 			{
 				FK_LOG_9("Player list requested");
 
@@ -248,13 +247,13 @@ GameHostLobbyState::GameHostLobbyState(
 					idx++;
 				}
 
-				host.network.SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
+                FK_ASSERT(0);
+				//host.network.SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
 			}, 
 			IN_framework->core->GetBlockMemory()));
 
 
 	host.network.PushHandler(&packetHandlers);
-	*/
 }
 
 

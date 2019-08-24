@@ -85,16 +85,16 @@ class GameClientState : public FlexKit::FrameworkState
 public:
 	GameClientState(
 		FlexKit::GameFramework* IN_framework,
-		BaseState*				IN_base,
-		NetworkState*			IN_network,
+		BaseState&				IN_base,
+		NetworkState&			IN_network,
 		ClientGameDescription	IN_desc = ClientGameDescription{}) :
 			FrameworkState		{ IN_framework							},
-			base				{ *IN_base								},
-			network				{ *IN_network							},
+			base				{ IN_base								},
+			network				{ IN_network							},
 			packetHandlers		{ IN_framework->core->GetBlockMemory()	},
 			remotePlayers		{ IN_framework->core->GetBlockMemory()	}
 	{
-		char	Address[256];
+		char Address[256];
 		if (!IN_desc.name)
 		{
 			std::cout << "Please Enter Name: \n";
@@ -110,8 +110,7 @@ public:
 		}
 
 		std::cout << "Connecting now\n";
-
-		FK_ASSERT(0);
+        network.Connect("127.0.0.1", 1337);
 	}
 
 

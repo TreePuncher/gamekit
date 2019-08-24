@@ -24,5 +24,3 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MultiplayerState.h"
 
-
-#pragma comment(lib, "GameNetworkingSockets.lib")
