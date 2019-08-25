@@ -67,7 +67,7 @@ using NetObjectInputComponent = FlexKit::BasicComponent_t<NetInput, NetComponent
 
 /************************************************************************************************/
 
-
+// current frame of game state
 class GameState final : public FlexKit::FrameworkState 
 {
 public:
@@ -91,6 +91,7 @@ public:
 
 // Takes inputs,
 // passes inputs to GameState
+// timeline
 class LocalPlayerState : public FlexKit::FrameworkState
 {
 public:
@@ -213,12 +214,15 @@ private:	/**********************************************************************
 // Takes inputs,
 // passes inputs to remote GameState and a local GameState
 // net object replication
+// handles latency mitigation
 class RemotePlayerState : public FlexKit::FrameworkState
 {
 public:
-	RemotePlayerState(FlexKit::GameFramework* IN_framework) : FrameworkState{ IN_framework } {}
+	RemotePlayerState(FlexKit::GameFramework* IN_framework, BaseState& IN_base) :
+        FrameworkState  { IN_framework  },
+        base            { IN_base       }  {}
 
-	BaseState* base;
+	BaseState& base;
 };
 
 

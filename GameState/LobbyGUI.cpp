@@ -48,7 +48,7 @@ MultiplayerLobbyScreen::MultiplayerLobbyScreen(FlexKit::iAllocator* memory, Flex
 	Temp->Font = font;
 
 	auto Temp2 = &gui.CreateButton(playerList, { 1,0 });
-	Temp2->Text = "test";
+	Temp2->Text = "ping";
 	Temp2->Font = font;
 
 	Temp = &gui.CreateButton(playerList, { 2,0 });
@@ -115,12 +115,15 @@ void MultiplayerLobbyScreen::CreateRow(LobbyRowID id)
 	Row newRow;
 	newRow.id		= id;
 	newRow.name		= &gui.CreateButton(playerList, { 0, 1 + rows.size() });
+    newRow.ping     = &gui.CreateButton(playerList, { 1, 1 + rows.size() });
 	newRow.ready	= &gui.CreateButton(playerList, { 2, 1 + rows.size() });
 
-	newRow.name->Text   = "...";
-	newRow.ready->Text  = "...";
+	newRow.name->Text   = "Joining...";
+    newRow.ready->Text  = "...";
+    newRow.ping->Text   = nullptr;
 
 	newRow.name->Font	= font;
+	newRow.ping->Font   = font;
 	newRow.ready->Font	= font;
 
 	rows.push_back(newRow);
@@ -159,6 +162,27 @@ void MultiplayerLobbyScreen::SetPlayerReady(LobbyRowID id, bool	ready)
 			return;
 		}
 	}
+}
+
+
+/************************************************************************************************/
+
+
+void MultiplayerLobbyScreen::SetPlayerPing(LobbyRowID id, int ping, iAllocator* allocator)
+{
+    for (auto& row : rows)
+    {
+        if (row.id == id)
+        {
+            if (row.ping->Text != zero)
+                allocator->free((void*)row.ping->Text);
+
+            char* text = (char*)allocator->malloc(32);
+            row.ping->Text = _itoa(ping, text, 10);
+
+            return;
+        }
+    }
 }
 
 

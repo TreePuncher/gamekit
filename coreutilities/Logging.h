@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef FK_LOG_LEVEL
 
 #if _DEBUG
-#define FK_LOG_LEVEL -1
+#define FK_LOG_LEVEL 0
 #else
 #define FK_LOG_LEVEL -1
 #endif

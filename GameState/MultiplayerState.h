@@ -13,6 +13,15 @@
 #include "..\graphicsutilities\GuiUtilities.h"
 
 #include <functional>
+#include <raknet/Source/RakPeerInterface.h>
+#include <raknet/Source/RakNetStatistics.h>
+#include <raknet/Source/MessageIdentifiers.h>
+
+#ifdef _DEBUG
+#pragma comment(lib, "RakNet_VS2008_LibStatic_Debug_x64.lib")
+#else
+#pragma comment(lib, "RakNet_VS2008_LibStatic_Release_x64.lib")
+#endif
 
 using FlexKit::EngineCore;
 using FlexKit::UpdateDispatcher;
@@ -21,82 +30,87 @@ using FlexKit::GameFramework;
 
 /************************************************************************************************/
 
+
+using ConnectionHandle = Handle_t<32, GetTypeGUID(ConnectionHandle)>;
+
+
+/************************************************************************************************/
+
 // Manages the lifespan of the packet
 class Packet
 {
 public:
-    Packet(void* IN_data = nullptr, size_t IN_size = 0, void* IN_sender = nullptr, iAllocator* IN_allocator = nullptr) :
-        dataSize    { IN_size       },
-        data        { IN_data       },
-        sender      { IN_sender     },
-        allocator   { IN_allocator  } {}
+	Packet(void* IN_data = nullptr, size_t IN_size = 0, ConnectionHandle IN_sender = InvalidHandle_t, iAllocator* IN_allocator = nullptr) :
+		dataSize    { IN_size       },
+		data        { IN_data       },
+		sender      { IN_sender     },
+		allocator   { IN_allocator  } {}
 
 
-    ~Packet() { Release(); }
+	~Packet() { Release(); }
 
-    // No Copy!
-    Packet(const Packet&)                   = delete;
-    const Packet operator = (const Packet&) = delete;
-
-
-    Packet(Packet&& rhs) noexcept
-    {
-        if (data)
-            Release();
-
-        data        = rhs.data;
-        sender      = rhs.sender;
-        allocator   = rhs.allocator;
-
-        rhs.Clear();
-    }
+	// No Copy!
+	Packet(const Packet&)                   = delete;
+	const Packet operator = (const Packet&) = delete;
 
 
-    Packet& operator = (Packet&& rhs) noexcept// Move
-    {
-        if (data)
-            Release();
+	Packet(Packet&& rhs) noexcept
+	{
+		if (data)
+			Release();
 
-        data        = rhs.data;
-        sender      = rhs.sender;
-        allocator   = rhs.allocator;
+		data        = rhs.data;
+		sender      = rhs.sender;
+		allocator   = rhs.allocator;
 
-        rhs.Clear();
-
-        return *this;
-    }
-
-    void Release()
-    {
-        if (data)
-        {
-            allocator->free(data);
-            allocator->free(sender);
-            Clear();
-        }
-    }
+		rhs.Clear();
+	}
 
 
-    void Clear()
-    {
-        data        = nullptr;
-        sender      = nullptr;
-        allocator   = nullptr;
-    }
+	Packet& operator = (Packet&& rhs) noexcept// Move
+	{
+		if (data)
+			Release();
+
+		data        = rhs.data;
+		sender      = rhs.sender;
+		allocator   = rhs.allocator;
+
+		rhs.Clear();
+
+		return *this;
+	}
+
+	void Release()
+	{
+		if (data)
+		{
+			allocator->free(data);
+			Clear();
+		}
+	}
 
 
-    static Packet CopyCreate(void* data, size_t data_size, void* sender, iAllocator* allocator)
-    {
-        auto buffer = (char*)allocator->malloc(data_size);
-        memcpy(buffer, data, data_size);
+	void Clear()
+	{
+		data        = nullptr;
+		sender      = InvalidHandle_t;
+		allocator   = nullptr;
+	}
 
-        return { data, data_size, sender, allocator };
-    }
 
-    void*       data        = nullptr;
-    size_t      dataSize    = 0;
-    void*       sender      = nullptr;
-    iAllocator* allocator   = nullptr;
+	static Packet CopyCreate(void* data, size_t data_size, ConnectionHandle sender, iAllocator* allocator)
+	{
+		auto buffer = (char*)allocator->malloc(data_size);
+		memcpy(buffer, data, data_size);
+
+		return { data, data_size, sender, allocator };
+	}
+
+	void*               data        = nullptr;
+	size_t              dataSize    = 0;
+	ConnectionHandle    sender      = InvalidHandle_t;
+	iAllocator*         allocator   = nullptr;
 };
 
 
@@ -108,7 +122,7 @@ typedef size_t PacketID_t;
 
 enum EBasePacketIDs : unsigned char
 {
-	EBP_USERPACKET,
+	EBP_USERPACKET = DefaultMessageIDTypes::ID_USER_PACKET_ENUM,
 	EBP_COUNT,
 };
 
@@ -184,22 +198,27 @@ LambdaPacketHandler<FN_TY>* CreatePacketHandler(PacketID_t IN_id, FN_TY&& FN, Fl
 /************************************************************************************************/
 
 
-using ConnectionHandle = Handle_t<32, GetTypeGUID(ConnectionHandle)>;
 
 class NetworkState : public FlexKit::FrameworkState
 {
 protected:
 
-    struct openSocket
-    {
-        uint64_t                state;
-    };
+	RakNet::RakPeerInterface& raknet = *RakNet::RakPeerInterface::GetInstance();
+
+	struct openSocket
+	{
+		uint64_t state      = 0;
+		uint64_t latency    = 0;
+
+		RakNet::SystemAddress address;
+		ConnectionHandle    handle;
+	};
 
 
-    void PushIncomingPacket(Packet&& packet)
-    {
-       incomingPackets.emplace_back(std::move(packet));
-    }
+	void PushIncomingPacket(Packet&& packet)
+	{
+	   incomingPackets.emplace_back(std::move(packet));
+	}
 
 
 public:
@@ -208,40 +227,135 @@ public:
 		BaseState&		IN_base) :
 			FrameworkState	{ IN_framework                          },
 			handlerStack	{ IN_framework->core->GetBlockMemory()  },
-            incomingPackets { IN_framework->core->GetBlockMemory()  },
-            openConnections { IN_framework->core->GetBlockMemory()  }
-    {
+			incomingPackets { IN_framework->core->GetBlockMemory()  },
+			openConnections { IN_framework->core->GetBlockMemory()  }
+	{
+        raknet.SetMaximumIncomingConnections(16);
     }
 
 
 	~NetworkState()
+	{
+		while (incomingPackets.size())
+		{
+			auto packet = incomingPackets.pop_front();
+			packet.Release();
+		}
+
+        RakNet::RakPeerInterface::DestroyInstance(&raknet);
+	}
+
+
+	/************************************************************************************************/
+
+    void Startup(short port)
     {
-        while (incomingPackets.size())
-        {
-            auto packet = incomingPackets.pop_front();
-            packet.Release();
-        }
+        raknet.InitializeSecurity(0, 0, false);
+        RakNet::SocketDescriptor socketDescriptor;
+        socketDescriptor.port = port;
+
+        const auto res = raknet.Startup(10, &socketDescriptor, 1);
+        FK_ASSERT(res, "Failed to startup Raknet!");
+
+        raknet.SetOccasionalPing(true);
+        raknet.SetUnreliableTimeout(1000);
     }
 
 
-    /************************************************************************************************/
-
-
-	bool Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) override
+	bool Update(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT) override
 	{
-		// Handle incoming Packets
-        while (incomingPackets.size())
-        {
-            auto                packet = incomingPackets.pop_front();
-            UserPacketHeader*   header = reinterpret_cast<UserPacketHeader*>(packet.data);
+		// Recieve Packets
+		for(auto packet = raknet.Receive(); packet != nullptr; raknet.DeallocatePacket(packet), packet = raknet.Receive())
+		{
+            FK_LOG_INFO("Packet Recieved!");
 
-            const auto packetID = header->GetID();
-            for (auto handler : *handlerStack.back())
+			switch(packet->data[0])
+			{
+            case ID_CONNECTION_REQUEST_ACCEPTED:
             {
-                if (handler->packetTypeID == packetID)
-                    handler->HandlePacket(header, &packet, this);
+                std::random_device random;
+                openConnections.push_back(openSocket{
+                                            0,
+                                            0,
+                                            packet->systemAddress,
+                                            ConnectionHandle{ random() } });
+
+                Accepted(openConnections.back().handle);
+            }   break;
+            case ID_CONNECTION_LOST:
+			case ID_DISCONNECTION_NOTIFICATION:
+			{
+                FK_LOG_INFO("Somebody Disconnected!");
+
+                auto handle = FindConnectionHandle(packet->systemAddress);
+                if (handle == InvalidHandle_t) {
+                    SystemInError();
+                    return false;
+                }
+
+                HandleDisconnection(handle);
+			}   break;
+			case ID_NEW_INCOMING_CONNECTION:
+			{
+                FK_LOG_INFO("Somebody Connected!");
+
+				std::random_device random;
+                openConnections.push_back(openSocket{
+                                            0,
+                                            0,
+                                            packet->systemAddress,
+                                            ConnectionHandle{ random() }});
+
+                raknet.Ping(packet->systemAddress);
+
+                if(HandleNewConnection)
+                    HandleNewConnection(openConnections.back().handle);
+
+			}   break;
+			case EBP_USERPACKET:
+			{
+				// Process packets in a deferred manner
+				auto sender = FindConnectionHandle(packet->systemAddress);
+
+				if (sender == InvalidHandle_t)
+					continue;
+
+				auto buffer = core->GetBlockMemory().malloc(packet->length);
+				memcpy(buffer, packet->data, packet->length);
+
+				PushIncomingPacket(Packet{ buffer, packet->length, sender, core->GetBlockMemory() });
+			}   break;
+			default:
+			{
+
+			}   break;
+			}
+		}
+
+		// Handle game Packets
+		while (incomingPackets.size())
+		{
+			auto                packet = incomingPackets.pop_front();
+			UserPacketHeader*   header = reinterpret_cast<UserPacketHeader*>(packet.data);
+
+			const auto packetID = header->GetID();
+			for (auto handler : *handlerStack.back())
+			{
+				if (handler->packetTypeID == packetID)
+					handler->HandlePacket(header, &packet, this);
+			}
+		}
+
+
+        if (timer > 1.0f)
+        {
+            for (auto& socket : openConnections) {
+                socket.latency = raknet.GetLastPing(socket.address);
+                raknet.Ping(socket.address);// ping hosts every second to get latencies
             }
         }
+        else
+            timer += dT;
 
 		return true;
 	}
@@ -250,8 +364,11 @@ public:
 	/************************************************************************************************/
 
 
-	void SendPacket(UserPacketHeader* packet, ConnectionHandle destination)
+	void SendPacket(UserPacketHeader& packet, ConnectionHandle destination)
 	{
+        auto socket = GetConnection(destination);
+
+        raknet.Send((const char*)&packet, packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
 	}
 
 
@@ -273,24 +390,86 @@ public:
 	}
 
 
+	/************************************************************************************************/
+
+
+	void Connect(const char* address, uint16_t port)
+	{
+        raknet.Startup(16, &RakNet::SocketDescriptor(), 1);
+
+        auto res = raknet.Connect("127.0.0.1", port, nullptr, 0);
+	}
+
+
+    void CloseConnection(ConnectionHandle handle)
+    {
+        auto socket = GetConnection(handle);
+        raknet.CloseConnection(socket.address, true);
+    }
+
     /************************************************************************************************/
 
 
-    ConnectionHandle Connect(const char* address, uint16_t port)
+	ConnectionHandle FindConnectionHandle(RakNet::SystemAddress address)
+	{
+		for (size_t i = 0; i < openConnections.size(); i++)
+			if (openConnections[i].address == address)
+				return openConnections[i].handle;
+
+		return InvalidHandle_t;
+	}
+
+
+    /************************************************************************************************/
+
+
+    openSocket GetConnection(ConnectionHandle handle)
     {
-        return InvalidHandle_t;
+        for (size_t i = 0; i < openConnections.size(); i++)
+            if (openConnections[i].handle == handle)
+                return openConnections[i];
+
+        return openSocket{};
     }
 
 
 	/************************************************************************************************/
 
 
-    SL_list<Packet>                     incomingPackets;
-	Vector<Vector<PacketHandler*>*>		handlerStack;
-    Vector<openSocket>		            openConnections;
+	void RemoveConnectionHandle(RakNet::SystemAddress address)
+	{
+		for (size_t i = 0; i < openConnections.size(); i++)
+			if (openConnections[i].address == address)
+			{
+				openConnections[i] = openConnections.back();
+				openConnections.pop_back();
+			}
+	}
 
-    uint16_t                            port;
-    bool                                running;
+
+    /************************************************************************************************/
+
+
+    void SystemInError()
+    {
+        framework->core->End = true;
+    }
+
+
+    /************************************************************************************************/
+
+
+	SL_list<Packet>                     incomingPackets;
+	Vector<Vector<PacketHandler*>*>		handlerStack;
+	Vector<openSocket>		            openConnections;
+
+    std::function<void (ConnectionHandle)> Accepted;
+    std::function<void (ConnectionHandle)> HandleNewConnection;
+    std::function<void (ConnectionHandle)> HandleDisconnection;
+
+    float                               timer = 0;
+	uint16_t                            port;
+	bool                                running;
 };
 
 

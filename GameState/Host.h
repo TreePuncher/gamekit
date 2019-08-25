@@ -50,7 +50,9 @@ public:
 	~GameHostLobbyState();
 
 	void AddLocalPlayer(MultiplayerPlayerID_t ID);
-	//void HandleNewConnection(RakNet::Packet* packet);
+	void HandleNewConnection(ConnectionHandle handle);
+    void HandleDisconnection(ConnectionHandle handle);
+
 
 	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
 	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
@@ -126,6 +128,7 @@ public:
 			network	{ IN_Network							},
 			base	{ IN_base								}
 	{
+        network.Startup(1337);
 		StartLobby();
 	}
 
@@ -135,11 +138,11 @@ public:
 
 	GameHostState& StartLobby()
 	{
-		auto localPlayer = GeneratePlayerID();
+        hostPlayer = GeneratePlayerID();
 		players.push_back({
 			true,
 			Lobby,
-			localPlayer,
+            hostPlayer,
 			InvalidHandle_t,
 			"LocalPlayer" });
 
@@ -148,13 +151,37 @@ public:
 		std::cout << "Please enter player name: ";
 		std::cin >> name;
 		std::cout << "\n";
-		SetPlayerName(localPlayer, name, strnlen(name, 32) + 1);
+		SetPlayerName(hostPlayer, name, strnlen(name, 32) + 1);
 
 		auto& lobby = framework->PushState<GameHostLobbyState>(*this);
-		lobby.AddLocalPlayer(localPlayer);
+		lobby.AddLocalPlayer(hostPlayer);
 
 		return *this;
 	}
+
+
+    void RemovePlayer(MultiplayerPlayerID_t id)
+    {
+        for (auto& player : players)
+        {
+            if (player.PlayerID == id)
+            {
+                player = players.back();
+                players.pop_back();
+                return;
+            }
+        }
+    }
+
+
+    MultiPlayerEntry* GetPlayer(ConnectionHandle handle)
+    {
+        for (auto& player : players)
+            if (player.Address == handle)
+                return &player;
+
+        return nullptr;
+    }
 
 
 	MultiPlayerEntry* GetPlayer(MultiplayerPlayerID_t id)
@@ -215,6 +242,7 @@ public:
 	}
 
 
+    MultiplayerPlayerID_t               hostPlayer;
 	static_vector<MultiPlayerEntry>		players;
 	BaseState&							base;
 	NetworkState&						network;

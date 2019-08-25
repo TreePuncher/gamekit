@@ -55,11 +55,10 @@ ClientLobbyState::ClientLobbyState(
 			IN_framework->core->GetBlockMemory()));
 
 
-	/*
 	packetHandlers.push_back(
 		CreatePacketHandler(
 			ClientDataRequest,
-			[&](UserPacketHeader* incomingPacket, RakNet::Packet* P, NetworkState* network)
+			[&](UserPacketHeader* incomingPacket, Packet* P, NetworkState* network)
 			{
 				auto				request = reinterpret_cast<RequestClientDataPacket*>(incomingPacket);
 				ClientDataPacket	responsePacket(request->playerID, localPlayerName);
@@ -68,7 +67,7 @@ ClientLobbyState::ClientLobbyState(
 
 				FK_LOG_INFO("Sending Client Info");
 				std::cout << "playerID set to: " << request->playerID << "\n";
-				network->SendPacket(responsePacket.GetRawPacket(), P->systemAddress);
+				network->SendPacket(responsePacket.Header, P->sender);
 			},
 			IN_framework->core->GetBlockMemory()));
 
@@ -76,7 +75,7 @@ ClientLobbyState::ClientLobbyState(
 	packetHandlers.push_back(
 		CreatePacketHandler(
 			RequestPlayerListResponse,
-			[&](UserPacketHeader* incomingPacket, RakNet::Packet* P, NetworkState* network)
+			[&](UserPacketHeader* incomingPacket, Packet* P, NetworkState* network)
 			{
 				FK_LOG_INFO("Player List Received");
 
@@ -109,7 +108,7 @@ ClientLobbyState::ClientLobbyState(
 		packetHandlers.push_back(
 		CreatePacketHandler(
 			StartGame,
-			[&](UserPacketHeader* incomingPacket, RakNet::Packet* P, NetworkState* network)
+			[&](UserPacketHeader* incomingPacket, Packet* P, NetworkState* network)
 			{
 				FK_LOG_INFO("Starting Game");
 				client.StartGame();
@@ -117,7 +116,6 @@ ClientLobbyState::ClientLobbyState(
 			IN_framework->core->GetBlockMemory()));
 
 	network.PushHandler(&packetHandlers);
-	*/
 }
 
 
@@ -149,8 +147,7 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 				ready = !ready;
 				
 				ClientReady packet(client.localID, ready);
-				FK_ASSERT(0);
-				//network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
+				network.SendPacket(packet.header, client.server);
 			}
 			}
 		}
@@ -169,8 +166,7 @@ bool ClientLobbyState::Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispat
 		refreshCounter = 0;
 
 		RequestPlayerListPacket packet{ client.localID };
-		FK_ASSERT(0);
-		//client.network.SendPacket(packet.GetRawPacket(), client.ServerAddress);
+		client.network.SendPacket(packet.Header, client.server);
 	}
 
 	return true;

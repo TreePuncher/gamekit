@@ -62,20 +62,23 @@ public:
 	void CreateRow		(LobbyRowID id);
 	void SetPlayerName	(LobbyRowID id, const char*	name	);
 	void SetPlayerReady	(LobbyRowID id, bool		ready	);
+	void SetPlayerPing	(LobbyRowID id, int         ping,   iAllocator* allocator);
 
 	struct Row
 	{
 		LobbyRowID			id;
+        FlexKit::GUIButton* ping;
 		FlexKit::GUIButton* name;
 		FlexKit::GUIButton* ready;
 	};
 
 	FlexKit::Vector<Row>		rows;
-
 	FlexKit::GuiSystem			gui;
 	FlexKit::GUIGrid*			playerList;
 	FlexKit::GUIGrid*			playerScreen;
 	FlexKit::SpriteFontAsset*	font;
+
+    char* zero = "0ms";
 };
 
 

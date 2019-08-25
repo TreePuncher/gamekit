@@ -110,12 +110,23 @@ public:
 		}
 
 		std::cout << "Connecting now\n";
+        network.Accepted =
+            [&](ConnectionHandle IN_server)
+            {
+                server = IN_server;
+                JoinLobby();
+            };
+
         network.Connect("127.0.0.1", 1337);
 	}
 
 
 	~GameClientState()
 	{
+        network.CloseConnection(server);
+
+        Sleep(1000); // IDK, does it need time to send the packet?
+
 		for (auto handler : packetHandlers)
 			framework->core->GetBlockMemory().free(handler);
 	}
@@ -124,18 +135,15 @@ public:
 	void StartGame()
 	{
 		auto framework_temp = framework;
-		framework_temp->PopState();
-		//auto& predictedState		= framework_temp->PushState<GameState>();
-		//auto& localState			= framework_temp->PushState<RemotePlayerState>();
+		auto& predictedState		= framework_temp->PushState<GameState>(base);
+		auto& localState			= framework_temp->PushState<RemotePlayerState>(base);
 	}
 
 
-	void ConnectionSuccess()
-	{
-		FK_ASSERT(0);
+    void JoinLobby()
+    {
 		framework->PushState<ClientLobbyState>(this, &network, localName);
-	}
-
+    }
 
 	void ServerLost()
 	{
@@ -155,6 +163,7 @@ public:
 	Vector<PacketHandler*>	packetHandlers;
 	NetworkState&			network;
 	BaseState&				base;
+    ConnectionHandle        server;
 
 	MultiplayerPlayerID_t	localID;
 	char					localName[32];

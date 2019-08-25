@@ -150,10 +150,18 @@ GameHostLobbyState::GameHostLobbyState(
 		screen				{ IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font	}
 {
 
-	//IN_host.network.NewConnectionHandler = [this](RakNet::Packet* packet) {
-	//	HandleNewConnection(packet); 
-	//};
+    host.network.HandleNewConnection =
+        [&](auto connection)
+        {
+	        HandleNewConnection(connection);
+        };
 
+
+    host.network.HandleDisconnection =
+        [&](auto connection)
+        {
+            HandleDisconnection(connection);
+        };
 
 	packetHandlers.push_back(
 		CreatePacketHandler(
@@ -247,13 +255,13 @@ GameHostLobbyState::GameHostLobbyState(
 					idx++;
 				}
 
-                FK_ASSERT(0);
-				//host.network.SendPacket(newPacket->GetRawPacket(), incomingPacket->systemAddress);
+			    host.network.SendPacket(newPacket->Header, incomingPacket->sender);
 			}, 
 			IN_framework->core->GetBlockMemory()));
 
 
 	host.network.PushHandler(&packetHandlers);
+    screen.ClearRows();
 }
 
 
@@ -286,18 +294,17 @@ void GameHostLobbyState::AddLocalPlayer(MultiplayerPlayerID_t ID)
 /************************************************************************************************/
 
 
-/*
-void GameHostLobbyState::HandleNewConnection(RakNet::Packet* packet)
+void GameHostLobbyState::HandleNewConnection(ConnectionHandle handle)
 {
 	auto newID = host.GetNewID();
 
-	RequestClientDataPacket Packet(newID);
+	RequestClientDataPacket packet(newID);
 
 	host.players.push_back({
 					false,
 					Joining,
 					newID,
-					packet->systemAddress,
+					handle,
 					""});
 
 	screen.CreateRow(newID);
@@ -306,8 +313,35 @@ void GameHostLobbyState::HandleNewConnection(RakNet::Packet* packet)
 					newID, 
 					false});
 
-	host.network.SendPacket(Packet.GetRawPacket(), packet->systemAddress);
+    host.network.SendPacket(packet.header, handle);
 }
-*/
+
+
+/************************************************************************************************/
+
+
+void GameHostLobbyState::HandleDisconnection(ConnectionHandle handle)
+{
+    screen.ClearRows();
+
+    auto disconnectedPlayer = host.GetPlayer(handle);
+
+    playerLobbyState.remove_stable(
+        find(   playerLobbyState,
+                [&](PlayerLobbyEntry& e) -> bool { return e.ID == disconnectedPlayer->PlayerID; }));
+
+    host.RemovePlayer(disconnectedPlayer->PlayerID);
+
+    // Re-add LocalPlayer
+    auto hostPlayer         = host.hostPlayer;
+    const auto localPlayer  = host.GetPlayer(hostPlayer);
+    screen.CreateRow(hostPlayer);
+    screen.SetPlayerName(hostPlayer, localPlayer->Name);
+
+    // Other Players
+    for (auto player : host.players)
+        screen.CreateRow(player.PlayerID);
+}
+
 
 /************************************************************************************************/
