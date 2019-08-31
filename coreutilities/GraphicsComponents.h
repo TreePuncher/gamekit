@@ -55,7 +55,7 @@ namespace FlexKit
 		Camera::ConstantBuffer			GetCameraConstants		(CameraHandle);
 		float4x4						GetCameraPV				(CameraHandle);
 
-		auto&	QueueCameraUpdate(UpdateDispatcher&, UpdateTask& TransformDependency);
+		auto&	QueueCameraUpdate(UpdateDispatcher&);
 
 		Vector<bool>								DirtyFlags;
 		Vector<Camera>								Cameras;

@@ -17,6 +17,10 @@
 #include <raknet/Source/RakNetStatistics.h>
 #include <raknet/Source/MessageIdentifiers.h>
 
+
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "user32.lib")
+
 #ifdef _DEBUG
 #pragma comment(lib, "RakNet_VS2008_LibStatic_Debug_x64.lib")
 #else

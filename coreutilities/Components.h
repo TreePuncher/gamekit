@@ -843,7 +843,7 @@ namespace FlexKit
 		{
 		public:
 			UpdateTask(ThreadManager* IN_manager, UpdateTaskBase::iUpdateFN& IN_updateFn, iAllocator* IN_allocator) :
-				UpdateTaskBase{	IN_manager, IN_updateFn, IN_allocator	} {}
+				UpdateTaskBase  { IN_manager, IN_updateFn, IN_allocator	} {}
 
 			const TY& GetData() const
 			{
@@ -855,7 +855,8 @@ namespace FlexKit
 		UpdateDispatcher(ThreadManager* IN_threads, iAllocator* IN_allocator) :
 			nodes		{ IN_allocator	},
 			allocator	{ IN_allocator	},
-			threads		{ IN_threads	}{}
+			threads		{ IN_threads	},
+            taskMap     { IN_allocator  } {}
 
 
 		// No Copy
@@ -927,8 +928,9 @@ namespace FlexKit
 		class UpdateBuilder
 		{
 		public:
-			UpdateBuilder(UpdateTaskBase& IN_node) :
-				newNode{ IN_node	} {}
+			UpdateBuilder(UpdateTaskBase& IN_node, UpdateDispatcher& IN_dispatcher) :
+				newNode     { IN_node	    },
+                dispatcher  { IN_dispatcher } {}
 
 			void SetDebugString(const char* str) noexcept
 			{
@@ -945,16 +947,59 @@ namespace FlexKit
 				newNode.AddInput(node);
 			}
 
+            void AddOutput(uint32_t taskID)
+            {
+                auto res = find(
+                    dispatcher.taskMap,
+                    [&](auto task){ return  std::get<0>(task) == taskID; });
+
+                if (res != dispatcher.taskMap.end())
+                {
+                    auto node = std::get<1>(*res);
+                    AddOutput(*node);
+                }
+            }
+
+            void AddInput(uint32_t taskID)
+            {
+                auto res = find(
+                    dispatcher.taskMap,
+                    [&](auto task){ return  std::get<0>(task) == taskID; });
+
+                if (res != dispatcher.taskMap.end())
+                {
+                    auto node = std::get<1>(*res);
+                    AddInput(*node);
+                }
+            }
+
 			const char* DebugID = "UNIDENTIFIED TASK";
 		private:
-			UpdateTaskBase& newNode;
+
+            UpdateDispatcher&   dispatcher;
+			UpdateTaskBase&     newNode;
 		};
+
+
+        template<
+            typename TY_NODEDATA,
+            typename FN_LINKAGE,
+            typename FN_UPDATE>
+        UpdateTask<TY_NODEDATA>& Add(uint32_t TaskID, FN_LINKAGE&& LinkageSetup, FN_UPDATE&& UpdateFN)
+        {
+            auto& task = Add<TY_NODEDATA>(LinkageSetup, UpdateFN);
+
+            if (find(taskMap, [&](auto& task) { return get<0>(task) == TaskID; } ) == taskMap.end())
+                taskMap.push_back({ TaskID, &task });
+
+            return task;
+        }
 
 		template<
 			typename TY_NODEDATA,
 			typename FN_LINKAGE,
 			typename FN_UPDATE>
-		UpdateTask<TY_NODEDATA>&	Add(FN_LINKAGE LinkageSetup, FN_UPDATE UpdateFN)
+		UpdateTask<TY_NODEDATA>&	Add(FN_LINKAGE&& LinkageSetup, FN_UPDATE&& UpdateFN)
 		{
 			struct data_BoilderPlate : UpdateTaskBase::iUpdateFN
 			{
@@ -974,19 +1019,18 @@ namespace FlexKit
 			auto& newNode		= allocator->allocate_aligned<UpdateTask<TY_NODEDATA>>(threads, functor, allocator);
 			newNode.Data		= reinterpret_cast<char*>(&functor.locals);
 
-			UpdateBuilder Builder{ newNode };
+			UpdateBuilder Builder{ newNode, *this };
 			LinkageSetup(Builder, functor.locals);
-
-			//newNode; = Builder.DebugID;
 
 			nodes.push_back(&newNode);
 
 			return newNode;
 		}
 
-		ThreadManager*				threads;
-		Vector<UpdateTaskBase*>		nodes;
-		iAllocator*					allocator;
+		ThreadManager*				                    threads;
+        Vector<UpdateTaskBase*>		                    nodes;
+        Vector<std::pair<uint32_t, UpdateTaskBase*>>	taskMap;
+		iAllocator*					                    allocator;
 	};
 
 

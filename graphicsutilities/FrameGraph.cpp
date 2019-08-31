@@ -555,7 +555,7 @@ namespace FlexKit
 			for (auto Source : N->Sources)
 				ProcessNode(Source, Resources, Context);
 
-			N->NodeAction(Resources, &Context);
+			N->NodeAction(*N, Resources, &Context);
 		}
 	}
 

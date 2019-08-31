@@ -165,7 +165,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto& CameraComponent::QueueCameraUpdate(UpdateDispatcher& Dispatcher, UpdateTask& TransformDependency)
+	auto& CameraComponent::QueueCameraUpdate(UpdateDispatcher& Dispatcher)
 	{
 		struct UpdateData
 		{};
@@ -174,7 +174,7 @@ namespace FlexKit
 			[&](auto& Builder, auto& Data)
 			{
 				Builder.SetDebugString("QueueCameraUpdate");
-				Builder.AddInput(TransformDependency);
+				Builder.AddInput(TransformComponentID);
 			},
 			[this](auto& Data)
 			{

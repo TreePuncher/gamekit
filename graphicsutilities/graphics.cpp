@@ -705,6 +705,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    DescriptorHeap::DescriptorHeap(DescriptorHeap&& rhs)
+    {
+        descriptorHeap  = rhs.descriptorHeap;
+        FillState       = std::move(rhs.FillState);
+        Layout          = rhs.Layout;
+
+        rhs.descriptorHeap = DescHeapPOS{ 0u, 0u };
+        rhs.Layout = nullptr;
+    }
+
+
+    /************************************************************************************************/
+
+
+    DescriptorHeap& DescriptorHeap::operator = (DescriptorHeap&& rhs)
+    {
+        descriptorHeap      = rhs.descriptorHeap;
+        FillState           = std::move(rhs.FillState);
+        Layout              = rhs.Layout;
+
+        rhs.descriptorHeap = DescHeapPOS{ 0u, 0u };
+        rhs.Layout = nullptr;
+
+        return *this;
+    }
+
+
+    /************************************************************************************************/
+
+
 	DescriptorHeap& DescriptorHeap::Init(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory)
 	{
 		FK_ASSERT(TempMemory);
@@ -960,7 +990,7 @@ namespace FlexKit
 
 	DescriptorHeap	DescriptorHeap::GetHeapOffsetted(size_t offset, RenderSystem* RS) const
 	{
-		DescriptorHeap subHeap(*this);
+		DescriptorHeap subHeap = Clone();
 		subHeap.descriptorHeap = IncrementHeapPOS(
 										descriptorHeap,
 										RS->DescriptorCBVSRVUAVSize,

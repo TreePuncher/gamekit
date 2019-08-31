@@ -215,17 +215,17 @@ namespace FlexKit
 
 		THISTYPE& operator =(THISTYPE&& RHS)
 		{
-			if (!Allocator) Allocator = RHS.Allocator;
+			Allocator = RHS.Allocator;
 
 			Release();
 
-			A = RHS.A;
-			Max = RHS.Max;
-			Size = RHS.Size;
+			A       = RHS.A;
+			Max     = RHS.Max;
+			Size    = RHS.Size;
 
-			RHS.Size = 0;
-			RHS.Max = 0;
-			RHS.A = nullptr;
+			RHS.Size    = 0;
+			RHS.Max     = 0;
+			RHS.A       = nullptr;
 
 			return *this;
 		}
