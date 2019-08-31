@@ -2350,7 +2350,7 @@ namespace FlexKit
 				auto* triMesh			= GetMeshResource(data.mesh);
 				size_t MeshVertexCount	= triMesh->IndexCount;
 
-				//setup(data, resources, ctx);
+				setup(data, resources, ctx);
 
 				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 				ctx->SetRenderTargets(
@@ -2369,8 +2369,7 @@ namespace FlexKit
 				ctx->AddVertexBuffers(triMesh,
 					{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-					},
+						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,    },
 					&instancedBuffers);
 
 
