@@ -94,7 +94,7 @@ namespace FlexKit
 			auto FrameEnd = std::chrono::system_clock::now();
 			auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
 
-			temp += double(Duration.count()) / 1000000.0;;
+            temp += double(Duration.count() / 1000000);
 
 			if (Core.FrameLock)// FPS Locked
 				std::this_thread::sleep_for(chrono::milliseconds(10) - Duration);
@@ -102,7 +102,7 @@ namespace FlexKit
 			FrameEnd = std::chrono::system_clock::now();
 			Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
 
-			dT = double(Duration.count()) / 1000000.0;
+			dT = double(Duration.count() / 1000000 ) ;
 
 			Core.Time.After();
 			Core.Time.Update();
