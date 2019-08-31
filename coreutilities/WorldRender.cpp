@@ -334,7 +334,6 @@ namespace FlexKit
 					frameGraph.Resources.renderSystem,
 					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					Memory);
-				//data.Heap.SetStructuredResource(frameGraph.GetRenderSystem(), 1, data.lightListBuffer, sizeof(uint32_t));
 
 				data.Heap.NullFill(frameGraph.Resources.renderSystem);
 			},

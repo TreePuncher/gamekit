@@ -2706,6 +2706,9 @@ namespace FlexKit
 		void PresentWindow		(RenderWindow* RW);
 		void WaitforGPU			();
 
+        void SetDebugName(UAVResourceHandle,    const char*);
+        void SetDebugName(UAVTextureHandle,     const char*);
+
 		size_t						GetVertexBufferSize		(const VertexBufferHandle);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetVertexBufferAddress	(const VertexBufferHandle VB);
 		D3D12_GPU_VIRTUAL_ADDRESS	GetConstantBufferAddress(const ConstantBufferHandle CB);

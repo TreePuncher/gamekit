@@ -1183,13 +1183,30 @@ namespace FlexKit
 
 	void Context::AddUAVBarrier(UAVResourceHandle handle, DeviceResourceState priorState, DeviceResourceState desiredState)
 	{
-		Barrier NewBarrier;
-		NewBarrier.OldState		= priorState;
-		NewBarrier.NewState		= desiredState;
-		NewBarrier.Type			= Barrier::BT_UAVBuffer;
-		NewBarrier.UAVBuffer	= handle;
+        auto res = find(PendingBarriers,
+            [&](Barrier& rhs) -> bool
+            {
+                return
+                    rhs.Type        == Barrier::BT_UAVBuffer &&
+                    rhs.UAVBuffer   == handle;
+            });
 
-		PendingBarriers.push_back(NewBarrier);
+        if(res == PendingBarriers.end())
+        {
+		    Barrier NewBarrier;
+		    NewBarrier.OldState		= priorState;
+		    NewBarrier.NewState		= desiredState;
+		    NewBarrier.Type			= Barrier::BT_UAVBuffer;
+		    NewBarrier.UAVBuffer	= handle;
+
+		    PendingBarriers.push_back(NewBarrier);
+        }
+        else if (res->OldState == desiredState)
+        {  // Barrier no longer needed
+            PendingBarriers.remove_unstable(res);
+        }
+        else
+            res->NewState = desiredState; // Fuse
 	}
 
 	/************************************************************************************************/
@@ -1197,13 +1214,30 @@ namespace FlexKit
 
 	void Context::AddUAVBarrier(UAVTextureHandle handle, DeviceResourceState priorState, DeviceResourceState desiredState)
 	{
-		Barrier NewBarrier;
-		NewBarrier.OldState		= priorState;
-		NewBarrier.NewState		= desiredState;
-		NewBarrier.Type			= Barrier::BT_UAVTexture;
-		NewBarrier.UAVTexture	= handle;
+        auto res = find(PendingBarriers,
+            [&](Barrier& rhs) -> bool
+            {
+                return
+                    rhs.Type        == Barrier::BT_UAVTexture &&
+                    rhs.UAVTexture == handle;
+            });
 
-		PendingBarriers.push_back(NewBarrier);
+        if(res == PendingBarriers.end())
+        {
+		    Barrier NewBarrier;
+		    NewBarrier.OldState		= priorState;
+		    NewBarrier.NewState		= desiredState;
+		    NewBarrier.Type			= Barrier::BT_UAVTexture;
+		    NewBarrier.UAVTexture = handle;
+
+		    PendingBarriers.push_back(NewBarrier);
+        }
+        else if (res->OldState == desiredState)
+        {   // Barrier no longer needed
+            PendingBarriers.remove_unstable(res);
+        }
+        else
+            res->NewState = desiredState; // Fuse
 	}
 
 
@@ -3083,6 +3117,26 @@ namespace FlexKit
 			ReleaseTempResources();
 		}
 	}
+
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::SetDebugName(UAVResourceHandle handle, const char* str)
+    {
+        auto resource = GetObjectDeviceResource(handle);
+        SETDEBUGNAME(resource, str);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::SetDebugName(UAVTextureHandle handle, const char* str)
+    {
+        auto resource = GetObjectDeviceResource(handle);
+        SETDEBUGNAME(resource, str);
+    }
 
 
 	/************************************************************************************************/

@@ -100,8 +100,7 @@ public:
 		game			{ IN_game								},
 		base			{ IN_base								},
 		eventMap		{ IN_framework->core->GetBlockMemory()	},
-		netInputObjects	{ IN_framework->core->GetBlockMemory()	},
-		netObjects		{ IN_framework->core->GetBlockMemory()	}
+		netInputObjects	{ IN_framework->core->GetBlockMemory()	}
 	{
 		eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
 		eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
@@ -152,7 +151,7 @@ public:
 		auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
 		auto& textureStreams	= base.streamingEngine.update(dispatcher);
 
-		FlexKit::WorldRender_Targets targets = {
+		WorldRender_Targets targets = {
 			GetCurrentBackBuffer(&core->Window),
 			base.depthBuffer
 		};
@@ -167,8 +166,6 @@ public:
 		sceneDesc.transforms		= &transforms;
 		sceneDesc.cameras			= &cameras;
 		sceneDesc.PVS				= &PVS;
-	
-		base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
 
 		ClearVertexBuffer(frameGraph, base.vertexBuffer);
 		ClearVertexBuffer(frameGraph, base.textBuffer);
@@ -176,7 +173,10 @@ public:
 		ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
 		ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
+        base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
 		base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.GetData().solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
+
+        PresentBackBuffer(frameGraph, &core->Window);
 
 		return true;
 	}
@@ -200,7 +200,6 @@ public:
 private:	/************************************************************************************************/
 
 	NetObjectInputComponent			netInputObjects;
-	NetObjectReplicationComponent	netObjects;
 	InputMap						eventMap;
 	OrbitCameraBehavior				debugCamera;
 	BaseState&						base;

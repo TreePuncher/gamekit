@@ -1564,9 +1564,10 @@ namespace FlexKit
 				Object.State			= state;
 				LocalOutputs.push_back(Object);
 
-				if (Object.ExpectedState != state) {
-					Context.RemoveReadable(handle);
-					
+				if (Object.ExpectedState != state)
+                {
+                    if(TrackedReadable)
+					    Context.RemoveReadable(handle);
 					if (TrackedWritable)
 						Context.RemoveWriteable(handle);
 
@@ -1634,6 +1635,8 @@ namespace FlexKit
                     draw    { std::move(IN_DrawFN)  },
                     fields  { std::move(IN_initial) } {}
 
+                ~NodeData() = default;
+
                 TY      fields;
                 DrawFN  draw;
             };
@@ -1646,7 +1649,7 @@ namespace FlexKit
                     FrameResources& resources,
                     Context* ctx)
                     {
-                        auto& data = *reinterpret_cast<NodeData*>(node.nodeData);
+                        NodeData& data = *reinterpret_cast<NodeData*>(node.nodeData);
 
                         node.HandleBarriers(resources, ctx);
                         data.draw(data.fields, resources, ctx);

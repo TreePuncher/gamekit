@@ -76,8 +76,10 @@ namespace FlexKit
 					return value.ID == ID;
 				});
 
-			if (res != Components.end())
-				FK_LOG_WARNING("Component System Adding already added System!");
+            if (res != Components.end()) {
+                FK_LOG_WARNING("Component System Adding already added System!");
+                FK_ASSERT(0, "Critical Error!");
+            }
 
 			Components.push_back({ &component, component.GetID() });
 		}
