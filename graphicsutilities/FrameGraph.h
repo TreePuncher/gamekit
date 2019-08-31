@@ -2338,11 +2338,7 @@ namespace FlexKit
 				data.constants				= constantData;
 				data.constantBuffers		= constantBuffers;
 			},
-<<<<<<< HEAD
-			[=, setup = std::move(setupPipeline)](_DrawCollection& data, const FrameResources& resources, Context* ctx)
-=======
 			[=, test = std::move(setupPipeline)](_DrawCollection& data, const FrameResources& resources, Context* ctx)
->>>>>>> a75b5b0e0a5385d5bf9f9e979d20c2f4916b8e00
 			{
 				data.fetchConstants(data);
 				auto entities = data.fetchInstances();
@@ -2354,11 +2350,7 @@ namespace FlexKit
 				auto* triMesh			= GetMeshResource(data.mesh);
 				size_t MeshVertexCount	= triMesh->IndexCount;
 
-<<<<<<< HEAD
-				setup(data, resources, ctx);
-=======
 				//setup(data, resources, ctx);
->>>>>>> a75b5b0e0a5385d5bf9f9e979d20c2f4916b8e00
 
 				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 				ctx->SetRenderTargets(
@@ -2377,7 +2369,8 @@ namespace FlexKit
 				ctx->AddVertexBuffers(triMesh,
 					{	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
 						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,    },
+						VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+					},
 					&instancedBuffers);
 
 
