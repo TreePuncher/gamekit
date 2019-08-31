@@ -146,7 +146,7 @@ public:
 
 		auto& scene				= game.scene;
 		auto& transforms		= QueueTransformUpdateTask	(dispatcher);
-		auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher, transforms);
+		auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 		auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
 		auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core->GetTempMemory());
 		auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());

@@ -1158,24 +1158,26 @@ namespace FlexKit
 	FLEXKITAPI class FrameGraphNode
 	{
 	public:
-		typedef std::function<void (FrameResources& Resources, Context* Ctx)> FN_NodeAction;
+		typedef void (*FN_NodeAction)(FrameGraphNode& node, FrameResources& Resources, Context* Ctx) ;
 
-		FrameGraphNode(iAllocator* IN_allocator = nullptr) :
-			InputObjects	{ IN_allocator		},
-			OutputObjects	{ IN_allocator		},
-			Sources			{ IN_allocator		},
-			Transitions		{ IN_allocator		},
-			NodeAction		{ [](auto, auto) {} },
-			Executed		{ false				}{}
+		FrameGraphNode(FN_NodeAction IN_action, void* IN_nodeData, iAllocator* IN_allocator = nullptr) :
+			InputObjects	{ IN_allocator		    },
+			OutputObjects	{ IN_allocator		    },
+			Sources			{ IN_allocator		    },
+			Transitions		{ IN_allocator		    },
+			NodeAction		{ IN_action             },
+            nodeData        { IN_nodeData           },
+			Executed		{ false				    } {}
 
 
 		FrameGraphNode(const FrameGraphNode& RHS) : 
-			Sources			{ RHS.Sources		},
-			InputObjects	{ RHS.InputObjects	},
-			OutputObjects	{ RHS.OutputObjects	},
-			Transitions		{ RHS.Transitions	},
-			NodeAction		{ RHS.NodeAction	},
-			Executed		{ false				}{}
+			Sources			{ RHS.Sources		        },
+			InputObjects	{ RHS.InputObjects	        },
+			OutputObjects	{ RHS.OutputObjects	        },
+			Transitions		{ RHS.Transitions	        },
+			NodeAction		{ std::move(RHS.NodeAction)	},
+            nodeData        { RHS.nodeData              },
+			Executed		{ false				        } {}
 
 
 		~FrameGraphNode() = default;
@@ -1192,6 +1194,7 @@ namespace FlexKit
 		Vector<FrameGraphNode*>		GetNodeDependencies()	{ return (nullptr); } 
 
 
+        void*                           nodeData;
 		bool							Executed;
 		FN_NodeAction					NodeAction;
 		Vector<FrameGraphNode*>			Sources;// Nodes that this node reads from
@@ -1623,28 +1626,42 @@ namespace FlexKit
 
 
 		template<typename TY, typename INITIAL_TY, typename SetupFN, typename DrawFN>
-		TY& AddNode(INITIAL_TY&& initial, SetupFN Setup, DrawFN Draw)
+		TY& AddNode(INITIAL_TY&& initial, SetupFN&& Setup, DrawFN&& Draw)
 		{
-			Nodes.push_back(FrameGraphNode(Memory));
+            struct NodeData
+            {
+                NodeData(INITIAL_TY&& IN_initial, DrawFN&& IN_DrawFN) :
+                    draw    { std::move(IN_DrawFN)  },
+                    fields  { std::move(IN_initial) } {}
 
-			TY& Data				= Memory->allocate_aligned<TY>(std::move(std::forward<INITIAL_TY>(initial)));
-			FrameGraphNode& Node	= Nodes.back();
-			FrameGraphNodeBuilder Builder(dataDependencies, &Resources, Node, ResourceContext, Memory);
+                TY      fields;
+                DrawFN  draw;
+            };
 
-			Node.NodeAction = [=, &Data, &Node](
-				FrameResources& Resources,
-				Context* ctx)
-				{
-					Node.HandleBarriers(Resources, ctx);
-					Draw(Data, Resources, ctx);
-					Node.RestoreResourceStates(ctx, Resources.SubNodeTracking);
-					Data.~TY();
-				};
+            auto& data  = Memory->allocate_aligned<NodeData>(std::move(std::forward<INITIAL_TY>(initial)), std::move(Draw));
+			auto idx    = Nodes.emplace_back(
+                FrameGraphNode{
+                    [](
+                    FrameGraphNode& node,
+                    FrameResources& resources,
+                    Context* ctx)
+                    {
+                        auto& data = *reinterpret_cast<NodeData*>(node.nodeData);
 
-			Setup(Builder, Data);
+                        node.HandleBarriers(resources, ctx);
+                        data.draw(data.fields, resources, ctx);
+                        node.RestoreResourceStates(ctx, resources.SubNodeTracking);
+                        data.fields.~TY();
+                    },
+                    &data,
+                    Memory});
+
+			FrameGraphNodeBuilder Builder(dataDependencies, &Resources, Nodes[idx], ResourceContext, Memory);
+
+			Setup(Builder, data.fields);
 			Builder.BuildNode(this);
 
-			return Data;
+			return data.fields;
 		}
 
 
@@ -2240,7 +2257,6 @@ namespace FlexKit
 		bool					enableDepthBuffer = true;
 
 		size_t	reserveCount			= 512;
-		size_t	InstanceElementSize;
 	};
 
 
@@ -2264,16 +2280,17 @@ namespace FlexKit
 		static_vector<UpdateTask*>			dependencies,
 		static_vector<_DCConstantData>		constantData,
 		static_vector<_DCConstantBuffer>	constantBuffers,
-		FETCHCONSTANTS_FN					fetchConstants,
-		FETCHINSTANCES_FN					fetchInstances,
-		FORMATINSTANCE_FN					formatInstanceData,
-		PIPELINESETUP_FN					setupPipeline,
+		FETCHCONSTANTS_FN&&					fetchConstants,
+		FETCHINSTANCES_FN&&					fetchInstances,
+		FORMATINSTANCE_FN&&					formatInstanceData,
+		PIPELINESETUP_FN&&					setupPipeline,
 		const DrawCollection_Desc&			desc,
 		iAllocator*							tempAllocator)
 	{
 		using FetchInstancesFN_t	= decltype(fetchInstances);
 		using FetchConstantsFN_t	= decltype(fetchConstants);
 
+        
 
 		struct _DrawCollection
 		{
@@ -2296,16 +2313,13 @@ namespace FlexKit
 			static_vector<_DCConstantBuffer>	constantBuffers;
 
 			size_t								instanceElementSize;
-
-			PSOHandle							PSO;
-			FlexKit::DescriptorHeap				heap; // Null Filled
 		};
 
-		const size_t instanceElementSize = sizeof(decltype(formatInstanceData(fetchInstances())));
+		constexpr size_t instanceElementSize = sizeof(decltype(formatInstanceData(fetchInstances())));
 
 		frameGraph.AddNode<_DrawCollection>(
 			_DrawCollection{ std::move(fetchInstances), std::move(fetchConstants) },
-			[&](FrameGraphNodeBuilder& builder, auto& data)
+			[&](FrameGraphNodeBuilder& builder, _DrawCollection& data)
 			{
 				for (auto& dep : dependencies)
 					builder.AddDataDependency(*dep);
@@ -2313,27 +2327,18 @@ namespace FlexKit
 				data.renderTarget	= builder.WriteRenderTarget(desc.RenderTarget);
 				data.depthBuffer	= desc.enableDepthBuffer ? builder.WriteDepthBuffer(desc.DepthBuffer) : InvalidHandle_t;
 
-				data.heap.Init(
-					frameGraph.Resources.renderSystem,
-					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-					tempAllocator).NullFill(frameGraph.Resources.renderSystem);
-
 				size_t MaxElementSize = 0;
 				for (auto& i : constantData)
 					MaxElementSize = std::max(MaxElementSize, i.bufferSize);
 
-				CBPushBuffer temp1 = Reserve(desc.constantBuffer, MaxElementSize,	constantData.size(),	frameGraph.Resources);
-				VBPushBuffer temp2 = Reserve(desc.instanceBuffer, instanceElementSize * desc.reserveCount,	frameGraph.Resources);
-
-				data.constantBuffer			= std::move(temp1);
+				data.constantBuffer			= Reserve(desc.constantBuffer, MaxElementSize, constantData.size(), frameGraph.Resources);
+				data.instanceBuffer			= Reserve(desc.instanceBuffer, instanceElementSize * desc.reserveCount, frameGraph.Resources);
 				data.mesh					= desc.Mesh;
-				data.PSO					= desc.PSO;
-				data.instanceBuffer			= std::move(temp2);
 				data.instanceElementSize	= instanceElementSize;
 				data.constants				= constantData;
 				data.constantBuffers		= constantBuffers;
 			},
-			[=](_DrawCollection& data, const FrameResources& resources, Context* ctx)
+			[=, test = std::move(setupPipeline)](_DrawCollection& data, const FrameResources& resources, Context* ctx)
 			{
 				data.fetchConstants(data);
 				auto entities = data.fetchInstances();
@@ -2345,7 +2350,7 @@ namespace FlexKit
 				auto* triMesh			= GetMeshResource(data.mesh);
 				size_t MeshVertexCount	= triMesh->IndexCount;
 
-				setupPipeline(data, resources, ctx);
+				//setup(data, resources, ctx);
 
 				ctx->SetScissorAndViewports({ resources.GetRenderTarget(data.renderTarget) });
 				ctx->SetRenderTargets(

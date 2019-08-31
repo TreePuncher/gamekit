@@ -652,6 +652,7 @@ namespace FlexKit
 		{};
 
 		auto& TransformUpdate = Dispatcher.Add<TransformUpdateData>(
+            TransformComponentID,
 			[&](auto& Builder, TransformUpdateData& Data)
 			{
 				Builder.SetDebugString("UpdateTransform");

@@ -1275,6 +1275,10 @@ namespace FlexKit
 		DescriptorHeap() {}
 		DescriptorHeap(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 
+        // moveable
+        DescriptorHeap(DescriptorHeap&& rhs);
+        DescriptorHeap& operator = (DescriptorHeap&&);
+
 		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
 		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory);
 		DescriptorHeap& NullFill	(RenderSystem* RS);
@@ -1293,6 +1297,21 @@ namespace FlexKit
 		DescriptorHeap	GetHeapOffsetted(size_t offset, RenderSystem* RS) const;
 
 	private:
+
+        // not publically copyable
+        //DescriptorHeap(const DescriptorHeap&) = default;
+        //DescriptorHeap& operator = (const DescriptorHeap&) = default;
+
+        DescriptorHeap Clone() const
+        {
+            DescriptorHeap heap;
+            heap.descriptorHeap     = descriptorHeap;
+            heap.Layout             = Layout;
+            heap.FillState          = FillState;
+
+            return heap;
+        }
+
 
 		static bool CheckType(const DesciptorHeapLayout<>& layout, DescHeapEntryType type, size_t idx);
 

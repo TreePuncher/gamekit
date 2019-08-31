@@ -173,7 +173,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	CameraHandle activeCamera = debugCamera;
 
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
-	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher, transforms);
+	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
 	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
 	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core->GetTempMemory());
 	auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
@@ -211,14 +211,11 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	DrawCollectionDesc.instanceBuffer		= base.vertexBuffer;
 	DrawCollectionDesc.Mesh					= LightModel;
 	DrawCollectionDesc.constantBuffer		= base.constantBuffer;
-	DrawCollectionDesc.PSO					= FORWARDDRAWINSTANCED;
-	DrawCollectionDesc.InstanceElementSize	= sizeof(float4x4);
-
 
 	if(false)
 	{
 		auto cameraConstanstSize = sizeof(decltype(GetCameraConstants(activeCamera)));
-		
+
 		DrawCollection(
 				frameGraph, 
 				{},
@@ -243,11 +240,16 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 						{ 0, 0, 0, 1 }, 
 						{ pos.x, pos.y, pos.z });
 
-					return float4x4{ XMMatrixToFloat4x4(&m) };
+					return XMMatrixToFloat4x4(&m);
 				},
-				[=](auto& defaultResources, auto& resources, auto& ctx)  // Do not setup render targets!
+				[=, heap = DescriptorHeap{
+                                frameGraph.GetRenderSystem(),
+                                frameGraph.GetRenderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+                                core->GetTempMemory() }
+                ]
+                (auto& defaultResources, auto& resources, Context* ctx)  // Do not setup render targets!
 				{
-					ctx->SetGraphicsDescriptorTable(0, defaultResources.heap);
+                    ctx->SetGraphicsDescriptorTable(0, heap);
 					ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
 					ctx->SetPipelineState(resources.GetPipelineState(FORWARDDRAWINSTANCED));
 					ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
