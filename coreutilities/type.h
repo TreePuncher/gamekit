@@ -131,9 +131,20 @@ namespace FlexKit
 		{
 			return CRCLookup[(uint8_t)CRC ^ s[SIZE]] ^ (CRC >> 8);
 		}
+
+        constexpr static uint32_t GetHash2(const char* s)
+        {
+            uint32_t CRC = 0xffffffff;
+
+            for (size_t itr = 0; itr < SIZE; ++itr)
+                CRC = CRCLookup[(uint8_t)CRC ^ s[itr]] ^ (CRC >> 8);
+
+            return CRC;
+        }
+
 	};
 
-	uint32_t Crc(byte* Buffer, size_t BufferSize = 0)
+	uint32_t CRC32(byte* Buffer, size_t BufferSize = 0)
 	{
 		uint32_t CRC = 0xffffffff;
 		for (size_t I = 0; I < BufferSize; ++I)
@@ -148,7 +159,7 @@ namespace FlexKit
 	template<size_t SIZE>
 	constexpr Type_t GenerateTypeGUID(const char* A)
 	{
-		return ~IDGen<SIZE - 2>::GetHash(A);
+		return ~IDGen<SIZE - 2>::GetHash2(A);
 		//return GetCRC32(A);
 	}
 
