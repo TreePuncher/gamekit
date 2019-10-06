@@ -292,51 +292,76 @@ namespace FlexKit
 	private:
 		static_vector<pair<BehaviorBase*, ComponentID>, 16>	behaviors;	// component + Code
 		iAllocator*											allocator;
-	};
+    };
 
 
-	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
-	bool hasBehaviors(GameObject& go)
-	{
-		using TY_COMPONENT = typename std::remove_pointer<TY_COMPONENT_ARG>::type;
-		static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
+    /************************************************************************************************/
 
-		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
-			return go.hasBehavior(TY_COMPONENT::GetComponentID());
-		else
-			return go.hasBehavior(TY_COMPONENT::GetComponentID()) && hasBehaviors<TY_PACKED_ARGS...>(go);
-	}
+
+    template<typename TY_COMPONENT>
+    constexpr bool ValidType()
+    {
+        return std::is_base_of_v<BehaviorBase, std::remove_pointer_t<std::decay_t<TY_COMPONENT>>>;
+    }
+
+
+    template<typename ... ARGS>
+    constexpr bool ValidTypes()
+    {
+        return (ValidType<ARGS>() || ...);
+    }
+
+
+    template<typename ... TY_PACKED_ARGS>
+    constexpr bool hasBehaviors(GameObject& go)
+    {
+        return ValidTypes<TY_PACKED_ARGS...>();
+    }
 
 
 	template<typename TY_COMPONENT>
-	auto GetBehavior(GameObject& go)
+    auto& GetBehavior(GameObject& go)
 	{
-		return static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID()));
+        static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
+
+        return *static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID()));
 	}
 
 
-	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
-	auto GetBehaviors(GameObject& go)
-	{
-		using TY_COMPONENT = typename std::remove_pointer<TY_COMPONENT_ARG>::type;
-		static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
+    template<typename TY_COMPONENT>
+    auto GetBehaviorTuple(GameObject& go)
+    {
+        using TY_COMPONENT_DECAYED  = typename std::remove_pointer_t<std::decay_t<TY_COMPONENT>>;
+        constexpr bool pointer      = std::is_pointer_v<TY_COMPONENT>;
 
+        static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT_DECAYED>::value, "Parameter that is not a behavior type detected, behavior types only!");
+
+        if constexpr (pointer)
+            return  std::tuple<TY_COMPONENT_DECAYED*>{ &GetBehavior<TY_COMPONENT_DECAYED>(go) };
+        else
+            return  std::tuple<TY_COMPONENT_DECAYED&>{  GetBehavior<TY_COMPONENT_DECAYED>(go) };
+    }
+
+
+	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
+	auto GetBehaviorsTuple(GameObject& go)
+	{
 		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
-			return std::tuple<TY_COMPONENT*>{ GetBehavior<TY_COMPONENT>(go) };
+            return  GetBehaviorTuple<TY_COMPONENT_ARG>(go);
 		else
-			return std::tuple_cat(
-				std::tuple<TY_COMPONENT*>{ GetBehavior<TY_COMPONENT>(go) },
-				GetBehaviors<TY_PACKED_ARGS...>(go) );
+            return  std::tuple_cat(
+                GetBehaviorTuple<TY_COMPONENT_ARG>(go),
+                GetBehaviorsTuple<TY_PACKED_ARGS...>(go));
 	}
 
 
 	template<typename ... TY_PACKED_ARGS, typename FN, typename ErrorFN>
 	auto Apply_t(GameObject& go, FN fn, ErrorFN errorFn)
 	{
-		if (!hasBehaviors<TY_PACKED_ARGS...>(go))
+        if (!hasBehaviors<TY_PACKED_ARGS...>(go))
 			return errorFn();
 		else 
-			return std::apply(fn, GetBehaviors<TY_PACKED_ARGS...>(go));
+			return std::apply(fn, GetBehaviorsTuple<TY_PACKED_ARGS...>(go));
 	}
 
 	// Thank Columbo for this idea, https://stackoverflow.com/a/28213747
@@ -712,35 +737,49 @@ namespace FlexKit
 		go.AddBehavior<TestBehavior>();
 
 		Apply(go,
-			[](	// Function Sources
-				SampleBehavior*		sample1,
-				SampleBehavior2*	sample2,
-				SampleBehavior3*	sample3
+			[&](	// Function Sources
+				SampleBehavior&	 sample1,
+				SampleBehavior2& sample2,
+				SampleBehavior3& sample3
 			)
 			{	// do things with behaviors
 				// JK doesn't run, not all inputs satisfied!
-				sample1->DoSomething();
-				sample2->DoSomething();
-				sample3->DoSomething();
+				sample1.DoSomething();
+				sample2.DoSomething();
+				sample3.DoSomething();
+
+                FK_ASSERT(false, "Expected Failure");
 			}, 
-			[] {});
+            [&]
+            {
+                FK_ASSERT(true, "SUCCESS");
+
+                // this runs instead!
+            });
 
 		go.AddBehavior<SampleBehavior2>();
 
 		Apply(go,
 			[](	// Function Sources
-				SampleBehavior*		sample1,
-				SampleBehavior2*	sample2,
-				SampleBehavior3*	sample3,
-				TestBehavior*		test1	)
+				SampleBehavior&		sample1,
+				SampleBehavior2&	sample2,
+				SampleBehavior3&	sample3,
+				TestBehavior&		test1	)
 			{	// do things with behaviors
-				sample1->DoSomething();
-				sample2->DoSomething();
-				sample3->DoSomething();
+				sample1.DoSomething();
+				sample2.DoSomething();
+				sample3.DoSomething();
 
-				auto val = test1->GetData();
+				auto val = test1.GetData();
+
+                FK_ASSERT(true, "SUCCESS");
 			}, 
-			[] {});
+			[]
+            {
+                FK_ASSERT(false, "Unexpected Failure");
+
+                // should not run
+            });
 	}
 
 
@@ -875,7 +914,7 @@ namespace FlexKit
 			for (auto& Node : Node->Inputs)
 				VisitInputs(Node, out);
 
-			out.push_back(Node);
+			out.push_back(Node); 
 		};
 
 
