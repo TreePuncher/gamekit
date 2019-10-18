@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -33,34 +33,34 @@ namespace FlexKit
 {	// Will eventually be a Quake Style Console
 	struct ConsoleSubState : public FrameworkState
 	{
-		ConsoleSubState(GameFramework* framework) :
-			FrameworkState(framework) 
+		ConsoleSubState(GameFramework& framework) :
+            FrameworkState  { framework      },
+            core            { framework.core }
+
 		{
 			FK_LOG_INFO("Creating Console State!");
 
-			console              = &framework->console;
-			framework            = framework;
-			core				 = framework->core;
+			console              = &framework.console;
 			pauseBackgroundLogic = true;
 		}
 
 		~ConsoleSubState()
 		{
-			framework->consoleActive = false;
+			framework.consoleActive = false;
 			console->allocator->free(this); // Not sure what to do about this. Seems like a poor design implication
 		}
 
 		bool			pauseBackgroundLogic;
 		size_t			recallIndex;
 		Console*		console;
-		EngineCore*		core;
+		EngineCore&		core;
 
 		void IncrementRecallIndex();
 		void DecrementRecallIndex();
 
-		bool  Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
-		bool  DebugDraw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
-		bool  Draw				(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
+		bool  Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
+		bool  DebugDraw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
+		bool  Draw				(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
 
 		bool  EventHandler		(Event evt)	override;
 

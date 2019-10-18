@@ -27,6 +27,7 @@
 #pragma comment(lib, "RakNet_VS2008_LibStatic_Release_x64.lib")
 #endif
 
+
 using FlexKit::EngineCore;
 using FlexKit::UpdateDispatcher;
 using FlexKit::GameFramework;
@@ -167,6 +168,8 @@ public:
 	virtual void HandlePacket(UserPacketHeader* incomingPacket, Packet* packet, NetworkState* network) = 0;
 };
 
+using PacketHandlerVector = FlexKit::Vector<PacketHandler*>;
+
 
 /************************************************************************************************/
 
@@ -227,12 +230,12 @@ protected:
 
 public:
 	NetworkState(
-		GameFramework*	IN_framework, 
+		GameFramework&	IN_framework, 
 		BaseState&		IN_base) :
-			FrameworkState	{ IN_framework                          },
-			handlerStack	{ IN_framework->core->GetBlockMemory()  },
-			incomingPackets { IN_framework->core->GetBlockMemory()  },
-			openConnections { IN_framework->core->GetBlockMemory()  }
+			FrameworkState	{ IN_framework                        },
+			handlerStack	{ IN_framework.core.GetBlockMemory()  },
+			incomingPackets { IN_framework.core.GetBlockMemory()  },
+			openConnections { IN_framework.core.GetBlockMemory()  }
 	{
         raknet.SetMaximumIncomingConnections(16);
     }
@@ -266,7 +269,7 @@ public:
     }
 
 
-	bool Update(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT) override
+	bool Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
 	{
 		// Recieve Packets
 		for(auto packet = raknet.Receive(); packet != nullptr; raknet.DeallocatePacket(packet), packet = raknet.Receive())
@@ -289,7 +292,7 @@ public:
             case ID_CONNECTION_LOST:
 			case ID_DISCONNECTION_NOTIFICATION:
 			{
-                FK_LOG_INFO("Somebody Disconnected!");
+                FK_LOG_INFO("Detected disconnection!");
 
                 auto handle = FindConnectionHandle(packet->systemAddress);
                 if (handle == InvalidHandle_t) {
@@ -301,36 +304,36 @@ public:
 			}   break;
 			case ID_NEW_INCOMING_CONNECTION:
 			{
-                FK_LOG_INFO("Somebody Connected!");
+                FK_LOG_INFO("New incoming connection!");
 
 				std::random_device random;
+                const uint32_t id = random();
                 openConnections.push_back(openSocket{
                                             0,
                                             0,
                                             packet->systemAddress,
-                                            ConnectionHandle{ random() }});
+                                            ConnectionHandle{ id }});
 
                 raknet.Ping(packet->systemAddress);
 
                 if(HandleNewConnection)
                     HandleNewConnection(openConnections.back().handle);
-
 			}   break;
 			case EBP_USERPACKET:
-			{
-				// Process packets in a deferred manner
+			{   // Process packets in a deferred manner
 				auto sender = FindConnectionHandle(packet->systemAddress);
 
 				if (sender == InvalidHandle_t)
 					continue;
 
-				auto buffer = core->GetBlockMemory().malloc(packet->length);
+				auto buffer = core.GetBlockMemory().malloc(packet->length);
 				memcpy(buffer, packet->data, packet->length);
 
-				PushIncomingPacket(Packet{ buffer, packet->length, sender, core->GetBlockMemory() });
+				PushIncomingPacket(Packet{ buffer, packet->length, sender, core.GetBlockMemory() });
 			}   break;
 			default:
 			{
+                FK_LOG_INFO("Unrecognized packet, dropped!");
 
 			}   break;
 			}
@@ -368,7 +371,17 @@ public:
 	/************************************************************************************************/
 
 
-	void SendPacket(UserPacketHeader& packet, ConnectionHandle destination)
+    void Broadcast(UserPacketHeader& packet)
+    {
+        for (auto socket : openConnections)
+            raknet.Send((const char*)& packet, packet.packetSize, PacketPriority::MEDIUM_PRIORITY, PacketReliability::UNRELIABLE, 0, socket.address, false, 0);
+    }
+
+
+    /************************************************************************************************/
+
+
+	void Send(UserPacketHeader& packet, ConnectionHandle destination)
 	{
         auto socket = GetConnection(destination);
 
@@ -379,9 +392,9 @@ public:
 	/************************************************************************************************/
 
 
-	void PushHandler(Vector<PacketHandler*>* handler)
+	void PushHandler(Vector<PacketHandler*>& handler)
 	{
-		handlerStack.push_back(handler);
+		handlerStack.push_back(&handler);
 	}
 
 
@@ -410,6 +423,7 @@ public:
         auto socket = GetConnection(handle);
         raknet.CloseConnection(socket.address, true);
     }
+
 
     /************************************************************************************************/
 
@@ -456,7 +470,7 @@ public:
 
     void SystemInError()
     {
-        framework->core->End = true;
+        framework.core.End = true;
     }
 
 

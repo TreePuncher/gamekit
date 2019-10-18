@@ -310,7 +310,7 @@ namespace FlexKit
 					}
 					itr++;
 				}
-				((float*)out)[0] = atof( c_str );
+				((float*)out)[0] = (float)atof( c_str );
 			}
 
 

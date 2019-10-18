@@ -4,7 +4,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -128,8 +128,8 @@ namespace FlexKit
 
 					auto View = buffers[I];
 					blob->Buffers[I].Begin  = bufferPosition;
-					blob->Buffers[I].Format = (size_t)buffers[I]->GetElementSize();
-					blob->Buffers[I].Type   = (size_t)buffers[I]->GetBufferType();
+					blob->Buffers[I].Format = (uint16_t)buffers[I]->GetElementSize();
+					blob->Buffers[I].Type   = (uint16_t)buffers[I]->GetBufferType();
 					blob->Buffers[I].size   = (size_t)buffers[I]->GetBufferSizeRaw();
 					bufferPosition		  += buffers[I]->GetBufferSizeRaw();
 
@@ -197,15 +197,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetNormalIndex	(size_t pIndex, size_t vIndex, size_t vID, fbxsdk::FbxMesh* Mesh);
-	size_t GetTexcordIndex	(size_t pIndex, size_t vIndex, fbxsdk::FbxMesh* Mesh);
-	size_t GetVertexIndex	(size_t pIndex, size_t vIndex, size_t vID, fbxsdk::FbxMesh* Mesh);
+	size_t GetNormalIndex	(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
+	size_t GetTexcordIndex	(const int pIndex, const int vIndex, fbxsdk::FbxMesh* Mesh);
+	size_t GetVertexIndex	(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh);
 
 
 	/************************************************************************************************/
 
 
-	FBXSkinDeformer		CreateSkin			(fbxsdk::FbxMesh* Mesh);
+	FBXSkinDeformer		CreateSkin			(const fbxsdk::FbxMesh* Mesh);
 	FBXMeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false);
 	
 	MeshResource_ptr	CompileMeshResource	(FbxMesh* Mesh, const std::string& ID = std::string{}, const MetaDataList& MD = MetaDataList{}, bool EnableSubDiv = false);

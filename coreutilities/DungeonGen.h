@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\MathUtils.h"
 #include <cstdlib>
 
-#pragma warning( disable : 4251 )
+//#pragma warning( disable : 4251 )
 
 #ifndef DUNGEONGEN_H
 #define DUNGEONGEN_H

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifdef _WIN32
 #pragma once
-#pragma warning ( disable : 4244 )
+//#pragma warning ( disable : 4244 )
 #endif
 
 #ifndef MATHUTTILS
@@ -555,11 +555,13 @@ namespace FlexKit
 	typedef Vect<3, double> double3;
 	typedef Vect<4, double> double4;
 	
-	typedef Vect<2, size_t> uint2;
-	typedef Vect<3, size_t> uint3;
-	typedef Vect<4, size_t> uint4;
+    typedef Vect<2, uint32_t>       uint2;
+    typedef Vect<2, size_t>         uint2_64;
+
+	typedef Vect<3, size_t>         uint3;
+	typedef Vect<4, size_t>         uint4;
 	typedef Vect<4, unsigned short> uint4_16;
-	typedef Vect<4, uint32_t> uint4_32;
+	typedef Vect<4, uint32_t>       uint4_32;
 
 	typedef Vect<2, int> int2;
 	typedef Vect<3, int> int3;
@@ -823,9 +825,9 @@ namespace FlexKit
 
 #endif
 
-		inline float3 xy() { return float3(x, y, 0.0f); }
-		inline float3 xz() { return float3(x, 0.0f, z); }
-		inline float3 yz() { return float3(0.0f, y, z); }
+		inline float3 xy() const { return float3(x, y, 0.0f); }
+		inline float3 xz() const { return float3(x, 0.0f, z); }
+		inline float3 yz() const { return float3(0.0f, y, z); }
 
 
 		inline float3& operator = (float F)
@@ -2134,7 +2136,7 @@ namespace FlexKit
 		float3 Dir		= (B - A).magnitude();
 		Dir = {Dir.z, Dir.y, -Dir.x};
 
-		float3 UpV		= (0, 1, 0);
+		float3 UpV		= (0.0f, 1.0f, 0.0f);
 		float3 DirXUpV	= Dir.cross(UpV);
 
 		return Vector2Quaternion(Dir, DirXUpV.cross(Dir), DirXUpV);

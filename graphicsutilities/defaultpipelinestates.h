@@ -68,9 +68,9 @@ namespace FlexKit
 			Predicates(rhs.Predicates) {}
 		*/
 
-		size_t					Head;
-		size_t					Max;
-		size_t					Idx;
+		uint32_t Head;
+        uint32_t Max;
+        uint32_t Idx;
 
 		ID3D12QueryHeap*		Heap[3];
 		FrameBufferedResource	Predicates;
@@ -80,7 +80,7 @@ namespace FlexKit
 		ID3D12PipelineState*	PSO;
 
 		ID3D12Resource* Get();
-		size_t			GetNext();
+        uint32_t		GetNext();
 
 		void Clear();
 		void Increment();

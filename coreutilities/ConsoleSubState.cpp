@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -29,7 +29,7 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
+	bool  ConsoleSubState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
 		return !pauseBackgroundLogic;
 	}
@@ -38,7 +38,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::DebugDraw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
+	bool  ConsoleSubState::DebugDraw(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
 		return false;
 	}
@@ -46,9 +46,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& graph)
+	bool  ConsoleSubState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
 	{
-		console->Draw(graph, GetCurrentBackBuffer(&core->Window), Engine->GetTempMemory());
+		console->Draw(graph, GetCurrentBackBuffer(core.Window), core.GetTempMemory());
 
 		return false;
 	}
@@ -72,12 +72,12 @@ namespace FlexKit
 					return false;
 				}	break;
 				case KC_BACKSPACE:
-					framework->console.BackSpace();
+					framework.console.BackSpace();
 					break;
 				case KC_ENTER:
 				{
 					recallIndex = 0;
-					framework->console.EnterLine(framework->core->GetTempMemory());
+					framework.console.EnterLine(framework.core.GetTempMemory());
 				}	break;
 				case KC_ARROWUP:
 				{
@@ -105,7 +105,7 @@ namespace FlexKit
 				}	break;
 				case KC_SPACE:
 				{
-					framework->console.Input(' ');
+					framework.console.Input(' ');
 				}	break;
 				default:
 				{
@@ -115,7 +115,7 @@ namespace FlexKit
 						(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
 						(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
 						(evt.mData1.mKC[0] == KC_SYMBOL ))
-						framework->console.Input((char)evt.mData2.mINT[0]);
+						framework.console.Input((char)evt.mData2.mINT[0]);
 
 				}	break;
 				}

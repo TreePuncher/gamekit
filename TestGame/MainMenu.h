@@ -37,24 +37,24 @@ class MainMenu : public FlexKit::FrameworkState
 {
 public:
 	MainMenu(
-		FlexKit::GameFramework*		IN_Framework,
-		BaseState*					IN_Base	);
+		GameFramework&  IN_Framework,
+		BaseState&	    IN_Base	);
 
-	bool Update			(FlexKit::EngineCore* Engine,	FlexKit::UpdateDispatcher& Dispatcher, double dT) override;
-	bool Draw			(FlexKit::EngineCore* Engine,	FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
-	bool PostDrawUpdate	(FlexKit::EngineCore* Core,		FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) override;
+	bool Update			(EngineCore& Engine,	UpdateDispatcher& Dispatcher, double dT) final override;
+	bool Draw			(EngineCore& Engine,	UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
+	bool PostDrawUpdate	(EngineCore& Core,		UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
 
 private:
-	FlexKit::ConstantBufferHandle	constantBuffer;
-	FlexKit::VertexBufferHandle		vertexBuffer;
-	FlexKit::VertexBufferHandle		textBuffer;
+	ConstantBufferHandle	constantBuffer;
+	VertexBufferHandle		vertexBuffer;
+	VertexBufferHandle		textBuffer;
 
 
-	FlexKit::GuiSystem	gui;
-	FlexKit::GUIGrid*	menuGrid;
-	FlexKit::GUIButton*	menuQuitButton;
-	FlexKit::GUIButton*	menuJoinButton;
-	FlexKit::GUIButton*	menuHostButton;
+	GuiSystem	gui;
+	GUIGrid*	menuGrid;
+	GUIButton*	menuQuitButton;
+	GUIButton*	menuJoinButton;
+	GUIButton*	menuHostButton;
 };
 
 #endif

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -182,9 +182,9 @@ namespace FlexKit
 					char ValueBuffer[16];
 					strncpy_s(ValueBuffer, &ValueToken.front(), ValueToken.size());
 
-					auto V = atoll(ValueBuffer);
-					NewValue.Data.UI = V;
-					NewValue.ID = IDToken;
+					auto V              = atol(ValueBuffer);
+					NewValue.Data.UI    = V;
+					NewValue.ID         = IDToken;
 
 					Values.push_back(NewValue);
 
@@ -216,7 +216,7 @@ namespace FlexKit
 					char ValueBuffer[16];
 					strncpy_s(ValueBuffer, &ValueToken.front(), ValueToken.size());
 
-					NewValue.Data.F = atof(ValueBuffer);
+					NewValue.Data.F = (float)atof(ValueBuffer);
 					NewValue.ID		= IDToken; 
 
 					Values.push_back(NewValue);
@@ -234,7 +234,7 @@ namespace FlexKit
 					for (size_t itr3 = 0; itr3 < 3; ++itr3) {
 						char ValueBuffer[16];
 						strncpy_s(ValueBuffer, ValueTokens[itr3].data(), ValueTokens[itr3].size());
-						NewValue.Data.F3[itr3] = atof(ValueBuffer);
+						NewValue.Data.F3[itr3] = (float)atof(ValueBuffer);
 					}
 
 					NewValue.ID = IDToken;

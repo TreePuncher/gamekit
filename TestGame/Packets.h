@@ -39,7 +39,9 @@ typedef uint64_t MultiplayerPlayerID_t;
 enum LobbyPacketIDs : PacketID_t
 {
 	_LobbyPacketID_Begin		= UserPacketIDCount,
-	StartGame					= GetCRCGUID(StartGame),
+	LoadGame					= GetCRCGUID(LoadGame),
+    ClientGameLoaded            = GetCRCGUID(ClientGameLoaded),
+    BeginGame                   = GetCRCGUID(BeginGame),
 	RequestPlayerList			= GetCRCGUID(RequestPlayerList),
 	RequestPlayerListResponse	= GetCRCGUID(PlayerList),
 };
@@ -142,17 +144,17 @@ public:
 /************************************************************************************************/
 
 
-class PlayerListPacket
+class PlayerListPacket : public UserPacketHeader
 {
 public:
 	PlayerListPacket(MultiplayerPlayerID_t IN_id, size_t playerCount) :
-		Header{	{ GetPacketSize(playerCount)},
-				{ RequestPlayerListResponse } },
+        UserPacketHeader{
+            { GetPacketSize(playerCount)},
+			{ RequestPlayerListResponse } },
 		playerID	{ IN_id			},
 		playerCount	{ playerCount	}{}
 
 
-	UserPacketHeader			Header;
 	const MultiplayerPlayerID_t	playerID;
 	size_t						playerCount;
 
@@ -164,11 +166,6 @@ public:
 		bool					ready;
 	}Players[];
 
-
-	UserPacketHeader* GetRawPacket()
-	{
-		return &Header;
-	}
 
 	static size_t GetPacketSize(size_t playerCount)
 	{
@@ -184,15 +181,25 @@ public:
 /************************************************************************************************/
 
 
-class StartGamePacket
+class StartGamePacket : public UserPacketHeader
 {
 public:
 	StartGamePacket() :
-		Header	{ sizeof(StartGamePacket),
-				{ StartGame } }
-	{}
+        UserPacketHeader
+        {   sizeof(StartGamePacket),
+		    { LoadGame } } {}
+};
 
-	UserPacketHeader	Header;
+
+/************************************************************************************************/
+
+
+class ClientGameLoadedPacket : public UserPacketHeader
+{
+    ClientGameLoadedPacket() :
+        UserPacketHeader
+        {   sizeof(ClientGameLoadedPacket),
+            { ClientGameLoaded } } {}
 };
 
 

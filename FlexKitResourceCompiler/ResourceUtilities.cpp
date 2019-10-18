@@ -1,7 +1,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -420,7 +420,7 @@ public :
 /************************************************************************************************/
 
 
-int	AddSceneNode(CompiledScene::SceneNode* Node, CompiledScene* Scene)
+size_t AddSceneNode(CompiledScene::SceneNode* Node, CompiledScene* Scene)
 {
 	auto index = Scene->Nodes.size();
 	return index;
@@ -515,7 +515,7 @@ FileDir SelectFile()
 					FileDir	Dir;
 					BOOL DefaultCharUsed = 0;
 					CCHAR	DChar = ' ';
-					auto res = WideCharToMultiByte( CP_UTF8, 0, FilePath, length, Dir.str, 256, nullptr, nullptr);
+					auto res = WideCharToMultiByte( CP_UTF8, 0, FilePath, (int)length, Dir.str, 256, nullptr, nullptr);
 					if ( !res )
 					{
 						IErrorInfo*	INFO = nullptr;

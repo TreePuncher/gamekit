@@ -5,11 +5,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	CameraHandle CameraComponent::CreateCamera(
-		float	FOV,			
-		float	AspectRatio,
-		float	Near,	
-		float	Far,			
-		bool	Invert)
+		const float	FOV,			
+		const float	AspectRatio,
+		const float	Near,	
+		const float	Far,			
+		const bool	Invert)
 	{
 		auto handle = handles.GetNewHandle();
 
@@ -23,7 +23,7 @@ namespace FlexKit
 
 		DirtyFlags.push_back(true);
 		handleRef.push_back(handle);
-		handles[handle] = Cameras.push_back(NewCamera);
+		handles[handle] = (index_t)Cameras.push_back(NewCamera);
 
 		return handle;
 	}

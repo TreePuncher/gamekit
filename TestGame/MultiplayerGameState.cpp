@@ -9,16 +9,14 @@ using namespace FlexKit;
 
 
 GameState::GameState(
-			FlexKit::GameFramework* IN_framework, 
-			BaseState&				IN_base) :
-		FrameworkState	{IN_framework},
+			GameFramework&  IN_framework, 
+			BaseState&		IN_base) :
+		        FrameworkState	{ IN_framework },
 		
-		frameID			{ 0										},
-		base			{ IN_base								},
-		scene			{ IN_framework->core->GetBlockMemory()	}
-{
-	LoadScene(framework->core, &scene, "TestScene");
-}
+		        frameID			{ 0										},
+		        base			{ IN_base								},
+		        scene			{ IN_framework.core.GetBlockMemory()	}
+{}
 
 
 /************************************************************************************************/
@@ -26,12 +24,12 @@ GameState::GameState(
 
 GameState::~GameState()
 {
-	iAllocator* allocator = base.framework->core->GetBlockMemory();
+	iAllocator* allocator = base.framework.core.GetBlockMemory();
 	auto entities = scene.sceneEntities;
 
 	for (auto entity : entities)
 	{
-		auto entityGO = SceneVisibilityBehavior::GetComponent()[entity].entity;
+		auto entityGO = SceneVisibilityView::GetComponent()[entity].entity;
 		scene.RemoveEntity(*entityGO);
 
 		entityGO->Release();
@@ -45,7 +43,7 @@ GameState::~GameState()
 /************************************************************************************************/
 
 
-bool GameState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
+bool GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
 	return true;
 }
@@ -54,7 +52,7 @@ bool GameState::Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double 
 /************************************************************************************************/
 
 
-bool GameState::PreDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT)
+bool GameState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
 	return true;
 }
@@ -63,7 +61,7 @@ bool GameState::PreDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispatcher, 
 /************************************************************************************************/
 
 
-bool GameState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+bool GameState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	return true;
 }
@@ -72,8 +70,106 @@ bool GameState::Draw(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT
 /************************************************************************************************/
 
 
-bool GameState::PostDrawUpdate(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+bool GameState::PostDrawUpdate(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_base, GameState& IN_game) :
+		FrameworkState	{ IN_framework							},
+		game			{ IN_game								},
+		base			{ IN_base								},
+		eventMap		{ IN_framework.core.GetBlockMemory()	},
+		netInputObjects	{ IN_framework.core.GetBlockMemory()	}
+{
+	eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
+}
+
+
+/************************************************************************************************/
+
+
+bool LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT)
+{
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
+{
+    return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+{
+	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
+
+	CameraHandle activeCamera = debugCamera;
+
+	auto& scene				= game.scene;
+	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
+	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
+	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework.MouseState, dT);
+	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
+	auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
+	auto& textureStreams	= base.streamingEngine.update(dispatcher);
+
+	WorldRender_Targets targets = {
+		GetCurrentBackBuffer(core.Window),
+		base.depthBuffer
+	};
+
+	LighBufferDebugDraw debugDraw;
+	debugDraw.constantBuffer = base.constantBuffer;
+	debugDraw.renderTarget   = targets.RenderTarget;
+	debugDraw.vertexBuffer	 = base.vertexBuffer;
+
+	const SceneDescription sceneDesc = {
+	    scene.GetPointLights(dispatcher, core.GetTempMemory()),
+	    transforms,
+	    cameras,
+	    PVS,
+    };
+
+	ClearVertexBuffer(frameGraph, base.vertexBuffer);
+	ClearVertexBuffer(frameGraph, base.textBuffer);
+
+	ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
+	ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
+
+    base.render.updateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
+	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, frameGraph, PVS.GetData().solid, activeCamera, targets, sceneDesc, core.GetTempMemory());
+
+    PresentBackBuffer(frameGraph, &core.Window);
+
+	return true;
+}
+
+
+/************************************************************************************************/
+
+
+bool LocalPlayerState::EventHandler(Event evt)
+{
+	eventMap.Handle(evt, [&](auto& evt)
+		{
+			debugCamera.HandleEvent(evt);
+		});
+
 	return true;
 }
 

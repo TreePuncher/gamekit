@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -109,7 +109,7 @@ namespace FlexKit
 
 
 		template<size_t size = 0>
-		TileID(TerrainTileBitSection ID[size]) : 
+		TileID(const TerrainTileBitSection ID[size]) : 
 			tileDepth		{ size													},
 			tileIDBitField	{ _GenerateBitField(static_cast<uint8_t*>(ID, size))	}
 		{
@@ -125,12 +125,12 @@ namespace FlexKit
 		}
 
 
-		TileID(uint64_t bitField = 0, size_t depth = 0) :
+		TileID(const uint64_t bitField = 0, const uint8_t depth = 0) :
 			tileDepth		{ depth		},
 			tileIDBitField	{ bitField	} {}
 
 
-		TileID CreateChildID(TerrainTileBitSection localID) const
+		TileID CreateChildID(const TerrainTileBitSection localID) const
 		{
 			uint64_t temp = tileIDBitField;
 			temp <<= 2;
@@ -192,7 +192,7 @@ namespace FlexKit
 			return bitField;
 		}
 
-		const size_t	tileDepth		: 8;
+		const uint8_t	tileDepth		: 8;
 		const size_t	tileIDBitField	: 56;
 	};
 
@@ -386,8 +386,8 @@ namespace FlexKit
 				//auto textureHandle	= MoveTextureBuffersToVRAM(RS, Textures.begin(), Textures.size(), allocator);
 				auto textureHandle		= MoveTextureBufferToVRAM(RS, &Textures[0], allocator);
 				
-				unsigned int tileMap	= tileTextures.push_back(TileMaps{ textureHandle, heightMap });
-				auto minMax				= GetMinMax(Textures.front());
+				const auto tileMap	    = (uint32_t)tileTextures.push_back(TileMaps{ textureHandle, heightMap });
+				const auto minMax		= GetMinMax(Textures.front());
 
 				root.heightMap			= TileMapHandle{ tileMap };
 				root.patch.lowerHeight	= minMax.Get<0>();
@@ -401,7 +401,7 @@ namespace FlexKit
 				if (!res)
 					throw std::runtime_error("Failed to created texture!");
 
-				unsigned int tileMap = tileTextures.push_back(TileMaps{ textureHandle, heightMap });
+				auto tileMap = (uint32_t)tileTextures.push_back(TileMaps{ textureHandle, heightMap });
 
 				root.heightMap = TileMapHandle{ tileMap };
 			}

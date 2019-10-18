@@ -4,7 +4,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -67,7 +67,7 @@ public:
 		result			= FMOD::System_Create(&system);
 		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
 
-		auto& Work = CreateLambdaWork_New(
+		auto& Work = CreateLambdaWork(
 			[this]() {
 			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
 			if(sound1)
@@ -94,7 +94,7 @@ public:
 
 	void Update(iAllocator* memory)
 	{
-		auto& Work = CreateLambdaWork_New(
+		auto& Work = CreateLambdaWork(
 			[this]() {
 				auto result = system->update();
 			}, 
@@ -149,34 +149,35 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 /************************************************************************************************/
 
 
-class BaseState : public FlexKit::FrameworkState
+class BaseState : public FrameworkState
 {
 public:
 	BaseState(	
-		FlexKit::GameFramework* IN_Framework,
-		FlexKit::FKApplication& IN_App	) :
+		GameFramework& IN_Framework,
+		FKApplication& IN_App	) :
 			App				{ IN_App																						},
 			FrameworkState	{ IN_Framework																					},
-			depthBuffer		{ IN_Framework->core->RenderSystem.CreateDepthBuffer(IN_Framework->ActiveWindow->WH,	true)	},
-			vertexBuffer	{ IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
-			textBuffer		{ IN_Framework->core->RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
-			constantBuffer	{ IN_Framework->core->RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
+			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(IN_Framework.ActiveWindow->WH,	true)	    },
+			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
+			textBuffer		{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
+			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
 			asEngine		{ asCreateScriptEngine()																		},
-			streamingEngine	{ IN_Framework->core->RenderSystem, IN_Framework->core->GetBlockMemory()						},
+			streamingEngine	{ IN_Framework.core.RenderSystem,   IN_Framework.core.GetBlockMemory()				            },
+            sounds          { IN_Framework.core.Threads,        IN_Framework.core.GetBlockMemory()                          },
 
-			render	{	IN_Framework->core->GetTempMemory(),
-						IN_Framework->core->RenderSystem,
+			render	{	IN_Framework.core.GetTempMemory(),
+						IN_Framework.core.RenderSystem,
 						streamingEngine,
-						IN_Framework->ActiveWindow->WH / 10
+						IN_Framework.ActiveWindow->WH / 10
 					},
 
-			cameras		{ framework->core->GetBlockMemory() },
-			ids			{ framework->core->GetBlockMemory() },
-			drawables	{ framework->core->GetBlockMemory() },
-			visables	{ framework->core->GetBlockMemory() },
-			pointLights	{ framework->core->GetBlockMemory() }
+			cameras		{ framework.core.GetBlockMemory() },
+			ids			{ framework.core.GetBlockMemory() },
+			drawables	{ framework.core.GetBlockMemory() },
+			visables	{ framework.core.GetBlockMemory() },
+			pointLights	{ framework.core.GetBlockMemory() }
 	{
-		auto& RS = *IN_Framework->GetRenderSystem();
+		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
 		RS.RegisterPSOLoader(FlexKit::DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
 		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
@@ -195,10 +196,10 @@ public:
 
 	~BaseState()
 	{
-		framework->core->RenderSystem.ReleaseVB(vertexBuffer);
-		framework->core->RenderSystem.ReleaseVB(textBuffer);
-		framework->core->RenderSystem.ReleaseCB(constantBuffer);
-		framework->core->RenderSystem.ReleaseDB(depthBuffer);
+		framework.core.RenderSystem.ReleaseVB(vertexBuffer);
+		framework.core.RenderSystem.ReleaseVB(textBuffer);
+		framework.core.RenderSystem.ReleaseCB(constantBuffer);
+		framework.core.RenderSystem.ReleaseDB(depthBuffer);
 	}
 
 	asIScriptEngine* asEngine;
@@ -211,6 +212,8 @@ public:
 	VertexBufferHandle			textBuffer;
 	ConstantBufferHandle		constantBuffer;
 	
+    SoundSystem			        sounds;
+
 	// Components
 	SceneNodeComponent			transforms;
 	CameraComponent				cameras;

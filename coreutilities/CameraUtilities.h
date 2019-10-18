@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -47,7 +47,7 @@ namespace FlexKit
 
 
 	class OrbitCameraBehavior :
-		public CameraBehavior
+		public CameraView
 	{
 	public:
 		OrbitCameraBehavior(CameraHandle Handle = CameraComponent::GetComponent().CreateCamera(), float MovementSpeed = 100, float3 InitialPos = {0, 0, 0});

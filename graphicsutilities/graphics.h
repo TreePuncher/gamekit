@@ -405,8 +405,8 @@ namespace FlexKit
 		}
 
 		Texture2D_Desc(
-			size_t			in_height,
-			size_t			in_width,
+			uint32_t		in_height,
+			uint32_t		in_width,
 			FORMAT_2D		in_format,
 			CPUACCESSMODE	in_Mode,
 			SPECIALFLAGS	in_FLAGS,
@@ -419,7 +419,7 @@ namespace FlexKit
 			MipLevels	= in_MipLevels;
 		}
 
-		size_t			Height, Width;
+		uint32_t		Height, Width;
 		size_t			MipLevels;
 		FORMAT_2D		Format;
 		bool			Write;
@@ -780,9 +780,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline TextureHandle GetCurrentBackBuffer(RenderWindow* Window) 
+	inline TextureHandle GetCurrentBackBuffer(RenderWindow& Window) 
 	{
-		return Window->RenderTargets[Window->BufferIndex];
+		return Window.RenderTargets[Window.BufferIndex];
 	}
 
 
@@ -1384,8 +1384,8 @@ namespace FlexKit
 		{
 			RootEntry Desc;
 			Desc.Type							= RootSignatureEntryType::ConstantBuffer;
-			Desc.ConstantBuffer.Register		= Register;
-			Desc.ConstantBuffer.RegisterSpace	= RegisterSpace;
+			Desc.ConstantBuffer.Register		= (uint32_t)Register;
+			Desc.ConstantBuffer.RegisterSpace	= (uint32_t)RegisterSpace;
 			Desc.ConstantBuffer.Accessibility	= AccessableStages;
 
 
@@ -1410,8 +1410,8 @@ namespace FlexKit
 		{
 			RootEntry Desc;
 			Desc.Type							= RootSignatureEntryType::UnorderedAcess;
-			Desc.ConstantBuffer.Register		= Register;
-			Desc.ConstantBuffer.RegisterSpace	= RegisterSpace;
+			Desc.ConstantBuffer.Register		= (uint32_t)Register;
+			Desc.ConstantBuffer.RegisterSpace	= (uint32_t)RegisterSpace;
 			Desc.ConstantBuffer.Accessibility	= AccessableStages;
 
 
@@ -1437,8 +1437,8 @@ namespace FlexKit
 		{
 			RootEntry Desc;
 			Desc.Type							= RootSignatureEntryType::StructuredBuffer;
-			Desc.ConstantBuffer.Register		= Register;
-			Desc.ConstantBuffer.RegisterSpace	= RegisterSpace;
+			Desc.ConstantBuffer.Register		= (uint32_t)Register;
+			Desc.ConstantBuffer.RegisterSpace	= (uint32_t)RegisterSpace;
 			Desc.ConstantBuffer.Accessibility	= AccessableStages;
 
 			if (RootEntries.size() < Index)
@@ -2478,7 +2478,7 @@ namespace FlexKit
 			newResource.resource[2] = resource[2];
 			newResource.handle		= handle;
 			newResource.format		= resourceDesc.Format;
-			handles[handle]			= resources.push_back(newResource);
+			handles[handle]			= (uint32_t)resources.push_back(newResource);
 
 			return InvalidHandle_t;
 		}
@@ -2559,13 +2559,13 @@ namespace FlexKit
 		{
 			auto newHandle		= handles.GetNewHandle();
 			handles[newHandle]	= 
-					resources.push_back({
+                    (index_t)resources.push_back({
 						newResources,
 						counters,
 						resourceSize,
 						{initialState, initialState, initialState},
 						newHandle,
-						0 });
+                        0 });
 
 			return newHandle;
 		}
@@ -3000,8 +3000,8 @@ namespace FlexKit
 		struct BuffEntry
 		{
 			ID3D12Resource*		Buffer;
-			size_t				BufferSizeInBytes;
-			size_t				BufferStride;
+			uint32_t			BufferSizeInBytes;
+            uint32_t            BufferStride;
 			VERTEXBUFFER_TYPE	Type;
 
 			operator bool()	{ return Buffer != nullptr; }
@@ -4098,7 +4098,7 @@ namespace FlexKit
 	FLEXKITAPI void SetSystemCursorToWindowCenter	( RenderWindow* Window );
 	FLEXKITAPI void ShowSystemCursor				( RenderWindow* Window );
 
-	FLEXKITAPI float2 GetPixelSize(RenderWindow* Window);
+	FLEXKITAPI float2 GetPixelSize(RenderWindow& Window);
 
 	
 	/************************************************************************************************/

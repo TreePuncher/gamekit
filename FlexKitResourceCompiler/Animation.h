@@ -1,7 +1,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -202,17 +202,17 @@ struct SkeletonResource : public iResource
 /************************************************************************************************/
 
 
-fbxsdk::FbxNode*	FindSkeletonRoot	( fbxsdk::FbxMesh* M );
-void				FindAllJoints		( JointList& Out, FbxNode* N, size_t Parent = 0xFFFF );
+fbxsdk::FbxNode*	FindSkeletonRoot	( const fbxsdk::FbxMesh* M );
+void				FindAllJoints		( JointList& Out, const FbxNode* N, const size_t Parent = 0xFFFF );
 
 void								GetAnimationCuts			( CutList* out, MetaDataList& MD, const std::string& id);
-JointAnimation						GetJointAnimation			( FbxNode* N );
+JointAnimation						GetJointAnimation			( const FbxNode* N );
 JointHandle							GetJoint					( static_vector<JointInfo, 1024>& Out, const char* ID );
-void								GetJointTransforms			( JointList& Out, FbxMesh* M, iAllocator* MEM );
-FbxAMatrix							GetGeometryTransformation	( FbxNode* inNode );	
-std::shared_ptr<Skeleton_MetaData>	GetSkeletonMetaData			(const MetaDataList& metaDatas);
+void								GetJointTransforms			( JointList& Out, const FbxMesh* M, iAllocator* MEM );
+FbxAMatrix							GetGeometryTransformation	( const FbxNode* inNode );	
+std::shared_ptr<Skeleton_MetaData>	GetSkeletonMetaData			( const MetaDataList& metaDatas);
 
-SkeletonResource_ptr		LoadSkeletonResource		( FbxMesh* M, const char* ParentID = nullptr, MetaDataList& related = MetaDataList{});
+SkeletonResource_ptr		LoadSkeletonResource		( const FbxMesh* M, const char* ParentID = nullptr, MetaDataList& related = MetaDataList{});
 
 
 /************************************************************************************************/

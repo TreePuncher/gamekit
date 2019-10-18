@@ -19,35 +19,33 @@ public:
 	thirdPersonActor(iAllocator* IN_allocator) : allocator{ IN_allocator }
 	{
 		// Add behaviors
-		gameObject.AddBehavior<CameraBehavior>();
-		gameObject.AddBehavior<SceneNodeBehavior<>>();
+		gameObject.AddView<CameraView>();
+		gameObject.AddView<SceneNodeView<>>();
 
 		// Tie nodes together
 		Apply(gameObject, []
-			(	CameraBehavior*			camera,
-				SceneNodeBehavior<>*	node)
+			(	CameraView&			camera,
+				SceneNodeView<>&	node)
 			{
-				auto cameraNode = camera->GetCameraNode();
-				node->Parent(cameraNode);
-			}, 
-			[] {});
+				node.Parent(camera.GetCameraNode());
+			});
 	}
+
 
 	~thirdPersonActor()
 	{
 		auto node	= &GetNode();
 		auto camera	= &GetCamera();
 		gameObject.Release();
-		allocator->release(node);
-		allocator->release(camera);
 	}
 
-	SceneNodeBehavior<>&	GetNode()	{ return *GetBehavior<SceneNodeBehavior<>>(gameObject); }
-	CameraBehavior&			GetCamera() { return *GetBehavior<CameraBehavior>(gameObject);		}
 
-	operator GameObject&			() { return gameObject; }
-	operator SceneNodeBehavior<>&	() { return *GetBehavior<SceneNodeBehavior<>>(gameObject);	}
-	operator CameraBehavior&		() { return *GetBehavior<CameraBehavior>(gameObject);		}
+	SceneNodeView<>&    	GetNode()	{ return GetView<SceneNodeView<>>(gameObject); }
+	CameraView&			    GetCamera() { return GetView<CameraView>(gameObject);		}
+
+	operator GameObject&		() { return gameObject; }
+	operator SceneNodeView<>&   () { return GetView<SceneNodeView<>>(gameObject);	}
+	operator CameraView&	    () { return GetView<CameraView>(gameObject);		}
 
 private:
 	GameObject	gameObject;
@@ -59,19 +57,19 @@ class PlayState : public FrameworkState
 {
 public:
 	PlayState(
-		GameFramework*	IN_Framework, 
+		GameFramework&	IN_Framework, 
 		BaseState&		Base);
 	
 
 	~PlayState();
 
 
-	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
-	bool PreDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
-	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
-	bool PostDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+	bool Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
+	bool PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
+	bool Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
+	bool PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
 
-	bool DebugDraw		(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) final;
+	bool DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
 	bool EventHandler	(Event evt)	final;
 
 
@@ -80,15 +78,6 @@ public:
 	WorldRender&		render;
 	BaseState&			base;
 
-	SoundSystem			sound;
-
-	/*
-	FlexKit::GuiSystem	ui;
-	FlexKit::GUIGrid*	uiMainGrid;
-	FlexKit::GUIGrid*	uiSubGrid_1;
-	FlexKit::GUIGrid*	uiSubGrid_2;
-	*/
-
 	InputMap		eventMap;
 	InputMap		debugCameraInputMap;
 	InputMap		debugEventsInputMap;
@@ -96,8 +85,7 @@ public:
 	TriMeshHandle	characterModel;
 	TriMeshHandle	LightModel;
 
-	FlexKit::OrbitCameraBehavior	debugCamera;
-	//FlexKit::ThirdPersonCameraRig	thirdPersonCamera;
+	OrbitCameraBehavior	    debugCamera;
 };
 
 

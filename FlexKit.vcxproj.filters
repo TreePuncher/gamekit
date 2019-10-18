@@ -258,12 +258,6 @@
     <ClCompile Include="graphicsutilities\SSReflections.cpp">
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
-    <ClCompile Include="graphicsutilities\ForwardRendering.h">
-      <Filter>graphicsutilities\headers</Filter>
-    </ClCompile>
-    <ClCompile Include="graphicsutilities\ForwardRendering.cpp">
-      <Filter>graphicsutilities\source</Filter>
-    </ClCompile>
     <ClCompile Include="coreutilities\Transforms.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -44,8 +44,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define MAXTHREADCOUNT 3
 
-#pragma warning ( disable : 4251 )
-
+//#pragma warning ( disable : 4251 )
 
 
 namespace FlexKit
@@ -198,14 +197,9 @@ namespace FlexKit
 		TY_FN Callback;
 	};
 
-	template<typename TY_FN>
-	LambdaWork<TY_FN> CreateLambdaWork(TY_FN FNIN, iAllocator* Memory = FlexKit::SystemAllocator) noexcept
-	{
-		return LambdaWork<TY_FN>(FNIN, Memory);
-	}
 
 	template<typename TY_FN>
-	iWork& CreateLambdaWork_New(
+	iWork& CreateLambdaWork(
 		TY_FN FNIN, 
 		iAllocator* Memory_1,
 		iAllocator* Memory_2)
@@ -214,11 +208,11 @@ namespace FlexKit
 	}
 
 	template<typename TY_FN>
-	iWork& CreateLambdaWork_New(
+	iWork& CreateLambdaWork(
 		TY_FN&		FNIN,
 		iAllocator* allocator = SystemAllocator)
 	{
-		return CreateLambdaWork_New(FNIN, allocator, allocator);
+		return CreateLambdaWork(FNIN, allocator, allocator);
 	}
 
 	/************************************************************************************************/
@@ -227,7 +221,7 @@ namespace FlexKit
 	class ThreadManager
 	{
 	public:
-		ThreadManager(size_t ThreadCount = 6, iAllocator* IN_allocator = SystemAllocator) :
+		ThreadManager(const uint32_t ThreadCount = 6, iAllocator* IN_allocator = SystemAllocator) :
 			threads				{ },
 			allocator			{ IN_allocator		},
 			workingThreadCount	{ 0					},
@@ -412,7 +406,7 @@ namespace FlexKit
 		}
 
 
-		size_t GetThreadCount() const
+		uint32_t GetThreadCount() const
 		{
 			return workerCount;
 		}
@@ -428,7 +422,7 @@ namespace FlexKit
 		std::atomic_int				workingThreadCount;
 		std::default_random_engine	randomDevice;
 
-		const size_t				workerCount;
+		const uint32_t				workerCount;
 		iAllocator*					allocator;
 		std::mutex					exclusive;
 		CircularBuffer<iWork*, 128>	workList; // for the case of a single thread, work is pushed here and process on Wait for workers to complete

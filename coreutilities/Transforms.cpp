@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -41,7 +41,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline size_t	_SNHandleToIndex(NodeHandle Node) 
+	inline uint16_t	_SNHandleToIndex(NodeHandle Node) 
 	{ 
 		return SceneNodeTable.Indexes[Node.INDEX]; 
 	}
@@ -50,7 +50,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void		_SNSetHandleIndex(NodeHandle Node, size_t index) 
+	inline void		_SNSetHandleIndex(NodeHandle Node, uint16_t index)
 	{ 
 		SceneNodeTable.Indexes[Node.INDEX] = index; 
 	}
@@ -186,8 +186,8 @@ namespace FlexKit
 							break;
 					
 					SwapNodeEntryies(I, II);
-					SceneNodeTable.Indexes[I] = I;
-					SceneNodeTable.Indexes[II]= II;
+					SceneNodeTable.Indexes[I] = (uint16_t)I;
+					SceneNodeTable.Indexes[II]= (uint16_t)II;
 					NewLength--;
 					int x = 0;
 				}
@@ -198,8 +198,8 @@ namespace FlexKit
 				if (ParentIndex > I)
 				{					
 					SwapNodeEntryies(ParentIndex, I);
-					SceneNodeTable.Indexes[ParentIndex]	= I;
-					SceneNodeTable.Indexes[I]			= ParentIndex;
+					SceneNodeTable.Indexes[ParentIndex]	= (uint16_t)I;
+					SceneNodeTable.Indexes[I]			= (uint16_t)ParentIndex;
 				}
 			}
 			SceneNodeTable.used = NewLength + 1;
@@ -223,12 +223,12 @@ namespace FlexKit
 		if (SceneNodeTable.max < SceneNodeTable.used)
 			FK_ASSERT(0);
 
-		auto HandleIndex	= 0;
-		auto NodeIndex		= 0;
+		uint16_t HandleIndex	= 0;
+        uint16_t NodeIndex		= 0;
 
 		{
-			size_t itr = 0;
-			size_t end = SceneNodeTable.max;
+            uint16_t itr = 0;
+            uint16_t end = (uint16_t)SceneNodeTable.max;
 			for (; itr < end; ++itr)
 			{
 				if (SceneNodeTable.Indexes[itr] == 0xffff)

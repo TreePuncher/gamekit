@@ -114,9 +114,9 @@ void MultiplayerLobbyScreen::CreateRow(LobbyRowID id)
 { 
 	Row newRow;
 	newRow.id		= id;
-	newRow.name		= &gui.CreateButton(playerList, { 0, 1 + rows.size() });
-    newRow.ping     = &gui.CreateButton(playerList, { 1, 1 + rows.size() });
-	newRow.ready	= &gui.CreateButton(playerList, { 2, 1 + rows.size() });
+	newRow.name		= &gui.CreateButton(playerList, { 0, 1 + (uint32_t)rows.size() });
+    newRow.ping     = &gui.CreateButton(playerList, { 1, 1 + (uint32_t)rows.size() });
+	newRow.ready	= &gui.CreateButton(playerList, { 2, 1 + (uint32_t)rows.size() });
 
 	newRow.name->Text   = "Joining...";
     newRow.ready->Text  = "...";

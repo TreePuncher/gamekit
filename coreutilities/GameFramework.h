@@ -3,7 +3,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -68,7 +68,7 @@ namespace FlexKit
 	class GameFramework
 	{
 	public:
-		GameFramework(EngineCore* core);
+		GameFramework(EngineCore& core);
 
 		GameFramework				(const GameFramework&) = delete;
 		GameFramework& operator =	(const GameFramework&) = delete;
@@ -93,15 +93,15 @@ namespace FlexKit
 
 		void PopState();
 
-		RenderSystem*	GetRenderSystem()	{ return core->RenderSystem; }
-		PhysicsSystem*	GetPhysx()			{ return core->Physics; }
+		RenderSystem&	GetRenderSystem()	{ return core.RenderSystem; }
+		PhysicsSystem&	GetPhysx()			{ return core.Physics; }
 
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
 		TY_INITIALSTATE& PushState(TY_ARGS&& ... args)
 		{
 			FK_LOG_9("Pushing New State");
 
-			auto& State = core->GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(this, std::forward<TY_ARGS>(args)...);
+			auto& State = core.GetBlockMemory().allocate_aligned<TY_INITIALSTATE>(*this, std::forward<TY_ARGS>(args)...);
 
 			subStates.push_back(&State);
 
@@ -121,7 +121,7 @@ namespace FlexKit
 			PushMessageToConsole
 		};
 
-		EngineCore*				core;
+		EngineCore&				core;
 		NodeHandle				rootNode;
 
 		static_vector<MouseHandler>		mouseHandlers;
@@ -156,9 +156,9 @@ namespace FlexKit
 			LoadFontAsset(
 				"assets\\fonts\\",
 				"fontTest.fnt",
-				core->RenderSystem,
-				core->GetTempMemory(),
-				core->GetBlockMemory())
+				core.RenderSystem,
+				core.GetTempMemory(),
+				core.GetBlockMemory())
 		};
 
 		Console					console;
@@ -177,37 +177,37 @@ namespace FlexKit
 
 		virtual ~FrameworkState() {}
 
-		virtual bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
-		virtual bool DebugDraw		(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
-		virtual bool PreDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
-		virtual bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
-		virtual bool PostDrawUpdate	(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
+		virtual bool Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
+		virtual bool DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
+		virtual bool PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
+		virtual bool Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
+		virtual bool PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
 
 		virtual bool EventHandler	(Event evt) { return true; };
 
-		GameFramework*	framework;
+		GameFramework&	framework;
 	protected:
 
-		FrameworkState(GameFramework* in_framework) : framework(in_framework) {}
+		FrameworkState(GameFramework& in_framework) : framework(in_framework) {}
 
-		RenderSystem*	GetRenderSystem() { return framework->GetRenderSystem(); }
+		RenderSystem*	GetRenderSystem() { return framework.GetRenderSystem(); }
 	};
 
 
 	/************************************************************************************************/
 
 
-	bool LoadScene		 (EngineCore* Engine, GraphicScene* Scene, const char* SceneName);
-	bool LoadScene		 (EngineCore* Engine, GraphicScene* Scene, GUID_t SceneID);
+	bool LoadScene		 (EngineCore& Engine, GraphicScene& Scene, const char* SceneName);
+	bool LoadScene		 (EngineCore& Engine, GraphicScene& Scene, GUID_t SceneID);
  
-	void PushSubState	 (GameFramework* _ptr, FrameworkState* SS);
-	void PopSubState	 (GameFramework* _ptr);
+	void PushSubState	 (GameFramework& _ptr, FrameworkState& SS);
+	void PopSubState	 (GameFramework& _ptr);
  
-	void UpdateGameFramework  (EngineCore* Engine, GameFramework* _ptr, double dT);
-	void PreDrawGameFramework (EngineCore* Engine, GameFramework* _ptr, double dT);
-	void ReleaseGameFramework (EngineCore* Engine, GameFramework* _ptr);
+	void UpdateGameFramework  (EngineCore& Engine, GameFramework& _ptr, double dT);
+	void PreDrawGameFramework (EngineCore& Engine, GameFramework& _ptr, double dT);
+	void ReleaseGameFramework (EngineCore& Engine, GameFramework& _ptr);
 
-	void InitiateFramework	(EngineCore* Engine, GameFramework& framework);
+	void InitiateFramework	(EngineCore& Engine, GameFramework& framework);
 
 
 	void DrawMouseCursor(

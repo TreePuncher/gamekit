@@ -23,7 +23,7 @@ class PacketHandler;
 
 
 constexpr	ComponentID NetObjectComponentID	= GetTypeGUID(NetObjectComponentID);
-using		NetComponentHandle					= FlexKit::Handle_t<32, NetObjectComponentID>;
+using		NetComponentHandle					= Handle_t<32, NetObjectComponentID>;
 using		NetObjectID							= size_t;
 
 struct NetObject
@@ -32,14 +32,14 @@ struct NetObject
 	NetObjectID	netID;
 };
 
-using NetObjectReplicationComponent = FlexKit::BasicComponent_t<NetObject, NetComponentHandle, NetObjectComponentID>;
+using NetObjectReplicationComponent = BasicComponent_t<NetObject, NetComponentHandle, NetObjectComponentID>;
 
 
 /************************************************************************************************/
 
 
-constexpr	FlexKit::ComponentID	NetInputEventsComponentID	= GetTypeGUID(NetInputEventsComponentID);
-using								NetInputComponentHandle		= FlexKit::Handle_t<32, NetInputEventsComponentID>;
+constexpr	ComponentID	NetInputEventsComponentID	= GetTypeGUID(NetInputEventsComponentID);
+using					NetInputComponentHandle		= Handle_t<32, NetInputEventsComponentID>;
 
 struct NetInputFrame
 {
@@ -71,17 +71,17 @@ using NetObjectInputComponent = FlexKit::BasicComponent_t<NetInput, NetComponent
 class GameState final : public FlexKit::FrameworkState 
 {
 public:
-	GameState(FlexKit::GameFramework* IN_framework, BaseState& base);
+	GameState(GameFramework& IN_framework, BaseState& base);
 
 	~GameState();
 
 	GameState				(const GameState&) = delete;
 	GameState& operator =	(const GameState&) = delete;
 
-	bool Update			(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) final;
-	bool PreDrawUpdate	(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT) final;
-	bool Draw			(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) final;
-	bool PostDrawUpdate	(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph) final;
+	bool Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+	bool PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+	bool Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+	bool PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
 
 	GraphicScene	scene;
 	BaseState&		base;
@@ -95,106 +95,14 @@ public:
 class LocalPlayerState : public FlexKit::FrameworkState
 {
 public:
-	LocalPlayerState(FlexKit::GameFramework* IN_framework, BaseState& IN_base, GameState& IN_game) : 
-		FrameworkState	{ IN_framework							},
-		game			{ IN_game								},
-		base			{ IN_base								},
-		eventMap		{ IN_framework->core->GetBlockMemory()	},
-		netInputObjects	{ IN_framework->core->GetBlockMemory()	}
-	{
-		eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
-		eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
-		eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft);
-		eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
-	}
+    LocalPlayerState(FlexKit::GameFramework& IN_framework, BaseState& IN_base, GameState& IN_game);
 
+	virtual ~LocalPlayerState() final override {}
 
-	/************************************************************************************************/
-
-
-	virtual ~LocalPlayerState() override
-	{
-	}
-
-	/************************************************************************************************/
-
-
-	bool Update			(EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT) final
-	{
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool PreDrawUpdate	(EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT) final
-	{
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool Draw			(EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final
-	{
-		frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
-
-		CameraHandle activeCamera = debugCamera;
-
-		auto& scene				= game.scene;
-		auto& transforms		= QueueTransformUpdateTask	(dispatcher);
-		auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-		auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
-		auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core->GetTempMemory());
-		auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
-		auto& textureStreams	= base.streamingEngine.update(dispatcher);
-
-		WorldRender_Targets targets = {
-			GetCurrentBackBuffer(&core->Window),
-			base.depthBuffer
-		};
-
-		LighBufferDebugDraw debugDraw;
-		debugDraw.constantBuffer = base.constantBuffer;
-		debugDraw.renderTarget   = targets.RenderTarget;
-		debugDraw.vertexBuffer	 = base.vertexBuffer;
-
-		SceneDescription sceneDesc;
-		sceneDesc.lights			= &scene.GetPointLights(dispatcher, core->GetTempMemory());
-		sceneDesc.transforms		= &transforms;
-		sceneDesc.cameras			= &cameras;
-		sceneDesc.PVS				= &PVS;
-
-		ClearVertexBuffer(frameGraph, base.vertexBuffer);
-		ClearVertexBuffer(frameGraph, base.textBuffer);
-
-		ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
-		ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
-
-        base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
-		base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.GetData().solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
-
-        PresentBackBuffer(frameGraph, &core->Window);
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool EventHandler(Event evt) final
-	{
-		eventMap.Handle(evt, [&](auto& evt)
-			{
-				debugCamera.HandleEvent(evt);
-			});
-
-		return true;
-	}
-
+	bool Update			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+	bool PreDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+    bool Draw           (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
+    bool EventHandler   (Event evt) final override;
 
 
 private:	/************************************************************************************************/
@@ -217,11 +125,118 @@ private:	/**********************************************************************
 class RemotePlayerState : public FlexKit::FrameworkState
 {
 public:
-	RemotePlayerState(FlexKit::GameFramework* IN_framework, BaseState& IN_base) :
+	RemotePlayerState(GameFramework& IN_framework, BaseState& IN_base) :
         FrameworkState  { IN_framework  },
         base            { IN_base       }  {}
 
 	BaseState& base;
+};
+
+
+/************************************************************************************************/
+
+
+struct GameLoadSceneStateDefaultAction
+{
+    void operator()(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
+};
+
+struct GameLoadSceneStateUpdateDefaultAction
+{
+    bool operator()(EngineCore& core, UpdateDispatcher& dispatcher, double dT) { return true; }
+};
+
+
+struct GameLoadSceneStateFailureDefaultAction
+{
+    void operator()() {}
+};
+
+// Loads Scene and sends server notification on completion
+template<
+    typename TY_OnCompletion    = GameLoadSceneStateDefaultAction,
+    typename TY_OnUpdate        = GameLoadSceneStateUpdateDefaultAction,
+    typename TY_OnFailure       = GameLoadSceneStateFailureDefaultAction>
+class GameLoadSceneState : public FrameworkState
+{
+public:
+    GameLoadSceneState(
+        GameFramework&  IN_framework,
+        BaseState&      IN_base,
+        GraphicScene&   IN_scene,
+        const char*     IN_sceneName,
+        TY_OnCompletion IN_OnCompletion = GameLoadSceneStateDefaultAction{},
+        TY_OnUpdate     IN_OnUpdate     = GameLoadSceneStateUpdateDefaultAction{},
+        TY_OnFailure    IN_OnFailure    = GameLoadSceneStateFailureDefaultAction{}) :
+            FrameworkState  { IN_framework      },
+            base            { IN_base           },
+            scene           { IN_scene          },
+            OnCompletion    { IN_OnCompletion   },
+            OnUpdate        { IN_OnUpdate       }
+    {
+        iAllocator* allocator = IN_framework.core.GetBlockMemory();
+
+        auto& task      = CreateLambdaWork(
+            [&, &core   = base.framework.core]
+            {
+                if(!LoadScene(core, &scene, IN_sceneName))
+                    OnFailure();
+
+                completed = true;
+            },
+            allocator);
+
+        framework.core.Threads.AddWork(task, allocator);
+    }
+
+
+    /************************************************************************************************/
+
+
+    virtual ~GameLoadSceneState() override {}
+
+
+    /************************************************************************************************/
+
+
+    bool Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
+    {
+        beginGame = OnUpdate(core, dispatcher, dT);
+
+        if (completed && beginGame)
+        {
+            auto& temp_OnCompletion = std::move(OnCompletion); // Must be moved to stack before class is popped off
+            framework.PopState();
+            temp_OnCompletion(core, dispatcher, dT);
+        }
+
+
+        return true;
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool EventHandler(Event evt) override
+    {
+        return true;
+    }
+
+    bool Completed()    { return completed; }
+    bool Begin()        { return beginGame; }
+
+    void BeginGame()    { beginGame = true; }
+
+private:
+
+    bool            completed = false;
+    bool            beginGame = false;
+    BaseState&      base;
+    GraphicScene&   scene;
+    TY_OnCompletion OnCompletion;
+    TY_OnUpdate     OnUpdate;
+    TY_OnFailure    OnFailure;
 };
 
 

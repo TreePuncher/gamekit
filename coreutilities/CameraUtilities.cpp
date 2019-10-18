@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -33,7 +33,7 @@ namespace FlexKit
 
 
 	OrbitCameraBehavior::OrbitCameraBehavior(CameraHandle handle, float movementSpeed, float3 initialPos) :
-		CameraBehavior{ handle }
+		CameraView{ handle }
 	{
 		yawNode		= GetZeroedNode();
 		pitchNode	= GetZeroedNode();
@@ -214,7 +214,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto&	QueueOrbitCameraUpdateTask(
+	auto& QueueOrbitCameraUpdateTask(
 					UpdateDispatcher&		dispatcher, 
 					UpdateTask&				transformUpdateDependency,
 					UpdateTask&				cameraUpdateDependency,

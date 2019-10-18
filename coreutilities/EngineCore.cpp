@@ -26,7 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../coreutilities/Transforms.h"
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
+
 	bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool fullscreen = false);
 
 
@@ -43,10 +45,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EngineMemory* CreateEngineMemory(bool& Sucess)
+	EngineMemory* CreateEngineMemory(bool& Success)
 	{
+        Success = false;
+
 		auto* Memory = (EngineMemory*)_aligned_malloc(PRE_ALLOC_SIZE, 0x40);
-		FK_ASSERT(Memory, "Memory Allocation Error!");
+		FK_ASSERT(Memory != nullptr, "Memory Allocation Error!");
+
+        if (Memory == nullptr) {
+            return nullptr;
+        }
 
 		memset(Memory, 0, PRE_ALLOC_SIZE);
 
@@ -64,6 +72,7 @@ namespace FlexKit
 
 		InitDebug(&Memory->Debug);
 
+        Success = true;
 		return Memory;
 	}
 
@@ -81,38 +90,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool EngineCore::Initiate(EngineMemory* Memory, uint2 WH)
+	bool EngineCore::Initiate(EngineMemory* Memory, const uint2 WH)
 	{
-		bool Sucess						= false;
-		FlexKit::Graphics_Desc	desc	= { 0 };
-		desc.Memory						= GetBlockMemory();
-		desc.TempMemory					= GetTempMemory();
-		uint32_t width					= WH[0];
-		uint32_t height					= WH[1];
-		bool InvertDepth				= true;
+		Graphics_Desc	desc	= { 0 };
+		desc.Memory			    = GetBlockMemory();
+		desc.TempMemory			= GetTempMemory();
+
+		const uint32_t width	= WH[0];
+		const uint32_t height	= WH[1];
+		bool InvertDepth		= true;
 
 		if (!RenderSystem.Initiate(&desc))
 			return false;
 
-		Window.Close = false;
-		Sucess = CreateRenderWindow(this, height, width, false);
+		Window.Close            = false;
 
-		if (!Sucess)
+		if (!CreateRenderWindow(this, height, width, false))
 		{
 			RenderSystem.Release();
 			cout << "Failed to Create Render Window!\n";
+
 			return false;
 		}
+        else
+        {
+            SetInputWIndow(&Window);
+            InitiateResourceTable(GetBlockMemory());
 
-
-		SetInputWIndow			(&Window);
-		InitiateResourceTable	(GetBlockMemory());
-
-		FK_ASSERT(Sucess, "FAILED TO INITIATE ENGINE!");
-
-		return Sucess;
+            return false;
+        }
 	}
-
 
 
 	/************************************************************************************************/
@@ -156,39 +163,31 @@ namespace FlexKit
 	}
 
 
-
 	/************************************************************************************************/
 
 
-	float GetWindowAspectRatio(EngineCore* Engine)
+	float GetWindowAspectRatio(EngineCore& core)
 	{
-		FK_ASSERT(Engine);
-
-		float out = (float)Engine->Window.WH[0] / (float)Engine->Window.WH[1];
-
-		return out;
+		return (float)core.Window.WH[0] / (float)core.Window.WH[1];;
 	}
 
 
 	/************************************************************************************************/
 
 
-	uint2 GetWindowWH(EngineCore* Engine)
+	uint2 GetWindowWH(EngineCore& core)
 	{
-		FK_ASSERT(Engine);
-
-		return Engine->Window.WH;
+		return core.Window.WH;
 	}
 
 
 	/************************************************************************************************/
 
 
-	float2 GetPixelSize(EngineCore* Engine)
+	float2 GetPixelSize(EngineCore& core)
 	{
-		return GetPixelSize(&Engine->Window);
+		return GetPixelSize(core.Window);
 	}
-
 
 
 	/************************************************************************************************/
@@ -202,7 +201,6 @@ namespace FlexKit
 		State->LMB_Pressed = false;
 		State->RMB_Pressed = false;
 	}
-
 
 
 	/************************************************************************************************/

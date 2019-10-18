@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -65,10 +65,10 @@ namespace FlexKit
 	using DrawableComponent = BasicComponent_t<Drawable, DrawableHandle, DrawableComponentID>;
 
 
-	class DrawableBehavior : public Behavior_t<DrawableComponent>
+	class DrawableView : public ComponentView_t<DrawableComponent>
 	{
 	public:
-		DrawableBehavior(TriMeshHandle	triMesh, NodeHandle node)
+		DrawableView(TriMeshHandle	triMesh, NodeHandle node)
 		{
 			GetComponent()[drawable].MeshHandle = triMesh;
 			GetComponent()[drawable].Node		= node;
@@ -99,9 +99,9 @@ namespace FlexKit
 	TriMeshHandle GetTriMesh(GameObject& go)
 	{
 		return Apply(go,
-			[&](DrawableBehavior* drawable)
+			[&](DrawableView& drawable)
 			{
-				return drawable->GetTriMesh();
+				return drawable.GetTriMesh();
 			}, 
 			[]() -> TriMeshHandle
 			{
@@ -118,12 +118,12 @@ namespace FlexKit
 	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID>;
 
 
-	class PointLightBehavior : public Behavior_t<PointLightComponent>
+	class PointLightView : public ComponentView_t<PointLightComponent>
 	{
 	public:
-		PointLightBehavior(float3 color, float intensity, NodeHandle node) : light{ GetComponent().Create({}) } 
+		PointLightView(float3 color, float intensity, NodeHandle node) : light{ GetComponent().Create({}) } 
 		{
-			auto& poingLight = GetComponent()[light];
+			auto& poingLight        = GetComponent()[light];
 			poingLight.K			= color;
 			poingLight.I			= intensity;
 			poingLight.R			= intensity;
@@ -169,10 +169,10 @@ namespace FlexKit
 
 	using SceneVisibilityComponent = BasicComponent_t<VisibilityFields, VisibilityHandle, SceneVisibilityComponentID>;
 
-	class SceneVisibilityBehavior : public Behavior_t<SceneVisibilityComponent>
+	class SceneVisibilityView : public ComponentView_t<SceneVisibilityComponent>
 	{
 	public:
-		SceneVisibilityBehavior(GameObject& go, NodeHandle node, SceneHandle scene) :
+		SceneVisibilityView(GameObject& go, NodeHandle node, SceneHandle scene) :
 			visibility	{ GetComponent().Create(VisibilityFields{}) }
 		{
 			auto& vis_ref	= GetComponent()[visibility];
@@ -201,10 +201,10 @@ namespace FlexKit
 	{
 		Apply(
 			go,
-			[](	SceneVisibilityBehavior*	visibility,
-				DrawableBehavior*			drawable)
+			[](	SceneVisibilityView&	visibility,
+				DrawableView&			drawable)
 			{
-				visibility->SetBoundingSphere(drawable->GetBoundingSphere());
+				visibility.SetBoundingSphere(drawable.GetBoundingSphere());
 			});
 	}
 
@@ -213,10 +213,10 @@ namespace FlexKit
 	{
 		Apply(
 			go,
-			[](	SceneVisibilityBehavior* visibility,
-				PointLightBehavior*		pointLight)
+			[](	SceneVisibilityView&    visibility,
+				PointLightView&	        pointLight)
 			{
-				visibility->SetBoundingSphere({ 0, 0, 0, pointLight->GetRadius() });
+				visibility.SetBoundingSphere({ 0, 0, 0, pointLight.GetRadius() });
 			});
 	}
 
@@ -388,8 +388,8 @@ namespace FlexKit
 	FLEXKITAPI void UpdateGraphicScenePoseTransform	(GraphicScene* SM );
 	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
 
-	FLEXKITAPI void	 GetGraphicScenePVS		(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
-	FLEXKITAPI auto& GetGraphicScenePVSTask	(UpdateDispatcher& dispatcher, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
+	FLEXKITAPI void	 GatherScene(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
+	FLEXKITAPI auto& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
 
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);

@@ -1,7 +1,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -194,12 +194,12 @@ namespace FlexKit
 		uint16_t minY = 0;
 		uint16_t maxY = 0;
 
-		for (size_t Y = 0; Y < WH[0]; Y++)
+		for (uint32_t Y = 0; Y < WH[0]; Y++)
 		{
-			for (size_t X = 0; X < WH[1]; X++) 
+			for (uint32_t X = 0; X < WH[1]; X++)
 			{
-				minY = min(view[{X, Y}][1], minY);
-				maxY = max(view[{X, Y}][1], maxY);
+				minY = min(view[{ X, Y }][1], minY);
+				maxY = max(view[{ X, Y }][1], maxY);
 			}
 		}
 
@@ -234,8 +234,8 @@ namespace FlexKit
 		{
 			for (size_t X = 0; X < WH[1]; X++)
 			{
-				uint2 in_Cord	= uint2{ min(X, WH[0] - 1) * 2, min(Y, WH[1] - 1) * 2 };
-				uint2 out_Cord	= uint2{ min(X, WH[0] - 1), min(Y, WH[1] - 1) };
+				uint2 in_Cord	= uint2{ (uint32_t)min(X, WH[0] - 1) * 2, (uint32_t)min(Y, WH[1] - 1) * 2 };
+				uint2 out_Cord	= uint2{ (uint32_t)min(X, WH[0] - 1), (uint32_t)min(Y, WH[1] - 1) };
 
 				MipView[out_Cord] = 
 					sampler(

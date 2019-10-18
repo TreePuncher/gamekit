@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -131,10 +131,10 @@ namespace FlexKit
 		inline  Vector(
 			iAllocator*		Alloc = nullptr,
 			const size_t	InitialReservation = 0) :
-			Allocator(Alloc),
-			Max(InitialReservation),
-			Size(0),
-			A(nullptr)
+			    Allocator(Alloc),
+			    Max(InitialReservation),
+			    Size(0),
+			    A(nullptr)
 		{
 			if (InitialReservation > 0)
 			{
@@ -562,7 +562,8 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		Ty& at(size_t index) { return A[index]; }
+        Ty& at(size_t index)                { return A[index]; }
+        const Ty& at(size_t index) const    { return A[index]; }
 
 
 		Iterator begin() { return A; }
@@ -610,8 +611,8 @@ namespace FlexKit
 		template<>	constexpr auto& Get<1>() noexcept { return V2 ;}
 
 		template<size_t index>	const auto& Get() const { static_assert(false, "Invalid Index"); }
-		template<> const auto& Get<0>() const noexcept { return V1 }
-		template<> const auto& Get<1>() const noexcept { return V2 }
+        template<> const auto& Get<0>() const noexcept { return V1; }
+        template<> const auto& Get<1>() const noexcept { return V2; }
 
 		Ty_1 V1;
 		Ty_2 V2;

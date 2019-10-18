@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -592,66 +592,6 @@ namespace FlexKit
 		iAllocator*						allocator;
 		ThreadManager&					threads;
 		friend PhysicsScene;
-	};
-
-
-	/************************************************************************************************/
-
-
-	class StaticColliderObjectBehavior :
-		public SceneNodeBehavior<>
-	{
-	public:
-		StaticColliderObjectBehavior(NodeHandle node) : 
-			SceneNodeBehavior<>(node){}
-
-
-		PhysicsSystem*			system;
-		StaticColliderHandle	handle;
-	};
-
-
-
-	/************************************************************************************************/
-
-	
-	class RigidBodyObjectBehavior
-	{
-	public:
-		RigidBodyObjectBehavior(
-			PhysicsSystem*		IN_system		= nullptr, 
-			rbColliderHandle	IN_collider		= { InvalidHandle_t, InvalidHandle_t }) :
-				collider	{ IN_collider	},
-				system		{ IN_system		}{}
-
-		RigidBodyObjectBehavior(RigidBodyObjectBehavior&& rhs) :
-			system		{ rhs.system	},
-			collider	{ rhs.collider	}
-		{
-			rhs.system		= nullptr;
-			rhs.collider	= { InvalidHandle_t, InvalidHandle_t };
-		}
-
-		RigidBodyObjectBehavior& operator = (RigidBodyObjectBehavior&& rhs)
-		{
-			system		= rhs.system;
-			collider	= rhs.collider;
-
-			rhs.system		= nullptr;
-			rhs.collider	= { InvalidHandle_t, InvalidHandle_t };
-
-			return *this;
-		}
-
-		// non-copyable
-		RigidBodyObjectBehavior				(RigidBodyObjectBehavior&) = delete;
-		RigidBodyObjectBehavior& operator = (RigidBodyObjectBehavior&) = delete;
-
-
-		bool GetSleeping() { return false; }
-
-		PhysicsSystem*		system;
-		rbColliderHandle	collider;
 	};
 
 

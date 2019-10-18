@@ -2,7 +2,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -121,12 +121,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetNormalIndex(size_t pIndex, size_t vIndex,size_t vID, fbxsdk::FbxMesh* Mesh)
+	size_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh)
 	{
 		using FlexKit::MeshUtilityFunctions::TokenList;
 
-		int CPIndex = Mesh->GetPolygonVertex(pIndex, vIndex);
-		auto NElement = Mesh->GetElementNormal(0);
+		int CPIndex     = Mesh->GetPolygonVertex(pIndex, vIndex);
+		auto NElement   = Mesh->GetElementNormal(0);
 
 		auto MappingMode = NElement->GetMappingMode();
 		switch (NElement->GetMappingMode())
@@ -171,7 +171,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetTexcordIndex(size_t pIndex, size_t vIndex, fbxsdk::FbxMesh* Mesh)
+	size_t GetTexcordIndex(const int pIndex, const int vIndex, fbxsdk::FbxMesh* Mesh)
 	{
 		FK_ASSERT(Mesh);
 
@@ -203,8 +203,8 @@ namespace FlexKit
 				case FbxGeometryElement::eDirect:
 				case FbxGeometryElement::eIndexToDirect:
 				{
-					int lTextureUVIndex = Mesh->GetTextureUVIndex(pIndex, vIndex);
-					return lTextureUVIndex;
+					const int lTextureUVIndex = Mesh->GetTextureUVIndex(pIndex, vIndex);
+					return (size_t)lTextureUVIndex;
 				}
 				break;
 				default:
@@ -223,7 +223,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetVertexIndex(size_t pIndex, size_t vIndex, size_t vID, fbxsdk::FbxMesh* Mesh) 
+	size_t GetVertexIndex(int pIndex, int vIndex, int vID, fbxsdk::FbxMesh* Mesh)
 	{ 
 		FK_ASSERT(Mesh);
 		return Mesh->GetPolygonVertex(pIndex, vIndex); 
@@ -233,12 +233,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FBXSkinDeformer CreateSkin(fbxsdk::FbxMesh* Mesh)
+	FBXSkinDeformer CreateSkin(const fbxsdk::FbxMesh* Mesh)
 	{	// Get Weights
 		FBXSkinDeformer	Out = {};
 
 		auto DeformerCount  = Mesh->GetDeformerCount();
-		for ( size_t I = 0; I < DeformerCount; ++I )
+		for ( int I = 0; I < DeformerCount; ++I )
 		{
 			fbxsdk::FbxStatus S;
 			auto D		= Mesh->GetDeformer(I, &S);
@@ -251,7 +251,7 @@ namespace FlexKit
 				auto ClusterCount	= Skin->GetClusterCount();
 				
 				Out.bones.reserve(ClusterCount);
-				for ( size_t II = 0; II < ClusterCount; ++II)
+				for ( int II = 0; II < ClusterCount; ++II)
 				{
 					const auto Cluster			= Skin->GetCluster( II );
 					const auto ClusterName		= Cluster->GetLink()->GetName();
@@ -270,7 +270,7 @@ namespace FlexKit
 
 					for ( size_t III = 0; III < CPICount; ++III )
 					{
-						bone.weights.push_back(Weights[III]);
+						bone.weights.push_back((float)Weights[III]);
 						bone.indices.push_back(CPIndices[III]);
 					}
 
@@ -344,7 +344,7 @@ namespace FlexKit
 			if (UVElement) {
 				out.UV = true;
 				auto size = UVElement->GetDirectArray().GetCount();
-				for (size_t I = 0; I < size; ++I) {
+				for (int I = 0; I < size; ++I) {
 					auto UV = UVElement->GetDirectArray().GetAt(I);
 					AddTexCordToken({ float(UV[0]), float(UV[1]), 0.0f }, TokensOut);
 				}
@@ -373,7 +373,7 @@ namespace FlexKit
 					size_t III = 0;
 					for (; III < 4; ++III)
 					{
-						size_t Index = skin.bones[I].weights[II];
+						size_t Index = skin.bones[I].indices[II];
 						if (boneIndices[Index][III] == -1)
 							break;
 					}
@@ -396,15 +396,15 @@ namespace FlexKit
 			auto Normals	= Mesh->GetElementNormal();
 			auto UVs		= Mesh->GetElementUV(0);
 
-			size_t NormalCount	= Mesh->GetElementNormalCount();
-			size_t TriCount		= Mesh->GetPolygonCount();
-			size_t IndexCount	= 0;
-			size_t FaceCount	= 0;
+			size_t  NormalCount	= Mesh->GetElementNormalCount();
+			size_t  TriCount		= Mesh->GetPolygonCount();
+			size_t  FaceCount	= 0;
+			int     IndexCount	= 0;
 
 			// Iterate through each Tri
-			for (size_t I = 0; I < TriCount; ++I)
+			for (int I = 0; I < TriCount; ++I)
 			{	// Process each Vertex in tri
-				unsigned int size = Mesh->GetPolygonSize(I);
+				const int size = Mesh->GetPolygonSize(I);
 				++FaceCount;
 
 				size_t	NC = Mesh->GetElementNormal()->GetDirectArray().GetCount();
@@ -575,7 +575,6 @@ namespace FlexKit
 
 				IB	= std::move(NewIB);
 				CVB = std::move(NewCVB);
-				int x = 0;
 			}
 		}
 #endif
@@ -594,7 +593,7 @@ namespace FlexKit
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
 				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteUV, FetchVertexUV);			break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
-				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchFloat3ZERO);		break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchFloat3ZERO);	break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
 				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchWeights);		break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
@@ -614,7 +613,7 @@ namespace FlexKit
 
 		ProcessBufferView(
 			&CVB, 
-			CVB.size(), 
+			(uint32_t)CVB.size(),
 			WriteVertex, 
 			FetchVertexPOS, 
 			[&](auto V)

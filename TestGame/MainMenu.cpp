@@ -30,13 +30,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 MainMenu::MainMenu(
-	FlexKit::GameFramework*		IN_Framework,
-	BaseState*					IN_Base) :
-		FlexKit::FrameworkState{ IN_Framework },
-		constantBuffer		{ IN_Base->constantBuffer },
-		vertexBuffer		{ IN_Base->vertexBuffer },
-		textBuffer			{ IN_Base->textBuffer },
-		gui					{{}, IN_Framework->core->GetBlockMemory()}
+	GameFramework&		IN_framework,
+	BaseState&			IN_base) :
+		FlexKit::FrameworkState{ IN_framework },
+		constantBuffer		{ IN_base.constantBuffer },
+		vertexBuffer		{ IN_base.vertexBuffer },
+		textBuffer			{ IN_base.textBuffer },
+		gui					{{}, IN_framework.core.GetBlockMemory()}
 {
 	menuGrid = &gui.CreateGrid();
 	menuGrid->SetGridDimensions({ 1, 3 });
@@ -46,13 +46,13 @@ MainMenu::MainMenu(
 	menuJoinButton = &gui.CreateButton(menuGrid, { 0, 0 });
 	menuJoinButton->Text	= "Join";
 	menuJoinButton->WH		= {1, 1};
-	menuJoinButton->Font	= IN_Framework->DefaultAssets.Font;
+	menuJoinButton->Font	= IN_framework.DefaultAssets.Font;
 
 	menuQuitButton = &gui.CreateButton(menuGrid, { 0, 2 });
 	menuQuitButton->Text	= "Quit";
-	menuQuitButton->Font	= IN_Framework->DefaultAssets.Font;
+	menuQuitButton->Font	= IN_framework.DefaultAssets.Font;
 	menuQuitButton->Clicked = [&]() { 
-		framework->quit = true; 
+		framework.quit = true; 
 		return false; 
 	};
 }
@@ -62,16 +62,16 @@ MainMenu::MainMenu(
 
 
 bool MainMenu::Update(
-	FlexKit::EngineCore* core,
-	FlexKit::UpdateDispatcher& dispatcher, 
+	EngineCore& core,
+	UpdateDispatcher& dispatcher, 
 	double dT)
 {
 	FlexKit::WindowInput windowInput;
 	windowInput.CursorWH				= { 0.05f, 0.05f };
-	windowInput.MousePosition			= framework->MouseState.NormalizedScreenCord;
-	windowInput.LeftMouseButtonPressed	= framework->MouseState.LMB_Pressed;
+	windowInput.MousePosition			= framework.MouseState.NormalizedScreenCord;
+	windowInput.LeftMouseButtonPressed	= framework.MouseState.LMB_Pressed;
 
-	gui.Update(dT, windowInput, GetPixelSize(&core->Window), core->GetTempMemory());
+	gui.Update(dT, windowInput, GetPixelSize(core.Window), core.GetTempMemory());
 	return true;
 }
 
@@ -79,9 +79,9 @@ bool MainMenu::Update(
 /************************************************************************************************/
 
 
-bool MainMenu::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+bool MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = GetCurrentBackBuffer(&core->Window);
+	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
 
 	ClearVertexBuffer	(frameGraph, vertexBuffer);
 	ClearVertexBuffer	(frameGraph, textBuffer);
@@ -95,15 +95,15 @@ bool MainMenu::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispat
 		textBuffer,
 		constantBuffer
 	};
-	gui.Draw(drawDesc, core->GetTempMemory());
+	gui.Draw(drawDesc, core.GetTempMemory());
 
 	FlexKit::DrawMouseCursor(
-		framework->MouseState.NormalizedScreenCord,
+		framework.MouseState.NormalizedScreenCord,
 		{0.05f, 0.05f}, 
 		vertexBuffer, 
 		constantBuffer,
 		currentRenderTarget,
-		core->GetTempMemory(),
+		core.GetTempMemory(),
 		&frameGraph);
 
 	return true;
@@ -112,12 +112,12 @@ bool MainMenu::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispat
 /************************************************************************************************/
 
 
-bool MainMenu::PostDrawUpdate(FlexKit::EngineCore* Core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph)
+bool MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph)
 {
-	if (framework->drawDebugStats)
-		framework->DrawDebugHUD(dT, textBuffer, Graph);
+	if (framework.drawDebugStats)
+		framework.DrawDebugHUD(dT, textBuffer, Graph);
 
-	PresentBackBuffer(Graph, &Core->Window);
+	PresentBackBuffer(Graph, &core.Window);
 	return true;
 }
 

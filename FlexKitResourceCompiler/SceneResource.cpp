@@ -30,8 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaDataList& MD = MetaDataList{}, size_t Parent = -1)
 {
-	bool SkipChildren		= false;
-	size_t AttributeCount	= Node->GetNodeAttributeCount();
+	bool SkipChildren	= false;
+	auto AttributeCount	= Node->GetNodeAttributeCount();
 	SceneNode NewNode;
 	
 	auto Position = Node->LclTranslation.	Get();
@@ -42,11 +42,11 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 	NewNode.parent		= Parent;
 	NewNode.position	= TranslateToFloat3(Position); 
 	NewNode.scale		= TranslateToFloat3(LclScale);
-	NewNode.Q			= Quaternion(rotation.mData[0], rotation.mData[1], rotation.mData[2]);
+	NewNode.Q			= Quaternion((float)rotation.mData[0], (float)rotation.mData[1], (float)rotation.mData[2]);
 
 	size_t Nodehndl = scene->AddSceneNode(NewNode);
 
-	for (size_t i= 0; i < AttributeCount; ++i)
+	for (int i = 0; i < AttributeCount; ++i)
 	{
 		auto Attr = Node->GetNodeAttributeByIndex(i);
 		auto AttrType = Attr->GetAttributeType();
@@ -78,7 +78,7 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 			auto FBXLight    = static_cast<fbxsdk::FbxLight*>(Attr);
 			auto Type        = FBXLight->LightType.Get();
 			auto Cast        = FBXLight->CastLight.Get();
-			auto I           = FBXLight->Intensity.Get()/10;
+			auto I           = (float)FBXLight->Intensity.Get()/10;
 			auto K           = FBXLight->Color.Get();
 			auto R           = FBXLight->OuterAngle.Get();
 			auto radius		 = FBXLight->FarAttenuationEnd.Get();
@@ -100,8 +100,8 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 
 	if (!SkipChildren)
 	{
-		size_t ChildCount = Node->GetChildCount();
-		for (size_t I = 0; I < ChildCount; ++I)
+		const auto ChildCount = Node->GetChildCount();
+		for (int I = 0; I < ChildCount; ++I)
 			ProcessNodes(Node->GetChild(I), scene, MD, Nodehndl);
 	}
 }
@@ -299,9 +299,9 @@ ResourceBlob SceneResource::CreateBlob()
 		nodeBlockSize	= SceneNodeBlock::GetHeaderSize() + nodes.size() * sizeof(SceneNodeBlock::SceneNode);
 		nodeblock		= reinterpret_cast<SceneNodeBlock*>(malloc(nodeBlockSize));
 
-		nodeblock->blockSize = nodeBlockSize;
+		nodeblock->blockSize = (uint32_t)nodeBlockSize;
 		nodeblock->blockType = SceneBlockType::NodeTable;
-		nodeblock->nodeCount = nodes.size();
+		nodeblock->nodeCount = (uint32_t)nodes.size();
 
 		for (size_t itr = 0; itr < nodes.size(); ++itr)
 		{

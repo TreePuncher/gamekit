@@ -306,9 +306,9 @@ namespace FlexKit
 
 
 	template<typename Ty_Container, typename FetchFN, typename TranslateFN>
-	bool FillBufferView(Ty_Container* Container, size_t vertexCount, VertexBufferView* out, TranslateFN Translate, FetchFN Fetch)
+	bool FillBufferView(const Ty_Container* Container, const size_t vertexCount, VertexBufferView* out, TranslateFN Translate, FetchFN Fetch)
 	{
-		for (size_t itr = 0; itr < vertexCount; ++itr) {
+		for (uint32_t itr = 0; itr < vertexCount; ++itr) {
 			auto temp = Translate(Fetch(itr, Container));
 			out->Push(temp);
 		}
@@ -321,9 +321,9 @@ namespace FlexKit
 
 
 	template<typename Ty_Container, typename FetchFN, typename TranslateFN, typename ProcessFN>
-	void ProcessBufferView(Ty_Container* Container, size_t vertexCount, TranslateFN Translate, FetchFN Fetch, ProcessFN Process)
+	void ProcessBufferView(const Ty_Container* Container, const uint32_t vertexCount, TranslateFN Translate, FetchFN Fetch, ProcessFN Process)
 	{
-		for (size_t itr = 0; itr < vertexCount; ++itr) {
+		for (uint32_t itr = 0; itr < vertexCount; ++itr) {
 			auto Vert = Translate(Fetch(itr, Container));
 			Process(Vert);
 		}

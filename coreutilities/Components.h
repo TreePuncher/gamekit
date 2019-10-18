@@ -184,13 +184,13 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	class BehaviorBase
+	class ComponentViewBase
 	{
 	public:
-		BehaviorBase(ComponentID IN_ID) :
+        ComponentViewBase(ComponentID IN_ID) :
 			ID{ IN_ID } {}
 
-		virtual ~BehaviorBase() {}
+		virtual ~ComponentViewBase() {}
 
 		ComponentBase& GetComponentRef()	{ return ComponentBase::GetComponent(ID); }
 
@@ -199,10 +199,10 @@ namespace FlexKit
 
 
 	template<typename ComponentTY>
-	class Behavior_t : public BehaviorBase
+	class ComponentView_t : public ComponentViewBase
 	{
 	public:
-		Behavior_t() : BehaviorBase{ ComponentTY::GetComponentID() } {}
+        ComponentView_t() : ComponentViewBase{ ComponentTY::GetComponentID() } {}
 
 		static ComponentID		GetComponentID()	{ return ComponentTY::GetComponentID(); }
 		static decltype(auto)	GetComponent()		{ return ComponentTY::GetComponent(); }
@@ -227,62 +227,62 @@ namespace FlexKit
 		}
 
 
-		template<typename TY_Behavior, typename ... TY_args>
-		void AddBehavior(TY_args&& ... args)
+		template<typename TY_View, typename ... TY_args>
+		void AddView(TY_args&& ... args)
 		{
-			static_assert(std::is_base_of<BehaviorBase, TY_Behavior>(), "You can only add behavior types!");
+			static_assert(std::is_base_of<ComponentViewBase, TY_View>(), "You can only add view types!");
 
-			behaviors.push_back({
-					&allocator->allocate<TY_Behavior>(std::forward<TY_args>(args)...),
-					TY_Behavior::GetComponentID() });
+			views.push_back({
+					&allocator->allocate<TY_View>(std::forward<TY_args>(args)...),
+					TY_View::GetComponentID() });
 		}
 
 
-		void RemoveBehavior(BehaviorBase& behavior)
+		void RemoveView(ComponentViewBase& view)
 		{
-			auto const id = behavior.ID;
-			for (auto itr = behaviors.begin(); itr < behaviors.end(); itr++)
+			auto const id = view.ID;
+			for (auto itr = views.begin(); itr < views.end(); itr++)
 			{
 				if (std::get<1>(*itr) == id) {
-					BehaviorBase* ptr = std::get<0>(*itr);
-					allocator->release(ptr);
-					behaviors.remove_unstable(itr);
+					auto _ptr = std::get<0>(*itr);
+					allocator->release(_ptr);
+					views.remove_unstable(itr);
 				}
 			}
 		}
 
-		void RemoveBehavior(BehaviorBase* behavior)
+		void RemoveView(ComponentViewBase* view)
 		{
-			if (behavior)
-				RemoveBehavior(*behavior);
+			if (view)
+				RemoveView(*view);
 		}
 
 
 		void Release()
 		{
-			for (auto& behavior : behaviors) {
-				auto behavior_ptr = std::get<0>(behavior);
-				allocator->release(behavior_ptr);
+			for (auto& view : views) {
+				auto view_ptr = std::get<0>(view);
+				allocator->release(view_ptr);
 			}
 
-			behaviors.clear();
+			views.clear();
 		}
 
 
-		BehaviorBase* GetBehavior(ComponentID id)
+		ComponentViewBase* GetView(ComponentID id)
 		{
-			for (auto behavior : behaviors)
-				if (std::get<1>(behavior) == id)
-					return std::get<0>(behavior);
+			for (auto view : views)
+				if (std::get<1>(view) == id)
+					return std::get<0>(view);
 
 			return nullptr;
 		}
 
 
-		bool hasBehavior(ComponentID id)
+		bool hasView(ComponentID id)
 		{
-			for (auto behavior : behaviors)
-				if (std::get<1>(behavior) == id)
+			for (auto view : views)
+				if (std::get<1>(view) == id)
 					return true;
 
 			return false;
@@ -290,8 +290,8 @@ namespace FlexKit
 
 
 	private:
-		static_vector<pair<BehaviorBase*, ComponentID>, 16>	behaviors;	// component + Code
-		iAllocator*											allocator;
+		static_vector<pair<ComponentViewBase*, ComponentID>, 16>	views;	// component + Code
+		iAllocator*						        					allocator;
     };
 
 
@@ -301,7 +301,7 @@ namespace FlexKit
     template<typename TY_COMPONENT>
     constexpr bool ValidType()
     {
-        return std::is_base_of_v<BehaviorBase, std::remove_pointer_t<std::decay_t<TY_COMPONENT>>>;
+        return std::is_base_of_v<ComponentViewBase, std::remove_pointer_t<std::decay_t<TY_COMPONENT>>>;
     }
 
 
@@ -313,55 +313,55 @@ namespace FlexKit
 
 
     template<typename ... TY_PACKED_ARGS>
-    constexpr bool hasBehaviors(GameObject& go)
+    constexpr bool hasViews(GameObject& go)
     {
         return ValidTypes<TY_PACKED_ARGS...>();
     }
 
 
 	template<typename TY_COMPONENT>
-    auto& GetBehavior(GameObject& go)
+    auto& GetView(GameObject& go)
 	{
-        static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
+        static_assert(std::is_base_of<ComponentViewBase, TY_COMPONENT>::value, "Parameter that is not a behavior type detected, behavior types only!");
 
-        return *static_cast<TY_COMPONENT*>(go.GetBehavior(TY_COMPONENT::GetComponentID()));
+        return *static_cast<TY_COMPONENT*>(go.GetView(TY_COMPONENT::GetComponentID()));
 	}
 
 
     template<typename TY_COMPONENT>
-    auto GetBehaviorTuple(GameObject& go)
+    auto GetViewTuple(GameObject& go)
     {
         using TY_COMPONENT_DECAYED  = typename std::remove_pointer_t<std::decay_t<TY_COMPONENT>>;
         constexpr bool pointer      = std::is_pointer_v<TY_COMPONENT>;
 
-        static_assert(std::is_base_of<BehaviorBase, TY_COMPONENT_DECAYED>::value, "Parameter that is not a behavior type detected, behavior types only!");
+        static_assert(std::is_base_of<ComponentViewBase, TY_COMPONENT_DECAYED>::value, "Parameter that is not a behavior type detected, behavior types only!");
 
         if constexpr (pointer)
-            return  std::tuple<TY_COMPONENT_DECAYED*>{ &GetBehavior<TY_COMPONENT_DECAYED>(go) };
+            return  std::tuple<TY_COMPONENT_DECAYED*>{ &GetView<TY_COMPONENT_DECAYED>(go) };
         else
-            return  std::tuple<TY_COMPONENT_DECAYED&>{  GetBehavior<TY_COMPONENT_DECAYED>(go) };
+            return  std::tuple<TY_COMPONENT_DECAYED&>{  GetView<TY_COMPONENT_DECAYED>(go) };
     }
 
 
 	template<typename TY_COMPONENT_ARG, typename ... TY_PACKED_ARGS>
-	auto GetBehaviorsTuple(GameObject& go)
+	auto GetViewsTuple(GameObject& go)
 	{
 		if constexpr (sizeof...(TY_PACKED_ARGS) == 0)
-            return  GetBehaviorTuple<TY_COMPONENT_ARG>(go);
+            return  GetViewTuple<TY_COMPONENT_ARG>(go);
 		else
             return  std::tuple_cat(
-                GetBehaviorTuple<TY_COMPONENT_ARG>(go),
-                GetBehaviorsTuple<TY_PACKED_ARGS...>(go));
+                GetViewTuple<TY_COMPONENT_ARG>(go),
+                GetViewsTuple<TY_PACKED_ARGS...>(go));
 	}
 
 
 	template<typename ... TY_PACKED_ARGS, typename FN, typename ErrorFN>
 	auto Apply_t(GameObject& go, FN fn, ErrorFN errorFn)
 	{
-        if (!hasBehaviors<TY_PACKED_ARGS...>(go))
+        if (!hasViews<TY_PACKED_ARGS...>(go))
 			return errorFn();
 		else 
-			return std::apply(fn, GetBehaviorsTuple<TY_PACKED_ARGS...>(go));
+			return std::apply(fn, GetViewsTuple<TY_PACKED_ARGS...>(go));
 	}
 
 	// Thank Columbo for this idea, https://stackoverflow.com/a/28213747
@@ -406,6 +406,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    template<typename TY_Component>
+    class BasicComponentView_t : public ComponentView_t<TY_Component>
+    {
+    public:
+        template<typename ... TY_Args>
+        BasicComponentView_t(TY_Args ... args) : handle{ GetComponent().Create(std::forward<TY_Args>(args)...) } {}
+
+        virtual ~BasicComponentView_t() final {}
+
+        using ComponentHandle_t = typename TY_Component::ComponetHandle_t;
+
+        decltype(auto) GetData()
+        {
+            return GetComponent()[handle];
+        }
+
+        ComponentHandle_t handle;
+    };
+
+
+    /************************************************************************************************/
+
+
 	template<typename TY, typename TY_Handle, ComponentID ID>
 	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID>, TY_Handle, ID>
 	{
@@ -421,11 +444,12 @@ namespace FlexKit
 			TY				componentData;
 		};
 
+        using View = BasicComponentView_t<BasicComponent_t<TY, TY_Handle, ID>>;
 
 		TY_Handle Create(const TY& initial)
 		{
 			auto handle		= handles.GetNewHandle();
-			handles[handle] = elements.push_back({ handle, initial });
+			handles[handle] = (index_t)elements.push_back({ handle, initial });
 
 			return handle;
 		}
@@ -471,27 +495,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename TY_Component>
-	class BasicBehavior_t : public Behavior_t<TY_Component>
-	{
-	public:
-		template<typename ... TY_Args>
-		BasicBehavior_t(TY_Args ... args) : handle{ GetComponent().Create(std::forward<TY_Args>(args)...) } {}
-
-		using ComponentHandle_t = typename TY_Component::ComponetHandle_t;
-
-		decltype(auto) GetData()
-		{
-			return GetComponent()[handle];
-		}
-
-		ComponentHandle_t handle;
-	};
-
-
-	/************************************************************************************************/
-
-
 	constexpr ComponentID StringComponentID = GetTypeGUID(StringID);
 	using StringIDHandle = Handle_t <32, GetTypeGUID(StringID)>;
 
@@ -518,7 +521,7 @@ namespace FlexKit
 			newID.ID[length] = '\0';
 			strncpy(newID.ID, initial, min(sizeof(StringID), length));
 
-			handles[handle] = IDs.push_back(newID);
+			handles[handle] = static_cast<index_t>(IDs.push_back(newID));
 
 			return handle;
 		}
@@ -548,7 +551,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class StringIDBehavior : public Behavior_t<StringIDComponent>
+	class StringIDBehavior : public ComponentView_t<StringIDComponent>
 	{
 	public:
 		StringIDBehavior(char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
@@ -648,14 +651,14 @@ namespace FlexKit
 	};
 
 
-	class SampleBehavior : public Behavior_t<SampleComponent>
+	class SampleView : public ComponentView_t<SampleComponent>
 	{
 	public:
-		SampleBehavior() :
+		SampleView() :
 			handle{ GetComponent().CreateComponent() } {}
 
 
-		~SampleBehavior()
+		~SampleView()
 		{
 			GetComponent().ReleaseEntity(handle);
 		}
@@ -671,14 +674,14 @@ namespace FlexKit
 	};
 
 
-	class SampleBehavior2 : public Behavior_t<SampleComponent2>
+	class SampleView2: public ComponentView_t<SampleComponent2>
 	{
 	public:
-		SampleBehavior2() :
+		SampleView2() :
 			handle{ GetComponent().CreateComponent() } {}
 
 
-		~SampleBehavior2()
+		~SampleView2()
 		{
 			GetComponent().ReleaseEntity(handle);
 		}
@@ -694,14 +697,14 @@ namespace FlexKit
 	};
 
 
-	class SampleBehavior3 : public Behavior_t<SampleComponent3>
+	class SampleView3 : public ComponentView_t<SampleComponent3>
 	{
 	public:
-		SampleBehavior3() :
+		SampleView3() :
 			handle{ GetComponent().CreateComponent() } {}
 
 
-		~SampleBehavior3()
+		~SampleView3()
 		{
 			GetComponent().ReleaseEntity(handle);
 		}
@@ -720,7 +723,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	using TestBehavior = BasicBehavior_t<StringIDComponent>;
+	using TestView = BasicComponentView_t<StringIDComponent>;
 
 
 	void GameOjectTest(iAllocator* allocator)
@@ -729,18 +732,16 @@ namespace FlexKit
 		SampleComponent2	sample2(allocator);
 		SampleComponent3	sample3(allocator);
 
-		TestBehavior behavior1;
-
 		GameObject go;
-		go.AddBehavior<SampleBehavior>();
-		go.AddBehavior<SampleBehavior2>();
-		go.AddBehavior<TestBehavior>();
+		go.AddView<SampleView>();
+		go.AddView<SampleView2>();
+		go.AddView<TestView>();
 
 		Apply(go,
 			[&](	// Function Sources
-				SampleBehavior&	 sample1,
-				SampleBehavior2& sample2,
-				SampleBehavior3& sample3
+				SampleView&	 sample1,
+				SampleView2& sample2,
+				SampleView3& sample3
 			)
 			{	// do things with behaviors
 				// JK doesn't run, not all inputs satisfied!
@@ -757,14 +758,14 @@ namespace FlexKit
                 // this runs instead!
             });
 
-		go.AddBehavior<SampleBehavior2>();
+		go.AddView<SampleView3>();
 
 		Apply(go,
 			[](	// Function Sources
-				SampleBehavior&		sample1,
-				SampleBehavior2&	sample2,
-				SampleBehavior3&	sample3,
-				TestBehavior&		test1	)
+				SampleView&		sample1,
+				SampleView2&	sample2,
+				SampleView3&	sample3,
+				TestView&		test1	)
 			{	// do things with behaviors
 				sample1.DoSomething();
 				sample2.DoSomething();

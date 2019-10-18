@@ -31,19 +31,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ClientLobbyState::ClientLobbyState(
-	FlexKit::GameFramework* IN_framework,
-	GameClientState*		IN_client,
-	NetworkState*			IN_network, 
+	GameFramework&          IN_framework,
+	GameClientState&		IN_client,
+	NetworkState&			IN_network, 
 	const char*				IN_localPlayerName) :
-		FrameworkState	{ IN_framework },
+		FrameworkState	{ IN_framework          },
 
-		client			{ *IN_client			},
+		client			{ IN_client			    },
 		localPlayerName { IN_localPlayerName	},
-		network			{ *IN_network			},
+		network			{ IN_network			},
 		ready			{ false					},
 		refreshCounter	{ 0						},
-		packetHandlers	{ IN_framework->core->GetBlockMemory()										},
-		screen			{ IN_framework->core->GetBlockMemory(), IN_framework->DefaultAssets.Font	}
+		packetHandlers	{ IN_framework.core.GetBlockMemory()							        },
+		screen			{ IN_framework.core.GetBlockMemory(), IN_framework.DefaultAssets.Font	}
 {
 	packetHandlers.push_back(
 		CreatePacketHandler(
@@ -52,7 +52,7 @@ ClientLobbyState::ClientLobbyState(
 			{
 				std::cout << "Message Received!\n";
 			}, 
-			IN_framework->core->GetBlockMemory()));
+			IN_framework.core.GetBlockMemory()));
 
 
 	packetHandlers.push_back(
@@ -67,9 +67,9 @@ ClientLobbyState::ClientLobbyState(
 
 				FK_LOG_INFO("Sending Client Info");
 				std::cout << "playerID set to: " << request->playerID << "\n";
-				network->SendPacket(responsePacket.Header, P->sender);
+				network->Send(responsePacket.Header, P->sender);
 			},
-			IN_framework->core->GetBlockMemory()));
+			IN_framework.core.GetBlockMemory()));
 
 
 	packetHandlers.push_back(
@@ -103,19 +103,19 @@ ClientLobbyState::ClientLobbyState(
 					screen.SetPlayerReady	(id, ready);
 				}
 			},
-			IN_framework->core->GetBlockMemory()));
+			IN_framework.core.GetBlockMemory()));
 
 		packetHandlers.push_back(
 		CreatePacketHandler(
-			StartGame,
+			LoadGame,
 			[&](UserPacketHeader* incomingPacket, Packet* P, NetworkState* network)
 			{
-				FK_LOG_INFO("Starting Game");
+				FK_LOG_INFO("Loading Game");
 				client.StartGame();
 			},
-			IN_framework->core->GetBlockMemory()));
+			IN_framework.core.GetBlockMemory()));
 
-	network.PushHandler(&packetHandlers);
+	network.PushHandler(packetHandlers);
 }
 
 
@@ -127,7 +127,7 @@ ClientLobbyState::~ClientLobbyState()
 	network.PopHandler();
 
 	for (auto handler : packetHandlers)
-		framework->core->GetBlockMemory().free(handler);
+		framework.core.GetBlockMemory().free(handler);
 }
 
 
@@ -147,7 +147,7 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 				ready = !ready;
 				
 				ClientReady packet(client.localID, ready);
-				network.SendPacket(packet.header, client.server);
+				network.Send(packet.header, client.server);
 			}
 			}
 		}
@@ -159,14 +159,14 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 /************************************************************************************************/
 
 
-bool ClientLobbyState::Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispatcher& Dispatcher, double dT)
+bool ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT)
 {
 	if (refreshCounter++ > 10)
 	{
 		refreshCounter = 0;
 
 		RequestPlayerListPacket packet{ client.localID };
-		client.network.SendPacket(packet.Header, client.server);
+		client.network.Send(packet.Header, client.server);
 	}
 
 	return true;
@@ -176,16 +176,16 @@ bool ClientLobbyState::Update(FlexKit::EngineCore* Engine, FlexKit::UpdateDispat
 /************************************************************************************************/
 
 
-bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+bool ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = GetCurrentBackBuffer(&core->Window);
+	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
 
 	ClearVertexBuffer	(frameGraph, client.base.vertexBuffer);
 	ClearVertexBuffer	(frameGraph, client.base.textBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget);
 
 	LobbyScreenDrawDesc Desc;
-	Desc.allocator			= core->GetTempMemory();
+	Desc.allocator			= core.GetTempMemory();
 	Desc.constantBuffer		= client.base.constantBuffer;
 	Desc.vertexBuffer		= client.base.vertexBuffer;
 	Desc.textBuffer			= client.base.textBuffer;
@@ -193,12 +193,12 @@ bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher
 	screen.Draw(Desc, dispatcher, frameGraph);
 
 	FlexKit::DrawMouseCursor(
-		framework->MouseState.NormalizedScreenCord,
+		framework.MouseState.NormalizedScreenCord,
 		{ 0.05f, 0.05f },
 		client.base.vertexBuffer,
 		client.base.constantBuffer,
 		currentRenderTarget,
-		core->GetTempMemory(),
+		core.GetTempMemory(),
 		&frameGraph);
 
 	return true;
@@ -208,12 +208,12 @@ bool ClientLobbyState::Draw(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher
 /************************************************************************************************/
 
 
-bool ClientLobbyState::PostDrawUpdate(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+bool ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	if (framework->drawDebugStats)
-		framework->DrawDebugHUD(dT, client.base.textBuffer, frameGraph);
+	if (framework.drawDebugStats)
+		framework.DrawDebugHUD(dT, client.base.textBuffer, frameGraph);
 
-	PresentBackBuffer(frameGraph, &core->Window);
+	PresentBackBuffer(frameGraph, &core.Window);
 	return true;
 }
 

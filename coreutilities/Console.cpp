@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -271,7 +271,7 @@ namespace FlexKit
 					char* Str = (char*)console->allocator->malloc(64);
 					memset(Str, '\0', 64);
 
-					_itoa_s(*(size_t*)Var.Data_ptr, Str, 64, 10);
+					_itoa_s((uint32_t)*(size_t*)Var.Data_ptr, Str, 64, 10);
 					console->PrintLine(Str, console->allocator);
 				}	break;
 				case ConsoleVariableType::CONSOLE_BOOL:

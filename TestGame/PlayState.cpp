@@ -13,34 +13,33 @@
 
 
 PlayState::PlayState(
-		GameFramework*	IN_Framework,
+		GameFramework&	IN_framework,
 		BaseState&		IN_base) : 
-	FrameworkState		{ IN_Framework						},
+	FrameworkState		{ IN_framework						},
 
 	/*
-	ui					{ FlexKit::GuiSystem_Desc{}, framework->core->GetBlockMemory()	},
+	ui					{ FlexKit::GuiSystem_Desc{}, framework.core.GetBlockMemory()	},
 	uiMainGrid			{ nullptr														},
 	uiSubGrid_1			{ nullptr														},
 	uiSubGrid_2			{ nullptr														},
 	*/
 
 	frameID				{ 0 },
-	sound				{ framework->core->Threads, framework->core->GetBlockMemory()	},
 	render				{ IN_base.render												},
 	base				{ IN_base														},
-	eventMap			{ framework->core->GetBlockMemory()								},
-	debugCameraInputMap	{ framework->core->GetBlockMemory()								},
-	debugEventsInputMap	{ framework->core->GetBlockMemory()								},
+	eventMap			{ framework.core.GetBlockMemory()								},
+	debugCameraInputMap	{ framework.core.GetBlockMemory()								},
+	debugEventsInputMap	{ framework.core.GetBlockMemory()								},
 
-	scene				{ framework->core->GetBlockMemory()								},
+	scene				{ framework.core.GetBlockMemory()								},
 
 	debugCamera			{ }
 	//thirdPersonCamera	{ CreateCharacterRig(GetMesh(GetRenderSystem(), "Flower"), &scene) }
 {
-	debugCamera.SetCameraAspectRatio(GetWindowAspectRatio(framework->core));
+	debugCamera.SetCameraAspectRatio(GetWindowAspectRatio(framework.core));
 	debugCamera.TranslateWorld({0, 100, 0});
 
-	LoadScene(IN_Framework->core, &scene, "TestScene");
+	LoadScene(framework.core, &scene, "TestScene");
 	LightModel = GetMesh(GetRenderSystem(), "LightModel");
 
 	// Print Scene entity list
@@ -50,9 +49,9 @@ PlayState::PlayState(
 	{
 		Apply(
 			*visibles[entity].entity, 
-			[](StringIDBehavior* id) 
+			[](StringIDBehavior& id) 
 			{
-				std::cout << id->GetString() << "\n";
+				std::cout << id.GetString() << "\n";
 			});
 	}
 
@@ -70,8 +69,8 @@ PlayState::PlayState(
 	debugEventsInputMap.MapKeyToEvent(KEYCODES::KC_X, DEBUG_EVENTS::TOGGLE_DEBUG_OVERLAY	);
 
 
-	framework->core->RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, { nullptr, LoadSpriteTextPSO });
-	framework->core->RenderSystem.PipelineStates.QueuePSOLoad		(DRAW_SPRITE_TEXT_PSO, framework->core->GetBlockMemory());
+	framework.core.RenderSystem.PipelineStates.RegisterPSOLoader	(DRAW_SPRITE_TEXT_PSO, { nullptr, LoadSpriteTextPSO });
+	framework.core.RenderSystem.PipelineStates.QueuePSOLoad		(DRAW_SPRITE_TEXT_PSO, framework.core.GetBlockMemory());
 
 	/*
 	uiMainGrid	= &ui.CreateGrid(nullptr);
@@ -100,12 +99,12 @@ PlayState::PlayState(
 
 PlayState::~PlayState()
 {
-	iAllocator* allocator	= base.framework->core->GetBlockMemory();
+	iAllocator* allocator	= base.framework.core.GetBlockMemory();
 	auto entities			= scene.sceneEntities;
 
 	for (auto entity : entities)
 	{
-		auto entityGO = SceneVisibilityBehavior::GetComponent()[entity].entity;
+		auto entityGO = SceneVisibilityView::GetComponent()[entity].entity;
 		scene.RemoveEntity(*entityGO);
 
 		entityGO->Release();
@@ -135,10 +134,10 @@ bool PlayState::EventHandler(Event evt)
 /************************************************************************************************/
 
 
-bool PlayState::Update(EngineCore* Core, UpdateDispatcher& dispatcher, double dT)
+bool PlayState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
 	//debugCamera.Yaw(dT * pi/8);
-	debugCamera.Update(framework->MouseState, dT);
+	debugCamera.Update(framework.MouseState, dT);
 	//auto cameraRigUpdateTask	= UpdateThirdPersonRig		(dispatcher, thirdPersonCamera, *transformTask, *cameraUpdate, dT);
 
 	return true;
@@ -148,7 +147,7 @@ bool PlayState::Update(EngineCore* Core, UpdateDispatcher& dispatcher, double dT
 /************************************************************************************************/
 
 
-bool PlayState::DebugDraw(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
+bool PlayState::DebugDraw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
 {
 	return true;
 }
@@ -157,7 +156,7 @@ bool PlayState::DebugDraw(EngineCore* Core, UpdateDispatcher& Dispatcher, double
 /************************************************************************************************/
 
 
-bool PlayState::PreDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, double dT)
+bool PlayState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
 {
 	return false;
 }
@@ -166,7 +165,7 @@ bool PlayState::PreDrawUpdate(EngineCore* Core, UpdateDispatcher& Dispatcher, do
 /************************************************************************************************/
 
 
-bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+bool PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
@@ -174,13 +173,13 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
 	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework->MouseState, dT);
-	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core->GetTempMemory());
-	auto& PVS				= GetGraphicScenePVSTask	(dispatcher, scene, activeCamera, core->GetTempMemory());
+	auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework.MouseState, dT);
+	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
+	auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
 	auto& textureStreams	= base.streamingEngine.update(dispatcher);
 
-	FlexKit::WorldRender_Targets targets = {
-		GetCurrentBackBuffer(&core->Window),
+	WorldRender_Targets targets = {
+		GetCurrentBackBuffer(core.Window),
 		base.depthBuffer
 	};
 
@@ -189,13 +188,14 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	debugDraw.renderTarget   = targets.RenderTarget;
 	debugDraw.vertexBuffer	 = base.vertexBuffer;
 
-	SceneDescription sceneDesc;
-	sceneDesc.lights			= &scene.GetPointLights(dispatcher, core->GetTempMemory());
-	sceneDesc.transforms		= &transforms;
-	sceneDesc.cameras			= &cameras;
-	sceneDesc.PVS				= &PVS;
-	
-	base.render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory(), &debugDraw);
+    const SceneDescription sceneDesc = {
+        scene.GetPointLights(dispatcher, core.GetTempMemory()),
+        transforms,
+        cameras,
+        PVS
+    };
+
+	base.render.updateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
 
 	ClearVertexBuffer(frameGraph, base.vertexBuffer);
 	ClearVertexBuffer(frameGraph, base.textBuffer);
@@ -203,7 +203,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
 	ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
-	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.GetData().solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
+	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, frameGraph, PVS.GetData().solid, activeCamera, targets, sceneDesc, core.GetTempMemory());
 
 	FlexKit::DrawCollection_Desc DrawCollectionDesc{};
 	DrawCollectionDesc.DepthBuffer			= targets.DepthTarget;
@@ -216,6 +216,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 	{
 		auto cameraConstanstSize = sizeof(decltype(GetCameraConstants(activeCamera)));
 
+        // Draw objects to represent point lights
 		DrawCollection(
 				frameGraph, 
 				{},
@@ -226,26 +227,27 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 				{
 					cameraConstants = GetCameraConstants(activeCamera); // update buffer with recent data
 				},
-				[this, core, activeCamera]()
+				[this, &core, activeCamera]()
 				{ 
-					return scene.FindPointLights(GetFrustum(activeCamera), core->GetTempMemory());
+					return scene.FindPointLights(GetFrustum(activeCamera), core.GetTempMemory());
 				},
 				[&, &lights = PointLightComponent::GetComponent()](auto& light) -> float4x4
 				{
-					const float3 pos = GetPositionW(lights[light].Position);
-					const float scale = 10;
-					XMMATRIX m = DirectX::XMMatrixAffineTransformation(
-						{ scale, scale, scale, 1},
-						{ 0, 0, 0, 0 }, 
-						{ 0, 0, 0, 1 }, 
-						{ pos.x, pos.y, pos.z });
+					const float3 pos    = GetPositionW(lights[light].Position);
+					const float scale   = 10;
+					XMMATRIX m          =
+                        DirectX::XMMatrixAffineTransformation(
+						    { scale, scale, scale, 1},
+						    { 0, 0, 0, 0 }, 
+						    { 0, 0, 0, 1 }, 
+						    { pos.x, pos.y, pos.z });
 
 					return XMMatrixToFloat4x4(&m);
 				},
 				[=, heap = DescriptorHeap{
                                 frameGraph.GetRenderSystem(),
                                 frameGraph.GetRenderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
-                                core->GetTempMemory() }
+                                core.GetTempMemory() }
                 ]
                 (auto& defaultResources, auto& resources, Context* ctx)  // Do not setup render targets!
 				{
@@ -255,7 +257,7 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 					ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 				},
 				DrawCollectionDesc,
-				core->GetTempMemory());
+				core.GetTempMemory());
 	}
 
 
@@ -266,12 +268,12 @@ bool PlayState::Draw(EngineCore* core, UpdateDispatcher& dispatcher, double dT, 
 /************************************************************************************************/
 
 
-bool PlayState::PostDrawUpdate(EngineCore* core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+bool PlayState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
-	if (framework->drawDebug)
-		framework->DrawDebugHUD(dT, base.textBuffer, frameGraph);
+	if (framework.drawDebug)
+		framework.DrawDebugHUD(dT, base.textBuffer, frameGraph);
 
-	PresentBackBuffer(frameGraph, &core->Window);
+	PresentBackBuffer(frameGraph, &core.Window);
 
 	return true;
 }

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2014-2017 Robert May
+Copyright (c) 2014-2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -67,7 +67,7 @@ namespace FlexKit
 		size_t			ResourceSize;
 		EResourceType	Type;
 
-	#pragma warning(disable:4200)
+#pragma warning(disable:4200)
 
 		GUID_t	GUID;
 		enum	ResourceState : uint32_t
@@ -179,7 +179,7 @@ namespace FlexKit
 
 	struct TriMeshResourceBlob
 	{
-		#pragma warning(disable:4200)
+		//#pragma warning(disable:4200)
 
 		size_t			ResourceSize;
 		EResourceType	Type;
@@ -226,7 +226,7 @@ namespace FlexKit
 
 	struct SkeletonResourceBlob
 	{
-		#pragma warning(disable:4200)
+		//#pragma warning(disable:4200)
 
 		size_t			ResourceSize;
 		EResourceType	Type;
@@ -254,7 +254,7 @@ namespace FlexKit
 
 	struct FontResourceBlob
 	{
-#pragma warning(disable:4200)
+//#pragma warning(disable:4200)
 
 		size_t			ResourceSize;
 		EResourceType	Type;
@@ -273,7 +273,7 @@ namespace FlexKit
 		size_t			ResourceSize;
 		EResourceType	Type;
 
-	#pragma warning(disable:4200)
+//#pragma warning(disable:4200)
 
 		GUID_t					GUID;
 		Resource::ResourceState	State;
@@ -316,7 +316,7 @@ namespace FlexKit
 			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
 		}
 
-	#pragma warning(disable:4200)
+//	#pragma warning(disable:4200)
 
 		size_t					ResourceSize;
 		EResourceType			Type;
@@ -476,7 +476,7 @@ namespace FlexKit
 			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
 		}
 
-#pragma warning(disable:4200)
+//#pragma warning(disable:4200)
 
 		size_t						ResourceSize;
 		EResourceType				Type;
@@ -496,7 +496,7 @@ namespace FlexKit
 
 	struct ColliderResourceBlob
 	{
-#pragma warning(disable:4200)
+//#pragma warning(disable:4200)
 		size_t					ResourceSize;
 		EResourceType			Type;
 		GUID_t					GUID;
@@ -536,11 +536,11 @@ namespace FlexKit
 	{
 		byte Buffer[128];
 
-		int s = fseek(F, 0, SEEK_SET);
-		s = fread(Buffer, 1, 128, F);
+		const int       seek_res = fseek(F, 0, SEEK_SET);
+		const size_t    read_res = fread(Buffer, 1, 128, F);
 
-		ResourceTable* T = (ResourceTable*)Buffer;
-		return T->ResourceCount * sizeof(ResourceEntry) + sizeof(ResourceTable);
+		const ResourceTable* table  = (ResourceTable*)Buffer;
+		return table->ResourceCount * sizeof(ResourceEntry) + sizeof(ResourceTable);
 	}
 
 
@@ -549,9 +549,10 @@ namespace FlexKit
 
 	inline bool ReadResourceTable(FILE* F, ResourceTable* Out, size_t TableSize)
 	{
-		int s = fseek(F, 0, SEEK_SET);
-		s = fread(Out, 1, TableSize, F);
-		return (s == TableSize);
+        const int seek_res    = fseek(F, 0, SEEK_SET);
+        const size_t read_res = fread(Out, 1, TableSize, F);
+
+		return (read_res == TableSize);
 	}
 
 
@@ -562,11 +563,11 @@ namespace FlexKit
 	{
 		byte Buffer[64];
 
-		int s = fseek(F, Table->Entries[Index].ResourcePosition, SEEK_SET);
-		s = fread(Buffer, 1, 64, F);
+		const int seek_res      = fseek(F, (LONG)Table->Entries[Index].ResourcePosition, SEEK_SET);
+		const size_t read_res   = fread(Buffer, 1, 64, F);
 
-		Resource* R = (Resource*)Buffer;
-		return R->ResourceSize;
+		Resource* resource = (Resource*)Buffer;
+		return resource->ResourceSize;
 	}
 
 
@@ -575,9 +576,6 @@ namespace FlexKit
 
 	inline bool ReadResource(FILE* F, ResourceTable* Table, size_t Index, Resource* out)
 	{
-		size_t ResourceSize = 0;
-		size_t Position = Table->Entries[Index].ResourcePosition;
-
 #if _DEBUG
 		std::chrono::system_clock Clock;
 		auto Before = Clock.now();
@@ -589,13 +587,26 @@ namespace FlexKit
 		FINALLYOVER
 #endif
 
-		int s = fseek(F, Position, SEEK_SET);
-		s = fread(&ResourceSize, 1, 8, F);
+        if(!F)
+            return false;
 
-		s = fseek(F, Position, SEEK_SET);
-		s = fread(out, 1, ResourceSize, F);
+        fseek(F, 0, SEEK_END);
+        const size_t resourceFileSize = ftell(F) + 1;
+        rewind(F);
 
-		return (s == out->ResourceSize);
+        const size_t position   = Table->Entries[Index].ResourcePosition;
+		int seek_res            = fseek(F, (LONG)position, SEEK_SET);
+
+        size_t resourceSize = 0;
+		size_t read_res     = fread(&resourceSize, 1, 8, F);
+
+        if (!(resourceSize + position < resourceFileSize))
+            return false;
+
+		seek_res                = fseek(F, (LONG)position, SEEK_SET);
+		const size_t readSize   = fread(out, 1, resourceSize, F);
+
+		return (readSize == out->ResourceSize);
 	}
 
 

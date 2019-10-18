@@ -347,16 +347,16 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, size_t Count, uint2 OcclusionBufferSize, bool Float)
+	OcclusionCuller CreateOcclusionCuller(RenderSystem* RS, uint32_t count, uint2 OcclusionBufferSize, bool Float)
 	{
 		FK_ASSERT(0);
 		//RegisterPSOLoader(EPIPELINESTATES::OCCLUSION_CULLING, LoadOcclusionState);
 		//QueuePSOLoad(RS, EPIPELINESTATES::OCCLUSION_CULLING);
 
-		auto NewRes = CreateShaderResource(RS, Count * 8, "OCCLUSIONCULLERRESULTS");
+		auto NewRes = CreateShaderResource(RS, count * 8, "OCCLUSIONCULLERRESULTS");
 
 		D3D12_QUERY_HEAP_DESC Desc;
-		Desc.Count		= Count;
+		Desc.Count		= count;
 		Desc.Type		= D3D12_QUERY_HEAP_TYPE_OCCLUSION;
 		Desc.NodeMask	= 0;
 
@@ -396,7 +396,7 @@ namespace FlexKit
 
 		OcclusionCuller Out;
 		Out.Head		    = 0;
-		Out.Max			    = Count;
+		Out.Max			    = count;
 		Out.Heap[0]		    = Heap[0];
 		Out.Heap[1]		    = Heap[1];
 		Out.Heap[2]		    = Heap[2];
@@ -435,11 +435,11 @@ namespace FlexKit
 
 		CL->RSSetViewports(1, VPs);
 		CL->OMSetRenderTargets(0, nullptr, false, &(D3D12_CPU_DESCRIPTOR_HANDLE)DSV);
-		//CL->SetPipelineState(GetPSO(RS, EPIPELINESTATES::OCCLUSION_CULLING));
+        CL->SetPipelineState(RS->GetPSO(OCCLUSION_CULLING));
 		CL->SetGraphicsRootSignature(RS->Library.RS6CBVs4SRVs);
-
-		for (size_t I = 0; I < Set->size(); ++I) {
-			size_t QueryID = OC->GetNext();
+		for (uint32_t I = 0; I < Set->size(); ++I)
+        {
+            uint32_t QueryID = OC->GetNext();
 
 			auto& P			= Set->at(I);
 			P.OcclusionID	= QueryID;
@@ -475,19 +475,19 @@ namespace FlexKit
 			D3D12_INDEX_BUFFER_VIEW		IndexView;
 			IndexView.BufferLocation	= GetBuffer(CurrentMesh, IBIndex)->GetGPUVirtualAddress();
 			IndexView.Format			= DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
-			IndexView.SizeInBytes		= IndexCount * 32;
+			IndexView.SizeInBytes		= (uint32_t)IndexCount * 32;
 
 			static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
 			FK_ASSERT(AddVertexBuffer(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, CurrentMesh, VBViews));
 			
 			CL->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			CL->IASetIndexBuffer(&IndexView);
-			CL->IASetVertexBuffers(0, VBViews.size(), VBViews.begin());
-			CL->DrawIndexedInstanced(IndexCount, 1, 0, 0, 0);
+			CL->IASetVertexBuffers(0, (uint32_t)VBViews.size(), VBViews.begin());
+			CL->DrawIndexedInstanced((uint32_t)IndexCount, 1, 0, 0, 0);
 			CL->EndQuery(OCHeap, D3D12_QUERY_TYPE::D3D12_QUERY_TYPE_BINARY_OCCLUSION, QueryID);
 		}
 
-		CL->ResolveQueryData(OCHeap, D3D12_QUERY_TYPE_BINARY_OCCLUSION, 0, Set->size(), OC->Predicates.Get(), 0);
+		CL->ResolveQueryData(OCHeap, D3D12_QUERY_TYPE_BINARY_OCCLUSION, 0, (uint32_t)Set->size(), OC->Predicates.Get(), 0);
 
 		CL->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(OC->Predicates.Get(),
 			D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT));
@@ -497,7 +497,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t	OcclusionCuller::GetNext() {
+    uint32_t OcclusionCuller::GetNext() {
 		return Head++;
 	}
 

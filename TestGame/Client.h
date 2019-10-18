@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 /************************************************************************************************/
 
+
 class GameClientState;
 
 
@@ -51,20 +52,20 @@ class ClientLobbyState : public FlexKit::FrameworkState
 {
 public:
 	ClientLobbyState(
-		GameFramework*		IN_framework,
-		GameClientState*	IN_client,
-		NetworkState*		IN_network,
+		GameFramework&		IN_framework,
+		GameClientState&	IN_client,
+		NetworkState&		IN_network,
 		const char*			IN_localPlayerName);
 
 
 	~ClientLobbyState();
 
 
-	bool Update			(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT);
-	bool Draw			(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph&);
-	bool PostDrawUpdate	(FlexKit::EngineCore* core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph&);
+	bool Update			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+	bool Draw			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
+	bool PostDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
 
-	bool EventHandler	(FlexKit::Event evt) override;
+	bool EventHandler	(Event evt) final override;
 
 	size_t					refreshCounter;
 	Vector<PacketHandler*>	packetHandlers;
@@ -84,15 +85,15 @@ class GameClientState : public FlexKit::FrameworkState
 {
 public:
 	GameClientState(
-		FlexKit::GameFramework* IN_framework,
+		GameFramework&          IN_framework,
 		BaseState&				IN_base,
 		NetworkState&			IN_network,
 		ClientGameDescription	IN_desc = ClientGameDescription{}) :
 			FrameworkState		{ IN_framework							},
 			base				{ IN_base								},
 			network				{ IN_network							},
-			packetHandlers		{ IN_framework->core->GetBlockMemory()	},
-			remotePlayers		{ IN_framework->core->GetBlockMemory()	}
+			packetHandlers		{ IN_framework.core.GetBlockMemory()	},
+			remotePlayers		{ IN_framework.core.GetBlockMemory()	}
 	{
 		char Address[256];
 		if (!IN_desc.name)
@@ -128,27 +129,80 @@ public:
         Sleep(1000); // IDK, does it need time to send the packet?
 
 		for (auto handler : packetHandlers)
-			framework->core->GetBlockMemory().free(handler);
+			framework.core.GetBlockMemory().free(handler);
 	}
 
 
-	void StartGame()
-	{
-		auto framework_temp = framework;
-		auto& predictedState		= framework_temp->PushState<GameState>(base);
-		auto& localState			= framework_temp->PushState<RemotePlayerState>(base);
+    void StartGame()
+    {
+        FK_LOG_INFO("Recieved game start from host. Starting Game!");
+
+        struct LoadState
+        {
+            LoadState(iAllocator* allocator) : handler{ allocator } 
+            {
+                handler.emplace_back(
+                    CreatePacketHandler(
+                        BeginGame,
+                        [&]( UserPacketHeader*   header,
+                            Packet*             packet,
+                            NetworkState*       network)
+                        {
+                            FK_ASSERT(header  != nullptr);
+                            FK_ASSERT(packet  != nullptr);
+                            FK_ASSERT(network != nullptr);
+
+                            beginLoad = true;
+                        }, allocator));
+            }
+
+            PacketHandlerVector handler;
+            bool                beginLoad   = false;
+
+            operator PacketHandlerVector& ()    { return handler;   }
+            operator bool()                     { return beginLoad; }
+        };
+
+        auto& Waiting       = framework.core.GetBlockMemory().allocate<LoadState>(framework.core.GetBlockMemory());
+
+        auto OnCompletion   = [&](auto& core, auto& Dispatcher, double dT)
+        {
+            auto& gameState     = framework.PushState<GameState>(base);
+            auto& localState    = framework.PushState<LocalPlayerState>(base, gameState);
+
+            // if we don't update, these states will miss their first frame update
+            gameState.Update(core, Dispatcher, dT);
+            localState.Update(core, Dispatcher, dT);
+
+            network.PopHandler();
+            framework.core.GetBlockMemory().release_allocation(Waiting);
+        };
+
+        auto OnUpdate = [&](auto& core, auto& dispatcher, double dt) -> bool
+        {
+            return Waiting;
+        };
+
+        framework.PopState(); // pop lobby state
+        network.PushHandler(Waiting);
+
+		auto& gameState     = framework.PushState<GameState>(base);
+        auto& localState    =
+            framework.PushState
+                <GameLoadSceneState<decltype(OnCompletion),decltype(OnUpdate)>>
+                (base, gameState.scene, "MultiplayerTestLevel", OnCompletion, OnUpdate);
 	}
 
 
     void JoinLobby()
     {
-		framework->PushState<ClientLobbyState>(this, &network, localName);
+		framework.PushState<ClientLobbyState>(*this, network, localName);
     }
 
 	void ServerLost()
 	{
 		FK_ASSERT(0);
-		framework->quit = true;
+		framework.quit = true;
 	}
 
 

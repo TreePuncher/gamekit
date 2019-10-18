@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -54,7 +54,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\DDSUtilities.cpp"
 #include "..\graphicsutilities\defaultpipelinestates.cpp"
 #include "..\graphicsutilities\geometry.cpp"
-#include "..\graphicsutilities\ForwardRendering.cpp"
 #include "..\graphicsutilities\FrameGraph.cpp"
 #include "..\graphicsutilities\Fonts.cpp"
 #include "..\graphicsutilities\graphics.cpp"

@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2018 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #ifndef HOSTSTATE_H_INCLUDED
 #define HOSTSTATE_H_INCLUDED
 
@@ -29,6 +5,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 #include "MultiplayerState.h"
+#include "MultiplayerGameState.h"
 #include "Packets.h"
 #include "LobbyGUI.h"
 
@@ -44,21 +21,20 @@ class GameHostLobbyState : public FlexKit::FrameworkState
 
 public:
 	GameHostLobbyState(
-		FlexKit::GameFramework* IN_framework,
-		GameHostState&			IN_host);
+		GameFramework& IN_framework,
+		GameHostState& IN_host);
 
 	~GameHostLobbyState();
 
-	void AddLocalPlayer(MultiplayerPlayerID_t ID);
-	void HandleNewConnection(ConnectionHandle handle);
-    void HandleDisconnection(ConnectionHandle handle);
+	void AddLocalPlayer(MultiplayerPlayerID_t);
+	void HandleNewConnection(ConnectionHandle);
+    void HandleDisconnection(ConnectionHandle);
 
+	bool Update			(EngineCore&, UpdateDispatcher&, double dT) final override;
+	bool Draw			(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
+	bool PostDrawUpdate	(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
 
-	bool Update			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override;
-	bool Draw			(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
-	bool PostDrawUpdate	(EngineCore* Core,	 UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) override;
-
-	bool EventHandler(FlexKit::Event evt) override;
+	bool EventHandler(Event evt) final override;
 
 
 	struct PlayerLobbyEntry
@@ -71,7 +47,7 @@ public:
 	{
 		for (auto& player : playerLobbyState)
 			if(player.ID == id)
-			return { player, true };
+			    return { player, true };
 
 		return { {}, false };
 	}
@@ -79,8 +55,8 @@ public:
 private:
 
 
-	FlexKit::Vector<PacketHandler*>		packetHandlers;
-	FlexKit::Vector<PlayerLobbyEntry>	playerLobbyState;
+	Vector<PacketHandler*>		packetHandlers;
+	Vector<PlayerLobbyEntry>	playerLobbyState;
 
 	bool					localHostReady = false;
 	GameHostState&			host;
@@ -96,6 +72,7 @@ enum PlayerNetState : uint32_t
 	Joining,
 	Lobby,
 	StartingGame,
+    LoadingScreen,
 	InGame
 };
 
@@ -120,7 +97,7 @@ class GameHostState : public FlexKit::FrameworkState
 {
 public:
 	GameHostState(
-		FlexKit::GameFramework* IN_framework,
+		GameFramework&          IN_framework,
 		BaseState&				IN_base,
 		NetworkState&			IN_Network,
 		GameDescription			IN_GameDesc = GameDescription{}) :
@@ -153,7 +130,7 @@ public:
 		std::cout << "\n";
 		SetPlayerName(hostPlayer, name, strnlen(name, 32) + 1);
 
-		auto& lobby = framework->PushState<GameHostLobbyState>(*this);
+		auto& lobby = framework.PushState<GameHostLobbyState>(*this);
 		lobby.AddLocalPlayer(hostPlayer);
 
 		return *this;
@@ -196,11 +173,40 @@ public:
 
 	void BeginGame()
 	{
-		framework->PopState();
+        FK_LOG_INFO("Starting Game!");
 
-		FK_ASSERT(0);
-		//auto& gameState = framework->PushState<GameState>(base);
-		//framework->PushState<LocalPlayerState>(gameState);
+        // Send Start Game Packets
+        network.Broadcast(StartGamePacket{});
+
+		framework.PopState();
+
+		auto& gameState = framework.PushState<GameState>(base);
+
+        auto PlayersStillLoading = [&]() -> bool
+        {
+            for (auto player : players)
+                if(player.State == LoadingScreen)
+                    return true;
+
+            return false;
+        };
+
+        auto OnCompletion = [&, PlayersStillLoading](auto& core, auto& Dispatcher, double dT)
+        {
+            if (PlayersStillLoading()) {
+                auto& WaitState = framework.PushState<LocalPlayerState>(base, gameState);
+                WaitState.Update(core, Dispatcher, dT);
+            }
+            else
+            {
+                auto& localState = framework.PushState<LocalPlayerState>(base, gameState);
+
+                // if we don't update, these states will miss their first frame update
+                localState.Update(core, Dispatcher, dT);
+            }
+        };
+
+        auto& localState = framework.PushState<GameLoadSceneState<decltype(OnCompletion)>> (base, gameState.scene, "MultiplayerTestLevel", OnCompletion);
 	}
 
 
@@ -217,12 +223,13 @@ public:
 	void SetState(MultiplayerPlayerID_t playerID, PlayerNetState netState)
 	{
 		auto player = GetPlayer(playerID);
+
 		if (player)
 			player->State = netState;
 	}
 
 
-	bool Update(EngineCore* Engine, UpdateDispatcher& Dispatcher, double dT) override
+	bool Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override
 	{
 		return true;
 	}
@@ -249,6 +256,29 @@ public:
 };
 
 
-/************************************************************************************************/
+/**********************************************************************
+
+Copyright (c) 2019 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+
 
 #endif

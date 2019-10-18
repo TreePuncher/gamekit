@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -75,18 +75,18 @@ using FlexKit::MeshUtilityFunctions::CombinedVertexBuffer;
 /************************************************************************************************/
 
 
-inline uint32_t		FetchIndex			(size_t itr, fbxsdk::FbxMesh* Mesh)			{ return Mesh->GetPolygonVertex(itr/3, itr % 3);	}
-inline uint32_t		FetchIndex2			(size_t itr, IndexList* IL)					{ return IL->at(itr);								}
-inline float3		FetchVertexPOS		(size_t itr, CombinedVertexBuffer* Buff)	{ return Buff->at(itr).POS;							}
-inline float3		FetchWeights		(size_t itr, CombinedVertexBuffer* Buff)	{ return Buff->at(itr).WEIGHTS;						}
-inline float3		FetchVertexNormal	(size_t itr, CombinedVertexBuffer* Buff)	{ return Buff->at(itr).NORMAL;						}
-inline float3		FetchFloat3ZERO		(size_t itr, CombinedVertexBuffer* Buff)	{ return{ 0.0f, 0.0f, 0.0f };						}
-inline float2		FetchVertexUV		(size_t itr, CombinedVertexBuffer* Buff)	{ auto temp = Buff->at(itr).TEXCOORD.xy();
-																						return {temp.x, temp.y};						}
-inline uint4_16		FetchWeightIndices	(size_t itr, CombinedVertexBuffer* Buff)	{ return Buff->at(itr).WIndices;					}
-inline uint32_t		WriteIndex			(uint32_t in)								{ return in;										}
-inline float3		WriteVertex			(float3 in)									{ return float3(in);								}
-inline float2		WriteUV				(float2 in)									{ return in;										}
+inline uint32_t		FetchIndex			(uint32_t itr, fbxsdk::FbxMesh* Mesh)			{ return Mesh->GetPolygonVertex(itr / 3, itr % 3);	}
+inline uint32_t		FetchIndex2			(uint32_t itr, const IndexList* IL)				{ return IL->at(itr);								}
+inline float3		FetchVertexPOS		(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).POS;							}
+inline float3		FetchWeights		(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).WEIGHTS;						}
+inline float3		FetchVertexNormal	(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).NORMAL;						}
+inline float3		FetchFloat3ZERO		(uint32_t itr, const CombinedVertexBuffer* Buff){ return{ 0.0f, 0.0f, 0.0f };						}
+inline float2		FetchVertexUV		(uint32_t itr, const CombinedVertexBuffer* Buff){ auto temp = Buff->at(itr).TEXCOORD.xy(); 
+																						    return {temp.x, temp.y};						}
+inline uint4_16		FetchWeightIndices	(size_t itr, const CombinedVertexBuffer* Buff)	{ return Buff->at(itr).WIndices;					}
+inline uint32_t		WriteIndex			(uint32_t in)								    { return in;										}
+inline float3		WriteVertex			(float3 in)									    { return float3(in);								}
+inline float2		WriteUV				(float2 in)									    { return in;										}
 inline uint4_16		Writeuint4			(uint4_16 in);
 
 
@@ -96,28 +96,28 @@ inline uint4_16		Writeuint4			(uint4_16 in);
 inline float3 TranslateToFloat3(FbxVector4& in)
 {
 	return float3(
-		in.mData[0],
-		in.mData[1],
-		in.mData[2]);
+		(float)in.mData[0],
+		(float)in.mData[1],
+		(float)in.mData[2]);
 }
 
 
 inline float3 TranslateToFloat3(FbxDouble3& in)
 {
 	return float3(
-		in.mData[0],
-		in.mData[1],
-		in.mData[2]);
+        (float)in.mData[0],
+        (float)in.mData[1],
+        (float)in.mData[2]);
 }
 
 
 inline float4 TranslateToFloat4(FbxVector4& in)
 {
 	return float4(
-		in.mData[0],
-		in.mData[1],
-		in.mData[2],
-		in.mData[3]);
+        (float)in.mData[0],
+        (float)in.mData[1],
+        (float)in.mData[2],
+        (float)in.mData[3]);
 }
 
 
@@ -127,9 +127,9 @@ inline float4 TranslateToFloat4(FbxVector4& in)
 inline XMMATRIX FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM)
 {
 	XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
-	for (size_t I = 0; I < 4; ++I)
-		for (size_t II = 0; II < 4; ++II)
-			M.r[I].m128_f32[II] = AM[I][II];
+	for (uint32_t I = 0; I < 4; ++I)
+		for (uint32_t II = 0; II < 4; ++II)
+			M.r[I].m128_f32[II] = (float)AM[I][II];
 
 	return M;
 }
@@ -138,8 +138,8 @@ inline XMMATRIX FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM)
 inline FbxAMatrix XMMATRIX_2_FBXMATRIX(XMMATRIX& M)
 {
 	FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
-	for (size_t I = 0; I < 4; ++I)
-		for (size_t II = 0; II < 4; ++II)
+	for (uint32_t I = 0; I < 4; ++I)
+		for (uint32_t II = 0; II < 4; ++II)
 			AM[I][II] = M.r[I].m128_f32[II];
 
 	return AM;

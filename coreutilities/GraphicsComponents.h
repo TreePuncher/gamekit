@@ -29,11 +29,11 @@ namespace FlexKit
 		~CameraComponent() {}
 
 		CameraHandle CreateCamera(
-			float	FOV			= pi/3,
-			float	AspectRatio = 1.0f,
-			float	Near		= 0.1f,
-			float	Far			= 10000.0f,
-			bool	Invert		= false);
+			const float	FOV			= pi/3,
+			const float	AspectRatio = 1.0f,
+			const float	Near		= 0.1f,
+			const float	Far			= 10000.0f,
+			const bool	Invert		= false);
 
 		void							ReleaseCamera(CameraHandle camera);
 
@@ -96,16 +96,16 @@ namespace FlexKit
 	};
 
 	template<typename TY_Interactor = DefaultCameraInteractor>
-	class CameraBehavior_t : 
-		public Behavior_t<CameraComponent>,
+	class CameraView_t : 
+		public ComponentView_t<CameraComponent>,
 		public DefaultCameraInteractor
 	{
 	public:
-		CameraBehavior_t(CameraHandle IN_camera = CameraComponent::GetComponent().CreateCamera()) :
+		CameraView_t(CameraHandle IN_camera = CameraComponent::GetComponent().CreateCamera()) :
 			camera{IN_camera}{}
 
 
-		~CameraBehavior_t()
+		~CameraView_t()
 		{
 			GetComponent().ReleaseCamera(camera);
 		}
@@ -195,7 +195,7 @@ namespace FlexKit
 	}
 
 
-	using CameraBehavior = CameraBehavior_t<>;
+	using CameraView = CameraView_t<>;
 
 
 	/************************************************************************************************/

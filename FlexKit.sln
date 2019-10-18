@@ -37,6 +37,7 @@ Global
 		{6B0D1EEB-82E4-4B7E-B05F-5AD513433686}.Debug|x64.ActiveCfg = Debug|x64
 		{6B0D1EEB-82E4-4B7E-B05F-5AD513433686}.Release|x64.ActiveCfg = Release|x64
 		{529B3F46-20B6-47AD-9281-536AF858BECF}.Debug|x64.ActiveCfg = Debug|x64
+		{529B3F46-20B6-47AD-9281-536AF858BECF}.Debug|x64.Build.0 = Debug|x64
 		{529B3F46-20B6-47AD-9281-536AF858BECF}.Release|x64.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution

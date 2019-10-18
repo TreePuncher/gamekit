@@ -36,12 +36,12 @@ namespace FlexKit
 
 	void GraphicScene::AddGameObject(GameObject& go, NodeHandle node)
 	{
-		go.AddBehavior<SceneVisibilityBehavior>(go, node, sceneID);
+		go.AddView<SceneVisibilityView>(go, node, sceneID);
 
 		Apply(go, 
-			[&](SceneVisibilityBehavior* visibility)
+			[&](SceneVisibilityView& visibility)
 			{
-				sceneEntities.push_back(*visibility);
+				sceneEntities.push_back(visibility);
 			});
 
 		//sceneManagement.AddEntity(vis);
@@ -55,16 +55,16 @@ namespace FlexKit
 	void GraphicScene::RemoveEntity(GameObject& go)
 	{
 		Apply(go, 
-		[&, allocator = this->allocator](SceneVisibilityBehavior* vis) 
+		[&, allocator = this->allocator](SceneVisibilityView& vis) 
 		{
 			//sceneManagement.RemoveEntity(*vis);
-			go.RemoveBehavior(vis);
+			go.RemoveView(vis);
 
-			auto handle = vis->visibility;
+			auto handle = vis.visibility;
 			sceneEntities.remove_unstable(
 				find(sceneEntities, [&](auto i) { return i == handle; }));
 
-			allocator->release(vis);
+			allocator->release(&vis);
 		},	[] { });
 	}
 
@@ -80,8 +80,8 @@ namespace FlexKit
 		for (auto visHandle : sceneEntities)
 		{
 			auto entity		= visables[visHandle].entity;
-			auto visable	= entity->GetBehavior(visableID);
-			entity->RemoveBehavior(visable);
+			auto visable	= entity->GetView(visableID);
+			entity->RemoveView(visable);
 
 			allocator->release(visable);
 		}
@@ -513,8 +513,8 @@ namespace FlexKit
 			{
 				FK_LOG_INFO("QuadTree::Update");
 
-				const int period  = QuadTreeUpdate.QTree->RebuildPeriod;
-				const int counter = QuadTreeUpdate.QTree->RebuildCounter;
+				const auto period  = QuadTreeUpdate.QTree->RebuildPeriod;
+				const auto counter = QuadTreeUpdate.QTree->RebuildCounter;
 
 				//if (period <= counter)
 				//	QuadTreeUpdate.QTree->Rebuild(*QuadTreeUpdate.parentScene);
@@ -561,7 +561,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GetGraphicScenePVS(GraphicScene* SM, CameraHandle Camera, PVS* __restrict out, PVS* __restrict T_out)
+	void GatherScene(GraphicScene* SM, CameraHandle Camera, PVS* __restrict out, PVS* __restrict T_out)
 	{
 		FK_ASSERT(out		!= T_out);
 		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
@@ -583,7 +583,7 @@ namespace FlexKit
 			const auto potentialVisible = Visibles[handle];
 
 			if(	potentialVisible.visable && 
-				potentialVisible.entity->hasBehavior(DrawableComponent::GetComponentID()))
+				potentialVisible.entity->hasView(DrawableComponent::GetComponentID()))
 			{
 				auto Ls	= GetLocalScale		(potentialVisible.node).x;
 				auto Pw	= GetPositionW		(potentialVisible.node);
@@ -593,15 +593,15 @@ namespace FlexKit
 					Ls * potentialVisible.boundingSphere.w };
 
 				Apply(*potentialVisible.entity,
-					[&](DrawableBehavior* drawable)
+					[&](DrawableView& drawable)
 					{
 						if (CompareBSAgainstFrustum(&F, BS))
 						{
 							float distance = 0;
 							if (potentialVisible.transparent)
-								PushPV(*drawable, T_out);
+								PushPV(drawable, T_out);
 							else
-								PushPV(*drawable, out);
+								PushPV(drawable, out);
 						}
 					});
 			}
@@ -612,7 +612,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto& GetGraphicScenePVSTask(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
+	auto& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
 	{
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
@@ -628,7 +628,7 @@ namespace FlexKit
 			{
 				FK_LOG_9("Start PVS gather\n");
 
-				GetGraphicScenePVS(data.scene, data.camera, &data.solid, &data.transparent);
+                GatherScene(data.scene, data.camera, &data.solid, &data.transparent);
 				SortPVS(&data.solid, &CameraComponent::GetComponent().GetCamera(data.camera));
 
 				FK_LOG_9("End PVS gather\n");
@@ -749,14 +749,14 @@ namespace FlexKit
 							auto& gameObject = allocator->allocate<GameObject>(allocator);
 							GS_out->AddGameObject(gameObject, node);
 
-							gameObject.AddBehavior<SceneNodeBehavior<>>(node);
-							gameObject.AddBehavior<DrawableBehavior>(triMesh, node);
-							gameObject.AddBehavior<PointLightBehavior>(float3(1, 1, 1), 1000, node);
+							gameObject.AddView<SceneNodeView<>>(node);
+							gameObject.AddView<DrawableView>(triMesh, node);
+							gameObject.AddView<PointLightView>(float3(1, 1, 1), 1000, node);
 
 							SetBoundingSphereFromMesh(gameObject);
 							
 							if(auto idLength = strnlen(entityBlock->ID, 64); idLength)
-								gameObject.AddBehavior<StringIDBehavior>(entityBlock->ID, idLength);
+								gameObject.AddView<StringIDBehavior>(entityBlock->ID, idLength);
 						}
 						case SceneBlockType::EntityComponent:
 							break;
@@ -810,16 +810,16 @@ namespace FlexKit
 
 		for (auto entity : sceneEntities)
 			Apply(*visables[entity].entity,
-				[&](PointLightBehavior*			pointLight,
-					SceneVisibilityBehavior*	visibility,
-					SceneNodeBehavior<>*		sceneNode)
+				[&](PointLightView&			pointLight,
+					SceneVisibilityView&	visibility,
+					SceneNodeView<>&		sceneNode)
 				{
-					auto position	= sceneNode->GetPosition();
-					auto scale		= sceneNode->GetScale();
-					auto radius		= pointLight->GetRadius();
+					auto position	= sceneNode.GetPosition();
+					auto scale		= sceneNode.GetScale();
+					auto radius		= pointLight.GetRadius();
 
 					if (CompareBSAgainstFrustum(&f, { position, radius * scale }))
-						lights.emplace_back(*pointLight);
+						lights.emplace_back(pointLight);
 
 					//visibility->GetBoundingVolume();
 					//BoundingSphere BoundingVolume = float4(Pw, light.R * Ps);
@@ -848,11 +848,11 @@ namespace FlexKit
 					auto& visables = SceneVisibilityComponent::GetComponent();
 
 					Apply(*visables[entity].entity,
-						[&](PointLightBehavior* pointLight,
-							SceneVisibilityBehavior* visibility,
-							SceneNodeBehavior<>* sceneNode)
+						[&](PointLightView& pointLight,
+							SceneVisibilityView& visibility,
+							SceneNodeView<>& sceneNode)
 						{
-							data.pointLights.emplace_back(*pointLight);
+							data.pointLights.emplace_back(pointLight);
 						});
 				}
 			}
@@ -870,7 +870,7 @@ namespace FlexKit
 
 		for (auto entity : sceneEntities)
 			Apply(*visables[entity].entity,
-				[&](PointLightBehavior* pointLight) { lightCount++; });
+				[&](PointLightView& pointLight) { lightCount++; });
 
 		return lightCount;
 	}

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -106,72 +106,19 @@ namespace FlexKit
 // Generic Utiliteies
 	bool LoadFileIntoBuffer(const char* strLoc, byte* out, size_t strlen, bool TextFile )
 	{
-		/*
-		std::fstream File;
-		auto mode = std::fstream::in;// | (textfile ? std::fstream::binary : 0);
-		File.open(strLoc, mode );
-
-		if( File.is_open() )
-		{
-			File.seekg( std::ios::beg );
-			size_t size = File.tellg();
-			File.seekg( 0, std::ios::end );
-			size = File.tellg();
-			File.seekg( std::ios::beg );
-
-			if( strlen > size )
-			{
-
-				File.seekg( std::ios::beg );
-				File.read((char*)out, size);
-
-				if (!File)
-				{	// An Error Occured
-
-					auto ReadCount = File.gcount();
-					auto test = File.eof();
-					File.close();
-					return false;
-				}
-
-				File.close();
-				return true;
-			}
-			File.close();
-		}*/
-		/*
-		FILE* F = fopen(strLoc, "r");
-		if (F)
-		{
-			auto res = fseek(F, 0, SEEK_END);
-			size_t Size = ftell(F);
-
-			if (strlen > Size)
-			{
-				rewind(F);
-				auto res = fread(out, 1, Size, F);
-				auto eof = feof(F);
-				return (res == Size) | feof(F);
-
-			}
-			return true;
-		}
-		else
-			return false;
-		*/
 		size_t newSize = 0;
 		WCHAR Temp[512];
 		mbstowcs_s(&newSize, Temp, strLoc, ::strlen(strLoc));
 
 		auto F = CreateFile(Temp, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 		LARGE_INTEGER LSize; 
-		auto res = ::GetFileSizeEx(F, &LSize);
-		size_t Size = LSize.LowPart;
+		auto res        = ::GetFileSizeEx(F, &LSize);
+		const auto Size = LSize.LowPart;
 
 		if ((size_t)Size < strlen)
 		{
 			DWORD BytesRead = 0;
-			auto res = ReadFile(F, out, Size, &BytesRead, nullptr);
+			const auto res  = ReadFile(F, out, Size, &BytesRead, nullptr);
 			
 			CloseHandle(F);
 

@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -138,9 +138,9 @@ namespace FlexKit
 	
 	DAStateHandle DASAddState( AnimationStateEntry_Desc& Desc, AnimationStateMachine* Out )
 	{
-		size_t Index = INVALIDHANDLE;
+        auto Index = (DAStateHandle)INVALIDHANDLE;
 		if (Out->StateCount < Out->MaxStateCount){
-			Index = Out->StateCount++;
+			Index       = Out->StateCount++;
 			auto& State = Out->States[Index];
 
 			State.Active			= false;
@@ -167,7 +167,7 @@ namespace FlexKit
 
 	DAConditionHandle	DASAddCondition(AnimationCondition_Desc& Desc, AnimationStateMachine* Out)
 	{
-		size_t Index = INVALIDHANDLE;
+        auto Index = (DAConditionHandle)INVALIDHANDLE;
 		if (Out->ConditionCount < Out->MaxConditionCount) {
 			Index = Out->ConditionCount++;
 			auto& Condition			= Out->Conditions[Index];
@@ -1021,7 +1021,7 @@ namespace FlexKit
 				std::cout << "    ";
 
 			std::cout << S->Joints[II].mID << " -- Children: \n";
-			PrintChildren(S, II, Depth + 1);
+			PrintChildren(S, (JointHandle)II, Depth + 1);
 		}
 	}
 
@@ -1036,7 +1036,7 @@ namespace FlexKit
 			if (S->Joints[I].mParent == 0XFFFF)
 			{
 				std::cout << S->Joints[I].mID << " -- Children: \n";
-				PrintChildren(S, I, 1);
+				PrintChildren(S, (JointHandle)I, 1);
 			}
 		}
 	}

@@ -209,28 +209,30 @@ const size_t CubeCount = 0001;
 class GraphicsTest : public FrameworkState
 {
 public:
-	GraphicsTest(GameFramework* IN_framework) :
+	GraphicsTest(GameFramework& IN_framework) :
 		FrameworkState(IN_framework),
-		textureEngine	{ IN_framework->core->RenderSystem, IN_framework->core->GetBlockMemory() },
-		render			{ IN_framework->core->GetBlockMemory(), IN_framework->core->RenderSystem, textureEngine			},
-		depthBuffer		{ IN_framework->core->RenderSystem.CreateDepthBuffer	(GetWindowWH(IN_framework->core), true)	},
-		vertexBuffer	{ IN_framework->core->RenderSystem.CreateVertexBuffer	(MEGABYTE * 8,		false)				},
-		textBuffer		{ IN_framework->core->RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
-		constantBuffer	{ IN_framework->core->RenderSystem.CreateConstantBuffer	(MEGABYTE * 128,	false)				},
-		eventMap		{ IN_framework->core->GetBlockMemory()															},
-		terrain			{ IN_framework->GetRenderSystem(), IN_framework->core->GetBlockMemory()							},
-		scene			{ IN_framework->core->GetBlockMemory()															},
-		PScene			{ IN_framework->GetPhysx()->CreateScene()														},
-		floor			{ IN_framework->GetPhysx()->CreateStaticBoxCollider		(PScene, {1000, 10, 1000}, {0, -10, 0})	},
-		orbitCamera		{ cameras.CreateCamera(float(pi) / 3.0f, GetWindowAspectRatio(IN_framework->core), 0.1f, 100000.0f), 300, { 0, 240, 0 } },
+		textureEngine	{ IN_framework.core.RenderSystem,       IN_framework.core.GetBlockMemory()                  },
+		render			{ IN_framework.core.GetBlockMemory(),   IN_framework.core.RenderSystem, textureEngine		},
+		depthBuffer		{ IN_framework.core.RenderSystem.CreateDepthBuffer	(GetWindowWH(IN_framework.core), true)	},
+		vertexBuffer	{ IN_framework.core.RenderSystem.CreateVertexBuffer	(MEGABYTE * 8,		false)				},
+		textBuffer		{ IN_framework.core.RenderSystem.CreateVertexBuffer	(8096 * 32,			false)				},
+		constantBuffer	{ IN_framework.core.RenderSystem.CreateConstantBuffer	(MEGABYTE * 128,	false)			},
+		eventMap		{ IN_framework.core.GetBlockMemory()														},
+		terrain			{ IN_framework.GetRenderSystem(), IN_framework.core.GetBlockMemory()						},
+		scene			{ IN_framework.core.GetBlockMemory()														},
+		PScene			{ IN_framework.GetPhysx().CreateScene()														},
+		floor			{ IN_framework.GetPhysx().CreateStaticBoxCollider	(PScene, {1000, 10, 1000}, {0, -10, 0})	},
+		orbitCamera		{   cameras.CreateCamera(float(pi) / 3.0f,
+                            GetWindowAspectRatio(IN_framework.core),
+                            0.1f, 100000.0f), 300, { 0, 240, 0 } },
 		//Object1			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
 		//Object2			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
 		//Object3			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
-		cameras			{ IN_framework->core->GetBlockMemory()				}
-		//ltcLookup_1{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
-		//ltcLookup_2{ IN_framework->Core->RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
+		cameras			{ IN_framework.core.GetBlockMemory()				}
+		//ltcLookup_1{ IN_framework.core.RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
+		//ltcLookup_2{ IN_framework.core.RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
-		orbitCamera.Pitch(-pi / 2);
+		orbitCamera.Pitch(float(-pi / 2.0f));
 
 		//Object1.TranslateWorld({ 0, 0, 0 });
 		//Object2.TranslateWorld({ 0, 0, 10 });
@@ -240,14 +242,14 @@ public:
 
 		/*
 		for (size_t itr = 0; itr < CubeCount; itr++) {
-			box[itr] = CreateRBCube(&scene, obj, IN_framework->GetPhysx(), PScene, 1, {0, 1.1f  + 1.1f * itr * 2, 0});
+			box[itr] = CreateRBCube(&scene, obj, IN_framework.GetPhysx(), PScene, 1, {0, 1.1f  + 1.1f * itr * 2, 0});
 			box[itr].SetVisable(true);
 			box[itr].SetMeshScale(10);
 			box[itr].SetMass(10);
 		}
 		*/
 
-		auto& RS = IN_framework->core->RenderSystem;
+		auto& RS = IN_framework.core.RenderSystem;
 		RS.RegisterPSOLoader(DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
 		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
 		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
@@ -261,10 +263,10 @@ public:
 
 
 		/*
-		if (!LoadScene(IN_framework->core, &scene, 6001))
+		if (!LoadScene(IN_framework.core, &scene, 6001))
 		{
 			std::cerr << "Failed to Load Scene!\n";
-			IN_framework->quit = true;
+			IN_framework.quit = true;
 		}
 
 		std::cout << "Objects in Scene: "	<< scene.Drawables.size() << "\n";
@@ -281,15 +283,15 @@ public:
 		eventMap.MapKeyToEvent(KEYCODES::KC_Q, ToggleWireframe);
 
 		const uint64_t TileSize = 1024 * 2;
-		terrain.SetMainHeightMap("assets/textures/testmap.bmp", framework->GetRenderSystem(), framework->core->GetTempMemory());
+		terrain.DebugMode = TerrainEngine::WIREFRAME;
+		terrain.SetMainHeightMap("assets/textures/testmap.bmp", framework.GetRenderSystem(), framework.core.GetTempMemory());
 		terrain.SetRegionDimensions(TileSize);
-		terrain.DebugMode	= TerrainEngine::WIREFRAME;
 
-		GameOjectTest(IN_framework->core->GetBlockMemory());
+		GameOjectTest(IN_framework.core.GetBlockMemory());
 
 		/*
-		float3x3*	ltc_Table		= (float3x3*)	IN_framework->Core->GetTempMemory()._aligned_malloc(sizeof(FlexKit::float3x3[lookupTableSize*lookupTableSize]));
-		float*		ltc_Amplitude	= (float*)		IN_framework->Core->GetTempMemory()._aligned_malloc(sizeof(float [lookupTableSize*lookupTableSize]));
+		float3x3*	ltc_Table		= (float3x3*)	IN_framework.core.GetTempMemory()._aligned_malloc(sizeof(FlexKit::float3x3[lookupTableSize*lookupTableSize]));
+		float*		ltc_Amplitude	= (float*)		IN_framework.core.GetTempMemory()._aligned_malloc(sizeof(float [lookupTableSize*lookupTableSize]));
 
 		const float MinAlpha = 0.0001f;
 
@@ -316,7 +318,7 @@ public:
 			}
 		}
 		*/
-		//framework->Core->RenderSystem.
+		//framework.core.RenderSystem.
 	}
 
 
@@ -325,11 +327,11 @@ public:
 
 	~GraphicsTest()
 	{
-		auto rendersystem = framework->GetRenderSystem();
-		rendersystem->ReleaseVB(vertexBuffer);
-		rendersystem->ReleaseVB(textBuffer);
-		rendersystem->ReleaseCB(constantBuffer);
-		rendersystem->ReleaseDB(depthBuffer);
+		auto& rendersystem = framework.GetRenderSystem();
+		rendersystem.ReleaseVB(vertexBuffer);
+		rendersystem.ReleaseVB(textBuffer);
+		rendersystem.ReleaseCB(constantBuffer);
+		rendersystem.ReleaseDB(depthBuffer);
 	}
 
 
@@ -337,7 +339,7 @@ public:
 
 
 	bool Update(
-		EngineCore*			Engine, 
+		EngineCore&			core, 
 		UpdateDispatcher&	dispatcher, 
 		double				dT) override
 	{
@@ -351,7 +353,7 @@ public:
 
 
 	bool DebugDraw(
-		EngineCore*			core, 
+		EngineCore&			core, 
 		UpdateDispatcher&	dispatcher, 
 		double dT) override
 	{
@@ -365,7 +367,7 @@ public:
 
 
 	bool PreDrawUpdate(
-		EngineCore*			engine, 
+		EngineCore&			core, 
 		UpdateDispatcher&	dispatcher, 
 		double				dT) override
 	{ 
@@ -377,14 +379,14 @@ public:
 
 
 	bool Draw(
-		EngineCore*			core, 
+		EngineCore&			core, 
 		UpdateDispatcher&	dispatcher, 
 		double				dT, 
 		FrameGraph&			frameGraph) override
 	{
 		auto& transformTask = QueueTransformUpdateTask							(dispatcher);
-		auto& cameraUpdate  = CameraComponent::GetComponent().QueueCameraUpdate	(dispatcher, transformTask);
-		auto& orbitUpdate   = QueueOrbitCameraUpdateTask						(dispatcher, transformTask, cameraUpdate, orbitCamera, framework->MouseState, dT);
+		auto& cameraUpdate  = CameraComponent::GetComponent().QueueCameraUpdate	(dispatcher);
+		auto& orbitUpdate   = QueueOrbitCameraUpdateTask						(dispatcher, transformTask, cameraUpdate, orbitCamera, framework.MouseState, dT);
 
 		FK_LOG_1("End Update");
 		FK_LOG_1("Begin Draw");
@@ -393,18 +395,18 @@ public:
 
 
 		WorldRender_Targets targets = {
-			GetCurrentBackBuffer(&core->Window),
+			GetCurrentBackBuffer(core.Window),
 			depthBuffer
 		};
 
-		PVS	solidDrawables			(core->GetTempMemory());
-		PVS	transparentDrawables	(core->GetTempMemory());
+		PVS	solidDrawables			(core.GetTempMemory());
+		PVS	transparentDrawables	(core.GetTempMemory());
 
 		ClearVertexBuffer	(frameGraph, vertexBuffer);
 		ClearVertexBuffer	(frameGraph, textBuffer);
 
-		ClearBackBuffer		(frameGraph, 0.0f);
-		ClearDepthBuffer	(frameGraph, depthBuffer, 1.0f);
+		ClearBackBuffer		(frameGraph, targets.RenderTarget, 0.0f);
+		ClearDepthBuffer	(frameGraph, targets.DepthTarget,  1.0f);
 
 		DrawUI_Desc DrawDesk
 		{
@@ -415,36 +417,35 @@ public:
 			constantBuffer
 		};
 
-		CameraHandle activeCamera = static_cast<CameraHandle>(orbitCamera);
+		const CameraHandle activeCamera = static_cast<CameraHandle>(orbitCamera);
 
-		auto& PVS				= GetGraphicScenePVSTask(dispatcher, scene, activeCamera, core->GetTempMemory());
-		auto& terrainPatches	= terrain.CreatePatchList(activeCamera, 1.0f, dispatcher, cameraUpdate, core->GetTempMemory());
+		auto& pvs				= GatherScene(dispatcher, scene, activeCamera, core.GetTempMemory());
+		auto& terrainPatches	= terrain.CreatePatchList(activeCamera, 1.0f, dispatcher, cameraUpdate, core.GetTempMemory());
 
-		const bool renderTerrainEnabled		= true;
+		const bool renderTerrainEnabled = true;
 
-		SceneDescription sceneDesc;
-		sceneDesc.pointLightCount	= scene.GetPointLightCount();
-		sceneDesc.transforms		= &transformTask;
-		sceneDesc.cameras			= &cameraUpdate;
-		sceneDesc.PVS				= PVS;
+        const SceneDescription sceneDesc = {
+            scene.GetPointLights(dispatcher, core.GetTempMemory()),
+            transformTask,
+            cameraUpdate,
+            pvs };
 
-		render.updateLightBuffers(dispatcher, activeCamera, scene, frameGraph, sceneDesc, core->GetTempMemory());
-		render.RenderDrawabledPBR_ForwardPLUS(dispatcher, PVS.solid, activeCamera, targets, frameGraph, sceneDesc, core->GetTempMemory());
+		render.updateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory());
+		render.RenderDrawabledPBR_ForwardPLUS(dispatcher, frameGraph, pvs.GetData().solid, activeCamera, targets, sceneDesc, core.GetTempMemory());
 
 		if (renderTerrainEnabled) 
 		{
 			TerrainRenderResources terrainResources = {
 				.vertexBuffer		= vertexBuffer,
 				.constantBuffer		= constantBuffer,
-				.renderTarget		= core->Window.GetBackBuffer(),
+				.renderTarget		= core.Window.GetBackBuffer(),
 				.depthTarget		= depthBuffer,
-				.renderSystem		= core->RenderSystem,
+				.renderSystem		= core.RenderSystem,
 			};
-
 
 			auto FetchCameraConstants =
 				MakeLazyObject<ConstantBufferDataSet> (
-					core->GetTempMemory(),
+					core.GetTempMemory(),
 					[activeCamera](CBPushBuffer& pushBuffer) -> ConstantBufferDataSet 
 					{ 
 						return { GetCameraConstants(activeCamera), pushBuffer };
@@ -452,7 +453,7 @@ public:
 				
 			auto FetchTerrainConstants = CreateDefaultTerrainConstants(activeCamera, terrain);
 
-			ForwardTerrainRenderer terrainRender{ FetchCameraConstants, FetchTerrainConstants, terrain, core->GetTempMemory() };
+			ForwardTerrainRenderer terrainRender{ FetchCameraConstants, FetchTerrainConstants, terrain, core.GetTempMemory() };
 			terrainRender.DependsOn(cameraUpdate);
 			terrainRender.DependsOn(terrainPatches);
 
@@ -461,8 +462,8 @@ public:
 				frameGraph,
 				vertexBuffer,
 				constantBuffer,
-				core->Window.GetBackBuffer(),
-				core->GetTempMemory(),
+				core.Window.GetBackBuffer(),
+				core.GetTempMemory(),
 				FetchCameraConstants);
 
 			auto& renderResults	= terrainRender.Draw(frameGraph, terrainPatches, targets.RenderTarget, targets.DepthTarget, terrainResources);
@@ -476,15 +477,15 @@ public:
 
 
 	bool PostDrawUpdate(
-		EngineCore*			core, 
+		EngineCore& 		core, 
 		UpdateDispatcher&	dispatcher, 
 		double				dT, 
 		FrameGraph&			frameGraph)
 	{ 
-		if (framework->drawDebug)
-			framework->DrawDebugHUD(dT, textBuffer, frameGraph);
+		if (framework.drawDebug)
+			framework.DrawDebugHUD(dT, textBuffer, frameGraph);
 
-		PresentBackBuffer(frameGraph, &core->Window);
+		PresentBackBuffer(frameGraph, &core.Window);
 		FK_LOG_1("End Draw");
 
 		return true; 
@@ -494,7 +495,7 @@ public:
 	/************************************************************************************************/
 
 
-	bool EventHandler	(Event evt)
+	bool EventHandler(Event evt)
 	{ 
 		eventMap.Handle(
 			evt, 
@@ -504,17 +505,19 @@ public:
 
 				if (evt.mData1.mINT[0] == ReloadShaders_1)
 				{
-					framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
-					framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);
-					framework->GetRenderSystem()->QueuePSOLoad(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
+					//framework.GetRenderSystem().QueuePSOLoad(TERRAIN_COMPUTE_CULL_PSO);
+					//framework.GetRenderSystem().QueuePSOLoad(TERRAIN_RENDER_FOWARD_PSO);
+					//framework.GetRenderSystem().QueuePSOLoad(TERRAIN_RENDER_FOWARD_WIREFRAME_PSO);
 				}
 				if (	evt.InputSource		== Event::InputType::Keyboard &&
 						evt.Action			== Event::InputAction::Release &&
 						evt.mData1.mINT[0]	== ToggleWireframe)
+                {
 					terrain.DebugMode = terrain.DebugMode == 
 								TerrainEngine::TERRAINDEBUGRENDERMODE::DISABLED ?
 								TerrainEngine::TERRAINDEBUGRENDERMODE::WIREFRAME :
 								TerrainEngine::TERRAINDEBUGRENDERMODE::DISABLED;
+                }
 			});
 
 		return true; 
@@ -545,9 +548,6 @@ private:
 	TriMeshHandle						obj;
 	OrbitCameraBehavior					orbitCamera;
 	PhysicsSceneHandle					PScene;
-	//DrawableBehavior					Object1; // Center
-	//DrawableBehavior					Object2; // North
-	//DrawableBehavior					Object3; // East
 	StaticColliderHandle				floor;
 	//RigidBodyDrawableBehavior			box[CubeCount];
 };

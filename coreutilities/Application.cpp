@@ -29,7 +29,7 @@ namespace FlexKit
 	FKApplication::FKApplication(uint2 WindowResolution, EngineMemory* IN_Memory) :
 		Memory		{ IN_Memory },
 		Core		{ IN_Memory, WindowResolution },
-		framework	{ &Core } {}
+		framework	{ Core } {}
 
 
 	/************************************************************************************************/

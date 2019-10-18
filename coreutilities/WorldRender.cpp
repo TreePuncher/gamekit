@@ -252,15 +252,16 @@ namespace FlexKit
 
 
 	void WorldRender::DefaultRender(
-		UpdateDispatcher&		dispatcher, 
-		PVS&					drawables, 
-		CameraHandle			camera, 
-		WorldRender_Targets&	targets, 
-		FrameGraph&				graph, 
-		SceneDescription&		scene, 
-		iAllocator*				memory)
+		UpdateDispatcher&		    dispatcher, 
+		FrameGraph&				    graph, 
+		const PVS&					drawables, 
+		const CameraHandle			camera, 
+		const WorldRender_Targets&	targets, 
+		const SceneDescription&		scene, 
+		iAllocator*				    memory
+    )
 	{
-		RenderDrawabledPBR_ForwardPLUS(dispatcher, drawables, camera, targets, graph, scene, memory);
+		RenderDrawabledPBR_ForwardPLUS(dispatcher, graph, drawables, camera, targets, scene, memory);
 	}
 
 
@@ -269,12 +270,12 @@ namespace FlexKit
 
 	void WorldRender::RenderDrawabledPBR_ForwardPLUS(
 		UpdateDispatcher&			dispatcher,
+		FrameGraph&					frameGraph, 
 		const PVS&					drawables, 
 		const CameraHandle			Camera,
 		const WorldRender_Targets&	Targets,
-		FrameGraph&					frameGraph, 
-		SceneDescription&			desc,
-		iAllocator*					Memory)
+		const SceneDescription&	    desc,
+		iAllocator*					allocator)
 	{
 		const size_t MaxEntityDrawCount = 10000;
 
@@ -315,9 +316,9 @@ namespace FlexKit
 			ForwardDrawPass{},
 			[&](FrameGraphNodeBuilder& builder, ForwardDrawPass& data)
 			{
-				builder.AddDataDependency(*desc.PVS);
+				builder.AddDataDependency(desc.PVS);
 
-				data.pointLights		= &desc.lights->GetData().pointLights;
+				data.pointLights		= &desc.lights.GetData().pointLights;
 				data.BackBuffer			= builder.WriteRenderTarget	(Targets.RenderTarget);
 				data.DepthBuffer		= builder.WriteDepthBuffer	(Targets.DepthTarget);
 				size_t localBufferSize  = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
@@ -333,7 +334,7 @@ namespace FlexKit
 				data.Heap.Init(
 					frameGraph.Resources.renderSystem,
 					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-					Memory);
+                    allocator);
 
 				data.Heap.NullFill(frameGraph.Resources.renderSystem);
 			},
@@ -359,8 +360,8 @@ namespace FlexKit
 
 				Ctx->SetPrimitiveTopology			(EInputTopology::EIT_TRIANGLE);
 				Ctx->SetGraphicsDescriptorTable		(0, data.Heap);
-				Ctx->SetGraphicsConstantBufferView	(1, data.localConstants,	cameraConstants);
-				Ctx->SetGraphicsConstantBufferView	(3, data.localConstants,	localconstants);
+				Ctx->SetGraphicsConstantBufferView	(1, data.localConstants, cameraConstants);
+				Ctx->SetGraphicsConstantBufferView	(3, data.localConstants, localconstants);
 				Ctx->NullGraphicsConstantBufferView	(6);
 
 				TriMesh* prevMesh = nullptr;
@@ -393,10 +394,10 @@ namespace FlexKit
 
 	LightBufferUpdate* WorldRender::updateLightBuffers(
 		UpdateDispatcher&		dispatcher,
-		CameraHandle			camera,
-		GraphicScene&			scene,
 		FrameGraph&				graph,
-		SceneDescription&		sceneDescription,
+		const CameraHandle	    camera,
+		const GraphicScene&	    scene,
+		const SceneDescription& sceneDescription,
 		iAllocator*				tempMemory, 
 		LighBufferDebugDraw*	drawDebug)
 	{
@@ -405,70 +406,72 @@ namespace FlexKit
 		graph.Resources.AddUAVResource(pointLightBuffer,	0, graph.GetRenderSystem().GetObjectState(pointLightBuffer));
 
 		auto lightBufferData = &graph.AddNode<LightBufferUpdate>(
-		LightBufferUpdate{},
-		[&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
-		{
-			auto& renderSystem = graph.GetRenderSystem();
-			data.pointLightHandles	= reinterpret_cast<Vector<PointLightHandle>*>(sceneDescription.lights->Data);
-			data.pointLights		= Vector<GPUPointLight>(tempMemory, 1024);
-			data.lightMapObject		= builder.ReadWriteUAV(lightMap,		 DRS_UAV);
-			data.lightListObject	= builder.ReadWriteUAV(lightLists,		 DRS_UAV);
-			data.lightBufferObject	= builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
-			data.lightBuffer		= ReserveUploadBuffer(1024 * sizeof(GPUPointLight), graph.GetRenderSystem()); // max point light count of 512
-			data.constants			= CBPushBuffer(ConstantBuffer, 2 * KILOBYTE, renderSystem);
-			data.camera				= camera;
+		    LightBufferUpdate{
+                    Vector<GPUPointLight>(tempMemory, 1024),
+                    &sceneDescription.lights.GetData().pointLights,
+                    ReserveUploadBuffer(1024 * sizeof(GPUPointLight), graph.GetRenderSystem()),// max point light count of 1024
+                    camera,
+                    CBPushBuffer(ConstantBuffer, 2 * KILOBYTE, graph.GetRenderSystem()),
+            },
+		    [&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
+		    {
+			    auto& renderSystem      = graph.GetRenderSystem();
+			    data.lightMapObject		= builder.ReadWriteUAV(lightMap,		 DRS_UAV);
+			    data.lightListObject	= builder.ReadWriteUAV(lightLists,		 DRS_UAV);
+			    data.lightBufferObject	= builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
+			    data.camera				= camera;
 
-			data.descHeap.Init(renderSystem, renderSystem.Library.ComputeSignature.GetDescHeap(0), tempMemory);
-			data.descHeap.NullFill(renderSystem);
+			    data.descHeap.Init(renderSystem, renderSystem.Library.ComputeSignature.GetDescHeap(0), tempMemory);
+			    data.descHeap.NullFill(renderSystem);
 
-			builder.AddDataDependency(*sceneDescription.lights);
-			builder.AddDataDependency(*sceneDescription.cameras);
-		},
-		[XY = lightMapWH](LightBufferUpdate& data, FrameResources& resources, Context* ctx)
-		{
-			struct ConstantsLayout
-			{
-				float4x4	iproj;
-				float4x4	view;
-				uint32_t	LightMapWidthHeight[2];
-				uint32_t	lightCount;
-			}constantsValues;
+			    builder.AddDataDependency(sceneDescription.lights);
+			    builder.AddDataDependency(sceneDescription.cameras);
+		    },
+		    [XY = lightMapWH](LightBufferUpdate& data, FrameResources& resources, Context* ctx)
+		    {
+			    const auto cameraConstants = GetCameraConstants(data.camera);
 
-			auto cameraConstants		= GetCameraConstants(data.camera);
-			constantsValues.LightMapWidthHeight[0] = XY[0];
-			constantsValues.LightMapWidthHeight[1] = XY[1];
-			constantsValues.view		= XMMatrixToFloat4x4(cameraConstants.View);
-			constantsValues.iproj		= XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, cameraConstants.Proj));
-			constantsValues.lightCount	= uint32_t(data.pointLightHandles->size());
+			    struct ConstantsLayout
+			    {
+				    float4x4 iproj;
+				    float4x4 view;
+				    uint2    LightMapWidthHeight[2];
+				    uint32_t lightCount;
+			    }constantsValues = {
+			        XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, cameraConstants.Proj)),
+			        XMMatrixToFloat4x4(cameraConstants.View),
+                    XY,
+			        (uint32_t)data.pointLightHandles->size()
+                };
 
-			ConstantBufferDataSet constants{ constantsValues, data.constants };
-			PointLightComponent& pointLights = PointLightComponent::GetComponent();
+			    ConstantBufferDataSet constants{ constantsValues, data.constants };
+			    PointLightComponent& pointLights = PointLightComponent::GetComponent();
 
-			for (auto light : *data.pointLightHandles)
-			{
-				PointLight pointLight	= pointLights[light];
-				float3 position			= GetPositionW(pointLight.Position);
+			    for (const auto light : *data.pointLightHandles)
+			    {
+				    PointLight pointLight	= pointLights[light];
+				    float3 position			= GetPositionW(pointLight.Position);
 
-				data.pointLights.push_back(
-					{	{ pointLight.K, pointLight.I	},
-						{ position, pointLight.R		} });
-			}
+				    data.pointLights.push_back(
+					    {	{ pointLight.K, pointLight.I	},
+						    { position, pointLight.R		} });
+			    }
 
-			const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
-			MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)&data.pointLights.front(), uploadSize);
-			ctx->CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, ctx));
+			    const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
+			    MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)data.pointLights.begin(), uploadSize);
+			    ctx->CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, ctx));
 
-			ctx->SetPipelineState(resources.GetPipelineState(LIGHTPREPASS));
-			ctx->SetComputeRootSignature(resources.renderSystem.Library.ComputeSignature);
-			ctx->SetComputeDescriptorTable(0, data.descHeap);
+			    ctx->SetPipelineState(resources.GetPipelineState(LIGHTPREPASS));
+			    ctx->SetComputeRootSignature(resources.renderSystem.Library.ComputeSignature);
+			    ctx->SetComputeDescriptorTable(0, data.descHeap);
 
-			data.descHeap.SetUAV(resources.renderSystem, 0, resources.GetUAVTextureResource	(data.lightMapObject));
-			data.descHeap.SetUAV(resources.renderSystem, 1, resources.GetUAVBufferResource	(data.lightListObject));
-			data.descHeap.SetSRV(resources.renderSystem, 2, resources.ReadUAVBuffer			(data.lightBufferObject, DRS_ShaderResource, ctx));
-			data.descHeap.SetCBV(resources.renderSystem, 6, constants, constants.offset(), sizeof(ConstantsLayout));
+			    data.descHeap.SetUAV(resources.renderSystem, 0, resources.GetUAVTextureResource	(data.lightMapObject));
+			    data.descHeap.SetUAV(resources.renderSystem, 1, resources.GetUAVBufferResource	(data.lightListObject));
+			    data.descHeap.SetSRV(resources.renderSystem, 2, resources.ReadUAVBuffer			(data.lightBufferObject, DRS_ShaderResource, ctx));
+			    data.descHeap.SetCBV(resources.renderSystem, 6, constants, constants.offset(), sizeof(ConstantsLayout));
 
-			ctx->Dispatch({ XY[0], XY[1], 1 });
-		});
+			    ctx->Dispatch({ XY[0], XY[1], 1 });
+		    });
 
 		return lightBufferData;
 	}

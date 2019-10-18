@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -416,7 +416,7 @@ namespace FlexKit
 	{
 		AnimationResourceBlob* Anim = (AnimationResourceBlob*)R;
 		AnimationClip	AC;// = &Memory->allocate_aligned<AnimationClip, 0x10>();
-		AC.FPS             = Anim->FPS;
+		AC.FPS             = (uint32_t)Anim->FPS;
 		AC.FrameCount      = Anim->FrameCount;
 		AC.isLooping       = Anim->IsLooping;
 		AC.guid			   = Anim->GUID;
@@ -518,7 +518,7 @@ namespace FlexKit
 			{
 				FreeResource(RHandle);
 
-				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.Handles[Handle]			= (index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= GameRes->ID;
 				GeometryTable.Guids[Index]				= GUID;
 				GeometryTable.ReferenceCounts[Index]	= 1;
@@ -588,7 +588,7 @@ namespace FlexKit
 			{
 				FreeResource(RHandle);
 
-				GeometryTable.Handles[Handle]			= Index;
+				GeometryTable.Handles[Handle]			= (index_t)Index;
 				GeometryTable.GeometryIDs[Index]		= ID;
 				GeometryTable.Guids[Index]				= GameRes->GUID;
 				GeometryTable.ReferenceCounts[Index]	= 1;

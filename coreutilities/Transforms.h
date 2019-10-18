@@ -141,10 +141,10 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-	
+	// TODO: add no except where applicable
 
-	FLEXKITAPI size_t	_SNHandleToIndex	(NodeHandle Node);
-	FLEXKITAPI void		_SNSetHandleIndex	(NodeHandle Node, size_t index);
+	FLEXKITAPI uint16_t	_SNHandleToIndex	(NodeHandle Node);
+	FLEXKITAPI void		_SNSetHandleIndex	(NodeHandle Node, uint16_t index);
 
 	FLEXKITAPI void			InitiateSceneNodeBuffer		( byte* pmem, size_t );
 	FLEXKITAPI void			SortNodes					( StackAllocator* Temp );
@@ -182,7 +182,7 @@ namespace FlexKit
 
 
 	FLEXKITAPI bool		UpdateTransforms();
-	FLEXKITAPI auto&	QueueTransformUpdateTask	( UpdateDispatcher& Dispatcher );
+	FLEXKITAPI auto&	QueueTransformUpdateTask	    ( UpdateDispatcher& Dispatcher );
 
 	FLEXKITAPI inline void Yaw							( NodeHandle Node,	float r );
 	FLEXKITAPI inline void Roll							( NodeHandle Node,	float r );
@@ -225,30 +225,30 @@ namespace FlexKit
 
 
 	template<typename Overrides_TY = NullSceneNodeBehaviorOverrides>
-	class SceneNodeBehavior : 
-		public Behavior_t<SceneNodeComponent>,
+	class SceneNodeView: 
+		public ComponentView_t<SceneNodeComponent>,
 		public Overrides_TY
 	{
 	public:
-		SceneNodeBehavior(NodeHandle IN_Node = GetComponent().GetZeroedNode()) :
+		SceneNodeView(NodeHandle IN_Node = GetComponent().GetZeroedNode()) :
 			node{ IN_Node } {}
 
 
-		~SceneNodeBehavior()
+		~SceneNodeView()
 		{
 			if (node != InvalidHandle_t)
 				ReleaseNode(node);
 		}
 
 
-		SceneNodeBehavior(SceneNodeBehavior&& rhs)
+		SceneNodeView(SceneNodeView&& rhs)
 		{
 			node		= rhs.node;
 			rhs.node	= InvalidHandle_t;
 		}
 
 
-		SceneNodeBehavior& operator = (SceneNodeBehavior&& rhs)
+		SceneNodeView& operator = (SceneNodeView&& rhs)
 		{
 			node		= rhs.node;
 			rhs.node	= InvalidHandle_t;
@@ -256,8 +256,8 @@ namespace FlexKit
 			return *this;
 		}
 
-		SceneNodeBehavior				(SceneNodeBehavior&) = delete;
-		SceneNodeBehavior& operator =	(SceneNodeBehavior&) = delete;
+		SceneNodeView               (SceneNodeView&) = delete;
+		SceneNodeView& operator =	(SceneNodeView&) = delete;
 
 
 		operator NodeHandle () { return node; }
@@ -347,9 +347,10 @@ namespace FlexKit
 	float3 GetWorldPosition(GameObject& go)
 	{
 		return Apply(go, 
-			[&](SceneNodeBehavior<>* node)
-			{	return node->GetPosition(); }, 
-			[]{ return float3{ 0, 0, 0 }; });
+			[&](SceneNodeView<>& node)
+			{	return node.GetPosition(); }, 
+			[]
+            { return float3{ 0, 0, 0 }; });
 	}
 
 

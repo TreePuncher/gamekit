@@ -3,7 +3,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2017 Robert May
+Copyright (c) 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -244,8 +244,8 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		VertexBufferHandle		vertexBuffer;	// (framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-		VertexBufferHandle		textBuffer;		// (framework->Core->RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		VertexBufferHandle		vertexBuffer;	// (framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)),
+		VertexBufferHandle		textBuffer;		// (framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)),
 		ConstantBufferHandle	constantBuffer;
 
 		CircularBuffer<ConsoleLine, 32>	lines;

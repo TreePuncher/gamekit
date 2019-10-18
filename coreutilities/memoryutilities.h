@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -24,9 +24,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #ifndef MEMORYUTILITIES_INLUDED
 #define MEMORYUTILITIES_INLUDED
-
-#pragma warning( disable : 4251 )
-#pragma warning( disable : 4267 )
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\Logging.h"
@@ -85,6 +82,13 @@ namespace FlexKit
 			_ptr->~T();
 			free(_ptr);
 		}
+
+        template<typename T>
+        void release(T& _ref)
+        {
+            _ref.~T();
+            free(&_ref);
+        }
 
 	protected:
 		iAllocator() noexcept {}
@@ -508,8 +512,8 @@ namespace FlexKit
 						if(NextBlockData < Size && BlockTable[NextBlockData].state == BlockData::UNUSED)
 						{// Split Block
 							BlockTable[NextBlockData].state          = BlockData::Free;
-							BlockTable[NextBlockData].AllocationSize = BlockTable[currentBlock].AllocationSize - BlocksNeeded;
-							BlockTable[currentBlock].AllocationSize  = BlocksNeeded;
+                            BlockTable[NextBlockData].AllocationSize = static_cast<uint16_t>(BlockTable[currentBlock].AllocationSize - BlocksNeeded);
+							BlockTable[currentBlock].AllocationSize  = static_cast<uint16_t>(BlocksNeeded);
 
 							FK_ASSERT(BlockTable[NextBlockData].AllocationSize);
 						}
@@ -765,11 +769,11 @@ namespace FlexKit
 		}
 
 		template<typename T, typename ... PARAM_TY>
-		T& allocate(PARAM_TY ... Params)
+		T& allocate(PARAM_TY&& ... Params)
 		{
 			auto mem = malloc(sizeof(T));
 
-			auto t = new (mem) T(Params...);
+			auto t = new (mem) T(std::forward<PARAM_TY>(Params)...);
 			return *t;
 		}
 

@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef FKAPPLICATION_H
 #define FKAPPLICATION_H
 
-#pragma warning( disable : 4251 )
+//#pragma warning( disable : 4251 )
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\AllSourceFiles.cpp"

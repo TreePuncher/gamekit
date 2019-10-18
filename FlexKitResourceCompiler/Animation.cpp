@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -30,10 +30,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-fbxsdk::FbxNode* FindSkeletonRoot(fbxsdk::FbxMesh* M)
+fbxsdk::FbxNode* FindSkeletonRoot(const fbxsdk::FbxMesh* M)
 {
 	auto DeformerCount  = M->GetDeformerCount();
-	for (size_t I = 0; I < DeformerCount; ++I)
+	for (int32_t I = 0; I < DeformerCount; ++I)
 	{
 		fbxsdk::FbxStatus S;
 		auto D		= M->GetDeformer(I, &S);
@@ -73,7 +73,7 @@ fbxsdk::FbxNode* FindSkeletonRoot(fbxsdk::FbxMesh* M)
 /************************************************************************************************/
 
 
-JointAnimation GetJointAnimation(FbxNode* N)
+JointAnimation GetJointAnimation(const FbxNode* N)
 {
 	auto Scene			= N->GetScene();
 	auto AnimationStack = Scene->GetCurrentAnimationStack();
@@ -92,7 +92,7 @@ JointAnimation GetJointAnimation(FbxNode* N)
 	{
 		FbxTime	CurrentFrame;
 		CurrentFrame.SetFrame(I, FbxTime::eFrames60);
-		A.Poses[I].JPose = GetPose(FBXMATRIX_2_XMMATRIX(N->EvaluateLocalTransform(CurrentFrame)));
+		A.Poses[I].JPose = GetPose(FBXMATRIX_2_XMMATRIX(const_cast<FbxNode*>(N)->EvaluateLocalTransform(CurrentFrame)));
 	}
 
 	return A;
@@ -106,7 +106,7 @@ JointHandle GetJoint(JointList& Out, const char* ID)
 {
 	for (size_t I = 0; I < Out.size(); ++I)
 		if (!strcmp(Out[I].Joint.mID, ID))
-			return I;
+			return (JointHandle)I;
 
 	return 0XFFFF;
 }
@@ -128,22 +128,22 @@ FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
 /************************************************************************************************/
 
 
-void GetJointTransforms(JointList& Out, FbxMesh* M)
+void GetJointTransforms(JointList& Out, const FbxMesh* M)
 {
 	using DirectX::XMMatrixRotationQuaternion;
 
 	auto DeformerCount = M->GetDeformerCount();
-	for (size_t I = 0; I < DeformerCount; ++I)
+	for (int I = 0; I < DeformerCount; ++I)
 	{
-		auto D = M->GetDeformer(I);
+		const auto D = M->GetDeformer(I);
 		if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
 		{
-			auto Skin = (FbxSkin*)D;
+			const auto Skin = (FbxSkin*)D;
 
-			for (size_t II = 0; Skin->GetClusterCount() > II; ++II)
+			for (int II = 0; Skin->GetClusterCount() > II; ++II)
 			{
-				auto Cluster = Skin->GetCluster(II);
-				auto ID = Cluster->GetLink()->GetName();
+				const auto Cluster  = Skin->GetCluster(II);
+				const auto ID       = Cluster->GetLink()->GetName();
 
 				JointHandle Handle = GetJoint(Out, ID);
 				FbxAMatrix G = GetGeometryTransformation(Cluster->GetLink());
@@ -165,13 +165,13 @@ void GetJointTransforms(JointList& Out, FbxMesh* M)
 /************************************************************************************************/
 
 
-void FindAllJoints(JointList& Out, FbxNode* N, size_t Parent )
+void FindAllJoints(JointList& Out, const FbxNode* N, const size_t Parent )
 {
 	if (N->GetNodeAttribute() && N->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton )
 	{
 		fbxsdk::FbxSkeleton* Sk = (fbxsdk::FbxSkeleton*)N->GetNodeAttribute();
 		
-		int JointIndex = Out.size();
+		int JointIndex = (int)Out.size();
 		int ChildCount = N->GetChildCount();
 
 		Joint NewJoint;
@@ -180,7 +180,7 @@ void FindAllJoints(JointList& Out, FbxNode* N, size_t Parent )
 
 		Out.emplace_back(JointInfo{ {NewJoint}, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
 
-		for ( size_t I = 0; I < ChildCount; ++I )
+		for ( int I = 0; I < ChildCount; ++I )
 			FindAllJoints(Out, N->GetChild( I ), JointIndex);
 	}
 }
@@ -277,8 +277,8 @@ SkeletonResource_ptr LoadSkeletonResource(FbxMesh* M, const std::string& parentI
 
 	for(auto Cut : Cuts)
 	{
-		size_t Begin	= Cut.T_Start / (1.0f / 60.0f);
-		size_t End		= Cut.T_End / (1.0f / 60.0f);
+		size_t Begin	= (size_t)(Cut.T_Start / (1.0f / 60.0f));
+		size_t End		= (size_t)(Cut.T_End / (1.0f / 60.0f));
 
 		AnimationClipResource Clip;
 		Clip.FPS		= 60;
@@ -286,7 +286,7 @@ SkeletonResource_ptr LoadSkeletonResource(FbxMesh* M, const std::string& parentI
 		Clip.guid		= Cut.guid;
 		Clip.isLooping	= false;
 
-		size_t clipFrameCount = Cut.T_End - Cut.T_Start;
+		size_t clipFrameCount = (size_t)(Cut.T_End - Cut.T_Start);
 
 		for (size_t I = 0; I < clipFrameCount; ++I)
 		{

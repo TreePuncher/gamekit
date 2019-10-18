@@ -1,6 +1,6 @@
 /**********************************************************************
 
-Copyright (c) 2015 - 2017 Robert May
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -325,8 +325,8 @@ namespace FlexKit
 
 		float				F;
 		float				F3[3];
-		int					I;
-		int					UI;
+		int32_t				I;
+		uint32_t			UI;
 		std::string_view	S;
 	};
 

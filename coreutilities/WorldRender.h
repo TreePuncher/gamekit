@@ -266,20 +266,20 @@ namespace FlexKit
 
 	struct LightBufferUpdate 
 	{
-		Vector<GPUPointLight>		pointLights;
-		Vector<PointLightHandle>*	pointLightHandles;
+		Vector<GPUPointLight>		    pointLights;
+		const Vector<PointLightHandle>*	pointLightHandles;
+        UploadSegment			        lightBuffer;	// immediate update
 
-		CameraHandle				camera;
+		CameraHandle			camera;
 
+		CBPushBuffer			constants;
 		TextureHandle			lightMap;
 		TextureHandle			lightListBuffer;
-		CBPushBuffer			constants;
 
 		FrameResourceHandle		lightMapObject;
 		FrameResourceHandle		lightListObject;
 		FrameResourceHandle		lightBufferObject;
 
-		UploadSegment			lightBuffer;	// immediate update
 
 		FlexKit::DescriptorHeap	descHeap;
 	};
@@ -295,10 +295,10 @@ namespace FlexKit
 
 	struct SceneDescription
 	{
-		UpdateTaskTyped<PointLightGather>*	lights;
-		UpdateTask*							transforms;
-		UpdateTask*							cameras;
-		UpdateTaskTyped<GetPVSTaskData>*	PVS;
+		UpdateTaskTyped<PointLightGather>&	lights;
+		UpdateTask&							transforms;
+		UpdateTask&							cameras;
+		UpdateTaskTyped<GetPVSTaskData>&	PVS;
 	};
 
 
@@ -342,11 +342,33 @@ namespace FlexKit
 		}
 
 		
-		void DefaultRender						(UpdateDispatcher& dispatcher, PVS& Objects, CameraHandle Camera, WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
-		void RenderDrawabledPBR_ForwardPLUS		(UpdateDispatcher& dispatcher, const PVS& Objects, const CameraHandle Camera, const WorldRender_Targets& Target, FrameGraph& Graph, SceneDescription& desc, iAllocator* Memory);
+		void DefaultRender(
+                UpdateDispatcher& dispatcher,
+                FrameGraph& graph,
+                const PVS& objects,
+                const CameraHandle camera,
+                const WorldRender_Targets& target,
+                const SceneDescription& desc,
+                iAllocator* Memory);
+
+		void RenderDrawabledPBR_ForwardPLUS(
+                UpdateDispatcher& dispatcher,
+                FrameGraph& graph,
+                const PVS& objects,
+                const CameraHandle camera,
+                const WorldRender_Targets& Target,
+                const SceneDescription& desc,
+                iAllocator* Memory);
 
 
-		LightBufferUpdate* updateLightBuffers	(UpdateDispatcher& dispatcher, CameraHandle Camera, GraphicScene& scene, FrameGraph& graph, SceneDescription& desc, iAllocator* tempMemory, LighBufferDebugDraw* drawDebug = nullptr);
+		LightBufferUpdate* updateLightBuffers(
+                UpdateDispatcher& dispatcher,
+                FrameGraph& graph,
+                const CameraHandle camera,
+                const GraphicScene& scene,
+                const SceneDescription& desc,
+                iAllocator* tempMemory,
+                LighBufferDebugDraw* drawDebug = nullptr);
 
 
 		void ClearGBuffer				(FrameGraph& Graph);

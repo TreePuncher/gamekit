@@ -2,7 +2,7 @@
 
 /**********************************************************************
 
-Copyright (c) 2014-2017 Robert May
+Copyright (c) 2014-2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -4031,7 +4031,7 @@ namespace FlexKit
 
 		NewTexture.Format		= Resource_DESC.Format;
 		NewTexture.Texture      = Resource;
-		NewTexture.WH			= {Resource_DESC.Width,Resource_DESC.Height};
+		NewTexture.WH			= { (uint32_t)Resource_DESC.Width, (uint32_t)Resource_DESC.Height };
 
 		FK_LOG_INFO("Creating Depth Buffer Resource!");
 
@@ -4724,7 +4724,7 @@ namespace FlexKit
 		CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
 
 		Texture2D NewTexture = { NewResource, 
-								 { desc_in->Width, desc_in->Height }, 
+								 { desc_in->Width, desc_in->Height },
 								 static_cast<uint8_t>(desc_in->MipLevels),
 								 TextureFormat2DXGIFormat(desc_in->Format)};
 
@@ -7705,10 +7705,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float2 GetPixelSize(RenderWindow* Window)
+	float2 GetPixelSize(RenderWindow& Window)
 	{
-		auto WH = Window->WH;
-		return float2{ 1.0f, 1.0f } / WH;
+		return float2{ 1.0f, 1.0f } / Window.WH;
 	}
 
 	/************************************************************************************************/

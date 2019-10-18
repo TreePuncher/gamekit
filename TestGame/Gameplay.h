@@ -47,11 +47,12 @@ using FlexKit::GameFramework;
 using FlexKit::iAllocator;
 using FlexKit::CameraHandle;
 using FlexKit::ConstantBufferHandle;
+using FlexKit::Handle_t;
 using FlexKit::VertexBufferHandle;
 using FlexKit::TextureHandle;
 using FlexKit::static_vector;
 
-using FlexKit::CameraBehavior;
+using FlexKit::CameraView;
 
 using FlexKit::int2;
 using FlexKit::uint2;
@@ -59,9 +60,6 @@ using FlexKit::float2;
 using FlexKit::float3;
 using FlexKit::float4;
 using FlexKit::Quaternion;
-
-
-/************************************************************************************************/
 
 
 
@@ -102,7 +100,7 @@ enum DEBUG_EVENTS : int64_t
 
 
 constexpr	FlexKit::ComponentID PlayerCamerComponentID	= GetTypeGUID(PlayerCamerComponentID);
-using		PlayerCameraHandle							= FlexKit::Handle_t<32, PlayerCamerComponentID>;
+using		PlayerCameraHandle							= Handle_t<32, PlayerCamerComponentID>;
 
 
 struct PlayerCamera
@@ -129,15 +127,9 @@ struct Player
 };
 
 
-using PlayerComponent = FlexKit::BasicComponent_t<Player, PlayerHandle, PlayerComponentID>;
+using PlayerComponent   = FlexKit::BasicComponent_t<Player, PlayerHandle, PlayerComponentID>;
+using PlayerView        = PlayerComponent::View;
 
-
-/*
-GameObject& CreatePlayer(iAllocator* allocator)
-{
-
-}
-*/
 
 /************************************************************************************************/
 
