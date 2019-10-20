@@ -107,15 +107,90 @@ struct SceneNode
 };
 
 
+/************************************************************************************************/
+
+
+class EntityComponent
+{
+public:
+    EntityComponent(const uint32_t IN_id = -1) : id{ IN_id } {}
+    ~EntityComponent() = default;
+
+    virtual Blob GetBlob() { return {}; }
+
+    uint32_t id;
+};
+
+
+/************************************************************************************************/
+
+
+Blob CreateSceneNodeComponent   (uint32_t nodeIdx);
+Blob CreateIDComponent          (std::string& string);
+Blob CreateDrawableComponent    (GUID_t meshGUID, float4 albedo_S = { 0.5f, 0.5f, 0.5f, 0.5f }, float4 specular_M = { 0.5f, 0.5f, 0.5f, 0.0f });
+Blob CreatePointLightComponent  (float3 K, float2 IR);
+
+/************************************************************************************************/
+
+
+class DrawableComponent : public EntityComponent
+{
+public:
+    DrawableComponent(GUID_t IN_MGUID = INVALIDHANDLE, float4 IN_albedo = { 0, 1, 0, 0.5f }, float4 specular = { 1, 0, 1, 0 }) :
+        EntityComponent { GetTypeGUID(DrawableComponent) },
+        MeshGuid        { IN_MGUID } {}
+
+    Blob GetBlob() override
+    {
+        return CreateDrawableComponent(MeshGuid, albedo, specular);
+    }
+
+    GUID_t MeshGuid = INVALIDHANDLE;
+    GUID_t Collider = INVALIDHANDLE;
+
+    float4 albedo;
+    float4 specular;
+};
+
+
+using DrawableComponent_ptr = std::shared_ptr<DrawableComponent>;
+
+
+/************************************************************************************************/
+
+
+class PointLightComponent : public EntityComponent
+{
+public:
+    PointLightComponent(const FlexKit::float3 IN_K, const float2 IR) :
+        EntityComponent { GetTypeGUID(PointLight) },
+        K               ( IN_K ),
+        I               { IR.x },
+        R               { IR.y } {}
+
+    Blob GetBlob() override
+    {
+        return CreatePointLightComponent(K, float2{ I, R });
+    }
+
+    float	I;
+    float   R;
+    float3	K;
+};
+
+
+using EntityComponent_ptr   = std::shared_ptr<EntityComponent>;
+using ComponentVector       = std::vector<EntityComponent_ptr>;
+
+
+/************************************************************************************************/
+
+
 struct SceneEntity
 {
-	GUID_t		MeshGuid;
-	GUID_t		Collider	= INVALIDHANDLE;
-	uint32_t	Node;
-	float4		albedo;
-	float4		specular;
-
+	uint32_t	    Node;
 	std::string		id;
+    ComponentVector components;
 	MetaDataList	metaData;
 };
 
@@ -164,15 +239,6 @@ public:
 	{
 		const auto idx = (uint32_t)nodes.size();
 		nodes.push_back(node);
-
-		return idx;
-	}
-
-
-    uint32_t AddPointLight(ScenePointLight pointLight)
-	{
-		const auto idx = (uint32_t)pointLights.size();
-		pointLights.push_back(pointLight);
 
 		return idx;
 	}

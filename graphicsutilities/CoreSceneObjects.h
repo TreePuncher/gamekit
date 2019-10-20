@@ -125,7 +125,7 @@ namespace FlexKit
 				Spec.w	 = min(m.w, 1.0f);
 			}
 
-			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.1f), Spec(1, 1, 1, 1) {}
+			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.5f), Spec(1, 1, 1, 1) {}
 
 			float4		Albedo;		// Term 4 is Roughness
 			float4		Spec;		// Metal Is first 4, Specular is rgb

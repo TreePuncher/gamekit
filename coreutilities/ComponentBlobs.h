@@ -88,6 +88,20 @@ namespace FlexKit
     };
 
 
+    struct PointLightComponentBlob
+    {
+        ComponentBlock::Header  header = {
+           0,
+           EntityComponent,
+           sizeof(PointLightComponentBlob),
+           GetTypeGUID(PointLightID)
+        };
+
+        float2 IR;
+        float3 K;
+    };
+
+
     struct DrawableComponentBlob
     {
         ComponentBlock::Header  header = {

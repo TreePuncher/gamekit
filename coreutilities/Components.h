@@ -321,9 +321,11 @@ namespace FlexKit
 
 
     template<typename ... TY_PACKED_ARGS>
-    constexpr bool hasViews(GameObject& go)
+    bool hasViews(GameObject& go)
     {
-        return ValidTypes<TY_PACKED_ARGS...>();
+        static_assert(ValidTypes<TY_PACKED_ARGS...>(), "Invalid Type Detected, Use only ComponentView types!");
+
+        return (go.hasView(std::decay_t<TY_PACKED_ARGS>::GetComponentID()) & ...);
     }
 
 
@@ -446,10 +448,10 @@ namespace FlexKit
     };
 
     template<typename TY, typename TY_Handle, ComponentID ID, typename TY_EventHandler = BasicComponentEventHandler>
-	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID>, TY_Handle, ID>
+	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler >, TY_Handle, ID>
 	{
 	public:
-        using ThisType      = BasicComponent_t<TY, TY_Handle, ID>;
+        using ThisType      = BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>;
         using EventHandler  = TY_EventHandler;
 
         template<typename ... TY_args>

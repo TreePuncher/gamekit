@@ -63,11 +63,9 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 			auto name		= Node->GetName();
 
 			SceneEntity entity;
-			entity.MeshGuid = UniqueID;
+            entity.components.push_back(make_shared<DrawableComponent>(UniqueID));
 			entity.Node		= Nodehndl;
 			entity.id		= name;
-			entity.albedo	= { 0.8f, 0.8f, 0.8f, 0.1f };
-			entity.specular = { 0.8f, 0.8f, 0.8f, 0.0f };
 
 			scene->AddSceneEntity(entity);
 		}	break;
@@ -84,13 +82,13 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 			auto R           = FBXLight->OuterAngle.Get();
 			auto radius		 = FBXLight->FarAttenuationEnd.Get();
 
-			ScenePointLight light;
-			light.K        = TranslateToFloat3(K);			// COLOR for the Confused
-			light.I        = I;
-			light.Node	   = Nodehndl;
-			light.R        = I;
+            SceneEntity entity;
+            entity.Node = Nodehndl;
+            entity.id   = Node->GetName();
 
-			scene->AddPointLight(light);
+            entity.components.push_back(std::make_shared<PointLightComponent>(TranslateToFloat3(K), float2{ I, I }));
+
+            scene->AddSceneEntity(entity);
 		}	break;
 		case FbxNodeAttribute::eMarker:
 		case FbxNodeAttribute::eUnknown:
@@ -285,39 +283,6 @@ ResourceList CompileSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileScene
 /************************************************************************************************/
 
 
-Blob CreateSceneNodeComponent(uint32_t nodeIdx)
-{
-    SceneNodeComponentBlob nodeblob;
-    nodeblob.excludeFromScene   = false;
-    nodeblob.nodeIdx            = nodeIdx;
-
-    return { nodeblob };
-}
-
-
-Blob CreateIDComponent(std::string& string)
-{
-    IDComponentBlob IDblob;
-    strncpy_s(IDblob.ID, string.c_str(), min(strnlen_s(IDblob.ID, sizeof(IDblob.ID)), string.size()));
-
-    return { IDblob };
-}
-
-
-Blob CreateDrawableComponent(GUID_t meshGUID, float4 albedo_S = { 0.5f, 0.5f, 0.5f, 0.5f }, float4 specular_M = { 0.5f, 0.5f, 0.5f, 0.0f })
-{
-    DrawableComponentBlob drawableComponent;
-    drawableComponent.resourceID        = meshGUID;
-    drawableComponent.albedo_smoothness = albedo_S;
-    drawableComponent.specular_metal    = specular_M;
-
-    return { drawableComponent };
-}
-
-
-/************************************************************************************************/
-
-
 ResourceBlob SceneResource::CreateBlob()
 { 
 
@@ -345,14 +310,24 @@ ResourceBlob SceneResource::CreateBlob()
         EntityBlock::Header entityHeader;
         entityHeader.blockType         = SceneBlockType::Entity;
         entityHeader.blockSize         = sizeof(EntityBlock);
-        entityHeader.componentCount    = 0;
+        entityHeader.componentCount    = 2 + entity.components.size();
 
-        auto componentBlock          = CreateIDComponent(entity.id);
-        componentBlock              += CreateSceneNodeComponent(entity.Node);
-        componentBlock              += CreateDrawableComponent(TranslateID(entity.MeshGuid, translationTable));
-        entityHeader.blockSize      += componentBlock.size();
-        entityHeader.componentCount += 3;
+        auto componentBlock  = CreateIDComponent(entity.id);
+        componentBlock      += CreateSceneNodeComponent(entity.Node);
 
+        for (auto& component : entity.components)
+        {
+            if (component->id == GetTypeGUID(DrawableComponent))
+            {
+                auto drawableComponent = std::dynamic_pointer_cast<DrawableComponent>(component);
+                const auto ID = TranslateID(drawableComponent->MeshGuid, translationTable);
+                componentBlock += CreateDrawableComponent(ID, drawableComponent->albedo, drawableComponent->specular);
+            }
+            else
+                componentBlock += component->GetBlob();
+        }
+
+        entityHeader.blockSize += componentBlock.size();
 
         entityBlock += Blob{ entityHeader };
         entityBlock += componentBlock;
@@ -378,6 +353,49 @@ ResourceBlob SceneResource::CreateBlob()
 	out.resourceType	= EResourceType::EResource_Scene;
 
 	return out;
+}
+
+
+/************************************************************************************************/
+
+
+Blob CreateSceneNodeComponent(uint32_t nodeIdx)
+{
+    SceneNodeComponentBlob nodeblob;
+    nodeblob.excludeFromScene   = false;
+    nodeblob.nodeIdx            = nodeIdx;
+
+    return { nodeblob };
+}
+
+
+Blob CreateIDComponent(std::string& string)
+{
+    IDComponentBlob IDblob;
+    strncpy_s(IDblob.ID, string.c_str(), min(strnlen_s(IDblob.ID, sizeof(IDblob.ID)), string.size()));
+
+    return { IDblob };
+}
+
+
+Blob CreateDrawableComponent(GUID_t meshGUID, float4 albedo_S, float4 specular_M)
+{
+    DrawableComponentBlob drawableComponent;
+    drawableComponent.resourceID        = meshGUID;
+    drawableComponent.albedo_smoothness = albedo_S;
+    drawableComponent.specular_metal    = specular_M;
+
+    return { drawableComponent };
+}
+
+
+Blob CreatePointLightComponent(float3 K, float2 IR)
+{
+    PointLightComponentBlob blob;
+    blob.IR = IR;
+    blob.K  = K;
+
+    return blob;
 }
 
 

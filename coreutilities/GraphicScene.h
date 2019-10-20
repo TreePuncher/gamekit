@@ -60,7 +60,7 @@ namespace FlexKit
 
 
 	constexpr ComponentID DrawableComponentID	= GetTypeGUID(DrawableID);
-	using DrawableHandle						= Handle_t <32, GetTypeGUID(DrawableID)>;
+	using DrawableHandle						= Handle_t <32, DrawableComponentID>;
 
     struct DrawableComponentEventHandler
     {
@@ -122,9 +122,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    class PointLightEventHandler
+    {
+    public:
+        static void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+    };
+
 	constexpr ComponentID PointLightComponentID	= GetTypeGUID(PointLightID);
 	using PointLightHandle						= Handle_t <32, GetTypeGUID(PointLightID)>;
-	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID>;
+	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
 
 
 	class PointLightView : public ComponentView_t<PointLightComponent>

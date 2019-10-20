@@ -42,7 +42,6 @@ namespace FlexKit
             return;
 
         DrawableComponentBlob drawableComponent;
-
         memcpy(&drawableComponent, buffer, bufferSize);
 
         auto [triMesh, loaded] = FindMesh(drawableComponent.resourceID);
@@ -51,6 +50,19 @@ namespace FlexKit
             triMesh = LoadTriMeshIntoTable(renderSystem, drawableComponent.resourceID);
 
         gameObject.AddView<DrawableView>(triMesh, node);
+    }
+
+
+    /************************************************************************************************/
+
+    
+    void PointLightEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    {
+        PointLightComponentBlob pointLight;
+
+        memcpy(&pointLight, buffer, sizeof(pointLight));
+
+        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], GetSceneNode(gameObject));
     }
 
 
@@ -786,7 +798,7 @@ namespace FlexKit
                                     auto node = nodes[blob.nodeIdx];
                                     gameObject.AddView<SceneNodeView<>>(node);
 
-                                    if(!blob.excludeFromScene)
+                                    //if (!blob.excludeFromScene)
                                         GS_out.AddGameObject(gameObject, node);
                                 }
                                 else if (ComponentAvailability(ID) == true)
