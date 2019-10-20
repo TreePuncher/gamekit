@@ -95,6 +95,9 @@ namespace FlexKit
 	};
 
 
+    /************************************************************************************************/
+
+
 	class _SystemAllocator : public iAllocator
 	{
 	public:
@@ -131,12 +134,65 @@ namespace FlexKit
 
 	static _SystemAllocator SystemAllocator;
 
+
+    /************************************************************************************************/
+
+
+    template<typename TY>
+    class FLEXKITAPI STLAllocatorAdapter
+    {
+    public:
+        using size_type         = size_t;
+        using difference_type   = std::ptrdiff_t;
+        using value_type        = TY;
+
+        STLAllocatorAdapter(iAllocator* IN_allocator) noexcept : allocator{ IN_allocator } {}
+
+        [[nodiscard]]
+        TY* allocate(const size_t n = 1)
+        {
+            auto* _ptr = allocator->malloc(sizeof(TY) * n);
+
+            if (_ptr == nullptr)
+                throw std::bad_alloc{};
+
+            return nullptr;
+        }
+
+        void deallocate(TY* _ptr, const size_t s) noexcept
+        {
+            allocator->free(_ptr);
+        }
+
+        size_t max_size() const noexcept { return -1; }
+
+        template<typename ... TY_ARGS>
+        [[nodiscard]] TY& construct(TY_ARGS&& ... args)
+        {
+            return nullptr;
+        }
+
+        void destroy(TY& _ref)
+        {
+            _ref.~TY();
+            allocator->free(&_ref);
+        }
+
+        std::byte* address() { return nullptr; }
+
+
+        iAllocator* allocator;
+    };
+
+
+    /************************************************************************************************/
+
+
 	class FLEXKITAPI StackAllocator
 	{
 	public:
 		StackAllocator() noexcept :
-			AllocatorInterface	{ this },
-			critsection			{}
+			AllocatorInterface	{ this }
 		{
 			used	= 0;
 			size	= 0;
@@ -144,8 +200,7 @@ namespace FlexKit
 		}
 
 		StackAllocator(iAllocator* allocator, size_t bufferSize) noexcept :
-			AllocatorInterface	{ this },
-			critsection			{}
+			AllocatorInterface	{ this }
 		{
 			used	= 0;
 			size	= 0;
@@ -155,8 +210,7 @@ namespace FlexKit
 		}
 
 		StackAllocator(StackAllocator&& rhs) noexcept :
-			AllocatorInterface{ this },
-			critsection{}
+			AllocatorInterface  { this }
 		{
 			used   = rhs.used;
 			size   = rhs.size;
@@ -189,54 +243,31 @@ namespace FlexKit
 
 		void	Init				(byte* memory, size_t);
 		void*	malloc				(size_t s);
-		void*	malloc_MT			(size_t s);
 		void*	_aligned_malloc		(size_t s, size_t alignement = 0x10);
-		void*	_aligned_malloc_MT	(size_t s, size_t alignement = 0x10);
 		void	clear				();
 
-		template<typename T>
-		T& allocate()
-		{
-			auto mem = malloc(sizeof(T));
-
-			auto t = new (mem) T();
-			return *t;
-		}
-
-
-		template<typename T, size_t a = 16>
-		T& allocate_aligned()
-		{
-			auto mem = _aligned_malloc(sizeof(T), a);
-
-			auto t = new (mem) T();
-			return *t;
-		}
-
-		operator iAllocator* ()	{ return &AllocatorInterface; }
+        operator iAllocator* () { return &AllocatorInterface; }
 	private:
 		size_t used		= 0;
 		size_t size		= 0;
 		byte*  Buffer	= 0;
 
-		struct iStackAllocator : public iAllocator
+		struct AllocatorAdapter : public iAllocator
 		{	
-			explicit iStackAllocator(StackAllocator* Allocator = nullptr) noexcept : 
+			explicit AllocatorAdapter(StackAllocator* Allocator = nullptr) noexcept :
 				ParentAllocator(Allocator){}
 
 			void* malloc(size_t size){
 				return ParentAllocator->malloc(size);
 			}
 
-			void free(void*){
-			}
+			void free(void*){}
 
 			void* _aligned_malloc(size_t size, size_t A){
 				return ParentAllocator->_aligned_malloc(size, A);
 			}
 
-			void _aligned_free(void*){
-			}
+			void _aligned_free(void*){}
 
 			void clear(void){ 
 				ParentAllocator->clear();
@@ -250,9 +281,6 @@ namespace FlexKit
 
 			StackAllocator*	ParentAllocator;
 		}AllocatorInterface;
-
-
-		std::mutex	critsection;
 	};
 
 
@@ -857,6 +885,7 @@ namespace FlexKit
 		}
 	};
 
+
 	/************************************************************************************************/
 
 
@@ -875,7 +904,7 @@ namespace FlexKit
 	public:
 		Shared_ref() = delete;
 
-		Shared_ref(REF_TY& IN_reference, DELETER_FN&& IN_deleter_fn, iAllocator* IN_allocator) :
+        constexpr Shared_ref(REF_TY& IN_reference, DELETER_FN&& IN_deleter_fn, iAllocator* IN_allocator) noexcept :
 			allocator	{ IN_allocator									},
 			counter_ref	{ IN_allocator->allocate<std::atomic_int>(1)	},
 			deleter		{ IN_deleter_fn									},
@@ -888,7 +917,7 @@ namespace FlexKit
 		}
 
 
-		Shared_ref(const Shared_ref& r_ref) :
+        constexpr Shared_ref(const Shared_ref& r_ref) noexcept :
 			allocator	{ r_ref.allocator	},
 			counter_ref { r_ref.counter_ref	},
 			deleter		{ r_ref.deleter		},
@@ -908,7 +937,7 @@ namespace FlexKit
 		operator	REF_TY& ()	noexcept { return reference; }
 		REF_TY&		Get()		noexcept { return reference; }
 
-		REF_TY*		ptr()	noexcept { return &reference; }
+		REF_TY*		ptr()	    noexcept { return &reference; }
 
 		void AddRef()
 		{

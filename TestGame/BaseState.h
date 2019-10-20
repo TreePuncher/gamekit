@@ -173,7 +173,7 @@ public:
 
 			cameras		{ framework.core.GetBlockMemory() },
 			ids			{ framework.core.GetBlockMemory() },
-			drawables	{ framework.core.GetBlockMemory() },
+			drawables	{ framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
 			visables	{ framework.core.GetBlockMemory() },
 			pointLights	{ framework.core.GetBlockMemory() }
 	{
@@ -189,8 +189,6 @@ public:
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
 		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
-
-		AddResourceFile("assets\\testScene.gameres");
 	}
 
 

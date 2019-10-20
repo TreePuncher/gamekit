@@ -354,6 +354,20 @@ namespace FlexKit
 	}
 
 
+    inline NodeHandle GetSceneNode(GameObject& go)
+    {
+        return Apply(
+            go,
+            [](SceneNodeView<>& node)
+            {
+                return node.node;
+            },
+            []
+            {
+                return NodeHandle(InvalidHandle_t);
+            });
+    }
+
 }	/************************************************************************************************/
 
 

@@ -163,7 +163,8 @@ public:
             operator bool()                     { return beginLoad; }
         };
 
-        auto& Waiting       = framework.core.GetBlockMemory().allocate<LoadState>(framework.core.GetBlockMemory());
+        auto& allocator     = framework.core.GetBlockMemory();
+        auto& waiting       = allocator.allocate<LoadState>(allocator);
 
         auto OnCompletion   = [&](auto& core, auto& Dispatcher, double dT)
         {
@@ -175,16 +176,16 @@ public:
             localState.Update(core, Dispatcher, dT);
 
             network.PopHandler();
-            framework.core.GetBlockMemory().release_allocation(Waiting);
+            framework.core.GetBlockMemory().release_allocation(waiting);
         };
 
         auto OnUpdate = [&](auto& core, auto& dispatcher, double dt) -> bool
         {
-            return Waiting;
+            return waiting;
         };
 
         framework.PopState(); // pop lobby state
-        network.PushHandler(Waiting);
+        network.PushHandler(waiting);
 
 		auto& gameState     = framework.PushState<GameState>(base);
         auto& localState    =
@@ -201,7 +202,7 @@ public:
 
 	void ServerLost()
 	{
-		FK_ASSERT(0);
+		FK_LOG_INFO("Server lost, quitting!");
 		framework.quit = true;
 	}
 

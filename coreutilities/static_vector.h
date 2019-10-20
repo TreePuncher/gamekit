@@ -53,6 +53,8 @@ namespace FlexKit
 			TY_* operator -- (int) { I++; return I - 1; }
 			size_t operator - (iterator_t i) { return I - i.I; }
 
+            bool operator == (const iterator_t rhs) const { return rhs.I == I; }
+            bool operator != (const iterator_t rhs) const { return !(*this == rhs); }
 
 			operator TY_* () {return I;}
 
@@ -208,6 +210,9 @@ namespace FlexKit
 
 		void remove_unstable(iterator i)
 		{
+            if (i == end())
+                return;
+
 			*i = back();
 			pop_back();
 		}

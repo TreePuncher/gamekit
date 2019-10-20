@@ -110,8 +110,8 @@ struct SceneNode
 struct SceneEntity
 {
 	GUID_t		MeshGuid;
-	size_t		Node;
 	GUID_t		Collider	= INVALIDHANDLE;
+	uint32_t	Node;
 	float4		albedo;
 	float4		specular;
 
@@ -151,27 +151,27 @@ public:
 	ResourceBlob CreateBlob() override;
 
 
-	size_t AddSceneEntity(SceneEntity entity)
+	uint32_t AddSceneEntity(SceneEntity entity)
 	{
-		auto idx = entities.size();
+		const auto idx = (uint32_t)entities.size();
 		entities.push_back(entity);
 
 		return idx;
 	}
 
 
-	size_t AddSceneNode(SceneNode node)
+	uint32_t AddSceneNode(SceneNode node)
 	{
-		auto idx = nodes.size();
+		const auto idx = (uint32_t)nodes.size();
 		nodes.push_back(node);
 
 		return idx;
 	}
 
 
-	size_t AddPointLight(ScenePointLight pointLight)
+    uint32_t AddPointLight(ScenePointLight pointLight)
 	{
-		auto idx = pointLights.size();
+		const auto idx = (uint32_t)pointLights.size();
 		pointLights.push_back(pointLight);
 
 		return idx;

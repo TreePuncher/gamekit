@@ -453,8 +453,8 @@ namespace FlexKit
 				    float3 position			= GetPositionW(pointLight.Position);
 
 				    data.pointLights.push_back(
-					    {	{ pointLight.K, pointLight.I	},
-						    { position, pointLight.R		} });
+					    {	{ pointLight.K, 100	},
+						    { position, 100		} });
 			    }
 
 			    const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);

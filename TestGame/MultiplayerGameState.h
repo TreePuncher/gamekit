@@ -179,7 +179,7 @@ public:
         auto& task      = CreateLambdaWork(
             [&, &core   = base.framework.core]
             {
-                if(!LoadScene(core, &scene, IN_sceneName))
+                if(!LoadScene(core, scene, IN_sceneName))
                     OnFailure();
 
                 completed = true;

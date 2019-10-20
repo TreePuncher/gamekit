@@ -22,8 +22,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#ifndef Resources_H
-#define Resources_H
+#ifndef RESOURCES_H
+#define RESOURCES_H
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
@@ -388,84 +388,6 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	enum SceneBlockType
-	{
-		NodeTable	= 1337,
-		ComponentRequirementTable,
-		Entity,
-		EntityComponent,
-	};
-
-
-	struct SceneBlock
-	{
-		uint32_t CRC32;
-		uint32_t blockType;
-		uint32_t blockSize;
-		char	 buffer[];
-	};
-
-	// SceneNodeBlock must always be defined before any entity Blocks
-	struct SceneNodeBlock
-	{
-		uint32_t CRC32;
-		uint32_t blockType = NodeTable;
-		uint32_t blockSize;
-		uint32_t nodeCount;
-
-		static const size_t GetHeaderSize() { return sizeof(uint32_t[4]); }
-
-		struct SceneNode
-		{
-			float3		position;		// 16
-			Quaternion	orientation;	// 16
-			float3		scale;			// 16
-			size_t		parent;			// 8
-			size_t		pad;			// 8
-		}nodes[];
-	};
-
-
-	struct ComponentRequirementBlock
-	{
-		uint32_t CRC32;
-		uint32_t blockType = ComponentRequirementTable;
-		uint32_t blockSize;
-
-		uint32_t count;
-		uint32_t componentID[];
-	};
-
-
-	struct ComponentBlock
-	{
-		uint32_t CRC32;
-		uint32_t blockType	= EntityComponent;
-		uint32_t blockSize;
-		uint32_t componentID;
-
-		char buffer[];
-	};
-
-
-	struct EntityBlock
-	{
-		uint32_t CRC32;
-		uint32_t blockType = Entity;
-		size_t	 blockSize;
-
-		// Temporary Values
-		GUID_t	MeshHandle;
-		char	ID[64];
-		float4	albedo_smoothness	= { 0.5, 0.5f, 0.5f, 0.5 };
-		float4	specular_metal		= { 0.5f, 0.5f, 0.5f, 0.0f };
-
-		size_t nodeIdx;
-		size_t componentCount		= 0;
-
-		char buffer[]; // Components stored here
-	};
-
 
 	struct SceneResourceBlob
 	{
@@ -612,4 +534,4 @@ namespace FlexKit
 
 }	/************************************************************************************************/
 
-#endif
+#endif // include guard

@@ -27,11 +27,34 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "intersection.h"
 
 #include "..\coreutilities\Components.h"
+#include "..\coreutilities\componentBlobs.h"
 #include "..\graphicsutilities\AnimationRuntimeUtilities.H"
 
 namespace FlexKit
 {
 	/************************************************************************************************/
+
+
+    void DrawableComponentEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+    {
+        auto node = GetSceneNode(gameObject);
+        if (node == InvalidHandle_t)
+            return;
+
+        DrawableComponentBlob drawableComponent;
+
+        memcpy(&drawableComponent, buffer, bufferSize);
+
+        auto [triMesh, loaded] = FindMesh(drawableComponent.resourceID);
+
+        if (!loaded)
+            triMesh = LoadTriMeshIntoTable(renderSystem, drawableComponent.resourceID);
+
+        gameObject.AddView<DrawableView>(triMesh, node);
+    }
+
+
+    /************************************************************************************************/
 
 
 	void GraphicScene::AddGameObject(GameObject& go, NodeHandle node)
@@ -666,7 +689,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene* GS_out, iAllocator* allocator, iAllocator* temp)
+	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene& GS_out, iAllocator* allocator, iAllocator* temp)
 	{
 		bool Available = isResourceAvailable(Guid);
 		if (Available)
@@ -681,10 +704,10 @@ namespace FlexKit
 
 				const auto blockCount = sceneBlob->blockCount;
 				
-				size_t						offset = 0;
-				size_t						currentBlock = 0;
-				SceneNodeBlock*				nodeBlock = nullptr;
-				ComponentRequirementBlock*	componentRequirement = nullptr;
+				size_t						offset                  = 0;
+				size_t						currentBlock            = 0;
+				SceneNodeBlock*				nodeBlock               = nullptr;
+				ComponentRequirementBlock*	componentRequirement    = nullptr;
 				Vector<NodeHandle>			nodes{ temp };
 
 
@@ -700,7 +723,7 @@ namespace FlexKit
 							FK_ASSERT(nodeBlock == nullptr, "Multiple Node Blocks Defined!");
 							nodeBlock = reinterpret_cast<SceneNodeBlock*>(block);
 
-							const auto nodeCount = nodeBlock->nodeCount;
+							const auto nodeCount = nodeBlock->header.nodeCount;
 							nodes.reserve(nodeCount);
 
 
@@ -736,27 +759,50 @@ namespace FlexKit
 							FK_ASSERT(nodeBlock != nullptr, "No Node Block defined!");
 							//FK_ASSERT(componentRequirement != nullptr, "No Component Requirement Block defined!");
 
-							EntityBlock* entityBlock = reinterpret_cast<EntityBlock*>(block);
-
-							auto node			= nodes[entityBlock->nodeIdx];
-							auto triMeshGUID	= entityBlock->MeshHandle;
-
-							auto [triMesh, loaded] = FindMesh(triMeshGUID);
-
-							if (!loaded)
-								triMesh = LoadTriMeshIntoTable(RS, triMeshGUID);
-
+                            EntityBlock::Header entityBlock;
+                            memcpy(&entityBlock, block, sizeof(entityBlock));
 							auto& gameObject = allocator->allocate<GameObject>(allocator);
-							GS_out->AddGameObject(gameObject, node);
 
-							gameObject.AddView<SceneNodeView<>>(node);
-							gameObject.AddView<DrawableView>(triMesh, node);
-							gameObject.AddView<PointLightView>(float3(1, 1, 1), 1000, node);
+                            size_t itr                  = 0;
+                            size_t componentOffset      = 0;
+                            const size_t componentCount = entityBlock.componentCount;
 
-							SetBoundingSphereFromMesh(gameObject);
-							
-							if(auto idLength = strnlen(entityBlock->ID, 64); idLength)
-								gameObject.AddView<StringIDBehavior>(entityBlock->ID, idLength);
+                            while(true)
+                            {
+                                if (block->buffer + componentOffset >= reinterpret_cast<byte*>(block) + entityBlock.blockSize)
+                                    break;
+
+                                ComponentBlock::Header component;
+                                memcpy(&component, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(component));
+
+                                const ComponentID ID = component.componentID;
+                                if (component.blockType != EntityComponent) // malformed blob?
+                                    break;
+                                else if (ID == SceneNodeView<>::GetComponentID())
+                                {
+                                    SceneNodeComponentBlob blob;
+                                    memcpy(&blob, (std::byte*)block + sizeof(entityBlock) + componentOffset, sizeof(blob));
+
+                                    auto node = nodes[blob.nodeIdx];
+                                    gameObject.AddView<SceneNodeView<>>(node);
+
+                                    if(!blob.excludeFromScene)
+                                        GS_out.AddGameObject(gameObject, node);
+                                }
+                                else if (ComponentAvailability(ID) == true)
+                                {
+                                    GetComponent(ID).AddComponentView(
+                                                        gameObject,
+                                                        (std::byte*)(block) + sizeof(entityBlock) + componentOffset,
+                                                        component.blockSize,
+                                                        allocator);
+                                }
+
+                                ++itr;
+                                componentOffset += component.blockSize;
+                                if (itr >= componentCount)
+                                    break;
+                            }
 						}
 						case SceneBlockType::EntityComponent:
 							break;
@@ -780,7 +826,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool LoadScene(RenderSystem* RS, const char* LevelName, GraphicScene* GS_out, iAllocator* allocator, iAllocator* Temp)
+	bool LoadScene(RenderSystem* RS, const char* LevelName, GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp)
 	{
 		if (isResourceAvailable(LevelName))
 		{

@@ -39,7 +39,7 @@ PlayState::PlayState(
 	debugCamera.SetCameraAspectRatio(GetWindowAspectRatio(framework.core));
 	debugCamera.TranslateWorld({0, 100, 0});
 
-	LoadScene(framework.core, &scene, "TestScene");
+	LoadScene(framework.core, scene, "Scene1");
 	LightModel = GetMesh(GetRenderSystem(), "LightModel");
 
 	// Print Scene entity list
@@ -49,7 +49,7 @@ PlayState::PlayState(
 	{
 		Apply(
 			*visibles[entity].entity, 
-			[](StringIDBehavior& id) 
+			[](StringIDView& id) 
 			{
 				std::cout << id.GetString() << "\n";
 			});
@@ -177,6 +177,7 @@ bool PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, 
 	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
 	auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
 	auto& textureStreams	= base.streamingEngine.update(dispatcher);
+    auto& renderSystem      = core.RenderSystem;
 
 	WorldRender_Targets targets = {
 		GetCurrentBackBuffer(core.Window),
@@ -221,7 +222,7 @@ bool PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, 
 				frameGraph, 
 				{},
 				{	{ 0, (char*)&cameraConstants, cameraConstanstSize },
-					{ 0, (char*)&cameraConstants, cameraConstanstSize } },
+					{ 1, (char*)&cameraConstants, cameraConstanstSize } },
 				{ },
 				[&, activeCamera](auto& data)
 				{
@@ -245,8 +246,8 @@ bool PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, 
 					return XMMatrixToFloat4x4(&m);
 				},
 				[=, heap = DescriptorHeap{
-                                frameGraph.GetRenderSystem(),
-                                frameGraph.GetRenderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+                                renderSystem,
+                                renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
                                 core.GetTempMemory() }
                 ]
                 (auto& defaultResources, auto& resources, Context* ctx)  // Do not setup render targets!

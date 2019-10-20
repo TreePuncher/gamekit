@@ -27,17 +27,17 @@ bool GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, 
 	for (auto player : playerLobbyState)
 	{
 		auto playerHostState = host.GetPlayer(player.ID);
-		if (playerHostState->State == Lobby)
+		if (playerHostState->state == Lobby)
 		{
-			screen.SetPlayerName(player.ID, playerHostState->Name);
+			screen.SetPlayerName(player.ID, playerHostState->name);
 			screen.SetPlayerReady(player.ID, player.Ready);
 		}
 	}
 
 	FlexKit::WindowInput windowInput;
-	windowInput.CursorWH = { 0.05f, 0.05f };
-	windowInput.MousePosition = framework.MouseState.NormalizedScreenCord;
-	windowInput.LeftMouseButtonPressed = framework.MouseState.LMB_Pressed;
+	windowInput.CursorWH                = { 0.05f, 0.05f };
+	windowInput.MousePosition           = framework.MouseState.NormalizedScreenCord;
+	windowInput.LeftMouseButtonPressed  = framework.MouseState.LMB_Pressed;
 
 	screen.Update(dT, windowInput, GetPixelSize(core.Window), core.GetTempMemory());
 
@@ -148,7 +148,7 @@ GameHostLobbyState::GameHostLobbyState(
 
 				if (auto player = host.GetPlayer(ClientData->playerID); player)
 				{
-					player->State = Lobby;
+					player->state = Lobby;
 
 					host.SetPlayerName(
 						ClientData->playerID, 
@@ -207,23 +207,23 @@ GameHostLobbyState::GameHostLobbyState(
 				size_t idx = 0;
 				for (auto& playerState : host.players)
 				{
-					if (playerState.PlayerID == newPacket.playerID)
+					if (playerState.ID == newPacket.playerID)
 						continue;
 
-					newPacket.Players[idx].playerID	= playerState.PlayerID;
+					newPacket.Players[idx].playerID	= playerState.ID;
 
-					if (playerState.Local)
+					if (playerState.local)
 						newPacket.Players[idx].ready = localHostReady;
 					else
 					{
-						auto [player, found] = GetPlayerLobbyState(playerState.PlayerID);
+						auto [player, found] = GetPlayerLobbyState(playerState.ID);
 						if(found)
 							newPacket.Players[idx].ready = player.Ready;
 					}
 
 					strncpy(
 						newPacket.Players[idx].playerName, 
-						playerState.Name,
+						playerState.name,
 						sizeof(PlayerListPacket::entry::playerName));
 
 					idx++;
@@ -253,22 +253,22 @@ GameHostLobbyState::~GameHostLobbyState()
 /************************************************************************************************/
 
 
-void GameHostLobbyState::AddLocalPlayer(MultiplayerPlayerID_t ID)
+void GameHostLobbyState::AddLocalPlayer(const MultiplayerPlayerID_t ID)
 {
 	screen.CreateRow(ID);
 
 	const auto localPlayer	= host.GetPlayer(ID);
-	const auto nameLength	= strnlen(localPlayer->Name, 32);
+	const auto nameLength	= strnlen(localPlayer->name, 32);
 
 	host.SetState(ID, Lobby);
-	screen.SetPlayerName(ID, localPlayer->Name);
+	screen.SetPlayerName(ID, localPlayer->name);
 }
 
 
 /************************************************************************************************/
 
 
-void GameHostLobbyState::HandleNewConnection(ConnectionHandle handle)
+void GameHostLobbyState::HandleNewConnection(const ConnectionHandle handle)
 {
 	auto newID = host.GetNewID();
 
@@ -294,7 +294,7 @@ void GameHostLobbyState::HandleNewConnection(ConnectionHandle handle)
 /************************************************************************************************/
 
 
-void GameHostLobbyState::HandleDisconnection(ConnectionHandle handle)
+void GameHostLobbyState::HandleDisconnection(const ConnectionHandle handle)
 {
     screen.ClearRows();
 
@@ -302,19 +302,19 @@ void GameHostLobbyState::HandleDisconnection(ConnectionHandle handle)
 
     playerLobbyState.remove_stable(
         find(   playerLobbyState,
-                [&](PlayerLobbyEntry& e) -> bool { return e.ID == disconnectedPlayer->PlayerID; }));
+                [&](PlayerLobbyEntry& e) -> bool { return e.ID == disconnectedPlayer->ID; }));
     
-    host.RemovePlayer(disconnectedPlayer->PlayerID);
+    host.RemovePlayer(disconnectedPlayer->ID);
 
     // Re-add LocalPlayer
     auto hostPlayer         = host.hostPlayer;
     const auto localPlayer  = host.GetPlayer(hostPlayer);
     screen.CreateRow(hostPlayer);
-    screen.SetPlayerName(hostPlayer, localPlayer->Name);
+    screen.SetPlayerName(hostPlayer, localPlayer->name);
     
     // Other Players
     for (auto player : host.players)
-        screen.CreateRow(player.PlayerID);
+        screen.CreateRow(player.ID);
 }
 
 

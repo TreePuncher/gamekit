@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2016 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\Handle.h"
@@ -45,6 +21,7 @@ namespace FlexKit
 	using ComponentID = uint32_t;
 	constexpr ComponentID InvalidComponentID = -1;
 
+    class GameObject;
 
 	class ComponentBase
 	{
@@ -68,7 +45,7 @@ namespace FlexKit
 		ComponentBase				(const ComponentBase&)		= delete;
 
 
-		void AddComponent(ComponentBase& component)
+		static void AddComponent(ComponentBase& component)
 		{
 			const auto ID = component.GetID();
 			auto res = find(Components, [&](auto value)
@@ -85,7 +62,7 @@ namespace FlexKit
 		}
 
 
-		void RemoveComponent(ComponentBase& system) noexcept
+		static void RemoveComponent(ComponentBase& system) noexcept
 		{
 			const auto ID = system.GetID();
 			auto res = find(Components, [&](auto value)
@@ -122,14 +99,43 @@ namespace FlexKit
 		}
 
 
+        static bool isComponentAvailable(ComponentID ID)
+        {
+            auto res = find(
+                Components,
+                [&](auto e)
+                {
+                    return e.ID == ID;
+                });
+
+
+            return res != Components.end();
+        }
+
+
 		static static_vector<ComponentEntry, 128> GetComponentList()
 		{
 			return Components;
 		}
 
 
+        virtual void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) {};
+
+
 		inline static static_vector<ComponentEntry, 128> Components = static_vector<ComponentBase::ComponentEntry, 128>();
 	};
+
+
+    bool ComponentAvailability(ComponentID ID)
+    {
+        return ComponentBase::isComponentAvailable(ID);
+    }
+
+
+    ComponentBase& GetComponent(ComponentID ID)
+    {
+        return ComponentBase::GetComponent(ID);
+    }
 
 
 	/************************************************************************************************/
@@ -178,6 +184,8 @@ namespace FlexKit
 		{
 			return component != nullptr;
 		}
+
+        virtual void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override {}
 	};
 
 
@@ -429,14 +437,30 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	template<typename TY, typename TY_Handle, ComponentID ID>
+    struct BasicComponentEventHandler
+    {
+        static void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
+        {
+            std::cout << "THIS IS A TEST!\n";
+        }
+    };
+
+    template<typename TY, typename TY_Handle, ComponentID ID, typename TY_EventHandler = BasicComponentEventHandler>
 	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID>, TY_Handle, ID>
 	{
 	public:
-		BasicComponent_t(iAllocator* allocator) :
+        using ThisType      = BasicComponent_t<TY, TY_Handle, ID>;
+        using EventHandler  = TY_EventHandler;
+
+        template<typename ... TY_args>
+        BasicComponent_t(iAllocator* allocator, TY_args&&... args) :
+            eventHandler{ std::forward<TY_args>(args)... },
 			elements	{ allocator },
 			handles		{ allocator } {}
 
+        BasicComponent_t(iAllocator* allocator) :
+            elements{ allocator },
+            handles{ allocator } {}
 
 		struct elementData
 		{
@@ -453,6 +477,11 @@ namespace FlexKit
 
 			return handle;
 		}
+
+        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        {
+            eventHandler.OnCreateView(GO, buffer, bufferSize, allocator);
+        }
 
 
 		void Remove(TY_Handle handle)
@@ -489,6 +518,7 @@ namespace FlexKit
 
 		HandleUtilities::HandleTable<TY_Handle>	handles;
 		Vector<elementData>						elements;
+        TY_EventHandler                         eventHandler;
 	};
 
 
@@ -513,35 +543,13 @@ namespace FlexKit
 		};
 
 
-		StringIDHandle Create(char* initial = nullptr, size_t length = 0)
-		{
-			auto handle = handles.GetNewHandle();
+        StringIDHandle Create(char* initial = nullptr, size_t length = 0);
 
-			StringID newID;
-			newID.ID[length] = '\0';
-			strncpy(newID.ID, initial, min(sizeof(StringID), length));
+        void Remove(StringIDHandle handle);
 
-			handles[handle] = static_cast<index_t>(IDs.push_back(newID));
+		char* operator[] (StringIDHandle handle) { return IDs[handles[handle]].ID; }
 
-			return handle;
-		}
-
-
-		void Remove(StringIDHandle handle)
-		{
-			auto lastElement		= IDs.back();
-			IDs[handles[handle]]	= lastElement;
-			IDs.pop_back();
-
-			handles[lastElement.handle] = handles[handle];
-			handles.RemoveHandle(handle);
-		}
-
-
-		char* operator[] (StringIDHandle handle)
-		{
-			return IDs[handles[handle]].ID;
-		}
+        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override;
 
 		HandleUtilities::HandleTable<StringIDHandle>	handles;
 		Vector<StringID>								IDs;
@@ -551,10 +559,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class StringIDBehavior : public ComponentView_t<StringIDComponent>
+	class StringIDView : public ComponentView_t<StringIDComponent>
 	{
 	public:
-		StringIDBehavior(char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
+        StringIDView(char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
 
 		char* GetString()
 		{
@@ -1084,5 +1092,30 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2019 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
 
 #endif

@@ -30,18 +30,21 @@ namespace FlexKit
 {
 	
 	/************************************************************************************************/
-	
+
+
 	void StackAllocator::Init(byte* _ptr, size_t s)
 	{
 		used   = 0;
 		size   = s;
 		Buffer = _ptr;
 
-		new(&AllocatorInterface) iStackAllocator(this);
+		new(&AllocatorInterface) AllocatorAdapter(this);
 	}
+
 	
 	/************************************************************************************************/
-	
+
+
 	void* StackAllocator::malloc(size_t s)
 	{
 		void* memory = nullptr;
@@ -55,24 +58,14 @@ namespace FlexKit
 #endif
 		if (!memory)
 			printf("Memory Failed to Allocate\n");
-#ifdef _DEBUG
-		//memset(memory, 0, s);
-#endif
+
 		return memory;
 	}
-	
+
+
 	/************************************************************************************************/
-	
-	void* StackAllocator::malloc_MT(size_t s)
-	{
-		critsection.lock();
-		void* _ptr = malloc(s);
-		critsection.unlock();
-		return _ptr;
-	}
-	
-	/************************************************************************************************/
-	
+
+
 	void* StackAllocator::_aligned_malloc(size_t s, size_t alignement)
 	{
 		byte* _ptr = (byte*)malloc( s + alignement );
@@ -80,19 +73,11 @@ namespace FlexKit
 		_ptr += alignement - alignoffset;
 		return _ptr;
 	}
-	
+
+
 	/************************************************************************************************/
 
-	void* StackAllocator::_aligned_malloc_MT(size_t s, size_t alignement)
-	{
-		critsection.lock();
-		void* _ptr = _aligned_malloc(s, alignement);
-		critsection.unlock();
-		return _ptr;
-	}
-	
-	/************************************************************************************************/
-	
+
 	void StackAllocator::clear()
 	{
 		used = 0;
@@ -100,7 +85,8 @@ namespace FlexKit
 		//memset(Buffer, 0xBB, size);
 #endif
 	}
-	
+
+
 /************************************************************************************************/
 	
 // Generic Utiliteies

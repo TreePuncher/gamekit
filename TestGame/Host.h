@@ -26,9 +26,9 @@ public:
 
 	~GameHostLobbyState();
 
-	void AddLocalPlayer(MultiplayerPlayerID_t);
-	void HandleNewConnection(ConnectionHandle);
-    void HandleDisconnection(ConnectionHandle);
+	void AddLocalPlayer(const MultiplayerPlayerID_t);
+	void HandleNewConnection(const ConnectionHandle);
+    void HandleDisconnection(const ConnectionHandle);
 
 	bool Update			(EngineCore&, UpdateDispatcher&, double dT) final override;
 	bool Draw			(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
@@ -43,7 +43,7 @@ public:
 		bool					Ready;
 	};
 
-	std::pair<PlayerLobbyEntry, bool> GetPlayerLobbyState(MultiplayerPlayerID_t id)
+	std::pair<PlayerLobbyEntry, bool> GetPlayerLobbyState(const MultiplayerPlayerID_t id)
 	{
 		for (auto& player : playerLobbyState)
 			if(player.ID == id)
@@ -82,11 +82,11 @@ MultiplayerPlayerID_t GeneratePlayerID();
 
 struct MultiPlayerEntry
 {
-	bool									Local;
-	PlayerNetState							State;
-	MultiplayerPlayerID_t					PlayerID;
-    ConnectionHandle                        Address;
-	char									Name[32];
+	bool									local;
+	PlayerNetState							state;
+	MultiplayerPlayerID_t					ID;
+    ConnectionHandle                        address;
+	char									name[32];
 };
 
 
@@ -137,37 +137,28 @@ public:
 	}
 
 
-    void RemovePlayer(MultiplayerPlayerID_t id)
+    void RemovePlayer(const MultiplayerPlayerID_t id)
     {
-        for (auto& player : players)
-        {
-            if (player.PlayerID == id)
-            {
-                player = players.back();
-                players.pop_back();
-                return;
-            }
-        }
+        players.remove_unstable(std::find_if(begin(players), end(players),
+            [&](auto player) { return player.ID == id; }));
     }
 
 
-    MultiPlayerEntry* GetPlayer(ConnectionHandle handle)
+    MultiPlayerEntry* GetPlayer(const ConnectionHandle handle)
     {
-        for (auto& player : players)
-            if (player.Address == handle)
-                return &player;
-
-        return nullptr;
+        auto res = std::find_if(begin(players), end(players),
+            [&](auto player) { return player.address == handle; });
+        
+        return (res == players.end()) ? nullptr : res;
     }
 
 
-	MultiPlayerEntry* GetPlayer(MultiplayerPlayerID_t id)
+	MultiPlayerEntry* GetPlayer(const MultiplayerPlayerID_t id)
 	{
-		for (auto& player : players)
-			if (player.PlayerID == id)
-				return &player;
+        auto res = std::find_if(begin(players), end(players),
+            [&](auto player) { return player.ID == id; });
 
-		return nullptr;
+        return (res == players.end()) ? nullptr : res;
 	}
 
 
@@ -184,16 +175,14 @@ public:
 
         auto PlayersStillLoading = [&]() -> bool
         {
-            for (auto player : players)
-                if(player.State == LoadingScreen)
-                    return true;
-
-            return false;
+            auto pred = [](auto& player) -> bool { return player.state == LoadingScreen; };
+            return std::find_if(begin(players), end(players), pred) != players.end();
         };
 
         auto OnCompletion = [&, PlayersStillLoading](auto& core, auto& Dispatcher, double dT)
         {
-            if (PlayersStillLoading()) {
+            if (PlayersStillLoading())
+            {
                 auto& WaitState = framework.PushState<LocalPlayerState>(base, gameState);
                 WaitState.Update(core, Dispatcher, dT);
             }
@@ -210,22 +199,20 @@ public:
 	}
 
 
-	void SetPlayerName(MultiplayerPlayerID_t id, char* name, size_t namelen)
+	void SetPlayerName(const MultiplayerPlayerID_t id, const char* name, const size_t namelen)
 	{
 		auto player = GetPlayer(id);
 		strncpy(
-			player->Name, 
+			player->name, 
 			name, 
-			min(namelen, sizeof(MultiPlayerEntry::Name) - 1)); // one less to account for null character
+			min(namelen, sizeof(MultiPlayerEntry::name) - 1)); // one less to account for null character
 	}
 
 
-	void SetState(MultiplayerPlayerID_t playerID, PlayerNetState netState)
+	void SetState(const MultiplayerPlayerID_t playerID, const PlayerNetState netState)
 	{
-		auto player = GetPlayer(playerID);
-
-		if (player)
-			player->State = netState;
+		if (auto player = GetPlayer(playerID); player)
+			player->state = netState;
 	}
 
 
@@ -237,14 +224,13 @@ public:
 
 	MultiplayerPlayerID_t GetNewID()
 	{
-		while (true)
-		{
-			auto NewID = GeneratePlayerID();
-			for (auto& player : players)
-				if (player.PlayerID == NewID)
-					continue;
-				else
-					return NewID;
+        while (true)
+        {
+            auto newID = GeneratePlayerID();
+
+            if (std::find_if(begin(players), end(players),
+                    [&](auto& player) -> bool { return player.ID == newID; }) == players.end() )
+                return newID;
 		}
 	}
 

@@ -62,7 +62,16 @@ namespace FlexKit
 	constexpr ComponentID DrawableComponentID	= GetTypeGUID(DrawableID);
 	using DrawableHandle						= Handle_t <32, GetTypeGUID(DrawableID)>;
 
-	using DrawableComponent = BasicComponent_t<Drawable, DrawableHandle, DrawableComponentID>;
+    struct DrawableComponentEventHandler
+    {
+        DrawableComponentEventHandler(RenderSystem& IN_renderSystem) : renderSystem{ IN_renderSystem }{}
+
+        void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
+
+        RenderSystem& renderSystem;
+    };
+
+	using DrawableComponent = BasicComponent_t<Drawable, DrawableHandle, DrawableComponentID, DrawableComponentEventHandler>;
 
 
 	class DrawableView : public ComponentView_t<DrawableComponent>
@@ -344,7 +353,7 @@ namespace FlexKit
 
 		void				ClearScene			();
 
-		Drawable&	SetNode(SceneEntityHandle EHandle, NodeHandle Node);
+		Drawable&	        SetNode(SceneEntityHandle EHandle, NodeHandle Node);
 
 		Vector<PointLightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
@@ -394,8 +403,8 @@ namespace FlexKit
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			GraphicScene* GS_out, iAllocator* allocator, iAllocator* Temp);
-	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	GraphicScene* GS_out, iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
+	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
 
 
 	/************************************************************************************************/
