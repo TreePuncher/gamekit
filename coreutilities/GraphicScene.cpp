@@ -50,6 +50,7 @@ namespace FlexKit
             triMesh = LoadTriMeshIntoTable(renderSystem, drawableComponent.resourceID);
 
         gameObject.AddView<DrawableView>(triMesh, node);
+        SetBoundingSphereFromMesh(gameObject);
     }
 
 
@@ -63,6 +64,7 @@ namespace FlexKit
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
         gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], GetSceneNode(gameObject));
+        SetBoundingSphereFromLight(gameObject);
     }
 
 
@@ -798,7 +800,7 @@ namespace FlexKit
                                     auto node = nodes[blob.nodeIdx];
                                     gameObject.AddView<SceneNodeView<>>(node);
 
-                                    //if (!blob.excludeFromScene)
+                                    if (!blob.excludeFromScene)
                                         GS_out.AddGameObject(gameObject, node);
                                 }
                                 else if (ComponentAvailability(ID) == true)
