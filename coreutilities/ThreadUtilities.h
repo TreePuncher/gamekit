@@ -323,7 +323,7 @@ namespace FlexKit
 				std::mutex						M;
 				std::unique_lock<std::mutex>	lock(M);
 
-				CV.wait(lock, [this] { return workingThreadCount <= 0; });
+                while (workingThreadCount > 0);
 			}
 			else
 			{
@@ -389,11 +389,9 @@ namespace FlexKit
 			if (threads.empty()) 
 			{
 				if (!workList.size())
-				{
-					std::scoped_lock lock{ exclusive };
 					return workList.pop_front();
-				}
-				return nullptr;
+                else
+				    return nullptr;
 			}
 
 			for(auto& thread : threads)

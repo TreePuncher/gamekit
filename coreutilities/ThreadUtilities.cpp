@@ -42,18 +42,20 @@ namespace FlexKit
 	{
 		std::unique_lock lock{ exclusive };
 
+        workCount++;
+
 		if (Quit)
 			return false;
 
-		if (workList.full())
-			return false;
+        if (workList.full()) {
+            workCount--;
+            return false;
+        }
 
 		if (!workList.push_back(Work))
 			return false;
 
-		workCount++;
-
-		while (!Running)
+		if (!Running)
 			CV.notify_all();
 
 		return true;
@@ -118,50 +120,55 @@ namespace FlexKit
 					if (!workCount)
 						return nullptr;
 
-					auto work		= workList.pop_back();
+					auto work = workList.pop_back();
 					workCount--;
 
 					return work;
 				};
 
+                auto FindWork = [&]()
+                {
+                    auto stealWork = [&](auto& begin, auto& end) -> iWork*
+                    {
+                        for (auto worker = begin; workList.empty() && worker != end && worker != nullptr; ++worker)
+                        {
+                            if (iWork* work = worker->Steal(); work)
+                            {
+                                return work;
+                            }
+                        }
 
-				while (workCount)
-				{
-					auto workItem = getWorkItem();
+                        return nullptr;
+                    };
 
-					if (workItem)
-						doWork(workItem);
-				}
+                    if (auto workItem = getWorkItem(); workItem)
+                        return workItem;
+                    else if (auto workItem = stealWork(WorkerList::Iterator{ this }, Manager->GetThreadsEnd()); workItem)
+                        return workItem;
+                    else
+                        return stealWork(Manager->GetThreadsBegin(), WorkerList::Iterator{ this });
+                };
 
+                while (true)
+                {
+                    auto workItem = FindWork();
 
-				auto stealWork = [&](auto& begin, auto& end)
-				{
-					for (auto worker = begin; workList.empty() && worker != end && worker != nullptr; ++worker)
-					{
-						if (iWork* work = worker->Steal(); work )
-						{
-							doWork(work);
-							return;
-						}
-					}
-				};
+                    if (!workItem)
+                        break;
 
+                    doWork(workItem);
+                }
 
-				stealWork(
-					WorkerList::Iterator{ this },
-					Manager->GetThreadsEnd());
-
-				stealWork(
-					Manager->GetThreadsBegin(),
-					WorkerList::Iterator{ this });
-
-				if (workList.empty() && Quit)
+				if (Quit)
 					return;
 
 				if (!workCount && !Quit)
 				{
 					std::mutex						M;
 					std::unique_lock<std::mutex>	lock{ M };
+
+                    if (lock)
+                        continue;
 
 					if (!workCount || !Quit)
 					{
