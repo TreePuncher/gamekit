@@ -90,6 +90,8 @@ LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_ba
 	eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
 	eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft);
 	eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
+
+    debugCamera.TranslateWorld({0, 10, 0});
 }
 
 
@@ -98,6 +100,8 @@ LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_ba
 
 bool LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT)
 {
+    debugCamera.Yaw(pi * dT / 2);
+
 	return true;
 }
 

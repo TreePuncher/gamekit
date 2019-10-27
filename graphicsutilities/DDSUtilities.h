@@ -29,11 +29,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\graphics.h"
-#include "Dds.h"
+
+#define MAKEFOURCC(ch0, ch1, ch2, ch3)                              \
+                ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |   \
+                ((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24 ))
+
+#include <DDSTextureLoader.h>
 #include <d3d12.h>
+#include <dds.h>
 
 namespace FlexKit
 {
+    using DirectX::DDS_HEADER;
+    using DirectX::DDS_HEADER_DXT10;
+    using DirectX::DDS_ALPHA_MODE;
+    using DirectX::DDS_PIXELFORMAT;
+    using DirectX::DDS_MAGIC;
+
 	struct DDSFILE_1
 	{
 		DWORD		dwMagic;
