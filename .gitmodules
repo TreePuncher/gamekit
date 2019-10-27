@@ -10,3 +10,9 @@
 [submodule "Dependencies/sdks/raknet"]
 	path = Dependencies/sdks/raknet
 	url = https://github.com/facebookarchive/RakNet
+[submodule "Dependencies/sdks/DirectX-Graphics-Samples"]
+	path = Dependencies/sdks/DirectX-Graphics-Samples
+	url = https://github.com/microsoft/DirectX-Graphics-Samples.git
+[submodule "Dependencies/sdks/DirectXTex"]
+	path = Dependencies/sdks/DirectXTex
+	url = https://github.com/microsoft/DirectXTex.git
