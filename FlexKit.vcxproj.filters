@@ -151,9 +151,6 @@
     <ClInclude Include="coreutilities\Console.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\ConsoleSubState.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="coreutilities\GameFramework.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
@@ -192,6 +189,9 @@
     </ClInclude>
     <ClInclude Include="graphicsutilities\AnimationComponents.h">
       <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\DebugPanel.h">
+      <Filter>coreutilities\headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -288,9 +288,6 @@
     <ClCompile Include="coreutilities\Console.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
-    <ClCompile Include="coreutilities\ConsoleSubState.cpp">
-      <Filter>coreutilities\source</Filter>
-    </ClCompile>
     <ClCompile Include="coreutilities\FlexKitApplication.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
@@ -335,6 +332,9 @@
     </ClCompile>
     <ClCompile Include="graphicsutilities\AnimationComponents.cpp">
       <Filter>graphicsutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\DebugPanel.cpp">
+      <Filter>coreutilities\source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

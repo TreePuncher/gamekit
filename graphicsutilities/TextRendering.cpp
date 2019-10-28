@@ -158,8 +158,9 @@ namespace FlexKit
 				Data.VertexBuffer	= Buffer;
 				Data.VertexCount	= StrLen;
 				Data.VertexOffset	= GetCurrentVBufferOffset<TextEntry>(Buffer, FGraph.Resources);
-				float XBegin		= Formatting.StartingPOS.x;
-				float YBegin		= Formatting.StartingPOS.y;
+
+                const float XBegin	= Formatting.StartingPOS.x;
+				const float YBegin	= Formatting.StartingPOS.y;
 
 				float CurrentX	= Formatting.CurrentX;
 				float CurrentY	= Formatting.CurrentY;
@@ -202,8 +203,7 @@ namespace FlexKit
 					const float2 UVTL	= XY;
 					const float2 UVBR	= XY + WH;
 
-					if (C == '\n' || 
-						CurrentX + XAdvance > Formatting.TextArea.x)
+					if (C == '\n' || CurrentX + XAdvance > Formatting.TextArea.x)
 					{
 						CenterLine();
 
@@ -223,7 +223,7 @@ namespace FlexKit
 					Character.Size          = WH * Formatting.Scale;
 						
 					Text.push_back(Character);
-					YAdvance    = max(YAdvance, GlyphArea.y);
+					YAdvance  = max(YAdvance, GlyphArea.y);
 					CurrentX += XAdvance * Formatting.Scale.x;
 					itr_2++;
 				}

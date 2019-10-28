@@ -22,42 +22,50 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "ConsoleSubState.h"
+#include "DebugPanel.h"
 
 
 namespace FlexKit
 {	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+	void DebugPanel::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
-		return !pauseBackgroundLogic;
+        if (!pauseBackgroundLogic)
+            topState.Update(core, dispatcher, dT);
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::DebugDraw(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+	void DebugPanel::DebugDraw(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 	{
-		return false;
 	}
 
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
+	void DebugPanel::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
 	{
+        topState.Draw(core, dispatcher, dT, graph);
 		console->Draw(graph, GetCurrentBackBuffer(core.Window), core.GetTempMemory());
-
-		return false;
 	}
+
+
+    /************************************************************************************************/
+
+
+    void DebugPanel::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
+    {
+        topState.PostDrawUpdate(core, dispatcher, dT, graph);
+    }
 
 
 	/************************************************************************************************/
 
 
-	bool  ConsoleSubState::EventHandler(Event evt)
+	void DebugPanel::EventHandler(Event evt)
 	{
 		if (evt.InputSource == Event::Keyboard)
 		{
@@ -69,7 +77,7 @@ namespace FlexKit
 				{
 				case KC_TILDA: {
 					PopSubState(framework);
-					return false;
+					return;
 				}	break;
 				case KC_BACKSPACE:
 					framework.console.BackSpace();
@@ -122,14 +130,13 @@ namespace FlexKit
 			}	break;
 			}
 		}
-		return false;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void ConsoleSubState::IncrementRecallIndex()
+	void DebugPanel::IncrementRecallIndex()
 	{
 		recallIndex = (recallIndex + 1) % console->commandHistory.size();
 	}
@@ -138,7 +145,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ConsoleSubState::DecrementRecallIndex()
+	void DebugPanel::DecrementRecallIndex()
 	{
 		recallIndex = (console->commandHistory.size() + recallIndex - 1) % console->commandHistory.size();
 	}

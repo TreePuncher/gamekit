@@ -957,11 +957,9 @@ namespace FlexKit
 					VisitAndScheduleLeafs(node, threads, allocator);
 
 				barrier.Join();
-				nodes.clear();
 			}
 			else
-			{
-				// Single Thread
+			{   // Single Thread
 				Vector<UpdateTaskBase*> nodesSorted{ allocator };
 				for (auto& node : nodes)
 					VisitInputs(node, nodesSorted);
@@ -970,10 +968,10 @@ namespace FlexKit
 				{
 					node->Update(*node);
 				}
-
-				nodesSorted.clear();
 			}
 
+            nodes.clear();
+            taskMap.clear();
 		}
 
 

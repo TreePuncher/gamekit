@@ -22,7 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "ConsoleSubState.h"
+#include "DebugPanel.h"
 #include "GameFramework.h"
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\TextureUtilities.h"
@@ -132,7 +132,7 @@ namespace FlexKit
 				FK_VLOG(Verbosity_9, "Console Key Pressed!");
 
 				if (!framework.consoleActive) {
-					PushSubState(framework, framework.core.GetBlockMemory().allocate<ConsoleSubState>(framework));
+                    framework.PushState<DebugPanel>(*framework.subStates.back());
 					framework.consoleActive = true;
 				}
 			}	break;
@@ -179,7 +179,7 @@ namespace FlexKit
 
 
 	GameFramework::GameFramework(EngineCore& IN_core) :
-		console				{ DefaultAssets.Font, IN_core.GetBlockMemory() },
+		console				{ DefaultAssets.Font, IN_core.RenderSystem, IN_core.GetBlockMemory() },
 		core				{ IN_core	},
 		fixStepAccumulator	{ 0.0		}
 
@@ -260,13 +260,7 @@ namespace FlexKit
 			return;
 		}
 
-		for(size_t I = 1; I <= subStates.size(); ++I)
-		{
-			auto& State = subStates[subStates.size() - I];
-
-			if (!State->Update(core, dispatcher, dT))
-				break;
-		}
+        subStates.back()->Update(core, dispatcher, dT);
 
 		core.End = quit;
 	}
@@ -291,35 +285,14 @@ namespace FlexKit
 			return;
 		}
 
-		{
-			UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemory() };
+        if (drawDebug)
+        {
+            subStates.back()->Update(core, dispatcher, dT);
+            dispatcher.Execute();
+        }
 
-			if (drawDebug) 
-			{
-				for(size_t I = 1; I <= subStates.size(); ++I)
-				{
-					auto& State = subStates[subStates.size() - I];
-
-					if (!State->DebugDraw(core, dispatcher, dT))
-						break;
-				}
-			}
-
-			dispatcher.Execute();
-		}
-
-		{
-			UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemory() };;
-
-			for (size_t I = 1; I <= subStates.size(); ++I)
-			{
-				auto& State = subStates[subStates.size() - I];
-				if (!State->PreDrawUpdate(core, dispatcher, dT))
-					break;
-			}
-
-			dispatcher.Execute();
-		}
+        subStates.back()->Update(core, dispatcher, dT);
+		dispatcher.Execute();
 
 		if (stats.fpsT > 1.0)
 		{
@@ -346,21 +319,8 @@ namespace FlexKit
 		frameGraph.Resources.AddRenderTarget(core.Window.GetBackBuffer());
 		frameGraph.UpdateFrameGraph(core.RenderSystem, ActiveWindow, core.GetTempMemory());
 
-
-		for (size_t I = 0; I < subStates.size(); ++I)
-		{
-			auto& SubState = subStates[I];
-			if (!SubState->Draw(core, dispatcher, dT, frameGraph))
-				break;
-		}
-
-		for (size_t I = 1; I <= subStates.size(); ++I)
-		{
-			auto& State = subStates[subStates.size() - I]; 
-			if (!State->PostDrawUpdate(core, dispatcher, dT, frameGraph))
-				break;
-		}
-
+        subStates.back()->Draw(core, dispatcher, dT, frameGraph);
+        subStates.back()->PostDrawUpdate(core, dispatcher, dT, frameGraph);
 
 		ProfileBegin(PROFILE_SUBMISSION);
 
@@ -460,13 +420,9 @@ namespace FlexKit
 
 	bool GameFramework::DispatchEvent(const Event& evt)
 	{
-		auto itr = subStates.rbegin();
-		while (itr != subStates.rend())
-		{
-			if (!(*itr)->EventHandler(evt))
-				return false;
-			itr++;
-		}
+        if (subStates.size() != 0)
+            subStates.back()->EventHandler(evt);
+
 		return true;
 	}
 

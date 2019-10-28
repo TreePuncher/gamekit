@@ -30,11 +30,11 @@ public:
 	void HandleNewConnection(const ConnectionHandle);
     void HandleDisconnection(const ConnectionHandle);
 
-	bool Update			(EngineCore&, UpdateDispatcher&, double dT) final override;
-	bool Draw			(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
-	bool PostDrawUpdate	(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
+	void Update			(EngineCore&, UpdateDispatcher&, double dT) final override;
+	void Draw			(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
+	void PostDrawUpdate	(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
 
-	bool EventHandler(Event evt) final override;
+	void EventHandler(Event evt) final override;
 
 
 	struct PlayerLobbyEntry
@@ -216,9 +216,8 @@ public:
 	}
 
 
-	bool Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override
+	void Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override
 	{
-		return true;
 	}
 
 

@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\coreutilities\CameraUtilities.cpp"
 #include "..\coreutilities\Console.cpp"
-#include "..\coreutilities\ConsoleSubState.cpp"
+#include "..\coreutilities\DebugPanel.cpp"
 #include "..\coreutilities\Logging.h"
 //#include "..\coreutilities\DungeonGen.cpp"
 #include "..\coreutilities\Components.cpp"

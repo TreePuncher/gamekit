@@ -44,7 +44,11 @@ namespace FlexKit
 
 
 
-	Console::Console(SpriteFontAsset* IN_font, iAllocator* IN_allocator)
+	Console::Console(SpriteFontAsset* IN_font, RenderSystem& IN_renderSystem, iAllocator* IN_allocator) :
+        vertexBuffer    { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
+        textBuffer      { IN_renderSystem.CreateVertexBuffer(8096 * 64, false)     },
+        constantBuffer  { IN_renderSystem.CreateConstantBuffer(1024 * 32, false)   },
+        renderSystem    { IN_renderSystem }
 	{
 		lines.clear();
 		allocator					 = IN_allocator;
@@ -62,8 +66,7 @@ namespace FlexKit
 
 		AddOperator({ "=",				OperatorAssign,	nullptr, 2, { ConsoleVariableType::CONSOLE_IDENTIFIER, ConsoleVariableType::STACK_INT } });
 
-
-		AddStringVar("Version", "Pre-Alpha 0.0.0.1");
+		AddStringVar("Version", "Pre-Alpha 0.0.0.3");
 		AddStringVar("BuildDate", __DATE__);
 
 		PrintLine("Type ListFunctions() for a list of Commands\n",	allocator);
@@ -106,9 +109,6 @@ namespace FlexKit
 		}
 		auto WindowWH = graph.Resources.renderSystem.GetRenderTargetWH(renderTarget);
 
-		ClearVertexBuffer(graph, vertexBuffer);
-		ClearVertexBuffer(graph, textBuffer);
-
 		const float		HeightScale			= 0.5f;
 		const auto		FontSize			= font->FontSize;
 		const float2	PixelSize			= { 0.5f / (float)WindowWH[0],  0.5f / (float)WindowWH[1]};
@@ -116,17 +116,16 @@ namespace FlexKit
 		const float		AspectRatio			= float(WindowWH[0]) / float(WindowWH[1]);
 		const float2	StartingPosition	= float2{ 1	, 0.5f + (FontSize[1] * PixelSize[1]) };
 
-
 		DrawShapes(
 				DRAW_PSO, graph, 
 				vertexBuffer,
 				constantBuffer,
 				renderTarget,
 				allocator,
-			RectangleShape(
-				float2{0.0f	, 0.0f},
-				StartingPosition, //
-				{ 0.25f, 0.25f, 0.25f, 1.0f }));
+            RectangleShape{
+                float2{0.0f	, 0.0f},
+                StartingPosition, //
+                { 0.25f, 0.25f, 0.25f, 1.0f } });
 
 		size_t	itr				= 1;
 		float	y				= 0.5f - float(1 + (itr)) * LineHeight;

@@ -177,13 +177,13 @@ namespace FlexKit
 
 		virtual ~FrameworkState() {}
 
-		virtual bool Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
-		virtual bool DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
-		virtual bool PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) { return true; };
-		virtual bool Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
-		virtual bool PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) { return true; };
+		virtual void Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
+		virtual void DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
+		virtual void PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
+		virtual void Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) {}
+		virtual void PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) {}
 
-		virtual bool EventHandler	(Event evt) { return true; };
+		virtual void EventHandler	(Event evt) {}
 
 		GameFramework&	framework;
 	protected:

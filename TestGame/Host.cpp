@@ -22,7 +22,7 @@ MultiplayerPlayerID_t GeneratePlayerID()
 /************************************************************************************************/
 
 
-bool GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
+void GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
 {
 	for (auto player : playerLobbyState)
 	{
@@ -40,15 +40,13 @@ bool GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, 
 	windowInput.LeftMouseButtonPressed  = framework.MouseState.LMB_Pressed;
 
 	screen.Update(dT, windowInput, GetPixelSize(core.Window), core.GetTempMemory());
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
 	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
 
@@ -72,28 +70,25 @@ bool GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, do
 		currentRenderTarget,
 		core.GetTempMemory(),
 		&frameGraph);
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+void GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
 	if (framework.drawDebugStats)
 		framework.DrawDebugHUD(dT, host.base.textBuffer, Graph);
 
 	PresentBackBuffer(Graph, &core.Window);
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool GameHostLobbyState::EventHandler(Event evt)
+void GameHostLobbyState::EventHandler(Event evt)
 {
 	if (evt.InputSource == Event::Keyboard &&
 		evt.Action == Event::Pressed)
@@ -108,8 +103,6 @@ bool GameHostLobbyState::EventHandler(Event evt)
 			break;
 		}
 	}
-
-	return true;
 }
 
 

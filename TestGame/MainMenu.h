@@ -40,9 +40,9 @@ public:
 		GameFramework&  IN_Framework,
 		BaseState&	    IN_Base	);
 
-	bool Update			(EngineCore& Engine,	UpdateDispatcher& Dispatcher, double dT) final override;
-	bool Draw			(EngineCore& Engine,	UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
-	bool PostDrawUpdate	(EngineCore& Core,		UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
+	void Update			(EngineCore& Engine,	UpdateDispatcher& Dispatcher, double dT) final override;
+	void Draw			(EngineCore& Engine,	UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
+	void PostDrawUpdate	(EngineCore& Core,		UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
 
 private:
 	ConstantBufferHandle	constantBuffer;

@@ -78,10 +78,10 @@ public:
 	GameState				(const GameState&) = delete;
 	GameState& operator =	(const GameState&) = delete;
 
-	bool Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
-	bool PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
-	bool Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
-	bool PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+	void Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+	void PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+	void Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+	void PostDrawUpdate (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
 
 	GraphicScene	scene;
 	BaseState&		base;
@@ -99,10 +99,11 @@ public:
 
 	virtual ~LocalPlayerState() final override {}
 
-	bool Update			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-	bool PreDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-    bool Draw           (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
-    bool EventHandler   (Event evt) final override;
+	void Update			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+	void PreDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+    void Draw           (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
+	void PostDrawUpdate	(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
+    void EventHandler   (Event evt) final override;
 
 
 private:	/************************************************************************************************/
@@ -199,7 +200,7 @@ public:
     /************************************************************************************************/
 
 
-    bool Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
+    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
     {
         beginGame = OnUpdate(core, dispatcher, dT);
 
@@ -209,18 +210,14 @@ public:
             framework.PopState();
             temp_OnCompletion(core, dispatcher, dT);
         }
-
-
-        return true;
     }
 
 
     /************************************************************************************************/
 
 
-    bool EventHandler(Event evt) override
+    void EventHandler(Event evt) override
     {
-        return true;
     }
 
     bool Completed()    { return completed; }

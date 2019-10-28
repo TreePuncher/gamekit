@@ -116,7 +116,7 @@ PlayState::~PlayState()
 /************************************************************************************************/
 
 
-bool PlayState::EventHandler(Event evt)
+void PlayState::EventHandler(Event evt)
 {
 	eventMap.Handle(
 		evt, 
@@ -126,46 +126,40 @@ bool PlayState::EventHandler(Event evt)
 
 			//thirdPersonCamera.HandleEvents(evt);
 		});
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool PlayState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+void PlayState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
 	//debugCamera.Yaw(dT * pi/8);
 	debugCamera.Update(framework.MouseState, dT);
 	//auto cameraRigUpdateTask	= UpdateThirdPersonRig		(dispatcher, thirdPersonCamera, *transformTask, *cameraUpdate, dT);
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool PlayState::DebugDraw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
+void PlayState::DebugDraw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
 {
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool PlayState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
+void PlayState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
 {
-	return false;
 }
 
 
 /************************************************************************************************/
 
 
-bool PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
@@ -260,23 +254,18 @@ bool PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, 
 				DrawCollectionDesc,
 				core.GetTempMemory());
 	}
-
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool PlayState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
+void PlayState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
 	if (framework.drawDebug)
 		framework.DrawDebugHUD(dT, base.textBuffer, frameGraph);
 
 	PresentBackBuffer(frameGraph, &core.Window);
-
-	return true;
 }
 
 

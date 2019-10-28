@@ -182,7 +182,7 @@
     <ClInclude Include="coreutilities\CommonStructs.h" />
     <ClInclude Include="coreutilities\Components.h" />
     <ClInclude Include="coreutilities\Console.h" />
-    <ClInclude Include="coreutilities\ConsoleSubState.h" />
+    <ClInclude Include="coreutilities\DebugPanel.h" />
     <ClInclude Include="coreutilities\containers.h" />
     <ClInclude Include="coreutilities\DungeonGen.h" />
     <ClInclude Include="coreutilities\Events.h" />
@@ -255,7 +255,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="coreutilities\ConsoleSubState.cpp">
+    <ClCompile Include="coreutilities\DebugPanel.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>

@@ -61,11 +61,11 @@ public:
 	~ClientLobbyState();
 
 
-	bool Update			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-	bool Draw			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
-	bool PostDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
+	void Update			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+	void Draw			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
+	void PostDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
 
-	bool EventHandler	(Event evt) final override;
+	void EventHandler	(Event evt) final override;
 
 	size_t					refreshCounter;
 	Vector<PacketHandler*>	packetHandlers;

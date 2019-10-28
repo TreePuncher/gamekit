@@ -64,13 +64,13 @@ public:
 	~PlayState();
 
 
-	bool Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
-	bool PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
-	bool Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
-	bool PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
+	void Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
+    void PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
+    void Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
+    void PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final override;
 
-	bool DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
-	bool EventHandler	(Event evt)	final;
+    void DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final override;
+    void EventHandler	(Event evt)	final;
 
 
 	GraphicScene		scene;

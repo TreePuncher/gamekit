@@ -134,7 +134,7 @@ ClientLobbyState::~ClientLobbyState()
 /************************************************************************************************/
 
 
-bool ClientLobbyState::EventHandler(FlexKit::Event evt)
+void ClientLobbyState::EventHandler(FlexKit::Event evt)
 {
 	if (evt.InputSource == FlexKit::Event::InputType::Keyboard)
 	{
@@ -152,14 +152,13 @@ bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 			}
 		}
 	}
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT)
+void ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT)
 {
 	if (refreshCounter++ > 10)
 	{
@@ -168,15 +167,13 @@ bool ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, 
 		RequestPlayerListPacket packet{ client.localID };
 		client.network.Send(packet.Header, client.server);
 	}
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
 
@@ -200,21 +197,18 @@ bool ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 		currentRenderTarget,
 		core.GetTempMemory(),
 		&frameGraph);
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	if (framework.drawDebugStats)
 		framework.DrawDebugHUD(dT, client.base.textBuffer, frameGraph);
 
 	PresentBackBuffer(frameGraph, &core.Window);
-	return true;
 }
 
 

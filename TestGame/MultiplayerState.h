@@ -269,7 +269,7 @@ public:
     }
 
 
-	bool Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
+	void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
 	{
 		// Recieve Packets
 		for(auto packet = raknet.Receive(); packet != nullptr; raknet.DeallocatePacket(packet), packet = raknet.Receive())
@@ -297,7 +297,7 @@ public:
                 auto handle = FindConnectionHandle(packet->systemAddress);
                 if (handle == InvalidHandle_t) {
                     SystemInError();
-                    return false;
+                    return;
                 }
 
                 HandleDisconnection(handle);
@@ -363,8 +363,6 @@ public:
         }
         else
             timer += dT;
-
-		return true;
 	}
 
 

@@ -201,19 +201,18 @@ namespace FlexKit
 		const char* Str;
 		iAllocator*	Memory;
 
-		operator const char* (){return Str; }
+		operator const char* (){ return Str; }
 	};
 
 
 	struct Console
 	{
-		Console(SpriteFontAsset* font, iAllocator* allocator);
+		Console(SpriteFontAsset* font, RenderSystem& renderSystem, iAllocator* allocator);
 		~Console();
-
 
 		void Release();
 
-		void Draw( FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory);
+		void Draw(FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory);
 
 
 		void Input( char InputCharacter );
@@ -243,10 +242,9 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-
-		VertexBufferHandle		vertexBuffer;	// (framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-		VertexBufferHandle		textBuffer;		// (framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)),
-		ConstantBufferHandle	constantBuffer;
+		VertexBufferHandle		vertexBuffer    = InvalidHandle_t; 
+		VertexBufferHandle		textBuffer      = InvalidHandle_t;
+		ConstantBufferHandle	constantBuffer  = InvalidHandle_t;
 
 		CircularBuffer<ConsoleLine, 32>	lines;
 		CircularBuffer<ConsoleLine, 32>	commandHistory;
@@ -261,9 +259,10 @@ namespace FlexKit
 		char	inputBuffer[1024];
 		size_t	inputBufferSize;
 
+        RenderSystem& renderSystem;
 		iAllocator*	allocator;
 
-		const char* engineVersion = "Version: Pre-Alpha 0.0.0.2:" __DATE__;
+		const char* engineVersion = "Version: Pre-Alpha 0.0.0.3:" __DATE__;
 	};
 
 

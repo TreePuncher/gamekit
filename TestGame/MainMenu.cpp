@@ -61,7 +61,7 @@ MainMenu::MainMenu(
 /************************************************************************************************/
 
 
-bool MainMenu::Update(
+void MainMenu::Update(
 	EngineCore& core,
 	UpdateDispatcher& dispatcher, 
 	double dT)
@@ -72,14 +72,13 @@ bool MainMenu::Update(
 	windowInput.LeftMouseButtonPressed	= framework.MouseState.LMB_Pressed;
 
 	gui.Update(dT, windowInput, GetPixelSize(core.Window), core.GetTempMemory());
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
+void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
 	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
 
@@ -105,20 +104,17 @@ bool MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 		currentRenderTarget,
 		core.GetTempMemory(),
 		&frameGraph);
-
-	return true;
 }
 
 /************************************************************************************************/
 
 
-bool MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph)
+void MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph)
 {
 	if (framework.drawDebugStats)
 		framework.DrawDebugHUD(dT, textBuffer, Graph);
 
 	PresentBackBuffer(Graph, &core.Window);
-	return true;
 }
 
 

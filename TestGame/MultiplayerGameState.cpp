@@ -43,36 +43,32 @@ GameState::~GameState()
 /************************************************************************************************/
 
 
-bool GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+void GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool GameState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+void GameState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool GameState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void GameState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool GameState::PostDrawUpdate(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+void GameState::PostDrawUpdate(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
-	return true;
 }
 
 
@@ -98,27 +94,25 @@ LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_ba
 /************************************************************************************************/
 
 
-bool LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT)
+void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT)
 {
-    debugCamera.Yaw(pi * dT / 2);
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
+void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT)
 {
-    return true;
 }
+
+
 
 
 /************************************************************************************************/
 
 
-bool LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
@@ -157,24 +151,27 @@ bool LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
     base.render.updateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
 	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, frameGraph, PVS.GetData().solid, activeCamera, targets, sceneDesc, core.GetTempMemory());
-
-    PresentBackBuffer(frameGraph, &core.Window);
-
-	return true;
 }
 
 
 /************************************************************************************************/
 
 
-bool LocalPlayerState::EventHandler(Event evt)
+void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+{
+    PresentBackBuffer(frameGraph, &core.Window);
+}
+
+
+/************************************************************************************************/
+
+
+void LocalPlayerState::EventHandler(Event evt)
 {
 	eventMap.Handle(evt, [&](auto& evt)
 		{
 			debugCamera.HandleEvent(evt);
 		});
-
-	return true;
 }
 
 
