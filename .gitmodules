@@ -16,3 +16,9 @@
 [submodule "Dependencies/sdks/DirectXTex"]
 	path = Dependencies/sdks/DirectXTex
 	url = https://github.com/microsoft/DirectXTex.git
+[submodule "Dependencies/sdks/amd-tootle"]
+	path = Dependencies/sdks/amd-tootle
+	url = https://github.com/GPUOpen-Tools/amd-tootle.git
+[submodule "Dependencies/sdks/angelscript"]
+	path = Dependencies/sdks/angelscript
+	url = https://github.com/IngwiePhoenix/AngelScript.git
