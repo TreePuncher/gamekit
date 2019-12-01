@@ -56,15 +56,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool PipelineStateTable::ReloadLoadPSO( PSOHandle handle )
-	{
-		return false;
-	}
-
-
-	/************************************************************************************************/
-
-
 	bool PipelineStateTable::QueuePSOLoad(PSOHandle handle, iAllocator* queueAllocator)
 	{
 		PipelineStateObject* PSO = _GetStateObject(handle);
@@ -102,7 +93,11 @@ namespace FlexKit
 				return true;
 			}
 
-			else return false;
+            else
+            {
+                queueAllocator->release(NewTask); // Failed to schedule task, release task
+                return false;
+            }
 		}
 
 
@@ -363,8 +358,11 @@ namespace FlexKit
 			FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
 		);
 		
-		auto previousState = PSO->PSO;
-		PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
+		const auto previousPSO = PSO->PSO;
+        const auto previousState = PSO->state.load();
+
+        if(previousState != PipelineStateObject::PSO_States::ReLoadQueued)
+		    PSO->state = PipelineStateObject::PSO_States::LoadInProgress;
 
 		while (true)
 		{
@@ -395,8 +393,9 @@ namespace FlexKit
 			PSO->state	= PipelineStateObject::PSO_States::Loaded;
 			PSO->CV.notify_all();
 
-			//if(previousState)
-			//	previousState->Release();
+            // TODO: FIX THIS LEAK!
+			//if(previousPSO)
+			//	previousPSO->Release();
 
 			break;
 		}

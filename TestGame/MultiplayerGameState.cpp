@@ -204,6 +204,23 @@ void LocalPlayerState::EventHandler(Event evt)
 		{
 			debugCamera.HandleEvent(evt);
 		});
+
+    switch (evt.InputSource)
+    {
+        case Event::Keyboard:
+        {
+            switch (evt.mData1.mKC[0])
+            {
+            case KC_U: // Reload Shaders
+            {
+                if (evt.Action == Event::Release)
+                {
+                    framework.core.RenderSystem.QueuePSOLoad(FORWARDDRAW);
+                }
+            }   break;
+            }
+        }   break;
+    }
 }
 
 

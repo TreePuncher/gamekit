@@ -144,20 +144,19 @@ namespace FlexKit
 		
 		void ReleasePSOs();
 
-		bool							QueuePSOLoad	( PSOHandle handle, iAllocator* Allocator );
-		bool							ReloadLoadPSO	( PSOHandle handle );
+		bool							QueuePSOLoad	(PSOHandle, iAllocator*);
 
-		ID3D12PipelineState*			GetPSO			( PSOHandle handle );
-		RootSignature const * const 	GetPSORootSig	( PSOHandle handle ) const;
+		ID3D12PipelineState*			GetPSO			(PSOHandle);
+		RootSignature const * const 	GetPSORootSig	(PSOHandle) const;
 
-		void							RegisterPSOLoader( PSOHandle handle, PipelineStateDescription Loader );
+		void							RegisterPSOLoader(PSOHandle, PipelineStateDescription Loader );
 
 	private:
-		PipelineStateObject*	_GetStateObject			(PSOHandle				handle);
-		PipelineStateObject*	_GetNearestStateObject	(PSOHandle				handle);
+		PipelineStateObject*	_GetStateObject			(PSOHandle);
+		PipelineStateObject*	_GetNearestStateObject	(PSOHandle);
 
-		PipelineStateObject const*	_GetStateObject			(PSOHandle				handle) const;
-		PipelineStateObject const*	_GetNearestStateObject	(PSOHandle				handle) const;
+		PipelineStateObject const*	_GetStateObject			(PSOHandle) const;
+		PipelineStateObject const*	_GetNearestStateObject	(PSOHandle) const;
 
 		bool					_AddStateObject			(PipelineStateObject*	PSO);
 
