@@ -29,7 +29,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\Fonts.h"
-#include "..\graphicsutilities\AnimationUtilities.h"
 #include "..\coreutilities\ResourceHandles.h"
 
 #include <iostream>
@@ -179,8 +178,6 @@ namespace FlexKit
 
 	struct TriMeshResourceBlob
 	{
-		//#pragma warning(disable:4200)
-
 		size_t			ResourceSize;
 		EResourceType	Type;
 		GUID_t			GUID;
@@ -224,38 +221,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct SkeletonResourceBlob
-	{
-		//#pragma warning(disable:4200)
-
-		size_t			ResourceSize;
-		EResourceType	Type;
-		size_t			GUID;
-		size_t			Pad;
-
-		char ID[FlexKit::ID_LENGTH];
-
-		struct JointEntry
-		{
-			FlexKit::float4x4		IPose;
-			FlexKit::JointPose		Pose;
-			FlexKit::JointHandle	Parent;
-			uint16_t				Pad;
-			char					ID[64];
-		};
-
-		size_t JointCount;
-		JointEntry Joints[];
-	};
-
-
-	/************************************************************************************************/
-
-
 	struct FontResourceBlob
 	{
-//#pragma warning(disable:4200)
-
 		size_t			ResourceSize;
 		EResourceType	Type;
 		GUID_t			GUID;
@@ -266,36 +233,6 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
-
-	struct AnimationResourceBlob
-	{
-		size_t			ResourceSize;
-		EResourceType	Type;
-
-//#pragma warning(disable:4200)
-
-		GUID_t					GUID;
-		Resource::ResourceState	State;
-		uint32_t				RefCount;
-
-		char   ID[FlexKit::ID_LENGTH];
-
-		GUID_t Skeleton;
-		size_t FrameCount;
-		size_t FPS;
-		bool   IsLooping;
-
-		struct FrameEntry
-		{
-			size_t JointCount;
-			size_t PoseCount;
-			size_t JointStarts;
-			size_t PoseStarts;
-		};
-
-		char	Buffer[];
-	};
 
 
 	struct TextureSet_Locations
@@ -315,8 +252,6 @@ namespace FlexKit
 			Type			= EResourceType::EResource_TextureSet;
 			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
 		}
-
-//	#pragma warning(disable:4200)
 
 		size_t					ResourceSize;
 		EResourceType			Type;
@@ -398,8 +333,6 @@ namespace FlexKit
 			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
 		}
 
-//#pragma warning(disable:4200)
-
 		size_t						ResourceSize;
 		EResourceType				Type;
 		GUID_t						GUID;
@@ -418,7 +351,6 @@ namespace FlexKit
 
 	struct ColliderResourceBlob
 	{
-//#pragma warning(disable:4200)
 		size_t					ResourceSize;
 		EResourceType			Type;
 		GUID_t					GUID;
@@ -434,8 +366,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI AnimationClip	Resource2AnimationClip	( Resource* R, iAllocator* Memory );
-	FLEXKITAPI Skeleton*		Resource2Skeleton		( ResourceHandle RHandle, iAllocator* Memory );
 	FLEXKITAPI bool				Resource2TriMesh		( RenderSystem* RS, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
 	FLEXKITAPI TextureSet*		Resource2TextureSet		( ResourceHandle RHandle, iAllocator* Memory );
 

@@ -94,7 +94,7 @@ public:
         //static_assert(std::is_pod_v<TY>, "POD types only!");
 
         buffer.resize(sizeof(IN_struct));
-        memcpy(GetBuffer(), &IN_struct, sizeof(TY));
+        memcpy(data(), &IN_struct, sizeof(TY));
     }
 
     Blob operator + (const Blob& rhs_blob)
@@ -123,7 +123,7 @@ public:
         return buffer.size();
     }
 
-    std::byte* GetBuffer()
+    std::byte* data()
     {
         return buffer.data();
     }

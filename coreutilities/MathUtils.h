@@ -830,6 +830,9 @@ namespace FlexKit
 		inline float3 yz() const { return float3(0.0f, y, z); }
 
 
+        inline float3 zxy() const { return float3(z, x, y); }
+
+
 		inline float3& operator = (float F)
 		{
 			pfloats = _mm_set_ps1(F);
@@ -1022,17 +1025,7 @@ namespace FlexKit
 		// Slow uses Square roots
 		inline void normalize() 
 		{
-#if USING(FASTMATH)
-			//pfloats.m128_f32[3] = 0;
-			__m128 sq = _mm_mul_ps(pfloats, pfloats);
-			sq = _mm_hadd_ps(sq, sq);
-			sq = _mm_hadd_ps(sq, sq);
-			sq = _mm_mul_ps(_mm_rsqrt_ps(sq), pfloats);
-			pfloats = sq;
-#else
-			float3 temp = *this;
-			pfloats = temp / magnitude();
-#endif
+            pfloats = normal();
 		}
 
 

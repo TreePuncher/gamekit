@@ -290,7 +290,7 @@ int main(int argc, char* argv[])
 					auto [res, scene] = LoadFBXScene(assetLocation, Manager, Settings);
 					if(res)
 					{
-						ResourceList sceneResources = CompileSceneFromFBXFile(scene, Desc, MetaData);
+						ResourceList sceneResources = CreateSceneFromFBXFile(scene, Desc, MetaData);
 
 						for (auto& resource : sceneResources)
 							resources.push_back(resource);

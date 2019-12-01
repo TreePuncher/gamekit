@@ -1,34 +1,73 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #include "..\PCH.h"
 #include "..\buildsettings.h"
 #include "AnimationUtilities.h"
 #include "AnimationRuntimeUtilities.h"
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
+
+    Skeleton* Resource2Skeleton(ResourceHandle RHandle, iAllocator* Memory)
+	{
+		SkeletonResourceBlob* Blob                  = (SkeletonResourceBlob*)GetResource(RHandle);
+        SkeletonResourceBlob::JointEntry* joints    = reinterpret_cast<SkeletonResourceBlob::JointEntry*>(((std::byte*)Blob) + sizeof(SkeletonResourceBlob::Header));
+
+		Skeleton*	S = &Memory->allocate_aligned<Skeleton, 0x40>();
+		S->InitiateSkeleton(Memory, Blob->header.JointCount);
+
+		char* StringPool = (char*)Memory->malloc(64 * Blob->header.JointCount);
+
+		for (size_t I = 0; I < Blob->header.JointCount; ++I)
+		{
+			Joint		J;
+			JointPose	JP;
+			float4x4	IP;
+			memcpy(&IP, &joints[I].IPose, sizeof(float4x4));
+			memcpy(&JP,	&joints[I].Pose,	sizeof(JointPose));
+
+			J.mID		= StringPool + (64 * I);
+			J.mParent	= joints[I].Parent;
+			strcpy_s((char*)J.mID, 64, joints[I].ID);
+
+			S->AddJoint(J, *(XMMATRIX*)&IP);
+		}
+
+		FreeResource(RHandle);
+		return S;
+	}
+
+
+	/************************************************************************************************/
+
+
+	AnimationClip Resource2AnimationClip(Resource* R, iAllocator* Memory)
+	{
+		AnimationResourceBlob* Anim = (AnimationResourceBlob*)R;
+		AnimationClip	AC;// = &Memory->allocate_aligned<AnimationClip, 0x10>();
+		AC.FPS             = (uint32_t)Anim->header.FPS;
+		AC.FrameCount      = Anim->header.FrameCount;
+		AC.isLooping       = Anim->header.IsLooping;
+		AC.guid			   = Anim->header.GUID;
+		size_t StrSize     = 1 + strlen(Anim->header.ID);
+		AC.mID	           = (char*)Memory->malloc(strlen(Anim->header.ID));
+		strcpy_s(AC.mID, StrSize, Anim->header.ID);
+		AC.Frames		   = (AnimationClip::KeyFrame*)Memory->_aligned_malloc(sizeof(AnimationClip::KeyFrame) * AC.FrameCount);
+		
+		AnimationResourceBlob::FrameEntry* Frames = (AnimationResourceBlob::FrameEntry*)(Anim->Buffer);
+		for (size_t I = 0; I < AC.FrameCount; ++I)
+		{
+			size_t jointcount       = Frames[I].JointCount;
+			AC.Frames[I].JointCount = jointcount;
+			AC.Frames[I].Joints     = (JointHandle*)	Memory->_aligned_malloc(sizeof(JointHandle) * jointcount, 0x10);
+			AC.Frames[I].Poses      = (JointPose*)		Memory->_aligned_malloc(sizeof(JointPose)   * jointcount, 0x10);
+			memcpy(AC.Frames[I].Joints, Anim->Buffer + Frames[I].JointStarts,  sizeof(JointHandle)  * jointcount);
+			memcpy(AC.Frames[I].Poses,  Anim->Buffer + Frames[I].PoseStarts,   sizeof(JointPose)    * jointcount);
+		}
+
+		return AC;
+	}
+
+
 	/************************************************************************************************/
 
 
@@ -1052,12 +1091,15 @@ namespace FlexKit
 
 		float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
 
+        for (size_t itr = 0; itr < S->JointCount; ++itr)
+            M[itr] = float4x4::Identity();
+
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
 			float3 A, B;
 			
 			float4x4 PT;
-			if (S->Joints[I].mParent != 0XFFFF)
+			if (S->Joints[I].mParent != InvalidHandle_t)
 				PT = M[S->Joints[I].mParent];
 			else
 				PT = float4x4::Identity();
@@ -1121,3 +1163,28 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2019 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

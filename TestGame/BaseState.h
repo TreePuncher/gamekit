@@ -171,11 +171,12 @@ public:
 						IN_Framework.ActiveWindow->WH / 10
 					},
 
-			cameras		{ framework.core.GetBlockMemory() },
-			ids			{ framework.core.GetBlockMemory() },
-			drawables	{ framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
-			visables	{ framework.core.GetBlockMemory() },
-			pointLights	{ framework.core.GetBlockMemory() }
+			cameras		        { framework.core.GetBlockMemory() },
+			ids			        { framework.core.GetBlockMemory() },
+			drawables	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
+			visables	        { framework.core.GetBlockMemory() },
+			pointLights	        { framework.core.GetBlockMemory() },
+            skeletonComponent   { framework.core.GetBlockMemory() }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
@@ -219,6 +220,7 @@ public:
 	DrawableComponent			drawables;
 	SceneVisibilityComponent	visables;
 	PointLightComponent			pointLights;
+    SkeletonComponent           skeletonComponent;
 
 	TextureStreamingEngine		streamingEngine;
 };

@@ -49,14 +49,14 @@ typedef FlexKit::Handle_t<16> NodeHandle;
 
 struct Scene_Desc
 {
-	size_t			MaxTriMeshCount		= 0;
-	size_t			MaxEntityCount		= 0;
-	size_t			MaxPointLightCount	= 0;
-	size_t			MaxSkeletonCount	= 0;
-	iAllocator*		SceneMemory			= nullptr;
-	iAllocator*		AssetMemory			= nullptr;
-	NodeHandle		Root;
-	ShaderSetHandle DefaultMaterial;
+	size_t			    MaxTriMeshCount		= 0;
+	size_t			    MaxEntityCount		= 0;
+	size_t			    MaxPointLightCount	= 0;
+	size_t			    MaxSkeletonCount	= 0;
+	iAllocator*		    SceneMemory			= nullptr;
+	iAllocator*		    AssetMemory			= nullptr;
+	NodeHandle	        Root;
+	ShaderSetHandle     DefaultMaterial;
 };
 
 
@@ -261,5 +261,5 @@ using SceneResource_ptr = std::shared_ptr<SceneResource>;
 /************************************************************************************************/
 
 
-ResourceList CompileSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, MetaDataList& METAINFO);
+ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& METAINFO);
 #endif

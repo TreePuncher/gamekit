@@ -105,6 +105,64 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    FbxVector4 ReadTangent(int index, fbxsdk::FbxMesh* Mesh)
+    {
+        FbxVector4 out;
+        auto Tangents = Mesh->GetElementTangent(index);
+        auto Mapping = Tangents->GetMappingMode();
+
+        out = Tangents->GetDirectArray().GetAt(index);
+        switch (Mapping)
+        {
+        case fbxsdk::FbxLayerElement::eNone:
+            break;
+        case fbxsdk::FbxLayerElement::eByControlPoint:
+        {
+            switch (Tangents->GetReferenceMode())
+            {
+            case fbxsdk::FbxLayerElement::eDirect:
+                out = Tangents->GetDirectArray().GetAt(index);
+                break;
+            case fbxsdk::FbxLayerElement::eIndexToDirect:
+            {
+                int TangentIndex = Tangents->GetIndexArray().GetAt(index);
+                out = Tangents->GetDirectArray().GetAt(TangentIndex);
+            }	break;
+            default:
+                break;
+            }
+        }
+        break;
+        case fbxsdk::FbxLayerElement::eByPolygonVertex:
+        {
+            auto TangentIndex = Tangents->GetIndexArray();
+            auto NIndex = TangentIndex.GetAt(index);
+            {
+                switch (Tangents->GetReferenceMode())
+                {
+                case fbxsdk::FbxLayerElement::eDirect:
+                {
+                    out = Tangents->GetDirectArray().GetAt(index);
+                }	break;
+                case fbxsdk::FbxLayerElement::eIndexToDirect:
+                {
+                    int x = 0;
+                }	break;
+                default:
+                    break;
+                }
+            }
+        }
+        default:
+            break;
+        }
+        return out;
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -121,12 +179,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh* Mesh)
+	size_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, const fbxsdk::FbxMesh& mesh)
 	{
 		using FlexKit::MeshUtilityFunctions::TokenList;
 
-		int CPIndex     = Mesh->GetPolygonVertex(pIndex, vIndex);
-		auto NElement   = Mesh->GetElementNormal(0);
+		int CPIndex     = mesh.GetPolygonVertex(pIndex, vIndex);
+		auto NElement   = mesh.GetElementNormal(0);
 
 		auto MappingMode = NElement->GetMappingMode();
 		switch (NElement->GetMappingMode())
@@ -171,14 +229,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetTexcordIndex(const int pIndex, const int vIndex, fbxsdk::FbxMesh* Mesh)
+	size_t GetTexcordIndex(const int pIndex, const int vIndex, fbxsdk::FbxMesh& mesh)
 	{
-		FK_ASSERT(Mesh);
+		const int CPIndex       = mesh.GetPolygonVertex(pIndex, vIndex);
+		const auto UVElement    = mesh.GetElementUV(0);
 
-		int CPIndex = Mesh->GetPolygonVertex(pIndex, vIndex);
-		auto UVElement = Mesh->GetElementUV(0);
 		if ( !UVElement )
-			return 0;
+			return -1;
 
 		switch (UVElement->GetMappingMode())
 		{
@@ -203,7 +260,7 @@ namespace FlexKit
 				case FbxGeometryElement::eDirect:
 				case FbxGeometryElement::eIndexToDirect:
 				{
-					const int lTextureUVIndex = Mesh->GetTextureUVIndex(pIndex, vIndex);
+					const int lTextureUVIndex = mesh.GetTextureUVIndex(pIndex, vIndex);
 					return (size_t)lTextureUVIndex;
 				}
 				break;
@@ -223,25 +280,24 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetVertexIndex(int pIndex, int vIndex, int vID, fbxsdk::FbxMesh* Mesh)
+	size_t GetVertexIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh& mesh)
 	{ 
-		FK_ASSERT(Mesh);
-		return Mesh->GetPolygonVertex(pIndex, vIndex); 
+		return mesh.GetPolygonVertex(pIndex, vIndex); 
 	}
 
 
 	/************************************************************************************************/
 
 
-	FBXSkinDeformer CreateSkin(const fbxsdk::FbxMesh* Mesh)
+	FBXSkinDeformer CreateSkin(const fbxsdk::FbxMesh& mesh)
 	{	// Get Weights
 		FBXSkinDeformer	Out = {};
 
-		auto DeformerCount  = Mesh->GetDeformerCount();
+		const auto DeformerCount  = mesh.GetDeformerCount();
 		for ( int I = 0; I < DeformerCount; ++I )
 		{
 			fbxsdk::FbxStatus S;
-			auto D		= Mesh->GetDeformer(I, &S);
+			auto D		= mesh.GetDeformer(I, &S);
 			auto Type	= D->GetDeformerType();
 			switch ( Type ) 
 			{
@@ -262,11 +318,8 @@ namespace FlexKit
 					auto* const fbxBone			= Cluster->GetLink();
 					const auto	fbxBoneAttrib	= fbxBone->GetNodeAttribute();
 
-					//if (fbxBoneAttrib->GetAttributeType() == FbxNodeAttribute::eSkeleton)
-					//	auto Name	= Bone->GetName();
-
 					FBXSkinDeformer::BoneWeights bone;
-					bone.name			= ClusterName;
+					bone.name = ClusterName;
 
 					for ( size_t III = 0; III < CPICount; ++III )
 					{
@@ -276,7 +329,6 @@ namespace FlexKit
 
 					Out.bones.emplace_back(std::move(bone));
 				}
-
 			}	break;
 			}
 		}
@@ -287,9 +339,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh* Mesh, FlexKit::MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S, bool SubDiv_Enabled)
+	FBXMeshDesc TranslateToTokens(fbxsdk::FbxMesh& mesh, SkeletonResource_ptr skeleton, bool SubDiv_Enabled)
 	{
-		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
+        using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddNormalToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddIndexToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddTexCordToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddVertexToken;
@@ -299,13 +351,15 @@ namespace FlexKit
 		using fbxsdk::FbxLayerElement;
 
 		FBXMeshDesc	out = {};
+        out.tokens      = FlexKit::MeshUtilityFunctions::TokenList{ SystemAllocator };
+
 		float3 MinV(INFINITY);
 		float3 MaxV(-INFINITY);
 		float  R = 0;
 
 		{	// Get Vertices
-			size_t VCount = Mesh->GetControlPointsCount();
-			auto CPs = Mesh->mControlPoints;
+			const size_t VCount   = mesh.GetControlPointsCount();
+			const auto CPs        = mesh.mControlPoints;
 
 			for (int itr = 0; itr < VCount; ++itr) 
 			{
@@ -321,38 +375,47 @@ namespace FlexKit
 				MaxV.z = max(V2.z, MaxV.z);
 				R = max(R, V2.magnitude());
 
-				AddVertexToken(V2, TokensOut);
+				AddVertexToken(V2, out.tokens);
 			}
 		}
 		{	// Get Normals
-			size_t	NormalCount = Mesh->GetElementNormalCount();
-			auto	Normals = Mesh->GetElementNormal();
-			size_t	NCount	= Mesh->GetPolygonVertexCount();
-			auto	mapping = Normals->GetMappingMode();
+			size_t	NormalCount = mesh.GetElementNormalCount();
+			auto	Normals     = mesh.GetElementNormal();
+			auto	Tangents    = mesh.GetElementTangent();
+			size_t	NCount	    = mesh.GetPolygonVertexCount();
+			auto	mapping     = Normals->GetMappingMode();
 
 			if (NormalCount)
 				out.Normals = true;
 
-			for (int itr = 0; itr < NCount; ++itr)
-			{
-				auto N = Normals->GetDirectArray().GetAt(itr);
-				AddNormalToken(TranslateToFloat3(N), TokensOut);
-			}
+            if(Tangents)
+			    for (int itr = 0; itr < NCount; ++itr)
+                    AddNormalToken(
+                        TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
+                        TranslateToFloat3(Tangents->GetDirectArray().GetAt(itr)),
+                        out.tokens);
+            else
+                for (int itr = 0; itr < NCount; ++itr)
+				    AddNormalToken(
+                        TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
+                        out.tokens);
+
+            out.Tangents = Tangents != nullptr;
 		}
 		{	// Get UV's
-			auto UVElement = Mesh->GetElementUV(0);
+			auto UVElement = mesh.GetElementUV(0);
 			if (UVElement) {
 				out.UV = true;
 				auto size = UVElement->GetDirectArray().GetCount();
 				for (int I = 0; I < size; ++I) {
 					auto UV = UVElement->GetDirectArray().GetAt(I);
-					AddTexCordToken({ float(UV[0]), float(UV[1]), 0.0f }, TokensOut);
+					AddTexCordToken({ float(UV[0]), float(UV[1]), 0.0f }, out.tokens);
 				}
 			}
 		}	// Get Use-able Deformers
-		if (Mesh->GetDeformerCount() && S)
+		if (mesh.GetDeformerCount() && skeleton)
 		{
-			const size_t			VCount		= size_t(Mesh->GetControlPointsCount());
+			const size_t			VCount		= (size_t)mesh.GetControlPointsCount();
 			std::vector<float4>		Weights;
 			std::vector<uint4_32>	boneIndices;
 
@@ -362,11 +425,11 @@ namespace FlexKit
 			for (size_t I = 0; I < VCount; ++I)	Weights[I]		= { 0.0f, 0.0f, 0.0f, 0.0f };
 			for (size_t I = 0; I < VCount; ++I)	boneIndices[I]	= { -1, -1, -1, -1 };
 
-			auto skin		= CreateSkin(Mesh);
+			auto skin		= CreateSkin(mesh);
 
 			for (size_t I = 0; I < skin.bones.size(); ++I)
 			{
-				JointHandle Handle = S->FindJoint(skin.bones[I].name);
+				JointHandle Handle = skeleton->FindJoint(skin.bones[I].name);
 
 				for (size_t II = 0; II < skin.bones[I].weights.size(); ++II)
 				{
@@ -386,50 +449,51 @@ namespace FlexKit
 			}
 
 			for (size_t I = 0; I < VCount; ++I)
-				AddWeightToken({ Weights[I].pFloats, boneIndices[I] }, TokensOut);
+				AddWeightToken({ Weights[I].pFloats, boneIndices[I] }, out.tokens);
 
 			out.Weights		= true;
 			skin.indices	= std::move(boneIndices);
-			out.Skin		= std::move(skin);
+			out.skin		= std::move(skin);
 		}
 		{	// Calculate Indices
-			auto Normals	= Mesh->GetElementNormal();
-			auto UVs		= Mesh->GetElementUV(0);
+			const auto Normals	= mesh.GetElementNormal();
+			const auto UVs		= mesh.GetElementUV(0);
 
-			size_t  NormalCount	= Mesh->GetElementNormalCount();
-			size_t  TriCount		= Mesh->GetPolygonCount();
-			size_t  FaceCount	= 0;
+			const size_t  NormalCount	= mesh.GetElementNormalCount();
+			const size_t  TriCount	= mesh.GetPolygonCount();
+
+			size_t  faceCount	= 0;
 			int     IndexCount	= 0;
 
 			// Iterate through each Tri
 			for (int I = 0; I < TriCount; ++I)
 			{	// Process each Vertex in tri
-				const int size = Mesh->GetPolygonSize(I);
-				++FaceCount;
+				const int size = mesh.GetPolygonSize(I);
 
-				size_t	NC = Mesh->GetElementNormal()->GetDirectArray().GetCount();
+				size_t	NC = mesh.GetElementNormal()->GetDirectArray().GetCount();
 				if (SubDiv_Enabled)	
-					AddPatchBeginToken(TokensOut);
+					AddPatchBeginToken(out.tokens);
 
 				if (size == 3)
 				{
-					size_t VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
-					size_t NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
-					size_t UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
+					const size_t VertexIndex1 = GetVertexIndex(I, 0, IndexCount, mesh);
+					const size_t NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, mesh) : 0;
+					const size_t UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, mesh) : 0;
 
-					size_t VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
-					size_t NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
-					size_t UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
+					const size_t VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, mesh);
+					const size_t NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, mesh) : 0;
+					const size_t UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, mesh) : 0;
 
-					size_t VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
-					size_t NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
-					size_t UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
+					const size_t VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, mesh);
+					const size_t NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, mesh) : 0;
+					const size_t UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, mesh) : 0;
 
-					AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, TokensOut);
-					AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, TokensOut);
-					AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, TokensOut);
+					AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, out.tokens);
+					AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+					AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, out.tokens);
 
 					IndexCount += 3;
+                    ++faceCount;
 				}
 				else if (size == 4)
 				{	// Quads
@@ -440,60 +504,61 @@ namespace FlexKit
 
 					if(QuadsEnabled)
 					{
-						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
-						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
-						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
+						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, mesh) : 0;
 
-						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
-						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
-						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
+						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, mesh) : 0;
 
-						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
-						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
-						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
+						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, mesh) : 0;
 
-						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, Mesh);
-						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, Mesh) : 0;
-						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, Mesh) : 0;
+						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, mesh) : 0;
 
-						AddIndexToken(VertexIndex1, NormalIndex1, 0, TokensOut);
-						AddIndexToken(VertexIndex2, NormalIndex2, 0, TokensOut);
-						AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
-						AddIndexToken(VertexIndex4, NormalIndex4, 0, TokensOut);
+						AddIndexToken(VertexIndex1, NormalIndex1, 0, out.tokens);
+						AddIndexToken(VertexIndex2, NormalIndex2, 0, out.tokens);
+						AddIndexToken(VertexIndex3, NormalIndex3, 0, out.tokens);
+						AddIndexToken(VertexIndex4, NormalIndex4, 0, out.tokens);
 
 						IndexCount += 4;
 					}
 					else
 					{
-						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, Mesh);
-						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, Mesh) : 0;
-						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, Mesh) : 0;
+						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, mesh) : 0;
 
-						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, Mesh);
-						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, Mesh) : 0;
-						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, Mesh) : 0;
+						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, mesh) : 0;
 
-						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, Mesh);
-						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, Mesh) : 0;
-						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, Mesh) : 0;
+						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, mesh) : 0;
 
-						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, Mesh);
-						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, Mesh) : 0;
-						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, Mesh) : 0;
+						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, mesh) : 0;
 
-						AddIndexToken(VertexIndex1, NormalIndex1, 0, TokensOut);
-						AddIndexToken(VertexIndex2, NormalIndex2, 0, TokensOut);
-						AddIndexToken(VertexIndex3, NormalIndex3, 0, TokensOut);
+						AddIndexToken(VertexIndex1, NormalIndex1, 0, out.tokens);
+						AddIndexToken(VertexIndex2, NormalIndex2, 0, out.tokens);
+						AddIndexToken(VertexIndex3, NormalIndex3, 0, out.tokens);
 
 						IndexCount += 3;
+                        ++faceCount;
 					}
 
 				}
 
-				if (SubDiv_Enabled)	AddPatchEndToken(TokensOut);
+				if (SubDiv_Enabled)	AddPatchEndToken(out.tokens);
 			}
 
-			out.FaceCount = FaceCount;
+			out.faceCount = faceCount;
 		}
 
 		out.MinV	= MinV;
@@ -507,7 +572,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MeshResource_ptr CompileMeshResource(FbxMesh* Mesh, const std::string& ID, MetaDataList& MD, bool EnableSubDiv = false)
+	MeshResource_ptr CreateMeshResource(FbxMesh& mesh, const std::string& ID, const MetaDataList& metaData, const bool enableSubDiv)
 	{
 #if USING(TOOTLE)
 		Memory  = SystemAllocator;// It will Leak, I know
@@ -524,31 +589,32 @@ namespace FlexKit
 		using MeshUtilityFunctions::MeshBuildInfo;
 
 		MeshResource_ptr meshOut		= std::make_shared<MeshResource>();
-
-		SkeletonResource_ptr skeleton	= LoadSkeletonResource(Mesh, ID, MD);
-		TokenList Tokens				= TokenList{ SystemAllocator };
-		auto MeshInfo					= TranslateToTokens(Mesh, Tokens, &skeleton.get()->CreateSkeletonProxy());
+		SkeletonResource_ptr skeleton	= CreateSkeletonResource(mesh, ID, metaData);
+		auto transformedMesh			= TranslateToTokens(mesh, skeleton, enableSubDiv);
 
 		CombinedVertexBuffer	CVB	{ SystemAllocator };
-		IndexList				IB	{ SystemAllocator, MeshInfo.FaceCount * 4 };
+		IndexList				IB	{ SystemAllocator, transformedMesh.faceCount * 4 };
 
-		auto BuildRes = MeshUtilityFunctions::BuildVertexBuffer(Tokens, CVB, IB, SystemAllocator, SystemAllocator, MeshInfo.Weights);
-		FK_ASSERT(BuildRes.V1 == true, "Mesh Failed to Build");
+		auto [success, buffer] = MeshUtilityFunctions::BuildVertexBuffer(transformedMesh.tokens, CVB, IB, SystemAllocator, SystemAllocator, transformedMesh.Weights);
+		FK_ASSERT(success == true, "Mesh Failed to Build");
 
-		size_t IndexCount  = GetByType<MeshBuildInfo>(BuildRes).IndexCount;
-		size_t VertexCount = GetByType<MeshBuildInfo>(BuildRes).VertexCount;
+		const size_t IndexCount  = buffer.IndexCount;
+		const size_t VertexCount = buffer.VertexCount;
 
 		static_vector<Pair<VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT>> BuffersFound = {
 			{VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32}
 		};
 
-		if ((MeshInfo.UV))
+		if (transformedMesh.UV)
 			BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32 });
 
-		if ((MeshInfo.Normals))
-			BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 });
+        if (transformedMesh.Normals)
+            BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 });
 
-		if ((MeshInfo.Weights)) {
+        if(transformedMesh.Tangents)
+            BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 });
+
+		if (transformedMesh.Weights) {
 			BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 });
 			BuffersFound.push_back({ VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16 });
 		}
@@ -589,17 +655,16 @@ namespace FlexKit
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
 				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchVertexPOS);		break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
-				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchVertexNormal);	break;
+                FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchVertexNormal);  break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV:
-				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteUV, FetchVertexUV);			break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteUV,     FetchVertexUV);      break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
-				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchFloat3ZERO);	break;
+				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchVertexTangent);	break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1:
 				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], WriteVertex, FetchWeights);		break;
 			case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2:
 				FillBufferView(&CVB, CVB.size(), meshOut->buffers[i], Writeuint4, FetchWeightIndices);	break;
-			default:
-				break;
+			default:                                                                                    break;
 			}
 		}
 
@@ -607,9 +672,9 @@ namespace FlexKit
 		FillBufferView(&IB, IB.size(), meshOut->buffers[BuffersFound.size()], WriteIndex, FetchIndex2);
 
 		//Calculate Bounding Sphere
-		const float3	BSCenter = (MeshInfo.MaxV + MeshInfo.MinV) / 2;
-		float			BSRadius = 0;//(MeshInfo.MaxV - MeshInfo.MinV).magnitude() / 2;
-		const float		BSR_Ref  = (MeshInfo.MaxV - MeshInfo.MinV).magnitude() / 2;
+		const float3	BSCenter = (transformedMesh.MaxV + transformedMesh.MinV) / 2;
+		const float		BSR_Ref  = (transformedMesh.MaxV - transformedMesh.MinV).magnitude() / 2;
+        float		    BSRadius = 0;
 
 		ProcessBufferView(
 			&CVB, 
@@ -626,17 +691,17 @@ namespace FlexKit
 
 		//Calculate AABB
 		FlexKit::AABB AxisAlignedBoundingBox;
-		AxisAlignedBoundingBox.BottomLeft	= MeshInfo.MinV;
-		AxisAlignedBoundingBox.TopRight		= MeshInfo.MaxV;
+		AxisAlignedBoundingBox.BottomLeft	= transformedMesh.MinV;
+		AxisAlignedBoundingBox.TopRight		= transformedMesh.MaxV;
 
 		meshOut->IndexBuffer_Idx	= BuffersFound.size();
 		meshOut->IndexCount			= IndexCount;
 		meshOut->Skeleton			= skeleton;
-		meshOut->AnimationData		= MeshInfo.Weights ? EAnimationData::EAD_Skin : 0;
-		meshOut->Info.max			= MeshInfo.MaxV;
-		meshOut->Info.min			= MeshInfo.MinV;
-		meshOut->Info.r				= MeshInfo.R;
-		meshOut->TriMeshID			= Mesh->GetUniqueID();
+		meshOut->AnimationData		= transformedMesh.Weights ? EAnimationData::EAD_Skin : 0;
+		meshOut->Info.max			= transformedMesh.MaxV;
+		meshOut->Info.min			= transformedMesh.MinV;
+		meshOut->Info.r				= transformedMesh.R;
+		meshOut->TriMeshID			= mesh.GetUniqueID();
 		meshOut->ID					= ID;
 		meshOut->SkeletonGUID		= skeleton ? skeleton->guid : -1;
 		meshOut->BS					= BoundingSphere(BSCenter, BSRadius);

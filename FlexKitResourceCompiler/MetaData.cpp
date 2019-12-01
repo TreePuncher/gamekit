@@ -152,6 +152,7 @@ namespace FlexKit
 			auto T = Tokens[itr2];
 
 			if (T.size())
+            {
 				if (T == "int")
 				{
 					Value NewValue;
@@ -171,7 +172,7 @@ namespace FlexKit
 
 					itr2 += 3;
 				}
-				if (T == "uint")
+				else if (T == "uint")
 				{
 					Value NewValue;
 					NewValue.Type = ValueType::UINT;
@@ -249,6 +250,7 @@ namespace FlexKit
 					return{ Values, itr2 };
 				else
 					itr2++;
+            }
 		}
 
 		// Should Be Un-reachable
@@ -312,8 +314,8 @@ namespace FlexKit
 		return metaData;
 	}
 
-	/************************************************************************************************/
 
+	/************************************************************************************************/
 
 
 	MetaData* ParseScene(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
@@ -407,12 +409,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseAnimationClip(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSkeletalAnimationClip(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto ID					= FindValue(values, "ID");
 		auto beginFrame			= FindValue(values, "Begin");
 		auto endFrame			= FindValue(values, "End");
 		auto GUID				= FindValue(values, "AssetGUID");
+		auto frameRate          = FindValue(values, "FrameRate");
 
 		// Check for ill formed data
 		FK_ASSERT((ID			!= nullptr), "MISSING ID TAG!");
@@ -424,17 +427,20 @@ namespace FlexKit
 		FK_ASSERT((endFrame->Type   == ValueType::FLOAT));
 		FK_ASSERT((GUID->Type		== ValueType::INT));
 
-		AnimationClip_MetaData* NewAnimationClip = new AnimationClip_MetaData;
+        SkeletalAnimationClip_MetaData* newSkeletalAnimationClip = new SkeletalAnimationClip_MetaData;
 
 		auto Target = tokens[begin - 2];
 
-		NewAnimationClip->ClipID	= ID->Data.S;
-		NewAnimationClip->ID		= Target;
-		NewAnimationClip->T_Start	= beginFrame->Data.F;
-		NewAnimationClip->T_End		= endFrame->Data.F;
-		NewAnimationClip->guid		= GUID->Data.I;
+        newSkeletalAnimationClip->ClipID	= ID->Data.S;
+        newSkeletalAnimationClip->ID		= Target;
+        newSkeletalAnimationClip->T_Start	= beginFrame->Data.F;
+        newSkeletalAnimationClip->T_End		= endFrame->Data.F;
+        newSkeletalAnimationClip->guid		= GUID->Data.I;
 
-		return NewAnimationClip;
+        if(frameRate && frameRate->Type == ValueType::FLOAT)
+            newSkeletalAnimationClip->frameRate	= frameRate->Data.F;
+
+		return newSkeletalAnimationClip;
 	}
 
 
@@ -560,13 +566,13 @@ namespace FlexKit
 	const MetaDataParserTable CreateDefaultParser()
 	{
 		return {
-				{ "AnimationClip",		ParseAnimationClip			},
-				{ "Collider",			ParseCollider				},
-				{ "Font",				ParseFontSet				},
-				{ "Model",				ParseModel					},
-				{ "Scene",				ParseScene					},
-				{ "Skeleton",			ParseSkeleton				},
-				{ "TerrainCollider",	ParseTerrainColliderAsset	},
+				{ "Collider",			    ParseCollider				},
+				{ "Font",				    ParseFontSet				},
+				{ "Model",				    ParseModel					},
+				{ "Scene",				    ParseScene					},
+                { "Skeleton",			    ParseSkeleton				},
+                { "SkeletalAnimationClip",	ParseSkeletalAnimationClip  },
+				{ "TerrainCollider",	    ParseTerrainColliderAsset	},
 				//table["TextureSet"]		= ParseTextureSet;
 				//table["Test"]				= CreateParser(0);
 			};
@@ -715,7 +721,6 @@ namespace FlexKit
 	}
 
 
-
 	/************************************************************************************************/
 
 
@@ -746,7 +751,7 @@ namespace FlexKit
 
 		for (size_t itr = begin; itr < end && itr < Tokens.size() - 3; ++itr)
 		{
-			if (std::string str = std::string(Tokens[itr]); 
+			if (auto str = std::string_view(Tokens[itr]);
 				parser.find(string(Tokens[itr])) == parser.end()		&& // Check Identifer
 				Tokens[itr + 1] == ":"									&& // Check for Operator
 				parser.find(string(Tokens[itr + 2])) != parser.end()	&& // Check keyword_metatype
@@ -832,15 +837,9 @@ namespace FlexKit
 
 	MetaDataList FindRelatedMetaData(const MetaDataList& MetaData, const MetaData::EMETA_RECIPIENT_TYPE Type, const std::string& ID)
 	{
-		MetaDataList RelatedData;
+        auto _pred = [&](auto meta) { return (meta->UserType == Type && ID == meta->ID); };
 
-		for (auto meta : MetaData)
-		{
-			if (meta->UserType == Type && ID == meta->ID)
-					RelatedData.push_back(meta);
-		}
-
-		return RelatedData;
+        return filter(MetaData, _pred);
 	}
 
 
@@ -857,8 +856,6 @@ namespace FlexKit
 	}
 
 	/************************************************************************************************/
-
-
 
 
 	MetaDataList ScanForRelated(const MetaDataList& metaData, const MetaData::EMETAINFOTYPE type)

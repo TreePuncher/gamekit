@@ -2159,7 +2159,7 @@ namespace FlexKit
 		iAllocator* Memory, 
 		TY_OTHER ... Args)
 	{
-		struct DrawRect
+		struct ShapeParams
 		{
 			PSOHandle				State;
 			FrameResourceHandle		RenderTarget;
@@ -2170,9 +2170,9 @@ namespace FlexKit
 		};
 
 
-		auto& Pass = Graph.AddNode<DrawRect>(
-			DrawRect{},
-			[&](FrameGraphNodeBuilder& Builder, DrawRect& Data)
+		auto& Pass = Graph.AddNode<ShapeParams>(
+            ShapeParams{},
+			[&](FrameGraphNodeBuilder& Builder, ShapeParams& Data)
 			{
 				// Single Thread Section
 				// All Rendering Data Must be pushed into buffers here in advance, or allocated in advance
@@ -2198,7 +2198,7 @@ namespace FlexKit
 					Data.descriptorTables.NullFill(Graph.Resources.renderSystem);
 				}
 			},
-			[=](const DrawRect& Data, const FrameResources& Resources, Context* Ctx)
+			[=](const ShapeParams& Data, const FrameResources& Resources, Context* Ctx)
 			{	// Multi-threadable Section
 				auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
 

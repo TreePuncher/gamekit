@@ -41,17 +41,19 @@ namespace FlexKit
 
 
 		Pair<bool, MeshBuildInfo>
-		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool DoWeights )
+		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool DoWeights, bool tangentsIncluded )
 		{
 			Vector<float3>		position	{ ScratchSpace };
 			Vector<float3>		normal		{ ScratchSpace };
+			Vector<float3>		tangent		{ ScratchSpace };
 			Vector<float2>		UV			{ ScratchSpace };
 			Vector<float3>		Weights		{ ScratchSpace };
 			Vector<uint4_16>	WIndexes	{ ScratchSpace };
 
 			IndexList&	Indexes	= out_indexes;
 			MeshBuildInfo MBI	= {0};
-			Vector<size_t>	NormalTable(ScratchSpace);
+            Vector<size_t>	NormalTable(ScratchSpace);
+            Vector<size_t>	TangentTable(ScratchSpace);
 
 			map_t<CombinedVertex::IndexBitlayout, unsigned int>	IndexMap;
 			auto& FinalVerts = out_buffer;
@@ -124,9 +126,19 @@ namespace FlexKit
 				case Normal_COORD:
 				{
 					bool unqiue = true;
-					float3 newNormal	= *(float3*)itr.buffer;
+                    float3 newNormal;
+                    float3 newTangent;
+
+                    memcpy(&newNormal, itr.buffer,                      sizeof(float[3]));
+                    memcpy(&newTangent, itr.buffer + sizeof(float[3]),  sizeof(float[3]));
+
 					newNormal[3]		= 0.0f;
-					newNormal			= newNormal.normal();
+                    newTangent[3]       = 0.0f;
+
+					newNormal.normalize();
+
+                    if(tangentsIncluded)
+					    newTangent.normalize();
 					
 					for (size_t I= 0; I < normal.size(); ++I)
 					{
@@ -141,13 +153,15 @@ namespace FlexKit
 					if (unqiue) {
 						NormalTable.push_back(normal.size());
 						normal.push_back(newNormal);
+
+                        if (tangentsIncluded)
+                            tangent.push_back(newTangent);
 					}
 				}break;
 				case POSITION_COORD:
 				{
 					position.push_back(*(float3*)itr.buffer);
-				}
-					break;
+				}   break;
 				case WEIGHT:
 				{
 					if(DoWeights)
@@ -585,6 +599,20 @@ namespace FlexKit
 			}
 
 
+            /************************************************************************************************/
+
+
+			void AddNormalToken(const float3 N, const float3 T, TokenList& out)
+			{
+				s_TokenValue token;
+				token.token = FlexKit::Token::Normal_COORD;
+                memcpy(token.buffer, &N, sizeof(float[3]));
+                memcpy(token.buffer + sizeof(float[3]), &N, sizeof(float3));
+
+				out.push_back(token);
+			}
+
+
 			/************************************************************************************************/
 
 
@@ -596,6 +624,7 @@ namespace FlexKit
 				V->f[0] = in.x;
 				V->f[1] = in.y;
 				V->f[2] = 0.0;
+
 				out.push_back(T);
 			}
 

@@ -83,7 +83,7 @@ namespace FlexKit
 			GetComponent()[drawable].Node		= node;
 		}
 
-		TriMeshHandle	GetTriMesh()
+		TriMeshHandle GetTriMesh()
 		{
 			return GetComponent()[drawable].MeshHandle;
 		}
@@ -202,6 +202,10 @@ namespace FlexKit
 			GetComponent()[visibility].boundingSphere = boundingSphere;
 		}
 
+        void SetVisable(bool v)
+        {
+            GetComponent()[visibility].visable = v;
+        }
 
 		operator VisibilityHandle() { return visibility; }
 
@@ -361,10 +365,14 @@ namespace FlexKit
 
 		Drawable&	        SetNode(SceneEntityHandle EHandle, NodeHandle Node);
 
-		Vector<PointLightHandle> FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
+		Vector<PointLightHandle>    FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
-		auto&					GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
-		size_t					GetPointLightCount();
+
+		auto&					    GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
+		size_t					    GetPointLightCount();
+
+        auto begin()    { return sceneEntities.begin(); }
+        auto end()      { return sceneEntities.end(); }
 
 		const SceneHandle					sceneID;
 
@@ -376,6 +384,12 @@ namespace FlexKit
 
 		operator GraphicScene* () { return this; }
 	};
+
+
+    /************************************************************************************************/
+
+
+    std::pair<GameObject*, bool> FindGameObject(GraphicScene& scene, const char* id);
 
 
 	/************************************************************************************************/
@@ -411,6 +425,12 @@ namespace FlexKit
 
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
+
+
+    /************************************************************************************************/
+
+
+    FLEXKITAPI void SetVisable(GameObject&, bool);
 
 
 	/************************************************************************************************/

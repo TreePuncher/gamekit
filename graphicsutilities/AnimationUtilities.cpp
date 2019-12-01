@@ -137,12 +137,8 @@ namespace FlexKit
 		S->Memory->free((void*)S->IPose);
 		S->Memory->free(S);
 
-		auto I = S->Animations;
-		while (I != nullptr) {
-			//ReleaseSceneAnimation(&I->Clip, I->Memory);
+        for (auto I = S->Animations; I != nullptr; I = I->Next) 
 			I->Memory->_aligned_free(I);
-			I = I->Next;
-		}
 	}
 
 
@@ -154,10 +150,10 @@ namespace FlexKit
 		for (size_t I = 0; I < JointCount; ++I)
 		{
 			if (!strcmp(Joints[I].mID, ID))
-				return (JointHandle)I;
+                return JointHandle{ I };
 		}
 
-		return -1;
+		return InvalidHandle_t;
 	}
 
 

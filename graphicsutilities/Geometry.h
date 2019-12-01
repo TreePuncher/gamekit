@@ -27,8 +27,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GEOMETRY_H_INCLUDED
 
 #include "..\buildsettings.h"
-#include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\intersection.h"
+#include "..\coreutilities\MathUtils.h"
+#include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 
 
@@ -187,12 +188,15 @@ namespace FlexKit
 		template<>
 		inline bool Push(float3& in)
 		{
-			if (mBufferUsed + static_cast<uint32_t>(mBufferFormat) > mBufferSize)
-				return false;
+            if (mBufferUsed + static_cast<uint32_t>(mBufferFormat) > mBufferSize) {
+                mBufferinError = true;
+                return false;
+            }
 
-			char* Val = (char*)&in;
-			for (size_t itr = 0; itr < static_cast<uint32_t>(mBufferFormat); itr++)
-				mBuffer[mBufferUsed++] = Val[itr];
+            const size_t elementSize = static_cast<uint32_t>(mBufferFormat);
+            memcpy(mBuffer + mBufferUsed, &in, elementSize);
+            mBufferUsed += elementSize;
+
 			return !mBufferinError;
 		}
 
@@ -288,7 +292,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI VertexBufferView* CreateVertexBufferView(byte* Memory, size_t BufferLength);
+	FLEXKITAPI VertexBufferView* CreateVertexBufferView(iAllocator* Memory, size_t BufferLength);
 
 
 	/************************************************************************************************/
@@ -297,7 +301,7 @@ namespace FlexKit
 	inline void CreateBufferView(size_t size, iAllocator* memory, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F)
 	{
 		size_t VertexBufferSize = size * (size_t)F + sizeof(VertexBufferView);
-		View = FlexKit::CreateVertexBufferView((byte*)memory->_aligned_malloc(VertexBufferSize), VertexBufferSize);
+		View = FlexKit::CreateVertexBufferView(memory, VertexBufferSize);
 		View->Begin(T, F);
 	}
 
@@ -416,6 +420,10 @@ namespace FlexKit
 
 		VertexBufferView*	Buffers[16];
 	};
+
+
+    bool GenerateTangents(static_vector<VertexBufferView*>& buffers, iAllocator*);
+
 
 }	/************************************************************************************************/
 

@@ -314,7 +314,6 @@ namespace FlexKit
 		{
 			TriMeshResourceBlob* Blob = (TriMeshResourceBlob*)R;
 			size_t BufferCount        = 0;
-			size_t Index              = 0; 
 
 			Out->SkinTable	  = nullptr;
 			Out->SkeletonGUID = Blob->SkeletonGuid;
@@ -349,15 +348,17 @@ namespace FlexKit
 				auto b = Blob->Buffers[I];
 				if (b.size)
 				{
-					auto View = new(Memory->_aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)(Blob->Memory + b.Begin), b.size);
+					auto View = new (Memory->_aligned_malloc(sizeof(VertexBufferView))) VertexBufferView((byte*)(Blob->Memory + b.Begin), b.size);
 					View->SetTypeFormatSize((VERTEXBUFFER_TYPE)b.Type, (VERTEXBUFFER_FORMAT)b.Format, b.size/b.Format );
-					Out->Buffers[Index] = View;
-					BufferCount++;
+					Out->Buffers.push_back(View);
 				}
-				++Index;
 			}
 
-			CreateVertexBuffer(RS, Out->Buffers, BufferCount, Out->VertexBuffer);
+            // Generate Tangents if they weren't loaded
+            if (!Out->HasTangents() && Out->HasNormals())
+                GenerateTangents(Out->Buffers, Memory);
+
+			CreateVertexBuffer(RS, Out->Buffers, Out->Buffers.size(), Out->VertexBuffer);
 
 			if (ClearBuffers)
 			{
@@ -367,7 +368,6 @@ namespace FlexKit
 						Memory->_aligned_free(Out->Buffers[I]);
 					Out->Buffers[I] = nullptr;
 				}
-				++Index;
 				FreeResource(RHandle);
 			}
 		
@@ -375,68 +375,6 @@ namespace FlexKit
 			return true;
 		}
 		return false;
-	}
-
-
-	/************************************************************************************************/
-
-
-	Skeleton* Resource2Skeleton(ResourceHandle RHandle, iAllocator* Memory)
-	{
-		SkeletonResourceBlob* Blob = (SkeletonResourceBlob*)GetResource(RHandle);
-		Skeleton*	S = &Memory->allocate_aligned<Skeleton, 0x40>();
-		S->InitiateSkeleton(Memory, Blob->JointCount);
-
-		char* StringPool = (char*)Memory->malloc(32 * Blob->JointCount);
-
-		for (size_t I = 0; I < Blob->JointCount; ++I)
-		{
-			Joint		J;
-			JointPose	JP;
-			float4x4	IP;
-			memcpy(&IP, &Blob->Joints[I].IPose, sizeof(float4x4));
-			memcpy(&JP,	&Blob->Joints[I].Pose,	sizeof(JointPose));
-
-			J.mID		= StringPool + (32 * I);
-			J.mParent	= Blob->Joints[I].Parent;
-			strcpy_s((char*)J.mID, 32, Blob->Joints[I].ID);
-
-			S->AddJoint(J, *(XMMATRIX*)&IP);
-		}
-
-		FreeResource(RHandle);
-		return S;
-	}
-
-
-	/************************************************************************************************/
-
-
-	AnimationClip Resource2AnimationClip(Resource* R, iAllocator* Memory)
-	{
-		AnimationResourceBlob* Anim = (AnimationResourceBlob*)R;
-		AnimationClip	AC;// = &Memory->allocate_aligned<AnimationClip, 0x10>();
-		AC.FPS             = (uint32_t)Anim->FPS;
-		AC.FrameCount      = Anim->FrameCount;
-		AC.isLooping       = Anim->IsLooping;
-		AC.guid			   = Anim->GUID;
-		size_t StrSize     = 1 + strlen(Anim->ID);
-		AC.mID	           = (char*)Memory->malloc(strlen(Anim->ID));
-		strcpy_s(AC.mID, StrSize, Anim->ID);
-		AC.Frames		   = (AnimationClip::KeyFrame*) Memory->_aligned_malloc(sizeof(AnimationClip::KeyFrame) * AC.FrameCount);
-		
-		AnimationResourceBlob::FrameEntry* Frames = (AnimationResourceBlob::FrameEntry*)(Anim->Buffer);
-		for (size_t I = 0; I < AC.FrameCount; ++I)
-		{
-			size_t jointcount       = Frames[I].JointCount;
-			AC.Frames[I].JointCount = jointcount;
-			AC.Frames[I].Joints     = (JointHandle*)	Memory->_aligned_malloc(sizeof(JointHandle) * jointcount, 0x10);
-			AC.Frames[I].Poses      = (JointPose*)		Memory->_aligned_malloc(sizeof(JointPose)   * jointcount, 0x10);
-			memcpy(AC.Frames[I].Joints, Anim->Buffer + Frames[I].JointStarts,  sizeof(JointHandle)  * jointcount);
-			memcpy(AC.Frames[I].Poses,  Anim->Buffer + Frames[I].PoseStarts,   sizeof(JointPose)    * jointcount);
-		}
-
-		return AC;
 	}
 
 
@@ -533,7 +471,7 @@ namespace FlexKit
 			auto Index	= GeometryTable.FreeList.back();
 			GeometryTable.FreeList.pop_back();
 
-			Handle		= GeometryTable.Handles.GetNewHandle();
+			Handle = GeometryTable.Handles.GetNewHandle();
 
 			auto Available = isResourceAvailable(GUID);
 			FK_ASSERT(Available);

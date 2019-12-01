@@ -35,6 +35,51 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    std::pair<GameObject*, bool> FindGameObject(GraphicScene& scene, const char* id)
+    {
+        auto& visableComponent = SceneVisibilityComponent::GetComponent();
+
+        for (auto& visable : scene)
+        {
+            auto& gameObject = *visableComponent[visable].entity;
+            auto res = Apply(
+                gameObject,
+                [&]
+                (
+                    StringIDView& ID
+                )
+                {
+                    auto goID = ID.GetString();
+                    return strncmp(goID, id, 64) == 0;
+                },
+                []
+                { return false; });
+
+            if (res)
+                return { &gameObject, true };
+        }
+
+        return { nullptr, false };
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetVisable(GameObject& gameObject, bool v)
+    {
+        Apply(
+            gameObject,
+            [&]( SceneVisibilityView& visable )
+            {
+                visable.SetVisable(v);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
     void DrawableComponentEventHandler::OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator)
     {
         auto node = GetSceneNode(gameObject);

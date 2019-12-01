@@ -27,10 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ANIMATION_UTILITIES_H
 
 #include "..\PCH.h"
-#include "..\\coreutilities\MathUtils.h"
-#include "..\\coreutilities\memoryutilities.h"
-#include "..\\coreutilities\Resources.h"
-#include "..\\graphicsutilities\CoreSceneObjects.h"
+#include "..\coreutilities\MathUtils.h"
+#include "..\coreutilities\memoryutilities.h"
+#include "..\coreutilities\Resources.h"
+#include "..\graphicsutilities\AnimationUtilities.h"
+#include "..\graphicsutilities\CoreSceneObjects.h"
 
 
 #include <DirectXMath.h>
@@ -66,8 +67,8 @@ namespace FlexKit
 		{
 			for (auto I = 0; I < S->JointCount; I++)
 			{
-				JointPoses[I].ts ={ 0, 0, 0, 0 };
-				JointPoses[I].r = DirectX::XMQuaternionIdentity();
+				JointPoses[I].ts = { 0, 0, 0, 0 };
+				JointPoses[I].r  = DirectX::XMQuaternionIdentity();
 			}
 		}
 
@@ -179,6 +180,7 @@ namespace FlexKit
 		EASO_WITHIN,
 		EASO_FARTHERTHEN,
 	};
+
 
 	enum ASCondition_InputType
 	{
@@ -301,6 +303,7 @@ namespace FlexKit
 
 	FLEXKITAPI void UpdateASM(double dt, AnimationStateMachine* ASM, iAllocator* TempMemory, iAllocator* Memory, GraphicScene* Scene);
 
+
 	/************************************************************************************************/
 
 
@@ -309,7 +312,7 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J != -1 && J < E->JointCount) {
+		if (J != InvalidHandle_t && J < E->JointCount) {
 			E->Joints[J].r = DirectX::XMQuaternionMultiply(E->Joints[J].r, Q);
 			E->Dirty = true;
 		}
@@ -320,7 +323,7 @@ namespace FlexKit
 		if (!PS)
 			return;
 
-		if (J != -1) {
+		if (J != InvalidHandle_t) {
 			float4 xyz(xyz, 0);
 			PS->Joints[J].ts = PS->Joints[J].ts + xyz;
 			PS->Dirty = true;
@@ -332,7 +335,7 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J != -1) {
+		if (J != InvalidHandle_t) {
 			float s = E->Joints[J].ts.w;
 			E->Joints[J].ts = float4( xyz.x, xyz.y, xyz.z, s);
 			E->Dirty = true;
@@ -344,7 +347,7 @@ namespace FlexKit
 		if (!E)
 			return;
 
-		if (J!= -1)
+		if (J!= InvalidHandle_t)
 			E->Joints[J].ts.w *= S;
 	}
 
@@ -406,6 +409,13 @@ namespace FlexKit
 	FLEXKITAPI void DEBUG_DrawSkeleton				( Skeleton* S,				NodeHandle Node, iAllocator* TEMP, LineSegments* Out );
 	FLEXKITAPI void DEBUG_DrawPoseState				( DrawablePoseState* DPS,	NodeHandle Node, LineSegments* Out ) ;
 	FLEXKITAPI void DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
+
+
+    /************************************************************************************************/
+
+
+    FLEXKITAPI AnimationClip	Resource2AnimationClip(Resource* R, iAllocator* Memory);
+    FLEXKITAPI Skeleton*        Resource2Skeleton(ResourceHandle RHandle, iAllocator* Memory);
 
 
 	/************************************************************************************************/

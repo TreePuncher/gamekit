@@ -42,7 +42,7 @@ namespace FlexKit
 		POSITION_COORD,
 		UV_COORD,
 		INDEX,
-		Normal_COORD,
+        Normal_COORD,
 		WEIGHT,
 		WEIGHTINDEX,
 		LOADMATERIAL,
@@ -102,7 +102,8 @@ namespace FlexKit
 	{
 		CombinedVertex() : NORMAL(0), POS(0), TEXCOORD(0), WEIGHTS(0) {}
 		float3	 POS;
-		float3	 NORMAL;
+        float3	 NORMAL;
+        float3	 TANGENT;
 		float3	 TEXCOORD;
 		float3	 WEIGHTS;
 		uint4_16 WIndices;
@@ -158,7 +159,7 @@ namespace FlexKit
 		};
 
 		// This Function is AWFUL!!! ITS SLOW AND SUCKS AND IS ASHAMED OF ITSELF!
-		FLEXKITAPI FlexKit::Pair<bool, MeshBuildInfo>	BuildVertexBuffer(const TokenList&, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool weights = false );
+		FLEXKITAPI FlexKit::Pair<bool, MeshBuildInfo>	BuildVertexBuffer(const TokenList&, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool weights = false, bool tangents = false );
 		FLEXKITAPI char*								ScrubLine( char* inLine, size_t RINOUT lineLength );
 
 		namespace OBJ_Tools
@@ -179,8 +180,9 @@ namespace FlexKit
 			typedef Pair<float3, uint4_32> WeightIndexPair;
 			FLEXKITAPI void			AddVertexToken		(float3 in, TokenList& out);
 			FLEXKITAPI void			AddWeightToken		(WeightIndexPair in, TokenList& out );
-			FLEXKITAPI void			AddNormalToken		(float3 in, TokenList& out);
-			FLEXKITAPI void			AddTexCordToken		(float3 in, TokenList& out);
+            FLEXKITAPI void			AddNormalToken      (float3 in, TokenList& out);
+            FLEXKITAPI void			AddNormalToken      (const float3 N, const float3 T, TokenList& out);
+            FLEXKITAPI void			AddTexCordToken		(float3 in, TokenList& out);
 			FLEXKITAPI void			AddIndexToken		(size_t V, size_t N, size_t T, TokenList& out);
 			FLEXKITAPI void			AddPatchBeginToken	(TokenList& out);
 			FLEXKITAPI void			AddPatchEndToken	(TokenList& out);

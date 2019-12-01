@@ -30,27 +30,27 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /************************************************************************************************/
 
 
-fbxsdk::FbxNode* FindSkeletonRoot(const fbxsdk::FbxMesh* M)
+fbxsdk::FbxNode* FindSkeletonRoot(const fbxsdk::FbxMesh& mesh)
 {
-	auto DeformerCount  = M->GetDeformerCount();
+	auto DeformerCount  = mesh.GetDeformerCount();
 	for (int32_t I = 0; I < DeformerCount; ++I)
 	{
 		fbxsdk::FbxStatus S;
-		auto D		= M->GetDeformer(I, &S);
-		auto Type	= D->GetDeformerType();
+		const auto D	= mesh.GetDeformer(I, &S);  FK_ASSERT(D != nullptr);
+		const auto Type	= D->GetDeformerType();
 
 		switch (Type)
 		{
 		case fbxsdk::FbxDeformer::EDeformerType::eSkin:
 		{
-			auto Skin			= (FbxSkin*)D;
-			auto ClusterCount	= Skin->GetClusterCount();
+			const auto Skin			= (FbxSkin*)D;
+			const auto ClusterCount	= Skin->GetClusterCount();
 
-			auto Cluster		= Skin->GetCluster(0);
-			auto CLBone			= Cluster->GetLink();
-			auto CLBoneAttrib	= CLBone->GetNodeAttribute();
-			auto CLBoneName		= CLBone->GetName();
-			auto* I				= CLBone;
+			const auto Cluster		= Skin->GetCluster(0);
+			const auto CLBone		= Cluster->GetLink();
+			const auto CLBoneAttrib	= CLBone->GetNodeAttribute();
+			const auto CLBoneName	= CLBone->GetName();
+			auto* I				    = CLBone;
 
 			while (true)
 			{
@@ -73,26 +73,26 @@ fbxsdk::FbxNode* FindSkeletonRoot(const fbxsdk::FbxMesh* M)
 /************************************************************************************************/
 
 
-JointAnimation GetJointAnimation(const FbxNode* N)
+SkeletonJointAnimation GetJointAnimation(const FbxNode* node, const AnimationProperties properties)
 {
-	auto Scene			= N->GetScene();
-	auto AnimationStack = Scene->GetCurrentAnimationStack();
-	auto TakeInfo		= Scene->GetTakeInfo(AnimationStack->GetName());
-	auto Begin			= TakeInfo->mLocalTimeSpan.GetStart();
-	auto End			= TakeInfo->mLocalTimeSpan.GetStop();
-	auto Duration		= End - Begin;
-	auto FrameRate		= 1.0f / 60.0f;
+	const auto Scene			= node->GetScene();
+	const auto AnimationStack   = Scene->GetCurrentAnimationStack();
+	const auto TakeInfo		    = Scene->GetTakeInfo(AnimationStack->GetName());
+	const auto Begin			= TakeInfo->mLocalTimeSpan.GetStart();
+	const auto End			    = TakeInfo->mLocalTimeSpan.GetStop();
+	const auto Duration		    = (End - Begin).GetFrameCount(FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
+	const auto FrameRate		= properties.frameRate;
 
-	JointAnimation	A;
-	A.FPS			= 60;
-	A.FrameCount	= Duration.GetFrameCount(FbxTime::eFrames60);
-	A.Poses.reserve(Duration.GetFrameCount(FbxTime::eFrames60));
+    SkeletonJointAnimation A;
+	A.FPS			= (uint32_t)properties.frameRate;
+	A.FrameCount	= Duration;
+	A.Poses.resize(Duration);
 
-	for (size_t I = 0; I < size_t(Duration.GetFrameCount(FbxTime::eFrames60)); ++I)
+	for (size_t I = 0; I < size_t(Duration); ++I)
 	{
 		FbxTime	CurrentFrame;
-		CurrentFrame.SetFrame(I, FbxTime::eFrames60);
-		A.Poses[I].JPose = GetPose(FBXMATRIX_2_XMMATRIX(const_cast<FbxNode*>(N)->EvaluateLocalTransform(CurrentFrame)));
+		CurrentFrame.SetFrame(I, FbxTime::ConvertFrameRateToTimeMode(properties.frameRate));
+		A.Poses[I].JPose = GetPose(FBXMATRIX_2_XMMATRIX(const_cast<FbxNode*>(node)->EvaluateLocalTransform(CurrentFrame)));
 	}
 
 	return A;
@@ -102,13 +102,13 @@ JointAnimation GetJointAnimation(const FbxNode* N)
 /************************************************************************************************/
 
 
-JointHandle GetJoint(JointList& Out, const char* ID)
+JointHandle GetJoint(const JointList& joints, const char* ID)
 {
-	for (size_t I = 0; I < Out.size(); ++I)
-		if (!strcmp(Out[I].Joint.mID, ID))
+	for (size_t I = 0; I < joints.size(); ++I)
+		if (joints[I].Joint.mID == ID)
 			return (JointHandle)I;
 
-	return 0XFFFF;
+	return InvalidHandle_t;
 }
 
 
@@ -128,14 +128,14 @@ FbxAMatrix GetGeometryTransformation(FbxNode* inNode)
 /************************************************************************************************/
 
 
-void GetJointTransforms(JointList& Out, const FbxMesh* M)
+void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
 {
 	using DirectX::XMMatrixRotationQuaternion;
 
-	auto DeformerCount = M->GetDeformerCount();
+	const auto DeformerCount = mesh.GetDeformerCount();
 	for (int I = 0; I < DeformerCount; ++I)
 	{
-		const auto D = M->GetDeformer(I);
+		const auto D = mesh.GetDeformer(I);
 		if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
 		{
 			const auto Skin = (FbxSkin*)D;
@@ -145,8 +145,8 @@ void GetJointTransforms(JointList& Out, const FbxMesh* M)
 				const auto Cluster  = Skin->GetCluster(II);
 				const auto ID       = Cluster->GetLink()->GetName();
 
-				JointHandle Handle = GetJoint(Out, ID);
-				FbxAMatrix G = GetGeometryTransformation(Cluster->GetLink());
+				JointHandle Handle  = GetJoint(Out, ID);
+				FbxAMatrix G        = GetGeometryTransformation(Cluster->GetLink());
 				FbxAMatrix transformMatrix;
 				FbxAMatrix transformLinkMatrix;
 
@@ -171,14 +171,14 @@ void FindAllJoints(JointList& Out, const FbxNode* N, const size_t Parent )
 	{
 		fbxsdk::FbxSkeleton* Sk = (fbxsdk::FbxSkeleton*)N->GetNodeAttribute();
 		
-		int JointIndex = (int)Out.size();
-		int ChildCount = N->GetChildCount();
+		const int JointIndex = (int)Out.size();
+		const int ChildCount = N->GetChildCount();
 
-		Joint NewJoint;
-		NewJoint.mID				= N->GetName();
-		NewJoint.mParent			= JointHandle(Parent);
+		SkeletonJoint NewJoint;
+		NewJoint.mID	    = N->GetName();
+		NewJoint.mParent	= JointHandle(Parent);
 
-		Out.emplace_back(JointInfo{ {NewJoint}, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
+		Out.emplace_back(SkeletonJointInfo{ { NewJoint }, GetJointAnimation(N), DirectX::XMMatrixIdentity() });
 
 		for ( int I = 0; I < ChildCount; ++I )
 			FindAllJoints(Out, N->GetChild( I ), JointIndex);
@@ -194,7 +194,7 @@ MetaDataList GetAllAnimationClipMetaData(const MetaDataList& metaDatas)
 	return FilterList(
 			[](auto metaData) 
 			{ 
-				return (metaData->type == MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP); 
+				return (metaData->type == MetaData::EMETAINFOTYPE::EMI_SKELETALANIMATION); 
 			}, 
 			metaDatas);
 }
@@ -203,22 +203,24 @@ MetaDataList GetAllAnimationClipMetaData(const MetaDataList& metaDatas)
 /************************************************************************************************/
 
 
-void GetAnimationCuts(CutList* out, const MetaDataList& metaData, const std::string& ID)
+CutList GetAnimationCuts(const MetaDataList& metaData, const std::string& ID)
 {
-	auto Related		= FindRelatedMetaData(metaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION, ID);
-	auto AnimationClips = GetAllAnimationClipMetaData(metaData);
+	auto related	= FindRelatedMetaData(metaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION, ID);
 
-	for (auto clip : AnimationClips)
-	{
-		auto			ClipMetaData = std::static_pointer_cast<AnimationClip_MetaData>(clip);
-		AnimationCut	NewCut	= {};
-		NewCut.ID				= ClipMetaData->ClipID;
-		NewCut.T_Start			= ClipMetaData->T_Start;
-		NewCut.T_End			= ClipMetaData->T_End;
-		NewCut.guid				= ClipMetaData->guid;
+    CutList out     = transform_stl(
+        GetAllAnimationClipMetaData(related),
+        [](auto& ClipMetaData) -> AnimationCut
+        {
+            auto clip = std::static_pointer_cast<SkeletalAnimationClip_MetaData> (ClipMetaData);
+            return {
+                clip->T_Start,
+                clip->T_End,
+                clip->ClipID,
+                clip->guid,
+                { clip } };
+        });
 
-		out->push_back(NewCut);
-	}
+    return out;
 }
 
 
@@ -238,74 +240,67 @@ std::shared_ptr<Skeleton_MetaData> GetSkeletonMetaData(const MetaDataList& metaD
 /************************************************************************************************/
 
 
-SkeletonResource_ptr LoadSkeletonResource(FbxMesh* M, const std::string& parentID, const MetaDataList& MD)
+SkeletonResource_ptr CreateSkeletonResource(FbxMesh& mesh, const std::string& parentID, const MetaDataList& MD)
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
 
+    auto skeleton = std::make_unique<SkeletonResource>();
+
 	// Gather MetaData
 	auto Related		= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON, parentID);
 	auto SkeletonInfo	= GetSkeletonMetaData(MD);
+    skeleton->metaData  = Related;
 
-	auto Root	= FindSkeletonRoot(M);
-	if (!Root || !SkeletonInfo)
+	auto root	= FindSkeletonRoot(mesh);
+	if (!root || !SkeletonInfo)
 		return nullptr;
 
-	std::vector<JointInfo> Joints;
-	FindAllJoints		(Joints, Root);
-	GetJointTransforms	(Joints, M);
+	std::vector<SkeletonJointInfo> joints;
+	FindAllJoints		(joints, root);
+	GetJointTransforms	(joints, mesh);
 
-	auto skeleton = std::make_unique<SkeletonResource>();
-
-	for (auto J : Joints)
-		skeleton->AddJoint(J.Joint, J.Inverse);
+	for (auto j : joints)
+		skeleton->AddJoint(j.Joint, j.Inverse);
 	
 	const std::string ID = SkeletonInfo->SkeletonID;
 	skeleton->guid  = SkeletonInfo->SkeletonGUID;
+    skeleton->ID    = ID;
 
-	for (size_t I = 0; I < Joints.size(); ++I)
+	for (size_t joint = 0; joint < joints.size(); ++joint)
+		skeleton->joints[joint].mID = skeleton->joints[joint].mID;
+
+	const CutList cuts = GetAnimationCuts(MD, ID);
+	for(const auto& cut : cuts)
 	{
-		size_t ID_Length = strnlen_s(skeleton->joints[I].mID, 64) + 1;
-		char* ID		 = (char*)SystemAllocator.malloc(ID_Length);
+		const auto begin	= (size_t)(cut.T_Start);
+		const auto end		= (size_t)(cut.T_End);
 
-		strcpy_s(ID, ID_Length, skeleton->joints[I].mID);
-		skeleton->joints[I].mID = ID;
-	}
+		AnimationClipResource clip;
+		clip.FPS		= 60;
+		clip.mID		= cut.ID;
+		clip.guid		= cut.guid;
+		clip.isLooping	= false;
 
-	CutList Cuts;
-	GetAnimationCuts(&Cuts, MD, ID);
+		const size_t clipFrameCount = end - begin;
 
-	for(auto Cut : Cuts)
-	{
-		size_t Begin	= (size_t)(Cut.T_Start / (1.0f / 60.0f));
-		size_t End		= (size_t)(Cut.T_End / (1.0f / 60.0f));
-
-		AnimationClipResource Clip;
-		Clip.FPS		= 60;
-		Clip.mID		= Cut.ID;
-		Clip.guid		= Cut.guid;
-		Clip.isLooping	= false;
-
-		size_t clipFrameCount = (size_t)(Cut.T_End - Cut.T_Start);
-
-		for (size_t I = 0; I < clipFrameCount; ++I)
+		for (size_t frame = 0; frame < clipFrameCount; ++frame)
 		{
 			AnimationKeyFrame keyFrame;
-			keyFrame.FrameNumber = 1;
+			keyFrame.FrameNumber = frame;
 
-			for (size_t II = 0; II < Joints.size(); ++II)
+			for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
 			{
-				auto Inverse				= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(skeleton->jointPoses[II]));
-				auto Pose					= GetPoseTransform(Joints[II].Animation.Poses[I + Begin].JPose);
-				auto LocalPose				= GetPose(Pose * Inverse);
+                const auto& joint       = joints[jointIdx];
+				const auto  inverse		= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(skeleton->jointPoses[jointIdx]));
+				const auto  pose		= GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose);
+				const auto  localPose   = GetPose(pose * inverse);
 
-				keyFrame.AddJointPose(JointHandle(II), LocalPose);
+				keyFrame.AddJointPose(JointHandle(jointIdx), localPose);
 			}
 
-			Clip.AddKeyFrame(keyFrame);
+			clip.AddKeyFrame(keyFrame);
 		}
-
-		skeleton->AddAnimationClip(Clip);
 	}
 
 	return skeleton;

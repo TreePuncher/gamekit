@@ -26,17 +26,22 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ANIMATIONUTILITIES_H_INCLUDED
 
 #include "..\buildsettings.h"
+#include "..\coreutilities\Handle.h"
+#include "..\coreutilities\Resources.h"
 #include <DirectXMath.h>
 
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
 
 	using DirectX::XMMATRIX;
 
-	/************************************************************************************************/
 
-	typedef uint16_t	JointHandle;
+    /************************************************************************************************/
+
+
+	using JointHandle = FlexKit::Handle_t<16, GetTypeGUID(JointHandle)>;
 
 	// PreDeclarations
 	struct	Drawable;
@@ -44,7 +49,7 @@ namespace FlexKit
 
 	struct Joint
 	{
-		const char*			mID				= nullptr;
+		const char*			mID				= nullptr; // null terminated string
 		JointHandle			mParent			= JointHandle(0);
 		char				mPad[6]			={};
 	};
@@ -73,6 +78,37 @@ namespace FlexKit
 	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX M);
 
 
+    /************************************************************************************************/
+
+
+    struct SkeletonResourceBlob
+    {
+        struct JointEntry
+        {
+            FlexKit::float4x4		IPose;
+            FlexKit::JointPose		Pose;
+            FlexKit::JointHandle	Parent;
+            uint16_t				Pad;
+            char					ID[64];
+        };
+
+        struct Header
+        {
+            size_t			ResourceSize;
+            EResourceType	Type;
+            size_t			GUID;
+            size_t			Pad;
+
+            char ID[FlexKit::ID_LENGTH];
+
+
+            size_t JointCount;
+        } header;
+
+        JointEntry Joints[];
+    };
+
+
 	/************************************************************************************************/
 
 
@@ -88,10 +124,45 @@ namespace FlexKit
 		uint32_t		FPS				= 0;
 		Skeleton*		Skeleton		= nullptr;
 		size_t			FrameCount		= 0;
-		KeyFrame*		Frames			= 0;
+		KeyFrame*		Frames			= nullptr;
 		size_t			guid			= 0;
 		char*			mID				= nullptr;
 		bool			isLooping		= false;
+	};
+
+
+    /************************************************************************************************/
+
+
+    struct AnimationResourceBlob
+	{
+        struct FrameEntry
+        {
+            size_t JointCount;
+            size_t PoseCount;
+            size_t JointStarts;
+            size_t PoseStarts;
+        };
+
+        struct AnimationResourceHeader
+        {
+            size_t			ResourceSize;
+            EResourceType	Type;
+
+            GUID_t					GUID;
+            Resource::ResourceState	State;
+            uint32_t				RefCount;
+
+            char   ID[FlexKit::ID_LENGTH];
+
+            GUID_t Skeleton;
+            size_t FrameCount;
+            size_t FPS;
+            bool   IsLooping;
+
+            static size_t size() noexcept { return sizeof(AnimationResourceHeader); }
+        }       header;
+		char	Buffer[];
 	};
 
 

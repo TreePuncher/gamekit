@@ -68,16 +68,18 @@ namespace FlexKit
 
 	struct FBXMeshDesc
 	{
-		bool UV;
-		bool Normals;
-		bool Weights;
+		bool UV         = false;
+		bool Normals    = false;
+        bool Tangents   = false;
+		bool Weights    = false;
 
-		float3			MinV;
-		float3			MaxV;
-		float			R;
+		float3			MinV    = float3(0, 0, 0);
+		float3			MaxV    = float3(0, 0, 0);
+		float			R       = 0;
 
-		size_t			FaceCount;
-		FBXSkinDeformer Skin;
+		size_t			                            faceCount = 0;
+		FBXSkinDeformer                             skin;
+        FlexKit::MeshUtilityFunctions::TokenList    tokens;
 	};
 
 
@@ -206,9 +208,9 @@ namespace FlexKit
 
 
 	FBXSkinDeformer		CreateSkin			(const fbxsdk::FbxMesh* Mesh);
-	FBXMeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, Skeleton* S = nullptr, bool SubDiv_Enabled = false);
+	FBXMeshDesc			TranslateToTokens	(fbxsdk::FbxMesh* Mesh, MeshUtilityFunctions::TokenList& TokensOut, SkeletonResource_ptr S = nullptr, bool SubDiv_Enabled = false);
 	
-	MeshResource_ptr	CompileMeshResource	(FbxMesh* Mesh, const std::string& ID = std::string{}, const MetaDataList& MD = MetaDataList{}, bool EnableSubDiv = false);
+	MeshResource_ptr	CreateMeshResource	(FbxMesh& Mesh, const std::string& ID = std::string{}, const MetaDataList& MD = MetaDataList{}, const bool EnableSubDiv = false);
 
 
 	/************************************************************************************************/

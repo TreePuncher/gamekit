@@ -71,7 +71,7 @@ namespace FlexKit
 #endif
 		}
 
-		constexpr explicit Handle_t(unsigned int in)
+		constexpr explicit Handle_t(size_t in)
 		{
 #if USING( DEBUGHANDLES )
 			TYPE = 0XFFFF;
@@ -86,7 +86,7 @@ namespace FlexKit
 		}
 
 
-		operator uint32_t() const { return to_uint(); }
+		//operator uint32_t() const { return to_uint(); }
 
 		bool				operator ==	(const THISTYPE_t in) const
 		{
@@ -135,7 +135,7 @@ namespace FlexKit
 		unsigned int	FLAGS		: 4;
 #endif
 
-		operator size_t () { return INDEX; }
+		operator size_t () const { return INDEX; }
 
 		enum HANDLE_FLAGS
 		{

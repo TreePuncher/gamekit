@@ -1486,7 +1486,7 @@ namespace FlexKit
 
 	void Context::SetGraphicsConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
 	{
-		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress((ConstantBufferHandle)CB) + (size_t)CB);
+		DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
 	}
 
 
@@ -7273,8 +7273,8 @@ namespace FlexKit
 
 	void CreatePlaneMesh(RenderSystem* RS, TriMesh* out, StackAllocator* mem, PlaneDesc desc)
 	{	// Change this to be allocated from level Memory
-		out->Buffers[0]		= FlexKit::CreateVertexBufferView((byte*)mem->malloc(512), 512);
-		out->Buffers[15]	= FlexKit::CreateVertexBufferView((byte*)mem->malloc(512), 512);
+		out->Buffers[0]		= CreateVertexBufferView(*mem, 512);
+		out->Buffers[15]	= CreateVertexBufferView(*mem, 512);
 
 		out->Buffers[0]->Begin
 			( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION
@@ -7389,10 +7389,11 @@ namespace FlexKit
 		byte* TexcordBuffer  = (byte*)(desc.LoadUVs				? (DiscardBuffers ? TempSpace._aligned_malloc(TexcordBufferSize, 16) : LevelSpace._aligned_malloc(TexcordBufferSize, 16)) : nullptr); // UV's
 		byte* TangentBuffer	 = (byte*)(desc.GenerateTangents	? (DiscardBuffers ? TempSpace._aligned_malloc(TangentBufferSize, 16) : LevelSpace._aligned_malloc(TangentBufferSize, 16)) : nullptr); // Tangents
 
+        FK_ASSERT(false);
 
-		out.Buffers[00] = FlexKit::CreateVertexBufferView(VertexBuffer, VertexBufferSize);
-		out.Buffers[01] = FlexKit::CreateVertexBufferView(NormalBuffer, NormalBufferSize);
-		out.Buffers[15] = FlexKit::CreateVertexBufferView(IndexBuffer,  IndexBufferSize);
+		//out.Buffers[00] = FlexKit::CreateVertexBufferView(VertexBuffer, VertexBufferSize);
+		//out.Buffers[01] = FlexKit::CreateVertexBufferView(NormalBuffer, NormalBufferSize);
+		//out.Buffers[15] = FlexKit::CreateVertexBufferView(IndexBuffer,  IndexBufferSize);
 
 		out.Buffers[0]->Begin
 			( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION
@@ -7455,7 +7456,7 @@ namespace FlexKit
 
 		if (S.UV_1 && desc.LoadUVs)
 		{
-			out.Buffers[2] = FlexKit::CreateVertexBufferView(TexcordBuffer, TexcordBufferSize);
+			//out.Buffers[2] = FlexKit::CreateVertexBufferView(TexcordBuffer, TexcordBufferSize);
 			out.Buffers[2]->Begin
 				( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV
 				, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32 );
@@ -7471,7 +7472,7 @@ namespace FlexKit
 			// TODO(RM): Lift out into Mesh Utilities 
 			FK_ASSERT(TangentBuffer); // Check that output is not Null
 		
-			out.Buffers[3] = FlexKit::CreateVertexBufferView(TangentBuffer, TangentBufferSize);
+			//out.Buffers[3] = FlexKit::CreateVertexBufferView(TangentBuffer, TangentBufferSize);
 			out.Buffers[3]->Begin
 				( FlexKit::VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT
 				, FlexKit::VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32 );
@@ -7538,60 +7539,6 @@ namespace FlexKit
 	}
 
 	
-	/************************************************************************************************/
-
-	/*
-	bool GenerateTangents(Buffer* __restrict Normals_in, Buffer* __restrict Indices_in, Buffer* __restrict  out)
-	{
-		// Set Clear Tangents
-		for (auto V : out_buffer)
-			out.Buffers[3]->Push(float3{ 0.0f, 0.0f, 0.0f });
-
-		auto IndexBuffer = reinterpret_cast<uint32_t*>(out.Buffers[15]->GetBuffer());
-		auto VBuffer = reinterpret_cast<float3*>	  (out.Buffers[0]->GetBuffer());
-		auto NBuffer = reinterpret_cast<float3*>	  (out.Buffers[1]->GetBuffer());
-		auto TexCoords = reinterpret_cast<float2*>	  (out.Buffers[2]->GetBuffer());
-		auto Tangents = reinterpret_cast<float3*>	  (out.Buffers[3]->GetBuffer());
-
-		for (auto itr = 0; itr < out.Buffers[0]->GetBufferSizeUsed(); itr += 3)
-		{
-			float3 V0 = VBuffer[IndexBuffer[itr + 0]];
-			float3 V1 = VBuffer[IndexBuffer[itr + 1]];
-			float3 V2 = VBuffer[IndexBuffer[itr + 2]];
-
-			float2 UV1 = TexCoords[IndexBuffer[itr + 0]];
-			float2 UV2 = TexCoords[IndexBuffer[itr + 1]];
-			float2 UV3 = TexCoords[IndexBuffer[itr + 2]];
-
-			float3 Q1 = V1 - V0;
-			float3 Q2 = V2 - V0;
-
-			float2 ST1 = UV2 - UV1;
-			float2 ST2 = UV3 - UV1;
-
-			float r = 1.0f / ((ST1.x*ST2.y) - (ST2.x * ST1.y));
-
-			float3 S = r * float3((ST2.y * Q1[0]) - (ST1.y * Q2[0]), (ST2.y * Q1[1]) - (ST1.y * Q2[1]), (ST2.y * Q1[2]) - (ST1.y * Q2[2]));
-			float3 T = r * float3((ST1.x * Q1[0]) - (ST2.x * Q2[0]), (ST1.x * Q1[1]) - (ST2.x * Q2[1]), (ST1.x * Q1[2]) - (ST2.x * Q2[2]));
-
-			Tangents[IndexBuffer[itr + 0]] += S;
-			Tangents[IndexBuffer[itr + 1]] += S;
-			Tangents[IndexBuffer[itr + 2]] += S;
-		}
-
-		// Normalise Averaged Tangents
-		float3* Normals = (float3*)out.Buffers[3]->GetBuffer();
-		float3* end = (float3*)(out.Buffers[3]->GetBuffer() + out.Buffers[3]->GetBufferSizeRaw());
-
-		while (Normals < end)
-		{
-			(*Normals) = Normals->normalize();
-			Normals++;
-		}
-	}
-	*/
-
-
 	/************************************************************************************************/
 
 
@@ -8468,7 +8415,7 @@ namespace FlexKit
 		// Index Buffer
 		{
 			auto bufferSize = sizeof(uint32_t) * 128;
-			Views[0] = CreateVertexBufferView((byte*)memory->_aligned_malloc(bufferSize), bufferSize);
+			Views[0] = CreateVertexBufferView(memory, bufferSize);
 			Views[0]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32);
 
 			for(uint32_t I = 0; I < 36; ++I)
@@ -8479,7 +8426,7 @@ namespace FlexKit
 
 		// Vertex Buffer
 		{
-			Views[1] = CreateVertexBufferView((byte*)memory->_aligned_malloc(4096), 4096);
+			Views[1] = CreateVertexBufferView(memory, 4096);
 			Views[1]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
 
 			float3 TopFarLeft	= { -R,  R, -R };
@@ -8551,7 +8498,7 @@ namespace FlexKit
 		}
 		// Normal Buffer
 		{
-			Views[2] = CreateVertexBufferView((byte*)memory->_aligned_malloc(4096), 4096);
+			Views[2] = CreateVertexBufferView(memory, 4096);
 			Views[2]->Begin(VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32);
 
 			float3 TopPlane		= {  0,  1,  0 };

@@ -72,7 +72,7 @@ namespace FlexKit
 	using MetaData_ptr = std::shared_ptr<MetaData>;
 	using MetaDataList = std::vector<MetaData_ptr>;
 
-	auto SkeletonFilter = [](MetaData* const in) {
+	auto SkeletonFilter = [](MetaData* const in) -> bool{
 		return (in->type == MetaData::EMETAINFOTYPE::EMI_SKELETAL);
 	};
 
@@ -103,19 +103,22 @@ namespace FlexKit
 	};
 
 
+    using SkeletonMetaData_ptr = std::shared_ptr<Skeleton_MetaData>;
+
 	/************************************************************************************************/
 
 
-	struct AnimationClip_MetaData : public MetaData
+	struct SkeletalAnimationClip_MetaData : public MetaData
 	{
-		AnimationClip_MetaData() {
-			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETALANIMATION;
-			type	 = MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP;
+        SkeletalAnimationClip_MetaData() {
+			UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON;
+			type	 = MetaData::EMETAINFOTYPE::EMI_SKELETALANIMATION;
 		}
 
 		std::string	ClipID;// Mesh Name
 		double		T_Start;
-		double		T_End;
+        double		T_End;
+        double		frameRate = 60;
 		GUID_t		guid;
 	};
 
@@ -244,8 +247,6 @@ namespace FlexKit
 		float	radius;
 	};
 
-
-
 	class SceneElementMeta : public MetaData
 	{
 	public:
@@ -271,6 +272,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
 
 	class SceneComponentMeta;
 	using FNComponentBlobFormatter = std::vector<byte> (*)(SceneComponentMeta*);
@@ -365,7 +367,6 @@ namespace FlexKit
 	inline const MetaDataParserTable EntityParser	= CreateEntityParser();
 
 	/*
-
 	constexpr class ValueProtoType
 	{
 	public:

@@ -29,6 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Handle.h"
 #include "Components.h"
 
+#include "XMMathConversion.h"
 #include <DirectXMath.h>
 
 namespace FlexKit
@@ -78,29 +79,6 @@ namespace FlexKit
 			//World = LT_Entry::Zero();
 		}	
 	};
-
-
-	inline float4x4 XMMatrixToFloat4x4(const DirectX::XMMATRIX* const M)
-	{
-		float4x4 Mout;
-		Mout = *(float4x4*)M;
-		return Mout;
-	}
-
-	inline float4x4 XMMatrixToFloat4x4(const DirectX::XMMATRIX& M)
-	{
-		float4x4 Mout;
-		Mout = *(float4x4*)&M;
-		return Mout;
-	}
-
-	inline DirectX::XMMATRIX Float4x4ToXMMATIRX(float4x4* M)
-	{
-		DirectX::XMMATRIX Mout;
-		Mout = *(DirectX::XMMATRIX*)M;
-		return Mout;
-	}
-
 	
 
 	struct SceneNodes
@@ -218,6 +196,8 @@ namespace FlexKit
 	{
 		template<typename ... discard>
 		void SetDirty(discard ...) {}
+
+        using Parent_TY = void;
 	};
 
 
@@ -329,11 +309,21 @@ namespace FlexKit
 		}
 
 
-		float3	GetScale() const
+		float3	GetScale() const noexcept
 		{
-			return { 1, 1, 1 };
+            return GetLocalScale(node);
 		}
 
+        Quaternion GetOrientation() const noexcept
+        {
+            return FlexKit::GetOrientation(node);
+        }
+
+
+        void SetScale(float3 scale)
+        {
+            FlexKit::SetScale(node, scale);
+        }
 
 		void Parent(NodeHandle child)
 		{
@@ -352,6 +342,46 @@ namespace FlexKit
 			[]
             { return float3{ 0, 0, 0 }; });
 	}
+
+    float3 GetScale(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            { return node.GetScale(); },
+            []
+            { return float3{ 1, 1, 1 }; });
+    }
+
+    void SetScale(GameObject& go, float3 scale)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.SetScale(scale);
+            }
+            );
+    }
+
+
+    void Pitch(GameObject& go, float theta)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.Pitch(theta);
+            }
+        );
+    }
+
+
+    Quaternion GetOrientation(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            { return node.GetOrientation(); },
+            []
+            { return Quaternion{ 0, 0, 0, 1 }; });
+    }
 
 
     inline NodeHandle GetSceneNode(GameObject& go)

@@ -112,11 +112,11 @@ struct CompiledMeshInfo
 /************************************************************************************************/
 
 
-void CompileAllGeometry(
+void GatherAllGeometry(
 	GeometryList&			geometry,
 	fbxsdk::FbxNode*		node, 
 	FBXIDTranslationTable&	Table, 
-	MetaDataList&			MD			= MetaDataList{}, 
+	const MetaDataList&		MD			= MetaDataList{}, 
 	bool					subDiv		= false)
 {
 	using FlexKit::AnimationClip;
@@ -137,13 +137,13 @@ void CompileAllGeometry(
 		{
 		case fbxsdk::FbxNodeAttribute::EType::eMesh:
 		{
-			const char* MeshName = node->GetName();
-			auto test		= Attr->GetUniqueID();
-			auto Mesh		= (fbxsdk::FbxMesh*)Attr;
-			bool found		= false;
-			bool LoadMesh	= false;
-			size_t uniqueID	= (size_t)Mesh->GetUniqueID();
-			auto Geo		= FindGeoByID(geometry, uniqueID);
+			const char* MeshName    = node->GetName();
+			auto test		        = Attr->GetUniqueID();
+			auto Mesh		        = (fbxsdk::FbxMesh*)Attr;
+			bool found		        = false;
+			bool LoadMesh	        = false;
+			size_t uniqueID	        = (size_t)Mesh->GetUniqueID();
+			auto Geo		        = FindGeoByID(geometry, uniqueID);
 
 			MetaDataList RelatedMetaData;
 
@@ -155,14 +155,12 @@ void CompileAllGeometry(
 			if(!RelatedMetaData.size())
 				LoadMesh = true;
 
-			auto MeshInfo	= FlexKit::GetMeshMetaData(RelatedMetaData);
-			auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
+			const auto MeshInfo	= FlexKit::GetMeshMetaData(RelatedMetaData);
+			const auto Name		= MeshInfo ? MeshInfo->MeshID : Mesh->GetName();
 
 			if (!FBXIDPresentInTable(Mesh->GetUniqueID(), Table))
 			{
-				Name = node->GetName();
-
-				MeshResource_ptr resource = CompileMeshResource(Mesh, Name, MD, false);
+				MeshResource_ptr resource = CreateMeshResource(*Mesh, Name, MD, false);
 				
 				if(MeshInfo)
 				{
@@ -177,9 +175,8 @@ void CompileAllGeometry(
 
 				Table.push_back({ Mesh->GetUniqueID(), resource->TriMeshID });
 
-	#if USING(RESCOMPILERVERBOSE)
-				std::cout << "Compiled Resource: " << Name << "\n";
-	#endif
+	            if constexpr (USING(RESCOMPILERVERBOSE))
+				    std::cout << "Compiled Resource: " << Name << "\n";
 
 				geometry.push_back(resource);
 			}
@@ -189,7 +186,7 @@ void CompileAllGeometry(
 
 	size_t NodeCount = node->GetChildCount();
 	for(int itr = 0; itr < NodeCount; ++itr)
-		CompileAllGeometry(geometry, node->GetChild(itr), Table, MD, subDiv);
+        GatherAllGeometry(geometry, node->GetChild(itr), Table, MD, subDiv);
 }
 
 
@@ -247,12 +244,12 @@ Resource* CreateSkeletonResourceBlob(Skeleton* S, iAllocator* MemoryOut)
 	Size += sizeof(SkeletonResourceBlob);
 
 	SkeletonResourceBlob* R = (SkeletonResourceBlob*)MemoryOut->_aligned_malloc(Size);
-	R->GUID					= S->guid;
-	R->ResourceSize			= Size;
-	R->Type					= EResource_Skeleton;
-	R->JointCount			= S->JointCount;
+	R->header.GUID					= S->guid;
+	R->header.ResourceSize			= Size;
+	R->header.Type					= EResource_Skeleton;
+	R->header.JointCount			= S->JointCount;
 
-	strcpy_s(R->ID, 64, "SKELETON");
+	strcpy_s(R->header.ID, 64, "SKELETON");
 
 	for (size_t I= 0; I < S->JointCount; ++I)
 	{
@@ -290,19 +287,19 @@ Resource* CreateSkeletalAnimationResourceBlob(AnimationClip* AC, GUID_t Skeleton
 	Size += sizeof(AnimationResourceBlob);
 
 	AnimationResourceBlob* R = (AnimationResourceBlob*)MemoryOut->_aligned_malloc(Size);
-	R->Skeleton		= Skeleton;
-	R->FrameCount	= AC->FrameCount;
-	R->FPS			= AC->FPS;
-	R->GUID			= AC->guid;
-	R->IsLooping	= AC->isLooping;
-	R->Type			= EResourceType::EResource_SkeletalAnimation;
-	R->ResourceSize = Size;
-	strcpy_s(R->ID, AC->mID);
+	R->header.Skeleton		= Skeleton;
+	R->header.FrameCount	= AC->FrameCount;
+	R->header.FPS			= AC->FPS;
+	R->header.GUID			= AC->guid;
+	R->header.IsLooping	    = AC->isLooping;
+	R->header.Type			= EResourceType::EResource_SkeletalAnimation;
+	R->header.ResourceSize  = Size;
+	strcpy_s(R->header.ID, AC->mID);
 
 	AnimationResourceBlob::FrameEntry*	Frames = (AnimationResourceBlob::FrameEntry*)R->Buffer;
-	size_t Position = sizeof(AnimationResourceBlob::FrameEntry) * R->FrameCount;
+	size_t Position = sizeof(AnimationResourceBlob::FrameEntry) * R->header.FrameCount;
 
-	for (size_t I = 0; I < R->FrameCount; ++I)
+	for (size_t I = 0; I < R->header.FrameCount; ++I)
 	{
 		Frames[I].JointCount  = AC->Frames[I].JointCount;
 		

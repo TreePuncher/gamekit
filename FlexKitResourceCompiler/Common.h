@@ -80,6 +80,7 @@ inline uint32_t		FetchIndex2			(uint32_t itr, const IndexList* IL)				{ return I
 inline float3		FetchVertexPOS		(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).POS;							}
 inline float3		FetchWeights		(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).WEIGHTS;						}
 inline float3		FetchVertexNormal	(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).NORMAL;						}
+inline float3		FetchVertexTangent  (uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).TANGENT;						}
 inline float3		FetchFloat3ZERO		(uint32_t itr, const CombinedVertexBuffer* Buff){ return{ 0.0f, 0.0f, 0.0f };						}
 inline float2		FetchVertexUV		(uint32_t itr, const CombinedVertexBuffer* Buff){ auto temp = Buff->at(itr).TEXCOORD.xy(); 
 																						    return {temp.x, temp.y};						}
@@ -93,7 +94,7 @@ inline uint4_16		Writeuint4			(uint4_16 in);
 /************************************************************************************************/
 
 
-inline float3 TranslateToFloat3(FbxVector4& in)
+inline float3 TranslateToFloat3(const FbxVector4& in)
 {
 	return float3(
 		(float)in.mData[0],
@@ -102,7 +103,7 @@ inline float3 TranslateToFloat3(FbxVector4& in)
 }
 
 
-inline float3 TranslateToFloat3(FbxDouble3& in)
+inline float3 TranslateToFloat3(const FbxDouble3& in)
 {
 	return float3(
         (float)in.mData[0],
@@ -111,7 +112,7 @@ inline float3 TranslateToFloat3(FbxDouble3& in)
 }
 
 
-inline float4 TranslateToFloat4(FbxVector4& in)
+inline float4 TranslateToFloat4(const FbxVector4& in)
 {
 	return float4(
         (float)in.mData[0],
@@ -124,7 +125,7 @@ inline float4 TranslateToFloat4(FbxVector4& in)
 /************************************************************************************************/
 
 
-inline XMMATRIX FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM)
+inline XMMATRIX FBXMATRIX_2_XMMATRIX(const FbxAMatrix& AM)
 {
 	XMMATRIX M; // Xmmatrix is Filled with 32-bit floats
 	for (uint32_t I = 0; I < 4; ++I)
@@ -135,7 +136,7 @@ inline XMMATRIX FBXMATRIX_2_XMMATRIX(FbxAMatrix& AM)
 }
 
 
-inline FbxAMatrix XMMATRIX_2_FBXMATRIX(XMMATRIX& M)
+inline FbxAMatrix XMMATRIX_2_FBXMATRIX(const XMMATRIX& M)
 {
 	FbxAMatrix AM; // FBX Matrix is filled with 64-bit floats
 	for (uint32_t I = 0; I < 4; ++I)

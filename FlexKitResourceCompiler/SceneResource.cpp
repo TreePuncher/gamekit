@@ -33,24 +33,25 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 {
 	bool SkipChildren	= false;
 	auto AttributeCount	= Node->GetNodeAttributeCount();
-	SceneNode NewNode;
 	
-	auto Position = Node->LclTranslation.	Get();
-	auto LclScale = Node->LclScaling.		Get();
-	auto rotation = Node->LclRotation.		Get();
-	auto NodeName = Node->GetName();
+	const auto Position = Node->LclTranslation.Get();
+	const auto LclScale = Node->LclScaling.Get();
+	const auto rotation = Node->LclRotation.Get();
+	const auto NodeName = Node->GetName();
 
+    SceneNode NewNode;
 	NewNode.parent		= Parent;
 	NewNode.position	= TranslateToFloat3(Position); 
 	NewNode.scale		= TranslateToFloat3(LclScale);
 	NewNode.Q			= Quaternion((float)rotation.mData[0], (float)rotation.mData[1], (float)rotation.mData[2]);
 
-	uint32_t Nodehndl = scene->AddSceneNode(NewNode);
+	const uint32_t Nodehndl = scene->AddSceneNode(NewNode);
 
 	for (int i = 0; i < AttributeCount; ++i)
 	{
-		auto Attr = Node->GetNodeAttributeByIndex(i);
-		auto AttrType = Attr->GetAttributeType();
+		auto Attr       = Node->GetNodeAttributeByIndex(i);
+		auto AttrType   = Attr->GetAttributeType();
+
 		switch (AttrType)
 		{
 		case FbxNodeAttribute::eMesh:
@@ -74,13 +75,13 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 #if USING(RESCOMPILERVERBOSE)
 			std::cout << "Light Found: " << Node->GetName() << "\n";
 #endif
-			auto FBXLight    = static_cast<fbxsdk::FbxLight*>(Attr);
-			auto Type        = FBXLight->LightType.Get();
-			auto Cast        = FBXLight->CastLight.Get();
-			auto I           = (float)FBXLight->Intensity.Get()/10;
-			auto K           = FBXLight->Color.Get();
-			auto R           = FBXLight->OuterAngle.Get();
-			auto radius		 = FBXLight->FarAttenuationEnd.Get();
+			const auto FBXLight    = static_cast<fbxsdk::FbxLight*>(Attr);
+			const auto Type        = FBXLight->LightType.Get();
+			const auto Cast        = FBXLight->CastLight.Get();
+			const auto I           = (float)FBXLight->Intensity.Get()/10;
+			const auto K           = FBXLight->Color.Get();
+			const auto R           = FBXLight->OuterAngle.Get();
+			const auto radius	   = FBXLight->FarAttenuationEnd.Get();
 
             SceneEntity entity;
             entity.Node = Nodehndl;
@@ -109,12 +110,12 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 /************************************************************************************************/
 
 
-ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker, FBXIDTranslationTable& Table, bool LoadSkeletalData = false, MetaDataList& MD = MetaDataList{}, bool subDivEnabled = false)
+ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker, FBXIDTranslationTable& Table, const bool LoadSkeletalData = false, const MetaDataList& MD = MetaDataList{}, const bool subDivEnabled = false)
 {
 	GeometryList geometryFound;
 	ResourceList resources;
 
-	CompileAllGeometry(geometryFound, S->GetRootNode(), Table, MD, subDivEnabled);
+    GatherAllGeometry(geometryFound, S->GetRootNode(), Table, MD, subDivEnabled);
 
 #if USING(RESCOMPILERVERBOSE)
 	std::cout << "CompileAllGeometry Compiled " << geometryFound.size() << " Resources\n";
@@ -127,8 +128,30 @@ ResourceList GatherSceneResources(fbxsdk::FbxScene* S, physx::PxCooking* Cooker,
 		{
 			resources.push_back(geometry->Skeleton);
 
-			for (auto& animation : geometry->Skeleton->animations)
-				resources.push_back(geometry->Skeleton);
+            // TODO: scan metadata for animation clips, then add those to the resource list, everything in the resource list gets output in the resource file
+            auto pred = [&](MetaData_ptr metaInfo) -> bool
+                {
+                    return
+                        metaInfo->UserType  == MetaData::EMETA_RECIPIENT_TYPE::EMR_SKELETON &&
+                        metaInfo->ID        == geometry->ID;
+                };
+
+            auto results = filter(MD, pred);
+
+            for( const auto r : results )
+            {
+                switch (r->type)
+                {
+                case MetaData::EMETAINFOTYPE::EMI_ANIMATIONCLIP:    break;
+                case MetaData::EMETAINFOTYPE::EMI_ANIMATIONEVENT:   break;
+                case MetaData::EMETAINFOTYPE::EMI_SKELETALANIMATION:
+                {   
+                    auto skeletonMetaData = static_pointer_cast<Skeleton_MetaData>(r);
+                }   break;
+                default:
+                    break;
+                }
+            }
 		}
 		/*
 		auto RelatedMD	= FindRelatedMetaData(MD, MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE, geometry.ID);
@@ -224,9 +247,9 @@ void ScanChildrenNodesForScene(
 	FBXIDTranslationTable&	translationTable, 
 	ResourceList&			Out)
 {
-	auto nodeName			= Node->GetName();
-	auto RelatedMetaData	= FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName());
-	auto NodeCount			= Node->GetChildCount();
+	const auto nodeName			= Node->GetName();
+	const auto RelatedMetaData	= FindRelatedMetaData(MetaData, MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE, Node->GetName());
+	const auto NodeCount		= Node->GetChildCount();
 
 	if (RelatedMetaData.size())
 	{
@@ -234,7 +257,7 @@ void ScanChildrenNodesForScene(
 		{
 			if (i->type == MetaData::EMETAINFOTYPE::EMI_SCENE)
 			{
-				auto				MD		= std::static_pointer_cast<Scene_MetaData>(i);
+				const auto			MD		= std::static_pointer_cast<Scene_MetaData>(i);
 				SceneResource_ptr	scene	= std::make_shared<SceneResource>();
 
 				scene->GUID				= MD->Guid;
@@ -269,12 +292,12 @@ void GetScenes(fbxsdk::FbxScene* S, const MetaDataList& MetaData, FBXIDTranslati
 /************************************************************************************************/
 
 
-ResourceList CompileSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, MetaDataList& METAINFO)
+ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData)
 {
 	FBXIDTranslationTable	translationTable;
-	ResourceList			resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, METAINFO);;
+	ResourceList			resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, metaData);
 
-	GetScenes(scene, METAINFO, translationTable, resources);
+	GetScenes(scene, metaData, translationTable, resources);
 
 	return resources;
 }

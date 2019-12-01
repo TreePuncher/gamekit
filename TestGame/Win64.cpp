@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\Logging.h"
 #include "..\coreutilities\Application.h"
+#include "..\graphicsutilities\AnimationComponents.h"
 
 #include "BaseState.h"
 #include "client.cpp"
@@ -151,6 +152,20 @@ int main(int argc, char* argv[])
 		auto& playState = app.PushState<LocalPlayerState>(gameBase, gameState);
 
         LoadScene(app.GetFramework().core, gameState.scene, 10000);
+
+        auto [Cube_003, res] = FindGameObject(gameState.scene, "Cube.003");
+        {
+            if (res)
+                SetVisable(*Cube_003, false);
+        }
+
+        auto [gameObject, res2] = FindGameObject(gameState.scene, "object1");
+        if (res2)
+        {
+            AddSkeletonComponent(*gameObject, app.GetFramework().core.GetBlockMemory());
+            SetScale(*gameObject, { 1, 1, 1 });
+            Pitch(*gameObject, float(pi/2.0f));
+        }
 	}
 
 	FK_LOG_INFO("Running application...");

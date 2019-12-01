@@ -1983,11 +1983,11 @@ namespace FlexKit
 	FLEXKITAPI struct ConstantBufferTable
 	{
 		ConstantBufferTable(iAllocator* Memory, RenderSystem* RS_IN) :
-			ConstantBuffers(Memory),
-			Handles(Memory),
-			FreeResourceSets(Memory),
-			RS(RS_IN),
-			UserBufferEntries(Memory)
+			ConstantBuffers     (Memory),
+			Handles             (Memory),
+			FreeResourceSets    (Memory),
+			RS                  (RS_IN),
+			UserBufferEntries   (Memory)
 		{}
 
 		~ConstantBufferTable()
@@ -3014,7 +3014,112 @@ namespace FlexKit
 		static_vector<BuffEntry, 16>	VertexBuffers;
 		TriangleMeshMetaData			MD;
 	};
-	
+
+
+    /************************************************************************************************/
+
+
+    struct TriMesh
+    {
+        TriMesh()
+        {
+            for (auto b : Buffers)
+                b = nullptr;
+
+            ID = nullptr;
+            AnimationData = EAD_None;
+            Memory = nullptr;
+        }
+
+
+        TriMesh(const TriMesh& rhs)
+        {
+            memcpy(this, &rhs, sizeof(TriMesh));
+        }
+
+
+        bool HasTangents() const
+        {
+            for (auto view : Buffers)
+            {
+                if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT)
+                    return true;
+            }
+
+            return false;
+        }
+
+        bool HasNormals() const
+        {
+            for (auto view : Buffers)
+            {
+                if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
+                    return true;
+            }
+
+            return false;
+        }
+
+        VertexBufferView* GetNormals()
+        {
+            for (auto view : Buffers)
+            {
+                if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL)
+                    return view;
+            }
+
+            return nullptr;
+        }
+
+
+        VertexBufferView* GetIndices()
+        {
+            for (auto view : Buffers)
+            {
+                if (view && view->GetBufferType() == VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX)
+                    return view;
+            }
+
+            return nullptr;
+        }
+
+
+        size_t AnimationData;
+        size_t IndexCount;
+        size_t TriMeshID;
+
+        struct SubDivInfo
+        {
+            size_t  numVertices;
+            size_t  numFaces;
+            int* numVertsPerFace;
+            int* IndicesPerFace;
+        }*SubDiv;
+
+        const char*                         ID;
+        SkinDeformer*                       SkinTable;
+        Skeleton*                           Skeleton;
+        static_vector<VertexBufferView*>    Buffers;
+        VertexBuffer		                VertexBuffer;
+
+        struct RInfo
+        {
+            float3 Offset;
+            float3 min, max;
+            float  r;
+        }Info;
+
+        // Visibility Information
+        AABB			AABB;
+        BoundingSphere	BS;
+
+        size_t		SkeletonGUID;
+        iAllocator* Memory;
+    };
+
+
+    /************************************************************************************************/
+
 
 	struct Shader
 	{
@@ -3346,10 +3451,8 @@ namespace FlexKit
 		ConstantBufferDataSet(const ConstantBufferDataSet& rhs)					= default;
 		ConstantBufferDataSet& operator = (const ConstantBufferDataSet& rhs)	= default;
 
-		operator ConstantBufferHandle	() const { return constantBuffer;	}
-		operator size_t					() const { return constantsOffset;	}
-
-		size_t	offset() const { return constantsOffset; }
+		ConstantBufferHandle    Handle() const { return constantBuffer;	}
+		size_t				    Offset() const { return constantsOffset; }
 	private:
 		ConstantBufferHandle	constantBuffer		= InvalidHandle_t;
 		size_t					constantsOffset		= 0;
@@ -3532,62 +3635,6 @@ namespace FlexKit
 	//	Camera	C;
 	//	size_t	LightHandle;
 	//};
-
-
-	/************************************************************************************************/
-
-
-	struct TriMesh
-	{
-		TriMesh()
-		{
-			for ( auto b : Buffers )
-				b = nullptr;
-
-			ID				= nullptr;
-			AnimationData	= EAD_None;
-			Memory			= nullptr;
-		}
-
-
-		TriMesh( const TriMesh& rhs )
-		{
-			memcpy(this, &rhs, sizeof(TriMesh));
-		}
-
-		size_t AnimationData;
-		size_t IndexCount;
-		size_t TriMeshID;
-
-		struct SubDivInfo
-		{
-			size_t  numVertices;
-			size_t  numFaces;
-			int*	numVertsPerFace;
-			int*	IndicesPerFace;
-		}*SubDiv;
-
-		const char*			ID;
-		SkinDeformer*		SkinTable;
-		Skeleton*			Skeleton;
-		VertexBufferView*	Buffers[16];
-		VertexBuffer		VertexBuffer;
-
-		struct RInfo
-		{
-			float3 Offset;
-			float3 min, max;
-			float  r;
-		}Info;
-
-		// Visibility Information
-		AABB			AABB;
-		BoundingSphere	BS;
-
-		size_t		SkeletonGUID;
-		iAllocator*	Memory;
-	};
-
 
 	/************************************************************************************************/
 

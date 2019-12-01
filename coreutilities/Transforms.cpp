@@ -453,9 +453,9 @@ namespace FlexKit
 	{
 		LT_Entry Local(GetLocal(Node));
 
-		Local.S.m128_f32[0] *= XYZ.pfloats.m128_f32[0];
-		Local.S.m128_f32[1] *= XYZ.pfloats.m128_f32[1];
-		Local.S.m128_f32[2] *= XYZ.pfloats.m128_f32[2];
+		Local.S.m128_f32[0] = XYZ.pfloats.m128_f32[0];
+		Local.S.m128_f32[1] = XYZ.pfloats.m128_f32[1];
+		Local.S.m128_f32[2] = XYZ.pfloats.m128_f32[2];
 
 		SetLocal(Node, &Local);
 	}

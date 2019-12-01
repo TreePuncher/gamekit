@@ -1677,7 +1677,46 @@ namespace FlexKit
 		Vector<bool>	FreeObjectList;
 		const size_t	PoolMaxSize;
 		iAllocator*		Allocator;
-	};
+    };
+
+
+    /************************************************************************************************/
+
+
+    template<typename TY_COL, typename FN_FilterOP>
+    auto filter(TY_COL collection, const FN_FilterOP filter_op)
+    {
+        auto res = std::remove_if(begin(collection), end(collection), [&](auto& i) { return !filter_op(i); });
+        collection.erase(res, end(collection));
+
+        return collection;
+    }
+
+
+    template<typename TY_COL, typename FN_transform>
+    auto transform(const TY_COL& collection, const FN_transform& transform, iAllocator* allocator = SystemAllocator)
+    {
+        Vector<decltype(collection[0])> output(allocator);
+        output.reserve(collection.size());
+
+        for (auto& c : collection)
+            output.emplace_back(transform(c));
+
+        return output;
+    }
+
+
+    template<typename TY_COL, typename FN_transform>
+    decltype(auto) transform_stl(const TY_COL& collection, const FN_transform& transform)
+    {
+        std::vector<decltype(transform(collection[0]))> output{};
+        output.reserve(collection.size());
+
+        for (auto& c : collection)
+            output.emplace_back(transform(c));
+
+        return output;
+    }
 
 
 	/************************************************************************************************/

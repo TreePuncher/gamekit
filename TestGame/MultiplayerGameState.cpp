@@ -107,8 +107,6 @@ void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatc
 }
 
 
-
-
 /************************************************************************************************/
 
 
@@ -117,6 +115,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
 	CameraHandle activeCamera = debugCamera;
+
+    SetCameraAspectRatio(activeCamera, GetWindowAspectRatio(core));
 
 	auto& scene				= game.scene;
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
@@ -151,6 +151,38 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
     base.render.updateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
 	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, frameGraph, PVS.GetData().solid, activeCamera, targets, sceneDesc, core.GetTempMemory());
+
+    // Draw Skeleton overlay
+    auto [gameObject, res] = FindGameObject(scene, "object1");
+    if (res)
+    {
+        auto Skeleton   = GetSkeleton(*gameObject);
+        auto node       = GetSceneNode(*gameObject);
+        LineSegments lines{ core.GetTempMemory() };
+        DEBUG_DrawSkeleton(Skeleton, node, core.GetTempMemory(), &lines);
+
+        auto cameraConstants = GetCameraConstants(activeCamera);
+        float4x4 V = XMMatrixToFloat4x4(&cameraConstants.View);
+        float4x4 P = XMMatrixToFloat4x4(&cameraConstants.Proj);
+
+        for (auto& line : lines)
+        {
+            const auto tempA = V * float4(line.A, 1);
+            line.A = tempA.xyz() / tempA.w;
+
+            auto tempB = V * float4(line.B, 1);
+            line.B = tempB.xyz() / tempB.w;
+        }
+
+        DrawShapes(
+            DRAW_LINE_PSO,
+            frameGraph,
+            base.vertexBuffer,
+            base.constantBuffer,
+            targets.RenderTarget,
+            core.GetTempMemory(),
+            LineShape{ lines });
+    }
 }
 
 
