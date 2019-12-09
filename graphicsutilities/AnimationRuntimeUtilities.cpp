@@ -1084,19 +1084,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawSkeleton(Skeleton* S, NodeHandle Node, iAllocator* TEMP, LineSegments* Out)
+    LineSegments BuildSkeletonLineSet(Skeleton* S, NodeHandle Node, iAllocator* allocator)
 	{
+        LineSegments lines{ allocator };
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
-		float4x4 WT; GetTransform(Node, &WT);
 
-		float4x4* M = (float4x4*)TEMP->_aligned_malloc(S->JointCount * sizeof(float4x4));
+		float4x4 WT         = GetWT(Node);
+        Vector<float4x4> M( allocator, S->JointCount, float4x4::Identity() );
 
-        for (size_t itr = 0; itr < S->JointCount; ++itr)
-            M[itr] = float4x4::Identity();
+        const float4 debugLines[] =
+        {
+            { 1, 0, 0, 1 },
+            { 0, 1, 0, 1 },
+            { 0, 0, 1, 1 }
+        };
+
+        const float4 Colors[] =
+        {
+            RED,
+            GREEN,
+            BLUE
+        };
+
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
-			float3 A, B;
 			
 			float4x4 PT;
 			if (S->Joints[I].mParent != InvalidHandle_t)
@@ -1107,19 +1119,28 @@ namespace FlexKit
 			auto J  = S->JointPoses[I];
 			auto JT = PT * XMMatrixToFloat4x4(&GetPoseTransform(J));
 
-			A = (WT * (JT * Zero)).xyz();
-			B = (WT * (PT * Zero)).xyz();
+            const float4 VA = (WT * (JT * Zero));
+            const float4 VB = (WT * (PT * Zero));
+
+            const float3 A = VA.xyz();
+            const float3 B = VB.xyz();
+
 			M[I] = JT;
 
-			float3 X = (WT * (PT * float4{ 1, 0, 0, 1 })).xyz();
-			float3 Y = (WT * (PT * float4{ 0, 1, 0, 1 })).xyz();
-			float3 Z = (WT * (PT * float4{ 0, 0, 1, 1 })).xyz();
+            if (VA.w <= 0 || VB.w <= 0)
+                continue;
 
-			Out->push_back({ A, WHITE,	B, PURPLE	});
-			Out->push_back({ B, RED,	X, RED		});
-			Out->push_back({ B, GREEN,	Y, GREEN	});
-			Out->push_back({ B, BLUE,	Z, BLUE		});
+            lines.push_back({ A, WHITE,	B, PURPLE	});
+
+            for (size_t itr = 0; itr < sizeof(debugLines) / sizeof(debugLines[0]); ++itr)
+            {
+                const float4 V      = WT * (PT * debugLines[itr]);
+                const auto& color   = Colors[itr];
+                lines.push_back({ B, color, V.xyz(), color });
+            }
 		}
+
+        return lines;
 	}
 
 

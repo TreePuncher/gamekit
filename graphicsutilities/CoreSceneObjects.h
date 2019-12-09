@@ -42,11 +42,11 @@ namespace FlexKit
 	public:
 		struct __declspec(align(16)) ConstantBuffer
 		{
-			XMMATRIX	View;
-			XMMATRIX	ViewI;
-			XMMATRIX	Proj;
-			XMMATRIX	PV;			//  Projection x View
-			XMMATRIX	PVI;		// (Projection x View)^-1
+			float4x4	View;
+			float4x4	ViewI;
+			float4x4	Proj;
+			float4x4	PV;			//  Projection x View
+			float4x4	PVI;		// (Projection x View)^-1
 			float4		WPOS;
 			float		MinZ;
 			float		MaxZ;
@@ -141,7 +141,7 @@ namespace FlexKit
 			DirectX::XMMATRIX	Transform;
 		};
 
-		VConsantsLayout GetConstants();
+		VConsantsLayout GetConstants() const;
 	};
 
 	constexpr const Type_t DRAWABLE_ID = GetTypeGUID(DRAWABLEHANDLE);

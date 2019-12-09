@@ -1228,7 +1228,7 @@ namespace FlexKit
 		    NewBarrier.OldState		= priorState;
 		    NewBarrier.NewState		= desiredState;
 		    NewBarrier.Type			= Barrier::BT_UAVTexture;
-		    NewBarrier.UAVTexture = handle;
+		    NewBarrier.UAVTexture   = handle;
 
 		    PendingBarriers.push_back(NewBarrier);
         }
@@ -1638,6 +1638,9 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
 	void Context::ImmediateWrite(
 		static_vector<UAVResourceHandle>		handles,
 		static_vector<size_t>					value,
@@ -1953,7 +1956,8 @@ namespace FlexKit
 		UpdateResourceStates();
 		DeviceContext->ClearDepthStencilView(Texture.GPUHandle, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
 
-		renderSystem->RenderTargets.MarkRTUsed(Texture.CPUHandle);
+        if(!Texture.UAV)
+		    renderSystem->RenderTargets.MarkRTUsed(Texture.Texture);
 	}
 
 
@@ -3195,6 +3199,15 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    const uint2	RenderSystem::GetTextureWH(UAVTextureHandle Handle) const
+    {
+        return Texture2DUAVs.GetExtra(Handle).WH;
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -3525,10 +3538,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	UAVTextureHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const FORMAT_2D format)
+	UAVTextureHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const FORMAT_2D format, const bool RenderTarget)
 	{
 		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormat2DXGIFormat(format), WH[0], WH[1]);
-		Resource_DESC.Flags              = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+		Resource_DESC.Flags              =
+            D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS |
+            (RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE);
 
 		D3D12_HEAP_PROPERTIES HEAP_Props = {};
 		HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -4403,6 +4418,8 @@ namespace FlexKit
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
 		case FlexKit::FORMAT_2D::R8G8_UNORM:
 			return DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM;
+        case FlexKit::FORMAT_2D::R16G16_FLOAT:
+            return DXGI_FORMAT::DXGI_FORMAT_R16G16_FLOAT;
 		case FlexKit::FORMAT_2D::R32G32B32_FLOAT:
 			return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT;
 		case FlexKit::FORMAT_2D::R16G16B16A16_FLOAT:
@@ -4465,6 +4482,8 @@ namespace FlexKit
 			return FlexKit::FORMAT_2D::R8G8_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT:
 			return FlexKit::FORMAT_2D::R32G32B32_FLOAT;
+        case DXGI_FORMAT::DXGI_FORMAT_R16G16_FLOAT:
+            return FlexKit::FORMAT_2D::R16G16_FLOAT;
 		case DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_FLOAT:
 			return FlexKit::FORMAT_2D::R16G16B16A16_FLOAT;
 		case DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT:
@@ -6776,15 +6795,15 @@ namespace FlexKit
 
 
 
-	DescHeapPOS PushRenderTarget(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS)
+	DescHeapPOS PushRenderTarget(RenderSystem* RS, const Texture2D& Target, DescHeapPOS POS)
 	{
 		D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
-		TargetDesc.Format				= Target->Format;
+		TargetDesc.Format				= Target.Format;
 		TargetDesc.Texture2D.MipSlice	= 0;
 		TargetDesc.Texture2D.PlaneSlice = 0;
 		TargetDesc.ViewDimension		= D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;
 
-		RS->pDevice->CreateRenderTargetView(*Target, &TargetDesc, POS);
+		RS->pDevice->CreateRenderTargetView(Target, &TargetDesc, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorRTVSize, 1);
 	}
@@ -7015,7 +7034,7 @@ namespace FlexKit
 		auto RTVPOS			= RS->_ReserveRTVHeap(1);
 		auto RTVHeap		= RS->_GetCurrentRTVTable();
 		
-		PushRenderTarget(RS, &GetRenderTarget(RW), RTVPOS);
+		PushRenderTarget(RS, GetRenderTarget(RW), RTVPOS);
 
 		CL->ClearRenderTargetView(RTVPOSCPU, ClearColor, 0, nullptr);
 	}

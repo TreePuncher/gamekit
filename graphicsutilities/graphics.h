@@ -68,6 +68,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <DirectXMath.h>
 #include <dxgi1_6.h>
 
+#include <tuple>
+#include <variant>
+
 //#pragma comment(lib, "osdCPU.lib" )
 //#pragma comment(lib, "osdGPU.lib" )
 
@@ -339,6 +342,7 @@ namespace FlexKit
 		D24_UNORM_S8_UINT,
 		R32_FLOAT,
 		D32_FLOAT,
+        R16G16_FLOAT,
 		R16G16B16A16_FLOAT,
 		R32G32_FLOAT,
 		R32G32B32_FLOAT,
@@ -705,7 +709,7 @@ namespace FlexKit
 			return Texture;
 		}
 
-		operator ID3D12Resource*() { return Texture; }
+		operator ID3D12Resource*() const { return Texture; }
 		operator bool() { return Texture != nullptr; }
 
 
@@ -1524,11 +1528,26 @@ namespace FlexKit
 
 	struct TextureObject
 	{
+        TextureObject(DescHeapPOS IN_GPUHandle, TextureHandle IN_texture) :
+            GPUHandle   { IN_GPUHandle  },
+            Texture     { IN_texture    },
+            UAV         { false         } {}
+
+        TextureObject(DescHeapPOS IN_GPUHandle, UAVTextureHandle IN_UAV) :
+            GPUHandle   { IN_GPUHandle  },
+            UAVTexture  { IN_UAV        },
+            UAV         { true          } {}
+
 		DescHeapPOS		GPUHandle;
-		TextureHandle	CPUHandle;
+
+        union {
+            TextureHandle	    Texture;
+            UAVTextureHandle    UAVTexture;
+        };
+
+        const bool UAV = false;
 
 		operator DescHeapPOS ()		{ return GPUHandle; }
-		operator TextureHandle ()	{ return CPUHandle; }
 	};
 
 
@@ -1627,6 +1646,18 @@ namespace FlexKit
 	};
 
 
+    template<size_t I = 0, typename TY_Tuple, typename FN>
+    void Tuple_For(TY_Tuple& tuple, FN fn)
+    {
+        constexpr size_t end = std::tuple_size_v<TY_Tuple>;
+
+        if constexpr (I < end) {
+            fn(std::get<I>(tuple));
+            Tuple_For<I + 1>(tuple, fn);
+        }
+    }
+
+
 	FLEXKITAPI class Context
 	{
 	public:
@@ -1719,6 +1750,26 @@ namespace FlexKit
 		void SetScissorRects		(static_vector<D3D12_RECT, 16>		Rects);
 
 		void SetScissorAndViewports	(static_vector<TextureHandle, 16>	RenderTargets);
+
+        template<typename ... ARGS>
+        void SetScissorAndViewports(std::tuple<ARGS...>	RenderTargets)
+        {
+            static_vector<D3D12_VIEWPORT, 16>	VPs;
+            static_vector<D3D12_RECT, 16>		Rects;
+
+            Tuple_For(
+                RenderTargets,
+                [&](auto target)
+                {
+                    const auto WH = renderSystem->GetTextureWH(target);
+                    VPs.push_back(  { 0,0, (FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
+                    Rects.push_back({ 0,0, (LONG)WH[0], (LONG)WH[1] });
+                });
+
+            SetViewports(VPs);
+            SetScissorRects(Rects);
+        }
+
 
 		void SetDepthStencil		(Texture2D* DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
@@ -2341,9 +2392,13 @@ namespace FlexKit
 			for (auto resource : resources[idx].resources)
 				resource->Release();
 
-			resources[idx] = resources.back();
-			handles[resources.back().resourceHandle] = idx;
-			resources.pop_back();
+            if (resources.size() > 1 && resources.size() < idx)
+            {
+                resources[idx] = resources.back();
+                handles[resources.back().resourceHandle] = idx;
+            }
+
+            resources.pop_back();
 		}
 
 
@@ -2720,8 +2775,9 @@ namespace FlexKit
 		uint32_t	GetTag(TextureHandle Handle);
 		void		SetTag(TextureHandle Handle, uint32_t);
 
-		const size_t	GetTextureElementSize		(TextureHandle Handle) const;
-		const uint2		GetTextureWH				(TextureHandle Handle) const;
+		const size_t	GetTextureElementSize		(TextureHandle      Handle) const;
+		const uint2		GetTextureWH				(TextureHandle      Handle) const;
+		const uint2		GetTextureWH				(UAVTextureHandle   Handle) const;
 		const uint2		GetRenderTargetWH			(TextureHandle Handle) const;
 		FORMAT_2D		GetTextureFormat			(TextureHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat		(TextureHandle Handle) const;
@@ -2740,7 +2796,7 @@ namespace FlexKit
 		TextureHandle			CreateTexture2D					(const uint2 WH, const FORMAT_2D Format, const size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
 		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
-		UAVTextureHandle		CreateUAVTextureResource		(const uint2 WH, const FORMAT_2D);
+		UAVTextureHandle		CreateUAVTextureResource		(const uint2 WH, const FORMAT_2D, const bool RenderTarget = false);
 		SOResourceHandle		CreateStreamOutResource			(size_t bufferHandle, bool tripleBuffer = true);
 		QueryHandle				CreateSOQuery					(size_t SOIndex,			size_t count);
 		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
@@ -2963,7 +3019,7 @@ namespace FlexKit
 	FLEXKITAPI UploadSegment	ReserveUploadBuffer		(const size_t uploadSize, RenderSystem& renderSystem);
 	FLEXKITAPI void				MoveBuffer2UploadBuffer	(const UploadSegment& data, byte* source, size_t uploadSize);
 
-	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, Texture2D*		target, DescHeapPOS POS);
+	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, const Texture2D&	target, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, TextureHandle	target, DescHeapPOS POS);
 
 	FLEXKITAPI DescHeapPOS PushDepthStencil			(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS);
@@ -3442,7 +3498,7 @@ namespace FlexKit
 		ConstantBufferDataSet() {}
 
 		template<typename TY>
-		ConstantBufferDataSet(TY& initialData, CBPushBuffer& buffer) :
+		ConstantBufferDataSet(const TY& initialData, CBPushBuffer& buffer) :
 			constantBuffer	{ buffer },
 			constantsOffset	{ buffer.Push(initialData) }	{}
 

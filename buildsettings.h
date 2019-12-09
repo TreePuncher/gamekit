@@ -188,7 +188,7 @@ static const size_t KILOBYTE	= 1024;
 static const size_t MEGABYTE	= 1024 * KILOBYTE;
 static const size_t GIGABYTE	= 1024 * MEGABYTE;
 
-constexpr size_t DefaultWorkerCount = 4; // should be safe for a quad core cpu
+constexpr size_t DefaultWorkerCount = 2; // should be safe for a quad core cpu
 const size_t INVALIDHANDLE = -1;
 
 namespace FlexKit {

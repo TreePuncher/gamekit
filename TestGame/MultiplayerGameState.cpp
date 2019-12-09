@@ -11,11 +11,11 @@ using namespace FlexKit;
 GameState::GameState(
 			GameFramework&  IN_framework, 
 			BaseState&		IN_base) :
-		        FrameworkState	{ IN_framework },
+				FrameworkState	{ IN_framework },
 		
-		        frameID			{ 0										},
-		        base			{ IN_base								},
-		        scene			{ IN_framework.core.GetBlockMemory()	}
+				frameID			{ 0										},
+				base			{ IN_base								},
+				scene			{ IN_framework.core.GetBlockMemory()	}
 {}
 
 
@@ -87,15 +87,19 @@ LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_ba
 	eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft);
 	eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
 
-    debugCamera.TranslateWorld({0, 10, 0});
+	debugCamera.TranslateWorld({0, 10, 0});
 }
 
 
 /************************************************************************************************/
 
 
-void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT)
+void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
+    base.Update(core, dispatcher, dT);
+
+    if (auto [suzanne000, res] = FindGameObject(game.scene, "Suzanne.000"); res)
+        Yaw(*suzanne000, pi * dT);
 }
 
 
@@ -116,7 +120,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 	CameraHandle activeCamera = debugCamera;
 
-    SetCameraAspectRatio(activeCamera, GetWindowAspectRatio(core));
+	SetCameraAspectRatio(activeCamera, GetWindowAspectRatio(core));
 
 	auto& scene				= game.scene;
 	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
@@ -137,11 +141,11 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	debugDraw.vertexBuffer	 = base.vertexBuffer;
 
 	const SceneDescription sceneDesc = {
-	    scene.GetPointLights(dispatcher, core.GetTempMemory()),
-	    transforms,
-	    cameras,
-	    PVS,
-    };
+		scene.GetPointLights(dispatcher, core.GetTempMemory()),
+		transforms,
+		cameras,
+		PVS,
+	};
 
 	ClearVertexBuffer(frameGraph, base.vertexBuffer);
 	ClearVertexBuffer(frameGraph, base.textBuffer);
@@ -149,40 +153,49 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
 	ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
-    base.render.updateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-	base.render.RenderDrawabledPBR_ForwardPLUS(dispatcher, frameGraph, PVS.GetData().solid, activeCamera, targets, sceneDesc, core.GetTempMemory());
+#if 1
+    auto& depthPass      = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS.GetData().solid, targets.DepthTarget, core.GetTempMemory());
+	auto& lighting       = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
+	auto& deferredPass   = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, core.GetTempMemory());
 
-    // Draw Skeleton overlay
-    auto [gameObject, res] = FindGameObject(scene, "object1");
-    if (res)
-    {
-        auto Skeleton   = GetSkeleton(*gameObject);
-        auto node       = GetSceneNode(*gameObject);
-        LineSegments lines{ core.GetTempMemory() };
-        DEBUG_DrawSkeleton(Skeleton, node, core.GetTempMemory(), &lines);
+#else
+    base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
+#endif
 
-        auto cameraConstants = GetCameraConstants(activeCamera);
-        float4x4 V = XMMatrixToFloat4x4(&cameraConstants.View);
-        float4x4 P = XMMatrixToFloat4x4(&cameraConstants.Proj);
+	// Draw Skeleton overlay
+	
+	if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)
+	{
+		auto Skeleton       = GetSkeleton(*gameObject);
+		auto node           = GetSceneNode(*gameObject);
 
-        for (auto& line : lines)
-        {
-            const auto tempA = V * float4(line.A, 1);
-            line.A = tempA.xyz() / tempA.w;
+		if (!Skeleton)
+			return;
 
-            auto tempB = V * float4(line.B, 1);
-            line.B = tempB.xyz() / tempB.w;
-        }
+		LineSegments lines  = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
 
-        DrawShapes(
-            DRAW_LINE_PSO,
-            frameGraph,
-            base.vertexBuffer,
-            base.constantBuffer,
-            targets.RenderTarget,
-            core.GetTempMemory(),
-            LineShape{ lines });
-    }
+		const auto cameraConstants = GetCameraConstants(activeCamera);
+		const float4x4 V = cameraConstants.View;
+		const float4x4 P = cameraConstants.Proj;
+
+		for (auto& line : lines)
+		{
+			const auto tempA = P * (V * float4{ line.A, 1 });
+			const auto tempB = P * (V * float4{ line.B, 1 });
+
+			line.A = tempA.xyz() / tempA.w;
+			line.B = tempB.xyz() / tempB.w;
+		}
+
+		DrawShapes(
+			DRAW_LINE_PSO,
+			frameGraph,
+			base.vertexBuffer,
+			base.constantBuffer,
+			targets.RenderTarget,
+			core.GetTempMemory(),
+			SSLineShape{ lines });
+	}
 }
 
 
@@ -191,7 +204,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-    PresentBackBuffer(frameGraph, &core.Window);
+	PresentBackBuffer(frameGraph, &core.Window);
 }
 
 
@@ -205,22 +218,24 @@ void LocalPlayerState::EventHandler(Event evt)
 			debugCamera.HandleEvent(evt);
 		});
 
-    switch (evt.InputSource)
-    {
-        case Event::Keyboard:
-        {
-            switch (evt.mData1.mKC[0])
-            {
-            case KC_U: // Reload Shaders
-            {
-                if (evt.Action == Event::Release)
-                {
-                    framework.core.RenderSystem.QueuePSOLoad(FORWARDDRAW);
-                }
-            }   break;
-            }
-        }   break;
-    }
+	switch (evt.InputSource)
+	{
+		case Event::Keyboard:
+		{
+			switch (evt.mData1.mKC[0])
+			{
+			case KC_U: // Reload Shaders
+			{
+				if (evt.Action == Event::Release)
+				{
+                    std::cout << "Reloading Shaders\n";
+					framework.core.RenderSystem.QueuePSOLoad(FORWARDDRAW);
+					framework.core.RenderSystem.QueuePSOLoad(LIGHTPREPASS);
+				}
+			}   break;
+			}
+		}   break;
+	}
 }
 
 

@@ -25,13 +25,12 @@ float V_SmithGGXCorrelated(float ndotl, float ndotv, float alphaG)
 	float alphaG2       = alphaG * alphaG;
 	float Lambda_GGXV   = ndotl * sqrt((-ndotv * alphaG2 + ndotv) * ndotv + alphaG2);
 	float Lambda_GGXL   = ndotv * sqrt((-ndotl * alphaG2 + ndotl) * ndotl + alphaG2);
-	return 0.5f / (Lambda_GGXV + Lambda_GGXL);
+	return saturate(0.5f / (Lambda_GGXV + Lambda_GGXL));
 }
 
 
 float D_GGX(float ndoth , float m)
 {
-	//Divide by PI is apply later
 	float m2    = m * m;
 	float f     = (ndoth * m2 - ndoth) * ndoth + 1;
 	return m2 / (f * f);
@@ -59,42 +58,45 @@ struct SphereAreaLight
 };
 
 
-float Fr(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r) // Fresnel Factor
+float Fr(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r) // specular
 {
-	float3 h  = normalize(v + l);
-	float  A  = saturate(pow(r, 2));
+	const float3 h  = normalize(v + l);
+	const float  A  = saturate(pow(r, 2));
 
-	float ndotv = saturate(dot(n, v) + 1e-5);
-	float ndotl = saturate(dot(n, l));
-	float ndoth = saturate(dot(n, h));
-	float ldoth = saturate(dot(l, h));
+	const float ndotv = saturate(dot(n, v) + 1e-5);
+	const float ndotl = saturate(dot(n, l));
+	const float ndoth = saturate(dot(n, h));
+	const float ldoth = saturate(dot(l, h));
 	
-	//	Specular BRDF
-	float3	F	= F_Schlick(Ks, 0.0f, ldoth);
-	float	G	= V_SmithGGXCorrelated(ndotv, ndotl, A);
-	float	D	= D_GGX(ndoth, A);
+	const float3 f0 = (m == 0) ? 0.04f : float3(0.549, 0.556, 0.554);
 
-	return D * G * F / (4 * ndotv * ndotl);
+	const float3	F = F_Schlick(Ks, 1.0f, ldoth);
+	const float		G = V_SmithGGXCorrelated(ndotv, ndotl, A);
+	const float		D = D_GGX(ndoth, A);
+
+	return D * G * F * ndotv * ndotl / 4;
 }
 
 
-float Fd(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r) // Fresnel Factor
+float Fd(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r) // diffuse
 {
-	float3 h = normalize(v + l);
-	float  A = saturate(pow(r, 2));
+	const float3 h = normalize(v + l);
+	const float  A = saturate(pow(r, 2));
 
-	float ndotv = saturate(dot(n, v) + 1e-5);
-	float ndotl = saturate(dot(n, l));
-	float ndoth = saturate(dot(n, h));
-	float ldoth = saturate(dot(l, h));
+	const float ndotv = saturate(dot(n, v) + 1e-5);
+	const float ndotl = saturate(dot(n, l));
+	const float ndoth = saturate(dot(n, h));
+	const float ldoth = saturate(dot(l, h));
 
-	//	Specular BRDF
-	float3	F = F_Schlick(Ks, 1.0f, ldoth);
-	float	G = V_SmithGGXCorrelated(ndotv, ndotl, A);
-	float	D = D_GGX(ndoth, A);
+	const float3 f0 = (m == 0) ? 0.04f : float3(0.549, 0.556, 0.554);
 
-	return Kd * D * G * F / (pi * ndotv * ndotl);
+	const float3	F = F_Schlick(f0, 1.0f, ldoth);
+	const float		G = V_SmithGGXCorrelated(ndotv, ndotl, A);
+	const float		D = D_GGX(ndoth, A);
+
+	return Fr_Disney(ndotv, ndotl, ldoth, A) * ndotl;
 }
+
 
 float3 BRDF(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, float3 Ks, float m, float r)
 {
@@ -113,12 +115,84 @@ float3 BRDF(float3 l, float3 lc, float3 v, float3 WPOS, float3 Kd, float3 n, flo
 	
 	//	Specular BRDF
 	float3	F	= F_Schlick(f0, 1.0f, ndotv);
-	float	G	= V_SmithGGXCorrelated(ndotv, ndotl, A);
-	float	D	= D_GGX(ndoth, A);
-	// 	Diffuse BRDF
-	float Fd	= (m <= 0.5f) ? Fr_Disney(ndotv, ndotl, ldoth, A) : 0.0f;
+	float	G	= V_SmithGGXCorrelated(ndotv, ndotl, r);
+	float	D	= D_GGX(ndotl, A);
 
-	return saturate((Kd * Fd) + (Ks * D * G * F));
+	return 	(m == 1) ? Fd(l, lc, v, WPOS, Kd, n, Ks, m, r) : 0 +
+			Fr(l, lc, v, WPOS, Kd, n, Ks, m, A);
+}
+
+
+float Square(float x) { return x * x; }
+ 
+float Theta(float3 w)
+{
+    return acos(w.z / length(w));
+}
+ 
+float CosTheta(float3 w)
+{
+    return cos(Theta(w));
+}
+ 
+float EricHeitz2018GGXG1Lambda(float3 V, float alpha_x,  float alpha_y)
+{
+    float Vx2 = Square(V.x);
+    float Vy2 = Square(V.y);
+    float Vz2 = Square(V.z);
+    float ax2 = Square(alpha_x);
+    float ay2 = Square(alpha_y);
+    return (-1.0 + sqrt(1.0 + (Vx2 * ax2 + Vy2 * ay2) / Vz2)) / 2.0;
+}
+ 
+float EricHeitz2018GGXG1(float3 V, float alpha_x, float alpha_y)
+{
+    return 1.0 / (1.0 + EricHeitz2018GGXG1Lambda(V, alpha_x, alpha_y));
+}
+ 
+// wm: microfacet normal in frame
+float EricHeitz2018GGXD(float3 N,  float alpha_x, float alpha_y)
+{
+    float Nx2 = Square(N.x);
+    float Ny2 = Square(N.y);
+    float Nz2 = Square(N.z);
+    float ax2 = Square(alpha_x);
+    float ay2 = Square(alpha_y);
+    return 1.0 / (pi * alpha_x * alpha_y * Square(Nx2 / ax2 + Ny2 / ay2 + Nz2));
+}
+ 
+float EricHeitz2018GGXG2(float3 V, float3 L, float alpha_x, float alpha_y)
+{
+    return EricHeitz2018GGXG1(V, alpha_x, alpha_y) * EricHeitz2018GGXG1(L, alpha_x, alpha_y);
+}
+ 
+float3 SchlickFresnel(float NoX, float3 F0)
+{
+	return F0 + (1.0 - F0) * pow(1.0 - NoX, 5.0);
+}
+
+float3 EricHeitz2018GGX(float3 V, float3 L, float roughness, float anisotropic, float ior)
+{
+    float alpha = roughness * roughness;
+    float aspect = sqrt(1.0 - 0.9 * anisotropic);
+    float alpha_x = alpha * aspect;
+    float alpha_y = alpha / aspect;
+ 
+    float3 H = normalize(L + V);
+    float NoV = CosTheta(V);
+    float NoL = CosTheta(L);
+    if (NoV < 0.0 || NoL < 0.0) return float3(0, 0, 0);
+ 
+    float VoH = dot(V, H);
+    float NoH = CosTheta(H);
+    float3 F0 = float3(1, 1, 1) * abs((1.0 - ior) / (1.0 + ior));
+    F0 = F0 * F0;
+ 
+    float D = EricHeitz2018GGXD(H, alpha_x, alpha_y);
+    float3 F = SchlickFresnel(max(NoV, 0.0), F0);
+    float G = EricHeitz2018GGXG2(V, L, alpha_x, alpha_y);
+
+    return (F * D * G) / (4.0f * VoH * NoH);
 }
 
 

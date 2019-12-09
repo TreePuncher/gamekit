@@ -214,16 +214,15 @@ namespace FlexKit
 
 				Out.FBL = V4;
 				Out.FBR = V3;
-
-				int x = 0;
 			}
 		}
 		// Near Field
 		{
-			float4 TopRight		(1, 1, 1, 1);
-			float4 TopLeft		(-1, 1, 1, 1);
-			float4 BottomRight	(1, -1, 1, 1);
-			float4 BottomLeft	(-1, -1, 1, 1);
+			float4 TopRight		{  1,  1, 1, 1 };
+			float4 TopLeft		{ -1,  1, 1, 1 };
+			float4 BottomRight	{  1, -1, 1, 1 };
+			float4 BottomLeft	{ -1, -1, 1, 1 };
+
 			{
 				float4 V1 = DirectX::XMVector4Transform(TopRight, Float4x4ToXMMATIRX(&InverseView));
 				float4 V2 = DirectX::XMVector4Transform(TopLeft, Float4x4ToXMMATIRX(&InverseView));
@@ -336,21 +335,20 @@ namespace FlexKit
 		DirectX::XMMATRIX XMWT   = Float4x4ToXMMATIRX(&WT);
 		DirectX::XMMATRIX XMView = DirectX::XMMatrixInverse(nullptr, XMWT);
 
-
 		Camera::ConstantBuffer NewData;
-		NewData.Proj            = Float4x4ToXMMATIRX(&Proj);
-		NewData.View			= XMMatrixTranspose(Float4x4ToXMMATIRX(&View));
-		NewData.ViewI           = XMWT;
-		NewData.PV              = XMMatrixTranspose(XMMatrixTranspose(NewData.Proj) * XMView);
-		NewData.PVI             = XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(NewData.Proj) * XMView));
+		NewData.Proj            = Proj;
+		NewData.View			= XMMatrixToFloat4x4(XMMatrixTranspose(Float4x4ToXMMATIRX(&View)));
+		NewData.ViewI           = WT;
+		NewData.PV              = XMMatrixToFloat4x4(XMMatrixTranspose(XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView));
+		NewData.PVI             = XMMatrixToFloat4x4(XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView)));
 		NewData.MinZ            = Near;
 		NewData.MaxZ            = Far;
 
-		PV = XMMatrixToFloat4x4(&NewData.PV);
+		PV = NewData.PV;
 
-		NewData.WPOS[0]         = XMWT.r[0].m128_f32[3];
-		NewData.WPOS[1]         = XMWT.r[1].m128_f32[3];
-		NewData.WPOS[2]         = XMWT.r[2].m128_f32[3];
+		NewData.WPOS[0]         = WT[0][3];
+		NewData.WPOS[1]         = WT[1][3];
+		NewData.WPOS[2]         = WT[2][3];
 		NewData.WPOS[3]         = 0;
 		
 		Quaternion Q			= GetOrientation(Node);
@@ -369,7 +367,7 @@ namespace FlexKit
 		return NewData;
 	}
 
-	float4x4				Camera::GetPV()
+	float4x4 Camera::GetPV()
 	{
 		return PV;
 	}

@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../coreutilities/MathUtils.h"
 #include "../coreutilities/MemoryUtilities.h"
 #include "../coreutilities/Resources.h"
+#include "../coreutilities/XMMathConversion.h"
 #include "../graphicsutilities/MeshUtils.h"
 #include "../graphicsutilities/AnimationUtilities.h"
 
@@ -61,6 +62,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using FlexKit::float2;
 using FlexKit::float3;
 using FlexKit::float4;
+using FlexKit::float4x4;
 using FlexKit::uint4_16;
 using FlexKit::uint4_32;
 using FlexKit::iAllocator;
@@ -144,6 +146,12 @@ inline FbxAMatrix XMMATRIX_2_FBXMATRIX(const XMMATRIX& M)
 			AM[I][II] = M.r[I].m128_f32[II];
 
 	return AM;
+}
+
+
+inline float4x4 FBXMATRIX_2_FLOAT4X4(const FbxAMatrix& AM)
+{
+    return FlexKit::XMMatrixToFloat4x4(FBXMATRIX_2_XMMATRIX(AM));
 }
 
 

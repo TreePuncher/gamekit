@@ -221,7 +221,7 @@ namespace FlexKit
 	class ThreadManager
 	{
 	public:
-		ThreadManager(const uint32_t ThreadCount = 6, iAllocator* IN_allocator = SystemAllocator) :
+		ThreadManager(const uint32_t ThreadCount = 2, iAllocator* IN_allocator = SystemAllocator) :
 			threads				{ },
 			allocator			{ IN_allocator		},
 			workingThreadCount	{ 0					},

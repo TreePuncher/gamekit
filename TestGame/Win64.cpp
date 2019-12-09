@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 	std::string server;
 
 
-	auto menu = [&]
+	[&]
 	{
 		while (true)
 		{
@@ -102,10 +102,8 @@ int main(int argc, char* argv[])
 				return;
 			}
 		}
-	};
+	}();
 
-
-	menu();
 
 	if (quit)
 		return 0;
@@ -152,19 +150,21 @@ int main(int argc, char* argv[])
 		auto& playState = app.PushState<LocalPlayerState>(gameBase, gameState);
 
         LoadScene(app.GetFramework().core, gameState.scene, 10000);
+        DEBUG_ListSceneObjects(gameState.scene);
 
-        auto [Cube_003, res] = FindGameObject(gameState.scene, "Cube.003");
-        {
-            if (res)
-                SetVisable(*Cube_003, false);
-        }
 
-        auto [gameObject, res2] = FindGameObject(gameState.scene, "object1");
-        if (res2)
+        if (auto [Cube_003, found] = FindGameObject(gameState.scene, "Cube.003"); found)
+            SetVisable(*Cube_003, false);
+
+        if (auto [gameObject, found] = FindGameObject(gameState.scene, "object1"); found)
         {
+            const auto parent       = GetParentNode(*gameObject);
+            const auto parentQ      = GetOrientation(parent);
+            const auto orientation  = GetOrientation(*gameObject);
+
+            ClearParent(*gameObject);
             AddSkeletonComponent(*gameObject, app.GetFramework().core.GetBlockMemory());
             SetScale(*gameObject, { 1, 1, 1 });
-            Pitch(*gameObject, float(pi/2.0f));
         }
 	}
 

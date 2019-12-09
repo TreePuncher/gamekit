@@ -519,7 +519,7 @@ namespace FlexKit
 
 
 	template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	Vect<ELEMENT_COUNT, TY_Vs> operator* (TY_S scaler, const Vect<ELEMENT_COUNT, TY_Vs>& v)// scaler multiply
+	Vect<ELEMENT_COUNT, TY_Vs> operator * (TY_S scaler, const Vect<ELEMENT_COUNT, TY_Vs>& v)// scaler multiply
 	{
 		auto V_out = v;
 
@@ -534,7 +534,7 @@ namespace FlexKit
 
 
 	template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
-	Vect<ELEMENT_COUNT, TY_Vs> operator* (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
+	Vect<ELEMENT_COUNT, TY_Vs> operator * (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
 	{
 		auto V_out = v;
 
@@ -543,6 +543,20 @@ namespace FlexKit
 
 		return V_out;
 	}
+
+    /************************************************************************************************/
+
+
+    template<typename TY_S, typename TY_Vs, size_t ELEMENT_COUNT = 1>
+    Vect<ELEMENT_COUNT, TY_Vs> operator / (const Vect<ELEMENT_COUNT, TY_Vs>& v, TY_S scaler)// scaler multiply
+    {
+        auto V_out = v;
+
+        for (auto& Vs : V_out)
+            Vs /= scaler;
+
+        return V_out;
+    }
 
 
 	/************************************************************************************************/
@@ -786,6 +800,7 @@ namespace FlexKit
 	public:
 		float3() noexcept {}
 
+        /*
 		template<class TY = float>
 		float3(std::initializer_list<TY> il) noexcept
 		{
@@ -804,16 +819,16 @@ namespace FlexKit
 				SetElement(pfloats, *n, itr);
 
 		}
-		
+		*/
+
 
 #if USING( FASTMATH )
 
-		inline float3 ( float val )						{ pfloats = _mm_set_ps1(val);					}
-		inline float3 ( float X, float Y, float Z )		{ pfloats = _mm_set_ps(0.0f, Z, Y, X);			}
-		inline float3 ( const float2 in, float Z )		{ pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f);	}
-		inline float3 ( const float3& a )				{ pfloats = a.pfloats;							}
-		inline float3 ( const __m128& in )				{ pfloats = in;									}
-
+		inline float3 ( float val )					    { pfloats = _mm_set_ps1(val);					    }
+		inline float3 ( float X, float Y, float Z )	    { pfloats = _mm_set_ps(0.0f, Z, Y, X);			    }
+		inline float3 ( const float2 in, float Z = 0 )	{ pfloats = _mm_setr_ps(in.x, in.y, Z, 0.0f);	    }
+		inline float3 ( const float3& a )			    { pfloats = a.pfloats;							    }
+		inline float3 ( const __m128& in )			    { pfloats = in;									    }
 
 #else
 
@@ -825,12 +840,16 @@ namespace FlexKit
 
 #endif
 
-		inline float3 xy() const { return float3(x, y, 0.0f); }
-		inline float3 xz() const { return float3(x, 0.0f, z); }
-		inline float3 yz() const { return float3(0.0f, y, z); }
+		inline float2 xy() const { return { x, y }; }
+		inline float2 yz() const { return { y, z }; }
+        inline float2 yx() const { return { y, x }; }
+        inline float2 xz() const { return { x, z }; }
+        inline float2 zy() const { return { z, y }; }
+        inline float2 zx() const { return { z, x }; }
 
 
-        inline float3 zxy() const { return float3(z, x, y); }
+        inline float3 zxy() const { return { z, x, y }; }
+        inline float3 yzx() const { return { y, z, x }; }
 
 
 		inline float3& operator = (float F)
@@ -1077,6 +1096,11 @@ namespace FlexKit
 
 	};
 
+    float3 MakeFloat3(float* f_ptr)
+    {
+        return float3(f_ptr[0], f_ptr[1], f_ptr[2]);
+    }
+
 	const float3 BLACK	= float3(0.0f, 0.0f, 0.0f);
 	const float3 WHITE	= float3(1.0f, 1.0f, 1.0f);
 	const float3 RED	= float3(1.0f, 0.0f, 0.0f);
@@ -1168,12 +1192,6 @@ namespace FlexKit
 			w = V2[1];
 		}
 
-		inline float4( std::initializer_list<float> il )
-		{
-			auto n = il.begin();
-			for (size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n)
-				SetElement(pFloats, *n, itr);
-		}
 
 		inline operator float*				()					{ return (float*)&pFloats;} 
 		inline operator const float* const	()	const			{ return (float*)&pFloats;}
@@ -1324,11 +1342,11 @@ namespace FlexKit
 
 		float3 xyz() const 
 		{
-			return { x, y, z, 0 };
+			return { x, y, z };
 		}
 
-		operator Vect4 ()		{ return{ x, y, z, w }; };
-		operator Vect4 () const { return{ x, y, z, w }; };
+		operator Vect4 ()		{ return{ x, y, z, 0 }; };
+		operator Vect4 () const { return{ x, y, z, 0 }; };
 
 		__m128 pFloats;
 	};
@@ -1701,8 +1719,10 @@ namespace FlexKit
 #endif
 	{
 	public:
-		Matrix(){}
+        using THIS_TYPE = const Matrix<ROW, COL, Ty>;
 
+        Matrix()                                            = default;
+        Matrix(const THIS_TYPE& initial)                    = default;
 
 		Matrix<ROW, COL> operator*(const float rhs)
 		{

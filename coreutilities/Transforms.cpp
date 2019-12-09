@@ -431,6 +431,16 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    float4x4 GetWT(NodeHandle node)
+    {
+        auto index = _SNHandleToIndex(node);
+        return XMMatrixToFloat4x4(SceneNodeTable.WT[index].m4x4);
+    }
+
+
 	/************************************************************************************************/
 
 

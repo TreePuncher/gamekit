@@ -186,7 +186,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
+	const PSOHandle GBUFFERPASS             = PSOHandle(GetTypeGUID(GBUFFERPASS));
 	const PSOHandle LIGHTPREPASS			= PSOHandle(GetTypeGUID(LIGHTPREPASS));
+	const PSOHandle DEPTHPREPASS            = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
 	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
 
@@ -194,6 +196,9 @@ namespace FlexKit
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
 	ID3D12PipelineState* CreateOcclusionDrawPSO			(RenderSystem* RS);
 	ID3D12PipelineState* CreateLightPassPSO				(RenderSystem* RS);
+    ID3D12PipelineState* CreateDepthPrePassPSO          (RenderSystem* RS);
+    ID3D12PipelineState* CreateGBufferPassPSO           (RenderSystem* RS);
+
 
 	struct WorldRender_Targets
 	{
@@ -301,96 +306,238 @@ namespace FlexKit
 		UpdateTaskTyped<GetPVSTaskData>&	PVS;
 	};
 
+    struct DepthPass
+    {
+        DepthPass(const PVS& IN_drawables) :
+            drawables{ IN_drawables } {}
+
+        const PVS&          drawables;
+        TextureHandle       depthPassTarget;
+        FrameResourceHandle depthBufferObject;
+
+        ConstantBufferDataSet passConstants;
+        ConstantBufferDataSet cameraConstants;
+        ConstantBufferDataSet entityConstants;
+
+        CBPushBuffer passConstantsBuffer;
+        CBPushBuffer entityConstantsBuffer;
+
+        DescriptorHeap Heap; // Null Filled
+    };
+
+    using PointLightHandleList = Vector<PointLightHandle>;
+
+
+    struct ForwardDrawConstants
+    {
+        float LightCount;
+        float t;
+    };
+
+    struct ForwardPlusPass
+    {
+        ForwardPlusPass(
+            const PointLightHandleList& IN_lights,
+            const PVS&                  IN_PVS,
+            const ConstantBufferDataSet& IN_passConstants,
+            const ConstantBufferDataSet& IN_cameraConstants,
+            const ConstantBufferDataSet& IN_entityConstants) :
+                pointLights     { IN_lights },
+                drawables       { IN_PVS    },
+                cameraConstants { IN_cameraConstants },
+                entityConstants { IN_entityConstants } {}
+
+
+        FrameResourceHandle			BackBuffer;
+        FrameResourceHandle			DepthBuffer;
+        FrameResourceHandle			OcclusionBuffer;
+        FrameResourceHandle			lightMap;
+        FrameResourceHandle			lightLists;
+        FrameResourceHandle			pointLightBuffer;
+        VertexBufferHandle			VertexBuffer;
+
+        CBPushBuffer passConstantsBuffer;
+        CBPushBuffer entityConstantsBuffer;
+
+        const ConstantBufferDataSet& cameraConstants;
+        const ConstantBufferDataSet& entityConstants;
+
+        const PointLightHandleList& pointLights;
+        const PVS&                  drawables;
+
+        DescriptorHeap				Heap; // Null Filled
+    };
+
 
 	/************************************************************************************************/
+
+
+    class GBuffer
+    {
+    public:
+        GBuffer(const uint2 WH, RenderSystem& RS_IN) :
+            RS          { RS_IN },
+            Albedo      { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R8G8B8A8_UNORM, true)     },
+            Specular    { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R8G8B8A8_UNORM, true)     },
+            Normal      { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R16G16B16A16_FLOAT, true) },
+            Tangent     { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R16G16B16A16_FLOAT, true) },
+            IOR_ANISO   { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R16G16_FLOAT, true)       }
+        {
+            RS.SetDebugName(Albedo,     "Albedo");
+            RS.SetDebugName(Specular,   "Specular");
+            RS.SetDebugName(Normal,     "Normal");
+            RS.SetDebugName(Tangent,    "Tangent");
+            RS.SetDebugName(IOR_ANISO,  "IOR_ANISO");
+        }
+
+        ~GBuffer()
+        {
+            RS.ReleaseUAV(Albedo);
+            RS.ReleaseUAV(Specular);
+            RS.ReleaseUAV(Normal);
+            RS.ReleaseUAV(Tangent);
+            RS.ReleaseUAV(IOR_ANISO);
+        }
+
+        UAVTextureHandle Albedo;	// rgba_UNORM, Albedo + Metal
+        UAVTextureHandle Specular;	// rgba_UNORM, Specular + roughness
+        UAVTextureHandle Normal;	// float16_RGBA
+        UAVTextureHandle Tangent;	// float16_RGBA
+        UAVTextureHandle IOR_ANISO;	// float16_RG
+
+        RenderSystem&    RS;
+    };
+
+
+    struct GBufferPass
+    {
+        GBuffer&        gbuffer;
+        const PVS&      pvs;
+
+        CBPushBuffer    entityConstants;
+        CBPushBuffer    passConstants;
+
+        DescriptorHeap	Heap;
+
+        FrameResourceHandle AlbedoTargetObject;     // RGBA8
+        FrameResourceHandle NormalTargetObject;     // RGBA16Float
+        FrameResourceHandle SpecularTargetObject;
+        FrameResourceHandle TangentTargetObject;
+        FrameResourceHandle IOR_ANISOTargetObject;  // RGBA8
+
+        FrameResourceHandle depthBufferTargetObject;
+    };
+
+
+    struct TiledDeferredShade
+    {
+        GBuffer& gbuffer;
+    };
+
+
+    /************************************************************************************************/
 
 
 	class FLEXKITAPI WorldRender
 	{
 	public:
-		WorldRender(iAllocator* Memory, RenderSystem* RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 IN_lightMapWH = { 64, 64 }) :
+		WorldRender(iAllocator* Memory, RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH) :
 
-			RS(RS_IN),
-			ConstantBuffer		{ RS->CreateConstantBuffer(64 * MEGABYTE, false)							        },
-			OcclusionCulling	{ false																		        },
-			lightLists			{ RS->CreateUAVBufferResource(sizeof(uint32_t) * IN_lightMapWH.Product() * 1024)    },
-			pointLightBuffer	{ RS->CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)                         },
-			lightMap			{ RS->CreateUAVTextureResource(IN_lightMapWH, FORMAT_2D::R32G32_UINT)               },
-			streamingEngine		{ IN_streamingEngine														        },
-			lightMapWH			{ IN_lightMapWH																        }
+			RS                  { RS_IN                                                             },
+			ConstantBuffer		{ RS.CreateConstantBuffer(64 * MEGABYTE, false)						},
+			OcclusionCulling	{ false																},
+			lightLists			{ RS.CreateUAVBufferResource(sizeof(uint32_t) * 108 * 192 * 1024)   },
+			pointLightBuffer	{ RS.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)          },
+			lightMap			{ RS.CreateUAVTextureResource(WH / 10, FORMAT_2D::R32G32_UINT)      },
+			streamingEngine		{ IN_streamingEngine											    },
+			lightMapWH			{ WH / 10                                                           }
 		{
-			RS_IN->RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN->Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,			});
-			RS_IN->RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN->Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO	});
-			RS_IN->RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN->Library.RS6CBVs4SRVs,		CreateOcclusionDrawPSO			});
-			RS_IN->RegisterPSOLoader(LIGHTPREPASS,			{ &RS_IN->Library.ComputeSignature, CreateLightPassPSO				});
+			RS_IN.RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,			});
+			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO	});
+			RS_IN.RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN.Library.RS6CBVs4SRVs,	    CreateOcclusionDrawPSO			});
+			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			{ &RS_IN.Library.ComputeSignature,  CreateLightPassPSO				});
+			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO           });
+			RS_IN.RegisterPSOLoader(GBUFFERPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO            });
 
-			RS_IN->QueuePSOLoad(FORWARDDRAW);
-			RS_IN->QueuePSOLoad(FORWARDDRAWINSTANCED);
+            RS_IN.QueuePSOLoad(GBUFFERPASS);
+            RS_IN.QueuePSOLoad(DEPTHPREPASS);
+            RS_IN.QueuePSOLoad(LIGHTPREPASS);
+            RS_IN.QueuePSOLoad(FORWARDDRAW);
+            RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
 
-            RS->SetDebugName(lightLists,        "lightLists");
-            RS->SetDebugName(pointLightBuffer,  "pointLightBuffer");
-            RS->SetDebugName(lightMap,          "lightMap");
+            RS.SetDebugName(lightLists,        "lightLists");
+            RS.SetDebugName(pointLightBuffer,  "pointLightBuffer");
+            RS.SetDebugName(lightMap,          "lightMap");
 		}
 
 
 		~WorldRender()
 		{
-			RS->ReleaseCB(ConstantBuffer);
-			RS->ReleaseUAV(lightMap);
-			RS->ReleaseUAV(lightLists);
-			RS->ReleaseUAV(pointLightBuffer);
+			RS.ReleaseCB(ConstantBuffer);
+			RS.ReleaseUAV(lightMap);
+			RS.ReleaseUAV(lightLists);
+            RS.ReleaseUAV(pointLightBuffer);
+
+
 		}
 
-		
-		void DefaultRender(
-                UpdateDispatcher& dispatcher,
-                FrameGraph& graph,
-                const PVS& objects,
-                const CameraHandle camera,
-                const WorldRender_Targets& target,
+
+        DepthPass& DepthPrePass(
+                UpdateDispatcher&   dispatcher,
+                FrameGraph&         graph,
+                const CameraHandle  camera,
+                const PVS&          viewableObjects,
+                const TextureHandle depthBufferTarget,
+                iAllocator*         allocator);
+
+
+        ForwardPlusPass& RenderPBR_ForwardPlus(
+                UpdateDispatcher&           dispatcher,
+                FrameGraph&                 graph,
+                const DepthPass&            depthPass,
+                const CameraHandle          camera,
+                const WorldRender_Targets&  Target,
+                const SceneDescription&     desc,
+                const float                 t,
+                iAllocator*                 allocator);
+
+
+		LightBufferUpdate& UpdateLightBuffers(
+                UpdateDispatcher&       dispatcher,
+                FrameGraph&             graph,
+                const CameraHandle      camera,
+                const GraphicScene&     scene,
                 const SceneDescription& desc,
-                iAllocator* Memory);
+                iAllocator*             tempMemory,
+                LighBufferDebugDraw*    drawDebug = nullptr);
 
-		void RenderDrawabledPBR_ForwardPLUS(
-                UpdateDispatcher& dispatcher,
-                FrameGraph& graph,
-                const PVS& objects,
-                const CameraHandle camera,
-                const WorldRender_Targets& Target,
-                const SceneDescription& desc,
-                iAllocator* Memory);
+        GBufferPass&        RenderPBR_GBufferPass(
+            UpdateDispatcher&   dispatcher,
+            FrameGraph&         graph,
+            const CameraHandle  camera,
+            GatherTask&         pvs,
+            GBuffer&            gbuffer,
+            TextureHandle       depthTarget,
+            iAllocator*         allocator);
 
-
-		LightBufferUpdate* updateLightBuffers(
-                UpdateDispatcher& dispatcher,
-                FrameGraph& graph,
-                const CameraHandle camera,
-                const GraphicScene& scene,
-                const SceneDescription& desc,
-                iAllocator* tempMemory,
-                LighBufferDebugDraw* drawDebug = nullptr);
-
-
-		void ClearGBuffer				(FrameGraph& Graph);
-		void RenderDrawabledPBR_Main	(PVS& Objects, FrameGraph& Graph);
-		void RenderDrawabledPBR_Shadow	(PVS& Objects, FrameGraph& Graph);
-		void ShadePBRPass				(FrameGraph& Graph);
+        //TiledDeferredShade& RenderPBR_ShadeTiledDeferred();
 
 	private:
-		RenderSystem*			RS;
+		RenderSystem&			RS;
 		ConstantBufferHandle	ConstantBuffer;
-		//QueryHandle				OcclusionQueries;
+		//QueryHandle			OcclusionQueries;
 		//TextureHandle			OcclusionBuffer;
 
+
 		UAVTextureHandle		lightMap;			// GPU
-		UAVResourceHandle		lightLists;			// GPU
+        UAVResourceHandle		lightLists;			// GPU
 		UAVResourceHandle		pointLightBuffer;	// GPU
 
 		uint2					WH;					// Output Size
 		uint2					lightMapWH;			// Output Size
 
 		TextureStreamingEngine&	streamingEngine;
-		bool OcclusionCulling;
+		bool                    OcclusionCulling;
 
 		// GBuffer
 		//RenderTargetHandle		Albedo;

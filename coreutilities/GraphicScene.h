@@ -412,19 +412,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    using GatherTask = UpdateTaskTyped<GetPVSTaskData>;
+
+    FLEXKITAPI void DEBUG_ListSceneObjects(GraphicScene& scene);
+
+
 	FLEXKITAPI void UpdateGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void UpdateAnimationsGraphicScene	(GraphicScene* SM, double dt);
 	FLEXKITAPI void UpdateGraphicScenePoseTransform	(GraphicScene* SM );
 	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
 
-	FLEXKITAPI void	 GatherScene(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
-	FLEXKITAPI auto& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* SM, CameraHandle C, iAllocator* allocator);
+	FLEXKITAPI void	        GatherScene(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
+    FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator);
+
 
 	FLEXKITAPI void ReleaseGraphicScene				(GraphicScene* SM);
 	FLEXKITAPI void BindJoint						(GraphicScene* SM, JointHandle Joint, SceneEntityHandle Entity, NodeHandle TargetNode);
 
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, GUID_t Guid,			GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
 	FLEXKITAPI bool LoadScene(RenderSystem* RS, const char* LevelName,	GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp);
+
+
 
 
     /************************************************************************************************/

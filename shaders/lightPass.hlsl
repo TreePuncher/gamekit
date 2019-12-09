@@ -121,10 +121,9 @@ Fustrum CreateSubFustrum(uint2 bucketID)
     bottomLeftPoint  /= bottomLeftPoint.w;
     bottomRightPoint /= bottomRightPoint.w;
 
-    //
     Plane topPlane      = GetPlane(Origin,          topLeftPoint,       topRightPoint);
-    Plane bottomPlane   = GetPlane(Origin,          bottomRightPoint,   bottomLeftPoint); // Off
-    Plane leftPlane     = GetPlane(Origin,          topLeftPoint,       bottomLeftPoint); // Off
+    Plane bottomPlane   = GetPlane(Origin,          bottomRightPoint,   bottomLeftPoint);
+    Plane leftPlane     = GetPlane(Origin,          topLeftPoint,       bottomLeftPoint);
     Plane rightPlane    = GetPlane(Origin,          bottomRightPoint,   topRightPoint);  
     Plane farPlane      = GetPlane(topRightPoint,   topLeftPoint,       bottomLeftPoint);
     Plane nearPlane;
@@ -133,7 +132,7 @@ Fustrum CreateSubFustrum(uint2 bucketID)
 
     Fustrum f_out;
     f_out.planes[EPlane_TOP]    = topPlane;
-    f_out.planes[EPlane_BOTTOM] = bottomPlane;// bugged
+    f_out.planes[EPlane_BOTTOM] = bottomPlane;
     f_out.planes[EPlane_LEFT]   = leftPlane;
     f_out.planes[EPlane_RIGHT]  = rightPlane;
     f_out.planes[EPlane_NEAR]   = nearPlane;

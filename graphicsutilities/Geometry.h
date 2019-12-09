@@ -119,8 +119,8 @@ namespace FlexKit
 				inline bool operator <	(const Typed_iterator& rhs) { return (this->m_position < rhs.m_position); }
 
 
-				inline bool				operator == (const Typed_iterator& rhs) { return  (m_position == &*rhs); }
-				inline bool				operator != (const Typed_iterator& rhs) { return !(m_position == &*rhs); }
+				inline bool				operator == (const Typed_iterator& rhs) { return (m_position == rhs.m_position); }
+				inline bool				operator != (const Typed_iterator& rhs) { return (m_position != rhs.m_position); }
 
 				inline Ty&				operator * () { return *m_position; }
 				inline Ty				operator * ()	const { return *m_position; }
@@ -228,7 +228,7 @@ namespace FlexKit
 		template<typename Ty>
 		inline Typed_Iteration<Ty> CreateTypedProxy()
 		{
-			return Typed_Iteration<Ty>(GetBuffer(), GetBufferSizeUsed());
+			return Typed_Iteration<Ty>(GetBuffer(), GetBufferSizeRaw() / sizeof(Ty));
 		}
 
 
@@ -325,13 +325,27 @@ namespace FlexKit
 
 
 	template<typename Ty_Container, typename FetchFN, typename TranslateFN, typename ProcessFN>
-	void ProcessBufferView(const Ty_Container* Container, const uint32_t vertexCount, TranslateFN Translate, FetchFN Fetch, ProcessFN Process)
+	void ScanBufferView(const Ty_Container* Container, const uint32_t vertexCount, TranslateFN Translate, FetchFN Fetch, ProcessFN Scan)
 	{
 		for (uint32_t itr = 0; itr < vertexCount; ++itr) {
 			auto Vert = Translate(Fetch(itr, Container));
-			Process(Vert);
+            Scan(Vert);
 		}
 	}
+
+
+    /************************************************************************************************/
+
+
+    template<typename Ty_Container, typename ProcessFN>
+    void TransformBuffer(Ty_Container& Container, ProcessFN Transform)
+    {
+        const auto end = Container.end();
+        for (auto e = Container.begin(); e != end; e++) {
+            *e = Transform(*e);
+        }
+    }
+
 
 	/************************************************************************************************/
 

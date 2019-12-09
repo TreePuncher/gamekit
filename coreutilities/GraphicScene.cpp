@@ -63,6 +63,28 @@ namespace FlexKit
     }
 
 
+    void DEBUG_ListSceneObjects(GraphicScene& scene)
+    {
+        auto& visableComponent = SceneVisibilityComponent::GetComponent();
+
+        for (auto& visable : scene)
+        {
+            auto& gameObject = *visableComponent[visable].entity;
+            Apply(
+                gameObject,
+                [&]
+                (
+                    StringIDView& ID
+                )
+                {
+                    std::cout << ID.GetString() << '\n';
+                });
+        }
+
+
+    }
+
+
     /************************************************************************************************/
 
 
@@ -108,7 +130,7 @@ namespace FlexKit
 
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
-        gameObject.AddView<PointLightView>(pointLight.K, pointLight.IR[0], GetSceneNode(gameObject));
+        gameObject.AddView<PointLightView>(pointLight.K, 40, GetSceneNode(gameObject));
         SetBoundingSphereFromLight(gameObject);
     }
 
@@ -694,7 +716,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
+    UpdateTaskTyped<GetPVSTaskData>& GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator)
 	{
 		auto& task = dispatcher.Add<GetPVSTaskData>(
 			[&](auto& builder, auto& data)
@@ -984,7 +1006,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Drawable::VConsantsLayout Drawable::GetConstants()
+	Drawable::VConsantsLayout Drawable::GetConstants() const
 	{
 		DirectX::XMMATRIX WT;
 		FlexKit::GetTransform(Node, &WT);

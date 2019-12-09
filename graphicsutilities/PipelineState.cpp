@@ -380,7 +380,9 @@ namespace FlexKit
 			auto res = loader(RS);
 
 			if (!res) {
-				PSO->state = PipelineStateObject::PSO_States::Failed;
+                if (previousState != PipelineStateObject::PSO_States::ReLoadQueued)
+    				PSO->state = PipelineStateObject::PSO_States::Failed;
+
 				FK_LOG_ERROR("PSO Load FAILED!");
 				return;
 			}

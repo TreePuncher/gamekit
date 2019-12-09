@@ -168,7 +168,7 @@ public:
 			render	{	IN_Framework.core.GetTempMemory(),
 						IN_Framework.core.RenderSystem,
 						streamingEngine,
-						IN_Framework.ActiveWindow->WH / 10
+						IN_Framework.ActiveWindow->WH
 					},
 
 			cameras		        { framework.core.GetBlockMemory() },
@@ -176,7 +176,8 @@ public:
 			drawables	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
 			visables	        { framework.core.GetBlockMemory() },
 			pointLights	        { framework.core.GetBlockMemory() },
-            skeletonComponent   { framework.core.GetBlockMemory() }
+            skeletonComponent   { framework.core.GetBlockMemory() },
+            gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
@@ -201,11 +202,23 @@ public:
 		framework.core.RenderSystem.ReleaseDB(depthBuffer);
 	}
 
+
+    void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+    {
+        t += dT;
+    }
+
+
 	asIScriptEngine* asEngine;
 
 	FKApplication& App;
 
+    // counters, timers
+    float                       t = 0.0f;
+
+    // render resources
 	WorldRender					render;
+    GBuffer                     gbuffer;
 	TextureHandle				depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	VertexBufferHandle			textBuffer;

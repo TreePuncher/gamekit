@@ -73,7 +73,8 @@ namespace FlexKit
 			{
 			case DRS_Write:
 			case DRS_ShaderResource:
-			case DRS_UAV:
+            case DRS_UAV:
+            case DRS_RenderTarget:
 			{
 				ctx->AddUAVBarrier(
 					Object->UAVTexture,
@@ -332,6 +333,17 @@ namespace FlexKit
 		return RenderTarget != InvalidHandle_t ? WriteRenderTarget(Resources->renderSystem.GetTag(RenderTarget)) : InvalidHandle_t;
 	}
 
+    FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(UAVTextureHandle handle)
+    {
+        const auto resourceHandle = AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
+        auto resource = Resources->GetResourceObject(resourceHandle);
+
+        FK_ASSERT(resource != nullptr);
+
+        resource->UAVTexture.renderTargetUse = true;
+
+        return resourceHandle;
+    }
 
 
 	/************************************************************************************************/
@@ -655,13 +667,28 @@ namespace FlexKit
 
 			for (auto RT : RenderTargets)
 			{
-				auto Handle			= RT->RenderTarget.Texture;
-				auto Texture		= renderSystem.RenderTargets[Handle];
+				const auto Handle			= RT->RenderTarget.Texture;
+				const auto Texture		    = renderSystem.RenderTargets[Handle];
 
 				RT->RenderTarget.HeapPOS	= TablePOS;
-				TablePOS					= PushRenderTarget(renderSystem, &Texture, TablePOS);
+				TablePOS					= PushRenderTarget(renderSystem, Texture, TablePOS);
 			}
 		}
+
+        for (auto& resource : Resources.Resources)
+        {
+            if (resource.Type == OT_UAVTexture && resource.UAVTexture.renderTargetUse)
+            {
+                const auto Texture          = renderSystem.GetUAV2DTexture(resource.UAVTexture.handle);
+                const auto TablePOS         = renderSystem._ReserveRTVHeap(1);
+                resource.UAVTexture.HeapPOS = TablePOS;
+
+                auto desc = Texture.Texture->GetDesc();
+
+                PushRenderTarget(renderSystem, Texture, TablePOS);
+            }
+        }
+
 		{	// Push Depth Stencils
 			auto TableDepth = renderSystem._ReserveDSVHeap(DepthBuffers.size());
 			auto TableDepthPOS = TableDepth;

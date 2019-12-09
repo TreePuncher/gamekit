@@ -147,6 +147,29 @@ namespace FlexKit
 			}
 		}
 
+        template<typename TY_Initial>
+        inline  Vector(
+			iAllocator*		    Alloc,
+			const size_t	    InitialSize,
+            const TY_Initial&   Initial_V) :
+			    Allocator   { Alloc },
+			    Max         { InitialSize },
+			    Size        { 0 },
+			    A           { nullptr }
+		{
+			if (InitialSize > 0)
+			{
+				FK_ASSERT(Allocator);
+				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * InitialSize);
+				FK_ASSERT(NewMem);
+
+				A   = NewMem;
+				Max = InitialSize;
+
+                for (size_t itr = 0; itr < InitialSize; ++itr)
+                    emplace_back(Initial_V);
+			}
+		}
 
 		inline  Vector(const THISTYPE& RHS) :
 			Allocator(RHS.Allocator),

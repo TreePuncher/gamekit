@@ -60,9 +60,9 @@ namespace FlexKit
 
 		bool Out = false;
 		BlockAllocator_desc BAdesc;
-		BAdesc.SmallBlock	= MEGABYTE * 64;
-		BAdesc.MediumBlock	= MEGABYTE * 64;
-		BAdesc.LargeBlock	= MEGABYTE * 512;
+		BAdesc.SmallBlock	= MEGABYTE * 128;
+		BAdesc.MediumBlock	= MEGABYTE * 128;
+		BAdesc.LargeBlock	= MEGABYTE * 256;
 
 		new(&Memory->BlockAllocator) BlockAllocator();
 
@@ -227,9 +227,9 @@ namespace FlexKit
 			State->NormalizedPos[1]			= max(0.0f, min((float)State->Position[1] / (float)Window->WH[1], 1));
 			State->NormalizedScreenCord		= Position2SS(State->NormalizedPos);
 
-			auto WH = Window->WH;
-			float HorizontalMouseMovement	= float(State->dPos[0]) / WH[0];
-			float VerticalMouseMovement		= float(State->dPos[1]) / WH[1];
+			const auto WH                       = Window->WH;
+			const float HorizontalMouseMovement	= float(State->dPos[0]) / WH[0];
+			const float VerticalMouseMovement	= float(State->dPos[1]) / WH[1];
 
 			State->Normalized_dPos ={ HorizontalMouseMovement, VerticalMouseMovement };
 
@@ -238,7 +238,7 @@ namespace FlexKit
 		}
 		else
 		{
-			ShowCursor(true);
+			ShowCursor(false);
 			State->Enabled = false;
 		}
 	}

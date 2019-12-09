@@ -74,6 +74,16 @@ LoadFBXScene(char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings*
 		printf("Error Returned: %s\n", importer->GetStatus().GetErrorString());
 		return{ false, nullptr };
 	}
+
+    if (auto& axisSystem = scene->GetGlobalSettings().GetAxisSystem();
+        axisSystem != FbxAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded))
+    {
+        std::cout << "Converting scene axis system\n";
+
+        FbxAxisSystem newAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded);
+        newAxisSystem.DeepConvertScene(scene);
+    }
+
 	return{ true, scene };
 }
 
@@ -128,6 +138,7 @@ void GatherAllGeometry(
 	using MeshUtilityFunctions::MeshBuildInfo;
 
 	auto AttributeCount = node->GetNodeAttributeCount();
+
 	for (int itr = 0; itr < AttributeCount; ++itr)
 	{
 		auto Attr		= node->GetNodeAttributeByIndex(itr);
@@ -160,7 +171,10 @@ void GatherAllGeometry(
 
 			if (!FBXIDPresentInTable(Mesh->GetUniqueID(), Table))
 			{
-				MeshResource_ptr resource = CreateMeshResource(*Mesh, Name, MD, false);
+                const FbxAMatrix transform  = node->EvaluateGlobalTransform();
+                MeshResource_ptr resource   = CreateMeshResource(*Mesh, Name, MD, false);
+
+                resource->BakeTransform(FBXMATRIX_2_FLOAT4X4((transform)));
 				
 				if(MeshInfo)
 				{

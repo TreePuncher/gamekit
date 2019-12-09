@@ -133,6 +133,7 @@ namespace FlexKit
 	FLEXKITAPI LT_Entry		GetLocal					( NodeHandle Node );
 	FLEXKITAPI float3		GetLocalScale				( NodeHandle Node );
 	FLEXKITAPI void			GetTransform				( NodeHandle Node,	DirectX::XMMATRIX* __restrict out );
+	FLEXKITAPI float4x4     GetWT                       ( NodeHandle Node );
 	FLEXKITAPI void			GetTransform				( NodeHandle node,	float4x4* __restrict out );
 	FLEXKITAPI Quaternion	GetOrientation				( NodeHandle Node );
 	FLEXKITAPI float3		GetPositionW				( NodeHandle Node );
@@ -186,6 +187,11 @@ namespace FlexKit
 		{
 			return FlexKit::GetZeroedNode();
 		}
+
+        NodeHandle GetRoot() 
+        {
+            return NodeHandle{ 0 };
+        }
 	};
 
 
@@ -245,7 +251,7 @@ namespace FlexKit
 
 		NodeHandle GetParentNode()
 		{
-			FlexKit::GetParentNode(node);
+			return FlexKit::GetParentNode(node);
 		}
 
 
@@ -352,6 +358,31 @@ namespace FlexKit
             { return float3{ 1, 1, 1 }; });
     }
 
+    void ClearParent(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.SetParentNode(node.GetComponent().GetRoot());
+            }
+        );
+    }
+
+    auto GetParentNode(GameObject& go)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node) -> NodeHandle
+            {
+                return node.GetParentNode();
+            },
+            []() -> NodeHandle
+            {
+                return InvalidHandle_t;
+            }
+        );
+    }
+
+
     void SetScale(GameObject& go, float3 scale)
     {
         return Apply(go,
@@ -369,6 +400,17 @@ namespace FlexKit
             [&](SceneNodeView<>& node)
             {
                 return node.Pitch(theta);
+            }
+        );
+    }
+
+
+    void Yaw(GameObject& go, float theta)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.Yaw(theta);
             }
         );
     }

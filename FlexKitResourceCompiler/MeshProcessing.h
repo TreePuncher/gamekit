@@ -180,6 +180,51 @@ namespace FlexKit
 			float  r;
 		}Info;
 
+        void BakeTransform(const float4x4 transform)
+        {
+            return;
+            for (auto view : buffers)
+            {
+                if (view)
+                {
+                    switch (view->GetBufferType())
+                    {
+                        case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL:
+                        case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT:
+                            TransformBuffer(
+                                view->CreateTypedProxy<float3>(),
+                                [&](auto V) -> float3
+                                {
+                                    return V;
+                                    //return (transform * float4(V, 0)).xyz().normal(); // TODO: Handle scaling correctly
+                                });
+                            break;
+                        case VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION:
+                            struct Vertex
+                            {
+                                float pos[3];
+                            };
+                            TransformBuffer(
+                                view->CreateTypedProxy<Vertex>(),
+                                [&](auto V)
+                                {
+                                    Vertex V_out;
+
+                                    float3 pos = MakeFloat3(V.pos);
+                                    auto new_v = (transform * float4(pos, 1)).xyz();
+                                    V_out.pos[0] = new_v.x;
+                                    V_out.pos[1] = new_v.y;
+                                    V_out.pos[2] = new_v.z;
+
+                                    return V_out;// 
+                                    //return (transform.Transpose() * float4(V, 1)).xyz();
+                                });
+                            break;
+                    }
+                }
+            }
+        }
+
 		// Visibility Information
 		AABB			AABB;
 		BoundingSphere	BS;

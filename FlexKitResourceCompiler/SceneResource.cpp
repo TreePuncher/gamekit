@@ -81,13 +81,14 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 			const auto I           = (float)FBXLight->Intensity.Get()/10;
 			const auto K           = FBXLight->Color.Get();
 			const auto R           = FBXLight->OuterAngle.Get();
-			const auto radius	   = FBXLight->FarAttenuationEnd.Get();
+			const auto radius	   = FBXLight->FarAttenuationStart.Get();
+            const auto decay       = FBXLight->DecayStart.Get();
 
             SceneEntity entity;
             entity.Node = Nodehndl;
             entity.id   = Node->GetName();
 
-            entity.components.push_back(std::make_shared<PointLightComponent>(TranslateToFloat3(K), float2{ I, I }));
+            entity.components.push_back(std::make_shared<PointLightComponent>(TranslateToFloat3(K), float2{ 40, 40 }));
 
             scene->AddSceneEntity(entity);
 		}	break;
@@ -324,8 +325,19 @@ ResourceBlob SceneResource::CreateBlob()
 		n.scale			= node.scale;
 		n.parent		= node.parent;
 
+        if(n.parent == -1)
+            n.orientation = Quaternion::Identity();
+
+        /*
+        if (n.parent == 0)
+        {// if Parent is root, bake rotation, fixes weird blender rotation issues
+            n.orientation   = nodes[0].Q * n.orientation;
+            n.position      = nodes[0].Q.Inverse() * n.position;
+        }
+        */
         nodeBlob += Blob{ n };
 	}
+
 
     Blob entityBlock;
 	for (auto& entity : entities)

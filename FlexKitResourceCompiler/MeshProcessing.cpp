@@ -676,7 +676,7 @@ namespace FlexKit
 		const float		BSR_Ref  = (transformedMesh.MaxV - transformedMesh.MinV).magnitude() / 2;
         float		    BSRadius = 0;
 
-		ProcessBufferView(
+		ScanBufferView(
 			&CVB, 
 			(uint32_t)CVB.size(),
 			WriteVertex, 

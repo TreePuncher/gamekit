@@ -113,12 +113,19 @@ namespace FlexKit
 				DescHeapPOS		HeapPOS;
 			}RenderTarget;
 
+            struct {
+                UAVTextureHandle	handle;
+                DescHeapPOS		    HeapPOS;
+                bool                renderTargetUse;
+
+                operator UAVTextureHandle () { return handle; }
+            }UAVTexture;
+
 			QueryHandle				query;
 			ShaderResourceHandle	ShaderResource;
 			GPUResourceHandle		byteBuffer;
 			SOResourceHandle		SOBuffer;
 			UAVResourceHandle		UAVBuffer;
-			UAVTextureHandle		UAVTexture;
 			TextureHandle			Texture;
 
 			struct {
@@ -136,7 +143,6 @@ namespace FlexKit
 
 			return RenderTarget;
 		}
-
 
 		static FrameObject WriteRenderTargetObject(uint32_t Tag, TextureHandle Handle)
 		{
@@ -182,7 +188,6 @@ namespace FlexKit
 			return shaderResource;
 		}
 
-
 		static FrameObject GPUResourceObject(uint32_t Tag, GPUResourceHandle Handle, DeviceResourceState InitialState)
 		{
 			FrameObject shaderResource;
@@ -210,10 +215,11 @@ namespace FlexKit
 		static FrameObject UAVTextureObject(uint32_t Tag, UAVTextureHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_UAV)
 		{
 			FrameObject UnorderedAccessViewObject;
-			UnorderedAccessViewObject.State             = InitialState;
-			UnorderedAccessViewObject.Type              = OT_UAVTexture;
-			UnorderedAccessViewObject.Tag               = Tag;
-			UnorderedAccessViewObject.UAVTexture		= Handle;
+			UnorderedAccessViewObject.State                         = InitialState;
+			UnorderedAccessViewObject.Type                          = OT_UAVTexture;
+			UnorderedAccessViewObject.Tag                           = Tag;
+            UnorderedAccessViewObject.UAVTexture.handle             = Handle;
+            UnorderedAccessViewObject.UAVTexture.renderTargetUse    = false;
 
 			return UnorderedAccessViewObject;
 		}
@@ -394,10 +400,23 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		TextureObject				GetRenderTargetObject(FrameResourceHandle Handle) const
+		TextureObject GetRenderTargetObject(FrameResourceHandle Handle) const
 		{
-			return { Resources[Handle].RenderTarget.HeapPOS, Resources[Handle].RenderTarget.Texture };
-		}
+            switch (Resources[Handle].Type)
+            {
+            case OT_BackBuffer:
+            case OT_RenderTarget:
+            case OT_DepthBuffer:
+                return { Resources[Handle].RenderTarget.HeapPOS, Resources[Handle].RenderTarget.Texture };
+            case OT_UAVTexture:
+                Resources[Handle];
+                return { Resources[Handle].UAVTexture.HeapPOS, Resources[Handle].UAVTexture.handle};
+            default:
+                FK_ASSERT(false);
+            }
+
+            return { {}, TextureHandle{ InvalidHandle_t } };
+        }
 
 
 		/************************************************************************************************/
@@ -896,7 +915,7 @@ namespace FlexKit
 				{
 					auto CorrectType = LHS.Type == OT_UAVTexture;
 
-					return (CorrectType && LHS.UAVTexture == handle);
+					return (CorrectType && LHS.UAVTexture.handle == handle);
 				});
 
 			if (res != Resources.end())
@@ -1431,7 +1450,7 @@ namespace FlexKit
 	{
 	public:
 		FrameGraphNodeBuilder(
-			Vector<UpdateTask*>&		IN_DataDependencies,
+			Vector<UpdateTask*>&	    IN_DataDependencies,
 			FrameResources*				IN_Resources, 
 			FrameGraphNode&				IN_Node,
 			FrameGraphResourceContext&	IN_context,
@@ -1462,8 +1481,9 @@ namespace FlexKit
 		FrameResourceHandle ReadRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 		FrameResourceHandle WriteRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
 
-		FrameResourceHandle ReadRenderTarget	(TextureHandle Handle);
-		FrameResourceHandle WriteRenderTarget	(TextureHandle Handle);
+		FrameResourceHandle ReadRenderTarget	(TextureHandle      Handle);
+		FrameResourceHandle WriteRenderTarget	(TextureHandle      Handle);
+        FrameResourceHandle WriteRenderTarget   (UAVTextureHandle   Handle);
 
 		FrameResourceHandle	PresentBackBuffer	(TextureHandle Tag);
 		FrameResourceHandle	ReadBackBuffer		(TextureHandle Tag);
@@ -1598,8 +1618,8 @@ namespace FlexKit
 		Vector<FrameObjectDependency>	LocalOutputs;
 		Vector<FrameObjectDependency>	LocalInputs;
 		Vector<FrameObjectDependency>	Transitions;
+		Vector<UpdateTask*>&	        DataDependencies;
 
-		Vector<UpdateTask*>&			DataDependencies;
 		FrameGraphResourceContext&		Context;
 		FrameGraphNode&					Node;
 		FrameResources*					Resources;
@@ -1929,6 +1949,48 @@ namespace FlexKit
 			{
 				ShapeVert Vert1 = { Position2SS(Segment.A),{ 0.0f, 0.0f }, float4(Segment.AColour, 1) };
 				ShapeVert Vert2 = { Position2SS(Segment.B),{ 0.0f, 0.0f }, float4(Segment.BColour, 1) };
+
+				PushVertex(Vert1, PushBuffer, Resources);
+				PushVertex(Vert2, PushBuffer, Resources);
+			}
+
+			Constants CB_Data = {
+				float4{ 0 },
+				float4{ 0 },
+				float4x4::Identity()
+			};
+
+			auto CBOffset = BeginNewConstantBuffer(CB, Resources);
+			PushConstantBufferData(CB_Data, CB, Resources);
+
+			DrawList.push_back({ ShapeDraw::RenderMode::Line, CBOffset, VBOffset, Lines.size() * 2 });
+		}
+
+
+	private:
+		LineSegments& Lines;
+	};
+
+    // for rendering lines already in Screen Space
+    class SSLineShape final : public ShapeProtoType
+	{
+	public:
+        SSLineShape(LineSegments& lines) :
+			Lines	{ lines } {}
+
+		void AddShapeDraw(
+			DrawList&				DrawList,
+			VertexBufferHandle		PushBuffer,
+			ConstantBufferHandle	CB,
+			FrameResources&			Resources) override
+		{
+			size_t VBOffset = Resources.GetVertexBufferOffset(PushBuffer, sizeof(ShapeVert));
+
+			for (auto Segment : Lines)
+			{
+                ShapeVert Vert1 = { Segment.A, { 0.0f, 0.0f }, float4(Segment.AColour, 1) };
+                ShapeVert Vert2 = { Segment.B, { 0.0f, 0.0f }, float4(Segment.BColour, 1) };
+
 				PushVertex(Vert1, PushBuffer, Resources);
 				PushVertex(Vert2, PushBuffer, Resources);
 			}

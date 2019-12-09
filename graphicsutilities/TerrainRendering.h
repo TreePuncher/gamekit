@@ -221,10 +221,10 @@ namespace FlexKit
 		static_vector<float3, 4> GetUVList(const float terrainHeight = 512) const noexcept
 		{
 			return {
-				{ float(NEUV[0]), float(NEUV[1]) },
-				{ float(SWUV[0]), float(NEUV[1]) },
-				{ float(SWUV[0]), float(SWUV[1]) },
-				{ float(NEUV[0]), float(SWUV[1]) } };
+				{ float(NEUV[0]), float(NEUV[1]), 0 },
+				{ float(SWUV[0]), float(NEUV[1]), 0 },
+				{ float(SWUV[0]), float(SWUV[1]), 0 },
+				{ float(NEUV[0]), float(SWUV[1]), 0 } };
 		}
 
 		uint16_t		upperHeight	= 0u;
