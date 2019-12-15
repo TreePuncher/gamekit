@@ -1978,6 +1978,9 @@ namespace FlexKit
         SSLineShape(LineSegments& lines) :
 			Lines	{ lines } {}
 
+        SSLineShape(LineSegments&& lines) :
+            Lines{ lines } {}
+
 		void AddShapeDraw(
 			DrawList&				DrawList,
 			VertexBufferHandle		PushBuffer,
@@ -2664,7 +2667,7 @@ namespace FlexKit
 					TempMem);
 				Data.Heap.NullFill(FrameGraph.Resources.renderSystem);
 
-				Drawable::VConsantsLayout DrawableConstants = 
+				Drawable::VConstantsLayout DrawableConstants = 
 				{	// Someday
 					/*.MP			= */Drawable::MaterialProperties{},
 					/*.Transform	= */DirectX::XMMatrixIdentity()

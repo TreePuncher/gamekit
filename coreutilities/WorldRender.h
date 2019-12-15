@@ -315,10 +315,6 @@ namespace FlexKit
         TextureHandle       depthPassTarget;
         FrameResourceHandle depthBufferObject;
 
-        ConstantBufferDataSet passConstants;
-        ConstantBufferDataSet cameraConstants;
-        ConstantBufferDataSet entityConstants;
-
         CBPushBuffer passConstantsBuffer;
         CBPushBuffer entityConstantsBuffer;
 
@@ -339,12 +335,9 @@ namespace FlexKit
         ForwardPlusPass(
             const PointLightHandleList& IN_lights,
             const PVS&                  IN_PVS,
-            const ConstantBufferDataSet& IN_passConstants,
-            const ConstantBufferDataSet& IN_cameraConstants,
-            const ConstantBufferDataSet& IN_entityConstants) :
+            const CBPushBuffer&         IN_entityConstants) :
                 pointLights     { IN_lights },
                 drawables       { IN_PVS    },
-                cameraConstants { IN_cameraConstants },
                 entityConstants { IN_entityConstants } {}
 
 
@@ -359,8 +352,7 @@ namespace FlexKit
         CBPushBuffer passConstantsBuffer;
         CBPushBuffer entityConstantsBuffer;
 
-        const ConstantBufferDataSet& cameraConstants;
-        const ConstantBufferDataSet& entityConstants;
+        const CBPushBuffer&         entityConstants;
 
         const PointLightHandleList& pointLights;
         const PVS&                  drawables;
@@ -486,7 +478,7 @@ namespace FlexKit
                 UpdateDispatcher&   dispatcher,
                 FrameGraph&         graph,
                 const CameraHandle  camera,
-                const PVS&          viewableObjects,
+                GatherTask&         pvs,
                 const TextureHandle depthBufferTarget,
                 iAllocator*         allocator);
 

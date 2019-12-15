@@ -172,15 +172,15 @@ namespace FlexKit
 		}
 
 		inline  Vector(const THISTYPE& RHS) :
-			Allocator(RHS.Allocator),
-			Max(RHS.Max),
-			Size(RHS.Size)
+            Allocator   { RHS.Allocator },
+			Max         { RHS.Max       },
+			Size        { RHS.Size      }
 		{
 			(*this) = RHS;
 		}
 
 
-		inline  Vector(THISTYPE&& RHS) :
+		inline  Vector(THISTYPE&& RHS) noexcept :
 			A(RHS.A),
 			Allocator(RHS.Allocator),
 			Max(RHS.Max),
@@ -195,8 +195,8 @@ namespace FlexKit
 		inline ~Vector() { if (A)Allocator->_aligned_free(A); }
 
 
-		inline			Ty& operator [](size_t index) { return A[index]; }
-		inline const	Ty& operator [](size_t index) const { return A[index]; }
+		inline			Ty& operator [](size_t index) noexcept          { return A[index]; }
+		inline const	Ty& operator [](size_t index) const noexcept    { return A[index]; }
 
 
 		/************************************************************************************************/
@@ -302,7 +302,7 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		void resize(size_t newSize)
+		void resize(const size_t newSize)
 		{
 			if (Max < newSize)
 				reserve(newSize);
@@ -357,38 +357,6 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-#if 0
-		void push_back(Ty in) {
-			if (Size + 1 > Max)
-			{// Increase Size
-#ifdef _DEBUG
-				FK_ASSERT(Allocator);
-#endif			
-				auto NewSize = sizeof(Ty) * 2 * (Max < 1) ? 1 : Max;
-				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(NewSize);
-
-#ifdef _DEBUG
-				FK_ASSERT(NewMem);
-				FK_ASSERT(NewMem != A);
-#endif
-
-				if (A) {
-					size_t itr = 0;
-					size_t End = Size;
-					for (; itr < End; ++itr)
-						NewMem[itr] = A[itr];
-
-					Allocator->_aligned_free(A);
-				}
-
-				A = NewMem;
-				Max = (Max) ? Max * 2 : 1;
-			}
-
-			A[Size++] = in;
-		}
-#else
-
 		size_t push_back(const Ty& in) {
 			if (Size + 1 > Max)
 			{// Increase Size
@@ -410,8 +378,9 @@ namespace FlexKit
 						new(NewMem + itr) Ty();
 					}
 				}
+
 #ifdef _DEBUG
-				FK_ASSERT(NewMem);
+				FK_ASSERT(NewMem != nullptr);
 				if (Size)
 					FK_ASSERT(NewMem != A);
 #endif
@@ -434,8 +403,6 @@ namespace FlexKit
 			return idx;
 		}
 
-#endif
-
 
 		/************************************************************************************************/
 
@@ -446,7 +413,7 @@ namespace FlexKit
 #ifdef _DEBUG
 				FK_ASSERT(Allocator);
 #endif			
-				auto NewSize = ((Max < 1) ? 2 : (2 * Max));
+				const auto NewSize = ((Max < 1) ? 2 : (2 * Max));
 				Ty* NewMem = (Ty*)Allocator->_aligned_malloc(sizeof(Ty) * NewSize);
 #ifdef _DEBUG
 				FK_ASSERT(NewMem);
@@ -489,7 +456,8 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-		void erase(Iterator first, Iterator last)
+
+		void erase(const Iterator first, const Iterator last)
 		{
 			auto itr = first;
 			while (itr != last)

@@ -389,18 +389,18 @@ namespace FlexKit
         UpdateDispatcher&   dispatcher,
         FrameGraph&         frameGraph,
         const CameraHandle  camera,
-        const PVS&          viewableObjects,
+        GatherTask&         pvs,
         const TextureHandle depthBufferTarget,
         iAllocator*         allocator)
     {
         const size_t MaxEntityDrawCount = 10000;
 
         auto& pass = frameGraph.AddNode<DepthPass>(
-                viewableObjects,
+                pvs.GetData().solid,
                 [&, camera](FrameGraphNodeBuilder& builder, DepthPass& data)
                 {
                     const size_t localBufferSize = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
-
+                    
                     data.entityConstantsBuffer  = std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources));
                     data.passConstantsBuffer    = std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
                     data.depthBufferObject      = builder.WriteDepthBuffer(depthBufferTarget);
@@ -412,11 +412,12 @@ namespace FlexKit
                         allocator);
 
                     data.Heap.NullFill(frameGraph.Resources.renderSystem);
+
+                    builder.AddDataDependency(pvs);
                 },
                 [=](DepthPass& data, const FrameResources& resources, Context* ctx)
                 {
                     const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
-                    data.cameraConstants = cameraConstants;
 
                     ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
                     ctx->SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
@@ -429,8 +430,8 @@ namespace FlexKit
 
                     ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
                     ctx->SetGraphicsDescriptorTable(0, data.Heap);
-                    ctx->SetGraphicsConstantBufferView(1, data.cameraConstants);
-                    ctx->SetGraphicsConstantBufferView(3, data.cameraConstants);
+                    ctx->SetGraphicsConstantBufferView(1, cameraConstants);
+                    ctx->SetGraphicsConstantBufferView(3, cameraConstants);
                     ctx->NullGraphicsConstantBufferView(6);
 
                     TriMesh* prevMesh = nullptr;
@@ -448,7 +449,7 @@ namespace FlexKit
                         }
 
                         ctx->SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstantsBuffer });
-                        ctx->DrawIndexedInstanced(triMesh->IndexCount, 0, 0, 1, 0);
+                        ctx->DrawIndexedInstanced(triMesh->IndexCount);
                     }
                 });
 
@@ -479,9 +480,7 @@ namespace FlexKit
             ForwardPlusPass{
                 desc.lights.GetData().pointLights,
                 depthPass.drawables,
-                depthPass.passConstants,
-                depthPass.cameraConstants,
-                depthPass.entityConstants},
+                depthPass.entityConstantsBuffer },
             [&](FrameGraphNodeBuilder& builder, ForwardPlusPass& data)
             {
                 builder.AddDataDependency(desc.PVS);
@@ -494,7 +493,6 @@ namespace FlexKit
                 size_t localBufferSize  = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
                 data.passConstantsBuffer    = std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
-                data.entityConstantsBuffer  = std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources));
 
                 data.lightMap			= builder.ReadWriteUAV(lightMap,			DRS_ShaderResource);
                 data.lightLists			= builder.ReadWriteUAV(lightLists,			DRS_ShaderResource);
@@ -534,6 +532,7 @@ namespace FlexKit
                 ctx->NullGraphicsConstantBufferView	(6);
 
                 TriMesh* prevMesh = nullptr;
+
                 for (size_t itr = 0; itr < data.drawables.size(); ++itr)
                 {
                     auto& drawable = data.drawables[itr];
@@ -552,9 +551,11 @@ namespace FlexKit
                             });
                     }
 
-                    //FK_ASSERT(0, "TODO: IMPLEMENT CREATEITERATORPROXY(...) METHOD!");
-                    ctx->SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstantsBuffer });
-                    //ctx->SetGraphicsConstantBufferView(2, CreateIteratorProxy()[itr]);
+                    auto proxy = CreateCBIterator<decltype(drawable.D->GetConstants())>(data.entityConstants)[itr];
+
+                    ctx->SetGraphicsConstantBufferView(
+                        2,
+                        proxy);
                     ctx->DrawIndexedInstanced(triMesh->IndexCount, 0, 0, 1, 0);
                 }
             });

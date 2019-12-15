@@ -3332,8 +3332,14 @@ namespace FlexKit
 			return *this; 
 		}
 
-		operator ConstantBufferHandle () { return CB; }
+		operator ConstantBufferHandle () const { return CB; }
 
+
+        template<typename TY>
+        static constexpr size_t CalculateOffset()
+        {
+            return (sizeof(TY) / 256 + 1) * 256;
+        }
 
 		template<typename _TY>
 		size_t Push(_TY& data)
@@ -3343,7 +3349,7 @@ namespace FlexKit
 
 			size_t offset = pushBufferUsed;
 			memcpy(pushBufferBegin + buffer + pushBufferUsed, (char*)&data, sizeof(data));
-			pushBufferUsed += (sizeof(data) / 256 + 1) * 256;
+            pushBufferUsed += CalculateOffset<_TY>();
 
 			return offset + pushBufferBegin;
 		}
@@ -3361,7 +3367,9 @@ namespace FlexKit
 		}
 
 
-		size_t begin() { return pushBufferBegin; }
+		size_t begin() const { return pushBufferBegin; }
+
+
 
 	private:
 		ConstantBufferHandle	CB				= InvalidHandle_t;
@@ -3500,7 +3508,12 @@ namespace FlexKit
 		template<typename TY>
 		ConstantBufferDataSet(const TY& initialData, CBPushBuffer& buffer) :
 			constantBuffer	{ buffer },
-			constantsOffset	{ buffer.Push(initialData) }	{}
+			constantsOffset	{ buffer.Push(initialData) } {}
+
+        explicit ConstantBufferDataSet(const size_t& IN_offset, ConstantBufferHandle IN_buffer) :
+            constantBuffer  { IN_buffer },
+            constantsOffset { IN_offset } {}
+
 
 		~ConstantBufferDataSet() = default;
 
@@ -3516,6 +3529,34 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    template<typename TY>
+    auto CreateCBIterator(const CBPushBuffer& source)
+    {
+        struct Proxy
+        {
+            Proxy operator[](const size_t idx) const
+            {
+                return { offset, idx, CB };
+            }
+
+            operator ConstantBufferDataSet() const
+            {
+                return ConstantBufferDataSet{ offset + idx * CBPushBuffer::CalculateOffset<TY>(), CB };
+            }
+
+            const size_t                offset;
+            const size_t                idx;
+            const ConstantBufferHandle	CB = InvalidHandle_t;
+        };
+
+        return Proxy{ source.begin(), 0, source };
+    }
+
+
+    /************************************************************************************************/
+
 
 	struct SET_MAP_t{
 

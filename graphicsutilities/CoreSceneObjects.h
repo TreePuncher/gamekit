@@ -135,13 +135,13 @@ namespace FlexKit
 		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }
 		Drawable&	SetNode(NodeHandle H)		{ Node					= H;	return *this; }
 
-		struct VConsantsLayout
+		struct VConstantsLayout
 		{
 			MaterialProperties	MP;
 			DirectX::XMMATRIX	Transform;
 		};
 
-		VConsantsLayout GetConstants() const;
+        VConstantsLayout GetConstants() const;
 	};
 
 	constexpr const Type_t DRAWABLE_ID = GetTypeGUID(DRAWABLEHANDLE);

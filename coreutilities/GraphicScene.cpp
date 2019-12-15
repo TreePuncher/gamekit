@@ -1006,12 +1006,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	Drawable::VConsantsLayout Drawable::GetConstants() const
+	Drawable::VConstantsLayout Drawable::GetConstants() const
 	{
 		DirectX::XMMATRIX WT;
 		FlexKit::GetTransform(Node, &WT);
 
-		Drawable::VConsantsLayout	Constants;
+		Drawable::VConstantsLayout	Constants;
 
 		Constants.MP.Albedo = MatProperties.Albedo;
 		Constants.MP.Spec	= MatProperties.Spec;
