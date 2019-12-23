@@ -343,6 +343,8 @@ namespace FlexKit
 		StackAllocator				temp;
 	};
 
+    using PointLightGatherTask = UpdateTaskTyped<PointLightGather>;
+
 	class GraphicScene
 	{
 	public:
@@ -368,7 +370,7 @@ namespace FlexKit
 		Vector<PointLightHandle>    FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
 
-		auto&					    GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
+        PointLightGatherTask&	    GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
 		size_t					    GetPointLightCount();
 
         auto begin()    { return sceneEntities.begin(); }

@@ -176,65 +176,172 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="buildsettings.h" />
-    <ClInclude Include="coreutilities\Application.h" />
-    <ClInclude Include="coreutilities\CameraUtilities.h" />
-    <ClInclude Include="coreutilities\CommonStructs.h" />
-    <ClInclude Include="coreutilities\Components.h" />
-    <ClInclude Include="coreutilities\Console.h" />
-    <ClInclude Include="coreutilities\DebugPanel.h" />
-    <ClInclude Include="coreutilities\containers.h" />
-    <ClInclude Include="coreutilities\DungeonGen.h" />
-    <ClInclude Include="coreutilities\Events.h" />
-    <ClInclude Include="coreutilities\GameFramework.h" />
-    <ClInclude Include="coreutilities\EngineCore.h" />
-    <ClInclude Include="coreutilities\GUIInputState.h" />
-    <ClInclude Include="coreutilities\Handle.h" />
-    <ClInclude Include="coreutilities\Input.h" />
-    <ClInclude Include="coreutilities\intersection.h" />
-    <ClInclude Include="coreutilities\KeycodesEnums.h" />
-    <ClInclude Include="coreutilities\Logging.h" />
-    <ClInclude Include="coreutilities\MathUtils.h" />
-    <ClInclude Include="coreutilities\memoryutilities.h" />
-    <ClInclude Include="coreutilities\MeshUtils.h" />
-    <ClInclude Include="coreutilities\NetworkUtilities.h" />
-    <ClInclude Include="coreutilities\physicsutilities.h" />
-    <ClInclude Include="coreutilities\ProfilingUtilities.h" />
-    <ClInclude Include="coreutilities\ResourceHandles.h" />
-    <ClInclude Include="coreutilities\Resources.h" />
-    <ClInclude Include="coreutilities\GraphicScene.h" />
-    <ClInclude Include="coreutilities\Signal.h" />
-    <ClInclude Include="coreutilities\static_vector.h" />
-    <ClInclude Include="coreutilities\ThreadUtilities.h" />
-    <ClInclude Include="coreutilities\timeutilities.h" />
-    <ClInclude Include="coreutilities\GraphicsComponents.h" />
-    <ClInclude Include="coreutilities\Transforms.h" />
-    <ClInclude Include="coreutilities\type.h" />
-    <ClInclude Include="coreutilities\WorldRender.h" />
-    <ClInclude Include="graphicsutilities\AnimationComponents.h" />
+    <ClInclude Include="buildsettings.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Application.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\CameraUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\CommonStructs.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\ComponentBlobs.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Components.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Console.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\containers.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\DebugPanel.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\DungeonGen.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\EngineCore.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Events.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GameFramework.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GraphicScene.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GraphicsComponents.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GUIInputState.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Handle.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Input.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\intersection.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\KeycodesEnums.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Logging.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\MathUtils.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\memoryutilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\MeshUtils.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\NetworkUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\ProfilingUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\ResourceHandles.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Resources.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Signal.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\static_vector.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\ThreadUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\timeutilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Transforms.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\type.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\WorldRender.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="coreutilities\XMMathConversion.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\AnimationComponents.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="graphicsutilities\AnimationRuntimeUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\AnimationUtilities.h" />
-    <ClInclude Include="graphicsutilities\CoreSceneObjects.h" />
-    <ClInclude Include="graphicsutilities\DDSUtilities.h" />
-    <ClInclude Include="graphicsutilities\Fonts.h" />
-    <ClInclude Include="graphicsutilities\Geometry.h" />
-    <ClInclude Include="graphicsutilities\graphics.h" />
-    <ClInclude Include="graphicsutilities\GuiUtilities.h" />
-    <ClInclude Include="graphicsutilities\defaultpipelinestates.h" />
-    <ClInclude Include="graphicsutilities\TextureUtilities.h" />
-    <ClInclude Include="graphicsutilities\PipelineState.h" />
-    <ClInclude Include="graphicsutilities\FrameGraph.h" />
-    <ClInclude Include="graphicsutilities\SSReflections.h" />
-    <ClInclude Include="graphicsutilities\TerrainRendering.h" />
-    <ClInclude Include="graphicsutilities\TextRendering.h" />
+    <ClInclude Include="graphicsutilities\AnimationUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\CoreSceneObjects.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\DDSUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\Fonts.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\Geometry.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\graphics.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\GuiUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\defaultpipelinestates.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\TextureUtilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\PipelineState.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\FrameGraph.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\SSReflections.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\TerrainRendering.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\TextRendering.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="PhysicsUtilities\physicsutilities.h" />
+    <ClInclude Include="PhysicsUtilities\physicsutilities.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="coreutilities\AllSourceFiles.cpp" />
+    <ClCompile Include="coreutilities\AllSourceFiles.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="coreutilities\Application.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -355,8 +462,12 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="graphicsutilities\AnimationComponents.cpp" />
-    <ClCompile Include="graphicsutilities\AnimationRuntimeUtilities.H" />
+    <ClCompile Include="graphicsutilities\AnimationComponents.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="graphicsutilities\AnimationRuntimeUtilities.H">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="graphicsutilities\AnimationUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
@@ -397,7 +508,9 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="graphicsutilities\defaultpipelinestates.cpp" />
+    <ClCompile Include="graphicsutilities\defaultpipelinestates.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="graphicsutilities\TextureUtilities.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

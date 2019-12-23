@@ -187,6 +187,8 @@ namespace FlexKit
 
 	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
 	const PSOHandle GBUFFERPASS             = PSOHandle(GetTypeGUID(GBUFFERPASS));
+	const PSOHandle SHADINGPASS             = PSOHandle(GetTypeGUID(SHADINGPASS));
+	const PSOHandle ENVIRONMENTPASS         = PSOHandle(GetTypeGUID(ENVIRONMENTPASS));
 	const PSOHandle LIGHTPREPASS			= PSOHandle(GetTypeGUID(LIGHTPREPASS));
 	const PSOHandle DEPTHPREPASS            = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
@@ -198,6 +200,8 @@ namespace FlexKit
 	ID3D12PipelineState* CreateLightPassPSO				(RenderSystem* RS);
     ID3D12PipelineState* CreateDepthPrePassPSO          (RenderSystem* RS);
     ID3D12PipelineState* CreateGBufferPassPSO           (RenderSystem* RS);
+    ID3D12PipelineState* CreateDeferredShadingPassPSO   (RenderSystem* RS);
+    ID3D12PipelineState* CreateEnvironmentPassPSO       (RenderSystem* RS);
 
 
 	struct WorldRender_Targets
@@ -369,11 +373,11 @@ namespace FlexKit
     public:
         GBuffer(const uint2 WH, RenderSystem& RS_IN) :
             RS          { RS_IN },
-            Albedo      { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R8G8B8A8_UNORM, true)     },
-            Specular    { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R8G8B8A8_UNORM, true)     },
-            Normal      { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R16G16B16A16_FLOAT, true) },
-            Tangent     { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R16G16B16A16_FLOAT, true) },
-            IOR_ANISO   { RS_IN.CreateUAVTextureResource(WH, FORMAT_2D::R16G16_FLOAT, true)       }
+            Albedo      { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
+            Specular    { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
+            Normal      { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
+            Tangent     { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
+            IOR_ANISO   { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R16G16_FLOAT)) }
         {
             RS.SetDebugName(Albedo,     "Albedo");
             RS.SetDebugName(Specular,   "Specular");
@@ -384,21 +388,63 @@ namespace FlexKit
 
         ~GBuffer()
         {
-            RS.ReleaseUAV(Albedo);
-            RS.ReleaseUAV(Specular);
-            RS.ReleaseUAV(Normal);
-            RS.ReleaseUAV(Tangent);
-            RS.ReleaseUAV(IOR_ANISO);
+            RS.ReleaseTexture(Albedo);
+            RS.ReleaseTexture(Specular);
+            RS.ReleaseTexture(Normal);
+            RS.ReleaseTexture(Tangent);
+            RS.ReleaseTexture(IOR_ANISO);
         }
 
-        UAVTextureHandle Albedo;	// rgba_UNORM, Albedo + Metal
-        UAVTextureHandle Specular;	// rgba_UNORM, Specular + roughness
-        UAVTextureHandle Normal;	// float16_RGBA
-        UAVTextureHandle Tangent;	// float16_RGBA
-        UAVTextureHandle IOR_ANISO;	// float16_RG
+        TextureHandle Albedo;	 // rgba_UNORM, Albedo + Metal
+        TextureHandle Specular;	 // rgba_UNORM, Specular + roughness
+        TextureHandle Normal;	 // float16_RGBA
+        TextureHandle Tangent;	 // float16_RGBA
+        TextureHandle IOR_ANISO; // float16_RG
 
         RenderSystem&    RS;
     };
+
+
+    void ClearGBuffer(GBuffer& gbuffer, FrameGraph& frameGraph)
+    {
+        struct GBufferClear
+        {
+            FrameResourceHandle albedo;
+            FrameResourceHandle specular;
+            FrameResourceHandle normal;
+            FrameResourceHandle tangent;
+            FrameResourceHandle IOR_ANISO;
+        };
+
+        auto& clear = frameGraph.AddNode<GBufferClear>(
+            GBufferClear{},
+            [&](FrameGraphNodeBuilder& builder, GBufferClear& data)
+            {
+                data.albedo     = builder.WriteRenderTarget(gbuffer.Albedo);
+                data.specular   = builder.WriteRenderTarget(gbuffer.Specular);
+                data.normal     = builder.WriteRenderTarget(gbuffer.Normal);
+                data.tangent    = builder.WriteRenderTarget(gbuffer.Tangent);
+                data.IOR_ANISO  = builder.WriteRenderTarget(gbuffer.IOR_ANISO);
+            },
+            [](GBufferClear& data, FrameResources& resources, Context* ctx)
+            {
+                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.albedo));
+                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.specular));
+                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.normal));
+                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.tangent));
+                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.IOR_ANISO));
+            });
+    }
+
+
+    void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
+    {
+        frameGraph.Resources.AddShaderResource(gbuffer.Albedo,      true);
+        frameGraph.Resources.AddShaderResource(gbuffer.Specular,    true);
+        frameGraph.Resources.AddShaderResource(gbuffer.Normal,      true);
+        frameGraph.Resources.AddShaderResource(gbuffer.IOR_ANISO,   true);
+        frameGraph.Resources.AddShaderResource(gbuffer.Tangent,     true);
+    }
 
 
     struct GBufferPass
@@ -421,9 +467,36 @@ namespace FlexKit
     };
 
 
+    struct BackgroundEnvironmentPass
+    {
+        TextureHandle       HDRMap;
+        DescriptorHeap	    descHeap;
+
+        FrameResourceHandle renderTargetObject;
+
+        VBPushBuffer        passVertices;
+        CBPushBuffer        passConstants;
+
+        CameraHandle        camera;
+    };
+
     struct TiledDeferredShade
     {
-        GBuffer& gbuffer;
+        GBuffer&                gbuffer;
+        PointLightGatherTask&   lights;
+
+        CBPushBuffer            passConstants;
+        VBPushBuffer            passVertices;
+        DescriptorHeap	        descHeap;
+
+        FrameResourceHandle     AlbedoTargetObject;     // RGBA8
+        FrameResourceHandle     NormalTargetObject;     // RGBA16Float
+        FrameResourceHandle     SpecularTargetObject;
+        FrameResourceHandle     TangentTargetObject;
+        FrameResourceHandle     IOR_ANISOTargetObject;  // RGBA8
+        FrameResourceHandle     depthBufferTargetObject;
+
+        FrameResourceHandle     renderTargetObject;
     };
 
 
@@ -450,12 +523,15 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			{ &RS_IN.Library.ComputeSignature,  CreateLightPassPSO				});
 			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO           });
 			RS_IN.RegisterPSOLoader(GBUFFERPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO            });
+			RS_IN.RegisterPSOLoader(SHADINGPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO    });
+            RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,        { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO        });
 
             RS_IN.QueuePSOLoad(GBUFFERPASS);
             RS_IN.QueuePSOLoad(DEPTHPREPASS);
             RS_IN.QueuePSOLoad(LIGHTPREPASS);
             RS_IN.QueuePSOLoad(FORWARDDRAW);
             RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
+            RS_IN.QueuePSOLoad(SHADINGPASS);
 
             RS.SetDebugName(lightLists,        "lightLists");
             RS.SetDebugName(pointLightBuffer,  "pointLightBuffer");
@@ -474,49 +550,79 @@ namespace FlexKit
 		}
 
 
+        void Begin(FrameGraph& frameGraph)
+        {
+        }
+
+
         DepthPass& DepthPrePass(
                 UpdateDispatcher&   dispatcher,
-                FrameGraph&         graph,
+                FrameGraph&         frameGraph,
                 const CameraHandle  camera,
                 GatherTask&         pvs,
                 const TextureHandle depthBufferTarget,
                 iAllocator*         allocator);
 
+        
+        BackgroundEnvironmentPass& BackgroundPass(
+                UpdateDispatcher&       dispatcher,
+                FrameGraph&             frameGraph,
+                const CameraHandle      camera,
+                const TextureHandle     renderTarget,
+                const TextureHandle     hdrMap,
+                VertexBufferHandle      vertexBuffer,
+                iAllocator*             tempMemory);
+
 
         ForwardPlusPass& RenderPBR_ForwardPlus(
                 UpdateDispatcher&           dispatcher,
-                FrameGraph&                 graph,
+                FrameGraph&                 frameGraph,
                 const DepthPass&            depthPass,
                 const CameraHandle          camera,
                 const WorldRender_Targets&  Target,
                 const SceneDescription&     desc,
                 const float                 t,
+                TextureHandle               environmentMap,
                 iAllocator*                 allocator);
 
 
 		LightBufferUpdate& UpdateLightBuffers(
                 UpdateDispatcher&       dispatcher,
-                FrameGraph&             graph,
+                FrameGraph&             frameGraph,
                 const CameraHandle      camera,
                 const GraphicScene&     scene,
                 const SceneDescription& desc,
                 iAllocator*             tempMemory,
                 LighBufferDebugDraw*    drawDebug = nullptr);
 
+
         GBufferPass&        RenderPBR_GBufferPass(
             UpdateDispatcher&   dispatcher,
-            FrameGraph&         graph,
+            FrameGraph&         frameGraph,
             const CameraHandle  camera,
             GatherTask&         pvs,
             GBuffer&            gbuffer,
             TextureHandle       depthTarget,
             iAllocator*         allocator);
 
-        //TiledDeferredShade& RenderPBR_ShadeTiledDeferred();
+
+        TiledDeferredShade& RenderPBR_DeferredShade(
+            UpdateDispatcher&       dispatcher,
+            FrameGraph&             frameGraph,
+            const CameraHandle      camera,
+            PointLightGatherTask&   gather,
+            GBuffer&                gbuffer,
+            TextureHandle           depthTarget,
+            TextureHandle           renderTarget,
+            TextureHandle           environmentMap,
+            VertexBufferHandle      vertexBuffer,
+            float                   t,
+            iAllocator*             allocator);
+
 
 	private:
 		RenderSystem&			RS;
-		ConstantBufferHandle	ConstantBuffer;
+        ConstantBufferHandle	ConstantBuffer;
 		//QueryHandle			OcclusionQueries;
 		//TextureHandle			OcclusionBuffer;
 

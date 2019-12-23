@@ -48,7 +48,7 @@ void GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, 
 
 void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
+	auto currentRenderTarget = core.Window.backBuffer;
 
 	ClearVertexBuffer	(frameGraph, host.base.vertexBuffer);
 	ClearVertexBuffer	(frameGraph, host.base.textBuffer);

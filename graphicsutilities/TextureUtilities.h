@@ -159,7 +159,7 @@ namespace FlexKit
 		TY& operator [](uint2 XY)
 		{
 			TY* buffer = (TY*)Texture.Buffer;
-			return buffer[Texture.WH[1] * XY[1] + XY[0]];
+			return buffer[Texture.WH[0] * XY[1] + XY[0]];
 		}
 
 		operator byte* () { return Texture.Buffer;  }

@@ -959,7 +959,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory)
+    PointLightGatherTask& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory)
 	{
 		return dispatcher.Add<PointLightGather>(
 			[&](auto& builder, PointLightGather& data)

@@ -38,9 +38,10 @@ namespace FlexKit
 			switch (AfterState)
 			{
 			case DRS_Write:
-			case DRS_ShaderResource:
+            case DRS_ShaderResource:
+            case DRS_RenderTarget:
 				ctx->AddShaderResourceBarrier(
-					handle_cast<TextureHandle>(Object->ShaderResource),
+					handle_cast<TextureHandle>(Object->ShaderResource.handle),
 					BeforeState,
 					AfterState);
 				break;
@@ -273,9 +274,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::ReadShaderResource(TextureHandle handle)
 	{
-		return AddReadableResource(
-						handle_cast<ShaderResourceHandle>(handle), 
-						DeviceResourceState::DRS_ShaderResource);
+		return AddReadableResource(handle, DeviceResourceState::DRS_ShaderResource);
 	}
 
 
@@ -284,9 +283,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteShaderResource(TextureHandle  handle)
 	{
-		return AddWriteableResource(
-						handle_cast<ShaderResourceHandle>(handle), 
-						DeviceResourceState::DRS_Write);
+		return AddWriteableResource(handle, DeviceResourceState::DRS_Write);
 	}
 
 
@@ -295,9 +292,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteShaderResource(GPUResourceHandle handle)
 	{
-		return AddWriteableResource(
-						handle, 
-						DeviceResourceState::DRS_Write);
+		return AddWriteableResource(handle, DeviceResourceState::DRS_Write);
 	}
 
 
@@ -330,13 +325,23 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(TextureHandle RenderTarget)
 	{
-		return RenderTarget != InvalidHandle_t ? WriteRenderTarget(Resources->renderSystem.GetTag(RenderTarget)) : InvalidHandle_t;
+		const auto resourceHandle   = AddWriteableResource(RenderTarget, DeviceResourceState::DRS_RenderTarget);
+        auto resource               = Resources->GetResourceObject(resourceHandle);
+
+        if (!resource)
+            return InvalidHandle_t;
+
+        if (resource->Type == FrameObjectResourceType::OT_ShaderResource)
+            resource->ShaderResource.renderTargetUse = true;
+
+        return resourceHandle;
 	}
+
 
     FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(UAVTextureHandle handle)
     {
-        const auto resourceHandle = AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
-        auto resource = Resources->GetResourceObject(resourceHandle);
+        const auto resourceHandle   = AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
+        auto resource               = Resources->GetResourceObject(resourceHandle);
 
         FK_ASSERT(resource != nullptr);
 
@@ -617,7 +622,7 @@ namespace FlexKit
 
 				FK_LOG_9("Frame Graph Single-Thread Section End");
 			},
-			[=](auto& data) 
+			[=](SubmitData& data)
 			{
 				FK_LOG_9("Frame Graph Multi-Thread Section Begin");
 
@@ -668,10 +673,11 @@ namespace FlexKit
 			for (auto RT : RenderTargets)
 			{
 				const auto Handle			= RT->RenderTarget.Texture;
-				const auto Texture		    = renderSystem.RenderTargets[Handle];
 
 				RT->RenderTarget.HeapPOS	= TablePOS;
-				TablePOS					= PushRenderTarget(renderSystem, Texture, TablePOS);
+				TablePOS					= PushRenderTarget(renderSystem, Handle, TablePOS);
+
+                renderSystem.MarkTextureUsed(Handle);
 			}
 		}
 
@@ -683,9 +689,15 @@ namespace FlexKit
                 const auto TablePOS         = renderSystem._ReserveRTVHeap(1);
                 resource.UAVTexture.HeapPOS = TablePOS;
 
-                auto desc = Texture.Texture->GetDesc();
-
                 PushRenderTarget(renderSystem, Texture, TablePOS);
+            }
+
+            if (resource.Type == OT_ShaderResource && resource.ShaderResource.renderTargetUse)
+            {
+                const auto TablePOS             = renderSystem._ReserveRTVHeap(1);
+                resource.ShaderResource.HeapPOS = TablePOS;
+
+                PushRenderTarget2(renderSystem, resource.ShaderResource, TablePOS);
             }
         }
 
@@ -695,11 +707,11 @@ namespace FlexKit
 
 			for (auto RT : DepthBuffers)
 			{
-				auto Handle		= RT->RenderTarget.Texture;
-				auto Texture	= renderSystem.RenderTargets[Handle];
-
+				auto Handle		            = RT->RenderTarget.Texture;
 				RT->RenderTarget.HeapPOS	= TableDepthPOS;
-				TableDepthPOS				= PushDepthStencil(renderSystem, &Texture, TableDepthPOS);
+				TableDepthPOS				= PushDepthStencil(renderSystem, Handle, TableDepthPOS);
+
+                renderSystem.MarkTextureUsed(Handle);
 			}
 		}
 	}
@@ -728,23 +740,19 @@ namespace FlexKit
 				auto state	= I.State;
 				Resources.renderSystem.SetObjectState(UAV, state);
 			}	break;
-			case OT_BackBuffer:
-			case OT_DepthBuffer:
-			case OT_RenderTarget:
-			{
-				Resources.renderSystem.RenderTargets.SetState(
-					I.FO->RenderTarget.Texture, 
-					I.State);
-			}	break;
 			case OT_StreamOut:
 			{
 				auto SOBuffer	= I.FO->SOBuffer;
 				auto state		= I.State;
+
 				Resources.renderSystem.SetObjectState(SOBuffer, state);
 			}	break;
+            case OT_BackBuffer:
+            case OT_DepthBuffer:
+            case OT_RenderTarget:
 			case OT_ShaderResource:
 			{
-				auto shaderResource = handle_cast<TextureHandle>(I.FO->ShaderResource);
+				auto shaderResource = I.FO->ShaderResource.handle;
 				auto state			= I.State;
 
 				Resources.renderSystem.SetObjectState(shaderResource, state);
@@ -831,7 +839,7 @@ namespace FlexKit
 			PassData{},
 			[&](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
-				Data.BackBuffer = Builder.PresentBackBuffer(Window->GetBackBuffer());
+				Data.BackBuffer = Builder.PresentBackBuffer(Window->backBuffer);
 			},
 			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
 			{	

@@ -43,59 +43,14 @@
     <ClInclude Include="buildsettings.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\containers.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Events.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Handle.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Input.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\MathUtils.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\memoryutilities.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Signal.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\ThreadUtilities.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\timeutilities.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\type.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\intersection.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="graphicsutilities\TerrainRendering.h">
       <Filter>graphicsutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\DungeonGen.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\static_vector.h">
-      <Filter>coreutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="graphicsutilities\AnimationUtilities.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="coreutilities\MeshUtils.h">
       <Filter>graphicsutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Resources.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\GraphicScene.h">
-      <Filter>coreutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="PhysicsUtilities\physicsutilities.h">
       <Filter>Physics</Filter>
@@ -109,15 +64,6 @@
     <ClInclude Include="graphicsutilities\PipelineState.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\ProfilingUtilities.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Components.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\GraphicsComponents.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="graphicsutilities\SSReflections.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
@@ -130,13 +76,22 @@
     <ClInclude Include="graphicsutilities\CoreSceneObjects.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\KeycodesEnums.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Logging.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="graphicsutilities\TextRendering.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\Geometry.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\AnimationRuntimeUtilities.cpp">
+      <Filter>graphicsutilities\source</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\TextureUtilities.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\defaultpipelinestates.h">
+      <Filter>graphicsutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="graphicsutilities\AnimationComponents.h">
       <Filter>graphicsutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="coreutilities\Application.h">
@@ -148,49 +103,97 @@
     <ClInclude Include="coreutilities\CommonStructs.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
+    <ClInclude Include="coreutilities\ComponentBlobs.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Components.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
     <ClInclude Include="coreutilities\Console.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\GameFramework.h">
+    <ClInclude Include="coreutilities\containers.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\GUIInputState.h">
+    <ClInclude Include="coreutilities\DebugPanel.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\NetworkUtilities.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\physicsutilities.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\WorldRender.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
-    <ClInclude Include="coreutilities\Transforms.h">
+    <ClInclude Include="coreutilities\DungeonGen.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="coreutilities\EngineCore.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\Geometry.h">
-      <Filter>graphicsutilities\headers</Filter>
+    <ClInclude Include="coreutilities\Events.h">
+      <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\AnimationRuntimeUtilities.cpp">
-      <Filter>graphicsutilities\source</Filter>
+    <ClInclude Include="coreutilities\GameFramework.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GraphicScene.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GraphicsComponents.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\GUIInputState.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Handle.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Input.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\intersection.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\KeycodesEnums.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Logging.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\MathUtils.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\memoryutilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\NetworkUtilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\ProfilingUtilities.h">
+      <Filter>coreutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="coreutilities\ResourceHandles.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\TextureUtilities.h">
-      <Filter>graphicsutilities\headers</Filter>
+    <ClInclude Include="coreutilities\Resources.h">
+      <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\defaultpipelinestates.h">
-      <Filter>graphicsutilities\headers</Filter>
+    <ClInclude Include="coreutilities\Signal.h">
+      <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="graphicsutilities\AnimationComponents.h">
-      <Filter>graphicsutilities\headers</Filter>
+    <ClInclude Include="coreutilities\static_vector.h">
+      <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\DebugPanel.h">
+    <ClInclude Include="coreutilities\ThreadUtilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\timeutilities.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Transforms.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\type.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\WorldRender.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\XMMathConversion.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
   </ItemGroup>

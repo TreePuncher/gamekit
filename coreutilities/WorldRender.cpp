@@ -253,6 +253,114 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateDeferredShadingPassPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("ShadingPass_VS",     "DeferredShade_VS",   "vs_5_0",	"assets\\deferredRender.hlsl");
+        auto PShader = LoadShader("DeferredShade_PS",   "DeferredShade_VS",   "ps_5_0",	"assets\\deferredRender.hlsl");
+
+        FINALLY
+         Release(&VShader);
+         Release(&PShader);
+        FINALLYOVER
+
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable	= false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = VShader;
+            PSO_Desc.PS                    = PShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets      = 1;
+            PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+            /*
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = true;
+            PSO_Desc.BlendState.RenderTarget[0].BlendOp		= D3D12_BLEND_OP::D3D12_BLEND_OP_ADD;
+
+            PSO_Desc.BlendState.RenderTarget[0].DestBlend   = D3D12_BLEND::D3D12_BLEND_DEST_COLOR;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlend    = D3D12_BLEND::D3D12_BLEND_SRC1_COLOR;
+
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND::D3D12_BLEND_ONE;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND::D3D12_BLEND_ONE;
+            */
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateEnvironmentPassPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("passthrough_VS", "FORWARDShade_VS", "vs_5_0", "assets\\DeferredRender.hlsl");
+        auto PShader = LoadShader("environment_PS", "FORWARDShade_VS", "ps_5_0", "assets\\DeferredRender.hlsl");
+
+        FINALLY
+            Release(&VShader);
+            Release(&PShader);
+        FINALLYOVER
+
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable	= false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = VShader;
+            PSO_Desc.PS                    = PShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets      = 1;
+            PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     ID3D12PipelineState* CreateForwardDrawInstancedPSO(RenderSystem* RS)
     {
         auto VShader = LoadShader("VMain",		"InstanceForward_VS",	"vs_5_0", "assets\\DrawInstancedVShader.hlsl");
@@ -460,6 +568,81 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    BackgroundEnvironmentPass& WorldRender::BackgroundPass(
+        UpdateDispatcher&       dispatcher,
+        FrameGraph&             frameGraph,
+        const CameraHandle      camera,
+        const TextureHandle     renderTarget,
+        const TextureHandle     hdrMap,
+        VertexBufferHandle      vertexBuffer,
+        iAllocator*             allocator)
+    {
+        auto& pass = frameGraph.AddNode<BackgroundEnvironmentPass>(
+            BackgroundEnvironmentPass{},
+            [&](FrameGraphNodeBuilder& builder, BackgroundEnvironmentPass& data)
+            {
+                const size_t localBufferSize  = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+                auto& renderSystem      = frameGraph.GetRenderSystem();
+                data.renderTargetObject = builder.WriteRenderTarget(renderTarget);
+
+
+                data.passConstants = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
+                data.passVertices = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
+
+                data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
+                data.descHeap.NullFill(renderSystem, 20);
+                data.HDRMap = hdrMap;
+            },
+            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context* ctx)
+            {
+                auto& renderSystem = frameResources.renderSystem;
+                const auto WH = frameResources.renderSystem.GetTextureWH(renderTarget);
+                const auto cameraConstants = GetCameraConstants(camera);
+
+                struct
+                {
+                    float4 Position;
+                }   vertices[] =
+                {
+                    float4(-1,   1,  1, 1),
+                    float4(1,    1,  1, 1),
+                    float4(-1,  -1,  1, 1),
+
+                    float4(-1,  -1,  1, 1),
+                    float4(1,    1,  1, 1),
+                    float4(1,   -1,  1, 1),
+                };
+
+                RenderTargetList renderTargets = {
+                    frameResources.GetRenderTargetObjects({ data.renderTargetObject })
+                };
+
+                struct
+                {
+                    float2 WH;
+                }passConstants = { float2(WH[0], WH[1]) };
+
+                data.descHeap.SetSRV(renderSystem, 0, data.HDRMap);
+
+                ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx->SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
+                ctx->SetGraphicsDescriptorTable(4, data.descHeap);
+
+                ctx->SetScissorAndViewports({ renderTarget });
+                ctx->SetRenderTargets(renderTargets, false, {});
+                ctx->SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+                ctx->SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
+                ctx->SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+
+                ctx->Draw(6);
+            });
+
+        return pass;
+    }
+
+
+    /************************************************************************************************/
+
 
     ForwardPlusPass& WorldRender::RenderPBR_ForwardPlus(
         UpdateDispatcher&			dispatcher,
@@ -469,6 +652,7 @@ namespace FlexKit
         const WorldRender_Targets&	Targets,
         const SceneDescription&	    desc,
         const float                 t,
+        TextureHandle               environmentMap,
         iAllocator*					allocator)
     {
         const size_t MaxEntityDrawCount = 10000;
@@ -524,6 +708,7 @@ namespace FlexKit
                 data.Heap.SetSRV(resources.renderSystem, 0, lightMap);
                 data.Heap.SetSRV(resources.renderSystem, 1, lightLists);
                 data.Heap.SetSRV(resources.renderSystem, 2, pointLightBuffer);
+                data.Heap.SetSRV(resources.renderSystem, 3, environmentMap);
 
                 ctx->SetPrimitiveTopology			(EInputTopology::EIT_TRIANGLE);
                 ctx->SetGraphicsDescriptorTable		(0, data.Heap);
@@ -668,12 +853,6 @@ namespace FlexKit
         constexpr size_t localBufferSize    = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
 
-        frameGraph.Resources.AddUAVResource(gbuffer.Albedo,     0, frameGraph.GetRenderSystem().GetObjectState(gbuffer.Albedo));
-        frameGraph.Resources.AddUAVResource(gbuffer.IOR_ANISO,  0, frameGraph.GetRenderSystem().GetObjectState(gbuffer.IOR_ANISO));
-        frameGraph.Resources.AddUAVResource(gbuffer.Normal,     0, frameGraph.GetRenderSystem().GetObjectState(gbuffer.Normal));
-        frameGraph.Resources.AddUAVResource(gbuffer.Specular,   0, frameGraph.GetRenderSystem().GetObjectState(gbuffer.Specular));
-        frameGraph.Resources.AddUAVResource(gbuffer.Tangent,    0, frameGraph.GetRenderSystem().GetObjectState(gbuffer.Tangent));
-
         auto& pass = frameGraph.AddNode<GBufferPass>(
             GBufferPass{
                 gbuffer, pvs.GetData().solid,
@@ -761,6 +940,123 @@ namespace FlexKit
         return pass;
     }
 
+
+
+    /************************************************************************************************/
+
+
+    TiledDeferredShade& WorldRender::RenderPBR_DeferredShade(
+        UpdateDispatcher&       dispatcher,
+        FrameGraph&             frameGraph,
+        const CameraHandle      camera,
+        PointLightGatherTask&   gather,
+        GBuffer&                gbuffer,
+        TextureHandle           depthTarget,
+        TextureHandle           renderTarget,
+        TextureHandle           environmentMap,
+        VertexBufferHandle      vertexBuffer,
+        float                   t,
+        iAllocator*             allocator)
+    {
+        struct PointLight
+        {
+            float4 KI;	// Color + intensity in W
+            float4 PR;	// XYZ + radius in W
+        };
+
+        auto& pass = frameGraph.AddNode<TiledDeferredShade>(
+            TiledDeferredShade{
+                gbuffer,
+                gather
+            },
+            [&](FrameGraphNodeBuilder& builder, TiledDeferredShade& data)
+            {
+                auto& renderSystem = frameGraph.GetRenderSystem();
+
+                data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.Albedo);
+                data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.Normal);
+                data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.Tangent);
+                data.SpecularTargetObject       = builder.ReadShaderResource(gbuffer.Specular);
+                data.IOR_ANISOTargetObject      = builder.ReadShaderResource(gbuffer.IOR_ANISO);
+                data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
+                data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
+
+                data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
+                data.descHeap.NullFill(renderSystem, 20);
+
+                data.passConstants = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
+                data.passVertices  = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
+            },
+            [camera, renderTarget, environmentMap, t](TiledDeferredShade& data, FrameResources& frameResources, Context* ctx)
+            {
+                auto& renderSystem = frameResources.renderSystem;
+                const auto WH = frameResources.renderSystem.GetTextureWH(renderTarget);
+                const auto cameraConstants = GetCameraConstants(camera);
+
+                RenderTargetList renderTargets = {
+                    frameResources.GetRenderTargetObjects({ data.renderTargetObject })
+                };
+
+                struct
+                {
+                    float2  WH;
+                    float   Seed;
+                }passConstants = { float2(WH[0], WH[1]), t };
+
+                struct
+                {
+                    float4 Position;
+                }   vertices[] =
+                {
+                    float4(-1,   1, 0, 1),
+                    float4(1,   1, 0, 1),
+                    float4(-1,  -1, 0, 1),
+
+                    float4(-1,  -1, 0, 1),
+                    float4(1,   1, 0, 1),
+                    float4(1,  -1, 0, 1),
+                };
+
+                ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx->SetPipelineState(frameResources.GetPipelineState(SHADINGPASS));
+                ctx->SetGraphicsDescriptorTable(4, data.descHeap);
+
+                ctx->SetScissorAndViewports({ renderTarget });
+                ctx->SetRenderTargets(renderTargets, false, {});
+                ctx->SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+                ctx->SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
+                ctx->SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+
+                data.descHeap.SetSRV(renderSystem, 0, frameResources.GetTexture(data.AlbedoTargetObject));
+                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.SpecularTargetObject));
+                data.descHeap.SetSRV(renderSystem, 2, frameResources.GetTexture(data.NormalTargetObject));
+                data.descHeap.SetSRV(renderSystem, 3, frameResources.GetTexture(data.TangentTargetObject));
+                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.IOR_ANISOTargetObject));
+                data.descHeap.SetSRV(renderSystem, 5, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                data.descHeap.SetSRV(renderSystem, 6, environmentMap);
+
+                auto& lights        = data.lights.GetData().pointLights;
+                auto& pointLights   = PointLightComponent::GetComponent();
+                auto& transforms    = SceneNodeComponent::GetComponent();
+
+                //for (auto& light : lights)
+                {
+                    auto light = lights[0];
+
+                    PointLight lightConstants;
+
+                    const auto lightData = pointLights[light];
+
+                    lightConstants.KI = float4(lightData.K, lightData.I);
+                    lightConstants.PR = float4(GetPositionW(lightData.Position), lightData.R);
+
+                    ctx->SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ lightConstants, data.passConstants });
+                    ctx->Draw(6);
+                }
+            });
+
+        return pass;
+    }
 
 
     /************************************************************************************************/

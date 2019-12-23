@@ -1299,7 +1299,11 @@ namespace FlexKit
 		DXGI_FORMAT		Format;
 
 		auto res = CreateDDSTextureFromFile12(RS, wstr, &TextureResources, 4096, &AlphaMode, &WH, &MipLevels, &Format);
-		TextureHandle Texture = RS->CreateTexture2D(WH, DXGIFormat2TextureFormat(Format), MipLevels, &TextureResources, 1);
+
+        TextureHandle Texture = RS->CreateTexture2D(
+            TextureDesc::BuildFromMemory(
+                TextureDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, 2),
+                &TextureResources, 1));
 
 		FK_ASSERT((size_t)Texture != INVALIDHANDLE, "TEXTURE FAILED TO CREATE!");
 

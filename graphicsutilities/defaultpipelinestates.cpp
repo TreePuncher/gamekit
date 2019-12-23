@@ -353,7 +353,7 @@ namespace FlexKit
 		//RegisterPSOLoader(EPIPELINESTATES::OCCLUSION_CULLING, LoadOcclusionState);
 		//QueuePSOLoad(RS, EPIPELINESTATES::OCCLUSION_CULLING);
 
-		auto NewRes = CreateShaderResource(RS, count * 8, "OCCLUSIONCULLERRESULTS");
+		//auto NewRes = CreateShaderResource(RS, count * 8, "OCCLUSIONCULLERRESULTS");
 
 		D3D12_QUERY_HEAP_DESC Desc;
 		Desc.Count		= count;
@@ -388,8 +388,8 @@ namespace FlexKit
 		Depth_Desc.Float32			= true;
 		Depth_Desc.InverseDepth		= true;
 
-		auto Res = CreateDepthBuffer(RS, OcclusionBufferSize, Depth_Desc, &DB);
-		FK_ASSERT(Res, "FAILED TO CREATE OCCLUSION BUFFER!");
+		//auto Res = CreateDepthBuffer(RS, OcclusionBufferSize, Depth_Desc, &DB);
+		//FK_ASSERT(Res, "FAILED TO CREATE OCCLUSION BUFFER!");
 		
 		for (size_t I = 0; I < 3; ++I)
 			SETDEBUGNAME(DB.Buffer[I], "OCCLUSION CULLER DEPTH BUFFER");
@@ -400,7 +400,7 @@ namespace FlexKit
 		Out.Heap[0]		    = Heap[0];
 		Out.Heap[1]		    = Heap[1];
 		Out.Heap[2]		    = Heap[2];
-		Out.Predicates	    = NewRes;
+		//Out.Predicates	    = NewRes;
 		Out.OcclusionBuffer = DB;
 		Out.HW              = OcclusionBufferSize;
 
@@ -437,6 +437,7 @@ namespace FlexKit
 		CL->OMSetRenderTargets(0, nullptr, false, &(D3D12_CPU_DESCRIPTOR_HANDLE)DSV);
         CL->SetPipelineState(RS->GetPSO(OCCLUSION_CULLING));
 		CL->SetGraphicsRootSignature(RS->Library.RS6CBVs4SRVs);
+
 		for (uint32_t I = 0; I < Set->size(); ++I)
         {
             uint32_t QueryID = OC->GetNext();
@@ -452,14 +453,15 @@ namespace FlexKit
 			auto DTable			= DHeap;
 
 			{	// Fill Descriptor Table With Nulls
-				auto Next = Push2DSRVToDescHeap(RS, RS->NullSRV, DHeap);
-				Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
-				Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
-				Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
-				Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
-				Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
-				Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
-				PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+                FK_ASSERT(0);
+				//auto Next = Push2DSRVToDescHeap(RS, RS->NullSRV, DHeap);
+				//Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
+				//Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
+				//Next = Push2DSRVToDescHeap(RS, RS->NullSRV, Next);
+				//Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+				//Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+				//Next = PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
+				//PushCBToDescHeap(RS, RS->NullConstantBuffer.Get(), Next, 1024);
 			}
 
 			CL->SetGraphicsRootDescriptorTable(0, DHeapPosition);

@@ -175,7 +175,7 @@ void ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, 
 
 void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
+	auto currentRenderTarget = core.Window.backBuffer;
 
 	ClearVertexBuffer	(frameGraph, client.base.vertexBuffer);
 	ClearVertexBuffer	(frameGraph, client.base.textBuffer);

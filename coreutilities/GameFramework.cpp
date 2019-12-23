@@ -316,7 +316,8 @@ namespace FlexKit
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, TempMemory);
 
 		// Add in Base Resources
-		frameGraph.Resources.AddRenderTarget(core.Window.GetBackBuffer());
+        
+		frameGraph.Resources.AddBackBuffer(core.Window.backBuffer);
 		frameGraph.UpdateFrameGraph(core.RenderSystem, ActiveWindow, core.GetTempMemory());
 
         subStates.back()->Draw(core, dispatcher, dT, frameGraph);
@@ -454,7 +455,7 @@ namespace FlexKit
 				graph, 
 				*DefaultAssets.Font, 
 				textBuffer, 
-				GetCurrentBackBuffer(core.Window), 
+				core.Window.backBuffer, 
 				core.GetTempMemory(), 
 				Format);
 	}

@@ -129,9 +129,10 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
     auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
     auto& textureStreams	= base.streamingEngine.update(dispatcher);
+    auto& pointLightGather  = scene.GetPointLights(dispatcher, core.GetTempMemory());
 
     WorldRender_Targets targets = {
-        GetCurrentBackBuffer(core.Window),
+        core.Window.backBuffer,
         base.depthBuffer
     };
 
@@ -141,7 +142,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     debugDraw.vertexBuffer	 = base.vertexBuffer;
 
     const SceneDescription sceneDesc = {
-        scene.GetPointLights(dispatcher, core.GetTempMemory()),
+        pointLightGather,
         transforms,
         cameras,
         PVS,
@@ -149,19 +150,26 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
     ClearVertexBuffer(frameGraph, base.vertexBuffer);
     ClearVertexBuffer(frameGraph, base.textBuffer);
-
+    
     ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
     ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
-    if constexpr (true)
+    base.render.Begin(frameGraph);
+
+    if constexpr (false)
     {
-        auto& depthPass     = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
-        auto& lighting      = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-        auto& deferredPass  = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, core.GetTempMemory());
+        auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
+        auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
+        auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.hdrMap, base.vertexBuffer, core.GetTempMemory());
+        auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.hdrMap, core.GetTempMemory());
     }
     else
+    {
+        AddGBufferResource(base.gbuffer, frameGraph);
+        ClearGBuffer(base.gbuffer, frameGraph);
         base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
-
+        base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
+    }
     // Draw Skeleton overlay
     
     if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)
@@ -231,6 +239,8 @@ void LocalPlayerState::EventHandler(Event evt)
                     std::cout << "Reloading Shaders\n";
                     framework.core.RenderSystem.QueuePSOLoad(FORWARDDRAW);
                     framework.core.RenderSystem.QueuePSOLoad(LIGHTPREPASS);
+                    framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
+                    framework.core.RenderSystem.QueuePSOLoad(ENVIRONMENTPASS);
                 }
             }   break;
             }

@@ -174,7 +174,7 @@ void PlayState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, 
     auto& renderSystem      = core.RenderSystem;
 
 	WorldRender_Targets targets = {
-		GetCurrentBackBuffer(core.Window),
+		core.Window.backBuffer,
 		base.depthBuffer
 	};
 

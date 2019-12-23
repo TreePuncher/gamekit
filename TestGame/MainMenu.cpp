@@ -80,7 +80,7 @@ void MainMenu::Update(
 
 void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = GetCurrentBackBuffer(core.Window);
+	auto currentRenderTarget = core.Window.backBuffer;
 
 	ClearVertexBuffer	(frameGraph, vertexBuffer);
 	ClearVertexBuffer	(frameGraph, textBuffer);

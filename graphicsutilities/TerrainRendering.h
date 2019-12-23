@@ -433,7 +433,7 @@ namespace FlexKit
 				{
 					builder.AddInput(cameraUpdate);
 
-					data.localMemory.Init((byte*)tempMemory->malloc(TempMemorySize), TempMemorySize);
+					//data.localMemory.Init((byte*)tempMemory->malloc(TempMemorySize), TempMemorySize);
 
 					data.camera				= camera;
 					data.patches			= Vector<TerrainPatch>(data.localMemory);

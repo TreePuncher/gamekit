@@ -142,11 +142,11 @@ namespace FlexKit
 		case DXGI_FORMAT_R32G32B32A32_SINT:
 			return sizeof(int32_t) * 4;
 		case DXGI_FORMAT_R32G32B32_TYPELESS:
-			return sizeof(int32_t) * 4;// 1 Pad
+			return sizeof(int32_t) * 4;
 		case DXGI_FORMAT_R32G32B32_FLOAT:
-			return sizeof(float) * 3;// assuming 1 Pad
+			return sizeof(float) * 3;
 		case DXGI_FORMAT_R32G32B32_UINT:
-			return sizeof(float) * 3;// assuming 1 Pad
+			return sizeof(float) * 3;
 		case DXGI_FORMAT_R32G32B32_SINT:
 		case DXGI_FORMAT_R16G16B16A16_TYPELESS:
 		case DXGI_FORMAT_R16G16B16A16_FLOAT:
@@ -369,129 +369,6 @@ namespace FlexKit
 	FORMAT_2D	DXGIFormat2TextureFormat(DXGI_FORMAT F);
 
 
-	enum class CPUACCESSMODE
-	{
-		READ,
-		WRITE,
-		WRITEONCE,
-		NONE = 0
-	};
-
-
-	enum SPECIALFLAGS
-	{
-		BACKBUFFER		= 1,
-		DEPTHSTENCIL	= 2,
-		Structred1D		= 4,
-		NONE			= 0
-	};
-
-
-	/************************************************************************************************/
-
-
-	struct Texture2D_Desc
-	{
-		Texture2D_Desc()
-		{
-			Height       = 0;
-			Width        = 0;
-			Write        = true;
-			Read         = true;
-			RenderTarget = false;
-			UAV          = false;
-			MipLevels    = 0;
-			CV           = true;
-			initialData  = nullptr;
-
-			Format       = FORMAT_2D::D24_UNORM_S8_UINT;
-			FLAGS        = SPECIALFLAGS::NONE;
-		}
-
-		Texture2D_Desc(
-			uint32_t		in_height,
-			uint32_t		in_width,
-			FORMAT_2D		in_format,
-			CPUACCESSMODE	in_Mode,
-			SPECIALFLAGS	in_FLAGS,
-			size_t			in_MipLevels = 0) : Texture2D_Desc()
-		{
-			Height		= in_height;
-			Width		= in_width;
-			Format		= in_format;
-			FLAGS		= in_FLAGS;
-			MipLevels	= in_MipLevels;
-		}
-
-		uint32_t		Height, Width;
-		size_t			MipLevels;
-		FORMAT_2D		Format;
-		bool			Write;
-		bool			Read;
-		bool			RenderTarget;
-		bool			UAV;
-		bool			CV;
-		byte*			initialData;
-		SPECIALFLAGS	FLAGS;
-
-		constexpr DXGI_FORMAT GetFormat()
-		{
-			switch (Format)
-			{
-			case FlexKit::FORMAT_2D::R16G16_UINT:
-				return DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT;
-			case FlexKit::FORMAT_2D::R8G8B8A_UINT:
-				return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UINT;
-			case FlexKit::FORMAT_2D::R8G8B8A8_UINT:
-				return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UINT;
-			case FlexKit::FORMAT_2D::R8G8B8A8_UNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM;
-			case FlexKit::FORMAT_2D::D24_UNORM_S8_UINT:
-				return DXGI_FORMAT::DXGI_FORMAT_D24_UNORM_S8_UINT;
-			case FlexKit::FORMAT_2D::R32_FLOAT:
-				return DXGI_FORMAT::DXGI_FORMAT_R32_FLOAT;
-			case FlexKit::FORMAT_2D::R32G32_FLOAT:
-				return DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT;
-			case FlexKit::FORMAT_2D::R32G32B32_FLOAT:
-				return DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT;
-			case FlexKit::FORMAT_2D::R32G32B32A32_FLOAT:
-				return DXGI_FORMAT::DXGI_FORMAT_R32G32B32A32_FLOAT;
-			case FlexKit::FORMAT_2D::BC1_TYPELESS:
-				return DXGI_FORMAT::DXGI_FORMAT_BC1_TYPELESS;
-			case FlexKit::FORMAT_2D::BC1_UNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM;
-			case FlexKit::FORMAT_2D::BC1_UNORM_SRGB:
-				return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM_SRGB;
-			case FlexKit::FORMAT_2D::BC2_TYPELESS:
-				return DXGI_FORMAT::DXGI_FORMAT_BC1_UNORM_SRGB;
-			case FlexKit::FORMAT_2D::BC2_UNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM;
-			case FlexKit::FORMAT_2D::BC2_UNORM_SRGB:
-				return DXGI_FORMAT::DXGI_FORMAT_BC2_UNORM_SRGB;
-			case FlexKit::FORMAT_2D::BC3_TYPELESS:
-				return DXGI_FORMAT::DXGI_FORMAT_BC3_TYPELESS;
-			case FlexKit::FORMAT_2D::BC3_UNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM;
-			case FlexKit::FORMAT_2D::BC3_UNORM_SRGB:
-				return DXGI_FORMAT::DXGI_FORMAT_BC3_UNORM_SRGB;
-			case FlexKit::FORMAT_2D::BC4_TYPELESS:
-				return DXGI_FORMAT::DXGI_FORMAT_BC4_TYPELESS;
-			case FlexKit::FORMAT_2D::BC4_UNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_BC4_UNORM;
-			case FlexKit::FORMAT_2D::BC4_SNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_BC4_SNORM;
-			case FlexKit::FORMAT_2D::BC5_TYPELESS:
-				return DXGI_FORMAT::DXGI_FORMAT_BC5_TYPELESS;
-			case FlexKit::FORMAT_2D::BC5_UNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_BC5_UNORM;
-			case FlexKit::FORMAT_2D::BC5_SNORM:
-				return DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM;
-			default:
-				break;
-			}
-			return DXGI_FORMAT::DXGI_FORMAT_UNKNOWN;
-		}
-	};
 
 
 	/************************************************************************************************/
@@ -595,12 +472,6 @@ namespace FlexKit
 		// Describe iRenderTarget here
 	};
 
-	// BackBuffer desc
-	struct BufferDesc
-	{
-		Texture2D_Desc BufferFormat;
-		Texture2D_Desc BufferInterp;
-	};
 
 	struct RenderWindowDesc
 	{
@@ -725,10 +596,8 @@ namespace FlexKit
 
 	struct RenderWindow
 	{
-		UINT						BufferIndex;
 		IDXGISwapChain4*			SwapChain_ptr;
-		ID3D12Resource*				BackBuffer[4];
-		TextureHandle				RenderTargets[4];
+        TextureHandle               backBuffer;
 		DXGI_FORMAT					Format;
 		HWND						hWindow;
 
@@ -740,15 +609,9 @@ namespace FlexKit
 
 		EventNotifier<>				Handler;
 
-		TextureHandle	GetBackBuffer()
-		{
-			return RenderTargets[BufferIndex];
-		}
 
 		WORD	InputBuffer[128];
 		size_t	InputBuffSize;
-		size_t	CurrentBuffer;
-		size_t	BufferCount;
 	};
 
 
@@ -778,15 +641,6 @@ namespace FlexKit
 
 	inline Texture2D GetCurrent(DepthBuffer* DB) {
 		return DB->Buffer[DB->CurrentBuffer];
-	}
-
-
-	/************************************************************************************************/
-
-
-	inline TextureHandle GetCurrentBackBuffer(RenderWindow& Window) 
-	{
-		return Window.RenderTargets[Window.BufferIndex];
 	}
 
 
@@ -1239,6 +1093,10 @@ namespace FlexKit
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_STREAM_OUT;
 		case DeviceResourceState::DRS_STREAMOUTCLEAR:
 			return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST;
+        case DeviceResourceState::DRS_DEPTHBUFFERWRITE:
+            return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE;
+        case DeviceResourceState::DRS_DEPTHBUFFERREAD:
+            return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_READ;
 		}
 		return D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 	}
@@ -1284,16 +1142,20 @@ namespace FlexKit
         DescriptorHeap& operator = (DescriptorHeap&&);
 
 		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, iAllocator* TempMemory);
-		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, size_t reserveCount, iAllocator* TempMemory);
-		DescriptorHeap& NullFill	(RenderSystem* RS);
+		DescriptorHeap& Init		(RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory);
+        DescriptorHeap& Init2       (RenderSystem* RS, const DesciptorHeapLayout<16>& Layout_IN, const size_t reserveCount, iAllocator* TempMemory); // for variable size heap layouts
+		DescriptorHeap& NullFill	(RenderSystem* RS, const size_t end = -1);
 
 		bool SetCBV					(RenderSystem* RS, size_t idx, ConstantBufferHandle	Handle, size_t offset, size_t bufferSize);
 		bool SetSRV					(RenderSystem* RS, size_t idx, TextureHandle		Handle);
+		bool SetSRV					(RenderSystem* RS, size_t idx, TextureHandle		Handle, FORMAT_2D format);
 		bool SetSRV					(RenderSystem* RS, size_t idx, UAVTextureHandle		Handle);
 		bool SetSRV					(RenderSystem* RS, size_t idx, UAVResourceHandle	Handle);
 		bool SetUAV					(RenderSystem* RS, size_t idx, UAVResourceHandle	Handle);
 		bool SetUAV					(RenderSystem* RS, size_t idx, UAVTextureHandle		Handle);
 		bool SetStructuredResource	(RenderSystem* RS, size_t idx, TextureHandle		Handle, size_t stride);
+
+
 
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
@@ -1771,7 +1633,7 @@ namespace FlexKit
         }
 
 
-		void SetDepthStencil		(Texture2D* DS);
+		void SetDepthStencil		(TextureHandle DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
 		void NullGraphicsConstantBufferView	(size_t idx);
@@ -2231,13 +2093,198 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    struct TextureDesc
+    {
+        bool renderTarget   = false;
+        bool depthTarget    = false;
+        bool unordered      = false;
+        bool buffered       = false;
+        bool shaderResource = false;
+        bool structured     = false;
+        bool CVFlag         = false; // Assumed true if render target is true
+        bool backBuffer     = false;
+
+        uint8_t Dimensions   = 2;
+        uint8_t MipLevels    = 1;
+        uint8_t bufferCount  = 0;
+
+        uint2       WH;
+        FORMAT_2D   format;
+
+        union
+        {
+            ID3D12Resource**    resources;
+            byte*               initial = nullptr;
+        };
+
+        static TextureDesc RenderTarget(uint2 IN_WH, FORMAT_2D IN_format)
+        {
+            return {
+                true,   // render target flag
+                false,  // depth target flag
+                false,  // UAV Resource flag
+                true,   // buffered flag
+                false,  // shader resource flag
+                false,  // structured flag
+                true,   // clear value
+                false,  // back buffer
+
+                2, // dimensions
+                1, // mip count
+                3, // buffere count
+
+                IN_WH, IN_format
+            };
+        }
+
+        static TextureDesc DepthTarget(uint2 IN_WH, FORMAT_2D IN_format)
+        {
+            return {
+                false,   // render target flag
+                true,   // depth target flag
+                false,   // UAV Resource flag
+                true,   // buffered flag
+                false,  // shader resource flag
+                false,  // structured flag
+                true,   // clear value
+                false,  // back buffer
+
+                2, // dimensions
+                1, // mip count
+                3, // buffere count
+
+                IN_WH, IN_format
+            };
+        }
+
+
+        static TextureDesc ShaderResource(uint2 IN_WH, FORMAT_2D IN_format, uint8_t mipCount = 1)
+        {
+            return {
+                false,   // render target flag
+                false,   // depth target flag
+                false,    // UAV Resource flag
+                false,    // buffered flag
+                false,   // shader resource flag
+                false,   // structured flag
+                false,   // clear value
+                false,  // back buffer
+
+                2,          // dimensions
+                mipCount,   // mip count
+                1,          // buffere count
+
+                IN_WH, IN_format
+
+            };
+        }
+
+        static TextureDesc StructuredResource(const uint32_t bufferSize)
+        {
+            return {
+                false,  // render target flag
+                false,  // depth target flag
+                true,   // UAV Resource flag
+                false,   // buffered flag
+                false,  // shader resource flag
+                true,   // structured flag
+                false,  // clear value
+                false,  // back buffer
+
+                1, // dimensions
+                1, // mip count
+                1, // buffered count
+
+                { bufferSize, 1 }
+            };
+        }
+
+        static TextureDesc UAVResource(uint2 IN_WH, FORMAT_2D IN_format, bool renderTarget = false)
+        {
+            return {
+                false,  // render target flag
+                false,  // depth target flag
+                true,   // UAV Resource flag
+                false,   // buffered flag
+                false,  // shader resource flag
+                true,   // structured flag
+                false,  // clear value
+                false,  // back buffer
+
+                1, // dimensions
+                1, // mip count
+                1, // buffered count
+
+                IN_WH, IN_format
+            };
+        }
+
+
+        static TextureDesc BackBuffered(uint2 WH, FORMAT_2D format, ID3D12Resource** sources, const uint8_t resourceCount)
+        {
+            TextureDesc desc = {
+                true,   // render target flag
+                false,  // depth target flag
+                false,  // UAV Resource flag
+                true,   // buffered flag
+                false,  // shader resource flag
+                false,  // structured flag
+                true,   // clear value
+                true,  // back buffer
+
+                2, // dimensions
+                1, // mip count
+                resourceCount, // buffer count
+
+                WH, format
+            };
+
+            desc.resources = sources;
+
+            return desc;
+        }
+
+
+        static TextureDesc DDS(uint2 WH, FORMAT_2D format, uint8_t mipCount, uint8_t dimensions)
+        {
+             return {
+                false,  // render target flag
+                false,  // depth target flag
+                false,  // UAV Resource flag
+                false,  // buffered flag
+                false,  // shader resource flag
+                false,  // structured flag
+                false,  // clear value
+                false,  // back buffer
+
+                dimensions, // dimensions
+                1,          // mip count
+                0,          // buffer count
+
+                WH, format
+            };
+        }
+
+        static TextureDesc BuildFromMemory(TextureDesc& format, ID3D12Resource** sources, const uint32_t resourceCount)
+        {
+            TextureDesc desc    = format;
+            desc.resources      = sources;
+            desc.bufferCount    = resourceCount;
+
+            return desc;
+        }
+    };
+
+
+
 	FLEXKITAPI class TextureStateTable
 	{
 	public:
-		TextureStateTable(iAllocator* memory) :
-			Handles		{memory},
-			UserEntries	{memory},
-			Resources	{memory}{}
+		TextureStateTable(iAllocator* allocator) :
+			Handles		        { allocator },
+			UserEntries	        { allocator },
+			Resources	        { allocator },
+            BufferedResources   { allocator }{}
 
 
 		~TextureStateTable()
@@ -2253,7 +2300,7 @@ namespace FlexKit
 
 		Texture2D		operator[]		(TextureHandle Handle);
 
-		TextureHandle	AddResource		(Texture2D_Desc& Desc, ID3D12Resource** Resource, uint32_t ResourceCount, uint8_t mipCount, DeviceResourceState InitialState, uint32_t Flags_IN = 0);
+		TextureHandle	AddResource		(const TextureDesc& Desc, const DeviceResourceState InitialState);
 		void			SetState		(TextureHandle Handle, DeviceResourceState State);
 
 		uint2			GetWH(TextureHandle Handle) const;
@@ -2265,6 +2312,7 @@ namespace FlexKit
 		uint32_t		GetTag(TextureHandle Handle) const;
 		void			SetTag(TextureHandle Handle, uint32_t Tag);
 
+        void            SetBufferedIdx(TextureHandle handle, uint32_t idx);
 
 		void			MarkRTUsed		(TextureHandle Handle);
 
@@ -2282,11 +2330,11 @@ namespace FlexKit
 			size_t				ResourceIdx;
 			int64_t				FGI_FrameStamp;
 			uint32_t			FrameGraphIndex;
-			uint32_t			Flags;
-			uint32_t			Tag;
+            uint32_t			Tag;
+            uint32_t			Flags;
 			TextureHandle		Handle;
 			DXGI_FORMAT			Format;
-			uint32_t			Pad;
+            uint32_t			pad;
 		};
 
 		struct ResourceEntry
@@ -2294,7 +2342,7 @@ namespace FlexKit
 			void			Release();
 			void			SetState(DeviceResourceState State) { States[CurrentResource]		= State;	}
 			void			SetFrameLock(size_t FrameID)		{ FrameLocks[CurrentResource]	= FrameID;	}
-			ID3D12Resource* GetResource()						{ return Resources[CurrentResource];		}
+			ID3D12Resource* GetResource() const					{ return Resources[CurrentResource];		}
 			void			IncreaseIdx()						{ CurrentResource = ++CurrentResource % 3;	}
 
 			size_t				ResourceCount;
@@ -2308,7 +2356,8 @@ namespace FlexKit
 		};
 			
 		Vector<UserEntry>								UserEntries;
-		Vector<ResourceEntry>							Resources;
+        Vector<ResourceEntry>							Resources;
+        Vector<TextureHandle>							BufferedResources;
 		HandleUtilities::HandleTable<TextureHandle, 32>	Handles;
 	};
 
@@ -2709,6 +2758,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+
+
 	struct UAVResourceLayout
 	{
 		uint32_t	stride;
@@ -2730,13 +2781,13 @@ namespace FlexKit
 			Memory			{ Memory_IN					},
 			Library			{ Memory_IN					},
 			Queries			{ Memory_IN, this			},
-			RenderTargets	{ Memory_IN					},
 			Textures		{ Memory_IN					},
 			VertexBuffers	{ Memory_IN					},
 			ConstantBuffers	{ Memory_IN, this			},
 			PipelineStates	{ Memory_IN, this, Threads	},
 			BufferUAVs		{ Memory_IN					},
 			Texture2DUAVs	{ Memory_IN					},
+            PendingBarriers { Memory_IN                 },
 			StreamOutTable	{ Memory_IN					}{}
 
 		
@@ -2761,6 +2812,7 @@ namespace FlexKit
 		void PresentWindow		(RenderWindow* RW);
 		void WaitforGPU			();
 
+        void SetDebugName(TextureHandle,        const char*);
         void SetDebugName(UAVResourceHandle,    const char*);
         void SetDebugName(UAVTextureHandle,     const char*);
 
@@ -2774,6 +2826,8 @@ namespace FlexKit
 
 		uint32_t	GetTag(TextureHandle Handle);
 		void		SetTag(TextureHandle Handle, uint32_t);
+
+        void        MarkTextureUsed(TextureHandle Handle);
 
 		const size_t	GetTextureElementSize		(TextureHandle      Handle) const;
 		const uint2		GetTextureWH				(TextureHandle      Handle) const;
@@ -2792,8 +2846,7 @@ namespace FlexKit
 		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
 		TextureHandle			CreateDepthBuffer				(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
 		TextureHandle			CreateStructuredResource		(const size_t size, const size_t elementSize);
-		TextureHandle			CreateTexture2D					(const uint2 WH, const FORMAT_2D Format, const size_t MipLevels = 1, bool unorderedAccess = false);
-		TextureHandle			CreateTexture2D					(const uint2 WH, const FORMAT_2D Format, const size_t MipLevels, ID3D12Resource** Resources, size_t ResourceCount = 1);
+		TextureHandle			CreateTexture2D					(const TextureDesc& desc);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
 		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
 		UAVTextureHandle		CreateUAVTextureResource		(const uint2 WH, const FORMAT_2D, const bool RenderTarget = false);
@@ -2863,6 +2916,8 @@ namespace FlexKit
 
 		ID3D12Resource*			_GetTextureResource(TextureHandle handle);
 
+        void _InsertBarrier(ID3D12Resource*, D3D12_RESOURCE_STATES currentState, D3D12_RESOURCE_STATES endState);
+
 		void _ResetDescHeap();
 		void _ResetRTVHeap();
 		void _ResetGPUDescHeap();
@@ -2913,9 +2968,16 @@ namespace FlexKit
 		IDXGIAdapter4*			pDXGIAdapter	= nullptr;
 
 		ConstantBuffer			NullConstantBuffer; // Zero Filled Constant Buffer
-		Texture2D				NullUAV; // 1x1 Zero UAV
-		Texture2D				NullSRV;
-		ShaderResourceBuffer	NullSRV1D;
+		UAVTextureHandle   		NullUAV; // 1x1 Zero UAV
+        TextureHandle           NullSRV;
+        TextureHandle           NullSRV1D;
+
+        struct PendingBarrier
+        {
+            ID3D12Resource*         resource;
+            D3D12_RESOURCE_STATES   beginState;
+            D3D12_RESOURCE_STATES   endState;
+        };
 
 		struct
 		{
@@ -2987,7 +3049,6 @@ namespace FlexKit
 		QueryTable				Queries;
 
 		VertexBufferStateTable									VertexBuffers;
-		TextureStateTable										RenderTargets;
 		TextureStateTable										Textures;
 		UAVResourceTable<UAVResourceHandle, UAVResourceLayout>	BufferUAVs;
 		UAVResourceTable<UAVTextureHandle,	UAVTextureLayout>	Texture2DUAVs;
@@ -3005,7 +3066,8 @@ namespace FlexKit
 			size_t			Counter		= 0;
 		};
 
-		Vector<FreeEntry>	FreeList;
+        Vector<FreeEntry>	            FreeList;
+        Vector<D3D12_RESOURCE_BARRIER>	PendingBarriers;
 
 		ID3D12Debug*			pDebug			= nullptr;
 		ID3D12DebugDevice*		pDebugDevice	= nullptr;
@@ -3021,8 +3083,10 @@ namespace FlexKit
 
 	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, const Texture2D&	target, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, TextureHandle	target, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushRenderTarget2        (RenderSystem* RS, TextureHandle    target, DescHeapPOS POS);
 
-	FLEXKITAPI DescHeapPOS PushDepthStencil			(RenderSystem* RS, Texture2D* Target, DescHeapPOS POS);
+
+	FLEXKITAPI DescHeapPOS PushDepthStencil			(RenderSystem* RS, TextureHandle Target, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushCBToDescHeap			(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t offset = 0);
 	FLEXKITAPI DescHeapPOS PushSRVToDescHeap		(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAG_NONE);
 	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap		(RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, D3D12_BUFFER_SRV_FLAGS = D3D12_BUFFER_SRV_FLAG_NONE);
@@ -3576,6 +3640,8 @@ namespace FlexKit
 			vertexBuffer	{ buffer					},
 			offsetBegin		{ buffer.pushBufferOffset	}
 		{
+            vertexStride = sizeof(initialData[0]);
+
 			for (auto& vertex : initialData) 
 				buffer.Push(vertex);
 		}
@@ -3934,7 +4000,8 @@ namespace FlexKit
 		DXGI_FORMAT			Format;
 	};
 
-	FrameBufferedRenderTarget CreateFrameBufferedRenderTarget(RenderSystem* RS, Texture2D_Desc* Desc);
+
+	//FrameBufferedRenderTarget CreateFrameBufferedRenderTarget(RenderSystem* RS, TextureDesc* Desc);
 
 	struct TextureVTable
 	{
@@ -4140,11 +4207,12 @@ namespace FlexKit
 	/************************************************************************************************/
 	// Depreciated API
 
+	FLEXKITAPI void					CreateVertexBuffer			( RenderSystem* RS, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
+    /*
 	FLEXKITAPI bool					CreateDepthBuffer			( RenderSystem* RS, uint2				Dimensions,	DepthBuffer_Desc&	DepthDesc,	DepthBuffer* out, ID3D12GraphicsCommandList* CL = nullptr );
 	FLEXKITAPI Texture2D			CreateDepthBufferResource	( RenderSystem* RS, Texture2D_Desc*		desc_in,	bool				Float32);
 	FLEXKITAPI bool					CreateInputLayout			( RenderSystem* RS, VertexBufferView**,  size_t count, Shader*, VertexBuffer* OUT );		// Expects Index buffer in index 15
 	FLEXKITAPI Texture2D			CreateTexture2D				( RenderSystem* RS, Texture2D_Desc* desc_in );
-	FLEXKITAPI void					CreateVertexBuffer			( RenderSystem* RS, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
 	FLEXKITAPI ShaderResourceBuffer CreateShaderResource		( RenderSystem* RS, const size_t ResourceSize, const char* _DebugName = "CreateShaderResource" );
 	FLEXKITAPI StreamOutBuffer		CreateStreamOut				( RenderSystem* RS, const size_t ResourceSize );
 	FLEXKITAPI VertexResourceBuffer CreateVertexBufferResource	( RenderSystem* RS, const size_t ResourceSize, bool GPUResident);
@@ -4152,6 +4220,7 @@ namespace FlexKit
 	FLEXKITAPI QueryResource		CreateSOQuery				( RenderSystem* RS, D3D12_QUERY_HEAP_TYPE Type = D3D12_QUERY_HEAP_TYPE_SO_STATISTICS );
 
 	FLEXKITAPI TextureHandle CreateRenderTarget	(RenderSystem* RS, Texture2D_Desc& Desc, uint32_t Tag);
+    */
 
 	struct SubResourceUpload_Desc
 	{
@@ -4165,11 +4234,13 @@ namespace FlexKit
 		size_t*	SubResourceSizes;
 		size_t*	SubResourceOffset;
 		size_t	ElementSize;
+
+        FORMAT_2D format;
 	};
 
 	FLEXKITAPI void UpdateResourceByTemp			( RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
 	FLEXKITAPI void UpdateResourceByTemp			( RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
-	FLEXKITAPI void UpdateSubResourceByUploadQueue	( RenderSystem* RS, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState);
+    FLEXKITAPI void UpdateSubResourceByUploadQueue  (RenderSystem* RS, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState);
 
 
 	/************************************************************************************************/
@@ -4191,7 +4262,7 @@ namespace FlexKit
 	FLEXKITAPI bool				LoadAndCompileShaderFromFile	(const char* FileLoc, ShaderDesc* desc, Shader* out);
 	FLEXKITAPI Shader			LoadShader						(const char* Entry, const char* ID, const char* ShaderVersion, const char* File);
 	FLEXKITAPI TextureHandle	LoadDDSTextureFromFile			(char* file, RenderSystem* RS, iAllocator* Memout);
-	FLEXKITAPI Texture2D		LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout);
+	FLEXKITAPI TextureHandle    LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UNORM);
 
 	FLEXKITAPI TextureBuffer CreateTextureBuffer			(size_t Width, size_t Height, iAllocator* Memout);
 
