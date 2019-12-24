@@ -168,6 +168,8 @@ namespace FlexKit
 
 			Release();
 
+            RenderSystem.Release();
+
 			Memory = nullptr;
 		}
 
@@ -204,15 +206,9 @@ namespace FlexKit
 	EngineMemory*	CreateEngineMemory();
 	EngineMemory*	CreateEngineMemory(bool&);
 	
-	void ReleaseCore			(EngineCore*		Game);
-	bool InitiateCoreSystems	(uint2 WH,			EngineCore*& Game);
-
 
 	/************************************************************************************************/
 
-
-	float GetWindowAspectRatio	(EngineCore* Engine);
-	uint2 GetWindowWH			(EngineCore* Engine);
 
 	float2	GetPixelSize	(EngineCore*);
 

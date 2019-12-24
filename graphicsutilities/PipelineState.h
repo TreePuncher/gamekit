@@ -80,30 +80,8 @@ namespace FlexKit
 			Undefined
 		};
 
-		bool changeState(const PipelineStateObject::PSO_States newState)
-		{
-			auto currentState = state.load(std::memory_order_acquire);
-
-			if (currentState == PipelineStateObject::PSO_States::Unloaded || 
-				currentState == PipelineStateObject::PSO_States::Loaded)
-			{
-				if (state.compare_exchange_strong(currentState, newState, std::memory_order_release))
-				{
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		void Release(iAllocator* allocator)
-		{
-			if(auto _ptr = next; _ptr)
-				_ptr->Release(allocator);
-
-			allocator->free(this);
-		}
-
+        bool changeState(const PipelineStateObject::PSO_States newState);
+        void Release(iAllocator* allocator);
 
 		ID3D12PipelineState*				PSO		= nullptr;
 		PSOHandle							id		= InvalidHandle_t;

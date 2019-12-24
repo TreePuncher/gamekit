@@ -68,8 +68,11 @@ public:
 		sender      = rhs.sender;
 		allocator   = rhs.allocator;
 
-		rhs.Clear();
-	}
+        rhs.data        = nullptr;
+        rhs.sender      = InvalidHandle_t;
+        rhs.allocator   = nullptr;
+        rhs.dataSize    = 0;
+    }
 
 
 	Packet& operator = (Packet&& rhs) noexcept// Move
@@ -81,7 +84,10 @@ public:
 		sender      = rhs.sender;
 		allocator   = rhs.allocator;
 
-		rhs.Clear();
+        rhs.data        = nullptr;
+        rhs.sender      = InvalidHandle_t;
+        rhs.allocator   = nullptr;
+        rhs.dataSize    = 0;
 
 		return *this;
 	}
@@ -89,20 +95,13 @@ public:
 	void Release()
 	{
 		if (data)
-		{
 			allocator->free(data);
-			Clear();
-		}
-	}
 
-
-	void Clear()
-	{
-		data        = nullptr;
-		sender      = InvalidHandle_t;
-		allocator   = nullptr;
-	}
-
+        data            = nullptr;
+        sender          = InvalidHandle_t;
+        allocator       = nullptr;
+        dataSize        = 0;
+    }
 
 	static Packet CopyCreate(void* data, size_t data_size, ConnectionHandle sender, iAllocator* allocator)
 	{
@@ -111,6 +110,7 @@ public:
 
 		return { data, data_size, sender, allocator };
 	}
+
 
 	void*               data        = nullptr;
 	size_t              dataSize    = 0;

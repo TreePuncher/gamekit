@@ -27,6 +27,45 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+    /************************************************************************************************/
+
+
+    bool PipelineStateObject::changeState(const PipelineStateObject::PSO_States newState)
+    {
+        auto currentState = state.load(std::memory_order_acquire);
+
+        if (currentState == PipelineStateObject::PSO_States::Unloaded ||
+            currentState == PipelineStateObject::PSO_States::Loaded)
+        {
+            if (state.compare_exchange_strong(currentState, newState, std::memory_order_release))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void PipelineStateObject::Release(iAllocator* allocator)
+    {
+        if(PSO)
+            PSO->Release();
+
+        PSO = nullptr;
+
+        if (auto _ptr = next; _ptr)
+            _ptr->Release(allocator);
+
+        allocator->free(this);
+    }
+
+
+    /************************************************************************************************/
+
 
 	PipelineStateTable::PipelineStateTable(iAllocator* IN_allocator, RenderSystem* IN_RS, ThreadManager* IN_Threads) :
 		Device		{ IN_RS->pDevice },
@@ -396,7 +435,8 @@ namespace FlexKit
 			PSO->CV.notify_all();
 
             // TODO: FIX THIS LEAK!
-			//if(previousPSO)
+            if (previousPSO)
+                int x = 0;
 			//	previousPSO->Release();
 
 			break;

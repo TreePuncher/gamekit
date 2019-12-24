@@ -35,7 +35,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MainMenu.cpp"
 #include "MultiplayerState.cpp"
 #include "MultiplayerGameState.cpp"
-#include "PlayState.cpp"
 
 #include <iostream>
 
@@ -43,7 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 int main(int argc, char* argv[])
 {
 	bool multiplayerMode	= false;
-	bool host				= true;
+	bool host				= false;
 	bool quit				= false;
 	std::string name;
 	std::string server;
@@ -102,7 +101,7 @@ int main(int argc, char* argv[])
 				return;
 			}
 		}
-	}();
+	};
 
 
 	if (quit)

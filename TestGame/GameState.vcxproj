@@ -167,10 +167,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="PlayState.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="Win64.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -184,7 +180,6 @@
     <ClInclude Include="MultiplayerGameState.h" />
     <ClInclude Include="MultiplayerState.h" />
     <ClInclude Include="Packets.h" />
-    <ClInclude Include="PlayState.h" />
     <ClInclude Include="ThirdPersonUtilities.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
