@@ -9,7 +9,7 @@ cbuffer CameraConstants : register( b0 )
     float4x4 ViewI;
     float4x4 Proj;
 	float4x4 PV;				// Projection x View
-	float4x4 PVI;				// Projection x View
+	float4x4 PVI;				
 	float4   CameraPOS;
 	float  	 MinZ;
 	float  	 MaxZ;
@@ -72,6 +72,13 @@ struct Plane
 	float4 Normal;
 	float4 Orgin;
 };
+
+float Hash(float x)
+{
+    uint2 n = uint(x) * uint2(1597334673U, 3812015801U);
+    uint q = (n.x ^ n.y) * 1597334673U;
+    return float(q) * (1.0 / float(0xFFFFFFFFU));
+}
 
 float Hash(float2 IN)// Thanks nVidia
 {

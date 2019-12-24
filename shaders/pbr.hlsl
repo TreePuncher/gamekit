@@ -1,3 +1,107 @@
+static const float PI			= 3.14159265359f;
+static const float INV_PI	    = 1 / PI;
+
+float Square(float x) { return x * x; }
+ 
+float Theta(float3 w)
+{
+    return acos(w.z / length(w));
+}
+ 
+float CosTheta(float3 w)
+{
+    return cos(Theta(w));
+}
+
+float EricHeitz2018GGXG1Lambda(float3 V, float alpha_x,  float alpha_y)
+{
+    float Vx2 = Square(V.x);
+    float Vy2 = Square(V.y);
+    float Vz2 = Square(V.z);
+    float ax2 = Square(alpha_x);
+    float ay2 = Square(alpha_y);
+    return (-1.0 + sqrt(1.0 + (Vx2 * ax2 + Vy2 * ay2) / Vz2)) / 2.0;
+}
+ 
+float EricHeitz2018GGXG1(float3 V, float alpha_x, float alpha_y)
+{
+    return 1.0 / (1.0 + EricHeitz2018GGXG1Lambda(V, alpha_x, alpha_y));
+}
+ 
+// wm: microfacet normal in frame
+float EricHeitz2018GGXD(float3 N,  float alpha_x, float alpha_y)
+{
+    float Nx2 = Square(N.x);
+    float Ny2 = Square(N.y);
+    float Nz2 = Square(N.z);
+    float ax2 = Square(alpha_x);
+    float ay2 = Square(alpha_y);
+    return 1.0 / (PI * alpha_x * alpha_y * Square(Nx2 / ax2 + Ny2 / ay2 + Nz2));
+}
+ 
+float EricHeitz2018GGXG2(float3 V, float3 L, float alpha_x, float alpha_y)
+{
+    return EricHeitz2018GGXG1(V, alpha_x, alpha_y) * EricHeitz2018GGXG1(L, alpha_x, alpha_y);
+}
+ 
+float3 SchlickFresnel(float NoX, float3 F0)
+{
+	return F0 + (1.0 - F0) * pow(1.0 - NoX, 5.0);
+}
+
+// L is in tangent space here
+float3 Lambert(float3 L, float3 albedo)
+{
+	return CosTheta(L) * INV_PI * albedo;
+}
+
+float3 EricHeitz2018GGX(float3 V, float3 L, float3 albedo, float metallic, float roughness, float anisotropic, float ior)
+{
+    float alpha = roughness * roughness;
+    float aspect = sqrt(1.0 - 0.9 * anisotropic);
+    float alpha_x = alpha * aspect;
+    float alpha_y = alpha / aspect;
+ 
+    float3 H = normalize(L + V);
+    float NoV = CosTheta(V);
+    float NoL = CosTheta(L);
+    if (NoV < 0.0 || NoL < 0.0) return float3(0, 0, 0);
+ 
+    float VoH = dot(V, H);
+    float NoH = CosTheta(H);
+    float3 F0 = float3(1, 1, 1) * abs((1.0 - ior) / (1.0 + ior));
+    F0 = F0 * F0;
+	F0 = lerp(F0, albedo, metallic);
+ 
+    float D = EricHeitz2018GGXD(H, alpha_x, alpha_y);
+    float3 F = SchlickFresnel(max(NoV, 0.0), F0);
+    float G = EricHeitz2018GGXG2(V, L, alpha_x, alpha_y);
+
+    return (F * D * G) / (4.0 * VoH * NoH);
+}
+
+float3 HammonEarlGGX(float3 V, float3 L, float3 albedo, float roughness)
+{
+    float NoV = CosTheta(V);
+    float NoL = CosTheta(L);
+ 
+    if (NoV < 0.0 || NoL < 0.0) return float3(0, 0, 0);
+ 
+	float3 H = normalize(V + L);
+    float NoH = CosTheta(H);
+    float VoL = dot(V, L);
+ 
+    float alpha = roughness * roughness;
+ 
+    float facing = 0.5 + 0.5 * VoL;
+    float roughy = facing * (0.9 - 0.4 * facing) * (0.5 + NoH)/NoH;
+    float smoothy = 1.05 * (1.0 - pow(1.0 - NoL, 5.0)) * (1.0 - pow(1.0 - NoV, 5.0));
+    float single = INV_PI * lerp(smoothy, roughy, alpha);
+    float multi = alpha * 0.1159;
+    return albedo * (single + albedo * multi);
+}
+
+/*
 #define pi 3.14159265
 
 
@@ -194,7 +298,7 @@ float3 EricHeitz2018GGX(float3 V, float3 L, float roughness, float anisotropic, 
 
     return (F * D * G) / (4.0f * VoH * NoH);
 }
-
+*/
 
 /**********************************************************************
 
