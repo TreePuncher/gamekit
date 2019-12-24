@@ -174,7 +174,6 @@ void tiledLightCulling(uint3 ID : SV_GroupID, uint3 TID : SV_GroupThreadID)
         uint idx = localIdx + GroupSize * i;
         if (idx < lightCount)
         {
-            // TODO: culling
             PointLight light    = ReadPointLight(idx);
             float3 viewPosition = mul(view, float4(light.PositionR.xyz, 1));
 
