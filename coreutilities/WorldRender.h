@@ -206,8 +206,8 @@ namespace FlexKit
 
 	struct WorldRender_Targets
 	{
-		TextureHandle RenderTarget;
-		TextureHandle DepthTarget;
+		ResourceHandle RenderTarget;
+		ResourceHandle DepthTarget;
 	};
 
 
@@ -282,8 +282,8 @@ namespace FlexKit
 		CameraHandle			camera;
 
 		CBPushBuffer			constants;
-		TextureHandle			lightMap;
-		TextureHandle			lightListBuffer;
+		ResourceHandle			lightMap;
+		ResourceHandle			lightListBuffer;
 
 		FrameResourceHandle		lightMapObject;
 		FrameResourceHandle		lightListObject;
@@ -298,7 +298,7 @@ namespace FlexKit
 	{
 		VertexBufferHandle		vertexBuffer;
 		ConstantBufferHandle	constantBuffer;
-		TextureHandle			renderTarget;
+		ResourceHandle			renderTarget;
 	};
 
 
@@ -316,7 +316,7 @@ namespace FlexKit
             drawables{ IN_drawables } {}
 
         const PVS&          drawables;
-        TextureHandle       depthPassTarget;
+        ResourceHandle       depthPassTarget;
         FrameResourceHandle depthBufferObject;
 
         CBPushBuffer passConstantsBuffer;
@@ -373,11 +373,11 @@ namespace FlexKit
     public:
         GBuffer(const uint2 WH, RenderSystem& RS_IN) :
             RS          { RS_IN },
-            Albedo      { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
-            Specular    { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
-            Normal      { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
-            Tangent     { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
-            IOR_ANISO   { RS_IN.CreateTexture2D(TextureDesc::RenderTarget(WH, FORMAT_2D::R16G16_FLOAT)) }
+            Albedo      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
+            Specular    { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
+            Normal      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
+            Tangent     { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
+            IOR_ANISO   { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16_FLOAT)) }
         {
             RS.SetDebugName(Albedo,     "Albedo");
             RS.SetDebugName(Specular,   "Specular");
@@ -395,11 +395,11 @@ namespace FlexKit
             RS.ReleaseTexture(IOR_ANISO);
         }
 
-        TextureHandle Albedo;	 // rgba_UNORM, Albedo + Metal
-        TextureHandle Specular;	 // rgba_UNORM, Specular + roughness
-        TextureHandle Normal;	 // float16_RGBA
-        TextureHandle Tangent;	 // float16_RGBA
-        TextureHandle IOR_ANISO; // float16_RG
+        ResourceHandle Albedo;	 // rgba_UNORM, Albedo + Metal
+        ResourceHandle Specular;	 // rgba_UNORM, Specular + roughness
+        ResourceHandle Normal;	 // float16_RGBA
+        ResourceHandle Tangent;	 // float16_RGBA
+        ResourceHandle IOR_ANISO; // float16_RG
 
         RenderSystem&    RS;
     };
@@ -469,8 +469,15 @@ namespace FlexKit
 
     struct BackgroundEnvironmentPass
     {
-        TextureHandle       HDRMap;
+        ResourceHandle       HDRMap;
         DescriptorHeap	    descHeap;
+
+        FrameResourceHandle AlbedoTargetObject;     // RGBA8
+        FrameResourceHandle NormalTargetObject;     // RGBA16Float
+        FrameResourceHandle SpecularTargetObject;
+        FrameResourceHandle TangentTargetObject;
+        FrameResourceHandle IOR_ANISOTargetObject;  // RGBA8
+        FrameResourceHandle depthBufferTargetObject;
 
         FrameResourceHandle renderTargetObject;
 
@@ -560,7 +567,7 @@ namespace FlexKit
                 FrameGraph&         frameGraph,
                 const CameraHandle  camera,
                 GatherTask&         pvs,
-                const TextureHandle depthBufferTarget,
+                const ResourceHandle depthBufferTarget,
                 iAllocator*         allocator);
 
         
@@ -568,8 +575,8 @@ namespace FlexKit
                 UpdateDispatcher&       dispatcher,
                 FrameGraph&             frameGraph,
                 const CameraHandle      camera,
-                const TextureHandle     renderTarget,
-                const TextureHandle     hdrMap,
+                const ResourceHandle     renderTarget,
+                const ResourceHandle     hdrMap,
                 VertexBufferHandle      vertexBuffer,
                 iAllocator*             tempMemory);
 
@@ -582,7 +589,7 @@ namespace FlexKit
                 const WorldRender_Targets&  Target,
                 const SceneDescription&     desc,
                 const float                 t,
-                TextureHandle               environmentMap,
+                ResourceHandle               environmentMap,
                 iAllocator*                 allocator);
 
 
@@ -596,13 +603,25 @@ namespace FlexKit
                 LighBufferDebugDraw*    drawDebug = nullptr);
 
 
+        BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
+            UpdateDispatcher&       dispatcher,
+            FrameGraph&             frameGraph,
+            const CameraHandle      camera,
+            const ResourceHandle     renderTarget,
+            const ResourceHandle     depthTarget,
+            const ResourceHandle     hdrMap,
+            GBuffer&                gbuffer,
+            VertexBufferHandle      vertexBuffer,
+            iAllocator*             tempMemory);
+
+
         GBufferPass&        RenderPBR_GBufferPass(
             UpdateDispatcher&   dispatcher,
             FrameGraph&         frameGraph,
             const CameraHandle  camera,
             GatherTask&         pvs,
             GBuffer&            gbuffer,
-            TextureHandle       depthTarget,
+            ResourceHandle       depthTarget,
             iAllocator*         allocator);
 
 
@@ -612,9 +631,9 @@ namespace FlexKit
             const CameraHandle      camera,
             PointLightGatherTask&   gather,
             GBuffer&                gbuffer,
-            TextureHandle           depthTarget,
-            TextureHandle           renderTarget,
-            TextureHandle           environmentMap,
+            ResourceHandle           depthTarget,
+            ResourceHandle           renderTarget,
+            ResourceHandle           environmentMap,
             VertexBufferHandle      vertexBuffer,
             float                   t,
             iAllocator*             allocator);
@@ -624,7 +643,7 @@ namespace FlexKit
 		RenderSystem&			RS;
         ConstantBufferHandle	ConstantBuffer;
 		//QueryHandle			OcclusionQueries;
-		//TextureHandle			OcclusionBuffer;
+		//ResourceHandle			OcclusionBuffer;
 
 
 		UAVTextureHandle		lightMap;			// GPU

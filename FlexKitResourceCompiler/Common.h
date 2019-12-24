@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "../coreutilities/MathUtils.h"
 #include "../coreutilities/MemoryUtilities.h"
-#include "../coreutilities/Resources.h"
+#include "../coreutilities/Assets.h"
 #include "../coreutilities/XMMathConversion.h"
 #include "../graphicsutilities/MeshUtils.h"
 #include "../graphicsutilities/AnimationUtilities.h"

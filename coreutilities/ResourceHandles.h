@@ -32,8 +32,7 @@ namespace FlexKit
 {
 	typedef Handle_t<32, GetTypeGUID(ConstantBuffer)>			ConstantBufferHandle;
 	typedef Handle_t<32, GetTypeGUID(VertexBuffer)>				VertexBufferHandle;
-	typedef Handle_t<32, GetTypeGUID(TextureHandle)>			TextureHandle;
-	typedef Handle_t<32, GetTypeGUID(GPUResourceHandle)>		GPUResourceHandle;
+	typedef Handle_t<32, GetTypeGUID(ResourceHandle)>		    ResourceHandle;
 	typedef Handle_t<32, GetTypeGUID(StreamTexture2DHandle)>	StreamingTexture2DHandle;
 	typedef Handle_t<32, GetTypeGUID(ShaderResourceHandle)>		ShaderResourceHandle;
 	typedef Handle_t<32, GetTypeGUID(UAVResourceHandle)>		UAVResourceHandle;

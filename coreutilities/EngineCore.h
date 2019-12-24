@@ -31,7 +31,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GraphicsComponents.h"
 #include "..\coreutilities\memoryutilities.h"
 #include "..\coreutilities\ProfilingUtilities.h"
-#include "..\coreutilities\Resources.h"
+#include "..\coreutilities\Assets.h"
 #include "..\coreutilities\ThreadUtilities.h"
 
 #include "..\graphicsutilities\FrameGraph.h"

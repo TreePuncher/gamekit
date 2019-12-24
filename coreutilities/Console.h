@@ -212,7 +212,7 @@ namespace FlexKit
 
 		void Release();
 
-		void Draw(FrameGraph& Graph, TextureHandle RenderTarget, iAllocator* TempMemory);
+		void Draw(FrameGraph& Graph, ResourceHandle RenderTarget, iAllocator* TempMemory);
 
 
 		void Input( char InputCharacter );

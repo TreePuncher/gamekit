@@ -33,7 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\Resources.h"
+#include "..\coreutilities\Assets.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 
 

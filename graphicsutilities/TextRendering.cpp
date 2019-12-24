@@ -119,10 +119,10 @@ namespace FlexKit
 
 	void DrawSprite_Text(
 		const char*				Str,
-		FrameGraph&				FGraph,
+		FrameGraph&				frameGraph,
 		SpriteFontAsset&		Font,
 		VertexBufferHandle		Buffer, 
-		TextureHandle			renderTarget,
+		ResourceHandle			renderTarget,
 		iAllocator*				TempMemory,
 		PrintTextFormatting&	Formatting)
 	{
@@ -134,21 +134,22 @@ namespace FlexKit
 			size_t					VertexCount;
 			size_t					VertexOffset;
 
+            uint2                   WH;
 			DescriptorHeap			Heap;
 		};
 
-		FGraph.AddNode<DrawSpriteText>(
+		frameGraph.AddNode<DrawSpriteText>(
 			DrawSpriteText{},
 			[&](FrameGraphNodeBuilder& Builder, DrawSpriteText& Data)
 			{
 				if (Formatting.PixelSize == float2{ 1.0f, 1.0f })
-					Formatting.PixelSize = float2{ 1.0f, 1.0f } / FGraph.Resources.renderSystem.GetRenderTargetWH(renderTarget);
+					Formatting.PixelSize = float2{ 1.0f, 1.0f } / frameGraph.Resources.renderSystem.GetTextureWH(renderTarget);
 
 				Data.renderTarget	= Builder.WriteRenderTarget(renderTarget);
 
 				Data.Heap.Init(
-					FGraph.Resources.renderSystem, 
-					FGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+					frameGraph.Resources.renderSystem, 
+					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
 					TempMemory);
 
 				size_t StrLen		= strlen(Str);
@@ -157,7 +158,8 @@ namespace FlexKit
 
 				Data.VertexBuffer	= Buffer;
 				Data.VertexCount	= StrLen;
-				Data.VertexOffset	= GetCurrentVBufferOffset<TextEntry>(Buffer, FGraph.Resources);
+				Data.VertexOffset	= GetCurrentVBufferOffset<TextEntry>(Buffer, frameGraph.Resources);
+                Data.WH             = frameGraph.GetRenderSystem().GetTextureWH(renderTarget);
 
                 const float XBegin	= Formatting.StartingPOS.x;
 				const float YBegin	= Formatting.StartingPOS.y;
@@ -239,13 +241,11 @@ namespace FlexKit
 				{
 					auto Character2 = Character;
 					Character2.POS = Position2SS(Character2.POS);
-					FlexKit::PushVertex(Character2, Buffer, FGraph.Resources);
+					FlexKit::PushVertex(Character2, Buffer, frameGraph.Resources);
 				}
 			},
 			[spriteSheet = Font.Texture](DrawSpriteText& Data, const FrameResources& Resources, Context* Ctx)
-			{
-				auto WH = Resources.GetRenderTargetWH(Data.renderTarget);
-				
+			{				
 				Data.Heap.SetSRV(Resources.renderSystem, 0, spriteSheet);
 				Data.Heap.NullFill(Resources.renderSystem);
 

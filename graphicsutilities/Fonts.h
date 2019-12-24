@@ -79,7 +79,7 @@ namespace FlexKit
 		bool	Unicode	 = false;
 
 		uint2			TextSheetDimensions;
-		TextureHandle	Texture;
+		ResourceHandle	Texture;
 		uint4			Padding = 0; // Ordering { Top, Left, Bottom, Right }
 		iAllocator*		Memory;
 
@@ -103,7 +103,7 @@ namespace FlexKit
 		char	FontName[128];
 		char*	FontDir; // Texture Directory
 
-		operator TextureHandle () { return Texture; }
+		operator ResourceHandle () { return Texture; }
 	};
 
 

@@ -61,7 +61,7 @@ namespace FlexKit
 		for(size_t I = 0; I < 3; ++I)
 		{	// Alebdo Buffer
 			desc.Format = FORMAT_2D::R32G32B32A32_FLOAT;
-			Out->ReflectionBuffer[I] = CreateTexture2D(RS, &desc);
+			Out->ReflectionBuffer[I] = CreateGPUResource(RS, &desc);
 			FK_ASSERT(Out->ReflectionBuffer[I]);
 			SETDEBUGNAME(Out->ReflectionBuffer[I], "Reflection Buffer");
 		}

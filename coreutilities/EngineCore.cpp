@@ -115,7 +115,7 @@ namespace FlexKit
         else
         {
             SetInputWIndow(&Window);
-            InitiateResourceTable(GetBlockMemory());
+            InitiateAssetTable(GetBlockMemory());
 
             return false;
         }

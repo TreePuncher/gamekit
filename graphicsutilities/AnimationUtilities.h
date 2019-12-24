@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\Handle.h"
-#include "..\coreutilities\Resources.h"
+#include "..\coreutilities\Assets.h"
 #include <DirectXMath.h>
 
 

@@ -24,7 +24,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 #include "..\buildsettings.h"
-#include "..\coreutilities\Resources.h"
+#include "..\coreutilities\Assets.h"
 #include "physicsutilities.h"
 #include <PhysX_sdk/physx/include/PxFoundation.h>
 #include <PhysX_sdk/physx/include/PxPhysics.h>
@@ -176,16 +176,16 @@ namespace FlexKit
 	/*
 	ColliderHandle LoadTriMeshCollider(FlexKit::PhysicsSystem* PS, GUID_t Guid)
 	{
-		if (isResourceAvailable(Guid))
+		if (isAssetAvailable(Guid))
 		{
-			auto RHandle		= LoadGameResource(Guid);
-			auto Resource		= (ColliderResourceBlob*)GetResource(RHandle);
+			auto RHandle		= LoadGameAsset(Guid);
+			auto Resource		= (ColliderResourceBlob*)GetAsset(RHandle);
 			size_t ResourceSize = Resource->ResourceSize - sizeof(ColliderResourceBlob);
 
 			PxDefaultMemoryInputData readBuffer(Resource->Buffer, ResourceSize);
 			auto Mesh = PS->Physx->createTriangleMesh(readBuffer);
 
-			FreeResource(RHandle);
+			FreeAsset(RHandle);
 
 			return AddCollider(&PS->Colliders, {Mesh, 1});
 		}
@@ -197,16 +197,16 @@ namespace FlexKit
 	/*
 	physx::PxHeightField*	LoadHeightFieldCollider(PhysicsSystem* PS, GUID_t Guid)
 	{
-		if (isResourceAvailable(Guid))
+		if (isAssetAvailable(Guid))
 		{
-			auto RHandle		= LoadGameResource(Guid);
-			auto Resource		= (ColliderResourceBlob*)GetResource(RHandle);
+			auto RHandle		= LoadGameAsset(Guid);
+			auto Resource		= (ColliderResourceBlob*)GetAsset(RHandle);
 			size_t ResourceSize = Resource->ResourceSize - sizeof(ColliderResourceBlob);
 
 			//PxDefaultMemoryInputData readBuffer(Resource->Buffer, ResourceSize);
 			//auto HeightField	= PS->physxAPI->createHeightField(readBuffer);
 
-			FreeResource(RHandle);
+			FreeAsset(RHandle);
 			return nullptr;
 			//return HeightField;
 			//return AddCollider(&PS->Colliders, { Mesh, 1 });

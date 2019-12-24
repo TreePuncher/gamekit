@@ -379,7 +379,7 @@ namespace FlexKit
 	{
 		FrameGraph*				FrameGraph;
 		ConstantBufferHandle	ConstantBuffer;
-		TextureHandle			RenderTarget;
+		ResourceHandle			RenderTarget;
 		VertexBufferHandle		VertexBuffer;
 		VertexBufferHandle		TextBuffer;
 		float2					PixelSize;
@@ -398,7 +398,7 @@ namespace FlexKit
 		LayoutEngine(iAllocator* tempmemory, iAllocator* Memory, LayoutEngine_Desc& RS);
 
 		FrameGraph*				FrameGraph;
-		TextureHandle			RenderTarget;
+		ResourceHandle			RenderTarget;
 		VertexBufferHandle		VertexBuffer;
 		VertexBufferHandle		TextBuffer;
 		ConstantBufferHandle	ConstantBuffer;
@@ -867,7 +867,7 @@ namespace FlexKit
 	struct DrawUI_Desc
 	{
 		FrameGraph*				FrameGraph;
-		TextureHandle			RenderTarget;
+		ResourceHandle			RenderTarget;
 		VertexBufferHandle		VertexBuffer;
 		VertexBufferHandle		TextBuffer;
 		ConstantBufferHandle	ConstantBuffer;

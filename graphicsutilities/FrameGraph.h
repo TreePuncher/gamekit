@@ -109,7 +109,7 @@ namespace FlexKit
         union
         {
             struct {
-                TextureHandle	Texture;
+                ResourceHandle	Texture;
                 DescHeapPOS		HeapPOS;
             }RenderTarget;
 
@@ -122,18 +122,17 @@ namespace FlexKit
             }UAVTexture;
 
             struct {
-                TextureHandle           handle;
+                ResourceHandle           handle;
                 DescHeapPOS		        HeapPOS;
                 bool                    renderTargetUse;
 
-                operator TextureHandle() { return handle; }
+                operator ResourceHandle() { return handle; }
             }ShaderResource;
 
             QueryHandle				query;
-            GPUResourceHandle		byteBuffer;
             SOResourceHandle		SOBuffer;
             UAVResourceHandle		UAVBuffer;
-            TextureHandle			Texture;
+            ResourceHandle			Texture;
 
             struct {
                 char	buff[256];
@@ -141,7 +140,7 @@ namespace FlexKit
         };
 
 
-        static FrameObject ReadRenderTargetObject(uint32_t Tag, TextureHandle Handle)
+        static FrameObject ReadRenderTargetObject(uint32_t Tag, ResourceHandle Handle)
         {
             FrameObject RenderTarget;
             RenderTarget.State					= DeviceResourceState::DRS_ShaderResource;
@@ -153,7 +152,7 @@ namespace FlexKit
         }
 
 
-        static FrameObject WriteRenderTargetObject(uint32_t Tag, TextureHandle Handle)
+        static FrameObject WriteRenderTargetObject(uint32_t Tag, ResourceHandle Handle)
         {
             FrameObject RenderTarget;
             RenderTarget.State		            = DeviceResourceState::DRS_RenderTarget;
@@ -165,7 +164,7 @@ namespace FlexKit
         }
 
 
-        static FrameObject BackBufferObject(uint32_t Tag, TextureHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
+        static FrameObject BackBufferObject(uint32_t Tag, ResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
         {
             FrameObject RenderTarget;
             RenderTarget.State					= InitialState;
@@ -177,7 +176,7 @@ namespace FlexKit
         }
 
 
-        static FrameObject DepthBufferObject(uint32_t Tag, TextureHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
+        static FrameObject DepthBufferObject(uint32_t Tag, ResourceHandle Handle, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
         {
             FrameObject RenderTarget;
             RenderTarget.State                = InitialState;
@@ -189,7 +188,7 @@ namespace FlexKit
         }
 
 
-        static FrameObject TextureObject(uint32_t Tag, TextureHandle Handle, DeviceResourceState InitialState)
+        static FrameObject TextureObject(uint32_t Tag, ResourceHandle Handle, DeviceResourceState InitialState)
         {
             FrameObject shaderResource;
             shaderResource.State                    = InitialState;
@@ -276,7 +275,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        void AddBackBuffer(TextureHandle Handle)
+        void AddBackBuffer(ResourceHandle Handle)
         {
             AddRenderTarget(
                 Handle,
@@ -288,7 +287,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        void AddRenderTarget(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
+        void AddRenderTarget(ResourceHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_RenderTarget)
         {
             Resources.push_back(
                 FrameObject::BackBufferObject(Tag, Handle, InitialState));
@@ -300,7 +299,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        void AddDepthBuffer(TextureHandle Handle)
+        void AddDepthBuffer(ResourceHandle Handle)
         {
             AddDepthBuffer(
                 Handle,
@@ -312,7 +311,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        void AddDepthBuffer(TextureHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
+        void AddDepthBuffer(ResourceHandle Handle, uint32_t Tag, DeviceResourceState InitialState = DeviceResourceState::DRS_DEPTHBUFFER)
         {
             Resources.push_back(
                 FrameObject::DepthBufferObject(Tag, Handle, InitialState));
@@ -358,7 +357,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        void AddShaderResource(TextureHandle handle, const bool renderTarget = false)
+        void AddShaderResource(ResourceHandle handle, const bool renderTarget = false)
         {
             DeviceResourceState initialState = renderSystem.GetObjectState(handle);
 
@@ -421,7 +420,7 @@ namespace FlexKit
                 FK_ASSERT(false);
             }
 
-            return { {}, TextureHandle{ InvalidHandle_t } };
+            return { {}, ResourceHandle{ InvalidHandle_t } };
         }
 
 
@@ -468,7 +467,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        DeviceResourceState		GetResourceObjectState(FrameResourceHandle Handle)
+        DeviceResourceState		GetAssetObjectState(FrameResourceHandle Handle)
         {
             return Resources[Handle].State;
         }
@@ -477,7 +476,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        FrameObject*			GetResourceObject(FrameResourceHandle Handle)
+        FrameObject*			GetAssetObject(FrameResourceHandle Handle)
         {
             return &Resources[Handle];
         }
@@ -486,18 +485,9 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        TextureHandle			GetRenderTarget(FrameResourceHandle Handle) const
+        ResourceHandle			GetRenderTarget(FrameResourceHandle Handle) const
         {
             return Resources[Handle].RenderTarget.Texture;
-        }
-
-
-        /************************************************************************************************/
-
-
-        uint2					GetRenderTargetWH(FrameResourceHandle Handle) const
-        {
-            return renderSystem.GetRenderTargetWH(GetRenderTarget(Handle));
         }
 
 
@@ -513,19 +503,9 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        TextureHandle			GetTexture(FrameResourceHandle Handle) const
+        ResourceHandle			GetTexture(FrameResourceHandle Handle) const
         {
-            return handle_cast<TextureHandle>(Resources[Handle].ShaderResource.handle);
-        }
-
-
-        /************************************************************************************************/
-
-
-        StaticFrameResourceHandle AddTexture(TextureHandle Handle, uint32_t Tag)
-        {
-            FK_ASSERT(0);
-            return InvalidHandle_t;
+            return handle_cast<ResourceHandle>(Resources[Handle].ShaderResource.handle);
         }
 
 
@@ -565,7 +545,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        SOResourceHandle GetSOResource(ResourceHandle handle) const
+        SOResourceHandle GetSOResource(FrameResourceHandle handle) const
         {
             FrameObject* resource = nullptr;
             auto res = find(SubNodeTracking,
@@ -835,7 +815,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        FrameResourceHandle	FindFrameResource(TextureHandle Handle)
+        FrameResourceHandle	FindFrameResource(ResourceHandle Handle)
         {
             auto res = find(Resources, 
                 [&](const FrameObject& LHS)
@@ -1024,6 +1004,15 @@ namespace FlexKit
             return *renderSystem;
         }
 
+        uint2 GetTextureWH(FrameResourceHandle handle) const
+        {
+            if (auto res = GetTexture(handle); res != InvalidHandle_t)
+                return renderSystem.GetTextureWH(res);
+            else
+                return { 0, 0 };
+        }
+
+
     };/************************************************************************************************/
 
 
@@ -1148,7 +1137,7 @@ namespace FlexKit
             UAVResourceHandle		UAVBuffer;
             UAVTextureHandle		UAVTexture;
             SOResourceHandle		SOHandle;
-            TextureHandle           ShaderResource;
+            ResourceHandle           ShaderResource;
         };
 
         DeviceResourceState	ExpectedState;
@@ -1289,7 +1278,7 @@ namespace FlexKit
     }
 
 
-    auto MakePred(TextureHandle handle)
+    auto MakePred(ResourceHandle handle)
     {
         return [handle](FrameObjectDependency& lhs)
         {
@@ -1480,30 +1469,25 @@ namespace FlexKit
 
         void AddDataDependency(UpdateTask& task);
 
-        FrameResourceHandle ReadShaderResource	(TextureHandle Handle);
-        FrameResourceHandle WriteShaderResource	(TextureHandle Handle);
+        FrameResourceHandle ReadShaderResource	(ResourceHandle Handle);
+        FrameResourceHandle WriteShaderResource	(ResourceHandle Handle);
 
-        FrameResourceHandle WriteShaderResource	(GPUResourceHandle Handle);
+        FrameResourceHandle ReadRenderTarget	(ResourceHandle   Handle);
+        FrameResourceHandle WriteRenderTarget	(ResourceHandle   Handle);
+        FrameResourceHandle WriteRenderTarget   (UAVTextureHandle Handle);
 
-        FrameResourceHandle ReadRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
-        FrameResourceHandle WriteRenderTarget	(uint32_t Tag, RenderTargetFormat Formt = TRF_Auto);
-
-        FrameResourceHandle ReadRenderTarget	(TextureHandle      Handle);
-        FrameResourceHandle WriteRenderTarget	(TextureHandle      Handle);
-        FrameResourceHandle WriteRenderTarget   (UAVTextureHandle   Handle);
-
-        FrameResourceHandle	PresentBackBuffer	(TextureHandle Tag);
-        FrameResourceHandle	ReadBackBuffer		(TextureHandle Tag);
-        FrameResourceHandle	WriteBackBuffer		(TextureHandle Tag);
+        FrameResourceHandle	PresentBackBuffer	(ResourceHandle Tag);
+        FrameResourceHandle	ReadBackBuffer		(ResourceHandle Tag);
+        FrameResourceHandle	WriteBackBuffer		(ResourceHandle Tag);
 
         //FrameResourceHandle	ReadDepthBuffer		(uint32_t Tag);
         //FrameResourceHandle	WriteDepthBuffer	(uint32_t Tag);
 
-        //FrameResourceHandle	ReadDepthBuffer		(TextureHandle Handle);
-        FrameResourceHandle	WriteDepthBuffer	(TextureHandle Handle);
+        //FrameResourceHandle	ReadDepthBuffer		(ResourceHandle Handle);
+        FrameResourceHandle	WriteDepthBuffer	(ResourceHandle Handle);
 
-        FrameResourceHandle	ReadWriteUAV(UAVResourceHandle, DeviceResourceState state = DeviceResourceState::DRS_Write);
-        FrameResourceHandle	ReadWriteUAV(UAVTextureHandle,	DeviceResourceState	state = DeviceResourceState::DRS_Write);
+        FrameResourceHandle	ReadWriteUAV    (UAVResourceHandle, DeviceResourceState state = DeviceResourceState::DRS_Write);
+        FrameResourceHandle	ReadWriteUAV    (UAVTextureHandle,	DeviceResourceState	state = DeviceResourceState::DRS_Write);
 
         FrameResourceHandle	ReadSOBuffer	(SOResourceHandle);
         FrameResourceHandle	WriteSOBuffer	(SOResourceHandle);
@@ -1530,9 +1514,9 @@ namespace FlexKit
 
                 LocalInputs.push_back(
                     FrameObjectDependency{
-                        Resources->GetResourceObject(Resource),
+                        Resources->GetAssetObject(Resource),
                         nullptr,
-                        Resources->GetResourceObjectState(Resource),
+                        Resources->GetAssetObjectState(Resource),
                         state });
 
                 Context.AddReadable(LocalOutputs.back());
@@ -1572,9 +1556,9 @@ namespace FlexKit
 
                 LocalOutputs.push_back(
                     FrameObjectDependency{
-                        Resources->GetResourceObject(Resource),
+                        Resources->GetAssetObject(Resource),
                         nullptr,
-                        Resources->GetResourceObjectState(Resource),
+                        Resources->GetAssetObjectState(Resource),
                         state });
 
                 Context.AddWriteable(LocalOutputs.back());
@@ -1606,7 +1590,7 @@ namespace FlexKit
             }
         }
 
-        FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(TextureHandle handle, DeviceResourceState state, FrameObjectResourceType type);
+        FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(ResourceHandle handle, DeviceResourceState state, FrameObjectResourceType type);
 
         enum class CheckStateRes
         {
@@ -1695,7 +1679,7 @@ namespace FlexKit
         }
 
 
-        void AddRenderTarget	(TextureHandle Texture);
+        void AddRenderTarget	(ResourceHandle Texture);
 
         void ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Context& Context);
         
@@ -1743,8 +1727,8 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void ClearBackBuffer	(FrameGraph& Graph, TextureHandle backBuffer, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
-    void ClearDepthBuffer	(FrameGraph& Graph, TextureHandle Handle, float D);
+    void ClearBackBuffer	(FrameGraph& Graph, ResourceHandle backBuffer, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
+    void ClearDepthBuffer	(FrameGraph& Graph, ResourceHandle Handle, float D);
     void PresentBackBuffer	(FrameGraph& Graph, RenderWindow* Window);
 
 
@@ -1778,7 +1762,7 @@ namespace FlexKit
         size_t          VertexBufferOffset	    = 0;
         size_t          VertexCount			    = 0;
         size_t          VertexOffset			= 0;
-        TextureHandle   texture		            = InvalidHandle_t;
+        ResourceHandle   texture		            = InvalidHandle_t;
     };
 
     typedef Vector<ShapeDraw> DrawList;
@@ -2127,7 +2111,7 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-    using TextureList = Vector<TextureHandle>;
+    using TextureList = Vector<ResourceHandle>;
 
     class TexturedRectangleListShape final : public ShapeProtoType
     {
@@ -2187,7 +2171,7 @@ namespace FlexKit
         }
 
         Vector<Rectangle>		rects;
-        Vector<TextureHandle>	textures;
+        Vector<ResourceHandle>	textures;
     };
 
 
@@ -2227,7 +2211,7 @@ namespace FlexKit
         FrameGraph& Graph, 
         VertexBufferHandle PushBuffer,
         ConstantBufferHandle CB, 
-        TextureHandle RenderTarget, 
+        ResourceHandle RenderTarget, 
         iAllocator* Memory, 
         TY_OTHER ... Args)
     {
@@ -2272,7 +2256,7 @@ namespace FlexKit
             },
             [=](const ShapeParams& Data, const FrameResources& Resources, Context* Ctx)
             {	// Multi-threadable Section
-                auto WH = Resources.GetRenderTargetWH(Data.RenderTarget);
+                auto WH = Resources.GetTextureWH(Data.RenderTarget);
 
                 Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
                 Ctx->SetRenderTargets(
@@ -2324,8 +2308,8 @@ namespace FlexKit
     struct DrawCollection_Desc
     {
         TriMeshHandle			Mesh;
-        TextureHandle			RenderTarget;
-        TextureHandle			DepthBuffer;
+        ResourceHandle			RenderTarget;
+        ResourceHandle			DepthBuffer;
         VertexBufferHandle		instanceBuffer;
         ConstantBufferHandle	constantBuffer;
         PSOHandle				PSO;
@@ -2466,7 +2450,7 @@ namespace FlexKit
 
     struct DrawWireframeRectangle_Desc
     {
-        TextureHandle			RenderTarget;
+        ResourceHandle			RenderTarget;
         VertexBufferHandle		VertexBuffer;
         ConstantBufferHandle	constantBuffer;
         CameraHandle			camera;
@@ -2509,7 +2493,7 @@ namespace FlexKit
             DrawWireframes{},
             [&](FrameGraphNodeBuilder& Builder, auto& Data)
             {
-                Data.RenderTarget	= Builder.WriteRenderTarget(frameGraph.Resources.renderSystem.GetTag(desc.RenderTarget));
+                Data.RenderTarget	= Builder.WriteRenderTarget(desc.RenderTarget);
 
                 Data.CB		= desc.constantBuffer;
                 Data.VB		= desc.VertexBuffer;
@@ -2598,8 +2582,8 @@ namespace FlexKit
         const size_t			RowCount,
         const float2			GridWH,
         const float4			GridColor,
-        TextureHandle			RenderTarget,
-        TextureHandle			DepthBuffer,
+        ResourceHandle			RenderTarget,
+        ResourceHandle			DepthBuffer,
         VertexBufferHandle		VertexBuffer,
         ConstantBufferHandle	Constants,
         CameraHandle			Camera,

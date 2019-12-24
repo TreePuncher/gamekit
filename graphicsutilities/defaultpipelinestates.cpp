@@ -353,7 +353,7 @@ namespace FlexKit
 		//RegisterPSOLoader(EPIPELINESTATES::OCCLUSION_CULLING, LoadOcclusionState);
 		//QueuePSOLoad(RS, EPIPELINESTATES::OCCLUSION_CULLING);
 
-		//auto NewRes = CreateShaderResource(RS, count * 8, "OCCLUSIONCULLERRESULTS");
+		//auto NewRes = CreateGPUResource(RS, count * 8, "OCCLUSIONCULLERRESULTS");
 
 		D3D12_QUERY_HEAP_DESC Desc;
 		Desc.Count		= count;

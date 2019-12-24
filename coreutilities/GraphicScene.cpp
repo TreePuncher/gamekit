@@ -224,11 +224,11 @@ namespace FlexKit
 	//bool LoadAnimation(GraphicScene* GS, SceneEntityHandle EHandle, ResourceHandle RHndl, TriMeshHandle MeshHandle, float w = 1.0f)
 	//{
 		/*
-		auto Resource = GetResource(RHndl);
+		auto Resource = GetAsset(RHndl);
 		if (Resource->Type == EResourceType::EResource_SkeletalAnimation)
 		{
 			auto AC = Resource2AnimationClip(Resource, GS->Memory);
-			FreeResource(RHndl);// No longer in memory once loaded
+			FreeAsset(RHndl);// No longer in memory once loaded
 
 			auto mesh				= GetMeshResource(MeshHandle);
 			AC.Skeleton				= mesh->Skeleton;
@@ -292,9 +292,9 @@ namespace FlexKit
 			if (!AnimationLoaded)
 			{
 				// Search Resources for Animation
-				if (isResourceAvailable(Guid))
+				if (isAssetAvailable(Guid))
 				{
-					auto RHndl = LoadGameResource(Guid);
+					auto RHndl = LoadGameAsset(Guid);
 					auto Res = LoadAnimation(this, EHandle, RHndl, MeshHandle, W);
 					if(!Res)
 						return{ false, -1 };
@@ -338,9 +338,9 @@ namespace FlexKit
 		}
 
 		// Search Resources for Animation
-		if(isResourceAvailable(Animation))
+		if(isAssetAvailable(Animation))
 		{
-			auto RHndl = LoadGameResource(Animation);
+			auto RHndl = LoadGameAsset(Animation);
 			int64_t AnimationID = -1;
 			if (LoadAnimation(this, EHandle, RHndl, MeshHandle, W)) {
 				if(PlayAnimation(&GetDrawable(EHandle), Animation, Memory, Loop, W, &AnimationID) == EPLAY_SUCCESS)
@@ -772,13 +772,13 @@ namespace FlexKit
 
 	bool LoadScene(RenderSystem* RS, GUID_t Guid, GraphicScene& GS_out, iAllocator* allocator, iAllocator* temp)
 	{
-		bool Available = isResourceAvailable(Guid);
+		bool Available = isAssetAvailable(Guid);
 		if (Available)
 		{
-			auto RHandle = LoadGameResource(Guid);
-			auto R		 = GetResource(RHandle);
+			auto RHandle = LoadGameAsset(Guid);
+			auto R		 = GetAsset(RHandle);
 
-			EXITSCOPE(FreeResource(RHandle));
+			EXITSCOPE(FreeAsset(RHandle));
 
 			if (R != nullptr) {
 				SceneResourceBlob* sceneBlob = (SceneResourceBlob*)R;
@@ -909,14 +909,14 @@ namespace FlexKit
 
 	bool LoadScene(RenderSystem* RS, const char* LevelName, GraphicScene& GS_out, iAllocator* allocator, iAllocator* Temp)
 	{
-		if (isResourceAvailable(LevelName))
+		if (isAssetAvailable(LevelName))
 		{
-			auto RHandle = LoadGameResource(LevelName);
-			auto R = GetResource(RHandle);
+			auto RHandle = LoadGameAsset(LevelName);
+			auto R = GetAsset(RHandle);
 
 			FINALLY
 			{
-				FreeResource(RHandle);
+				FreeAsset(RHandle);
 			}
 			FINALLYOVER
 

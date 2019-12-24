@@ -169,9 +169,6 @@
     <ClInclude Include="coreutilities\ResourceHandles.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
-    <ClInclude Include="coreutilities\Resources.h">
-      <Filter>coreutilities\headers</Filter>
-    </ClInclude>
     <ClInclude Include="coreutilities\Signal.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
@@ -194,6 +191,9 @@
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
     <ClInclude Include="coreutilities\XMMathConversion.h">
+      <Filter>coreutilities\headers</Filter>
+    </ClInclude>
+    <ClInclude Include="coreutilities\Assets.h">
       <Filter>coreutilities\headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -233,9 +233,6 @@
     </ClCompile>
     <ClCompile Include="coreutilities\meshutils.cpp">
       <Filter>graphicsutilities\source</Filter>
-    </ClCompile>
-    <ClCompile Include="coreutilities\Resources.cpp">
-      <Filter>coreutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="coreutilities\Intersection.cpp">
       <Filter>coreutilities\source</Filter>
@@ -337,6 +334,9 @@
       <Filter>graphicsutilities\source</Filter>
     </ClCompile>
     <ClCompile Include="coreutilities\DebugPanel.cpp">
+      <Filter>coreutilities\source</Filter>
+    </ClCompile>
+    <ClCompile Include="coreutilities\Assets.cpp">
       <Filter>coreutilities\source</Filter>
     </ClCompile>
   </ItemGroup>

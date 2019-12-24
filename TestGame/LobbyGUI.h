@@ -42,7 +42,7 @@ struct LobbyScreenDrawDesc
 	FlexKit::VertexBufferHandle		vertexBuffer;
 	FlexKit::VertexBufferHandle		textBuffer;
 	FlexKit::ConstantBufferHandle	constantBuffer;
-	FlexKit::TextureHandle			renderTarget;
+	FlexKit::ResourceHandle			renderTarget;
 	FlexKit::iAllocator*			allocator;
 };
 

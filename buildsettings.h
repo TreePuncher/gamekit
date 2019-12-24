@@ -193,7 +193,7 @@ const size_t INVALIDHANDLE = -1;
 
 namespace FlexKit {
 	typedef char	 byte;
-	typedef uint64_t ResourceHandle;
+	typedef uint64_t AssetHandle;
 	typedef uint64_t GUID_t;
 }
 

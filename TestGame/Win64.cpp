@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
 
 	if (multiplayerMode)
 	{
-        AddResourceFile("assets\\Scene1.gameres");
+        AddAssetFile("assets\\Scene1.gameres");
 
 		auto& NetState = app.PushState<NetworkState>(gameBase);
 		if (host)
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-        AddResourceFile("assets\\Scene1.gameres");
+        AddAssetFile("assets\\Scene1.gameres");
 
 		auto& gameState = app.PushState<GameState>(gameBase);
 		auto& playState = app.PushState<LocalPlayerState>(gameBase, gameState);

@@ -49,7 +49,7 @@ using FlexKit::CameraHandle;
 using FlexKit::ConstantBufferHandle;
 using FlexKit::Handle_t;
 using FlexKit::VertexBufferHandle;
-using FlexKit::TextureHandle;
+using FlexKit::ResourceHandle;
 using FlexKit::static_vector;
 
 using FlexKit::CameraView;

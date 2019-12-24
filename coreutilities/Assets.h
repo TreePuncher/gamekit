@@ -142,29 +142,29 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI void			InitiateResourceTable	(iAllocator* Memory);
-	FLEXKITAPI void			ReleaseResourceTable	();
+	FLEXKITAPI void			InitiateAssetTable	(iAllocator* Memory);
+	FLEXKITAPI void			ReleaseAssetTable	();
 
-	FLEXKITAPI size_t		ReadResourceTableSize	(FILE* F);
-	FLEXKITAPI size_t		ReadResourceSize		(FILE* F, ResourceTable* Table, size_t Index);
+	FLEXKITAPI size_t		ReadAssetTableSize	    (FILE* F);
+	FLEXKITAPI size_t		ReadAssetSize		    (FILE* F, ResourceTable* Table, size_t Index);
 
-	FLEXKITAPI void					AddResourceFile		(char* FILELOC);
-	FLEXKITAPI Resource*			GetResource			(ResourceHandle RHandle);
-	FLEXKITAPI Pair<GUID_t, bool>	FindResourceGUID	(char* Str);
+	FLEXKITAPI void					AddAssetFile	(char* FILELOC);
+	FLEXKITAPI Resource*			GetAsset		(AssetHandle RHandle);
+	FLEXKITAPI Pair<GUID_t, bool>	FindAssetGUID	(char* Str);
 
 
-	FLEXKITAPI bool			ReadResourceTable	(FILE* F, ResourceTable* Out, size_t TableSize);
+	FLEXKITAPI bool			ReadAssetTable	(FILE* F, ResourceTable* Out, size_t TableSize);
 	FLEXKITAPI bool			ReadResource		(FILE* F, ResourceTable* Table, size_t Index, Resource* out);
 
-	FLEXKITAPI ResourceHandle LoadGameResource (const char* ID);
-	FLEXKITAPI ResourceHandle LoadGameResource (GUID_t GUID);
+	FLEXKITAPI AssetHandle LoadGameAsset (const char* ID);
+	FLEXKITAPI AssetHandle LoadGameAsset (GUID_t GUID);
 
-	FLEXKITAPI void FreeResource			(ResourceHandle RHandle);
-	FLEXKITAPI void FreeAllResources		();
-	FLEXKITAPI void FreeAllResourceFiles	();
+	FLEXKITAPI void FreeAsset			    (AssetHandle RHandle);
+	FLEXKITAPI void FreeAllAssets		();
+	FLEXKITAPI void FreeAllAssetFiles	();
 
-	FLEXKITAPI bool isResourceAvailable		(GUID_t ID);
-	FLEXKITAPI bool isResourceAvailable		(const char* ID);
+	FLEXKITAPI bool isAssetAvailable		(GUID_t ID);
+	FLEXKITAPI bool isAssetAvailable		(const char* ID);
 
 
 	/************************************************************************************************/
@@ -176,7 +176,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct TriMeshResourceBlob
+	struct TriMeshAssetBlob
 	{
 		size_t			ResourceSize;
 		EResourceType	Type;
@@ -221,7 +221,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct FontResourceBlob
+	struct FontAssetBlob
 	{
 		size_t			ResourceSize;
 		EResourceType	Type;
@@ -366,8 +366,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool				Resource2TriMesh		( RenderSystem* RS, ResourceHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
-	FLEXKITAPI TextureSet*		Resource2TextureSet		( ResourceHandle RHandle, iAllocator* Memory );
+	FLEXKITAPI bool				Asset2TriMesh		( RenderSystem* RS, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
+	FLEXKITAPI TextureSet*		Asset2TextureSet	( AssetHandle RHandle, iAllocator* Memory );
 
 	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );
 	FLEXKITAPI void				LoadTriangleMesh ( GUID_t ID, iAllocator* Memory, TriMesh* out );
@@ -375,7 +375,7 @@ namespace FlexKit
 	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, size_t guid );
 	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, const char* ID );
 
-	typedef Pair<size_t, FlexKit::SpriteFontAsset*> LoadFontResult;
+	typedef Pair<size_t, SpriteFontAsset*> LoadFontResult;
 
 	FLEXKITAPI LoadFontResult	LoadFontAsset	( char* file, char* dir, RenderSystem* RS, iAllocator* tempMem, iAllocator* outMem );
 	FLEXKITAPI void				Release			( SpriteFontAsset* asset, RenderSystem* RS);
@@ -384,7 +384,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline size_t ReadResourceTableSize(FILE* F)
+	inline size_t ReadAssetTableSize(FILE* F)
 	{
 		byte Buffer[128];
 
@@ -399,7 +399,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline bool ReadResourceTable(FILE* F, ResourceTable* Out, size_t TableSize)
+	inline bool ReadAssetTable(FILE* F, ResourceTable* Out, size_t TableSize)
 	{
         const int seek_res    = fseek(F, 0, SEEK_SET);
         const size_t read_res = fread(Out, 1, TableSize, F);
@@ -411,7 +411,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline size_t ReadResourceSize(FILE* F, ResourceTable* Table, size_t Index)
+	inline size_t ReadAssetSize(FILE* F, ResourceTable* Table, size_t Index)
 	{
 		byte Buffer[64];
 

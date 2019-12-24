@@ -373,7 +373,7 @@ int main(int argc, char* argv[])
 
 				EXITSCOPE(fclose(F));
 
-				size_t TableSize			= ReadResourceTableSize(F);
+				size_t TableSize			= ReadAssetTableSize(F);
 				FlexKit::byte* TableMemory	= (FlexKit::byte*)malloc(TableSize);
 				ResourceTable* RT			= (ResourceTable*)TableMemory;
 
@@ -382,7 +382,7 @@ int main(int argc, char* argv[])
 
 				EXITSCOPE(free(TableMemory));
 
-				ReadResourceTable(F, RT, TableSize);
+				ReadAssetTable(F, RT, TableSize);
 
 				for (size_t I = 0; I < RT->ResourceCount; ++I)
 				{

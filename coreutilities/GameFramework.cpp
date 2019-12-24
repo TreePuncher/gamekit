@@ -194,7 +194,7 @@ namespace FlexKit
 	void GameFramework::Initiate()
 	{
 		SetDebugMemory			(core.GetDebugMemory());
-		InitiateResourceTable	(core.GetBlockMemory());
+		InitiateAssetTable	(core.GetBlockMemory());
 		InitiateGeometryTable	(core.GetBlockMemory());
 
 		clearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
@@ -409,8 +409,8 @@ namespace FlexKit
 		Free_DelayedReleaseResources(core.RenderSystem);
 		Free_DelayedReleaseResources(core.RenderSystem);
 
-		FreeAllResourceFiles	();
-		FreeAllResources		();
+		FreeAllAssetFiles	();
+		FreeAllAssets		();
 	
 		ReleaseGameFramework(core, *this);
 	}
@@ -564,7 +564,7 @@ namespace FlexKit
 		float2					CursorSize, 
 		VertexBufferHandle		vertexBuffer, 
 		ConstantBufferHandle	constantBuffer,
-		TextureHandle			renderTarget,
+		ResourceHandle			renderTarget,
 		iAllocator*				tempMemory,
 		FrameGraph*				frameGraph)
 	{
@@ -602,7 +602,7 @@ namespace FlexKit
 
 
 		ReleaseGeometryTable();
-		ReleaseResourceTable();
+		ReleaseAssetTable();
 
 		//TODO
 		//Release(State->DefaultAssets.Font);

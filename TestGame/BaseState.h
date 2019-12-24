@@ -183,13 +183,13 @@ public:
             gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
-		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
-		RS.RegisterPSOLoader(FlexKit::DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
-		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_PSO,		{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
-		RS.RegisterPSOLoader(FlexKit::DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
-		RS.RegisterPSOLoader(FlexKit::DRAW_LINE_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO			});
-		RS.RegisterPSOLoader(FlexKit::DRAW_LINE3D_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO				});
-		RS.RegisterPSOLoader(FlexKit::DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO				});
+		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
+		RS.RegisterPSOLoader(DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,		    { &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
+		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
+		RS.RegisterPSOLoader(DRAW_LINE_PSO,			    { &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO			});
+		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO				});
+		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO				});
 
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
@@ -211,7 +211,7 @@ public:
             float rgb[3];
         };
 
-        TextureBuffer hdrTexture{ uint2{(uint32_t)width, (uint32_t)height}, sizeof(RGBA), IN_Framework.core.GetBlockMemory() };
+        TextureBuffer hdrTexture{ uint2{(uint32_t)width / 64, (uint32_t)height / 64}, sizeof(RGBA), IN_Framework.core.GetBlockMemory() };
         //TextureBuffer hdrTexture_Mip1{ uint2{(uint32_t)width/2, (uint32_t)height/2}, sizeof(RGBA), IN_Framework.core.GetBlockMemory() };
         //TextureBuffer hdrTexture_Mip2{ uint2{(uint32_t)width/4, (uint32_t)height/4}, sizeof(RGBA), IN_Framework.core.GetBlockMemory() };
         auto view = TextureBufferView<RGBA>(hdrTexture);
@@ -219,9 +219,10 @@ public:
 
         RGB* rgb = (RGB*)res;
 
-        for (uint32_t y = 0; y < height; y++)
-            for (uint32_t x = 0; x < width; x++)
-                memcpy(&view[{x, y}], &rgb[y * width + x], sizeof(RGB));
+        for (int y = 0; y < height / 64; y++)
+            for (int x = 0; x < width / 64; x++) {
+                memcpy(&view[{(uint32_t)x, (uint32_t)y}], &rgb[y * width * 64 + x * 64], sizeof(RGB));
+            }
 
         free(res);
 
@@ -232,10 +233,11 @@ public:
 
 	~BaseState()
 	{
-		framework.core.RenderSystem.ReleaseVB(vertexBuffer);
-		framework.core.RenderSystem.ReleaseVB(textBuffer);
-		framework.core.RenderSystem.ReleaseCB(constantBuffer);
-		framework.core.RenderSystem.ReleaseDB(depthBuffer);
+		framework.GetRenderSystem().ReleaseVB(vertexBuffer);
+		framework.GetRenderSystem().ReleaseVB(textBuffer);
+		framework.GetRenderSystem().ReleaseCB(constantBuffer);
+		framework.GetRenderSystem().ReleaseTexture(depthBuffer);
+        framework.GetRenderSystem().ReleaseTexture(hdrMap);
 	}
 
 
@@ -254,12 +256,12 @@ public:
 
 
     // Scene Resources
-    TextureHandle               hdrMap;
+    ResourceHandle               hdrMap;
 
     // render resources
 	WorldRender					render;
     GBuffer                     gbuffer;
-	TextureHandle				depthBuffer;
+	ResourceHandle				depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	VertexBufferHandle			textBuffer;
 	ConstantBufferHandle		constantBuffer;

@@ -101,13 +101,13 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void Console::Draw(FrameGraph& graph, TextureHandle renderTarget, iAllocator* allocator)
+	void Console::Draw(FrameGraph& graph, ResourceHandle renderTarget, iAllocator* allocator)
 	{
 		if (!font) {
 			FK_LOG_ERROR("Console has Null font, aborting draw!");
 			return;
 		}
-		auto WindowWH = graph.Resources.renderSystem.GetRenderTargetWH(renderTarget);
+		const auto WindowWH = graph.Resources.renderSystem.GetTextureWH(renderTarget);
 
 		const float		HeightScale			= 0.5f;
 		const auto		FontSize			= font->FontSize;

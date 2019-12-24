@@ -86,7 +86,7 @@ namespace FlexKit
 
 	struct TileMaps
 	{
-		FlexKit::TextureHandle	heightMap;
+		FlexKit::ResourceHandle	heightMap;
 		const char*				File;
 	};
 
@@ -234,7 +234,7 @@ namespace FlexKit
 		float2			SWUV		= { 0.0f, 0.0f };
 		float2			NEUV		= { 1.0f, 1.0f };
 
-		TextureHandle	HeightMap			= InvalidHandle_t;
+		ResourceHandle	HeightMap			= InvalidHandle_t;
 		int				HeightMapSampleBias = 0;
 	};
 
@@ -561,8 +561,8 @@ namespace FlexKit
 	{
 		VertexBufferHandle		vertexBuffer;
 		ConstantBufferHandle	constantBuffer;
-		TextureHandle			renderTarget;
-		TextureHandle			depthTarget;
+		ResourceHandle			renderTarget;
+		ResourceHandle			depthTarget;
 		RenderSystem&			renderSystem;
 	};
 
@@ -573,7 +573,7 @@ namespace FlexKit
 		FrameGraph&				frameGraph,
 		VertexBufferHandle		vertexBuffer,
 		ConstantBufferHandle	constantBuffer,
-		TextureHandle			renderTarget,
+		ResourceHandle			renderTarget,
 		iAllocator*				tempMemory,
 		_GETCAMERACONSTANTS		GetCameraConstants)
 	{
@@ -731,8 +731,8 @@ namespace FlexKit
 		auto& Draw(
 			FrameGraph&				frameGraph,
 			UpdateTask&				gatherPatches,
-			TextureHandle			renderTarget, 
-			TextureHandle			depthTarget,
+			ResourceHandle			renderTarget, 
+			ResourceHandle			depthTarget,
 			TerrainRenderResources&	resources)
 		{
 			struct _RenderTerrainForward

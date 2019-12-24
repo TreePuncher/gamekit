@@ -7,9 +7,9 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    Skeleton* Resource2Skeleton(ResourceHandle RHandle, iAllocator* Memory)
+    Skeleton* Resource2Skeleton(AssetHandle RHandle, iAllocator* Memory)
 	{
-		SkeletonResourceBlob* Blob                  = (SkeletonResourceBlob*)GetResource(RHandle);
+		SkeletonResourceBlob* Blob                  = (SkeletonResourceBlob*)GetAsset(RHandle);
         SkeletonResourceBlob::JointEntry* joints    = reinterpret_cast<SkeletonResourceBlob::JointEntry*>(((std::byte*)Blob) + sizeof(SkeletonResourceBlob::Header));
 
 		Skeleton*	S = &Memory->allocate_aligned<Skeleton, 0x40>();
@@ -32,7 +32,7 @@ namespace FlexKit
 			S->AddJoint(J, *(XMMATRIX*)&IP);
 		}
 
-		FreeResource(RHandle);
+		FreeAsset(RHandle);
 		return S;
 	}
 

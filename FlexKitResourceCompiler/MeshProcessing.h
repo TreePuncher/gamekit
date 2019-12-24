@@ -91,7 +91,7 @@ namespace FlexKit
 		ResourceBlob CreateBlob() override 
 		{ 
 			size_t bufferSize			= CalculateResourceSize();
-			TriMeshResourceBlob* blob	= reinterpret_cast<TriMeshResourceBlob*>(malloc(bufferSize));
+			TriMeshAssetBlob* blob	= reinterpret_cast<TriMeshAssetBlob*>(malloc(bufferSize));
 
 			blob->GUID				= TriMeshID;
 			blob->HasAnimation		= AnimationData > 0;
@@ -155,7 +155,7 @@ namespace FlexKit
 			for (auto B : buffers)
 				Size += B ? B->GetBufferSizeRaw() : 0;
 
-			return Size + sizeof(TriMeshResourceBlob);
+			return Size + sizeof(TriMeshAssetBlob);
 		}
 
 		size_t AnimationData;

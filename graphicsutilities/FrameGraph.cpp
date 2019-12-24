@@ -41,7 +41,7 @@ namespace FlexKit
             case DRS_ShaderResource:
             case DRS_RenderTarget:
 				ctx->AddShaderResourceBarrier(
-					handle_cast<TextureHandle>(Object->ShaderResource.handle),
+					handle_cast<ResourceHandle>(Object->ShaderResource.handle),
 					BeforeState,
 					AfterState);
 				break;
@@ -211,7 +211,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraph::AddRenderTarget(TextureHandle Texture)
+	void FrameGraph::AddRenderTarget(ResourceHandle Texture)
 	{
 
 	}
@@ -272,7 +272,7 @@ namespace FlexKit
 	}
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::ReadShaderResource(TextureHandle handle)
+	FrameResourceHandle FrameGraphNodeBuilder::ReadShaderResource(ResourceHandle handle)
 	{
 		return AddReadableResource(handle, DeviceResourceState::DRS_ShaderResource);
 	}
@@ -281,7 +281,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::WriteShaderResource(TextureHandle  handle)
+	FrameResourceHandle FrameGraphNodeBuilder::WriteShaderResource(ResourceHandle  handle)
 	{
 		return AddWriteableResource(handle, DeviceResourceState::DRS_Write);
 	}
@@ -290,43 +290,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::WriteShaderResource(GPUResourceHandle handle)
+	FrameResourceHandle FrameGraphNodeBuilder::ReadRenderTarget(ResourceHandle RenderTarget)
 	{
-		return AddWriteableResource(handle, DeviceResourceState::DRS_Write);
+		return AddReadableResource(RenderTarget, DRS_ShaderResource);
 	}
 
 
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::ReadRenderTarget(
-			uint32_t Tag, 
-			RenderTargetFormat Format)
-	{
-		return AddReadableResource(Tag, DeviceResourceState::DRS_ShaderResource);
-	}
-
-
-	FrameResourceHandle FrameGraphNodeBuilder::ReadRenderTarget(TextureHandle RenderTarget)
-	{
-		return ReadRenderTarget(Resources->renderSystem.GetTag(RenderTarget));
-	}
-
-
-	/************************************************************************************************/
-
-
-	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(
-		uint32_t Tag, 
-		RenderTargetFormat Format)
-	{
-		return AddWriteableResource(Tag, DeviceResourceState::DRS_RenderTarget);
-	}
-
-	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(TextureHandle RenderTarget)
+	FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(ResourceHandle RenderTarget)
 	{
 		const auto resourceHandle   = AddWriteableResource(RenderTarget, DeviceResourceState::DRS_RenderTarget);
-        auto resource               = Resources->GetResourceObject(resourceHandle);
+        auto resource               = Resources->GetAssetObject(resourceHandle);
 
         if (!resource)
             return InvalidHandle_t;
@@ -338,10 +314,13 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
     FrameResourceHandle FrameGraphNodeBuilder::WriteRenderTarget(UAVTextureHandle handle)
     {
         const auto resourceHandle   = AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
-        auto resource               = Resources->GetResourceObject(resourceHandle);
+        auto resource               = Resources->GetAssetObject(resourceHandle);
 
         FK_ASSERT(resource != nullptr);
 
@@ -354,7 +333,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::PresentBackBuffer(TextureHandle renderTarget)
+	FrameResourceHandle	FrameGraphNodeBuilder::PresentBackBuffer(ResourceHandle renderTarget)
 	{
 		return renderTarget != InvalidHandle_t ? AddReadableResource(renderTarget, DeviceResourceState::DRS_Present) : InvalidHandle_t;
 	}
@@ -363,7 +342,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::WriteBackBuffer(TextureHandle handle)
+	FrameResourceHandle FrameGraphNodeBuilder::WriteBackBuffer(ResourceHandle handle)
 	{
 		FK_ASSERT(handle != InvalidHandle_t);
 		return AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
@@ -373,13 +352,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::ReadBackBuffer(TextureHandle handle)
+	FrameResourceHandle FrameGraphNodeBuilder::ReadBackBuffer(ResourceHandle handle)
 	{
 		FrameResourceHandle Resource = Resources->FindFrameResource(handle);
 		LocalInputs.push_back(FrameObjectDependency{
-			Resources->GetResourceObject(Resource),
+			Resources->GetAssetObject(Resource),
 			nullptr,
-			Resources->GetResourceObjectState(Resource),
+			Resources->GetAssetObjectState(Resource),
 			DeviceResourceState::DRS_ShaderResource });
 
 		return Resource;
@@ -389,13 +368,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	/*
-	FrameResourceHandle	FrameGraphNodeBuilder::ReadDepthBuffer(TextureHandle Handle)
+	FrameResourceHandle	FrameGraphNodeBuilder::ReadDepthBuffer(ResourceHandle Handle)
 	{
-		auto Resource = Resources->FindRenderTargetResource(Handle);
+		auto Resource = Resources->FindRenderTarGetAsset(Handle);
 		LocalInputs.push_back(FrameObjectDependency{
-			Resources->GetResourceObject(Resource),
+			Resources->GetAssetObject(Resource),
 			nullptr,
-			Resources->GetResourceObjectState(Resource),
+			Resources->GetAssetObjectState(Resource),
 			DeviceResourceState::DRS_DEPTHBUFFERWRITE });
 
 		return FrameResourceHandle(INVALIDHANDLE);
@@ -405,7 +384,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(TextureHandle handle)
+	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(ResourceHandle handle)
 	{
 		return AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE, FrameObjectResourceType::OT_DepthBuffer);
 	}
@@ -450,7 +429,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(TextureHandle handle, DeviceResourceState state, FrameObjectResourceType type)
+	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(ResourceHandle handle, DeviceResourceState state, FrameObjectResourceType type)
 	{
 		bool TrackedReadable = Context.IsTrackedReadable	(handle, type);
 		bool TrackedWritable = Context.IsTrackedWriteable	(handle, type);
@@ -461,9 +440,9 @@ namespace FlexKit
 
 			LocalOutputs.push_back(
 				FrameObjectDependency{
-					Resources->GetResourceObject(Resource),
+					Resources->GetAssetObject(Resource),
 					nullptr,
-					Resources->GetResourceObjectState(Resource),
+					Resources->GetAssetObjectState(Resource),
 					state });
 
 			Context.AddWriteable(LocalOutputs.back());
@@ -768,7 +747,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearBackBuffer(FrameGraph& Graph, TextureHandle backBuffer, float4 Color)
+	void ClearBackBuffer(FrameGraph& Graph, ResourceHandle backBuffer, float4 Color)
 	{
 		struct PassData
 		{
@@ -798,7 +777,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void ClearDepthBuffer(FrameGraph& Graph, TextureHandle Handle, float clearDepth)
+	void ClearDepthBuffer(FrameGraph& Graph, ResourceHandle Handle, float clearDepth)
 	{
 		FK_VLOG(Verbosity_9, "Clearing depth buffer.");
 

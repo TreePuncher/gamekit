@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GraphicScene_H
 
 #include "..\buildsettings.h"
-#include "..\coreutilities\Resources.h"
+#include "..\coreutilities\Assets.h"
 #include "..\coreutilities\GraphicsComponents.h"
 #include "..\graphicsutilities\AnimationUtilities.h" 
 #include "..\graphicsutilities\graphics.h"
@@ -460,7 +460,7 @@ namespace FlexKit
 		CameraHandle			camera,
 		VertexBufferHandle		vertexBuffer, 
 		ConstantBufferHandle	constantBuffer,
-		TextureHandle			renderTarget,
+		ResourceHandle			renderTarget,
 		iAllocator*				tempMemory)
 	{
 		Vector<FlexKit::Rectangle> rects{ tempMemory };

@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\GraphicScene.h"
 #include "..\coreutilities\GraphicsComponents.h"
 #include "..\coreutilities\Logging.h"
-#include "..\coreutilities\Resources.h"
+#include "..\coreutilities\Assets.h"
 
 #include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\Graphics.h"
@@ -215,7 +215,7 @@ namespace FlexKit
 		float2					CursorSize,
 		VertexBufferHandle		vertexBuffer,
 		ConstantBufferHandle	constantBuffer,
-		TextureHandle			renderTarget,
+		ResourceHandle			renderTarget,
 		iAllocator*				tempMemory,
 		FrameGraph*				frameGraph);
 

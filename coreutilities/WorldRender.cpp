@@ -289,16 +289,15 @@ namespace FlexKit
             PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
             PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
             PSO_Desc.DepthStencilState     = Depth_Desc;
-            /*
+
             PSO_Desc.BlendState.RenderTarget[0].BlendEnable = true;
             PSO_Desc.BlendState.RenderTarget[0].BlendOp		= D3D12_BLEND_OP::D3D12_BLEND_OP_ADD;
 
-            PSO_Desc.BlendState.RenderTarget[0].DestBlend   = D3D12_BLEND::D3D12_BLEND_DEST_COLOR;
-            PSO_Desc.BlendState.RenderTarget[0].SrcBlend    = D3D12_BLEND::D3D12_BLEND_SRC1_COLOR;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlend   = D3D12_BLEND::D3D12_BLEND_ONE;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlend    = D3D12_BLEND::D3D12_BLEND_ONE;
 
             PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND::D3D12_BLEND_ONE;
             PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND::D3D12_BLEND_ONE;
-            */
         }
 
         ID3D12PipelineState* PSO = nullptr;
@@ -330,7 +329,7 @@ namespace FlexKit
 
         D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
         Depth_Desc.DepthEnable	= false;
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
@@ -348,6 +347,15 @@ namespace FlexKit
             PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
             PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
             PSO_Desc.DepthStencilState     = Depth_Desc;
+
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = true;
+            PSO_Desc.BlendState.RenderTarget[0].BlendOp     = D3D12_BLEND_OP::D3D12_BLEND_OP_ADD;
+
+            PSO_Desc.BlendState.RenderTarget[0].DestBlend   = D3D12_BLEND::D3D12_BLEND_ONE;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlend    = D3D12_BLEND::D3D12_BLEND_ONE;
+
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND::D3D12_BLEND_ONE;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND::D3D12_BLEND_ONE;
         }
 
         ID3D12PipelineState* PSO = nullptr;
@@ -498,7 +506,7 @@ namespace FlexKit
         FrameGraph&         frameGraph,
         const CameraHandle  camera,
         GatherTask&         pvs,
-        const TextureHandle depthBufferTarget,
+        const ResourceHandle depthBufferTarget,
         iAllocator*         allocator)
     {
         const size_t MaxEntityDrawCount = 10000;
@@ -572,8 +580,8 @@ namespace FlexKit
         UpdateDispatcher&       dispatcher,
         FrameGraph&             frameGraph,
         const CameraHandle      camera,
-        const TextureHandle     renderTarget,
-        const TextureHandle     hdrMap,
+        const ResourceHandle     renderTarget,
+        const ResourceHandle     hdrMap,
         VertexBufferHandle      vertexBuffer,
         iAllocator*             allocator)
     {
@@ -581,23 +589,23 @@ namespace FlexKit
             BackgroundEnvironmentPass{},
             [&](FrameGraphNodeBuilder& builder, BackgroundEnvironmentPass& data)
             {
-                const size_t localBufferSize  = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
-                auto& renderSystem      = frameGraph.GetRenderSystem();
-                data.renderTargetObject = builder.WriteRenderTarget(renderTarget);
+                const size_t localBufferSize        = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+                auto& renderSystem                  = frameGraph.GetRenderSystem();
+                data.renderTargetObject             = builder.WriteRenderTarget(renderTarget);
 
 
-                data.passConstants = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
-                data.passVertices = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
+                data.passConstants  = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
+                data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
 
                 data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
                 data.descHeap.NullFill(renderSystem, 20);
-                data.HDRMap = hdrMap;
+                data.HDRMap     = hdrMap;
             },
             [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context* ctx)
             {
-                auto& renderSystem = frameResources.renderSystem;
-                const auto WH = frameResources.renderSystem.GetTextureWH(renderTarget);
-                const auto cameraConstants = GetCameraConstants(camera);
+                auto& renderSystem          = frameResources.renderSystem;
+                const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
+                const auto cameraConstants  = GetCameraConstants(camera);
 
                 struct
                 {
@@ -622,7 +630,97 @@ namespace FlexKit
                     float2 WH;
                 }passConstants = { float2(WH[0], WH[1]) };
 
-                data.descHeap.SetSRV(renderSystem, 0, data.HDRMap);
+                data.descHeap.SetSRV(renderSystem, 6, data.HDRMap);
+
+                ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx->SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
+                ctx->SetGraphicsDescriptorTable(4, data.descHeap);
+
+                ctx->SetScissorAndViewports({ renderTarget });
+                ctx->SetRenderTargets(renderTargets, false, {});
+                ctx->SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+                ctx->SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
+                ctx->SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+
+                ctx->Draw(6);
+            });
+
+        return pass;
+    }
+
+
+    /************************************************************************************************/
+
+
+    BackgroundEnvironmentPass& WorldRender::RenderPBR_IBL_Deferred(
+        UpdateDispatcher&       dispatcher,
+        FrameGraph&             frameGraph,
+        const CameraHandle      camera,
+        const ResourceHandle     renderTarget,
+        const ResourceHandle     depthTarget,
+        const ResourceHandle     hdrMap,
+        GBuffer&                gbuffer,
+        VertexBufferHandle      vertexBuffer,
+        iAllocator*             allocator)
+    {
+        auto& pass = frameGraph.AddNode<BackgroundEnvironmentPass>(
+            BackgroundEnvironmentPass{},
+            [&](FrameGraphNodeBuilder& builder, BackgroundEnvironmentPass& data)
+            {
+                const size_t localBufferSize    = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+                auto& renderSystem              = frameGraph.GetRenderSystem();
+                data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
+
+                data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.Albedo);
+                data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.Normal);
+                data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.Tangent);
+                data.SpecularTargetObject       = builder.ReadShaderResource(gbuffer.Specular);
+                data.IOR_ANISOTargetObject      = builder.ReadShaderResource(gbuffer.IOR_ANISO);
+                data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
+
+                data.passConstants  = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
+                data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
+
+                data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
+                data.descHeap.NullFill(renderSystem, 20);
+                data.HDRMap     = hdrMap;
+            },
+            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context* ctx)
+            {
+                auto& renderSystem          = frameResources.renderSystem;
+                const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
+                const auto cameraConstants  = GetCameraConstants(camera);
+
+                struct
+                {
+                    float4 Position;
+                }   vertices[] =
+                {
+                    float4(-1,   1,  1, 1),
+                    float4(1,    1,  1, 1),
+                    float4(-1,  -1,  1, 1),
+
+                    float4(-1,  -1,  1, 1),
+                    float4(1,    1,  1, 1),
+                    float4(1,   -1,  1, 1),
+                };
+
+                RenderTargetList renderTargets = {
+                    frameResources.GetRenderTargetObjects({ data.renderTargetObject })
+                };
+
+                struct
+                {
+                    float2 WH;
+                }passConstants = { float2(WH[0], WH[1]) };
+
+                data.descHeap.SetSRV(renderSystem, 0, frameResources.GetTexture(data.AlbedoTargetObject));
+                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.SpecularTargetObject));
+                data.descHeap.SetSRV(renderSystem, 2, frameResources.GetTexture(data.NormalTargetObject));
+                data.descHeap.SetSRV(renderSystem, 3, frameResources.GetTexture(data.TangentTargetObject));
+                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.IOR_ANISOTargetObject));
+                data.descHeap.SetSRV(renderSystem, 5, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                data.descHeap.SetSRV(renderSystem, 6, data.HDRMap);
 
                 ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
                 ctx->SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
@@ -652,7 +750,7 @@ namespace FlexKit
         const WorldRender_Targets&	Targets,
         const SceneDescription&	    desc,
         const float                 t,
-        TextureHandle               environmentMap,
+        ResourceHandle               environmentMap,
         iAllocator*					allocator)
     {
         const size_t MaxEntityDrawCount = 10000;
@@ -846,7 +944,7 @@ namespace FlexKit
         const CameraHandle  camera,
         GatherTask&         pvs,
         GBuffer&            gbuffer,
-        TextureHandle       depthTarget,
+        ResourceHandle       depthTarget,
         iAllocator*         allocator)
     {
         constexpr size_t MaxEntityDrawCount = 10000;
@@ -951,9 +1049,9 @@ namespace FlexKit
         const CameraHandle      camera,
         PointLightGatherTask&   gather,
         GBuffer&                gbuffer,
-        TextureHandle           depthTarget,
-        TextureHandle           renderTarget,
-        TextureHandle           environmentMap,
+        ResourceHandle           depthTarget,
+        ResourceHandle           renderTarget,
+        ResourceHandle           environmentMap,
         VertexBufferHandle      vertexBuffer,
         float                   t,
         iAllocator*             allocator)
@@ -989,9 +1087,9 @@ namespace FlexKit
             },
             [camera, renderTarget, environmentMap, t](TiledDeferredShade& data, FrameResources& frameResources, Context* ctx)
             {
-                auto& renderSystem = frameResources.renderSystem;
-                const auto WH = frameResources.renderSystem.GetTextureWH(renderTarget);
-                const auto cameraConstants = GetCameraConstants(camera);
+                auto& renderSystem          = frameResources.renderSystem;
+                const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
+                const auto cameraConstants  = GetCameraConstants(camera);
 
                 RenderTargetList renderTargets = {
                     frameResources.GetRenderTargetObjects({ data.renderTargetObject })
@@ -1039,10 +1137,8 @@ namespace FlexKit
                 auto& pointLights   = PointLightComponent::GetComponent();
                 auto& transforms    = SceneNodeComponent::GetComponent();
 
-                //for (auto& light : lights)
+                for (auto& light : lights)
                 {
-                    auto light = lights[0];
-
                     PointLight lightConstants;
 
                     const auto lightData = pointLights[light];
@@ -1057,16 +1153,6 @@ namespace FlexKit
 
         return pass;
     }
-
-
-    /************************************************************************************************/
-
-    /*
-    TiledDeferredShade& WorldRender::RenderPBR_ShadeTiledDeferred()
-    {
-
-    }
-    */
 
 
 }	/************************************************************************************************/

@@ -138,12 +138,12 @@ namespace FlexKit
         if (hasSkeletonLoaded(gameObject))
             return true;
 
-        const auto available = isResourceAvailable(guid);
+        const auto available = isAssetAvailable(guid);
 
         if (!available)
             return false;
 
-        const auto resource = LoadGameResource(guid);
+        const auto resource = LoadGameAsset(guid);
         auto skeleton = Resource2Skeleton(resource, allocator);
 
         gameObject.AddView<SkeletonComponentView>(skeleton);
@@ -172,12 +172,12 @@ namespace FlexKit
         if (!mesh->Skeleton)
         {
             const auto skeletonGuid  = mesh->SkeletonGUID;
-            const auto available     = isResourceAvailable(skeletonGuid);
+            const auto available     = isAssetAvailable(skeletonGuid);
 
             if (!available)
                 return false;
 
-            const auto resource = LoadGameResource(skeletonGuid);
+            const auto resource = LoadGameAsset(skeletonGuid);
             auto skeleton       = Resource2Skeleton(resource, allocator);
             mesh->Skeleton  = skeleton;
         }

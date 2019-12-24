@@ -968,7 +968,7 @@ namespace FlexKit
 					Upload_Desc.RowCount = height;
 					Upload_Desc.RowSize = height * GetFormatElementSize(format);
 					Upload_Desc.WH = { width , height };
-					UpdateSubResourceByUploadQueue(RS, *texture, &Upload_Desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+					_UpdateSubResourceByUploadQueue(RS, *texture, &Upload_Desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 					*/
 					//cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
 					//	D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
@@ -1300,9 +1300,9 @@ namespace FlexKit
 
 		auto res = CreateDDSTextureFromFile12(RS, wstr, &TextureResources, 4096, &AlphaMode, &WH, &MipLevels, &Format);
 
-        TextureHandle Texture = RS->CreateTexture2D(
-            TextureDesc::BuildFromMemory(
-                TextureDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, 2),
+        ResourceHandle Texture = RS->CreateGPUResource(
+            GPUResourceDesc::BuildFromMemory(
+                GPUResourceDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, 2),
                 &TextureResources, 1));
 
 		FK_ASSERT((size_t)Texture != INVALIDHANDLE, "TEXTURE FAILED TO CREATE!");

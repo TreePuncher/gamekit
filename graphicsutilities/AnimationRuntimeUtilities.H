@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\PCH.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\Resources.h"
+#include "..\coreutilities\Assets.h"
 #include "..\graphicsutilities\AnimationUtilities.h"
 #include "..\graphicsutilities\CoreSceneObjects.h"
 
@@ -416,7 +416,7 @@ namespace FlexKit
 
 
     FLEXKITAPI AnimationClip	Resource2AnimationClip(Resource* R, iAllocator* Memory);
-    FLEXKITAPI Skeleton*        Resource2Skeleton(ResourceHandle RHandle, iAllocator* Memory);
+    FLEXKITAPI Skeleton*        Resource2Skeleton(AssetHandle RHandle, iAllocator* Memory);
 
 
 	/************************************************************************************************/

@@ -46,8 +46,8 @@ int main(int argc, char* argv[])
 
 	FKApplication App(WH, Memory);
 
-	AddResourceFile("testScene.gameres");
-	AddResourceFile("testHead.gameres");
+	AddAssetFile("testScene.gameres");
+	AddAssetFile("testHead.gameres");
 
 	App.PushState<GraphicsTest>();
 	App.Run();

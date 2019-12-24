@@ -229,8 +229,8 @@ public:
 		//Object2			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
 		//Object3			{ scene, scene.CreateSceneEntityAndSetMesh(10000)	},
 		cameras			{ IN_framework.core.GetBlockMemory()				}
-		//ltcLookup_1{ IN_framework.core.RenderSystem.CreateTexture2D(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
-		//ltcLookup_2{ IN_framework.core.RenderSystem.CreateTexture2D(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
+		//ltcLookup_1{ IN_framework.core.RenderSystem.CreateGPUResource(FlexKit::uint2{lookupTableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)},
+		//ltcLookup_2{ IN_framework.core.RenderSystem.CreateGPUResource(FlexKit::uint2{lookupT's ableSize, lookupTableSize}, FlexKit::FORMAT_2D::R32G32B32A32_FLOAT)}
 	{
 		orbitCamera.Pitch(float(-pi / 2.0f));
 
@@ -538,9 +538,9 @@ private:
 	GraphicScene						scene;
 	WorldRender							render;
 
-	TextureHandle						ltcLookup_1;
-	TextureHandle						ltcLookup_2;
-	TextureHandle						depthBuffer;
+	ResourceHandle						ltcLookup_1;
+	ResourceHandle						ltcLookup_2;
+	ResourceHandle						depthBuffer;
 	VertexBufferHandle					vertexBuffer;
 	VertexBufferHandle					textBuffer;
 	ConstantBufferHandle				constantBuffer;

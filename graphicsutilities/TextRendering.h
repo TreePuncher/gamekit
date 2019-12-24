@@ -39,7 +39,7 @@ namespace FlexKit
 		FrameGraph&				FGraph, 
 		SpriteFontAsset&		Font,
 		VertexBufferHandle		Buffer,
-		TextureHandle			RenderTarget,
+		ResourceHandle			RenderTarget,
 		iAllocator*				TempMemory,
 		PrintTextFormatting&	Formatting = PrintTextFormatting::DefaultParams());
 
@@ -48,7 +48,7 @@ namespace FlexKit
 		FrameGraph&				FGraph,
 		SpriteFontAsset&		Font,
 		VertexBufferHandle		Buffer,
-		TextureHandle			RenderTarget,
+		ResourceHandle			RenderTarget,
 		iAllocator*				TempMemory,
 		PrintTextFormatting&	Formatting);
 
