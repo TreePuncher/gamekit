@@ -108,6 +108,13 @@ public:
 
 private:	/************************************************************************************************/
 
+
+    enum class RenderMode
+    {
+        ForwardPlus,
+        Deferred,
+    }   renderMode = RenderMode::Deferred;
+
 	NetObjectInputComponent			netInputObjects;
 	InputMap						eventMap;
 	OrbitCameraBehavior				debugCamera;

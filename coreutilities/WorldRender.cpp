@@ -104,10 +104,15 @@ namespace FlexKit
             PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
             PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
             PSO_Desc.DepthStencilState     = Depth_Desc;
-            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-            PSO_Desc.BlendState.RenderTarget[0].DestBlend	= D3D12_BLEND::D3D12_BLEND_DEST_COLOR;
-            PSO_Desc.BlendState.RenderTarget[0].SrcBlend	= D3D12_BLEND::D3D12_BLEND_SRC_COLOR;
+
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = true;
             PSO_Desc.BlendState.RenderTarget[0].BlendOp		= D3D12_BLEND_OP::D3D12_BLEND_OP_ADD;
+
+            PSO_Desc.BlendState.RenderTarget[0].DestBlend   = D3D12_BLEND::D3D12_BLEND_ONE;
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlend    = D3D12_BLEND::D3D12_BLEND_ONE;
+
+            PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND::D3D12_BLEND_ONE;
+            PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND::D3D12_BLEND_ONE;
         }
 
         ID3D12PipelineState* PSO = nullptr;
@@ -165,9 +170,6 @@ namespace FlexKit
             PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
             PSO_Desc.DepthStencilState     = Depth_Desc;
             PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-            PSO_Desc.BlendState.RenderTarget[0].DestBlend	= D3D12_BLEND::D3D12_BLEND_DEST_COLOR;
-            PSO_Desc.BlendState.RenderTarget[0].SrcBlend	= D3D12_BLEND::D3D12_BLEND_SRC_COLOR;
-            PSO_Desc.BlendState.RenderTarget[0].BlendOp		= D3D12_BLEND_OP::D3D12_BLEND_OP_ADD;
         }
 
         ID3D12PipelineState* PSO = nullptr;
@@ -237,9 +239,6 @@ namespace FlexKit
             PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
             PSO_Desc.DepthStencilState     = Depth_Desc;
             PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
-            PSO_Desc.BlendState.RenderTarget[0].DestBlend	= D3D12_BLEND::D3D12_BLEND_DEST_COLOR;
-            PSO_Desc.BlendState.RenderTarget[0].SrcBlend	= D3D12_BLEND::D3D12_BLEND_SRC_COLOR;
-            PSO_Desc.BlendState.RenderTarget[0].BlendOp		= D3D12_BLEND_OP::D3D12_BLEND_OP_ADD;
         }
 
         ID3D12PipelineState* PSO = nullptr;
@@ -750,7 +749,7 @@ namespace FlexKit
         const WorldRender_Targets&	Targets,
         const SceneDescription&	    desc,
         const float                 t,
-        ResourceHandle               environmentMap,
+        ResourceHandle              environmentMap,
         iAllocator*					allocator)
     {
         const size_t MaxEntityDrawCount = 10000;
@@ -767,8 +766,6 @@ namespace FlexKit
             {
                 builder.AddDataDependency(desc.PVS);
                 builder.AddDataDependency(desc.cameras);
-                //FK_ASSERT(0, "TODO: PASS DEPENDENCIES");
-                //builder.AddPassDependency(depthPass);
 
                 data.BackBuffer			= builder.WriteRenderTarget	(Targets.RenderTarget);
                 data.DepthBuffer        = builder.WriteDepthBuffer (Targets.DepthTarget);

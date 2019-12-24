@@ -156,20 +156,24 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
     base.render.Begin(frameGraph);
 
-    if constexpr (false)
+    switch(renderMode)
+    {
+    case RenderMode::ForwardPlus:
     {
         auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
         auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-        auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.hdrMap, base.vertexBuffer, core.GetTempMemory());
+        //auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.hdrMap, base.vertexBuffer, core.GetTempMemory());
         auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.hdrMap, core.GetTempMemory());
-    }
-    else
+    }   break;
+
+    case RenderMode::Deferred:
     {
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
         base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
         base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.depthBuffer, base.hdrMap, base.gbuffer, base.vertexBuffer, core.GetTempMemory());
-        //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
+        base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
+    }   break;
     }
     // Draw Skeleton overlay
     
@@ -242,6 +246,16 @@ void LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(LIGHTPREPASS);
                     framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
                     framework.core.RenderSystem.QueuePSOLoad(ENVIRONMENTPASS);
+                }
+            }   break;
+            case KC_P: // Reload Shaders
+            {
+                if (evt.Action == Event::Release)
+                {
+                    if (renderMode == RenderMode::Deferred)
+                        renderMode = RenderMode::ForwardPlus;
+                    else
+                        renderMode = RenderMode::Deferred;
                 }
             }   break;
             }

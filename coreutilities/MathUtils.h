@@ -367,7 +367,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator + (const Vect<SIZE, TY_2>& in) noexcept
+		THISTYPE operator + (const Vect<SIZE, TY_2>& in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -388,7 +388,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator - (const Vect<SIZE, TY_2>& in) noexcept
+		THISTYPE operator - (const Vect<SIZE, TY_2>& in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -419,7 +419,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator / (TY_2 in) noexcept
+		THISTYPE operator / (TY_2 in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -430,7 +430,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		THISTYPE operator % (TY_2 in) noexcept
+		THISTYPE operator % (TY_2 in) const noexcept
 		{
 			THISTYPE temp = *this;
 			for (auto I = 0; I < SIZE; ++I)
@@ -462,7 +462,7 @@ namespace FlexKit
 
 
 		template<typename TY_2>
-		bool operator == (const Vect<SIZE, TY_2>& in) noexcept
+		bool operator == (const Vect<SIZE, TY_2>& in) const noexcept
 		{
 			bool res = true;
 			for (auto I = 0; I < SIZE; ++I)

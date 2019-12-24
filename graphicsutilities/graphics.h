@@ -3013,8 +3013,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, TextureBuffer* buffer, size_t bufferCount, iAllocator* tempMemory);
-	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, TextureBuffer* buffer, iAllocator* tempMemory);
+	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, TextureBuffer* buffer, size_t bufferCount, iAllocator* tempMemory, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UINT);
+	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, TextureBuffer* buffer, FORMAT_2D format, iAllocator* tempMemory);
 
 
 	/************************************************************************************************/

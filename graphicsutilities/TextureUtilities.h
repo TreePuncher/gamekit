@@ -65,6 +65,7 @@ namespace FlexKit
 			Buffer			= (byte*)Memory->_aligned_malloc(Size);
 			WH				= rhs.WH;
 			ElementSize		= rhs.ElementSize;
+            Size            = rhs.Size;
 
 			memcpy(Buffer, rhs.Buffer, Size);
 		}
@@ -162,6 +163,12 @@ namespace FlexKit
 			return buffer[Texture.WH[0] * XY[1] + XY[0]];
 		}
 
+        TY operator [](uint2 XY) const
+        {
+            TY* buffer = (TY*)Texture.Buffer;
+            return buffer[Texture.WH[0] * XY[1] + XY[0]];
+        }
+
 		operator byte* () { return Texture.Buffer;  }
 
 		size_t BufferSize() { return Texture.Size;  }
@@ -220,33 +227,41 @@ namespace FlexKit
 			Sample4) * 0.25f;
 	}
 
-	template<typename FN_Sampler = decltype(AverageSampler<>)>
+
+    template<typename TY_sample = Vect<4, uint8_t>>
+    auto TestSamples(
+        TY_sample Sample1,
+        TY_sample Sample2,
+        TY_sample Sample3,
+        TY_sample Sample4) noexcept
+    {
+        return TY_sample(1, 0, 1, 0);
+    }
+
+	template<typename TY_FORMAT = Vect<4, uint8_t>, typename FN_Sampler = decltype(AverageSampler<>)>
 	TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, FN_Sampler sampler = AverageSampler<>)
 	{
-		using RBGA = Vect<4, uint8_t>;
+		TextureBuffer		    NewMIP	  = TextureBuffer(sourceMap.WH / 2, sizeof(TY_FORMAT), memory );
+		TextureBufferView	    DestiView = TextureBufferView<TY_FORMAT>(NewMIP);
+		const TextureBufferView	InputView = TextureBufferView<TY_FORMAT>(sourceMap);
 
-		TextureBuffer		MIPMap	= TextureBuffer( sourceMap.WH / 2, sizeof(RGBA), memory );
-		TextureBufferView	View	= TextureBufferView<RBGA>(sourceMap);
-		TextureBufferView	MipView = TextureBufferView<RBGA>(MIPMap);
-
-		const auto WH = MIPMap.WH;
-		for (size_t Y = 0; Y < WH[0]; Y++)
+		const auto WH = NewMIP.WH;
+		for (uint32_t Y = 0; Y < WH[1]; Y++)
 		{
-			for (size_t X = 0; X < WH[1]; X++)
+			for (uint32_t X = 0; X < WH[0]; X++)
 			{
-				uint2 in_Cord	= uint2{ (uint32_t)min(X, WH[0] - 1) * 2, (uint32_t)min(Y, WH[1] - 1) * 2 };
-				uint2 out_Cord	= uint2{ (uint32_t)min(X, WH[0] - 1), (uint32_t)min(Y, WH[1] - 1) };
+                const uint2 in_Cord   = { X * 2, Y * 2 };
+				const uint2 out_Cord	= { X, Y };
 
-				MipView[out_Cord] = 
-					sampler(
-						View[in_Cord + uint2{ 0, 0 }],
-						View[in_Cord + uint2{ 0, 1 }],
-						View[in_Cord + uint2{ 1, 0 }],
-						View[in_Cord + uint2{ 1, 1 }]);
+                DestiView[out_Cord] = sampler(
+                    InputView[in_Cord + uint2{ 0, 0 }],
+                    InputView[in_Cord + uint2{ 0, 1 }],
+                    InputView[in_Cord + uint2{ 1, 0 }],
+                    InputView[in_Cord + uint2{ 1, 1 }]);
 			}
 		}
 
-		return MIPMap;
+		return NewMIP;
 	}
 }
 

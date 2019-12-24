@@ -3363,6 +3363,7 @@ namespace FlexKit
         desc.SubResourceStart	= 0;
         desc.WH					= WH;
         desc.ElementSize		= formatSize;
+        desc.format             = format;
 
         _UpdateSubResourceByUploadQueue(this, resource, &desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
@@ -4358,15 +4359,12 @@ namespace FlexKit
         PerFrameUploadQueue& UploadQueue	= RS->_GetCurrentUploadQueue();
         ID3D12GraphicsCommandList* CS		= UploadQueue.UploadList[0];
 
-        for (size_t I = 0; I < SubResCount + SubResStart; ++I) 
+        for (size_t I = 0; I < SubResCount + SubResStart; ++I, WH /= 2)
         {
-            D3D12_RANGE R;
-            R.Begin     = Desc->SubResourceOffset[I];
-            R.End	    = Desc->SubResourceOffset[I] + Desc->SubResourceSizes[I];
-
-            void* pData			= nullptr;
-            size_t TempOffset	= 0;
-            ReserveTempSpace(RS, WH[0] * WH[1] * Desc->ElementSize, pData, TempOffset);
+            void* pData = nullptr;
+            size_t Offset = 0;
+            ReserveTempSpace(RS, Desc->SubResourceSizes[I], pData, Offset);
+            memcpy((char*)pData, (char*)Desc->Data + Desc->SubResourceOffset[I], Desc->SubResourceSizes[I]);
 
             D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
             SubRegion.Footprint.Depth    = 1;
@@ -4374,30 +4372,15 @@ namespace FlexKit
             SubRegion.Footprint.RowPitch = Desc->ElementSize * WH[0];
             SubRegion.Footprint.Width    = WH[0];
             SubRegion.Footprint.Height   = WH[1];
-            SubRegion.Offset             = TempOffset;
+            SubRegion.Offset             = Offset;
 
-            auto Destination	= CD3DX12_TEXTURE_COPY_LOCATION(Dest);
+            auto Destination	= CD3DX12_TEXTURE_COPY_LOCATION(Dest, I);
             auto Source			= CD3DX12_TEXTURE_COPY_LOCATION(CE.TempBuffer, SubRegion);
 
-            Destination.SubresourceIndex					= I;
-            Destination.Type								= D3D12_TEXTURE_COPY_TYPE::D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-            Destination.pResource							= Dest;
-            Destination.PlacedFootprint.Footprint.Depth		= 1;
-            Destination.PlacedFootprint.Footprint.Format	= format;
-            Destination.PlacedFootprint.Footprint.Width		= WH[0];
-            Destination.PlacedFootprint.Footprint.Height	= WH[1];
-            Destination.PlacedFootprint.Footprint.RowPitch	= Desc->ElementSize * WH[0];
-
-            memcpy((char*)pData, (char*)Desc->Data + Desc->SubResourceOffset[I], WH[0] * WH[1] * Desc->ElementSize);
-            auto GPUResourceDesc = Dest->GetDesc();
-            
             CS->CopyTextureRegion(&Destination, 0, 0, 0, &Source, nullptr);
-
-            RS->_InsertBarrier(Dest, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, EndState);
-
-            SrOffset += Desc->SubResourceSizes[I];
-            WH /= 2;
         }
+
+        RS->_InsertBarrier(Dest, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, EndState);
     }
 
 
@@ -6492,7 +6475,7 @@ namespace FlexKit
             ViewDesc.Format                        = tex.Format;
             ViewDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             ViewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-            ViewDesc.Texture2D.MipLevels           = -1;//tex.mipCount;
+            ViewDesc.Texture2D.MipLevels           = tex.mipCount;
             ViewDesc.Texture2D.MostDetailedMip     = 0;
             ViewDesc.Texture2D.PlaneSlice          = 0;
             ViewDesc.Texture2D.ResourceMinLODClamp = 0;
@@ -6885,9 +6868,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceHandle MoveTextureBufferToVRAM(RenderSystem* RS, TextureBuffer* buffer,  iAllocator* tempMemory)
+    ResourceHandle MoveTextureBufferToVRAM(RenderSystem* RS, TextureBuffer* buffer, FORMAT_2D format, iAllocator* tempMemory)
     {
-        auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer->WH, FORMAT_2D::R8G8B8A8_UNORM));
+        auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer->WH, format));
         RS->UploadTexture(textureHandle, buffer->Buffer, buffer->Size);
 
         return textureHandle;
@@ -6897,7 +6880,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory)
+    ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory, FORMAT_2D format)
     {
         size_t bufferSize = 0;
         for (size_t itr = 0; itr < MIPCount; ++itr)
@@ -6907,15 +6890,15 @@ namespace FlexKit
 
         static_vector<size_t> MIPOffsets;
         size_t offset = 0;
-        for (size_t itr = 0; itr < MIPCount; ++itr) 
+
+        for (size_t itr = 0; itr < MIPCount; ++itr)
         {
             memcpy(textureBuffer + offset, buffer[itr].Buffer, buffer[itr].Size);
             MIPOffsets.push_back(offset);
             offset += buffer[itr].Size;
         }
 
-
-        auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, FORMAT_2D::R8G8B8A8_UINT, MIPCount));
+        auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, MIPCount));
         RS->UploadTexture(textureHandle, textureBuffer, bufferSize, buffer->WH, MIPCount, MIPOffsets.begin(), tempMemory);
 
         return textureHandle;
