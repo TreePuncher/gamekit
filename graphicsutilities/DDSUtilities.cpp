@@ -944,7 +944,7 @@ namespace FlexKit
 
 				Push_DelayedRelease(RS, textureUploadHeap);
 
-				SETDEBUGNAME(*texture, "TEXTURE");
+				SETDEBUGNAME(*texture,          "TEXTURE");
 				SETDEBUGNAME(textureUploadHeap, "textureUploadHeap");
 
 				if (FAILED(hr))

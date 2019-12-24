@@ -80,7 +80,7 @@ namespace FlexKit
 		void UpdatePreDraw		(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
 		void Draw				(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
 		void PostDraw			(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dT);
-		void Cleanup			();
+		void Release			();
 
 		void DrawFrame(double dT);
 

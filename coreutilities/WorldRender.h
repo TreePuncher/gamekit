@@ -147,7 +147,15 @@ namespace FlexKit
 				&CD3DX12_RESOURCE_DESC::Buffer(desc.textureCacheSize),
 				D3D12_RESOURCE_STATE_COMMON,
 				nullptr, IID_PPV_ARGS(&resourcePool));
+
+            SETDEBUGNAME(resourcePool, "TextureStreamingEngine");
 		}
+
+
+        ~TextureStreamingEngine()
+        {
+            resourcePool->Release();
+        }
 
 
 		UpdateTask& update(UpdateDispatcher& dispatcher)

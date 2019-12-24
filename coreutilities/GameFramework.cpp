@@ -385,14 +385,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::Cleanup()
+	void GameFramework::Release()
 	{
 		auto end = subStates.rend();
 		auto itr = subStates.rbegin();
 
 
 		console.Release();
-		Release(DefaultAssets.Font, core.RenderSystem);
+		FlexKit::Release(DefaultAssets.Font, core.RenderSystem);
 
 		// wait for last Frame to finish Rendering
 		auto CL = core.RenderSystem._GetCurrentCommandList();

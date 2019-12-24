@@ -3034,12 +3034,18 @@ namespace FlexKit
         for (auto& FR : FrameResources)
             FR.Release();
 
-
+        ConstantBuffers.Release();
+        VertexBuffers.Release();
+        Textures.Release();
+        BufferUAVs.ReleaseAll();
+        Texture2DUAVs.ReleaseAll();
         PipelineStates.ReleasePSOs();
 
         CopyEngine.Release();
 
         NullConstantBuffer.Release();
+
+        Library.Release();
 
         if(GraphicsQueue)	GraphicsQueue->Release();
         if(UploadQueue)		UploadQueue->Release();
@@ -3428,6 +3434,10 @@ namespace FlexKit
         {
             return Textures.AddResource(desc, DRS_Present);
         }
+        else if (desc.PreCreated)
+        {
+            return Textures.AddResource(desc, DRS_ShaderResource);
+        }
         else
         {
             D3D12_RESOURCE_DESC   Resource_DESC = 
@@ -3506,6 +3516,7 @@ namespace FlexKit
             filledDesc.resources = NewResource;
             return Textures.AddResource(filledDesc, initialState);
         }
+
         return InvalidHandle_t;
     }
 
@@ -4952,8 +4963,7 @@ namespace FlexKit
             auto& T = UserEntries[I];
             auto F  = T.Flags;
 
-            if ( !(F & TF_BackBuffer))
-                Resources[T.ResourceIdx].Release();
+            Resources[T.ResourceIdx].Release();
         }
 
         UserEntries.Release();
@@ -4978,6 +4988,7 @@ namespace FlexKit
         Entry.FGI_FrameStamp    = -1;
         Entry.Handle            = Handle;
         Entry.Format			= TextureFormat2DXGIFormat(Desc.format);
+        Entry.Flags             = Desc.backBuffer ? TF_BackBuffer : 0;
 
         UserEntries.push_back(Entry);
 

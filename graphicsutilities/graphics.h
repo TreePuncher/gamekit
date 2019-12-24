@@ -1914,24 +1914,29 @@ namespace FlexKit
 			UserBufferEntries   (Memory)
 		{}
 
-		~ConstantBufferTable()
-		{
-			for (auto& CB : ConstantBuffers)
-			{
-				for (auto R : CB.Resources)
-				{
-					if (R)
-						R->Release();
+        ~ConstantBufferTable()
+        {
+            Release();
+        }
 
-					R = nullptr;
-				}
-			}
+        void Release()
+        {
+            for (auto& CB : ConstantBuffers)
+            {
+                for (auto R : CB.Resources)
+                {
+                    if (R)
+                        R->Release();
+
+                    R = nullptr;
+                }
+            }
 
 
-			ConstantBuffers.Release();
-			UserBufferEntries.Release();
-			FreeAssetSets.Release();
-		}
+            ConstantBuffers.Release();
+            UserBufferEntries.Release();
+            FreeAssetSets.Release();
+        }
 
 		struct SubAllocation
 		{
@@ -2114,6 +2119,7 @@ namespace FlexKit
         bool structured     = false;
         bool CVFlag         = false; // Assumed true if render target is true
         bool backBuffer     = false;
+        bool PreCreated     = false;
 
         uint8_t Dimensions   = 2;
         uint8_t MipLevels    = 1;
@@ -2139,6 +2145,7 @@ namespace FlexKit
                 false,  // structured flag
                 true,   // clear value
                 false,  // back buffer
+                false,  // PreCreated
 
                 2, // dimensions
                 1, // mip count
@@ -2159,6 +2166,7 @@ namespace FlexKit
                 false,  // structured flag
                 true,   // clear value
                 false,  // back buffer
+                false,  // PreCreated
 
                 2, // dimensions
                 1, // mip count
@@ -2172,14 +2180,15 @@ namespace FlexKit
         static GPUResourceDesc ShaderResource(uint2 IN_WH, FORMAT_2D IN_format, uint8_t mipCount = 1)
         {
             return {
-                false,   // render target flag
-                false,   // depth target flag
-                false,    // UAV Resource flag
-                false,    // buffered flag
-                false,   // shader resource flag
-                false,   // structured flag
-                false,   // clear value
-                false,  // back buffer
+                false, // render target flag
+                false, // depth target flag
+                false, // UAV Resource flag
+                false, // buffered flag
+                false, // shader resource flag
+                false, // structured flag
+                false, // clear value
+                false, // back buffer
+                false, // PreCreated
 
                 2,          // dimensions
                 mipCount,   // mip count
@@ -2196,11 +2205,12 @@ namespace FlexKit
                 false,  // render target flag
                 false,  // depth target flag
                 true,   // UAV Resource flag
-                false,   // buffered flag
+                false,  // buffered flag
                 false,  // shader resource flag
                 true,   // structured flag
                 false,  // clear value
                 false,  // back buffer
+                false,  // created
 
                 1, // dimensions
                 1, // mip count
@@ -2216,11 +2226,12 @@ namespace FlexKit
                 false,  // render target flag
                 false,  // depth target flag
                 true,   // UAV Resource flag
-                false,   // buffered flag
+                false,  // buffered flag
                 false,  // shader resource flag
                 true,   // structured flag
                 false,  // clear value
                 false,  // back buffer
+                false,  // created
 
                 1, // dimensions
                 1, // mip count
@@ -2241,7 +2252,8 @@ namespace FlexKit
                 false,  // shader resource flag
                 false,  // structured flag
                 true,   // clear value
-                true,  // back buffer
+                true,   // back buffer
+                false,  // created
 
                 2, // dimensions
                 1, // mip count
@@ -2267,6 +2279,7 @@ namespace FlexKit
                 false,  // structured flag
                 false,  // clear value
                 false,  // back buffer
+                false,  // created
 
                 dimensions, // dimensions
                 1,          // mip count
@@ -2279,8 +2292,9 @@ namespace FlexKit
         static GPUResourceDesc BuildFromMemory(GPUResourceDesc& format, ID3D12Resource** sources, const uint32_t resourceCount)
         {
             GPUResourceDesc desc    = format;
-            desc.resources      = sources;
-            desc.bufferCount    = resourceCount;
+            desc.PreCreated         = true;
+            desc.resources          = sources;
+            desc.bufferCount        = resourceCount;
 
             return desc;
         }
@@ -2691,8 +2705,8 @@ namespace FlexKit
 		RenderSystem				(const RenderSystem&) = delete;
 		RenderSystem& operator =	(const RenderSystem&) = delete;
 
-		bool	Initiate(Graphics_Desc* desc_in);
-		void	Release();
+		bool Initiate(Graphics_Desc* desc_in);
+		void Release();
 
 		// Pipeline State
 		size_t						GetCurrentFrame();
@@ -2927,6 +2941,16 @@ namespace FlexKit
 				ComputeSignature	{ Memory }{}
 
 			void Initiate(RenderSystem* RS, iAllocator* TempMemory);
+
+            void Release()
+            {
+                RS2UAVs4SRVs4CBs.Release();
+                RS6CBVs4SRVs.Release();
+                RS4CBVs_SO.Release();
+                ShadingRTSig.Release();
+                RSDefault.Release();
+                ComputeSignature.Release();
+            }
 
 			RootSignature RS2UAVs4SRVs4CBs;		// 4CBVs On all Stages, 4 SRV On all Stages
 			RootSignature RS6CBVs4SRVs;			// 4CBVs On all Stages, 4 SRV On all Stages
@@ -4079,10 +4103,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	
-	FLEXKITAPI bool					CreateRenderWindow			( RenderSystem*, RenderWindowDesc* desc_in, RenderWindow* );
-	FLEXKITAPI bool					ResizeRenderWindow			( RenderSystem*, RenderWindow* Window, uint2 HW );
-	FLEXKITAPI void					SetInputWIndow				( RenderWindow* );
-	FLEXKITAPI void					UpdateInput					( void );
+	FLEXKITAPI bool CreateRenderWindow	( RenderSystem*, RenderWindowDesc* desc_in, RenderWindow* );
+	FLEXKITAPI bool	ResizeRenderWindow	( RenderSystem*, RenderWindow* Window, uint2 HW );
+	FLEXKITAPI void	SetInputWIndow		( RenderWindow* );
+	FLEXKITAPI void	UpdateInput			( void );
 
 	
 	/************************************************************************************************/
@@ -4130,7 +4154,7 @@ namespace FlexKit
 	FLEXKITAPI bool				LoadAndCompileShaderFromFile	(const char* FileLoc, ShaderDesc* desc, Shader* out);
 	FLEXKITAPI Shader			LoadShader						(const char* Entry, const char* ID, const char* ShaderVersion, const char* File);
 	FLEXKITAPI ResourceHandle	LoadDDSTextureFromFile			(char* file, RenderSystem* RS, iAllocator* Memout);
-	FLEXKITAPI ResourceHandle    LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UNORM);
+	FLEXKITAPI ResourceHandle   LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UNORM);
 
 
 	/************************************************************************************************/
