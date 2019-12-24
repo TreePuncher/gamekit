@@ -211,22 +211,43 @@ public:
             float rgb[3];
         };
 
-        TextureBuffer hdrTexture{ uint2{(uint32_t)width / 64, (uint32_t)height / 64}, sizeof(RGBA), IN_Framework.core.GetBlockMemory() };
-        //TextureBuffer hdrTexture_Mip1{ uint2{(uint32_t)width/2, (uint32_t)height/2}, sizeof(RGBA), IN_Framework.core.GetBlockMemory() };
-        //TextureBuffer hdrTexture_Mip2{ uint2{(uint32_t)width/4, (uint32_t)height/4}, sizeof(RGBA), IN_Framework.core.GetBlockMemory() };
-        auto view = TextureBufferView<RGBA>(hdrTexture);
+        auto& tempMemory = IN_Framework.core.GetTempMemory();
 
+            Vector<TextureBuffer> MIPChain(tempMemory);
 
+            MIPChain.emplace_back(
+                uint2{ (uint32_t)width, (uint32_t)height },
+                sizeof(RGBA),
+                IN_Framework.core.GetBlockMemory());
+
+        auto view = TextureBufferView<RGBA>(MIPChain.back());
         RGB* rgb = (RGB*)res;
 
-        for (int y = 0; y < height / 64; y++)
-            for (int x = 0; x < width / 64; x++) {
-                memcpy(&view[{(uint32_t)x, (uint32_t)y}], &rgb[y * width * 64 + x * 64], sizeof(RGB));
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                memcpy(
+                    &view[{(uint32_t)x, (uint32_t)y}],
+                    &rgb[y * width + x],
+                    sizeof(RGB));
             }
+        }
+
+        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
+        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
+        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
+        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
+        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
+        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
+
+        hdrMap = MoveTextureBuffersToVRAM(
+            RS,
+            &MIPChain.back(),
+            1,
+            IN_Framework.core.GetBlockMemory(),
+            FORMAT_2D::R32G32B32A32_FLOAT);
 
         free(res);
 
-        hdrMap = LoadTexture(&hdrTexture, RS, IN_Framework.core.GetBlockMemory(), FORMAT_2D::R32G32B32A32_FLOAT);
         RS.SetDebugName(hdrMap, "HDR Map");
 	}
 

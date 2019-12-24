@@ -383,15 +383,17 @@ namespace FlexKit
 				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
 				Textures.push_back(BuildMipMap(Textures.back(), tempMemory));
 
-				//auto textureHandle	= MoveTextureBuffersToVRAM(RS, Textures.begin(), Textures.size(), allocator);
-				auto textureHandle		= MoveTextureBufferToVRAM(RS, &Textures[0], allocator);
-				
-				const auto tileMap	    = (uint32_t)tileTextures.push_back(TileMaps{ textureHandle, heightMap });
-				const auto minMax		= GetMinMax(Textures.front());
 
-				root.heightMap			= TileMapHandle{ tileMap };
-				root.patch.lowerHeight	= minMax.Get<0>();
-				root.patch.upperHeight	= minMax.Get<1>();
+                FK_ASSERT(0);
+				//auto textureHandle	    = MoveTextureBuffersToVRAM(RS, Textures.begin(), Textures.size(), allocator);
+				//auto textureHandle		= MoveTextureBufferToVRAM(RS, &Textures[0], , allocator);
+				
+				//const auto tileMap	    = (uint32_t)tileTextures.push_back(TileMaps{ textureHandle, heightMap });
+				//const auto minMax		= GetMinMax(Textures.front());
+
+				//root.heightMap			= TileMapHandle{ tileMap };
+				//root.patch.lowerHeight	= minMax.Get<0>();
+				//root.patch.upperHeight	= minMax.Get<1>();
 			}
 			else
 			{
