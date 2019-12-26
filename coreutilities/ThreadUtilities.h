@@ -42,9 +42,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 #include <random>
 
-#define MAXTHREADCOUNT 3
-
-//#pragma warning ( disable : 4251 )
+#define MAXTHREADCOUNT 8
 
 
 namespace FlexKit
@@ -261,8 +259,6 @@ namespace FlexKit
 
 		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept
 		{
-			//FK_ASSERT(newWork->scheduled == false);
-
 			if (!threads.empty())
 			{
 				size_t	startPoint = randomDevice();
@@ -283,30 +279,18 @@ namespace FlexKit
 					size_t	threadidx	= (startPoint + itr) % workerCount;
 					auto& thread		= threads.begin() + threadidx;
 
-					if (!thread->IsRunning())
-					{
-						if(_AddWork(newWork, thread))
-							return;
-					}
+                    if (_AddWork(newWork, thread))
+                        break;
 				}
 
-				for (size_t itr = 0; itr < workerCount; ++itr)
-				{
-					size_t	threadidx = (startPoint + itr) % workerCount;
-					auto& thread = threads.begin() + threadidx;
-
-					if (!thread->HasJob())
-					{
-						if(_AddWork(newWork, thread))
-							return;
-					}
-				}
-
-				for(size_t I = 0; true; I = (I + 1) % workerCount)
-				{
-					if (_AddWork(newWork, threads.begin() + ((I + startPoint - 1) % workerCount )))
-						return;
-				}
+                if (workerCount != workingThreadCount) // wake another thread
+                {
+                    for (auto& thread : threads)
+                    {
+                        if (!thread.IsRunning())
+                            return thread.Wake();
+                    }
+                }
 			}
 			else
 			{
@@ -340,20 +324,6 @@ namespace FlexKit
 				}
 			}
 		}
-
-		/*
-		void RotateThreads() noexcept
-		{
-			WorkerThread* Ptr = nullptr;
-
-			auto success = threads.try_pop_front(Ptr);
-
-			if (success) {
-				threads.push_back(Ptr);
-				Ptr->Wake();
-			}
-		}
-		*/
 
 
 		void WaitForShutdown() noexcept // TODO: this does not work!
