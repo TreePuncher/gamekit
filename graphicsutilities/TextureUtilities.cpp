@@ -24,8 +24,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "TextureUtilities.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb\stb_image.h"
+
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
+
 	bool LoadBMP(const char* File, iAllocator* Memory, TextureBuffer* Out)
 	{
 #pragma pack(push, 1)
@@ -152,6 +157,9 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
 	bool CheckerBoard(int XSize, int YSize, TextureBuffer* Out)
 	{
 		FK_ASSERT(Out);
@@ -173,4 +181,57 @@ namespace FlexKit
 		return true;
 	}
 
-}
+
+    
+    Vector<TextureBuffer> LoadHDR(const char* str, size_t MIPCount, iAllocator* scratchSpace)
+    {
+        if (!stbi_is_hdr(str))
+            return {};
+
+        int width;
+        int height;
+        int channelCount;
+
+        float* res = stbi_loadf(str, &width, &height, &channelCount, STBI_rgb);
+
+        if (!res)
+            return {};
+
+        struct RGBA
+        {
+            float rgb[4];
+        };
+
+        struct RGB
+        {
+            float rgb[3];
+        };
+
+        Vector<TextureBuffer> MIPChain(scratchSpace);
+
+        MIPChain.emplace_back(
+            uint2{ (uint32_t)width, (uint32_t)height },
+            sizeof(RGBA),
+            scratchSpace);
+
+        auto view = TextureBufferView<RGBA>(MIPChain.back());
+        RGB* rgb = (RGB*)res;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                memcpy(
+                    &view[{(uint32_t)x, (uint32_t)y}],
+                    &rgb[y * width + x],
+                    sizeof(RGB));
+            }
+        }
+
+        for (size_t I = 0; I < MIPCount; I++)
+            MIPChain.emplace_back(BuildMipMap<float4>(MIPChain.back(), scratchSpace, AverageSampler<float4>));
+
+        free(res);
+
+        return std::move(MIPChain);
+    }
+
+}    /************************************************************************************************/

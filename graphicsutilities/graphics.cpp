@@ -2580,14 +2580,12 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void ReserveTempSpace(RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset)
+    void ReserveTempSpace(RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset, const size_t alignment)
     {
         // TODO: make thread Safe
 
         void* out = nullptr;
         auto& CopyEngine = RS->CopyEngine;
-
-        size_t SizePlusOffset = Size + 512;
 
         auto ResizeBuffer = [&]()
         {
@@ -2597,7 +2595,7 @@ namespace FlexKit
             //Push_DelayedRelease(RS, CopyEngine.TempBuffer);
 
             size_t NewBufferSize = CopyEngine.Size;
-            while (NewBufferSize < SizePlusOffset)
+            while (NewBufferSize < Size + alignment)
                 NewBufferSize = NewBufferSize * 2;
 
             D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(NewBufferSize);
@@ -2618,38 +2616,38 @@ namespace FlexKit
             HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
 
 
-            return ReserveTempSpace(RS, Size, CPUMem, Offset);
+            std::cout << "Resizing Upload Heap\n";
+
+            return ReserveTempSpace(RS, Size, CPUMem, Offset, alignment);
         };
 
-        // Not enough remaining Space in Buffer GOTO Beginning
-        if	(CopyEngine.Position + SizePlusOffset > CopyEngine.Size)
+        // Not enough remaining Space in Buffer GOTO Beginning if space in front of upload buffer is available
+        if	(CopyEngine.Position + Size > CopyEngine.Size && CopyEngine.Last != 0)
             CopyEngine.Position = 0;
 
+        const size_t AlignmentOffset = [&]() {
+            auto offset = alignment - CopyEngine.Position % alignment;
+            return offset == alignment ? 0 : offset;
+        }();
+
         // Buffer too Small
-        if (SizePlusOffset > CopyEngine.Size)
-        {
+        if (CopyEngine.Position + Size + AlignmentOffset > CopyEngine.Size)
             return ResizeBuffer();
-        }
 
-        if(CopyEngine.Last <= CopyEngine.Position + SizePlusOffset)
+
+        if(CopyEngine.Last <= CopyEngine.Position)
         {	// Safe, Do Upload
-
-            size_t AlignmentOffset = 512 - (size_t(CopyEngine.Buffer + CopyEngine.Position) % 512);
-            AlignmentOffset = (AlignmentOffset == 512) ? 0 : AlignmentOffset;
-
             CPUMem = CopyEngine.Buffer + CopyEngine.Position + AlignmentOffset;
             Offset = CopyEngine.Position + AlignmentOffset;
-            CopyEngine.Position += SizePlusOffset;
+            CopyEngine.Position += Size + AlignmentOffset;
         }
         else if (CopyEngine.Last > CopyEngine.Position)
         {	// Potential Overlap condition
-            if(CopyEngine.Position + SizePlusOffset  < CopyEngine.Last)
+            if (CopyEngine.Position + Size + AlignmentOffset < CopyEngine.Last)
             {	// Safe, Do Upload
-                size_t AlignmentOffset = 512 - (size_t(CopyEngine.Buffer + CopyEngine.Position) % 512);
-
                 CPUMem = CopyEngine.Buffer + CopyEngine.Position + AlignmentOffset;
                 Offset = CopyEngine.Position + AlignmentOffset;
-                CopyEngine.Position += SizePlusOffset;
+                CopyEngine.Position += Size + AlignmentOffset;
             }
             else
             {	// Resize Buffer and Try again
@@ -3121,7 +3119,7 @@ namespace FlexKit
     
     void RenderSystem::PresentWindow(RenderWindow* Window)
     {
-        //CopyEnginePostFrameUpdate(this);
+        CopyEnginePostFrameUpdate(this);
 
         Window->SwapChain_ptr->Present(1, 0);
 
@@ -3287,82 +3285,26 @@ namespace FlexKit
         auto wh			= GetTextureWH(handle);
         auto formatSize = GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
 
-        /*
-        struct SubResourceUpload_Desc
-        {
-            const void* Data; 
-            size_t	Size;
-            size_t	RowSize;
-            size_t	RowCount;
-            uint2	WH;
-            size_t	SubResourceStart;
-            size_t	SubResourceCount;
-            size_t*	SubResourceSizes;
-            size_t	ElementSize;
-        };
-        */
-
         size_t resourceSize = bufferSize;
-        size_t offset = 0;
+        size_t offset       = 0;
+
+        TextureBuffer textureBuffer{ wh, buffer, bufferSize, };
 
         SubResourceUpload_Desc desc;
-        desc.Data				= buffer;
-        desc.RowSize			= wh[1] * formatSize;
-        desc.RowCount			= wh[0];
-        desc.Size				= bufferSize;
-        desc.SubResourceCount	= 1;
-        desc.SubResourceSizes	= &resourceSize;
-        desc.SubResourceOffset	= &offset;
-        desc.SubResourceStart	= 0;
-        desc.WH					= wh;
-        desc.ElementSize		= formatSize;
+        desc.buffers            = &textureBuffer;
 
         _UpdateSubResourceByUploadQueue(this, resource, &desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
 
-    void RenderSystem::UploadTexture(ResourceHandle handle, byte* buffer, size_t bufferSize, uint2 WH, size_t resourceCount, size_t* mipOffsets, iAllocator* temp) // Uses Upload Queue
+    void RenderSystem::UploadTexture(ResourceHandle handle, TextureBuffer* buffers, size_t resourceCount, iAllocator* temp) // Uses Upload Queue
     {
         auto resource	= _GetTextureResource(handle);
         auto format		=  GetTextureFormat(handle);
-        auto formatSize =  GetTextureElementSize(handle); FK_ASSERT(formatSize != -1);
-
-        /*
-        struct SubResourceUpload_Desc
-        {
-            const void* Data; 
-            size_t	Size;
-            size_t	RowSize;
-            size_t	RowCount;
-            uint2	WH;
-            size_t	SubResourceStart;
-            size_t	SubResourceCount;
-            size_t*	SubResourceSizes;
-            size_t	ElementSize;
-        };
-        */
-
-        auto WHtemp = WH;
-        static_vector<size_t> subResourceSizes;
-        for (size_t I = 0; I < resourceCount; ++I) 
-        {
-            subResourceSizes.push_back(WHtemp.Product() * formatSize);
-            WHtemp /= 2;
-        }
-
-        size_t zero = 0;
 
         SubResourceUpload_Desc desc;
-        desc.Data				= buffer;
-        desc.RowSize			= WH[1] * formatSize;
-        desc.RowCount			= WH[0];
-        desc.Size				= bufferSize;
-        desc.SubResourceCount	= resourceCount;
-        desc.SubResourceSizes	= subResourceSizes.begin();
-        desc.SubResourceOffset  = resourceCount == 1 ? &zero : mipOffsets;
-        desc.SubResourceStart	= 0;
-        desc.WH					= WH;
-        desc.ElementSize		= formatSize;
+        desc.buffers            = buffers;
+        desc.subResourceCount   = resourceCount;
         desc.format             = format;
 
         _UpdateSubResourceByUploadQueue(this, resource, &desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -3449,6 +3391,7 @@ namespace FlexKit
                         TextureFormat2DXGIFormat(desc.format),
                         desc.WH[0],
                         desc.WH[1],
+                        1,
                         desc.MipLevels);
 
 
@@ -3537,23 +3480,23 @@ namespace FlexKit
     UAVResourceHandle RenderSystem::CreateUAVBufferResource(size_t resourceSize, bool tripleBuffer)
     {
         D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(resourceSize);
-        Resource_DESC.Alignment          = 0;
-        Resource_DESC.DepthOrArraySize   = 1;
-        Resource_DESC.Dimension          = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
-        Resource_DESC.Layout             = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        Resource_DESC.Width              = resourceSize;
-        Resource_DESC.Height             = 1;
-        Resource_DESC.Format             = DXGI_FORMAT_UNKNOWN;
-        Resource_DESC.SampleDesc.Count   = 1;
-        Resource_DESC.SampleDesc.Quality = 0;
-        Resource_DESC.Flags              = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        Resource_DESC.Alignment           = 0;
+        Resource_DESC.DepthOrArraySize    = 1;
+        Resource_DESC.Dimension           = D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
+        Resource_DESC.Layout              = D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        Resource_DESC.Width               = resourceSize;
+        Resource_DESC.Height              = 1;
+        Resource_DESC.Format              = DXGI_FORMAT_UNKNOWN;
+        Resource_DESC.SampleDesc.Count    = 1;
+        Resource_DESC.SampleDesc.Quality  = 0;
+        Resource_DESC.Flags               = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        D3D12_HEAP_PROPERTIES HEAP_Props = {};
-        HEAP_Props.CPUPageProperty       = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        HEAP_Props.Type                  = D3D12_HEAP_TYPE_DEFAULT;
-        HEAP_Props.MemoryPoolPreference  = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-        HEAP_Props.CreationNodeMask      = 0;
-        HEAP_Props.VisibleNodeMask       = 0;
+        D3D12_HEAP_PROPERTIES HEAP_Props  = {};
+        HEAP_Props.CPUPageProperty        = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        HEAP_Props.Type                   = D3D12_HEAP_TYPE_DEFAULT;
+        HEAP_Props.MemoryPoolPreference   = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+        HEAP_Props.CreationNodeMask       = 0;
+        HEAP_Props.VisibleNodeMask        = 0;
 
         static_vector<ID3D12Resource*, 3> buffers;
 
@@ -4347,40 +4290,44 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState)
+    FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, ID3D12Resource* destinationResource, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState)
     {
         auto& CE					= RS->CopyEngine;
-        size_t SrOffset				= 0;
-        const size_t SubResCount	= Desc->SubResourceCount;
-        const size_t SubResStart	= Desc->SubResourceStart;
-        uint2 WH					= Desc->WH;
-        const auto format           = TextureFormat2DXGIFormat(Desc->format);
+        const auto      format      = TextureFormat2DXGIFormat(Desc->format);
+        const size_t    formatSize  = GetFormatElementSize(format);
 
         PerFrameUploadQueue& UploadQueue	= RS->_GetCurrentUploadQueue();
         ID3D12GraphicsCommandList* CS		= UploadQueue.UploadList[0];
 
-        for (size_t I = 0; I < SubResCount + SubResStart; ++I, WH /= 2)
+
+        for (size_t I = 0; I < Desc->subResourceCount; ++I)
         {
-            void* pData = nullptr;
+            void* pData         = nullptr;
             size_t Offset = 0;
-            ReserveTempSpace(RS, Desc->SubResourceSizes[I], pData, Offset);
-            memcpy((char*)pData, (char*)Desc->Data + Desc->SubResourceOffset[I], Desc->SubResourceSizes[I]);
+            ReserveTempSpace(RS, Desc->buffers[I].Size, pData, Offset);
+
+            memcpy(
+                (char*)pData,
+                (char*)Desc->buffers[I].Buffer,
+                Desc->buffers[I].Size);
+
+            const auto WH = Desc->buffers[I].WH;
 
             D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
             SubRegion.Footprint.Depth    = 1;
             SubRegion.Footprint.Format   = format;
-            SubRegion.Footprint.RowPitch = Desc->ElementSize * WH[0];
+            SubRegion.Footprint.RowPitch = formatSize * WH[0];
             SubRegion.Footprint.Width    = WH[0];
             SubRegion.Footprint.Height   = WH[1];
             SubRegion.Offset             = Offset;
 
-            auto Destination	= CD3DX12_TEXTURE_COPY_LOCATION(Dest, I);
+            auto Destination	= CD3DX12_TEXTURE_COPY_LOCATION(destinationResource, I);
             auto Source			= CD3DX12_TEXTURE_COPY_LOCATION(CE.TempBuffer, SubRegion);
 
             CS->CopyTextureRegion(&Destination, 0, 0, 0, &Source, nullptr);
         }
 
-        RS->_InsertBarrier(Dest, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, EndState);
+        RS->_InsertBarrier(destinationResource, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, EndState);
     }
 
 
@@ -6882,24 +6829,8 @@ namespace FlexKit
 
     ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory, FORMAT_2D format)
     {
-        size_t bufferSize = 0;
-        for (size_t itr = 0; itr < MIPCount; ++itr)
-            bufferSize += buffer[itr].Size;
-
-        byte* textureBuffer = (byte*)tempMemory->malloc(bufferSize);
-
-        static_vector<size_t> MIPOffsets;
-        size_t offset = 0;
-
-        for (size_t itr = 0; itr < MIPCount; ++itr)
-        {
-            memcpy(textureBuffer + offset, buffer[itr].Buffer, buffer[itr].Size);
-            MIPOffsets.push_back(offset);
-            offset += buffer[itr].Size;
-        }
-
         auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, MIPCount));
-        RS->UploadTexture(textureHandle, textureBuffer, bufferSize, buffer->WH, MIPCount, MIPOffsets.begin(), tempMemory);
+        RS->UploadTexture(textureHandle, buffer, MIPCount, tempMemory);
 
         return textureHandle;
     }
@@ -6915,23 +6846,15 @@ namespace FlexKit
 
         size_t elementSize          = GetFormatElementSize(TextureFormat2DXGIFormat(format));
         size_t ResourceSizes[]      = { Buffer->Size };
-        size_t ResourceOffsets[]    = { 0 };
 
         auto texture = RS->CreateGPUResource(GPUResourceDesc);
-        FlexKit::SubResourceUpload_Desc Desc = {};
-        Desc.Data                            = Buffer->Buffer;
-        Desc.RowCount                        = Buffer->WH[1];
-        Desc.RowSize                         = Buffer->WH[0] * elementSize;
-        Desc.Size	                         = Buffer->Size;
-        Desc.WH	                             = Buffer->WH;
-        Desc.SubResourceCount                = 1;
-        Desc.SubResourceSizes                = ResourceSizes;
-        Desc.SubResourceStart                = 0;
-        Desc.SubResourceOffset               = ResourceOffsets;
-        Desc.ElementSize                     = elementSize;
-        Desc.format                          = format;
+        FlexKit::SubResourceUpload_Desc desc = {};
+        desc.buffers                         = Buffer;
+        desc.subResourceCount                = 1;
+        desc.subResourceStart                = 0;
+        desc.format                          = format;
 
-        _UpdateSubResourceByUploadQueue(RS, RS->GetObjectDeviceResource(texture), &Desc, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        _UpdateSubResourceByUploadQueue(RS, RS->GetObjectDeviceResource(texture), &desc, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
         RS->Textures.SetState(texture, DeviceResourceState::DRS_ShaderResource);
         RS->SetDebugName(texture, "LOADTEXTURE");

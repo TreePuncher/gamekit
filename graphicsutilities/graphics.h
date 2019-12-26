@@ -328,42 +328,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	enum class FORMAT_2D
-	{
-		R8_UINT,
-		R16_UINT,
-		R16G16_UINT,
-		R32G32_UINT,
-		R8G8B8A_UINT,
-		R8G8B8A8_UINT,
-		R8G8B8A8_UNORM,
-		R16G16B16A16_UNORM,
-		R8G8_UNORM,
-		D24_UNORM_S8_UINT,
-		R32_FLOAT,
-		D32_FLOAT,
-        R16G16_FLOAT,
-		R16G16B16A16_FLOAT,
-		R32G32_FLOAT,
-		R32G32B32_FLOAT,
-		R32G32B32A32_FLOAT,
-		BC1_TYPELESS,
-		BC1_UNORM,
-		BC1_UNORM_SRGB,
-		BC2_TYPELESS,
-		BC2_UNORM,
-		BC2_UNORM_SRGB,
-		BC3_TYPELESS,
-		BC3_UNORM,
-		BC3_UNORM_SRGB,
-		BC4_TYPELESS,
-		BC4_UNORM,
-		BC4_SNORM,
-		BC5_TYPELESS,
-		BC5_UNORM,
-		BC5_SNORM,
-		UNKNOWN
-	};
 
 	DXGI_FORMAT TextureFormat2DXGIFormat(FORMAT_2D F);
 	FORMAT_2D	DXGIFormat2TextureFormat(DXGI_FORMAT F);
@@ -1165,9 +1129,6 @@ namespace FlexKit
 		bool SetUAV					(RenderSystem* RS, size_t idx, UAVResourceHandle	Handle);
 		bool SetUAV					(RenderSystem* RS, size_t idx, UAVTextureHandle		Handle);
 		bool SetStructuredResource	(RenderSystem* RS, size_t idx, ResourceHandle		Handle, size_t stride);
-
-
-
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
@@ -2155,6 +2116,7 @@ namespace FlexKit
             };
         }
 
+
         static GPUResourceDesc DepthTarget(uint2 IN_WH, FORMAT_2D IN_format)
         {
             return {
@@ -2667,6 +2629,67 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    class ReadBackStateTable
+    {
+    public:
+        using FNHandler = void (*)(char* bufer, size_t bufferSize);
+
+        ReadBackStateTable(iAllocator* allocator) :
+            handles     { allocator },
+            resources   { allocator } {}
+
+
+        ReadBackResourceHandle AddReadBack(size_t BufferSize, ID3D12Resource* resource)
+        {
+            return InvalidHandle_t;
+        }
+
+
+        bool ReadBackReady(ReadBackResourceHandle handle)
+        {
+            return false;
+        }
+
+
+        void SetCallback(ReadBackResourceHandle handle, FNHandler readBackHandler)
+        {
+        }
+
+
+        void QueueReadBack(size_t frameID)
+        {
+        }
+
+
+    private:
+        struct OnReadBack
+        {
+            void*       _Data;
+            FNHandler   callback;
+        };
+
+        struct ReadBackEntry
+        {
+            OnReadBack onReceive;
+        };
+
+        ReadBackEntry& _GetEntry(ReadBackResourceHandle handle)
+        {
+            const size_t idx = handles[handle];
+            return resources[idx];
+        }
+
+        enum States
+        {
+        };
+
+
+        Vector<ReadBackEntry>                                   resources;
+        HandleUtilities::HandleTable<ReadBackResourceHandle>    handles;
+    };
+
+
+    /************************************************************************************************/
 
 
 	struct UAVResourceLayout
@@ -2686,18 +2709,19 @@ namespace FlexKit
 	FLEXKITAPI class RenderSystem
 	{
 	public:
-		RenderSystem(iAllocator* Memory_IN, ThreadManager* Threads) :
-			Memory			{ Memory_IN					},
-			Library			{ Memory_IN					},
-			Queries			{ Memory_IN, this			},
-			Textures		{ Memory_IN					},
-			VertexBuffers	{ Memory_IN					},
-			ConstantBuffers	{ Memory_IN, this			},
-			PipelineStates	{ Memory_IN, this, Threads	},
-			BufferUAVs		{ Memory_IN					},
-			Texture2DUAVs	{ Memory_IN					},
-            PendingBarriers { Memory_IN                 },
-			StreamOutTable	{ Memory_IN					}{}
+		RenderSystem(iAllocator* IN_allocator, ThreadManager* IN_Threads) :
+			Memory			{ IN_allocator					    },
+			Library			{ IN_allocator					    },
+			Queries			{ IN_allocator, this			    },
+			Textures		{ IN_allocator					    },
+			VertexBuffers	{ IN_allocator					    },
+			ConstantBuffers	{ IN_allocator, this			    },
+			PipelineStates	{ IN_allocator, this, IN_Threads    },
+			BufferUAVs		{ IN_allocator					    },
+			Texture2DUAVs	{ IN_allocator					    },
+            PendingBarriers { IN_allocator                      },
+			StreamOutTable	{ IN_allocator					    },
+            ReadBackTable   { IN_allocator                      } {}
 
 		
 		~RenderSystem() { Release(); }
@@ -2745,7 +2769,7 @@ namespace FlexKit
 		DXGI_FORMAT		GetTextureDeviceFormat		(ResourceHandle Handle) const;
 
 		void			UploadTexture				(ResourceHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
-		void			UploadTexture				(ResourceHandle handle, byte* buffer, size_t bufferSize, uint2 WH, size_t resourceCount, size_t* mipOffsets, iAllocator* temp); // Uses Upload Queue
+        void            UploadTexture               (ResourceHandle handle, TextureBuffer* buffer, size_t resourceCount, iAllocator* temp); // Uses Upload Queue
 		void			UpdateResourceByUploadQueue	(ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
 
 		// Resource Creation and Destruction
@@ -2759,6 +2783,8 @@ namespace FlexKit
 		SOResourceHandle		CreateStreamOutResource			(size_t bufferHandle, bool tripleBuffer = true);
 		QueryHandle				CreateSOQuery					(size_t SOIndex, size_t count);
 		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
+        ReadBackResourceHandle  CreateReadBackBuffer            (size_t bufferSize);
+
 
 		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
 		void SetObjectState(UAVResourceHandle	handle, DeviceResourceState state);
@@ -2874,8 +2900,8 @@ namespace FlexKit
 
 		ConstantBuffer			NullConstantBuffer; // Zero Filled Constant Buffer
 		UAVTextureHandle   		NullUAV; // 1x1 Zero UAV
-        ResourceHandle           NullSRV;
-        ResourceHandle           NullSRV1D;
+        ResourceHandle          NullSRV;
+        ResourceHandle          NullSRV1D;
 
         struct PendingBarrier
         {
@@ -2969,6 +2995,7 @@ namespace FlexKit
 		UAVResourceTable<UAVTextureHandle,	UAVTextureLayout>	Texture2DUAVs;
 		SOResourceTable											StreamOutTable;
 		PipelineStateTable										PipelineStates;
+        ReadBackStateTable                                      ReadBackTable;
 
 		struct FreeEntry
 		{
@@ -3013,7 +3040,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, TextureBuffer* buffer, size_t bufferCount, iAllocator* tempMemory, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UINT);
+	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UINT);
 	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, TextureBuffer* buffer, FORMAT_2D format, iAllocator* tempMemory);
 
 
@@ -4065,7 +4092,7 @@ namespace FlexKit
 	inline float2 PixelToSS(uint2 XY, uint2 Dimensions)			  { return { -1.0f + (float(XY[0]) / Dimensions[0]), 1.0f - (float(XY[1]) / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
 
 	
-	FLEXKITAPI void ReserveTempSpace	( RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset );
+	FLEXKITAPI void ReserveTempSpace	( RenderSystem* RS, size_t Size, void*& CPUMem, size_t& Offset, const size_t alignment = 512);
 
 	FLEXKITAPI void	Release						( RenderSystem* System );
 	FLEXKITAPI void Push_DelayedRelease			( RenderSystem* RS, ID3D12Resource* Res);
@@ -4116,18 +4143,12 @@ namespace FlexKit
 
 	struct SubResourceUpload_Desc
 	{
-		const void* Data; 
-		size_t	Size;
-		size_t	RowSize;
-		size_t	RowCount;
-		uint2	WH;
-		size_t	SubResourceStart;
-		size_t	SubResourceCount;
-		size_t*	SubResourceSizes;
-		size_t*	SubResourceOffset;
-		size_t	ElementSize;
+        TextureBuffer*  buffers;
 
-        FORMAT_2D format;
+		size_t	        subResourceStart;
+		size_t	        subResourceCount;
+
+        FORMAT_2D       format;
 	};
 
 	FLEXKITAPI void UpdateResourceByTemp			( RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
@@ -4143,9 +4164,6 @@ namespace FlexKit
 	FLEXKITAPI void	Release( RenderWindow*		);
 	FLEXKITAPI void	Release( VertexBuffer*		);
 	FLEXKITAPI void	Release( Shader*			);
-	FLEXKITAPI void	Release( SpotLightList*	);
-	FLEXKITAPI void	Release( PointLightList*	);
-	FLEXKITAPI void Release( DepthBuffer*		);
 
 
 	/************************************************************************************************/
@@ -4270,6 +4288,7 @@ namespace FlexKit
 
 
 	inline void ClearTriMeshVBVs(TriMesh* Mesh) { for (auto& buffer : Mesh->Buffers) buffer = nullptr; }
+
 
 
 }	/************************************************************************************************/
