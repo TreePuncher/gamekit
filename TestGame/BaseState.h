@@ -26,6 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
+#include "..\graphicsutilities\AnimationComponents.h"
+#include "..\coreutilities\Application.h"
 #include "..\coreutilities\GameFramework.h"
 #include "..\coreutilities\EngineCore.h"
 #include "..\coreutilities\WorldRender.h"
@@ -35,9 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <angelscript.h>
 #include <scriptstdstring/scriptstdstring.h>
 #include <scriptbuilder/scriptbuilder.h>
-
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb\stb_image.h"
 
 #include <fmod.hpp>
 
@@ -195,58 +194,15 @@ public:
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
 		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
 
-        int width;
-        int height;
-        int channelCount;
-
-        float* res = stbi_loadf("assets/textures/lakeside_2k.hdr", &width, &height, &channelCount, STBI_rgb);
-
-        struct RGBA
-        {
-            float rgb[4];
-        };
-
-        struct RGB
-        {
-            float rgb[3];
-        };
-
-        auto& tempMemory = IN_Framework.core.GetTempMemory();
-
-            Vector<TextureBuffer> MIPChain(tempMemory);
-
-            MIPChain.emplace_back(
-                uint2{ (uint32_t)width, (uint32_t)height },
-                sizeof(RGBA),
-                IN_Framework.core.GetBlockMemory());
-
-        auto view = TextureBufferView<RGBA>(MIPChain.back());
-        RGB* rgb = (RGB*)res;
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                memcpy(
-                    &view[{(uint32_t)x, (uint32_t)y}],
-                    &rgb[y * width + x],
-                    sizeof(RGB));
-            }
-        }
-
-        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
-        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
-        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
-        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
-        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
-        MIPChain.push_back(BuildMipMap<float4>(MIPChain.back(), tempMemory, AverageSampler<float4>));
+        auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 5, IN_Framework.core.GetTempMemory());
 
         hdrMap = MoveTextureBuffersToVRAM(
-            RS,
-            &MIPChain.back(),
-            1,
-            IN_Framework.core.GetBlockMemory(),
+            framework.core.RenderSystem,
+            HDRStack.begin(),
+            HDRStack.size(),
+            framework.core.GetTempMemory(),
             FORMAT_2D::R32G32B32A32_FLOAT);
 
-        free(res);
 
         RS.SetDebugName(hdrMap, "HDR Map");
 	}

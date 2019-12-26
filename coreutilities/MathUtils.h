@@ -1413,19 +1413,6 @@ namespace FlexKit
 			floats( in.floats )	{}
 
 
-		template<typename TY>
-		Quaternion( std::initializer_list<TY> il )
-		{
-			auto IV = il.begin();
-			floats = _mm_set_ps(0.0f, 0.0f, 0.0f, 0.0f);
-			for( size_t I = 0; I < FlexKit::min(il.size(), 4); ++I  )
-			{
-				float V = *IV;
-				SetElement(floats,V, I);
-				IV++;
-			}
-		}
-
 		inline explicit Quaternion( float dX, float dY, float dZ ) // Degrees to Quat
 		{
 			FlexKit::Quaternion X, Y, Z;
