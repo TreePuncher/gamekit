@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define RENDERGRAPH_H
 
 #include "..\graphicsutilities\graphics.h"
+#include "..\coreutilities\GraphicsComponents.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\Components.h"
 
@@ -1890,7 +1891,6 @@ namespace FlexKit
         float	AspectRatio;
         size_t	Divisions;
     };
-
 
 
     /************************************************************************************************/

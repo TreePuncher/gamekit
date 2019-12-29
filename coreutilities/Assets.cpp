@@ -307,7 +307,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool Asset2TriMesh(RenderSystem* RS, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
+	bool Asset2TriMesh(RenderSystem* RS, UploadQueueHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
 	{
 		Resource* R = GetAsset(RHandle);
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
@@ -358,7 +358,7 @@ namespace FlexKit
             if (!Out->HasTangents() && Out->HasNormals())
                 GenerateTangents(Out->Buffers, Memory);
 
-			CreateVertexBuffer(RS, Out->Buffers, Out->Buffers.size(), Out->VertexBuffer);
+			CreateVertexBuffer(RS, handle, Out->Buffers, Out->Buffers.size(), Out->VertexBuffer);
 
 			if (ClearBuffers)
 			{
@@ -424,7 +424,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, size_t GUID)
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, UploadQueueHandle handle, size_t GUID)
 	{	// Make this atomic
 		TriMeshHandle Handle;
 
@@ -452,7 +452,7 @@ namespace FlexKit
 
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
-			if( Asset2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if( Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -479,7 +479,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(GUID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -502,7 +502,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, const char* ID)
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, UploadQueueHandle handle, const char* ID)
 	{	// Make this atomic
 		TriMeshHandle Handle;
 
@@ -522,7 +522,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 			
-			if(Asset2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -549,7 +549,7 @@ namespace FlexKit
 			auto RHandle = LoadGameAsset(ID);
 			auto GameRes = GetAsset(RHandle);
 
-			if(Asset2TriMesh(RS, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
+			if(Asset2TriMesh(RS, handle, RHandle, GeometryTable.Memory, &GeometryTable.Geometry[Index]))
 			{
 				FreeAsset(RHandle);
 
@@ -715,8 +715,11 @@ namespace FlexKit
 					Fonts = (SpriteFontAsset*)outMem->malloc(sizeof(SpriteFontAsset) * FontCount);
 
 					for (size_t I = 0; I < FontCount; ++I) {
+                        memset(Fonts + I, 0, sizeof(SpriteFontAsset));
+
 						Fonts[I].Padding = Padding;
 						Fonts[I].Memory  = outMem;
+
 						strcpy_s(Fonts[I].FontName, ID);
 					}
 
@@ -735,7 +738,7 @@ namespace FlexKit
 						strcpy_s(Fonts[I].FontDir, BufferSize, dir);
 						strcat_s(Fonts[I].FontDir, BufferSize, FONTPATH + I * FontPathLen);
 
-						auto Texture					= LoadDDSTextureFromFile(Fonts[I].FontDir, RS, outMem);
+						auto Texture					= LoadDDSTextureFromFile(Fonts[I].FontDir, RS, RS->GetImmediateUploadQueue(), outMem);
 						Fonts[I].Texture				= Texture;
 						Fonts[I].TextSheetDimensions	= { CB.ScaleW, CB.ScaleH };
 					}

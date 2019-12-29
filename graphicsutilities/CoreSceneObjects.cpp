@@ -203,8 +203,6 @@ namespace FlexKit
 
 				Out.FTL	= V4;
 				Out.FTR = V3;
-
-				int x = 0;
 			}
 			{
 				float4 V1 = DirectX::XMVector4Transform(BottomRight,	Float4x4ToXMMATIRX(&InverseView));
@@ -218,10 +216,10 @@ namespace FlexKit
 		}
 		// Near Field
 		{
-			float4 TopRight		{  1,  1, 1, 1 };
-			float4 TopLeft		{ -1,  1, 1, 1 };
-			float4 BottomRight	{  1, -1, 1, 1 };
-			float4 BottomLeft	{ -1, -1, 1, 1 };
+			float4 TopRight		{  1,  1, 0.1, 1 };
+			float4 TopLeft		{ -1,  1, 0.1, 1 };
+			float4 BottomRight	{  1, -1, 0.1, 1 };
+			float4 BottomLeft	{ -1, -1, 0.1, 1 };
 
 			{
 				float4 V1 = DirectX::XMVector4Transform(TopRight, Float4x4ToXMMATIRX(&InverseView));

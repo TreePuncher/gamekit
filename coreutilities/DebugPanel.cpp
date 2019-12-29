@@ -49,7 +49,7 @@ namespace FlexKit
 	void DebugPanel::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
 	{
         topState.Draw(core, dispatcher, dT, graph);
-		console->Draw(graph, core.Window.backBuffer, core.GetTempMemory());
+		console.Draw(graph, core.Window.backBuffer, core.GetTempMemory());
 	}
 
 
@@ -65,7 +65,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DebugPanel::EventHandler(Event evt)
+	bool DebugPanel::EventHandler(Event evt)
 	{
 		if (evt.InputSource == Event::Keyboard)
 		{
@@ -75,10 +75,9 @@ namespace FlexKit
 			{
 				switch (evt.mData1.mKC[0])
 				{
-				case KC_TILDA: {
-					PopSubState(framework);
-					return;
-				}	break;
+                case KC_TILDA: {
+                    PopSubState(framework);
+                }	break;
 				case KC_BACKSPACE:
 					framework.console.BackSpace();
 					break;
@@ -89,25 +88,25 @@ namespace FlexKit
 				}	break;
 				case KC_ARROWUP:
 				{
-					if(console->commandHistory.size()){
-						auto line	  = console->commandHistory[recallIndex].Str;
+					if(console.commandHistory.size()){
+						auto line	  = console.commandHistory[recallIndex].Str;
 						auto LineSize = strlen(line);
 
-						strcpy_s(console->inputBuffer, console->commandHistory[recallIndex]);
+						strcpy_s(console.inputBuffer, console.commandHistory[recallIndex]);
 
-						console->inputBufferSize = LineSize;
+						console.inputBufferSize = LineSize;
 						IncrementRecallIndex();
 					}
 				}	break;
 				case KC_ARROWDOWN:
 				{
-					if (console->commandHistory.size()) {
-						auto line		= console->commandHistory[recallIndex].Str;
+					if (console.commandHistory.size()) {
+						auto line		= console.commandHistory[recallIndex].Str;
 						auto lineSize	= strlen(line);
 
-						strcpy_s(console->inputBuffer, console->commandHistory[recallIndex]);
+						strcpy_s(console.inputBuffer, console.commandHistory[recallIndex]);
 
-						console->inputBufferSize = lineSize;
+						console.inputBufferSize = lineSize;
 						DecrementRecallIndex();
 					}
 				}	break;
@@ -130,6 +129,8 @@ namespace FlexKit
 			}	break;
 			}
 		}
+
+        return true;
 	}
 
 
@@ -138,7 +139,7 @@ namespace FlexKit
 
 	void DebugPanel::IncrementRecallIndex()
 	{
-		recallIndex = (recallIndex + 1) % console->commandHistory.size();
+		recallIndex = (recallIndex + 1) % console.commandHistory.size();
 	}
 
 
@@ -147,7 +148,7 @@ namespace FlexKit
 
 	void DebugPanel::DecrementRecallIndex()
 	{
-		recallIndex = (console->commandHistory.size() + recallIndex - 1) % console->commandHistory.size();
+		recallIndex = (console.commandHistory.size() + recallIndex - 1) % console.commandHistory.size();
 	}
 
 

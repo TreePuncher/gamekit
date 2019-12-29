@@ -37,7 +37,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../graphicsutilities/FrameGraph.h"
 #include "../graphicsutilities/graphics.h"
 #include "../graphicsutilities/CoreSceneObjects.h"
+#include "../coreutilities/GraphicScene.h"
 
+#include <d3dx12.h>
 
 namespace FlexKit
 {	/************************************************************************************************/
@@ -80,6 +82,7 @@ namespace FlexKit
 	private:
 		bool							evicted		= true;
 		ID3D12Resource*					tiledResource;
+        ResourceHandle                  textureHandle;
 		static_vector<char*>			buffers;	// Nulls for unmapped buffers
 		uint16_t						highestMappedMip = -1;
 		static_vector<ResourceHandle>	backingResources;
@@ -158,14 +161,14 @@ namespace FlexKit
         }
 
 
-		UpdateTask& update(UpdateDispatcher& dispatcher)
+		UpdateTask& updatePhase1(UpdateDispatcher& dispatcher)
 		{
 			struct _update
 			{
 
 			};
 
-			return dispatcher.Add<_update>(
+			auto& update = dispatcher.Add<_update>(
 				[&](auto& threadBuilder, _update& data)
 				{
 				},
@@ -173,7 +176,28 @@ namespace FlexKit
 				{
 				}
 			);
+
+            return update;
 		}
+
+
+        struct FetchTextureBlocks
+        {
+
+        };
+
+
+        FetchTextureBlocks& updatePhase2(UpdateTask& Phase1, UpdateDispatcher& dispatcher, FrameGraph& frameGraph)
+        {
+            return frameGraph.AddNode<FetchTextureBlocks>(
+                FetchTextureBlocks{},
+                [](auto& builder, FetchTextureBlocks& data)
+                {
+                },
+                [](const FetchTextureBlocks& data, const FrameResources& resources, Context* ctx)
+                {
+                });
+        }
 
 
 		StreamingTexture2DHandle CreateStreamingTexture()
@@ -192,6 +216,7 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
 
 	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
 	const PSOHandle GBUFFERPASS             = PSOHandle(GetTypeGUID(GBUFFERPASS));
@@ -297,8 +322,7 @@ namespace FlexKit
 		FrameResourceHandle		lightListObject;
 		FrameResourceHandle		lightBufferObject;
 
-
-		FlexKit::DescriptorHeap	descHeap;
+		DescriptorHeap	descHeap;
 	};
 
 
@@ -324,7 +348,7 @@ namespace FlexKit
             drawables{ IN_drawables } {}
 
         const PVS&          drawables;
-        ResourceHandle       depthPassTarget;
+        ResourceHandle      depthPassTarget;
         FrameResourceHandle depthBufferObject;
 
         CBPushBuffer passConstantsBuffer;
@@ -495,10 +519,15 @@ namespace FlexKit
         CameraHandle        camera;
     };
 
+
     struct TiledDeferredShade
     {
         GBuffer&                gbuffer;
         PointLightGatherTask&   lights;
+        UploadSegment			lightBuffer;	// immediate update
+
+        Vector<GPUPointLight>		    pointLights;
+        const Vector<PointLightHandle>* pointLightHandles;
 
         CBPushBuffer            passConstants;
         VBPushBuffer            passVertices;
@@ -510,6 +539,7 @@ namespace FlexKit
         FrameResourceHandle     TangentTargetObject;
         FrameResourceHandle     IOR_ANISOTargetObject;  // RGBA8
         FrameResourceHandle     depthBufferTargetObject;
+        FrameResourceHandle		lightBufferObject;
 
         FrameResourceHandle     renderTargetObject;
     };
@@ -523,14 +553,14 @@ namespace FlexKit
 	public:
 		WorldRender(iAllocator* Memory, RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH) :
 
-			RS                  { RS_IN                                                             },
-			ConstantBuffer		{ RS.CreateConstantBuffer(64 * MEGABYTE, false)						},
-			OcclusionCulling	{ false																},
-			lightLists			{ RS.CreateUAVBufferResource(sizeof(uint32_t) * 108 * 192 * 1024)   },
-			pointLightBuffer	{ RS.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)          },
-			lightMap			{ RS.CreateUAVTextureResource(WH / 10, FORMAT_2D::R32G32_UINT)      },
-			streamingEngine		{ IN_streamingEngine											    },
-			lightMapWH			{ WH / 10                                                           }
+			renderSystem        { RS_IN                                                                                 },
+			constantBuffer		{ renderSystem.CreateConstantBuffer(64 * MEGABYTE, false)						        },
+			OcclusionCulling	{ false																                    },
+			lightLists			{ renderSystem.CreateUAVBufferResource(sizeof(uint32_t) * (WH / 10).Product() * 1024)   },
+			pointLightBuffer	{ renderSystem.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)                    },
+			lightMap			{ renderSystem.CreateUAVTextureResource(WH / 10, FORMAT_2D::R32G32_UINT)                },
+			streamingEngine		{ IN_streamingEngine											                        },
+			lightMapWH			{ WH / 10                                                                               }
 		{
 			RS_IN.RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,			});
 			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO	});
@@ -548,25 +578,24 @@ namespace FlexKit
             RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
             RS_IN.QueuePSOLoad(SHADINGPASS);
 
-            RS.SetDebugName(lightLists,        "lightLists");
-            RS.SetDebugName(pointLightBuffer,  "pointLightBuffer");
-            RS.SetDebugName(lightMap,          "lightMap");
+            RS_IN.SetDebugName(lightLists,        "lightLists");
+            RS_IN.SetDebugName(pointLightBuffer,  "pointLightBuffer");
+            RS_IN.SetDebugName(lightMap,          "lightMap");
 		}
 
 
 		~WorldRender()
 		{
-			RS.ReleaseCB(ConstantBuffer);
-			RS.ReleaseUAV(lightMap);
-			RS.ReleaseUAV(lightLists);
-            RS.ReleaseUAV(pointLightBuffer);
-
-
+            Release();
 		}
 
 
-        void Begin(FrameGraph& frameGraph)
+        void Release()
         {
+            renderSystem.ReleaseCB(constantBuffer);
+            renderSystem.ReleaseUAV(lightMap);
+            renderSystem.ReleaseUAV(lightLists);
+            renderSystem.ReleaseUAV(pointLightBuffer);
         }
 
 
@@ -597,7 +626,7 @@ namespace FlexKit
                 const WorldRender_Targets&  Target,
                 const SceneDescription&     desc,
                 const float                 t,
-                ResourceHandle               environmentMap,
+                ResourceHandle              environmentMap,
                 iAllocator*                 allocator);
 
 
@@ -614,42 +643,46 @@ namespace FlexKit
         BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
             UpdateDispatcher&       dispatcher,
             FrameGraph&             frameGraph,
+            const SceneDescription& sceneDescription,
             const CameraHandle      camera,
-            const ResourceHandle     renderTarget,
-            const ResourceHandle     depthTarget,
-            const ResourceHandle     hdrMap,
+            const ResourceHandle    renderTarget,
+            const ResourceHandle    depthTarget,
+            const ResourceHandle    hdrMap,
             GBuffer&                gbuffer,
             VertexBufferHandle      vertexBuffer,
+            const float             t,
             iAllocator*             tempMemory);
 
 
         GBufferPass&        RenderPBR_GBufferPass(
-            UpdateDispatcher&   dispatcher,
-            FrameGraph&         frameGraph,
-            const CameraHandle  camera,
-            GatherTask&         pvs,
-            GBuffer&            gbuffer,
-            ResourceHandle       depthTarget,
-            iAllocator*         allocator);
+            UpdateDispatcher&       dispatcher,
+            FrameGraph&             frameGraph,
+            const SceneDescription& sceneDescription,
+            const CameraHandle      camera,
+            GatherTask&             pvs,
+            GBuffer&                gbuffer,
+            ResourceHandle          depthTarget,
+            iAllocator*             allocator);
 
 
         TiledDeferredShade& RenderPBR_DeferredShade(
             UpdateDispatcher&       dispatcher,
             FrameGraph&             frameGraph,
+            const SceneDescription& sceneDescription,
             const CameraHandle      camera,
             PointLightGatherTask&   gather,
             GBuffer&                gbuffer,
-            ResourceHandle           depthTarget,
-            ResourceHandle           renderTarget,
-            ResourceHandle           environmentMap,
+            ResourceHandle          depthTarget,
+            ResourceHandle          renderTarget,
+            ResourceHandle          environmentMap,
             VertexBufferHandle      vertexBuffer,
             float                   t,
             iAllocator*             allocator);
 
 
 	private:
-		RenderSystem&			RS;
-        ConstantBufferHandle	ConstantBuffer;
+		RenderSystem&			renderSystem;
+        ConstantBufferHandle	constantBuffer;
 		//QueryHandle			OcclusionQueries;
 		//ResourceHandle			OcclusionBuffer;
 
@@ -663,12 +696,6 @@ namespace FlexKit
 
 		TextureStreamingEngine&	streamingEngine;
 		bool                    OcclusionCulling;
-
-		// GBuffer
-		//RenderTargetHandle		Albedo;
-		//RenderTargetHandle		Color;
-		//RenderTargetHandle		Normal;
-		//RenderTargetHandle		Depth;
 	};
 
 

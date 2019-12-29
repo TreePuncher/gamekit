@@ -65,7 +65,7 @@ public:
 	void Draw			(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
 	void PostDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph&) final override;
 
-	void EventHandler	(Event evt) final override;
+	bool EventHandler	(Event evt) final override;
 
 	size_t					refreshCounter;
 	Vector<PacketHandler*>	packetHandlers;
@@ -188,10 +188,12 @@ public:
         network.PushHandler(waiting);
 
 		auto& gameState     = framework.PushState<GameState>(base);
+        /*
         auto& localState    =
             framework.PushState
                 <GameLoadSceneState<decltype(OnCompletion),decltype(OnUpdate)>>
                 (base, gameState.scene, "MultiplayerTestLevel", OnCompletion, OnUpdate);
+                */
 	}
 
 

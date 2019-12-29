@@ -78,11 +78,11 @@ namespace FlexKit
 	typedef FlexKit::Pair<DDSTexture2D*, bool> DDSTexture2DLoad_RES;
 	typedef FlexKit::Pair<DDSTexture3D*, bool> DDSTexture3DLoad_RES;
 
-	FLEXKITAPI DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS);
+	FLEXKITAPI DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(const char* File, iAllocator* In, RenderSystem* RS, UploadQueueHandle);
 	FLEXKITAPI DDSTexture3DLoad_RES LoadDDSTexture3DFromFile();
 
 	typedef FlexKit::Pair<ResourceHandle, bool> LoadDDSTexture2DFromFile_RES;
-	FLEXKITAPI	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS);
+	FLEXKITAPI	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS, UploadQueueHandle);
 
 	FLEXKITAPI Texture2D LoadDDSIntoResource();
 }

@@ -15,8 +15,7 @@ GameState::GameState(
         
                 frameID			{ 0										},
                 base			{ IN_base								},
-                scene			{ IN_framework.core.GetBlockMemory()	}
-{}
+                scene			{ IN_framework.core.GetBlockMemory()	} {}
 
 
 /************************************************************************************************/
@@ -128,7 +127,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework.MouseState, dT);
     auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
     auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
-    auto& textureStreams	= base.streamingEngine.update(dispatcher);
     auto& pointLightGather  = scene.GetPointLights(dispatcher, core.GetTempMemory());
 
     WorldRender_Targets targets = {
@@ -154,15 +152,13 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
     ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
 
-    base.render.Begin(frameGraph);
-
     switch(renderMode)
     {
     case RenderMode::ForwardPlus:
     {
         auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
         auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-        //auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.hdrMap, base.vertexBuffer, core.GetTempMemory());
+        auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.hdrMap, base.vertexBuffer, core.GetTempMemory());
         auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.hdrMap, core.GetTempMemory());
     }   break;
 
@@ -170,9 +166,9 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     {
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
-        base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
-        base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.depthBuffer, base.hdrMap, base.gbuffer, base.vertexBuffer, core.GetTempMemory());
-        base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
+        base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, sceneDesc, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
+        base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, sceneDesc, activeCamera, targets.RenderTarget, base.depthBuffer, base.hdrMap, base.gbuffer, base.vertexBuffer, base.t, core.GetTempMemory());
+        base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
     }   break;
     }
     // Draw Skeleton overlay
@@ -209,6 +205,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             core.GetTempMemory(),
             SSLineShape{ lines });
     }
+
+    framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
 }
 
 
@@ -217,6 +215,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
+    framework.DrawDebugHUD(dT, base.textBuffer, frameGraph);
     PresentBackBuffer(frameGraph, &core.Window);
 }
 
@@ -224,9 +223,9 @@ void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispat
 /************************************************************************************************/
 
 
-void LocalPlayerState::EventHandler(Event evt)
+bool LocalPlayerState::EventHandler(Event evt)
 {
-    eventMap.Handle(evt, [&](auto& evt)
+    bool handled = eventMap.Handle(evt, [&](auto& evt)
         {
             debugCamera.HandleEvent(evt);
         });
@@ -247,7 +246,7 @@ void LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
                     framework.core.RenderSystem.QueuePSOLoad(ENVIRONMENTPASS);
                 }
-            }   break;
+            }   return true;
             case KC_P: // Reload Shaders
             {
                 if (evt.Action == Event::Release)
@@ -257,10 +256,14 @@ void LocalPlayerState::EventHandler(Event evt)
                     else
                         renderMode = RenderMode::Deferred;
                 }
-            }   break;
+            }   return true;
+            default:
+                return handled;
             }
         }   break;
     }
+
+    return handled;
 }
 
 

@@ -71,7 +71,7 @@ namespace FlexKit
         SkeletonHandle Create(Skeleton* skeleton_ptr)
         {
             auto handle = handles.GetNewHandle();
-            handles[handle] = skeletons.push_back({ skeleton_ptr });
+            handles[handle] = (uint32_t)skeletons.push_back({ skeleton_ptr });
 
             return handle;
         }

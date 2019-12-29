@@ -222,8 +222,7 @@ namespace FlexKit
 	
 	void FrameGraph::UpdateFrameGraph(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp)
 	{
-		RS->SubmitUploadQueues();
-		RS->BeginSubmission(Window);
+		RS->BeginSubmission();
 	}
 
 

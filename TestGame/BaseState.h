@@ -193,18 +193,6 @@ public:
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
 		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
-
-        auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 5, IN_Framework.core.GetTempMemory());
-
-        hdrMap = MoveTextureBuffersToVRAM(
-            framework.core.RenderSystem,
-            HDRStack.begin(),
-            HDRStack.size(),
-            framework.core.GetTempMemory(),
-            FORMAT_2D::R32G32B32A32_FLOAT);
-
-
-        RS.SetDebugName(hdrMap, "HDR Map");
 	}
 
 

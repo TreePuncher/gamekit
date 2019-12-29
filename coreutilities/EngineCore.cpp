@@ -127,8 +127,6 @@ namespace FlexKit
 
 	void EngineCore::Release()
 	{
-		RenderSystem.ShutDownUploadQueues();
-
 		FlexKit::Release(&Window);
 
 		for (auto Arg : CmdArguments)

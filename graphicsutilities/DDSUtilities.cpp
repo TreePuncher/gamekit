@@ -872,6 +872,7 @@ namespace FlexKit
 
 	static HRESULT CreateD3DResources12(
 		RenderSystem* RS,
+        UploadQueueHandle handle,
 		uint32_t resDim,
 		size_t width,
 		size_t height,
@@ -930,8 +931,7 @@ namespace FlexKit
 				const UINT64	uploadBufferSize	= GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
 
 				ID3D12Resource* textureUploadHeap	= nullptr;
-				ID3D12GraphicsCommandList* cmdList	= RS->_GetCurrentUploadQueue().UploadList[0];
-				RS->_GetCurrentUploadQueue().UploadCount++;
+				ID3D12GraphicsCommandList* cmdList	= RS->_GetUploadCommandList(handle);
 
 
 				hr = RS->pDevice->CreateCommittedResource(
@@ -942,7 +942,7 @@ namespace FlexKit
 					nullptr,
 					IID_PPV_ARGS(&textureUploadHeap));
 
-				Push_DelayedRelease(RS, textureUploadHeap);
+				//Push_DelayedRelease(RS, textureUploadHeap);
 
 				SETDEBUGNAME(*texture,          "TEXTURE");
 				SETDEBUGNAME(textureUploadHeap, "textureUploadHeap");
@@ -959,19 +959,6 @@ namespace FlexKit
 
 					// Use Heap-allocating UpdateSubresources implementation for variable number of subresources (which is the case for textures).
 					UpdateSubresources(cmdList, *texture, textureUploadHeap, 0, 0, num2DSubresources, initData);
-
-					/*
-					SubResourceUpload_Desc Upload_Desc = {};
-					Upload_Desc.Data = initData;
-					Upload_Desc.SubResourceCount = 1;
-					Upload_Desc.SubResourceStart = 0;
-					Upload_Desc.RowCount = height;
-					Upload_Desc.RowSize = height * GetFormatElementSize(format);
-					Upload_Desc.WH = { width , height };
-					_UpdateSubResourceByUploadQueue(RS, *texture, &Upload_Desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-					*/
-					//cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(*texture,
-					//	D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 				}
 			}
 		} break;
@@ -1021,6 +1008,7 @@ namespace FlexKit
 
 	static HRESULT CreateTextureFromDDS12(
 		RenderSystem* RS,
+        UploadQueueHandle handle,
 		const DDS_HEADER* header,
 		const uint8_t* bitData,
 		size_t bitSize,
@@ -1198,6 +1186,7 @@ namespace FlexKit
 		if (SUCCEEDED(hr))
 			hr = CreateD3DResources12(
 				RS,
+                handle,
 				resDim, twidth, theight, tdepth,
 				mipCount - skipMip,
 				arraySize,
@@ -1219,6 +1208,7 @@ namespace FlexKit
 
 	bool CreateDDSTextureFromFile12(
 		RenderSystem*				RS,
+        UploadQueueHandle           handle,
 		const wchar_t*				szFileName,
 		ID3D12Resource**			texture,
 		size_t						maxsize,
@@ -1245,8 +1235,16 @@ namespace FlexKit
 		if (FAILED(hr))
 			return false;
 
-		hr = CreateTextureFromDDS12(RS, header,
-			bitData, bitSize, maxsize, false, texture, FormatOut);
+		hr = CreateTextureFromDDS12(
+            RS,
+            handle,
+            header,
+			bitData,
+            bitSize,
+            maxsize,
+            false,
+            texture,
+            FormatOut);
 
 		if(WH) *WH					= {header->width, header->height};
 		if (MIPLevels) *MIPLevels	=  header->mipMapCount;
@@ -1258,7 +1256,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(const char* File, iAllocator* Memory, RenderSystem* RS)
+	DDSTexture2DLoad_RES LoadDDSTexture2DFromFile(
+        const char*         File,
+        iAllocator*         Memory,
+        RenderSystem*       RS,
+        UploadQueueHandle   handle)
 	{
 		size_t NewSize = 0;
 		wchar_t	wstr[256];
@@ -1271,7 +1273,7 @@ namespace FlexKit
 		uint64_t		MipLevels;
 		DXGI_FORMAT		Format;
 
-		auto res = CreateDDSTextureFromFile12(RS, wstr, &Texture, 4096, &AlphaMode, &WH, &MipLevels, &Format);
+		auto res = CreateDDSTextureFromFile12(RS, handle, wstr, &Texture, 4096, &AlphaMode, &WH, &MipLevels, &Format);
 
 		DDSTexture2D* TextureOut = &Memory->allocate_aligned<DDSTexture2D, 0x10>();
 		TextureOut->Alpha		 = AlphaMode;
@@ -1285,7 +1287,11 @@ namespace FlexKit
 	}
 
 
-	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(const char* File, iAllocator* Memory, RenderSystem* RS)
+	LoadDDSTexture2DFromFile_RES LoadDDSTexture2DFromFile_2(
+        const char*         File,
+        iAllocator*         Memory,
+        RenderSystem*       RS,
+        UploadQueueHandle   handle)
 	{
 		size_t NewSize = 0;
 		wchar_t	wstr[256];
@@ -1298,7 +1304,7 @@ namespace FlexKit
 		uint64_t		MipLevels;
 		DXGI_FORMAT		Format;
 
-		auto res = CreateDDSTextureFromFile12(RS, wstr, &TextureResources, 4096, &AlphaMode, &WH, &MipLevels, &Format);
+		auto res = CreateDDSTextureFromFile12(RS, handle, wstr, &TextureResources, 4096, &AlphaMode, &WH, &MipLevels, &Format);
 
         ResourceHandle Texture = RS->CreateGPUResource(
             GPUResourceDesc::BuildFromMemory(

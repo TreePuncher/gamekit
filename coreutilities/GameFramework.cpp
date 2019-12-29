@@ -194,7 +194,7 @@ namespace FlexKit
 	void GameFramework::Initiate()
 	{
 		SetDebugMemory			(core.GetDebugMemory());
-		InitiateAssetTable	(core.GetBlockMemory());
+		InitiateAssetTable	    (core.GetBlockMemory());
 		InitiateGeometryTable	(core.GetBlockMemory());
 
 		clearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
@@ -240,8 +240,6 @@ namespace FlexKit
 		console.AddFunction({ "SetRenderMode", &SetDebugRenderMode, this, 1, { ConsoleVariableType::CONSOLE_UINT }});
 
 		AddLogCallback(&logMessagePipe, Verbosity_INFO);
-
-		core.RenderSystem.UploadResources();// Uploads fresh Resources to GPU
 	}
 
 
@@ -422,29 +420,30 @@ namespace FlexKit
 	bool GameFramework::DispatchEvent(const Event& evt)
 	{
         if (subStates.size() != 0)
-            subStates.back()->EventHandler(evt);
-
-		return true;
+            return subStates.back()->EventHandler(evt);
+        else
+		    return false;
 	}
 
 
 	/************************************************************************************************/
 
 
-	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, FrameGraph& graph)
+	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, FrameGraph& frameGraph)
 	{
-		uint32_t VRamUsage	= 0;//core.RenderSystem._GetVidMemUsage() / MEGABYTE;
+		uint32_t VRamUsage	= core.RenderSystem._GetVidMemUsage() / MEGABYTE;
 		char* TempBuffer	= (char*)core.GetTempMemory().malloc(512);
 		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 
 		sprintf_s(TempBuffer, 512, 
 			"Current VRam Usage: %u MB\n"
 			"FPS: %u\n"
-			"Draw Time: %fms\n"
+			"Update/Draw Dispatch Time: %fms\n"
 			"Objects Drawn: %u\n"
 			"Build Date: " __DATE__ "\n",
 			VRamUsage, 
-			(uint32_t)stats.fps, DrawTiming, 
+			(uint32_t)stats.fps,
+            DrawTiming, 
 			(uint32_t)stats.objectsDrawnLastFrame);
 
 
@@ -452,7 +451,7 @@ namespace FlexKit
 		Format.Scale = { 0.5f, 0.5f};
 		DrawSprite_Text(
 				TempBuffer, 
-				graph, 
+				frameGraph, 
 				*DefaultAssets.Font, 
 				textBuffer, 
 				core.Window.backBuffer, 
@@ -521,9 +520,7 @@ namespace FlexKit
 	{
 		auto& framework = *reinterpret_cast<GameFramework*>(_ptr);
 
-		auto itr = framework.subStates.rbegin();
-
-		if (framework.DispatchEvent(evt))
+		if (!framework.DispatchEvent(evt))
 		{
 			switch (evt.InputSource)
 			{

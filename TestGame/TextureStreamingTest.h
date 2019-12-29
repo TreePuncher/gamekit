@@ -1,6 +1,36 @@
+
+
+#ifndef TEXTURESTREAMINGTEST_H
+#define TEXTURESTREAMINGTEST_H
+
+#include "..\coreutilities\WorldRender.h"
+#include "..\coreutilities\GameFramework.h"
+#include "BaseState.h"
+
+
+class TextureStreamingTest final : FlexKit::FrameworkState
+{
+public:
+    TextureStreamingTest(FlexKit::GameFramework& IN_framework, BaseState& IN_base) :
+        FrameworkState  { IN_framework  },
+        base            { IN_base       },
+        readBackBuffer  { IN_framework.core.RenderSystem.CreateReadBackBuffer(2048) } {}
+
+    void Update         (EngineCore&, UpdateDispatcher&, double dT)             override;
+    void Draw           (EngineCore&, UpdateDispatcher&, double, FrameGraph&)   override;
+
+    void EventHandler   (Event evt) override;
+
+    ReadBackResourceHandle  readBackBuffer;
+    BaseState&              base;
+};
+
+
+#endif
+
 /**********************************************************************
-, 1080
-Copyright (c) 2015 - 2018 Robert May
+
+Copyright (c) 2015 - 2019 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -21,55 +51,3 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
-
-
-#ifndef FKAPPLICATION_H
-#define FKAPPLICATION_H
-
-#include "..\buildsettings.h"
-#include "..\coreutilities\AllSourceFiles.cpp"
-
-#include "EngineCore.h"
-#include "GameFramework.h"
-
-#include <Windows.h>
-#include <iostream>
-
-
-namespace FlexKit
-{
-    class FKApplication
-    {
-    public:
-        FKApplication(uint2 WindowResolution, EngineMemory* Memory);
-        ~FKApplication();
-
-        void PopState() noexcept
-        {
-            framework.PopState();
-        }
-
-        template<typename TY_STATE, typename ... TY_ARGS>
-        TY_STATE& PushState(TY_ARGS&& ... ARGS) noexcept
-        {
-            return framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
-        }
-
-        void Run();
-        void Release();
-
-        void PushArgument(const char* Str);
-
-        GameFramework&	GetFramework() { return framework; }
-
-    private:
-        EngineMemory*	Memory;
-        EngineCore		Core;
-        GameFramework	framework;
-    };
-
-}
-
-#include "Application.cpp"
-
-#endif

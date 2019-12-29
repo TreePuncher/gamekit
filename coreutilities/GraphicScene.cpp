@@ -114,7 +114,7 @@ namespace FlexKit
         auto [triMesh, loaded] = FindMesh(drawableComponent.resourceID);
 
         if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, drawableComponent.resourceID);
+            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), drawableComponent.resourceID);
 
         gameObject.AddView<DrawableView>(triMesh, node);
         SetBoundingSphereFromMesh(gameObject);
