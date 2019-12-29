@@ -50,31 +50,43 @@ int main(int argc, char* argv[])
         Playground,
     }   applicationMode = ApplicationMode::Playground;
 
-	std::string name;
-	std::string server;
+    std::string name;
+    std::string server;
 
-	FlexKit::InitLog(argc, argv);
-	FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
-	FlexKit::AddLogFile("GameState.log", FlexKit::Verbosity_INFO);
+    FlexKit::InitLog(argc, argv);
+    FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
+    FlexKit::AddLogFile("GameState.log", FlexKit::Verbosity_INFO);
 
 #ifdef _DEBUG
-	FlexKit::AddLogFile("GameState_Detailed.log", 
-		FlexKit::Verbosity_9, 
-		false);
+    FlexKit::AddLogFile("GameState_Detailed.log", 
+        FlexKit::Verbosity_9, 
+        false);
 #endif
 
-	FK_LOG_INFO("Logging initialized started.");
+    FK_LOG_INFO("Logging initialized started.");
 
-	auto* Memory = CreateEngineMemory();
-	EXITSCOPE(ReleaseEngineMemory(Memory));
+    auto* Memory = CreateEngineMemory();
+    EXITSCOPE(ReleaseEngineMemory(Memory));
 
-	FlexKit::FKApplication app{ uint2{ 1920, 1080 }, Memory };
+    uint2 WH = uint2{ 1920, 1080 } * 1.4;
 
     for (size_t I = 0; I < argc; ++I)
     {
         const char* TextureStreamingTestStr = "TextureStreamingTest";
 
-        if (!strncmp("-C", argv[I], 2))
+        if (!strncmp("-WH", argv[I], 2))
+        {
+            const auto X_str = argv[I + 1];
+            const auto Y_str = argv[I + 2];
+
+            const uint32_t X = atoi(X_str);
+            const uint32_t Y = atoi(Y_str);
+
+            WH = { X, Y };
+
+            I += 2;
+        }
+        else if (!strncmp("-C", argv[I], 2))
         {
             try
             {
@@ -106,12 +118,14 @@ int main(int argc, char* argv[])
         else if (!strncmp(TextureStreamingTestStr, argv[I], strlen(TextureStreamingTestStr))) // 
             applicationMode = ApplicationMode::TextureStreamingTestMode;
 
-        app.PushArgument(argv[I]);
+        //app.PushArgument(argv[I]);
     }
 
 
-	FK_LOG_INFO("Set initial PlayState state.");
-	auto& base = app.PushState<BaseState>(app);
+    FlexKit::FKApplication app{ WH, Memory };
+
+    FK_LOG_INFO("Set initial PlayState state.");
+    auto& base = app.PushState<BaseState>(app);
 
     switch (applicationMode)
     {
@@ -135,8 +149,7 @@ int main(int argc, char* argv[])
 
             auto& gameState = app.PushState<GameState>(base);
 
-            auto& completed = app.GetFramework().core.GetBlockMemory().allocate_aligned<bool>();
-            completed = false;
+            auto& completed = app.GetFramework().core.GetBlockMemory().allocate_aligned<bool>(false);
 
             auto Task =
                 [&]()
@@ -147,7 +160,7 @@ int main(int argc, char* argv[])
                     auto& renderSystem          = framework.GetRenderSystem();
                     UploadQueueHandle upload    = renderSystem.GetUploadQueue();
 
-                    auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 5, allocator);
+                    auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 8, allocator);
 
                     base.hdrMap = MoveTextureBuffersToVRAM(
                         renderSystem,
@@ -193,13 +206,13 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-	FK_LOG_INFO("Running application...");
-	app.Run();
-	FK_LOG_INFO("Completed running application");
+    FK_LOG_INFO("Running application...");
+    app.Run();
+    FK_LOG_INFO("Completed running application");
 
-	FK_LOG_INFO("Started cleanup...");
-	app.Release();
-	FK_LOG_INFO("Completed cleanup.");
+    FK_LOG_INFO("Started cleanup...");
+    app.Release();
+    FK_LOG_INFO("Completed cleanup.");
 
-	return 0;
+    return 0;
 }

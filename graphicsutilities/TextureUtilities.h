@@ -88,6 +88,13 @@ namespace FlexKit
             Size		{ IN_WH.Product() * IN_elementSize								} {}
 
 
+        TextureBuffer(uint2 IN_WH, size_t IN_elementSize, size_t BufferSize, iAllocator* IN_Memory) : 
+            Buffer		{ (byte*)IN_Memory->malloc(BufferSize)	                        },
+            WH			{ IN_WH															},
+            ElementSize	{ IN_elementSize												},
+            Memory		{ IN_Memory														},
+            Size		{ BufferSize                                                    } {}
+
         TextureBuffer(uint2 IN_WH, byte* buffer, size_t IN_elementSize) :
             Buffer		{ buffer },
             WH			{ IN_WH															},
@@ -202,25 +209,77 @@ namespace FlexKit
     template<typename TY>
     struct TextureBufferView
     {
-        TextureBufferView(TextureBuffer& Buffer) : Texture(Buffer) {}
+        TextureBufferView(TextureBuffer& Buffer) :
+            Texture     { Buffer                    },
+            rowPitch    { Buffer.WH[0] * sizeof(TY) } {}
+
+        TextureBufferView(TextureBuffer& Buffer, const size_t IN_rowPitch) :
+            Texture     { Buffer        },
+            rowPitch    { IN_rowPitch   } {}
 
         TY& operator [](uint2 XY)
         {
-            TY* buffer = (TY*)Texture.Buffer;
-            return buffer[Texture.WH[0] * XY[1] + XY[0]];
+            byte* row = Texture.Buffer + rowPitch * XY[1];
+            return ((TY*)row)[XY[0]];
         }
 
         TY operator [](uint2 XY) const
         {
-            TY* buffer = (TY*)Texture.Buffer;
-            return buffer[Texture.WH[0] * XY[1] + XY[0]];
+            byte* row = Texture.Buffer + rowPitch * XY[1];
+            return ((TY*)row)[XY[0]];
         }
 
-        operator byte* () { return Texture.Buffer;  }
+        operator byte* ()   { return Texture.Buffer;    }
+        size_t BufferSize() { return Texture.Size;      }
 
-        size_t BufferSize() { return Texture.Size;  }
+        const TextureBuffer& Texture;
+        const size_t rowPitch;
+    };
 
-        TextureBuffer& Texture;
+
+    /************************************************************************************************/
+
+
+    struct WRAP_DIMENSIONS 
+    {
+        template<typename TY_SampleUnit>
+        static uint2 Map(uint2 cordinate, uint2 window)
+        {
+            FK_ASSERT(0);
+            return { 0, 0 };   
+        }
+    };
+
+    struct STRETCH_DIMENSIONS
+    {
+        template<typename TY_SampleUnit>
+        static uint2 Map(uint2 cordinate, uint2 window)
+        {
+            FK_ASSERT(0);
+            return { 0, 0 };   
+        }
+    };
+
+    template<typename TY_SampleType = float3, typename TY_EDGEHANDLER = WRAP_DIMENSIONS, size_t BLURSIZE = 3>
+    class BlurredTextureSampler
+    {
+        BlurredTextureSampler(uint2 IN_sampleWindow) : 
+            sampleWindow{ IN_sampleWindow }{}
+
+        template<typename TY_BufferView>
+        TY_SampleType operator() (const TY_BufferView& view, const float2 UV)
+        {
+            float           blurKernel[BLURSIZE] = {0.2, 0.2, 0.2, 0.2, 0.2};
+            TY_SampleType   sample = { 0 };
+
+            for(size_t Y = 0; Y < 5; Y++)
+                for(size_t X = 0; X < 5; X++)
+                    samples += blurKernel[X] * blurKernel[Y] * view[TY_EDGEHANDLER::MAP({X, Y}, sampleWindow)];
+
+            return sample;
+        }
+
+        const uint2 sampleWindow;
     };
 
 
@@ -260,13 +319,14 @@ namespace FlexKit
         return { minY, maxY };
     };
 
-    template<typename TY_sample = Vect<4, uint8_t>>
-    auto AverageSampler (
-        TY_sample Sample1, 
-        TY_sample Sample2, 
-        TY_sample Sample3, 
-        TY_sample Sample4) noexcept
+    template<typename TY_VIEW = TextureBufferView<Vect<4, uint8_t>>>
+    auto AverageSampler (TY_VIEW& view, uint2 xy) noexcept
     {
+        auto Sample1 = view[xy + uint2{ 0, 0 }];
+        auto Sample2 = view[xy + uint2{ 0, 1 }];
+        auto Sample3 = view[xy + uint2{ 1, 0 }];
+        auto Sample4 = view[xy + uint2{ 1, 1 }];
+
         return (
             Sample1 +
             Sample2 +
@@ -288,13 +348,21 @@ namespace FlexKit
     template<typename TY_FORMAT = Vect<4, uint8_t>, typename FN_Sampler = decltype(AverageSampler<>)>
     TextureBuffer BuildMipMap(TextureBuffer& sourceMap, iAllocator* memory, FN_Sampler sampler = AverageSampler<>)
     {
-        auto                    NewWH     = sourceMap.WH / 2;
-        TextureBuffer		    NewMIP	  = TextureBuffer(NewWH, sizeof(TY_FORMAT), memory );
-        TextureBufferView	    DestiView = TextureBufferView<TY_FORMAT>(NewMIP);
+        const size_t    elementSize = sizeof(TY_FORMAT);
+        const uint2     WH          = sourceMap.WH / 2;
+
+        auto GetRowPitch = [&]
+        {
+            const auto offset = WH[0] * sizeof(TY_FORMAT) % 256;
+
+            return (offset == 0) ? WH[0] * elementSize : WH[0] * elementSize + (256 - offset);
+        };
+
+        size_t                  RowPitch  = GetRowPitch();
+        TextureBuffer		    NewMIP	  = TextureBuffer(WH, sizeof(TY_FORMAT), WH[1] * RowPitch , memory );
+        TextureBufferView	    DestiView = TextureBufferView<TY_FORMAT>(NewMIP, RowPitch);
         const TextureBufferView	InputView = TextureBufferView<TY_FORMAT>(sourceMap);
 
-
-        const auto WH = NewMIP.WH;
         for (uint32_t Y = 0; Y < WH[1]; Y++)
         {
             for (uint32_t X = 0; X < WH[0]; X++)
@@ -302,11 +370,7 @@ namespace FlexKit
                 const uint2 in_Cord   = { X * 2, Y * 2 };
                 const uint2 out_Cord  = { X, Y };
 
-                DestiView[out_Cord] = sampler(
-                    InputView[in_Cord + uint2{ 0, 0 }],
-                    InputView[in_Cord + uint2{ 0, 1 }],
-                    InputView[in_Cord + uint2{ 1, 0 }],
-                    InputView[in_Cord + uint2{ 1, 1 }]);
+                DestiView[out_Cord] = AverageSampler(InputView, in_Cord);
             }
         }
 

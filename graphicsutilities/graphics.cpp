@@ -4286,12 +4286,16 @@ namespace FlexKit
                 (char*)Desc->buffers[I].Buffer,
                 Desc->buffers[I].Size);
 
-            const auto WH = Desc->buffers[I].WH;
+            const auto WH                   = Desc->buffers[I].WH;
+            size_t rowPitch                 = formatSize * WH[0];
+            const size_t alignmentOffset    = (rowPitch % 256);
+
+            rowPitch += alignmentOffset == 0 ? 0 : 256 - alignmentOffset;
 
             D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
             SubRegion.Footprint.Depth    = 1;
             SubRegion.Footprint.Format   = format;
-            SubRegion.Footprint.RowPitch = formatSize * WH[0];
+            SubRegion.Footprint.RowPitch = rowPitch;
             SubRegion.Footprint.Width    = WH[0];
             SubRegion.Footprint.Height   = WH[1];
             SubRegion.Offset             = Offset;

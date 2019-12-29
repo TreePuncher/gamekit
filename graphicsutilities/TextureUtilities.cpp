@@ -214,7 +214,7 @@ namespace FlexKit
             sizeof(RGBA),
             scratchSpace);
 
-        auto view = TextureBufferView<RGBA>(MIPChain.back());
+        auto view = TextureBufferView<float4>(MIPChain.back());
         RGB* rgb = (RGB*)res;
 
         for (int y = 0; y < height; y++) {
@@ -227,7 +227,9 @@ namespace FlexKit
         }
 
         for (size_t I = 0; I < MIPCount; I++)
-            MIPChain.emplace_back(BuildMipMap<float4>(MIPChain.back(), scratchSpace, AverageSampler<float4>));
+            MIPChain.emplace_back(
+                BuildMipMap<float4>(
+                    MIPChain.back(), scratchSpace, AverageSampler<decltype(view)>));
 
         free(res);
 
