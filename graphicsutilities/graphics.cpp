@@ -2592,7 +2592,7 @@ namespace FlexKit
             AddTempBuffer(CopyEngine.TempBuffer, RS);
             CopyEngine.TempBuffer->Unmap(0, 0);
 
-            //Push_DelayedRelease(RS, CopyEngine.TempBuffer);
+            Push_DelayedRelease(RS, CopyEngine.TempBuffer);
 
             size_t NewBufferSize = CopyEngine.Size;
             while (NewBufferSize < Size + alignment)
@@ -3001,6 +3001,10 @@ namespace FlexKit
         if (!Memory)
             return;
 
+
+        for (size_t I = 0; I < 3; I++)
+            WaitforGPU();
+
         FK_LOG_INFO("Releasing RenderSystem");
 
         while (FreeList.size())
@@ -3114,6 +3118,21 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void RenderSystem::FlushPending()
+    {
+        for (auto& syncPoint : Syncs)
+            Uploads.Wait(syncPoint.queue);
+
+        for (size_t I = 0; I < 6; I++) {
+            WaitforGPU();
+            _IncrementRSIndex();
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
     void RenderSystem::WaitforGPU()
     {
         size_t Index			= CurrentIndex;
@@ -3124,7 +3143,6 @@ namespace FlexKit
             Fence->SetEventOnCompletion(Fences[Index].FenceValue, eventHandle);
             WaitForSingleObject(eventHandle, INFINITE);
             CloseHandle(eventHandle);
-            ReleaseTempResources();
         }
     }
 

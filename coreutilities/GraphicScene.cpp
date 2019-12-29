@@ -161,14 +161,11 @@ namespace FlexKit
 		Apply(go, 
 		[&, allocator = this->allocator](SceneVisibilityView& vis) 
 		{
-			//sceneManagement.RemoveEntity(*vis);
+			const auto handle = vis.visibility;
 			go.RemoveView(vis);
 
-			auto handle = vis.visibility;
 			sceneEntities.remove_unstable(
 				find(sceneEntities, [&](auto i) { return i == handle; }));
-
-			allocator->release(&vis);
 		},	[] { });
 	}
 
