@@ -1913,6 +1913,21 @@ namespace FlexKit
 	}
 
 
+    inline float3 operator * (const float3x3& LHS, const float3 rhs)
+    {// TODO: FAST PATH
+        Vect<3, float> out;
+        Vect3 Temp = rhs;
+
+        auto T = LHS.Transpose();
+        for (size_t i = 0; i < 4; ++i)
+        {
+            const auto v = T[i];
+            out[i] = v.Dot(Temp);
+        }
+
+        return Conversion::Vect3To<float3>(out);
+    }
+
 	/************************************************************************************************/
 
 

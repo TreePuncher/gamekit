@@ -1013,8 +1013,7 @@ namespace FlexKit
 
 		Drawable::VConstantsLayout	Constants;
 
-		Constants.MP.Albedo = MatProperties.Albedo;
-		Constants.MP.Spec	= MatProperties.Spec;
+		Constants.MP        = MatProperties;
 		Constants.Transform = DirectX::XMMatrixTranspose(WT);
 
 		return Constants;

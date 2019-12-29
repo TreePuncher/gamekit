@@ -88,6 +88,11 @@ namespace FlexKit
 			return GetComponent()[drawable].MeshHandle;
 		}
 
+        Drawable& GetDrawable()
+        {
+            return GetComponent()[drawable];
+        }
+
 		operator Drawable& ()
 		{
 			return GetComponent()[drawable];
@@ -118,6 +123,23 @@ namespace FlexKit
 			});
 	}
 
+
+    /************************************************************************************************/
+
+
+    void SetMaterialParams(GameObject& go, float3 albedo, float kS, float IOR, float anisotropic, float roughness, float metallic)
+    {
+        return Apply(go,
+            [&](DrawableView& drawable)
+            {
+                drawable.GetDrawable().MatProperties.albedo         = albedo;
+                drawable.GetDrawable().MatProperties.kS             = kS;
+                drawable.GetDrawable().MatProperties.IOR            = IOR;
+                drawable.GetDrawable().MatProperties.anisotropic    = anisotropic;
+                drawable.GetDrawable().MatProperties.roughness      = roughness;
+                drawable.GetDrawable().MatProperties.metallic       = metallic;
+            });
+    }
 
 	/************************************************************************************************/
 

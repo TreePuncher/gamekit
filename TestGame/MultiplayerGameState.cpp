@@ -168,7 +168,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         ClearGBuffer(base.gbuffer, frameGraph);
         base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, sceneDesc, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
         base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, sceneDesc, activeCamera, targets.RenderTarget, base.depthBuffer, base.hdrMap, base.gbuffer, base.vertexBuffer, base.t, core.GetTempMemory());
-        base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
+        //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
     }   break;
     }
     // Draw Skeleton overlay
