@@ -119,21 +119,13 @@ namespace FlexKit
 
 		struct MaterialProperties
 		{
-			MaterialProperties(float4 a, float4 m) : Albedo(a), Spec(m)
-			{
-				Albedo.w = min(a.w, 1.0f);
-				Spec.w	 = min(m.w, 1.0f);
-			}
-
-			MaterialProperties() : Albedo(1.0, 1.0f, 1.0f, 0.5f), Spec(1, 1, 1, 1) {}
-
-			float4		Albedo;		// Term 4 is Roughness
-			float4		Spec;		// Metal Is first 4, Specular is rgb
+            float3  albedo      = float3{1.0f, 1.0f, 1.0f};
+            float   kS          = 0.5f;
+            float   IOR         = 1.0f;
+            float   anisotropic = 0.0f;
+            float   roughness   = 0.5f;
+            float   metallic    = 0.0f;
 		}MatProperties;	// 32 
-
-		Drawable&	SetAlbedo(float4 RGBA)		{ MatProperties.Albedo	= RGBA; return *this; }
-		Drawable&	SetSpecular(float4 RGBA)	{ MatProperties.Spec	= RGBA; return *this; }
-		Drawable&	SetNode(NodeHandle H)		{ Node					= H;	return *this; }
 
 		struct VConstantsLayout
 		{

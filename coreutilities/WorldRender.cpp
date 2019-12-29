@@ -227,12 +227,11 @@ namespace FlexKit
             PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
             PSO_Desc.SampleMask            = UINT_MAX;
             PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-            PSO_Desc.NumRenderTargets      = 5;
+            PSO_Desc.NumRenderTargets      = 4;
             PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo
-            PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Specular
+            PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Specular
             PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Normal
             PSO_Desc.RTVFormats[3]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Tangent
-            PSO_Desc.RTVFormats[4]         = DXGI_FORMAT_R16G16_FLOAT; // IOR_ANISO
             PSO_Desc.SampleDesc.Count      = 1;
             PSO_Desc.SampleDesc.Quality    = 0;
             PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -677,8 +676,7 @@ namespace FlexKit
                 data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.Albedo);
                 data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.Normal);
                 data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.Tangent);
-                data.SpecularTargetObject       = builder.ReadShaderResource(gbuffer.Specular);
-                data.IOR_ANISOTargetObject      = builder.ReadShaderResource(gbuffer.IOR_ANISO);
+                data.MRIATargetObject           = builder.ReadShaderResource(gbuffer.MRIA);
                 data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
 
                 data.passConstants  = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
@@ -719,12 +717,13 @@ namespace FlexKit
                 }passConstants = { float2(WH[0], WH[1]), t };
 
                 data.descHeap.SetSRV(renderSystem, 0, frameResources.GetTexture(data.AlbedoTargetObject));
-                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.SpecularTargetObject));
+                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.MRIATargetObject));
                 data.descHeap.SetSRV(renderSystem, 2, frameResources.GetTexture(data.NormalTargetObject));
                 data.descHeap.SetSRV(renderSystem, 3, frameResources.GetTexture(data.TangentTargetObject));
-                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.IOR_ANISOTargetObject));
-                data.descHeap.SetSRV(renderSystem, 5, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                data.descHeap.SetSRV(renderSystem, 5, data.HDRMap);
                 data.descHeap.SetSRV(renderSystem, 6, data.HDRMap);
+                data.descHeap.SetSRV(renderSystem, 7, data.HDRMap);
 
                 ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
                 ctx->SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
@@ -965,9 +964,8 @@ namespace FlexKit
                 builder.AddDataDependency(sceneDescription.PVS);
 
                 data.AlbedoTargetObject      = builder.WriteRenderTarget(gbuffer.Albedo);
-                data.IOR_ANISOTargetObject   = builder.WriteRenderTarget(gbuffer.IOR_ANISO);
+                data.MRIATargetObject        = builder.WriteRenderTarget(gbuffer.MRIA);
                 data.NormalTargetObject      = builder.WriteRenderTarget(gbuffer.Normal);
-                data.SpecularTargetObject    = builder.WriteRenderTarget(gbuffer.Specular);
                 data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.Tangent);
                 data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
 
@@ -991,18 +989,16 @@ namespace FlexKit
                 ctx->SetScissorAndViewports(
                     std::tuple{
                         data.gbuffer.Albedo,
-                        data.gbuffer.IOR_ANISO,
+                        data.gbuffer.MRIA,
                         data.gbuffer.Normal,
-                        data.gbuffer.Specular,
                         data.gbuffer.Tangent
                     });
 
                 RenderTargetList renderTargets = {
                     frameResources.GetRenderTargetObject(data.AlbedoTargetObject),
-                    frameResources.GetRenderTargetObject(data.SpecularTargetObject),
+                    frameResources.GetRenderTargetObject(data.MRIATargetObject),
                     frameResources.GetRenderTargetObject(data.NormalTargetObject),
                     frameResources.GetRenderTargetObject(data.TangentTargetObject),
-                    frameResources.GetRenderTargetObject(data.IOR_ANISOTargetObject),
                 };
 
                 ctx->SetGraphicsDescriptorTable(0, data.Heap);
@@ -1089,8 +1085,7 @@ namespace FlexKit
                 data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.Albedo);
                 data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.Normal);
                 data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.Tangent);
-                data.SpecularTargetObject       = builder.ReadShaderResource(gbuffer.Specular);
-                data.IOR_ANISOTargetObject      = builder.ReadShaderResource(gbuffer.IOR_ANISO);
+                data.MRIATargetObject           = builder.ReadShaderResource(gbuffer.MRIA);
                 data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
                 data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
 
@@ -1162,13 +1157,12 @@ namespace FlexKit
                 ctx->SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 
                 data.descHeap.SetSRV(renderSystem, 0, frameResources.GetTexture(data.AlbedoTargetObject));
-                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.SpecularTargetObject));
+                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.MRIATargetObject));
                 data.descHeap.SetSRV(renderSystem, 2, frameResources.GetTexture(data.NormalTargetObject));
                 data.descHeap.SetSRV(renderSystem, 3, frameResources.GetTexture(data.TangentTargetObject));
-                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.IOR_ANISOTargetObject));
-                data.descHeap.SetSRV(renderSystem, 5, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
-                data.descHeap.SetSRV(renderSystem, 6, environmentMap);
-                data.descHeap.SetSRV(renderSystem, 7, frameResources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx));
+                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                data.descHeap.SetSRV(renderSystem, 5, environmentMap);
+                data.descHeap.SetSRV(renderSystem, 6, frameResources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx));
 
                 ctx->Draw(6);
             });

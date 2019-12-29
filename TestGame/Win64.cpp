@@ -40,6 +40,48 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <iostream>
 
 
+void SetupTestScene(FlexKit::GraphicScene& scene, RenderSystem& renderSystem, iAllocator* allocator)
+{
+    const AssetHandle sphere    = 4967718927826386829;
+
+    float3x3 m;
+    m[0] = { 0, 0, 0 };
+    m[1] = { 0, 0, 0 };
+    m[2] = { 0, 0, 0 };
+    m[3] = { 0, 0, 0 };
+
+    auto [triMesh, loaded] = FindMesh(sphere);
+
+    if (!loaded)
+        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), sphere);
+
+	static const size_t N = 10;
+
+    for (size_t Y = 0; Y < N; ++Y)
+    {
+        for (size_t X = 0; X < N; ++X)
+        {
+			float roughness = ((float)X + 0.5f) / (float)N;
+			float anisotropic = 0.0f;//((float)Y + 0.5f) / (float)N;
+			float kS = ((float)Y + 0.5f) / (float)N;
+
+            auto& gameObject = allocator->allocate<GameObject>();
+            auto node = FlexKit::GetNewNode();
+
+            gameObject.AddView<DrawableView>(triMesh, node);
+
+			SetMaterialParams(gameObject, float3(1.0f, 1.0f, 1.0f), kS, 1.0f, roughness, anisotropic, 0.0f);
+
+			float W = (float)N * 1.5f;
+            FlexKit::SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ W * 0.5f, 0, W * 0.5f });
+
+            scene.AddGameObject(gameObject, node);
+        }
+    }
+
+}
+
+
 int main(int argc, char* argv[])
 {
     enum class ApplicationMode
@@ -160,7 +202,7 @@ int main(int argc, char* argv[])
                     auto& renderSystem          = framework.GetRenderSystem();
                     UploadQueueHandle upload    = renderSystem.GetUploadQueue();
 
-                    auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 8, allocator);
+                    auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 6, allocator);
 
                     base.hdrMap = MoveTextureBuffersToVRAM(
                         renderSystem,
@@ -179,7 +221,10 @@ int main(int argc, char* argv[])
             auto& workItem = CreateLambdaWork(Task, app.GetFramework().core.GetBlockMemory());
             app.GetFramework().core.Threads.AddWork(workItem);
 
-            LoadScene(app.GetFramework().core, gameState.scene, 10000);
+			// Setup test scene
+			SetupTestScene(gameState.scene, app.GetFramework().GetRenderSystem(), app.GetFramework().core.GetBlockMemory());
+
+            //LoadScene(app.GetFramework().core, gameState.scene, 10000);
 
             auto OnLoadUpdate =
                 [&](EngineCore& core, UpdateDispatcher& dispatcher, double dT)

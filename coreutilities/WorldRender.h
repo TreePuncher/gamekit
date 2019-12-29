@@ -406,32 +406,28 @@ namespace FlexKit
         GBuffer(const uint2 WH, RenderSystem& RS_IN) :
             RS          { RS_IN },
             Albedo      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
-            Specular    { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
+            MRIA        { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
             Normal      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
-            Tangent     { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
-            IOR_ANISO   { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16_FLOAT)) }
+            Tangent     { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) }
         {
             RS.SetDebugName(Albedo,     "Albedo");
-            RS.SetDebugName(Specular,   "Specular");
+            RS.SetDebugName(MRIA,       "MRIA");
             RS.SetDebugName(Normal,     "Normal");
             RS.SetDebugName(Tangent,    "Tangent");
-            RS.SetDebugName(IOR_ANISO,  "IOR_ANISO");
         }
 
         ~GBuffer()
         {
             RS.ReleaseTexture(Albedo);
-            RS.ReleaseTexture(Specular);
+            RS.ReleaseTexture(MRIA);
             RS.ReleaseTexture(Normal);
             RS.ReleaseTexture(Tangent);
-            RS.ReleaseTexture(IOR_ANISO);
         }
 
         ResourceHandle Albedo;	 // rgba_UNORM, Albedo + Metal
-        ResourceHandle Specular;	 // rgba_UNORM, Specular + roughness
+        ResourceHandle MRIA;	 // rgba_UNORM, Metal + roughness + IOR + ANISO
         ResourceHandle Normal;	 // float16_RGBA
         ResourceHandle Tangent;	 // float16_RGBA
-        ResourceHandle IOR_ANISO; // float16_RG
 
         RenderSystem&    RS;
     };
@@ -442,10 +438,9 @@ namespace FlexKit
         struct GBufferClear
         {
             FrameResourceHandle albedo;
-            FrameResourceHandle specular;
+            FrameResourceHandle MRIA;
             FrameResourceHandle normal;
             FrameResourceHandle tangent;
-            FrameResourceHandle IOR_ANISO;
         };
 
         auto& clear = frameGraph.AddNode<GBufferClear>(
@@ -453,29 +448,26 @@ namespace FlexKit
             [&](FrameGraphNodeBuilder& builder, GBufferClear& data)
             {
                 data.albedo     = builder.WriteRenderTarget(gbuffer.Albedo);
-                data.specular   = builder.WriteRenderTarget(gbuffer.Specular);
+                data.MRIA       = builder.WriteRenderTarget(gbuffer.MRIA);
                 data.normal     = builder.WriteRenderTarget(gbuffer.Normal);
                 data.tangent    = builder.WriteRenderTarget(gbuffer.Tangent);
-                data.IOR_ANISO  = builder.WriteRenderTarget(gbuffer.IOR_ANISO);
             },
             [](GBufferClear& data, FrameResources& resources, Context* ctx)
             {
                 ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.albedo));
-                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.specular));
+                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.MRIA));
                 ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.normal));
                 ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.tangent));
-                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.IOR_ANISO));
             });
     }
 
 
     void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
     {
-        frameGraph.Resources.AddShaderResource(gbuffer.Albedo,      true);
-        frameGraph.Resources.AddShaderResource(gbuffer.Specular,    true);
-        frameGraph.Resources.AddShaderResource(gbuffer.Normal,      true);
-        frameGraph.Resources.AddShaderResource(gbuffer.IOR_ANISO,   true);
-        frameGraph.Resources.AddShaderResource(gbuffer.Tangent,     true);
+        frameGraph.Resources.AddShaderResource(gbuffer.Albedo,  true);
+        frameGraph.Resources.AddShaderResource(gbuffer.MRIA,    true);
+        frameGraph.Resources.AddShaderResource(gbuffer.Normal,  true);
+        frameGraph.Resources.AddShaderResource(gbuffer.Tangent, true);
     }
 
 
@@ -491,7 +483,7 @@ namespace FlexKit
 
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
-        FrameResourceHandle SpecularTargetObject;
+        FrameResourceHandle MRIATargetObject;
         FrameResourceHandle TangentTargetObject;
         FrameResourceHandle IOR_ANISOTargetObject;  // RGBA8
 
@@ -506,7 +498,7 @@ namespace FlexKit
 
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
-        FrameResourceHandle SpecularTargetObject;
+        FrameResourceHandle MRIATargetObject;
         FrameResourceHandle TangentTargetObject;
         FrameResourceHandle IOR_ANISOTargetObject;  // RGBA8
         FrameResourceHandle depthBufferTargetObject;
@@ -535,9 +527,8 @@ namespace FlexKit
 
         FrameResourceHandle     AlbedoTargetObject;     // RGBA8
         FrameResourceHandle     NormalTargetObject;     // RGBA16Float
-        FrameResourceHandle     SpecularTargetObject;
+        FrameResourceHandle     MRIATargetObject;
         FrameResourceHandle     TangentTargetObject;
-        FrameResourceHandle     IOR_ANISOTargetObject;  // RGBA8
         FrameResourceHandle     depthBufferTargetObject;
         FrameResourceHandle		lightBufferObject;
 
