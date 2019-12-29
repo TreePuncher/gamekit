@@ -646,68 +646,67 @@ namespace FlexKit
 	};
 
 
-	struct PerFrameUploadQueue
+	struct UploadQueues
 	{
-		PerFrameUploadQueue()
-		{
-		}
+        UploadQueues() = default;
 
 
-		~PerFrameUploadQueue()
+		~UploadQueues()
 		{
 			Release();
 		}
 
 
-		void Open()
+        UploadQueueHandle Open()
 		{
-			UploadList[0]->Close();
+            const size_t currentIdx = idx++ % uploadContexts.size();
+            auto& ctx               = uploadContexts[currentIdx];
+
+            Wait(UploadQueueHandle{ currentIdx });
+
+            ctx.commandAllocator->Reset();
+            ctx.commandList->Reset(ctx.commandAllocator, nullptr);
+
+            return UploadQueueHandle{ currentIdx };
 		}
 
-		void Close()
+
+        void Wait(UploadQueueHandle handle)
+        {
+            auto& ctx = uploadContexts[handle];
+
+            if (fence->GetCompletedValue() < ctx.counter)
+            {
+                fence->SetEventOnCompletion(ctx.counter, ctx.eventHandle);
+                WaitForSingleObject(ctx.eventHandle, INFINITY);
+            }
+        }
+
+		void Close(UploadQueueHandle handle)
 		{
-			UploadList[0]->Close();
-		}
+            auto& ctx = uploadContexts[handle];
 
-
-		void Reset()
-		{
-			UploadCount = 0;
-            UploadCounter++;
-
-			HRESULT HR	= UploadCLAllocator[0]->Reset();						FK_ASSERT(SUCCEEDED(HR));
-			HR			= UploadList[0]->Reset(UploadCLAllocator[0], nullptr);	FK_ASSERT(SUCCEEDED(HR));
+			ctx.commandList->Close();
 		}
 
 
 		void Release()
 		{
-			for (auto& UL : UploadList) {
-				if (UL)
-					UL->Release();
+            fence->Release();
 
-				UL = nullptr;
-			}
-
-			for (auto& alloc : UploadCLAllocator)
-			{
-				if (alloc)
-					alloc->Release();
-
-				alloc = nullptr;
-			}
-
-            if(UploadFence)
-                UploadFence->Release();
-
-            UploadFence = nullptr;
+            for (auto& ctx : uploadContexts)
+            {
+                ctx.commandAllocator->Release();
+                ctx.commandList->Release();
+            }
 		}
 
-		bool Initiate(ID3D12Device* Device, Vector<ID3D12DeviceChild*>& ObjectsCreated)
+
+		bool Initiate(ID3D12Device* Device, size_t threadCount, Vector<ID3D12DeviceChild*>& ObjectsCreated)
 		{
 			bool Success = true;
 
-			for (size_t I = 0; I < MaxThreadCount && Success; ++I)
+			for (size_t I = 0; I < threadCount && Success; ++I)
 			{
 				ID3D12CommandAllocator*		NewUploadAllocator	= nullptr;
 				ID3D12GraphicsCommandList2*	NewUploadList		= nullptr;
@@ -747,22 +746,31 @@ namespace FlexKit
 				NewUploadList->Close();
 				NewUploadAllocator->Reset();
 
-				UploadCount				= 0;
-				UploadCLAllocator[I]	= NewUploadAllocator;
-				UploadList[I]			= NewUploadList;
-			}
+                uploadContexts.push_back({
+                    NewUploadAllocator,
+                    NewUploadList,
+                    0,
+                    CreateEvent(nullptr, FALSE, FALSE, nullptr) });
+                }
 
-            Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&UploadFence));
+            Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 
 			return Success;
 		}
 
-        size_t						UploadCount;
-        size_t						UploadCounter;
-        ID3D12Fence*                UploadFence;
-		ID3D12CommandAllocator*		UploadCLAllocator	[MaxThreadCount];
-		ID3D12GraphicsCommandList*	UploadList			[MaxThreadCount];
 
+        struct UploadContext
+        {
+		    ID3D12CommandAllocator*		commandAllocator    = nullptr;
+		    ID3D12GraphicsCommandList*	commandList         = nullptr;
+            size_t                      counter             = 0;
+            HANDLE                      eventHandle;
+        };
+
+        ID3D12Fence*                        fence           = nullptr;
+        atomic_uint                         idx             = 0;
+        atomic_uint                         counter         = 0;
+        CircularBuffer<UploadContext, 64>   uploadContexts;
 	};
 
 
@@ -2721,7 +2729,9 @@ namespace FlexKit
 			Texture2DUAVs	{ IN_allocator					    },
             PendingBarriers { IN_allocator                      },
 			StreamOutTable	{ IN_allocator					    },
-            ReadBackTable   { IN_allocator                      } {}
+            ReadBackTable   { IN_allocator                      },
+            threads         {*IN_Threads                        },
+            Syncs           { IN_allocator, 64                  }{}
 
 		
 		~RenderSystem() { Release(); }
@@ -2740,7 +2750,7 @@ namespace FlexKit
 		void RegisterPSOLoader	(PSOHandle State, PipelineStateDescription desc);
 		void QueuePSOLoad		(PSOHandle State);
 
-		void BeginSubmission	(RenderWindow* Window);
+		void BeginSubmission	();
 		void Submit				(static_vector<ID3D12CommandList*>& CLs);
 		void PresentWindow		(RenderWindow* RW);
 		void WaitforGPU			();
@@ -2768,9 +2778,9 @@ namespace FlexKit
 		FORMAT_2D		GetTextureFormat			(ResourceHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat		(ResourceHandle Handle) const;
 
-		void			UploadTexture				(ResourceHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
-        void            UploadTexture               (ResourceHandle handle, TextureBuffer* buffer, size_t resourceCount, iAllocator* temp); // Uses Upload Queue
-		void			UpdateResourceByUploadQueue	(ID3D12Resource* Dest, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
+		void			UploadTexture				(ResourceHandle, UploadQueueHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
+        void            UploadTexture               (ResourceHandle handle, UploadQueueHandle, TextureBuffer* buffer, size_t resourceCount, iAllocator* temp); // Uses Upload Queue
+		void			UpdateResourceByUploadQueue	(ID3D12Resource* Dest, UploadQueueHandle, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
 
 		// Resource Creation and Destruction
 		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
@@ -2814,7 +2824,6 @@ namespace FlexKit
 
 		Texture2D			GetUAV2DTexture(const UAVTextureHandle ) const;
 
-
 		void ResetQuery(QueryHandle handle);
 
 		void ReleaseCB		(ConstantBufferHandle);
@@ -2826,13 +2835,9 @@ namespace FlexKit
 		void ReleaseTempResources();
 
 
-		// Upload Queues
-		void ShutDownUploadQueues();
-		void WaitForUploadQueue();
-		void ReadyUploadQueues();
-		void UploadResources();
-		void SubmitUploadQueues();
-
+        void                SubmitUploadQueues(UploadQueueHandle* handle, size_t count = 1);
+        UploadQueueHandle   GetUploadQueue();
+        UploadQueueHandle   GetImmediateUploadQueue();
 
 		// Internal
 		//ResourceHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
@@ -2845,7 +2850,8 @@ namespace FlexKit
 		DescHeapPOS				_ReserveRTVHeap				(size_t SlotCount );
 		DescHeapPOS				_ReserveDSVHeap				(size_t SlotCount );
 
-		ID3D12Resource*			_GetTextureResource(ResourceHandle handle);
+		ID3D12Resource*			    _GetTextureResource(ResourceHandle handle);
+        ID3D12GraphicsCommandList*  _GetUploadCommandList(UploadQueueHandle);
 
         void _InsertBarrier(ID3D12Resource*, D3D12_RESOURCE_STATES currentState, D3D12_RESOURCE_STATES endState);
 
@@ -2872,7 +2878,6 @@ namespace FlexKit
 		ID3D12GraphicsCommandList3*	_GetCurrentCommandList();
 		PerFrameResources*			_GetCurrentFrameResources();
 		ID3D12GraphicsCommandList3*	_GetCommandList_1();
-		PerFrameUploadQueue&		_GetCurrentUploadQueue();
 
 		void						_IncrementRSIndex() { CurrentIndex = (CurrentIndex + 1) % 3; }
 
@@ -2885,15 +2890,13 @@ namespace FlexKit
 
 		size_t CurrentFrame			= 0;
  		size_t CurrentIndex			= 0;
-		size_t CurrentUploadIndex	= 0;
 		size_t FenceCounter			= 0;
-		size_t FenceUploadCounter	= 0;
 
 		ID3D12Fence* Fence			= nullptr;
-		ID3D12Fence* CopyFence		= nullptr;
 
 		PerFrameResources		FrameResources	[QueueSize];
-		PerFrameUploadQueue		UploadQueues	[QueueSize];
+		UploadQueues		    Uploads;
+        UploadQueueHandle       ImmediateUpload = InvalidHandle_t;
 
 		IDXGIFactory5*			pGIFactory		= nullptr;
 		IDXGIAdapter4*			pDXGIAdapter	= nullptr;
@@ -3008,12 +3011,22 @@ namespace FlexKit
 			size_t			Counter		= 0;
 		};
 
+        struct UploadSyncPoint
+        {
+            UploadQueueHandle queue;
+            size_t            waitCounter;
+        };
+
+        Vector<UploadSyncPoint>         Syncs;
         Vector<FreeEntry>	            FreeList;
         Vector<D3D12_RESOURCE_BARRIER>	PendingBarriers;
+
+        ThreadManager&          threads;
 
 		ID3D12Debug*			pDebug			= nullptr;
 		ID3D12DebugDevice*		pDebugDevice	= nullptr;
 		iAllocator*				Memory			= nullptr;
+
 	};
 
 	
@@ -3040,8 +3053,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UINT);
-	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, TextureBuffer* buffer, FORMAT_2D format, iAllocator* tempMemory);
+	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, UploadQueueHandle, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UINT);
+	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, UploadQueueHandle, TextureBuffer* buffer, FORMAT_2D format, iAllocator* tempMemory);
 
 
 	/************************************************************************************************/
@@ -4139,7 +4152,7 @@ namespace FlexKit
 	/************************************************************************************************/
 	// Depreciated API
 
-	FLEXKITAPI void					CreateVertexBuffer			( RenderSystem* RS, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
+	FLEXKITAPI void CreateVertexBuffer			( RenderSystem* RS, UploadQueueHandle handle, VertexBufferView** Buffers, size_t BufferCount, VertexBuffer& DVB_Out ); // Expects Index buffer in index 15
 
 	struct SubResourceUpload_Desc
 	{
@@ -4151,9 +4164,9 @@ namespace FlexKit
         FORMAT_2D       format;
 	};
 
-	FLEXKITAPI void UpdateResourceByTemp			( RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
-	FLEXKITAPI void UpdateResourceByTemp			( RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
-    FLEXKITAPI void _UpdateSubResourceByUploadQueue  (RenderSystem* RS, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState);
+	FLEXKITAPI void UpdateResourceByTemp			(RenderSystem* RS, ID3D12Resource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
+	FLEXKITAPI void UpdateResourceByTemp			(RenderSystem* RS, FrameBufferedResource* Dest, void* Data, size_t SourceSize, size_t ByteSize = 1, D3D12_RESOURCE_STATES EndState = D3D12_RESOURCE_STATE_COMMON);
+    FLEXKITAPI void _UpdateSubResourceByUploadQueue (RenderSystem* RS, UploadQueueHandle, ID3D12Resource* Dest, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState);
 
 
 	/************************************************************************************************/
@@ -4171,7 +4184,7 @@ namespace FlexKit
 
 	FLEXKITAPI bool				LoadAndCompileShaderFromFile	(const char* FileLoc, ShaderDesc* desc, Shader* out);
 	FLEXKITAPI Shader			LoadShader						(const char* Entry, const char* ID, const char* ShaderVersion, const char* File);
-	FLEXKITAPI ResourceHandle	LoadDDSTextureFromFile			(char* file, RenderSystem* RS, iAllocator* Memout);
+	FLEXKITAPI ResourceHandle	LoadDDSTextureFromFile			(char* file, RenderSystem* RS, UploadQueueHandle, iAllocator* Memout);
 	FLEXKITAPI ResourceHandle   LoadTexture						(TextureBuffer* Buffer,  RenderSystem* RS, iAllocator* Memout, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UNORM);
 
 

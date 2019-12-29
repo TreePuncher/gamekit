@@ -73,11 +73,17 @@ namespace FlexKit
 		if (keyStates.left)
 			movementVector += -right;
 
-		if (movementVector.magnitudesquared() > 0.0001f)
-		{
-			movementVector = movementVector.normal();
-			TranslateWorld(movementVector * dt * moveRate);
-		}
+        movementVector.normalize();
+
+		if (keyStates.KeyPressed())
+			velocity += movementVector * acceleration * dt;
+
+        if (velocity.magnitudesquared() > 0.01f) {
+            velocity -= velocity * drag * dt;
+            TranslateWorld(velocity * dt);
+        }
+        else
+            velocity = 0;
 	}
 
 

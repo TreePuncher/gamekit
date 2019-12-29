@@ -134,7 +134,7 @@ ClientLobbyState::~ClientLobbyState()
 /************************************************************************************************/
 
 
-void ClientLobbyState::EventHandler(FlexKit::Event evt)
+bool ClientLobbyState::EventHandler(FlexKit::Event evt)
 {
 	if (evt.InputSource == FlexKit::Event::InputType::Keyboard)
 	{
@@ -152,6 +152,8 @@ void ClientLobbyState::EventHandler(FlexKit::Event evt)
 			}
 		}
 	}
+
+    return true;
 }
 
 

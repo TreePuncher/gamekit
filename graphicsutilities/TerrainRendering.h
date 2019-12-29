@@ -398,7 +398,8 @@ namespace FlexKit
 			else
 			{
 				// Load DDS
-				auto [textureHandle, res] = LoadDDSTexture2DFromFile_2(heightMap, tempMemory, RS);
+                auto uploadQueue = RS->GetUploadQueue();
+				auto [textureHandle, res] = LoadDDSTexture2DFromFile_2(heightMap, tempMemory, RS, uploadQueue);
 
 				if (!res)
 					throw std::runtime_error("Failed to created texture!");
@@ -406,6 +407,8 @@ namespace FlexKit
 				auto tileMap = (uint32_t)tileTextures.push_back(TileMaps{ textureHandle, heightMap });
 
 				root.heightMap = TileMapHandle{ tileMap };
+
+                RS->SubmitUploadQueues(&uploadQueue);
 			}
 		}
 

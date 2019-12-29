@@ -183,7 +183,7 @@ namespace FlexKit
 		virtual void Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) {}
 		virtual void PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) {}
 
-		virtual void EventHandler	(Event evt) {}
+		virtual bool EventHandler	(Event evt) { return false;}
 
 		GameFramework&	framework;
 	protected:

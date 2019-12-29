@@ -516,8 +516,8 @@ namespace FlexKit
                 {
                     const size_t localBufferSize = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
                     
-                    data.entityConstantsBuffer  = std::move(Reserve(ConstantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources));
-                    data.passConstantsBuffer    = std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
+                    data.entityConstantsBuffer  = std::move(Reserve(constantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources));
+                    data.passConstantsBuffer    = std::move(Reserve(constantBuffer, localBufferSize, 2, frameGraph.Resources));
                     data.depthBufferObject      = builder.WriteDepthBuffer(depthBufferTarget);
                     data.depthPassTarget        = depthBufferTarget;
 
@@ -579,8 +579,8 @@ namespace FlexKit
         UpdateDispatcher&       dispatcher,
         FrameGraph&             frameGraph,
         const CameraHandle      camera,
-        const ResourceHandle     renderTarget,
-        const ResourceHandle     hdrMap,
+        const ResourceHandle    renderTarget,
+        const ResourceHandle    hdrMap,
         VertexBufferHandle      vertexBuffer,
         iAllocator*             allocator)
     {
@@ -593,7 +593,7 @@ namespace FlexKit
                 data.renderTargetObject             = builder.WriteRenderTarget(renderTarget);
 
 
-                data.passConstants  = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
+                data.passConstants  = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
 
                 data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
@@ -654,18 +654,22 @@ namespace FlexKit
     BackgroundEnvironmentPass& WorldRender::RenderPBR_IBL_Deferred(
         UpdateDispatcher&       dispatcher,
         FrameGraph&             frameGraph,
+        const SceneDescription& sceneDescription,
         const CameraHandle      camera,
-        const ResourceHandle     renderTarget,
-        const ResourceHandle     depthTarget,
-        const ResourceHandle     hdrMap,
+        const ResourceHandle    renderTarget,
+        const ResourceHandle    depthTarget,
+        const ResourceHandle    hdrMap,
         GBuffer&                gbuffer,
         VertexBufferHandle      vertexBuffer,
+        float                   t,
         iAllocator*             allocator)
     {
         auto& pass = frameGraph.AddNode<BackgroundEnvironmentPass>(
             BackgroundEnvironmentPass{},
             [&](FrameGraphNodeBuilder& builder, BackgroundEnvironmentPass& data)
             {
+                builder.AddDataDependency(sceneDescription.cameras);
+
                 const size_t localBufferSize    = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
                 auto& renderSystem              = frameGraph.GetRenderSystem();
                 data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
@@ -677,7 +681,7 @@ namespace FlexKit
                 data.IOR_ANISOTargetObject      = builder.ReadShaderResource(gbuffer.IOR_ANISO);
                 data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
 
-                data.passConstants  = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
+                data.passConstants  = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
 
                 data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
@@ -711,7 +715,8 @@ namespace FlexKit
                 struct
                 {
                     float2 WH;
-                }passConstants = { float2(WH[0], WH[1]) };
+                    float  t;
+                }passConstants = { float2(WH[0], WH[1]), t };
 
                 data.descHeap.SetSRV(renderSystem, 0, frameResources.GetTexture(data.AlbedoTargetObject));
                 data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.SpecularTargetObject));
@@ -771,7 +776,7 @@ namespace FlexKit
                 data.DepthBuffer        = builder.WriteDepthBuffer (Targets.DepthTarget);
                 size_t localBufferSize  = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
-                data.passConstantsBuffer    = std::move(Reserve(ConstantBuffer, localBufferSize, 2, frameGraph.Resources));
+                data.passConstantsBuffer    = std::move(Reserve(constantBuffer, localBufferSize, 2, frameGraph.Resources));
 
                 data.lightMap			= builder.ReadWriteUAV(lightMap,			DRS_ShaderResource);
                 data.lightLists			= builder.ReadWriteUAV(lightLists,			DRS_ShaderResource);
@@ -866,7 +871,7 @@ namespace FlexKit
                     &sceneDescription.lights.GetData().pointLights,
                     ReserveUploadBuffer(1024 * sizeof(GPUPointLight), graph.GetRenderSystem()),// max point light count of 1024
                     camera,
-                    CBPushBuffer(ConstantBuffer, 2 * KILOBYTE, graph.GetRenderSystem()),
+                    CBPushBuffer(constantBuffer, 2 * KILOBYTE, graph.GetRenderSystem()),
             },
             [&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
             {
@@ -908,8 +913,8 @@ namespace FlexKit
                     float3 position			= GetPositionW(pointLight.Position);
 
                     data.pointLights.push_back(
-                        {	{ pointLight.K, 10	},
-                            { position, 20		} });
+                        {	{ pointLight.K, 100	},
+                            { position, 2000    } });
                 }
 
                 const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
@@ -936,13 +941,14 @@ namespace FlexKit
 
 
     GBufferPass& WorldRender::RenderPBR_GBufferPass(
-        UpdateDispatcher&   dispatcher,
-        FrameGraph&         frameGraph,
-        const CameraHandle  camera,
-        GatherTask&         pvs,
-        GBuffer&            gbuffer,
-        ResourceHandle       depthTarget,
-        iAllocator*         allocator)
+        UpdateDispatcher&       dispatcher,
+        FrameGraph&             frameGraph,
+        const SceneDescription& sceneDescription,
+        const CameraHandle      camera,
+        GatherTask&             pvs,
+        GBuffer&                gbuffer,
+        ResourceHandle          depthTarget,
+        iAllocator*             allocator)
     {
         constexpr size_t MaxEntityDrawCount = 10000;
         constexpr size_t localBufferSize    = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
@@ -951,11 +957,12 @@ namespace FlexKit
         auto& pass = frameGraph.AddNode<GBufferPass>(
             GBufferPass{
                 gbuffer, pvs.GetData().solid,
-                Reserve(ConstantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources),
-                Reserve(ConstantBuffer, localBufferSize, MaxEntityDrawCount, frameGraph.Resources) },
+                Reserve(constantBuffer, sizeof(ForwardDrawConstants), MaxEntityDrawCount, frameGraph.Resources),
+                Reserve(constantBuffer, localBufferSize, MaxEntityDrawCount, frameGraph.Resources) },
             [&](FrameGraphNodeBuilder& builder, GBufferPass& data)
             {
-                builder.AddDataDependency(pvs);
+                builder.AddDataDependency(sceneDescription.cameras);
+                builder.AddDataDependency(sceneDescription.PVS);
 
                 data.AlbedoTargetObject      = builder.WriteRenderTarget(gbuffer.Albedo);
                 data.IOR_ANISOTargetObject   = builder.WriteRenderTarget(gbuffer.IOR_ANISO);
@@ -1043,12 +1050,13 @@ namespace FlexKit
     TiledDeferredShade& WorldRender::RenderPBR_DeferredShade(
         UpdateDispatcher&       dispatcher,
         FrameGraph&             frameGraph,
+        const SceneDescription& sceneDescription,
         const CameraHandle      camera,
         PointLightGatherTask&   gather,
         GBuffer&                gbuffer,
-        ResourceHandle           depthTarget,
-        ResourceHandle           renderTarget,
-        ResourceHandle           environmentMap,
+        ResourceHandle          depthTarget,
+        ResourceHandle          renderTarget,
+        ResourceHandle          environmentMap,
         VertexBufferHandle      vertexBuffer,
         float                   t,
         iAllocator*             allocator)
@@ -1059,14 +1067,24 @@ namespace FlexKit
             float4 PR;	// XYZ + radius in W
         };
 
+        frameGraph.Resources.AddUAVResource(pointLightBuffer,	0, frameGraph.GetRenderSystem().GetObjectState(pointLightBuffer));
+
         auto& pass = frameGraph.AddNode<TiledDeferredShade>(
             TiledDeferredShade{
                 gbuffer,
-                gather
+                gather,
+                ReserveUploadBuffer(1024 * sizeof(GPUPointLight), frameGraph.GetRenderSystem()),// max point light count of 1024
             },
             [&](FrameGraphNodeBuilder& builder, TiledDeferredShade& data)
             {
+                builder.AddDataDependency(sceneDescription.cameras);
+
                 auto& renderSystem = frameGraph.GetRenderSystem();
+
+                data.pointLights                = allocator;
+                data.pointLights.reserve(1024);
+
+                data.pointLightHandles          = &sceneDescription.lights.GetData().pointLights;
 
                 data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.Albedo);
                 data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.Normal);
@@ -1076,14 +1094,33 @@ namespace FlexKit
                 data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
                 data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
 
+                data.lightBufferObject          = builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
+
                 data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
                 data.descHeap.NullFill(renderSystem, 20);
 
-                data.passConstants = CBPushBuffer(ConstantBuffer, 6 * KILOBYTE, renderSystem);
+                data.passConstants = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices  = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
             },
             [camera, renderTarget, environmentMap, t](TiledDeferredShade& data, FrameResources& frameResources, Context* ctx)
             {
+                PointLightComponent& pointLights = PointLightComponent::GetComponent();
+
+                for (const auto light : *data.pointLightHandles)
+                {
+                    auto    pointLight	= pointLights[light];
+                    float3  position	= GetPositionW(pointLight.Position);
+
+                    data.pointLights.push_back(
+                        {	{ pointLight.K, 100	},
+                            { position, 2000    } });
+                }
+
+                const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
+                MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)data.pointLights.begin(), uploadSize);
+                ctx->CopyBuffer(data.lightBuffer, uploadSize, frameResources.WriteUAV(data.lightBufferObject, ctx));
+
+
                 auto& renderSystem          = frameResources.renderSystem;
                 const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
@@ -1095,8 +1132,10 @@ namespace FlexKit
                 struct
                 {
                     float2  WH;
-                    float   Seed;
-                }passConstants = { float2(WH[0], WH[1]), t };
+                    float   time;
+                    float   lightCount;
+                }passConstants = { {(float)WH[0], (float)WH[1]}, t, (float)data.pointLights.size() };
+
 
                 struct
                 {
@@ -1129,23 +1168,9 @@ namespace FlexKit
                 data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.IOR_ANISOTargetObject));
                 data.descHeap.SetSRV(renderSystem, 5, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
                 data.descHeap.SetSRV(renderSystem, 6, environmentMap);
+                data.descHeap.SetSRV(renderSystem, 7, frameResources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx));
 
-                auto& lights        = data.lights.GetData().pointLights;
-                auto& pointLights   = PointLightComponent::GetComponent();
-                auto& transforms    = SceneNodeComponent::GetComponent();
-
-                for (auto& light : lights)
-                {
-                    PointLight lightConstants;
-
-                    const auto lightData = pointLights[light];
-
-                    lightConstants.KI = float4(lightData.K, lightData.I);
-                    lightConstants.PR = float4(GetPositionW(lightData.Position), lightData.R);
-
-                    ctx->SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ lightConstants, data.passConstants });
-                    ctx->Draw(6);
-                }
+                ctx->Draw(6);
             });
 
         return pass;

@@ -157,6 +157,7 @@ namespace FlexKit
 				format.TextArea		= float2(1.0f, 1.0f) - Position;
 				format.CurrentX		= 0;
 				format.CurrentY		= 0;
+
 				DrawSprite_Text(
 					Line.Str,
 					graph,

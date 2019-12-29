@@ -77,12 +77,21 @@ namespace FlexKit
 		NodeHandle		rollNode;
 		float			moveRate;
 
+        float3          velocity        = 0;
+        float           acceleration    = 100;
+        float           drag            = 5.0;
+
 		struct KeyStates
 		{
 			bool forward	= false;
 			bool backward	= false;
 			bool left		= false;
 			bool right		= false;
+
+            bool KeyPressed()
+            {
+                return forward | backward | left | right;
+            }
 		}keyStates;
 	};
 

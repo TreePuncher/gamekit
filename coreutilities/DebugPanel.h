@@ -10,36 +10,35 @@ namespace FlexKit
 	struct DebugPanel : public FrameworkState
 	{
 		DebugPanel(GameFramework& framework, FrameworkState& IN_topState) :
-            FrameworkState  { framework      },
-            topState        { IN_topState    },
-            core            { framework.core }
-
+            FrameworkState  { framework         },
+            topState        { IN_topState       },
+            core            { framework.core    },
+            console         { framework.console }
 		{
-			console              = &framework.console;
 			pauseBackgroundLogic = true;
 		}
 
 		~DebugPanel()
 		{
 			framework.consoleActive = false;
-			console->allocator->free(this); // Not sure what to do about this. Seems like a poor design implication
+			console.allocator->free(this); // Not sure what to do about this. Seems like a poor design implication
 		}
 
 		bool			pauseBackgroundLogic;
 		size_t			recallIndex;
-		Console*		console;
+		Console&		console;
 		EngineCore&		core;
         FrameworkState& topState;
 
 		void IncrementRecallIndex();
 		void DecrementRecallIndex();
 
-		void Update			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
+		void Update			    (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
 		void DebugDraw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) override;
 		void Draw				(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
 		void PostDrawUpdate 	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) override;
 
-		void EventHandler		(Event evt)	override;
+		bool EventHandler		(Event evt)	override;
 	};
 
 }

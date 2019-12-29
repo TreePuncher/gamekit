@@ -374,7 +374,7 @@ namespace FlexKit
 		}
 
 
-		uint32_t GetThreadCount() const
+		uint32_t GetThreadCount() const noexcept
 		{
 			return workerCount;
 		}

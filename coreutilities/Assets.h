@@ -366,14 +366,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool				Asset2TriMesh		( RenderSystem* RS, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
+	FLEXKITAPI bool				Asset2TriMesh		( RenderSystem* RS, UploadQueueHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
 	FLEXKITAPI TextureSet*		Asset2TextureSet	( AssetHandle RHandle, iAllocator* Memory );
 
 	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );
 	FLEXKITAPI void				LoadTriangleMesh ( GUID_t ID, iAllocator* Memory, TriMesh* out );
 
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, size_t guid );
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, const char* ID );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, UploadQueueHandle handle, size_t guid );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, UploadQueueHandle handle, const char* ID );
 
 	typedef Pair<size_t, SpriteFontAsset*> LoadFontResult;
 

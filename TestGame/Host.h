@@ -34,7 +34,7 @@ public:
 	void Draw			(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
 	void PostDrawUpdate	(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
 
-	void EventHandler(Event evt) final override;
+	bool EventHandler(Event evt) final override;
 
 
 	struct PlayerLobbyEntry
@@ -195,7 +195,9 @@ public:
             }
         };
 
-        auto& localState = framework.PushState<GameLoadSceneState<decltype(OnCompletion)>> (base, gameState.scene, "MultiplayerTestLevel", OnCompletion);
+        FK_ASSERT(0);
+
+        //auto& localState = framework.PushState<GameLoadSceneState<decltype(OnCompletion)>> (base, gameState.scene, "MultiplayerTestLevel", OnCompletion);
 	}
 
 

@@ -35,77 +35,23 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MainMenu.cpp"
 #include "MultiplayerState.cpp"
 #include "MultiplayerGameState.cpp"
+//#include "TextureStreamingTest.cpp"
 
 #include <iostream>
 
 
 int main(int argc, char* argv[])
 {
-	bool multiplayerMode	= false;
-	bool host				= false;
-	bool quit				= false;
+    enum class ApplicationMode
+    {
+        Client,
+        Host,
+        TextureStreamingTestMode,
+        Playground,
+    }   applicationMode = ApplicationMode::Playground;
+
 	std::string name;
 	std::string server;
-
-
-	[&]
-	{
-		while (true)
-		{
-			std::cout << "Main Menu: \n1 - Play State\n2 - Multiplayer State\n3 - Quit\n";
-			int x = 0;
-			std::cin >> x;
-
-			switch (x)
-			{
-				case 1:
-				multiplayerMode = false;
-				host = false;
-				return;
-				case 2: 
-				{
-					multiplayerMode = true;
-					std::cout << "Multiplayer menu\n1 - Host\n2 - Join\n";
-					std::cin >> x;
-					switch (x)
-					{
-					case 1:
-						std::cout << "hosting game\n";
-						host	= true;
-						return;
-					case 2:
-					{
-						std::cout << "Joining game\nEnter name: ";
-						std::cin >> name;
-						std::cout << "Enter server address: ";
-						std::cin >> server;
-
-						name.push_back('\0'); 
-						// TODO: better input scrubbing
-						if (!name.size() && !server.size()) // if they entered invalid inputs
-							continue;						// Goes back to main menu to try again
-
-						multiplayerMode		= true;
-						host				= false;
-						return;
-					}	break;
-					default:
-						break;
-					}
-				}
-				case 3:
-				quit = true;
-				return;
-			default:
-				continue;
-				return;
-			}
-		}
-	};
-
-
-	if (quit)
-		return 0;
 
 	FlexKit::InitLog(argc, argv);
 	FlexKit::SetShellVerbocity(FlexKit::Verbosity_1);
@@ -124,48 +70,128 @@ int main(int argc, char* argv[])
 
 	FlexKit::FKApplication app{ uint2{ 1920, 1080 }, Memory };
 
-	for (size_t I = 0; I < argc; ++I)
-		app.PushArgument(argv[I]);
+    for (size_t I = 0; I < argc; ++I)
+    {
+        const char* TextureStreamingTestStr = "TextureStreamingTest";
+
+        if (!strncmp("-C", argv[I], 2))
+        {
+            try
+            {
+                std::cout << "Please Enter Player Name: \n";
+                std::cin >> name;
+
+                std::cout << "Please Enter Server: \n";
+                std::cin >> server;
+            }
+            catch (...)
+            {
+                return -1;
+            }
+            applicationMode = ApplicationMode::Client;
+        }
+        else if (!strncmp("-S", argv[I], 2))
+        {
+            try
+            {
+                std::cout << "Please Enter Player Name: \n";
+                std::cin >> name;
+            }
+            catch (...)
+            {
+                return -1;
+            }
+            applicationMode = ApplicationMode::Host;
+        }
+        else if (!strncmp(TextureStreamingTestStr, argv[I], strlen(TextureStreamingTestStr))) // 
+            applicationMode = ApplicationMode::TextureStreamingTestMode;
+
+        app.PushArgument(argv[I]);
+    }
+
 
 	FK_LOG_INFO("Set initial PlayState state.");
-	auto& gameBase = app.PushState<BaseState>(app);
+	auto& base = app.PushState<BaseState>(app);
 
-
-	if (multiplayerMode)
-	{
-        AddAssetFile("assets\\Scene1.gameres");
-
-		auto& NetState = app.PushState<NetworkState>(gameBase);
-		if (host)
-			auto& hostState		= app.PushState<GameHostState>(gameBase, NetState);
-		else
-			auto& clientState	= app.PushState<GameClientState>(gameBase, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
-	}
-	else
-	{
-        AddAssetFile("assets\\Scene1.gameres");
-
-		auto& gameState = app.PushState<GameState>(gameBase);
-		auto& playState = app.PushState<LocalPlayerState>(gameBase, gameState);
-
-        LoadScene(app.GetFramework().core, gameState.scene, 10000);
-        DEBUG_ListSceneObjects(gameState.scene);
-
-
-        if (auto [Cube_003, found] = FindGameObject(gameState.scene, "Cube.003"); found)
-            SetVisable(*Cube_003, false);
-
-        if (auto [gameObject, found] = FindGameObject(gameState.scene, "object1"); found)
+    switch (applicationMode)
+    {
+        case ApplicationMode::Client:
         {
-            const auto parent       = GetParentNode(*gameObject);
-            const auto parentQ      = GetOrientation(parent);
-            const auto orientation  = GetOrientation(*gameObject);
+            AddAssetFile("assets\\Scene1.gameres");
 
-            ClearParent(*gameObject);
-            AddSkeletonComponent(*gameObject, app.GetFramework().core.GetBlockMemory());
-            SetScale(*gameObject, { 1, 1, 1 });
-        }
-	}
+            auto& NetState      = app.PushState<NetworkState>(base);
+            auto& clientState   = app.PushState<GameClientState>(base, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
+        }   break;
+        case ApplicationMode::Host:
+        {
+            AddAssetFile("assets\\Scene1.gameres");
+
+            auto& NetState  = app.PushState<NetworkState>(base);
+            auto& hostState = app.PushState<GameHostState>(base, NetState);
+        }   break;
+        case ApplicationMode::Playground:
+        {
+            AddAssetFile("assets\\Scene1.gameres");
+
+            auto& gameState = app.PushState<GameState>(base);
+
+            auto& completed = app.GetFramework().core.GetBlockMemory().allocate_aligned<bool>();
+            completed = false;
+
+            auto Task =
+                [&]()
+                {
+
+                    auto& framework             = app.GetFramework();
+                    auto& allocator             = framework.core.GetBlockMemory();
+                    auto& renderSystem          = framework.GetRenderSystem();
+                    UploadQueueHandle upload    = renderSystem.GetUploadQueue();
+
+                    auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 5, allocator);
+
+                    base.hdrMap = MoveTextureBuffersToVRAM(
+                        renderSystem,
+                        upload,
+                        HDRStack.begin(),
+                        HDRStack.size(),
+                        allocator,
+                        FORMAT_2D::R32G32B32A32_FLOAT);
+
+                    renderSystem.SetDebugName(base.hdrMap, "HDR Map");
+                    renderSystem.SubmitUploadQueues(&upload);
+
+                    completed = true;
+                };
+
+            auto& workItem = CreateLambdaWork(Task, app.GetFramework().core.GetBlockMemory());
+            app.GetFramework().core.Threads.AddWork(workItem);
+
+            LoadScene(app.GetFramework().core, gameState.scene, 10000);
+
+            auto OnLoadUpdate =
+                [&](EngineCore& core, UpdateDispatcher& dispatcher, double dT)
+                {
+                    const auto completedState = completed;
+                    if(completedState)
+                    {
+                        app.PopState();
+
+                        auto& playState = app.PushState<LocalPlayerState>(base, gameState);
+                        //app.GetFramework().core.GetBlockMemory().free(&completed);
+                    }
+                };
+
+
+            using LoadState = GameLoadScreenState<decltype(OnLoadUpdate)>;
+            app.PushState<LoadState>(base, OnLoadUpdate);
+        }   break;
+        case ApplicationMode::TextureStreamingTestMode:
+        {
+            //auto& testState = app.PushState<TextureStreamingTest>(base);
+        }   break;
+    default:
+        return -1;
+    }
 
 	FK_LOG_INFO("Running application...");
 	app.Run();

@@ -514,7 +514,6 @@ namespace FlexKit
 			H = nullptr;
 		}
 	
-		FlexKit::Release(&OcclusionBuffer);
 		Predicates.Release();
 	}
 

@@ -88,7 +88,7 @@ void GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Disp
 /************************************************************************************************/
 
 
-void GameHostLobbyState::EventHandler(Event evt)
+bool GameHostLobbyState::EventHandler(Event evt)
 {
 	if (evt.InputSource == Event::Keyboard &&
 		evt.Action == Event::Pressed)
@@ -98,11 +98,14 @@ void GameHostLobbyState::EventHandler(Event evt)
 		case FlexKit::KC_SPACE:
 		{
 			host.BeginGame();
+            return true;
 		}	break;
 		default:
 			break;
 		}
 	}
+
+    return false;
 }
 
 

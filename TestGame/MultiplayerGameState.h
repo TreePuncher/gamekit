@@ -103,7 +103,7 @@ public:
 	void PreDrawUpdate	(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
     void Draw           (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
 	void PostDrawUpdate	(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
-    void EventHandler   (Event evt) final override;
+    bool EventHandler   (Event evt) final override;
 
 
 private:	/************************************************************************************************/
@@ -144,64 +144,30 @@ public:
 /************************************************************************************************/
 
 
-struct GameLoadSceneStateDefaultAction
+struct GameLoadScreenStateDefaultAction
 {
     void operator()(EngineCore& core, UpdateDispatcher& dispatcher, double dT) {}
 };
 
-struct GameLoadSceneStateUpdateDefaultAction
-{
-    bool operator()(EngineCore& core, UpdateDispatcher& dispatcher, double dT) { return true; }
-};
-
-
-struct GameLoadSceneStateFailureDefaultAction
-{
-    void operator()() {}
-};
 
 // Loads Scene and sends server notification on completion
-template<
-    typename TY_OnCompletion    = GameLoadSceneStateDefaultAction,
-    typename TY_OnUpdate        = GameLoadSceneStateUpdateDefaultAction,
-    typename TY_OnFailure       = GameLoadSceneStateFailureDefaultAction>
-class GameLoadSceneState : public FrameworkState
+template<typename TY_OnUpdate = GameLoadScreenStateDefaultAction>
+class GameLoadScreenState : public FrameworkState
 {
 public:
-    GameLoadSceneState(
+    GameLoadScreenState(
         GameFramework&  IN_framework,
         BaseState&      IN_base,
-        GraphicScene&   IN_scene,
-        const char*     IN_sceneName,
-        TY_OnCompletion IN_OnCompletion = GameLoadSceneStateDefaultAction{},
-        TY_OnUpdate     IN_OnUpdate     = GameLoadSceneStateUpdateDefaultAction{},
-        TY_OnFailure    IN_OnFailure    = GameLoadSceneStateFailureDefaultAction{}) :
+        TY_OnUpdate     IN_OnUpdate     = GameLoadSceneStateUpdateDefaultAction{}) :
             FrameworkState  { IN_framework      },
             base            { IN_base           },
-            scene           { IN_scene          },
-            OnCompletion    { IN_OnCompletion   },
-            OnUpdate        { IN_OnUpdate       }
-    {
-        iAllocator* allocator = IN_framework.core.GetBlockMemory();
-
-        auto& task      = CreateLambdaWork(
-            [&, &core   = base.framework.core]
-            {
-                if(!LoadScene(core, scene, IN_sceneName))
-                    OnFailure();
-
-                completed = true;
-            },
-            allocator);
-
-        framework.core.Threads.AddWork(task, allocator);
-    }
+            OnUpdate        { IN_OnUpdate       } {}
 
 
     /************************************************************************************************/
 
 
-    virtual ~GameLoadSceneState() override {}
+    virtual ~GameLoadScreenState() override {}
 
 
     /************************************************************************************************/
@@ -209,38 +175,47 @@ public:
 
     void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override
     {
-        beginGame = OnUpdate(core, dispatcher, dT);
+        OnUpdate(core, dispatcher, dT);
+    }
 
-        if (completed && beginGame)
-        {
-            auto& temp_OnCompletion = std::move(OnCompletion); // Must be moved to stack before class is popped off
-            framework.PopState();
-            temp_OnCompletion(core, dispatcher, dT);
-        }
+
+    void Draw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) final override
+    {
+        WorldRender_Targets targets = {
+            core.Window.backBuffer,
+            base.depthBuffer
+        };
+
+        frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
+
+        ClearVertexBuffer(frameGraph, base.vertexBuffer);
+        ClearVertexBuffer(frameGraph, base.textBuffer);
+
+        ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
+        ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
+
+        PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
+        Format.Scale = { 1.0f, 1.0f };
+
+        DrawSprite_Text(
+            "Loading...",
+            frameGraph,
+            *framework.DefaultAssets.Font,
+            base.textBuffer,
+            core.Window.backBuffer,
+            core.GetTempMemory(),
+            Format);
+
+        PresentBackBuffer(frameGraph, &core.Window);
     }
 
 
     /************************************************************************************************/
 
-
-    void EventHandler(Event evt) override
-    {
-    }
-
-    bool Completed()    { return completed; }
-    bool Begin()        { return beginGame; }
-
-    void BeginGame()    { beginGame = true; }
-
 private:
 
-    bool            completed = false;
-    bool            beginGame = false;
     BaseState&      base;
-    GraphicScene&   scene;
-    TY_OnCompletion OnCompletion;
     TY_OnUpdate     OnUpdate;
-    TY_OnFailure    OnFailure;
 };
 
 

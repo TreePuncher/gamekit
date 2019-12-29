@@ -153,13 +153,13 @@ namespace FlexKit
 
 
 		template<typename TY_FN>
-		void Handle(const Event& evt_in, TY_FN handler)
+		bool Handle(const Event& evt_in, TY_FN handler)
 		{
 			if (evt_in.InputSource != Event::Keyboard)
-				return;
+				return false;
 
 			auto itr = EventMap.begin();
-
+            bool handled = false;
 			do {
 				itr = std::find_if(
 					itr, 
@@ -175,10 +175,13 @@ namespace FlexKit
 					evt.mData1.mINT[0] = (*itr).EventID;
 					handler(evt);
 					itr++;
+
+                    handled = true;
 				}
 
 			} while (itr != EventMap.end());
 
+            return handled;
 		}
 
 
