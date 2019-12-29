@@ -24,11 +24,11 @@ GameState::GameState(
 GameState::~GameState()
 {
     iAllocator* allocator = base.framework.core.GetBlockMemory();
-    auto entities = scene.sceneEntities;
+    auto& entities = scene.sceneEntities;
 
-    for (auto entity : entities)
+    while(entities.size())
     {
-        auto entityGO = SceneVisibilityView::GetComponent()[entity].entity;
+        auto* entityGO = SceneVisibilityView::GetComponent()[entities.back()].entity;
         scene.RemoveEntity(*entityGO);
 
         entityGO->Release();

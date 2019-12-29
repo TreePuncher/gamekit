@@ -692,13 +692,29 @@ namespace FlexKit
 
 		void Release()
 		{
+            if (!fence)
+                return;
+
+            for (auto& ctx : uploadContexts)
+            {
+                if (fence->GetCompletedValue() < ctx.counter)
+                {
+                    fence->SetEventOnCompletion(ctx.counter, ctx.eventHandle);
+                    WaitForSingleObject(ctx.eventHandle, INFINITY);
+                }
+            }
+
+
             fence->Release();
+            fence = nullptr;
 
             for (auto& ctx : uploadContexts)
             {
                 ctx.commandAllocator->Release();
                 ctx.commandList->Release();
             }
+
+            uploadContexts.clear();
 		}
 
 
@@ -2753,7 +2769,9 @@ namespace FlexKit
 		void BeginSubmission	();
 		void Submit				(static_vector<ID3D12CommandList*>& CLs);
 		void PresentWindow		(RenderWindow* RW);
-		void WaitforGPU			();
+
+        void FlushPending();
+		void WaitforGPU();
 
         void SetDebugName(ResourceHandle,        const char*);
         void SetDebugName(UAVResourceHandle,    const char*);
@@ -2894,7 +2912,7 @@ namespace FlexKit
 
 		ID3D12Fence* Fence			= nullptr;
 
-		PerFrameResources		FrameResources	[QueueSize];
+		PerFrameResources		FrameResources[QueueSize];
 		UploadQueues		    Uploads;
         UploadQueueHandle       ImmediateUpload = InvalidHandle_t;
 

@@ -385,27 +385,14 @@ namespace FlexKit
 
 	void GameFramework::Release()
 	{
-		auto end = subStates.rend();
-		auto itr = subStates.rbegin();
+        GetRenderSystem().FlushPending();
 
+        while (subStates.size())
+            PopState();
 
 		console.Release();
 		FlexKit::Release(DefaultAssets.Font, core.RenderSystem);
 
-		// wait for last Frame to finish Rendering
-		auto CL = core.RenderSystem._GetCurrentCommandList();
-
-		for (size_t I = 0; I < 4; ++I) 
-		{
-			core.RenderSystem.WaitforGPU();
-			core.RenderSystem._IncrementRSIndex();
-		}
-
-
-		// Counters are at Max 3
-		Free_DelayedReleaseResources(core.RenderSystem);
-		Free_DelayedReleaseResources(core.RenderSystem);
-		Free_DelayedReleaseResources(core.RenderSystem);
 
 		FreeAllAssetFiles	();
 		FreeAllAssets		();
