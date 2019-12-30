@@ -211,9 +211,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraph::AddRenderTarget(ResourceHandle Texture)
+	void FrameGraph::AddRenderTarget(ResourceHandle handle)
 	{
-
+        Resources.AddShaderResource(handle, true);
 	}
 
 
@@ -672,10 +672,13 @@ namespace FlexKit
 
             if (resource.Type == OT_ShaderResource && resource.ShaderResource.renderTargetUse)
             {
-                const auto TablePOS             = renderSystem._ReserveRTVHeap(1);
+                const auto resourceArraySize    = renderSystem.GetTextureArraySize(resource.ShaderResource);
+
+                auto TablePOS                   = renderSystem._ReserveRTVHeap(resourceArraySize);
                 resource.ShaderResource.HeapPOS = TablePOS;
 
-                PushRenderTarget2(renderSystem, resource.ShaderResource, TablePOS);
+                for(size_t I = 0; I < resourceArraySize; ++I)
+                    TablePOS = PushRenderTarget2(renderSystem, resource.ShaderResource, TablePOS);
             }
         }
 

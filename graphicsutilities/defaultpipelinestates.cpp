@@ -35,8 +35,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDrawTriStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS", "vs_5_0",	"assets\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect", "ps_5_0",		"assets\\pshader.hlsl");
+		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS", "vs_5_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect", "ps_5_0",		"assets\\shaders\\pshader.hlsl");
 
 		FINALLY
 			
@@ -86,8 +86,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateTexturedTriStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS",		"DrawRect_VS",		"vs_5_0", "assets\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRectTextured",	"DrawRectTextured", "ps_5_0", "assets\\pshader.hlsl");
+		auto DrawRectVShader = LoadShader("DrawRect_VS",		"DrawRect_VS",		"vs_5_0", "assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRectTextured",	"DrawRectTextured", "ps_5_0", "assets\\shaders\\pshader.hlsl");
 
 		FINALLY
 			
@@ -139,8 +139,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateTexturedTriStateDEBUGPSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("VS",	"VS", "vs_5_0", "assets\\temp.hlsl");
-		auto DrawRectPShader = LoadShader("PS",	"PS", "ps_5_0", "assets\\temp.hlsl");
+		auto DrawRectVShader = LoadShader("VS",	"VS", "vs_5_0", "assets\\shaders\\temp.hlsl");
+		auto DrawRectPShader = LoadShader("PS",	"PS", "ps_5_0", "assets\\shaders\\temp.hlsl");
 
 		FINALLY
 			
@@ -192,8 +192,8 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateDrawLineStatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS",	"vs_5_0",	"assets\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect",		"ps_5_0",	"assets\\pshader.hlsl");
+		auto DrawRectVShader = LoadShader("DrawRect_VS",	"DrawRect_VS",	"vs_5_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRect",		"DrawRect",		"ps_5_0",	"assets\\shaders\\pshader.hlsl");
 
 		FINALLY
 			
@@ -253,8 +253,8 @@ namespace FlexKit
 	*/
 	ID3D12PipelineState* CreateDraw2StatePSO(RenderSystem* RS)
 	{
-		auto DrawRectVShader = LoadShader("V10Main",	"V10Main",	"vs_5_0",	"assets\\vshader.hlsl");
-		auto DrawRectPShader = LoadShader("DrawRect",	"DrawRect",	"ps_5_0",	"assets\\pshader.hlsl");
+		auto DrawRectVShader = LoadShader("V10Main",	"V10Main",	"vs_5_0",	"assets\\shaders\\vshader.hlsl");
+		auto DrawRectPShader = LoadShader("DrawRect",	"DrawRect",	"ps_5_0",	"assets\\shaders\\pshader.hlsl");
 
 		EXITSCOPE(
 			Release(&DrawRectVShader);
@@ -305,7 +305,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* LoadOcclusionState(RenderSystem* RS)
 	{
-		Shader VShader = LoadShader("VMain", "VMAIN", "vs_5_0", "assets\\VShader.hlsl" );
+		Shader VShader = LoadShader("VMain", "VMAIN", "vs_5_0", "assets\\shaders\\VShader.hlsl" );
 
 		D3D12_INPUT_ELEMENT_DESC InputElements[] =
 		{

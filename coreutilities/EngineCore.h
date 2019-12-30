@@ -147,11 +147,11 @@ namespace FlexKit
 	class EngineCore
 	{
 	public:
-		EngineCore(EngineMemory* memory, uint2 WH) :
+		EngineCore(EngineMemory* memory, uint2 WH, size_t threadCount) :
 			Memory			{ memory										},
 			CmdArguments	{ memory->BlockAllocator						},
 			Time			{ memory->BlockAllocator						},
-			Threads			{ DefaultWorkerCount, memory->BlockAllocator	},// TODO: Get System Thread Count.
+			Threads			{ threadCount, memory->BlockAllocator	        },// TODO: Get System Thread Count.
 			RenderSystem	{ memory->BlockAllocator, &Threads				},
 			FrameLock		{ true											},
 			Physics			{ Threads, memory->BlockAllocator				}

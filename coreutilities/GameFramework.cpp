@@ -385,6 +385,9 @@ namespace FlexKit
 
 	void GameFramework::Release()
 	{
+        core.Threads.SendShutdown();
+        core.Threads.WaitForWorkersToComplete();
+
         GetRenderSystem().FlushPending();
 
         while (subStates.size())

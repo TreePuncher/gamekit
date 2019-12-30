@@ -226,6 +226,8 @@ namespace FlexKit
 	const PSOHandle DEPTHPREPASS            = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
 	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
+    const PSOHandle TEXTURE2CUBEMAP         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP));
+
 
 	ID3D12PipelineState* CreateForwardDrawPSO			(RenderSystem* RS);
 	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
@@ -235,6 +237,7 @@ namespace FlexKit
     ID3D12PipelineState* CreateGBufferPassPSO           (RenderSystem* RS);
     ID3D12PipelineState* CreateDeferredShadingPassPSO   (RenderSystem* RS);
     ID3D12PipelineState* CreateEnvironmentPassPSO       (RenderSystem* RS);
+    ID3D12PipelineState* CreateTexture2CubeMapPSO       (RenderSystem* RS);
 
 
 	struct WorldRender_Targets

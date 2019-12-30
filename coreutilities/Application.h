@@ -41,7 +41,7 @@ namespace FlexKit
     class FKApplication
     {
     public:
-        FKApplication(uint2 WindowResolution, EngineMemory* Memory);
+        FKApplication(uint2 WindowResolution, EngineMemory* Memory, size_t threadCount = 4);
         ~FKApplication();
 
         void PopState() noexcept

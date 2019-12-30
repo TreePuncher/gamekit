@@ -9,8 +9,12 @@ struct PointLight
 
 cbuffer LocalConstants : register(b1)
 {
-    float4	 Albedo; // + roughness
-    float4	 Specular;
+    float4	 Albedo;
+	float    Ks;
+	float    IOR;
+	float    Roughness;
+	float    Anisotropic;
+	float    Metallic;
     float4x4 WT;
 }
 
@@ -56,9 +60,6 @@ PointLight ReadPointLight(uint idx)
     return pointLight;
 }
 
-
-
-
 struct Vertex
 {
     float3 POS		: POSITION;
@@ -78,7 +79,6 @@ struct Forward_VS_OUT
     float2 UV		: TEXCOORD;
 };
 
-
 Forward_VS_OUT Forward_VS(Vertex In)
 {
     Forward_VS_OUT Out;
@@ -91,12 +91,10 @@ Forward_VS_OUT Forward_VS(Vertex In)
     return Out;
 }
 
-
 float4 DepthPass_VS(float3 POS : POSITION) : SV_POSITION
 {
     return mul(PV, mul(WT, float4(POS, 1)));
 }
-
 
 struct Forward_PS_IN
 {
@@ -107,11 +105,10 @@ struct Forward_PS_IN
     float2	UV		: TEXCOORD;
 };
 
-
 struct Deferred_OUT
 {
     float4 Albedo       : SV_TARGET0;
-    float4 Specular     : SV_TARGET1;
+    float4 MRIA         : SV_TARGET1;
     float4 Normal       : SV_TARGET2;
     float4 Tangent      : SV_TARGET3;
     float2 IOR_ANISO    : SV_TARGET4;
@@ -119,22 +116,18 @@ struct Deferred_OUT
     float Depth : SV_DEPTH;
 };
 
-
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     Deferred_OUT gbuffer;
 
     gbuffer.Normal      = float4(IN.Normal,     1);
-    gbuffer.Tangent     = float4(IN.Tangent,    1);
-    gbuffer.Albedo      = Albedo;
-    gbuffer.Specular    = Specular;
-    gbuffer.IOR_ANISO   = float2(1.0, 0.0f);
+    gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
+    gbuffer.Albedo      = float4(Albedo.rgb, Ks);
+    gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
 
     return gbuffer;
 }
-
-
 
 float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 {
@@ -157,8 +150,6 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
     const int	lightBegin		= lightList.y;
     const int	localLightCount	= lightList.x;
 
-    return float4(positionW, 0);
-    
     float3 Color = float3(0, 0, 0);
     for (int i = 0; i < localLightCount; i++)
     {
