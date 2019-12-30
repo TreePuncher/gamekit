@@ -80,6 +80,44 @@ float3 EricHeitz2018GGX(float3 V, float3 L, float3 albedo, float metallic, float
     return (F * D * G) / (4.0 * VoH * NoH);
 }
 
+float3 EricHeitz2018GGXVNDF(in float3 Ve, in float alpha_x, in float alpha_y, in float U1, in float U2)
+{
+	// Section 3.2: transforming the view direction to the hemisphere configuration
+    float3 Vh = normalize(float3(alpha_x * Ve.x, alpha_y * Ve.y, Ve.z));
+	// Section 4.1: orthonormal basis (with special case if cross product is zero)
+    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    float3 T1 = lensq > 0.0 ? float3(-Vh.y, Vh.x, 0.0) * rsqrt(lensq) : float3(1.0, 0.0, 0.0);
+    float3 T2 = cross(Vh, T1);
+	// Section 4.2: parameterization of the projected area
+    float r = sqrt(U1);
+    float phi = PI * 2.0 * U2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5 * (1.0 + Vh.z);
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+	// Section 4.3: reprojection onto hemisphere
+    float3 Nh = T1 * t1 + T2 * t2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+	// Section 3.4: transforming the normal back to the ellipsoid configuration
+    float3 Ne = normalize(float3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.0, Nh.z)));
+    return Ne;
+}
+
+float EricHeitz2018GGXDV(in float3 N, in float3 V, in float alpha_x, in float alpha_y)
+{
+    float dotVZ = CosTheta(V);
+    float dotNV = dot(N, V);
+    float G = EricHeitz2018GGXG1(V, alpha_x, alpha_y);
+    float D = EricHeitz2018GGXD(N, alpha_x, alpha_y);
+    return (G * max(dotNV, 0.0) * D) / dotVZ;
+}
+ 
+float EricHeitz2018GGXPDF(in float3 V, in float3 Ni, in float3 Li, in float alpha_x, in float alpha_y)
+{
+    float DV = EricHeitz2018GGXDV(Ni, V, alpha_x, alpha_y);
+    float NoV = dot(V, Ni);
+    return DV / (4.0 * NoV);
+}
+
 float3 HammonEarlGGX(float3 V, float3 L, float3 albedo, float roughness)
 {
     float NoV = CosTheta(V);

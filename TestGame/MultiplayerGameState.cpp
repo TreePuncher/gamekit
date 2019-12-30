@@ -158,8 +158,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     {
         auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
         auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-        auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.hdrMap, base.vertexBuffer, core.GetTempMemory());
-        auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.hdrMap, core.GetTempMemory());
+        auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.cubeMap, base.vertexBuffer, core.GetTempMemory());
+        auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.cubeMap, core.GetTempMemory());
     }   break;
 
     case RenderMode::Deferred:
@@ -167,8 +167,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
         base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, sceneDesc, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
-        base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, sceneDesc, activeCamera, targets.RenderTarget, base.depthBuffer, base.hdrMap, base.gbuffer, base.vertexBuffer, base.t, core.GetTempMemory());
-        //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.hdrMap, base.vertexBuffer, base.t, core.GetTempMemory());
+        base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, sceneDesc, activeCamera, targets.RenderTarget, base.depthBuffer, base.cubeMap, base.gbuffer, base.vertexBuffer, base.t, core.GetTempMemory());
+        //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
     }   break;
     }
     // Draw Skeleton overlay

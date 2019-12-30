@@ -201,8 +201,8 @@ public:
 		framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 		framework.GetRenderSystem().ReleaseVB(textBuffer);
 		framework.GetRenderSystem().ReleaseCB(constantBuffer);
-		framework.GetRenderSystem().ReleaseTexture(depthBuffer);
-        framework.GetRenderSystem().ReleaseTexture(hdrMap);
+        framework.GetRenderSystem().ReleaseTexture(depthBuffer);
+        framework.GetRenderSystem().ReleaseTexture(cubeMap);
 	}
 
 
@@ -221,7 +221,7 @@ public:
 
 
     // Scene Resources
-    ResourceHandle               hdrMap;
+    ResourceHandle             cubeMap;
 
     // render resources
 	WorldRender					render;

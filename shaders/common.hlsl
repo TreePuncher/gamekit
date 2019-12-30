@@ -73,7 +73,7 @@ struct Plane
 	float4 Orgin;
 };
 
-float Hash(float x)
+float Hash(in float x)
 {
     uint2 n = uint(x) * uint2(1597334673U, 3812015801U);
     uint q = (n.x ^ n.y) * 1597334673U;

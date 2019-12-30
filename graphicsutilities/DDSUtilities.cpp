@@ -1305,7 +1305,7 @@ namespace FlexKit
 
         ResourceHandle Texture = RS->CreateGPUResource(
             GPUResourceDesc::BuildFromMemory(
-                GPUResourceDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, 2),
+                GPUResourceDesc::DDS(WH, DXGIFormat2TextureFormat(Format), MipLevels, TextureDimension::Texture2D),
                 &TextureResources, 1));
 
 		FK_ASSERT((size_t)Texture != INVALIDHANDLE, "TEXTURE FAILED TO CREATE!");

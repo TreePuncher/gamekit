@@ -150,18 +150,30 @@ struct GameLoadScreenStateDefaultAction
 };
 
 
+struct GameLoadScreenStateDefaultDraw
+{
+    void operator()(EngineCore& core, UpdateDispatcher& dispatcher, FrameGraph& frameGraph, double dT)
+    {
+    }
+};
+
+
 // Loads Scene and sends server notification on completion
-template<typename TY_OnUpdate = GameLoadScreenStateDefaultAction>
+template<
+    typename TY_OnUpdate    = GameLoadScreenStateDefaultAction,
+    typename TY_OnDraw      = GameLoadScreenStateDefaultDraw>
 class GameLoadScreenState : public FrameworkState
 {
 public:
     GameLoadScreenState(
         GameFramework&  IN_framework,
         BaseState&      IN_base,
-        TY_OnUpdate     IN_OnUpdate     = GameLoadSceneStateUpdateDefaultAction{}) :
+        TY_OnUpdate     IN_OnUpdate     = GameLoadScreenStateDefaultAction{},
+        TY_OnDraw       IN_OnDraw       = GameLoadScreenStateDefaultDraw{}) :
             FrameworkState  { IN_framework      },
             base            { IN_base           },
-            OnUpdate        { IN_OnUpdate       } {}
+            OnUpdate        { IN_OnUpdate       },
+            OnDraw          { IN_OnDraw         } {}
 
 
     /************************************************************************************************/
@@ -179,7 +191,7 @@ public:
     }
 
 
-    void Draw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph) final override
+    void Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override
     {
         WorldRender_Targets targets = {
             core.Window.backBuffer,
@@ -193,6 +205,8 @@ public:
 
         ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
         ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
+
+        OnDraw(core, dispatcher, frameGraph, dT);
 
         PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
         Format.Scale = { 1.0f, 1.0f };
@@ -214,8 +228,9 @@ public:
 
 private:
 
-    BaseState&      base;
-    TY_OnUpdate     OnUpdate;
+    BaseState&    base;
+    TY_OnUpdate   OnUpdate;
+    TY_OnDraw     OnDraw;
 };
 
 

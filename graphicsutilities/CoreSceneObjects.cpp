@@ -216,10 +216,10 @@ namespace FlexKit
 		}
 		// Near Field
 		{
-			float4 TopRight		{  1,  1, 0.1, 1 };
-			float4 TopLeft		{ -1,  1, 0.1, 1 };
-			float4 BottomRight	{  1, -1, 0.1, 1 };
-			float4 BottomLeft	{ -1, -1, 0.1, 1 };
+			float4 TopRight		{  1.0f,  1.0f, 0.1f, 1.0f };
+			float4 TopLeft		{ -1.0f,  1.0f, 0.1f, 1.0f };
+			float4 BottomRight	{  1.0f, -1.0f, 0.1f, 1.0f };
+			float4 BottomLeft	{ -1.0f, -1.0f, 0.1f, 1.0f };
 
 			{
 				float4 V1 = DirectX::XMVector4Transform(TopRight, Float4x4ToXMMATIRX(&InverseView));

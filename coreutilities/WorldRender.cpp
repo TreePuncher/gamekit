@@ -37,7 +37,7 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateLightPassPSO(RenderSystem* RS)
     {
-        auto lightPassShader = LoadShader("tiledLightCulling", "tiledLightCulling", "cs_5_0", "assets\\lightPass.hlsl");
+        auto lightPassShader = LoadShader("tiledLightCulling", "tiledLightCulling", "cs_5_0", "assets\\shaders\\lightPass.hlsl");
 
         D3D12_COMPUTE_PIPELINE_STATE_DESC PSO_desc = {};
         PSO_desc.CS				= lightPassShader;
@@ -53,8 +53,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateForwardDrawPSO(RenderSystem* RS)
     {
-        auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\forwardRender.hlsl");
-        auto DrawRectPShader = LoadShader("Forward_PS", "Forward_PS", "ps_5_0",	"assets\\forwardRender.hlsl");
+        auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\shaders\\forwardRender.hlsl");
+        auto DrawRectPShader = LoadShader("Forward_PS", "Forward_PS", "ps_5_0",	"assets\\shaders\\forwardRender.hlsl");
 
         FINALLY
             
@@ -128,7 +128,7 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateDepthPrePassPSO(RenderSystem* RS)
     {
-        auto DrawRectVShader = LoadShader("DepthPass_VS", "DepthPass_VS", "vs_5_0",	"assets\\forwardRender.hlsl");
+        auto DrawRectVShader = LoadShader("DepthPass_VS", "DepthPass_VS", "vs_5_0",	"assets\\shaders\\forwardRender.hlsl");
 
         EXITSCOPE(Release(&DrawRectVShader));
             
@@ -185,8 +185,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateGBufferPassPSO(RenderSystem* RS)
     {
-        auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS",           "vs_5_0",	"assets\\forwardRender.hlsl");
-        auto DrawRectPShader = LoadShader("GBufferFill_PS", "GBufferFill_PS",   "ps_5_0",	"assets\\forwardRender.hlsl");
+        auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS",           "vs_5_0",	"assets\\shaders\\forwardRender.hlsl");
+        auto DrawRectPShader = LoadShader("GBufferFill_PS", "GBufferFill_PS",   "ps_5_0",	"assets\\shaders\\forwardRender.hlsl");
 
         FINALLY
          Release(&DrawRectVShader);
@@ -253,8 +253,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateDeferredShadingPassPSO(RenderSystem* RS)
     {
-        auto VShader = LoadShader("ShadingPass_VS",     "DeferredShade_VS",   "vs_5_0",	"assets\\deferredRender.hlsl");
-        auto PShader = LoadShader("DeferredShade_PS",   "DeferredShade_VS",   "ps_5_0",	"assets\\deferredRender.hlsl");
+        auto VShader = LoadShader("ShadingPass_VS",     "DeferredShade_VS",   "vs_5_0",	"assets\\shaders\\deferredRender.hlsl");
+        auto PShader = LoadShader("DeferredShade_PS",   "DeferredShade_VS",   "ps_5_0",	"assets\\shaders\\deferredRender.hlsl");
 
         FINALLY
          Release(&VShader);
@@ -311,8 +311,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateEnvironmentPassPSO(RenderSystem* RS)
     {
-        auto VShader = LoadShader("passthrough_VS", "FORWARDShade_VS", "vs_5_0", "assets\\DeferredRender.hlsl");
-        auto PShader = LoadShader("environment_PS", "FORWARDShade_VS", "ps_5_0", "assets\\DeferredRender.hlsl");
+        auto VShader = LoadShader("passthrough_VS", "FORWARDShade_VS", "vs_5_0", "assets\\shaders\\DeferredRender.hlsl");
+        auto PShader = LoadShader("environment_PS", "FORWARDShade_VS", "ps_5_0", "assets\\shaders\\DeferredRender.hlsl");
 
         FINALLY
             Release(&VShader);
@@ -369,8 +369,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateForwardDrawInstancedPSO(RenderSystem* RS)
     {
-        auto VShader = LoadShader("VMain",		"InstanceForward_VS",	"vs_5_0", "assets\\DrawInstancedVShader.hlsl");
-        auto PShader = LoadShader("FlatWhite",	"FlatWhite",			"ps_5_0", "assets\\forwardRender.hlsl");
+        auto VShader = LoadShader("VMain",		"InstanceForward_VS",	"vs_5_0", "assets\\shaders\\DrawInstancedVShader.hlsl");
+        auto PShader = LoadShader("FlatWhite",	"FlatWhite",			"ps_5_0", "assets\\shaders\\forwardRender.hlsl");
 
         EXITSCOPE(
             Release(&VShader);
@@ -442,7 +442,7 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateOcclusionDrawPSO(RenderSystem* RS)
     {
-        auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\forwardRender.hlsl");
+        auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\shaders\\forwardRender.hlsl");
 
         FINALLY
             
@@ -485,6 +485,57 @@ namespace FlexKit
             PSO_Desc.SampleDesc.Quality    = 0;
             PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
             PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateTexture2CubeMapPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("texture2CubeMap_VS", "texture2CubeMap_VS", "vs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+        auto GShader = LoadShader("texture2CubeMap_GS", "texture2CubeMap_GS", "gs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+        auto PShader = LoadShader("texture2CubeMap_PS", "texture2CubeMap_PS", "ps_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+
+        FINALLY
+            Release(&VShader);
+            Release(&PShader);
+        FINALLYOVER
+
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        Rast_Desc.CullMode                      = D3D12_CULL_MODE::D3D12_CULL_MODE_NONE;
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
+        Depth_Desc.DepthEnable	= false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = VShader;
+            PSO_Desc.GS                    = GShader;
+            PSO_Desc.PS                    = PShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+            PSO_Desc.NumRenderTargets      = 1;
+            PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            //PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
             PSO_Desc.DepthStencilState     = Depth_Desc;
         }
 
@@ -721,9 +772,9 @@ namespace FlexKit
                 data.descHeap.SetSRV(renderSystem, 2, frameResources.GetTexture(data.NormalTargetObject));
                 data.descHeap.SetSRV(renderSystem, 3, frameResources.GetTexture(data.TangentTargetObject));
                 data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
-                data.descHeap.SetSRV(renderSystem, 5, data.HDRMap);
-                data.descHeap.SetSRV(renderSystem, 6, data.HDRMap);
-                data.descHeap.SetSRV(renderSystem, 7, data.HDRMap);
+                data.descHeap.SetSRVCubemap(renderSystem, 5, data.HDRMap);
+                data.descHeap.SetSRVCubemap(renderSystem, 6, data.HDRMap);
+                data.descHeap.SetSRVCubemap(renderSystem, 7, data.HDRMap);
 
                 ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
                 ctx->SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));

@@ -880,6 +880,26 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    bool DescriptorHeap::SetSRVCubemap(RenderSystem* RS, size_t idx, ResourceHandle	handle)
+    {
+        if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+            return false;
+
+        PushCubeMapTextureToDescHeap(
+            RS, 
+            RS->Textures[handle],
+            IncrementHeapPOS(
+                    descriptorHeap, 
+                    RS->DescriptorCBVSRVUAVSize, 
+                    idx));
+
+        return true;
+    }
+
+
+    /************************************************************************************************/
+
+
     bool DescriptorHeap::SetSRV(RenderSystem* RS, size_t idx, ResourceHandle	handle, FORMAT_2D format)
     {
         if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
@@ -1415,7 +1435,7 @@ namespace FlexKit
             false,
             DepthStecil ? &(D3D12_CPU_DESCRIPTOR_HANDLE)DepthStencil : nullptr);
     }
-    
+
 
     /************************************************************************************************/
 
@@ -2876,12 +2896,11 @@ namespace FlexKit
 
                     FK_VLOG(10, "FINISHED RESETING COMMAND LISTS");
 
-                    FrameResources[I].TempBuffers				= TempResourceList(in->Memory);
-                    FrameResources[I].ComputeList[II]			= static_cast<ID3D12GraphicsCommandList3*>(ComputeList);
-                    FrameResources[I].CommandListsUsed[II]		= false;
-                    FrameResources[I].ComputeCLAllocator[II]	= ComputeAllocator;
-                    FrameResources[I].GraphicsCLAllocator[II]	= GraphicsAllocator;
-                    FrameResources[I].CommandLists[II]			= static_cast<ID3D12GraphicsCommandList3*>(CommandList);
+                    FrameResources[I].ComputeList.push_back(static_cast<ID3D12GraphicsCommandList3*>(ComputeList));
+                    FrameResources[I].CommandListsUsed.push_back(false);
+                    FrameResources[I].ComputeCLAllocator.push_back(ComputeAllocator);
+                    FrameResources[I].GraphicsCLAllocator.push_back(GraphicsAllocator);
+                    FrameResources[I].CommandLists.push_back(static_cast<ID3D12GraphicsCommandList3*>(CommandList));
                 }
 
                 ID3D12DescriptorHeap* SRVHeap		= nullptr;
@@ -3274,6 +3293,24 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    TextureDimension RenderSystem::GetTextureDimension(ResourceHandle handle) const
+    {
+        return Textures.GetDimension(handle);
+    }
+
+
+    /************************************************************************************************/
+
+
+    size_t RenderSystem::GetTextureArraySize(ResourceHandle handle) const
+    {
+        return Textures.GetArraySize(handle);
+    }
+
+
+    /************************************************************************************************/
+
+
     void RenderSystem::UploadTexture(ResourceHandle handle, UploadQueueHandle queue, byte* buffer, size_t bufferSize)
     {
         auto resource	= _GetTextureResource(handle);
@@ -3379,15 +3416,22 @@ namespace FlexKit
         else
         {
             D3D12_RESOURCE_DESC   Resource_DESC = 
-                    (desc.Dimensions == 1) ?
-                    CD3DX12_RESOURCE_DESC::Buffer(desc.WH[0])
-                :
+                    (desc.Dimensions == TextureDimension::Texture1D) ?
+                    CD3DX12_RESOURCE_DESC::Buffer(desc.WH[0]):
+                    (desc.Dimensions == TextureDimension::Texture2D) ? (
                     CD3DX12_RESOURCE_DESC::Tex2D(
                         TextureFormat2DXGIFormat(desc.format),
                         desc.WH[0],
                         desc.WH[1],
                         1,
-                        desc.MipLevels);
+                        desc.MipLevels)
+                    ) : (
+                    CD3DX12_RESOURCE_DESC::Tex2D(
+                        TextureFormat2DXGIFormat(desc.format),
+                        desc.WH[0],
+                        desc.WH[1],
+                        6,
+                        desc.MipLevels));
 
 
             Resource_DESC.Flags	= desc.renderTarget ?
@@ -3401,7 +3445,7 @@ namespace FlexKit
             Resource_DESC.Flags |=  (desc.depthTarget) ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : 
                 D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
 
-            Resource_DESC.MipLevels	= desc.MipLevels;
+            Resource_DESC.MipLevels	= !desc.MipLevels ? 1 : desc.MipLevels;
 
             D3D12_HEAP_PROPERTIES HEAP_Props	={};
             HEAP_Props.CPUPageProperty			= D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
@@ -4918,6 +4962,8 @@ namespace FlexKit
         Entry.Handle            = Handle;
         Entry.Format			= TextureFormat2DXGIFormat(Desc.format);
         Entry.Flags             = Desc.backBuffer ? TF_BackBuffer : 0;
+        Entry.dimension         = Desc.Dimensions;
+        Entry.arraySize         = Desc.arraySize;
 
         UserEntries.push_back(Entry);
 
@@ -5039,6 +5085,26 @@ namespace FlexKit
     {
         auto UserIdx = Handles[handle];
         return UserEntries[UserIdx].Format;
+    }
+
+
+    /************************************************************************************************/
+
+
+    TextureDimension TextureStateTable::GetDimension(ResourceHandle handle) const
+    {
+        auto UserIdx = Handles[handle];
+        return UserEntries[UserIdx].dimension;
+    }
+
+
+    /************************************************************************************************/
+
+
+    size_t TextureStateTable::GetArraySize(ResourceHandle handle) const
+    {
+        auto UserIdx = Handles[handle];
+        return UserEntries[UserIdx].arraySize;
     }
 
 
@@ -6300,10 +6366,26 @@ namespace FlexKit
     DescHeapPOS PushRenderTarget2(RenderSystem* RS, ResourceHandle target, DescHeapPOS POS)
     {
         D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
-        TargetDesc.Format				= TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
-        TargetDesc.Texture2D.MipSlice	= 0;
-        TargetDesc.Texture2D.PlaneSlice = 0;
-        TargetDesc.ViewDimension		= D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;
+        const auto dimension            = RS->GetTextureDimension(target);
+
+        switch (dimension)
+        {
+        case TextureDimension::Texture2D:
+            TargetDesc.Format               = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
+            TargetDesc.Texture2D.MipSlice   = 0;
+            TargetDesc.Texture2D.PlaneSlice = 0;
+            TargetDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
+            break;
+        case TextureDimension::TextureCubeMap:
+            TargetDesc.Format                           = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
+            TargetDesc.Texture2DArray.FirstArraySlice   = 0;
+            TargetDesc.Texture2DArray.MipSlice          = 0;
+            TargetDesc.Texture2DArray.PlaneSlice        = 0;
+            TargetDesc.Texture2DArray.ArraySize         = 6;
+            TargetDesc.ViewDimension                    = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+            break;
+        }
+            
 
         auto resource = RS->GetObjectDeviceResource(target);
         RS->pDevice->CreateRenderTargetView(resource, &TargetDesc, POS);
@@ -6392,10 +6474,30 @@ namespace FlexKit
             ViewDesc.Format                        = tex.Format;
             ViewDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             ViewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-            ViewDesc.Texture2D.MipLevels           = tex.mipCount;
+            ViewDesc.Texture2D.MipLevels           = !tex.mipCount ? 1 : tex.mipCount;
             ViewDesc.Texture2D.MostDetailedMip     = 0;
             ViewDesc.Texture2D.PlaneSlice          = 0;
             ViewDesc.Texture2D.ResourceMinLODClamp = 0;
+        }
+
+        RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
+
+        return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+    }
+
+
+    /************************************************************************************************/
+
+
+    DescHeapPOS PushCubeMapTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
+            ViewDesc.Format                          = tex.Format;
+            ViewDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            ViewDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURECUBE;
+            ViewDesc.TextureCube.MipLevels           = 1;
+            ViewDesc.TextureCube.MostDetailedMip     = 0;
+            ViewDesc.TextureCube.ResourceMinLODClamp = 0;
         }
 
         RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
