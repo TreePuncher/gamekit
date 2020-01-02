@@ -78,7 +78,7 @@ namespace FlexKit
 		float			moveRate;
 
         float3          velocity        = 0;
-        float           acceleration    = 100;
+        float           acceleration    = 500;
         float           drag            = 5.0;
 
 		struct KeyStates

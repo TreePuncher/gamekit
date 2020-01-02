@@ -194,7 +194,7 @@ namespace FlexKit
                 [](auto& builder, FetchTextureBlocks& data)
                 {
                 },
-                [](const FetchTextureBlocks& data, const FrameResources& resources, Context* ctx)
+                [](const FetchTextureBlocks& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
                 {
                 });
         }
@@ -324,8 +324,6 @@ namespace FlexKit
 		FrameResourceHandle		lightMapObject;
 		FrameResourceHandle		lightListObject;
 		FrameResourceHandle		lightBufferObject;
-
-		DescriptorHeap	descHeap;
 	};
 
 
@@ -356,8 +354,6 @@ namespace FlexKit
 
         CBPushBuffer passConstantsBuffer;
         CBPushBuffer entityConstantsBuffer;
-
-        DescriptorHeap Heap; // Null Filled
     };
 
     using PointLightHandleList = Vector<PointLightHandle>;
@@ -395,8 +391,6 @@ namespace FlexKit
 
         const PointLightHandleList& pointLights;
         const PVS&                  drawables;
-
-        DescriptorHeap				Heap; // Null Filled
     };
 
 
@@ -455,12 +449,12 @@ namespace FlexKit
                 data.normal     = builder.WriteRenderTarget(gbuffer.Normal);
                 data.tangent    = builder.WriteRenderTarget(gbuffer.Tangent);
             },
-            [](GBufferClear& data, FrameResources& resources, Context* ctx)
+            [](GBufferClear& data, FrameResources& resources, Context& ctx, iAllocator&)
             {
-                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.albedo));
-                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.MRIA));
-                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.normal));
-                ctx->ClearRenderTarget(resources.GetRenderTargetObject(data.tangent));
+                ctx.ClearRenderTarget(resources.GetTexture(data.albedo));
+                ctx.ClearRenderTarget(resources.GetTexture(data.MRIA));
+                ctx.ClearRenderTarget(resources.GetTexture(data.normal));
+                ctx.ClearRenderTarget(resources.GetTexture(data.tangent));
             });
     }
 
@@ -482,8 +476,6 @@ namespace FlexKit
         CBPushBuffer    entityConstants;
         CBPushBuffer    passConstants;
 
-        DescriptorHeap	Heap;
-
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
         FrameResourceHandle MRIATargetObject;
@@ -497,7 +489,6 @@ namespace FlexKit
     struct BackgroundEnvironmentPass
     {
         ResourceHandle       HDRMap;
-        DescriptorHeap	    descHeap;
 
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
@@ -526,7 +517,6 @@ namespace FlexKit
 
         CBPushBuffer            passConstants;
         VBPushBuffer            passVertices;
-        DescriptorHeap	        descHeap;
 
         FrameResourceHandle     AlbedoTargetObject;     // RGBA8
         FrameResourceHandle     NormalTargetObject;     // RGBA16Float

@@ -493,23 +493,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescriptorHeap	FrameGraphNodeBuilder::ReserveDescriptorTableSpaces(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory)
-	{
-		DescriptorHeap newHeap;
-		newHeap.Init(
-			Resources->renderSystem,
-			IN_layout,
-			requiredTables,
-			tempMemory);
-
-
-		return newHeap;
-	}
-
-
-	/************************************************************************************************/
-
-
 	FrameGraphNodeBuilder::CheckStateRes FrameGraphNodeBuilder::CheckResourceSituation(
 		Vector<FrameObjectDependency>&  Set1,
 		Vector<FrameObjectDependency>&  Set2,
@@ -541,38 +524,38 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraph::ProcessNode(FrameGraphNode* N, FrameResources& Resources, Context& Context)
+	void FrameGraph::ProcessNode(FrameGraphNode* node, FrameResources& resources, Context& ctx, iAllocator& allocator)
 	{
-		if (!N->Executed)
+		if (!node->Executed)
 		{
-			N->Executed = true;
+            node->Executed = true;
 
-			for (auto Source : N->Sources)
-				ProcessNode(Source, Resources, Context);
+			for (auto Source : node->Sources)
+				ProcessNode(node, resources, ctx, allocator);
 
-			N->NodeAction(*N, Resources, &Context);
+			node->NodeAction(*node, resources, ctx, allocator);
 		}
 	}
 
 
 	/************************************************************************************************/
 
-	 void FrameGraph::_SubmitFrameGraph(Vector<Context>& contexts)
+
+	void FrameGraph::_SubmitFrameGraph(Vector<Context*>& contexts, iAllocator& allocator)
 	{
 		for (auto& N : Nodes)
-			ProcessNode(&N, Resources, contexts.back());
+			ProcessNode(&N, Resources, *contexts.back(), allocator);
 	}
 
 
-	void FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, RenderWindow* renderWindow)
+	void FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, RenderWindow* renderWindow, iAllocator& allocator)
 	{
-
 		struct SubmitData
 		{
-			Vector<Context>				contexts;
-			FrameGraph*					frameGraph;
-			RenderSystem*				renderSystem;
-			RenderWindow*				renderWindow;
+			Vector<Context*>    contexts;
+			FrameGraph*		    frameGraph;
+			RenderSystem*	    renderSystem;
+			RenderWindow*	    renderWindow;
 		};
 
 		auto framegraph = this;
@@ -583,8 +566,8 @@ namespace FlexKit
 				FK_LOG_9("Frame Graph Single-Thread Section Begin");
 				builder.DebugID		= "Frame Graph Task";
 
-				data.contexts		= Vector<Context>{ Memory };
-				data.contexts.emplace_back(renderSystem->_GetCurrentCommandList(), renderSystem, Memory);
+				data.contexts		= Vector<Context*>{ Memory };
+				data.contexts.emplace_back(&renderSystem->GetCommandList());
 
 				data.frameGraph		= framegraph;
 				data.renderSystem	= renderSystem;
@@ -596,105 +579,20 @@ namespace FlexKit
 				for (auto dependency : dataDependencies)
 					builder.AddInput(*dependency);
 
-				ReadyResources();
-
 				FK_LOG_9("Frame Graph Single-Thread Section End");
 			},
-			[=](SubmitData& data)
+			[=, &allocator](SubmitData& data)
 			{
 				FK_LOG_9("Frame Graph Multi-Thread Section Begin");
 
-				data.frameGraph->_SubmitFrameGraph(data.contexts);
-				data.contexts.back().FlushBarriers();
-
-				static_vector<ID3D12CommandList*> CLs = { data.contexts.back().GetCommandList() };
-
-				Close({ data.contexts.back().GetCommandList() });
-				data.renderSystem->Submit(CLs);
+				data.frameGraph->_SubmitFrameGraph(data.contexts, allocator);
+				data.contexts.back()->FlushBarriers();
+				data.renderSystem->Submit(data.contexts);
 
 				UpdateResourceFinalState();
 
 				FK_LOG_9("Frame Graph Multi-Thread Section End");
 			});
-	}
-
-
-	/************************************************************************************************/
-
-
-	void FrameGraph::ReadyResources()
-	{
-		Vector<FrameObject*> RenderTargets(Memory);
-		RenderTargets.reserve(64);
-
-		Vector<FrameObject*> DepthBuffers(Memory);
-		DepthBuffers.reserve(64);
-
-
-		for (auto& Resource : Resources.Resources)
-		{
-			if (Resource.Type == OT_RenderTarget ||
-				Resource.Type == OT_BackBuffer)
-			{
-				RenderTargets.push_back(&Resource);
-			}
-			else if(Resource.Type == OT_DepthBuffer)
-				DepthBuffers.push_back(&Resource);
-		}
-
-		auto& renderSystem	= Resources.renderSystem;
-
-		{	// Push RenderTargets
-			auto Table		= renderSystem._ReserveRTVHeap(RenderTargets.size());
-			auto TablePOS	= Table;
-
-			for (auto RT : RenderTargets)
-			{
-				const auto Handle			= RT->RenderTarget.Texture;
-
-				RT->RenderTarget.HeapPOS	= TablePOS;
-				TablePOS					= PushRenderTarget(renderSystem, Handle, TablePOS);
-
-                renderSystem.MarkTextureUsed(Handle);
-			}
-		}
-
-        for (auto& resource : Resources.Resources)
-        {
-            if (resource.Type == OT_UAVTexture && resource.UAVTexture.renderTargetUse)
-            {
-                const auto Texture          = renderSystem.GetUAV2DTexture(resource.UAVTexture.handle);
-                const auto TablePOS         = renderSystem._ReserveRTVHeap(1);
-                resource.UAVTexture.HeapPOS = TablePOS;
-
-                PushRenderTarget(renderSystem, Texture, TablePOS);
-            }
-
-            if (resource.Type == OT_ShaderResource && resource.ShaderResource.renderTargetUse)
-            {
-                const auto resourceArraySize    = renderSystem.GetTextureArraySize(resource.ShaderResource);
-
-                auto TablePOS                   = renderSystem._ReserveRTVHeap(resourceArraySize);
-                resource.ShaderResource.HeapPOS = TablePOS;
-
-                for(size_t I = 0; I < resourceArraySize; ++I)
-                    TablePOS = PushRenderTarget2(renderSystem, resource.ShaderResource, TablePOS);
-            }
-        }
-
-		{	// Push Depth Stencils
-			auto TableDepth = renderSystem._ReserveDSVHeap(DepthBuffers.size());
-			auto TableDepthPOS = TableDepth;
-
-			for (auto RT : DepthBuffers)
-			{
-				auto Handle		            = RT->RenderTarget.Texture;
-				RT->RenderTarget.HeapPOS	= TableDepthPOS;
-				TableDepthPOS				= PushDepthStencil(renderSystem, Handle, TableDepthPOS);
-
-                renderSystem.MarkTextureUsed(Handle);
-			}
-		}
 	}
 
 
@@ -767,10 +665,10 @@ namespace FlexKit
 			{
 				Data.BackBuffer = Builder.WriteBackBuffer(backBuffer);
 			},
-			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
+			[=](const PassData& Data, const FrameResources& Resources, Context& Ctx, iAllocator& allocator)
 			{	// do clear here
-				Ctx->ClearRenderTarget(
-					Resources.GetRenderTargetObject(Data.BackBuffer), 
+				Ctx.ClearRenderTarget(
+                    { Resources.GetTexture(Data.BackBuffer) },
 					Data.ClearColor);
 			});
 	}
@@ -798,10 +696,10 @@ namespace FlexKit
 			{
 				Data.DepthBuffer = Builder.WriteDepthBuffer(Handle);
 			},
-			[=](const ClearDepthBuffer& Data, const FrameResources& Resources, Context* Ctx)
+			[=](const ClearDepthBuffer& Data, const FrameResources& Resources, Context& Ctx, iAllocator& allocator)
 			{	// do clear here
-				Ctx->ClearDepthBuffer(
-					Resources.GetRenderTargetObject(Data.DepthBuffer),
+				Ctx.ClearDepthBuffer(
+                    { Resources.GetTexture(Data.DepthBuffer) },
 					Data.ClearDepth);
 			});
 	}
@@ -822,7 +720,7 @@ namespace FlexKit
 			{
 				Data.BackBuffer = Builder.PresentBackBuffer(Window->backBuffer);
 			},
-			[=](const PassData& Data, const FrameResources& Resources, Context* Ctx)
+			[=](const PassData& Data, const FrameResources& Resources, Context& ctx, iAllocator&)
 			{	
 			});
 	}

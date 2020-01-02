@@ -571,33 +571,33 @@ namespace FlexKit
                     data.depthBufferObject      = builder.WriteDepthBuffer(depthBufferTarget);
                     data.depthPassTarget        = depthBufferTarget;
 
-                    data.Heap.Init(
-                        frameGraph.Resources.renderSystem,
-                        frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-                        allocator);
-
-                    data.Heap.NullFill(frameGraph.Resources.renderSystem);
-
                     builder.AddDataDependency(pvs);
                 },
-                [=](DepthPass& data, const FrameResources& resources, Context* ctx)
+                [=](DepthPass& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
                 {
                     const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
 
-                    ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
-                    ctx->SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
+                    DescriptorHeap heap{
+                        ctx,
+                        resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                        &allocator };
 
-                    ctx->SetScissorAndViewports({ data.depthPassTarget });
-                    ctx->SetRenderTargets(
+                    heap.NullFill(ctx);
+
+                    ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                    ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
+
+                    ctx.SetScissorAndViewports({ data.depthPassTarget });
+                    ctx.SetRenderTargets(
                         {},
                         true,
-                        resources.GetRenderTargetObject(data.depthBufferObject));
+                        resources.GetTexture(data.depthBufferObject));
 
-                    ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                    ctx->SetGraphicsDescriptorTable(0, data.Heap);
-                    ctx->SetGraphicsConstantBufferView(1, cameraConstants);
-                    ctx->SetGraphicsConstantBufferView(3, cameraConstants);
-                    ctx->NullGraphicsConstantBufferView(6);
+                    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+                    ctx.SetGraphicsDescriptorTable(0, heap);
+                    ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+                    ctx.SetGraphicsConstantBufferView(3, cameraConstants);
+                    ctx.NullGraphicsConstantBufferView(6);
 
                     TriMesh* prevMesh = nullptr;
                     for (const auto& drawable : data.drawables)
@@ -607,14 +607,14 @@ namespace FlexKit
                         {
                             prevMesh = triMesh;
 
-                            ctx->AddIndexBuffer(triMesh);
-                            ctx->AddVertexBuffers(triMesh,
+                            ctx.AddIndexBuffer(triMesh);
+                            ctx.AddVertexBuffers(triMesh,
                                 {   VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
                                 });
                         }
 
-                        ctx->SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstantsBuffer });
-                        ctx->DrawIndexedInstanced(triMesh->IndexCount);
+                        ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstantsBuffer });
+                        ctx.DrawIndexedInstanced(triMesh->IndexCount);
                     }
                 });
 
@@ -646,12 +646,15 @@ namespace FlexKit
                 data.passConstants  = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
 
-                data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
-                data.descHeap.NullFill(renderSystem, 20);
                 data.HDRMap     = hdrMap;
             },
-            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context* ctx)
+            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& tempAllocator)
             {
+                DescriptorHeap descHeap;
+                descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 20, &tempAllocator);
+                descHeap.SetSRV(ctx, 6, data.HDRMap);
+                descHeap.NullFill(ctx, 20);
+
                 auto& renderSystem          = frameResources.renderSystem;
                 const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
@@ -670,28 +673,22 @@ namespace FlexKit
                     float4(1,   -1,  1, 1),
                 };
 
-                RenderTargetList renderTargets = {
-                    frameResources.GetRenderTargetObjects({ data.renderTargetObject })
-                };
-
                 struct
                 {
                     float2 WH;
                 }passConstants = { float2(WH[0], WH[1]) };
 
-                data.descHeap.SetSRV(renderSystem, 6, data.HDRMap);
+                ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
+                ctx.SetGraphicsDescriptorTable(4, descHeap);
 
-                ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
-                ctx->SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
-                ctx->SetGraphicsDescriptorTable(4, data.descHeap);
+                ctx.SetScissorAndViewports({ renderTarget });
+                ctx.SetRenderTargets({ frameResources.GetTexture({ data.renderTargetObject }) }, false, {});
+                ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+                ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
+                ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
 
-                ctx->SetScissorAndViewports({ renderTarget });
-                ctx->SetRenderTargets(renderTargets, false, {});
-                ctx->SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
-                ctx->SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
-                ctx->SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
-
-                ctx->Draw(6);
+                ctx.Draw(6);
             });
 
         return pass;
@@ -733,11 +730,9 @@ namespace FlexKit
                 data.passConstants  = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
 
-                data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
-                data.descHeap.NullFill(renderSystem, 20);
                 data.HDRMap     = hdrMap;
             },
-            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context* ctx)
+            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& allocator)
             {
                 auto& renderSystem          = frameResources.renderSystem;
                 const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
@@ -757,9 +752,6 @@ namespace FlexKit
                     float4(1,   -1,  1, 1),
                 };
 
-                RenderTargetList renderTargets = {
-                    frameResources.GetRenderTargetObjects({ data.renderTargetObject })
-                };
 
                 struct
                 {
@@ -767,26 +759,30 @@ namespace FlexKit
                     float  t;
                 }passConstants = { float2(WH[0], WH[1]), t };
 
-                data.descHeap.SetSRV(renderSystem, 0, frameResources.GetTexture(data.AlbedoTargetObject));
-                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.MRIATargetObject));
-                data.descHeap.SetSRV(renderSystem, 2, frameResources.GetTexture(data.NormalTargetObject));
-                data.descHeap.SetSRV(renderSystem, 3, frameResources.GetTexture(data.TangentTargetObject));
-                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
-                data.descHeap.SetSRVCubemap(renderSystem, 5, data.HDRMap);
-                data.descHeap.SetSRVCubemap(renderSystem, 6, data.HDRMap);
-                data.descHeap.SetSRVCubemap(renderSystem, 7, data.HDRMap);
+                DescriptorHeap descHeap;
+                descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 20, &allocator);
 
-                ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
-                ctx->SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
-                ctx->SetGraphicsDescriptorTable(4, data.descHeap);
+                descHeap.SetSRV(ctx, 0, frameResources.GetTexture(data.AlbedoTargetObject));
+                descHeap.SetSRV(ctx, 1, frameResources.GetTexture(data.MRIATargetObject));
+                descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.NormalTargetObject));
+                descHeap.SetSRV(ctx, 3, frameResources.GetTexture(data.TangentTargetObject));
+                descHeap.SetSRV(ctx, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                descHeap.SetSRVCubemap(ctx, 5, data.HDRMap);
+                descHeap.SetSRVCubemap(ctx, 6, data.HDRMap);
+                descHeap.SetSRVCubemap(ctx, 7, data.HDRMap);
+                descHeap.NullFill(ctx, 20);
 
-                ctx->SetScissorAndViewports({ renderTarget });
-                ctx->SetRenderTargets(renderTargets, false, {});
-                ctx->SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
-                ctx->SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
-                ctx->SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+                ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
+                ctx.SetGraphicsDescriptorTable(4, descHeap);
 
-                ctx->Draw(6);
+                ctx.SetScissorAndViewports({ renderTarget });
+                ctx.SetRenderTargets({ frameResources.GetTexture(data.renderTargetObject) }, false);
+                ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+                ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
+                ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+
+                ctx.Draw(6);
             });
 
         return pass;
@@ -831,40 +827,40 @@ namespace FlexKit
                 data.lightMap			= builder.ReadWriteUAV(lightMap,			DRS_ShaderResource);
                 data.lightLists			= builder.ReadWriteUAV(lightLists,			DRS_ShaderResource);
                 data.pointLightBuffer	= builder.ReadWriteUAV(pointLightBuffer,	DRS_ShaderResource);
-
-                data.Heap.Init(
-                    frameGraph.Resources.renderSystem,
-                    frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    allocator);
-
-                data.Heap.NullFill(frameGraph.Resources.renderSystem);
             },
-            [=](ForwardPlusPass& data, const FrameResources& resources, Context* ctx)
+            [=](ForwardPlusPass& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t }, data.passConstantsBuffer };
 
-                ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
-                ctx->SetPipelineState(resources.GetPipelineState(FORWARDDRAW));
+
+                DescriptorHeap descHeap;
+                descHeap.Init(
+                    ctx,
+                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                    &allocator);
+
+                descHeap.SetSRV(ctx, 0, lightMap);
+                descHeap.SetSRV(ctx, 1, lightLists);
+                descHeap.SetSRV(ctx, 2, pointLightBuffer);
+                descHeap.SetSRV(ctx, 3, environmentMap);
+                descHeap.NullFill(ctx);
+
+                ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                ctx.SetPipelineState(resources.GetPipelineState(FORWARDDRAW));
 
                 // Setup Initial Shading State
-                ctx->SetScissorAndViewports({Targets.RenderTarget});
-                ctx->SetRenderTargets(
-                    { resources.GetRenderTargetObject(data.BackBuffer) },
+                ctx.SetScissorAndViewports({Targets.RenderTarget});
+                ctx.SetRenderTargets(
+                    { resources.GetTexture(data.BackBuffer) },
                     true,
-                    resources.GetRenderTargetObject(data.DepthBuffer));
+                    resources.GetTexture(data.DepthBuffer));
 
-
-                data.Heap.SetSRV(resources.renderSystem, 0, lightMap);
-                data.Heap.SetSRV(resources.renderSystem, 1, lightLists);
-                data.Heap.SetSRV(resources.renderSystem, 2, pointLightBuffer);
-                data.Heap.SetSRV(resources.renderSystem, 3, environmentMap);
-
-                ctx->SetPrimitiveTopology			(EInputTopology::EIT_TRIANGLE);
-                ctx->SetGraphicsDescriptorTable		(0, data.Heap);
-                ctx->SetGraphicsConstantBufferView	(1, cameraConstants);
-                ctx->SetGraphicsConstantBufferView	(3, passConstants);
-                ctx->NullGraphicsConstantBufferView	(6);
+                ctx.SetPrimitiveTopology			(EInputTopology::EIT_TRIANGLE);
+                ctx.SetGraphicsDescriptorTable		(0, descHeap);
+                ctx.SetGraphicsConstantBufferView	(1, cameraConstants);
+                ctx.SetGraphicsConstantBufferView	(3, passConstants);
+                ctx.NullGraphicsConstantBufferView	(6);
 
                 TriMesh* prevMesh = nullptr;
 
@@ -877,8 +873,8 @@ namespace FlexKit
                     {
                         prevMesh = triMesh;
 
-                        ctx->AddIndexBuffer(triMesh);
-                        ctx->AddVertexBuffers(triMesh,
+                        ctx.AddIndexBuffer(triMesh);
+                        ctx.AddVertexBuffers(triMesh,
                             {	VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
                                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
                                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
@@ -888,10 +884,10 @@ namespace FlexKit
 
                     auto proxy = CreateCBIterator<decltype(drawable.D->GetConstants())>(data.entityConstants)[itr];
 
-                    ctx->SetGraphicsConstantBufferView(
+                    ctx.SetGraphicsConstantBufferView(
                         2,
                         proxy);
-                    ctx->DrawIndexedInstanced(triMesh->IndexCount, 0, 0, 1, 0);
+                    ctx.DrawIndexedInstanced(triMesh->IndexCount, 0, 0, 1, 0);
                 }
             });
 
@@ -931,13 +927,11 @@ namespace FlexKit
                 data.lightBufferObject	= builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
                 data.camera				= camera;
 
-                data.descHeap.Init(renderSystem, renderSystem.Library.ComputeSignature.GetDescHeap(0), tempMemory);
-                data.descHeap.NullFill(renderSystem);
 
                 builder.AddDataDependency(sceneDescription.lights);
                 builder.AddDataDependency(sceneDescription.cameras);
             },
-            [XY = lightMapWH](LightBufferUpdate& data, FrameResources& resources, Context* ctx)
+            [XY = lightMapWH](LightBufferUpdate& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 const auto cameraConstants = GetCameraConstants(data.camera);
 
@@ -969,18 +963,21 @@ namespace FlexKit
 
                 const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
                 MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)data.pointLights.begin(), uploadSize);
-                ctx->CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, ctx));
+                ctx.CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, &ctx));
 
-                ctx->SetPipelineState(resources.GetPipelineState(LIGHTPREPASS));
-                ctx->SetComputeRootSignature(resources.renderSystem.Library.ComputeSignature);
-                ctx->SetComputeDescriptorTable(0, data.descHeap);
+                DescriptorHeap descHeap;
+                descHeap.Init(ctx, resources.renderSystem.Library.ComputeSignature.GetDescHeap(0), &allocator);
+                descHeap.SetUAV(ctx, 0, resources.GetUAVTextureResource	(data.lightMapObject));
+                descHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource	(data.lightListObject));
+                descHeap.SetSRV(ctx, 2, resources.ReadUAVBuffer			(data.lightBufferObject, DRS_ShaderResource, &ctx));
+                descHeap.SetCBV(ctx, 6, constants.Handle(), constants.Offset(), sizeof(ConstantsLayout));
+                descHeap.NullFill(ctx);
 
-                data.descHeap.SetUAV(resources.renderSystem, 0, resources.GetUAVTextureResource	(data.lightMapObject));
-                data.descHeap.SetUAV(resources.renderSystem, 1, resources.GetUAVBufferResource	(data.lightListObject));
-                data.descHeap.SetSRV(resources.renderSystem, 2, resources.ReadUAVBuffer			(data.lightBufferObject, DRS_ShaderResource, ctx));
-                data.descHeap.SetCBV(resources.renderSystem, 6, constants.Handle(), constants.Offset(), sizeof(ConstantsLayout));
+                ctx.SetPipelineState(resources.GetPipelineState(LIGHTPREPASS));
+                ctx.SetComputeRootSignature(resources.renderSystem.Library.ComputeSignature);
+                ctx.SetComputeDescriptorTable(0, descHeap);
 
-                ctx->Dispatch({ XY[0], XY[1], 1 });
+                ctx.Dispatch({ XY[0], XY[1], 1 });
             });
 
         return lightBufferData;
@@ -1019,25 +1016,25 @@ namespace FlexKit
                 data.NormalTargetObject      = builder.WriteRenderTarget(gbuffer.Normal);
                 data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.Tangent);
                 data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
-
-                data.Heap.Init(
-                    frameGraph.Resources.renderSystem,
-                    frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    allocator);
-
-                data.Heap.NullFill(frameGraph.Resources.renderSystem);
             },
-            [camera](GBufferPass& data, FrameResources& frameResources, Context* ctx)
+            [camera](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstants };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, data.passConstants };
 
-                ctx->SetRootSignature(frameResources.renderSystem.Library.RS6CBVs4SRVs);
-                ctx->SetPipelineState(frameResources.GetPipelineState(GBUFFERPASS));
-                ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+                DescriptorHeap descHeap;
+                descHeap.Init(
+                    ctx,
+                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                    &allocator);
+                descHeap.NullFill(ctx);
+
+                ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS));
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
                 // Setup pipeline resources
-                ctx->SetScissorAndViewports(
+                ctx.SetScissorAndViewports(
                     std::tuple{
                         data.gbuffer.Albedo,
                         data.gbuffer.MRIA,
@@ -1046,42 +1043,48 @@ namespace FlexKit
                     });
 
                 RenderTargetList renderTargets = {
-                    frameResources.GetRenderTargetObject(data.AlbedoTargetObject),
-                    frameResources.GetRenderTargetObject(data.MRIATargetObject),
-                    frameResources.GetRenderTargetObject(data.NormalTargetObject),
-                    frameResources.GetRenderTargetObject(data.TangentTargetObject),
+                    resources.GetTexture(data.AlbedoTargetObject),
+                    resources.GetTexture(data.MRIATargetObject),
+                    resources.GetTexture(data.NormalTargetObject),
+                    resources.GetTexture(data.TangentTargetObject),
                 };
 
-                ctx->SetGraphicsDescriptorTable(0, data.Heap);
+                ctx.SetGraphicsDescriptorTable(0, descHeap);
 
-                ctx->SetRenderTargets(
+                ctx.SetRenderTargets(
                     renderTargets,
                     true,
-                    frameResources.GetRenderTargetObject(data.depthBufferTargetObject));
+                    resources.GetTexture(data.depthBufferTargetObject));
 
                 // Setup Constants
-                ctx->SetGraphicsConstantBufferView(1, cameraConstants);
-                ctx->SetGraphicsConstantBufferView(3, passConstants);
+                ctx.SetGraphicsConstantBufferView(1, cameraConstants);
+                ctx.SetGraphicsConstantBufferView(3, passConstants);
 
                 // submit draw calls
+                TriMesh* prevMesh = nullptr;
+
                 for (auto& drawable : data.pvs)
                 {
                     const auto constants  = drawable.D->GetConstants();
-                    const auto triMesh    = GetMeshResource(drawable.D->MeshHandle);
+                    auto* triMesh = GetMeshResource(drawable.D->MeshHandle);
 
-                    ctx->AddIndexBuffer(triMesh);
-                    ctx->AddVertexBuffers(
-                        triMesh,
-                        {
-                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
-                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
-                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
-                            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
-                        }
-                    );
+                    if (triMesh != prevMesh)
+                    {
+                        prevMesh = triMesh;
 
-                    ctx->SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, data.entityConstants));
-                    ctx->DrawIndexed(triMesh->IndexCount);
+                        ctx.AddIndexBuffer(triMesh);
+                        ctx.AddVertexBuffers(
+                            triMesh,
+                            {
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+                            }
+                        );
+                    }
+                    ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, data.entityConstants));
+                    ctx.DrawIndexed(triMesh->IndexCount);
                 }
             }
             );
@@ -1142,13 +1145,11 @@ namespace FlexKit
 
                 data.lightBufferObject          = builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
 
-                data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
-                data.descHeap.NullFill(renderSystem, 20);
-
                 data.passConstants = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices  = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
             },
-            [camera, renderTarget, environmentMap, t](TiledDeferredShade& data, FrameResources& frameResources, Context* ctx)
+            [camera, renderTarget, environmentMap, t]
+            (TiledDeferredShade& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 PointLightComponent& pointLights = PointLightComponent::GetComponent();
 
@@ -1164,16 +1165,11 @@ namespace FlexKit
 
                 const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
                 MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)data.pointLights.begin(), uploadSize);
-                ctx->CopyBuffer(data.lightBuffer, uploadSize, frameResources.WriteUAV(data.lightBufferObject, ctx));
+                ctx.CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, &ctx));
 
-
-                auto& renderSystem          = frameResources.renderSystem;
-                const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
+                auto& renderSystem          = resources.renderSystem;
+                const auto WH               = resources.renderSystem.GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
-
-                RenderTargetList renderTargets = {
-                    frameResources.GetRenderTargetObjects({ data.renderTargetObject })
-                };
 
                 struct
                 {
@@ -1189,33 +1185,37 @@ namespace FlexKit
                 }   vertices[] =
                 {
                     float4(-1,   1, 0, 1),
-                    float4(1,   1, 0, 1),
+                    float4( 1,   1, 0, 1),
                     float4(-1,  -1, 0, 1),
 
                     float4(-1,  -1, 0, 1),
-                    float4(1,   1, 0, 1),
-                    float4(1,  -1, 0, 1),
+                    float4( 1,   1, 0, 1),
+                    float4( 1,  -1, 0, 1),
                 };
 
-                ctx->SetRootSignature(frameResources.renderSystem.Library.RSDefault);
-                ctx->SetPipelineState(frameResources.GetPipelineState(SHADINGPASS));
-                ctx->SetGraphicsDescriptorTable(4, data.descHeap);
 
-                ctx->SetScissorAndViewports({ renderTarget });
-                ctx->SetRenderTargets(renderTargets, false, {});
-                ctx->SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
-                ctx->SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
-                ctx->SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+                DescriptorHeap descHeap;
+                descHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 20, &allocator);
+                descHeap.SetSRV(ctx, 0, resources.GetTexture(data.AlbedoTargetObject));
+                descHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIATargetObject));
+                descHeap.SetSRV(ctx, 2, resources.GetTexture(data.NormalTargetObject));
+                descHeap.SetSRV(ctx, 3, resources.GetTexture(data.TangentTargetObject));
+                descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                descHeap.SetSRV(ctx, 5, environmentMap);
+                descHeap.SetSRV(ctx, 6, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, &ctx));
+                descHeap.NullFill(ctx, 20);
 
-                data.descHeap.SetSRV(renderSystem, 0, frameResources.GetTexture(data.AlbedoTargetObject));
-                data.descHeap.SetSRV(renderSystem, 1, frameResources.GetTexture(data.MRIATargetObject));
-                data.descHeap.SetSRV(renderSystem, 2, frameResources.GetTexture(data.NormalTargetObject));
-                data.descHeap.SetSRV(renderSystem, 3, frameResources.GetTexture(data.TangentTargetObject));
-                data.descHeap.SetSRV(renderSystem, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
-                data.descHeap.SetSRV(renderSystem, 5, environmentMap);
-                data.descHeap.SetSRV(renderSystem, 6, frameResources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, ctx));
+                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
 
-                ctx->Draw(6);
+                ctx.SetScissorAndViewports({ renderTarget });
+                ctx.SetRenderTargets({ resources.GetTexture({ data.renderTargetObject })}, false, {});
+                ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
+                ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
+                ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+                ctx.SetGraphicsDescriptorTable(4, descHeap);
+
+                ctx.Draw(6);
             });
 
         return pass;

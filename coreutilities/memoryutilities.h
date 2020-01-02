@@ -560,7 +560,7 @@ namespace FlexKit
 				{
 					printf( "Block: %i : %i : ", (int)I, (int)BlockTable[I].AllocationSize);
 					if (LB[I].state && FlexKit::MediumBlockAllocator::BlockData::Aligned)
-						printf("Aligned\n");
+						printf("Allocated and Aligned\n");
 					else
 						printf("Allocated\n");
 				}

@@ -178,13 +178,15 @@ namespace FlexKit
 	class LambdaWork : public iWork
 	{
 	public:
-		LambdaWork(TY_FN& FNIN, iAllocator* Memory = FlexKit::SystemAllocator) noexcept :
-			iWork		{ Memory },
-			Callback	{ FNIN } {}
+		LambdaWork(TY_FN& FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
+			iWork		{ IN_allocator  },
+            allocator   { IN_allocator  },
+			Callback	{ FNIN          } {}
 
 		void Release() noexcept
 		{
-
+            this->~LambdaWork();
+            allocator->free(this);
 		}
 
 		void Run()
@@ -192,7 +194,8 @@ namespace FlexKit
 			Callback();
 		}
 
-		TY_FN Callback;
+		TY_FN       Callback;
+        iAllocator* allocator;
 	};
 
 
@@ -513,6 +516,60 @@ namespace FlexKit
 		return lazyConstructor;
 	}
 
+
+    /************************************************************************************************/
+
+
+    template<typename TY_OP>
+    class SynchronizedOperation
+    {
+    public:
+        SynchronizedOperation(TY_OP IN_operation) : operation{ IN_operation} {}
+
+        // No Copy
+        SynchronizedOperation(const SynchronizedOperation& rhs) = delete;
+        SynchronizedOperation& operator = (const SynchronizedOperation& rhs) = delete;
+
+
+        SynchronizedOperation(SynchronizedOperation&& rhs) :
+            criticalSection { std::move(rhs.criticalSection)    },
+            operation       { std::move(rhs.operation)          } {}
+
+
+        SynchronizedOperation& operator = (SynchronizedOperation&& rhs)
+        {
+            std::scoped_lock<std::mutex> lock{ rhs.criticalSection };
+            operation = std::move(rhs.operation);
+        }
+
+
+        template<typename ... TY_ARGS>
+        decltype(auto) operator ()(TY_ARGS&& ... args)
+        {
+            std::scoped_lock<std::mutex> lock( criticalSection );
+
+            try
+            {
+                return operation(std::foward<TY_ARGS>(args)...);
+            }
+            catch (...)
+            {
+                // Handle error somehow?
+            }
+        }
+
+
+
+    private:
+        TY_OP       operation;
+        std::mutex  criticalSection;
+    };
+
+    template<typename TY_OP>
+    auto MakeSynchonized(TY_OP operation)
+    {
+        return SynchronizedOperation{operation};
+    }
 
 	/************************************************************************************************/
 }	// namespace FlexKit

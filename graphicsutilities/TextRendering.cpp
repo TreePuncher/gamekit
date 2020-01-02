@@ -135,7 +135,6 @@ namespace FlexKit
 			size_t					VertexOffset;
 
             uint2                   WH;
-			DescriptorHeap			Heap;
 		};
 
 		frameGraph.AddNode<DrawSpriteText>(
@@ -146,11 +145,6 @@ namespace FlexKit
 					Formatting.PixelSize = float2{ 1.0f, 1.0f } / frameGraph.Resources.renderSystem.GetTextureWH(renderTarget);
 
 				Data.renderTarget	= Builder.WriteRenderTarget(renderTarget);
-
-				Data.Heap.Init(
-					frameGraph.Resources.renderSystem, 
-					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-					TempMemory);
 
 				size_t StrLen		= strlen(Str);
 				size_t BufferSize	= StrLen * sizeof(TextEntry);
@@ -244,29 +238,35 @@ namespace FlexKit
 					FlexKit::PushVertex(Character2, Buffer, frameGraph.Resources);
 				}
 			},
-			[spriteSheet = Font.Texture](DrawSpriteText& Data, const FrameResources& Resources, Context* Ctx)
-			{				
-				Data.Heap.SetSRV(Resources.renderSystem, 0, spriteSheet);
-				Data.Heap.NullFill(Resources.renderSystem);
+			[spriteSheet = Font.Texture](DrawSpriteText& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
+			{
+                DescriptorHeap descHeap;
+                descHeap.Init(
+                    ctx,
+                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                    &allocator);
 
-				Ctx->SetRootSignature				(Resources.renderSystem.Library.RS6CBVs4SRVs);
-				Ctx->SetPipelineState				(Resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
+				descHeap.SetSRV(ctx, 0, spriteSheet);
+				descHeap.NullFill(ctx);
 
-				Ctx->SetScissorAndViewports			({ Resources.GetRenderTarget(Data.renderTarget) });
-				Ctx->SetRenderTargets				({ Resources.GetRenderTargetObject(Data.renderTarget) }, false);
+				ctx.SetRootSignature				(resources.renderSystem.Library.RS6CBVs4SRVs);
+				ctx.SetPipelineState				(resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
-				Ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
-				Ctx->SetPrimitiveTopology			(EInputTopology::EIT_POINT);
-				Ctx->SetVertexBuffers				(VertexBufferList{ { Data.VertexBuffer, sizeof(TextEntry) } });
+				ctx.SetScissorAndViewports			({ resources.GetRenderTarget(data.renderTarget) });
+				ctx.SetRenderTargets				({ resources.GetTexture(data.renderTarget) }, false);
 
-				Ctx->NullGraphicsConstantBufferView	(1);
-				Ctx->NullGraphicsConstantBufferView	(2);
-				Ctx->NullGraphicsConstantBufferView	(3);
-				Ctx->NullGraphicsConstantBufferView	(4);
-				Ctx->NullGraphicsConstantBufferView	(5);
-				Ctx->NullGraphicsConstantBufferView	(6);
+				ctx.SetGraphicsDescriptorTable		(0, descHeap);
+				ctx.SetPrimitiveTopology			(EInputTopology::EIT_POINT);
+				ctx.SetVertexBuffers				(VertexBufferList{ { data.VertexBuffer, sizeof(TextEntry) } });
 
-				Ctx->Draw							(Data.VertexCount, Data.VertexOffset);
+				ctx.NullGraphicsConstantBufferView	(1);
+				ctx.NullGraphicsConstantBufferView	(2);
+				ctx.NullGraphicsConstantBufferView	(3);
+				ctx.NullGraphicsConstantBufferView	(4);
+				ctx.NullGraphicsConstantBufferView	(5);
+				ctx.NullGraphicsConstantBufferView	(6);
+
+				ctx.Draw							(data.VertexCount, data.VertexOffset);
 			});
 	}
 }	// Namespace FlexKit
