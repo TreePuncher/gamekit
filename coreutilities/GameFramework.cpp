@@ -325,7 +325,7 @@ namespace FlexKit
 
 		if(	ActiveWindow )
 		{
-			frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, ActiveWindow);
+			frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, ActiveWindow, *TempMemory);
 			Free_DelayedReleaseResources(core.RenderSystem);
 		}
 

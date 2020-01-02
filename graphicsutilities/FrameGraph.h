@@ -403,44 +403,6 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        TextureObject GetRenderTargetObject(FrameResourceHandle Handle) const
-        {
-            switch (Resources[Handle].Type)
-            {
-            case OT_BackBuffer:
-            case OT_RenderTarget:
-            case OT_DepthBuffer:
-                return { Resources[Handle].RenderTarget.HeapPOS, Resources[Handle].RenderTarget.Texture };
-            case OT_UAVTexture:
-                FK_ASSERT(Resources[Handle].UAVTexture.renderTargetUse);
-                return { Resources[Handle].UAVTexture.HeapPOS, Resources[Handle].UAVTexture.handle};
-            case OT_ShaderResource:
-                FK_ASSERT(Resources[Handle].ShaderResource.renderTargetUse);
-                return { Resources[Handle].ShaderResource.HeapPOS, Resources[Handle].ShaderResource.handle };
-            default:
-                FK_ASSERT(false);
-            }
-
-            return { {}, ResourceHandle{ InvalidHandle_t } };
-        }
-
-
-        /************************************************************************************************/
-
-
-        static_vector<DescHeapPOS>	GetRenderTargetObjects(const static_vector<FrameResourceHandle> Handles) const
-        {
-            static_vector<DescHeapPOS> Out;
-            for (auto Handle : Handles)
-                Out.push_back(Resources[Handle].RenderTarget.HeapPOS);
-
-            return Out;
-        }
-
-
-        /************************************************************************************************/
-
-
         ID3D12PipelineState*	GetPipelineState(PSOHandle State)	const
         {
             return renderSystem.GetPSO(State);
@@ -1076,7 +1038,7 @@ namespace FlexKit
 
     inline size_t BeginNewConstantBuffer(ConstantBufferHandle CB, FrameResources& Resources)
     {
-        return Resources.renderSystem.ConstantBuffers.BeginNewBuffer(CB);
+        return Resources.renderSystem.ConstantBuffers.AlignNext(CB);
     }
 
 
@@ -1172,7 +1134,7 @@ namespace FlexKit
     FLEXKITAPI class FrameGraphNode
     {
     public:
-        typedef void (*FN_NodeAction)(FrameGraphNode& node, FrameResources& Resources, Context* Ctx) ;
+        typedef void (*FN_NodeAction)(FrameGraphNode& node, FrameResources& Resources, Context& ctx, iAllocator& tempAllocator);
 
         FrameGraphNode(FN_NodeAction IN_action, void* IN_nodeData, iAllocator* IN_allocator = nullptr) :
             InputObjects	{ IN_allocator		    },
@@ -1496,8 +1458,6 @@ namespace FlexKit
         size_t							GetDescriptorTableSize			(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
         const DesciptorHeapLayout<16>&	GetDescriptorTableLayout		(PSOHandle State, size_t index) const;// PSO index + handle to desciptor table slot
 
-        DescriptorHeap					ReserveDescriptorTableSpaces	(const DesciptorHeapLayout<16>& IN_layout, size_t requiredTables, iAllocator* tempMemory);
-
         operator FrameResources&	() const	{ return *Resources; }
         operator RenderSystem&		()			{ return *Resources->renderSystem;}
 
@@ -1659,13 +1619,14 @@ namespace FlexKit
                     [](
                     FrameGraphNode& node,
                     FrameResources& resources,
-                    Context* ctx)
+                    Context&        ctx,
+                    iAllocator&     tempAllocator)
                     {
                         NodeData& data = *reinterpret_cast<NodeData*>(node.nodeData);
 
-                        node.HandleBarriers(resources, ctx);
-                        data.draw(data.fields, resources, ctx);
-                        node.RestoreResourceStates(ctx, resources.SubNodeTracking);
+                        node.HandleBarriers(resources, &ctx);
+                        data.draw(data.fields, resources, ctx, tempAllocator);
+                        node.RestoreResourceStates(&ctx, resources.SubNodeTracking);
                         data.fields.~TY();
                     },
                     &data,
@@ -1682,10 +1643,10 @@ namespace FlexKit
 
         void AddRenderTarget	(ResourceHandle Texture);
 
-        void ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Context& Context);
+        void ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Context& Context, iAllocator& allocator);
         
         void UpdateFrameGraph	(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp);// 
-        void SubmitFrameGraph	(UpdateDispatcher& dispatcher, RenderSystem* RS, RenderWindow* Window);
+        void SubmitFrameGraph	(UpdateDispatcher& dispatcher, RenderSystem* RS, RenderWindow* Window, iAllocator& allocator);
 
         RenderSystem& GetRenderSystem() { return Resources.renderSystem; }
 
@@ -1695,10 +1656,9 @@ namespace FlexKit
         Vector<FrameGraphNode>		Nodes;
         DataDependencyList			dataDependencies;
 
-        void _SubmitFrameGraph(Vector<Context>& contexts);
+        void _SubmitFrameGraph(Vector<Context*>& contexts, iAllocator& allocator);
     private:
 
-        void ReadyResources();
         void UpdateResourceFinalState();
     };
 
@@ -2221,7 +2181,6 @@ namespace FlexKit
             FrameResourceHandle		RenderTarget;
             VertexBufferHandle		VertexBuffer;
             ConstantBufferHandle	ConstantBuffer;
-            DescriptorHeap			descriptorTables;
             DrawList				Draws;
         };
 
@@ -2247,53 +2206,53 @@ namespace FlexKit
                 for (const auto& Draw : Data.Draws)
                     if (Draw.Mode == ShapeDraw::RenderMode::Textured)
                         ++textureCount;
-
-                if (textureCount){
-                    auto& desciptorTableLayout	= Builder.GetDescriptorTableLayout(State, 0);
-                    Data.descriptorTables		= Builder.ReserveDescriptorTableSpaces(desciptorTableLayout, textureCount, Memory);
-                    Data.descriptorTables.NullFill(Graph.Resources.renderSystem);
-                }
             },
-            [=](const ShapeParams& Data, const FrameResources& Resources, Context* Ctx)
+            [=](const ShapeParams& Data, const FrameResources& Resources, Context& Ctx, iAllocator&)
             {	// Multi-threadable Section
                 auto WH = Resources.GetTextureWH(Data.RenderTarget);
 
-                Ctx->SetScissorAndViewports({Resources.GetRenderTarget(Data.RenderTarget)});
-                Ctx->SetRenderTargets(
-                    {	Resources.GetRenderTargetObject(Data.RenderTarget) }, 
+                FK_ASSERT(0);
+
+                //auto& desciptorTableLayout = Builder.GetDescriptorTableLayout(State, 0);
+                //DescriptorHeap descHeap = Builder.ReserveDescriptorTableSpaces(desciptorTableLayout, textureCount, Memory);
+                //descHeap.NullFill(Graph.Resources.renderSystem);
+
+                Ctx.SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget)} );
+                Ctx.SetRenderTargets(
+                    {	Resources.GetRenderTarget(Data.RenderTarget) }, 
                     false);
 
-                Ctx->SetRootSignature		(Resources.renderSystem.Library.RS6CBVs4SRVs);
-                Ctx->SetPipelineState		(Resources.GetPipelineState(Data.State));
-                Ctx->SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
+                Ctx.SetRootSignature		(Resources.renderSystem.Library.RS6CBVs4SRVs);
+                Ctx.SetPipelineState		(Resources.GetPipelineState(Data.State));
+                Ctx.SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 
                 size_t TextureDrawCount = 0;
                 ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
                 for (auto D : Data.Draws)
                 {
-                    Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert), (UINT)D.VertexBufferOffset} });
+                    Ctx.SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(ShapeVert), (UINT)D.VertexBufferOffset} });
 
                     switch (D.Mode) {
                         case ShapeDraw::RenderMode::Line:
                         {
-                            Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
+                            Ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
                         }	break;
                         case ShapeDraw::RenderMode::Triangle:
                         {
-                            Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+                            Ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
                         }	break;
                         case ShapeDraw::RenderMode::Textured:
                         {
-                            auto table = Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++, Resources.renderSystem);
-                            table.SetSRV(Resources.renderSystem, 0, D.texture);
-                            Ctx->SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                            Ctx->SetGraphicsDescriptorTable(0, table);
+                            Ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+                            //auto table = Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++, Resources.renderSystem);
+                            //table.SetSRV(Resources.renderSystem, 0, D.texture);
+                            //Ctx.SetGraphicsDescriptorTable(0, table);
                             
                         }	break;
                     }
 
-                    Ctx->SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
-                    Ctx->Draw(D.VertexCount, D.VertexOffset);
+                    Ctx.SetGraphicsConstantBufferView(2, Data.ConstantBuffer, D.ConstantBufferOffset);
+                    Ctx.Draw(D.VertexCount, D.VertexOffset);
                     
                     PreviousMode = D.Mode;
                 }
@@ -2478,7 +2437,6 @@ namespace FlexKit
             size_t vertexOffset;
 
             PSOHandle PSO;	
-            FlexKit::DescriptorHeap	Heap; // Null Filled
         };
     
 
@@ -2498,11 +2456,6 @@ namespace FlexKit
                 Data.CB		= desc.constantBuffer;
                 Data.VB		= desc.VertexBuffer;
                 Data.PSO	= desc.PSO;
-
-                Data.Heap.Init(
-                    frameGraph.Resources.renderSystem,
-                    frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    TempMem).NullFill(frameGraph.Resources.renderSystem);
 
                 struct LocalConstants// Register b1
                 {
@@ -2550,25 +2503,32 @@ namespace FlexKit
 
                 Data.vertexCount = rects.size() * 8;
             },
-            [](auto& Data, const FrameResources& Resources, Context* ctx)
+            [](auto& Data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
-                ctx->SetRootSignature(Resources.renderSystem.Library.RS6CBVs4SRVs);
-                ctx->SetPipelineState(Resources.GetPipelineState(Data.PSO));
-                ctx->SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
+                DescriptorHeap descHeap;
+                descHeap.Init(
+                    ctx,
+                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                    &allocator);
+                descHeap.NullFill(ctx);
 
-                ctx->SetRenderTargets(
-                    { (DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false);
+                ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                ctx.SetPipelineState(resources.GetPipelineState(Data.PSO));
+                ctx.SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
 
-                ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
-                ctx->SetGraphicsDescriptorTable		(0, Data.Heap);
-                ctx->SetGraphicsConstantBufferView	(1, Data.CB, Data.cameraOffset);
-                ctx->SetGraphicsConstantBufferView	(2, Data.CB, Data.constantsOffset);
+                ctx.SetRenderTargets(
+                    { resources.GetRenderTarget(Data.RenderTarget) }, false);
 
-                ctx->NullGraphicsConstantBufferView	(4);
-                ctx->NullGraphicsConstantBufferView	(5);
-                ctx->NullGraphicsConstantBufferView	(6);
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+                ctx.SetGraphicsDescriptorTable		(0, descHeap);
+                ctx.SetGraphicsConstantBufferView	(1, Data.CB, Data.cameraOffset);
+                ctx.SetGraphicsConstantBufferView	(2, Data.CB, Data.constantsOffset);
 
-                ctx->Draw(Data.vertexCount, 0);
+                ctx.NullGraphicsConstantBufferView	(4);
+                ctx.NullGraphicsConstantBufferView	(5);
+                ctx.NullGraphicsConstantBufferView	(6);
+
+                ctx.Draw(Data.vertexCount, 0);
             });
     }
 
@@ -2625,8 +2585,6 @@ namespace FlexKit
 
             size_t					CameraConstantsOffset;
             size_t					LocalConstantsOffset;
-
-            DescriptorHeap	Heap; // Null Filled
         };
 
 
@@ -2650,12 +2608,6 @@ namespace FlexKit
                     GetCameraConstants(Camera),
                     Constants,
                     FrameGraph.Resources);
-
-                Data.Heap.Init(
-                    FrameGraph.Resources.renderSystem,
-                    FrameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    TempMem);
-                Data.Heap.NullFill(FrameGraph.Resources.renderSystem);
 
                 Drawable::VConstantsLayout DrawableConstants = 
                 {	// Someday
@@ -2691,29 +2643,36 @@ namespace FlexKit
 
                 Data.VertexCount = Lines.size() * 2;
             },
-            [](auto& Data, const FlexKit::FrameResources& Resources, FlexKit::Context* Ctx)
+            [](auto& Data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
-                Ctx->SetRootSignature(Resources.renderSystem.Library.RS6CBVs4SRVs);
-                Ctx->SetPipelineState(Resources.GetPipelineState(DRAW_LINE3D_PSO));
+                DescriptorHeap descHeap;
+                descHeap.Init(
+                    ctx,
+                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                    &allocator);
+                descHeap.NullFill(ctx);
 
-                Ctx->SetScissorAndViewports({ Resources.GetRenderTarget(Data.RenderTarget) });
-                Ctx->SetRenderTargets(
-                    {	(DescHeapPOS)Resources.GetRenderTargetObject(Data.RenderTarget) }, false,
-                        (DescHeapPOS)Resources.GetRenderTargetObject(Data.DepthBuffer));
+                ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                ctx.SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
 
-                Ctx->SetPrimitiveTopology(EInputTopology::EIT_LINE);
-                Ctx->SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(VertexLayout), (UINT)Data.VertexBufferOffset } });
+                ctx.SetScissorAndViewports({ resources.GetRenderTarget(Data.RenderTarget) });
+                ctx.SetRenderTargets(
+                    {	resources.GetRenderTarget(Data.RenderTarget) }, false,
+                        resources.GetRenderTarget(Data.DepthBuffer));
 
-                Ctx->SetGraphicsDescriptorTable(0, Data.Heap);
-                Ctx->SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
-                Ctx->SetGraphicsConstantBufferView(2, Data.CB, Data.LocalConstantsOffset);
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+                ctx.SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(VertexLayout), (UINT)Data.VertexBufferOffset } });
 
-                Ctx->NullGraphicsConstantBufferView(3);
-                Ctx->NullGraphicsConstantBufferView(4);
-                Ctx->NullGraphicsConstantBufferView(5);
-                Ctx->NullGraphicsConstantBufferView(6);
+                ctx.SetGraphicsDescriptorTable(0, descHeap);
+                ctx.SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
+                ctx.SetGraphicsConstantBufferView(2, Data.CB, Data.LocalConstantsOffset);
 
-                Ctx->Draw(Data.VertexCount, 0);
+                ctx.NullGraphicsConstantBufferView(3);
+                ctx.NullGraphicsConstantBufferView(4);
+                ctx.NullGraphicsConstantBufferView(5);
+                ctx.NullGraphicsConstantBufferView(6);
+
+                ctx.Draw(Data.VertexCount, 0);
             });
     }
 

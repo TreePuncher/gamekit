@@ -55,7 +55,8 @@ void SetupTestScene(FlexKit::GraphicScene& scene, RenderSystem& renderSystem, iA
     if (!loaded)
         triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), sphere);
 
-    static const size_t N = 10;
+    static const size_t N = 40;
+    static const float  W = (float)10 * 1.5f;
 
     for (size_t Y = 0; Y < N; ++Y)
     {
@@ -72,8 +73,7 @@ void SetupTestScene(FlexKit::GraphicScene& scene, RenderSystem& renderSystem, iA
 
             SetMaterialParams(gameObject, float3(1.0f, 1.0f, 1.0f), kS, 1.0f, roughness, anisotropic, 0.0f);
 
-            float W = (float)N * 1.5f;
-            FlexKit::SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ W * 0.5f, 0, W * 0.5f });
+            FlexKit::SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 
             scene.AddGameObject(gameObject, node);
         }
@@ -108,10 +108,8 @@ int main(int argc, char* argv[])
 
     FK_LOG_INFO("Logging initialized started.");
 
-    auto* Memory = CreateEngineMemory();
-    EXITSCOPE(ReleaseEngineMemory(Memory));
-
-    uint2 WH = uint2{ 1920, 1080 } * 1.4;
+    uint2   WH          = uint2{ 1920, 1080 } * 1.4;
+    size_t threadCount  = 3;
 
     for (size_t I = 0; I < argc; ++I)
     {
@@ -128,6 +126,11 @@ int main(int argc, char* argv[])
             WH = { X, Y };
 
             I += 2;
+        }
+        if (!strncmp("--threadcount", argv[I], strlen("-threadCount")))
+        {
+            threadCount = atoi(argv[I + 1]);
+            I += 1;
         }
         else if (!strncmp("-C", argv[I], 2))
         {
@@ -165,7 +168,10 @@ int main(int argc, char* argv[])
     }
 
 
-    FlexKit::FKApplication app{ WH, Memory, 8 };
+    auto* Memory = CreateEngineMemory();
+    EXITSCOPE(ReleaseEngineMemory(Memory));
+
+    FlexKit::FKApplication app{ WH, Memory, threadCount };
 
     FK_LOG_INFO("Set initial PlayState state.");
     auto& base = app.PushState<BaseState>(app);
@@ -192,6 +198,12 @@ int main(int argc, char* argv[])
 
             auto& gameState     = app.PushState<GameState>(base);
             auto& renderSystem  = app.GetFramework().GetRenderSystem();
+
+            auto test = []{};
+
+            auto testSynced = FlexKit::MakeSynchonized(test);
+            testSynced();
+
             struct LoadStateData
             {
                 bool Finished           = false;
@@ -217,7 +229,7 @@ int main(int argc, char* argv[])
                     auto HDRStack   = LoadHDR("assets/textures/lakeside_2k.hdr", 0, allocator);
 
                     const auto WH   = HDRStack.front().WH;
-                    state.cubeMap   = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 256, 256 }, FORMAT_2D::R16G16B16A16_FLOAT, 0, true));
+                    state.cubeMap   = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 128, 128 }, FORMAT_2D::R16G16B16A16_FLOAT, 0, true));
                     base.cubeMap    = state.cubeMap;
 
                     renderSystem.SetDebugName(state.cubeMap, "Cube Map");
@@ -234,6 +246,7 @@ int main(int argc, char* argv[])
                     renderSystem.SubmitUploadQueues(&upload);
 
                     state.textureLoaded = true;
+                    HDRStack.Release();
                 };
 
             auto& workItem = CreateLambdaWork(Task, app.GetFramework().core.GetBlockMemory());
@@ -249,11 +262,15 @@ int main(int argc, char* argv[])
                     const auto completedState = state.textureLoaded;
                     if(state.Finished)
                     {
+                        // Once state is popped off, the reference used in this lambda is also lost,
+                        // stack local ref is kept for releaseing local state
+                        auto& localState_ref = state;
+                        
                         app.PopState();
 
                         auto& playState = app.PushState<LocalPlayerState>(base, gameState);
-                        //app.GetFramework().GetRenderSystem().ReleaseVB(state.vertexBuffer);
-                        app.GetFramework().core.GetBlockMemory().free(&state);
+                        //core.RenderSystem.ReleaseVB(state.vertexBuffer);
+                        core.GetBlockMemory().release_allocation(localState_ref);
                     }
                 };
 
@@ -267,7 +284,6 @@ int main(int argc, char* argv[])
                         ResourceHandle      hdrMap;
                         ResourceHandle      cubeMap;
 
-                        DescriptorHeap      descHeap;
                         VBPushBuffer        vertexBuffer;
                     };
 
@@ -286,41 +302,24 @@ int main(int argc, char* argv[])
                             auto& renderSystem  = frameGraph.GetRenderSystem();
 
                             data.vertexBuffer = VBPushBuffer(state.vertexBuffer, sizeof(float4) * 6, renderSystem);
-                            data.descHeap.Init2(renderSystem, renderSystem.Library.RSDefault.GetDescHeap(0), 20, allocator);
-                            data.descHeap.NullFill(renderSystem, 20);
+
                         },
-                        [](RenderTexture2CubeMap& data, FrameResources& resources, Context* ctx)
+                        [](RenderTexture2CubeMap& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
                         {
-                            data.descHeap.SetSRV(resources.renderSystem, 0, data.hdrMap);
+                            DescriptorHeap descHeap;
+                            descHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 20, &allocator);
+                            descHeap.SetSRV(ctx, 0, data.hdrMap);
+                            descHeap.NullFill(ctx, 20);
 
-                            struct
-                            {
-                                float4 position;
-                            }   vertices[] =
-                            {
-                                // Front
-                                { {-1,   1,  1, 0} },
-                                { { 1,   1,  1, 0} },
-                                { {-1,  -1,  1, 0} },
+                            ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                            ctx.SetPipelineState(resources.GetPipelineState(TEXTURE2CUBEMAP));
+                            ctx.SetScissorAndViewports({ data.cubeMap });
+                            ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
 
-                                { {-1,  -1,  1, 0} },
-                                { {1,    1,  1, 0} },
-                                { {1,   -1,  1, 0} },
-                            };
+                            ctx.SetGraphicsDescriptorTable(4, descHeap);
 
-                            ctx->SetRootSignature(resources.renderSystem.Library.RSDefault);
-                            ctx->SetPipelineState(resources.GetPipelineState(TEXTURE2CUBEMAP));
-                            ctx->SetScissorAndViewports({ data.cubeMap });
-                            ctx->SetPrimitiveTopology(EInputTopology::EIT_POINT);
-                            //ctx->SetVertexBuffers({ VertexBufferDataSet{ vertices, data.vertexBuffer } });
-
-                            ctx->SetGraphicsDescriptorTable(4, data.descHeap);
-
-                            for (size_t I = 0; I < 1; ++I)
-                            {
-                                ctx->SetRenderTargets({ resources.GetRenderTargetObject(data.renderTarget) }, false);
-                                ctx->Draw(1);
-                            }
+                            ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
+                            ctx.Draw(1);
                         });
 
                     struct Dummy {};
@@ -330,7 +329,7 @@ int main(int argc, char* argv[])
                         {
                             builder.ReadShaderResource(state.cubeMap);
                         },
-                        [](Dummy& data, FrameResources& resources, Context* ctx) {});
+                        [](Dummy& data, FrameResources& resources, Context& ctx, iAllocator&) {});
 
                     state.Finished = true;
                 }

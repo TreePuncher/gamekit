@@ -596,8 +596,6 @@ namespace FlexKit
 				patches			{ vertexBuffer,		4096 * KILOBYTE, renderSystem	},
 				constants		{ constantBuffer,	1024, renderSystem	} {}
 
-			FlexKit::DescriptorHeap	heap; // Null Filled
-
 			FrameResourceHandle		renderTarget;
 			VBPushBuffer			patches;
 			CBPushBuffer			constants;
