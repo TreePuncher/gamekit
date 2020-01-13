@@ -59,6 +59,9 @@ project "TestGame"
 	filter{"files:TestGame/Win64.cpp"}
 		removeflags{"ExcludeFromBuild"}
 
+	filter{"files:**.hlsl"}
+		flags {"ExcludeFromBuild"}
+
 	filter "configurations:Debug"
 		libdirs {
 			"Dependencies/libs/debug", 
@@ -113,7 +116,7 @@ project "ResourceBuilder"
 
 	architecture "x86_64"
 
-	vpaths { ["Headers"] = "**.h", ["Source"] = "**.cpp" }
+	vpaths { ["Headers"] = "**.h", ["Source"] = "**.cpp", ["shaders"] = "**.hlsl" }
 
 	files{"FlexKitResourceCompiler/**.h", "FlexKitResourceCompiler/**.cpp"}
 

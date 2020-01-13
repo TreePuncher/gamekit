@@ -33,8 +33,5 @@ Release/
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
+*.sln
 /assets
-/flxBlenderTools/__pycache__
-/GraphicsTests/My Advisor Results - GraphicsTests
-/GraphicsTests/VTune Amplifier Results/GraphicsTests/r000hs
-/Dependencies/sdks
