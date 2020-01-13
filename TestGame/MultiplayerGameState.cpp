@@ -85,6 +85,9 @@ LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_ba
     eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
     eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft);
     eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
+    eventMap.MapKeyToEvent(KEYCODES::KC_Q, OCE_MoveDown);
+    eventMap.MapKeyToEvent(KEYCODES::KC_E, OCE_MoveUp);
+
 
     debugCamera.TranslateWorld({0, 10, 0});
 }
@@ -140,6 +143,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     debugDraw.vertexBuffer	 = base.vertexBuffer;
 
     const SceneDescription sceneDesc = {
+        activeCamera,
         pointLightGather,
         transforms,
         cameras,
@@ -158,18 +162,36 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     {
         auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
         auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-        auto& environmentPass = base.render.BackgroundPass(dispatcher, frameGraph, activeCamera, targets.RenderTarget, base.cubeMap, base.vertexBuffer, core.GetTempMemory());
-        auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.cubeMap, core.GetTempMemory());
+        auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.irradianceMap, core.GetTempMemory());
     }   break;
-
     case RenderMode::Deferred:
     {
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
         base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, sceneDesc, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
-        base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, sceneDesc, activeCamera, targets.RenderTarget, base.depthBuffer, base.cubeMap, base.gbuffer, base.vertexBuffer, base.t, core.GetTempMemory());
+        base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, sceneDesc, activeCamera, targets.RenderTarget, base.depthBuffer, base.irradianceMap, base.GGXMap, base.gbuffer, base.vertexBuffer, base.t, core.GetTempMemory());
         //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
     }   break;
+    case RenderMode::ComputeTiledDeferred:
+    {
+        auto& constantsAllocator = CreateConstantBufferAllocator(base.constantBuffer, core.RenderSystem,  core.GetTempMemory());
+
+        ComputeTiledDeferredShadeDesc desc =
+        {
+            pointLightGather,
+            base.gbuffer,
+            base.depthBuffer,
+            targets.RenderTarget,
+            activeCamera,
+        };
+
+
+        AddGBufferResource(base.gbuffer, frameGraph);
+        ClearGBuffer(base.gbuffer, frameGraph);
+        base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, sceneDesc, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
+        base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
+        base.render.RenderPBR_ComputeDeferredTiledShade(dispatcher, frameGraph, constantsAllocator, desc);
+    }
     }
     // Draw Skeleton overlay
     
@@ -245,6 +267,7 @@ bool LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(LIGHTPREPASS);
                     framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
                     framework.core.RenderSystem.QueuePSOLoad(ENVIRONMENTPASS);
+                    framework.core.RenderSystem.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
                 }
             }   return true;
             case KC_P: // Reload Shaders

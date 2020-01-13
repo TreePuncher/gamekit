@@ -421,7 +421,7 @@ namespace FlexKit
 
 	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, FrameGraph& frameGraph)
 	{
-		uint32_t VRamUsage	= core.RenderSystem._GetVidMemUsage() / MEGABYTE;
+		uint32_t VRamUsage	= (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
 		char* TempBuffer	= (char*)core.GetTempMemory().malloc(512);
 		auto DrawTiming		= float(GetDuration(PROFILE_SUBMISSION)) / 1000.0f;
 

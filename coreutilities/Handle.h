@@ -40,7 +40,7 @@ namespace FlexKit
 	}InvalidHandle_t;
 
 	template< typename int HandleSize = 32, typename int ID = -1>
-	 class Handle_t
+	class Handle_t
 	{
 	public:
 		typedef Handle_t<HandleSize, ID> THISTYPE_t;
@@ -80,7 +80,7 @@ namespace FlexKit
 			INDEX = in;
 		}
 
-		Handle_t(_InvalidHandle_t)
+        constexpr Handle_t(_InvalidHandle_t)
 		{
 			INDEX = 0XFFFFFFFF;
 		}

@@ -4,10 +4,9 @@
 struct InstancedIN
 {
 	float3 POS		: POSITION;
-	float2 T		: TEXCOORD0;
+	float2 UV		: TEXCOORD;
 	float3 N		: NORMAL;
 	float3 Tangent	: TANGENT;
-	float2 UV		: TEXCOORD;
 	float4x4 WT 	: INSTANCEWT;
 };
 

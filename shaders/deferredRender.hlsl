@@ -19,9 +19,9 @@ Texture2D<float4> MRIABuffer        : register(t1); // metallic, roughness, IOR,
 Texture2D<float4> NormalBuffer      : register(t2);
 Texture2D<float4> TangentBuffer     : register(t3);
 Texture2D<float>  DepthBuffer       : register(t4);
-ByteAddressBuffer pointLights       : register(t5);
-TextureCube<float4> EnvMap          : register(t6);
-TextureCube<float4> IrradianceMap   : register(t7);
+TextureCube<float4> ggxMap          : register(t5);
+TextureCube<float4> diffuseMap      : register(t6);
+ByteAddressBuffer pointLights       : register(t7);
 
 sampler BiLinear     : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
@@ -144,7 +144,21 @@ float CantorPairing(in float a, in float b)
     return 0.5 * (a + b) * (a + b + 1.0) + b;
 }
 
-#define SAMPLE_COUNT 32
+float RadicalInverse_VdC(in uint bits) 
+{
+    bits = (bits << 16u) | (bits >> 16u);
+    bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
+    bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
+    bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
+    bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
+    return float(bits) * 2.3283064365386963e-10; // / 0x100000000
+}
+// ----------------------------------------------------------------------------
+float2 Hammersley(in uint i, in uint N)
+{
+    return float2(float(i)/float(N), RadicalInverse_VdC(i));
+}  
+
 float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 {
     const float2 SampleCoord    = input.Position;
@@ -153,9 +167,9 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
     float3 rayDir               = GetViewVector(UV);
 
     //const float4 Specular       = SpecularBuffer.Load(Coord);
-    const float3 N              = normalize(NormalBuffer.Load(Coord).xyz);
-    const float3 T              = normalize(cross(N, N.zxy));
-    const float3 B              = normalize(cross(N, T));
+    const float3 normal              = normalize(NormalBuffer.Load(Coord).xyz);
+    const float3 tangent              = normalize(cross(normal, normal.zxy));
+    const float3 bitangent              = normalize(cross(normal, tangent));
 
     const float  depth          = DepthBuffer.Load(Coord);
 
@@ -169,7 +183,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 	// Compute tangent space vectors
 	const float3 worldV         = -rayDir;
-    const float3x3 inverseTBN   = float3x3(T, B, N.xyz);
+    const float3x3 inverseTBN   = float3x3(tangent, bitangent, normal);
     const float3x3 TBN          = transpose(inverseTBN);
 	const float3 V              = mul(inverseTBN, worldV);
 
@@ -179,73 +193,87 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 	//float metallic      = Specular.w;
 	//float3 albedo       = Albedo.rgb;
 
+	float3 color;
 	if (depth < 1.0)
 	{
 		const float4 AlbedoSpecular = AlbedoBuffer.Load(Coord);
 		const float3 albedo         = AlbedoSpecular.xyz;
-		const float  kS             = AlbedoSpecular.w;
 		const float4 MRIA           = MRIABuffer.Load(Coord);
 
-		const float metallic = MRIA.x;
-		const float roughness = MRIA.y;
-		const float ior = MRIA.z;
+		const float metallic = saturate(MRIA.x);
+		const float roughness = saturate(MRIA.y);
+		const float ior = 0.47;//MRIA.z;
 		const float anisotropic = MRIA.w;
-		const float kD = (1.0 - kS) * (1.0 - metallic);
+		
+		float alpha = roughness * roughness;
+		float aspect = sqrt(1.0 - 0.9 * anisotropic);
+		float alpha_x = alpha * aspect;
+		float alpha_y = alpha / aspect;
+
+		float NdotV = max(CosTheta(V), 0.0);
 
 		float3 specular = float3(0,0,0);
 
-		uint W, H, NumberOfLevels;
-		EnvMap.GetDimensions(0, W, H, NumberOfLevels);
+		uint Width, Height, NumberOfLevels;
+		ggxMap.GetDimensions(0, Width, Height, NumberOfLevels);
 		
-		float3 diffuse = IrradianceMap.SampleLevel(BiLinear, N, NumberOfLevels);
+		float3 diffuse = diffuseMap.Sample(BiLinear, normal);
+		const uint N = 24;
 
-		int seed = Hash(SampleCoord.y * W + SampleCoord.x) * 1000000;
+		uint pixelIndex = uint(SampleCoord.y * Width + SampleCoord.x);//Hash() * 1000000;
+		float kS = 0.0;
 
-		for (int i = 0; i < SAMPLE_COUNT; ++i)
+		for (uint i = 0; i < N; ++i)
 		{
 			// Eric Heitz GGX 2018 MIS sampling
-			float alpha = roughness * roughness;
-			float aspect = sqrt(1.0 - 0.9 * anisotropic);
-			float alpha_x = alpha * aspect;
-			float alpha_y = alpha / aspect;
+			float2 Xi = frac(Hammersley(i, N) + Hash2(pixelIndex));
+			float3 H = EricHeitz2018GGXVNDF(V, alpha_x, alpha_y, Xi.x, Xi.y);
+			float3 L = reflect(-V, H);
+			float3 Wh = normalize(V + L);
+			float cosT = dot(V, Wh);
 
-			float U1 = RandUniform(seed++);
-			float U2 = RandUniform(seed++);
-
-			float3 Ni = EricHeitz2018GGXVNDF(V, alpha_x, alpha_y, U1, U2);
-			float3 Li = reflect(-V, Ni);
-
-			float cosT = max(dot(V,Li), 0.0);
-
-			float3 F0 = abs((1.0 - ior) / (1.0 + ior));
+			// Fresnel
+			float3 F0 = pow(ior - 1.0, 2.0) / pow(ior + 1.0, 2.0);
 			float3 F = SchlickFresnel(cosT, F0);
-                
-			float G2 = EricHeitz2018GGXG2(V, Li, alpha_x, alpha_y);
+
+			kS += F;
+
+			// Geometry / Visibility
+			float G2 = EricHeitz2018GGXG2(V, L, alpha_x, alpha_y);
 			float G1 = EricHeitz2018GGXG1(V, alpha_x, alpha_y);
 
-			float3 brdfVal = (F * G2) / max(G1, 0.01);
+			float3 brdfVal = (F * G2) / G1;
 
 			// Importance Sampling combined with Mipmap Filtering
-			float pdfVal = EricHeitz2018GGXPDF(V, Ni, Li, alpha_x, alpha_y);
+			float pdfVal = EricHeitz2018GGXPDF(V, H, L, alpha_x, alpha_y);
 			float distortVal = 1.0;
-			float omegaS = 1.0 / (SAMPLE_COUNT * pdfVal);
-			float omegaP = distortVal / (W * H);
+			float omegaS = 1.0 / (N * pdfVal);
+			float omegaP = distortVal / (Width * Height);
 
-			int lod = max(0.5 * log2( (W * H) / SAMPLE_COUNT ) - 0.5 * log2(pdfVal * distortVal), 0.0);
-			float3 sampleDir = mul(TBN, Li);
-			float3 sampleIrradiance = EnvMap.SampleLevel(BiLinear, sampleDir, lod);
-		
+			int lod = max(0.5 * log2( (Width * Height) / N ) - 0.5 * log2(pdfVal * distortVal), 0.0);
+			float3 sampleDir = mul(TBN, L);
+			float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, lod);
+			
+
 			specular += sampleIrradiance * brdfVal;
 		}
+		
+		kS = saturate( kS / N );
+		float kD = (1.0 - kS) * (1.0 - metallic);
 
-		specular /= SAMPLE_COUNT;
-
-		return float4(kS * specular + kD * diffuse, 1.0);
+		specular /= N;
+		color = kD * diffuse + /* kS **/ specular; 
 	}
 	else
 	{
-        return EnvMap.Sample(BiLinear, rayDir);
+        color = ggxMap.Sample(BiLinear, rayDir);
     }
+
+
+    float gamma = 2.2;
+    color = color / (color + 1.0);
+	color = pow(color, 1.0/gamma);  
+	return float4(color, 1.0);
 
     /*
 	// Calculate world position
@@ -389,7 +417,7 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
