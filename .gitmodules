@@ -31,7 +31,3 @@
 [submodule "Dependencies/sdks/stb"]
 	path = Dependencies/sdks/stb
 	url = https://github.com/nothings/stb.git
-
-[submodule "Dependencies/sdks/DirectX-samples"]
-	path = Dependencies/sdks/DirectX-samples
-	url = https://github.com/microsoft/DirectX-Graphics-Samples.git
