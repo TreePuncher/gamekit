@@ -151,52 +151,56 @@ PointLight ReadPointLight(uint idx)
     return pointLight;
 }
 
+#define MAXLIGHTCOUNT 1024
+#define BITFIELDSIZE  1024/32
+
 groupshared Fustrum f;
 groupshared uint    culledLightCount  = 0;
-groupshared uint    lightOffset       = 0;
-groupshared uint    lights[768];
+groupshared uint    bitField[BITFIELDSIZE];
 
 [numthreads(GroupWidth, GroupHeight, 1)]
 void tiledLightCulling(uint3 ID : SV_GroupID, uint3 TID : SV_GroupThreadID)
 {
-    if (TID.x == 0 && TID.y == 0)
+    if (TID.x == 0 && TID.y == 0){
         f = CreateSubFustrum(ID.xy);
+        culledLightCount    = 0;
+    }
 
     const uint2 bucketID     = ID; 
     const uint  localIdx     = TID.x + (TID.y * GroupWidth);
     const uint  waveCount    = lightCount / GroupSize + 1;
-    const uint  offset       = (ID.x + ID.y * 192) * 768;
+    const uint  offset       = (ID.x + ID.y * LightMapWidthHeight.x) * BITFIELDSIZE;
+
+    if(localIdx < BITFIELDSIZE)
+        bitField[localIdx] = 0;
 
     GroupMemoryBarrierWithGroupSync();
 
     for (int i = 0; i < waveCount; ++i )
     {
-        uint idx = localIdx + GroupSize * i;
+        const uint idx = localIdx + GroupSize * i;
+        
+        const uint  byteOffset   = idx / 32;
+        const uint  bitOffset    = (idx % 32);
+
         if (idx < lightCount)
         {
-            PointLight light    = ReadPointLight(idx);
-            float3 viewPosition = mul(view, float4(light.PositionR.xyz, 1));
+            PointLight light        = ReadPointLight(idx);
+            float3 viewPosition     = mul(view, float4(light.PositionR.xyz, 1));
 
-            if (CompareAgainstFrustum(viewPosition, light.PositionR.w, f))
-            {
-                uint OutIdx;
-                InterlockedAdd(culledLightCount, 1, OutIdx);
-                lights[OutIdx] = idx;
+            if (CompareAgainstFrustum(viewPosition, light.PositionR.w, f)){
+                InterlockedOr(bitField[byteOffset], 0x01 << bitOffset);
             }
         }
     }
     
     GroupMemoryBarrierWithGroupSync();
 
-
-    if (TID.x == 0 && TID.y == 0)
+    if (TID.x == 0 && TID.y == 0){
         lightMap[ID.xy] = uint2(culledLightCount, offset);
 
-    // TODO: buffer compaction
-    for (int i = 0; i < waveCount; ++i)
-    {
-        uint idx = localIdx + GroupSize * i;
-        if (idx < lightCount)
-            lightBuffer[offset + idx] = lights[idx];
+        for(uint I = 0; I < BITFIELDSIZE; I++)
+            lightBuffer[offset + I] = bitField[I];
     }
+
 }

@@ -41,6 +41,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <iostream>
 #include <random>
+#include <utility>
+
 
 #define MAXTHREADCOUNT 8
 
@@ -124,6 +126,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    class WorkStealingQueue
+    {
+    public:
+
+        WorkStealingQueue()
+        {
+        }
+
+        void PushWork(iWork* work)
+        {
+
+        }
+
+        iWork* Steal()
+        {
+            return nullptr;
+        }
+
+        iWork* Pop_Front()
+        {
+            return nullptr;
+        }
+
+    private:
+
+        iWork* front;
+        iWork* end;
+    };
+
+
 	class _WorkerThread
 	{
 	public:
@@ -200,7 +232,7 @@ namespace FlexKit
 
 
 	template<typename TY_FN>
-	iWork& CreateLambdaWork(
+	iWork& CreateWorkItem(
 		TY_FN FNIN, 
 		iAllocator* Memory_1,
 		iAllocator* Memory_2)
@@ -209,11 +241,11 @@ namespace FlexKit
 	}
 
 	template<typename TY_FN>
-	iWork& CreateLambdaWork(
+	iWork& CreateWorkItem(
 		TY_FN&		FNIN,
 		iAllocator* allocator = SystemAllocator)
 	{
-		return CreateLambdaWork(FNIN, allocator, allocator);
+		return CreateWorkItem(FNIN, allocator, allocator);
 	}
 
 	/************************************************************************************************/
@@ -396,7 +428,9 @@ namespace FlexKit
 		const uint32_t				workerCount;
 		iAllocator*					allocator;
 		std::mutex					exclusive;
-		CircularBuffer<iWork*, 128>	workList; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
+
+		CircularBuffer<iWork*, 128>	            workList; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
+        CircularBuffer<WorkStealingQueue*, 128>	workLists; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
 	};
 
 
@@ -532,7 +566,6 @@ namespace FlexKit
 
 
         SynchronizedOperation(SynchronizedOperation&& rhs) :
-            criticalSection { std::move(rhs.criticalSection)    },
             operation       { std::move(rhs.operation)          } {}
 
 
@@ -547,17 +580,8 @@ namespace FlexKit
         decltype(auto) operator ()(TY_ARGS&& ... args)
         {
             std::scoped_lock<std::mutex> lock( criticalSection );
-
-            try
-            {
-                return operation(std::foward<TY_ARGS>(args)...);
-            }
-            catch (...)
-            {
-                // Handle error somehow?
-            }
+            return operation(std::forward<TY_ARGS>(args)...);
         }
-
 
 
     private:
@@ -566,9 +590,9 @@ namespace FlexKit
     };
 
     template<typename TY_OP>
-    auto MakeSynchonized(TY_OP operation)
+    auto MakeSynchonized(TY_OP operation, iAllocator* allocator)
     {
-        return SynchronizedOperation{operation};
+        return MakeSharedRef<SynchronizedOperation<TY_OP>>(allocator, operation);
     }
 
 	/************************************************************************************************/

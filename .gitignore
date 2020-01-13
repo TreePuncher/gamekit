@@ -30,7 +30,11 @@ Release/
 *.ib_pdb_index
 *.ib_tag
 *.sdf
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
 /assets
 /flxBlenderTools/__pycache__
 /GraphicsTests/My Advisor Results - GraphicsTests
 /GraphicsTests/VTune Amplifier Results/GraphicsTests/r000hs
+/Dependencies/sdks

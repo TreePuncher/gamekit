@@ -22,3 +22,16 @@
 [submodule "Dependencies/sdks/angelscript"]
 	path = Dependencies/sdks/angelscript
 	url = https://github.com/IngwiePhoenix/AngelScript.git
+[submodule "Dependencies/sdks/DirectXShaderCompiler"]
+	path = Dependencies/sdks/DirectXShaderCompiler
+	url = https://github.com/microsoft/DirectXShaderCompiler.git
+[submodule "Dependencies/sdks/imgui"]
+	path = Dependencies/sdks/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "Dependencies/sdks/stb"]
+	path = Dependencies/sdks/stb
+	url = https://github.com/nothings/stb.git
+
+[submodule "Dependencies/sdks/DirectX-samples"]
+	path = Dependencies/sdks/DirectX-samples
+	url = https://github.com/microsoft/DirectX-Graphics-Samples.git

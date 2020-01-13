@@ -34,7 +34,9 @@ TODO's
 #include "..\coreutilities\Components.h"
 #include "..\coreutilities\Events.h"
 #include "..\coreutilities\MathUtils.h"
+#include "..\coreutilities\GameFramework.h"
 #include "..\graphicsutilities\FrameGraph.h"
+
 
 
 /************************************************************************************************/

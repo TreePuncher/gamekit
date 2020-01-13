@@ -54,6 +54,22 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    auto CreateConstantBufferAllocator(ConstantBufferHandle constantBuffer, RenderSystem& renderSystem, iAllocator* allocator)
+    {
+        return MakeSynchonized(
+            [constantBuffer, &renderSystem](size_t size, size_t count)
+            {
+                return Reserve(constantBuffer, size, count, renderSystem);
+            },
+            allocator);
+    }
+
+    using ConstantBufferAllocator = decltype(CreateConstantBufferAllocator(ConstantBufferHandle{}, *((RenderSystem*)nullptr), nullptr));
+
+
+    /************************************************************************************************/
+
+
 	struct StreamingTextureDesc
 	{
 		static_vector<ResourceHandle> resourceHandles;
@@ -218,26 +234,35 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const PSOHandle FORWARDDRAW				= PSOHandle(GetTypeGUID(FORWARDDRAW));
-	const PSOHandle GBUFFERPASS             = PSOHandle(GetTypeGUID(GBUFFERPASS));
-	const PSOHandle SHADINGPASS             = PSOHandle(GetTypeGUID(SHADINGPASS));
-	const PSOHandle ENVIRONMENTPASS         = PSOHandle(GetTypeGUID(ENVIRONMENTPASS));
-	const PSOHandle LIGHTPREPASS			= PSOHandle(GetTypeGUID(LIGHTPREPASS));
-	const PSOHandle DEPTHPREPASS            = PSOHandle(GetTypeGUID(DEPTHPREPASS));
-	const PSOHandle FORWARDDRAWINSTANCED	= PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
-	const PSOHandle FORWARDDRAW_OCCLUDE		= PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
-    const PSOHandle TEXTURE2CUBEMAP         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP));
+	static const PSOHandle FORWARDDRAW				   = PSOHandle(GetTypeGUID(FORWARDDRAW));
+	static const PSOHandle GBUFFERPASS                 = PSOHandle(GetTypeGUID(GBUFFERPASS));
+	static const PSOHandle SHADINGPASS                 = PSOHandle(GetTypeGUID(SHADINGPASS));
+	static const PSOHandle COMPUTETILEDSHADINGPASS     = PSOHandle(GetTypeGUID(COMPUTETILEDSHADINGPASS));
+	static const PSOHandle ENVIRONMENTPASS             = PSOHandle(GetTypeGUID(ENVIRONMENTPASS));
+	static const PSOHandle LIGHTPREPASS			       = PSOHandle(GetTypeGUID(LIGHTPREPASS));
+	static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
+	static const PSOHandle FORWARDDRAWINSTANCED	       = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
+	static const PSOHandle FORWARDDRAW_OCCLUDE		   = PSOHandle(GetTypeGUID(FORWARDDRAW_OCCLUDE));
+    static const PSOHandle TEXTURE2CUBEMAP_IRRADIANCE  = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
+    static const PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
 
-	ID3D12PipelineState* CreateForwardDrawPSO			(RenderSystem* RS);
-	ID3D12PipelineState* CreateForwardDrawInstancedPSO	(RenderSystem* RS);
-	ID3D12PipelineState* CreateOcclusionDrawPSO			(RenderSystem* RS);
-	ID3D12PipelineState* CreateLightPassPSO				(RenderSystem* RS);
-    ID3D12PipelineState* CreateDepthPrePassPSO          (RenderSystem* RS);
-    ID3D12PipelineState* CreateGBufferPassPSO           (RenderSystem* RS);
-    ID3D12PipelineState* CreateDeferredShadingPassPSO   (RenderSystem* RS);
-    ID3D12PipelineState* CreateEnvironmentPassPSO       (RenderSystem* RS);
-    ID3D12PipelineState* CreateTexture2CubeMapPSO       (RenderSystem* RS);
+    /************************************************************************************************/
+
+
+	ID3D12PipelineState* CreateForwardDrawPSO			    (RenderSystem* RS);
+	ID3D12PipelineState* CreateForwardDrawInstancedPSO	    (RenderSystem* RS);
+	ID3D12PipelineState* CreateOcclusionDrawPSO			    (RenderSystem* RS);
+    ID3D12PipelineState* CreateDepthPrePassPSO              (RenderSystem* RS);
+    ID3D12PipelineState* CreateEnvironmentPassPSO           (RenderSystem* RS);
+
+    ID3D12PipelineState* CreateTexture2CubeMapIrradiancePSO (RenderSystem* RS);
+    ID3D12PipelineState* CreateTexture2CubeMapGGXPSO        (RenderSystem* RS);
+
+	ID3D12PipelineState* CreateLightPassPSO				    (RenderSystem* RS);
+    ID3D12PipelineState* CreateGBufferPassPSO               (RenderSystem* RS);
+    ID3D12PipelineState* CreateDeferredShadingPassPSO       (RenderSystem* RS);
+    ID3D12PipelineState* CreateComputeTiledDeferredPSO      (RenderSystem* RS);
 
 
 	struct WorldRender_Targets
@@ -318,10 +343,8 @@ namespace FlexKit
 		CameraHandle			camera;
 
 		CBPushBuffer			constants;
-		ResourceHandle			lightMap;
 		ResourceHandle			lightListBuffer;
 
-		FrameResourceHandle		lightMapObject;
 		FrameResourceHandle		lightListObject;
 		FrameResourceHandle		lightBufferObject;
 	};
@@ -337,6 +360,7 @@ namespace FlexKit
 
 	struct SceneDescription
 	{
+        CameraHandle                        camera;
 		UpdateTaskTyped<PointLightGather>&	lights;
 		UpdateTask&							transforms;
 		UpdateTask&							cameras;
@@ -363,6 +387,7 @@ namespace FlexKit
     {
         float LightCount;
         float t;
+        uint2 WH;
     };
 
     struct ForwardPlusPass
@@ -386,6 +411,8 @@ namespace FlexKit
 
         CBPushBuffer passConstantsBuffer;
         CBPushBuffer entityConstantsBuffer;
+
+        uint2       WH;
 
         const CBPushBuffer&         entityConstants;
 
@@ -488,7 +515,8 @@ namespace FlexKit
 
     struct BackgroundEnvironmentPass
     {
-        ResourceHandle       HDRMap;
+        ResourceHandle      diffuseMap;
+        ResourceHandle      GGX;
 
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
@@ -523,7 +551,7 @@ namespace FlexKit
         FrameResourceHandle     MRIATargetObject;
         FrameResourceHandle     TangentTargetObject;
         FrameResourceHandle     depthBufferTargetObject;
-        FrameResourceHandle		lightBufferObject;
+        FrameResourceHandle		pointLightBufferObject;
 
         FrameResourceHandle     renderTargetObject;
     };
@@ -531,6 +559,17 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+
+    struct ComputeTiledDeferredShadeDesc
+    {
+        PointLightGatherTask&   pointLightGather;
+        GBuffer&                gbuffer;
+        ResourceHandle          depthTarget;
+        ResourceHandle          renderTarget;
+
+        CameraHandle            activeCamera;
+        iAllocator*             allocator;
+    };
 
 	class FLEXKITAPI WorldRender
 	{
@@ -540,20 +579,20 @@ namespace FlexKit
 			renderSystem        { RS_IN                                                                                 },
 			constantBuffer		{ renderSystem.CreateConstantBuffer(64 * MEGABYTE, false)						        },
 			OcclusionCulling	{ false																                    },
-			lightLists			{ renderSystem.CreateUAVBufferResource(sizeof(uint32_t) * (WH / 10).Product() * 1024)   },
+			lightLists			{ renderSystem.CreateUAVBufferResource(sizeof(uint32_t) * (WH / 10).Product() * 32)     },
 			pointLightBuffer	{ renderSystem.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)                    },
-			lightMap			{ renderSystem.CreateUAVTextureResource(WH / 10, FORMAT_2D::R32G32_UINT)                },
+            tempBuffer          { renderSystem.CreateUAVTextureResource(WH, FORMAT_2D::R16G16B16A16_FLOAT)              },
 			streamingEngine		{ IN_streamingEngine											                        },
 			lightMapWH			{ WH / 10                                                                               }
 		{
-			RS_IN.RegisterPSOLoader(FORWARDDRAW,			{ &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,			});
-			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	{ &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO	});
-			RS_IN.RegisterPSOLoader(FORWARDDRAW_OCCLUDE,	{ &RS_IN.Library.RS6CBVs4SRVs,	    CreateOcclusionDrawPSO			});
-			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			{ &RS_IN.Library.ComputeSignature,  CreateLightPassPSO				});
-			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO           });
-			RS_IN.RegisterPSOLoader(GBUFFERPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO            });
-			RS_IN.RegisterPSOLoader(SHADINGPASS,			{ &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO    });
-            RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,        { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO        });
+			RS_IN.RegisterPSOLoader(FORWARDDRAW,			 { &RS_IN.Library.RS6CBVs4SRVs,		 CreateForwardDrawPSO,		   });
+			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	 { &RS_IN.Library.RS6CBVs4SRVs,		 CreateForwardDrawInstancedPSO });
+			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			 { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			   });
+			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
+			RS_IN.RegisterPSOLoader(GBUFFERPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
+			RS_IN.RegisterPSOLoader(SHADINGPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO  });
+            RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,         { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
+            RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS, { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
 
             RS_IN.QueuePSOLoad(GBUFFERPASS);
             RS_IN.QueuePSOLoad(DEPTHPREPASS);
@@ -561,10 +600,11 @@ namespace FlexKit
             RS_IN.QueuePSOLoad(FORWARDDRAW);
             RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
             RS_IN.QueuePSOLoad(SHADINGPASS);
+            RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
 
             RS_IN.SetDebugName(lightLists,        "lightLists");
             RS_IN.SetDebugName(pointLightBuffer,  "pointLightBuffer");
-            RS_IN.SetDebugName(lightMap,          "lightMap");
+            RS_IN.SetDebugName(pointLightBuffer,  "tempBuffer");
 		}
 
 
@@ -577,7 +617,6 @@ namespace FlexKit
         void Release()
         {
             renderSystem.ReleaseCB(constantBuffer);
-            renderSystem.ReleaseUAV(lightMap);
             renderSystem.ReleaseUAV(lightLists);
             renderSystem.ReleaseUAV(pointLightBuffer);
         }
@@ -631,7 +670,8 @@ namespace FlexKit
             const CameraHandle      camera,
             const ResourceHandle    renderTarget,
             const ResourceHandle    depthTarget,
-            const ResourceHandle    hdrMap,
+            const ResourceHandle    diffuseMap,
+            const ResourceHandle    GGXMap,
             GBuffer&                gbuffer,
             VertexBufferHandle      vertexBuffer,
             const float             t,
@@ -653,29 +693,156 @@ namespace FlexKit
             UpdateDispatcher&       dispatcher,
             FrameGraph&             frameGraph,
             const SceneDescription& sceneDescription,
-            const CameraHandle      camera,
             PointLightGatherTask&   gather,
             GBuffer&                gbuffer,
             ResourceHandle          depthTarget,
             ResourceHandle          renderTarget,
-            ResourceHandle          environmentMap,
+            ResourceHandle          GGXSpecularMap,
+            ResourceHandle          diffuseMap,
             VertexBufferHandle      vertexBuffer,
             float                   t,
             iAllocator*             allocator);
 
 
+        auto& RenderPBR_ComputeDeferredTiledShade(
+            UpdateDispatcher&                       dispatcher,
+            FrameGraph&                             frameGraph,
+            ConstantBufferAllocator&                constantBufferAllocator,
+            const ComputeTiledDeferredShadeDesc&    scene)
+        {
+            struct PassResources
+            {
+                ConstantBufferAllocator     constantBufferAllocator;
+                PointLightGatherTask&       pointLights;
+
+                uint3                       dispatchDims;
+                uint2                       WH;
+                CameraHandle                activeCamera;
+
+                FrameResourceHandle albedoObject;
+                FrameResourceHandle MRIAObject;
+                FrameResourceHandle normalObject;
+                FrameResourceHandle tangentObject;
+                FrameResourceHandle depthBufferObject;
+
+                FrameResourceHandle lightBitBucketObject;
+                FrameResourceHandle lightBuffer;
+
+                FrameResourceHandle renderTargetObject;
+                FrameResourceHandle tempBufferObject;
+            };
+
+            frameGraph.Resources.AddUAVResource(tempBuffer, 0, frameGraph.GetRenderSystem().GetObjectState(tempBuffer));
+
+
+            auto& pass = frameGraph.AddNode<PassResources>(
+                PassResources{
+                    constantBufferAllocator,
+                    scene.pointLightGather
+                },
+                [&](FrameGraphNodeBuilder& builder, PassResources& data)
+                {
+                    data.dispatchDims   = { lightMapWH[0], lightMapWH[1], 1 };
+                    data.activeCamera   = scene.activeCamera;
+                    data.WH             = lightMapWH * 10;
+                    // Inputs
+                    data.albedoObject         = builder.ReadShaderResource(scene.gbuffer.Albedo);
+                    data.MRIAObject           = builder.ReadShaderResource(scene.gbuffer.MRIA);
+                    data.normalObject         = builder.ReadShaderResource(scene.gbuffer.Normal);
+                    data.tangentObject        = builder.ReadShaderResource(scene.gbuffer.Tangent);
+                    data.depthBufferObject    = builder.ReadShaderResource(scene.depthTarget);
+
+                    data.lightBitBucketObject   = builder.ReadWriteUAV(lightLists,          DRS_ShaderResource);
+                    data.lightBuffer            = builder.ReadWriteUAV(pointLightBuffer,    DRS_ShaderResource);
+
+                    // Ouputs
+                    data.tempBufferObject   = builder.ReadWriteUAV(tempBuffer);
+                    data.renderTargetObject = builder.WriteRenderTarget(scene.renderTarget);
+                },
+                [=]
+                (PassResources& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+                {
+                    CBPushBuffer pushBuffer{ data.constantBufferAllocator.Get()(1024, 2) };
+
+                    ConstantBufferDataSet cameraConstants{
+                        CameraComponent::GetComponent().GetCamera(data.activeCamera).GetConstants(),
+                        pushBuffer
+                    };
+
+                    struct LocalPassConstants
+                    {
+                        uint32_t    lightCount;
+                        uint2       WH;
+                    };
+
+                    ConstantBufferDataSet localConstants{
+                        LocalPassConstants{
+                            (uint32_t)data.pointLights.GetData().pointLights.size(),
+                            data.WH
+                        },
+                        pushBuffer
+                    };
+
+                    PointLightComponent& pointLights = PointLightComponent::GetComponent();
+                    DescriptorHeap srvHeap;
+                    srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 7, &allocator);
+                    srvHeap.SetSRV(ctx, 0, resources.GetTexture(data.albedoObject));
+                    srvHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIAObject));
+                    srvHeap.SetSRV(ctx, 2, resources.GetTexture(data.normalObject));
+                    srvHeap.SetSRV(ctx, 3, resources.GetTexture(data.tangentObject));
+                    srvHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferObject), FORMAT_2D::R32_FLOAT);
+                    srvHeap.SetSRV(ctx, 5, lightLists);
+                    srvHeap.SetSRV(ctx, 6, pointLightBuffer);
+
+                    DescriptorHeap uavHeap;
+                    uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 10, &allocator);
+                    uavHeap.SetUAV(ctx, 0, resources.GetUAVTextureResource(data.tempBufferObject));
+
+                    ctx.SetComputeRootSignature(resources.renderSystem.Library.RSDefault);
+                    ctx.SetPipelineState(resources.GetPipelineState(COMPUTETILEDSHADINGPASS));
+
+                    ctx.SetComputeConstantBufferView(0, cameraConstants);
+                    ctx.SetComputeConstantBufferView(1, localConstants);
+                    ctx.SetComputeDescriptorTable(3, srvHeap);
+                    ctx.SetComputeDescriptorTable(4, uavHeap);
+                    ctx.Dispatch(data.dispatchDims);
+
+                    ctx.CopyTexture2D(
+                        resources.CopyToTexture(data.renderTargetObject, ctx),
+                        resources.CopyUAVTexture(data.tempBufferObject, ctx));
+                });
+
+            return pass;
+        }
+
+
+        void RenderPBR_DeferredPipeline(
+            UpdateDispatcher&           dispatcher,
+            FrameGraph&                 frameGraph,
+            const SceneDescription&     sceneDescription,
+            GatherTask&                 pvs,
+            GBuffer&                    gbuffer,
+            ResourceHandle              depthTarget,
+            iAllocator*                 allocator)
+        {
+            /*
+            auto& GBufferPass = RenderPBR_GBufferPass(
+                dispatcher,
+                frameGraph,
+                sceneDescription,
+            );
+            */
+        }
+
+
 	private:
 		RenderSystem&			renderSystem;
         ConstantBufferHandle	constantBuffer;
-		//QueryHandle			OcclusionQueries;
-		//ResourceHandle			OcclusionBuffer;
 
-
-		UAVTextureHandle		lightMap;			// GPU
         UAVResourceHandle		lightLists;			// GPU
-		UAVResourceHandle		pointLightBuffer;	// GPU
+        UAVResourceHandle		pointLightBuffer;	// GPU
+        UAVTextureHandle		tempBuffer;	        // GPU
 
-		uint2					WH;					// Output Size
 		uint2					lightMapWH;			// Output Size
 
 		TextureStreamingEngine&	streamingEngine;

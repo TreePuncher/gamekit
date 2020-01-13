@@ -972,9 +972,8 @@ namespace FlexKit
 					auto& visables = SceneVisibilityComponent::GetComponent();
 
 					Apply(*visables[entity].entity,
-						[&](PointLightView& pointLight,
-							SceneVisibilityView& visibility,
-							SceneNodeView<>& sceneNode)
+						[&](PointLightView&         pointLight,
+							SceneVisibilityView&    visibility)
 						{
 							data.pointLights.emplace_back(pointLight);
 						});
@@ -1011,7 +1010,7 @@ namespace FlexKit
 		Drawable::VConstantsLayout	Constants;
 
 		Constants.MP        = MatProperties;
-		Constants.Transform = DirectX::XMMatrixTranspose(WT);
+		Constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
 		return Constants;
 	}

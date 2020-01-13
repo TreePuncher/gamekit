@@ -80,11 +80,19 @@ float Hash(in float x)
     return float(q) * (1.0 / float(0xFFFFFFFFU));
 }
 
+float2 Hash2(in uint q)
+{
+	uint2 n = q * uint2(1597334673U, 3812015801U);
+	n = (n.x ^ n.y) * uint2(1597334673U, 3812015801U);
+	return float2(n) * (1.0 / float(0xFFFFFFFFU));
+}
+
 float Hash(float2 IN)// Thanks nVidia
 {
     return frac(1.0e4 * sin(17.0f * IN.x + 0.1 * IN.y) *
                 (0.1 + abs(sin(13.0 * IN.y + IN.x))));
 }
+
 
 float Hash3D(float3 IN)// Thanks nVidia
 {

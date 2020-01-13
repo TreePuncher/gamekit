@@ -365,6 +365,7 @@ namespace FlexKit
 		StackAllocator				temp;
 	};
 
+
     using PointLightGatherTask = UpdateTaskTyped<PointLightGather>;
 
 	class GraphicScene
@@ -538,6 +539,24 @@ namespace FlexKit
 			rects,
 			tempMemory);
 	}
+
+
+    /************************************************************************************************/
+
+
+    struct _PointLightShadowCaster
+    {
+        PointLightHandle    pointLight;
+        NodeHandle          node;
+    };
+
+
+    constexpr ComponentID PointLightShadowCasterID = GetTypeGUID(PointLighShadowCaster);
+
+    using PointLightShadowCasterHandle  = Handle_t<32, PointLightShadowCasterID>;
+    using PointLightShadowCaster        = BasicComponent_t<_PointLightShadowCaster, PointLightShadowCasterHandle, PointLightShadowCasterID>;
+    using PointLightShadowCasterView    = PointLightShadowCaster::View;
+
 
 }	/************************************************************************************************/
 

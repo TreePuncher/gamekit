@@ -77,10 +77,10 @@ namespace FlexKit
         */
 
         D3D12_INPUT_ELEMENT_DESC InputElements[] = {
-                { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
                 { "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
                 { "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-                { "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         };
 
 
@@ -257,20 +257,18 @@ namespace FlexKit
         auto PShader = LoadShader("DeferredShade_PS",   "DeferredShade_VS",   "ps_5_0",	"assets\\shaders\\deferredRender.hlsl");
 
         FINALLY
-         Release(&VShader);
-         Release(&PShader);
+            Release(&VShader);
+            Release(&PShader);
         FINALLYOVER
-
 
         D3D12_INPUT_ELEMENT_DESC InputElements[] = {
             { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         };
 
-
         D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
         D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
-        Depth_Desc.DepthEnable	= false;
+        Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable	                = false;
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
             PSO_Desc.pRootSignature        = RS->Library.RSDefault;
@@ -301,6 +299,29 @@ namespace FlexKit
         ID3D12PipelineState* PSO = nullptr;
         auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
         FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateComputeTiledDeferredPSO(RenderSystem* RS)
+    {
+        Shader computeShader = LoadShader("csmain", "main", "cs_5_0", "assets\\shaders\\computedeferredtiledshading.hlsl");
+
+        EXITSCOPE(Release(&computeShader));
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            RS->Library.RSDefault,
+            computeShader
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(&desc, IID_PPV_ARGS(&PSO));
+
+        FK_ASSERT(SUCCEEDED(HR), "Failed to create PSO");
 
         return PSO;
     }
@@ -442,6 +463,7 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateOcclusionDrawPSO(RenderSystem* RS)
     {
+        return nullptr;
         auto DrawRectVShader = LoadShader("Forward_VS", "Forward_VS", "vs_5_0",	"assets\\shaders\\forwardRender.hlsl");
 
         FINALLY
@@ -499,11 +521,62 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ID3D12PipelineState* CreateTexture2CubeMapPSO(RenderSystem* RS)
+    ID3D12PipelineState* CreateTexture2CubeMapIrradiancePSO(RenderSystem* RS)
     {
-        auto VShader = LoadShader("texture2CubeMap_VS", "texture2CubeMap_VS", "vs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
-        auto GShader = LoadShader("texture2CubeMap_GS", "texture2CubeMap_GS", "gs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
-        auto PShader = LoadShader("texture2CubeMap_PS", "texture2CubeMap_PS", "ps_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+        auto VShader = LoadShader("texture2CubeMap_VS"       , "texture2CubeMap_VS",        "vs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+        auto GShader = LoadShader("texture2CubeMap_GS"       , "texture2CubeMap_GS",        "gs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+        auto PShader = LoadShader("texture2CubeMapDiffuse_PS", "texture2CubeMapDiffuse_PS", "ps_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+
+        FINALLY
+            Release(&VShader);
+            Release(&PShader);
+        FINALLYOVER
+
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        Rast_Desc.CullMode                      = D3D12_CULL_MODE::D3D12_CULL_MODE_NONE;
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_EQUAL;
+        Depth_Desc.DepthEnable	= false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = VShader;
+            PSO_Desc.GS                    = GShader;
+            PSO_Desc.PS                    = PShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+            PSO_Desc.NumRenderTargets      = 1;
+            PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            //PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+    
+    ID3D12PipelineState* CreateTexture2CubeMapGGXPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("texture2CubeMap_VS",     "texture2CubeMap_VS",       "vs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+        auto GShader = LoadShader("texture2CubeMap_GS",     "texture2CubeMap_GS",       "gs_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
+        auto PShader = LoadShader("texture2CubeMapGGX_PS",  "texture2CubeMapGGX_PS",    "ps_5_0", "assets\\shaders\\texture2Cubemap.hlsl");
 
         FINALLY
             Release(&VShader);
@@ -558,7 +631,7 @@ namespace FlexKit
         const ResourceHandle depthBufferTarget,
         iAllocator*         allocator)
     {
-        const size_t MaxEntityDrawCount = 10000;
+        const size_t MaxEntityDrawCount = 1000;
 
         auto& pass = frameGraph.AddNode<DepthPass>(
                 pvs.GetData().solid,
@@ -613,7 +686,9 @@ namespace FlexKit
                                 });
                         }
 
-                        ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ drawable.D->GetConstants(), data.entityConstantsBuffer });
+                        auto test = drawable.D->GetConstants();
+                        auto constants = ConstantBufferDataSet{ test, data.entityConstantsBuffer };
+                        ctx.SetGraphicsConstantBufferView(2, constants);
                         ctx.DrawIndexedInstanced(triMesh->IndexCount);
                     }
                 });
@@ -646,13 +721,13 @@ namespace FlexKit
                 data.passConstants  = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
 
-                data.HDRMap     = hdrMap;
+                data.diffuseMap     = hdrMap;
             },
             [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& tempAllocator)
             {
                 DescriptorHeap descHeap;
                 descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 20, &tempAllocator);
-                descHeap.SetSRV(ctx, 6, data.HDRMap);
+                descHeap.SetSRV(ctx, 6, data.diffuseMap);
                 descHeap.NullFill(ctx, 20);
 
                 auto& renderSystem          = frameResources.renderSystem;
@@ -705,7 +780,8 @@ namespace FlexKit
         const CameraHandle      camera,
         const ResourceHandle    renderTarget,
         const ResourceHandle    depthTarget,
-        const ResourceHandle    hdrMap,
+        const ResourceHandle    diffuseMap,
+        const ResourceHandle    GGXMap,
         GBuffer&                gbuffer,
         VertexBufferHandle      vertexBuffer,
         float                   t,
@@ -730,7 +806,8 @@ namespace FlexKit
                 data.passConstants  = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices   = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
 
-                data.HDRMap     = hdrMap;
+                data.diffuseMap = diffuseMap;
+                data.GGX        = GGXMap;
             },
             [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& allocator)
             {
@@ -767,20 +844,20 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.NormalTargetObject));
                 descHeap.SetSRV(ctx, 3, frameResources.GetTexture(data.TangentTargetObject));
                 descHeap.SetSRV(ctx, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
-                descHeap.SetSRVCubemap(ctx, 5, data.HDRMap);
-                descHeap.SetSRVCubemap(ctx, 6, data.HDRMap);
-                descHeap.SetSRVCubemap(ctx, 7, data.HDRMap);
-                descHeap.NullFill(ctx, 20);
+                descHeap.SetSRVCubemap(ctx, 5, data.GGX);
+                descHeap.SetSRVCubemap(ctx, 6, data.diffuseMap);
+                //descHeap.NullFill(ctx, 20);
 
                 ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
                 ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
-                ctx.SetGraphicsDescriptorTable(4, descHeap);
+                ctx.SetGraphicsDescriptorTable(3, descHeap);
 
                 ctx.SetScissorAndViewports({ renderTarget });
                 ctx.SetRenderTargets({ frameResources.GetTexture(data.renderTargetObject) }, false);
                 ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
                 ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
                 ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
+                ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ passConstants, data.passConstants });
 
                 ctx.Draw(6);
             });
@@ -818,20 +895,21 @@ namespace FlexKit
                 builder.AddDataDependency(desc.PVS);
                 builder.AddDataDependency(desc.cameras);
 
-                data.BackBuffer			= builder.WriteRenderTarget	(Targets.RenderTarget);
-                data.DepthBuffer        = builder.WriteDepthBuffer (Targets.DepthTarget);
-                size_t localBufferSize  = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
+                data.BackBuffer			    = builder.WriteRenderTarget	(Targets.RenderTarget);
+                data.DepthBuffer            = builder.WriteDepthBuffer (Targets.DepthTarget);
+                size_t localBufferSize      = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
 
                 data.passConstantsBuffer    = std::move(Reserve(constantBuffer, localBufferSize, 2, frameGraph.Resources));
 
-                data.lightMap			= builder.ReadWriteUAV(lightMap,			DRS_ShaderResource);
-                data.lightLists			= builder.ReadWriteUAV(lightLists,			DRS_ShaderResource);
-                data.pointLightBuffer	= builder.ReadWriteUAV(pointLightBuffer,	DRS_ShaderResource);
+                data.lightLists			    = builder.ReadWriteUAV(lightLists,			DRS_ShaderResource);
+                data.pointLightBuffer	    = builder.ReadWriteUAV(pointLightBuffer,	DRS_ShaderResource);
+
+                data.WH                     = lightMapWH;
             },
             [=](ForwardPlusPass& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
-                const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t }, data.passConstantsBuffer };
+                const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t, data.WH }, data.passConstantsBuffer };
 
 
                 DescriptorHeap descHeap;
@@ -840,10 +918,8 @@ namespace FlexKit
                     resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
                     &allocator);
 
-                descHeap.SetSRV(ctx, 0, lightMap);
                 descHeap.SetSRV(ctx, 1, lightLists);
                 descHeap.SetSRV(ctx, 2, pointLightBuffer);
-                descHeap.SetSRV(ctx, 3, environmentMap);
                 descHeap.NullFill(ctx);
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
@@ -884,9 +960,7 @@ namespace FlexKit
 
                     auto proxy = CreateCBIterator<decltype(drawable.D->GetConstants())>(data.entityConstants)[itr];
 
-                    ctx.SetGraphicsConstantBufferView(
-                        2,
-                        proxy);
+                    ctx.SetGraphicsConstantBufferView(2, proxy);
                     ctx.DrawIndexedInstanced(triMesh->IndexCount, 0, 0, 1, 0);
                 }
             });
@@ -907,7 +981,6 @@ namespace FlexKit
         iAllocator*				tempMemory, 
         LighBufferDebugDraw*	drawDebug)
     {
-        graph.Resources.AddUAVResource(lightMap,			0, graph.GetRenderSystem().GetObjectState(lightMap));
         graph.Resources.AddUAVResource(lightLists,			0, graph.GetRenderSystem().GetObjectState(lightLists));
         graph.Resources.AddUAVResource(pointLightBuffer,	0, graph.GetRenderSystem().GetObjectState(pointLightBuffer));
 
@@ -922,7 +995,6 @@ namespace FlexKit
             [&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
             {
                 auto& renderSystem      = graph.GetRenderSystem();
-                data.lightMapObject		= builder.ReadWriteUAV(lightMap,		 DRS_UAV);
                 data.lightListObject	= builder.ReadWriteUAV(lightLists,		 DRS_UAV);
                 data.lightBufferObject	= builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
                 data.camera				= camera;
@@ -939,7 +1011,7 @@ namespace FlexKit
                 {
                     float4x4 iproj;
                     float4x4 view;
-                    uint2    LightMapWidthHeight[2];
+                    uint2    LightMapWidthHeight;
                     uint32_t lightCount;
                 }constantsValues = {
                     XMMatrixToFloat4x4(DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(cameraConstants.Proj))),
@@ -957,8 +1029,8 @@ namespace FlexKit
                     float3 position			= GetPositionW(pointLight.Position);
 
                     data.pointLights.push_back(
-                        {	{ pointLight.K, 100	},
-                            { position, 2000    } });
+                        {	{ pointLight.K, pointLight.I	},
+                            { position, pointLight.R        } });
                 }
 
                 const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
@@ -967,7 +1039,6 @@ namespace FlexKit
 
                 DescriptorHeap descHeap;
                 descHeap.Init(ctx, resources.renderSystem.Library.ComputeSignature.GetDescHeap(0), &allocator);
-                descHeap.SetUAV(ctx, 0, resources.GetUAVTextureResource	(data.lightMapObject));
                 descHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource	(data.lightListObject));
                 descHeap.SetSRV(ctx, 2, resources.ReadUAVBuffer			(data.lightBufferObject, DRS_ShaderResource, &ctx));
                 descHeap.SetCBV(ctx, 6, constants.Handle(), constants.Offset(), sizeof(ConstantsLayout));
@@ -1101,12 +1172,12 @@ namespace FlexKit
         UpdateDispatcher&       dispatcher,
         FrameGraph&             frameGraph,
         const SceneDescription& sceneDescription,
-        const CameraHandle      camera,
         PointLightGatherTask&   gather,
         GBuffer&                gbuffer,
         ResourceHandle          depthTarget,
         ResourceHandle          renderTarget,
-        ResourceHandle          environmentMap,
+        ResourceHandle          GGXSpecularMap,
+        ResourceHandle          diffuseMap,
         VertexBufferHandle      vertexBuffer,
         float                   t,
         iAllocator*             allocator)
@@ -1143,12 +1214,12 @@ namespace FlexKit
                 data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
                 data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
 
-                data.lightBufferObject          = builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
+                data.pointLightBufferObject     = builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
 
                 data.passConstants = CBPushBuffer(constantBuffer, 6 * KILOBYTE, renderSystem);
                 data.passVertices  = VBPushBuffer(vertexBuffer, sizeof(float4) * 6, renderSystem);
             },
-            [camera, renderTarget, environmentMap, t]
+            [camera = sceneDescription.camera, renderTarget, diffuseMap, GGXSpecularMap, t]
             (TiledDeferredShade& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 PointLightComponent& pointLights = PointLightComponent::GetComponent();
@@ -1165,11 +1236,12 @@ namespace FlexKit
 
                 const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
                 MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)data.pointLights.begin(), uploadSize);
-                ctx.CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, &ctx));
+                ctx.CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.pointLightBufferObject, &ctx));
 
                 auto& renderSystem          = resources.renderSystem;
                 const auto WH               = resources.renderSystem.GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
+
 
                 struct
                 {
@@ -1201,8 +1273,9 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 2, resources.GetTexture(data.NormalTargetObject));
                 descHeap.SetSRV(ctx, 3, resources.GetTexture(data.TangentTargetObject));
                 descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
-                descHeap.SetSRV(ctx, 5, environmentMap);
-                descHeap.SetSRV(ctx, 6, resources.ReadUAVBuffer(data.lightBufferObject, DRS_ShaderResource, &ctx));
+                descHeap.SetSRV(ctx, 5, GGXSpecularMap);
+                descHeap.SetSRV(ctx, 6, diffuseMap);
+                descHeap.SetSRV(ctx, 7, resources.ReadUAVBuffer(data.pointLightBufferObject, DRS_ShaderResource, &ctx));
                 descHeap.NullFill(ctx, 20);
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
@@ -1220,6 +1293,12 @@ namespace FlexKit
 
         return pass;
     }
+
+
+    /************************************************************************************************/
+
+
+
 
 
 }	/************************************************************************************************/
