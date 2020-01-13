@@ -13,8 +13,8 @@ namespace FlexKit
 		bool Left	= false;
 		bool Right	= false;
 		bool Top	= false;
-		float3 V = BS.xyz();
-		float  r = BS.w;
+		const float3 V = BS.xyz();
+		const float  r = BS.w;
 
 		{
 			auto P = V - F->Planes[EPlane_FAR].Orgin;

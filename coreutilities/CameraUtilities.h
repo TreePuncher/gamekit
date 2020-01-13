@@ -42,7 +42,9 @@ namespace FlexKit
 		OCE_MoveForward,
 		OCE_MoveBackward,
 		OCE_MoveLeft,
-		OCE_MoveRight
+		OCE_MoveRight,
+        OCE_MoveUp,
+        OCE_MoveDown,
 	};
 
 
@@ -87,10 +89,12 @@ namespace FlexKit
 			bool backward	= false;
 			bool left		= false;
 			bool right		= false;
+			bool up         = false;
+			bool down       = false;
 
             bool KeyPressed()
             {
-                return forward | backward | left | right;
+                return forward | backward | left | right | up | down;
             }
 		}keyStates;
 	};

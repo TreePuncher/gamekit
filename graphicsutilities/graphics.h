@@ -1674,6 +1674,7 @@ namespace FlexKit
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceResourceState Before, DeviceResourceState State);
 		void AddShaderResourceBarrier	(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State);
 
+        void AddCopyResourceBarrier (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
 
 		void ClearDepthBuffer		(ResourceHandle Texture, float ClearDepth = 0.0f); // Assumes full-screen Clear
 		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
@@ -1682,12 +1683,13 @@ namespace FlexKit
 		void SetComputeRootSignature(RootSignature& RS);
 		void SetPipelineState		(ID3D12PipelineState* PSO);
 
-		void SetRenderTargets		(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle_t);
+		void SetRenderTargets		(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle_t, const size_t MIPMapOffset = 0);
 
 		void SetViewports			(static_vector<D3D12_VIEWPORT, 16>	VPs);
 		void SetScissorRects		(static_vector<D3D12_RECT, 16>		Rects);
 
 		void SetScissorAndViewports	(static_vector<ResourceHandle, 16>	RenderTargets);
+        void SetScissorAndViewports2(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset = 0);
 
         template<typename ... ARGS>
         void SetScissorAndViewports(std::tuple<ARGS...>	RenderTargets)
@@ -1722,6 +1724,7 @@ namespace FlexKit
 
 		void SetComputeDescriptorTable		(size_t idx, const DescriptorHeap& DH);
 		void SetComputeConstantBufferView	(size_t idx, const ConstantBufferHandle, size_t offset);
+        void SetComputeConstantBufferView   (size_t idx, const ConstantBufferDataSet& CB);
 		void SetComputeShaderResourceView	(size_t idx, Texture2D&			Texture);
 		void SetComputeUnorderedAccessView	(size_t idx, UAVResourceHandle& Texture);
 
@@ -1780,6 +1783,16 @@ namespace FlexKit
 		void CopyBuffer		(const UploadSegment src, ResourceHandle destination);
 		void CopyTexture2D	(const UploadSegment src, ResourceHandle destination, uint2 BufferSize);
 
+        template<typename TY_RES1, typename TY_RES2>
+        void CopyTexture2D(TY_RES1 des, TY_RES2 src)
+        {
+            FlushBarriers();
+
+            DeviceContext->CopyResource(
+                renderSystem->GetObjectDeviceResource(des),
+                renderSystem->GetObjectDeviceResource(src));
+        }
+
 		void SetRTRead	(ResourceHandle Handle);
 		void SetRTWrite	(ResourceHandle Handle);
 		void SetRTFree	(ResourceHandle Handle);
@@ -1796,9 +1809,11 @@ namespace FlexKit
 		void SetUAVWrite();
 		void SetUAVFree();
 
+
         DescHeapPOS _ReserveDSV(size_t count);
         DescHeapPOS _ReserveSRV(size_t count);
         DescHeapPOS _ReserveRTV(size_t count);
+
 
         void        _ResetRTV();
         void        _ResetDSV();
@@ -1886,6 +1901,7 @@ namespace FlexKit
 		size_t	RenderTargetCount;
 		bool	DepthStencilEnabled;
 
+        
 		static_vector<ResourceHandle, 16>		RenderTargets;
 		static_vector<D3D12_VIEWPORT, 16>		Viewports;
 		static_vector<DescriptorHeap*>			DesciptorHeaps;
@@ -1895,8 +1911,15 @@ namespace FlexKit
 			SOResourceHandle	handle;
 		};
 
+        struct RTV_View {
+            ResourceHandle                  resource;
+            D3D12_CPU_DESCRIPTOR_HANDLE     CPU_Handle;
+        };
+
         static_vector<StreamOutResource, 128>   TrackedSOBuffers;
         static_vector<Barrier, 128>				PendingBarriers;
+        static_vector<RTV_View, 128>            renderTargetViews;
+        static_vector<RTV_View, 128>            depthStencilViews;
 
         uint8_t                                 lockCounter = 0;
 		iAllocator*								Memory;
@@ -3066,13 +3089,13 @@ namespace FlexKit
 
 		struct
 		{
-			size_t			FenceValue;
+			size_t			FenceValue  = 0;
 			HANDLE			FenceHandle;
 		}Fences[QueueSize];
 
 		struct
 		{
-			size_t			FenceValue;
+			size_t			FenceValue  = 0;
 			HANDLE			FenceHandle;
 		}CopyFences[QueueSize];
 
@@ -3189,9 +3212,7 @@ namespace FlexKit
 	FLEXKITAPI UploadSegment	ReserveUploadBuffer		(const size_t uploadSize, RenderSystem& renderSystem, UploadQueueHandle = InvalidHandle_t);
 	FLEXKITAPI void				MoveBuffer2UploadBuffer	(const UploadSegment& data, byte* source, size_t uploadSize);
 
-	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, const Texture2D&	target, DescHeapPOS POS);
-	FLEXKITAPI DescHeapPOS PushRenderTarget			(RenderSystem* RS, ResourceHandle	target, DescHeapPOS POS);
-    FLEXKITAPI DescHeapPOS PushRenderTarget2        (RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushRenderTarget             (RenderSystem* RS, ResourceHandle    target, DescHeapPOS POS, const size_t MIPOffset = 0);
 
 
 	FLEXKITAPI DescHeapPOS PushDepthStencil			    (RenderSystem* RS, ResourceHandle Target, DescHeapPOS POS);
@@ -3514,13 +3535,18 @@ namespace FlexKit
             return (sizeof(TY) / 256 + 1) * 256;
         }
 
+        static size_t CalculateOffset(size_t size)
+        {
+            return (size / 256 + 1) * 256;
+        }
+
 		template<typename _TY>
 		size_t Push(_TY& data)
 		{
 			if (pushBufferUsed + sizeof(data) > pushBufferSize)
 				return -1;
 
-			size_t offset = pushBufferUsed;
+			const size_t offset = pushBufferUsed;
 			memcpy(pushBufferBegin + buffer + pushBufferUsed, (char*)&data, sizeof(data));
             pushBufferUsed += CalculateOffset<_TY>();
 
@@ -3532,9 +3558,9 @@ namespace FlexKit
 			if (pushBufferUsed + size > pushBufferSize)
 				return -1;
 
-			size_t offset = pushBufferUsed;
+			const size_t offset = pushBufferUsed;
 			memcpy(pushBufferBegin + buffer + pushBufferUsed, _ptr, size);
-			pushBufferUsed += (size / 256 + 1) * 256;
+			pushBufferUsed += CalculateOffset(offset);
 
 			return offset + pushBufferBegin;
 		}

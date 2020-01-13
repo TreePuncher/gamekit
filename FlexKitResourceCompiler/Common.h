@@ -25,14 +25,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef COMMON_H
 #define COMMON_H
 
-#include "fbxsdk/include/fbxsdk.h"
+#include "fbxsdk.h"
 
-#include "../coreutilities/MathUtils.h"
-#include "../coreutilities/MemoryUtilities.h"
-#include "../coreutilities/Assets.h"
-#include "../coreutilities/XMMathConversion.h"
-#include "../graphicsutilities/MeshUtils.h"
-#include "../graphicsutilities/AnimationUtilities.h"
+#include "MathUtils.h"
+#include "MemoryUtilities.h"
+#include "Assets.h"
+#include "XMMathConversion.h"
+#include "MeshUtils.h"
+#include "AnimationUtilities.h"
 
 
 #include <DirectXMath.h>
@@ -43,7 +43,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "Shell32.lib")
 
 // FBX Loading
-#include				"fbxsdk/include/fbxsdk.h"
+#include				"fbxsdk.h"
 #pragma comment	(lib,	"libfbxsdk.lib")
 
 // PhysX Cooking Deps
@@ -84,8 +84,7 @@ inline float3		FetchWeights		(uint32_t itr, const CombinedVertexBuffer* Buff){ r
 inline float3		FetchVertexNormal	(uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).NORMAL;						}
 inline float3		FetchVertexTangent  (uint32_t itr, const CombinedVertexBuffer* Buff){ return Buff->at(itr).TANGENT;						}
 inline float3		FetchFloat3ZERO		(uint32_t itr, const CombinedVertexBuffer* Buff){ return{ 0.0f, 0.0f, 0.0f };						}
-inline float2		FetchVertexUV		(uint32_t itr, const CombinedVertexBuffer* Buff){ auto temp = Buff->at(itr).TEXCOORD.xy(); 
-																						    return {temp.x, temp.y};						}
+inline float2		FetchVertexUV		(uint32_t itr, const CombinedVertexBuffer* Buff){ auto temp = Buff->at(itr).TEXCOORD.xy(); return {temp.x, temp.y};	    }
 inline uint4_16		FetchWeightIndices	(size_t itr, const CombinedVertexBuffer* Buff)	{ return Buff->at(itr).WIndices;					}
 inline uint32_t		WriteIndex			(uint32_t in)								    { return in;										}
 inline float3		WriteVertex			(float3 in)									    { return float3(in);								}
@@ -108,19 +107,19 @@ inline float3 TranslateToFloat3(const FbxVector4& in)
 inline float3 TranslateToFloat3(const FbxDouble3& in)
 {
 	return float3(
-        (float)in.mData[0],
-        (float)in.mData[1],
-        (float)in.mData[2]);
+		(float)in.mData[0],
+		(float)in.mData[1],
+		(float)in.mData[2]);
 }
 
 
 inline float4 TranslateToFloat4(const FbxVector4& in)
 {
 	return float4(
-        (float)in.mData[0],
-        (float)in.mData[1],
-        (float)in.mData[2],
-        (float)in.mData[3]);
+		(float)in.mData[0],
+		(float)in.mData[1],
+		(float)in.mData[2],
+		(float)in.mData[3]);
 }
 
 
@@ -151,7 +150,7 @@ inline FbxAMatrix XMMATRIX_2_FBXMATRIX(const XMMATRIX& M)
 
 inline float4x4 FBXMATRIX_2_FLOAT4X4(const FbxAMatrix& AM)
 {
-    return FlexKit::XMMatrixToFloat4x4(FBXMATRIX_2_XMMATRIX(AM));
+	return FlexKit::XMMatrixToFloat4x4(FBXMATRIX_2_XMMATRIX(AM));
 }
 
 

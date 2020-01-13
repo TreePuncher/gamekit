@@ -60,6 +60,7 @@ namespace FlexKit
 		float3 movementVector	{ 0 };
 		float3 forward			{ GetForwardVector() };
 		float3 right			{ GetRightVector() };
+        float3 up               { 0, 1, 0 };
 
 		if (keyStates.forward)
 			movementVector +=  forward;
@@ -72,6 +73,13 @@ namespace FlexKit
 
 		if (keyStates.left)
 			movementVector += -right;
+
+        if (keyStates.up)
+            movementVector += up;
+
+        if (keyStates.down)
+            movementVector += -up;
+
 
         movementVector.normalize();
 
@@ -148,6 +156,12 @@ namespace FlexKit
 			case OCE_MoveRight:
 				keyStates.right		= state;
 				break;
+            case OCE_MoveUp:
+                keyStates.up        = state;
+                break;
+            case OCE_MoveDown:
+                keyStates.down      = state;
+                break;
 			}
 		}
 	}

@@ -26,6 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Logging.h"
 #include "..\coreutilities\Application.h"
 #include "..\graphicsutilities\AnimationComponents.h"
+#include "..\coreutilities\Logging.cpp"
 
 #include "BaseState.h"
 #include "client.cpp"
@@ -35,51 +36,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MainMenu.cpp"
 #include "MultiplayerState.cpp"
 #include "MultiplayerGameState.cpp"
+#include "TestScene.h"
 //#include "TextureStreamingTest.cpp"
 
 #include <iostream>
-
-
-void SetupTestScene(FlexKit::GraphicScene& scene, RenderSystem& renderSystem, iAllocator* allocator)
-{
-    const AssetHandle sphere    = 4967718927826386829;
-
-    float3x3 m;
-    m[0] = { 0, 0, 0 };
-    m[1] = { 0, 0, 0 };
-    m[2] = { 0, 0, 0 };
-    m[3] = { 0, 0, 0 };
-
-    auto [triMesh, loaded] = FindMesh(sphere);
-
-    if (!loaded)
-        triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), sphere);
-
-    static const size_t N = 40;
-    static const float  W = (float)10 * 1.5f;
-
-    for (size_t Y = 0; Y < N; ++Y)
-    {
-        for (size_t X = 0; X < N; ++X)
-        {
-            float roughness = ((float)X + 0.5f) / (float)N;
-            float anisotropic = 0.0f;//((float)Y + 0.5f) / (float)N;
-            float kS = ((float)Y + 0.5f) / (float)N;
-
-            auto& gameObject = allocator->allocate<GameObject>();
-            auto node = FlexKit::GetNewNode();
-
-            gameObject.AddView<DrawableView>(triMesh, node);
-
-            SetMaterialParams(gameObject, float3(1.0f, 1.0f, 1.0f), kS, 1.0f, roughness, anisotropic, 0.0f);
-
-            FlexKit::SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
-
-            scene.AddGameObject(gameObject, node);
-        }
-    }
-
-}
 
 
 int main(int argc, char* argv[])
@@ -180,168 +140,25 @@ int main(int argc, char* argv[])
     {
         case ApplicationMode::Client:
         {
-            AddAssetFile("assets\\Scene1.gameres");
+            AddAssetFile("assets\\TestScenes.gameres");
 
             auto& NetState      = app.PushState<NetworkState>(base);
             auto& clientState   = app.PushState<GameClientState>(base, NetState, ClientGameDescription{ 1337, server.c_str(), name.c_str() });
         }   break;
         case ApplicationMode::Host:
         {
-            AddAssetFile("assets\\Scene1.gameres");
+            AddAssetFile("assets\\TestScenes.gameres");
 
             auto& NetState  = app.PushState<NetworkState>(base);
             auto& hostState = app.PushState<GameHostState>(base, NetState);
         }   break;
         case ApplicationMode::GraphicsTestMode:
         {
-            AddAssetFile("assets\\Scene1.gameres");
-
-            auto& gameState     = app.PushState<GameState>(base);
-            auto& renderSystem  = app.GetFramework().GetRenderSystem();
-
-            auto test = []{};
-
-            auto testSynced = FlexKit::MakeSynchonized(test);
-            testSynced();
-
-            struct LoadStateData
-            {
-                bool Finished           = false;
-                bool textureLoaded      = false;
-                ResourceHandle cubeMap  = InvalidHandle_t;
-                ResourceHandle hdrMap   = InvalidHandle_t;
-
-                VertexBufferHandle  vertexBuffer;
-            }&state = app.GetFramework().core.GetBlockMemory().allocate<LoadStateData>();
-
-            state.vertexBuffer = renderSystem.CreateVertexBuffer(2048, false);
-            renderSystem.RegisterPSOLoader(TEXTURE2CUBEMAP, { &renderSystem.Library.RSDefault, CreateTexture2CubeMapPSO });
-            renderSystem.QueuePSOLoad(TEXTURE2CUBEMAP);
-
-            auto Task =
-                [&]()
-                {
-                    auto& framework             = app.GetFramework();
-                    auto& allocator             = framework.core.GetBlockMemory();
-                    auto& renderSystem          = framework.GetRenderSystem();
-                    UploadQueueHandle upload    = renderSystem.GetUploadQueue();
-
-                    auto HDRStack   = LoadHDR("assets/textures/lakeside_2k.hdr", 0, allocator);
-
-                    const auto WH   = HDRStack.front().WH;
-                    state.cubeMap   = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 128, 128 }, FORMAT_2D::R16G16B16A16_FLOAT, 0, true));
-                    base.cubeMap    = state.cubeMap;
-
-                    renderSystem.SetDebugName(state.cubeMap, "Cube Map");
-
-                    state.hdrMap    = MoveTextureBuffersToVRAM(
-                        renderSystem,
-                        upload,
-                        HDRStack.begin(),
-                        HDRStack.size(),
-                        allocator,
-                        FORMAT_2D::R32G32B32A32_FLOAT);
-
-                    renderSystem.SetDebugName(state.hdrMap, "HDR Map");
-                    renderSystem.SubmitUploadQueues(&upload);
-
-                    state.textureLoaded = true;
-                    HDRStack.Release();
-                };
-
-            auto& workItem = CreateLambdaWork(Task, app.GetFramework().core.GetBlockMemory());
-            app.GetFramework().core.Threads.AddWork(workItem);
-
-            // Setup test scene
-            SetupTestScene(gameState.scene, app.GetFramework().GetRenderSystem(), app.GetFramework().core.GetBlockMemory());
-
-
-            auto OnLoadUpdate =
-                [&](EngineCore& core, UpdateDispatcher& dispatcher, double dT)
-                {
-                    const auto completedState = state.textureLoaded;
-                    if(state.Finished)
-                    {
-                        // Once state is popped off, the reference used in this lambda is also lost,
-                        // stack local ref is kept for releaseing local state
-                        auto& localState_ref = state;
-                        
-                        app.PopState();
-
-                        auto& playState = app.PushState<LocalPlayerState>(base, gameState);
-                        //core.RenderSystem.ReleaseVB(state.vertexBuffer);
-                        core.GetBlockMemory().release_allocation(localState_ref);
-                    }
-                };
-
-            auto OnLoadDraw = [&](EngineCore& core, UpdateDispatcher& dispatcher, FrameGraph& frameGraph, double dT)
-            {
-                if (state.textureLoaded)
-                {
-                    struct RenderTexture2CubeMap
-                    {
-                        FrameResourceHandle renderTarget;
-                        ResourceHandle      hdrMap;
-                        ResourceHandle      cubeMap;
-
-                        VBPushBuffer        vertexBuffer;
-                    };
-
-                    ClearVertexBuffer(frameGraph, state.vertexBuffer);
-
-                    frameGraph.AddRenderTarget(state.cubeMap);
-                    frameGraph.AddNode<RenderTexture2CubeMap>(
-                        RenderTexture2CubeMap{},
-                        [&](FrameGraphNodeBuilder& builder, RenderTexture2CubeMap& data)
-                        {
-                            data.renderTarget   = builder.WriteRenderTarget(state.cubeMap);
-                            data.hdrMap         = state.hdrMap;
-                            data.cubeMap        = state.cubeMap;
-
-                            auto& allocator     = core.GetBlockMemory();
-                            auto& renderSystem  = frameGraph.GetRenderSystem();
-
-                            data.vertexBuffer = VBPushBuffer(state.vertexBuffer, sizeof(float4) * 6, renderSystem);
-
-                        },
-                        [](RenderTexture2CubeMap& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
-                        {
-                            DescriptorHeap descHeap;
-                            descHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 20, &allocator);
-                            descHeap.SetSRV(ctx, 0, data.hdrMap);
-                            descHeap.NullFill(ctx, 20);
-
-                            ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
-                            ctx.SetPipelineState(resources.GetPipelineState(TEXTURE2CUBEMAP));
-                            ctx.SetScissorAndViewports({ data.cubeMap });
-                            ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
-
-                            ctx.SetGraphicsDescriptorTable(4, descHeap);
-
-                            ctx.SetRenderTargets({ resources.GetRenderTarget(data.renderTarget) }, false);
-                            ctx.Draw(1);
-                        });
-
-                    struct Dummy {};
-                    frameGraph.AddNode<Dummy>(
-                        Dummy{},
-                        [&](FrameGraphNodeBuilder& builder, Dummy& data)
-                        {
-                            builder.ReadShaderResource(state.cubeMap);
-                        },
-                        [](Dummy& data, FrameResources& resources, Context& ctx, iAllocator&) {});
-
-                    state.Finished = true;
-                }
-            };
-
-
-            using LoadState = GameLoadScreenState<decltype(OnLoadUpdate), decltype(OnLoadDraw)>;
-            app.PushState<LoadState>(base, OnLoadUpdate, OnLoadDraw);
+            StartTestState(app, base, TestScenes::GlobalIllumination);
         }   break;
         case ApplicationMode::PlaygroundMode:
         {
-            AddAssetFile("assets\\Scene1.gameres");
+            AddAssetFile("assets\\TestScenes.gameres");
 
             auto& gameState = app.PushState<GameState>(base);
 
@@ -357,7 +174,7 @@ int main(int argc, char* argv[])
 
                     auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 6, allocator);
 
-                    base.cubeMap = MoveTextureBuffersToVRAM(
+                    base.irradianceMap = MoveTextureBuffersToVRAM(
                         renderSystem,
                         upload,
                         HDRStack.begin(),
@@ -365,13 +182,14 @@ int main(int argc, char* argv[])
                         allocator,
                         FORMAT_2D::R32G32B32A32_FLOAT);
 
-                    renderSystem.SetDebugName(base.cubeMap, "HDR Map");
+                    renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
+                    renderSystem.SetDebugName(base.irradianceMap, "ggx Map");
                     renderSystem.SubmitUploadQueues(&upload);
 
                     completed = true;
                 };
 
-            auto& workItem = CreateLambdaWork(Task, app.GetFramework().core.GetBlockMemory());
+            auto& workItem = CreateWorkItem(Task, app.GetFramework().core.GetBlockMemory());
             app.GetFramework().core.Threads.AddWork(workItem);
 
             // Setup test scene
@@ -386,7 +204,7 @@ int main(int argc, char* argv[])
                         app.PopState();
 
                         auto& playState = app.PushState<LocalPlayerState>(base, gameState);
-                        //app.GetFramework().core.GetBlockMemory().free(&completed);
+                        app.GetFramework().core.GetBlockMemory().free(&completed);
                     }
                 };
 

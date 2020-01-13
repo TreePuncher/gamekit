@@ -69,7 +69,7 @@ public:
 		result			= FMOD::System_Create(&system);
 		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
 
-		auto& Work = CreateLambdaWork(
+		auto& Work = CreateWorkItem(
 			[this]() {
 			//auto res = system->createSound("test.flac", FMOD_DEFAULT, 0, &sound1);
 			if(sound1)
@@ -96,7 +96,7 @@ public:
 
 	void Update(iAllocator* memory)
 	{
-		auto& Work = CreateLambdaWork(
+		auto& Work = CreateWorkItem(
 			[this]() {
 				auto result = system->update();
 			}, 
@@ -179,7 +179,8 @@ public:
 			visables	        { framework.core.GetBlockMemory() },
 			pointLights	        { framework.core.GetBlockMemory() },
             skeletonComponent   { framework.core.GetBlockMemory() },
-            gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem }
+            gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem    },
+            shadowCasters       { IN_Framework.core.GetBlockMemory()                            }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
@@ -202,7 +203,8 @@ public:
 		framework.GetRenderSystem().ReleaseVB(textBuffer);
 		framework.GetRenderSystem().ReleaseCB(constantBuffer);
         framework.GetRenderSystem().ReleaseTexture(depthBuffer);
-        framework.GetRenderSystem().ReleaseTexture(cubeMap);
+        framework.GetRenderSystem().ReleaseTexture(irradianceMap);
+        framework.GetRenderSystem().ReleaseTexture(GGXMap);
 	}
 
 
@@ -221,7 +223,8 @@ public:
 
 
     // Scene Resources
-    ResourceHandle             cubeMap;
+    ResourceHandle             irradianceMap;
+    ResourceHandle             GGXMap;
 
     // render resources
 	WorldRender					render;
@@ -241,6 +244,7 @@ public:
 	SceneVisibilityComponent	visables;
 	PointLightComponent			pointLights;
     SkeletonComponent           skeletonComponent;
+    PointLightShadowCaster      shadowCasters;
 
 	TextureStreamingEngine		streamingEngine;
 };

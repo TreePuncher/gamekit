@@ -665,6 +665,25 @@ namespace FlexKit
         }
 
 
+        ResourceHandle CopyToTexture(FrameResourceHandle resource, Context& ctx)
+        {
+            auto res = _FindSubNodeResource(resource);
+            if (res->State != DRS_Write)
+                ctx.AddCopyResourceBarrier(res->Texture, res->State, DRS_Write);
+
+            return res->Texture;
+        }
+
+
+        UAVTextureHandle CopyUAVTexture(FrameResourceHandle resource, Context& ctx)
+        {
+            auto res = _FindSubNodeResource(resource);
+            if (res->State != DRS_Read)
+                ctx.AddUAVBarrier(res->UAVTexture, res->State, DRS_Read);
+
+            return res->UAVTexture;
+        }
+
         /************************************************************************************************/
 
 
@@ -2612,7 +2631,7 @@ namespace FlexKit
                 Drawable::VConstantsLayout DrawableConstants = 
                 {	// Someday
                     /*.MP			= */Drawable::MaterialProperties{},
-                    /*.Transform	= */DirectX::XMMatrixIdentity()
+                    /*.Transform	= */float4x4::Identity()
                 };
 
                 Data.LocalConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);

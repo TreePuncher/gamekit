@@ -181,7 +181,9 @@ namespace FlexKit
 		EngineCore& operator =	(const EngineCore&) = delete;
 
 		bool					FrameLock;
-		bool					End;
+		bool					End         = false;
+
+        ThreadManager			Threads;
 
 		RenderSystem			RenderSystem;
 
@@ -192,7 +194,6 @@ namespace FlexKit
 
 		Vector<const char*>		CmdArguments;
 
-		ThreadManager			Threads;
 		EngineMemory*			Memory;
 
 		BlockAllocator& GetBlockMemory() { return  Memory->BlockAllocator; }

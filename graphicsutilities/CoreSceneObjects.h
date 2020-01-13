@@ -121,16 +121,16 @@ namespace FlexKit
 		{
             float3  albedo      = float3{1.0f, 1.0f, 1.0f};
             float   kS          = 0.5f;
-            float   IOR         = 1.0f;
-            float   anisotropic = 0.0f;
+            float   IOR         = 0.45f;
             float   roughness   = 0.5f;
+            float   anisotropic = 0.0f;
             float   metallic    = 0.0f;
 		}MatProperties;	// 32 
 
 		struct VConstantsLayout
 		{
 			MaterialProperties	MP;
-			DirectX::XMMATRIX	Transform;
+			float4x4	        Transform;
 		};
 
         VConstantsLayout GetConstants() const;
