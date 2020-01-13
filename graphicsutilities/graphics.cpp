@@ -54,6 +54,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma warning( disable :4267 )
 
+
 namespace FlexKit
 {
     void SetDebugName(ID3D12Object* Obj, const char* cstr, size_t size)
@@ -602,7 +603,6 @@ namespace FlexKit
         FK_ASSERT(success != false);
 
         const size_t UserIdx	= handles[CB];
-        uint32_t	 Idx		= buffers[UserIdx].currentRes;
         void*		 buffer		= buffers[UserIdx].mapped_ptr;
 
         return { static_cast<char*>(buffer), offsetBegin, reserveSize };
@@ -681,9 +681,8 @@ namespace FlexKit
                 FK_ASSERT(FAILED(HR), "Failed to map Constant Buffer");
                 buffer.mapped_ptr   = mapped_Ptr;
 
+                buffer.offset = 0;
             }
-
-            buffer.offset = 0;
         }
 
     }
@@ -870,6 +869,9 @@ namespace FlexKit
         if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
             return false;
 
+
+        FillState[idx] = true;
+
         PushTextureToDescHeap(
             ctx.renderSystem,
             ctx.renderSystem->Textures[handle],
@@ -890,6 +892,8 @@ namespace FlexKit
         if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
             return false;
 
+        FillState[idx] = true;
+
         PushCubeMapTextureToDescHeap(
             ctx.renderSystem,
             ctx.renderSystem->Textures[handle],
@@ -905,10 +909,12 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle	handle, FORMAT_2D format)
+    bool DescriptorHeap::SetSRV(Context& ctx, size_t idx, ResourceHandle handle, FORMAT_2D format)
     {
         if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
             return false;
+
+        FillState[idx] = true;
 
         auto texture    = ctx.renderSystem->Textures[handle];
         texture.Format  = TextureFormat2DXGIFormat(format);
@@ -933,6 +939,8 @@ namespace FlexKit
         if (!CheckType(*Layout, DescHeapEntryType::ConstantBuffer, idx))
             return false;
 
+        FillState[idx] = true;
+
         auto resource = ctx.renderSystem->GetObjectDeviceResource(Handle);
         PushCBToDescHeap(
             ctx.renderSystem,
@@ -956,6 +964,8 @@ namespace FlexKit
         if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
             return false;
 
+        FillState[idx] = true;
+
         PushTextureToDescHeap(
             ctx.renderSystem,
             ctx.renderSystem->GetUAV2DTexture(handle),
@@ -975,6 +985,8 @@ namespace FlexKit
     {
         if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
             return false;
+
+        FillState[idx] = true;
 
         auto layout		= ctx.renderSystem->GetUAVBufferLayout(handle);
         auto resource	= ctx.renderSystem->GetObjectDeviceResource(handle);
@@ -1001,6 +1013,8 @@ namespace FlexKit
         if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
             return false;
 
+        FillState[idx] = true;
+
         const UAVBuffer UAV{ *ctx.renderSystem, Handle };
 
         PushUAVBufferToDescHeap(
@@ -1023,6 +1037,8 @@ namespace FlexKit
         if (!CheckType(*Layout, DescHeapEntryType::UAVBuffer, idx))
             return false;
 
+        FillState[idx] = true;
+
         Texture2D tex = ctx.renderSystem->GetUAV2DTexture(handle);
 
         PushUAV2DToDescHeap(
@@ -1044,6 +1060,8 @@ namespace FlexKit
     {
         if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
             return false;
+
+        FillState[idx] = true;
 
         auto WH = ctx.renderSystem->GetTextureWH(handle);
 
@@ -1469,6 +1487,34 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void Context::AddCopyResourceBarrier(ResourceHandle resource, DeviceResourceState Before, DeviceResourceState State)
+    {
+        auto res = find(PendingBarriers,
+            [&](Barrier& rhs) -> bool
+            {
+                return
+                    rhs.Type            == Barrier::BT_ShaderResource &&
+                    rhs.shaderResource  == resource;
+            });
+
+        if (res != PendingBarriers.end()) {
+            res->NewState = State;
+        }
+        else
+        {
+            Barrier NewBarrier;
+            NewBarrier.OldState         = Before;
+            NewBarrier.NewState         = State;
+            NewBarrier.Type             = Barrier::BT_ShaderResource;
+            NewBarrier.shaderResource   = resource;
+            PendingBarriers.push_back(NewBarrier);
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
     void Context::SetRootSignature(RootSignature& RS)
     {
         DeviceContext->SetGraphicsRootSignature(RS);
@@ -1502,32 +1548,73 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void Context::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle depthStencil)
+    void Context::SetRenderTargets(const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle depthStencil, const size_t MIPMapOffset)
     {
-        auto RTVs = _ReserveRTV(RTs.size());
-
         static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTV_CPU_HANDLES;
 
-        auto itr = RTVs;
-        for (auto renderTarget : RTs) {
-            RTV_CPU_HANDLES.push_back(itr);
-            itr = PushRenderTarget2(renderSystem, renderTarget, itr);
+        if (!MIPMapOffset)
+        {
+            for (auto renderTarget : RTs) {
+                auto res = std::find_if(
+                    renderTargetViews.begin(),
+                    renderTargetViews.end(),
+                    [&](RTV_View& view)
+                    {
+                        return view.resource == renderTarget;
+                    });
+
+                if (res != renderTargetViews.end())
+                {
+                    RTV_CPU_HANDLES.push_back(res->CPU_Handle);
+                }
+                else
+                {
+                    auto view = _ReserveRTV(1);
+                    PushRenderTarget(renderSystem, renderTarget, view);
+                    RTV_CPU_HANDLES.push_back(view);
+                    renderTargetViews.push_back({ renderTarget, view });
+                }
+            }
+        }
+        else
+        {
+            auto view = _ReserveRTV(RTs.size());
+            
+            for (auto& renderTarget : RTs)
+            {
+                RTV_CPU_HANDLES.push_back(view);
+                view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
+            }
         }
 
-        auto DSV = _ReserveDSV(1);
-        if(DepthStecil)
-            PushDepthStencil(renderSystem, depthStencil, DSV);
+        auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
 
-        auto DSV_CPU_HANDLE = (D3D12_CPU_DESCRIPTOR_HANDLE)DSV;
+        if(DepthStecil)
+        {
+            if (auto res = std::find_if(
+                    depthStencilViews.begin(),
+                    depthStencilViews.end(),
+                    [&](RTV_View& view)
+                    {
+                        return view.resource == depthStencil;
+                    });
+                    res == depthStencilViews.end())
+            {
+                auto DSV = _ReserveDSV(1);
+                PushDepthStencil(renderSystem, depthStencil, DSV);
+
+                DSV_CPU_HANDLE = DSV;
+            }
+            else
+                DSV_CPU_HANDLE = res->CPU_Handle;
+        }
+
 
         DeviceContext->OMSetRenderTargets(
-            RTs.size(),
+            RTV_CPU_HANDLES.size(),
             RTV_CPU_HANDLES.begin(),
             DepthStecil,
             DepthStecil ? &DSV_CPU_HANDLE : nullptr);
-
-        _ResetRTV();
-        _ResetDSV();
     }
 
 
@@ -1569,6 +1656,25 @@ namespace FlexKit
         SetScissorRects(Rects);
     }
 
+    /************************************************************************************************/
+
+
+    void Context::SetScissorAndViewports2(static_vector<ResourceHandle, 16>	RenderTargets, const size_t MIPMapOffset)
+    {
+        static_vector<D3D12_VIEWPORT, 16>	VPs;
+        static_vector<D3D12_RECT, 16>		Rects;
+
+        for (auto RT : RenderTargets)
+        {
+            auto WH = renderSystem->GetTextureWH(RT) / std::pow(2, MIPMapOffset);
+            VPs.push_back({ 0, 0,	(FLOAT)WH[0], (FLOAT)WH[1], 0, 1 });
+            Rects.push_back({ 0,0,	(LONG)WH[0], (LONG)WH[1] });
+        }
+
+        SetViewports(VPs);
+        SetScissorRects(Rects);
+    }
+
 
     /************************************************************************************************/
 
@@ -1586,8 +1692,6 @@ namespace FlexKit
         }
         else 
             DepthStencilEnabled = false;
-
-
     }
 
 
@@ -1698,6 +1802,15 @@ namespace FlexKit
     void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferHandle CB, size_t offset)
     {
         DeviceContext->SetGraphicsRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB) + offset);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Context::SetComputeConstantBufferView(size_t idx, const ConstantBufferDataSet& CB)
+    {
+        DeviceContext->SetComputeRootConstantBufferView(idx, renderSystem->GetConstantBufferAddress(CB.Handle()) + CB.Offset());
     }
 
 
@@ -2118,33 +2231,67 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void Context::ClearDepthBuffer(ResourceHandle texture, float ClearDepth)
+    void Context::ClearDepthBuffer(ResourceHandle depthStencil, float ClearDepth)
     {
         UpdateResourceStates();
-        auto RTVView = _ReserveDSV(0);
-        PushDepthStencil(renderSystem, texture, RTVView);
-        _ResetDSV();
 
-        DeviceContext->ClearDepthStencilView(RTVView, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
+        auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
 
-        renderSystem->Textures.MarkRTUsed(texture);
+            if (auto res = std::find_if(
+                depthStencilViews.begin(),
+                depthStencilViews.end(),
+                [&](RTV_View& view)
+                {
+                    return view.resource == depthStencil;
+                });
+                res == depthStencilViews.end())
+            {
+                auto DSV = _ReserveDSV(1);
+                PushDepthStencil(renderSystem, depthStencil, DSV);
+
+                DSV_CPU_HANDLE = DSV;
+            }
+            else
+                DSV_CPU_HANDLE = res->CPU_Handle;
+
+
+        DeviceContext->ClearDepthStencilView(DSV_CPU_HANDLE, D3D12_CLEAR_FLAG_DEPTH, ClearDepth, 0, 0, nullptr);
+        renderSystem->Textures.MarkRTUsed(depthStencil);
     }
 
 
     /************************************************************************************************/
 
 
-    void Context::ClearRenderTarget(ResourceHandle texture, float4 ClearColor)
+    void Context::ClearRenderTarget(ResourceHandle renderTarget, float4 ClearColor)
     {
         UpdateResourceStates();
 
-        auto RTVView = _ReserveRTV(0);
-        PushRenderTarget2(renderSystem, texture, RTVView);
-        _ResetRTV();
+        D3D12_CPU_DESCRIPTOR_HANDLE RTV_CPU_HANDLES{ 0 };
 
-        DeviceContext->ClearRenderTargetView(RTVView, ClearColor, 0, nullptr);
+        auto res = std::find_if(
+            renderTargetViews.begin(),
+            renderTargetViews.end(),
+            [&](RTV_View& view)
+            {
+                return view.resource == renderTarget;
+            });
 
-        renderSystem->Textures.MarkRTUsed(texture);
+        if (res != renderTargetViews.end())
+        {
+            RTV_CPU_HANDLES = res->CPU_Handle;
+        }
+        else
+        {
+            auto view = _ReserveRTV(1);
+            PushRenderTarget(renderSystem, renderTarget, view);
+            RTV_CPU_HANDLES = view;
+            renderTargetViews.push_back({ renderTarget, view });
+        }
+
+        DeviceContext->ClearRenderTargetView(RTV_CPU_HANDLES, ClearColor, 0, nullptr);
+
+        renderSystem->Textures.MarkRTUsed(renderTarget);
     }
 
 
@@ -2371,14 +2518,9 @@ namespace FlexKit
         commandAllocator->Reset();
         DeviceContext->Reset(commandAllocator, nullptr);
 
-        RTV_CPU = descHeapRTV->GetCPUDescriptorHandleForHeapStart();
-        RTV_GPU = descHeapRTV->GetGPUDescriptorHandleForHeapStart();
-
-        SRV_CPU = descHeapSRV->GetCPUDescriptorHandleForHeapStart();
-        SRV_GPU = descHeapSRV->GetGPUDescriptorHandleForHeapStart();
-
-        DSV_CPU = descHeapDSV->GetCPUDescriptorHandleForHeapStart();
-        DSV_GPU = descHeapDSV->GetGPUDescriptorHandleForHeapStart();
+        _ResetDSV();
+        _ResetRTV();
+        _ResetSRV();
 
         ID3D12DescriptorHeap* heaps[]{
             descHeapSRV };
@@ -2657,6 +2799,8 @@ namespace FlexKit
     {
         RTV_CPU = descHeapRTV->GetCPUDescriptorHandleForHeapStart();
         RTV_GPU = descHeapRTV->GetGPUDescriptorHandleForHeapStart();
+
+        renderTargetViews.clear();
     }
 
 
@@ -2667,6 +2811,8 @@ namespace FlexKit
     {
         DSV_CPU = descHeapDSV->GetCPUDescriptorHandleForHeapStart();
         DSV_GPU = descHeapDSV->GetGPUDescriptorHandleForHeapStart();
+
+        depthStencilViews.clear();
     }
 
 
@@ -2781,15 +2927,19 @@ namespace FlexKit
         {
             RS->Library.RSDefault.AllowIA = true;
 
-            DesciptorHeapLayout<16> DescriptorHeap;
-            DescriptorHeap.SetParameterAsSRV(0, 0, -1);
-            FK_ASSERT(DescriptorHeap.Check());
+            DesciptorHeapLayout<16> DescriptorHeapSRV;
+            DescriptorHeapSRV.SetParameterAsSRV(0, 0, -1);
+            FK_ASSERT(DescriptorHeapSRV.Check());
+
+            DesciptorHeapLayout<16> DescriptorHeapUAV;
+            DescriptorHeapUAV.SetParameterAsShaderUAV(0, 0, -1);
+            FK_ASSERT(DescriptorHeapUAV.Check());
 
             RS->Library.RSDefault.SetParameterAsCBV				(0, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
             RS->Library.RSDefault.SetParameterAsCBV				(1, 1, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
             RS->Library.RSDefault.SetParameterAsCBV				(2, 2, 0, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
-            RS->Library.RSDefault.SetParameterAsSRV				(3, 0, 0, PIPELINE_DESTINATION::PIPELINE_DEST_VS);
-            RS->Library.RSDefault.SetParameterAsDescriptorTable	(4, DescriptorHeap, -1, PIPELINE_DESTINATION::PIPELINE_DEST_PS);
+            RS->Library.RSDefault.SetParameterAsDescriptorTable	(3, DescriptorHeapSRV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
+            RS->Library.RSDefault.SetParameterAsDescriptorTable	(4, DescriptorHeapUAV, -1, PIPELINE_DESTINATION::PIPELINE_DEST_ALL);
             RS->Library.RSDefault.Build(RS, TempMemory);
 
             SETDEBUGNAME(RS->Library.RSDefault, "RSDefault");
@@ -3705,6 +3855,8 @@ namespace FlexKit
     UAVTextureHandle RenderSystem::CreateUAVTextureResource(const uint2 WH, const FORMAT_2D format, const bool RenderTarget)
     {
         D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Tex2D(TextureFormat2DXGIFormat(format), WH[0], WH[1]);
+        Resource_DESC.MipLevels         = 1;
+
         Resource_DESC.Flags              =
             D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS |
             (RenderTarget ? D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE);
@@ -4990,7 +5142,7 @@ namespace FlexKit
 
         for (const auto ResourceIdx : userEntry.Buffers)
             if(ResourceIdx != INVALIDHANDLE)
-                FreeBuffers.push_back({0, ResourceIdx});
+                FreeBuffers.push_back({ 3, ResourceIdx});
             else
                 break;
 
@@ -6397,43 +6549,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-
-    DescHeapPOS PushRenderTarget(RenderSystem* RS, const Texture2D& Target, DescHeapPOS POS)
-    {
-        D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
-        TargetDesc.Format				= Target.Format;
-        TargetDesc.Texture2D.MipSlice	= 0;
-        TargetDesc.Texture2D.PlaneSlice = 0;
-        TargetDesc.ViewDimension		= D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;
-
-        RS->pDevice->CreateRenderTargetView(Target, &TargetDesc, POS);
-
-        return IncrementHeapPOS(POS, RS->DescriptorRTVSize, 1);
-    }
-
-
-    /************************************************************************************************/
-
-
-    DescHeapPOS PushRenderTarget(RenderSystem* RS, ResourceHandle target, DescHeapPOS POS)
-    {
-        D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
-        TargetDesc.Format				= RS->GetTextureDeviceFormat(target);
-        TargetDesc.Texture2D.MipSlice	= 0;
-        TargetDesc.Texture2D.PlaneSlice = 0;
-        TargetDesc.ViewDimension		= D3D12_RTV_DIMENSION::D3D12_RTV_DIMENSION_TEXTURE2D;
-
-        auto resource = RS->GetObjectDeviceResource(target);
-        RS->pDevice->CreateRenderTargetView(resource, &TargetDesc, POS);
-
-        return IncrementHeapPOS(POS, RS->DescriptorRTVSize, 1);
-    }
-
-
-    /************************************************************************************************/
-
-
-    DescHeapPOS PushRenderTarget2(RenderSystem* RS, ResourceHandle target, DescHeapPOS POS)
+    DescHeapPOS PushRenderTarget(RenderSystem* RS, ResourceHandle target, DescHeapPOS POS, const size_t MIPOffset)
     {
         D3D12_RENDER_TARGET_VIEW_DESC TargetDesc = {};
         const auto dimension            = RS->GetTextureDimension(target);
@@ -6442,14 +6558,14 @@ namespace FlexKit
         {
         case TextureDimension::Texture2D:
             TargetDesc.Format               = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
-            TargetDesc.Texture2D.MipSlice   = 0;
+            TargetDesc.Texture2D.MipSlice   = MIPOffset;
             TargetDesc.Texture2D.PlaneSlice = 0;
             TargetDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
             break;
         case TextureDimension::TextureCubeMap:
             TargetDesc.Format                           = TextureFormat2DXGIFormat(RS->GetTextureFormat(target));
             TargetDesc.Texture2DArray.FirstArraySlice   = 0;
-            TargetDesc.Texture2DArray.MipSlice          = 0;
+            TargetDesc.Texture2DArray.MipSlice          = MIPOffset;
             TargetDesc.Texture2DArray.PlaneSlice        = 0;
             TargetDesc.Texture2DArray.ArraySize         = 6;
             TargetDesc.ViewDimension                    = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
@@ -6565,7 +6681,7 @@ namespace FlexKit
             ViewDesc.Format                          = tex.Format;
             ViewDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
             ViewDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURECUBE;
-            ViewDesc.TextureCube.MipLevels           = 1;
+            ViewDesc.TextureCube.MipLevels           = !tex.mipCount ? 1 : tex.mipCount;
             ViewDesc.TextureCube.MostDetailedMip     = 0;
             ViewDesc.TextureCube.ResourceMinLODClamp = 0;
         }

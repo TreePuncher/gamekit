@@ -22,29 +22,23 @@ cbuffer ShadingConstants : register(b2)
 {
     float lightCount;
     float globalTime;
+    uint2 WH;
 }
 
-Texture2D<uint2>			    lightMap	: register(t0);
 StructuredBuffer<uint>		    lightLists	: register(t1);
 ByteAddressBuffer               pointLights : register(t2);
-Texture2D<float4>               HDRMap      : register(t3);
+TextureCube<float4>             HDRMap      : register(t3);
 
 sampler BiLinear : register(s1); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
 
-
-float4 SampleHDR(float3 w, float level)
+bool isLightContributing(uint idx, uint2 xy)
 {
-    float r = length(w);
-    float theta = atan2(w.z, w.x);
-    float phi = acos(w.y / r);
-	
-    float U = (theta / (2.0 * PI)) + 0.5;
-    float V = phi / PI;
+    const uint offset       = (xy.x + xy.y * WH[0]) * (1024 / 32);
+    const uint wordOffset   = idx / 32;
+    const uint bitMask      = 0x1 << (idx % 32);
 
-    float2 UV = float2(U, V);
-
-    return HDRMap.SampleLevel(BiLinear, UV, level);
+    return lightLists[wordOffset + offset] & bitMask;
 }
 
 PointLight ReadPointLight(uint idx)
@@ -68,7 +62,6 @@ struct Vertex
     float2 UV		: TEXCOORD;
 
 };
-
 
 struct Forward_VS_OUT
 {
@@ -132,8 +125,6 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 {
     // surface parameters
-    //const float  m			= 1;//Specular.w;
-    //const float  r			= 0.05;//Albedo.w;
     const float3 N			    = normalize(IN.Normal);
     const float3 T			    = normalize(cross(N, N.zxy));
     const float3 B			    = normalize(cross(N, T));
@@ -145,22 +136,23 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
     float3 positionW	        = IN.WPOS;
     float3 worldV   	        = normalize(CameraPOS - positionW);
 
-    const uint2	lightMapCord	= IN.POS / 10.0f;// - uint2( 1, 1 );
-    const uint2	lightList		= lightMap.Load(int3(lightMapCord, 0));
-    const int	lightBegin		= lightList.y;
-    const int	localLightCount	= lightList.x;
+    const uint2	lightBin	    = IN.POS / 10.0f;// - uint2( 1, 1 );
+    uint        localLightCount = 0;
 
     float3 Color = float3(0, 0, 0);
-    for (int i = 0; i < localLightCount; i++)
+    for (int i = 0; i < lightCount; i++)
     {
-        const int lightIdx  = lightLists[lightBegin + i];
-        PointLight light	= ReadPointLight(lightIdx);
+        if(!isLightContributing(i, lightBin))
+            continue;
+
+        PointLight light	= ReadPointLight(i);
+        localLightCount++;
 
         const float3 Lc			= light.KI.rgb;
         const float  Ld			= length(positionW - light.PR.xyz);
         const float  Li			= light.KI.w;
         const float  Lr			= light.PR.w;
-        const float  ld_2		= Ld * Ld;
+        const float  ld_2		= (Ld * Ld);
         const float  La			= (Li / ld_2) * saturate(1 - (pow(Ld, 10) / pow(Lr, 10)));
 
 		// Compute tangent space vectors
@@ -168,32 +160,10 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
 		const float3 L = mul(inverseTBN, worldL);
 		const float3 V = mul(inverseTBN, worldV);
 
-		// Constants for testing
-		
-		// Gold physical properties
-#if 1
-		const float3 albedo = float3(1.0, 0.765, 0.336);
-		const float metallic = 1.0;
-        const float roughness = Albedo.w;// cos(globalTime * 0.25f * PI) * .5 + .5;// fmod(globalTime * 0.25, 1.0);
-		const float anisotropic = 0.0;
-		const float ior = 0.475;
-#else
-		const float3 albedo = float3(1, 1.0f, 1);
-		const float metallic = 1.0;
-        const float roughness = cos(globalTime * 0.25f * PI) * .5 + .5;// fmod(globalTime * 0.25, 1.0);
-		const float anisotropic = 1.0;
-		const float ior = 1.0;
-#endif
-		const float Ks = 1.0;
-		const float Kd = (1.0 - Ks) * (1.0 - metallic);
+		const float3 diffuse    = HammonEarlGGX(V, L, Albedo, .01);
+		const float3 specular   = EricHeitz2018GGX(V, L, Albedo, Metallic, .01, Anisotropic, IOR);
 
-		const float3 diffuse = HammonEarlGGX(V, L, albedo, roughness);
-		const float3 specular = EricHeitz2018GGX(V, L, albedo, metallic, roughness, anisotropic, ior);
-
-		const float r = distance(light.PR.xyz, positionW);
-		const float K = Li / (4.0 * PI * r * r); // Inverse Square law
-
-		Color += (diffuse * Kd + specular * Ks) * La;
+		Color += saturate(diffuse * (1 - Ks) + specular * Ks) * La;
     }
 
     //return pow(float4(1, 0, 0, 0) * localLightCount / lightCount, 1.0f / 2.1f); // Light Tiles
@@ -205,6 +175,8 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
     //return float4(UV, 0, 1);	
     //return float4(pow(Color, 1/2.1), 1);
 	return float4(Color, 1);
+	//return float4(Color.xy,pow(localLightCount / lightCount, 1), 1);
+	//return float4(Color.xy, pow(localLightCount / lightCount, 1), 1);
 }
 
 float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET
