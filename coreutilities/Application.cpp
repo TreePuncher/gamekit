@@ -58,24 +58,26 @@ namespace FlexKit
 
 		while (!Core.End && !Core.Window.Close && framework.subStates.size())
 		{
+            FK_LOG_INFO("BEGIN FRAME");
+
 			Core.Time.Before();
 
-			auto FrameStart = std::chrono::system_clock::now();
+			auto FrameStart = std::chrono::high_resolution_clock::now();
 			CodeCheckTimer += dT;
 			FPSTimer += dT;
 			FPSCounter++;
 
 			framework.DrawFrame(dT);
 
-			auto FrameEnd = std::chrono::system_clock::now();
+			auto FrameEnd = std::chrono::high_resolution_clock::now();
 			auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
 
             temp += double(Duration.count()) / 1000000.0;
 
 			if (Core.FrameLock)// FPS Locked
-				std::this_thread::sleep_for(chrono::milliseconds(1000 / 60) - Duration);
+				std::this_thread::sleep_for((1000ms / 60) - Duration);
 
-			FrameEnd = std::chrono::system_clock::now();
+			FrameEnd = std::chrono::high_resolution_clock::now();
 			Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
 
 			dT = double(Duration.count() ) / 1000000.0;

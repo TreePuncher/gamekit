@@ -260,6 +260,7 @@ namespace FlexKit
 		THISTYPE& operator +=(const THISTYPE& RHS)
 		{
 			reserve(size() + RHS.size());
+
 			for (auto I : RHS)
 				push_back(I);
 

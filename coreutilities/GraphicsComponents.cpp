@@ -171,7 +171,7 @@ namespace FlexKit
 		{};
 
 		auto& task = Dispatcher.Add<UpdateData>(
-			[&](auto& Builder, auto& Data)
+			[&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
 			{
 				Builder.SetDebugString("QueueCameraUpdate");
 				Builder.AddInput(TransformComponentID);
@@ -191,8 +191,7 @@ namespace FlexKit
 				}
 
 				return;
-			}
-			);
+			});
 
 		return task;
 	}

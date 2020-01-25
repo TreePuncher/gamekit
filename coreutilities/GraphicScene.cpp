@@ -724,15 +724,17 @@ namespace FlexKit
 				data.solid			= PVS{ data.taskMemory };
 				data.transparent	= PVS{ data.taskMemory };
 				data.camera			= C;
+
+                builder.SetDebugString("Gather Scene");
 			},
 			[](auto& data)
 			{
-				FK_LOG_9("Start PVS gather\n");
+                FK_LOG_INFO("Start PVS gather\n");
 
                 GatherScene(data.scene, data.camera, &data.solid, &data.transparent);
 				SortPVS(&data.solid, &CameraComponent::GetComponent().GetCamera(data.camera));
 
-				FK_LOG_9("End PVS gather\n");
+                FK_LOG_INFO("End PVS gather\n");
 			});
 
 		return task;
@@ -959,14 +961,18 @@ namespace FlexKit
     PointLightGatherTask& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory)
 	{
 		return dispatcher.Add<PointLightGather>(
-			[&](auto& builder, PointLightGather& data)
+			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightGather& data)
 			{
 				data.temp			= StackAllocator(tempMemory, KILOBYTE * 16);
 				data.pointLights	= Vector<PointLightHandle>{ data.temp, 1024 };
 				data.scene			= this;
+
+                builder.SetDebugString("Point Light Gather");
 			},
 			[this](PointLightGather& data)
 			{
+                FK_LOG_INFO("Point Light Gather");
+
 				for (auto entity : sceneEntities)
 				{
 					auto& visables = SceneVisibilityComponent::GetComponent();

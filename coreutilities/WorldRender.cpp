@@ -791,7 +791,7 @@ namespace FlexKit
             BackgroundEnvironmentPass{},
             [&](FrameGraphNodeBuilder& builder, BackgroundEnvironmentPass& data)
             {
-                builder.AddDataDependency(sceneDescription.cameras);
+                //builder.AddDataDependency(sceneDescription.cameras);
 
                 const size_t localBufferSize    = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
                 auto& renderSystem              = frameGraph.GetRenderSystem();

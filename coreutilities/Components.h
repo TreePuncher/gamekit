@@ -813,9 +813,6 @@ namespace FlexKit
 
 			UpdateTaskBase(ThreadManager* IN_manager, iUpdateFN& IN_updateFn, iAllocator* IN_allocator) :
 				Update		{ IN_updateFn						},
-				Inputs		{ IN_allocator						},
-				visited		{ false								},
-				completed	{ 0									},
 				threadTask	{ this, IN_manager, IN_allocator	} {}
 
 			// No Copy
@@ -828,8 +825,7 @@ namespace FlexKit
 			public:
 				UpdateThreadTask(UpdateTaskBase* IN_task, ThreadManager* threads, iAllocator* memory) :
 					iWork	{ memory					},
-					task	{ IN_task					},
-					wait	{ *this, threads, memory	} {}
+					task	{ IN_task					}{}
 
 				// No Copy
 				UpdateThreadTask				(const UpdateThreadTask&) = delete;
@@ -840,14 +836,11 @@ namespace FlexKit
 				void Run() override
 				{
 					task->Run();
-					task->completed++;
 				}
 
 				void Release() override
 				{
 				}
-
-				WorkDependencyWait wait;
 			}threadTask;
 
 
@@ -857,36 +850,46 @@ namespace FlexKit
 			}
 
 
-			void AddInput(UpdateTaskBase& task)
-			{
-				Inputs.push_back(&task);
-				threadTask.wait.AddDependency(task.threadTask);
-			}
-
-
 			bool isLeaf() const noexcept
 			{
-				return Inputs.size() == 0;
+				return counter == 0;
 			}
 
 
-			void MarkVisited() noexcept
-			{
-				visited = true;
-			}
+            void AddInput(UpdateTaskBase& input)
+            {
+                counter++;
+
+                input.threadTask.Subscribe([&]
+                    {
+                        auto res = counter.fetch_sub(1) - 1;
+                        if (!res)
+                        {
+                            PushToLocalQueue(&threadTask);
+                        }
+                    });
+            }
 
 
-			bool Visited() const noexcept
-			{
-				return visited;
-			}
+            void AddOutput(UpdateTaskBase& output)
+            {
+                counter++;
 
-			UpdateID_t				ID;
-			iUpdateFN&				Update;
-			char*					Data;
-			int						completed;
-			bool					visited;
-			Vector<UpdateTaskBase*> Inputs;
+                threadTask.Subscribe([&]
+                    {
+                        auto res = counter.fetch_sub(1) - 1;
+                        if (!res)
+                        {
+                            PushToLocalQueue(&output.threadTask);
+                        }
+                    });
+            }
+
+
+			UpdateID_t				        ID;
+			iUpdateFN&				        Update;
+			char*					        Data;
+            alignas(64) std::atomic_int     counter = 0;
 		};
 
 		template<typename TY>
@@ -915,60 +918,20 @@ namespace FlexKit
 		UpdateDispatcher					(const UpdateDispatcher&) = delete;
 		const UpdateDispatcher& operator =	(const UpdateDispatcher&) = delete;
 
-		static void VisitInputs(UpdateTaskBase* Node, Vector<UpdateTaskBase*>& out)
-		{
-			if (Node->visited)
-				return;
-
-			Node->visited = true;
-
-			for (auto& Node : Node->Inputs)
-				VisitInputs(Node, out);
-
-			out.push_back(Node); 
-		};
-
-
-		static void VisitAndScheduleLeafs(UpdateTaskBase* node, ThreadManager* threads, iAllocator* allocator)
-		{
-			if (node->Visited())
-				return;
-
-			node->MarkVisited();
-
-			for (auto& childNode : node->Inputs)
-				VisitAndScheduleLeafs(childNode, threads, allocator);
-
-			if (node->isLeaf())
-				threads->AddWork(node->threadTask, allocator);
-		}
-
 
 		void Execute()
 		{
-			if(threads->GetThreadCount())
-			{	// Multi Thread
-				WorkBarrier barrier{ *threads, allocator };
+			WorkBarrier barrier{ *threads, allocator };
 
-				for (auto& node : nodes)
-					barrier.AddDependentWork(&node->threadTask);
 
-				for (auto& node : nodes)
-					VisitAndScheduleLeafs(node, threads, allocator);
+            for (auto& node : nodes)
+                barrier.AddWork(&node->threadTask);
 
-				barrier.Join();
-			}
-			else
-			{   // Single Thread
-				Vector<UpdateTaskBase*> nodesSorted{ allocator };
-				for (auto& node : nodes)
-					VisitInputs(node, nodesSorted);
+            for (auto node : nodes)
+                if (node->isLeaf())
+                    threads->AddWork(node->threadTask, allocator);
 
-				for (auto& node : nodesSorted) 
-				{
-					node->Update(*node);
-				}
-			}
+			barrier.Join();
 
             nodes.clear();
             taskMap.clear();
@@ -1008,6 +971,8 @@ namespace FlexKit
                     auto node = std::get<1>(*res);
                     AddOutput(*node);
                 }
+                else
+                    FK_ASSERT(false, "Failed to find output Task!");
             }
 
             void AddInput(uint32_t taskID)
@@ -1021,9 +986,10 @@ namespace FlexKit
                     auto node = std::get<1>(*res);
                     AddInput(*node);
                 }
+                else
+                    FK_ASSERT(false, "Failed to find inputTask!");
             }
 
-			const char* DebugID = "UNIDENTIFIED TASK";
 		private:
 
             UpdateDispatcher&   dispatcher;
@@ -1041,6 +1007,11 @@ namespace FlexKit
 
             if (find(taskMap, [&](auto& task) { return get<0>(task) == TaskID; } ) == taskMap.end())
                 taskMap.push_back({ TaskID, &task });
+            else
+            {
+                std::cout << "ERROR!";
+                std::exit(-1);
+            }
 
             return task;
         }
