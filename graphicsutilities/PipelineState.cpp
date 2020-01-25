@@ -380,7 +380,10 @@ namespace FlexKit
 			allocator	{ IN_allocator	},
 			iWork		{ IN_allocator	},
 			RS			{ IN_PST->RS	},
-			PSO			{ IN_PSO		}{}
+			PSO			{ IN_PSO		}
+    {
+        _debugID = "Load PSO task";
+    }
 
 
 	/************************************************************************************************/

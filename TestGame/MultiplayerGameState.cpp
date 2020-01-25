@@ -125,12 +125,17 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     SetCameraAspectRatio(activeCamera, GetWindowAspectRatio(core));
 
     auto& scene				= game.scene;
+    auto& pointLightGather  = scene.GetPointLights      (dispatcher, core.GetTempMemory());
     auto& transforms		= QueueTransformUpdateTask	(dispatcher);
     auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
     auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework.MouseState, dT);
     auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
     auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
-    auto& pointLightGather  = scene.GetPointLights(dispatcher, core.GetTempMemory());
+
+    //pointLightGather.AddInput(transforms);
+    //pointLightGather.AddInput(cameras);
+    PVS.AddInput(cameras);
+    PVS.AddInput(transforms);
 
     WorldRender_Targets targets = {
         core.Window.backBuffer,
@@ -160,9 +165,9 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     {
     case RenderMode::ForwardPlus:
     {
-        auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
-        auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-        auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.irradianceMap, core.GetTempMemory());
+        //auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
+        //auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
+        //auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.irradianceMap, core.GetTempMemory());
     }   break;
     case RenderMode::Deferred:
     {

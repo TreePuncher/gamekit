@@ -36,11 +36,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <thread>
-#include <functional>
-#include <stdint.h>
 #include <iostream>
+#include <functional>
+#include <numeric>
+#include <optional>
 #include <random>
+#include <stdint.h>
+#include <thread>
 #include <utility>
 
 
@@ -86,86 +88,242 @@ namespace FlexKit
 		void NotifyWatchers()
 		{
 			for (auto& watcher : subscribers)
-			{
-				if (!watcher)
-					FK_ASSERT(0);
 				watcher();
-			}
 
-			subscribers.clear();
-			notifiedSubs = true;
+            completed++;
 		}
 
 
 		void Subscribe(OnCompletionEvent subscriber) 
 		{ 
-			if (!subscriber)
-				FK_ASSERT(0);
 			subscribers.push_back(subscriber);
 		}
 
 
 		operator iWork* () { return this; }
 
-		bool						scheduled = false;
-
 		void SetDebugID(const char* IN_debugID)
 		{
 			_debugID = IN_debugID;
 		}
 
+        std::atomic_int			completed = 0;
 	protected:
-		const char*							_debugID;
-
+		const char*				_debugID;
 	private:
-		bool								notifiedSubs = false;
-		static_vector<OnCompletionEvent, 8>	subscribers;
+		static_vector<OnCompletionEvent, 64>	subscribers;
 	};
 
 
 	/************************************************************************************************/
 
 
-    class WorkStealingQueue
+    template<typename TY, size_t Alignment = 64>
+    struct alignas(Alignment) alignedAtomicWrapper
     {
-    public:
+        std::atomic<TY> element;
 
-        WorkStealingQueue()
+        operator TY ()
         {
+            return element.load();
         }
 
-        void PushWork(iWork* work)
-        {
 
+        alignedAtomicWrapper& operator = (const TY& rhs)
+        {
+            element.store(rhs);
+            return *this;
         }
 
-        iWork* Steal()
+
+        alignedAtomicWrapper& operator = (const alignedAtomicWrapper& rhs) = default;
+
+
+        template<typename = std::enable_if_t<std::is_pointer_v<TY>>>
+        TY operator -> ()
         {
-            return nullptr;
+            return element.load();
         }
 
-        iWork* Pop_Front()
+
+        template<typename = std::enable_if_t<std::is_pointer_v<TY>>>
+        TY operator * ()
         {
-            return nullptr;
+            return element.load();
         }
-
-    private:
-
-        iWork* front;
-        iWork* end;
     };
 
+
+    /************************************************************************************************/
+
+
+	template<typename TY_E>
+	class alignas(64) CircularStealingQueue
+	{
+	public:
+        using ElementType = alignedAtomicWrapper<TY_E>;
+        //using ElementType = std::atomic<TY_E>;
+
+
+		CircularStealingQueue(const size_t initialReservation = 64) noexcept :
+			queueArraySize	{ initialReservation	},
+			queue			{ nullptr				},
+			frontCounter	{ 0						},
+			backCounter	    { 0						}
+		{
+			if(initialReservation)
+				queue = new ElementType[initialReservation];
+		}
+
+		~CircularStealingQueue()
+		{
+			delete[] queue;
+		}
+
+
+		CircularStealingQueue               (const CircularStealingQueue&) = delete;
+		CircularStealingQueue& 	operator =	(const CircularStealingQueue&) = delete;
+
+        [[nodiscard]] std::optional<TY_E> pop_back() noexcept // FILO
+		{
+            std::scoped_lock lock{ m };
+
+            auto back  = backCounter.fetch_sub(1, std::memory_order_seq_cst) - 1;
+            auto front = frontCounter.load(std::memory_order_seq_cst);
+
+            if (front <= back)
+            {
+                auto job = *queue[back % queueArraySize];
+
+                if (front != back)
+                    return job;
+                else
+                {
+                    auto res = frontCounter.compare_exchange_weak(front, front + 1, std::memory_order_seq_cst);
+
+                    if (!res)
+                        return {};
+
+                    backCounter.store(front + 1, std::memory_order_seq_cst);
+
+                    return { job };
+                }
+            }
+            else
+            {
+                backCounter.store(frontCounter.load());
+                return {};
+            }
+		}
+
+        [[nodiscard]] std::optional<TY_E> Steal() noexcept // FIFO
+		{
+            std::scoped_lock lock{ m };
+
+            auto front = frontCounter.load(std::memory_order_seq_cst);
+            auto back  = backCounter.load(std::memory_order_seq_cst);
+
+            if (front < back)
+            {
+                auto job = *queue[front % queueArraySize];
+
+                if (!frontCounter.compare_exchange_weak(front, front + 1, std::memory_order_seq_cst))
+                    return {};
+
+                return job;
+            }
+
+            return {};
+		}
+
+	
+		void push_back(TY_E element) noexcept
+		{
+            std::scoped_lock lock{ m };
+
+            if (queueArraySize < size() + 1) {
+                _Expand();
+            }
+
+            queue[backCounter % queueArraySize] = element;
+			backCounter++; // publish push
+		}
+
+
+		bool empty() const noexcept
+		{
+			return size() == 0;
+		}
+
+
+		size_t size() const noexcept
+		{
+			return (size_t)(backCounter - frontCounter);
+		}
+
+
+	private:
+		void _Expand() noexcept
+		{
+			const auto	arraySize	= queueArraySize * 2;
+			auto		newArray	= new ElementType[arraySize];;
+
+			const uint64_t begin	= frontCounter;
+			const uint64_t end		= backCounter;
+			const uint64_t count	= end - begin;
+
+			FK_ASSERT(queueArraySize >= count);
+
+			for (uint64_t idx = 0; idx < count; ++idx)
+			{
+				const auto oldIdx = (begin + idx) % queueArraySize;
+				const auto newIdx = (begin + idx) % arraySize;
+				newArray[newIdx]  = *queue[oldIdx];
+			}
+
+			auto temp		= queue;
+			queue			= newArray;
+			queueArraySize	= arraySize;
+
+			delete[] temp;
+		}
+
+
+		void _Contract() noexcept
+		{
+			const auto newSize	= (size_t)std::pow(2, log2(size()) + 1);
+			const auto newArray	= new TY_E[newSize];
+		}
+
+		size_t			                    queueArraySize = 0;
+        ElementType*                        queue          = nullptr;
+		alignas(64) std::atomic_int64_t     frontCounter   = 0;
+		alignas(64) std::atomic_int64_t     backCounter    = 0;
+        std::atomic_bool                    inProgress     = true;
+        std::mutex                          m;
+	};
+
+
+	thread_local CircularStealingQueue<iWork*>* localWorkQueue = nullptr;
+
+    void PushToLocalQueue(iWork* work)
+    {
+        localWorkQueue->push_back(work);
+    }
 
 	class _WorkerThread
 	{
 	public:
 		_WorkerThread(iAllocator* ThreadMemory = SystemAllocator) :
-			Thread		{ [this] { _Run(); }	},
+			Thread		{ [&]
+							{
+								localWorkQueue = &workQueue;
+								_Run();
+							}},
 			Running		{ false				},
 			Quit		{ false				},
 			hasJob		{ false				},
 			Allocator	{ ThreadMemory		} {}
-
 
 		void Shutdown()	noexcept;
 		void Wake()		noexcept;
@@ -176,6 +334,8 @@ namespace FlexKit
 
 		bool	AddItem(iWork* Work)	noexcept;
 		iWork*	Steal()					noexcept;
+
+		auto&   GetQueue() { return workQueue; }
 
 		static ThreadManager*	Manager;
 
@@ -190,10 +350,9 @@ namespace FlexKit
 
 		iAllocator*				Allocator;
 
-		std::mutex					exclusive;
-		CircularBuffer<iWork*, 32>	workList;
-
-		std::thread					Thread;
+		std::mutex					    exclusive;
+		CircularStealingQueue<iWork*>   workQueue;
+		std::thread					    Thread;
 
 		size_t tasksCompleted = 0;
 	};
@@ -212,13 +371,13 @@ namespace FlexKit
 	public:
 		LambdaWork(TY_FN& FNIN, iAllocator* IN_allocator = FlexKit::SystemAllocator) noexcept :
 			iWork		{ IN_allocator  },
-            allocator   { IN_allocator  },
+			allocator   { IN_allocator  },
 			Callback	{ FNIN          } {}
 
 		void Release() noexcept
 		{
-            this->~LambdaWork();
-            allocator->free(this);
+			this->~LambdaWork();
+			allocator->free(this);
 		}
 
 		void Run()
@@ -227,7 +386,7 @@ namespace FlexKit
 		}
 
 		TY_FN       Callback;
-        iAllocator* allocator;
+		iAllocator* allocator;
 	};
 
 
@@ -258,12 +417,20 @@ namespace FlexKit
 			threads				{ },
 			allocator			{ IN_allocator		},
 			workingThreadCount	{ 0					},
-			workerCount			{ ThreadCount		}
+			workerCount			{ ThreadCount       },
+			workQueues          { IN_allocator      }
 		{
 			WorkerThread::Manager = this;
 
-			for (size_t I = 0; I < ThreadCount; ++I)
-				threads.push_back(allocator->allocate<WorkerThread>(allocator));
+			localWorkQueue = &allocator->allocate_aligned<CircularStealingQueue<iWork*>>();
+			workQueues.push_back(localWorkQueue);
+
+			for (size_t I = 0; I < workerCount; ++I) {
+
+				auto& thread = allocator->allocate<WorkerThread>(allocator);
+				threads.push_back(thread);
+				workQueues.push_back(&thread.GetQueue());
+			}
 		}
 
 
@@ -294,76 +461,33 @@ namespace FlexKit
 
 		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept
 		{
-			if (!threads.empty())
-			{
-				size_t	startPoint = randomDevice();
-
-				auto _AddWork = [](iWork* newWork, auto& thread)
-				{
-
-					if (thread->AddItem(newWork))// committed to adding work here
-					{
-						newWork->scheduled = true;
-						return true;
-					}
-					return false;
-				};
-
-				for(size_t itr = 0; itr < workerCount; ++itr)
-				{
-					size_t	threadidx	= (startPoint + itr) % workerCount;
-					auto& thread		= threads.begin() + threadidx;
-
-                    if (_AddWork(newWork, thread))
-                        break;
-				}
-
-                if (workerCount != workingThreadCount) // wake another thread
-                {
-                    for (auto& thread : threads)
-                    {
-                        if (!thread.IsRunning())
-                            return thread.Wake();
-                    }
-                }
-			}
-			else
-			{
-				std::scoped_lock lock{ exclusive };
-				workList.push_back(newWork);
-			}
+			localWorkQueue->push_back(newWork);
+			workerWait.notify_one();
 		}
 
 
 		void WaitForWorkersToComplete()
 		{
-			if (!threads.empty())
+			while (!localWorkQueue->empty())
 			{
-				std::mutex						M;
-				std::unique_lock<std::mutex>	lock(M);
+				std::scoped_lock lock{ exclusive };
 
-                while (workingThreadCount > 0);
-			}
-			else
-			{
-				while(!workList.empty())
+				if (auto workItem = localWorkQueue->pop_back(); workItem)
 				{
-					std::scoped_lock lock{ exclusive };
-
-					if (auto workItem = workList.pop_front(); workItem != nullptr)
-					{
-						workItem->Run();
-						workItem->NotifyWatchers();
-						workItem->Release();
-					}
+					workItem.value()->Run();
+					workItem.value()->NotifyWatchers();
+					workItem.value()->Release();
 				}
 			}
+
+			while (workingThreadCount > 0);
 		}
 
 
 		void WaitForShutdown() noexcept // TODO: this does not work!
 		{
 			bool threadRunnings = false;
+
 			do
 			{
 				threadRunnings = false;
@@ -371,6 +495,8 @@ namespace FlexKit
 					threadRunnings |= I.IsRunning();
 					I.Shutdown();
 				}
+
+				workerWait.notify_all();
 			} while (threadRunnings);
 		}
 
@@ -389,21 +515,28 @@ namespace FlexKit
 		}
 
 
-		iWork* StealSomeWork()
+		void WaitForWork() noexcept
 		{
-			if (threads.empty()) 
-			{
-				if (!workList.size())
-					return workList.pop_front();
-                else
-				    return nullptr;
-			}
+            std::mutex m;
+            std::unique_lock l{ m };
 
-			for(auto& thread : threads)
-			{
-				if (auto res = thread.Steal())
-					return res;
-			}
+            //workerWait.wait(l);
+            workerWait.wait_for(l, 1000ns);
+		}
+
+
+		iWork* FindWork()
+		{
+            if (auto res = localWorkQueue->pop_back(); res)
+                return res.value();
+
+            const size_t startingPoint = randomDevice();
+            for (size_t I = 0; I < workQueues.size(); ++I)
+            {
+                size_t idx = (I + startingPoint) % workQueues.size();
+                if (auto res = workQueues[idx]->Steal(); res)
+                    return res.value();
+            }
 
 			return nullptr;
 		}
@@ -422,6 +555,7 @@ namespace FlexKit
 		WorkerList	threads;
 
 		std::condition_variable		CV;
+		std::condition_variable		workerWait;
 		std::atomic_int				workingThreadCount;
 		std::default_random_engine	randomDevice;
 
@@ -429,8 +563,7 @@ namespace FlexKit
 		iAllocator*					allocator;
 		std::mutex					exclusive;
 
-		CircularBuffer<iWork*, 128>	            workList; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
-        CircularBuffer<WorkStealingQueue*, 128>	workLists; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
+		Vector<CircularStealingQueue<iWork*>*>	workQueues; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
 	};
 
 
@@ -442,70 +575,44 @@ namespace FlexKit
 	public:
 		WorkBarrier(
 			ThreadManager&	IN_threads,
-			iAllocator*		Memory = FlexKit::SystemAllocator) :
-				PostEvents	{ Memory		},
+			iAllocator*		allocator = FlexKit::SystemAllocator) :
+				PostEvents	{ allocator     },
+                workList    { allocator     },
 				threads		{ IN_threads	} {}
 
-		~WorkBarrier() {}
+        ~WorkBarrier() { Join(); }
 
 		WorkBarrier(const WorkBarrier&)					= delete;
 		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
-		int  GetDependentCount		() { return TasksInProgress; }
-		void AddDependentWork		(iWork* Work);
-		void AddOnCompletionEvent	(OnCompletionEvent Callback);
-		void Wait					();
-		void Join					();
+		size_t  GetDependentCount		() { return tasksInProgress; }
+		void    AddWork                 (iWork* Work);
+		void    AddOnCompletionEvent	(OnCompletionEvent Callback);
+		void    Wait					();
+		void    Join					();
 
 	private:
+        void    _OnEnd()
+        {
+            for (auto evt : PostEvents)
+                evt();
+
+            inProgress = false;
+        }
+
+
+		std::atomic_int	    tasksInProgress = 0;
+        std::atomic_bool    inProgress      = true;
+
 		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;
+        Vector<iWork*>              workList;
 
-		std::condition_variable		CV;
-		std::atomic_int				TasksInProgress	= 0;
-		std::mutex					m;
 	};
 
 
 	/************************************************************************************************/
 
-
-	class WorkDependencyWait
-	{
-	public:
-		WorkDependencyWait(iWork& IN_work, ThreadManager* IN_threads, iAllocator* IN_allocator = SystemAllocator) :
-			work			{ IN_work		},
-			allocator		{ IN_allocator	},
-			threads			{ IN_threads	},
-			dependentCount	{ 0 }{}
-
-		WorkDependencyWait				(const WorkDependencyWait&) = delete;
-		WorkDependencyWait& operator =	(const WorkDependencyWait&) = delete;
-
-
-		void AddDependency(iWork& waitsOn)
-		{
-			dependentCount++;
-
-			waitsOn.Subscribe(
-				[&]() {
-					dependentCount--;
-
-					if (!dependentCount && scheduleLock.try_lock()) // Leave locked!
-						threads->AddWork(&work, allocator);
-					});
-		}
-
-		iWork&						work;
-		ThreadManager*				threads;
-		iAllocator*					allocator;
-		std::atomic_int				dependentCount;
-		std::mutex					scheduleLock;
-		Vector<OnCompletionEvent>	PostEvents;
-	};
-
-
-	/************************************************************************************************/
 
 
 	// Thread safe lazy object constructor, returns callable that returns the same object everytime, for every calling thread.  Will block during construction.
@@ -551,49 +658,49 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    template<typename TY_OP>
-    class SynchronizedOperation
-    {
-    public:
-        SynchronizedOperation(TY_OP IN_operation) : operation{ IN_operation} {}
+	template<typename TY_OP>
+	class SynchronizedOperation
+	{
+	public:
+		SynchronizedOperation(TY_OP IN_operation) : operation{ IN_operation} {}
 
-        // No Copy
-        SynchronizedOperation(const SynchronizedOperation& rhs) = delete;
-        SynchronizedOperation& operator = (const SynchronizedOperation& rhs) = delete;
-
-
-        SynchronizedOperation(SynchronizedOperation&& rhs) :
-            operation       { std::move(rhs.operation)          } {}
+		// No Copy
+		SynchronizedOperation(const SynchronizedOperation& rhs) = delete;
+		SynchronizedOperation& operator = (const SynchronizedOperation& rhs) = delete;
 
 
-        SynchronizedOperation& operator = (SynchronizedOperation&& rhs)
-        {
-            std::scoped_lock<std::mutex> lock{ rhs.criticalSection };
-            operation = std::move(rhs.operation);
-        }
+		SynchronizedOperation(SynchronizedOperation&& rhs) :
+			operation       { std::move(rhs.operation)          } {}
 
 
-        template<typename ... TY_ARGS>
-        decltype(auto) operator ()(TY_ARGS&& ... args)
-        {
-            std::scoped_lock<std::mutex> lock( criticalSection );
-            return operation(std::forward<TY_ARGS>(args)...);
-        }
+		SynchronizedOperation& operator = (SynchronizedOperation&& rhs)
+		{
+			std::scoped_lock<std::mutex> lock{ rhs.criticalSection };
+			operation = std::move(rhs.operation);
+		}
 
 
-    private:
-        TY_OP       operation;
-        std::mutex  criticalSection;
-    };
+		template<typename ... TY_ARGS>
+		decltype(auto) operator ()(TY_ARGS&& ... args)
+		{
+			std::scoped_lock<std::mutex> lock( criticalSection );
+			return operation(std::forward<TY_ARGS>(args)...);
+		}
 
-    template<typename TY_OP>
-    auto MakeSynchonized(TY_OP operation, iAllocator* allocator)
-    {
-        return MakeSharedRef<SynchronizedOperation<TY_OP>>(allocator, operation);
-    }
+
+	private:
+		TY_OP       operation;
+		std::mutex  criticalSection;
+	};
+
+	template<typename TY_OP>
+	auto MakeSynchonized(TY_OP operation, iAllocator* allocator)
+	{
+		return MakeSharedRef<SynchronizedOperation<TY_OP>>(allocator, operation);
+	}
 
 	/************************************************************************************************/
 }	// namespace FlexKit

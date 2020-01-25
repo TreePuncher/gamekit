@@ -100,7 +100,7 @@ namespace FlexKit
 
 	struct CombinedVertex
 	{
-		CombinedVertex() : NORMAL(0), POS(0), TEXCOORD(0), WEIGHTS(0) {}
+        CombinedVertex() : NORMAL{ 0 }, POS{ 0 }, TEXCOORD{ 0 }, WEIGHTS{ 0 } {}
 		float3	 POS;
         float3	 NORMAL;
         float3	 TANGENT;
@@ -108,7 +108,7 @@ namespace FlexKit
 		float3	 WEIGHTS;
 		uint4_16 WIndices;
 
-		struct IndexBitlayout
+		struct IndexBitField
 		{
 			size_t p_Index = 0;
 			size_t n_Index = 0;
@@ -118,13 +118,13 @@ namespace FlexKit
 			{ 
 				size_t hash = 0;
 				hash_combine(hash, p_Index);
-				hash_combine(hash, n_Index);
 				hash_combine(hash, t_Index);
+				//hash_combine(hash, n_Index);
 
 				return hash;
 			};
 
-			bool operator == (const IndexBitlayout in) const { return (in.Hash() == Hash()); }
+			bool operator == (const IndexBitField in) const { return (in.Hash() == Hash()); }
 		} index;
 
 		bool operator == ( const CombinedVertex& rhs )
@@ -134,7 +134,7 @@ namespace FlexKit
 
 		bool eqlcompare( const CombinedVertex * __restrict lhs, const CombinedVertex * __restrict rhs )
 		{
-			IndexBitlayout rhsindex = rhs->index;
+			IndexBitField rhsindex = rhs->index;
 			if( rhsindex.p_Index == index.p_Index )
 				if( rhsindex.n_Index == index.n_Index )
 					if( rhsindex.t_Index == index.t_Index )
@@ -143,7 +143,7 @@ namespace FlexKit
 		}
 	};
 
-	FLEXKITAPI bool operator < ( const CombinedVertex::IndexBitlayout lhs, const CombinedVertex::IndexBitlayout rhs );
+	FLEXKITAPI bool operator < ( const CombinedVertex::IndexBitField lhs, const CombinedVertex::IndexBitField rhs );
 
 	namespace MeshUtilityFunctions
 	{

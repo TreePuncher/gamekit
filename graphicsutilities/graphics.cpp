@@ -2534,7 +2534,7 @@ namespace FlexKit
 
     void Context::LockFor(uint8_t frameCount)
     {
-        lockCounter = frameCount;
+        lockCounter = frameCount + 1;
     }
 
 
@@ -6063,7 +6063,7 @@ namespace FlexKit
         static_vector<ID3D12CommandList*> cls;
         for (auto context : contexts) {
             context->Close();
-            context->LockFor(3);
+            context->LockFor(2);
 
             cls.push_back(context->GetCommandList());
         }

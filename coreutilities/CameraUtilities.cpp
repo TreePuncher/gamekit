@@ -249,7 +249,7 @@ namespace FlexKit
 		};
 
 		auto& data = dispatcher.Add<OrbitCameraUpdateData>(
-			[&](auto& Builder, OrbitCameraUpdateData& data)
+			[&](UpdateDispatcher::UpdateBuilder& Builder, OrbitCameraUpdateData& data)
 			{
 				Builder.SetDebugString("OrbitCamera Update");
 				Builder.AddOutput(transformUpdateDependency);
@@ -260,7 +260,7 @@ namespace FlexKit
 			},
 			[&orbitCamera](auto& data)
 			{
-				FK_LOG_9("OrbitCamera Update");
+				FK_LOG_INFO("OrbitCamera Update");
 
 				orbitCamera.Update(data.mouseState, data.dt);
 			});

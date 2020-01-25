@@ -177,9 +177,9 @@ GameHostLobbyState::GameHostLobbyState(
 
 #ifdef _DEBUG
 							if (readyPacket->ready)
-								FK_LOG_9("Player: %s is now ready", playerState->Name);
+								FK_LOG_9("Player: %s is now ready", playerState->name);
 							else
-								FK_LOG_9("Player: %s is now not ready", playerState->Name);
+								FK_LOG_9("Player: %s is now not ready", playerState->name);
 #endif
 						}
 					}

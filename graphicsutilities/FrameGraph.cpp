@@ -564,7 +564,7 @@ namespace FlexKit
 			[&](auto& builder, SubmitData& data)
 			{
 				FK_LOG_9("Frame Graph Single-Thread Section Begin");
-				builder.DebugID		= "Frame Graph Task";
+                builder.SetDebugString("Frame Graph Task");
 
 				data.contexts		= Vector<Context*>{ Memory };
 				data.contexts.emplace_back(&renderSystem->GetCommandList());
@@ -576,14 +576,14 @@ namespace FlexKit
 				std::sort(dataDependencies.begin(), dataDependencies.end());
 				dataDependencies.erase(std::unique(dataDependencies.begin(), dataDependencies.end()), dataDependencies.end());
 
-				for (auto dependency : dataDependencies)
+			    for (auto dependency : dataDependencies)
 					builder.AddInput(*dependency);
 
 				FK_LOG_9("Frame Graph Single-Thread Section End");
 			},
 			[=, &allocator](SubmitData& data)
 			{
-				FK_LOG_9("Frame Graph Multi-Thread Section Begin");
+				FK_LOG_INFO("Frame Graph Multi-Thread Section Begin");
 
 				data.frameGraph->_SubmitFrameGraph(data.contexts, allocator);
 				data.contexts.back()->FlushBarriers();
@@ -591,7 +591,7 @@ namespace FlexKit
 
 				UpdateResourceFinalState();
 
-				FK_LOG_9("Frame Graph Multi-Thread Section End");
+                FK_LOG_INFO("Frame Graph Multi-Thread Section End");
 			});
 	}
 

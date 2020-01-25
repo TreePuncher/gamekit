@@ -18,18 +18,12 @@ namespace FlexKit
 	{
 		std::unique_lock lock{ exclusive };
 
-        workCount++;
+		workCount++;
 
 		if (Quit)
 			return false;
 
-        if (workList.full()) {
-            workCount--;
-            return false;
-        }
-
-		if (!workList.push_back(Work))
-			return false;
+		workQueue.push_back(Work);
 
 		if (!Running)
 			CV.notify_all();
@@ -59,108 +53,63 @@ namespace FlexKit
 			Running.store(false);
 		});
 
-
 		while (true)
 		{
+			auto doWork = [&](iWork* work)
+			{
+				if (work) 
+				{
+					hasJob.store(true, std::memory_order_release);
+
+					work->Run();
+					work->NotifyWatchers();
+					work->Release();
+
+					tasksCompleted++;
+
+					hasJob.store(false, std::memory_order_release);
+
+					return true;
+				}
+				return false;
+			};
+
+
+            for(size_t I = 0; I < 10; I++)
 			{
 				EXITSCOPE({
 					Manager->DecrementActiveWorkerCount();
-				});
+					});
 
 				Manager->IncrementActiveWorkerCount();
 
-				auto doWork = [&](iWork* work)
-				{
-					if (work) 
-					{
-						hasJob.store(true, std::memory_order_release);
+					auto workItem = localWorkQueue->pop_back().value_or(Manager->FindWork());
 
-						work->Run();
-						work->NotifyWatchers();
-						work->Release();
-
-						tasksCompleted++;
-
-						hasJob.store(false, std::memory_order_release);
-
-						return true;
-					}
-					return false;
-				};
-
-
-				auto getWorkItem = [&]()  -> iWork*
-				{
-					std::unique_lock lock{ exclusive };
-
-					if (!workCount)
-						return nullptr;
-
-					auto work = workList.pop_back();
-					workCount--;
-
-					return work;
-				};
-
-                auto FindWork = [&]()
-                {
-                    auto stealWork = [&](auto& begin, auto& end) -> iWork*
+                    if (workItem)
                     {
-                        for (auto worker = begin; workList.empty() && worker != end && worker != nullptr; ++worker)
+                        I = 0;
+                        doWork(workItem);
+                    }
+                    else if(I > 5)
+                    {
+                        auto beginTimePoint = std::chrono::high_resolution_clock::now();
+
+                        while (true)
                         {
-                            if (iWork* work = worker->Steal(); work)
-                            {
-                                return work;
-                            }
+                            auto currentTime    = std::chrono::high_resolution_clock::now();
+                            auto duration       = currentTime - beginTimePoint;
+
+                            if (duration > 1000ns )
+                                break;
                         }
 
-                        return nullptr;
-                    };
-
-                    if (auto workItem = getWorkItem(); workItem)
-                        return workItem;
-                    else if (auto workItem = stealWork(WorkerList::Iterator{ this }, Manager->GetThreadsEnd()); workItem)
-                        return workItem;
-                    else
-                        return stealWork(Manager->GetThreadsBegin(), WorkerList::Iterator{ this });
-                };
-
-                while (true)
-                {
-                    auto workItem = FindWork();
-
-                    if (!workItem)
-                        break;
-
-                    doWork(workItem);
-                }
-
-				if (Quit)
-					return;
-
-				if (!workCount && !Quit)
-				{
-					std::mutex						M;
-					std::unique_lock<std::mutex>	lock{ M };
-
-                    if (lock)
-                        continue;
-
-					if (!workCount || !Quit)
-					{
-						Running.store(false);
-
-						CV.wait(
-							lock,
-							[this]() -> bool
-							{
-								return workCount || Quit;
-							});
-
-						Running.store(true);
-					}
-				}
+                    }
 			}
+
+			Manager->WaitForWork();
+
+			if (Quit)
+				return;
 		}
 
 	}
@@ -189,7 +138,7 @@ namespace FlexKit
 
 	bool _WorkerThread::hasWork() noexcept
 	{
-		return !workList.empty();
+		return !localWorkQueue->empty();
 	}
 
 	
@@ -198,37 +147,29 @@ namespace FlexKit
 
 	iWork* _WorkerThread::Steal() noexcept
 	{
-		if (!workCount)
-			return nullptr;
 
-		std::unique_lock lock{ exclusive };
-
-		if (workCount)
-		{
-			auto work = workList.pop_front();
-			workCount--;
-
-			return work;
-		}
-		else
-			return nullptr;
+		return localWorkQueue->Steal().value_or(nullptr);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void WorkBarrier::AddDependentWork(iWork* Work)
+	void WorkBarrier::AddWork(iWork* work)
 	{
-		FK_ASSERT(Work != nullptr);
+		FK_ASSERT(work != nullptr);
 
-		++TasksInProgress;
+		workList.push_back(work);
 
-		Work->Subscribe(
-			[&]
+		++tasksInProgress;
+
+		work->Subscribe(
+			[this]
 			{
-				if(--TasksInProgress == 0)
-					CV.notify_all();
+				auto prev = tasksInProgress.fetch_sub(1); FK_ASSERT(prev > 0);
+
+				if (prev == 1)
+					_OnEnd();
 			});
 	}
 
@@ -247,50 +188,43 @@ namespace FlexKit
 
 	void WorkBarrier::Wait()
 	{
-		if (TasksInProgress == 0)
-			return;
-
-		std::mutex M;
-		std::unique_lock<std::mutex> lock(M);
-
-		CV.wait(
-			lock, 
-			[this]()->bool
-			{
-				return TasksInProgress.load(std::memory_order_seq_cst) == 0;
-			});
-
-		for (auto Evt : PostEvents)
-			Evt();
+		do
+		{
+			if (tasksInProgress == 0)
+				return;
+		} while (true);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void WorkBarrier::Join()
 	{
+		FK_ASSERT(workList.size() >= tasksInProgress);
+
+		if (!workList.size())
+			return;
+
+		//auto temp = workList;
+
 		do
 		{
-			if (TasksInProgress == 0)
+            /*
+			for (auto& work : temp)
+				if (work->completed)
+					temp.remove_unstable(&work);
+            */
+
+			if (!inProgress)
 				return;
 
-			for(auto work = threads.StealSomeWork(); work; work = threads.StealSomeWork())
+			for(auto work = threads.FindWork(); work; work = threads.FindWork())
 			{
 				work->Run();
 				work->NotifyWatchers();
 				work->Release();
 			}
-
-			std::mutex						M;
-			std::unique_lock<std::mutex>	lock(M);
-
-			CV.wait(
-				lock,
-				[&, this]()->bool
-				{
-					return TasksInProgress == 0;
-				});
 		} while (true);
 	}
 

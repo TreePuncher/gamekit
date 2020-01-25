@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	bool operator < ( const CombinedVertex::IndexBitlayout lhs, const CombinedVertex::IndexBitlayout rhs )
+	bool operator < ( const CombinedVertex::IndexBitField lhs, const CombinedVertex::IndexBitField rhs )
 	{
 		return lhs.Hash() > rhs.Hash();
 	}
@@ -49,18 +49,14 @@ namespace FlexKit
 			Vector<float2>		UV			{ ScratchSpace };
 			Vector<float3>		Weights		{ ScratchSpace };
 			Vector<uint4_16>	WIndexes	{ ScratchSpace };
+            Vector<size_t>	    NormalTable { ScratchSpace };
+            Vector<size_t>	    TangentTable{ ScratchSpace };
 
 			IndexList&	Indexes	= out_indexes;
 			MeshBuildInfo MBI	= {0};
-            Vector<size_t>	NormalTable(ScratchSpace);
-            Vector<size_t>	TangentTable(ScratchSpace);
 
-			map_t<CombinedVertex::IndexBitlayout, unsigned int>	IndexMap;
+			map_t<CombinedVertex::IndexBitField, unsigned int>	IndexMap;
 			auto& FinalVerts = out_buffer;
-
-			// Temps
-			CombinedVertex	TempFVert;
-			s_TokenValue	WorkToken;
 
 			auto count  = 0;
 			auto count2 = 0;
@@ -80,47 +76,48 @@ namespace FlexKit
 					FK_ASSERT( 0 );
 					break;
 				case INDEX:
-					WorkToken = itr;
+                {
+                    const s_TokenValue	token = itr;
+                    CombinedVertex	    vertex;
 
-					TempFVert.index		= *(CombinedVertex::IndexBitlayout*)WorkToken.buffer;
-					TempFVert.index.n_Index = NormalTable[TempFVert.index.n_Index];
-					memcpy(&TempFVert.POS, &position[TempFVert.index.p_Index], sizeof(TempFVert.POS));
+                    CombinedVertex::IndexBitField bitLayout;
+                    memcpy(&bitLayout, token.buffer, sizeof(bitLayout));
 
+                    vertex.index		        = bitLayout;
+                    vertex.index.n_Index        = NormalTable[vertex.index.n_Index];
+					memcpy(&vertex.POS, &position[vertex.index.p_Index], sizeof(vertex.POS));
 
 					if (DoWeights) {
-						memcpy(&TempFVert.WEIGHTS,  &Weights[TempFVert.index.p_Index],  sizeof(TempFVert.POS));
-						memcpy(&TempFVert.WIndices, &WIndexes[TempFVert.index.p_Index], sizeof(uint4_16));
+						memcpy(&vertex.WEIGHTS,  &Weights[vertex.index.p_Index],  sizeof(vertex.POS));
+						memcpy(&vertex.WIndices, &WIndexes[vertex.index.p_Index], sizeof(uint4_16));
 					}
 					if (normal.size() != 0)
-						memcpy(&TempFVert.NORMAL, &normal[TempFVert.index.n_Index], sizeof(TempFVert.NORMAL));
+						memcpy(&vertex.NORMAL, &normal[vertex.index.n_Index], sizeof(vertex.NORMAL));
 					else {
-						float3 Temp{0};
-						memcpy(&TempFVert.NORMAL, &Temp, sizeof(TempFVert.NORMAL));
+                        memcpy(&vertex.NORMAL, &float3{ 0, 0, 0 }, sizeof(vertex.NORMAL));
 					}
 					if (UV.size() != 0)
-						memcpy(&TempFVert.TEXCOORD, &UV[TempFVert.index.t_Index], sizeof(TempFVert.NORMAL));
+						memcpy(&vertex.TEXCOORD, &UV[vertex.index.t_Index], sizeof(vertex.NORMAL));
 					else
 					{
 						float2 Temp;
-						memcpy(&TempFVert.TEXCOORD, &Temp, sizeof(TempFVert.TEXCOORD));
+						memcpy(&vertex.TEXCOORD, &Temp, sizeof(vertex.TEXCOORD));
 					}
+					if (IndexMap.find(vertex.index) == IndexMap.end())
 					{
-						if (IndexMap.find(TempFVert.index) == IndexMap.end())
-						{
-							Indexes.push_back(static_cast< uint32_t >(FinalVerts.size()));
-							IndexMap[TempFVert.index] = static_cast<unsigned int>(FinalVerts.size());
-							FinalVerts.push_back(TempFVert);
-							count++;
-						}
-						else
-						{
-							Indexes.push_back(IndexMap[TempFVert.index]);
-							count2++;
-						}
+						Indexes.push_back(static_cast<uint32_t>(FinalVerts.size()));
+						IndexMap[vertex.index] = static_cast<unsigned int>(FinalVerts.size());
+						FinalVerts.push_back(vertex);
+						count++;
 					}
-					++MBI.IndexCount;
+					else
+					{
+						Indexes.push_back(IndexMap[vertex.index]);
+						count2++;
+					}
 
-					break;
+					MBI.IndexCount++;
+				}	break;
 				case LOADMATERIAL:
 					break;
 				case Normal_COORD:
@@ -132,15 +129,15 @@ namespace FlexKit
                     memcpy(&newNormal, itr.buffer,                      sizeof(float[3]));
                     memcpy(&newTangent, itr.buffer + sizeof(float[3]),  sizeof(float[3]));
 
-					newNormal[3]		= 0.0f;
-                    newTangent[3]       = 0.0f;
+					newNormal[3]  = 0.0f;
+                    newTangent[3] = 0.0f;
 
 					newNormal.normalize();
 
                     if(tangentsIncluded)
 					    newTangent.normalize();
 					
-					for (size_t I= 0; I < normal.size(); ++I)
+					for (size_t I = 0; I < normal.size(); ++I)
 					{
 						if ( 1 - normal[I].dot( newNormal ) < 0.00001f)
 						{
@@ -419,7 +416,7 @@ namespace FlexKit
 			/************************************************************************************************/
 
 
-			void ExtractIndice( size_t RINOUT itr, const char* in_str, size_t LineLength, CombinedVertex::IndexBitlayout* __restrict out, int ITYPE )
+			void ExtractIndice( size_t RINOUT itr, const char* in_str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int ITYPE )
 			{
 				char			c_str[ 16 ];
 				unsigned int	POS = 0;
@@ -479,7 +476,7 @@ namespace FlexKit
 			/************************************************************************************************/
 
 
-			void ExtractFace( const char* str, size_t LineLength, CombinedVertex::IndexBitlayout* __restrict out, int index, int slashcount )
+			void ExtractFace( const char* str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int index, int slashcount )
 			{
 				// Skip token plus spaces
 				size_t itr = 0;
@@ -635,11 +632,11 @@ namespace FlexKit
 			void AddIndexToken(size_t V, size_t N, size_t T, TokenList& out)
 			{
 				s_TokenValue					Token;
-				CombinedVertex::IndexBitlayout*	BitLayout = (CombinedVertex::IndexBitlayout*)Token.buffer;
+				CombinedVertex::IndexBitField*	BitLayout = (CombinedVertex::IndexBitField*)Token.buffer;
 				
 				Token.token = Token::INDEX;
 
-				CombinedVertex::IndexBitlayout Temp;
+				CombinedVertex::IndexBitField Temp;
 				Temp.p_Index = uint64_t(V);
 				Temp.n_Index = uint64_t(N);
 				Temp.t_Index = uint64_t(T);
@@ -742,8 +739,8 @@ namespace FlexKit
 						newToken.token = INDEX;
 						for( auto itr = 0; itr <= spacecount; itr++ )
 						{
-							new( &newToken.buffer ) CombinedVertex::IndexBitlayout();
-							ExtractFace( in_Line, LineLength, ( CombinedVertex::IndexBitlayout*)&newToken.buffer, itr, slashcount );
+							new( &newToken.buffer ) CombinedVertex::IndexBitField();
+							ExtractFace( in_Line, LineLength, ( CombinedVertex::IndexBitField*)&newToken.buffer, itr, slashcount );
 							TL.push_back( newToken );
 						}
 					}

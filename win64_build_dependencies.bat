@@ -32,8 +32,12 @@ devenv Dependencies\sdks\raknet\Lib\LibStatic\LibStatic_vc9.vcxproj /build "Rele
 copy "Dependencies\sdks\raknet\Lib\LibStatic\Lib\LibStatic_vc9_LibStatic_Debug_x64.lib" "Dependencies\libs\debug\raknet_debug_x64.lib"
 copy "Dependencies\sdks\raknet\Lib\LibStatic\Lib\LibStatic_vc9_LibStatic_Release_x64.lib" "Dependencies\libs\release\raknet_release_x64.lib"
 
-copy "%fmodapidir%\api\lowlevel\lib\fmod64.dll" "builds\debug"
-copy "%fmodapidir%\api\lowlevel\lib\fmod64.dll" "builds\release"
+if exist "builds\debug" mkdir "builds\debug" copy "%fmodapidir%\api\core\lib\fmod64.dll" "builds\debug"
+if exist "builds\debug" mkdir "builds\debug" copy "%fmodapidir%\api\core\lib\fmod64.dll" "builds\release"
+
+
+if exist "builds\debug" mkdir "builds\debug" copy "%fmodapidir%\api\lowlevel\lib\fmod64.dll" "builds\debug"
+if exist "builds\debug" mkdir "builds\debug" copy "%fmodapidir%\api\lowlevel\lib\fmod64.dll" "builds\release"
 
 if not exist "builds\debug" mkdir "builds\debug"
 if not exist "builds\debug\assets" mkdir "builds\debug\assets"

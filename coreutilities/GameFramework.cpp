@@ -132,7 +132,7 @@ namespace FlexKit
 				FK_VLOG(Verbosity_9, "Console Key Pressed!");
 
 				if (!framework.consoleActive) {
-                    framework.PushState<DebugPanel>(*framework.subStates.back());
+					framework.PushState<DebugPanel>(*framework.subStates.back());
 					framework.consoleActive = true;
 				}
 			}	break;
@@ -258,7 +258,7 @@ namespace FlexKit
 			return;
 		}
 
-        subStates.back()->Update(core, dispatcher, dT);
+		subStates.back()->Update(core, dispatcher, dT);
 
 		core.End = quit;
 	}
@@ -283,13 +283,13 @@ namespace FlexKit
 			return;
 		}
 
-        if (drawDebug)
-        {
-            subStates.back()->Update(core, dispatcher, dT);
-            dispatcher.Execute();
-        }
+		if (drawDebug)
+		{
+			subStates.back()->Update(core, dispatcher, dT);
+			dispatcher.Execute();
+		}
 
-        subStates.back()->Update(core, dispatcher, dT);
+		subStates.back()->Update(core, dispatcher, dT);
 		dispatcher.Execute();
 
 		if (stats.fpsT > 1.0)
@@ -314,14 +314,13 @@ namespace FlexKit
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, TempMemory);
 
 		// Add in Base Resources
-        
+		
 		frameGraph.Resources.AddBackBuffer(core.Window.backBuffer);
 		frameGraph.UpdateFrameGraph(core.RenderSystem, ActiveWindow, core.GetTempMemory());
 
-        subStates.back()->Draw(core, dispatcher, dT, frameGraph);
-        subStates.back()->PostDrawUpdate(core, dispatcher, dT, frameGraph);
+		subStates.back()->Draw(core, dispatcher, dT, frameGraph);
+		subStates.back()->PostDrawUpdate(core, dispatcher, dT, frameGraph);
 
-		ProfileBegin(PROFILE_SUBMISSION);
 
 		if(	ActiveWindow )
 		{
@@ -329,7 +328,6 @@ namespace FlexKit
 			Free_DelayedReleaseResources(core.RenderSystem);
 		}
 
-		ProfileEnd(PROFILE_SUBMISSION);
 
 		FK_LOG_9("Frame Draw Begin");
 	}
@@ -363,9 +361,13 @@ namespace FlexKit
 
 		Update			(dispatcher, dT);
 		UpdatePreDraw	(dispatcher, core.GetTempMemory(), dT);
-		Draw			(dispatcher, core.GetTempMemory(), dT);
 
+		ProfileBegin(PROFILE_SUBMISSION);
+
+		Draw			(dispatcher, core.GetTempMemory(), dT);
 		dispatcher.Execute();
+
+		ProfileEnd(PROFILE_SUBMISSION);
 
 		PostDraw		(dispatcher, core.GetTempMemory(), dT);
 
@@ -385,13 +387,13 @@ namespace FlexKit
 
 	void GameFramework::Release()
 	{
-        core.Threads.SendShutdown();
-        core.Threads.WaitForWorkersToComplete();
+		core.Threads.SendShutdown();
+		core.Threads.WaitForWorkersToComplete();
 
-        GetRenderSystem().FlushPending();
+		GetRenderSystem().FlushPending();
 
-        while (subStates.size())
-            PopState();
+		while (subStates.size())
+			PopState();
 
 		console.Release();
 		FlexKit::Release(DefaultAssets.Font, core.RenderSystem);
@@ -409,10 +411,10 @@ namespace FlexKit
 
 	bool GameFramework::DispatchEvent(const Event& evt)
 	{
-        if (subStates.size() != 0)
-            return subStates.back()->EventHandler(evt);
-        else
-		    return false;
+		if (subStates.size() != 0)
+			return subStates.back()->EventHandler(evt);
+		else
+			return false;
 	}
 
 
@@ -433,7 +435,7 @@ namespace FlexKit
 			"Build Date: " __DATE__ "\n",
 			VRamUsage, 
 			(uint32_t)stats.fps,
-            DrawTiming, 
+			DrawTiming, 
 			(uint32_t)stats.objectsDrawnLastFrame);
 
 
@@ -578,7 +580,7 @@ namespace FlexKit
 
 		auto    RItr        = framework.subStates.rbegin();
 		auto    REnd        = framework.subStates.rend();
-        auto&   allocator   = core.GetBlockMemory();
+		auto&   allocator   = core.GetBlockMemory();
 		while (RItr != REnd)
 		{
 			(*RItr)->~FrameworkState();

@@ -47,7 +47,7 @@ using FlexKit::FKApplication;
 /************************************************************************************************/
 
 
-#pragma comment(lib, "fmod64_vc.lib")
+#pragma comment(lib, "fmod_vc.lib")
 
 #ifdef _DEBUG
 #pragma comment(lib, "angelscript64d.lib")
@@ -76,6 +76,7 @@ public:
 				system->playSound(sound1, nullptr, false, &channel);
 		}, memory, memory);
 
+        Work.SetDebugID("FMOD: Play Sound");
 		threads.AddWork(Work, memory);
 	}
 
@@ -102,6 +103,7 @@ public:
 			}, 
 			memory);
 
+        Work.SetDebugID("FMOD: Update Sound");
 		threads.AddWork(Work, memory);
 
 	}

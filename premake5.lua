@@ -14,7 +14,9 @@ project "TestGame"
 	basedir "TestGame"
 
 	includedirs { 
-		"%fmodapidir%/api/lowlevel/inc", 
+		"%fmodapidir%/api/lowlevel/inc",
+		"%fmodapidir%/api/core/inc", 
+
 		"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/include/**",
 
 		"coreutilities", 
@@ -66,19 +68,24 @@ project "TestGame"
 		libdirs {
 			"Dependencies/libs/debug", 
 			"%fmodapidir%/api/lowlevel/lib",
-			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x86/debug"
+			"%fmodapidir%/api/core/lib/x64",
+			
+			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/debug"
 		}
-		defines "_DEBUG"
+		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		symbols "On"
-		optimize "Debug"
+		--optimize "Debug"
 		buildoptions { "/std:c++latest", "/MTd" }
 
 	filter "configurations:Release"
 		libdirs {
 			"Dependencies/libs/release", 
-			"%fmodapidir%/api/lowlevel/lib"
+			"%fmodapidir%/api/lowlevel/lib",
+			"%fmodapidir%/api/core/lib/x64"	,
+
+			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/release"
 		}
-		defines "NDEBUG"
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		optimize "Full"
 		buildoptions { "/std:c++latest", "/MT"}
 
@@ -132,7 +139,7 @@ project "ResourceBuilder"
 		libdirs {
 			"Dependencies/libs/debug", 
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/debug" }
-		defines "_DEBUG"
+		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		symbols "On"
 		buildoptions { "/std:c++latest", "/MTd" }
 		optimize "Debug"
@@ -141,6 +148,6 @@ project "ResourceBuilder"
 		libdirs {
 			"Dependencies/libs/release",
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/release"	}
-		defines "NDEBUG"
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
 		buildoptions { "/std:c++latest", "/MT" }
 		optimize "Full"

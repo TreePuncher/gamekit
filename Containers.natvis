@@ -22,6 +22,17 @@
     </Expand>
   </Type>
 
+  <Type Name="FlexKit::Vector&lt;*&gt;">
+    <Expand>
+      <Item Name="Max">Max</Item>
+      <Item Name="Size">Size</Item>
+      <ArrayItems>
+        <Size>Size</Size>
+        <ValuePointer>A</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
   <Type Name="FlexKit::float2">
     <Expand>
       <Item Name="X">x</Item>
