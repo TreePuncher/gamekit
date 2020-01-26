@@ -184,6 +184,7 @@ namespace FlexKit
 		CircularStealingQueue               (const CircularStealingQueue&) = delete;
 		CircularStealingQueue& 	operator =	(const CircularStealingQueue&) = delete;
 
+
         [[nodiscard]] std::optional<TY_E> pop_back() noexcept // FILO
 		{
             std::scoped_lock lock{ m };
@@ -520,8 +521,7 @@ namespace FlexKit
             std::mutex m;
             std::unique_lock l{ m };
 
-            //workerWait.wait(l);
-            workerWait.wait_for(l, 1000ns);
+            workerWait.wait_for(l, 1ms);
 		}
 
 
