@@ -39,6 +39,7 @@ namespace FlexKit
         R8_UINT,
         R16_UINT,
         R16G16_UINT,
+        R32_UINT,
         R32G32_UINT,
         R8G8B8A_UINT,
         R8G8B8A8_UINT,

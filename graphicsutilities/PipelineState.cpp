@@ -162,6 +162,7 @@ namespace FlexKit
 
 			switch (PSO->state)
 			{
+            case PipelineStateObject::PSO_States::LoadQueued:
 			case PipelineStateObject::PSO_States::LoadInProgress: 
 			{
 				std::mutex			M;

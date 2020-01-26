@@ -90,16 +90,16 @@ namespace FlexKit
                         I = 0;
                         doWork(workItem);
                     }
-                    else if(I > 5)
+                    else if(I > 1)
                     {
-                        auto beginTimePoint = std::chrono::high_resolution_clock::now();
+                        const auto beginTimePoint = std::chrono::high_resolution_clock::now();
 
                         while (true)
                         {
-                            auto currentTime    = std::chrono::high_resolution_clock::now();
-                            auto duration       = currentTime - beginTimePoint;
+                            const auto currentTime    = std::chrono::high_resolution_clock::now();
+                            const auto duration       = currentTime - beginTimePoint;
 
-                            if (duration > 1000ns )
+                            if (duration > 5000ns )
                                 break;
                         }
 
@@ -190,7 +190,7 @@ namespace FlexKit
 	{
 		do
 		{
-			if (tasksInProgress == 0)
+			if (!inProgress)
 				return;
 		} while (true);
 	}
@@ -206,16 +206,8 @@ namespace FlexKit
 		if (!workList.size())
 			return;
 
-		//auto temp = workList;
-
 		do
 		{
-            /*
-			for (auto& work : temp)
-				if (work->completed)
-					temp.remove_unstable(&work);
-            */
-
 			if (!inProgress)
 				return;
 

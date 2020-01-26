@@ -1757,6 +1757,8 @@ namespace FlexKit
 			static_vector<size_t>					destinationoffset);
 
 		void AddIndexBuffer			(TriMesh* Mesh);
+        void SetIndexBuffer         (VertexBufferEntry buffer, FORMAT_2D format = FORMAT_2D::R32_UINT);
+
 		void AddVertexBuffers		(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers = nullptr);
 		void SetVertexBuffers		(VertexBufferList&	List);
 		void SetVertexBuffers		(VertexBufferList	List);
@@ -3660,7 +3662,7 @@ namespace FlexKit
 
 			size_t offset = pushBufferUsed;
 			memcpy(pushBufferOffset + buffer + pushBufferUsed, _ptr, size);
-			pushBufferUsed += std::ceil(size / 512) * 512;
+			pushBufferUsed += (size + 255) & ~255;
 
 			return offset;
 		}
@@ -3668,6 +3670,11 @@ namespace FlexKit
 
 		size_t begin() { return pushBufferOffset; }
 
+
+        size_t GetOffset()const noexcept
+        {
+            return pushBufferUsed + pushBufferOffset;
+        }
 
 		VertexBufferHandle	VB					= InvalidHandle_t;
 		char*				buffer				= 0;
@@ -3779,6 +3786,17 @@ namespace FlexKit
 
 			for (auto& vertex : initialData) 
 				buffer.Push(vertex);
+		}
+
+        template<typename TY>
+		VertexBufferDataSet(TY* buffer, size_t bufferSize, VBPushBuffer& pushBuffer) :
+			vertexBuffer	{ pushBuffer                    },
+			offsetBegin		{ pushBuffer.GetOffset()	    }
+		{
+			vertexStride = sizeof(TY);
+
+            if (pushBuffer.Push((char*)buffer, bufferSize) == -1)
+                throw std::exception("buffer too short to accomdate push!");
 		}
 
 		template<typename TY, typename FN_TransformVertex>

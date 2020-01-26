@@ -2133,6 +2133,20 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void Context::SetIndexBuffer(VertexBufferEntry buffer, FORMAT_2D format)
+    {
+        D3D12_INDEX_BUFFER_VIEW		IndexView;
+        IndexView.BufferLocation    = renderSystem->GetVertexBufferAddress(buffer.VertexBuffer) + buffer.Offset;
+        IndexView.Format            = TextureFormat2DXGIFormat(format);
+        IndexView.SizeInBytes       = renderSystem->GetVertexBufferSize(buffer.VertexBuffer) - buffer.Offset;
+
+        DeviceContext->IASetIndexBuffer(&IndexView);
+    }
+
+
+    /************************************************************************************************/
+
+
     void Context::AddVertexBuffers(TriMesh* Mesh, static_vector<VERTEXBUFFER_TYPE, 16> Buffers, VertexBufferList* InstanceBuffers)
     {
         static_vector<D3D12_VERTEX_BUFFER_VIEW> VBViews;
@@ -4483,6 +4497,8 @@ namespace FlexKit
             return DXGI_FORMAT::DXGI_FORMAT_R16_UINT;
         case FlexKit::FORMAT_2D::R16G16_UINT:
             return DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT;
+        case FlexKit::FORMAT_2D::R32_UINT:
+            return DXGI_FORMAT::DXGI_FORMAT_R32_UINT;
         case FlexKit::FORMAT_2D::R32G32_UINT:
             return DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT;
         case FlexKit::FORMAT_2D::R8G8B8A8_UNORM:
@@ -5068,6 +5084,13 @@ namespace FlexKit
         auto&	userBuffer  = UserBuffers[idx];
         auto	offset		= UserBuffers[idx].Offset;
         auto	mapped_Ptr	= UserBuffers[idx].MappedPtr;
+
+        if( offset % 256 )
+        {
+            auto alignementOffset = 256 - std::ceil(offset / 256.0f) * 256;
+            offset  += alignementOffset;
+            size    += alignementOffset;
+        }
 
         UserBuffers[idx].Offset		+= size;
         UserBuffers[idx].WrittenTo	 = true;

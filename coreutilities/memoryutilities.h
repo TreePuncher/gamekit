@@ -898,13 +898,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename REF_TY, typename DELETER_FN>
+	template<typename TY, typename DELETER_FN>
 	class Shared_ref
 	{
 	public:
 		Shared_ref() = delete;
 
-        constexpr Shared_ref(REF_TY& IN_reference, DELETER_FN&& IN_deleter_fn, iAllocator* IN_allocator) noexcept :
+        constexpr Shared_ref(TY& IN_reference, DELETER_FN&& IN_deleter_fn, iAllocator* IN_allocator) noexcept :
 			allocator	{ IN_allocator									},
 			counter_ref	{ IN_allocator->allocate<std::atomic_int>(1)	},
 			deleter		{ IN_deleter_fn									},
@@ -934,10 +934,17 @@ namespace FlexKit
 			return reference == rhs.Get();
 		}
 
-		operator	REF_TY& ()	noexcept { return reference; }
-		REF_TY&		Get()		noexcept { return reference; }
+        template<typename ... TY_Args>
+        auto operator ()(TY_Args ... args)
+        {
+            //if constexpr (std::is_invocable<REF_TY>::value)
+                return Get()(std::forward<TY_Args>(args)...);
+        }
 
-		REF_TY*		ptr()	    noexcept { return &reference; }
+		operator TY& ()	noexcept { return reference; }
+        TY&		Get()		noexcept { return reference; }
+
+        TY*		ptr()	    noexcept { return &reference; }
 
 		void AddRef()
 		{
@@ -963,7 +970,7 @@ namespace FlexKit
 	protected:
 		DELETER_FN			deleter;
 		iAllocator*			allocator;
-		REF_TY&				reference;
+        TY&				    reference;
 		std::atomic_int&	counter_ref;
 	};
 

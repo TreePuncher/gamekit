@@ -29,7 +29,7 @@ StructuredBuffer<uint>		    lightLists	: register(t1);
 ByteAddressBuffer               pointLights : register(t2);
 TextureCube<float4>             HDRMap      : register(t3);
 
-sampler BiLinear : register(s1); // Nearest point
+sampler BiLinear : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
 
 bool isLightContributing(uint idx, uint2 xy)
