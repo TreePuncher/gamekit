@@ -447,7 +447,7 @@ namespace FlexKit
 	FLEXKITAPI void UpdateGraphicScenePoseTransform	(GraphicScene* SM );
 	FLEXKITAPI void UpdateShadowCasters				(GraphicScene* SM);
 
-	FLEXKITAPI void	        GatherScene(GraphicScene* SM, CameraHandle C, PVS* __restrict out, PVS* __restrict T_out);
+    FLEXKITAPI void         GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& solid, PVS& transparent);
     FLEXKITAPI GatherTask&  GatherScene(UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator);
 
 

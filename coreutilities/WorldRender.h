@@ -51,22 +51,6 @@ namespace FlexKit
 	};
 
 
-	/************************************************************************************************/
-
-
-    auto CreateConstantBufferAllocator(ConstantBufferHandle constantBuffer, RenderSystem& renderSystem, iAllocator* allocator)
-    {
-        return MakeSynchonized(
-            [constantBuffer, &renderSystem](size_t size, size_t count)
-            {
-                return Reserve(constantBuffer, size, count, renderSystem);
-            },
-            allocator);
-    }
-
-    using ConstantBufferAllocator = decltype(CreateConstantBufferAllocator(ConstantBufferHandle{}, *((RenderSystem*)nullptr), nullptr));
-
-
     /************************************************************************************************/
 
 
@@ -448,6 +432,24 @@ namespace FlexKit
             RS.ReleaseTexture(Tangent);
         }
 
+        void Resize(const uint2 WH)
+        {
+            RS.ReleaseTexture(Albedo);
+            RS.ReleaseTexture(MRIA);
+            RS.ReleaseTexture(Normal);
+            RS.ReleaseTexture(Tangent);
+
+            Albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM));
+            MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
+            Normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
+            Tangent = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
+
+            RS.SetDebugName(Albedo,  "Albedo");
+            RS.SetDebugName(MRIA,    "MRIA");
+            RS.SetDebugName(Normal,  "Normal");
+            RS.SetDebugName(Tangent, "Tangent");
+        }
+
         ResourceHandle Albedo;	 // rgba_UNORM, Albedo + Metal
         ResourceHandle MRIA;	 // rgba_UNORM, Metal + roughness + IOR + ANISO
         ResourceHandle Normal;	 // float16_RGBA
@@ -500,8 +502,7 @@ namespace FlexKit
         GBuffer&        gbuffer;
         const PVS&      pvs;
 
-        CBPushBuffer    entityConstants;
-        CBPushBuffer    passConstants;
+        ReserveConstantBufferFunction reserveCB;
 
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
@@ -577,7 +578,6 @@ namespace FlexKit
 		WorldRender(iAllocator* Memory, RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH) :
 
 			renderSystem        { RS_IN                                                                                 },
-			constantBuffer		{ renderSystem.CreateConstantBuffer(64 * MEGABYTE, false)						        },
 			OcclusionCulling	{ false																                    },
 			lightLists			{ renderSystem.CreateUAVBufferResource(sizeof(uint32_t) * (WH / 10).Product() * 32)     },
 			pointLightBuffer	{ renderSystem.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)                    },
@@ -616,104 +616,110 @@ namespace FlexKit
 
         void Release()
         {
-            renderSystem.ReleaseCB(constantBuffer);
             renderSystem.ReleaseUAV(lightLists);
             renderSystem.ReleaseUAV(pointLightBuffer);
         }
 
 
         DepthPass& DepthPrePass(
-                UpdateDispatcher&   dispatcher,
-                FrameGraph&         frameGraph,
-                const CameraHandle  camera,
-                GatherTask&         pvs,
-                const ResourceHandle depthBufferTarget,
-                iAllocator*         allocator);
+                UpdateDispatcher&               dispatcher,
+                FrameGraph&                     frameGraph,
+                const CameraHandle              camera,
+                GatherTask&                     pvs,
+                const ResourceHandle            depthBufferTarget,
+                ReserveConstantBufferFunction,
+                iAllocator*);
 
         
         BackgroundEnvironmentPass& BackgroundPass(
-                UpdateDispatcher&       dispatcher,
-                FrameGraph&             frameGraph,
-                const CameraHandle      camera,
-                const ResourceHandle     renderTarget,
-                const ResourceHandle     hdrMap,
-                VertexBufferHandle      vertexBuffer,
-                iAllocator*             tempMemory);
+                UpdateDispatcher&               dispatcher,
+                FrameGraph&                     frameGraph,
+                const CameraHandle              camera,
+                const ResourceHandle            renderTarget,
+                const ResourceHandle            hdrMap,
+                ReserveConstantBufferFunction   reserveCB,
+                ReserveVertexBufferFunction     reserveVB,
+                iAllocator*                     tempMemory);
 
 
         ForwardPlusPass& RenderPBR_ForwardPlus(
-                UpdateDispatcher&           dispatcher,
-                FrameGraph&                 frameGraph,
-                const DepthPass&            depthPass,
-                const CameraHandle          camera,
-                const WorldRender_Targets&  Target,
-                const SceneDescription&     desc,
-                const float                 t,
-                ResourceHandle              environmentMap,
-                iAllocator*                 allocator);
+                UpdateDispatcher&               dispatcher,
+                FrameGraph&                     frameGraph,
+                const DepthPass&                depthPass,
+                const CameraHandle              camera,
+                const WorldRender_Targets&      Target,
+                const SceneDescription&         desc,
+                const float                     t,
+                ReserveConstantBufferFunction   reserveCB,
+                ResourceHandle                  environmentMap,
+                iAllocator*                     allocator);
 
 
 		LightBufferUpdate& UpdateLightBuffers(
-                UpdateDispatcher&       dispatcher,
-                FrameGraph&             frameGraph,
-                const CameraHandle      camera,
-                const GraphicScene&     scene,
-                const SceneDescription& desc,
-                iAllocator*             tempMemory,
-                LighBufferDebugDraw*    drawDebug = nullptr);
+                UpdateDispatcher&               dispatcher,
+                FrameGraph&                     frameGraph,
+                const CameraHandle              camera,
+                const GraphicScene&             scene,
+                const SceneDescription&         desc,
+                ReserveConstantBufferFunction   reserveCB,
+                iAllocator*                     tempMemory,
+                LighBufferDebugDraw*            drawDebug = nullptr);
 
 
         BackgroundEnvironmentPass& RenderPBR_IBL_Deferred(
-            UpdateDispatcher&       dispatcher,
-            FrameGraph&             frameGraph,
-            const SceneDescription& sceneDescription,
-            const CameraHandle      camera,
-            const ResourceHandle    renderTarget,
-            const ResourceHandle    depthTarget,
-            const ResourceHandle    diffuseMap,
-            const ResourceHandle    GGXMap,
-            GBuffer&                gbuffer,
-            VertexBufferHandle      vertexBuffer,
+            UpdateDispatcher&               dispatcher,
+            FrameGraph&                     frameGraph,
+            const SceneDescription&         sceneDescription,
+            const CameraHandle              camera,
+            const ResourceHandle            renderTarget,
+            const ResourceHandle            depthTarget,
+            const ResourceHandle            diffuseMap,
+            const ResourceHandle            GGXMap,
+            GBuffer&                        gbuffer,
+            ReserveConstantBufferFunction   reserveCB,
+            ReserveVertexBufferFunction     reserveVB,
             const float             t,
             iAllocator*             tempMemory);
 
 
         GBufferPass&        RenderPBR_GBufferPass(
-            UpdateDispatcher&       dispatcher,
-            FrameGraph&             frameGraph,
-            const SceneDescription& sceneDescription,
-            const CameraHandle      camera,
-            GatherTask&             pvs,
-            GBuffer&                gbuffer,
-            ResourceHandle          depthTarget,
-            iAllocator*             allocator);
+            UpdateDispatcher&               dispatcher,
+            FrameGraph&                     frameGraph,
+            const SceneDescription&         sceneDescription,
+            const CameraHandle              camera,
+            GatherTask&                     pvs,
+            GBuffer&                        gbuffer,
+            ResourceHandle                  depthTarget,
+            ReserveConstantBufferFunction   reserveCB,
+            iAllocator*                     allocator);
 
 
         TiledDeferredShade& RenderPBR_DeferredShade(
-            UpdateDispatcher&       dispatcher,
-            FrameGraph&             frameGraph,
-            const SceneDescription& sceneDescription,
-            PointLightGatherTask&   gather,
-            GBuffer&                gbuffer,
-            ResourceHandle          depthTarget,
-            ResourceHandle          renderTarget,
-            ResourceHandle          GGXSpecularMap,
-            ResourceHandle          diffuseMap,
-            VertexBufferHandle      vertexBuffer,
-            float                   t,
-            iAllocator*             allocator);
+            UpdateDispatcher&               dispatcher,
+            FrameGraph&                     frameGraph,
+            const SceneDescription&         sceneDescription,
+            PointLightGatherTask&           gather,
+            GBuffer&                        gbuffer,
+            ResourceHandle                  depthTarget,
+            ResourceHandle                  renderTarget,
+            ResourceHandle                  GGXSpecularMap,
+            ResourceHandle                  diffuseMap,
+            ReserveConstantBufferFunction   reserveCB,
+            ReserveVertexBufferFunction     reserveVB,
+            float                           t,
+            iAllocator*                     allocator);
 
 
         auto& RenderPBR_ComputeDeferredTiledShade(
             UpdateDispatcher&                       dispatcher,
             FrameGraph&                             frameGraph,
-            ConstantBufferAllocator&                constantBufferAllocator,
+            ReserveConstantBufferFunction&          constantBufferAllocator,
             const ComputeTiledDeferredShadeDesc&    scene)
         {
             struct PassResources
             {
-                ConstantBufferAllocator     constantBufferAllocator;
-                PointLightGatherTask&       pointLights;
+                ReserveConstantBufferFunction       constantBufferAllocator;
+                PointLightGatherTask&               pointLights;
 
                 uint3                       dispatchDims;
                 uint2                       WH;
@@ -762,7 +768,7 @@ namespace FlexKit
                 [=]
                 (PassResources& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
                 {
-                    CBPushBuffer pushBuffer{ data.constantBufferAllocator.Get()(1024, 2) };
+                    CBPushBuffer pushBuffer{ data.constantBufferAllocator(2048) };
 
                     ConstantBufferDataSet cameraConstants{
                         CameraComponent::GetComponent().GetCamera(data.activeCamera).GetConstants(),
@@ -837,7 +843,6 @@ namespace FlexKit
 
 	private:
 		RenderSystem&			renderSystem;
-        ConstantBufferHandle	constantBuffer;
 
         UAVResourceHandle		lightLists;			// GPU
         UAVResourceHandle		pointLightBuffer;	// GPU

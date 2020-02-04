@@ -51,14 +51,12 @@ void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, do
 	auto currentRenderTarget = core.Window.backBuffer;
 
 	ClearVertexBuffer	(frameGraph, host.base.vertexBuffer);
-	ClearVertexBuffer	(frameGraph, host.base.textBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 	LobbyScreenDrawDesc Desc;
 	Desc.allocator			= core.GetTempMemory();
 	Desc.constantBuffer		= host.base.constantBuffer;
 	Desc.vertexBuffer		= host.base.vertexBuffer;
-	Desc.textBuffer			= host.base.textBuffer;
 	Desc.renderTarget		= currentRenderTarget;
 	screen.Draw(Desc, Dispatcher, frameGraph);
 
@@ -79,7 +77,7 @@ void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, do
 void GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
 {
 	if (framework.drawDebugStats)
-		framework.DrawDebugHUD(dT, host.base.textBuffer, Graph);
+		framework.DrawDebugHUD(dT, host.base.vertexBuffer, Graph);
 
 	PresentBackBuffer(Graph, &core.Window);
 }

@@ -217,7 +217,6 @@ namespace FlexKit
 			Desc.ConstantBuffer,
 			Desc.RenderTarget,
 			Desc.VertexBuffer,
-			Desc.TextBuffer,
 			PixelSize
 		};
 
@@ -454,7 +453,6 @@ namespace FlexKit
 		FrameGraph		{Desc.FrameGraph},
 		RenderTarget    {Desc.RenderTarget},
 		VertexBuffer    {Desc.VertexBuffer},
-		TextBuffer		{Desc.TextBuffer},
 		ConstantBuffer  {Desc.ConstantBuffer}
 	{}
 
@@ -511,7 +509,7 @@ namespace FlexKit
 			Str,
 			*FrameGraph, 
 			*Font, 
-			TextBuffer, 
+			VertexBuffer, 
 			RenderTarget, 
 			TempMemory, 
 			Formatting);
@@ -542,6 +540,9 @@ namespace FlexKit
 			L.B = L.B * CurrentDrawArea + Offset;
 		}
 
+        FK_ASSERT(0);
+
+        /*
 		DrawShapes(
 			DRAW_LINE_PSO,
 			*FrameGraph, 
@@ -550,6 +551,7 @@ namespace FlexKit
 			RenderTarget, 
 			TempMemory, 
 			LineShape(Temp));
+         */
 	}
 
 
@@ -571,7 +573,9 @@ namespace FlexKit
 		Rect.XY = Rect.XY * CurrentDrawArea + Offset;
 		Rect.WH = Rect.WH * CurrentDrawArea;
 
-		
+        FK_ASSERT(0);
+
+        /*
 		DrawShapes(
 			DRAW_PSO,
 			*FrameGraph,
@@ -583,6 +587,7 @@ namespace FlexKit
 				Rect.XY,
 				Rect.WH,
 				Rect.Color));
+        */
 	}
 
 

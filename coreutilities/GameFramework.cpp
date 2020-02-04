@@ -313,8 +313,6 @@ namespace FlexKit
 
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, TempMemory);
 
-		// Add in Base Resources
-		
 		frameGraph.Resources.AddBackBuffer(core.Window.backBuffer);
 		frameGraph.UpdateFrameGraph(core.RenderSystem, ActiveWindow, core.GetTempMemory());
 
@@ -351,6 +349,7 @@ namespace FlexKit
 
 		UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemory() };
 
+        /*
 		core.Physics.Simulate(dT);
 
 		while(fixStepAccumulator >= fixedTimeStep) {
@@ -358,6 +357,7 @@ namespace FlexKit
 			dispatcher.Execute();
 			fixStepAccumulator -= fixedTimeStep;
 		}
+        */
 
 		Update			(dispatcher, dT);
 		UpdatePreDraw	(dispatcher, core.GetTempMemory(), dT);
@@ -365,9 +365,10 @@ namespace FlexKit
 		ProfileBegin(PROFILE_SUBMISSION);
 
 		Draw			(dispatcher, core.GetTempMemory(), dT);
-		dispatcher.Execute();
 
-		ProfileEnd(PROFILE_SUBMISSION);
+        dispatcher.Execute();
+
+        ProfileEnd(PROFILE_SUBMISSION);
 
 		PostDraw		(dispatcher, core.GetTempMemory(), dT);
 
@@ -557,6 +558,8 @@ namespace FlexKit
 		iAllocator*				tempMemory,
 		FrameGraph*				frameGraph)
 	{
+        FK_ASSERT(0);
+        /*
 		DrawShapes(
 			DRAW_PSO,
 			*frameGraph,
@@ -568,6 +571,7 @@ namespace FlexKit
 				CursorPos,
 				CursorSize,
 				{Grey(1.0f), 1.0f}));
+         */
 	}
 
 

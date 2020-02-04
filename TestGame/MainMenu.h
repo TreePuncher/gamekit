@@ -47,8 +47,6 @@ public:
 private:
 	ConstantBufferHandle	constantBuffer;
 	VertexBufferHandle		vertexBuffer;
-	VertexBufferHandle		textBuffer;
-
 
 	GuiSystem	gui;
 	GUIGrid*	menuGrid;

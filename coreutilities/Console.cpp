@@ -116,6 +116,8 @@ namespace FlexKit
 		const float		AspectRatio			= float(WindowWH[0]) / float(WindowWH[1]);
 		const float2	StartingPosition	= float2{ 1	, 0.5f + (FontSize[1] * PixelSize[1]) };
 
+        FK_ASSERT(0);
+        /*
 		DrawShapes(
 				DRAW_PSO, graph, 
 				vertexBuffer,
@@ -126,6 +128,7 @@ namespace FlexKit
                 float2{0.0f	, 0.0f},
                 StartingPosition, //
                 { 0.25f, 0.25f, 0.25f, 1.0f } });
+        */
 
 		size_t	itr				= 1;
 		float	y				= 0.5f - float(1 + (itr)) * LineHeight;

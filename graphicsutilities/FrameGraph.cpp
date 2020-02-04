@@ -560,6 +560,10 @@ namespace FlexKit
 
 		auto framegraph = this;
 
+        std::sort(dataDependencies.begin(), dataDependencies.end());
+        dataDependencies.erase(std::unique(dataDependencies.begin(), dataDependencies.end()), dataDependencies.end());
+
+
 		dispatcher.Add<SubmitData>(
 			[&](auto& builder, SubmitData& data)
 			{
@@ -572,9 +576,6 @@ namespace FlexKit
 				data.frameGraph		= framegraph;
 				data.renderSystem	= renderSystem;
 				data.renderWindow	= renderWindow;
-
-				std::sort(dataDependencies.begin(), dataDependencies.end());
-				dataDependencies.erase(std::unique(dataDependencies.begin(), dataDependencies.end()), dataDependencies.end());
 
 			    for (auto dependency : dataDependencies)
 					builder.AddInput(*dependency);

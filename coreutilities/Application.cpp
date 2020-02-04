@@ -49,12 +49,9 @@ namespace FlexKit
 
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
-		size_t FPSCounter		= 0;
 		double CodeCheckTimer	= 0.0f;
 		double dT				= 1.0/60.0;
 
-
-		double temp = 0.0f;
 
 		while (!Core.End && !Core.Window.Close && framework.subStates.size())
 		{
@@ -62,36 +59,52 @@ namespace FlexKit
 
 			Core.Time.Before();
 
-			auto FrameStart = std::chrono::high_resolution_clock::now();
+			const auto frameStart = std::chrono::high_resolution_clock::now();
 			CodeCheckTimer += dT;
 			FPSTimer += dT;
-			FPSCounter++;
 
 			framework.DrawFrame(dT);
 
-			auto FrameEnd = std::chrono::high_resolution_clock::now();
-			auto Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
+			const auto frameEnd         = std::chrono::high_resolution_clock::now();
+			const auto updateDuration   = frameEnd - frameStart;
+            const auto desiredFrameTime = std::chrono::microseconds(1000000) / 60;
 
-            temp += double(Duration.count()) / 1000000.0;
+            if (Core.FrameLock)// FPS Locked
+            {
+                auto sleepTime  = desiredFrameTime - updateDuration;
+                auto timePointA = std::chrono::high_resolution_clock::now();
 
-			if (Core.FrameLock)// FPS Locked
-				std::this_thread::sleep_for((1000ms / 60) - Duration);
+                // Give up timeslice for 1ms increments
+                while (true)
+                {
+                    const auto timepointB        = std::chrono::high_resolution_clock::now();
+                    const auto durationRemaining = sleepTime - (timepointB - timePointA);
 
-			FrameEnd = std::chrono::high_resolution_clock::now();
-			Duration = chrono::duration_cast<chrono::microseconds>(FrameEnd - FrameStart);
+                    if (durationRemaining < 1ms)
+                        break;
 
-			dT = double(Duration.count() ) / 1000000.0;
+                    std::this_thread::sleep_for(1ms);
+                }
+                // Spin for remaining time
+                while (true)
+                {
+                    const auto timepointB   = std::chrono::high_resolution_clock::now();
+                    const auto duration     = timepointB - frameStart;
+
+                    if (duration > desiredFrameTime)
+                        break;
+                }
+            }
+
+			const auto sleepEnd      = std::chrono::high_resolution_clock::now();
+			const auto totalDuration = chrono::duration_cast<chrono::microseconds>(sleepEnd - frameStart);
+
+			dT = double(totalDuration.count() ) / 1000000.0;
 
 			Core.Time.After();
 			Core.Time.Update();
 
 			T += dT;
-			FPSCounter++;
-
-			if (FPSCounter % 60 == 0 && false) {
-				std::cout << "Frame Time average: " << temp / 60.0f << "\n";
-				temp = 0.0f;
-			}
 		}
 			// End Update  -----------------------------------------------------------------------------------------
 	}

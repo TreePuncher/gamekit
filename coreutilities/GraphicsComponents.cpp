@@ -174,7 +174,6 @@ namespace FlexKit
 			[&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
 			{
 				Builder.SetDebugString("QueueCameraUpdate");
-				Builder.AddInput(TransformComponentID);
 			},
 			[this](auto& Data)
 			{

@@ -180,14 +180,12 @@ void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	auto currentRenderTarget = core.Window.backBuffer;
 
 	ClearVertexBuffer	(frameGraph, client.base.vertexBuffer);
-	ClearVertexBuffer	(frameGraph, client.base.textBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget);
 
 	LobbyScreenDrawDesc Desc;
 	Desc.allocator			= core.GetTempMemory();
 	Desc.constantBuffer		= client.base.constantBuffer;
 	Desc.vertexBuffer		= client.base.vertexBuffer;
-	Desc.textBuffer			= client.base.textBuffer;
 	Desc.renderTarget		= currentRenderTarget;
 	screen.Draw(Desc, dispatcher, frameGraph);
 
@@ -208,7 +206,7 @@ void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 void ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
 	if (framework.drawDebugStats)
-		framework.DrawDebugHUD(dT, client.base.textBuffer, frameGraph);
+		framework.DrawDebugHUD(dT, client.base.vertexBuffer, frameGraph);
 
 	PresentBackBuffer(frameGraph, &core.Window);
 }

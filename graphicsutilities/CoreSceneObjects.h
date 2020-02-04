@@ -127,7 +127,7 @@ namespace FlexKit
             float   metallic    = 0.0f;
 		}MatProperties;	// 32 
 
-		struct VConstantsLayout
+		struct alignas(256) VConstantsLayout
 		{
 			MaterialProperties	MP;
 			float4x4	        Transform;
@@ -176,10 +176,10 @@ namespace FlexKit
 	
 	typedef Vector<PVEntry> PVS;
 
-	inline void PushPV(Drawable& e, PVS* pvs)
+	inline void PushPV(Drawable& e, PVS& pvs)
 	{
-		if (e.MeshHandle.to_uint() != INVALIDHANDLE)
-			pvs->push_back(PVEntry( e, pvs->size(), 0u));
+		if (e.MeshHandle != InvalidHandle_t)
+			pvs.push_back(PVEntry( e, pvs.size(), 0u));
 	}
 
 	FLEXKITAPI void SortPVS				(PVS* PVS_, Camera* C);

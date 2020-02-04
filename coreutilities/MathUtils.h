@@ -584,6 +584,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
+
 	union float2
 	{
 	public:
@@ -717,6 +718,9 @@ namespace FlexKit
 	template<typename TY_> float2 operator - (const float2& LHS, const Vect<2, TY_>& RHS){ return{ LHS.x - RHS[0], LHS.y - RHS[1] };}
 	template<typename TY_> float2 operator * (const float2& LHS, const Vect<2, TY_>& RHS){ return{ LHS.x * RHS[0], LHS.y * RHS[1] };}
 	template<typename TY_> float2 operator / (const float2& LHS, const Vect<2, TY_>& RHS){ return{ LHS.x / RHS[0], LHS.y / RHS[1] };}
+
+    template<typename TY_> Vect<2, TY_> operator * (const Vect<2, TY_> LHS, const float2 RHS) { return{ (uint32_t)(LHS[0] * RHS[0]), (uint32_t)(LHS[1] * RHS[1]) }; }
+
 
 	inline float2 operator * (const float   lhs, const float2 rhs) { return float2(lhs) * rhs; }
 

@@ -128,14 +128,31 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     auto& pointLightGather  = scene.GetPointLights      (dispatcher, core.GetTempMemory());
     auto& transforms		= QueueTransformUpdateTask	(dispatcher);
     auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-    auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, transforms, cameras, debugCamera, framework.MouseState, dT);
+    auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, debugCamera, framework.MouseState, dT);
     auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
     auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
 
-    //pointLightGather.AddInput(transforms);
-    //pointLightGather.AddInput(cameras);
-    PVS.AddInput(cameras);
+    /*
+    orbitUpdate.AddOutput(transforms);
+    orbitUpdate.AddOutput(cameras);
+
+    transforms.AddOutput(cameras);
+    transforms.AddOutput(pointLightGather);
+
+    cameras.AddOutput(pointLightGather);
+    cameras.AddOutput(PVS);
+    */
+
+    transforms.AddInput(orbitUpdate);
+
+    cameras.AddInput(transforms);
+    cameras.AddInput(orbitUpdate);
+
     PVS.AddInput(transforms);
+    PVS.AddInput(cameras);
+
+    pointLightGather.AddInput(transforms);
+    pointLightGather.AddInput(cameras);
 
     WorldRender_Targets targets = {
         core.Window.backBuffer,
@@ -156,10 +173,12 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     };
 
     ClearVertexBuffer(frameGraph, base.vertexBuffer);
-    ClearVertexBuffer(frameGraph, base.textBuffer);
     
     ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
     ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
+
+    auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+    auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
     switch(renderMode)
     {
@@ -173,13 +192,35 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     {
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
-        base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, sceneDesc, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
-        base.render.RenderPBR_IBL_Deferred(dispatcher, frameGraph, sceneDesc, activeCamera, targets.RenderTarget, base.depthBuffer, base.irradianceMap, base.GGXMap, base.gbuffer, base.vertexBuffer, base.t, core.GetTempMemory());
+        base.render.RenderPBR_GBufferPass(
+            dispatcher,
+            frameGraph,
+            sceneDesc,
+            activeCamera,
+            PVS,
+            base.gbuffer,
+            base.depthBuffer,
+            reserveCB,
+            core.GetTempMemory());
+
+        base.render.RenderPBR_IBL_Deferred(
+            dispatcher,
+            frameGraph,
+            sceneDesc,
+            activeCamera,
+            targets.RenderTarget,
+            base.depthBuffer,
+            base.irradianceMap,
+            base.GGXMap,
+            base.gbuffer,
+            reserveCB,
+            reserveVB,
+            base.t,
+            core.GetTempMemory());
         //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
     }   break;
     case RenderMode::ComputeTiledDeferred:
     {
-        auto& constantsAllocator = CreateConstantBufferAllocator(base.constantBuffer, core.RenderSystem,  core.GetTempMemory());
 
         ComputeTiledDeferredShadeDesc desc =
         {
@@ -193,9 +234,32 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
-        base.render.RenderPBR_GBufferPass(dispatcher, frameGraph, sceneDesc, activeCamera, PVS, base.gbuffer, base.depthBuffer, core.GetTempMemory());
-        base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-        base.render.RenderPBR_ComputeDeferredTiledShade(dispatcher, frameGraph, constantsAllocator, desc);
+        base.render.RenderPBR_GBufferPass(
+            dispatcher,
+            frameGraph,
+            sceneDesc,
+            activeCamera,
+            PVS,
+            base.gbuffer,
+            base.depthBuffer,
+            reserveCB,
+            core.GetTempMemory());
+
+        base.render.UpdateLightBuffers(
+            dispatcher,
+            frameGraph,
+            activeCamera,
+            scene,
+            sceneDesc,
+            reserveCB,
+            core.GetTempMemory(),
+            &debugDraw);
+
+        base.render.RenderPBR_ComputeDeferredTiledShade(
+            dispatcher,
+            frameGraph,
+            reserveCB,
+            desc);
     }
     }
     // Draw Skeleton overlay
@@ -223,6 +287,9 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             line.B = tempB.xyz() / tempB.w;
         }
 
+        FK_ASSERT(0);
+
+        /*
         DrawShapes(
             DRAW_LINE_PSO,
             frameGraph,
@@ -231,6 +298,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             targets.RenderTarget,
             core.GetTempMemory(),
             SSLineShape{ lines });
+         */
     }
 
     framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
@@ -242,7 +310,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-    framework.DrawDebugHUD(dT, base.textBuffer, frameGraph);
+    framework.DrawDebugHUD(dT, base.vertexBuffer, frameGraph);
     PresentBackBuffer(frameGraph, &core.Window);
 }
 

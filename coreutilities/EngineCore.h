@@ -147,7 +147,7 @@ namespace FlexKit
 	class EngineCore
 	{
 	public:
-		EngineCore(EngineMemory* memory, uint2 WH, size_t threadCount) :
+		EngineCore(EngineMemory* memory, uint2 WH, uint32_t threadCount) :
 			Memory			{ memory										},
 			CmdArguments	{ memory->BlockAllocator						},
 			Time			{ memory->BlockAllocator						},

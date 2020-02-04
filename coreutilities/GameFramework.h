@@ -165,6 +165,15 @@ namespace FlexKit
 	};
 
 
+    /************************************************************************************************/
+
+
+    inline uint2 GetWindowWH(GameFramework& framework)
+    {
+        return framework.GetRenderSystem().GetTextureWH(framework.ActiveWindow->backBuffer);
+    }
+
+
 	/************************************************************************************************/
 
 

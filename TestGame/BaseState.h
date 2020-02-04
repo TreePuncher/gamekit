@@ -66,6 +66,7 @@ public:
 	SoundSystem(ThreadManager& IN_Threads, iAllocator* memory) :
 		threads	{	IN_Threads	}
 	{
+        /*
 		result			= FMOD::System_Create(&system);
 		auto initres	= system->init(32, FMOD_INIT_NORMAL, nullptr);
 
@@ -76,16 +77,17 @@ public:
 				system->playSound(sound1, nullptr, false, &channel);
 		}, memory, memory);
 
-        Work.SetDebugID("FMOD: Play Sound");
+        Work._debugID = "FMOD: Play Sound";
 		threads.AddWork(Work, memory);
+        */
 	}
 
 
 	~SoundSystem()
 	{
-		sound1->release();
-		system->release();
-		system = nullptr;
+		//sound1->release();
+		//system->release();
+		//system = nullptr;
 	}
 
 
@@ -97,15 +99,16 @@ public:
 
 	void Update(iAllocator* memory)
 	{
+        /*
 		auto& Work = CreateWorkItem(
 			[this]() {
 				auto result = system->update();
 			}, 
 			memory);
 
-        Work.SetDebugID("FMOD: Update Sound");
+        Work._debugID = "FMOD: Update Sound";
 		threads.AddWork(Work, memory);
-
+        */
 	}
 
 
@@ -163,7 +166,6 @@ public:
 			FrameworkState	{ IN_Framework																					},
 			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(IN_Framework.ActiveWindow->WH,	true)	    },
 			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
-			textBuffer		{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
 			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
 			asEngine		{ asCreateScriptEngine()																		},
 			streamingEngine	{ IN_Framework.core.RenderSystem,   IN_Framework.core.GetBlockMemory()				            },
@@ -202,7 +204,6 @@ public:
 	~BaseState()
 	{
 		framework.GetRenderSystem().ReleaseVB(vertexBuffer);
-		framework.GetRenderSystem().ReleaseVB(textBuffer);
 		framework.GetRenderSystem().ReleaseCB(constantBuffer);
         framework.GetRenderSystem().ReleaseTexture(depthBuffer);
         framework.GetRenderSystem().ReleaseTexture(irradianceMap);
@@ -233,7 +234,6 @@ public:
     GBuffer                     gbuffer;
 	ResourceHandle				depthBuffer;
 	VertexBufferHandle			vertexBuffer;
-	VertexBufferHandle			textBuffer;
 	ConstantBufferHandle		constantBuffer;
 	
     SoundSystem			        sounds;

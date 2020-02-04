@@ -236,8 +236,6 @@ namespace FlexKit
 
 	auto& QueueOrbitCameraUpdateTask(
 					UpdateDispatcher&		dispatcher, 
-					UpdateTask&				transformUpdateDependency,
-					UpdateTask&				cameraUpdateDependency,
 					OrbitCameraBehavior&	orbitCamera, 
 					MouseInputState			mouseState, 
 					float					dt)
@@ -252,8 +250,6 @@ namespace FlexKit
 			[&](UpdateDispatcher::UpdateBuilder& Builder, OrbitCameraUpdateData& data)
 			{
 				Builder.SetDebugString("OrbitCamera Update");
-				Builder.AddOutput(transformUpdateDependency);
-				Builder.AddOutput(cameraUpdateDependency);
 
 				data.mouseState		= mouseState;
 				data.dt				= dt;

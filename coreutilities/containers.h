@@ -192,7 +192,13 @@ namespace FlexKit
 		}
 
 
-		inline ~Vector() { if (A)Allocator->_aligned_free(A); }
+		inline ~Vector()
+        {
+            if (A && Allocator)
+                Allocator->_aligned_free(A);
+            A = nullptr;
+            Allocator = nullptr;
+        }
 
 
 		inline			Ty& operator [](size_t index) noexcept          { return A[index]; }
@@ -538,7 +544,7 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
-		// Releases Memory, does call Destructors!
+
 		void Release()
 		{
 			clear();
@@ -569,12 +575,12 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		Ty*	A;
+		Ty*	A                   = nullptr;
 
-		size_t Size;
-		size_t Max;
+		size_t Size             = 0;
+		size_t Max              = 0;
 
-		iAllocator* Allocator;
+		iAllocator* Allocator   = 0;
 
 
 		/************************************************************************************************/

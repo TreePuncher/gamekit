@@ -48,7 +48,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 			Scale(node, { 3, 3, 3 });
-			Roll(node, -pi / 2);
+			Roll(node, (float)-pi / 2.0f);
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
 
 			scene.AddGameObject(gameObject, node);
