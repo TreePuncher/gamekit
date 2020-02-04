@@ -35,7 +35,6 @@ MainMenu::MainMenu(
 		FlexKit::FrameworkState{ IN_framework },
 		constantBuffer		{ IN_base.constantBuffer },
 		vertexBuffer		{ IN_base.vertexBuffer },
-		textBuffer			{ IN_base.textBuffer },
 		gui					{{}, IN_framework.core.GetBlockMemory()}
 {
 	menuGrid = &gui.CreateGrid();
@@ -83,7 +82,6 @@ void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 	auto currentRenderTarget = core.Window.backBuffer;
 
 	ClearVertexBuffer	(frameGraph, vertexBuffer);
-	ClearVertexBuffer	(frameGraph, textBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
 
 	FlexKit::DrawUI_Desc drawDesc = 
@@ -91,7 +89,6 @@ void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 		&frameGraph,
 		currentRenderTarget,
 		vertexBuffer,
-		textBuffer,
 		constantBuffer
 	};
 	gui.Draw(drawDesc, core.GetTempMemory());
@@ -112,7 +109,7 @@ void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 void MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph)
 {
 	if (framework.drawDebugStats)
-		framework.DrawDebugHUD(dT, textBuffer, Graph);
+		framework.DrawDebugHUD(dT, vertexBuffer, Graph);
 
 	PresentBackBuffer(Graph, &core.Window);
 }

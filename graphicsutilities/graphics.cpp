@@ -3415,9 +3415,10 @@ namespace FlexKit
     {
         CopyEnginePostFrameUpdate(this);
 
-        Window->SwapChain_ptr->Present(1, 0);
+        Window->SwapChain_ptr->Present(0, 0);
 
         Textures.SetBufferedIdx(Window->backBuffer, Window->SwapChain_ptr->GetCurrentBackBufferIndex());
+        Textures.UpdateLocks();
 
         GraphicsQueue->Signal(Fence, FenceCounter);
 
@@ -5522,7 +5523,32 @@ namespace FlexKit
             }
         }
     }
-    
+
+
+    /************************************************************************************************/
+
+
+    void TextureStateTable::UpdateLocks()
+    {
+        for (auto& res : delayRelease)
+        {
+            res.counter--;
+            if (!res.counter)
+                res.resource->Release();
+        }
+
+        delayRelease.erase(
+            std::remove_if(
+                delayRelease.begin(),
+                delayRelease.end(),
+                [](auto& res)
+                {
+                    return res.counter == 0;
+                }),
+
+            delayRelease.end());
+    }
+
 
     /************************************************************************************************/
 
@@ -5534,7 +5560,9 @@ namespace FlexKit
         const auto ResIdx	= UserEntry.ResourceIdx;
         auto& Resource		= Resources[ResIdx];
 
-        Resource.Release();
+        for(auto res : Resource.Resources)
+            if(res)
+                delayRelease.push_back({ res, 3 });
 
         auto TempHandle		= UserEntries.back().Handle;
         UserEntry			= UserEntries.back();

@@ -203,7 +203,6 @@ public:
         frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
         ClearVertexBuffer(frameGraph, base.vertexBuffer);
-        ClearVertexBuffer(frameGraph, base.textBuffer);
 
         ClearBackBuffer(frameGraph, targets.RenderTarget, 0.0f);
         ClearDepthBuffer(frameGraph, base.depthBuffer, 1.0f);
@@ -217,7 +216,7 @@ public:
             "Loading...",
             frameGraph,
             *framework.DefaultAssets.Font,
-            base.textBuffer,
+            base.vertexBuffer,
             core.Window.backBuffer,
             core.GetTempMemory(),
             Format);

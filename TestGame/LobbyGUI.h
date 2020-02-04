@@ -40,7 +40,6 @@ typedef size_t LobbyRowID;
 struct LobbyScreenDrawDesc
 {
 	FlexKit::VertexBufferHandle		vertexBuffer;
-	FlexKit::VertexBufferHandle		textBuffer;
 	FlexKit::ConstantBufferHandle	constantBuffer;
 	FlexKit::ResourceHandle			renderTarget;
 	FlexKit::iAllocator*			allocator;

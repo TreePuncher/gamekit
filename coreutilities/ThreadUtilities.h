@@ -65,7 +65,8 @@ namespace FlexKit
 	class iWork
 	{
 	public:
-		iWork & operator = (iWork& rhs) = delete;
+		iWork& operator = (iWork& rhs)  = delete;
+		iWork& operator = (iWork&& rhs) = delete;
 
 		iWork(iAllocator* Memory) :
 			_debugID	{ "UNIDENTIFIED!" }
@@ -102,14 +103,10 @@ namespace FlexKit
 
 		operator iWork* () { return this; }
 
-		void SetDebugID(const char* IN_debugID)
-		{
-			_debugID = IN_debugID;
-		}
+        const char*         _debugID;
+        std::atomic_int		completed = 0;
 
-        std::atomic_int			completed = 0;
 	protected:
-		const char*				_debugID;
 	private:
 		static_vector<OnCompletionEvent, 64>	subscribers;
 	};
@@ -118,7 +115,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    template<typename TY, size_t Alignment = 64>
+    template<typename TY, size_t Alignment = sizeof(TY)>
     struct alignas(Alignment) alignedAtomicWrapper
     {
         std::atomic<TY> element;
@@ -162,22 +159,21 @@ namespace FlexKit
 	{
 	public:
         using ElementType = alignedAtomicWrapper<TY_E>;
-        //using ElementType = std::atomic<TY_E>;
 
-
-		CircularStealingQueue(const size_t initialReservation = 64) noexcept :
+		CircularStealingQueue(iAllocator* IN_allocator, const size_t initialReservation = 64) noexcept :
 			queueArraySize	{ initialReservation	},
 			queue			{ nullptr				},
 			frontCounter	{ 0						},
 			backCounter	    { 0						}
 		{
 			if(initialReservation)
-				queue = new ElementType[initialReservation];
+                //queue = (ElementType*)allocator->_aligned_malloc(sizeof(ElementType) * initialReservation);
+                queue = new ElementType[initialReservation];
 		}
 
 		~CircularStealingQueue()
 		{
-			delete[] queue;
+			//delete[] queue;
 		}
 
 
@@ -187,40 +183,37 @@ namespace FlexKit
 
         [[nodiscard]] std::optional<TY_E> pop_back() noexcept // FILO
 		{
-            std::scoped_lock lock{ m };
-
-            auto back  = backCounter.fetch_sub(1, std::memory_order_seq_cst) - 1;
-            auto front = frontCounter.load(std::memory_order_seq_cst);
+            const auto back  = backCounter.fetch_sub(1) - 1;
+            const auto front = frontCounter.load();
 
             if (front <= back)
             {
-                auto job = *queue[back % queueArraySize];
+                auto job = *queue[back % 64];
 
                 if (front != back)
                     return job;
                 else
-                {
-                    auto res = frontCounter.compare_exchange_weak(front, front + 1, std::memory_order_seq_cst);
+                {   // last job in queue, potential race with a steal
+                    //auto expected = front;
+                    backCounter.store(front + 1);
+                    const auto res = frontCounter.compare_exchange_strong(decltype(front)(front), front + 1);
 
-                    if (!res)
+                    if (res)
+                        return { job };
+                    else
                         return {};
-
-                    backCounter.store(front + 1, std::memory_order_seq_cst);
-
-                    return { job };
                 }
             }
             else
             {
-                backCounter.store(frontCounter.load());
+                backCounter.store(front);
                 return {};
             }
 		}
 
+
         [[nodiscard]] std::optional<TY_E> Steal() noexcept // FIFO
 		{
-            std::scoped_lock lock{ m };
-
             auto front = frontCounter.load(std::memory_order_seq_cst);
             auto back  = backCounter.load(std::memory_order_seq_cst);
 
@@ -228,26 +221,26 @@ namespace FlexKit
             {
                 auto job = *queue[front % queueArraySize];
 
-                if (!frontCounter.compare_exchange_weak(front, front + 1, std::memory_order_seq_cst))
+                if (frontCounter.compare_exchange_strong(front, front + 1))
+                    return job;
+                else
                     return {};
-
-                return job;
             }
-
-            return {};
+            else
+                return {};
 		}
 
 	
 		void push_back(TY_E element) noexcept
 		{
-            std::scoped_lock lock{ m };
-
-            if (queueArraySize < size() + 1) {
+            if (queueArraySize < size() + 1)
                 _Expand();
-            }
 
             queue[backCounter % queueArraySize] = element;
-			backCounter++; // publish push
+
+            std::atomic_thread_fence(std::memory_order_release);
+
+			backCounter.fetch_add(1); // publish push
 		}
 
 
@@ -267,11 +260,12 @@ namespace FlexKit
 		void _Expand() noexcept
 		{
 			const auto	arraySize	= queueArraySize * 2;
-			auto		newArray	= new ElementType[arraySize];;
+            //auto		newArray	= (ElementType*)allocator->_aligned_malloc(sizeof(ElementType) * arraySize);
+            auto		newArray	= new ElementType[arraySize];
 
-			const uint64_t begin	= frontCounter;
-			const uint64_t end		= backCounter;
-			const uint64_t count	= end - begin;
+			const int64_t   begin	= frontCounter;
+			const int64_t   end	    = backCounter;
+			const auto      count	= size_t(end - begin);
 
 			FK_ASSERT(queueArraySize >= count);
 
@@ -282,11 +276,11 @@ namespace FlexKit
 				newArray[newIdx]  = *queue[oldIdx];
 			}
 
-			auto temp		= queue;
+			auto tmp_ptr    = queue;
 			queue			= newArray;
 			queueArraySize	= arraySize;
 
-			delete[] temp;
+            delete[] tmp_ptr;
 		}
 
 
@@ -296,38 +290,46 @@ namespace FlexKit
 			const auto newArray	= new TY_E[newSize];
 		}
 
-		size_t			                    queueArraySize = 0;
-        ElementType*                        queue          = nullptr;
-		alignas(64) std::atomic_int64_t     frontCounter   = 0;
-		alignas(64) std::atomic_int64_t     backCounter    = 0;
-        std::atomic_bool                    inProgress     = true;
+		size_t			                    queueArraySize  = 0;
+        ElementType*                        queue           = nullptr;
         std::mutex                          m;
+
+		alignas(64) std::atomic_int64_t     backCounter    = 0;
+		alignas(64) std::atomic_int64_t     frontCounter   = 0;
 	};
 
 
-	thread_local CircularStealingQueue<iWork*>* localWorkQueue = nullptr;
+    thread_local CircularStealingQueue<iWork*>* localWorkQueue = nullptr;
 
-    void PushToLocalQueue(iWork* work)
+
+    inline void PushToLocalQueue(iWork& work, iWork* _Debug_Parent)
     {
-        localWorkQueue->push_back(work);
+        localWorkQueue->push_back(&work);
     }
+
 
 	class _WorkerThread
 	{
 	public:
 		_WorkerThread(iAllocator* ThreadMemory = SystemAllocator) :
-			Thread		{ [&]
-							{
-								localWorkQueue = &workQueue;
-								_Run();
-							}},
 			Running		{ false				},
 			Quit		{ false				},
 			hasJob		{ false				},
+            workQueue   { ThreadMemory      },
 			Allocator	{ ThreadMemory		} {}
 
 		void Shutdown()	noexcept;
 		void Wake()		noexcept;
+
+        void Start() noexcept
+        {
+            Thread = std::move(
+                std::thread([&]
+                {
+                    localWorkQueue = &workQueue;
+                    _Run();
+                }));
+        }
 
 		bool IsRunning()	noexcept;
 		bool HasJob()		noexcept;
@@ -419,19 +421,23 @@ namespace FlexKit
 			allocator			{ IN_allocator		},
 			workingThreadCount	{ 0					},
 			workerCount			{ ThreadCount       },
-			workQueues          { IN_allocator      }
+			workQueues          { IN_allocator      },
+            mainThreadQueue     { IN_allocator      }
 		{
 			WorkerThread::Manager = this;
 
-			localWorkQueue = &allocator->allocate_aligned<CircularStealingQueue<iWork*>>();
+			localWorkQueue = &mainThreadQueue;
 			workQueues.push_back(localWorkQueue);
 
-			for (size_t I = 0; I < workerCount; ++I) {
-
+			for (size_t I = 0; I < workerCount; ++I)
+            {
 				auto& thread = allocator->allocate<WorkerThread>(allocator);
 				threads.push_back(thread);
 				workQueues.push_back(&thread.GetQueue());
 			}
+
+            for (auto& thread : threads)
+                thread.Start();
 		}
 
 
@@ -471,8 +477,6 @@ namespace FlexKit
 		{
 			while (!localWorkQueue->empty())
 			{
-				std::scoped_lock lock{ exclusive };
-
 				if (auto workItem = localWorkQueue->pop_back(); workItem)
 				{
 					workItem.value()->Run();
@@ -480,7 +484,6 @@ namespace FlexKit
 					workItem.value()->Release();
 				}
 			}
-
 			while (workingThreadCount > 0);
 		}
 
@@ -533,7 +536,7 @@ namespace FlexKit
             const size_t startingPoint = randomDevice();
             for (size_t I = 0; I < workQueues.size(); ++I)
             {
-                size_t idx = (I + startingPoint) % workQueues.size();
+                const size_t idx = (I + startingPoint) % workQueues.size();
                 if (auto res = workQueues[idx]->Steal(); res)
                     return res.value();
             }
@@ -563,8 +566,10 @@ namespace FlexKit
 		iAllocator*					allocator;
 		std::mutex					exclusive;
 
-		Vector<CircularStealingQueue<iWork*>*>	workQueues; // for the case of a single thread, work is pushed here and process on Wait for workers to complete
-	};
+        CircularStealingQueue<iWork*>   mainThreadQueue;
+
+		Vector<CircularStealingQueue<iWork*>*>	workQueues;
+    };
 
 
 	/************************************************************************************************/

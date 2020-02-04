@@ -79,7 +79,6 @@ void MultiplayerLobbyScreen::Draw(
 		&frameGraph,
 		desc.renderTarget,
 		desc.vertexBuffer,
-		desc.textBuffer,
 		desc.constantBuffer
 	};
 

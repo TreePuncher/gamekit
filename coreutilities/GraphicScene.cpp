@@ -662,13 +662,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GatherScene(GraphicScene* SM, CameraHandle Camera, PVS* __restrict out, PVS* __restrict T_out)
+	void GatherScene(GraphicScene* SM, CameraHandle Camera, PVS& out, PVS& T_out)
 	{
-		FK_ASSERT(out		!= T_out);
+		FK_ASSERT(&out		!= &T_out);
 		FK_ASSERT(Camera	!= CameraHandle{(unsigned int)INVALIDHANDLE});
 		FK_ASSERT(SM		!= nullptr);
-		FK_ASSERT(out		!= nullptr);
-		FK_ASSERT(T_out		!= nullptr);
+		FK_ASSERT(&out		!= nullptr);
+		FK_ASSERT(&T_out	!= nullptr);
 
 
 		auto& cameraComponent = CameraComponent::GetComponent();
@@ -727,11 +727,11 @@ namespace FlexKit
 
                 builder.SetDebugString("Gather Scene");
 			},
-			[](auto& data)
+			[](GetPVSTaskData& data)
 			{
                 FK_LOG_INFO("Start PVS gather\n");
 
-                GatherScene(data.scene, data.camera, &data.solid, &data.transparent);
+                GatherScene(data.scene, data.camera, data.solid, data.transparent);
 				SortPVS(&data.solid, &CameraComponent::GetComponent().GetCamera(data.camera));
 
                 FK_LOG_INFO("End PVS gather\n");

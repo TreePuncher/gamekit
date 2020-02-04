@@ -381,7 +381,6 @@ namespace FlexKit
 		ConstantBufferHandle	ConstantBuffer;
 		ResourceHandle			RenderTarget;
 		VertexBufferHandle		VertexBuffer;
-		VertexBufferHandle		TextBuffer;
 		float2					PixelSize;
 	};
 
@@ -400,7 +399,6 @@ namespace FlexKit
 		FrameGraph*				FrameGraph;
 		ResourceHandle			RenderTarget;
 		VertexBufferHandle		VertexBuffer;
-		VertexBufferHandle		TextBuffer;
 		ConstantBufferHandle	ConstantBuffer;
 
 		iAllocator*			Memory;
@@ -869,7 +867,6 @@ namespace FlexKit
 		FrameGraph*				FrameGraph;
 		ResourceHandle			RenderTarget;
 		VertexBufferHandle		VertexBuffer;
-		VertexBufferHandle		TextBuffer;
 		ConstantBufferHandle	ConstantBuffer;
 	};
 

@@ -53,6 +53,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Transforms.h"
 #include "..\coreutilities\type.h"
 #include "..\coreutilities\KeycodesEnums.h"
+#include "..\coreutilities\ThreadUtilities.h"
 #include "..\graphicsutilities\Geometry.h"
 #include "..\graphicsutilities\TextureUtilities.h"
 
@@ -2471,7 +2472,8 @@ namespace FlexKit
 			Handles		        { allocator },
 			UserEntries	        { allocator },
 			Resources	        { allocator },
-            BufferedResources   { allocator }{}
+            BufferedResources   { allocator },
+            delayRelease        { allocator } {}
 
 
 		~TextureStateTable()
@@ -2512,6 +2514,7 @@ namespace FlexKit
 		void ReleaseTexture	(ResourceHandle Handle);
 		void LockUntil		(size_t FrameID);
 
+        void UpdateLocks();
 	private:
 
 		struct UserEntry
@@ -2545,10 +2548,18 @@ namespace FlexKit
 			uint2				WH;
 		};
 			
-		Vector<UserEntry>								UserEntries;
-        Vector<ResourceEntry>							Resources;
-        Vector<ResourceHandle>							BufferedResources;
+		Vector<UserEntry>								    UserEntries;
+        Vector<ResourceEntry>							    Resources;
+        Vector<ResourceHandle>							    BufferedResources;
 		HandleUtilities::HandleTable<ResourceHandle, 32>	Handles;
+
+        struct UnusedResource
+        {
+            ID3D12Resource* resource;
+            uint8_t         counter;
+        };
+
+        Vector<UnusedResource>	delayRelease;
 	};
 
 
@@ -3806,37 +3817,26 @@ namespace FlexKit
 		{
 			vertexStride = sizeof(decltype(TransformVertex(initialData.front())));
 
-			for (auto& vertex : initialData) {
+			for (const auto& vertex : initialData) {
 				auto transformedVertex = TransformVertex(vertex);
 				if (buffer.Push(transformedVertex) == -1)
 					throw std::exception("buffer too short to accomdate push!");
 			}
 		}
 
-		template<typename TY_CONTAINER, typename FN_TransformVertex, typename TY>
-		VertexBufferDataSet(const SET_TRANSFORM_t, TY_CONTAINER& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer, TY) :
+
+		template<typename TY_CONTAINER, typename FN_TransformVertex>
+		VertexBufferDataSet(const SET_TRANSFORM_t, TY_CONTAINER& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
 			vertexBuffer	{ buffer					},
 			offsetBegin		{ buffer.pushBufferOffset	}
 		{
-			vertexStride = sizeof(TY);
+            using TY = decltype(TransformVertex(initialData.front(), buffer));
+            vertexStride = sizeof(decltype(TransformVertex(initialData.front(), buffer)));
 
-			struct adapter
-			{
-				VBPushBuffer& buffer;
-
-				adapter(VBPushBuffer& IN_buffer) : buffer{ IN_buffer } {}
-
-				void append(TY vertex)
-				{
-					if(buffer.Push(vertex) == -1)
-						throw std::exception("buffer too short to accomdate push!");
-				}
-
-			}_adapter{ buffer };
-
-			for (auto& vertex : initialData)
-				TransformVertex(vertex, _adapter);
+			for (const auto& vertex : initialData)
+				TransformVertex(vertex, buffer);
 		}
+
 
 		~VertexBufferDataSet() = default;
 
@@ -4225,7 +4225,7 @@ namespace FlexKit
 
 	StaticObjectHandle CreateDrawable(StaticScene* Scene, NodeHandle node, size_t GeometryIndex = 0);
 
-	// TODO: Implement StaticMeshBatcher
+	// TODO: re-implement StaticMeshBatcher
 	struct FLEXKITAPI StaticMeshBatcher
 	{
 		typedef char DirtyFlag;
@@ -4500,6 +4500,38 @@ namespace FlexKit
 
 	inline void ClearTriMeshVBVs(TriMesh* Mesh) { for (auto& buffer : Mesh->Buffers) buffer = nullptr; }
 
+
+    /************************************************************************************************/
+
+
+    inline auto CreateVertexBufferReserveObject(
+        VertexBufferHandle  vertexBuffer,
+        RenderSystem*       renderSystem,
+        iAllocator*         allocator)
+    {
+        return MakeSynchonized(
+            [=](size_t reserveSize) -> VBPushBuffer
+            {
+                return VBPushBuffer(vertexBuffer, reserveSize, *renderSystem);
+            },
+            allocator);
+    }
+
+    inline auto CreateConstantBufferReserveObject(
+        ConstantBufferHandle    constantBuffer,
+        RenderSystem*           renderSystem,
+        iAllocator*             allocator)
+    {
+        return MakeSynchonized(
+            [=](size_t reserveSize) -> CBPushBuffer
+            {
+                return CBPushBuffer(constantBuffer, reserveSize, *renderSystem);
+            },
+            allocator);
+    }
+
+    using ReserveVertexBufferFunction   = decltype(CreateVertexBufferReserveObject(InvalidHandle_t, nullptr, nullptr));
+    using ReserveConstantBufferFunction = decltype(CreateConstantBufferReserveObject(InvalidHandle_t, nullptr, nullptr));
 
 
 }	/************************************************************************************************/

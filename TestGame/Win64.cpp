@@ -68,8 +68,8 @@ int main(int argc, char* argv[])
 
     FK_LOG_INFO("Logging initialized started.");
 
-    uint2   WH          = uint2{ 1920, 1080 } * 1.4;
-    size_t threadCount  = 3;
+    uint2   WH          = uint2{ 1920, 1080 } * 1.4f;
+    size_t threadCount  = 20;
 
     for (size_t I = 0; I < argc; ++I)
     {

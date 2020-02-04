@@ -81,11 +81,9 @@ namespace FlexKit
 					Manager->DecrementActiveWorkerCount();
 					});
 
-				Manager->IncrementActiveWorkerCount();
+				    Manager->IncrementActiveWorkerCount();
 
-					auto workItem = localWorkQueue->pop_back().value_or(Manager->FindWork());
-
-                    if (workItem)
+                    if (auto workItem = Manager->FindWork(); workItem)
                     {
                         I = 0;
                         doWork(workItem);
@@ -99,7 +97,7 @@ namespace FlexKit
                             const auto currentTime    = std::chrono::high_resolution_clock::now();
                             const auto duration       = currentTime - beginTimePoint;
 
-                            if (duration > 5000ns )
+                            if (duration > 1000ns)
                                 break;
                         }
 

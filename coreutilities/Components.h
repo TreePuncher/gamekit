@@ -797,6 +797,23 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+
+    struct DebugPush
+    {
+        iWork*          work;
+        const char*     workID;
+        iWork*          parent;
+        void*           localQueue;
+    };
+
+    thread_local DebugPush  localPushes[1024];
+    thread_local size_t     pushCounter = 0;
+
+    void _PushDebug(iWork* work, iWork* parent)
+    {
+        localPushes[pushCounter++ % 1024] = { work, work->_debugID, parent, localWorkQueue };
+    }
+
 	class UpdateDispatcher
 	{
 	public:
@@ -852,44 +869,66 @@ namespace FlexKit
 
 			bool isLeaf() const noexcept
 			{
-				return counter == 0;
+				return leaf;
 			}
 
 
-            void AddInput(UpdateTaskBase& input)
+            void AddInput(UpdateTaskBase& input) 
             {
                 counter++;
+                leaf = false;
 
-                input.threadTask.Subscribe([&]
+                input.AddContinuationTask(
+                    [&]
                     {
-                        auto res = counter.fetch_sub(1) - 1;
-                        if (!res)
-                        {
-                            PushToLocalQueue(&threadTask);
-                        }
+                        if (counter < 1)
+                            __debugbreak();
+
+                        if (_DecrementCounter())
+                            PushToLocalQueue(threadTask, input);
                     });
             }
 
-
+            /*
             void AddOutput(UpdateTaskBase& output)
             {
-                counter++;
+                output.AddInput(*this);
+            }
+            */
 
-                threadTask.Subscribe([&]
+            bool _DecrementCounter()
+            {
+                const auto count = counter.fetch_sub(1);
+                return count == 1;
+            }
+
+
+            void AddContinuation(UpdateTaskBase& task)
+            {
+                threadTask.Subscribe(
+                    [&]
                     {
-                        auto res = counter.fetch_sub(1) - 1;
-                        if (!res)
-                        {
-                            PushToLocalQueue(&output.threadTask);
-                        }
+                        PushToLocalQueue(task, &threadTask);
                     });
             }
 
 
-			UpdateID_t				        ID;
-			iUpdateFN&				        Update;
-			char*					        Data;
-            alignas(64) std::atomic_int     counter = 0;
+            template<typename TY_FN>
+            void AddContinuationTask(TY_FN task)
+            {
+                threadTask.Subscribe(task);
+            }
+
+
+            operator iWork& () { return threadTask; }
+            operator iWork* () { return &threadTask; }
+
+            std::atomic_int     counter     = 0;
+            bool                leaf        = true;
+
+			UpdateID_t			ID;
+			iUpdateFN&			Update;
+			char*			    Data;
 		};
 
 		template<typename TY>
@@ -923,7 +962,6 @@ namespace FlexKit
 		{
 			WorkBarrier barrier{ *threads, allocator };
 
-
             for (auto& node : nodes)
                 barrier.AddWork(&node->threadTask);
 
@@ -947,19 +985,22 @@ namespace FlexKit
 
 			void SetDebugString(const char* str) noexcept
 			{
-				newNode.threadTask.SetDebugID(str);
+				newNode.threadTask._debugID = str;
 			}
 
+            /*
 			void AddOutput(UpdateTaskBase& node)
 			{
 				node.AddInput(newNode);
 			}
+            */
 
 			void AddInput(UpdateTaskBase& node)
 			{
 				newNode.AddInput(node);
 			}
 
+            /*
             void AddOutput(uint32_t taskID)
             {
                 auto res = find(
@@ -989,6 +1030,7 @@ namespace FlexKit
                 else
                     FK_ASSERT(false, "Failed to find inputTask!");
             }
+            */
 
 		private:
 
@@ -1025,7 +1067,7 @@ namespace FlexKit
 			struct data_BoilderPlate : UpdateTaskBase::iUpdateFN
 			{
 				data_BoilderPlate(FN_UPDATE&& IN_fn) :
-					function{ std::move(IN_fn) } {}
+					function{ IN_fn } {}
 
 				virtual void operator() (UpdateTaskBase& task) override
 				{
