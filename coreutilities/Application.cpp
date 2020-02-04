@@ -80,7 +80,7 @@ namespace FlexKit
                     const auto timepointB        = std::chrono::high_resolution_clock::now();
                     const auto durationRemaining = sleepTime - (timepointB - timePointA);
 
-                    if (durationRemaining < 1ms)
+                    if (durationRemaining < 1.ms)
                         break;
 
                     std::this_thread::sleep_for(1ms);
@@ -97,14 +97,14 @@ namespace FlexKit
             }
 
 			const auto sleepEnd      = std::chrono::high_resolution_clock::now();
-			const auto totalDuration = chrono::duration_cast<chrono::microseconds>(sleepEnd - frameStart);
+			const auto totalDuration = chrono::duration_cast<chrono::nanoseconds>(sleepEnd - frameStart);
 
-			dT = double(totalDuration.count() ) / 1000000.0;
+			dT = double(totalDuration.count() ) / 1000000000.0;
+            T += dT;
 
 			Core.Time.After();
 			Core.Time.Update();
 
-			T += dT;
 		}
 			// End Update  -----------------------------------------------------------------------------------------
 	}
