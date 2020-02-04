@@ -164,16 +164,16 @@ namespace FlexKit
 			queueArraySize	{ initialReservation	},
 			queue			{ nullptr				},
 			frontCounter	{ 0						},
-			backCounter	    { 0						}
+			backCounter	    { 0						},
+            allocator       { IN_allocator          }
 		{
 			if(initialReservation)
-                //queue = (ElementType*)allocator->_aligned_malloc(sizeof(ElementType) * initialReservation);
-                queue = new ElementType[initialReservation];
+                queue = (ElementType*)allocator->_aligned_malloc(sizeof(ElementType) * initialReservation);
 		}
 
 		~CircularStealingQueue()
 		{
-			//delete[] queue;
+            allocator->_aligned_free(queue);
 		}
 
 
@@ -194,9 +194,9 @@ namespace FlexKit
                     return job;
                 else
                 {   // last job in queue, potential race with a steal
-                    //auto expected = front;
+                    auto expected   = front;
+                    const auto res  = frontCounter.compare_exchange_strong(expected, expected + 1);
                     backCounter.store(front + 1);
-                    const auto res = frontCounter.compare_exchange_strong(decltype(front)(front), front + 1);
 
                     if (res)
                         return { job };
@@ -260,8 +260,7 @@ namespace FlexKit
 		void _Expand() noexcept
 		{
 			const auto	arraySize	= queueArraySize * 2;
-            //auto		newArray	= (ElementType*)allocator->_aligned_malloc(sizeof(ElementType) * arraySize);
-            auto		newArray	= new ElementType[arraySize];
+            auto		newArray	= (ElementType*)allocator->_aligned_malloc(sizeof(ElementType) * arraySize);
 
 			const int64_t   begin	= frontCounter;
 			const int64_t   end	    = backCounter;
@@ -280,7 +279,7 @@ namespace FlexKit
 			queue			= newArray;
 			queueArraySize	= arraySize;
 
-            delete[] tmp_ptr;
+            allocator->_aligned_free(tmp_ptr);
 		}
 
 
@@ -292,7 +291,7 @@ namespace FlexKit
 
 		size_t			                    queueArraySize  = 0;
         ElementType*                        queue           = nullptr;
-        std::mutex                          m;
+        iAllocator*                         allocator       = nullptr;
 
 		alignas(64) std::atomic_int64_t     backCounter    = 0;
 		alignas(64) std::atomic_int64_t     frontCounter   = 0;
