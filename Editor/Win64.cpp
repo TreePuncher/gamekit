@@ -4,6 +4,7 @@
 #include "..\graphicsutilities\AnimationComponents.h"
 #include "..\coreutilities\Logging.cpp"
 
+#include "EditorPanels.cpp"
 #include "EditorBase.cpp"
 
 
@@ -22,7 +23,8 @@ int main(int argc, char* argv[])
 
     FlexKit::FKApplication app{ WH, memory, threadCount };
 
-    app.PushState<EditorBase>();
+    auto& editor = app.PushState<EditorBase>();
+    CreateDefaultLayout(editor);
 
     app.Run();
     app.Release();

@@ -56,7 +56,9 @@ namespace FlexKit
 
 	class ThreadManager;
 
-	typedef std::function<void()> OnCompletionEvent;
+
+    typedef TypeErasedCallable<64, void> OnCompletionEvent;
+	//typedef std::function<void()> OnCompletionEvent;
 
 
 	/************************************************************************************************/
@@ -90,12 +92,11 @@ namespace FlexKit
 		{
 			for (auto& watcher : subscribers)
 				watcher();
-
-            completed++;
 		}
 
 
-		void Subscribe(OnCompletionEvent subscriber) 
+        template<typename TY_Callable>
+		void Subscribe(TY_Callable subscriber)
 		{ 
 			subscribers.push_back(subscriber);
 		}
@@ -104,7 +105,6 @@ namespace FlexKit
 		operator iWork* () { return this; }
 
         const char*         _debugID;
-        std::atomic_int		completed = 0;
 
 	protected:
 	private:
@@ -598,7 +598,7 @@ namespace FlexKit
 	private:
         void    _OnEnd()
         {
-            for (auto evt : PostEvents)
+            for (auto& evt : PostEvents)
                 evt();
 
             inProgress = false;

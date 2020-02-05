@@ -79,7 +79,7 @@ ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
 }
 
 #define MAX_ENV_LOD 2.0
-#define ENV_SAMPLE_COUNT 1
+#define MAX_CUBEMAP_SAMPLES 40
 #define SEED_SCALE 1000000
 /*
 float4 SampleSphericalLOD(in TextureCube<float4> tex, in float3 w, in float lod)
@@ -154,10 +154,31 @@ float RadicalInverse_VdC(in uint bits)
     return float(bits) * 2.3283064365386963e-10; // / 0x100000000
 }
 // ----------------------------------------------------------------------------
-float2 Hammersley(in uint i, in uint N)
+float2 HammersleySeq(in uint i, in uint N)
 {
     return float2(float(i)/float(N), RadicalInverse_VdC(i));
-}  
+}
+
+float DualParabloidJacobianDeterminant(in float z, in float b)
+{
+	float b2 = b * b;
+	float k = abs(z) + 1.0;
+	float k2 = k * k;
+	return 4.0 * b2 * k2;
+}
+
+uint PickCubemapLOD(in TextureCube cubemap, in float pdf, in float3 w, in uint N)
+{
+	const float K = 4.0;
+	uint W, H;
+	cubemap.GetDimensions(W, H);
+	
+	float det = DualParabloidJacobianDeterminant( w.z, 1.2 );
+
+	uint level = max(log2(K * ((W * H)/N) * (1.0 / det)), 0.0);
+
+	return level;
+}
 
 float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 {
@@ -197,13 +218,14 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 	if (depth < 1.0)
 	{
 		const float4 AlbedoSpecular = AlbedoBuffer.Load(Coord);
-		const float3 albedo         = AlbedoSpecular.xyz;
+		const float3 albedo         = float3(0.7, 0.45, 0.23);//float3(0.7,0.32,0.1);//AlbedoSpecular.xyz;
+		const float sF              = 1.0;//AlbedoSpecular.w;
 		const float4 MRIA           = MRIABuffer.Load(Coord);
 
-		const float metallic = saturate(MRIA.x);
-		const float roughness = saturate(MRIA.y);
-		const float ior = 0.47;//MRIA.z;
-		const float anisotropic = MRIA.w;
+		const float metallic = 0.0;//MRIA.x;
+		const float roughness = MRIA.y;
+		const float ior = 2.4;//MRIA.z;
+		const float anisotropic = AlbedoSpecular.w;//MRIA.w;
 		
 		float alpha = roughness * roughness;
 		float aspect = sqrt(1.0 - 0.9 * anisotropic);
@@ -213,28 +235,32 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 		float NdotV = max(CosTheta(V), 0.0);
 
 		float3 specular = float3(0,0,0);
+		
+		float3 diffuse = albedo * diffuseMap.Sample(BiLinear, normal);
+
+		uint N = MAX_CUBEMAP_SAMPLES;
 
 		uint Width, Height, NumberOfLevels;
 		ggxMap.GetDimensions(0, Width, Height, NumberOfLevels);
-		
-		float3 diffuse = diffuseMap.Sample(BiLinear, normal);
-		const uint N = 24;
-
 		uint pixelIndex = uint(SampleCoord.y * Width + SampleCoord.x);//Hash() * 1000000;
 		float kS = 0.0;
+
+		// Precalculate Fresnel F0
+
+		float3 F0 = (1.0 - ior) / (1.0 + ior);
+		F0 = F0 * F0;
+		F0 = lerp(F0, albedo, metallic);
 
 		for (uint i = 0; i < N; ++i)
 		{
 			// Eric Heitz GGX 2018 MIS sampling
-			float2 Xi = frac(Hammersley(i, N) + Hash2(pixelIndex));
+			float2 Xi = frac(HammersleySeq(i, N) + Hash2(pixelIndex));
 			float3 H = EricHeitz2018GGXVNDF(V, alpha_x, alpha_y, Xi.x, Xi.y);
 			float3 L = reflect(-V, H);
-			float3 Wh = normalize(V + L);
-			float cosT = dot(V, Wh);
+			float dotVH = dot(V, H);
 
 			// Fresnel
-			float3 F0 = pow(ior - 1.0, 2.0) / pow(ior + 1.0, 2.0);
-			float3 F = SchlickFresnel(cosT, F0);
+			float3 F = SchlickFresnel(dotVH, F0);
 
 			kS += F;
 
@@ -242,39 +268,42 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 			float G2 = EricHeitz2018GGXG2(V, L, alpha_x, alpha_y);
 			float G1 = EricHeitz2018GGXG1(V, alpha_x, alpha_y);
 
-			float3 brdfVal = (F * G2) / G1;
+			float3 brdf = (F * G2) / G1;
 
 			// Importance Sampling combined with Mipmap Filtering
-			float pdfVal = EricHeitz2018GGXPDF(V, H, L, alpha_x, alpha_y);
-			float distortVal = 1.0;
-			float omegaS = 1.0 / (N * pdfVal);
-			float omegaP = distortVal / (Width * Height);
-
-			int lod = max(0.5 * log2( (Width * Height) / N ) - 0.5 * log2(pdfVal * distortVal), 0.0);
+			float pdf = EricHeitz2018GGXPDF(V, H, L, alpha_x, alpha_y);
+			int lod = PickCubemapLOD(ggxMap, pdf, L, N);
+			//int lod = (1.0 / PDF) * NumberOfLevels;//max(0.875 * log2( (Width * Height) / N ) - 0.125 * log2(PDF * omegaS), 0.0);
+			
 			float3 sampleDir = mul(TBN, L);
 			float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, lod);
 			
 
-			specular += sampleIrradiance * brdfVal;
+			specular += sampleIrradiance * brdf;
 		}
 		
 		kS = saturate( kS / N );
 		float kD = (1.0 - kS) * (1.0 - metallic);
 
 		specular /= N;
-		color = kD * diffuse + /* kS **/ specular; 
+
+		//float3 reflVec = reflect(rayDir, normal);
+		//specular = ggxMap.SampleLevel(BiLinear, reflVec, 6).rgb;
+		color = (1.0 - sF) * kD * diffuse + sF * specular; 
 	}
 	else
 	{
         color = ggxMap.Sample(BiLinear, rayDir);
     }
 
-
-    float gamma = 2.2;
+    
+    float gamma = 1.3;
     color = color / (color + 1.0);
 	color = pow(color, 1.0/gamma);  
-	return float4(color, 1.0);
+	
 
+	return float4(color, 1.0);
+	
     /*
 	// Calculate world position
     const float3 positionW = rayPos + rayDir * (depth * (MaxZ - MinZ) - MinZ);

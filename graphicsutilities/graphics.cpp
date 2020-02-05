@@ -5086,9 +5086,11 @@ namespace FlexKit
         auto	offset		= UserBuffers[idx].Offset;
         auto	mapped_Ptr	= UserBuffers[idx].MappedPtr;
 
-        if( offset % 256 )
+        const size_t mask = 0XFF;
+
+        if( offset & mask)
         {
-            auto alignementOffset = 256 - std::ceil(offset / 256.0f) * 256;
+            size_t alignementOffset = mask - (offset & mask) + 1;
             offset  += alignementOffset;
             size    += alignementOffset;
         }

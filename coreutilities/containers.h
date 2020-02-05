@@ -22,7 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-// Define the Containers used in the application here
+
 #ifndef CONTAINERS_H
 #define CONTAINERS_H
 
@@ -396,7 +396,7 @@ namespace FlexKit
 					size_t itr = 0;
 					size_t End = Size;
 					for (; itr < End; ++itr)
-						NewMem[itr] = A[itr];
+						NewMem[itr] = std::move(A[itr]);
 
 					Allocator->_aligned_free(A);
 				}
@@ -406,7 +406,7 @@ namespace FlexKit
 			}
 
 			const size_t idx = Size++;
-			new(A + idx) Ty(in); // 
+            new(A + idx) Ty{ in }; // 
 			return idx;
 		}
 
@@ -1959,6 +1959,122 @@ namespace FlexKit
 			TY_Element* first	= nullptr;
 			TY_Element* last	= nullptr;
 	};
+
+
+    /************************************************************************************************/
+
+
+    template<unsigned int storage = 64, typename TY_return = void, typename ... TY_ARGS>
+    class TypeErasedCallable
+    {
+    public:
+        TypeErasedCallable() = default;
+
+
+        template<typename TY_CALLABLE>
+        TypeErasedCallable(const TY_CALLABLE& callable) noexcept
+        {
+            Assign(callable);
+        }
+
+
+        TypeErasedCallable(const TypeErasedCallable& callable) noexcept
+        {
+            memcpy(buffer, callable.buffer, sizeof(buffer));
+
+            proxy       = callable.proxy;
+            destructor  = callable.destructor;
+        }
+
+
+        TypeErasedCallable(TypeErasedCallable&& callable) noexcept
+        {
+            memcpy(buffer, callable.buffer, sizeof(buffer));
+
+            proxy       = callable.proxy;
+            destructor  = callable.destructor;
+
+            callable.proxy      = nullptr;
+            callable.destructor = nullptr;
+        }
+
+
+        ~TypeErasedCallable()
+        {
+            if (destructor)
+                destructor(buffer);
+        }
+
+
+        template<typename TY_CALLABLE>
+        TypeErasedCallable& operator = (TY_CALLABLE callable)
+        {
+            if (destructor)
+                destructor(buffer);
+
+            Assign(callable);
+
+            return *this;
+        }
+
+
+        TypeErasedCallable& operator = (TypeErasedCallable&) = delete;
+
+
+        TypeErasedCallable& operator = (TypeErasedCallable&& rhs)
+        {
+            if (destructor)
+                destructor(buffer);
+
+            memcpy(buffer, rhs.buffer, sizeof(buffer));
+            proxy       = rhs.proxy;
+            destructor  = rhs.destructor;
+
+            return *this;
+        }
+
+
+        template<typename TY_CALLABLE>
+        void Assign(TY_CALLABLE& callable)
+        {
+            static_assert(sizeof(TY_CALLABLE) <= storage, "Callable object too large for this TypeErasedCallable!");
+
+            struct data
+            {
+                TY_CALLABLE callable;
+            };
+
+            new(buffer) data{ callable };
+
+            proxy = [](char* _ptr, TY_ARGS ... args) -> TY_return
+                {
+                    auto functor = reinterpret_cast<data*>(_ptr);
+                    return functor->callable(args...);
+                };
+
+            destructor = [](char* _ptr)
+                {
+                    auto functor = reinterpret_cast<data*>(_ptr);
+                    functor->~data();
+                };
+        }
+
+
+        auto operator()(TY_ARGS... args)
+        {
+            return proxy(buffer, std::forward<TY_ARGS>(args)...);
+        }
+
+
+    private:
+        typedef TY_return(*fnProxy)(char*, TY_ARGS ... args);
+        typedef void (*fnDestructor)(char*);
+
+        fnProxy         proxy       = nullptr;
+        fnDestructor    destructor  = nullptr;
+        char            buffer[storage];
+    };
+
 
 }	// namespace FlexKit;
 	/************************************************************************************************/

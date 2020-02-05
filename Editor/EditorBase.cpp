@@ -5,10 +5,43 @@
 #include <imgui_draw.cpp>
 
 
+using namespace FlexKit;
+
+
 /************************************************************************************************/
 
 
-using namespace FlexKit;
+void CreateDefaultLayout(EditorBase& editor)
+{
+    auto& allocator = editor.framework.core.GetBlockMemory();
+
+    auto& Viewer3D = allocator.allocate<Viewer3D_Panel>(editor.framework, editor.streamingEngine);
+    Viewer3D.Resize(GetWindowWH(editor.framework) * editor.UI.GetSize({ 1, 1 }, { 1, 1 }));
+
+    auto& propertyPanel = allocator.allocate<Property_Panel>(editor.framework);
+    auto& menuPanel     = allocator.allocate<Menu_Panel>(editor.framework, editor);
+
+
+    editor.UI.AddPanel(
+        { 1, 1 }, { 1, 1 },
+        Viewer3D);
+
+    editor.UI.AddPanel(
+        { 2, 1 }, { 1, 1 },
+        propertyPanel);
+
+    editor.UI.AddPanel(
+        { 0, 0 }, { 3, 1 },
+        menuPanel);
+
+
+    editor.UI.columnWidths  = { 0.1f, 0.7f,     0.2f };
+    editor.UI.rowHeights    = { 0.025f, 0.9f,    0.075f };
+}
+
+
+/************************************************************************************************/
+
 
 ID3D12PipelineState* Create_DrawImGUI(FlexKit::RenderSystem* renderSystem)
 {
@@ -72,19 +105,12 @@ const FlexKit::PSOHandle DRAW_imgui = FlexKit::PSOHandle(GetTypeGUID(DRAW_imgui)
 
 
 EditorBase::EditorBase(FlexKit::GameFramework& IN_framework) :
-    FlexKit::FrameworkState{ IN_framework },
+    FlexKit::FrameworkState { IN_framework },
+    panels                  { framework.core.GetBlockMemory() },
+    streamingEngine         { framework.core.RenderSystem, framework.core.GetBlockMemory() },
 
-    streamingEngine{ framework.core.RenderSystem, framework.core.GetBlockMemory() },
-
-    render{
-        framework.core.GetTempMemory(),
-        framework.core.RenderSystem,
-        streamingEngine,
-        framework.ActiveWindow->WH  },
-
-    depthBuffer         { framework.core.RenderSystem.CreateDepthBuffer(framework.ActiveWindow->WH,	true)   },
-    vertexBuffer        { framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)                  },
-    constantBuffer      { framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false)              },
+    vertexBuffer        { framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)     },
+    constantBuffer      { framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false) },
 
    	cameras		        { framework.core.GetBlockMemory()                               },
 	ids			        { framework.core.GetBlockMemory()                               },
@@ -92,23 +118,27 @@ EditorBase::EditorBase(FlexKit::GameFramework& IN_framework) :
 	visables	        { framework.core.GetBlockMemory()                               },
 	pointLights	        { framework.core.GetBlockMemory()                               },
     skeletonComponent   { framework.core.GetBlockMemory()                               },
-    gbuffer             { framework.ActiveWindow->WH, framework.core.RenderSystem       },
-    shadowCasters       { framework.core.GetBlockMemory()                               }
+    shadowCasters       { framework.core.GetBlockMemory()                               },
+
+    UI                  {{ 3, 3 }, framework.core.GetBlockMemory() }
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-
     auto&                       renderSystem    = framework.GetRenderSystem();
     FlexKit::UploadQueueHandle  uploadQueue     = renderSystem.ImmediateUpload;
     ImGuiIO&                    io              = ImGui::GetIO();
-    io.FontGlobalScale = 2.0f;
+    io.FontGlobalScale                          = 2.0f;
 
     renderSystem.RegisterPSOLoader(DRAW_imgui, { &renderSystem.Library.RSDefault, Create_DrawImGUI });
     renderSystem.QueuePSOLoad(DRAW_imgui);
 
-    io.Fonts->GetTexDataAsRGBA32(&atlas.tex_pixels, &atlas.tex_w, &atlas.tex_h);
-    FlexKit::TextureBuffer buffer{ {(uint32_t)atlas.tex_w, (uint32_t)atlas.tex_h}, (FlexKit::byte*)atlas.tex_pixels, 4 };
+    unsigned char* tex_pixels = nullptr;
+    int             tex_w;
+    int             tex_h;
+
+    io.Fonts->GetTexDataAsRGBA32(&tex_pixels, &tex_w, &tex_h);
+    FlexKit::TextureBuffer buffer{ {(uint32_t)tex_w, (uint32_t)tex_h}, (FlexKit::byte*)tex_pixels, 4 };
 
 
     imGuiFont = MoveTextureBuffersToVRAM(
@@ -118,6 +148,7 @@ EditorBase::EditorBase(FlexKit::GameFramework& IN_framework) :
         1,
         framework.core.GetBlockMemory(),
         FlexKit::FORMAT_2D::R8G8B8A8_UNORM);
+
 
     io.Fonts->TexID = TextreHandleToIM(imGuiFont);
 }
@@ -147,29 +178,22 @@ void EditorBase::Draw(
     io.DisplaySize = ImVec2(core.Window.WH[0], core.Window.WH[1]);
     io.DeltaTime = dT;
 
-    auto reserveVertexBufferSpace   = CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
-    auto reserveConstantBufferSpace = CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
-
-    ImGui::NewFrame();
-    ImGui::SetNextWindowSize({ float(core.Window.WH[0] / 8), (float)core.Window.WH[1] });
-    ImGui::SetNextWindowPos({ (float)(core.Window.WH[0] - core.Window.WH[0] / 8), 0 });
-
-    if (ImGui::Begin("properties"))
-    {
-        float f = 0;
-        char input[256];
-        memset(input, '\0', 256);
-
-        ImGui::Text("!Hello, World!");
-        ImGui::InputText("input text", input, 256);
-        ImGui::SliderFloat("float", &f, 0.0f, 1.0f);
-    }
-
-    ImGui::End();
-    ImGui::Render();
+    auto reserveVertexBufferSpace   = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
+    auto reserveConstantBufferSpace = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
 
     ClearVertexBuffer(frameGraph, vertexBuffer);
     ClearBackBuffer(frameGraph, core.Window.backBuffer, 0.0f);
+
+    ImGui::NewFrame();
+
+    UI.Draw(
+        core,
+        dispatcher,
+        dT,
+        frameGraph,
+        DrawUIResouces{ core.Window.backBuffer, reserveVertexBufferSpace, reserveConstantBufferSpace, core.GetTempMemory() });
+
+    ImGui::Render();
 
     DrawImGui(dispatcher, frameGraph, reserveVertexBufferSpace, reserveConstantBufferSpace, core.Window.backBuffer, ImGui::GetDrawData());
 }
@@ -179,12 +203,12 @@ void EditorBase::Draw(
 
 
 void EditorBase::DrawImGui(
-    FlexKit::UpdateDispatcher&      dispatcher,
-    FlexKit::FrameGraph&            frameGraph,
-    ReserveVertexBufferFunction     ReserveVBSpace,
-    ReserveConstantBufferFunction   ReserveCBSpace,
-    FlexKit::ResourceHandle         renderTarget,
-    ImDrawData*                     drawData)
+    FlexKit::UpdateDispatcher&                  dispatcher,
+    FlexKit::FrameGraph&                        frameGraph,
+    FlexKit::ReserveVertexBufferFunction        ReserveVBSpace,
+    FlexKit::ReserveConstantBufferFunction      ReserveCBSpace,
+    FlexKit::ResourceHandle                     renderTarget,
+    ImDrawData*                                 drawData)
 {
     struct DrawImGui_data
     {
@@ -206,7 +230,7 @@ void EditorBase::DrawImGui(
             auto& cmdLists          = drawData->CmdLists;
             const ImVec2 clip_off   = drawData->DisplayPos;
 
-            struct Constants
+            struct alignas(256) Constants
             {
                 FlexKit::uint2 WidthHeight;
             };
@@ -234,8 +258,10 @@ void EditorBase::DrawImGui(
             {
                 auto&                           cmdList     = cmdLists[i];
                 auto&                           cmdBuffer   = cmdList->CmdBuffer;
-                
-                FlexKit::VBPushBuffer           VBSpace     = pass.ReserveVBSpace(cmdList->VtxBuffer.Size * sizeof(ImDrawVert) + cmdList->IdxBuffer.Size * sizeof(uint32_t));
+
+                auto _debug = (ImDrawVert*)cmdList->VtxBuffer.Data;
+
+                FlexKit::VBPushBuffer           VBSpace     = pass.ReserveVBSpace(cmdList->VtxBuffer.Size * sizeof(ImDrawVert) + cmdList->IdxBuffer.Size * sizeof(uint32_t) + 1024);
                 FlexKit::VertexBufferDataSet    VBSet{ (ImDrawVert*)cmdList->VtxBuffer.Data, cmdList->VtxBuffer.Size * sizeof(ImDrawVert), VBSpace };
                 FlexKit::VertexBufferDataSet    IBSet{ (ImDrawIdx*)cmdList->IdxBuffer.Data, cmdList->IdxBuffer.Size * sizeof(ImDrawIdx), VBSpace };
 
@@ -363,7 +389,8 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 					(evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
 					(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
 					(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
-					(evt.mData1.mKC[0] == KC_SYMBOL ))
+					(evt.mData1.mKC[0] == KC_SYMBOL) ||
+                    (evt.mData1.mKC[0] == KC_SPACE))
                 {
                     io.AddInputCharacter((char)evt.mData2.mINT[0]);
                 }

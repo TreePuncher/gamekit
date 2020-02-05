@@ -1,51 +1,31 @@
 #ifndef EDITORBASE_H
 #define EDITORBASE_H
 
-#include "..\graphicsutilities\AnimationComponents.h"
-#include "..\coreutilities\Application.h"
-#include "..\coreutilities\GameFramework.h"
-#include "..\coreutilities\EngineCore.h"
-#include "..\coreutilities\WorldRender.h"
-#include "..\graphicsutilities\TextRendering.h"
-#include "..\graphicsutilities\defaultpipelinestates.h"
+#include "AnimationComponents.h"
+#include "Application.h"
+#include "GameFramework.h"
+#include "EngineCore.h"
+#include "WorldRender.h"
+#include "TextRendering.h"
+#include "defaultpipelinestates.h"
+
+#include "EditorPanels.h"
 #include "graphics.h"
 
 #include <imgui/imgui.h>
 
 
-auto CreateVertexBufferReserveObject(
-    FlexKit::VertexBufferHandle vertexBuffer,
-    FlexKit::RenderSystem*      renderSystem,
-    FlexKit::iAllocator*        allocator)
-{
-    return FlexKit::MakeSynchonized(
-        [=](size_t reserveSize) -> FlexKit::VBPushBuffer
-        {
-            return FlexKit::VBPushBuffer(vertexBuffer, reserveSize, *renderSystem);
-        },
-        allocator);
-}
+/************************************************************************************************/
 
-auto CreateConstantBufferReserveObject(
-    FlexKit::ConstantBufferHandle   vertexBuffer,
-    FlexKit::RenderSystem*          renderSystem,
-    FlexKit::iAllocator*            allocator)
-{
-    return FlexKit::MakeSynchonized(
-        [=](size_t reserveSize) -> FlexKit::CBPushBuffer
-        {
-            return FlexKit::CBPushBuffer(vertexBuffer, reserveSize, *renderSystem);
-        },
-        allocator);
-}
-
-using ReserveVertexBufferFunction   = decltype(CreateVertexBufferReserveObject(FlexKit::InvalidHandle_t, nullptr, nullptr));
-using ReserveConstantBufferFunction = decltype(CreateConstantBufferReserveObject(FlexKit::InvalidHandle_t, nullptr, nullptr));
 
 inline ImTextureID TextreHandleToIM(FlexKit::ResourceHandle texture)
 {
     return reinterpret_cast<ImTextureID>(texture.INDEX);
 }
+
+
+/************************************************************************************************/
+
 
 class EditorBase : public FlexKit::FrameworkState
 {
@@ -62,11 +42,9 @@ public:
 
 	bool EventHandler	(FlexKit::Event evt) override;
 
+
     FlexKit::ResourceHandle             imGuiFont;
 
-    FlexKit::WorldRender				render;
-    FlexKit::GBuffer                    gbuffer;
-    FlexKit::ResourceHandle				depthBuffer;
     FlexKit::VertexBufferHandle			vertexBuffer;
     FlexKit::ConstantBufferHandle		constantBuffer;
 
@@ -81,25 +59,19 @@ public:
 
     FlexKit::TextureStreamingEngine		streamingEngine;
 
+    FlexKit::Vector<iEditorPanel*>      panels;
+    UIGrid                              UI;
+
 private:
 
-
-
-    void DrawImGui(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&, ReserveVertexBufferFunction, ReserveConstantBufferFunction, FlexKit::ResourceHandle, ImDrawData*);
-
-
-    struct
-    {
-
-    }InputStates;
-
-    struct gui_Atlas
-    {
-        unsigned char*  tex_pixels = nullptr;
-        int             tex_w;
-        int             tex_h;
-    }atlas;
+    void DrawImGui(FlexKit::UpdateDispatcher&, FlexKit::FrameGraph&, FlexKit::ReserveVertexBufferFunction, FlexKit::ReserveConstantBufferFunction, FlexKit::ResourceHandle, ImDrawData*);
 };
+
+
+/************************************************************************************************/
+
+
+void CreateDefaultLayout(EditorBase&);
 
 
 /**********************************************************************

@@ -177,7 +177,7 @@ namespace FlexKit
 
 	void WorkBarrier::AddOnCompletionEvent(OnCompletionEvent Callback)
 	{
-		PostEvents.push_back(Callback);
+		PostEvents.emplace_back(std::move(Callback));
 	}
 
 

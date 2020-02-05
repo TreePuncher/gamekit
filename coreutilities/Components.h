@@ -786,10 +786,8 @@ namespace FlexKit
                 FK_ASSERT(true, "SUCCESS");
 			}, 
 			[]
-            {
+            {   // should not run
                 FK_ASSERT(false, "Unexpected Failure");
-
-                // should not run
             });
 	}
 
@@ -797,22 +795,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
-    struct DebugPush
-    {
-        iWork*          work;
-        const char*     workID;
-        iWork*          parent;
-        void*           localQueue;
-    };
-
-    thread_local DebugPush  localPushes[1024];
-    thread_local size_t     pushCounter = 0;
-
-    void _PushDebug(iWork* work, iWork* parent)
-    {
-        localPushes[pushCounter++ % 1024] = { work, work->_debugID, parent, localWorkQueue };
-    }
 
 	class UpdateDispatcher
 	{
@@ -881,20 +863,17 @@ namespace FlexKit
                 input.AddContinuationTask(
                     [&]
                     {
-                        if (counter < 1)
-                            __debugbreak();
-
                         if (_DecrementCounter())
                             PushToLocalQueue(threadTask, input);
                     });
             }
 
-            /*
+
             void AddOutput(UpdateTaskBase& output)
             {
                 output.AddInput(*this);
             }
-            */
+
 
             bool _DecrementCounter()
             {
@@ -983,24 +962,25 @@ namespace FlexKit
 				newNode     { IN_node	    },
                 dispatcher  { IN_dispatcher } {}
 
+
 			void SetDebugString(const char* str) noexcept
 			{
 				newNode.threadTask._debugID = str;
 			}
 
-            /*
+
 			void AddOutput(UpdateTaskBase& node)
 			{
 				node.AddInput(newNode);
 			}
-            */
+
 
 			void AddInput(UpdateTaskBase& node)
 			{
 				newNode.AddInput(node);
 			}
 
-            /*
+
             void AddOutput(uint32_t taskID)
             {
                 auto res = find(
@@ -1016,6 +996,7 @@ namespace FlexKit
                     FK_ASSERT(false, "Failed to find output Task!");
             }
 
+
             void AddInput(uint32_t taskID)
             {
                 auto res = find(
@@ -1030,7 +1011,6 @@ namespace FlexKit
                 else
                     FK_ASSERT(false, "Failed to find inputTask!");
             }
-            */
 
 		private:
 
