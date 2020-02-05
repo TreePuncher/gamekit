@@ -33,3 +33,11 @@ external Dependencies
   * AngelScript
 
 Additional dependencies are pulled in automatically via git submodules.
+
+Build Instructions:
+
+	Install FBX and FMOD
+
+	run these build commands on the terminal:
+		premake5.exe build_dependencies
+		premake5.exe vs2019

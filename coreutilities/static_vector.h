@@ -179,11 +179,13 @@ namespace FlexKit
 			}
 		}
 
-		void push_back(TY_&& in)
+
+        template<typename ... TY_ARGS>
+		void emplace_back(TY_ARGS&& ... in_args)
 		{
 			if (!full())
 			{
-				new(&Elements[Size]) TY_(in);
+                new(&Elements[Size]) TY_{ std::move<TY_ARGS>(in_args)...};
 				Size++;
 			}
 		}

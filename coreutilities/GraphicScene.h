@@ -224,6 +224,7 @@ namespace FlexKit
 			GetComponent()[visibility].boundingSphere = boundingSphere;
 		}
 
+
         void SetVisable(bool v)
         {
             GetComponent()[visibility].visable = v;
