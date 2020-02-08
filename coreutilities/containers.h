@@ -1964,7 +1964,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    template<unsigned int storage = 64, typename TY_return = void, typename ... TY_ARGS>
+    template<unsigned int storage = 64 - sizeof(void*) * 2, typename TY_return = void, typename ... TY_ARGS>
     class TypeErasedCallable
     {
     public:

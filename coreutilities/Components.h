@@ -141,12 +141,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	template<typename TY, typename TY_Handle, ComponentID ID = -1>
+	template<typename TY, ComponentID ID = -1>
 	class Component : public ComponentBase
 	{
 	public:
-		using ComponetHandle_t = TY_Handle;
-
 	protected:
 		inline static TY* component	= nullptr;
 
@@ -425,7 +423,7 @@ namespace FlexKit
 
         virtual ~BasicComponentView_t() final {}
 
-        using ComponentHandle_t = typename TY_Component::ComponetHandle_t;
+        using ComponentHandle_t = typename Handle_t<32, TY_Component::GetComponentID()>;
 
         decltype(auto) GetData()
         {
@@ -448,7 +446,7 @@ namespace FlexKit
     };
 
     template<typename TY, typename TY_Handle, ComponentID ID, typename TY_EventHandler = BasicComponentEventHandler>
-	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler >, TY_Handle, ID>
+	class BasicComponent_t : public Component<BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>, ID>
 	{
 	public:
         using ThisType      = BasicComponent_t<TY, TY_Handle, ID, TY_EventHandler>;
@@ -479,6 +477,7 @@ namespace FlexKit
 
 			return handle;
 		}
+
 
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
@@ -530,7 +529,7 @@ namespace FlexKit
 	constexpr ComponentID StringComponentID = GetTypeGUID(StringID);
 	using StringIDHandle = Handle_t <32, GetTypeGUID(StringID)>;
 
-	class StringIDComponent : public Component<StringIDComponent, StringIDHandle, StringComponentID>
+	class StringIDComponent : public Component<StringIDComponent, StringComponentID>
 	{
 	public:
 		StringIDComponent(iAllocator* allocator) : 
@@ -582,14 +581,14 @@ namespace FlexKit
 	using SampleHandle = Handle_t <32, GetTypeGUID(SampleHandle)>;
 
 
-	class SampleComponent : public Component<SampleComponent, SampleHandle, SampleComponentID>
+	class SampleComponent : public Component<SampleComponent, SampleComponentID>
 	{
 	public:
 		SampleComponent(iAllocator* allocator = SystemAllocator) : entities{ allocator } { }
 
-		ComponetHandle_t CreateComponent()
+        SampleHandle CreateComponent()
 		{
-			return ComponetHandle_t{ unsigned int(entities.push_back({})) };
+			return SampleHandle{ unsigned int(entities.push_back({})) };
 		}
 
 		void ReleaseEntity(SampleHandle handle)
@@ -610,14 +609,14 @@ namespace FlexKit
 	using Sample2Handle = Handle_t <32, GetTypeGUID(Sample2Handle)>;
 
 
-	class SampleComponent2 : public Component<SampleComponent2, Sample2Handle, SampleComponent2ID>
+	class SampleComponent2 : public Component<SampleComponent2, SampleComponent2ID>
 	{
 	public:
 		SampleComponent2(iAllocator* allocator = SystemAllocator) : entities{ allocator } { }
 
-		ComponetHandle_t CreateComponent()
+        Sample2Handle CreateComponent()
 		{
-			return ComponetHandle_t{ unsigned int(entities.push_back({})) };
+			return Sample2Handle{ unsigned int(entities.push_back({})) };
 		}
 
 		void ReleaseEntity(Sample2Handle handle)
@@ -637,14 +636,14 @@ namespace FlexKit
 	using Sample3Handle = Handle_t <32, GetTypeGUID(Sample3Handle)>;
 
 
-	class SampleComponent3 : public Component<SampleComponent3, Sample3Handle, SampleComponent3ID>
+	class SampleComponent3 : public Component<SampleComponent3, SampleComponent3ID>
 	{
 	public:
 		SampleComponent3(iAllocator* allocator = SystemAllocator) : entities{ allocator } { }
 
-		ComponetHandle_t CreateComponent()
+        Sample3Handle CreateComponent()
 		{
-			return ComponetHandle_t{ unsigned int(entities.push_back({})) };
+			return Sample3Handle{ unsigned int(entities.push_back({})) };
 		}
 
 		void ReleaseEntity(Sample3Handle handle)

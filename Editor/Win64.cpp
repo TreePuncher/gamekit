@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     FlexKit::AddLogFile("Editor.log", FlexKit::Verbosity_INFO);
 
 
-    const auto        WH          = FlexKit::uint2{ 1920, 1080 } *1.4;
+    const auto        WH          = FlexKit::uint2{ 1920, 1080 };
     const uint32_t    threadCount = 3;
 
     auto* memory = FlexKit::CreateEngineMemory();

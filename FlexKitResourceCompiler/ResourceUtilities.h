@@ -107,7 +107,6 @@ public:
         return out;
     }
 
-
     Blob& operator += (const Blob& rhs_blob)
     {
         const size_t offset = buffer.size();

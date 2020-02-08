@@ -175,8 +175,8 @@ void EditorBase::Draw(
     // Draw imGui
     ImGuiIO& io = ImGui::GetIO();
     
-    io.DisplaySize = ImVec2(core.Window.WH[0], core.Window.WH[1]);
-    io.DeltaTime = dT;
+    io.DisplaySize  = ImVec2(core.Window.WH[0], core.Window.WH[1]);
+    io.DeltaTime    = dT;
 
     auto reserveVertexBufferSpace   = FlexKit::CreateVertexBufferReserveObject(vertexBuffer, core.RenderSystem, core.GetTempMemory());
     auto reserveConstantBufferSpace = FlexKit::CreateConstantBufferReserveObject(constantBuffer, core.RenderSystem, core.GetTempMemory());
@@ -194,7 +194,6 @@ void EditorBase::Draw(
         DrawUIResouces{ core.Window.backBuffer, reserveVertexBufferSpace, reserveConstantBufferSpace, core.GetTempMemory() });
 
     ImGui::Render();
-
     DrawImGui(dispatcher, frameGraph, reserveVertexBufferSpace, reserveConstantBufferSpace, core.Window.backBuffer, ImGui::GetDrawData());
 }
 
@@ -389,7 +388,7 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 					(evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
 					(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
 					(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
-					(evt.mData1.mKC[0] == KC_SYMBOL) ||
+                    (evt.mData1.mKC[0] == KC_SYMBOL) || (evt.mData1.mKC[0] == KC_BACKSPACE) ||
                     (evt.mData1.mKC[0] == KC_SPACE))
                 {
                     io.AddInputCharacter((char)evt.mData2.mINT[0]);

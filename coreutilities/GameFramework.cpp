@@ -349,16 +349,6 @@ namespace FlexKit
 
 		UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemory() };
 
-        /*
-		core.Physics.Simulate(dT);
-
-		while(fixStepAccumulator >= fixedTimeStep) {
-			UpdateFixed(dispatcher, fixedTimeStep);
-			dispatcher.Execute();
-			fixStepAccumulator -= fixedTimeStep;
-		}
-        */
-
 		Update			(dispatcher, dT);
 		UpdatePreDraw	(dispatcher, core.GetTempMemory(), dT);
 

@@ -39,7 +39,7 @@ namespace FlexKit
 	constexpr ComponentID AnimatorComponentID = GetTypeGUID(Animator);
 	using AnimatorHandle = Handle_t<32, AnimatorComponentID>;
 
-	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorHandle, AnimatorComponentID>
+	class AnimatorComponent : public FlexKit::Component<AnimatorComponent, AnimatorComponentID>
 	{
 	public:
 		AnimatorComponent(iAllocator* allocator) : 
@@ -61,7 +61,7 @@ namespace FlexKit
 	constexpr ComponentID SkeletonComponentID = GetTypeGUID(Skeleton);
 	using SkeletonHandle = Handle_t<32, SkeletonComponentID>;
 
-    class SkeletonComponent : public FlexKit::Component<SkeletonComponent, SkeletonHandle, SkeletonComponentID>
+    class SkeletonComponent : public FlexKit::Component<SkeletonComponent, SkeletonComponentID>
     {
     public:
         SkeletonComponent(iAllocator* allocator) :
@@ -100,7 +100,7 @@ namespace FlexKit
 	constexpr ComponentID BindPointComponentID = GetTypeGUID(BindPoint);
 	using BindPointHandle = Handle_t<32, BindPointComponentID>;
 
-	class BindPointComponent : public FlexKit::Component<BindPointComponent, BindPointHandle, BindPointComponentID>
+	class BindPointComponent : public FlexKit::Component<BindPointComponent, BindPointComponentID>
 	{
 	public:
 		BindPointComponent(iAllocator* allocator) : bindPoints{ allocator } {}

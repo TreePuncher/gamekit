@@ -40,9 +40,10 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	PhysicsSystem::PhysicsSystem(ThreadManager& IN_threads, iAllocator* IN_allocator) :
+    PhysXComponent::PhysXComponent(ThreadManager& IN_threads, iAllocator* IN_allocator) :
 		threads		{ IN_threads				},
 		scenes		{ IN_allocator				},
+        shapes      { IN_allocator              },
 		allocator	{ IN_allocator				},
 		dispatcher	{ IN_threads, IN_allocator	}
 	{
@@ -56,7 +57,6 @@ namespace FlexKit
 		if (!foundation)
 			FK_ASSERT(0); // Failed to init
 
-		physxAPI = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, physx::PxTolerancesScale(), recordMemoryAllocations);
 
 #if USING(PHYSX_PVD)
 		if (remoteDebuggerEnabled || true)
@@ -64,7 +64,7 @@ namespace FlexKit
 			physx::PxPvd*			pvd			= physx::PxCreatePvd(*foundation);
 			physx::PxPvdTransport*	transport	= physx::PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
 
-			bool res = pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eDEBUG);
+			bool res = pvd->connect(*transport, physx::PxPvdInstrumentationFlag::eALL);
 
 			if (!res) {
 				pvd->release();
@@ -77,8 +77,11 @@ namespace FlexKit
 		}
 		else
 		{
+            visualDebugger              = nullptr;
+            visualDebuggerConnection    = nullptr;
 		}
 #endif
+        physxAPI = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, physx::PxTolerancesScale(), recordMemoryAllocations, visualDebugger);
 
 		// TODO: gracefull handling of errors maybe?
 		if (!physxAPI)
@@ -96,55 +99,81 @@ namespace FlexKit
 		// Create Default Material
 		defaultMaterial = physxAPI->createMaterial(0.5f, 0.5f, .1f);
 		updateColliders	= false;
-
-		//pxDispatcher	= physx::PxDefaultCpuDispatcherCreate(4);
 	}
 
 
 	/************************************************************************************************/
 
 
-	PhysicsSceneHandle PhysicsSystem::CreateScene()
+	PhysXSceneHandle PhysXComponent::CreateScene()
 	{
 		physx::PxSceneDesc desc(physxAPI->getTolerancesScale());
 		desc.gravity		= physx::PxVec3(0.0f, -9.81f, 0.0f);
 		desc.filterShader	= physx::PxDefaultSimulationFilterShader;
 		desc.cpuDispatcher	= &dispatcher;
-		//desc.cpuDispatcher	= pxDispatcher;
 
 		auto pScene			= physxAPI->createScene(desc);
-		auto Idx			= scenes.emplace_back(pScene, this, allocator);
+		auto Idx			= scenes.emplace_back(pScene, *this, allocator);
 
-		return PhysicsSceneHandle(Idx);
+        /*
+        pScene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
+        pScene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 2.0f);
+        pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
+        */
+
+		return PhysXSceneHandle(Idx);
 	}
 
 
 	/************************************************************************************************/
 
 
-	StaticColliderHandle PhysicsSystem::CreateStaticBoxCollider(PhysicsSceneHandle sceneHandle, float3 xyz, float3 pos, Quaternion q)
+    StaticBodyHandle PhysXComponent::CreateStaticCollider(PhysXSceneHandle sceneHndl, PxShapeHandle shape, float3 pos, Quaternion q)
 	{
-		StaticColliderEntityHandle collider = scenes[sceneHandle.INDEX].CreateStaticBoxCollider(xyz, pos, q);
-		return { sceneHandle,  collider };
+        auto& scene = GetScene_ref(sceneHndl);
+		return scene.CreateStaticCollider(shapes[shape], pos, q);
 	}
 
 
 	/************************************************************************************************/
 
 
-	rbColliderHandle PhysicsSystem::CreateRigidBodyBoxCollider(PhysicsSceneHandle sceneHandle, float3 xyz, float3 pos, Quaternion q, NodeHandle node)
+    RigidBodyHandle PhysXComponent::CreateRigidBodyCollider(PhysXSceneHandle sceneHndl, PxShapeHandle shape, float3 pos, Quaternion q)
 	{
-		rbColliderEntityHandle colliderHandle = scenes[sceneHandle.INDEX].CreateRigidBodyBoxCollider(xyz, pos, q, node);
-
-		return { sceneHandle, colliderHandle };
+        auto& scene = GetScene_ref(sceneHndl);
+		return scene.CreateRigidBodyCollider(shapes[shape], pos, q);
 	}
+
+
+    /************************************************************************************************/
+
+
+    PxShapeHandle  PhysXComponent::CreateCubeShape(const float3 dimensions)
+    {
+        auto shape = physxAPI->createShape(
+            physx::PxBoxGeometry(dimensions.x, dimensions.y, dimensions.z),
+            *defaultMaterial,
+            false);
+
+        return PxShapeHandle{ shapes.push_back({ shape }) };
+    }
+
+
+    /************************************************************************************************/
+
+
+    PhysXScene& PhysXComponent::GetScene_ref(PhysXSceneHandle handle)
+    {
+        return scenes[handle];
+    }
+
 
 	/************************************************************************************************/
 
 
-	void PhysicsSystem::Simulate(double dt)
+	void PhysXComponent::Simulate(double dt)
 	{
-		for (PhysicsScene& scene : scenes)
+		for (PhysXScene& scene : scenes)
 			scene.Update(dt);
 	}
 
@@ -261,7 +290,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	PhysicsSystem::~PhysicsSystem()
+	PhysXComponent::~PhysXComponent()
 	{
 		Release();
 	}
@@ -270,7 +299,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysicsSystem::Release()
+	void PhysXComponent::Release()
 	{
 		for (auto& scene : scenes)
 			scene.Release();
@@ -290,13 +319,31 @@ namespace FlexKit
 		foundation		= nullptr;
 	}
 
+
 	/************************************************************************************************/
 
 
-	void PhysicsSystem::ReleaseScene(PhysicsSceneHandle handle)
+	void PhysXComponent::ReleaseScene(PhysXSceneHandle handle)
 	{
 		scenes[handle.INDEX].Release();
 	}
+
+
+    /************************************************************************************************/
+
+
+    void PhysXComponent::Update(double dt)
+    {
+        const auto updatePeriod = 1.0 / updateFrequency;
+
+        while(acc > updatePeriod)
+        {
+            Simulate(dt);
+            acc -= updatePeriod;
+        }
+
+        acc += dt;
+    }
 
 
 	/************************************************************************************************/
@@ -415,7 +462,7 @@ namespace FlexKit
 	*/
 
 
-	void PhysicsScene::Update(double dT)
+	void PhysXScene::Update(double dT)
 	{
 		EXITSCOPE( T += dT; );
 
@@ -440,7 +487,6 @@ namespace FlexKit
 				else
 					return;
 			}
-
 		} while ((T > stepSize));
 	}
 
@@ -448,7 +494,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysicsScene::UpdateColliders()
+	void PhysXScene::UpdateColliders()
 	{
 		staticColliders.UpdateColliders();
 		rbColliders.UpdateColliders();
@@ -458,7 +504,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticColliderEntityHandle	PhysicsScene::CreateStaticBoxCollider(float3 dimensions, float3 initialPosition, Quaternion initialQ)
+	StaticBodyHandle	PhysXScene::CreateStaticCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
 	{
 		physx::PxTransform pxInitialPose =
 			physx::PxTransform{ PxMat44(PxIdentity) };
@@ -466,27 +512,24 @@ namespace FlexKit
 		pxInitialPose.q = physx::PxQuat{ initialQ.x, initialQ.y, initialQ.z, initialQ.w};
 		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
 
-		auto rigidStaticActor	= system->physxAPI->createRigidStatic(pxInitialPose);
-		
-		PxShape* boxShape = PxRigidActorExt::createExclusiveShape(	*rigidStaticActor,
-																	 physx::PxBoxGeometry(dimensions.x, dimensions.y, dimensions.z),
-																	*system->defaultMaterial );
+		auto rigidStaticActor	= system.physxAPI->createRigidStatic(pxInitialPose);
 
-		size_t handleIdx		= staticColliders.colliders.push_back({	GetZeroedNode(),
-																		rigidStaticActor,
-																		boxShape});
+        rigidStaticActor->attachShape(*shape._ptr);
+
+		size_t handleIdx		= staticColliders.push_back({ GetZeroedNode(), rigidStaticActor }, true);
 
 		scene->addActor(*rigidStaticActor);
 
-		return StaticColliderEntityHandle{ static_cast<unsigned int>(handleIdx) };
+		return StaticBodyHandle{ static_cast<unsigned int>(handleIdx) };
 	}
 
 
 	/************************************************************************************************/
 
 
-	rbColliderEntityHandle PhysicsScene::CreateRigidBodyBoxCollider(float3 dimensions, float3 initialPosition, Quaternion initialQ, NodeHandle node)
+    RigidBodyHandle PhysXScene::CreateRigidBodyCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
 	{
+        auto node = GetZeroedNode();
 		SetOrientation	(node, initialQ);
 		SetPositionW	(node, initialPosition);
 
@@ -495,43 +538,59 @@ namespace FlexKit
 		pxInitialPose.q = physx::PxQuat{ initialQ.x, initialQ.y, initialQ.z, initialQ.w };
 		pxInitialPose.p = physx::PxVec3{ initialPosition.x, initialPosition.y, initialPosition.z };
 
-		PxRigidDynamic* rigidBodyActor = system->physxAPI->createRigidDynamic(pxInitialPose);
+		PxRigidDynamic* rigidBodyActor = system.physxAPI->createRigidDynamic(pxInitialPose);
 
-		PxShape* shape = PxRigidActorExt::createExclusiveShape(	*rigidBodyActor,
-																physx::PxBoxGeometry(dimensions.x, dimensions.y, dimensions.z),
-																*system->defaultMaterial);
+
+        rigidBodyActor->attachShape(*shape._ptr);
 
 		size_t handleIdx = rbColliders.colliders.push_back({	node,
-																rigidBodyActor,
-																shape });
+																rigidBodyActor });
 
-		rigidBodyActor->setMass(100.0f);
+		rigidBodyActor->setMass(1.0f);
 		scene->addActor(*rigidBodyActor);
 
-		return rbColliderEntityHandle{ static_cast<unsigned int>(handleIdx) };
+		return RigidBodyHandle{ static_cast<unsigned int>(handleIdx) };
 	}
+
+
+    /************************************************************************************************/
+
+
+    void PhysXScene::ReleaseCollider(RigidBodyHandle handle)
+    {
+        scene->removeActor(*rbColliders.colliders[handle].actor);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void PhysXScene::ReleaseCollider(StaticBodyHandle handle)
+    {
+        scene->removeActor(*staticColliders.colliders[handle].actor);
+    }
 
 
 	/************************************************************************************************/
 
 
-	void PhysicsScene::SetPosition(rbColliderEntityHandle collider, float3 xyz)
+	void PhysXScene::SetPosition(RigidBodyHandle collider, float3 xyz)
 	{
 		auto& colliderIMPL	= rbColliders.colliders[collider.INDEX];
-		auto pose			= colliderIMPL.dynamicActor->getGlobalPose();
+		auto pose			= colliderIMPL.actor->getGlobalPose();
 
 		pose.p = {xyz.x, xyz.y, xyz.z};
-		colliderIMPL.dynamicActor->setGlobalPose(pose);
+		colliderIMPL.actor->setGlobalPose(pose);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void PhysicsScene::SetMass(rbColliderEntityHandle collider, float m)
+	void PhysXScene::SetMass(RigidBodyHandle collider, float m)
 	{
 		auto& colliderIMPL = rbColliders.colliders[collider.INDEX];
-		colliderIMPL.dynamicActor->setMass(m);
+		colliderIMPL.actor->setMass(m);
 	}
 
 

@@ -149,28 +149,26 @@ int main(int argc, char* argv[])
 					return -1;
 				}
 
-				for (auto MD : MetaData)
+				for (const auto& MD : MetaData)
 				{
-					if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE) {
+                    if (MD->UserType    == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE &&
+                        MD->type        == MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE)
+                    {
+                        auto cubeMap = std::static_pointer_cast<TextureCubeMap_MetaData>(MD);
+                        // LoadTextures into a cubemap resource
+                    }
+                    else if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE)
+                    {
 						FK_ASSERT(0);
 						//auto NewResource = MetaDataToBlob(MD, FlexKit::SystemAllocator);
 						//if(NewResource)
 						//	resources.push_back(NewResource);
 					}
-				}
-
-				// Load Fonts
-				constexpr bool FontLoadingEnabled = false;
-				if constexpr (FontLoadingEnabled)
-				{
-					for (auto MD : MetaData)
-					{
-						if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT)
-						{
-							auto Font	= std::static_pointer_cast<Font_MetaData>(MD);
-							auto res	= LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
-						}
-					}
+                    if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT && false)
+                    {
+                        auto Font   = std::static_pointer_cast<Font_MetaData>(MD);
+                        auto res    = LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
+                    }
 				}
 
 

@@ -174,7 +174,7 @@ namespace FlexKit
 	constexpr ComponentID TransformComponentID = GetTypeGUID(TransformComponent);
 
 	class SceneNodeComponent : 
-		public Component<SceneNodeComponent, NodeHandle, TransformComponentID>
+		public Component<SceneNodeComponent, TransformComponentID>
 	{
 	public:
 
@@ -378,6 +378,18 @@ namespace FlexKit
             []() -> NodeHandle
             {
                 return InvalidHandle_t;
+            }
+        );
+    }
+
+
+
+    void EnableScale(GameObject& go, bool scale)
+    {
+        return Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                return node.ToggleScaling(scale);
             }
         );
     }

@@ -12,6 +12,8 @@ GameState::GameState(
             GameFramework&  IN_framework, 
             BaseState&		IN_base) :
                 FrameworkState	{ IN_framework },
+
+                pScene          { IN_base.physics.CreateScene() },
         
                 frameID			{ 0										},
                 base			{ IN_base								},
@@ -36,6 +38,7 @@ GameState::~GameState()
     }
 
     scene.ClearScene();
+    base.physics.ReleaseScene(pScene);
 }
 
 

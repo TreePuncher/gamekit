@@ -51,7 +51,8 @@ namespace FlexKit
 			EMI_ANIMATIONCLIP,
 			EMI_ANIMATIONEVENT,
 			EMI_TERRAINCOLLIDER,
-			EMI_TEXTURESET,
+            EMI_TEXTURESET,
+            EMI_CUBEMAPTEXTURE,
 		};
 
 		enum class EMETA_RECIPIENT_TYPE
@@ -170,6 +171,24 @@ namespace FlexKit
 		std::string	SceneID;
 
 		MetaDataList sceneMetaData;
+	};
+
+
+    /************************************************************************************************/
+
+
+    struct TextureCubeMap_MetaData : public MetaData
+	{
+        TextureCubeMap_MetaData(){
+			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
+			type		= MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE;
+			Guid		= INVALIDHANDLE;
+		}
+
+		GUID_t		Guid;
+        std::string assetID;
+		std::string	TextureFiles[6];
+        size_t      format;
 	};
 
 

@@ -318,6 +318,52 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    MetaData* ParseCubeMapTexture(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    {
+        auto Target		= tokens[begin - 2];
+		auto AssetGUID	= FindValue(values, "AssetGUID");
+		auto AssetID	= FindValue(values, "AssetID");
+
+        auto forward    = FindValue(values, "Forward");
+        auto backward   = FindValue(values, "Backward");
+        auto left       = FindValue(values, "Left");
+        auto right      = FindValue(values, "Right");
+        auto top        = FindValue(values, "Top");
+        auto bottom     = FindValue(values, "Bottom");
+
+        auto* cubeMap = new TextureCubeMap_MetaData;
+
+		if(AssetGUID != nullptr && AssetGUID->Type == ValueType::INT)
+            cubeMap->Guid = AssetGUID->Data.I;
+
+		if (AssetID != nullptr && AssetID->Type == ValueType::STRING)
+            cubeMap->assetID = AssetID->Data.S;
+
+        if (forward != nullptr && forward->Type == ValueType::STRING)
+            cubeMap->TextureFiles[0] = forward->Data.S;
+
+        if (backward != nullptr && backward->Type == ValueType::STRING)
+            cubeMap->TextureFiles[0] = backward->Data.S;
+
+        if (left != nullptr && left->Type == ValueType::STRING)
+            cubeMap->TextureFiles[0] = left->Data.S;
+
+        if (right != nullptr && right->Type == ValueType::STRING)
+            cubeMap->TextureFiles[0] = right->Data.S;
+
+        if (top != nullptr && top->Type == ValueType::STRING)
+            cubeMap->TextureFiles[0] = top->Data.S;
+
+        if (bottom != nullptr && bottom->Type == ValueType::STRING)
+            cubeMap->TextureFiles[0] = bottom->Data.S;
+
+		return cubeMap;
+    }
+
+
+    /************************************************************************************************/
+
+
 	MetaData* ParseScene(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto Target				= tokens[begin - 2];
@@ -572,7 +618,8 @@ namespace FlexKit
 				{ "Scene",				    ParseScene					},
                 { "Skeleton",			    ParseSkeleton				},
                 { "SkeletalAnimationClip",	ParseSkeletalAnimationClip  },
-				{ "TerrainCollider",	    ParseTerrainColliderAsset	},
+                { "TerrainCollider",	    ParseTerrainColliderAsset	},
+                { "CubeMapTexture",	        ParseCubeMapTexture         },
 				//table["TextureSet"]		= ParseTextureSet;
 				//table["Test"]				= CreateParser(0);
 			};
@@ -689,7 +736,6 @@ namespace FlexKit
 
 		return component;
 	}
-
 
 	/************************************************************************************************/
 
