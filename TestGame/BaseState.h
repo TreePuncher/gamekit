@@ -216,9 +216,8 @@ public:
 
     void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
     {
+        physics.Update(dT, core.GetTempMemory());
         t += dT;
-
-        physics.Update(dT);
     }
 
 

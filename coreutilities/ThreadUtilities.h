@@ -302,7 +302,7 @@ namespace FlexKit
     thread_local CircularStealingQueue<iWork*>* localWorkQueue = nullptr;
 
 
-    inline void PushToLocalQueue(iWork& work, iWork* _Debug_Parent)
+    inline void PushToLocalQueue(iWork& work)
     {
         localWorkQueue->push_back(&work);
     }
@@ -581,7 +581,6 @@ namespace FlexKit
 			ThreadManager&	IN_threads,
 			iAllocator*		allocator = FlexKit::SystemAllocator) :
 				PostEvents	{ allocator     },
-                workList    { allocator     },
 				threads		{ IN_threads	} {}
 
         ~WorkBarrier() { Join(); }
@@ -590,11 +589,13 @@ namespace FlexKit
 		WorkBarrier& operator = (const WorkBarrier&)	= delete;
 
 		size_t  GetDependentCount		() { return tasksInProgress; }
-		void    AddWork                 (iWork* Work);
+		void    AddWork                 (iWork& Work);
 		void    AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void    Wait					();
 		void    Join					();
+        void    JoinLocal();
 
+        void    Reset();
 	private:
         void    _OnEnd()
         {
@@ -610,8 +611,6 @@ namespace FlexKit
 
 		ThreadManager&				threads;
 		Vector<OnCompletionEvent>	PostEvents;
-        Vector<iWork*>              workList;
-
 	};
 
 

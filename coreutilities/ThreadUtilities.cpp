@@ -153,16 +153,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void WorkBarrier::AddWork(iWork* work)
+	void WorkBarrier::AddWork(iWork& work)
 	{
-		FK_ASSERT(work != nullptr);
-
-		workList.push_back(work);
-
 		++tasksInProgress;
 
-		work->Subscribe(
-			[this]
+		work.Subscribe(
+			[&]
 			{
 				auto prev = tasksInProgress.fetch_sub(1); FK_ASSERT(prev > 0);
 
@@ -199,10 +195,8 @@ namespace FlexKit
 
 	void WorkBarrier::Join()
 	{
-		FK_ASSERT(workList.size() >= tasksInProgress);
-
-		if (!workList.size())
-			return;
+        if (!tasksInProgress)
+            return;
 
 		do
 		{
@@ -216,7 +210,44 @@ namespace FlexKit
 				work->Release();
 			}
 		} while (true);
+
+        Reset();
 	}
+
+    void WorkBarrier::JoinLocal()
+    {
+        if (!tasksInProgress)
+            return;
+
+		do
+		{
+			if (!inProgress)
+				return;
+
+			for(auto work = localWorkQueue->pop_back().value_or(nullptr);
+                work;
+                work = localWorkQueue->pop_back().value_or(nullptr))
+			{
+				work->Run();
+				work->NotifyWatchers();
+				work->Release();
+			}
+		} while (true);
+
+        Reset();
+    }
+
+
+    /************************************************************************************************/
+
+
+    void WorkBarrier::Reset()
+    {
+        tasksInProgress = 0;
+        inProgress      = true;
+    }
+
+
 
 
 	ThreadManager* WorkerThread::Manager = nullptr;

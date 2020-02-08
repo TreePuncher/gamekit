@@ -182,7 +182,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 
         // Create Rigid Body Box
-        for (size_t itr = 0; itr < 30; itr++)
+        for (size_t itr = 0; itr < 3000; itr++)
         {
             auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { 0, 2.1f * itr + 1, 0 });
             auto& dynamicBox = allocator.allocate<GameObject>();
