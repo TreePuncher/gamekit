@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     FK_LOG_INFO("Logging initialized started.");
 
     uint2   WH          = uint2{ 1920, 1080 } * 1.4f;
-    size_t threadCount  = 20;
+    size_t threadCount  = 19;
 
     for (size_t I = 0; I < argc; ++I)
     {
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
         }   break;
         case ApplicationMode::GraphicsTestMode:
         {
-            StartTestState(app, base, TestScenes::GlobalIllumination);
+            StartTestState(app, base, TestScenes::PhysXTest);
         }   break;
         case ApplicationMode::PlaygroundMode:
         {

@@ -78,14 +78,15 @@ public:
     GameState(const GameState&) = delete;
     GameState& operator =	(const GameState&) = delete;
 
-    void Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
-    void PreDrawUpdate(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
-    void Draw(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
-    void PostDrawUpdate(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+    void Update         (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+    void PreDrawUpdate  (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
+    void Draw           (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+    void PostDrawUpdate (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
 
-    GraphicScene	scene;
-    BaseState& base;
-    size_t			frameID;
+    GraphicScene	    scene;
+    PhysXSceneHandle    pScene;
+    BaseState&          base;
+    size_t			    frameID;
 };
 
 
@@ -99,11 +100,11 @@ public:
 
     virtual ~LocalPlayerState() final override {}
 
-    void Update(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-    void PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
-    void Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
-    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
-    bool EventHandler(Event evt) final override;
+    void Update         (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+    void PreDrawUpdate  (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
+    void Draw           (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
+    void PostDrawUpdate (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
+    bool EventHandler   (Event evt) final override;
 
 
 private:	/************************************************************************************************/
@@ -116,11 +117,11 @@ private:	/**********************************************************************
         ComputeTiledDeferred
     }   renderMode = RenderMode::Deferred;
 
-    NetObjectInputComponent			netInputObjects;
-    InputMap						eventMap;
-    OrbitCameraBehavior				debugCamera;
-    BaseState& base;
-    GameState& game;
+    NetObjectInputComponent		netInputObjects;
+    InputMap					eventMap;
+    OrbitCameraBehavior			debugCamera;
+    BaseState&                  base;
+    GameState&                  game;
 };
 
 

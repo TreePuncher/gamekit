@@ -9,12 +9,6 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 {
 	const AssetHandle model = 1001;
 
-	float3x3 m;
-	m[0] = { 0, 0, 0 };
-	m[1] = { 0, 0, 0 };
-	m[2] = { 0, 0, 0 };
-	m[3] = { 0, 0, 0 };
-
 	auto [triMesh, loaded] = FindMesh(model);
 
 	if (!loaded)
@@ -61,7 +55,8 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 enum class TestScenes
 {
 	GlobalIllumination,
-	ShadowTestScene
+	ShadowTestScene,
+    PhysXTest
 };
 
 
@@ -94,7 +89,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 	renderSystem.QueuePSOLoad(TEXTURE2CUBEMAP_GGX);
 	renderSystem.QueuePSOLoad(TEXTURE2CUBEMAP_IRRADIANCE);
 
-	auto Task =
+	auto loadTexturesTask =
 		[&]()
 		{
 			auto& framework             = app.GetFramework();
@@ -127,7 +122,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			HDRStack.Release();
 		};
 
-	auto& workItem = CreateWorkItem(Task, app.GetFramework().core.GetBlockMemory());
+	auto& workItem = CreateWorkItem(loadTexturesTask, app.GetFramework().core.GetBlockMemory());
 	app.GetFramework().core.Threads.AddWork(workItem);
 
 	switch (scene)
@@ -159,6 +154,45 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 		}
 		*/
 	 }  break;
+    case TestScenes::PhysXTest:
+    {
+        auto& allocator = app.GetCore().GetBlockMemory();
+
+        // Load Model
+        const AssetHandle model = 1002;
+        auto [triMesh, loaded] = FindMesh(model);
+
+        if (!loaded)
+            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
+
+        auto    floorShape = base.physics.CreateCubeShape({ 300, 1, 300 });
+        auto    cubeShape  = base.physics.CreateCubeShape({ 1, 1, 1 });
+
+        // Create static Box
+        auto  staticCollider = base.physics.CreateStaticCollider(gameState.pScene, floorShape, { 0, 0, 0 });
+        auto& staticBox = allocator.allocate<GameObject>();
+
+        staticBox.AddView<StaticBodyView>(staticCollider, gameState.pScene);
+        auto staticNode = GetStaticBodyNode(staticBox);
+        staticBox.AddView<DrawableView>(triMesh, staticNode);
+        staticBox.AddView<SceneNodeView<>>(staticNode);
+        EnableScale(staticBox, true);
+        SetScale(staticBox, { 300, 1, 300 });
+        gameState.scene.AddGameObject(staticBox, staticNode);
+
+
+        // Create Rigid Body Box
+        for (size_t itr = 0; itr < 30; itr++)
+        {
+            auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { 0, 2.1f * itr + 1, 0 });
+            auto& dynamicBox = allocator.allocate<GameObject>();
+
+            dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
+            auto dynamicNode = GetRigidBodyNode(dynamicBox);
+            dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
+            gameState.scene.AddGameObject(dynamicBox, dynamicNode);
+        }
+    }   break;
 	default:
 		break;
 	}

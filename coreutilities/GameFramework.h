@@ -94,7 +94,6 @@ namespace FlexKit
 		void PopState();
 
 		RenderSystem&	GetRenderSystem()	{ return core.RenderSystem; }
-		PhysicsSystem&	GetPhysx()			{ return core.Physics; }
 
 		template<typename TY_INITIALSTATE, typename ... TY_ARGS>
 		TY_INITIALSTATE& PushState(TY_ARGS&& ... args)

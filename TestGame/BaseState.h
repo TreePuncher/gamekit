@@ -184,7 +184,10 @@ public:
 			pointLights	        { framework.core.GetBlockMemory() },
             skeletonComponent   { framework.core.GetBlockMemory() },
             gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem    },
-            shadowCasters       { IN_Framework.core.GetBlockMemory()                            }
+            shadowCasters       { IN_Framework.core.GetBlockMemory()                            },
+            physics             { IN_Framework.core.Threads, IN_Framework.core.GetBlockMemory() },
+            rigidBodies         { physics },
+            staticBodies        { physics }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
@@ -214,6 +217,8 @@ public:
     void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
     {
         t += dT;
+
+        physics.Update(dT);
     }
 
 
@@ -247,6 +252,9 @@ public:
 	PointLightComponent			pointLights;
     SkeletonComponent           skeletonComponent;
     PointLightShadowCaster      shadowCasters;
+    PhysXComponent  	        physics;
+    RigidBodyComponent          rigidBodies;
+    StaticBodyComponent         staticBodies;
 
 	TextureStreamingEngine		streamingEngine;
 };

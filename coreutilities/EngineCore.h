@@ -153,8 +153,7 @@ namespace FlexKit
 			Time			{ memory->BlockAllocator						},
 			Threads			{ threadCount, memory->BlockAllocator	        },// TODO: Get System Thread Count.
 			RenderSystem	{ memory->BlockAllocator, &Threads				},
-			FrameLock		{ true											},
-			Physics			{ Threads, memory->BlockAllocator				}
+			FrameLock		{ true											}
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
 			Initiate(memory, WH);
@@ -189,8 +188,6 @@ namespace FlexKit
 
 		RenderWindow			Window;
 		Time					Time;
-
-		PhysicsSystem			Physics;
 
 		Vector<const char*>		CmdArguments;
 

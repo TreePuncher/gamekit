@@ -17,7 +17,7 @@ namespace FlexKit
 
 	constexpr ComponentID CameraComponentID = GetTypeGUID(CameraComponentID);
 
-	class CameraComponent : public Component<CameraComponent, CameraHandle, CameraComponentID>
+	class CameraComponent : public Component<CameraComponent, CameraComponentID>
 	{
 	public:
 		CameraComponent(iAllocator* allocator) : 

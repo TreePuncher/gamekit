@@ -26,10 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PHYSICSUTILITIES_H
 
 #include "..\buildsettings.h"
+#include "..\coreutilities\components.h"
 #include "..\coreutilities\containers.h"
+#include "..\coreutilities\graphicScene.h"
 #include "..\coreutilities\mathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\graphicScene.h"
 #include "..\coreutilities\threadUtilities.h"
 
 #include "PxPhysicsAPI.h"
@@ -59,8 +60,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 	// Forward Declarations
-	class PhysicsScene;
-	class PhysicsSystem;
+	class PhysXScene;
+	class PhysXComponent;
 	class StaticColliderSystem;
 
 	static physx::PxDefaultErrorCallback	gDefaultErrorCallback;
@@ -240,27 +241,43 @@ namespace FlexKit
 
 	*/
 
-	
 
-	typedef Handle_t<16, GetCRCGUID(StaticColliderHandle)>	StaticColliderEntityHandle;
-	typedef Handle_t<16, GetCRCGUID(rbColliderHandle)>		rbColliderEntityHandle;
-	typedef Handle_t<16, GetCRCGUID(PhysicsScene)>			PhysicsSceneHandle;
+    /************************************************************************************************/
 
-	using StaticColliderHandle	= Pair<PhysicsSceneHandle, StaticColliderEntityHandle>;
-	using rbColliderHandle		= Pair<PhysicsSceneHandle, rbColliderEntityHandle>;
+
+	typedef Handle_t<16, GetCRCGUID(StaticBodyHandle)>	StaticBodyHandle;
+	typedef Handle_t<16, GetCRCGUID(RigidBodyHandle)>	RigidBodyHandle;
+	typedef Handle_t<16, GetCRCGUID(PhysXSceneHandle)>	PhysXSceneHandle;
+    typedef Handle_t<16, GetCRCGUID(PxShapeHandle)>		PxShapeHandle;
 
 
 	/************************************************************************************************/
 
 
+    struct Shape
+    {
+        physx::PxShape* _ptr;
+    };
+
+
+    /************************************************************************************************/
+
+
 	class StaticColliderSystem
 	{
 	public:
-		StaticColliderSystem(PhysicsScene* IN_scene, iAllocator* IN_memory) :
-			parentScene	{ IN_scene	},
-			colliders	{ IN_memory }
+		StaticColliderSystem(PhysXScene& IN_scene, iAllocator* IN_memory) :
+			parentScene	{ &IN_scene	},
+			colliders	{ IN_memory },
+            dirtyFlags  { IN_memory, 128 }
 		{
 		}
+
+
+        ~StaticColliderSystem()
+        {
+            Release();
+        }
 
 		// NON COPYABLE
 		StaticColliderSystem				(const StaticColliderSystem&) = delete;
@@ -279,58 +296,80 @@ namespace FlexKit
 		void Release()
 		{
 			for (auto& collider : colliders)
-				collider.staticActor->release();
+				collider.actor->release();
 
-			colliders.clear();
+			colliders.Release();
+            dirtyFlags.Release();
 		}
 
 
 		void UpdateColliders()
 		{
-			for (auto& collider : colliders) 
+			for (size_t itr = 0; itr < dirtyFlags.size(); ++itr) 
 			{
-				physx::PxTransform pose = collider.staticActor->getGlobalPose();
-				Quaternion	orientation		= Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
-				float3		position		= float3(pose.p.x, pose.p.y, pose.p.z);
+                if (dirtyFlags[itr])
+                {
+                    auto& collider = colliders[itr];
+				    physx::PxTransform pose     = collider.actor->getGlobalPose();
+				    Quaternion	orientation		= Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
+				    float3		position		= float3(pose.p.x, pose.p.y, pose.p.z);
 
-				FlexKit::SetPositionW	(collider.sceneNode, position);
-				FlexKit::SetOrientation	(collider.sceneNode, orientation);
+				    FlexKit::SetPositionW	(collider.node, position);
+				    FlexKit::SetOrientation	(collider.node, orientation);
+
+                    dirtyFlags[itr] = false;
+                }
 			}
 		}
 
 
+        auto& operator[] (StaticBodyHandle collider)
+        {
+            return colliders[collider];
+        }
+
 		struct StaticColliderObject
 		{
-			NodeHandle				sceneNode;
-			physx::PxRigidStatic*	staticActor;
+			NodeHandle				node;
+			physx::PxRigidStatic*	actor;
 			physx::PxShape*			shape;
 		};
 
 
-		StaticColliderObject GetAPIObject(StaticColliderEntityHandle collider)
+        size_t push_back(const StaticColliderObject& object, bool initialDirtyFlag)
+        {
+            dirtyFlags.push_back(initialDirtyFlag);
+            return colliders.push_back(object);
+        }
+
+
+		StaticColliderObject GetAPIObject(StaticBodyHandle collider)
 		{
 			return colliders[collider];
 		}
 
-		Vector<StaticColliderObject>	colliders;
-		PhysicsScene*					parentScene;
+
+        Vector<StaticColliderObject>	colliders;
+        Vector<bool>	                dirtyFlags;
+        PhysXScene*				        parentScene;
 	};
+
+
+    /************************************************************************************************/
 
 
 	class RigidBodyColliderSystem
 	{
 	public:
-		RigidBodyColliderSystem(PhysicsScene* IN_scene, iAllocator* IN_memory) :
-			parentScene	{ IN_scene },
-			colliders	{ IN_memory }
-		{
-		}
+		RigidBodyColliderSystem(PhysXScene& IN_scene, iAllocator* IN_memory) :
+			parentScene	{ IN_scene  },
+			colliders	{ IN_memory } {}
 
 
 		void Release()
 		{
 			for (auto& collider : colliders)
-				collider.dynamicActor->release();
+				collider.actor->release();
 
 			colliders.clear();
 		}
@@ -340,48 +379,53 @@ namespace FlexKit
 		{
 			for (auto& collider : colliders) 
 			{
-				if (collider.dynamicActor->isSleeping())
+				if (collider.actor->isSleeping())
 					continue;
 
-				physx::PxTransform pose		= collider.dynamicActor->getGlobalPose();
-				Quaternion	orientation		= Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
-				float3		position		= float3(pose.p.x, pose.p.y, pose.p.z);
+				physx::PxTransform  pose		 = collider.actor->getGlobalPose();
+				Quaternion	        orientation	 = Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
+                float3		        position     = float3{ pose.p.x, pose.p.y, pose.p.z };
 
-				FlexKit::SetPositionW	(collider.sceneNode, position);
-				FlexKit::SetOrientation	(collider.sceneNode, orientation);
+				SetPositionW	(collider.node, position);
+				SetOrientation	(collider.node, orientation);
 			}
 		}
 
 
 		struct rbColliderObject
 		{
-			NodeHandle				sceneNode;
-			physx::PxRigidDynamic*	dynamicActor;
-			physx::PxShape*			shape;
+			NodeHandle				node;
+			physx::PxRigidDynamic*	actor;
 		};
 
 
-		rbColliderObject GetAPIObject(rbColliderEntityHandle collider)
+        rbColliderObject& operator[] (RigidBodyHandle collider)
+        {
+            return colliders[collider];
+        }
+
+
+		rbColliderObject GetAPIObject(RigidBodyHandle collider)
 		{
 			return colliders[collider];
 		}
 
 		Vector<rbColliderObject>	colliders;
-		PhysicsScene*				parentScene;
+        PhysXScene&				    parentScene;
 	};
 
 
-	class PhysicsScene
+	class PhysXScene
 	{
 	public:
-		PhysicsScene(physx::PxScene* IN_scene, PhysicsSystem* IN_system, iAllocator* IN_memory) :
+        PhysXScene(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) :
 			scene			{ IN_scene			},
 			system			{ IN_system			},
 			memory			{ IN_memory			},
-			staticColliders	{ this, IN_memory	},
-			rbColliders		{ this, IN_memory	}
+			staticColliders	{ *this, IN_memory	},
+			rbColliders		{ *this, IN_memory	}
 		{
-			FK_ASSERT(scene && system && memory, "INVALID ARGUEMENT");
+			FK_ASSERT(scene && memory, "INVALID ARGUEMENT");
 
 			if (!scene)
 				FK_ASSERT(0, "FAILED TO CREATE PSCENE!");
@@ -391,7 +435,7 @@ namespace FlexKit
 		}
 
 
-		PhysicsScene(PhysicsScene&& IN_scene) :
+        PhysXScene(PhysXScene&& IN_scene) :
 			staticColliders		{ std::move(IN_scene.staticColliders)	},
 			rbColliders			{ std::move(IN_scene.rbColliders)		},
 			scene				{ IN_scene.scene						},
@@ -404,14 +448,20 @@ namespace FlexKit
 		}
 
 
-		~PhysicsScene()
+		~PhysXScene()
 		{
 			Release();
 		}
 
 
+        // uncopyable
+        PhysXScene(const PhysXScene& scene)                 = delete;
+        PhysXScene& operator = (const PhysXScene& scene)    = delete;
+
+
 		void Release()
 		{
+            // Drain updates first
 			while (updateColliders)
 			{
 				if (scene->checkResults())
@@ -423,7 +473,6 @@ namespace FlexKit
 					}
 				}
 			}
-
 
 			staticColliders.Release();
 			rbColliders.Release();
@@ -438,16 +487,33 @@ namespace FlexKit
 		}
 
 
+        auto& operator[] (RigidBodyHandle collider)
+        {
+            return rbColliders[collider];
+        }
+
+
+        auto& operator[] (StaticBodyHandle collider)
+        {
+            return staticColliders[collider];
+        }
+
+
 		void Update(double dT);
 		void UpdateColliders		();
 
 		void DebugDraw				(FrameGraph* FGraph, iAllocator* TempMemory);
 
-		StaticColliderEntityHandle	CreateStaticBoxCollider		(float3 dimensions, float3 initialPosition, Quaternion initialQ);
-		rbColliderEntityHandle		CreateRigidBodyBoxCollider	(float3 dimensions, float3 initialPosition, Quaternion initialQ, NodeHandle node);
+        PxShapeHandle               CreateCubeShape(const float3 dimensions);
 
-		void						SetPosition	(rbColliderEntityHandle, float3 xyz);
-		void						SetMass(rbColliderEntityHandle, float m);
+        StaticBodyHandle	        CreateStaticCollider    (Shape shape, float3 initialPosition, Quaternion initialQ);
+        RigidBodyHandle		        CreateRigidBodyCollider (Shape shape, float3 initialPosition, Quaternion initialQ);
+
+        void                        ReleaseCollider(StaticBodyHandle);
+        void                        ReleaseCollider(RigidBodyHandle);
+
+		void						SetPosition	(RigidBodyHandle, float3 xyz);
+		void						SetMass     (RigidBodyHandle, float m);
 
 
 	private:
@@ -462,7 +528,7 @@ namespace FlexKit
 		StaticColliderSystem		staticColliders;
 		RigidBodyColliderSystem		rbColliders;
 
-		PhysicsSystem*				system;
+        PhysXComponent&				system;
 
 		FNPSCENECALLBACK_POSTUPDATE PreUpdate;
 		FNPSCENECALLBACK_PREUPDATE	PostUpdate;
@@ -475,33 +541,43 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI class PhysicsSystem
+    constexpr ComponentID PhysXComponentID = GetTypeGUID(RigidBodyComponentID);
+
+	FLEXKITAPI class PhysXComponent : public FlexKit::Component<PhysXComponent, PhysXComponentID>
 	{
 	public:
-		PhysicsSystem(ThreadManager& threads, iAllocator* allocator);
-		~PhysicsSystem();
+        PhysXComponent(ThreadManager& threads, iAllocator* allocator);
+		~PhysXComponent();
 
 		void							Release();
-		void							ReleaseScene				(PhysicsSceneHandle);
+		void							ReleaseScene				(PhysXSceneHandle);
 
+        void                            Update(double dt);
 		void							Simulate					(double dt);
 
-		PhysicsSceneHandle				CreateScene();
-		StaticColliderHandle			CreateStaticBoxCollider		(PhysicsSceneHandle, float3 xyz = { 10, 10, 10 }, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
+		PhysXSceneHandle				CreateScene();
+        StaticBodyHandle			    CreateStaticCollider	(PhysXSceneHandle, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
+        RigidBodyHandle				    CreateRigidBodyCollider	(PhysXSceneHandle, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
 
-		rbColliderHandle				CreateRigidBodyBoxCollider	(PhysicsSceneHandle, float3 xyz, float3 pos, Quaternion q, NodeHandle node);
+        PxShapeHandle                   CreateCubeShape(const float3 dimensions);
+
+        PhysXScene&                     GetScene_ref(PhysXSceneHandle handle);
 
 		template<typename TY>
-		PhysicsScene*					GetOwningScene(TY handle)
+		PhysXScene&	GetOwningScene(TY handle)
 		{
-			return &scenes[GetByType<PhysicsSceneHandle>(handle)];
+			return scenes[GetByType<PhysicsSceneHandle>(handle)];
 		}
 
-		operator PhysicsSystem* () { return this; }
+		operator PhysXComponent* () { return this; }
 
 	private:
 		physx::PxFoundation*			foundation;
 		physx::PxPhysics*				physxAPI;
+
+        double                          acc             = 0.0;
+        size_t                          updateFrequency = 30;
+
 		//physx::PxProfileZoneManager*	ProfileZoneManager;
 		//physx::PxCooking*				Oven;
 
@@ -512,18 +588,15 @@ namespace FlexKit
 		//physx::PxGpuDispatcher*			GPUDispatcher;
 		physx::PxMaterial*				defaultMaterial;
 
-		bool							remoteDebuggerEnabled;
+		bool							remoteDebuggerEnabled = true;
 
 
-		class CpuDispatcher : 
-			public physx::PxCpuDispatcher
+		class CpuDispatcher : public physx::PxCpuDispatcher
 		{
 		public:
 			CpuDispatcher(ThreadManager& IN_threads, iAllocator* persistent_allocator = FlexKit::SystemAllocator) :
 				threads		{ IN_threads			},
-				freeList	{ persistent_allocator	},
-				allocator	{ persistent_allocator	}
-			{}
+				allocator	{ persistent_allocator	} {}
 
 			~CpuDispatcher() {}
 
@@ -534,22 +607,23 @@ namespace FlexKit
 				PhysXTask(physx::PxBaseTask& IN_task, iAllocator* IN_memory = FlexKit::SystemAllocator) :
 					iWork		{ IN_memory	},
 					allocator	{ IN_memory	},
-					task		{ IN_task	} {}
+					task		{ IN_task	}
+                {
+                    _debugID = "PhysX Task";
+                }
 
 
-				virtual ~PhysXTask() final
-				{
-				}
+				virtual ~PhysXTask() final {}
 
 
-				void Run()		override 
+				void Run() final override
 				{
 					task.run();
 					task.release();
 				}
 
 
-				void Release()	override 
+				void Release() final override
 				{
 					allocator->release_aligned(this);
 				}
@@ -562,15 +636,8 @@ namespace FlexKit
 
 			void submitTask(physx::PxBaseTask& pxTask)
 			{
-				jobsInProgress++;
-				auto* newTask = &allocator->allocate_aligned<PhysXTask>(pxTask, allocator);
-
-				newTask->Subscribe([&]
-					{
-						jobsInProgress--; 
-					});
-
-				threads.AddWork(*newTask, allocator);
+				auto& newTask = allocator->allocate_aligned<PhysXTask>(pxTask, allocator);
+				threads.AddWork(newTask, allocator);
 			}
 
 
@@ -581,25 +648,165 @@ namespace FlexKit
 
 
 		private:
-			atomic_int			jobsInProgress = 0;
 			ThreadManager&		threads;
-			Vector<PhysXTask*>	freeList; // TODO: thread safe memory releasing!
 			iAllocator*			allocator;
 		} dispatcher;
 
 
-		Vector<PhysicsScene>			scenes;
-		iAllocator*						allocator;
-		ThreadManager&					threads;
-		friend PhysicsScene;
+        Vector<Shape>               shapes;
+
+		Vector<PhysXScene>			scenes;
+		iAllocator*					allocator;
+		ThreadManager&				threads;
+
+		friend PhysXScene;
 	};
+
+
+    /************************************************************************************************/
+
+
+    constexpr ComponentID StaticBodyComponentID  = GetTypeGUID(RigidBodyComponentID);
+
+    class StaticBodyComponent : public Component<StaticBodyComponent, StaticBodyComponentID>
+    {
+    public:
+        StaticBodyComponent(PhysXComponent& IN_physx) :
+            physx{ IN_physx }
+        {
+
+        }
+
+
+        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        {
+        }
+
+
+        void Remove()
+        {
+            //instance.scene.ReleaseCollider(instance.handle);
+        }
+
+
+        auto& GetScene(PhysXSceneHandle sceneHandle)
+        {
+            return physx.GetScene_ref(sceneHandle);
+        }
+
+
+    private:
+        PhysXComponent& physx;
+    };
+
+
+    /************************************************************************************************/
+
+
+    class StaticBodyView : public ComponentView_t<StaticBodyComponent>
+    {
+    public:
+        StaticBodyView(StaticBodyHandle IN_staticBody, PhysXSceneHandle IN_handle) :
+            staticBody  { IN_staticBody },
+            scene       { IN_handle     } {}
+
+        NodeHandle GetNode() const
+        {
+            return GetComponent().GetScene(scene)[staticBody].node;
+        }
+
+        const PhysXSceneHandle    scene;
+        const StaticBodyHandle    staticBody;
+    };
+
+
+    /************************************************************************************************/
+
+
+    inline NodeHandle GetStaticBodyNode(GameObject& GO)
+    {
+        return Apply(GO,
+            [](StaticBodyView& staticBody) -> NodeHandle
+            {
+                return staticBody.GetNode();
+            },
+            [] { return (NodeHandle)InvalidHandle_t; });
+    }
 
 
 	/************************************************************************************************/
 
 
+    constexpr ComponentID RigicBodyComponentID = GetTypeGUID(RigicBodyComponentID);
+
+    class RigidBodyComponent : public Component<RigidBodyComponent, RigicBodyComponentID>
+    {
+    public:
+        RigidBodyComponent(PhysXComponent& IN_physx) :
+            physx{ IN_physx }
+        {
+
+        }
+
+
+        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        {
+        }
+
+
+        void Remove()
+        {
+            //instance.scene.ReleaseCollider(instance.handle);
+        }
+
+
+        auto& GetScene(PhysXSceneHandle sceneHandle)
+        {
+            return physx.GetScene_ref(sceneHandle);
+        }
+
+
+    private:
+        PhysXComponent& physx;
+    };
+
+
+    /************************************************************************************************/
+
+
+    class RigidBodyView : public ComponentView_t<RigidBodyComponent>
+    {
+    public:
+        RigidBodyView(RigidBodyHandle IN_staticBody, PhysXSceneHandle IN_handle) :
+            staticBody{ IN_staticBody },
+            scene{ IN_handle } {}
+
+        NodeHandle GetNode() const
+        {
+            return GetComponent().GetScene(scene)[staticBody].node;
+        }
+
+        const PhysXSceneHandle    scene;
+        const RigidBodyHandle     staticBody;
+    };
+
+
+    inline NodeHandle GetRigidBodyNode(GameObject& GO)
+    {
+        return Apply(GO,
+            [](RigidBodyView& staticBody) -> NodeHandle
+            {
+                return staticBody.GetNode();
+            },
+            [] { return (NodeHandle)InvalidHandle_t; });
+    }
+
+
+    /************************************************************************************************/
+
+
 	//FLEXKITAPI ColliderHandle			LoadTriMeshCollider		(PhysicsSystem* PS, GUID_t Guid);
-	FLEXKITAPI physx::PxHeightField*	LoadHeightFieldCollider	(PhysicsSystem* PS, GUID_t Guid);
+	FLEXKITAPI physx::PxHeightField*	LoadHeightFieldCollider	(PhysXComponent& PX, GUID_t Guid);
 
 
 }	/************************************************************************************************/

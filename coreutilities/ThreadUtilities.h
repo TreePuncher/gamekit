@@ -108,7 +108,7 @@ namespace FlexKit
 
 	protected:
 	private:
-		static_vector<OnCompletionEvent, 64>	subscribers;
+		static_vector<OnCompletionEvent, 8>	subscribers;
 	};
 
 
@@ -173,7 +173,8 @@ namespace FlexKit
 
 		~CircularStealingQueue()
 		{
-            allocator->_aligned_free(queue);
+            if(queue)
+                allocator->_aligned_free(queue);
 		}
 
 
@@ -454,7 +455,6 @@ namespace FlexKit
 				if (threads.try_pop_back(worker))
 					allocator->free(worker);
 			}
-
 		}
 
 
