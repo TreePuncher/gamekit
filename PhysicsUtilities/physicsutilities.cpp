@@ -70,10 +70,15 @@ namespace FlexKit
 				pvd->release();
 				transport->release();
 				FK_LOG_WARNING("FAILED TO CONNECT TO PHYSX REMOVE DEBUGGER");
-			}
+                visualDebugger              = nullptr;
+                visualDebuggerConnection    = nullptr;
 
-			visualDebugger				= pvd;
-			visualDebuggerConnection	= transport;
+			}
+            else
+            {
+                visualDebugger              = pvd;
+                visualDebuggerConnection    = transport;
+            }
 		}
 		else
 		{
@@ -171,10 +176,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysXComponent::Simulate(double dt)
+	void PhysXComponent::Simulate(double dt, WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
 		for (PhysXScene& scene : scenes)
-			scene.Update(dt);
+			scene.Update(dt, barrier, temp_allocator);
 	}
 
 
@@ -332,13 +337,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void PhysXComponent::Update(double dt)
+    void PhysXComponent::Update(double dt, iAllocator* temp_allocator)
     {
         const auto updatePeriod = 1.0 / updateFrequency;
 
         while(acc > updatePeriod)
         {
-            Simulate(dt);
+            WorkBarrier barrier{ dispatcher, temp_allocator };
+            Simulate(dt, &barrier, temp_allocator);
+            barrier.JoinLocal(); // Only works on work in local thread queue, to avoid increasing latency doing other tasks before continuing
             acc -= updatePeriod;
         }
 
@@ -462,7 +469,7 @@ namespace FlexKit
 	*/
 
 
-	void PhysXScene::Update(double dT)
+	void PhysXScene::Update(double dT, WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
 		EXITSCOPE( T += dT; );
 
@@ -479,8 +486,12 @@ namespace FlexKit
 			{
 				if (scene->fetchResults())
 				{
-					UpdateColliders();
+					UpdateColliders(barrier, temp_allocator);
 					updateColliders = false;
+
+                    if (barrier)
+                        barrier->JoinLocal();
+
 
 					T -= stepSize;
 				}
@@ -494,10 +505,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PhysXScene::UpdateColliders()
+	void PhysXScene::UpdateColliders(WorkBarrier* barrier, iAllocator* temp_allocator)
 	{
-		staticColliders.UpdateColliders();
-		rbColliders.UpdateColliders();
+		staticColliders.UpdateColliders(barrier, temp_allocator);
+		rbColliders.UpdateColliders(barrier, temp_allocator);
 	}
 
 

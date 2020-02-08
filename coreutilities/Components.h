@@ -863,7 +863,7 @@ namespace FlexKit
                     [&]
                     {
                         if (_DecrementCounter())
-                            PushToLocalQueue(threadTask, input);
+                            PushToLocalQueue(threadTask);
                     });
             }
 
@@ -886,7 +886,7 @@ namespace FlexKit
                 threadTask.Subscribe(
                     [&]
                     {
-                        PushToLocalQueue(task, &threadTask);
+                        PushToLocalQueue(task);
                     });
             }
 
@@ -941,7 +941,7 @@ namespace FlexKit
 			WorkBarrier barrier{ *threads, allocator };
 
             for (auto& node : nodes)
-                barrier.AddWork(&node->threadTask);
+                barrier.AddWork(node->threadTask);
 
             for (auto node : nodes)
                 if (node->isLeaf())

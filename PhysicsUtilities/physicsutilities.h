@@ -303,7 +303,7 @@ namespace FlexKit
 		}
 
 
-		void UpdateColliders()
+		void UpdateColliders(WorkBarrier* barrier = nullptr, iAllocator* temp_iAllocator = nullptr)
 		{
 			for (size_t itr = 0; itr < dirtyFlags.size(); ++itr) 
 			{
@@ -375,20 +375,48 @@ namespace FlexKit
 		}
 
 
-		void UpdateColliders()
+		void UpdateColliders(WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr)
 		{
-			for (auto& collider : colliders) 
-			{
-				if (collider.actor->isSleeping())
-					continue;
+            auto _updateColliders = [&](auto itr, const auto end)
+            {
+                for(;itr < end; itr++)
+                {
+                    auto& collider = *itr;
+                    if (collider.actor->isSleeping())
+                        continue;
 
-				physx::PxTransform  pose		 = collider.actor->getGlobalPose();
-				Quaternion	        orientation	 = Quaternion{pose.q.x, pose.q.y, pose.q.z, pose.q.w};
-                float3		        position     = float3{ pose.p.x, pose.p.y, pose.p.z };
+                    physx::PxTransform  pose = collider.actor->getGlobalPose();
+                    Quaternion	        orientation = Quaternion{ pose.q.x, pose.q.y, pose.q.z, pose.q.w };
+                    float3		        position = float3{ pose.p.x, pose.p.y, pose.p.z };
 
-				SetPositionW	(collider.node, position);
-				SetOrientation	(collider.node, orientation);
-			}
+                    SetPositionW(collider.node, position);
+                    SetOrientation(collider.node, orientation);
+                }
+            };
+
+
+            if (barrier)
+            {
+                for (auto itr = colliders.begin(); itr < colliders.end(); itr += 512)
+                {
+                    const auto remaining    = (colliders.end() - itr);
+                    const auto enditr       = remaining >= 512 ? itr + 512 : colliders.end();
+
+                    auto& workitem = CreateWorkItem(
+                        [&, itr, enditr]
+                        {
+                            _updateColliders(itr, enditr);
+                        },
+                        temp_allocator);
+
+                    barrier->AddWork(workitem);
+                    PushToLocalQueue(workitem);
+                }
+            }
+
+            else
+                _updateColliders(colliders.begin(), colliders.end());
+
 		}
 
 
@@ -499,8 +527,8 @@ namespace FlexKit
         }
 
 
-		void Update(double dT);
-		void UpdateColliders		();
+		void Update(double dT, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
+		void UpdateColliders(WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
 
 		void DebugDraw				(FrameGraph* FGraph, iAllocator* TempMemory);
 
@@ -552,8 +580,8 @@ namespace FlexKit
 		void							Release();
 		void							ReleaseScene				(PhysXSceneHandle);
 
-        void                            Update(double dt);
-		void							Simulate					(double dt);
+        void                            Update(double dt, iAllocator* temp_allocator);
+		void							Simulate(double dt, WorkBarrier* barrier = nullptr, iAllocator* temp_allocator = nullptr);
 
 		PhysXSceneHandle				CreateScene();
         StaticBodyHandle			    CreateStaticCollider	(PhysXSceneHandle, PxShapeHandle shape, float3 pos = { 0, 0, 0 }, Quaternion q = { 0, 0, 0, 1 });
@@ -646,6 +674,9 @@ namespace FlexKit
 				return threads.GetThreadCount();
 			}
 
+
+
+            operator ThreadManager& () { return threads; }
 
 		private:
 			ThreadManager&		threads;
