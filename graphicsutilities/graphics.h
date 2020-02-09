@@ -2317,7 +2317,7 @@ namespace FlexKit
         }
 
 
-        static GPUResourceDesc ShaderResource(uint2 IN_WH, FORMAT_2D IN_format, uint8_t mipCount = 1)
+        static GPUResourceDesc ShaderResource(uint2 IN_WH, FORMAT_2D IN_format, uint8_t mipCount = 1, size_t arraySize = 1)
         {
             return {
                 false, // render target flag
@@ -2332,9 +2332,10 @@ namespace FlexKit
 
                 TextureDimension::Texture2D,          // dimensions
                 mipCount,   // mip count
-                1,          // buffere count
+                1,          // buffer count
 
-                IN_WH, IN_format
+                IN_WH, IN_format,
+                (uint8_t)arraySize,  // buffer count
 
             };
         }
@@ -3241,8 +3242,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, UploadQueueHandle, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory, FORMAT_2D format = FORMAT_2D::R8G8B8A8_UINT);
 	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, UploadQueueHandle, TextureBuffer* buffer, FORMAT_2D format, iAllocator* tempMemory);
+	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, UploadQueueHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, FORMAT_2D format, iAllocator* tempMemory);
+	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, UploadQueueHandle, TextureBuffer* buffer, size_t MIPCount, FORMAT_2D format, iAllocator* tempMemory);
 
 
 	/************************************************************************************************/

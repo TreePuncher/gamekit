@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #include "stdafx.h"
 
 // Headers
@@ -37,6 +13,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceUtilities.cpp"
 #include "TTFontLoader.cpp"
 #include "SceneResource.cpp"
+#include "TextureResourceUtilities.h"
 
 #include "..\graphicsutilities\AnimationUtilities.cpp"
 #include "..\graphicsutilities\MeshUtils.cpp"
@@ -110,19 +87,11 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	if (Mode == TOOL_MODE::ETOOLMODE_COMPILERESOURCE || Mode == TOOL_MODE::ETOOLMODE_LISTCONTENTS)
-	{
-		if (!Inputs.size()) {
-			auto Dir	= SelectFile();
-			FileChosen	= Dir.Valid;
-			Inputs.push_back(Dir.str);
-		}
-	}
 
 	switch (Mode)
 	{
 	case TOOL_MODE::ETOOLMODE_COMPILERESOURCE:
-		if(FileChosen)
+		if(true)
 		{
 #if USING(TOOTLE)
 			auto RES = TootleInit();
@@ -151,24 +120,22 @@ int main(int argc, char* argv[])
 
 				for (const auto& MD : MetaData)
 				{
-                    if (MD->UserType    == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE &&
-                        MD->type        == MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE)
+                    switch (MD->type)
+                    {
+                    case MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE:
                     {
                         auto cubeMap = std::static_pointer_cast<TextureCubeMap_MetaData>(MD);
-                        // LoadTextures into a cubemap resource
-                    }
-                    else if (MD->UserType == MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE)
+                        resources.push_back(CreateCubeMapResource(cubeMap));
+                    }   break;
+                    case MetaData::EMETAINFOTYPE::EMI_FONT:
                     {
-						FK_ASSERT(0);
-						//auto NewResource = MetaDataToBlob(MD, FlexKit::SystemAllocator);
-						//if(NewResource)
-						//	resources.push_back(NewResource);
-					}
-                    if (MD->type == MetaData::EMETAINFOTYPE::EMI_FONT && false)
-                    {
-                        auto Font   = std::static_pointer_cast<Font_MetaData>(MD);
-                        auto res    = LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
+                        auto Font = std::static_pointer_cast<Font_MetaData>(MD);
+                        auto res = LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
                     }
+                    default:
+                        break;
+                    }
+                    
 				}
 
 
@@ -407,6 +374,8 @@ int main(int argc, char* argv[])
 					std::cout << " Type: TextureSet" << "\n";			break;
 					case EResourceType::EResource_TerrainCollider:
 					std::cout << " Type: TextureSet" << "\n";			break;
+                    case EResourceType::EResource_CubeMapTexture:
+                    std::cout << " Type: CubeMapResource" << "\n";      break;
 					default:
 						break;
 					}
@@ -425,3 +394,28 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2020 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

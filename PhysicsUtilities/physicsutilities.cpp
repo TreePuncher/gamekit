@@ -432,6 +432,31 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void PhysXScene::ApplyForce(RigidBodyHandle rbHandle, float3 xyz)
+    {
+        auto actor = rbColliders[rbHandle].actor;
+        actor->addForce({ xyz.x, xyz.y, xyz.z });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void PhysXScene::SetRigidBodyPosition(RigidBodyHandle rbHandle, const float3 xyz)
+    {
+        auto actor  = rbColliders[rbHandle].actor;
+        auto pose   = actor->getGlobalPose();
+        pose.p      = { xyz.x, xyz.y, xyz.z };
+
+        rbColliders[rbHandle].actor->setGlobalPose(pose);
+    }
+
+
+    /************************************************************************************************/
+
 
     Quaternion	ThirdPersonCamera::GetOrientation() const
     {

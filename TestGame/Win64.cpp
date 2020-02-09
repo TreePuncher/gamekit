@@ -179,8 +179,8 @@ int main(int argc, char* argv[])
                         upload,
                         HDRStack.begin(),
                         HDRStack.size(),
-                        allocator,
-                        FORMAT_2D::R32G32B32A32_FLOAT);
+                        FORMAT_2D::R32G32B32A32_FLOAT,
+                        allocator);
 
                     renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
                     renderSystem.SetDebugName(base.irradianceMap, "ggx Map");

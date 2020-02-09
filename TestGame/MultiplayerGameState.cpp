@@ -182,6 +182,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     {
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
+
         base.render.RenderPBR_GBufferPass(
             dispatcher,
             frameGraph,
@@ -224,6 +225,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
         AddGBufferResource(base.gbuffer, frameGraph);
         ClearGBuffer(base.gbuffer, frameGraph);
+
+
         base.render.RenderPBR_GBufferPass(
             dispatcher,
             frameGraph,
@@ -321,6 +324,30 @@ bool LocalPlayerState::EventHandler(Event evt)
         {
             switch (evt.mData1.mKC[0])
             {
+            case KC_SPACE: // Reload Shaders
+            {
+                if (evt.Action == Event::Pressed)
+                {
+                    auto pos = GetCameraControllerHeadPosition(thirdPersonCamera);
+                    auto forward = GetCameraControllerForwardVector(thirdPersonCamera);
+
+                    // Load Model
+                    const AssetHandle model = 1002;
+                    auto [triMesh, loaded] = FindMesh(model);
+
+                    auto& allocator = framework.core.GetBlockMemory();
+
+                    auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 0 }, pos + forward * 20);
+                    auto& dynamicBox = allocator.allocate<GameObject>();
+
+                    dynamicBox.AddView<RigidBodyView>(rigidBody, game.pScene);
+                    auto dynamicNode = GetRigidBodyNode(dynamicBox);
+                    dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
+                    game.scene.AddGameObject(dynamicBox, dynamicNode);
+
+                    ApplyForce(dynamicBox, forward * 100000);
+                }
+            }   break;
             case KC_U: // Reload Shaders
             {
                 if (evt.Action == Event::Release)

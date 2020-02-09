@@ -3721,7 +3721,7 @@ namespace FlexKit
                         TextureFormat2DXGIFormat(desc.format),
                         desc.WH[0],
                         desc.WH[1],
-                        1,
+                        desc.arraySize,
                         desc.MipLevels)
                     ) : (
                     CD3DX12_RESOURCE_DESC::Tex2D(
@@ -6028,7 +6028,7 @@ namespace FlexKit
         if (uploadQueue == InvalidHandle_t)
             Uploads.Push_Temporary(resource, uploadQueue);
         else
-            FreeList.push_back({ resource, 3 });
+            FreeList.push_back({ resource, 6 });
     }
 
 
@@ -6544,6 +6544,7 @@ namespace FlexKit
         HRESULT HR = D3DCompileFromFile(WString, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
         if (FAILED(HR))	{
             FK_LOG_ERROR((char*)Errors->GetBufferPointer());
+            std::cout << (char*)Errors->GetBufferPointer();
             return false;
         }
 
@@ -7138,13 +7139,26 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, UploadQueueHandle handle, TextureBuffer* buffer, size_t MIPCount, iAllocator* tempMemory, FORMAT_2D format)
+    ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, UploadQueueHandle handle, TextureBuffer* buffer, size_t resourceCount, FORMAT_2D format, iAllocator* tempMemory)
     {
-        auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, MIPCount));
-        RS->UploadTexture(textureHandle, handle, buffer, MIPCount, tempMemory);
+        auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, resourceCount));
+        RS->UploadTexture(textureHandle, handle, buffer, resourceCount, tempMemory);
 
         return textureHandle;
     }
+
+
+    /************************************************************************************************/
+
+
+    ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, UploadQueueHandle handle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, FORMAT_2D format, iAllocator* tempMemory)
+    {
+        auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, MIPCount, arrayCount));
+        RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount, tempMemory);
+
+        return textureHandle;
+    }
+
 
 
     /************************************************************************************************/

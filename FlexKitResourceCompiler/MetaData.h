@@ -177,6 +177,18 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    struct TextureCubeMapMipLevel_MetaData : public MetaData
+    {
+        TextureCubeMapMipLevel_MetaData() {
+            UserType    = MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
+            type        = MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE;
+        }
+
+        uint32_t        level;
+        std::string	    TextureFiles[6];
+    };
+
+
     struct TextureCubeMap_MetaData : public MetaData
 	{
         TextureCubeMap_MetaData(){
@@ -185,10 +197,11 @@ namespace FlexKit
 			Guid		= INVALIDHANDLE;
 		}
 
-		GUID_t		Guid;
-        std::string assetID;
-		std::string	TextureFiles[6];
-        size_t      format;
+		GUID_t		           Guid;
+        AssetHandle            AssetID;
+        std::string            ID;
+        MetaDataList           mipLevels;
+        std::string            format;
 	};
 
 
@@ -374,13 +387,15 @@ namespace FlexKit
 	using MetaDataParserFN_ptr	= MetaData* (*)(const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end);
 	using MetaDataParserTable	= std::map<std::string, MetaDataParserFN_ptr>;
 
-	const MetaDataParserTable CreateDefaultParser();
+    const MetaDataParserTable CreateDefaultParser();
+    const MetaDataParserTable CreateCubeMapParser();
 	const MetaDataParserTable CreateSceneParser();
 	const MetaDataParserTable CreateNodeParser();
 	const MetaDataParserTable CreateEntityParser();
 
 
 	inline const MetaDataParserTable DefaultParser	= CreateDefaultParser();
+    inline const MetaDataParserTable CubeMapParser  = CreateCubeMapParser();
 	inline const MetaDataParserTable SceneParser	= CreateSceneParser();
 	inline const MetaDataParserTable NodeParser		= CreateNodeParser();
 	inline const MetaDataParserTable EntityParser	= CreateEntityParser();

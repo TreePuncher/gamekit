@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\memoryutilities.h"
 #include "..\graphicsutilities\Fonts.h"
 #include "..\coreutilities\ResourceHandles.h"
+#include "TextureUtilities.h"
 
 #include <iostream>
 
@@ -58,7 +59,8 @@ namespace FlexKit
 		EResource_TriMesh,
 		EResource_TerrainCollider,
 		EResource_Texture,
-		EResource_TextureSet,
+        EResource_TextureSet,
+        EResource_CubeMapTexture,
 	};
 
 	struct Resource
@@ -174,6 +176,51 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    struct Face
+    {
+        size_t MipCount;
+
+        size_t GetOffset(size_t idx)
+        {
+            return ((size_t*)this)[1 + idx];
+        }
+
+        char* GetMip(size_t mipLevel)
+        {
+            return ((char*)this) + GetOffset(mipLevel);
+        }
+
+
+        size_t GetMipSize(size_t mipLevel)
+        {
+            return ((size_t*)this)[1 + MipCount + mipLevel];
+        }
+    };
+
+    struct CubeMapAssetBlob
+    {
+        size_t			ResourceSize;
+        EResourceType	Type;
+        GUID_t			GUID;
+        size_t			Pad;
+
+        size_t          Width;
+        size_t          Height;
+        size_t          MipCount;
+
+        size_t          Format;
+        size_t          Offset[6];
+
+        Face*    GetFace(size_t faceIdx)
+        {
+            return reinterpret_cast<Face*>(((char*)this) + Offset[faceIdx]);
+        }
+    };
+
+
+    /************************************************************************************************/
 
 
 	struct TriMeshAssetBlob
@@ -366,8 +413,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool				Asset2TriMesh		( RenderSystem* RS, UploadQueueHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
-	FLEXKITAPI TextureSet*		Asset2TextureSet	( AssetHandle RHandle, iAllocator* Memory );
+	FLEXKITAPI bool				        Asset2TriMesh		( RenderSystem* RS, UploadQueueHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
+	FLEXKITAPI TextureSet*		        Asset2TextureSet	( AssetHandle RHandle, iAllocator* Memory );
+    FLEXKITAPI Vector<TextureBuffer>    LoadCubeMapAsset    ( GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, FORMAT_2D& OUT_format, iAllocator* );
 
 	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );
 	FLEXKITAPI void				LoadTriangleMesh ( GUID_t ID, iAllocator* Memory, TriMesh* out );

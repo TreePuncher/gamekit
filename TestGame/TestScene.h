@@ -62,7 +62,8 @@ enum class TestScenes
 
 inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestScenes scene = TestScenes::ShadowTestScene)
 {
-	AddAssetFile("assets\\TestScenes.gameres");
+    AddAssetFile("assets\\TestScenes.gameres");
+    AddAssetFile("test.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();
@@ -74,12 +75,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 	struct LoadStateData
 	{
-		bool Finished                   = false;
-		bool textureLoaded              = false;
-		ResourceHandle irradianceMap    = InvalidHandle_t;
-		ResourceHandle GGXMap           = InvalidHandle_t;
-		ResourceHandle sourceMap        = InvalidHandle_t;
-
+		bool loaded                     = false;
 		VertexBufferHandle  vertexBuffer;
 	}&state = app.GetFramework().core.GetBlockMemory().allocate<LoadStateData>();
 
@@ -97,29 +93,28 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			auto& renderSystem          = framework.GetRenderSystem();
 			UploadQueueHandle upload    = renderSystem.GetUploadQueue();
 
-			auto HDRStack   = LoadHDR("assets/textures/lebombo_1k.hdr", 0, allocator);
+            size_t      MIPCount;
+            uint2       WH;
+            FORMAT_2D   format;
+            Vector<TextureBuffer> GGXStack = LoadCubeMapAsset(1, MIPCount, WH, format, allocator);
 
-			const auto WH       = HDRStack.front().WH;
-			state.irradianceMap = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 32, 32 }, FORMAT_2D::R16G16B16A16_FLOAT, 1, true));
-			state.GGXMap        = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 128, 128 }, FORMAT_2D::R16G16B16A16_FLOAT, 6, true));
-			base.irradianceMap  = state.irradianceMap;
-			base.GGXMap         = state.GGXMap;
+			//const auto WH       = HDRStack.front().WH;
+            base.irradianceMap = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 32, 32 }, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
+			//base.GGXMap        = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 1024, 1024}, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
 
-			state.sourceMap     = MoveTextureBuffersToVRAM(
+            base.GGXMap = MoveTextureBuffersToVRAM(
 				renderSystem,
-				upload,
-				HDRStack.begin(),
-				HDRStack.size(),
-				allocator,
-				FORMAT_2D::R32G32B32A32_FLOAT);
-
-			renderSystem.SetDebugName(state.sourceMap,     "Cube Map");
-			renderSystem.SetDebugName(state.irradianceMap, "irradiance Map");
-			renderSystem.SetDebugName(state.GGXMap,        "GGX Map");
+                upload,
+                GGXStack.begin(),
+                MIPCount,
+                6,
+                format,
+                allocator);
+			renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
+			renderSystem.SetDebugName(base.GGXMap,        "GGX Map");
 			renderSystem.SubmitUploadQueues(&upload);
 
-			state.textureLoaded = true;
-			HDRStack.Release();
+            state.loaded = true;
 		};
 
 	auto& workItem = CreateWorkItem(loadTexturesTask, app.GetFramework().core.GetBlockMemory());
@@ -179,12 +174,12 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         EnableScale(staticBox, true);
         SetScale(staticBox, { 300, 1, 300 });
         gameState.scene.AddGameObject(staticBox, staticNode);
-
+        SetBoundingSphereRadius(staticBox, 400);
 
         // Create Rigid Body Box
-        for (size_t y = 0; y < 10; y++)
+        for (size_t y = 0; y < 20; y++)
         {
-            for (size_t x = 0; x < 30; x++)
+            for (size_t x = 0; x < 50; x++)
             {
                 auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { 2.1f * x + 1, 3.0f * y + 1.1f, 0 });
                 auto& dynamicBox = allocator.allocate<GameObject>();
@@ -196,7 +191,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             }
         }
 
-        for (size_t y = 0; y < 3000; y++)
+        for (size_t y = 0; y < 0; y++)
         {
             auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { -50 , 3.0f * y + 1.1f, 0 });
             auto& dynamicBox = allocator.allocate<GameObject>();
@@ -215,8 +210,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 	auto OnLoadUpdate =
 		[&](EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 		{
-			const auto completedState = state.textureLoaded;
-			if(state.Finished)
+			if(state.loaded)
 			{
 				core.RenderSystem.ReleaseVB(state.vertexBuffer);
 				core.GetBlockMemory().release_allocation(state);
@@ -227,86 +221,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			}
 		};
 
-	auto OnLoadDraw = [&](EngineCore& core, UpdateDispatcher& dispatcher, FrameGraph& frameGraph, double dT)
-	{
-		if (state.textureLoaded)
-		{
-			struct RenderTexture2CubeMap
-			{
-				FrameResourceHandle irradianceTarget;
-				FrameResourceHandle ggxTarget;
-
-				ResourceHandle      irradianceMap;
-				ResourceHandle      ggxMap;
-				ResourceHandle      irradianceSource;
-
-				VBPushBuffer        vertexBuffer;
-			};
-
-			ClearVertexBuffer(frameGraph, state.vertexBuffer);
-
-			frameGraph.AddRenderTarget(state.irradianceMap);
-			frameGraph.AddRenderTarget(state.GGXMap);
-			frameGraph.AddNode<RenderTexture2CubeMap>(
-				RenderTexture2CubeMap{},
-				[&](FrameGraphNodeBuilder& builder, RenderTexture2CubeMap& data)
-				{
-					data.irradianceTarget   = builder.WriteRenderTarget(state.irradianceMap);
-					data.ggxTarget          = builder.WriteRenderTarget(state.GGXMap);
-					data.ggxMap             = state.GGXMap;
-					data.irradianceMap      = state.irradianceMap;
-					data.irradianceSource   = state.sourceMap;
-
-					auto& allocator     = core.GetBlockMemory();
-					auto& renderSystem  = frameGraph.GetRenderSystem();
-
-					data.vertexBuffer = VBPushBuffer(state.vertexBuffer, sizeof(float4) * 6, renderSystem);
-				},
-				[](RenderTexture2CubeMap& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
-				{
-					DescriptorHeap descHeap;
-					descHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 20, &allocator);
-					descHeap.SetSRV(ctx, 0, data.irradianceSource);
-					descHeap.NullFill(ctx, 20);
-
-					ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
-					ctx.SetPipelineState(resources.GetPipelineState(TEXTURE2CUBEMAP_IRRADIANCE));
-					ctx.SetScissorAndViewports({ data.irradianceMap });
-					ctx.SetPrimitiveTopology(EInputTopology::EIT_POINT);
-
-					ctx.SetGraphicsDescriptorTable(3, descHeap);
-
-					ctx.SetRenderTargets({ resources.GetRenderTarget(data.irradianceTarget) }, false);
-					ctx.Draw(1);
-
-
-					ctx.SetPipelineState(resources.GetPipelineState(TEXTURE2CUBEMAP_GGX));
-
-					for (size_t I = 0; I < 6; I++)
-					{
-						ctx.SetScissorAndViewports2({ data.ggxMap }, I);
-						ctx.SetRenderTargets({ data.ggxMap }, false, InvalidHandle_t, I);
-						ctx.Draw(1);
-					}
-				});
-
-			struct Dummy {};
-			frameGraph.AddNode<Dummy>(
-				Dummy{},
-				[&](FrameGraphNodeBuilder& builder, Dummy& data)
-				{
-					builder.ReadShaderResource(state.irradianceMap);
-					builder.ReadShaderResource(state.GGXMap);
-				},
-				[](Dummy& data, FrameResources& resources, Context& ctx, iAllocator&) {});
-
-			state.Finished = true;
-		}
-	};
-
-
-	using LoadState = GameLoadScreenState<decltype(OnLoadUpdate), decltype(OnLoadDraw)>;
-	app.PushState<LoadState>(base, OnLoadUpdate, OnLoadDraw);
+	using LoadState = GameLoadScreenState<decltype(OnLoadUpdate)>;
+	app.PushState<LoadState>(base, OnLoadUpdate);
 }
 
 
