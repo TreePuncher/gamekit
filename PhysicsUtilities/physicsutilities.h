@@ -1119,9 +1119,9 @@ namespace FlexKit
                 const auto   pxPostPos  = controllerImpl.controller->getFootPosition();
                 const float3 postPos    = { (float)pxPostPos.x, (float)pxPostPos.y, (float)pxPostPos.z };
 
-                const auto deltaPos = prevPos - postPos;
-                if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
-                    velocity = 0;
+                //const auto deltaPos = prevPos - postPos;
+                //if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
+                //    velocity = 0;
 
                 SetPositionW(yawNode, { (float)postPos.x, (float)postPos.y, (float)postPos.z } );
                 CameraComponent::GetComponent().MarkDirty(camera);
