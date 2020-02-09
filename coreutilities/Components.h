@@ -418,12 +418,16 @@ namespace FlexKit
     class BasicComponentView_t : public ComponentView_t<TY_Component>
     {
     public:
+        using ComponentHandle_t = typename Handle_t<32, TY_Component::GetComponentID()>;
+
+        BasicComponentView_t(ComponentHandle_t IN_handle) : handle{ IN_handle } {}
+
+
         template<typename ... TY_Args>
         BasicComponentView_t(TY_Args ... args) : handle{ GetComponent().Create(std::forward<TY_Args>(args)...) } {}
 
         virtual ~BasicComponentView_t() final {}
 
-        using ComponentHandle_t = typename Handle_t<32, TY_Component::GetComponentID()>;
 
         decltype(auto) GetData()
         {
@@ -454,13 +458,13 @@ namespace FlexKit
 
         template<typename ... TY_args>
         BasicComponent_t(iAllocator* allocator, TY_args&&... args) :
-            eventHandler{ std::forward<TY_args>(args)... },
-			elements	{ allocator },
-			handles		{ allocator } {}
+            eventHandler    { std::forward<TY_args>(args)... },
+			elements	    { allocator },
+			handles		    { allocator } {}
 
         BasicComponent_t(iAllocator* allocator) :
-            elements{ allocator },
-            handles{ allocator } {}
+            elements        { allocator },
+            handles         { allocator } {}
 
 		struct elementData
 		{
@@ -516,6 +520,16 @@ namespace FlexKit
 		{
 			return elements[handles[handle]].componentData;
 		}
+
+        auto begin()
+        {
+            return elements.begin();
+        }
+
+        auto end()
+        {
+            return elements.end();
+        }
 
 		HandleUtilities::HandleTable<TY_Handle>	handles;
 		Vector<elementData>						elements;

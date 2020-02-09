@@ -119,7 +119,7 @@ private:	/**********************************************************************
 
     NetObjectInputComponent		netInputObjects;
     InputMap					eventMap;
-    OrbitCameraBehavior			debugCamera;
+    GameObject&                 thirdPersonCamera;
     BaseState&                  base;
     GameState&                  game;
 };

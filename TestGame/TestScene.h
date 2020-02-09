@@ -182,9 +182,23 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 
         // Create Rigid Body Box
-        for (size_t itr = 0; itr < 3000; itr++)
+        for (size_t y = 0; y < 10; y++)
         {
-            auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { 0, 2.1f * itr + 1, 0 });
+            for (size_t x = 0; x < 30; x++)
+            {
+                auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { 2.1f * x + 1, 3.0f * y + 1.1f, 0 });
+                auto& dynamicBox = allocator.allocate<GameObject>();
+
+                dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
+                auto dynamicNode = GetRigidBodyNode(dynamicBox);
+                dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
+                gameState.scene.AddGameObject(dynamicBox, dynamicNode);
+            }
+        }
+
+        for (size_t y = 0; y < 3000; y++)
+        {
+            auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { -50 , 3.0f * y + 1.1f, 0 });
             auto& dynamicBox = allocator.allocate<GameObject>();
 
             dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);

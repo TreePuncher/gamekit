@@ -43,9 +43,12 @@ namespace FlexKit
 		OCE_MoveBackward,
 		OCE_MoveLeft,
 		OCE_MoveRight,
-        OCE_MoveUp,
-        OCE_MoveDown,
+		OCE_MoveUp,
+		OCE_MoveDown,
 	};
+
+
+    /************************************************************************************************/
 
 
 	class OrbitCameraBehavior :
@@ -79,9 +82,9 @@ namespace FlexKit
 		NodeHandle		rollNode;
 		float			moveRate;
 
-        float3          velocity        = 0;
-        float           acceleration    = 500;
-        float           drag            = 5.0;
+		float3          velocity        = 0;
+		float           acceleration    = 500;
+		float           drag            = 5.0;
 
 		struct KeyStates
 		{
@@ -92,10 +95,10 @@ namespace FlexKit
 			bool up         = false;
 			bool down       = false;
 
-            bool KeyPressed()
-            {
-                return forward | backward | left | right | up | down;
-            }
+			bool KeyPressed()
+			{
+				return forward | backward | left | right | up | down;
+			}
 		}keyStates;
 	};
 
