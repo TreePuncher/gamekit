@@ -77,22 +77,23 @@ void GameState::PostDrawUpdate(EngineCore& Engine, UpdateDispatcher& Dispatcher,
 /************************************************************************************************/
 
 
-LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_base, GameState& IN_game) :
-        FrameworkState	{ IN_framework							},
-        game			{ IN_game								},
-        base			{ IN_base								},
-        eventMap		{ IN_framework.core.GetBlockMemory()	},
-        netInputObjects	{ IN_framework.core.GetBlockMemory()	}
+LocalPlayerState::LocalPlayerState(
+    GameFramework&      IN_framework,
+    BaseState&          IN_base,
+    GameState&          IN_game) :
+        FrameworkState	    { IN_framework							                            },
+        game			    { IN_game								                            },
+        base			    { IN_base								                            },
+        eventMap		    { IN_framework.core.GetBlockMemory()	                            },
+        netInputObjects	    { IN_framework.core.GetBlockMemory()	                            },
+        thirdPersonCamera   { CreateThirdPersonCameraController(IN_game.pScene, IN_framework.core.GetBlockMemory())   }
 {
-    eventMap.MapKeyToEvent(KEYCODES::KC_W, OCE_MoveForward);
-    eventMap.MapKeyToEvent(KEYCODES::KC_S, OCE_MoveBackward);
-    eventMap.MapKeyToEvent(KEYCODES::KC_A, OCE_MoveLeft);
-    eventMap.MapKeyToEvent(KEYCODES::KC_D, OCE_MoveRight);
-    eventMap.MapKeyToEvent(KEYCODES::KC_Q, OCE_MoveDown);
-    eventMap.MapKeyToEvent(KEYCODES::KC_E, OCE_MoveUp);
-
-
-    debugCamera.TranslateWorld({0, 10, 0});
+    eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
+    eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
+    eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
+    eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
+    eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
+    eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
 }
 
 
@@ -102,9 +103,6 @@ LocalPlayerState::LocalPlayerState(GameFramework& IN_framework, BaseState& IN_ba
 void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
     base.Update(core, dispatcher, dT);
-
-    if (auto [suzanne000, res] = FindGameObject(game.scene, "Suzanne.000"); res)
-        Yaw(*suzanne000, pi * dT);
 }
 
 
@@ -123,7 +121,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 {
     frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
-    CameraHandle activeCamera = debugCamera;
+    CameraHandle activeCamera = GetCameraControllerCamera(thirdPersonCamera);
 
     SetCameraAspectRatio(activeCamera, GetWindowAspectRatio(core));
 
@@ -131,25 +129,14 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     auto& pointLightGather  = scene.GetPointLights      (dispatcher, core.GetTempMemory());
     auto& transforms		= QueueTransformUpdateTask	(dispatcher);
     auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-    auto& orbitUpdate		= QueueOrbitCameraUpdateTask(dispatcher, debugCamera, framework.MouseState, dT);
     auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
     auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
+    auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, framework.MouseState.Normalized_dPos, dT);
 
-    /*
-    orbitUpdate.AddOutput(transforms);
-    orbitUpdate.AddOutput(cameras);
+    transforms.AddInput(cameraControllers);
 
-    transforms.AddOutput(cameras);
-    transforms.AddOutput(pointLightGather);
-
-    cameras.AddOutput(pointLightGather);
-    cameras.AddOutput(PVS);
-    */
-
-    transforms.AddInput(orbitUpdate);
-
+    cameras.AddInput(cameraControllers);
     cameras.AddInput(transforms);
-    cameras.AddInput(orbitUpdate);
 
     PVS.AddInput(transforms);
     PVS.AddInput(cameras);
@@ -325,7 +312,7 @@ bool LocalPlayerState::EventHandler(Event evt)
 {
     bool handled = eventMap.Handle(evt, [&](auto& evt)
         {
-            debugCamera.HandleEvent(evt);
+            HandleEvents(thirdPersonCamera, evt);
         });
 
     switch (evt.InputSource)

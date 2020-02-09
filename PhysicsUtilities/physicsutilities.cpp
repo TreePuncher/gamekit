@@ -120,12 +120,6 @@ namespace FlexKit
 		auto pScene			= physxAPI->createScene(desc);
 		auto Idx			= scenes.emplace_back(pScene, *this, allocator);
 
-        /*
-        pScene->setVisualizationParameter(PxVisualizationParameter::eSCALE, 1.0f);
-        pScene->setVisualizationParameter(PxVisualizationParameter::eACTOR_AXES, 2.0f);
-        pScene->setVisualizationParameter(PxVisualizationParameter::eCOLLISION_SHAPES, 1.0f);
-        */
-
 		return PhysXSceneHandle(Idx);
 	}
 
@@ -186,20 +180,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 /*
-	physx::PxFilterFlags Test(
-		physx::PxFilterObjectAttributes attributes0,
-		physx::PxFilterData filterData0,
-		physx::PxFilterObjectAttributes attributes1,
-		physx::PxFilterData filterData1,
-		physx::PxPairFlags& pairFlags,
-		const byte* constantBlock,
-		physx::PxU32 constantBlockSize)
-	{
-		std::cout << "FILTERING";
 
-		pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
-		return physx::PxFilterFlag::eDEFAULT;
-	}
 */
 
 
@@ -250,49 +231,8 @@ namespace FlexKit
 	}
 	*/
 
-	/************************************************************************************************/
 
-
-	/*
-	size_t CreateStaticActor(PhysicsSystem* PS, FlexKit::PScene* Scene, ColliderHandle CHandle, float3 POS, Quaternion Q)
-	{
-		PxTriangleMeshGeometry triGeom;
-		PxRigidStatic* Static	= PS->Physx->createRigidStatic(PxTransform(POS.x, POS.y, POS.z, PxQuat(Q.x, Q.y, Q.z, Q.w)));
-		triGeom.triangleMesh	= GetCollider(PS, CHandle);
-
-		auto Shape = Static->createShape(triGeom, *PS->DefaultMaterial, PxTransform(0, 0, 0));
-
-		Scene->Scene->addActor(*Static);
-		//Scene->Colliders.push_back({ Static });
-
-		AddRef(PS, CHandle);
-
-		return -1; //Scene->Colliders.size() - 1;
-	}
-	*/
-
-
-	/************************************************************************************************/
-
-	/*
-	size_t CreateSphereActor(physx::PxMaterial* material, PScene* scene, float3 initialP, FlexKit::Quaternion initialQ, float3 InitialV)
-	{
-		physx::PxRigidDynamic* sphere = scene->Scene->getPhysics().createRigidDynamic(physx::PxTransform(initialP.x, initialP.y, initialP.z, { initialQ.x, initialQ.y, initialQ.z, initialQ.w }));
-		physx::PxShape* Shape = sphere->createShape(physx::PxSphereGeometry(1), *material);
-
-		PActor	MappingData;
-
-		sphere->setLinearVelocity(physx::PxVec3(InitialV.x, InitialV.y, InitialV.z), true);
-		sphere->setOwnerClient(scene->CID);
-		scene->Scene->addActor(*sphere);
-		//scene->Colliders.push_back({ sphere, NodeHandle(-1), MappingData});
-		//sphere->userData = &scene->Colliders.back().ExtraData;
-
-		return -1;//scene->Colliders.size() - 1;
-	}
-	(/
-
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 
 	PhysXComponent::~PhysXComponent()
@@ -353,120 +293,7 @@ namespace FlexKit
     }
 
 
-	/************************************************************************************************/
-
-	/*
-	void Initiate(CapsuleCharacterController* out, PScene* Scene, PhysicsSystem* PS, CapsuleCharacterController_DESC& Desc)
-	{
-		PxCapsuleControllerDesc CCDesc;
-		CCDesc.material             = PS->DefaultMaterial;
-		CCDesc.radius               = Desc.r;
-		CCDesc.height               = Desc.h;
-		CCDesc.contactOffset        = 0.01f;
-		CCDesc.position             = { 0.0f, Desc.h / 2, 0.0f };
-		CCDesc.climbingMode         = PxCapsuleClimbingMode::eEASY;
-		//CCDesc.upDirection = PxVec3(0, 0, 1);
-
-		auto NewCharacterController = Scene->ControllerManager->createController(CCDesc);
-		out->Controller             = NewCharacterController;
-		out->Controller->setFootPosition({ Desc.FootPos.x, Desc.FootPos.y, Desc.FootPos.z });
-		out->FloorContact           = false;
-		out->CeilingContact         = false;
-	}
-	*/
-
-	/************************************************************************************************/
-
-	/*
-	void CharacterControllerSystem::Initiate(SceneNodeComponentSystem* nodes, iAllocator* Memory, physx::PxScene* Scene)
-	{
-		Nodes					= nodes;
-		Controllers.Allocator	= Memory;
-		ControllerManager		= PxCreateControllerManager(*Scene);
-		Handles.Initiate(Memory);
-	}
-
-
-	/************************************************************************************************\/
-
-
-	void CharacterControllerSystem::UpdateSystem(double dT)
-	{
-		for (auto& C : Controllers)
-		{
-			physx::PxControllerFilters Filter;
-			if (C.Delta.magnitudesquared() > 0.001f)
-			{
-				if(C.Delta.magnitudesquared() < 10.0f)
-				{
-					auto Flags = C.Controller->move(
-						{ C.Delta.x, C.Delta.y, C.Delta.z },
-						0.01f,
-						dT,
-						Filter);
-
-					C.CeilingContact	= Flags & physx::PxControllerCollisionFlag::eCOLLISION_UP;
-					C.FloorContact		= Flags & physx::PxControllerCollisionFlag::eCOLLISION_DOWN;
-
-					auto NewPosition	= C.Controller->getFootPosition();
-					auto NewPositionFK	= { NewPosition.x, NewPosition.y, NewPosition.z };
-					C.CurrentPosition	= NewPositionFK;
-
-					Nodes->SetPositionL(C.Node, NewPositionFK);
-				}
-				else
-				{
-					auto Position		= GetPositionL(*Nodes, C.Node);
-					C.CurrentPosition	= Position;
-					C.Controller->setFootPosition({ Position.x, Position.y, Position.z });
-				}
-
-				C.Delta = 0;
-			}
-		}
-	}
-
-
-	/************************************************************************************************\/
-
-
-	ComponentHandle CharacterControllerSystem::CreateCapsuleController(PhysicsSystem* PS, physx::PxScene* Scene, physx::PxMaterial* Mat,float R, float H, float3 InitialPosition, Quaternion Q)
-	{
-		physx::PxCapsuleControllerDesc CCDesc;
-		CCDesc.material             = Mat;
-		CCDesc.radius               = R;
-		CCDesc.height               = H;
-		CCDesc.contactOffset        = 0.01f;
-		CCDesc.position             = { 0.0f, H / 2, 0.0f };
-		CCDesc.climbingMode         = physx::PxCapsuleClimbingMode::eEASY;
-		//CCDesc.upDirection = PxVec3(0, 0, 1);
-
-		CharacterController NewController;
-
-		auto NewCharacterController = ControllerManager->createController(CCDesc);
-		NewController.Controller	= NewCharacterController;
-		NewController.Node			= Nodes->GetNewNode();
-		NewCharacterController->setFootPosition({ InitialPosition.x, InitialPosition.y, InitialPosition.z });
-
-		Controllers.push_back(NewController);
-
-		ComponentHandle NewHandle = Handles.GetNewHandle();
-		Handles[NewHandle] = Controllers.size() - 1;
-		return NewHandle;
-	}
-
-
-	/************************************************************************************************\/
-
-
-	void ReleaseCapsule(CapsuleCharacterController* Capsule)
-	{
-		Capsule->Controller->release();
-	}
-
-
-	/************************************************************************************************\/
-	*/
+    /************************************************************************************************/
 
 
 	void PhysXScene::Update(double dT, WorkBarrier* barrier, iAllocator* temp_allocator)
@@ -515,7 +342,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	StaticBodyHandle	PhysXScene::CreateStaticCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
+	StaticBodyHandle PhysXScene::CreateStaticCollider(Shape shape, float3 initialPosition, Quaternion initialQ)
 	{
 		physx::PxTransform pxInitialPose =
 			physx::PxTransform{ PxMat44(PxIdentity) };
@@ -604,6 +431,32 @@ namespace FlexKit
 		colliderIMPL.actor->setMass(m);
 	}
 
+
+
+    Quaternion	ThirdPersonCamera::GetOrientation() const
+    {
+        return FlexKit::GetOrientation(pitchNode);
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 ThirdPersonCamera::GetForwardVector() const
+    {
+        Quaternion Q = GetOrientation();
+        return -(Q * float3(0, 0, 1)).normal();
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 ThirdPersonCamera::GetRightVector() const
+    {
+        Quaternion Q = GetOrientation();
+        return -(Q * float3(-1, 0, 0)).normal();
+    }
 
 	/************************************************************************************************/
 }// Namespace FlexKit

@@ -55,6 +55,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib,	"PhysXCommon_64.lib"				)
 #pragma comment(lib,	"PhysXExtensions_static_64.lib"		)
 #pragma comment(lib,	"PhysXPvdSDK_static_64.lib"			)
+#pragma comment(lib,	"PhysXCharacterKinematic_static_64.lib"	)
 #endif
 
 namespace FlexKit
@@ -447,11 +448,12 @@ namespace FlexKit
 	{
 	public:
         PhysXScene(physx::PxScene* IN_scene, PhysXComponent& IN_system, iAllocator* IN_memory) :
-			scene			{ IN_scene			},
-			system			{ IN_system			},
-			memory			{ IN_memory			},
-			staticColliders	{ *this, IN_memory	},
-			rbColliders		{ *this, IN_memory	}
+			scene			    { IN_scene			},
+			system			    { IN_system			},
+			memory			    { IN_memory			},
+			staticColliders	    { *this, IN_memory	},
+			rbColliders		    { *this, IN_memory	},
+            controllerManager   { PxCreateControllerManager(*IN_scene) }
 		{
 			FK_ASSERT(scene && memory, "INVALID ARGUEMENT");
 
@@ -505,10 +507,10 @@ namespace FlexKit
 			staticColliders.Release();
 			rbColliders.Release();
 
+            if (controllerManager)
+                controllerManager->release();
 			if(scene)
 				scene->release();
-			if(controllerManager)
-				controllerManager->release();
 
 			scene				= nullptr;
 			controllerManager	= nullptr;
@@ -542,6 +544,9 @@ namespace FlexKit
 
 		void						SetPosition	(RigidBodyHandle, float3 xyz);
 		void						SetMass     (RigidBodyHandle, float m);
+
+
+        physx::PxControllerManager& GetCharacterController() { return *controllerManager; }
 
 
 	private:
@@ -590,6 +595,8 @@ namespace FlexKit
         PxShapeHandle                   CreateCubeShape(const float3 dimensions);
 
         PhysXScene&                     GetScene_ref(PhysXSceneHandle handle);
+        physx::PxMaterial*              GetDefaultMaterial() const { return defaultMaterial;}
+
 
 		template<typename TY>
 		PhysXScene&	GetOwningScene(TY handle)
@@ -782,6 +789,7 @@ namespace FlexKit
 
         void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
         {
+            FK_ASSERT(0);
         }
 
 
@@ -835,6 +843,419 @@ namespace FlexKit
 
     /************************************************************************************************/
 
+
+    constexpr ComponentID CharacterControllerComponentID = GetTypeGUID(CharacterControllerComponentID);
+    using CharacterControllerHandle = Handle_t<32, CharacterControllerComponentID>;
+
+    struct CharacterController
+    {
+        NodeHandle                node;
+        PhysXSceneHandle          scene;
+        physx::PxController*      controller;
+    };
+
+
+    class CharacterControllerComponent : public Component<CharacterControllerComponent, CharacterControllerComponentID>
+    {
+    public:
+        CharacterControllerComponent(PhysXComponent& IN_physx, iAllocator* allocator) :
+            physx       { IN_physx  },
+            controllers { allocator } {}
+
+
+        CharacterControllerHandle Create(const PhysXSceneHandle scene, const NodeHandle node = GetZeroedNode(), const float R = 1, const float H = 1)
+        {
+            auto& manager = physx.GetScene_ref(scene).GetCharacterController();
+
+            physx::PxCapsuleControllerDesc CCDesc;
+            CCDesc.material         = physx.GetDefaultMaterial();
+            CCDesc.radius           = 1;
+            CCDesc.height           = 1;
+            CCDesc.contactOffset    = 0.01f;
+            CCDesc.position         = { 0.0f, 10.0f, 0.0f };
+            CCDesc.climbingMode     = physx::PxCapsuleClimbingMode::eEASY;
+
+            auto controller = manager.createController(CCDesc);
+
+            auto idx = controllers.push_back(
+                CharacterController{
+                    node,
+                    scene,
+                    controller
+                });
+
+            return CharacterControllerHandle{ idx };
+        }
+
+
+        void AddComponentView(GameObject& GO, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator) override
+        {
+            FK_ASSERT(0);
+        }
+
+
+        void Remove()
+        {
+            //instance.scene.ReleaseCollider(instance.handle);
+        }
+
+
+        auto& GetScene(PhysXSceneHandle sceneHandle)
+        {
+            return physx.GetScene_ref(sceneHandle);
+        }
+
+
+        CharacterController& operator[] (CharacterControllerHandle controller)
+        {
+            return controllers[controller];
+        }
+
+    private:
+
+        Vector<CharacterController> controllers;
+        PhysXComponent&             physx;
+    };
+
+
+    /************************************************************************************************/
+
+
+    class CharacterControllerView : public ComponentView_t<CharacterControllerComponent>
+    {
+    public:
+        CharacterControllerView(
+            PhysXSceneHandle scene,
+            NodeHandle node     = GetZeroedNode(),
+            const float R       = 1.0f,
+            const float H       = 1.0f) :
+                controller{ GetComponent().Create(scene, node) } {}
+
+
+        CharacterControllerView(CharacterControllerHandle IN_controller) :
+            controller  { IN_controller } {}
+
+
+        NodeHandle GetNode() const
+        {
+            return GetComponent()[controller].node;
+        }
+
+
+        CharacterControllerHandle controller;
+    };
+
+
+    NodeHandle GetControllerNode(GameObject& GO)
+    {
+        return Apply(GO, [](CharacterControllerView& controller)
+            {
+                return controller.GetNode();
+            },
+            []
+            {
+                return (NodeHandle)InvalidHandle_t;
+            });
+    }
+
+
+    CharacterControllerHandle GetControllerHandle(GameObject& GO)
+    {
+        return Apply(GO, [](CharacterControllerView& controller)
+            {
+                return controller.controller;
+            },
+            []
+            {
+                return (CharacterControllerHandle)InvalidHandle_t;
+            });
+    }
+    
+
+
+    /************************************************************************************************/
+
+
+    constexpr ComponentID CameraControllerComponentID   = GetTypeGUID(ThirdPersonCameraComponentID);
+    using CameraControllerHandle                        = Handle_t<32, CameraControllerComponentID>;
+
+
+    struct ThirdPersonCamera
+    {
+        ThirdPersonCamera(
+            CharacterControllerHandle   IN_controller        = InvalidHandle_t,
+            NodeHandle                  IN_node              = GetZeroedNode(),
+            CameraHandle                IN_camera            = CameraComponent::GetComponent().CreateCamera(),
+            float3                      initialPos           = { 0, 0, 0 },
+            const float                 initialMovementSpeed = 500) :
+                controller  { IN_controller },
+                camera      { IN_camera     }
+        {
+            yawNode   = IN_node;
+            pitchNode = GetZeroedNode();
+            rollNode  = GetZeroedNode();
+            moveRate  = initialMovementSpeed;
+
+            SetParentNode(pitchNode, rollNode);
+            SetParentNode(yawNode, pitchNode);
+
+            CameraComponent::GetComponent().SetCameraNode(camera, rollNode);
+
+            TranslateWorld(yawNode, initialPos);
+        }
+
+        static physx::PxFilterFlags Test(
+            physx::PxFilterObjectAttributes attributes0,
+            physx::PxFilterData filterData0,
+            physx::PxFilterObjectAttributes attributes1,
+            physx::PxFilterData filterData1,
+            physx::PxPairFlags& pairFlags,
+            const byte* constantBlock,
+            physx::PxU32 constantBlockSize)
+        {
+            std::cout << "FILTERING";
+
+            pairFlags = physx::PxPairFlag::eCONTACT_DEFAULT;
+            return physx::PxFilterFlag::eDEFAULT;
+        }
+
+
+        ThirdPersonCamera(const ThirdPersonCamera&) = default;
+
+        Quaternion	GetOrientation()     const;
+        float3      GetForwardVector()   const;
+        float3      GetRightVector()     const;
+
+        void Rotate(float3 xyz)
+        {
+            if (xyz[0] != 0.0f)
+                FlexKit::Pitch(pitchNode, xyz[0]);
+
+            if (xyz[1] != 0.0f)
+                FlexKit::Yaw(yawNode, xyz[1]);
+
+            if (xyz[2] != 0.0f)
+                FlexKit::Roll(pitchNode, xyz[2]);
+        }
+
+        void Yaw(float Theta)
+        {
+            Rotate({ 0, Theta, 0 });
+        }
+
+        void Pitch(float Theta)
+        {
+            Rotate({ Theta, 0, 0 });
+        }
+
+        void Roll(float Theta)
+        {
+            Rotate({ 0, 0, Theta });
+        }
+
+        void Update(float2 mouseInput, const double dt)
+        {
+            Yaw(mouseInput[0] * dt * pi * 50);
+            Pitch(mouseInput[1] * dt * pi * 50);
+
+            auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
+
+            float3 movementVector   { 0 };
+            const float3 forward    { GetForwardVector() };
+            const float3 right      { GetRightVector() };
+            const float3 up         { 0, 1, 0 };
+
+            if (keyStates.forward)
+                movementVector += forward;
+
+            if (keyStates.backward)
+                movementVector += -forward;
+
+            if (keyStates.right)
+                movementVector += right;
+
+            if (keyStates.left)
+                movementVector += -right;
+
+            if (keyStates.up)
+                movementVector += up;
+
+            if (keyStates.down)
+                movementVector += -up;
+
+            movementVector.normalize();
+
+            if (keyStates.KeyPressed())
+                velocity += movementVector * acceleration * dt;
+
+            if (velocity.magnitudesquared() > 0.01f) {
+                velocity -= velocity * drag * dt;
+
+                const float3    desiredMove    = velocity * dt;
+                const auto      pxPrevPos      = controllerImpl.controller->getFootPosition();
+                const float3    prevPos        = { (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
+
+                physx::PxControllerFilters filters;
+                auto collision = controllerImpl.controller->move(
+                    {   desiredMove.x,
+                        desiredMove.y,
+                        desiredMove.z },
+                    0.1f,
+                    dt,
+                    filters);
+
+
+                const auto   pxPostPos  = controllerImpl.controller->getFootPosition();
+                const float3 postPos    = { (float)pxPostPos.x, (float)pxPostPos.y, (float)pxPostPos.z };
+
+                const auto deltaPos = prevPos - postPos;
+                if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
+                    velocity = 0;
+
+                SetPositionW(yawNode, { (float)postPos.x, (float)postPos.y, (float)postPos.z } );
+                CameraComponent::GetComponent().MarkDirty(camera);
+            }
+            else
+                velocity = 0;
+        }
+
+        CharacterControllerHandle   controller;
+        CameraHandle                camera;
+
+        NodeHandle		cameraNode   = InvalidHandle_t;
+        NodeHandle		yawNode      = InvalidHandle_t;
+        NodeHandle		pitchNode    = InvalidHandle_t;
+        NodeHandle		rollNode     = InvalidHandle_t;
+
+        float3          velocity     = 0;
+        float           acceleration = 500;
+        float           drag         = 5.0;
+        float			moveRate     = 100;
+
+        struct KeyStates
+        {
+            bool forward  = false;
+            bool backward = false;
+            bool left     = false;
+            bool right    = false;
+            bool up       = false;
+            bool down     = false;
+
+            bool KeyPressed()
+            {
+                return forward | backward | left | right | up | down;
+            }
+        }keyStates;
+    };
+
+
+    /************************************************************************************************/
+
+
+    using CameraControllerComponent     = BasicComponent_t<ThirdPersonCamera, CameraControllerHandle, CameraControllerComponentID>;
+    using CameraControllerView          = CameraControllerComponent::View;
+
+
+    CameraHandle GetCameraControllerCamera(GameObject& GO)
+    {
+        return Apply(GO, [](CameraControllerView& cameraController)
+            {
+                return cameraController.GetData().camera;
+            },
+            []
+            {
+                return (CameraHandle)InvalidHandle_t;
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    enum ThirdPersonCameraEvents
+    {
+        TPC_MoveForward,
+        TPC_MoveBackward,
+        TPC_MoveLeft,
+        TPC_MoveRight,
+        TPC_MoveUp,
+        TPC_MoveDown,
+    };
+
+
+    void HandleEvents(GameObject& GO, Event evt)
+    {
+        return Apply(GO,
+            [&](CameraControllerView& cameraController)
+            {
+                auto& keyStates = cameraController.GetData().keyStates;
+
+                if (evt.InputSource == FlexKit::Event::Keyboard)
+		        {
+			        bool state = evt.Action == Event::Pressed ? true : false;
+
+			        switch (evt.mData1.mINT[0])
+			        {
+			        case TPC_MoveForward:
+				        keyStates.forward	= state;
+				        break;
+			        case TPC_MoveBackward:
+				        keyStates.backward	= state;
+				        break;
+			        case TPC_MoveLeft:
+				        keyStates.left		= state;
+				        break;
+			        case TPC_MoveRight:
+				        keyStates.right		= state;
+				        break;
+                    case TPC_MoveUp:
+                        keyStates.up        = state;
+                        break;
+                    case TPC_MoveDown:
+                        keyStates.down      = state;
+                        break;
+			        }
+		        }
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    GameObject& CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator* allocator, const float R = 1, const float H = 1)
+    {
+        auto& gameObject = allocator->allocate<GameObject>();
+
+        gameObject.AddView<CharacterControllerView>(scene);
+        gameObject.AddView<CameraControllerView>(
+            CameraControllerComponent::GetComponent().Create(
+                ThirdPersonCamera(
+                    GetControllerHandle(gameObject),
+                    GetControllerNode(gameObject))));
+
+        return gameObject;
+    }
+
+
+    /************************************************************************************************/
+
+
+    auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
+    {
+        struct TPC_Update {};
+
+        return dispatcher.Add<TPC_Update>(
+            [&](auto& builder, auto& data){},
+            [mouseInput, dT](TPC_Update& data)
+            {
+                for (auto& controller : CameraControllerComponent::GetComponent())
+                    controller.componentData.Update(mouseInput, dT);
+            });
+    }
+
+
+    /************************************************************************************************/
 
 	//FLEXKITAPI ColliderHandle			LoadTriMeshCollider		(PhysicsSystem* PS, GUID_t Guid);
 	FLEXKITAPI physx::PxHeightField*	LoadHeightFieldCollider	(PhysXComponent& PX, GUID_t Guid);

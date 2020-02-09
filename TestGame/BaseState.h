@@ -187,7 +187,9 @@ public:
             shadowCasters       { IN_Framework.core.GetBlockMemory()                            },
             physics             { IN_Framework.core.Threads, IN_Framework.core.GetBlockMemory() },
             rigidBodies         { physics },
-            staticBodies        { physics }
+            staticBodies        { physics },
+            characterControllers{ physics, framework.core.GetBlockMemory() },
+            orbitCameras        { framework.core.GetBlockMemory() }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
 		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
@@ -243,17 +245,19 @@ public:
     SoundSystem			        sounds;
 
 	// Components
-	SceneNodeComponent			transforms;
-	CameraComponent				cameras;
-	StringIDComponent			ids;
-	DrawableComponent			drawables;
-	SceneVisibilityComponent	visables;
-	PointLightComponent			pointLights;
-    SkeletonComponent           skeletonComponent;
-    PointLightShadowCaster      shadowCasters;
-    PhysXComponent  	        physics;
-    RigidBodyComponent          rigidBodies;
-    StaticBodyComponent         staticBodies;
+	SceneNodeComponent			    transforms;
+	CameraComponent				    cameras;
+	StringIDComponent			    ids;
+	DrawableComponent			    drawables;
+	SceneVisibilityComponent	    visables;
+	PointLightComponent			    pointLights;
+    SkeletonComponent               skeletonComponent;
+    PointLightShadowCaster          shadowCasters;
+    PhysXComponent  	            physics;
+    RigidBodyComponent              rigidBodies;
+    StaticBodyComponent             staticBodies;
+    CharacterControllerComponent    characterControllers;
+    CameraControllerComponent       orbitCameras;
 
 	TextureStreamingEngine		streamingEngine;
 };
