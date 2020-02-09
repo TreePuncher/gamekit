@@ -122,6 +122,12 @@ public:
         return buffer.size();
     }
 
+    void resize(size_t newSize)
+    {
+        buffer.resize(newSize);
+    }
+
+
     std::byte* data()
     {
         return buffer.data();

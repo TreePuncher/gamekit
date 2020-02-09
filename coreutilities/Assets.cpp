@@ -400,7 +400,40 @@ namespace FlexKit
 		return NewTextureSet;
 	}
 
-	
+    
+    /************************************************************************************************/
+
+
+    Vector<TextureBuffer> LoadCubeMapAsset(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, FORMAT_2D& OUT_format, iAllocator* allocator)
+    {
+        Vector<TextureBuffer> textureArray{ allocator };
+
+        auto assetHandle            = LoadGameAsset(resourceID);
+        CubeMapAssetBlob* resource  = reinterpret_cast<CubeMapAssetBlob*>(FlexKit::GetAsset(assetHandle));
+
+        OUT_MIPCount    = resource->GetFace(0)->MipCount;
+        OUT_WH          = { (uint32_t)resource->Width, (uint32_t)resource->Height };
+        OUT_format      = (FORMAT_2D)resource->Format;
+
+        for (size_t I = 0; I < 6; I++)
+        {
+            for (size_t MIPLevel = 0; MIPLevel < resource->MipCount; MIPLevel++)
+            {
+                float* buffer = (float*)resource->GetFace(I)->GetMip(MIPLevel);
+                size_t bufferSize = resource->GetFace(I)->GetMipSize(MIPLevel);
+
+                textureArray.emplace_back(
+                    TextureBuffer{
+                        uint2{(uint32_t)resource->Width, (uint32_t)resource->Height },
+                        (char*)buffer,
+                        sizeof(float4) });
+            }
+        }
+
+        return textureArray;
+    }
+
+
 	/************************************************************************************************/
 
 

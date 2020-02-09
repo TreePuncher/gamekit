@@ -146,8 +146,8 @@ EditorBase::EditorBase(FlexKit::GameFramework& IN_framework) :
         uploadQueue,
         &buffer,
         1,
-        framework.core.GetBlockMemory(),
-        FlexKit::FORMAT_2D::R8G8B8A8_UNORM);
+        FlexKit::FORMAT_2D::R8G8B8A8_UNORM,
+        framework.core.GetBlockMemory());
 
 
     io.Fonts->TexID = TextreHandleToIM(imGuiFont);

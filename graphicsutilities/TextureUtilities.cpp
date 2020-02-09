@@ -23,6 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "TextureUtilities.h"
+#include "Assets.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb\stb_image.h"
@@ -226,7 +227,7 @@ namespace FlexKit
             }
         }
 
-        for (size_t I = 0; I < MIPCount; I++)
+        for (size_t I = 1; I < MIPCount; I++)
             MIPChain.emplace_back(
                 BuildMipMap<float4>(
                     MIPChain.back(), scratchSpace, AverageSampler<decltype(view)>));

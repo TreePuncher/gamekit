@@ -250,6 +250,16 @@ namespace FlexKit
 			});
 	}
 
+    inline void SetBoundingSphereRadius(GameObject& go, const float radius)
+    {
+        Apply(
+            go,
+            [&](SceneVisibilityView& visibility)
+            {
+                visibility.SetBoundingSphere(BoundingSphere{ 0, 0, 0, radius });
+            });
+    }
+
 
 	inline void SetBoundingSphereFromLight(GameObject& go)
 	{

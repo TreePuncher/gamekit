@@ -318,46 +318,60 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    MetaData* ParseCubeMapTexture(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    MetaData* ParseCubeMapMipLevel(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
     {
-        auto Target		= tokens[begin - 2];
-		auto AssetGUID	= FindValue(values, "AssetGUID");
-		auto AssetID	= FindValue(values, "AssetID");
-
-        auto forward    = FindValue(values, "Forward");
-        auto backward   = FindValue(values, "Backward");
+        auto level      = tokens[begin - 2];
+        auto front      = FindValue(values, "Front");
+        auto back       = FindValue(values, "Back");
         auto left       = FindValue(values, "Left");
         auto right      = FindValue(values, "Right");
         auto top        = FindValue(values, "Top");
         auto bottom     = FindValue(values, "Bottom");
 
-        auto* cubeMap = new TextureCubeMap_MetaData;
+        auto* mipLevel = new TextureCubeMapMipLevel_MetaData;
 
-		if(AssetGUID != nullptr && AssetGUID->Type == ValueType::INT)
-            cubeMap->Guid = AssetGUID->Data.I;
-
-		if (AssetID != nullptr && AssetID->Type == ValueType::STRING)
-            cubeMap->assetID = AssetID->Data.S;
-
-        if (forward != nullptr && forward->Type == ValueType::STRING)
-            cubeMap->TextureFiles[0] = forward->Data.S;
-
-        if (backward != nullptr && backward->Type == ValueType::STRING)
-            cubeMap->TextureFiles[0] = backward->Data.S;
+        mipLevel->level = atoi(level.data());
 
         if (left != nullptr && left->Type == ValueType::STRING)
-            cubeMap->TextureFiles[0] = left->Data.S;
+            mipLevel->TextureFiles[0] = left->Data.S;
 
         if (right != nullptr && right->Type == ValueType::STRING)
-            cubeMap->TextureFiles[0] = right->Data.S;
+            mipLevel->TextureFiles[1] = right->Data.S;
 
         if (top != nullptr && top->Type == ValueType::STRING)
-            cubeMap->TextureFiles[0] = top->Data.S;
+            mipLevel->TextureFiles[2] = top->Data.S;
 
         if (bottom != nullptr && bottom->Type == ValueType::STRING)
-            cubeMap->TextureFiles[0] = bottom->Data.S;
+            mipLevel->TextureFiles[3] = bottom->Data.S;
 
-		return cubeMap;
+        if (back != nullptr && back->Type == ValueType::STRING)
+            mipLevel->TextureFiles[4] = back->Data.S;
+
+        if (front != nullptr && front->Type == ValueType::STRING)
+            mipLevel->TextureFiles[5] = front->Data.S;
+
+        return mipLevel;
+    }
+
+
+    /************************************************************************************************/
+
+
+    MetaData* ParseCubeMapTexture(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    {
+        auto AssetID    = tokens[begin - 2];
+        auto AssetGUID  = FindValue(values, "AssetGUID");
+        auto Format     = FindValue(values, "Format");
+
+        auto* cubemapTexture = new TextureCubeMap_MetaData;
+
+        // Parse Mip levels
+        cubemapTexture->Guid        = AssetGUID->Data.I;
+        cubemapTexture->ID          = AssetID;
+        cubemapTexture->format      = Format->Data.S;
+        cubemapTexture->mipLevels   = ParseSubContainer(CubeMapParser, tokens, begin, end);
+
+		return cubemapTexture;
     }
 
 
@@ -373,7 +387,7 @@ namespace FlexKit
 		Scene_MetaData* scene	= new Scene_MetaData;
 		scene->ID				= Target;
 
-		scene->sceneMetaData = ParseSubContainer(SceneParser, tokens, begin, end);
+		scene->sceneMetaData    = ParseSubContainer(SceneParser, tokens, begin, end);
 
 		if(AssetGUID != nullptr && AssetGUID->Type == ValueType::INT)
 			scene->Guid = AssetGUID->Data.I;
@@ -605,7 +619,7 @@ namespace FlexKit
 		return TerrainCollider;
 	}
 
-	
+
 	/************************************************************************************************/
 
 
@@ -624,6 +638,12 @@ namespace FlexKit
 				//table["Test"]				= CreateParser(0);
 			};
 	}
+
+
+    const MetaDataParserTable CreateCubeMapParser()
+    {
+        return {{ "CubeMipLevel", ParseCubeMapMipLevel }};
+    }
 
 
 	/************************************************************************************************/

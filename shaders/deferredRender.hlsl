@@ -79,7 +79,7 @@ ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
 }
 
 #define MAX_ENV_LOD 2.0
-#define MAX_CUBEMAP_SAMPLES 40
+#define MAX_CUBEMAP_SAMPLES 8
 #define SEED_SCALE 1000000
 /*
 float4 SampleSphericalLOD(in TextureCube<float4> tex, in float3 w, in float lod)

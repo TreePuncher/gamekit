@@ -534,17 +534,17 @@ namespace FlexKit
 
 		void DebugDraw				(FrameGraph* FGraph, iAllocator* TempMemory);
 
-        PxShapeHandle               CreateCubeShape(const float3 dimensions);
-
         StaticBodyHandle	        CreateStaticCollider    (Shape shape, float3 initialPosition, Quaternion initialQ);
         RigidBodyHandle		        CreateRigidBodyCollider (Shape shape, float3 initialPosition, Quaternion initialQ);
 
         void                        ReleaseCollider(StaticBodyHandle);
         void                        ReleaseCollider(RigidBodyHandle);
 
+        void                        ApplyForce(RigidBodyHandle, float3 xyz);
+
 		void						SetPosition	(RigidBodyHandle, float3 xyz);
 		void						SetMass     (RigidBodyHandle, float m);
-
+        void                        SetRigidBodyPosition(RigidBodyHandle, const float3 xyz);
 
         physx::PxControllerManager& GetCharacterController() { return *controllerManager; }
 
@@ -704,7 +704,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    constexpr ComponentID StaticBodyComponentID  = GetTypeGUID(RigidBodyComponentID);
+    constexpr ComponentID StaticBodyComponentID  = GetTypeGUID(StaticBodyComponentID);
 
     class StaticBodyComponent : public Component<StaticBodyComponent, StaticBodyComponentID>
     {
@@ -1036,6 +1036,8 @@ namespace FlexKit
 
             if (xyz[2] != 0.0f)
                 FlexKit::Roll(pitchNode, xyz[2]);
+
+            CameraComponent::GetComponent().MarkDirty(camera);
         }
 
         void Yaw(float Theta)
@@ -1052,6 +1054,15 @@ namespace FlexKit
         {
             Rotate({ 0, 0, Theta });
         }
+
+
+        float3 GetHeadPosition()
+        {
+            auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
+            auto pxPos = controllerImpl.controller->getPosition();
+            return { (float)pxPos.x, (float)pxPos.y , (float)pxPos.z };
+        }
+
 
         void Update(float2 mouseInput, const double dt)
         {
@@ -1117,6 +1128,7 @@ namespace FlexKit
             }
             else
                 velocity = 0;
+
         }
 
         CharacterControllerHandle   controller;
@@ -1251,6 +1263,62 @@ namespace FlexKit
             {
                 for (auto& controller : CameraControllerComponent::GetComponent())
                     controller.componentData.Update(mouseInput, dT);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 GetCameraControllerHeadPosition(GameObject& GO)
+    {
+        return Apply(GO, [](CameraControllerView& cameraController)
+            {
+                return cameraController.GetData().GetHeadPosition();
+            },
+            []
+            {
+                return float3(0, 0, 0);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    float3 GetCameraControllerForwardVector(GameObject& GO)
+    {
+        return Apply(GO, [](CameraControllerView& cameraController)
+            {
+                return cameraController.GetData().GetForwardVector();
+            },
+            []
+            {
+                return float3(0, 0, 0);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetRigidBodyPosition(GameObject& GO, const float3 worldPOS)
+    {
+        Apply(GO, [&](RigidBodyView& rigidBody)
+            {
+                PhysXComponent::GetComponent().GetScene_ref(rigidBody.scene).SetRigidBodyPosition(rigidBody.staticBody, worldPOS);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void ApplyForce(GameObject& GO, const float3 force)
+    {
+        Apply(GO, [&](RigidBodyView& rigidBody)
+            {
+                PhysXComponent::GetComponent().GetScene_ref(rigidBody.scene).ApplyForce(rigidBody.staticBody, force);
             });
     }
 
