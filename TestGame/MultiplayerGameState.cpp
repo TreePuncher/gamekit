@@ -345,7 +345,7 @@ bool LocalPlayerState::EventHandler(Event evt)
                     dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
                     game.scene.AddGameObject(dynamicBox, dynamicNode);
 
-                    ApplyForce(dynamicBox, forward * 100000);
+                    ApplyForce(dynamicBox, forward * 100);
                 }
             }   break;
             case KC_U: // Reload Shaders

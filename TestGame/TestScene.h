@@ -22,8 +22,8 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 		for (size_t X = 0; X < N; ++X)
 		{
 			float roughness     = ((float)X + 0.5f) / (float)N;
-			float anisotropic   = 0.0f;//((float)Y + 0.5f) / (float)N;
-			float kS            = ((float)Y + 0.5f) / (float)N;
+			float anisotropic   = ((float)Y + 0.5f) / (float)N;
+			float kS            = 1.0;//((float)Y + 0.5f) / (float)N;
 
 			auto& gameObject = allocator->allocate<GameObject>();
 			auto node = FlexKit::GetNewNode();
@@ -34,7 +34,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 				gameObject,
 				float3(1.0f, 1.0f, 1.0f), // albedo
 				kS, // specular
-				1.0f, // IOR
+				0.47f, // IOR
 				anisotropic,
 				roughness,
 				0.0f);
@@ -42,7 +42,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 			Scale(node, { 3, 3, 3 });
-			Roll(node, (float)-pi / 2.0f);
+			Roll(node, (float)pi / 2.0f);
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
 
 			scene.AddGameObject(gameObject, node);
@@ -96,20 +96,32 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             size_t      MIPCount;
             uint2       WH;
             FORMAT_2D   format;
-            Vector<TextureBuffer> GGXStack = LoadCubeMapAsset(1, MIPCount, WH, format, allocator);
-
-			//const auto WH       = HDRStack.front().WH;
-            base.irradianceMap = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 32, 32 }, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
-			//base.GGXMap        = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 1024, 1024}, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
-
+            Vector<TextureBuffer> radiance      = LoadCubeMapAsset(2, MIPCount, WH, format, allocator);
             base.GGXMap = MoveTextureBuffersToVRAM(
-				renderSystem,
+                renderSystem,
                 upload,
-                GGXStack.begin(),
+                radiance.begin(),
                 MIPCount,
                 6,
                 format,
                 allocator);
+
+            Vector<TextureBuffer> irradience    = LoadCubeMapAsset(1, MIPCount, WH, format, allocator);
+            base.irradianceMap = MoveTextureBuffersToVRAM(
+                renderSystem,
+                upload,
+                irradience.begin(),
+                MIPCount,
+                6,
+                format,
+                allocator);
+
+
+			//const auto WH       = HDRStack.front().WH;
+            //base.irradianceMap = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 32, 32 }, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
+			//base.GGXMap        = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 1024, 1024}, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
+
+            
 			renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
 			renderSystem.SetDebugName(base.GGXMap,        "GGX Map");
 			renderSystem.SubmitUploadQueues(&upload);
@@ -188,6 +200,16 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 auto dynamicNode = GetRigidBodyNode(dynamicBox);
                 dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
                 gameState.scene.AddGameObject(dynamicBox, dynamicNode);
+
+
+                SetMaterialParams(
+                    dynamicBox,
+                    float3(1.0f, 1.0f, 1.0f), // albedo
+                    (rand() % 1000) / 1000.0f, // specular
+                    1.0f, // IOR
+                    (rand() % 1000) / 1000.0f,
+                    (rand() % 1000) / 1000.0f,
+                    0.0f);
             }
         }
 

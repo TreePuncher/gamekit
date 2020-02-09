@@ -218,17 +218,17 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 	if (depth < 1.0)
 	{
 		const float4 AlbedoSpecular = AlbedoBuffer.Load(Coord);
-		const float3 albedo         = float3(0.7, 0.45, 0.23);//float3(0.7,0.32,0.1);//AlbedoSpecular.xyz;
-		const float sF              = 1.0;//AlbedoSpecular.w;
+		const float3 albedo         = AlbedoSpecular.xyz;
+		const float sF              = AlbedoSpecular.w;
 		const float4 MRIA           = MRIABuffer.Load(Coord);
 
-		const float metallic = 0.0;//MRIA.x;
+		const float metallic = MRIA.x;
 		const float roughness = MRIA.y;
-		const float ior = 2.4;//MRIA.z;
-		const float anisotropic = AlbedoSpecular.w;//MRIA.w;
+		const float ior = MRIA.z;
+		const float aniso = MRIA.w;
 		
 		float alpha = roughness * roughness;
-		float aspect = sqrt(1.0 - 0.9 * anisotropic);
+		float aspect = sqrt(1.0 - 0.9 * aniso);
 		float alpha_x = alpha * aspect;
 		float alpha_y = alpha / aspect;
 
@@ -238,7 +238,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 		
 		float3 diffuse = albedo * diffuseMap.Sample(BiLinear, normal);
 
-		uint N = MAX_CUBEMAP_SAMPLES;
+		const uint N = MAX_CUBEMAP_SAMPLES;
 
 		uint Width, Height, NumberOfLevels;
 		ggxMap.GetDimensions(0, Width, Height, NumberOfLevels);
@@ -262,7 +262,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 			// Fresnel
 			float3 F = SchlickFresnel(dotVH, F0);
 
-			kS += F;
+			//kS += F;
 
 			// Geometry / Visibility
 			float G2 = EricHeitz2018GGXG2(V, L, alpha_x, alpha_y);
@@ -289,18 +289,16 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 		//float3 reflVec = reflect(rayDir, normal);
 		//specular = ggxMap.SampleLevel(BiLinear, reflVec, 6).rgb;
-		color = (1.0 - sF) * kD * diffuse + sF * specular; 
+		color = specular; //(1.0 - sF) * kD * diffuse + sF * specular; 
 	}
 	else
 	{
         color = ggxMap.Sample(BiLinear, rayDir);
     }
 
-    
-    float gamma = 1.3;
-    color = color / (color + 1.0);
-	color = pow(color, 1.0/gamma);  
-	
+    //float gamma = 0.2;
+    //color = color / (color + 1.0);
+	//color = pow(color, 1.0/gamma);
 
 	return float4(color, 1.0);
 	

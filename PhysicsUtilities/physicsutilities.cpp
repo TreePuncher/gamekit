@@ -438,7 +438,7 @@ namespace FlexKit
     void PhysXScene::ApplyForce(RigidBodyHandle rbHandle, float3 xyz)
     {
         auto actor = rbColliders[rbHandle].actor;
-        actor->addForce({ xyz.x, xyz.y, xyz.z });
+        actor->addForce({ xyz.x, xyz.y, xyz.z }, PxForceMode::eIMPULSE);
     }
 
 
