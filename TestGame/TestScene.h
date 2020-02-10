@@ -4,15 +4,14 @@
 #include "BaseState.h"
 #include "MultiplayerGameState.h"
 
-
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator)
 {
-	const AssetHandle model = 1001;
+	const AssetHandle model = 6001;
 
-	auto [triMesh, loaded] = FindMesh(model);
+	auto [triMesh, loaded] = FindMesh("Sphere");
 
 	if (!loaded)
-		triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
+		triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), "Sphere");
 
 	static const size_t N = 10;
 	static const float  W = (float)30;
@@ -23,9 +22,9 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 		{
 			float roughness     = ((float)X + 0.5f) / (float)N;
 			float anisotropic   = ((float)Y + 0.5f) / (float)N;
-			float kS            = 1.0;//((float)Y + 0.5f) / (float)N;
+			float kS            = 1.0f;//((float)Y + 0.5f) / (float)N;
 
-			auto& gameObject = allocator->allocate<GameObject>();
+			auto& gameObject = allocator->allocate<FlexKit::GameObject>();
 			auto node = FlexKit::GetNewNode();
 
 			gameObject.AddView<DrawableView>(triMesh, node);
@@ -41,8 +40,8 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
-			Scale(node, { 3, 3, 3 });
-			Roll(node, (float)pi / 2.0f);
+			Scale(node, { 8, 8, 8 });
+			//Roll(node, (float)pi / 2.0f);
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
 
 			scene.AddGameObject(gameObject, node);
