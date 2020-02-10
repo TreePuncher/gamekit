@@ -91,10 +91,17 @@ namespace FlexKit
 						memcpy(&vertex.WEIGHTS,  &Weights[vertex.index.p_Index],  sizeof(vertex.POS));
 						memcpy(&vertex.WIndices, &WIndexes[vertex.index.p_Index], sizeof(uint4_16));
 					}
-					if (normal.size() != 0)
-						memcpy(&vertex.NORMAL, &normal[vertex.index.n_Index], sizeof(vertex.NORMAL));
-					else {
+                    if (normal.size() != 0)
+                    {
+                        memcpy(&vertex.NORMAL,  &normal[vertex.index.n_Index], sizeof(vertex.NORMAL));
+                        if (tangent.size())
+                            memcpy(&vertex.TANGENT, &tangent[vertex.index.n_Index], sizeof(vertex.TANGENT));
+                    }
+					else
+                    {
                         memcpy(&vertex.NORMAL, &float3{ 0, 0, 0 }, sizeof(vertex.NORMAL));
+                        if (tangent.size())
+                            memcpy(&vertex.TANGENT, &float3{ 0, 0, 0 }, sizeof(vertex.TANGENT));
 					}
 					if (UV.size() != 0)
 						memcpy(&vertex.TEXCOORD, &UV[vertex.index.t_Index], sizeof(vertex.NORMAL));
@@ -126,8 +133,12 @@ namespace FlexKit
                     float3 newNormal;
                     float3 newTangent;
 
-                    memcpy(&newNormal, itr.buffer,                      sizeof(float[3]));
-                    memcpy(&newTangent, itr.buffer + sizeof(float[3]),  sizeof(float[3]));
+                    // Unpack
+                    float3 data[2];
+                    memcpy(data, itr.buffer, sizeof(data));
+                    newNormal = data[0];
+                    newTangent = data[1];
+
 
 					newNormal[3]  = 0.0f;
                     newTangent[3] = 0.0f;
@@ -603,8 +614,10 @@ namespace FlexKit
 			{
 				s_TokenValue token;
 				token.token = FlexKit::Token::Normal_COORD;
-                memcpy(token.buffer, &N, sizeof(float[3]));
-                memcpy(token.buffer + sizeof(float[3]), &N, sizeof(float3));
+
+                float3 data[2] = { N, T };
+
+                memcpy(token.buffer, data, sizeof(data));
 
 				out.push_back(token);
 			}

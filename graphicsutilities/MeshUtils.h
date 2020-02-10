@@ -119,7 +119,7 @@ namespace FlexKit
 				size_t hash = 0;
 				hash_combine(hash, p_Index);
 				hash_combine(hash, t_Index);
-				//hash_combine(hash, n_Index);
+				hash_combine(hash, n_Index);
 
 				return hash;
 			};

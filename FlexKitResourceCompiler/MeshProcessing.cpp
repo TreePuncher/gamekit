@@ -388,19 +388,27 @@ namespace FlexKit
 			if (NormalCount)
 				out.Normals = true;
 
-            if(Tangents)
-			    for (int itr = 0; itr < NCount; ++itr)
+            if (Tangents)
+            {
+                for (int itr = 0; itr < NCount; ++itr)
                     AddNormalToken(
                         TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
                         TranslateToFloat3(Tangents->GetDirectArray().GetAt(itr)),
                         out.tokens);
-            else
+
+                out.Tangents    = true;
+                out.Normals     = true;
+            }
+            else if(Normals)
+            {
                 for (int itr = 0; itr < NCount; ++itr)
-				    AddNormalToken(
+                    AddNormalToken(
                         TranslateToFloat3(Normals->GetDirectArray().GetAt(itr)),
                         out.tokens);
 
-            out.Tangents = Tangents != nullptr;
+                out.Tangents    = false;
+                out.Normals     = true;
+            }
 		}
 		{	// Get UV's
 			auto UVElement = mesh.GetElementUV(0);
@@ -460,7 +468,7 @@ namespace FlexKit
 			const auto UVs		= mesh.GetElementUV(0);
 
 			const size_t  NormalCount	= mesh.GetElementNormalCount();
-			const size_t  TriCount	= mesh.GetPolygonCount();
+			const size_t  TriCount	    = mesh.GetPolygonCount();
 
 			size_t  faceCount	= 0;
 			int     IndexCount	= 0;
@@ -595,7 +603,7 @@ namespace FlexKit
 		CombinedVertexBuffer	CVB	{ SystemAllocator };
 		IndexList				IB	{ SystemAllocator, transformedMesh.faceCount * 4 };
 
-		auto [success, buffer] = MeshUtilityFunctions::BuildVertexBuffer(transformedMesh.tokens, CVB, IB, SystemAllocator, SystemAllocator, transformedMesh.Weights);
+		auto [success, buffer] = MeshUtilityFunctions::BuildVertexBuffer(transformedMesh.tokens, CVB, IB, SystemAllocator, SystemAllocator, transformedMesh.Weights, transformedMesh.Tangents);
 		FK_ASSERT(success == true, "Mesh Failed to Build");
 
 		const size_t IndexCount  = buffer.IndexCount;

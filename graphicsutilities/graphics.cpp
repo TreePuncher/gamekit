@@ -6028,7 +6028,7 @@ namespace FlexKit
         if (uploadQueue == InvalidHandle_t)
             Uploads.Push_Temporary(resource, uploadQueue);
         else
-            FreeList.push_back({ resource, 6 });
+            FreeList.push_back({ resource, 30 });
     }
 
 
