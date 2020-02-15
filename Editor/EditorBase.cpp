@@ -184,6 +184,9 @@ void EditorBase::Draw(
     ClearVertexBuffer(frameGraph, vertexBuffer);
     ClearBackBuffer(frameGraph, core.Window.backBuffer, 0.0f);
 
+    if (!core.Window.WH.Product())
+        return;
+
     ImGui::NewFrame();
 
     UI.Draw(
@@ -195,6 +198,8 @@ void EditorBase::Draw(
 
     ImGui::Render();
     DrawImGui(dispatcher, frameGraph, reserveVertexBufferSpace, reserveConstantBufferSpace, core.Window.backBuffer, ImGui::GetDrawData());
+
+    io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
 }
 
 
@@ -373,56 +378,94 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 
     ImGuiIO& io = ImGui::GetIO();
 
-	if (evt.InputSource == Event::Keyboard)
-	{
-		switch (evt.Action)
-		{
-		case Event::Pressed:
-		{
-			switch (evt.mData1.mKC[0])
-			{
-			default:
-			{
-				if ((evt.mData1.mKC[0] >= KC_A && evt.mData1.mKC[0] <= KC_Z ) || 
-					(evt.mData1.mKC[0] >= KC_0 && evt.mData1.mKC[0] <= KC_9)  ||
-					(evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
-					(evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
-					(evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
-                    (evt.mData1.mKC[0] == KC_SYMBOL) || (evt.mData1.mKC[0] == KC_BACKSPACE) ||
-                    (evt.mData1.mKC[0] == KC_SPACE))
-                {
-                    io.AddInputCharacter((char)evt.mData2.mINT[0]);
-                }
-			}	break;
-			}
-		}	break;
-		}
-	}
-
-    if (evt.InputSource == Event::Mouse)
+    switch (evt.InputSource)
     {
-        int KC = -1;
-
-        switch (evt.mData1.mKC[0])
+        case Event::E_SystemEvent:
         {
-            case FlexKit::KC_MOUSELEFT:
-                KC = 0; break;
-            case FlexKit::KC_MOUSEMIDDLE:
-                KC = 2; break;
-            case FlexKit::KC_MOUSERIGHT:
-                KC = 1; break;
-        }
+            switch (evt.Action)
+            {
+            case Event::InputAction::Resized:
+            {
+                const auto width    = (uint32_t)evt.mData1.mINT[0];
+                const auto height   = (uint32_t)evt.mData2.mINT[0];
+                Resize({ width, height });
+            }   break;
+            default:
+                break;
+            }
+        }   break;
+        case Event::Keyboard:
+	    {
+            if (evt.mData1.mKC[0] == KC_BACKSPACE && (evt.Action == Event::Pressed | evt.Action == Event::Release))
+            {
+                io.KeysDown[io.KeyMap[ImGuiKey_Backspace]] =
+                    evt.Action == Event::Pressed ? true : false;
+            }
 
-        
-        if (KC != -1 && evt.Action == Event::Pressed || evt.Action == Event::Release)
+
+		    switch (evt.Action)
+		    {
+		    case Event::Pressed:
+		    {
+			    switch (evt.mData1.mKC[0])
+			    {
+			    default:
+			    {
+				    if ((evt.mData1.mKC[0] >= KC_A && evt.mData1.mKC[0] <= KC_Z ) || 
+					    (evt.mData1.mKC[0] >= KC_0 && evt.mData1.mKC[0] <= KC_9)  ||
+					    (evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
+					    (evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
+					    (evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
+                        (evt.mData1.mKC[0] == KC_SYMBOL) ||
+                        (evt.mData1.mKC[0] == KC_BACKSPACE) ||
+                        (evt.mData1.mKC[0] == KC_SPACE))
+                    {
+                        io.AddInputCharacter((char)evt.mData2.mINT[0]);
+                    }
+
+			    }	break;
+			    }
+		    }	break;
+		    }
+	    }
+
+        case Event::Mouse:
         {
-            const bool pressed = evt.Action == Event::Pressed ? true : false;
-            io.MouseDown[KC] = pressed;
+            int KC = -1;
+
+            switch (evt.mData1.mKC[0])
+            {
+                case FlexKit::KC_MOUSELEFT:
+                    KC = 0; break;
+                case FlexKit::KC_MOUSEMIDDLE:
+                    KC = 2; break;
+                case FlexKit::KC_MOUSERIGHT:
+                    KC = 1; break;
+            }
+
+            if (KC != -1 && evt.Action == Event::Pressed || evt.Action == Event::Release)
+            {
+                const bool pressed = evt.Action == Event::Pressed ? true : false;
+                io.MouseDown[KC] = pressed;
+            }
         }
+        default:
+            break;
     }
 
 
     return true;
+}
+
+
+
+void EditorBase::Resize(const FlexKit::uint2 WH)
+{
+    framework.core.Window.Resize(WH, framework.GetRenderSystem());
+    /*
+    framework.GetRenderSystem().ReleaseTexture(depthBuffer);
+    depthBuffer = framework.GetRenderSystem().CreateDepthBuffer(WH, true);
+    */
 }
 
 

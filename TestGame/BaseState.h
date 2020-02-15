@@ -223,6 +223,17 @@ public:
     }
 
 
+    void Resize(const uint2 WH)
+    {
+        framework.core.Window.Resize(WH, framework.GetRenderSystem());
+
+        framework.GetRenderSystem().ReleaseTexture(depthBuffer);
+        depthBuffer = framework.GetRenderSystem().CreateDepthBuffer(WH, true);
+
+        gbuffer.Resize(WH);
+    }
+
+
 	asIScriptEngine* asEngine;
 
 	FKApplication& App;

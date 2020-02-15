@@ -320,6 +320,20 @@ bool LocalPlayerState::EventHandler(Event evt)
 
     switch (evt.InputSource)
     {
+        case Event::E_SystemEvent:
+        {
+            switch (evt.Action)
+            {
+            case Event::InputAction::Resized:
+            {
+                const auto width  = (uint32_t)evt.mData1.mINT[0];
+                const auto height = (uint32_t)evt.mData2.mINT[0];
+                base.Resize({ width, height });
+            }   break;
+            default:
+                break;
+            }
+        }   break;
         case Event::Keyboard:
         {
             switch (evt.mData1.mKC[0])
@@ -328,8 +342,8 @@ bool LocalPlayerState::EventHandler(Event evt)
             {
                 if (evt.Action == Event::Pressed)
                 {
-                    auto pos = GetCameraControllerHeadPosition(thirdPersonCamera);
-                    auto forward = GetCameraControllerForwardVector(thirdPersonCamera);
+                    auto pos        = GetCameraControllerHeadPosition(thirdPersonCamera);
+                    auto forward    = GetCameraControllerForwardVector(thirdPersonCamera);
 
                     // Load Model
                     const AssetHandle model = 1002;
@@ -337,7 +351,7 @@ bool LocalPlayerState::EventHandler(Event evt)
 
                     auto& allocator = framework.core.GetBlockMemory();
 
-                    auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 0 }, pos + forward * 20);
+                    auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 1 }, pos + forward * 20);
                     auto& dynamicBox = allocator.allocate<GameObject>();
 
                     dynamicBox.AddView<RigidBodyView>(rigidBody, game.pScene);
@@ -346,6 +360,15 @@ bool LocalPlayerState::EventHandler(Event evt)
                     game.scene.AddGameObject(dynamicBox, dynamicNode);
 
                     ApplyForce(dynamicBox, forward * 100);
+
+                    SetMaterialParams(
+                        dynamicBox,
+                        float3(0.5f, 0.5f, 0.5f), // albedo
+                        (rand() % 1000) / 1000.0f, // specular
+                        1.0f, // IOR
+                        (rand() % 1000) / 1000.0f,
+                        (rand() % 1000) / 1000.0f,
+                        0.0f);
                 }
             }   break;
             case KC_U: // Reload Shaders

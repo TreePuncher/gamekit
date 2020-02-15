@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
             applicationMode = ApplicationMode::Host;
         }
         else if (!strncmp(TextureStreamingTestStr, argv[I], strlen(TextureStreamingTestStr))) // 
-            applicationMode = ApplicationMode::TextureStreamingTestMode;
+            applicationMode = ApplicationMode::GraphicsTestMode;
 
         //app.PushArgument(argv[I]);
     }
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
         }   break;
         case ApplicationMode::GraphicsTestMode:
         {
-            StartTestState(app, base, TestScenes::GlobalIllumination);
+            StartTestState(app, base, TestScenes::PhysXTest);
         }   break;
         case ApplicationMode::PlaygroundMode:
         {

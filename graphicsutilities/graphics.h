@@ -563,7 +563,7 @@ namespace FlexKit
 	struct RenderWindow
 	{
 		IDXGISwapChain4*			SwapChain_ptr;
-        ResourceHandle               backBuffer;
+        ResourceHandle              backBuffer;
 		DXGI_FORMAT					Format;
 		HWND						hWindow;
 
@@ -574,6 +574,9 @@ namespace FlexKit
 		bool						Fullscreen;
 
 		EventNotifier<>				Handler;
+
+
+        void Resize(const uint2 newWH, RenderSystem& renderSystem);
 
 
 		WORD	InputBuffer[128];
@@ -1080,7 +1083,7 @@ namespace FlexKit
 
 		DRS_PREDICATE		 = 0x0015, // Implied Read
 		DRS_INDIRECTARGS	 = 0x0019, // Implied Read
-		DRS_UNKNOWN			 = 0x0020, 
+		DRS_UNKNOWN			 = 0x0040, 
 		DRS_GENERIC			 = 0x0020, 
 		DRS_ERROR			 = 0xFFFF 
 	};
@@ -2505,6 +2508,8 @@ namespace FlexKit
 		void			SetTag(ResourceHandle Handle, uint32_t Tag);
 
         void            SetBufferedIdx(ResourceHandle handle, uint32_t idx);
+        void            SetDebugName(ResourceHandle handle, const char* str);
+
 
 		void			MarkRTUsed		(ResourceHandle Handle);
 
@@ -2516,6 +2521,8 @@ namespace FlexKit
 		void LockUntil		(size_t FrameID);
 
         void UpdateLocks();
+
+		void _ReleaseTextureForceRelease(ResourceHandle Handle);
 	private:
 
 		struct UserEntry
@@ -2534,7 +2541,10 @@ namespace FlexKit
 		struct ResourceEntry
 		{
 			void			Release();
-			void			SetState(DeviceResourceState State) { States[CurrentResource]		= State;	}
+			void			SetState(DeviceResourceState State)
+            {
+                States[CurrentResource]		= State;
+            }
 			void			SetFrameLock(size_t FrameID)		{ FrameLocks[CurrentResource]	= FrameID;	}
 			ID3D12Resource* GetAsset() const					{ return Resources[CurrentResource];		}
 			void			IncreaseIdx()						{ CurrentResource = ++CurrentResource % 3;	}
@@ -2547,6 +2557,7 @@ namespace FlexKit
 			DXGI_FORMAT			Format;
 			uint8_t				mipCount;
 			uint2				WH;
+            ResourceHandle      owner;
 		};
 			
 		Vector<UserEntry>								    UserEntries;
@@ -2906,6 +2917,36 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    struct CopyContext
+    {
+        ID3D12Resource* TempBuffer  = nullptr;
+        size_t			Position    = 0;
+        size_t			Last        = 0;
+        size_t			Size        = 0;
+
+        std::mutex      lock;
+
+        char* Buffer                = nullptr;
+
+        void Release()
+        {
+            if (!TempBuffer)
+                return;
+
+            TempBuffer->Unmap(0, nullptr);
+            TempBuffer->Release();
+
+            TempBuffer  = 0;
+            Position    = 0;
+            Size        = 0;
+            Buffer      = nullptr;
+        }
+    };
+
+
+    /************************************************************************************************/
+
+
 	struct UAVResourceLayout
 	{
 		uint32_t	stride;
@@ -3060,6 +3101,7 @@ namespace FlexKit
         ID3D12GraphicsCommandList*  _GetUploadCommandList(UploadQueueHandle);
         void                        _PushDelayReleasedResource(ID3D12Resource*, UploadQueueHandle = InvalidHandle_t);
 
+        void    _ForceReleaseTexture(ResourceHandle handle);
         void    _InsertBarrier(ID3D12Resource*, D3D12_RESOURCE_STATES currentState, D3D12_RESOURCE_STATES endState);
 
 		size_t  _GetVidMemUsage();
@@ -3124,28 +3166,8 @@ namespace FlexKit
 			size_t AAQuality	= 1;
 		}Settings;
 
-		struct
-		{
-			ID3D12Resource* TempBuffer	= nullptr;
-			size_t			Position	= 0;
-			size_t			Last		= 0;
-			size_t			Size		= 0;
-			char*			Buffer		= nullptr;
 
-			void Release()
-			{
-				if (!TempBuffer)
-					return;
-
-				TempBuffer->Unmap(0, nullptr);
-				TempBuffer->Release();
-
-				TempBuffer	= 0;
-				Position	= 0;
-				Size		= 0;
-				Buffer		= nullptr;
-			}
-		}CopyEngine;
+        CopyContext immediateCopyContext;
 
 		struct RootSigLibrary
 		{
@@ -3207,6 +3229,7 @@ namespace FlexKit
             size_t            waitCounter;
         };
 
+        std::atomic_uint                SyncCounter = 0;
         Vector<UploadSyncPoint>         Syncs;
         Vector<FreeEntry>	            FreeList;
         Vector<D3D12_RESOURCE_BARRIER>	PendingBarriers;
@@ -4304,16 +4327,25 @@ namespace FlexKit
 	inline float2 PixelToSS(size_t X, size_t Y, uint2 Dimensions) {	return { -1.0f + (float(X)	   / Dimensions[0]), 1.0f - (float(Y)	  / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
 	inline float2 PixelToSS(uint2 XY, uint2 Dimensions)			  { return { -1.0f + (float(XY[0]) / Dimensions[0]), 1.0f - (float(XY[1]) / Dimensions[1]) }; } // Assumes screen boundaries are -1 and 1
 
-	
-	FLEXKITAPI void ReserveTempSpace	( RenderSystem* RS, UploadQueueHandle, size_t Size, void*& CPUMem, size_t& Offset, const size_t alignment = 512);
 
-	FLEXKITAPI void	Release						( RenderSystem* System );
-	FLEXKITAPI void Push_DelayedRelease			( RenderSystem* RS, ID3D12Resource* Res);
-	FLEXKITAPI void Free_DelayedReleaseResources( RenderSystem* RS);
+    struct ReservedUploadSpace
+    {
+        ID3D12Resource* resouce     = nullptr;
+        const size_t    reserveSize = 0;
+        const size_t    offset      = 0;
+        char*           buffer      = 0;
+    };
 
 
-	FLEXKITAPI void AddTempBuffer	( ID3D12Resource* _ptr, RenderSystem* RS );
-	FLEXKITAPI void AddTempShaderRes( ShaderResourceBuffer& ShaderResource, RenderSystem* RS );
+	FLEXKITAPI ReservedUploadSpace ReserveTempSpace(RenderSystem* RS, UploadQueueHandle, size_t size, const size_t alignment = 512);
+
+	FLEXKITAPI void	Release						(RenderSystem* System);
+	FLEXKITAPI void Push_DelayedRelease			(RenderSystem* RS, ID3D12Resource* Res);
+	FLEXKITAPI void Free_DelayedReleaseResources(RenderSystem* RS);
+
+
+	FLEXKITAPI void AddTempBuffer	(ID3D12Resource* _ptr, RenderSystem* RS);
+	FLEXKITAPI void AddTempShaderRes(ShaderResourceBuffer& ShaderResource, RenderSystem* RS);
 
 
 	inline DescHeapPOS IncrementHeapPOS(DescHeapPOS POS, size_t Size, size_t INC) {
