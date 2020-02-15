@@ -198,20 +198,13 @@ namespace FlexKit
 
 			inline HANDLE	GetNewHandle()
 			{
-				HANDLE NewHandle( 0, mType, FlexKit::Handle::HF_USED );
+                while(FreeList.size() && FreeList.back() >= FreeList.size())
+                    FreeList.pop_back();
 
-				if( FreeList.size() )
-				{
-					NewHandle.INDEX = FreeList.back();
-					FreeList.pop_back();
-				}
-				else
-				{
-					NewHandle.INDEX = Indexes.size();
-					Indexes.push_back( 0 );
-				}
+                if (FreeList.size())
+                    return { FreeList.pop_back(), mType, FlexKit::Handle::HF_USED };
 
-				return NewHandle;
+                return { (index_t)Indexes.push_back(-1), mType, FlexKit::Handle::HF_USED };
 			}
 
 			inline void	Clear()

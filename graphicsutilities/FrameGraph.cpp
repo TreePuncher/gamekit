@@ -33,13 +33,15 @@ namespace FlexKit
 			}
 		}	break;
 
-		case OT_ShaderResource:
+        case OT_ShaderResource:
+        case OT_BackBuffer:
 		{
 			switch (AfterState)
 			{
 			case DRS_Write:
             case DRS_ShaderResource:
             case DRS_RenderTarget:
+            case DRS_Present:
 				ctx->AddShaderResourceBarrier(
 					handle_cast<ResourceHandle>(Object->ShaderResource.handle),
 					BeforeState,
@@ -588,9 +590,11 @@ namespace FlexKit
 
 				data.frameGraph->_SubmitFrameGraph(data.contexts, allocator);
 				data.contexts.back()->FlushBarriers();
-				data.renderSystem->Submit(data.contexts);
 
 				UpdateResourceFinalState();
+
+				data.renderSystem->Submit(data.contexts);
+
 
                 FK_LOG_INFO("Frame Graph Multi-Thread Section End");
 			});

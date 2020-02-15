@@ -6,12 +6,12 @@
 
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator)
 {
-	const AssetHandle model = 6001;
+	const AssetHandle model = 1004;
 
-	auto [triMesh, loaded] = FindMesh("Sphere");
+	auto [triMesh, loaded] = FindMesh(model);
 
 	if (!loaded)
-		triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), "Sphere");
+		triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
 
 	static const size_t N = 10;
 	static const float  W = (float)30;
@@ -41,7 +41,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 			Scale(node, { 8, 8, 8 });
-			//Roll(node, (float)pi / 2.0f);
+			Pitch(node, (float)pi / 2.0f);
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
 
 			scene.AddGameObject(gameObject, node);
@@ -95,7 +95,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             size_t      MIPCount;
             uint2       WH;
             FORMAT_2D   format;
-            Vector<TextureBuffer> radiance      = LoadCubeMapAsset(2, MIPCount, WH, format, allocator);
+
+            Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, MIPCount, WH, format, allocator);
             base.GGXMap = MoveTextureBuffersToVRAM(
                 renderSystem,
                 upload,
@@ -105,7 +106,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 format,
                 allocator);
 
-            Vector<TextureBuffer> irradience    = LoadCubeMapAsset(1, MIPCount, WH, format, allocator);
+            Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, MIPCount, WH, format, allocator);
             base.irradianceMap = MoveTextureBuffersToVRAM(
                 renderSystem,
                 upload,
@@ -115,12 +116,6 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 format,
                 allocator);
 
-
-			//const auto WH       = HDRStack.front().WH;
-            //base.irradianceMap = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 32, 32 }, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
-			//base.GGXMap        = renderSystem.CreateGPUResource(GPUResourceDesc::CubeMap({ 1024, 1024}, FORMAT_2D::R32G32B32A32_FLOAT, 1, true));
-
-            
 			renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
 			renderSystem.SetDebugName(base.GGXMap,        "GGX Map");
 			renderSystem.SubmitUploadQueues(&upload);
@@ -172,10 +167,10 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
 
         auto    floorShape = base.physics.CreateCubeShape({ 300, 1, 300 });
-        auto    cubeShape  = base.physics.CreateCubeShape({ 1, 1, 1 });
+        auto    cubeShape  = base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f });
 
         // Create static Box
-        auto  staticCollider = base.physics.CreateStaticCollider(gameState.pScene, floorShape, { 0, 0, 0 });
+        auto  staticCollider = base.physics.CreateStaticCollider(gameState.pScene, floorShape, { 0, -1.0f, 0 });
         auto& staticBox = allocator.allocate<GameObject>();
 
         staticBox.AddView<StaticBodyView>(staticCollider, gameState.pScene);
@@ -183,7 +178,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         staticBox.AddView<DrawableView>(triMesh, staticNode);
         staticBox.AddView<SceneNodeView<>>(staticNode);
         EnableScale(staticBox, true);
-        SetScale(staticBox, { 300, 1, 300 });
+        SetScale(staticBox, { 600, 1, 600 });
         gameState.scene.AddGameObject(staticBox, staticNode);
         SetBoundingSphereRadius(staticBox, 400);
 
@@ -192,7 +187,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         {
             for (size_t x = 0; x < 50; x++)
             {
-                auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { 2.1f * x + 1, 3.0f * y + 1.1f, 0 });
+                auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { (float)x * 1.05f, (float)y * 1.05f, 0 });
                 auto& dynamicBox = allocator.allocate<GameObject>();
 
                 dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
@@ -203,7 +198,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
                 SetMaterialParams(
                     dynamicBox,
-                    float3(1.0f, 1.0f, 1.0f), // albedo
+                    float3(0.5f, 0.5f, 0.5f), // albedo
                     (rand() % 1000) / 1000.0f, // specular
                     1.0f, // IOR
                     (rand() % 1000) / 1000.0f,
@@ -214,7 +209,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
         for (size_t y = 0; y < 0; y++)
         {
-            auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { -50 , 3.0f * y + 1.1f, 0 });
+            auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { -50 , 3.0f * y + 1.0f, 0 });
             auto& dynamicBox = allocator.allocate<GameObject>();
 
             dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);

@@ -43,6 +43,8 @@ public:
 	bool EventHandler	(FlexKit::Event evt) override;
 
 
+    void Resize(const FlexKit::uint2 WH);
+
     FlexKit::ResourceHandle             imGuiFont;
 
     FlexKit::VertexBufferHandle			vertexBuffer;

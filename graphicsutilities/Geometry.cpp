@@ -228,6 +228,7 @@ namespace FlexKit
 
     bool GenerateTangents(static_vector<VertexBufferView*>& buffers, iAllocator* allocator)
     {
+        FK_LOG_INFO("GENERATING TANGENTS");
         auto GetBuffer = [&](auto VERTEXBUFFER_TYPE) -> VertexBufferView*
         {
             for (VertexBufferView* buffer : buffers)

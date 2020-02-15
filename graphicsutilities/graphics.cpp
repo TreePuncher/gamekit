@@ -1,5 +1,3 @@
-
-
 /**********************************************************************
 
 Copyright (c) 2014-2019 Robert May
@@ -2987,35 +2985,35 @@ namespace FlexKit
             &Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
             nullptr, IID_PPV_ARGS(&TempBuffer));
 
-        RS->CopyEngine.Position	    = 0;
-        RS->CopyEngine.Last			= 0;
-        RS->CopyEngine.Size		    = MEGABYTE * 16;
-        RS->CopyEngine.TempBuffer   = TempBuffer;
+        RS->immediateCopyContext.Position	    = 0;
+        RS->immediateCopyContext.Last			= 0;
+        RS->immediateCopyContext.Size		    = MEGABYTE * 16;
+        RS->immediateCopyContext.TempBuffer     = TempBuffer;
 
         SETDEBUGNAME(TempBuffer, __func__);
 
         CD3DX12_RANGE Range(0, 0);
-        HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
+        HR = TempBuffer->Map(0, &Range, (void**)&RS->immediateCopyContext.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
     }
 
 
     /************************************************************************************************/
 
 
-    void ReserveTempSpace(RenderSystem* RS, UploadQueueHandle uploadQueue, size_t Size, void*& CPUMem, size_t& Offset, const size_t alignment)
+    ReservedUploadSpace ReserveTempSpace(RenderSystem* RS, UploadQueueHandle uploadQueue, size_t Size, const size_t alignment)
     {
-        // TODO: make thread Safe
+        void* out       = nullptr;
+        auto& copyCtx   = RS->immediateCopyContext;
 
-        void* out = nullptr;
-        auto& CopyEngine = RS->CopyEngine;
+        std::scoped_lock lock{ copyCtx.lock };
 
         auto ResizeBuffer = [&]()
         {
-            CopyEngine.TempBuffer->Unmap(0, 0);
+            copyCtx.TempBuffer->Unmap(0, 0);
 
-            RS->_PushDelayReleasedResource(CopyEngine.TempBuffer, uploadQueue);
+            RS->_PushDelayReleasedResource(copyCtx.TempBuffer, uploadQueue);
 
-            size_t NewBufferSize = CopyEngine.Size;
+            size_t NewBufferSize = copyCtx.Size;
             while (NewBufferSize < Size + alignment)
                 NewBufferSize = NewBufferSize * 2;
 
@@ -3027,54 +3025,58 @@ namespace FlexKit
                 &Resource_DESC, D3D12_RESOURCE_STATE_GENERIC_READ,
                 nullptr, IID_PPV_ARGS(&TempBuffer));
 
-            RS->CopyEngine.Position   = 0;
-            RS->CopyEngine.Last		  = 0;
-            RS->CopyEngine.Size       = NewBufferSize;
-            RS->CopyEngine.TempBuffer = TempBuffer;
+            copyCtx.Position    = 0;
+            copyCtx.Last	    = 0;
+            copyCtx.Size        = NewBufferSize;
+            copyCtx.TempBuffer  = TempBuffer;
             SETDEBUGNAME(TempBuffer, "TEMPORARY");
 
             CD3DX12_RANGE Range(0, 0);
-            HR = TempBuffer->Map(0, &Range, (void**)&RS->CopyEngine.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
-
+            HR = TempBuffer->Map(0, &Range, (void**)&copyCtx.Buffer); CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
 
             std::cout << "Resizing Upload Heap\n";
-
-            return ReserveTempSpace(RS, uploadQueue, Size, CPUMem, Offset, alignment);
         };
 
         // Not enough remaining Space in Buffer GOTO Beginning if space in front of upload buffer is available
-        if	(CopyEngine.Position + Size > CopyEngine.Size && CopyEngine.Last != 0)
-            CopyEngine.Position = 0;
+        if	(copyCtx.Position + Size > copyCtx.Size && copyCtx.Last != 0)
+            copyCtx.Position = 0;
 
-        const size_t AlignmentOffset = [&]() {
-            auto offset = alignment - CopyEngine.Position % alignment;
+        auto GetOffset = [&]() {
+            auto offset = alignment - copyCtx.Position % alignment;
             return offset == alignment ? 0 : offset;
-        }();
+        };
 
         // Buffer too Small
-        if (CopyEngine.Position + Size + AlignmentOffset > CopyEngine.Size)
-            return ResizeBuffer();
+        if (copyCtx.Position + Size + GetOffset() > copyCtx.Size)
+            ResizeBuffer();
 
-
-        if(CopyEngine.Last <= CopyEngine.Position)
-        {	// Safe, Do Upload
-            CPUMem = CopyEngine.Buffer + CopyEngine.Position + AlignmentOffset;
-            Offset = CopyEngine.Position + AlignmentOffset;
-            CopyEngine.Position += Size + AlignmentOffset;
-        }
-        else if (CopyEngine.Last > CopyEngine.Position)
+        if (copyCtx.Last > copyCtx.Position)
         {	// Potential Overlap condition
-            if (CopyEngine.Position + Size + AlignmentOffset < CopyEngine.Last)
-            {	// Safe, Do Upload
-                CPUMem = CopyEngine.Buffer + CopyEngine.Position + AlignmentOffset;
-                Offset = CopyEngine.Position + AlignmentOffset;
-                CopyEngine.Position += Size + AlignmentOffset;
-            }
-            else
-            {	// Resize Buffer and Try again
-                return ResizeBuffer();
-            }
+            if (copyCtx.Position + Size + GetOffset() >= copyCtx.Last)
+                ResizeBuffer();  // Resize Buffer and then upload
+
+            const auto alignmentOffset  = GetOffset();
+            char*           buffer      = copyCtx.Buffer + copyCtx.Position + alignmentOffset;
+            const size_t    offset      = copyCtx.Position + alignmentOffset;
+
+            copyCtx.Position += Size + alignmentOffset;
+
+            return { copyCtx.TempBuffer, Size, offset, buffer };
         }
+
+        if(copyCtx.Last <= copyCtx.Position)
+        {	// Safe, Do Upload
+            const auto alignmentOffset = GetOffset();
+
+            char* buffer        = copyCtx.Buffer + copyCtx.Position + alignmentOffset;
+            size_t offset       = copyCtx.Position + alignmentOffset;
+            copyCtx.Position    += Size + alignmentOffset;
+
+            return { copyCtx.TempBuffer, Size, offset, buffer };
+        }
+
+        FK_ASSERT(0);
+        return {};
     }
 
 
@@ -3109,8 +3111,8 @@ namespace FlexKit
 
     void CopyEnginePostFrameUpdate(RenderSystem* RS)
     {
-        auto& CopyEngine = RS->CopyEngine;
-        CopyEngine.Last  = CopyEngine.Position;
+        auto& CopyCtx = RS->immediateCopyContext;
+        CopyCtx.Last  = CopyCtx.Position;
     }
 
 
@@ -3334,7 +3336,7 @@ namespace FlexKit
         Texture2DUAVs.ReleaseAll();
         PipelineStates.ReleasePSOs();
 
-        CopyEngine.Release();
+        immediateCopyContext.Release();
 
         NullConstantBuffer.Release();
 
@@ -3440,9 +3442,19 @@ namespace FlexKit
         for (auto& syncPoint : Syncs)
             Uploads.Wait(syncPoint.queue);
 
-        for (size_t I = 0; I < 6; I++) {
-            WaitforGPU();
-            _IncrementRSIndex();
+
+
+        for (size_t itr = 0; itr < 3; itr++)
+        {
+            const size_t prevFrame      = (CurrentIndex - itr) % 3; ;
+            const size_t CompleteValue  = Fence->GetCompletedValue();
+
+            if (CompleteValue < Fences[prevFrame].FenceValue) {
+                HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+                Fence->SetEventOnCompletion(Fences[prevFrame].FenceValue, eventHandle);
+                WaitForSingleObject(eventHandle, INFINITE);
+                CloseHandle(eventHandle);
+            }
         }
     }
 
@@ -3470,8 +3482,7 @@ namespace FlexKit
 
     void RenderSystem::SetDebugName(ResourceHandle handle, const char* str)
     {
-        auto resource = GetObjectDeviceResource(handle);
-        SETDEBUGNAME(resource, str);
+        Textures.SetDebugName(handle, str);
     }
 
 
@@ -3623,8 +3634,11 @@ namespace FlexKit
         SubResourceUpload_Desc desc;
         desc.buffers            = &textureBuffer;
 
-        _UpdateSubResourceByUploadQueue(this, queue, resource, &desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        _UpdateSubResourceByUploadQueue(this, queue, resource, &desc, D3D12_RESOURCE_STATE_COMMON);
     }
+
+
+    /************************************************************************************************/
 
 
     void RenderSystem::UploadTexture(ResourceHandle handle, UploadQueueHandle queue, TextureBuffer* buffers, size_t resourceCount, iAllocator* temp) // Uses Upload Queue
@@ -3637,7 +3651,7 @@ namespace FlexKit
         desc.subResourceCount   = resourceCount;
         desc.format             = format;
 
-        _UpdateSubResourceByUploadQueue(this, queue, resource, &desc, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        _UpdateSubResourceByUploadQueue(this, queue, resource, &desc, D3D12_RESOURCE_STATE_COMMON);
     }
 
 
@@ -3694,7 +3708,10 @@ namespace FlexKit
 
     ResourceHandle RenderSystem::CreateDepthBuffer( const uint2 WH, const bool UseFloat, const size_t bufferCount)
     {
-        return CreateGPUResource(GPUResourceDesc::DepthTarget(WH, UseFloat ? FORMAT_2D::D32_FLOAT : FORMAT_2D::D24_UNORM_S8_UINT));
+        auto resource = CreateGPUResource(GPUResourceDesc::DepthTarget(WH, UseFloat ? FORMAT_2D::D32_FLOAT : FORMAT_2D::D24_UNORM_S8_UINT));
+        SetDebugName(resource, "DepthBuffer");
+
+        return resource;
     }
 
 
@@ -3764,8 +3781,9 @@ namespace FlexKit
             D3D12_CLEAR_VALUE* pCV = (desc.CVFlag | desc.renderTarget | desc.depthTarget) ? &CV : nullptr;
 
 
-            D3D12_RESOURCE_STATES InitialState = desc.renderTarget ?
-                D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET:
+            D3D12_RESOURCE_STATES InitialState =
+                desc.renderTarget   ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
+                desc.depthTarget    ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON   :
                 D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 
             ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
@@ -3791,8 +3809,7 @@ namespace FlexKit
 
             auto initialState =
                 filledDesc.renderTarget ? DRS_RenderTarget:
-                (filledDesc.depthTarget ? DRS_GENERIC :
-                    DRS_ShaderResource);
+                filledDesc.depthTarget  ? DRS_GENERIC : DRS_ShaderResource;
 
             filledDesc.resources = NewResource;
             return Textures.AddResource(filledDesc, initialState);
@@ -4165,7 +4182,7 @@ namespace FlexKit
 
     ID3D12Resource* RenderSystem::GetUploadResource()
     {
-        return CopyEngine.TempBuffer;
+        return immediateCopyContext.TempBuffer;
     }
 
 
@@ -4288,6 +4305,48 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void RenderWindow::Resize(const uint2 newWH, RenderSystem& renderSystem)
+    {
+        WH = newWH;
+
+        renderSystem.FlushPending();
+        renderSystem._ForceReleaseTexture(backBuffer);
+
+        const auto HR = SwapChain_ptr->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+        if (FAILED(HR))
+        {
+            FK_ASSERT(0, "Failed to resize back buffer!");
+        }
+
+        //recreateBackBuffer
+        ID3D12Resource* buffer[3];
+
+        DXGI_SWAP_CHAIN_DESC1 desc;
+        SwapChain_ptr->GetDesc1(&desc);
+        desc.Height;
+        desc.Width;
+
+        const auto bufferCount = desc.BufferCount;
+
+        for (size_t I = 0; I < bufferCount; ++I)
+        {
+            SwapChain_ptr->GetBuffer(I, __uuidof(ID3D12Resource), (void**)&buffer[I]);
+            if (!buffer[I])
+                FK_ASSERT(buffer[I], "Failed to Create Back Buffer!");
+
+        }
+
+        backBuffer = renderSystem.CreateGPUResource(
+            GPUResourceDesc::BackBuffered(
+                { desc.Width, desc.Height },
+                FORMAT_2D::R16G16B16A16_FLOAT,
+                buffer, 3));
+
+        renderSystem.SetDebugName(backBuffer, "BackBuffer");
+        renderSystem.Textures.SetBufferedIdx(backBuffer, SwapChain_ptr->GetCurrentBackBufferIndex());
+    }
+
+
     bool CreateRenderWindow( RenderSystem* RS, RenderWindowDesc* In_Desc, RenderWindow* out )
     {
         SetProcessDPIAware();
@@ -4299,7 +4358,7 @@ namespace FlexKit
         Window_Count++;
 
         // Register Window Class
-        auto Window = CreateWindow( L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_BORDER,
+        auto Window = CreateWindow( L"RENDER_WINDOW", L"Render Window", WS_OVERLAPPEDWINDOW | WS_SIZEBOX,
                                In_Desc->POS_X,
                                In_Desc->POS_Y,
                                In_Desc->width,
@@ -4352,6 +4411,7 @@ namespace FlexKit
         SwapChainDesc.BufferUsage		= DXGI_USAGE_RENDER_TARGET_OUTPUT;
         SwapChainDesc.SwapEffect		= DXGI_SWAP_EFFECT_FLIP_DISCARD;
         SwapChainDesc.SampleDesc.Count	= 1;
+        SwapChainDesc.Flags             = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
         ShowWindow(Window, 5);
 
         IDXGISwapChain1* NewSwapChain_ptr = nullptr;
@@ -4638,7 +4698,7 @@ namespace FlexKit
 
     FLEXKITAPI void _UpdateSubResourceByUploadQueue(RenderSystem* RS, UploadQueueHandle uploadHandle, ID3D12Resource* destinationResource, SubResourceUpload_Desc* Desc, D3D12_RESOURCE_STATES EndState)
     {
-        auto& CE					    = RS->CopyEngine;
+        auto& copyCtx					= RS->immediateCopyContext;
         const auto      format          = TextureFormat2DXGIFormat(Desc->format);
         const size_t    formatSize      = GetFormatElementSize(format);
 
@@ -4646,12 +4706,10 @@ namespace FlexKit
 
         for (size_t I = 0; I < Desc->subResourceCount; ++I)
         {
-            void* pData         = nullptr;
-            size_t Offset = 0;
-            ReserveTempSpace(RS, uploadHandle, Desc->buffers[I].Size, pData, Offset);
+            const auto region = ReserveTempSpace(RS, uploadHandle, Desc->buffers[I].Size);
 
             memcpy(
-                (char*)pData,
+                (char*)region.buffer,
                 (char*)Desc->buffers[I].Buffer,
                 Desc->buffers[I].Size);
 
@@ -4667,10 +4725,10 @@ namespace FlexKit
             SubRegion.Footprint.RowPitch = rowPitch;
             SubRegion.Footprint.Width    = WH[0];
             SubRegion.Footprint.Height   = WH[1];
-            SubRegion.Offset             = Offset;
+            SubRegion.Offset             = region.offset;
 
             auto Destination	= CD3DX12_TEXTURE_COPY_LOCATION(destinationResource, I);
-            auto Source			= CD3DX12_TEXTURE_COPY_LOCATION(CE.TempBuffer, SubRegion);
+            auto Source			= CD3DX12_TEXTURE_COPY_LOCATION(region.resouce, SubRegion);
 
             CS->CopyTextureRegion(&Destination, 0, 0, 0, &Source, nullptr);
         }
@@ -4689,14 +4747,16 @@ namespace FlexKit
 
         ID3D12GraphicsCommandList* commandList = _GetUploadCommandList(uploadQueue);
 
-        void* _ptr = nullptr;
-        size_t Offset = 0;
-        ReserveTempSpace(this, uploadQueue, Size, _ptr, Offset);
+        const auto reservedSpace = ReserveTempSpace(this, uploadQueue, Size);
 
-        FK_ASSERT(_ptr, "UPLOAD ERROR!");
+        memcpy(reservedSpace.buffer, Data, Size);
 
-        memcpy(_ptr, Data, Size);
-        commandList->CopyBufferRegion(Dest, 0, CopyEngine.TempBuffer, Offset, Size);
+        commandList->CopyBufferRegion(
+            Dest,
+            0,
+            reservedSpace.resouce,
+            reservedSpace.offset,
+            reservedSpace.reserveSize);
     }
 
 
@@ -4710,15 +4770,14 @@ namespace FlexKit
         RenderSystem&	    renderSystem,
         UploadQueueHandle   uploadQueue)
     {
-        size_t	Offset	= 0;
-        void*	_ptr	= nullptr;
-
-        ReserveTempSpace(renderSystem, uploadQueue, uploadSize + 512, _ptr, Offset);
+        const auto reservedSpace = ReserveTempSpace(renderSystem, uploadQueue, uploadSize + 512);
         
-        size_t alignmentOffset = Offset % 512;
-        Offset += alignmentOffset;
+        size_t alignmentOffset = reservedSpace.offset % 512;
 
-        return { .offset = Offset,.uploadSize = uploadSize + 512,.buffer = (char*)_ptr };
+        return {
+            .offset     = reservedSpace.offset + alignmentOffset,
+            .uploadSize = uploadSize + 512,
+            .buffer     = reservedSpace.buffer  };
     }
 
 
@@ -5329,22 +5388,7 @@ namespace FlexKit
 
     ResourceHandle TextureStateTable::AddResource(const GPUResourceDesc& Desc, const DeviceResourceState InitialState)
     {
-        auto UserIdx     = UserEntries.size();
-        auto ResourceIdx = Resources.size();
         auto Handle		 = Handles.GetNewHandle();
-        Handles[Handle]  = UserIdx;
-
-        UserEntry Entry;
-        Entry.ResourceIdx		= ResourceIdx;
-        Entry.FrameGraphIndex	= -1;
-        Entry.FGI_FrameStamp    = -1;
-        Entry.Handle            = Handle;
-        Entry.Format			= TextureFormat2DXGIFormat(Desc.format);
-        Entry.Flags             = Desc.backBuffer ? TF_BackBuffer : 0;
-        Entry.dimension         = Desc.Dimensions;
-        Entry.arraySize         = Desc.arraySize;
-
-        UserEntries.push_back(Entry);
 
         ResourceEntry NewEntry = 
         {	
@@ -5353,20 +5397,88 @@ namespace FlexKit
             { nullptr, nullptr, nullptr },
             { 0, 0, 0 },
             { InitialState, InitialState , InitialState },
-            Entry.Format,
+            TextureFormat2DXGIFormat(Desc.format),
             Desc.MipLevels,
-            Desc.WH
+            Desc.WH,
+            Handle
         };
 
         for (size_t I = 0; I < Desc.bufferCount; ++I)
             NewEntry.Resources[I] = Desc.resources[I];
 
-        Resources.push_back(NewEntry);
+        UserEntry Entry;
+        Entry.ResourceIdx		= Resources.push_back(NewEntry);
+        Entry.FrameGraphIndex	= -1;
+        Entry.FGI_FrameStamp    = -1;
+        Entry.Handle            = Handle;
+        Entry.Format			= NewEntry.Format;
+        Entry.Flags             = Desc.backBuffer ? TF_BackBuffer : 0;
+        Entry.dimension         = Desc.Dimensions;
+        Entry.arraySize         = Desc.arraySize;
+
+        Handles[Handle]         = UserEntries.push_back(Entry);
 
         if (Desc.buffered && Desc.bufferCount > 1)
             BufferedResources.push_back(Handle);
 
         return Handle;
+    }
+    
+
+    /************************************************************************************************/
+
+
+    void TextureStateTable::ReleaseTexture(ResourceHandle Handle)
+    {
+        const auto UserIdx	= Handles[Handle];
+        auto& UserEntry		= UserEntries[UserIdx];
+        const auto ResIdx	= UserEntry.ResourceIdx;
+        auto& resource		= Resources[ResIdx];
+
+        for(auto res : resource.Resources)
+            if(res)
+                delayRelease.push_back({ res, 3 });
+
+        const auto TempHandle	= UserEntries.back().Handle;
+        UserEntry			    = UserEntries.back();
+        Handles[TempHandle]     = UserIdx;
+
+        const auto temp         = Resources[UserEntry.ResourceIdx];
+        Resources[ResIdx]       = Resources.back();
+        UserEntries[Handles[resource.owner]].ResourceIdx = ResIdx;
+
+        UserEntries.pop_back();
+        Resources.pop_back();
+
+        Handles.RemoveHandle(Handle);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void TextureStateTable::_ReleaseTextureForceRelease(ResourceHandle Handle)
+    {
+        auto  UserIdx		= Handles[Handle];
+        auto& UserEntry		= UserEntries[UserIdx];
+        const auto ResIdx	= UserEntry.ResourceIdx;
+        auto& resource		= Resources[ResIdx];
+
+        for (auto res : resource.Resources)
+            res->Release();
+
+        const auto TempHandle	= UserEntries.back().Handle;
+        UserEntry			    = UserEntries.back();
+        Handles[TempHandle]     = UserIdx;
+
+        const auto temp         = Resources[UserEntry.ResourceIdx];
+        Resources[ResIdx]       = Resources.back();
+        UserEntries[Handles[resource.owner]].ResourceIdx = ResIdx;
+
+        UserEntries.pop_back();
+        Resources.pop_back();
+
+        Handles.RemoveHandle(Handle);
     }
 
 
@@ -5428,6 +5540,21 @@ namespace FlexKit
         auto Residx  = UserEntries[UserIdx].ResourceIdx;
 
         Resources[Residx].CurrentResource = idx;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void TextureStateTable::SetDebugName(ResourceHandle handle, const char* str)
+    {
+        auto UserIdx    = Handles[handle];
+        auto resIdx     = UserEntries[UserIdx].ResourceIdx;
+        auto& resource  = Resources[resIdx];
+
+        for (auto& res : resource.Resources)
+            if (res)
+                SETDEBUGNAME(res, str);
     }
 
 
@@ -5555,34 +5682,6 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void TextureStateTable::ReleaseTexture(ResourceHandle Handle)
-    {
-        auto UserIdx		= Handles[Handle];
-        auto& UserEntry		= UserEntries[UserIdx];
-        const auto ResIdx	= UserEntry.ResourceIdx;
-        auto& Resource		= Resources[ResIdx];
-
-        for(auto res : Resource.Resources)
-            if(res)
-                delayRelease.push_back({ res, 3 });
-
-        auto TempHandle		= UserEntries.back().Handle;
-        UserEntry			= UserEntries.back();
-
-        Resource				= Resources[UserEntry.ResourceIdx];
-        UserEntry.ResourceIdx	= ResIdx;
-        Handles[TempHandle]		= UserIdx;
-
-        UserEntries.pop_back();
-        Resources.pop_back();
-
-        Handles.RemoveHandle(Handle);
-    }
-
-
-    /************************************************************************************************/
-
-
     void TextureStateTable::ResourceEntry::Release()
     {
         for (auto& R : Resources)
@@ -5600,10 +5699,11 @@ namespace FlexKit
 
     DeviceResourceState TextureStateTable::GetState(ResourceHandle Handle) const
     {
-        auto Idx			= Handles[Handle];
-        auto ResourceIdx	= UserEntries[Idx].ResourceIdx;
+        auto    Idx			    = Handles[Handle];
+        auto    ResourceIdx	    = UserEntries[Idx].ResourceIdx;
+        const   auto& resources = Resources[ResourceIdx];
 
-        return Resources[ResourceIdx].States[Resources[ResourceIdx].CurrentResource];
+        return resources.States[resources.CurrentResource];
     }
 
 
@@ -6035,6 +6135,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    void RenderSystem::_ForceReleaseTexture(ResourceHandle handle)
+    {
+        Textures._ReleaseTextureForceRelease(handle);
+    }
+
+
+    /************************************************************************************************/
+
+
     void RenderSystem::_InsertBarrier(ID3D12Resource* resource, D3D12_RESOURCE_STATES currentState, D3D12_RESOURCE_STATES endState)
     {
         PendingBarriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(resource, currentState, endState, 0));
@@ -6108,10 +6217,15 @@ namespace FlexKit
             ImmediateUpload = InvalidHandle_t;
         }
 
-        for (auto& sync : Syncs)
-            auto HR = GraphicsQueue->Wait(Uploads.fence, sync.waitCounter);
 
-        Syncs.clear();
+        if (SyncCounter.load(std::memory_order_acquire))
+        {
+            for (auto& sync : Syncs)
+                auto HR = GraphicsQueue->Wait(Uploads.fence, sync.waitCounter);
+
+            Syncs.clear();
+            SyncCounter.store(0, std::memory_order_release);
+        }
 
         static_vector<ID3D12CommandList*> cls;
         for (auto context : contexts) {
@@ -6154,13 +6268,21 @@ namespace FlexKit
 
         UploadQueue->ExecuteCommandLists(count, cmdLists);
         UploadQueue->Signal(Uploads.fence, counter);
+        SyncCounter.fetch_add(Syncs.size(), std::memory_order_acq_rel);
     }
+
+
+    /************************************************************************************************/
 
 
     UploadQueueHandle RenderSystem::GetUploadQueue()
     {
         return Uploads.Open();
     }
+
+
+    /************************************************************************************************/
+
 
     UploadQueueHandle RenderSystem::GetImmediateUploadQueue()
     {
@@ -6169,7 +6291,6 @@ namespace FlexKit
 
         return ImmediateUpload;
     }
-
 
 
     /************************************************************************************************/

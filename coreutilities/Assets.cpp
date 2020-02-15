@@ -355,8 +355,8 @@ namespace FlexKit
 			}
 
             // Generate Tangents if they weren't loaded
-            if (!Out->HasTangents() && Out->HasNormals())
-                GenerateTangents(Out->Buffers, Memory);
+            //if (!Out->HasTangents() && Out->HasNormals())
+            //    GenerateTangents(Out->Buffers, Memory);
 
 			CreateVertexBuffer(RS, handle, Out->Buffers, Out->Buffers.size(), Out->VertexBuffer);
 
