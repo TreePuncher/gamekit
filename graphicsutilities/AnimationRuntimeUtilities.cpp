@@ -22,8 +22,8 @@ namespace FlexKit
 			Joint		J;
 			JointPose	JP;
 			float4x4	IP;
-			memcpy(&IP, &joints[I].IPose, sizeof(float4x4));
-			memcpy(&JP,	&joints[I].Pose,	sizeof(JointPose));
+			memcpy(&IP, &joints[I].IPose,   sizeof(float4x4));
+			memcpy(&JP,	&joints[I].Pose,    sizeof(JointPose));
 
 			J.mID		= StringPool + (64 * I);
 			J.mParent	= joints[I].Parent;
@@ -79,43 +79,36 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DrawablePoseState* CreatePoseState(Drawable* E, iAllocator* allocator)
+	PoseState CreatePoseState(Skeleton& skeleton, iAllocator* allocator)
 	{
 		using DirectX::XMMATRIX;
 		using DirectX::XMMatrixIdentity;
-		auto Mesh = GetMeshResource(E->MeshHandle);
 
-		if (!Mesh && !Mesh->Skeleton)
-			return nullptr;
+		size_t JointCount = skeleton.JointCount;
 
-		size_t JointCount = Mesh->Skeleton->JointCount;
+        PoseState poseState;
+        poseState.Joints		= (JointPose*)	allocator->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
+        poseState.CurrentPose	= (XMMATRIX*)	allocator->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
+        poseState.JointCount	= JointCount;
+        poseState.Sk			= &skeleton;
 
-		auto New_EAS = (DrawablePoseState*)		allocator->_aligned_malloc(sizeof(DrawablePoseState));
-		New_EAS->Joints			= (JointPose*)	allocator->_aligned_malloc(sizeof(JointPose) * JointCount, 0x40);
-		New_EAS->CurrentPose	= (XMMATRIX*)	allocator->_aligned_malloc(sizeof(XMMATRIX) * JointCount, 0x40);
-		New_EAS->JointCount		= JointCount;
-		New_EAS->Sk				= Mesh->Skeleton;
-		New_EAS->Dirty			= true; // Forces First Upload
-
-		auto S = New_EAS->Sk;
-		
 		for (size_t I = 0; I < JointCount; ++I)
-			New_EAS->Joints[I] = JointPose(Quaternion{ 0, 0, 0, 1 },float4{0, 0, 0, 1});
+            poseState.Joints[I] = JointPose(Quaternion{ 0, 0, 0, 1 },float4{0, 0, 0, 1});
 		
-		for (size_t I = 0; I < New_EAS->JointCount; ++I) 
+		for (size_t I = 0; I < poseState.JointCount; ++I)
 		{
-			auto P = (S->Joints[I].mParent != 0xFFFF) ? New_EAS->CurrentPose[S->Joints[I].mParent] : XMMatrixIdentity();
-			New_EAS->CurrentPose[I] = New_EAS->CurrentPose[I] * P;
+			auto P = (skeleton.Joints[I].mParent != 0xFFFF) ? poseState.CurrentPose[skeleton.Joints[I].mParent] : XMMatrixIdentity();
+            poseState.CurrentPose[I] = P * Float4x4ToXMMATIRX(GetPoseTransform(skeleton.JointPoses[I]));
 		}
 
-		return New_EAS;
+		return poseState;
 	}
 
 
 	/************************************************************************************************/
 
 
-	bool InitiatePoseState(RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState)
+	bool InitiatePoseState(RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* InitialState)
 	{
 		size_t ResourceSize = Desc.JointCount * sizeof(VShaderJoint) * 2;
 		return true;
@@ -413,7 +406,7 @@ namespace FlexKit
 
 	Pair<EPLAY_ANIMATION_RES, bool> CheckState_PlayAnimation(Drawable* E, iAllocator* MEM)
 	{
-		using FlexKit::DrawablePoseState;
+		using FlexKit::PoseState;
 		if (!E || !(E->MeshHandle != InvalidHandle_t))
 			return{ EPLAY_ANIMATION_RES::EPLAY_INVALID_PARAM, false };
 
@@ -426,12 +419,13 @@ namespace FlexKit
 
 		if (false)//!E->PoseState)
 		{
+            /*
 			Skeleton*	S		= (Skeleton*)Mesh->Skeleton;
 			auto NewPoseState	= CreatePoseState(E, MEM);
 
 			if (!NewPoseState)
 				return{ EPLAY_NOT_ANIMATABLE, false };
-
+            */
 			//E->PoseState = NewPoseState;
 		}// Create Animation State
 
@@ -451,7 +445,7 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
 	{
-		using FlexKit::DrawablePoseState;
+		using FlexKit::PoseState;
 		auto Res = CheckState_PlayAnimation(E, Allocator);
 
 		if (!Res)
@@ -499,7 +493,7 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, const char* Animation, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t* OutID)
 	{
-		using FlexKit::DrawablePoseState;
+		using FlexKit::PoseState;
 		auto Res = CheckState_PlayAnimation(E, Allocator);
 
 		if (!Res)
@@ -547,7 +541,7 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES PlayAnimation(Drawable* E, GUID_t Guid, iAllocator* Allocator, bool ForceLoop, float Weight, int64_t& out)
 	{
-		using FlexKit::DrawablePoseState;
+		using FlexKit::PoseState;
 		auto Res = CheckState_PlayAnimation(E, Allocator);
 
 		if (!Res)
@@ -597,7 +591,7 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, int64_t ID, double Speed)
 	{
-		using FlexKit::DrawablePoseState;
+		using FlexKit::PoseState;
 
 		for (auto& C : AE->Clips)
 		{
@@ -617,7 +611,7 @@ namespace FlexKit
 
 	EPLAY_ANIMATION_RES SetAnimationSpeed(DrawableAnimationState* AE, GUID_t AnimationID, double Speed)
 	{
-		using FlexKit::DrawablePoseState;
+		using FlexKit::PoseState;
 
 		for (auto& C : AE->Clips)
 		{
@@ -842,7 +836,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	EPLAY_ANIMATION_RES ClearAnimationPose(DrawablePoseState* DPS, iAllocator* TEMP)
+	EPLAY_ANIMATION_RES ClearAnimationPose(PoseState* DPS, iAllocator* TEMP)
 	{
 		using DirectX::XMMatrixIdentity;
 		auto S = DPS->Sk;
@@ -856,7 +850,7 @@ namespace FlexKit
 			auto BasePose	= S->JointPoses[I];
 			auto JointPose	= DPS->Joints[I];
 			
-			M[I] = GetPoseTransform(JointPose) * GetPoseTransform(BasePose);
+			M[I] = Float4x4ToXMMATIRX(GetPoseTransform(JointPose) * GetPoseTransform(BasePose));
 		}
 
 
@@ -1040,7 +1034,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	float4x4 GetJointPosed_WT(JointHandle Joint, NodeHandle Node, DrawablePoseState* DPS)
+	float4x4 GetJointPosed_WT(JointHandle Joint, NodeHandle Node, PoseState* DPS)
 	{
 		float4x4 WT; GetTransform(Node, &WT);
 		float4x4 JT = XMMatrixToFloat4x4(DPS->CurrentPose + Joint);
@@ -1109,16 +1103,12 @@ namespace FlexKit
 
 		for (size_t I = 1; I < S->JointCount; ++I)
 		{
-			
-			float4x4 PT;
-			if (S->Joints[I].mParent != InvalidHandle_t)
-				PT = M[S->Joints[I].mParent];
-			else
-				PT = float4x4::Identity();
+			float4x4 PT = (S->Joints[I].mParent != InvalidHandle_t) ? M[S->Joints[I].mParent] : float4x4::Identity();
 
 			auto J  = S->JointPoses[I];
-			auto JT = PT * XMMatrixToFloat4x4(&GetPoseTransform(J));
+			auto JT = GetPoseTransform(J) * S->GetInversePose(JointHandle(I));
 
+            const auto temp = (JT * Zero);
             const float4 VA = (WT * (JT * Zero));
             const float4 VB = (WT * (PT * Zero));
 
@@ -1130,7 +1120,7 @@ namespace FlexKit
             if (VA.w <= 0 || VB.w <= 0)
                 continue;
 
-            lines.push_back({ A, WHITE,	B, PURPLE	});
+            lines.push_back({ A, BLACK,	B, PURPLE	});
 
             for (size_t itr = 0; itr < sizeof(debugLines) / sizeof(debugLines[0]); ++itr)
             {
@@ -1147,12 +1137,11 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void DEBUG_DrawPoseState(DrawablePoseState* DPS, NodeHandle Node, LineSegments* Out)
+    LineSegments DEBUG_DrawPoseState(PoseState& poseState, NodeHandle Node, iAllocator* allocator)
 	{
-		if (!DPS)
-			return;
+        LineSegments lines{ allocator };
 
-		Skeleton* S = DPS->Sk;
+		Skeleton* S = poseState.Sk;
 		float4 Zero(0.0f, 0.0f, 0.0f, 1.0f);
 		float4x4 WT; GetTransform(Node, &WT);
 
@@ -1162,11 +1151,11 @@ namespace FlexKit
 
 			float4x4 PT;
 			if (S->Joints[I].mParent != 0XFFFF)
-				PT = XMMatrixToFloat4x4(DPS->CurrentPose + S->Joints[I].mParent);
+				PT = XMMatrixToFloat4x4(poseState.CurrentPose + S->Joints[I].mParent);
 			else
 				PT = float4x4::Identity();
 
-			auto JT = XMMatrixToFloat4x4(DPS->CurrentPose + I);
+			auto JT = XMMatrixToFloat4x4(poseState.CurrentPose + I);
 
 			A = (WT * (JT * Zero)).xyz();
 			B = (WT * (PT * Zero)).xyz();
@@ -1175,11 +1164,13 @@ namespace FlexKit
 			float3 Y = (WT * (PT * float4{ 0, 1, 0, 1 })).xyz();
 			float3 Z = (WT * (PT * float4{ 0, 0, 1, 1 })).xyz();
 
-			Out->push_back({ A, WHITE,	B, PURPLE	});
-			Out->push_back({ B, RED,	X, RED		});
-			Out->push_back({ B, GREEN,	Y, GREEN	});
-			Out->push_back({ B, BLUE,	Z, BLUE		});
+			lines.push_back({ A, WHITE,	B, PURPLE	});
+			lines.push_back({ B, RED,	X, RED		});
+			lines.push_back({ B, GREEN,	Y, GREEN	});
+			lines.push_back({ B, BLUE,	Z, BLUE		});
 		}
+
+        return lines;
 	}
 
 

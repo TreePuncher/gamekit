@@ -414,8 +414,10 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 				    if ((evt.mData1.mKC[0] >= KC_A && evt.mData1.mKC[0] <= KC_Z ) || 
 					    (evt.mData1.mKC[0] >= KC_0 && evt.mData1.mKC[0] <= KC_9)  ||
 					    (evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
-					    (evt.mData1.mKC[0] == KC_PLUS) || (evt.mData1.mKC[0] == KC_MINUS) ||
-					    (evt.mData1.mKC[0] == KC_UNDERSCORE) || (evt.mData1.mKC[0] == KC_EQUAL) ||
+					    (evt.mData1.mKC[0] == KC_PLUS) ||
+                        (evt.mData1.mKC[0] == KC_MINUS) ||
+					    (evt.mData1.mKC[0] == KC_UNDERSCORE) ||
+                        (evt.mData1.mKC[0] == KC_EQUAL) ||
                         (evt.mData1.mKC[0] == KC_SYMBOL) ||
                         (evt.mData1.mKC[0] == KC_BACKSPACE) ||
                         (evt.mData1.mKC[0] == KC_SPACE))
@@ -428,7 +430,6 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 		    }	break;
 		    }
 	    }
-
         case Event::Mouse:
         {
             int KC = -1;

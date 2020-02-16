@@ -90,7 +90,7 @@ namespace FlexKit
 		size_t JointCount;
 	};
 
-	struct DrawablePoseState
+	struct PoseState
 	{
 		JointPose*				Joints		= nullptr;
 		DirectX::XMMATRIX*		CurrentPose	= nullptr;
@@ -126,7 +126,7 @@ namespace FlexKit
 	struct DrawableAnimationState
 	{
 		static_vector<AnimationStateEntry>	Clips; // Animations in
-		DrawablePoseState*					Target;
+        PoseState*					        Target;
 	};
 
 
@@ -260,7 +260,7 @@ namespace FlexKit
 	{
 		AnimationStateMachine*	ASM;
 		BlendTree*				BlendTree;
-		DrawablePoseState*		Target;
+        PoseState*		        Target;
 	};
 
 
@@ -307,7 +307,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void RotateJoint			( DrawablePoseState* E, JointHandle J, Quaternion Q )
+	inline void RotateJoint			(PoseState* E, JointHandle J, Quaternion Q )
 	{
 		if (!E)
 			return;
@@ -318,7 +318,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void TranslateJoint		( DrawablePoseState* PS, JointHandle J, float3 xyz )
+	inline void TranslateJoint		(PoseState* PS, JointHandle J, float3 xyz )
 	{
 		if (!PS)
 			return;
@@ -330,7 +330,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void SetJointTranslation ( DrawablePoseState* E, JointHandle J, float3 xyz )
+	inline void SetJointTranslation (PoseState* E, JointHandle J, float3 xyz )
 	{
 		if (!E)
 			return;
@@ -342,7 +342,7 @@ namespace FlexKit
 		}
 	}
 
-	inline void ScaleJoint			( DrawablePoseState* E, JointHandle J, float S )
+	inline void ScaleJoint			(PoseState* E, JointHandle J, float S )
 	{
 		if (!E)
 			return;
@@ -355,9 +355,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FLEXKITAPI DrawablePoseState*	CreatePoseState		( Drawable* D, iAllocator* MEM );
-	FLEXKITAPI bool					InitiatePoseState	( RenderSystem* RS, DrawablePoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
-	FLEXKITAPI void					InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
+	FLEXKITAPI PoseState	CreatePoseState		( Skeleton&, iAllocator*);
+	FLEXKITAPI bool			InitiatePoseState	( RenderSystem* RS, PoseState* EAS, PoseState_DESC& Desc, VShaderJoint* Initial );
+	FLEXKITAPI void			InitiateASM			( AnimationStateMachine* AS, iAllocator*, EntityHandle Target );
 
 
 	/************************************************************************************************/
@@ -388,7 +388,7 @@ namespace FlexKit
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, GUID_t		Guid);
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, const char*	Animation);
 	FLEXKITAPI EPLAY_ANIMATION_RES StopAnimation			( Drawable* E, uint64_t	ID);
-	FLEXKITAPI EPLAY_ANIMATION_RES ClearAnimationPose		( DrawablePoseState* DPS, iAllocator* TEMP );
+	FLEXKITAPI EPLAY_ANIMATION_RES ClearAnimationPose		(PoseState* DPS, iAllocator* TEMP );
 	
 	FLEXKITAPI size_t				GetAnimationCount			( Drawable* E );
 	FLEXKITAPI size_t				GetAnimationClipCount		( Skeleton* E );
@@ -404,11 +404,11 @@ namespace FlexKit
 	FLEXKITAPI void UploadPoses		( RenderSystem* RS, PVS* Drawables, iAllocator* TEMP);
 
 	//	Call After Updating PoseState
-	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, DrawablePoseState* DPS );
+	FLEXKITAPI float4x4 GetJointPosed_WT( JointHandle Joint, NodeHandle Node, PoseState* DPS );
 
-	FLEXKITAPI LineSegments BuildSkeletonLineSet            ( Skeleton* S,				NodeHandle Node, iAllocator* TEMP);
+	FLEXKITAPI LineSegments BuildSkeletonLineSet            ( Skeleton* S,		NodeHandle Node, iAllocator* TEMP);
 
-	FLEXKITAPI void         DEBUG_DrawPoseState				( DrawablePoseState* DPS,	NodeHandle Node, LineSegments* Out ) ;
+    FLEXKITAPI LineSegments DEBUG_DrawPoseState             (PoseState&, NodeHandle, iAllocator*);
 	FLEXKITAPI void         DEBUG_PrintSkeletonHierarchy	( Skeleton* S);
 
 

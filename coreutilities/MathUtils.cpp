@@ -49,7 +49,7 @@ namespace FlexKit
 		return Number;
 	}
 
-	Quaternion GrassManProduct( Quaternion& P, Quaternion& Q)
+	Quaternion GrassManProduct(const Quaternion& P, const Quaternion& Q)
 	{
 #if 1
 		float3 PV = P.XYZ();

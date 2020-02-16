@@ -117,6 +117,7 @@ private:	/**********************************************************************
         ComputeTiledDeferred
     }   renderMode = RenderMode::Deferred;
 
+    float                       T = 0;
     NetObjectInputComponent		netInputObjects;
     InputMap					eventMap;
     GameObject&                 thirdPersonCamera;

@@ -74,7 +74,7 @@ namespace FlexKit
 	};
 
 
-	FLEXKITAPI XMMATRIX		GetPoseTransform(JointPose P);
+	FLEXKITAPI float4x4		GetPoseTransform(JointPose P);
 	FLEXKITAPI JointPose	GetPose(DirectX::XMMATRIX M);
 
 
@@ -185,7 +185,7 @@ namespace FlexKit
 		JointHandle		AddJoint			(Joint J, XMMATRIX& I);
 		void			AddAnimationClip	(AnimationClip, iAllocator* allocator);
 
-		XMMATRIX		GetInversePose		(JointHandle H);
+		float4x4		GetInversePose		(JointHandle H);
 		JointHandle		FindJoint			(const char*);
 
 		DirectX::XMMATRIX*	IPose		= nullptr; // Global Inverse Space Pose

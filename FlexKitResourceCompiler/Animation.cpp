@@ -132,6 +132,9 @@ void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
 {
 	using DirectX::XMMatrixRotationQuaternion;
 
+    FbxAMatrix Identity;
+    Identity.FbxAMatrix::SetIdentity();
+
 	const auto DeformerCount = mesh.GetDeformerCount();
 	for (int I = 0; I < DeformerCount; ++I)
 	{
@@ -139,22 +142,27 @@ void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
 		if (D->GetDeformerType() == FbxDeformer::EDeformerType::eSkin)
 		{
 			const auto Skin = (FbxSkin*)D;
+            auto root = Skin->GetCluster(0);
+            FbxAMatrix G = GetGeometryTransformation(root->GetLink());
+            FbxAMatrix transformMatrix = root->GetTransformMatrix(FbxAMatrix{});
+            FbxAMatrix rootLinkMatrix  = root->GetTransformLinkMatrix(FbxAMatrix{});
+
+
 
 			for (int II = 0; Skin->GetClusterCount() > II; ++II)
 			{
 				const auto Cluster  = Skin->GetCluster(II);
 				const auto ID       = Cluster->GetLink()->GetName();
 
-				JointHandle Handle  = GetJoint(Out, ID);
-				FbxAMatrix G        = GetGeometryTransformation(Cluster->GetLink());
-				FbxAMatrix transformMatrix;
-				FbxAMatrix transformLinkMatrix;
+				JointHandle Handle              = GetJoint(Out, ID);
+				FbxAMatrix G                    = GetGeometryTransformation(Cluster->GetLink());
+				FbxAMatrix transformMatrix      = Cluster->GetTransformMatrix(FbxAMatrix{});
+				FbxAMatrix transformLinkMatrix  = Cluster->GetTransformLinkMatrix(FbxAMatrix{});
 
-				Cluster->GetTransformMatrix(transformMatrix);
-				Cluster->GetTransformLinkMatrix(transformLinkMatrix);
+                const FbxAMatrix globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
+				const XMMATRIX Inverse  = FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
+                auto temp = GetPose(Inverse);
 
-				FbxAMatrix globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
-				XMMATRIX Inverse = FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
 				Out[Handle].Inverse = Inverse;
 			}
 		}
@@ -292,8 +300,8 @@ SkeletonResource_ptr CreateSkeletonResource(FbxMesh& mesh, const std::string& pa
 			for (size_t jointIdx = 0; jointIdx < joints.size(); ++jointIdx)
 			{
                 const auto& joint       = joints[jointIdx];
-				const auto  inverse		= DirectX::XMMatrixInverse(nullptr, GetPoseTransform(skeleton->jointPoses[jointIdx]));
-				const auto  pose		= GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose);
+				const auto  inverse		= DirectX::XMMatrixInverse(nullptr, Float4x4ToXMMATIRX(GetPoseTransform(skeleton->jointPoses[jointIdx])));
+				const auto  pose		= Float4x4ToXMMATIRX(GetPoseTransform(joints[jointIdx].Animation.Poses[(frame + begin) % (joint.Animation.FrameCount - 1)].JPose));
 				const auto  localPose   = GetPose(pose * inverse);
 
 				keyFrame.AddJointPose(JointHandle(jointIdx), localPose);

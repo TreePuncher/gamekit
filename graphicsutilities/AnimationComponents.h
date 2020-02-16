@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #ifndef ANIMATIONCOMPONENTS_H_INCLUDED
 #define ANIMATIONCOMPONENTS_H_INCLUDED
 
@@ -65,34 +41,86 @@ namespace FlexKit
     {
     public:
         SkeletonComponent(iAllocator* allocator) :
-            skeletons{ allocator },
-            handles{ allocator } {}
+            skeletons   { allocator },
+            handles     { allocator },
+            allocator   { allocator } {}
 
-        SkeletonHandle Create(Skeleton* skeleton_ptr)
+        SkeletonHandle Create(const TriMeshHandle triMesh, const AssetHandle asset)
         {
-            auto handle = handles.GetNewHandle();
-            handles[handle] = (uint32_t)skeletons.push_back({ skeleton_ptr });
+            auto mesh = GetMeshResource(triMesh);
+            if (!mesh || mesh->SkeletonGUID == -1)
+                return InvalidHandle_t;
+
+            if (!mesh->Skeleton)
+            {
+                const auto skeletonGuid  = mesh->SkeletonGUID;
+                const auto available     = isAssetAvailable(skeletonGuid);
+
+                if (!available)
+                    return InvalidHandle_t;
+
+                const auto resource = LoadGameAsset(skeletonGuid);
+                mesh->Skeleton      = Resource2Skeleton(resource, allocator);
+                mesh->SkeletonGUID  = asset;
+            }
+
+
+            const auto handle = handles.GetNewHandle();
+            handles[handle] = (uint32_t)skeletons.push_back({ mesh->Skeleton, CreatePoseState(*mesh->Skeleton, allocator) });
 
             return handle;
         }
 
         struct SkeletonState
         {
-            Skeleton* skeleton;
-            //PoseState	poseState;
+            Skeleton*   skeleton;
+            PoseState	poseState;
         };
 
-        SkeletonState operator [](SkeletonHandle handle)
+        SkeletonState& operator [](SkeletonHandle handle)
         {
             return skeletons[handles[handle]];
         }
 
 		Vector<SkeletonState>							skeletons;
 		HandleUtilities::HandleTable<SkeletonHandle>	handles;
+        iAllocator*                                     allocator;
 	};
 
-    using SkeletonComponentView = BasicComponentView_t<SkeletonComponent>;
 
+    class SkeletonView : public FlexKit::ComponentView_t<SkeletonComponent>
+    {
+    public:
+        SkeletonView(const TriMeshHandle triMesh, const AssetHandle asset) : handle{ GetComponent().Create(triMesh, asset) }
+        {
+
+        }
+
+        PoseState& GetPoseState()
+        {
+            return GetComponent()[handle].poseState;
+        }
+
+
+        auto GetSkeleton()
+        {
+            return GetComponent()[handle].skeleton;
+        }
+
+        void SetPose(JointHandle jointId, JointPose pose)
+        {
+            GetPoseState().Joints[jointId] = pose;
+        }
+
+
+        JointPose GetPose(JointHandle jointId)
+        {
+            return GetPoseState().Joints[jointId];
+        }
+
+
+        SkeletonHandle handle;
+    };
 
 	/************************************************************************************************/
 
@@ -125,7 +153,7 @@ namespace FlexKit
     {
         return Apply(
             gameObject,
-            [](SkeletonComponentView& skeleton){ return true; },
+            [](SkeletonView& skeleton){ return true; },
             []{ return false; });
     }
 
@@ -133,69 +161,142 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    bool AddSkeletonComponent(GameObject& gameObject, GUID_t guid, iAllocator* allocator)
+    Skeleton* GetSkeleton(GameObject& gameObject)
     {
-        if (hasSkeletonLoaded(gameObject))
-            return true;
-
-        const auto available = isAssetAvailable(guid);
-
-        if (!available)
-            return false;
-
-        const auto resource = LoadGameAsset(guid);
-        auto skeleton = Resource2Skeleton(resource, allocator);
-
-        gameObject.AddView<SkeletonComponentView>(skeleton);
-
-        return true;
+        return Apply(
+            gameObject,
+            [](SkeletonView& view) -> Skeleton* { return view.GetSkeleton(); },
+            []() -> Skeleton* { return nullptr; });
     }
 
 
     /************************************************************************************************/
 
 
-    bool AddSkeletonComponent(GameObject& gameObject, iAllocator* allocator)
-    {
-        if (hasSkeletonLoaded(gameObject))
-            return true;
-
-        auto triMesh = GetTriMesh(gameObject);
-
-        if (triMesh == InvalidHandle_t)
-            return false;
-
-        auto mesh = GetMeshResource(triMesh);
-        if (!mesh || mesh->SkeletonGUID == -1)
-            return false;
-
-        if (!mesh->Skeleton)
-        {
-            const auto skeletonGuid  = mesh->SkeletonGUID;
-            const auto available     = isAssetAvailable(skeletonGuid);
-
-            if (!available)
-                return false;
-
-            const auto resource = LoadGameAsset(skeletonGuid);
-            auto skeleton       = Resource2Skeleton(resource, allocator);
-            mesh->Skeleton  = skeleton;
-        }
-
-        gameObject.AddView<SkeletonComponentView>(mesh->Skeleton);
-
-        return true;
-    }
-
-    Skeleton* GetSkeleton(GameObject& gameObject)
+    PoseState* GetPoseState(GameObject& gameObject)
     {
         return Apply(
             gameObject,
-            [](SkeletonComponentView& skeleton) -> Skeleton* { return skeleton.GetData().skeleton; },
-            []() -> Skeleton* { return nullptr; });
+            [](SkeletonView& view) -> PoseState* { return &view.GetPoseState(); },
+            []() -> PoseState* { return nullptr; });
     }
+
+
+    /************************************************************************************************/
+
+
+    void RotateJoint(GameObject& gameObject, JointHandle jointID, const Quaternion Q)
+    {
+        Apply(
+            gameObject,
+            [&](SkeletonView& skeleton)
+            {
+                auto pose = skeleton.GetPose(jointID);
+
+                pose.r = pose.r.normalized() * Q.normalized();
+
+                skeleton.SetPose(jointID, pose);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    JointPose GetJointPose(GameObject& gameObject, JointHandle jointID)
+    {
+        return Apply(
+            gameObject,
+            [&](SkeletonView& skeleton) -> JointPose
+            {
+                return skeleton.GetPose(jointID);
+            },
+            [] { return JointPose{}; });
+    }
+
+
+    /************************************************************************************************/
+
+
+    void SetJointPose(GameObject& gameObject, JointHandle jointID, JointPose pose)
+    {
+        Apply(
+            gameObject,
+            [&](SkeletonView& skeleton)
+            {
+                skeleton.SetPose(jointID, pose);
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
+    struct PosedDrawable
+    {
+        Drawable*   drawable;
+        PoseState*  pose;
+    };
+
+
+    using PosedDrawableList = Vector<PosedDrawable>;
+
+    struct GatherSkinnedTaskData
+    {
+        CameraHandle	    camera;
+        GraphicScene*       scene; // Source Scene
+        StackAllocator	    taskMemory;
+        PosedDrawableList	skinned;
+
+        UpdateTask*         task;
+
+        operator UpdateTask* () { return task; }
+    };
+
+    struct UpdatePosesTaskData
+    {
+        StackAllocator	            taskMemory;
+        const PosedDrawableList*	skinned;
+
+        UpdateTask*         task;
+        operator UpdateTask* () { return task; }
+    };
+
+    using GatherSkinnedTask = UpdateTaskTyped<GatherSkinnedTaskData>&;
+    using UpdatePoseTask    = UpdateTaskTyped<UpdatePosesTaskData>&;
+
+    void                GatherSkinned   (GraphicScene* SM, CameraHandle Camera, PosedDrawableList& out_skinned);
+    GatherSkinnedTask&  GatherSkinned   (UpdateDispatcher& dispatcher, GraphicScene* scene, CameraHandle C, iAllocator* allocator);
+    UpdatePoseTask&     UpdatePoses     (UpdateDispatcher& dispatcher, GatherSkinnedTask& skinnedObjects, iAllocator* allocator);
+
+
+    void UpdatePose(PoseState& pose, iAllocator* );
 
 
 }	/************************************************************************************************/
 #endif
 
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2020 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/

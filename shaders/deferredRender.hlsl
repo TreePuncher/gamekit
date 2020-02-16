@@ -79,7 +79,7 @@ ENVIRONMENT_PS passthrough_VS(float4 position : POSITION)
 }
 
 #define MAX_ENV_LOD 2.0
-#define MAX_CUBEMAP_SAMPLES 32
+#define MAX_CUBEMAP_SAMPLES 16
 #define SEED_SCALE 1000000
 /*
 float4 SampleSphericalLOD(in TextureCube<float4> tex, in float3 w, in float lod)
@@ -162,22 +162,29 @@ float2 HammersleySeq(in uint i, in uint N)
 float DualParabloidJacobianDeterminant(in float z, in float b)
 {
 	float b2 = b * b;
-	float k = abs(z) + 1.0;
-	float k2 = k * k;
-	return 4.0 * b2 * k2;
+	float zi = abs(z) + 1.0;
+	float zi2 = zi * zi;
+	return 4.0 * b2 * zi2;
 }
 
-uint PickCubemapLOD(in TextureCube cubemap, in float pdf, in float3 w, in uint N)
+float PickCubemapLOD(in TextureCube cubemap, in float pdf, in float3 w, in uint N)
 {
-	const float K = 4.0;
 	uint W, H;
 	cubemap.GetDimensions(W, H);
 	
-	//float det = 1.0;//DualParabloidJacobianDeterminant( w.z, 1.2 );
+	float det = DualParabloidJacobianDeterminant( w.z, 1.2 );
 
-	uint level = max(log2(K * ((W * H)/N)), 0.0);
+	float omega_s = 1.0 / (N * pdf);
+	float omega_p = det / (W * H);
+
+	float level = max(0.5 * log2(omega_s / omega_p), 0.0);
 
 	return level;
+}
+
+float3 SchlickFresnelRoughness(in float NoX, in float3 F0, in float roughness)
+{
+    return F0 + (max(1.0 - roughness, F0) - F0) * pow(1.0 - NoX, 5.0);
 }
 
 float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
@@ -214,22 +221,23 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 	//float metallic      = Specular.w;
 	//float3 albedo       = Albedo.rgb;
 
-	//return float4(tangent, 1.0);
+	//return float4(normal, 1.0);
+
 
 	float3 color;
 	if (depth < 1.0)
 	{
 		const float4 AlbedoSpecular = AlbedoBuffer.Load(Coord);
-		const float3 albedo         = AlbedoSpecular.xyz;
-		const float sF              = AlbedoSpecular.w;
+		const float3 albedo         = float3(1.0,0.0,0.0);//AlbedoSpecular.xyz;
+		const float sF              = 0.3;//AlbedoSpecular.w;
 		const float4 MRIA           = MRIABuffer.Load(Coord);
 
 		const float metallic  = MRIA.x;
 		const float roughness = MRIA.y;
-		const float ior       = MRIA.z;
+		const float ior       = 1.5;//MRIA.z;
 		const float aniso     = MRIA.w;
 		
-		float alpha = roughness * roughness;
+		float alpha = roughness;
 		float aspect = sqrt(1.0 - 0.9 * aniso);
 		float alpha_x = alpha * aspect;
 		float alpha_y = alpha / aspect;
@@ -238,15 +246,18 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 		float3 specular = float3(0,0,0);
 		
-		float3 diffuse = albedo * diffuseMap.Sample(BiLinear, normal);
+		float3 diffuse = albedo * diffuseMap.Sample(BiLinear, normal) / PI;
 
-		const uint N = MAX_CUBEMAP_SAMPLES;
+		const uint N = MAX_CUBEMAP_SAMPLES;//max(pow(alpha,0.25) * MAX_CUBEMAP_SAMPLES, 8);
 
 		uint Width, Height, NumberOfLevels;
 		ggxMap.GetDimensions(0, Width, Height, NumberOfLevels);
 		uint pixelIndex = uint(SampleCoord.y * Width + SampleCoord.x);//Hash() * 1000000;
 		float kS = 0.0;
 
+		//float NdotL = CosTheta(mul(TBN, normalize(float3(1,1,1))) );
+
+		//return float4(NdotL, NdotL, NdotL, 0.0);
 		// Precalculate Fresnel F0
 
 		float3 F0 = (1.0 - ior) / (1.0 + ior);
@@ -259,10 +270,12 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 			float2 Xi = frac(HammersleySeq(i, N) + Hash2(pixelIndex));
 			float3 H = EricHeitz2018GGXVNDF(V, alpha_x, alpha_y, Xi.x, Xi.y);
 			float3 L = reflect(-V, H);
-			float dotVH = dot(V, H);
+			float cosT = dot(V, H);
+
+			if (cosT <= 0.0) continue;
 
 			// Fresnel
-			float3 F = SchlickFresnel(dotVH, F0);
+			float3 F = SchlickFresnel(max(cosT, 0.0), F0);
 
 			kS += F;
 
@@ -274,24 +287,26 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 			// Importance Sampling combined with Mipmap Filtering
 			float pdf = EricHeitz2018GGXPDF(V, H, L, alpha_x, alpha_y);
-			int lod = PickCubemapLOD(ggxMap, pdf, L, N);
+			float lod = PickCubemapLOD(ggxMap, pdf, L, N);
+
+			//return float4(lod, lod, lod, 0);
 			//int lod = (1.0 / PDF) * NumberOfLevels;//max(0.875 * log2( (Width * Height) / N ) - 0.125 * log2(PDF * omegaS), 0.0);
 			
 			float3 sampleDir = mul(TBN, L);
-			float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, lod);
+			float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, 1);
 			
 
-			specular += sampleIrradiance * brdf;
+			specular += (sampleIrradiance * brdf);
 		}
 		
-		kS = sF * saturate( kS / N );
-		float kD = (1.0 - kS) * (1.0 - metallic);
+		kS = saturate( kS / N );
+		float kD = (1.0 - kS);// * (1.0 - metallic);
 
 		specular /= N;
 
 		//float3 reflVec = reflect(rayDir, normal);
 		//specular = ggxMap.SampleLevel(BiLinear, reflVec, 6).rgb;
-		color = kD * diffuse + kS * specular; 
+		color = kS * specular;//kD * diffuse + kS * specular;
 	}
 	else
 	{

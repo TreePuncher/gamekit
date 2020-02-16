@@ -1,44 +1,17 @@
-/**********************************************************************
-
-Copyright (c) 2015 - 2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #include "../graphicsutilities/AnimationUtilities.h"
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
 
 
-	/************************************************************************************************/
-
-
-	DirectX::XMMATRIX GetPoseTransform(JointPose P)
+	float4x4 GetPoseTransform(JointPose P)
 	{
-		auto Rotation = DirectX::XMMatrixRotationQuaternion(P.r);
+        
+		auto Rotation = DirectX::XMMatrixRotationQuaternion(DirectX::XMQuaternionNormalize(P.r));
 		auto Scaling = DirectX::XMMatrixScalingFromVector(DirectX::XMVectorSet(P.ts[3], P.ts[3], P.ts[3], 1.0f));
 		auto Translation = DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorSet(P.ts[0], P.ts[1], P.ts[2], 1.0f));
 
-		return (Rotation * Scaling) * Translation;
+		return XMMatrixToFloat4x4((Scaling * Rotation) * Translation);
 	}
 
 
@@ -65,7 +38,7 @@ namespace FlexKit
 		Joints		[JointCount] = J;
 		IPose		[JointCount] = I;
 
-		auto Temp = DirectX::XMMatrixInverse(nullptr, I) * GetInversePose(J.mParent);
+		auto Temp = DirectX::XMMatrixInverse(nullptr, I) * Float4x4ToXMMATIRX(GetInversePose(J.mParent));
 		auto Pose = GetPose(Temp);
 		JointPoses[JointCount] = Pose;
 
@@ -95,9 +68,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	XMMATRIX Skeleton::GetInversePose(JointHandle H)
+	float4x4 Skeleton::GetInversePose(JointHandle H)
 	{
-		return (H != 0XFFFF)? IPose[H] : DirectX::XMMatrixIdentity();
+		return H != InvalidHandle_t ? XMMatrixToFloat4x4(IPose[H]) : float4x4::Identity();
 	}
 
 
@@ -158,3 +131,29 @@ namespace FlexKit
 
 
 }	/************************************************************************************************/
+
+
+/**********************************************************************
+
+Copyright (c) 2015 - 2020 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+

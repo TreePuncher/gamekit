@@ -25,6 +25,11 @@ cbuffer ShadingConstants : register(b2)
     uint2 WH;
 }
 
+cbuffer Poses : register(b3)
+{
+    float4x4 Poses[128];
+}
+
 StructuredBuffer<uint>		    lightLists	: register(t1);
 ByteAddressBuffer               pointLights : register(t2);
 TextureCube<float4>             HDRMap      : register(t3);
@@ -79,6 +84,59 @@ Forward_VS_OUT Forward_VS(Vertex In)
     Out.POS		= mul(PV, mul(WT, float4(In.POS, 1)));
     Out.Normal  = normalize(mul(WT, float4(In.Normal, 0.0f)));
     Out.Tangent = normalize(mul(WT, float4(In.Tangent, 0.0f)));
+    Out.UV		= In.UV;
+
+    return Out;
+}
+
+
+struct VertexSkinned
+{
+    float3 POS		: POSITION;
+    float3 Normal	: NORMAL;
+    float3 Tangent	: Tangent;
+    float2 UV		: TEXCOORD;
+    float3 Weights  : BLENDWEIGHT;
+    uint4  Indices  : BLENDINDICES;
+};
+
+Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
+{
+	float4 N = float4(0.0f, 0.0f, 0.0f, 0.0f);
+	float4 T = float4(0.0f, 0.0f, 0.0f, 0.0f);
+	float4 V = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 W = float4(In.Weights.xyz, 1 - In.Weights.x - In.Weights.y - In.Weights.z);
+
+	float4x4 MTs[4] =
+	{
+		Poses[In.Indices[0]],
+		Poses[In.Indices[1]],
+		Poses[In.Indices[2]],
+		Poses[In.Indices[3]],
+    };
+
+	[unroll(4)]
+	for (uint I = 0; I < 4; ++I)
+	{
+        //M * V
+        //V * M  <-?
+
+        #if 0
+        V += mul(float4(In.POS, 1),     MTs[I]) * W[I];
+        N += mul(float4(In.Normal, 0),  MTs[I]) * W[I];
+        T += mul(float4(In.Tangent, 0), MTs[I]) * W[I];
+        #else
+        V += mul(MTs[I], float4(In.POS, 1)) * W[I];
+        N += mul(MTs[I], float4(In.Normal, 0)) * W[I];
+        T += mul(MTs[I], float4(In.Tangent, 0)) * W[I];
+        #endif
+    }
+    
+    Forward_VS_OUT Out;
+    Out.WPOS	= mul(WT, float4(V.xyz, 1));
+    Out.POS		= mul(PV, mul(WT, float4(V.xyz, 1)));
+    Out.Normal  = normalize(mul(WT, float4(N.xyz, 0.0f)));
+    Out.Tangent = normalize(mul(WT, float4(T.xyz, 0.0f)));
     Out.UV		= In.UV;
 
     return Out;
