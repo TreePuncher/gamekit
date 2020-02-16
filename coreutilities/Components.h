@@ -558,7 +558,7 @@ namespace FlexKit
 		};
 
 
-        StringIDHandle Create(char* initial = nullptr, size_t length = 0);
+        StringIDHandle Create(const char* initial = nullptr, size_t length = 0);
 
         void Remove(StringIDHandle handle);
 
@@ -577,7 +577,7 @@ namespace FlexKit
 	class StringIDView : public ComponentView_t<StringIDComponent>
 	{
 	public:
-        StringIDView(char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
+        StringIDView(const char* id, size_t idLen) : ID{ GetComponent().Create(id, idLen) } {}
 
 		char* GetString()
 		{

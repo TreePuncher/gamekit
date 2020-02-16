@@ -696,7 +696,7 @@ namespace FlexKit
 				Apply(*potentialVisible.entity,
 					[&](DrawableView& drawable)
 					{
-						if (CompareBSAgainstFrustum(&F, BS))
+						if (!drawable.GetDrawable().Skinned && CompareBSAgainstFrustum(&F, BS))
 						{
 							float distance = 0;
 							if (potentialVisible.transparent)
@@ -1025,9 +1025,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Release(DrawablePoseState* EPS, iAllocator* allocator)
+	void Release(PoseState* EPS, iAllocator* allocator)
 	{
-		if (EPS->Joints)			allocator->free(EPS->Joints);
+		if (EPS->Joints)		allocator->free(EPS->Joints);
 		if (EPS->CurrentPose)	allocator->free(EPS->CurrentPose);
 
 		EPS->Joints = nullptr;

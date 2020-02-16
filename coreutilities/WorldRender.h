@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../graphicsutilities/FrameGraph.h"
 #include "../graphicsutilities/graphics.h"
 #include "../graphicsutilities/CoreSceneObjects.h"
+#include "../graphicsutilities/AnimationComponents.h"
 #include "../coreutilities/GraphicScene.h"
 
 #include <d3dx12.h>
@@ -220,6 +221,7 @@ namespace FlexKit
 
 	static const PSOHandle FORWARDDRAW				   = PSOHandle(GetTypeGUID(FORWARDDRAW));
 	static const PSOHandle GBUFFERPASS                 = PSOHandle(GetTypeGUID(GBUFFERPASS));
+	static const PSOHandle GBUFFERPASS_SKINNED         = PSOHandle(GetTypeGUID(GBUFFERPASS_SKINNED));
 	static const PSOHandle SHADINGPASS                 = PSOHandle(GetTypeGUID(SHADINGPASS));
 	static const PSOHandle COMPUTETILEDSHADINGPASS     = PSOHandle(GetTypeGUID(COMPUTETILEDSHADINGPASS));
 	static const PSOHandle ENVIRONMENTPASS             = PSOHandle(GetTypeGUID(ENVIRONMENTPASS));
@@ -245,6 +247,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateLightPassPSO				    (RenderSystem* RS);
     ID3D12PipelineState* CreateGBufferPassPSO               (RenderSystem* RS);
+    ID3D12PipelineState* CreateGBufferSkinnedPassPSO        (RenderSystem* RS);
     ID3D12PipelineState* CreateDeferredShadingPassPSO       (RenderSystem* RS);
     ID3D12PipelineState* CreateComputeTiledDeferredPSO      (RenderSystem* RS);
 
@@ -344,11 +347,12 @@ namespace FlexKit
 
 	struct SceneDescription
 	{
-        CameraHandle                        camera;
-		UpdateTaskTyped<PointLightGather>&	lights;
-		UpdateTask&							transforms;
-		UpdateTask&							cameras;
-		UpdateTaskTyped<GetPVSTaskData>&	PVS;
+        CameraHandle                            camera;
+		UpdateTaskTyped<PointLightGather>&	    lights;
+		UpdateTask&							    transforms;
+		UpdateTask&							    cameras;
+		UpdateTaskTyped<GetPVSTaskData>&	    PVS;
+		UpdateTaskTyped<GatherSkinnedTaskData>&	skinned;
 	};
 
     struct DepthPass
@@ -499,8 +503,9 @@ namespace FlexKit
 
     struct GBufferPass
     {
-        GBuffer&        gbuffer;
-        const PVS&      pvs;
+        GBuffer&                    gbuffer;
+        const PVS&                  pvs;
+        const PosedDrawableList&    skinned;
 
         ReserveConstantBufferFunction reserveCB;
 
@@ -590,11 +595,14 @@ namespace FlexKit
 			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			 { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			   });
 			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
 			RS_IN.RegisterPSOLoader(GBUFFERPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
+			RS_IN.RegisterPSOLoader(GBUFFERPASS_SKINNED,	 { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferSkinnedPassPSO    });
 			RS_IN.RegisterPSOLoader(SHADINGPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO  });
             RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,         { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
             RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS, { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
 
+
             RS_IN.QueuePSOLoad(GBUFFERPASS);
+            RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
             RS_IN.QueuePSOLoad(DEPTHPREPASS);
             RS_IN.QueuePSOLoad(LIGHTPREPASS);
             RS_IN.QueuePSOLoad(FORWARDDRAW);
@@ -687,7 +695,6 @@ namespace FlexKit
             FrameGraph&                     frameGraph,
             const SceneDescription&         sceneDescription,
             const CameraHandle              camera,
-            GatherTask&                     pvs,
             GBuffer&                        gbuffer,
             ResourceHandle                  depthTarget,
             ReserveConstantBufferFunction   reserveCB,

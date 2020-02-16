@@ -101,7 +101,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	struct DrawableAnimationState;
-	struct DrawablePoseState;
+	struct PoseState;
 	struct TextureSet;
 
 	struct FLEXKITAPI Drawable
@@ -114,7 +114,8 @@ namespace FlexKit
 		bool					Transparent		= false; // 1
 		bool					Textured		= false; // 1
 		bool					Dirty			= false; // 1
-		bool					Padding[5];		// 5
+        bool                    Skinned         = false;
+		bool					Padding[1];		// 5
 		char*					id;				// 8 - string ID, null terminated 
 
 		struct MaterialProperties

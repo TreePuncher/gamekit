@@ -775,7 +775,7 @@ namespace FlexKit
 	}
 	
 
-	inline __m128 CrossProduct( __m128& a, __m128& b )
+	inline __m128 CrossProduct(const __m128 a, const __m128 b )
 	{
 #if USING(FASTMATH)
 		__m128 temp1 = _mm_mul_ps(_mm_shuffle_ps(a, a, 0x01 | 0x02 << 2 | 0x00 << 4 | 0x00 << 6), _mm_shuffle_ps(b, b, 0x02 | 0x00 << 2 | 0x01 << 4 | 0x00 << 6));
@@ -791,7 +791,7 @@ namespace FlexKit
 
 
 	union Quaternion;
-	FLEXKITAPI Quaternion GrassManProduct( Quaternion& lhs, Quaternion& rhs );
+	FLEXKITAPI Quaternion GrassManProduct(const Quaternion& lhs, const Quaternion& rhs );
 
 	/************************************************************************************************/
 
@@ -1349,8 +1349,8 @@ namespace FlexKit
 			return { x, y, z };
 		}
 
-		operator Vect4 ()		{ return{ x, y, z, 0 }; };
-		operator Vect4 () const { return{ x, y, z, 0 }; };
+		operator Vect4 ()		{ return{ x, y, z, w }; };
+		operator Vect4 () const { return{ x, y, z, w }; };
 
 		__m128 pFloats;
 	};
@@ -1399,13 +1399,14 @@ namespace FlexKit
 		}
 
 
+        /*
 		inline Quaternion( std::initializer_list<float> il )
 		{
 			auto n = il.begin();
 			for (size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n)
 				SetElement( floats, *n, itr);
 		}
-
+        */
 
 		inline explicit Quaternion( float* in )
 		{
@@ -1438,26 +1439,26 @@ namespace FlexKit
 			( *this ) = X * Y * Z;
 		}
 
-		inline Quaternion& operator *= ( Quaternion& rhs )
+		inline Quaternion& operator *= (const Quaternion& rhs )
 		{
 			(*this) = GrassManProduct(*this, rhs);
 			return (*this);
 		}
 
-		inline Quaternion& operator = ( Quaternion& rhs )
+		inline Quaternion& operator = (const Quaternion& rhs )
 		{
 			floats = rhs.floats;
 			return (*this);
 		}
 
-		inline Quaternion& operator = ( __m128 rhs )
+		inline Quaternion& operator = (const  __m128 rhs )
 		{
 			floats = rhs;
 			return (*this);
 		}
 
 
-		inline Quaternion operator * (Quaternion q)
+		inline Quaternion operator * (const Quaternion q) const
 		{
 			return GrassManProduct(*this, q);
 		}
@@ -1482,7 +1483,7 @@ namespace FlexKit
 			return (*this);
 		}
 
-		inline Quaternion Conjugate() 
+		inline Quaternion Conjugate() const
 		{
 			Quaternion Conjugate;
 #if USING(FASTMATH)
@@ -1495,7 +1496,7 @@ namespace FlexKit
 #endif
 			return Conjugate;
 		}
-		inline Quaternion Inverse() { return  Conjugate(); }
+		inline Quaternion Inverse() const { return  Conjugate(); }
 		
 		inline float dot(Quaternion rhs) 
 		{ 
@@ -1545,20 +1546,23 @@ namespace FlexKit
 		{
 			float mag2 = Magnitude();
 			__m128 Res;
-			if (mag2 != 0 && (fabs(mag2 - 1.0f) > .00001f))
-			{
+            if (mag2 != 0 && (fabs(mag2 - 1.0f) > .00001f))
+            {
 #if USING(FASTMATH)
 
-				__m128 rsq = _mm_rsqrt_ps(_mm_set1_ps(mag2));
-				Res = _mm_mul_ps(rsq, floats);
+                __m128 rsq = _mm_rsqrt_ps(_mm_set1_ps(mag2));
+                Res = _mm_mul_ps(rsq, floats);
 #else
-				float mag = sqrt(mag2);
-				w = w / mag;
-				x = x / mag;
-				y = y / mag;
-				z = z / mag;
+                float mag = sqrt(mag2);
+                w = w / mag;
+                x = x / mag;
+                y = y / mag;
+                z = z / mag;
 #endif
-			}
+            }
+            else
+                Res = floats;
+
 			return Res;
 		}
 
@@ -1593,7 +1597,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline float3		operator * (Quaternion P, float3 V)
+	inline float3		operator * (const Quaternion P, const float3 V)
 	{
 		auto v		= -1 * P.XYZ();
 		auto vXV	= v.cross(V);
@@ -1603,7 +1607,7 @@ namespace FlexKit
 	}
 
 
-	inline Quaternion operator * (Quaternion Q, float scaler)
+	inline Quaternion operator * (const Quaternion Q, const float scaler)
 	{
 		__m128 r = Q;
 		__m128 s = _mm_set1_ps(scaler);

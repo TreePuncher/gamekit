@@ -619,7 +619,7 @@ namespace FlexKit
     {
         auto& gameObject = allocator->allocate<GameObject>();
 
-        gameObject.AddView<CharacterControllerView>(scene, float3{ 40, 10, 40 });
+        gameObject.AddView<CharacterControllerView>(scene, float3{ 0, 10, 40 });
         gameObject.AddView<CameraControllerView>(
             CameraControllerComponent::GetComponent().Create(
                 ThirdPersonCamera(

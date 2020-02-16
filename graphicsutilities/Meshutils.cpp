@@ -574,6 +574,14 @@ namespace FlexKit
 
 			void AddWeightToken(WeightIndexPair in, TokenList& out)
 			{
+                auto temp = (in.V1.x + in.V1.y + in.V1.z);
+
+                if ((1.0f - (in.V1.x + in.V1.y + in.V1.z)) > 0.01f)
+                {
+                    in.V1 += 1.0f - in.V1.x + in.V1.y + in.V1.z;
+                    __debugbreak();
+                }
+
 				s_TokenValue T;
 				T.token = FlexKit::Token::WEIGHT;
 				s_TokenVertexLayout* V =  (s_TokenVertexLayout*)T.buffer;
@@ -581,6 +589,7 @@ namespace FlexKit
 				V->f[1] = ((float3)in).y;
 				V->f[2] = ((float3)in).z;
 				out.push_back(T);
+
 
 				T.token = FlexKit::Token::WEIGHTINDEX;
 				s_TokenWIndexLayout* W = (s_TokenWIndexLayout*)T.buffer;

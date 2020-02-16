@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
         }   break;
         case ApplicationMode::GraphicsTestMode:
         {
-            StartTestState(app, base, TestScenes::PhysXTest);
+            StartTestState(app, base, TestScenes::AnimationTest);
         }   break;
         case ApplicationMode::PlaygroundMode:
         {

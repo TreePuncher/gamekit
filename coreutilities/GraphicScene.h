@@ -36,7 +36,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace FlexKit
 {
 	//Forward Declarations 
-	struct DrawablePoseState;
+	struct PoseState;
 
 	typedef Handle_t<16, GetCRCGUID(SceneEntity)> SceneEntityHandle;
 	typedef size_t SpotLightHandle;
@@ -132,14 +132,29 @@ namespace FlexKit
         return Apply(go,
             [&](DrawableView& drawable)
             {
-                drawable.GetDrawable().MatProperties.albedo         = albedo;
-                drawable.GetDrawable().MatProperties.kS             = kS;
-                drawable.GetDrawable().MatProperties.IOR            = IOR;
-                drawable.GetDrawable().MatProperties.anisotropic    = anisotropic;
-                drawable.GetDrawable().MatProperties.roughness      = roughness;
-                drawable.GetDrawable().MatProperties.metallic       = metallic;
+                auto& drawableData = drawable.GetDrawable();
+                drawableData.MatProperties.albedo         = albedo;
+                drawableData.MatProperties.kS             = kS;
+                drawableData.MatProperties.IOR            = IOR;
+                drawableData.MatProperties.anisotropic    = anisotropic;
+                drawableData.MatProperties.roughness      = roughness;
+                drawableData.MatProperties.metallic       = metallic;
             });
     }
+
+
+    /************************************************************************************************/
+
+
+    void ToggleSkinned(GameObject& go, bool enabled)
+    {
+        return Apply(go,
+            [&](DrawableView& drawable)
+            {
+                drawable.GetDrawable().Skinned = enabled;
+            });
+    }
+
 
 	/************************************************************************************************/
 
@@ -480,7 +495,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	inline void Release(DrawablePoseState* EPS, iAllocator* allocator);
+	inline void Release(PoseState* EPS, iAllocator* allocator);
 
 
 	/************************************************************************************************/

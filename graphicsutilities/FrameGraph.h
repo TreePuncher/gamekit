@@ -1820,24 +1820,15 @@ namespace FlexKit
     class Range
     {
     public:
-
-        Range(size_t IN_step, size_t IN_end, size_t IN_initial) :
-            end_    { IN_end     },
-            step_   { IN_step    },
-            itr     { 0          },
-            initial { IN_initial }
-        {}
-
-
         Range begin()
         {
-            return Range(step_, end_, itr + 1);
+            return { 0, end_, step_ };
         }
 
 
         Range end()
         {
-            return Range(step_, end_, end_);
+            return { end_, end_, step_ };
         }
 
 
@@ -1849,7 +1840,7 @@ namespace FlexKit
 
         bool operator == (Range& rhs)
         {
-            return  (rhs.initial == initial) & (rhs.itr == itr) & (rhs.end_ == end_) & (rhs.step_ == step_);
+            return  (rhs.itr == itr) & (rhs.end_ == end_) & (rhs.step_ == step_);
         }
 
         Range operator ++ ()
@@ -1860,14 +1851,19 @@ namespace FlexKit
 
         size_t front() const
         {
-            return initial;
+            return 0;
         }
 
+        size_t       itr;
         const size_t end_;
         const size_t step_;
-        const size_t initial;
-        size_t       itr;
     };
+
+
+    auto MakeRange(size_t begin, size_t end, size_t step = 1)
+    {
+        return Range{ begin, end, step };
+    }
 
 
     class CircleShape final : public ShapeProtoType
@@ -1892,13 +1888,12 @@ namespace FlexKit
             FrameResources&			        Resources) override
         {
             auto VBBuffer   = reserveVB(sizeof(ShapeVert) * 3 * Divisions);
-            auto VBDataSet  = VertexBufferDataSet{};
 
             const float Step = 2 * pi / Divisions;
 
             VertexBufferDataSet vertices{
                 SET_TRANSFORM_OP,
-                Range(1, Divisions, 0),
+                MakeRange(0, Divisions),
                 [&](size_t I, auto& pushBuffer) -> int
                 {
                     float2 V1 = { POS.x + R * cos(Step * (I + 1)),	POS.y - AspectRatio * (R * sin(Step * (I + 1))) };
@@ -1969,29 +1964,34 @@ namespace FlexKit
             ReserveConstantBufferFunction&  reserveCB,
             FrameResources&			        Resources) override
         {
-            /*
-            size_t VBOffset = Resources.GetVertexBufferOffset(PushBuffer, sizeof(ShapeVert));
+            auto VBBuffer = reserveVB(sizeof(ShapeVert) * 2 * Lines.size());
 
-            for (auto Segment : Lines)
-            {
-                ShapeVert Vert1 = { Position2SS(Segment.A),{ 0.0f, 0.0f }, float4(Segment.AColour, 1) };
-                ShapeVert Vert2 = { Position2SS(Segment.B),{ 0.0f, 0.0f }, float4(Segment.BColour, 1) };
+            VertexBufferDataSet vertices{
+                SET_TRANSFORM_OP,
+                MakeRange(0, Lines.size()),
+                [&](size_t I, auto& pushBuffer) -> ShapeVert
+                {
+                    auto positionA = Lines[I].A;
+                    auto positionB = Lines[I].B;
 
-                PushVertex(Vert1, PushBuffer, Resources);
-                PushVertex(Vert2, PushBuffer, Resources);
-            }
+                    auto pointA = ShapeVert{ positionA, { 0.0f, 1.0f }, Lines[I].AColour };
+                    auto pointB = ShapeVert{ positionB, { 0.0f, 1.0f }, Lines[I].BColour };
+
+                    pushBuffer.Push(pointA);
+                    pushBuffer.Push(pointB);
+
+                    return {};
+                },
+                VBBuffer };
 
             Constants CB_Data = {
-                float4{ 0 },
-                float4{ 0 },
+                { 1, 1, 1, 1 },
+                { 1, 1, 1, 1 },
                 float4x4::Identity()
             };
 
-            auto CBOffset = BeginNewConstantBuffer(CB, Resources);
-            PushConstantBufferData(CB_Data, CB, Resources);
-
-            DrawList.push_back({ ShapeDraw::RenderMode::Line, CBOffset, VBOffset, Lines.size() * 2 });
-            */
+            ConstantBufferDataSet constants{ CB_Data, reserveCB(256) };
+            DrawList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
         }
 
 
@@ -2009,35 +2009,41 @@ namespace FlexKit
         SSLineShape(LineSegments&& lines) :
             Lines{ lines } {}
 
+
         void AddShapeDraw(
             DrawList&				        DrawList,
-            ReserveVertexBufferFunction&    reserveCB,
-            ReserveConstantBufferFunction&  reserveVB,
+            ReserveVertexBufferFunction&    reserveVB,
+            ReserveConstantBufferFunction&  reserveCB,
             FrameResources&			        Resources) override
         {
-            /*
-            size_t VBOffset = Resources.GetVertexBufferOffset(PushBuffer, sizeof(ShapeVert));
+            auto VBBuffer   = reserveVB(sizeof(ShapeVert) * 2 * Lines.size());
 
-            for (auto Segment : Lines)
-            {
-                ShapeVert Vert1 = { Segment.A, { 0.0f, 0.0f }, float4(Segment.AColour, 1) };
-                ShapeVert Vert2 = { Segment.B, { 0.0f, 0.0f }, float4(Segment.BColour, 1) };
+            VertexBufferDataSet vertices{
+                SET_TRANSFORM_OP,
+                MakeRange(0, Lines.size()),
+                [&](size_t I, auto& pushBuffer) -> ShapeVert
+                {
+                    auto positionA = Position2SS(Lines[I].A);
+                    auto positionB = Position2SS(Lines[I].B);
 
-                PushVertex(Vert1, PushBuffer, Resources);
-                PushVertex(Vert2, PushBuffer, Resources);
-            }
+                    auto pointA = ShapeVert{ positionA, { 0.0f, 1.0f }, Lines[I].AColour };
+                    auto pointB = ShapeVert{ positionB, { 0.0f, 1.0f }, Lines[I].BColour };
+
+                    pushBuffer.Push(pointA);
+                    pushBuffer.Push(pointB);
+
+                    return {};
+                },
+                VBBuffer };
 
             Constants CB_Data = {
-                float4{ 0 },
-                float4{ 0 },
+                { 1, 1, 1, 1 },
+                { 1, 1, 1, 1 },
                 float4x4::Identity()
             };
 
-            auto CBOffset = BeginNewConstantBuffer(CB, Resources);
-            PushConstantBufferData(CB_Data, CB, Resources);
-
-            DrawList.push_back({ ShapeDraw::RenderMode::Line, CBOffset, VBOffset, Lines.size() * 2 });
-            */
+            ConstantBufferDataSet constants{ CB_Data, reserveCB(256) };
+            DrawList.push_back({ ShapeDraw::RenderMode::Line, constants, vertices, 2 * Lines.size() });
         }
 
 

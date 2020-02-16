@@ -251,6 +251,77 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateGBufferSkinnedPassPSO(RenderSystem* RS)
+    {
+        auto DrawRectVShader = LoadShader("ForwardSkinned_VS",  "ForwardSkinned_VS",    "vs_5_0",	"assets\\shaders\\forwardRender.hlsl");
+        auto DrawRectPShader = LoadShader("GBufferFill_PS",     "GBufferFill_PS",       "ps_5_0",	"assets\\shaders\\forwardRender.hlsl");
+
+        FINALLY
+         Release(&DrawRectVShader);
+         Release(&DrawRectPShader);
+        FINALLYOVER
+
+        /*
+        typedef struct D3D12_INPUT_ELEMENT_DESC
+        {
+        LPCSTR SemanticName;
+        UINT SemanticIndex;
+        DXGI_FORMAT Format;
+        UINT InputSlot;
+        UINT AlignedByteOffset;
+        D3D12_INPUT_CLASSIFICATION InputSlotClass;
+        UINT InstanceDataStepRate;
+        } 	D3D12_INPUT_ELEMENT_DESC;
+        */
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+
+            { "BLENDWEIGHT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT,    4, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+            { "BLENDINDICES",	0, DXGI_FORMAT::DXGI_FORMAT_R16G16B16A16_UINT,  5, 0,  D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable	= true;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RS6CBVs4SRVs;
+            PSO_Desc.VS                    = DrawRectVShader;
+            PSO_Desc.PS                    = DrawRectPShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets      = 4;
+            PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R8G8B8A8_UNORM; // Albedo
+            PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Specular
+            PSO_Desc.RTVFormats[2]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Normal
+            PSO_Desc.RTVFormats[3]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // Tangent
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     ID3D12PipelineState* CreateDeferredShadingPassPSO(RenderSystem* RS)
     {
         auto VShader = LoadShader("ShadingPass_VS",     "DeferredShade_VS",   "vs_5_0",	"assets\\shaders\\deferredRender.hlsl");
@@ -1066,7 +1137,6 @@ namespace FlexKit
         FrameGraph&                     frameGraph,
         const SceneDescription&         sceneDescription,
         const CameraHandle              camera,
-        GatherTask&                     pvs,
         GBuffer&                        gbuffer,
         ResourceHandle                  depthTarget,
         ReserveConstantBufferFunction   reserveCB,
@@ -1079,13 +1149,15 @@ namespace FlexKit
         auto& pass = frameGraph.AddNode<GBufferPass>(
             GBufferPass{
                 gbuffer,
-                pvs.GetData().solid,
+                sceneDescription.PVS.GetData().solid,
+                sceneDescription.skinned.GetData().skinned,
                 reserveCB
             },
             [&](FrameGraphNodeBuilder& builder, GBufferPass& data)
             {
                 builder.AddDataDependency(sceneDescription.cameras);
                 builder.AddDataDependency(sceneDescription.PVS);
+                builder.AddDataDependency(sceneDescription.skinned);
 
                 data.AlbedoTargetObject      = builder.WriteRenderTarget(gbuffer.Albedo);
                 data.MRIATargetObject        = builder.WriteRenderTarget(gbuffer.MRIA);
@@ -1096,7 +1168,8 @@ namespace FlexKit
             [camera](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 auto passConstantBuffer   = data.reserveCB(1024);
-                auto entityConstantBuffer = data.reserveCB(data.pvs.size() * 1024);
+                auto entityConstantBuffer = data.reserveCB((data.pvs.size() + data.skinned.size()) * 1024);
+                auto poseBuffer           = data.reserveCB(data.skinned.size() * sizeof(float4x4[128]));
 
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
@@ -1141,7 +1214,9 @@ namespace FlexKit
 
                 // submit draw calls
                 TriMesh* prevMesh = nullptr;
-                
+
+
+                // unskinned models
                 for (auto& drawable : data.pvs)
                 {
                     const auto constants    = drawable.D->GetConstants();
@@ -1164,6 +1239,55 @@ namespace FlexKit
                     }
 
                     ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+                    ctx.DrawIndexed(triMesh->IndexCount);
+                }
+
+                // skinned models
+                ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED));
+
+                struct EntityPoses
+                {
+                    float4x4 transforms[128];
+
+                    auto& operator [](size_t idx)
+                    {
+                        return transforms[idx];
+                    }
+                };
+
+                auto& poses = allocator.allocate<EntityPoses>();
+
+                for (const auto& skinnedDraw : data.skinned)
+                {
+                    const auto constants    = skinnedDraw.drawable->GetConstants();
+                    auto* triMesh           = GetMeshResource(skinnedDraw.drawable->MeshHandle);
+
+                    if (triMesh != prevMesh)
+                    {
+                        prevMesh = triMesh;
+
+                        ctx.AddIndexBuffer(triMesh);
+                        ctx.AddVertexBuffers(
+                            triMesh,
+                            {
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+                            }
+                        );
+                    }
+
+                    auto pose       = skinnedDraw.pose;
+                    auto skeleton   = pose->Sk;
+
+                    for(size_t I = 0; I < pose->JointCount; I++)
+                        poses[I] = XMMatrixToFloat4x4(skeleton->IPose[I] * pose->CurrentPose[I]);
+
+                    ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet(constants, entityConstantBuffer));
+                    ctx.SetGraphicsConstantBufferView(4, ConstantBufferDataSet(poses, poseBuffer));
                     ctx.DrawIndexed(triMesh->IndexCount);
                 }
             }

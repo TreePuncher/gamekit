@@ -55,7 +55,8 @@ enum class TestScenes
 {
 	GlobalIllumination,
 	ShadowTestScene,
-    PhysXTest
+    PhysXTest,
+    AnimationTest
 };
 
 
@@ -218,6 +219,52 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             gameState.scene.AddGameObject(dynamicBox, dynamicNode);
         }
     }   break;
+    case TestScenes::AnimationTest:
+    {
+        auto& allocator = app.GetCore().GetBlockMemory();
+
+        if(0)
+        {
+            // Load cube Model
+            const AssetHandle model = 1002;
+            auto [triMesh, loaded] = FindMesh(model);
+
+            if (!loaded)
+                triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
+
+            auto& floor = allocator.allocate<GameObject>();
+
+            auto node = GetZeroedNode();
+            floor.AddView<DrawableView>(triMesh, node);
+            floor.AddView<SceneNodeView<>>(node);
+
+            gameState.scene.AddGameObject(floor, node);
+
+            EnableScale(floor, true);
+            SetScale(floor, { 600, 1, 600 });
+            SetBoundingSphereRadius(floor, 900);
+        }
+        // Load rig Model
+        {
+            const AssetHandle riggedModel   = 1005;
+            const AssetHandle skeleton      = 2000;
+            auto [triMesh, loaded] = FindMesh(riggedModel);
+
+            if (!loaded)
+                triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), riggedModel);
+
+            auto& GO = allocator.allocate<GameObject>();
+            auto node = GetZeroedNode();
+            GO.AddView<DrawableView>(triMesh, node);
+            GO.AddView<SceneNodeView<>>(node);
+            GO.AddView<SkeletonView>(GetTriMesh(GO), 2000);
+            GO.AddView<StringIDView>("object1", strlen("object1"));
+
+            ToggleSkinned(GO, true);
+
+            gameState.scene.AddGameObject(GO, node);
+        }
+    }
 	default:
 		break;
 	}

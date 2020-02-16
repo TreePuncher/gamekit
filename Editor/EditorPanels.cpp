@@ -54,6 +54,7 @@ void Viewer3D_Panel::Draw(
     auto& cameras           = CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
     auto& cameraConstants   = MakeHeapCopy(Camera::ConstantBuffer{}, core.GetTempMemory());
     auto& PVS               = GatherScene(dispatcher, scene, camera, core.GetTempMemory());
+    auto& Skinned           = GatherSkinned(dispatcher, scene, camera, core.GetTempMemory());
 
     PVS.AddInput(cameras);
     PVS.AddInput(transforms);
@@ -64,6 +65,7 @@ void Viewer3D_Panel::Draw(
         transforms,
         cameras,
         PVS,
+        Skinned
     };
 
     

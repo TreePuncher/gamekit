@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 
 
+
 #include "..\coreutilities\CameraUtilities.cpp"
 #include "..\coreutilities\Console.cpp"
 #include "..\coreutilities\DebugPanel.cpp"
@@ -48,6 +49,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\WorldRender.cpp"
 
 #include "..\graphicsutilities\AnimationUtilities.cpp"
+#include "..\graphicsutilities\AnimationComponents.cpp"
 #include "..\graphicsutilities\AnimationRuntimeUtilities.cpp"
 #include "..\graphicsutilities\CoreSceneObjects.cpp"
 #include "..\graphicsutilities\DDSUtilities.cpp"
