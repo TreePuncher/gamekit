@@ -168,8 +168,14 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         skinnedObjects
     };
 
+    frameGraph.AddRenderTarget(base.temporaryBuffers[0]);
+    frameGraph.AddRenderTarget(base.temporaryBuffers[1]);
+    frameGraph.AddRenderTarget(base.temporaryBuffers_2Channel[0]);
+    frameGraph.AddRenderTarget(base.temporaryBuffers_2Channel[1]);
+    frameGraph.AddRenderTarget(base.temporaryBuffers[1]);
+
     ClearVertexBuffer   (frameGraph, base.vertexBuffer);
-    ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
+    ClearBackBuffer     (frameGraph, base.temporaryBuffers[0], 0.0f);
     ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
 
     auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
@@ -205,7 +211,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 frameGraph,
                 sceneDesc,
                 activeCamera,
-                targets.RenderTarget,
+                base.temporaryBuffers[0],
                 base.depthBuffer,
                 base.irradianceMap,
                 base.GGXMap,
@@ -214,6 +220,20 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveVB,
                 base.t,
                 core.GetTempMemory());
+
+            base.render.BilateralBlur(
+                frameGraph,
+                base.temporaryBuffers[0],
+                base.temporaryBuffers[1],
+                base.temporaryBuffers_2Channel[0],
+                base.temporaryBuffers_2Channel[1],
+                targets.RenderTarget,
+                base.gbuffer,
+                base.depthBuffer,
+                reserveCB,
+                reserveVB,
+                core.GetTempMemory());
+
             //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
         }   break;
         case RenderMode::ComputeTiledDeferred:
@@ -363,13 +383,12 @@ bool LocalPlayerState::EventHandler(Event evt)
             {
                 if (evt.Action == Event::Pressed)
                 {
-                    /*
                     auto pos        = GetCameraControllerHeadPosition(thirdPersonCamera);
                     auto forward    = GetCameraControllerForwardVector(thirdPersonCamera);
 
                     // Load Model
                     const AssetHandle model = 1002;
-                    auto [triMesh, loaded] = FindMesh(model);
+                    auto [triMesh, loaded] = FindMesh("Cube1x1x1");
 
                     auto& allocator = framework.core.GetBlockMemory();
 
@@ -391,7 +410,6 @@ bool LocalPlayerState::EventHandler(Event evt)
                         (rand() % 1000) / 1000.0f,
                         (rand() % 1000) / 1000.0f,
                         0.0f);
-                    */
                 }
             }   break;
             case KC_U: // Reload Shaders
@@ -404,6 +422,9 @@ bool LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
                     framework.core.RenderSystem.QueuePSOLoad(ENVIRONMENTPASS);
                     framework.core.RenderSystem.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
+                    framework.core.RenderSystem.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
+                    framework.core.RenderSystem.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
+
                 }
             }   return true;
             case KC_P: // Reload Shaders

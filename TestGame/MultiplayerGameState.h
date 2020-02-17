@@ -214,6 +214,7 @@ public:
         PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
         Format.Scale = { 1.0f, 1.0f };
 
+
         DrawSprite_Text(
             "Loading...",
             frameGraph,

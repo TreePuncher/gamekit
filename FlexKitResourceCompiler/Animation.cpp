@@ -307,8 +307,10 @@ SkeletonResource_ptr CreateSkeletonResource(FbxMesh& mesh, const std::string& pa
 				keyFrame.AddJointPose(JointHandle(jointIdx), localPose);
 			}
 
-			clip.AddKeyFrame(keyFrame);
+			clip.AddKeyFrame(keyFrame, frame * 1.0 / 60.0f);
 		}
+
+        //clip.Compress();
 	}
 
 	return skeleton;

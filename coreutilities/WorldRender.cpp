@@ -378,6 +378,98 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("ShadingPass_VS",             "DeferredShade_VS",             "vs_5_0", "assets\\shaders\\deferredRender.hlsl");
+        auto PShader = LoadShader("BilateralBlurHorizontal_PS", "BilateralBlurHorizontal_PS",   "ps_5_0", "assets\\shaders\\BilateralBlur.hlsl");
+
+        FINALLY
+            Release(&VShader);
+            Release(&PShader);
+        FINALLYOVER
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable	                = false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = VShader;
+            PSO_Desc.PS                    = PShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets      = 2;
+            PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    ID3D12PipelineState* CreateBilaterialBlurVerticalPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("ShadingPass_VS",             "DeferredShade_VS",         "vs_5_0", "assets\\shaders\\deferredRender.hlsl");
+        auto PShader = LoadShader("BilateralBlurVertical_PS",   "BilateralBlurVertical_PS", "ps_5_0", "assets\\shaders\\BilateralBlur.hlsl");
+
+        FINALLY
+            Release(&VShader);
+            Release(&PShader);
+        FINALLYOVER
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+            { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	                = D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable	                = false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = VShader;
+            PSO_Desc.PS                    = PShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets      = 1;
+            PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     ID3D12PipelineState* CreateComputeTiledDeferredPSO(RenderSystem* RS)
     {
         Shader computeShader = LoadShader("csmain", "main", "cs_5_0", "assets\\shaders\\computedeferredtiledshading.hlsl");
@@ -931,6 +1023,106 @@ namespace FlexKit
                 ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
                 ctx.SetGraphicsConstantBufferView(2, ConstantBufferDataSet{ passConstants, data.passConstants });
 
+                ctx.Draw(6);
+            });
+
+        return pass;
+    }
+
+
+    /************************************************************************************************/
+
+
+    BilateralBlurPass& WorldRender::BilateralBlur(
+        FrameGraph&                     frameGraph,
+        const ResourceHandle            source,
+        const ResourceHandle            temp1,
+        const ResourceHandle            temp2,
+        const ResourceHandle            temp3,
+        const ResourceHandle            destination,
+        GBuffer&                        gbuffer,
+        const ResourceHandle            depthBuffer,
+        ReserveConstantBufferFunction   reserveCB,
+        ReserveVertexBufferFunction     reserveVB,
+        iAllocator*                     tempMemory)
+    {
+        auto& pass = frameGraph.AddNode<BilateralBlurPass>(
+            BilateralBlurPass
+            {
+                reserveCB,
+                reserveVB
+            },
+            [&](FrameGraphNodeBuilder& builder, BilateralBlurPass& data)
+            {
+                data.DestinationObject  = builder.WriteRenderTarget(destination);
+                data.TempObject1        = builder.WriteRenderTarget(temp1);
+                data.TempObject2        = builder.WriteRenderTarget(temp2);
+                data.TempObject3        = builder.WriteRenderTarget(temp3);
+
+                data.DepthSource        = builder.ReadShaderResource(depthBuffer);
+                data.NormalSource       = builder.ReadShaderResource(gbuffer.Normal);
+                data.Source             = builder.ReadShaderResource(source);
+            },
+            [=](BilateralBlurPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& allocator)
+            {
+                auto& renderSystem          = frameResources.renderSystem;
+                const auto WH               = frameResources.renderSystem.GetTextureWH(destination);
+
+                auto constantBuffer = data.reserveCB(2048);
+                auto vertexBuffer   = data.reserveVB(2048);
+
+                struct
+                {
+                    float4 Position;
+                }   vertices[] =
+                {
+                    float4(-1,   1,  1, 1),
+                    float4(1,    1,  1, 1),
+                    float4(-1,  -1,  1, 1),
+
+                    float4(-1,  -1,  1, 1),
+                    float4(1,    1,  1, 1),
+                    float4(1,   -1,  1, 1),
+                };
+
+
+                struct
+                {
+                    float2 WH;
+                }passConstants = { float2(WH[0], WH[1]) };
+
+                DescriptorHeap descHeap;
+                descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 5, &allocator);
+
+                descHeap.SetSRV(ctx, 0, frameResources.GetTexture(data.Source));
+                descHeap.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
+                descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), FORMAT_2D::R32_FLOAT);
+                descHeap.NullFill(ctx, 3);
+
+                ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSHORIZONTAL));
+                ctx.SetGraphicsDescriptorTable(3, descHeap);
+
+                ctx.SetScissorAndViewports({ destination });
+                ctx.SetRenderTargets({ frameResources.GetTexture(data.TempObject1), frameResources.GetTexture(data.TempObject2) }, false);
+                ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, vertexBuffer } });
+                ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, constantBuffer });
+
+                ctx.Draw(6);
+
+                DescriptorHeap descHeap2;
+                descHeap2.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 5, &allocator);
+
+                
+                descHeap2.SetSRV(ctx, 0, frameResources.ReadRenderTarget(data.TempObject1, &ctx));
+                descHeap2.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
+                descHeap2.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), FORMAT_2D::R32_FLOAT);
+                descHeap2.SetSRV(ctx, 3, frameResources.ReadRenderTarget(data.TempObject2, &ctx));
+                descHeap2.NullFill(ctx, 4);
+
+                ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL));
+                ctx.SetGraphicsDescriptorTable(3, descHeap2);
+                ctx.SetRenderTargets({ frameResources.GetTexture(data.DestinationObject) }, false);
                 ctx.Draw(6);
             });
 

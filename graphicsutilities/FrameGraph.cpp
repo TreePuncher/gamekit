@@ -191,13 +191,15 @@ namespace FlexKit
 				case FrameObjectResourceType::OT_UAVBuffer:
 					ctx->AddUAVBarrier(resNode.UAVBuffer, resNode.State, res->State);
 					break;
-				case FrameObjectResourceType::OT_BackBuffer:
+                case FrameObjectResourceType::OT_BackBuffer:
+                case FrameObjectResourceType::OT_RenderTarget:
+                case FrameObjectResourceType::OT_ShaderResource:
+                    ctx->AddShaderResourceBarrier(resNode.Texture, resNode.State, res->State);
+                    break;
 				case FrameObjectResourceType::OT_ConstantBuffer:
 				case FrameObjectResourceType::OT_DepthBuffer:
 				case FrameObjectResourceType::OT_IndirectArguments:
 				case FrameObjectResourceType::OT_PVS:
-				case FrameObjectResourceType::OT_RenderTarget:
-				case FrameObjectResourceType::OT_ShaderResource:
 				case FrameObjectResourceType::OT_VertexBuffer:
 					FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
 				}

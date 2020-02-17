@@ -31,3 +31,6 @@
 [submodule "Dependencies/sdks/stb"]
 	path = Dependencies/sdks/stb
 	url = https://github.com/nothings/stb.git
+[submodule "Dependencies/sdks/ACL"]
+	path = Dependencies/sdks/ACL
+	url = https://github.com/nfrechette/acl.git

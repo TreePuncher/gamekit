@@ -601,6 +601,18 @@ namespace FlexKit
         /************************************************************************************************/
 
 
+        ResourceHandle ReadRenderTarget(FrameResourceHandle resource, Context* ctx) const
+        {
+            auto res = _FindSubNodeResource(resource);
+            if (res->State != DRS_ShaderResource)
+                ctx->AddShaderResourceBarrier(res->Texture, res->State, DRS_ShaderResource);
+
+            res->State = DRS_ShaderResource;
+
+            return res->ShaderResource;
+        }
+
+
         UAVTextureHandle ReadWriteUAVTexture(FrameResourceHandle resource, Context* ctx) const
         {
             auto res = _FindSubNodeResource(resource);
