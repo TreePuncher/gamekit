@@ -89,12 +89,15 @@ struct AnimationKeyFrame
 {
 	size_t FrameNumber  = 0;
 	size_t JointCount   = 0;
+    double T            = 0;
+
 
 	void AddJointPose(const JointHandle joint, const JointPose pose)
 	{
 		joints.push_back(joint);
 		poses.push_back(pose);
 	}
+
 
 	bool hasJoint(const JointHandle joint) const noexcept
 	{
@@ -126,7 +129,7 @@ struct AnimationClipResource : public iResource
 	}
 	
 
-	void AddKeyFrame(AnimationKeyFrame keyFrame)
+	void AddKeyFrame(AnimationKeyFrame keyFrame, double dt)
 	{
 		Frames.push_back(keyFrame);
 	}

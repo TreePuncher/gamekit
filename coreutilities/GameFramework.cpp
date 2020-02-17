@@ -431,7 +431,8 @@ namespace FlexKit
 
 
 		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
-		Format.Scale = { 0.5f, 0.5f};
+		Format.Scale = { 0.5f, 0.5f };
+        Format.Color = { 1, 0, 1, 1 };
 		DrawSprite_Text(
 				TempBuffer, 
 				frameGraph, 

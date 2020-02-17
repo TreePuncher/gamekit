@@ -8,10 +8,18 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 {
 	const AssetHandle model = 1004;
 
-	auto [triMesh, loaded] = FindMesh(model);
+    // Load Model
+    const AssetHandle dragonHandle = 1004;
+    const AssetHandle buddahHandle = 1003;
 
-	if (!loaded)
-		triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
+    auto [dragon, loaded1] = FindMesh(dragonHandle);
+    auto [buddah, loaded2] = FindMesh(buddahHandle);
+
+    if (!loaded1)
+        dragon = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), dragonHandle);
+
+    if (!loaded2)
+        buddah = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), buddahHandle);
 
 	static const size_t N = 10;
 	static const float  W = (float)30;
@@ -27,7 +35,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			auto& gameObject = allocator->allocate<FlexKit::GameObject>();
 			auto node = FlexKit::GetNewNode();
 
-			gameObject.AddView<DrawableView>(triMesh, node);
+			gameObject.AddView<DrawableView>( (X % 2 == 0 )? dragon : buddah, node);
 
 			SetMaterialParams(
 				gameObject,
@@ -40,7 +48,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
-			Scale(node, { 8, 8, 8 });
+			Scale(node, { 0.1, 0.1, 0.1 });
 			Pitch(node, (float)pi / 2.0f);
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
 
@@ -162,10 +170,10 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
         // Load Model
         const AssetHandle model = 1002;
-        auto [triMesh, loaded] = FindMesh(model);
+        auto [triMesh, loaded] = FindMesh("Cube1x1x1");
 
         if (!loaded)
-            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
+            triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), "Cube1x1x1");
 
         auto    floorShape = base.physics.CreateCubeShape({ 300, 1, 300 });
         auto    cubeShape  = base.physics.CreateCubeShape({ 0.5f, 0.5f, 0.5f });
@@ -179,14 +187,14 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         staticBox.AddView<DrawableView>(triMesh, staticNode);
         staticBox.AddView<SceneNodeView<>>(staticNode);
         EnableScale(staticBox, true);
-        SetScale(staticBox, { 600, 1, 600 });
+        SetScale(staticBox, { 60, 0.01f, 60 });
         gameState.scene.AddGameObject(staticBox, staticNode);
         SetBoundingSphereRadius(staticBox, 400);
 
         // Create Rigid Body Box
-        for (size_t y = 0; y < 20; y++)
+        for (size_t y = 0; y < 1; y++)
         {
-            for (size_t x = 0; x < 50; x++)
+            for (size_t x = 0; x < 1; x++)
             {
                 auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { (float)x * 1.05f, (float)y * 1.05f, 0 });
                 auto& dynamicBox = allocator.allocate<GameObject>();
@@ -194,8 +202,12 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 dynamicBox.AddView<RigidBodyView>(rigidBody, gameState.pScene);
                 auto dynamicNode = GetRigidBodyNode(dynamicBox);
                 dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
-                gameState.scene.AddGameObject(dynamicBox, dynamicNode);
 
+                dynamicBox.AddView<SceneNodeView<>>(dynamicNode);
+                EnableScale(dynamicBox, SceneNodes::SCALE);
+                SetScale(dynamicBox, { 0.1f, 0.1f, 0.1f });
+
+                gameState.scene.AddGameObject(dynamicBox, dynamicNode);
 
                 SetMaterialParams(
                     dynamicBox,
@@ -208,6 +220,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             }
         }
 
+        /*
         for (size_t y = 0; y < 0; y++)
         {
             auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { -50 , 3.0f * y + 1.0f, 0 });
@@ -218,6 +231,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
             gameState.scene.AddGameObject(dynamicBox, dynamicNode);
         }
+        */
     }   break;
     case TestScenes::AnimationTest:
     {

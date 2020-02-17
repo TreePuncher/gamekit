@@ -225,6 +225,8 @@ namespace FlexKit
 	static const PSOHandle SHADINGPASS                 = PSOHandle(GetTypeGUID(SHADINGPASS));
 	static const PSOHandle COMPUTETILEDSHADINGPASS     = PSOHandle(GetTypeGUID(COMPUTETILEDSHADINGPASS));
 	static const PSOHandle ENVIRONMENTPASS             = PSOHandle(GetTypeGUID(ENVIRONMENTPASS));
+    static const PSOHandle BILATERALBLURPASSHORIZONTAL = PSOHandle(GetTypeGUID(BILATERALBLURPASSHORIZONTAL));
+    static const PSOHandle BILATERALBLURPASSVERTICAL   = PSOHandle(GetTypeGUID(BILATERALBLURPASSVERTICAL));
 	static const PSOHandle LIGHTPREPASS			       = PSOHandle(GetTypeGUID(LIGHTPREPASS));
 	static const PSOHandle DEPTHPREPASS                = PSOHandle(GetTypeGUID(DEPTHPREPASS));
 	static const PSOHandle FORWARDDRAWINSTANCED	       = PSOHandle(GetTypeGUID(FORWARDDRAWINSTANCED));
@@ -250,6 +252,9 @@ namespace FlexKit
     ID3D12PipelineState* CreateGBufferSkinnedPassPSO        (RenderSystem* RS);
     ID3D12PipelineState* CreateDeferredShadingPassPSO       (RenderSystem* RS);
     ID3D12PipelineState* CreateComputeTiledDeferredPSO      (RenderSystem* RS);
+
+    ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
+    ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
 
 
 	struct WorldRender_Targets
@@ -540,6 +545,22 @@ namespace FlexKit
     };
 
 
+    struct BilateralBlurPass
+    {
+        ReserveConstantBufferFunction   reserveCB;
+        ReserveVertexBufferFunction     reserveVB;
+
+        FrameResourceHandle             DestinationObject;
+        FrameResourceHandle             TempObject1;
+        FrameResourceHandle             TempObject2;
+        FrameResourceHandle             TempObject3;
+
+        FrameResourceHandle             Source;
+        FrameResourceHandle             DepthSource;
+        FrameResourceHandle             NormalSource;
+    };
+
+
     struct TiledDeferredShade
     {
         GBuffer&                gbuffer;
@@ -590,15 +611,17 @@ namespace FlexKit
 			streamingEngine		{ IN_streamingEngine											                        },
 			lightMapWH			{ WH / 10                                                                               }
 		{
-			RS_IN.RegisterPSOLoader(FORWARDDRAW,			 { &RS_IN.Library.RS6CBVs4SRVs,		 CreateForwardDrawPSO,		   });
-			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	 { &RS_IN.Library.RS6CBVs4SRVs,		 CreateForwardDrawInstancedPSO });
-			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			 { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			   });
-			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
-			RS_IN.RegisterPSOLoader(GBUFFERPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
-			RS_IN.RegisterPSOLoader(GBUFFERPASS_SKINNED,	 { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferSkinnedPassPSO    });
-			RS_IN.RegisterPSOLoader(SHADINGPASS,			 { &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO  });
-            RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,         { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
-            RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS, { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
+			RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		 CreateForwardDrawPSO,		   });
+			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		 CreateForwardDrawInstancedPSO });
+			RS_IN.RegisterPSOLoader(LIGHTPREPASS,			    { &RS_IN.Library.ComputeSignature,  CreateLightPassPSO			   });
+			RS_IN.RegisterPSOLoader(DEPTHPREPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDepthPrePassPSO         });
+			RS_IN.RegisterPSOLoader(GBUFFERPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferPassPSO          });
+			RS_IN.RegisterPSOLoader(GBUFFERPASS_SKINNED,	    { &RS_IN.Library.RS6CBVs4SRVs,      CreateGBufferSkinnedPassPSO   });
+			RS_IN.RegisterPSOLoader(SHADINGPASS,			    { &RS_IN.Library.RS6CBVs4SRVs,      CreateDeferredShadingPassPSO  });
+            RS_IN.RegisterPSOLoader(ENVIRONMENTPASS,            { &RS_IN.Library.RS6CBVs4SRVs,      CreateEnvironmentPassPSO      });
+            RS_IN.RegisterPSOLoader(COMPUTETILEDSHADINGPASS,    { &RS_IN.Library.RSDefault,         CreateComputeTiledDeferredPSO });
+            RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,{ &RS_IN.Library.RSDefault,         CreateBilaterialBlurHorizontalPSO });
+            RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,  { &RS_IN.Library.RSDefault,         CreateBilaterialBlurVerticalPSO   });
 
 
             RS_IN.QueuePSOLoad(GBUFFERPASS);
@@ -609,6 +632,8 @@ namespace FlexKit
             RS_IN.QueuePSOLoad(FORWARDDRAWINSTANCED);
             RS_IN.QueuePSOLoad(SHADINGPASS);
             RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
+            RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
+            RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
 
             RS_IN.SetDebugName(lightLists,        "lightLists");
             RS_IN.SetDebugName(pointLightBuffer,  "pointLightBuffer");
@@ -686,8 +711,22 @@ namespace FlexKit
             GBuffer&                        gbuffer,
             ReserveConstantBufferFunction   reserveCB,
             ReserveVertexBufferFunction     reserveVB,
-            const float             t,
-            iAllocator*             tempMemory);
+            const float                     t,
+            iAllocator*                     tempMemory);
+
+
+        BilateralBlurPass& BilateralBlur(
+            FrameGraph&,
+            const ResourceHandle            source,
+            const ResourceHandle            temp1,
+            const ResourceHandle            temp2,
+            const ResourceHandle            temp3,
+            const ResourceHandle            destination,
+            GBuffer&                        gbuffer,
+            const ResourceHandle            depthBuffer,
+            ReserveConstantBufferFunction   reserveCB,
+            ReserveVertexBufferFunction     reserveVB,
+            iAllocator*                     tempMemory);
 
 
         GBufferPass&        RenderPBR_GBufferPass(

@@ -165,6 +165,16 @@ public:
 			App				{ IN_App																						},
 			FrameworkState	{ IN_Framework																					},
 			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(IN_Framework.ActiveWindow->WH,	true)	    },
+
+            temporaryBuffers{
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16B16A16_FLOAT))	},
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16B16A16_FLOAT))	}},
+
+            temporaryBuffers_2Channel{
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16_FLOAT)) },
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16_FLOAT)) } },
+
+
 			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
 			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
 			asEngine		{ asCreateScriptEngine()																		},
@@ -225,11 +235,21 @@ public:
 
     void Resize(const uint2 WH)
     {
-        framework.core.Window.Resize(WH, framework.GetRenderSystem());
+        auto& renderSystem = framework.GetRenderSystem();
+        framework.core.Window.Resize(WH, renderSystem);
 
-        framework.GetRenderSystem().ReleaseTexture(depthBuffer);
-        depthBuffer = framework.GetRenderSystem().CreateDepthBuffer(WH, true);
+        for (auto& temp : temporaryBuffers) {
+            renderSystem.ReleaseTexture(temp);
+            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
+        }
 
+        for (auto& temp : temporaryBuffers_2Channel) {
+            renderSystem.ReleaseTexture(temp);
+            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16_FLOAT));
+        }
+
+        renderSystem.ReleaseTexture(depthBuffer);
+        depthBuffer     = renderSystem.CreateDepthBuffer(WH, true);
         gbuffer.Resize(WH);
     }
 
@@ -252,6 +272,8 @@ public:
 	ResourceHandle				depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
+    ResourceHandle              temporaryBuffers[2];
+    ResourceHandle              temporaryBuffers_2Channel[2];
 	
     SoundSystem			        sounds;
 

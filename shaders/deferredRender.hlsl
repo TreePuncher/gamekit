@@ -264,18 +264,21 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 		F0 = F0 * F0;
 		F0 = lerp(F0, albedo, metallic);
 
-		for (uint i = 0; i < N; ++i)
+		uint sampleCount = 0;
+
+		for (uint i = 0; i < N; sampleCount = ++i)
 		{
 			// Eric Heitz GGX 2018 MIS sampling
 			float2 Xi = frac(HammersleySeq(i, N) + Hash2(pixelIndex));
 			float3 H = EricHeitz2018GGXVNDF(V, alpha_x, alpha_y, Xi.x, Xi.y);
 			float3 L = reflect(-V, H);
-			float cosT = dot(V, H);
+			float dotVH = dot(V, H);
+			float dotNL = CosTheta(L);
 
-			if (cosT <= 0.0) continue;
+			if (dotNL <= 0.0) continue;
 
 			// Fresnel
-			float3 F = SchlickFresnel(max(cosT, 0.0), F0);
+			float3 F = SchlickFresnel(max(dotVH, 0.0), F0);
 
 			kS += F;
 
@@ -293,16 +296,15 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 			//int lod = (1.0 / PDF) * NumberOfLevels;//max(0.875 * log2( (Width * Height) / N ) - 0.125 * log2(PDF * omegaS), 0.0);
 			
 			float3 sampleDir = mul(TBN, L);
-			float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, 1);
+			float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, lod);
 			
-
 			specular += (sampleIrradiance * brdf);
 		}
 		
-		kS = saturate( kS / N );
+		kS = saturate( kS / sampleCount );
 		float kD = (1.0 - kS);// * (1.0 - metallic);
 
-		specular /= N;
+		specular /= sampleCount;
 
 		//float3 reflVec = reflect(rayDir, normal);
 		//specular = ggxMap.SampleLevel(BiLinear, reflVec, 6).rgb;
@@ -456,7 +458,6 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     }
     return float4(color, 1);
 }
-
 
 
 /**********************************************************************
