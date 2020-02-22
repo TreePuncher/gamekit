@@ -12,14 +12,8 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
     const AssetHandle dragonHandle = 1004;
     const AssetHandle buddahHandle = 1003;
 
-    auto [dragon, loaded1] = FindMesh(dragonHandle);
-    auto [buddah, loaded2] = FindMesh(buddahHandle);
-
-    if (!loaded1)
-        dragon = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), dragonHandle);
-
-    if (!loaded2)
-        buddah = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), buddahHandle);
+    auto dragon = GetMesh(renderSystem, dragonHandle);
+    auto buddah = GetMesh(renderSystem, buddahHandle);
 
 	static const size_t N = 10;
 	static const float  W = (float)30;
@@ -35,7 +29,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			auto& gameObject = allocator->allocate<FlexKit::GameObject>();
 			auto node = FlexKit::GetNewNode();
 
-			gameObject.AddView<DrawableView>( (X % 2 == 0 )? dragon : buddah, node);
+			gameObject.AddView<DrawableView>( (X % 2 == 0)? dragon : buddah, node);
 
 			SetMaterialParams(
 				gameObject,
@@ -48,8 +42,13 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
-			Scale(node, { 0.1, 0.1, 0.1 });
-			Pitch(node, (float)pi / 2.0f);
+
+            //if (X % 2 == 0)
+            {
+                Pitch(node, (float)pi / 2.0f);
+                Scale(node, { 0.1, 0.1, 0.1 });
+            }
+
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
 
 			scene.AddGameObject(gameObject, node);
@@ -191,10 +190,11 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         gameState.scene.AddGameObject(staticBox, staticNode);
         SetBoundingSphereRadius(staticBox, 400);
 
+
         // Create Rigid Body Box
         for (size_t y = 0; y < 1; y++)
         {
-            for (size_t x = 0; x < 1; x++)
+            for (size_t x = 0; x < 10; x++)
             {
                 auto  rigidBody = base.physics.CreateRigidBodyCollider(gameState.pScene, cubeShape, { (float)x * 1.05f, (float)y * 1.05f, 0 });
                 auto& dynamicBox = allocator.allocate<GameObject>();
@@ -237,7 +237,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
     {
         auto& allocator = app.GetCore().GetBlockMemory();
 
-        if(0)
+        if(1)
         {
             // Load cube Model
             const AssetHandle model = 1002;

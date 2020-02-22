@@ -505,12 +505,8 @@ namespace FlexKit
 				}
 				else if (size == 4)
 				{	// Quads
-					bool QuadsEnabled = false | SubDiv_Enabled;
-					if (!QuadsEnabled) {
-						std::cout << "Quads Disabled!\n";
-					}
 
-					if(QuadsEnabled)
+					if constexpr(false)
 					{
 						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, mesh);
 						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, mesh) : 0;
@@ -553,12 +549,16 @@ namespace FlexKit
 						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, mesh) : 0;
 						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, mesh) : 0;
 
-						AddIndexToken(VertexIndex1, NormalIndex1, 0, out.tokens);
-						AddIndexToken(VertexIndex2, NormalIndex2, 0, out.tokens);
-						AddIndexToken(VertexIndex3, NormalIndex3, 0, out.tokens);
+						AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, out.tokens);
+						AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+						AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, out.tokens);
 
-						IndexCount += 3;
-                        ++faceCount;
+                        AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, out.tokens);
+                        AddIndexToken(VertexIndex4, NormalIndex4, UVCordIndex4, out.tokens);
+                        AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, out.tokens);
+
+						IndexCount += IndexCount;
+                        faceCount += 2;
 					}
 
 				}

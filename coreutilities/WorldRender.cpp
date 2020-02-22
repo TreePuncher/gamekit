@@ -1624,7 +1624,96 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ComputeTiledPass& WorldRender::RenderPBR_ComputeDeferredTiledShade(
+            UpdateDispatcher&                       dispatcher,
+            FrameGraph&                             frameGraph,
+            ReserveConstantBufferFunction&          constantBufferAllocator,
+            const ComputeTiledDeferredShadeDesc&    scene)
+    {
 
+
+        frameGraph.Resources.AddUAVResource(tempBuffer, 0, frameGraph.GetRenderSystem().GetObjectState(tempBuffer));
+
+
+        auto& pass = frameGraph.AddNode<ComputeTiledPass>(
+            ComputeTiledPass{
+                constantBufferAllocator,
+                scene.pointLightGather
+            },
+            [&](FrameGraphNodeBuilder& builder, ComputeTiledPass& data)
+            {
+                data.dispatchDims   = { lightMapWH[0], lightMapWH[1], 1 };
+                data.activeCamera   = scene.activeCamera;
+                data.WH             = lightMapWH * 10;
+                // Inputs
+                data.albedoObject         = builder.ReadShaderResource(scene.gbuffer.Albedo);
+                data.MRIAObject           = builder.ReadShaderResource(scene.gbuffer.MRIA);
+                data.normalObject         = builder.ReadShaderResource(scene.gbuffer.Normal);
+                data.tangentObject        = builder.ReadShaderResource(scene.gbuffer.Tangent);
+                data.depthBufferObject    = builder.ReadShaderResource(scene.depthTarget);
+
+                data.lightBitBucketObject   = builder.ReadWriteUAV(lightLists,          DRS_ShaderResource);
+                data.lightBuffer            = builder.ReadWriteUAV(pointLightBuffer,    DRS_ShaderResource);
+
+                // Ouputs
+                data.tempBufferObject   = builder.ReadWriteUAV(tempBuffer);
+                data.renderTargetObject = builder.WriteRenderTarget(scene.renderTarget);
+            },
+            [=]
+            (ComputeTiledPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            {
+                CBPushBuffer pushBuffer{ data.constantBufferAllocator(2048) };
+
+                ConstantBufferDataSet cameraConstants{
+                    CameraComponent::GetComponent().GetCamera(data.activeCamera).GetConstants(),
+                    pushBuffer
+                };
+
+                struct LocalPassConstants
+                {
+                    uint32_t    lightCount;
+                    uint2       WH;
+                };
+
+                ConstantBufferDataSet localConstants{
+                    LocalPassConstants{
+                        (uint32_t)data.pointLights.GetData().pointLights.size(),
+                        data.WH
+                    },
+                    pushBuffer
+                };
+
+                PointLightComponent& pointLights = PointLightComponent::GetComponent();
+                DescriptorHeap srvHeap;
+                srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 7, &allocator);
+                srvHeap.SetSRV(ctx, 0, resources.GetTexture(data.albedoObject));
+                srvHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIAObject));
+                srvHeap.SetSRV(ctx, 2, resources.GetTexture(data.normalObject));
+                srvHeap.SetSRV(ctx, 3, resources.GetTexture(data.tangentObject));
+                srvHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferObject), FORMAT_2D::R32_FLOAT);
+                srvHeap.SetSRV(ctx, 5, lightLists);
+                srvHeap.SetSRV(ctx, 6, pointLightBuffer);
+
+                DescriptorHeap uavHeap;
+                uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 10, &allocator);
+                uavHeap.SetUAV(ctx, 0, resources.GetUAVTextureResource(data.tempBufferObject));
+
+                ctx.SetComputeRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(resources.GetPipelineState(COMPUTETILEDSHADINGPASS));
+
+                ctx.SetComputeConstantBufferView(0, cameraConstants);
+                ctx.SetComputeConstantBufferView(1, localConstants);
+                ctx.SetComputeDescriptorTable(3, srvHeap);
+                ctx.SetComputeDescriptorTable(4, uavHeap);
+                ctx.Dispatch(data.dispatchDims);
+
+                ctx.CopyTexture2D(
+                    resources.CopyToTexture(data.renderTargetObject, ctx),
+                    resources.CopyUAVTexture(data.tempBufferObject, ctx));
+            });
+
+        return pass;
+    }
 
 
 }	/************************************************************************************************/

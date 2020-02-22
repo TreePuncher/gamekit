@@ -34,3 +34,6 @@
 [submodule "Dependencies/sdks/ACL"]
 	path = Dependencies/sdks/ACL
 	url = https://github.com/nfrechette/acl.git
+[submodule "Dependencies/sdks/crunch"]
+	path = Dependencies/sdks/crunch
+	url = https://github.com/BinomialLLC/crunch.git

@@ -298,13 +298,14 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
                 SetJointPose(*gameObject, joint, jointPose);
             }
-            //std::cout << jointPose.r << "\n";
+
             T += dT;
 
             if (!Skeleton)
                 return;
 
             LineSegments lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
+            //LineSegments lines = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
 
             const auto cameraConstants = GetCameraConstants(activeCamera);
 

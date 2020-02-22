@@ -67,6 +67,8 @@ HorizontalOut BilateralBlurHorizontal_PS(Blur_PS_IN input)
     HorizontalOut output;
 
     uint3 coord = uint3(input.PixelCoord, 0);
+    float depth = DepthBuffer.Load(coord).r;
+
     float dp0 = DepthBuffer.Load(uint3(coord.x - 1, coord.y, 0)).x;
     float dp1 = DepthBuffer.Load(uint3(coord.x, coord.y, 0)).x;
     float dp2 = DepthBuffer.Load(uint3(coord.x + 1, coord.y, 0)).x;
@@ -83,7 +85,6 @@ HorizontalOut BilateralBlurHorizontal_PS(Blur_PS_IN input)
     /*
     float3 color     = float3(0, 0, 0);
     uint2 pixelCoord = uint2(input.PixelCoord);
-    float depth      = DepthBuffer.Load(uint3(pixelCoord, 0)).r;
     
     float3 c = float3(0, 0, 0);
     const float HALF_KERNEL_SIZE = float(KERNEL_SIZE) * 0.5;
@@ -102,10 +103,11 @@ HorizontalOut BilateralBlurHorizontal_PS(Blur_PS_IN input)
 
     float diff = length(normalDiff);
     c = float3(diff, diff, diff);*/
-/*
+
+    float3 c = 0;
     if(depth == 1.0f)
     {
-        c = SourceBuffer.Load(uint3(pixelCoord, 0)).rgb;
+        c = SourceBuffer.Load(coord).rgb;
     }
     else
     {
@@ -113,19 +115,23 @@ HorizontalOut BilateralBlurHorizontal_PS(Blur_PS_IN input)
         float k[] = { 0.0545, 0.2442, 0.4026, 0.2442, 0.0545 };
         for (uint x = 0; x < 5; x++)
         {
-            uint2 pos = pixelCoord + uint2(x - 2, 0);
+            uint2 pos = coord.xy + uint2(x - 2, 0);
             c += k[x] * SourceBuffer.Load(uint3(pos, 0)).rgb;
         }
     }
-    */
+
+    output.Colour  = float4(c, 1);
     return output;//float4(c, 1.0);
 }
 
 
 float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
 {   
+    #if 0
     uint3 coord = uint3(input.PixelCoord, 0);
     float depth = DepthBuffer.Load(coord).x;
+
+
     float2 vs0 = SobelBuffer.Load(uint3(coord.x, coord.y - 1, 0)).xy;
     float2 vs1 = SobelBuffer.Load(uint3(coord.x, coord.y, 0)).xy;
     float2 vs2 = SobelBuffer.Load(uint3(coord.x, coord.y + 1, 0)).xy;
@@ -136,11 +142,13 @@ float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
     float G = sqrt(Gx * Gx + Gy * Gy);
     float A = 1.0 - max(G, float(depth == 1.0));
 
-    return float4(A, A, A, 1);
-    /*
+    return float4(SourceBuffer.Load(coord).xyz, 1);
+
+    #else
+
     float3 color = float3(0, 0, 0);
     uint2 pixelCoord = uint2(input.PixelCoord);
-    return SourceBuffer.Load(uint3(pixelCoord, 0));
+    //return SourceBuffer.Load(uint3(pixelCoord, 0));
 
     float depth = DepthBuffer.Load(uint3(pixelCoord, 0)).r;
 
@@ -160,5 +168,7 @@ float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
         }
     }
     
-    return float4(c, 1.0);*/
+    return float4(c, 1.0);
+
+    #endif
 }

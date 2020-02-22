@@ -6,7 +6,9 @@
 #include "TextureUtilities.h"
 #include "ResourceUtilities.h"
 
-
+#include "crnlib.h"
+#include "crn_decomp.h"
+#include "dds_defs.h"
 
 
 FlexKit::FORMAT_2D FormatStringToFORMAT_2D(const std::string& format)
@@ -113,6 +115,20 @@ public:
         return out;
     }
 };
+
+
+void CreateCompressedDDSTextureResource()
+{
+    crn_comp_params params = {};
+    crn_uint32  size = 0;
+    crn_uint32  actualQualityLevel;
+    float       actualBitrate;
+
+    auto resource = crn_compress(params,
+                    size,
+                    &actualQualityLevel,
+                    &actualBitrate);
+}
 
 
 inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData)

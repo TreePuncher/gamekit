@@ -76,8 +76,7 @@ struct TTF_Directory
 	TTF_USHORT RangeShift;
 };
 
-TTF_ULONG
-CalcTableChecksum(TTF_ULONG *Table, TTF_ULONG Length)
+TTF_ULONG CalcTableChecksum(TTF_ULONG *Table, TTF_ULONG Length)
 {
 	TTF_ULONG  Sum = 0L;
 	TTF_ULONG* Endptr = Table + ((Length + 3) & ~3) / sizeof(TTF_ULONG);
@@ -202,7 +201,7 @@ struct _Format4Encoding
 		Converted.RangeShift	= ConvertEndianness(RangeShift);
 		Converted.EndCodes		= EndCodes;
 
-		auto SegmentCount = Converted.segCountX2 / 2;
+		const auto SegmentCount = Converted.segCountX2 / 2;
 
 		Converted.StartCodes	= EndCodes + SegmentCount + 1;
 		Converted.idDelta		= (TTF_SHORT*)	Converted.StartCodes + SegmentCount;
@@ -365,17 +364,15 @@ struct Glyph
 	TTF_FWORD xMax;
 	TTF_FWORD yMax;
 
-	Glyph GetConverted()
+	Glyph GetConverted() const
 	{
-		Glyph Converted;
-
-		Converted.NumberOfContours = ConvertEndianness(NumberOfContours);
-		Converted.xMin = ConvertEndianness(xMin);
-		Converted.yMin = ConvertEndianness(yMin);
-		Converted.xMax = ConvertEndianness(xMax);
-		Converted.yMax = ConvertEndianness(yMax);
-
-		return Converted;
+        return {
+		    .NumberOfContours  = ConvertEndianness(NumberOfContours),
+		    .xMin              = ConvertEndianness(xMin),
+		    .yMin              = ConvertEndianness(yMin),
+		    .xMax              = ConvertEndianness(xMax),
+		    .yMax              = ConvertEndianness(yMax),
+        };
 	}
 };
 
@@ -412,16 +409,13 @@ struct SimpleGlyph
 
 struct GlyphEntry
 {
-	GlyphEntry(FlexKit::byte* buffer)
-	{
-		auto data = reinterpret_cast<Glyph*>(buffer)->GetConverted();
-
-		Compound			= data.NumberOfContours > 1;
-		NumberOfContours	= abs(data.NumberOfContours);
-
-		BufferBegin			= buffer + sizeof(Glyph);
-	}
-
+    GlyphEntry(
+        const TTF_USHORT            IN_contourCount,
+        const bool                  IN_compound,
+        const FlexKit::byte* const  IN_buffer) :
+            contourCount    { IN_contourCount   },
+            compound        { IN_compound       },
+            buffer          { IN_buffer         } {}
 
 	struct Curve
 	{
@@ -430,48 +424,58 @@ struct GlyphEntry
 	};
 
 
-	Curve GetCurve(size_t Idx, size_t Contour = 0)
+	Curve GetCurve(const size_t Idx, const size_t Contour = 0) const
 	{
 		Curve Out;
 
-		FlexKit::byte* Begin = BufferBegin + sizeof(Glyph);
+		const FlexKit::byte* const Begin = buffer + sizeof(Glyph);
 
-		if (Compound)
+		if (compound)
 		{
-			TTF_USHORT* endPtsOfContours	= 
-				reinterpret_cast<TTF_USHORT*>(Begin);
+			const TTF_USHORT* const endPtsOfContours	= 
+				reinterpret_cast<const TTF_USHORT*>(Begin);
 
-			size_t InstructionLength		= 
-				ConvertEndianness(
-					endPtsOfContours[NumberOfContours]);
+			const size_t InstructionLength = 
+				ConvertEndianness(endPtsOfContours[contourCount]);
 
-			TTF_UBYTE* instructions			= 
-				reinterpret_cast<TTF_UBYTE*>(
-					endPtsOfContours + NumberOfContours + 1);
-
+			const TTF_UBYTE* instructions = 
+				reinterpret_cast<const TTF_UBYTE*>(endPtsOfContours + contourCount + 1);
 		}
 		else
 		{
-			TTF_USHORT* endPtsOfContours	= 
-				reinterpret_cast<TTF_USHORT*>(Begin);
+			const TTF_USHORT* endPtsOfContours = 
+				reinterpret_cast<const TTF_USHORT*>(Begin);
 
-			TTF_USHORT InstructionLength	= 
-				endPtsOfContours[NumberOfContours];
+			const TTF_USHORT InstructionLength = 
+				endPtsOfContours[contourCount];
 
-			TTF_UBYTE* instructions =
-				reinterpret_cast<TTF_UBYTE*>(
-					endPtsOfContours + NumberOfContours + 1);
+			const TTF_UBYTE* const instructions =
+				reinterpret_cast<const TTF_UBYTE*>(endPtsOfContours + contourCount + 1);
 
 		}
 
 		return Out;
 	}
 
-	TTF_USHORT	NumberOfContours;
-	bool		Compound;
-	Glyph			Data;
-	FlexKit::byte*	BufferBegin;
+	const TTF_USHORT	        contourCount    = 0;
+	const bool		            compound        = false;
+	const FlexKit::byte* const  buffer          = nullptr;
 };
+
+
+GlyphEntry GetGlyphEntry(FlexKit::byte* buffer)
+{
+    Glyph glyph;
+    memcpy(&glyph, buffer, sizeof(Glyph));
+    glyph = glyph.GetConverted();
+
+    const auto Compound                 = glyph.NumberOfContours > 1;
+    const TTF_USHORT NumberOfContours   = abs(glyph.NumberOfContours);
+    const auto BufferBegin              = buffer + sizeof(Glyph);
+
+    return { NumberOfContours, Compound, BufferBegin };
+}
+
 
 
 struct CompoundGlyph
@@ -801,7 +805,7 @@ public:
 		auto RES = FindDirectoryEntry("glyf");
 		TTF_DirectoryEntry& Entry = (TTF_DirectoryEntry)RES;
 
-		return { Buffer + Entry.offset + Glyph_offset };
+		return GetGlyphEntry( Buffer + Entry.offset + Glyph_offset );
 	}
 
 
@@ -881,9 +885,9 @@ Pair<bool, TTFont*> LoadTTFFile(std::string& file, iAllocator* Memory)
 		auto Table			= CMap.GetWindowsEntry();
 		auto Format4Table	= CMap.GetSubTableAsFormat4(Table.SubTableOffset);
 
-		auto Glyph = Font.GetGlyph(Loca.GetOffset(0));
-
-		auto Curve = Glyph.GetCurve(0);
+		const auto glyph        = Font.GetGlyph(Loca.GetOffset(0));
+        const auto contourCount = glyph.contourCount;
+		const auto curve        = glyph.GetCurve(0);
 		/*
 		if (Glyph.NumberOfContours > 0)
 		{
