@@ -224,7 +224,7 @@ namespace FlexKit
 	class SceneVisibilityView : public ComponentView_t<SceneVisibilityComponent>
 	{
 	public:
-		SceneVisibilityView(GameObject& go, NodeHandle node, SceneHandle scene) :
+		SceneVisibilityView(GameObject& go, const NodeHandle node, const SceneHandle scene) :
 			visibility	{ GetComponent().Create(VisibilityFields{}) }
 		{
 			auto& vis_ref	= GetComponent()[visibility];
@@ -234,7 +234,7 @@ namespace FlexKit
 		}
 
 
-		void SetBoundingSphere(BoundingSphere boundingSphere)
+		void SetBoundingSphere(const BoundingSphere boundingSphere)
 		{
 			GetComponent()[visibility].boundingSphere = boundingSphere;
 		}
@@ -256,12 +256,21 @@ namespace FlexKit
 
 	inline void SetBoundingSphereFromMesh(GameObject& go)
 	{
+        const auto Scale = GetScale(go);
+
+        float rScale = 1;
+        for (size_t I = 0; I < 3; ++I)
+            rScale = std::max(rScale, Scale[I]);
+
 		Apply(
 			go,
-			[](	SceneVisibilityView&	visibility,
-				DrawableView&			drawable)
+			[&]( SceneVisibilityView&	visibility,
+			    DrawableView&			drawable)
 			{
-				visibility.SetBoundingSphere(drawable.GetBoundingSphere());
+                auto boundingSphere = drawable.GetBoundingSphere();
+                boundingSphere.w *= rScale;
+
+				visibility.SetBoundingSphere(boundingSphere);
 			});
 	}
 

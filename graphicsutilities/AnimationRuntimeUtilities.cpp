@@ -1106,7 +1106,7 @@ namespace FlexKit
 			float4x4 PT = (S->Joints[I].mParent != InvalidHandle_t) ? M[S->Joints[I].mParent] : float4x4::Identity();
 
 			auto J  = S->JointPoses[I];
-			auto JT = GetPoseTransform(J) * S->GetInversePose(JointHandle(I));
+			auto JT = S->GetInversePose(JointHandle(I)) * GetPoseTransform(J);
 
             const auto temp = (JT * Zero);
             const float4 VA = (WT * (JT * Zero));

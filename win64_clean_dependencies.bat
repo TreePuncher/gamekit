@@ -9,4 +9,10 @@ devenv Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\angelscri
 devenv Dependencies\sdks\raknet\Lib\LibStatic\LibStatic_vc9.vcxproj /clean "Debug|x64"
 devenv Dependencies\sdks\raknet\Lib\LibStatic\LibStatic_vc9.vcxproj /clean "Release|x64"
 
+devenv Dependencies\sdks\crunch\crn.2008.sln "Debug|x64"
+devenv Dependencies\sdks\crunch\crn.2008.sln "Release|x64"
+
+devenv Dependencies\sdks\crunch\crn.2008.sln "Debug|x64" /clean "Debug|x64"
+devenv Dependencies\sdks\crunch\crn.2008.sln "Release|x64" /clean "Release|x64"
+
 exit

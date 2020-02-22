@@ -31,6 +31,23 @@
 using namespace FlexKit;
 
 
+
+class NullErrorCallback :
+    public physx::PxErrorCallback
+{
+public:
+
+    virtual ~NullErrorCallback() {}
+
+    virtual void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
+    {
+        std::cout << message << " : " << file << " : Line: " << line << "\n";
+    }
+
+};
+
+
+
 int main(int argc, char* argv[])
 {
 	bool FileChosen = false;
@@ -98,234 +115,209 @@ int main(int argc, char* argv[])
 			if(RES != TOOTLE_OK)
 				return -1;
 #endif
+            physx::PxCooking*				Cooker		= nullptr;
+			physx::PxFoundation*			Foundation	= nullptr;
+			physx::PxDefaultAllocator		DefaultAllocatorCallback;
 
-			{
-				ResourceList resources;
-				MetaDataList MetaData;
+            NullErrorCallback errorCallback;
 
-				for (auto MD_Location : MetaDataFiles)
-					ReadMetaData(MD_Location, FlexKit::SystemAllocator, FlexKit::SystemAllocator, MetaData);
+			Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, errorCallback);
+			FK_ASSERT(Foundation);
+
+			Cooker = PxCreateCooking(PX_PHYSICS_VERSION, *Foundation, physx::PxCookingParams(physx::PxTolerancesScale()));
+			FK_ASSERT(Cooker);
+
+			FINALLY{
+				if (Foundation)
+					Foundation->release();
+
+				if (Cooker)
+					Cooker->release();
+			}FINALLYOVER;
+
+			ResourceList resources;
+			MetaDataList MetaData;
+
+			for (auto MD_Location : MetaDataFiles)
+				ReadMetaData(MD_Location, FlexKit::SystemAllocator, FlexKit::SystemAllocator, MetaData);
 
 #if USING(RESCOMPILERVERBOSE)
-				std::cout << "FOUND FOLLOWING METADATA:\n";
-				std::cout << "Metadata Entry Count: " << MetaData.size() << "\n";
-				FlexKit::PrintMetaDataList(MetaData);
+			std::cout << "FOUND FOLLOWING METADATA:\n";
+			std::cout << "Metadata Entry Count: " << MetaData.size() << "\n";
+			FlexKit::PrintMetaDataList(MetaData);
 #endif
 
-				if (!MetaData.size())
-				{
-					std::cout << "No Meta Data Found!\n";
-					return -1;
-				}
-
-				for (const auto& MD : MetaData)
-				{
-                    switch (MD->type)
-                    {
-                    case MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE:
-                    {
-                        auto cubeMap = std::static_pointer_cast<TextureCubeMap_MetaData>(MD);
-                        resources.push_back(CreateCubeMapResource(cubeMap));
-                    }   break;
-                    case MetaData::EMETAINFOTYPE::EMI_FONT:
-                    {
-                        auto Font = std::static_pointer_cast<Font_MetaData>(MD);
-                        auto res = LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
-                    }
-                    default:
-                        break;
-                    }
-                    
-				}
-
-
-				physx::PxCooking*				Cooker		= nullptr;
-				physx::PxFoundation*			Foundation	= nullptr;
-				physx::PxDefaultAllocator		DefaultAllocatorCallback;
-
-				class NullErrorCallback : 
-					public physx::PxErrorCallback
-				{
-				public:
-
-					virtual ~NullErrorCallback() {}
-
-					virtual void reportError(physx::PxErrorCode::Enum code, const char* message, const char* file, int line) override
-					{
-						std::cout << message << " : " << file << " : Line: " << line << "\n";
-					}
-
-				}errorCallback;
-
-
-				Foundation = PxCreateFoundation(PX_PHYSICS_VERSION, DefaultAllocatorCallback, errorCallback);
-				FK_ASSERT(Foundation);
-
-				Cooker = PxCreateCooking(PX_PHYSICS_VERSION, *Foundation, physx::PxCookingParams(physx::PxTolerancesScale()));
-				FK_ASSERT(Cooker);
-
-				FINALLY{
-					if (Foundation)
-						Foundation->release();
-
-					if (Cooker)
-						Cooker->release();
-				}FINALLYOVER;
-
-
-				constexpr bool terrainCookingEnabled = false;
-				if constexpr(terrainCookingEnabled)
-				{
-					// Load Terrain Collider
-					for (auto MD : MetaData)
-					{
-						if (MD->type == MetaData::EMETAINFOTYPE::EMI_TERRAINCOLLIDER)
-						{
-							std::cout << "Cooking HeightField!\n";
-
-
-							auto TerrainCollider	= std::static_pointer_cast<TerrainCollider_MetaData>(MD);
-							ColliderStream Stream	= ColliderStream(FlexKit::SystemAllocator, 4096);
-
-							struct TerrainSample
-							{
-								int16_t Height;
-								int8_t Material_1;
-								int8_t RESERVED;
-							}* Samples;
-
-
-							FlexKit::TextureBuffer Buffer;
-							FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc.c_str(), FlexKit::SystemAllocator, &Buffer);
-
-							Samples = (TerrainSample*)FlexKit::SystemAllocator.malloc(Buffer.WH[0] * Buffer.WH[1] * sizeof(TerrainSample));
-
-							FlexKit::TextureBufferView<RGBA> View(Buffer);
-							auto SampleCount = Buffer.WH[0] * Buffer.WH[1];
-							for (size_t I = 0; I < SampleCount; ++I){
-								double Height = ((RGBA*)Buffer.Buffer)[I].Red;
-								Height = Height / double(unsigned char(0xff));
-
-								Samples[I].Height		= uint16_t(Height * 32767.0f);
-								Samples[I].Material_1	= 0;
-								Samples[I].RESERVED		= 0;
-							}
-
-							physx::PxHeightFieldDesc Desc;
-							Desc.nbColumns		= Buffer.WH[0];
-							Desc.nbRows			= Buffer.WH[1];
-							Desc.samples.data	= Samples;
-							Desc.samples.stride	= 4;
-
-							auto RES = Cooker->cookHeightField(Desc, Stream);
-							if (!RES)
-							{
-								int x = 0;
-							}
-							int c = 0;
-
-							Buffer.Release();
-							FlexKit::SystemAllocator.free(Samples);
-							std::cout << "Done Cooking HeightField!\n";
-
-							FK_ASSERT(0);
-							//auto Blob	= CreateColliderResourceBlob(Stream.Buffer, Stream.used, TerrainCollider->Guid, TerrainCollider->ColliderID, FlexKit::SystemAllocator);
-							//Blob->Type	= EResourceType::EResource_TerrainCollider;
-
-							//ResourcesFound.push_back(Blob);
-						}
-					}
-				}
-
-				// Scan Input Files for Resources
-				for (auto assetLocation : Inputs)
-				{
-					CompileSceneFromFBXFile_DESC Desc;
-					Desc.CloseFBX		= true;
-					Desc.IncludeShaders = false;
-					Desc.CookingEnabled = true;
-					Desc.Foundation;
-					Desc.Cooker;
-					std::cout << "Compiling File: " << assetLocation << "\n";
-					
-					fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
-					fbxsdk::FbxIOSettings*	Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
-					Manager->SetIOSettings(Settings);
-
-					auto [res, scene] = LoadFBXScene(assetLocation, Manager, Settings);
-					if(res)
-					{
-						ResourceList sceneResources = CreateSceneFromFBXFile(scene, Desc, MetaData);
-
-						for (auto& resource : sceneResources)
-							resources.push_back(resource);
-					}
-					else
-					{
-						std::cout << "Failed to Open FBX File: " << assetLocation << "\n";
-						MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
-					}
-				}
-
-				if (!resources.size()) 
-				{
-					std::cout << "No Resources Found!\n";
-					return -1;
-				}
-
-				std::vector<ResourceBlob> blobs;
-
-				for (auto resource : resources)
-					blobs.push_back(resource->CreateBlob());
-
-				sort(blobs.begin(),
-					blobs.end(),
-					[](auto& lhs, auto& rhs) 
-					{
-						return lhs.GUID < rhs.GUID;
-					});
-
-
-				size_t TableSize     = sizeof(ResourceEntry) * resources.size() + sizeof(ResourceTable);
-				ResourceTable& Table = *(ResourceTable*)malloc(TableSize);
-				EXITSCOPE(free(&Table));
-
-				FK_ASSERT(&Table != nullptr, "Allocation Error!");
-
-				memset(&Table, 0, TableSize);
-				Table.MagicNumber	= 0xF4F3F2F1F4F3F2F1;
-				Table.Version       = 0x0000000000000002;
-				Table.ResourceCount = resources.size();
-
-				std::cout << "Resources Found: " << resources.size() << "\n";
-
-				size_t Position = TableSize;
-
-				for(size_t I = 0; I < blobs.size(); ++I)
-				{
-					Table.Entries[I].ResourcePosition	= Position;
-					Table.Entries[I].GUID				= blobs[I].GUID;
-					Table.Entries[I].Type				= blobs[I].resourceType;
-					
-					memcpy(Table.Entries[I].ID, blobs[I].ID.c_str(), ID_LENGTH);
-
-					Position += blobs[I].bufferSize;
-					std::cout << "Resource Found: " << blobs[I].ID << " ID: " << Table.Entries[I].GUID << "\n";
-				}
-
-				FILE* F			= nullptr;
-				if (fopen_s(&F, Out, "wb") == EINVAL)
-					return -1;
-
-				EXITSCOPE(fclose(F));
-
-				fwrite(&Table, sizeof(char), TableSize, F);
-
-				std::cout << "writing resource " << Out << '\n';
-
-				for (auto& blob : blobs)
-					fwrite(blob.buffer, sizeof(char), blob.bufferSize, F);
+			if (!MetaData.size())
+			{
+				std::cout << "No Meta Data Found!\n";
+				return -1;
 			}
+
+			for (const auto& MD : MetaData)
+			{
+                switch (MD->type)
+                {
+                case MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE:
+                {
+                    auto cubeMap = std::static_pointer_cast<TextureCubeMap_MetaData>(MD);
+                    resources.push_back(CreateCubeMapResource(cubeMap));
+                }   break;
+                case MetaData::EMETAINFOTYPE::EMI_FONT:
+                {
+                    auto Font = std::static_pointer_cast<Font_MetaData>(MD);
+                    auto res = LoadTTFFile(Font->FontFile, FlexKit::SystemAllocator);
+                }   break;
+                case MetaData::EMETAINFOTYPE::EMI_TERRAINCOLLIDER:
+                {
+                    if (MD->type == MetaData::EMETAINFOTYPE::EMI_TERRAINCOLLIDER)
+					{
+						std::cout << "Cooking HeightField!\n";
+
+						auto TerrainCollider	= std::static_pointer_cast<TerrainCollider_MetaData>(MD);
+						ColliderStream Stream	= ColliderStream(FlexKit::SystemAllocator, 4096);
+
+						struct TerrainSample
+						{
+							int16_t Height;
+							int8_t  Material_1;
+							int8_t  RESERVED;
+						}* Samples;
+
+
+						FlexKit::TextureBuffer Buffer;
+						FlexKit::LoadBMP(TerrainCollider->BitmapFileLoc.c_str(), FlexKit::SystemAllocator, &Buffer);
+
+						Samples = (TerrainSample*)FlexKit::SystemAllocator.malloc(Buffer.WH[0] * Buffer.WH[1] * sizeof(TerrainSample));
+
+						FlexKit::TextureBufferView<RGBA> View(Buffer);
+						auto SampleCount = Buffer.WH[0] * Buffer.WH[1];
+						for (size_t I = 0; I < SampleCount; ++I){
+							double Height = ((RGBA*)Buffer.Buffer)[I].Red;
+							Height = Height / double(unsigned char(0xff));
+
+							Samples[I].Height		= uint16_t(Height * 32767.0f);
+							Samples[I].Material_1	= 0;
+							Samples[I].RESERVED		= 0;
+						}
+
+						physx::PxHeightFieldDesc Desc;
+						Desc.nbColumns		= Buffer.WH[0];
+						Desc.nbRows			= Buffer.WH[1];
+						Desc.samples.data	= Samples;
+						Desc.samples.stride	= 4;
+
+						auto RES = Cooker->cookHeightField(Desc, Stream);
+						if (!RES)
+						{
+							int x = 0;
+						}
+						int c = 0;
+
+						Buffer.Release();
+						FlexKit::SystemAllocator.free(Samples);
+						std::cout << "Done Cooking HeightField!\n";
+
+						FK_ASSERT(0);
+						//auto Blob	= CreateColliderResourceBlob(Stream.Buffer, Stream.used, TerrainCollider->Guid, TerrainCollider->ColliderID, FlexKit::SystemAllocator);
+						//Blob->Type	= EResourceType::EResource_TerrainCollider;
+
+						//ResourcesFound.push_back(Blob);
+					}
+                }   break;
+                default:
+                    break;
+                }
+                    
+			}
+
+			// Scan Input Files for Resources
+			for (auto assetLocation : Inputs)
+			{
+				CompileSceneFromFBXFile_DESC Desc;
+				Desc.CloseFBX		= true;
+				Desc.IncludeShaders = false;
+				Desc.CookingEnabled = true;
+				Desc.Foundation;
+				Desc.Cooker;
+				std::cout << "Compiling File: " << assetLocation << "\n";
+					
+				fbxsdk::FbxManager*		Manager		= fbxsdk::FbxManager::Create();
+				fbxsdk::FbxIOSettings*	Settings	= fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
+				Manager->SetIOSettings(Settings);
+
+				auto [res, scene] = LoadFBXScene(assetLocation, Manager, Settings);
+				if(res)
+				{
+					ResourceList sceneResources = CreateSceneFromFBXFile(scene, Desc, MetaData);
+
+					for (auto& resource : sceneResources)
+						resources.push_back(resource);
+				}
+				else
+				{
+					std::cout << "Failed to Open FBX File: " << assetLocation << "\n";
+					MessageBox(0, L"Failed to Load File!", L"ERROR!", MB_OK);
+				}
+			}
+
+			if (!resources.size()) 
+			{
+				std::cout << "No Resources Found!\n";
+				return -1;
+			}
+
+			std::vector<ResourceBlob> blobs;
+
+			for (auto resource : resources)
+				blobs.push_back(resource->CreateBlob());
+
+			sort(blobs.begin(),
+				blobs.end(),
+				[](auto& lhs, auto& rhs) 
+				{
+					return lhs.GUID < rhs.GUID;
+				});
+
+
+			size_t TableSize     = sizeof(ResourceEntry) * resources.size() + sizeof(ResourceTable);
+			ResourceTable& Table = *(ResourceTable*)malloc(TableSize);
+			EXITSCOPE(free(&Table));
+
+			FK_ASSERT(&Table != nullptr, "Allocation Error!");
+
+			memset(&Table, 0, TableSize);
+			Table.MagicNumber	= 0xF4F3F2F1F4F3F2F1;
+			Table.Version       = 0x0000000000000002;
+			Table.ResourceCount = resources.size();
+
+			std::cout << "Resources Found: " << resources.size() << "\n";
+
+			size_t Position = TableSize;
+
+			for(size_t I = 0; I < blobs.size(); ++I)
+			{
+				Table.Entries[I].ResourcePosition	= Position;
+				Table.Entries[I].GUID				= blobs[I].GUID;
+				Table.Entries[I].Type				= blobs[I].resourceType;
+					
+				memcpy(Table.Entries[I].ID, blobs[I].ID.c_str(), ID_LENGTH);
+
+				Position += blobs[I].bufferSize;
+				std::cout << "Resource Found: " << blobs[I].ID << " ID: " << Table.Entries[I].GUID << "\n";
+			}
+
+			FILE* F			= nullptr;
+			if (fopen_s(&F, Out, "wb") == EINVAL)
+				return -1;
+
+			EXITSCOPE(fclose(F));
+
+			fwrite(&Table, sizeof(char), TableSize, F);
+
+			std::cout << "writing resource " << Out << '\n';
+
+			for (auto& blob : blobs)
+				fwrite(blob.buffer, sizeof(char), blob.bufferSize, F);
 	}	break;
 	case TOOL_MODE::ETOOLMODE_LISTCONTENTS:
 	{	if (FileChosen)

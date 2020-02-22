@@ -154,7 +154,9 @@ int main(int argc, char* argv[])
         }   break;
         case ApplicationMode::GraphicsTestMode:
         {
-            StartTestState(app, base, TestScenes::GlobalIllumination);
+            AddAssetFile("assets\\DemonGirl.gameres");
+
+            StartTestState(app, base, TestScenes::AnimationTest);
         }   break;
         case ApplicationMode::PlaygroundMode:
         {
