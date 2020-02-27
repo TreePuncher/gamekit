@@ -378,6 +378,56 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    MetaData* ParseTextureMipLevel(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    {
+        auto level  = tokens[begin - 2];
+        auto File   = FindValue(values, "File");
+
+        auto* mipLevel = new TextureMipLevel_MetaData;
+
+        mipLevel->level = atoi(level.data());
+        mipLevel->file  = File ? std::string(File->Data.S) : std::string("");
+
+        return mipLevel;
+    }
+
+
+    /************************************************************************************************/
+
+
+    MetaData* ParseTexture(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    {
+        auto stringID           = tokens[begin - 2];
+        auto assetID            = FindValue(values, "AssetGUID");
+        auto Format             = FindValue(values, "Format");
+        auto File               = FindValue(values, "File");
+        auto GenerateMips       = FindValue(values, "GenerateMips");
+        auto CompressionQuality = FindValue(values, "CompressionQuality");
+        auto CompressTexture    = FindValue(values, "CompressTexture");
+
+
+        auto* texture = new Texture_MetaData;
+
+        texture->compressionQuality = CompressionQuality ? CompressionQuality->Data.F : texture->compressionQuality;
+        texture->compressTexture    = CompressTexture ? (bool)(CompressTexture->Data.S == "True") : texture->compressTexture;
+
+        texture->assetID            = assetID ? assetID->Data.I : rand();
+        texture->stringID           = stringID;
+        texture->format             = Format->Data.S;
+        texture->file               = File ? (File->Type == ValueType::STRING ? File->Data.S : "") : texture->file;
+
+        if(GenerateMips && GenerateMips->Type == ValueType::STRING && GenerateMips->Data.S == "False")
+            texture->generateMipMaps = false;
+
+        texture->mipLevels          = ParseSubContainer(TextureParser, tokens, begin, end);
+
+		return texture;
+    }
+
+
+    /************************************************************************************************/
+
+
 	MetaData* ParseScene(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto Target				= tokens[begin - 2];
@@ -634,10 +684,23 @@ namespace FlexKit
                 { "SkeletalAnimationClip",	ParseSkeletalAnimationClip  },
                 { "TerrainCollider",	    ParseTerrainColliderAsset	},
                 { "CubeMapTexture",	        ParseCubeMapTexture         },
+                { "Texture",	            ParseTexture                },
 				//table["TextureSet"]		= ParseTextureSet;
 				//table["Test"]				= CreateParser(0);
 			};
 	}
+
+
+    /************************************************************************************************/
+
+
+    const MetaDataParserTable CreateTextureParser()
+    {
+        return { { "MipLevel", ParseTextureMipLevel } };
+    }
+
+
+    /************************************************************************************************/
 
 
     const MetaDataParserTable CreateCubeMapParser()

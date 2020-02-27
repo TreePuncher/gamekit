@@ -156,7 +156,7 @@ int main(int argc, char* argv[])
         {
             AddAssetFile("assets\\DemonGirl.gameres");
 
-            StartTestState(app, base, TestScenes::AnimationTest);
+            StartTestState(app, base, TestScenes::GlobalIllumination);
         }   break;
         case ApplicationMode::PlaygroundMode:
         {
@@ -172,7 +172,7 @@ int main(int argc, char* argv[])
                     auto& framework             = app.GetFramework();
                     auto& allocator             = framework.core.GetBlockMemory();
                     auto& renderSystem          = framework.GetRenderSystem();
-                    UploadQueueHandle upload    = renderSystem.GetUploadQueue();
+                    CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
                     auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 6, allocator);
 

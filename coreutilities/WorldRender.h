@@ -757,6 +757,7 @@ namespace FlexKit
             const ResourceHandle            temp2,
             const ResourceHandle            temp3,
             const ResourceHandle            destination,
+            const ResourceHandle            testImage,
             GBuffer&                        gbuffer,
             const ResourceHandle            depthBuffer,
             ReserveConstantBufferFunction   reserveCB,

@@ -1040,6 +1040,7 @@ namespace FlexKit
         const ResourceHandle            temp2,
         const ResourceHandle            temp3,
         const ResourceHandle            destination,
+        const ResourceHandle            testImage,
         GBuffer&                        gbuffer,
         const ResourceHandle            depthBuffer,
         ReserveConstantBufferFunction   reserveCB,
@@ -1118,7 +1119,7 @@ namespace FlexKit
                 descHeap2.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
                 descHeap2.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), FORMAT_2D::R32_FLOAT);
                 descHeap2.SetSRV(ctx, 3, frameResources.ReadRenderTarget(data.TempObject2, &ctx));
-                descHeap2.NullFill(ctx, 4);
+                descHeap2.SetSRV(ctx, 4, testImage);
 
                 ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL));
                 ctx.SetGraphicsDescriptorTable(3, descHeap2);
@@ -1254,7 +1255,7 @@ namespace FlexKit
             LightBufferUpdate{
                     Vector<GPUPointLight>(tempMemory, 1024),
                     &sceneDescription.lights.GetData().pointLights,
-                    ReserveUploadBuffer(1024 * sizeof(GPUPointLight), graph.GetRenderSystem()),// max point light count of 1024
+                    ReserveUploadBuffer(graph.GetRenderSystem(), 1024 * sizeof(GPUPointLight)),// max point light count of 1024
                     camera,
                     reserveCB(2 * KILOBYTE),
             },
@@ -1520,7 +1521,7 @@ namespace FlexKit
             TiledDeferredShade{
                 gbuffer,
                 gather,
-                ReserveUploadBuffer(1024 * sizeof(GPUPointLight), frameGraph.GetRenderSystem()),// max point light count of 1024
+                ReserveUploadBuffer(frameGraph.GetRenderSystem(), 1024 * sizeof(GPUPointLight)),// max point light count of 1024
             },
             [&](FrameGraphNodeBuilder& builder, TiledDeferredShade& data)
             {

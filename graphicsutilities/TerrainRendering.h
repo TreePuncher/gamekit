@@ -398,7 +398,7 @@ namespace FlexKit
 			else
 			{
 				// Load DDS
-                auto uploadQueue = RS->GetUploadQueue();
+                auto uploadQueue = RS->OpenUploadQueue();
 				auto [textureHandle, res] = LoadDDSTexture2DFromFile_2(heightMap, tempMemory, RS, uploadQueue);
 
 				if (!res)

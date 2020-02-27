@@ -192,7 +192,10 @@ project "Editor"
 
 		"Dependencies/sdks/DirectXTK/Src",
 		"Dependencies/sdks/DirectXTK/Inc",
-		"Dependencies/sdks/DirectX-Graphics-Samples/Libraries/D3DX12/"}
+		"Dependencies/sdks/DirectX-Graphics-Samples/Libraries/D3DX12/",
+
+		"Dependencies/sdks/crunch/inc"
+	}
 
 	architecture "x86_64"
 

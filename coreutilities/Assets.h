@@ -83,10 +83,9 @@ namespace FlexKit
 		uint32_t		RefCount;
 
 		char	ID[ID_LENGTH];
-		char	Memory[];
 
-	private:
-		Resource();
+	protected:
+        Resource() = default;
 	};
 
 	/************************************************************************************************/
@@ -375,7 +374,7 @@ namespace FlexKit
 	{
 		SceneResourceBlob()
 		{
-			ResourceSize	= sizeof(TextureSetBlob);
+			ResourceSize	= sizeof(SceneResourceBlob);
 			Type			= EResourceType::EResource_Scene;
 			State			= Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
 		}
@@ -409,19 +408,46 @@ namespace FlexKit
 	};
 
 
+    /************************************************************************************************/
+
+
+    struct TextureResourceBlob : public Resource
+    {
+        TextureResourceBlob()
+        {
+            ResourceSize    = sizeof(TextureResourceBlob);
+            Type            = EResourceType::EResource_Texture;
+            State           = Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
+        }
+
+        FORMAT_2D                   format;
+
+        const char* GetBuffer() const
+        {
+            return ((const char*)this) + sizeof(TextureResourceBlob);
+        }
+
+        size_t GetBufferSize() const
+        {
+            return ResourceSize - sizeof(TextureResourceBlob);
+        }
+
+    };
+
+
 
 	/************************************************************************************************/
 
 
-	FLEXKITAPI bool				        Asset2TriMesh		( RenderSystem* RS, UploadQueueHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
+	FLEXKITAPI bool				        Asset2TriMesh		( RenderSystem* RS, CopyContextHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
 	FLEXKITAPI TextureSet*		        Asset2TextureSet	( AssetHandle RHandle, iAllocator* Memory );
     FLEXKITAPI Vector<TextureBuffer>    LoadCubeMapAsset    ( GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, FORMAT_2D& OUT_format, iAllocator* );
 
 	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );
 	FLEXKITAPI void				LoadTriangleMesh ( GUID_t ID, iAllocator* Memory, TriMesh* out );
 
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, UploadQueueHandle handle, size_t guid );
-	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, UploadQueueHandle handle, const char* ID );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, CopyContextHandle handle, size_t guid );
+	FLEXKITAPI TriMeshHandle	LoadTriMeshIntoTable ( RenderSystem* RS, CopyContextHandle handle, const char* ID );
 
 	typedef Pair<size_t, SpriteFontAsset*> LoadFontResult;
 

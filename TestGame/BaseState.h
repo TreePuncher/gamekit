@@ -265,6 +265,7 @@ public:
     // Scene Resources
     ResourceHandle             irradianceMap;
     ResourceHandle             GGXMap;
+    ResourceHandle             TestImage;
 
     // render resources
 	WorldRender					render;

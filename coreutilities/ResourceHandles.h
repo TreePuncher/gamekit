@@ -41,7 +41,7 @@ namespace FlexKit
 	typedef Handle_t<32, GetTypeGUID(SOResourceHandle)>			SOResourceHandle;
 	typedef Handle_t<32, GetTypeGUID(QueryBuffer)>				QueryHandle;
 	typedef Handle_t<16, GetTypeGUID(TriMesh)>					TriMeshHandle;
-    typedef Handle_t<32, GetTypeGUID(UploadQueueHandle)>		UploadQueueHandle;
+    typedef Handle_t<32, GetTypeGUID(CopyContextHandle)>		CopyContextHandle;
 
 }
 

@@ -307,7 +307,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool Asset2TriMesh(RenderSystem* RS, UploadQueueHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
+	bool Asset2TriMesh(RenderSystem* RS, CopyContextHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers)
 	{
 		Resource* R = GetAsset(RHandle);
 		if (R->State == Resource::EResourceState_LOADED && R->Type == EResource_TriMesh)
@@ -457,7 +457,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, UploadQueueHandle handle, size_t GUID)
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, CopyContextHandle handle, size_t GUID)
 	{	// Make this atomic
 		TriMeshHandle Handle;
 
@@ -535,7 +535,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, UploadQueueHandle handle, const char* ID)
+	TriMeshHandle LoadTriMeshIntoTable(RenderSystem* RS, CopyContextHandle handle, const char* ID)
 	{	// Make this atomic
 		TriMeshHandle Handle;
 

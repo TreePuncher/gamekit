@@ -2,6 +2,7 @@ Texture2D<float4> SourceBuffer     : register(t0);
 Texture2D<float4> NormalBuffer     : register(t1); // metallic, roughness, IOR, anisotropic
 Texture2D<float4> DepthBuffer      : register(t2);
 Texture2D<float2> SobelBuffer      : register(t3);
+Texture2D<float4> testImage        : register(t4);
 
 cbuffer LocalConstants : register(b0)
 {
@@ -148,7 +149,6 @@ float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
 
     float3 color = float3(0, 0, 0);
     uint2 pixelCoord = uint2(input.PixelCoord);
-    //return SourceBuffer.Load(uint3(pixelCoord, 0));
 
     float depth = DepthBuffer.Load(uint3(pixelCoord, 0)).r;
 
@@ -168,7 +168,7 @@ float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
         }
     }
     
-    return float4(c, 1.0);
+    return float4(c, 1.0) * testImage.Load(uint3(pixelCoord % uint2(2048, 2048), 0));
 
     #endif
 }

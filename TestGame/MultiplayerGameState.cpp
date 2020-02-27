@@ -228,6 +228,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.temporaryBuffers_2Channel[0],
                 base.temporaryBuffers_2Channel[1],
                 targets.RenderTarget,
+                base.TestImage,
                 base.gbuffer,
                 base.depthBuffer,
                 reserveCB,
@@ -384,33 +385,36 @@ bool LocalPlayerState::EventHandler(Event evt)
             {
                 if (evt.Action == Event::Pressed)
                 {
-                    auto pos        = GetCameraControllerHeadPosition(thirdPersonCamera);
-                    auto forward    = GetCameraControllerForwardVector(thirdPersonCamera);
+                    if constexpr(false)
+                    {
+                        auto pos        = GetCameraControllerHeadPosition(thirdPersonCamera);
+                        auto forward    = GetCameraControllerForwardVector(thirdPersonCamera);
 
-                    // Load Model
-                    const AssetHandle model = 1002;
-                    auto [triMesh, loaded] = FindMesh("Cube1x1x1");
+                        // Load Model
+                        const AssetHandle model = 1002;
+                        auto [triMesh, loaded] = FindMesh("Cube1x1x1");
 
-                    auto& allocator = framework.core.GetBlockMemory();
+                        auto& allocator = framework.core.GetBlockMemory();
 
-                    auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 1 }, pos + forward * 20);
-                    auto& dynamicBox = allocator.allocate<GameObject>();
+                        auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 1 }, pos + forward * 20);
+                        auto& dynamicBox = allocator.allocate<GameObject>();
 
-                    dynamicBox.AddView<RigidBodyView>(rigidBody, game.pScene);
-                    auto dynamicNode = GetRigidBodyNode(dynamicBox);
-                    dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
-                    game.scene.AddGameObject(dynamicBox, dynamicNode);
+                        dynamicBox.AddView<RigidBodyView>(rigidBody, game.pScene);
+                        auto dynamicNode = GetRigidBodyNode(dynamicBox);
+                        dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
+                        game.scene.AddGameObject(dynamicBox, dynamicNode);
 
-                    ApplyForce(dynamicBox, forward * 100);
+                        ApplyForce(dynamicBox, forward * 100);
 
-                    SetMaterialParams(
-                        dynamicBox,
-                        float3(0.5f, 0.5f, 0.5f), // albedo
-                        (rand() % 1000) / 1000.0f, // specular
-                        1.0f, // IOR
-                        (rand() % 1000) / 1000.0f,
-                        (rand() % 1000) / 1000.0f,
-                        0.0f);
+                        SetMaterialParams(
+                            dynamicBox,
+                            float3(0.5f, 0.5f, 0.5f), // albedo
+                            (rand() % 1000) / 1000.0f, // specular
+                            1.0f, // IOR
+                            (rand() % 1000) / 1000.0f,
+                            (rand() % 1000) / 1000.0f,
+                            0.0f);
+                    }
                 }
             }   break;
             case KC_U: // Reload Shaders
