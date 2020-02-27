@@ -10,6 +10,8 @@
 #include "crn_decomp.h"
 #include "dds_defs.h"
 
+#pragma comment(lib,"crunch.lib")
+
 
 FlexKit::FORMAT_2D FormatStringToFORMAT_2D(const std::string& format)
 {
@@ -117,20 +119,6 @@ public:
 };
 
 
-void CreateCompressedDDSTextureResource()
-{
-    crn_comp_params params = {};
-    crn_uint32  size = 0;
-    crn_uint32  actualQualityLevel;
-    float       actualBitrate;
-
-    auto resource = crn_compress(params,
-                    size,
-                    &actualQualityLevel,
-                    &actualBitrate);
-}
-
-
 inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData)
 {
     auto resource       = std::make_shared<CubeMapTexture>();
@@ -149,13 +137,220 @@ inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureC
             resource->Faces[itr].mipLevels[cubeMap->level] = FlexKit::LoadHDR(cubeMap->TextureFiles[itr].c_str(), 1)[0];
     }
 
-    resource->Height    = resource->Faces[0].mipLevels[0].WH[0];
-    resource->Width     = resource->Faces[0].mipLevels[0].WH[1];
+    resource->Height = resource->Faces[0].mipLevels[0].WH[0];
+    resource->Width = resource->Faces[0].mipLevels[0].WH[1];
 
     return resource;
 }
 
 
+void CreateCompressedDDSTextureResource()
+{
+}
+
+
+enum class DDSTextureFormat
+{
+    DXT5,
+    UNKNOWN
+};
+
+
+DDSTextureFormat FormatStringToFormatID(const std::string& ID)
+{
+    if (ID == "DXT5")
+        return DDSTextureFormat::DXT5;
+
+    return DDSTextureFormat::UNKNOWN;
+}
+
+struct _TextureMipLevelResource
+{
+    int         width;
+    int         height;
+    int         channelCount;
+
+    crn_uint32* buffer;
+
+
+    void Release()
+    {
+        delete[] buffer;
+        buffer = nullptr;
+    }
+};
+
+class TextureResource : public iResource
+{
+public:
+    TextureResource() {}
+
+    ResourceBlob CreateBlob() override
+    {
+        TextureResourceBlob headerData;
+
+        headerData.format       = format;
+        headerData.ResourceSize = sizeof(headerData) + bufferSize;
+        headerData.GUID         = assetHandle;
+
+        Blob header { headerData };
+        Blob body   = { (const char*)buffer, bufferSize };
+
+        strncpy(headerData.ID, ID.c_str(), min(sizeof(headerData.ID), ID.size()));
+
+        auto [data, size]   = (header + body).Release();
+
+        ResourceBlob out;
+        out.buffer          = (char*)data;
+        out.bufferSize      = size;
+        out.GUID            = assetHandle;
+        out.ID              = ID;
+        out.resourceType    = EResourceType::EResource_Scene;
+
+        return out;
+    }
+
+    std::string         ID;
+    GUID_t              assetHandle;
+    FlexKit::FORMAT_2D  format;
+
+    void*     buffer;
+    size_t    bufferSize;
+};
+
+_TextureMipLevelResource CreateMIPMapResource(const std::string& string)
+{
+    int width;
+    int height;
+    int channelCount;
+
+    float* res = stbi_loadf(string.c_str(), &width, &height, &channelCount, STBI_rgb);
+    if (!res)
+        return {};
+
+    auto pixelCount = width * height;
+
+    crn_uint32* buffer = new crn_uint32[width * height];
+
+    for (size_t I = 0; I < pixelCount; I++)
+    {
+        switch (channelCount)
+        {
+        case 3:
+        {
+            struct
+            {
+                uint8_t R;
+                uint8_t G;
+                uint8_t B;
+                uint8_t padding;
+            }pixel = {
+                (uint8_t)(res[I * channelCount + 0] * 255),
+                (uint8_t)(res[I * channelCount + 1] * 255),
+                (uint8_t)(res[I * channelCount + 2] * 255),
+            };
+
+            memcpy(&buffer[I], &pixel, sizeof(pixel));
+        }   break;
+        case 4:
+        {
+            struct
+            {
+                uint8_t R;
+                uint8_t G;
+                uint8_t B;
+                uint8_t A;
+            }pixel = {
+                (uint8_t)(res[I * channelCount + 0] * 255),
+                (uint8_t)(res[I * channelCount + 1] * 255),
+                (uint8_t)(res[I * channelCount + 2] * 255),
+                (uint8_t)(res[I * channelCount + 3] * 255),
+            };
+            memcpy(&buffer[I], &pixel, sizeof(pixel));
+        }   break;
+        default:
+            break;
+        }
+    }
+
+    return {
+        .width          = width,
+        .height         = height,
+        .channelCount   = channelCount,
+        .buffer         = buffer
+    };
+}
+
+
+inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData)
+{
+    auto format = FormatStringToFormatID(metaData->format);
+    FlexKit::FORMAT_2D  FK_format;
+
+    std::vector<_TextureMipLevelResource> mipLevels{};
+
+    if (metaData->mipLevels.size() && !metaData->generateMipMaps)
+    {
+        for (auto& mipLevel : metaData->mipLevels)
+            mipLevels.push_back(
+                CreateMIPMapResource(
+                    std::static_pointer_cast<TextureMipLevel_MetaData>(mipLevel)->file));
+    }
+    else
+        mipLevels.push_back(CreateMIPMapResource(metaData->file));
+
+
+    crn_comp_params params = {};
+    params.clear();
+
+    switch (format)
+    {
+    case DDSTextureFormat::DXT5:
+    {
+        params.m_faces                           = 1;
+        params.m_width                           = mipLevels[0].width;
+        params.m_height                          = mipLevels[0].height;
+        params.m_target_bitrate                  = 0;
+        params.m_format                          = crn_format::cCRNFmtDXT5;
+        params.m_num_helper_threads              = min((size_t)std::thread::hardware_concurrency(), cCRNMaxHelperThreads);
+        params.m_dxt_compressor_type             = crn_dxt_compressor_type::cCRNDXTCompressorCRNF;
+        params.m_dxt_quality                     = cCRNDXTQualityNormal;
+        params.m_crn_color_selector_palette_size = 8;
+        params.m_file_type                       = cCRNFileTypeCRN;
+
+        FK_format = FORMAT_2D::BC5_UNORM;
+
+        if (!params.check())
+            return {};
+    }   break;
+    default:
+        return {};
+    }
+
+    crn_uint32  size = 0;
+    crn_uint32  actualQualityLevel;
+    float       actualBitrate;
+
+    for (size_t I = 0; I < mipLevels.size(); I++)
+        params.m_pImages[0][I] = mipLevels[I].buffer;
+
+    auto compressedTexture =
+        crn_compress(
+            params,
+            size,
+            &actualQualityLevel,
+            &actualBitrate);
+
+    auto resource = std::make_shared<TextureResource>();
+
+    resource->ID            = metaData->stringID;
+    resource->assetHandle   = metaData->assetID;
+    resource->buffer        = compressedTexture;
+    resource->bufferSize    = size;
+    resource->format        = FK_format;
+
+    return resource;
+}
 
 
 /**********************************************************************

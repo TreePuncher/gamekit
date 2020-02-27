@@ -157,6 +157,11 @@ int main(int argc, char* argv[])
 			{
                 switch (MD->type)
                 {
+                case MetaData::EMETAINFOTYPE::EMI_TEXTURE:
+                {
+                    auto textureMetaData = std::static_pointer_cast<Texture_MetaData>(MD);
+                    resources.push_back(CreateTextureResource(textureMetaData));
+                }   break;
                 case MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE:
                 {
                     auto cubeMap = std::static_pointer_cast<TextureCubeMap_MetaData>(MD);

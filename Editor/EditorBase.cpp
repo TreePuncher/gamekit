@@ -126,7 +126,7 @@ EditorBase::EditorBase(FlexKit::GameFramework& IN_framework) :
     ImGui::CreateContext();
 
     auto&                       renderSystem    = framework.GetRenderSystem();
-    FlexKit::UploadQueueHandle  uploadQueue     = renderSystem.ImmediateUpload;
+    FlexKit::CopyContextHandle  uploadQueue     = renderSystem.ImmediateUpload;
     ImGuiIO&                    io              = ImGui::GetIO();
     io.FontGlobalScale                          = 2.0f;
 

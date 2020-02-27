@@ -97,6 +97,14 @@ public:
         memcpy(data(), &IN_struct, sizeof(TY));
     }
 
+
+    Blob(const char* IN_buffer, const size_t size)
+    {
+        buffer.resize(size);
+        memcpy(data(), IN_buffer, size);
+    }
+
+
     Blob operator + (const Blob& rhs_blob)
     {
         Blob out;

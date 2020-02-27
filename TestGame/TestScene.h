@@ -4,13 +4,14 @@
 #include "BaseState.h"
 #include "MultiplayerGameState.h"
 
+
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator)
 {
 	const AssetHandle model = 1004;
 
     // Load Model
     const AssetHandle dragonHandle = 1004;
-    const AssetHandle buddahHandle = 1003;
+    const AssetHandle buddahHandle = 1100;
 
     auto dragon = GetMesh(renderSystem, dragonHandle);
     auto buddah = GetMesh(renderSystem, buddahHandle);
@@ -43,10 +44,10 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 
-            //if (X % 2 == 0)
+            if (X % 2 == 0)
             {
                 Pitch(node, (float)pi / 2.0f);
-                Scale(node, { 0.1, 0.1, 0.1 });
+                Scale(node, { 10.0, 10.0, 10.0 });
             }
 
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
@@ -98,7 +99,13 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			auto& framework             = app.GetFramework();
 			auto& allocator             = framework.core.GetBlockMemory();
 			auto& renderSystem          = framework.GetRenderSystem();
-			UploadQueueHandle upload    = renderSystem.GetUploadQueue();
+			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
+
+
+            auto textureHandle      = 8000;
+            auto DDSTexture         = UploadDDSFromAsset(textureHandle, renderSystem, upload, allocator);
+
+            base.TestImage = DDSTexture;
 
             size_t      MIPCount;
             uint2       WH;

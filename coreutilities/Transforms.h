@@ -390,8 +390,7 @@ namespace FlexKit
             [&](SceneNodeView<>& node)
             {
                 return node.ToggleScaling(scale);
-            }
-        );
+            });
     }
 
 

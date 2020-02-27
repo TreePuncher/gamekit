@@ -872,7 +872,7 @@ namespace FlexKit
 
 	static HRESULT CreateD3DResources12(
 		RenderSystem* RS,
-        UploadQueueHandle handle,
+        CopyContextHandle handle,
 		uint32_t resDim,
 		size_t width,
 		size_t height,
@@ -931,7 +931,7 @@ namespace FlexKit
 				const UINT64	uploadBufferSize	= GetRequiredIntermediateSize(*texture, 0, num2DSubresources);
 
 				ID3D12Resource* textureUploadHeap	= nullptr;
-				ID3D12GraphicsCommandList* cmdList	= RS->_GetUploadCommandList(handle);
+				ID3D12GraphicsCommandList* cmdList	= RS->_GetCopyContext(handle).commandList;
 
 
 				hr = RS->pDevice->CreateCommittedResource(
@@ -1005,7 +1005,7 @@ namespace FlexKit
 
 	static HRESULT CreateTextureFromDDS12(
 		RenderSystem* RS,
-        UploadQueueHandle handle,
+        CopyContextHandle handle,
 		const DDS_HEADER* header,
 		const uint8_t* bitData,
 		size_t bitSize,
@@ -1205,7 +1205,7 @@ namespace FlexKit
 
 	bool CreateDDSTextureFromFile12(
 		RenderSystem*				RS,
-        UploadQueueHandle           handle,
+        CopyContextHandle           handle,
 		const wchar_t*				szFileName,
 		ID3D12Resource**			texture,
 		size_t						maxsize,
@@ -1257,7 +1257,7 @@ namespace FlexKit
         const char*         File,
         iAllocator*         Memory,
         RenderSystem*       RS,
-        UploadQueueHandle   handle)
+        CopyContextHandle   handle)
 	{
 		size_t NewSize = 0;
 		wchar_t	wstr[256];
@@ -1288,7 +1288,7 @@ namespace FlexKit
         const char*         File,
         iAllocator*         Memory,
         RenderSystem*       RS,
-        UploadQueueHandle   handle)
+        CopyContextHandle   handle)
 	{
 		size_t NewSize = 0;
 		wchar_t	wstr[256];

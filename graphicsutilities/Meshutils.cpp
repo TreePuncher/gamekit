@@ -579,7 +579,7 @@ namespace FlexKit
                 if ((1.0f - (in.V1.x + in.V1.y + in.V1.z)) > 0.01f)
                 {
                     in.V1 += 1.0f - in.V1.x + in.V1.y + in.V1.z;
-                    __debugbreak();
+                    //__debugbreak();
                 }
 
 				s_TokenValue T;

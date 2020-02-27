@@ -53,6 +53,7 @@ namespace FlexKit
 			EMI_TERRAINCOLLIDER,
             EMI_TEXTURESET,
             EMI_CUBEMAPTEXTURE,
+            EMI_TEXTURE,
 		};
 
 		enum class EMETA_RECIPIENT_TYPE
@@ -180,7 +181,7 @@ namespace FlexKit
     struct TextureCubeMapMipLevel_MetaData : public MetaData
     {
         TextureCubeMapMipLevel_MetaData() {
-            UserType    = MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
+            UserType    = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
             type        = MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE;
         }
 
@@ -192,7 +193,7 @@ namespace FlexKit
     struct TextureCubeMap_MetaData : public MetaData
 	{
         TextureCubeMap_MetaData(){
-			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_NODE;
+			UserType	= MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
 			type		= MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE;
 			Guid		= INVALIDHANDLE;
 		}
@@ -203,6 +204,40 @@ namespace FlexKit
         MetaDataList           mipLevels;
         std::string            format;
 	};
+
+
+    /************************************************************************************************/
+
+
+    struct TextureMipLevel_MetaData : public MetaData
+    {
+        TextureMipLevel_MetaData() {
+            UserType = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
+            type = MetaData::EMETAINFOTYPE::EMI_CUBEMAPTEXTURE;
+        }
+
+        uint32_t        level;
+        std::string	    file;
+    };
+
+
+    struct Texture_MetaData : public MetaData
+    {
+        Texture_MetaData() {
+            UserType    = MetaData::EMETA_RECIPIENT_TYPE::EMR_NONE;
+            type        = MetaData::EMETAINFOTYPE::EMI_TEXTURE;
+        }
+
+        AssetHandle            assetID              = rand();
+        bool                   generateMipMaps      = false;
+        bool                   compressTexture      = true;
+        float                  compressionQuality   = 0.8f;
+        std::string            stringID             = "";
+        MetaDataList           mipLevels;
+        std::string            format               = "";
+        std::string            file;
+    };
+
 
 
 	/************************************************************************************************/
@@ -389,13 +424,15 @@ namespace FlexKit
 
     const MetaDataParserTable CreateDefaultParser();
     const MetaDataParserTable CreateCubeMapParser();
-	const MetaDataParserTable CreateSceneParser();
+    const MetaDataParserTable CreateTextureParser();
+    const MetaDataParserTable CreateSceneParser();
 	const MetaDataParserTable CreateNodeParser();
 	const MetaDataParserTable CreateEntityParser();
 
 
 	inline const MetaDataParserTable DefaultParser	= CreateDefaultParser();
     inline const MetaDataParserTable CubeMapParser  = CreateCubeMapParser();
+    inline const MetaDataParserTable TextureParser  = CreateTextureParser();
 	inline const MetaDataParserTable SceneParser	= CreateSceneParser();
 	inline const MetaDataParserTable NodeParser		= CreateNodeParser();
 	inline const MetaDataParserTable EntityParser	= CreateEntityParser();

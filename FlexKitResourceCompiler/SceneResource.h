@@ -130,6 +130,7 @@ Blob CreateIDComponent          (std::string& string);
 Blob CreateDrawableComponent    (GUID_t meshGUID, float4 albedo_S = { 0.5f, 0.5f, 0.5f, 0.5f }, float4 specular_M = { 0.5f, 0.5f, 0.5f, 0.0f });
 Blob CreatePointLightComponent  (float3 K, float2 IR);
 
+
 /************************************************************************************************/
 
 
@@ -203,16 +204,12 @@ struct ScenePointLight
 
 	operator CompiledScene::PointLight() const
 	{
-		/*
 		return {
 				.I		= I, 
 				.R		= R,
 				.K		= K,
 				.Node	= Node
 		};
-		*/
-
-		return { I, R, K, Node };
 	}
 };
 
