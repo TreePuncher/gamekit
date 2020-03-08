@@ -404,7 +404,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    Vector<TextureBuffer> LoadCubeMapAsset(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, FORMAT_2D& OUT_format, iAllocator* allocator)
+    Vector<TextureBuffer> LoadCubeMapAsset(GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* allocator)
     {
         Vector<TextureBuffer> textureArray{ allocator };
 
@@ -413,7 +413,7 @@ namespace FlexKit
 
         OUT_MIPCount    = resource->GetFace(0)->MipCount;
         OUT_WH          = { (uint32_t)resource->Width, (uint32_t)resource->Height };
-        OUT_format      = (FORMAT_2D)resource->Format;
+        OUT_format      = (DeviceFormat)resource->Format;
 
         for (size_t I = 0; I < 6; I++)
         {

@@ -13,7 +13,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
     const AssetHandle dragonHandle = 1004;
     const AssetHandle buddahHandle = 1100;
 
-    auto dragon = GetMesh(renderSystem, dragonHandle);
+    auto dragon = GetMesh(renderSystem, buddahHandle);
     auto buddah = GetMesh(renderSystem, buddahHandle);
 
 	static const size_t N = 10;
@@ -30,7 +30,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			auto& gameObject = allocator->allocate<FlexKit::GameObject>();
 			auto node = FlexKit::GetNewNode();
 
-			gameObject.AddView<DrawableView>( (X % 2 == 0)? dragon : buddah, node);
+			gameObject.AddView<DrawableView>(buddah, node);
 
 			SetMaterialParams(
 				gameObject,
@@ -46,8 +46,8 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 
             if (X % 2 == 0)
             {
-                Pitch(node, (float)pi / 2.0f);
-                Scale(node, { 10.0, 10.0, 10.0 });
+                //Pitch(node, (float)pi / 2.0f);
+                //Scale(node, { 10.0, 10.0, 10.0 });
             }
 
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
@@ -107,9 +107,17 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
             base.TestImage = DDSTexture;
 
-            size_t      MIPCount;
-            uint2       WH;
-            FORMAT_2D   format;
+            base.virtualResource = renderSystem.CreateGPUResource(
+                GPUResourceDesc::ShaderResource(
+                    { 2048, 2048 },
+                    DeviceFormat::BC3_UNORM,
+                    1, 1, true ));
+
+            base.streamingEngine.BindAsset(textureHandle, base.virtualResource);
+
+            size_t          MIPCount;
+            uint2           WH;
+            DeviceFormat    format;
 
             Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, MIPCount, WH, format, allocator);
             base.GGXMap = MoveTextureBuffersToVRAM(
@@ -211,7 +219,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
 
                 dynamicBox.AddView<SceneNodeView<>>(dynamicNode);
-                EnableScale(dynamicBox, SceneNodes::SCALE);
+                EnableScale(dynamicBox, true);
                 SetScale(dynamicBox, { 0.1f, 0.1f, 0.1f });
 
                 gameState.scene.AddGameObject(dynamicBox, dynamicNode);
@@ -248,12 +256,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         {
             // Load cube Model
             const AssetHandle model = 1002;
-            auto [triMesh, loaded] = FindMesh(model);
-
-            if (!loaded)
-                triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), model);
-
-            auto& floor = allocator.allocate<GameObject>();
+            auto triMesh = GetMesh(renderSystem, model);
+            auto& floor  = allocator.allocate<GameObject>();
 
             auto node = GetZeroedNode();
             floor.AddView<DrawableView>(triMesh, node);
@@ -265,26 +269,22 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
             SetScale(floor, { 600, 1, 600 });
             SetBoundingSphereRadius(floor, 900);
         }
+
         // Load rig Model
-        {
-            const AssetHandle riggedModel   = 1005;
-            const AssetHandle skeleton      = 2000;
-            auto [triMesh, loaded] = FindMesh(riggedModel);
+        const AssetHandle riggedModel   = 1005;
+        const AssetHandle skeleton      = 2000;
+        auto triMesh                    = GetMesh(renderSystem, riggedModel);
 
-            if (!loaded)
-                triMesh = LoadTriMeshIntoTable(renderSystem, renderSystem.GetImmediateUploadQueue(), riggedModel);
+        auto& GO = allocator.allocate<GameObject>();
+        auto node = GetZeroedNode();
+        GO.AddView<DrawableView>(triMesh, node);
+        GO.AddView<SceneNodeView<>>(node);
+        GO.AddView<SkeletonView>(GetTriMesh(GO), 2000);
+        GO.AddView<StringIDView>("object1", strlen("object1"));
 
-            auto& GO = allocator.allocate<GameObject>();
-            auto node = GetZeroedNode();
-            GO.AddView<DrawableView>(triMesh, node);
-            GO.AddView<SceneNodeView<>>(node);
-            GO.AddView<SkeletonView>(GetTriMesh(GO), 2000);
-            GO.AddView<StringIDView>("object1", strlen("object1"));
+        ToggleSkinned(GO, true);
 
-            ToggleSkinned(GO, true);
-
-            gameState.scene.AddGameObject(GO, node);
-        }
+        gameState.scene.AddGameObject(GO, node);
     }
 	default:
 		break;

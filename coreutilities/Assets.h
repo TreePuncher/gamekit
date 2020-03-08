@@ -420,7 +420,7 @@ namespace FlexKit
             State           = Resource::ResourceState::EResourceState_UNLOADED;		// Runtime Member
         }
 
-        FORMAT_2D                   format;
+        DeviceFormat                   format;
 
         const char* GetBuffer() const
         {
@@ -441,7 +441,7 @@ namespace FlexKit
 
 	FLEXKITAPI bool				        Asset2TriMesh		( RenderSystem* RS, CopyContextHandle handle, AssetHandle RHandle, iAllocator* Memory, TriMesh* Out, bool ClearBuffers = true );
 	FLEXKITAPI TextureSet*		        Asset2TextureSet	( AssetHandle RHandle, iAllocator* Memory );
-    FLEXKITAPI Vector<TextureBuffer>    LoadCubeMapAsset    ( GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, FORMAT_2D& OUT_format, iAllocator* );
+    FLEXKITAPI Vector<TextureBuffer>    LoadCubeMapAsset    ( GUID_t resourceID, size_t& OUT_MIPCount, uint2& OUT_WH, DeviceFormat& OUT_format, iAllocator* );
 
 	FLEXKITAPI TextureSet*		LoadTextureSet	 ( GUID_t ID, iAllocator* Memory );
 	FLEXKITAPI void				LoadTriangleMesh ( GUID_t ID, iAllocator* Memory, TriMesh* out );

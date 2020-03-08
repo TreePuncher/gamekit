@@ -228,13 +228,12 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.temporaryBuffers_2Channel[0],
                 base.temporaryBuffers_2Channel[1],
                 targets.RenderTarget,
-                base.TestImage,
+                base.virtualResource,
                 base.gbuffer,
                 base.depthBuffer,
                 reserveCB,
                 reserveVB,
                 core.GetTempMemory());
-
             //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
         }   break;
         case RenderMode::ComputeTiledDeferred:
@@ -280,6 +279,14 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 desc);
         }
         }
+
+        base.streamingEngine.TextureFeedbackPass(
+            dispatcher,
+            frameGraph,
+            activeCamera,
+            sceneDesc,
+            base.virtualResource,
+            reserveCB);
 
         // Draw Skeleton overlay
     
@@ -346,7 +353,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-    framework.DrawDebugHUD(dT, base.vertexBuffer, frameGraph);
+    //framework.DrawDebugHUD(dT, base.vertexBuffer, frameGraph);
     PresentBackBuffer(frameGraph, &core.Window);
 }
 

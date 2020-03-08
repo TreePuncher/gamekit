@@ -35,10 +35,13 @@ namespace FlexKit
 
         case OT_ShaderResource:
         case OT_BackBuffer:
+        case OT_DepthBuffer:
 		{
 			switch (AfterState)
 			{
-			case DRS_Write:
+            case DRS_DEPTHBUFFERWRITE:
+            case DRS_DEPTHBUFFERREAD:
+            case DRS_Write:
             case DRS_ShaderResource:
             case DRS_RenderTarget:
             case DRS_Present:

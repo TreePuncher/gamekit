@@ -181,7 +181,7 @@ int main(int argc, char* argv[])
                         upload,
                         HDRStack.begin(),
                         HDRStack.size(),
-                        FORMAT_2D::R32G32B32A32_FLOAT,
+                        DeviceFormat::R32G32B32A32_FLOAT,
                         allocator);
 
                     renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");

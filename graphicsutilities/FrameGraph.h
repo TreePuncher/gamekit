@@ -390,7 +390,7 @@ namespace FlexKit
         template<typename TY>
         ID3D12Resource* GetObjectResource(TY handle) const
         {
-            return renderSystem.GetObjectDeviceResource(handle);
+            return renderSystem.GetDeviceResource(handle);
         }
 
 
@@ -488,7 +488,7 @@ namespace FlexKit
 
             auto res			= _FindSubNodeResource(handle);
             auto SOHandle		= res->SOBuffer;
-            auto deviceResource = renderSystem.GetObjectDeviceResource(SOHandle);
+            auto deviceResource = renderSystem.GetDeviceResource(SOHandle);
 
             if (res->State != DRS_VERTEXBUFFER) 
                 ctx->AddStreamOutBarrier(SOHandle, res->State, DRS_VERTEXBUFFER);
@@ -696,6 +696,15 @@ namespace FlexKit
             return res->UAVTexture;
         }
 
+        UAVResourceHandle CopyToUAV(FrameResourceHandle resource, Context& ctx)
+        {
+            auto res = _FindSubNodeResource(resource);
+            if (res->State != DRS_Read)
+                ctx.AddUAVBarrier(res->UAVBuffer, res->State, DRS_Write);
+
+            return res->UAVBuffer;
+        }
+
         /************************************************************************************************/
 
 
@@ -752,7 +761,7 @@ namespace FlexKit
 
             D3D12_STREAM_OUTPUT_BUFFER_VIEW view =
             {
-                renderSystem.GetObjectDeviceResource(SOHandle)->GetGPUVirtualAddress(),
+                renderSystem.GetDeviceResource(SOHandle)->GetGPUVirtualAddress(),
                 renderSystem.GetStreamOutBufferSize(SOHandle),
                 renderSystem.GetSOCounterResource(SOHandle)->GetGPUVirtualAddress(),
             };

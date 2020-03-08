@@ -167,12 +167,12 @@ public:
 			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(IN_Framework.ActiveWindow->WH,	true)	    },
 
             temporaryBuffers{
-                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16B16A16_FLOAT))	},
-                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16B16A16_FLOAT))	}},
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, DeviceFormat::R16G16B16A16_FLOAT))	},
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, DeviceFormat::R16G16B16A16_FLOAT))	}},
 
             temporaryBuffers_2Channel{
-                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16_FLOAT)) },
-                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, FORMAT_2D::R16G16_FLOAT)) } },
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, DeviceFormat::R16G16_FLOAT)) },
+                { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, DeviceFormat::R16G16_FLOAT)) } },
 
 
 			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
@@ -202,13 +202,12 @@ public:
             orbitCameras        { framework.core.GetBlockMemory() }
 	{
 		auto& RS = *IN_Framework.GetRenderSystem();
-		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, FlexKit::LoadSpriteTextPSO		});
+		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO		        });
 		RS.RegisterPSOLoader(DRAW_PSO,					{ &RS.Library.RS6CBVs4SRVs, CreateDrawTriStatePSO			});
 		RS.RegisterPSOLoader(DRAW_TEXTURED_PSO,		    { &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStatePSO		});
 		RS.RegisterPSOLoader(DRAW_TEXTURED_DEBUG_PSO,	{ &RS.Library.RS6CBVs4SRVs, CreateTexturedTriStateDEBUGPSO	});
 		RS.RegisterPSOLoader(DRAW_LINE_PSO,			    { &RS.Library.RS6CBVs4SRVs, CreateDrawLineStatePSO			});
 		RS.RegisterPSOLoader(DRAW_LINE3D_PSO,			{ &RS.Library.RS6CBVs4SRVs, CreateDraw2StatePSO				});
-		RS.RegisterPSOLoader(DRAW_SPRITE_TEXT_PSO,		{ &RS.Library.RS6CBVs4SRVs, LoadSpriteTextPSO				});
 
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
@@ -240,12 +239,12 @@ public:
 
         for (auto& temp : temporaryBuffers) {
             renderSystem.ReleaseTexture(temp);
-            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
+            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
         }
 
         for (auto& temp : temporaryBuffers_2Channel) {
             renderSystem.ReleaseTexture(temp);
-            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16_FLOAT));
+            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT));
         }
 
         renderSystem.ReleaseTexture(depthBuffer);
@@ -266,6 +265,7 @@ public:
     ResourceHandle             irradianceMap;
     ResourceHandle             GGXMap;
     ResourceHandle             TestImage;
+    ResourceHandle             virtualResource;
 
     // render resources
 	WorldRender					render;

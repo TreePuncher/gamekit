@@ -450,6 +450,28 @@ namespace FlexKit
 
 		/************************************************************************************************/
 
+
+        void insert(Iterator I, const Ty& in)
+        {
+            if (!size()) {
+                push_back(in);
+                return;
+            }
+
+            auto II     = end() - 1;
+
+            push_back(back());
+
+            while (II > I)
+                *(II + 1) = *II;
+
+            *I = in;
+        }
+
+
+        /************************************************************************************************/
+
+
 		// Order Not Preserved
 		void remove_unstable(Iterator I)
 		{

@@ -13,12 +13,12 @@
 #pragma comment(lib,"crunch.lib")
 
 
-FlexKit::FORMAT_2D FormatStringToFORMAT_2D(const std::string& format)
+FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format)
 {
-    static std::map<std::string, FlexKit::FORMAT_2D> formatMap = {
-        { "RGBA8_UNORM",    FORMAT_2D::R8G8B8A8_UNORM       },
-        { "RGBA16_FLOAT",   FORMAT_2D::R16G16B16A16_FLOAT   },
-        { "RGBA32_FLOAT",   FORMAT_2D::R32G32B32A32_FLOAT   },
+    static std::map<std::string, FlexKit::DeviceFormat> formatMap = {
+        { "RGBA8_UNORM",    DeviceFormat::R8G8B8A8_UNORM       },
+        { "RGBA16_FLOAT",   DeviceFormat::R16G16B16A16_FLOAT   },
+        { "RGBA32_FLOAT",   DeviceFormat::R32G32B32A32_FLOAT   },
     };
 
     return formatMap[format];
@@ -62,7 +62,7 @@ public:
     CubeMapFace                 Faces[6];
     size_t                      GUID;
     std::string					ID;
-    FlexKit::FORMAT_2D          format;
+    FlexKit::DeviceFormat          format;
 
     size_t                      Width   = 0;
     size_t                      Height  = 0;
@@ -124,7 +124,7 @@ inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureC
     auto resource       = std::make_shared<CubeMapTexture>();
     resource->GUID      = metaData->Guid;
     resource->ID        = metaData->ID;
-    resource->format    = FormatStringToFORMAT_2D(metaData->format);
+    resource->format    = FormatStringToDeviceFormat(metaData->format);
 
     for (auto& face : resource->Faces)
         face.mipLevels.resize(metaData->mipLevels.size());
@@ -212,7 +212,7 @@ public:
 
     std::string         ID;
     GUID_t              assetHandle;
-    FlexKit::FORMAT_2D  format;
+    FlexKit::DeviceFormat  format;
 
     void*     buffer;
     size_t    bufferSize;
@@ -224,13 +224,13 @@ _TextureMipLevelResource CreateMIPMapResource(const std::string& string)
     int height;
     int channelCount;
 
-    float* res = stbi_loadf(string.c_str(), &width, &height, &channelCount, STBI_rgb);
+    float* res = stbi_loadf(string.c_str(), &width, &height, &channelCount, STBI_default);
     if (!res)
         return {};
 
     auto pixelCount = width * height;
 
-    crn_uint32* buffer = new crn_uint32[width * height];
+    crn_uint32* buffer = new crn_uint32[pixelCount];
 
     for (size_t I = 0; I < pixelCount; I++)
     {
@@ -285,7 +285,7 @@ _TextureMipLevelResource CreateMIPMapResource(const std::string& string)
 inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData)
 {
     auto format = FormatStringToFormatID(metaData->format);
-    FlexKit::FORMAT_2D  FK_format;
+    FlexKit::DeviceFormat  FK_format;
 
     std::vector<_TextureMipLevelResource> mipLevels{};
 
@@ -318,7 +318,7 @@ inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_
         params.m_crn_color_selector_palette_size = 8;
         params.m_file_type                       = cCRNFileTypeCRN;
 
-        FK_format = FORMAT_2D::BC5_UNORM;
+        FK_format = DeviceFormat::BC5_UNORM;
 
         if (!params.check())
             return {};

@@ -162,7 +162,6 @@ struct Deferred_OUT
     float4 MRIA         : SV_TARGET1;
     float4 Normal       : SV_TARGET2;
     float4 Tangent      : SV_TARGET3;
-    float2 IOR_ANISO    : SV_TARGET4;
 
     float Depth : SV_DEPTH;
 };

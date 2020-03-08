@@ -60,45 +60,36 @@ namespace FlexKit
 		static_vector<ResourceHandle> resourceHandles;
 	};
 
-	class FLEXKITAPI StreamingTexture
+
+    /************************************************************************************************/
+
+
+    struct SceneDescription
 	{
-	public:
-		uint16_t GetHighestResidentMip()
-		{
-			return -1;
-		}
-
-
-		bool isMipLoadinProgress(uint16_t mip)
-		{
-			return false;
-		}
-
-
-		void QueueMipLoad(ThreadManager& threads)
-		{
-		}
-
-
-	private:
-		bool							evicted		= true;
-		ID3D12Resource*					tiledResource;
-        ResourceHandle                  textureHandle;
-		static_vector<char*>			buffers;	// Nulls for unmapped buffers
-		uint16_t						highestMappedMip = -1;
-		static_vector<ResourceHandle>	backingResources;
+        CameraHandle                            camera;
+		UpdateTaskTyped<PointLightGather>&	    lights;
+		UpdateTask&							    transforms;
+		UpdateTask&							    cameras;
+		UpdateTaskTyped<GetPVSTaskData>&	    PVS;
+		UpdateTaskTyped<GatherSkinnedTaskData>&	skinned;
 	};
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 
-	class FLEXKITAPI TiledResource
-	{
-	public:
-		TiledResource(iAllocator* IN_allocator) {}
+    struct TextureFeedbackPass_Data
+    {
+        CameraHandle                    camera;
+        GatherTask&                     pvs;
+        ReserveConstantBufferFunction   constantBufferAllocator;
+        FrameResourceHandle             feedbackCounters;
+        FrameResourceHandle             feedbackTarget;
+        FrameResourceHandle             feedbackBuffer;
+        FrameResourceHandle             feedbackLists;
+        FrameResourceHandle             feedbackDepth;
+    };
 
-	};
 
 
 	/************************************************************************************************/
@@ -106,7 +97,7 @@ namespace FlexKit
 
 	constexpr size_t GetMinBlockSize()
 	{
-		return ct_sqrt(64 * KILOBYTE / sizeof(uint8_t[4])); // assuming RGBA pixel, and a 64 KB texture alignment
+		return 64 * KILOBYTE;
 	}
 
 	struct TextureCacheDesc
@@ -119,99 +110,240 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	class TextureStreamingEngine;
+    struct TileID_t
+    {
+        uint32_t bytes;
+
+        uint32_t GetTileX() const
+        {
+            return bytes >> 16 & 0xf;
+        }
+        uint32_t GetTileY() const
+        {
+            return bytes >> 4 & 0xf;
+        }
+        int32_t GetMip() const
+        {
+            return bytes & 0xf;
+        }
+
+        operator uint3 () const
+        {
+            return {
+                GetTileX(),
+                GetTileY(),
+                (UINT)GetMip()
+            };
+        }
+    };
+
+
+    struct RequestedBlock
+    {
+        TileID_t        tileID;
+        ResourceHandle  resource;
+        uint32_t        offset;
+        uint32_t        tileIdx;
+    };
+
+    using BlockList = Vector<RequestedBlock>;
+
 
 	class TextureBlockAllocator
 	{
 	public:
-		TextureBlockAllocator(iAllocator* IN_allocator) : 
-			allocator{ IN_allocator } {}
+		TextureBlockAllocator(const size_t blockCount, iAllocator* IN_allocator) :
+            blockTable  { IN_allocator  },
+			allocator   { IN_allocator  }
+        {
+            blockTable.reserve(blockCount);
 
-		iAllocator* allocator;
+            for (size_t I = 0; I < blockCount; ++I)
+                blockTable.emplace_back(Block{ { 0 }, InvalidHandle_t });
+        }
+
+        struct Block
+        {
+            TileID_t        tileID;
+            ResourceHandle  resource;
+            size_t          frameID;
+        };
+
+        std::optional<RequestedBlock> Allocate(TileID_t tileID, ResourceHandle resource, size_t frameID)
+        {
+            const auto start        = last;
+            const auto tableSize    = blockTable.size();
+
+            for (auto itr = 0; itr < tableSize; ++itr)
+            {
+                uint32_t idx = (start + itr) % tableSize;
+                auto& block = blockTable[idx];
+                const auto mipLevel = tileID.GetMip();
+                if (block.resource == InvalidHandle_t || block.tileID.GetMip() > mipLevel || block.frameID + 2 < frameID)
+                {
+                    block.resource  = resource;
+                    block.tileID    = tileID;
+                    block.frameID   = frameID;
+
+                    last            = idx;
+
+                    return { RequestedBlock{
+                        .tileID     = tileID,
+                        .resource   = resource,
+                        .offset     = idx * blockSize,
+                        .tileIdx    = idx,
+                    } };
+                }
+            }
+
+            return {};
+        }
+
+        const static uint32_t   blockSize   = 64 * KILOBYTE;
+        uint32_t                last        = 0;
+        Vector<Block>           blockTable;
+		iAllocator*             allocator;
 	};
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 
 	class FLEXKITAPI TextureStreamingEngine
 	{
 	public:
 		TextureStreamingEngine(RenderSystem& IN_renderSystem, iAllocator* IN_allocator, const TextureCacheDesc& desc = {}) : 
-			allocator		{ IN_allocator		},
-			mappedTextures	{ IN_allocator		},
-			renderSystem	{ IN_renderSystem	},
-			settings		{ desc				} 
-		{
-			FK_ASSERT(desc.textureCacheSize % desc.blockSize == 0, "INVALID POOL SIZE! MUST BE MULTIPLE OF BLOCK SIZE!");
+			allocator		        { IN_allocator		},
+            textureBlockAllocator   { desc.textureCacheSize / desc.blockSize,   IN_allocator },
+			renderSystem	        { IN_renderSystem	},
+			settings		        { desc				},
+            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE * 2)                                    },
+            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 240, 240 }, DeviceFormat::D32_FLOAT)) },
+            feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
+            feedbackReturnBuffer    {
+                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
+                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
+                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) } },
+             heap                   { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
+             mappedAssets           { IN_allocator }
+        {
+            //IN_renderSystem.SetDebugName(feedbackTarget, "texture feedback target");
 
-			renderSystem.pDevice->CreateCommittedResource(
-				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
-				&CD3DX12_RESOURCE_DESC::Buffer(desc.textureCacheSize),
-				D3D12_RESOURCE_STATE_COMMON,
-				nullptr, IID_PPV_ARGS(&resourcePool));
+            for (size_t I = 0; I < 3; I++)
+            {
+                renderSystem.SetReadBackEvent(
+                    feedbackReturnBuffer[I],
+                    [&, textureStreamingEngine = this](char* buffer, const size_t bufferSize)
+                    {
+                        if (!buffer)
+                            return;
 
-            SETDEBUGNAME(resourcePool, "TextureStreamingEngine");
-		}
+                        PushToLocalQueue(allocator->allocate<TextureBlockUpdate>(*textureStreamingEngine, buffer, allocator));
+
+                        //ReadBackOffset  = readBackBlock * MEGABYTE * 2;
+                        //readBackBlock   = readBackBlock > 6 ? 0 : ++readBackBlock;
+                    });
+
+                renderSystem.LockReadBack(
+                    feedbackReturnBuffer[I],
+                    -1);
+            }
+        }
 
 
         ~TextureStreamingEngine()
         {
-            resourcePool->Release();
+            renderSystem.ReleaseUAV(feedbackBuffer);
+            //renderSystem.ReleaseUAV(feedbackLists);
+            renderSystem.ReleaseUAV(feedbackCounters);
+
+            //renderSystem.ReleaseTexture(feedbackTarget);
+            renderSystem.ReleaseTexture(feedbackDepth);
         }
 
-
-		UpdateTask& updatePhase1(UpdateDispatcher& dispatcher)
-		{
-			struct _update
-			{
-
-			};
-
-			auto& update = dispatcher.Add<_update>(
-				[&](auto& threadBuilder, _update& data)
-				{
-				},
-				[this](auto&) 
-				{
-				}
-			);
-
-            return update;
-		}
+        
+        void TextureFeedbackPass(
+            UpdateDispatcher&               dispatcher,
+            FrameGraph&                     frameGraph,
+            CameraHandle                    camera,
+            const SceneDescription&         sceneDescription,
+            ResourceHandle                  testTexture,
+            ReserveConstantBufferFunction&  constantBufferAllocator);
 
 
-        struct FetchTextureBlocks
+        struct TileRequest
         {
+            TileID_t tileID;
+            uint32_t TextureID;
 
+            uint64_t GetSortingID() const
+            {
+                return (uint64_t(TextureID) << 32) | tileID.bytes;
+            }
         };
 
 
-        FetchTextureBlocks& updatePhase2(UpdateTask& Phase1, UpdateDispatcher& dispatcher, FrameGraph& frameGraph)
+        struct TextureBlockUpdate : public FlexKit::iWork
         {
-            return frameGraph.AddNode<FetchTextureBlocks>(
-                FetchTextureBlocks{},
-                [](auto& builder, FetchTextureBlocks& data)
-                {
-                },
-                [](const FetchTextureBlocks& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
-                {
-                });
-        }
+            TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, iAllocator* IN_allocator);
+
+            void Run() override;
+
+            void Release() override { allocator->release(*this); }
+
+            TextureStreamingEngine& textureStreamEngine;
+            size_t                  requestCount = 0;
+            TileRequest*            requests;
+            iAllocator*             allocator;
+        };
 
 
-		StreamingTexture2DHandle CreateStreamingTexture()
-		{
-			return InvalidHandle_t;
-		}
+        std::optional<RequestedBlock> AllocateTile(TileID_t tile, ResourceHandle handle);
+
+        void                        BindAsset           (const AssetHandle textureAsset, const ResourceHandle  resource);
+        std::optional<AssetHandle>  GetResourceAsset    (const ResourceHandle  resource) const;
+
+        void PostUpdatedTiles   (const BlockList& blocks);
+        void MarkUpdateCompleted() { updateInProgress = false; }
 
 	private:
+
+
+        struct MappedAsset
+        {
+            ResourceHandle  resource;
+            AssetHandle     textureAsset;
+
+            auto GetResourceID() const
+            {
+                return resource.to_uint();
+            }
+
+
+            uint64_t GetID() const
+            {
+                return (uint64_t)resource.to_uint() << 32 | textureAsset;
+            }
+        };
+
+
 		RenderSystem&				renderSystem;
-		ID3D12Resource*				resourcePool	= nullptr;
-		Vector<StreamingTexture>	mappedTextures;
-		Vector<StreamingTexture*>	loadList; // updated every frame
-		TextureBlockAllocator		allocator;
+
+        bool                        updateInProgress = false;
+
+        uint32_t                    readBackBlock = 0;
+
+        UAVResourceHandle		    feedbackBuffer;     // GPU
+        UAVResourceHandle           feedbackCounters;   // GPU
+        ResourceHandle		        feedbackDepth;      // GPU
+
+        ReadBackResourceHandle      feedbackReturnBuffer[3]; // CPU + GPU
+
+        Vector<MappedAsset>         mappedAssets;
+		TextureBlockAllocator		textureBlockAllocator;
+        DeviceHeapHandle            heap;
+
+        iAllocator*                 allocator;
 		const TextureCacheDesc		settings;
 	};
 
@@ -234,6 +366,8 @@ namespace FlexKit
     static const PSOHandle TEXTURE2CUBEMAP_IRRADIANCE  = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
     static const PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
+    static const PSOHandle TEXTUREFEEDBACK             = PSOHandle(GetTypeGUID(TEXTUREFEEDBACK));
+
 
     /************************************************************************************************/
 
@@ -255,6 +389,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
     ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
+
+    ID3D12PipelineState* CreateTextureFeedbackPSO           (RenderSystem* RS);
 
 
 	struct WorldRender_Targets
@@ -350,16 +486,6 @@ namespace FlexKit
 	};
 
 
-	struct SceneDescription
-	{
-        CameraHandle                            camera;
-		UpdateTaskTyped<PointLightGather>&	    lights;
-		UpdateTask&							    transforms;
-		UpdateTask&							    cameras;
-		UpdateTaskTyped<GetPVSTaskData>&	    PVS;
-		UpdateTaskTyped<GatherSkinnedTaskData>&	skinned;
-	};
-
     struct DepthPass
     {
         DepthPass(const PVS& IN_drawables) :
@@ -422,10 +548,10 @@ namespace FlexKit
     public:
         GBuffer(const uint2 WH, RenderSystem& RS_IN) :
             RS          { RS_IN },
-            Albedo      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM)) },
-            MRIA        { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
-            Normal      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) },
-            Tangent     { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT)) }
+            Albedo      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
+            MRIA        { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
+            Normal      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
+            Tangent     { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) }
         {
             RS.SetDebugName(Albedo,     "Albedo");
             RS.SetDebugName(MRIA,       "MRIA");
@@ -448,10 +574,10 @@ namespace FlexKit
             RS.ReleaseTexture(Normal);
             RS.ReleaseTexture(Tangent);
 
-            Albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R8G8B8A8_UNORM));
-            MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
-            Normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
-            Tangent = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, FORMAT_2D::R16G16B16A16_FLOAT));
+            Albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
+            MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
+            Normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
+            Tangent = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
 
             RS.SetDebugName(Albedo,  "Albedo");
             RS.SetDebugName(MRIA,    "MRIA");
@@ -633,14 +759,13 @@ namespace FlexKit
 	{
 	public:
 		WorldRender(iAllocator* Memory, RenderSystem& RS_IN, TextureStreamingEngine& IN_streamingEngine, const uint2 WH) :
-
-			renderSystem        { RS_IN                                                                                 },
-			OcclusionCulling	{ false																                    },
-			lightLists			{ renderSystem.CreateUAVBufferResource(sizeof(uint32_t) * (WH / 10).Product() * 32)     },
-			pointLightBuffer	{ renderSystem.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)                    },
-            tempBuffer          { renderSystem.CreateUAVTextureResource(WH, FORMAT_2D::R16G16B16A16_FLOAT)              },
-			streamingEngine		{ IN_streamingEngine											                        },
-			lightMapWH			{ WH / 10                                                                               }
+			renderSystem                { RS_IN                                                                                    },
+			OcclusionCulling	        { false																                    },
+			lightLists			        { renderSystem.CreateUAVBufferResource(sizeof(uint32_t) * (WH / 10).Product() * 32)        },
+			pointLightBuffer	        { renderSystem.CreateUAVBufferResource(sizeof(GPUPointLight) * 1024)                       },
+            tempBuffer                  { renderSystem.CreateUAVTextureResource(WH, DeviceFormat::R16G16B16A16_FLOAT)                 },
+			streamingEngine		        { IN_streamingEngine											                            },
+			lightMapWH			        { WH / 10                                                                                  }
 		{
 			RS_IN.RegisterPSOLoader(FORWARDDRAW,			    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawPSO,		   });
 			RS_IN.RegisterPSOLoader(FORWARDDRAWINSTANCED,	    { &RS_IN.Library.RS6CBVs4SRVs,		CreateForwardDrawInstancedPSO });
@@ -658,6 +783,7 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,{ &RS_IN.Library.RSDefault,         CreateBilaterialBlurHorizontalPSO });
             RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,  { &RS_IN.Library.RSDefault,         CreateBilaterialBlurVerticalPSO   });
 
+            RS_IN.RegisterPSOLoader(TEXTUREFEEDBACK,            { &RS_IN.Library.RSDefault,         CreateTextureFeedbackPSO});
 
             RS_IN.QueuePSOLoad(GBUFFERPASS);
             RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
@@ -669,10 +795,11 @@ namespace FlexKit
             RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
             RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
             RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
+            RS_IN.QueuePSOLoad(TEXTUREFEEDBACK);
 
+            RS_IN.SetDebugName(tempBuffer,        "tempBuffer");
             RS_IN.SetDebugName(lightLists,        "lightLists");
             RS_IN.SetDebugName(pointLightBuffer,  "pointLightBuffer");
-            RS_IN.SetDebugName(pointLightBuffer,  "tempBuffer");
 		}
 
 
@@ -680,6 +807,12 @@ namespace FlexKit
 		{
             Release();
 		}
+
+
+        void HandleTextures()
+        {
+
+        }
 
 
         void Release()
@@ -797,7 +930,6 @@ namespace FlexKit
             FrameGraph&                             frameGraph,
             ReserveConstantBufferFunction&          constantBufferAllocator,
             const ComputeTiledDeferredShadeDesc&    scene);
-
 
 	private:
 		RenderSystem&			renderSystem;

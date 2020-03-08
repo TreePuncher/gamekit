@@ -1,29 +1,5 @@
-/**********************************************************************
-
-Copyright (c) 2014-2019 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
-
 #include "WorldRender.h"
+#include "TextureStreamingUtilities.h"
 
 #include <d3d12.h>
 #include <d3dx12.h>
@@ -114,6 +90,7 @@ namespace FlexKit
             PSO_Desc.BlendState.RenderTarget[0].SrcBlendAlpha   = D3D12_BLEND::D3D12_BLEND_ONE;
             PSO_Desc.BlendState.RenderTarget[0].DestBlendAlpha  = D3D12_BLEND::D3D12_BLEND_ONE;
         }
+
 
         ID3D12PipelineState* PSO = nullptr;
         auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
@@ -407,7 +384,7 @@ namespace FlexKit
             PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
             PSO_Desc.NumRenderTargets      = 2;
             PSO_Desc.RTVFormats[0]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
-            PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16B16A16_FLOAT; // backBuffer
+            PSO_Desc.RTVFormats[1]         = DXGI_FORMAT_R16G16_FLOAT; // backBuffer
             PSO_Desc.SampleDesc.Count      = 1;
             PSO_Desc.SampleDesc.Quality    = 0;
             PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
@@ -1007,7 +984,7 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 1, frameResources.GetTexture(data.MRIATargetObject));
                 descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.NormalTargetObject));
                 descHeap.SetSRV(ctx, 3, frameResources.GetTexture(data.TangentTargetObject));
-                descHeap.SetSRV(ctx, 4, frameResources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                descHeap.SetSRV(ctx, 4, frameResources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
                 descHeap.SetSRVCubemap(ctx, 5, data.GGX);
                 descHeap.SetSRVCubemap(ctx, 6, data.diffuseMap);
                 //descHeap.NullFill(ctx, 20);
@@ -1057,8 +1034,8 @@ namespace FlexKit
             {
                 data.DestinationObject  = builder.WriteRenderTarget(destination);
                 data.TempObject1        = builder.WriteRenderTarget(temp1);
-                data.TempObject2        = builder.WriteRenderTarget(temp2);
-                data.TempObject3        = builder.WriteRenderTarget(temp3);
+                data.TempObject2        = builder.WriteRenderTarget(temp2); // 2 channel
+                data.TempObject3        = builder.WriteRenderTarget(temp3); // 2 channel
 
                 data.DepthSource        = builder.ReadShaderResource(depthBuffer);
                 data.NormalSource       = builder.ReadShaderResource(gbuffer.Normal);
@@ -1097,7 +1074,7 @@ namespace FlexKit
 
                 descHeap.SetSRV(ctx, 0, frameResources.GetTexture(data.Source));
                 descHeap.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
-                descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), FORMAT_2D::R32_FLOAT);
+                descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), DeviceFormat::R32_FLOAT);
                 descHeap.NullFill(ctx, 3);
 
                 ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
@@ -1117,7 +1094,7 @@ namespace FlexKit
                 
                 descHeap2.SetSRV(ctx, 0, frameResources.ReadRenderTarget(data.TempObject1, &ctx));
                 descHeap2.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
-                descHeap2.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), FORMAT_2D::R32_FLOAT);
+                descHeap2.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), DeviceFormat::R32_FLOAT);
                 descHeap2.SetSRV(ctx, 3, frameResources.ReadRenderTarget(data.TempObject2, &ctx));
                 descHeap2.SetSRV(ctx, 4, testImage);
 
@@ -1176,7 +1153,6 @@ namespace FlexKit
             {
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t, data.WH }, data.passConstantsBuffer };
-
 
                 DescriptorHeap descHeap;
                 descHeap.Init(
@@ -1599,7 +1575,7 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIATargetObject));
                 descHeap.SetSRV(ctx, 2, resources.GetTexture(data.NormalTargetObject));
                 descHeap.SetSRV(ctx, 3, resources.GetTexture(data.TangentTargetObject));
-                descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), FORMAT_2D::R32_FLOAT);
+                descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
                 descHeap.SetSRV(ctx, 5, GGXSpecularMap);
                 descHeap.SetSRV(ctx, 6, diffuseMap);
                 descHeap.SetSRV(ctx, 7, resources.ReadUAVBuffer(data.pointLightBufferObject, DRS_ShaderResource, &ctx));
@@ -1691,7 +1667,7 @@ namespace FlexKit
                 srvHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIAObject));
                 srvHeap.SetSRV(ctx, 2, resources.GetTexture(data.normalObject));
                 srvHeap.SetSRV(ctx, 3, resources.GetTexture(data.tangentObject));
-                srvHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferObject), FORMAT_2D::R32_FLOAT);
+                srvHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferObject), DeviceFormat::R32_FLOAT);
                 srvHeap.SetSRV(ctx, 5, lightLists);
                 srvHeap.SetSRV(ctx, 6, pointLightBuffer);
 
@@ -1717,4 +1693,457 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+
+    ID3D12PipelineState* CreateTextureFeedbackPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("Forward_VS",         "Forward_VS",           "vs_5_0", "assets\\shaders\\forwardRender.hlsl");
+        auto PShader = LoadShader("TextureFeedback_PS", "TextureFeedback_PS",   "ps_5_0", "assets\\shaders\\TextureFeedback.hlsl");
+
+        FINALLY
+            
+        Release(&VShader);
+        Release(&PShader);
+
+        FINALLYOVER
+
+        /*
+        typedef struct D3D12_INPUT_ELEMENT_DESC
+        {
+        LPCSTR SemanticName;
+        UINT SemanticIndex;
+        DXGI_FORMAT Format;
+        UINT InputSlot;
+        UINT AlignedByteOffset;
+        D3D12_INPUT_CLASSIFICATION InputSlotClass;
+        UINT InstanceDataStepRate;
+        } 	D3D12_INPUT_ELEMENT_DESC;
+        */
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+                { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "NORMAL",		0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "TANGENT",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+                { "TEXCOORD",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32_FLOAT,	 3, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);    // enable conservative rast
+        Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
+
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // Disable depth 
+        //Depth_Desc.DepthEnable      = true;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = VShader;
+            PSO_Desc.PS                    = PShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets      = 0;
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            PSO_Desc.DSVFormat             = DXGI_FORMAT_UNKNOWN;
+            //PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+        }
+
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    template<typename TY>
+    size_t GetConstantsAlignedSize()
+    {
+        const auto unalignedSize    = sizeof(TY);
+        const auto offset           = unalignedSize & (256 + 1);
+        const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
+
+        return unalignedSize + adjustedOffset;
+    }
+
+    void TextureStreamingEngine::TextureFeedbackPass(
+            UpdateDispatcher&               dispatcher,
+            FrameGraph&                     frameGraph,
+            CameraHandle                    camera,
+            const SceneDescription&         sceneDescription,
+            ResourceHandle                  testTexture,
+            ReserveConstantBufferFunction&  constantBufferAllocator)
+    {
+        if (updateInProgress)
+            return;
+
+        updateInProgress = true;
+
+        frameGraph.Resources.AddUAVResource(feedbackBuffer, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackBuffer));
+        //frameGraph.Resources.AddUAVResource(feedbackLists, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackLists));
+        frameGraph.Resources.AddUAVResource(feedbackCounters, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackCounters));
+        //frameGraph.Resources.AddRenderTarget(feedbackTarget, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackTarget));
+        frameGraph.Resources.AddDepthBuffer(feedbackDepth, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackDepth));
+
+        frameGraph.AddNode<TextureFeedbackPass_Data>(
+            TextureFeedbackPass_Data{
+                camera,
+                sceneDescription.PVS,
+                constantBufferAllocator
+            },
+            [&](FrameGraphNodeBuilder& nodeBuilder, TextureFeedbackPass_Data& data)
+            {
+                data.feedbackBuffer     = nodeBuilder.ReadWriteUAV(feedbackBuffer);
+                data.feedbackCounters   = nodeBuilder.ReadWriteUAV(feedbackCounters);
+                //data.feedbackLists      = nodeBuilder.ReadWriteUAV(feedbackLists);
+                data.feedbackDepth      = nodeBuilder.WriteDepthBuffer(feedbackDepth);
+                //data.feedbackTarget     = nodeBuilder.WriteRenderTarget(feedbackTarget);
+            },
+            [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            {
+                const size_t entityBufferSize = GetConstantsAlignedSize<Drawable::VConstantsLayout>();
+
+                CBPushBuffer entityConstantBuffer   { data.constantBufferAllocator(entityBufferSize * data.pvs.GetData().solid.size()) };
+                CBPushBuffer passContantBuffer      { data.constantBufferAllocator(4096) };
+
+                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACK));
+
+                //ctx.ClearUAVTexture(resources.ReadWriteUAVTexture(data.feedbackLists, &ctx), uint4{ 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff });
+
+                ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackTarget) });
+                /*
+                ctx.SetRenderTargets(
+                    { resources.GetRenderTarget(data.feedbackTarget) },
+                    false, resources.GetRenderTarget(data.feedbackDepth));
+                */
+
+                struct constantBufferLayout
+                {
+                    uint32_t    textureHandles[16];
+                    uint2       blockSizes[16];
+
+                    uint32_t    zeroBlock[8];
+                } constants =
+                {
+                    { testTexture },
+                    { { 256, 256 }}
+                };
+
+                auto passConstants = ConstantBufferDataSet{ constants, passContantBuffer };
+
+                ctx.CopyBufferRegion(
+                    { resources.GetObjectResource(passConstants.Handle()) },
+                    { passConstants.Offset() + ((size_t)&constants.zeroBlock - (size_t)&constants) },
+                    { resources.GetObjectResource(resources.CopyToUAV(data.feedbackCounters, ctx)) },
+                    { 0 },
+                    { 8 },
+                    { resources.GetObjectState(data.feedbackCounters) },
+                    { DRS_Write }
+                );
+
+                DescriptorHeap uavHeap;
+                uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 4, &allocator);
+                //uavHeap.SetUAV(ctx, 1, resources.GetUAVTextureResource(data.feedbackLists));
+                uavHeap.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx));
+                uavHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+
+                DescriptorHeap srvHeap;
+                srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 4, &allocator);
+                srvHeap.SetSRV(ctx, 0, testTexture);
+
+                ctx.SetGraphicsDescriptorTable(3, srvHeap);
+                ctx.SetGraphicsDescriptorTable(4, uavHeap);
+
+                ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ GetCameraConstants(camera), passContantBuffer });
+                ctx.SetGraphicsConstantBufferView(2, passConstants);
+
+                TriMesh* prevMesh = nullptr;
+
+                //for (auto& visable : data.pvs.GetData().solid)
+                for (size_t I = 0; I < data.pvs.GetData().solid.size() && I < 5; ++I)
+                {
+                    auto& visable = data.pvs.GetData().solid[I];
+                    auto* triMesh = GetMeshResource(visable.D->MeshHandle);
+
+                    visable.D->GetConstants();
+
+                    if (triMesh != prevMesh)
+                    {
+                        prevMesh = triMesh;
+
+                        ctx.AddIndexBuffer(triMesh);
+                        ctx.AddVertexBuffers(
+                            triMesh,
+                            {
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1,
+                                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2,
+                            }
+                        );
+                    }
+
+                    ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ visable.D->GetConstants(), entityConstantBuffer });
+                    ctx.DrawIndexed(triMesh->IndexCount);
+                }
+
+                ctx.CopyBufferRegion(
+                    {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters, DRS_Read, &ctx)) ,
+                        resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackBuffer, DRS_Read, &ctx)) },
+                    { 0, 0 },
+                    {   resources.GetObjectResource(feedbackReturnBuffer[readBackBlock]),
+                        resources.GetObjectResource(feedbackReturnBuffer[readBackBlock]) },
+                    { 0, 64 },
+                    { 8, MEGABYTE / 2 },
+                    { DRS_Write, DRS_Write },
+                    { DRS_Write, DRS_Write }
+                );
+
+                resources.renderSystem.LockReadBack(
+                    feedbackReturnBuffer[readBackBlock],
+                    resources.renderSystem.GetCurrentFrame() + 2);
+            });
+
+        readBackBlock = readBackBlock < 2 ? readBackBlock + 1 : 0;
+    }
+
+
+    /************************************************************************************************/
+
+
+    TextureStreamingEngine::TextureBlockUpdate::TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, iAllocator* IN_allocator) :
+            iWork               { IN_allocator              },
+            allocator           { IN_allocator              },
+            textureStreamEngine { IN_textureStreamEngine    }
+        {
+            memcpy(&requestCount, buffer, sizeof(uint64_t));
+
+            if (requestCount)
+            {
+                requests = reinterpret_cast<TileRequest*>(IN_allocator->malloc(requestCount));
+
+                memcpy(requests, buffer + 64, requestCount * 8);
+            }
+        }
+
+
+    /************************************************************************************************/
+
+
+    void TextureStreamingEngine::TextureBlockUpdate::Run()
+    {
+        if (!requests || !requestCount)
+            return;
+
+        auto lg_comparitor = [](TileRequest& lhs, TileRequest& rhs) -> bool
+        {
+            return lhs.GetSortingID() < rhs.GetSortingID();
+        };
+
+        auto eq_comparitor = [](TileRequest& lhs, TileRequest& rhs) -> bool
+        {
+            return lhs.GetSortingID() == rhs.GetSortingID();
+        };
+
+        const auto localRequestCount = requestCount;
+
+        std::sort(
+            requests,
+            requests + localRequestCount,
+            lg_comparitor);
+
+        const auto end            = std::unique(requests, requests + localRequestCount, eq_comparitor);
+        const auto uniqueCount    = (size_t)(end - requests);
+
+        BlockList requestList{ allocator };
+        requestList.reserve(uniqueCount);
+
+        for (auto itr = requests; itr < end; ++itr)
+        {
+            auto texture = ResourceHandle(itr->TextureID);
+            auto x = itr->tileID.GetTileX();
+            auto y = itr->tileID.GetTileY();
+
+            if (auto res = textureStreamEngine.AllocateTile(itr->tileID, texture); res)
+                requestList.push_back(res.value());
+        }
+
+        allocator->free(requests);
+        textureStreamEngine.PostUpdatedTiles(requestList);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void TextureStreamingEngine::BindAsset(const AssetHandle textureAsset, const ResourceHandle  resource)
+    {
+        auto comparator =
+            [](const MappedAsset& lhs, const MappedAsset& rhs)
+            {
+                return lhs.GetResourceID() < rhs.GetResourceID();
+            };
+
+        auto res = std::lower_bound(
+            std::begin(mappedAssets),
+            std::end(mappedAssets),
+            MappedAsset{ resource },
+            comparator);
+
+        if (res == std::end(mappedAssets) || res->resource != resource)
+            mappedAssets.insert(res, MappedAsset{ resource, textureAsset });
+        else
+            res->textureAsset = textureAsset;
+    }
+
+
+    /************************************************************************************************/
+
+
+    std::optional<AssetHandle>   TextureStreamingEngine::GetResourceAsset(const ResourceHandle  resource) const
+    {
+        auto comparator =
+            [](const MappedAsset& lhs, const MappedAsset& rhs)
+            {
+                return lhs.GetResourceID() < rhs.GetResourceID();
+            };
+
+        auto res = std::lower_bound(
+            std::begin(mappedAssets),
+            std::end(mappedAssets),
+            MappedAsset{ resource },
+            comparator);
+
+        return (res != std::end(mappedAssets) && res->GetResourceID() == resource) ?
+            std::optional<AssetHandle>{ res->textureAsset } :
+            std::optional<AssetHandle>{};
+    }
+
+
+    /************************************************************************************************/
+
+
+    void TextureStreamingEngine::PostUpdatedTiles(const BlockList& blocks)
+    {
+        auto ctxHandle      = renderSystem.OpenUploadQueue();
+        auto& ctx           = renderSystem._GetCopyContext(ctxHandle);
+        auto uploadQueue    = renderSystem._GetCopyQueue();
+        auto deviceHeap     = renderSystem.GetDeviceResource(heap);
+
+        ResourceHandle          prevResource    = InvalidHandle_t;
+        TextureStreamContext    streamContext   = { allocator };
+        uint2                   blockSize       = { 256, 256 };
+
+        for (const RequestedBlock& block : blocks)
+        {
+            if (prevResource != block.resource)
+            {
+                if (prevResource != InvalidHandle_t)
+                {
+                    auto currentState = renderSystem.GetObjectState(block.resource);
+                    if(currentState != DeviceResourceState::DRS_GENERIC)
+                        ctx.Barrier(
+                            renderSystem.GetDeviceResource(block.resource),
+                            currentState,
+                            DeviceResourceState::DRS_GENERIC);
+                }
+
+
+                if (auto res = GetResourceAsset(block.resource); res)
+                {
+                    if (!streamContext.Open(block.tileID.GetMip(), res.value()))
+                        continue;
+
+                    prevResource    = block.resource;
+                    blockSize       = streamContext.GetBlockSize();
+                }
+                else 
+                    continue;
+            }
+
+            auto deviceResource = renderSystem.GetDeviceResource(block.resource);
+            auto resourceState  = renderSystem.GetObjectState(block.resource);
+
+            if (resourceState != DeviceResourceState::DRS_Write)
+                ctx.Barrier(
+                    deviceResource,
+                    resourceState,
+                    DeviceResourceState::DRS_Write);
+
+            renderSystem.SetObjectState(block.resource, DRS_Write);
+
+            const auto tile = streamContext.ReadTile(block.tileID, blockSize, ctx);
+
+            renderSystem._UpdateTileMapping(
+                block.tileID,
+                blockSize,
+                deviceResource,
+                deviceHeap,
+                block.tileIdx);
+
+            ctx.CopyTile(
+                deviceResource,
+                block.tileID,
+                block.tileIdx,
+                tile);
+        }
+
+        renderSystem.SubmitUploadQueues(&ctxHandle);
+    }
+
+
+    /************************************************************************************************/
+
+
+    std::optional<RequestedBlock> TextureStreamingEngine::AllocateTile(TileID_t tile, ResourceHandle resource)
+    {
+        auto res = std::lower_bound(
+            std::begin(mappedAssets),
+            std::end(mappedAssets),
+            MappedAsset{ resource },
+            [](const MappedAsset& lhs, const MappedAsset& rhs)
+            {
+                return lhs.GetResourceID() < rhs.GetResourceID();
+            });
+
+        if (res == std::end(mappedAssets)) 
+            return {}; // not a mapped asset
+
+        return textureBlockAllocator.Allocate(tile, resource, renderSystem.GetCurrentFrame());
+    }
+
+
 }	/************************************************************************************************/
+
+/**********************************************************************
+
+Copyright (c) 2019-2020 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
