@@ -30,7 +30,7 @@ PointLight ReadPointLight(uint idx)
     return pointLight;
 }
 
-RWTexture2D<float4> output  : register(u0);
+globallycoherent RWTexture2D<float4> output  : register(u0);
 
 groupshared float3 color[100];
 [numthreads(10, 10, 8)]

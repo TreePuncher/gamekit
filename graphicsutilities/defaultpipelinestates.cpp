@@ -371,7 +371,7 @@ namespace FlexKit
 		FlexKit::Texture2D_Desc Tex2D_Desc;
 		Tex2D_Desc.CV				= true;
 		Tex2D_Desc.FLAGS			= FlexKit::SPECIALFLAGS::DEPTHSTENCIL;
-		Tex2D_Desc.Format			= FORMAT_2D::D32_FLOAT;
+		Tex2D_Desc.Format			= DeviceFormat::D32_FLOAT;
 		Tex2D_Desc.Width			= OcclusionBufferSize[0];
 		Tex2D_Desc.Height			= OcclusionBufferSize[1];
 		Tex2D_Desc.Read				= false;

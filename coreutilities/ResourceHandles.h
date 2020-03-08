@@ -42,7 +42,7 @@ namespace FlexKit
 	typedef Handle_t<32, GetTypeGUID(QueryBuffer)>				QueryHandle;
 	typedef Handle_t<16, GetTypeGUID(TriMesh)>					TriMeshHandle;
     typedef Handle_t<32, GetTypeGUID(CopyContextHandle)>		CopyContextHandle;
-
+    typedef Handle_t<32, GetTypeGUID(DeviceHeapHandle)>         DeviceHeapHandle;
 }
 
 #endif
