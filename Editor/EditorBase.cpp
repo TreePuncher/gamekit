@@ -395,41 +395,33 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 			}
 		}   break;
 		case Event::Keyboard:
-		{
-			if (evt.mData1.mKC[0] == KC_BACKSPACE && (evt.Action == Event::Pressed | evt.Action == Event::Release))
-			{
-				io.KeysDown[io.KeyMap[ImGuiKey_Backspace]] =
-					evt.Action == Event::Pressed ? true : false;
-			}
+        {
+            if (evt.mData1.mKC[0] == KC_BACKSPACE && (evt.Action == Event::Pressed | evt.Action == Event::Release))
+            {
+                io.KeysDown[io.KeyMap[ImGuiKey_Backspace]] =
+                    evt.Action == Event::Pressed ? true : false;
+            }
 
-
-			switch (evt.Action)
-			{
-			case Event::Pressed:
-			{
-				switch (evt.mData1.mKC[0])
-				{
-				default:
-				{
-					if ((evt.mData1.mKC[0] >= KC_A && evt.mData1.mKC[0] <= KC_Z ) || 
-						(evt.mData1.mKC[0] >= KC_0 && evt.mData1.mKC[0] <= KC_9)  ||
-						(evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END ) || 
-						(evt.mData1.mKC[0] == KC_PLUS) ||
-						(evt.mData1.mKC[0] == KC_MINUS) ||
-						(evt.mData1.mKC[0] == KC_UNDERSCORE) ||
-						(evt.mData1.mKC[0] == KC_EQUAL) ||
-						(evt.mData1.mKC[0] == KC_SYMBOL) ||
-						(evt.mData1.mKC[0] == KC_BACKSPACE) ||
-						(evt.mData1.mKC[0] == KC_SPACE))
-					{
-						io.AddInputCharacter((char)evt.mData2.mINT[0]);
-					}
-
-				}	break;
-				}
-			}	break;
-			}
-		}
+            switch (evt.Action)
+            {
+            case Event::Pressed:
+            {
+                if ((evt.mData1.mKC[0] >= KC_A && evt.mData1.mKC[0] <= KC_Z) ||
+                    (evt.mData1.mKC[0] >= KC_0 && evt.mData1.mKC[0] <= KC_9) ||
+                    (evt.mData1.mKC[0] >= KC_SYMBOLS_BEGIN && evt.mData1.mKC[0] <= KC_SYMBOLS_END) ||
+                    (evt.mData1.mKC[0] == KC_PLUS) ||
+                    (evt.mData1.mKC[0] == KC_MINUS) ||
+                    (evt.mData1.mKC[0] == KC_UNDERSCORE) ||
+                    (evt.mData1.mKC[0] == KC_EQUAL) ||
+                    (evt.mData1.mKC[0] == KC_SYMBOL) ||
+                    (evt.mData1.mKC[0] == KC_BACKSPACE) ||
+                    (evt.mData1.mKC[0] == KC_SPACE))
+                {
+                    io.AddInputCharacter((char)evt.mData2.mINT[0]);
+                }
+            }	break;
+            }
+        }   break;
 		case Event::Mouse:
 		{
 			int KC = -1;

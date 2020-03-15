@@ -168,8 +168,8 @@ float4 BilateralBlurVertical_PS(Blur_PS_IN input) : SV_TARGET
         }
     }
     
-    //return float4(c, 1.0) * testImage.Load(uint3(pixelCoord % uint2(2048, 2048), 0));
-    return testImage.Load(uint3((pixelCoord) % uint2(2048, 2048), 0));
+    return float4(c, 1.0);// * testImage.Load(uint3(pixelCoord % uint2(2048, 2048), 0));
+    //return testImage.Load(uint3((pixelCoord) % uint2(2048, 2048), 0));
 
     #endif
 }

@@ -26,13 +26,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef TEXTRENDERING_H
 #define TEXTRENDERING_H
 
-#include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\FrameGraph.h"
 #include "..\graphicsutilities\Fonts.h"
 
 namespace FlexKit
 {
+    class RenderSystem;
+    class FrameGraph;
+
+
 	ID3D12PipelineState* LoadSpriteTextPSO(RenderSystem* RS);
+
 
 	void DrawSprite_Text(
 		const char*				Str,

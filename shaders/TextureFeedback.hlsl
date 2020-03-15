@@ -53,8 +53,7 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         return;
 
     uint status = 0;
-    texture1.Sample(defaultSampler, uint3(IN.UV, MIPLevelRequested), status);
-    
+    texture1.Load(uint3(IN.UV, 0), status);
 
     if(!CheckAccessFullyMapped(status)) // Texture not mapped!
     {

@@ -23,6 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "TextRendering.h"
+#include "Graphics.h"
+
 #include <memory>
 #include <Windows.h>
 #include <windowsx.h>
@@ -31,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <d3dcompiler.h>
 #include <d3d11sdklayers.h>
 #include <d3d11shader.h>
+
 
 namespace FlexKit
 {
@@ -108,7 +111,7 @@ namespace FlexKit
 		}
 
 		HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-		FlexKit::CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
+		CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE PIPELINE STATE OBJECT"));
 
 		Release(&DrawTextVShader);
 		Release(&DrawTextGShader);
