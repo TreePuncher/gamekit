@@ -468,7 +468,7 @@ namespace FlexKit
 		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept
 		{
 			localWorkQueue->push_back(newWork);
-			workerWait.notify_one();
+			workerWait.notify_all();
 		}
 
 

@@ -3094,14 +3094,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void CopyContext::Barrier(ID3D12Resource* resource, DeviceResourceState before, DeviceResourceState after)
+    void CopyContext::Barrier(ID3D12Resource* resource, const DeviceResourceState before, const DeviceResourceState after)
     {
         D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
             resource,
             DRS2D3DState(before != DeviceResourceState::DRS_Write ? DeviceResourceState::DRS_GENERIC : before),
             DRS2D3DState(after));
 
-        commandList->ResourceBarrier(1, &barrier);
+
+        if (pendingBarriers.full())
+            flushPendingBarriers();
+
+        pendingBarriers.push_back(barrier);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void CopyContext::flushPendingBarriers()
+    {
+        if (pendingBarriers.empty())
+            return;
+
+        commandList->ResourceBarrier(pendingBarriers.size(), pendingBarriers.data());
+        pendingBarriers.clear();
     }
 
 
@@ -3162,6 +3179,8 @@ namespace FlexKit
 
 	void CopyContext::CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, UploadReservation source)
 	{
+        flushPendingBarriers();
+
 		commandList->CopyBufferRegion(
 			destination,
 			destinationOffset,
@@ -3176,6 +3195,8 @@ namespace FlexKit
 
 	void CopyContext::CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, ID3D12Resource* source, const size_t sourceOffset, const size_t sourceSize)
 	{
+        flushPendingBarriers();
+
 		commandList->CopyBufferRegion(
 			destination,
 			destinationOffset,
@@ -3196,6 +3217,8 @@ namespace FlexKit
 		uint2               WH,
 		DeviceFormat           format)
 	{
+        flushPendingBarriers();
+
 		const auto      deviceFormat    = TextureFormat2DXGIFormat(format);
 		const size_t    formatSize      = GetFormatElementSize(deviceFormat);
 
@@ -3228,6 +3251,8 @@ namespace FlexKit
 
     void CopyContext::CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
     {
+        flushPendingBarriers();
+
         const D3D12_TILED_RESOURCE_COORDINATE coordinate = {
             .X              = (UINT)destTile[0],
             .Y              = (UINT)destTile[1],
@@ -4389,6 +4414,109 @@ namespace FlexKit
 
 		return { signature, entryStride, std::move(layout) };
 	}
+
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
+    {
+        auto itr = begin;
+        while(itr < end)
+        {
+            auto& mappings = Textures.GetTileMapping(*itr);
+            auto deviceResource = GetDeviceResource(*itr);
+
+            Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator };
+            Vector<D3D12_TILE_REGION_SIZE>          regionSizes { allocator };
+            Vector<D3D12_TILE_RANGE_FLAGS>          flags       { allocator };
+            Vector<UINT>                            offsets     { allocator };
+            Vector<UINT>                            tileRanges  { allocator };
+            DeviceHeapHandle                        heap = InvalidHandle_t;
+
+            uint32_t I = 0;
+
+            while(I < mappings.size())
+            {
+                heap = mappings[I].heap;
+
+                for (;mappings[I].heap == heap && I < mappings.size(); I++)
+                {
+                    const auto& mapping = mappings[I];
+
+                    D3D12_TILED_RESOURCE_COORDINATE coordinate;
+                    coordinate.Subresource  = mapping.tileID.GetMip();
+                    coordinate.X            = mapping.tileID.GetTileX();
+                    coordinate.Y            = mapping.tileID.GetTileY();
+                    coordinate.Z            = 0;
+
+                    coordinates.push_back(coordinate);
+
+                    D3D12_TILE_REGION_SIZE regionSize;
+                    regionSize.Depth    = 1;
+                    regionSize.Height   = 1;// tileSize[0];
+                    regionSize.Width    = 1;// tileSize[1];
+
+                    regionSize.NumTiles = 1;
+                    regionSize.UseBox = false;
+
+                    regionSizes.push_back(regionSize);
+
+                    offsets.push_back(mapping.heapOffset);
+                    flags.push_back(D3D12_TILE_RANGE_FLAGS::D3D12_TILE_RANGE_FLAG_NONE);
+                    tileRanges.push_back(1);
+                    UINT tileCount = 1;
+                }
+
+                I++;
+
+                if (heap != InvalidHandle_t)
+                {
+                    D3D12_TILE_RANGE_FLAGS nullRangeFlag = D3D12_TILE_RANGE_FLAG_NULL;
+                    copyEngine.copyQueue->UpdateTileMappings(
+                        deviceResource,
+                        1,
+                        nullptr,
+                        nullptr,
+                        nullptr,
+                        1,
+                        &nullRangeFlag,
+                        nullptr,
+                        nullptr,
+                        D3D12_TILE_MAPPING_FLAG_NONE );
+
+                    copyEngine.copyQueue->UpdateTileMappings(
+                        deviceResource,
+                        mappings.size(),
+                        coordinates.data(),
+                        regionSizes.data(),
+                        GetDeviceResource(heap),
+                        coordinates.size(),
+                        flags.data(),
+                        offsets.data(),
+                        tileRanges.data(),
+                        D3D12_TILE_MAPPING_FLAG_NONE);
+                }
+
+                coordinates.clear();
+                regionSizes.clear();
+                flags.clear();
+                offsets.clear();
+                tileRanges.clear();
+            }
+
+            itr++;
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::UpdateTextureTileMappings(const ResourceHandle handle, const TileMapList& tileMaps)
+    {
+        Textures.UpdateTileMappings(handle, tileMaps.begin(), tileMaps.end());
+    }
 
 
     /************************************************************************************************/
@@ -5709,6 +5837,7 @@ namespace FlexKit
 		Entry.Flags             = Desc.backBuffer ? TF_BackBuffer : 0;
 		Entry.dimension         = Desc.Dimensions;
 		Entry.arraySize         = Desc.arraySize;
+        Entry.tileMappings      = { allocator };
 
 		Handles[Handle]         = UserEntries.push_back(Entry);
 
@@ -5919,6 +6048,125 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
+
+
+    void TextureStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
+    {
+        auto itr        = begin;
+        auto UserIdx    = Handles[handle];
+        auto& mappings  = UserEntries[UserIdx].tileMappings;
+
+
+        while (itr < end)
+        {
+            auto res = std::find_if(
+                std::begin(mappings),
+                std::end(mappings),
+                [&](const TileMapping& e)
+                {
+                    return itr->tileID == e.tileID;
+                });
+
+            if (res != std::end(mappings))
+            {
+                res->state = TileMapState::Updated;
+            }
+            else
+            {
+                TileMapping mapping = *itr;
+                mapping.state = TileMapState::Updated;
+                mappings.push_back(mapping);
+            }
+            ++itr;
+        }
+
+        for (auto& mappings : mappings)
+            if (mappings.state == TileMapState::InUse)
+                mappings.state = TileMapState::Stale;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void TextureStateTable::SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp)
+    {
+        Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator_temp };
+        Vector<D3D12_TILE_REGION_SIZE>          regionSize  { allocator_temp };
+        Vector<D3D12_TILE_RANGE_FLAGS>          tile_flags  { allocator_temp };
+        Vector<UINT>                            heapOffsets { allocator_temp };
+        Vector<UINT>                            tileCounts  { allocator_temp };
+
+        for (auto& userEntry : UserEntries)
+        {
+            coordinates.size();
+            regionSize.size();
+
+            ID3D12Resource* resource    = nullptr;
+            ID3D12Heap*     heap        = nullptr;
+
+            for (const auto& mapping: userEntry.tileMappings)
+            {
+                if (auto mappingHeap = renderSystem.GetDeviceResource(mapping.heap); heap != mappingHeap)
+                {
+                    if (mappingHeap)
+                        queue->UpdateTileMappings(
+                            resource,
+                            coordinates.size(),
+                            coordinates.data(),
+                            regionSize.data(),
+                            heap,
+                            tile_flags.size(),
+                            tile_flags.data(),
+                            heapOffsets.data(),
+                            tileCounts.data(),
+                            D3D12_TILE_MAPPING_FLAG_NONE);
+
+                    coordinates.clear();
+                    regionSize.clear();
+                    tile_flags.clear();
+                    heapOffsets.clear();
+                    tileCounts.clear();
+                }
+                else
+                {
+                    coordinates.push_back(
+                        D3D12_TILED_RESOURCE_COORDINATE{
+                            .X = mapping.tileID.GetTileX(),
+                            .Y = mapping.tileID.GetTileY(),
+                            .Z = 0,
+                            .Subresource = (UINT)mapping.tileID.GetMip()
+                        });
+
+                    regionSize.push_back(
+                        D3D12_TILE_REGION_SIZE{
+                            .NumTiles = 1,
+                            .UseBox = true,
+                            .Width = 1,
+                            .Height = 1,
+                            .Depth = 1,
+                        });
+
+                    tile_flags.push_back(D3D12_TILE_RANGE_FLAGS::D3D12_TILE_RANGE_FLAG_NONE);
+                    heapOffsets.push_back(mapping.heapOffset);
+                    tileCounts.push_back(1);
+                }
+            }
+        }
+    }
+
+
+    /************************************************************************************************/
+
+
+    const TileMapList& TextureStateTable::GetTileMapping(const ResourceHandle handle) const
+    {
+        auto UserIdx    = Handles[handle];
+        return UserEntries[UserIdx].tileMappings;
+    }
+
+
+    /************************************************************************************************/
 
 
 	void TextureStateTable::MarkRTUsed(ResourceHandle Handle)
@@ -7631,7 +7879,7 @@ namespace FlexKit
 		size_t ResourceSizes[]      = { Buffer->Size };
 
 		auto texture = RS->CreateGPUResource(GPUResourceDesc);
-		FlexKit::SubResourceUpload_Desc desc = {};
+		SubResourceUpload_Desc desc = {};
 		desc.buffers                         = Buffer;
 		desc.subResourceCount                = 1;
 		desc.subResourceStart                = 0;

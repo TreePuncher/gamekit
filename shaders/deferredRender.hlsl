@@ -228,7 +228,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 	if (depth < 1.0)
 	{
 		const float4 AlbedoSpecular = AlbedoBuffer.Load(Coord);
-		const float3 albedo         = float3(1.0,0.0,0.0);//AlbedoSpecular.xyz;
+		const float3 albedo         = AlbedoSpecular.xyz;
 		const float sF              = 0.3;//AlbedoSpecular.w;
 		const float4 MRIA           = MRIABuffer.Load(Coord);
 
@@ -308,7 +308,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 		//float3 reflVec = reflect(rayDir, normal);
 		//specular = ggxMap.SampleLevel(BiLinear, reflVec, 6).rgb;
-		color = kS * specular;//kD * diffuse + kS * specular;
+		color = kD * diffuse + kS * specular;
 	}
 	else
 	{

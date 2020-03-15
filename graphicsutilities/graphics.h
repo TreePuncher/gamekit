@@ -784,6 +784,8 @@ namespace FlexKit
 		void                CopyTextureRegion(ID3D12Resource*, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format);
         void                CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src);
 
+        void                flushPendingBarriers();
+
 		ID3D12CommandAllocator*		commandAllocator    = nullptr;
 		ID3D12GraphicsCommandList*	commandList         = nullptr;
 		size_t                      counter             = 0;
@@ -791,7 +793,8 @@ namespace FlexKit
 
 		UploadBuffer               uploadBuffer;
 
-		Vector<ID3D12Resource*>    freeResources;
+		Vector<ID3D12Resource*>                 freeResources;
+        static_vector<D3D12_RESOURCE_BARRIER>   pendingBarriers;
 	};
 
 
@@ -2323,15 +2326,73 @@ namespace FlexKit
 	};
 
 
+    struct TileID_t
+    {
+        uint32_t bytes;
+
+        uint32_t GetTileX() const
+        {
+            return bytes >> 16 & 0xf;
+        }
+        uint32_t GetTileY() const
+        {
+            return bytes >> 4 & 0xf;
+        }
+        int32_t GetMip() const
+        {
+            return bytes & 0xf;
+        }
+
+        bool operator == (const TileID_t& rhs) const
+        {
+            return bytes == rhs.bytes;
+        }
+
+        operator uint3 () const
+        {
+            return {
+                GetTileX(),
+                GetTileY(),
+                (UINT)GetMip()
+            };
+        }
+
+        operator uint32_t() const
+        {
+            return bytes;
+        }
+    };
+
+
+    enum class TileMapState
+    {
+        Stale,
+        InUse,
+        Updated,
+    };
+
+    struct TileMapping
+    {
+        TileID_t            tileID;
+        DeviceHeapHandle    heap;
+        TileMapState        state;
+        uint32_t            heapOffset;
+    };
+
+
+    using TileMapList = Vector<TileMapping>;
+
+
 	FLEXKITAPI class TextureStateTable
 	{
 	public:
-		TextureStateTable(iAllocator* allocator) :
-			Handles		        { allocator },
-			UserEntries	        { allocator },
-			Resources	        { allocator },
-			BufferedResources   { allocator },
-			delayRelease        { allocator } {}
+		TextureStateTable(iAllocator* IN_allocator) :
+			Handles		        { IN_allocator },
+			UserEntries	        { IN_allocator },
+			Resources	        { IN_allocator },
+			BufferedResources   { IN_allocator },
+			delayRelease        { IN_allocator },
+            allocator           { IN_allocator } {}
 
 
 		~TextureStateTable()
@@ -2339,33 +2400,37 @@ namespace FlexKit
 			Release();
 		}
 
+
 		void Release();
+
 
 		// No Copy
 		TextureStateTable				(const TextureStateTable&) = delete;
 		TextureStateTable& operator =	(const TextureStateTable&) = delete;
 
-		Texture2D		operator[]		(ResourceHandle Handle);
+		Texture2D		    operator[]		(ResourceHandle Handle);
 
-		ResourceHandle	AddResource		(const GPUResourceDesc& Desc, const DeviceResourceState InitialState);
-		void			SetState		(ResourceHandle Handle, DeviceResourceState State);
+		ResourceHandle	    AddResource		(const GPUResourceDesc& Desc, const DeviceResourceState InitialState);
+		void			    SetState		(ResourceHandle Handle, DeviceResourceState State);
 
-		uint2			GetWH(ResourceHandle Handle) const;
-		size_t			GetFrameGraphIndex(ResourceHandle Texture, size_t FrameID) const;
-		void			SetFrameGraphIndex(ResourceHandle Texture, size_t FrameID, size_t Index);
+		uint2			    GetWH(ResourceHandle Handle) const;
+		size_t			    GetFrameGraphIndex(ResourceHandle Texture, size_t FrameID) const;
+		void			    SetFrameGraphIndex(ResourceHandle Texture, size_t FrameID, size_t Index);
 
 		DXGI_FORMAT		    GetFormat(ResourceHandle handle) const;
 		TextureDimension    GetDimension(ResourceHandle) const;
 		size_t              GetArraySize(ResourceHandle) const;
 
-		uint32_t		GetTag(ResourceHandle Handle) const;
-		void			SetTag(ResourceHandle Handle, uint32_t Tag);
+		uint32_t		    GetTag(ResourceHandle Handle) const;
+		void			    SetTag(ResourceHandle Handle, uint32_t Tag);
 
-		void            SetBufferedIdx(ResourceHandle handle, uint32_t idx);
-		void            SetDebugName(ResourceHandle handle, const char* str);
+		void                SetBufferedIdx  (ResourceHandle handle, uint32_t idx);
+		void                SetDebugName    (ResourceHandle handle, const char* str);
 
+        void                UpdateTileMappings  (ResourceHandle handle, const TileMapping* begin, const TileMapping* end);
+        const TileMapList&  GetTileMapping      (const ResourceHandle handle) const;
 
-		void			MarkRTUsed		(ResourceHandle Handle);
+		void			    MarkRTUsed		(ResourceHandle Handle);
 
 		DeviceResourceState GetState	(ResourceHandle Handle) const;
 		ID3D12Resource*		GetAsset	(ResourceHandle Handle) const;
@@ -2375,30 +2440,30 @@ namespace FlexKit
 		void LockUntil		(size_t FrameID);
 
 		void UpdateLocks();
+        void SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp);
 
 		void _ReleaseTextureForceRelease(ResourceHandle Handle);
+
 	private:
 
 		struct UserEntry
 		{
-			size_t				ResourceIdx;
-			int64_t				FGI_FrameStamp;
-			uint32_t			FrameGraphIndex;
-			uint32_t			Tag;
-			uint32_t			Flags;
-			uint16_t			arraySize;
-			ResourceHandle		Handle;
-			DXGI_FORMAT			Format;
-			TextureDimension    dimension;
+			size_t				    ResourceIdx;
+			int64_t				    FGI_FrameStamp;
+			uint32_t			    FrameGraphIndex;
+			uint32_t			    Tag;
+			uint32_t			    Flags;
+			uint16_t			    arraySize;
+			ResourceHandle		    Handle;
+			DXGI_FORMAT			    Format;
+			TextureDimension        dimension;
+            Vector<TileMapping>     tileMappings;
 		};
 
 		struct ResourceEntry
 		{
 			void			Release();
-			void			SetState(DeviceResourceState State)
-			{
-				States[CurrentResource]		= State;
-			}
+			void			SetState(DeviceResourceState State) { States[CurrentResource]		= State;    }
 			void			SetFrameLock(size_t FrameID)		{ FrameLocks[CurrentResource]	= FrameID;	}
 			ID3D12Resource* GetAsset() const					{ return Resources[CurrentResource];		}
 			void			IncreaseIdx()						{ CurrentResource = ++CurrentResource % 3;	}
@@ -2413,6 +2478,7 @@ namespace FlexKit
 			uint2				WH;
 			ResourceHandle      owner;
 		};
+
 			
 		Vector<UserEntry>								    UserEntries;
 		Vector<ResourceEntry>							    Resources;
@@ -2426,6 +2492,7 @@ namespace FlexKit
 		};
 
 		Vector<UnusedResource>	delayRelease;
+        iAllocator*             allocator;
 	};
 
 
@@ -2914,6 +2981,7 @@ namespace FlexKit
 		DXGI_FORMAT format;
 	};
 
+
 	FLEXKITAPI class RenderSystem
 	{
 	public:
@@ -2979,8 +3047,12 @@ namespace FlexKit
 		const size_t	GetTextureElementSize		(ResourceHandle   Handle) const;
 		const uint2		GetTextureWH				(ResourceHandle   Handle) const;
 		const uint2		GetTextureWH				(UAVTextureHandle Handle) const;
-		DeviceFormat		GetTextureFormat			(ResourceHandle Handle) const;
+		DeviceFormat	GetTextureFormat			(ResourceHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat		(ResourceHandle Handle) const;
+
+        void            UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
+        void            UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList& );
+
 
 		TextureDimension GetTextureDimension(ResourceHandle handle) const;
 		size_t           GetTextureArraySize(ResourceHandle handle) const;
@@ -3067,7 +3139,7 @@ namespace FlexKit
         auto*                       _GetCopyQueue() { return copyEngine.copyQueue; }
 		void						_IncrementRSIndex() { CurrentIndex = (CurrentIndex + 1) % 3; }
 
-        void        _UpdateTileMapping(const uint3 Tile, const uint2 tileSize, ID3D12Resource* resource, ID3D12Heap* heap, const uint32_t heapOffset);
+        void                        _UpdateTileMapping(const uint3 Tile, const uint2 tileSize, ID3D12Resource* resource, ID3D12Heap* heap, const uint32_t heapOffset);
 
 
 		operator RenderSystem* () { return this; }

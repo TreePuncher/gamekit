@@ -1,12 +1,23 @@
-#include "memoryutilities.h"
+#ifndef TEXTURESTREAMINGUTILITIES_H
+#define TEXTURESTREAMINGUTILITIES_H
+
+#include "Memoryutilities.h"
 #include "TextureUtilities.h"
-#include "graphics.h"
+#include "ThreadUtilities.h"
+
 
 #define CRND_HEADER_FILE_ONLY
 #include <crn_decomp.h>
 
 namespace FlexKit
 {   /************************************************************************************************/
+
+
+    class RenderSystem;
+
+
+    /************************************************************************************************/
+
 
     class iDecompressor
     {
@@ -16,70 +27,16 @@ namespace FlexKit
         virtual UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) = 0;
     };
 
+
     class CRNDecompressor final : public iDecompressor
     {
     public:
-        CRNDecompressor(const uint32_t mipLevel, AssetHandle asset, iAllocator* IN_allocator) :
-                allocator{ IN_allocator }
-        {
-            TextureResourceBlob* resource = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(asset));
+        CRNDecompressor(const uint32_t mipLevel, AssetHandle asset, iAllocator* IN_allocator);
+        ~CRNDecompressor();
+ 
 
-            crnd::crn_level_info levelInfo;
-            crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), mipLevel, &levelInfo);
+        UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
 
-            rowPitch   = levelInfo.m_blocks_x * levelInfo.m_bytes_per_block;
-            bufferSize = levelInfo.m_blocks_y * rowPitch;
-
-            blockSize   = levelInfo.m_bytes_per_block;
-            blocks_X    = levelInfo.m_blocks_x;
-            blocks_Y    = levelInfo.m_blocks_y;
-
-            buffer = (char*)allocator->malloc(bufferSize);
-
-            void* data[1]   = { (void*)buffer};
-
-            crnd::crnd_unpack_context   crn_context = crnd::crnd_unpack_begin(resource->GetBuffer(), resource->GetBufferSize());
-            auto res    = crnd::crnd_unpack_level(crn_context, data, bufferSize, rowPitch, mipLevel);
-            crnd::crnd_unpack_end(crn_context);
-
-            FreeAsset(asset);
-        }
-
-
-
-        ~CRNDecompressor()
-        {
-            allocator->free(buffer);
-        }
-
-
-        UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) override
-        {
-            auto reservation    = ctx.Reserve(64 * KILOBYTE);
-            auto blocksX        = TileSize[0] / 4;
-            auto blocksY        = TileSize[1] / 4;
-            auto localRowPitch  = blockSize * blocksX;
-
-            const auto tileX = id.GetTileX();
-            const auto tileY = id.GetTileY();
-
-            /*
-            for (size_t row = 0; row < 64; ++row)
-                for (size_t column = 0; column < 16; ++column)
-                    memcpy(
-                        reservation.buffer + blockSize * 256 * column + blockSize * row * 4,
-                        buffer + blockSize * column * 4 + rowPitch * row + tileY * rowPitch * blocksY + tileX * localRowPitch,
-                        blockSize * 4);
-            */
-
-            for (size_t row = 0; row < blocksY; ++row)
-                memcpy(
-                    reservation.buffer + row * localRowPitch,
-                    buffer + row * rowPitch + tileX * localRowPitch,
-                    localRowPitch);
-
-            return reservation;
-        }
 
         uint32_t                    blocks_X;
         uint32_t                    blocks_Y;
@@ -94,27 +51,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline std::optional<CRNDecompressor*> CreateCRNDecompressor(const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator)
-    {
-        TextureResourceBlob* resource   = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(asset));
-        auto buffer                     = resource->GetBuffer();
-        const auto bufferSize           = resource->GetBufferSize();
-       
-        EXITSCOPE(FreeAsset(asset));
-
-        crnd::crn_texture_info info;
-        if (crnd::crnd_get_texture_info(buffer, resource->GetBufferSize(), &info))
-        {
-            crnd::crn_level_info levelInfo;
-
-            if (!crnd::crnd_get_level_info(buffer, bufferSize, 0, &levelInfo))
-                return {};
-
-            return &allocator->allocate<CRNDecompressor>(MIPlevel, asset, allocator);
-        }
-        else
-            return {};
-    }
+    std::optional<CRNDecompressor*> CreateCRNDecompressor(const uint32_t MIPlevel, AssetHandle asset, iAllocator* allocator);
 
 
     /************************************************************************************************/
@@ -169,7 +106,6 @@ namespace FlexKit
 
             TextureResourceBlob* resource   = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(assetHandle));
 
-
             if (IsDDS((DeviceFormat)resource->format))
             {
                 Close();
@@ -213,6 +149,243 @@ namespace FlexKit
     };
 
 
+    
+    /************************************************************************************************/
+
+
+    struct TextureFeedbackPass_Data
+    {
+        CameraHandle                    camera;
+        GatherTask&                     pvs;
+        ReserveConstantBufferFunction   constantBufferAllocator;
+        FrameResourceHandle             feedbackCounters;
+        FrameResourceHandle             feedbackTarget;
+        FrameResourceHandle             feedbackBuffer;
+        FrameResourceHandle             feedbackLists;
+        FrameResourceHandle             feedbackDepth;
+    };
+
+
+
+	/************************************************************************************************/
+
+
+	constexpr size_t GetMinBlockSize()
+	{
+		return 64 * KILOBYTE;
+	}
+
+	struct TextureCacheDesc
+	{
+		const size_t textureCacheSize	= MEGABYTE * 16; // Very small for debugging purposes, forces resource eviction and priority, should be changed to a reasonable value
+		const size_t blockSize			= GetMinBlockSize();
+	};
+
+
+	/************************************************************************************************/
+
+
+    struct AllocatedBlock
+    {
+        TileID_t        tileID;
+        ResourceHandle  resource;
+        uint32_t        offset;
+        uint32_t        tileIdx;
+    };
+
+
+    struct gpuTileID
+    {
+        TileID_t tileID;
+        uint32_t TextureID;
+
+        uint64_t GetSortingID() const
+        {
+            return (uint64_t(TextureID) << 32) | tileID.bytes;
+        }
+
+        operator uint64_t () const { return GetSortingID(); }
+    };
+
+
+    using AllocatedBlockList    = Vector<AllocatedBlock>;
+    using gpuTileList           = Vector<gpuTileID>;
+
+    struct BlockAllocation
+    {
+        AllocatedBlockList  reallocations;
+        AllocatedBlockList  allocations;
+    };
+
+	class TextureBlockAllocator
+	{
+	public:
+
+        struct Block
+        {
+            TileID_t        tileID;
+            ResourceHandle  resource;
+            uint32_t        state;
+            uint32_t        blockID;
+
+            operator uint64_t() const
+            {
+                return ((uint64_t)resource.to_uint()) << 32 | tileID;
+            }
+        };
+
+        enum EBlockState
+        {
+            Free,
+            InUse,
+            Stale// Free for reallocation
+        };
+
+
+        TextureBlockAllocator(const size_t blockCount, iAllocator* IN_allocator);
+
+        Vector<gpuTileID>   UpdateTileStates    (gpuTileID* begin, gpuTileID* end, iAllocator* allocator);
+        BlockAllocation     AllocateBlocks      (gpuTileID* begin, gpuTileID* end, iAllocator* allocator);
+
+        const static uint32_t   blockSize   = 64 * KILOBYTE;
+        uint32_t                last        = 0;
+
+        Vector<Block>           blockTable;
+
+		iAllocator*             allocator;
+	};
+
+
+    /************************************************************************************************/
+
+
+    class FLEXKITAPI TextureStreamingEngine
+	{
+	public:
+		TextureStreamingEngine(RenderSystem& IN_renderSystem, iAllocator* IN_allocator, const TextureCacheDesc& desc = {}) : 
+			allocator		        { IN_allocator		},
+            textureBlockAllocator   { desc.textureCacheSize / desc.blockSize,   IN_allocator },
+			renderSystem	        { IN_renderSystem	},
+			settings		        { desc				},
+            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE * 2)                                    },
+            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 240, 240 }, DeviceFormat::D32_FLOAT)) },
+            feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
+            feedbackReturnBuffer    {
+                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
+                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
+                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) } },
+             heap                   { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
+             mappedAssets           { IN_allocator }
+        {
+            //IN_renderSystem.SetDebugName(feedbackTarget, "texture feedback target");
+
+            for (size_t I = 0; I < 3; I++)
+            {
+                renderSystem.SetReadBackEvent(
+                    feedbackReturnBuffer[I],
+                    [&, textureStreamingEngine = this](char* buffer, const size_t bufferSize)
+                    {
+                        if (!buffer)
+                            return;
+
+                        PushToLocalQueue(allocator->allocate<TextureBlockUpdate>(*textureStreamingEngine, buffer, allocator));
+
+                        //ReadBackOffset  = readBackBlock * MEGABYTE * 2;
+                        //readBackBlock   = readBackBlock > 6 ? 0 : ++readBackBlock;
+                    });
+
+                renderSystem.LockReadBack(
+                    feedbackReturnBuffer[I],
+                    -1);
+            }
+        }
+
+
+        ~TextureStreamingEngine()
+        {
+            renderSystem.ReleaseUAV(feedbackBuffer);
+            renderSystem.ReleaseUAV(feedbackCounters);
+            renderSystem.ReleaseTexture(feedbackDepth);
+        }
+
+        
+        void TextureFeedbackPass(
+            UpdateDispatcher&                   dispatcher,
+            FrameGraph&                         frameGraph,
+            CameraHandle                        camera,
+            UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
+            ResourceHandle                      testTexture,
+            ReserveConstantBufferFunction&      constantBufferAllocator);
+
+
+        struct TextureBlockUpdate : public FlexKit::iWork
+        {
+            TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, iAllocator* IN_allocator);
+
+            void Run() override;
+
+            void Release() override { allocator->release(*this); }
+
+            TextureStreamingEngine& textureStreamEngine;
+            size_t                  requestCount = 0;
+            gpuTileID*              requests;
+            iAllocator*             allocator;
+        };
+
+
+        gpuTileList     UpdateTileStates    (gpuTileID* begin, gpuTileID* end, iAllocator* allocator);
+        BlockAllocation AllocateTiles       (gpuTileID* begin, gpuTileID* end);
+
+        void                        BindAsset           (const AssetHandle textureAsset, const ResourceHandle  resource);
+        std::optional<AssetHandle>  GetResourceAsset    (const ResourceHandle  resource) const;
+
+        void PostUpdatedTiles(const BlockAllocation& blocks);
+        void MarkUpdateCompleted() { updateInProgress = false; }
+
+	private:
+
+
+        struct MappedAsset
+        {
+            ResourceHandle  resource;
+            AssetHandle     textureAsset;
+
+            auto GetResourceID() const
+            {
+                return resource.to_uint();
+            }
+
+
+            uint64_t GetID() const
+            {
+                return (uint64_t)resource.to_uint() << 32 | textureAsset;
+            }
+        };
+
+
+		RenderSystem&				renderSystem;
+
+        bool                        updateInProgress = false;
+
+        uint32_t                    readBackBlock = 0;
+        uint32_t                    counter = -1;
+
+        UAVResourceHandle		    feedbackBuffer;     // GPU
+        UAVResourceHandle           feedbackCounters;   // GPU
+        ResourceHandle		        feedbackDepth;      // GPU
+
+        ReadBackResourceHandle      feedbackReturnBuffer[3]; // CPU + GPU
+
+        Vector<MappedAsset>         mappedAssets;
+		TextureBlockAllocator		textureBlockAllocator;
+        DeviceHeapHandle            heap;
+
+        iAllocator*                 allocator;
+		const TextureCacheDesc		settings;
+	};
+
+
+
 }   /************************************************************************************************/
 
 /**********************************************************************
@@ -238,3 +411,6 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
+
+
+#endif

@@ -292,6 +292,11 @@ namespace FlexKit
 			for (const auto& I : Elements)
 				pop_back();
 		}
+
+        TY_* data()
+        {
+            return Elements;
+        }
  
 		void resize(size_t NewSize)
 		{
