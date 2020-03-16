@@ -163,6 +163,8 @@ namespace FlexKit
         FrameResourceHandle             feedbackBuffer;
         FrameResourceHandle             feedbackLists;
         FrameResourceHandle             feedbackDepth;
+
+        ReadBackResourceHandle          readbackBuffer;
     };
 
 
@@ -244,8 +246,8 @@ namespace FlexKit
 
         TextureBlockAllocator(const size_t blockCount, iAllocator* IN_allocator);
 
-        Vector<gpuTileID>   UpdateTileStates    (gpuTileID* begin, gpuTileID* end, iAllocator* allocator);
-        BlockAllocation     AllocateBlocks      (gpuTileID* begin, gpuTileID* end, iAllocator* allocator);
+        Vector<gpuTileID>   UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
+        BlockAllocation     AllocateBlocks      (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
 
         const static uint32_t   blockSize   = 64 * KILOBYTE;
         uint32_t                last        = 0;
@@ -277,24 +279,24 @@ namespace FlexKit
              heap                   { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
              mappedAssets           { IN_allocator }
         {
-            //IN_renderSystem.SetDebugName(feedbackTarget, "texture feedback target");
-
             for (size_t I = 0; I < 3; I++)
             {
                 renderSystem.SetReadBackEvent(
                     feedbackReturnBuffer[I],
                     [&, textureStreamingEngine = this](char* buffer, const size_t bufferSize)
                     {
+                        readBackBlock = ++readBackBlock % 3;
+                        updateInProgress = false;
+
                         if (!buffer)
                             return;
 
-                        PushToLocalQueue(allocator->allocate<TextureBlockUpdate>(*textureStreamingEngine, buffer, allocator));
-
-                        //ReadBackOffset  = readBackBlock * MEGABYTE * 2;
-                        //readBackBlock   = readBackBlock > 6 ? 0 : ++readBackBlock;
+                        renderSystem.threads.AddWork(
+                            &allocator->allocate<TextureBlockUpdate>(*textureStreamingEngine, buffer, allocator),
+                            allocator);
                     });
 
-                renderSystem.LockReadBack(
+                renderSystem.QueueReadBack(
                     feedbackReturnBuffer[I],
                     -1);
             }
@@ -333,8 +335,8 @@ namespace FlexKit
         };
 
 
-        gpuTileList     UpdateTileStates    (gpuTileID* begin, gpuTileID* end, iAllocator* allocator);
-        BlockAllocation AllocateTiles       (gpuTileID* begin, gpuTileID* end);
+        gpuTileList     UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
+        BlockAllocation AllocateTiles       (const gpuTileID* begin, const gpuTileID* end);
 
         void                        BindAsset           (const AssetHandle textureAsset, const ResourceHandle  resource);
         std::optional<AssetHandle>  GetResourceAsset    (const ResourceHandle  resource) const;
@@ -368,7 +370,6 @@ namespace FlexKit
         bool                        updateInProgress = false;
 
         uint32_t                    readBackBlock = 0;
-        uint32_t                    counter = -1;
 
         UAVResourceHandle		    feedbackBuffer;     // GPU
         UAVResourceHandle           feedbackCounters;   // GPU

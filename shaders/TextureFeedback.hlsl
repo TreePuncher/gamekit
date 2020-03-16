@@ -39,17 +39,16 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
     // Get Texture Block ID
     float2 d_xy             = ddx(IN.UV);
     uint MIPLevelRequested  = floor(pow(d_xy, 2));
-    uint width              = 0;
-    uint height             = 0;
+    uint2 WH                = uint2(0, 0);
     uint mip                = 0;
 
-    texture1.GetDimensions(MIPLevelRequested, width, height, mip);
-    uint blockX  = min(uint(width  / 256) * saturate(IN.UV.x), uint(width  / 256) - 1);
-    uint blockY  = min(uint(height / 256) * saturate(IN.UV.y), uint(height  / 256) - 1);
-    uint blockID = (blockX << 16) | (blockY << 4) | min(MIPLevelRequested, 16);
-    //uint blockID = (0<< 16) | (0 << 4) | min(MIPLevelRequested, 16);
+    texture1.GetDimensions(MIPLevelRequested, WH.x, WH.y, mip);
+    const uint2 blockSize = uint2(256, 256);
+    //const uint2 blockSize = textureBlockSize[0];
+    const uint2 blockXY   = min(uint2(WH / blockSize) * saturate(IN.UV), WH  / blockSize - 1);
+    uint blockID    = (blockXY.x << 16) | (blockXY.y << 4) | min(MIPLevelRequested, 16);
 
-    if(width == 0 || height == 0)
+    if(WH.x == 0 || WH.y == 0)
         return;
 
     uint status = 0;

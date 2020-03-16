@@ -810,7 +810,7 @@ namespace FlexKit
 		void Wait(CopyContextHandle handle);
 		void Close(CopyContextHandle handle);
 
-		void Submit(CopyContextHandle* begin, CopyContextHandle* end, atomic_uint& counter);
+		void Submit(CopyContextHandle* begin, CopyContextHandle* end, const size_t counter);
 
 		void Push_Temporary(ID3D12Resource* resource, CopyContextHandle handle);
 
@@ -1556,6 +1556,9 @@ namespace FlexKit
 		}
 
 
+        void QueueReadBack(ReadBackResourceHandle readBack);
+
+
 		void SetDepthStencil		(ResourceHandle DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
 
@@ -1656,6 +1659,7 @@ namespace FlexKit
 		void SetUAVWrite();
 		void SetUAVFree();
 
+        void _QueueReadBacks(const size_t counter);
 
 		DescHeapPOS _ReserveDSV(size_t count);
 		DescHeapPOS _ReserveSRV(size_t count);
@@ -1671,6 +1675,16 @@ namespace FlexKit
 		ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
 
 		RenderSystem* renderSystem = nullptr;
+
+        void BeginMarker(const char* str)
+        {
+        }
+
+        void EndMarker(const char* str)
+        {
+
+        }
+
 
 	private:
 
@@ -1768,13 +1782,14 @@ namespace FlexKit
 			D3D12_CPU_DESCRIPTOR_HANDLE     CPU_Handle;
 		};
 
-		static_vector<StreamOutResource, 128>   TrackedSOBuffers;
-		static_vector<Barrier, 128>				PendingBarriers;
-		static_vector<RTV_View, 128>            renderTargetViews;
-		static_vector<RTV_View, 128>            depthStencilViews;
+		static_vector<StreamOutResource, 128>       TrackedSOBuffers;
+		static_vector<Barrier, 128>				    PendingBarriers;
+		static_vector<RTV_View, 128>                renderTargetViews;
+		static_vector<RTV_View, 128>                depthStencilViews;
+        static_vector<ReadBackResourceHandle, 128>  queuedReadBacks;
 
-		uint8_t                                 lockCounter = 0;
-		iAllocator*								Memory;
+		uint8_t                                     lockCounter = 0;
+		iAllocator*								    Memory;
 	};
 
 
@@ -2457,7 +2472,7 @@ namespace FlexKit
 			ResourceHandle		    Handle;
 			DXGI_FORMAT			    Format;
 			TextureDimension        dimension;
-            Vector<TileMapping>     tileMappings;
+            Vector<TileMapping>     tileMappings = {};
 		};
 
 		struct ResourceEntry
@@ -2903,16 +2918,15 @@ namespace FlexKit
         {
             for (ReadBackEntry& buffer : readBackBuffers)
             {
-                if ((buffer.lastReadFrameID) < currentFrameID)
+                if (buffer.queueUntil <= currentFrameID + 1)
                 {
-                    buffer.lastReadFrameID = -1;
+                    buffer.queueUntil = -1;
 
                     void* _ptr = nullptr;
 
                     D3D12_RANGE range;
                     range.Begin = 0;
-                    range.End = buffer.size;
-
+                    range.End = buffer.size / 2;
 
                     buffer.resource->Map(0, &range, &_ptr);
                     buffer.onReadBack((char*)_ptr, buffer.size);
@@ -2945,7 +2959,7 @@ namespace FlexKit
             size_t                  size;
             ReadBackResourceHandle  handle;
             ID3D12Resource*         resource;
-            size_t                  lastReadFrameID;
+            size_t                  queueUntil;
             ReadBackEventHandler    onReadBack;
 		};
 
@@ -3076,7 +3090,7 @@ namespace FlexKit
 		ReadBackResourceHandle  CreateReadBackBuffer            (const size_t bufferSize);
 
         void SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
-        void LockReadBack(ReadBackResourceHandle readbackBuffer, const uint64_t frameID);
+        void QueueReadBack(ReadBackResourceHandle readbackBuffer, const uint64_t frameID);
 
 
 		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
@@ -3134,13 +3148,10 @@ namespace FlexKit
 		size_t  _GetVidMemUsage();
 
 
-		ID3D12QueryHeap*			_GetQueryResource(QueryHandle handle);
-		CopyContext&                _GetCopyContext(CopyContextHandle handle = InvalidHandle_t);
-        auto*                       _GetCopyQueue() { return copyEngine.copyQueue; }
+		ID3D12QueryHeap*			_GetQueryResource   (QueryHandle handle);
+		CopyContext&                _GetCopyContext     (CopyContextHandle handle = InvalidHandle_t);
+        auto*                       _GetCopyQueue()     { return copyEngine.copyQueue; }
 		void						_IncrementRSIndex() { CurrentIndex = (CurrentIndex + 1) % 3; }
-
-        void                        _UpdateTileMapping(const uint3 Tile, const uint2 tileSize, ID3D12Resource* resource, ID3D12Heap* heap, const uint32_t heapOffset);
-
 
 		operator RenderSystem* () { return this; }
 

@@ -525,7 +525,7 @@ namespace FlexKit
 		Ty pop_back()
 		{
 			auto Temp = back();
-			A[Size--].~Ty();
+			A[--Size].~Ty();
 
 			return Temp;
 		}

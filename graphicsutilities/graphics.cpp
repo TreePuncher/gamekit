@@ -1667,6 +1667,15 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    void Context::QueueReadBack(ReadBackResourceHandle readBack)
+    {
+        queuedReadBacks.push_back(readBack);
+    }
+
+
+    /************************************************************************************************/
+
+
 	void Context::SetDepthStencil(ResourceHandle DS)
 	{
 		if (DS != InvalidHandle_t)
@@ -2789,6 +2798,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    void Context::_QueueReadBacks(const size_t counter)
+    {
+        for (const auto readBackHandle : queuedReadBacks)
+            renderSystem->QueueReadBack(readBackHandle, counter + 1);
+
+        queuedReadBacks.clear();
+    }
+
+
+    /************************************************************************************************/
+
+
 	DescHeapPOS Context::_ReserveDSV(size_t count)
 	{
 		auto currentCPU = DSV_CPU;
@@ -3336,11 +3357,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end, atomic_uint& counter)
+	void CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end, const size_t counter)
 	{
 		static_vector<ID3D12CommandList*, 64> cmdLists;
-
-		const size_t localCounter = ++counter;
 
 		for (auto itr = begin; itr < end; itr++)
 		{
@@ -3348,12 +3367,12 @@ namespace FlexKit
 			cmdLists.push_back(context.commandList);
 
 			context.uploadBuffer.Last = context.uploadBuffer.Position;
-
+            
 			Close(*itr);
 		}
 
 		copyQueue->ExecuteCommandLists(cmdLists.size(), cmdLists);
-		copyQueue->Signal(fence, localCounter);
+		copyQueue->Signal(fence, counter);
 	}
 
 
@@ -3800,8 +3819,6 @@ namespace FlexKit
 	{
 		for (auto& syncPoint : Syncs)
 			copyEngine.Wait(syncPoint.queue);
-
-
 
 		for (size_t itr = 0; itr < 3; itr++)
 		{
@@ -4473,6 +4490,7 @@ namespace FlexKit
                 if (heap != InvalidHandle_t)
                 {
                     D3D12_TILE_RANGE_FLAGS nullRangeFlag = D3D12_TILE_RANGE_FLAG_NULL;
+
                     copyEngine.copyQueue->UpdateTileMappings(
                         deviceResource,
                         1,
@@ -4559,9 +4577,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void RenderSystem::LockReadBack(ReadBackResourceHandle readbackBuffer, const uint64_t frameID)
+    void RenderSystem::QueueReadBack(ReadBackResourceHandle readbackBuffer, const uint64_t frameID)
     {
-        ReadBackTable[readbackBuffer].lastReadFrameID = frameID;
+        ReadBackTable[readbackBuffer].queueUntil = frameID;
     }
 
 
@@ -5200,7 +5218,10 @@ namespace FlexKit
 				Desc->format);
 		}
 
-		//RS->_InsertBarrier(destinationResource, D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COPY_DEST, EndState);
+        copyCtx.Barrier(
+            destinationResource,
+            DRS_Write,
+            DRS_GENERIC);
 	}
 
 
@@ -6665,42 +6686,6 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
-
-
-    void RenderSystem::_UpdateTileMapping(const uint3 Tile, const uint2 tileSize, ID3D12Resource* resource, ID3D12Heap* heap, const uint32_t heapOffset)
-    {
-        D3D12_TILED_RESOURCE_COORDINATE coordinate;
-        coordinate.Subresource  = Tile[2];
-        coordinate.X            = Tile[0];
-        coordinate.Y            = Tile[1];
-        coordinate.Z            = 0;
-
-        D3D12_TILE_REGION_SIZE          regionSize;
-        regionSize.Depth    = 1;
-        regionSize.Height   = 1;// tileSize[0];
-        regionSize.Width    = 1;// tileSize[1];
-
-        regionSize.NumTiles = 1;
-        regionSize.UseBox = false;
-
-        D3D12_TILE_RANGE_FLAGS flag = D3D12_TILE_RANGE_FLAGS::D3D12_TILE_RANGE_FLAG_NONE;
-        UINT tileCount = 1;
-
-        copyEngine.copyQueue->UpdateTileMappings(
-            resource,
-            1,
-            &coordinate,
-            &regionSize,
-            heap,
-            1,
-            &flag,
-            &heapOffset,
-            &tileCount,
-            D3D12_TILE_MAPPING_FLAG_NONE);
-    }
-
-
 	/************************************************************************************************/
 
 
@@ -6758,11 +6743,13 @@ namespace FlexKit
 		}
 
 		static_vector<ID3D12CommandList*> cls;
-		for (auto context : contexts) {
+		for (auto context : contexts)
+        {
 			context->Close();
 			context->LockFor(2);
 
 			cls.push_back(context->GetCommandList());
+            context->_QueueReadBacks(Val);
 		}
 
 		GraphicsQueue->ExecuteCommandLists(cls.size(), cls.begin());
@@ -6772,7 +6759,7 @@ namespace FlexKit
 		ConstantBuffers.LockFor(2);
 		Textures.LockUntil(GetCurrentFrame() + 2);
 
-        ReadBackTable.Update(GetCurrentFrame());
+        ReadBackTable.Update(Fence->GetCompletedValue());
 
 		_IncrementRSIndex();
 	}
@@ -6783,8 +6770,15 @@ namespace FlexKit
 
 	void RenderSystem::SubmitUploadQueues(CopyContextHandle* handles, size_t count)
 	{
-		copyEngine.Submit(handles, handles + count, FenceCounter);
-		SyncCounter.fetch_add(count, std::memory_order_acq_rel);
+        const auto counter = ++FenceCounter;
+
+        UploadSyncPoint sync;
+        sync.waitCounter = counter;
+
+        Syncs.push_back(sync);
+
+		copyEngine.Submit(handles, handles + count, counter);
+        SyncCounter++;
 	}
 
 
