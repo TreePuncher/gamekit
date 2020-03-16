@@ -118,18 +118,6 @@ namespace FlexKit
 
         FINALLYOVER
 
-        /*
-        typedef struct D3D12_INPUT_ELEMENT_DESC
-        {
-        LPCSTR SemanticName;
-        UINT SemanticIndex;
-        DXGI_FORMAT Format;
-        UINT InputSlot;
-        UINT AlignedByteOffset;
-        D3D12_INPUT_CLASSIFICATION InputSlotClass;
-        UINT InstanceDataStepRate;
-        } 	D3D12_INPUT_ELEMENT_DESC;
-        */
 
         D3D12_INPUT_ELEMENT_DESC InputElements[] = {
                 { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -142,25 +130,23 @@ namespace FlexKit
         D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);    // enable conservative rast
         Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
-        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // Disable depth 
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
         Depth_Desc.DepthEnable      = true;
 
-        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
-            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
-            PSO_Desc.VS                    = VShader;
-            PSO_Desc.PS                    = PShader;
-            PSO_Desc.RasterizerState       = Rast_Desc;
-            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-            PSO_Desc.SampleMask            = UINT_MAX;
-            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-            PSO_Desc.NumRenderTargets      = 0;
-            PSO_Desc.SampleDesc.Count      = 1;
-            PSO_Desc.SampleDesc.Quality    = 0;
-            PSO_Desc.DSVFormat             = DXGI_FORMAT_UNKNOWN;
-            PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
-            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
-            PSO_Desc.DepthStencilState     = Depth_Desc;
-        }
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {
+            .pRootSignature        = RS->Library.RSDefault,
+            .VS                    = VShader,
+            .PS                    = PShader,
+            .BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT),
+            .SampleMask            = UINT_MAX,
+            .RasterizerState       = Rast_Desc,
+            .DepthStencilState     = Depth_Desc,
+            .InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) },
+            .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+            .NumRenderTargets      = 0,
+            .DSVFormat             = DXGI_FORMAT_D32_FLOAT,
+            .SampleDesc            = { 1, 0 },
+        };
 
 
         ID3D12PipelineState* PSO = nullptr;
@@ -189,10 +175,8 @@ namespace FlexKit
             ResourceHandle                      testTexture,
             ReserveConstantBufferFunction&      constantBufferAllocator)
     {
-        if (updateInProgress || counter++ < 2)
+        if (updateInProgress)
             return;
-
-        counter = 0;
 
         updateInProgress = true;
 
@@ -213,6 +197,7 @@ namespace FlexKit
                 data.feedbackBuffer     = nodeBuilder.ReadWriteUAV(feedbackBuffer);
                 data.feedbackCounters   = nodeBuilder.ReadWriteUAV(feedbackCounters);
                 data.feedbackDepth      = nodeBuilder.WriteDepthBuffer(feedbackDepth);
+                data.readbackBuffer     = feedbackReturnBuffer[readBackBlock];
             },
             [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
@@ -240,7 +225,7 @@ namespace FlexKit
                     { { 256, 256 }}
                 };
 
-                auto passConstants = ConstantBufferDataSet{ constants, passContantBuffer };
+                const auto passConstants = ConstantBufferDataSet{ constants, passContantBuffer };
 
                 ctx.CopyBufferRegion(
                     { resources.GetObjectResource(passConstants.Handle()) },
@@ -298,23 +283,19 @@ namespace FlexKit
                     ctx.DrawIndexed(triMesh->IndexCount);
                 }
 
-
                 ctx.CopyBufferRegion(
                     {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters, DRS_Read, &ctx)) ,
                         resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackBuffer, DRS_Read, &ctx)) },
                     { 0, 0 },
-                    {   resources.GetObjectResource(feedbackReturnBuffer[readBackBlock]),
-                        resources.GetObjectResource(feedbackReturnBuffer[readBackBlock]) },
+                    {   resources.GetObjectResource(data.readbackBuffer),
+                        resources.GetObjectResource(data.readbackBuffer) },
                     { 0, 64 },
                     { 8, MEGABYTE / 2 },
                     { DRS_Write, DRS_Write },
                     { DRS_Write, DRS_Write }
                 );
 
-
-                resources.renderSystem.LockReadBack(
-                    feedbackReturnBuffer[readBackBlock],
-                    resources.renderSystem.GetCurrentFrame() + 2);
+                ctx.QueueReadBack(data.readbackBuffer);
             });
     }
 
@@ -325,14 +306,14 @@ namespace FlexKit
     TextureStreamingEngine::TextureBlockUpdate::TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, iAllocator* IN_allocator) :
             iWork               { IN_allocator              },
             allocator           { IN_allocator              },
-            textureStreamEngine { IN_textureStreamEngine    }
+            textureStreamEngine { IN_textureStreamEngine    },
+            requestCount        { 0 }
         {
             memcpy(&requestCount, buffer, sizeof(uint64_t));
 
             if (requestCount)
             {
                 requests = reinterpret_cast<gpuTileID*>(IN_allocator->malloc(requestCount));
-
                 memcpy(requests, buffer + 64, requestCount * 8);
             }
         }
@@ -344,14 +325,17 @@ namespace FlexKit
     void TextureStreamingEngine::TextureBlockUpdate::Run()
     {
         if (!requests || !requestCount)
+        {
+            textureStreamEngine.MarkUpdateCompleted();
             return;
+        }
 
-        auto lg_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
+        const auto lg_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
         {
             return lhs.GetSortingID() < rhs.GetSortingID();
         };
 
-        auto eq_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
+        const auto eq_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
         {
             return lhs.GetSortingID() == rhs.GetSortingID();
         };
@@ -364,11 +348,13 @@ namespace FlexKit
         const auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
         const auto uniqueCount    = (size_t)(end - requests);
 
-        auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, allocator);
-        auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
+        const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, allocator);
+        const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
         allocator->free(requests);
+
         textureStreamEngine.PostUpdatedTiles(blockAllocations);
+        textureStreamEngine.MarkUpdateCompleted();
     }
 
 
@@ -377,13 +363,13 @@ namespace FlexKit
 
     void TextureStreamingEngine::BindAsset(const AssetHandle textureAsset, const ResourceHandle  resource)
     {
-        auto comparator =
+        const auto comparator =
             [](const MappedAsset& lhs, const MappedAsset& rhs)
             {
                 return lhs.GetResourceID() < rhs.GetResourceID();
             };
 
-        auto res = std::lower_bound(
+        const auto res = std::lower_bound(
             std::begin(mappedAssets),
             std::end(mappedAssets),
             MappedAsset{ resource },
@@ -424,6 +410,9 @@ namespace FlexKit
 
     void TextureStreamingEngine::PostUpdatedTiles(const BlockAllocation& allocations)
     {
+        if (allocations.allocations.size() == 0)
+            return;
+
         auto ctxHandle      = renderSystem.OpenUploadQueue();
         auto& ctx           = renderSystem._GetCopyContext(ctxHandle);
         auto uploadQueue    = renderSystem._GetCopyQueue();
@@ -432,8 +421,8 @@ namespace FlexKit
         Vector<ResourceHandle>  updatedTextures = { allocator };
         ResourceHandle          prevResource    = InvalidHandle_t;
         TextureStreamContext    streamContext   = { allocator };
-        uint2                   blockSize       = { 256, 256 };
-        TileMapList             mappings{ allocator };
+        uint2                   blockSize       = { 512, 512 };
+        TileMapList             mappings        = { allocator };
 
         for (const AllocatedBlock& block : allocations.allocations)
         {
@@ -492,36 +481,25 @@ namespace FlexKit
                 block.tileID,
                 block.tileIdx,
                 tile);
-
-            renderSystem._UpdateTileMapping(
-                block.tileID,
-                blockSize,
-                deviceResource,
-                deviceHeap,
-                block.tileIdx);
         }
 
-        if (allocations.allocations.size() && mappings.size() != 0) {
+        if (allocations.allocations.size() && mappings.size() != 0)
+        {
             const ResourceHandle resource = allocations.allocations.back().resource;
-            renderSystem.UpdateTextureTileMappings(
-                resource,
-                mappings);
+            renderSystem.UpdateTextureTileMappings(resource, mappings);
         }
 
         mappings.clear();
 
         renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), allocator);
         renderSystem.SubmitUploadQueues(&ctxHandle);
-        //updateInProgress    = false;
-        readBackBlock       = ++readBackBlock % 3;
-        counter             = 0;
     }
 
 
     /************************************************************************************************/
 
 
-    Vector<gpuTileID> TextureBlockAllocator::UpdateTileStates(gpuTileID* begin, gpuTileID* end, iAllocator* allocator)
+    Vector<gpuTileID> TextureBlockAllocator::UpdateTileStates(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator)
     {
         auto pred = [](const auto& lhs, const auto& rhs)
         {
@@ -536,7 +514,7 @@ namespace FlexKit
         auto I                  = begin;
         size_t stateIterator    = 0;
 
-        Vector<gpuTileID>   allocationsNeeded{ allocator };
+        Vector<gpuTileID> allocationsNeeded{ allocator };
 
         // Update states of loaded tiles
         while(I < end)
@@ -572,7 +550,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    BlockAllocation TextureBlockAllocator::AllocateBlocks(gpuTileID* begin, gpuTileID* end, iAllocator* allocator)
+    BlockAllocation TextureBlockAllocator::AllocateBlocks(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator)
     {
         AllocatedBlockList allocatedBlocks  { allocator };
         AllocatedBlockList reallocatedBlocks{ allocator };
@@ -580,9 +558,9 @@ namespace FlexKit
         allocatedBlocks.reserve(blockTable.size());
         reallocatedBlocks.reserve(blockTable.size());
 
-        uint32_t    itr        = 0;
-        const auto  blockCount = blockTable.size();
-        gpuTileID*  block_itr  = begin;
+        uint32_t            itr        = 0;
+        const auto          blockCount = blockTable.size();
+        const gpuTileID*    block_itr  = begin;
 
         while (block_itr < end)
         {
@@ -594,10 +572,9 @@ namespace FlexKit
                     const auto resourceHandle = ResourceHandle{ block_itr->TextureID };
                     const auto tileID         = block_itr->tileID;
 
-                    blockTable[idx].resource    = resourceHandle;
-                    blockTable[idx].tileID      = tileID;
-
-                    blockTable[idx + last].state = EBlockState::InUse;
+                    blockTable[idx].resource        = resourceHandle;
+                    blockTable[idx].tileID          = tileID;
+                    blockTable[idx + last].state    = EBlockState::InUse;
 
                     allocatedBlocks.push_back({
                         .tileID     = tileID,
@@ -629,7 +606,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    BlockAllocation TextureStreamingEngine::AllocateTiles(gpuTileID* begin, gpuTileID* end)
+    BlockAllocation TextureStreamingEngine::AllocateTiles(const gpuTileID* begin, const gpuTileID* end)
     {
         return textureBlockAllocator.AllocateBlocks(begin, end, allocator);
     }
@@ -638,7 +615,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    gpuTileList TextureStreamingEngine::UpdateTileStates(gpuTileID* begin, gpuTileID* end, iAllocator* allocator)
+    gpuTileList TextureStreamingEngine::UpdateTileStates(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator)
     {
         return textureBlockAllocator.UpdateTileStates(begin, end, allocator);
     }
