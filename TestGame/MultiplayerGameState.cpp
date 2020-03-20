@@ -175,7 +175,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     frameGraph.AddRenderTarget(base.temporaryBuffers[1]);
 
     ClearVertexBuffer   (frameGraph, base.vertexBuffer);
-    ClearBackBuffer     (frameGraph, base.temporaryBuffers[0], 0.0f);
+    ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
     ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
 
     auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
@@ -211,7 +211,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 frameGraph,
                 sceneDesc,
                 activeCamera,
-                base.temporaryBuffers[0],
+                targets.RenderTarget,
+                //base.temporaryBuffers[0],
                 base.depthBuffer,
                 base.irradianceMap,
                 base.GGXMap,
@@ -221,6 +222,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.t,
                 core.GetTempMemory());
 
+            /*
             base.render.BilateralBlur(
                 frameGraph,
                 base.temporaryBuffers[0],
@@ -234,6 +236,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveCB,
                 reserveVB,
                 core.GetTempMemory());
+            */
             //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
         }   break;
         case RenderMode::ComputeTiledDeferred:
@@ -290,7 +293,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             reserveCB);
 
         // Draw Skeleton overlay
-    
         if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)
         {
             auto Skeleton = GetSkeleton(*gameObject);

@@ -176,7 +176,7 @@ public:
 
 
 			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
-			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false)						},
+			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 64, false)						},
 			asEngine		{ asCreateScriptEngine()																		},
 			streamingEngine	{ IN_Framework.core.RenderSystem,   IN_Framework.core.GetBlockMemory()				            },
             sounds          { IN_Framework.core.Threads,        IN_Framework.core.GetBlockMemory()                          },

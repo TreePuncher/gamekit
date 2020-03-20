@@ -422,10 +422,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-
-	DXGI_FORMAT TextureFormat2DXGIFormat(DeviceFormat F);
-	DeviceFormat	DXGIFormat2TextureFormat(DXGI_FORMAT F);
-
+	constexpr DXGI_FORMAT   TextureFormat2DXGIFormat(DeviceFormat F) noexcept;
+    constexpr DeviceFormat	DXGIFormat2TextureFormat(DXGI_FORMAT F) noexcept;
 
 
 
@@ -810,7 +808,8 @@ namespace FlexKit
 		void Wait(CopyContextHandle handle);
 		void Close(CopyContextHandle handle);
 
-		void Submit(CopyContextHandle* begin, CopyContextHandle* end, const size_t counter);
+		void Submit(CopyContextHandle* begin, CopyContextHandle* end);
+        void Signal(ID3D12Fence* fence, const size_t counter);
 
 		void Push_Temporary(ID3D12Resource* resource, CopyContextHandle handle);
 
@@ -820,7 +819,8 @@ namespace FlexKit
 
 		ID3D12CommandQueue*                 copyQueue       = nullptr;
 		ID3D12Fence*                        fence           = nullptr;
-		atomic_uint                         idx             = 0;
+        atomic_uint                         idx             = 0;
+        atomic_uint                         counter         = 0;
 		CircularBuffer<CopyContext, 64>     copyContexts;
 	};
 
@@ -1555,9 +1555,7 @@ namespace FlexKit
 			SetScissorRects(Rects);
 		}
 
-
         void QueueReadBack(ReadBackResourceHandle readBack);
-
 
 		void SetDepthStencil		(ResourceHandle DS);
 		void SetPrimitiveTopology	(EInputTopology Topology);
@@ -1647,19 +1645,15 @@ namespace FlexKit
 		void SetRTWrite	(ResourceHandle Handle);
 		void SetRTFree	(ResourceHandle Handle);
 
-		void Close();
-		void Reset();
-		void LockFor(uint8_t frameCount);
-
-		bool _isLocked();
-		void _DecrementLock();
+		void     Close(const size_t counter);
+        Context& Reset();
 
 		// Not Yet Implemented
 		void SetUAVRead();
 		void SetUAVWrite();
 		void SetUAVFree();
 
-        void _QueueReadBacks(const size_t counter);
+        void _QueueReadBacks();
 
 		DescHeapPOS _ReserveDSV(size_t count);
 		DescHeapPOS _ReserveSRV(size_t count);
@@ -1671,7 +1665,7 @@ namespace FlexKit
 		void        _ResetDSV();
 		void        _ResetSRV();
 
-
+        uint64_t    _GetCounter() { return counter;  }
 		ID3D12GraphicsCommandList*	GetCommandList() { return DeviceContext; }
 
 		RenderSystem* renderSystem = nullptr;
@@ -1788,7 +1782,7 @@ namespace FlexKit
 		static_vector<RTV_View, 128>                depthStencilViews;
         static_vector<ReadBackResourceHandle, 128>  queuedReadBacks;
 
-		uint8_t                                     lockCounter = 0;
+		uint64_t                                    counter = 0;
 		iAllocator*								    Memory;
 	};
 
@@ -2451,6 +2445,9 @@ namespace FlexKit
 		ID3D12Resource*		GetAsset	(ResourceHandle Handle) const;
 
 
+        void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, ID3D12Resource** end);
+
+
 		void ReleaseTexture	(ResourceHandle Handle);
 		void LockUntil		(size_t FrameID);
 
@@ -2848,10 +2845,11 @@ namespace FlexKit
 			ID3D12Heap1* heap_ptr = nullptr;
 
 			const auto HR = pDevice->CreateHeap(&heapDesc, IID_PPV_ARGS(&heap_ptr));
-			if (!FAILED(HR))
+
+			if (SUCCEEDED(HR))
 			{
 				auto handle = handles.GetNewHandle();
-				handles[handle] = heaps.push_back({ heap_ptr });
+				handles[handle] = (index_t)heaps.push_back({ heap_ptr });
 
 				return handle;
 			}
@@ -2885,54 +2883,83 @@ namespace FlexKit
 	public:
 		ReadBackStateTable(iAllocator* allocator) :
 			handles         { allocator },
-            readBackBuffers { allocator } {}
+            readBackBuffers { allocator },
+            readBackFence   { nullptr }
+        {
+            
+        }
+
+        ~ReadBackStateTable()
+        {
+            readBackFence->Release();
+
+            for (auto& buffer : readBackBuffers)
+                CloseHandle(buffer.event);
+
+            readBackBuffers.clear();
+        }
 
 
-		ReadBackResourceHandle AddReadBack(size_t BufferSize, ID3D12Resource* resource)
+		ReadBackResourceHandle AddReadBack(const size_t BufferSize, ID3D12Resource* resource)
 		{
-            auto handle = handles.GetNewHandle();
-            handles[handle] = readBackBuffers.push_back({ BufferSize, handle, resource });
+            auto event      = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+            auto handle     = handles.GetNewHandle();
+
+            auto index      = (index_t)readBackBuffers.push_back({ BufferSize, handle, resource });
+            handles[handle] = index;
+
+            readBackBuffers[index].event = event;
 
 			return handle;
 		}
 
 
-		bool ReadBackReady(ReadBackResourceHandle handle)
-		{
-			return false;
-		}
+        void Initiate(ID3D12Device* device)
+        {
+            const auto HR = device->CreateFence(0, D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&readBackFence));
+            FK_ASSERT(SUCCEEDED(HR));
+        }
 
 
-		void SetCallback(ReadBackResourceHandle handle, ReadBackEventHandler&& readBackHandler)
-		{
-            readBackBuffers[handles[handle]].onReadBack = std::move(readBackHandler);
-		}
-
-
-		void QueueReadBack(const size_t frameID)
-		{
-		}
-
-
-        void Update(const size_t currentFrameID)
+        void Update()
         {
             for (ReadBackEntry& buffer : readBackBuffers)
             {
-                if (buffer.queueUntil <= currentFrameID + 1)
+                if (buffer.queued)
                 {
-                    buffer.queueUntil = -1;
+                    auto res = WaitForSingleObject(buffer.event, 0);
 
-                    void* _ptr = nullptr;
+                    if (res == WAIT_OBJECT_0)
+                    {
+                        buffer.queueUntil   = -1;
+                        buffer.queued       = false;
 
-                    D3D12_RANGE range;
-                    range.Begin = 0;
-                    range.End = buffer.size / 2;
+                        void* _ptr = nullptr;
 
-                    buffer.resource->Map(0, &range, &_ptr);
-                    buffer.onReadBack((char*)_ptr, buffer.size);
+                        const D3D12_RANGE readRange = {
+                            .Begin = 0,
+                            .End   = buffer.size
+                        };
 
-                    range.End = 0;
-                    buffer.resource->Unmap(0, &range);
+                        buffer.resource->Map(0, &readRange, &_ptr);
+                        buffer.onReadBack((char*)_ptr, buffer.size);
+
+                        const D3D12_RANGE writeRange = {
+                            .Begin  = 0,
+                            .End    = 0
+                        };
+
+                        buffer.resource->Unmap(0, &writeRange);
+                    }
+                    else if (res == WAIT_FAILED)
+                    {
+                        buffer.queueUntil   = -1;
+                        buffer.queued       = false;
+
+                        FK_ASSERT(0, "Unknown Error");
+                    }
+                    else if (res == WAIT_TIMEOUT)
+                        continue;
                 }
             }
         }
@@ -2943,15 +2970,43 @@ namespace FlexKit
             return readBackBuffers[handles[handle]].resource;
         }
 
+
         auto& operator [](const ReadBackResourceHandle handle) const
         {
             return readBackBuffers[handles[handle]];
         }
 
+
         auto& operator [](const ReadBackResourceHandle handle)
         {
             return readBackBuffers[handles[handle]];
         }
+
+
+        void SetCallback(ReadBackResourceHandle handle, ReadBackEventHandler&& readBackHandler)
+        {
+            readBackBuffers[handles[handle]].onReadBack = std::move(readBackHandler);
+        }
+
+
+        void QueueReadBack(const ReadBackResourceHandle handle, const size_t counter)
+        {
+            (*this)[handle].queueUntil = counter;
+        }
+
+        
+        ID3D12Fence* _GetReadBackFence()
+        {
+            return readBackFence;
+        }
+
+
+        uint64_t    GetTicket()
+        {
+            return ++counter;
+        }
+
+
 
 	private:
 		struct ReadBackEntry
@@ -2961,6 +3016,8 @@ namespace FlexKit
             ID3D12Resource*         resource;
             size_t                  queueUntil;
             ReadBackEventHandler    onReadBack;
+            HANDLE                  event;
+            bool                    queued  = false;
 		};
 
 		ReadBackEntry& _GetEntry(ReadBackResourceHandle handle)
@@ -2973,6 +3030,9 @@ namespace FlexKit
 		{
 		};
 
+
+        uint64_t                                                counter = 0;
+        ID3D12Fence*                                            readBackFence;
 		Vector<ReadBackEntry>                                   readBackBuffers;
 		HandleUtilities::HandleTable<ReadBackResourceHandle>    handles;
 	};
@@ -2994,6 +3054,12 @@ namespace FlexKit
 		uint16_t	mipCount;
 		DXGI_FORMAT format;
 	};
+
+    enum SubmitCopyFlags
+    {
+        SYNC_Graphics   = 0x01,
+        SYNC_Compute    = 0x02
+    };
 
 
 	FLEXKITAPI class RenderSystem
@@ -3029,7 +3095,7 @@ namespace FlexKit
 		size_t						GetCurrentFrame();
         size_t                      GetCurrentCounter();
 		ID3D12PipelineState*		GetPSO				(PSOHandle StateID);
-		RootSignature const * const GetPSORootSignature	(PSOHandle StateID) const;
+		const RootSignature * const GetPSORootSignature	(PSOHandle StateID) const;
 
 		void RegisterPSOLoader	(PSOHandle State, PipelineStateDescription desc);
 		void QueuePSOLoad		(PSOHandle State);
@@ -3038,7 +3104,6 @@ namespace FlexKit
 		void Submit				(Vector<Context*>& CLs);
 		void PresentWindow		(RenderWindow* RW);
 
-		void FlushPending();
 		void WaitforGPU();
 
 		void SetDebugName(ResourceHandle,       const char*);
@@ -3090,8 +3155,6 @@ namespace FlexKit
 		ReadBackResourceHandle  CreateReadBackBuffer            (const size_t bufferSize);
 
         void SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
-        void QueueReadBack(ReadBackResourceHandle readbackBuffer, const uint64_t frameID);
-
 
 		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
 		void SetObjectState(UAVResourceHandle	handle, DeviceResourceState state);
@@ -3131,7 +3194,7 @@ namespace FlexKit
 		void ReleaseUAV		(UAVTextureHandle);
 
 
-		void                SubmitUploadQueues(CopyContextHandle* handle, size_t count = 1);
+		void                SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1);
 		CopyContextHandle   OpenUploadQueue();
 		CopyContextHandle   GetImmediateUploadQueue();
 		Context&            GetCommandList();
@@ -3151,7 +3214,6 @@ namespace FlexKit
 		ID3D12QueryHeap*			_GetQueryResource   (QueryHandle handle);
 		CopyContext&                _GetCopyContext     (CopyContextHandle handle = InvalidHandle_t);
         auto*                       _GetCopyQueue()     { return copyEngine.copyQueue; }
-		void						_IncrementRSIndex() { CurrentIndex = (CurrentIndex + 1) % 3; }
 
 		operator RenderSystem* () { return this; }
 
@@ -3159,8 +3221,9 @@ namespace FlexKit
 		ID3D12CommandQueue*		GraphicsQueue	= nullptr;
 		ID3D12CommandQueue*		ComputeQueue	= nullptr;
 
-		size_t      CurrentFrame			= 0;
-		size_t      CurrentIndex			= 0;
+        size_t      pendingFrames[3]        = { 0, 0, 0 };
+        size_t      frameIdx                = 0;
+        size_t      CurrentFrame			= 0;
 		atomic_uint FenceCounter			= 0;
 
 		ID3D12Fence* Fence = nullptr;
@@ -3181,18 +3244,6 @@ namespace FlexKit
 			D3D12_RESOURCE_STATES   beginState;
 			D3D12_RESOURCE_STATES   endState;
 		};
-
-		struct
-		{
-			size_t			FenceValue  = 0;
-			HANDLE			FenceHandle;
-		}Fences[QueueSize];
-
-		struct
-		{
-			size_t			FenceValue  = 0;
-			HANDLE			FenceHandle;
-		}CopyFences[QueueSize];
 
 		size_t BufferCount				= 0;
 		size_t DescriptorRTVSize		= 0;

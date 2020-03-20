@@ -54,7 +54,7 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
     uint status = 0;
     texture1.Load(uint3(IN.UV, 0), status);
 
-    if(!CheckAccessFullyMapped(status)) // Texture not mapped!
+    //if(!CheckAccessFullyMapped(status)) // Texture not mapped!
     {
         uint offset = 0;
         UAVCounters.InterlockedAdd(0, 1, offset);
