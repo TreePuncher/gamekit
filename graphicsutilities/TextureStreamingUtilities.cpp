@@ -10,7 +10,7 @@ namespace FlexKit
         TextureResourceBlob* resource = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(asset));
 
         crnd::crn_level_info levelInfo;
-        crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), mipLevel, &levelInfo);
+        crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), 0, &levelInfo);
 
         rowPitch   = levelInfo.m_blocks_x * levelInfo.m_bytes_per_block;
         bufferSize = levelInfo.m_blocks_y * rowPitch;
@@ -131,7 +131,7 @@ namespace FlexKit
         Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
         D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        Depth_Desc.DepthEnable      = true;
+        Depth_Desc.DepthEnable      = false;
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {
             .pRootSignature        = RS->Library.RSDefault,
@@ -198,19 +198,21 @@ namespace FlexKit
                 data.feedbackCounters   = nodeBuilder.ReadWriteUAV(feedbackCounters);
                 data.feedbackDepth      = nodeBuilder.WriteDepthBuffer(feedbackDepth);
                 data.readbackBuffer     = feedbackReturnBuffer[readBackBlock];
+
+                readBackBlock = ++readBackBlock % 3;
             },
             [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 const size_t entityBufferSize = GetConstantsAlignedSize<Drawable::VConstantsLayout>();
 
-                CBPushBuffer entityConstantBuffer   { data.constantBufferAllocator(entityBufferSize * data.pvs.GetData().solid.size() * 2) };
+                CBPushBuffer entityConstantBuffer   { data.constantBufferAllocator(entityBufferSize * data.pvs.GetData().solid.size()) };
                 CBPushBuffer passContantBuffer      { data.constantBufferAllocator(4096) };
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACK));
 
 
-                ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackTarget) });
+                ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackDepth) });
                 ctx.SetRenderTargets({}, true, resources.GetRenderTarget(data.feedbackDepth));
 
                 struct constantBufferLayout
@@ -237,6 +239,7 @@ namespace FlexKit
                     { DRS_Write }
                 );
 
+
                 DescriptorHeap uavHeap;
                 uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 4, &allocator);
                 uavHeap.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx));
@@ -254,7 +257,8 @@ namespace FlexKit
 
                 TriMesh* prevMesh = nullptr;
 
-                for (size_t I = 0; I < data.pvs.GetData().solid.size(); ++I)
+                auto& opaqueObjects = data.pvs.GetData().solid;
+                for (size_t I = 0; I < min(1, opaqueObjects.size()); ++I)
                 {
                     auto& visable = data.pvs.GetData().solid[I];
                     auto* triMesh = GetMeshResource(visable.D->MeshHandle);
@@ -279,7 +283,8 @@ namespace FlexKit
                         );
                     }
 
-                    ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ visable.D->GetConstants(), entityConstantBuffer });
+                    auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), entityConstantBuffer };
+                    ctx.SetGraphicsConstantBufferView(1, constants);
                     ctx.DrawIndexed(triMesh->IndexCount);
                 }
 
@@ -303,7 +308,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    TextureStreamingEngine::TextureBlockUpdate::TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, iAllocator* IN_allocator) :
+    TextureStreamingEngine::TextureBlockUpdate::TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, const size_t buffer_size, iAllocator* IN_allocator) :
             iWork               { IN_allocator              },
             allocator           { IN_allocator              },
             textureStreamEngine { IN_textureStreamEngine    },
@@ -313,8 +318,8 @@ namespace FlexKit
 
             if (requestCount)
             {
-                requests = reinterpret_cast<gpuTileID*>(IN_allocator->malloc(requestCount));
-                memcpy(requests, buffer + 64, requestCount * 8);
+                requests = reinterpret_cast<gpuTileID*>(IN_allocator->malloc(requestCount * 8));
+                memcpy(requests, buffer + 64, std::min(requestCount * 8, buffer_size));
             }
         }
 
@@ -421,8 +426,9 @@ namespace FlexKit
         Vector<ResourceHandle>  updatedTextures = { allocator };
         ResourceHandle          prevResource    = InvalidHandle_t;
         TextureStreamContext    streamContext   = { allocator };
-        uint2                   blockSize       = { 512, 512 };
+        uint2                   blockSize       = { 256, 256 };
         TileMapList             mappings        = { allocator };
+
 
         for (const AllocatedBlock& block : allocations.allocations)
         {
@@ -430,7 +436,7 @@ namespace FlexKit
             {
                 if (prevResource != InvalidHandle_t)
                 {
-                    auto currentState = renderSystem.GetObjectState(block.resource);
+                    const auto currentState = renderSystem.GetObjectState(block.resource);
                     if(currentState != DeviceResourceState::DRS_GENERIC)
                         ctx.Barrier(
                             renderSystem.GetDeviceResource(block.resource),
@@ -441,7 +447,7 @@ namespace FlexKit
                     mappings.clear();
                 }
 
-                if (auto res = GetResourceAsset(block.resource); res)
+                if (const auto res = GetResourceAsset(block.resource); res)
                 {
                     if (!streamContext.Open(block.tileID.GetMip(), res.value()))
                         continue;
@@ -487,12 +493,25 @@ namespace FlexKit
         {
             const ResourceHandle resource = allocations.allocations.back().resource;
             renderSystem.UpdateTextureTileMappings(resource, mappings);
+
+            if (prevResource != InvalidHandle_t)
+            {
+                const auto currentState = renderSystem.GetObjectState(resource);
+                if (currentState != DeviceResourceState::DRS_GENERIC)
+                    ctx.Barrier(
+                        renderSystem.GetDeviceResource(resource),
+                        currentState,
+                        DeviceResourceState::DRS_GENERIC);
+
+                renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
+                renderSystem.UpdateTextureTileMappings(resource, mappings);
+            }
         }
 
         mappings.clear();
 
         renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), allocator);
-        renderSystem.SubmitUploadQueues(&ctxHandle);
+        renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle);
     }
 
 
@@ -527,8 +546,8 @@ namespace FlexKit
                 return allocationsNeeded;
             }
 
-            while (I->TextureID != blockTable[stateIterator].resource) stateIterator++;
-            while (I->tileID > blockTable[stateIterator].tileID)
+            while (I->TextureID != blockTable[stateIterator].resource && I < end && stateIterator < blockTable.size()) stateIterator++;
+            while (I->tileID > blockTable[stateIterator].tileID && I < end && stateIterator < blockTable.size())
             {
                 auto I_TileID       = I->tileID;
                 auto blockTileID    = blockTable[stateIterator].tileID;

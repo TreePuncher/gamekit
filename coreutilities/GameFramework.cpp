@@ -381,7 +381,7 @@ namespace FlexKit
 		core.Threads.SendShutdown();
 		core.Threads.WaitForWorkersToComplete();
 
-		GetRenderSystem().FlushPending();
+		GetRenderSystem().WaitforGPU();
 
 		while (subStates.size())
 			PopState();

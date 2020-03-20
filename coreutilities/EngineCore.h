@@ -152,8 +152,7 @@ namespace FlexKit
 			CmdArguments	{ memory->BlockAllocator						},
 			Time			{ memory->BlockAllocator						},
 			Threads			{ threadCount, memory->BlockAllocator	        },// TODO: Get System Thread Count.
-			RenderSystem	{ memory->BlockAllocator, &Threads				},
-			FrameLock		{ true											}
+			RenderSystem	{ memory->BlockAllocator, &Threads				}
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
 			Initiate(memory, WH);
@@ -179,7 +178,7 @@ namespace FlexKit
 		EngineCore				(const EngineCore&) = delete;
 		EngineCore& operator =	(const EngineCore&) = delete;
 
-		bool					FrameLock;
+		bool					FrameLock   = true;
 		bool					End         = false;
 
         ThreadManager			Threads;

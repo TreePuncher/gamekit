@@ -2549,16 +2549,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void Context::Close()
+	void Context::Close(const size_t IN_counter)
 	{
+        counter = IN_counter;
 		DeviceContext->Close();
+
+        //_QueueReadBacks(IN_counter);
 	}
 
 
 	/************************************************************************************************/
 
 
-	void Context::Reset()
+    Context& Context::Reset()
 	{
 		commandAllocator->Reset();
 		DeviceContext->Reset(commandAllocator, nullptr);
@@ -2571,33 +2574,8 @@ namespace FlexKit
 			descHeapSRV };
 
 		DeviceContext->SetDescriptorHeaps(sizeof(heaps) / sizeof(heaps[0]), heaps);
-	}
 
-
-	/************************************************************************************************/
-
-
-	void Context::LockFor(uint8_t frameCount)
-	{
-		lockCounter = frameCount + 1;
-	}
-
-
-	/************************************************************************************************/
-
-
-	bool Context::_isLocked()
-	{
-		return lockCounter != 0;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void Context::_DecrementLock()
-	{
-		lockCounter ? --lockCounter : 0;
+        return *this;
 	}
 
 
@@ -2798,10 +2776,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void Context::_QueueReadBacks(const size_t counter)
+    void Context::_QueueReadBacks()
     {
         for (const auto readBackHandle : queuedReadBacks)
-            renderSystem->QueueReadBack(readBackHandle, counter + 1);
+        {
+            auto& readBack  = renderSystem->ReadBackTable[readBackHandle];
+            auto fence      = renderSystem->ReadBackTable._GetReadBackFence();
+
+            const uint64_t counter = ++renderSystem->copyEngine.counter;
+
+            auto HR     = fence->SetEventOnCompletion(counter, readBack.event); FK_ASSERT(SUCCEEDED(HR));
+            renderSystem->GraphicsQueue->Signal(fence, counter);
+
+            readBack.queueUntil = counter;
+            readBack.queued     = true;
+        }
 
         queuedReadBacks.clear();
     }
@@ -3349,7 +3338,7 @@ namespace FlexKit
 	void CopyEngine::Close(CopyContextHandle handle)
 	{
 		auto& ctx = copyContexts[handle];
-
+        ctx.flushPendingBarriers();
 		ctx.commandList->Close();
 	}
 
@@ -3357,8 +3346,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end, const size_t counter)
+	void CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end)
 	{
+        const size_t localCounter = ++counter;
 		static_vector<ID3D12CommandList*, 64> cmdLists;
 
 		for (auto itr = begin; itr < end; itr++)
@@ -3366,14 +3356,24 @@ namespace FlexKit
 			auto& context = copyContexts[*itr];
 			cmdLists.push_back(context.commandList);
 
-			context.uploadBuffer.Last = context.uploadBuffer.Position;
+            context.counter             = localCounter;
+			context.uploadBuffer.Last   = context.uploadBuffer.Position;
             
 			Close(*itr);
 		}
 
 		copyQueue->ExecuteCommandLists(cmdLists.size(), cmdLists);
-		copyQueue->Signal(fence, counter);
+        copyQueue->Signal(fence, counter);
 	}
+
+
+    /************************************************************************************************/
+
+
+    void CopyEngine::Signal(ID3D12Fence* fence, const size_t counter)
+    {
+        copyQueue->Signal(fence, counter);
+    }
 
 
 	/************************************************************************************************/
@@ -3470,7 +3470,6 @@ namespace FlexKit
 				(void**)&copyCommandList);
 
 
-
 			FK_ASSERT	(FAILED(HR),        "FAILED TO CREATE COMMAND LIST!");
 			SETDEBUGNAME(commandAllocator,  "COPY ALLOCATOR");
 			FK_VLOG		(10,                "COPY COMMANDLIST CREATED: %u", copyCommandList);
@@ -3563,13 +3562,7 @@ namespace FlexKit
 			Fence = NewFence;
 			ObjectsCreated.push_back(NewFence);
 		}
-
-
-		for(size_t I = 0; I < 3; ++I){
-			CopyFences[I].FenceHandle = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-			CopyFences[I].FenceValue  = 0;
-		}
-			
+		
 		D3D12_COMMAND_QUEUE_DESC CQD		= {};
 		CQD.Flags							            = D3D12_COMMAND_QUEUE_FLAGS::D3D12_COMMAND_QUEUE_FLAG_NONE;
 		CQD.Type								        = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -3625,7 +3618,6 @@ namespace FlexKit
 			pDebugDevice			= DebugDevice;
 			pDebug					= Debug;
 			BufferCount				= 3;
-			CurrentIndex			= 0;
 			FenceCounter			= 0;
 			DescriptorRTVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 			DescriptorDSVSize		= Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
@@ -3660,6 +3652,7 @@ namespace FlexKit
 		InitiateComplete = true;
 		
 		Library.Initiate(this, in->TempMemory);
+        ReadBackTable.Initiate(Device);
 
 		FreeList.Allocator = in->Memory;
 
@@ -3682,12 +3675,13 @@ namespace FlexKit
 
 	void RenderSystem::Release()
 	{
+        WaitforGPU();
+
+        auto temp = Fence->GetCompletedValue();
+
 		if (!Memory)
 			return;
 
-
-		for (size_t I = 0; I < 3; I++)
-			WaitforGPU();
 
 		FK_LOG_INFO("Releasing RenderSystem");
 
@@ -3800,38 +3794,9 @@ namespace FlexKit
 		Textures.SetBufferedIdx(Window->backBuffer, Window->SwapChain_ptr->GetCurrentBackBufferIndex());
 		Textures.UpdateLocks();
 
-		GraphicsQueue->Signal(Fence, FenceCounter);
-
 		ConstantBuffers.DecrementLocks();
 
-		for (auto& ctx : Contexts)
-			ctx._DecrementLock();
-
 		++CurrentFrame;
-	}
-
-
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::FlushPending()
-	{
-		for (auto& syncPoint : Syncs)
-			copyEngine.Wait(syncPoint.queue);
-
-		for (size_t itr = 0; itr < 3; itr++)
-		{
-			const size_t prevFrame      = (CurrentIndex - itr) % 3; ;
-			const size_t CompleteValue  = Fence->GetCompletedValue();
-
-			if (CompleteValue < Fences[prevFrame].FenceValue) {
-				HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-				Fence->SetEventOnCompletion(Fences[prevFrame].FenceValue, eventHandle);
-				WaitForSingleObject(eventHandle, INFINITE);
-				CloseHandle(eventHandle);
-			}
-		}
 	}
 
 
@@ -3840,12 +3805,13 @@ namespace FlexKit
 
 	void RenderSystem::WaitforGPU()
 	{
-		size_t Index			= CurrentIndex;
-		size_t CompleteValue	= Fence->GetCompletedValue();
+		const size_t CompletedValue	= Fence->GetCompletedValue();
+        const size_t currentCounter = FenceCounter;
 
-		if (CompleteValue < Fences[Index].FenceValue) {
-			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-			Fence->SetEventOnCompletion(Fences[Index].FenceValue, eventHandle);
+		if (CompletedValue < currentCounter)
+        {
+			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
+			Fence->SetEventOnCompletion(currentCounter, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
 			CloseHandle(eventHandle);
 		}
@@ -4168,7 +4134,7 @@ namespace FlexKit
 
 			D3D12_RESOURCE_STATES InitialState =
 				desc.renderTarget   ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_RENDER_TARGET :
-				desc.depthTarget    ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON   :
+				desc.depthTarget    ? D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_DEPTH_WRITE   :
 				D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON;
 
 			ID3D12Resource* NewResource[3] = { nullptr, nullptr, nullptr };
@@ -4210,7 +4176,8 @@ namespace FlexKit
 
 			auto initialState =
 				filledDesc.renderTarget ? DRS_RenderTarget:
-				filledDesc.depthTarget  ? DRS_GENERIC : DRS_ShaderResource;
+				filledDesc.depthTarget  ? DRS_DEPTHBUFFERWRITE :
+                DRS_ShaderResource;
 
 			filledDesc.resources = NewResource;
 			return Textures.AddResource(filledDesc, initialState);
@@ -4441,9 +4408,17 @@ namespace FlexKit
         auto itr = begin;
         while(itr < end)
         {
-            auto& mappings = Textures.GetTileMapping(*itr);
-            auto deviceResource = GetDeviceResource(*itr);
+            auto& mappings                      = Textures.GetTileMapping(*itr);
+            auto deviceResource                 = GetDeviceResource(*itr);
 
+            /*
+            auto desc                           = deviceResource->GetDesc();
+            const auto state                    = GetObjectState(*itr);
+            ID3D12Resource* remappedResource    = nullptr; pDevice->CreateReservedResource(&desc, DRS2D3DState(state), nullptr, IID_PPV_ARGS(&remappedResource));
+            
+            _PushDelayReleasedResource(deviceResource);
+            Textures.ReplaceResources(*itr, &remappedResource, &remappedResource + 1);
+            */
             Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator };
             Vector<D3D12_TILE_REGION_SIZE>          regionSizes { allocator };
             Vector<D3D12_TILE_RANGE_FLAGS>          flags       { allocator };
@@ -4575,15 +4550,6 @@ namespace FlexKit
     }
 
     /************************************************************************************************/
-
-
-    void RenderSystem::QueueReadBack(ReadBackResourceHandle readbackBuffer, const uint64_t frameID)
-    {
-        ReadBackTable[readbackBuffer].queueUntil = frameID;
-    }
-
-
-	/************************************************************************************************/
 
 
 	void RenderSystem::SetObjectState(SOResourceHandle handle, DeviceResourceState state)
@@ -4864,7 +4830,7 @@ namespace FlexKit
 	{
 		WH = newWH;
 
-		renderSystem.FlushPending();
+		renderSystem.WaitforGPU();
 		renderSystem._ForceReleaseTexture(backBuffer);
 
 		const auto HR = SwapChain_ptr->ResizeBuffers(0, 0, 0, DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
@@ -5065,7 +5031,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DXGI_FORMAT TextureFormat2DXGIFormat(DeviceFormat F)
+	constexpr DXGI_FORMAT TextureFormat2DXGIFormat(DeviceFormat F) noexcept
 	{
 		switch (F)
 		{
@@ -5133,7 +5099,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DeviceFormat	DXGIFormat2TextureFormat(DXGI_FORMAT F)
+	constexpr DeviceFormat	DXGIFormat2TextureFormat(DXGI_FORMAT F) noexcept
 	{
 		switch (F)
 		{
@@ -6284,6 +6250,21 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void TextureStateTable::ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, ID3D12Resource** end)
+    {
+        auto  Idx                   = Handles[handle];
+        auto  ResourceIdx           = UserEntries[Idx].ResourceIdx;
+        const auto resourceCount    = Resources[ResourceIdx].ResourceCount;
+        auto& resources             = Resources[ResourceIdx].Resources;
+
+        for (size_t I = 0; I < resourceCount && begin + I < end; ++I)
+            resources[I] = *(begin + I);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -6622,7 +6603,7 @@ namespace FlexKit
 
 	void RenderSystem::_PushDelayReleasedResource(ID3D12Resource* resource, CopyContextHandle uploadQueue)
 	{
-		if (uploadQueue == InvalidHandle_t)
+		if (uploadQueue != InvalidHandle_t)
 			copyEngine.Push_Temporary(resource, uploadQueue);
 		else
 			FreeList.push_back({ resource, 30 });
@@ -6691,16 +6672,16 @@ namespace FlexKit
 
 	Context& RenderSystem::GetCommandList()
 	{
+        const size_t completedCounter = Fence->GetCompletedValue();
+
 		for(auto& _ : Contexts)
 		{
 			const size_t idx = contextIdx;
 			contextIdx = ++contextIdx % Contexts.size();
 
-			auto& context = Contexts[idx];
-			if (!context._isLocked()) {
-				context.Reset();
-				return context;
-			}
+			Context& context = Contexts[idx];
+			if (context._GetCounter() <= completedCounter)
+				return context.Reset();
 		}
 
 		FK_ASSERT(0, "Failed to get a free context!");
@@ -6714,7 +6695,15 @@ namespace FlexKit
 
 	void RenderSystem::BeginSubmission()
 	{
-		WaitforGPU();
+        const auto pendingFrame = pendingFrames[(frameIdx) % 3];
+
+        if (pendingFrame > Fence->GetCompletedValue())
+        {
+            HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
+            Fence->SetEventOnCompletion(pendingFrame, eventHandle);
+            WaitForSingleObject(eventHandle, INFINITE);
+            CloseHandle(eventHandle);
+        }
 	}
 
 
@@ -6723,62 +6712,54 @@ namespace FlexKit
 
 	void RenderSystem::Submit(Vector<Context*>& contexts)
 	{
-		const auto Val = ++FenceCounter;
-		Fences[CurrentIndex].FenceValue = Val;
-
 		if (ImmediateUpload != InvalidHandle_t)
 		{
-			SubmitUploadQueues(&ImmediateUpload);
+			SubmitUploadQueues(SYNC_Graphics, &ImmediateUpload);
 			ImmediateUpload = InvalidHandle_t;
 		}
 
-
-		if (SyncCounter.load(std::memory_order_acquire))
-		{
-			for (auto& sync : Syncs)
-				auto HR = GraphicsQueue->Wait(copyEngine.fence, sync.waitCounter);
-
-			Syncs.clear();
-			SyncCounter.store(0, std::memory_order_release);
-		}
+        const auto counter = ++FenceCounter;
 
 		static_vector<ID3D12CommandList*> cls;
 		for (auto context : contexts)
         {
-			context->Close();
-			context->LockFor(2);
-
 			cls.push_back(context->GetCommandList());
-            context->_QueueReadBacks(Val);
+			context->Close(counter);
 		}
 
 		GraphicsQueue->ExecuteCommandLists(cls.size(), cls.begin());
-		GraphicsQueue->Signal(Fence, Val);
+		GraphicsQueue->Signal(Fence, counter);
+
+        for (auto context : contexts)
+            context->_QueueReadBacks();
 
 		VertexBuffers.LockUntil(GetCurrentFrame() + 2);
 		ConstantBuffers.LockFor(2);
 		Textures.LockUntil(GetCurrentFrame() + 2);
 
-        ReadBackTable.Update(Fence->GetCompletedValue());
+        pendingFrames[frameIdx] = counter;
+        frameIdx = ++frameIdx % 3;
 
-		_IncrementRSIndex();
+        ReadBackTable.Update();
 	}
 
 
 	/************************************************************************************************/
 
 
-	void RenderSystem::SubmitUploadQueues(CopyContextHandle* handles, size_t count)
+	void RenderSystem::SubmitUploadQueues(uint32_t flags, CopyContextHandle* handles, size_t count)
 	{
-        const auto counter = ++FenceCounter;
+		copyEngine.Submit(handles, handles + count);
 
-        UploadSyncPoint sync;
-        sync.waitCounter = counter;
+        if (SYNC_Graphics & flags)
+        {
+            auto HR = GraphicsQueue->Wait(copyEngine.fence, copyEngine.counter);  FK_ASSERT(SUCCEEDED(HR));
+        }
 
-        Syncs.push_back(sync);
+        if (SYNC_Compute & flags)
+        {
+        }
 
-		copyEngine.Submit(handles, handles + count, counter);
-        SyncCounter++;
 	}
 
 

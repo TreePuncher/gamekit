@@ -159,7 +159,6 @@ namespace FlexKit
         GatherTask&                     pvs;
         ReserveConstantBufferFunction   constantBufferAllocator;
         FrameResourceHandle             feedbackCounters;
-        FrameResourceHandle             feedbackTarget;
         FrameResourceHandle             feedbackBuffer;
         FrameResourceHandle             feedbackLists;
         FrameResourceHandle             feedbackDepth;
@@ -285,20 +284,15 @@ namespace FlexKit
                     feedbackReturnBuffer[I],
                     [&, textureStreamingEngine = this](char* buffer, const size_t bufferSize)
                     {
-                        readBackBlock = ++readBackBlock % 3;
                         updateInProgress = false;
 
                         if (!buffer)
                             return;
 
                         renderSystem.threads.AddWork(
-                            &allocator->allocate<TextureBlockUpdate>(*textureStreamingEngine, buffer, allocator),
+                            &allocator->allocate<TextureBlockUpdate>(*textureStreamingEngine, buffer, bufferSize, allocator),
                             allocator);
                     });
-
-                renderSystem.QueueReadBack(
-                    feedbackReturnBuffer[I],
-                    -1);
             }
         }
 
@@ -322,7 +316,7 @@ namespace FlexKit
 
         struct TextureBlockUpdate : public FlexKit::iWork
         {
-            TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, iAllocator* IN_allocator);
+            TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, const size_t buffer_size, iAllocator* IN_allocator);
 
             void Run() override;
 

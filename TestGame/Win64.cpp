@@ -37,7 +37,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MultiplayerState.cpp"
 #include "MultiplayerGameState.cpp"
 #include "TestScene.h"
-//#include "TextureStreamingTest.cpp"
 
 #include <iostream>
 
@@ -68,8 +67,7 @@ int main(int argc, char* argv[])
 
     FK_LOG_INFO("Logging initialized started.");
 
-    uint2   WH          = uint2{ 1920, 1080 } * 1.4f;
-    size_t threadCount  = max(std::thread::hardware_concurrency(), 1u) - 1;
+    uint2   WH          = uint2{ 1920, 1080 };
 
     for (size_t I = 0; I < argc; ++I)
     {
@@ -86,11 +84,6 @@ int main(int argc, char* argv[])
             WH = { X, Y };
 
             I += 2;
-        }
-        if (!strncmp("--threadcount", argv[I], strlen("-threadCount")))
-        {
-            threadCount = atoi(argv[I + 1]);
-            I += 1;
         }
         else if (!strncmp("-C", argv[I], 2))
         {
@@ -128,10 +121,10 @@ int main(int argc, char* argv[])
     }
 
 
-    auto* Memory = CreateEngineMemory();
-    EXITSCOPE(ReleaseEngineMemory(Memory));
+    auto* allocator = CreateEngineMemory();
+    EXITSCOPE(ReleaseEngineMemory(allocator));
 
-    FlexKit::FKApplication app{ WH, Memory, threadCount };
+    FlexKit::FKApplication app{ WH, allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
 
     FK_LOG_INFO("Set initial PlayState state.");
     auto& base = app.PushState<BaseState>(app);
@@ -163,7 +156,6 @@ int main(int argc, char* argv[])
             AddAssetFile("assets\\TestScenes.gameres");
 
             auto& gameState = app.PushState<GameState>(base);
-
             auto& completed = app.GetFramework().core.GetBlockMemory().allocate_aligned<bool>(false);
 
             auto Task =
@@ -186,12 +178,12 @@ int main(int argc, char* argv[])
 
                     renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
                     renderSystem.SetDebugName(base.irradianceMap, "ggx Map");
-                    renderSystem.SubmitUploadQueues(&upload);
+                    renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
 
                     completed = true;
                 };
 
-            auto& workItem = CreateWorkItem(Task, app.GetFramework().core.GetBlockMemory());
+            auto& workItem = CreateWorkItem(Task, allocator->BlockAllocator);
             app.GetFramework().core.Threads.AddWork(workItem);
 
             // Setup test scene
@@ -223,13 +215,13 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    FK_LOG_INFO("Running application...");
+    FK_LOG_INFO("Running application.");
     app.Run();
-    FK_LOG_INFO("Completed running application");
+    FK_LOG_INFO("Application shutting down.");
 
-    FK_LOG_INFO("Started cleanup...");
+    FK_LOG_INFO("Cleanup Startup.");
     app.Release();
-    FK_LOG_INFO("Completed cleanup.");
+    FK_LOG_INFO("Cleanup Finished.");
 
     return 0;
 }

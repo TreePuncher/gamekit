@@ -408,7 +408,7 @@ namespace FlexKit
 
 				root.heightMap = TileMapHandle{ tileMap };
 
-                RS->SubmitUploadQueues(&uploadQueue);
+                RS->SubmitUploadQueues(SYNC_Graphics, &uploadQueue);
 			}
 		}
 

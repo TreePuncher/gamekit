@@ -1616,10 +1616,7 @@ namespace FlexKit
             ReserveConstantBufferFunction&          constantBufferAllocator,
             const ComputeTiledDeferredShadeDesc&    scene)
     {
-
-
         frameGraph.Resources.AddUAVResource(tempBuffer, 0, frameGraph.GetRenderSystem().GetObjectState(tempBuffer));
-
 
         auto& pass = frameGraph.AddNode<ComputeTiledPass>(
             ComputeTiledPass{

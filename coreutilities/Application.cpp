@@ -24,6 +24,7 @@ namespace FlexKit
 	{
 		if (Memory)
 		{
+            Core.RenderSystem.WaitforGPU();
 			framework.Release();
 			Core.Release();
 			Memory = nullptr;
