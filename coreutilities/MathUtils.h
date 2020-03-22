@@ -570,12 +570,12 @@ namespace FlexKit
 	typedef Vect<4, double> double4;
 	
     typedef Vect<2, uint32_t>       uint2;
-    typedef Vect<2, size_t>         uint2_64;
+    typedef Vect<2, uint64_t>       uint2_64;
 
-	typedef Vect<3, size_t>         uint3;
-	typedef Vect<4, size_t>         uint4;
+	typedef Vect<3, uint32_t>       uint3;
+	typedef Vect<4, uint32_t>       uint4;
 	typedef Vect<4, unsigned short> uint4_16;
-	typedef Vect<4, uint32_t>       uint4_32;
+	typedef Vect<4, uint64_t>       uint4_32;
 
 	typedef Vect<2, int> int2;
 	typedef Vect<3, int> int3;

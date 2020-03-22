@@ -284,8 +284,6 @@ namespace FlexKit
                     feedbackReturnBuffer[I],
                     [&, textureStreamingEngine = this](char* buffer, const size_t bufferSize)
                     {
-                        updateInProgress = false;
-
                         if (!buffer)
                             return;
 

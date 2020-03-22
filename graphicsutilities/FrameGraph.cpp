@@ -591,7 +591,7 @@ namespace FlexKit
 			},
 			[=, &allocator](SubmitData& data)
 			{
-				FK_LOG_INFO("Frame Graph Multi-Thread Section Begin");
+				FK_LOG_9("Frame Graph Multi-Thread Section Begin");
 
 				data.frameGraph->_SubmitFrameGraph(data.contexts, allocator);
 				data.contexts.back()->FlushBarriers();
@@ -601,7 +601,7 @@ namespace FlexKit
 				data.renderSystem->Submit(data.contexts);
 
 
-                FK_LOG_INFO("Frame Graph Multi-Thread Section End");
+                FK_LOG_9("Frame Graph Multi-Thread Section End");
 			});
 	}
 

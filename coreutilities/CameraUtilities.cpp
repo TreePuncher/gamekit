@@ -256,7 +256,7 @@ namespace FlexKit
 			},
 			[&orbitCamera](auto& data)
 			{
-				FK_LOG_INFO("OrbitCamera Update");
+				FK_LOG_9("OrbitCamera Update");
 
 				orbitCamera.Update(data.mouseState, data.dt);
 			});

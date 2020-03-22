@@ -177,7 +177,7 @@ namespace FlexKit
 			},
 			[this](auto& Data)
 			{
-				FK_LOG_INFO("Updating Cameras");
+				FK_LOG_9("Updating Cameras");
 
 				size_t End = Cameras.size();
 				for (size_t I = 0; I < End; ++I)

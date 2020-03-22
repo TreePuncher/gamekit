@@ -82,7 +82,7 @@ namespace FlexKit
 
 	void PipelineStateTable::ReleasePSOs()
 	{
-		FK_LOG_INFO("Releasing Pipeline State Objects");
+		FK_LOG_9("Releasing Pipeline State Objects");
 
 		for (auto& s : States)
 		{
@@ -202,11 +202,11 @@ namespace FlexKit
 
 					if (PSO->stale && PSO->loader != loader)
 					{
-						FK_LOG_INFO("Stale PSO LOADED!");
+						FK_LOG_2("Stale PSO LOADED!");
 						continue;
 					}
 
-					FK_LOG_INFO("Finished PSO Load");
+					FK_LOG_2("Finished PSO Load");
 
 					PSO->state = PipelineStateObject::PSO_States::Loaded;
 					PSO->PSO = res;
@@ -254,7 +254,7 @@ namespace FlexKit
 
 		if (!PSO)
 		{
-			FK_LOG_INFO("Adding State Node!");
+			FK_LOG_2("Adding State Node!");
 			// add new node
 			PSO			= &allocator->allocate<PipelineStateObject>();
 			PSO->id		= handle;
@@ -286,7 +286,7 @@ namespace FlexKit
 
 		if (!PSO->next)
 		{
-			FK_LOG_INFO("Adding State Node!");
+			FK_LOG_2("Adding State Node!");
 			// add new node
 			PSO					= &allocator->allocate<PipelineStateObject>();
 			PSO->id				= handle;
@@ -398,7 +398,7 @@ namespace FlexKit
 		EXITSCOPE(
 			auto After = Clock.now();
 			auto Duration = chrono::duration_cast<chrono::milliseconds>(After - Before);
-			FK_LOG_INFO("Shader Load Time: %d milliseconds", Duration.count());
+			FK_LOG_1("Shader Load Time: %d milliseconds", Duration.count());
 		);
 		
 		const auto previousPSO = PSO->PSO;

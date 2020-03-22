@@ -131,7 +131,7 @@ namespace FlexKit
         Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
         D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-        Depth_Desc.DepthEnable      = false;
+        Depth_Desc.DepthEnable      = true;
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {
             .pRootSignature        = RS->Library.RSDefault,
@@ -158,10 +158,12 @@ namespace FlexKit
 
 
     template<typename TY>
-    size_t GetConstantsAlignedSize()
+    constexpr size_t GetConstantsAlignedSize()
     {
+        const auto alignment        = 256;
+        const auto mask             = alignment - 1;
         const auto unalignedSize    = sizeof(TY);
-        const auto offset           = unalignedSize & (256 + 1);
+        const auto offset           = unalignedSize & mask;
         const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
 
         return unalignedSize + adjustedOffset;
@@ -203,32 +205,51 @@ namespace FlexKit
             },
             [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
-                const size_t entityBufferSize = GetConstantsAlignedSize<Drawable::VConstantsLayout>();
+                auto& drawables = data.pvs.GetData().solid;
 
-                CBPushBuffer entityConstantBuffer   { data.constantBufferAllocator(entityBufferSize * data.pvs.GetData().solid.size()) };
-                CBPushBuffer passContantBuffer      { data.constantBufferAllocator(4096) };
+                static const size_t entityBufferSize = 1024 * drawables.size();
+                CBPushBuffer passContantBuffer{ data.constantBufferAllocator(entityBufferSize + 2048)  };
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACK));
 
+                ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
+                ctx.ClearDepthBuffer(resources.GetRenderTarget(data.feedbackDepth), 1.0f);
 
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackDepth) });
                 ctx.SetRenderTargets({}, true, resources.GetRenderTarget(data.feedbackDepth));
 
-                struct constantBufferLayout
+                struct alignas(256) constantBufferLayout
                 {
-                    uint32_t    textureHandles[16];
-                    uint2       blockSizes[16];
-
+                    uint4       textureHandles[16];
                     uint32_t    zeroBlock[8];
                 } constants =
                 {
-                    { (uint32_t)testTexture },
-                    { { 256, 256 }}
+                    {   {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u },
+                        {256, 256, (uint32_t)testTexture, 0u } },
+
+                    { 0, 0, 0, 0, 0, 0, 0, 0 }
                 };
 
-                const auto passConstants = ConstantBufferDataSet{ constants, passContantBuffer };
+                const auto passConstants    = ConstantBufferDataSet{ constants, passContantBuffer };
+                const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passContantBuffer };
 
+
+                // TODO: addd Clear UAV Buffer
                 ctx.CopyBufferRegion(
                     { resources.GetObjectResource(passConstants.Handle()) },
                     { passConstants.Offset() + ((size_t)&constants.zeroBlock - (size_t)&constants) },
@@ -252,18 +273,15 @@ namespace FlexKit
                 ctx.SetGraphicsDescriptorTable(3, srvHeap);
                 ctx.SetGraphicsDescriptorTable(4, uavHeap);
 
-                ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ GetCameraConstants(camera), passContantBuffer });
+                ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, passConstants);
 
                 TriMesh* prevMesh = nullptr;
 
-                auto& opaqueObjects = data.pvs.GetData().solid;
-                for (size_t I = 0; I < min(1, opaqueObjects.size()); ++I)
+                for (size_t I = 0; I < drawables.size(); ++I)
                 {
-                    auto& visable = data.pvs.GetData().solid[I];
+                    auto& visable = drawables[I];
                     auto* triMesh = GetMeshResource(visable.D->MeshHandle);
-
-                    visable.D->GetConstants();
 
                     if (triMesh != prevMesh)
                     {
@@ -283,9 +301,18 @@ namespace FlexKit
                         );
                     }
 
-                    auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), entityConstantBuffer };
-                    ctx.SetGraphicsConstantBufferView(1, constants);
-                    ctx.DrawIndexed(triMesh->IndexCount);
+                    const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passContantBuffer };
+
+                    if (constants.Offset() == -1 || constants.Offset() % 256 != 0)
+                    {
+                        __debugbreak();
+                        break;
+                    }
+                    else
+                    {
+                        ctx.SetGraphicsConstantBufferView(1, constants);
+                        ctx.DrawIndexed(triMesh->IndexCount);
+                    }
                 }
 
                 ctx.CopyBufferRegion(
@@ -295,11 +322,10 @@ namespace FlexKit
                     {   resources.GetObjectResource(data.readbackBuffer),
                         resources.GetObjectResource(data.readbackBuffer) },
                     { 0, 64 },
-                    { 8, MEGABYTE / 2 },
+                    { 8, MEGABYTE * 2 },
                     { DRS_Write, DRS_Write },
                     { DRS_Write, DRS_Write }
                 );
-
                 ctx.QueueReadBack(data.readbackBuffer);
             });
     }
@@ -318,8 +344,11 @@ namespace FlexKit
 
             if (requestCount)
             {
-                requests = reinterpret_cast<gpuTileID*>(IN_allocator->malloc(requestCount * 8));
-                memcpy(requests, buffer + 64, std::min(requestCount * 8, buffer_size));
+                requestCount    = std::min(requestCount, buffer_size);
+                requests        = reinterpret_cast<gpuTileID*>(IN_allocator->malloc(requestCount));
+                memcpy(requests, buffer + 64, requestCount);
+
+                requestCount = requestCount / 64;
             }
         }
 
@@ -327,8 +356,35 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    template<typename TY>
+    decltype(auto) _TimeBlock(TY& function, const char* id)
+    {
+        std::chrono::system_clock Clock;
+        auto Before = Clock.now();
+
+        FINALLY
+            auto After = Clock.now();
+            auto Duration = chrono::duration_cast<chrono::microseconds>(After - Before);
+        FK_LOG_9("Function %s executed in %umicroseconds.", id, Duration.count());
+        FINALLYOVER;
+
+        return function();
+    }
+
+
+#define TIMEBLOCK(A, B) _TimeBlock([&]{ return A; }, B)
+
     void TextureStreamingEngine::TextureBlockUpdate::Run()
     {
+        std::chrono::system_clock Clock;
+		auto Before = Clock.now();
+		FINALLY
+			auto After = Clock.now();
+			auto Duration = chrono::duration_cast<chrono::microseconds>( After - Before );
+            FK_LOG_9("TextureBlockUpdate Time: %u", Duration.count());
+		FINALLYOVER;
+
+
         if (!requests || !requestCount)
         {
             textureStreamEngine.MarkUpdateCompleted();
@@ -345,12 +401,14 @@ namespace FlexKit
             return lhs.GetSortingID() == rhs.GetSortingID();
         };
 
-        std::sort(
-            requests,
-            requests + requestCount,
-            lg_comparitor);
+        TIMEBLOCK(
+            std::sort(
+                requests,
+                requests + requestCount,
+                lg_comparitor),
+            "sort(Requests)");
 
-        const auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
+        const auto end            = TIMEBLOCK(std::unique(requests, requests + requestCount, eq_comparitor), "Unqiue(Requests)");
         const auto uniqueCount    = (size_t)(end - requests);
 
         const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, allocator);
@@ -432,6 +490,9 @@ namespace FlexKit
 
         for (const AllocatedBlock& block : allocations.allocations)
         {
+            if (!GetResourceAsset(block.resource)) // Skipped unmapped blocks
+                continue;
+
             if (prevResource != block.resource)
             {
                 if (prevResource != InvalidHandle_t)
@@ -492,19 +553,23 @@ namespace FlexKit
         if (allocations.allocations.size() && mappings.size() != 0)
         {
             const ResourceHandle resource = allocations.allocations.back().resource;
-            renderSystem.UpdateTextureTileMappings(resource, mappings);
 
-            if (prevResource != InvalidHandle_t)
+            if (GetResourceAsset(resource)) // Skipped unmapped blocks
             {
-                const auto currentState = renderSystem.GetObjectState(resource);
-                if (currentState != DeviceResourceState::DRS_GENERIC)
-                    ctx.Barrier(
-                        renderSystem.GetDeviceResource(resource),
-                        currentState,
-                        DeviceResourceState::DRS_GENERIC);
-
-                renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
                 renderSystem.UpdateTextureTileMappings(resource, mappings);
+
+                if (prevResource != InvalidHandle_t)
+                {
+                    const auto currentState = renderSystem.GetObjectState(resource);
+                    if (currentState != DeviceResourceState::DRS_GENERIC)
+                        ctx.Barrier(
+                            renderSystem.GetDeviceResource(resource),
+                            currentState,
+                            DeviceResourceState::DRS_GENERIC);
+
+                    renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
+                    renderSystem.UpdateTextureTileMappings(resource, mappings);
+                }
             }
         }
 

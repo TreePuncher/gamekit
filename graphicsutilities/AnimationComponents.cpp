@@ -63,11 +63,11 @@ namespace FlexKit
 			},
 			[](GatherSkinnedTaskData& data)
 			{
-                FK_LOG_INFO("Start gather skinned objects.\n");
+                FK_LOG_9("Start gather skinned objects.\n");
 
                 GatherSkinned(data.scene, data.camera, data.skinned);
 
-                FK_LOG_INFO("End gather skinned objects.\n");
+                FK_LOG_9("End gather skinned objects.\n");
 			});
 
 		return task;
@@ -112,7 +112,7 @@ namespace FlexKit
 			},
 			[](UpdatePosesTaskData& data)
 			{
-                FK_LOG_INFO("Start Pose Updates.\n");
+                FK_LOG_9("Start Pose Updates.\n");
 
                 for (auto& skinnedObject : *data.skinned)
                 {
@@ -120,7 +120,7 @@ namespace FlexKit
                     data.taskMemory.clear();
                 }
 
-                FK_LOG_INFO("End Pose Updates.\n");
+                FK_LOG_9("End Pose Updates.\n");
 			});
 
 		return task;

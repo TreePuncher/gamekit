@@ -215,13 +215,25 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    FK_LOG_INFO("Running application.");
-    app.Run();
-    FK_LOG_INFO("Application shutting down.");
+    try
+    {
+        FK_LOG_2("Running application.");
+        app.Run();
+        FK_LOG_2("Application shutting down.");
 
-    FK_LOG_INFO("Cleanup Startup.");
-    app.Release();
-    FK_LOG_INFO("Cleanup Finished.");
+        FK_LOG_2("Cleanup Startup.");
+        app.Release();
+        FK_LOG_2("Cleanup Finished.");
+    }
+    catch (...)
+    {
+#if USING(AFTERMATH)
+        GFSDK_Aftermath_Device_Status status;
+        GFSDK_Aftermath_GetDeviceStatus(&status);
+
+        int x = 0;
+#endif
+    };
 
     return 0;
 }

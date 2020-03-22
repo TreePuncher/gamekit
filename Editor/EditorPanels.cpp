@@ -203,7 +203,7 @@ void Menu_Panel::Draw(
         if(ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("Load File"))
-                FK_LOG_INFO("Unimplemented Menu item called!");
+                FK_LOG_WARNING("Unimplemented Menu item called!");
 
             if (ImGui::MenuItem("Exit"))
                 core.End = true;

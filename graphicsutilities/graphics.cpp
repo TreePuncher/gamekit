@@ -426,7 +426,6 @@ namespace FlexKit
 		Resource_DESC.DepthOrArraySize		= 1;
 		Resource_DESC.Dimension				= D3D12_RESOURCE_DIMENSION::D3D12_RESOURCE_DIMENSION_BUFFER;
 		Resource_DESC.Layout				= D3D12_TEXTURE_LAYOUT::D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-		Resource_DESC.Width					= BufferSize;
 		Resource_DESC.Height				= 1;
 		Resource_DESC.Format				= DXGI_FORMAT_UNKNOWN;
 		Resource_DESC.SampleDesc.Count		= 1;
@@ -471,18 +470,20 @@ namespace FlexKit
 
 		ConstantBufferHandle handle = handles.GetNewHandle();
 
-		UserConstantBuffer buffer = {
-			uint32_t(BufferSize),
-			0,
-			Mapped_ptr,
+        UserConstantBuffer buffer = {
+            BufferSize,
+            0,
+            Mapped_ptr,
 
-			GPUResident,
-			false,
+            GPUResident,
+            false,
 
-			{ resources[0], resources[1], resources[2], },
-			0,
-			{0, 0, 0},
-			handle };
+            { 0, 0, 0 },
+            0,
+            handle,
+
+            { resources[0], resources[1], resources[2], },
+        };
 
 
 		handles[handle] = buffers.push_back(buffer);
@@ -539,7 +540,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t pushSize)
+    std::optional<size_t> ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t pushSize)
 	{
 		auto& buffer = buffers[handles[Handle]];
 
@@ -556,19 +557,22 @@ namespace FlexKit
 		const char*  mapped_Ptr	= (char*)buffer.mapped_ptr;
 
 		if (!mapped_Ptr)
-			return false;
+            return {};
 
 		if (size < offset + pushSize)
-			return false; // Buffer To small to accommodate Push
+            return {}; // Buffer To small to accommodate Push
 
 		buffer.offset += pushSize;
-		buffer.writeFlag = true;
 
-		FK_ASSERT(offset % 256 == 0);
+        if(!buffer.writeFlag)
+		    buffer.writeFlag = true;
+
+		FK_ASSERT(pushSize % 256 == 0); // size requests must be blocks of 256
+
 		if(_Ptr)
 			memcpy((void*)(mapped_Ptr + offset), _Ptr, pushSize);
 
-		return true;
+        return { offset };
 	}
 
 
@@ -577,14 +581,13 @@ namespace FlexKit
 
 	ConstantBufferTable::SubAllocation ConstantBufferTable::Reserve(ConstantBufferHandle CB, size_t reserveSize)
 	{
-		size_t offsetBegin = GetBufferOffset(CB);
-		const bool success = Push(CB, nullptr, reserveSize);
-		FK_ASSERT(success != false);
+		const auto res = Push(CB, nullptr, reserveSize);
+		FK_ASSERT(res.has_value());
 
 		const size_t UserIdx	= handles[CB];
 		void*		 buffer		= buffers[UserIdx].mapped_ptr;
 
-		return { static_cast<char*>(buffer), offsetBegin, reserveSize };
+		return { static_cast<char*>(buffer), res.value_or(0), reserveSize };
 	}
 
 
@@ -1281,9 +1284,9 @@ namespace FlexKit
 		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapDSV));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
-		FK_LOG_INFO("GRAPHICS SRV DESCRIPTOR HEAP CREATED: %u", descHeapSRV);
-		FK_LOG_INFO("GRAPHICS RTV DESCRIPTOR HEAP CREATED: %u", descHeapRTV);
-		FK_LOG_INFO("GRAPHICS DSV DESCRIPTOR HEAP CREATED: %u", descHeapDSV);
+		FK_LOG_9("GRAPHICS SRV DESCRIPTOR HEAP CREATED: %u", descHeapSRV);
+		FK_LOG_9("GRAPHICS RTV DESCRIPTOR HEAP CREATED: %u", descHeapRTV);
+		FK_LOG_9("GRAPHICS DSV DESCRIPTOR HEAP CREATED: %u", descHeapDSV);
 
 		SETDEBUGNAME(descHeapSRV, "RESOURCEHEAP");
 		SETDEBUGNAME(descHeapRTV, "GPURESOURCEHEAP");
@@ -1291,6 +1294,8 @@ namespace FlexKit
 
 		HR = renderSystem->pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator)); FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, __uuidof(ID3D12CommandList), (void**)&DeviceContext);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
+
+        auto res = GFSDK_Aftermath_DX12_CreateContextHandle(DeviceContext, &AFTERMATH_context);
 
 		DeviceContext->Close();
 	}
@@ -1324,15 +1329,13 @@ namespace FlexKit
 		if(DeviceContext)
 			DeviceContext->Release();
 
+        GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
+
 		descHeapDSV         = nullptr;
 		descHeapRTV         = nullptr;
 		descHeapSRV         = nullptr;
 		commandAllocator    = nullptr;
 		DeviceContext       = nullptr;
-
-
-
-
 	}
 
 
@@ -3527,25 +3530,29 @@ namespace FlexKit
 		Debug		= nullptr;
 		DebugDevice = nullptr;
 		#endif	
-		
+
 		bool InitiateComplete = false;
 
 		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
 		{
-			FK_LOG_INFO("Failed to create A DX12 Device!");
+			FK_LOG_ERROR("Failed to create A DX12 Device!");
 
 			// Trying again with a DX11 Feature Level
 			HR = D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&Device));
 			if (FAILED(HR))
 			{
-				FK_LOG_INFO("Failed to create A DX11 Device!");
+				FK_LOG_ERROR("Failed to create A DX11 Device!");
 				MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
 				return false;
 			}
 		}
 
-#if USING( DEBUGGRAPHICS )
+#if USING(AFTERMATH)
+        auto res = GFSDK_Aftermath_DX12_Initialize(GFSDK_Aftermath_Version_API, GFSDK_Aftermath_FeatureFlags_Maximum, Device);
+#endif
+
+#if USING(DEBUGGRAPHICS)
 		HR =  Device->QueryInterface(__uuidof(ID3D12DebugDevice), (void**)&DebugDevice);
 #else
 		DebugDevice = nullptr;
@@ -3557,7 +3564,7 @@ namespace FlexKit
 			FK_ASSERT(FAILED(HR), "FAILED TO CREATE FENCE!");
 			SETDEBUGNAME(NewFence, "GRAPHICS FENCE");
 
-			FK_LOG_INFO("GRAPHICS FENCE CREATED: %u", NewFence);
+			FK_LOG_9("GRAPHICS FENCE CREATED: %u", NewFence);
 
 			Fence = NewFence;
 			ObjectsCreated.push_back(NewFence);
@@ -3582,9 +3589,8 @@ namespace FlexKit
 		ObjectsCreated.push_back(GraphicsQueue);
 		ObjectsCreated.push_back(ComputeQueue);
 
-		FK_LOG_INFO("GRAPHICS COMMAND QUEUE CREATED: %u", CQD);
-		FK_LOG_INFO("GRAPHICS COMPUTE QUEUE CREATED: %u", ComputeCQD);
-		FK_LOG_INFO("GRAPHICS UPLOAD  QUEUE CREATED: %u", UploadCQD);
+		FK_LOG_9("GRAPHICS COMMAND QUEUE CREATED: %u", CQD);
+		FK_LOG_9("GRAPHICS COMPUTE QUEUE CREATED: %u", ComputeCQD);
 
 		SETDEBUGNAME(GraphicsQueue, "GRAPHICS QUEUE");
 		SETDEBUGNAME(ComputeQueue,	"COMPUTE QUEUE");
@@ -3675,15 +3681,12 @@ namespace FlexKit
 
 	void RenderSystem::Release()
 	{
-        WaitforGPU();
-
-        auto temp = Fence->GetCompletedValue();
-
 		if (!Memory)
 			return;
 
+        WaitforGPU();
 
-		FK_LOG_INFO("Releasing RenderSystem");
+		FK_LOG_9("Releasing RenderSystem");
 
 		for (auto& ctx : Contexts)
 			ctx.Release();
@@ -3760,7 +3763,7 @@ namespace FlexKit
 
 	void RenderSystem::QueuePSOLoad(PSOHandle State)
 	{
-		FK_LOG_INFO("Reloading PSO!");
+		FK_LOG_2("Reloading PSO!");
 
 		PipelineStates.QueuePSOLoad(State, Memory);
 	}
@@ -3789,7 +3792,16 @@ namespace FlexKit
 	
 	void RenderSystem::PresentWindow(RenderWindow* Window)
 	{
-		Window->SwapChain_ptr->Present(0, 0);
+		auto HR = Window->SwapChain_ptr->Present(0, 0);
+
+        if (HR == DXGI_ERROR_DEVICE_REMOVED || HR == DXGI_ERROR_DEVICE_RESET)
+        {
+            _OnCrash();
+        }
+        else
+        {
+        }
+
 
 		Textures.SetBufferedIdx(Window->backBuffer, Window->SwapChain_ptr->GetCurrentBackBufferIndex());
 		Textures.UpdateLocks();
@@ -4141,7 +4153,7 @@ namespace FlexKit
 
 			FK_ASSERT(desc.bufferCount <= 3);
 
-			FK_LOG_INFO("Creating Texture!");
+			FK_LOG_9("Creating Texture!");
 
 			const size_t end = desc.bufferCount;
 			for (size_t itr = 0; itr < end; ++itr)
@@ -6039,6 +6051,9 @@ namespace FlexKit
 
     void TextureStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
     {
+        if (handle == InvalidHandle_t)
+            return;
+
         auto itr        = begin;
         auto UserIdx    = Handles[handle];
         auto& mappings  = UserEntries[UserIdx].tileMappings;
@@ -6667,6 +6682,36 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void RenderSystem::_OnCrash()
+    {
+#if USING(AFTERMATH)
+        std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
+        std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ Contexts.size() };
+
+        for (auto& context : Contexts)
+            context_handles.push_back(context.AFTERMATH_context);
+
+        GFSDK_Aftermath_Device_Status           device_status;
+        GFSDK_Aftermath_PageFaultInformation    pafeFault;
+
+        GFSDK_Aftermath_GetDeviceStatus(&device_status);
+        GFSDK_Aftermath_GetData(context_handles.size(), context_handles.data(), context_crash_info.data());
+        GFSDK_Aftermath_GetPageFaultInformation(&pafeFault);
+
+        for (auto& context : Contexts)
+            GFSDK_Aftermath_ReleaseContextHandle(context.AFTERMATH_context);
+
+        Sleep(3000); // Aftermath needs a moment to do it's crash dump
+
+        __debugbreak();
+        exit(-1);
+#endif
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -7182,7 +7227,7 @@ namespace FlexKit
 
 		do
 		{
-			FK_LOG_INFO("LoadingShader - %s - \n", Entry);
+			FK_LOG_2("LoadingShader - %s - \n", Entry);
 			res = LoadAndCompileShaderFromFile(File, &SDesc, &Shader);
 #if USING( EDITSHADERCONTINUE )
 			if (!res)

@@ -71,6 +71,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //#pragma comment(lib, "osdGPU.lib" )
 
 
+#if USING(AFTERMATH)
+
+#include "..\dependencies\sdks\nvidia-aftermath\include\GFSDK_Aftermath.h"
+#pragma comment( lib, "../Dependencies/sdks/nvidia-aftermath/lib/x64/GFSDK_Aftermath_Lib.x64.lib")
+
+#endif
+
 namespace FlexKit
 {
 	// Forward Declarations
@@ -1784,6 +1791,12 @@ namespace FlexKit
 
 		uint64_t                                    counter = 0;
 		iAllocator*								    Memory;
+
+#if USING(AFTERMATH)
+public:
+        GFSDK_Aftermath_ContextHandle   AFTERMATH_context;
+private:
+#endif
 	};
 
 
@@ -1932,18 +1945,18 @@ namespace FlexKit
 
 		struct UserConstantBuffer
 		{
-			uint32_t	size;
-			uint32_t	offset;
+			uint64_t	size;
+            uint64_t	offset;
 			void*		mapped_ptr;
 
 			bool GPUResident;
 			bool writeFlag;
 
-			ID3D12Resource*         resources[3];
-			uint8_t                 currentRes;
 			char                    locks[3];
-
+			uint8_t                 currentRes;
 			ConstantBufferHandle    handle;
+
+			ID3D12Resource*         resources[3];
 		};
 
 
@@ -1955,7 +1968,7 @@ namespace FlexKit
 		size_t					GetBufferOffset			(const ConstantBufferHandle Handle) const;
 
 		size_t					AlignNext               (ConstantBufferHandle Handle);
-		bool					Push			        (ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
+		std::optional<size_t>	Push			        (ConstantBufferHandle Handle, void* _Ptr, size_t PushSize);
 		
 		SubAllocation			Reserve					(ConstantBufferHandle Handle, size_t Size);
 
@@ -3215,6 +3228,8 @@ namespace FlexKit
 		CopyContext&                _GetCopyContext     (CopyContextHandle handle = InvalidHandle_t);
         auto*                       _GetCopyQueue()     { return copyEngine.copyQueue; }
 
+        void                        _OnCrash();
+
 		operator RenderSystem* () { return this; }
 
 		ID3D12Device*			pDevice			= nullptr;
@@ -3651,7 +3666,7 @@ namespace FlexKit
 			return (sizeof(TY) / 256 + 1) * 256;
 		}
 
-		static size_t CalculateOffset(size_t size)
+		static constexpr size_t CalculateOffset(const size_t size)
 		{
 			return (size / 256 + 1) * 256;
 		}
@@ -3659,23 +3674,24 @@ namespace FlexKit
 		template<typename _TY>
 		size_t Push(_TY& data)
 		{
-			if (pushBufferUsed + sizeof(data) > pushBufferSize)
+            const size_t estimatedSize = CalculateOffset<_TY>();
+			if (pushBufferUsed + CalculateOffset<_TY>() > pushBufferSize)
 				return -1;
 
 			const size_t offset = pushBufferUsed;
-			memcpy(pushBufferBegin + buffer + pushBufferUsed, (char*)&data, sizeof(data));
+			memcpy(buffer + pushBufferBegin + offset, (char*)&data, sizeof(data));
 			pushBufferUsed += CalculateOffset<_TY>();
 
 			return offset + pushBufferBegin;
 		}
 
-		size_t Push(char* _ptr, size_t size)
+		size_t Push(char* _ptr, const size_t size)
 		{
-			if (pushBufferUsed + size > pushBufferSize)
+			if (pushBufferUsed + CalculateOffset(size) > pushBufferSize)
 				return -1;
 
 			const size_t offset = pushBufferUsed;
-			memcpy(pushBufferBegin + buffer + pushBufferUsed, _ptr, size);
+			memcpy(buffer + pushBufferBegin + offset, _ptr, size);
 			pushBufferUsed += CalculateOffset(offset);
 
 			return offset + pushBufferBegin;
@@ -4538,9 +4554,11 @@ namespace FlexKit
 		iAllocator*             allocator)
 	{
 		return MakeSynchonized(
-			[=](size_t reserveSize) -> CBPushBuffer
+			[=](const size_t reserveSize) -> CBPushBuffer
 			{
-				return CBPushBuffer(constantBuffer, reserveSize, *renderSystem);
+                auto push = CBPushBuffer(constantBuffer, reserveSize, *renderSystem);
+                //std::cout << "reserveSize: " << reserveSize << ", offset: " << push.begin() << "\n";
+				return std::move(push);
 			},
 			allocator);
 	}
