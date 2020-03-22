@@ -1084,12 +1084,12 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-
+    [[deprecated]]
     inline bool PushConstantBufferData(char* _ptr, size_t Size, ConstantBufferHandle Buffer, FrameResources& Resources)
     {
-        bool res = Resources.renderSystem.ConstantBuffers.Push(Buffer, _ptr, Size);
+        const auto res = Resources.renderSystem.ConstantBuffers.Push(Buffer, _ptr, Size);
         FK_ASSERT(res, "Failed to Push Constants!");
-        return res;
+        return res.has_value();
     }
 
 
@@ -1097,11 +1097,11 @@ namespace FlexKit
 
 
     template<typename TY_CB>
-    bool PushConstantBufferData(const TY_CB& Constants, ConstantBufferHandle Buffer, FrameResources& Resources)
+    [[deprecated]] bool PushConstantBufferData(const TY_CB& Constants, ConstantBufferHandle Buffer, FrameResources& Resources)
     {
-        bool res = Resources.renderSystem.ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB));
+        const auto res = Resources.renderSystem.ConstantBuffers.Push(Buffer, (void*)&Constants, sizeof(TY_CB));
         FK_ASSERT(res, "Failed to Push Constants!");
-        return res;
+        return res.has_value();
     }
 
 

@@ -56,7 +56,7 @@ namespace FlexKit
 
 		while (!Core.End && !Core.Window.Close && framework.subStates.size())
 		{
-            FK_LOG_INFO("BEGIN FRAME");
+            FK_LOG_2("BEGIN FRAME");
 
 			Core.Time.Before();
 

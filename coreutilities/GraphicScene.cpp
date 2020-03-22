@@ -612,7 +612,7 @@ namespace FlexKit
 			},
 			[](auto& QuadTreeUpdate)
 			{
-				FK_LOG_INFO("QuadTree::Update");
+				FK_LOG_9("QuadTree::Update");
 
 				const auto period  = QuadTreeUpdate.QTree->RebuildPeriod;
 				const auto counter = QuadTreeUpdate.QTree->RebuildCounter;
@@ -729,12 +729,12 @@ namespace FlexKit
 			},
 			[](GetPVSTaskData& data)
 			{
-                FK_LOG_INFO("Start PVS gather\n");
+                FK_LOG_9("Start PVS gather\n");
 
                 GatherScene(data.scene, data.camera, data.solid, data.transparent);
 				SortPVS(&data.solid, &CameraComponent::GetComponent().GetCamera(data.camera));
 
-                FK_LOG_INFO("End PVS gather\n");
+                FK_LOG_9("End PVS gather\n");
 			});
 
 		return task;
@@ -971,7 +971,7 @@ namespace FlexKit
 			},
 			[this](PointLightGather& data)
 			{
-                FK_LOG_INFO("Point Light Gather");
+                FK_LOG_9("Point Light Gather");
 
 				for (auto entity : sceneEntities)
 				{

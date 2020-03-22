@@ -175,8 +175,8 @@ public:
                 { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, DeviceFormat::R16G16_FLOAT)) } },
 
 
-			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)							},
-			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 64, false)						},
+			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)							},
+			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)						},
 			asEngine		{ asCreateScriptEngine()																		},
 			streamingEngine	{ IN_Framework.core.RenderSystem,   IN_Framework.core.GetBlockMemory()				            },
             sounds          { IN_Framework.core.Threads,        IN_Framework.core.GetBlockMemory()                          },

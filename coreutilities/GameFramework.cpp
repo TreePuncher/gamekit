@@ -122,9 +122,9 @@ namespace FlexKit
 				framework.MouseState.Enabled = !framework.MouseState.Enabled;
 
 				if (framework.MouseState.Enabled)
-					FK_LOG_INFO("Mouse Enabled");
+					FK_LOG_2("Mouse Enabled");
 				else
-					FK_LOG_INFO("Mouse Disabled");
+					FK_LOG_2("Mouse Disabled");
 
 				break;
 			case KC_TILDA:
