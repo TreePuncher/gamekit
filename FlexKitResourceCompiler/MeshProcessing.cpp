@@ -186,13 +186,15 @@ namespace FlexKit
 		int CPIndex     = mesh.GetPolygonVertex(pIndex, vIndex);
 		auto NElement   = mesh.GetElementNormal(0);
 
-		auto MappingMode = NElement->GetMappingMode();
-		switch (NElement->GetMappingMode())
+        const auto MappingMode    = NElement->GetMappingMode();
+        const auto referenceMode  = NElement->GetReferenceMode();
+
+		switch (MappingMode)
 		{
 			case FbxGeometryElement::eByPolygonVertex:
 			{
 				auto ReferenceMode = NElement->GetReferenceMode();
-				switch (NElement->GetReferenceMode())
+				switch (referenceMode)
 				{
 				case FbxGeometryElement::eDirect:
 				{
@@ -200,8 +202,7 @@ namespace FlexKit
 				}	break;
 				case FbxGeometryElement::eIndexToDirect:
 				{
-					int index = NElement->GetIndexArray().GetAt(vID);
-					return index;
+					return NElement->GetIndexArray().GetAt(vID);
 				}
 				break;
 				default:
@@ -346,8 +347,6 @@ namespace FlexKit
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddTexCordToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddVertexToken;
 		using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddWeightToken;
-		//using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddPatchBeginToken;
-		//using FlexKit::MeshUtilityFunctions::OBJ_Tools::AddPatchEndToken;
 		using fbxsdk::FbxLayerElement;
 
 		FBXMeshDesc	out = {};
@@ -382,8 +381,11 @@ namespace FlexKit
 			size_t	NormalCount = mesh.GetElementNormalCount();
 			auto	Normals     = mesh.GetElementNormal();
 			auto	Tangents    = mesh.GetElementTangent();
-			size_t	NCount	    = mesh.GetPolygonVertexCount();
-			auto	mapping     = Normals->GetMappingMode();
+			size_t	VCount	    = mesh.GetPolygonVertexCount();
+			size_t	NCount	    = Normals->GetDirectArray().GetCount();
+
+            auto	mapping     = Normals->GetMappingMode();
+            auto	reference   = Normals->GetReferenceMode();
 
             if (!Tangents && mesh.GetElementUV(0))
             {
@@ -475,34 +477,34 @@ namespace FlexKit
 			const auto Normals	= mesh.GetElementNormal();
 			const auto UVs		= mesh.GetElementUV(0);
 
-			const size_t  NormalCount	= mesh.GetElementNormalCount();
+			const size_t  NormalCount	= mesh.GetPolygonVertexCount();
 			const size_t  TriCount	    = mesh.GetPolygonCount();
 
 			size_t  faceCount	= 0;
 			int     IndexCount	= 0;
 
 			// Iterate through each Tri
-			for (int I = 0; I < TriCount; ++I)
+			for (int triID = 0; triID < TriCount; ++triID)
 			{	// Process each Vertex in tri
-				const int size = mesh.GetPolygonSize(I);
-
-				size_t	NC = mesh.GetElementNormal()->GetDirectArray().GetCount();
-				//if (SubDiv_Enabled)	
-                //  AddPatchBeginToken(out.tokens);
+				const int size = mesh.GetPolygonSize(triID);
+				const size_t NC = mesh.GetElementNormal()->GetDirectArray().GetCount();
 
 				if (size == 3)
 				{
-					const size_t VertexIndex1 = GetVertexIndex(I, 0, IndexCount, mesh);
-					const size_t NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, mesh) : 0;
-					const size_t UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, mesh) : 0;
+					const size_t VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
+					const size_t NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+					const size_t UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
 
-					const size_t VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, mesh);
-					const size_t NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, mesh) : 0;
-					const size_t UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, mesh) : 0;
+					const size_t VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
+					const size_t NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+					const size_t UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
 
-					const size_t VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, mesh);
-					const size_t NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, mesh) : 0;
-					const size_t UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, mesh) : 0;
+					const size_t VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
+					const size_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+					const size_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
+
+                    if (NormalIndex1 > NormalCount || NormalIndex2 > NormalCount || NormalIndex3 > NormalCount)
+                        __debugbreak();
 
 					AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
                     AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
@@ -516,21 +518,24 @@ namespace FlexKit
 
 					if constexpr(false)
 					{
-						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, mesh);
-						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, mesh) : 0;
-						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, mesh) : 0;
+						auto VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
 
-						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, mesh);
-						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, mesh) : 0;
-						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, mesh) : 0;
+						auto VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
 
-						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, mesh);
-						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, mesh) : 0;
-						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, mesh) : 0;
+						auto VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
 
-						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, mesh);
-						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, mesh) : 0;
-						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, mesh) : 0;
+						auto VertexIndex4 = GetVertexIndex(triID, 3, IndexCount + 3, mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
+
+                        if (NormalIndex1 > NormalCount || NormalIndex2 > NormalCount || NormalIndex3 > NormalCount || NormalIndex4 > NormalCount)
+                            __debugbreak();
 
 						AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, out.tokens);
 						AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, out.tokens);
@@ -541,21 +546,24 @@ namespace FlexKit
 					}
 					else
 					{
-						auto VertexIndex1 = GetVertexIndex(I, 0, IndexCount, mesh);
-						auto NormalIndex1 = out.Normals ? GetNormalIndex(I, 0, IndexCount, mesh) : 0;
-						auto UVCordIndex1 = out.UV ? GetTexcordIndex(I, 0, mesh) : 0;
+						auto VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
+						auto NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+						auto UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
 
-						auto VertexIndex2 = GetVertexIndex(I, 1, IndexCount + 1, mesh);
-						auto NormalIndex2 = out.Normals ? GetNormalIndex(I, 1, IndexCount + 1, mesh) : 0;
-						auto UVCordIndex2 = out.UV ? GetTexcordIndex(I, 1, mesh) : 0;
+						auto VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
+						auto NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+						auto UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
 
-						auto VertexIndex3 = GetVertexIndex(I, 2, IndexCount + 2, mesh);
-						auto NormalIndex3 = out.Normals ? GetNormalIndex(I, 2, IndexCount + 2, mesh) : 0;
-						auto UVCordIndex3 = out.UV ? GetTexcordIndex(I, 2, mesh) : 0;
+						auto VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
+						auto NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+						auto UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
 
-						auto VertexIndex4 = GetVertexIndex(I, 3, IndexCount + 3, mesh);
-						auto NormalIndex4 = out.Normals ? GetNormalIndex(I, 3, IndexCount + 3, mesh) : 0;
-						auto UVCordIndex4 = out.UV ? GetTexcordIndex(I, 3, mesh) : 0;
+						auto VertexIndex4 = GetVertexIndex(triID, 3, IndexCount + 3, mesh);
+						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
+						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
+
+                        if (NormalIndex1 > NormalCount || NormalIndex2 > NormalCount || NormalIndex3 > NormalCount || NormalIndex4 > NormalCount)
+                            __debugbreak();
 
 						AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
                         AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
@@ -565,7 +573,7 @@ namespace FlexKit
                         AddIndexToken(VertexIndex4, NormalIndex4, NormalIndex4, UVCordIndex4, out.tokens);
                         AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
 
-						IndexCount += 6;
+						IndexCount += 4;
                         faceCount += 2;
 					}
 
@@ -676,32 +684,6 @@ namespace FlexKit
 		}
 #endif
 
-
-		//Calculate Bounding Sphere
-		const float3	BSCenter = (transformedMesh.MaxV + transformedMesh.MinV) / 2;
-		const float		BSR_Ref  = (transformedMesh.MaxV - transformedMesh.MinV).magnitude() / 2;
-        float		    BSRadius = 50;
-
-        /*
-		ScanBufferView(
-			&CVB, 
-			(uint32_t)CVB.size(),
-			WriteVertex, 
-			FetchVertexPOS, 
-			[&](auto V)
-			{
-				V[3]		= 0;
-				auto Temp	= (V - BSCenter);
-				auto L		= Temp.magnitude();
-				BSRadius	= (BSRadius > L)? BSRadius : L;
-			});
-        */
-
-		//Calculate AABB
-		FlexKit::AABB AxisAlignedBoundingBox;
-		AxisAlignedBoundingBox.BottomLeft	= transformedMesh.MinV;
-		AxisAlignedBoundingBox.TopRight		= transformedMesh.MaxV;
-
 		meshOut->IndexBuffer_Idx	= BuffersFound.size();
 		meshOut->IndexCount			= optimizedbuffer.IndexCount();
 		meshOut->Skeleton			= skeleton;
@@ -712,8 +694,8 @@ namespace FlexKit
 		meshOut->TriMeshID			= mesh.GetUniqueID();
 		meshOut->ID					= ID;
 		meshOut->SkeletonGUID		= skeleton ? skeleton->guid : -1;
-		meshOut->BS					= BoundingSphere(BSCenter, BSRadius);
-		meshOut->AABB				= AxisAlignedBoundingBox;
+		meshOut->BS					= optimizedbuffer.bs;
+		meshOut->AABB				= optimizedbuffer.aabb;
         
 		return meshOut;
 	}

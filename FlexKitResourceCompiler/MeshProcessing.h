@@ -112,12 +112,12 @@ namespace FlexKit
 			blob->Info.r		= Info.r;
 	
 			memcpy(blob->BS, &BS, sizeof(BoundingSphere));
-			blob->AABB[0] = AABB.BottomLeft[0];
-			blob->AABB[1] = AABB.BottomLeft[1];
-			blob->AABB[2] = AABB.BottomLeft[2];
-			blob->AABB[3] = AABB.TopRight[0];
-			blob->AABB[4] = AABB.TopRight[1];
-			blob->AABB[5] = AABB.TopRight[2];
+			blob->AABB[0] = AABB.min[0];
+			blob->AABB[1] = AABB.min[1];
+			blob->AABB[2] = AABB.min[2];
+			blob->AABB[3] = AABB.max[0];
+			blob->AABB[4] = AABB.max[1];
+			blob->AABB[5] = AABB.max[2];
 
 			strcpy_s(blob->ID, ID_LENGTH > ID.size() ? ID_LENGTH : ID.size(), ID.c_str());
 
