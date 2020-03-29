@@ -271,27 +271,26 @@ namespace FlexKit
             feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE * 2)                                    },
             feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 240, 240 }, DeviceFormat::D32_FLOAT)) },
             feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
-            feedbackReturnBuffer    {
-                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
-                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
-                { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) } },
-             heap                   { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
-             mappedAssets           { IN_allocator }
+            feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
+            heap                    { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
+            mappedAssets            { IN_allocator },
+            updateThread            { *this, IN_allocator }
         {
             for (size_t I = 0; I < 3; I++)
             {
                 renderSystem.SetReadBackEvent(
-                    feedbackReturnBuffer[I],
+                    feedbackReturnBuffer,
                     [&, textureStreamingEngine = this](char* buffer, const size_t bufferSize)
                     {
                         if (!buffer)
                             return;
 
-                        renderSystem.threads.AddWork(
-                            &allocator->allocate<TextureBlockUpdate>(*textureStreamingEngine, buffer, bufferSize, allocator),
-                            allocator);
+                        updateThread.PushUpdate(buffer, bufferSize, allocator);
                     });
             }
+
+
+            textureLoadThread = std::thread{ [&] { updateThread.Run(); } };
         }
 
 
@@ -301,7 +300,6 @@ namespace FlexKit
             renderSystem.ReleaseUAV(feedbackCounters);
             renderSystem.ReleaseTexture(feedbackDepth);
         }
-
         
         void TextureFeedbackPass(
             UpdateDispatcher&                   dispatcher,
@@ -312,19 +310,30 @@ namespace FlexKit
             ReserveConstantBufferFunction&      constantBufferAllocator);
 
 
-        struct TextureBlockUpdate : public FlexKit::iWork
+        struct TextureBlockUpdateThread
         {
-            TextureBlockUpdate(TextureStreamingEngine& IN_textureStreamEngine, char* buffer, const size_t buffer_size, iAllocator* IN_allocator);
+            TextureBlockUpdateThread(TextureStreamingEngine& IN_textureStreamEngine, iAllocator* IN_allocator);
 
-            void Run() override;
+            void Run();
 
-            void Release() override { allocator->release(*this); }
+            void PushUpdate(char* buffer, const size_t buffer_size, iAllocator* IN_allocator);
+            void Shutdown();
 
             TextureStreamingEngine& textureStreamEngine;
-            size_t                  requestCount = 0;
-            gpuTileID*              requests;
-            iAllocator*             allocator;
-        };
+
+            struct _PendingUpdate
+            {
+                uint64_t    requestCount    = 0;
+                gpuTileID*  requests        = nullptr;
+                iAllocator* allocator       = nullptr;
+            };
+
+            Vector<_PendingUpdate>      pendingUpdates;
+            std::mutex                  lock;
+            std::atomic_bool            running = true;
+            std::condition_variable     cv;
+            iAllocator*                 allocator;
+        } updateThread;
 
 
         gpuTileList     UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
@@ -356,18 +365,17 @@ namespace FlexKit
             }
         };
 
+        std::thread                 textureLoadThread;
 
 		RenderSystem&				renderSystem;
 
         bool                        updateInProgress = false;
 
-        uint32_t                    readBackBlock = 0;
-
         UAVResourceHandle		    feedbackBuffer;     // GPU
         UAVResourceHandle           feedbackCounters;   // GPU
         ResourceHandle		        feedbackDepth;      // GPU
 
-        ReadBackResourceHandle      feedbackReturnBuffer[3]; // CPU + GPU
+        ReadBackResourceHandle      feedbackReturnBuffer; // CPU + GPU
 
         Vector<MappedAsset>         mappedAssets;
 		TextureBlockAllocator		textureBlockAllocator;

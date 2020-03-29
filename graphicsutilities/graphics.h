@@ -2354,16 +2354,24 @@ private:
 
         uint32_t GetTileX() const
         {
-            return bytes >> 16 & 0xf;
+            return (bytes >> 8) & 0xff;
         }
+
         uint32_t GetTileY() const
         {
-            return bytes >> 4 & 0xf;
+            return bytes & 0xff;
         }
-        int32_t GetMip() const
+
+        int32_t GetMipLevel(const uint32_t mipCount) const
         {
-            return bytes & 0xf;
+            return mipCount - (bytes >> 16) & 0xf;
         }
+
+        int32_t GetMipLevelInverted() const
+        {
+            return (bytes >> 16) & 0xf;
+        }
+
 
         bool operator == (const TileID_t& rhs) const
         {
@@ -2375,7 +2383,7 @@ private:
             return {
                 GetTileX(),
                 GetTileY(),
-                (UINT)GetMip()
+                (UINT)GetMipLevelInverted()
             };
         }
 
@@ -2442,6 +2450,8 @@ private:
 		DXGI_FORMAT		    GetFormat(ResourceHandle handle) const;
 		TextureDimension    GetDimension(ResourceHandle) const;
 		size_t              GetArraySize(ResourceHandle) const;
+        uint32_t            GetMIPCount(ResourceHandle) const;
+        
 
 		uint32_t		    GetTag(ResourceHandle Handle) const;
 		void			    SetTag(ResourceHandle Handle, uint32_t Tag);
@@ -3141,6 +3151,8 @@ private:
 		const uint2		GetTextureWH				(UAVTextureHandle Handle) const;
 		DeviceFormat	GetTextureFormat			(ResourceHandle Handle) const;
 		DXGI_FORMAT		GetTextureDeviceFormat		(ResourceHandle Handle) const;
+        uint32_t        GetTextureMipCount          (ResourceHandle Handle) const;
+
 
         void            UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
         void            UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList& );
@@ -3663,19 +3675,19 @@ private:
 		template<typename TY>
 		static constexpr size_t CalculateOffset()
 		{
-			return (sizeof(TY) / 256 + 1) * 256;
+			return max((sizeof(TY) / 256) * 256, 256);
 		}
 
 		static constexpr size_t CalculateOffset(const size_t size)
 		{
-			return (size / 256 + 1) * 256;
+			return max((size / 256) * 256, 256);
 		}
 
 		template<typename _TY>
 		size_t Push(_TY& data)
 		{
-            const size_t estimatedSize = CalculateOffset<_TY>();
-			if (pushBufferUsed + CalculateOffset<_TY>() > pushBufferSize)
+            constexpr size_t alignedSize = CalculateOffset<_TY>();
+			if (pushBufferUsed + alignedSize > pushBufferSize)
 				return -1;
 
 			const size_t offset = pushBufferUsed;
@@ -3836,6 +3848,18 @@ private:
 	/************************************************************************************************/
 
 
+    template<typename TY>
+    constexpr size_t GetConstantsAlignedSize()
+    {
+        const auto alignment        = 256;
+        const auto mask             = alignment - 1;
+        const auto unalignedSize    = sizeof(TY);
+        const auto offset           = unalignedSize & mask;
+        const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
+
+        return unalignedSize + adjustedOffset;
+    }
+
 	class ConstantBufferDataSet
 	{
 	public:
@@ -3895,11 +3919,9 @@ private:
 
 
 	struct SET_MAP_t{
-
 	}const SET_MAP_OP;
 
 	struct SET_TRANSFORM_t {
-
 	}const SET_TRANSFORM_OP;
 
 	class VertexBufferDataSet

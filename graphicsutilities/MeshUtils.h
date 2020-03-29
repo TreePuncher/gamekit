@@ -30,52 +30,94 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include <algorithm>
 #include <functional>
+#include <variant>
+#include <limits>
 
 namespace FlexKit
 {
-	// Enumerations
-	enum Token : char
+	struct JointWeightToken
 	{
-		ERRORTOKEN,
-		BEGINOBJECT,
-		COMMENT,
-		POSITION_COORD,
-		UV_COORD,
-		INDEX,
-        Normal_COORD,
-		WEIGHT,
-		WEIGHTINDEX,
-		LOADMATERIAL,
-		SMOOTHING,
-		PATCHBEGIN,
-		PATCHEND,
-		END
-	};
-	
-	// Structs
-	struct s_TokenVertexLayout
-	{
-		float f[3];
-		char  padding[4];
+        float4 weights;
 	};
 
-	struct s_TokenWIndexLayout
+
+	struct JointIndexToken
 	{
-		uint32_t i[4];
+		uint4_16 joints;
 	};
 
-	struct s_TokenValue
-	{
-		FlexKit::byte	buffer[256];
-		Token			token;
 
-		static s_TokenValue Empty()
-		{
-			s_TokenValue BLANKTOKEN;
-			BLANKTOKEN.token = COMMENT;
-			return BLANKTOKEN;
-		}
-	};
+    struct PointToken
+    {
+        float3 xyz;
+    };
+
+
+    struct TextureCoordinateToken
+    {
+        float2   UV;
+        uint32_t index;
+
+        bool operator == (const TextureCoordinateToken& rhs) const
+        {
+            return UV == rhs.UV && index == rhs.index;
+        }
+    };
+
+
+    struct NormalToken
+    {
+        float3 normal;
+    };
+
+
+    struct TangentToken
+    {
+        float3 tangent;
+    };
+
+
+    struct MaterialToken
+    {
+        uint32_t materialID;
+    };
+
+
+    struct VertexField
+    {
+        uint32_t idx;
+
+        enum FieldType
+        {
+            Point,
+            TextureCoordinate,
+            Normal,
+            Tangent,
+            Material,
+            JointWeight,
+            JointIndex
+        } type;
+    };
+
+
+    using VertexIndexList = static_vector<VertexField>;
+
+    struct VertexToken
+    {
+        VertexIndexList vertex;
+    };
+
+
+    using MeshToken = std::variant<
+        PointToken,
+        TextureCoordinateToken,
+        NormalToken,
+        TangentToken,
+        MaterialToken,
+        JointWeightToken,
+        JointIndexToken,
+        VertexToken>;
+
 
 	struct PackedVertexLayout
 	{
@@ -147,10 +189,9 @@ namespace FlexKit
 
 	namespace MeshUtilityFunctions
 	{
-		// RETURNS FALSE ON FAILURE
-		typedef Vector<s_TokenValue>		TokenList;
-		typedef Vector<uint32_t>			IndexList;
-		typedef Vector<CombinedVertex>		CombinedVertexBuffer;
+		typedef Vector<MeshToken>		TokenList;
+		typedef Vector<uint32_t>		IndexList;
+		typedef Vector<CombinedVertex>	CombinedVertexBuffer;
 
 		struct MeshBuildInfo
 		{
@@ -158,9 +199,31 @@ namespace FlexKit
 			size_t VertexCount;
 		};
 
-		// This Function is AWFUL!!! ITS SLOW AND SUCKS AND IS ASHAMED OF ITSELF!
-		FLEXKITAPI FlexKit::Pair<bool, MeshBuildInfo>	BuildVertexBuffer(const TokenList&, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool weights = false, bool tangents = false );
-		FLEXKITAPI char*								ScrubLine( char* inLine, size_t RINOUT lineLength );
+        class OptimizedMesh;
+
+        class OptimizedBuffer
+        {
+        public:
+            OptimizedBuffer(const OptimizedMesh& buffer);
+
+            Vector<char> points     { SystemAllocator };
+            Vector<char> normals    { SystemAllocator };
+            Vector<char> tangents   { SystemAllocator };
+
+            Vector<char> textureCoordinates { SystemAllocator };
+            Vector<char> jointWeights       { SystemAllocator };
+            Vector<char> jointIndexes       { SystemAllocator };
+
+            Vector<char> indexes    { SystemAllocator };
+
+            size_t IndexCount() const
+            {
+                return indexes.size() / sizeof(uint32_t);
+            }
+        };
+
+		FLEXKITAPI OptimizedBuffer	BuildVertexBuffer(const TokenList& in);
+		FLEXKITAPI char*		    ScrubLine( char* inLine, size_t RINOUT lineLength );
 
 		namespace OBJ_Tools
 		{
@@ -177,15 +240,16 @@ namespace FlexKit
 				bool UV_1;
 			};
 
-			typedef Pair<float3, uint4_32> WeightIndexPair;
+			typedef Pair<float3, uint4_16> WeightIndexPair;
 			FLEXKITAPI void			AddVertexToken		(float3 in, TokenList& out);
 			FLEXKITAPI void			AddWeightToken		(WeightIndexPair in, TokenList& out );
             FLEXKITAPI void			AddNormalToken      (float3 in, TokenList& out);
             FLEXKITAPI void			AddNormalToken      (const float3 N, const float3 T, TokenList& out);
             FLEXKITAPI void			AddTexCordToken		(float3 in, TokenList& out);
-			FLEXKITAPI void			AddIndexToken		(size_t V, size_t N, size_t T, TokenList& out);
-			FLEXKITAPI void			AddPatchBeginToken	(TokenList& out);
-			FLEXKITAPI void			AddPatchEndToken	(TokenList& out);
+			FLEXKITAPI void			AddIndexToken		(const uint32_t V, const uint32_t N, const uint32_t T, TokenList& out);
+			FLEXKITAPI void			AddIndexToken		(const uint32_t V, const uint32_t N, const uint32_t T, const uint32_t texCoord, TokenList& out);
+			//FLEXKITAPI void			AddPatchBeginToken	(TokenList& out);
+			//FLEXKITAPI void			AddPatchEndToken	(TokenList& out);
 			FLEXKITAPI void			CStrToToken			(const char* in_Line, size_t lineLength, TokenList& out, LoaderState& State_in_out );
 			FLEXKITAPI std::string	GetNextLine			(std::string::iterator& File_Position, std::string& File_Buffer );
 			FLEXKITAPI void			SkipToFloat			(std::string::const_iterator& in, const std::string& in_str );

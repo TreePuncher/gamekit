@@ -61,7 +61,7 @@ namespace FlexKit
 		};
 
 		std::vector<BoneWeights>	bones;
-		std::vector<uint4_32>		indices;
+		std::vector<uint4_16>		indices;
 
 		size_t						size;
 	};

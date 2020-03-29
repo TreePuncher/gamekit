@@ -88,6 +88,8 @@ namespace FlexKit
 	public:
 		VertexBufferView();
 		VertexBufferView(FlexKit::byte* _ptr, size_t size);
+        VertexBufferView(FlexKit::byte* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type);
+
 		~VertexBufferView();
 
 		VertexBufferView  operator + (const VertexBufferView& RHS);
@@ -304,6 +306,20 @@ namespace FlexKit
 		View = FlexKit::CreateVertexBufferView(memory, VertexBufferSize);
 		View->Begin(T, F);
 	}
+
+
+    /************************************************************************************************/
+
+
+    inline void CreateBufferView(char* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
+    {
+        size_t blobSize = bufferSize + sizeof(VertexBufferView);
+        char* blob = (char*)allocator->malloc(blobSize);
+
+        View = new(blob) VertexBufferView(blob + sizeof(VertexBufferView), bufferSize, F, T);
+
+        memcpy(blob + sizeof(VertexBufferView), buffer, bufferSize);
+    }
 
 
 	/************************************************************************************************/

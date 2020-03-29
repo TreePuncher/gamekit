@@ -31,9 +31,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MeshTokenList GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
+    MetaTokenList GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
 	{
-		MeshTokenList Tokens;
+        MetaTokenList Tokens;
 
 		size_t StartPos = 0;
 		size_t CurrentPos = 0;
@@ -115,7 +115,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t SkipBrackets(const MeshTokenList& Tokens, size_t StartingPosition)
+	size_t SkipBrackets(const MetaTokenList& Tokens, size_t StartingPosition)
 	{
 		size_t itr2			= StartingPosition;
 		size_t bracketCount = 0;
@@ -142,7 +142,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FlexKit::Pair<ValueList, size_t> ParseDeclarations(const MeshTokenList& Tokens, size_t StartingPosition, size_t endPosition)
+	FlexKit::Pair<ValueList, size_t> ParseDeclarations(const MetaTokenList& Tokens, size_t StartingPosition, size_t endPosition)
 	{
 		ValueList Values;
 		size_t itr2 = StartingPosition;
@@ -275,7 +275,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	std::pair<bool,size_t>  DetectSubContainer(const MeshTokenList& Tokens, const size_t begin, const size_t end)
+	std::pair<bool,size_t>  DetectSubContainer(const MetaTokenList& Tokens, const size_t begin, const size_t end)
 	{
 		for (size_t itr = begin; itr < end; ++itr)
 		{
@@ -289,7 +289,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	MetaDataList ParseSubContainer(const MetaDataParserTable& parser, const MeshTokenList& Tokens, const size_t begin, const size_t end)
+	MetaDataList ParseSubContainer(const MetaDataParserTable& parser, const MetaTokenList& Tokens, const size_t begin, const size_t end)
 	{
 		MetaDataList metaData;
 
@@ -318,7 +318,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    MetaData* ParseCubeMapMipLevel(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    MetaData* ParseCubeMapMipLevel(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
     {
         auto level      = tokens[begin - 2];
         auto front      = FindValue(values, "Front");
@@ -357,7 +357,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    MetaData* ParseCubeMapTexture(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    MetaData* ParseCubeMapTexture(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
     {
         auto AssetID    = tokens[begin - 2];
         auto AssetGUID  = FindValue(values, "AssetGUID");
@@ -378,7 +378,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    MetaData* ParseTextureMipLevel(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    MetaData* ParseTextureMipLevel(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
     {
         auto level  = tokens[begin - 2];
         auto File   = FindValue(values, "File");
@@ -395,7 +395,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    MetaData* ParseTexture(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+    MetaData* ParseTexture(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
     {
         auto stringID           = tokens[begin - 2];
         auto assetID            = FindValue(values, "AssetGUID");
@@ -428,7 +428,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-	MetaData* ParseScene(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseScene(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto Target				= tokens[begin - 2];
 		auto AssetGUID			= FindValue(values, "AssetGUID");
@@ -452,7 +452,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseModel(const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseModel(const MetaTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto AssetID			= FindValue(values, "AssetID");
 		auto AssetGUID			= FindValue(values, "AssetGUID");
@@ -488,7 +488,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseSkeleton(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSkeleton(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto AssetID			= FindValue(values, "AssetID");		
 		auto AssetGUID			= FindValue(values, "AssetGUID");	
@@ -519,7 +519,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseSkeletalAnimationClip(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSkeletalAnimationClip(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto ID					= FindValue(values, "ID");
 		auto beginFrame			= FindValue(values, "Begin");
@@ -557,7 +557,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseTextureSet(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseTextureSet(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		FK_ASSERT(0);
 
@@ -602,7 +602,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseFontSet(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseFontSet(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto AssetID			= tokens[begin - 2];
 		auto AssetGUID			= FindValue(values,	"AssetGUID");
@@ -626,7 +626,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseCollider(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseCollider(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto Target				= tokens[begin - 2];
 		auto AssetGUID			= FindValue(values,	"AssetGUID");
@@ -648,7 +648,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseTerrainColliderAsset(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseTerrainColliderAsset(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto Target				= tokens[begin - 2];
 		auto AssetGUID			= FindValue(values, "AssetGUID");
@@ -712,7 +712,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseSceneEntity(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSceneEntity(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto Target		= tokens[begin - 2];
 		auto id			= FindValue(values, "ID");
@@ -730,7 +730,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseSceneLight(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSceneLight(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		FK_ASSERT(0);
 
@@ -741,7 +741,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseSceneNode(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSceneNode(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto Target		= tokens[begin - 2];
 		auto id			= FindValue(values, "ID");
@@ -759,7 +759,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseSceneTerrainCollider(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSceneTerrainCollider(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		FK_ASSERT(0);
 
@@ -769,7 +769,7 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	MetaData* ParseSceneComponentRequirement(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSceneComponentRequirement(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		FK_ASSERT(0);
 
@@ -780,7 +780,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	MetaData* ParseSceneEntityComponent(const MeshTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	MetaData* ParseSceneEntityComponent(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
 	{
 		auto						componentIDValue = FindValue(values, "ComponentID");
 		FNComponentBlobFormatter	formatter	= nullptr;
@@ -853,20 +853,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool ParseTokens(const MetaDataParserTable& parser, const MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end)
+	bool ParseTokens(const MetaDataParserTable& parser, const MetaTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end)
 	{
-		struct Value
-		{
-			enum TYPE
-			{
-				INT,
-				STRING,
-				FLOAT,
-			}Type;
-
-			Token T;
-		};
-
 		// Metadata Format
 		// String					:= {{ A-Z, a-z, 0-9 }...}
 		// Number					:= { 0-9... "." 0-9... }

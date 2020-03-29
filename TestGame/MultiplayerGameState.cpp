@@ -284,6 +284,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         }
         }
 
+        /*
         base.streamingEngine.TextureFeedbackPass(
             dispatcher,
             frameGraph,
@@ -291,7 +292,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             PVS,
             base.virtualResource,
             reserveCB);
-
+            */
         // Draw Skeleton overlay
         if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)
         {

@@ -60,7 +60,7 @@ namespace FlexKit
 
 			TY_* I;
 		};
-		typedef typename iterator_t iterator;
+		typedef typename TY_* iterator;
 
 		class reverse_iterator_t
 		{
@@ -190,14 +190,14 @@ namespace FlexKit
 			}
 		}
  
-		iterator begin()
+		TY_* begin()
 		{
 			return Elements;
 		}
  
-		iterator end()
+        TY_* end()
 		{
-			return &Elements[Size];
+			return Elements + Size;
 		}
 
 		reverse_iterator rbegin()

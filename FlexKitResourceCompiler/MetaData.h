@@ -413,13 +413,13 @@ namespace FlexKit
 
 
 	typedef std::vector<Value> ValueList;
-	typedef std::vector<std::string_view> MeshTokenList;
+	typedef std::vector<std::string_view> MetaTokenList;
 
 
 	/************************************************************************************************/
 
 
-	using MetaDataParserFN_ptr	= MetaData* (*)(const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end);
+	using MetaDataParserFN_ptr	= MetaData* (*)(const MetaTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end);
 	using MetaDataParserTable	= std::map<std::string, MetaDataParserFN_ptr>;
 
     const MetaDataParserTable CreateDefaultParser();
@@ -437,30 +437,11 @@ namespace FlexKit
 	inline const MetaDataParserTable NodeParser		= CreateNodeParser();
 	inline const MetaDataParserTable EntityParser	= CreateEntityParser();
 
-	/*
-	constexpr class ValueProtoType
-	{
-	public:
-		std::string_view	ID;
-		ValueType			type = ValueType::INVALID;
-		ValueTypeUnion		defaultValue;
-	};
-
-	// WIP 
-	template<typename TY>
-	constexpr MetaDataParserFN_ptr CreateParser(const TY Values)
-	{
-		return [](const MeshTokenList& Tokens, const ValueList& values, const size_t begin, const size_t end) -> MetaData*
-			{
-				return nullptr;
-			};
-	}
-	*/
 
 	/************************************************************************************************/
 
 
-	bool							ParseTokens(const MetaDataParserTable& parser, const MeshTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end);
+	bool							ParseTokens(const MetaDataParserTable& parser, const MetaTokenList& Tokens, MetaDataList& MD_Out, size_t begin, size_t end);
 
 	std::pair<MetaDataList, bool>	ReadMetaData		(const char* Location);
 	MetaDataList					FindRelatedMetaData (const MetaDataList& MetaData, const MetaData::EMETA_RECIPIENT_TYPE Type, const std::string& ID);
