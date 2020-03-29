@@ -33,15 +33,55 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	struct AABB // Axis Aligned Bounding Box
-	{
-		float3 Position() const noexcept
-		{
-			return (BottomLeft + TopRight) / 2;
-		}
+    // Axis Aligned Bounding Box
+    static const float inf = std::numeric_limits<double>::infinity();
+    struct AABB
+    {
+        enum Axis
+        {
+            X, Y, Z, Axis_count
+        };
 
-		float3 BottomLeft, TopRight;
-	};
+        float3 min = { inf, inf, inf };
+        float3 max = { -inf, -inf, -inf };
+
+        Axis LongestAxis() const
+        {
+            Axis axis = Axis::Axis_count;
+            float d = 0.0f;
+
+            const auto span = min - max;
+
+            for (size_t I = 0; I < Axis_count; I++)
+            {
+                const float axisLength = fabs(span[I]);
+
+                if (d < axisLength)
+                {
+                    d = axisLength;
+                    axis = (Axis)I;
+                }
+            }
+
+            return axis;
+        }
+
+        AABB operator += (const AABB& rhs)
+        {
+            for (size_t I = 0; I < Axis_count; I++)
+            {
+                min[I] = FlexKit::min(rhs.min[I], min[I]);
+                max[I] = FlexKit::max(rhs.max[I], max[I]);
+            }
+
+            return (*this);
+        }
+
+        float3 MidPoint() const
+        {
+            return (min + max) / 2;
+        }
+    };
 
 
 	typedef float4 BoundingSphere;
@@ -177,9 +217,9 @@ namespace FlexKit
 
 		for (int I = 0; I < 6; ++I)
 		{
-			float px = (frustum.Planes[I].Normal.x >= 0.0f) ? aabb.BottomLeft.x : aabb.TopRight.x;
-			float py = (frustum.Planes[I].Normal.y >= 0.0f) ? aabb.BottomLeft.y : aabb.TopRight.y;
-			float pz = (frustum.Planes[I].Normal.z >= 0.0f) ? aabb.BottomLeft.z : aabb.TopRight.z;
+			float px = (frustum.Planes[I].Normal.x >= 0.0f) ? aabb.min.x : aabb.max.x;
+			float py = (frustum.Planes[I].Normal.y >= 0.0f) ? aabb.min.y : aabb.max.y;
+			float pz = (frustum.Planes[I].Normal.z >= 0.0f) ? aabb.min.z : aabb.max.z;
 
 			float3 pV = float3{ px, py, pz } -frustum.Planes[I].Orgin;
 			float dP = dot(frustum.Planes[I].Normal, pV);

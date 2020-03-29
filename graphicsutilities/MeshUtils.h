@@ -220,6 +220,9 @@ namespace FlexKit
             {
                 return indexes.size() / sizeof(uint32_t);
             }
+
+            AABB            aabb;
+            BoundingSphere  bs;
         };
 
 		FLEXKITAPI OptimizedBuffer	BuildVertexBuffer(const TokenList& in);

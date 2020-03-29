@@ -46,51 +46,6 @@ namespace FlexKit
         template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
         template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
 
-        static const float inf = std::numeric_limits<double>::infinity();
-
-        struct AABB
-        {
-            enum Axis
-            {
-                X, Y, Z, Axis_count
-            };
-
-            float3 min = { inf, inf, inf };
-            float3 max = { -inf, -inf, -inf };
-
-            Axis LongestAxis() const
-            {
-                Axis axis = Axis::Axis_count;
-                float d = 0.0f;
-
-                const auto span = min - max;
-
-                for (size_t I = 0; I < Axis_count; I++)
-                {
-                    const float axisLength = fabs(span[I]);
-
-                    if (d < axisLength)
-                    {
-                        d = axisLength;
-                        axis = (Axis)I;
-                    }
-                }
-
-                return axis;
-            }
-
-            AABB operator += (const AABB& rhs)
-            {
-                for (size_t I = 0; I < Axis_count; I++)
-                {
-                    min[I] = FlexKit::min(rhs.min[I], min[I]);
-                    max[I] = FlexKit::max(rhs.max[I], max[I]);
-                }
-
-                return (*this);
-            }
-        };
-
         struct Triangle
         {
             uint32_t vertices[3] = { (uint32_t)-1, (uint32_t)-1, (uint32_t)-1 };
@@ -303,6 +258,8 @@ namespace FlexKit
 
         class KDBTree
         {
+        public:
+
             struct KDBNode
             {
                 std::unique_ptr<KDBNode> left;
@@ -314,7 +271,6 @@ namespace FlexKit
                 AABB aabb;
             };
 
-        public:
             KDBTree(const UnoptimizedMesh& IN_mesh) :
                 mesh{ IN_mesh },
                 root{ BuildNode(mesh.tris.begin(), mesh.tris.end()) } {}
@@ -536,13 +492,18 @@ namespace FlexKit
             Vector<uint4_16>	    jointIndexes        { SystemAllocator };
 
             Vector<uint32_t>	    indexes{ SystemAllocator };
+
+            AABB                    aabb;
+            BoundingSphere          boundingSphere;
         };
 
 
         /************************************************************************************************/
 
 
-        OptimizedBuffer::OptimizedBuffer(const OptimizedMesh& buffer)
+        OptimizedBuffer::OptimizedBuffer(const OptimizedMesh& buffer) :
+            aabb    { buffer.aabb           },
+            bs      { buffer.boundingSphere }
         {
             // Not quick I know, leave me alone
             auto moveFloat3s =
@@ -586,18 +547,46 @@ namespace FlexKit
 
         OptimizedMesh CreateOptimizedMesh(const KDBTree& tree)
         {
-            OptimizedMesh optimized;
+            OptimizedMesh       optimized;
+            LocalBlockContext   context{ tree.mesh };
 
             for (const auto& leaf : tree)
-            {
-                LocalBlockContext   context{ tree.mesh };
-                OptimizedMesh       localBlock;
-
                 for (auto I = leaf->begin; I < leaf->end; I++)
-                    localBlock.PushTri(*I, context);
+                    optimized.PushTri(*I, context);
 
-                optimized += localBlock;
+
+            const float3 meshMidPoint = tree.root->aabb.MidPoint();
+            KDBTree::KDBNode* node = nullptr;
+
+            float distance = 0;
+            for (const auto& leaf : tree)
+            {
+                auto midPoint = leaf->aabb.MidPoint();
+                auto d = (midPoint - meshMidPoint).magnitudesquared();
+
+                if (d >= distance)
+                {
+                    d = distance;
+                    node = leaf;
+                }
             }
+
+            float radius = 0.0f;
+
+            std::for_each(node->begin, node->end,
+                [&](Triangle& tri)
+                {
+                    for (auto& vertex : tri.vertices) {
+                        const float3 point = tree.mesh.GetPoint(vertex);
+                        auto d = (meshMidPoint - point).magnitudesquared();
+
+                        if (d > radius)
+                            d = radius;
+                    }
+                });
+
+            optimized.aabb              = tree.root->aabb;
+            optimized.boundingSphere    = float4(meshMidPoint, radius);
 
             return optimized;
         }
