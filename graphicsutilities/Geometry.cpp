@@ -60,6 +60,19 @@ namespace FlexKit
 	}
 
 
+    VertexBufferView::VertexBufferView(FlexKit::byte* _ptr, size_t size, VERTEXBUFFER_FORMAT format, VERTEXBUFFER_TYPE type)
+    {
+        mBufferinError     = false;
+		mBufferFormat      = format;
+		mBufferType        = type;
+		mBufferElementSize = (uint32_t)format;
+		mBuffer			   = _ptr;
+		mBufferUsed		   = size;
+		mBufferSize        = size;
+		mBufferLock        = true;
+    }
+
+
 	/************************************************************************************************/
 
 

@@ -1136,7 +1136,7 @@ namespace FlexKit
 
 			void Decrement()
 			{
-				Idx--;;
+				Idx--;
 			}
 
 			CircularIterator operator ++ (int) { auto Temp = *this; Increment(); return Temp; }

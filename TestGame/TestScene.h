@@ -7,16 +7,16 @@
 
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator)
 {
-	const AssetHandle model = 1004;
+	const AssetHandle demonModel = 6666;
 
     // Load Model
-    const AssetHandle dragonHandle = 1004;
-    const AssetHandle buddahHandle = 1100;
+    const AssetHandle dragonHandle = 6666;
+    const AssetHandle buddahHandle = 6666;
 
     auto dragon = GetMesh(renderSystem, buddahHandle);
     auto buddah = GetMesh(renderSystem, buddahHandle);
 
-	static const size_t N = 10;
+	static const size_t N = 2;
 	static const float  W = (float)30;
 
 	for (size_t Y = 0; Y < N; ++Y)
@@ -71,6 +71,8 @@ enum class TestScenes
 inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestScenes scene = TestScenes::ShadowTestScene)
 {
     AddAssetFile("assets\\TestScenes.gameres");
+    AddAssetFile("assets\\DemonGirl.gameres");
+    AddAssetFile("assets\\aRealDemon.gameres");
     AddAssetFile("test.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
@@ -111,7 +113,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 GPUResourceDesc::ShaderResource(
                     { 2048, 2048 },
                     DeviceFormat::BC3_UNORM,
-                    1, 1, true ));
+                    1,
+                    1, true ));
 
             base.streamingEngine.BindAsset(textureHandle, base.virtualResource);
 

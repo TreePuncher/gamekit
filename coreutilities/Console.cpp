@@ -534,12 +534,6 @@ namespace FlexKit
 
 	bool Console::ExecuteGrammerTokens(Vector<GrammerToken>& Tokens, Vector<ConsoleVariable>& TempVariables, iAllocator* Stack)
 	{
-		struct ScanContext
-		{
-
-		};
-
-
 		struct TranslationRes
 		{
 			bool			Success;
@@ -547,7 +541,7 @@ namespace FlexKit
 		};
 
 
-		auto& TranslateTokenToVar = [&](Token& T) -> TranslationRes
+		auto& TranslateTokenToVar = [&](GrammerToken& T) -> TranslationRes
 		{
 			return { false };
 		};
@@ -560,8 +554,8 @@ namespace FlexKit
 		
 		struct TokenRange
 		{
-			Vector<Token>::Iterator Begin;
-			Vector<Token>::Iterator End;
+			Vector<GrammerToken>::Iterator Begin;
+			Vector<GrammerToken>::Iterator End;
 
 			operator bool()
 			{

@@ -1343,9 +1343,29 @@ namespace FlexKit
             },
             [camera, _DEBUGTexture](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
-                auto passConstantBuffer   = data.reserveCB(1024);
-                auto entityConstantBuffer = data.reserveCB((data.pvs.size() + data.skinned.size()) * 1024);
-                auto poseBuffer           = data.reserveCB(data.skinned.size() * sizeof(float4x4[128]));
+                struct EntityPoses
+                {
+                    float4x4 transforms[128];
+
+                    auto& operator [](size_t idx)
+                    {
+                        return transforms[idx];
+                    }
+                };
+
+                const size_t entityBufferSize =
+                    GetConstantsAlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
+
+                constexpr size_t passBufferSize =
+                    GetConstantsAlignedSize<Camera::ConstantBuffer>() +
+                    GetConstantsAlignedSize<ForwardDrawConstants>();
+
+                const size_t poseBufferSize =
+                    GetConstantsAlignedSize<EntityPoses>() * data.skinned.size();
+
+                auto passConstantBuffer   = data.reserveCB(passBufferSize);
+                auto entityConstantBuffer = data.reserveCB(entityBufferSize);
+                auto poseBuffer           = data.reserveCB(poseBufferSize);
 
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
@@ -1422,16 +1442,6 @@ namespace FlexKit
 
                 // skinned models
                 ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS_SKINNED));
-
-                struct EntityPoses
-                {
-                    float4x4 transforms[128];
-
-                    auto& operator [](size_t idx)
-                    {
-                        return transforms[idx];
-                    }
-                };
 
                 auto& poses = allocator.allocate<EntityPoses>();
 

@@ -26,9 +26,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\MeshUtils.h"
 #include "..\coreutilities\memoryutilities.h"
 
+#include <bitset>
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
+
 	bool operator < ( const CombinedVertex::IndexBitField lhs, const CombinedVertex::IndexBitField rhs )
 	{
 		return lhs.Hash() > rhs.Hash();
@@ -36,168 +39,577 @@ namespace FlexKit
 
 
 	namespace MeshUtilityFunctions
-	{
-		/************************************************************************************************/
+	{   /************************************************************************************************/
 
 
-		Pair<bool, MeshBuildInfo>
-		BuildVertexBuffer(TokenList RIN in, CombinedVertexBuffer ROUT out_buffer, IndexList ROUT out_indexes, iAllocator* LevelSpace, iAllocator* ScratchSpace, bool DoWeights, bool tangentsIncluded )
-		{
-			Vector<float3>		position	{ ScratchSpace };
-			Vector<float3>		normal		{ ScratchSpace };
-			Vector<float3>		tangent		{ ScratchSpace };
-			Vector<float2>		UV			{ ScratchSpace };
-			Vector<float3>		Weights		{ ScratchSpace };
-			Vector<uint4_16>	WIndexes	{ ScratchSpace };
-            Vector<size_t>	    NormalTable { ScratchSpace };
-            Vector<size_t>	    TangentTable{ ScratchSpace };
+        // Thank you cppReference.com
+        template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+        template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
 
-			IndexList&	Indexes	= out_indexes;
-			MeshBuildInfo MBI	= {0};
+        static const float inf = std::numeric_limits<double>::infinity();
 
-			map_t<CombinedVertex::IndexBitField, unsigned int>	IndexMap;
-			auto& FinalVerts = out_buffer;
+        struct AABB
+        {
+            enum Axis
+            {
+                X, Y, Z, Axis_count
+            };
 
-			auto count  = 0;
-			auto count2 = 0;
+            float3 min = { inf, inf, inf };
+            float3 max = { -inf, -inf, -inf };
 
-			for( auto itr : in )
-			{
-				switch( itr.token )
-				{
-				case BEGINOBJECT:
-					break;
-				case COMMENT:
-					break;
-				case END:
-					return{ true, MBI };
-					break;
-				case ERRORTOKEN:
-					FK_ASSERT( 0 );
-					break;
-				case INDEX:
+            Axis LongestAxis() const
+            {
+                Axis axis = Axis::Axis_count;
+                float d = 0.0f;
+
+                const auto span = min - max;
+
+                for (size_t I = 0; I < Axis_count; I++)
                 {
-                    const s_TokenValue	token = itr;
-                    CombinedVertex	    vertex;
+                    const float axisLength = fabs(span[I]);
 
-                    CombinedVertex::IndexBitField bitLayout;
-                    memcpy(&bitLayout, token.buffer, sizeof(bitLayout));
-
-                    vertex.index		        = bitLayout;
-                    vertex.index.n_Index        = NormalTable[vertex.index.n_Index];
-					memcpy(&vertex.POS, &position[vertex.index.p_Index], sizeof(vertex.POS));
-
-					if (DoWeights) {
-						memcpy(&vertex.WEIGHTS,  &Weights[vertex.index.p_Index],  sizeof(vertex.POS));
-						memcpy(&vertex.WIndices, &WIndexes[vertex.index.p_Index], sizeof(uint4_16));
-					}
-                    if (normal.size() != 0)
+                    if (d < axisLength)
                     {
-                        memcpy(&vertex.NORMAL,  &normal[vertex.index.n_Index], sizeof(vertex.NORMAL));
-                        if (tangent.size())
-                            memcpy(&vertex.TANGENT, &tangent[vertex.index.n_Index], sizeof(vertex.TANGENT));
+                        d = axisLength;
+                        axis = (Axis)I;
                     }
-					else
+                }
+
+                return axis;
+            }
+
+            AABB operator += (const AABB& rhs)
+            {
+                for (size_t I = 0; I < Axis_count; I++)
+                {
+                    min[I] = FlexKit::min(rhs.min[I], min[I]);
+                    max[I] = FlexKit::max(rhs.max[I], max[I]);
+                }
+
+                return (*this);
+            }
+        };
+
+        struct Triangle
+        {
+            uint32_t vertices[3] = { (uint32_t)-1, (uint32_t)-1, (uint32_t)-1 };
+        };
+
+        class UnoptimizedMesh
+        {
+        public:
+
+            UnoptimizedMesh(const TokenList& tokens)
+            {
+                for (auto& token : tokens)
+                {
+                    std::visit(
+                        overloaded{
+                            [](auto&)
+                            {
+                                FK_ASSERT(0, "NO OVERLOAD! " + __LINE__);
+                            },
+                            [&](const JointIndexToken token)
+                            {
+                                jointIndexes.push_back(token.joints);
+                            },
+                            [&](const JointWeightToken& token)
+                            {
+                                jointWeights.push_back(token.weights);
+                            },
+                            [&](const PointToken& token)
+                            {
+                                points.push_back(token.xyz);
+                            },
+                            [&](const TextureCoordinateToken& texCoord)
+                            {
+                                textureCoordinates.push_back(texCoord);
+                            },
+                            [&](const NormalToken& token)
+                            {
+                                normals.push_back(token.normal);
+                            },
+                            [&](const TangentToken token)
+                            {
+                                tangents.push_back(token.tangent);
+                            },
+                            [&](const MaterialToken& material)
+                            {
+                            },
+                            [&](const VertexToken& token)
+                            {
+                                indexes.push_back(token.vertex);
+                            } },
+                        token);
+                };
+
+                for (uint32_t I = 0; I < indexes.size(); I += 3)
+                    tris.push_back({ I + 0, I + 1, I + 2 });
+            }
+
+
+            UnoptimizedMesh(const UnoptimizedMesh&) = default;
+
+
+            float3 GetPoint(uint32_t vertexIndex) const noexcept
+            {
+                auto fields = indexes[vertexIndex];
+                auto res = std::find_if(
+                    fields.begin(), fields.end(),
+                    [&](const VertexField& field)
                     {
-                        memcpy(&vertex.NORMAL, &float3{ 0, 0, 0 }, sizeof(vertex.NORMAL));
-                        if (tangent.size())
-                            memcpy(&vertex.TANGENT, &float3{ 0, 0, 0 }, sizeof(vertex.TANGENT));
-					}
-					if (UV.size() != 0)
-						memcpy(&vertex.TEXCOORD, &UV[vertex.index.t_Index], sizeof(vertex.NORMAL));
-					else
-					{
-						float2 Temp;
-						memcpy(&vertex.TEXCOORD, &Temp, sizeof(vertex.TEXCOORD));
-					}
-					if (IndexMap.find(vertex.index) == IndexMap.end())
-					{
-						Indexes.push_back(static_cast<uint32_t>(FinalVerts.size()));
-						IndexMap[vertex.index] = static_cast<unsigned int>(FinalVerts.size());
-						FinalVerts.push_back(vertex);
-						count++;
-					}
-					else
-					{
-						Indexes.push_back(IndexMap[vertex.index]);
-						count2++;
-					}
+                        return field.type == VertexField::Point;
+                    });
 
-					MBI.IndexCount++;
-				}	break;
-				case LOADMATERIAL:
-					break;
-				case Normal_COORD:
-				{
-					bool unqiue = true;
-                    float3 newNormal;
-                    float3 newTangent;
+                if(res == fields.end()) throw; // Crash!
 
-                    // Unpack
-                    float3 data[2];
-                    memcpy(data, itr.buffer, sizeof(data));
-                    newNormal = data[0];
-                    newTangent = data[1];
+                return points[res->idx];
+            }
 
 
-					newNormal[3]  = 0.0f;
-                    newTangent[3] = 0.0f;
+            float3 GetTrianglePosition(const Triangle tri) const
+            {
+                float3 point = { 0, 0, 0 };
 
-					newNormal.normalize();
+                for (auto v : tri.vertices)
+                    point += GetPoint(v);
 
-                    if(tangentsIncluded)
-					    newTangent.normalize();
-					
-					for (size_t I = 0; I < normal.size(); ++I)
-					{
-						if ( 1 - normal[I].dot( newNormal ) < 0.00001f)
-						{
-							unqiue = false;
-							NormalTable.push_back(I);
-							break;
-						}
-					}
+                return point / 3;
+            }
 
-					if (unqiue) {
-						NormalTable.push_back(normal.size());
-						normal.push_back(newNormal);
 
-                        if (tangentsIncluded)
-                            tangent.push_back(newTangent);
-					}
-				}break;
-				case POSITION_COORD:
-				{
-					position.push_back(*(float3*)itr.buffer);
-				}   break;
-				case WEIGHT:
-				{
-					if(DoWeights)
-						Weights.push_back(*(float3*)itr.buffer);
-				}	break;
-				case WEIGHTINDEX:
-				{
-					if (DoWeights)
-					{
-						auto Indexes = *(uint4_32*)itr.buffer;
-						for(size_t itr = 0; itr < 4; ++itr)
-							Indexes[itr] = (Indexes[itr] == -1) ? 0 : Indexes[itr];
+            AABB GetTriangleAABB(const Triangle tri) const
+            {
+                AABB aabb;
 
-						WIndexes.push_back(Indexes);
-					}
-				}	break;
-				case UV_COORD:
-					UV.push_back( *(float2*)itr.buffer );
-					break;
-				case SMOOTHING:
-					break;
-				default:
-					return{ false, {0} };
-				}
-			}
+                for (auto V : tri.vertices) {
+                    const float3 Pos = GetPoint(V);
+                    aabb += AABB{ Pos, Pos };
+                }
 
-			MBI.VertexCount = FinalVerts.size();
-			return{ true, MBI };
+                return { aabb };
+            }
+
+
+            bool VertexCompare(uint32_t lhs, uint32_t rhs) const
+            {
+                const auto lhsVertexField = indexes[lhs];
+                const auto rhsVertexField = indexes[rhs];
+
+                bool res = true;
+                for (size_t I = 0; I < lhsVertexField.size(); ++I)
+                {
+                    switch (lhsVertexField[I].type)
+                    {
+                    case VertexField::FieldType::JointIndex:
+                    {
+                        res &= jointIndexes[lhsVertexField[I].idx] == jointIndexes[rhsVertexField[I].idx];
+                    }   break;
+                    case VertexField::FieldType::JointWeight:
+                    {
+                        res &= jointWeights[lhsVertexField[I].idx] == jointWeights[rhsVertexField[I].idx];
+                    }   break;
+                    case VertexField::FieldType::Material:
+                        break;
+                    case VertexField::FieldType::Normal:
+                    {
+                        res &= (1.0f - normals[lhsVertexField[I].idx].dot(normals[rhsVertexField[I].idx])) < 0.001f;
+                    }   break;
+                    case VertexField::FieldType::Tangent:
+                    {
+                        res &= (1.0f - tangents[lhsVertexField[I].idx].dot(tangents[rhsVertexField[I].idx])) < 0.001f;
+                    }   break;
+                    case VertexField::FieldType::Point:
+                    {
+                        res &= VectorCompare(points[lhsVertexField[I].idx], points[rhsVertexField[I].idx], 0.000001f);
+                    }   break;
+                    default:    break;
+                    };
+                }
+
+                return res;
+            }
+
+            uint64_t VertexHash( uint32_t v ) const 
+            {
+                const VertexIndexList fields = indexes[v];
+                uint64_t hash = 0;
+
+                for (auto field : fields) {
+                    switch (field.type)
+                    {
+                    case VertexField::FieldType::JointIndex:
+                    {
+                        std::bitset<sizeof(uint4_16) * 8> bitset;
+                        memcpy(&bitset, &jointIndexes[field.idx], sizeof(bitset));
+                        hash_combine(hash, bitset);
+                    }   break;
+                    case VertexField::FieldType::JointWeight:
+                    {
+                        std::bitset<sizeof(float4) * 8> bitset;
+                        memcpy(&bitset, &jointWeights[field.idx], sizeof(bitset));
+                        hash_combine(hash, bitset);
+                    }   break;
+                    case VertexField::FieldType::Material:
+                        break;
+                    case VertexField::FieldType::Normal:
+                    {
+                        std::bitset<sizeof(float3) * 8> bitset;
+                        memcpy(&bitset, &normals[field.idx], sizeof(bitset));
+                        hash_combine(hash, bitset);
+                    }   break;
+                    case VertexField::FieldType::Tangent:
+                    {
+                        std::bitset<sizeof(float3) * 8> bitset;
+                        memcpy(&bitset, &tangents[field.idx], sizeof(bitset));
+                        hash_combine(hash, bitset);
+                    }   break;
+                    case VertexField::FieldType::Point:
+                    {
+                        std::bitset<sizeof(float3) * 8> bitset;
+                        memcpy(&bitset, &points[field.idx], sizeof(bitset));
+                        hash_combine(hash, bitset);
+                    }   break;
+                    default:    break;
+                    };
+                }
+                //*/
+
+                return hash;
+            }
+
+            using Point             = float3;
+            using Normal            = float3;
+            using TextureCoordinate = TextureCoordinateToken;
+            using JointWeight       = float4;
+            using JointIndexes      = uint4_16;
+
+            Vector<Point>		        points              { SystemAllocator };
+            Vector<Normal>		        normals             { SystemAllocator };
+            Vector<Normal>		        tangents            { SystemAllocator };
+
+            Vector<TextureCoordinate>   textureCoordinates  { SystemAllocator };
+            Vector<JointWeight>		    jointWeights        { SystemAllocator };
+            Vector<JointIndexes>	    jointIndexes        { SystemAllocator };
+
+            Vector<VertexIndexList>	    indexes { SystemAllocator };
+            Vector<Triangle>	        tris    { SystemAllocator };
+        };
+
+
+        /************************************************************************************************/
+
+
+        class KDBTree
+        {
+            struct KDBNode
+            {
+                std::unique_ptr<KDBNode> left;
+                std::unique_ptr<KDBNode> right;
+
+                Triangle* begin;
+                Triangle* end;
+
+                AABB aabb;
+            };
+
+        public:
+            KDBTree(const UnoptimizedMesh& IN_mesh) :
+                mesh{ IN_mesh },
+                root{ BuildNode(mesh.tris.begin(), mesh.tris.end()) } {}
+
+            auto begin() const
+            {
+                return leafNodes.begin();
+            }
+
+            auto end() const
+            {
+                return leafNodes.end();
+            }
+
+        private:
+
+            auto GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const
+            {
+                float3  midPoint{ 0, 0, 0 };
+                AABB    aabb;
+
+                for_each(
+                    begin, end,
+                    [&](const auto tri)
+                    {
+                        midPoint += mesh.GetTrianglePosition(tri);
+                        aabb += mesh.GetTriangleAABB(tri);
+                    });
+
+                return std::make_pair(midPoint / std::distance(begin, end), aabb);
+            }
+
+            inline static const float3 SplitPlanes[] = {
+                { 1, 0, 0 },
+                { 0, 1, 0 },
+                { 0, 0, 1 }
+            };
+
+            std::unique_ptr<KDBNode> BuildNode(Triangle* begin, Triangle* end)
+            {
+                const auto [midPoint, aabb] = GetMedianSplitPlaneAABB(begin, end);
+                const auto splitPlane = SplitPlanes[aabb.LongestAxis()];
+
+                if (std::distance(begin, end) < 512)
+                {
+                    auto node = make_unique<KDBNode>(KDBNode{ nullptr, nullptr, begin, end, aabb });
+                    leafNodes.push_back(node.get());
+                    return node;
+                }
+                else
+                {
+                    const auto mid = std::partition(
+                        begin,
+                        end,
+                        [&](const auto& tri) -> bool
+                        {
+                            const float3 pos = mesh.GetTrianglePosition(tri);
+                            const float d = (midPoint - pos).dot(splitPlane);
+
+                            return d >= 0;
+                        });
+
+                    return make_unique<KDBNode>(
+                            KDBNode{
+                                BuildNode(begin, mid),
+                                BuildNode(mid, end),
+                                begin, end, aabb });
+                }
+            }
+
+
+        public:
+
+            UnoptimizedMesh             mesh;
+            std::vector<KDBNode*>       leafNodes;
+            std::unique_ptr<KDBNode>    root;
+        };
+
+
+        /************************************************************************************************/
+
+
+        class LocalBlockContext
+        {
+        public:
+            LocalBlockContext(const UnoptimizedMesh& IN_mesh) : mesh{ IN_mesh } {}
+
+            uint32_t LocallyUnique(uint32_t vertex, uint32_t localIdx)
+            {
+                for (const auto recentVertex : vertexHistory)
+                    if (mesh.VertexCompare(recentVertex.vertexIndex, vertex))
+                        return false;
+
+                vertexHistory.push_back({ localIdx, vertex });
+
+                return true;
+            }
+
+            uint32_t map(uint32_t vertex) 
+            {
+                uint32_t remapped = vertex;
+
+                for (const auto recentVertex : vertexHistory)
+                    if (mesh.VertexCompare(recentVertex.vertexIndex, vertex))
+                        remapped = recentVertex.localIndex;
+
+                return remapped;
+            }
+
+            struct LocalVertex
+            {
+                uint32_t localIndex;
+                uint32_t vertexIndex;
+            };
+
+            CircularBuffer<LocalVertex, 256>    vertexHistory;
+            const UnoptimizedMesh&              mesh;
+        };
+
+
+        class OptimizedMesh
+        {
+        public:
+            OptimizedMesh& operator += (OptimizedMesh& rhs)
+            {
+                auto appendBuffers = [](auto& target, auto& source)
+                {
+                    if (!target.size()) {
+                        target = source;
+                        return;
+                    }
+
+                    const auto size = target.size();
+                    target.resize(target.size() + source.size());
+
+                    memcpy(target.data() + size, source.data(), sizeof(decltype(source[0])) * source.size());
+                };
+
+
+                if (indexes.size())
+                {
+                    const size_t indexOffset = points.size();
+
+                    for (auto index : rhs.indexes)
+                        indexes.push_back(index + indexOffset);
+                }
+                else
+                    indexes = rhs.indexes;
+
+                appendBuffers(points, rhs.points);
+                appendBuffers(normals, rhs.normals);
+                appendBuffers(tangents, rhs.tangents);
+                appendBuffers(textureCoordinates, rhs.textureCoordinates);
+                appendBuffers(jointIndexes, rhs.jointIndexes);
+                appendBuffers(jointWeights, rhs.jointWeights);
+
+                return *this;
+            }
+
+
+            void PushVertex(uint32_t globalIdx, LocalBlockContext& ctx)
+            {
+                auto& vertexField = ctx.mesh.indexes[globalIdx];
+
+                for (auto field : vertexField)
+                {
+                    switch (field.type)
+                    {
+                    case VertexField::Point:
+                        points.push_back(ctx.mesh.points[field.idx]);
+                        break;
+                    case VertexField::TextureCoordinate:
+                        textureCoordinates.push_back(ctx.mesh.textureCoordinates[field.idx].UV);
+                        break;
+                    case VertexField::Normal:
+                        normals.push_back(ctx.mesh.normals[field.idx]);
+                        break;
+                    case VertexField::Tangent:
+                        tangents.push_back(ctx.mesh.tangents[field.idx]);
+                        break;
+                    case VertexField::Material:
+                        break;
+                    case VertexField::JointWeight:
+                        jointWeights.push_back(ctx.mesh.jointWeights[field.idx].xyz());
+                        break;
+                    case VertexField::JointIndex:
+                        jointIndexes.push_back(ctx.mesh.jointIndexes[field.idx]);
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
+
+
+            void PushTri(Triangle& tri, LocalBlockContext& ctx)
+            {
+                for (auto& v : tri.vertices)
+                {
+                    if (ctx.LocallyUnique(v, points.size()))
+                    {
+                        indexes.push_back(points.size());
+                        PushVertex(v, ctx);
+                    }
+                    else
+                    {
+                        const uint32_t idx = ctx.map(v);
+                        indexes.push_back(idx);
+                    }
+                }
+            }
+
+            Vector<float3>		    points      { SystemAllocator };
+            Vector<float3>		    normals     { SystemAllocator };
+            Vector<float3>		    tangents    { SystemAllocator };
+
+            Vector<float2>          textureCoordinates  { SystemAllocator };
+            Vector<float3>		    jointWeights        { SystemAllocator };
+            Vector<uint4_16>	    jointIndexes        { SystemAllocator };
+
+            Vector<uint32_t>	    indexes{ SystemAllocator };
+        };
+
+
+        /************************************************************************************************/
+
+
+        OptimizedBuffer::OptimizedBuffer(const OptimizedMesh& buffer)
+        {
+            // Not quick I know, leave me alone
+            auto moveFloat3s =
+                [&](auto& target, auto& source)
+            {
+                for (auto temp : source)
+                {
+                    char byteBuffer[sizeof(float[3])];
+                    memcpy(byteBuffer, &temp, sizeof(byteBuffer));
+                    for (auto byte : byteBuffer)
+                        target.push_back(byte);
+                }
+            };
+
+            auto moveBuffer =
+                [&](auto& target, auto& source)
+                {
+                    for(auto temp : source)
+                    {
+                        char byteBuffer[sizeof(temp)];
+                        memcpy(byteBuffer, &temp, sizeof(byteBuffer));
+                        for (auto byte : byteBuffer)
+                            target.push_back(byte);
+                    }
+                };
+
+
+            moveFloat3s(points, buffer.points);
+            moveFloat3s(normals, buffer.normals);
+            moveFloat3s(tangents, buffer.tangents);
+
+            moveBuffer(textureCoordinates, buffer.textureCoordinates);
+            moveBuffer(jointWeights, buffer.jointWeights);
+            moveBuffer(jointIndexes, buffer.jointIndexes);
+            moveBuffer(indexes, buffer.indexes);
+        }
+
+
+        /************************************************************************************************/
+
+
+        OptimizedMesh CreateOptimizedMesh(const KDBTree& tree)
+        {
+            OptimizedMesh optimized;
+
+            for (const auto& leaf : tree)
+            {
+                LocalBlockContext   context{ tree.mesh };
+                OptimizedMesh       localBlock;
+
+                for (auto I = leaf->begin; I < leaf->end; I++)
+                    localBlock.PushTri(*I, context);
+
+                optimized += localBlock;
+            }
+
+            return optimized;
+        }
+
+
+        /************************************************************************************************/
+
+
+        OptimizedBuffer BuildVertexBuffer(const TokenList& tokens)
+		{
+            auto mesh = CreateOptimizedMesh(KDBTree({ tokens }));
+            return OptimizedBuffer(mesh);
 		}
 
 
@@ -271,333 +683,305 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-		namespace OBJ_Tools
-		{
-			void SkipToFloat(  size_t RINOUT itr, const char* in_str, size_t lineLength )
-			{
-				bool continueloop = true;
-				while( itr < lineLength && continueloop )
-				{
-					switch ( in_str[itr] )
-					{
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
-					case '6':
-					case '7':
-					case '8':
-					case '9':
-					case '0':
-					case '-':
-						continueloop = false;
-						break;
-					default:
-						itr++;
-					}
-				}
-			}
-
-
-			/************************************************************************************************/
-
-
-			void ExtractFloat( size_t RINOUT itr, const char* in_str, const size_t LineLength, float* __restrict out )
-			{
-				char		c_str[16];
-				uint32_t	itr2 = 0;
-				bool continueloop = true;
-				while( itr < LineLength && continueloop )
-				{
-					switch ( in_str[itr] )
-					{
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
-					case '6':
-					case '7':
-					case '8':
-					case '9':
-					case '0':
-					case '.':
-					case '-':
-						c_str[itr2] = in_str[itr];
-						itr2++;
-						break;
-					default:
-						continueloop = false;
-					}
-					itr++;
-				}
-				((float*)out)[0] = (float)atof( c_str );
-			}
-
-
-			/************************************************************************************************/
-
-
-			void ExtractFloats_3( const char* in, size_t LineLength, byte* out )
-			{
-				// Skip token plus spaces
-				size_t itr = 0;
-
-				itr++;
-				itr++;
-
-				//Get Float 1
-				SkipToFloat	( itr, in, LineLength );
-				ExtractFloat( itr, in, LineLength, &((float*)out)[0] );
-				//Get Float 2
-				SkipToFloat	( itr, in, LineLength );
-				ExtractFloat( itr, in, LineLength, &((float*)out)[1] );
-				//Get Float 3
-				SkipToFloat	( itr, in, LineLength );
-				ExtractFloat( itr, in, LineLength, &((float*)out)[2] );
-				//Done!
-			}
-
-
-			/************************************************************************************************/
-
-
-			void ExtractFloats_2( const char* in, size_t LineLength, FlexKit::byte* out )
-			{
-				// Skip token plus spaces
-				size_t itr = 0;
-
-				itr++;
-				itr++;
-
-				//Get Float 1
-				SkipToFloat( itr, in, LineLength );
-				ExtractFloat( itr, in, LineLength, &((float*)out)[0] );
-				//Get Float 2
-				SkipToFloat( itr, in, LineLength );
-				ExtractFloat( itr, in, LineLength, &((float*)out)[1] );
-				//Done!
-			}
-
-
-			/************************************************************************************************/
-
-
-			int GetSlashCount( const char* in_str, const size_t lineLength )
-			{
-				int slashcount = 0;
-				auto itr = 0;
-				itr++;
-				itr++;
-				if( in_str[itr]== ' ' )
-					itr++;
-
-				while( itr < lineLength && in_str[itr] != ' ' )
-				{
-					if( in_str[itr] == '/' )
-						slashcount++;
-					itr++;
-				}
-				return slashcount;
-			}
-
-
-			/************************************************************************************************/
-
-
-			int GetIndiceCount( const char* in_str, const size_t lineLength )
-			{
-				int spacecount = 0;
-				auto itr = 0;
-				itr++;
-				itr++;
-				if( in_str[itr] == ' ' )
-					itr++;
-				while( itr < lineLength )
-				{
-					if( in_str[itr] == ' ' )
-						spacecount++;
-					itr++;
-				}
-				return spacecount;
-			}
-
-
-			/************************************************************************************************/
-
-
-			void ExtractIndice( size_t RINOUT itr, const char* in_str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int ITYPE )
-			{
-				char			c_str[ 16 ];
-				unsigned int	POS = 0;
-				bool continueloop = true;
-
-				while( itr < LineLength && continueloop  )
-				{
-					switch (in_str[itr])
-					{
-					case '1':
-					case '2':
-					case '3':
-					case '4':
-					case '5':
-					case '6':
-					case '7':
-					case '8':
-					case '9':
-					case '0':
-						c_str[POS] = in_str[itr];
-						POS++;
-						//ss << *in;
-						break;
-					default:
-						continueloop = false;
-					}
-					itr++;
-				}
-
-				uint32_t indice = 0;
-				uint32_t size = 1;
-
-				for( int32_t itr2 = POS - 1; itr2 >= 0; itr2-- )
-				{
-					indice += ( c_str[itr2] - 48 ) * size;
-					size *= 10;
-				}
-
-				if( indice != 0 )
-				{
-					switch( ITYPE )
-					{
-					case 0:
-						(*out).p_Index = indice - 1; // Vertex
-						break;
-					case 1:
-						(*out).t_Index = indice - 1; // Texcoord
-						break;
-					case 2:
-						(*out).n_Index = indice - 1; // Normal
-						break;
-					}
-				}
-			}
-
-
-			/************************************************************************************************/
-
-
-			void ExtractFace( const char* str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int index, int slashcount )
-			{
-				// Skip token plus spaces
-				size_t itr = 0;
-
-				itr++;
-				itr++;
-				if( str[itr]== ' ' )
-					itr++;
-
-				for( ; index; index-- )
-				{
-					for( ; str[itr] != ' ' && itr < LineLength; itr++ );
-					for( ; str[itr] == ' ' && itr < LineLength; itr++ );
-				}
-
-				switch ( slashcount )
-				{
-				case 0:
-
-					ExtractIndice( itr, str, LineLength, out, 0 );
-					out[0].n_Index = 0xfffff;
-					out[0].t_Index = 0xfffff;
-					
-					break;
-				case 1:
-
-					ExtractIndice( itr, str, LineLength, out, 0 );
-					ExtractIndice( itr, str, LineLength, out, 2 );
-					out[0].n_Index = 0xfffff;
-
-					break;
-				case 2:
-
-					ExtractIndice( itr, str, LineLength, out, 0 );
-					ExtractIndice( itr, str, LineLength, out, 1 );
-					ExtractIndice( itr, str, LineLength, out, 2 );
-
-					break;
-				default:
-#if USING(FATALERROR)
-					FK_ASSERT( 0 ); // Unsupported Face Combination, CRASHING!!!
-#endif
-					break;
-				}
-				//Done!
-			}
-
-
-			/************************************************************************************************/
-
-
-			std::string GetNextLine( const char* File_Position, const char* File_Buffer )
-			{
-				char CurrentLine[256];
-
-				do
-				{
-					//strcat( Line_Str, File_Position );
-					File_Position++;
-				} while( *File_Position != '\0' );
-				//strcpy( CurrentLine, ScrubgetLineOBJ( Line_Str ) );
-
-				return CurrentLine;
-			}
-			
-
-			/************************************************************************************************/
-
-
-			void AddVertexToken(float3 in, TokenList& out)
-			{
-				s_TokenValue T;
-				T.token = FlexKit::Token::POSITION_COORD;
-				s_TokenVertexLayout* V =  (s_TokenVertexLayout*)T.buffer;
-				V->f[0] = in.x;
-				V->f[1] = in.y;
-				V->f[2] = in.z;
-				out.push_back(T);
-			}
-			
-
-			/************************************************************************************************/
-
-
-			void AddWeightToken(WeightIndexPair in, TokenList& out)
-			{
-                auto temp = (in.V1.x + in.V1.y + in.V1.z);
-
-                if ((1.0f - (in.V1.x + in.V1.y + in.V1.z)) > 0.01f)
+        namespace OBJ_Tools
+        {
+            void SkipToFloat(size_t RINOUT itr, const char* in_str, size_t lineLength)
+            {
+                bool continueloop = true;
+                while (itr < lineLength && continueloop)
                 {
-                    in.V1 += 1.0f - in.V1.x + in.V1.y + in.V1.z;
-                    //__debugbreak();
+                    switch (in_str[itr])
+                    {
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '0':
+                    case '-':
+                        continueloop = false;
+                        break;
+                    default:
+                        itr++;
+                    }
+                }
+            }
+
+
+            /************************************************************************************************/
+
+
+            void ExtractFloat(size_t RINOUT itr, const char* in_str, const size_t LineLength, float* __restrict out)
+            {
+                char		c_str[16];
+                uint32_t	itr2 = 0;
+                bool continueloop = true;
+                while (itr < LineLength && continueloop)
+                {
+                    switch (in_str[itr])
+                    {
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '0':
+                    case '.':
+                    case '-':
+                        c_str[itr2] = in_str[itr];
+                        itr2++;
+                        break;
+                    default:
+                        continueloop = false;
+                    }
+                    itr++;
+                }
+                ((float*)out)[0] = (float)atof(c_str);
+            }
+
+
+            /************************************************************************************************/
+
+
+            void ExtractFloats_3(const char* in, size_t LineLength, byte* out)
+            {
+                // Skip token plus spaces
+                size_t itr = 0;
+
+                itr++;
+                itr++;
+
+                //Get Float 1
+                SkipToFloat(itr, in, LineLength);
+                ExtractFloat(itr, in, LineLength, &((float*)out)[0]);
+                //Get Float 2
+                SkipToFloat(itr, in, LineLength);
+                ExtractFloat(itr, in, LineLength, &((float*)out)[1]);
+                //Get Float 3
+                SkipToFloat(itr, in, LineLength);
+                ExtractFloat(itr, in, LineLength, &((float*)out)[2]);
+                //Done!
+            }
+
+
+            /************************************************************************************************/
+
+
+            void ExtractFloats_2(const char* in, size_t LineLength, FlexKit::byte* out)
+            {
+                // Skip token plus spaces
+                size_t itr = 0;
+
+                itr++;
+                itr++;
+
+                //Get Float 1
+                SkipToFloat(itr, in, LineLength);
+                ExtractFloat(itr, in, LineLength, &((float*)out)[0]);
+                //Get Float 2
+                SkipToFloat(itr, in, LineLength);
+                ExtractFloat(itr, in, LineLength, &((float*)out)[1]);
+                //Done!
+            }
+
+
+            /************************************************************************************************/
+
+
+            int GetSlashCount(const char* in_str, const size_t lineLength)
+            {
+                int slashcount = 0;
+                auto itr = 0;
+                itr++;
+                itr++;
+                if (in_str[itr] == ' ')
+                    itr++;
+
+                while (itr < lineLength && in_str[itr] != ' ')
+                {
+                    if (in_str[itr] == '/')
+                        slashcount++;
+                    itr++;
+                }
+                return slashcount;
+            }
+
+
+            /************************************************************************************************/
+
+
+            int GetIndiceCount(const char* in_str, const size_t lineLength)
+            {
+                int spacecount = 0;
+                auto itr = 0;
+                itr++;
+                itr++;
+                if (in_str[itr] == ' ')
+                    itr++;
+                while (itr < lineLength)
+                {
+                    if (in_str[itr] == ' ')
+                        spacecount++;
+                    itr++;
+                }
+                return spacecount;
+            }
+
+
+            /************************************************************************************************/
+
+
+            void ExtractIndice(size_t RINOUT itr, const char* in_str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int ITYPE)
+            {
+                char			c_str[16];
+                unsigned int	POS = 0;
+                bool continueloop = true;
+
+                while (itr < LineLength && continueloop)
+                {
+                    switch (in_str[itr])
+                    {
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                    case '0':
+                        c_str[POS] = in_str[itr];
+                        POS++;
+                        //ss << *in;
+                        break;
+                    default:
+                        continueloop = false;
+                    }
+                    itr++;
                 }
 
-				s_TokenValue T;
-				T.token = FlexKit::Token::WEIGHT;
-				s_TokenVertexLayout* V =  (s_TokenVertexLayout*)T.buffer;
-				V->f[0] = ((float3)in).x;
-				V->f[1] = ((float3)in).y;
-				V->f[2] = ((float3)in).z;
-				out.push_back(T);
+                uint32_t indice = 0;
+                uint32_t size = 1;
+
+                for (int32_t itr2 = POS - 1; itr2 >= 0; itr2--)
+                {
+                    indice += (c_str[itr2] - 48) * size;
+                    size *= 10;
+                }
+
+                if (indice != 0)
+                {
+                    switch (ITYPE)
+                    {
+                    case 0:
+                        (*out).p_Index = indice - 1; // Vertex
+                        break;
+                    case 1:
+                        (*out).t_Index = indice - 1; // Texcoord
+                        break;
+                    case 2:
+                        (*out).n_Index = indice - 1; // Normal
+                        break;
+                    }
+                }
+            }
 
 
-				T.token = FlexKit::Token::WEIGHTINDEX;
-				s_TokenWIndexLayout* W = (s_TokenWIndexLayout*)T.buffer;
-				W->i[0] = in.V2[0];
-				W->i[1] = in.V2[1];
-				W->i[2] = in.V2[2];
-				W->i[3] = in.V2[3];
-				out.push_back(T);
+            /************************************************************************************************/
+
+
+            void ExtractFace(const char* str, size_t LineLength, CombinedVertex::IndexBitField* __restrict out, int index, int slashcount)
+            {
+                // Skip token plus spaces
+                size_t itr = 0;
+
+                itr++;
+                itr++;
+                if (str[itr] == ' ')
+                    itr++;
+
+                for (; index; index--)
+                {
+                    for (; str[itr] != ' ' && itr < LineLength; itr++);
+                    for (; str[itr] == ' ' && itr < LineLength; itr++);
+                }
+
+                switch (slashcount)
+                {
+                case 0:
+
+                    ExtractIndice(itr, str, LineLength, out, 0);
+                    out[0].n_Index = 0xfffff;
+                    out[0].t_Index = 0xfffff;
+
+                    break;
+                case 1:
+
+                    ExtractIndice(itr, str, LineLength, out, 0);
+                    ExtractIndice(itr, str, LineLength, out, 2);
+                    out[0].n_Index = 0xfffff;
+
+                    break;
+                case 2:
+
+                    ExtractIndice(itr, str, LineLength, out, 0);
+                    ExtractIndice(itr, str, LineLength, out, 1);
+                    ExtractIndice(itr, str, LineLength, out, 2);
+
+                    break;
+                default:
+#if USING(FATALERROR)
+                    FK_ASSERT(0); // Unsupported Face Combination, CRASHING!!!
+#endif
+                    break;
+                }
+                //Done!
+            }
+
+
+            /************************************************************************************************/
+
+
+            std::string GetNextLine(const char* File_Position, const char* File_Buffer)
+            {
+                char CurrentLine[256];
+
+                do
+                {
+                    //strcat( Line_Str, File_Position );
+                    File_Position++;
+                } while (*File_Position != '\0');
+                //strcpy( CurrentLine, ScrubgetLineOBJ( Line_Str ) );
+
+                return CurrentLine;
+            }
+
+
+            /************************************************************************************************/
+
+
+            void AddVertexToken(float3 point, TokenList& out)
+            {
+                out.push_back(PointToken{ point });
+            }
+
+
+            /************************************************************************************************/
+
+
+            void AddWeightToken(WeightIndexPair in, TokenList& out)
+            {
+                out.push_back(JointWeightToken{ (float3)in });
+                out.push_back(JointIndexToken{ in.Get<1>() });
 			}
 
 
@@ -606,13 +990,7 @@ namespace FlexKit
 
 			void AddNormalToken(float3 in, TokenList& out)
 			{
-				s_TokenValue T;
-				T.token = FlexKit::Token::Normal_COORD;
-				s_TokenVertexLayout* V =  (s_TokenVertexLayout*)T.buffer;
-				V->f[0] = in.x;
-				V->f[1] = in.y;
-				V->f[2] = in.z;
-				out.push_back(T);
+                out.push_back(NormalToken{ in });
 			}
 
 
@@ -621,72 +999,60 @@ namespace FlexKit
 
 			void AddNormalToken(const float3 N, const float3 T, TokenList& out)
 			{
-				s_TokenValue token;
-				token.token = FlexKit::Token::Normal_COORD;
-
-                float3 data[2] = { N, T };
-
-                memcpy(token.buffer, data, sizeof(data));
-
-				out.push_back(token);
+                out.push_back(NormalToken{ N });
+                out.push_back(TangentToken{ T });
 			}
 
 
 			/************************************************************************************************/
 
 
-			void AddTexCordToken(float3 in, TokenList& out)
+			void AddTexCordToken(const float3 in, TokenList& out)
 			{
-				s_TokenValue T;
-				T.token = FlexKit::Token::UV_COORD;
-				s_TokenVertexLayout* V =  (s_TokenVertexLayout*)T.buffer;
-				V->f[0] = in.x;
-				V->f[1] = in.y;
-				V->f[2] = 0.0;
-
-				out.push_back(T);
+                out.push_back(TextureCoordinateToken{ in, 0 });
 			}
 
 
 			/************************************************************************************************/
 
 
-			void AddIndexToken(size_t V, size_t N, size_t T, TokenList& out)
+			void AddIndexToken(const uint32_t V, const uint32_t N, const uint32_t T, TokenList& out)
 			{
-				s_TokenValue					Token;
-				CombinedVertex::IndexBitField*	BitLayout = (CombinedVertex::IndexBitField*)Token.buffer;
-				
-				Token.token = Token::INDEX;
+                VertexToken token;
+                token.vertex.push_back(VertexField{ V, VertexField::Point });
+                token.vertex.push_back(VertexField{ N, VertexField::Normal });
+                token.vertex.push_back(VertexField{ T, VertexField::TextureCoordinate });
 
-				CombinedVertex::IndexBitField Temp;
-				Temp.p_Index = uint64_t(V);
-				Temp.n_Index = uint64_t(N);
-				Temp.t_Index = uint64_t(T);
+                std::sort(
+                    token.vertex.begin(), token.vertex.end(),
+                    [&](VertexField& lhs, VertexField& rhs)
+                    {
+                        return lhs.type < rhs.type;
+                    });
 
-				memcpy(Token.buffer, &Temp, sizeof(Temp));
-				out.push_back(Token);
+                out.push_back(token);
 			}
 
 
-			/************************************************************************************************/
+            /************************************************************************************************/
 
 
-			void AddPatchBeginToken(TokenList& out)
+			void AddIndexToken(const uint32_t V, const uint32_t N, const uint32_t T, const uint32_t texCoord, TokenList& out)
 			{
-				s_TokenValue Token;
-				Token.token = Token::PATCHBEGIN;
-				out.push_back(Token);
-			}
+                VertexToken token;
+                token.vertex.push_back(VertexField{ V, VertexField::Point });
+                token.vertex.push_back(VertexField{ N, VertexField::Normal });
+                token.vertex.push_back(VertexField{ T, VertexField::Tangent });
+                token.vertex.push_back(VertexField{ texCoord, VertexField::TextureCoordinate });
 
+                std::sort(
+                    token.vertex.begin(), token.vertex.end(),
+                    [&](VertexField& lhs, VertexField& rhs)
+                    {
+                        return lhs.type < rhs.type;
+                    });
 
-			/************************************************************************************************/
-
-
-			void AddPatchEndToken(TokenList& out)
-			{
-				s_TokenValue Token;
-				Token.token = Token::PATCHEND;
-				out.push_back(Token);
+                out.push_back(token);
 			}
 
 
@@ -710,8 +1076,8 @@ namespace FlexKit
 				hl.HIGH_LOW.HIGH = in_Line[1];
 
 				int BOTH = hl.BOTHPARTS;
-				s_TokenValue newToken;
 
+                /*
 				switch (hl.BOTHPARTS)
 				{
 				case 0x00002320: // Comment
@@ -770,6 +1136,8 @@ namespace FlexKit
 				default:
 					break;
 				}
+                */
+
 		}
 
 			/************************************************************************************************/

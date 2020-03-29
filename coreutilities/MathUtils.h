@@ -51,10 +51,10 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-	template<typename TY_1, typename TY_2> auto floor	(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
-	template<typename TY_1, typename TY_2> auto min		(TY_1 x, TY_2 y)	{ return ((x > y) ? y : x);   }
-	template<typename TY_1, typename TY_2> auto max		(TY_1 x, TY_2 y)	{ return ((x > y) ? x : y);   }
-	template<typename TY_1, typename TY_2> auto fastmod (TY_1 x, TY_2 y)	{ return ((x < y) ? x : x%y); }
+	template<typename TY_1, typename TY_2> constexpr auto floor	    (const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2> constexpr auto min		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2> constexpr auto max		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? x : y);   }
+	template<typename TY_1, typename TY_2> constexpr auto fastmod   (const TY_1 x, const TY_2 y) noexcept { return ((x < y) ? x : x%y); }
 
 
 	/************************************************************************************************/
@@ -157,6 +157,12 @@ namespace FlexKit
 		return fabs(A - B) <= E;
 	}
 
+
+    template<typename TY>
+    inline bool VectorCompare(TY A, TY B, float E)
+    {
+        return (A - B).magnitudesquared() < E;
+    }
 
 	
 	inline const float& GetElement(const __m128& V, size_t idx)
@@ -1012,6 +1018,11 @@ namespace FlexKit
 		{
 			return DotProduct3(pfloats, b.pfloats);
 		}
+
+        inline float3 abs() const
+        {
+            return { fabs(x), fabs(y), fabs(z) };
+        }
 
 
 		// Slow due to the use of a square root

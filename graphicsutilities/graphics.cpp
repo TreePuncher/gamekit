@@ -1295,7 +1295,9 @@ namespace FlexKit
 		HR = renderSystem->pDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator)); FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND ALLOCATOR!");
 		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, __uuidof(ID3D12CommandList), (void**)&DeviceContext);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 
+#if USING(AFTERMATH)
         auto res = GFSDK_Aftermath_DX12_CreateContextHandle(DeviceContext, &AFTERMATH_context);
+#endif
 
 		DeviceContext->Close();
 	}
@@ -1329,7 +1331,9 @@ namespace FlexKit
 		if(DeviceContext)
 			DeviceContext->Release();
 
+#if USING(AFTERMATH)
         GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
+#endif
 
 		descHeapDSV         = nullptr;
 		descHeapRTV         = nullptr;
@@ -3080,7 +3084,7 @@ namespace FlexKit
 		D3D12_RESOURCE_DESC   Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(size);
 		D3D12_HEAP_PROPERTIES HEAP_Props	= CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD);
 
-		ID3D12Resource* deviceBuffer = nullptr;
+		ID3D12Resource* newDeviceBuffer = nullptr;
 
 		HRESULT HR = parentDevice->CreateCommittedResource(
 			&HEAP_Props,
@@ -3088,19 +3092,18 @@ namespace FlexKit
 			&Resource_DESC,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&deviceBuffer));
+			IID_PPV_ARGS(&newDeviceBuffer));
 
 		Position       = 0;
 		Last	       = 0;
 		Size           = size;
-		deviceBuffer   = deviceBuffer;
-		SETDEBUGNAME(deviceBuffer, "TEMPORARY");
+		deviceBuffer   = newDeviceBuffer;
+		SETDEBUGNAME(newDeviceBuffer, "TEMPORARY");
 
 		CD3DX12_RANGE Range(0, 0);
-		HR = deviceBuffer->Map(0, &Range, (void**)&deviceBuffer);   CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
+		HR = newDeviceBuffer->Map(0, &Range, (void**)&Buffer);   CheckHR(HR, ASSERTONFAIL("FAILED TO MAP TEMP BUFFER"));
 
-
-		return deviceBuffer;
+		return previousBuffer;
 	}
 
 
@@ -3150,7 +3153,7 @@ namespace FlexKit
 		};
 
 		auto ResizeBuffer = [&] {
-			const auto newSize = (1 << (sizeof(size_t) * 8 - __lzcnt64(0xff)));
+			const auto newSize = (size_t )std::pow(2, std::floor(std::log2(reserveSize)) + 1);
 			freeResources.push_back(uploadBuffer.Resize(newSize));
 		};
 
@@ -3971,6 +3974,15 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    uint32_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
+    {
+        return Textures.GetMIPCount(handle);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -4422,6 +4434,7 @@ namespace FlexKit
         {
             auto& mappings                      = Textures.GetTileMapping(*itr);
             auto deviceResource                 = GetDeviceResource(*itr);
+            const auto mipCount                 = Textures.GetMIPCount(*itr);
 
             /*
             auto desc                           = deviceResource->GetDesc();
@@ -4447,9 +4460,9 @@ namespace FlexKit
                 for (;mappings[I].heap == heap && I < mappings.size(); I++)
                 {
                     const auto& mapping = mappings[I];
-
+                    
                     D3D12_TILED_RESOURCE_COORDINATE coordinate;
-                    coordinate.Subresource  = mapping.tileID.GetMip();
+                    coordinate.Subresource  = mapping.tileID.GetMipLevel(mipCount);
                     coordinate.X            = mapping.tileID.GetTileX();
                     coordinate.Y            = mapping.tileID.GetTileY();
                     coordinate.Z            = 0;
@@ -6036,6 +6049,16 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    uint32_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
+    {
+        auto UserIdx = Handles[handle];
+        return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -6109,6 +6132,8 @@ namespace FlexKit
 
             for (const auto& mapping: userEntry.tileMappings)
             {
+                auto desc = resource->GetDesc();
+                
                 if (auto mappingHeap = renderSystem.GetDeviceResource(mapping.heap); heap != mappingHeap)
                 {
                     if (mappingHeap)
@@ -6137,7 +6162,7 @@ namespace FlexKit
                             .X = mapping.tileID.GetTileX(),
                             .Y = mapping.tileID.GetTileY(),
                             .Z = 0,
-                            .Subresource = (UINT)mapping.tileID.GetMip()
+                            .Subresource = (UINT)mapping.tileID.GetMipLevel(desc.MipLevels)
                         });
 
                     regionSize.push_back(
@@ -7473,7 +7498,7 @@ namespace FlexKit
 		CombinedVertexBuffer	out_buffer	{ TempSpace, 16000 };
 		IndexList				out_indexes	{ TempSpace, 64000 };
 
-		TL.push_back(s_TokenValue::Empty());
+		//TL.push_back(s_TokenValue::Empty());
 		LoaderState S;
 
 		size = strlen(strBuffer);
@@ -7493,7 +7518,7 @@ namespace FlexKit
 			pos++;
 		}
 
-		if (!FlexKit::MeshUtilityFunctions::BuildVertexBuffer(TL, out_buffer, out_indexes, LevelSpace, TempSpace))
+		//if (!FlexKit::MeshUtilityFunctions::BuildVertexBuffer(TL, out_buffer, out_indexes, LevelSpace, TempSpace))
 			return false;
 
 		size_t VertexBufferSize = out_buffer.size()		* sizeof(float3)	+ sizeof(VertexBufferView);// pos
