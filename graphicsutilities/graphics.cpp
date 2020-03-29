@@ -3158,6 +3158,7 @@ namespace FlexKit
 		};
 
 		// Buffer too Small
+        auto temp = reserveSize + GetOffset();
 		if (uploadBuffer.Position + reserveSize + GetOffset() > uploadBuffer.Size)
 			ResizeBuffer();
 
@@ -3238,10 +3239,8 @@ namespace FlexKit
 		const auto      deviceFormat    = TextureFormat2DXGIFormat(format);
 		const size_t    formatSize      = GetFormatElementSize(deviceFormat);
 
-		size_t rowPitch           = formatSize * WH[0];
-		size_t alignmentOffset    = rowPitch & 0x01ff;
-
-		rowPitch += alignmentOffset == 0 ? 0 : 512 - alignmentOffset;
+		const size_t rowPitch           = max((formatSize * WH[0]) / 256, 1) * 256;
+		//size_t alignmentOffset    = rowPitch & 0x01ff;
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
 		SubRegion.Footprint.Depth       = 1;
@@ -5193,7 +5192,7 @@ namespace FlexKit
 
 		for (size_t I = 0; I < Desc->subResourceCount; ++I)
 		{
-			const auto region = copyCtx.Reserve(Desc->buffers[I].Size, 512);
+			const auto region       = copyCtx.Reserve(Desc->buffers[I].Size, 512);
 
 			memcpy(
 				(char*)region.buffer,

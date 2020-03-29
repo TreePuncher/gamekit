@@ -7,11 +7,11 @@
 
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator)
 {
-	const AssetHandle demonModel = 6666;
+	const AssetHandle demonModel = 666;
 
     // Load Model
-    const AssetHandle dragonHandle = 6666;
-    const AssetHandle buddahHandle = 6666;
+    const AssetHandle dragonHandle = 666;
+    const AssetHandle buddahHandle = 666;
 
     auto dragon = GetMesh(renderSystem, buddahHandle);
     auto buddah = GetMesh(renderSystem, buddahHandle);
@@ -71,9 +71,9 @@ enum class TestScenes
 inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestScenes scene = TestScenes::ShadowTestScene)
 {
     AddAssetFile("assets\\TestScenes.gameres");
-    AddAssetFile("assets\\DemonGirl.gameres");
+    AddAssetFile("assets\\ZeldaScene.gameres");
     AddAssetFile("assets\\aRealDemon.gameres");
-    AddAssetFile("test.gameres");
+    AddAssetFile("assets\\CubeMapResource.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();
@@ -104,8 +104,14 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
 
-            auto textureHandle      = 8000;
-            auto DDSTexture         = UploadDDSFromAsset(textureHandle, renderSystem, upload, allocator);
+            //auto textureHandle      = 8000;
+            auto DDSTexture         = renderSystem.CreateGPUResource( //UploadDDSFromAsset(textureHandle, renderSystem, upload, allocator);
+                GPUResourceDesc::ShaderResource(
+                    { 2048, 2048 },
+                    DeviceFormat::BC3_UNORM,
+                    1,
+                    1, true));
+
 
             base.TestImage = DDSTexture;
 
@@ -116,7 +122,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                     1,
                     1, true ));
 
-            base.streamingEngine.BindAsset(textureHandle, base.virtualResource);
+            //base.streamingEngine.BindAsset(textureHandle, base.virtualResource);
 
             size_t          MIPCount;
             uint2           WH;
@@ -160,7 +166,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 	case TestScenes::ShadowTestScene:
 	{
 		iAllocator* allocator = app.GetCore().GetBlockMemory();
-		LoadScene(app.GetCore(), gameState.scene, "ShadowsTestScene");
+		LoadScene(app.GetCore(), gameState.scene, "ZeldaScene");
 
 		/*
 		static const size_t N = 30;

@@ -13,7 +13,7 @@
 #include "ResourceUtilities.cpp"
 #include "TTFontLoader.cpp"
 #include "SceneResource.cpp"
-#include "TextureResourceUtilities.h"
+#include "TextureResourceUtilities.cpp"
 
 #include "..\graphicsutilities\AnimationUtilities.cpp"
 #include "..\graphicsutilities\MeshUtils.cpp"

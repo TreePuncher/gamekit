@@ -296,6 +296,12 @@ namespace FlexKit
 
         ~TextureStreamingEngine()
         {
+            updateThread.Shutdown();
+
+            while (updateInProgress);
+
+            textureLoadThread.join();
+
             renderSystem.ReleaseUAV(feedbackBuffer);
             renderSystem.ReleaseUAV(feedbackCounters);
             renderSystem.ReleaseTexture(feedbackDepth);
@@ -317,7 +323,12 @@ namespace FlexKit
             void Run();
 
             void PushUpdate(char* buffer, const size_t buffer_size, iAllocator* IN_allocator);
-            void Shutdown();
+            void Shutdown()
+            {
+                running = false;
+                cv.notify_all();
+            }
+
 
             TextureStreamingEngine& textureStreamEngine;
 

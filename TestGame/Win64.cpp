@@ -149,67 +149,7 @@ int main(int argc, char* argv[])
         {
             AddAssetFile("assets\\DemonGirl.gameres");
 
-            StartTestState(app, base, TestScenes::GlobalIllumination);
-        }   break;
-        case ApplicationMode::PlaygroundMode:
-        {
-            AddAssetFile("assets\\TestScenes.gameres");
-
-            auto& gameState = app.PushState<GameState>(base);
-            auto& completed = app.GetFramework().core.GetBlockMemory().allocate_aligned<bool>(false);
-
-            auto Task =
-                [&]()
-                {
-                    auto& framework             = app.GetFramework();
-                    auto& allocator             = framework.core.GetBlockMemory();
-                    auto& renderSystem          = framework.GetRenderSystem();
-                    CopyContextHandle upload    = renderSystem.OpenUploadQueue();
-
-                    auto HDRStack = LoadHDR("assets/textures/lakeside_2k.hdr", 6, allocator);
-
-                    base.irradianceMap = MoveTextureBuffersToVRAM(
-                        renderSystem,
-                        upload,
-                        HDRStack.begin(),
-                        HDRStack.size(),
-                        DeviceFormat::R32G32B32A32_FLOAT,
-                        allocator);
-
-                    renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
-                    renderSystem.SetDebugName(base.irradianceMap, "ggx Map");
-                    renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
-
-                    completed = true;
-                };
-
-            auto& workItem = CreateWorkItem(Task, allocator->BlockAllocator);
-            app.GetFramework().core.Threads.AddWork(workItem);
-
-            // Setup test scene
-            LoadScene(app.GetFramework().core, gameState.scene, 10000);
-
-            auto OnLoadUpdate =
-                [&](EngineCore& core, UpdateDispatcher& dispatcher, double dT)
-                {
-                    const auto completedState = completed;
-                    if(completedState)
-                    {
-                        app.PopState();
-
-                        auto& playState = app.PushState<LocalPlayerState>(base, gameState);
-                        app.GetFramework().core.GetBlockMemory().free(&completed);
-                    }
-                };
-
-
-            using LoadState = GameLoadScreenState<decltype(OnLoadUpdate)>;
-            app.PushState<LoadState>(base, OnLoadUpdate);
-
-        }   break;
-        case ApplicationMode::TextureStreamingTestMode:
-        {
-            //auto& testState = app.PushState<TextureStreamingTest>(base);
+            StartTestState(app, base, TestScenes::ShadowTestScene);
         }   break;
     default:
         return -1;

@@ -35,3 +35,4 @@ Release/
 *.vcxproj.user
 *.sln
 /assets
+/hdrs
