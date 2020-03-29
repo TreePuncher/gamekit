@@ -77,6 +77,13 @@ namespace FlexKit
             ElementSize	{ IN_elementSize												},
             Size		{ IN_WH.Product() * IN_elementSize								} {}
 
+        TextureBuffer(uint2 IN_WH, byte* buffer, size_t bufferSize, size_t IN_elementSize, iAllocator* allocator) :
+            Buffer      { buffer },
+            WH          { IN_WH },
+            ElementSize { IN_elementSize },
+            Size        { bufferSize  },
+            Memory      { allocator }{}
+
         ~TextureBuffer()
         {
             Release();
@@ -103,7 +110,7 @@ namespace FlexKit
 
         TextureBuffer& operator =(const TextureBuffer& rhs)
         {
-            if (Buffer)
+            if (Buffer && Memory)
                 Memory->free(Buffer);
 
             Memory		= rhs.Memory;

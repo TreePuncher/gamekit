@@ -171,6 +171,8 @@ void GatherAllGeometry(
 
 			if (!FBXIDPresentInTable(Mesh->GetUniqueID(), Table))
 			{
+                std::cout << "Building Mesh: " << MeshName << "\n";
+
                 const FbxAMatrix transform  = node->EvaluateGlobalTransform();
                 MeshResource_ptr resource   = CreateMeshResource(*Mesh, Name, MD, false);
 

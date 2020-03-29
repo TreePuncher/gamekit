@@ -269,6 +269,24 @@ namespace FlexKit
                 Triangle* end;
 
                 AABB aabb;
+
+                BoundingSphere GetBoundingSphere(const UnoptimizedMesh& IN_mesh) 
+                {
+                    const float3 midPoint = { 0, 0, 0 };// aabb.MidPoint();
+                    float d = 0.0f;
+
+                    std::for_each(
+                        begin, end,
+                        [&](const auto tri)
+                        {
+                            const float3 pos = IN_mesh.GetTrianglePosition(tri);
+                            const float distance = (pos - midPoint).magnitude();
+                            if (distance > d)
+                                d = distance;
+                        });
+
+                    return { midPoint, d };
+                }
             };
 
             KDBTree(const UnoptimizedMesh& IN_mesh) :
@@ -291,7 +309,6 @@ namespace FlexKit
             {
                 float3  midPoint{ 0, 0, 0 };
                 AABB    aabb;
-
                 for_each(
                     begin, end,
                     [&](const auto tri)
@@ -555,6 +572,7 @@ namespace FlexKit
                     optimized.PushTri(*I, context);
 
 
+            /*
             const float3 meshMidPoint = tree.root->aabb.MidPoint();
             KDBTree::KDBNode* node = nullptr;
 
@@ -578,15 +596,16 @@ namespace FlexKit
                 {
                     for (auto& vertex : tri.vertices) {
                         const float3 point = tree.mesh.GetPoint(vertex);
-                        auto d = (meshMidPoint - point).magnitudesquared();
+                        auto d = (meshMidPoint - point).magnitude();
 
                         if (d > radius)
-                            d = radius;
+                            radius = fabs(d);
                     }
                 });
+            */
 
             optimized.aabb              = tree.root->aabb;
-            optimized.boundingSphere    = float4(meshMidPoint, radius);
+            optimized.boundingSphere    = tree.root->GetBoundingSphere(tree.mesh);
 
             return optimized;
         }

@@ -154,6 +154,38 @@ public:
 };
 
 
+/************************************************************************************************/
+
+
+struct Material
+{
+    using MaterialProperty = std::variant<std::string, float4, float3, float2, float>;
+
+    std::vector<MaterialProperty>   properties;
+    std::vector<std::string>        propertyID;
+    std::vector<uint32_t>           propertyGUID;
+};
+
+
+/************************************************************************************************/
+
+
+class MaterialComponent : public EntityComponent
+{
+public:
+    MaterialComponent() :
+        EntityComponent{ GetTypeGUID(DrawableComponent) } {}
+
+
+    Blob GetBlob() override
+    {
+        return {};
+    }
+
+    std::vector<Material> materials;
+};
+
+
 using DrawableComponent_ptr = std::shared_ptr<DrawableComponent>;
 
 

@@ -63,6 +63,19 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 			auto UniqueID	= FBXMesh->GetUniqueID();
 			auto name		= Node->GetName();
 
+            const auto materialCount = Node->GetMaterialCount();
+            const auto shadingMode = Node->GetShadingMode();
+
+            for (size_t I = 0; I < materialCount; I++)
+            {
+                auto classID = Node->GetMaterial(I)->GetClassId();
+                auto material = Node->GetSrcObject<FbxSurfacePhong>(I);
+                auto materialName = material->GetName();
+                auto diffuse = material->sDiffuse;
+                auto normal = material->sNormalMap;
+                bool multilayer = material->MultiLayer;
+            }
+
 			SceneEntity entity;
             entity.components.push_back(make_shared<DrawableComponent>(UniqueID));
 			entity.Node		= Nodehndl;
@@ -296,7 +309,7 @@ void GetScenes(fbxsdk::FbxScene* S, const MetaDataList& MetaData, FBXIDTranslati
 ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData)
 {
 	FBXIDTranslationTable	translationTable;
-	ResourceList			resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, metaData);
+    ResourceList			resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, metaData);
 
 	GetScenes(scene, metaData, translationTable, resources);
 
@@ -335,6 +348,7 @@ ResourceBlob SceneResource::CreateBlob()
             n.position      = nodes[0].Q.Inverse() * n.position;
         }
         */
+
         nodeBlob += Blob{ n };
 	}
 

@@ -696,7 +696,7 @@ namespace FlexKit
 		meshOut->SkeletonGUID		= skeleton ? skeleton->guid : -1;
 		meshOut->BS					= optimizedbuffer.bs;
 		meshOut->AABB				= optimizedbuffer.aabb;
-        
+
 		return meshOut;
 	}
 

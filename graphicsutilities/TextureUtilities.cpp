@@ -210,12 +210,23 @@ namespace FlexKit
 
         Vector<TextureBuffer> MIPChain(scratchSpace);
 
+        auto GetRowPitch = [&]
+        {
+            const size_t elementSize = sizeof(RGBA);
+            return max((width * elementSize) / 256, 1) * 256;
+        };
+
+        const size_t rowPitch = GetRowPitch();
+        const size_t bufferSize = rowPitch * height;
+
         MIPChain.emplace_back(
             uint2{ (uint32_t)width, (uint32_t)height },
+            (byte*)scratchSpace->_aligned_malloc(rowPitch * height, 256),
+            bufferSize,
             sizeof(RGBA),
             scratchSpace);
 
-        auto view = TextureBufferView<float4>(MIPChain.back());
+        auto view = TextureBufferView<float4>(MIPChain.back(), rowPitch);
         RGB* rgb = (RGB*)res;
 
         for (int y = 0; y < height; y++) {
@@ -234,7 +245,7 @@ namespace FlexKit
 
         free(res);
 
-        return std::move(MIPChain);
+        return MIPChain;
     }
 
 

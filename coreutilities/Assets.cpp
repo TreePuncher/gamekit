@@ -177,7 +177,7 @@ namespace FlexKit
 					{
 						// Memory Full
 						// Evict A Unused Resource
-						// TODO: THIS
+						// TODO: Handle running out of memory
 						FK_ASSERT(false, "OUT OF MEMORY!");
 					}
 
@@ -420,13 +420,15 @@ namespace FlexKit
             for (size_t MIPLevel = 0; MIPLevel < resource->MipCount; MIPLevel++)
             {
                 float* buffer = (float*)resource->GetFace(I)->GetMip(MIPLevel);
-                size_t bufferSize = resource->GetFace(I)->GetMipSize(MIPLevel);
+                const size_t bufferSize = resource->GetFace(I)->GetMipSize(MIPLevel);
 
                 textureArray.emplace_back(
                     TextureBuffer{
                         uint2{(uint32_t)resource->Width >> MIPLevel, (uint32_t)resource->Height >> MIPLevel},
                         (char*)buffer,
-                        sizeof(float4) });
+                        bufferSize,
+                        sizeof(float4),
+                        nullptr });
             }
         }
 
