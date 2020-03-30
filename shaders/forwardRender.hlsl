@@ -119,9 +119,6 @@ Forward_VS_OUT ForwardSkinned_VS(VertexSkinned In)
 	[unroll(4)]
 	for (uint I = 0; I < 4; ++I)
 	{
-        //M * V
-        //V * M  <-?
-
         #if 0
         V += mul(float4(In.POS, 1),     MTs[I]) * W[I];
         N += mul(float4(In.Normal, 0),  MTs[I]) * W[I];
@@ -174,8 +171,9 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     gbuffer.Normal      = float4(IN.Normal,     1);
     gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
 
-    //gbuffer.Albedo      = float4(IN.UV, 0, Ks);
-    gbuffer.Albedo      = float4(albedoTexture.Sample(BiLinear, IN.UV).xyz, Ks);
+    gbuffer.Albedo      = float4(Albedo.xyz, Ks);
+    //gbuffer.Albedo      = float4(Albedo.xyz, Ks);
+    //gbuffer.Albedo      = float4(albedoTexture.Sample(BiLinear, IN.UV).xyz, Ks);
 
     gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;

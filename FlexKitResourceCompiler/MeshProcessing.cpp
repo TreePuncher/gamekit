@@ -503,9 +503,6 @@ namespace FlexKit
 					const size_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
 					const size_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
 
-                    if (NormalIndex1 > NormalCount || NormalIndex2 > NormalCount || NormalIndex3 > NormalCount)
-                        __debugbreak();
-
 					AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
                     AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
                     AddIndexToken(VertexIndex2, NormalIndex2, NormalIndex2, UVCordIndex2, out.tokens);
@@ -534,9 +531,6 @@ namespace FlexKit
 						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
 						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
 
-                        if (NormalIndex1 > NormalCount || NormalIndex2 > NormalCount || NormalIndex3 > NormalCount || NormalIndex4 > NormalCount)
-                            __debugbreak();
-
 						AddIndexToken(VertexIndex1, NormalIndex1, UVCordIndex1, out.tokens);
 						AddIndexToken(VertexIndex2, NormalIndex2, UVCordIndex2, out.tokens);
 						AddIndexToken(VertexIndex3, NormalIndex3, UVCordIndex3, out.tokens);
@@ -561,9 +555,6 @@ namespace FlexKit
 						auto VertexIndex4 = GetVertexIndex(triID, 3, IndexCount + 3, mesh);
 						auto NormalIndex4 = out.Normals ? GetNormalIndex(triID, 3, IndexCount + 3, mesh) : 0;
 						auto UVCordIndex4 = out.UV ? GetTexcordIndex(triID, 3, mesh) : 0;
-
-                        if (NormalIndex1 > NormalCount || NormalIndex2 > NormalCount || NormalIndex3 > NormalCount || NormalIndex4 > NormalCount)
-                            __debugbreak();
 
 						AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
                         AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
