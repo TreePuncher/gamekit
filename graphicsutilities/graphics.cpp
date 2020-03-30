@@ -2523,6 +2523,8 @@ namespace FlexKit
 		PendingBarriers.clear();
 
 		CurrentPipelineState = nullptr;
+
+        DeviceContext->ClearState(nullptr);
 	}
 
 
@@ -2560,8 +2562,6 @@ namespace FlexKit
 	{
         counter = IN_counter;
 		DeviceContext->Close();
-
-        //_QueueReadBacks(IN_counter);
 	}
 
 
@@ -3819,10 +3819,12 @@ namespace FlexKit
 
 	void RenderSystem::WaitforGPU()
 	{
-		const size_t CompletedValue	= Fence->GetCompletedValue();
+        GraphicsQueue->Signal(Fence, ++FenceCounter);
+
+		const size_t completedValue	= Fence->GetCompletedValue();
         const size_t currentCounter = FenceCounter;
 
-		if (CompletedValue < currentCounter)
+		if (currentCounter > completedValue)
         {
 			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			Fence->SetEventOnCompletion(currentCounter, eventHandle);
@@ -5898,8 +5900,8 @@ namespace FlexKit
 		const auto ResIdx	= UserEntry.ResourceIdx;
 		auto& resource		= Resources[ResIdx];
 
-		for (auto res : resource.Resources)
-			res->Release();
+        for (auto res : resource.Resources)
+            res->Release();
 
 		const auto TempHandle	= UserEntries.back().Handle;
 		UserEntry			    = UserEntries.back();
