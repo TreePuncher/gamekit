@@ -301,14 +301,86 @@ namespace FlexKit
 
     thread_local CircularStealingQueue<iWork*>* localWorkQueue = nullptr;
 
+    class _BackgrounWorkQueue
+    {
+    public:
+        _BackgrounWorkQueue(iAllocator* allocator) :
+            queue               { allocator },
+            workList            { allocator }
+        {
+            localWorkQueue      = &queue;
+            running             = true;
+            backgroundThread    = std::thread{ [&] { void Run();  } };
+        }
 
-    inline void PushToLocalQueue(iWork& work)
+
+        void Shutdown()
+        {
+            running = false;
+            cv.notify_all();
+            backgroundThread.join();
+        }
+
+
+        void PushWork(iWork& work)
+        {
+            std::scoped_lock localLock{ lock };
+            workList.push_back(work);
+        }
+
+
+        void Run()
+        {
+            while (running)
+            {
+                if (workList.size())
+                {
+                    while (workList.size())
+                        queue.push_back(workList.pop_back());
+                }
+                else
+                {
+                    std::mutex m;
+                    std::unique_lock ul{ m };
+
+                    cv.wait(ul);
+                }
+            }
+        }
+
+
+        auto& GetQueue()
+        {
+            return queue;
+        }
+
+
+        bool Running()
+        {
+            return running;
+        }
+
+    private:
+
+        Vector<iWork*>                  workList;
+
+        std::mutex                      lock;
+        std::atomic_bool                running = false;
+        std::condition_variable         cv;
+        std::thread                     backgroundThread;
+
+        CircularStealingQueue<iWork*>   queue;
+    };
+
+
+
+    FLEXKITAPI inline void PushToLocalQueue(iWork& work)
     {
         localWorkQueue->push_back(&work);
     }
 
 
-	class _WorkerThread
+    class _WorkerThread
 	{
 	public:
 		_WorkerThread(iAllocator* ThreadMemory = SystemAllocator) :
@@ -422,7 +494,8 @@ namespace FlexKit
 			workingThreadCount	{ 0					},
 			workerCount			{ ThreadCount       },
 			workQueues          { IN_allocator      },
-            mainThreadQueue     { IN_allocator      }
+            mainThreadQueue     { IN_allocator      },
+            backgroundQueue     { IN_allocator      }
 		{
 			WorkerThread::Manager = this;
 
@@ -455,6 +528,8 @@ namespace FlexKit
 				if (threads.try_pop_back(worker))
 					allocator->free(worker);
 			}
+
+            backgroundQueue.Shutdown();
 		}
 
 
@@ -470,6 +545,12 @@ namespace FlexKit
 			localWorkQueue->push_back(newWork);
 			workerWait.notify_all();
 		}
+
+
+        void AddBackgroundWork(iWork& newWork) noexcept
+        {
+            backgroundQueue.PushWork(newWork);
+        }
 
 
 		void WaitForWorkersToComplete()
@@ -527,7 +608,7 @@ namespace FlexKit
 		}
 
 
-		iWork* FindWork()
+		iWork* FindWork(bool stealBackground = false)
 		{
             if (auto res = localWorkQueue->pop_back(); res)
                 return res.value();
@@ -540,7 +621,9 @@ namespace FlexKit
                     return res.value();
             }
 
-			return nullptr;
+            return  stealBackground ?
+                backgroundQueue.GetQueue().Steal().value_or(nullptr) :
+                nullptr;
 		}
 
 
@@ -554,7 +637,8 @@ namespace FlexKit
 		auto GetThreadsEnd()	{ return threads.end(); }
 
 	private:
-		WorkerList	threads;
+		WorkerList	            threads;
+        _BackgrounWorkQueue     backgroundQueue;
 
 		std::condition_variable		CV;
 		std::condition_variable		workerWait;
