@@ -83,7 +83,7 @@ namespace FlexKit
 
 				    Manager->IncrementActiveWorkerCount();
 
-                    if (auto workItem = Manager->FindWork(); workItem)
+                    if (auto workItem = Manager->FindWork(true); workItem)
                     {
                         I = 0;
                         doWork(workItem);
