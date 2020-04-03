@@ -4008,7 +4008,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, TextureBuffer* buffers, size_t resourceCount, iAllocator* temp) // Uses Upload Queue
+	void RenderSystem::UploadTexture(ResourceHandle handle, CopyContextHandle queue, TextureBuffer* buffers, size_t resourceCount) // Uses Upload Queue
 	{
 		auto resource	= GetDeviceResource(handle);
 		auto format		= GetTextureFormat(handle);
@@ -6738,6 +6738,30 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    ResourceHandle RenderSystem::_CreateDefaultTexture()
+    {
+        char tempBuffer[256];
+        memset(tempBuffer, 0xffff, 256);
+
+        const auto upload = GetImmediateUploadQueue();
+
+        TextureBuffer textureBuffer{ {1, 1}, (FlexKit::byte*)tempBuffer, 256, 4, nullptr };
+
+        auto defaultTexture = MoveTextureBuffersToVRAM(
+            this,
+            upload,
+            &textureBuffer,
+            1,
+            1,
+            DeviceFormat::R8G8B8A8_UNORM);
+
+        return defaultTexture;
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -7879,7 +7903,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBufferToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, DeviceFormat format, iAllocator* tempMemory)
+	ResourceHandle MoveTextureBufferToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, DeviceFormat format)
 	{
 		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer->WH, format));
 		RS->UploadTexture(textureHandle, handle, buffer->Buffer, buffer->Size);
@@ -7891,10 +7915,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t resourceCount, DeviceFormat format, iAllocator* tempMemory)
+	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t resourceCount, DeviceFormat format)
 	{
 		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, resourceCount));
-		RS->UploadTexture(textureHandle, handle, buffer, resourceCount, tempMemory);
+		RS->UploadTexture(textureHandle, handle, buffer, resourceCount);
 
 		return textureHandle;
 	}
@@ -7903,10 +7927,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format, iAllocator* tempMemory)
+	ResourceHandle MoveTextureBuffersToVRAM(RenderSystem* RS, CopyContextHandle handle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format)
 	{
 		auto textureHandle = RS->CreateGPUResource(GPUResourceDesc::ShaderResource(buffer[0].WH, format, MIPCount, arrayCount));
-		RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount, tempMemory);
+		RS->UploadTexture(textureHandle, handle, buffer, arrayCount * MIPCount);
 
 		return textureHandle;
 	}

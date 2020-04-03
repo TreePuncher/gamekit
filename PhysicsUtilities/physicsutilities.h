@@ -665,7 +665,11 @@ namespace FlexKit
     {
         NodeHandle                node;
         PhysXSceneHandle          scene;
+
         physx::PxController*      controller;
+
+        float2                    mouseMoved = { 0, 0 };
+        double                    updateTimer = 0;
     };
 
 

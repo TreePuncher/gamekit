@@ -178,7 +178,7 @@ namespace FlexKit
 		EngineCore				(const EngineCore&) = delete;
 		EngineCore& operator =	(const EngineCore&) = delete;
 
-		bool					FrameLock   = true;
+		bool					FrameLock   = false;
 		bool					End         = false;
 
         ThreadManager			Threads;
@@ -209,6 +209,8 @@ namespace FlexKit
 
 	float2	GetPixelSize	(EngineCore*);
 
+    void EnableMouseInput   ();
+    void DisableMouseInput  ();
 	void UpdateMouseInput	(MouseInputState* State,	RenderWindow* Window);
 	void PushCmdArg			(EngineCore* Engine,		const char* arg);
 

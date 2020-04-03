@@ -35,9 +35,7 @@ namespace FlexKit
 {
 	typedef uint32_t index_t;
 
-	struct _InvalidHandle_t
-	{
-	}InvalidHandle_t;
+	struct _InvalidHandle_t {} inline static const InvalidHandle_t;
 
 	template< typename int HandleSize = 32, typename int ID = -1>
 	class Handle_t

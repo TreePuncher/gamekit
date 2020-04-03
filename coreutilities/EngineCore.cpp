@@ -204,13 +204,31 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    void EnableMouseInput(MouseInputState* State, RenderWindow* Window)
+    {
+        SetSystemCursorToWindowCenter(Window);
+        State->Enabled  = true;
+        ShowCursor(false);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void DisableMouseInput(MouseInputState* State)
+    {
+        State->Enabled  = false;
+        ShowCursor(true);
+    }
+
+
+    /************************************************************************************************/
+
+
 	void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 	{
-		if (!State->Enabled) {
-			ShowCursor(true);
-			State->dPos = { 0, 0 };
+		if (!State->Enabled)
 			return;
-		}
 
 		if (GetForegroundWindow() == Window->hWindow)
 		{
@@ -232,12 +250,10 @@ namespace FlexKit
 			State->Normalized_dPos ={ HorizontalMouseMovement, VerticalMouseMovement };
 
 			SetSystemCursorToWindowCenter(Window);
-			ShowCursor(false);
 		}
 		else
 		{
-			ShowCursor(false);
-			State->Enabled = false;
+            DisableMouseInput(State);
 		}
 	}
 

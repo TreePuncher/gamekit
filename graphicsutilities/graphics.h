@@ -2354,22 +2354,22 @@ private:
 
         uint32_t GetTileX() const
         {
-            return (bytes >> 8) & 0xff;
+            return (bytes >> 12) & 0xfff;
         }
 
         uint32_t GetTileY() const
         {
-            return bytes & 0xff;
+            return bytes & 0xfff;
         }
 
         int32_t GetMipLevel(const uint32_t mipCount) const
         {
-            return mipCount - (bytes >> 16) & 0xf;
+            return mipCount - (bytes >> 24) & 0xff;
         }
 
         int32_t GetMipLevelInverted() const
         {
-            return (bytes >> 16) & 0xf;
+            return (bytes >> 24) & 0xff;
         }
 
 
@@ -3162,7 +3162,7 @@ private:
 		size_t           GetTextureArraySize(ResourceHandle handle) const;
 
 		void			UploadTexture				(ResourceHandle, CopyContextHandle, byte* buffer, size_t bufferSize); // Uses Upload Queue
-		void            UploadTexture               (ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount, iAllocator* temp); // Uses Upload Queue
+		void            UploadTexture               (ResourceHandle handle, CopyContextHandle, TextureBuffer* buffer, size_t resourceCount); // Uses Upload Queue
 		void			UpdateResourceByUploadQueue	(ID3D12Resource* Dest, CopyContextHandle, void* Data, size_t Size, size_t ByteSize, D3D12_RESOURCE_STATES EndState);
 
 		// Resource Creation and Destruction
@@ -3227,6 +3227,7 @@ private:
 		//ResourceHandle			_AddBackBuffer						(Texture2D_Desc& Desc, ID3D12Resource* Res, uint32_t Tag);
 		static ConstantBuffer	_CreateConstantBufferResource		(RenderSystem* RS, ConstantBuffer_desc* desc);
 		VertexResourceBuffer	_CreateVertexBufferDeviceResource	(const size_t ResourceSize, bool GPUResident = true);
+        ResourceHandle          _CreateDefaultTexture();
 
 		void                    _PushDelayReleasedResource(ID3D12Resource*, CopyContextHandle = InvalidHandle_t);
 
@@ -3241,6 +3242,7 @@ private:
         auto*                       _GetCopyQueue()     { return copyEngine.copyQueue; }
 
         void                        _OnCrash();
+
 
 		operator RenderSystem* () { return this; }
 
@@ -3264,6 +3266,7 @@ private:
 		UAVTextureHandle   		NullUAV; // 1x1 Zero UAV
 		ResourceHandle          NullSRV;
 		ResourceHandle          NullSRV1D;
+        ResourceHandle          DefaultTexture;
 
 		struct PendingBarrier
 		{
@@ -3381,9 +3384,9 @@ private:
 	/************************************************************************************************/
 
 
-	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, DeviceFormat format, iAllocator* tempMemory);
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format, iAllocator* tempMemory);
-	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format, iAllocator* tempMemory);
+	ResourceHandle MoveTextureBufferToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, DeviceFormat format);
+	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, size_t arrayCount, DeviceFormat format);
+	ResourceHandle MoveTextureBuffersToVRAM	(RenderSystem* RS, CopyContextHandle, TextureBuffer* buffer, size_t MIPCount, DeviceFormat format);
 
 
 	/************************************************************************************************/

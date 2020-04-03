@@ -118,7 +118,6 @@ struct CompiledMeshInfo
 };
 
 
-
 /************************************************************************************************/
 
 
@@ -131,11 +130,6 @@ void GatherAllGeometry(
 {
 	using FlexKit::AnimationClip;
 	using FlexKit::Skeleton;
-	using MeshUtilityFunctions::BuildVertexBuffer;
-	using MeshUtilityFunctions::CombinedVertexBuffer;
-	using MeshUtilityFunctions::IndexList;
-	using MeshUtilityFunctions::TokenList;
-	using MeshUtilityFunctions::MeshBuildInfo;
 
 	auto AttributeCount = node->GetNodeAttributeCount();
 

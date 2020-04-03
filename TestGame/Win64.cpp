@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
         {
             AddAssetFile("assets\\DemonGirl.gameres");
 
-            StartTestState(app, base, TestScenes::ShadowTestScene);
+            StartTestState(app, base, TestScenes::GlobalIllumination);
         }   break;
     default:
         return -1;

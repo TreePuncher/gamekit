@@ -179,7 +179,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, const fbxsdk::FbxMesh& mesh)
+    uint32_t GetNormalIndex(const int pIndex, const int vIndex, const int vID, const fbxsdk::FbxMesh& mesh)
 	{
 		using FlexKit::MeshUtilityFunctions::TokenList;
 
@@ -230,7 +230,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetTexcordIndex(const int pIndex, const int vIndex, fbxsdk::FbxMesh& mesh)
+	uint32_t GetTexcordIndex(const int pIndex, const int vIndex, fbxsdk::FbxMesh& mesh)
 	{
 		const int CPIndex       = mesh.GetPolygonVertex(pIndex, vIndex);
 		const auto UVElement    = mesh.GetElementUV(0);
@@ -281,9 +281,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	size_t GetVertexIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh& mesh)
+    uint32_t GetVertexIndex(const int pIndex, const int vIndex, const int vID, fbxsdk::FbxMesh& mesh)
 	{ 
-		return mesh.GetPolygonVertex(pIndex, vIndex); 
+		return (uint32_t)mesh.GetPolygonVertex(pIndex, vIndex);
 	}
 
 
@@ -491,17 +491,17 @@ namespace FlexKit
 
 				if (size == 3)
 				{
-					const size_t VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
-					const size_t NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
-					const size_t UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
+					const uint32_t VertexIndex1 = GetVertexIndex(triID, 0, IndexCount, mesh);
+                    const uint32_t NormalIndex1 = out.Normals ? GetNormalIndex(triID, 0, IndexCount, mesh) : 0;
+                    const uint32_t UVCordIndex1 = out.UV ? GetTexcordIndex(triID, 0, mesh) : 0;
 
-					const size_t VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
-					const size_t NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
-					const size_t UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
+					const uint32_t VertexIndex2 = GetVertexIndex(triID, 1, IndexCount + 1, mesh);
+                    const uint32_t NormalIndex2 = out.Normals ? GetNormalIndex(triID, 1, IndexCount + 1, mesh) : 0;
+                    const uint32_t UVCordIndex2 = out.UV ? GetTexcordIndex(triID, 1, mesh) : 0;
 
-					const size_t VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
-					const size_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
-					const size_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
+					const uint32_t VertexIndex3 = GetVertexIndex(triID, 2, IndexCount + 2, mesh);
+                    const uint32_t NormalIndex3 = out.Normals ? GetNormalIndex(triID, 2, IndexCount + 2, mesh) : 0;
+                    const uint32_t UVCordIndex3 = out.UV ? GetTexcordIndex(triID, 2, mesh) : 0;
 
 					AddIndexToken(VertexIndex1, NormalIndex1, NormalIndex1, UVCordIndex1, out.tokens);
                     AddIndexToken(VertexIndex3, NormalIndex3, NormalIndex3, UVCordIndex3, out.tokens);
@@ -589,24 +589,23 @@ namespace FlexKit
 
 	MeshResource_ptr CreateMeshResource(FbxMesh& mesh, const std::string& ID, const MetaDataList& metaData, const bool enableSubDiv)
 	{
-#if USING(TOOTLE)
-		Memory  = SystemAllocator;// It will Leak, I know
-		TempMem = SystemAllocator;
-#endif
-
 		using FlexKit::FillBufferView;
 		using FlexKit::AnimationClip;
 		using FlexKit::Skeleton;
-		using MeshUtilityFunctions::BuildVertexBuffer;
-		using MeshUtilityFunctions::CombinedVertexBuffer;
-		using MeshUtilityFunctions::IndexList;
+
+        using MeshUtilityFunctions::OptimizedBuffer;
+        using MeshUtilityFunctions::OptimizedMesh;
 		using MeshUtilityFunctions::TokenList;
-		using MeshUtilityFunctions::MeshBuildInfo;
+        using MeshUtilityFunctions::MeshBuildInfo;
+        using MeshUtilityFunctions::MeshKDBTree;
+        using MeshUtilityFunctions::CreateOptimizedMesh;
 
 		MeshResource_ptr meshOut		= std::make_shared<MeshResource>();
 		SkeletonResource_ptr skeleton	= CreateSkeletonResource(mesh, ID, metaData);
 		const auto transformedMesh		= TranslateToTokens(mesh, skeleton, enableSubDiv);
-		auto optimizedbuffer            = MeshUtilityFunctions::BuildVertexBuffer(transformedMesh.tokens);
+        auto kdbTree                    = std::make_shared<MeshKDBTree>(transformedMesh.tokens);
+        auto optimizedMesh              = CreateOptimizedMesh(*kdbTree);
+		auto optimizedBuffer            = OptimizedBuffer(optimizedMesh);
 
 		static_vector<Pair<VERTEXBUFFER_TYPE, VERTEXBUFFER_FORMAT>> BuffersFound = {
 			{VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32}
@@ -614,38 +613,38 @@ namespace FlexKit
 
         size_t i = 0;
         CreateBufferView(
-            optimizedbuffer.points.data(), optimizedbuffer.points.size(), meshOut->buffers[i++],
+            optimizedBuffer.points.data(), optimizedBuffer.points.size(), meshOut->buffers[i++],
             VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
         if (transformedMesh.UV)
             CreateBufferView(
-                optimizedbuffer.textureCoordinates.data(), optimizedbuffer.textureCoordinates.size(), meshOut->buffers[i++],
+                optimizedBuffer.textureCoordinates.data(), optimizedBuffer.textureCoordinates.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32, SystemAllocator);
 
         if (transformedMesh.Normals)
             CreateBufferView(
-                optimizedbuffer.normals.data(), optimizedbuffer.normals.size(), meshOut->buffers[i++],
+                optimizedBuffer.normals.data(), optimizedBuffer.normals.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
         if(transformedMesh.Tangents)
             CreateBufferView(
-                optimizedbuffer.tangents.data(), optimizedbuffer.tangents.size(), meshOut->buffers[i++],
+                optimizedBuffer.tangents.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
 		if (transformedMesh.Weights)
         {
             CreateBufferView(
-                optimizedbuffer.jointWeights.data(), optimizedbuffer.tangents.size(), meshOut->buffers[i++],
+                optimizedBuffer.jointWeights.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
             CreateBufferView(
-                optimizedbuffer.jointIndexes.data(), optimizedbuffer.tangents.size(), meshOut->buffers[i++],
+                optimizedBuffer.jointIndexes.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16, SystemAllocator);
 
 		}
 
         CreateBufferView(
-            optimizedbuffer.indexes.data(), optimizedbuffer.indexes.size(), meshOut->buffers[i++],
+            optimizedBuffer.indexes.data(), optimizedBuffer.indexes.size(), meshOut->buffers[i++],
             VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, SystemAllocator);
 
 
@@ -676,7 +675,7 @@ namespace FlexKit
 #endif
 
 		meshOut->IndexBuffer_Idx	= BuffersFound.size();
-		meshOut->IndexCount			= optimizedbuffer.IndexCount();
+		meshOut->IndexCount			= optimizedBuffer.IndexCount();
 		meshOut->Skeleton			= skeleton;
 		meshOut->AnimationData		= transformedMesh.Weights ? EAnimationData::EAD_Skin : 0;
 		meshOut->Info.max			= transformedMesh.MaxV;
@@ -685,8 +684,9 @@ namespace FlexKit
 		meshOut->TriMeshID			= mesh.GetUniqueID();
 		meshOut->ID					= ID;
 		meshOut->SkeletonGUID		= skeleton ? skeleton->guid : -1;
-		meshOut->BS					= optimizedbuffer.bs;
-		meshOut->AABB				= optimizedbuffer.aabb;
+		meshOut->BS					= optimizedBuffer.bs;
+		meshOut->AABB				= optimizedBuffer.aabb;
+        meshOut->kdbTree            = kdbTree;
 
 		return meshOut;
 	}

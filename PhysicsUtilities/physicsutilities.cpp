@@ -846,68 +846,79 @@ namespace FlexKit
 
     void ThirdPersonCamera::Update(const float2 mouseInput, const double dt)
     {
-        Yaw(mouseInput[0] * dt * pi * 50);
-        Pitch(mouseInput[1] * dt * pi * 50);
-
         auto& controllerImpl = CharacterControllerComponent::GetComponent()[controller];
 
-        float3 movementVector   { 0 };
-        const float3 forward    { GetForwardVector() };
-        const float3 right      { GetRightVector() };
-        const float3 up         { 0, 1, 0 };
+        controllerImpl.updateTimer += dt;
+        controllerImpl.mouseMoved += mouseInput;
 
-        if (keyStates.forward)
-            movementVector += forward;
+        const double deltaTime = 1.0 / 60;
+        while(controllerImpl.updateTimer >= deltaTime)
+        {
+            controllerImpl.updateTimer -= deltaTime;
 
-        if (keyStates.backward)
-            movementVector -= forward;
+            Yaw(controllerImpl.mouseMoved[0] * deltaTime * pi * 50);
+            Pitch(controllerImpl.mouseMoved[1] * deltaTime * pi * 50);
 
-        if (keyStates.right)
-            movementVector += right;
+            controllerImpl.mouseMoved = { 0.0f, 0.0f };
 
-        if (keyStates.left)
-            movementVector -= right;
+            float3 movementVector   { 0 };
+            const float3 forward    { GetForwardVector() };
+            const float3 right      { GetRightVector() };
+            const float3 up         { 0, 1, 0 };
 
-        if (keyStates.up)
-            movementVector += up;
+            if (keyStates.forward)
+                movementVector += forward;
 
-        if (keyStates.down)
-            movementVector -= up;
+            if (keyStates.backward)
+                movementVector -= forward;
 
-        movementVector.normalize();
+            if (keyStates.right)
+                movementVector += right;
 
-        if (keyStates.KeyPressed())
-            velocity += movementVector * acceleration * dt;
+            if (keyStates.left)
+                movementVector -= right;
 
-        if (velocity.magnitudesquared() > 0.01f) {
-            velocity -= velocity * drag * dt;
+            if (keyStates.up)
+                movementVector += up;
 
-            const float3    desiredMove    = velocity * dt;
-            const auto      pxPrevPos      = controllerImpl.controller->getPosition();
-            const float3    prevPos        = { (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
+            if (keyStates.down)
+                movementVector -= up;
 
-            physx::PxControllerFilters filters;
-            auto collision = controllerImpl.controller->move(
-                {   desiredMove.x,
-                    desiredMove.y,
-                    desiredMove.z },
-                0.1f,
-                dt,
-                filters);
+            movementVector.normalize();
+
+            if (keyStates.KeyPressed())
+                velocity += movementVector * acceleration * deltaTime;
+
+            if (velocity.magnitudesquared() > 0.01f) {
+                velocity -= velocity * drag * deltaTime;
+
+                const float3    desiredMove    = velocity * deltaTime;
+                const auto      pxPrevPos      = controllerImpl.controller->getPosition();
+                const float3    prevPos        = { (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
+
+                physx::PxControllerFilters filters;
+                auto collision = controllerImpl.controller->move(
+                    {   desiredMove.x,
+                        desiredMove.y,
+                        desiredMove.z },
+                    0.1f,
+                    dt,
+                    filters);
 
 
-            const auto   pxPostPos  = controllerImpl.controller->getPosition();
-            const float3 postPos    = { (float)pxPostPos.x, (float)pxPostPos.y, (float)pxPostPos.z };
+                const auto   pxPostPos  = controllerImpl.controller->getPosition();
+                const float3 postPos    = { (float)pxPostPos.x, (float)pxPostPos.y, (float)pxPostPos.z };
 
-            const auto deltaPos = prevPos - postPos;
-            if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
+                const auto deltaPos = prevPos - postPos;
+                if (desiredMove.magnitudesquared() * 0.5f >= deltaPos.magnitudesquared())
+                    velocity = 0;
+
+                SetPositionW(yawNode, { (float)postPos.x, (float)postPos.y, (float)postPos.z } );
+                CameraComponent::GetComponent().MarkDirty(camera);
+            }
+            else
                 velocity = 0;
-
-            SetPositionW(yawNode, { (float)postPos.x, (float)postPos.y, (float)postPos.z } );
-            CameraComponent::GetComponent().MarkDirty(camera);
         }
-        else
-            velocity = 0;
     }
 
 

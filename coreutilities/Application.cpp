@@ -50,7 +50,6 @@ namespace FlexKit
 
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
-		double CodeCheckTimer	= 0.0f;
 		double dT				= 1.0/60.0;
 
 
@@ -61,7 +60,6 @@ namespace FlexKit
 			Core.Time.Before();
 
 			const auto frameStart = std::chrono::high_resolution_clock::now();
-			CodeCheckTimer += dT;
 			FPSTimer += dT;
 
 			framework.DrawFrame(dT);

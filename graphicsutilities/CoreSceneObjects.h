@@ -40,7 +40,7 @@ namespace FlexKit
 	class FLEXKITAPI Camera
 	{
 	public:
-		struct __declspec(align(16)) ConstantBuffer
+		struct alignas(256) ConstantBuffer
 		{
 			float4x4	View;
 			float4x4	ViewI;

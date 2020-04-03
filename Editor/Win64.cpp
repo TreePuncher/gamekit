@@ -16,7 +16,7 @@ int main(int argc, char* argv[])
 
 
     const auto        WH          = FlexKit::uint2{ 1920, 1080 };
-    const uint32_t    threadCount = 3;
+    const uint32_t    threadCount = max(std::thread::hardware_concurrency(), 1u) - 1;
 
     auto* memory = FlexKit::CreateEngineMemory();
     EXITSCOPE(FlexKit::ReleaseEngineMemory(memory));

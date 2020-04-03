@@ -86,6 +86,9 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+    using MeshKDBTree_ptr = std::shared_ptr<FlexKit::MeshUtilityFunctions::MeshKDBTree>;
+
+
 	struct MeshResource : public iResource
 	{
 		ResourceBlob CreateBlob() override 
@@ -139,7 +142,7 @@ namespace FlexKit
 				}
 			}
 
-			ResourceBlob out;
+			ResourceBlob        out;
 			out.GUID			= TriMeshID;
 			out.ID				= ID;
 			out.resourceType	= EResourceType::EResource_TriMesh;
@@ -210,14 +213,13 @@ namespace FlexKit
                                 {
                                     Vertex V_out;
 
-                                    float3 pos = MakeFloat3(V.pos);
+                                    const float3 pos = float3::Load(V.pos);
                                     auto new_v = (transform * float4(pos, 1)).xyz();
                                     V_out.pos[0] = new_v.x;
                                     V_out.pos[1] = new_v.y;
                                     V_out.pos[2] = new_v.z;
 
-                                    return V_out;// 
-                                    //return (transform.Transpose() * float4(V, 1)).xyz();
+                                    return V_out;
                                 });
                             break;
                     }
@@ -225,7 +227,9 @@ namespace FlexKit
             }
         }
 
+
 		// Visibility Information
+        MeshKDBTree_ptr kdbTree;
 		AABB			AABB;
 		BoundingSphere	BS;
 
