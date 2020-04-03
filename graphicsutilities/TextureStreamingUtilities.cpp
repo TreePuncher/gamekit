@@ -1,4 +1,5 @@
 #include "TextureStreamingUtilities.h"
+#include "ProfilingUtilities.h"
 #include "Graphics.h"
 
 namespace FlexKit
@@ -190,7 +191,6 @@ namespace FlexKit
             {
                 auto& drawables = data.pvs.GetData().solid;
 
-
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACK));
 
@@ -355,23 +355,6 @@ namespace FlexKit
 
     /************************************************************************************************/
 
-
-    template<typename TY>
-    decltype(auto) _TimeBlock(TY& function, const char* id)
-    {
-        std::chrono::system_clock Clock;
-        auto Before = Clock.now();
-
-        EXITSCOPE(
-            auto After = Clock.now();
-            auto Duration = chrono::duration_cast<chrono::microseconds>(After - Before);
-            FK_LOG_9("Function %s executed in %umicroseconds.", id, Duration.count());  );
-
-        return function();
-    }
-
-
-#define TIMEBLOCK(A, B) _TimeBlock([&]{ return A; }, B)
 
     void TextureStreamingEngine::TextureBlockUpdateThread::Run()
     {

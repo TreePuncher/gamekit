@@ -329,7 +329,6 @@ namespace FlexKit
                 cv.notify_all();
             }
 
-
             TextureStreamingEngine& textureStreamEngine;
 
             struct _PendingUpdate
