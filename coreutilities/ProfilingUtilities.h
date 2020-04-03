@@ -27,6 +27,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include <Windows.h>
+#include <chrono>
+
 
 /************************************************************************************************/
 
@@ -104,6 +106,24 @@ namespace FlexKit
 
 		size_t Counters[COUNTER_IDs::COUNTER_COUNT];
 	};
+
+
+    template<typename TY>
+    FLEXKITAPI decltype(auto) _TimeBlock(TY& function, const char* id)
+    {
+        std::chrono::system_clock Clock;
+        auto Before = Clock.now();
+
+        EXITSCOPE(
+            auto After = Clock.now();
+        auto Duration = chrono::duration_cast<chrono::microseconds>(After - Before);
+        FK_LOG_9("Function %s executed in %umicroseconds.", id, Duration.count()); );
+
+        return function();
+    }
+
+
+    #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A; }, B)
 
 
 	FLEXKITAPI void		InitDebug		(EngineMemory_DEBUG* _ptr);
