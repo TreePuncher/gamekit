@@ -34,7 +34,7 @@ namespace FlexKit
 
 
     // Axis Aligned Bounding Box
-    static const float inf = std::numeric_limits<double>::infinity();
+    static const float inf = std::numeric_limits<float>::infinity();
     struct AABB
     {
         enum Axis
