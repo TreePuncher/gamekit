@@ -36,3 +36,4 @@ Release/
 *.sln
 /assets
 /hdrs
+*.ini

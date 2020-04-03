@@ -1000,11 +1000,17 @@ namespace FlexKit
 			return Buffer[idx];
 		}
 
-		bool full() noexcept {
+        const Ty& at(size_t idx) const noexcept
+        {
+            idx = (_Head - idx - 1) % SIZE;
+            return Buffer[idx];
+        }
+
+		bool full() const noexcept {
 			return (_Size == SIZE);
 		}
 
-		bool empty() noexcept {
+		bool empty() const noexcept {
 			return (_Size == 0);
 		}
 
@@ -1013,7 +1019,7 @@ namespace FlexKit
 			_Head = 0;
 		}
 
-		size_t size() noexcept {
+		size_t size() const noexcept {
 			return _Size;
 		}
 
@@ -1144,18 +1150,60 @@ namespace FlexKit
 
 			CircularIterator operator -- (int) { auto Temp = *this; Decrement(); return Temp; }
 			CircularIterator operator -- () { Decrement(); return (*this); }
-
 		};
 
-		CircularIterator begin()
+        struct Const_CircularIterator
+        {
+            const CircularBuffer<Ty, SIZE>* Buffer;
+            int					Idx;
+
+            const Ty& operator *() const 
+            {
+                return Buffer->at(Idx);
+            }
+
+            bool operator <		(Const_CircularIterator rhs) { return Idx < rhs.Idx; }
+            bool operator ==	(Const_CircularIterator rhs) { return Idx == rhs.Idx; }
+
+            bool operator !=	(Const_CircularIterator rhs) { return !(*this == rhs); }
+
+
+            void Increment()
+            {
+                Idx++;
+            }
+
+            void Decrement()
+            {
+                Idx--;
+            }
+
+            Const_CircularIterator operator ++ (int) { auto Temp = *this; Increment(); return Temp; }
+            Const_CircularIterator operator ++ () { Increment(); return (*this); }
+
+            Const_CircularIterator operator -- (int) { auto Temp = *this; Decrement(); return Temp; }
+            Const_CircularIterator operator -- () { Decrement(); return (*this); }
+        };
+
+		CircularIterator begin() noexcept
 		{
 			return{ this, 0 };
 		}
 
-		CircularIterator end()
+		CircularIterator end() noexcept
 		{
 			return{ this, _Size };
 		}
+
+        Const_CircularIterator begin() const noexcept
+        {
+            return{ this, 0 };
+        }
+
+        Const_CircularIterator end() const noexcept
+        {
+            return{ this, _Size };
+        }
 
 		int _Head, _Size;
 		Ty Buffer[SIZE];

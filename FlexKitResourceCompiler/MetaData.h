@@ -344,7 +344,7 @@ namespace FlexKit
 	class SceneComponentMeta;
 	using FNComponentBlobFormatter = std::vector<byte> (*)(SceneComponentMeta*);
 
-	std::vector<byte> createTransformComponentBlob(SceneComponentMeta*)
+	inline std::vector<byte> createTransformComponentBlob(SceneComponentMeta*)
 	{
 		return {};
 	}

@@ -10,11 +10,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 	const AssetHandle demonModel = 666;
 
     // Load Model
-    const AssetHandle dragonHandle = 666;
-    const AssetHandle buddahHandle = 666;
-
-    auto dragon = GetMesh(renderSystem, buddahHandle);
-    auto buddah = GetMesh(renderSystem, buddahHandle);
+    auto model = GetMesh(renderSystem, demonModel);
 
 	static const size_t N = 2;
 	static const float  W = (float)30;
@@ -23,18 +19,18 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 	{
 		for (size_t X = 0; X < N; ++X)
 		{
-			float roughness     = ((float)X + 0.5f) / (float)N;
-			float anisotropic   = ((float)Y + 0.5f) / (float)N;
-			float kS            = 1.0f;//((float)Y + 0.5f) / (float)N;
+			const float roughness     = ((float)X + 0.5f) / (float)N;
+			const float anisotropic   = ((float)Y + 0.5f) / (float)N;
+			const float kS            = 1.0f;//((float)Y + 0.5f) / (float)N;
 
 			auto& gameObject = allocator->allocate<FlexKit::GameObject>();
 			auto node = FlexKit::GetNewNode();
 
-			gameObject.AddView<DrawableView>(buddah, node);
+			gameObject.AddView<DrawableView>(model, node);
 
 			SetMaterialParams(
 				gameObject,
-				float3(1.0f, 1.0f, 1.0f), // albedo
+				float3(0.0f, 0.0f, 0.0f), // albedo
 				kS, // specular
 				0.47f, // IOR
 				anisotropic,
@@ -44,11 +40,8 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 
-            if (X % 2 == 0)
-            {
-                //Pitch(node, (float)pi / 2.0f);
-                //Scale(node, { 10.0, 10.0, 10.0 });
-            }
+            if (demonModel == 6666)
+                Pitch(node, (float)pi / 2.0f);
 
 			SetFlag(node, SceneNodes::StateFlags::SCALE);
 
@@ -85,7 +78,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 	struct LoadStateData
 	{
-		bool loaded                     = false;
+		bool loaded = false;
 		VertexBufferHandle  vertexBuffer;
 	}&state = app.GetFramework().core.GetBlockMemory().allocate<LoadStateData>();
 
@@ -135,8 +128,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 radiance.begin(),
                 MIPCount,
                 6,
-                format,
-                allocator);
+                format);
 
             Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, MIPCount, WH, format, allocator);
             base.irradianceMap = MoveTextureBuffersToVRAM(
@@ -145,8 +137,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 irradience.begin(),
                 MIPCount,
                 6,
-                format,
-                allocator);
+                format);
 
 			renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
 			renderSystem.SetDebugName(base.GGXMap,        "GGX Map");

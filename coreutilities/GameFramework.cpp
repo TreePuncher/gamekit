@@ -119,12 +119,10 @@ namespace FlexKit
 				framework.core.RenderSystem.QueuePSOLoad(TILEDSHADING_SHADE);
 				break;
 			case KC_M:
-				framework.MouseState.Enabled = !framework.MouseState.Enabled;
-
-				if (framework.MouseState.Enabled)
-					FK_LOG_2("Mouse Enabled");
+                if (framework.MouseState.Enabled)
+                    DisableMouseInput(&framework.MouseState);
 				else
-					FK_LOG_2("Mouse Disabled");
+                    EnableMouseInput(&framework.MouseState, framework.ActiveWindow);
 
 				break;
 			case KC_TILDA:
@@ -430,9 +428,13 @@ namespace FlexKit
 			(uint32_t)stats.objectsDrawnLastFrame);
 
 
+        const uint2 WH          = ActiveWindow->WH;
+        const float aspectRatio = GetWindowAspectRatio(core);
+
 		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
-		Format.Scale = { 0.5f, 0.5f };
-        Format.Color = { 1, 0, 1, 1 };
+        Format.Scale = float2{ 0.5f, 0.5f } * float2{ (float)WH[0], (float)WH[1] * aspectRatio } / float2{ 1080, 1920 };
+        Format.Color = { 1, 1, 1, 1 };
+
 		DrawSprite_Text(
 				TempBuffer, 
 				frameGraph, 

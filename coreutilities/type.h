@@ -144,7 +144,7 @@ namespace FlexKit
 
 	};
 
-	uint32_t CRC32(byte* Buffer, size_t BufferSize = 0)
+	inline uint32_t CRC32(byte* Buffer, size_t BufferSize = 0)
 	{
 		uint32_t CRC = 0xffffffff;
 		for (size_t I = 0; I < BufferSize; ++I)

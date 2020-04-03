@@ -282,7 +282,7 @@ namespace FlexKit
     FLEXKITAPI bool LoadBMP			( const char* File, iAllocator* Memory, TextureBuffer* Out );
     FLEXKITAPI bool CheckerBoard	( int XSize, int YSize, TextureBuffer* Out );
 
-    Pair<uint16_t, uint16_t> GetMinMax(TextureBuffer& sourceMap)
+    inline Pair<uint16_t, uint16_t> GetMinMax(TextureBuffer& sourceMap)
     {
         using RBGA						= Vect<4, uint8_t>;
         TextureBufferView	view		= TextureBufferView<RBGA>(sourceMap);

@@ -137,7 +137,7 @@ namespace FlexKit
 		Vector<Resource*>			ResourcesLoaded;
 		Vector<GUID_t>				ResourceGUIDs;
 		iAllocator*					ResourceMemory;
-	}Resources;
+	}inline Resources;
 
 
 	/************************************************************************************************/

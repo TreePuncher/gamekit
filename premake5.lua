@@ -145,7 +145,7 @@ project "ResourceBuilder"
 		libdirs {
 			"Dependencies/libs/debug", 
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/debug" }
-		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED" }
 		symbols "On"
 		buildoptions { "/std:c++latest", "/MTd" }
 		optimize "Debug"
@@ -154,7 +154,7 @@ project "ResourceBuilder"
 		libdirs {
 			"Dependencies/libs/release",
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/release"	}
-		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED" }
 		buildoptions { "/std:c++latest", "/MT" }
 		optimize "Full"
 

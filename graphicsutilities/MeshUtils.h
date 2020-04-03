@@ -25,10 +25,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
+#include "..\coreutilities\intersection.h"
 #include "..\coreutilities\MathUtils.h"
 #include "..\coreutilities\memoryutilities.h"
 
+
 #include <algorithm>
+#include <bitset>
 #include <functional>
 #include <variant>
 #include <limits>
@@ -188,10 +191,16 @@ namespace FlexKit
 	FLEXKITAPI bool operator < ( const CombinedVertex::IndexBitField lhs, const CombinedVertex::IndexBitField rhs );
 
 	namespace MeshUtilityFunctions
-	{
+	{   /************************************************************************************************/
+
+
 		typedef Vector<MeshToken>		TokenList;
 		typedef Vector<uint32_t>		IndexList;
 		typedef Vector<CombinedVertex>	CombinedVertexBuffer;
+
+
+        /************************************************************************************************/
+
 
 		struct MeshBuildInfo
 		{
@@ -199,9 +208,112 @@ namespace FlexKit
 			size_t VertexCount;
 		};
 
-        class OptimizedMesh;
 
-        class OptimizedBuffer
+        /************************************************************************************************/
+
+        // Thank you cppReference.com
+        FLEXKITAPI template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+        FLEXKITAPI template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
+
+
+        /************************************************************************************************/
+
+
+        FLEXKITAPI struct Triangle
+        {
+            uint32_t vertices[3] = { (uint32_t)-1, (uint32_t)-1, (uint32_t)-1 };
+        };
+
+
+        /************************************************************************************************/
+
+
+        FLEXKITAPI class UnoptimizedMesh
+        {
+        public:
+
+            UnoptimizedMesh(const TokenList& tokens);
+            UnoptimizedMesh(const UnoptimizedMesh&) = default;
+
+            float3      GetPoint            (const uint32_t vertexIndex) const noexcept;
+            float3      GetTrianglePosition (const Triangle tri) const;
+            AABB        GetTriangleAABB     (const Triangle tri) const;
+
+            bool        VertexCompare       (const uint32_t lhs, const uint32_t rhs) const;
+            uint64_t    VertexHash          (const uint32_t v) const;
+
+            using Point             = float3;
+            using Normal            = float3;
+            using TextureCoordinate = TextureCoordinateToken;
+            using JointWeight       = float4;
+            using JointIndexes      = uint4_16;
+
+            Vector<Point>		        points              { SystemAllocator };
+            Vector<Normal>		        normals             { SystemAllocator };
+            Vector<Normal>		        tangents            { SystemAllocator };
+
+            Vector<TextureCoordinate>   textureCoordinates  { SystemAllocator };
+            Vector<JointWeight>		    jointWeights        { SystemAllocator };
+            Vector<JointIndexes>	    jointIndexes        { SystemAllocator };
+
+            Vector<VertexIndexList>	    indexes { SystemAllocator };
+            Vector<Triangle>	        tris    { SystemAllocator };
+        };
+
+
+        /************************************************************************************************/
+
+
+        FLEXKITAPI class LocalBlockContext
+        {
+        public:
+            LocalBlockContext(const UnoptimizedMesh& IN_mesh) : mesh{ IN_mesh } {}
+
+            uint32_t LocallyUnique(const uint32_t vertex, const uint32_t localIdx);
+            uint32_t Map(const uint32_t vertex) const;
+
+            struct LocalVertex
+            {
+                uint32_t localIndex;
+                uint32_t vertexIndex;
+            };
+
+            CircularBuffer<LocalVertex, 256>    vertexHistory;
+            const UnoptimizedMesh&              mesh;
+        };
+
+
+        /************************************************************************************************/
+
+
+        FLEXKITAPI class OptimizedMesh
+        {
+        public:
+
+            OptimizedMesh& operator += (OptimizedMesh& rhs);
+
+            void PushVertex (uint32_t globalIdx, LocalBlockContext& ctx);
+            void PushTri    (Triangle& tri, LocalBlockContext& ctx);
+
+            Vector<float3>		        points      { SystemAllocator };
+            Vector<float3>		        normals     { SystemAllocator };
+            Vector<float3>		        tangents    { SystemAllocator };
+
+            Vector<float2>              textureCoordinates  { SystemAllocator };
+            Vector<float3>		        jointWeights        { SystemAllocator };
+            Vector<uint4_16>	        jointIndexes        { SystemAllocator };
+
+            Vector<uint32_t>	        indexes{ SystemAllocator };
+
+            AABB                        aabb;
+            BoundingSphere              boundingSphere;
+        };
+
+
+        /************************************************************************************************/
+
+
+        FLEXKITAPI class OptimizedBuffer
         {
         public:
             OptimizedBuffer(const OptimizedMesh& buffer);
@@ -216,17 +328,61 @@ namespace FlexKit
 
             Vector<char> indexes    { SystemAllocator };
 
-            size_t IndexCount() const
-            {
-                return indexes.size() / sizeof(uint32_t);
-            }
+            size_t IndexCount() const { return indexes.size() / sizeof(uint32_t); }
 
             AABB            aabb;
             BoundingSphere  bs;
         };
 
-		FLEXKITAPI OptimizedBuffer	BuildVertexBuffer(const TokenList& in);
-		FLEXKITAPI char*		    ScrubLine( char* inLine, size_t RINOUT lineLength );
+
+        /************************************************************************************************/
+
+
+        FLEXKITAPI class MeshKDBTree
+        {
+        public:
+
+            struct KDBNode
+            {
+                std::unique_ptr<KDBNode> left;
+                std::unique_ptr<KDBNode> right;
+
+                Triangle* begin;
+                Triangle* end;
+
+                AABB aabb;
+
+                BoundingSphere GetBoundingSphere(const UnoptimizedMesh& IN_mesh);
+            };
+
+            MeshKDBTree(const UnoptimizedMesh& IN_mesh);
+
+            auto begin() const;
+            auto end() const;
+
+            auto GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const;
+            std::unique_ptr<KDBNode> BuildNode(Triangle* begin, Triangle* end);
+
+            inline static const float3 SplitPlanes[] = {
+                { 1, 0, 0 },
+                { 0, 1, 0 },
+                { 0, 0, 1 }
+            };
+
+        public:
+
+            UnoptimizedMesh             mesh;
+            std::vector<KDBNode*>       leafNodes;
+            std::unique_ptr<KDBNode>    root;
+        };
+
+
+        /************************************************************************************************/
+
+
+        FLEXKITAPI OptimizedMesh            CreateOptimizedMesh(const MeshKDBTree& tree);
+        FLEXKITAPI shared_ptr<MeshKDBTree>  BuildKDBTree(const TokenList& in);
+		FLEXKITAPI char*		            ScrubLine( char* inLine, size_t RINOUT lineLength );
 
 		namespace OBJ_Tools
 		{
@@ -251,8 +407,6 @@ namespace FlexKit
             FLEXKITAPI void			AddTexCordToken		(float3 in, TokenList& out);
 			FLEXKITAPI void			AddIndexToken		(const uint32_t V, const uint32_t N, const uint32_t T, TokenList& out);
 			FLEXKITAPI void			AddIndexToken		(const uint32_t V, const uint32_t N, const uint32_t T, const uint32_t texCoord, TokenList& out);
-			//FLEXKITAPI void			AddPatchBeginToken	(TokenList& out);
-			//FLEXKITAPI void			AddPatchEndToken	(TokenList& out);
 			FLEXKITAPI void			CStrToToken			(const char* in_Line, size_t lineLength, TokenList& out, LoaderState& State_in_out );
 			FLEXKITAPI std::string	GetNextLine			(std::string::iterator& File_Position, std::string& File_Buffer );
 			FLEXKITAPI void			SkipToFloat			(std::string::const_iterator& in, const std::string& in_str );

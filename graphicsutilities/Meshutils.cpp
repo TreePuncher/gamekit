@@ -26,8 +26,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\graphicsutilities\MeshUtils.h"
 #include "..\coreutilities\memoryutilities.h"
 
-#include <bitset>
-
 namespace FlexKit
 {   /************************************************************************************************/
 
@@ -42,413 +40,358 @@ namespace FlexKit
 	{   /************************************************************************************************/
 
 
-        // Thank you cppReference.com
-        template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-        template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
-
-        struct Triangle
+        UnoptimizedMesh::UnoptimizedMesh(const TokenList& tokens)
         {
-            uint32_t vertices[3] = { (uint32_t)-1, (uint32_t)-1, (uint32_t)-1 };
-        };
-
-        class UnoptimizedMesh
-        {
-        public:
-
-            UnoptimizedMesh(const TokenList& tokens)
+            for (auto& token : tokens)
             {
-                for (auto& token : tokens)
-                {
-                    std::visit(
-                        overloaded{
-                            [](auto&)
-                            {
-                                FK_ASSERT(0, "NO OVERLOAD! " + __LINE__);
-                            },
-                            [&](const JointIndexToken token)
-                            {
-                                jointIndexes.push_back(token.joints);
-                            },
-                            [&](const JointWeightToken& token)
-                            {
-                                jointWeights.push_back(token.weights);
-                            },
-                            [&](const PointToken& token)
-                            {
-                                points.push_back(token.xyz);
-                            },
-                            [&](const TextureCoordinateToken& texCoord)
-                            {
-                                textureCoordinates.push_back(texCoord);
-                            },
-                            [&](const NormalToken& token)
-                            {
-                                normals.push_back(token.normal);
-                            },
-                            [&](const TangentToken token)
-                            {
-                                tangents.push_back(token.tangent);
-                            },
-                            [&](const MaterialToken& material)
-                            {
-                            },
-                            [&](const VertexToken& token)
-                            {
-                                indexes.push_back(token.vertex);
-                            } },
-                        token);
-                };
+                std::visit(
+                    overloaded{
+                        [](auto&)
+                        {
+                            FK_ASSERT(0, "NO OVERLOAD! " + __LINE__);
+                        },
+                        [&](const JointIndexToken token)
+                        {
+                            jointIndexes.push_back(token.joints);
+                        },
+                        [&](const JointWeightToken& token)
+                        {
+                            jointWeights.push_back(token.weights);
+                        },
+                        [&](const PointToken& token)
+                        {
+                            points.push_back(token.xyz);
+                        },
+                        [&](const TextureCoordinateToken& texCoord)
+                        {
+                            textureCoordinates.push_back(texCoord);
+                        },
+                        [&](const NormalToken& token)
+                        {
+                            normals.push_back(token.normal);
+                        },
+                        [&](const TangentToken token)
+                        {
+                            tangents.push_back(token.tangent);
+                        },
+                        [&](const MaterialToken& material)
+                        {
+                        },
+                        [&](const VertexToken& token)
+                        {
+                            indexes.push_back(token.vertex);
+                        } },
+                    token);
+            };
 
-                for (uint32_t I = 0; I < indexes.size(); I += 3)
-                    tris.push_back({ I + 0, I + 1, I + 2 });
-            }
-
-
-            UnoptimizedMesh(const UnoptimizedMesh&) = default;
-
-
-            float3 GetPoint(uint32_t vertexIndex) const noexcept
-            {
-                auto fields = indexes[vertexIndex];
-                auto res = std::find_if(
-                    fields.begin(), fields.end(),
-                    [&](const VertexField& field)
-                    {
-                        return field.type == VertexField::Point;
-                    });
-
-                if(res == fields.end()) throw; // Crash!
-
-                return points[res->idx];
-            }
-
-
-            float3 GetTrianglePosition(const Triangle tri) const
-            {
-                float3 point = { 0, 0, 0 };
-
-                for (auto v : tri.vertices)
-                    point += GetPoint(v);
-
-                return point / 3;
-            }
-
-
-            AABB GetTriangleAABB(const Triangle tri) const
-            {
-                AABB aabb;
-
-                for (auto V : tri.vertices) {
-                    const float3 Pos = GetPoint(V);
-                    aabb += AABB{ Pos, Pos };
-                }
-
-                return { aabb };
-            }
-
-
-            bool VertexCompare(uint32_t lhs, uint32_t rhs) const
-            {
-                const auto lhsVertexField = indexes[lhs];
-                const auto rhsVertexField = indexes[rhs];
-
-                bool res = true;
-                for (size_t I = 0; I < lhsVertexField.size(); ++I)
-                {
-                    switch (lhsVertexField[I].type)
-                    {
-                    case VertexField::FieldType::JointIndex:
-                    {
-                        res &= jointIndexes[lhsVertexField[I].idx] == jointIndexes[rhsVertexField[I].idx];
-                    }   break;
-                    case VertexField::FieldType::JointWeight:
-                    {
-                        res &= jointWeights[lhsVertexField[I].idx] == jointWeights[rhsVertexField[I].idx];
-                    }   break;
-                    case VertexField::FieldType::Material:
-                        break;
-                    case VertexField::FieldType::Normal:
-                    {
-                        res &= (1.0f - normals[lhsVertexField[I].idx].dot(normals[rhsVertexField[I].idx])) < 0.001f;
-                    }   break;
-                    case VertexField::FieldType::Tangent:
-                    {
-                        res &= (1.0f - tangents[lhsVertexField[I].idx].dot(tangents[rhsVertexField[I].idx])) < 0.001f;
-                    }   break;
-                    case VertexField::FieldType::Point:
-                    {
-                        res &= VectorCompare(points[lhsVertexField[I].idx], points[rhsVertexField[I].idx], 0.000001f);
-                    }   break;
-                    default:    break;
-                    };
-                }
-
-                return res;
-            }
-
-            uint64_t VertexHash( uint32_t v ) const 
-            {
-                const VertexIndexList fields = indexes[v];
-                uint64_t hash = 0;
-
-                for (auto field : fields) {
-                    switch (field.type)
-                    {
-                    case VertexField::FieldType::JointIndex:
-                    {
-                        std::bitset<sizeof(uint4_16) * 8> bitset;
-                        memcpy(&bitset, &jointIndexes[field.idx], sizeof(bitset));
-                        hash_combine(hash, bitset);
-                    }   break;
-                    case VertexField::FieldType::JointWeight:
-                    {
-                        std::bitset<sizeof(float4) * 8> bitset;
-                        memcpy(&bitset, &jointWeights[field.idx], sizeof(bitset));
-                        hash_combine(hash, bitset);
-                    }   break;
-                    case VertexField::FieldType::Material:
-                        break;
-                    case VertexField::FieldType::Normal:
-                    {
-                        std::bitset<sizeof(float3) * 8> bitset;
-                        memcpy(&bitset, &normals[field.idx], sizeof(bitset));
-                        hash_combine(hash, bitset);
-                    }   break;
-                    case VertexField::FieldType::Tangent:
-                    {
-                        std::bitset<sizeof(float3) * 8> bitset;
-                        memcpy(&bitset, &tangents[field.idx], sizeof(bitset));
-                        hash_combine(hash, bitset);
-                    }   break;
-                    case VertexField::FieldType::Point:
-                    {
-                        std::bitset<sizeof(float3) * 8> bitset;
-                        memcpy(&bitset, &points[field.idx], sizeof(bitset));
-                        hash_combine(hash, bitset);
-                    }   break;
-                    default:    break;
-                    };
-                }
-                //*/
-
-                return hash;
-            }
-
-            using Point             = float3;
-            using Normal            = float3;
-            using TextureCoordinate = TextureCoordinateToken;
-            using JointWeight       = float4;
-            using JointIndexes      = uint4_16;
-
-            Vector<Point>		        points              { SystemAllocator };
-            Vector<Normal>		        normals             { SystemAllocator };
-            Vector<Normal>		        tangents            { SystemAllocator };
-
-            Vector<TextureCoordinate>   textureCoordinates  { SystemAllocator };
-            Vector<JointWeight>		    jointWeights        { SystemAllocator };
-            Vector<JointIndexes>	    jointIndexes        { SystemAllocator };
-
-            Vector<VertexIndexList>	    indexes { SystemAllocator };
-            Vector<Triangle>	        tris    { SystemAllocator };
-        };
+            for (uint32_t I = 0; I < indexes.size(); I += 3)
+                tris.push_back({ I + 0, I + 1, I + 2 });
+        }
 
 
         /************************************************************************************************/
 
 
-        class KDBTree
+        float3 UnoptimizedMesh::GetPoint(uint32_t vertexIndex) const noexcept
         {
-        public:
-
-            struct KDBNode
-            {
-                std::unique_ptr<KDBNode> left;
-                std::unique_ptr<KDBNode> right;
-
-                Triangle* begin;
-                Triangle* end;
-
-                AABB aabb;
-
-                BoundingSphere GetBoundingSphere(const UnoptimizedMesh& IN_mesh) 
+            auto fields = indexes[vertexIndex];
+            auto res = std::find_if(
+                fields.begin(), fields.end(),
+                [&](const VertexField& field)
                 {
-                    const float3 midPoint = { 0, 0, 0 };// aabb.MidPoint();
-                    float d = 0.0f;
+                    return field.type == VertexField::Point;
+                });
 
-                    std::for_each(
-                        begin, end,
-                        [&](const auto tri)
-                        {
-                            const float3 pos = IN_mesh.GetTrianglePosition(tri);
-                            const float distance = (pos - midPoint).magnitude();
-                            if (distance > d)
-                                d = distance;
-                        });
-
-                    return { midPoint, d };
-                }
-            };
-
-            KDBTree(const UnoptimizedMesh& IN_mesh) :
-                mesh{ IN_mesh },
-                root{ BuildNode(mesh.tris.begin(), mesh.tris.end()) } {}
-
-            auto begin() const
-            {
-                return leafNodes.begin();
-            }
-
-            auto end() const
-            {
-                return leafNodes.end();
-            }
-
-        private:
-
-            auto GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const
-            {
-                float3  midPoint{ 0, 0, 0 };
-                AABB    aabb;
-                for_each(
-                    begin, end,
-                    [&](const auto tri)
-                    {
-                        midPoint += mesh.GetTrianglePosition(tri);
-                        aabb += mesh.GetTriangleAABB(tri);
-                    });
-
-                return std::make_pair(midPoint / std::distance(begin, end), aabb);
-            }
-
-            inline static const float3 SplitPlanes[] = {
-                { 1, 0, 0 },
-                { 0, 1, 0 },
-                { 0, 0, 1 }
-            };
-
-            std::unique_ptr<KDBNode> BuildNode(Triangle* begin, Triangle* end)
-            {
-                const auto [midPoint, aabb] = GetMedianSplitPlaneAABB(begin, end);
-                const auto splitPlane = SplitPlanes[aabb.LongestAxis()];
-
-                if (std::distance(begin, end) < 512)
-                {
-                    auto node = make_unique<KDBNode>(KDBNode{ nullptr, nullptr, begin, end, aabb });
-                    leafNodes.push_back(node.get());
-                    return node;
-                }
-                else
-                {
-                    const auto mid = std::partition(
-                        begin,
-                        end,
-                        [&](const auto& tri) -> bool
-                        {
-                            const float3 pos = mesh.GetTrianglePosition(tri);
-                            const float d = (midPoint - pos).dot(splitPlane);
-
-                            return d >= 0;
-                        });
-
-                    return make_unique<KDBNode>(
-                            KDBNode{
-                                BuildNode(begin, mid),
-                                BuildNode(mid, end),
-                                begin, end, aabb });
-                }
-            }
-
-
-        public:
-
-            UnoptimizedMesh             mesh;
-            std::vector<KDBNode*>       leafNodes;
-            std::unique_ptr<KDBNode>    root;
-        };
+            return points[res->idx];
+        }
 
 
         /************************************************************************************************/
 
 
-        class LocalBlockContext
+        float3 UnoptimizedMesh::GetTrianglePosition(const Triangle tri) const
         {
-        public:
-            LocalBlockContext(const UnoptimizedMesh& IN_mesh) : mesh{ IN_mesh } {}
+            float3 point = { 0, 0, 0 };
 
-            uint32_t LocallyUnique(uint32_t vertex, uint32_t localIdx)
-            {
-                for (const auto recentVertex : vertexHistory)
-                    if (mesh.VertexCompare(recentVertex.vertexIndex, vertex))
-                        return false;
+            for (auto v : tri.vertices)
+                point += GetPoint(v);
 
-                vertexHistory.push_back({ localIdx, vertex });
+            return point / 3;
+        }
 
-                return true;
+
+        /************************************************************************************************/
+
+
+        AABB UnoptimizedMesh::GetTriangleAABB(const Triangle tri) const
+        {
+            AABB aabb;
+
+            for (auto V : tri.vertices) {
+                const float3 Pos = GetPoint(V);
+                aabb += AABB{ Pos, Pos };
             }
 
-            uint32_t map(uint32_t vertex) 
+            return { aabb };
+        }
+
+
+        /************************************************************************************************/
+
+
+        bool UnoptimizedMesh::VertexCompare(const uint32_t lhs, const uint32_t rhs) const
+        {
+            const auto lhsVertexField = indexes[lhs];
+            const auto rhsVertexField = indexes[rhs];
+
+            bool res = true;
+            for (size_t I = 0; I < lhsVertexField.size(); ++I)
             {
-                uint32_t remapped = vertex;
-
-                for (const auto recentVertex : vertexHistory)
-                    if (mesh.VertexCompare(recentVertex.vertexIndex, vertex))
-                        remapped = recentVertex.localIndex;
-
-                return remapped;
+                switch (lhsVertexField[I].type)
+                {
+                case VertexField::FieldType::JointIndex:
+                {
+                    res &= jointIndexes[lhsVertexField[I].idx] == jointIndexes[rhsVertexField[I].idx];
+                }   break;
+                case VertexField::FieldType::JointWeight:
+                {
+                    res &= jointWeights[lhsVertexField[I].idx] == jointWeights[rhsVertexField[I].idx];
+                }   break;
+                case VertexField::FieldType::Material:
+                    break;
+                case VertexField::FieldType::Normal:
+                {
+                    res &= (1.0f - normals[lhsVertexField[I].idx].dot(normals[rhsVertexField[I].idx])) < 0.001f;
+                }   break;
+                case VertexField::FieldType::Tangent:
+                {
+                    res &= (1.0f - tangents[lhsVertexField[I].idx].dot(tangents[rhsVertexField[I].idx])) < 0.001f;
+                }   break;
+                case VertexField::FieldType::Point:
+                {
+                    res &= VectorCompare(points[lhsVertexField[I].idx], points[rhsVertexField[I].idx], 0.000001f);
+                }   break;
+                default:    break;
+                };
             }
 
-            struct LocalVertex
+            return res;
+        }
+
+
+        /************************************************************************************************/
+
+
+        uint64_t UnoptimizedMesh::VertexHash(const uint32_t v ) const
+        {
+            const VertexIndexList fields = indexes[v];
+            uint64_t hash = 0;
+
+            for (auto field : fields) {
+                switch (field.type)
+                {
+                case VertexField::FieldType::JointIndex:
+                {
+                    std::bitset<sizeof(uint4_16) * 8> bitset;
+                    memcpy(&bitset, &jointIndexes[field.idx], sizeof(bitset));
+                    hash_combine(hash, bitset);
+                }   break;
+                case VertexField::FieldType::JointWeight:
+                {
+                    std::bitset<sizeof(float4) * 8> bitset;
+                    memcpy(&bitset, &jointWeights[field.idx], sizeof(bitset));
+                    hash_combine(hash, bitset);
+                }   break;
+                case VertexField::FieldType::Material:
+                    break;
+                case VertexField::FieldType::Normal:
+                {
+                    std::bitset<sizeof(float3) * 8> bitset;
+                    memcpy(&bitset, &normals[field.idx], sizeof(bitset));
+                    hash_combine(hash, bitset);
+                }   break;
+                case VertexField::FieldType::Tangent:
+                {
+                    std::bitset<sizeof(float3) * 8> bitset;
+                    memcpy(&bitset, &tangents[field.idx], sizeof(bitset));
+                    hash_combine(hash, bitset);
+                }   break;
+                case VertexField::FieldType::Point:
+                {
+                    std::bitset<sizeof(float3) * 8> bitset;
+                    memcpy(&bitset, &points[field.idx], sizeof(bitset));
+                    hash_combine(hash, bitset);
+                }   break;
+                default:    break;
+                };
+            }
+
+            return hash;
+        }
+
+
+        /************************************************************************************************/
+
+
+        uint32_t LocalBlockContext::LocallyUnique(const uint32_t vertex, const uint32_t localIdx)
+        {
+            for (const auto recentVertex : vertexHistory)
+                if (mesh.VertexCompare(recentVertex.vertexIndex, vertex))
+                    return false;
+
+            vertexHistory.push_back({ localIdx, vertex });
+
+            return true;
+        }
+
+
+        /************************************************************************************************/
+
+
+        uint32_t LocalBlockContext::Map(const uint32_t vertex) const
+        {
+            uint32_t remapped = vertex;
+
+            for (const auto recentVertex : vertexHistory)
+                if (mesh.VertexCompare(recentVertex.vertexIndex, vertex))
+                    remapped = recentVertex.localIndex;
+
+            return remapped;
+        }
+
+
+        /************************************************************************************************/
+
+
+        BoundingSphere MeshKDBTree::KDBNode::GetBoundingSphere(const UnoptimizedMesh& IN_mesh)
+        {
+            const float3 midPoint = { 0, 0, 0 };// aabb.MidPoint();
+            float d = 0.0f;
+
+            std::for_each(
+                begin, end,
+                [&](const auto tri)
+                {
+                    const float3 pos = IN_mesh.GetTrianglePosition(tri);
+                    const float distance = (pos - midPoint).magnitude();
+                    if (distance > d)
+                        d = distance;
+                });
+
+            return { midPoint, d };
+        }
+
+        MeshKDBTree::MeshKDBTree(const UnoptimizedMesh& IN_mesh) :
+            mesh{ IN_mesh },
+            root{ BuildNode(mesh.tris.begin(), mesh.tris.end()) } {}
+
+
+
+        auto MeshKDBTree::begin() const
+        {
+            return leafNodes.begin();
+        }
+
+
+        auto MeshKDBTree::end() const
+        {
+            return leafNodes.end();
+        }
+
+
+        auto MeshKDBTree::GetMedianSplitPlaneAABB(const Triangle* begin, const Triangle* end) const
+        {
+            float3  midPoint{ 0, 0, 0 };
+            AABB    aabb;
+            for_each(
+                begin, end,
+                [&](const auto tri)
+                {
+                    midPoint += mesh.GetTrianglePosition(tri);
+                    aabb += mesh.GetTriangleAABB(tri);
+                });
+
+            return std::make_pair(midPoint / std::distance(begin, end), aabb);
+        }
+
+
+        std::unique_ptr<MeshKDBTree::KDBNode> MeshKDBTree::BuildNode(Triangle* begin, Triangle* end)
+        {
+            const auto [midPoint, aabb] = GetMedianSplitPlaneAABB(begin, end);
+            const auto splitPlane = SplitPlanes[aabb.LongestAxis()];
+
+            if (std::distance(begin, end) < 512)
             {
-                uint32_t localIndex;
-                uint32_t vertexIndex;
+                auto node = make_unique<KDBNode>(KDBNode{ nullptr, nullptr, begin, end, aabb });
+                leafNodes.push_back(node.get());
+                return node;
+            }
+            else
+            {
+                const auto mid = std::partition(
+                    begin,
+                    end,
+                    [&](const auto& tri) -> bool
+                    {
+                        const float3 pos = mesh.GetTrianglePosition(tri);
+                        const float d = (midPoint - pos).dot(splitPlane);
+
+                        return d >= 0;
+                    });
+
+                return make_unique<KDBNode>(
+                        KDBNode{
+                            BuildNode(begin, mid),
+                            BuildNode(mid, end),
+                            begin, end, aabb });
+            }
+        }
+
+
+        /************************************************************************************************/
+
+
+        OptimizedMesh& OptimizedMesh::operator += (OptimizedMesh& rhs)
+        {
+            auto appendBuffers = [](auto& target, auto& source)
+            {
+                if (!target.size()) {
+                    target = source;
+                    return;
+                }
+
+                const auto size = target.size();
+                target.resize(target.size() + source.size());
+
+                memcpy(target.data() + size, source.data(), sizeof(decltype(source[0])) * source.size());
             };
 
-            CircularBuffer<LocalVertex, 256>    vertexHistory;
-            const UnoptimizedMesh&              mesh;
-        };
 
-
-        class OptimizedMesh
-        {
-        public:
-            OptimizedMesh& operator += (OptimizedMesh& rhs)
+            if (indexes.size())
             {
-                auto appendBuffers = [](auto& target, auto& source)
-                {
-                    if (!target.size()) {
-                        target = source;
-                        return;
-                    }
+                const size_t indexOffset = points.size();
 
-                    const auto size = target.size();
-                    target.resize(target.size() + source.size());
-
-                    memcpy(target.data() + size, source.data(), sizeof(decltype(source[0])) * source.size());
-                };
-
-
-                if (indexes.size())
-                {
-                    const size_t indexOffset = points.size();
-
-                    for (auto index : rhs.indexes)
-                        indexes.push_back(index + indexOffset);
-                }
-                else
-                    indexes = rhs.indexes;
-
-                appendBuffers(points, rhs.points);
-                appendBuffers(normals, rhs.normals);
-                appendBuffers(tangents, rhs.tangents);
-                appendBuffers(textureCoordinates, rhs.textureCoordinates);
-                appendBuffers(jointIndexes, rhs.jointIndexes);
-                appendBuffers(jointWeights, rhs.jointWeights);
-
-                return *this;
+                for (auto index : rhs.indexes)
+                    indexes.push_back(index + indexOffset);
             }
+            else
+                indexes = rhs.indexes;
+
+            appendBuffers(points, rhs.points);
+            appendBuffers(normals, rhs.normals);
+            appendBuffers(tangents, rhs.tangents);
+            appendBuffers(textureCoordinates, rhs.textureCoordinates);
+            appendBuffers(jointIndexes, rhs.jointIndexes);
+            appendBuffers(jointWeights, rhs.jointWeights);
+
+            return *this;
+        }
 
 
-            void PushVertex(uint32_t globalIdx, LocalBlockContext& ctx)
+        /************************************************************************************************/
+
+
+        void OptimizedMesh::PushVertex(uint32_t globalIdx, LocalBlockContext& ctx)
             {
                 auto& vertexField = ctx.mesh.indexes[globalIdx];
 
@@ -483,36 +426,25 @@ namespace FlexKit
             }
 
 
-            void PushTri(Triangle& tri, LocalBlockContext& ctx)
+        /************************************************************************************************/
+
+
+        void OptimizedMesh::PushTri(Triangle& tri, LocalBlockContext& ctx)
+        {
+            for (auto& v : tri.vertices)
             {
-                for (auto& v : tri.vertices)
+                if (ctx.LocallyUnique(v, points.size()))
                 {
-                    if (ctx.LocallyUnique(v, points.size()))
-                    {
-                        indexes.push_back(points.size());
-                        PushVertex(v, ctx);
-                    }
-                    else
-                    {
-                        const uint32_t idx = ctx.map(v);
-                        indexes.push_back(idx);
-                    }
+                    indexes.push_back(points.size());
+                    PushVertex(v, ctx);
+                }
+                else
+                {
+                    const uint32_t idx = ctx.Map(v);
+                    indexes.push_back(idx);
                 }
             }
-
-            Vector<float3>		    points      { SystemAllocator };
-            Vector<float3>		    normals     { SystemAllocator };
-            Vector<float3>		    tangents    { SystemAllocator };
-
-            Vector<float2>          textureCoordinates  { SystemAllocator };
-            Vector<float3>		    jointWeights        { SystemAllocator };
-            Vector<uint4_16>	    jointIndexes        { SystemAllocator };
-
-            Vector<uint32_t>	    indexes{ SystemAllocator };
-
-            AABB                    aabb;
-            BoundingSphere          boundingSphere;
-        };
+        }
 
 
         /************************************************************************************************/
@@ -562,7 +494,7 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        OptimizedMesh CreateOptimizedMesh(const KDBTree& tree)
+        OptimizedMesh CreateOptimizedMesh(const MeshKDBTree& tree)
         {
             OptimizedMesh       optimized;
             LocalBlockContext   context{ tree.mesh };
@@ -609,16 +541,6 @@ namespace FlexKit
 
             return optimized;
         }
-
-
-        /************************************************************************************************/
-
-
-        OptimizedBuffer BuildVertexBuffer(const TokenList& tokens)
-		{
-            auto mesh = CreateOptimizedMesh(KDBTree({ tokens }));
-            return OptimizedBuffer(mesh);
-		}
 
 
 		/************************************************************************************************/

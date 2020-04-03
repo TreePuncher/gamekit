@@ -63,17 +63,17 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
 			auto UniqueID	= FBXMesh->GetUniqueID();
 			auto name		= Node->GetName();
 
-            const auto materialCount = Node->GetMaterialCount();
-            const auto shadingMode = Node->GetShadingMode();
+            const auto materialCount    = Node->GetMaterialCount();
+            const auto shadingMode      = Node->GetShadingMode();
 
             for (size_t I = 0; I < materialCount; I++)
             {
-                auto classID = Node->GetMaterial(I)->GetClassId();
-                auto material = Node->GetSrcObject<FbxSurfacePhong>(I);
-                auto materialName = material->GetName();
-                auto diffuse = material->sDiffuse;
-                auto normal = material->sNormalMap;
-                bool multilayer = material->MultiLayer;
+                auto classID        = Node->GetMaterial(I)->GetClassId();
+                auto material       = Node->GetSrcObject<FbxSurfacePhong>(I);
+                auto materialName   = material->GetName();
+                auto diffuse        = material->sDiffuse;
+                auto normal         = material->sNormalMap;
+                bool multilayer     = material->MultiLayer;
             }
 
 			SceneEntity entity;

@@ -234,22 +234,27 @@ public:
 
     void Resize(const uint2 WH)
     {
-        auto& renderSystem = framework.GetRenderSystem();
-        framework.core.Window.Resize(WH, renderSystem);
+        if (WH[0] * WH[1] == 0)
+            return;
+
+        auto& renderSystem  = framework.GetRenderSystem();
+        auto adjustedWH     = uint2{ max(8, WH[0]), max(8, WH[1]) };
+
+        framework.core.Window.Resize(adjustedWH, renderSystem);
 
         for (auto& temp : temporaryBuffers) {
             renderSystem.ReleaseTexture(temp);
-            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
+            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(adjustedWH, DeviceFormat::R16G16B16A16_FLOAT));
         }
 
         for (auto& temp : temporaryBuffers_2Channel) {
             renderSystem.ReleaseTexture(temp);
-            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16_FLOAT));
+            temp = renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(adjustedWH, DeviceFormat::R16G16_FLOAT));
         }
 
         renderSystem.ReleaseTexture(depthBuffer);
-        depthBuffer     = renderSystem.CreateDepthBuffer(WH, true);
-        gbuffer.Resize(WH);
+        depthBuffer     = renderSystem.CreateDepthBuffer(adjustedWH, true);
+        gbuffer.Resize(adjustedWH);
     }
 
 
