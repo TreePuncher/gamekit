@@ -310,7 +310,11 @@ namespace FlexKit
         {
             localWorkQueue      = &queue;
             running             = true;
-            backgroundThread    = std::thread{ [&] { void Run();  } };
+            backgroundThread    = std::thread{
+                [&]
+                {
+                    Run();
+                } };
         }
 
 
@@ -326,6 +330,8 @@ namespace FlexKit
         {
             std::scoped_lock localLock{ lock };
             workList.push_back(work);
+
+            cv.notify_all();
         }
 
 
@@ -335,6 +341,7 @@ namespace FlexKit
             {
                 if (workList.size())
                 {
+                    std::scoped_lock localLock{ lock };
                     while (workList.size())
                         queue.push_back(workList.pop_back());
                 }
@@ -482,6 +489,7 @@ namespace FlexKit
 		return CreateWorkItem(FNIN, allocator, allocator);
 	}
 
+
 	/************************************************************************************************/
 
 
@@ -499,8 +507,7 @@ namespace FlexKit
 		{
 			WorkerThread::Manager = this;
 
-			localWorkQueue = &mainThreadQueue;
-			workQueues.push_back(localWorkQueue);
+			workQueues.push_back(&mainThreadQueue);
 
 			for (size_t I = 0; I < workerCount; ++I)
             {
@@ -557,11 +564,11 @@ namespace FlexKit
 		{
 			while (!localWorkQueue->empty())
 			{
-				if (auto workItem = localWorkQueue->pop_back(); workItem)
+				if (auto workItem = FindWork(true); workItem)
 				{
-					workItem.value()->Run();
-					workItem.value()->NotifyWatchers();
-					workItem.value()->Release();
+					workItem->Run();
+					workItem->NotifyWatchers();
+					workItem->Release();
 				}
 			}
 			while (workingThreadCount > 0);

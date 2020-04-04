@@ -901,7 +901,7 @@ namespace FlexKit
                     {   desiredMove.x,
                         desiredMove.y,
                         desiredMove.z },
-                    0.1f,
+                    0.001f,
                     dt,
                     filters);
 

@@ -45,15 +45,14 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         float2 d_xy             = ddx(IN.UV);
         uint MIPLevelRequested  = floor(pow(d_xy, 2));
         uint2 WH                = uint2(0, 0);
-        uint mip                = 0;
+        uint MIPCount           = 0;
         const uint textureID    = textureConstants[I].z;
         const uint2 blockSize   = textureConstants[I].xy;
 
-        textures[I].GetDimensions(MIPLevelRequested, WH.x, WH.y, mip);
+        textures[I].GetDimensions(MIPLevelRequested, WH.x, WH.y, MIPCount);
 
-        const uint2 blockXY     = min(uint2(WH / blockSize) * saturate(IN.UV), WH  / blockSize - 1);
-        //const uint  blockID     = (0 << 16) | (0 << 4) | min(0, 16);
-        const uint blockID    = (blockXY.x << 16) | (blockXY.y << 4) | min(0, 16);
+        const uint2 blockXY = min(uint2(WH / blockSize) * saturate(IN.UV), WH  / blockSize - 1);
+        const uint  blockID = ((MIPCount - MIPLevelRequested) << 24 ) | (blockXY.x << 12) | (blockXY.y);
 
         if(WH.x == 0 || WH.y == 0)
             return;
@@ -62,7 +61,6 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         UAVCounters.InterlockedAdd(0, 8, offset);
 
         uint bufferSize; UAVBuffer.GetDimensions(bufferSize);
-        //if(bufferSize > offset)
-            WriteOut(blockID, textureID, offset);
+        WriteOut(blockID, textureID, offset);
     }
 }

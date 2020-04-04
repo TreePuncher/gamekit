@@ -13,7 +13,7 @@ namespace FlexKit
         crnd::crn_level_info levelInfo;
         crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), 0, &levelInfo);
 
-        rowPitch   = levelInfo.m_blocks_x * levelInfo.m_bytes_per_block;
+        rowPitch = levelInfo.m_blocks_x * levelInfo.m_bytes_per_block;
         bufferSize = levelInfo.m_blocks_y * rowPitch;
 
         blockSize   = levelInfo.m_bytes_per_block;
@@ -22,10 +22,10 @@ namespace FlexKit
 
         buffer = (char*)allocator->malloc(bufferSize);
 
-        void* data[1]   = { (void*)buffer};
+        void* data[1] = { (void*)buffer};
 
-        crnd::crnd_unpack_context   crn_context = crnd::crnd_unpack_begin(resource->GetBuffer(), resource->GetBufferSize());
-        auto res    = crnd::crnd_unpack_level(crn_context, data, bufferSize, rowPitch, mipLevel);
+        crnd::crnd_unpack_context crn_context = crnd::crnd_unpack_begin(resource->GetBuffer(), resource->GetBufferSize());
+        auto res = crnd::crnd_unpack_level(crn_context, data, bufferSize, rowPitch, 0);
         crnd::crnd_unpack_end(crn_context);
 
         FreeAsset(asset);
@@ -80,7 +80,7 @@ namespace FlexKit
         {
             crnd::crn_level_info levelInfo;
 
-            if (!crnd::crnd_get_level_info(buffer, bufferSize, MIPlevel - 1, &levelInfo))
+            if (!crnd::crnd_get_level_info(buffer, bufferSize, 0, &levelInfo))
                 return {};
 
             return &allocator->allocate<CRNDecompressor>(MIPlevel, asset, allocator);
@@ -312,111 +312,70 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    TextureStreamingEngine::TextureBlockUpdateThread::TextureBlockUpdateThread(
-        TextureStreamingEngine& IN_textureStreamEngine,
-        iAllocator*             IN_allocator) :
-            allocator           { IN_allocator              },
-            pendingUpdates      { IN_allocator              },
-            textureStreamEngine { IN_textureStreamEngine    }
-    {
-    }
+    TextureStreamingEngine::TextureStreamUpdate::TextureStreamUpdate(
+        ReadBackResourceHandle      IN_resource,
+        TextureStreamingEngine&     IN_textureStreamEngine,
+        iAllocator*                 IN_allocator) :
+            iWork               { IN_allocator },
+            textureStreamEngine { IN_textureStreamEngine },
+            allocator           { IN_allocator  },
+            resource            { IN_resource   } {}
 
 
     /************************************************************************************************/
 
 
-    void TextureStreamingEngine::TextureBlockUpdateThread::PushUpdate(char* buffer, const size_t buffer_size, iAllocator* IN_allocator)
+    void TextureStreamingEngine::TextureStreamUpdate::Run()
     {
-        uint64_t    requestCount;
-        gpuTileID*  requests;
+        EXITSCOPE(textureStreamEngine.MarkUpdateCompleted(););
+
+        uint64_t    requestCount = 0;
+        gpuTileID*  requests = nullptr;
+
+        auto [buffer, bufferSize] = textureStreamEngine.renderSystem.OpenReadBackBuffer(resource);
+        EXITSCOPE(textureStreamEngine.renderSystem.CloseReadBackBuffer(resource));
+
+        if (!buffer)
+            return;
 
         memcpy(&requestCount, buffer, sizeof(uint64_t));
+        EXITSCOPE(allocator->free(requests));
+
+        requestCount    = min(requestCount, bufferSize);
+        requests        = reinterpret_cast<gpuTileID*>(allocator->malloc(requestCount));
+
 
         if (requestCount)
         {
-            requestCount    = std::min(requestCount, buffer_size);
-            requests        = reinterpret_cast<gpuTileID*>(IN_allocator->malloc(requestCount));
-            memcpy(requests, buffer + 64, requestCount);
-
+            memcpy(requests, (std::byte*)buffer + 64, requestCount);
             requestCount = requestCount / 64;
-
-            
-            EXITSCOPE(cv.notify_all());
-            std::scoped_lock<> lock(mutex);
-
-            pendingUpdates.push_back({
-                    .requestCount   = requestCount,
-                    .requests       = requests,
-                    .allocator      = IN_allocator
-                });
         }
-    }
 
+        if (!requests || !requestCount)
+            return;
 
-    /************************************************************************************************/
-
-
-    void TextureStreamingEngine::TextureBlockUpdateThread::Run()
-    {
-        while(running)
+        const auto lg_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
         {
-            std::mutex localLock;
-            std::unique_lock ul(localLock);
+            return lhs.GetSortingID() < rhs.GetSortingID();
+        };
 
-            if (!pendingUpdates.size())
-                cv.wait(ul, [&]() { return !running || pendingUpdates.size(); });
+        const auto eq_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
+        {
+            return lhs.GetSortingID() == rhs.GetSortingID();
+        };
 
-            if(pendingUpdates.size())
-            {
-                auto GetPending = [&]() -> std::optional<_PendingUpdate>
-                {
-                    std::unique_lock ul{ lock };
+        std::sort(
+            requests,
+            requests + requestCount,
+            lg_comparitor);
 
-                    return pendingUpdates.size() ? pendingUpdates.pop_back() : _PendingUpdate{};
-                };
+        const auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
+        const auto uniqueCount    = (size_t)(end - requests);
 
-                auto DoUpdate = [&](const _PendingUpdate update)
-                {
-                     if (!update.requests || !update.requestCount)
-                    {
-                        textureStreamEngine.MarkUpdateCompleted();
-                        return;
-                    }
+        const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, allocator);
+        const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
-                    const auto lg_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
-                    {
-                        return lhs.GetSortingID() < rhs.GetSortingID();
-                    };
-
-                    const auto eq_comparitor = [](const gpuTileID lhs, const gpuTileID rhs) -> bool
-                    {
-                        return lhs.GetSortingID() == rhs.GetSortingID();
-                    };
-
-                    std::sort(
-                        update.requests,
-                        update.requests + update.requestCount,
-                        lg_comparitor);
-
-                    const auto end            = std::unique(update.requests, update.requests + update.requestCount, eq_comparitor);
-                    const auto uniqueCount    = (size_t)(end - update.requests);
-
-                    const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(update.requests, update.requests + uniqueCount, update.allocator);
-                    const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
-
-                    update.allocator->free(update.requests);
-
-                    textureStreamEngine.PostUpdatedTiles(blockAllocations);
-                    textureStreamEngine.MarkUpdateCompleted();
-                };
-
-
-                const auto update = GetPending();
-
-                if (update)
-                    DoUpdate(update.value());
-             }
-        }
+        textureStreamEngine.PostUpdatedTiles(blockAllocations);
     }
 
 
@@ -486,6 +445,30 @@ namespace FlexKit
         uint2                   blockSize       = { 256, 256 };
         TileMapList             mappings        = { allocator };
 
+
+        for (const AllocatedBlock& block : allocations.reallocations)
+        {
+            if (prevResource != block.resource)
+            {
+                mappings = renderSystem.GetTileMappings(block.resource);
+
+                if(prevResource != InvalidHandle_t)
+                    renderSystem.UpdateTileMappings(&prevResource, &prevResource + 1, allocator);
+            }
+
+            mappings.remove_unstable(std::remove_if(
+                mappings.begin(),
+                mappings.end(),
+                [&](const auto& mapping)
+                {
+                    return block.tileID == mapping.tileID;
+                }));
+        }
+
+        if (prevResource != InvalidHandle_t)
+            renderSystem.UpdateTileMappings(&prevResource, &prevResource + 1, allocator);
+
+        mappings.clear();
 
         for (const AllocatedBlock& block : allocations.allocations)
         {
@@ -654,11 +637,20 @@ namespace FlexKit
                 const auto idx = itr++;
                 if (blockTable[idx + last].state != EBlockState::InUse)
                 {
+                    if (blockTable[idx + last].state == EBlockState::Stale) {
+                        reallocatedBlocks.push_back({
+                            .tileID     = blockTable[idx + last].tileID,
+                            .resource   = blockTable[idx + last].resource,
+                            .offset     = blockTable[idx + last].blockID * 64 * KILOBYTE,
+                            .tileIdx    = blockTable[idx + last].blockID
+                            });
+                    }
+
                     const auto resourceHandle = ResourceHandle{ block_itr->TextureID };
                     const auto tileID         = block_itr->tileID;
 
-                    blockTable[idx].resource        = resourceHandle;
-                    blockTable[idx].tileID          = tileID;
+                    blockTable[idx + last].resource = resourceHandle;
+                    blockTable[idx + last].tileID   = tileID;
                     blockTable[idx + last].state    = EBlockState::InUse;
 
                     allocatedBlocks.push_back({
@@ -680,7 +672,7 @@ namespace FlexKit
             block_itr++;
         }
 
-        last = itr % blockTable.size();
+        last = (last + itr) % blockTable.size();
 
         return {
             std::move(reallocatedBlocks),

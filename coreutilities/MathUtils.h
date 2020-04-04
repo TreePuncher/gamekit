@@ -611,15 +611,20 @@ namespace FlexKit
 			float x, y;
 		};
 
-		float Product() noexcept    { return x * y; }
-		float Sum()	noexcept        { return x + y;	}
+		float Product() const noexcept    { return x * y; }
+		float Sum()	const noexcept        { return x + y;	}
 
-		float Magnitude() noexcept
+		float Magnitude() const noexcept
 		{ 
 			auto V_2 = (*this * *this);
 			return  sqrt(V_2.Sum());
 		}
 
+
+        float magnitudesquared() const noexcept
+        {
+            return (*this * *this).Sum();
+        }
 
 		float XY[2];
 

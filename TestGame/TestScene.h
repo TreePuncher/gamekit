@@ -12,7 +12,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
     // Load Model
     auto model = GetMesh(renderSystem, demonModel);
 
-	static const size_t N = 2;
+	static const size_t N = 10;
 	static const float  W = (float)30;
 
 	for (size_t Y = 0; Y < N; ++Y)
@@ -21,7 +21,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 		{
 			const float roughness     = ((float)X + 0.5f) / (float)N;
 			const float anisotropic   = ((float)Y + 0.5f) / (float)N;
-			const float kS            = 1.0f;//((float)Y + 0.5f) / (float)N;
+			const float kS            = 0.0f;//((float)Y + 0.5f) / (float)N;
 
 			auto& gameObject = allocator->allocate<FlexKit::GameObject>();
 			auto node = FlexKit::GetNewNode();
@@ -30,7 +30,7 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 
 			SetMaterialParams(
 				gameObject,
-				float3(0.0f, 0.0f, 0.0f), // albedo
+				float3(1.0f, 1.0f, 1.0f), // albedo
 				kS, // specular
 				0.47f, // IOR
 				anisotropic,
@@ -42,8 +42,8 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 
             if (demonModel == 6666)
                 Pitch(node, (float)pi / 2.0f);
-
-			SetFlag(node, SceneNodes::StateFlags::SCALE);
+            else
+                Yaw(node, (float)pi);
 
 			scene.AddGameObject(gameObject, node);
 			SetBoundingSphereFromMesh(gameObject);
@@ -97,25 +97,18 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
 
-            //auto textureHandle      = 8000;
-            auto DDSTexture         = renderSystem.CreateGPUResource( //UploadDDSFromAsset(textureHandle, renderSystem, upload, allocator);
+            auto textureHandle      = 8000;
+            auto DDSTexture         = UploadDDSFromAsset(textureHandle, renderSystem, upload, allocator);
+
+            base.TestImage          = DDSTexture;
+            base.virtualResource    = renderSystem.CreateGPUResource(
                 GPUResourceDesc::ShaderResource(
                     { 2048, 2048 },
                     DeviceFormat::BC3_UNORM,
-                    1,
-                    1, true));
-
-
-            base.TestImage = DDSTexture;
-
-            base.virtualResource = renderSystem.CreateGPUResource(
-                GPUResourceDesc::ShaderResource(
-                    { 2048, 2048 },
-                    DeviceFormat::BC3_UNORM,
-                    1,
+                    4,
                     1, true ));
 
-            //base.streamingEngine.BindAsset(textureHandle, base.virtualResource);
+            base.streamingEngine.BindAsset(textureHandle, base.virtualResource);
 
             size_t          MIPCount;
             uint2           WH;
