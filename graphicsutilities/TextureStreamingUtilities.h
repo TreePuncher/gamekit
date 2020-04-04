@@ -178,7 +178,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= MEGABYTE * 16; // Very small for debugging purposes, forces resource eviction and priority, should be changed to a reasonable value
+		const size_t textureCacheSize	= MEGABYTE * 4; // Very small for debugging purposes, forces resource eviction and priority, should be changed to a reasonable value
 		const size_t blockSize			= GetMinBlockSize();
 	};
 
@@ -193,7 +193,6 @@ namespace FlexKit
         uint32_t        offset;
         uint32_t        tileIdx;
     };
-
 
     struct gpuTileID
     {
@@ -273,34 +272,30 @@ namespace FlexKit
             feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
             feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
             heap                    { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
-            mappedAssets            { IN_allocator },
-            updateThread            { *this, IN_allocator }
+            mappedAssets            { IN_allocator }
         {
-            for (size_t I = 0; I < 3; I++)
-            {
-                renderSystem.SetReadBackEvent(
-                    feedbackReturnBuffer,
-                    [&, textureStreamingEngine = this](char* buffer, const size_t bufferSize)
-                    {
-                        if (!buffer)
-                            return;
 
-                        updateThread.PushUpdate(buffer, bufferSize, allocator);
-                    });
-            }
-
-
-            textureLoadThread = std::thread{ [&] { updateThread.Run(); } };
+            renderSystem.SetReadBackEvent(
+                feedbackReturnBuffer,
+                [&, textureStreamingEngine = this](ReadBackResourceHandle resource)
+                {
+                    taskInProgress = true;
+                    auto& task = allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
+                    renderSystem.threads.AddBackgroundWork(task);
+                });
         }
 
 
         ~TextureStreamingEngine()
         {
-            updateThread.Shutdown();
+            renderSystem.SetReadBackEvent(
+                feedbackReturnBuffer,
+                [](ReadBackResourceHandle resource) {});
 
-            while (updateInProgress);
+            renderSystem.WaitforGPU(); // Flush any pending reads
+            renderSystem.FlushPendingReadBacks();
 
-            textureLoadThread.join();
+            while (taskInProgress);
 
             renderSystem.ReleaseUAV(feedbackBuffer);
             renderSystem.ReleaseUAV(feedbackCounters);
@@ -316,34 +311,22 @@ namespace FlexKit
             ReserveConstantBufferFunction&      constantBufferAllocator);
 
 
-        struct TextureBlockUpdateThread
+        struct TextureStreamUpdate : public FlexKit::iWork
         {
-            TextureBlockUpdateThread(TextureStreamingEngine& IN_textureStreamEngine, iAllocator* IN_allocator);
+            TextureStreamUpdate(ReadBackResourceHandle resource, TextureStreamingEngine& IN_textureStreamEngine, iAllocator* IN_allocator);
 
-            void Run();
+            void Run() override;
 
-            void PushUpdate(char* buffer, const size_t buffer_size, iAllocator* IN_allocator);
-            void Shutdown()
+            void Release() override
             {
-                running = false;
-                cv.notify_all();
+                allocator->free(this);
             }
 
             TextureStreamingEngine& textureStreamEngine;
+            ReadBackResourceHandle  resource;
 
-            struct _PendingUpdate
-            {
-                uint64_t    requestCount    = 0;
-                gpuTileID*  requests        = nullptr;
-                iAllocator* allocator       = nullptr;
-            };
-
-            Vector<_PendingUpdate>      pendingUpdates;
-            std::mutex                  lock;
-            std::atomic_bool            running = true;
-            std::condition_variable     cv;
-            iAllocator*                 allocator;
-        } updateThread;
+            iAllocator* allocator       = nullptr;
+        };
 
 
         gpuTileList     UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
@@ -353,7 +336,7 @@ namespace FlexKit
         std::optional<AssetHandle>  GetResourceAsset    (const ResourceHandle  resource) const;
 
         void PostUpdatedTiles(const BlockAllocation& blocks);
-        void MarkUpdateCompleted() { updateInProgress = false; }
+        void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
 	private:
 
@@ -375,11 +358,10 @@ namespace FlexKit
             }
         };
 
-        std::thread                 textureLoadThread;
-
 		RenderSystem&				renderSystem;
 
-        bool                        updateInProgress = false;
+        std::atomic_bool            updateInProgress    = false;
+        std::atomic_bool            taskInProgress      = false;
 
         UAVResourceHandle		    feedbackBuffer;     // GPU
         UAVResourceHandle           feedbackCounters;   // GPU

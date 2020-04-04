@@ -117,7 +117,7 @@ namespace FlexKit
         EXITSCOPE(
             auto After = Clock.now();
         auto Duration = chrono::duration_cast<chrono::microseconds>(After - Before);
-        FK_LOG_9("Function %s executed in %umicroseconds.", id, Duration.count()); );
+        FK_LOG_0("Function %s executed in %umicroseconds.", id, Duration.count()); );
 
         return function();
     }

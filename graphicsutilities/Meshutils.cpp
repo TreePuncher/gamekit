@@ -171,6 +171,13 @@ namespace FlexKit
                 {
                     res &= VectorCompare(points[lhsVertexField[I].idx], points[rhsVertexField[I].idx], 0.000001f);
                 }   break;
+                case VertexField::FieldType::TextureCoordinate:
+                {
+                    const auto lhs    = textureCoordinates[lhsVertexField[I].idx];
+                    const auto rhs    = textureCoordinates[rhsVertexField[I].idx];
+
+                    res &= (lhs.index == rhs.index && VectorCompare(lhs.UV, rhs.UV, 0.000001f));
+                }   break;
                 default:    break;
                 };
             }

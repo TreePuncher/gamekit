@@ -502,14 +502,14 @@ namespace FlexKit
 
 	inline bool ReadResource(FILE* F, ResourceTable* Table, size_t Index, Resource* out)
 	{
+        FK_LOG_INFO( "Loading Resource: %s : ResourceID: %u", Table->Entries[Index].ID, Table->Entries[Index].GUID);
 #if _DEBUG
 		std::chrono::system_clock Clock;
 		auto Before = Clock.now();
 		FINALLY
 			auto After = Clock.now();
 			auto Duration = chrono::duration_cast<chrono::microseconds>( After - Before );
-			std::cout << "Loading Resource: " << Table->Entries[Index].ID << " : ResourceID: "<< Table->Entries[Index].GUID << "\n";
-			std::cout << "Resource Load Duration: " << Duration.count() << "microseconds\n";
+            FK_LOG_INFO("Loading Resource: %s took %u microseconds", Table->Entries[Index].ID, Duration.count());
 		FINALLYOVER
 #endif
 

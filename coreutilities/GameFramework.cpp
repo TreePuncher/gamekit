@@ -478,25 +478,26 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void HandleMouseEvents(const Event& in, GameFramework& framework) {
-	switch (in.Action)
-	{
-	case Event::InputAction::Pressed:
-	{
-		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			framework.MouseState.LMB_Pressed = true;
-		}
-	}	break;
-	case Event::InputAction::Release:
-	{
-		if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			framework.MouseState.LMB_Pressed = false;
-		}
-	}	break;
-	default:
-		break;
-	}
-}
+	void HandleMouseEvents(const Event& in, GameFramework& framework)
+    {
+	    switch (in.Action)
+	    {
+	    case Event::InputAction::Pressed:
+	    {
+		    if (in.mData1.mKC[0] == KC_MOUSELEFT) {
+			    framework.MouseState.LMB_Pressed = true;
+		    }
+	    }	break;
+	    case Event::InputAction::Release:
+	    {
+		    if (in.mData1.mKC[0] == KC_MOUSELEFT) {
+			    framework.MouseState.LMB_Pressed = false;
+		    }
+	    }	break;
+	    default:
+		    break;
+	    }
+    }
 
 
 	/************************************************************************************************/

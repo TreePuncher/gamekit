@@ -3268,11 +3268,13 @@ namespace FlexKit
     {
         flushPendingBarriers();
 
+        auto desc = dest->GetDesc();
+
         const D3D12_TILED_RESOURCE_COORDINATE coordinate = {
             .X              = (UINT)destTile[0],
             .Y              = (UINT)destTile[1],
             .Z              = (UINT)0,
-            .Subresource    = (UINT)destTile[2],
+            .Subresource    = desc.MipLevels - (UINT)destTile[2],
         };
 
         const D3D12_TILE_REGION_SIZE regionSize = {
@@ -4433,7 +4435,7 @@ namespace FlexKit
         auto itr = begin;
         while(itr < end)
         {
-            auto& mappings                      = Textures.GetTileMapping(*itr);
+            auto& mappings                      = Textures.GetTileMappings(*itr);
             auto deviceResource                 = GetDeviceResource(*itr);
             const auto mipCount                 = Textures.GetMIPCount(*itr);
 
@@ -4541,6 +4543,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    const TileMapList& RenderSystem::GetTileMappings(const ResourceHandle handle)
+    {
+        return Textures.GetTileMappings(handle);
+    }
+
+
+    /************************************************************************************************/
+
+
     ReadBackResourceHandle  RenderSystem::CreateReadBackBuffer(const size_t bufferSize)
     {
         D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
@@ -4574,6 +4585,34 @@ namespace FlexKit
     {
         ReadBackTable.SetCallback(readbackBuffer, std::move(handler));
     }
+
+
+    /************************************************************************************************/
+
+
+    MappedReadBackBuffer RenderSystem::OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize)
+    {
+        return ReadBackTable.OpenBufferData(readbackBuffer, readSize);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer)
+    {
+        ReadBackTable.CloseBufferData(readbackBuffer);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::FlushPendingReadBacks()
+    {
+        ReadBackTable.Update();
+    }
+
 
     /************************************************************************************************/
 
@@ -6187,9 +6226,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    const TileMapList& TextureStateTable::GetTileMapping(const ResourceHandle handle) const
+    const TileMapList& TextureStateTable::GetTileMappings(const ResourceHandle handle) const
     {
-        auto UserIdx    = Handles[handle];
+        auto UserIdx = Handles[handle];
         return UserEntries[UserIdx].tileMappings;
     }
 

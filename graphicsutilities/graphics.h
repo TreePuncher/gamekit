@@ -2362,9 +2362,10 @@ private:
             return bytes & 0xfff;
         }
 
-        int32_t GetMipLevel(const uint32_t mipCount) const
+        uint32_t GetMipLevel(const uint32_t mipCount) const
         {
-            return mipCount - (bytes >> 24) & 0xff;
+            const uint32_t mipInverted = ((bytes >> 24) & 0xff);
+            return mipCount - mipInverted;
         }
 
         int32_t GetMipLevelInverted() const
@@ -2456,11 +2457,11 @@ private:
 		uint32_t		    GetTag(ResourceHandle Handle) const;
 		void			    SetTag(ResourceHandle Handle, uint32_t Tag);
 
-		void                SetBufferedIdx  (ResourceHandle handle, uint32_t idx);
-		void                SetDebugName    (ResourceHandle handle, const char* str);
+		void                SetBufferedIdx(ResourceHandle handle, uint32_t idx);
+		void                SetDebugName(ResourceHandle handle, const char* str);
 
-        void                UpdateTileMappings  (ResourceHandle handle, const TileMapping* begin, const TileMapping* end);
-        const TileMapList&  GetTileMapping      (const ResourceHandle handle) const;
+        void                UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end);
+        const TileMapList&  GetTileMappings(const ResourceHandle handle) const;
 
 		void			    MarkRTUsed		(ResourceHandle Handle);
 
@@ -2899,7 +2900,14 @@ private:
 
 	/************************************************************************************************/
 
-    using ReadBackEventHandler = TypeErasedCallable<64, void, char*, const size_t>;
+    using ReadBackEventHandler = TypeErasedCallable<64, void, ReadBackResourceHandle>;
+
+    struct MappedReadBackBuffer
+    {
+        void* buffer;
+        const size_t bufferSize;
+    };
+
 
 	class ReadBackStateTable
 	{
@@ -2956,23 +2964,7 @@ private:
                     {
                         buffer.queueUntil   = -1;
                         buffer.queued       = false;
-
-                        void* _ptr = nullptr;
-
-                        const D3D12_RANGE readRange = {
-                            .Begin = 0,
-                            .End   = buffer.size
-                        };
-
-                        buffer.resource->Map(0, &readRange, &_ptr);
-                        buffer.onReadBack((char*)_ptr, buffer.size);
-
-                        const D3D12_RANGE writeRange = {
-                            .Begin  = 0,
-                            .End    = 0
-                        };
-
-                        buffer.resource->Unmap(0, &writeRange);
+                        buffer.onReadBack(buffer.handle);
                     }
                     else if (res == WAIT_FAILED)
                     {
@@ -3017,6 +3009,34 @@ private:
             (*this)[handle].queueUntil = counter;
         }
 
+
+        MappedReadBackBuffer OpenBufferData(const ReadBackResourceHandle handle, size_t readSize)
+        {
+            auto& readBack                  = readBackBuffers[handles[handle]];
+            void* _ptr                      = nullptr;
+            const size_t requestedReadSize  = min(readBack.size, readSize);
+
+            const D3D12_RANGE readRange = {
+                .Begin  = 0,
+                .End    = requestedReadSize
+            };
+
+            readBack.resource->Map(0, &readRange, &_ptr);
+
+            return { _ptr, requestedReadSize };
+        }
+
+        void CloseBufferData(const ReadBackResourceHandle handle)
+        {
+            auto& readBack = readBackBuffers[handles[handle]];
+
+            const D3D12_RANGE writeRange = {
+                .Begin = 0,
+                .End = 0
+            };
+
+            readBack.resource->Unmap(0, &writeRange);
+        }
         
         ID3D12Fence* _GetReadBackFence()
         {
@@ -3154,8 +3174,9 @@ private:
         uint32_t        GetTextureMipCount          (ResourceHandle Handle) const;
 
 
-        void            UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
-        void            UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList& );
+        void                UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator);
+        void                UpdateTextureTileMappings(const ResourceHandle Handle, const TileMapList& );
+        const TileMapList&  GetTileMappings(const ResourceHandle Handle);
 
 
 		TextureDimension GetTextureDimension(ResourceHandle handle) const;
@@ -3179,7 +3200,10 @@ private:
 		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
 		ReadBackResourceHandle  CreateReadBackBuffer            (const size_t bufferSize);
 
-        void SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
+        void                    SetReadBackEvent   (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
+        MappedReadBackBuffer    OpenReadBackBuffer (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
+        void                    CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer);
+        void                    FlushPendingReadBacks();
 
 		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
 		void SetObjectState(UAVResourceHandle	handle, DeviceResourceState state);

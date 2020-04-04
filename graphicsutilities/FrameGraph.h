@@ -1762,7 +1762,7 @@ namespace FlexKit
         ConstantBufferDataSet   constants;
         VertexBufferDataSet     vertices;
         size_t                  vertexCount;
-        ResourceHandle          textures = InvalidHandle_t;
+        ResourceHandle          texture = InvalidHandle_t;
     };
 
     typedef Vector<ShapeDraw> DrawList;
@@ -2311,18 +2311,18 @@ namespace FlexKit
 
                 AddShapes(Data.Draws, reserveVB, reserveCB, frameGraph.Resources, std::forward<TY_OTHER&&>(Args)...);
             },
-            [=](const ShapeParams& Data, const FrameResources& frameResources, Context& Ctx, iAllocator&)
+            [=](const ShapeParams& Data, const FrameResources& frameResources, Context& context, iAllocator& allocator)
             {	// Multi-threadable Section
                 auto WH = frameResources.GetTextureWH(Data.RenderTarget);
 
-                Ctx.SetScissorAndViewports({ frameResources.GetRenderTarget(Data.RenderTarget)} );
-                Ctx.SetRenderTargets(
+                context.SetScissorAndViewports({ frameResources.GetRenderTarget(Data.RenderTarget)} );
+                context.SetRenderTargets(
                     { frameResources.GetRenderTarget(Data.RenderTarget) },
                     false);
 
-                Ctx.SetRootSignature		(frameResources.renderSystem.Library.RS6CBVs4SRVs);
-                Ctx.SetPipelineState		(frameResources.GetPipelineState(Data.State));
-                Ctx.SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
+                context.SetRootSignature		(frameResources.renderSystem.Library.RS6CBVs4SRVs);
+                context.SetPipelineState		(frameResources.GetPipelineState(Data.State));
+                context.SetPrimitiveTopology	(EInputTopology::EIT_TRIANGLE);
 
                 size_t TextureDrawCount = 0;
                 ShapeDraw::RenderMode PreviousMode = ShapeDraw::RenderMode::Triangle;
@@ -2332,32 +2332,30 @@ namespace FlexKit
                     switch (D.Mode) {
                         case ShapeDraw::RenderMode::Line:
                         {
-                            Ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
+                            context.SetPrimitiveTopology(EInputTopology::EIT_LINE);
                         }	break;
                         case ShapeDraw::RenderMode::Triangle:
                         {
-                            Ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                            
+                            context.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
                         }	break;
                         case ShapeDraw::RenderMode::Textured:
                         {
-                            FK_ASSERT(0);
+                            context.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
 
-                            Ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
-                            //auto& desciptorTableLayout = Builder.GetDescriptorTableLayout(State, 0);
-                            //DescriptorHeap descHeap = Builder.ReserveDescriptorTableSpaces(desciptorTableLayout, textureCount, Memory);
-                            //descHeap.NullFill(Graph.Resources.renderSystem);
+                            DescriptorHeap descHeap;
+                            auto& desciptorTableLayout = frameResources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0);
 
-                            //auto table = Data.descriptorTables.GetHeapOffsetted(TextureDrawCount++, Resources.renderSystem);
-                            //table.SetSRV(Resources.renderSystem, 0, D.texture);
-                            //Ctx.SetGraphicsDescriptorTable(0, table);
-                            
+                            descHeap.Init2(context, desciptorTableLayout, 1, &allocator);
+                            descHeap.NullFill(context, 1);
+                            descHeap.SetSRV(context, 0, D.texture);
+
+                            context.SetGraphicsDescriptorTable(0, descHeap);
                         }	break;
                     }
 
-                    Ctx.SetVertexBuffers({ D.vertices });
-                    Ctx.SetGraphicsConstantBufferView(2, D.constants);
-                    Ctx.Draw(D.vertexCount, 0);
+                    context.SetVertexBuffers({ D.vertices });
+                    context.SetGraphicsConstantBufferView(2, D.constants);
+                    context.Draw(D.vertexCount, 0);
                     
                     PreviousMode = D.Mode;
                 }

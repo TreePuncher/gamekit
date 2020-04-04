@@ -164,16 +164,36 @@ struct Deferred_OUT
     float Depth : SV_DEPTH;
 };
 
+float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in float2 UV)
+{
+    float MIP           = source.CalculateLevelOfDetail(textureSampler, UV);
+    float MIPCount      = 1;
+    float width         = 0;
+    float height        = 0;
+    source.GetDimensions(0u, width, height, MIPCount);
+
+    [unroll(16)]
+    while(MIP <= MIPCount)
+    {
+        uint state;
+        const float4 texel = source.SampleLevel(textureSampler, UV, MIP, 0.0f, state);
+
+        if(CheckAccessFullyMapped(state))
+            return texel;
+        else 
+            MIP = min(1.0f, MIP +  1.0f / float(MIPCount));
+    }
+
+    return float4(1, 0, 1, 1);
+}
+
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     Deferred_OUT gbuffer;
 
     gbuffer.Normal      = float4(IN.Normal,     1);
     gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
-
-    gbuffer.Albedo      = float4(Albedo.xyz, Ks);
-    //gbuffer.Albedo      = float4(Albedo.xyz, Ks);
-    //gbuffer.Albedo      = float4(albedoTexture.Sample(BiLinear, IN.UV).xyz, Ks);
+    gbuffer.Albedo      = float4(Albedo.xyz * SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz, Ks);
 
     gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
