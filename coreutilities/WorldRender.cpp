@@ -1377,6 +1377,7 @@ namespace FlexKit
                     &allocator);
 
                 descHeap.SetSRV(ctx, 0, _DEBUGTexture);
+                descHeap.SetSRV(ctx, 4, resources.renderSystem.DefaultTexture);
                 descHeap.NullFill(ctx);
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);

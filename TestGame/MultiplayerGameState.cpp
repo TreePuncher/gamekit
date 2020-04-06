@@ -439,7 +439,6 @@ bool LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
                     framework.core.RenderSystem.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
                     framework.core.RenderSystem.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
-
                 }
             }   return true;
             case KC_P: // Reload Shaders

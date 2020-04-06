@@ -2937,7 +2937,7 @@ namespace FlexKit
 
 			RS->Library.RS6CBVs4SRVs.AllowIA = true;
 			DesciptorHeapLayout<2> DescriptorHeap;
-			DescriptorHeap.SetParameterAsSRV(0, 0, 4);
+			DescriptorHeap.SetParameterAsSRV(0, 0, 6);
 			DescriptorHeap.SetParameterAsCBV(1, 6, 4);
 			FK_ASSERT(DescriptorHeap.Check());
 
@@ -3279,7 +3279,7 @@ namespace FlexKit
 
         const D3D12_TILE_REGION_SIZE regionSize = {
             .NumTiles   = 1,
-            .UseBox     = true,
+            .UseBox     = false,
             .Width      = 1,
             .Height     = 1,
             .Depth      = 1,
@@ -3317,9 +3317,10 @@ namespace FlexKit
 		ctx.commandAllocator->Reset();
 		ctx.commandList->Reset(ctx.commandAllocator, nullptr);
 
+        /*
 		for (auto resource : ctx.freeResources)
 			resource->Release();
-
+            */
 		return CopyContextHandle{ currentIdx };
 	}
 
@@ -3537,7 +3538,7 @@ namespace FlexKit
 
 		bool InitiateComplete = false;
 
-		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&Device));
+		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
 		{
 			FK_LOG_ERROR("Failed to create A DX12 Device!");
@@ -3665,6 +3666,7 @@ namespace FlexKit
         ReadBackTable.Initiate(Device);
 
 		FreeList.Allocator = in->Memory;
+        DefaultTexture = _CreateDefaultTexture();
 
 		return InitiateComplete;
 	}
@@ -4432,21 +4434,15 @@ namespace FlexKit
 
     void RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
     {
+        FK_LOG_INFO("Updating tile mappings for frame: %u", GetCurrentFrame());
+
         auto itr = begin;
         while(itr < end)
         {
-            auto& mappings                      = Textures.GetTileMappings(*itr);
+            auto& mappings                      = Textures._GetTileMappings(*itr);
             auto deviceResource                 = GetDeviceResource(*itr);
             const auto mipCount                 = Textures.GetMIPCount(*itr);
 
-            /*
-            auto desc                           = deviceResource->GetDesc();
-            const auto state                    = GetObjectState(*itr);
-            ID3D12Resource* remappedResource    = nullptr; pDevice->CreateReservedResource(&desc, DRS2D3DState(state), nullptr, IID_PPV_ARGS(&remappedResource));
-            
-            _PushDelayReleasedResource(deviceResource);
-            Textures.ReplaceResources(*itr, &remappedResource, &remappedResource + 1);
-            */
             Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator };
             Vector<D3D12_TILE_REGION_SIZE>          regionSizes { allocator };
             Vector<D3D12_TILE_RANGE_FLAGS>          flags       { allocator };
@@ -4462,20 +4458,33 @@ namespace FlexKit
 
                 for (;mappings[I].heap == heap && I < mappings.size(); I++)
                 {
-                    const auto& mapping = mappings[I];
-                    
+                    auto& mapping = mappings[I];
+
+                    if (mapping.state == TileMapState::InUse)
+                        continue;
+
+                    if (mapping.state == TileMapState::Updated)
+                        mapping.state = TileMapState::InUse;
+
+                    const auto flag = mapping.state == TileMapState::Null ? D3D12_TILE_RANGE_FLAG_NULL : D3D12_TILE_RANGE_FLAG_NONE;
+
                     D3D12_TILED_RESOURCE_COORDINATE coordinate;
                     coordinate.Subresource  = mapping.tileID.GetMipLevel(mipCount);
                     coordinate.X            = mapping.tileID.GetTileX();
                     coordinate.Y            = mapping.tileID.GetTileY();
                     coordinate.Z            = 0;
 
+                    if(flag == D3D12_TILE_RANGE_FLAG_NONE)
+                        FK_LOG_INFO("Mapping Tile { %u, %u, %u MIP } to Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset );
+                    else
+                        FK_LOG_INFO("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
+
                     coordinates.push_back(coordinate);
 
                     D3D12_TILE_REGION_SIZE regionSize;
                     regionSize.Depth    = 1;
-                    regionSize.Height   = 1;// tileSize[0];
-                    regionSize.Width    = 1;// tileSize[1];
+                    regionSize.Height   = 1;
+                    regionSize.Width    = 1;
 
                     regionSize.NumTiles = 1;
                     regionSize.UseBox = false;
@@ -4483,9 +4492,8 @@ namespace FlexKit
                     regionSizes.push_back(regionSize);
 
                     offsets.push_back(mapping.heapOffset);
-                    flags.push_back(D3D12_TILE_RANGE_FLAGS::D3D12_TILE_RANGE_FLAG_NONE);
+                    flags.push_back(flag);
                     tileRanges.push_back(1);
-                    UINT tileCount = 1;
                 }
 
                 I++;
@@ -4493,18 +4501,6 @@ namespace FlexKit
                 if (heap != InvalidHandle_t)
                 {
                     D3D12_TILE_RANGE_FLAGS nullRangeFlag = D3D12_TILE_RANGE_FLAG_NULL;
-
-                    copyEngine.copyQueue->UpdateTileMappings(
-                        deviceResource,
-                        1,
-                        nullptr,
-                        nullptr,
-                        nullptr,
-                        1,
-                        &nullRangeFlag,
-                        nullptr,
-                        nullptr,
-                        D3D12_TILE_MAPPING_FLAG_NONE );
 
                     copyEngine.copyQueue->UpdateTileMappings(
                         deviceResource,
@@ -4519,6 +4515,16 @@ namespace FlexKit
                         D3D12_TILE_MAPPING_FLAG_NONE);
                 }
 
+                mappings.erase(
+                    std::remove_if(
+                        std::begin(mappings),
+                        std::end(mappings),
+                        [](TileMapping& mapping)
+                        {
+                            return mapping.state == TileMapState::Null;
+                        }),
+                    std::end(mappings));
+
                 coordinates.clear();
                 regionSizes.clear();
                 flags.clear();
@@ -4528,6 +4534,8 @@ namespace FlexKit
 
             itr++;
         }
+
+        FK_LOG_INFO("Completed file mapping update");
     }
 
 
@@ -6121,33 +6129,36 @@ namespace FlexKit
         auto UserIdx    = Handles[handle];
         auto& mappings  = UserEntries[UserIdx].tileMappings;
 
+        TileMapList newElements{ allocator };
 
-        while (itr < end)
-        {
-            auto res = std::find_if(
-                std::begin(mappings),
-                std::end(mappings),
-                [&](const TileMapping& e)
+        std::sort(mappings.begin(), mappings.end(),
+            [](const auto& lhs, const auto& rhs)
+            {
+                return lhs.sortingID() < rhs.sortingID();
+            });
+
+        std::for_each(begin, end,
+            [&](const TileMapping& updatedTile)
+            {
+                auto pred = [](const TileMapping& lhs, const TileMapping& rhs)
                 {
-                    return itr->tileID == e.tileID;
-                });
+                    return lhs.tileID < rhs.tileID;
+                };
 
-            if (res != std::end(mappings))
-            {
-                res->state = TileMapState::Updated;
-            }
-            else
-            {
-                TileMapping mapping = *itr;
-                mapping.state = TileMapState::Updated;
-                mappings.push_back(mapping);
-            }
-            ++itr;
-        }
+                auto res = std::lower_bound(
+                    mappings.begin(),
+                    mappings.end(),
+                    updatedTile,
+                    pred);
 
-        for (auto& mappings : mappings)
-            if (mappings.state == TileMapState::InUse)
-                mappings.state = TileMapState::Stale;
+                if (res != mappings.end() && res->tileID == updatedTile.tileID)
+                    res->state = updatedTile.state;
+                else
+                    newElements.push_back(updatedTile);
+            });
+
+        for (auto& e : newElements)
+            mappings.push_back(e);
     }
 
 
@@ -6207,11 +6218,11 @@ namespace FlexKit
 
                     regionSize.push_back(
                         D3D12_TILE_REGION_SIZE{
-                            .NumTiles = 1,
-                            .UseBox = true,
-                            .Width = 1,
-                            .Height = 1,
-                            .Depth = 1,
+                            .NumTiles   = 1,
+                            .UseBox     = true,
+                            .Width      = 1,
+                            .Height     = 1,
+                            .Depth      = 1,
                         });
 
                     tile_flags.push_back(D3D12_TILE_RANGE_FLAGS::D3D12_TILE_RANGE_FLAG_NONE);
@@ -6227,6 +6238,16 @@ namespace FlexKit
 
 
     const TileMapList& TextureStateTable::GetTileMappings(const ResourceHandle handle) const
+    {
+        auto UserIdx = Handles[handle];
+        return UserEntries[UserIdx].tileMappings;
+    }
+
+
+    /************************************************************************************************/
+
+
+    TileMapList& TextureStateTable::_GetTileMappings(const ResourceHandle handle)
     {
         auto UserIdx = Handles[handle];
         return UserEntries[UserIdx].tileMappings;

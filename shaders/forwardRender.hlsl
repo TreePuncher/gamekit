@@ -34,6 +34,7 @@ Texture2D<float4>		        albedoTexture   : register(t0);
 StructuredBuffer<uint>		    lightLists	    : register(t1);
 ByteAddressBuffer               pointLights     : register(t2);
 TextureCube<float4>             HDRMap          : register(t3);
+Texture2D<float4>		        MRIATexture     : register(t4);
 
 sampler BiLinear : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
@@ -164,15 +165,24 @@ struct Deferred_OUT
     float Depth : SV_DEPTH;
 };
 
+
+
 float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in float2 UV)
 {
+    const float4 MIPColors[4] = 
+    {
+        float4(1, 1, 1, 1),
+        float4(1, 0, 0, 1),
+        float4(0, 1, 0, 1),
+        float4(0, 0, 1, 1),
+    };
+
     float MIP           = source.CalculateLevelOfDetail(textureSampler, UV);
     float MIPCount      = 1;
     float width         = 0;
     float height        = 0;
     source.GetDimensions(0u, width, height, MIPCount);
 
-    [unroll(16)]
     while(MIP <= MIPCount)
     {
         uint state;
@@ -180,8 +190,9 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
 
         if(CheckAccessFullyMapped(state))
             return texel;
+            //return MIPColors[MIP];
         else 
-            MIP = min(1.0f, MIP +  1.0f / float(MIPCount));
+            MIP = floor(MIP) + 1;
     }
 
     return float4(1, 0, 1, 1);
@@ -195,7 +206,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
     gbuffer.Albedo      = float4(Albedo.xyz * SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz, Ks);
 
-    gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic);
+    gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic) * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
 
     return gbuffer;

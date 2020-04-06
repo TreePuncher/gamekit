@@ -178,7 +178,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= MEGABYTE * 4; // Very small for debugging purposes, forces resource eviction and priority, should be changed to a reasonable value
+		const size_t textureCacheSize	= MEGABYTE * 2; // Very small for debugging purposes, forces resource eviction and priority, should be changed to a reasonable value
 		const size_t blockSize			= GetMinBlockSize();
 	};
 
@@ -267,7 +267,7 @@ namespace FlexKit
             textureBlockAllocator   { desc.textureCacheSize / desc.blockSize,   IN_allocator },
 			renderSystem	        { IN_renderSystem	},
 			settings		        { desc				},
-            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE * 2)                                    },
+            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE * 4)                                    },
             feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 240, 240 }, DeviceFormat::D32_FLOAT)) },
             feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
             feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
