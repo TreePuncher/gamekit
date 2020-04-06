@@ -68,6 +68,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
     AddAssetFile("assets\\aRealDemon.gameres");
     AddAssetFile("assets\\CubeMapResource.gameres");
     AddAssetFile("assets\\skull.gameres");
+    AddAssetFile("assets\\debugPlane.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();

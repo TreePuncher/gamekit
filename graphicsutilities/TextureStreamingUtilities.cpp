@@ -46,10 +46,10 @@ namespace FlexKit
 
     UploadReservation CRNDecompressor::ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx)
     {
-        auto reservation    = ctx.Reserve(64 * KILOBYTE);
-        auto blocksX        = TileSize[0] / 4;
-        auto blocksY        = TileSize[1] / 4;
-        auto localRowPitch  = blockSize * blocksX;
+        const auto reservation    = ctx.Reserve(64 * KILOBYTE);
+        const auto blocksX        = TileSize[0] / 4;
+        const auto blocksY        = TileSize[1] / 4;
+        const auto localRowPitch  = blockSize * blocksX;
 
         const auto tileX = id.GetTileX();
         const auto tileY = id.GetTileY();
@@ -429,9 +429,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void TextureStreamingEngine::PostUpdatedTiles(const BlockAllocation& allocations)
+    void TextureStreamingEngine::PostUpdatedTiles(const BlockAllocation& blockChanges)
     {
-        if (allocations.allocations.size() == 0)
+        if (blockChanges.allocations.size() == 0)
             return;
 
         auto ctxHandle      = renderSystem.OpenUploadQueue();
@@ -445,7 +445,7 @@ namespace FlexKit
         uint2                   blockSize       = { 256, 256 };
         TileMapList             mappings        = { allocator };
 
-        auto reallocatedResourceList = allocations.reallocations;
+        auto reallocatedResourceList = blockChanges.reallocations;
 
         std::sort(
             std::begin(reallocatedResourceList),
@@ -471,7 +471,7 @@ namespace FlexKit
 
             const auto resource = block.resource;
             const auto blocks = filter(
-                allocations.reallocations,
+                blockChanges.reallocations,
                 [&](auto& block)
                 {
                     return block.resource == resource;
@@ -493,7 +493,7 @@ namespace FlexKit
             updatedTextures.push_back(resource);
         }
 
-        auto allocatedResourceList = allocations.allocations;
+        auto allocatedResourceList = blockChanges.allocations;
 
         std::sort(
             std::begin(allocatedResourceList),
@@ -515,7 +515,6 @@ namespace FlexKit
 
         for (const auto& block : allocatedResourceList)
         {
-            TileMapList mappings{ allocator };
             const auto resource = block.resource;
 
             auto asset = GetResourceAsset(resource);
@@ -524,13 +523,6 @@ namespace FlexKit
 
             if (!streamContext.Open(block.tileID.GetMipLevel(0), asset.value()))
                 continue;
-
-            const auto blocks = filter(
-                allocations.allocations,
-                [&](auto& block)
-                {
-                    return block.resource == resource;
-                });
 
             const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
             const auto resourceState    = renderSystem.GetObjectState(block.resource);
@@ -541,7 +533,15 @@ namespace FlexKit
                     resourceState,
                     DeviceResourceState::DRS_Write);
 
-            for (const AllocatedBlock& block : allocations.allocations)
+            const auto blocks = filter(
+                blockChanges.allocations,
+                [&](auto& block)
+                {
+                    return block.resource == resource;
+                });
+
+            TileMapList mappings{ allocator };
+            for (const AllocatedBlock& block : blocks)
             {
                 mappings.push_back(
                     TileMapping{
@@ -552,6 +552,8 @@ namespace FlexKit
                     });
 
                 const auto tile = streamContext.ReadTile(block.tileID, blockSize, ctx);
+
+                FK_LOG_INFO("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel(4));
 
                 ctx.CopyTile(
                     deviceResource,
@@ -649,7 +651,7 @@ namespace FlexKit
                 {
                     if (blockTable[idx].resource != InvalidHandle_t &&
                         (blockTable[idx].state == EBlockState::Stale ||
-                         blockTable[idx].tileID.GetMipLevelInverted() < block_itr->tileID.GetMipLevelInverted()))
+                         blockTable[idx].tileID.GetMipLevelInverted() > block_itr->tileID.GetMipLevelInverted()))
                     {
                         reallocatedBlocks.push_back({
                             .tileID     = blockTable[idx].tileID,
