@@ -300,7 +300,7 @@ namespace FlexKit
                     {   resources.GetObjectResource(data.readbackBuffer),
                         resources.GetObjectResource(data.readbackBuffer) },
                     { 0, 64 },
-                    { 8, MEGABYTE * 2 },
+                    { 8, MEGABYTE * 4 },
                     { DRS_Write, DRS_Write },
                     { DRS_Write, DRS_Write }
                 );
@@ -342,11 +342,11 @@ namespace FlexKit
         EXITSCOPE(allocator->free(requests));
 
         requestCount    = min(requestCount, bufferSize);
-        requests        = reinterpret_cast<gpuTileID*>(allocator->malloc(requestCount));
 
 
         if (requestCount)
         {
+            requests = reinterpret_cast<gpuTileID*>(allocator->malloc(requestCount));
             memcpy(requests, (std::byte*)buffer + 64, requestCount);
             requestCount = requestCount / 64;
         }
@@ -445,69 +445,95 @@ namespace FlexKit
         uint2                   blockSize       = { 256, 256 };
         TileMapList             mappings        = { allocator };
 
+        auto reallocatedResourceList = allocations.reallocations;
 
-        for (const AllocatedBlock& block : allocations.reallocations)
-        {
-            if (prevResource != block.resource)
+        std::sort(
+            std::begin(reallocatedResourceList),
+            std::end(reallocatedResourceList),
+            [&](auto& lhs, auto& rhs)
             {
-                mappings = renderSystem.GetTileMappings(block.resource);
+                return lhs.resource < rhs.resource;
+            });
 
-                if(prevResource != InvalidHandle_t)
-                    renderSystem.UpdateTileMappings(&prevResource, &prevResource + 1, allocator);
+        reallocatedResourceList.erase(
+            std::unique(
+                std::begin(reallocatedResourceList),
+                std::end(reallocatedResourceList),
+                [&](auto& lhs, auto& rhs)
+                {
+                    return lhs.resource == rhs.resource;
+                }),
+            std::end(reallocatedResourceList));
+
+        for (const auto& block : reallocatedResourceList)
+        {
+            TileMapList mappings{ allocator };
+
+            const auto resource = block.resource;
+            const auto blocks = filter(
+                allocations.reallocations,
+                [&](auto& block)
+                {
+                    return block.resource == resource;
+                });
+
+            for (const AllocatedBlock& block : blocks)
+            {
+                const TileMapping mapping = {
+                    .tileID      = block.tileID,
+                    .heap        = InvalidHandle_t,
+                    .state       = TileMapState::Null,
+                    .heapOffset  = block.offset,
+                };
+
+                mappings.push_back(mapping);
             }
 
-            mappings.remove_unstable(std::remove_if(
-                mappings.begin(),
-                mappings.end(),
-                [&](const auto& mapping)
-                {
-                    return block.tileID == mapping.tileID;
-                }));
+            renderSystem.UpdateTextureTileMappings(resource, mappings);
+            updatedTextures.push_back(resource);
         }
 
-        if (prevResource != InvalidHandle_t)
-            renderSystem.UpdateTileMappings(&prevResource, &prevResource + 1, allocator);
+        auto allocatedResourceList = allocations.allocations;
 
-        mappings.clear();
+        std::sort(
+            std::begin(allocatedResourceList),
+            std::end(allocatedResourceList),
+            [&](auto& lhs, auto& rhs)
+            {
+                return lhs.resource < rhs.resource;
+            });
 
-        for (const AllocatedBlock& block : allocations.allocations)
+        allocatedResourceList.erase(
+            std::unique(
+                std::begin(allocatedResourceList),
+                std::end(allocatedResourceList),
+                [&](auto& lhs, auto& rhs)
+                {
+                    return lhs.resource == rhs.resource;
+                }),
+            std::end(allocatedResourceList));
+
+        for (const auto& block : allocatedResourceList)
         {
-            if (!GetResourceAsset(block.resource)) // Skipped unmapped blocks
+            TileMapList mappings{ allocator };
+            const auto resource = block.resource;
+
+            auto asset = GetResourceAsset(resource);
+            if (!asset) // Skipped unmapped blocks
                 continue;
 
-            if (prevResource != block.resource)
-            {
-                if (prevResource != InvalidHandle_t)
+            if (!streamContext.Open(block.tileID.GetMipLevel(0), asset.value()))
+                continue;
+
+            const auto blocks = filter(
+                allocations.allocations,
+                [&](auto& block)
                 {
-                    const auto currentState = renderSystem.GetObjectState(block.resource);
-                    if(currentState != DeviceResourceState::DRS_GENERIC)
-                        ctx.Barrier(
-                            renderSystem.GetDeviceResource(block.resource),
-                            currentState,
-                            DeviceResourceState::DRS_GENERIC);
+                    return block.resource == resource;
+                });
 
-                    renderSystem.UpdateTextureTileMappings(block.resource, mappings);
-                    mappings.clear();
-                }
-
-                if (const auto res = GetResourceAsset(block.resource); res)
-                {
-                    const auto mipCount = renderSystem.GetTextureMipCount(block.resource);
-
-                    if (!streamContext.Open(block.tileID.GetMipLevel(mipCount), res.value()))
-                        continue;
-
-                    prevResource    = block.resource;
-                    blockSize       = streamContext.GetBlockSize();
-
-                    updatedTextures.push_back(block.resource);
-                }
-                else 
-                    continue;
-            }
-
-            const auto deviceResource = renderSystem.GetDeviceResource(block.resource);
-            const auto resourceState  = renderSystem.GetObjectState(block.resource);
+            const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
+            const auto resourceState    = renderSystem.GetObjectState(block.resource);
 
             if (resourceState != DeviceResourceState::DRS_Write)
                 ctx.Barrier(
@@ -515,49 +541,42 @@ namespace FlexKit
                     resourceState,
                     DeviceResourceState::DRS_Write);
 
-            renderSystem.SetObjectState(block.resource, DRS_Write);
-
-            mappings.push_back(
-                TileMapping{
-                    .tileID     = block.tileID,
-                    .heap       = heap,
-                    .state      = TileMapState::Updated,
-                    .heapOffset = block.tileIdx
-                });
-
-            const auto tile = streamContext.ReadTile(block.tileID, blockSize, ctx);
-
-            ctx.CopyTile(
-                deviceResource,
-                block.tileID,
-                block.tileIdx,
-                tile);
-        }
-
-        if (allocations.allocations.size() && mappings.size() != 0)
-        {
-            const ResourceHandle resource = allocations.allocations.back().resource;
-
-            if (GetResourceAsset(resource)) // Skipped unmapped blocks
+            for (const AllocatedBlock& block : allocations.allocations)
             {
-                renderSystem.UpdateTextureTileMappings(resource, mappings);
+                mappings.push_back(
+                    TileMapping{
+                        .tileID     = block.tileID,
+                        .heap       = heap,
+                        .state      = TileMapState::Updated,
+                        .heapOffset = block.tileIdx
+                    });
 
-                if (prevResource != InvalidHandle_t)
-                {
-                    const auto currentState = renderSystem.GetObjectState(resource);
-                    if (currentState != DeviceResourceState::DRS_GENERIC)
-                        ctx.Barrier(
-                            renderSystem.GetDeviceResource(resource),
-                            currentState,
-                            DeviceResourceState::DRS_GENERIC);
+                const auto tile = streamContext.ReadTile(block.tileID, blockSize, ctx);
 
-                    renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
-                    renderSystem.UpdateTextureTileMappings(resource, mappings);
-                }
+                ctx.CopyTile(
+                    deviceResource,
+                    block.tileID,
+                    block.tileIdx,
+                    tile);
             }
+
+            ctx.Barrier(
+                renderSystem.GetDeviceResource(block.resource),
+                DeviceResourceState::DRS_Write,
+                DeviceResourceState::DRS_GENERIC);
+
+            renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
+            renderSystem.UpdateTextureTileMappings(block.resource, mappings);
+            updatedTextures.push_back(resource);
         }
 
-        mappings.clear();
+        std::sort(std::begin(updatedTextures), std::end(updatedTextures));
+
+        updatedTextures.erase(
+            std::unique(
+                std::begin(updatedTextures),
+                std::end(updatedTextures)),
+            std::end(updatedTextures));
 
         renderSystem.UpdateTileMappings(updatedTextures.begin(), updatedTextures.end(), allocator);
         renderSystem.SubmitUploadQueues(SYNC_Graphics, &ctxHandle);
@@ -584,32 +603,21 @@ namespace FlexKit
 
         Vector<gpuTileID> allocationsNeeded{ allocator };
 
-        // Update states of loaded tiles
-        while(I < end)
-        {
-            if (blockTable[stateIterator].resource == InvalidHandle_t)
+        std::for_each(begin, end,
+            [&](const gpuTileID tile)
             {
-                for (; I < end; I++)
-                    allocationsNeeded.push_back(*I);
+                auto res = std::lower_bound(
+                    blockTable.begin(), blockTable.end(), tile,
+                    [&](auto lhs, auto rhs)
+                    {
+                        return lhs < rhs;
+                    });
 
-                return allocationsNeeded;
-            }
-
-            while (I->TextureID != blockTable[stateIterator].resource && I < end && stateIterator < blockTable.size()) stateIterator++;
-            while (I->tileID > blockTable[stateIterator].tileID && I < end && stateIterator < blockTable.size())
-            {
-                auto I_TileID       = I->tileID;
-                auto blockTileID    = blockTable[stateIterator].tileID;
-
-                stateIterator++;
-            }
-
-            if (I->tileID == blockTable[stateIterator].tileID)
-                blockTable[stateIterator].state = EBlockState::InUse;
-            else
-                allocationsNeeded.push_back(*I);
-            I++;
-        }
+                if (res != std::end(blockTable) && res->tileID == tile.tileID && res->resource == tile.TextureID)
+                    res->state = EBlockState::InUse;
+                else
+                    allocationsNeeded.push_back(tile);
+            });
 
         return allocationsNeeded;
     }
@@ -634,24 +642,29 @@ namespace FlexKit
         {
             while (itr < blockCount)
             {
-                const auto idx = itr++;
-                if (blockTable[idx + last].state != EBlockState::InUse)
+                const auto idx = (last + itr) % blockCount;
+
+                if (blockTable[idx].state != EBlockState::InUse ||
+                    blockTable[idx].tileID.GetMipLevelInverted() > block_itr->tileID.GetMipLevelInverted())
                 {
-                    if (blockTable[idx + last].state == EBlockState::Stale) {
+                    if (blockTable[idx].resource != InvalidHandle_t &&
+                        (blockTable[idx].state == EBlockState::Stale ||
+                         blockTable[idx].tileID.GetMipLevelInverted() < block_itr->tileID.GetMipLevelInverted()))
+                    {
                         reallocatedBlocks.push_back({
-                            .tileID     = blockTable[idx + last].tileID,
-                            .resource   = blockTable[idx + last].resource,
-                            .offset     = blockTable[idx + last].blockID * 64 * KILOBYTE,
-                            .tileIdx    = blockTable[idx + last].blockID
+                            .tileID     = blockTable[idx].tileID,
+                            .resource   = blockTable[idx].resource,
+                            .offset     = blockTable[idx].blockID * 64 * KILOBYTE,
+                            .tileIdx    = blockTable[idx].blockID
                             });
                     }
 
                     const auto resourceHandle = ResourceHandle{ block_itr->TextureID };
                     const auto tileID         = block_itr->tileID;
 
-                    blockTable[idx + last].resource = resourceHandle;
-                    blockTable[idx + last].tileID   = tileID;
-                    blockTable[idx + last].state    = EBlockState::InUse;
+                    blockTable[idx].resource = resourceHandle;
+                    blockTable[idx].tileID   = tileID;
+                    blockTable[idx].state    = EBlockState::InUse;
 
                     allocatedBlocks.push_back({
                         .tileID     = tileID,
@@ -661,6 +674,8 @@ namespace FlexKit
 
                     break;
                 }
+
+                ++itr;
             }
 
             if (itr > blockCount)

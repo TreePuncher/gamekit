@@ -39,20 +39,40 @@ struct Forward_VS_OUT
 
 void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
 {
-    uint textureCount = 1;
+    const uint textureCount = 1;
+    const float2 UV = IN.UV;
+
     for(uint I = 0; I < textureCount; I++)
     {
-        float2 d_xy             = ddx(IN.UV);
-        uint MIPLevelRequested  = floor(pow(d_xy, 2));
+        int   MIP               = textures[I].CalculateLevelOfDetail(defaultSampler, UV);
         uint2 WH                = uint2(0, 0);
         uint MIPCount           = 0;
         const uint textureID    = textureConstants[I].z;
         const uint2 blockSize   = textureConstants[I].xy;
+        textures[I].GetDimensions(MIP, WH.x, WH.y, MIPCount);
 
-        textures[I].GetDimensions(MIPLevelRequested, WH.x, WH.y, MIPCount);
+        /*
+        while(MIP < MIPCount)
+        {
+            uint state;
+            textures[I].SampleLevel(defaultSampler, UV, MIP, 0.0f, state);
 
-        const uint2 blockXY = min(uint2(WH / blockSize) * saturate(IN.UV), WH  / blockSize - 1);
-        const uint  blockID = ((MIPCount - MIPLevelRequested) << 24 ) | (blockXY.x << 12) | (blockXY.y);
+            if(CheckAccessFullyMapped(state))
+            {
+                break;
+            } 
+            else
+            {
+                MIP = floor(MIP) + 1.0f;
+                textures[I].GetDimensions(max(MIP - 1, 0), WH.x, WH.y, MIPCount);
+            }
+        }
+        */
+
+        //MIP = min(MIP, MIPCount - 1);
+        const uint2 blockArea   = max(uint2(WH / blockSize), uint2(1, 1));
+        const uint2 blockXY     = min(blockArea * saturate(IN.UV), blockArea - uint2(1, 1));
+        const uint  blockID     = ((MIPCount - MIP) << 24 ) | (blockXY.x << 12) | (blockXY.y);
 
         if(WH.x == 0 || WH.y == 0)
             return;

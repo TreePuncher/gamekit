@@ -7,7 +7,7 @@
 
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator)
 {
-	const AssetHandle demonModel = 666;
+	const AssetHandle demonModel = 40000;
 
     // Load Model
     auto model = GetMesh(renderSystem, demonModel);
@@ -67,6 +67,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
     AddAssetFile("assets\\ZeldaScene.gameres");
     AddAssetFile("assets\\aRealDemon.gameres");
     AddAssetFile("assets\\CubeMapResource.gameres");
+    AddAssetFile("assets\\skull.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();

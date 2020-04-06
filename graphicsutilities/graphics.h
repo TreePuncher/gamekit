@@ -2397,9 +2397,9 @@ private:
 
     enum class TileMapState
     {
-        Stale,
         InUse,
-        Updated,
+        Null,
+        Updated
     };
 
     struct TileMapping
@@ -2408,6 +2408,11 @@ private:
         DeviceHeapHandle    heap;
         TileMapState        state;
         uint32_t            heapOffset;
+
+        uint64_t sortingID() const
+        {
+            return heap << 32 | tileID;
+        };
     };
 
 
@@ -2462,6 +2467,7 @@ private:
 
         void                UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end);
         const TileMapList&  GetTileMappings(const ResourceHandle handle) const;
+        TileMapList&        _GetTileMappings(const ResourceHandle handle);
 
 		void			    MarkRTUsed		(ResourceHandle Handle);
 
