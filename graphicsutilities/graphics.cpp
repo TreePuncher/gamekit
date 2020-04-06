@@ -3290,7 +3290,7 @@ namespace FlexKit
             &coordinate,
             &regionSize,
             src.resource,
-            tileOffset * 64 * KILOBYTE,
+            src.offset,
             D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
     }
 
@@ -4487,7 +4487,7 @@ namespace FlexKit
                     regionSize.Width    = 1;
 
                     regionSize.NumTiles = 1;
-                    regionSize.UseBox = false;
+                    regionSize.UseBox = true;
 
                     regionSizes.push_back(regionSize);
 
@@ -4504,7 +4504,7 @@ namespace FlexKit
 
                     copyEngine.copyQueue->UpdateTileMappings(
                         deviceResource,
-                        mappings.size(),
+                        coordinates.size(),
                         coordinates.data(),
                         regionSizes.data(),
                         GetDeviceResource(heap),

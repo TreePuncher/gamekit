@@ -247,7 +247,7 @@ namespace FlexKit
         Vector<gpuTileID>   UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
         BlockAllocation     AllocateBlocks      (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
 
-        const static uint32_t   blockSize   = 64 * KILOBYTE;
+        const static uint32_t   blockSize   = 1 * GIGABYTE;
         uint32_t                last        = 0;
 
         Vector<Block>           blockTable;
