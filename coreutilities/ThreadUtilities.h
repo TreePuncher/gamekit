@@ -308,11 +308,12 @@ namespace FlexKit
             queue               { allocator },
             workList            { allocator }
         {
-            localWorkQueue      = &queue;
-            running             = true;
-            backgroundThread    = std::thread{
+            backgroundThread = std::thread{
                 [&]
                 {
+                    localWorkQueue = &queue;
+                    running = true;
+
                     Run();
                 } };
         }
@@ -506,6 +507,7 @@ namespace FlexKit
             backgroundQueue     { IN_allocator      }
 		{
 			WorkerThread::Manager = this;
+            localWorkQueue = &mainThreadQueue;
 
 			workQueues.push_back(&mainThreadQueue);
 
