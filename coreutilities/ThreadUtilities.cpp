@@ -160,7 +160,7 @@ namespace FlexKit
 		work.Subscribe(
 			[&]
 			{
-				auto prev = tasksInProgress.fetch_sub(1); FK_ASSERT(prev > 0);
+				const auto prev = tasksInProgress.fetch_sub(1); FK_ASSERT(prev > 0);
 
 				if (prev == 1)
 					_OnEnd();
