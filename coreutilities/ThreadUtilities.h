@@ -33,6 +33,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\containers.h"
 #include "..\coreutilities\memoryutilities.h"
+#include <array>
 #include <atomic>
 #include <memory>
 #include <mutex>
@@ -44,7 +45,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <stdint.h>
 #include <thread>
 #include <utility>
-
 
 #define MAXTHREADCOUNT 8
 
@@ -84,7 +84,7 @@ namespace FlexKit
 		}
 
 
-		virtual void Run()		{ FK_ASSERT(0); }
+		virtual void Run(iAllocator& threadLocalAllocator) { FK_ASSERT(0); }
 		virtual void Release()	= 0;
 
 
@@ -299,74 +299,22 @@ namespace FlexKit
 	};
 
 
-    thread_local CircularStealingQueue<iWork*>* localWorkQueue = nullptr;
+    class _WorkerThread;
+
+
 
     class _BackgrounWorkQueue
     {
     public:
-        _BackgrounWorkQueue(iAllocator* allocator) :
-            queue               { allocator },
-            workList            { allocator }
-        {
-            backgroundThread = std::thread{
-                [&]
-                {
-                    localWorkQueue = &queue;
-                    running = true;
+        _BackgrounWorkQueue(iAllocator* allocator);
 
-                    Run();
-                } };
-        }
+        void Shutdown();
 
+        void PushWork(iWork& work);
 
-        void Shutdown()
-        {
-            running = false;
-            cv.notify_all();
-            backgroundThread.join();
-        }
-
-
-        void PushWork(iWork& work)
-        {
-            std::scoped_lock localLock{ lock };
-            workList.push_back(work);
-
-            cv.notify_all();
-        }
-
-
-        void Run()
-        {
-            while (running)
-            {
-                if (workList.size())
-                {
-                    std::scoped_lock localLock{ lock };
-                    while (workList.size())
-                        queue.push_back(workList.pop_back());
-                }
-                else
-                {
-                    std::mutex m;
-                    std::unique_lock ul{ m };
-
-                    cv.wait(ul);
-                }
-            }
-        }
-
-
-        auto& GetQueue()
-        {
-            return queue;
-        }
-
-
-        bool Running()
-        {
-            return running;
-        }
+        void                            Run();
+        CircularStealingQueue<iWork*>&  GetQueue();
+        bool                            Running();
 
     private:
 
@@ -379,13 +327,6 @@ namespace FlexKit
 
         CircularStealingQueue<iWork*>   queue;
     };
-
-
-
-    FLEXKITAPI inline void PushToLocalQueue(iWork& work)
-    {
-        localWorkQueue->push_back(&work);
-    }
 
 
     class _WorkerThread
@@ -401,15 +342,7 @@ namespace FlexKit
 		void Shutdown()	noexcept;
 		void Wake()		noexcept;
 
-        void Start() noexcept
-        {
-            Thread = std::move(
-                std::thread([&]
-                {
-                    localWorkQueue = &workQueue;
-                    _Run();
-                }));
-        }
+        void Start() noexcept;
 
 		bool IsRunning()	noexcept;
 		bool HasJob()		noexcept;
@@ -419,6 +352,8 @@ namespace FlexKit
 		iWork*	Steal()					noexcept;
 
 		auto&   GetQueue() { return workQueue; }
+
+        iAllocator& GetThreadLocalAllocator() { return localAllocator; }
 
 		static ThreadManager*	Manager;
 
@@ -437,9 +372,29 @@ namespace FlexKit
 		CircularStealingQueue<iWork*>   workQueue;
 		std::thread					    Thread;
 
-		size_t tasksCompleted = 0;
+        StackAllocator                                  localAllocator;
+        std::unique_ptr<std::array<byte, MEGABYTE * 8>> buffer;
 	};
 
+
+    /************************************************************************************************/
+
+
+    FLEXKITAPI inline void                              PushToLocalQueue(iWork& work);
+
+    FLEXKITAPI inline CircularStealingQueue<iWork*>&    _GetThreadLocalQueue();
+    FLEXKITAPI inline void                              _SetThreadLocalQueue(CircularStealingQueue<iWork*>& localQueue);
+
+    FLEXKITAPI inline _WorkerThread&                    GetLocalThread();
+    FLEXKITAPI inline iAllocator&                       GetThreadLocalAllocator();
+
+
+    FLEXKITAPI inline void RunTask(iWork& work, iAllocator& allocator)
+    {
+        work.Run(allocator);
+        work.NotifyWatchers();
+        work.Release();
+    }
 
 	using WorkerList	= IntrusiveLinkedList<_WorkerThread>;
 	using WorkerThread	= WorkerList::TY_Element;
@@ -463,7 +418,7 @@ namespace FlexKit
 			allocator->free(this);
 		}
 
-		void Run()
+        void Run(iAllocator& allocator) override
 		{
 			Callback();
 		}
@@ -497,150 +452,29 @@ namespace FlexKit
 	class ThreadManager
 	{
 	public:
-		ThreadManager(const uint32_t ThreadCount = 2, iAllocator* IN_allocator = SystemAllocator) :
-			threads				{ },
-			allocator			{ IN_allocator		},
-			workingThreadCount	{ 0					},
-			workerCount			{ ThreadCount       },
-			workQueues          { IN_allocator      },
-            mainThreadQueue     { IN_allocator      },
-            backgroundQueue     { IN_allocator      }
-		{
-			WorkerThread::Manager = this;
-            localWorkQueue = &mainThreadQueue;
-
-			workQueues.push_back(&mainThreadQueue);
-
-			for (size_t I = 0; I < workerCount; ++I)
-            {
-				auto& thread = allocator->allocate<WorkerThread>(allocator);
-				threads.push_back(thread);
-				workQueues.push_back(&thread.GetQueue());
-			}
-
-            for (auto& thread : threads)
-                thread.Start();
-		}
+        ThreadManager(const uint32_t ThreadCount = 2, iAllocator* IN_allocator = SystemAllocator);
 
 
-		void Release()
-		{
-			WaitForWorkersToComplete();
-
-			SendShutdown();
-
-			WaitForShutdown();
-
-			while (!threads.empty())
-			{
-				WorkerThread* worker = nullptr;
-				if (threads.try_pop_back(worker))
-					allocator->free(worker);
-			}
-
-            backgroundQueue.Shutdown();
-		}
+        void Release();
 
 
-		void SendShutdown()
-		{
-			for (auto& I : threads)
-				I.Shutdown();
-		}
+        void SendShutdown();
+
+        void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept;
+        void AddBackgroundWork(iWork& newWork) noexcept;
+
+        void WaitForWorkersToComplete(iAllocator& tempAllocator);
+        void WaitForShutdown() noexcept;
 
 
-		void AddWork(iWork* newWork, iAllocator* Allocator = SystemAllocator) noexcept
-		{
-			localWorkQueue->push_back(newWork);
-			workerWait.notify_all();
-		}
+        void IncrementActiveWorkerCount() noexcept;
+        void DecrementActiveWorkerCount() noexcept;
 
+        void WaitForWork() noexcept;
 
-        void AddBackgroundWork(iWork& newWork) noexcept
-        {
-            backgroundQueue.PushWork(newWork);
-        }
+        iWork* FindWork(bool stealBackground = false);
 
-
-		void WaitForWorkersToComplete()
-		{
-			while (!localWorkQueue->empty())
-			{
-				if (auto workItem = FindWork(true); workItem)
-				{
-					workItem->Run();
-					workItem->NotifyWatchers();
-					workItem->Release();
-				}
-			}
-			while (workingThreadCount > 0);
-		}
-
-
-		void WaitForShutdown() noexcept // TODO: this does not work!
-		{
-			bool threadRunnings = false;
-
-			do
-			{
-				threadRunnings = false;
-				for (auto& I : threads) {
-					threadRunnings |= I.IsRunning();
-					I.Shutdown();
-				}
-
-				workerWait.notify_all();
-			} while (threadRunnings);
-		}
-
-
-		void IncrementActiveWorkerCount() noexcept
-		{
-			workingThreadCount++;
-			CV.notify_all();
-		}
-
-
-		void DecrementActiveWorkerCount() noexcept
-		{
-			workingThreadCount--;
-			CV.notify_all();
-		}
-
-
-		void WaitForWork() noexcept
-		{
-            std::mutex m;
-            std::unique_lock l{ m };
-
-            workerWait.wait_for(l, 1ms);
-		}
-
-
-		iWork* FindWork(bool stealBackground = false)
-		{
-            if (auto res = localWorkQueue->pop_back(); res)
-                return res.value();
-
-            const size_t startingPoint = randomDevice();
-            for (size_t I = 0; I < workQueues.size(); ++I)
-            {
-                const size_t idx = (I + startingPoint) % workQueues.size();
-                if (auto res = workQueues[idx]->Steal(); res)
-                    return res.value();
-            }
-
-            return  stealBackground ?
-                backgroundQueue.GetQueue().Steal().value_or(nullptr) :
-                nullptr;
-		}
-
-
-		uint32_t GetThreadCount() const noexcept
-		{
-			return workerCount;
-		}
-
+        uint32_t GetThreadCount() const noexcept;
 
 		auto GetThreadsBegin()	{ return threads.begin(); }
 		auto GetThreadsEnd()	{ return threads.end(); }
@@ -660,7 +494,9 @@ namespace FlexKit
 
         CircularStealingQueue<iWork*>   mainThreadQueue;
 
-		Vector<CircularStealingQueue<iWork*>*>	workQueues;
+		Vector<CircularStealingQueue<iWork*>*>	        workQueues;
+        StackAllocator                                  localAllocator;
+        std::unique_ptr<std::array<byte, MEGABYTE * 8>> buffer;
     };
 
 
@@ -685,8 +521,9 @@ namespace FlexKit
 		void    AddWork                 (iWork& Work);
 		void    AddOnCompletionEvent	(OnCompletionEvent Callback);
 		void    Wait					();
-		void    Join					();
-        void    JoinLocal();
+
+		void    Join        ();
+        void    JoinLocal   ();
 
         void    Reset();
 	private:

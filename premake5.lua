@@ -75,7 +75,7 @@ project "TestGame"
 			
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/debug"
 		}
-		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		symbols "On"
 		--optimize "Debug"
 		buildoptions { "/std:c++latest", "/MTd" }
@@ -88,7 +88,7 @@ project "TestGame"
 
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/release"
 		}
-		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		optimize "Full"
 		buildoptions { "/std:c++latest", "/MT"}
 
@@ -145,7 +145,7 @@ project "ResourceBuilder"
 		libdirs {
 			"Dependencies/libs/debug", 
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/debug" }
-		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED" }
+		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		symbols "On"
 		buildoptions { "/std:c++latest", "/MTd" }
 		optimize "Debug"
@@ -154,7 +154,7 @@ project "ResourceBuilder"
 		libdirs {
 			"Dependencies/libs/release",
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/release"	}
-		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		buildoptions { "/std:c++latest", "/MT" }
 		optimize "Full"
 
@@ -229,7 +229,7 @@ project "Editor"
 			
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/debug"
 		}
-		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		symbols "On"
 		--optimize "Debug"
 		buildoptions { "/std:c++latest", "/MTd" }
@@ -242,6 +242,6 @@ project "Editor"
 
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/release"
 		}
-		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		optimize "Full"
 		buildoptions { "/std:c++latest", "/MT"}

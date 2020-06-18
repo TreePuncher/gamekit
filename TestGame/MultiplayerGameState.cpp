@@ -222,7 +222,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.t,
                 core.GetTempMemory());
 
-            /*
+            if constexpr (false)
             base.render.BilateralBlur(
                 frameGraph,
                 base.temporaryBuffers[0],
@@ -236,7 +236,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveCB,
                 reserveVB,
                 core.GetTempMemory());
-            */
             //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
         }   break;
         case RenderMode::ComputeTiledDeferred:
@@ -290,7 +289,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             activeCamera,
             PVS,
             base.virtualResource,
-            reserveCB);
+            reserveCB,
+            reserveVB);
 
         // Draw Skeleton overlay
         if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)

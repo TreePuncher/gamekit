@@ -20,7 +20,7 @@
 
 inline ImTextureID TextreHandleToIM(FlexKit::ResourceHandle texture)
 {
-    return reinterpret_cast<ImTextureID>(texture.INDEX);
+    return reinterpret_cast<ImTextureID>((size_t)texture.INDEX);
 }
 
 

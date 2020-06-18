@@ -887,12 +887,12 @@ namespace FlexKit
             movementVector.normalize();
 
             if (keyStates.KeyPressed())
-                velocity += movementVector * acceleration * deltaTime;
+                velocity += movementVector * acceleration * (float)deltaTime;
 
             if (velocity.magnitudesquared() > 0.01f) {
-                velocity -= velocity * drag * deltaTime;
+                velocity -= velocity * drag * (float)deltaTime;
 
-                const float3    desiredMove    = velocity * deltaTime;
+                const float3    desiredMove    = velocity * (float)deltaTime;
                 const auto      pxPrevPos      = controllerImpl.controller->getPosition();
                 const float3    prevPos        = { (float)pxPrevPos.x, (float)pxPrevPos.y, (float)pxPrevPos.z };
 

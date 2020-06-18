@@ -1,5 +1,7 @@
 #include "common.hlsl"
 
+#define NODESIZE 12
+
 cbuffer LocalConstants : register(b1)
 {
 
@@ -14,17 +16,18 @@ cbuffer PassConstants : register(b2)
     uint4  zeroBlock[2];
 }
 
-globallycoherent    RWByteAddressBuffer    UAVCounters     : register(u0);
-globallycoherent    RWByteAddressBuffer    UAVBuffer       : register(u1);
+globallycoherent    RWByteAddressBuffer UAVCounters     : register(u0);
+globallycoherent    RWByteAddressBuffer UAVBuffer       : register(u1);
+globallycoherent    RWByteAddressBuffer UAVOffsets      : register(u2);
+globallycoherent    RWTexture2D<uint>   PPLinkedList    : register(u3);
 
 Texture2D<float4>   textures[16] : register(t0);
 
 SamplerState   defaultSampler : register(s1);
 
-void WriteOut(uint blockID, uint textureID, uint Offset)
+void WriteOut(uint blockID, uint textureID, uint offset, uint prev)
 {
-    UAVBuffer.Store(Offset, blockID);
-    UAVBuffer.Store(Offset + 4, textureID);
+    UAVBuffer.Store3(offset, uint3(blockID, textureID, prev));
 }
 
 struct Forward_VS_OUT
@@ -36,11 +39,22 @@ struct Forward_VS_OUT
     float2 UV		: TEXCOORD;
 };
 
+void ClearPS(float4 XY : SV_POSITION)
+{
+    UAVOffsets.Store(XY.x * 4 + XY.y * 4 * 240, 0);
+
+    if(XY.x == 0.5f && XY.y == 0.5f)
+        UAVCounters.Store(0, 0);
+}
 
 void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
 {
     const uint textureCount = 1;
     const float2 UV = IN.UV;
+    uint offset = 0;
+    UAVCounters.InterlockedAdd(0, NODESIZE * textureCount, offset);
+    UAVOffsets.Store(XY.x * 4 + XY.y * 4 * 240, offset);
+    uint prev = PPLinkedList[XY.xy];
 
     for(uint I = 0; I < textureCount; I++)
     {
@@ -69,7 +83,6 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         }
         */
 
-        //MIP = min(MIP, MIPCount - 1);
         const uint2 blockArea   = max(uint2(WH / blockSize), uint2(1, 1));
         const uint2 blockXY     = min(blockArea * saturate(IN.UV), blockArea - uint2(1, 1));
         const uint  blockID     = ((MIPCount - MIP) << 24 ) | (blockXY.x << 12) | (blockXY.y);
@@ -77,10 +90,10 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         if(WH.x == 0 || WH.y == 0)
             return;
 
-        uint offset = 0;
-        UAVCounters.InterlockedAdd(0, 8, offset);
-
-        uint bufferSize; UAVBuffer.GetDimensions(bufferSize);
-        WriteOut(blockID, textureID, offset);
+        const uint nodeOffset = offset + NODESIZE * I;
+        WriteOut(blockID, textureID, nodeOffset, prev);
+        prev = nodeOffset;
     }
+
+    PPLinkedList[XY.xy] = prev;
 }

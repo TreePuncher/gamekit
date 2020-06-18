@@ -86,7 +86,7 @@ Forward_VS_OUT Forward_VS(Vertex In)
     Out.POS		= mul(PV, mul(WT, float4(In.POS, 1)));
     Out.Normal  = normalize(mul(WT, float4(In.Normal, 0.0f)));
     Out.Tangent = normalize(mul(WT, float4(In.Tangent, 0.0f)));
-    Out.UV		= In.UV;
+    Out.UV		= In.UV % 1.0f;
 
     return Out;
 }
@@ -190,11 +190,9 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
 
         if(CheckAccessFullyMapped(state))
             return texel;
-            //return MIPColors[MIP];
         else 
-            MIP = floor(MIP) + 1;
+            MIP = floor(MIP + 1);
     }
-
     return float4(1, 0, 1, 1);
 }
 

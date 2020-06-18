@@ -719,7 +719,31 @@ namespace FlexKit
 		EIT_TRIANGLELIST,
 		EIT_TRIANGLE,
 		EIT_POINT,
-		EIT_PATCH_CP_1,
+        EIT_PATCH_CP_1,
+        EIT_PATCH_CP_2,
+        EIT_PATCH_CP_3,
+        EIT_PATCH_CP_4,
+        EIT_PATCH_CP_5,
+        EIT_PATCH_CP_6,
+        EIT_PATCH_CP_7,
+        EIT_PATCH_CP_8,
+        EIT_PATCH_CP_9,
+        EIT_PATCH_CP_10,
+        EIT_PATCH_CP_11,
+        EIT_PATCH_CP_12,
+        EIT_PATCH_CP_13,
+        EIT_PATCH_CP_14,
+        EIT_PATCH_CP_15,
+        EIT_PATCH_CP_16,
+        EIT_PATCH_CP_17,
+        EIT_PATCH_CP_18,
+        EIT_PATCH_CP_19,
+        EIT_PATCH_CP_20,
+        EIT_PATCH_CP_21,
+        EIT_PATCH_CP_22,
+        EIT_PATCH_CP_23,
+        EIT_PATCH_CP_24,
+        EIT_PATCH_CP_25,
 	};
 
 
@@ -1529,6 +1553,8 @@ namespace FlexKit
 		void ClearRenderTarget		(ResourceHandle Texture, float4 ClearColor = float4(0.0f)); // Assumes full-screen Clear
         void ClearUAVTexture        (UAVTextureHandle UAV, float4 clearColor = float4(0, 0, 0, 0));
         void ClearUAVTexture        (UAVTextureHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+        void ClearUAV               (UAVResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
+
 
 
 		void SetRootSignature		    (RootSignature& RS);
@@ -3882,7 +3908,7 @@ private:
 
 
     template<typename TY>
-    constexpr size_t GetConstantsAlignedSize()
+    constexpr size_t AlignedSize()
     {
         const auto alignment        = 256;
         const auto mask             = alignment - 1;
@@ -3964,8 +3990,8 @@ private:
 
 		template<typename TY>
 		VertexBufferDataSet(TY& initialData, VBPushBuffer& buffer) :
-			vertexBuffer	{ buffer					},
-			offsetBegin		{ buffer.pushBufferOffset	}
+			vertexBuffer	{ buffer },
+			offsetBegin		{ buffer.GetOffset() }
 		{
 			vertexStride = sizeof(initialData[0]);
 
@@ -3975,8 +4001,8 @@ private:
 
 		template<typename TY>
 		VertexBufferDataSet(TY* buffer, size_t bufferSize, VBPushBuffer& pushBuffer) :
-			vertexBuffer	{ pushBuffer                    },
-			offsetBegin		{ pushBuffer.GetOffset()	    }
+			vertexBuffer	{ pushBuffer },
+			offsetBegin		{ pushBuffer.GetOffset() }
 		{
 			vertexStride = sizeof(TY);
 
@@ -3986,8 +4012,8 @@ private:
 
 		template<typename TY, typename FN_TransformVertex>
 		VertexBufferDataSet(const SET_MAP_t, TY& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
-			vertexBuffer	{ buffer					},
-			offsetBegin		{ buffer.pushBufferOffset	}
+			vertexBuffer	{ buffer },
+			offsetBegin		{ buffer.GetOffset() }
 		{
 			vertexStride = sizeof(decltype(TransformVertex(initialData.front())));
 
@@ -4001,8 +4027,8 @@ private:
 
 		template<typename TY_CONTAINER, typename FN_TransformVertex>
 		VertexBufferDataSet(const SET_TRANSFORM_t, TY_CONTAINER& initialData, FN_TransformVertex& TransformVertex, VBPushBuffer& buffer) :
-			vertexBuffer	{ buffer					},
-			offsetBegin		{ buffer.pushBufferOffset	}
+			vertexBuffer	{ buffer },
+			offsetBegin		{ buffer.GetOffset() }
 		{
 			using TY = decltype(TransformVertex(initialData.front(), buffer));
 			vertexStride = sizeof(decltype(TransformVertex(initialData.front(), buffer)));

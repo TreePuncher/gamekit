@@ -229,7 +229,7 @@ namespace FlexKit
         }
 
         AssetHandle            assetID              = rand();
-        bool                   generateMipMaps      = false;
+        bool                   generateMipMaps      = true;
         bool                   compressTexture      = true;
         float                  compressionQuality   = 0.8f;
         std::string            stringID             = "";

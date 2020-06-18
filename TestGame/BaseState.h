@@ -162,9 +162,9 @@ public:
 	BaseState(	
 		GameFramework& IN_Framework,
 		FKApplication& IN_App	) :
-			App				{ IN_App																						},
-			FrameworkState	{ IN_Framework																					},
-			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(IN_Framework.ActiveWindow->WH,	true)	    },
+			App				{ IN_App },
+			FrameworkState	{ IN_Framework },
+			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(IN_Framework.ActiveWindow->WH,	true) },
 
             temporaryBuffers{
                 { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, DeviceFormat::R16G16B16A16_FLOAT))	},
@@ -175,11 +175,11 @@ public:
                 { IN_Framework.core.RenderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_Framework.ActiveWindow->WH, DeviceFormat::R16G16_FLOAT)) } },
 
 
-			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false)							},
-			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false)						},
-			asEngine		{ asCreateScriptEngine()																		},
-			streamingEngine	{ IN_Framework.core.RenderSystem,   IN_Framework.core.GetBlockMemory()				            },
-            sounds          { IN_Framework.core.Threads,        IN_Framework.core.GetBlockMemory()                          },
+			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
+			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
+			asEngine		{ asCreateScriptEngine() },
+			streamingEngine	{ IN_Framework.core.RenderSystem, IN_Framework.ActiveWindow->WH,   IN_Framework.core.GetBlockMemory() },
+            sounds          { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory()    },
 
 			render	{	IN_Framework.core.GetTempMemory(),
 						IN_Framework.core.RenderSystem,
@@ -193,8 +193,8 @@ public:
 			visables	        { framework.core.GetBlockMemory() },
 			pointLights	        { framework.core.GetBlockMemory() },
             skeletonComponent   { framework.core.GetBlockMemory() },
-            gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem    },
-            shadowCasters       { IN_Framework.core.GetBlockMemory()                            },
+            gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem },
+            shadowCasters       { IN_Framework.core.GetBlockMemory() },
             physics             { IN_Framework.core.Threads, IN_Framework.core.GetBlockMemory() },
             rigidBodies         { physics },
             staticBodies        { physics },
@@ -238,7 +238,7 @@ public:
             return;
 
         auto& renderSystem  = framework.GetRenderSystem();
-        auto adjustedWH     = uint2{ max(8, WH[0]), max(8, WH[1]) };
+        auto adjustedWH     = uint2{ max(8u, WH[0]), max(8u, WH[1]) };
 
         framework.core.Window.Resize(adjustedWH, renderSystem);
 

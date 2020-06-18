@@ -318,7 +318,7 @@ namespace FlexKit
                     aabb += mesh.GetTriangleAABB(tri);
                 });
 
-            return std::make_pair(midPoint / std::distance(begin, end), aabb);
+            return std::make_pair(midPoint / (float)std::distance(begin, end), aabb);
         }
 
 
@@ -379,7 +379,7 @@ namespace FlexKit
                 const size_t indexOffset = points.size();
 
                 for (auto index : rhs.indexes)
-                    indexes.push_back(index + indexOffset);
+                    indexes.push_back(index_t(index + indexOffset));
             }
             else
                 indexes = rhs.indexes;
@@ -440,9 +440,9 @@ namespace FlexKit
         {
             for (auto& v : tri.vertices)
             {
-                if (ctx.LocallyUnique(v, points.size()))
+                if (ctx.LocallyUnique(v, (uint32_t)points.size()))
                 {
-                    indexes.push_back(points.size());
+                    indexes.push_back((index_t)points.size());
                     PushVertex(v, ctx);
                 }
                 else

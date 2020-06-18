@@ -1947,32 +1947,6 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    size_t LoadCameraConstants(CameraHandle camera, ConstantBufferHandle constantBuffer, FrameResources& resources)
-    {
-
-        auto CBOffset = BeginNewConstantBuffer(constantBuffer, resources);
-        PushConstantBufferData(CameraComponent::GetComponent().GetCameraConstants(camera), constantBuffer, resources);
-
-        return CBOffset;
-    }
-
-
-    /************************************************************************************************/
-
-
-    template<typename TY>
-    size_t LoadConstants(const TY& data, ConstantBufferHandle constantBuffer, FrameResources& resources)
-    {
-        auto CBOffset = BeginNewConstantBuffer(constantBuffer, resources);
-        PushConstantBufferData(data, constantBuffer, resources);
-
-        return CBOffset;
-    }
-
-
-    /************************************************************************************************/
-
-
     class LineShape final : public ShapeProtoType
     {
     public:
@@ -2094,13 +2068,13 @@ namespace FlexKit
             float2 RectBottomLeft	= { RectUpperLeft.x,	RectBottomRight.y };
 
             ShapeVert vertices[] = {
-                ShapeVert{ Position2SS(RectUpperLeft),	{ 0.0f, 1.0f }, Color },
-                ShapeVert{ Position2SS(RectBottomRight),{ 1.0f, 0.0f }, Color },
-                ShapeVert{ Position2SS(RectBottomLeft),	{ 0.0f, 1.0f }, Color },
+                ShapeVert{ Position2SS(RectUpperLeft),	 { 0.0f, 1.0f }, Color },
+                ShapeVert{ Position2SS(RectBottomRight), { 1.0f, 0.0f }, Color },
+                ShapeVert{ Position2SS(RectBottomLeft),	 { 0.0f, 1.0f }, Color },
 
-                ShapeVert{ Position2SS(RectUpperLeft),	{ 0.0f, 1.0f }, Color },
-                ShapeVert{ Position2SS(RectUpperRight),	{ 1.0f, 1.0f }, Color },
-                ShapeVert{ Position2SS(RectBottomRight),{ 1.0f, 0.0f }, Color } };
+                ShapeVert{ Position2SS(RectUpperLeft),	 { 0.0f, 1.0f }, Color },
+                ShapeVert{ Position2SS(RectUpperRight),	 { 1.0f, 1.0f }, Color },
+                ShapeVert{ Position2SS(RectBottomRight), { 1.0f, 0.0f }, Color } };
 
             Constants CB_Data = {
                 Color,
@@ -2534,10 +2508,11 @@ namespace FlexKit
             ConstantBufferHandle	CB;
             VertexBufferHandle		VB;
 
-            size_t cameraOffset;
-            size_t constantsOffset;
-            size_t vertexCount;
-            size_t vertexOffset;
+            ConstantBufferDataSet   cameraConstants;
+            ConstantBufferDataSet   constants;
+
+            VertexBufferDataSet     vertexBuffer;
+            uint32_t                vertexCount;
 
             PSOHandle PSO;	
         };
@@ -2552,7 +2527,7 @@ namespace FlexKit
 
         frameGraph.AddNode<DrawWireframes>(
             DrawWireframes{},
-            [&](FrameGraphNodeBuilder& Builder, auto& Data)
+            [&](FrameGraphNodeBuilder& Builder, DrawWireframes& Data)
             {
                 Data.RenderTarget	= Builder.WriteRenderTarget(desc.RenderTarget);
 
@@ -2571,40 +2546,46 @@ namespace FlexKit
                     float4x4::Identity()
                 };
 
+                CBPushBuffer constantBuffer{ desc.constantBuffer, 1000, frameGraph.GetRenderSystem() };
+                VBPushBuffer vertexBuffer{ desc.VertexBuffer, sizeof(Vertex) * 8 * rects.size(), frameGraph.GetRenderSystem() };
+
                 auto cameraBuffer	= GetCameraConstants(desc.camera);
                 auto pushBuffer		= desc.VertexBuffer;
-                Data.vertexOffset	= frameGraph.Resources.GetVertexBufferOffset(pushBuffer);
 
-                Data.constantsOffset	= BeginNewConstantBuffer(desc.constantBuffer,frameGraph.Resources);
-                PushConstantBufferData(locals, desc.constantBuffer, frameGraph.Resources);
-                Data.cameraOffset		= BeginNewConstantBuffer(desc.constantBuffer, frameGraph.Resources);
-                PushConstantBufferData	(cameraBuffer, desc.constantBuffer, frameGraph.Resources);
+                Data.constants          = ConstantBufferDataSet(locals, constantBuffer);
+                Data.cameraConstants    = ConstantBufferDataSet(cameraBuffer, constantBuffer);
 
-                for (const Rectangle& rect : rects)
-                {
-                    float4 upperLeft	= { rect.Position.x, 0, rect.Position.y,		1};
-                    float4 bottomRight	=   upperLeft + float4{rect.WH.x, 0, rect.WH.y, 0};
-                    float4 upperRight	= { bottomRight.x,	0, upperLeft.z,				1};
-                    float4 bottomLeft	= { upperLeft.x,	0, bottomRight.z,			1};
+                VertexBufferDataSet vertices{
+                    SET_TRANSFORM_OP,
+                    MakeRange(0, rects.size()),
+                    [&](size_t I, auto& pushBuffer) -> ShapeVert
+                    {
+                        const auto rect             = rects[I];
+                        const float4 upperLeft	    = { rect.Position.x, 0, rect.Position.y,		1};
+                        const float4 bottomRight	=   upperLeft + float4{rect.WH.x, 0, rect.WH.y, 0};
+                        const float4 upperRight	    = { bottomRight.x,	0, upperLeft.z,				1};
+                        const float4 bottomLeft	    = { upperLeft.x,	0, bottomRight.z,			1};
 
-                    // Top
-                    PushVertex(Vertex{ upperLeft,	rect.Color, { 0.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
-                    PushVertex(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
+                        pushBuffer.Push(Vertex{ upperLeft, rect.Color, { 0.0f, 1.0f } });
+                        pushBuffer.Push(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } });
 
-                    // Right
-                    PushVertex(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
-                    PushVertex(Vertex{ bottomRight,	rect.Color, { 1.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
+                        // Right
+                        pushBuffer.Push(Vertex{ upperRight,	rect.Color, { 1.0f, 1.0f } });
+                        pushBuffer.Push(Vertex{ bottomRight, rect.Color, { 1.0f, 0.0f } });
 
-                    // Bottom
-                    PushVertex(Vertex{ bottomRight,	rect.Color, { 0.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
-                    PushVertex(Vertex{ bottomLeft,	rect.Color, { 1.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
+                        // Bottom
+                        pushBuffer.Push(Vertex{ bottomRight, rect.Color, { 0.0f, 0.0f } });
+                        pushBuffer.Push(Vertex{ bottomLeft,	rect.Color, { 1.0f, 0.0f } });
 
-                    // Left
-                    PushVertex(Vertex{ bottomLeft,	rect.Color, { 0.0f, 0.0f } },	pushBuffer, frameGraph.Resources);
-                    PushVertex(Vertex{ upperLeft,	rect.Color, { 0.0f, 1.0f } },	pushBuffer, frameGraph.Resources);
-                }
+                        // Left
+                        pushBuffer.Push(Vertex{ bottomLeft,	rect.Color, { 0.0f, 0.0f } });
+                        pushBuffer.Push(Vertex{ upperLeft,  rect.Color, { 0.0f, 1.0f } });
 
-                Data.vertexCount = rects.size() * 8;
+                        return {};
+                    },
+                    vertexBuffer };
+
+                Data.vertexCount = (uint32_t)rects.size() * 8;
             },
             [](auto& Data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
@@ -2617,15 +2598,15 @@ namespace FlexKit
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
                 ctx.SetPipelineState(resources.GetPipelineState(Data.PSO));
-                ctx.SetVertexBuffers({ { Data.VB, sizeof(Vertex), (UINT)Data.vertexOffset } });
+                ctx.SetVertexBuffers({ Data.vertexBuffer });
 
                 ctx.SetRenderTargets(
                     { resources.GetRenderTarget(Data.RenderTarget) }, false);
 
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
                 ctx.SetGraphicsDescriptorTable		(0, descHeap);
-                ctx.SetGraphicsConstantBufferView	(1, Data.CB, Data.cameraOffset);
-                ctx.SetGraphicsConstantBufferView	(2, Data.CB, Data.constantsOffset);
+                ctx.SetGraphicsConstantBufferView	(1, Data.cameraConstants);
+                ctx.SetGraphicsConstantBufferView	(2, Data.constants);
 
                 ctx.NullGraphicsConstantBufferView	(4);
                 ctx.NullGraphicsConstantBufferView	(5);
@@ -2640,15 +2621,15 @@ namespace FlexKit
 
     // Requires a registered DRAW_LINE3D_PSO pipeline state!
     void Draw3DGrid(
-        FrameGraph&				FrameGraph,
+        FrameGraph&				frameGraph,
         const size_t			ColumnCount,
         const size_t			RowCount,
         const float2			GridWH,
         const float4			GridColor,
         ResourceHandle			RenderTarget,
         ResourceHandle			DepthBuffer,
-        VertexBufferHandle		VertexBuffer,
-        ConstantBufferHandle	Constants,
+        VertexBufferHandle		vertexBuffer,
+        ConstantBufferHandle	constants,
         CameraHandle			Camera,
         iAllocator*				TempMem)
     {
@@ -2683,11 +2664,12 @@ namespace FlexKit
 
             size_t					VertexBufferOffset;
             size_t					VertexCount;
-            VertexBufferHandle		VertexBuffer;
+
+            VertexBufferDataSet		vertexBuffer;
             ConstantBufferHandle	CB;
 
-            size_t					CameraConstantsOffset;
-            size_t					LocalConstantsOffset;
+            ConstantBufferDataSet   cameraConstants;
+            ConstantBufferDataSet   passConstants;
         };
 
 
@@ -2698,53 +2680,60 @@ namespace FlexKit
             float2 UV;
         };
 
-        FrameGraph.AddNode<DrawGrid>(
+        frameGraph.AddNode<DrawGrid>(
             DrawGrid{},
-            [&](FrameGraphNodeBuilder& Builder, auto& Data)
+            [&](FrameGraphNodeBuilder& builder, auto& Data)
             {
-                Data.RenderTarget	= Builder.WriteRenderTarget(RenderTarget);
-                Data.DepthBuffer	= Builder.WriteDepthBuffer(DepthBuffer);
-                Data.CB				= Constants;
 
-                Data.CameraConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
-                PushConstantBufferData(
-                    GetCameraConstants(Camera),
-                    Constants,
-                    FrameGraph.Resources);
+                Data.RenderTarget	        = builder.WriteRenderTarget(RenderTarget);
+                Data.DepthBuffer	        = builder.WriteDepthBuffer(DepthBuffer);
+                Data.CB				        = constants;
 
-                Drawable::VConstantsLayout DrawableConstants = 
-                {	// Someday
-                    /*.MP			= */Drawable::MaterialProperties{},
-                    /*.Transform	= */float4x4::Identity()
+
+                Drawable::VConstantsLayout DrawableConstants = {	
+                    .MP			= Drawable::MaterialProperties{},
+                    .Transform	= float4x4::Identity()
                 };
 
-                Data.LocalConstantsOffset = BeginNewConstantBuffer(Constants, FrameGraph.Resources);
-                PushConstantBufferData(
-                    DrawableConstants,
-                    Constants,
-                    FrameGraph.Resources);
+                CBPushBuffer cbPushBuffer(
+                    constants,
+                    AlignedSize<Drawable::VConstantsLayout>() + AlignedSize<Camera::ConstantBuffer>(),
+                    frameGraph.GetRenderSystem());
 
-                Data.VertexBuffer = VertexBuffer;
-                Data.VertexBufferOffset = FrameGraph.Resources.GetVertexBufferOffset(VertexBuffer);
+                Data.passConstants      = ConstantBufferDataSet(constants, cbPushBuffer);
+                Data.cameraConstants    = ConstantBufferDataSet(GetCameraConstants(Camera), cbPushBuffer);
 
-                // Fill Vertex Buffer Section
-                for (auto& LineSegment : Lines)
-                {
-                    VertexLayout Vertex;
-                    Vertex.POS		= float4(LineSegment.A, 1);
-                    Vertex.Color	= float4(LineSegment.AColour, 1) * float4 { 1.0f, 0.0f, 0.0f, 1.0f };
-                    Vertex.UV		= { 0.0f, 0.0f };
+                VBPushBuffer vbPushBuffer(
+                    vertexBuffer,
+                    sizeof(VertexLayout) * Lines.size() * 2,
+                    frameGraph.GetRenderSystem());
 
-                    PushVertex(Vertex, VertexBuffer, FrameGraph.Resources);
+                VertexBufferDataSet vertices{
+                    SET_TRANSFORM_OP,
+                    MakeRange(0, Lines.size()),
+                    [&](size_t I, auto& pushBuffer) -> VertexLayout
+                    {
+                        const LineSegment& lineSegment = Lines[I];
 
-                    Vertex.POS		= float4(LineSegment.B, 1);
-                    Vertex.Color	= float4(LineSegment.BColour, 1) * float4 { 0.0f, 1.0f, 0.0f, 1.0f };
-                    Vertex.UV		= { 1.0f, 1.0f };
+                        VertexLayout Vertex;
+                        Vertex.POS		= float4(lineSegment.A, 1);
+                        Vertex.Color	= float4(lineSegment.AColour, 1) * float4 { 1.0f, 0.0f, 0.0f, 1.0f };
+                        Vertex.UV		= { 0.0f, 0.0f };
 
-                    PushVertex(Vertex, VertexBuffer, FrameGraph.Resources);
-                }
+                        pushBuffer.Push(Vertex);
 
-                Data.VertexCount = Lines.size() * 2;
+                        Vertex.POS		= float4(lineSegment.B, 1);
+                        Vertex.Color	= float4(lineSegment.BColour, 1) * float4 { 0.0f, 1.0f, 0.0f, 1.0f };
+                        Vertex.UV		= { 1.0f, 1.0f };
+
+                        pushBuffer.Push(Vertex);
+
+                        return {};
+                    },
+                    vbPushBuffer };
+
+                Data.vertexBuffer   = vertices;
+                Data.VertexCount    = Lines.size() * 2;
             },
             [](auto& Data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
@@ -2764,11 +2753,11 @@ namespace FlexKit
                         resources.GetRenderTarget(Data.DepthBuffer));
 
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_LINE);
-                ctx.SetVertexBuffers(VertexBufferList{ { Data.VertexBuffer, sizeof(VertexLayout), (UINT)Data.VertexBufferOffset } });
+                ctx.SetVertexBuffers({ Data.vertexBuffer });
 
                 ctx.SetGraphicsDescriptorTable(0, descHeap);
-                ctx.SetGraphicsConstantBufferView(1, Data.CB, Data.CameraConstantsOffset);
-                ctx.SetGraphicsConstantBufferView(2, Data.CB, Data.LocalConstantsOffset);
+                ctx.SetGraphicsConstantBufferView(1, Data.cameraConstants);
+                ctx.SetGraphicsConstantBufferView(2, Data.passConstants);
 
                 ctx.NullGraphicsConstantBufferView(3);
                 ctx.NullGraphicsConstantBufferView(4);
@@ -2776,6 +2765,44 @@ namespace FlexKit
                 ctx.NullGraphicsConstantBufferView(6);
 
                 ctx.Draw(Data.VertexCount, 0);
+            });
+    }
+
+
+    inline auto& ClearIntegerRenderTarget_RG32(
+        FrameGraph&                     frameGraph,
+        ResourceHandle                  target,
+        ReserveConstantBufferFunction&  reserveCB,
+        uint2                           value = { 0, 0 })
+    {
+        struct _Clear
+        {
+            ReserveConstantBufferFunction   ReserveCB;
+            FrameResourceHandle             feedbackTarget;
+        };
+
+        return frameGraph.AddNode<_Clear>(
+            _Clear{ reserveCB },
+            [&](FrameGraphNodeBuilder& builder, _Clear& data)
+            {
+                data.feedbackTarget = builder.WriteRenderTarget(target);
+            },
+            [](const _Clear& data, FrameResources& resources, Context& ctx, iAllocator&)
+            {
+                /*
+                struct _Constants
+                {
+                    uint4 constants = {};
+                }constants{ { value[0], value[1], value[0], value[1] } };
+
+                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(resources.GetPipelineState(CLEARRENDERTARGET_RG32));
+
+                ctx.SetScissorRects();
+                ctx.SetRenderTargets();
+                */
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLE);
+                ctx.Draw(6);
             });
     }
 

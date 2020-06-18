@@ -38,6 +38,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MultiplayerGameState.cpp"
 #include "TestScene.h"
 
+#include "GraphicsTest.hpp"
+
 #include <iostream>
 
 
@@ -48,9 +50,10 @@ int main(int argc, char* argv[])
         Client,
         Host,
         TextureStreamingTestMode,
-        GraphicsTestMode,
+        TextureStreamTestMode,
+        ACCTestMode,
         PlaygroundMode,
-    }   applicationMode = ApplicationMode::GraphicsTestMode;
+    }   applicationMode = ApplicationMode::TextureStreamTestMode;
 
     std::string name;
     std::string server;
@@ -115,7 +118,7 @@ int main(int argc, char* argv[])
             applicationMode = ApplicationMode::Host;
         }
         else if (!strncmp(TextureStreamingTestStr, argv[I], strlen(TextureStreamingTestStr))) // 
-            applicationMode = ApplicationMode::GraphicsTestMode;
+            applicationMode = ApplicationMode::TextureStreamTestMode;
 
         //app.PushArgument(argv[I]);
     }
@@ -145,11 +148,15 @@ int main(int argc, char* argv[])
             auto& NetState  = app.PushState<NetworkState>(base);
             auto& hostState = app.PushState<GameHostState>(base, NetState);
         }   break;
-        case ApplicationMode::GraphicsTestMode:
+        case ApplicationMode::TextureStreamTestMode:
         {
             AddAssetFile("assets\\DemonGirl.gameres");
 
             StartTestState(app, base, TestScenes::GlobalIllumination);
+        }   break;
+        case ApplicationMode::ACCTestMode:
+        {
+            app.PushState<GraphicsTest>(base);
         }   break;
     default:
         return -1;

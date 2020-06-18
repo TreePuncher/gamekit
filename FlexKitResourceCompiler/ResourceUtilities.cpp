@@ -75,7 +75,7 @@ LoadFBXScene(char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings*
 		return{ false, nullptr };
 	}
 
-    if (auto& axisSystem = scene->GetGlobalSettings().GetAxisSystem();
+    if (const auto& axisSystem = scene->GetGlobalSettings().GetAxisSystem();
         axisSystem != FbxAxisSystem(FbxAxisSystem::EUpVector::eYAxis, FbxAxisSystem::EFrontVector::eParityOdd, FbxAxisSystem::ECoordSystem::eRightHanded))
     {
         std::cout << "Converting scene axis system\n";

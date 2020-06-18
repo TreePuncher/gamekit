@@ -7,12 +7,12 @@
 
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator)
 {
-	const AssetHandle demonModel = 40000;
+    const AssetHandle demonModel = 666;
 
     // Load Model
     auto model = GetMesh(renderSystem, demonModel);
 
-	static const size_t N = 10;
+	static const size_t N = 15;
 	static const float  W = (float)30;
 
 	for (size_t Y = 0; Y < N; ++Y)
@@ -65,7 +65,6 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 {
     AddAssetFile("assets\\TestScenes.gameres");
     AddAssetFile("assets\\ZeldaScene.gameres");
-    AddAssetFile("assets\\aRealDemon.gameres");
     AddAssetFile("assets\\CubeMapResource.gameres");
     AddAssetFile("assets\\skull.gameres");
     AddAssetFile("assets\\debugPlane.gameres");

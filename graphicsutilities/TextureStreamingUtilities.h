@@ -149,6 +149,14 @@ namespace FlexKit
     };
 
 
+    inline const PSOHandle TEXTUREFEEDBACKPASS          = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKPASS));
+    inline const PSOHandle TEXTUREFEEDBACKCLEAR         = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKCLEAR));
+    inline const PSOHandle TEXTUREFEEDBACKCOMPRESSOR    = PSOHandle(GetTypeGUID(TEXTUREFEEDBACKCOMPRESSOR));
+
+    ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS);
+    ID3D12PipelineState* CreateTextureFeedbackClearPSO(RenderSystem* RS);
+    ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS);
+
     
     /************************************************************************************************/
 
@@ -157,15 +165,23 @@ namespace FlexKit
     {
         CameraHandle                    camera;
         GatherTask&                     pvs;
-        ReserveConstantBufferFunction   constantBufferAllocator;
+        ReserveConstantBufferFunction   reserveCB;
+        
         FrameResourceHandle             feedbackCounters;
         FrameResourceHandle             feedbackBuffer;
         FrameResourceHandle             feedbackLists;
         FrameResourceHandle             feedbackDepth;
+        FrameResourceHandle             feedbackOffsets;
+        FrameResourceHandle             feedbackPPLists;
+
+        FrameResourceHandle             feedbackOutputTemp;
+        FrameResourceHandle             feedbackOutputFinal;
+        FrameResourceHandle             feedbackPPLists_Temp1;
+        FrameResourceHandle             feedbackPPLists_Temp2;
+
 
         ReadBackResourceHandle          readbackBuffer;
     };
-
 
 
 	/************************************************************************************************/
@@ -178,7 +194,7 @@ namespace FlexKit
 
 	struct TextureCacheDesc
 	{
-		const size_t textureCacheSize	= MEGABYTE * 2; // Very small for debugging purposes, forces resource eviction and priority, should be changed to a reasonable value
+		const size_t textureCacheSize	= GIGABYTE;
 		const size_t blockSize			= GetMinBlockSize();
 	};
 
@@ -198,6 +214,7 @@ namespace FlexKit
     {
         TileID_t tileID;
         uint32_t TextureID;
+        uint32_t prev;// Unused
 
         uint64_t GetSortingID() const
         {
@@ -247,7 +264,7 @@ namespace FlexKit
         Vector<gpuTileID>   UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
         BlockAllocation     AllocateBlocks      (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
 
-        const static uint32_t   blockSize   = 1 * GIGABYTE;
+        const static uint32_t   blockSize   = 64 * KILOBYTE;
         uint32_t                last        = 0;
 
         Vector<Block>           blockTable;
@@ -259,66 +276,112 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+
     class FLEXKITAPI TextureStreamingEngine
 	{
 	public:
-		TextureStreamingEngine(RenderSystem& IN_renderSystem, iAllocator* IN_allocator, const TextureCacheDesc& desc = {}) : 
+		TextureStreamingEngine(
+                RenderSystem&   IN_renderSystem,
+                const uint2     IN_WH,
+                iAllocator*     IN_allocator    = SystemAllocator,
+                const TextureCacheDesc& desc    = {}) : 
 			allocator		        { IN_allocator		},
             textureBlockAllocator   { desc.textureCacheSize / desc.blockSize,   IN_allocator },
 			renderSystem	        { IN_renderSystem	},
 			settings		        { desc				},
-            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE * 4)                                    },
-            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 240, 240 }, DeviceFormat::D32_FLOAT)) },
+            feedbackOffsets         { IN_renderSystem.CreateUAVBufferResource(OffsetBufferSize) },
+            feedbackOutputTemp      { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
+            feedbackOutputFinal     { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
+            feedbackPPLists         { IN_renderSystem.CreateUAVTextureResource({256, 256}, DeviceFormat::R32_UINT)  },
+            feedbackTemp1           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
+            feedbackTemp2           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
+            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE) },
+            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT)) },
             feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
-            feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(16 * MEGABYTE) },
+            feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(1 * MEGABYTE) },
+            feedbackTarget          { IN_renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_WH, DeviceFormat::R32G32_UINT)) },
             heap                    { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
             mappedAssets            { IN_allocator }
         {
+            renderSystem.RegisterPSOLoader(
+                TEXTUREFEEDBACKPASS,
+                { &renderSystem.Library.RSDefault, CreateTextureFeedbackPassPSO });
+
+            renderSystem.RegisterPSOLoader(
+                TEXTUREFEEDBACKCLEAR,
+                { &renderSystem.Library.RSDefault, CreateTextureFeedbackClearPSO });
+
+            renderSystem.RegisterPSOLoader(
+                TEXTUREFEEDBACKCOMPRESSOR,
+                { &renderSystem.Library.RSDefault, CreateTextureFeedbackCompressorPSO });
 
             renderSystem.SetReadBackEvent(
                 feedbackReturnBuffer,
                 [&, textureStreamingEngine = this](ReadBackResourceHandle resource)
                 {
+                    if (!updateInProgress)
+                        return;
+
                     taskInProgress = true;
                     auto& task = allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
                     renderSystem.threads.AddBackgroundWork(task);
                 });
+
+            renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
+            renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCLEAR);
+            renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
+
+            renderSystem.SetDebugName(feedbackTarget, "feedbackTarget");
         }
 
 
         ~TextureStreamingEngine()
         {
+            updateInProgress = false;
+
             renderSystem.SetReadBackEvent(
                 feedbackReturnBuffer,
-                [](ReadBackResourceHandle resource) {});
+                [](ReadBackResourceHandle resource){});
+
+            while (taskInProgress);
 
             renderSystem.WaitforGPU(); // Flush any pending reads
             renderSystem.FlushPendingReadBacks();
 
-            while (taskInProgress);
+            renderSystem.ReleaseUAV(feedbackOffsets);
+            renderSystem.ReleaseUAV(feedbackOutputTemp);
+            renderSystem.ReleaseUAV(feedbackOutputFinal);
 
-            renderSystem.ReleaseUAV(feedbackBuffer);
+            renderSystem.ReleaseUAV(feedbackTemp1);
+            renderSystem.ReleaseUAV(feedbackTemp2);
+
+            renderSystem.ReleaseUAV(feedbackPPLists);
             renderSystem.ReleaseUAV(feedbackCounters);
+
             renderSystem.ReleaseTexture(feedbackDepth);
+            renderSystem.ReleaseTexture(feedbackTarget);
         }
-        
+
+
         void TextureFeedbackPass(
             UpdateDispatcher&                   dispatcher,
             FrameGraph&                         frameGraph,
             CameraHandle                        camera,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
             ResourceHandle                      testTexture,
-            ReserveConstantBufferFunction&      constantBufferAllocator);
+            ReserveConstantBufferFunction&      reserveCB,
+            ReserveVertexBufferFunction&        reserveVB);
 
 
         struct TextureStreamUpdate : public FlexKit::iWork
         {
             TextureStreamUpdate(ReadBackResourceHandle resource, TextureStreamingEngine& IN_textureStreamEngine, iAllocator* IN_allocator);
 
-            void Run() override;
+            void Run(iAllocator& threadLocalAllocator) override;
 
             void Release() override
             {
+                textureStreamEngine.MarkUpdateCompleted();
                 allocator->free(this);
             }
 
@@ -338,8 +401,16 @@ namespace FlexKit
         void PostUpdatedTiles(const BlockAllocation& blocks);
         void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
+
+        auto& ClearFeedbackBuffer(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB)
+        {
+            return ClearIntegerRenderTarget_RG32(frameGraph, feedbackTarget, reserveCB, { (uint32_t)-1, (uint32_t)-1 });
+        }
+
+
 	private:
 
+        inline static const size_t OffsetBufferSize = 240 * 240 * sizeof(uint32_t);
 
         struct MappedAsset
         {
@@ -358,25 +429,33 @@ namespace FlexKit
             }
         };
 
-		RenderSystem&				renderSystem;
+		RenderSystem&			renderSystem;
 
-        std::atomic_bool            updateInProgress    = false;
-        std::atomic_bool            taskInProgress      = false;
+        std::atomic_bool        updateInProgress    = false;
+        std::atomic_bool        taskInProgress      = false;
 
-        UAVResourceHandle		    feedbackBuffer;     // GPU
-        UAVResourceHandle           feedbackCounters;   // GPU
-        ResourceHandle		        feedbackDepth;      // GPU
+        UAVResourceHandle		feedbackOffsets;        // GPU
+        UAVTextureHandle        feedbackPPLists;        // GPU
+        UAVResourceHandle		feedbackBuffer;         // GPU
+        UAVResourceHandle       feedbackCounters;       // GPU
 
-        ReadBackResourceHandle      feedbackReturnBuffer; // CPU + GPU
+        ResourceHandle		    feedbackDepth;  // GPU
+        ResourceHandle		    feedbackTarget; // GPU
 
-        Vector<MappedAsset>         mappedAssets;
-		TextureBlockAllocator		textureBlockAllocator;
-        DeviceHeapHandle            heap;
+        UAVResourceHandle		feedbackOutputTemp;   // GPU
+        UAVResourceHandle		feedbackOutputFinal;  // GPU
+        UAVTextureHandle        feedbackTemp1;        // GPU
+        UAVTextureHandle        feedbackTemp2;        // GPU
+
+        ReadBackResourceHandle  feedbackReturnBuffer; // CPU + GPU
+
+        Vector<MappedAsset>     mappedAssets;
+		TextureBlockAllocator	textureBlockAllocator;
+        DeviceHeapHandle        heap;
 
         iAllocator*                 allocator;
 		const TextureCacheDesc		settings;
 	};
-
 
 
 }   /************************************************************************************************/

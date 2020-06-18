@@ -219,10 +219,12 @@ namespace FlexKit
 			return Vector;
 		}
 
+
 		TY* end() noexcept
 		{
 			return Vector + SIZE;
 		}
+
 
 		template< typename TY_i >
 		Vect<3, TY>	Cross( Vect<3, TY_i> rhs ) noexcept
@@ -246,7 +248,7 @@ namespace FlexKit
 
 
 		template< typename TY_i >
-		TY Dot( const Vect<SIZE, TY_i>* rhs_ptr ) noexcept
+		TY Dot(const Vect<SIZE, TY_i>* rhs_ptr) noexcept
 		{
 			auto& rhs = *rhs_ptr;
 			Vect<SIZE> products;
@@ -257,7 +259,7 @@ namespace FlexKit
 		}
 
 
-		TY Norm( unsigned int exp = 2 ) noexcept
+		TY Norm(unsigned int exp = 2) noexcept
 		{
 			TY sum = 0;
 			for( auto element : Vector )
@@ -284,16 +286,27 @@ namespace FlexKit
 		}
 
 
-		TY& operator []( size_t index ) noexcept
+		TY& operator [](const int index) noexcept
 		{
 			return Vector[index];
 		}
 
 
-		const TY& operator []( size_t index ) const noexcept
-		{
-			return Vector[index];
-		}
+        const TY& operator [](const int index) const noexcept
+        {
+            return Vector[index];
+        }
+
+        TY& operator [](const size_t index) noexcept
+        {
+            return Vector[index];
+        }
+
+
+        const TY& operator [](const size_t index) const noexcept
+        {
+            return Vector[index];
+        }
 
 
 		TY Sum() const noexcept
@@ -434,6 +447,13 @@ namespace FlexKit
 		}
 
 
+        template<typename ...TY_ARGS>
+        auto Swizzle()
+        {
+            return;
+        }
+
+
 		static THISTYPE Zero() noexcept
 		{
 			THISTYPE zero;
@@ -442,6 +462,13 @@ namespace FlexKit
 
 			return zero;
 		}
+
+
+        static const size_t Size() noexcept
+        {
+            return SIZE();
+        }
+
 
 		operator TY* () noexcept { return Vector; }
 
@@ -1244,7 +1271,7 @@ namespace FlexKit
 		inline Quaternion(__m128 in) { floats = in; }
 
 
-		inline explicit Quaternion( const float3& vector, float scaler )
+		inline explicit Quaternion(const float3& vector, float scaler)
 		{
 #if USING(FASTMATH)
 			floats = _mm_set_ps(scaler, vector[2], vector[1],vector[0]);
@@ -1257,7 +1284,7 @@ namespace FlexKit
 		}
 
 
-		inline Quaternion( float X, float Y, float Z, float W )
+		inline Quaternion(float X, float Y, float Z, float W)
 		{
 #if USING(FASTMATH)
 			floats = _mm_set_ps(W, Z, Y, X);
@@ -1269,15 +1296,6 @@ namespace FlexKit
 #endif
 		}
 
-
-        /*
-		inline Quaternion( std::initializer_list<float> il )
-		{
-			auto n = il.begin();
-			for (size_t itr = 0; n != il.end() && itr < 4; ++itr, ++n)
-				SetElement( floats, *n, itr);
-		}
-        */
 
 		inline explicit Quaternion( float* in )
 		{
@@ -1310,17 +1328,20 @@ namespace FlexKit
 			( *this ) = X * Y * Z;
 		}
 
+
 		inline Quaternion& operator *= (const Quaternion& rhs )
 		{
 			(*this) = GrassManProduct(*this, rhs);
 			return (*this);
 		}
 
+
 		inline Quaternion& operator = (const Quaternion& rhs )
 		{
 			floats = rhs.floats;
 			return (*this);
 		}
+
 
 		inline Quaternion& operator = (const  __m128 rhs )
 		{
@@ -1335,8 +1356,11 @@ namespace FlexKit
 		}
 
 
-		inline float& operator [] ( const size_t index )		{ return GetElement_ref	(floats, index); }
-		inline float operator  [] ( const size_t index ) const	{ return GetElement		(floats, index); }
+		inline float& operator [] (const size_t index)		    { return GetElement_ref	(floats, index); }
+		inline float operator  [] (const size_t index) const	{ return GetElement		(floats, index); }
+
+        inline float& operator [] (const int index)		    { return GetElement_ref	(floats, index); }
+		inline float operator  [] (const int index) const	{ return GetElement		(floats, index); }
 
 		inline operator		  float* ()			{ return (float*)&floats; }
 		inline operator const float* () const	{ return (float*)&floats; }
@@ -1539,20 +1563,20 @@ namespace FlexKit
 	/************************************************************************************************/
 	
 
-    FLEXKITAPI inline float3	Vect3ToFloat3(Vect3 R3) { return {R3[0], R3[1], R3[2]}; }
-    FLEXKITAPI inline Vect3	    Float3ToVect3(float3 R3){ return {R3[0], R3[1], R3[2]}; }
+    FLEXKITAPI inline float3	Vect3ToFloat3(const Vect3 R3)  noexcept { return {R3[0], R3[1], R3[2]}; }
+    FLEXKITAPI inline Vect3	    Float3ToVect3(const float3 R3) noexcept { return {R3[0], R3[1], R3[2]}; }
 	
-    FLEXKITAPI inline float4	Vect4ToFloat4(Vect4  R4){ return {R4[0], R4[1], R4[2], R4[3]}; }
-	FLEXKITAPI inline Vect4	    Float4ToVect4(float3 R4){ return {R4[0], R4[1], R4[2], R4[3]}; }
+    FLEXKITAPI inline float4	Vect4ToFloat4(const Vect4  R4) noexcept { return {R4[0], R4[1], R4[2], R4[3]}; }
+	FLEXKITAPI inline Vect4	    Float4ToVect4(const float3 R4) noexcept { return {R4[0], R4[1], R4[2], R4[3]}; }
 
 
 	/************************************************************************************************/
 
 
-    FLEXKITAPI inline float Vect3FDot(const Vect3& lhs, const Vect3& rhs)
+    FLEXKITAPI inline float Vect3FDot(const Vect3& lhs, const Vect3& rhs) noexcept
 	{
-		auto temp1 = _mm_set_ps(lhs.Vector[3], lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
-		auto temp2 = _mm_set_ps(rhs.Vector[3], rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
+		auto temp1 = _mm_set_ps(0, lhs.Vector[2], lhs.Vector[1], lhs.Vector[0]);
+		auto temp2 = _mm_set_ps(0, rhs.Vector[2], rhs.Vector[1], rhs.Vector[0]);
 
 		__m128 res = _mm_dp_ps(temp1, temp2, 0xFF);
 
@@ -1656,8 +1680,11 @@ namespace FlexKit
 			return out;
 		}
 
-		Vect<ROW>&		operator[] ( size_t i )			{ return *((Vect<ROW>*)matrix[i]); }
-		const float*	operator[] ( size_t i ) const	{ return matrix[i]; }
+		Vect<ROW>&		operator[] (const int i)		{ return *((Vect<ROW>*)matrix[i]); }
+		const float*	operator[] (const int i) const	{ return matrix[i]; }
+
+        Vect<ROW>&		operator[] (const size_t i)		    { return *((Vect<ROW>*)matrix[i]); }
+		const float*	operator[] (const size_t i) const	{ return matrix[i]; }
 
 		static inline Matrix<ROW, COL> Identity()
 		{
