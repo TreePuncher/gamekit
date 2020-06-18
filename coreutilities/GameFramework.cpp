@@ -377,7 +377,7 @@ namespace FlexKit
 	void GameFramework::Release()
 	{
 		core.Threads.SendShutdown();
-		core.Threads.WaitForWorkersToComplete();
+		core.Threads.WaitForWorkersToComplete(core.Memory->TempAllocator);
 
 		GetRenderSystem().WaitforGPU();
 
@@ -596,7 +596,7 @@ namespace FlexKit
 		Release(framework.DefaultAssets.Terrain);
 
 		core.Threads.SendShutdown();
-		core.Threads.WaitForWorkersToComplete();
+		core.Threads.WaitForWorkersToComplete(core.Memory->TempAllocator);
 	}
 
 

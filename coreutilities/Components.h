@@ -812,7 +812,7 @@ namespace FlexKit
 	class UpdateDispatcher
 	{
 	public:
-		typedef size_t	UpdateID_t;
+		typedef uint32_t UpdateID_t;
 
 		class UpdateTaskBase
 		{
@@ -845,7 +845,7 @@ namespace FlexKit
 
 				UpdateTaskBase*	task;
 
-				void Run() override
+				void Run(iAllocator& allocator) override
 				{
 					task->Run();
 				}
@@ -918,7 +918,7 @@ namespace FlexKit
             std::atomic_int     counter     = 0;
             bool                leaf        = true;
 
-			UpdateID_t			ID;
+			UpdateID_t			ID          = (uint32_t)-1;
 			iUpdateFN&			Update;
 			char*			    Data;
 		};

@@ -944,9 +944,9 @@ namespace FlexKit
                 auto& renderSystem              = frameGraph.GetRenderSystem();
                 data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
 
-                data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.Albedo);
-                data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.Normal);
-                data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.Tangent);
+                data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.albedo);
+                data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.normal);
+                data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.tangent);
                 data.MRIATargetObject           = builder.ReadShaderResource(gbuffer.MRIA);
                 data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
 
@@ -1044,7 +1044,7 @@ namespace FlexKit
                 data.TempObject3        = builder.WriteRenderTarget(temp3); // 2 channel
 
                 data.DepthSource        = builder.ReadShaderResource(depthBuffer);
-                data.NormalSource       = builder.ReadShaderResource(gbuffer.Normal);
+                data.NormalSource       = builder.ReadShaderResource(gbuffer.normal);
                 data.Source             = builder.ReadShaderResource(source);
             },
             [=](BilateralBlurPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& allocator)
@@ -1335,10 +1335,11 @@ namespace FlexKit
                 builder.AddDataDependency(sceneDescription.PVS);
                 builder.AddDataDependency(sceneDescription.skinned);
 
-                data.AlbedoTargetObject      = builder.WriteRenderTarget(gbuffer.Albedo);
+                data.AlbedoTargetObject      = builder.WriteRenderTarget(gbuffer.albedo);
                 data.MRIATargetObject        = builder.WriteRenderTarget(gbuffer.MRIA);
-                data.NormalTargetObject      = builder.WriteRenderTarget(gbuffer.Normal);
-                data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.Tangent);
+                data.NormalTargetObject      = builder.WriteRenderTarget(gbuffer.normal);
+                data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.tangent);
+                //data.feedbackTargetObject    = builder.WriteRenderTarget(gbuffer.textureFeedback);
                 data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
             },
             [camera, _DEBUGTexture](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
@@ -1354,14 +1355,14 @@ namespace FlexKit
                 };
 
                 const size_t entityBufferSize =
-                    GetConstantsAlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
+                    AlignedSize<Drawable::VConstantsLayout>() * data.pvs.size();
 
                 constexpr size_t passBufferSize =
-                    GetConstantsAlignedSize<Camera::ConstantBuffer>() +
-                    GetConstantsAlignedSize<ForwardDrawConstants>();
+                    AlignedSize<Camera::ConstantBuffer>() +
+                    AlignedSize<ForwardDrawConstants>();
 
                 const size_t poseBufferSize =
-                    GetConstantsAlignedSize<EntityPoses>() * data.skinned.size();
+                    AlignedSize<EntityPoses>() * data.skinned.size();
 
                 auto passConstantBuffer   = data.reserveCB(passBufferSize);
                 auto entityConstantBuffer = data.reserveCB(entityBufferSize);
@@ -1387,10 +1388,11 @@ namespace FlexKit
                 // Setup pipeline resources
                 ctx.SetScissorAndViewports(
                     std::tuple{
-                        data.gbuffer.Albedo,
+                        data.gbuffer.albedo,
                         data.gbuffer.MRIA,
-                        data.gbuffer.Normal,
-                        data.gbuffer.Tangent
+                        data.gbuffer.normal,
+                        data.gbuffer.tangent,
+                        //data.gbuffer.textureFeedback,
                     });
 
                 RenderTargetList renderTargets = {
@@ -1398,6 +1400,7 @@ namespace FlexKit
                     resources.GetTexture(data.MRIATargetObject),
                     resources.GetTexture(data.NormalTargetObject),
                     resources.GetTexture(data.TangentTargetObject),
+                    //resources.GetTexture(data.feedbackTargetObject),
                 };
 
                 ctx.SetGraphicsDescriptorTable(0, descHeap);
@@ -1530,9 +1533,9 @@ namespace FlexKit
 
                 data.pointLightHandles          = &sceneDescription.lights.GetData().pointLights;
 
-                data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.Albedo);
-                data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.Normal);
-                data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.Tangent);
+                data.AlbedoTargetObject         = builder.ReadShaderResource(gbuffer.albedo);
+                data.NormalTargetObject         = builder.ReadShaderResource(gbuffer.normal);
+                data.TangentTargetObject        = builder.ReadShaderResource(gbuffer.tangent);
                 data.MRIATargetObject           = builder.ReadShaderResource(gbuffer.MRIA);
                 data.depthBufferTargetObject    = builder.ReadShaderResource(depthTarget);
                 data.renderTargetObject         = builder.WriteRenderTarget(renderTarget);
@@ -1640,10 +1643,10 @@ namespace FlexKit
                 data.activeCamera   = scene.activeCamera;
                 data.WH             = lightMapWH * 10;
                 // Inputs
-                data.albedoObject         = builder.ReadShaderResource(scene.gbuffer.Albedo);
+                data.albedoObject         = builder.ReadShaderResource(scene.gbuffer.albedo);
                 data.MRIAObject           = builder.ReadShaderResource(scene.gbuffer.MRIA);
-                data.normalObject         = builder.ReadShaderResource(scene.gbuffer.Normal);
-                data.tangentObject        = builder.ReadShaderResource(scene.gbuffer.Tangent);
+                data.normalObject         = builder.ReadShaderResource(scene.gbuffer.normal);
+                data.tangentObject        = builder.ReadShaderResource(scene.gbuffer.tangent);
                 data.depthBufferObject    = builder.ReadShaderResource(scene.depthTarget);
 
                 data.lightBitBucketObject   = builder.ReadWriteUAV(lightLists,          DRS_ShaderResource);

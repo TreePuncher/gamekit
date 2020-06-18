@@ -178,7 +178,7 @@ namespace FlexKit
 		EngineCore				(const EngineCore&) = delete;
 		EngineCore& operator =	(const EngineCore&) = delete;
 
-		bool					FrameLock   = true;
+		bool					FrameLock   = false;
 		bool					End         = false;
 
         ThreadManager			Threads;

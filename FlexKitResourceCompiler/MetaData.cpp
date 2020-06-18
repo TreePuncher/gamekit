@@ -402,8 +402,8 @@ namespace FlexKit
         auto Format             = FindValue(values, "Format");
         auto File               = FindValue(values, "File");
         auto GenerateMips       = FindValue(values, "GenerateMips");
-        auto CompressionQuality = FindValue(values, "CompressionQuality");
-        auto CompressTexture    = FindValue(values, "CompressTexture");
+        auto CompressionQuality = FindValue(values, "CompressionQuality"); // float
+        auto CompressTexture    = FindValue(values, "CompressTexture"); // bool
 
 
         auto* texture = new Texture_MetaData;
@@ -685,8 +685,6 @@ namespace FlexKit
                 { "TerrainCollider",	    ParseTerrainColliderAsset	},
                 { "CubeMapTexture",	        ParseCubeMapTexture         },
                 { "Texture",	            ParseTexture                },
-				//table["TextureSet"]		= ParseTextureSet;
-				//table["Test"]				= CreateParser(0);
 			};
 	}
 

@@ -1721,7 +1721,79 @@ namespace FlexKit
 			break;
 		case EInputTopology::EIT_PATCH_CP_1:
 			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST;
-		}
+            break;
+        case EInputTopology::EIT_PATCH_CP_2:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_3:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_4:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_5:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_6:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_7:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_8:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_9:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_10:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_11:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_12:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_13:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_14:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_15:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_16:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_17:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_18:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_19:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_20:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_21:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_22:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_23:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST;
+            break;
+        case EInputTopology::EIT_PATCH_CP_24:
+            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST;
+            break;
+        default:
+            FK_ASSERT(0);
+        }
 
 		DeviceContext->IASetPrimitiveTopology(D3DTopology);
 	}
@@ -2331,10 +2403,10 @@ namespace FlexKit
 
     void Context::ClearUAVTexture(UAVTextureHandle UAV, uint4 clearColor)
     {
-        auto view = _ReserveSRVLocal(1);
-        auto resource = renderSystem->GetDeviceResource(UAV);
+        auto view       = _ReserveSRVLocal(1);
+        auto resource   = renderSystem->GetDeviceResource(UAV);
 
-        Texture2D tex = renderSystem->GetUAV2DTexture(UAV);
+        Texture2D tex   = renderSystem->GetUAV2DTexture(UAV);
 
         PushUAV2DToDescHeap(
             renderSystem,
@@ -2343,7 +2415,35 @@ namespace FlexKit
 
         auto CPUHandle = view.Get<0>();
         auto GPUHandle = view.Get<1>();
+
+        FlushBarriers();
+
         DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, (UINT*)&clearColor, 0, nullptr);
+    }
+
+
+    /************************************************************************************************/
+
+
+    void Context::ClearUAV(UAVResourceHandle UAV, uint4 clearColor)
+    {
+        auto view = _ReserveSRVLocal(1);
+        auto resource = renderSystem->GetDeviceResource(UAV);
+
+        const auto UAVDesc = renderSystem->GetUAVBufferLayout(UAV);
+        UAVBuffer uav {
+            *renderSystem,
+            UAV
+        };
+
+        PushUAVBufferToDescHeap(renderSystem, uav, view);
+
+        auto CPUHandle = view.Get<0>();
+        auto GPUHandle = view.Get<1>();
+
+        FlushBarriers();
+
+        DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, clearColor, 0, 0);
     }
 
 
@@ -4434,7 +4534,7 @@ namespace FlexKit
 
     void RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
     {
-        FK_LOG_INFO("Updating tile mappings for frame: %u", GetCurrentFrame());
+        FK_LOG_9("Updating tile mappings for frame: %u", GetCurrentFrame());
 
         auto itr = begin;
         while(itr < end)
@@ -4474,10 +4574,12 @@ namespace FlexKit
                     coordinate.Y            = mapping.tileID.GetTileY();
                     coordinate.Z            = 0;
 
+#if _DEBUG
                     if(flag == D3D12_TILE_RANGE_FLAG_NONE)
-                        FK_LOG_INFO("Mapping Tile { %u, %u, %u MIP } to Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset );
+                        FK_LOG_9("Mapping Tile { %u, %u, %u MIP } to Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset );
                     else
-                        FK_LOG_INFO("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
+                        FK_LOG_9("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
+#endif
 
                     coordinates.push_back(coordinate);
 
@@ -4535,7 +4637,7 @@ namespace FlexKit
             itr++;
         }
 
-        FK_LOG_INFO("Completed file mapping update");
+        FK_LOG_9("Completed file mapping update");
     }
 
 
@@ -5178,6 +5280,8 @@ namespace FlexKit
 		{
 		case DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT:
 			return FlexKit::DeviceFormat::R16G16_UINT;
+        case DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT:
+            return FlexKit::DeviceFormat::R32G32_UINT;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM:
 			return FlexKit::DeviceFormat::R8G8B8A8_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM:
@@ -5913,6 +6017,9 @@ namespace FlexKit
 
 	void TextureStateTable::ReleaseTexture(ResourceHandle Handle)
 	{
+        if (Handle == InvalidHandle_t)
+            return;
+
 		const auto UserIdx	= Handles[Handle];
 		auto& UserEntry		= UserEntries[UserIdx];
 		const auto ResIdx	= UserEntry.ResourceIdx;

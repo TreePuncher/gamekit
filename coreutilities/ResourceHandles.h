@@ -30,19 +30,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
-	typedef Handle_t<32, GetTypeGUID(ConstantBuffer)>			ConstantBufferHandle;
-	typedef Handle_t<32, GetTypeGUID(VertexBuffer)>				VertexBufferHandle;
-    typedef Handle_t<32, GetTypeGUID(ResourceHandle)>		    ResourceHandle;
-    typedef Handle_t<32, GetTypeGUID(ReadBackResourceHandle)>   ReadBackResourceHandle;
-	typedef Handle_t<32, GetTypeGUID(StreamTexture2DHandle)>	StreamingTexture2DHandle;
-    typedef Handle_t<32, GetTypeGUID(ShaderResourceHandle)>		ShaderResourceHandle;
-    typedef Handle_t<32, GetTypeGUID(UAVResourceHandle)>		UAVResourceHandle;
-	typedef Handle_t<32, GetTypeGUID(UAVTextureHandle)>			UAVTextureHandle;
-	typedef Handle_t<32, GetTypeGUID(SOResourceHandle)>			SOResourceHandle;
-	typedef Handle_t<32, GetTypeGUID(QueryBuffer)>				QueryHandle;
-	typedef Handle_t<16, GetTypeGUID(TriMesh)>					TriMeshHandle;
-    typedef Handle_t<32, GetTypeGUID(CopyContextHandle)>		CopyContextHandle;
-    typedef Handle_t<32, GetTypeGUID(DeviceHeapHandle)>         DeviceHeapHandle;
+	typedef Handle_t<32u, GetTypeGUID(ConstantBuffer)>			ConstantBufferHandle;
+	typedef Handle_t<32u, GetTypeGUID(VertexBuffer)>			VertexBufferHandle;
+    typedef Handle_t<32u, GetTypeGUID(ResourceHandle)>		    ResourceHandle;
+    typedef Handle_t<32u, GetTypeGUID(ReadBackResourceHandle)>  ReadBackResourceHandle;
+	typedef Handle_t<32u, GetTypeGUID(StreamTexture2DHandle)>	StreamingTexture2DHandle;
+    typedef Handle_t<32u, GetTypeGUID(ShaderResourceHandle)>	ShaderResourceHandle;
+    typedef Handle_t<32u, GetTypeGUID(UAVResourceHandle)>		UAVResourceHandle;
+	typedef Handle_t<32u, GetTypeGUID(UAVTextureHandle)>		UAVTextureHandle;
+	typedef Handle_t<32u, GetTypeGUID(SOResourceHandle)>		SOResourceHandle;
+	typedef Handle_t<32u, GetTypeGUID(QueryBuffer)>				QueryHandle;
+	typedef Handle_t<16u, GetTypeGUID(TriMesh)>					TriMeshHandle;
+    typedef Handle_t<32u, GetTypeGUID(CopyContextHandle)>		CopyContextHandle;
+    typedef Handle_t<32u, GetTypeGUID(DeviceHeapHandle)>        DeviceHeapHandle;
 }
 
 #endif

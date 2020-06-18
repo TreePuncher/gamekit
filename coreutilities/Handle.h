@@ -37,7 +37,7 @@ namespace FlexKit
 
 	struct _InvalidHandle_t {} inline static const InvalidHandle_t;
 
-	template< typename int HandleSize = 32, typename int ID = -1>
+	template<size_t HandleSize = 32, size_t ID = (size_t)-1>
 	class Handle_t
 	{
 	public:
@@ -127,10 +127,11 @@ namespace FlexKit
 		}
 
 		operator uint32_t(){ return INDEX; }
-		unsigned int	INDEX		: HandleSize;
+
+		unsigned int    INDEX		: HandleSize    = 0xffffffff;
 #if USING( DEBUGHANDLES )
-		unsigned int	TYPE		: 28;
-		unsigned int	FLAGS		: 4;
+		unsigned int	TYPE		: 28            = 0;
+		unsigned int	FLAGS		: 4             = 0;
 #endif
 
 		operator size_t () const { return INDEX; }

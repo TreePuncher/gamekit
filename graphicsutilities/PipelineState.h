@@ -102,7 +102,7 @@ namespace FlexKit
 	public:
 		LoadTask(iAllocator* IN_allocator, PipelineStateTable* IN_PST, PipelineStateObject* IN_PSO);
 
-		void Run()		override;
+		void Run(iAllocator& allocator)		override;
 		void Release()	override;
 
 

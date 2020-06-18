@@ -532,5 +532,51 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* LoadClearRenderTarget_RG32(RenderSystem* renderSystem)
+    {
+        auto VShader = LoadShader("FullscreenQuad", "FullscreenQuad", "vs_5_0", "assets\\shaders\\FullscreenQuad.hlsl");
+        auto PShader = LoadShader("ClearRenderTargetUINT2", "ClearRenderTargetUINT2", "ps_5_0", "assets\\shaders\\ClearRenderTarget.hlsl");
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+                { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc = CD3DX12_RASTERIZER_DESC{ D3D12_DEFAULT };
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc = CD3DX12_DEPTH_STENCIL_DESC{ D3D12_DEFAULT };
+        Depth_Desc.DepthEnable = false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature = renderSystem->Library.RSDefault;
+            PSO_Desc.VS = VShader;
+            PSO_Desc.PS = PShader;
+            PSO_Desc.RasterizerState = Rast_Desc;
+            PSO_Desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets = 1;
+            PSO_Desc.RTVFormats[0] = DXGI_FORMAT_R32G32_UINT;
+            PSO_Desc.SampleDesc.Count = 1;
+            PSO_Desc.SampleDesc.Quality = 0;
+            PSO_Desc.DSVFormat = DXGI_FORMAT_UNKNOWN;
+            PSO_Desc.InputLayout = { InputElements, sizeof(InputElements) / sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState = Depth_Desc;
+
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+        }
+
+
+        ID3D12PipelineState* PSO = nullptr;
+        const auto HR = renderSystem->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+
 	/************************************************************************************************/
 }

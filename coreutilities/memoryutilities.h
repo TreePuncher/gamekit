@@ -247,6 +247,7 @@ namespace FlexKit
 		void	clear				();
 
         operator iAllocator* () { return &AllocatorInterface; }
+        operator iAllocator& () { return  AllocatorInterface; }
 	private:
 		size_t used		= 0;
 		size_t size		= 0;

@@ -390,7 +390,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void LoadTask::Run()
+	void LoadTask::Run(iAllocator& threadLocalAllocator)
 	{
 		std::chrono::system_clock Clock;
 		auto Before = Clock.now();

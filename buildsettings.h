@@ -195,7 +195,7 @@ constexpr size_t DefaultWorkerCount = 2; // should be safe for a quad core cpu
 const size_t INVALIDHANDLE = -1;
 
 namespace FlexKit {
-	typedef char	 byte;
+	typedef char byte;
 	typedef uint64_t AssetHandle;
 	typedef uint64_t GUID_t;
 }

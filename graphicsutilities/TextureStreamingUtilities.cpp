@@ -107,7 +107,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    ID3D12PipelineState* CreateTextureFeedbackPSO(RenderSystem* RS)
+    ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS)
     {
         auto VShader = LoadShader("Forward_VS",         "Forward_VS",           "vs_5_0", "assets\\shaders\\forwardRender.hlsl");
         auto PShader = LoadShader("TextureFeedback_PS", "TextureFeedback_PS",   "ps_5_0", "assets\\shaders\\TextureFeedback.hlsl");
@@ -126,24 +126,23 @@ namespace FlexKit
 
 
         D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);    // enable conservative rast
-        Rast_Desc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_ON;
 
         D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
         Depth_Desc.DepthEnable      = true;
 
         D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {
-            .pRootSignature        = RS->Library.RSDefault,
-            .VS                    = VShader,
-            .PS                    = PShader,
-            .BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT),
-            .SampleMask            = UINT_MAX,
-            .RasterizerState       = Rast_Desc,
-            .DepthStencilState     = Depth_Desc,
-            .InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) },
-            .PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
-            .NumRenderTargets      = 0,
-            .DSVFormat             = DXGI_FORMAT_D32_FLOAT,
-            .SampleDesc            = { 1, 0 },
+            .pRootSignature         = RS->Library.RSDefault,
+            .VS                     = VShader,
+            .PS                     = PShader,
+            .BlendState             = CD3DX12_BLEND_DESC(D3D12_DEFAULT),
+            .SampleMask             = UINT_MAX,
+            .RasterizerState        = Rast_Desc,
+            .DepthStencilState      = Depth_Desc,
+            .InputLayout            = { InputElements, sizeof(InputElements)/sizeof(*InputElements) },
+            .PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+            .NumRenderTargets       = 0,
+            .DSVFormat              = DXGI_FORMAT_D32_FLOAT,
+            .SampleDesc             = { 1, 0 },
         };
 
 
@@ -155,18 +154,98 @@ namespace FlexKit
     }
 
 
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateTextureFeedbackClearPSO(RenderSystem* RS)
+    {
+        auto VShader = LoadShader("FullscreenQuad", "FullscreenQuad", "vs_5_0", "assets\\shaders\\FullScreenQuad.hlsl");
+        auto PShader = LoadShader("ClearPS", "ClearPS", "ps_5_0", "assets\\shaders\\TextureFeedback.hlsl");
+
+        EXITSCOPE(
+            Release(&VShader);
+            Release(&PShader);
+        );
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthEnable = false;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {
+            .pRootSignature         = RS->Library.RSDefault,
+            .VS                     = VShader,
+            .PS                     = PShader,
+            .BlendState             = CD3DX12_BLEND_DESC(D3D12_DEFAULT),
+            .SampleMask             = UINT_MAX,
+            .RasterizerState        = Rast_Desc,
+            .DepthStencilState      = Depth_Desc,
+            .InputLayout            = 0,
+            .PrimitiveTopologyType  = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE,
+            .NumRenderTargets       = 0,
+            .DSVFormat              = DXGI_FORMAT_D32_FLOAT,
+            .SampleDesc             = { 1, 0 },
+        };
+
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
+    ID3D12PipelineState* CreateTextureFeedbackCompressorPSO(RenderSystem* RS)
+    {
+        auto computeShader = LoadShader(
+            "CompressTiles", "CompressTiles", "cs_5_0",
+            "assets\\shaders\\TextureFeedbackCompressor.hlsl");
+
+        D3D12_COMPUTE_PIPELINE_STATE_DESC desc = {
+            .pRootSignature     = RS->Library.RSDefault,
+            .CS                 = computeShader,
+        };
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateComputePipelineState(
+            &desc,
+            IID_PPV_ARGS(&PSO));
+
+        return PSO;
+    }
+
+
+    /************************************************************************************************/
+
+
     void TextureStreamingEngine::TextureFeedbackPass(
             UpdateDispatcher&                   dispatcher,
             FrameGraph&                         frameGraph,
             CameraHandle                        camera,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
             ResourceHandle                      testTexture,
-            ReserveConstantBufferFunction&      constantBufferAllocator)
+            ReserveConstantBufferFunction&      reserveCB,
+            ReserveVertexBufferFunction&        reserveVB)
     {
+        return;
+
         if (updateInProgress)
             return;
 
         updateInProgress = true;
+
+        frameGraph.Resources.AddUAVResource(feedbackPPLists, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackPPLists));
+        frameGraph.Resources.AddUAVResource(feedbackOffsets, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackOffsets));
+
+        frameGraph.Resources.AddUAVResource(feedbackOutputTemp, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackOutputTemp));
+        frameGraph.Resources.AddUAVResource(feedbackOutputFinal, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackOutputFinal));
+
+        frameGraph.Resources.AddUAVResource(feedbackTemp1, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackTemp1));
+        frameGraph.Resources.AddUAVResource(feedbackTemp2, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackTemp2));
 
         frameGraph.Resources.AddUAVResource(feedbackBuffer, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackBuffer));
         frameGraph.Resources.AddUAVResource(feedbackCounters, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackCounters));
@@ -176,34 +255,45 @@ namespace FlexKit
             TextureFeedbackPass_Data{
                 camera,
                 sceneGather,
-                constantBufferAllocator
+                reserveCB,
             },
             [&](FrameGraphNodeBuilder& nodeBuilder, TextureFeedbackPass_Data& data)
             {
                 nodeBuilder.AddDataDependency(sceneGather);
 
-                data.feedbackBuffer     = nodeBuilder.ReadWriteUAV(feedbackBuffer);
-                data.feedbackCounters   = nodeBuilder.ReadWriteUAV(feedbackCounters);
-                data.feedbackDepth      = nodeBuilder.WriteDepthBuffer(feedbackDepth);
-                data.readbackBuffer     = feedbackReturnBuffer;
+                data.feedbackOffsets        = nodeBuilder.ReadWriteUAV(feedbackOffsets);
+                data.feedbackBuffer         = nodeBuilder.ReadWriteUAV(feedbackBuffer);
+                data.feedbackCounters       = nodeBuilder.ReadWriteUAV(feedbackCounters);
+
+                data.feedbackOutputTemp     = nodeBuilder.ReadWriteUAV(feedbackOutputTemp);
+                data.feedbackOutputFinal    = nodeBuilder.ReadWriteUAV(feedbackOutputFinal);
+
+                data.feedbackPPLists_Temp1  = nodeBuilder.ReadWriteUAV(feedbackTemp1);
+                data.feedbackPPLists_Temp2  = nodeBuilder.ReadWriteUAV(feedbackTemp2);
+
+                data.feedbackDepth          = nodeBuilder.WriteDepthBuffer(feedbackDepth);
+                data.feedbackPPLists        = nodeBuilder.ReadWriteUAV(feedbackPPLists);
+                data.readbackBuffer         = feedbackReturnBuffer;
             },
             [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 auto& drawables = data.pvs.GetData().solid;
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
-                ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACK));
 
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
                 ctx.ClearDepthBuffer(resources.GetRenderTarget(data.feedbackDepth), 1.0f);
+                ctx.ClearUAVTexture(resources.GetUAVTextureResource(data.feedbackPPLists), uint4{ (uint32_t)-1, (uint32_t)-1, (uint32_t)-1, (uint32_t)-1 });
 
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackDepth) });
                 ctx.SetRenderTargets({}, true, resources.GetRenderTarget(data.feedbackDepth));
 
+
+
                 struct alignas(512) constantBufferLayout
                 {
                     uint4       textureHandles[16];
-                    uint32_t    zeroBlock[8];
+                    uint32_t    zeroBlock[64];
                 } constants =
                 {
                     {   {256, 256, (uint32_t)testTexture, 0u },
@@ -223,36 +313,53 @@ namespace FlexKit
                         {256, 256, (uint32_t)testTexture, 0u },
                         {256, 256, (uint32_t)testTexture, 0u } },
 
-                    { 0, 0, 0, 0, 0, 0, 0, 0 }
+                    {   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  }
+                };
+
+                static const float4 Vertices[] = 
+                 {
+                    float4(-1,  1, 0, 1),
+                    float4( 1,  1, 0, 1),
+                    float4(-1, -1, 0, 1),
+
+                    float4(-1, -1, 0, 1),
+                    float4( 1,  1, 0, 1),
+                    float4( 1, -1, 0, 1),
                 };
 
                 const size_t bufferSize = 
-                    GetConstantsAlignedSize<Drawable::VConstantsLayout>() * drawables.size() +
-                    GetConstantsAlignedSize<constantBufferLayout>() +
-                    GetConstantsAlignedSize<Camera::ConstantBuffer>();
+                    AlignedSize<Drawable::VConstantsLayout>() * drawables.size() +
+                    AlignedSize<constantBufferLayout>() +
+                    AlignedSize<Camera::ConstantBuffer>() +
+                    AlignedSize<decltype(Vertices)>();
 
-                CBPushBuffer passContantBuffer{ data.constantBufferAllocator(bufferSize) };
+                CBPushBuffer passContantBuffer  { data.reserveCB(bufferSize) };
 
                 const auto passConstants    = ConstantBufferDataSet{ constants, passContantBuffer };
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passContantBuffer };
+                const auto fullscreenQuad   = ConstantBufferDataSet{ Vertices, passContantBuffer };
 
-
-                // TODO: addd Clear UAV Buffer
                 ctx.CopyBufferRegion(
                     { resources.GetObjectResource(passConstants.Handle()) },
                     { passConstants.Offset() + ((size_t)&constants.zeroBlock - (size_t)&constants) },
                     { resources.GetObjectResource(resources.CopyToUAV(data.feedbackCounters, ctx)) },
                     { 0 },
-                    { 8 },
+                    { sizeof(constants.zeroBlock) },
                     { resources.GetObjectState(data.feedbackCounters) },
                     { DRS_Write }
                 );
 
-
                 DescriptorHeap uavHeap;
-                uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 4, &allocator);
+                uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
                 uavHeap.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx));
                 uavHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+                uavHeap.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
+                uavHeap.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists));
+                uavHeap.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
+
 
                 DescriptorHeap srvHeap;
                 srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 4, &allocator);
@@ -261,8 +368,16 @@ namespace FlexKit
                 ctx.SetGraphicsDescriptorTable(3, srvHeap);
                 ctx.SetGraphicsDescriptorTable(4, uavHeap);
 
+
+                ctx.SetGraphicsConstantBufferView(0, fullscreenQuad);
+                ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKCLEAR));
+                ctx.Draw(6, 0);
+
+
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, passConstants);
+                ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
+
 
                 TriMesh* prevMesh = nullptr;
 
@@ -293,17 +408,63 @@ namespace FlexKit
                     ctx.DrawIndexed(triMesh->IndexCount);
                 }
 
+
+                ctx.SetComputeRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR));
+
+                // iteration 0
+                DescriptorHeap uavHeap2;
+                uavHeap2.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                uavHeap2.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 1);
+                uavHeap2.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+                uavHeap2.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
+                uavHeap2.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists));
+                uavHeap2.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
+                uavHeap2.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
+
+
+                ctx.SetComputeDescriptorTable(4, uavHeap2);
+                ctx.Dispatch({ 256 / 16, 256 / 32, 1 });
+
+                // iteration 1
+                DescriptorHeap uavHeap3;
+                uavHeap3.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                uavHeap3.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 2);
+                uavHeap3.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+                uavHeap3.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
+                uavHeap3.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
+                uavHeap3.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
+                uavHeap3.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
+
+
+                ctx.SetComputeDescriptorTable(4, uavHeap3);
+                ctx.Dispatch({ 256 / 32, 256 / 64, 1 });
+
+                // iteration 2
+                DescriptorHeap uavHeap4;
+                uavHeap4.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                uavHeap4.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 3);
+                uavHeap4.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+                uavHeap4.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
+                uavHeap4.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
+                uavHeap4.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputFinal));
+                uavHeap4.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
+
+                ctx.SetComputeDescriptorTable(4, uavHeap4);
+                ctx.Dispatch({ 256 / 64, 256 / 128, 1 });
+
                 ctx.CopyBufferRegion(
                     {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters, DRS_Read, &ctx)) ,
-                        resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackBuffer, DRS_Read, &ctx)) },
+                        resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackOutputFinal, DRS_Read, &ctx)) },
                     { 0, 0 },
                     {   resources.GetObjectResource(data.readbackBuffer),
                         resources.GetObjectResource(data.readbackBuffer) },
                     { 0, 64 },
-                    { 8, MEGABYTE * 4 },
+                    { 64, MEGABYTE * 1 - 64},
                     { DRS_Write, DRS_Write },
                     { DRS_Write, DRS_Write }
                 );
+
                 ctx.QueueReadBack(data.readbackBuffer);
             });
     }
@@ -325,20 +486,20 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void TextureStreamingEngine::TextureStreamUpdate::Run()
+    void TextureStreamingEngine::TextureStreamUpdate::Run(iAllocator& threadLocalAllocator)
     {
-        EXITSCOPE(textureStreamEngine.MarkUpdateCompleted(););
-
         uint64_t    requestCount = 0;
         gpuTileID*  requests = nullptr;
 
         auto [buffer, bufferSize] = textureStreamEngine.renderSystem.OpenReadBackBuffer(resource);
         EXITSCOPE(textureStreamEngine.renderSystem.CloseReadBackBuffer(resource));
 
-        if (!buffer)
+        if (!buffer) {
+            __debugbreak();
             return;
+        }
 
-        memcpy(&requestCount, buffer, sizeof(uint64_t));
+        memcpy(&requestCount, (char*)buffer + 12, sizeof(uint64_t));
         EXITSCOPE(allocator->free(requests));
 
         requestCount    = min(requestCount, bufferSize);
@@ -553,7 +714,7 @@ namespace FlexKit
 
                 const auto tile = streamContext.ReadTile(block.tileID, blockSize, ctx);
 
-                FK_LOG_INFO("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel(4));
+                FK_LOG_9("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel(4));
 
                 ctx.CopyTile(
                     deviceResource,
@@ -633,9 +794,6 @@ namespace FlexKit
         AllocatedBlockList allocatedBlocks  { allocator };
         AllocatedBlockList reallocatedBlocks{ allocator };
 
-        allocatedBlocks.reserve(blockTable.size());
-        reallocatedBlocks.reserve(blockTable.size());
-
         uint32_t            itr        = 0;
         const auto          blockCount = blockTable.size();
         const gpuTileID*    block_itr  = begin;
@@ -689,7 +847,7 @@ namespace FlexKit
             block_itr++;
         }
 
-        last = (last + itr) % blockTable.size();
+        last = (last + itr + 1) % blockTable.size();
 
         return {
             std::move(reallocatedBlocks),

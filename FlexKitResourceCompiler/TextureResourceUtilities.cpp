@@ -219,7 +219,7 @@ inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_
         params.m_height                          = mipLevels[0].height;
         params.m_target_bitrate                  = 0;
         params.m_format                          = crn_format::cCRNFmtDXT5;
-        params.m_num_helper_threads              = min((size_t)std::thread::hardware_concurrency(), cCRNMaxHelperThreads);
+        params.m_num_helper_threads              = min((crn_uint32)std::thread::hardware_concurrency(), (crn_uint32)cCRNMaxHelperThreads);
         params.m_dxt_compressor_type             = crn_dxt_compressor_type::cCRNDXTCompressorCRNF;
         params.m_dxt_quality                     = cCRNDXTQualityNormal;
         params.m_crn_color_selector_palette_size = 8;
@@ -241,9 +241,17 @@ inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_
     for (size_t I = 0; I < mipLevels.size(); I++)
         params.m_pImages[0][I] = mipLevels[I].buffer;
 
+    crn_mipmap_params mipMapParams;
+    mipMapParams.m_max_levels   = 16;
+    mipMapParams.m_min_mip_size = 1;
+
+    if (!mipMapParams.check())
+        return {};
+
     auto compressedTexture =
         crn_compress(
             params,
+            mipMapParams,
             size,
             &actualQualityLevel,
             &actualBitrate);

@@ -90,8 +90,6 @@ namespace FlexKit
     static const PSOHandle TEXTURE2CUBEMAP_IRRADIANCE  = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_IRRADIANCE));
     static const PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
-    static const PSOHandle TEXTUREFEEDBACK             = PSOHandle(GetTypeGUID(TEXTUREFEEDBACK));
-
 
     /************************************************************************************************/
 
@@ -113,8 +111,6 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
     ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
-
-    ID3D12PipelineState* CreateTextureFeedbackPSO           (RenderSystem* RS);
 
 
 	struct WorldRender_Targets
@@ -271,50 +267,50 @@ namespace FlexKit
     {
     public:
         GBuffer(const uint2 WH, RenderSystem& RS_IN) :
-            RS          { RS_IN },
-            Albedo      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
-            MRIA        { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
-            Normal      { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
-            Tangent     { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) }
+            RS              { RS_IN },
+            albedo          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM)) },
+            MRIA            { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
+            normal          { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) },
+            tangent         { RS_IN.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT)) }
         {
-            RS.SetDebugName(Albedo,     "Albedo");
+            RS.SetDebugName(albedo,     "Albedo");
             RS.SetDebugName(MRIA,       "MRIA");
-            RS.SetDebugName(Normal,     "Normal");
-            RS.SetDebugName(Tangent,    "Tangent");
+            RS.SetDebugName(normal,     "Normal");
+            RS.SetDebugName(tangent,    "Tangent");
         }
 
         ~GBuffer()
         {
-            RS.ReleaseTexture(Albedo);
+            RS.ReleaseTexture(albedo);
             RS.ReleaseTexture(MRIA);
-            RS.ReleaseTexture(Normal);
-            RS.ReleaseTexture(Tangent);
+            RS.ReleaseTexture(normal);
+            RS.ReleaseTexture(tangent);
         }
 
         void Resize(const uint2 WH)
         {
-            RS.ReleaseTexture(Albedo);
+            RS.ReleaseTexture(albedo);
             RS.ReleaseTexture(MRIA);
-            RS.ReleaseTexture(Normal);
-            RS.ReleaseTexture(Tangent);
+            RS.ReleaseTexture(normal);
+            RS.ReleaseTexture(tangent);
 
-            Albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
+            albedo  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R8G8B8A8_UNORM));
             MRIA    = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
-            Normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
-            Tangent = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
+            normal  = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
+            tangent = RS.CreateGPUResource(GPUResourceDesc::RenderTarget(WH, DeviceFormat::R16G16B16A16_FLOAT));
 
-            RS.SetDebugName(Albedo,  "Albedo");
+            RS.SetDebugName(albedo,  "Albedo");
             RS.SetDebugName(MRIA,    "MRIA");
-            RS.SetDebugName(Normal,  "Normal");
-            RS.SetDebugName(Tangent, "Tangent");
+            RS.SetDebugName(normal,  "Normal");
+            RS.SetDebugName(tangent, "Tangent");
         }
 
-        ResourceHandle Albedo;	 // rgba_UNORM, Albedo + Metal
+        ResourceHandle albedo;	 // rgba_UNORM, Albedo + Metal
         ResourceHandle MRIA;	 // rgba_UNORM, Metal + roughness + IOR + ANISO
-        ResourceHandle Normal;	 // float16_RGBA
-        ResourceHandle Tangent;	 // float16_RGBA
+        ResourceHandle normal;	 // float16_RGBA
+        ResourceHandle tangent;	 // float16_RGBA
 
-        RenderSystem&    RS;
+        RenderSystem& RS;
     };
 
 
@@ -332,10 +328,10 @@ namespace FlexKit
             GBufferClear{},
             [&](FrameGraphNodeBuilder& builder, GBufferClear& data)
             {
-                data.albedo     = builder.WriteRenderTarget(gbuffer.Albedo);
-                data.MRIA       = builder.WriteRenderTarget(gbuffer.MRIA);
-                data.normal     = builder.WriteRenderTarget(gbuffer.Normal);
-                data.tangent    = builder.WriteRenderTarget(gbuffer.Tangent);
+                data.albedo             = builder.WriteRenderTarget(gbuffer.albedo);
+                data.MRIA               = builder.WriteRenderTarget(gbuffer.MRIA);
+                data.normal             = builder.WriteRenderTarget(gbuffer.normal);
+                data.tangent            = builder.WriteRenderTarget(gbuffer.tangent);
             },
             [](GBufferClear& data, FrameResources& resources, Context& ctx, iAllocator&)
             {
@@ -349,10 +345,10 @@ namespace FlexKit
 
     void AddGBufferResource(GBuffer& gbuffer, FrameGraph& frameGraph)
     {
-        frameGraph.Resources.AddShaderResource(gbuffer.Albedo,  true);
-        frameGraph.Resources.AddShaderResource(gbuffer.MRIA,    true);
-        frameGraph.Resources.AddShaderResource(gbuffer.Normal,  true);
-        frameGraph.Resources.AddShaderResource(gbuffer.Tangent, true);
+        frameGraph.Resources.AddShaderResource(gbuffer.albedo, true);
+        frameGraph.Resources.AddShaderResource(gbuffer.MRIA, true);
+        frameGraph.Resources.AddShaderResource(gbuffer.normal, true);
+        frameGraph.Resources.AddShaderResource(gbuffer.tangent, true);
     }
 
 
@@ -507,8 +503,6 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,{ &RS_IN.Library.RSDefault,         CreateBilaterialBlurHorizontalPSO });
             RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,  { &RS_IN.Library.RSDefault,         CreateBilaterialBlurVerticalPSO   });
 
-            RS_IN.RegisterPSOLoader(TEXTUREFEEDBACK,            { &RS_IN.Library.RSDefault,         CreateTextureFeedbackPSO});
-
             RS_IN.QueuePSOLoad(GBUFFERPASS);
             RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
             RS_IN.QueuePSOLoad(DEPTHPREPASS);
@@ -519,7 +513,6 @@ namespace FlexKit
             RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
             RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
             RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
-            RS_IN.QueuePSOLoad(TEXTUREFEEDBACK);
 
             RS_IN.SetDebugName(tempBuffer,        "tempBuffer");
             RS_IN.SetDebugName(lightLists,        "lightLists");

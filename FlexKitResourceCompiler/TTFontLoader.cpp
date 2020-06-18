@@ -29,6 +29,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "..\graphicsutilities\Fonts.h"
 
+#include <optional>
+
 typedef uint8_t TTF_UBYTE;
 typedef  int8_t TTF_BYTE;
 
@@ -409,6 +411,8 @@ struct SimpleGlyph
 
 struct GlyphEntry
 {
+    GlyphEntry() = default;
+
     GlyphEntry(
         const TTF_USHORT            IN_contourCount,
         const bool                  IN_compound,
@@ -519,7 +523,9 @@ struct CompoundGlyph
 // https://docs.microsoft.com/en-us/typography/opentype/spec/head
 struct Head
 {
-	Head(FlexKit::byte* Buffer)
+    Head() = default;
+
+	Head(FlexKit::byte* Buffer) noexcept
 	{
 		Head* Temp = reinterpret_cast<Head*>(Buffer);
 		Version				= ConvertEndianness(Temp->Version);
@@ -683,7 +689,7 @@ public:
 	/************************************************************************************************/
 
 
-	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(TTF_ULONG ID) const
+    std::optional<TTF_DirectoryEntry> FindDirectoryEntry(TTF_ULONG ID) const
 	{
 		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
 
@@ -694,17 +700,17 @@ public:
 			size_t Offset = Entry.offset;
 
 			if (Entry.Tag_UL == ID) 
-				return { Entry, true };
+				return { Entry };
 		}
 
-		return { TTF_DirectoryEntry(), false };
+        return {};
 	}
 
 
 	/************************************************************************************************/
 
 
-	Pair<TTF_DirectoryEntry, bool> FindDirectoryEntry(const char* Tag) const
+	std::optional<TTF_DirectoryEntry> FindDirectoryEntry(const char* Tag) const
 	{
 		TTF_DirectoryEntry* Entries = (TTF_DirectoryEntry*)(Buffer + 12);
 
@@ -718,10 +724,10 @@ public:
 				Entry.Tag_C[1] == Tag[1] && 
 				Entry.Tag_C[2] == Tag[2] && 
 				Entry.Tag_C[3] == Tag[3])
-					return { Entry, true };
+					return { Entry };
 		}
 
-		return { TTF_DirectoryEntry(), false };
+		return {};
 	}
 
 
@@ -730,24 +736,27 @@ public:
 
 	CMap GetCMap()
 	{
-		auto RES					= FindDirectoryEntry("cmap");
-		TTF_DirectoryEntry& Entry	= (TTF_DirectoryEntry)RES;
+        if (auto cmap = FindDirectoryEntry("cmap"); cmap)
+        {
+            TTF_DirectoryEntry& Entry	= cmap.value();
 
-		FK_ASSERT(RES != false);
 
-		size_t Offset = Entry.offset;
+		    size_t Offset = Entry.offset;
 
-		//auto CheckSum = CalcTableChecksum((TTF_ULONG*)(&Entries[I]), sizeof(Entry));
-		//FK_ASSERT(Checksum == Entry.Checksum);
+		    //auto CheckSum = CalcTableChecksum((TTF_ULONG*)(&Entries[I]), sizeof(Entry));
+		    //FK_ASSERT(Checksum == Entry.Checksum);
 
-		auto Temp = reinterpret_cast<_CMAP*>(Buffer + Offset);
-		CMap Out;
-		Out.Tables		= Temp->Table;
-		Out.Version		= ConvertEndianness(Temp->Version);
-		Out.TableSize	= ConvertEndianness(Temp->TableSize);
-		Out.Buffer		= Buffer + Offset;
+		    auto Temp = reinterpret_cast<_CMAP*>(Buffer + Offset);
+		    CMap Out;
+		    Out.Tables		= Temp->Table;
+		    Out.Version		= ConvertEndianness(Temp->Version);
+		    Out.TableSize	= ConvertEndianness(Temp->TableSize);
+		    Out.Buffer		= Buffer + Offset;
 
-		return Out;
+            return Out;
+        }
+
+        return {};
 	}
 
 
@@ -756,14 +765,15 @@ public:
 
 	Loca GetLoca() const
 	{
-		auto RES  = FindDirectoryEntry("loca");
-		auto Head = GetHead();
+		if(auto RES  = FindDirectoryEntry("loca"); RES)
+        {
+		    const auto Head = GetHead();
+		    const auto& EntryLoca = RES.value();
 
-		TTF_DirectoryEntry& EntryLoca = (TTF_DirectoryEntry)RES;
+		    return { Buffer + EntryLoca.offset, static_cast<bool>(Head.IndexToLocFormat) };
+        }
 
-		FK_ASSERT(RES == true);
-
-		return { Buffer + EntryLoca.offset, static_cast<bool>(Head.IndexToLocFormat) };
+        return { nullptr, false };
 	}
 
 
@@ -772,28 +782,32 @@ public:
 
 	Head GetHead() const
 	{
-		auto RES = FindDirectoryEntry("head");
+        if (auto head = FindDirectoryEntry("head"); head)
+        {
+            const TTF_DirectoryEntry& EntryLoca = head.value();
+            return { Buffer + EntryLoca.offset };
+        }
 
-		TTF_DirectoryEntry& EntryLoca = (TTF_DirectoryEntry)RES;
-
-		FK_ASSERT(RES == true);
-
-		return { Buffer + EntryLoca.offset };
+        return {};
 	}
 
 
 	/************************************************************************************************/
 
 
-	Glyph* GetGlyphs()
+	const Glyph* GetGlyphs()
 	{
-		auto RES = FindDirectoryEntry("glyf");
-		TTF_DirectoryEntry& Entry = (TTF_DirectoryEntry)RES;
+        if (auto glyf = FindDirectoryEntry("glyf"); glyf)
+        {
+            const TTF_DirectoryEntry& Entry = glyf.value();
 
-		size_t Offset	= Entry.offset;
-		auto Glyphs		= reinterpret_cast<Glyph*>(Buffer + Offset);
+            const auto Offset = Entry.offset;
+            const auto Glyphs = reinterpret_cast<Glyph*>(Buffer + Offset);
 
-		return Glyphs;
+            return Glyphs;
+        }
+
+        return nullptr;
 	}
 
 
@@ -802,10 +816,13 @@ public:
 
 	GlyphEntry GetGlyph(size_t Glyph_offset)
 	{
-		auto RES = FindDirectoryEntry("glyf");
-		TTF_DirectoryEntry& Entry = (TTF_DirectoryEntry)RES;
+        if (auto glyf = FindDirectoryEntry("glyf"); glyf)
+        {
+            const TTF_DirectoryEntry& Entry = glyf.value();
+		    return GetGlyphEntry( Buffer + Entry.offset + Glyph_offset );
+        }
 
-		return GetGlyphEntry( Buffer + Entry.offset + Glyph_offset );
+        return {};
 	}
 
 

@@ -66,7 +66,7 @@ void ProcessNodes(fbxsdk::FbxNode* Node, SceneResource_ptr scene, const MetaData
             const auto materialCount    = Node->GetMaterialCount();
             const auto shadingMode      = Node->GetShadingMode();
 
-            for (size_t I = 0; I < materialCount; I++)
+            for (int I = 0; I < materialCount; I++)
             {
                 auto classID        = Node->GetMaterial(I)->GetClassId();
                 auto material       = Node->GetSrcObject<FbxSurfacePhong>(I);

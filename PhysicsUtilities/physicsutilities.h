@@ -486,7 +486,7 @@ namespace FlexKit
 				virtual ~PhysXTask() final {}
 
 
-				void Run() final override
+				void Run(iAllocator& allocator) final override
 				{
 					task.run();
 					task.release();

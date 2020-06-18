@@ -37,7 +37,7 @@ namespace FlexKit
     static const float inf = std::numeric_limits<float>::infinity();
     struct AABB
     {
-        enum Axis
+        enum Axis : size_t
         {
             X, Y, Z, Axis_count
         };
@@ -52,7 +52,7 @@ namespace FlexKit
 
             const auto span = min - max;
 
-            for (size_t I = 0; I < Axis_count; I++)
+            for (size_t I = 0; I < Axis::Axis_count; I++)
             {
                 const float axisLength = fabs(span[I]);
 
@@ -68,7 +68,7 @@ namespace FlexKit
 
         AABB operator += (const AABB& rhs)
         {
-            for (size_t I = 0; I < Axis_count; I++)
+            for (size_t I = 0; I < Axis::Axis_count; I++)
             {
                 min[I] = FlexKit::min(rhs.min[I], min[I]);
                 max[I] = FlexKit::max(rhs.max[I], max[I]);

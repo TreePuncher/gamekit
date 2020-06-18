@@ -35,23 +35,28 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	const PSOHandle TILEDSHADING_SHADE				= PSOHandle(GetTypeGUID(TILEDSHADING_SHADE));
-	const PSOHandle TILEDSHADING_LIGHTPREPASS		= PSOHandle(GetTypeGUID(TILEDSHADING_LIGHTPREPASS));
-	const PSOHandle TILEDSHADING_COPYOUT			= PSOHandle(GetTypeGUID(TILEDSHADING_COPYOUT));
-	const PSOHandle OCCLUSION_CULLING				= PSOHandle(GetTypeGUID(OCCLUSION_CULLING));
-	const PSOHandle SSREFLECTIONS					= PSOHandle(GetTypeGUID(SSREFLECTIONS));
-	const PSOHandle DRAW_PSO						= PSOHandle(GetTypeGUID(DRAW_PSO));
-	const PSOHandle DRAW_TEXTURED_PSO				= PSOHandle(GetTypeGUID(DRAW_TEXTURED_PSO));
-	const PSOHandle DRAW_TEXTURED_DEBUG_PSO			= PSOHandle(GetTypeGUID(DRAW_TEXTURED_DEBUG_PSO));
-	const PSOHandle DRAW_3D_PSO						= PSOHandle(GetTypeGUID(DRAW_3D_PSO));
-	const PSOHandle DRAW_LINE_PSO					= PSOHandle(GetTypeGUID(DRAW_LINE_PSO));
-	const PSOHandle DRAW_LINE3D_PSO					= PSOHandle(GetTypeGUID(DRAW_LINE3D_PSO));
-	const PSOHandle DRAW_SPRITE_TEXT_PSO			= PSOHandle(GetTypeGUID(DRAW_SPRITE_TEXT_PSO));
+	inline constexpr PSOHandle TILEDSHADING_SHADE			= PSOHandle(GetTypeGUID(TILEDSHADING_SHADE));
+	inline constexpr PSOHandle TILEDSHADING_LIGHTPREPASS	= PSOHandle(GetTypeGUID(TILEDSHADING_LIGHTPREPASS));
+	inline constexpr PSOHandle TILEDSHADING_COPYOUT			= PSOHandle(GetTypeGUID(TILEDSHADING_COPYOUT));
+	inline constexpr PSOHandle OCCLUSION_CULLING			= PSOHandle(GetTypeGUID(OCCLUSION_CULLING));
+	inline constexpr PSOHandle SSREFLECTIONS				= PSOHandle(GetTypeGUID(SSREFLECTIONS));
+	inline constexpr PSOHandle DRAW_PSO						= PSOHandle(GetTypeGUID(DRAW_PSO));
+	inline constexpr PSOHandle DRAW_TEXTURED_PSO			= PSOHandle(GetTypeGUID(DRAW_TEXTURED_PSO));
+	inline constexpr PSOHandle DRAW_TEXTURED_DEBUG_PSO		= PSOHandle(GetTypeGUID(DRAW_TEXTURED_DEBUG_PSO));
+	inline constexpr PSOHandle DRAW_3D_PSO					= PSOHandle(GetTypeGUID(DRAW_3D_PSO));
+	inline constexpr PSOHandle DRAW_LINE_PSO				= PSOHandle(GetTypeGUID(DRAW_LINE_PSO));
+	inline constexpr PSOHandle DRAW_LINE3D_PSO				= PSOHandle(GetTypeGUID(DRAW_LINE3D_PSO));
+	inline constexpr PSOHandle DRAW_SPRITE_TEXT_PSO			= PSOHandle(GetTypeGUID(DRAW_SPRITE_TEXT_PSO));
+    inline constexpr PSOHandle CLEARRENDERTARGET_RG32       = PSOHandle(GetTypeGUID(CLEARRENDERTARGET_RG32));
+
 
 	ID3D12PipelineState* CreateDrawTriStatePSO		(RenderSystem* RS);
 	ID3D12PipelineState* CreateTexturedTriStatePSO	(RenderSystem* RS);
 	ID3D12PipelineState* CreateDrawLineStatePSO		(RenderSystem* RS);
 	ID3D12PipelineState* CreateDraw2StatePSO		(RenderSystem* RS);
+
+
+    ID3D12PipelineState* LoadClearRenderTarget_RG32 (RenderSystem* renderSystem);
 
 
 	/************************************************************************************************/

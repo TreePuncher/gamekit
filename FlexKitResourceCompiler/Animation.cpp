@@ -143,11 +143,10 @@ void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
 		{
 			const auto Skin = (FbxSkin*)D;
             auto root = Skin->GetCluster(0);
+            auto rootLinkMatrix = FbxAMatrix{};
+
             FbxAMatrix G = GetGeometryTransformation(root->GetLink());
-            FbxAMatrix transformMatrix = root->GetTransformMatrix(FbxAMatrix{});
-            FbxAMatrix rootLinkMatrix  = root->GetTransformLinkMatrix(FbxAMatrix{});
-
-
+            root->GetTransformLinkMatrix(rootLinkMatrix);
 
 			for (int II = 0; Skin->GetClusterCount() > II; ++II)
 			{
@@ -156,12 +155,14 @@ void GetJointTransforms(JointList& Out, const FbxMesh& mesh)
 
 				JointHandle Handle              = GetJoint(Out, ID);
 				FbxAMatrix G                    = GetGeometryTransformation(Cluster->GetLink());
-				FbxAMatrix transformMatrix      = Cluster->GetTransformMatrix(FbxAMatrix{});
-				FbxAMatrix transformLinkMatrix  = Cluster->GetTransformLinkMatrix(FbxAMatrix{});
+                FbxAMatrix transformMatrix;
+                FbxAMatrix transformLinkMatrix;
+
+                Cluster->GetTransformLinkMatrix(transformLinkMatrix);
+                Cluster->GetTransformMatrix(transformMatrix);
 
                 const FbxAMatrix globalBindposeInverseMatrix = transformLinkMatrix.Inverse() * transformMatrix * G;
 				const XMMATRIX Inverse  = FBXMATRIX_2_XMMATRIX(globalBindposeInverseMatrix);
-                auto temp = GetPose(Inverse);
 
 				Out[Handle].Inverse = Inverse;
 			}

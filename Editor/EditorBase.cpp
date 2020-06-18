@@ -107,20 +107,20 @@ const FlexKit::PSOHandle DRAW_imgui = FlexKit::PSOHandle(GetTypeGUID(DRAW_imgui)
 EditorBase::EditorBase(FlexKit::GameFramework& IN_framework) :
 	FlexKit::FrameworkState { IN_framework },
 	panels                  { framework.core.GetBlockMemory() },
-	streamingEngine         { framework.core.RenderSystem, framework.core.GetBlockMemory() },
+	streamingEngine         { framework.core.RenderSystem, framework.ActiveWindow->WH, framework.core.GetBlockMemory() },
 
 	vertexBuffer        { framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)     },
 	constantBuffer      { framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false) },
 
-	cameras		        { framework.core.GetBlockMemory()                               },
-	ids			        { framework.core.GetBlockMemory()                               },
+	cameras		        { framework.core.GetBlockMemory() },
+	ids			        { framework.core.GetBlockMemory() },
 	drawables	        { framework.core.GetBlockMemory(), framework.GetRenderSystem()  },
-	visables	        { framework.core.GetBlockMemory()                               },
-	pointLights	        { framework.core.GetBlockMemory()                               },
-	skeletonComponent   { framework.core.GetBlockMemory()                               },
-	shadowCasters       { framework.core.GetBlockMemory()                               },
+	visables	        { framework.core.GetBlockMemory() },
+	pointLights	        { framework.core.GetBlockMemory() },
+	skeletonComponent   { framework.core.GetBlockMemory() },
+	shadowCasters       { framework.core.GetBlockMemory() },
 
-	UI                  {{ 3, 3 }, framework.core.GetBlockMemory() }
+	UI                  { { 3, 3 }, framework.core.GetBlockMemory() }
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -394,7 +394,7 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 		}   break;
 		case Event::Keyboard:
         {
-            if (evt.mData1.mKC[0] == KC_BACKSPACE && (evt.Action == Event::Pressed | evt.Action == Event::Release))
+            if (evt.mData1.mKC[0] == KC_BACKSPACE && ((evt.Action == Event::Pressed) | (evt.Action == Event::Release)))
             {
                 io.KeysDown[io.KeyMap[ImGuiKey_Backspace]] =
                     evt.Action == Event::Pressed ? true : false;
