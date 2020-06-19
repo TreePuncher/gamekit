@@ -409,6 +409,8 @@ namespace FlexKit
         work.Run(allocator);
         work.NotifyWatchers();
         work.Release();
+
+        allocator.clear();
     }
 
 	using WorkerList	= IntrusiveLinkedList<_WorkerThread>;

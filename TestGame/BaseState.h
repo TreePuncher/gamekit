@@ -143,7 +143,7 @@ inline FlexKit::UpdateTask* QueueSoundUpdate(FlexKit::UpdateDispatcher& Dispatch
 			Data.Sounds = Sounds;
 			Builder.SetDebugString("UpdateSound");
 		},
-		[allocator](auto& Data)
+		[allocator](auto& Data, iAllocator& threadAllocator)
 		{
 			FK_LOG_9("Sound Update");
 			Data.Sounds->Update(allocator);

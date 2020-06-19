@@ -444,7 +444,7 @@ namespace FlexKit
 					data.patches			= Vector<TerrainPatch>(data.localMemory);
 					data.engine				= this;
 				},
-				[camera, maxPatchEdgeSize, this](TerrainUpdate& data)
+				[camera, maxPatchEdgeSize, this](TerrainUpdate& data, iAllocator& threadAllocator)
 				{
 					FK_LOG_9("Begin Terrain Patch Generation");
 

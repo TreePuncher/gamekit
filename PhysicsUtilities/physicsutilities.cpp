@@ -639,7 +639,7 @@ namespace FlexKit
 
         return dispatcher.Add<TPC_Update>(
             [&](auto& builder, auto& data){},
-            [mouseInput, dT](TPC_Update& data)
+            [mouseInput, dT](TPC_Update& data, iAllocator& threadAllocator)
             {
                 for (auto& controller : CameraControllerComponent::GetComponent())
                     controller.componentData.Update(mouseInput, dT);

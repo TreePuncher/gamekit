@@ -175,7 +175,7 @@ namespace FlexKit
 			{
 				Builder.SetDebugString("QueueCameraUpdate");
 			},
-			[this](auto& Data)
+			[this](auto& Data, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("Updating Cameras");
 

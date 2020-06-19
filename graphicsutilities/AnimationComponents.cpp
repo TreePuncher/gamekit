@@ -61,7 +61,7 @@ namespace FlexKit
 
                 builder.SetDebugString("Gather Scene");
 			},
-			[](GatherSkinnedTaskData& data)
+			[](GatherSkinnedTaskData& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Start gather skinned objects.\n");
 
@@ -110,7 +110,7 @@ namespace FlexKit
 
                 builder.SetDebugString("Update Poses");
 			},
-			[](UpdatePosesTaskData& data)
+			[](UpdatePosesTaskData& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Start Pose Updates.\n");
 
