@@ -173,8 +173,7 @@ namespace FlexKit
 
 		~CircularStealingQueue()
 		{
-            if(queue)
-                allocator->_aligned_free(queue);
+            Release();
 		}
 
 
@@ -257,6 +256,13 @@ namespace FlexKit
 		}
 
 
+        void Release()
+        {
+            if (queue)
+                allocator->_aligned_free(queue);
+            queue = nullptr;
+        }
+
 	private:
 		void _Expand() noexcept
 		{
@@ -338,6 +344,15 @@ namespace FlexKit
 			hasJob		{ false				},
             workQueue   { ThreadMemory      },
 			Allocator	{ ThreadMemory		} {}
+
+        ~_WorkerThread()
+        {
+            workQueue.Release();
+            buffer = std::unique_ptr<std::array<byte, MEGABYTE * 8>>(nullptr);
+
+            if (Thread.joinable())
+                Thread.join();
+        }
 
 		void Shutdown()	noexcept;
 		void Wake()		noexcept;
@@ -453,7 +468,7 @@ namespace FlexKit
 	{
 	public:
         ThreadManager(const uint32_t ThreadCount = 2, iAllocator* IN_allocator = SystemAllocator);
-
+        ~ThreadManager() { Release(); }
 
         void Release();
 
