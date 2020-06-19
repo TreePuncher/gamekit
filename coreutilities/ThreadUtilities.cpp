@@ -227,7 +227,9 @@ namespace FlexKit
     {
         running = false;
         cv.notify_all();
-        backgroundThread.join();
+
+        if(backgroundThread.joinable())
+            backgroundThread.join();
     }
 
 
@@ -422,7 +424,7 @@ namespace FlexKit
 		{
 			WorkerThread* worker = nullptr;
 			if (threads.try_pop_back(worker))
-				allocator->free(worker);
+				allocator->release(worker);
 		}
 
         backgroundQueue.Shutdown();
