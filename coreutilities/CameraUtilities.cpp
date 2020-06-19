@@ -254,7 +254,7 @@ namespace FlexKit
 				data.mouseState		= mouseState;
 				data.dt				= dt;
 			},
-			[&orbitCamera](auto& data)
+			[&orbitCamera](auto& data, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("OrbitCamera Update");
 

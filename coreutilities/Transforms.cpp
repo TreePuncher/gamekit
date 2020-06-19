@@ -667,7 +667,7 @@ namespace FlexKit
 			{
 				Builder.SetDebugString("UpdateTransform");
 			},
-			[](auto& Data)
+			[](auto& Data, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("Transform Update");
 				UpdateTransforms();

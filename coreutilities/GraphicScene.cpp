@@ -610,7 +610,7 @@ namespace FlexKit
 				QuadTreeUpdate.parentScene	= parentScene;
 
 			},
-			[](auto& QuadTreeUpdate)
+			[](auto& QuadTreeUpdate, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("QuadTree::Update");
 
@@ -727,7 +727,7 @@ namespace FlexKit
 
                 builder.SetDebugString("Gather Scene");
 			},
-			[](GetPVSTaskData& data)
+			[](GetPVSTaskData& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Start PVS gather\n");
 
@@ -969,7 +969,7 @@ namespace FlexKit
 
                 builder.SetDebugString("Point Light Gather");
 			},
-			[this](PointLightGather& data)
+			[this](PointLightGather& data, iAllocator& threadAllocator)
 			{
                 FK_LOG_9("Point Light Gather");
 

@@ -589,7 +589,7 @@ namespace FlexKit
 
 				FK_LOG_9("Frame Graph Single-Thread Section End");
 			},
-			[=, &allocator](SubmitData& data)
+			[=, &allocator](SubmitData& data, iAllocator& threadAllocator)
 			{
 				FK_LOG_9("Frame Graph Multi-Thread Section Begin");
 

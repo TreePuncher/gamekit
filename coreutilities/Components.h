@@ -819,7 +819,7 @@ namespace FlexKit
 		public:
 			struct iUpdateFN
 			{
-				virtual void operator () (UpdateTaskBase& task) = 0;
+				virtual void operator () (UpdateTaskBase& task, iAllocator& threadAllocator) = 0;
 			};
 
 
@@ -845,9 +845,9 @@ namespace FlexKit
 
 				UpdateTaskBase*	task;
 
-				void Run(iAllocator& allocator) override
+				void Run(iAllocator& threadAllocator) override
 				{
-					task->Run();
+					task->Run(threadAllocator);
 				}
 
 				void Release() override
@@ -856,9 +856,9 @@ namespace FlexKit
 			}threadTask;
 
 
-			void Run()
+			void Run(iAllocator& threadAllocator)
 			{
-				Update(*this);
+				Update(*this, threadAllocator);
 			}
 
 
@@ -1062,9 +1062,9 @@ namespace FlexKit
 				data_BoilderPlate(FN_UPDATE&& IN_fn) :
 					function{ IN_fn } {}
 
-				virtual void operator() (UpdateTaskBase& task) override
+				virtual void operator() (UpdateTaskBase& task, iAllocator& threadAllocator) override
 				{
-					function(locals);
+					function(locals, threadAllocator);
 				}
 
 				TY_NODEDATA locals;
