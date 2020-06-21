@@ -222,6 +222,95 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    TextureStreamingEngine::TextureStreamingEngine(
+                RenderSystem&   IN_renderSystem,
+                const uint2     IN_WH,
+                iAllocator*     IN_allocator,
+                const TextureCacheDesc& desc) : 
+			allocator		        { IN_allocator		},
+            textureBlockAllocator   { desc.textureCacheSize / desc.blockSize,   IN_allocator },
+			renderSystem	        { IN_renderSystem	},
+			settings		        { desc				},
+            feedbackOffsets         { IN_renderSystem.CreateUAVBufferResource(OffsetBufferSize) },
+            feedbackOutputTemp      { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
+            feedbackOutputFinal     { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
+            feedbackPPLists         { IN_renderSystem.CreateUAVTextureResource({256, 256}, DeviceFormat::R32_UINT)  },
+            feedbackTemp1           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
+            feedbackTemp2           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
+            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE) },
+            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT)) },
+            feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
+            feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(1 * MEGABYTE) },
+            feedbackTarget          { IN_renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_WH, DeviceFormat::R32G32_UINT)) },
+            heap                    { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
+            mappedAssets            { IN_allocator }
+    {
+        renderSystem.RegisterPSOLoader(
+            TEXTUREFEEDBACKPASS,
+            { &renderSystem.Library.RSDefault, CreateTextureFeedbackPassPSO });
+
+        renderSystem.RegisterPSOLoader(
+            TEXTUREFEEDBACKCLEAR,
+            { &renderSystem.Library.RSDefault, CreateTextureFeedbackClearPSO });
+
+        renderSystem.RegisterPSOLoader(
+            TEXTUREFEEDBACKCOMPRESSOR,
+            { &renderSystem.Library.RSDefault, CreateTextureFeedbackCompressorPSO });
+
+        renderSystem.SetReadBackEvent(
+            feedbackReturnBuffer,
+            [&, textureStreamingEngine = this](ReadBackResourceHandle resource)
+            {
+                if (!updateInProgress)
+                    return;
+
+                taskInProgress = true;
+                auto& task = allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
+                renderSystem.threads.AddBackgroundWork(task);
+            });
+
+        renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
+        renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCLEAR);
+        renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
+
+        renderSystem.SetDebugName(feedbackTarget, "feedbackTarget");
+    }
+
+
+    /************************************************************************************************/
+
+
+    TextureStreamingEngine::~TextureStreamingEngine()
+    {
+        updateInProgress = false;
+
+        renderSystem.SetReadBackEvent(
+            feedbackReturnBuffer,
+            [](ReadBackResourceHandle resource){});
+
+        while (taskInProgress);
+
+        renderSystem.WaitforGPU(); // Flush any pending reads
+        renderSystem.FlushPendingReadBacks();
+
+        renderSystem.ReleaseUAV(feedbackOffsets);
+        renderSystem.ReleaseUAV(feedbackOutputTemp);
+        renderSystem.ReleaseUAV(feedbackOutputFinal);
+
+        renderSystem.ReleaseUAV(feedbackTemp1);
+        renderSystem.ReleaseUAV(feedbackTemp2);
+
+        renderSystem.ReleaseUAV(feedbackPPLists);
+        renderSystem.ReleaseUAV(feedbackCounters);
+
+        renderSystem.ReleaseTexture(feedbackDepth);
+        renderSystem.ReleaseTexture(feedbackTarget);
+    }
+
+
+    /************************************************************************************************/
+
+
     void TextureStreamingEngine::TextureFeedbackPass(
             UpdateDispatcher&                   dispatcher,
             FrameGraph&                         frameGraph,
@@ -231,8 +320,6 @@ namespace FlexKit
             ReserveConstantBufferFunction&      reserveCB,
             ReserveVertexBufferFunction&        reserveVB)
     {
-        return;
-
         if (updateInProgress)
             return;
 
@@ -287,8 +374,6 @@ namespace FlexKit
 
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackDepth) });
                 ctx.SetRenderTargets({}, true, resources.GetRenderTarget(data.feedbackDepth));
-
-
 
                 struct alignas(512) constantBufferLayout
                 {
@@ -500,14 +585,13 @@ namespace FlexKit
         }
 
         memcpy(&requestCount, (char*)buffer + 12, sizeof(uint64_t));
-        EXITSCOPE(allocator->free(requests));
+        EXITSCOPE(threadLocalAllocator.free(requests));
 
-        requestCount    = min(requestCount, bufferSize);
-
+        requestCount = min(requestCount, bufferSize);
 
         if (requestCount)
         {
-            requests = reinterpret_cast<gpuTileID*>(allocator->malloc(requestCount));
+            requests = reinterpret_cast<gpuTileID*>(threadLocalAllocator.malloc(requestCount));
             memcpy(requests, (std::byte*)buffer + 64, requestCount);
             requestCount = requestCount / 64;
         }
@@ -533,7 +617,7 @@ namespace FlexKit
         const auto end            = std::unique(requests, requests + requestCount, eq_comparitor);
         const auto uniqueCount    = (size_t)(end - requests);
 
-        const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, allocator);
+        const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
         const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
         textureStreamEngine.PostUpdatedTiles(blockAllocations);

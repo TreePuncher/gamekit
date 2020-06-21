@@ -280,87 +280,10 @@ namespace FlexKit
     class FLEXKITAPI TextureStreamingEngine
 	{
 	public:
-		TextureStreamingEngine(
-                RenderSystem&   IN_renderSystem,
-                const uint2     IN_WH,
-                iAllocator*     IN_allocator    = SystemAllocator,
-                const TextureCacheDesc& desc    = {}) : 
-			allocator		        { IN_allocator		},
-            textureBlockAllocator   { desc.textureCacheSize / desc.blockSize,   IN_allocator },
-			renderSystem	        { IN_renderSystem	},
-			settings		        { desc				},
-            feedbackOffsets         { IN_renderSystem.CreateUAVBufferResource(OffsetBufferSize) },
-            feedbackOutputTemp      { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
-            feedbackOutputFinal     { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
-            feedbackPPLists         { IN_renderSystem.CreateUAVTextureResource({256, 256}, DeviceFormat::R32_UINT)  },
-            feedbackTemp1           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
-            feedbackTemp2           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
-            feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE) },
-            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT)) },
-            feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
-            feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(1 * MEGABYTE) },
-            feedbackTarget          { IN_renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_WH, DeviceFormat::R32G32_UINT)) },
-            heap                    { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
-            mappedAssets            { IN_allocator }
-        {
-            renderSystem.RegisterPSOLoader(
-                TEXTUREFEEDBACKPASS,
-                { &renderSystem.Library.RSDefault, CreateTextureFeedbackPassPSO });
-
-            renderSystem.RegisterPSOLoader(
-                TEXTUREFEEDBACKCLEAR,
-                { &renderSystem.Library.RSDefault, CreateTextureFeedbackClearPSO });
-
-            renderSystem.RegisterPSOLoader(
-                TEXTUREFEEDBACKCOMPRESSOR,
-                { &renderSystem.Library.RSDefault, CreateTextureFeedbackCompressorPSO });
-
-            renderSystem.SetReadBackEvent(
-                feedbackReturnBuffer,
-                [&, textureStreamingEngine = this](ReadBackResourceHandle resource)
-                {
-                    if (!updateInProgress)
-                        return;
-
-                    taskInProgress = true;
-                    auto& task = allocator->allocate<TextureStreamUpdate>(resource, *this, allocator);
-                    renderSystem.threads.AddBackgroundWork(task);
-                });
-
-            renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
-            renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCLEAR);
-            renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
-
-            renderSystem.SetDebugName(feedbackTarget, "feedbackTarget");
-        }
+		TextureStreamingEngine(RenderSystem&, const uint2 WH, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
 
 
-        ~TextureStreamingEngine()
-        {
-            updateInProgress = false;
-
-            renderSystem.SetReadBackEvent(
-                feedbackReturnBuffer,
-                [](ReadBackResourceHandle resource){});
-
-            while (taskInProgress);
-
-            renderSystem.WaitforGPU(); // Flush any pending reads
-            renderSystem.FlushPendingReadBacks();
-
-            renderSystem.ReleaseUAV(feedbackOffsets);
-            renderSystem.ReleaseUAV(feedbackOutputTemp);
-            renderSystem.ReleaseUAV(feedbackOutputFinal);
-
-            renderSystem.ReleaseUAV(feedbackTemp1);
-            renderSystem.ReleaseUAV(feedbackTemp2);
-
-            renderSystem.ReleaseUAV(feedbackPPLists);
-            renderSystem.ReleaseUAV(feedbackCounters);
-
-            renderSystem.ReleaseTexture(feedbackDepth);
-            renderSystem.ReleaseTexture(feedbackTarget);
-        }
+        ~TextureStreamingEngine();
 
 
         void TextureFeedbackPass(
@@ -434,10 +357,10 @@ namespace FlexKit
         std::atomic_bool        updateInProgress    = false;
         std::atomic_bool        taskInProgress      = false;
 
-        UAVResourceHandle		feedbackOffsets;        // GPU
-        UAVTextureHandle        feedbackPPLists;        // GPU
-        UAVResourceHandle		feedbackBuffer;         // GPU
-        UAVResourceHandle       feedbackCounters;       // GPU
+        UAVResourceHandle		feedbackOffsets;    // GPU
+        UAVTextureHandle        feedbackPPLists;    // GPU
+        UAVResourceHandle		feedbackBuffer;     // GPU
+        UAVResourceHandle       feedbackCounters;   // GPU
 
         ResourceHandle		    feedbackDepth;  // GPU
         ResourceHandle		    feedbackTarget; // GPU
@@ -453,8 +376,8 @@ namespace FlexKit
 		TextureBlockAllocator	textureBlockAllocator;
         DeviceHeapHandle        heap;
 
-        iAllocator*                 allocator;
-		const TextureCacheDesc		settings;
+        iAllocator*             allocator;
+		const TextureCacheDesc	settings;
 	};
 
 

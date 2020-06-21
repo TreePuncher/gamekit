@@ -193,8 +193,10 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         else 
             MIP = floor(MIP + 1);
     }
-    return float4(1, 0, 1, 1);
+    
+    return float4(UV, MIP / MIPCount, 1);
 }
+
 
 Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
