@@ -377,10 +377,14 @@ namespace FlexKit
 
                 struct alignas(512) constantBufferLayout
                 {
+                    float       bias;
+                    float       padding[3];
                     uint4       textureHandles[16];
                     uint32_t    zeroBlock[64];
                 } constants =
                 {
+                    std::log2f(256.0f / 1920.0f),
+                    {0.0f},
                     {   {256, 256, (uint32_t)testTexture, 0u },
                         {256, 256, (uint32_t)testTexture, 0u },
                         {256, 256, (uint32_t)testTexture, 0u },
@@ -620,7 +624,7 @@ namespace FlexKit
         const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
         const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
-        textureStreamEngine.PostUpdatedTiles(blockAllocations);
+        textureStreamEngine.PostUpdatedTiles(blockAllocations, threadLocalAllocator);
     }
 
 
@@ -674,7 +678,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void TextureStreamingEngine::PostUpdatedTiles(const BlockAllocation& blockChanges)
+    void TextureStreamingEngine::PostUpdatedTiles(const BlockAllocation& blockChanges, iAllocator& threadLocalAllocator)
     {
         if (blockChanges.allocations.size() == 0)
             return;
@@ -684,11 +688,11 @@ namespace FlexKit
         auto uploadQueue    = renderSystem._GetCopyQueue();
         auto deviceHeap     = renderSystem.GetDeviceResource(heap);
 
-        Vector<ResourceHandle>  updatedTextures = { allocator };
+        Vector<ResourceHandle>  updatedTextures = { &threadLocalAllocator  };
         ResourceHandle          prevResource    = InvalidHandle_t;
-        TextureStreamContext    streamContext   = { allocator };
+        TextureStreamContext    streamContext   = { &threadLocalAllocator };
         uint2                   blockSize       = { 256, 256 };
-        TileMapList             mappings        = { allocator };
+        TileMapList             mappings        = { &threadLocalAllocator };
 
         auto reallocatedResourceList = blockChanges.reallocations;
 

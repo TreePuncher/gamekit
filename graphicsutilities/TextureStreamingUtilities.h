@@ -321,7 +321,7 @@ namespace FlexKit
         void                        BindAsset           (const AssetHandle textureAsset, const ResourceHandle  resource);
         std::optional<AssetHandle>  GetResourceAsset    (const ResourceHandle  resource) const;
 
-        void PostUpdatedTiles(const BlockAllocation& blocks);
+        void PostUpdatedTiles(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
         void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
 

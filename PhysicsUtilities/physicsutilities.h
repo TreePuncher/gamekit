@@ -762,6 +762,15 @@ namespace FlexKit
             return GetComponent()[controller].node;
         }
 
+        struct MoveFilter {};
+
+        void SetPosition(const float3 xyz)
+        {
+            auto& ref = GetComponent()[controller];
+            ref.controller->setPosition({ xyz.x, xyz.y, xyz.z });
+            SetPositionW(ref.node, xyz);
+        }
+
 
         CharacterControllerHandle controller;
     };
@@ -792,7 +801,13 @@ namespace FlexKit
             });
     }
     
-
+    void SetControllerPosition(GameObject& GO, const float3 xyz)
+    {
+        Apply(GO, [&](CharacterControllerView& controller)
+            {
+                controller.SetPosition(xyz);
+            });
+    }
 
     /************************************************************************************************/
 

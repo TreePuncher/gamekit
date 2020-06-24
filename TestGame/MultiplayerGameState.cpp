@@ -88,6 +88,8 @@ LocalPlayerState::LocalPlayerState(
         netInputObjects	    { IN_framework.core.GetBlockMemory()	                            },
         thirdPersonCamera   { CreateThirdPersonCameraController(IN_game.pScene, IN_framework.core.GetBlockMemory())   }
 {
+    SetControllerPosition(thirdPersonCamera, { 0, 0, 500 });
+
     eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
     eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
     eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);

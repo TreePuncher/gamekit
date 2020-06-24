@@ -339,6 +339,14 @@ namespace FlexKit
 		NodeHandle node;
 	};
 
+    void Translate(GameObject& go, const float3 xyz)
+    {
+        Apply(go,
+            [&](SceneNodeView<>& node)
+            {
+                node.TranslateWorld(xyz);
+            });
+    }
 
 	float3 GetWorldPosition(GameObject& go)
 	{
