@@ -174,12 +174,7 @@ int main(int argc, char* argv[])
     }
     catch (...)
     {
-#if USING(AFTERMATH)
-        GFSDK_Aftermath_Device_Status status;
-        GFSDK_Aftermath_GetDeviceStatus(&status);
-
-        int x = 0;
-#endif
+        return -1;
     };
 
     return 0;

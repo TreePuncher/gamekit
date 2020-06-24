@@ -12,6 +12,8 @@ cbuffer LocalConstants : register(b1)
 // W  - PADDING
 cbuffer PassConstants : register(b2)
 {
+    float  feedbackBias;
+    float  padding;
     uint4  textureConstants[16];
     uint4  zeroBlock[2];
 }
@@ -49,6 +51,8 @@ void ClearPS(float4 XY : SV_POSITION)
 
 void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
 {
+    const float maxAniso = 4;
+    const float maxAnisoLog2 = log2(maxAniso);
     const uint textureCount = 1;
     const float2 UV = IN.UV;
     uint offset = 0;
@@ -58,36 +62,48 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
 
     for(uint I = 0; I < textureCount; I++)
     {
-        int   MIP               = textures[I].CalculateLevelOfDetail(defaultSampler, UV);
-        uint2 WH                = uint2(0, 0);
-        uint MIPCount           = 0;
+        uint2 WH = uint2(0, 0);
+        uint MIPCount = 0;
+        textures[I].GetDimensions(0.0f, WH.x, WH.y, MIPCount);
+        
+        const float2 dx = ddx(UV * WH);
+        const float2 dy = ddy(UV * WH);
+
+        const float px = dot(dx, dx);
+        const float py = dot(dy, dy);
+
+        const float maxLod = 0.5 * log2(max(px, py));
+        const float minLod = 0.5 * log2(min(px, py));
+
+        const float anisoLOD    = maxLod - min(maxLod - minLod, maxAnisoLog2);
+        const float desiredLod = max(min(floor(maxLod) + feedbackBias, MIPCount - 1), 0);
+        
+        int lod = desiredLod;
+
         const uint textureID    = textureConstants[I].z;
         const uint2 blockSize   = textureConstants[I].xy;
-        textures[I].GetDimensions(MIP, WH.x, WH.y, MIPCount);
 
-        /*
-        while(MIP < MIPCount)
+        while (lod < MIPCount - 1)
         {
+            // Make sure that the lower level mip is loaded first
             uint state;
-            textures[I].SampleLevel(defaultSampler, UV, MIP, 0.0f, state);
+            textures[I].SampleLevel(defaultSampler, UV, min(MIPCount, lod + 1), 0.0f, state);
 
             if(CheckAccessFullyMapped(state))
-            {
                 break;
-            } 
-            else
-            {
-                MIP = floor(MIP) + 1.0f;
-                textures[I].GetDimensions(max(MIP - 1, 0), WH.x, WH.y, MIPCount);
-            }
+
+            lod += 1;
+            textures[I].GetDimensions(max(lod, 0), WH.x, WH.y, MIPCount);
         }
-        */
 
-        const uint2 blockArea   = max(uint2(WH / blockSize), uint2(1, 1));
+        uint2 MIPWH = 0;
+        textures[I].GetDimensions(lod, MIPWH.x, MIPWH.y, MIPCount);
+        
+        const uint2 blockArea   = max(uint2(MIPWH / blockSize), uint2(1, 1));
         const uint2 blockXY     = min(blockArea * saturate(IN.UV), blockArea - uint2(1, 1));
-        const uint  blockID     = ((MIPCount - MIP) << 24 ) | (blockXY.x << 12) | (blockXY.y);
+        const uint  blockID     = ((MIPCount - lod) << 24 ) | (blockXY.x << 12) | (blockXY.y);
 
-        if(WH.x == 0 || WH.y == 0)
+        if (MIPWH.x == 0 || MIPWH.y == 0)
             return;
 
         const uint nodeOffset = offset + NODESIZE * I;

@@ -166,7 +166,6 @@ struct Deferred_OUT
 };
 
 
-
 float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in float2 UV)
 {
     const float4 MIPColors[4] = 
@@ -177,24 +176,27 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         float4(0, 0, 1, 1),
     };
 
-    float MIP           = source.CalculateLevelOfDetail(textureSampler, UV);
     float MIPCount      = 1;
     float width         = 0;
     float height        = 0;
     source.GetDimensions(0u, width, height, MIPCount);
 
-    while(MIP < MIPCount)
+    const float lod = source.CalculateLevelOfDetail(textureSampler, UV);
+    float mip = lod;
+
+    while(mip < MIPCount && mip <= 16)
     {
         uint state;
-        const float4 texel = source.SampleLevel(textureSampler, UV, MIP, 0.0f, state);
+        const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
 
         if(CheckAccessFullyMapped(state))
             return texel;
-        else 
-            MIP = floor(MIP + 1);
+
+        mip = floor(mip + 1);
     }
     
-    return float4(UV, MIP / MIPCount, 1);
+    return float4(1.0f, 0.0f, 1.0f, 0.0f);
+    
 }
 
 
