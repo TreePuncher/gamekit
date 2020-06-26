@@ -109,6 +109,7 @@ namespace FlexKit
 		NodeHandle			Node				= InvalidHandle_t;	// 2
 		TriMeshHandle		Occluder			= InvalidHandle_t;	// 2
 		TriMeshHandle		MeshHandle			= InvalidHandle_t;	// 2
+        MaterialHandle      material            = InvalidHandle_t;
 
 		bool					DrawLast		= false; // 1
 		bool					Transparent		= false; // 1
@@ -132,6 +133,7 @@ namespace FlexKit
 		{
 			MaterialProperties	MP;
 			float4x4	        Transform;
+            uint4               textureHandles[16];
 		};
 
         VConstantsLayout GetConstants() const;

@@ -6615,7 +6615,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle GetMesh(RenderSystem* rs, GUID_t guid)
+	TriMeshHandle GetMesh(RenderSystem* rs, GUID_t guid, CopyContextHandle copyCtx )
 	{
 		if (IsMeshLoaded(guid))
 		{
@@ -6625,7 +6625,9 @@ namespace FlexKit
 				return mesh;
 		}
 
-		TriMeshHandle triMesh = LoadTriMeshIntoTable(rs, rs->GetImmediateUploadQueue(), guid);
+		TriMeshHandle triMesh = LoadTriMeshIntoTable(
+            rs,
+            copyCtx == InvalidHandle_t ? rs->GetImmediateUploadQueue() : copyCtx, guid);
 
 		return triMesh;
 	}
@@ -6634,14 +6636,14 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	TriMeshHandle GetMesh(RenderSystem* rs, const char* meshID)
+	TriMeshHandle GetMesh(RenderSystem* rs, const char* meshID, CopyContextHandle copyCtx )
 	{
 		auto [mesh, result] = FindMesh(meshID);
 
 		if(result)
 			return mesh;
 
-		return LoadTriMeshIntoTable(rs, rs->GetImmediateUploadQueue(), meshID);
+		return LoadTriMeshIntoTable(rs, copyCtx == InvalidHandle_t ? rs->GetImmediateUploadQueue() : copyCtx, meshID);
 	}
 
 

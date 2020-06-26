@@ -1018,6 +1018,14 @@ namespace FlexKit
 		Constants.MP        = MatProperties;
 		Constants.Transform = XMMatrixToFloat4x4(WT).Transpose();
 
+        if (material != InvalidHandle_t)
+        {
+            auto textures = MaterialComponent::GetComponent()[material].Textures;
+
+            for (auto& texture : textures)
+                Constants.textureHandles[std::distance(std::begin(textures), &texture)] = uint4{ 256, 256, texture.to_uint() };
+        }
+
 		return Constants;
 	}
 

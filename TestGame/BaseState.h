@@ -190,6 +190,7 @@ public:
 			cameras		        { framework.core.GetBlockMemory() },
 			ids			        { framework.core.GetBlockMemory() },
 			drawables	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
+            materials           { framework.core.GetBlockMemory() },
 			visables	        { framework.core.GetBlockMemory() },
 			pointLights	        { framework.core.GetBlockMemory() },
             skeletonComponent   { framework.core.GetBlockMemory() },
@@ -270,7 +271,8 @@ public:
     ResourceHandle             irradianceMap;
     ResourceHandle             GGXMap;
     ResourceHandle             TestImage;
-    ResourceHandle             virtualResource;
+    ResourceHandle             virtualResource1;
+    ResourceHandle             virtualResource2;
 
     // render resources
 	WorldRender					render;
@@ -288,6 +290,7 @@ public:
 	CameraComponent				    cameras;
 	StringIDComponent			    ids;
 	DrawableComponent			    drawables;
+    MaterialComponent               materials;
 	SceneVisibilityComponent	    visables;
 	PointLightComponent			    pointLights;
     SkeletonComponent               skeletonComponent;
