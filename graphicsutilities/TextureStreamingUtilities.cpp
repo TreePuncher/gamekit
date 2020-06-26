@@ -827,11 +827,6 @@ namespace FlexKit
             if (!asset) // Skipped unmapped blocks
                 continue;
 
-            const auto level = block.tileID.GetMipLevel(mipCount);
-            
-            if (!streamContext.Open(level, asset.value()))
-                continue;
-
             const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
             const auto resourceState    = renderSystem.GetObjectState(block.resource);
 
@@ -841,16 +836,33 @@ namespace FlexKit
                     resourceState,
                     DeviceResourceState::DRS_Write);
 
-            const auto blocks = filter(
-                blockChanges.allocations,
-                [&](auto& block)
-                {
-                    return block.resource == resource;
-                });
+            const auto blocks = [&]
+            {
+                auto blocks = filter(
+                    blockChanges.allocations,
+                    [&](auto& block)
+                    {
+                        return block.resource == resource;
+                    });
+
+                std::sort(
+                    std::begin(blocks),
+                    std::end(blocks),
+                    [&](auto& lhs, auto& rhs)
+                    {
+                        return lhs.tileID.GetMipLevel(mipCount) > rhs.tileID.GetMipLevel(mipCount);
+                    });
+
+                return blocks;
+            }();
 
             TileMapList mappings{ allocator };
             for (const AllocatedBlock& block : blocks)
             {
+                const auto level = block.tileID.GetMipLevel(mipCount);
+                if (!streamContext.Open(level, asset.value()))
+                    continue;
+
                 mappings.push_back(
                     TileMapping{
                         .tileID     = block.tileID,

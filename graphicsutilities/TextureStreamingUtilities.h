@@ -146,6 +146,9 @@ namespace FlexKit
 
         bool Open(const uint32_t MIPlevel, AssetHandle asset)
         {
+            if (MIPlevel == currentLevel && asset == currentAsset)
+                return true;
+
             auto textureAvailable   = isAssetAvailable(asset);
             auto assetHandle        = LoadGameAsset(asset);
             EXITSCOPE(FreeAsset(assetHandle));
@@ -159,6 +162,8 @@ namespace FlexKit
                 auto res        = CreateCRNDecompressor(MIPlevel, assetHandle, allocator);
                 decompressor    = res.value_or(nullptr);
                 format          = DeviceFormat::BC3_UNORM; // TODO: correctly extract the format
+                currentLevel    = MIPlevel;
+                currentAsset    = asset;
 
                 return res.has_value();
             }
@@ -208,6 +213,7 @@ namespace FlexKit
         DeviceFormat    format;
         iDecompressor*  decompressor = nullptr;
         AssetHandle     currentAsset = -1;
+        uint8_t         currentLevel = -1;
         iAllocator*     allocator;
     };
 
