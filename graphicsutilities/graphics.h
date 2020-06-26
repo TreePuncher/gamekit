@@ -278,6 +278,9 @@ namespace FlexKit
 			return 4;
 		case DXGI_FORMAT_R16G16_UINT:
 			return sizeof(uint16_t[2]);
+        case DXGI_FORMAT_BC3_UNORM:
+        case DXGI_FORMAT_BC5_UNORM:
+            return 16;
 		case DXGI_FORMAT_R16G16_TYPELESS:
 		case DXGI_FORMAT_R16G16_FLOAT:
 		case DXGI_FORMAT_R16G16_UNORM:
@@ -321,13 +324,11 @@ namespace FlexKit
 		case DXGI_FORMAT_BC2_UNORM:
 		case DXGI_FORMAT_BC2_UNORM_SRGB:
 		case DXGI_FORMAT_BC3_TYPELESS:
-		case DXGI_FORMAT_BC3_UNORM:
 		case DXGI_FORMAT_BC3_UNORM_SRGB:
 		case DXGI_FORMAT_BC4_TYPELESS:
 		case DXGI_FORMAT_BC4_UNORM:
 		case DXGI_FORMAT_BC4_SNORM:
 		case DXGI_FORMAT_BC5_TYPELESS:
-		case DXGI_FORMAT_BC5_UNORM:
 		case DXGI_FORMAT_BC5_SNORM:
 		case DXGI_FORMAT_B5G6R5_UNORM:
 		case DXGI_FORMAT_B5G5R5A1_UNORM:
@@ -800,7 +801,13 @@ namespace FlexKit
 		char*           buffer          = 0;
 	};
 
-	
+    struct PackedResourceTileInfo
+    {
+        size_t startingLevel;
+        size_t endingLevel;
+        size_t startingTileIndex;
+    };
+
 	class CopyContext
 	{
 	public:
@@ -813,7 +820,10 @@ namespace FlexKit
 		void                CopyTextureRegion(ID3D12Resource*, size_t subResourceIdx, uint3 XYZ, UploadReservation source, uint2 WH, DeviceFormat format);
         void                CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src);
 
-        void                flushPendingBarriers();
+        PackedResourceTileInfo  GetPackedTileInfo(ID3D12Resource* resource) const;
+        bool                    IsSubResourceTiled(ID3D12Resource* Resource, const size_t level) const;
+
+        void                    flushPendingBarriers();
 
 		ID3D12CommandAllocator*		commandAllocator    = nullptr;
 		ID3D12GraphicsCommandList*	commandList         = nullptr;
@@ -2390,15 +2400,19 @@ private:
 
         uint32_t GetMipLevel(const uint32_t mipCount) const
         {
-            const uint32_t mipInverted = ((bytes >> 24) & 0xff);
+            const uint32_t mipInverted = ((bytes >> 24) & 0x7f);
             return mipCount - mipInverted;
         }
 
         int32_t GetMipLevelInverted() const
         {
-            return (bytes >> 24) & 0xff;
+            return (bytes >> 24) & 0x7f;
         }
 
+        bool packed() const
+        {
+           return (bytes >> 31) & 0x01;
+        }
 
         bool operator == (const TileID_t& rhs) const
         {
@@ -2420,6 +2434,10 @@ private:
         }
     };
 
+    TileID_t CreateTileID(uint32_t x, uint32_t y, uint32_t mipLevel)
+    {
+        return TileID_t{ (mipLevel & 0x7f) << 24 | (x & 0x0f) << 12 | y };
+    }
 
     enum class TileMapState
     {

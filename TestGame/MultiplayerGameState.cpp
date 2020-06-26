@@ -289,6 +289,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             dispatcher,
             frameGraph,
             activeCamera,
+            core.Window.WH,
             PVS,
             base.virtualResource,
             reserveCB,

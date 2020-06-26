@@ -107,7 +107,7 @@ const FlexKit::PSOHandle DRAW_imgui = FlexKit::PSOHandle(GetTypeGUID(DRAW_imgui)
 EditorBase::EditorBase(FlexKit::GameFramework& IN_framework) :
 	FlexKit::FrameworkState { IN_framework },
 	panels                  { framework.core.GetBlockMemory() },
-	streamingEngine         { framework.core.RenderSystem, framework.ActiveWindow->WH, framework.core.GetBlockMemory() },
+	streamingEngine         { framework.core.RenderSystem, framework.core.GetBlockMemory() },
 
 	vertexBuffer        { framework.core.RenderSystem.CreateVertexBuffer(8096 * 64, false)     },
 	constantBuffer      { framework.core.RenderSystem.CreateConstantBuffer(8096 * 2000, false) },

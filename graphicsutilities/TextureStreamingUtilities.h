@@ -24,7 +24,10 @@ namespace FlexKit
     public:
         virtual ~iDecompressor() {}
 
-        virtual UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) = 0;
+        virtual UploadReservation   ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) = 0;
+        virtual UploadReservation   Read(const uint2 WH, CopyContext& ctx) = 0;
+        virtual uint2               GetTextureWH() const = 0;
+
     };
 
 
@@ -35,8 +38,9 @@ namespace FlexKit
         ~CRNDecompressor();
  
 
-        UploadReservation ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
-
+        UploadReservation   ReadTile(const TileID_t id, const uint2 TileSize, CopyContext& ctx) override;
+        UploadReservation   Read(const uint2 WH, CopyContext& ctx) override;
+        uint2               GetTextureWH() const override;
 
         uint32_t                    blocks_X;
         uint32_t                    blocks_Y;
@@ -44,6 +48,7 @@ namespace FlexKit
         char*                       buffer;
         size_t                      rowPitch;
         size_t                      bufferSize;
+        uint2                       WH;
         iAllocator*                 allocator;
     };
 
@@ -82,6 +87,47 @@ namespace FlexKit
         }
     }
 
+    size_t GetFormatTileSizeWith(DeviceFormat)
+    {
+        // TODO: actually fill this out, this is only correct *most* of the time
+        return 256;
+    }
+
+    struct DDSLevelInfo
+    {
+        size_t  RowPitch = 0;
+        uint2   WH;
+        bool    tiled;
+    };
+
+    struct DDSInfo
+    {
+        size_t  MIPCount;
+        uint2   WH;
+
+        DeviceFormat format;
+    };
+
+    DDSInfo GetDDSInfo(AssetHandle asset);
+
+    DDSLevelInfo GetMIPLevelInfo(const size_t Level, const uint2 WH, const DeviceFormat format)
+    {
+        // TODO: actually figure out the row pitch and tile size, and width
+
+        const uint32_t levelWidth = max(WH[0] >> Level, 4);
+
+        if (levelWidth > GetFormatTileSizeWith(format))
+        {
+            return { -1u, { levelWidth, levelWidth }, false };
+        }
+        else
+        {
+            return { -1u,  { levelWidth, levelWidth }, true };
+        }
+    }
+
+
+
 
     /************************************************************************************************/
 
@@ -112,6 +158,7 @@ namespace FlexKit
 
                 auto res        = CreateCRNDecompressor(MIPlevel, assetHandle, allocator);
                 decompressor    = res.value_or(nullptr);
+                format          = DeviceFormat::BC3_UNORM; // TODO: correctly extract the format
 
                 return res.has_value();
             }
@@ -136,11 +183,27 @@ namespace FlexKit
         }
 
 
+        UploadReservation Read(const uint2 WH, CopyContext& ctx)
+        {
+            return decompressor->Read(WH, ctx);
+        }
+
+
         uint2 GetBlockSize() const
         {
             return { 256, 256 };
         }
 
+
+        DeviceFormat Format() const
+        {
+            return format;
+        }
+
+        uint2 WH() const
+        {
+            return decompressor->GetTextureWH();
+        }
 
         DeviceFormat    format;
         iDecompressor*  decompressor = nullptr;
@@ -221,6 +284,11 @@ namespace FlexKit
             return (uint64_t(TextureID) << 32) | tileID.bytes;
         }
 
+        bool IsPacked() const
+        {
+            return tileID.packed();
+        }
+
         operator uint64_t () const { return GetSortingID(); }
     };
 
@@ -232,6 +300,7 @@ namespace FlexKit
     {
         AllocatedBlockList  reallocations;
         AllocatedBlockList  allocations;
+        AllocatedBlockList  packedAllocations;
     };
 
 	class TextureBlockAllocator
@@ -241,8 +310,11 @@ namespace FlexKit
         struct Block
         {
             TileID_t        tileID;
-            ResourceHandle  resource;
-            uint32_t        state;
+            ResourceHandle  resource            = InvalidHandle_t;
+            uint8_t         state               = EBlockState::Free;
+            uint8_t         packed              = 0;
+            uint8_t         parentLevel         = -1;
+            uint8_t         packedLevelCount    = -1;
             uint32_t        blockID;
 
             operator uint64_t() const
@@ -251,11 +323,11 @@ namespace FlexKit
             }
         };
 
-        enum EBlockState
+        enum EBlockState : uint8_t
         {
             Free,
             InUse,
-            Stale// Free for reallocation
+            Stale, // Free for reallocation
         };
 
 
@@ -280,7 +352,7 @@ namespace FlexKit
     class FLEXKITAPI TextureStreamingEngine
 	{
 	public:
-		TextureStreamingEngine(RenderSystem&, const uint2 WH, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
+		TextureStreamingEngine(RenderSystem&, iAllocator* IN_allocator = SystemAllocator, const TextureCacheDesc& desc    = {});
 
 
         ~TextureStreamingEngine();
@@ -290,6 +362,7 @@ namespace FlexKit
             UpdateDispatcher&                   dispatcher,
             FrameGraph&                         frameGraph,
             CameraHandle                        camera,
+            uint2                               renderTargetWH,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
             ResourceHandle                      testTexture,
             ReserveConstantBufferFunction&      reserveCB,
@@ -324,13 +397,6 @@ namespace FlexKit
         void PostUpdatedTiles(const BlockAllocation& blocks, iAllocator& threadLocalAllocator);
         void MarkUpdateCompleted() { updateInProgress = false; taskInProgress = false; }
 
-
-        auto& ClearFeedbackBuffer(FrameGraph& frameGraph, ReserveConstantBufferFunction& reserveCB)
-        {
-            return ClearIntegerRenderTarget_RG32(frameGraph, feedbackTarget, reserveCB, { (uint32_t)-1, (uint32_t)-1 });
-        }
-
-
 	private:
 
         inline static const size_t OffsetBufferSize = 240 * 240 * sizeof(uint32_t);
@@ -363,7 +429,6 @@ namespace FlexKit
         UAVResourceHandle       feedbackCounters;   // GPU
 
         ResourceHandle		    feedbackDepth;  // GPU
-        ResourceHandle		    feedbackTarget; // GPU
 
         UAVResourceHandle		feedbackOutputTemp;   // GPU
         UAVResourceHandle		feedbackOutputFinal;  // GPU

@@ -6,12 +6,40 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    CRNDecompressor::CRNDecompressor(const uint32_t mipLevel, AssetHandle asset, iAllocator* IN_allocator) : allocator{ IN_allocator }
+    DDSInfo GetDDSInfo(AssetHandle assetID)
     {
+        AssetHandle asset = FlexKit::LoadGameAsset(assetID);
         TextureResourceBlob* resource = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(asset));
 
+        auto buffer = resource->GetBuffer();
+        const auto bufferSize = resource->GetBufferSize();
+
+        EXITSCOPE(FreeAsset(asset));
+
+        crnd::crn_texture_info info;
+        if (crnd::crnd_get_texture_info(buffer, resource->GetBufferSize(), &info))
+        {
+            return { info.m_levels, { info.m_width, info.m_height }, resource->format };
+        }
+        else
+            return {};
+    }
+
+
+    /************************************************************************************************/
+
+
+    CRNDecompressor::CRNDecompressor(const uint32_t mipLevel, AssetHandle assetID, iAllocator* IN_allocator) : allocator{ IN_allocator }
+    {
+        TextureResourceBlob* resource = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(assetID));
+
+        crnd::crn_level_info level0Info;
+        crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), 0, &level0Info);
+
+        WH = { level0Info.m_width, level0Info.m_height };
+
         crnd::crn_level_info levelInfo;
-        crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), 0, &levelInfo);
+        const auto getLevelRes =  crnd::crnd_get_level_info(resource->GetBuffer(), resource->GetBufferSize(), mipLevel, &levelInfo);
 
         rowPitch = levelInfo.m_blocks_x * levelInfo.m_bytes_per_block;
         bufferSize = levelInfo.m_blocks_y * rowPitch;
@@ -25,10 +53,10 @@ namespace FlexKit
         void* data[1] = { (void*)buffer};
 
         crnd::crnd_unpack_context crn_context = crnd::crnd_unpack_begin(resource->GetBuffer(), resource->GetBufferSize());
-        auto res = crnd::crnd_unpack_level(crn_context, data, bufferSize, rowPitch, 0);
+        auto res = crnd::crnd_unpack_level(crn_context, data, bufferSize, rowPitch, mipLevel);
         crnd::crnd_unpack_end(crn_context);
 
-        FreeAsset(asset);
+        FreeAsset(assetID);
     }
 
 
@@ -64,6 +92,29 @@ namespace FlexKit
     }
 
 
+    UploadReservation CRNDecompressor::Read(const uint2 WH, CopyContext& ctx)
+    {
+        const size_t destinationRowPitch    = max(blockSize * WH[0]/4, 256);
+        const size_t rowCount               = WH[0] / 4;
+        const size_t allocationSize         = destinationRowPitch * rowCount;
+        const auto reservation              = ctx.Reserve(allocationSize, 512);
+        const size_t sourceRowPitch         = blockSize * WH[0] / 4;
+
+        for(size_t row = 0; row < rowCount; row++)
+            memcpy(
+                reservation.buffer + row * destinationRowPitch,  
+                buffer + row * sourceRowPitch,
+                sourceRowPitch);
+
+        return reservation;
+    }
+
+
+    uint2 CRNDecompressor::GetTextureWH() const
+    {
+        return WH;
+    }
+
     /************************************************************************************************/
 
 
@@ -80,7 +131,7 @@ namespace FlexKit
         {
             crnd::crn_level_info levelInfo;
 
-            if (!crnd::crnd_get_level_info(buffer, bufferSize, 0, &levelInfo))
+            if (!crnd::crnd_get_level_info(buffer, bufferSize, MIPlevel, &levelInfo))
                 return {};
 
             return &allocator->allocate<CRNDecompressor>(MIPlevel, asset, allocator);
@@ -100,7 +151,14 @@ namespace FlexKit
         blockTable.reserve(blockCount);
 
         for (size_t I = 0; I < blockCount; ++I)
-            blockTable.emplace_back(Block{ (uint32_t)-1, InvalidHandle_t, 0, (uint32_t)I });
+            blockTable.emplace_back(
+                Block
+                {
+                    (uint32_t)-1,
+                    InvalidHandle_t,
+                    0, 0, 0, 0, // state, subresourceCount, subresourceStart, padding
+                    (uint32_t)I
+                });
     }
 
 
@@ -144,7 +202,6 @@ namespace FlexKit
             .DSVFormat              = DXGI_FORMAT_D32_FLOAT,
             .SampleDesc             = { 1, 0 },
         };
-
 
         ID3D12PipelineState* PSO = nullptr;
         auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
@@ -224,7 +281,6 @@ namespace FlexKit
 
     TextureStreamingEngine::TextureStreamingEngine(
                 RenderSystem&   IN_renderSystem,
-                const uint2     IN_WH,
                 iAllocator*     IN_allocator,
                 const TextureCacheDesc& desc) : 
 			allocator		        { IN_allocator		},
@@ -241,7 +297,6 @@ namespace FlexKit
             feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT)) },
             feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
             feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(1 * MEGABYTE) },
-            feedbackTarget          { IN_renderSystem.CreateGPUResource(GPUResourceDesc::RenderTarget(IN_WH, DeviceFormat::R32G32_UINT)) },
             heap                    { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
             mappedAssets            { IN_allocator }
     {
@@ -272,8 +327,6 @@ namespace FlexKit
         renderSystem.QueuePSOLoad(TEXTUREFEEDBACKPASS);
         renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCLEAR);
         renderSystem.QueuePSOLoad(TEXTUREFEEDBACKCOMPRESSOR);
-
-        renderSystem.SetDebugName(feedbackTarget, "feedbackTarget");
     }
 
 
@@ -304,7 +357,6 @@ namespace FlexKit
         renderSystem.ReleaseUAV(feedbackCounters);
 
         renderSystem.ReleaseTexture(feedbackDepth);
-        renderSystem.ReleaseTexture(feedbackTarget);
     }
 
 
@@ -315,6 +367,7 @@ namespace FlexKit
             UpdateDispatcher&                   dispatcher,
             FrameGraph&                         frameGraph,
             CameraHandle                        camera,
+            uint2                               renderTargetWH,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
             ResourceHandle                      testTexture,
             ReserveConstantBufferFunction&      reserveCB,
@@ -383,7 +436,7 @@ namespace FlexKit
                     uint32_t    zeroBlock[64];
                 } constants =
                 {
-                    std::log2f(256.0f / 1920.0f),
+                    std::log2f(256.0f / renderTargetWH[0]),
                     {0.0f},
                     {   {256, 256, (uint32_t)testTexture, 0u },
                         {256, 256, (uint32_t)testTexture, 0u },
@@ -680,8 +733,9 @@ namespace FlexKit
 
     void TextureStreamingEngine::PostUpdatedTiles(const BlockAllocation& blockChanges, iAllocator& threadLocalAllocator)
     {
-        if (blockChanges.allocations.size() == 0)
-            return;
+        if (blockChanges.allocations.size() == 0 &&
+            blockChanges.packedAllocations.size() &&
+            blockChanges.reallocations.size()) return;
 
         auto ctxHandle      = renderSystem.OpenUploadQueue();
         auto& ctx           = renderSystem._GetCopyContext(ctxHandle);
@@ -694,6 +748,7 @@ namespace FlexKit
         uint2                   blockSize       = { 256, 256 };
         TileMapList             mappings        = { &threadLocalAllocator };
 
+        // Process reallocated blocks
         auto reallocatedResourceList = blockChanges.reallocations;
 
         std::sort(
@@ -742,6 +797,7 @@ namespace FlexKit
             updatedTextures.push_back(resource);
         }
 
+        // process newly allocated blocks
         auto allocatedResourceList = blockChanges.allocations;
 
         std::sort(
@@ -765,12 +821,15 @@ namespace FlexKit
         for (const auto& block : allocatedResourceList)
         {
             const auto resource = block.resource;
+            const auto mipCount = renderSystem.GetTextureMipCount(resource);
 
             auto asset = GetResourceAsset(resource);
             if (!asset) // Skipped unmapped blocks
                 continue;
 
-            if (!streamContext.Open(block.tileID.GetMipLevel(0), asset.value()))
+            const auto level = block.tileID.GetMipLevel(mipCount);
+            
+            if (!streamContext.Open(level, asset.value()))
                 continue;
 
             const auto deviceResource   = renderSystem.GetDeviceResource(block.resource);
@@ -802,7 +861,7 @@ namespace FlexKit
 
                 const auto tile = streamContext.ReadTile(block.tileID, blockSize, ctx);
 
-                FK_LOG_9("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel(4));
+                FK_LOG_9("CopyTile to tile index: %u, tileID { %u, %u, %u }", block.tileIdx, block.tileID.GetTileX(), block.tileID.GetTileY(), block.tileID.GetMipLevel(mipCount));
 
                 ctx.CopyTile(
                     deviceResource,
@@ -811,16 +870,83 @@ namespace FlexKit
                     tile);
             }
 
+
             ctx.Barrier(
-                renderSystem.GetDeviceResource(block.resource),
+                deviceResource,
                 DeviceResourceState::DRS_Write,
                 DeviceResourceState::DRS_GENERIC);
 
             renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
-            renderSystem.UpdateTextureTileMappings(block.resource, mappings);
+            renderSystem.UpdateTextureTileMappings(resource, mappings);
             updatedTextures.push_back(resource);
         }
 
+
+        auto packedAllocations = blockChanges.packedAllocations;
+        // process newly allocated tiled blocks
+        std::sort(
+            std::begin(packedAllocations),
+            std::end(packedAllocations),
+            [&](auto& lhs, auto& rhs)
+            {
+                return lhs.resource < rhs.resource;
+            });
+
+        for (auto& packedBlock : packedAllocations)
+        {
+            const auto resource         = packedBlock.resource;
+            const auto asset            = GetResourceAsset(resource);
+
+            const auto deviceResource   = renderSystem.GetDeviceResource(resource);
+            const auto resourceState    = renderSystem.GetObjectState(packedBlock.resource);
+
+            const auto packedBlockInfo  = ctx.GetPackedTileInfo(deviceResource);
+
+            const auto startingLevel    = packedBlockInfo.startingLevel;
+            const auto endingLevel      = packedBlockInfo.endingLevel;
+
+            if (resourceState != DeviceResourceState::DRS_Write)
+                ctx.Barrier(
+                    deviceResource,
+                    resourceState,
+                    DeviceResourceState::DRS_Write);
+
+
+            TileMapList mappings{ allocator };
+
+            mappings.push_back(
+                TileMapping{
+                    .tileID     = packedBlock.tileID,
+                    .heap       = heap,
+                    .state      = TileMapState::Updated,
+                    .heapOffset = packedBlock.tileIdx
+                });
+
+
+            for (auto level = startingLevel; level < endingLevel; level++)
+            {
+                if (!streamContext.Open(level, asset.value()))
+                    continue;
+
+                const auto MIPLevelInfo = GetMIPLevelInfo(level, streamContext.WH(), streamContext.Format());
+
+                const TileID_t tileID   = CreateTileID( 0, 0, level );
+                const auto tile         = streamContext.Read(MIPLevelInfo.WH, ctx);
+
+                ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, DeviceFormat::BC3_UNORM);
+            }
+
+            ctx.Barrier(
+                deviceResource,
+                DeviceResourceState::DRS_Write,
+                DeviceResourceState::DRS_GENERIC);
+
+            renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
+            renderSystem.UpdateTextureTileMappings(resource, mappings);
+            updatedTextures.push_back(resource);
+        }
+
+        // Submit Texture tiling changes
         std::sort(std::begin(updatedTextures), std::end(updatedTextures));
 
         updatedTextures.erase(
@@ -857,12 +983,13 @@ namespace FlexKit
         std::for_each(begin, end,
             [&](const gpuTileID tile)
             {
-                auto res = std::lower_bound(
-                    blockTable.begin(), blockTable.end(), tile,
-                    [&](auto lhs, auto rhs)
-                    {
-                        return lhs < rhs;
-                    });
+                auto res =
+                    std::lower_bound(
+                        blockTable.begin(), blockTable.end(), tile,
+                        [&](auto lhs, auto rhs)
+                        {
+                            return lhs < rhs;
+                        });
 
                 if (res != std::end(blockTable) && res->tileID == tile.tileID && res->resource == tile.TextureID)
                     res->state = EBlockState::InUse;
@@ -879,8 +1006,9 @@ namespace FlexKit
 
     BlockAllocation TextureBlockAllocator::AllocateBlocks(const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator)
     {
-        AllocatedBlockList allocatedBlocks  { allocator };
-        AllocatedBlockList reallocatedBlocks{ allocator };
+        AllocatedBlockList allocatedBlocks      { allocator };
+        AllocatedBlockList reallocatedBlocks    { allocator };
+        AllocatedBlockList packedBlocks         { allocator };
 
         uint32_t            itr        = 0;
         const auto          blockCount = blockTable.size();
@@ -890,7 +1018,7 @@ namespace FlexKit
         {
             while (itr < blockCount)
             {
-                const auto idx = (last + itr) % blockCount;
+                const auto idx          = (last + itr) % blockCount;
 
                 if (blockTable[idx].state != EBlockState::InUse ||
                     blockTable[idx].tileID.GetMipLevelInverted() > block_itr->tileID.GetMipLevelInverted())
@@ -913,12 +1041,18 @@ namespace FlexKit
                     blockTable[idx].resource = resourceHandle;
                     blockTable[idx].tileID   = tileID;
                     blockTable[idx].state    = EBlockState::InUse;
+                    blockTable[idx].packed   = block_itr->IsPacked();
 
-                    allocatedBlocks.push_back({
-                        .tileID     = tileID,
-                        .resource   = resourceHandle ,
-                        .offset     = blockTable[idx].blockID * 64 * KILOBYTE,
-                        .tileIdx    = blockTable[idx].blockID });
+                    AllocatedBlock block = {
+                            .tileID     = tileID,
+                            .resource   = resourceHandle,
+                            .offset     = blockTable[idx].blockID * 64 * KILOBYTE,
+                            .tileIdx    = blockTable[idx].blockID };
+
+                    if (!block_itr->IsPacked())
+                        allocatedBlocks.push_back(block);
+                    else
+                        packedBlocks.push_back(block);
 
                     break;
                 }
@@ -939,7 +1073,8 @@ namespace FlexKit
 
         return {
             std::move(reallocatedBlocks),
-            std::move(allocatedBlocks) };
+            std::move(allocatedBlocks),
+            std::move(packedBlocks) };
     }
 
 
@@ -978,7 +1113,7 @@ Software is furnished to do so, subject to the following conditions:
 The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+THE SOTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
