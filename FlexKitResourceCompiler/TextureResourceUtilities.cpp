@@ -242,7 +242,7 @@ inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_
         params.m_pImages[0][I] = mipLevels[I].buffer;
 
     crn_mipmap_params mipMapParams;
-    mipMapParams.m_max_levels   = 16;
+    mipMapParams.m_max_levels   = 64;
     mipMapParams.m_min_mip_size = 1;
 
     if (!mipMapParams.check())

@@ -184,7 +184,7 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
     const float lod = source.CalculateLevelOfDetail(textureSampler, UV);
     float mip = lod;
 
-    while(mip < MIPCount && mip <= 16)
+    while(mip < MIPCount)
     {
         uint state;
         const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
@@ -195,8 +195,7 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         mip = floor(mip + 1);
     }
     
-    return float4(1.0f, 0.0f, 1.0f, 0.0f);
-    
+    return float4(1.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
 }
 
 

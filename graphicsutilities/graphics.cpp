@@ -3332,14 +3332,14 @@ namespace FlexKit
 		uint3               XYZ,
 		UploadReservation   source,
 		uint2               WH,
-		DeviceFormat           format)
+		DeviceFormat        format)
 	{
         flushPendingBarriers();
 
 		const auto      deviceFormat    = TextureFormat2DXGIFormat(format);
 		const size_t    formatSize      = GetFormatElementSize(deviceFormat);
-
-		const size_t rowPitch           = max((formatSize * WH[0]) / 256, 1) * 256;
+        const bool      BCformat        = IsDDS(format);
+		const size_t rowPitch           = max((!BCformat ? formatSize * WH[0] : formatSize * WH[0] / 4) / 256, 1) * 256;
 		//size_t alignmentOffset    = rowPitch & 0x01ff;
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT SubRegion;
@@ -3376,7 +3376,7 @@ namespace FlexKit
             .Z              = (UINT)0,
             .Subresource    = desc.MipLevels - (UINT)destTile[2],
         };
-
+        
         const D3D12_TILE_REGION_SIZE regionSize = {
             .NumTiles   = 1,
             .UseBox     = false,
@@ -3392,6 +3392,49 @@ namespace FlexKit
             src.resource,
             src.offset,
             D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
+    }
+
+
+    /************************************************************************************************/
+
+
+    PackedResourceTileInfo CopyContext::GetPackedTileInfo(ID3D12Resource* resource) const
+    {
+        ID3D12Device* device = nullptr;
+        commandList->GetDevice(IID_PPV_ARGS(&device));
+
+        UINT                        TileCount = 0;
+        D3D12_PACKED_MIP_INFO       packedMipInfo;
+        D3D12_TILE_SHAPE            TileShape;
+        UINT                        subResourceTilingCount = 1;
+        D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
+
+        device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
+
+        return {
+            size_t(packedMipInfo.NumStandardMips),
+            size_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
+            packedMipInfo.StartTileIndexInOverallResource };
+    }
+
+
+    /************************************************************************************************/
+
+
+    bool CopyContext::IsSubResourceTiled(ID3D12Resource* resource, const size_t level) const
+    {
+        ID3D12Device* device = nullptr;
+        commandList->GetDevice(IID_PPV_ARGS(&device));
+
+        UINT                        TileCount = 0;
+        D3D12_PACKED_MIP_INFO       packedMipInfo;
+        D3D12_TILE_SHAPE            TileShape;
+        UINT                        subResourceTilingCount = 1;
+        D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
+
+        device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, level, &subResourceTiling_Packed);
+
+        return (subResourceTiling_Packed.HeightInTiles * subResourceTiling_Packed.WidthInTiles) != 0;
     }
 
 
@@ -4589,7 +4632,7 @@ namespace FlexKit
                     regionSize.Width    = 1;
 
                     regionSize.NumTiles = 1;
-                    regionSize.UseBox = true;
+                    regionSize.UseBox = false;
 
                     regionSizes.push_back(regionSize);
 

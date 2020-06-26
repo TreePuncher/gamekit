@@ -2,11 +2,6 @@
 
 #define NODESIZE 12
 
-cbuffer LocalConstants : register(b1)
-{
-
-}
-
 // XY - SIZE
 // Z  - ID
 // W  - PADDING
@@ -76,15 +71,16 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         const float minLod = 0.5 * log2(min(px, py));
 
         const float anisoLOD    = maxLod - min(maxLod - minLod, maxAnisoLog2);
-        const float desiredLod = max(min(floor(maxLod) + feedbackBias, MIPCount - 1), 0);
+        const float desiredLod = max(min(floor(maxLod) + feedbackBias + 0.5f, MIPCount - 1), 0);
         
-        int lod = desiredLod;
 
         const uint textureID    = textureConstants[I].z;
         const uint2 blockSize   = textureConstants[I].xy;
 
+        int lod = desiredLod;
         while (lod < MIPCount - 1)
         {
+            // TODO: mark all needed MIP levels, rather then one level at a time
             // Make sure that the lower level mip is loaded first
             uint state;
             textures[I].SampleLevel(defaultSampler, UV, min(MIPCount, lod + 1), 0.0f, state);
@@ -99,9 +95,28 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         uint2 MIPWH = 0;
         textures[I].GetDimensions(lod, MIPWH.x, MIPWH.y, MIPCount);
         
+        const int packed = MIPWH.x < blockSize.x;
+        
+        if (packed)
+        {
+            uint2 WH;
+            int MIPCount;
+            int mipLevel = 0;
+            
+            for (int mipLevel = 0; mipLevel < 16; mipLevel++)
+            {
+                textures[I].GetDimensions(mipLevel, WH.x, WH.y, MIPCount);
+                if(WH.x < blockSize.x)
+                    break;
+            }
+
+            lod = mipLevel;
+            textures[I].GetDimensions(lod, MIPWH.x, MIPWH.y, MIPCount);
+        }
+        
         const uint2 blockArea   = max(uint2(MIPWH / blockSize), uint2(1, 1));
         const uint2 blockXY     = min(blockArea * saturate(IN.UV), blockArea - uint2(1, 1));
-        const uint  blockID     = ((MIPCount - lod) << 24 ) | (blockXY.x << 12) | (blockXY.y);
+        const uint  blockID     = (packed << 31) | ((MIPCount - lod) << 24 ) | (packed ? 0 : (blockXY.x << 12) | (blockXY.y));
 
         if (MIPWH.x == 0 || MIPWH.y == 0)
             return;

@@ -68,6 +68,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
     AddAssetFile("assets\\CubeMapResource.gameres");
     AddAssetFile("assets\\skull.gameres");
     AddAssetFile("assets\\debugPlane.gameres");
+    AddAssetFile("assets\\debugTexture.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();
@@ -98,38 +99,40 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
 
-            auto textureHandle      = 8000;
+            auto textureHandle      = 8001;
             auto DDSTexture         = UploadDDSFromAsset(textureHandle, renderSystem, upload, allocator);
+
+            const auto [MIPCount, DDSTextureWH, _] = GetDDSInfo(textureHandle);
 
             base.TestImage          = DDSTexture;
             base.virtualResource    = renderSystem.CreateGPUResource(
                 GPUResourceDesc::ShaderResource(
-                    { 2048, 2048 },
+                    DDSTextureWH,
                     DeviceFormat::BC3_UNORM,
-                    4,
+                    MIPCount,
                     1, true ));
 
             base.streamingEngine.BindAsset(textureHandle, base.virtualResource);
 
-            size_t          MIPCount;
+            size_t          mipCount;
             uint2           WH;
             DeviceFormat    format;
 
-            Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, MIPCount, WH, format, allocator);
+            Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, mipCount, WH, format, allocator);
             base.GGXMap = MoveTextureBuffersToVRAM(
                 renderSystem,
                 upload,
                 radiance.begin(),
-                MIPCount,
+                mipCount,
                 6,
                 format);
 
-            Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, MIPCount, WH, format, allocator);
+            Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, mipCount, WH, format, allocator);
             base.irradianceMap = MoveTextureBuffersToVRAM(
                 renderSystem,
                 upload,
                 irradience.begin(),
-                MIPCount,
+                mipCount,
                 6,
                 format);
 
