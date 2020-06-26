@@ -62,11 +62,11 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
 {
     const float maxAniso = 4;
     const float maxAnisoLog2 = log2(maxAniso);
-    const uint textureCount = 1;
+    const uint textureCount = 2;
     const float2 UV = IN.UV;
     
     uint offset     = 0;
-    UAVCounters.InterlockedAdd(0, NODESIZE, offset);
+    UAVCounters.InterlockedAdd(0, NODESIZE * textureCount, offset);
     UAVOffsets.Store(XY.x * 4 + XY.y * 4 * 240, offset);
     uint prev = PPLinkedList[XY.xy];
 

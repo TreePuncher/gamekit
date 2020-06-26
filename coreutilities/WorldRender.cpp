@@ -97,7 +97,7 @@ namespace FlexKit
 
         ID3D12PipelineState* PSO = nullptr;
         auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
-        FK_ASSERT(SUCCEEDED(HR));
+        //FK_ASSERT(SUCCEEDED(HR));
 
         return PSO;
     }
@@ -1371,16 +1371,6 @@ namespace FlexKit
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
 
-                DescriptorHeap descHeap;
-                descHeap.Init(
-                    ctx,
-                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-                    &allocator);
-
-                descHeap.SetSRV(ctx, 0, _DEBUGTexture);
-                descHeap.SetSRV(ctx, 4, resources.renderSystem.DefaultTexture);
-                descHeap.NullFill(ctx);
-
                 ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
                 ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
@@ -1403,7 +1393,6 @@ namespace FlexKit
                     //resources.GetTexture(data.feedbackTargetObject),
                 };
 
-                ctx.SetGraphicsDescriptorTable(0, descHeap);
 
                 ctx.SetRenderTargets(
                     renderTargets,
@@ -1423,6 +1412,21 @@ namespace FlexKit
                 {
                     const auto constants    = drawable.D->GetConstants();
                     auto* triMesh           = GetMeshResource(drawable.D->MeshHandle);
+                    auto& material          = MaterialComponent::GetComponent()[drawable.D->material];
+
+                    DescriptorHeap descHeap;
+                    descHeap.Init(
+                        ctx,
+                        resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                        &allocator);
+
+                    for(size_t I = 0; I < min(material.Textures.size(), 4); I++)
+                        descHeap.SetSRV(ctx, I, material.Textures[I]);
+
+                    descHeap.SetSRV(ctx, 4, resources.renderSystem.DefaultTexture);
+                    descHeap.NullFill(ctx);
+
+                    ctx.SetGraphicsDescriptorTable(0, descHeap);
 
                     if (triMesh != prevMesh)
                     {

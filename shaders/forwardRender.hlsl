@@ -30,11 +30,14 @@ cbuffer Poses : register(b3)
     float4x4 Poses[128];
 }
 
-Texture2D<float4>		        albedoTexture   : register(t0);
-StructuredBuffer<uint>		    lightLists	    : register(t1);
-ByteAddressBuffer               pointLights     : register(t2);
+Texture2D<float4> albedoTexture : register(t0);
+Texture2D<float4> testTexture   : register(t1);
+
 TextureCube<float4>             HDRMap          : register(t3);
 Texture2D<float4>		        MRIATexture     : register(t4);
+
+StructuredBuffer<uint>		    lightLists	    : register(t5);
+ByteAddressBuffer               pointLights     : register(t6);
 
 sampler BiLinear : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
@@ -205,7 +208,9 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 
     gbuffer.Normal      = float4(IN.Normal,     1);
     gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
-    gbuffer.Albedo      = float4(Albedo.xyz * SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz, Ks);
+    gbuffer.Albedo      = float4(Albedo.xyz *
+        SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz * SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz,
+    Ks);
 
     gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic) * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;

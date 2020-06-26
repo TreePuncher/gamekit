@@ -7,7 +7,7 @@
 
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator, ResourceHandle texture1, ResourceHandle texture2, CopyContextHandle copyContext)
 {
-    const AssetHandle demonModel = 666;
+    const AssetHandle demonModel = 40000;
 
     // Load Model
     auto model = GetMesh(renderSystem, demonModel, copyContext);
@@ -99,9 +99,10 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
 
-            auto testPattern1       = 8001;
-            auto testPattern2       = 8002;
-            auto DDSTexture         = UploadDDSFromAsset(testPattern1, renderSystem, upload, allocator);
+            auto testPattern1       = 8002;
+            auto testPattern2       = 8001;
+            auto DDSTexture = UploadDDSFromAsset(testPattern1, renderSystem, upload, allocator);
+            UploadDDSFromAsset(testPattern2, renderSystem, upload, allocator);
 
             const auto [MIPCount, DDSTextureWH, _] = GetDDSInfo(testPattern1);
 
@@ -113,7 +114,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                     MIPCount,
                     1, true ));
 
-            const auto [MIPCount2, DDSTextureWH2, _2] = GetDDSInfo(testPattern1);
+            const auto [MIPCount2, DDSTextureWH2, _2] = GetDDSInfo(testPattern2);
 
             base.virtualResource2 = renderSystem.CreateGPUResource(
                 GPUResourceDesc::ShaderResource(

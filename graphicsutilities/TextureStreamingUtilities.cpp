@@ -1037,7 +1037,7 @@ namespace FlexKit
             {
                 const auto idx          = (last + itr) % blockCount;
 
-                if (blockTable[idx].state != EBlockState::InUse ||
+                if (blockTable[idx].state != EBlockState::InUse &&
                     blockTable[idx].tileID.GetMipLevelInverted() > block_itr->tileID.GetMipLevelInverted())
                 {
                     if (blockTable[idx].resource != InvalidHandle_t &&
