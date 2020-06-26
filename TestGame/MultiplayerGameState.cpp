@@ -206,7 +206,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.gbuffer,
                 base.depthBuffer,
                 reserveCB,
-                core.GetTempMemory(), base.virtualResource);
+                core.GetTempMemory(), base.virtualResource1);
 
             base.render.RenderPBR_IBL_Deferred(
                 dispatcher,
@@ -232,7 +232,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.temporaryBuffers_2Channel[0],
                 base.temporaryBuffers_2Channel[1],
                 targets.RenderTarget,
-                base.virtualResource,
+                base.virtualResource1,
                 base.gbuffer,
                 base.depthBuffer,
                 reserveCB,
@@ -265,7 +265,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.depthBuffer,
                 reserveCB,
                 core.GetTempMemory(),
-                base.virtualResource);
+                base.virtualResource1);
 
             base.render.UpdateLightBuffers(
                 dispatcher,
@@ -291,7 +291,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             activeCamera,
             core.Window.WH,
             PVS,
-            base.virtualResource,
+            base.virtualResource1,
             reserveCB,
             reserveVB);
 

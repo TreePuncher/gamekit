@@ -178,8 +178,9 @@ namespace FlexKit
                     localWorkQueue = &workQueue;
                     _localThread = this;
 
-                    buffer = std::make_unique<std::array<byte, MEGABYTE * 8>>();
-                    localAllocator.Init(buffer->data(), MEGABYTE * 8);
+                    buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
+                    localAllocator.Init(buffer->data(), MEGABYTE * 16);
+
                     _Run();
                 }));
     }
@@ -393,8 +394,8 @@ namespace FlexKit
         _SetThreadLocalQueue(mainThreadQueue);
 		workQueues.push_back(&mainThreadQueue);
 
-        buffer = std::make_unique<std::array<byte, MEGABYTE * 8>>();
-        localAllocator.Init(buffer->data(), MEGABYTE * 8);
+        buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
+        localAllocator.Init(buffer->data(), MEGABYTE * 16);
         _localAllocator = localAllocator;
 
 		for (size_t I = 0; I < workerCount; ++I)

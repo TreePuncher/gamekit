@@ -56,6 +56,17 @@ namespace FlexKit
 	const float MinNodeSize = 1;
 
 
+    /************************************************************************************************/
+
+    struct MaterialComponentData
+    {
+        static_vector<ResourceHandle, 16> Textures;
+    };
+
+    using MaterialComponent         = BasicComponent_t<MaterialComponentData, MaterialHandle, MaterialComponentID>;
+    using MaterialComponentView     = MaterialComponent::View;
+
+
 	/************************************************************************************************/
 
 
@@ -72,7 +83,6 @@ namespace FlexKit
     };
 
 	using DrawableComponent = BasicComponent_t<Drawable, DrawableHandle, DrawableComponentID, DrawableComponentEventHandler>;
-
 
 	class DrawableView : public ComponentView_t<DrawableComponent>
 	{
@@ -142,6 +152,30 @@ namespace FlexKit
             });
     }
 
+
+    void SetMaterialHandle(GameObject& go, MaterialHandle material)
+    {
+        Apply(
+            go,
+            [&](DrawableView& drawable)
+            {
+                drawable.GetDrawable().material = material;
+            });
+    }
+
+    MaterialHandle GetMaterialHandle(GameObject& go)
+    {
+        return Apply(
+            go,
+            [&](MaterialComponentView& material)
+            {
+                return material.handle;
+            },
+            []() -> MaterialHandle
+            {
+                return InvalidHandle_t;
+            });
+    }
 
     /************************************************************************************************/
 

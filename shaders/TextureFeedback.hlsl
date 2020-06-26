@@ -2,6 +2,20 @@
 
 #define NODESIZE 12
 
+cbuffer EntityConstants : register(b1)
+{
+    float4      Albedo;
+    float       Ks;
+    float       IOR;
+    float       Roughness;
+    float       Anisotropic;
+    float       Metallic;
+    float4x4    WT;
+
+    uint4 Textures[16];
+}
+
+
 // XY - SIZE
 // Z  - ID
 // W  - PADDING
@@ -50,8 +64,9 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
     const float maxAnisoLog2 = log2(maxAniso);
     const uint textureCount = 1;
     const float2 UV = IN.UV;
-    uint offset = 0;
-    UAVCounters.InterlockedAdd(0, NODESIZE * textureCount, offset);
+    
+    uint offset     = 0;
+    UAVCounters.InterlockedAdd(0, NODESIZE, offset);
     UAVOffsets.Store(XY.x * 4 + XY.y * 4 * 240, offset);
     uint prev = PPLinkedList[XY.xy];
 
@@ -74,8 +89,8 @@ void TextureFeedback_PS(Forward_VS_OUT IN, float4 XY : SV_POSITION)
         const float desiredLod = max(min(floor(maxLod) + feedbackBias + 0.5f, MIPCount - 1), 0);
         
 
-        const uint textureID    = textureConstants[I].z;
-        const uint2 blockSize   = textureConstants[I].xy;
+        const uint textureID    = Textures[I].z;
+        const uint2 blockSize   = Textures[I].xy;
 
         int lod = desiredLod;
         while (lod < MIPCount - 1)

@@ -49,6 +49,8 @@ namespace FlexKit
         blocks_Y    = levelInfo.m_blocks_y;
 
         buffer = (char*)allocator->malloc(bufferSize);
+        if (!buffer)
+            __debugbreak();
 
         void* data[1] = { (void*)buffer};
 
@@ -418,7 +420,7 @@ namespace FlexKit
             [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 auto& drawables = data.pvs.GetData().solid;
-
+                
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
 
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
@@ -474,7 +476,7 @@ namespace FlexKit
 
                 const size_t bufferSize = 
                     AlignedSize<Drawable::VConstantsLayout>() * drawables.size() +
-                    AlignedSize<constantBufferLayout>() +
+                    AlignedSize<constantBufferLayout>() * drawables.size() +
                     AlignedSize<Camera::ConstantBuffer>() +
                     AlignedSize<decltype(Vertices)>();
 
@@ -503,14 +505,7 @@ namespace FlexKit
                 uavHeap.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
 
 
-                DescriptorHeap srvHeap;
-                srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 4, &allocator);
-                srvHeap.SetSRV(ctx, 0, testTexture);
-
-                ctx.SetGraphicsDescriptorTable(3, srvHeap);
                 ctx.SetGraphicsDescriptorTable(4, uavHeap);
-
-
                 ctx.SetGraphicsConstantBufferView(0, fullscreenQuad);
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKCLEAR));
                 ctx.Draw(6, 0);
@@ -545,7 +540,17 @@ namespace FlexKit
                         );
                     }
 
+                    auto materialHandle = visable.D->material;
+                    auto& textures = MaterialComponent::GetComponent()[materialHandle].Textures;
+
+                    DescriptorHeap srvHeap;
+                    srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
+
+                    for(size_t I = 0; I < textures.size(); I++)
+                        srvHeap.SetSRV(ctx, I, textures[I]);
+
                     const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passContantBuffer };
+                    ctx.SetGraphicsDescriptorTable(3, srvHeap);
                     ctx.SetGraphicsConstantBufferView(1, constants);
                     ctx.DrawIndexed(triMesh->IndexCount);
                 }
@@ -677,7 +682,7 @@ namespace FlexKit
         const auto stateUpdateRes     = textureStreamEngine.UpdateTileStates(requests, requests + uniqueCount, &threadLocalAllocator);
         const auto blockAllocations   = textureStreamEngine.AllocateTiles(stateUpdateRes.begin(), stateUpdateRes.end());
 
-        textureStreamEngine.PostUpdatedTiles(blockAllocations, threadLocalAllocator);
+        textureStreamEngine.PostUpdatedTiles(blockAllocations, *allocator);
     }
 
 

@@ -348,7 +348,7 @@ namespace FlexKit
         ~_WorkerThread()
         {
             workQueue.Release();
-            buffer = std::unique_ptr<std::array<byte, MEGABYTE * 8>>(nullptr);
+            buffer = std::unique_ptr<std::array<byte, MEGABYTE * 16>>(nullptr);
 
             if (Thread.joinable())
                 Thread.join();
@@ -388,7 +388,7 @@ namespace FlexKit
 		std::thread					    Thread;
 
         StackAllocator                                  localAllocator;
-        std::unique_ptr<std::array<byte, MEGABYTE * 8>> buffer;
+        std::unique_ptr<std::array<byte, MEGABYTE * 16>> buffer;
 	};
 
 
@@ -513,7 +513,7 @@ namespace FlexKit
 
 		Vector<CircularStealingQueue<iWork*>*>	        workQueues;
         StackAllocator                                  localAllocator;
-        std::unique_ptr<std::array<byte, MEGABYTE * 8>> buffer;
+        std::unique_ptr<std::array<byte, MEGABYTE * 16>> buffer;
     };
 
 
