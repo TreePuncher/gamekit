@@ -17,8 +17,8 @@ inline void SetupTestScene(
     // Load Model
     auto model = GetMesh(renderSystem, demonModel, copyContext);
 
-	static const size_t N = 15;
-	static const float  W = (float)30;
+	static const size_t N = 10;
+	static const float  W = (float)10;
 
     MaterialComponent& materials = MaterialComponent::GetComponent();
     MaterialHandle material = materials.CreateMaterial();
@@ -61,6 +61,8 @@ inline void SetupTestScene(
 			SetBoundingSphereFromMesh(gameObject);
 		}
 	}
+
+    materials.ReleaseMaterial(material);
 }
 
 
@@ -81,6 +83,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
     AddAssetFile("assets\\skull.gameres");
     AddAssetFile("assets\\debugPlane.gameres");
     AddAssetFile("assets\\debugTexture.gameres");
+    AddAssetFile("assets\\aRealDemon.gameres");
+    AddAssetFile("assets\\primrose.gameres");
 
 	auto& gameState     = app.PushState<GameState>(base);
 	auto& renderSystem  = app.GetFramework().GetRenderSystem();
@@ -106,8 +110,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
 
-            auto testPattern1       = 8002;
-            auto testPattern2       = 8001;
+            auto testPattern1       = 8001;
+            auto testPattern2       = 8002;
 
             size_t          mipCount;
             uint2           WH;
