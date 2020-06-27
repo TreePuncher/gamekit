@@ -292,11 +292,11 @@ namespace FlexKit
             feedbackOffsets         { IN_renderSystem.CreateUAVBufferResource(OffsetBufferSize) },
             feedbackOutputTemp      { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
             feedbackOutputFinal     { IN_renderSystem.CreateUAVBufferResource(1 * MEGABYTE) },
-            feedbackPPLists         { IN_renderSystem.CreateUAVTextureResource({256, 256}, DeviceFormat::R32_UINT)  },
+            feedbackPPLists         { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
             feedbackTemp1           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
             feedbackTemp2           { IN_renderSystem.CreateUAVTextureResource({128, 128}, DeviceFormat::R32_UINT)  },
             feedbackBuffer          { IN_renderSystem.CreateUAVBufferResource(MEGABYTE) },
-            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 256, 256 }, DeviceFormat::D32_FLOAT)) },
+            feedbackDepth           { IN_renderSystem.CreateGPUResource(GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT)) },
             feedbackCounters        { IN_renderSystem.CreateUAVBufferResource(512) },
             feedbackReturnBuffer    { IN_renderSystem.CreateReadBackBuffer(1 * MEGABYTE) },
             heap                    { IN_renderSystem.CreateHeap(GIGABYTE * 1, 0) },
@@ -438,7 +438,7 @@ namespace FlexKit
                     uint32_t    zeroBlock[64];
                 } constants =
                 {
-                    std::log2f(256.0f / renderTargetWH[0]),
+                    std::log2f(128.0f / renderTargetWH[0]),
                     {0.0f},
                     {   {256, 256, (uint32_t)testTexture, 0u },
                         {256, 256, (uint32_t)testTexture, 0u },
@@ -510,7 +510,6 @@ namespace FlexKit
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKCLEAR));
                 ctx.Draw(6, 0);
 
-
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, passConstants);
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
@@ -556,61 +555,76 @@ namespace FlexKit
                 }
 
 
-                ctx.SetComputeRootSignature(resources.renderSystem.Library.RSDefault);
-                ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR));
+                // Stream Compression Step
+                if (false)
+                {
+                    ctx.SetComputeRootSignature(resources.renderSystem.Library.RSDefault);
+                    ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR));
 
-                // iteration 0
-                DescriptorHeap uavHeap2;
-                uavHeap2.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
-                uavHeap2.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 1);
-                uavHeap2.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
-                uavHeap2.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
-                uavHeap2.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists));
-                uavHeap2.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
-                uavHeap2.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
+                    // iteration 0
+                    DescriptorHeap uavHeap2;
+                    uavHeap2.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                    uavHeap2.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 1);
+                    uavHeap2.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+                    uavHeap2.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
+                    uavHeap2.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists));
+                    uavHeap2.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
+                    uavHeap2.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
+                    ctx.SetComputeDescriptorTable(4, uavHeap2);
+                    ctx.Dispatch({ 256 / 16, 256 / 32, 1 });
+
+                    // iteration 1
+                    DescriptorHeap uavHeap3;
+                    uavHeap3.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                    uavHeap3.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 2);
+                    uavHeap3.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+                    uavHeap3.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
+                    uavHeap3.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
+                    uavHeap3.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
+                    uavHeap3.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
 
 
-                ctx.SetComputeDescriptorTable(4, uavHeap2);
-                ctx.Dispatch({ 256 / 16, 256 / 32, 1 });
+                    ctx.SetComputeDescriptorTable(4, uavHeap3);
+                    ctx.Dispatch({ 256 / 32, 256 / 64, 1 });
 
-                // iteration 1
-                DescriptorHeap uavHeap3;
-                uavHeap3.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
-                uavHeap3.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 2);
-                uavHeap3.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
-                uavHeap3.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
-                uavHeap3.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
-                uavHeap3.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
-                uavHeap3.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
+                    // iteration 2
+                    DescriptorHeap uavHeap4;
+                    uavHeap4.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                    uavHeap4.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 3);
+                    uavHeap4.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
+                    uavHeap4.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
+                    uavHeap4.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
+                    uavHeap4.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputFinal));
+                    uavHeap4.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
 
+                    ctx.SetComputeDescriptorTable(4, uavHeap4);
+                    ctx.Dispatch({ 128/ 64, 128/ 128, 1 });
 
-                ctx.SetComputeDescriptorTable(4, uavHeap3);
-                ctx.Dispatch({ 256 / 32, 256 / 64, 1 });
-
-                // iteration 2
-                DescriptorHeap uavHeap4;
-                uavHeap4.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
-                uavHeap4.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 3);
-                uavHeap4.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
-                uavHeap4.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
-                uavHeap4.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
-                uavHeap4.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputFinal));
-                uavHeap4.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
-
-                ctx.SetComputeDescriptorTable(4, uavHeap4);
-                ctx.Dispatch({ 256 / 64, 256 / 128, 1 });
-
-                ctx.CopyBufferRegion(
-                    {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters, DRS_Read, &ctx)) ,
-                        resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackOutputFinal, DRS_Read, &ctx)) },
-                    { 0, 0 },
-                    {   resources.GetObjectResource(data.readbackBuffer),
-                        resources.GetObjectResource(data.readbackBuffer) },
-                    { 0, 64 },
-                    { 64, MEGABYTE * 1 - 64},
-                    { DRS_Write, DRS_Write },
-                    { DRS_Write, DRS_Write }
-                );
+                    ctx.CopyBufferRegion(
+                        {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters, DRS_Read, &ctx)) ,
+                            resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackOutputFinal, DRS_Read, &ctx)) },
+                        { 0, 0 },
+                        {   resources.GetObjectResource(data.readbackBuffer),
+                            resources.GetObjectResource(data.readbackBuffer) },
+                        { 0, 64 },
+                        { 64, MEGABYTE * 1 - 64},
+                        { DRS_Write, DRS_Write },
+                        { DRS_Write, DRS_Write }
+                    );
+                }
+                else
+                {
+                    ctx.CopyBufferRegion(
+                        {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters,  DRS_Read, &ctx)) ,
+                            resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackBuffer,   DRS_Read, &ctx)) },
+                        { 0, 0 },
+                        {   resources.GetObjectResource(data.readbackBuffer),
+                            resources.GetObjectResource(data.readbackBuffer) },
+                        { 0, 64 },
+                        { 64, MEGABYTE * 1 - 64},
+                        { DRS_Write, DRS_Write },
+                        { DRS_Write, DRS_Write });
+                }
 
                 ctx.QueueReadBack(data.readbackBuffer);
             });
@@ -642,11 +656,10 @@ namespace FlexKit
         EXITSCOPE(textureStreamEngine.renderSystem.CloseReadBackBuffer(resource));
 
         if (!buffer) {
-            __debugbreak();
             return;
         }
 
-        memcpy(&requestCount, (char*)buffer + 12, sizeof(uint64_t));
+        memcpy(&requestCount, (char*)buffer, sizeof(uint64_t));
         EXITSCOPE(threadLocalAllocator.free(requests));
 
         requestCount = min(requestCount, bufferSize);
@@ -984,7 +997,7 @@ namespace FlexKit
     {
         auto pred = [](const auto& lhs, const auto& rhs)
         {
-            return lhs.tileID < rhs.tileID;
+            return (lhs.resource << 32 |  lhs.tileID) <  (size_t(rhs.resource) << 32 | rhs.tileID);
         };
 
         std::sort(blockTable.begin(), blockTable.end(), pred);
