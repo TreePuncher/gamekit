@@ -30,6 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Application.h"
 #include "..\coreutilities\GameFramework.h"
 #include "..\coreutilities\EngineCore.h"
+#include "..\coreutilities\Materials.h"
 #include "..\coreutilities\WorldRender.h"
 #include "..\graphicsutilities\TextRendering.h"
 #include "..\graphicsutilities\defaultpipelinestates.h"
@@ -190,7 +191,7 @@ public:
 			cameras		        { framework.core.GetBlockMemory() },
 			ids			        { framework.core.GetBlockMemory() },
 			drawables	        { framework.core.GetBlockMemory(), IN_Framework.GetRenderSystem() },
-            materials           { framework.core.GetBlockMemory() },
+            materials           { IN_Framework.core.RenderSystem, streamingEngine, framework.core.GetBlockMemory() },
 			visables	        { framework.core.GetBlockMemory() },
 			pointLights	        { framework.core.GetBlockMemory() },
             skeletonComponent   { framework.core.GetBlockMemory() },
@@ -270,9 +271,6 @@ public:
     // Scene Resources
     ResourceHandle             irradianceMap;
     ResourceHandle             GGXMap;
-    ResourceHandle             TestImage;
-    ResourceHandle             virtualResource1;
-    ResourceHandle             virtualResource2;
 
     // render resources
 	WorldRender					render;

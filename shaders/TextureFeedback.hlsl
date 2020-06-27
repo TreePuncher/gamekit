@@ -23,7 +23,6 @@ cbuffer PassConstants : register(b2)
 {
     float  feedbackBias;
     float  padding;
-    uint4  textureConstants[16];
     uint4  zeroBlock[2];
 }
 

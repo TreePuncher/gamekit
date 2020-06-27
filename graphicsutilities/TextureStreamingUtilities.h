@@ -4,7 +4,7 @@
 #include "Memoryutilities.h"
 #include "TextureUtilities.h"
 #include "ThreadUtilities.h"
-
+#include "GraphicScene.h"
 
 #define CRND_HEADER_FILE_ONLY
 #include <crn_decomp.h>
@@ -14,7 +14,6 @@ namespace FlexKit
 
 
     class RenderSystem;
-
 
     /************************************************************************************************/
 
@@ -370,7 +369,6 @@ namespace FlexKit
             CameraHandle                        camera,
             uint2                               renderTargetWH,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
-            ResourceHandle                      testTexture,
             ReserveConstantBufferFunction&      reserveCB,
             ReserveVertexBufferFunction&        reserveVB);
 

@@ -4,8 +4,13 @@
 #include "BaseState.h"
 #include "MultiplayerGameState.h"
 
-
-inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator, ResourceHandle texture1, ResourceHandle texture2, CopyContextHandle copyContext)
+inline void SetupTestScene(
+    FlexKit::GraphicScene&  scene,
+    FlexKit::RenderSystem&  renderSystem,
+    FlexKit::iAllocator*    allocator,
+    GUID_t                  texture1,
+    GUID_t                  texture2,
+    CopyContextHandle       copyContext)
 {
     const AssetHandle demonModel = 666;
 
@@ -15,7 +20,10 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 	static const size_t N = 15;
 	static const float  W = (float)30;
 
-    MaterialComponentData material = { { texture1, texture2 } };
+    MaterialComponent& materials = MaterialComponent::GetComponent();
+    MaterialHandle material = materials.CreateMaterial();
+    materials.AddTexture(texture1, material);
+    materials.AddTexture(texture2, material);
 
 	for (size_t Y = 0; Y < N; ++Y)
 	{
@@ -100,30 +108,6 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
             auto testPattern1       = 8002;
             auto testPattern2       = 8001;
-            auto DDSTexture = UploadDDSFromAsset(testPattern1, renderSystem, upload, allocator);
-            UploadDDSFromAsset(testPattern2, renderSystem, upload, allocator);
-
-            const auto [MIPCount, DDSTextureWH, _] = GetDDSInfo(testPattern1);
-
-            base.TestImage          = DDSTexture;
-            base.virtualResource1    = renderSystem.CreateGPUResource(
-                GPUResourceDesc::ShaderResource(
-                    DDSTextureWH,
-                    DeviceFormat::BC3_UNORM,
-                    MIPCount,
-                    1, true ));
-
-            const auto [MIPCount2, DDSTextureWH2, _2] = GetDDSInfo(testPattern2);
-
-            base.virtualResource2 = renderSystem.CreateGPUResource(
-                GPUResourceDesc::ShaderResource(
-                    DDSTextureWH2,
-                    DeviceFormat::BC3_UNORM,
-                    MIPCount2,
-                    1, true));
-
-            base.streamingEngine.BindAsset(testPattern1, base.virtualResource1);
-            base.streamingEngine.BindAsset(testPattern2, base.virtualResource2);
 
             size_t          mipCount;
             uint2           WH;
@@ -147,7 +131,11 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 6,
                 format);
 
-            SetupTestScene(gameState.scene, app.GetFramework().GetRenderSystem(), app.GetCore().GetBlockMemory(), base.virtualResource1, base.virtualResource2, upload);
+            SetupTestScene(
+                gameState.scene,
+                app.GetFramework().GetRenderSystem(),
+                app.GetCore().GetBlockMemory(),
+                testPattern1, testPattern2, upload);
 
 			renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
 			renderSystem.SetDebugName(base.GGXMap,        "GGX Map");
