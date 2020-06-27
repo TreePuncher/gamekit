@@ -18,18 +18,27 @@ namespace FlexKit
     {
         static_vector<ResourceHandle, 16>   Textures;
         uint32_t                            refCount;
+        MaterialHandle                      handle;
     };
 
     struct MaterialTextureEntry
     {
+        uint32_t        refCount;
         ResourceHandle  texture;
         GUID_t          assetID;
     };
+
+
+    /************************************************************************************************/
+
 
     struct MaterialComponentEventHandler
     {
         void OnCreateView(GameObject& gameObject, const std::byte* buffer, const size_t bufferSize, iAllocator* allocator);
     };
+
+
+    /************************************************************************************************/
 
 
     struct MaterialComponent : public Component<MaterialComponent, MaterialComponentID>
@@ -38,35 +47,44 @@ namespace FlexKit
             streamEngine    { IN_TSE },  
             renderSystem    { IN_renderSystem },
             materials       { allocator },
-            textures        { allocator } {}
+            textures        { allocator },
+            handles         { allocator } {}
 
         MaterialComponentData operator [](MaterialHandle handle) const
         {
-            return materials[handle];
+            return materials[handles[handle]];
         }
 
         MaterialHandle CreateMaterial()
         {
-            return MaterialHandle{ materials.push_back({ {}, 1 }) };
+            auto materialIdx = materials.push_back({ {}, 1 });
+            auto handle = handles.GetNewHandle();
+
+            handles[handle] = materialIdx;
+
+            return handle;
         }
 
-        void ReleaseMaterial(MaterialHandle material)
+        void AddRef(MaterialHandle material)
         {
-            materials[material].refCount--;
+            materials[handles[material]].refCount++;
         }
 
-        MaterialHandle CloneMaterial(MaterialHandle sourceMaterial)
-        {
-            auto clone = materials.push_back(materials[sourceMaterial]);
-            materials[clone].refCount = 1;
-            return MaterialHandle{ clone };
-        }
+        void            ReleaseMaterial(MaterialHandle material);
+        void            ReleaseTexture(ResourceHandle texture);
+
+        MaterialHandle  CloneMaterial(MaterialHandle sourceMaterial);
 
         // The Material View is a ref counted reference to a material instance.
         // On Writes to the material, if it is shared, the MaterialView does a copy on write and creates a new instance of the material.
         struct MaterialView : public ComponentView_t<MaterialComponent>
         {
-            MaterialView(MaterialHandle IN_handle = GetComponent().CreateMaterial()) : handle{ IN_handle } {}
+            MaterialView(MaterialHandle IN_handle) : handle{ IN_handle }
+            {
+                GetComponent().AddRef(handle);
+            }
+
+            MaterialView() : handle{ GetComponent().CreateMaterial() } {}
 
             ~MaterialView()
             {
@@ -79,10 +97,12 @@ namespace FlexKit
                 return GetComponent()[handle];
             }
 
+
             bool Shared() const
             {
                 return GetComponent()[handle].refCount > 1;
             }
+
 
             void AddTexture(GUID_t textureAsset)
             {
@@ -108,13 +128,13 @@ namespace FlexKit
         RenderSystem&                   renderSystem;
         TextureStreamingEngine&         streamEngine;
 
-        Vector<MaterialComponentData>   materials;
-        Vector<MaterialTextureEntry>    textures;
+        Vector<MaterialComponentData>                   materials;
+        Vector<MaterialTextureEntry>                    textures;
+        HandleUtilities::HandleTable<MaterialHandle>    handles;
     };
 
+
     using MaterialComponentView     = MaterialComponent::View;
-
-
 
 
 }   /************************************************************************************************/

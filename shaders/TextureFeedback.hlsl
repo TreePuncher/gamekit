@@ -26,10 +26,10 @@ cbuffer PassConstants : register(b2)
     uint4  zeroBlock[2];
 }
 
-globallycoherent    RWByteAddressBuffer UAVCounters     : register(u0);
-globallycoherent    RWByteAddressBuffer UAVBuffer       : register(u1);
-globallycoherent    RWByteAddressBuffer UAVOffsets      : register(u2);
-globallycoherent    RWTexture2D<uint>   PPLinkedList    : register(u3);
+globallycoherent RasterizerOrderedByteAddressBuffer UAVCounters : register(u0);
+globallycoherent RasterizerOrderedByteAddressBuffer UAVBuffer : register(u1);
+globallycoherent RasterizerOrderedByteAddressBuffer UAVOffsets : register(u2);
+globallycoherent RasterizerOrderedTexture2D<uint>   PPLinkedList : register(u3);
 
 Texture2D<float4>   textures[16] : register(t0);
 

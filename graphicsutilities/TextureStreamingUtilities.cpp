@@ -457,15 +457,15 @@ namespace FlexKit
 
                 const size_t bufferSize = 
                     AlignedSize<Drawable::VConstantsLayout>() * drawables.size() +
-                    AlignedSize<constantBufferLayout>() * drawables.size() +
+                    AlignedSize<constantBufferLayout>() +
                     AlignedSize<Camera::ConstantBuffer>() +
                     AlignedSize<decltype(Vertices)>();
 
-                CBPushBuffer passContantBuffer  { data.reserveCB(bufferSize) };
+                CBPushBuffer passConstantBuffer  { data.reserveCB(bufferSize) };
 
-                const auto passConstants    = ConstantBufferDataSet{ constants, passContantBuffer };
-                const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passContantBuffer };
-                const auto fullscreenQuad   = ConstantBufferDataSet{ Vertices, passContantBuffer };
+                const auto passConstants    = ConstantBufferDataSet{ constants, passConstantBuffer };
+                const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
+                const auto fullscreenQuad   = ConstantBufferDataSet{ Vertices, passConstantBuffer };
 
                 ctx.CopyBufferRegion(
                     { resources.GetObjectResource(passConstants.Handle()) },
@@ -529,7 +529,7 @@ namespace FlexKit
                     for(size_t I = 0; I < textures.size(); I++)
                         srvHeap.SetSRV(ctx, I, textures[I]);
 
-                    const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passContantBuffer };
+                    const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passConstantBuffer };
                     ctx.SetGraphicsDescriptorTable(3, srvHeap);
                     ctx.SetGraphicsConstantBufferView(1, constants);
                     ctx.DrawIndexed(triMesh->IndexCount);
