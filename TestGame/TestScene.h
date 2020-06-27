@@ -7,7 +7,7 @@
 
 inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& renderSystem, FlexKit::iAllocator* allocator, ResourceHandle texture1, ResourceHandle texture2, CopyContextHandle copyContext)
 {
-    const AssetHandle demonModel = 40000;
+    const AssetHandle demonModel = 666;
 
     // Load Model
     auto model = GetMesh(renderSystem, demonModel, copyContext);
@@ -42,7 +42,6 @@ inline void SetupTestScene(FlexKit::GraphicScene& scene, FlexKit::RenderSystem& 
 
             SetMaterialHandle(gameObject, GetMaterialHandle(gameObject));
 
-			
 			SetPositionW(node, float3{ (float)X * W, 0, (float)Y * W } - float3{ N * W / 2, 0, N * W / 2 });
 
             if (demonModel == 6666)

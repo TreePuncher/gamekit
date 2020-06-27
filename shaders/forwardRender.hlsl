@@ -209,8 +209,9 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
     gbuffer.Normal      = float4(IN.Normal,     1);
     gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
     gbuffer.Albedo      = float4(Albedo.xyz *
-        SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz * SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz,
-    Ks);
+        SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz * 
+        SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz,
+        Ks);
 
     gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic) * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
