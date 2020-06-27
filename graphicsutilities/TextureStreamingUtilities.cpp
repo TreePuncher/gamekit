@@ -371,7 +371,6 @@ namespace FlexKit
             CameraHandle                        camera,
             uint2                               renderTargetWH,
             UpdateTaskTyped<GetPVSTaskData>&    sceneGather,
-            ResourceHandle                      testTexture,
             ReserveConstantBufferFunction&      reserveCB,
             ReserveVertexBufferFunction&        reserveVB)
     {
@@ -434,29 +433,11 @@ namespace FlexKit
                 {
                     float       bias;
                     float       padding[3];
-                    uint4       textureHandles[16];
                     uint32_t    zeroBlock[64];
                 } constants =
                 {
                     std::log2f(128.0f / renderTargetWH[0]),
-                    {0.0f},
-                    {   {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u },
-                        {256, 256, (uint32_t)testTexture, 0u } },
-
+                    { 0.0f },
                     {   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

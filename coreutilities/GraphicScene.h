@@ -28,6 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\buildsettings.h"
 #include "..\coreutilities\Assets.h"
 #include "..\coreutilities\GraphicsComponents.h"
+#include "..\coreutilities\Materials.h"
+
 #include "..\graphicsutilities\AnimationUtilities.h" 
 #include "..\graphicsutilities\graphics.h"
 #include "..\graphicsutilities\CoreSceneObjects.h"
@@ -54,21 +56,6 @@ namespace FlexKit
 	};
 
 	const float MinNodeSize = 1;
-
-
-    /************************************************************************************************/
-
-    struct MaterialComponentData
-    {
-        static_vector<ResourceHandle, 16> Textures;
-    };
-
-    using MaterialComponent         = BasicComponent_t<MaterialComponentData, MaterialHandle, MaterialComponentID>;
-    using MaterialComponentView     = MaterialComponent::View;
-
-
-	/************************************************************************************************/
-
 
 	constexpr ComponentID DrawableComponentID	= GetTypeGUID(DrawableID);
 	using DrawableHandle						= Handle_t <32, DrawableComponentID>;

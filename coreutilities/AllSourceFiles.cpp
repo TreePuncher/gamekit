@@ -39,6 +39,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\coreutilities\Handle.cpp"
 #include "..\coreutilities\intersection.cpp"
 #include "..\coreutilities\MathUtils.cpp"
+#include "..\coreutilities\Materials.cpp"
 #include "..\coreutilities\memoryutilities.cpp"
 #include "..\coreutilities\ProfilingUtilities.cpp"
 #include "..\coreutilities\assets.cpp"

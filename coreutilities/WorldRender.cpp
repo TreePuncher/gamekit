@@ -1023,7 +1023,6 @@ namespace FlexKit
         const ResourceHandle            temp2,
         const ResourceHandle            temp3,
         const ResourceHandle            destination,
-        const ResourceHandle            testImage,
         GBuffer&                        gbuffer,
         const ResourceHandle            depthBuffer,
         ReserveConstantBufferFunction   reserveCB,
@@ -1102,7 +1101,6 @@ namespace FlexKit
                 descHeap2.SetSRV(ctx, 1, frameResources.GetTexture(data.NormalSource));
                 descHeap2.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), DeviceFormat::R32_FLOAT);
                 descHeap2.SetSRV(ctx, 3, frameResources.ReadRenderTarget(data.TempObject2, &ctx));
-                descHeap2.SetSRV(ctx, 4, testImage);
 
                 ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSVERTICAL));
                 ctx.SetGraphicsDescriptorTable(3, descHeap2);
@@ -1315,8 +1313,7 @@ namespace FlexKit
         GBuffer&                        gbuffer,
         ResourceHandle                  depthTarget,
         ReserveConstantBufferFunction   reserveCB,
-        iAllocator*                     allocator,
-        ResourceHandle                  _DEBUGTexture)
+        iAllocator*                     allocator)
     {
         constexpr size_t MaxEntityDrawCount = 10000;
         constexpr size_t localBufferSize    = std::max(sizeof(Camera::ConstantBuffer), sizeof(ForwardDrawConstants));
@@ -1342,7 +1339,7 @@ namespace FlexKit
                 //data.feedbackTargetObject    = builder.WriteRenderTarget(gbuffer.textureFeedback);
                 data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
             },
-            [camera, _DEBUGTexture](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            [camera](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 struct EntityPoses
                 {

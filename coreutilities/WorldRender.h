@@ -607,7 +607,6 @@ namespace FlexKit
             const ResourceHandle            temp2,
             const ResourceHandle            temp3,
             const ResourceHandle            destination,
-            const ResourceHandle            testImage,
             GBuffer&                        gbuffer,
             const ResourceHandle            depthBuffer,
             ReserveConstantBufferFunction   reserveCB,
@@ -623,8 +622,7 @@ namespace FlexKit
             GBuffer&                        gbuffer,
             ResourceHandle                  depthTarget,
             ReserveConstantBufferFunction   reserveCB,
-            iAllocator*                     allocator,
-            ResourceHandle                  _DEBUGTexture);
+            iAllocator*                     allocator);
 
 
         TiledDeferredShade& RenderPBR_DeferredShade(
