@@ -756,6 +756,12 @@ namespace FlexKit
 
 	struct DescHeapStack
 	{
+        ~DescHeapStack()
+        {
+            Release();
+        }
+
+
 		void Release()
 		{
 			if (DescHeap) 
@@ -2954,8 +2960,9 @@ private:
 
     struct MappedReadBackBuffer
     {
-        void* buffer;
-        const size_t bufferSize;
+        void*                   buffer;
+        const size_t            bufferSize;
+        ReadBackResourceHandle  handle;
     };
 
 
@@ -2964,6 +2971,7 @@ private:
 	public:
 		ReadBackStateTable(iAllocator* allocator) :
 			handles         { allocator },
+            pendingRelease  { allocator },
             readBackBuffers { allocator },
             readBackFence   { nullptr }
         {
@@ -2972,12 +2980,7 @@ private:
 
         ~ReadBackStateTable()
         {
-            readBackFence->Release();
-
-            for (auto& buffer : readBackBuffers)
-                CloseHandle(buffer.event);
-
-            readBackBuffers.clear();
+            Release();
         }
 
 
@@ -2999,6 +3002,36 @@ private:
         {
             const auto HR = device->CreateFence(0, D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&readBackFence));
             FK_ASSERT(SUCCEEDED(HR));
+        }
+
+
+        void Release()
+        {
+            if(readBackFence)
+                readBackFence->Release();
+
+            readBackFence = nullptr;
+
+            for (auto& buffer : readBackBuffers)
+                CloseHandle(buffer.event);
+
+            readBackBuffers.clear();
+
+            for (auto& pending : pendingRelease)
+                pending.resource->Release();
+
+            pendingRelease.clear();
+
+        }
+
+        void ReleaseResource(ReadBackResourceHandle handle)
+        {
+            pendingRelease.push_back(readBackBuffers[handles[handle]]);
+
+            readBackBuffers[handles[handle]]        = std::move(readBackBuffers.back());
+            handles[readBackBuffers.back().handle]  = handles[handle];
+
+            readBackBuffers.pop_back();
         }
 
 
@@ -3127,6 +3160,7 @@ private:
         uint64_t                                                counter = 0;
         ID3D12Fence*                                            readBackFence;
 		Vector<ReadBackEntry>                                   readBackBuffers;
+        Vector<ReadBackEntry>                                   pendingRelease;
 		HandleUtilities::HandleTable<ReadBackResourceHandle>    handles;
 	};
 
@@ -3250,10 +3284,10 @@ private:
 		IndirectLayout			CreateIndirectLayout			(static_vector<IndirectDrawDescription> entries, iAllocator* allocator);
 		ReadBackResourceHandle  CreateReadBackBuffer            (const size_t bufferSize);
 
-        void                    SetReadBackEvent   (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
-        MappedReadBackBuffer    OpenReadBackBuffer (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
-        void                    CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer);
-        void                    FlushPendingReadBacks();
+        void                        SetReadBackEvent    (ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler);
+        std::pair<void*, size_t>    OpenReadBackBuffer  (ReadBackResourceHandle readbackBuffer, const size_t readSize = -1);
+        void                        CloseReadBackBuffer (ReadBackResourceHandle readbackBuffer);
+        void                        FlushPendingReadBacks();
 
 		void SetObjectState(SOResourceHandle	handle,	DeviceResourceState state);
 		void SetObjectState(UAVResourceHandle	handle, DeviceResourceState state);
@@ -3291,7 +3325,7 @@ private:
 		void ReleaseTexture	(ResourceHandle);
 		void ReleaseUAV		(UAVResourceHandle);
 		void ReleaseUAV		(UAVTextureHandle);
-
+        void ReleaseReadBack(ReadBackResourceHandle);
 
 		void                SubmitUploadQueues(uint32_t flags, CopyContextHandle* handle, size_t count = 1);
 		CopyContextHandle   OpenUploadQueue();

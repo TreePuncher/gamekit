@@ -170,12 +170,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         skinnedObjects
     };
 
-    frameGraph.AddRenderTarget(base.temporaryBuffers[0]);
-    frameGraph.AddRenderTarget(base.temporaryBuffers[1]);
-    frameGraph.AddRenderTarget(base.temporaryBuffers_2Channel[0]);
-    frameGraph.AddRenderTarget(base.temporaryBuffers_2Channel[1]);
-    frameGraph.AddRenderTarget(base.temporaryBuffers[1]);
-
     ClearVertexBuffer   (frameGraph, base.vertexBuffer);
     ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
     ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
@@ -224,7 +218,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 base.t,
                 core.GetTempMemory());
 
-            if constexpr (false)
+            if constexpr (false);
+                /*
             base.render.BilateralBlur(
                 frameGraph,
                 base.temporaryBuffers[0],
@@ -237,6 +232,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveCB,
                 reserveVB,
                 core.GetTempMemory());
+                */
             //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
         }   break;
         case RenderMode::ComputeTiledDeferred:
