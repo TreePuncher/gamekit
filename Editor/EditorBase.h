@@ -13,6 +13,14 @@
 #include "graphics.h"
 
 #include <imgui/imgui.h>
+#include <memory>
+
+
+#include "ResourceHandles.h"
+
+#include "..\FlexKitResourceCompiler\Common.h"
+#include "..\FlexKitResourceCompiler\SceneResource.h"
+#include "..\FlexKitResourceCompiler\ResourceUtilities.h"
 
 
 /************************************************************************************************/
@@ -22,6 +30,16 @@ inline ImTextureID TextreHandleToIM(FlexKit::ResourceHandle texture)
 {
     return reinterpret_cast<ImTextureID>((size_t)texture.INDEX);
 }
+
+
+/************************************************************************************************/
+
+
+struct ResourceTable
+{
+    std::vector<std::shared_ptr<FlexKit::ResourceBuilder::SceneResource>> scenes;
+    std::vector<std::shared_ptr<FlexKit::ResourceBuilder::iResource>>     resources;
+};
 
 
 /************************************************************************************************/
@@ -45,6 +63,8 @@ public:
     void ImportFbx();
 
     void Resize(const FlexKit::uint2 WH);
+
+    ResourceTable                       resourceTable;
 
     FlexKit::ResourceHandle             imGuiFont;
 

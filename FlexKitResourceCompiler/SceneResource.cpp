@@ -307,6 +307,22 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
+    void MakeScene(fbxsdk::FbxScene* S, FBXIDTranslationTable& translationTable, ResourceList& Out)
+    {
+        auto Root = S->GetRootNode();
+
+        SceneResource_ptr	scene = std::make_shared<SceneResource>();
+
+        scene->translationTable = translationTable;
+
+        ProcessNodes(Root, scene, {});
+        Out.push_back(scene);
+    }
+
+
+    /************************************************************************************************/
+
+
     ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData)
     {
         FBXIDTranslationTable	translationTable;
@@ -315,6 +331,33 @@ namespace FlexKit::ResourceBuilder
         GetScenes(scene, metaData, translationTable, resources);
 
         return resources;
+    }
+
+
+    /************************************************************************************************/
+
+
+    std::pair<ResourceList, std::shared_ptr<SceneResource>>  CreateSceneFromFBXFile2(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc)
+    {
+        FBXIDTranslationTable	translationTable;
+        ResourceList			resources = GatherSceneResources(scene, Desc.Cooker, translationTable, true, {});
+        ResourceList            sceneRes;
+
+        MakeScene(scene, translationTable, sceneRes);
+        // Translate ID's right now
+        auto localScene = std::dynamic_pointer_cast<SceneResource>(sceneRes.back());
+        for (auto& entity : localScene->entities)
+        {
+            for (auto& component : entity.components)
+            {
+                if (component->id == GetTypeGUID(DrawableComponent))
+                {
+                    auto drawable = std::dynamic_pointer_cast<DrawableComponent>(component);
+                    drawable->MeshGuid = TranslateID(drawable->MeshGuid, translationTable);
+                }
+            }
+        }
+        return { resources, localScene };
     }
 
 

@@ -5,9 +5,6 @@
 #include <imgui_draw.cpp>
 
 
-#include "..\FlexKitResourceCompiler\Common.h"
-#include "..\FlexKitResourceCompiler\SceneResource.h"
-#include "..\FlexKitResourceCompiler\ResourceUtilities.h"
 
 using namespace FlexKit;
 
@@ -458,8 +455,7 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 
 void EditorBase::ImportFbx()
 {
-    /*
-    CompileSceneFromFBXFile_DESC Desc;
+    FlexKit::ResourceBuilder::CompileSceneFromFBXFile_DESC Desc;
     Desc.CloseFBX = true;
     Desc.IncludeShaders = false;
     Desc.CookingEnabled = true;
@@ -469,9 +465,21 @@ void EditorBase::ImportFbx()
     fbxsdk::FbxManager* Manager         = fbxsdk::FbxManager::Create();
     fbxsdk::FbxIOSettings* Settings     = fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
     Manager->SetIOSettings(Settings);
-    */
 
-    //auto [res, scene] = LoadFBXScene(assetLocation, Manager, Settings);
+    auto file = ResourceBuilder::SelectFile();
+
+    if (!file.Valid)
+        return;
+
+    auto [res, scene] = FlexKit::ResourceBuilder::LoadFBXScene(file.str, Manager, Settings);
+    auto [sceneResources, fkScene] = FlexKit::ResourceBuilder::CreateSceneFromFBXFile2(scene, Desc);
+
+    for (auto& resource : sceneResources)
+        resourceTable.resources.push_back(resource);
+
+    resourceTable.scenes.push_back(fkScene);
+
+    FK_LOG_INFO("Load FBX Complete!");
 }
 
 
@@ -490,7 +498,7 @@ void EditorBase::Resize(const FlexKit::uint2 WH)
 
 /**********************************************************************
 
-Copyright (c) 2019 Robert May
+Copyright (c) 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
