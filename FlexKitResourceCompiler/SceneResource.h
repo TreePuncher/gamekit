@@ -291,7 +291,9 @@ namespace FlexKit::ResourceBuilder
     /************************************************************************************************/
 
 
-    ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData);
+    ResourceList                                                CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData);
+    std::pair<ResourceList, std::shared_ptr<SceneResource>>     CreateSceneFromFBXFile2(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc);
+
 
 }   /************************************************************************************************/
 

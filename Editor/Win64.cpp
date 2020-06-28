@@ -7,7 +7,12 @@
 #include "EditorPanels.cpp"
 #include "EditorBase.cpp"
 
+
+#include "..\FlexKitResourceCompiler\Animation.cpp"
 #include "..\FlexKitResourceCompiler\MetaData.cpp"
+#include "..\FlexKitResourceCompiler\MeshProcessing.cpp"
+#include "..\FlexKitResourceCompiler\ResourceUtilities.cpp"
+#include "..\FlexKitResourceCompiler\SceneResource.cpp"
 
 
 int main(int argc, char* argv[])
@@ -38,7 +43,7 @@ int main(int argc, char* argv[])
 
 /**********************************************************************
 
-Copyright (c) 2019 Robert May
+Copyright (c) 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

@@ -215,7 +215,7 @@ project "Editor"
 
 		"graphicsutilities/*.h",
 		"graphicsutilities/*.cpp", 
-		
+
 		"physicsutilities/*.h", 
 		"physicsutilities/*.cpp", 
 		"shaders/*.hlsl"}
@@ -237,10 +237,10 @@ project "Editor"
 			
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/debug"
 		}
-		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
+		defines { "_DEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		symbols "On"
 		--optimize "Debug"
-		buildoptions { "/std:c++latest", "/MTd" }
+		buildoptions { "/std:c++latest", "/MTd", "/bigobj" }
 
 	filter "configurations:Release"
 		libdirs {
@@ -250,6 +250,6 @@ project "Editor"
 
 			"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/lib/vs2017/x64/release"
 		}
-		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
+		defines { "NDEBUG", "_CRT_SECURE_NO_WARNINGS", "FBXSDK_SHARED", "_ENABLE_ATOMIC_ALIGNMENT_FIX" }
 		optimize "Full"
-		buildoptions { "/std:c++latest", "/MT"}
+		buildoptions { "/std:c++latest", "/MT", "/bigobj" }
