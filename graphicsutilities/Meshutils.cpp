@@ -23,8 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "..\pch.h"
-#include "..\graphicsutilities\MeshUtils.h"
-#include "..\coreutilities\memoryutilities.h"
+#include "MeshUtils.h"
+#include "memoryutilities.h"
 
 namespace FlexKit
 {   /************************************************************************************************/

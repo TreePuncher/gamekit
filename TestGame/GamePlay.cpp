@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Gameplay.h"
-#include "..\coreutilities\containers.h"
+#include "containers.h"
 #include <algorithm>
 
 

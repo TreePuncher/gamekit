@@ -27,10 +27,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "GameFramework.h"
 
-#include "../graphicsutilities/graphics.h"
-#include "../coreutilities/GraphicsComponents.h"
-#include "../coreutilities/Transforms.h"
-#include "../coreutilities/MathUtils.h"
+#include "graphics.h"
+#include "GraphicsComponents.h"
+#include "Transforms.h"
+#include "MathUtils.h"
 
 
 namespace FlexKit

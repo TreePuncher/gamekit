@@ -26,7 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GUIINPUTSTATE_H
 
 #include "..\Application\GameFramework.h"
-#include "..\graphicsutilities\GuiUtilities.h"
+#include "GuiUtilities.h"
 
 namespace FlexKit
 {

@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\mathutils.h"
+#include "containers.h"
+#include "mathutils.h"
 #include <stdint.h>
 
 namespace FlexKit

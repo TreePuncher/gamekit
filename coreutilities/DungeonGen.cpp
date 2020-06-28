@@ -22,7 +22,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\coreutilities\DungeonGen.H"
+#include "DungeonGen.H"
 
 #pragma warning( disable : 4267 )
 

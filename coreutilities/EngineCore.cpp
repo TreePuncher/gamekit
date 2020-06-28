@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "EngineCore.h"
-#include "../coreutilities/Transforms.h"
+#include "Transforms.h"
 
 namespace FlexKit
 {   /************************************************************************************************/

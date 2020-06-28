@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Assets.h"
-#include "..\graphicsutilities\graphics.h"
+#include "graphics.h"
 
 namespace FlexKit
 {

@@ -22,9 +22,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\MathUtils.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "MathUtils.h"
 #include <cstdlib>
 
 //#pragma warning( disable : 4251 )

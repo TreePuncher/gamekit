@@ -30,8 +30,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define TYPEID_H
 
 // Include
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
+#include "buildsettings.h"
+#include "containers.h"
 
 namespace FlexKit
 {

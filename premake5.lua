@@ -169,6 +169,7 @@ project "Editor"
 		"%fmodapidir%/api/lowlevel/inc",
 		"%fmodapidir%/api/core/inc", 
 
+		"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/include",
 		"C:/Program Files/Autodesk/FBX/FBX SDK/2020.0.1/include/**",
 
 		"coreutilities", 
@@ -202,6 +203,7 @@ project "Editor"
 	vpaths { ["Headers/*"] = "**.h", ["Source/*"] = "**.cpp", ["Shaders"] = "**.hlsl"}
 
 	files{
+		"buildsettings.h", 
 		"Editor/**.h", 
 		"Editor/**.cpp", 
 		"coreutilities/*.h", 

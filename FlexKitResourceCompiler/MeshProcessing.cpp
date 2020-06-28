@@ -25,11 +25,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "stdafx.h"
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 
 #include "MeshProcessing.h"
 #include "Animation.h"
-#include "..\coreutilities\intersection.h"
+#include "intersection.h"
 
 #include <iostream>
 

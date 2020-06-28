@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef TTFONTLOADER_H
 #define TTFONTLOADER_H
 
-#include "..\coreutilities\memoryutilities.h"
+#include "memoryutilities.h"
 
 
 using FlexKit::iAllocator;

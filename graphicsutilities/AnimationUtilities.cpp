@@ -1,4 +1,4 @@
-#include "../graphicsutilities/AnimationUtilities.h"
+#include "AnimationUtilities.h"
 
 namespace FlexKit
 {   /************************************************************************************************/

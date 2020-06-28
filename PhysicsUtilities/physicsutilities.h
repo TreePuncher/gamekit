@@ -25,13 +25,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef PHYSICSUTILITIES_H
 #define PHYSICSUTILITIES_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\components.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\graphicScene.h"
-#include "..\coreutilities\mathUtils.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\threadUtilities.h"
+#include "buildsettings.h"
+#include "components.h"
+#include "containers.h"
+#include "graphicScene.h"
+#include "mathUtils.h"
+#include "memoryutilities.h"
+#include "threadUtilities.h"
 
 #include "PxPhysicsAPI.h"
 #include <PhysX_sdk/physx/include/characterkinematic/PxController.h>

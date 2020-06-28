@@ -2,9 +2,9 @@
 #include "Common.h"
 #include "ResourceUtilities.h"
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\AnimationUtilities.h"
+#include "buildsettings.h"
+#include "memoryutilities.h"
+#include "AnimationUtilities.h"
 
 #include "Scenes.h"
 #include "MeshProcessing.h"

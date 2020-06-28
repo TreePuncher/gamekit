@@ -1,10 +1,10 @@
 #include "..\pch.h"
-#include "..\buildsettings.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\intersection.h"
-#include "..\graphicsutilities\MeshUtils.h"
-#include "..\graphicsutilities\DDSUtilities.h"
+#include "buildsettings.h"
+#include "memoryutilities.h"
+#include "containers.h"
+#include "intersection.h"
+#include "MeshUtils.h"
+#include "DDSUtilities.h"
 
 
 #include "AnimationUtilities.h"

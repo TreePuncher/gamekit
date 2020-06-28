@@ -5,7 +5,7 @@
 #include "memoryutilities.h"
 #include "Transforms.h"
 #include "intersection.h"
-#include "..\graphicsutilities\CoreSceneObjects.h"
+#include "CoreSceneObjects.h"
 
 
 namespace FlexKit

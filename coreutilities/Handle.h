@@ -24,9 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\type.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "type.h"
 
 #include <stdint.h>
 

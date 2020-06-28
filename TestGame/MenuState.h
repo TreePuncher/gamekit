@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\coreutilities\GameFramework.h"
-#include "..\coreutilities\CameraUtilities.h"
+#include "GameFramework.h"
+#include "CameraUtilities.h"
 
 using FlexKit::iAllocator;
 using FlexKit::FrameworkState;

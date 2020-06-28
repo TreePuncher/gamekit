@@ -25,9 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DEFAULTPIPELINESTATES
 #define DEFAULTPIPELINESTATES
 
-#include "../graphicsutilities/graphics.h"
-#include "../graphicsutilities/PipelineState.h"
-#include "../coreutilities/ResourceHandles.h"
+#include "graphics.h"
+#include "PipelineState.h"
+#include "ResourceHandles.h"
 
 
 namespace FlexKit

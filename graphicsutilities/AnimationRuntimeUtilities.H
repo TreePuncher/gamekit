@@ -27,11 +27,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define ANIMATION_UTILITIES_H
 
 #include "..\PCH.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\Assets.h"
-#include "..\graphicsutilities\AnimationUtilities.h"
-#include "..\graphicsutilities\CoreSceneObjects.h"
+#include "MathUtils.h"
+#include "memoryutilities.h"
+#include "Assets.h"
+#include "AnimationUtilities.h"
+#include "CoreSceneObjects.h"
 
 
 #include <DirectXMath.h>

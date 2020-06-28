@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef METADATA_H
 #define METADATA_H
 
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\Assets.h"
+#include "memoryutilities.h"
+#include "Assets.h"
 
 using FlexKit::iAllocator;
 

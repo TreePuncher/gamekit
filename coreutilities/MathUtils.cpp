@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "..\pch.h"
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 
 #include "MathUtils.h"
 #include "static_vector.h"

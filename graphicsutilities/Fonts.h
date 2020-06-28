@@ -28,10 +28,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef FONTS_H
 #define FONTS_H
 
-#include "../buildsettings.h"
-#include "../coreutilities/MathUtils.h"
-#include "../coreutilities/memoryutilities.h"
-#include "../coreutilities/ResourceHandles.h"
+#include "buildsettings.h"
+#include "MathUtils.h"
+#include "memoryutilities.h"
+#include "ResourceHandles.h"
 
 
 namespace FlexKit

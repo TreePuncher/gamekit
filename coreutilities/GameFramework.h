@@ -31,17 +31,17 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GAMESTATEAPI __declspec(dllimport)
 #endif
 
-#include "..\coreutilities\EngineCore.h"
-#include "..\coreutilities\Components.h"
-#include "..\coreutilities\GraphicScene.h"
-#include "..\coreutilities\GraphicsComponents.h"
-#include "..\coreutilities\Logging.h"
-#include "..\coreutilities\Assets.h"
+#include "EngineCore.h"
+#include "Components.h"
+#include "GraphicScene.h"
+#include "GraphicsComponents.h"
+#include "Logging.h"
+#include "Assets.h"
 
-#include "..\graphicsutilities\FrameGraph.h"
-#include "..\graphicsutilities\Graphics.h"
-#include "..\graphicsutilities\TerrainRendering.h"
-#include "..\graphicsutilities\SSReflections.h"
+#include "FrameGraph.h"
+#include "Graphics.h"
+#include "TerrainRendering.h"
+#include "SSReflections.h"
 
 #include "Console.h"
 

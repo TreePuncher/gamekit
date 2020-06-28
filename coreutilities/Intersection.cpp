@@ -1,5 +1,5 @@
-#include "..\coreutilities\intersection.h"
-#include "..\graphicsutilities\graphics.h"
+#include "intersection.h"
+#include "graphics.h"
 
 namespace FlexKit
 {	/************************************************************************************************/

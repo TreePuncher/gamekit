@@ -1,11 +1,11 @@
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\Handle.h"
-#include "..\coreutilities\logging.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\MemoryUtilities.h"
-#include "..\coreutilities\ThreadUtilities.h"
-#include "..\coreutilities\type.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "Handle.h"
+#include "logging.h"
+#include "MathUtils.h"
+#include "MemoryUtilities.h"
+#include "ThreadUtilities.h"
+#include "type.h"
 
 
 #include <iostream>

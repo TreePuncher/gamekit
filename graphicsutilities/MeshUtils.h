@@ -23,11 +23,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\intersection.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\memoryutilities.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "intersection.h"
+#include "MathUtils.h"
+#include "memoryutilities.h"
 
 
 #include <algorithm>

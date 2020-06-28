@@ -30,9 +30,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define CTHREAD_H
 
 	// includes
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\memoryutilities.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "memoryutilities.h"
 #include <array>
 #include <atomic>
 #include <memory>

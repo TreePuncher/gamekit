@@ -1,11 +1,11 @@
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 #include "Common.h"
 #include "MetaData.h"
 #include "ResourceUtilities.h"
-#include "..\coreutilities\XMMathConversion.h"
+#include "XMMathConversion.h"
 
 
 /************************************************************************************************/

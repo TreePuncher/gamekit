@@ -23,11 +23,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\memoryutilities.h"
+#include "buildsettings.h"
+#include "MathUtils.h"
+#include "memoryutilities.h"
 
-#include "..\graphicsutilities\graphics.h"
+#include "graphics.h"
 
 #include <functional>
 

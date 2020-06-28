@@ -23,7 +23,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "SceneResource.h"
-#include "..\coreutilities\ComponentBlobs.h"
+#include "ComponentBlobs.h"
 
 
 /************************************************************************************************/

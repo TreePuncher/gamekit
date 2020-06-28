@@ -1,6 +1,6 @@
 #include "graphics.h"
 #include "FrameGraph.h"
-#include "..\coreutilities\Logging.h"
+#include "Logging.h"
 
 namespace FlexKit
 {	/************************************************************************************************/

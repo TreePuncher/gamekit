@@ -28,8 +28,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef MAINMENU_H_INCLUDED
 #define MAINMENU_H_INCLUDED
 
-#include "..\coreutilities\GameFramework.h"
-#include "..\graphicsutilities\GuiUtilities.h"
+#include "GameFramework.h"
+#include "GuiUtilities.h"
 
 #include "BaseState.h"
 

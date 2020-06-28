@@ -26,9 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "GraphicsComponents.h"
 #include "intersection.h"
 
-#include "..\coreutilities\Components.h"
-#include "..\coreutilities\componentBlobs.h"
-#include "..\graphicsutilities\AnimationRuntimeUtilities.H"
+#include "Components.h"
+#include "componentBlobs.h"
+#include "AnimationRuntimeUtilities.H"
 
 namespace FlexKit
 {

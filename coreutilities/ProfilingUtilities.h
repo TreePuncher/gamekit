@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef PROFILINGUTILITIES
 #define PROFILINGUTILITIES
 
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 #include <Windows.h>
 #include <chrono>
 

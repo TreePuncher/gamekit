@@ -30,12 +30,12 @@ TODO's
 #ifndef GAMEPLAY_H_INCLUDED
 #define GAMEPLAY_H_INCLUDED
 
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\Components.h"
-#include "..\coreutilities\Events.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\GameFramework.h"
-#include "..\graphicsutilities\FrameGraph.h"
+#include "containers.h"
+#include "Components.h"
+#include "Events.h"
+#include "MathUtils.h"
+#include "GameFramework.h"
+#include "FrameGraph.h"
 
 
 

@@ -24,9 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "stdafx.h"
 #include "CommonStructs.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\graphics.h"
-#include "..\coreutilities\MeshUtils.h"
+#include "memoryutilities.h"
+#include "graphics.h"
+#include "MeshUtils.h"
 
 using FlexKit::RenderSystem;
 using FlexKit::static_vector;

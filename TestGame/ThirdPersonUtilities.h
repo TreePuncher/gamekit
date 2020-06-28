@@ -1,10 +1,10 @@
 #ifndef THIRDPERSONCHARACTERRIG_H
 #define THIRDPERSONCHARACTERRIG_H
 
-#include "..\coreutilities\CameraUtilities.h"
-#include "..\coreutilities\Components.h"
-#include "..\coreutilities\GraphicsComponents.h"
-#include "..\coreutilities\GraphicScene.h"
+#include "CameraUtilities.h"
+#include "Components.h"
+#include "GraphicsComponents.h"
+#include "GraphicScene.h"
 
 
 /************************************************************************************************/

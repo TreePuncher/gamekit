@@ -25,15 +25,15 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef GraphicScene_H
 #define GraphicScene_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\Assets.h"
-#include "..\coreutilities\GraphicsComponents.h"
-#include "..\coreutilities\Materials.h"
+#include "buildsettings.h"
+#include "Assets.h"
+#include "GraphicsComponents.h"
+#include "Materials.h"
 
-#include "..\graphicsutilities\AnimationUtilities.h" 
-#include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\CoreSceneObjects.h"
-#include "..\graphicsutilities\defaultpipelinestates.h"
+#include "AnimationUtilities.h" 
+#include "graphics.h"
+#include "CoreSceneObjects.h"
+#include "defaultpipelinestates.h"
 
 namespace FlexKit
 {
