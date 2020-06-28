@@ -46,7 +46,7 @@ namespace FlexKit::ResourceBuilder
 
 
     Pair<bool, fbxsdk::FbxScene*>  
-    LoadFBXScene(char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
+    LoadFBXScene(const char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings)
     {
         fbxsdk::FbxNode*	 node	  = nullptr;
         fbxsdk::FbxImporter* importer = fbxsdk::FbxImporter::Create(lSdkManager, "");

@@ -218,7 +218,8 @@ namespace FlexKit::ResourceBuilder
     class iResource
     {
     public:
-        virtual ResourceBlob CreateBlob() = 0;
+        virtual ResourceBlob        CreateBlob() = 0;
+        virtual const std::string&  GetResourceID() const { return "resource"; }
     };
 
 

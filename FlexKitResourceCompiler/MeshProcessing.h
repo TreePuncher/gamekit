@@ -90,7 +90,7 @@ namespace FlexKit::ResourceBuilder
 
 	struct MeshResource : public iResource
 	{
-		ResourceBlob CreateBlob() override 
+		ResourceBlob CreateBlob() override
 		{ 
 			size_t bufferSize			= CalculateResourceSize();
 			TriMeshAssetBlob* blob	= reinterpret_cast<TriMeshAssetBlob*>(malloc(bufferSize));
@@ -150,6 +150,8 @@ namespace FlexKit::ResourceBuilder
 
 			return out;
 		}
+
+        const std::string& GetResourceID() const override { return ID; }
 
 		size_t CalculateResourceSize()
 		{

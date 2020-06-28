@@ -254,7 +254,7 @@ namespace FlexKit::ResourceBuilder
     {
     public:
         ResourceBlob CreateBlob() override;
-
+        const std::string& GetResourceID() const override { return ID;  }
 
         uint32_t AddSceneEntity(SceneEntity entity)
         {

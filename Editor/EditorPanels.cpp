@@ -206,7 +206,12 @@ void Menu_Panel::Draw(
                 FK_LOG_WARNING("Unimplemented Menu item called!");
 
             if (ImGui::MenuItem("Import FBX"))
-                editor.ImportFbx();
+            {
+                auto file = ResourceBuilder::SelectFile();
+
+                if (file.Valid)
+                    editor.ImportFbx(file.str);
+            }
 
             if (ImGui::MenuItem("Exit"))
                 core.End = true;
@@ -216,6 +221,63 @@ void Menu_Panel::Draw(
 
         ImGui::EndMainMenuBar();
     }
+}
+
+
+/************************************************************************************************/
+
+
+Resource_Panel::Resource_Panel(FlexKit::GameFramework&, EditorBase& editor) : base{ editor }
+{
+
+}
+
+Resource_Panel::~Resource_Panel()
+{
+
+}
+
+void Resource_Panel::Draw(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph&, const LayoutContext& layout, DrawUIResouces& resources)
+{
+    const auto XY = layout.XY * layout.windowWH;
+    const auto WH = layout.Size * layout.windowWH;
+
+    ImGui::SetNextWindowSize({ float(WH[0]), (float)WH[1] });
+    ImGui::SetNextWindowPos({ (float)XY[0], (float)XY[1] });
+
+    if (ImGui::Begin("Resources", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse))
+    {
+        // Adjust rest of window to fix the menu bar
+        auto FrameHeight = ImGui::GetFrameHeight() / float(layout.windowWH[1]);
+        auto prevHeight = base.UI.rowHeights[0];
+        base.UI.rowHeights[0] = FrameHeight;
+        base.UI.rowHeights[1] += prevHeight - FrameHeight;
+
+        ImVec2 sceneWindowSize = { base.UI.rowHeights[0] / 2, base.UI.rowHeights[1] / 2 };
+
+        ImGuiID ID = 123;
+        if (ImGui::BeginTabBar("Scenes"))
+        {
+            if(ImGui::BeginTabItem("Scenes"))
+            {
+                for (auto& scene : base.resourceTable.scenes)
+                    ImGui::Text(scene->GetResourceID().c_str());
+
+                ImGui::EndTabItem();
+            } 
+
+            if (ImGui::BeginTabItem("Resources"))
+            {
+                for (auto& resource : base.resourceTable.resources)
+                    ImGui::Text(resource->GetResourceID().c_str());
+
+                ImGui::EndTabItem();
+            }
+        }
+        ImGui::EndTabBar();
+    }
+
+    ImGui::End();
 }
 
 
