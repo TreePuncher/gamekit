@@ -1322,12 +1322,19 @@ namespace FlexKit
 	{
 		if(descHeapRTV)
 			descHeapRTV->Release();
+
 		if (descHeapSRV)
 			descHeapSRV->Release();
+
+        if (descHeapSRVLocal)
+            descHeapSRVLocal->Release();
+
 		if (descHeapDSV)
 			descHeapDSV->Release();
+
 		if(commandAllocator)
 			commandAllocator->Release();
+
 		if(DeviceContext)
 			DeviceContext->Release();
 
@@ -1338,6 +1345,7 @@ namespace FlexKit
 		descHeapDSV         = nullptr;
 		descHeapRTV         = nullptr;
 		descHeapSRV         = nullptr;
+        descHeapSRVLocal    = nullptr;
 		commandAllocator    = nullptr;
 		DeviceContext       = nullptr;
 	}
@@ -3855,6 +3863,7 @@ namespace FlexKit
 		BufferUAVs.ReleaseAll();
 		Texture2DUAVs.ReleaseAll();
 		PipelineStates.ReleasePSOs();
+        ReadBackTable.Release();
 
 		NullConstantBuffer.Release();
 
@@ -4743,9 +4752,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    MappedReadBackBuffer RenderSystem::OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize)
+    std::pair<void*, size_t> RenderSystem::OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize)
     {
-        return ReadBackTable.OpenBufferData(readbackBuffer, readSize);
+        auto temp = ReadBackTable.OpenBufferData(readbackBuffer, readSize);
+        return { temp.buffer, temp.bufferSize };
     }
 
 
@@ -5012,6 +5022,14 @@ namespace FlexKit
 	{
 		Texture2DUAVs.ReleaseResource(handle);
 	}
+
+    /************************************************************************************************/
+
+
+    void RenderSystem::ReleaseReadBack(ReadBackResourceHandle handle)
+    {
+        ReadBackTable.ReleaseResource(handle);
+    }
 
 
 	/************************************************************************************************/
@@ -6006,6 +6024,10 @@ namespace FlexKit
 			Resources[T.ResourceIdx].Release();
 		}
 
+        for (auto& resource : delayRelease)
+            resource.resource->Release();
+
+        delayRelease.Release();
 		UserEntries.Release();
 		Resources.Release();
 		Handles.Clear();

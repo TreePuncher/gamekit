@@ -145,7 +145,6 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			renderSystem.SetDebugName(base.GGXMap,        "GGX Map");
 			renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
 
-
             state.loaded = true;
 		};
 

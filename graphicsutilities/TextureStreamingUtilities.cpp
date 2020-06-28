@@ -348,14 +348,17 @@ namespace FlexKit
         renderSystem.WaitforGPU(); // Flush any pending reads
         renderSystem.FlushPendingReadBacks();
 
-        renderSystem.ReleaseUAV(feedbackOffsets);
         renderSystem.ReleaseUAV(feedbackOutputTemp);
         renderSystem.ReleaseUAV(feedbackOutputFinal);
 
         renderSystem.ReleaseUAV(feedbackTemp1);
         renderSystem.ReleaseUAV(feedbackTemp2);
 
+        renderSystem.ReleaseReadBack(feedbackReturnBuffer);
+
+        renderSystem.ReleaseUAV(feedbackOffsets);
         renderSystem.ReleaseUAV(feedbackPPLists);
+        renderSystem.ReleaseUAV(feedbackBuffer);
         renderSystem.ReleaseUAV(feedbackCounters);
 
         renderSystem.ReleaseTexture(feedbackDepth);
