@@ -169,7 +169,7 @@ namespace FlexKit::ResourceBuilder
     };
     typedef std::vector<FBXIDTranslation> FBXIDTranslationTable;
 
-    Pair<bool, fbxsdk::FbxScene*> LoadFBXScene(char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings);
+    Pair<bool, fbxsdk::FbxScene*> LoadFBXScene(const char* file, fbxsdk::FbxManager* lSdkManager, fbxsdk::FbxIOSettings* settings);
 
 
 }   /************************************************************************************************/

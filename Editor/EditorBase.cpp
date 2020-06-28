@@ -28,16 +28,19 @@ void CreateDefaultLayout(EditorBase& editor)
 		Viewer3D);
 
 	editor.UI.AddPanel(
-		{ 2, 1 }, { 1, 1 },
+		{ 2, 1 }, { 1, 2 },
 		propertyPanel);
 
 	editor.UI.AddPanel(
 		{ 0, 0 }, { 3, 1 },
 		menuPanel);
 
+    editor.UI.AddPanel(
+        { 1, 2 }, { 1, 1 },
+        allocator.allocate<Resource_Panel>(editor.framework, editor));
 
-	editor.UI.columnWidths  = { 0.1f, 0.7f,     0.2f };
-	editor.UI.rowHeights    = { 0.025f, 0.9f,    0.075f };
+	editor.UI.columnWidths  = { 0.2f, 0.6f,     0.2f };
+	editor.UI.rowHeights    = { 0.025f, 0.7f,    0.275f };
 }
 
 
@@ -453,7 +456,7 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 /************************************************************************************************/
 
 
-void EditorBase::ImportFbx()
+void EditorBase::ImportFbx(const char* file)
 {
     FlexKit::ResourceBuilder::CompileSceneFromFBXFile_DESC Desc;
     Desc.CloseFBX = true;
@@ -466,13 +469,10 @@ void EditorBase::ImportFbx()
     fbxsdk::FbxIOSettings* Settings     = fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
     Manager->SetIOSettings(Settings);
 
-    auto file = ResourceBuilder::SelectFile();
-
-    if (!file.Valid)
-        return;
-
-    auto [res, scene] = FlexKit::ResourceBuilder::LoadFBXScene(file.str, Manager, Settings);
+    auto [res, scene] = FlexKit::ResourceBuilder::LoadFBXScene(file, Manager, Settings);
     auto [sceneResources, fkScene] = FlexKit::ResourceBuilder::CreateSceneFromFBXFile2(scene, Desc);
+
+    fkScene->ID = !fkScene->ID.size() ? file : fkScene->ID;
 
     for (auto& resource : sceneResources)
         resourceTable.resources.push_back(resource);

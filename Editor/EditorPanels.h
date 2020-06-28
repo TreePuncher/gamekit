@@ -103,6 +103,17 @@ public:
     EditorBase& editor;
 };
 
+class Resource_Panel : public iEditorPanel
+{
+public:
+    Resource_Panel(FlexKit::GameFramework&, EditorBase& base);
+    ~Resource_Panel();
+    
+    void Draw(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, double dT, FlexKit::FrameGraph&, const LayoutContext&, DrawUIResouces&) final override;
+
+    EditorBase& base;
+};
+
 /************************************************************************************************/
 
 

@@ -313,6 +313,7 @@ namespace FlexKit::ResourceBuilder
 
         SceneResource_ptr	scene = std::make_shared<SceneResource>();
 
+        scene->ID               = Root->GetName();
         scene->translationTable = translationTable;
 
         ProcessNodes(Root, scene, {});

@@ -35,7 +35,7 @@ inline ImTextureID TextreHandleToIM(FlexKit::ResourceHandle texture)
 /************************************************************************************************/
 
 
-struct ResourceTable
+struct EditorResourceTable
 {
     std::vector<std::shared_ptr<FlexKit::ResourceBuilder::SceneResource>> scenes;
     std::vector<std::shared_ptr<FlexKit::ResourceBuilder::iResource>>     resources;
@@ -60,11 +60,11 @@ public:
 
 	bool EventHandler	(FlexKit::Event evt) override;
 
-    void ImportFbx();
+    void ImportFbx(const char* str);
 
     void Resize(const FlexKit::uint2 WH);
 
-    ResourceTable                       resourceTable;
+    EditorResourceTable                 resourceTable;
 
     FlexKit::ResourceHandle             imGuiFont;
 
