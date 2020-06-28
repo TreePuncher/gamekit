@@ -7,7 +7,7 @@
 
 
 // Includes
-#include "../buildsettings.h"
+#include "buildsettings.h"
 #include "containers.h"
 
 #include <math.h>

@@ -26,10 +26,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define LOBBYGUI_H_INCLUDED
 
 
-#include "..\coreutilities\EngineCore.h"
-#include "..\graphicsutilities\FrameGraph.h"
-#include "..\graphicsutilities\GuiUtilities.h"
-#include "..\graphicsutilities\Fonts.h"
+#include "EngineCore.h"
+#include "FrameGraph.h"
+#include "GuiUtilities.h"
+#include "Fonts.h"
 
 
 /************************************************************************************************/

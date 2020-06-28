@@ -25,9 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef ANIMATIONUTILITIES_H_INCLUDED
 #define ANIMATIONUTILITIES_H_INCLUDED
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\Handle.h"
-#include "..\coreutilities\Assets.h"
+#include "buildsettings.h"
+#include "Handle.h"
+#include "Assets.h"
 #include <DirectXMath.h>
 
 

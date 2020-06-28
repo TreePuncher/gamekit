@@ -33,9 +33,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RakNetTypes.h"
 #include "BitStream.h"
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\memoryutilities.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "memoryutilities.h"
 
 #include <iostream>
 

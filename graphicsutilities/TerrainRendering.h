@@ -25,13 +25,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef TERRAINRENDERING
 #define TERRAINRENDERING
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\intersection.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\DDSUtilities.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "intersection.h"
+#include "MathUtils.h"
+#include "memoryutilities.h"
+#include "graphics.h"
+#include "DDSUtilities.h"
 
 #include <d3dx12.h>
 #include <DirectXMath.h>

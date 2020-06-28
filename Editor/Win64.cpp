@@ -1,8 +1,8 @@
-#include "..\buildsettings.h"
-#include "..\coreutilities\Logging.h"
-#include "..\coreutilities\Application.h"
-#include "..\graphicsutilities\AnimationComponents.h"
-#include "..\coreutilities\Logging.cpp"
+#include "buildsettings.h"
+#include "Logging.h"
+#include "Application.h"
+#include "AnimationComponents.h"
+#include "Logging.cpp"
 
 #include "EditorPanels.cpp"
 #include "EditorBase.cpp"

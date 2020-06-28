@@ -1,5 +1,5 @@
 #include "..\PCH.h"
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 #include "AnimationUtilities.h"
 #include "AnimationRuntimeUtilities.h"
 

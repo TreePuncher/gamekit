@@ -26,8 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef FKAPPLICATION_H
 #define FKAPPLICATION_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\AllSourceFiles.cpp"
+#include "buildsettings.h"
+#include "AllSourceFiles.cpp"
 
 #include "EngineCore.h"
 #include "GameFramework.h"

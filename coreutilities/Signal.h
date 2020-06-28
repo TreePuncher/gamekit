@@ -24,8 +24,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\type.h"
+#include "buildsettings.h"
+#include "type.h"
 #include <algorithm>
 #include <functional>
 

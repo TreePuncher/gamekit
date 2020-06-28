@@ -4,9 +4,9 @@
 #include "AnimationUtilities.h"
 #include "AnimationRuntimeUtilities.h"
 
-#include "..\coreutilities\Components.h"
-#include "..\coreutilities\GraphicScene.h"
-#include "..\coreutilities\Transforms.h"
+#include "Components.h"
+#include "GraphicScene.h"
+#include "Transforms.h"
 
 namespace FlexKit
 {	/************************************************************************************************/

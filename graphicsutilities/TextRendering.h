@@ -26,8 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef TEXTRENDERING_H
 #define TEXTRENDERING_H
 
-#include "..\graphicsutilities\FrameGraph.h"
-#include "..\graphicsutilities\Fonts.h"
+#include "FrameGraph.h"
+#include "Fonts.h"
 
 namespace FlexKit
 {

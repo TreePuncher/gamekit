@@ -1,8 +1,8 @@
 #ifndef TEXTUREUTILITIES_H
 #define TEXTUREUTILITIES_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\MathUtils.h"
+#include "buildsettings.h"
+#include "MathUtils.h"
 
 namespace FlexKit
 {

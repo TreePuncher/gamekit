@@ -33,8 +33,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma warning ( disable : 4251 )
 
 // Includes
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
+#include "buildsettings.h"
+#include "containers.h"
 #include <stdint.h>
 
 namespace FlexKit

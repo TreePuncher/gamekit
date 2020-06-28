@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef EVENT_H
 #define EVENT_H
 
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 #include "containers.h"
 #include "KeycodesEnums.h"
 

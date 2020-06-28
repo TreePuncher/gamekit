@@ -26,9 +26,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CONTAINERS_H
 #define CONTAINERS_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\static_vector.h"
+#include "buildsettings.h"
+#include "memoryutilities.h"
+#include "static_vector.h"
 
 #if USING(USESTL)
 

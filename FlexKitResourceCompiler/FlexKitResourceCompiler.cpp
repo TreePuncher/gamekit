@@ -1,8 +1,8 @@
 #include "stdafx.h"
 
 // Headers
-#include "..\buildsettings.h"
-#include "..\graphicsutilities\Geometry.h"
+#include "buildsettings.h"
+#include "Geometry.h"
 
 
 // Sources Files
@@ -15,14 +15,14 @@
 #include "SceneResource.cpp"
 #include "TextureResourceUtilities.cpp"
 
-#include "..\graphicsutilities\AnimationUtilities.cpp"
-#include "..\graphicsutilities\MeshUtils.cpp"
-#include "..\graphicsutilities\Geometry.cpp"
-#include "..\graphicsutilities\TextureUtilities.cpp"
-#include "..\coreutilities\memoryutilities.cpp"
-#include "..\coreutilities\Logging.cpp"
-#include "..\coreutilities\MathUtils.cpp"
-#include "..\coreutilities\ThreadUtilities.h"
+#include "AnimationUtilities.cpp"
+#include "MeshUtils.cpp"
+#include "Geometry.cpp"
+#include "TextureUtilities.cpp"
+#include "memoryutilities.cpp"
+#include "Logging.cpp"
+#include "MathUtils.cpp"
+#include "ThreadUtilities.h"
 
 #include <algorithm>
 #include <initializer_list>

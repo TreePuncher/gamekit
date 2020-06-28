@@ -46,7 +46,7 @@ TODOs
 
 #include "stdafx.h"
 
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 
 #include <Windows.h>
 #include <iostream>

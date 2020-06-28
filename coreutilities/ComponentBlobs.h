@@ -1,8 +1,10 @@
+#pragma once
+
 #ifndef COMPONENTBLOBS_H
 #define COMPONENTBLOBS_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\MathUtils.h"
+#include "buildsettings.h"
+#include "MathUtils.h"
 
 namespace FlexKit
 {

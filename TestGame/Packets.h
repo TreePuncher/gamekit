@@ -27,7 +27,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define PACKETS_H_INCLUDED
 
 #include "MultiplayerState.h"
-#include "..\coreutilities\type.h"
+#include "type.h"
 
 
 /************************************************************************************************/

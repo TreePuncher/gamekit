@@ -26,14 +26,14 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\graphicsutilities\AnimationComponents.h"
-#include "..\coreutilities\Application.h"
-#include "..\coreutilities\GameFramework.h"
-#include "..\coreutilities\EngineCore.h"
-#include "..\coreutilities\Materials.h"
-#include "..\coreutilities\WorldRender.h"
-#include "..\graphicsutilities\TextRendering.h"
-#include "..\graphicsutilities\defaultpipelinestates.h"
+#include "AnimationComponents.h"
+#include "Application.h"
+#include "GameFramework.h"
+#include "EngineCore.h"
+#include "Materials.h"
+#include "WorldRender.h"
+#include "TextRendering.h"
+#include "defaultpipelinestates.h"
 
 #include <angelscript.h>
 #include <scriptstdstring/scriptstdstring.h>

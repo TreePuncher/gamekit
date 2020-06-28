@@ -22,8 +22,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "../graphicsutilities/defaultpipelinestates.h"
-#include "../graphicsutilities/CoreSceneObjects.h"
+#include "defaultpipelinestates.h"
+#include "CoreSceneObjects.h"
 
 
 #include <d3dx12.h>

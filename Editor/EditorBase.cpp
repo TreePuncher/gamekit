@@ -5,6 +5,10 @@
 #include <imgui_draw.cpp>
 
 
+//#include "..\FlexKitResourceCompiler\Common.h"
+//#include "..\FlexKitResourceCompiler\SceneResource.h"
+//#include "..\FlexKitResourceCompiler\ResourceUtilities.h"
+
 using namespace FlexKit;
 
 
@@ -448,6 +452,30 @@ bool EditorBase::EventHandler(FlexKit::Event evt)
 	return true;
 }
 
+
+/************************************************************************************************/
+
+
+void EditorBase::ImportFbx()
+{
+    /*
+    CompileSceneFromFBXFile_DESC Desc;
+    Desc.CloseFBX = true;
+    Desc.IncludeShaders = false;
+    Desc.CookingEnabled = true;
+    Desc.Foundation;
+    Desc.Cooker;
+
+    fbxsdk::FbxManager* Manager         = fbxsdk::FbxManager::Create();
+    fbxsdk::FbxIOSettings* Settings     = fbxsdk::FbxIOSettings::Create(Manager, IOSROOT);
+    Manager->SetIOSettings(Settings);
+    */
+
+    //auto [res, scene] = LoadFBXScene(assetLocation, Manager, Settings);
+}
+
+
+/************************************************************************************************/
 
 
 void EditorBase::Resize(const FlexKit::uint2 WH)

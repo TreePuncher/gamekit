@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RESOURCEHANDLES_H_INCLUDED
 #define RESOURCEHANDLES_H_INCLUDED
 
-#include "..\coreutilities\Handle.h"
-#include "..\coreutilities\type.h"
+#include "Handle.h"
+#include "type.h"
 
 namespace FlexKit
 {

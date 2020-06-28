@@ -24,10 +24,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "stdafx.h"
 #include "TTFontLoader.h"
-#include "..\coreutilities\type.h"
-#include "..\coreutilities\memoryutilities.h"
+#include "type.h"
+#include "memoryutilities.h"
 
-#include "..\graphicsutilities\Fonts.h"
+#include "Fonts.h"
 
 #include <optional>
 

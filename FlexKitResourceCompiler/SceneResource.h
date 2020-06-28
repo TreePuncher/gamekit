@@ -30,11 +30,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ResourceUtilities.h"
 #include "sceneResource.h"
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\Assets.h"
-#include "..\graphicsutilities\AnimationUtilities.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "memoryutilities.h"
+#include "Assets.h"
+#include "AnimationUtilities.h"
 
 
 /************************************************************************************************/
@@ -290,5 +290,5 @@ using SceneResource_ptr = std::shared_ptr<SceneResource>;
 /************************************************************************************************/
 
 
-ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& METAINFO);
+ResourceList CreateSceneFromFBXFile(fbxsdk::FbxScene* scene, const CompileSceneFromFBXFile_DESC& Desc, const MetaDataList& metaData);
 #endif

@@ -1,11 +1,11 @@
 #ifndef MULTIPLAYERGAMESTATE_H
 #define MULTIPLAYERGAMESTATE_H
 
-#include "..\coreutilities\GameFramework.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\Components.h"
-#include "..\coreutilities\EngineCore.h"
-#include "..\coreutilities\ResourceHandles.h"
+#include "GameFramework.h"
+#include "containers.h"
+#include "Components.h"
+#include "EngineCore.h"
+#include "ResourceHandles.h"
 
 #include "BaseState.h"
 #include "Gameplay.h"

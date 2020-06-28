@@ -25,8 +25,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef COMMON_H
 #define COMMON_H
 
-#include "fbxsdk.h"
-
 #include "MathUtils.h"
 #include "MemoryUtilities.h"
 #include "Assets.h"

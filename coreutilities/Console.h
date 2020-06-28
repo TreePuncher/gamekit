@@ -26,11 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 
-#include "..\buildsettings.h"	
-#include "..\coreutilities\EngineCore.h"
-#include "..\graphicsutilities\Graphics.h"
-#include "..\graphicsutilities\FrameGraph.h"
-#include "..\graphicsutilities\GuiUtilities.h"
+#include "buildsettings.h"	
+#include "EngineCore.h"
+#include "Graphics.h"
+#include "FrameGraph.h"
+#include "GuiUtilities.h"
 
 namespace FlexKit
 {

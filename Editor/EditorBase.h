@@ -42,6 +42,7 @@ public:
 
 	bool EventHandler	(FlexKit::Event evt) override;
 
+    void ImportFbx();
 
     void Resize(const FlexKit::uint2 WH);
 

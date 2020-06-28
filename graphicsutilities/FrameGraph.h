@@ -25,10 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RENDERGRAPH_H
 #define RENDERGRAPH_H
 
-#include "..\graphicsutilities\graphics.h"
-#include "..\coreutilities\GraphicsComponents.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\Components.h"
+#include "graphics.h"
+#include "GraphicsComponents.h"
+#include "containers.h"
+#include "Components.h"
 
 #include <type_traits>
 

@@ -25,8 +25,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef MEMORYUTILITIES_INLUDED
 #define MEMORYUTILITIES_INLUDED
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\Logging.h"
+#include "buildsettings.h"
+#include "Logging.h"
 #include <atomic>
 #include <mutex>
 

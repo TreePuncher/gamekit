@@ -205,6 +205,9 @@ void Menu_Panel::Draw(
             if (ImGui::MenuItem("Load File"))
                 FK_LOG_WARNING("Unimplemented Menu item called!");
 
+            if (ImGui::MenuItem("Import FBX"))
+                editor.ImportFbx();
+
             if (ImGui::MenuItem("Exit"))
                 core.End = true;
 

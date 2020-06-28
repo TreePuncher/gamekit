@@ -26,11 +26,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef GEOMETRY_H_INCLUDED
 #define GEOMETRY_H_INCLUDED
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\intersection.h"
-#include "..\coreutilities\MathUtils.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\AnimationUtilities.h"
+#include "buildsettings.h"
+#include "intersection.h"
+#include "MathUtils.h"
+#include "memoryutilities.h"
+#include "AnimationUtilities.h"
 
 
 namespace FlexKit

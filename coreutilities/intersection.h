@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef INTERSECTION_H
 #define INTERSECTION_H
 
-#include "..\coreutilities\MathUtils.h"
+#include "MathUtils.h"
 
 
 namespace FlexKit

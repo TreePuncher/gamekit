@@ -5,12 +5,12 @@
 #include "MultiplayerGameState.h"
 #include "BaseState.h"
 
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\EngineCore.h"
-#include "..\coreutilities\GameFramework.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\Components.h"
-#include "..\graphicsutilities\GuiUtilities.h"
+#include "containers.h"
+#include "EngineCore.h"
+#include "GameFramework.h"
+#include "memoryutilities.h"
+#include "Components.h"
+#include "GuiUtilities.h"
 
 #include <functional>
 #include <raknet/Source/RakPeerInterface.h>

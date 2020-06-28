@@ -24,9 +24,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "DebugPanel.h"
 #include "GameFramework.h"
-#include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\TextureUtilities.h"
-#include "..\coreutilities\Logging.h"
+#include "graphics.h"
+#include "TextureUtilities.h"
+#include "Logging.h"
 
 
 // Todo List

@@ -29,7 +29,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "Common.h"
 #include "MetaData.h"
-#include "..\graphicsutilities\Geometry.h"
+#include "Geometry.h"
 #include "Animation.h"
 
 #include <array>

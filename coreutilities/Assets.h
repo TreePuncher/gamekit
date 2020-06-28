@@ -25,11 +25,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef RESOURCES_H
 #define RESOURCES_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\Fonts.h"
-#include "..\coreutilities\ResourceHandles.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "memoryutilities.h"
+#include "Fonts.h"
+#include "ResourceHandles.h"
 #include "TextureUtilities.h"
 
 #include <iostream>

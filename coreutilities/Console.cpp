@@ -23,8 +23,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "Console.h"
-#include "../graphicsutilities/TextRendering.h"
-#include "../graphicsutilities/defaultpipelinestates.h"
+#include "TextRendering.h"
+#include "defaultpipelinestates.h"
 
 
 namespace FlexKit

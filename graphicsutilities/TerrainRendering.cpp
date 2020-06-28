@@ -22,8 +22,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 **********************************************************************/
 
-#include "..\graphicsutilities\TerrainRendering.h"
-#include "..\coreutilities\intersection.h"
+#include "TerrainRendering.h"
+#include "intersection.h"
 
 #include <d3dx12.h>
 #include <stdio.h>

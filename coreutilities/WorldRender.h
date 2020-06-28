@@ -32,13 +32,13 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define WORLDRENDER_H_INCLUDED
 
 
-#include "../buildsettings.h"
-#include "../coreutilities/Components.h"
-#include "../graphicsutilities/FrameGraph.h"
-#include "../graphicsutilities/graphics.h"
-#include "../graphicsutilities/CoreSceneObjects.h"
-#include "../graphicsutilities/AnimationComponents.h"
-#include "../coreutilities/GraphicScene.h"
+#include "buildsettings.h"
+#include "Components.h"
+#include "FrameGraph.h"
+#include "graphics.h"
+#include "CoreSceneObjects.h"
+#include "AnimationComponents.h"
+#include "GraphicScene.h"
 
 #include <d3dx12.h>
 

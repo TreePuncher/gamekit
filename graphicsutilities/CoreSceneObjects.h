@@ -25,9 +25,9 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef CORESCENEOBJECTS_H_INCLUDED
 #define CORESCENEOBJECTS_H_INCLUDED
 
-#include "..\\buildsettings.h"
-#include "..\\coreutilities\MathUtils.h"
-#include "..\\coreutilities\ResourceHandles.h"
+#include "buildsettings.h"
+#include "MathUtils.h"
+#include "ResourceHandles.h"
 
 #include <DirectXMath.h>
 

@@ -25,10 +25,10 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef DDSUTILITIES_H
 #define DDSUTILITIES_H
 
-#include "..\buildsettings.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\graphicsutilities\graphics.h"
+#include "buildsettings.h"
+#include "containers.h"
+#include "memoryutilities.h"
+#include "graphics.h"
 
 #define MAKEFOURCC(ch0, ch1, ch2, ch3)                              \
                 ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) |   \

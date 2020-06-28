@@ -24,19 +24,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-#include "..\buildsettings.h"
+#include "buildsettings.h"
 
-#include "..\coreutilities\timeutilities.h"
-#include "..\coreutilities\containers.h"
-#include "..\coreutilities\GraphicsComponents.h"
-#include "..\coreutilities\memoryutilities.h"
-#include "..\coreutilities\ProfilingUtilities.h"
-#include "..\coreutilities\Assets.h"
-#include "..\coreutilities\ThreadUtilities.h"
+#include "timeutilities.h"
+#include "containers.h"
+#include "GraphicsComponents.h"
+#include "memoryutilities.h"
+#include "ProfilingUtilities.h"
+#include "Assets.h"
+#include "ThreadUtilities.h"
 
-#include "..\graphicsutilities\FrameGraph.h"
-#include "..\graphicsutilities\graphics.h"
-#include "..\graphicsutilities\MeshUtils.h"
+#include "FrameGraph.h"
+#include "graphics.h"
+#include "MeshUtils.h"
 
 #include "..\PhysicsUtilities\physicsutilities.h"
 
