@@ -62,105 +62,115 @@ using FlexKit::TriMesh;
 typedef FlexKit::Handle_t<16> ShaderSetHandle;
 
 
-/************************************************************************************************/
+namespace FlexKit::ResourceBuilder
+{   /************************************************************************************************/
 
 
-struct FileDir
-{	
-	char str[256]; 
-	bool Valid	= false;
-};
+    struct FileDir
+    {	
+        char str[256]; 
+        bool Valid	= false;
+    };
 
 
-/************************************************************************************************/
+    /************************************************************************************************/
 
 
-size_t CreateRandomID();
-FileDir SelectFile();
+    size_t CreateRandomID();
+    FileDir SelectFile();
 
 
-/************************************************************************************************/
+    /************************************************************************************************/
 
 
-class Blob
-{
-public:
-
-    Blob() = default;
-
-    template<typename TY>
-    Blob(const TY& IN_struct)
+    class Blob
     {
-        //static_assert(std::is_pod_v<TY>, "POD types only!");
+    public:
 
-        buffer.resize(sizeof(IN_struct));
-        memcpy(data(), &IN_struct, sizeof(TY));
-    }
+        Blob() = default;
+
+        template<typename TY>
+        Blob(const TY& IN_struct)
+        {
+            //static_assert(std::is_pod_v<TY>, "POD types only!");
+
+            buffer.resize(sizeof(IN_struct));
+            memcpy(data(), &IN_struct, sizeof(TY));
+        }
 
 
-    Blob(const char* IN_buffer, const size_t size)
+        Blob(const char* IN_buffer, const size_t size)
+        {
+            buffer.resize(size);
+            memcpy(data(), IN_buffer, size);
+        }
+
+
+        Blob operator + (const Blob& rhs_blob)
+        {
+            Blob out;
+
+            out += *this;
+            out += rhs_blob;
+
+            return out;
+        }
+
+        Blob& operator += (const Blob& rhs_blob)
+        {
+            const size_t offset = buffer.size();
+
+            buffer.resize(buffer.size() + rhs_blob.size());
+            memcpy(buffer.data() + offset, rhs_blob, rhs_blob.size());
+
+            return *this;
+        }
+
+        size_t size() const
+        {
+            return buffer.size();
+        }
+
+        void resize(size_t newSize)
+        {
+            buffer.resize(newSize);
+        }
+
+
+        std::byte* data()
+        {
+            return buffer.data();
+        }
+
+        operator const std::byte* () const
+        {
+            return buffer.data();
+        }
+
+        std::pair<std::byte*, const size_t> Release()
+        {
+            std::byte* _ptr = new std::byte[buffer.size()];
+
+            memcpy(_ptr, buffer.data(), buffer.size());
+            const size_t size = buffer.size();
+            buffer.clear();
+
+            return { _ptr, size };
+        }
+
+        std::vector<std::byte> buffer;
+    };
+
+
+    struct FBXIDTranslation
     {
-        buffer.resize(size);
-        memcpy(data(), IN_buffer, size);
-    }
+        size_t	FBXID;
+        GUID_t	Guid;
+    };
+    typedef std::vector<FBXIDTranslation> FBXIDTranslationTable;
 
 
-    Blob operator + (const Blob& rhs_blob)
-    {
-        Blob out;
-
-        out += *this;
-        out += rhs_blob;
-
-        return out;
-    }
-
-    Blob& operator += (const Blob& rhs_blob)
-    {
-        const size_t offset = buffer.size();
-
-        buffer.resize(buffer.size() + rhs_blob.size());
-        memcpy(buffer.data() + offset, rhs_blob, rhs_blob.size());
-
-        return *this;
-    }
-
-    size_t size() const
-    {
-        return buffer.size();
-    }
-
-    void resize(size_t newSize)
-    {
-        buffer.resize(newSize);
-    }
-
-
-    std::byte* data()
-    {
-        return buffer.data();
-    }
-
-    operator const std::byte* () const
-    {
-        return buffer.data();
-    }
-
-    std::pair<std::byte*, const size_t> Release()
-    {
-        std::byte* _ptr = new std::byte[buffer.size()];
-
-        memcpy(_ptr, buffer.data(), buffer.size());
-        const size_t size = buffer.size();
-        buffer.clear();
-
-        return { _ptr, size };
-    }
-
-    std::vector<std::byte> buffer;
-};
-
-/************************************************************************************************/
+}   /************************************************************************************************/
 
 
 #endif // Include guard

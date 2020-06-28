@@ -44,10 +44,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #endif
 #endif
 
-namespace FlexKit
-{
-
-	/************************************************************************************************/
+namespace FlexKit::ResourceBuilder
+{   /************************************************************************************************/
 
 
 	FbxVector4 ReadNormal(int index, fbxsdk::FbxMesh* Mesh)	

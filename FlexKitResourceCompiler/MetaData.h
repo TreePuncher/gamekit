@@ -30,7 +30,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 using FlexKit::iAllocator;
 
-namespace FlexKit
+namespace FlexKit::ResourceBuilder
 {
 	// Resource Compiler Functions
 	struct MetaData

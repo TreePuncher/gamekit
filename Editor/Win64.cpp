@@ -7,6 +7,8 @@
 #include "EditorPanels.cpp"
 #include "EditorBase.cpp"
 
+#include "..\FlexKitResourceCompiler\MetaData.cpp"
+
 
 int main(int argc, char* argv[])
 {

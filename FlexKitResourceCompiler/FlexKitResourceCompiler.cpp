@@ -29,7 +29,7 @@
 #include <PxDefaultAllocator.h>
 
 using namespace FlexKit;
-
+using namespace FlexKit::ResourceBuilder;
 
 
 class NullErrorCallback :
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
 #if USING(RESCOMPILERVERBOSE)
 			std::cout << "FOUND FOLLOWING METADATA:\n";
 			std::cout << "Metadata Entry Count: " << MetaData.size() << "\n";
-			FlexKit::PrintMetaDataList(MetaData);
+			PrintMetaDataList(MetaData);
 #endif
 
 			if (!MetaData.size())

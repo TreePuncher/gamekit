@@ -206,10 +206,16 @@ project "Editor"
 		"buildsettings.h", 
 		"Editor/**.h", 
 		"Editor/**.cpp", 
+
+		"ResourceBuilder/**.cpp", 
+		"ResourceBuilder/**.h", 
+
 		"coreutilities/*.h", 
 		"coreutilities/*.cpp", 
+
 		"graphicsutilities/*.h",
 		"graphicsutilities/*.cpp", 
+		
 		"physicsutilities/*.h", 
 		"physicsutilities/*.cpp", 
 		"shaders/*.hlsl"}

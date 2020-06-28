@@ -5,9 +5,9 @@
 #include <imgui_draw.cpp>
 
 
-//#include "..\FlexKitResourceCompiler\Common.h"
-//#include "..\FlexKitResourceCompiler\SceneResource.h"
-//#include "..\FlexKitResourceCompiler\ResourceUtilities.h"
+#include "..\FlexKitResourceCompiler\Common.h"
+#include "..\FlexKitResourceCompiler\SceneResource.h"
+#include "..\FlexKitResourceCompiler\ResourceUtilities.h"
 
 using namespace FlexKit;
 
