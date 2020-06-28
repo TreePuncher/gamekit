@@ -28,17 +28,24 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "memoryutilities.h"
 
 
-using FlexKit::iAllocator;
-using FlexKit::Pair;
+namespace FlexKit::ResourceBuilder
+{   /************************************************************************************************/
 
 
-struct TTFont
-{
-	iAllocator* Memory;
-};
+    using FlexKit::iAllocator;
+    using FlexKit::Pair;
 
 
-Pair<bool, TTFont*> LoadTTFFile(const char* file, iAllocator* Memory);
+    struct TTFont
+    {
+        iAllocator* Memory;
+    };
+
+
+    Pair<bool, TTFont*> LoadTTFFile(const char* file, iAllocator* Memory);
+
+
+}   /************************************************************************************************/
 
 
 #endif

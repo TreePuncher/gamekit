@@ -13,101 +13,132 @@
 #pragma comment(lib,"crunch.lib")
 
 
-FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format)
-{
-    static std::map<std::string, FlexKit::DeviceFormat> formatMap = {
-        { "RGBA8_UNORM",    DeviceFormat::R8G8B8A8_UNORM       },
-        { "RGBA16_FLOAT",   DeviceFormat::R16G16B16A16_FLOAT   },
-        { "RGBA32_FLOAT",   DeviceFormat::R32G32B32A32_FLOAT   },
+namespace FlexKit::ResourceBuilder
+{   /************************************************************************************************/
+
+
+    FlexKit::DeviceFormat FormatStringToDeviceFormat(const std::string& format)
+    {
+        static std::map<std::string, FlexKit::DeviceFormat> formatMap = {
+            { "RGBA8_UNORM",    DeviceFormat::R8G8B8A8_UNORM       },
+            { "RGBA16_FLOAT",   DeviceFormat::R16G16B16A16_FLOAT   },
+            { "RGBA32_FLOAT",   DeviceFormat::R32G32B32A32_FLOAT   },
+        };
+
+        return formatMap[format];
+    }
+
+    /************************************************************************************************/
+
+
+    struct CubeMapFace
+    {
+        std::vector<FlexKit::TextureBuffer> mipLevels;
+
+        Blob CreateBlob();
     };
 
-    return formatMap[format];
-}
+
+    /************************************************************************************************/
 
 
-struct CubeMapFace
-{
-    std::vector<FlexKit::TextureBuffer> mipLevels;
-
-    Blob CreateBlob();
-};
-
-
-class CubeMapTexture : public iResource
-{
-public:
-    CubeMapFace                 Faces[6];
-    size_t                      GUID;
-    std::string					ID;
-    FlexKit::DeviceFormat       format;
-
-    size_t                      Width   = 0;
-    size_t                      Height  = 0;
-
-
-    ResourceBlob CreateBlob() override;
-};
-
-
-inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData);
-
-
-void CreateCompressedDDSTextureResource()
-{
-}
-
-
-enum class DDSTextureFormat
-{
-    DXT5,
-    UNKNOWN
-};
-
-
-DDSTextureFormat FormatStringToFormatID(const std::string& ID)
-{
-    if (ID == "DXT5")
-        return DDSTextureFormat::DXT5;
-
-    return DDSTextureFormat::UNKNOWN;
-}
-
-
-struct _TextureMipLevelResource
-{
-    int         width;
-    int         height;
-    int         channelCount;
-
-    crn_uint32* buffer;
-
-
-    void Release()
+    class CubeMapTexture : public iResource
     {
-        delete[] buffer;
-        buffer = nullptr;
+    public:
+        CubeMapFace                 Faces[6];
+        size_t                      GUID;
+        std::string					ID;
+        FlexKit::DeviceFormat       format;
+
+        size_t                      Width   = 0;
+        size_t                      Height  = 0;
+
+
+        ResourceBlob CreateBlob() override;
+    };
+
+
+    inline std::shared_ptr<iResource> CreateCubeMapResource(std::shared_ptr<TextureCubeMap_MetaData> metaData);
+
+
+    /************************************************************************************************/
+
+
+    void CreateCompressedDDSTextureResource()
+    {
     }
-};
 
 
-class TextureResource : public iResource
-{
-public:
-    TextureResource() {}
-
-    ResourceBlob CreateBlob() override;
-
-    std::string         ID;
-    GUID_t              assetHandle;
-    FlexKit::DeviceFormat  format;
-
-    void*     buffer;
-    size_t    bufferSize;
-};
+    /************************************************************************************************/
 
 
-_TextureMipLevelResource CreateMIPMapResource(const std::string& string);
-inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
+    enum class DDSTextureFormat
+    {
+        DXT5,
+        UNKNOWN
+    };
+
+
+    /************************************************************************************************/
+
+
+    DDSTextureFormat FormatStringToFormatID(const std::string& ID)
+    {
+        if (ID == "DXT5")
+            return DDSTextureFormat::DXT5;
+
+        return DDSTextureFormat::UNKNOWN;
+    }
+
+
+    /************************************************************************************************/
+
+
+    struct _TextureMipLevelResource
+    {
+        int         width;
+        int         height;
+        int         channelCount;
+
+        crn_uint32* buffer;
+
+
+        void Release()
+        {
+            delete[] buffer;
+            buffer = nullptr;
+        }
+    };
+
+
+    /************************************************************************************************/
+
+
+    class TextureResource : public iResource
+    {
+    public:
+        TextureResource() {}
+
+        ResourceBlob CreateBlob() override;
+
+        std::string         ID;
+        GUID_t              assetHandle;
+        FlexKit::DeviceFormat  format;
+
+        void*     buffer;
+        size_t    bufferSize;
+    };
+
+
+    /************************************************************************************************/
+
+
+    _TextureMipLevelResource CreateMIPMapResource(const std::string& string);
+    inline std::shared_ptr<iResource> CreateTextureResource(std::shared_ptr<Texture_MetaData> metaData);
+
+
+}    /************************************************************************************************/
+
 
 
 /**********************************************************************
