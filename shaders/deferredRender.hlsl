@@ -192,22 +192,22 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
     const float2 SampleCoord    = input.Position;
 	const int3 Coord            = int3(SampleCoord.x, SampleCoord.y, 0);
     const float2 UV             = SampleCoord.xy / WH; // [0;1]
-    float3 rayDir               = GetViewVector(UV);
-
+    float3 rayDir_VS            = GetViewVector_VS(UV);
+    float3 rayDir               = mul(ViewI, rayDir_VS);
+    
     //const float4 Specular       = SpecularBuffer.Load(Coord);
-    const float3 normal              = normalize(NormalBuffer.Load(Coord).xyz);
-    const float3 tangent             = normalize(TangentBuffer.Load(Coord).xyz);
-    const float3 bitangent           = normalize(cross(normal, tangent));
+    const float3 normal          = normalize(NormalBuffer.Load(Coord).xyz);
+    const float3 tangent         = normalize(TangentBuffer.Load(Coord).xyz);
+    const float3 bitangent       = normalize(cross(normal, tangent));
 
-    const float  depth          = DepthBuffer.Load(Coord);
-
-	//return float4(T, 1.0);
+    const float  depth           = DepthBuffer.Load(Coord);
 
     const float3x3 invView  = View;
     const float3 rayPos     = CameraPOS;
 
 	// Calculate world position
-    const float3 positionW = rayPos + rayDir * (depth * MaxZ);
+    //const float3 position_VS    = rayDir_VS * (depth * MaxZ); // View Space
+    //const float3 positionW      = GetWorldSpacePosition(UV, depth);//mul(ViewI, float4(position_VS, 1));//rayPos + rayDir * (depth * MaxZ);
 
 	// Compute tangent space vectors
 	const float3 worldV         = -rayDir;
@@ -319,7 +319,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
     //color = color / (color + 1.0);
 	//color = pow(color, 1.0/gamma);
 
-	return float4(color, 1.0);
+    return float4(color, 1.0);
 	
     /*
 	// Calculate world position

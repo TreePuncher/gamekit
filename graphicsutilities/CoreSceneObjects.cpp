@@ -312,10 +312,8 @@ namespace FlexKit
 
 		XMView		= XMMatrixInverse(nullptr, XMWT);
 		XMProj		= CreatePerspective(this, invert);
-		XMView		= XMView;
 		XMPV		= XMMatrixTranspose(XMMatrixTranspose(XMProj)* XMView);
 		XMIV		= XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
-		XMWT		= XMWT;
 		
 		WT		= XMMatrixToFloat4x4(&XMWT);
 		View	= XMMatrixToFloat4x4(&XMView);
@@ -335,8 +333,8 @@ namespace FlexKit
 
 		Camera::ConstantBuffer NewData;
 		NewData.Proj            = Proj;
-		NewData.View			= XMMatrixToFloat4x4(XMMatrixTranspose(Float4x4ToXMMATIRX(&View)));
-		NewData.ViewI           = WT;
+		NewData.View			= View.Transpose();
+		NewData.ViewI           = WT.Transpose();
 		NewData.PV              = XMMatrixToFloat4x4(XMMatrixTranspose(XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView));
 		NewData.PVI             = XMMatrixToFloat4x4(XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, XMMatrixTranspose(Float4x4ToXMMATIRX(NewData.Proj)) * XMView)));
 		NewData.MinZ            = Near;
@@ -348,19 +346,18 @@ namespace FlexKit
 		NewData.WPOS[1]         = WT[1][3];
 		NewData.WPOS[2]         = WT[2][3];
 		NewData.WPOS[3]         = 0;
-		
-		Quaternion Q			= GetOrientation(Node);
-		auto CameraPoints		= GetFrustumPoints(NewData.WPOS.xyz(), Q);
 
-		NewData.WSTopLeft     = CameraPoints.FTL;
-		NewData.WSTopRight    = CameraPoints.FTR;
-		NewData.WSBottomLeft  = CameraPoints.FBL;
-		NewData.WSBottomRight = CameraPoints.FBR;
+        const float Y = tan(FOV / 2);
+        const float X = Y * AspectRatio;
 
-		NewData.WSTopLeft_Near		= CameraPoints.NTL;
-		NewData.WSTopRight_Near		= CameraPoints.NTR;
-		NewData.WSBottomLeft_Near	= CameraPoints.NBL;
-		NewData.WSBottomRight_Near	= CameraPoints.NBR;
+        NewData.TLCorner_VS = float3(-X, Y, -1);
+        NewData.TRCorner_VS = float3(X, Y, -1);
+
+        NewData.BLCorner_VS = float3(-X, -Y, -1);
+        NewData.BRCorner_VS = float3(X, -Y, -1);
+
+        NewData.FOV         = FOV;
+        NewData.AspectRatio = AspectRatio;
 
 		return NewData;
 	}

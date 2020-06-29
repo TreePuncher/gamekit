@@ -50,18 +50,14 @@ namespace FlexKit
 			float4		WPOS;
 			float		MinZ;
 			float		MaxZ;
+            float       AspectRatio;
+            float       FOV;
 
-			float Padding[2];
+            float3   TLCorner_VS;
+            float3   TRCorner_VS;
 
-			float3  WSTopLeft;
-			float3  WSTopRight;
-			float3  WSBottomLeft;
-			float3  WSBottomRight;
-
-			float3  WSTopLeft_Near;
-			float3  WSTopRight_Near;
-			float3  WSBottomLeft_Near;
-			float3  WSBottomRight_Near;
+            float3   BLCorner_VS;
+            float3   BRCorner_VS;
 
 			constexpr static const size_t GetBufferSize()
 			{

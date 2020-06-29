@@ -13,16 +13,14 @@ cbuffer CameraConstants : register( b0 )
 	float4   CameraPOS;
 	float  	 MinZ;
 	float  	 MaxZ;
+    float   AspectRatio;
+    float   FOV;
+    
+    float3   TLCorner_VS;
+    float3   TRCorner_VS;
 
-	float4  WSTopLeft;
-	float4  WSTopRight;
-	float4  WSBottomLeft;
-	float4  WSBottomRight;
-
-	float4  WSTopLeft_Near;
-	float4  WSTopRight_Near;
-	float4  WSBottomLeft_Near;
-	float4  WSBottomRight_Near;
+    float3   BLCorner_VS;
+    float3   BRCorner_VS;
 };
 
 
@@ -151,22 +149,26 @@ float NormalizeAndRescaleZ(float Z_in, float Scale)
     return saturate((Z_in - MinZ) / (Scale - MinZ));
 }
 
-float3 GetViewVector(float2 UV)
+float3 GetViewVector_VS(const float2 UV) // View Space Vector
 {
-    float3 Temp1    = lerp(WSTopLeft, WSBottomLeft, UV.y);
-    float3 Temp2    = lerp(WSTopRight, WSBottomRight, UV.y);
-    float3 FarPos   = lerp(Temp1, Temp2, UV.x);
+    const float3 LeftPoint  = lerp(TLCorner_VS, BLCorner_VS, UV.y); // Left Edge
+    const float3 RightPoint = lerp(TRCorner_VS, BRCorner_VS, UV.y); // Right Edge
+    const float3 FarPos     = lerp(LeftPoint, RightPoint, UV.x);
 
-    float3 Temp3    = lerp(WSTopLeft_Near, WSBottomLeft_Near, UV.y);
-    float3 Temp4    = lerp(WSTopRight_Near, WSBottomRight_Near, UV.y);
-    float3 NearPOS  = lerp(Temp3, Temp4, UV.x);
-
-    return normalize(NearPOS - FarPos);
+    return normalize(FarPos);
 }
 
-float3 GetWorldSpacePosition(float3 ViewVector, float3 Origin, float Z) 
+float3 GetViewVector(const float2 UV)
 {
-    return Origin + ViewVector * Z;
+    float3 View_VS = GetViewVector_VS(UV);
+    return mul(ViewI, View_VS);
+}
+
+float3 GetWorldSpacePosition(float2 UV, float D) 
+{
+    const float3 V = GetViewVector_VS(UV) * MaxZ * D;
+    return mul(ViewI, float4(V, 1));
+
 }
 
 
