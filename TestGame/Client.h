@@ -53,6 +53,7 @@ class ClientLobbyState : public FlexKit::FrameworkState
 public:
 	ClientLobbyState(
 		GameFramework&		IN_framework,
+        BaseState&          IN_base,
 		GameClientState&	IN_client,
 		NetworkState&		IN_network,
 		const char*			IN_localPlayerName);
@@ -67,6 +68,7 @@ public:
 
 	bool EventHandler	(Event evt) final override;
 
+    BaseState&              base;
 	size_t					refreshCounter;
 	Vector<PacketHandler*>	packetHandlers;
 	NetworkState&			network;
@@ -199,7 +201,7 @@ public:
 
     void JoinLobby()
     {
-		framework.PushState<ClientLobbyState>(*this, network, localName);
+		framework.PushState<ClientLobbyState>(base, *this, network, localName);
     }
 
 	void ServerLost()

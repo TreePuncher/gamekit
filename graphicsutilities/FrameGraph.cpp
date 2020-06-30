@@ -227,7 +227,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	
-	void FrameGraph::UpdateFrameGraph(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp)
+	void FrameGraph::UpdateFrameGraph(RenderSystem* RS, iAllocator* Temp)
 	{
 		RS->BeginSubmission();
 	}
@@ -555,7 +555,7 @@ namespace FlexKit
 	}
 
 
-	void FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, RenderWindow* renderWindow, iAllocator& allocator)
+	void FrameGraph::SubmitFrameGraph(UpdateDispatcher& dispatcher, RenderSystem* renderSystem, iAllocator& allocator)
 	{
 		struct SubmitData
 		{
@@ -582,7 +582,6 @@ namespace FlexKit
 
 				data.frameGraph		= framegraph;
 				data.renderSystem	= renderSystem;
-				data.renderWindow	= renderWindow;
 
 			    for (auto dependency : dataDependencies)
 					builder.AddInput(*dependency);
@@ -718,20 +717,20 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void PresentBackBuffer(FrameGraph& Graph, RenderWindow* Window)
+	void PresentBackBuffer(FrameGraph& frameGraph, IRenderWindow& window)
 	{
 		struct PassData
 		{
 			FrameResourceHandle BackBuffer;
 		};
-		auto& Pass = Graph.AddNode<PassData>(
+		auto& Pass = frameGraph.AddNode<PassData>(
 			PassData{},
 			[&](FrameGraphNodeBuilder& Builder, PassData& Data)
 			{
-				Data.BackBuffer = Builder.PresentBackBuffer(Window->backBuffer);
+				Data.BackBuffer = Builder.PresentBackBuffer(window.GetBackBuffer());
 			},
-			[=](const PassData& Data, const FrameResources& Resources, Context& ctx, iAllocator&)
-			{	
+			[](const PassData& Data, const FrameResources& Resources, Context& ctx, iAllocator&)
+			{
 			});
 	}
 

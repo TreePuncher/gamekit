@@ -102,8 +102,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define FLEXKITINTERNAL
 
-
-
 #include <assert.h>
 #include <functional>
 #include <chrono>
@@ -195,15 +193,13 @@ constexpr size_t DefaultWorkerCount = 2; // should be safe for a quad core cpu
 const size_t INVALIDHANDLE = -1;
 
 namespace FlexKit {
-	typedef char byte;
+    using byte = uint8_t;
+
 	typedef uint64_t AssetHandle;
 	typedef uint64_t GUID_t;
 }
 
 #define NOMINMAX
 
-#include <WinSock2.h>
-#include <windows.h>
-#include <Ws2tcpip.h>
 
 #endif//BUILDSETTING_H

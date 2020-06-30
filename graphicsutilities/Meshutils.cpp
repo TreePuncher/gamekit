@@ -310,7 +310,7 @@ namespace FlexKit
         {
             float3  midPoint{ 0, 0, 0 };
             AABB    aabb;
-            for_each(
+            std::for_each(
                 begin, end,
                 [&](const auto tri)
                 {
@@ -329,7 +329,7 @@ namespace FlexKit
 
             if (std::distance(begin, end) < 512)
             {
-                auto node = make_unique<KDBNode>(KDBNode{ nullptr, nullptr, begin, end, aabb });
+                auto node = std::make_unique<KDBNode>(KDBNode{ nullptr, nullptr, begin, end, aabb });
                 leafNodes.push_back(node.get());
                 return node;
             }
@@ -346,7 +346,7 @@ namespace FlexKit
                         return d >= 0;
                     });
 
-                return make_unique<KDBNode>(
+                return std::make_unique<KDBNode>(
                         KDBNode{
                             BuildNode(begin, mid),
                             BuildNode(mid, end),

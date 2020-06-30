@@ -311,10 +311,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline void CreateBufferView(char* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
+    inline void CreateBufferView(byte* buffer, size_t bufferSize, VertexBufferView*& View, VERTEXBUFFER_TYPE T, VERTEXBUFFER_FORMAT F, iAllocator* allocator)
     {
         size_t blobSize = bufferSize + sizeof(VertexBufferView);
-        char* blob = (char*)allocator->malloc(blobSize);
+        byte* blob = (byte*)allocator->malloc(blobSize);
 
         View = new(blob) VertexBufferView(blob + sizeof(VertexBufferView), bufferSize, F, T);
 

@@ -130,7 +130,7 @@ namespace FlexKit
                             const auto currentTime    = std::chrono::high_resolution_clock::now();
                             const auto duration       = currentTime - beginTimePoint;
 
-                            if (duration > 1000ns)
+                            if (duration > std::chrono::nanoseconds(1000))
                                 break;
                         }
 

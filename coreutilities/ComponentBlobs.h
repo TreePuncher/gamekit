@@ -22,7 +22,7 @@ namespace FlexKit
         uint32_t CRC32;
         uint32_t blockType;
         uint32_t blockSize;
-        char	 buffer[];
+        byte	 buffer[];
     };
 
     // SceneNodeBlock must always be defined before any entity Blocks

@@ -147,7 +147,7 @@ namespace FlexKit
 	class EngineCore
 	{
 	public:
-		EngineCore(EngineMemory* memory, uint2 WH, uint32_t threadCount) :
+		EngineCore(EngineMemory* memory, uint32_t threadCount) :
 			Memory			{ memory										},
 			CmdArguments	{ memory->BlockAllocator						},
 			Time			{ memory->BlockAllocator						},
@@ -155,7 +155,7 @@ namespace FlexKit
 			RenderSystem	{ memory->BlockAllocator, &Threads				}
 		{
 			InitiateSceneNodeBuffer(memory->NodeMem, sizeof(EngineMemory::NodeMem));
-			Initiate(memory, WH);
+			Initiate(memory);
 		}
 
 
@@ -172,7 +172,7 @@ namespace FlexKit
 		}
 
 
-		bool Initiate(EngineMemory* Memory, const uint2 WH);
+        bool Initiate(EngineMemory* Memory);
 		void Release();
 
 		EngineCore				(const EngineCore&) = delete;
@@ -185,7 +185,6 @@ namespace FlexKit
 
 		RenderSystem			RenderSystem;
 
-		RenderWindow			Window;
 		Time					Time;
 
 		Vector<const char*>		CmdArguments;

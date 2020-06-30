@@ -273,13 +273,8 @@ namespace FlexKit
 			const Type_t mType;
 		};
 
-		inline void CheckType(HANDLE hdnl_in, Type_t type_in )
-		{
-#if USING( DEBUGHANDLES )
-			FK_ASSERT(type_in == hdnl_in.TYPE);
-#endif
-		}
-		/************************************************************************************************/
+
+        /************************************************************************************************/
 	}
 
 	typedef Handle_t<16> EntityHandle;

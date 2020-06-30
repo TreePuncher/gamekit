@@ -34,10 +34,11 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldRender.h"
 #include "TextRendering.h"
 #include "defaultpipelinestates.h"
+#include "Win32Graphics.h"
 
 #include <angelscript.h>
-#include <scriptstdstring/scriptstdstring.h>
-#include <scriptbuilder/scriptbuilder.h>
+#include <angelscript/scriptstdstring/scriptstdstring.h>
+#include <angelscript/scriptbuilder/scriptbuilder.h>
 
 #include <fmod.hpp>
 
@@ -49,12 +50,6 @@ using FlexKit::FKApplication;
 
 
 #pragma comment(lib, "fmod_vc.lib")
-
-#ifdef _DEBUG
-#pragma comment(lib, "angelscript64d.lib")
-#else
-#pragma comment(lib, "angelscript64.lib")
-#endif
 
 using namespace FlexKit;
 
@@ -165,18 +160,20 @@ public:
 		FKApplication& IN_App	) :
 			App				{ IN_App },
 			FrameworkState	{ IN_Framework },
-			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(IN_Framework.ActiveWindow->WH,	true) },
+			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(renderWindow.GetWH(),	true) },
 
 			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
 			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
 			asEngine		{ asCreateScriptEngine() },
 			streamingEngine	{ IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
-            sounds          { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory()    },
+            sounds          { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
+
+            renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
 
 			render	{	IN_Framework.core.GetTempMemory(),
 						IN_Framework.core.RenderSystem,
 						streamingEngine,
-						IN_Framework.ActiveWindow->WH
+                        renderWindow.GetWH()
 					},
 
 			cameras		        { framework.core.GetBlockMemory() },
@@ -186,7 +183,7 @@ public:
 			visables	        { framework.core.GetBlockMemory() },
 			pointLights	        { framework.core.GetBlockMemory() },
             skeletonComponent   { framework.core.GetBlockMemory() },
-            gbuffer             { IN_Framework.ActiveWindow->WH, framework.core.RenderSystem },
+            gbuffer             { renderWindow.GetWH(), framework.core.RenderSystem },
             shadowCasters       { IN_Framework.core.GetBlockMemory() },
             physics             { IN_Framework.core.Threads, IN_Framework.core.GetBlockMemory() },
             rigidBodies         { physics },
@@ -205,6 +202,14 @@ public:
 		RS.QueuePSOLoad(DRAW_PSO);
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
 		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
+
+        uint2	WindowRect = renderWindow.GetWH();
+        float	Aspect = (float)WindowRect[0] / (float)WindowRect[1];
+
+        EventNotifier<>::Subscriber sub;
+        sub.Notify = &EventsWrapper;
+        sub._ptr = &framework;
+        renderWindow.Handler->Subscribe(sub);
 	}
 
 
@@ -215,13 +220,24 @@ public:
         framework.GetRenderSystem().ReleaseTexture(depthBuffer);
         framework.GetRenderSystem().ReleaseTexture(irradianceMap);
         framework.GetRenderSystem().ReleaseTexture(GGXMap);
+
+        renderWindow.Release();
 	}
 
 
     void Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
     {
+        UpdateInput();
+        renderWindow.UpdateCapturedMouseInput(dT);
+
         physics.Update(dT, core.GetTempMemory());
         t += dT;
+    }
+
+
+    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) override
+    {
+        core.RenderSystem.PresentWindow(&renderWindow);
     }
 
 
@@ -233,7 +249,7 @@ public:
         auto& renderSystem  = framework.GetRenderSystem();
         auto adjustedWH     = uint2{ max(8u, WH[0]), max(8u, WH[1]) };
 
-        framework.core.Window.Resize(adjustedWH, renderSystem);
+        renderWindow.Resize(adjustedWH);
 
         renderSystem.ReleaseTexture(depthBuffer);
         depthBuffer = renderSystem.CreateDepthBuffer(adjustedWH, true);
@@ -254,6 +270,7 @@ public:
     ResourceHandle             GGXMap;
 
     // render resources
+    Win32RenderWindow           renderWindow;
 	WorldRender					render;
     GBuffer                     gbuffer;
 	ResourceHandle				depthBuffer;

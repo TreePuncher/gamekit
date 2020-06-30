@@ -76,7 +76,7 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void MaterialComponent::AddTexture(GUID_t textureAsset, MaterialHandle material)
+    void MaterialComponent::AddTexture(GUID_t textureAsset, MaterialHandle material, const bool loadLowest)
     {
         const auto res = std::find_if(
             std::begin(textures),
@@ -99,6 +99,10 @@ namespace FlexKit
                     1, true));
 
             streamEngine.BindAsset(textureAsset, textureResource);
+
+            if(loadLowest)
+                streamEngine.LoadLowestLevel(textureResource);
+
             textures.push_back({ 1, textureResource, textureAsset });
 
             materials[handles[material]].Textures.push_back(textureResource);

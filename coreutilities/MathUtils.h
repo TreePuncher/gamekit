@@ -19,8 +19,6 @@
 #include <initializer_list>
 #include <ostream>
 
-using namespace std;
-
 namespace FlexKit
 {
 	/************************************************************************************************/
@@ -1602,11 +1600,7 @@ namespace FlexKit
 
 	// Row Major
 	template< const int ROW, const int COL, typename Ty = float >
-#ifdef WIN32
-    FLEXKITAPI class __declspec(align(16))  Matrix
-#else
-	__attribute__((aligned(16))) union Matrix
-#endif
+	union alignas(16) Matrix
 	{
 	public:
         using THIS_TYPE = const Matrix<ROW, COL, Ty>;
@@ -1839,7 +1833,7 @@ namespace FlexKit
 
 	FLEXKITAPI int			Exp( int32_t Number, uint32_t exp );
 	FLEXKITAPI Quaternion	MatrixToQuat( Matrix<4,4>& );
-	FLEXKITAPI void			NumberToString( int32_t n, string& _Dest );
+	FLEXKITAPI void			NumberToString( int32_t n, std::string& _Dest );
 	FLEXKITAPI int			Testing();
 
 	FLEXKITAPI void printfloat2(const float2& in);

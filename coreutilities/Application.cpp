@@ -2,13 +2,13 @@
 
 namespace FlexKit
 {
-	FKApplication::FKApplication(uint2 WindowResolution, EngineMemory* IN_Memory, size_t threadCount) :
+	FKApplication::FKApplication(EngineMemory* IN_Memory, size_t threadCount) :
 		Memory		{ IN_Memory },
-		Core		{ IN_Memory, WindowResolution, threadCount },
+		Core		{ IN_Memory, threadCount },
 		framework	{ Core } {}
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 
 	FKApplication::~FKApplication()
@@ -46,14 +46,12 @@ namespace FlexKit
 
 	void FKApplication::Run()
 	{
-		using FlexKit::UpdateInput;
-
 		double T				= 0.0f;
 		double FPSTimer			= 0.0;
 		double dT				= 1.0/60.0;
 
 
-		while (!Core.End && !Core.Window.Close && framework.subStates.size())
+		while (!Core.End && framework.subStates.size())
 		{
             FK_LOG_2("BEGIN FRAME");
 
@@ -96,7 +94,7 @@ namespace FlexKit
             }
 
 			const auto sleepEnd      = std::chrono::high_resolution_clock::now();
-			const auto totalDuration = chrono::duration_cast<chrono::nanoseconds>(sleepEnd - frameStart);
+			const auto totalDuration = std::chrono::duration_cast<std::chrono::nanoseconds>(sleepEnd - frameStart);
 
 			dT = double(totalDuration.count() ) / 1000000000.0;
             T += dT;

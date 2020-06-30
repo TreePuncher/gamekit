@@ -34,7 +34,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Assets.h"
 #include "AnimationUtilities.h"
 
-#include <PhysX_sdk/physx/include/PxPhysicsAPI.h>
+#include <physx/PxPhysicsAPI.h>
 
 #include <random>
 #include <limits>

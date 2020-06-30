@@ -380,9 +380,9 @@ namespace FlexKit
         /************************************************************************************************/
 
 
-        FLEXKITAPI OptimizedMesh            CreateOptimizedMesh(const MeshKDBTree& tree);
-        FLEXKITAPI shared_ptr<MeshKDBTree>  BuildKDBTree(const TokenList& in);
-		FLEXKITAPI char*		            ScrubLine( char* inLine, size_t RINOUT lineLength );
+        FLEXKITAPI OptimizedMesh                    CreateOptimizedMesh(const MeshKDBTree& tree);
+        FLEXKITAPI std::shared_ptr<MeshKDBTree>     BuildKDBTree(const TokenList& in);
+		FLEXKITAPI char*		                    ScrubLine( char* inLine, size_t RINOUT lineLength );
 
 		namespace OBJ_Tools
 		{

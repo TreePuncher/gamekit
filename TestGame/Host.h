@@ -21,8 +21,9 @@ class GameHostLobbyState : public FlexKit::FrameworkState
 
 public:
 	GameHostLobbyState(
-		GameFramework& IN_framework,
-		GameHostState& IN_host);
+		GameFramework&  IN_framework,
+        BaseState&      IN_base,
+		GameHostState&  IN_host);
 
 	~GameHostLobbyState();
 
@@ -59,6 +60,7 @@ private:
 	Vector<PlayerLobbyEntry>	playerLobbyState;
 
 	bool					localHostReady = false;
+    BaseState&              base;
 	GameHostState&			host;
 	MultiplayerLobbyScreen	screen;
 };
@@ -130,7 +132,7 @@ public:
 		std::cout << "\n";
 		SetPlayerName(hostPlayer, name, strnlen(name, 32) + 1);
 
-		auto& lobby = framework.PushState<GameHostLobbyState>(*this);
+		auto& lobby = framework.PushState<GameHostLobbyState>(base, *this);
 		lobby.AddLocalPlayer(hostPlayer);
 
 		return *this;
@@ -139,14 +141,14 @@ public:
 
     void RemovePlayer(const MultiplayerPlayerID_t id)
     {
-        players.remove_unstable(std::find_if(begin(players), end(players),
+        players.remove_unstable(std::find_if(std::begin(players), std::end(players),
             [&](auto player) { return player.ID == id; }));
     }
 
 
     MultiPlayerEntry* GetPlayer(const ConnectionHandle handle)
     {
-        auto res = std::find_if(begin(players), end(players),
+        auto res = std::find_if(std::begin(players), std::end(players),
             [&](auto player) { return player.address == handle; });
         
         return (res == players.end()) ? nullptr : res;
@@ -155,7 +157,7 @@ public:
 
 	MultiPlayerEntry* GetPlayer(const MultiplayerPlayerID_t id)
 	{
-        auto res = std::find_if(begin(players), end(players),
+        auto res = std::find_if(std::begin(players), std::end(players),
             [&](auto player) { return player.ID == id; });
 
         return (res == players.end()) ? nullptr : res;
@@ -176,7 +178,7 @@ public:
         auto PlayersStillLoading = [&]() -> bool
         {
             auto pred = [](auto& player) -> bool { return player.state == LoadingScreen; };
-            return std::find_if(begin(players), end(players), pred) != players.end();
+            return std::find_if(std::begin(players), std::end(players), pred) != players.end();
         };
 
         auto OnCompletion = [&, PlayersStillLoading](auto& core, auto& Dispatcher, double dT)
@@ -229,7 +231,7 @@ public:
         {
             auto newID = GeneratePlayerID();
 
-            if (std::find_if(begin(players), end(players),
+            if (std::find_if(std::begin(players), std::end(players),
                     [&](auto& player) -> bool { return player.ID == newID; }) == players.end() )
                 return newID;
 		}

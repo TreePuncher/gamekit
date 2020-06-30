@@ -90,35 +90,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	bool EngineCore::Initiate(EngineMemory* Memory, const uint2 WH)
+	bool EngineCore::Initiate(EngineMemory* Memory)
 	{
 		Graphics_Desc	desc	= { 0 };
 		desc.Memory			    = GetBlockMemory();
 		desc.TempMemory			= GetTempMemory();
 
-		const uint32_t width	= WH[0];
-		const uint32_t height	= WH[1];
-		bool InvertDepth		= true;
-
 		if (!RenderSystem.Initiate(&desc))
 			return false;
 
-		Window.Close            = false;
+        InitiateAssetTable(GetBlockMemory());
 
-		if (!CreateRenderWindow(this, height, width, false))
-		{
-			RenderSystem.Release();
-			cout << "Failed to Create Render Window!\n";
-
-			return false;
-		}
-        else
-        {
-            SetInputWIndow(&Window);
-            InitiateAssetTable(GetBlockMemory());
-
-            return false;
-        }
+        return true;
 	}
 
 
@@ -127,8 +110,6 @@ namespace FlexKit
 
 	void EngineCore::Release()
 	{
-		FlexKit::Release(&Window);
-
 		for (auto Arg : CmdArguments)
 			GetBlockMemory().free((void*)Arg);
 
@@ -141,54 +122,7 @@ namespace FlexKit
 	}
 
 
-	/************************************************************************************************/
-
-
-	bool CreateRenderWindow(EngineCore* Game, uint32_t height, uint32_t width, bool fullscreen)
-	{
-		// Initiate Render Window
-		RenderWindowDesc	WinDesc = { 0 };
-		WinDesc.POS_X		= 0;
-		WinDesc.POS_Y		= 0;
-		WinDesc.height		= height;
-		WinDesc.width		= width;
-		WinDesc.fullscreen	= fullscreen;
-
-		if (CreateRenderWindow(Game->RenderSystem, &WinDesc, &Game->Window))
-			FK_ASSERT(false, "RENDER WINDOW FAILED TO INITIALIZE!");
-
-		return true;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float GetWindowAspectRatio(EngineCore& core)
-	{
-		return (float)core.Window.WH[0] / (float)core.Window.WH[1];;
-	}
-
-
-	/************************************************************************************************/
-
-
-	uint2 GetWindowWH(EngineCore& core)
-	{
-		return core.Window.WH;
-	}
-
-
-	/************************************************************************************************/
-
-
-	float2 GetPixelSize(EngineCore& core)
-	{
-		return GetPixelSize(core.Window);
-	}
-
-
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 
 	void ClearMouseButtonStates(MouseInputState* State)
@@ -206,7 +140,8 @@ namespace FlexKit
 
     void EnableMouseInput(MouseInputState* State, RenderWindow* Window)
     {
-        SetSystemCursorToWindowCenter(Window);
+        FK_ASSERT(0);
+        //SetSystemCursorToWindowCenter(Window);
         State->Enabled  = true;
         ShowCursor(false);
     }
@@ -227,9 +162,11 @@ namespace FlexKit
 
 	void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 	{
+        FK_ASSERT(0);
+
 		if (!State->Enabled)
 			return;
-
+        /*
 		if (GetForegroundWindow() == Window->hWindow)
 		{
 			State->dPos = GetMousedPos(Window);
@@ -255,6 +192,7 @@ namespace FlexKit
 		{
             DisableMouseInput(State);
 		}
+        */
 	}
 
 

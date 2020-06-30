@@ -26,8 +26,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Assets.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb\stb_image.h"
-
+#include <stb_image.h>
 #define CRND_HEADER_FILE_ONLY
 #include <crn_decomp.h>
 

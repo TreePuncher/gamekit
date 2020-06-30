@@ -1,27 +1,3 @@
-/**********************************************************************
-
-Copyright (c) 2014-2020 Robert May
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included
-in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-**********************************************************************/
-
 #ifdef _WIN32
 #pragma once
 #endif
@@ -29,7 +5,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #ifndef GRAPHICS_H_INCLUDED
 #define GRAPHICS_H_INCLUDED
 
-//#pragma comment( lib, "DirectXTK.lib")
 #pragma comment( lib, "D3D12.lib")
 #pragma comment( lib, "d3dcompiler.lib")
 #pragma comment( lib, "dxgi.lib")
@@ -40,7 +15,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "..\PCH.h"
 #include "buildsettings.h"
 #include "containers.h"
-#include "Events.h"
 #include "Handle.h"
 #include "intersection.h"
 #include "Logging.h"
@@ -52,11 +26,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Geometry.h"
 #include "TextureUtilities.h"
 
-
 #include <iso646.h>
 #include <algorithm>
-//#include <opensubdiv/far/topologyDescriptor.h>
-//#include <opensubdiv/far/primvarRefiner.h>
 #include <string>
 #include <d3d12.h>
 #include <d3d12sdklayers.h>
@@ -533,25 +504,7 @@ namespace FlexKit
 		uint32_t		width;
 		uint32_t		mip_Levels;
 		byte*			usr;
-		// Describe iRenderTarget here
 	};
-
-
-	struct RenderWindowDesc
-	{
-		bool		fullscreen;
-		uint64_t	hInstance;
-		uint64_t	hWindow;
-		uint32_t	height;
-		uint32_t	width;
-		uint32_t	depth;
-		uint32_t	AA_Count;
-		uint32_t	AA_Quality;
-		uint32_t	POS_X;
-		uint32_t	POS_Y;
-		char		ID[64];
-	};
-
 
 
 	/************************************************************************************************/
@@ -655,32 +608,23 @@ namespace FlexKit
 	};
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
+
+    struct IRenderWindow
+    {
+        virtual ~IRenderWindow() {};
+
+        virtual ResourceHandle      GetBackBuffer() const = 0;
+        virtual bool                Present(const uint32_t syncInternal, const uint32_t flags) = 0;
+        virtual uint2               GetWH() const = 0;
+        virtual void                Resize(const uint2 WH) = 0;
+
+        virtual IDXGISwapChain4*    _GetSwapChain() const = 0;
 
 
-	struct RenderWindow
-	{
-		IDXGISwapChain4*			SwapChain_ptr;
-		ResourceHandle              backBuffer;
-		DXGI_FORMAT					Format;
-		HWND						hWindow;
-
-		uint2						WH; // Width-Height
-		uint2						WindowCenterPosition;
-		Viewport					VP;
-		bool						Close;
-		bool						Fullscreen;
-
-		EventNotifier<>				Handler;
-
-
-		void Resize(const uint2 newWH, RenderSystem& renderSystem);
-
-
-		WORD	InputBuffer[128];
-		size_t	InputBuffSize;
-	};
-
+        float2  GetPixelSize() const { return float2{ 1.0f, 1.0f } / GetWH(); }
+        float   GetAspectRatio() const { const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
+    };
 
 	/************************************************************************************************/
 
@@ -866,8 +810,8 @@ namespace FlexKit
 
 		ID3D12CommandQueue*                 copyQueue       = nullptr;
 		ID3D12Fence*                        fence           = nullptr;
-        atomic_uint                         idx             = 0;
-        atomic_uint                         counter         = 0;
+        std::atomic_uint                    idx             = 0;
+        std::atomic_uint                    counter         = 0;
 		CircularBuffer<CopyContext, 64>     copyContexts;
 	};
 
@@ -3229,7 +3173,7 @@ private:
 
 		void BeginSubmission	();
 		void Submit				(Vector<Context*>& CLs);
-		void PresentWindow		(RenderWindow* RW);
+		void PresentWindow		(IRenderWindow* RW);
 
 		void WaitforGPU();
 
@@ -3358,10 +3302,10 @@ private:
 		ID3D12CommandQueue*		GraphicsQueue	= nullptr;
 		ID3D12CommandQueue*		ComputeQueue	= nullptr;
 
-        size_t      pendingFrames[3]        = { 0, 0, 0 };
-        size_t      frameIdx                = 0;
-        size_t      CurrentFrame			= 0;
-		atomic_uint FenceCounter			= 0;
+        size_t              pendingFrames[3]        = { 0, 0, 0 };
+        size_t              frameIdx                = 0;
+        size_t              CurrentFrame			= 0;
+		std::atomic_uint    FenceCounter			= 0;
 
 		ID3D12Fence* Fence = nullptr;
 
@@ -4504,14 +4448,6 @@ private:
 	const float DefaultClearDepthValues_0[] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, };
 	const int   DefaultClearStencilValues[]	= { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
-
-	/************************************************************************************************/
-
-	
-	FLEXKITAPI bool CreateRenderWindow	( RenderSystem*, RenderWindowDesc* desc_in, RenderWindow* );
-	FLEXKITAPI void	SetInputWIndow		( RenderWindow* );
-	FLEXKITAPI void	UpdateInput			( void );
-
 	
 	/************************************************************************************************/
 	// Depreciated API
@@ -4579,13 +4515,6 @@ private:
 	
 	/************************************************************************************************/
 
-
-	FLEXKITAPI int2 GetMousedPos					( RenderWindow* Window );
-	FLEXKITAPI void HideSystemCursor				( RenderWindow* Window );
-	FLEXKITAPI void SetSystemCursorToWindowCenter	( RenderWindow* Window );
-	FLEXKITAPI void ShowSystemCursor				( RenderWindow* Window );
-
-	FLEXKITAPI float2 GetPixelSize(RenderWindow& Window);
 
 	
 	/************************************************************************************************/
@@ -4701,5 +4630,30 @@ private:
 
 
 }	/************************************************************************************************/
+
+/**********************************************************************
+
+Copyright (c) 2014-2020 Robert May
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+**********************************************************************/
+
 
 #endif

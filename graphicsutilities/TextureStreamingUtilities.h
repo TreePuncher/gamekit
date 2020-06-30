@@ -101,8 +101,8 @@ namespace FlexKit
 
     struct DDSInfo
     {
-        size_t  MIPCount;
-        uint2   WH;
+        uint8_t     MIPCount;
+        uint2       WH;
 
         DeviceFormat format;
     };
@@ -340,6 +340,7 @@ namespace FlexKit
 
         Vector<gpuTileID>   UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
         BlockAllocation     AllocateBlocks      (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);
+        BlockAllocation     AllocateBlock       (TileID_t, iAllocator* allocator);
 
         const static uint32_t   blockSize   = 64 * KILOBYTE;
         uint32_t                last        = 0;
@@ -390,6 +391,16 @@ namespace FlexKit
 
             iAllocator* allocator       = nullptr;
         };
+
+
+        void LoadLowestLevel(ResourceHandle textureResource)
+        {
+            const auto mipCount     = renderSystem.GetTextureMipCount(textureResource);
+            const auto tileID       = CreateTileID(0, 0, mipCount - 1);
+            const gpuTileID gpuID   = { tileID, textureResource };
+
+            textureBlockAllocator.AllocateBlocks(&gpuID, &gpuID + 1, allocator);
+        }
 
 
         gpuTileList     UpdateTileStates    (const gpuTileID* begin, const gpuTileID* end, iAllocator* allocator);

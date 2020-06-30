@@ -31,19 +31,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define GAMESTATEAPI __declspec(dllimport)
 #endif
 
-#include "EngineCore.h"
+#include "Assets.h"
 #include "Components.h"
+#include "Console.h"
+#include "EngineCore.h"
+#include "Events.h"
+#include "FrameGraph.h"
+#include "Graphics.h"
 #include "GraphicScene.h"
 #include "GraphicsComponents.h"
 #include "Logging.h"
-#include "Assets.h"
-
-#include "FrameGraph.h"
-#include "Graphics.h"
-#include "TerrainRendering.h"
 #include "SSReflections.h"
-
-#include "Console.h"
+#include "TerrainRendering.h"
 
 #include <iostream>
 
@@ -107,13 +106,6 @@ namespace FlexKit
 			return State;
 		}
 
-		MouseInputState			MouseState;
-
-		GraphicScene*			ActiveScene;
-		RenderWindow*			ActiveWindow;
-
-		float4					clearColor;
-
 		LogCallback				logMessagePipe = {
 			"INFO",
 			this,
@@ -165,15 +157,6 @@ namespace FlexKit
 
 
     /************************************************************************************************/
-
-
-    inline uint2 GetWindowWH(GameFramework& framework)
-    {
-        return framework.GetRenderSystem().GetTextureWH(framework.ActiveWindow->backBuffer);
-    }
-
-
-	/************************************************************************************************/
 
 
 	class FrameworkState

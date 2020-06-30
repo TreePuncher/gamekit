@@ -519,7 +519,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetOrientation(NodeHandle node, Quaternion& in)
+	void SetOrientation(NodeHandle node, const Quaternion& in)
 	{
 		DirectX::XMMATRIX wt;
 		LT_Entry Local(GetLocal(node));
@@ -537,7 +537,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void SetOrientationL(NodeHandle node, Quaternion& in)
+	void SetOrientationL(NodeHandle node, const Quaternion& in)
 	{
 		LT_Entry Local(GetLocal(node));
 		Local.R = in;

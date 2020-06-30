@@ -35,6 +35,7 @@ MainMenu::MainMenu(
 		FlexKit::FrameworkState{ IN_framework },
 		constantBuffer		{ IN_base.constantBuffer },
 		vertexBuffer		{ IN_base.vertexBuffer },
+        base                { IN_base },
 		gui					{{}, IN_framework.core.GetBlockMemory()}
 {
 	menuGrid = &gui.CreateGrid();
@@ -65,12 +66,14 @@ void MainMenu::Update(
 	UpdateDispatcher& dispatcher, 
 	double dT)
 {
-	FlexKit::WindowInput windowInput;
-	windowInput.CursorWH				= { 0.05f, 0.05f };
-	windowInput.MousePosition			= framework.MouseState.NormalizedScreenCord;
-	windowInput.LeftMouseButtonPressed	= framework.MouseState.LMB_Pressed;
+    FK_ASSERT(0);
 
-	gui.Update(dT, windowInput, GetPixelSize(core.Window), core.GetTempMemory());
+	//FlexKit::WindowInput windowInput;
+	//windowInput.CursorWH				= { 0.05f, 0.05f };
+	//windowInput.MousePosition			= framework.MouseState.NormalizedScreenCord;
+	//windowInput.LeftMouseButtonPressed	= framework.MouseState.LMB_Pressed;
+
+	//gui.Update(dT, windowInput, GetPixelSize(core.Window), core.GetTempMemory());
 }
 
 
@@ -79,7 +82,9 @@ void MainMenu::Update(
 
 void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = core.Window.backBuffer;
+	auto currentRenderTarget = base.renderWindow.GetBackBuffer();
+
+    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
 
 	ClearVertexBuffer	(frameGraph, vertexBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -93,6 +98,7 @@ void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 	};
 	gui.Draw(drawDesc, core.GetTempMemory());
 
+    /*
 	FlexKit::DrawMouseCursor(
 		framework.MouseState.NormalizedScreenCord,
 		{0.05f, 0.05f}, 
@@ -101,17 +107,18 @@ void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 		currentRenderTarget,
 		core.GetTempMemory(),
 		&frameGraph);
+    */
 }
 
 /************************************************************************************************/
 
 
-void MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& Dispatcher, double dT, FlexKit::FrameGraph& Graph)
+void MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& Graph)
 {
 	if (framework.drawDebugStats)
 		framework.DrawDebugHUD(dT, vertexBuffer, Graph);
 
-	PresentBackBuffer(Graph, &core.Window);
+	PresentBackBuffer(Graph, base.renderWindow);
 }
 
 

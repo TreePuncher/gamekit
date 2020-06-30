@@ -32,11 +32,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ClientLobbyState::ClientLobbyState(
 	GameFramework&          IN_framework,
+    BaseState&              IN_base,
 	GameClientState&		IN_client,
 	NetworkState&			IN_network, 
 	const char*				IN_localPlayerName) :
 		FrameworkState	{ IN_framework          },
-
+        base            { IN_base               },
 		client			{ IN_client			    },
 		localPlayerName { IN_localPlayerName	},
 		network			{ IN_network			},
@@ -177,7 +178,9 @@ void ClientLobbyState::Update(EngineCore& Engine, UpdateDispatcher& Dispatcher, 
 
 void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = core.Window.backBuffer;
+    auto currentRenderTarget = base.renderWindow.GetBackBuffer();
+
+    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
 
 	ClearVertexBuffer	(frameGraph, client.base.vertexBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget);
@@ -189,6 +192,7 @@ void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 	Desc.renderTarget		= currentRenderTarget;
 	screen.Draw(Desc, dispatcher, frameGraph);
 
+    /*
 	FlexKit::DrawMouseCursor(
 		framework.MouseState.NormalizedScreenCord,
 		{ 0.05f, 0.05f },
@@ -197,6 +201,7 @@ void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 		currentRenderTarget,
 		core.GetTempMemory(),
 		&frameGraph);
+    */
 }
 
 
@@ -208,7 +213,7 @@ void ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispat
 	if (framework.drawDebugStats)
 		framework.DrawDebugHUD(dT, client.base.vertexBuffer, frameGraph);
 
-	PresentBackBuffer(frameGraph, &core.Window);
+	PresentBackBuffer(frameGraph, base.renderWindow);
 }
 
 

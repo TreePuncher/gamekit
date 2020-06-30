@@ -118,13 +118,6 @@ namespace FlexKit
 			case KC_T:
 				framework.core.RenderSystem.QueuePSOLoad(TILEDSHADING_SHADE);
 				break;
-			case KC_M:
-                if (framework.MouseState.Enabled)
-                    DisableMouseInput(&framework.MouseState);
-				else
-                    EnableMouseInput(&framework.MouseState, framework.ActiveWindow);
-
-				break;
 			case KC_TILDA:
 			{
 				FK_VLOG(Verbosity_9, "Console Key Pressed!");
@@ -195,7 +188,6 @@ namespace FlexKit
 		InitiateAssetTable	    (core.GetBlockMemory());
 		InitiateGeometryTable	(core.GetBlockMemory());
 
-		clearColor					= { 0.0f, 0.2f, 0.4f, 1.0f };
 		quit						= false;
 		physicsUpdateTimer			= 0.0f;
 
@@ -207,9 +199,6 @@ namespace FlexKit
 		drawDebugStats			= true;
 #endif
 
-		ActiveScene					= nullptr;
-		ActiveWindow				= &core.Window;
-
 		drawPhysicsDebug			= false;
 
 		stats.fps						= 0;
@@ -217,18 +206,6 @@ namespace FlexKit
 		stats.fpsT						= 0.0;
 		stats.objectsDrawnLastFrame		= 0;
 		rootNode						= GetZeroedNode();
-
-		uint2	WindowRect	   = core.Window.WH;
-		float	Aspect		   = (float)WindowRect[0] / (float)WindowRect[1];
-
-		MouseState.NormalizedPos	= { 0.5f, 0.5f };
-		MouseState.Position			= { float(WindowRect[0]/2), float(WindowRect[1] / 2) };
-
-
-		EventNotifier<>::Subscriber sub;
-		sub.Notify = &EventsWrapper;
-		sub._ptr   = this;
-		core.Window.Handler.Subscribe(sub);
 
 		console.BindUIntVar("FPS",			&stats.fps);
 		console.BindBoolVar("HUD",			&drawDebugStats);
@@ -247,9 +224,6 @@ namespace FlexKit
 	void GameFramework::Update(UpdateDispatcher& dispatcher, double dT)
 	{
 		runningTime += dT;
-
-		UpdateInput();
-		UpdateMouseInput(&MouseState, &core.Window);
 
 		if (!subStates.size()) {
 			quit = true;
@@ -311,19 +285,14 @@ namespace FlexKit
 
 		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, TempMemory);
 
-		frameGraph.Resources.AddBackBuffer(core.Window.backBuffer);
-		frameGraph.UpdateFrameGraph(core.RenderSystem, ActiveWindow, core.GetTempMemory());
+		frameGraph.UpdateFrameGraph(core.RenderSystem, core.GetTempMemory());
 
 		subStates.back()->Draw(core, dispatcher, dT, frameGraph);
-		subStates.back()->PostDrawUpdate(core, dispatcher, dT, frameGraph);
 
+        Free_DelayedReleaseResources(core.RenderSystem);
+		frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, *TempMemory);
 
-		if(	ActiveWindow )
-		{
-			frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, ActiveWindow, *TempMemory);
-			Free_DelayedReleaseResources(core.RenderSystem);
-		}
-
+        subStates.back()->PostDrawUpdate(core, dispatcher, dT, frameGraph);
 
 		FK_LOG_9("Frame Draw Begin");
 	}
@@ -334,7 +303,7 @@ namespace FlexKit
 
 	void GameFramework::PostDraw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dt)
 	{
-		core.RenderSystem.PresentWindow(&core.Window);
+		//core.RenderSystem.PresentWindow(&core.Window);
 	}
 
 
@@ -428,6 +397,7 @@ namespace FlexKit
 			(uint32_t)stats.objectsDrawnLastFrame);
 
 
+        /*
         const uint2 WH          = ActiveWindow->WH;
         const float aspectRatio = GetWindowAspectRatio(core);
 
@@ -443,6 +413,7 @@ namespace FlexKit
 				core.Window.backBuffer, 
 				core.GetTempMemory(), 
 				Format);
+                */
 	}
 
 
@@ -485,13 +456,13 @@ namespace FlexKit
 	    case Event::InputAction::Pressed:
 	    {
 		    if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			    framework.MouseState.LMB_Pressed = true;
+			    //framework.MouseState.LMB_Pressed = true;
 		    }
 	    }	break;
 	    case Event::InputAction::Release:
 	    {
 		    if (in.mData1.mKC[0] == KC_MOUSELEFT) {
-			    framework.MouseState.LMB_Pressed = false;
+			    //framework.MouseState.LMB_Pressed = false;
 		    }
 	    }	break;
 	    default:
@@ -518,7 +489,6 @@ namespace FlexKit
 				break;
 			}
 		}
-
 	}
 
 

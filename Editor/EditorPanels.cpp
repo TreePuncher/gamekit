@@ -261,8 +261,12 @@ void Resource_Panel::Draw(FlexKit::EngineCore&, FlexKit::UpdateDispatcher&, doub
             if(ImGui::BeginTabItem("Scenes"))
             {
                 for (auto& scene : base.resourceTable.scenes)
-                    ImGui::Text(scene->GetResourceID().c_str());
-
+                {
+                    if (ImGui::Button(scene->GetResourceID().c_str()))
+                    {
+                        std::cout << "Hello!\n";
+                    }
+                }
                 ImGui::EndTabItem();
             } 
 

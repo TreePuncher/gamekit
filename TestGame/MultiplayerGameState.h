@@ -198,10 +198,11 @@ public:
     void Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override
     {
         WorldRender_Targets targets = {
-            core.Window.backBuffer,
+            base.renderWindow.GetBackBuffer(),
             base.depthBuffer
         };
 
+        frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
         frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
         ClearVertexBuffer(frameGraph, base.vertexBuffer);
@@ -214,18 +215,23 @@ public:
         PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
         Format.Scale = { 1.0f, 1.0f };
 
-
         DrawSprite_Text(
             "Loading...",
             frameGraph,
             *framework.DefaultAssets.Font,
             base.vertexBuffer,
-            core.Window.backBuffer,
+            base.renderWindow.GetBackBuffer(),
             core.GetTempMemory(),
             Format);
 
-        PresentBackBuffer(frameGraph, &core.Window);
+        PresentBackBuffer(frameGraph, base.renderWindow);
     }
+
+    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+    {
+        base.PostDrawUpdate(core, dispatcher, dT, frameGraph);
+    }
+
 
 
     /************************************************************************************************/

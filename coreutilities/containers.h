@@ -1769,8 +1769,8 @@ namespace FlexKit
     template<typename TY_COL, typename FN_FilterOP>
     auto filter(TY_COL collection, const FN_FilterOP filter_op)
     {
-        auto res = std::remove_if(begin(collection), end(collection), [&](auto& i) { return !filter_op(i); });
-        collection.erase(res, end(collection));
+        auto res = std::remove_if(std::begin(collection), std::end(collection), [&](auto& i) { return !filter_op(i); });
+        collection.erase(res, std::end(collection));
 
         return collection;
     }

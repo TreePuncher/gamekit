@@ -425,7 +425,7 @@ namespace FlexKit
                 textureArray.emplace_back(
                     TextureBuffer{
                         uint2{(uint32_t)resource->Width >> MIPLevel, (uint32_t)resource->Height >> MIPLevel},
-                        (char*)buffer,
+                        (byte*)buffer,
                         bufferSize,
                         sizeof(float4),
                         nullptr });

@@ -161,7 +161,7 @@ project "ResourceBuilder"
 project "Editor"
 	kind "ConsoleApp"
 	language "C++"
-	targetdir "builds/%{cfg.buildcfg}"
+	targetdir "builds/%{cfg.buildcfg}_Editor"
 
 	basedir "Editor"
 

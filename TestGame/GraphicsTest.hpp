@@ -74,7 +74,7 @@ public:
 
     void Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) override
     {
-        ClearBackBuffer(frameGraph, core.Window.backBuffer, 0.0f);
+        ClearBackBuffer(frameGraph, base.renderWindow.GetBackBuffer(), 0.0f);
         ClearVertexBuffer(frameGraph, base.vertexBuffer);
 
         ReserveVertexBufferFunction     reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
@@ -95,7 +95,7 @@ public:
             },
             [&](FrameGraphNodeBuilder& nodeBuilder, ACCTest& data)
             {
-                data.renderTarget = nodeBuilder.WriteRenderTarget(core.Window.backBuffer);
+                data.renderTarget = nodeBuilder.WriteRenderTarget(base.renderWindow.GetBackBuffer());
             },
             [=](ACCTest& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
@@ -140,7 +140,7 @@ public:
 
     void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) override
     {
-        PresentBackBuffer(frameGraph, &core.Window);
+        PresentBackBuffer(frameGraph, base.renderWindow);
     }
 
     bool EventHandler(Event evt) override

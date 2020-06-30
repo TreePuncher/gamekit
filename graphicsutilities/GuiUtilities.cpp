@@ -163,7 +163,7 @@ namespace FlexKit
 		LayoutEngine_Desc Desc;
 		LayoutEngine layoutEngine(tempMemory, Memory, Desc);
 
-		sort(
+		std::sort(
 			Elements.begin(), Elements.end(), 
 			[](auto lhs, auto rhs) -> bool
 			{

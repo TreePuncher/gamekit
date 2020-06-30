@@ -67,7 +67,8 @@ namespace FlexKit
 			Moved,
 			Pressed,
 			Release,
-			Resized
+			Resized,
+            Exit
 		} Action;
 
 		enum Error
@@ -90,6 +91,8 @@ namespace FlexKit
 	class EventNotifier
 	{
 	public:
+        ~EventNotifier() {}
+
 		template< typename Ty = Event >
 		class SubscriberTemplate
 		{
@@ -102,7 +105,7 @@ namespace FlexKit
 
 		inline void	NotifyEvent( Event Event )
 		{
-			for (auto Sub : mSubscribers)
+			for (auto& Sub : mSubscribers)
 				Sub.Notify( Event, Sub._ptr );
 		}
 		inline void	 Subscribe( Subscriber Subscriber )

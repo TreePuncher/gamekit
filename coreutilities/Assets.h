@@ -489,7 +489,7 @@ namespace FlexKit
 	{
 		byte Buffer[64];
 
-		const int seek_res      = fseek(F, (LONG)Table->Entries[Index].ResourcePosition, SEEK_SET);
+		const int seek_res      = fseek(F, (long)Table->Entries[Index].ResourcePosition, SEEK_SET);
 		const size_t read_res   = fread(Buffer, 1, 64, F);
 
 		Resource* resource = (Resource*)Buffer;
@@ -508,7 +508,7 @@ namespace FlexKit
 		auto Before = Clock.now();
 		FINALLY
 			auto After = Clock.now();
-			auto Duration = chrono::duration_cast<chrono::microseconds>( After - Before );
+			auto Duration = std::chrono::duration_cast<std::chrono::microseconds>( After - Before );
             FK_LOG_INFO("Loading Resource: %s took %u microseconds", Table->Entries[Index].ID, Duration.count());
 		FINALLYOVER
 #endif
@@ -521,7 +521,7 @@ namespace FlexKit
         rewind(F);
 
         const size_t position   = Table->Entries[Index].ResourcePosition;
-		int seek_res            = fseek(F, (LONG)position, SEEK_SET);
+		int seek_res            = fseek(F, (long)position, SEEK_SET);
 
         size_t resourceSize = 0;
 		size_t read_res     = fread(&resourceSize, 1, 8, F);
@@ -529,7 +529,7 @@ namespace FlexKit
         if (!(resourceSize + position < resourceFileSize))
             return false;
 
-		seek_res                = fseek(F, (LONG)position, SEEK_SET);
+		seek_res                = fseek(F, (long)position, SEEK_SET);
 		const size_t readSize   = fread(out, 1, resourceSize, F);
 
 		return (readSize == out->ResourceSize);
