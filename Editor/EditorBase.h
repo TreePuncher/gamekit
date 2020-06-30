@@ -8,6 +8,7 @@
 #include "WorldRender.h"
 #include "TextRendering.h"
 #include "defaultpipelinestates.h"
+#include "GraphicScene.h"
 
 #include "EditorPanels.h"
 #include "graphics.h"
@@ -45,6 +46,12 @@ struct EditorResourceTable
 /************************************************************************************************/
 
 
+struct SceneContext
+{
+    std::shared_ptr<FlexKit::GraphicScene> scene = std::make_shared<FlexKit::GraphicScene>();
+};
+
+
 class EditorBase : public FlexKit::FrameworkState
 {
 public:
@@ -61,9 +68,11 @@ public:
 	bool EventHandler	(FlexKit::Event evt) override;
 
     void ImportFbx(const char* str);
+    void LoadScene(std::shared_ptr<FlexKit::ResourceBuilder::SceneResource> scene);
 
     void Resize(const FlexKit::uint2 WH);
 
+    std::unique_ptr<SceneContext>       currentScene;
     EditorResourceTable                 resourceTable;
 
     FlexKit::ResourceHandle             imGuiFont;

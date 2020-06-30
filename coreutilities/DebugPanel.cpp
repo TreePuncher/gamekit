@@ -49,7 +49,7 @@ namespace FlexKit
 	void DebugPanel::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
 	{
         topState.Draw(core, dispatcher, dT, graph);
-		console.Draw(graph, core.Window.backBuffer, core.GetTempMemory());
+		//console.Draw(graph, core.Window.backBuffer, core.GetTempMemory());
 	}
 
 

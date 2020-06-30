@@ -97,9 +97,9 @@ namespace FlexKit
 
 	/************************************************************************************************/
 
-	void NumberToString( int32_t n, string& _Dest )
+	void NumberToString( int32_t n, std::string& _Dest )
 	{
-		string Tmp;
+        std::string Tmp;
 		uint32_t pwr = 9;
 		uint32_t exp = 1 * Exp( 10, pwr );
 		uint32_t remainder = n;

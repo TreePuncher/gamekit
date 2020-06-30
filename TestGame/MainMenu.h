@@ -48,6 +48,7 @@ private:
 	ConstantBufferHandle	constantBuffer;
 	VertexBufferHandle		vertexBuffer;
 
+    BaseState&  base;
 	GuiSystem	gui;
 	GUIGrid*	menuGrid;
 	GUIButton*	menuQuitButton;

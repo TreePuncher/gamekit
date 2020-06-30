@@ -41,7 +41,8 @@ namespace FlexKit
     class FKApplication
     {
     public:
-        FKApplication(uint2 WindowResolution, EngineMemory* Memory, size_t threadCount = 4);
+        FKApplication(EngineMemory* Memory, size_t threadCount = 4);
+
         ~FKApplication();
 
         void PopState() noexcept
@@ -53,6 +54,12 @@ namespace FlexKit
         TY_STATE& PushState(TY_ARGS&& ... ARGS) noexcept
         {
             return framework.PushState<TY_STATE>(std::forward<TY_ARGS>(ARGS)...);
+        }
+
+
+        void DrawOneFrame(float dT)
+        {
+            framework.DrawFrame(dT);
         }
 
         void Run();

@@ -28,17 +28,19 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 #include "components.h"
 #include "containers.h"
+#include "Events.h"
 #include "graphicScene.h"
 #include "mathUtils.h"
 #include "memoryutilities.h"
 #include "threadUtilities.h"
 
-#include "PxPhysicsAPI.h"
-#include <PhysX_sdk/physx/include/characterkinematic/PxController.h>
-#include <PhysX_sdk/physx/include/extensions/PxDefaultAllocator.h>
-#include <PhysX_sdk/physx/include/pvd/PxPvd.h>
-#include <PhysX_sdk/physx/include/pvd/PxPvdTransport.h>
-#include <PhysX_sdk/physx/include/characterkinematic/PxControllerManager.h>
+//#include <PxPhysicsAPI.h>
+#include <physx/PxPhysicsAPI.h>
+#include <physx/characterkinematic/PxController.h>
+#include <physx/extensions/PxDefaultAllocator.h>
+#include <physx/pvd/PxPvd.h>
+#include <physx/pvd/PxPvdTransport.h>
+#include <physx/characterkinematic/PxControllerManager.h>
 
 #ifdef _DEBUG
 #pragma comment(lib,	"LowLevel_static_64.lib"				)

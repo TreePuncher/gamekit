@@ -222,7 +222,7 @@ namespace FlexKit
 	
 	void ASSetBool(DAConditionHandle Condition, bool B, AnimationStateMachine* ASM, size_t index)
 	{
-		FK_ASSERT(index < size(ASM->Conditions[Condition].Inputs));
+		FK_ASSERT(index < size_t(ASM->Conditions[Condition].Inputs));
 
 		if(ASM->Conditions[Condition].Operation == EASO_TRUE || EASO_FALSE)
 			ASM->Conditions[Condition].Inputs[index].B = B;

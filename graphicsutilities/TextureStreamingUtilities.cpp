@@ -19,7 +19,7 @@ namespace FlexKit
         crnd::crn_texture_info info;
         if (crnd::crnd_get_texture_info(buffer, resource->GetBufferSize(), &info))
         {
-            return { info.m_levels, { info.m_width, info.m_height }, resource->format };
+            return { (uint8_t)info.m_levels, { info.m_width, info.m_height }, resource->format };
         }
         else
             return {};

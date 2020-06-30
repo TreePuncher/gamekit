@@ -47,6 +47,7 @@ GameState::~GameState()
 
 void GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
+    base.Update(core, dispatcher, dT);
 }
 
 
@@ -121,11 +122,13 @@ void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatc
 
 void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
+    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
     frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
     CameraHandle activeCamera = GetCameraControllerCamera(thirdPersonCamera);
+    SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
 
-    SetCameraAspectRatio(activeCamera, GetWindowAspectRatio(core));
+    float2 mouse_dPos   = base.renderWindow.mouseState.Normalized_dPos;
 
     auto& scene				= game.scene;
     auto& pointLightGather  = scene.GetPointLights      (dispatcher, core.GetTempMemory());
@@ -135,7 +138,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
     auto& skinnedObjects    = GatherSkinned             (dispatcher, scene, activeCamera, core.GetTempMemory());
     auto& updatedPoses      = UpdatePoses               (dispatcher, skinnedObjects, core.GetTempMemory());
-    auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, framework.MouseState.Normalized_dPos, dT);
+    auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, mouse_dPos, dT);
 
     transforms.AddInput(cameraControllers);
 
@@ -152,7 +155,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     pointLightGather.AddInput(cameras);
 
     WorldRender_Targets targets = {
-        core.Window.backBuffer,
+        base.renderWindow.GetBackBuffer(),
         base.depthBuffer
     };
 
@@ -177,7 +180,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
     auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
-    if(core.Window.WH.Product() != 0)
+    if(base.renderWindow.GetWH().Product() != 0)
     {
         switch(renderMode)
         {
@@ -246,10 +249,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 activeCamera,
             };
 
-
             AddGBufferResource(base.gbuffer, frameGraph);
             ClearGBuffer(base.gbuffer, frameGraph);
-
 
             base.render.RenderPBR_GBufferPass(
                 dispatcher,
@@ -283,7 +284,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
             dispatcher,
             frameGraph,
             activeCamera,
-            core.Window.WH,
+            base.renderWindow.GetWH(),
             PVS,
             reserveCB,
             reserveVB);
@@ -344,6 +345,9 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         }
     }
     framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
+
+    framework.DrawDebugHUD(dT, base.vertexBuffer, frameGraph);
+    PresentBackBuffer(frameGraph, base.renderWindow);
 }
 
 
@@ -352,8 +356,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-    framework.DrawDebugHUD(dT, base.vertexBuffer, frameGraph);
-    PresentBackBuffer(frameGraph, &core.Window);
+    base.PostDrawUpdate(core, dispatcher, dT, frameGraph);
 }
 
 
@@ -379,6 +382,10 @@ bool LocalPlayerState::EventHandler(Event evt)
                 const auto height = (uint32_t)evt.mData2.mINT[0];
                 base.Resize({ width, height });
             }   break;
+
+            case Event::InputAction::Exit:
+                framework.quit = true;
+                break;
             default:
                 break;
             }
@@ -447,6 +454,10 @@ bool LocalPlayerState::EventHandler(Event evt)
                         renderMode = RenderMode::Deferred;
                 }
             }   return true;
+            case KC_M:
+                if (evt.Action == Event::Release)
+                    base.renderWindow.EnableCaptureMouse(!base.renderWindow.mouseCapture);
+                break;
             default:
                 return handled;
             }

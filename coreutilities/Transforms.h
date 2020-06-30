@@ -145,8 +145,8 @@ namespace FlexKit
 
 	FLEXKITAPI void			SetFlag						( NodeHandle Node,	SceneNodes::StateFlags f );
 	FLEXKITAPI void			SetLocal					( NodeHandle Node,	LT_Entry* __restrict In );
-	FLEXKITAPI void			SetOrientation				( NodeHandle Node,	Quaternion& In );	// Sets World Orientation
-	FLEXKITAPI void			SetOrientationL				( NodeHandle Node,	Quaternion& In );	// Sets World Orientation
+	FLEXKITAPI void			SetOrientation				( NodeHandle Node,	const Quaternion& In );	// Sets World Orientation
+	FLEXKITAPI void			SetOrientationL				( NodeHandle Node,	const Quaternion& In );	// Sets World Orientation
 	FLEXKITAPI void			SetParentNode				( NodeHandle Parent, NodeHandle Node );
 	FLEXKITAPI void			SetPositionW				( NodeHandle Node,	float3 in );
 	FLEXKITAPI void			SetPositionL				( NodeHandle Node,	float3 in );

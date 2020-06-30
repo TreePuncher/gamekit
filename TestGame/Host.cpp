@@ -36,10 +36,10 @@ void GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, 
 
 	FlexKit::WindowInput windowInput;
 	windowInput.CursorWH                = { 0.05f, 0.05f };
-	windowInput.MousePosition           = framework.MouseState.NormalizedScreenCord;
-	windowInput.LeftMouseButtonPressed  = framework.MouseState.LMB_Pressed;
+	//windowInput.MousePosition           = framework.MouseState.NormalizedScreenCord;
+	//windowInput.LeftMouseButtonPressed  = framework.MouseState.LMB_Pressed;
 
-	screen.Update(dT, windowInput, GetPixelSize(core.Window), core.GetTempMemory());
+	screen.Update(dT, windowInput, GetPixelSize(base.renderWindow), core.GetTempMemory());
 }
 
 
@@ -48,7 +48,9 @@ void GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, 
 
 void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& frameGraph)
 {
-	auto currentRenderTarget = core.Window.backBuffer;
+	auto currentRenderTarget = base.renderWindow.GetBackBuffer();
+
+    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
 
 	ClearVertexBuffer	(frameGraph, host.base.vertexBuffer);
 	ClearBackBuffer		(frameGraph, currentRenderTarget, { 0.0f, 0.0f, 0.0f, 0.0f });
@@ -60,6 +62,7 @@ void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, do
 	Desc.renderTarget		= currentRenderTarget;
 	screen.Draw(Desc, Dispatcher, frameGraph);
 
+    /*
 	DrawMouseCursor(
 		framework.MouseState.NormalizedScreenCord,
 		{ 0.05f, 0.05f },
@@ -68,6 +71,7 @@ void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, do
 		currentRenderTarget,
 		core.GetTempMemory(),
 		&frameGraph);
+    */
 }
 
 
@@ -79,7 +83,7 @@ void GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Disp
 	if (framework.drawDebugStats)
 		framework.DrawDebugHUD(dT, host.base.vertexBuffer, Graph);
 
-	PresentBackBuffer(Graph, &core.Window);
+	PresentBackBuffer(Graph, base.renderWindow);
 }
 
 
@@ -112,9 +116,11 @@ bool GameHostLobbyState::EventHandler(Event evt)
 
 GameHostLobbyState::GameHostLobbyState(
 	GameFramework&	IN_framework,
+    BaseState&      IN_base,
 	GameHostState&	IN_host) :
 		FrameworkState		{ IN_framework																}, 
 		packetHandlers		{ IN_framework.core.GetBlockMemory()										},
+        base                { IN_base                                                                   },
 		host				{ IN_host																	},
 		playerLobbyState	{ IN_framework.core.GetBlockMemory()										},
 		screen				{ IN_framework.core.GetBlockMemory(), IN_framework.DefaultAssets.Font	}

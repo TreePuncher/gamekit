@@ -53,6 +53,11 @@ namespace FlexKit
 {
 	using std::atomic;
 	using std::atomic_bool;
+    using std::chrono::nanoseconds;
+    using std::chrono::microseconds;
+    using std::chrono::milliseconds;
+
+    using namespace std::chrono_literals;
 
 	class ThreadManager;
 

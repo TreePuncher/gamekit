@@ -26,7 +26,7 @@
 
 #include <algorithm>
 #include <initializer_list>
-#include <PxDefaultAllocator.h>
+#include <physx/extensions/PxDefaultAllocator.h>
 
 using namespace FlexKit;
 using namespace FlexKit::ResourceBuilder;

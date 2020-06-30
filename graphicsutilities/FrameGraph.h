@@ -1685,8 +1685,8 @@ namespace FlexKit
 
         void ProcessNode		(FrameGraphNode* N, FrameResources& Resources, Context& Context, iAllocator& allocator);
         
-        void UpdateFrameGraph	(RenderSystem* RS, RenderWindow* Window, iAllocator* Temp);// 
-        void SubmitFrameGraph	(UpdateDispatcher& dispatcher, RenderSystem* RS, RenderWindow* Window, iAllocator& allocator);
+        void UpdateFrameGraph	(RenderSystem* RS, iAllocator* Temp);// 
+        void SubmitFrameGraph	(UpdateDispatcher& dispatcher, RenderSystem* RS, iAllocator& allocator);
 
         RenderSystem& GetRenderSystem() { return Resources.renderSystem; }
 
@@ -1730,7 +1730,7 @@ namespace FlexKit
 
     void ClearBackBuffer	(FrameGraph& Graph, ResourceHandle backBuffer, float4 Color = {0.0f, 0.0f, 0.0f, 0.0f });// Clears BackBuffer to Black
     void ClearDepthBuffer	(FrameGraph& Graph, ResourceHandle Handle, float D);
-    void PresentBackBuffer	(FrameGraph& Graph, RenderWindow* Window);
+    void PresentBackBuffer	(FrameGraph& Graph, IRenderWindow& Window);
 
 
     void SetRenderTargets	(Context* Ctx, static_vector<FrameResourceHandle> RenderTargets, FrameResources& FG);

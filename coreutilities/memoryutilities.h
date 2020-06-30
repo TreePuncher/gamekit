@@ -480,7 +480,7 @@ namespace FlexKit
 
 		struct BlockData
 		{
-			enum Flags
+			enum Flags : byte
 			{
 				Free		= 0x00,
 				Allocated	= 0x01,

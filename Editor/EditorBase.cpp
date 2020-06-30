@@ -4,7 +4,7 @@
 #include <imgui_widgets.cpp>
 #include <imgui_draw.cpp>
 
-
+#include "Transforms.h"
 
 using namespace FlexKit;
 
@@ -103,6 +103,48 @@ ID3D12PipelineState* Create_DrawImGUI(FlexKit::RenderSystem* renderSystem)
 }
 
 const FlexKit::PSOHandle DRAW_imgui = FlexKit::PSOHandle(GetTypeGUID(DRAW_imgui));
+
+
+/************************************************************************************************/
+
+
+void LoadSceneResource(EditorBase& editor, GraphicScene& sceneOut, FlexKit::ResourceBuilder::SceneResource& sceneResource)
+{
+    std::vector<NodeHandle> nodes;
+
+    for (const auto node : sceneResource.nodes)
+    {
+        auto handle = GetNewNode();
+        SetPositionL(handle, node.position);
+        SetOrientationL(handle, node.Q);
+
+        if (node.parent != -1)
+            SetParentNode(handle, nodes[node.parent]);
+    }
+
+    for (const auto entity : sceneResource.entities)
+    {
+        auto newEntity = new GameObject;
+        sceneOut.AddGameObject(*newEntity, nodes[entity.Node]);
+
+        for (auto component : entity.components)
+        {
+            switch (component->id)
+            {
+            case TransformComponentID:
+            {
+                newEntity->AddView<FlexKit::SceneNodeView<>>(nodes[entity.Node]);
+            }   break;
+            default:
+            {
+                auto Blob = component->GetBlob();
+                auto& componentSystem = GetComponent(component->id);
+                componentSystem.AddComponentView(*newEntity, Blob, Blob.size(), SystemAllocator);
+            }   break;
+            }
+        }
+    }
+}
 
 
 /************************************************************************************************/
@@ -480,6 +522,21 @@ void EditorBase::ImportFbx(const char* file)
     resourceTable.scenes.push_back(fkScene);
 
     FK_LOG_INFO("Load FBX Complete!");
+}
+
+
+/************************************************************************************************/
+
+
+void EditorBase::LoadScene(std::shared_ptr<FlexKit::ResourceBuilder::SceneResource> sceneResource)
+{
+    if (currentScene)
+        currentScene->scene->ClearScene();
+
+    currentScene.reset();
+    currentScene = std::make_unique<SceneContext>();
+
+    LoadSceneResource(*this, *currentScene->scene, *sceneResource);
 }
 
 

@@ -22,9 +22,9 @@
 #pragma comment(lib, "user32.lib")
 
 #ifdef _DEBUG
-#pragma comment(lib, "raknet_debug_x64.lib")
+#pragma comment(lib, "RakNet_VS2008_DLL_Debug_x64.lib")
 #else
-#pragma comment(lib, "raknet_release_x64.lib")
+#pragma comment(lib, "RakNet_VS2008_DLL_Release_x64.lib")
 #endif
 
 

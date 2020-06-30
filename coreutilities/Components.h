@@ -296,7 +296,7 @@ namespace FlexKit
 
 
 	private:
-		static_vector<pair<ComponentViewBase*, ComponentID>, 16>	views;	// component + Code
+		static_vector<std::pair<ComponentViewBase*, ComponentID>, 16>	views;	// component + Code
 		iAllocator*						        					allocator;
     };
 

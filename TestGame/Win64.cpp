@@ -23,6 +23,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 **********************************************************************/
 
 #include "buildsettings.h"
+
+
+#define _WINSOCKAPI_
+#include <windows.h>
+#include <WinSock2.h>
+
 #include "Logging.h"
 #include "Application.h"
 #include "AnimationComponents.h"
@@ -34,11 +40,12 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "host.cpp"
 #include "lobbygui.cpp"
 #include "MainMenu.cpp"
-#include "MultiplayerState.cpp"
-#include "MultiplayerGameState.cpp"
 #include "TestScene.h"
 
 #include "GraphicsTest.hpp"
+
+#include "MultiplayerState.cpp"
+#include "MultiplayerGameState.cpp"
 
 #include <iostream>
 
@@ -127,7 +134,7 @@ int main(int argc, char* argv[])
     auto* allocator = CreateEngineMemory();
     EXITSCOPE(ReleaseEngineMemory(allocator));
 
-    FlexKit::FKApplication app{ WH, allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
+    FlexKit::FKApplication app{ allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
 
     FK_LOG_INFO("Set initial PlayState state.");
     auto& base = app.PushState<BaseState>(app);

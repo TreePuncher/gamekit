@@ -104,7 +104,7 @@ namespace FlexKit
             }
 
 
-            void AddTexture(GUID_t textureAsset)
+            void AddTexture(GUID_t textureAsset, bool LoadLowest = false)
             {
                 if (Shared())
                 {
@@ -114,7 +114,7 @@ namespace FlexKit
                     handle = newHandle;
                 }
 
-                GetComponent().AddTexture(textureAsset, handle);
+                GetComponent().AddTexture(textureAsset, handle, LoadLowest);
             }
 
             MaterialHandle handle;
@@ -122,7 +122,7 @@ namespace FlexKit
 
         using View = MaterialView;
 
-        void AddTexture(GUID_t textureAsset, MaterialHandle material);
+        void AddTexture(GUID_t textureAsset, MaterialHandle material, const bool LoadLowest = false);
 
 
         RenderSystem&                   renderSystem;

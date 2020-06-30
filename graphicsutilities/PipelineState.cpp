@@ -396,8 +396,8 @@ namespace FlexKit
 		auto Before = Clock.now();
 
 		EXITSCOPE(
-			auto After = Clock.now();
-			auto Duration = chrono::duration_cast<chrono::milliseconds>(After - Before);
+			auto After      = Clock.now();
+			auto Duration   = std::chrono::duration_cast<std::chrono::milliseconds>(After - Before);
 			FK_LOG_1("Shader Load Time: %d milliseconds", Duration.count());
 		);
 		
