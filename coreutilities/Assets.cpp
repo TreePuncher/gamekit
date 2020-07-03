@@ -692,7 +692,8 @@ namespace FlexKit
 
 		size_t Size = 1 + GetFileSize(TEMP);
 		byte* mem = (byte*)tempMem->malloc(Size);
-		LoadFileIntoBuffer(TEMP, mem, Size, false);
+        if (!LoadFileIntoBuffer(TEMP, mem, Size, false))
+            return { 0, nullptr };
 
 		char*	FontPath   = nullptr;
 		size_t  PathLength = strlen(dir);

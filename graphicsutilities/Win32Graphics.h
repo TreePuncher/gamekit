@@ -36,9 +36,14 @@ namespace FlexKit
             return backBuffer;
         }
 
-        bool Present(const uint32_t syncInternal, const uint32_t flags) override
+        bool Present(const uint32_t syncInternal = 0, const uint32_t flags = 0) override
         {
             auto res = SUCCEEDED(swapChain->Present(syncInternal, flags));
+
+            if (!res)
+                renderSystem->_OnCrash();
+
+            renderSystem->_PresentWindow(this);
             renderSystem->Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
 
             return res;
@@ -114,9 +119,9 @@ namespace FlexKit
         }
 
 
-        MouseInputState UpdateCapturedMouseInput(float dT)
+        MouseInputState UpdateCapturedMouseInput(double dT)
         {
-            const double updateFreq = 1.0f / 30.0f;
+            const double updateFreq = 1.0f / 45.0f;
 
             if (mouseCapture)
             {
@@ -126,8 +131,8 @@ namespace FlexKit
                     return mouseState;
 
                 mouseState.dPos = GetMousedPos();
-                mouseState.Position.x -= mouseState.dPos[0];
-                mouseState.Position.y += mouseState.dPos[1];
+                mouseState.Position.x -= mouseState.dPos[0] / 2.0f;
+                mouseState.Position.y += mouseState.dPos[1] / 2.0f;
 
                 mouseState.Position.x = max(0.0f, min((float)mouseState.Position.x, (float)WH[0]));
                 mouseState.Position.y = max(0.0f, min((float)mouseState.Position.y, (float)WH[1]));

@@ -117,11 +117,11 @@ namespace FlexKit
 
         if (levelWidth > GetFormatTileSizeWith(format))
         {
-            return { -1u, { levelWidth, levelWidth }, false };
+            return { 0xff, { levelWidth, levelWidth }, false };
         }
         else
         {
-            return { -1u,  { levelWidth, levelWidth }, true };
+            return { 0xff,  { levelWidth, levelWidth }, true };
         }
     }
 

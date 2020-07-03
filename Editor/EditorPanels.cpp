@@ -6,8 +6,7 @@
 #include "EditorBase.h"
 
 #include <algorithm>
-#include <imgui.h>
-
+#include <imgui/imgui.h>
 using namespace FlexKit;
 
 
@@ -18,8 +17,8 @@ Viewer3D_Panel::Viewer3D_Panel(FlexKit::GameFramework& framework, FlexKit::Textu
     renderSystem    { framework.core.RenderSystem                                                           },
     scene           { framework.core.GetBlockMemory()                                                       },
     camera          { CameraComponent::GetComponent().CreateCamera()                                        },
-    gbuffer         { framework.ActiveWindow->WH, framework.core.RenderSystem                               },
-    depthBuffer     { framework.core.RenderSystem.CreateDepthBuffer(framework.ActiveWindow->WH / 3,	true)   },
+    gbuffer         { { 500, 500 }, framework.core.RenderSystem                               },
+    depthBuffer     { framework.core.RenderSystem.CreateDepthBuffer({} / 3,	true)   },
     render{ framework.core.GetTempMemory(),
             framework.core.RenderSystem,
             streamingEngine,

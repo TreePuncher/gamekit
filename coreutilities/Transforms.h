@@ -159,9 +159,14 @@ namespace FlexKit
 	FLEXKITAPI NodeHandle	ZeroNode					( NodeHandle Node );
 
 
+    /************************************************************************************************/
+
 
 	FLEXKITAPI bool		UpdateTransforms();
-	FLEXKITAPI auto&	QueueTransformUpdateTask	    ( UpdateDispatcher& Dispatcher );
+
+
+    /************************************************************************************************/
+
 
 	FLEXKITAPI inline void Yaw							( NodeHandle Node,	float r );
 	FLEXKITAPI inline void Roll							( NodeHandle Node,	float r );
@@ -193,6 +198,31 @@ namespace FlexKit
             return NodeHandle{ 0 };
         }
 	};
+
+
+    /************************************************************************************************/
+
+
+    FLEXKITAPI auto& QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
+    {
+        struct TransformUpdateData
+        {};
+
+        auto& TransformUpdate = Dispatcher.Add<TransformUpdateData>(
+            TransformComponentID,
+            [&](auto& Builder, TransformUpdateData& Data)
+            {
+                Builder.SetDebugString("UpdateTransform");
+            },
+            [](auto& Data, iAllocator& threadAllocator)
+            {
+                FK_LOG_9("Transform Update");
+                UpdateTransforms();
+            });
+
+        return TransformUpdate;
+    }
+
 
 
 	/************************************************************************************************/

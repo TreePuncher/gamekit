@@ -55,7 +55,35 @@ namespace FlexKit
 		Camera::ConstantBuffer			GetCameraConstants		(CameraHandle);
 		float4x4						GetCameraPV				(CameraHandle);
 
-		auto&	QueueCameraUpdate(UpdateDispatcher&);
+		auto&	QueueCameraUpdate(UpdateDispatcher& dispatcher)
+        {
+		    struct UpdateData
+		    {};
+
+		    auto& task = dispatcher.Add<UpdateData>(
+			    [&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
+			    {
+				    Builder.SetDebugString("QueueCameraUpdate");
+			    },
+			    [this](auto& Data, iAllocator& threadAllocator)
+			    {
+				    FK_LOG_9("Updating Cameras");
+
+				    size_t End = Cameras.size();
+				    for (size_t I = 0; I < End; ++I)
+				    {
+					    if (DirtyFlags[I])
+					    {
+						    Cameras[I].UpdateMatrices();
+						    DirtyFlags[I] = false;
+					    }
+				    }
+
+				    return;
+			    });
+
+		    return task;
+	    }
 
 		Vector<bool>								DirtyFlags;
 		Vector<Camera>								Cameras;
@@ -81,7 +109,8 @@ namespace FlexKit
 	inline float4x4							GetCameraPV				(CameraHandle camera) { return CameraComponent::GetComponent().GetCameraPV(camera);				}
 
 
-	/************************************************************************************************/
+
+    /************************************************************************************************/
 
 
 	struct DefaultCameraInteractor

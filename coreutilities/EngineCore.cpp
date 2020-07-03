@@ -138,28 +138,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void EnableMouseInput(MouseInputState* State, RenderWindow* Window)
-    {
-        FK_ASSERT(0);
-        //SetSystemCursorToWindowCenter(Window);
-        State->Enabled  = true;
-        ShowCursor(false);
-    }
-
-
-    /************************************************************************************************/
-
-
-    void DisableMouseInput(MouseInputState* State)
-    {
-        State->Enabled  = false;
-        ShowCursor(true);
-    }
-
-
-    /************************************************************************************************/
-
-
 	void UpdateMouseInput(MouseInputState* State, RenderWindow* Window)
 	{
         FK_ASSERT(0);

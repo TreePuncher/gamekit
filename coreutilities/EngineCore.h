@@ -201,12 +201,13 @@ namespace FlexKit
 
 	EngineMemory*	CreateEngineMemory();
 	EngineMemory*	CreateEngineMemory(bool&);
-	
+
+
+    void ReleaseEngineMemory(EngineMemory* Memory);
+
 
 	/************************************************************************************************/
 
-
-	float2	GetPixelSize	(EngineCore*);
 
     void EnableMouseInput   ();
     void DisableMouseInput  ();

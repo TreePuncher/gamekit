@@ -25,7 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "buildsettings.h"
 
 
-
+#include "Application.cpp"
 #include "CameraUtilities.cpp"
 #include "Console.cpp"
 #include "DebugPanel.cpp"

@@ -23,6 +23,7 @@
 #include "..\FlexKitResourceCompiler\SceneResource.h"
 #include "..\FlexKitResourceCompiler\ResourceUtilities.h"
 
+#include "TextureStreamingUtilities.h"
 
 /************************************************************************************************/
 

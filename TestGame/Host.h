@@ -33,7 +33,7 @@ public:
 
 	void Update			(EngineCore&, UpdateDispatcher&, double dT) final override;
 	void Draw			(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
-	void PostDrawUpdate	(EngineCore&, UpdateDispatcher&, double dT, FrameGraph&) final override;
+	void PostDrawUpdate	(EngineCore&, UpdateDispatcher&, double dT) final override;
 
 	bool EventHandler(Event evt) final override;
 

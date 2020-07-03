@@ -656,30 +656,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	auto& QueueTransformUpdateTask(UpdateDispatcher& Dispatcher)
-	{
-		struct TransformUpdateData
-		{};
-
-		auto& TransformUpdate = Dispatcher.Add<TransformUpdateData>(
-            TransformComponentID,
-			[&](auto& Builder, TransformUpdateData& Data)
-			{
-				Builder.SetDebugString("UpdateTransform");
-			},
-			[](auto& Data, iAllocator& threadAllocator)
-			{
-				FK_LOG_9("Transform Update");
-				UpdateTransforms();
-			});
-
-		return TransformUpdate;
-	}
-
-
-	/************************************************************************************************/
-
-
 	NodeHandle	GetZeroedNode()
 	{
 		return ZeroNode(GetNewNode());

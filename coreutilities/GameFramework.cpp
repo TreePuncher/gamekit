@@ -292,8 +292,6 @@ namespace FlexKit
         Free_DelayedReleaseResources(core.RenderSystem);
 		frameGraph.SubmitFrameGraph(dispatcher, core.RenderSystem, *TempMemory);
 
-        subStates.back()->PostDrawUpdate(core, dispatcher, dT, frameGraph);
-
 		FK_LOG_9("Frame Draw Begin");
 	}
 
@@ -303,7 +301,8 @@ namespace FlexKit
 
 	void GameFramework::PostDraw(UpdateDispatcher& dispatcher, iAllocator* TempMemory, double dt)
 	{
-		//core.RenderSystem.PresentWindow(&core.Window);
+        if(subStates.back())
+            subStates.back()->PostDrawUpdate(core, dispatcher, dt);
 	}
 
 
@@ -312,11 +311,16 @@ namespace FlexKit
 
 	void GameFramework::DrawFrame(double dT)
 	{
+        UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemory() };
+        Update(dispatcher, dT);
+
 		FK_LOG_9("Frame Begin");
+        if (!subStates.size())
+        {
+            FK_LOG_9("State stack empty!");
+            return;
+        }
 
-		UpdateDispatcher dispatcher{ &core.Threads, core.GetTempMemory() };
-
-		Update			(dispatcher, dT);
 		UpdatePreDraw	(dispatcher, core.GetTempMemory(), dT);
 
 		ProfileBegin(PROFILE_SUBMISSION);
@@ -379,7 +383,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, FrameGraph& frameGraph)
+	void GameFramework::DrawDebugHUD(double dT, VertexBufferHandle textBuffer, ResourceHandle renderTarget, FrameGraph& frameGraph)
 	{
 		uint32_t VRamUsage	= (uint32_t)(core.RenderSystem._GetVidMemUsage() / MEGABYTE);
 		char* TempBuffer	= (char*)core.GetTempMemory().malloc(512);
@@ -397,9 +401,9 @@ namespace FlexKit
 			(uint32_t)stats.objectsDrawnLastFrame);
 
 
-        /*
-        const uint2 WH          = ActiveWindow->WH;
-        const float aspectRatio = GetWindowAspectRatio(core);
+        
+        const uint2 WH          = core.RenderSystem.GetTextureWH(renderTarget);
+        const float aspectRatio = float(WH[0]) / float(WH[1]);
 
 		PrintTextFormatting Format = PrintTextFormatting::DefaultParams();
         Format.Scale = float2{ 0.5f, 0.5f } * float2{ (float)WH[0], (float)WH[1] * aspectRatio } / float2{ 1080, 1920 };
@@ -410,10 +414,9 @@ namespace FlexKit
 				frameGraph, 
 				*DefaultAssets.Font, 
 				textBuffer, 
-				core.Window.backBuffer, 
+				renderTarget, 
 				core.GetTempMemory(), 
 				Format);
-                */
 	}
 
 
