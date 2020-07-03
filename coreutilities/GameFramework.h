@@ -85,7 +85,7 @@ namespace FlexKit
 
 		bool DispatchEvent(const Event& evt);
 
-		void DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, FrameGraph& Graph);
+		void DrawDebugHUD(double dT, VertexBufferHandle TextBuffer, ResourceHandle renderTarget, FrameGraph& Graph);
 
 		void PostPhysicsUpdate	();
 		void PrePhysicsUpdate	();
@@ -172,7 +172,7 @@ namespace FlexKit
 		virtual void DebugDraw		(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
 		virtual void PreDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
 		virtual void Draw			(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) {}
-		virtual void PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) {}
+		virtual void PostDrawUpdate	(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) {}
 
 		virtual bool EventHandler	(Event evt) { return false;}
 
@@ -209,6 +209,9 @@ namespace FlexKit
 		ResourceHandle			renderTarget,
 		iAllocator*				tempMemory,
 		FrameGraph*				frameGraph);
+
+
+    void EventsWrapper(const Event& evt, void* _ptr);
 
 
 }	/************************************************************************************************/

@@ -70,8 +70,9 @@ void GameState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, 
 /************************************************************************************************/
 
 
-void GameState::PostDrawUpdate(EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+void GameState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
+    base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 
@@ -346,7 +347,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     }
     framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
 
-    framework.DrawDebugHUD(dT, base.vertexBuffer, frameGraph);
+    framework.DrawDebugHUD(dT, base.vertexBuffer, base.renderWindow, frameGraph);
     PresentBackBuffer(frameGraph, base.renderWindow);
 }
 
@@ -354,9 +355,9 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 /************************************************************************************************/
 
 
-void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-    base.PostDrawUpdate(core, dispatcher, dT, frameGraph);
+    base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 

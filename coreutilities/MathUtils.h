@@ -1,6 +1,4 @@
-#ifdef _WIN32
 #pragma once
-#endif
 
 #ifndef MATHUTTILS
 #define MATHUTTILS
@@ -22,15 +20,14 @@
 namespace FlexKit
 {
 	/************************************************************************************************/
-	
 
-	FLEXKITAPI template<typename TY_1, typename TY_2> constexpr auto floor	    (const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
-	FLEXKITAPI template<typename TY_1, typename TY_2> constexpr auto min		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
-	FLEXKITAPI template<typename TY_1, typename TY_2> constexpr auto max		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? x : y);   }
-	FLEXKITAPI template<typename TY_1, typename TY_2> constexpr auto fastmod    (const TY_1 x, const TY_2 y) noexcept { return ((x < y) ? x : x%y); }
+	template<typename TY_1, typename TY_2>  constexpr auto floor	    (const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2>  constexpr auto min		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? y : x);   }
+	template<typename TY_1, typename TY_2>  constexpr auto max		(const TY_1 x, const TY_2 y) noexcept { return ((x > y) ? x : y);   }
+	template<typename TY_1, typename TY_2>  constexpr auto fastmod   (const TY_1 x, const TY_2 y) noexcept { return ((x < y) ? x : x%y); }
 
 
-	/************************************************************************************************/
+    /************************************************************************************************/
 
 	
 	// Source: https://stackoverflow.com/questions/8622256/in-c11-is-sqrt-defined-as-constexpr

@@ -25,6 +25,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "memoryutilities.h"
 #include <fstream>
 #include <iostream>
+#include <windows.h>
 
 namespace FlexKit
 {
@@ -90,12 +91,23 @@ namespace FlexKit
 /************************************************************************************************/
 	
 // Generic Utiliteies
-	bool LoadFileIntoBuffer(const char* strLoc, byte* out, size_t strlen, bool TextFile )
+	bool LoadFileIntoBuffer(const char* strLoc, byte* buffer, size_t bufferSize, bool TextFile )
 	{
 		size_t newSize = 0;
 		WCHAR Temp[512];
 		mbstowcs_s(&newSize, Temp, strLoc, ::strlen(strLoc));
 
+        auto file = fopen(strLoc, "rb");
+        if (!file)
+            return false;
+
+        auto res = fread(buffer, 1, bufferSize, file);
+
+        //__debugbreak();
+
+        return true;
+
+        /*
 		auto F = CreateFile(Temp, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
 		LARGE_INTEGER LSize; 
 		auto res        = ::GetFileSizeEx(F, &LSize);
@@ -124,6 +136,8 @@ namespace FlexKit
 			return (BytesRead == Size);
 
 		}
+        */
+
 		return false;
 	}
 

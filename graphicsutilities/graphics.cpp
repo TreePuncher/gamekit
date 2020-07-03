@@ -3343,7 +3343,7 @@ namespace FlexKit
 			if (FAILED(HR))
 			{
 				FK_LOG_ERROR("Failed to create A DX11 Device!");
-				MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
+				//MessageBox(NULL, L"FAILED TO CREATE D3D12 ADAPTER! GET A NEWER COMPUTER", L"ERROR!", MB_OK);
 				return false;
 			}
 		}
@@ -3592,15 +3592,8 @@ namespace FlexKit
 	/************************************************************************************************/
 
 	
-	void RenderSystem::PresentWindow(IRenderWindow* window)
+	void RenderSystem::_PresentWindow(IRenderWindow* window)
 	{
-        if (window->Present(0, 0))
-            _OnCrash();
-
-        auto backBuffer = window->GetBackBuffer();
-        auto swapChain = window->_GetSwapChain();
-
-		Textures.SetBufferedIdx(backBuffer, swapChain->GetCurrentBackBufferIndex());
 		Textures.UpdateLocks();
 
 		ConstantBuffers.DecrementLocks();

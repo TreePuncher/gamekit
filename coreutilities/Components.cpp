@@ -11,7 +11,7 @@ namespace FlexKit
 
         StringID newID;
         newID.ID[length] = '\0';
-        strncpy(newID.ID, initial, min(sizeof(StringID), length));
+        strncpy_s(newID.ID, initial, min(sizeof(StringID), length));
 
         handles[handle] = static_cast<index_t>(IDs.push_back(newID));
 

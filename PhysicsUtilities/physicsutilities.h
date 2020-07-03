@@ -34,7 +34,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "memoryutilities.h"
 #include "threadUtilities.h"
 
-//#include <PxPhysicsAPI.h>
 #include <physx/PxPhysicsAPI.h>
 #include <physx/characterkinematic/PxController.h>
 #include <physx/extensions/PxDefaultAllocator.h>
@@ -892,10 +891,23 @@ namespace FlexKit
 
     CameraHandle    GetCameraControllerCamera(GameObject& GO);
     GameObject&     CreateThirdPersonCameraController(PhysXSceneHandle scene, iAllocator* allocator, const float R = 1, const float H = 1);
-    auto&           UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT);
 
     float3          GetCameraControllerHeadPosition(GameObject& GO);
     float3          GetCameraControllerForwardVector(GameObject& GO);
+
+
+    auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
+    {
+        struct TPC_Update {};
+
+        return dispatcher.Add<TPC_Update>(
+            [&](auto& builder, auto& data){},
+            [mouseInput, dT](TPC_Update& data, iAllocator& threadAllocator)
+            {
+                for (auto& controller : CameraControllerComponent::GetComponent())
+                    controller.componentData.Update(mouseInput, dT);
+            });
+    }
 
 
     /************************************************************************************************/

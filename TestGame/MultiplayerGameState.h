@@ -81,7 +81,7 @@ public:
     void Update         (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
     void PreDrawUpdate  (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
     void Draw           (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
-    void PostDrawUpdate (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph) final;
+    void PostDrawUpdate (EngineCore& Engine, UpdateDispatcher& Dispatcher, double dT) final;
 
     GraphicScene	    scene;
     PhysXSceneHandle    pScene;
@@ -103,7 +103,7 @@ public:
     void Update         (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
     void PreDrawUpdate  (EngineCore& core, UpdateDispatcher& Dispatcher, double dT) final override;
     void Draw           (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
-    void PostDrawUpdate (EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) final override;
+    void PostDrawUpdate (EngineCore& core, UpdateDispatcher& dispatcher, double dT) final override;
     bool EventHandler   (Event evt) final override;
 
 
@@ -223,6 +223,8 @@ public:
             base.renderWindow.GetBackBuffer(),
             core.GetTempMemory(),
             Format);
+
+        framework.DrawDebugHUD(dT,  base.vertexBuffer, base.renderWindow, frameGraph);
 
         PresentBackBuffer(frameGraph, base.renderWindow);
     }

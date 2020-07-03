@@ -633,23 +633,6 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    auto& UpdateThirdPersonCameraControllers(UpdateDispatcher& dispatcher, float2 mouseInput, const double dT)
-    {
-        struct TPC_Update {};
-
-        return dispatcher.Add<TPC_Update>(
-            [&](auto& builder, auto& data){},
-            [mouseInput, dT](TPC_Update& data, iAllocator& threadAllocator)
-            {
-                for (auto& controller : CameraControllerComponent::GetComponent())
-                    controller.componentData.Update(mouseInput, dT);
-            });
-    }
-
-
-    /************************************************************************************************/
-
-
     float3 GetCameraControllerHeadPosition(GameObject& GO)
     {
         return Apply(GO, [](CameraControllerView& cameraController)

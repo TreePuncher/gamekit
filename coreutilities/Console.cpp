@@ -219,7 +219,7 @@ namespace FlexKit
 			if (!strncmp(
 				variable.VariableIdentifier.str, 
 				variableIdentifier, 
-				min(strlen(
+                min(strlen(
 					variable.VariableIdentifier.str), Arguments->Data_size)))
 			{
 				if (variable.Type == ConsoleVariableType::CONSOLE_BOOL) {

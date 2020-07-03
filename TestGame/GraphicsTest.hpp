@@ -136,11 +136,13 @@ public:
                 ctx.SetPrimitiveTopology(EIT_PATCH_CP_4);
                 ctx.DrawIndexed(8);
             });
+
+        PresentBackBuffer(frameGraph, base.renderWindow);
     }
 
-    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph) override
+    void PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT) override
     {
-        PresentBackBuffer(frameGraph, base.renderWindow);
+        base.PostDrawUpdate(core, dispatcher, dT);
     }
 
     bool EventHandler(Event evt) override

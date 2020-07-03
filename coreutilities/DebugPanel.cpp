@@ -56,9 +56,10 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void DebugPanel::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& graph)
+    void DebugPanel::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
     {
-        topState.PostDrawUpdate(core, dispatcher, dT, graph);
+        topState.PostDrawUpdate(core, dispatcher, dT);
+        renderWindow->Present(0, 0);
     }
 
 

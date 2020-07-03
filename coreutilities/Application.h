@@ -1,5 +1,5 @@
 /**********************************************************************
-, 1080
+
 Copyright (c) 2015 - 2018 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -27,7 +27,6 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FKAPPLICATION_H
 
 #include "buildsettings.h"
-#include "AllSourceFiles.cpp"
 
 #include "EngineCore.h"
 #include "GameFramework.h"
@@ -77,7 +76,5 @@ namespace FlexKit
     };
 
 }
-
-#include "Application.cpp"
 
 #endif

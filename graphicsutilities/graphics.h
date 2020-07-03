@@ -621,6 +621,7 @@ namespace FlexKit
 
         virtual IDXGISwapChain4*    _GetSwapChain() const = 0;
 
+        operator ResourceHandle () { return GetBackBuffer(); }
 
         float2  GetPixelSize() const { return float2{ 1.0f, 1.0f } / GetWH(); }
         float   GetAspectRatio() const { const auto WH = GetWH(); return float(WH[0]) / float(WH[1]); }
@@ -3173,7 +3174,7 @@ private:
 
 		void BeginSubmission	();
 		void Submit				(Vector<Context*>& CLs);
-		void PresentWindow		(IRenderWindow* RW);
+		void _PresentWindow		(IRenderWindow* RW);
 
 		void WaitforGPU();
 

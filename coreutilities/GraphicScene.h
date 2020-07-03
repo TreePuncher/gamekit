@@ -281,7 +281,7 @@ namespace FlexKit
 
         float rScale = 1;
         for (size_t I = 0; I < 3; ++I)
-            rScale = std::max(rScale, Scale[I]);
+            rScale = max(rScale, Scale[I]);
 
 		Apply(
 			go,

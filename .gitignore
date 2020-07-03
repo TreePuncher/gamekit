@@ -37,3 +37,5 @@ Release/
 /assets
 /hdrs
 *.ini
+/EditorWinUI/Generated Files/winrt
+/packages

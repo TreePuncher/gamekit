@@ -202,18 +202,20 @@ void ClientLobbyState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 		core.GetTempMemory(),
 		&frameGraph);
     */
+
+    if (framework.drawDebugStats)
+        framework.DrawDebugHUD(dT, client.base.vertexBuffer, base.renderWindow.GetBackBuffer(), frameGraph);
+
+    PresentBackBuffer(frameGraph, base.renderWindow);
 }
 
 
 /************************************************************************************************/
 
 
-void ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
+void ClientLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	if (framework.drawDebugStats)
-		framework.DrawDebugHUD(dT, client.base.vertexBuffer, frameGraph);
-
-	PresentBackBuffer(frameGraph, base.renderWindow);
+    base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 

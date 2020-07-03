@@ -333,7 +333,7 @@ namespace FlexKit::ResourceBuilder
 			return element;
 		}
 
-		string			id = "";
+		std::string		id = "";
 		MetaDataList	metaData;
 	};
 
@@ -365,7 +365,7 @@ namespace FlexKit::ResourceBuilder
 	public:
 		FNComponentBlobFormatter CreateBlob;
 
-		string			id = "";
+		std::string		id = "";
 		MetaDataList	metaData;
 	};
 

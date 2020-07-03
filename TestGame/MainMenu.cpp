@@ -108,17 +108,19 @@ void MainMenu::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, F
 		core.GetTempMemory(),
 		&frameGraph);
     */
+
+    if (framework.drawDebugStats)
+        framework.DrawDebugHUD(dT, vertexBuffer, base.renderWindow, frameGraph);
+
+    PresentBackBuffer(frameGraph, base.renderWindow);
 }
 
 /************************************************************************************************/
 
 
-void MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT, FlexKit::FrameGraph& Graph)
+void MainMenu::PostDrawUpdate(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-	if (framework.drawDebugStats)
-		framework.DrawDebugHUD(dT, vertexBuffer, Graph);
-
-	PresentBackBuffer(Graph, base.renderWindow);
+    base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 

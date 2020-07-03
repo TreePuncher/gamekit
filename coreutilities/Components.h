@@ -405,7 +405,7 @@ namespace FlexKit
 
 
 	template<typename FN>
-	auto Apply(GameObject& go, FN& fn)
+	auto Apply(GameObject& go, const FN& fn)
 	{
 		return ApplyProxy<FN>::run(go, fn, [] {});
 	}

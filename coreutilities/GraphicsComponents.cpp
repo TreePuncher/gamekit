@@ -163,40 +163,6 @@ namespace FlexKit
 
 
 	/************************************************************************************************/
-
-
-	auto& CameraComponent::QueueCameraUpdate(UpdateDispatcher& Dispatcher)
-	{
-		struct UpdateData
-		{};
-
-		auto& task = Dispatcher.Add<UpdateData>(
-			[&](UpdateDispatcher::UpdateBuilder& Builder, auto& Data)
-			{
-				Builder.SetDebugString("QueueCameraUpdate");
-			},
-			[this](auto& Data, iAllocator& threadAllocator)
-			{
-				FK_LOG_9("Updating Cameras");
-
-				size_t End = Cameras.size();
-				for (size_t I = 0; I < End; ++I)
-				{
-					if (DirtyFlags[I])
-					{
-						Cameras[I].UpdateMatrices();
-						DirtyFlags[I] = false;
-					}
-				}
-
-				return;
-			});
-
-		return task;
-	}
-
-
-	/************************************************************************************************/
 }// nemespace FlexKit
 
 

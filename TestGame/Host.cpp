@@ -39,7 +39,7 @@ void GameHostLobbyState::Update(EngineCore& core, UpdateDispatcher& Dispatcher, 
 	//windowInput.MousePosition           = framework.MouseState.NormalizedScreenCord;
 	//windowInput.LeftMouseButtonPressed  = framework.MouseState.LMB_Pressed;
 
-	screen.Update(dT, windowInput, GetPixelSize(base.renderWindow), core.GetTempMemory());
+	screen.Update(dT, windowInput, base.renderWindow.GetPixelSize(), core.GetTempMemory());
 }
 
 
@@ -72,18 +72,20 @@ void GameHostLobbyState::Draw(EngineCore& core, UpdateDispatcher& Dispatcher, do
 		core.GetTempMemory(),
 		&frameGraph);
     */
+
+    if (framework.drawDebugStats)
+        framework.DrawDebugHUD(dT, host.base.vertexBuffer, base.renderWindow.GetBackBuffer(), frameGraph);
+
+    PresentBackBuffer(frameGraph, base.renderWindow);
 }
 
 
 /************************************************************************************************/
 
 
-void GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatcher, double dT, FrameGraph& Graph)
+void GameHostLobbyState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-	if (framework.drawDebugStats)
-		framework.DrawDebugHUD(dT, host.base.vertexBuffer, Graph);
-
-	PresentBackBuffer(Graph, base.renderWindow);
+    base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 

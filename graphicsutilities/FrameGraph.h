@@ -1732,6 +1732,23 @@ namespace FlexKit
     void ClearDepthBuffer	(FrameGraph& Graph, ResourceHandle Handle, float D);
     void PresentBackBuffer	(FrameGraph& Graph, IRenderWindow& Window);
 
+    inline void PresentBackBuffer(FrameGraph& frameGraph, ResourceHandle& backBuffer)
+    {
+        struct PassData
+        {
+            FrameResourceHandle BackBuffer;
+        };
+        auto& Pass = frameGraph.AddNode<PassData>(
+            PassData{},
+            [&](FrameGraphNodeBuilder& Builder, PassData& Data)
+            {
+                Data.BackBuffer = Builder.PresentBackBuffer(backBuffer);
+            },
+            [](const PassData& Data, const FrameResources& Resources, Context& ctx, iAllocator&)
+            {
+            });
+    }
+
 
     void SetRenderTargets	(Context* Ctx, static_vector<FrameResourceHandle> RenderTargets, FrameResources& FG);
     void ClearVertexBuffer	(FrameGraph& FG, VertexBufferHandle PushBuffer);
@@ -1979,7 +1996,7 @@ namespace FlexKit
                 },
                 VBBuffer };
 
-            Constants CB_Data = {
+            const Constants CB_Data = {
                 { 1, 1, 1, 1 },
                 { 1, 1, 1, 1 },
                 float4x4::Identity()
