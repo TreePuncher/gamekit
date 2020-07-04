@@ -39,14 +39,27 @@ namespace winrt::EditorWinUI::implementation
         {
         case 2:
             {
-                auto targetElement = target.as<::winrt::Windows::UI::Xaml::Controls::Grid>();
-                this->grid(targetElement);
+                auto targetElement = target.as<::winrt::Windows::UI::Xaml::Controls::SwapChainPanel>();
+                this->swapChain(targetElement);
+                auto weakThis = ::winrt::make_weak<class_type>(*this);
+                targetElement.SizeChanged([weakThis](::winrt::Windows::Foundation::IInspectable const& p0, ::winrt::Windows::UI::Xaml::SizeChangedEventArgs const& p1){
+                    if (auto t = weakThis.get())
+                    {
+                        ::winrt::get_self<D>(t)->swapChain_SizeChanged(p0, p1);
+                    }
+                });
             }
             break;
         case 3:
             {
-                auto targetElement = target.as<::winrt::Windows::UI::Xaml::Controls::SwapChainPanel>();
-                this->swapChain(targetElement);
+                auto targetElement = target.as<::winrt::Windows::UI::Xaml::Controls::AppBarButton>();
+                auto weakThis = ::winrt::make_weak<class_type>(*this);
+                targetElement.Click([weakThis](::winrt::Windows::Foundation::IInspectable const& p0, ::winrt::Windows::UI::Xaml::RoutedEventArgs const& p1){
+                    if (auto t = weakThis.get())
+                    {
+                        ::winrt::get_self<D>(t)->ClickHandler(p0, p1);
+                    }
+                });
             }
             break;
         }

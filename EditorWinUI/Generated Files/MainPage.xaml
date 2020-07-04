@@ -8,15 +8,22 @@
     xmlns:winui="using:Microsoft.UI.Xaml.Controls"
     mc:Ignorable="d">
 
-    <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" VerticalAlignment="Top">
-        <winui:MenuBar>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+
+        <winui:MenuBar Grid.Row="0" Background="#FF4D4D4D">
             <winui:MenuBarItem Title="File">
             </winui:MenuBarItem>
             <winui:MenuBarItem Title="Window">
                 <MenuFlyoutItem x:ConnectionId='3' Text="Add Scene Viewport Tab"                         />
             </winui:MenuBarItem>
         </winui:MenuBar>
-        <winui:TabView x:ConnectionId='2' Name="tabs"></winui:TabView>
-    </StackPanel>
+
+        <winui:TabView x:ConnectionId='2' Name="tabs" Grid.Row="1" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+        </winui:TabView>
+    </Grid>
 </Page>
 

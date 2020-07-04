@@ -2470,7 +2470,7 @@ private:
 		ID3D12Resource*		GetAsset	(ResourceHandle Handle) const;
 
 
-        void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, ID3D12Resource** end);
+        void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size);
 
 
 		void ReleaseTexture	(ResourceHandle Handle);
@@ -3175,6 +3175,7 @@ private:
 		void BeginSubmission	();
 		void Submit				(Vector<Context*>& CLs);
 		void _PresentWindow		(IRenderWindow* RW);
+        void _UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size);
 
 		void WaitforGPU();
 

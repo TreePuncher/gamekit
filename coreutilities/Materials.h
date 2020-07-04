@@ -50,7 +50,7 @@ namespace FlexKit
             textures        { allocator },
             handles         { allocator } {}
 
-        MaterialComponentData operator [](MaterialHandle handle) const
+        MaterialComponentData operator [](const MaterialHandle handle) const
         {
             return materials[handles[handle]];
         }

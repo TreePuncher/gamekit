@@ -281,6 +281,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         }
         }
 
+        if(true)
         base.streamingEngine.TextureFeedbackPass(
             dispatcher,
             frameGraph,
