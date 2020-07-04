@@ -1,0 +1,446 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.props" Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.props')" />
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8C1A20B0-78BC-4A86-6177-5EDA4DB8D1D6}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>Editor</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\builds\Debug_Editor\</OutDir>
+    <IntDir>obj\Debug\</IntDir>
+    <TargetName>Editor</TargetName>
+    <TargetExt>.exe</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <IntDir>obj\Release\</IntDir>
+    <TargetName>Editor</TargetName>
+    <TargetExt>.exe</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_DEBUG;_CRT_SECURE_NO_WARNINGS;FBXSDK_SHARED;_ENABLE_ATOMIC_ALIGNMENT_FIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>%fmodapidir%\api\lowlevel\inc;%fmodapidir%\api\core\inc;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\utils;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\arch;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\base;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\math;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\sync;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\collada;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\fbx;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\animation;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\constraint;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\geometry;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\shading;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2\libxml;..\coreutilities;..\graphicsutilities;..\physicsutilities;..\Dependencies\sdks;..\Dependencies\sdks\fbxsdk\include;..\Dependencies\sdks\DirectXTK\Src;..\Dependencies\sdks\DirectXTK\Inc;..\Dependencies\sdks\DirectX-Graphics-Samples\Libraries\D3DX12;..\Dependencies\sdks\crunch\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <AdditionalOptions>/std:c++latest /Mdd /bigobj %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\Dependencies\libs\debug;%fmodapidir%\api\lowlevel\lib;%fmodapidir%\api\core\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>NDEBUG;_CRT_SECURE_NO_WARNINGS;FBXSDK_SHARED;_ENABLE_ATOMIC_ALIGNMENT_FIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>%fmodapidir%\api\lowlevel\inc;%fmodapidir%\api\core\inc;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\utils;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\arch;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\base;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\math;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\sync;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\collada;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\fbx;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\animation;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\constraint;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\geometry;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\shading;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2\libxml;..\coreutilities;..\graphicsutilities;..\physicsutilities;..\Dependencies\sdks;..\Dependencies\sdks\fbxsdk\include;..\Dependencies\sdks\DirectXTK\Src;..\Dependencies\sdks\DirectXTK\Inc;..\Dependencies\sdks\DirectX-Graphics-Samples\Libraries\D3DX12;..\Dependencies\sdks\crunch\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <AdditionalOptions>/std:c++latest /MD /bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>..\Dependencies\libs\release;%fmodapidir%\api\lowlevel\lib;%fmodapidir%\api\core\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\buildsettings.h" />
+    <ClInclude Include="..\coreutilities\Application.h" />
+    <ClInclude Include="..\coreutilities\Assets.h" />
+    <ClInclude Include="..\coreutilities\CameraUtilities.h" />
+    <ClInclude Include="..\coreutilities\CommonStructs.h" />
+    <ClInclude Include="..\coreutilities\ComponentBlobs.h" />
+    <ClInclude Include="..\coreutilities\Components.h" />
+    <ClInclude Include="..\coreutilities\Console.h" />
+    <ClInclude Include="..\coreutilities\DebugPanel.h" />
+    <ClInclude Include="..\coreutilities\DungeonGen.h" />
+    <ClInclude Include="..\coreutilities\EngineCore.h" />
+    <ClInclude Include="..\coreutilities\Events.h" />
+    <ClInclude Include="..\coreutilities\GUIInputState.h" />
+    <ClInclude Include="..\coreutilities\GameFramework.h" />
+    <ClInclude Include="..\coreutilities\GraphicScene.h" />
+    <ClInclude Include="..\coreutilities\GraphicsComponents.h" />
+    <ClInclude Include="..\coreutilities\Handle.h" />
+    <ClInclude Include="..\coreutilities\Input.h" />
+    <ClInclude Include="..\coreutilities\KeycodesEnums.h" />
+    <ClInclude Include="..\coreutilities\Logging.h" />
+    <ClInclude Include="..\coreutilities\Materials.h" />
+    <ClInclude Include="..\coreutilities\MathUtils.h" />
+    <ClInclude Include="..\coreutilities\NetworkUtilities.h" />
+    <ClInclude Include="..\coreutilities\ProfilingUtilities.h" />
+    <ClInclude Include="..\coreutilities\ResourceHandles.h" />
+    <ClInclude Include="..\coreutilities\Signal.h" />
+    <ClInclude Include="..\coreutilities\ThreadUtilities.h" />
+    <ClInclude Include="..\coreutilities\Transforms.h" />
+    <ClInclude Include="..\coreutilities\WorldRender.h" />
+    <ClInclude Include="..\coreutilities\XMMathConversion.h" />
+    <ClInclude Include="..\coreutilities\buildsettings.h" />
+    <ClInclude Include="..\coreutilities\containers.h" />
+    <ClInclude Include="..\coreutilities\intersection.h" />
+    <ClInclude Include="..\coreutilities\memoryutilities.h" />
+    <ClInclude Include="..\coreutilities\static_vector.h" />
+    <ClInclude Include="..\coreutilities\timeutilities.h" />
+    <ClInclude Include="..\coreutilities\type.h" />
+    <ClInclude Include="..\graphicsutilities\AnimationComponents.h" />
+    <ClInclude Include="..\graphicsutilities\AnimationRuntimeUtilities.H" />
+    <ClInclude Include="..\graphicsutilities\AnimationUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\CoreSceneObjects.h" />
+    <ClInclude Include="..\graphicsutilities\DDSUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\Fonts.h" />
+    <ClInclude Include="..\graphicsutilities\FrameGraph.h" />
+    <ClInclude Include="..\graphicsutilities\Geometry.h" />
+    <ClInclude Include="..\graphicsutilities\GuiUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\MeshUtils.h" />
+    <ClInclude Include="..\graphicsutilities\PipelineState.h" />
+    <ClInclude Include="..\graphicsutilities\SSReflections.h" />
+    <ClInclude Include="..\graphicsutilities\SceneManager.h" />
+    <ClInclude Include="..\graphicsutilities\TerrainRendering.h" />
+    <ClInclude Include="..\graphicsutilities\TextRendering.h" />
+    <ClInclude Include="..\graphicsutilities\TextureStreamingUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\TextureUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\VertexBuffer.h" />
+    <ClInclude Include="..\graphicsutilities\defaultpipelinestates.h" />
+    <ClInclude Include="..\graphicsutilities\graphics.h" />
+    <ClInclude Include="..\physicsutilities\physicsutilities.h" />
+    <ClInclude Include="EditorBase.h" />
+    <ClInclude Include="EditorPanels.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Application.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Assets.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\CameraUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\CommonUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Components.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Console.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\DebugPanel.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\DungeonGen.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\EngineCore.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\FlexKitApplication.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GUIInputState.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GameFramework.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GraphicScene.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GraphicsComponents.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Handle.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Intersection.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Logging.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Materials.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\MathUtils.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\NetworkUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\ProfilingUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\ThreadUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Transforms.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\WorldRender.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\memoryutilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\signal.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\timeutilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\type.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\AnimationComponents.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\AnimationRuntimeUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\AnimationUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\CoreSceneObjects.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\DDSUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Fonts.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\FrameGraph.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Geometry.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\GuiUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Meshutils.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\PipelineState.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\SSReflections.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TerrainRendering.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TextRendering.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TextureStreamingUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TextureUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\defaultpipelinestates.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\graphics.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="EditorBase.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="EditorPanels.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Win64.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\shaders\ACC.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\BilateralBlur.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ClearRenderTarget.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ComputeAuto.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\CopyOut.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\DrawInstancedPShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\DrawInstancedVShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ForwardPassPShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ForwardPassVShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\FullscreenQuad.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\SSRCompute.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\StaticMeshBatcher.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\Temp.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextRendering.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextureFeedback.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextureFeedbackCompressor.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VPP.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VSFullscreenQuad.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\common.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\computedeferredtiledshading.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\cshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\cullterrain.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\deferredRender.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\forwardRender.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\forwardRenderTerrain.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\forwardRenderTerrainDEBUG.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\gshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\imguiShaders.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\lightPass.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\pbr.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\pshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\tdshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\terrainRenderingCommon.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\texture2Cubemap.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\tgshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\thshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\tvshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\vshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Editor.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.targets')" />
+    <Import Project="..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets" Condition="Exists('..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets')" />
+  </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.props'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.Windows.CppWinRT.2.0.200630.5\build\native\Microsoft.Windows.CppWinRT.targets'))" />
+    <Error Condition="!Exists('..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.UI.Xaml.2.5.0-prerelease.200609001\build\native\Microsoft.UI.Xaml.targets'))" />
+  </Target>
+</Project>

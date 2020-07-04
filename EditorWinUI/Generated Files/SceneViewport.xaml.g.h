@@ -27,15 +27,6 @@ namespace winrt::EditorWinUI::implementation
         void UnloadObject(::winrt::Windows::UI::Xaml::DependencyObject const& dependencyObject);
         void DisconnectUnloadedObject(int32_t connectionId);
 
-        ::winrt::Windows::UI::Xaml::Controls::Grid grid()
-        {
-            return _grid;
-        }
-        void grid(::winrt::Windows::UI::Xaml::Controls::Grid value)
-        {
-            _grid = value;
-        }
-
         ::winrt::Windows::UI::Xaml::Controls::SwapChainPanel swapChain()
         {
             return _swapChain;
@@ -51,7 +42,6 @@ namespace winrt::EditorWinUI::implementation
     private:
         struct SceneViewport_obj1_Bindings;
 
-        ::winrt::Windows::UI::Xaml::Controls::Grid _grid{nullptr};
         ::winrt::Windows::UI::Xaml::Controls::SwapChainPanel _swapChain{nullptr};
     };
 }

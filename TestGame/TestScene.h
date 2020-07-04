@@ -12,7 +12,7 @@ inline void SetupTestScene(
     GUID_t                  texture2,
     CopyContextHandle       copyContext)
 {
-    const AssetHandle demonModel = 40000;
+    const AssetHandle demonModel = 666;
 
     // Load Model
     auto model = GetMesh(renderSystem, demonModel, copyContext);

@@ -36,3 +36,9 @@ void winrt::EditorWinUI::implementation::MainPage::AddSceneViewPort(winrt::Windo
 
     tabs().TabItems().Append(newTab);
 }
+
+void winrt::EditorWinUI::implementation::MainPage::AddResourceView(winrt::Windows::Foundation::IInspectable const& sender, winrt::Windows::UI::Xaml::RoutedEventArgs const& e)
+{
+
+}
+

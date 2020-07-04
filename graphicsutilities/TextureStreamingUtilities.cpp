@@ -422,7 +422,8 @@ namespace FlexKit
             [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 auto& drawables = data.pvs.GetData().solid;
-                
+                auto& materials = MaterialComponent::GetComponent();
+
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
 
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
@@ -500,6 +501,7 @@ namespace FlexKit
 
 
                 TriMesh* prevMesh = nullptr;
+                MaterialHandle prevMaterial = InvalidHandle_t;
 
                 for (auto& visable : drawables)
                 {
@@ -523,17 +525,22 @@ namespace FlexKit
                         );
                     }
 
-                    auto materialHandle = visable.D->material;
-                    auto& textures = MaterialComponent::GetComponent()[materialHandle].Textures;
+                    const auto materialHandle = visable.D->material;
+                    if (materialHandle != prevMaterial)
+                    {
+                        const auto& textures = materials[materialHandle].Textures;
 
-                    DescriptorHeap srvHeap;
-                    srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
+                        DescriptorHeap srvHeap;
+                        srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
+                        ctx.SetGraphicsDescriptorTable(3, srvHeap);
 
-                    for(size_t I = 0; I < textures.size(); I++)
-                        srvHeap.SetSRV(ctx, I, textures[I]);
+                        for (size_t I = 0; I < textures.size(); I++)
+                            srvHeap.SetSRV(ctx, I, textures[I]);
+                    }
+
+                    prevMaterial = materialHandle;
 
                     const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passConstantBuffer };
-                    ctx.SetGraphicsDescriptorTable(3, srvHeap);
                     ctx.SetGraphicsConstantBufferView(1, constants);
                     ctx.DrawIndexed(triMesh->IndexCount);
                 }

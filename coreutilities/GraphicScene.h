@@ -427,7 +427,7 @@ namespace FlexKit
 	class GraphicScene
 	{
 	public:
-		GraphicScene(iAllocator*		in_allocator = SystemAllocator) :
+		GraphicScene(iAllocator* in_allocator = SystemAllocator) :
 				allocator					{ in_allocator							},
 				HandleTable					{ in_allocator							},
 				sceneID						{ rand()								},

@@ -3602,6 +3602,15 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void RenderSystem::_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size)
+    {
+        Textures.ReplaceResources(handle, resources, size);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -3714,7 +3723,10 @@ namespace FlexKit
 
 	const uint2	RenderSystem::GetTextureWH(ResourceHandle handle) const
 	{
-		return Textures.GetWH(handle);
+        if (handle == InvalidHandle_t)
+            return { 0, 0 };
+        else
+		    return Textures.GetWH(handle);
 	}
 
 
@@ -5953,15 +5965,15 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    void TextureStateTable::ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, ID3D12Resource** end)
+    void TextureStateTable::ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size)
     {
         auto  Idx                   = Handles[handle];
         auto  ResourceIdx           = UserEntries[Idx].ResourceIdx;
         const auto resourceCount    = Resources[ResourceIdx].ResourceCount;
         auto& resources             = Resources[ResourceIdx].Resources;
 
-        for (size_t I = 0; I < resourceCount && begin + I < end; ++I)
-            resources[I] = *(begin + I);
+        for (size_t I = 0; I < min(resourceCount, size); ++I)
+            resources[I] = begin[I];
     }
 
 

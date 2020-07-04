@@ -1,0 +1,462 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{BF10A474-ABDD-FE7F-D4F6-EC27C022340E}</ProjectGuid>
+    <IgnoreWarnCompileDuplicatedFilename>true</IgnoreWarnCompileDuplicatedFilename>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>TestGame</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\builds\Debug\</OutDir>
+    <IntDir>obj\Debug\</IntDir>
+    <TargetName>TestGame</TargetName>
+    <TargetExt>.exe</TargetExt>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\builds\Release\</OutDir>
+    <IntDir>obj\Release\</IntDir>
+    <TargetName>TestGame</TargetName>
+    <TargetExt>.exe</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>_DEBUG;_CRT_SECURE_NO_WARNINGS;_ENABLE_ATOMIC_ALIGNMENT_FIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>%fmodapidir%\api\lowlevel\inc;%fmodapidir%\api\core\inc;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\utils;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\arch;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\base;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\math;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\sync;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\collada;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\fbx;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\animation;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\constraint;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\geometry;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\shading;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2\libxml;..\coreutilities;..\graphicsutilities;..\physicsutilities;..\Dependencies\sdks;..\Dependencies\sdks\angelscript\.git;..\Dependencies\sdks\angelscript\sdk;..\Dependencies\sdks\angelscript\.git\hooks;..\Dependencies\sdks\angelscript\.git\info;..\Dependencies\sdks\angelscript\.git\logs;..\Dependencies\sdks\angelscript\.git\objects;..\Dependencies\sdks\angelscript\.git\refs;..\Dependencies\sdks\angelscript\.git\logs\refs;..\Dependencies\sdks\angelscript\.git\logs\refs\heads;..\Dependencies\sdks\angelscript\.git\logs\refs\remotes;..\Dependencies\sdks\angelscript\.git\logs\refs\remotes\origin;..\Dependencies\sdks\angelscript\.git\objects\info;..\Dependencies\sdks\angelscript\.git\objects\pack;..\Dependencies\sdks\angelscript\.git\refs\heads;..\Dependencies\sdks\angelscript\.git\refs\remotes;..\Dependencies\sdks\angelscript\.git\refs\tags;..\Dependencies\sdks\angelscript\.git\refs\remotes\origin;..\Dependencies\sdks\angelscript\sdk\add_on;..\Dependencies\sdks\angelscript\sdk\angelscript;..\Dependencies\sdks\angelscript\sdk\docs;..\Dependencies\sdks\angelscript\sdk\samples;..\Dependencies\sdks\angelscript\sdk\tests;..\Dependencies\sdks\angelscript\sdk\add_on\autowrapper;..\Dependencies\sdks\angelscript\sdk\add_on\contextmgr;..\Dependencies\sdks\angelscript\sdk\add_on\datetime;..\Dependencies\sdks\angelscript\sdk\add_on\debugger;..\Dependencies\sdks\angelscript\sdk\add_on\scriptany;..\Dependencies\sdks\angelscript\sdk\add_on\scriptarray;..\Dependencies\sdks\angelscript\sdk\add_on\scriptbuilder;..\Dependencies\sdks\angelscript\sdk\add_on\scriptdictionary;..\Dependencies\sdks\angelscript\sdk\add_on\scriptfile;..\Dependencies\sdks\angelscript\sdk\add_on\scriptgrid;..\Dependencies\sdks\angelscript\sdk\add_on\scripthandle;..\Dependencies\sdks\angelscript\sdk\add_on\scripthelper;..\Dependencies\sdks\angelscript\sdk\add_on\scriptmath;..\Dependencies\sdks\angelscript\sdk\add_on\scriptstdstring;..\Dependencies\sdks\angelscript\sdk\add_on\serializer;..\Dependencies\sdks\angelscript\sdk\add_on\weakref;..\Dependencies\sdks\angelscript\sdk\add_on\autowrapper\generator;..\Dependencies\sdks\angelscript\sdk\angelscript\include;..\Dependencies\sdks\angelscript\sdk\angelscript\lib;..\Dependencies\sdks\angelscript\sdk\angelscript\projects;..\Dependencies\sdks\angelscript\sdk\angelscript\source;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\android;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\BCBuilder;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\cmake;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\codeblocks;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dev-cpp;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dreamcast;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\gnuc macosx;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\marmalade;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\meson;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\mingw;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc10;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2013;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc8;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\android\jni;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\cmake\cmake;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dev-cpp\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dreamcast\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\mingw\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\.vs;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup2;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup3;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup4;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Debug;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Release;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\.vs\angelscript;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\.vs\angelscript\v16;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Debug;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Release;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Debug\angelscript.tlog;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Release\angelscript.tlog;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc6\lib;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\project.xcworkspace;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\xcuserdata;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\project.xcworkspace\xcuserdata;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\project.xcworkspace\xcuserdata\elastic.xcuserdatad;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\xcuserdata\elastic.xcuserdatad;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\xcuserdata\elastic.xcuserdatad\xcschemes;..\Dependencies\sdks\angelscript\sdk\docs\articles;..\Dependencies\sdks\angelscript\sdk\docs\doxygen;..\Dependencies\sdks\angelscript\sdk\docs\doxygen\source;..\Dependencies\sdks\angelscript\sdk\docs\doxygen\source\logo;..\Dependencies\sdks\angelscript\sdk\samples\asbuild;..\Dependencies\sdks\angelscript\sdk\samples\asrun;..\Dependencies\sdks\angelscript\sdk\samples\concurrent;..\Dependencies\sdks\angelscript\sdk\samples\console;..\Dependencies\sdks\angelscript\sdk\samples\coroutine;..\Dependencies\sdks\angelscript\sdk\samples\events;..\Dependencies\sdks\angelscript\sdk\samples\game;..\Dependencies\sdks\angelscript\sdk\samples\include;..\Dependencies\sdks\angelscript\sdk\samples\tutorial;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\bin;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\source;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\asrun\bin;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects;..\Dependencies\sdks\angelscript\sdk\samples\asrun\source;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\source;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\console\projects;..\Dependencies\sdks\angelscript\sdk\samples\console\source;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\source;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\events\projects;..\Dependencies\sdks\angelscript\sdk\samples\events\source;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\game\bin;..\Dependencies\sdks\angelscript\sdk\samples\game\projects;..\Dependencies\sdks\angelscript\sdk\samples\game\source;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\cmake;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\include\bin;..\Dependencies\sdks\angelscript\sdk\samples\include\projects;..\Dependencies\sdks\angelscript\sdk\samples\include\source;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\bin;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\source;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc8;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance;..\Dependencies\sdks\angelscript\sdk\tests\test_feature;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread;..\Dependencies\sdks\angelscript\sdk\tests\test_performance;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\bin;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\source;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\bin;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\source;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\bin\scripts;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\BCBuilder;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\cmake;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\codeblocks;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\dev-cpp;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\dreamcast;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\mingw;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc10;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc8;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\xcode;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\.idea;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\jni;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\res;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\res\values;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src\com;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src\com\angelcode;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src\com\angelcode\android;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\mingw\obj;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\xcode\xcode.xcodeproj;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\source;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\bin;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\source;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\cmake;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc9;..\Dependencies\sdks\fbxsdk\include;..\Dependencies\sdks\physx_sdk\physx\include;..\Dependencies\sdks\physx_sdk\physx\include\characterkinematic;..\Dependencies\sdks\physx_sdk\physx\include\collision;..\Dependencies\sdks\physx_sdk\physx\include\common;..\Dependencies\sdks\physx_sdk\physx\include\cooking;..\Dependencies\sdks\physx_sdk\physx\include\cudamanager;..\Dependencies\sdks\physx_sdk\physx\include\extensions;..\Dependencies\sdks\physx_sdk\physx\include\filebuf;..\Dependencies\sdks\physx_sdk\physx\include\foundation;..\Dependencies\sdks\physx_sdk\physx\include\geometry;..\Dependencies\sdks\physx_sdk\physx\include\geomutils;..\Dependencies\sdks\physx_sdk\physx\include\gpu;..\Dependencies\sdks\physx_sdk\physx\include\pvd;..\Dependencies\sdks\physx_sdk\physx\include\solver;..\Dependencies\sdks\physx_sdk\physx\include\task;..\Dependencies\sdks\physx_sdk\physx\include\vehicle;..\Dependencies\sdks\physx_sdk\physx\include\common\windows;..\Dependencies\sdks\physx_sdk\pxshared\include;..\Dependencies\sdks\physx_sdk\pxshared\include\foundation;..\Dependencies\sdks\physx_sdk\pxshared\include\foundation\unix;..\Dependencies\sdks\physx_sdk\pxshared\include\foundation\windows;..\Dependencies\sdks\stb;..\Dependencies\sdks\stb\.github;..\Dependencies\sdks\stb\data;..\Dependencies\sdks\stb\deprecated;..\Dependencies\sdks\stb\docs;..\Dependencies\sdks\stb\tests;..\Dependencies\sdks\stb\tools;..\Dependencies\sdks\stb\data\herringbone;..\Dependencies\sdks\stb\tests\caveview;..\Dependencies\sdks\stb\tests\oversample;..\Dependencies\sdks\stb\tests\pg_test;..\Dependencies\sdks\stb\tests\pngsuite;..\Dependencies\sdks\stb\tests\prerelease;..\Dependencies\sdks\stb\tests\sdf;..\Dependencies\sdks\stb\tests\vorbseek;..\Dependencies\sdks\stb\tests\caveview\win32;..\Dependencies\sdks\stb\tests\pngsuite\16bit;..\Dependencies\sdks\stb\tests\pngsuite\corrupt;..\Dependencies\sdks\stb\tests\pngsuite\primary;..\Dependencies\sdks\stb\tests\pngsuite\primary_check;..\Dependencies\sdks\stb\tests\pngsuite\unused;..\Dependencies\sdks\stb\tools\unicode;..\Dependencies\sdks\DirectXTK\Src;..\Dependencies\sdks\DirectXTK\Inc;..\Dependencies\sdks\DirectX-Graphics-Samples\Libraries\D3DX12;..\Dependencies\sdks\crunch\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <AdditionalOptions>/std:c++latest /MDd %(AdditionalOptions)</AdditionalOptions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\Dependencies\libs\debug;%fmodapidir%\api\lowlevel\lib;%fmodapidir%\api\core\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <PreprocessorDefinitions>NDEBUG;_CRT_SECURE_NO_WARNINGS;_ENABLE_ATOMIC_ALIGNMENT_FIX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>%fmodapidir%\api\lowlevel\inc;%fmodapidir%\api\core\inc;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\utils;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\arch;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\base;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\math;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\core\sync;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\collada;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\fileio\fbx;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\animation;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\constraint;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\geometry;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\fbxsdk\scene\shading;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\include\libxml2\libxml;..\coreutilities;..\graphicsutilities;..\physicsutilities;..\Dependencies\sdks;..\Dependencies\sdks\angelscript\.git;..\Dependencies\sdks\angelscript\sdk;..\Dependencies\sdks\angelscript\.git\hooks;..\Dependencies\sdks\angelscript\.git\info;..\Dependencies\sdks\angelscript\.git\logs;..\Dependencies\sdks\angelscript\.git\objects;..\Dependencies\sdks\angelscript\.git\refs;..\Dependencies\sdks\angelscript\.git\logs\refs;..\Dependencies\sdks\angelscript\.git\logs\refs\heads;..\Dependencies\sdks\angelscript\.git\logs\refs\remotes;..\Dependencies\sdks\angelscript\.git\logs\refs\remotes\origin;..\Dependencies\sdks\angelscript\.git\objects\info;..\Dependencies\sdks\angelscript\.git\objects\pack;..\Dependencies\sdks\angelscript\.git\refs\heads;..\Dependencies\sdks\angelscript\.git\refs\remotes;..\Dependencies\sdks\angelscript\.git\refs\tags;..\Dependencies\sdks\angelscript\.git\refs\remotes\origin;..\Dependencies\sdks\angelscript\sdk\add_on;..\Dependencies\sdks\angelscript\sdk\angelscript;..\Dependencies\sdks\angelscript\sdk\docs;..\Dependencies\sdks\angelscript\sdk\samples;..\Dependencies\sdks\angelscript\sdk\tests;..\Dependencies\sdks\angelscript\sdk\add_on\autowrapper;..\Dependencies\sdks\angelscript\sdk\add_on\contextmgr;..\Dependencies\sdks\angelscript\sdk\add_on\datetime;..\Dependencies\sdks\angelscript\sdk\add_on\debugger;..\Dependencies\sdks\angelscript\sdk\add_on\scriptany;..\Dependencies\sdks\angelscript\sdk\add_on\scriptarray;..\Dependencies\sdks\angelscript\sdk\add_on\scriptbuilder;..\Dependencies\sdks\angelscript\sdk\add_on\scriptdictionary;..\Dependencies\sdks\angelscript\sdk\add_on\scriptfile;..\Dependencies\sdks\angelscript\sdk\add_on\scriptgrid;..\Dependencies\sdks\angelscript\sdk\add_on\scripthandle;..\Dependencies\sdks\angelscript\sdk\add_on\scripthelper;..\Dependencies\sdks\angelscript\sdk\add_on\scriptmath;..\Dependencies\sdks\angelscript\sdk\add_on\scriptstdstring;..\Dependencies\sdks\angelscript\sdk\add_on\serializer;..\Dependencies\sdks\angelscript\sdk\add_on\weakref;..\Dependencies\sdks\angelscript\sdk\add_on\autowrapper\generator;..\Dependencies\sdks\angelscript\sdk\angelscript\include;..\Dependencies\sdks\angelscript\sdk\angelscript\lib;..\Dependencies\sdks\angelscript\sdk\angelscript\projects;..\Dependencies\sdks\angelscript\sdk\angelscript\source;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\android;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\BCBuilder;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\cmake;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\codeblocks;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dev-cpp;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dreamcast;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\gnuc macosx;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\marmalade;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\meson;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\mingw;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc10;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2013;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc8;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\android\jni;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\cmake\cmake;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dev-cpp\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\dreamcast\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\mingw\obj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\.vs;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup2;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup3;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Backup4;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Debug;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\Release;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\.vs\angelscript;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\.vs\angelscript\v16;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Debug;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Release;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Debug\angelscript.tlog;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc2017\x64\Release\angelscript.tlog;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\msvc6\lib;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\project.xcworkspace;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\xcuserdata;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\project.xcworkspace\xcuserdata;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\project.xcworkspace\xcuserdata\elastic.xcuserdatad;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\xcuserdata\elastic.xcuserdatad;..\Dependencies\sdks\angelscript\sdk\angelscript\projects\xcode\angelscript.xcodeproj\xcuserdata\elastic.xcuserdatad\xcschemes;..\Dependencies\sdks\angelscript\sdk\docs\articles;..\Dependencies\sdks\angelscript\sdk\docs\doxygen;..\Dependencies\sdks\angelscript\sdk\docs\doxygen\source;..\Dependencies\sdks\angelscript\sdk\docs\doxygen\source\logo;..\Dependencies\sdks\angelscript\sdk\samples\asbuild;..\Dependencies\sdks\angelscript\sdk\samples\asrun;..\Dependencies\sdks\angelscript\sdk\samples\concurrent;..\Dependencies\sdks\angelscript\sdk\samples\console;..\Dependencies\sdks\angelscript\sdk\samples\coroutine;..\Dependencies\sdks\angelscript\sdk\samples\events;..\Dependencies\sdks\angelscript\sdk\samples\game;..\Dependencies\sdks\angelscript\sdk\samples\include;..\Dependencies\sdks\angelscript\sdk\samples\tutorial;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\bin;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\source;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\asbuild\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\asrun\bin;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects;..\Dependencies\sdks\angelscript\sdk\samples\asrun\source;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\asrun\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\source;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\concurrent\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\console\projects;..\Dependencies\sdks\angelscript\sdk\samples\console\source;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\console\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\source;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\coroutine\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\events\projects;..\Dependencies\sdks\angelscript\sdk\samples\events\source;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\events\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\game\bin;..\Dependencies\sdks\angelscript\sdk\samples\game\projects;..\Dependencies\sdks\angelscript\sdk\samples\game\source;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\cmake;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\game\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\include\bin;..\Dependencies\sdks\angelscript\sdk\samples\include\projects;..\Dependencies\sdks\angelscript\sdk\samples\include\source;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\include\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\bin;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\source;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc8;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\trolltechqt;..\Dependencies\sdks\angelscript\sdk\samples\tutorial\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance;..\Dependencies\sdks\angelscript\sdk\tests\test_feature;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread;..\Dependencies\sdks\angelscript\sdk\tests\test_performance;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\bin;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\source;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_build_performance\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\bin;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\source;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\bin\scripts;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\BCBuilder;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\cmake;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\codeblocks;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\dev-cpp;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\dreamcast;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\mingw;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc10;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc7;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc8;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\msvc9;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\xcode;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\.idea;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\jni;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\res;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\res\values;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src\com;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src\com\angelcode;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\android\src\com\angelcode\android;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\gnuc\obj;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\mingw\obj;..\Dependencies\sdks\angelscript\sdk\tests\test_feature\projects\xcode\xcode.xcodeproj;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\source;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_multithread\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\bin;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\source;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\cmake;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\gnuc;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc2012;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc2015;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc2017;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc6;..\Dependencies\sdks\angelscript\sdk\tests\test_performance\projects\msvc9;..\Dependencies\sdks\fbxsdk\include;..\Dependencies\sdks\physx_sdk\physx\include;..\Dependencies\sdks\physx_sdk\physx\include\characterkinematic;..\Dependencies\sdks\physx_sdk\physx\include\collision;..\Dependencies\sdks\physx_sdk\physx\include\common;..\Dependencies\sdks\physx_sdk\physx\include\cooking;..\Dependencies\sdks\physx_sdk\physx\include\cudamanager;..\Dependencies\sdks\physx_sdk\physx\include\extensions;..\Dependencies\sdks\physx_sdk\physx\include\filebuf;..\Dependencies\sdks\physx_sdk\physx\include\foundation;..\Dependencies\sdks\physx_sdk\physx\include\geometry;..\Dependencies\sdks\physx_sdk\physx\include\geomutils;..\Dependencies\sdks\physx_sdk\physx\include\gpu;..\Dependencies\sdks\physx_sdk\physx\include\pvd;..\Dependencies\sdks\physx_sdk\physx\include\solver;..\Dependencies\sdks\physx_sdk\physx\include\task;..\Dependencies\sdks\physx_sdk\physx\include\vehicle;..\Dependencies\sdks\physx_sdk\physx\include\common\windows;..\Dependencies\sdks\physx_sdk\pxshared\include;..\Dependencies\sdks\physx_sdk\pxshared\include\foundation;..\Dependencies\sdks\physx_sdk\pxshared\include\foundation\unix;..\Dependencies\sdks\physx_sdk\pxshared\include\foundation\windows;..\Dependencies\sdks\stb;..\Dependencies\sdks\stb\.github;..\Dependencies\sdks\stb\data;..\Dependencies\sdks\stb\deprecated;..\Dependencies\sdks\stb\docs;..\Dependencies\sdks\stb\tests;..\Dependencies\sdks\stb\tools;..\Dependencies\sdks\stb\data\herringbone;..\Dependencies\sdks\stb\tests\caveview;..\Dependencies\sdks\stb\tests\oversample;..\Dependencies\sdks\stb\tests\pg_test;..\Dependencies\sdks\stb\tests\pngsuite;..\Dependencies\sdks\stb\tests\prerelease;..\Dependencies\sdks\stb\tests\sdf;..\Dependencies\sdks\stb\tests\vorbseek;..\Dependencies\sdks\stb\tests\caveview\win32;..\Dependencies\sdks\stb\tests\pngsuite\16bit;..\Dependencies\sdks\stb\tests\pngsuite\corrupt;..\Dependencies\sdks\stb\tests\pngsuite\primary;..\Dependencies\sdks\stb\tests\pngsuite\primary_check;..\Dependencies\sdks\stb\tests\pngsuite\unused;..\Dependencies\sdks\stb\tools\unicode;..\Dependencies\sdks\DirectXTK\Src;..\Dependencies\sdks\DirectXTK\Inc;..\Dependencies\sdks\DirectX-Graphics-Samples\Libraries\D3DX12;..\Dependencies\sdks\crunch\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <Optimization>Full</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StringPooling>true</StringPooling>
+      <AdditionalOptions>/std:c++latest /MD %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>..\Dependencies\libs\release;%fmodapidir%\api\lowlevel\lib;%fmodapidir%\api\core\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2020.0.1\lib\vs2017\x64\release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="..\coreutilities\Application.h" />
+    <ClInclude Include="..\coreutilities\Assets.h" />
+    <ClInclude Include="..\coreutilities\CameraUtilities.h" />
+    <ClInclude Include="..\coreutilities\CommonStructs.h" />
+    <ClInclude Include="..\coreutilities\ComponentBlobs.h" />
+    <ClInclude Include="..\coreutilities\Components.h" />
+    <ClInclude Include="..\coreutilities\Console.h" />
+    <ClInclude Include="..\coreutilities\DebugPanel.h" />
+    <ClInclude Include="..\coreutilities\DungeonGen.h" />
+    <ClInclude Include="..\coreutilities\EngineCore.h" />
+    <ClInclude Include="..\coreutilities\Events.h" />
+    <ClInclude Include="..\coreutilities\GUIInputState.h" />
+    <ClInclude Include="..\coreutilities\GameFramework.h" />
+    <ClInclude Include="..\coreutilities\GraphicScene.h" />
+    <ClInclude Include="..\coreutilities\GraphicsComponents.h" />
+    <ClInclude Include="..\coreutilities\Handle.h" />
+    <ClInclude Include="..\coreutilities\Input.h" />
+    <ClInclude Include="..\coreutilities\KeycodesEnums.h" />
+    <ClInclude Include="..\coreutilities\Logging.h" />
+    <ClInclude Include="..\coreutilities\Materials.h" />
+    <ClInclude Include="..\coreutilities\MathUtils.h" />
+    <ClInclude Include="..\coreutilities\NetworkUtilities.h" />
+    <ClInclude Include="..\coreutilities\ProfilingUtilities.h" />
+    <ClInclude Include="..\coreutilities\ResourceHandles.h" />
+    <ClInclude Include="..\coreutilities\Signal.h" />
+    <ClInclude Include="..\coreutilities\ThreadUtilities.h" />
+    <ClInclude Include="..\coreutilities\Transforms.h" />
+    <ClInclude Include="..\coreutilities\WorldRender.h" />
+    <ClInclude Include="..\coreutilities\XMMathConversion.h" />
+    <ClInclude Include="..\coreutilities\buildsettings.h" />
+    <ClInclude Include="..\coreutilities\containers.h" />
+    <ClInclude Include="..\coreutilities\intersection.h" />
+    <ClInclude Include="..\coreutilities\memoryutilities.h" />
+    <ClInclude Include="..\coreutilities\static_vector.h" />
+    <ClInclude Include="..\coreutilities\timeutilities.h" />
+    <ClInclude Include="..\coreutilities\type.h" />
+    <ClInclude Include="..\graphicsutilities\AnimationComponents.h" />
+    <ClInclude Include="..\graphicsutilities\AnimationRuntimeUtilities.H" />
+    <ClInclude Include="..\graphicsutilities\AnimationUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\CoreSceneObjects.h" />
+    <ClInclude Include="..\graphicsutilities\DDSUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\Fonts.h" />
+    <ClInclude Include="..\graphicsutilities\FrameGraph.h" />
+    <ClInclude Include="..\graphicsutilities\Geometry.h" />
+    <ClInclude Include="..\graphicsutilities\GuiUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\MeshUtils.h" />
+    <ClInclude Include="..\graphicsutilities\PipelineState.h" />
+    <ClInclude Include="..\graphicsutilities\SSReflections.h" />
+    <ClInclude Include="..\graphicsutilities\SceneManager.h" />
+    <ClInclude Include="..\graphicsutilities\TerrainRendering.h" />
+    <ClInclude Include="..\graphicsutilities\TextRendering.h" />
+    <ClInclude Include="..\graphicsutilities\TextureStreamingUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\TextureUtilities.h" />
+    <ClInclude Include="..\graphicsutilities\VertexBuffer.h" />
+    <ClInclude Include="..\graphicsutilities\defaultpipelinestates.h" />
+    <ClInclude Include="..\graphicsutilities\graphics.h" />
+    <ClInclude Include="..\graphicsutilities\Win32Graphics.h" />
+    <ClInclude Include="..\physicsutilities\physicsutilities.h" />
+    <ClInclude Include="BaseState.h" />
+    <ClInclude Include="Client.h" />
+    <ClInclude Include="Gameplay.h" />
+    <ClInclude Include="Host.h" />
+    <ClInclude Include="LobbyGUI.h" />
+    <ClInclude Include="MainMenu.h" />
+    <ClInclude Include="MenuState.h" />
+    <ClInclude Include="MultiplayerGameState.h" />
+    <ClInclude Include="MultiplayerState.h" />
+    <ClInclude Include="Packets.h" />
+    <ClInclude Include="TestScene.h" />
+    <ClInclude Include="ThirdPersonUtilities.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Application.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Assets.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\CameraUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\CommonUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Components.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Console.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\DebugPanel.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\DungeonGen.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\EngineCore.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\FlexKitApplication.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GUIInputState.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GameFramework.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GraphicScene.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\GraphicsComponents.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Handle.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Intersection.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Logging.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Materials.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\MathUtils.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\NetworkUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\ProfilingUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\ThreadUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\Transforms.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\WorldRender.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\memoryutilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\signal.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\timeutilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\coreutilities\type.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\AnimationComponents.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\AnimationRuntimeUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\AnimationUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\CoreSceneObjects.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\DDSUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Fonts.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\FrameGraph.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Geometry.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\GuiUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\Meshutils.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\PipelineState.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\SSReflections.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TerrainRendering.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TextRendering.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TextureStreamingUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\TextureUtilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\defaultpipelinestates.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\graphicsutilities\graphics.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\physicsutilities\physicsutilities.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Client.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="GamePlay.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Host.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="LobbyGUI.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="MainMenu.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="MenuState.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="MultiplayerGameState.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="MultiplayerState.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Win64.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\shaders\ACC.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\BilateralBlur.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ClearRenderTarget.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ComputeAuto.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\CopyOut.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\DrawInstancedPShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\DrawInstancedVShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ForwardPassPShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\ForwardPassVShader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\FullscreenQuad.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\SSRCompute.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\StaticMeshBatcher.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\Temp.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextRendering.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextureFeedback.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\TextureFeedbackCompressor.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VPP.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\VSFullscreenQuad.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\common.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\computedeferredtiledshading.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\cshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\cullterrain.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\deferredRender.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\forwardRender.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\forwardRenderTerrain.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\forwardRenderTerrainDEBUG.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\gshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\imguiShaders.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\lightPass.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\pbr.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\pshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\tdshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\terrainRenderingCommon.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\texture2Cubemap.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\tgshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\thshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\tvshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\vshader.hlsl">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </FxCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="..\packages\Microsoft.UI.Xaml.2.4.2\build\native\Microsoft.UI.Xaml.targets" Condition="Exists('..\packages\Microsoft.UI.Xaml.2.4.2\build\native\Microsoft.UI.Xaml.targets')" />
+  </ImportGroup>
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('..\packages\Microsoft.UI.Xaml.2.4.2\build\native\Microsoft.UI.Xaml.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Microsoft.UI.Xaml.2.4.2\build\native\Microsoft.UI.Xaml.targets'))" />
+  </Target>
+</Project>

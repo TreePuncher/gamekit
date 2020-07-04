@@ -6,16 +6,33 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:winui="Windows::UI::XAML::Control::SwapChainBackgroundPanel"
-    mc:Ignorable="d">
+    mc:Ignorable="d" VerticalAlignment="Stretch"  Height="Auto" Width="Auto">
 
-    <Grid x:ConnectionId='2' Name="grid" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-       <SwapChainPanel x:ConnectionId='3' Name="swapChain" Width="800" Height="800">
-            <SwapChainPanel.ColumnDefinitions>
-                <ColumnDefinition Width="300*"/>
-                <ColumnDefinition Width="1069*"/>
-            </SwapChainPanel.ColumnDefinitions>
-        </SwapChainPanel>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
 
+        <StackPanel Orientation="Horizontal">
+            <AppBarButton Icon="Add" Scale="0.75, 0.75, 0.75" Height="40" Width="30"/>
+        </StackPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Vertical">
+                <AppBarButton x:ConnectionId='3' Icon="AttachCamera" Label="Attach Camera" Height="50"                     />
+                <AppBarButton Icon="AttachCamera" Label="Attach Camera" Height="50"/>
+            </StackPanel>
+
+            <Grid Grid.Column="2" Height="Auto" Width="Auto" VerticalAlignment="Stretch" HorizontalAlignment="Stretch">
+                <SwapChainPanel x:ConnectionId='2' Name="swapChain"                                     VerticalAlignment="Stretch" Height="Auto" Width="Auto"/>
+            </Grid>
+        </Grid>
     </Grid>
 </Page>
 

@@ -23,17 +23,12 @@ Release/
 *.obj
 *.pch
 *.pdb
-*.suo
 *.flooignore
 *.floo
 *.opendb
 *.ib_pdb_index
 *.ib_tag
 *.sdf
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
-*.sln
 /assets
 /hdrs
 *.ini
