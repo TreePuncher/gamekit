@@ -312,7 +312,7 @@ namespace FlexKit
 
 		XMView		= XMMatrixInverse(nullptr, XMWT);
 		XMProj		= CreatePerspective(this, invert);
-		XMPV		= XMMatrixTranspose(XMMatrixTranspose(XMProj)* XMView);
+		XMPV		= XMMatrixTranspose(XMMatrixTranspose(XMProj) * XMView);
 		XMIV		= XMMatrixTranspose(XMMatrixInverse(nullptr, XMMatrixTranspose(CreatePerspective(this, invert)) * XMView));
 		
 		WT		= XMMatrixToFloat4x4(&XMWT);

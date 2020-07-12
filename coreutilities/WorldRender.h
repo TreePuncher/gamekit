@@ -91,6 +91,9 @@ namespace FlexKit
     static const PSOHandle TEXTURE2CUBEMAP_GGX         = PSOHandle(GetTypeGUID(TEXTURE2CUBEMAP_GGX));
 
 
+    static const PSOHandle SHADOWMAPPASS                = PSOHandle(GetTypeGUID(SHADOWMAPPASS));
+
+
     /************************************************************************************************/
 
 
@@ -111,6 +114,9 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateBilaterialBlurHorizontalPSO  (RenderSystem* RS);
     ID3D12PipelineState* CreateBilaterialBlurVerticalPSO    (RenderSystem* RS);
+
+    ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS);
+
 
 
 	struct WorldRender_Targets
@@ -421,6 +427,7 @@ namespace FlexKit
         FrameResourceHandle		pointLightBufferObject;
 
         FrameResourceHandle     renderTargetObject;
+        FrameResourceHandle		pointLightShadowMapObject; // Temp
     };
 
 
@@ -469,6 +476,150 @@ namespace FlexKit
     /************************************************************************************************/
 
 
+    ID3D12PipelineState* CreateShadowMapPass(RenderSystem* RS)
+    {
+        auto DrawRectVShader = LoadShader("DepthPass_VS", "DepthPass_VS", "vs_5_0",	"assets\\shaders\\forwardRender.hlsl");
+
+        EXITSCOPE(Release(&DrawRectVShader));
+            
+
+        /*
+        typedef struct D3D12_INPUT_ELEMENT_DESC
+        {
+        LPCSTR SemanticName;
+        UINT SemanticIndex;
+        DXGI_FORMAT Format;
+        UINT InputSlot;
+        UINT AlignedByteOffset;
+        D3D12_INPUT_CLASSIFICATION InputSlotClass;
+        UINT InstanceDataStepRate;
+        } 	D3D12_INPUT_ELEMENT_DESC;
+        */
+
+        D3D12_INPUT_ELEMENT_DESC InputElements[] = {
+                { "POSITION",	0, DXGI_FORMAT::DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,	D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+        };
+
+
+        D3D12_RASTERIZER_DESC		Rast_Desc	= CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+        D3D12_DEPTH_STENCIL_DESC	Depth_Desc	= CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+        Depth_Desc.DepthFunc	= D3D12_COMPARISON_FUNC::D3D12_COMPARISON_FUNC_LESS;
+        Depth_Desc.DepthEnable	= true;
+
+        D3D12_GRAPHICS_PIPELINE_STATE_DESC	PSO_Desc = {}; {
+            PSO_Desc.pRootSignature        = RS->Library.RSDefault;
+            PSO_Desc.VS                    = DrawRectVShader;
+            PSO_Desc.RasterizerState       = Rast_Desc;
+            PSO_Desc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+            PSO_Desc.SampleMask            = UINT_MAX;
+            PSO_Desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE::D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+            PSO_Desc.NumRenderTargets      = 0;
+            PSO_Desc.SampleDesc.Count      = 1;
+            PSO_Desc.SampleDesc.Quality    = 0;
+            PSO_Desc.DSVFormat             = DXGI_FORMAT_D32_FLOAT;
+            PSO_Desc.InputLayout           = { InputElements, sizeof(InputElements)/sizeof(*InputElements) };
+            PSO_Desc.DepthStencilState     = Depth_Desc;
+            PSO_Desc.BlendState.RenderTarget[0].BlendEnable = false;
+        }
+
+        ID3D12PipelineState* PSO = nullptr;
+        auto HR = RS->pDevice->CreateGraphicsPipelineState(&PSO_Desc, IID_PPV_ARGS(&PSO));
+        FK_ASSERT(SUCCEEDED(HR));
+
+        return PSO;
+    }
+
+    struct ShadowMapPass_Desc
+    {
+        const GatherTask&               sceneSource;
+        ReserveConstantBufferFunction   reserveCB;
+        FrameResourceHandle             shadowMapTarget; // CubeMap?
+    };
+
+    inline ShadowMapPass_Desc& ShadowMapPass(
+        FrameGraph&                     frameGraph,
+        const GatherTask&               sceneSource,
+        ResourceHandle                  shadowMapTarget,
+        ReserveConstantBufferFunction   reserveCB,
+        double                          T)
+    {
+        frameGraph.Resources.AddRenderTarget(shadowMapTarget, 0, frameGraph.GetRenderSystem().GetObjectState(shadowMapTarget));
+
+        return frameGraph.AddNode<ShadowMapPass_Desc>(
+            ShadowMapPass_Desc{ sceneSource, reserveCB },
+            [&](FrameGraphNodeBuilder& builder, ShadowMapPass_Desc& data)
+            {
+                data.shadowMapTarget = builder.WriteDepthBuffer(shadowMapTarget);
+            },
+            [=](ShadowMapPass_Desc& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            {
+                const auto& drawables   = data.sceneSource.GetData().solid;
+                CBPushBuffer constantBuffer  = data.reserveCB(
+                    AlignedSize<Drawable::VConstantsLayout>() * drawables.size() +
+                    AlignedSize<Camera::ConstantBuffer>());
+
+                auto& pointLights = PointLightComponent::GetComponent();
+                if (!pointLights.elements.size())
+                    return;
+
+                auto& light = pointLights.elements.front();
+                const float3 Position = FlexKit::GetPositionW(light.componentData.Position);
+
+                /*
+                const XMMATRIX ViewI          = DirectX::XMMatrixMultiply(
+                    DirectX::XMMatrixTranslation(Position.x, Position.y, Position.z),
+                    DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationRollPitchYaw(0, -pi / 2, 0)));
+                */
+                const XMMATRIX ViewI          = DirectX::XMMatrixTranslation(Position.x, Position.y, Position.z) * DirectX::XMMatrixRotationRollPitchYaw(0, T, 0);
+                const XMMATRIX View           = DirectX::XMMatrixInverse(nullptr, ViewI);
+                const XMMATRIX perspective    = DirectX::XMMatrixPerspectiveFovRH(pi/2, 1, 0.1, 1000);
+                const XMMATRIX PV             = XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
+
+                ctx.ClearDepthBuffer(resources.GetRenderTarget(data.shadowMapTarget), 1.0f);
+
+                ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.shadowMapTarget) });
+                ctx.SetRenderTargets(
+                    {},
+                    true,
+                    resources.GetTexture(data.shadowMapTarget));
+
+                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetPipelineState(resources.GetPipelineState(SHADOWMAPPASS));
+                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+
+                Camera::ConstantBuffer  cameraBuffer;
+
+                cameraBuffer.View   = XMMatrixToFloat4x4(View);
+                cameraBuffer.ViewI  = XMMatrixToFloat4x4(ViewI);
+                cameraBuffer.PV     = XMMatrixToFloat4x4(PV).Transpose();
+                cameraBuffer.FOV    = 1.0f;
+                cameraBuffer.Proj   = XMMatrixToFloat4x4(perspective).Transpose();
+
+                ConstantBufferDataSet   cameraConstants{ cameraBuffer, constantBuffer };
+
+                ctx.SetGraphicsConstantBufferView(0, cameraConstants);
+
+                for(auto& drawable : drawables)
+                {
+                    ConstantBufferDataSet localConstants{ drawable.D->GetConstants(), constantBuffer };
+                    auto* const triMesh = GetMeshResource(drawable.D->MeshHandle);
+
+                    ctx.SetGraphicsConstantBufferView(1, localConstants);
+
+                    ctx.AddIndexBuffer(triMesh);
+                    ctx.AddVertexBuffers(triMesh,
+                        { VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION,
+                        });
+
+                    ctx.DrawIndexedInstanced(triMesh->IndexCount);
+                }
+            });
+    }
+
+
+    /************************************************************************************************/
+
+
 	class FLEXKITAPI WorldRender
 	{
 	public:
@@ -497,6 +648,8 @@ namespace FlexKit
             RS_IN.RegisterPSOLoader(BILATERALBLURPASSHORIZONTAL,{ &RS_IN.Library.RSDefault,         CreateBilaterialBlurHorizontalPSO });
             RS_IN.RegisterPSOLoader(BILATERALBLURPASSVERTICAL,  { &RS_IN.Library.RSDefault,         CreateBilaterialBlurVerticalPSO   });
 
+            RS_IN.RegisterPSOLoader(SHADOWMAPPASS,{ &RS_IN.Library.RSDefault, CreateShadowMapPass });
+
             RS_IN.QueuePSOLoad(GBUFFERPASS);
             RS_IN.QueuePSOLoad(GBUFFERPASS_SKINNED);
             RS_IN.QueuePSOLoad(DEPTHPREPASS);
@@ -507,6 +660,7 @@ namespace FlexKit
             RS_IN.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
             RS_IN.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
             RS_IN.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
+            RS_IN.QueuePSOLoad(SHADOWMAPPASS);
 
             RS_IN.SetDebugName(tempBuffer,        "tempBuffer");
             RS_IN.SetDebugName(lightLists,        "lightLists");
@@ -625,6 +779,7 @@ namespace FlexKit
             GBuffer&                        gbuffer,
             ResourceHandle                  depthTarget,
             ResourceHandle                  renderTarget,
+            ResourceHandle                  shadowMap,
             LightBufferUpdate&              lightPass,
             ReserveConstantBufferFunction   reserveCB,
             ReserveVertexBufferFunction     reserveVB,

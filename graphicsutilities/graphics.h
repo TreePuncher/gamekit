@@ -3221,6 +3221,7 @@ private:
 		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
 		ResourceHandle			CreateDepthBuffer				(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
+		ResourceHandle			CreateDepthBufferArray			(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const bool virtualRes = false);
 		ResourceHandle			CreateGPUResource			    (const GPUResourceDesc& desc);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
 		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);

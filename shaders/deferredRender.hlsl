@@ -12,6 +12,9 @@ cbuffer LocalConstants : register(b1)
     float2  WH;
     float   Time;
     float   lightCount;
+
+	float4x4 pl_ViewI;
+	float4x4 pl_PV;
 }
 
 Texture2D<float4> AlbedoBuffer      : register(t0);
@@ -21,6 +24,7 @@ Texture2D<float4> TangentBuffer     : register(t3);
 Texture2D<float>  DepthBuffer       : register(t4);
 
 ByteAddressBuffer pointLights       : register(t7);
+Texture2D<float> shadowMap   		: register(t8);
 
 sampler BiLinear     : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
@@ -419,26 +423,27 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
     const float3 positionW 	= GetWorldSpacePosition(UV, depth);
 
-    float roughness     = Albedo.a;
+    float roughness     = 1.0f;//Albedo.a;
     float ior           = 1.0;//IOR_ANISO.x;
     float anisotropic   = 0.0;//IOR_ANISO.y;
-	float metallic      = 1.0;//Specular.w;
+	float metallic      = 0.0;//Specular.w;
 	float3 albedo       = Albedo.rgb;
     
 
     float3 color = 0;
-    for(float I; I < lightCount; I++)
+    for(float I = 0; I < 1; I++)
     {
         PointLight light = ReadPointLight(I);
 
         const float3 Lc			= light.KI.rgb;
         const float  Ld			= length(positionW - light.PR.xyz);
-        const float  Li			= light.KI.w;
-        const float  Lr			= light.PR.w;
+        const float  Li			= light.KI.w * 10;
+        const float  Lr			= light.PR.w * 100;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * saturate(1 - (pow(Ld, 10) / pow(Lr, 10)));
 
-        // Compute tangent space vectors
+		/*
+		// Compute tangent space vectors
         const float3 worldV = -rayDir;
         const float3 worldL = normalize(light.PR.xyz - positionW);
         const float3x3 inverseTBN = float3x3(T, B, N.xyz);
@@ -455,6 +460,22 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
         const float3 specular   = EricHeitz2018GGX(V, L, albedo, metallic, roughness, anisotropic, ior);
 
         color += saturate((diffuse * Kd + specular * Ks) * La);
+		*/
+
+		const float4 lightPosition_DC 	= mul(pl_PV, float4(positionW.xyz, 1));
+		const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
+		const float2 shadowMapUV 	  	= float2( lightPosition_PS.x / 2 + 0.5f, 0.5f - lightPosition_PS.y / 2);
+		const float shadowSample 		= shadowMap.Sample(BiLinear, shadowMapUV.xy);
+		const float depth 				= lightPosition_PS.z;
+
+		if( lightPosition_DC.a < 0.0f  || 
+			lightPosition_PS.x > 1.0f || lightPosition_PS.x < -1.0f ||
+			lightPosition_PS.y > 1.0f || lightPosition_PS.y < -1.0f )
+			continue;
+
+		const float4 lightPosition_VS = mul(pl_ViewI, float4(positionW, 1));
+		const float3 L = normalize(light.PR.xyz - positionW);
+		color += depth - shadowSample > 0.0001f ? 0.0f : saturate(dot(N.xyz, L) * La / PI);
     }
 
     return float4(color, 1);

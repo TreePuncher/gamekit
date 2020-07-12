@@ -121,6 +121,7 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                 uint2           WH;
                 DeviceFormat    format;
 
+                /*
                 Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, mipCount, WH, format, allocator);
                 base.GGXMap = MoveTextureBuffersToVRAM(
                     renderSystem,
@@ -139,14 +140,17 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                     6,
                     format);
 
+
+                renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
+                renderSystem.SetDebugName(base.GGXMap, "GGX Map");
+                */
+
                 SetupTestScene(
                     gameState.scene,
                     app.GetFramework().GetRenderSystem(),
                     app.GetCore().GetBlockMemory(),
                     testPattern1, testPattern2, upload);
 
-                renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
-                renderSystem.SetDebugName(base.GGXMap, "GGX Map");
                 renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
             }
             else

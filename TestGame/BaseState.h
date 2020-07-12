@@ -159,15 +159,17 @@ public:
 	BaseState(	
 		GameFramework& IN_Framework,
 		FKApplication& IN_App	) :
-			App				{ IN_App },
-			FrameworkState	{ IN_Framework },
-			depthBuffer		{ IN_Framework.core.RenderSystem.CreateDepthBuffer(renderWindow.GetWH(),	true) },
+			App				    { IN_App },
+			FrameworkState	    { IN_Framework },
+			depthBuffer		    { IN_Framework.core.RenderSystem.CreateDepthBuffer(renderWindow.GetWH(),	true) },
 
-			vertexBuffer	{ IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
-			constantBuffer	{ IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
-			asEngine		{ asCreateScriptEngine() },
-			streamingEngine	{ IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
-            sounds          { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
+			vertexBuffer	    { IN_Framework.core.RenderSystem.CreateVertexBuffer(MEGABYTE * 1, false) },
+			constantBuffer	    { IN_Framework.core.RenderSystem.CreateConstantBuffer(MEGABYTE * 128, false) },
+			asEngine		    { asCreateScriptEngine() },
+			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
+            sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
+
+            pointLightShadowMap { IN_Framework.core.RenderSystem.CreateDepthBufferArray({ 128, 128 }, true, 6) },
 
             renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
 
@@ -204,9 +206,6 @@ public:
 		RS.QueuePSOLoad(DRAW_LINE3D_PSO);
 		RS.QueuePSOLoad(DRAW_TEXTURED_DEBUG_PSO);
 
-        uint2	WindowRect = renderWindow.GetWH();
-        float	Aspect = (float)WindowRect[0] / (float)WindowRect[1];
-
         EventNotifier<>::Subscriber sub;
         sub.Notify = &EventsWrapper;
         sub._ptr = &framework;
@@ -219,8 +218,6 @@ public:
 		framework.GetRenderSystem().ReleaseVB(vertexBuffer);
 		framework.GetRenderSystem().ReleaseCB(constantBuffer);
         framework.GetRenderSystem().ReleaseTexture(depthBuffer);
-        framework.GetRenderSystem().ReleaseTexture(irradianceMap);
-        framework.GetRenderSystem().ReleaseTexture(GGXMap);
 
         renderWindow.Release();
 	}
@@ -267,8 +264,7 @@ public:
 
 
     // Scene Resources
-    ResourceHandle             irradianceMap;
-    ResourceHandle             GGXMap;
+    ResourceHandle             pointLightShadowMap;
 
     // render resources
     Win32RenderWindow           renderWindow;

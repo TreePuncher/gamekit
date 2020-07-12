@@ -3895,6 +3895,27 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    ResourceHandle RenderSystem::CreateDepthBufferArray(
+        const uint2     WH,
+        const bool      UseFloat,
+        const size_t    arraySize,
+        const bool      buffered,
+        const bool      virtualRes)
+    {
+        auto desc       = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
+        desc.arraySize  = arraySize;
+        desc.Virtual    = virtualRes;
+
+        auto resource   = CreateGPUResource(desc);
+        SetDebugName(resource, "DepthBufferArray");
+
+        return resource;
+    }
+
+
 	/************************************************************************************************/
 
 
