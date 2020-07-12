@@ -39,6 +39,7 @@ Texture2D<float4>		        MRIATexture     : register(t4);
 StructuredBuffer<uint>		    lightLists	    : register(t5);
 ByteAddressBuffer               pointLights     : register(t6);
 
+
 sampler BiLinear : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
 

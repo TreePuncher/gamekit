@@ -1510,6 +1510,7 @@ namespace FlexKit
         GBuffer&                        gbuffer,
         ResourceHandle                  depthTarget,
         ResourceHandle                  renderTarget,
+        ResourceHandle                  shadowMap,
         LightBufferUpdate&              lightPass,
         ReserveConstantBufferFunction   reserveCB,
         ReserveVertexBufferFunction     reserveVB,
@@ -1552,6 +1553,8 @@ namespace FlexKit
 
                 data.passConstants = reserveCB(6 * KILOBYTE);
                 data.passVertices  = reserveVB(sizeof(float4) * 6);
+
+                data.pointLightShadowMapObject  = builder.ReadShaderResource(shadowMap);
             },
             [camera = sceneDescription.camera, renderTarget, t]
             (TiledDeferredShade& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
@@ -1572,12 +1575,26 @@ namespace FlexKit
                 const auto WH               = resources.renderSystem.GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
 
+                if (!pointLights.elements.size())
+                    return;
+
+                auto& light                      = pointLights.elements.front();
+                const float3 pointLightPosition   = FlexKit::GetPositionW(light.componentData.Position);
+
+                const XMMATRIX ViewI          = DirectX::XMMatrixTranslation(pointLightPosition.x, pointLightPosition.y, pointLightPosition.z) * DirectX::XMMatrixRotationRollPitchYaw(0, t, 0);
+                const XMMATRIX View           = DirectX::XMMatrixInverse(nullptr, ViewI);
+                const XMMATRIX perspective    = DirectX::XMMatrixPerspectiveFovRH(pi/2, 1, 0.1, 1000);
+                const XMMATRIX PV             = XMMatrixTranspose(perspective) * XMMatrixTranspose(View);
+
                 struct
                 {
                     float2  WH;
                     float   time;
                     float   lightCount;
-                }passConstants = { {(float)WH[0], (float)WH[1]}, t, data.pointLightHandles->size() };
+                    float4x4 ViewI;
+                    float4x4 PV;
+                }passConstants = { {(float)WH[0], (float)WH[1]}, t, 1, XMMatrixToFloat4x4(ViewI), XMMatrixToFloat4x4(PV).Transpose() };
+                    //}passConstants = { {(float)WH[0], (float)WH[1]}, t, data.pointLightHandles->size() };
 
                 struct
                 {
@@ -1601,6 +1618,7 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 3, resources.GetTexture(data.TangentTargetObject));
                 descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
                 descHeap.SetSRV(ctx, 7, resources.ReadUAVBuffer(data.pointLightBufferObject, DRS_ShaderResource, &ctx));
+                descHeap.SetSRV(ctx, 8, resources.GetTexture(data.pointLightShadowMapObject), DeviceFormat::R32_FLOAT);
                 //descHeap.NullFill(ctx, 20);
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);

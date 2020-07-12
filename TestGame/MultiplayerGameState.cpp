@@ -204,6 +204,8 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveCB,
                 core.GetTempMemory());
 
+            auto& shadowMapPass = ShadowMapPass(frameGraph, PVS, base.pointLightShadowMap, reserveCB, base.t);
+
             auto& lightPass = base.render.UpdateLightBuffers(
                 dispatcher,
                 frameGraph,
@@ -250,7 +252,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 frameGraph,
                 sceneDesc,
                 pointLightGather,
-                base.gbuffer, base.depthBuffer, targets.RenderTarget, lightPass,
+                base.gbuffer, base.depthBuffer, targets.RenderTarget, base.pointLightShadowMap, lightPass,
                 reserveCB, reserveVB,
                 base.t,
                 core.GetTempMemory());
@@ -457,9 +459,6 @@ bool LocalPlayerState::EventHandler(Event evt)
                     framework.core.RenderSystem.QueuePSOLoad(LIGHTPREPASS);
                     framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
                     framework.core.RenderSystem.QueuePSOLoad(ENVIRONMENTPASS);
-                    framework.core.RenderSystem.QueuePSOLoad(COMPUTETILEDSHADINGPASS);
-                    framework.core.RenderSystem.QueuePSOLoad(BILATERALBLURPASSHORIZONTAL);
-                    framework.core.RenderSystem.QueuePSOLoad(BILATERALBLURPASSVERTICAL);
                 }
             }   return true;
             case KC_P: // Reload Shaders
