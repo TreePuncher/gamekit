@@ -9,6 +9,8 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
+#pragma comment(lib, "Winmm.lib")
+
     struct Win32RenderWindow;
 
     // Globals
@@ -121,7 +123,7 @@ namespace FlexKit
 
         MouseInputState UpdateCapturedMouseInput(double dT)
         {
-            const double updateFreq = 1.0f / 45.0f;
+            const double updateFreq = 1.0f / 50.0f;
 
             if (mouseCapture)
             {
@@ -344,6 +346,7 @@ namespace FlexKit
             CREATESTRUCT* CreateStruct = (CREATESTRUCT*)lParam;
             eventHandler = (EventNotifier<>*)CreateStruct->lpCreateParams;
             SetWindowLongPtr(hWnd, GWLP_USERDATA, (LONG_PTR)eventHandler);
+            auto res = timeBeginPeriod(1);
         }
 
         eventHandler = (EventNotifier<>*)GetWindowLongPtr(hWnd, GWLP_USERDATA);

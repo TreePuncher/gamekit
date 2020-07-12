@@ -2329,7 +2329,9 @@ namespace FlexKit
 
     Context& Context::Reset()
 	{
-		commandAllocator->Reset();
+        if(FAILED(commandAllocator->Reset()))
+            __debugbreak();
+
 		DeviceContext->Reset(commandAllocator, nullptr);
 
 		_ResetDSV();
@@ -3116,7 +3118,9 @@ namespace FlexKit
 
 		Wait(CopyContextHandle{ currentIdx });
 
-		ctx.commandAllocator->Reset();
+        if (FAILED(ctx.commandAllocator->Reset()))
+            __debugbreak();
+
 		ctx.commandList->Reset(ctx.commandAllocator, nullptr);
 
         /*

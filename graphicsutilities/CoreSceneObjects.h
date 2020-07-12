@@ -61,8 +61,7 @@ namespace FlexKit
 
 			constexpr static const size_t GetBufferSize()
 			{
-				//return sizeof(BufferLayout);	
-				return 4096;	
+				return sizeof(ConstantBuffer);
 			}
 
 		};

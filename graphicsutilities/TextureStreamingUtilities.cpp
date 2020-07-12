@@ -428,7 +428,7 @@ namespace FlexKit
 
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
                 ctx.ClearDepthBuffer(resources.GetRenderTarget(data.feedbackDepth), 1.0f);
-                ctx.ClearUAVTexture(resources.GetUAVTextureResource(data.feedbackPPLists), uint4{ (uint32_t)-1, (uint32_t)-1, (uint32_t)-1, (uint32_t)-1 });
+                //ctx.ClearUAVTexture(resources.GetUAVTextureResource(data.feedbackPPLists), uint4{ (uint32_t)-1, (uint32_t)-1, (uint32_t)-1, (uint32_t)-1 });
 
                 ctx.SetScissorAndViewports({ resources.GetRenderTarget(data.feedbackDepth) });
                 ctx.SetRenderTargets({}, true, resources.GetRenderTarget(data.feedbackDepth));
@@ -498,7 +498,6 @@ namespace FlexKit
                 ctx.SetGraphicsConstantBufferView(0, cameraConstants);
                 ctx.SetGraphicsConstantBufferView(2, passConstants);
                 ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKPASS));
-
 
                 TriMesh* prevMesh = nullptr;
                 MaterialHandle prevMaterial = InvalidHandle_t;
@@ -573,7 +572,6 @@ namespace FlexKit
                     uavHeap3.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
                     uavHeap3.SetUAV(ctx, 4, resources.GetUAVBufferResource(data.feedbackOutputTemp));
                     uavHeap3.SetUAV(ctx, 5, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
-
 
                     ctx.SetComputeDescriptorTable(4, uavHeap3);
                     ctx.Dispatch({ 256 / 32, 256 / 64, 1 });

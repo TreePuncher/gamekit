@@ -46,6 +46,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "MultiplayerState.cpp"
 #include "MultiplayerGameState.cpp"
+#include "playgroundmode.hpp"
 
 #include "allsourcefiles.cpp"
 
@@ -58,7 +59,6 @@ int main(int argc, char* argv[])
     {
         Client,
         Host,
-        TextureStreamingTestMode,
         TextureStreamTestMode,
         ACCTestMode,
         PlaygroundMode,
@@ -163,6 +163,10 @@ int main(int argc, char* argv[])
             AddAssetFile("assets\\DemonGirl.gameres");
 
             StartTestState(app, base, TestScenes::GlobalIllumination);
+        }   break;
+        case ApplicationMode::PlaygroundMode:
+        {
+
         }   break;
         case ApplicationMode::ACCTestMode:
         {

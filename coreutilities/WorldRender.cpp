@@ -857,6 +857,8 @@ namespace FlexKit
         ReserveVertexBufferFunction     reserveVB,
         iAllocator*                     allocator)
     {
+        FK_ASSERT(0);
+
         auto& pass = frameGraph.AddNode<BackgroundEnvironmentPass>(
             BackgroundEnvironmentPass{},
             [&](FrameGraphNodeBuilder& builder, BackgroundEnvironmentPass& data)
@@ -867,13 +869,13 @@ namespace FlexKit
                 data.renderTargetObject             = builder.WriteRenderTarget(renderTarget);
                 data.passConstants                  = reserveCB(6 * KILOBYTE);
                 data.passVertices                   = reserveVB(sizeof(float4) * 6);
-                data.diffuseMap                     = hdrMap;
+                //data.diffuseMap                     = hdrMap;
             },
             [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& tempAllocator)
             {
                 DescriptorHeap descHeap;
                 descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 20, &tempAllocator);
-                descHeap.SetSRV(ctx, 6, data.diffuseMap);
+                //descHeap.SetSRV(ctx, 6, data.diffuseMap);
                 descHeap.NullFill(ctx, 20);
 
                 auto& renderSystem          = frameResources.renderSystem;
@@ -926,8 +928,6 @@ namespace FlexKit
         const CameraHandle              camera,
         const ResourceHandle            renderTarget,
         const ResourceHandle            depthTarget,
-        const ResourceHandle            diffuseMap,
-        const ResourceHandle            GGXMap,
         GBuffer&                        gbuffer,
         ReserveConstantBufferFunction   reserveCB,
         ReserveVertexBufferFunction     reserveVB,
@@ -952,9 +952,6 @@ namespace FlexKit
 
                 data.passConstants  = reserveCB(6 * KILOBYTE);
                 data.passVertices   = reserveVB(sizeof(float4) * 6);
-
-                data.diffuseMap = diffuseMap;
-                data.GGX        = GGXMap;
             },
             [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& allocator)
             {
@@ -991,9 +988,7 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.NormalTargetObject));
                 descHeap.SetSRV(ctx, 3, frameResources.GetTexture(data.TangentTargetObject));
                 descHeap.SetSRV(ctx, 4, frameResources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
-                descHeap.SetSRVCubemap(ctx, 5, data.GGX);
-                descHeap.SetSRVCubemap(ctx, 6, data.diffuseMap);
-                //descHeap.NullFill(ctx, 20);
+                descHeap.NullFill(ctx, 20);
 
                 ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
                 ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
@@ -1233,11 +1228,9 @@ namespace FlexKit
 
         auto& lightBufferData = graph.AddNode<LightBufferUpdate>(
             LightBufferUpdate{
-                    Vector<GPUPointLight>(tempMemory, 1024),
                     &sceneDescription.lights.GetData().pointLights,
-                    ReserveUploadBuffer(graph.GetRenderSystem(), 1024 * sizeof(GPUPointLight)),// max point light count of 1024
                     camera,
-                    reserveCB(2 * KILOBYTE),
+                    reserveCB,
             },
             [&, this](FrameGraphNodeBuilder& builder, LightBufferUpdate& data)
             {
@@ -1245,7 +1238,6 @@ namespace FlexKit
                 data.lightListObject	= builder.ReadWriteUAV(lightLists,		 DRS_UAV);
                 data.lightBufferObject	= builder.ReadWriteUAV(pointLightBuffer, DRS_Write);
                 data.camera				= camera;
-
 
                 builder.AddDataDependency(sceneDescription.lights);
                 builder.AddDataDependency(sceneDescription.cameras);
@@ -1267,22 +1259,39 @@ namespace FlexKit
                     (uint32_t)data.pointLightHandles->size()
                 };
 
-                ConstantBufferDataSet constants{ constantsValues, data.constants };
                 PointLightComponent& pointLights = PointLightComponent::GetComponent();
+
+                CBPushBuffer    constantBuffer = data.reserveCB(
+                    AlignedSize( sizeof(FlexKit::GPUPointLight) * data.pointLightHandles->size() ) +
+                    AlignedSize<ConstantsLayout>()
+                );
+
+                ConstantBufferDataSet constants{ constantsValues, constantBuffer };
+
+                Vector<FlexKit::GPUPointLight> pointLightValues{ &allocator };
 
                 for (const auto light : *data.pointLightHandles)
                 {
                     PointLight pointLight	= pointLights[light];
                     float3 position			= GetPositionW(pointLight.Position);
 
-                    data.pointLights.push_back(
+                    pointLightValues.push_back(
                         {	{ pointLight.K, pointLight.I	},
                             { position, pointLight.R        } });
                 }
 
-                const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
-                MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)data.pointLights.begin(), uploadSize);
-                ctx.CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.lightBufferObject, &ctx));
+                const size_t uploadSize = pointLightValues.size() * sizeof(GPUPointLight);
+                ConstantBufferDataSet pointLights_GPU{ (char*)pointLightValues.data(), uploadSize, constantBuffer };
+
+                ctx.CopyBufferRegion(
+                    { resources.GetObjectResource(pointLights_GPU.Handle()) },
+                    { pointLights_GPU.Offset() },
+                    { resources.GetObjectResource(resources.WriteUAV(data.lightBufferObject, &ctx)) },
+                    { 0 },
+                    { uploadSize },
+                    { DRS_Write },
+                    { DRS_Write }
+                );
 
                 DescriptorHeap descHeap;
                 descHeap.Init(ctx, resources.renderSystem.Library.ComputeSignature.GetDescHeap(0), &allocator);
@@ -1324,7 +1333,7 @@ namespace FlexKit
                 gbuffer,
                 sceneDescription.PVS.GetData().solid,
                 sceneDescription.skinned.GetData().skinned,
-                reserveCB
+                reserveCB,
             },
             [&](FrameGraphNodeBuilder& builder, GBufferPass& data)
             {
@@ -1336,7 +1345,6 @@ namespace FlexKit
                 data.MRIATargetObject        = builder.WriteRenderTarget(gbuffer.MRIA);
                 data.NormalTargetObject      = builder.WriteRenderTarget(gbuffer.normal);
                 data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.tangent);
-                //data.feedbackTargetObject    = builder.WriteRenderTarget(gbuffer.textureFeedback);
                 data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
             },
             [camera](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
@@ -1379,7 +1387,6 @@ namespace FlexKit
                         data.gbuffer.MRIA,
                         data.gbuffer.normal,
                         data.gbuffer.tangent,
-                        //data.gbuffer.textureFeedback,
                     });
 
                 RenderTargetList renderTargets = {
@@ -1387,7 +1394,6 @@ namespace FlexKit
                     resources.GetTexture(data.MRIATargetObject),
                     resources.GetTexture(data.NormalTargetObject),
                     resources.GetTexture(data.TangentTargetObject),
-                    //resources.GetTexture(data.feedbackTargetObject),
                 };
 
 
@@ -1417,10 +1423,12 @@ namespace FlexKit
                         resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
                         &allocator);
 
-                    for(size_t I = 0; I < min(material.Textures.size(), 4); I++)
-                        descHeap.SetSRV(ctx, I, material.Textures[I]);
+                    if(material.Textures.size())
+                        for(size_t I = 0; I < min(material.Textures.size(), 4); I++)
+                            descHeap.SetSRV(ctx, I, material.Textures[I]);
+                    else
+                        descHeap.SetSRV(ctx, 0, resources.renderSystem.DefaultTexture);
 
-                    descHeap.SetSRV(ctx, 4, resources.renderSystem.DefaultTexture);
                     descHeap.NullFill(ctx);
 
                     ctx.SetGraphicsDescriptorTable(0, descHeap);
@@ -1502,8 +1510,7 @@ namespace FlexKit
         GBuffer&                        gbuffer,
         ResourceHandle                  depthTarget,
         ResourceHandle                  renderTarget,
-        ResourceHandle                  GGXSpecularMap,
-        ResourceHandle                  diffuseMap,
+        LightBufferUpdate&              lightPass,
         ReserveConstantBufferFunction   reserveCB,
         ReserveVertexBufferFunction     reserveVB,
         float                           t,
@@ -1521,7 +1528,7 @@ namespace FlexKit
             TiledDeferredShade{
                 gbuffer,
                 gather,
-                ReserveUploadBuffer(frameGraph.GetRenderSystem(), 1024 * sizeof(GPUPointLight)),// max point light count of 1024
+                lightPass
             },
             [&](FrameGraphNodeBuilder& builder, TiledDeferredShade& data)
             {
@@ -1546,7 +1553,7 @@ namespace FlexKit
                 data.passConstants = reserveCB(6 * KILOBYTE);
                 data.passVertices  = reserveVB(sizeof(float4) * 6);
             },
-            [camera = sceneDescription.camera, renderTarget, diffuseMap, GGXSpecularMap, t]
+            [camera = sceneDescription.camera, renderTarget, t]
             (TiledDeferredShade& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
             {
                 PointLightComponent& pointLights = PointLightComponent::GetComponent();
@@ -1561,22 +1568,16 @@ namespace FlexKit
                             { position, 2000    } });
                 }
 
-                const size_t uploadSize = data.pointLights.size() * sizeof(GPUPointLight);
-                MoveBuffer2UploadBuffer(data.lightBuffer, (byte*)data.pointLights.begin(), uploadSize);
-                ctx.CopyBuffer(data.lightBuffer, uploadSize, resources.WriteUAV(data.pointLightBufferObject, &ctx));
-
                 auto& renderSystem          = resources.renderSystem;
                 const auto WH               = resources.renderSystem.GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
-
 
                 struct
                 {
                     float2  WH;
                     float   time;
                     float   lightCount;
-                }passConstants = { {(float)WH[0], (float)WH[1]}, t, (float)data.pointLights.size() };
-
+                }passConstants = { {(float)WH[0], (float)WH[1]}, t, data.pointLightHandles->size() };
 
                 struct
                 {
@@ -1592,7 +1593,6 @@ namespace FlexKit
                     float4( 1,  -1, 0, 1),
                 };
 
-
                 DescriptorHeap descHeap;
                 descHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 20, &allocator);
                 descHeap.SetSRV(ctx, 0, resources.GetTexture(data.AlbedoTargetObject));
@@ -1600,20 +1600,19 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 2, resources.GetTexture(data.NormalTargetObject));
                 descHeap.SetSRV(ctx, 3, resources.GetTexture(data.TangentTargetObject));
                 descHeap.SetSRV(ctx, 4, resources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
-                descHeap.SetSRV(ctx, 5, GGXSpecularMap);
-                descHeap.SetSRV(ctx, 6, diffuseMap);
                 descHeap.SetSRV(ctx, 7, resources.ReadUAVBuffer(data.pointLightBufferObject, DRS_ShaderResource, &ctx));
-                descHeap.NullFill(ctx, 20);
+                //descHeap.NullFill(ctx, 20);
 
                 ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
                 ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
+                ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
 
                 ctx.SetScissorAndViewports({ renderTarget });
                 ctx.SetRenderTargets({ resources.GetTexture({ data.renderTargetObject })}, false, {});
                 ctx.SetVertexBuffers({ VertexBufferDataSet{ vertices, data.passVertices } });
                 ctx.SetGraphicsConstantBufferView(0, ConstantBufferDataSet{ cameraConstants, data.passConstants });
                 ctx.SetGraphicsConstantBufferView(1, ConstantBufferDataSet{ passConstants, data.passConstants });
-                ctx.SetGraphicsDescriptorTable(4, descHeap);
+                ctx.SetGraphicsDescriptorTable(3, descHeap);
 
                 ctx.Draw(6);
             });
