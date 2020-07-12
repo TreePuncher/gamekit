@@ -12,6 +12,7 @@ inline void SetupTestScene(
     GUID_t                  texture2,
     CopyContextHandle       copyContext)
 {
+    /*
     const AssetHandle demonModel = 666;
 
     // Load Model
@@ -63,11 +64,13 @@ inline void SetupTestScene(
 	}
 
     materials.ReleaseMaterial(material);
+    */
 }
 
 
 enum class TestScenes
 {
+    LocalIllumination,
 	GlobalIllumination,
 	ShadowTestScene,
     PhysXTest,
@@ -109,41 +112,49 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 			auto& renderSystem          = framework.GetRenderSystem();
 			CopyContextHandle upload    = renderSystem.OpenUploadQueue();
 
+            if(0)
+            {
+                auto testPattern1       = 8001;
+                auto testPattern2       = 8002;
 
-            auto testPattern1       = 8001;
-            auto testPattern2       = 8002;
+                size_t          mipCount;
+                uint2           WH;
+                DeviceFormat    format;
 
-            size_t          mipCount;
-            uint2           WH;
-            DeviceFormat    format;
+                Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, mipCount, WH, format, allocator);
+                base.GGXMap = MoveTextureBuffersToVRAM(
+                    renderSystem,
+                    upload,
+                    radiance.begin(),
+                    mipCount,
+                    6,
+                    format);
 
-            Vector<TextureBuffer> radiance   = LoadCubeMapAsset(2, mipCount, WH, format, allocator);
-            base.GGXMap = MoveTextureBuffersToVRAM(
-                renderSystem,
-                upload,
-                radiance.begin(),
-                mipCount,
-                6,
-                format);
+                Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, mipCount, WH, format, allocator);
+                base.irradianceMap = MoveTextureBuffersToVRAM(
+                    renderSystem,
+                    upload,
+                    irradience.begin(),
+                    mipCount,
+                    6,
+                    format);
 
-            Vector<TextureBuffer> irradience = LoadCubeMapAsset(1, mipCount, WH, format, allocator);
-            base.irradianceMap = MoveTextureBuffersToVRAM(
-                renderSystem,
-                upload,
-                irradience.begin(),
-                mipCount,
-                6,
-                format);
+                SetupTestScene(
+                    gameState.scene,
+                    app.GetFramework().GetRenderSystem(),
+                    app.GetCore().GetBlockMemory(),
+                    testPattern1, testPattern2, upload);
 
-            SetupTestScene(
-                gameState.scene,
-                app.GetFramework().GetRenderSystem(),
-                app.GetCore().GetBlockMemory(),
-                testPattern1, testPattern2, upload);
-
-			renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
-			renderSystem.SetDebugName(base.GGXMap,        "GGX Map");
-			renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
+                renderSystem.SetDebugName(base.irradianceMap, "irradiance Map");
+                renderSystem.SetDebugName(base.GGXMap, "GGX Map");
+                renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
+            }
+            else
+            {
+                const AssetHandle ShadowScene = 202;
+                AddAssetFile("assets\\ShadowTestScene.gameres");
+                FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
+            }
 
             state.loaded = true;
 		};
@@ -153,6 +164,10 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
 	switch (scene)
 	{
+    case TestScenes::LocalIllumination:
+        AddAssetFile("assets\\ShadowTestScene.gameres");
+
+        break;
 	case TestScenes::GlobalIllumination:
 		break;
 	case TestScenes::ShadowTestScene:

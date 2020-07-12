@@ -184,15 +184,12 @@ namespace FlexKit
 
 	struct LightBufferUpdate 
 	{
-		Vector<GPUPointLight>		    pointLights;
 		const Vector<PointLightHandle>*	pointLightHandles;
-        UploadSegment			        lightBuffer;	// immediate update
 
-		CameraHandle			camera;
+		CameraHandle			        camera;
+        ReserveConstantBufferFunction   reserveCB;
 
-		CBPushBuffer			constants;
 		ResourceHandle			lightListBuffer;
-
 		FrameResourceHandle		lightListObject;
 		FrameResourceHandle		lightBufferObject;
 	};
@@ -358,7 +355,7 @@ namespace FlexKit
         const PVS&                  pvs;
         const PosedDrawableList&    skinned;
 
-        ReserveConstantBufferFunction reserveCB;
+        ReserveConstantBufferFunction   reserveCB;
 
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
@@ -372,9 +369,6 @@ namespace FlexKit
 
     struct BackgroundEnvironmentPass
     {
-        ResourceHandle      diffuseMap;
-        ResourceHandle      GGX;
-
         FrameResourceHandle AlbedoTargetObject;     // RGBA8
         FrameResourceHandle NormalTargetObject;     // RGBA16Float
         FrameResourceHandle MRIATargetObject;
@@ -411,7 +405,7 @@ namespace FlexKit
     {
         GBuffer&                gbuffer;
         PointLightGatherTask&   lights;
-        UploadSegment			lightBuffer;	// immediate update
+        LightBufferUpdate&      lightPass;
 
         Vector<GPUPointLight>		    pointLights;
         const Vector<PointLightHandle>* pointLightHandles;
@@ -591,8 +585,6 @@ namespace FlexKit
             const CameraHandle              camera,
             const ResourceHandle            renderTarget,
             const ResourceHandle            depthTarget,
-            const ResourceHandle            diffuseMap,
-            const ResourceHandle            GGXMap,
             GBuffer&                        gbuffer,
             ReserveConstantBufferFunction   reserveCB,
             ReserveVertexBufferFunction     reserveVB,
@@ -633,8 +625,7 @@ namespace FlexKit
             GBuffer&                        gbuffer,
             ResourceHandle                  depthTarget,
             ResourceHandle                  renderTarget,
-            ResourceHandle                  GGXSpecularMap,
-            ResourceHandle                  diffuseMap,
+            LightBufferUpdate&              lightPass,
             ReserveConstantBufferFunction   reserveCB,
             ReserveVertexBufferFunction     reserveVB,
             float                           t,

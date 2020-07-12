@@ -249,6 +249,9 @@
     <ClInclude Include="..\graphicsutilities\Win32Graphics.h">
       <Filter>Headers\graphicsutilities</Filter>
     </ClInclude>
+    <ClInclude Include="playgroundmode.hpp">
+      <Filter>Headers\TestGame</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\coreutilities\AllSourceFiles.cpp">

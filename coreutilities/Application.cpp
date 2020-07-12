@@ -71,13 +71,14 @@ namespace FlexKit
                 auto sleepTime  = desiredFrameTime - updateDuration;
                 auto timePointA = std::chrono::high_resolution_clock::now();
 
+
                 // Give up timeslice for 1ms increments
                 while (true)
                 {
                     const auto timepointB        = std::chrono::high_resolution_clock::now();
                     const auto durationRemaining = sleepTime - (timepointB - timePointA);
 
-                    if (durationRemaining < 1.ms)
+                    if (durationRemaining < 10.ms)
                         break;
 
                     std::this_thread::sleep_for(1ms);

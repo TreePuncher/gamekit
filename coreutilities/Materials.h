@@ -52,6 +52,9 @@ namespace FlexKit
 
         MaterialComponentData operator [](const MaterialHandle handle) const
         {
+            if (handle == InvalidHandle_t)
+                return { {}, 0, InvalidHandle_t };
+
             return materials[handles[handle]];
         }
 

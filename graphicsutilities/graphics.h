@@ -3905,17 +3905,23 @@ private:
 	/************************************************************************************************/
 
 
-    template<typename TY>
-    constexpr size_t AlignedSize()
+    
+    constexpr size_t AlignedSize(const size_t unalignedSize)
     {
         const auto alignment        = 256;
         const auto mask             = alignment - 1;
-        const auto unalignedSize    = sizeof(TY);
         const auto offset           = unalignedSize & mask;
         const auto adjustedOffset   = offset != 0 ? 256 - offset : 0;
 
         return unalignedSize + adjustedOffset;
     }
+
+    template<typename TY>
+    constexpr size_t AlignedSize()
+    {
+        return AlignedSize(sizeof(TY));
+    }
+
 
 	class ConstantBufferDataSet
 	{
@@ -3931,6 +3937,9 @@ private:
 			constantBuffer  { IN_buffer },
 			constantsOffset { IN_offset } {}
 
+        explicit ConstantBufferDataSet(char* initialData, const size_t bufferSize, CBPushBuffer& buffer) :
+            constantBuffer  { buffer },
+            constantsOffset { buffer.Push(initialData, bufferSize) }{}
 
 		~ConstantBufferDataSet() = default;
 

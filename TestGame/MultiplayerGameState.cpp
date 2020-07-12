@@ -90,8 +90,6 @@ LocalPlayerState::LocalPlayerState(
         netInputObjects	    { IN_framework.core.GetBlockMemory()	                            },
         thirdPersonCamera   { CreateThirdPersonCameraController(IN_game.pScene, IN_framework.core.GetBlockMemory())   }
 {
-    SetControllerPosition(thirdPersonCamera, { 0, 0, 100 });
-
     eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
     eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
     eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
@@ -206,21 +204,30 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveCB,
                 core.GetTempMemory());
 
+            auto& lightPass = base.render.UpdateLightBuffers(
+                dispatcher,
+                frameGraph,
+                activeCamera,
+                scene,
+                sceneDesc,
+                reserveCB,
+                core.GetTempMemory(),
+                &debugDraw);
+
+            /*
             base.render.RenderPBR_IBL_Deferred(
                 dispatcher,
                 frameGraph,
                 sceneDesc,
                 activeCamera,
                 targets.RenderTarget,
-                //base.temporaryBuffers[0],
                 base.depthBuffer,
-                base.irradianceMap,
-                base.GGXMap,
                 base.gbuffer,
                 reserveCB,
                 reserveVB,
                 base.t,
                 core.GetTempMemory());
+            */
 
             if constexpr (false);
                 /*
@@ -237,7 +244,16 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveVB,
                 core.GetTempMemory());
                 */
-            //base.render.RenderPBR_DeferredShade(dispatcher, frameGraph, sceneDesc, activeCamera, pointLightGather, base.gbuffer, base.depthBuffer, targets.RenderTarget, base.cubeMap, base.vertexBuffer, base.t, core.GetTempMemory());
+
+            base.render.RenderPBR_DeferredShade(
+                dispatcher,
+                frameGraph,
+                sceneDesc,
+                pointLightGather,
+                base.gbuffer, base.depthBuffer, targets.RenderTarget, lightPass,
+                reserveCB, reserveVB,
+                base.t,
+                core.GetTempMemory());
         }   break;
         case RenderMode::ComputeTiledDeferred:
         {
@@ -281,7 +297,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         }
         }
 
-        if(true)
         base.streamingEngine.TextureFeedbackPass(
             dispatcher,
             frameGraph,
@@ -346,9 +361,10 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 LineShape{ lines });
         }
     }
-    framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
 
+    framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
     framework.DrawDebugHUD(dT, base.vertexBuffer, base.renderWindow, frameGraph);
+
     PresentBackBuffer(frameGraph, base.renderWindow);
 }
 

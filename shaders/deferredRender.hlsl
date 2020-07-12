@@ -19,8 +19,7 @@ Texture2D<float4> MRIABuffer        : register(t1); // metallic, roughness, IOR,
 Texture2D<float4> NormalBuffer      : register(t2);
 Texture2D<float4> TangentBuffer     : register(t3);
 Texture2D<float>  DepthBuffer       : register(t4);
-TextureCube<float4> ggxMap          : register(t5);
-TextureCube<float4> diffuseMap      : register(t6);
+
 ByteAddressBuffer pointLights       : register(t7);
 
 sampler BiLinear     : register(s0); // Nearest point
@@ -224,6 +223,7 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 	//return float4(normal, 1.0);
 
 
+/*
 	float3 color;
 	if (depth < 1.0)
 	{
@@ -246,13 +246,13 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 		float3 specular = float3(0,0,0);
 		
-		float3 diffuse = albedo * diffuseMap.Sample(BiLinear, normal) / PI;
+		float3 diffuse = float3(1, 0, 1);//albedo * diffuseMap.Sample(BiLinear, normal) / PI;
 
 		const uint N = MAX_CUBEMAP_SAMPLES;//max(pow(alpha,0.25) * MAX_CUBEMAP_SAMPLES, 8);
 
 		uint Width, Height, NumberOfLevels;
-		ggxMap.GetDimensions(0, Width, Height, NumberOfLevels);
-		uint pixelIndex = uint(SampleCoord.y * Width + SampleCoord.x);//Hash() * 1000000;
+		//ggxMap.GetDimensions(0, Width, Height, NumberOfLevels);
+		//uint pixelIndex = uint(SampleCoord.y * Width + SampleCoord.x);//Hash() * 1000000;
 		float kS = 0.0;
 
 		//float NdotL = CosTheta(mul(TBN, normalize(float3(1,1,1))) );
@@ -290,15 +290,15 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 			// Importance Sampling combined with Mipmap Filtering
 			float pdf = EricHeitz2018GGXPDF(V, H, L, alpha_x, alpha_y);
-			float lod = PickCubemapLOD(ggxMap, pdf, L, N);
+			//float lod = PickCubemapLOD(ggxMap, pdf, L, N);
 
 			//return float4(lod, lod, lod, 0);
 			//int lod = (1.0 / PDF) * NumberOfLevels;//max(0.875 * log2( (Width * Height) / N ) - 0.125 * log2(PDF * omegaS), 0.0);
 			
 			float3 sampleDir = mul(TBN, L);
-			float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, lod);
+			//float3 sampleIrradiance = ggxMap.SampleLevel(BiLinear, sampleDir, lod);
 			
-			specular += (sampleIrradiance * brdf);
+			//specular += (sampleIrradiance * brdf);
 		}
 		
 		kS = saturate( kS / sampleCount );
@@ -311,15 +311,16 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 		color = kD * diffuse + kS * specular;
 	}
 	else
+	*/
 	{
-        color = ggxMap.Sample(BiLinear, rayDir);
+        //color = ggxMap.Sample(BiLinear, rayDir);
     }
 
     //float gamma = 0.2;
     //color = color / (color + 1.0);
 	//color = pow(color, 1.0/gamma);
 
-    return float4(color, 1.0);
+    return float4(1, 0, 1, 1.0);
 	
     /*
 	// Calculate world position
@@ -398,7 +399,6 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 
 float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 {
-	discard;
     const float2 SampleCoord    = IN.Position;
     const float2 UV             = SampleCoord.xy / WH; // [0;1]
     const float2 P              = (2 * SampleCoord - WH) / WH.y;
@@ -411,21 +411,21 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
     //const float2 IOR_ANISO      = IOR_ANISOBuffer.Sample(NearestPoint, UV);
     const float  depth          = DepthBuffer.Sample(NearestPoint, UV);
 
-
-    if (depth == 1) discard;
+    if (depth >= 1.0f) discard;
     
-	const float3x3 invView = View;
-	const float3 rayDir = GetViewVector(UV); //mul(invView, normalize(float3(P, 0.5)));
-    const float3 rayPos = CameraPOS;
+	const float3x3 invView 	= View;
+	const float3 rayDir 	= GetViewVector(UV);
+    const float3 rayPos 	= CameraPOS;
 
-    const float3 positionW = rayPos + rayDir * (depth * MaxZ);
+    const float3 positionW 	= GetWorldSpacePosition(UV, depth);
 
-    float roughness     = cos(Time) * .5 + .5;
+    float roughness     = Albedo.a;
     float ior           = 1.0;//IOR_ANISO.x;
     float anisotropic   = 0.0;//IOR_ANISO.y;
-	float metallic      = 0.0;//Specular.w;
+	float metallic      = 1.0;//Specular.w;
 	float3 albedo       = Albedo.rgb;
     
+
     float3 color = 0;
     for(float I; I < lightCount; I++)
     {
@@ -456,7 +456,9 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
         color += saturate((diffuse * Kd + specular * Ks) * La);
     }
+
     return float4(color, 1);
+	//return float4(N / 2 + float3(0.5f, 0.5f, 0.5f), 1);
 }
 
 
