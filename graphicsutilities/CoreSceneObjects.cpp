@@ -347,17 +347,17 @@ namespace FlexKit
 		NewData.WPOS[2]         = WT[2][3];
 		NewData.WPOS[3]         = 0;
 
-        const float Y = tan(FOV / 2);
-        const float X = Y * AspectRatio;
+		const float Y = tan(FOV / 2);
+		const float X = Y * AspectRatio;
 
-        NewData.TLCorner_VS = float3(-X, Y, -1);
-        NewData.TRCorner_VS = float3(X, Y, -1);
+		NewData.TLCorner_VS = float3(-X, Y, -1);
+		NewData.TRCorner_VS = float3(X, Y, -1);
 
-        NewData.BLCorner_VS = float3(-X, -Y, -1);
-        NewData.BRCorner_VS = float3(X, -Y, -1);
+		NewData.BLCorner_VS = float3(-X, -Y, -1);
+		NewData.BRCorner_VS = float3(X, -Y, -1);
 
-        NewData.FOV         = FOV;
-        NewData.AspectRatio = AspectRatio;
+		NewData.FOV         = FOV;
+		NewData.AspectRatio = AspectRatio;
 
 		return NewData;
 	}

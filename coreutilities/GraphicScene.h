@@ -37,6 +37,18 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace FlexKit
 {
+    // IDs
+    constexpr ComponentID DrawableComponentID       = GetTypeGUID(DrawableID);
+    constexpr ComponentID PointLightShadowMapID  = GetTypeGUID(PointLighShadowCaster);
+
+    // Handles
+    using DrawableHandle            = Handle_t<32, DrawableComponentID>;
+    using PointLightHandle          = Handle_t<32, GetTypeGUID(PointLightID)>;
+    using PointLightShadowHandle    = Handle_t<32, PointLightShadowMapID>;
+    using SceneHandle               = Handle_t<32, GetTypeGUID(SceneID)>;
+    using VisibilityHandle          = Handle_t<32, GetTypeGUID(DrawableID)>;
+
+
 	//Forward Declarations 
 	struct PoseState;
 
@@ -57,8 +69,6 @@ namespace FlexKit
 
 	const float MinNodeSize = 1;
 
-	constexpr ComponentID DrawableComponentID	= GetTypeGUID(DrawableID);
-	using DrawableHandle						= Handle_t <32, DrawableComponentID>;
 
     struct DrawableComponentEventHandler
     {
@@ -187,7 +197,6 @@ namespace FlexKit
     };
 
 	constexpr ComponentID PointLightComponentID	= GetTypeGUID(PointLightID);
-	using PointLightHandle						= Handle_t <32, GetTypeGUID(PointLightID)>;
 	using PointLightComponent					= BasicComponent_t<PointLight, PointLightHandle, PointLightComponentID, PointLightEventHandler>;
 
 
@@ -203,15 +212,20 @@ namespace FlexKit
 			poingLight.Position		= node;
 		}
 
-		float GetRadius()
+		float GetRadius() const noexcept
 		{
 			return GetComponent()[light].I;
 		}
 
-		void SetNode(NodeHandle node)
+		void SetNode(NodeHandle node) const noexcept
 		{
 			GetComponent()[light].Position = node;
 		}
+
+        NodeHandle GetNode() const noexcept
+        {
+            return GetComponent()[light].Position;
+        }
 
 
 		operator PointLightHandle () { return light; }
@@ -224,8 +238,6 @@ namespace FlexKit
 
 
 	constexpr ComponentID SceneVisibilityComponentID	= GetTypeGUID(SceneVisibilityComponentID);
-	using VisibilityHandle								= Handle_t <32, GetTypeGUID(DrawableID)>;
-	using SceneHandle									= Handle_t <32, GetTypeGUID(SceneID)>;
 
 	struct VisibilityFields
 	{
@@ -305,7 +317,6 @@ namespace FlexKit
             });
     }
 
-
 	inline void SetBoundingSphereFromLight(GameObject& go)
 	{
 		Apply(
@@ -316,6 +327,7 @@ namespace FlexKit
 				visibility.SetBoundingSphere({ 0, 0, 0, pointLight.GetRadius() });
 			});
 	}
+
 
 	/************************************************************************************************/
 
@@ -417,12 +429,17 @@ namespace FlexKit
 	struct PointLightGather
 	{
 		Vector<PointLightHandle>	pointLights;
-		GraphicScene*				scene;
-		StackAllocator				temp;
+		const GraphicScene*			scene;
 	};
 
+    struct PointLightShadowGather
+    {
+        Vector<PointLightShadowHandle>	pointLightShadows;
+        const GraphicScene*             scene;
+    };
 
-    using PointLightGatherTask = UpdateTaskTyped<PointLightGather>;
+    using PointLightGatherTask          = UpdateTaskTyped<PointLightGather>;
+    using PointLightShadowGatherTask    = UpdateTaskTyped<PointLightShadowGather>;
 
 	class GraphicScene
 	{
@@ -449,8 +466,10 @@ namespace FlexKit
 		Vector<PointLightHandle>    FindPointLights(const Frustum& f, iAllocator* tempMemory) const;
 
 
-        PointLightGatherTask&	    GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory);
+        PointLightGatherTask&	    GetPointLights(UpdateDispatcher& disatcher, iAllocator* tempMemory) const;
 		size_t					    GetPointLightCount();
+
+        PointLightShadowGatherTask& GetPointLightShadows(UpdateDispatcher& disatcher, iAllocator* tempMemory) const;
 
         auto begin()    { return sceneEntities.begin(); }
         auto end()      { return sceneEntities.end(); }
@@ -602,16 +621,33 @@ namespace FlexKit
 
     struct _PointLightShadowCaster
     {
-        PointLightHandle    pointLight;
-        NodeHandle          node;
+        PointLightHandle    pointLight  = InvalidHandle_t;
+        NodeHandle          node        = InvalidHandle_t;
+        ResourceHandle      shadowMap   = InvalidHandle_t;
+        float4x4            matrix      = float4x4::Identity();
     };
 
+    using PointLightShadowMap       = BasicComponent_t<_PointLightShadowCaster, PointLightShadowHandle, PointLightShadowMapID>;
+    using PointLightShadowMapView   = PointLightShadowMap::View;
 
-    constexpr ComponentID PointLightShadowCasterID = GetTypeGUID(PointLighShadowCaster);
 
-    using PointLightShadowCasterHandle  = Handle_t<32, PointLightShadowCasterID>;
-    using PointLightShadowCaster        = BasicComponent_t<_PointLightShadowCaster, PointLightShadowCasterHandle, PointLightShadowCasterID>;
-    using PointLightShadowCasterView    = PointLightShadowCaster::View;
+    void EnablePointLightShadows(GameObject& gameObject)
+    {
+        if (!Apply(gameObject,
+            [](PointLightShadowMapView& pointLight){ return true; }, []{ return false; }))
+        {
+            Apply(gameObject,
+                [&](PointLightView& pointLight)
+                {
+                    gameObject.AddView<PointLightShadowMapView>(
+                        _PointLightShadowCaster{
+                            pointLight,
+                            pointLight.GetNode()
+                        }
+                    );
+                });
+        }
+    }
 
 
 }	/************************************************************************************************/

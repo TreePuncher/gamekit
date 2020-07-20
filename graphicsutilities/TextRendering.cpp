@@ -41,9 +41,9 @@ namespace FlexKit
 	// Create/Load Text Rendering State
 	ID3D12PipelineState* LoadSpriteTextPSO(RenderSystem* RS)
 	{
-		Shader DrawTextVShader = LoadShader("VTextMain", "TextPassThrough", "vs_5_0", "assets\\Shaders\\TextRendering.hlsl");
+		Shader DrawTextVShader = LoadShader("VTextMain", "TextPassThrough", "vs_5_1", "assets\\Shaders\\TextRendering.hlsl");
 		Shader DrawTextGShader = LoadShader("GTextMain", "GTextMain",		"gs_5_0", "assets\\Shaders\\TextRendering.hlsl");
-		Shader DrawTextPShader = LoadShader("PTextMain", "TextShading",		"ps_5_0", "assets\\Shaders\\TextRendering.hlsl");
+		Shader DrawTextPShader = LoadShader("PTextMain", "TextShading",		"ps_5_1", "assets\\Shaders\\TextRendering.hlsl");
 
 		HRESULT HR;
 		ID3D12PipelineState* PSO = nullptr;

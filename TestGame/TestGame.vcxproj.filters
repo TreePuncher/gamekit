@@ -541,5 +541,8 @@
     <FxCompile Include="..\shaders\vshader.hlsl">
       <Filter>Headers\shaders</Filter>
     </FxCompile>
+    <FxCompile Include="..\shaders\CubeMapShadowMapping.hlsl">
+      <Filter>Headers\shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

@@ -36,7 +36,7 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateCullTerrainComputePSO(RenderSystem* renderSystem)
 	{
-		auto cullTerrain_shader_VS = LoadShader("CP_PassThroughVS", "CP_PassThroughVS", "vs_5_0", "assets\\cullterrain.hlsl");
+		auto cullTerrain_shader_VS = LoadShader("CP_PassThroughVS", "CP_PassThroughVS", "vs_5_1", "assets\\cullterrain.hlsl");
 		auto cullTerrain_shader_GS = LoadShader("CullTerrain",		"CullTerrain",		"gs_5_0", "assets\\cullterrain.hlsl");
 
 
@@ -115,9 +115,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateForwardRenderTerrainPSO(RenderSystem* renderSystem)
 	{
-		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",		"vs_5_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",		"vs_5_1", "assets\\forwardRenderTerrain.hlsl");
 		auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",		"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto forwardRenderTerrain_shader_PS = LoadShader("PS_RenderTerrain",	"PS_RenderTerrain",		"ps_5_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_PS = LoadShader("PS_RenderTerrain",	"PS_RenderTerrain",		"ps_5_1", "assets\\forwardRenderTerrain.hlsl");
 
 		EXITSCOPE(
 			Release(forwardRenderTerrain_shader_VS);
@@ -172,9 +172,9 @@ namespace FlexKit
 
 	ID3D12PipelineState* CreateForwardRenderTerrainWireFramePSO(RenderSystem* renderSystem)
 	{
-		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",				"vs_5_0", "assets\\forwardRenderTerrain.hlsl");
+		auto forwardRenderTerrain_shader_VS = LoadShader("CP_PassThroughVS",	"CP_PassThroughVS",				"vs_5_1", "assets\\forwardRenderTerrain.hlsl");
 		auto forwardRenderTerrain_shader_GS = LoadShader("GS_RenderTerrain",	"GS_RenderTerrain",				"gs_5_0", "assets\\forwardRenderTerrain.hlsl");
-		auto ShaderPaint_Wire				= LoadShader("PS_RenderTerrainDEBUG",	"PS_RenderTerrainDEBUG",	"ps_5_0", "assets\\forwardRenderTerrainDEBUG.hlsl");
+		auto ShaderPaint_Wire				= LoadShader("PS_RenderTerrainDEBUG",	"PS_RenderTerrainDEBUG",	"ps_5_1", "assets\\forwardRenderTerrainDEBUG.hlsl");
 
 
 		EXITSCOPE(

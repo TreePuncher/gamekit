@@ -121,6 +121,7 @@ void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatc
 
 void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
+    frameGraph.AddMemoryPool(&base.memoryPool);
     frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
     frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
@@ -129,8 +130,11 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
     float2 mouse_dPos   = base.renderWindow.mouseState.Normalized_dPos;
 
-    auto& scene				= game.scene;
-    auto& pointLightGather  = scene.GetPointLights      (dispatcher, core.GetTempMemory());
+    auto& scene				            = game.scene;
+
+    auto& pointLightGather              = scene.GetPointLights(dispatcher, core.GetTempMemory());
+    auto& pointLightShadowCasterGather  = scene.GetPointLightShadows(dispatcher, core.GetTempMemory());
+
     auto& transforms		= QueueTransformUpdateTask	(dispatcher);
     auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
     auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
@@ -166,6 +170,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
     const SceneDescription sceneDesc = {
         activeCamera,
         pointLightGather,
+        pointLightShadowCasterGather,
         transforms,
         cameras,
         PVS,
@@ -204,8 +209,6 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveCB,
                 core.GetTempMemory());
 
-            auto& shadowMapPass = ShadowMapPass(frameGraph, PVS, base.pointLightShadowMap, reserveCB, base.t);
-
             auto& lightPass = base.render.UpdateLightBuffers(
                 dispatcher,
                 frameGraph,
@@ -215,6 +218,15 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 reserveCB,
                 core.GetTempMemory(),
                 &debugDraw);
+
+            auto& shadowMapPass = ShadowMapPass(
+                frameGraph,
+                PVS,
+                base.pointLightShadowMap,
+                reserveCB,
+                base.t,
+                core.GetTempMemory());
+
 
             /*
             base.render.RenderPBR_IBL_Deferred(
@@ -231,31 +243,17 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
                 core.GetTempMemory());
             */
 
-            if constexpr (false);
-                /*
-            base.render.BilateralBlur(
-                frameGraph,
-                base.temporaryBuffers[0],
-                base.temporaryBuffers[1],
-                base.temporaryBuffers_2Channel[0],
-                base.temporaryBuffers_2Channel[1],
-                targets.RenderTarget,
-                base.gbuffer,
-                base.depthBuffer,
-                reserveCB,
-                reserveVB,
-                core.GetTempMemory());
-                */
-
             base.render.RenderPBR_DeferredShade(
                 dispatcher,
                 frameGraph,
                 sceneDesc,
                 pointLightGather,
-                base.gbuffer, base.depthBuffer, targets.RenderTarget, base.pointLightShadowMap, lightPass,
+                base.gbuffer, base.depthBuffer, targets.RenderTarget, shadowMapPass, lightPass,
                 reserveCB, reserveVB,
                 base.t,
                 core.GetTempMemory());
+
+            ReleaseShadowMapPass(frameGraph, shadowMapPass);
         }   break;
         case RenderMode::ComputeTiledDeferred:
         {
@@ -299,6 +297,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
         }
         }
 
+        if(1)
         base.streamingEngine.TextureFeedbackPass(
             dispatcher,
             frameGraph,

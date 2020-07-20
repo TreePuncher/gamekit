@@ -234,13 +234,15 @@ namespace FlexKit
 
 
 		template<typename TY_View, typename ... TY_args>
-		void AddView(TY_args&& ... args)
+		auto& AddView(TY_args&& ... args)
 		{
 			static_assert(std::is_base_of<ComponentViewBase, TY_View>(), "You can only add view types!");
 
 			views.push_back({
 					&allocator->allocate<TY_View>(std::forward<TY_args>(args)...),
 					TY_View::GetComponentID() });
+
+            return *static_cast<TY_View*>(views.back().first);
 		}
 
 
