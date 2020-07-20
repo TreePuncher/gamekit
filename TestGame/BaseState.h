@@ -169,6 +169,7 @@ public:
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
+            memoryPool          { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(512 * MEGABYTE, DeviceHeapFlags::RenderTarget), 512 * MEGABYTE / (64 * KILOBYTE), 64 * KILOBYTE, IN_Framework.core.GetBlockMemory() },
             pointLightShadowMap { IN_Framework.core.RenderSystem.CreateDepthBufferArray({ 128, 128 }, true, 6) },
 
             renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
@@ -267,14 +268,15 @@ public:
     ResourceHandle             pointLightShadowMap;
 
     // render resources
+    MemoryPoolAllocator         memoryPool;
     Win32RenderWindow           renderWindow;
 	WorldRender					render;
     GBuffer                     gbuffer;
 	ResourceHandle				depthBuffer;
 	VertexBufferHandle			vertexBuffer;
 	ConstantBufferHandle		constantBuffer;
-	
     SoundSystem			        sounds;
+    DeviceHeapHandle            renderTargetTemporaryPool;
 
 	// Components
 	SceneNodeComponent			    transforms;
@@ -285,14 +287,14 @@ public:
 	SceneVisibilityComponent	    visables;
 	PointLightComponent			    pointLights;
     SkeletonComponent               skeletonComponent;
-    PointLightShadowCaster          shadowCasters;
+    PointLightShadowMap             shadowCasters;
     PhysXComponent  	            physics;
     RigidBodyComponent              rigidBodies;
     StaticBodyComponent             staticBodies;
     CharacterControllerComponent    characterControllers;
     CameraControllerComponent       orbitCameras;
 
-	TextureStreamingEngine		streamingEngine;
+	TextureStreamingEngine		    streamingEngine;
 };
 
 

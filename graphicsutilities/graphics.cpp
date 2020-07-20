@@ -121,20 +121,20 @@ namespace FlexKit
 
 		ConstantBufferHandle handle = handles.GetNewHandle();
 
-        UserConstantBuffer buffer = {
-            BufferSize,
-            0,
-            Mapped_ptr,
+		UserConstantBuffer buffer = {
+			BufferSize,
+			0,
+			Mapped_ptr,
 
-            GPUResident,
-            false,
+			GPUResident,
+			false,
 
-            { 0, 0, 0 },
-            0,
-            handle,
+			{ 0, 0, 0 },
+			0,
+			handle,
 
-            { resources[0], resources[1], resources[2], },
-        };
+			{ resources[0], resources[1], resources[2], },
+		};
 
 
 		handles[handle] = buffers.push_back(buffer);
@@ -191,7 +191,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    std::optional<size_t> ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t pushSize)
+	std::optional<size_t> ConstantBufferTable::Push(ConstantBufferHandle Handle, void* _Ptr, size_t pushSize)
 	{
 		auto& buffer = buffers[handles[Handle]];
 
@@ -208,22 +208,22 @@ namespace FlexKit
 		const char*  mapped_Ptr	= (char*)buffer.mapped_ptr;
 
 		if (!mapped_Ptr)
-            return {};
+			return {};
 
 		if (size < offset + pushSize)
-            return {}; // Buffer To small to accommodate Push
+			return {}; // Buffer To small to accommodate Push
 
 		buffer.offset += pushSize;
 
-        if(!buffer.writeFlag)
-		    buffer.writeFlag = true;
+		if(!buffer.writeFlag)
+			buffer.writeFlag = true;
 
 		FK_ASSERT(pushSize % 256 == 0); // size requests must be blocks of 256
 
 		if(_Ptr)
 			memcpy((void*)(mapped_Ptr + offset), _Ptr, pushSize);
 
-        return { offset };
+		return { offset };
 	}
 
 
@@ -435,7 +435,7 @@ namespace FlexKit
 		{
 			auto& e = Entries[I];
 			//
-			for (size_t II = 0; II < e.Space; II++)
+			for (size_t II = 0; II < e.Count + e.Space; II++)
 			{
 				if (I + II > end)
 					return *this;
@@ -464,7 +464,7 @@ namespace FlexKit
 						PushSRVToDescHeap(
 							ctx.renderSystem,
 							ctx.renderSystem->GetDeviceResource(ctx.renderSystem->NullSRV1D),
-							POS, 0, 16);
+							POS, 16, 16);
 					}	break;
 					case DescHeapEntryType::UAVBuffer:
 					{
@@ -485,8 +485,8 @@ namespace FlexKit
 					default:
 						break;
 					}
-					Idx++;
 				}
+                Idx++;
 			}
 		}
 
@@ -507,7 +507,8 @@ namespace FlexKit
 
 		PushTextureToDescHeap(
 			ctx.renderSystem,
-			ctx.renderSystem->Textures[handle],
+            ctx.renderSystem->GetTextureDeviceFormat(handle),
+            handle,
 			IncrementHeapPOS(
 					descriptorHeap, 
 					ctx.renderSystem->DescriptorCBVSRVUAVSize,
@@ -529,14 +530,39 @@ namespace FlexKit
 
 		PushCubeMapTextureToDescHeap(
 			ctx.renderSystem,
-			ctx.renderSystem->Textures[handle],
+			handle,
 			IncrementHeapPOS(
 					descriptorHeap, 
 					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
-					idx));
+					idx),
+            ctx.renderSystem->GetTextureFormat(handle));
 
 		return true;
 	}
+
+
+    /************************************************************************************************/
+
+
+    bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
+    {
+        if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+			return false;
+
+		FillState[idx] = true;
+
+		PushCubeMapTextureToDescHeap(
+			ctx.renderSystem,
+			handle,
+			IncrementHeapPOS(
+					descriptorHeap, 
+					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
+					idx),
+            format);
+
+		return true;
+    }
+
 
 
 	/************************************************************************************************/
@@ -549,12 +575,12 @@ namespace FlexKit
 
 		FillState[idx] = true;
 
-		auto texture    = ctx.renderSystem->Textures[handle];
-		texture.Format  = TextureFormat2DXGIFormat(format);
+        auto dxFormat = TextureFormat2DXGIFormat(format);
 
 		PushTextureToDescHeap(
 			ctx.renderSystem,
-			texture,
+            dxFormat,
+            handle,
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
@@ -648,8 +674,8 @@ namespace FlexKit
 
 		FillState[idx] = true;
 
-        UAVBuffer UAV{ *ctx.renderSystem, Handle };
-        UAV.offset = offset;
+		UAVBuffer UAV{ *ctx.renderSystem, Handle };
+		UAV.offset = offset;
 
 		PushUAVBufferToDescHeap(
 			ctx.renderSystem,
@@ -706,6 +732,31 @@ namespace FlexKit
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
 				idx),
 			WH[0],
+			stride);
+
+		return true;
+	}
+
+
+	/************************************************************************************************/
+
+
+	bool DescriptorHeap::SetStructuredResource(Context& ctx, size_t idx, UAVResourceHandle handle, size_t stride)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+			return false;
+
+		FillState[idx] = true;
+
+		const auto size = ctx.renderSystem->GetUAVBufferSize(handle);
+		
+		PushSRVToDescHeap(
+			ctx.renderSystem,
+			ctx.renderSystem->GetDeviceResource(handle),
+			IncrementHeapPOS(descriptorHeap,
+				ctx.renderSystem->DescriptorCBVSRVUAVSize,
+				idx),
+			size / stride,
 			stride);
 
 		return true;
@@ -913,11 +964,11 @@ namespace FlexKit
 		HR = renderSystem->pDevice->CreateDescriptorHeap(&descriptorHeapdesc, IID_PPV_ARGS(&descHeapSRV));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
-        D3D12_DESCRIPTOR_HEAP_DESC cpuDescriptorHeapdesc;
-        cpuDescriptorHeapdesc.Flags            = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-        cpuDescriptorHeapdesc.NumDescriptors   = 1024;
-        cpuDescriptorHeapdesc.NodeMask         = 0;
-        cpuDescriptorHeapdesc.Type             = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		D3D12_DESCRIPTOR_HEAP_DESC cpuDescriptorHeapdesc;
+		cpuDescriptorHeapdesc.Flags            = D3D12_DESCRIPTOR_HEAP_FLAGS::D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		cpuDescriptorHeapdesc.NumDescriptors   = 1024;
+		cpuDescriptorHeapdesc.NodeMask         = 0;
+		cpuDescriptorHeapdesc.Type             = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		HR = renderSystem->pDevice->CreateDescriptorHeap(&cpuDescriptorHeapdesc, IID_PPV_ARGS(&descHeapSRVLocal));
 		FK_ASSERT(HR, "FAILED TO CREATE DESCRIPTOR HEAP");
 
@@ -947,7 +998,7 @@ namespace FlexKit
 		HR = renderSystem->pDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator, nullptr, __uuidof(ID3D12CommandList), (void**)&DeviceContext);	FK_ASSERT(FAILED(HR), "FAILED TO CREATE COMMAND LIST!");
 
 #if USING(AFTERMATH)
-        auto res = GFSDK_Aftermath_DX12_CreateContextHandle(DeviceContext, &AFTERMATH_context);
+		auto res = GFSDK_Aftermath_DX12_CreateContextHandle(DeviceContext, &AFTERMATH_context);
 #endif
 
 		DeviceContext->Close();
@@ -977,8 +1028,8 @@ namespace FlexKit
 		if (descHeapSRV)
 			descHeapSRV->Release();
 
-        if (descHeapSRVLocal)
-            descHeapSRVLocal->Release();
+		if (descHeapSRVLocal)
+			descHeapSRVLocal->Release();
 
 		if (descHeapDSV)
 			descHeapDSV->Release();
@@ -990,13 +1041,13 @@ namespace FlexKit
 			DeviceContext->Release();
 
 #if USING(AFTERMATH)
-        GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
+		GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
 #endif
 
 		descHeapDSV         = nullptr;
 		descHeapRTV         = nullptr;
 		descHeapSRV         = nullptr;
-        descHeapSRVLocal    = nullptr;
+		descHeapSRVLocal    = nullptr;
 		commandAllocator    = nullptr;
 		DeviceContext       = nullptr;
 	}
@@ -1064,6 +1115,29 @@ namespace FlexKit
 			res->NewState = desiredState; // Fuse
 	}
 
+
+    /************************************************************************************************/
+
+
+    void Context::AddAliasingBarrier(ResourceHandle handle, DeviceResourceState Before, DeviceResourceState State)
+    {
+        auto res = find(PendingBarriers,
+			[&](Barrier& rhs) -> bool
+			{
+				return
+					rhs.Type            == Barrier::BT_Aliasing &&
+					rhs.shaderResource  == handle;
+			});
+
+        if (std::end(PendingBarriers) == res)
+        {
+            Barrier barrier;
+            barrier.Type            = Barrier::BT_Aliasing;
+            barrier.shaderResource  = handle;
+
+            PendingBarriers.push_back(barrier);
+        }
+    }
 
 
 
@@ -1191,8 +1265,8 @@ namespace FlexKit
 	{
 		FK_ASSERT(PSO);
 
-		//if (CurrentPipelineState == PSO)
-		//    return;
+		if (CurrentPipelineState == PSO)
+		    return;
 
 		CurrentPipelineState = PSO;
 		DeviceContext->SetPipelineState(PSO);
@@ -1272,6 +1346,68 @@ namespace FlexKit
 	}
 
 
+    /************************************************************************************************/
+
+
+    void Context::SetRenderTargets2(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV)
+    {
+        static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTV_CPU_HANDLES;
+
+		if (!MIPMapOffset)
+		{
+			for (auto renderTarget : RTs) {
+				auto res = std::find_if(
+					renderTargetViews.begin(),
+					renderTargetViews.end(),
+					[&](RTV_View& view)
+					{
+						return view.resource == renderTarget;
+					});
+
+				if (res != renderTargetViews.end())
+				{
+					RTV_CPU_HANDLES.push_back(res->CPU_Handle);
+				}
+				else
+				{
+					auto view = _ReserveRTV(1);
+					PushRenderTarget(renderSystem, renderTarget, view);
+					RTV_CPU_HANDLES.push_back(view);
+					renderTargetViews.push_back({ renderTarget, view });
+				}
+			}
+		}
+		else
+		{
+			auto view = _ReserveRTV(RTs.size());
+			
+			for (auto& renderTarget : RTs)
+			{
+				RTV_CPU_HANDLES.push_back(view);
+				view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
+			}
+		}
+        
+		auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
+
+        const bool depthEnabled = DSV.depthStencil != InvalidHandle_t;
+
+		if(depthEnabled)
+		{
+			auto descriptor = _ReserveDSV(1);
+			PushDepthStencilArray(renderSystem, DSV.depthStencil, DSV.ArraySliceOffset, DSV.MipOffset, descriptor);
+
+			DSV_CPU_HANDLE = descriptor;
+		}
+
+		DeviceContext->OMSetRenderTargets(
+			RTV_CPU_HANDLES.size(),
+			RTV_CPU_HANDLES.begin(),
+            depthEnabled,
+            depthEnabled ? &DSV_CPU_HANDLE : nullptr);
+    }
+
+
 	/************************************************************************************************/
 
 
@@ -1333,13 +1469,13 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void Context::QueueReadBack(ReadBackResourceHandle readBack)
-    {
-        queuedReadBacks.push_back(readBack);
-    }
+	void Context::QueueReadBack(ReadBackResourceHandle readBack)
+	{
+		queuedReadBacks.push_back(readBack);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	void Context::SetDepthStencil(ResourceHandle DS)
@@ -1380,79 +1516,79 @@ namespace FlexKit
 			break;
 		case EInputTopology::EIT_PATCH_CP_1:
 			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_2:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_3:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_4:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_5:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_6:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_7:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_8:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_9:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_10:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_11:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_12:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_13:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_14:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_15:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_16:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_17:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_18:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_19:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_20:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_21:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_22:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_23:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST;
-            break;
-        case EInputTopology::EIT_PATCH_CP_24:
-            D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST;
-            break;
-        default:
-            FK_ASSERT(0);
-        }
+			break;
+		case EInputTopology::EIT_PATCH_CP_2:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_2_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_3:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_4:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_5:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_5_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_6:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_6_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_7:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_7_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_8:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_8_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_9:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_9_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_10:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_10_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_11:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_11_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_12:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_12_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_13:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_13_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_14:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_14_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_15:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_15_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_16:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_17:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_17_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_18:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_18_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_19:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_19_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_20:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_20_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_21:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_21_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_22:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_22_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_23:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_23_CONTROL_POINT_PATCHLIST;
+			break;
+		case EInputTopology::EIT_PATCH_CP_24:
+			D3DTopology = D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_24_CONTROL_POINT_PATCHLIST;
+			break;
+		default:
+			FK_ASSERT(0);
+		}
 
 		DeviceContext->IASetPrimitiveTopology(D3DTopology);
 	}
@@ -1989,7 +2125,7 @@ namespace FlexKit
 				res == depthStencilViews.end())
 			{
 				auto DSV = _ReserveDSV(1);
-				PushDepthStencil(renderSystem, depthStencil, DSV);
+				PushDepthStencilArray(renderSystem, depthStencil, 0, 0, DSV);
 
 				DSV_CPU_HANDLE = DSV;
 			}
@@ -2037,73 +2173,73 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::ClearUAVTexture(UAVTextureHandle UAV, float4 clearColor)
-    {
-        auto view       = _ReserveSRVLocal(1);
-        auto resource   = renderSystem->GetDeviceResource(UAV);
+	void Context::ClearUAVTexture(UAVTextureHandle UAV, float4 clearColor)
+	{
+		auto view       = _ReserveSRVLocal(1);
+		auto resource   = renderSystem->GetDeviceResource(UAV);
 
-        Texture2D tex = renderSystem->GetUAV2DTexture(UAV);
+		Texture2D tex = renderSystem->GetUAV2DTexture(UAV);
 
-        PushUAV2DToDescHeap(
-            renderSystem,
-            tex,
-            view);
+		PushUAV2DToDescHeap(
+			renderSystem,
+			tex,
+			view);
 
-        FlushBarriers();
+		FlushBarriers();
 
-        DeviceContext->ClearUnorderedAccessViewFloat(view, view, resource, clearColor, 0, nullptr);
-    }
+		DeviceContext->ClearUnorderedAccessViewFloat(view, view, resource, clearColor, 0, nullptr);
+	}
 
-    /************************************************************************************************/
-
-
-    void Context::ClearUAVTexture(UAVTextureHandle UAV, uint4 clearColor)
-    {
-        auto view       = _ReserveSRVLocal(1);
-        auto resource   = renderSystem->GetDeviceResource(UAV);
-
-        Texture2D tex   = renderSystem->GetUAV2DTexture(UAV);
-
-        PushUAV2DToDescHeap(
-            renderSystem,
-            tex,
-            view);
-
-        auto CPUHandle = view.Get<0>();
-        auto GPUHandle = view.Get<1>();
-
-        FlushBarriers();
-
-        DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, (UINT*)&clearColor, 0, nullptr);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void Context::ClearUAVTexture(UAVTextureHandle UAV, uint4 clearColor)
+	{
+		auto view       = _ReserveSRVLocal(1);
+		auto resource   = renderSystem->GetDeviceResource(UAV);
+
+		Texture2D tex   = renderSystem->GetUAV2DTexture(UAV);
+
+		PushUAV2DToDescHeap(
+			renderSystem,
+			tex,
+			view);
+
+		auto CPUHandle = view.Get<0>();
+		auto GPUHandle = view.Get<1>();
+
+		FlushBarriers();
+
+		DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, (UINT*)&clearColor, 0, nullptr);
+	}
 
 
-    void Context::ClearUAV(UAVResourceHandle UAV, uint4 clearColor)
-    {
-        auto view = _ReserveSRVLocal(1);
-        auto resource = renderSystem->GetDeviceResource(UAV);
+	/************************************************************************************************/
 
-        const auto UAVDesc = renderSystem->GetUAVBufferLayout(UAV);
-        UAVBuffer uav {
-            *renderSystem,
-            UAV
-        };
 
-        PushUAVBufferToDescHeap(renderSystem, uav, view);
+	void Context::ClearUAV(UAVResourceHandle UAV, uint4 clearColor)
+	{
+		auto view = _ReserveSRVLocal(1);
+		auto resource = renderSystem->GetDeviceResource(UAV);
 
-        auto CPUHandle = view.Get<0>();
-        auto GPUHandle = view.Get<1>();
+		const auto UAVDesc = renderSystem->GetUAVBufferLayout(UAV);
+		UAVBuffer uav {
+			*renderSystem,
+			UAV
+		};
 
-        FlushBarriers();
+		PushUAVBufferToDescHeap(renderSystem, uav, view);
 
-        DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, clearColor, 0, 0);
-    }
+		auto CPUHandle = view.Get<0>();
+		auto GPUHandle = view.Get<1>();
+
+		FlushBarriers();
+
+		DeviceContext->ClearUnorderedAccessViewUint(GPUHandle, CPUHandle, resource, clearColor, 0, 0);
+	}
 
 
 	/************************************************************************************************/
@@ -2283,7 +2419,7 @@ namespace FlexKit
 
 		CurrentPipelineState = nullptr;
 
-        DeviceContext->ClearState(nullptr);
+		DeviceContext->ClearState(nullptr);
 	}
 
 
@@ -2319,7 +2455,7 @@ namespace FlexKit
 
 	void Context::Close(const size_t IN_counter)
 	{
-        counter = IN_counter;
+		counter = IN_counter;
 		DeviceContext->Close();
 	}
 
@@ -2327,10 +2463,10 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    Context& Context::Reset()
+	Context& Context::Reset()
 	{
-        if(FAILED(commandAllocator->Reset()))
-            __debugbreak();
+		if(FAILED(commandAllocator->Reset()))
+			__debugbreak();
 
 		DeviceContext->Reset(commandAllocator, nullptr);
 
@@ -2343,7 +2479,7 @@ namespace FlexKit
 
 		DeviceContext->SetDescriptorHeaps(sizeof(heaps) / sizeof(heaps[0]), heaps);
 
-        return *this;
+		return *this;
 	}
 
 
@@ -2521,6 +2657,12 @@ namespace FlexKit
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 							resource, currentState, newState));
 				}	break;
+                case Barrier::BT_Aliasing:
+                {
+                    auto aliasingBarrier = CD3DX12_RESOURCE_BARRIER::Aliasing(renderSystem->GetDeviceResource(B.shaderResource), nullptr);
+
+                    Barriers.push_back(aliasingBarrier);
+                }   break;
 				default:
 					FK_ASSERT(0);
 			};
@@ -2544,27 +2686,27 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void Context::_QueueReadBacks()
-    {
-        for (const auto readBackHandle : queuedReadBacks)
-        {
-            auto& readBack  = renderSystem->ReadBackTable[readBackHandle];
-            auto fence      = renderSystem->ReadBackTable._GetReadBackFence();
+	void Context::_QueueReadBacks()
+	{
+		for (const auto readBackHandle : queuedReadBacks)
+		{
+			auto& readBack  = renderSystem->ReadBackTable[readBackHandle];
+			auto fence      = renderSystem->ReadBackTable._GetReadBackFence();
 
-            const uint64_t counter = ++renderSystem->copyEngine.counter;
+			const uint64_t counter = ++renderSystem->copyEngine.counter;
 
-            auto HR     = fence->SetEventOnCompletion(counter, readBack.event); FK_ASSERT(SUCCEEDED(HR));
-            renderSystem->GraphicsQueue->Signal(fence, counter);
+			auto HR     = fence->SetEventOnCompletion(counter, readBack.event); FK_ASSERT(SUCCEEDED(HR));
+			renderSystem->GraphicsQueue->Signal(fence, counter);
 
-            readBack.queueUntil = counter;
-            readBack.queued     = true;
-        }
+			readBack.queueUntil = counter;
+			readBack.queued     = true;
+		}
 
-        queuedReadBacks.clear();
-    }
+		queuedReadBacks.clear();
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	DescHeapPOS Context::_ReserveDSV(size_t count)
@@ -2592,18 +2734,18 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    DescHeapPOS Context::_ReserveSRVLocal(size_t count)
-    {
-        auto currentCPU = SRV_LOCAL_CPU;
+	DescHeapPOS Context::_ReserveSRVLocal(size_t count)
+	{
+		auto currentCPU = SRV_LOCAL_CPU;
 		auto currentGPU = SRV_LOCAL_GPU;
 		SRV_LOCAL_CPU.ptr = SRV_CPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
 		SRV_LOCAL_GPU.ptr = SRV_GPU.ptr + renderSystem->DescriptorCBVSRVUAVSize * count;
 
 		return { currentCPU, currentGPU };
-    }
+	}
 
 
 	/************************************************************************************************/
@@ -2652,8 +2794,8 @@ namespace FlexKit
 		SRV_CPU = descHeapSRV->GetCPUDescriptorHandleForHeapStart();
 		SRV_GPU = descHeapSRV->GetGPUDescriptorHandleForHeapStart();
 
-        SRV_LOCAL_CPU = descHeapSRVLocal->GetCPUDescriptorHandleForHeapStart();
-        SRV_LOCAL_GPU = descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
+		SRV_LOCAL_CPU = descHeapSRVLocal->GetCPUDescriptorHandleForHeapStart();
+		SRV_LOCAL_GPU = descHeapSRVLocal->GetGPUDescriptorHandleForHeapStart();
 	}
 
 
@@ -2871,35 +3013,35 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void CopyContext::Barrier(ID3D12Resource* resource, const DeviceResourceState before, const DeviceResourceState after)
-    {
-        D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
-            resource,
-            DRS2D3DState(before != DeviceResourceState::DRS_Write ? DeviceResourceState::DRS_GENERIC : before),
-            DRS2D3DState(after));
+	void CopyContext::Barrier(ID3D12Resource* resource, const DeviceResourceState before, const DeviceResourceState after)
+	{
+		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			resource,
+			DRS2D3DState(before != DeviceResourceState::DRS_Write ? DeviceResourceState::DRS_GENERIC : before),
+			DRS2D3DState(after));
 
 
-        if (pendingBarriers.full())
-            flushPendingBarriers();
+		if (pendingBarriers.full())
+			flushPendingBarriers();
 
-        pendingBarriers.push_back(barrier);
-    }
-
-
-    /************************************************************************************************/
+		pendingBarriers.push_back(barrier);
+	}
 
 
-    void CopyContext::flushPendingBarriers()
-    {
-        if (pendingBarriers.empty())
-            return;
-
-        commandList->ResourceBarrier(pendingBarriers.size(), pendingBarriers.data());
-        pendingBarriers.clear();
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void CopyContext::flushPendingBarriers()
+	{
+		if (pendingBarriers.empty())
+			return;
+
+		commandList->ResourceBarrier(pendingBarriers.size(), pendingBarriers.data());
+		pendingBarriers.clear();
+	}
+
+
+	/************************************************************************************************/
 
 
 	UploadReservation CopyContext::Reserve(const size_t reserveSize, const size_t reserveAlignement)
@@ -2919,7 +3061,7 @@ namespace FlexKit
 		};
 
 		// Buffer too Small
-        auto temp = reserveSize + GetOffset();
+		auto temp = reserveSize + GetOffset();
 		if (uploadBuffer.Position + reserveSize + GetOffset() > uploadBuffer.Size)
 			ResizeBuffer();
 
@@ -2957,7 +3099,7 @@ namespace FlexKit
 
 	void CopyContext::CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, UploadReservation source)
 	{
-        flushPendingBarriers();
+		flushPendingBarriers();
 
 		commandList->CopyBufferRegion(
 			destination,
@@ -2973,7 +3115,7 @@ namespace FlexKit
 
 	void CopyContext::CopyBuffer(ID3D12Resource* destination, const size_t destinationOffset, ID3D12Resource* source, const size_t sourceOffset, const size_t sourceSize)
 	{
-        flushPendingBarriers();
+		flushPendingBarriers();
 
 		commandList->CopyBufferRegion(
 			destination,
@@ -2995,11 +3137,11 @@ namespace FlexKit
 		uint2               WH,
 		DeviceFormat        format)
 	{
-        flushPendingBarriers();
+		flushPendingBarriers();
 
 		const auto      deviceFormat    = TextureFormat2DXGIFormat(format);
 		const size_t    formatSize      = GetFormatElementSize(deviceFormat);
-        const bool      BCformat        = IsDDS(format);
+		const bool      BCformat        = IsDDS(format);
 		const size_t rowPitch           = max((!BCformat ? formatSize * WH[0] : formatSize * WH[0] / 4) / 256, 1) * 256;
 		//size_t alignmentOffset    = rowPitch & 0x01ff;
 
@@ -3022,85 +3164,85 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void CopyContext::CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
-    {
-        flushPendingBarriers();
+	void CopyContext::CopyTile(ID3D12Resource* dest, const uint3 destTile, const size_t tileOffset, const UploadReservation src)
+	{
+		flushPendingBarriers();
 
-        auto desc = dest->GetDesc();
+		auto desc = dest->GetDesc();
 
-        const D3D12_TILED_RESOURCE_COORDINATE coordinate = {
-            .X              = (UINT)destTile[0],
-            .Y              = (UINT)destTile[1],
-            .Z              = (UINT)0,
-            .Subresource    = desc.MipLevels - (UINT)destTile[2],
-        };
-        
-        const D3D12_TILE_REGION_SIZE regionSize = {
-            .NumTiles   = 1,
-            .UseBox     = false,
-            .Width      = 1,
-            .Height     = 1,
-            .Depth      = 1,
-        };
+		const D3D12_TILED_RESOURCE_COORDINATE coordinate = {
+			.X              = (UINT)destTile[0],
+			.Y              = (UINT)destTile[1],
+			.Z              = (UINT)0,
+			.Subresource    = desc.MipLevels - (UINT)destTile[2],
+		};
+		
+		const D3D12_TILE_REGION_SIZE regionSize = {
+			.NumTiles   = 1,
+			.UseBox     = false,
+			.Width      = 1,
+			.Height     = 1,
+			.Depth      = 1,
+		};
 
-        commandList->CopyTiles(
-            dest,
-            &coordinate,
-            &regionSize,
-            src.resource,
-            src.offset,
-            D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
-    }
-
-
-    /************************************************************************************************/
+		commandList->CopyTiles(
+			dest,
+			&coordinate,
+			&regionSize,
+			src.resource,
+			src.offset,
+			D3D12_TILE_COPY_FLAG_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE);
+	}
 
 
-    PackedResourceTileInfo CopyContext::GetPackedTileInfo(ID3D12Resource* resource) const
-    {
-        ID3D12Device* device = nullptr;
-        commandList->GetDevice(IID_PPV_ARGS(&device));
-
-        UINT                        TileCount = 0;
-        D3D12_PACKED_MIP_INFO       packedMipInfo;
-        D3D12_TILE_SHAPE            TileShape;
-        UINT                        subResourceTilingCount = 1;
-        D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
-
-        device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
-
-        return {
-            size_t(packedMipInfo.NumStandardMips),
-            size_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
-            packedMipInfo.StartTileIndexInOverallResource };
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	PackedResourceTileInfo CopyContext::GetPackedTileInfo(ID3D12Resource* resource) const
+	{
+		ID3D12Device* device = nullptr;
+		commandList->GetDevice(IID_PPV_ARGS(&device));
+
+		UINT                        TileCount = 0;
+		D3D12_PACKED_MIP_INFO       packedMipInfo;
+		D3D12_TILE_SHAPE            TileShape;
+		UINT                        subResourceTilingCount = 1;
+		D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
+
+		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, 0, &subResourceTiling_Packed);
+
+		return {
+			size_t(packedMipInfo.NumStandardMips),
+			size_t(packedMipInfo.NumStandardMips + packedMipInfo.NumPackedMips),
+			packedMipInfo.StartTileIndexInOverallResource };
+	}
 
 
-    bool CopyContext::IsSubResourceTiled(ID3D12Resource* resource, const size_t level) const
-    {
-        ID3D12Device* device = nullptr;
-        commandList->GetDevice(IID_PPV_ARGS(&device));
-
-        UINT                        TileCount = 0;
-        D3D12_PACKED_MIP_INFO       packedMipInfo;
-        D3D12_TILE_SHAPE            TileShape;
-        UINT                        subResourceTilingCount = 1;
-        D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
-
-        device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, level, &subResourceTiling_Packed);
-
-        return (subResourceTiling_Packed.HeightInTiles * subResourceTiling_Packed.WidthInTiles) != 0;
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
-    
+	bool CopyContext::IsSubResourceTiled(ID3D12Resource* resource, const size_t level) const
+	{
+		ID3D12Device* device = nullptr;
+		commandList->GetDevice(IID_PPV_ARGS(&device));
+
+		UINT                        TileCount = 0;
+		D3D12_PACKED_MIP_INFO       packedMipInfo;
+		D3D12_TILE_SHAPE            TileShape;
+		UINT                        subResourceTilingCount = 1;
+		D3D12_SUBRESOURCE_TILING    subResourceTiling_Packed;
+
+		device->GetResourceTiling(resource, &TileCount, &packedMipInfo, &TileShape, &subResourceTilingCount, level, &subResourceTiling_Packed);
+
+		return (subResourceTiling_Packed.HeightInTiles * subResourceTiling_Packed.WidthInTiles) != 0;
+	}
+
+
+	/************************************************************************************************/
+	
 
 	CopyContext& CopyEngine::operator [](CopyContextHandle handle)
 	{
@@ -3119,14 +3261,18 @@ namespace FlexKit
 		Wait(CopyContextHandle{ currentIdx });
 
         if (FAILED(ctx.commandAllocator->Reset()))
+        {
+#if DEBUG
             __debugbreak();
+#endif
+        }
 
 		ctx.commandList->Reset(ctx.commandAllocator, nullptr);
 
-        /*
+		/*
 		for (auto resource : ctx.freeResources)
 			resource->Release();
-            */
+			*/
 		return CopyContextHandle{ currentIdx };
 	}
 
@@ -3152,7 +3298,7 @@ namespace FlexKit
 	void CopyEngine::Close(CopyContextHandle handle)
 	{
 		auto& ctx = copyContexts[handle];
-        ctx.flushPendingBarriers();
+		ctx.flushPendingBarriers();
 		ctx.commandList->Close();
 	}
 
@@ -3162,7 +3308,7 @@ namespace FlexKit
 
 	void CopyEngine::Submit(CopyContextHandle* begin, CopyContextHandle* end)
 	{
-        const size_t localCounter = ++counter;
+		const size_t localCounter = ++counter;
 		static_vector<ID3D12CommandList*, 64> cmdLists;
 
 		for (auto itr = begin; itr < end; itr++)
@@ -3170,24 +3316,24 @@ namespace FlexKit
 			auto& context = copyContexts[*itr];
 			cmdLists.push_back(context.commandList);
 
-            context.counter             = localCounter;
+			context.counter             = localCounter;
 			context.uploadBuffer.Last   = context.uploadBuffer.Position;
-            
+			
 			Close(*itr);
 		}
 
 		copyQueue->ExecuteCommandLists(cmdLists.size(), cmdLists);
-        copyQueue->Signal(fence, counter);
+		copyQueue->Signal(fence, counter);
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void CopyEngine::Signal(ID3D12Fence* fence, const size_t counter)
-    {
-        copyQueue->Signal(fence, counter);
-    }
+	void CopyEngine::Signal(ID3D12Fence* fence, const size_t counter)
+	{
+		copyQueue->Signal(fence, counter);
+	}
 
 
 	/************************************************************************************************/
@@ -3353,7 +3499,7 @@ namespace FlexKit
 		}
 
 #if USING(AFTERMATH)
-        auto res = GFSDK_Aftermath_DX12_Initialize(GFSDK_Aftermath_Version_API, GFSDK_Aftermath_FeatureFlags_Maximum, Device);
+		auto res = GFSDK_Aftermath_DX12_Initialize(GFSDK_Aftermath_Version_API, GFSDK_Aftermath_FeatureFlags_Maximum, Device);
 #endif
 
 #if USING(DEBUGGRAPHICS)
@@ -3462,10 +3608,12 @@ namespace FlexKit
 		InitiateComplete = true;
 		
 		Library.Initiate(this, in->TempMemory);
-        ReadBackTable.Initiate(Device);
+		ReadBackTable.Initiate(Device);
 
 		FreeList.Allocator = in->Memory;
         DefaultTexture = _CreateDefaultTexture();
+
+        SetDebugName(DefaultTexture, "Default Texture");
 
 		return InitiateComplete;
 	}
@@ -3489,7 +3637,7 @@ namespace FlexKit
 		if (!Memory)
 			return;
 
-        WaitforGPU();
+		WaitforGPU();
 
 		FK_LOG_9("Releasing RenderSystem");
 
@@ -3511,7 +3659,7 @@ namespace FlexKit
 		BufferUAVs.ReleaseAll();
 		Texture2DUAVs.ReleaseAll();
 		PipelineStates.ReleasePSOs();
-        ReadBackTable.Release();
+		ReadBackTable.Release();
 
 		NullConstantBuffer.Release();
 
@@ -3584,13 +3732,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t RenderSystem::GetCurrentCounter()
-    {
-        return FenceCounter;
-    }
+	size_t RenderSystem::GetCurrentCounter()
+	{
+		return FenceCounter;
+	}
 
 
 	/************************************************************************************************/
@@ -3606,13 +3754,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void RenderSystem::_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size)
-    {
-        Textures.ReplaceResources(handle, resources, size);
-    }
+	void RenderSystem::_UpdateSubResources(ResourceHandle handle, ID3D12Resource** resources, const size_t size)
+	{
+		Textures.ReplaceResources(handle, resources, size);
+	}
 
 
 	/************************************************************************************************/
@@ -3620,13 +3768,13 @@ namespace FlexKit
 
 	void RenderSystem::WaitforGPU()
 	{
-        GraphicsQueue->Signal(Fence, ++FenceCounter);
+		GraphicsQueue->Signal(Fence, ++FenceCounter);
 
 		const size_t completedValue	= Fence->GetCompletedValue();
-        const size_t currentCounter = FenceCounter;
+		const size_t currentCounter = FenceCounter;
 
 		if (currentCounter > completedValue)
-        {
+		{
 			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
 			Fence->SetEventOnCompletion(currentCounter, eventHandle);
 			WaitForSingleObject(eventHandle, INFINITE);
@@ -3714,6 +3862,58 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	const size_t    RenderSystem::GetResourceSize(ResourceHandle handle) const noexcept
+	{
+		auto resource               = GetDeviceResource(handle);
+		D3D12_RESOURCE_DESC desc    = resource->GetDesc();
+		auto resourceInfo           = pDevice->GetResourceAllocationInfo(0, 1, &desc);
+
+		return resourceInfo.SizeInBytes;
+	}
+
+
+	const size_t    RenderSystem::GetResourceSize(GPUResourceDesc desc) const noexcept
+	{
+		D3D12_RESOURCE_DESC   Resource_DESC = 
+				(desc.Dimensions == TextureDimension::Texture1D) ?
+				CD3DX12_RESOURCE_DESC::Buffer(desc.WH[0]):
+				(desc.Dimensions == TextureDimension::Texture2D) ? (
+				CD3DX12_RESOURCE_DESC::Tex2D(
+					TextureFormat2DXGIFormat(desc.format),
+					desc.WH[0],
+					desc.WH[1],
+					desc.arraySize,
+					desc.MipLevels)
+				) : (
+				CD3DX12_RESOURCE_DESC::Tex2D(
+					TextureFormat2DXGIFormat(desc.format),
+					desc.WH[0],
+					desc.WH[1],
+					6,
+					desc.MipLevels));
+
+
+		Resource_DESC.Flags	= desc.renderTarget ?
+								D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET : 
+								D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+		Resource_DESC.Flags |= desc.unordered ?
+			D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS :
+			D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+		Resource_DESC.Flags |=  (desc.depthTarget) ? D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL : 
+			D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+		Resource_DESC.MipLevels	= !desc.MipLevels ? 1 : desc.MipLevels;
+
+		auto resourceInfo = pDevice->GetResourceAllocationInfo(0, 1, &Resource_DESC);
+
+		return resourceInfo.SizeInBytes;
+	}
+
+
+	/************************************************************************************************/
+
 
 	const size_t	RenderSystem::GetTextureElementSize(ResourceHandle handle) const
 	{
@@ -3727,10 +3927,10 @@ namespace FlexKit
 
 	const uint2	RenderSystem::GetTextureWH(ResourceHandle handle) const
 	{
-        if (handle == InvalidHandle_t)
-            return { 0, 0 };
-        else
-		    return Textures.GetWH(handle);
+		if (handle == InvalidHandle_t)
+			return { 0, 0 };
+		else
+			return Textures.GetWH(handle);
 	}
 
 
@@ -3779,13 +3979,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    uint32_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
-    {
-        return Textures.GetMIPCount(handle);
-    }
+	uint32_t RenderSystem::GetTextureMipCount(ResourceHandle handle) const
+	{
+		return Textures.GetMIPCount(handle);
+	}
 
 
 	/************************************************************************************************/
@@ -3895,25 +4095,25 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ResourceHandle RenderSystem::CreateDepthBufferArray(
-        const uint2     WH,
-        const bool      UseFloat,
-        const size_t    arraySize,
-        const bool      buffered,
-        const bool      virtualRes)
-    {
-        auto desc       = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
-        desc.arraySize  = arraySize;
-        desc.Virtual    = virtualRes;
+	ResourceHandle RenderSystem::CreateDepthBufferArray(
+		const uint2                     WH,
+		const bool                      UseFloat,
+		const size_t                    arraySize,
+		const bool                      buffered,
+		const ResourceAllocationType    allocationType)
+	{
+		auto desc           = GPUResourceDesc::DepthTarget(WH, UseFloat ? DeviceFormat::D32_FLOAT : DeviceFormat::D24_UNORM_S8_UINT);
+		desc.arraySize      = arraySize;
+		desc.allocationType = allocationType;
 
-        auto resource   = CreateGPUResource(desc);
-        SetDebugName(resource, "DepthBufferArray");
+		auto resource   = CreateGPUResource(desc);
+		SetDebugName(resource, "DepthBufferArray");
 
-        return resource;
-    }
+		return resource;
+	}
 
 
 	/************************************************************************************************/
@@ -3996,9 +4196,11 @@ namespace FlexKit
 			const size_t end = desc.bufferCount;
 			for (size_t itr = 0; itr < end; ++itr)
 			{
-				if (desc.Virtual)
+				switch(desc.allocationType)
 				{
-                    Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
+				case ResourceAllocationType::Tiled:
+				{
+					Resource_DESC.Layout = D3D12_TEXTURE_LAYOUT_64KB_UNDEFINED_SWIZZLE;
 
 					HRESULT HR = pDevice->CreateReservedResource(
 									&Resource_DESC,
@@ -4007,8 +4209,8 @@ namespace FlexKit
 									IID_PPV_ARGS(&NewResource[itr]));
 
 					CheckHR(HR, ASSERTONFAIL("FAILED TO CREATE VIRTUAL MEMORY FOR TEXTURE"));
-				}
-				else
+				}   break;
+				case ResourceAllocationType::Committed:
 				{
 					HRESULT HR = pDevice->CreateCommittedResource(
 									&HEAP_Props, 
@@ -4016,6 +4218,17 @@ namespace FlexKit
 									&Resource_DESC, InitialState, pCV, IID_PPV_ARGS(&NewResource[itr]));
 
 					CheckHR(HR, ASSERTONFAIL("FAILED TO COMMIT MEMORY FOR TEXTURE"));
+				}   break;
+				case ResourceAllocationType::Placed:
+				{
+					HRESULT HR = pDevice->CreatePlacedResource(
+						GetDeviceResource(desc.placed.heap),
+						desc.placed.offset,
+						&Resource_DESC,
+						InitialState,
+                        pCV,
+						IID_PPV_ARGS(&NewResource[itr]));
+				}   break;
 				}
 				FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
 				SETDEBUGNAME(NewResource[itr], __func__);
@@ -4027,7 +4240,7 @@ namespace FlexKit
 			auto initialState =
 				filledDesc.renderTarget ? DRS_RenderTarget:
 				filledDesc.depthTarget  ? DRS_DEPTHBUFFERWRITE :
-                DRS_ShaderResource;
+				DRS_ShaderResource;
 
 			filledDesc.resources = NewResource;
 			return Textures.AddResource(filledDesc, initialState);
@@ -4250,203 +4463,203 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
-    {
-        FK_LOG_9("Updating tile mappings for frame: %u", GetCurrentFrame());
+	void RenderSystem::UpdateTileMappings(ResourceHandle* begin, ResourceHandle* end, iAllocator* allocator)
+	{
+		FK_LOG_9("Updating tile mappings for frame: %u", GetCurrentFrame());
 
-        auto itr = begin;
-        while(itr < end)
-        {
-            auto& mappings                      = Textures._GetTileMappings(*itr);
-            auto deviceResource                 = GetDeviceResource(*itr);
-            const auto mipCount                 = Textures.GetMIPCount(*itr);
+		auto itr = begin;
+		while(itr < end)
+		{
+			auto& mappings                      = Textures._GetTileMappings(*itr);
+			auto deviceResource                 = GetDeviceResource(*itr);
+			const auto mipCount                 = Textures.GetMIPCount(*itr);
 
-            Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator };
-            Vector<D3D12_TILE_REGION_SIZE>          regionSizes { allocator };
-            Vector<D3D12_TILE_RANGE_FLAGS>          flags       { allocator };
-            Vector<UINT>                            offsets     { allocator };
-            Vector<UINT>                            tileRanges  { allocator };
-            DeviceHeapHandle                        heap = InvalidHandle_t;
+			Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator };
+			Vector<D3D12_TILE_REGION_SIZE>          regionSizes { allocator };
+			Vector<D3D12_TILE_RANGE_FLAGS>          flags       { allocator };
+			Vector<UINT>                            offsets     { allocator };
+			Vector<UINT>                            tileRanges  { allocator };
+			DeviceHeapHandle                        heap = InvalidHandle_t;
 
-            uint32_t I = 0;
+			uint32_t I = 0;
 
-            while(I < mappings.size())
-            {
-                heap = mappings[I].heap;
+			while(I < mappings.size())
+			{
+				heap = mappings[I].heap;
 
-                for (;mappings[I].heap == heap && I < mappings.size(); I++)
-                {
-                    auto& mapping = mappings[I];
+				for (;mappings[I].heap == heap && I < mappings.size(); I++)
+				{
+					auto& mapping = mappings[I];
 
-                    if (mapping.state == TileMapState::InUse)
-                        continue;
+					if (mapping.state == TileMapState::InUse)
+						continue;
 
-                    if (mapping.state == TileMapState::Updated)
-                        mapping.state = TileMapState::InUse;
+					if (mapping.state == TileMapState::Updated)
+						mapping.state = TileMapState::InUse;
 
-                    const auto flag = mapping.state == TileMapState::Null ? D3D12_TILE_RANGE_FLAG_NULL : D3D12_TILE_RANGE_FLAG_NONE;
+					const auto flag = mapping.state == TileMapState::Null ? D3D12_TILE_RANGE_FLAG_NULL : D3D12_TILE_RANGE_FLAG_NONE;
 
-                    D3D12_TILED_RESOURCE_COORDINATE coordinate;
-                    coordinate.Subresource  = mapping.tileID.GetMipLevel(mipCount);
-                    coordinate.X            = mapping.tileID.GetTileX();
-                    coordinate.Y            = mapping.tileID.GetTileY();
-                    coordinate.Z            = 0;
+					D3D12_TILED_RESOURCE_COORDINATE coordinate;
+					coordinate.Subresource  = mapping.tileID.GetMipLevel(mipCount);
+					coordinate.X            = mapping.tileID.GetTileX();
+					coordinate.Y            = mapping.tileID.GetTileY();
+					coordinate.Z            = 0;
 
 #if _DEBUG
-                    if(flag == D3D12_TILE_RANGE_FLAG_NONE)
-                        FK_LOG_9("Mapping Tile { %u, %u, %u MIP } to Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset );
-                    else
-                        FK_LOG_9("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
+					if(flag == D3D12_TILE_RANGE_FLAG_NONE)
+						FK_LOG_9("Mapping Tile { %u, %u, %u MIP } to Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset );
+					else
+						FK_LOG_9("Unmapping Tile { %u, %u, %u MIP } from Offset: { %u }", coordinate.X, coordinate.Y, coordinate.Subresource, mapping.heapOffset);
 #endif
 
-                    coordinates.push_back(coordinate);
+					coordinates.push_back(coordinate);
 
-                    D3D12_TILE_REGION_SIZE regionSize;
-                    regionSize.Depth    = 1;
-                    regionSize.Height   = 1;
-                    regionSize.Width    = 1;
+					D3D12_TILE_REGION_SIZE regionSize;
+					regionSize.Depth    = 1;
+					regionSize.Height   = 1;
+					regionSize.Width    = 1;
 
-                    regionSize.NumTiles = 1;
-                    regionSize.UseBox = false;
+					regionSize.NumTiles = 1;
+					regionSize.UseBox = false;
 
-                    regionSizes.push_back(regionSize);
+					regionSizes.push_back(regionSize);
 
-                    offsets.push_back(mapping.heapOffset);
-                    flags.push_back(flag);
-                    tileRanges.push_back(1);
-                }
+					offsets.push_back(mapping.heapOffset);
+					flags.push_back(flag);
+					tileRanges.push_back(1);
+				}
 
-                I++;
+				I++;
 
-                if (heap != InvalidHandle_t)
-                {
-                    D3D12_TILE_RANGE_FLAGS nullRangeFlag = D3D12_TILE_RANGE_FLAG_NULL;
+				if (heap != InvalidHandle_t)
+				{
+					D3D12_TILE_RANGE_FLAGS nullRangeFlag = D3D12_TILE_RANGE_FLAG_NULL;
 
-                    copyEngine.copyQueue->UpdateTileMappings(
-                        deviceResource,
-                        coordinates.size(),
-                        coordinates.data(),
-                        regionSizes.data(),
-                        GetDeviceResource(heap),
-                        coordinates.size(),
-                        flags.data(),
-                        offsets.data(),
-                        tileRanges.data(),
-                        D3D12_TILE_MAPPING_FLAG_NONE);
-                }
+					copyEngine.copyQueue->UpdateTileMappings(
+						deviceResource,
+						coordinates.size(),
+						coordinates.data(),
+						regionSizes.data(),
+						GetDeviceResource(heap),
+						coordinates.size(),
+						flags.data(),
+						offsets.data(),
+						tileRanges.data(),
+						D3D12_TILE_MAPPING_FLAG_NONE);
+				}
 
-                mappings.erase(
-                    std::remove_if(
-                        std::begin(mappings),
-                        std::end(mappings),
-                        [](TileMapping& mapping)
-                        {
-                            return mapping.state == TileMapState::Null;
-                        }),
-                    std::end(mappings));
+				mappings.erase(
+					std::remove_if(
+						std::begin(mappings),
+						std::end(mappings),
+						[](TileMapping& mapping)
+						{
+							return mapping.state == TileMapState::Null;
+						}),
+					std::end(mappings));
 
-                coordinates.clear();
-                regionSizes.clear();
-                flags.clear();
-                offsets.clear();
-                tileRanges.clear();
-            }
+				coordinates.clear();
+				regionSizes.clear();
+				flags.clear();
+				offsets.clear();
+				tileRanges.clear();
+			}
 
-            itr++;
-        }
+			itr++;
+		}
 
-        FK_LOG_9("Completed file mapping update");
-    }
-
-
-    /************************************************************************************************/
+		FK_LOG_9("Completed file mapping update");
+	}
 
 
-    void RenderSystem::UpdateTextureTileMappings(const ResourceHandle handle, const TileMapList& tileMaps)
-    {
-        Textures.UpdateTileMappings(handle, tileMaps.begin(), tileMaps.end());
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void RenderSystem::UpdateTextureTileMappings(const ResourceHandle handle, const TileMapList& tileMaps)
+	{
+		Textures.UpdateTileMappings(handle, tileMaps.begin(), tileMaps.end());
+	}
 
 
-    const TileMapList& RenderSystem::GetTileMappings(const ResourceHandle handle)
-    {
-        return Textures.GetTileMappings(handle);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	const TileMapList& RenderSystem::GetTileMappings(const ResourceHandle handle)
+	{
+		return Textures.GetTileMappings(handle);
+	}
 
 
-    ReadBackResourceHandle  RenderSystem::CreateReadBackBuffer(const size_t bufferSize)
-    {
-        D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
-        Resource_DESC.Width     = bufferSize;
-        Resource_DESC.Format    = DXGI_FORMAT_UNKNOWN;
-        Resource_DESC.Flags     = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-
-        D3D12_HEAP_PROPERTIES HEAP_Props = {};
-        HEAP_Props.CPUPageProperty      = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-        HEAP_Props.Type                 = D3D12_HEAP_TYPE_READBACK;
-        HEAP_Props.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
-
-        ID3D12Resource* resource = nullptr;
-
-        auto HR = pDevice->CreateCommittedResource(
-            &HEAP_Props,
-            D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
-            &Resource_DESC,
-            D3D12_RESOURCE_STATE_COPY_DEST,
-            nullptr,
-            IID_PPV_ARGS(&resource));
-
-        return ReadBackTable.AddReadBack(bufferSize, resource);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	ReadBackResourceHandle  RenderSystem::CreateReadBackBuffer(const size_t bufferSize)
+	{
+		D3D12_RESOURCE_DESC Resource_DESC = CD3DX12_RESOURCE_DESC::Buffer(bufferSize);
+		Resource_DESC.Width     = bufferSize;
+		Resource_DESC.Format    = DXGI_FORMAT_UNKNOWN;
+		Resource_DESC.Flags     = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
+
+		D3D12_HEAP_PROPERTIES HEAP_Props = {};
+		HEAP_Props.CPUPageProperty      = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		HEAP_Props.Type                 = D3D12_HEAP_TYPE_READBACK;
+		HEAP_Props.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+
+		ID3D12Resource* resource = nullptr;
+
+		auto HR = pDevice->CreateCommittedResource(
+			&HEAP_Props,
+			D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
+			&Resource_DESC,
+			D3D12_RESOURCE_STATE_COPY_DEST,
+			nullptr,
+			IID_PPV_ARGS(&resource));
+
+		return ReadBackTable.AddReadBack(bufferSize, resource);
+	}
 
 
-    void RenderSystem::SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler)
-    {
-        ReadBackTable.SetCallback(readbackBuffer, std::move(handler));
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void RenderSystem::SetReadBackEvent(ReadBackResourceHandle readbackBuffer, ReadBackEventHandler&& handler)
+	{
+		ReadBackTable.SetCallback(readbackBuffer, std::move(handler));
+	}
 
 
-    std::pair<void*, size_t> RenderSystem::OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize)
-    {
-        auto temp = ReadBackTable.OpenBufferData(readbackBuffer, readSize);
-        return { temp.buffer, temp.bufferSize };
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	std::pair<void*, size_t> RenderSystem::OpenReadBackBuffer(ReadBackResourceHandle readbackBuffer, const size_t readSize)
+	{
+		auto temp = ReadBackTable.OpenBufferData(readbackBuffer, readSize);
+		return { temp.buffer, temp.bufferSize };
+	}
 
 
-    void RenderSystem::CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer)
-    {
-        ReadBackTable.CloseBufferData(readbackBuffer);
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void RenderSystem::CloseReadBackBuffer(ReadBackResourceHandle readbackBuffer)
+	{
+		ReadBackTable.CloseBufferData(readbackBuffer);
+	}
 
 
-    void RenderSystem::FlushPendingReadBacks()
-    {
-        ReadBackTable.Update();
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void RenderSystem::FlushPendingReadBacks()
+	{
+		ReadBackTable.Update();
+	}
+
+
+	/************************************************************************************************/
 
 
 	void RenderSystem::SetObjectState(SOResourceHandle handle, DeviceResourceState state)
@@ -4528,19 +4741,19 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    ID3D12Heap* RenderSystem::GetDeviceResource(const DeviceHeapHandle handle) const
-    {
-        return heaps.GetDeviceResource(handle);
-    }
+	ID3D12Heap* RenderSystem::GetDeviceResource(const DeviceHeapHandle handle) const
+	{
+		return heaps.GetDeviceResource(handle);
+	}
 
 
-    ID3D12Resource* RenderSystem::GetDeviceResource(const ReadBackResourceHandle handle) const
-    {
-        return ReadBackTable.GetDeviceResource(handle);
-    }
+	ID3D12Resource* RenderSystem::GetDeviceResource(const ReadBackResourceHandle handle) const
+	{
+		return ReadBackTable.GetDeviceResource(handle);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	ID3D12Resource* RenderSystem::GetDeviceResource(const ConstantBufferHandle handle) const
@@ -4625,6 +4838,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
+	size_t RenderSystem::GetUAVBufferSize(const UAVResourceHandle handle) const noexcept
+	{
+		if (auto res = BufferUAVs[handle]; res)
+			return res->resourceSize;
+
+		return 0;
+	}
+
+
+	/************************************************************************************************/
+
+
 	Texture2D RenderSystem::GetUAV2DTexture(const UAVTextureHandle handle) const
 	{
 		const auto layout = Texture2DUAVs.GetExtra(handle);
@@ -4637,6 +4862,15 @@ namespace FlexKit
 
 		return tex;
 	}
+
+
+    /************************************************************************************************/
+
+
+    size_t RenderSystem::GetHeapSize(const DeviceHeapHandle heap) const
+    {
+        return heaps.GetHeapSize(heap);
+    }
 
 
 	/************************************************************************************************/
@@ -4692,13 +4926,13 @@ namespace FlexKit
 		Texture2DUAVs.ReleaseResource(handle);
 	}
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void RenderSystem::ReleaseReadBack(ReadBackResourceHandle handle)
-    {
-        ReadBackTable.ReleaseResource(handle);
-    }
+	void RenderSystem::ReleaseReadBack(ReadBackResourceHandle handle)
+	{
+		ReadBackTable.ReleaseResource(handle);
+	}
 
 
 	/************************************************************************************************/
@@ -4805,8 +5039,8 @@ namespace FlexKit
 		{
 		case DXGI_FORMAT::DXGI_FORMAT_R16G16_UINT:
 			return FlexKit::DeviceFormat::R16G16_UINT;
-        case DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT:
-            return FlexKit::DeviceFormat::R32G32_UINT;
+		case DXGI_FORMAT::DXGI_FORMAT_R32G32_UINT:
+			return FlexKit::DeviceFormat::R32G32_UINT;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8B8A8_UNORM:
 			return FlexKit::DeviceFormat::R8G8B8A8_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_R8G8_UNORM:
@@ -4851,8 +5085,8 @@ namespace FlexKit
 			return FlexKit::DeviceFormat::BC5_UNORM;
 		case DXGI_FORMAT::DXGI_FORMAT_BC5_SNORM:
 			return FlexKit::DeviceFormat::BC5_SNORM;
-        case DXGI_FORMAT::DXGI_FORMAT_R32_UINT:
-            return FlexKit::DeviceFormat::R32_UINT;
+		case DXGI_FORMAT::DXGI_FORMAT_R32_UINT:
+			return FlexKit::DeviceFormat::R32_UINT;
 
 		default:
 			return FlexKit::DeviceFormat::UNKNOWN;
@@ -4886,10 +5120,10 @@ namespace FlexKit
 				Desc->format);
 		}
 
-        copyCtx.Barrier(
-            destinationResource,
-            DRS_Write,
-            DRS_GENERIC);
+		copyCtx.Barrier(
+			destinationResource,
+			DRS_Write,
+			DRS_GENERIC);
 	}
 
 
@@ -5488,10 +5722,10 @@ namespace FlexKit
 			Resources[T.ResourceIdx].Release();
 		}
 
-        for (auto& resource : delayRelease)
-            resource.resource->Release();
+		for (auto& resource : delayRelease)
+			resource.resource->Release();
 
-        delayRelease.Release();
+		delayRelease.Release();
 		UserEntries.Release();
 		Resources.Release();
 		Handles.Clear();
@@ -5530,7 +5764,7 @@ namespace FlexKit
 		Entry.Flags             = Desc.backBuffer ? TF_BackBuffer : 0;
 		Entry.dimension         = Desc.Dimensions;
 		Entry.arraySize         = Desc.arraySize;
-        Entry.tileMappings      = { allocator };
+		Entry.tileMappings      = { allocator };
 
 		Handles[Handle]         = UserEntries.push_back(Entry);
 
@@ -5544,12 +5778,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void TextureStateTable::ReleaseTexture(ResourceHandle Handle)
+	void TextureStateTable::ReleaseTexture(ResourceHandle handle)
 	{
-        if (Handle == InvalidHandle_t)
-            return;
+		if (handle == InvalidHandle_t)
+			return;
 
-		const auto UserIdx	= Handles[Handle];
+		const auto UserIdx	= Handles[handle];
 		auto& UserEntry		= UserEntries[UserIdx];
 		const auto ResIdx	= UserEntry.ResourceIdx;
 		auto& resource		= Resources[ResIdx];
@@ -5569,7 +5803,7 @@ namespace FlexKit
 		UserEntries.pop_back();
 		Resources.pop_back();
 
-		Handles.RemoveHandle(Handle);
+		Handles.RemoveHandle(handle);
 	}
 
 
@@ -5583,8 +5817,8 @@ namespace FlexKit
 		const auto ResIdx	= UserEntry.ResourceIdx;
 		auto& resource		= Resources[ResIdx];
 
-        for (auto res : resource.Resources)
-            res->Release();
+		for (auto res : resource.Resources)
+			res->Release();
 
 		const auto TempHandle	= UserEntries.back().Handle;
 		UserEntry			    = UserEntries.back();
@@ -5733,14 +5967,14 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    uint32_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
-    {
-        auto UserIdx = Handles[handle];
-        return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;
-    }
+	uint32_t TextureStateTable::GetMIPCount(ResourceHandle handle) const
+	{
+		auto UserIdx = Handles[handle];
+		return Resources[UserEntries[UserIdx].ResourceIdx].mipCount;
+	}
 
 
 	/************************************************************************************************/
@@ -5756,141 +5990,141 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    void TextureStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
-    {
-        if (handle == InvalidHandle_t)
-            return;
+	void TextureStateTable::UpdateTileMappings(ResourceHandle handle, const TileMapping* begin, const TileMapping* end)
+	{
+		if (handle == InvalidHandle_t)
+			return;
 
-        auto itr        = begin;
-        auto UserIdx    = Handles[handle];
-        auto& mappings  = UserEntries[UserIdx].tileMappings;
+		auto itr        = begin;
+		auto UserIdx    = Handles[handle];
+		auto& mappings  = UserEntries[UserIdx].tileMappings;
 
-        TileMapList newElements{ allocator };
+		TileMapList newElements{ allocator };
 
-        std::sort(mappings.begin(), mappings.end(),
-            [](const auto& lhs, const auto& rhs)
-            {
-                return lhs.sortingID() < rhs.sortingID();
-            });
+		std::sort(mappings.begin(), mappings.end(),
+			[](const auto& lhs, const auto& rhs)
+			{
+				return lhs.sortingID() < rhs.sortingID();
+			});
 
-        std::for_each(begin, end,
-            [&](const TileMapping& updatedTile)
-            {
-                auto pred = [](const TileMapping& lhs, const TileMapping& rhs)
-                {
-                    return lhs.tileID < rhs.tileID;
-                };
+		std::for_each(begin, end,
+			[&](const TileMapping& updatedTile)
+			{
+				auto pred = [](const TileMapping& lhs, const TileMapping& rhs)
+				{
+					return lhs.tileID < rhs.tileID;
+				};
 
-                auto res = std::lower_bound(
-                    mappings.begin(),
-                    mappings.end(),
-                    updatedTile,
-                    pred);
+				auto res = std::lower_bound(
+					mappings.begin(),
+					mappings.end(),
+					updatedTile,
+					pred);
 
-                if (res != mappings.end() && res->tileID == updatedTile.tileID)
-                    res->state = updatedTile.state;
-                else
-                    newElements.push_back(updatedTile);
-            });
+				if (res != mappings.end() && res->tileID == updatedTile.tileID)
+					res->state = updatedTile.state;
+				else
+					newElements.push_back(updatedTile);
+			});
 
-        for (auto& e : newElements)
-            mappings.push_back(e);
-    }
-
-
-    /************************************************************************************************/
+		for (auto& e : newElements)
+			mappings.push_back(e);
+	}
 
 
-    void TextureStateTable::SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp)
-    {
-        Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator_temp };
-        Vector<D3D12_TILE_REGION_SIZE>          regionSize  { allocator_temp };
-        Vector<D3D12_TILE_RANGE_FLAGS>          tile_flags  { allocator_temp };
-        Vector<UINT>                            heapOffsets { allocator_temp };
-        Vector<UINT>                            tileCounts  { allocator_temp };
-
-        for (auto& userEntry : UserEntries)
-        {
-            coordinates.size();
-            regionSize.size();
-
-            ID3D12Resource* resource    = nullptr;
-            ID3D12Heap*     heap        = nullptr;
-
-            for (const auto& mapping: userEntry.tileMappings)
-            {
-                auto desc = resource->GetDesc();
-                
-                if (auto mappingHeap = renderSystem.GetDeviceResource(mapping.heap); heap != mappingHeap)
-                {
-                    if (mappingHeap)
-                        queue->UpdateTileMappings(
-                            resource,
-                            coordinates.size(),
-                            coordinates.data(),
-                            regionSize.data(),
-                            heap,
-                            tile_flags.size(),
-                            tile_flags.data(),
-                            heapOffsets.data(),
-                            tileCounts.data(),
-                            D3D12_TILE_MAPPING_FLAG_NONE);
-
-                    coordinates.clear();
-                    regionSize.clear();
-                    tile_flags.clear();
-                    heapOffsets.clear();
-                    tileCounts.clear();
-                }
-                else
-                {
-                    coordinates.push_back(
-                        D3D12_TILED_RESOURCE_COORDINATE{
-                            .X = mapping.tileID.GetTileX(),
-                            .Y = mapping.tileID.GetTileY(),
-                            .Z = 0,
-                            .Subresource = (UINT)mapping.tileID.GetMipLevel(desc.MipLevels)
-                        });
-
-                    regionSize.push_back(
-                        D3D12_TILE_REGION_SIZE{
-                            .NumTiles   = 1,
-                            .UseBox     = true,
-                            .Width      = 1,
-                            .Height     = 1,
-                            .Depth      = 1,
-                        });
-
-                    tile_flags.push_back(D3D12_TILE_RANGE_FLAGS::D3D12_TILE_RANGE_FLAG_NONE);
-                    heapOffsets.push_back(mapping.heapOffset);
-                    tileCounts.push_back(1);
-                }
-            }
-        }
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	void TextureStateTable::SubmitTileUpdates(ID3D12CommandQueue* queue, RenderSystem& renderSystem, iAllocator* allocator_temp)
+	{
+		Vector<D3D12_TILED_RESOURCE_COORDINATE> coordinates { allocator_temp };
+		Vector<D3D12_TILE_REGION_SIZE>          regionSize  { allocator_temp };
+		Vector<D3D12_TILE_RANGE_FLAGS>          tile_flags  { allocator_temp };
+		Vector<UINT>                            heapOffsets { allocator_temp };
+		Vector<UINT>                            tileCounts  { allocator_temp };
+
+		for (auto& userEntry : UserEntries)
+		{
+			coordinates.size();
+			regionSize.size();
+
+			ID3D12Resource* resource    = nullptr;
+			ID3D12Heap*     heap        = nullptr;
+
+			for (const auto& mapping: userEntry.tileMappings)
+			{
+				auto desc = resource->GetDesc();
+				
+				if (auto mappingHeap = renderSystem.GetDeviceResource(mapping.heap); heap != mappingHeap)
+				{
+					if (mappingHeap)
+						queue->UpdateTileMappings(
+							resource,
+							coordinates.size(),
+							coordinates.data(),
+							regionSize.data(),
+							heap,
+							tile_flags.size(),
+							tile_flags.data(),
+							heapOffsets.data(),
+							tileCounts.data(),
+							D3D12_TILE_MAPPING_FLAG_NONE);
+
+					coordinates.clear();
+					regionSize.clear();
+					tile_flags.clear();
+					heapOffsets.clear();
+					tileCounts.clear();
+				}
+				else
+				{
+					coordinates.push_back(
+						D3D12_TILED_RESOURCE_COORDINATE{
+							.X = mapping.tileID.GetTileX(),
+							.Y = mapping.tileID.GetTileY(),
+							.Z = 0,
+							.Subresource = (UINT)mapping.tileID.GetMipLevel(desc.MipLevels)
+						});
+
+					regionSize.push_back(
+						D3D12_TILE_REGION_SIZE{
+							.NumTiles   = 1,
+							.UseBox     = true,
+							.Width      = 1,
+							.Height     = 1,
+							.Depth      = 1,
+						});
+
+					tile_flags.push_back(D3D12_TILE_RANGE_FLAGS::D3D12_TILE_RANGE_FLAG_NONE);
+					heapOffsets.push_back(mapping.heapOffset);
+					tileCounts.push_back(1);
+				}
+			}
+		}
+	}
 
 
-    const TileMapList& TextureStateTable::GetTileMappings(const ResourceHandle handle) const
-    {
-        auto UserIdx = Handles[handle];
-        return UserEntries[UserIdx].tileMappings;
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	const TileMapList& TextureStateTable::GetTileMappings(const ResourceHandle handle) const
+	{
+		auto UserIdx = Handles[handle];
+		return UserEntries[UserIdx].tileMappings;
+	}
 
 
-    TileMapList& TextureStateTable::_GetTileMappings(const ResourceHandle handle)
-    {
-        auto UserIdx = Handles[handle];
-        return UserEntries[UserIdx].tileMappings;
-    }
+	/************************************************************************************************/
 
 
-    /************************************************************************************************/
+	TileMapList& TextureStateTable::_GetTileMappings(const ResourceHandle handle)
+	{
+		auto UserIdx = Handles[handle];
+		return UserEntries[UserIdx].tileMappings;
+	}
+
+
+	/************************************************************************************************/
 
 
 	void TextureStateTable::MarkRTUsed(ResourceHandle Handle)
@@ -5987,19 +6221,19 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void TextureStateTable::ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size)
-    {
-        auto  Idx                   = Handles[handle];
-        auto  ResourceIdx           = UserEntries[Idx].ResourceIdx;
-        const auto resourceCount    = Resources[ResourceIdx].ResourceCount;
-        auto& resources             = Resources[ResourceIdx].Resources;
+	void TextureStateTable::ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size)
+	{
+		auto  Idx                   = Handles[handle];
+		auto  ResourceIdx           = UserEntries[Idx].ResourceIdx;
+		const auto resourceCount    = Resources[ResourceIdx].ResourceCount;
+		auto& resources             = Resources[ResourceIdx].Resources;
 
-        for (size_t I = 0; I < min(resourceCount, size); ++I)
-            resources[I] = begin[I];
-    }
+		for (size_t I = 0; I < min(resourceCount, size); ++I)
+			resources[I] = begin[I];
+	}
 
 
 	/************************************************************************************************/
@@ -6112,8 +6346,8 @@ namespace FlexKit
 		}
 
 		TriMeshHandle triMesh = LoadTriMeshIntoTable(
-            rs,
-            copyCtx == InvalidHandle_t ? rs->GetImmediateUploadQueue() : copyCtx, guid);
+			rs,
+			copyCtx == InvalidHandle_t ? rs->GetImmediateUploadQueue() : copyCtx, guid);
 
 		return triMesh;
 	}
@@ -6406,58 +6640,60 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void RenderSystem::_OnCrash()
-    {
+	void RenderSystem::_OnCrash()
+	{
 #if USING(AFTERMATH)
-        std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
-        std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ Contexts.size() };
+		std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
+		std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ Contexts.size() };
 
-        for (auto& context : Contexts)
-            context_handles.push_back(context.AFTERMATH_context);
+		for (auto& context : Contexts)
+			context_handles.push_back(context.AFTERMATH_context);
 
-        GFSDK_Aftermath_Device_Status           device_status;
-        GFSDK_Aftermath_PageFaultInformation    pafeFault;
+		GFSDK_Aftermath_Device_Status           device_status;
+		GFSDK_Aftermath_PageFaultInformation    pafeFault;
 
-        GFSDK_Aftermath_GetDeviceStatus(&device_status);
-        GFSDK_Aftermath_GetData(context_handles.size(), context_handles.data(), context_crash_info.data());
-        GFSDK_Aftermath_GetPageFaultInformation(&pafeFault);
+		GFSDK_Aftermath_GetDeviceStatus(&device_status);
+		GFSDK_Aftermath_GetData(context_handles.size(), context_handles.data(), context_crash_info.data());
+		GFSDK_Aftermath_GetPageFaultInformation(&pafeFault);
 
-        for (auto& context : Contexts)
-            GFSDK_Aftermath_ReleaseContextHandle(context.AFTERMATH_context);
+		for (auto& context : Contexts)
+			GFSDK_Aftermath_ReleaseContextHandle(context.AFTERMATH_context);
 
-        Sleep(3000); // Aftermath needs a moment to do it's crash dump
+		Sleep(3000); // Aftermath needs a moment to do it's crash dump
 
-        __debugbreak();
-        exit(-1);
+		__debugbreak();
+		exit(-1);
 #endif
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    ResourceHandle RenderSystem::_CreateDefaultTexture()
-    {
-        char tempBuffer[256];
-        memset(tempBuffer, 0xffff, 256);
+	ResourceHandle RenderSystem::_CreateDefaultTexture()
+	{
+		char tempBuffer[256];
+		memset(tempBuffer, 0xffff, 256);
 
-        const auto upload = GetImmediateUploadQueue();
+		auto upload = OpenUploadQueue();
 
-        TextureBuffer textureBuffer{ {1, 1}, (FlexKit::byte*)tempBuffer, 256, 4, nullptr };
+		TextureBuffer textureBuffer{ { 1,  1 }, (FlexKit::byte*)tempBuffer, 256, 4, nullptr };
 
-        auto defaultTexture = MoveTextureBuffersToVRAM(
-            this,
-            upload,
-            &textureBuffer,
-            1,
-            1,
-            DeviceFormat::R8G8B8A8_UNORM);
+		auto defaultTexture = MoveTextureBuffersToVRAM(
+			this,
+			upload,
+			&textureBuffer,
+			1,
+			1,
+			DeviceFormat::R8G8B8A8_UNORM);
 
-        return defaultTexture;
-    }
+        SubmitUploadQueues(0, &upload);
+
+		return defaultTexture;
+	}
 
 
 	/************************************************************************************************/
@@ -6465,7 +6701,7 @@ namespace FlexKit
 
 	Context& RenderSystem::GetCommandList()
 	{
-        const size_t completedCounter = Fence->GetCompletedValue();
+		const size_t completedCounter = Fence->GetCompletedValue();
 
 		for(auto& _ : Contexts)
 		{
@@ -6488,15 +6724,15 @@ namespace FlexKit
 
 	void RenderSystem::BeginSubmission()
 	{
-        const auto pendingFrame = pendingFrames[(frameIdx) % 3];
+		const auto pendingFrame = pendingFrames[(frameIdx) % 3];
 
-        if (pendingFrame > Fence->GetCompletedValue())
-        {
-            HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
-            Fence->SetEventOnCompletion(pendingFrame, eventHandle);
-            WaitForSingleObject(eventHandle, INFINITE);
-            CloseHandle(eventHandle);
-        }
+		if (pendingFrame > Fence->GetCompletedValue())
+		{
+			HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS); FK_ASSERT(eventHandle != 0);
+			Fence->SetEventOnCompletion(pendingFrame, eventHandle);
+			WaitForSingleObject(eventHandle, INFINITE);
+			CloseHandle(eventHandle);
+		}
 	}
 
 
@@ -6511,11 +6747,11 @@ namespace FlexKit
 			ImmediateUpload = InvalidHandle_t;
 		}
 
-        const auto counter = ++FenceCounter;
+		const auto counter = ++FenceCounter;
 
 		static_vector<ID3D12CommandList*> cls;
 		for (auto context : contexts)
-        {
+		{
 			cls.push_back(context->GetCommandList());
 			context->Close(counter);
 		}
@@ -6523,17 +6759,17 @@ namespace FlexKit
 		GraphicsQueue->ExecuteCommandLists(cls.size(), cls.begin());
 		GraphicsQueue->Signal(Fence, counter);
 
-        for (auto context : contexts)
-            context->_QueueReadBacks();
+		for (auto context : contexts)
+			context->_QueueReadBacks();
 
 		VertexBuffers.LockUntil(GetCurrentFrame() + 2);
 		ConstantBuffers.LockFor(2);
 		Textures.LockUntil(GetCurrentFrame() + 2);
 
-        pendingFrames[frameIdx] = counter;
-        frameIdx = ++frameIdx % 3;
+		pendingFrames[frameIdx] = counter;
+		frameIdx = ++frameIdx % 3;
 
-        ReadBackTable.Update();
+		ReadBackTable.Update();
 	}
 
 
@@ -6544,14 +6780,14 @@ namespace FlexKit
 	{
 		copyEngine.Submit(handles, handles + count);
 
-        if (SYNC_Graphics & flags)
-        {
-            auto HR = GraphicsQueue->Wait(copyEngine.fence, copyEngine.counter);  FK_ASSERT(SUCCEEDED(HR));
-        }
+		if (SYNC_Graphics & flags)
+		{
+			auto HR = GraphicsQueue->Wait(copyEngine.fence, copyEngine.counter);  FK_ASSERT(SUCCEEDED(HR));
+		}
 
-        if (SYNC_Compute & flags)
-        {
-        }
+		if (SYNC_Compute & flags)
+		{
+		}
 
 	}
 
@@ -6940,16 +7176,21 @@ namespace FlexKit
 		mbstowcs_s(&ConvertCount, WString, FileLoc, 128);
 		ID3DBlob* NewBlob   = nullptr;
 		ID3DBlob* Errors    = nullptr;
-		DWORD dwShaderFlags = 0;
 
-#if USING( DEBUGGRAPHICS )
-		dwShaderFlags |= D3DCOMPILE_PREFER_FLOW_CONTROL | D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
+		auto flags = D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES;
+
+#if NDEBUG
+		flags |= D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
-		HRESULT HR = D3DCompileFromFile(WString, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, desc->entry, desc->shaderVersion, dwShaderFlags, 0, &NewBlob, &Errors);
+#if USING( DEBUGGRAPHICS )
+		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_ENABLE_STRICTNESS;
+#endif
+
+
+		HRESULT HR = D3DCompileFromFile(WString, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, desc->entry, desc->shaderVersion, flags, 0, &NewBlob, &Errors);
 		if (FAILED(HR))	{
 			FK_LOG_ERROR((char*)Errors->GetBufferPointer());
-			std::cout << (char*)Errors->GetBufferPointer();
 			return false;
 		}
 
@@ -7055,6 +7296,23 @@ namespace FlexKit
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
 
+    DescHeapPOS PushDepthStencilArray(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS)
+    {
+        const size_t arraySize = RS->GetTextureArraySize(Target);
+
+        D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
+        DSVDesc.Format                          = RS->GetTextureDeviceFormat(Target);
+        DSVDesc.Texture2DArray.ArraySize        = arraySize - arrayOffset;
+        DSVDesc.Texture2DArray.FirstArraySlice  = arrayOffset;
+        DSVDesc.Texture2DArray.MipSlice         = MipSlice;
+        DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+
+        RS->MarkTextureUsed(Target);
+        RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
+
+        return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
+    }
+
 
 	/************************************************************************************************/
 
@@ -7113,19 +7371,45 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
+    DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
+    {
+        D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc   = {}; {
+            ViewDesc.Format                        = tex.Format;
+            ViewDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+            ViewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+            ViewDesc.Texture2D.MipLevels           = !tex.mipCount ? 1 : tex.mipCount;
+            ViewDesc.Texture2D.MostDetailedMip     = 0;
+            ViewDesc.Texture2D.PlaneSlice          = 0;
+            ViewDesc.Texture2D.ResourceMinLODClamp = 0;
+        }
+
+        RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
+
+        return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+    }
+
+
+    /************************************************************************************************/
+
+
+	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
-			ViewDesc.Format                        = tex.Format;
-			ViewDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-			ViewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-			ViewDesc.Texture2D.MipLevels           = !tex.mipCount ? 1 : tex.mipCount;
-			ViewDesc.Texture2D.MostDetailedMip     = 0;
-			ViewDesc.Texture2D.PlaneSlice          = 0;
-			ViewDesc.Texture2D.ResourceMinLODClamp = 0;
+            const auto mipCount     = RS->GetTextureMipCount(handle);
+            const auto arraySize    = RS->GetTextureArraySize(handle);
+
+			ViewDesc.Format                             = format;
+			ViewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			ViewDesc.ViewDimension                      = D3D12_SRV_DIMENSION_TEXTURE2D;
+			ViewDesc.Texture2DArray.MipLevels           = max(mipCount, 1);
+			ViewDesc.Texture2DArray.MostDetailedMip     = 0;
+			ViewDesc.Texture2DArray.PlaneSlice          = 0;
+            ViewDesc.Texture2DArray.ResourceMinLODClamp = 0;
+            ViewDesc.Texture2DArray.ArraySize           = arraySize;
 		}
 
-		RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
+        auto debug = RS->GetDeviceResource(handle);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}
@@ -7134,18 +7418,18 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	DescHeapPOS PushCubeMapTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
+	DescHeapPOS PushCubeMapTextureToDescHeap(RenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
-			ViewDesc.Format                          = tex.Format;
+			ViewDesc.Format                          = TextureFormat2DXGIFormat(format);
 			ViewDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 			ViewDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURECUBE;
-			ViewDesc.TextureCube.MipLevels           = !tex.mipCount ? 1 : tex.mipCount;
+			ViewDesc.TextureCube.MipLevels           = max(RS->GetTextureMipCount(resource), 1);
 			ViewDesc.TextureCube.MostDetailedMip     = 0;
 			ViewDesc.TextureCube.ResourceMinLODClamp = 0;
 		}
 
-		RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
+		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(resource), &ViewDesc, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
 	}

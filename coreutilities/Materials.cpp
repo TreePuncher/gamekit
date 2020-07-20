@@ -96,7 +96,10 @@ namespace FlexKit
                     DDSTextureWH,
                     DeviceFormat::BC3_UNORM,
                     MIPCount,
-                    1, true));
+                    1,
+                    ResourceAllocationType::Tiled));
+
+            renderSystem.SetDebugName(textureResource, "Texture");
 
             streamEngine.BindAsset(textureAsset, textureResource);
 

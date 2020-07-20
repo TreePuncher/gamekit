@@ -51,7 +51,14 @@ template<typename Ty, typename Ty_key>	using map_t = std::map<Ty, Ty_key>;
 template<typename Ty>					using list_t = std::list<Ty>;
 
 namespace FlexKit
-{
+{   /************************************************************************************************/
+
+
+    // Thank you cppReference.com
+    FLEXKITAPI template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+    FLEXKITAPI template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
+
+
 	/************************************************************************************************/
 
 

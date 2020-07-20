@@ -49,8 +49,8 @@ void CreateDefaultLayout(EditorBase& editor)
 
 ID3D12PipelineState* Create_DrawImGUI(FlexKit::RenderSystem* renderSystem)
 {
-	auto DrawRectVShader = FlexKit::LoadShader("ImGui_VS", "ImGui_VS", "vs_5_0", "assets\\shaders\\imguiShaders.hlsl");
-	auto DrawRectPShader = FlexKit::LoadShader("ImGui_PS", "ImGui_PS", "ps_5_0", "assets\\shaders\\imguiShaders.hlsl");
+	auto DrawRectVShader = FlexKit::LoadShader("ImGui_VS", "ImGui_VS", "vs_5_1", "assets\\shaders\\imguiShaders.hlsl");
+	auto DrawRectPShader = FlexKit::LoadShader("ImGui_PS", "ImGui_PS", "ps_5_1", "assets\\shaders\\imguiShaders.hlsl");
 
 	EXITSCOPE(
 		Release(&DrawRectVShader);

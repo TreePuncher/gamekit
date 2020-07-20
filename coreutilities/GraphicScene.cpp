@@ -130,8 +130,10 @@ namespace FlexKit
 
         memcpy(&pointLight, buffer, sizeof(pointLight));
 
-        gameObject.AddView<PointLightView>(pointLight.K, 40, GetSceneNode(gameObject));
+        gameObject.AddView<PointLightView>(pointLight.K, 100, GetSceneNode(gameObject));
         SetBoundingSphereFromLight(gameObject);
+
+        EnablePointLightShadows(gameObject);
     }
 
 
@@ -958,13 +960,12 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    PointLightGatherTask& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory)
+    PointLightGatherTask& GraphicScene::GetPointLights(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
 	{
 		return dispatcher.Add<PointLightGather>(
 			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightGather& data)
 			{
-				data.temp			= StackAllocator(tempMemory, KILOBYTE * 16);
-				data.pointLights	= Vector<PointLightHandle>{ data.temp, 1024 };
+				data.pointLights	= Vector<PointLightHandle>{ tempMemory, 64 };
 				data.scene			= this;
 
                 builder.SetDebugString("Point Light Gather");
@@ -973,20 +974,57 @@ namespace FlexKit
 			{
                 FK_LOG_9("Point Light Gather");
 
+                Vector<PointLightHandle> tempList{ &threadAllocator, 64 };
+			    auto& visables = SceneVisibilityComponent::GetComponent();
+
 				for (auto entity : sceneEntities)
 				{
-					auto& visables = SceneVisibilityComponent::GetComponent();
 
 					Apply(*visables[entity].entity,
 						[&](PointLightView&         pointLight,
 							SceneVisibilityView&    visibility)
 						{
-							data.pointLights.emplace_back(pointLight);
+                            tempList.emplace_back(pointLight);
 						});
 				}
+
+                data.pointLights = tempList;
 			}
 		);
 	}
+
+
+    /************************************************************************************************/
+
+
+    PointLightShadowGatherTask& GraphicScene::GetPointLightShadows(UpdateDispatcher& dispatcher, iAllocator* tempMemory) const
+    {
+        return dispatcher.Add<PointLightShadowGather>(
+			[&](UpdateDispatcher::UpdateBuilder& builder, PointLightShadowGather& data)
+			{
+                builder.SetDebugString("Point Light Shadow Gather");
+			},
+			[this](PointLightShadowGather& data, iAllocator& threadAllocator)
+			{
+                FK_LOG_9("Point Light Shadow Gather");
+
+                Vector<PointLightShadowHandle>	pointLightShadows{ &threadAllocator };
+                auto& visables = SceneVisibilityComponent::GetComponent();
+
+                for (auto entity : sceneEntities)
+                {
+                    Apply(*visables[entity].entity,
+                        [&](PointLightView&             pointLight,
+                            PointLightShadowMapView&    shadowMap)
+                        {
+                            pointLightShadows.emplace_back(shadowMap.handle);
+                        });
+                }
+
+                data.pointLightShadows = pointLightShadows;
+			}
+		);
+    }
 
 
 	/************************************************************************************************/
@@ -1044,5 +1082,6 @@ namespace FlexKit
 		EPS->Joints = nullptr;
 		EPS->CurrentPose = nullptr;
 	}
+
 
 }	/************************************************************************************************/

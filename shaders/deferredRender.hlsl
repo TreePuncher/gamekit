@@ -11,10 +11,9 @@ cbuffer LocalConstants : register(b1)
 {
     float2  WH;
     float   Time;
-    float   lightCount;
+    uint   	lightCount;
 
-	float4x4 pl_ViewI;
-	float4x4 pl_PV;
+	float4x4 pl_PV[512];
 }
 
 Texture2D<float4> AlbedoBuffer      : register(t0);
@@ -23,23 +22,21 @@ Texture2D<float4> NormalBuffer      : register(t2);
 Texture2D<float4> TangentBuffer     : register(t3);
 Texture2D<float>  DepthBuffer       : register(t4);
 
-ByteAddressBuffer pointLights       : register(t7);
-Texture2D<float> shadowMap   		: register(t8);
+// light and shadow map resources
+StructuredBuffer<uint> 			lightBuckets : register(t6);
+StructuredBuffer<PointLight> 	pointLights	 : register(t7);
+TextureCube<float> 				shadowMaps[] : register(t8);
 
 sampler BiLinear     : register(s0); // Nearest point
 sampler NearestPoint : register(s1); // Nearest point
 
-PointLight ReadPointLight(uint idx)
+bool isLightContributing(const uint idx, const uint2 xy)
 {
-    PointLight pointLight;
+    const uint offset       = (xy.x + xy.y * WH[0] / 10) * (1024 / 32);
+    const uint wordOffset   = idx / 32;
+    const uint bitMask      = 0x1 << (idx % 32);
 
-    uint4 load1 = pointLights.Load4(idx * 32 + 00);
-    uint4 load2 = pointLights.Load4(idx * 32 + 16);
-
-    pointLight.KI   = asfloat(load1);
-    pointLight.PR   = asfloat(load2);
-
-    return pointLight;
+    return lightBuckets[wordOffset + offset] & bitMask;
 }
 
 struct Vertex
@@ -50,7 +47,6 @@ struct Vertex
     float2 UV		: TEXCOORD;
 
 };
-
 
 struct Deferred_PS_IN
 {
@@ -401,17 +397,18 @@ float4 environment_PS(ENVIRONMENT_PS input) : SV_Target
 #endif*/
 }
 
-float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
+float4 DeferredShade_PS(Deferred_PS_IN IN, float4 ScreenPOS : SV_POSITION) : SV_Target0
 {
     const float2 SampleCoord    = IN.Position;
     const float2 UV             = SampleCoord.xy / WH; // [0;1]
     const float2 P              = (2 * SampleCoord - WH) / WH.y;
     
     const float4 Albedo         = AlbedoBuffer.Sample(NearestPoint, UV);
-    //const float4 Specular       = SpecularBuffer.Sample(NearestPoint, UV);
     const float4 N              = NormalBuffer.Sample(NearestPoint, UV);
     const float3 T              = normalize(cross(N, N.zxy));
     const float3 B              = normalize(cross(N, T));
+	const float4 MRIA			= MRIABuffer.Sample(NearestPoint, UV);
+    //const float4 Specular       = SpecularBuffer.Sample(NearestPoint, UV);
     //const float2 IOR_ANISO      = IOR_ANISOBuffer.Sample(NearestPoint, UV);
     const float  depth          = DepthBuffer.Sample(NearestPoint, UV);
 
@@ -423,26 +420,38 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
     const float3 positionW 	= GetWorldSpacePosition(UV, depth);
 
-    float roughness     = 1.0f;//Albedo.a;
-    float ior           = 1.0;//IOR_ANISO.x;
-    float anisotropic   = 0.0;//IOR_ANISO.y;
-	float metallic      = 0.0;//Specular.w;
-	float3 albedo       = Albedo.rgb;
+    const float roughness     = Albedo.a;
+    const float ior           = MRIA.b;
+    const float anisotropic   = MRIA.g;
+	const float metallic      = MRIA.r;
+	const float3 albedo       = Albedo.rgb;
     
+	const uint2	lightBin	    = UV * WH / 10.0f;// - uint2( 1, 1 );
+    uint        localLightCount = 0;
 
-    float3 color = 0;
-    for(float I = 0; I < 1; I++)
+    float4 color = 0;
+
+	[unroll(16)]
+    for(float I = 0; I < lightCount; I++)
     {
-        PointLight light = ReadPointLight(I);
+		if(!isLightContributing(I, lightBin))
+			continue;
+
+		localLightCount++;
+
+        const PointLight light = pointLights[I];
 
         const float3 Lc			= light.KI.rgb;
+        const float3 Lray		= -normalize(positionW - light.PR.xyz);
         const float  Ld			= length(positionW - light.PR.xyz);
-        const float  Li			= light.KI.w * 10;
-        const float  Lr			= light.PR.w * 100;
+        const float  Li			= light.KI.w;
+        const float  Lr			= light.PR.w;
         const float  ld_2		= Ld * Ld;
         const float  La			= (Li / ld_2) * saturate(1 - (pow(Ld, 10) / pow(Lr, 10)));
 
-		/*
+		if(Ld > Lr)
+			continue;
+
 		// Compute tangent space vectors
         const float3 worldV = -rayDir;
         const float3 worldL = normalize(light.PR.xyz - positionW);
@@ -452,33 +461,64 @@ float4 DeferredShade_PS(Deferred_PS_IN IN) : SV_Target0
 
         // Constants for testing
             
-        // Gold physical properties
-        const float Ks = 1.0;
+        const float Ks = metallic;
         const float Kd = (1.0 - Ks) * (1.0 - metallic);
 
-        const float3 diffuse    = HammonEarlGGX(V, L, albedo, roughness);
-        const float3 specular   = EricHeitz2018GGX(V, L, albedo, metallic, roughness, anisotropic, ior);
+        const float3 diffuse = HammonEarlGGX(V, L, albedo, roughness);
+        const float3 specular = EricHeitz2018GGX(V, L, albedo, metallic, roughness, anisotropic, ior);
+        const float3 colorSample = saturate((diffuse * Kd + specular * Ks) * La * 10);
+        //const float3 colorSample = dot(N.xyz, Lray) * Albedo; saturate((diffuse * Kd + specular * Ks) * La);
 
-        color += saturate((diffuse * Kd + specular * Ks) * La);
-		*/
+		const float3 mapVectors[] = {
+			float3(-1,  0,  0), // left
+			float3( 1,  0,  0), // right
+			float3( 0,  1,  0), // top
+			float3( 0, -1,  0), // bottom
+			float3( 0,  0,  1), // forward
+			float3( 0,  0, -1), // backward
+		};
 
-		const float4 lightPosition_DC 	= mul(pl_PV, float4(positionW.xyz, 1));
+		float4 Colors[] = {
+			float4(1, 0, 0, 0), // Left
+			float4(0, 1, 0, 0), // Right
+			float4(0, 0, 1, 0), // Top
+			float4(1, 1, 1, 1), // Bottom
+			float4(1, 1, 0, 1),
+			float4(1, 0, 1, 1), 
+		};
+
+		int fieldID = 0;
+		float a = -1.0f;
+		
+		[unroll(6)]
+		for(int II = 0; II < 6; II++){
+			const float b = dot(mapVectors[II], -Lray);
+			if(b > a){
+				fieldID = II;
+				a = b;
+			}
+		}
+
+		const float4 lightPosition_DC 	= mul(pl_PV[6 * I + fieldID], float4(positionW.xyz, 1));
 		const float3 lightPosition_PS 	= lightPosition_DC / lightPosition_DC.a;
-		const float2 shadowMapUV 	  	= float2( lightPosition_PS.x / 2 + 0.5f, 0.5f - lightPosition_PS.y / 2);
-		const float shadowSample 		= shadowMap.Sample(BiLinear, shadowMapUV.xy);
-		const float depth 				= lightPosition_PS.z;
 
-		if( lightPosition_DC.a < 0.0f  || 
+		if( lightPosition_PS.z < 0.0f || lightPosition_PS.z > 1.0f || 
 			lightPosition_PS.x > 1.0f || lightPosition_PS.x < -1.0f ||
 			lightPosition_PS.y > 1.0f || lightPosition_PS.y < -1.0f )
 			continue;
 
-		const float4 lightPosition_VS = mul(pl_ViewI, float4(positionW, 1));
-		const float3 L = normalize(light.PR.xyz - positionW);
-		color += depth - shadowSample > 0.0001f ? 0.0f : saturate(dot(N.xyz, L) * La / PI);
+		const float2 shadowMapUV 	  	= float2( lightPosition_PS.x / 2 + 0.5f, 0.5f - lightPosition_PS.y / 2);
+		const float shadowSample 		= shadowMaps[I].Sample(BiLinear, Lray * float3( 1, -1, -1));
+		const float depth 				= lightPosition_PS.z;
+
+		color += float4(depth - shadowSample > 0.00001f ? 0.0f : (colorSample * Lc * La), 1);
     }
 
-    return float4(color, 1);
+    return color;
+    //return float4(color, 1);
+    //return float4(float(localLightCount) / float(lightCount) * float3(1, 1, 1), 1);
+    //return float4(color * float(localLightCount) / float(lightCount), 1);
+    //return float4(color * localLightCount / lightCount, 1);
 	//return float4(N / 2 + float3(0.5f, 0.5f, 0.5f), 1);
 }
 

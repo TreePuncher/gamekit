@@ -110,7 +110,7 @@ namespace FlexKit
 	{
 		DRS_Free			 = 0x0003, // Forces any type of transition
 		DRS_Read			 = 0x0001,
-		DRS_Retire			 = 0x1000,
+		DRS_Retired			 = 0x1000,
 
 		DRS_Write			 = 0x0002,
 		DRS_Present			 = 0x1005, // Implied Read and Retire
@@ -128,7 +128,8 @@ namespace FlexKit
 		DRS_PREDICATE		 = 0x0015, // Implied Read
 		DRS_INDIRECTARGS	 = 0x0019, // Implied Read
 		DRS_UNKNOWN			 = 0x0040, 
-		DRS_GENERIC			 = 0x0020, 
+		DRS_GENERIC			 = 0x0020,
+        DRS_VIRTUAL          = 0x0080,
 		DRS_ERROR			 = 0xFFFF 
 	};
 
@@ -1008,9 +1009,11 @@ namespace FlexKit
 		bool SetSRV					(Context& ctx, size_t idx, UAVTextureHandle		Handle);
 		bool SetSRV					(Context& ctx, size_t idx, UAVResourceHandle	Handle);
 		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle);
+		bool SetSRVCubemap          (Context& ctx, size_t idx, ResourceHandle		Handle, DeviceFormat format);
 		bool SetUAV					(Context& ctx, size_t idx, UAVResourceHandle	Handle, size_t offset = 0);
 		bool SetUAV					(Context& ctx, size_t idx, UAVTextureHandle		Handle);
 		bool SetStructuredResource	(Context& ctx, size_t idx, ResourceHandle		Handle, size_t stride);
+		bool SetStructuredResource	(Context& ctx, size_t idx, UAVResourceHandle	Handle, size_t stride);
 
 		operator D3D12_GPU_DESCRIPTOR_HANDLE () const { return descriptorHeap.V2; } // TODO: FIX PAIRS SO AUTO CASTING WORKS
 
@@ -1369,6 +1372,14 @@ namespace FlexKit
 	}
 
 
+    struct DepthStencilView_Options
+    {
+        size_t ArraySliceOffset = 0;
+        size_t MipOffset        = 0;
+
+        ResourceHandle depthStencil;
+    };
+
 	FLEXKITAPI class Context
 	{
 	public:
@@ -1503,6 +1514,8 @@ namespace FlexKit
 		void AddUAVBarrier			(UAVResourceHandle, DeviceResourceState, DeviceResourceState);
 		void AddUAVBarrier			(UAVTextureHandle,	DeviceResourceState, DeviceResourceState);
 
+        void AddAliasingBarrier     (ResourceHandle Handle, DeviceResourceState Before, DeviceResourceState State);
+
 		void AddPresentBarrier			(ResourceHandle Handle,	DeviceResourceState Before);
 		void AddRenderTargetBarrier		(ResourceHandle Handle,	DeviceResourceState Before, DeviceResourceState State = DeviceResourceState::DRS_RenderTarget);
 		void AddStreamOutBarrier		(SOResourceHandle,		DeviceResourceState Before, DeviceResourceState State);
@@ -1516,13 +1529,12 @@ namespace FlexKit
         void ClearUAVTexture        (UAVTextureHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
         void ClearUAV               (UAVResourceHandle UAV, uint4 clearColor = uint4{ 0, 0, 0, 0 });
 
-
-
 		void SetRootSignature		    (RootSignature& RS);
 		void SetComputeRootSignature    (RootSignature& RS);
 		void SetPipelineState		    (ID3D12PipelineState* PSO);
 
 		void SetRenderTargets		    (const static_vector<ResourceHandle> RTs, bool DepthStecil, ResourceHandle DepthStencil = InvalidHandle_t, const size_t MIPMapOffset = 0);
+		void SetRenderTargets2		    (const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV);
 
 		void SetViewports			    (static_vector<D3D12_VIEWPORT, 16>	VPs);
 		void SetScissorRects		    (static_vector<D3D12_RECT, 16>		Rects);
@@ -1707,6 +1719,7 @@ namespace FlexKit
 				BT_StreamOut,
 				BT_ShaderResource,
 				BT_Generic,
+                BT_Aliasing,
 				BT_
 			}Type;
 
@@ -1771,7 +1784,8 @@ namespace FlexKit
 		};
 
 		static_vector<StreamOutResource, 128>       TrackedSOBuffers;
-		static_vector<Barrier, 128>				    PendingBarriers;
+        static_vector<Barrier, 128>				    PendingBarriers; // Barriers potentially needed
+        static_vector<Barrier, 128>				    queuedBarriers; // Barriers required
 		static_vector<RTV_View, 128>                renderTargetViews;
 		static_vector<RTV_View, 128>                depthStencilViews;
         static_vector<ReadBackResourceHandle, 128>  queuedReadBacks;
@@ -2103,6 +2117,13 @@ private:
 	/************************************************************************************************/
 
 
+    enum class ResourceAllocationType
+    {
+        Committed,
+        Placed,
+        Tiled
+    };
+
 	struct GPUResourceDesc
 	{
 		bool renderTarget   = false;
@@ -2114,25 +2135,34 @@ private:
 		bool CVFlag         = false; // Assumed true if render target is true
 		bool backBuffer     = false;
 		bool PreCreated     = false;
-		bool Virtual        = false;
+
+        ResourceAllocationType allocationType = ResourceAllocationType::Committed;
 
 		TextureDimension    Dimensions   = TextureDimension::Texture2D;
 		uint8_t             MipLevels    = 1;
 		uint8_t             bufferCount  = 0;
 
-		uint2       WH;
+		uint2           WH;
 		DeviceFormat   format;
 
-		uint8_t             arraySize  = 1;
+		uint8_t arraySize  = 1;
 
 		union
 		{
-			ID3D12Resource**    resources;
-			byte*               initial = nullptr;
+            struct
+            {
+			    ID3D12Resource**    resources;
+			    byte*               initial;
+            };
 		};
 
+        struct
+        {
+            size_t              offset;
+            DeviceHeapHandle    heap;
+        } placed;
 
-		static GPUResourceDesc RenderTarget(uint2 IN_WH, DeviceFormat IN_format, const bool virtualResource = false)
+		static GPUResourceDesc RenderTarget(uint2 IN_WH, DeviceFormat IN_format, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
 			return {
 				true,   // render target flag
@@ -2144,7 +2174,7 @@ private:
 				true,   // clear value
 				false,  // back buffer
 				false,  // PreCreated
-				virtualResource,
+                allocationType,
 
 				TextureDimension::Texture2D, // dimensions
 				1, // mip count
@@ -2155,7 +2185,7 @@ private:
 		}
 
 
-		static GPUResourceDesc DepthTarget(uint2 IN_WH, DeviceFormat IN_format, const bool virtualResource = false)
+		static GPUResourceDesc DepthTarget(uint2 IN_WH, DeviceFormat IN_format, const uint8_t arraySize = 1, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
 			return {
 				false,   // render target flag
@@ -2167,18 +2197,18 @@ private:
 				true,   // clear value
 				false,  // back buffer
 				false,  // PreCreated
-				virtualResource,
+                allocationType,
 
 				TextureDimension::Texture2D, // dimensions
 				1, // mip count
 				3, // buffere count
 
-				IN_WH, IN_format
+				IN_WH, IN_format, arraySize
 			};
 		}
 
 
-		static GPUResourceDesc ShaderResource(uint2 IN_WH, DeviceFormat IN_format, uint8_t mipCount = 1, size_t arraySize = 1, const bool virtualResource = false)
+		static GPUResourceDesc ShaderResource(uint2 IN_WH, DeviceFormat IN_format, uint8_t mipCount = 1, size_t arraySize = 1, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
 			return {
 				false, // render target flag
@@ -2190,7 +2220,7 @@ private:
 				false, // clear value
 				false, // back buffer
 				false, // PreCreated
-				virtualResource,
+                allocationType,
 
 				TextureDimension::Texture2D,          // dimensions
 				mipCount,   // mip count
@@ -2214,7 +2244,7 @@ private:
 				false,  // clear value
 				false,  // back buffer
 				false,  // created
-				false, 
+                ResourceAllocationType::Committed,
 
 				TextureDimension::Texture1D, // dimensions
 				1, // mip count
@@ -2237,7 +2267,7 @@ private:
 				false,  // clear value
 				false,  // back buffer
 				false,  // created
-				false,
+                ResourceAllocationType::Committed,
 				
 				TextureDimension::Texture1D, // dimensions
 				1, // mip count
@@ -2260,7 +2290,7 @@ private:
 				true,   // clear value
 				true,   // back buffer
 				false,  // created
-				false,
+                ResourceAllocationType::Committed,
 
 				TextureDimension::Texture2D, // dimensions
 				1, // mip count
@@ -2275,7 +2305,7 @@ private:
 		}
 
 
-		static GPUResourceDesc DDS(uint2 WH, DeviceFormat format, uint8_t mipCount, TextureDimension dimensions, bool virtualResource = false)
+		static GPUResourceDesc DDS(uint2 WH, DeviceFormat format, uint8_t mipCount, TextureDimension dimensions, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
 			 return {
 				false,  // render target flag
@@ -2287,7 +2317,7 @@ private:
 				false,  // clear value
 				false,  // back buffer
 				false,  // created
-				virtualResource,
+                ResourceAllocationType::Committed,
 
 				dimensions, // dimensions
 				mipCount,   // mip count
@@ -2309,7 +2339,7 @@ private:
 		}
 
 
-		static GPUResourceDesc CubeMap(uint2 WH, DeviceFormat format, uint8_t mipCount, bool renderTarget, bool virtualResource = false)
+		static GPUResourceDesc CubeMap(uint2 WH, DeviceFormat format, uint8_t mipCount, bool renderTarget, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
 		{
 			 return {
 				renderTarget,   // render target flag
@@ -2321,7 +2351,7 @@ private:
 				false,          // clear value
 				false,          // back buffer
 				false,          // created
-				virtualResource,
+                allocationType,
 
 				TextureDimension::TextureCubeMap,          // dimensions
 				mipCount,   // mip count
@@ -2570,6 +2600,14 @@ private:
 			return newHandle;
 		}
 
+        const UAVResource* operator [](const TY_Handle handle) const noexcept
+        {
+            if (handle == InvalidHandle_t)
+                return nullptr;
+            else
+                return &resources[handles[handle]];
+        }
+
 
 		ID3D12Resource*	GetAsset(const TY_Handle handle) const
 		{
@@ -2812,6 +2850,16 @@ private:
 	/************************************************************************************************/
 
 
+    namespace DeviceHeapFlags
+    {
+        enum DeviceHeapFlagEnums: uint32_t
+        {
+            NONE,
+            RenderTarget,
+        };
+    }
+
+
 	struct DeviceHeap
 	{
 		ID3D12Heap* heap;
@@ -2864,7 +2912,7 @@ private:
 				size,
 				HEAP_Props,
                 D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
-				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES
+				((flags & DeviceHeapFlags::RenderTarget) ? D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES : D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES)
             };
 
 			ID3D12Heap1* heap_ptr = nullptr;
@@ -2884,6 +2932,12 @@ private:
 			}
 		}
 
+
+        size_t GetHeapSize(DeviceHeapHandle heap) const
+        {
+            auto desc = heaps[handles[heap]].heap->GetDesc();
+            return desc.SizeInBytes;
+        }
 
         ID3D12Heap* GetDeviceResource(DeviceHeapHandle handle) const
         {
@@ -3196,6 +3250,9 @@ private:
 
 		void        MarkTextureUsed(ResourceHandle Handle);
 
+        const size_t    GetResourceSize             (ResourceHandle handle) const noexcept;
+        const size_t    GetResourceSize             (GPUResourceDesc desc) const noexcept;
+
 		const size_t	GetTextureElementSize		(ResourceHandle   Handle) const;
 		const uint2		GetTextureWH				(ResourceHandle   Handle) const;
 		const uint2		GetTextureWH				(UAVTextureHandle Handle) const;
@@ -3221,7 +3278,7 @@ private:
 		ConstantBufferHandle	CreateConstantBuffer			(size_t BufferSize, bool GPUResident = true);
 		VertexBufferHandle		CreateVertexBuffer				(size_t BufferSize, bool GPUResident = true);
 		ResourceHandle			CreateDepthBuffer				(const uint2 WH, const bool UseFloat = false, size_t bufferCount = 3);
-		ResourceHandle			CreateDepthBufferArray			(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const bool virtualRes = false);
+		ResourceHandle			CreateDepthBufferArray			(const uint2 WH, const bool UseFloat = false, const size_t arraySize = 1, const bool buffered = true, const ResourceAllocationType = ResourceAllocationType::Committed);
 		ResourceHandle			CreateGPUResource			    (const GPUResourceDesc& desc);
 		QueryHandle				CreateOcclusionBuffer			(size_t Size);
 		UAVResourceHandle		CreateUAVBufferResource			(size_t bufferHandle, bool tripleBuffer = true);
@@ -3260,10 +3317,13 @@ private:
 		ID3D12Resource*		GetSOCounterResource	(const SOResourceHandle handle) const;
 		size_t				GetStreamOutBufferSize	(const SOResourceHandle handle) const;
 
-		UAVResourceLayout	GetUAVBufferLayout(const UAVResourceHandle) const noexcept;
-		void				SetUAVBufferLayout(const UAVResourceHandle, const UAVResourceLayout) noexcept;
+		UAVResourceLayout	GetUAVBufferLayout  (const UAVResourceHandle) const noexcept;
+		void				SetUAVBufferLayout  (const UAVResourceHandle, const UAVResourceLayout) noexcept;
+        size_t              GetUAVBufferSize    (const UAVResourceHandle) const noexcept;
 
 		Texture2D			GetUAV2DTexture(const UAVTextureHandle ) const;
+
+        size_t              GetHeapSize(const DeviceHeapHandle heap) const;
 
 		void ResetQuery(QueryHandle handle);
 
@@ -3427,11 +3487,18 @@ private:
 
 
 	FLEXKITAPI DescHeapPOS PushDepthStencil			    (RenderSystem* RS, ResourceHandle Target, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushDepthStencilArray        (RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushCBToDescHeap			    (RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t BufferSize, size_t offset = 0);
 	FLEXKITAPI DescHeapPOS PushSRVToDescHeap		    (RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, size_t ElementCount, size_t Stride, D3D12_BUFFER_SRV_FLAGS Flags = D3D12_BUFFER_SRV_FLAG_NONE);
 	FLEXKITAPI DescHeapPOS Push2DSRVToDescHeap		    (RenderSystem* RS, ID3D12Resource* Buffer, DescHeapPOS POS, D3D12_BUFFER_SRV_FLAGS = D3D12_BUFFER_SRV_FLAG_NONE);
+
+    [[depreciated]]
 	FLEXKITAPI DescHeapPOS PushTextureToDescHeap	    (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushTextureToDescHeap        (RenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS);
+
+
 	FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
+    FLEXKITAPI DescHeapPOS PushCubeMapTextureToDescHeap (RenderSystem* RS, ResourceHandle resource, DescHeapPOS POS, DeviceFormat format);
 	FLEXKITAPI DescHeapPOS PushUAV2DToDescHeap		    (RenderSystem* RS, Texture2D tex, DescHeapPOS POS);
 	FLEXKITAPI DescHeapPOS PushUAVBufferToDescHeap	    (RenderSystem* RS, UAVBuffer buffer, DescHeapPOS POS);
 

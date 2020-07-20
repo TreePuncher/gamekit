@@ -1347,7 +1347,7 @@ namespace FlexKit
 
 		inline Quaternion operator * (const Quaternion q) const
 		{
-			return GrassManProduct(*this, q);
+			return GrassManProduct(q, *this);
 		}
 
 

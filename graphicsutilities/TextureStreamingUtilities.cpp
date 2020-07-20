@@ -169,8 +169,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateTextureFeedbackPassPSO(RenderSystem* RS)
     {
-        auto VShader = LoadShader("Forward_VS",         "Forward_VS",           "vs_5_0", "assets\\shaders\\forwardRender.hlsl");
-        auto PShader = LoadShader("TextureFeedback_PS", "TextureFeedback_PS",   "ps_5_0", "assets\\shaders\\TextureFeedback.hlsl");
+        auto VShader = LoadShader("Forward_VS",         "Forward_VS",           "vs_5_1", "assets\\shaders\\forwardRender.hlsl");
+        auto PShader = LoadShader("TextureFeedback_PS", "TextureFeedback_PS",   "ps_5_1", "assets\\shaders\\TextureFeedback.hlsl");
 
         EXITSCOPE(
             Release(&VShader);
@@ -218,8 +218,8 @@ namespace FlexKit
 
     ID3D12PipelineState* CreateTextureFeedbackClearPSO(RenderSystem* RS)
     {
-        auto VShader = LoadShader("FullscreenQuad", "FullscreenQuad", "vs_5_0", "assets\\shaders\\FullScreenQuad.hlsl");
-        auto PShader = LoadShader("ClearPS", "ClearPS", "ps_5_0", "assets\\shaders\\TextureFeedback.hlsl");
+        auto VShader = LoadShader("FullscreenQuad", "FullscreenQuad", "vs_5_1", "assets\\shaders\\FullScreenQuad.hlsl");
+        auto PShader = LoadShader("ClearPS", "ClearPS", "ps_5_1", "assets\\shaders\\TextureFeedback.hlsl");
 
         EXITSCOPE(
             Release(&VShader);
@@ -382,18 +382,18 @@ namespace FlexKit
 
         updateInProgress = true;
 
-        frameGraph.Resources.AddUAVResource(feedbackPPLists, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackPPLists));
-        frameGraph.Resources.AddUAVResource(feedbackOffsets, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackOffsets));
+        frameGraph.Resources.AddUAVResource(feedbackPPLists, frameGraph.Resources.renderSystem.GetObjectState(feedbackPPLists));
+        frameGraph.Resources.AddUAVResource(feedbackOffsets, frameGraph.Resources.renderSystem.GetObjectState(feedbackOffsets));
 
-        frameGraph.Resources.AddUAVResource(feedbackOutputTemp, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackOutputTemp));
-        frameGraph.Resources.AddUAVResource(feedbackOutputFinal, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackOutputFinal));
+        frameGraph.Resources.AddUAVResource(feedbackOutputTemp, frameGraph.Resources.renderSystem.GetObjectState(feedbackOutputTemp));
+        frameGraph.Resources.AddUAVResource(feedbackOutputFinal, frameGraph.Resources.renderSystem.GetObjectState(feedbackOutputFinal));
 
-        frameGraph.Resources.AddUAVResource(feedbackTemp1, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackTemp1));
-        frameGraph.Resources.AddUAVResource(feedbackTemp2, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackTemp2));
+        frameGraph.Resources.AddUAVResource(feedbackTemp1, frameGraph.Resources.renderSystem.GetObjectState(feedbackTemp1));
+        frameGraph.Resources.AddUAVResource(feedbackTemp2, frameGraph.Resources.renderSystem.GetObjectState(feedbackTemp2));
 
-        frameGraph.Resources.AddUAVResource(feedbackBuffer, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackBuffer));
-        frameGraph.Resources.AddUAVResource(feedbackCounters, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackCounters));
-        frameGraph.Resources.AddDepthBuffer(feedbackDepth, 0, frameGraph.Resources.renderSystem.GetObjectState(feedbackDepth));
+        frameGraph.Resources.AddUAVResource(feedbackBuffer, frameGraph.Resources.renderSystem.GetObjectState(feedbackBuffer));
+        frameGraph.Resources.AddUAVResource(feedbackCounters, frameGraph.Resources.renderSystem.GetObjectState(feedbackCounters));
+        frameGraph.Resources.AddDepthBuffer(feedbackDepth, frameGraph.Resources.renderSystem.GetObjectState(feedbackDepth));
 
         frameGraph.AddNode<TextureFeedbackPass_Data>(
             TextureFeedbackPass_Data{
@@ -954,6 +954,7 @@ namespace FlexKit
 
                 ctx.CopyTextureRegion(deviceResource, level, { 0, 0, 0 }, tile, MIPLevelInfo.WH, DeviceFormat::BC3_UNORM);
             }
+
 
             ctx.Barrier(
                 deviceResource,

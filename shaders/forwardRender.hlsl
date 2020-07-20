@@ -209,9 +209,7 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 
     gbuffer.Normal      = float4(IN.Normal,     1);
     gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
-    gbuffer.Albedo      = float4(Albedo.xyz *
-        SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz,// * SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz,
-        Ks);
+    gbuffer.Albedo      = float4(Albedo.xyz * SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz, Ks);
 
     gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic) * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);
     gbuffer.Depth       = length(IN.WPOS - CameraPOS.xyz) / MaxZ;
@@ -271,9 +269,9 @@ float4 Forward_PS(Forward_PS_IN IN) : SV_TARGET
     //return float4(pow(tangent * 0.5 + float3(0.5, 0.5f, 0.5f), 0.45f), 1);	
     //return float4(UV, 0, 1);	
     //return float4(pow(Color, 1/2.1), 1);
-	return float4(Color, 1);
+	//return float4(Color, 1);
 	//return float4(Color.xy,pow(localLightCount / lightCount, 1), 1);
-	//return float4(Color.xy, pow(localLightCount / lightCount, 1), 1);
+	return float4(Color.xy, pow(localLightCount / lightCount, 1), 1);
 }
 
 float4 FlatWhite(Forward_PS_IN IN) : SV_TARGET

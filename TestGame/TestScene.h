@@ -151,13 +151,11 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
                     app.GetCore().GetBlockMemory(),
                     testPattern1, testPattern2, upload);
 
+
                 renderSystem.SubmitUploadQueues(SYNC_Graphics, &upload);
             }
             else
             {
-                const AssetHandle ShadowScene = 202;
-                AddAssetFile("assets\\ShadowTestScene.gameres");
-                FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
             }
 
             state.loaded = true;
@@ -172,13 +170,29 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         AddAssetFile("assets\\ShadowTestScene.gameres");
 
         break;
-	case TestScenes::GlobalIllumination:
 		break;
+	case TestScenes::GlobalIllumination:
 	case TestScenes::ShadowTestScene:
 	{
-		iAllocator* allocator = app.GetCore().GetBlockMemory();
-		LoadScene(app.GetCore(), gameState.scene, "ZeldaScene");
+        const AssetHandle ShadowScene = 202;
+        AddAssetFile("assets\\ShadowTestScene.gameres");
 
+        FK_ASSERT(FlexKit::LoadScene(app.GetCore(), gameState.scene, ShadowScene), "Failed to load Scene!");
+
+        MaterialComponent& materials = MaterialComponent::GetComponent();
+        MaterialHandle material = materials.CreateMaterial();
+        materials.AddTexture(8001, material);
+
+        if (auto [gameObject, res] = FindGameObject(gameState.scene, "Daem"); res)
+        {
+            gameObject->AddView<MaterialComponentView>(material);
+            SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+        }
+        if (auto [gameObject, res] = FindGameObject(gameState.scene, "1Dae"); res)
+        {
+            gameObject->AddView<MaterialComponentView>(material);
+            SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
+        }
 		/*
 		static const size_t N = 30;
 		static const float  W = (float)5;
