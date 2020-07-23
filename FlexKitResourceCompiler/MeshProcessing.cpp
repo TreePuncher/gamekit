@@ -611,39 +611,39 @@ namespace FlexKit::ResourceBuilder
 
         size_t i = 0;
         CreateBufferView(
-            optimizedBuffer.points.data(), optimizedBuffer.points.size(), meshOut->buffers[i++],
-            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
+                (byte*)optimizedBuffer.points.data(), optimizedBuffer.points.size(), meshOut->buffers[i++],
+                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_POSITION, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
         if (transformedMesh.UV)
             CreateBufferView(
-                optimizedBuffer.textureCoordinates.data(), optimizedBuffer.textureCoordinates.size(), meshOut->buffers[i++],
+                (byte*)optimizedBuffer.textureCoordinates.data(), optimizedBuffer.textureCoordinates.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_UV, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32, SystemAllocator);
 
         if (transformedMesh.Normals)
             CreateBufferView(
-                optimizedBuffer.normals.data(), optimizedBuffer.normals.size(), meshOut->buffers[i++],
+                (byte*)optimizedBuffer.normals.data(), optimizedBuffer.normals.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_NORMAL, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
         if(transformedMesh.Tangents)
             CreateBufferView(
-                optimizedBuffer.tangents.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
+                (byte*)optimizedBuffer.tangents.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_TANGENT, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
 		if (transformedMesh.Weights)
         {
             CreateBufferView(
-                optimizedBuffer.jointWeights.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
+                (byte*)optimizedBuffer.jointWeights.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION1, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32G32B32, SystemAllocator);
 
             CreateBufferView(
-                optimizedBuffer.jointIndexes.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
+                (byte*)optimizedBuffer.jointIndexes.data(), optimizedBuffer.tangents.size(), meshOut->buffers[i++],
                 VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_ANIMATION2, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R16G16B16A16, SystemAllocator);
 
 		}
 
         CreateBufferView(
-            optimizedBuffer.indexes.data(), optimizedBuffer.indexes.size(), meshOut->buffers[i++],
-            VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, SystemAllocator);
+                (byte*)optimizedBuffer.indexes.data(), optimizedBuffer.indexes.size(), meshOut->buffers[i++],
+                VERTEXBUFFER_TYPE::VERTEXBUFFER_TYPE_INDEX, VERTEXBUFFER_FORMAT::VERTEXBUFFER_FORMAT_R32, SystemAllocator);
 
 
 #if USING(TOOTLE)
