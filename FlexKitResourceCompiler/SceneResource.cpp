@@ -78,9 +78,10 @@ namespace FlexKit::ResourceBuilder
                 }
 
                 SceneEntity entity;
-                entity.components.push_back(make_shared<DrawableComponent>(UniqueID));
+                entity.components.push_back(std::make_shared<DrawableComponent>(UniqueID));
                 entity.Node		= Nodehndl;
                 entity.id		= name;
+                entity.id       = std::string(name);
 
                 scene->AddSceneEntity(entity);
             }	break;
@@ -100,7 +101,7 @@ namespace FlexKit::ResourceBuilder
 
                 SceneEntity entity;
                 entity.Node = Nodehndl;
-                entity.id   = Node->GetName();
+                entity.id   = std::string(Node->GetName());
 
                 entity.components.push_back(std::make_shared<PointLightComponent>(TranslateToFloat3(K), float2{ 40, 40 }));
 
@@ -367,7 +368,6 @@ namespace FlexKit::ResourceBuilder
 
     ResourceBlob SceneResource::CreateBlob()
     { 
-
         // Create Scene Node Table
         SceneNodeBlock::Header sceneNodeHeader;
         sceneNodeHeader.blockSize = (uint32_t)(SceneNodeBlock::GetHeaderSize() + sizeof(SceneNodeBlock::SceneNode) * nodes.size());
@@ -406,7 +406,8 @@ namespace FlexKit::ResourceBuilder
             entityHeader.blockSize         = sizeof(EntityBlock);
             entityHeader.componentCount    = 2 + entity.components.size();
 
-            auto componentBlock  = CreateIDComponent(entity.id);
+            Blob componentBlock;
+            componentBlock      += CreateIDComponent(entity.id);
             componentBlock      += CreateSceneNodeComponent(entity.Node);
 
             for (auto& component : entity.components)
@@ -466,7 +467,7 @@ namespace FlexKit::ResourceBuilder
     Blob CreateIDComponent(std::string& string)
     {
         IDComponentBlob IDblob;
-        strncpy_s(IDblob.ID, string.c_str(), min(strnlen_s(IDblob.ID, sizeof(IDblob.ID)), string.size()));
+        strncpy_s(IDblob.ID, 64, string.c_str(), string.size());
 
         return { IDblob };
     }

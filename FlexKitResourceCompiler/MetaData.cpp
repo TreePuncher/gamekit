@@ -31,9 +31,9 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-    MetaTokenList GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
+	MetaTokenList GetMetaDataTokens(char* Buffer, size_t BufferSize, iAllocator* Memory)
 	{
-        MetaTokenList Tokens;
+		MetaTokenList Tokens;
 
 		size_t StartPos = 0;
 		size_t CurrentPos = 0;
@@ -152,7 +152,7 @@ namespace FlexKit::ResourceBuilder
 			auto T = Tokens[itr2];
 
 			if (T.size())
-            {
+			{
 				if (T == "int")
 				{
 					Value NewValue;
@@ -229,8 +229,8 @@ namespace FlexKit::ResourceBuilder
 					Value NewValue;
 					NewValue.Type = ValueType::FLOAT;
 
-					auto		IDToken			= Tokens[itr2 - 2];
-					string_view	ValueTokens[]	= { Tokens[itr2 + 3], Tokens[itr2 + 5], Tokens[itr2 + 7] };
+					auto IDToken			        = Tokens[itr2 - 2];
+					std::string_view ValueTokens[]	= { Tokens[itr2 + 3], Tokens[itr2 + 5], Tokens[itr2 + 7] };
 
 					for (size_t itr3 = 0; itr3 < 3; ++itr3) {
 						char ValueBuffer[16];
@@ -250,7 +250,7 @@ namespace FlexKit::ResourceBuilder
 					return{ Values, itr2 };
 				else
 					itr2++;
-            }
+			}
 		}
 
 		// Should Be Un-reachable
@@ -318,114 +318,114 @@ namespace FlexKit::ResourceBuilder
 	/************************************************************************************************/
 
 
-    MetaData* ParseCubeMapMipLevel(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
-    {
-        auto level      = tokens[begin - 2];
-        auto front      = FindValue(values, "Front");
-        auto back       = FindValue(values, "Back");
-        auto left       = FindValue(values, "Left");
-        auto right      = FindValue(values, "Right");
-        auto top        = FindValue(values, "Top");
-        auto bottom     = FindValue(values, "Bottom");
+	MetaData* ParseCubeMapMipLevel(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto level      = tokens[begin - 2];
+		auto front      = FindValue(values, "Front");
+		auto back       = FindValue(values, "Back");
+		auto left       = FindValue(values, "Left");
+		auto right      = FindValue(values, "Right");
+		auto top        = FindValue(values, "Top");
+		auto bottom     = FindValue(values, "Bottom");
 
-        auto* mipLevel = new TextureCubeMapMipLevel_MetaData;
+		auto* mipLevel = new TextureCubeMapMipLevel_MetaData;
 
-        mipLevel->level = atoi(level.data());
+		mipLevel->level = atoi(level.data());
 
-        if (left != nullptr && left->Type == ValueType::STRING)
-            mipLevel->TextureFiles[0] = left->Data.S;
+		if (left != nullptr && left->Type == ValueType::STRING)
+			mipLevel->TextureFiles[0] = left->Data.S;
 
-        if (right != nullptr && right->Type == ValueType::STRING)
-            mipLevel->TextureFiles[1] = right->Data.S;
+		if (right != nullptr && right->Type == ValueType::STRING)
+			mipLevel->TextureFiles[1] = right->Data.S;
 
-        if (top != nullptr && top->Type == ValueType::STRING)
-            mipLevel->TextureFiles[2] = top->Data.S;
+		if (top != nullptr && top->Type == ValueType::STRING)
+			mipLevel->TextureFiles[2] = top->Data.S;
 
-        if (bottom != nullptr && bottom->Type == ValueType::STRING)
-            mipLevel->TextureFiles[3] = bottom->Data.S;
+		if (bottom != nullptr && bottom->Type == ValueType::STRING)
+			mipLevel->TextureFiles[3] = bottom->Data.S;
 
-        if (back != nullptr && back->Type == ValueType::STRING)
-            mipLevel->TextureFiles[4] = back->Data.S;
+		if (back != nullptr && back->Type == ValueType::STRING)
+			mipLevel->TextureFiles[4] = back->Data.S;
 
-        if (front != nullptr && front->Type == ValueType::STRING)
-            mipLevel->TextureFiles[5] = front->Data.S;
+		if (front != nullptr && front->Type == ValueType::STRING)
+			mipLevel->TextureFiles[5] = front->Data.S;
 
-        return mipLevel;
-    }
-
-
-    /************************************************************************************************/
+		return mipLevel;
+	}
 
 
-    MetaData* ParseCubeMapTexture(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
-    {
-        auto AssetID    = tokens[begin - 2];
-        auto AssetGUID  = FindValue(values, "AssetGUID");
-        auto Format     = FindValue(values, "Format");
+	/************************************************************************************************/
 
-        auto* cubemapTexture = new TextureCubeMap_MetaData;
 
-        // Parse Mip levels
-        cubemapTexture->Guid        = AssetGUID->Data.I;
-        cubemapTexture->ID          = AssetID;
-        cubemapTexture->format      = Format->Data.S;
-        cubemapTexture->mipLevels   = ParseSubContainer(CubeMapParser, tokens, begin, end);
+	MetaData* ParseCubeMapTexture(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto AssetID    = tokens[begin - 2];
+		auto AssetGUID  = FindValue(values, "AssetGUID");
+		auto Format     = FindValue(values, "Format");
+
+		auto* cubemapTexture = new TextureCubeMap_MetaData;
+
+		// Parse Mip levels
+		cubemapTexture->Guid        = AssetGUID->Data.I;
+		cubemapTexture->ID          = AssetID;
+		cubemapTexture->format      = Format->Data.S;
+		cubemapTexture->mipLevels   = ParseSubContainer(CubeMapParser, tokens, begin, end);
 
 		return cubemapTexture;
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    MetaData* ParseTextureMipLevel(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
-    {
-        auto level  = tokens[begin - 2];
-        auto File   = FindValue(values, "File");
+	MetaData* ParseTextureMipLevel(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto level  = tokens[begin - 2];
+		auto File   = FindValue(values, "File");
 
-        auto* mipLevel = new TextureMipLevel_MetaData;
+		auto* mipLevel = new TextureMipLevel_MetaData;
 
-        mipLevel->level = atoi(level.data());
-        mipLevel->file  = File ? std::string(File->Data.S) : std::string("");
+		mipLevel->level = atoi(level.data());
+		mipLevel->file  = File ? std::string(File->Data.S) : std::string("");
 
-        return mipLevel;
-    }
-
-
-    /************************************************************************************************/
+		return mipLevel;
+	}
 
 
-    MetaData* ParseTexture(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
-    {
-        auto stringID           = tokens[begin - 2];
-        auto assetID            = FindValue(values, "AssetGUID");
-        auto Format             = FindValue(values, "Format");
-        auto File               = FindValue(values, "File");
-        auto GenerateMips       = FindValue(values, "GenerateMips");
-        auto CompressionQuality = FindValue(values, "CompressionQuality"); // float
-        auto CompressTexture    = FindValue(values, "CompressTexture"); // bool
+	/************************************************************************************************/
 
 
-        auto* texture = new Texture_MetaData;
+	MetaData* ParseTexture(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
+	{
+		auto stringID           = tokens[begin - 2];
+		auto assetID            = FindValue(values, "AssetGUID");
+		auto Format             = FindValue(values, "Format");
+		auto File               = FindValue(values, "File");
+		auto GenerateMips       = FindValue(values, "GenerateMips");
+		auto CompressionQuality = FindValue(values, "CompressionQuality"); // float
+		auto CompressTexture    = FindValue(values, "CompressTexture"); // bool
 
-        texture->compressionQuality = CompressionQuality ? CompressionQuality->Data.F : texture->compressionQuality;
-        texture->compressTexture    = CompressTexture ? (bool)(CompressTexture->Data.S == "True") : texture->compressTexture;
 
-        texture->assetID            = assetID ? assetID->Data.I : rand();
-        texture->stringID           = stringID;
-        texture->format             = Format->Data.S;
-        texture->file               = File ? (File->Type == ValueType::STRING ? File->Data.S : "") : texture->file;
+		auto* texture = new Texture_MetaData;
 
-        if(GenerateMips && GenerateMips->Type == ValueType::STRING && GenerateMips->Data.S == "False")
-            texture->generateMipMaps = false;
+		texture->compressionQuality = CompressionQuality ? CompressionQuality->Data.F : texture->compressionQuality;
+		texture->compressTexture    = CompressTexture ? (bool)(CompressTexture->Data.S == "True") : texture->compressTexture;
 
-        texture->mipLevels          = ParseSubContainer(TextureParser, tokens, begin, end);
+		texture->assetID            = assetID ? assetID->Data.I : rand();
+		texture->stringID           = stringID;
+		texture->format             = Format->Data.S;
+		texture->file               = File ? (File->Type == ValueType::STRING ? File->Data.S : "") : texture->file;
+
+		if(GenerateMips && GenerateMips->Type == ValueType::STRING && GenerateMips->Data.S == "False")
+			texture->generateMipMaps = false;
+
+		texture->mipLevels          = ParseSubContainer(TextureParser, tokens, begin, end);
 
 		return texture;
-    }
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	MetaData* ParseScene(const MetaTokenList& tokens, const ValueList& values, const size_t begin, const size_t end)
@@ -537,18 +537,18 @@ namespace FlexKit::ResourceBuilder
 		FK_ASSERT((endFrame->Type   == ValueType::FLOAT));
 		FK_ASSERT((GUID->Type		== ValueType::INT));
 
-        SkeletalAnimationClip_MetaData* newSkeletalAnimationClip = new SkeletalAnimationClip_MetaData;
+		SkeletalAnimationClip_MetaData* newSkeletalAnimationClip = new SkeletalAnimationClip_MetaData;
 
 		auto Target = tokens[begin - 2];
 
-        newSkeletalAnimationClip->ClipID	= ID->Data.S;
-        newSkeletalAnimationClip->ID		= Target;
-        newSkeletalAnimationClip->T_Start	= beginFrame->Data.F;
-        newSkeletalAnimationClip->T_End		= endFrame->Data.F;
-        newSkeletalAnimationClip->guid		= GUID->Data.I;
+		newSkeletalAnimationClip->ClipID	= ID->Data.S;
+		newSkeletalAnimationClip->ID		= Target;
+		newSkeletalAnimationClip->T_Start	= beginFrame->Data.F;
+		newSkeletalAnimationClip->T_End		= endFrame->Data.F;
+		newSkeletalAnimationClip->guid		= GUID->Data.I;
 
-        if(frameRate && frameRate->Type == ValueType::FLOAT)
-            newSkeletalAnimationClip->frameRate	= frameRate->Data.F;
+		if(frameRate && frameRate->Type == ValueType::FLOAT)
+			newSkeletalAnimationClip->frameRate	= frameRate->Data.F;
 
 		return newSkeletalAnimationClip;
 	}
@@ -680,31 +680,31 @@ namespace FlexKit::ResourceBuilder
 				{ "Font",				    ParseFontSet				},
 				{ "Model",				    ParseModel					},
 				{ "Scene",				    ParseScene					},
-                { "Skeleton",			    ParseSkeleton				},
-                { "SkeletalAnimationClip",	ParseSkeletalAnimationClip  },
-                { "TerrainCollider",	    ParseTerrainColliderAsset	},
-                { "CubeMapTexture",	        ParseCubeMapTexture         },
-                { "Texture",	            ParseTexture                },
+				{ "Skeleton",			    ParseSkeleton				},
+				{ "SkeletalAnimationClip",	ParseSkeletalAnimationClip  },
+				{ "TerrainCollider",	    ParseTerrainColliderAsset	},
+				{ "CubeMapTexture",	        ParseCubeMapTexture         },
+				{ "Texture",	            ParseTexture                },
 			};
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    const MetaDataParserTable CreateTextureParser()
-    {
-        return { { "MipLevel", ParseTextureMipLevel } };
-    }
+	const MetaDataParserTable CreateTextureParser()
+	{
+		return { { "MipLevel", ParseTextureMipLevel } };
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    const MetaDataParserTable CreateCubeMapParser()
-    {
-        return {{ "CubeMipLevel", ParseCubeMapMipLevel }};
-    }
+	const MetaDataParserTable CreateCubeMapParser()
+	{
+		return {{ "CubeMipLevel", ParseCubeMapMipLevel }};
+	}
 
 
 	/************************************************************************************************/
@@ -867,14 +867,14 @@ namespace FlexKit::ResourceBuilder
 		for (size_t itr = begin; itr < end && itr < Tokens.size() - 3; ++itr)
 		{
 			if (auto str = std::string_view(Tokens[itr]);
-				parser.find(string(Tokens[itr])) == parser.end()		&& // Check Identifer
+				parser.find(std::string(Tokens[itr])) == parser.end()		&& // Check Identifer
 				Tokens[itr + 1] == ":"									&& // Check for Operator
-				parser.find(string(Tokens[itr + 2])) != parser.end()	&& // Check keyword_metatype
+				parser.find(std::string(Tokens[itr + 2])) != parser.end()	&& // Check keyword_metatype
 				Tokens[itr + 3] == "=")
 			{
 				auto [Values, innerEnd] = ParseDeclarations(Tokens, itr + 5, end);
 
-				if(auto res = parser.at(string(Tokens[itr + 2]))(Tokens, Values, itr + 2, innerEnd); res != nullptr)
+				if(auto res = parser.at(std::string(Tokens[itr + 2]))(Tokens, Values, itr + 2, innerEnd); res != nullptr)
 					MD_Out.push_back(std::shared_ptr<MetaData>{ res });
 
 				itr = innerEnd;
@@ -952,9 +952,9 @@ namespace FlexKit::ResourceBuilder
 
 	MetaDataList FindRelatedMetaData(const MetaDataList& MetaData, const MetaData::EMETA_RECIPIENT_TYPE Type, const std::string& ID)
 	{
-        auto _pred = [&](auto meta) { return (meta->UserType == Type && ID == meta->ID); };
+		auto _pred = [&](auto meta) { return (meta->UserType == Type && ID == meta->ID); };
 
-        return filter(MetaData, _pred);
+		return filter(MetaData, _pred);
 	}
 
 
