@@ -628,7 +628,8 @@ namespace FlexKit
 
 
 		SynchronizedOperation(SynchronizedOperation&& rhs) :
-			operation       { std::move(rhs.operation)          } {}
+			operation       { std::move(rhs.operation) },
+            criticalSection { std::move(rhs.criticalSection) } {}
 
 
 		SynchronizedOperation& operator = (SynchronizedOperation&& rhs)
@@ -641,7 +642,7 @@ namespace FlexKit
 		template<typename ... TY_ARGS>
 		decltype(auto) operator ()(TY_ARGS&& ... args)
 		{
-			std::scoped_lock<std::mutex> lock( criticalSection );
+			const auto lock = std::scoped_lock( criticalSection );
 			return operation(std::forward<TY_ARGS>(args)...);
 		}
 

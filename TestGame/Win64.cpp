@@ -136,7 +136,8 @@ int main(int argc, char* argv[])
     auto* allocator = CreateEngineMemory();
     EXITSCOPE(ReleaseEngineMemory(allocator));
 
-    FlexKit::FKApplication app{ allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
+    //FlexKit::FKApplication app{ allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
+    FlexKit::FKApplication app{ allocator, 2 };
     app.GetCore().FrameLock = true;
 
     FK_LOG_INFO("Set initial PlayState state.");
