@@ -42,6 +42,7 @@ namespace FlexKit
 		PROFILE_ENTITYUPDATE,
 		PROFILE_FRAME,
 		PROFILE_SUBMISSION,
+        PROFILE_SHADOWMAPPASS,
 		PROFILE_PRESENT,
 		PROFILE_SORTING,
 		PROFILE_ID_COUNT
@@ -111,7 +112,7 @@ namespace FlexKit
     template<typename TY>
     FLEXKITAPI decltype(auto) _TimeBlock(TY& function, const char* id)
     {
-        std::chrono::system_clock Clock;
+        std::chrono::high_resolution_clock Clock;
         auto Before = Clock.now();
 
         EXITSCOPE(
@@ -122,8 +123,30 @@ namespace FlexKit
         return function();
     }
 
+    class _ProfileFunction
+    {
+    public:
 
-    #define TIMEBLOCK(A, B) _TimeBlock([&]{ return A; }, B)
+        _ProfileFunction(const char* FunctionName) : id{ FunctionName } {}
+
+        ~_ProfileFunction()
+        {
+            auto after = std::chrono::high_resolution_clock::now();
+
+            auto Duration = std::chrono::duration_cast<std::chrono::microseconds>(after - before);
+            FK_LOG_0("Function %s executed in %umicroseconds.", id, Duration.count());
+        }
+
+    private:
+        std::chrono::high_resolution_clock::time_point before = std::chrono::high_resolution_clock::now();
+        const char* id = "Unnamed function";
+    };
+
+#define PROFILELABEL_(a) MERGECOUNT_(PROFILE_ID_, a)
+#define PROFILELABEL PROFILELABEL_(__LINE__)
+
+#define ProfileFunction() const auto PROFILELABEL_ = _ProfileFunction(__FUNCTION__)
+#define TIMEBLOCK(A, B) _TimeBlock([&]{ return A; }, B)
 
 
 	FLEXKITAPI void		InitDebug		(EngineMemory_DEBUG* _ptr);

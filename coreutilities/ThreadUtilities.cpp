@@ -538,7 +538,8 @@ namespace FlexKit
         if (auto res = localWorkQueue.pop_back(); res)
             return res.value();
 
-        const size_t startingPoint = randomDevice();
+        thread_local static const size_t startingPoint = randomDevice();
+
         for (size_t I = 0; I < workQueues.size(); ++I)
         {
             const size_t idx = (I + startingPoint) % workQueues.size();

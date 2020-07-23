@@ -183,6 +183,8 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
         MaterialHandle material = materials.CreateMaterial();
         materials.AddTexture(8001, material);
 
+        DEBUG_ListSceneObjects(gameState.scene);
+
         if (auto [gameObject, res] = FindGameObject(gameState.scene, "Daem"); res)
         {
             gameObject->AddView<MaterialComponentView>(material);

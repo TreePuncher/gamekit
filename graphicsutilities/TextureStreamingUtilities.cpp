@@ -537,6 +537,10 @@ namespace FlexKit
                             srvHeap.SetSRV(ctx, I, textures[I]);
                     }
 
+                    const auto& textures = materials[materialHandle].Textures;
+                    if (!textures.size())
+                        continue;
+
                     prevMaterial = materialHandle;
 
                     const auto constants = ConstantBufferDataSet{ visable.D->GetConstants(), passConstantBuffer };
