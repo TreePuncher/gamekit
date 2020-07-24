@@ -136,7 +136,7 @@ namespace FlexKit
 
 			auto stateObject	= *T.Object;
 			stateObject.State	= T.AfterState;
-			auto idx			= Resources.SubNodeTracking.push_back(stateObject);
+			auto idx			= SubNodeTracking.push_back(stateObject);
 		}
 	}
 
@@ -393,7 +393,7 @@ namespace FlexKit
 
 	FrameResourceHandle  FrameGraphNodeBuilder::AcquireVirtualResource(const GPUResourceDesc desc, DeviceResourceState initialState)
 	{
-        const auto& memoryPool      = Resources->memoryPools.back();
+		const auto& memoryPool      = Resources->memoryPools.back();
 		auto virtualResource        = memoryPool->Aquire(desc);
 
 		FrameObject virtualObject = FrameObject::VirtualObject();
@@ -518,25 +518,8 @@ namespace FlexKit
 
 			return Resource;
 		}
-		else
-		{
-			FK_ASSERT(0);
-			/*
-			auto Object = TrackedReadable ?
-				Context.GetReadable(Tag) : Context.GetWriteable(Tag);
-			Object.ExpectedState = Object.State;
-			Object.State = State;
-			LocalOutputs.push_back(Object);
-			if (TrackedReadable) {
-				Context.RemoveReadable(Tag);
-				Context.AddWriteable(Object);
-				Transitions.push_back(Object);
-			}
-			return Object.FO->Handle;
-			*/
-		}
 
-		return FrameResourceHandle(0);
+		return InvalidHandle_t;
 	}
 
 
@@ -581,16 +564,21 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraph::ProcessNode(FrameGraphNode* node, FrameResources& resources, Context& ctx, iAllocator& allocator)
+	void FrameGraph::ProcessNode(FrameGraphNode* node, FrameResources& resources, Vector<FrameGraphNodeWork>& taskList, iAllocator& allocator)
 	{
 		if (!node->Executed)
 		{
 			node->Executed = true;
 
 			for (auto Source : node->Sources)
-				ProcessNode(node, resources, ctx, allocator);
+				ProcessNode(node, resources, taskList, allocator);
 
-			node->NodeAction(*node, resources, ctx, allocator);
+            taskList.push_back(
+                {
+                    node->NodeAction,
+                    node,
+                    &resources
+                });
 		}
 	}
 
@@ -598,10 +586,74 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraph::_SubmitFrameGraph(Vector<Context*>& contexts, iAllocator& allocator)
+	void FrameGraph::_SubmitFrameGraph(iAllocator& allocator)
 	{
+        FlexKit::WorkBarrier barrier{ threads, &allocator };
+        
+        Vector<FrameGraphNodeWork> taskList{ &SystemAllocator };
+
 		for (auto& N : Nodes)
-			ProcessNode(&N, Resources, *contexts.back(), allocator);
+			ProcessNode(&N, Resources, taskList, SystemAllocator);
+
+        auto& renderSystem = Resources.renderSystem;
+        Vector<Context*> contexts{ &SystemAllocator };
+
+        struct SubmissionWorkRange
+        {
+            Vector<FrameGraphNodeWork>::Iterator begin;
+            Vector<FrameGraphNodeWork>::Iterator end;
+        };
+
+        static const size_t workerCount = 4;
+        static_vector<SubmissionWorkRange> workList;
+        for (size_t I = 0; I < workerCount; I++)
+        {
+            workList.push_back(
+                {
+                    taskList.begin() + I * taskList.size() / workerCount,
+                    taskList.begin() + (I  + 1) * taskList.size() / workerCount
+                });
+        }
+
+        class RenderWorker : public iWork
+        {
+        public:
+            RenderWorker(SubmissionWorkRange IN_work, Context* IN_ctx, iAllocator& allocator) :
+                iWork   { &allocator    },
+                work    { IN_work       },
+                ctx     { IN_ctx        } {}
+
+            void Run(iAllocator& allocator) override
+            {
+                std::for_each(work.begin, work.end,
+                    [&](auto& item)
+                    {
+                        item(ctx, SystemAllocator);
+                    });
+
+                ctx->FlushBarriers();
+            }
+
+            void Release() {}
+
+            SubmissionWorkRange work;
+            Context*            ctx;
+        };
+
+        static_vector<RenderWorker*> workerList;
+        for (auto& work : workList)
+        {
+            contexts.push_back(&renderSystem.GetCommandList());
+            workerList.push_back(&SystemAllocator.allocate<RenderWorker>(work, contexts.back(), SystemAllocator));
+            threads.AddWork(*workerList.back());
+            barrier.AddWork(*workerList.back());
+        }
+
+        barrier.Wait();
+
+        renderSystem.Submit(contexts);
+
+        UpdateResourceFinalState();
 	}
 
 
@@ -609,7 +661,6 @@ namespace FlexKit
 	{
 		struct SubmitData
 		{
-			Vector<Context*>    contexts;
 			FrameGraph*		    frameGraph;
 			RenderSystem*	    renderSystem;
 			RenderWindow*	    renderWindow;
@@ -627,9 +678,6 @@ namespace FlexKit
 				FK_LOG_9("Frame Graph Single-Thread Section Begin");
 				builder.SetDebugString("Frame Graph Task");
 
-				data.contexts		= Vector<Context*>{ Memory };
-				data.contexts.emplace_back(&renderSystem->GetCommandList());
-
 				data.frameGraph		= framegraph;
 				data.renderSystem	= renderSystem;
 
@@ -640,19 +688,10 @@ namespace FlexKit
 			},
 			[=, &allocator](SubmitData& data, iAllocator& threadAllocator)
 			{
-				FK_LOG_9("Frame Graph Multi-Thread Section Begin");
-
-				data.frameGraph->_SubmitFrameGraph(data.contexts, allocator);
-				data.contexts.back()->FlushBarriers();
-
-				UpdateResourceFinalState();
-
-				data.renderSystem->Submit(data.contexts);
+				data.frameGraph->_SubmitFrameGraph(allocator);
 
 				for (auto resource : Resources.virtualResources)
 					data.renderSystem->ReleaseTexture(Resources.GetRenderTarget(resource));
-
-				FK_LOG_9("Frame Graph Multi-Thread Section End");
 			});
 	}
 
@@ -730,7 +769,7 @@ namespace FlexKit
 			{
 				Data.BackBuffer = Builder.WriteBackBuffer(backBuffer);
 			},
-			[=](const PassData& Data, const FrameResources& Resources, Context& Ctx, iAllocator& allocator)
+			[=](const PassData& Data, const ResourceHandler& Resources, Context& Ctx, iAllocator& allocator)
 			{	// do clear here
 				Ctx.ClearRenderTarget(
 					{ Resources.GetTexture(Data.BackBuffer) },
@@ -761,7 +800,7 @@ namespace FlexKit
 			{
 				Data.DepthBuffer = Builder.WriteDepthBuffer(Handle);
 			},
-			[=](const ClearDepthBuffer& Data, const FrameResources& Resources, Context& Ctx, iAllocator& allocator)
+			[=](const ClearDepthBuffer& Data, const ResourceHandler& Resources, Context& Ctx, iAllocator& allocator)
 			{	// do clear here
 				Ctx.ClearDepthBuffer(
 					{ Resources.GetTexture(Data.DepthBuffer) },
@@ -785,7 +824,7 @@ namespace FlexKit
 			{
 				Data.BackBuffer = Builder.PresentBackBuffer(window.GetBackBuffer());
 			},
-			[](const PassData& Data, const FrameResources& Resources, Context& ctx, iAllocator&)
+			[](const PassData& Data, const ResourceHandler& Resources, Context& ctx, iAllocator&)
 			{
 			});
 	}

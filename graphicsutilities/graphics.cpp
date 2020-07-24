@@ -486,7 +486,7 @@ namespace FlexKit
 						break;
 					}
 				}
-                Idx++;
+				Idx++;
 			}
 		}
 
@@ -507,8 +507,8 @@ namespace FlexKit
 
 		PushTextureToDescHeap(
 			ctx.renderSystem,
-            ctx.renderSystem->GetTextureDeviceFormat(handle),
-            handle,
+			ctx.renderSystem->GetTextureDeviceFormat(handle),
+			handle,
 			IncrementHeapPOS(
 					descriptorHeap, 
 					ctx.renderSystem->DescriptorCBVSRVUAVSize,
@@ -535,18 +535,18 @@ namespace FlexKit
 					descriptorHeap, 
 					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
 					idx),
-            ctx.renderSystem->GetTextureFormat(handle));
+			ctx.renderSystem->GetTextureFormat(handle));
 
 		return true;
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
-    {
-        if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
+	bool DescriptorHeap::SetSRVCubemap(Context& ctx, size_t idx, ResourceHandle	handle, DeviceFormat format)
+	{
+		if (!CheckType(*Layout, DescHeapEntryType::ShaderResource, idx))
 			return false;
 
 		FillState[idx] = true;
@@ -558,10 +558,10 @@ namespace FlexKit
 					descriptorHeap, 
 					ctx.renderSystem->DescriptorCBVSRVUAVSize, 
 					idx),
-            format);
+			format);
 
 		return true;
-    }
+	}
 
 
 
@@ -575,12 +575,12 @@ namespace FlexKit
 
 		FillState[idx] = true;
 
-        auto dxFormat = TextureFormat2DXGIFormat(format);
+		auto dxFormat = TextureFormat2DXGIFormat(format);
 
 		PushTextureToDescHeap(
 			ctx.renderSystem,
-            dxFormat,
-            handle,
+			dxFormat,
+			handle,
 			IncrementHeapPOS(
 				descriptorHeap,
 				ctx.renderSystem->DescriptorCBVSRVUAVSize,
@@ -1044,12 +1044,13 @@ namespace FlexKit
 		GFSDK_Aftermath_ReleaseContextHandle(AFTERMATH_context);
 #endif
 
-		descHeapDSV         = nullptr;
-		descHeapRTV         = nullptr;
-		descHeapSRV         = nullptr;
-		descHeapSRVLocal    = nullptr;
-		commandAllocator    = nullptr;
-		DeviceContext       = nullptr;
+		descHeapDSV          = nullptr;
+		descHeapRTV          = nullptr;
+		descHeapSRV          = nullptr;
+		descHeapSRVLocal     = nullptr;
+		commandAllocator     = nullptr;
+		DeviceContext        = nullptr;
+        CurrentPipelineState = nullptr;
 	}
 
 
@@ -1116,12 +1117,12 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::AddAliasingBarrier(ResourceHandle handle, DeviceResourceState Before, DeviceResourceState State)
-    {
-        auto res = find(PendingBarriers,
+	void Context::AddAliasingBarrier(ResourceHandle handle, DeviceResourceState Before, DeviceResourceState State)
+	{
+		auto res = find(PendingBarriers,
 			[&](Barrier& rhs) -> bool
 			{
 				return
@@ -1129,15 +1130,15 @@ namespace FlexKit
 					rhs.shaderResource  == handle;
 			});
 
-        if (std::end(PendingBarriers) == res)
-        {
-            Barrier barrier;
-            barrier.Type            = Barrier::BT_Aliasing;
-            barrier.shaderResource  = handle;
+		if (std::end(PendingBarriers) == res)
+		{
+			Barrier barrier;
+			barrier.Type            = Barrier::BT_Aliasing;
+			barrier.shaderResource  = handle;
 
-            PendingBarriers.push_back(barrier);
-        }
-    }
+			PendingBarriers.push_back(barrier);
+		}
+	}
 
 
 
@@ -1265,8 +1266,11 @@ namespace FlexKit
 	{
 		FK_ASSERT(PSO);
 
-		if (CurrentPipelineState == PSO)
-		    return;
+        if (PSO == nullptr)
+            __debugbreak();
+
+		//if (CurrentPipelineState == PSO)
+		//	return;
 
 		CurrentPipelineState = PSO;
 		DeviceContext->SetPipelineState(PSO);
@@ -1346,12 +1350,12 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    void Context::SetRenderTargets2(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV)
-    {
-        static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTV_CPU_HANDLES;
+	void Context::SetRenderTargets2(const static_vector<ResourceHandle> RTs, const size_t MIPMapOffset, const DepthStencilView_Options DSV)
+	{
+		static_vector<D3D12_CPU_DESCRIPTOR_HANDLE> RTV_CPU_HANDLES;
 
 		if (!MIPMapOffset)
 		{
@@ -1387,10 +1391,10 @@ namespace FlexKit
 				view = PushRenderTarget(renderSystem, renderTarget, view, MIPMapOffset);
 			}
 		}
-        
+		
 		auto DSV_CPU_HANDLE = D3D12_CPU_DESCRIPTOR_HANDLE{};
 
-        const bool depthEnabled = DSV.depthStencil != InvalidHandle_t;
+		const bool depthEnabled = DSV.depthStencil != InvalidHandle_t;
 
 		if(depthEnabled)
 		{
@@ -1403,9 +1407,9 @@ namespace FlexKit
 		DeviceContext->OMSetRenderTargets(
 			RTV_CPU_HANDLES.size(),
 			RTV_CPU_HANDLES.begin(),
-            depthEnabled,
-            depthEnabled ? &DSV_CPU_HANDLE : nullptr);
-    }
+			depthEnabled,
+			depthEnabled ? &DSV_CPU_HANDLE : nullptr);
+	}
 
 
 	/************************************************************************************************/
@@ -2465,6 +2469,8 @@ namespace FlexKit
 
 	Context& Context::Reset()
 	{
+        CurrentPipelineState = nullptr;
+
 		if(FAILED(commandAllocator->Reset()))
 			__debugbreak();
 
@@ -2649,7 +2655,7 @@ namespace FlexKit
 				}	break;
 				case Barrier::BT_ShaderResource:
 				{
-					auto resource		= renderSystem->Textures.GetAsset(B.shaderResource);
+					auto resource		= renderSystem->GetDeviceResource(B.shaderResource);
 					auto currentState	= DRS2D3DState(B.OldState);
 					auto newState		= DRS2D3DState(B.NewState);
 
@@ -2657,12 +2663,12 @@ namespace FlexKit
 						Barriers.push_back(CD3DX12_RESOURCE_BARRIER::Transition(
 							resource, currentState, newState));
 				}	break;
-                case Barrier::BT_Aliasing:
-                {
-                    auto aliasingBarrier = CD3DX12_RESOURCE_BARRIER::Aliasing(renderSystem->GetDeviceResource(B.shaderResource), nullptr);
+				case Barrier::BT_Aliasing:
+				{
+					auto aliasingBarrier = CD3DX12_RESOURCE_BARRIER::Aliasing(renderSystem->GetDeviceResource(B.shaderResource), nullptr);
 
-                    Barriers.push_back(aliasingBarrier);
-                }   break;
+					Barriers.push_back(aliasingBarrier);
+				}   break;
 				default:
 					FK_ASSERT(0);
 			};
@@ -3260,12 +3266,12 @@ namespace FlexKit
 
 		Wait(CopyContextHandle{ currentIdx });
 
-        if (FAILED(ctx.commandAllocator->Reset()))
-        {
+		if (FAILED(ctx.commandAllocator->Reset()))
+		{
 #if DEBUG
-            __debugbreak();
+			__debugbreak();
 #endif
-        }
+		}
 
 		ctx.commandList->Reset(ctx.commandAllocator, nullptr);
 
@@ -3611,9 +3617,9 @@ namespace FlexKit
 		ReadBackTable.Initiate(Device);
 
 		FreeList.Allocator = in->Memory;
-        DefaultTexture = _CreateDefaultTexture();
+		DefaultTexture = _CreateDefaultTexture();
 
-        SetDebugName(DefaultTexture, "Default Texture");
+		SetDebugName(DefaultTexture, "Default Texture");
 
 		return InitiateComplete;
 	}
@@ -3829,24 +3835,6 @@ namespace FlexKit
 	size_t RenderSystem::GetVertexBufferSize(const VertexBufferHandle VB)
 	{
 		return VertexBuffers.GetBufferSize(VB);
-	}
-
-
-	/************************************************************************************************/
-
-
-	uint32_t RenderSystem::GetTag(ResourceHandle handle)
-	{
-		return Textures.GetTag(handle);
-	}
-
-
-	/************************************************************************************************/
-
-
-	void RenderSystem::SetTag(ResourceHandle handle, uint32_t Tag)
-	{
-		Textures.SetTag(handle, Tag);
 	}
 
 
@@ -4226,7 +4214,7 @@ namespace FlexKit
 						desc.placed.offset,
 						&Resource_DESC,
 						InitialState,
-                        pCV,
+						pCV,
 						IID_PPV_ARGS(&NewResource[itr]));
 				}   break;
 				}
@@ -4767,7 +4755,7 @@ namespace FlexKit
 
 	ID3D12Resource* RenderSystem::GetDeviceResource(const ResourceHandle handle) const
 	{
-		return Textures.GetAsset(handle);
+		return Textures.GetResource(handle, pDevice);
 	}
 
 
@@ -4864,13 +4852,13 @@ namespace FlexKit
 	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    size_t RenderSystem::GetHeapSize(const DeviceHeapHandle heap) const
-    {
-        return heaps.GetHeapSize(heap);
-    }
+	size_t RenderSystem::GetHeapSize(const DeviceHeapHandle heap) const
+	{
+		return heaps.GetHeapSize(heap);
+	}
 
 
 	/************************************************************************************************/
@@ -5867,26 +5855,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	uint32_t TextureStateTable::GetTag(ResourceHandle Handle) const
-	{
-		auto UserIdx = Handles[Handle];
-		return UserEntries[UserIdx].Tag;
-	}
-
-
-	/************************************************************************************************/
-
-
-	void TextureStateTable::SetTag(ResourceHandle Handle, uint32_t Tag)
-	{
-		auto UserIdx = Handles[Handle];
-		UserEntries[UserIdx].Tag = Tag;
-	}
-
-
-	/************************************************************************************************/
-
-
 	void TextureStateTable::SetBufferedIdx(ResourceHandle handle, uint32_t idx)
 	{
 		auto UserIdx = Handles[handle];
@@ -6210,7 +6178,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	ID3D12Resource*		TextureStateTable::GetAsset(ResourceHandle Handle) const
+	ID3D12Resource* TextureStateTable::GetResource(ResourceHandle Handle, ID3D12Device* device) const
 	{
 		auto  Idx			= Handles[Handle];
 		auto  ResourceIdx	= UserEntries[Idx].ResourceIdx;
@@ -6690,7 +6658,7 @@ namespace FlexKit
 			1,
 			DeviceFormat::R8G8B8A8_UNORM);
 
-        SubmitUploadQueues(0, &upload);
+		SubmitUploadQueues(0, &upload);
 
 		return defaultTexture;
 	}
@@ -7296,22 +7264,22 @@ namespace FlexKit
 		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
 	}
 
-    DescHeapPOS PushDepthStencilArray(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS)
-    {
-        const size_t arraySize = RS->GetTextureArraySize(Target);
+	DescHeapPOS PushDepthStencilArray(RenderSystem* RS, ResourceHandle Target, size_t arrayOffset, size_t MipSlice, DescHeapPOS POS)
+	{
+		const size_t arraySize = RS->GetTextureArraySize(Target);
 
-        D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
-        DSVDesc.Format                          = RS->GetTextureDeviceFormat(Target);
-        DSVDesc.Texture2DArray.ArraySize        = arraySize - arrayOffset;
-        DSVDesc.Texture2DArray.FirstArraySlice  = arrayOffset;
-        DSVDesc.Texture2DArray.MipSlice         = MipSlice;
-        DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
+		D3D12_DEPTH_STENCIL_VIEW_DESC DSVDesc = {};
+		DSVDesc.Format                          = RS->GetTextureDeviceFormat(Target);
+		DSVDesc.Texture2DArray.ArraySize        = arraySize - arrayOffset;
+		DSVDesc.Texture2DArray.FirstArraySlice  = arrayOffset;
+		DSVDesc.Texture2DArray.MipSlice         = MipSlice;
+		DSVDesc.ViewDimension                   = D3D12_DSV_DIMENSION::D3D12_DSV_DIMENSION_TEXTURE2DARRAY;
 
-        RS->MarkTextureUsed(Target);
-        RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
+		RS->MarkTextureUsed(Target);
+		RS->pDevice->CreateDepthStencilView(RS->GetDeviceResource(Target), &DSVDesc, POS);
 
-        return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
-    }
+		return IncrementHeapPOS(POS, RS->DescriptorDSVSize, 1);
+	}
 
 
 	/************************************************************************************************/
@@ -7371,32 +7339,32 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-    DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
-    {
-        D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc   = {}; {
-            ViewDesc.Format                        = tex.Format;
-            ViewDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            ViewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-            ViewDesc.Texture2D.MipLevels           = !tex.mipCount ? 1 : tex.mipCount;
-            ViewDesc.Texture2D.MostDetailedMip     = 0;
-            ViewDesc.Texture2D.PlaneSlice          = 0;
-            ViewDesc.Texture2D.ResourceMinLODClamp = 0;
-        }
+	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, Texture2D tex, DescHeapPOS POS)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc   = {}; {
+			ViewDesc.Format                        = tex.Format;
+			ViewDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			ViewDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+			ViewDesc.Texture2D.MipLevels           = !tex.mipCount ? 1 : tex.mipCount;
+			ViewDesc.Texture2D.MostDetailedMip     = 0;
+			ViewDesc.Texture2D.PlaneSlice          = 0;
+			ViewDesc.Texture2D.ResourceMinLODClamp = 0;
+		}
 
-        RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
+		RS->pDevice->CreateShaderResourceView(tex, &ViewDesc, POS);
 
-        return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
-    }
+		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
+	}
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
 	DescHeapPOS PushTextureToDescHeap(RenderSystem* RS, DXGI_FORMAT format, ResourceHandle handle, DescHeapPOS POS)
 	{
 		D3D12_SHADER_RESOURCE_VIEW_DESC ViewDesc = {}; {
-            const auto mipCount     = RS->GetTextureMipCount(handle);
-            const auto arraySize    = RS->GetTextureArraySize(handle);
+			const auto mipCount     = RS->GetTextureMipCount(handle);
+			const auto arraySize    = RS->GetTextureArraySize(handle);
 
 			ViewDesc.Format                             = format;
 			ViewDesc.Shader4ComponentMapping            = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -7404,11 +7372,11 @@ namespace FlexKit
 			ViewDesc.Texture2DArray.MipLevels           = max(mipCount, 1);
 			ViewDesc.Texture2DArray.MostDetailedMip     = 0;
 			ViewDesc.Texture2DArray.PlaneSlice          = 0;
-            ViewDesc.Texture2DArray.ResourceMinLODClamp = 0;
-            ViewDesc.Texture2DArray.ArraySize           = arraySize;
+			ViewDesc.Texture2DArray.ResourceMinLODClamp = 0;
+			ViewDesc.Texture2DArray.ArraySize           = arraySize;
 		}
 
-        auto debug = RS->GetDeviceResource(handle);
+		auto debug = RS->GetDeviceResource(handle);
 		RS->pDevice->CreateShaderResourceView(RS->GetDeviceResource(handle), &ViewDesc, POS);
 
 		return IncrementHeapPOS(POS, RS->DescriptorCBVSRVUAVSize, 1);
