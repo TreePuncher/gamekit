@@ -618,9 +618,9 @@ namespace FlexKit
 				data.renderTarget = builder.WriteRenderTarget(renderTarget);
 
 				data.heap.Init(
-					frameGraph.Resources.renderSystem,
-					frameGraph.Resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
-					tempMemory).NullFill(frameGraph.Resources.renderSystem);
+					frameGraph.resources.renderSystem(),
+					frameGraph.resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
+					tempMemory).NullFill(frameGraph.resources.renderSystem());
 			}, 
 			[&patches = update.patches](debugDraw& data, const FrameResources& resources, Context* ctx)
 			{
@@ -671,7 +671,7 @@ namespace FlexKit
 				ConstantBufferDataSet localConstants	= ConstantBufferDataSet{ LocalConstants{}, data.constants };
 				ConstantBufferDataSet cameraConstants	= data.GetConstants(data.constants);
 
-				ctx->SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+				ctx->SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
 
 				ctx->SetPipelineState(resources.GetPipelineState(DRAW_LINE3D_PSO));
 				ctx->SetRenderTargets({ resources.GetRenderTargetDescHeapEntry(data.renderTarget) }, false);

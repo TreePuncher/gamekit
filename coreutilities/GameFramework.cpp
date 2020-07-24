@@ -283,7 +283,7 @@ namespace FlexKit
 	{
 		FK_LOG_9("Frame Draw Begin");
 
-		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, TempMemory);
+		FrameGraph&	frameGraph = TempMemory->allocate_aligned<FrameGraph>(core.RenderSystem, core.Threads, TempMemory);
 
 		frameGraph.UpdateFrameGraph(core.RenderSystem, core.GetTempMemory());
 

@@ -286,7 +286,7 @@ void EditorBase::DrawImGui(
 
 			auto  constantBuffer = pass.ReserveCBSpace(1024);
 			auto  constants      = FlexKit::ConstantBufferDataSet(Constants{ pass.WH }, constantBuffer);
-			auto& rootSig        = frameResources.renderSystem.Library.RSDefault;
+			auto& rootSig        = frameResources.renderSystem().Library.RSDefault;
 
 			// Setup draw State
 			//

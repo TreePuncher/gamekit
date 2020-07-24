@@ -97,7 +97,7 @@ public:
             {
                 data.renderTarget = nodeBuilder.WriteRenderTarget(base.renderWindow.GetBackBuffer());
             },
-            [=](ACCTest& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            [=](ACCTest& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 struct ControlPoint
                 {
@@ -129,7 +129,7 @@ public:
                     { resources.GetTexture(data.renderTarget) },
                     false);
 
-                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
                 ctx.SetPipelineState(resources.GetPipelineState(ACCState));
                 ctx.SetVertexBuffers({ vbDataSet });
                 ctx.SetIndexBuffer(ibDataSet);
