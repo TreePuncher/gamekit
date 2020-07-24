@@ -337,7 +337,7 @@ namespace FlexKit
 				data.normal             = builder.WriteRenderTarget(gbuffer.normal);
 				data.tangent            = builder.WriteRenderTarget(gbuffer.tangent);
 			},
-			[](GBufferClear& data, FrameResources& resources, Context& ctx, iAllocator&)
+			[](GBufferClear& data, ResourceHandler& resources, Context& ctx, iAllocator&)
 			{
 				ctx.ClearRenderTarget(resources.GetTexture(data.albedo));
 				ctx.ClearRenderTarget(resources.GetTexture(data.MRIA));
@@ -410,11 +410,17 @@ namespace FlexKit
 
     struct ShadowMapPassData
     {
-        const GatherTask&                       sceneSource;
-        ReserveConstantBufferFunction           reserveCB;
-        Vector<TemporaryFrameResourceHandle>&   shadowMapTargets;
+        Vector<TemporaryFrameResourceHandle>    shadowMapTargets;
     };
 
+    struct LocalShadowMapPassData
+    {
+        ShadowMapPassData&            sharedData;
+        const GatherTask&             sceneSource;
+        ReserveConstantBufferFunction reserveCB;
+        TemporaryFrameResourceHandle  shadowMapTargets;
+        PointLightHandle              pointLight;
+    };
 
 	struct TiledDeferredShade
 	{

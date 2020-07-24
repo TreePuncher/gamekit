@@ -175,8 +175,9 @@ namespace FlexKit
         Thread = std::move(
             std::thread([&]
                 {
-                    localWorkQueue = &workQueue;
-                    _localThread = this;
+                    localWorkQueue  = &workQueue;
+                    _localThread    = this;
+                    _localAllocator = localAllocator;
 
                     buffer = std::make_unique<std::array<byte, MEGABYTE * 16>>();
                     localAllocator.Init(buffer->data(), MEGABYTE * 16);

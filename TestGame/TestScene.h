@@ -185,34 +185,16 @@ inline void StartTestState(FlexKit::FKApplication& app, BaseState& base, TestSce
 
         DEBUG_ListSceneObjects(gameState.scene);
 
-        if (auto [gameObject, res] = FindGameObject(gameState.scene, "Daem"); res)
+        if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.001"); res)
         {
             gameObject->AddView<MaterialComponentView>(material);
             SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
         }
-        if (auto [gameObject, res] = FindGameObject(gameState.scene, "1Dae"); res)
+        if (auto [gameObject, res] = FindGameObject(gameState.scene, "DaemonGirl.002"); res)
         {
             gameObject->AddView<MaterialComponentView>(material);
             SetMaterialHandle(*gameObject, GetMaterialHandle(*gameObject));
         }
-		/*
-		static const size_t N = 30;
-		static const float  W = (float)5;
-
-		for (size_t Y = 0; Y < N; ++Y)
-		{
-			for (size_t X = 0; X < N; ++X)
-			{
-				auto node           = FlexKit::GetNewNode();
-				auto& gameObject    = allocator->allocate<GameObject>();
-				gameObject.AddView<PointLightView>(float3(1, 1, 1), 20, node);
-
-				SetPositionW(node, float3{ (float)X * W, 10, (float)Y * W } -float3{ N * W / 2, 0, N * W / 2 });
-
-				gameState.scene.AddGameObject(gameObject, node);
-			}
-		}
-		*/
 	 }  break;
     case TestScenes::PhysXTest:
     {
