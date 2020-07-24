@@ -1896,6 +1896,7 @@ namespace FlexKit
 			    },
 			    [=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			    {
+<<<<<<< HEAD
 				    const auto& drawables  = data.sceneSource.GetData().solid;
                     const auto depthTarget = resources.GetTexture(data.shadowMapTargets);
 
@@ -1935,6 +1936,37 @@ namespace FlexKit
                     ctx.SetPipelineState(PSO);
                     ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
+=======
+				    const auto& drawables   = data.sceneSource.GetData().solid;
+
+                    struct PassConstants
+                    {
+                        struct PlaneMatrices
+                        {
+                            float4x4 ViewI;
+                            float4x4 PV;
+                        }matrices[6];
+                    };
+
+				    CBPushBuffer passConstantBuffer = data.reserveCB(
+					    AlignedSize<PassConstants>() * lightCount);
+
+                    CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * drawables.size());
+
+                    for (auto& drawable : drawables)
+                        ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
+
+                    auto constants = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
+
+                    auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
+                    if (PSO == nullptr)
+                        __debugbreak();
+
+                    ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+                    ctx.SetPipelineState(PSO);
+                    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
                     auto& pointLights       = PointLightComponent::GetComponent();
                     auto& light             = pointLights.elements[I].componentData;
 				    const float3 Position   = FlexKit::GetPositionW(light.Position);
@@ -1950,6 +1982,17 @@ namespace FlexKit
 
                     ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
 
+<<<<<<< HEAD
+=======
+                    const auto depthTarget = resources.GetTexture(data.shadowMapTargets);
+
+                    const DepthStencilView_Options DSV_desc = {
+                        .depthStencil = depthTarget
+                    };
+
+
+				    ctx.ClearDepthBuffer(depthTarget, 1.0f);
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
 				    ctx.SetScissorAndViewports({ depthTarget });
                     ctx.SetRenderTargets2({}, 0, DSV_desc);
 

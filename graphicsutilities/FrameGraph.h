@@ -549,9 +549,16 @@ namespace FlexKit
             memoryPools         { IN_allocator      },
             allocator           { IN_allocator      } {}
 
+<<<<<<< HEAD
         PassObjectList			        Resources;
         TemporaryPassObjectList         virtualResources;
         Vector<MemoryPoolAllocator*>    memoryPools;
+=======
+        PassObjectList			Resources;
+        TemporaryPassObjectList virtualResources;
+
+        Vector<MemoryPoolAllocator*> memoryPools;
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
 
 
         void AddMemoryPool(MemoryPoolAllocator* heapAllocator)
@@ -774,6 +781,7 @@ namespace FlexKit
             if (res != Resources.end())
                 return res->Handle;
 
+<<<<<<< HEAD
             return InvalidHandle_t;
         }
 
@@ -795,12 +803,48 @@ namespace FlexKit
                 return res->Handle;
 
             return InvalidHandle_t;
+=======
+            // Create New Resource
+            FrameResourceHandle NewResource;
+
+            FK_ASSERT(0);
+
+            return NewResource;
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         }
 
 
         /************************************************************************************************/
 
 
+<<<<<<< HEAD
+=======
+        FrameResourceHandle	FindFrameResource(ShaderResourceHandle Handle)
+        {
+            auto res = find(Resources,
+                [&](const auto& LHS)
+                {
+                    auto CorrectType = LHS.Type == OT_ShaderResource;
+
+                    return (CorrectType && LHS.ShaderResource.handle == Handle);
+                });
+
+            if (res != Resources.end())
+                return res->Handle;
+
+            // Create New Resource
+            FrameResourceHandle NewResource;
+
+            FK_ASSERT(0);
+
+            return NewResource;
+        }
+
+
+        /************************************************************************************************/
+
+
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         FrameResourceHandle	FindFrameResource(UAVResourceHandle handle)
         {
             auto res = find(Resources, 
@@ -814,7 +858,16 @@ namespace FlexKit
             if (res != Resources.end())
                 return res->Handle;
 
+<<<<<<< HEAD
             return InvalidHandle_t;
+=======
+            // Create New Resource
+            FrameResourceHandle NewResource;
+
+            FK_ASSERT(0);
+
+            return NewResource;
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         }
 
 
@@ -834,7 +887,16 @@ namespace FlexKit
             if (res != Resources.end())
                 return res->Handle;
 
+<<<<<<< HEAD
             return InvalidHandle_t;
+=======
+            // Create New Resource
+            FrameResourceHandle NewResource;
+
+            FK_ASSERT(0);
+
+            return NewResource;
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         }
 
 
@@ -854,7 +916,16 @@ namespace FlexKit
             if (res != Resources.end())
                 return res->Handle;
 
+<<<<<<< HEAD
             return InvalidHandle_t;
+=======
+            // Create New Resource
+            FrameResourceHandle NewResource;
+
+            FK_ASSERT(0);
+
+            return NewResource;
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         }
 
 
@@ -874,7 +945,16 @@ namespace FlexKit
             if (res != Resources.end())
                 return res->Handle;
 
+<<<<<<< HEAD
             return InvalidHandle_t;
+=======
+            // Create New Resource
+            FrameResourceHandle NewResource;
+
+            FK_ASSERT(0);
+
+            return NewResource;
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         }
 
 
@@ -969,7 +1049,10 @@ namespace FlexKit
             return resource->UAVTexture;
         }
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         UAVResourceHandle GetUAVBufferResource(FrameResourceHandle handle) const
         {
             FrameObject* resource = nullptr;
@@ -1205,7 +1288,11 @@ namespace FlexKit
         }
 
 
+<<<<<<< HEAD
         SOResourceHandle ClearStreamOut(FrameResourceHandle handle, Context& ctx)
+=======
+        SOResourceHandle ClearStreamOut(FrameResourceHandle handle, Context* ctx)
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
         {
             auto resource = _FindSubNodeResource(handle);
 
@@ -1831,8 +1918,13 @@ namespace FlexKit
                         node.HandleBarriers(resources, ctx);
 
                         ResourceHandler handler{ resources, node.SubNodeTracking };
+<<<<<<< HEAD
                         data.draw(data.fields, handler, ctx, tempAllocator);
 
+=======
+
+                        data.draw(data.fields, handler, ctx, tempAllocator);
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
                         node.RestoreResourceStates(&ctx, node.SubNodeTracking);
                         data.fields.~TY();
                     },
