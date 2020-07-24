@@ -793,18 +793,18 @@ namespace FlexKit
 
                     builder.AddDataDependency(pvs);
                 },
-                [=](DepthPass& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
+                [=](DepthPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
                 {
                     const auto cameraConstants = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
 
                     DescriptorHeap heap{
                         ctx,
-                        resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                        resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
                         &allocator };
 
                     heap.NullFill(ctx);
 
-                    ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                    ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
                     ctx.SetPipelineState(resources.GetPipelineState(DEPTHPREPASS));
 
                     ctx.SetScissorAndViewports({ data.depthPassTarget });
@@ -871,15 +871,15 @@ namespace FlexKit
                 data.passVertices                   = reserveVB(sizeof(float4) * 6);
                 //data.diffuseMap                     = hdrMap;
             },
-            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& tempAllocator)
+            [=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& tempAllocator)
             {
                 DescriptorHeap descHeap;
                 descHeap.Init2(ctx, renderSystem.Library.RSDefault.GetDescHeap(0), 20, &tempAllocator);
                 //descHeap.SetSRV(ctx, 6, data.diffuseMap);
                 descHeap.NullFill(ctx, 20);
 
-                auto& renderSystem          = frameResources.renderSystem;
-                const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
+                auto& renderSystem          = frameResources.renderSystem();
+                const auto WH               = frameResources.renderSystem().GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
 
                 struct
@@ -901,7 +901,7 @@ namespace FlexKit
                     float2 WH;
                 }passConstants = { float2(WH[0], WH[1]) };
 
-                ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
                 ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
                 ctx.SetGraphicsDescriptorTable(4, descHeap);
 
@@ -953,10 +953,10 @@ namespace FlexKit
                 data.passConstants  = reserveCB(6 * KILOBYTE);
                 data.passVertices   = reserveVB(sizeof(float4) * 6);
             },
-            [=](BackgroundEnvironmentPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& allocator)
+            [=](BackgroundEnvironmentPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
             {
-                auto& renderSystem          = frameResources.renderSystem;
-                const auto WH               = frameResources.renderSystem.GetTextureWH(renderTarget);
+                auto& renderSystem          = frameResources.renderSystem();
+                const auto WH               = renderSystem.GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
 
                 struct
@@ -990,7 +990,7 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 4, frameResources.GetTexture(data.depthBufferTargetObject), DeviceFormat::R32_FLOAT);
                 descHeap.NullFill(ctx, 20);
 
-                ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx.SetRootSignature(renderSystem.Library.RSDefault);
                 ctx.SetPipelineState(frameResources.GetPipelineState(ENVIRONMENTPASS));
                 ctx.SetGraphicsDescriptorTable(3, descHeap);
 
@@ -1041,10 +1041,10 @@ namespace FlexKit
                 data.NormalSource       = builder.ReadShaderResource(gbuffer.normal);
                 data.Source             = builder.ReadShaderResource(source);
             },
-            [=](BilateralBlurPass& data, const FrameResources& frameResources, Context& ctx, iAllocator& allocator)
+            [=](BilateralBlurPass& data, const ResourceHandler& frameResources, Context& ctx, iAllocator& allocator)
             {
-                auto& renderSystem          = frameResources.renderSystem;
-                const auto WH               = frameResources.renderSystem.GetTextureWH(destination);
+                auto& renderSystem          = frameResources.renderSystem();
+                const auto WH               = frameResources.renderSystem().GetTextureWH(destination);
 
                 auto constantBuffer = data.reserveCB(2048);
                 auto vertexBuffer   = data.reserveVB(2048);
@@ -1077,7 +1077,7 @@ namespace FlexKit
                 descHeap.SetSRV(ctx, 2, frameResources.GetTexture(data.DepthSource), DeviceFormat::R32_FLOAT);
                 descHeap.NullFill(ctx, 3);
 
-                ctx.SetRootSignature(frameResources.renderSystem.Library.RSDefault);
+                ctx.SetRootSignature(frameResources.renderSystem().Library.RSDefault);
                 ctx.SetPipelineState(frameResources.GetPipelineState(BILATERALBLURPASSHORIZONTAL));
                 ctx.SetGraphicsDescriptorTable(3, descHeap);
 
@@ -1148,7 +1148,7 @@ namespace FlexKit
 
                 data.WH                     = lightMapWH;
             },
-            [=](ForwardPlusPass& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
+            [=](ForwardPlusPass& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), data.passConstantsBuffer };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ (float)data.pointLights.size(), t, data.WH }, data.passConstantsBuffer };
@@ -1156,14 +1156,14 @@ namespace FlexKit
                 DescriptorHeap descHeap;
                 descHeap.Init(
                     ctx,
-                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
                     &allocator);
 
                 descHeap.SetSRV(ctx, 1, lightLists);
                 descHeap.SetSRV(ctx, 2, pointLightBuffer);
                 descHeap.NullFill(ctx);
 
-                ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
                 ctx.SetPipelineState(resources.GetPipelineState(FORWARDDRAW));
 
                 // Setup Initial Shading State
@@ -1242,7 +1242,7 @@ namespace FlexKit
                 builder.AddDataDependency(sceneDescription.lights);
                 builder.AddDataDependency(sceneDescription.cameras);
             },
-            [XY = lightMapWH](LightBufferUpdate& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            [XY = lightMapWH](LightBufferUpdate& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 const auto cameraConstants = GetCameraConstants(data.camera);
 
@@ -1294,14 +1294,14 @@ namespace FlexKit
                 );
 
                 DescriptorHeap descHeap;
-                descHeap.Init(ctx, resources.renderSystem.Library.ComputeSignature.GetDescHeap(0), &allocator);
+                descHeap.Init(ctx, resources.renderSystem().Library.ComputeSignature.GetDescHeap(0), &allocator);
                 descHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource	(data.lightListObject));
                 descHeap.SetSRV(ctx, 2, resources.ReadUAVBuffer			(data.lightBufferObject, DRS_ShaderResource, &ctx));
                 descHeap.SetCBV(ctx, 6, constants.Handle(), constants.Offset(), sizeof(ConstantsLayout));
                 descHeap.NullFill(ctx);
 
                 ctx.SetPipelineState(resources.GetPipelineState(LIGHTPREPASS));
-                ctx.SetComputeRootSignature(resources.renderSystem.Library.ComputeSignature);
+                ctx.SetComputeRootSignature(resources.renderSystem().Library.ComputeSignature);
                 ctx.SetComputeDescriptorTable(0, descHeap);
 
                 ctx.Dispatch({ XY[0], XY[1], 1 });
@@ -1347,7 +1347,7 @@ namespace FlexKit
                 data.TangentTargetObject     = builder.WriteRenderTarget(gbuffer.tangent);
                 data.depthBufferTargetObject = builder.WriteDepthBuffer(depthTarget);
             },
-            [camera](GBufferPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            [camera](GBufferPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 struct EntityPoses
                 {
@@ -1376,7 +1376,7 @@ namespace FlexKit
                 const auto cameraConstants  = ConstantBufferDataSet{ GetCameraConstants(camera), passConstantBuffer };
                 const auto passConstants    = ConstantBufferDataSet{ ForwardDrawConstants{ 1, 1 }, passConstantBuffer };
 
-                ctx.SetRootSignature(resources.renderSystem.Library.RS6CBVs4SRVs);
+                ctx.SetRootSignature(resources.renderSystem().Library.RS6CBVs4SRVs);
                 ctx.SetPipelineState(resources.GetPipelineState(GBUFFERPASS));
                 ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
@@ -1421,7 +1421,7 @@ namespace FlexKit
                     DescriptorHeap descHeap;
                     descHeap.Init(
                         ctx,
-                        resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                        resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
                         &allocator);
 
                     if(material.Textures.size())
@@ -1429,10 +1429,10 @@ namespace FlexKit
                             descHeap.SetSRV(ctx, I, material.Textures[I]);
                     else
                     {
-                        descHeap.SetSRV(ctx, 0, resources.renderSystem.DefaultTexture);
-                        descHeap.SetSRV(ctx, 1, resources.renderSystem.DefaultTexture);
-                        descHeap.SetSRV(ctx, 2, resources.renderSystem.DefaultTexture);
-                        descHeap.SetSRV(ctx, 3, resources.renderSystem.DefaultTexture);
+                        descHeap.SetSRV(ctx, 0, resources.renderSystem().DefaultTexture);
+                        descHeap.SetSRV(ctx, 1, resources.renderSystem().DefaultTexture);
+                        descHeap.SetSRV(ctx, 2, resources.renderSystem().DefaultTexture);
+                        descHeap.SetSRV(ctx, 3, resources.renderSystem().DefaultTexture);
                     }
 
                     descHeap.NullFill(ctx);
@@ -1563,10 +1563,10 @@ namespace FlexKit
                 data.passVertices               = reserveVB(sizeof(float4) * 6);
 
                 for(auto shadowMap : shadowMaps.shadowMapTargets)
-                    builder.ReadResource(shadowMap, DRS_ShaderResource);
+                  builder.ReadResource(shadowMap, DRS_ShaderResource);
             },
             [camera = sceneDescription.camera, renderTarget, t, lightLists = this->lightLists]
-            (TiledDeferredShade& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            (TiledDeferredShade& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 PointLightComponent& pointLights = PointLightComponent::GetComponent();
 
@@ -1581,8 +1581,8 @@ namespace FlexKit
                 }
 
 
-                auto& renderSystem          = resources.renderSystem;
-                const auto WH               = resources.renderSystem.GetTextureWH(renderTarget);
+                auto& renderSystem          = resources.renderSystem();
+                const auto WH               = resources.renderSystem().GetTextureWH(renderTarget);
                 const auto cameraConstants  = GetCameraConstants(camera);
 
                 const auto pointLightCount = pointLights.elements.size();
@@ -1627,7 +1627,7 @@ namespace FlexKit
                 const size_t descriptorTableSize = 20 + data.shadowMaps.shadowMapTargets.size() * 4;
 
                 DescriptorHeap descHeap;
-                descHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
+                descHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), descriptorTableSize, &allocator);
                 descHeap.SetSRV(ctx, 0, resources.GetTexture(data.AlbedoTargetObject));
                 descHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIATargetObject));
                 descHeap.SetSRV(ctx, 2, resources.GetTexture(data.NormalTargetObject));
@@ -1645,7 +1645,7 @@ namespace FlexKit
 
                 descHeap.NullFill(ctx, descriptorTableSize);
 
-                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
                 ctx.SetPipelineState(resources.GetPipelineState(SHADINGPASS));
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
 
@@ -1699,7 +1699,7 @@ namespace FlexKit
                 data.renderTargetObject = builder.WriteRenderTarget(scene.renderTarget);
             },
             [=]
-            (ComputeTiledPass& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            (ComputeTiledPass& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 CBPushBuffer pushBuffer{ data.constantBufferAllocator(2048) };
 
@@ -1724,7 +1724,7 @@ namespace FlexKit
 
                 PointLightComponent& pointLights = PointLightComponent::GetComponent();
                 DescriptorHeap srvHeap;
-                srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), 7, &allocator);
+                srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), 7, &allocator);
                 srvHeap.SetSRV(ctx, 0, resources.GetTexture(data.albedoObject));
                 srvHeap.SetSRV(ctx, 1, resources.GetTexture(data.MRIAObject));
                 srvHeap.SetSRV(ctx, 2, resources.GetTexture(data.normalObject));
@@ -1734,10 +1734,10 @@ namespace FlexKit
                 srvHeap.SetSRV(ctx, 6, pointLightBuffer);
 
                 DescriptorHeap uavHeap;
-                uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 10, &allocator);
+                uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 10, &allocator);
                 uavHeap.SetUAV(ctx, 0, resources.GetUAVTextureResource(data.tempBufferObject));
 
-                ctx.SetComputeRootSignature(resources.renderSystem.Library.RSDefault);
+                ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
                 ctx.SetPipelineState(resources.GetPipelineState(COMPUTETILEDSHADINGPASS));
 
                 ctx.SetComputeConstantBufferView(0, cameraConstants);
@@ -1862,9 +1862,9 @@ namespace FlexKit
     /************************************************************************************************/
 
 
-    inline ShadowMapPassData& ShadowMapPass(
+    ShadowMapPassData& ShadowMapPass(
 		FrameGraph&                     frameGraph,
-		GatherTask&               sceneSource,
+		GatherTask&                     sceneSource,
 		ResourceHandle                  shadowMapTarget,
 		ReserveConstantBufferFunction   reserveCB,
 		const double                    t,
@@ -1872,62 +1872,75 @@ namespace FlexKit
 	{
 		frameGraph.Resources.AddRenderTarget(shadowMapTarget, frameGraph.GetRenderSystem().GetObjectState(shadowMapTarget));
 
-        return frameGraph.AddNode<ShadowMapPassData>(
-            ShadowMapPassData{
-                sceneSource,
-                reserveCB,
-                allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator)
-            },
-			[&](FrameGraphNodeBuilder& builder, ShadowMapPassData& data)
-			{
-                builder.AddDataDependency(sceneSource);
+        auto& shadowMapPass     = allocator->allocate<ShadowMapPassData>(
+            ShadowMapPassData{ allocator->allocate<Vector<TemporaryFrameResourceHandle>>(allocator) });
+        auto& pointLights       = PointLightComponent::GetComponent();
+        const auto lightCount   = pointLights.elements.size();
 
-                auto& pointLights = PointLightComponent::GetComponent();
-                for (size_t I = 0; I < pointLights.elements.size(); I++)
-                    data.shadowMapTargets.push_back(builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget({ 512, 512}, DeviceFormat::D32_FLOAT, 6), DRS_DEPTHBUFFERWRITE));
-			},
-			[=](ShadowMapPassData& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
-			{
-                auto& pointLights       = PointLightComponent::GetComponent();
-                const auto lightCount   = pointLights.elements.size();
-				const auto& drawables   = data.sceneSource.GetData().solid;
+        for(size_t I = 0; I < lightCount; I++)
+        {
+            auto& pointLight = pointLights.elements[I];
 
-                if (!pointLights.elements.size())
-                    return;
+            frameGraph.AddNode<LocalShadowMapPassData>(
+                LocalShadowMapPassData{
+                    shadowMapPass,
+                    sceneSource,
+                    reserveCB,
+                },
+			    [&](FrameGraphNodeBuilder& builder, LocalShadowMapPassData& data)
+			    {
+                    builder.AddDataDependency(sceneSource);
+                    shadowMapPass.shadowMapTargets.push_back(builder.AcquireVirtualResource(GPUResourceDesc::DepthTarget({ 128, 128 }, DeviceFormat::D32_FLOAT, 6), DRS_DEPTHBUFFERWRITE));
+                    data.shadowMapTargets = shadowMapPass.shadowMapTargets.back();
+                    data.pointLight = pointLight.handle;
+			    },
+			    [=](LocalShadowMapPassData& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+			    {
+				    const auto& drawables  = data.sceneSource.GetData().solid;
+                    const auto depthTarget = resources.GetTexture(data.shadowMapTargets);
 
+                    const DepthStencilView_Options DSV_desc = {
+                        .depthStencil = depthTarget
+                    };
 
-                struct PassConstants
-                {
-                    struct PlaneMatrices
+                    ctx.ClearDepthBuffer(depthTarget, 1.0f);
+
+                    if (!drawables.size())
+                        return;
+
+                    struct PassConstants
                     {
-                        float4x4 ViewI;
-                        float4x4 PV;
-                    }matrices[6];
-                };
+                        struct PlaneMatrices
+                        {
+                            float4x4 ViewI;
+                            float4x4 PV;
+                        }matrices[6];
+                    };
 
+				    CBPushBuffer passConstantBuffer = data.reserveCB(
+					    AlignedSize<PassConstants>() * lightCount);
 
-				CBPushBuffer passConstantBuffer = data.reserveCB(
-					AlignedSize<PassConstants>() * lightCount);
+                    CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * drawables.size());
 
-                CBPushBuffer localConstantBuffer = data.reserveCB(AlignedSize<Drawable::VConstantsLayout>() * drawables.size());
+                    for (auto& drawable : drawables)
+                        ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
 
-                for (auto& drawable : drawables)
-                    ConstantBufferDataSet{ drawable.D->GetConstants(), localConstantBuffer };
+                    auto constants = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
 
-                auto constants = CreateCBIterator<Drawable::VConstantsLayout>(localConstantBuffer);
+                    auto PSO = resources.GetPipelineState(SHADOWMAPPASS);
+                    if (PSO == nullptr)
+                        __debugbreak();
 
-                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
-                ctx.SetPipelineState(resources.GetPipelineState(SHADOWMAPPASS));
-                ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
+                    ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
+                    ctx.SetPipelineState(PSO);
+                    ctx.SetPrimitiveTopology(EInputTopology::EIT_TRIANGLELIST);
 
-
-                for(size_t I = 0; I < lightCount; I++)
-                {
+                    auto& pointLights       = PointLightComponent::GetComponent();
                     auto& light             = pointLights.elements[I].componentData;
 				    const float3 Position   = FlexKit::GetPositionW(light.Position);
                     const auto matrices     = CalculateShadowMapMatrices(Position, light.R, t);
 
-                    PassConstants           passConstantData;
+                    PassConstants passConstantData;
 
                     for(size_t I = 0; I < 6; I++)
                     {
@@ -1935,22 +1948,12 @@ namespace FlexKit
                         passConstantData.matrices[I].PV     = matrices.PV[I];
                     }
 
-                    ConstantBufferDataSet   passConstants{ passConstantData, passConstantBuffer };
+                    ConstantBufferDataSet passConstants{ passConstantData, passConstantBuffer };
 
-                    const auto depthTarget = resources.GetTexture(data.shadowMapTargets[I]);
-
-                    const DepthStencilView_Options DSV_desc = {
-                        .depthStencil = depthTarget
-                    };
-
-
-				    ctx.ClearDepthBuffer(depthTarget, 1.0f);
 				    ctx.SetScissorAndViewports({ depthTarget });
                     ctx.SetRenderTargets2({}, 0, DSV_desc);
 
 				    ctx.SetGraphicsConstantBufferView(0, passConstants);
-
-
 
 				    for(size_t drawableIdx = 0; drawableIdx < drawables.size(); drawableIdx++)
 				    {
@@ -1964,8 +1967,10 @@ namespace FlexKit
 
 					    ctx.DrawIndexedInstanced(triMesh->IndexCount);
 				    }
-                }
-			});
+			    });
+        }
+
+        return shadowMapPass;
 	}
 
 
@@ -1981,7 +1986,7 @@ namespace FlexKit
                 for (auto& map : shadowMaps.shadowMapTargets)
                     builder.ReleaseVirtualResource(map);
             },
-            [=](_& data, FrameResources& resources, Context& ctx, iAllocator& allocator) {});
+            [=](_& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator) {});
     }
 
 

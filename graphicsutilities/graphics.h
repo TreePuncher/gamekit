@@ -1654,6 +1654,12 @@ namespace FlexKit
 		void     Close(const size_t counter);
         Context& Reset();
 
+        void SetDebugName(const char* ID)
+        {
+            SETDEBUGNAME(DeviceContext, ID);
+        }
+
+
 		// Not Yet Implemented
 		void SetUAVRead();
 		void SetUAVWrite();
@@ -2484,9 +2490,6 @@ private:
         uint32_t            GetMIPCount(ResourceHandle) const;
         
 
-		uint32_t		    GetTag(ResourceHandle Handle) const;
-		void			    SetTag(ResourceHandle Handle, uint32_t Tag);
-
 		void                SetBufferedIdx(ResourceHandle handle, uint32_t idx);
 		void                SetDebugName(ResourceHandle handle, const char* str);
 
@@ -2497,7 +2500,7 @@ private:
 		void			    MarkRTUsed		(ResourceHandle Handle);
 
 		DeviceResourceState GetState	(ResourceHandle Handle) const;
-		ID3D12Resource*		GetAsset	(ResourceHandle Handle) const;
+		ID3D12Resource*		GetResource (ResourceHandle Handle, ID3D12Device* device) const;
 
 
         void ReplaceResources(ResourceHandle handle, ID3D12Resource** begin, size_t size);
@@ -2518,7 +2521,6 @@ private:
 			size_t				    ResourceIdx;
 			int64_t				    FGI_FrameStamp;
 			uint32_t			    FrameGraphIndex;
-			uint32_t			    Tag;
 			uint32_t			    Flags;
 			uint16_t			    arraySize;
 			ResourceHandle		    Handle;
@@ -3244,9 +3246,6 @@ private:
 
 		size_t	GetTextureFrameGraphIndex(ResourceHandle);
 		void	SetTextureFrameGraphIndex(ResourceHandle, size_t);
-
-		uint32_t	GetTag(ResourceHandle Handle);
-		void		SetTag(ResourceHandle Handle, uint32_t);
 
 		void        MarkTextureUsed(ResourceHandle Handle);
 

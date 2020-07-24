@@ -241,18 +241,18 @@ namespace FlexKit
 					FlexKit::PushVertex(Character2, Buffer, frameGraph.Resources);
 				}
 			},
-			[spriteSheet = Font.Texture](DrawSpriteText& data, const FrameResources& resources, Context& ctx, iAllocator& allocator)
+			[spriteSheet = Font.Texture](DrawSpriteText& data, const ResourceHandler& resources, Context& ctx, iAllocator& allocator)
 			{
                 DescriptorHeap descHeap;
                 descHeap.Init(
                     ctx,
-                    resources.renderSystem.Library.RS6CBVs4SRVs.GetDescHeap(0),
+                    resources.renderSystem().Library.RS6CBVs4SRVs.GetDescHeap(0),
                     &allocator);
 
 				descHeap.SetSRV(ctx, 0, spriteSheet);
 				descHeap.NullFill(ctx);
 
-				ctx.SetRootSignature				(resources.renderSystem.Library.RS6CBVs4SRVs);
+				ctx.SetRootSignature				(resources.renderSystem().Library.RS6CBVs4SRVs);
 				ctx.SetPipelineState				(resources.GetPipelineState(DRAW_SPRITE_TEXT_PSO));
 
 				ctx.SetScissorAndViewports			({ resources.GetRenderTarget(data.renderTarget) });

@@ -419,12 +419,17 @@ namespace FlexKit
                 data.feedbackPPLists        = nodeBuilder.ReadWriteUAV(feedbackPPLists);
                 data.readbackBuffer         = feedbackReturnBuffer;
             },
-            [=](TextureFeedbackPass_Data& data, FrameResources& resources, Context& ctx, iAllocator& allocator)
+            [=, this](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
             {
                 auto& drawables = data.pvs.GetData().solid;
                 auto& materials = MaterialComponent::GetComponent();
 
-                ctx.SetRootSignature(resources.renderSystem.Library.RSDefault);
+                if (!drawables.size()) {
+                    updateInProgress = false;
+                    return;
+                }
+
+                ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);
                 ctx.ClearDepthBuffer(resources.GetRenderTarget(data.feedbackDepth), 1.0f);
@@ -482,7 +487,7 @@ namespace FlexKit
                 );
 
                 DescriptorHeap uavHeap;
-                uavHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
                 uavHeap.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx));
                 uavHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                 uavHeap.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
@@ -530,7 +535,7 @@ namespace FlexKit
                         const auto& textures = materials[materialHandle].Textures;
 
                         DescriptorHeap srvHeap;
-                        srvHeap.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
+                        srvHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(0), textures.size(), &allocator);
                         ctx.SetGraphicsDescriptorTable(3, srvHeap);
 
                         for (size_t I = 0; I < textures.size(); I++)
@@ -552,12 +557,12 @@ namespace FlexKit
                 // Stream Compression Step
                 if (false)
                 {
-                    ctx.SetComputeRootSignature(resources.renderSystem.Library.RSDefault);
+                    ctx.SetComputeRootSignature(resources.renderSystem().Library.RSDefault);
                     ctx.SetPipelineState(resources.GetPipelineState(TEXTUREFEEDBACKCOMPRESSOR));
 
                     // iteration 0
                     DescriptorHeap uavHeap2;
-                    uavHeap2.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                    uavHeap2.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
                     uavHeap2.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 1);
                     uavHeap2.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                     uavHeap2.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
@@ -569,7 +574,7 @@ namespace FlexKit
 
                     // iteration 1
                     DescriptorHeap uavHeap3;
-                    uavHeap3.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                    uavHeap3.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
                     uavHeap3.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 2);
                     uavHeap3.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                     uavHeap3.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
@@ -582,7 +587,7 @@ namespace FlexKit
 
                     // iteration 2
                     DescriptorHeap uavHeap4;
-                    uavHeap4.Init2(ctx, resources.renderSystem.Library.RSDefault.GetDescHeap(1), 6, &allocator);
+                    uavHeap4.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
                     uavHeap4.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 3);
                     uavHeap4.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                     uavHeap4.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));

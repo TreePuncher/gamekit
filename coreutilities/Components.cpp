@@ -41,6 +41,8 @@ namespace FlexKit
         IDComponentBlob blob;
         std::memcpy(&blob, buffer, sizeof(blob));
 
+        auto temp = sizeof(blob.ID);
+
         const size_t IDLen = strnlen(blob.ID, sizeof(blob.ID));
 
         GO.AddView<StringIDView>(blob.ID, IDLen);
@@ -52,7 +54,7 @@ namespace FlexKit
 
 /**********************************************************************
 
-Copyright (c) 2015 - 2019 Robert May
+Copyright (c) 2015 - 2020 Robert May
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

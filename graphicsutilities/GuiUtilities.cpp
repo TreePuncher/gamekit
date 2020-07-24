@@ -321,7 +321,7 @@ namespace FlexKit
 	void GuiSystem::Draw_DEBUG(DrawUI_Desc& Desc, iAllocator* Temp)
 	{
 		/*
-		auto WH			= Desc.FrameGraph->Resources.RenderSystem->GetTextureWH(Desc.RenderTarget);
+		auto WH			= Desc.FrameGraph->resources.renderSystem()->GetTextureWH(Desc.RenderTarget);
 		auto PixelSize	= float2{ 1.0f / WH[0], 1.0f / WH[1] };
 
 		LayoutEngine_Desc LE_Desc =
