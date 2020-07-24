@@ -137,6 +137,7 @@ namespace FlexKit
 
 			auto stateObject	= *T.Object;
 			stateObject.State	= T.AfterState;
+			auto idx			= SubNodeTracking.push_back(stateObject);
 
 			SubNodeTracking.push_back(stateObject);
 		}

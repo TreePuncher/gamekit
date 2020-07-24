@@ -419,16 +419,23 @@ namespace FlexKit
                 data.feedbackPPLists        = nodeBuilder.ReadWriteUAV(feedbackPPLists);
                 data.readbackBuffer         = feedbackReturnBuffer;
             },
+<<<<<<< HEAD
             [=, this](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+=======
+            [=](TextureFeedbackPass_Data& data, ResourceHandler& resources, Context& ctx, iAllocator& allocator)
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
             {
                 auto& drawables = data.pvs.GetData().solid;
                 auto& materials = MaterialComponent::GetComponent();
 
+<<<<<<< HEAD
                 if (!drawables.size()) {
                     updateInProgress = false;
                     return;
                 }
 
+=======
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
                 ctx.SetRootSignature(resources.renderSystem().Library.RSDefault);
 
                 ctx.SetPrimitiveTopology(EIT_TRIANGLELIST);

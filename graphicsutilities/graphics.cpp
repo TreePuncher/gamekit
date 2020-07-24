@@ -1269,8 +1269,13 @@ namespace FlexKit
         if (PSO == nullptr)
             __debugbreak();
 
+<<<<<<< HEAD
 		if (CurrentPipelineState == PSO)
 			return;
+=======
+		//if (CurrentPipelineState == PSO)
+		//	return;
+>>>>>>> 08b0e35d501fb931c166e443753404dd135bd3eb
 
 		CurrentPipelineState = PSO;
 		DeviceContext->SetPipelineState(PSO);
