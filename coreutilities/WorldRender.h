@@ -244,13 +244,13 @@ namespace FlexKit
 				entityConstants { IN_entityConstants } {}
 
 
-		FrameResourceHandle			BackBuffer;
-		FrameResourceHandle			DepthBuffer;
-		FrameResourceHandle			OcclusionBuffer;
-		FrameResourceHandle			lightMap;
-		FrameResourceHandle			lightLists;
-		FrameResourceHandle			pointLightBuffer;
-		VertexBufferHandle			VertexBuffer;
+		FrameResourceHandle	BackBuffer;
+		FrameResourceHandle	DepthBuffer;
+		FrameResourceHandle	OcclusionBuffer;
+		FrameResourceHandle	lightMap;
+		FrameResourceHandle	lightLists;
+		FrameResourceHandle	pointLightBuffer;
+		VertexBufferHandle	VertexBuffer;
 
 		CBPushBuffer passConstantsBuffer;
 		CBPushBuffer entityConstantsBuffer;
@@ -510,7 +510,6 @@ namespace FlexKit
 	inline ShadowMapPassData& ShadowMapPass(
 		FrameGraph&                     frameGraph,
 		GatherTask&                     sceneSource,
-		ResourceHandle                  shadowMapTarget,
 		ReserveConstantBufferFunction   reserveCB,
 		const double                    t,
         iAllocator*                     allocator);

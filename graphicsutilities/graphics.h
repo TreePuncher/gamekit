@@ -2166,6 +2166,7 @@ private:
         {
             size_t              offset;
             DeviceHeapHandle    heap;
+            ID3D12Heap*         customHeap;
         } placed;
 
 		static GPUResourceDesc RenderTarget(uint2 IN_WH, DeviceFormat IN_format, const ResourceAllocationType allocationType = ResourceAllocationType::Committed)
@@ -3475,6 +3476,81 @@ private:
 
 	};
 
+
+    /************************************************************************************************/
+
+
+    struct PoolAllocatorInterface
+    {
+        virtual ~PoolAllocatorInterface() {};
+
+        virtual ResourceHandle Aquire(GPUResourceDesc desc, bool temporary = false) = 0;
+        virtual void Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) = 0;
+    };
+
+	class MemoryPoolAllocator : public PoolAllocatorInterface
+	{
+	public:
+		MemoryPoolAllocator(RenderSystem&, DeviceHeapHandle IN_heap, size_t IN_heapSize, size_t IN_blockSize, iAllocator* IN_allocator);
+		MemoryPoolAllocator(const MemoryPoolAllocator& rhs)             = delete;
+		MemoryPoolAllocator& operator =(const MemoryPoolAllocator& rhs) = delete;
+
+        ~MemoryPoolAllocator() override = default;
+
+        enum NodeFlags
+        {
+            Clear               = 0x00,
+            AllowReallocation   = 0x2,
+            Locked              = 0x4,
+            Temporary           = 0x8,
+        };
+
+        struct HeapAllocation
+        {
+            size_t offset   = 0;
+            size_t size     = 0;
+
+            operator bool () { return size > 0; }
+        };
+
+        
+        HeapAllocation GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags);
+        ResourceHandle Aquire(GPUResourceDesc desc, bool temporary = true) final override;
+
+        void Release(ResourceHandle handle, const bool freeResourceImmedate = true, const bool allowImmediateReuse = true) final override;
+
+        void Coalesce();
+
+		size_t              blockCount;
+		size_t              blockSize;
+
+		DeviceHeapHandle    heap;
+		RenderSystem&       renderSystem;
+
+        struct MemoryRange
+        {
+            uint32_t offset;
+            uint32_t blockCount;
+            uint64_t flags;
+            uint64_t frameID;
+        };
+
+        struct Allocation
+        {
+            uint32_t        offset;
+            uint32_t        blockCount;
+            size_t          frameID;
+            uint64_t        flags;
+            ResourceHandle  resource;
+        };
+
+        Vector<MemoryRange> freeRanges;
+		Vector<Allocation>  allocations;
+
+		std::mutex   lock;
+		iAllocator*  allocator;
+	};
+
 	
 	/************************************************************************************************/
 
@@ -3833,10 +3909,7 @@ private:
 			return offset + pushBufferBegin;
 		}
 
-
 		size_t begin() const { return pushBufferBegin; }
-
-
 
 	private:
 		ConstantBufferHandle	CB				= InvalidHandle_t;

@@ -54,9 +54,9 @@ namespace FlexKit
 {   /************************************************************************************************/
 
 
-    // Thank you cppReference.com
-    FLEXKITAPI template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
-    FLEXKITAPI template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
+	// Thank you cppReference.com
+	FLEXKITAPI template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+	FLEXKITAPI template<class... Ts> overloaded(Ts...)->overloaded<Ts...>; // not needed as of C++20
 
 
 	/************************************************************************************************/
@@ -138,10 +138,10 @@ namespace FlexKit
 		inline  Vector(
 			iAllocator*		Alloc = nullptr,
 			const size_t	InitialReservation = 0) :
-			    Allocator(Alloc),
-			    Max(InitialReservation),
-			    Size(0),
-			    A(nullptr)
+				Allocator(Alloc),
+				Max(InitialReservation),
+				Size(0),
+				A(nullptr)
 		{
 			if (InitialReservation > 0)
 			{
@@ -154,15 +154,15 @@ namespace FlexKit
 			}
 		}
 
-        template<typename TY_Initial>
-        inline  Vector(
+		template<typename TY_Initial>
+		inline  Vector(
 			iAllocator*		    Alloc,
 			const size_t	    InitialSize,
-            const TY_Initial&   Initial_V) :
-			    Allocator   { Alloc },
-			    Max         { InitialSize },
-			    Size        { 0 },
-			    A           { nullptr }
+			const TY_Initial&   Initial_V) :
+				Allocator   { Alloc },
+				Max         { InitialSize },
+				Size        { 0 },
+				A           { nullptr }
 		{
 			if (InitialSize > 0)
 			{
@@ -173,13 +173,13 @@ namespace FlexKit
 				A   = NewMem;
 				Max = InitialSize;
 
-                for (size_t itr = 0; itr < InitialSize; ++itr)
-                    emplace_back(Initial_V);
+				for (size_t itr = 0; itr < InitialSize; ++itr)
+					emplace_back(Initial_V);
 			}
 		}
 
 		inline  Vector(const THISTYPE& RHS) :
-            Allocator   { RHS.Allocator },
+			Allocator   { RHS.Allocator },
 			Max         { RHS.Max       },
 			Size        { RHS.Size      }
 		{
@@ -200,12 +200,12 @@ namespace FlexKit
 
 
 		inline ~Vector()
-        {
-            if (A && Allocator)
-                Allocator->_aligned_free(A);
-            A = nullptr;
-            Allocator = nullptr;
-        }
+		{
+			if (A && Allocator)
+				Allocator->_aligned_free(A);
+			A = nullptr;
+			Allocator = nullptr;
+		}
 
 
 		inline			Ty& operator [](size_t index) noexcept          { return A[index]; }
@@ -312,11 +312,11 @@ namespace FlexKit
 			return A[Size - 1];
 		}
 
-        Ty back() const
-        {
-            FK_ASSERT(Size > 0);
-            return A[Size - 1];
-        }
+		Ty back() const
+		{
+			FK_ASSERT(Size > 0);
+			return A[Size - 1];
+		}
 
 		/************************************************************************************************/
 
@@ -418,7 +418,7 @@ namespace FlexKit
 			}
 
 			const size_t idx = Size++;
-            new(A + idx) Ty{ in }; // 
+			new(A + idx) Ty{ in }; // 
 			return idx;
 		}
 
@@ -464,25 +464,25 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-        void insert(Iterator I, const Ty& in)
-        {
-            if (!size()) {
-                push_back(in);
-                return;
-            }
+		void insert(Iterator I, const Ty& in)
+		{
+			if (!size()) {
+				push_back(in);
+				return;
+			}
 
-            auto II     = end() - 1;
+			auto II     = end() - 1;
 
-            push_back(back());
+			push_back(back());
 
-            while (II > I)
-                *(II + 1) = *II;
+			while (II > I)
+				*(II + 1) = *II;
 
-            *I = in;
-        }
+			*I = in;
+		}
 
 
-        /************************************************************************************************/
+		/************************************************************************************************/
 
 
 		// Order Not Preserved
@@ -568,13 +568,13 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-        Ty* data()
-        {
-            return A;
-        }
+		Ty* data()
+		{
+			return A;
+		}
 
 
-        /************************************************************************************************/
+		/************************************************************************************************/
 
 
 		void clear()
@@ -604,8 +604,8 @@ namespace FlexKit
 		/************************************************************************************************/
 
 
-        Ty& at(size_t index)                { return A[index]; }
-        const Ty& at(size_t index) const    { return A[index]; }
+		Ty& at(size_t index)                { return A[index]; }
+		const Ty& at(size_t index) const    { return A[index]; }
 
 
 		Iterator begin() { return A; }
@@ -653,8 +653,8 @@ namespace FlexKit
 		template<>	constexpr auto& Get<1>() noexcept { return V2 ;}
 
 		template<size_t index>	const auto& Get() const noexcept { static_assert(index >= 2, "Invalid Index"); }
-        template<> const auto& Get<0>() const noexcept { return V1; }
-        template<> const auto& Get<1>() const noexcept { return V2; }
+		template<> const auto& Get<0>() const noexcept { return V1; }
+		template<> const auto& Get<1>() const noexcept { return V2; }
 
 		Ty_1 V1;
 		Ty_2 V2;
@@ -751,7 +751,7 @@ namespace FlexKit
 	{
 		typedef SL_list<TY>		This_Type;
 
-        SL_list(iAllocator* M = nullptr) : _allocator{ M }
+		SL_list(iAllocator* M = nullptr) : _allocator{ M }
 		{
 			FirstNode   = nullptr;
 			LastNode    = nullptr;
@@ -771,8 +771,8 @@ namespace FlexKit
 
 		struct Node
 		{
-            Node(TY&& Initial)      : Data{ std::move(Initial) } {} // Move Constructor
-            Node(const TY& Initial) : Data{ Initial } {} // Copy Constructor
+			Node(TY&& Initial)      : Data{ std::move(Initial) } {} // Move Constructor
+			Node(const TY& Initial) : Data{ Initial } {} // Copy Constructor
 
 			TY					Data;
 			std::atomic<Node*>	Next;
@@ -882,7 +882,7 @@ namespace FlexKit
 		}
 
 
-        Iterator emplace_back(TY&& e)
+		Iterator emplace_back(TY&& e)
 		{
 			Node* NewNode = &_allocator->allocate_aligned<Node>(std::move(e));
 
@@ -1007,11 +1007,11 @@ namespace FlexKit
 			return Buffer[idx];
 		}
 
-        const Ty& at(size_t idx) const noexcept
-        {
-            idx = (_Head - idx - 1) % SIZE;
-            return Buffer[idx];
-        }
+		const Ty& at(size_t idx) const noexcept
+		{
+			idx = (_Head - idx - 1) % SIZE;
+			return Buffer[idx];
+		}
 
 		bool full() const noexcept {
 			return (_Size == SIZE);
@@ -1159,38 +1159,38 @@ namespace FlexKit
 			CircularIterator operator -- () { Decrement(); return (*this); }
 		};
 
-        struct Const_CircularIterator
-        {
-            const CircularBuffer<Ty, SIZE>* Buffer;
-            int					Idx;
+		struct Const_CircularIterator
+		{
+			const CircularBuffer<Ty, SIZE>* Buffer;
+			int					Idx;
 
-            const Ty& operator *() const 
-            {
-                return Buffer->at(Idx);
-            }
+			const Ty& operator *() const 
+			{
+				return Buffer->at(Idx);
+			}
 
-            bool operator <		(Const_CircularIterator rhs) { return Idx < rhs.Idx; }
-            bool operator ==	(Const_CircularIterator rhs) { return Idx == rhs.Idx; }
+			bool operator <		(Const_CircularIterator rhs) { return Idx < rhs.Idx; }
+			bool operator ==	(Const_CircularIterator rhs) { return Idx == rhs.Idx; }
 
-            bool operator !=	(Const_CircularIterator rhs) { return !(*this == rhs); }
+			bool operator !=	(Const_CircularIterator rhs) { return !(*this == rhs); }
 
 
-            void Increment()
-            {
-                Idx++;
-            }
+			void Increment()
+			{
+				Idx++;
+			}
 
-            void Decrement()
-            {
-                Idx--;
-            }
+			void Decrement()
+			{
+				Idx--;
+			}
 
-            Const_CircularIterator operator ++ (int) { auto Temp = *this; Increment(); return Temp; }
-            Const_CircularIterator operator ++ () { Increment(); return (*this); }
+			Const_CircularIterator operator ++ (int) { auto Temp = *this; Increment(); return Temp; }
+			Const_CircularIterator operator ++ () { Increment(); return (*this); }
 
-            Const_CircularIterator operator -- (int) { auto Temp = *this; Decrement(); return Temp; }
-            Const_CircularIterator operator -- () { Decrement(); return (*this); }
-        };
+			Const_CircularIterator operator -- (int) { auto Temp = *this; Decrement(); return Temp; }
+			Const_CircularIterator operator -- () { Decrement(); return (*this); }
+		};
 
 		CircularIterator begin() noexcept
 		{
@@ -1202,15 +1202,15 @@ namespace FlexKit
 			return{ this, _Size };
 		}
 
-        Const_CircularIterator begin() const noexcept
-        {
-            return{ this, 0 };
-        }
+		Const_CircularIterator begin() const noexcept
+		{
+			return{ this, 0 };
+		}
 
-        Const_CircularIterator end() const noexcept
-        {
-            return{ this, _Size };
-        }
+		Const_CircularIterator end() const noexcept
+		{
+			return{ this, _Size };
+		}
 
 		int _Head, _Size;
 		Ty Buffer[SIZE];
@@ -1767,46 +1767,46 @@ namespace FlexKit
 		Vector<bool>	FreeObjectList;
 		const size_t	PoolMaxSize;
 		iAllocator*		Allocator;
-    };
+	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    template<typename TY_COL, typename FN_FilterOP>
-    auto filter(TY_COL collection, const FN_FilterOP filter_op)
-    {
-        auto res = std::remove_if(std::begin(collection), std::end(collection), [&](auto& i) { return !filter_op(i); });
-        collection.erase(res, std::end(collection));
+	template<typename TY_COL, typename FN_FilterOP>
+	auto filter(TY_COL collection, const FN_FilterOP filter_op)
+	{
+		auto res = std::remove_if(std::begin(collection), std::end(collection), [&](auto& i) { return !filter_op(i); });
+		collection.erase(res, std::end(collection));
 
-        return collection;
-    }
-
-
-    template<typename TY_COL, typename FN_transform>
-    auto transform(const TY_COL& collection, const FN_transform& transform, iAllocator* allocator = SystemAllocator)
-    {
-        Vector<decltype(collection[0])> output(allocator);
-        output.reserve(collection.size());
-
-        for (auto& c : collection)
-            output.emplace_back(transform(c));
-
-        return output;
-    }
+		return collection;
+	}
 
 
-    template<typename TY_COL, typename FN_transform>
-    decltype(auto) transform_stl(const TY_COL& collection, const FN_transform& transform)
-    {
-        std::vector<decltype(transform(collection[0]))> output{};
-        output.reserve(collection.size());
+	template<typename TY_COL, typename FN_transform>
+	auto transform(const TY_COL& collection, const FN_transform& transform, iAllocator* allocator = SystemAllocator)
+	{
+		Vector<decltype(collection[0])> output(allocator);
+		output.reserve(collection.size());
 
-        for (auto& c : collection)
-            output.emplace_back(transform(c));
+		for (auto& c : collection)
+			output.emplace_back(transform(c));
 
-        return output;
-    }
+		return output;
+	}
+
+
+	template<typename TY_COL, typename FN_transform>
+	decltype(auto) transform_stl(const TY_COL& collection, const FN_transform& transform)
+	{
+		std::vector<decltype(transform(collection[0]))> output{};
+		output.reserve(collection.size());
+
+		for (auto& c : collection)
+			output.emplace_back(transform(c));
+
+		return output;
+	}
 
 
 	/************************************************************************************************/
@@ -2053,119 +2053,119 @@ namespace FlexKit
 	};
 
 
-    /************************************************************************************************/
+	/************************************************************************************************/
 
 
-    template<unsigned int storage = 64 - sizeof(void*) * 2, typename TY_return = void, typename ... TY_ARGS>
-    class TypeErasedCallable
-    {
-    public:
-        TypeErasedCallable() = default;
+	template<unsigned int storage = 64 - sizeof(void*) * 2, typename TY_return = void, typename ... TY_ARGS>
+	class TypeErasedCallable
+	{
+	public:
+		TypeErasedCallable() = default;
 
 
-        template<typename TY_CALLABLE>
-        TypeErasedCallable(const TY_CALLABLE& callable) noexcept
-        {
-            Assign(callable);
-        }
+		template<typename TY_CALLABLE>
+		TypeErasedCallable(const TY_CALLABLE& callable) noexcept
+		{
+			Assign(callable);
+		}
 
 
-        TypeErasedCallable(const TypeErasedCallable& callable) noexcept
-        {
-            memcpy(buffer, callable.buffer, sizeof(buffer));
+		TypeErasedCallable(const TypeErasedCallable& callable) noexcept
+		{
+			memcpy(buffer, callable.buffer, sizeof(buffer));
 
-            proxy       = callable.proxy;
-            destructor  = callable.destructor;
-        }
-
-
-        TypeErasedCallable(TypeErasedCallable&& callable) noexcept
-        {
-            memcpy(buffer, callable.buffer, sizeof(buffer));
-
-            proxy       = callable.proxy;
-            destructor  = callable.destructor;
-
-            callable.proxy      = nullptr;
-            callable.destructor = nullptr;
-        }
+			proxy       = callable.proxy;
+			destructor  = callable.destructor;
+		}
 
 
-        ~TypeErasedCallable()
-        {
-            if (destructor)
-                destructor(buffer);
-        }
+		TypeErasedCallable(TypeErasedCallable&& callable) noexcept
+		{
+			memcpy(buffer, callable.buffer, sizeof(buffer));
+
+			proxy       = callable.proxy;
+			destructor  = callable.destructor;
+
+			callable.proxy      = nullptr;
+			callable.destructor = nullptr;
+		}
 
 
-        template<typename TY_CALLABLE>
-        TypeErasedCallable& operator = (TY_CALLABLE callable)
-        {
-            if (destructor)
-                destructor(buffer);
-
-            Assign(callable);
-
-            return *this;
-        }
+		~TypeErasedCallable()
+		{
+			if (destructor)
+				destructor(buffer);
+		}
 
 
-        TypeErasedCallable& operator = (TypeErasedCallable&) = delete;
+		template<typename TY_CALLABLE>
+		TypeErasedCallable& operator = (TY_CALLABLE callable)
+		{
+			if (destructor)
+				destructor(buffer);
+
+			Assign(callable);
+
+			return *this;
+		}
 
 
-        TypeErasedCallable& operator = (TypeErasedCallable&& rhs)
-        {
-            if (destructor)
-                destructor(buffer);
-
-            memcpy(buffer, rhs.buffer, sizeof(buffer));
-            proxy       = rhs.proxy;
-            destructor  = rhs.destructor;
-
-            return *this;
-        }
+		TypeErasedCallable& operator = (TypeErasedCallable&) = delete;
 
 
-        template<typename TY_CALLABLE>
-        void Assign(TY_CALLABLE& callable)
-        {
-            static_assert(sizeof(TY_CALLABLE) <= storage, "Callable object too large for this TypeErasedCallable!");
+		TypeErasedCallable& operator = (TypeErasedCallable&& rhs)
+		{
+			if (destructor)
+				destructor(buffer);
 
-            struct data
-            {
-                TY_CALLABLE callable;
-            };
+			memcpy(buffer, rhs.buffer, sizeof(buffer));
+			proxy       = rhs.proxy;
+			destructor  = rhs.destructor;
 
-            new(buffer) data{ callable };
-
-            proxy = [](char* _ptr, TY_ARGS ... args) -> TY_return
-                {
-                    auto functor = reinterpret_cast<data*>(_ptr);
-                    return functor->callable(args...);
-                };
-
-            destructor = [](char* _ptr)
-                {
-                    auto functor = reinterpret_cast<data*>(_ptr);
-                    functor->~data();
-                };
-        }
+			return *this;
+		}
 
 
-        auto operator()(TY_ARGS... args)
-        {
-            return proxy(buffer, std::forward<TY_ARGS>(args)...);
-        }
+		template<typename TY_CALLABLE>
+		void Assign(TY_CALLABLE& callable)
+		{
+			static_assert(sizeof(TY_CALLABLE) <= storage, "Callable object too large for this TypeErasedCallable!");
+
+			struct data
+			{
+				TY_CALLABLE callable;
+			};
+
+			new(buffer) data{ callable };
+
+			proxy = [](char* _ptr, TY_ARGS ... args) -> TY_return
+				{
+					auto functor = reinterpret_cast<data*>(_ptr);
+					return functor->callable(args...);
+				};
+
+			destructor = [](char* _ptr)
+				{
+					auto functor = reinterpret_cast<data*>(_ptr);
+					functor->~data();
+				};
+		}
 
 
-    private:
-        typedef TY_return(*fnProxy)(char*, TY_ARGS ... args);
-        typedef void (*fnDestructor)(char*);
+		auto operator()(TY_ARGS... args)
+		{
+			return proxy(buffer, std::forward<TY_ARGS>(args)...);
+		}
 
-        fnProxy         proxy       = nullptr;
-        fnDestructor    destructor  = nullptr;
-        char            buffer[storage];
-    };
+
+	private:
+		typedef TY_return(*fnProxy)(char*, TY_ARGS ... args);
+		typedef void (*fnDestructor)(char*);
+
+		fnProxy         proxy       = nullptr;
+		fnDestructor    destructor  = nullptr;
+		char            buffer[storage];
+	};
 
 
 }	// namespace FlexKit;
