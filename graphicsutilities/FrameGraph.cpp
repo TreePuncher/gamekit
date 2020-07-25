@@ -7,18 +7,11 @@ namespace FlexKit
 {	/************************************************************************************************/
 
 
-	ResourceTransition::ResourceTransition(FrameObjectDependency& Dep) :
-		Object		{ Dep.FO },
-		BeforeState	{ Dep.ExpectedState },
-		AfterState	{ Dep.State}{}
-
-
-	/************************************************************************************************/
-
-
 	void ResourceTransition::ProcessTransition(FrameResources& Resources, Context* ctx) const
 	{
-		switch (Object->Type)
+        auto& resourceObject = Resources.Resources[Object];
+
+		switch (resourceObject.Type)
 		{
 		case OT_StreamOut:
 		{
@@ -27,7 +20,7 @@ namespace FlexKit
 			case DRS_VERTEXBUFFER:
 			case DRS_STREAMOUT: {
 				ctx->AddStreamOutBarrier(
-					Object->SOBuffer,
+                    resourceObject.SOBuffer,
 					BeforeState,
 					AfterState);
 			}	break;
@@ -48,12 +41,12 @@ namespace FlexKit
 			case DRS_RenderTarget:
 			case DRS_Present:
 				ctx->AddShaderResourceBarrier(
-					Object->ShaderResource.handle,
+                    resourceObject.shaderResource,
 					BeforeState,
 					AfterState);
 				break;
 			case DRS_Retired:
-				ctx->AddAliasingBarrier(Object->ShaderResource.handle, BeforeState, AfterState);
+				ctx->AddAliasingBarrier(resourceObject.shaderResource, BeforeState, AfterState);
 				break;
 			default:
 				FK_ASSERT(0);
@@ -70,7 +63,7 @@ namespace FlexKit
 			case DRS_STREAMOUTCLEAR:
 			{
 				ctx->AddUAVBarrier(
-					Object->UAVBuffer,
+                    resourceObject.UAVBuffer,
 					BeforeState,
 					AfterState);
 			}	break;
@@ -88,7 +81,7 @@ namespace FlexKit
 			case DRS_RenderTarget:
 			{
 				ctx->AddUAVBarrier(
-					Object->UAVTexture,
+                    resourceObject.UAVTexture,
 					BeforeState,
 					AfterState);
 			}	break;
@@ -102,13 +95,13 @@ namespace FlexKit
 			case DRS_Present:
 			{
 				ctx->AddPresentBarrier(
-					Resources.GetRenderTarget(Object->Handle),
+					Resources.GetRenderTarget(resourceObject.Handle),
 					BeforeState);
 			}	break;
 			case DRS_DEPTHBUFFERWRITE:
 			case DRS_RenderTarget:
 				ctx->AddRenderTargetBarrier(
-					Resources.GetRenderTarget(Object->Handle),
+					Resources.GetRenderTarget(resourceObject.Handle),
 					BeforeState,
 					AfterState);
 				break;
@@ -132,23 +125,17 @@ namespace FlexKit
 
 	void FrameGraphNode::HandleBarriers(FrameResources& Resources, Context& Ctx)
 	{
-		for (const auto& T : Transitions) {
+		for (const auto& T : Transitions) 
 			T.ProcessTransition(Resources, &Ctx);
-
-			auto stateObject	= *T.Object;
-			stateObject.State	= T.AfterState;
-
-			SubNodeTracking.push_back(stateObject);
-		}
 	}
 
 
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::AddTransition(FrameObjectDependency& Dep)
+	void FrameGraphNode::AddTransition(ResourceTransition& transition)
 	{
-		Transitions.push_back(Dep);
+		Transitions.push_back(transition);
 	}
 
 
@@ -171,47 +158,42 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraphNode::RestoreResourceStates(Context* ctx, PassObjectList& locallyTrackedObjects)
+	void FrameGraphNode::RestoreResourceStates(Context* ctx, FrameResources& resources, LocallyTrackedObjectList& locallyTrackedObjects)
 	{
-		for (auto& resNode : locallyTrackedObjects)
+		for (auto& localResourceDescriptor : locallyTrackedObjects)
 		{
-			auto res = find(OutputObjects,
-				[&](FrameObjectDependency& rhs) -> bool
-				{
-					return rhs.FO->Handle == resNode.Handle;
-				});
+            auto currentState   = localResourceDescriptor.currentState;
+            auto nodeState      = localResourceDescriptor.nodeState;
 
-			if (res!= OutputObjects.end() && res->State != resNode.State)
+            if (currentState == nodeState)
+                continue;
+
+            auto& resource = resources.Resources[localResourceDescriptor.resource];
+
+			switch (resource.Type)
 			{
-				switch (resNode.Type)
-				{
-				case FrameObjectResourceType::OT_StreamOut:
-					ctx->AddStreamOutBarrier(resNode.SOBuffer, resNode.State, res->State);
-					break;
-				case FrameObjectResourceType::OT_UAVTexture:
-					ctx->AddUAVBarrier(resNode.UAVTexture, resNode.State, res->State);
-					break;
-				case FrameObjectResourceType::OT_UAVBuffer:
-					ctx->AddUAVBarrier(resNode.UAVBuffer, resNode.State, res->State);
-					break;
-				case FrameObjectResourceType::OT_BackBuffer:
-				case FrameObjectResourceType::OT_RenderTarget:
-				case FrameObjectResourceType::OT_ShaderResource:
-					ctx->AddShaderResourceBarrier(resNode.Texture, resNode.State, res->State);
-					break;
-				case FrameObjectResourceType::OT_ConstantBuffer:
-				case FrameObjectResourceType::OT_DepthBuffer:
-				case FrameObjectResourceType::OT_IndirectArguments:
-				case FrameObjectResourceType::OT_PVS:
-				case FrameObjectResourceType::OT_VertexBuffer:
-					FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
-				}
+			case FrameObjectResourceType::OT_StreamOut:
+				ctx->AddStreamOutBarrier(resource.SOBuffer, currentState, nodeState);
+				break;
+			case FrameObjectResourceType::OT_UAVTexture:
+				ctx->AddUAVBarrier(resource.UAVTexture, currentState, nodeState);
+				break;
+			case FrameObjectResourceType::OT_UAVBuffer:
+				ctx->AddUAVBarrier(resource.UAVBuffer, currentState, nodeState);
+				break;
+			case FrameObjectResourceType::OT_BackBuffer:
+			case FrameObjectResourceType::OT_RenderTarget:
+			case FrameObjectResourceType::OT_ShaderResource:
+				ctx->AddShaderResourceBarrier(resource.shaderResource, currentState, nodeState);
+				break;
+			case FrameObjectResourceType::OT_ConstantBuffer:
+			case FrameObjectResourceType::OT_DepthBuffer:
+			case FrameObjectResourceType::OT_IndirectArguments:
+			case FrameObjectResourceType::OT_PVS:
+			case FrameObjectResourceType::OT_VertexBuffer:
+				FK_ASSERT(0, "UN-IMPLEMENTED BLOCK!");
 			}
 		}
-
-		locallyTrackedObjects.clear();
-
-		return;
 	}
 
 
@@ -227,7 +209,7 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	void FrameGraph::AddMemoryPool(MemoryPoolAllocator* allocator)
+	void FrameGraph::AddMemoryPool(PoolAllocatorInterface* allocator)
 	{
 		Resources.AddMemoryPool(allocator);
 	}
@@ -247,35 +229,12 @@ namespace FlexKit
 
 	void FrameGraphNodeBuilder::BuildNode(FrameGraph* FrameGraph)
 	{	// Builds Nodes Linkages, Transitions
-		auto CheckNodeSource = [](FrameGraphNode& Node, FrameObjectDependency& Resource)
-		{
-			if (//Input.SourceObject != &Node &&
-				Resource.Source&&
-				!IsXInSet(Resource.Source, Node.Sources))
-			{
-				Node.Sources.push_back(Resource.Source);
-			}
-		};
-
 		// Process Transitions
-		for (auto& Object : Transitions)
-		{
-			CheckNodeSource(Node, Object);
-			Object.Source = &Node;
 
-			
-			if(Object.ExpectedState != Object.State)
-				Node.AddTransition(Object);
-		}
+        Node.Transitions = std::move(Transitions);
+        Context.Retirees += RetiredObjects;
 
-		for (auto& SourceNode : LocalInputs)
-			CheckNodeSource(Node, SourceNode);
-
-		for (auto& retired : RetiredObjects)
-			Context.Retire(retired);
-
-		Node.InputObjects	= std::move(LocalInputs);
-		Node.OutputObjects	= std::move(LocalOutputs);
+        Transitions.clear();
 	}
 
 
@@ -323,9 +282,6 @@ namespace FlexKit
 		if (!resource)
 			return InvalidHandle_t;
 
-		if (resource->Type == FrameObjectResourceType::OT_ShaderResource)
-			resource->ShaderResource.renderTargetUse = true;
-
 		return resourceHandle;
 	}
 
@@ -340,8 +296,6 @@ namespace FlexKit
 
 		FK_ASSERT(resource != nullptr);
 
-		resource->UAVTexture.renderTargetUse = true;
-
 		return resourceHandle;
 	}
 
@@ -351,7 +305,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::PresentBackBuffer(ResourceHandle renderTarget)
 	{
-		return renderTarget != InvalidHandle_t ? AddReadableResource(renderTarget, DeviceResourceState::DRS_Present) : InvalidHandle_t;
+		return AddReadableResource(renderTarget, DeviceResourceState::DRS_Present);
 	}
 
 
@@ -360,7 +314,6 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::WriteBackBuffer(ResourceHandle handle)
 	{
-		FK_ASSERT(handle != InvalidHandle_t);
 		return AddWriteableResource(handle, DeviceResourceState::DRS_RenderTarget);
 	}
 
@@ -370,14 +323,7 @@ namespace FlexKit
 
 	FrameResourceHandle FrameGraphNodeBuilder::ReadBackBuffer(ResourceHandle handle)
 	{
-		FrameResourceHandle Resource = Resources->FindFrameResource(handle);
-		LocalInputs.push_back(FrameObjectDependency{
-			Resources->GetAssetObject(Resource),
-			nullptr,
-			Resources->GetAssetObjectState(Resource),
-			DeviceResourceState::DRS_ShaderResource });
-
-		return Resource;
+		return AddReadableResource(handle, DeviceResourceState::DRS_ShaderResource);
 	}
 
 
@@ -386,7 +332,7 @@ namespace FlexKit
 
 	FrameResourceHandle	FrameGraphNodeBuilder::WriteDepthBuffer(ResourceHandle handle)
 	{
-		return AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE, FrameObjectResourceType::OT_DepthBuffer);
+		return AddWriteableResource(handle, DeviceResourceState::DRS_DEPTHBUFFERWRITE);
 	}
 
 
@@ -398,20 +344,18 @@ namespace FlexKit
 		const auto& memoryPool      = Resources->memoryPools.back();
 		auto virtualResource        = memoryPool->Aquire(desc);
 
-		FrameObject virtualObject = FrameObject::VirtualObject();
-		virtualObject.RenderTarget.Texture  = virtualResource;
-		virtualObject.State                 = DeviceResourceState::DRS_DEPTHBUFFERWRITE;
+		FrameObject virtualObject       = FrameObject::VirtualObject();
+		virtualObject.shaderResource    = virtualResource;
+		virtualObject.State             = DeviceResourceState::DRS_DEPTHBUFFERWRITE;
 
 		auto virtualResourceHandle = FrameResourceHandle{ Resources->Resources.emplace_back(virtualObject) };
 		Resources->Resources[virtualResourceHandle].Handle = virtualResourceHandle;
 		Resources->virtualResources.push_back(virtualResourceHandle);
 
-		FrameObjectDependency outputObject;
-			outputObject.ExpectedState      = Resources->renderSystem.GetObjectState(virtualResource);
-			outputObject.State              = Resources->renderSystem.GetObjectState(virtualResource);
-			outputObject.ShaderResource     = virtualResource;
-			outputObject.Source             = &Node;
-			outputObject.FO                 = &Resources->Resources[virtualResourceHandle];
+		FrameObjectLink outputObject;
+			outputObject.neededState    = Resources->renderSystem.GetObjectState(virtualResource);
+			outputObject.Source         = &Node;
+			outputObject.handle         = virtualResourceHandle;
 
 		Context.AddWriteable(outputObject);
 		Node.OutputObjects.push_back(outputObject);
@@ -428,12 +372,12 @@ namespace FlexKit
 		FrameResourceHandle resource    = Resources->FindFrameResource(handle);
 		auto freedResource              = Resources->GetTexture(resource);
 
-		FrameObjectDependency freeObject;
-		freeObject.ExpectedState    = Resources->GetAssetObjectState(resource);
-		freeObject.State            = DeviceResourceState::DRS_Retired;
-		freeObject.ShaderResource   = freedResource;
+        FrameObjectLink freeObject;
+		freeObject.neededState      = DeviceResourceState::DRS_Retired;
 		freeObject.Source           = &Node;
-		freeObject.FO               = &Resources->Resources[handle];
+		freeObject.handle           = handle;
+
+        Resources->Resources[handle].State = DRS_Retired;
 
 		Node.RetiredObjects.push_back(freeObject);
 
@@ -499,35 +443,6 @@ namespace FlexKit
 	/************************************************************************************************/
 
 
-	FrameResourceHandle FrameGraphNodeBuilder::AddWriteableResource(ResourceHandle handle, DeviceResourceState state, FrameObjectResourceType type)
-	{
-		bool TrackedReadable = Context.IsTrackedReadable(handle, type);
-		bool TrackedWritable = Context.IsTrackedWriteable(handle, type);
-
-		if (!TrackedReadable && !TrackedWritable)
-		{
-			FrameResourceHandle Resource = Resources->FindFrameResource(handle);
-
-			LocalOutputs.push_back(
-				FrameObjectDependency{
-					Resources->GetAssetObject(Resource),
-					nullptr,
-					Resources->GetAssetObjectState(Resource),
-					state });
-
-			Context.AddWriteable(LocalOutputs.back());
-			Transitions.push_back(LocalOutputs.back());
-
-			return Resource;
-		}
-
-		return InvalidHandle_t;
-	}
-
-
-	/************************************************************************************************/
-
-
 	size_t FrameGraphNodeBuilder::GetDescriptorTableSize(PSOHandle State, size_t idx) const
 	{
 		auto rootSig	= Resources->renderSystem.GetPSORootSignature(State);
@@ -548,11 +463,11 @@ namespace FlexKit
 
 
 	FrameGraphNodeBuilder::CheckStateRes FrameGraphNodeBuilder::CheckResourceSituation(
-		Vector<FrameObjectDependency>&  Set1,
-		Vector<FrameObjectDependency>&  Set2,
-		FrameObjectDependency&			Object)
+		Vector<FrameObjectLink>&    Set1,
+		Vector<FrameObjectLink>&    Set2,
+        FrameObjectLink&			Object)
 	{
-		auto Pred = [&](auto& lhs){	return (lhs.FO == Object.FO);	};
+		auto Pred = [&](auto& lhs){	return (lhs.handle == Object.handle);	};
 
 		if (find(Set1, Pred) != Set1.end())
 			return CheckStateRes::TransitionNeeded;
@@ -575,12 +490,12 @@ namespace FlexKit
 			for (auto Source : node->Sources)
 				ProcessNode(node, resources, taskList, allocator);
 
-            taskList.push_back(
-                {
-                    node->NodeAction,
-                    node,
-                    &resources
-                });
+			taskList.push_back(
+				{
+					node->NodeAction,
+					node,
+					&resources
+				});
 		}
 	}
 
@@ -590,88 +505,82 @@ namespace FlexKit
 
 	void FrameGraph::_SubmitFrameGraph(iAllocator& persistentAllocator)
 	{        
-        Vector<FrameGraphNodeWork> taskList{ &persistentAllocator };
+		Vector<FrameGraphNodeWork> taskList{ &persistentAllocator };
 
 		for (auto& N : Nodes)
 			ProcessNode(&N, Resources, taskList, persistentAllocator);
 
-        auto& renderSystem = Resources.renderSystem;
-        Vector<Context*> contexts{ &persistentAllocator };
+		auto& renderSystem = Resources.renderSystem;
+		Vector<Context*> contexts{ &persistentAllocator };
 
-        struct SubmissionWorkRange
-        {
-            Vector<FrameGraphNodeWork>::Iterator begin;
-            Vector<FrameGraphNodeWork>::Iterator end;
-        };
+		struct SubmissionWorkRange
+		{
+			Vector<FrameGraphNodeWork>::Iterator begin;
+			Vector<FrameGraphNodeWork>::Iterator end;
+		};
 
-        static const size_t workerCount = 9;
-        static_vector<SubmissionWorkRange> workList;
-        for (size_t I = 0; I < workerCount; I++)
-        {
-            workList.push_back(
-                {
-                    taskList.begin() + I * taskList.size() / workerCount,
-                    taskList.begin() + (I  + 1) * taskList.size() / workerCount
-                });
-        }
+		static const size_t workerCount = 10;
+		static_vector<SubmissionWorkRange> workList;
+		for (size_t I = 0; I < workerCount; I++)
+		{
+			workList.push_back(
+				{
+					taskList.begin() + I * taskList.size() / workerCount,
+					taskList.begin() + (I  + 1) * taskList.size() / workerCount
+				});
+		}
 
-        class RenderWorker : public iWork
-        {
-        public:
-            RenderWorker(SubmissionWorkRange IN_work, Context* IN_ctx, iAllocator& persistentAllocator) :
-                iWork   { &persistentAllocator  },
-                work    { IN_work               },
-                ctx     { IN_ctx                } {}
+		class RenderWorker : public iWork
+		{
+		public:
+			RenderWorker(SubmissionWorkRange IN_work, Context* IN_ctx, iAllocator& persistentAllocator) :
+				iWork   { &persistentAllocator  },
+				work    { IN_work               },
+				ctx     { IN_ctx                } {}
 
-            void Run(iAllocator& tempAllocator) override
-            {
-                bool expected = false;
+			void Run(iAllocator& tempAllocator) override
+			{
+				std::for_each(work.begin, work.end,
+					[&](auto& item)
+					{
+						item(ctx, tempAllocator);
+					});
 
-                if (hasBeenStarted || !hasBeenStarted.compare_exchange_strong(expected, true))
-                    __debugbreak();
+				ctx->FlushBarriers();
+			}
 
-                std::for_each(work.begin, work.end,
-                    [&](auto& item)
-                    {
-                        item(ctx, tempAllocator);
-                    });
+			void Release() {}
 
-                ctx->FlushBarriers();
-            }
+			SubmissionWorkRange work;
+			Context*            ctx;
+		};
 
-            void Release() {}
+		FlexKit::WorkBarrier barrier{ threads, &persistentAllocator };
+		static_vector<RenderWorker*> workers;
 
-            std::atomic_bool    hasBeenStarted = false;
-            SubmissionWorkRange work;
-            Context*            ctx;
-        };
+		for (auto& work : workList)
+		{
+			auto& context = renderSystem.GetCommandList();
+			contexts.push_back(&context);
 
-        static_vector<RenderWorker*> workers;
-        FlexKit::WorkBarrier barrier{ threads, &persistentAllocator };
-
-        for (auto& work : workList)
-        {
-            auto& context = renderSystem.GetCommandList();
-            contexts.push_back(&context);
-
-#if _DEBUG
-            auto ID = fmt::format("CommandList{}", contexts.size() - 1);
-            context.SetDebugName(ID.c_str());
+#if USING(DEBUGGRAPHICS)
+			auto ID = fmt::format("CommandList{}", contexts.size() - 1);
+			context.SetDebugName(ID.c_str());
 #endif
 
-            auto& worker = SystemAllocator.allocate<RenderWorker>(work, &context, persistentAllocator);
-            workers.push_back(&worker);
-            barrier.AddWork(worker);
-        }
+			auto& worker = SystemAllocator.allocate<RenderWorker>(work, &context, persistentAllocator);
+			workers.push_back(&worker);
+			barrier.AddWork(worker);
+		}
 
-        for(auto work : workers)
-            threads.AddWork(*work);
+		for (auto& worker : workers)
+			threads.AddWork(*worker);
 
-        barrier.JoinLocal();
+		barrier.JoinLocal();
 
-        UpdateResourceFinalState();
+		UpdateResourceFinalState();
 
-        renderSystem.Submit(contexts);
+		renderSystem.Submit(contexts);
 	}
 
 
@@ -689,7 +598,7 @@ namespace FlexKit
 		std::sort(dataDependencies.begin(), dataDependencies.end());
 		dataDependencies.erase(std::unique(dataDependencies.begin(), dataDependencies.end()), dataDependencies.end());
 
-        dispatcher.Add<SubmitData>(
+		dispatcher.Add<SubmitData>(
 			[&](auto& builder, SubmitData& data)
 			{
 				FK_LOG_9("Frame Graph Single-Thread Section Begin");
@@ -706,9 +615,6 @@ namespace FlexKit
 			[=](SubmitData& data, iAllocator& threadAllocator)
 			{
 				data.frameGraph->_SubmitFrameGraph(*persistentAllocator);
-
-				for (auto resource : Resources.virtualResources)
-					data.renderSystem->ReleaseTexture(Resources.GetRenderTarget(resource));
 			});
 	}
 
@@ -718,27 +624,27 @@ namespace FlexKit
 
 	void FrameGraph::UpdateResourceFinalState()
 	{
-		auto Objects = ResourceContext.GetFinalStates();
+		auto Objects = Resources.Resources;
 
 		for (auto& I : Objects)
 		{
-			switch (I.FO->Type)
+			switch (I.Type)
 			{
 			case OT_UAVBuffer:
 			{
-				auto UAV	= I.FO->UAVBuffer;
+				auto UAV	= I.UAVBuffer;
 				auto state	= I.State;
 				Resources.renderSystem.SetObjectState(UAV, state);
 			}	break;
 			case OT_UAVTexture:
 			{
-				auto UAV	= I.FO->UAVTexture;
+				auto UAV	= I.UAVTexture;
 				auto state	= I.State;
 				Resources.renderSystem.SetObjectState(UAV, state);
 			}	break;
 			case OT_StreamOut:
 			{
-				auto SOBuffer	= I.FO->SOBuffer;
+				auto SOBuffer	= I.SOBuffer;
 				auto state		= I.State;
 
 				Resources.renderSystem.SetObjectState(SOBuffer, state);
@@ -748,7 +654,7 @@ namespace FlexKit
 			case OT_RenderTarget:
 			case OT_ShaderResource:
 			{
-				auto shaderResource = I.FO->ShaderResource.handle;
+				auto shaderResource = I.shaderResource;
 				auto state			= I.State;
 
 				Resources.renderSystem.SetObjectState(shaderResource, state);
@@ -756,7 +662,7 @@ namespace FlexKit
 			case OT_Virtual:
 			{
 				if(I.State == DRS_Retired)
-					Resources.renderSystem.ReleaseTexture(I.ShaderResource);
+					Resources.renderSystem.ReleaseTexture(I.shaderResource);
 			}   break;
 			default:
 				FK_ASSERT(false, "UN-IMPLEMENTED BLOCK!");
@@ -853,23 +759,6 @@ namespace FlexKit
 	void ClearVertexBuffer(FrameGraph& FG, VertexBufferHandle PushBuffer)
 	{
 		FG.Resources.renderSystem.VertexBuffers.Reset(PushBuffer);
-	}
-
-
-	/************************************************************************************************/
-
-
-	MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, DeviceHeapHandle IN_heap, size_t IN_blockCount, size_t IN_blockSize, iAllocator* IN_allocator) :
-		renderSystem    { IN_renderSystem },
-		blockCount      { IN_blockCount },
-		blockSize       { IN_blockSize },
-		allocator       { IN_allocator },
-		allocations     { IN_allocator },
-		heap            { IN_heap }
-	{
-		rootNode = _Link{
-			.leaf       = { 0, blockCount, ResourceHandle{ InvalidHandle_t } },
-			.isLeaf     = true };
 	}
 
 

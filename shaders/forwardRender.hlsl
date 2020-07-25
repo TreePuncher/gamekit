@@ -16,6 +16,7 @@ cbuffer LocalConstants : register(b1)
 	float    Anisotropic;
 	float    Metallic;
     float4x4 WT;
+    uint     textureCount;
 }
 
 cbuffer ShadingConstants : register(b2)
@@ -191,7 +192,7 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
     while(mip < MIPCount)
     {
         uint state;
-        const float4 texel = source.SampleLevel(textureSampler, UV, mip, 0.0f, state);
+        const float4 texel = source.SampleLevel(textureSampler, float2(0, 1) + float2(1, -1) * UV, mip, 0.0f, state);
 
         if(CheckAccessFullyMapped(state))
             return texel;
@@ -199,7 +200,7 @@ float4 SampleVirtualTexture(Texture2D source, in sampler textureSampler, in floa
         mip = floor(mip + 1);
     }
     
-    return float4(1.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
+    return float4(0.0f, 0.0f, 1.0f, 0.0f); // NO PAGES LOADED!
 }
 
 
@@ -207,8 +208,16 @@ Deferred_OUT GBufferFill_PS(Forward_PS_IN IN)
 {
     Deferred_OUT gbuffer;
 
-    gbuffer.Normal      = float4(IN.Normal,     1);
-    gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
+    const float3 biTangent = cross(IN.Tangent, IN.Normal);
+    float3x3 inverseTBN = float3x3(normalize(IN.Tangent), normalize(biTangent), normalize(IN.Normal));
+    float3x3 TBN = transpose(inverseTBN);
+
+    //const float3 normalSample =  mul(WT, SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz * 2.0f - 1.0f);
+    const float3 normalSample = textureCount > 1 ? mul(TBN, SampleVirtualTexture(testTexture, BiLinear, IN.UV).xyz) : IN.Normal;
+
+    gbuffer.Normal      = float4(normalize(normalSample),     1);
+    gbuffer.Tangent     = float4(normalize(IN.Tangent),  1);
+    //gbuffer.Tangent     = float4(normalize(cross(IN.Normal, IN.Normal.zxy)),    1);
     gbuffer.Albedo      = float4(Albedo.xyz * SampleVirtualTexture(albedoTexture, BiLinear, IN.UV).xyz, Ks);
 
     gbuffer.MRIA        = float4(Metallic, Roughness, IOR, Anisotropic) * SampleVirtualTexture(MRIATexture, BiLinear, IN.UV);

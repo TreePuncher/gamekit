@@ -9,15 +9,15 @@ using namespace FlexKit;
 
 
 GameState::GameState(
-            GameFramework&  IN_framework, 
-            BaseState&		IN_base) :
-                FrameworkState	{ IN_framework },
+			GameFramework&  IN_framework, 
+			BaseState&		IN_base) :
+				FrameworkState	{ IN_framework },
 
-                pScene          { IN_base.physics.CreateScene() },
-        
-                frameID			{ 0										},
-                base			{ IN_base								},
-                scene			{ IN_framework.core.GetBlockMemory()	} {}
+				pScene          { IN_base.physics.CreateScene() },
+		
+				frameID			{ 0										},
+				base			{ IN_base								},
+				scene			{ IN_framework.core.GetBlockMemory()	} {}
 
 
 /************************************************************************************************/
@@ -25,20 +25,20 @@ GameState::GameState(
 
 GameState::~GameState()
 {
-    iAllocator* allocator = base.framework.core.GetBlockMemory();
-    auto& entities = scene.sceneEntities;
+	iAllocator* allocator = base.framework.core.GetBlockMemory();
+	auto& entities = scene.sceneEntities;
 
-    while(entities.size())
-    {
-        auto* entityGO = SceneVisibilityView::GetComponent()[entities.back()].entity;
-        scene.RemoveEntity(*entityGO);
+	while(entities.size())
+	{
+		auto* entityGO = SceneVisibilityView::GetComponent()[entities.back()].entity;
+		scene.RemoveEntity(*entityGO);
 
-        entityGO->Release();
-        allocator->free(entityGO);
-    }
+		entityGO->Release();
+		allocator->free(entityGO);
+	}
 
-    scene.ClearScene();
-    base.physics.ReleaseScene(pScene);
+	scene.ClearScene();
+	base.physics.ReleaseScene(pScene);
 }
 
 
@@ -47,7 +47,7 @@ GameState::~GameState()
 
 void GameState::Update(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-    base.Update(core, dispatcher, dT);
+	base.Update(core, dispatcher, dT);
 }
 
 
@@ -72,7 +72,7 @@ void GameState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, 
 
 void GameState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-    base.PostDrawUpdate(core, dispatcher, dT);
+	base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 
@@ -80,22 +80,22 @@ void GameState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, d
 
 
 LocalPlayerState::LocalPlayerState(
-    GameFramework&      IN_framework,
-    BaseState&          IN_base,
-    GameState&          IN_game) :
-        FrameworkState	    { IN_framework							                            },
-        game			    { IN_game								                            },
-        base			    { IN_base								                            },
-        eventMap		    { IN_framework.core.GetBlockMemory()	                            },
-        netInputObjects	    { IN_framework.core.GetBlockMemory()	                            },
-        thirdPersonCamera   { CreateThirdPersonCameraController(IN_game.pScene, IN_framework.core.GetBlockMemory())   }
+	GameFramework&      IN_framework,
+	BaseState&          IN_base,
+	GameState&          IN_game) :
+		FrameworkState	    { IN_framework							                            },
+		game			    { IN_game								                            },
+		base			    { IN_base								                            },
+		eventMap		    { IN_framework.core.GetBlockMemory()	                            },
+		netInputObjects	    { IN_framework.core.GetBlockMemory()	                            },
+		thirdPersonCamera   { CreateThirdPersonCameraController(IN_game.pScene, IN_framework.core.GetBlockMemory())   }
 {
-    eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
-    eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
-    eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
-    eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
-    eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
-    eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
+	eventMap.MapKeyToEvent(KEYCODES::KC_W, TPC_MoveForward);
+	eventMap.MapKeyToEvent(KEYCODES::KC_S, TPC_MoveBackward);
+	eventMap.MapKeyToEvent(KEYCODES::KC_A, TPC_MoveLeft);
+	eventMap.MapKeyToEvent(KEYCODES::KC_D, TPC_MoveRight);
+	eventMap.MapKeyToEvent(KEYCODES::KC_Q, TPC_MoveDown);
+	eventMap.MapKeyToEvent(KEYCODES::KC_E, TPC_MoveUp);
 }
 
 
@@ -104,7 +104,7 @@ LocalPlayerState::LocalPlayerState(
 
 void LocalPlayerState::Update(EngineCore& core, FlexKit::UpdateDispatcher& dispatcher, double dT)
 {
-    base.Update(core, dispatcher, dT);
+	base.Update(core, dispatcher, dT);
 }
 
 
@@ -121,252 +121,253 @@ void LocalPlayerState::PreDrawUpdate(EngineCore& core, UpdateDispatcher& Dispatc
 
 void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, double dT, FrameGraph& frameGraph)
 {
-    frameGraph.AddMemoryPool(&base.memoryPool);
-    frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
-    frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
+	frameGraph.AddMemoryPool(&base.memoryPool);
 
-    CameraHandle activeCamera = GetCameraControllerCamera(thirdPersonCamera);
-    SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
+	frameGraph.Resources.AddBackBuffer(base.renderWindow.GetBackBuffer());
+	frameGraph.Resources.AddDepthBuffer(base.depthBuffer);
 
-    float2 mouse_dPos   = base.renderWindow.mouseState.Normalized_dPos;
+	CameraHandle activeCamera = GetCameraControllerCamera(thirdPersonCamera);
+	SetCameraAspectRatio(activeCamera, base.renderWindow.GetAspectRatio());
 
-    auto& scene				            = game.scene;
+	float2 mouse_dPos   = base.renderWindow.mouseState.Normalized_dPos;
 
-    auto& pointLightGather              = scene.GetPointLights(dispatcher, core.GetTempMemory());
-    auto& pointLightShadowCasterGather  = scene.GetPointLightShadows(dispatcher, core.GetTempMemory());
+	auto& scene				            = game.scene;
 
-    auto& transforms		= QueueTransformUpdateTask	(dispatcher);
-    auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
-    auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
-    auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
-    auto& skinnedObjects    = GatherSkinned             (dispatcher, scene, activeCamera, core.GetTempMemory());
-    auto& updatedPoses      = UpdatePoses               (dispatcher, skinnedObjects, core.GetTempMemory());
-    auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, mouse_dPos, dT);
+	auto& pointLightGather              = scene.GetPointLights(dispatcher, core.GetTempMemory());
+	auto& pointLightShadowCasterGather  = scene.GetPointLightShadows(dispatcher, core.GetTempMemory());
 
-    transforms.AddInput(cameraControllers);
+	auto& transforms		= QueueTransformUpdateTask	(dispatcher);
+	auto& cameras			= CameraComponent::GetComponent().QueueCameraUpdate(dispatcher);
+	auto& cameraConstants	= MakeHeapCopy				(Camera::ConstantBuffer{}, core.GetTempMemory());
+	auto& PVS				= GatherScene               (dispatcher, scene, activeCamera, core.GetTempMemory());
+	auto& skinnedObjects    = GatherSkinned             (dispatcher, scene, activeCamera, core.GetTempMemory());
+	auto& updatedPoses      = UpdatePoses               (dispatcher, skinnedObjects, core.GetTempMemory());
+	auto& cameraControllers = UpdateThirdPersonCameraControllers(dispatcher, mouse_dPos, dT);
 
-    cameras.AddInput(cameraControllers);
-    cameras.AddInput(transforms);
+	transforms.AddInput(cameraControllers);
 
-    PVS.AddInput(transforms);
-    PVS.AddInput(cameras);
+	cameras.AddInput(cameraControllers);
+	cameras.AddInput(transforms);
 
-    skinnedObjects.AddInput(cameras);
-    updatedPoses.AddInput(skinnedObjects);
+	PVS.AddInput(transforms);
+	PVS.AddInput(cameras);
 
-    pointLightGather.AddInput(transforms);
-    pointLightGather.AddInput(cameras);
+	skinnedObjects.AddInput(cameras);
+	updatedPoses.AddInput(skinnedObjects);
 
-    WorldRender_Targets targets = {
-        base.renderWindow.GetBackBuffer(),
-        base.depthBuffer
-    };
+	pointLightGather.AddInput(transforms);
+	pointLightGather.AddInput(cameras);
 
-    LighBufferDebugDraw debugDraw;
-    debugDraw.constantBuffer = base.constantBuffer;
-    debugDraw.renderTarget   = targets.RenderTarget;
-    debugDraw.vertexBuffer	 = base.vertexBuffer;
+	WorldRender_Targets targets = {
+		base.renderWindow.GetBackBuffer(),
+		base.depthBuffer
+	};
 
-    const SceneDescription sceneDesc = {
-        activeCamera,
-        pointLightGather,
-        pointLightShadowCasterGather,
-        transforms,
-        cameras,
-        PVS,
-        skinnedObjects
-    };
+	LighBufferDebugDraw debugDraw;
+	debugDraw.constantBuffer = base.constantBuffer;
+	debugDraw.renderTarget   = targets.RenderTarget;
+	debugDraw.vertexBuffer	 = base.vertexBuffer;
 
-    ClearVertexBuffer   (frameGraph, base.vertexBuffer);
-    ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
-    ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
+	const SceneDescription sceneDesc = {
+		activeCamera,
+		pointLightGather,
+		pointLightShadowCasterGather,
+		transforms,
+		cameras,
+		PVS,
+		skinnedObjects
+	};
 
-    auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
-    auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
+	ClearVertexBuffer   (frameGraph, base.vertexBuffer);
+	ClearBackBuffer     (frameGraph, targets.RenderTarget, 0.0f);
+	ClearDepthBuffer    (frameGraph, base.depthBuffer, 1.0f);
 
-    if(base.renderWindow.GetWH().Product() != 0)
-    {
-        switch(renderMode)
-        {
-        case RenderMode::ForwardPlus:
-        {
-            //auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
-            //auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
-            //auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.irradianceMap, core.GetTempMemory());
-        }   break;
-        case RenderMode::Deferred:
-        {
-            AddGBufferResource(base.gbuffer, frameGraph);
-            ClearGBuffer(base.gbuffer, frameGraph);
+	auto reserveVB = FlexKit::CreateVertexBufferReserveObject(base.vertexBuffer, core.RenderSystem, core.GetTempMemory());
+	auto reserveCB = FlexKit::CreateConstantBufferReserveObject(base.constantBuffer, core.RenderSystem, core.GetTempMemory());
 
-            base.render.RenderPBR_GBufferPass(
-                dispatcher,
-                frameGraph,
-                sceneDesc,
-                activeCamera,
-                base.gbuffer,
-                base.depthBuffer,
-                reserveCB,
-                core.GetTempMemory());
+	if(base.renderWindow.GetWH().Product() != 0)
+	{
+		switch(renderMode)
+		{
+		case RenderMode::ForwardPlus:
+		{
+			//auto& depthPass       = base.render.DepthPrePass(dispatcher, frameGraph, activeCamera, PVS, targets.DepthTarget, core.GetTempMemory());
+			//auto& lighting        = base.render.UpdateLightBuffers(dispatcher, frameGraph, activeCamera, scene, sceneDesc, core.GetTempMemory(), &debugDraw);
+			//auto& deferredPass    = base.render.RenderPBR_ForwardPlus(dispatcher, frameGraph, depthPass, activeCamera, targets, sceneDesc, base.t, base.irradianceMap, core.GetTempMemory());
+		}   break;
+		case RenderMode::Deferred:
+		{
+			AddGBufferResource(base.gbuffer, frameGraph);
+			ClearGBuffer(base.gbuffer, frameGraph);
 
-            auto& lightPass = base.render.UpdateLightBuffers(
-                dispatcher,
-                frameGraph,
-                activeCamera,
-                scene,
-                sceneDesc,
-                reserveCB,
-                core.GetTempMemory(),
-                &debugDraw);
+			base.render.RenderPBR_GBufferPass(
+				dispatcher,
+				frameGraph,
+				sceneDesc,
+				activeCamera,
+				base.gbuffer,
+				base.depthBuffer,
+				reserveCB,
+				core.GetTempMemory());
 
-            auto& shadowMapPass = ShadowMapPass(
-                frameGraph,
-                PVS,
-                base.pointLightShadowMap,
-                reserveCB,
-                base.t,
-                core.GetTempMemory());
+			auto& lightPass = base.render.UpdateLightBuffers(
+				dispatcher,
+				frameGraph,
+				activeCamera,
+				scene,
+				sceneDesc,
+				reserveCB,
+				core.GetTempMemory(),
+				&debugDraw);
+
+			auto& shadowMapPass = ShadowMapPass(
+				frameGraph,
+				PVS,
+				reserveCB,
+				base.t,
+				core.GetTempMemory());
 
 
-            /*
-            base.render.RenderPBR_IBL_Deferred(
-                dispatcher,
-                frameGraph,
-                sceneDesc,
-                activeCamera,
-                targets.RenderTarget,
-                base.depthBuffer,
-                base.gbuffer,
-                reserveCB,
-                reserveVB,
-                base.t,
-                core.GetTempMemory());
-            */
+			/*
+			base.render.RenderPBR_IBL_Deferred(
+				dispatcher,
+				frameGraph,
+				sceneDesc,
+				activeCamera,
+				targets.RenderTarget,
+				base.depthBuffer,
+				base.gbuffer,
+				reserveCB,
+				reserveVB,
+				base.t,
+				core.GetTempMemory());
+			*/
 
-            base.render.RenderPBR_DeferredShade(
-                dispatcher,
-                frameGraph,
-                sceneDesc,
-                pointLightGather,
-                base.gbuffer, base.depthBuffer, targets.RenderTarget, shadowMapPass, lightPass,
-                reserveCB, reserveVB,
-                base.t,
-                core.GetTempMemory());
 
-            ReleaseShadowMapPass(frameGraph, shadowMapPass);
-        }   break;
-        case RenderMode::ComputeTiledDeferred:
-        {
-            ComputeTiledDeferredShadeDesc desc =
-            {
-                pointLightGather,
-                base.gbuffer,
-                base.depthBuffer,
-                targets.RenderTarget,
-                activeCamera,
-            };
+			base.render.RenderPBR_DeferredShade(
+				dispatcher,
+				frameGraph,
+				sceneDesc,
+				pointLightGather,
+				base.gbuffer, base.depthBuffer, targets.RenderTarget, shadowMapPass, lightPass,
+				reserveCB, reserveVB,
+				base.t,
+				core.GetTempMemory());
 
-            AddGBufferResource(base.gbuffer, frameGraph);
-            ClearGBuffer(base.gbuffer, frameGraph);
+			ReleaseShadowMapPass(frameGraph, shadowMapPass);
 
-            base.render.RenderPBR_GBufferPass(
-                dispatcher,
-                frameGraph,
-                sceneDesc,
-                activeCamera,
-                base.gbuffer,
-                base.depthBuffer,
-                reserveCB,
-                core.GetTempMemory());
+		}   break;
+		case RenderMode::ComputeTiledDeferred:
+		{
+			ComputeTiledDeferredShadeDesc desc =
+			{
+				pointLightGather,
+				base.gbuffer,
+				base.depthBuffer,
+				targets.RenderTarget,
+				activeCamera,
+			};
 
-            base.render.UpdateLightBuffers(
-                dispatcher,
-                frameGraph,
-                activeCamera,
-                scene,
-                sceneDesc,
-                reserveCB,
-                core.GetTempMemory(),
-                &debugDraw);
+			AddGBufferResource(base.gbuffer, frameGraph);
+			ClearGBuffer(base.gbuffer, frameGraph);
 
-            base.render.RenderPBR_ComputeDeferredTiledShade(
-                dispatcher,
-                frameGraph,
-                reserveCB,
-                desc);
-        }
-        }
+			base.render.RenderPBR_GBufferPass(
+				dispatcher,
+				frameGraph,
+				sceneDesc,
+				activeCamera,
+				base.gbuffer,
+				base.depthBuffer,
+				reserveCB,
+				core.GetTempMemory());
 
-        if(1)
-        base.streamingEngine.TextureFeedbackPass(
-            dispatcher,
-            frameGraph,
-            activeCamera,
-            base.renderWindow.GetWH(),
-            PVS,
-            reserveCB,
-            reserveVB);
+			base.render.UpdateLightBuffers(
+				dispatcher,
+				frameGraph,
+				activeCamera,
+				scene,
+				sceneDesc,
+				reserveCB,
+				core.GetTempMemory(),
+				&debugDraw);
 
-        // Draw Skeleton overlay
-        if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)
-        {
-            auto Skeleton = GetSkeleton(*gameObject);
-            auto pose     = GetPoseState(*gameObject);
-            auto node     = GetSceneNode(*gameObject);
+			base.render.RenderPBR_ComputeDeferredTiledShade(
+				dispatcher,
+				frameGraph,
+				reserveCB,
+				desc);
+		}
+		}
 
-            //RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
+		base.streamingEngine.TextureFeedbackPass(
+			dispatcher,
+			frameGraph,
+			activeCamera,
+			base.renderWindow.GetWH(),
+			PVS,
+			reserveCB,
+			reserveVB);
 
-            for (size_t I = 0; I < 5; I++)
-            {
-                JointHandle joint{ I };
+		// Draw Skeleton overlay
+		if (auto [gameObject, res] = FindGameObject(scene, "object1"); res)
+		{
+			auto Skeleton = GetSkeleton(*gameObject);
+			auto pose     = GetPoseState(*gameObject);
+			auto node     = GetSceneNode(*gameObject);
 
-                auto jointPose = GetJointPose(*gameObject, joint);
-                jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
-                SetJointPose(*gameObject, joint, jointPose);
-            }
+			//RotateJoint(*gameObject, JointHandle(0), Quaternion{ 0, T, 0 });
 
-            T += dT;
+			for (size_t I = 0; I < 5; I++)
+			{
+				JointHandle joint{ I };
 
-            if (!Skeleton)
-                return;
+				auto jointPose = GetJointPose(*gameObject, joint);
+				jointPose.r = Quaternion{ 0, 0, (float)(T) * 90 };
+				SetJointPose(*gameObject, joint, jointPose);
+			}
 
-            LineSegments lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
-            //LineSegments lines = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
+			T += dT;
 
-            const auto cameraConstants = GetCameraConstants(activeCamera);
+			if (!Skeleton)
+				return;
 
-            for (auto& line : lines)
-            {
-                const auto tempA = cameraConstants.PV * float4{ line.A, 1 };
-                const auto tempB = cameraConstants.PV * float4{ line.B, 1 };
+			LineSegments lines = DEBUG_DrawPoseState(*pose, node, core.GetTempMemory());
+			//LineSegments lines = BuildSkeletonLineSet(Skeleton, node, core.GetTempMemory());
 
-                if (tempA.w <= 0 || tempB.w <= 0)
-                {
-                    line.A = { 0, 0, 0 };
-                    line.B = { 0, 0, 0 };
-                }
-                else
-                {
-                    line.A = tempA.xyz() / tempA.w;
-                    line.B = tempB.xyz() / tempB.w;
-                }
-            }
+			const auto cameraConstants = GetCameraConstants(activeCamera);
 
-            DrawShapes(
-                DRAW_LINE_PSO,
-                frameGraph,
-                reserveVB,
-                reserveCB,
-                targets.RenderTarget,
-                core.GetTempMemory(),
-                LineShape{ lines });
-        }
-    }
+			for (auto& line : lines)
+			{
+				const auto tempA = cameraConstants.PV * float4{ line.A, 1 };
+				const auto tempB = cameraConstants.PV * float4{ line.B, 1 };
 
-    framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
-    framework.DrawDebugHUD(dT, base.vertexBuffer, base.renderWindow, frameGraph);
+				if (tempA.w <= 0 || tempB.w <= 0)
+				{
+					line.A = { 0, 0, 0 };
+					line.B = { 0, 0, 0 };
+				}
+				else
+				{
+					line.A = tempA.xyz() / tempA.w;
+					line.B = tempB.xyz() / tempB.w;
+				}
+			}
 
-    PresentBackBuffer(frameGraph, base.renderWindow);
+			DrawShapes(
+				DRAW_LINE_PSO,
+				frameGraph,
+				reserveVB,
+				reserveCB,
+				targets.RenderTarget,
+				core.GetTempMemory(),
+				LineShape{ lines });
+		}
+	}
+
+	framework.stats.objectsDrawnLastFrame = PVS.GetData().solid.size();
+	framework.DrawDebugHUD(dT, base.vertexBuffer, base.renderWindow, frameGraph);
+
+	PresentBackBuffer(frameGraph, base.renderWindow);
 }
 
 
@@ -375,7 +376,7 @@ void LocalPlayerState::Draw(EngineCore& core, UpdateDispatcher& dispatcher, doub
 
 void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispatcher, double dT)
 {
-    base.PostDrawUpdate(core, dispatcher, dT);
+	base.PostDrawUpdate(core, dispatcher, dT);
 }
 
 
@@ -384,103 +385,101 @@ void LocalPlayerState::PostDrawUpdate(EngineCore& core, UpdateDispatcher& dispat
 
 bool LocalPlayerState::EventHandler(Event evt)
 {
-    bool handled = eventMap.Handle(evt, [&](auto& evt)
-        {
-            HandleEvents(thirdPersonCamera, evt);
-        });
+	bool handled = eventMap.Handle(evt, [&](auto& evt)
+		{
+			HandleEvents(thirdPersonCamera, evt);
+		});
 
-    switch (evt.InputSource)
-    {
-        case Event::E_SystemEvent:
-        {
-            switch (evt.Action)
-            {
-            case Event::InputAction::Resized:
-            {
-                const auto width  = (uint32_t)evt.mData1.mINT[0];
-                const auto height = (uint32_t)evt.mData2.mINT[0];
-                base.Resize({ width, height });
-            }   break;
+	switch (evt.InputSource)
+	{
+		case Event::E_SystemEvent:
+		{
+			switch (evt.Action)
+			{
+			case Event::InputAction::Resized:
+			{
+				const auto width  = (uint32_t)evt.mData1.mINT[0];
+				const auto height = (uint32_t)evt.mData2.mINT[0];
+				base.Resize({ width, height });
+			}   break;
 
-            case Event::InputAction::Exit:
-                framework.quit = true;
-                break;
-            default:
-                break;
-            }
-        }   break;
-        case Event::Keyboard:
-        {
-            switch (evt.mData1.mKC[0])
-            {
-            case KC_SPACE: // Reload Shaders
-            {
-                if (evt.Action == Event::Pressed)
-                {
-                    if constexpr(false)
-                    {
-                        auto pos        = GetCameraControllerHeadPosition(thirdPersonCamera);
-                        auto forward    = GetCameraControllerForwardVector(thirdPersonCamera);
+			case Event::InputAction::Exit:
+				framework.quit = true;
+				break;
+			default:
+				break;
+			}
+		}   break;
+		case Event::Keyboard:
+		{
+			switch (evt.mData1.mKC[0])
+			{
+			case KC_SPACE: // Reload Shaders
+			{
+				if (evt.Action == Event::Pressed)
+				{
+					if constexpr(false)
+					{
+						auto pos        = GetCameraControllerHeadPosition(thirdPersonCamera);
+						auto forward    = GetCameraControllerForwardVector(thirdPersonCamera);
 
-                        // Load Model
-                        const AssetHandle model = 1002;
-                        auto [triMesh, loaded] = FindMesh("Cube1x1x1");
+						// Load Model
+						const AssetHandle model = 1002;
+						auto [triMesh, loaded] = FindMesh("Cube1x1x1");
 
-                        auto& allocator = framework.core.GetBlockMemory();
+						auto& allocator = framework.core.GetBlockMemory();
 
-                        auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 1 }, pos + forward * 20);
-                        auto& dynamicBox = allocator.allocate<GameObject>();
+						auto  rigidBody = base.physics.CreateRigidBodyCollider(game.pScene, PxShapeHandle{ 1 }, pos + forward * 20);
+						auto& dynamicBox = allocator.allocate<GameObject>();
 
-                        dynamicBox.AddView<RigidBodyView>(rigidBody, game.pScene);
-                        auto dynamicNode = GetRigidBodyNode(dynamicBox);
-                        dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
-                        game.scene.AddGameObject(dynamicBox, dynamicNode);
+						dynamicBox.AddView<RigidBodyView>(rigidBody, game.pScene);
+						auto dynamicNode = GetRigidBodyNode(dynamicBox);
+						dynamicBox.AddView<DrawableView>(triMesh, dynamicNode);
+						game.scene.AddGameObject(dynamicBox, dynamicNode);
 
-                        ApplyForce(dynamicBox, forward * 100);
+						ApplyForce(dynamicBox, forward * 100);
 
-                        SetMaterialParams(
-                            dynamicBox,
-                            float3(0.5f, 0.5f, 0.5f), // albedo
-                            (rand() % 1000) / 1000.0f, // specular
-                            1.0f, // IOR
-                            (rand() % 1000) / 1000.0f,
-                            (rand() % 1000) / 1000.0f,
-                            0.0f);
-                    }
-                }
-            }   break;
-            case KC_U: // Reload Shaders
-            {
-                if (evt.Action == Event::Release)
-                {
-                    std::cout << "Reloading Shaders\n";
-                    framework.core.RenderSystem.QueuePSOLoad(FORWARDDRAW);
-                    framework.core.RenderSystem.QueuePSOLoad(LIGHTPREPASS);
-                    framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
-                    framework.core.RenderSystem.QueuePSOLoad(ENVIRONMENTPASS);
-                }
-            }   return true;
-            case KC_P: // Reload Shaders
-            {
-                if (evt.Action == Event::Release)
-                {
-                    if (renderMode == RenderMode::Deferred)
-                        renderMode = RenderMode::ForwardPlus;
-                    else
-                        renderMode = RenderMode::Deferred;
-                }
-            }   return true;
-            case KC_M:
-                if (evt.Action == Event::Release)
-                    base.renderWindow.EnableCaptureMouse(!base.renderWindow.mouseCapture);
-                break;
-            default:
-                return handled;
-            }
-        }   break;
-    }
+						SetMaterialParams(
+							dynamicBox,
+							float3(0.5f, 0.5f, 0.5f), // albedo
+							(rand() % 1000) / 1000.0f, // specular
+							1.0f, // IOR
+							(rand() % 1000) / 1000.0f,
+							(rand() % 1000) / 1000.0f,
+							0.0f);
+					}
+				}
+			}   break;
+			case KC_U: // Reload Shaders
+			{
+				if (evt.Action == Event::Release)
+				{
+					std::cout << "Reloading Shaders\n";
+					framework.core.RenderSystem.QueuePSOLoad(GBUFFERPASS);
+					framework.core.RenderSystem.QueuePSOLoad(SHADINGPASS);
+				}
+			}   return true;
+			case KC_P: // Reload Shaders
+			{
+				if (evt.Action == Event::Release)
+				{
+					if (renderMode == RenderMode::Deferred)
+						renderMode = RenderMode::ForwardPlus;
+					else
+						renderMode = RenderMode::Deferred;
+				}
+			}   return true;
+			case KC_M:
+				if (evt.Action == Event::Release)
+					base.renderWindow.EnableCaptureMouse(!base.renderWindow.mouseCapture);
+				break;
+			default:
+				return handled;
+			}
+		}   break;
+	}
 
-    return handled;
+	return handled;
 }
 
 

@@ -2474,7 +2474,8 @@ namespace FlexKit
 		if(FAILED(commandAllocator->Reset()))
 			__debugbreak();
 
-		DeviceContext->Reset(commandAllocator, nullptr);
+		if(FAILED(DeviceContext->Reset(commandAllocator, nullptr)))
+            __debugbreak();
 
 		_ResetDSV();
 		_ResetRTV();
@@ -3267,13 +3268,10 @@ namespace FlexKit
 		Wait(CopyContextHandle{ currentIdx });
 
 		if (FAILED(ctx.commandAllocator->Reset()))
-		{
-#if DEBUG
 			__debugbreak();
-#endif
-		}
 
-		ctx.commandList->Reset(ctx.commandAllocator, nullptr);
+        if (FAILED(ctx.commandList->Reset(ctx.commandAllocator, nullptr)))
+            __debugbreak();
 
 		/*
 		for (auto resource : ctx.freeResources)
@@ -3305,7 +3303,9 @@ namespace FlexKit
 	{
 		auto& ctx = copyContexts[handle];
 		ctx.flushPendingBarriers();
-		ctx.commandList->Close();
+
+        if (FAILED(ctx.commandList->Close()))
+            __debugbreak();
 	}
 
 
@@ -3479,8 +3479,8 @@ namespace FlexKit
 		ID3D12DebugDevice*  DebugDevice;
 		
 		HRESULT HR;
-		#if USING( DEBUGGRAPHICS )
 		HR = D3D12GetDebugInterface(__uuidof(ID3D12Debug), (void**)&Debug);			FK_ASSERT(SUCCEEDED(HR));
+		#if USING( DEBUGGRAPHICS )
 		Debug->EnableDebugLayer();
 		#else
 		Debug		= nullptr;
@@ -3488,6 +3488,14 @@ namespace FlexKit
 		#endif	
 
 		bool InitiateComplete = false;
+
+#if USING(ENABLEDRED)
+        ID3D12DeviceRemovedExtendedDataSettings1* dred;
+        D3D12GetDebugInterface(IID_PPV_ARGS(&dred));
+
+        dred->SetAutoBreadcrumbsEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+        dred->SetPageFaultEnablement(D3D12_DRED_ENABLEMENT_FORCED_ON);
+#endif
 
 		HR = D3D12CreateDevice(nullptr,	D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&Device));
 		if(FAILED(HR))
@@ -3564,6 +3572,7 @@ namespace FlexKit
 
 		// Create Resources
 		HR = CreateDXGIFactory2(DXGI_CREATE_FACTORY_DEBUG, IID_PPV_ARGS(&DXGIFactory));
+        DXGIFactory->EnumAdapterByLuid(Device->GetAdapterLuid(), IID_PPV_ARGS(&DXGIAdapter));
 
 		FK_ASSERT(FAILED(HR), "FAILED TO CREATE DXGIFactory!"  );
 
@@ -4210,12 +4219,15 @@ namespace FlexKit
 				case ResourceAllocationType::Placed:
 				{
 					HRESULT HR = pDevice->CreatePlacedResource(
-						GetDeviceResource(desc.placed.heap),
+                        desc.placed.heap != InvalidHandle_t ? GetDeviceResource(desc.placed.heap) : desc.placed.customHeap,
 						desc.placed.offset,
 						&Resource_DESC,
 						InitialState,
 						pCV,
 						IID_PPV_ARGS(&NewResource[itr]));
+
+                    if (FAILED(HR))
+                        __debugbreak();
 				}   break;
 				}
 				FK_ASSERT(NewResource[itr], "Failed to Create Texture!");
@@ -5778,7 +5790,7 @@ namespace FlexKit
 
 		for(auto res : resource.Resources)
 			if(res)
-				delayRelease.push_back({ res, 3 });
+				delayRelease.push_back({ res, 4 });
 
 		const auto TempHandle	= UserEntries.back().Handle;
 		UserEntry			    = UserEntries.back();
@@ -6613,6 +6625,20 @@ namespace FlexKit
 
 	void RenderSystem::_OnCrash()
 	{
+        ID3D12DeviceRemovedExtendedData1* dred;
+        pDevice->QueryInterface(IID_PPV_ARGS(&dred));
+
+        if (!dred)
+            FK_ASSERT(0, "CRASH DETECTED, DRED NOT ENABLED!");
+
+        D3D12_DRED_AUTO_BREADCRUMBS_OUTPUT1 DredAutoBreadcrumbsOutput;
+        D3D12_DRED_PAGE_FAULT_OUTPUT DredPageFaultOutput;
+
+        dred->GetAutoBreadcrumbsOutput1(&DredAutoBreadcrumbsOutput);
+        dred->GetPageFaultAllocationOutput(&DredPageFaultOutput);
+
+        __debugbreak();
+
 #if USING(AFTERMATH)
 		std::vector<GFSDK_Aftermath_ContextHandle> context_handles;
 		std::vector<GFSDK_Aftermath_ContextData> context_crash_info{ Contexts.size() };
@@ -7866,6 +7892,166 @@ namespace FlexKit
 
 		return texture;
 	}
+
+
+    /************************************************************************************************/
+
+
+    MemoryPoolAllocator::MemoryPoolAllocator(RenderSystem& IN_renderSystem, DeviceHeapHandle IN_heap, size_t IN_heapSize, size_t IN_blockSize, iAllocator* IN_allocator) :
+        renderSystem    { IN_renderSystem },
+        blockCount      { IN_heapSize / IN_blockSize },
+        blockSize       { IN_blockSize },
+        allocator       { IN_allocator },
+        allocations     { IN_allocator },
+        freeRanges      { IN_allocator },
+        heap            { IN_heap }
+    {
+        freeRanges.push_back({ 0, (uint32_t)blockCount, Clear });
+    }
+
+
+    /************************************************************************************************/
+
+
+    MemoryPoolAllocator::HeapAllocation MemoryPoolAllocator::GetMemory(const size_t requestBlockCount, const uint64_t frameID, const uint64_t flags)
+    {
+        auto _GetMemory = [&]() -> HeapAllocation {
+            for (auto& range : freeRanges)
+            {
+                if (range.offset > blockCount)
+                    __debugbreak();
+
+                if (range.blockCount >= requestBlockCount)
+                {
+                    if  (range.flags == Clear ||
+                        (range.flags | Locked && range.frameID + 3 < frameID) ||
+                        (range.flags | AllowReallocation && range.frameID == frameID))
+                    {
+                        MemoryPoolAllocator::HeapAllocation heapAllocation = {
+                            .offset     = range.offset * blockSize,
+                            .size       = requestBlockCount * blockSize
+                        };
+
+
+                        if (range.blockCount > requestBlockCount)
+                        {
+                            range.blockCount    -= requestBlockCount;
+                            range.offset        += requestBlockCount;
+                        }
+                        else if (range.blockCount == requestBlockCount)
+                            freeRanges.remove_unstable(&range);
+
+                        return heapAllocation;
+                    }
+                }
+            }
+
+            return {};
+        };
+        auto res = _GetMemory();
+        if (res)
+            return res;
+
+        Coalesce();
+
+        return _GetMemory();
+    }
+
+
+    void MemoryPoolAllocator::Coalesce()
+    {
+        const auto frameID = renderSystem.GetCurrentFrame();
+
+        std::sort(
+            std::begin(freeRanges),
+            std::end(freeRanges),
+            [&](auto& lhs, auto& rhs)
+            {
+                return lhs.offset < rhs.offset;
+            }
+        );
+
+        size_t I = 0; 
+        while (I + 1 < freeRanges.size())
+        {
+            if (freeRanges[I].offset + freeRanges[I].blockCount == freeRanges[I + 1].offset &&
+                freeRanges[I].frameID + 2 < frameID &&
+                freeRanges[I + 1].frameID + 3 < frameID)
+            {
+                freeRanges[I].blockCount += freeRanges[I + 1].blockCount;
+                freeRanges.remove_stable(freeRanges.begin() + I + 1);
+            }
+            else
+                I++;
+        }
+    }
+
+    /************************************************************************************************/
+
+
+    ResourceHandle MemoryPoolAllocator::Aquire(GPUResourceDesc desc, bool temporary)
+    {
+        std::scoped_lock localLock{ lock };
+
+        auto frameIdx   = renderSystem.GetCurrentFrame();
+        auto size       = renderSystem.GetResourceSize(desc);
+
+        const size_t requestedBlockCount = size / blockSize;
+        auto block = GetMemory(requestedBlockCount, frameIdx, Clear);
+
+        if (block.offset / blockSize > blockCount)
+            __debugbreak();
+
+        if (!block) {
+            __debugbreak();
+            return InvalidHandle_t;
+        }
+
+        desc.bufferCount    = 1;
+        desc.allocationType = ResourceAllocationType::Placed;
+        desc.placed.heap    = heap;
+        desc.placed.offset  = block.offset;
+
+        auto resource = renderSystem.CreateGPUResource(desc);
+
+        if (resource != InvalidHandle_t) {
+            allocations.push_back({ (uint32_t)(block.offset / blockSize), uint32_t(block.size / blockSize), frameIdx, (uint64_t)(temporary ? Temporary : Clear), resource });
+        }
+        else
+            __debugbreak();
+
+        return resource;
+    }
+
+
+    /************************************************************************************************/
+
+
+    void MemoryPoolAllocator::Release(ResourceHandle handle, const bool freeResourceImmedate, const bool allowImmediateReuse)
+    {
+        auto res = find(allocations,
+            [&](auto& e)
+            {
+                return (e.resource == handle);
+            }
+        );
+
+        if (res != std::end(allocations))
+        {
+            if (res->offset > blockCount || res->offset + res->blockCount > blockCount)
+                __debugbreak();
+
+            freeRanges.push_back(
+                {
+                    res->offset,
+                    res->blockCount,
+                    uint64_t(res->flags == AllowReallocation ? AllowReallocation : Locked),
+                    res->frameID,
+                });
+
+            allocations.remove_unstable(res);
+        }
+    }
 
 
 	/************************************************************************************************/

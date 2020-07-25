@@ -91,6 +91,9 @@ namespace FlexKit
         {
             const auto [MIPCount, DDSTextureWH, _] = GetDDSInfo(textureAsset);
 
+            if (DDSTextureWH.Product() == 0)
+                return;
+
             auto textureResource = renderSystem.CreateGPUResource(
                 GPUResourceDesc::ShaderResource(
                     DDSTextureWH,

@@ -37,6 +37,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Win32Graphics.h"
 #include "TextureStreamingUtilities.h"
 
+
 #include <angelscript.h>
 #include <angelscript/scriptstdstring/scriptstdstring.h>
 #include <angelscript/scriptbuilder/scriptbuilder.h>
@@ -169,8 +170,8 @@ public:
 			streamingEngine	    { IN_Framework.core.RenderSystem, IN_Framework.core.GetBlockMemory() },
             sounds              { IN_Framework.core.Threads,      IN_Framework.core.GetBlockMemory() },
 
-            memoryPool          { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(512 * MEGABYTE, DeviceHeapFlags::RenderTarget), 512 * MEGABYTE / (64 * KILOBYTE), 64 * KILOBYTE, IN_Framework.core.GetBlockMemory() },
-            pointLightShadowMap { IN_Framework.core.RenderSystem.CreateDepthBufferArray({ 128, 128 }, true, 6) },
+            //d3DMemoryPool   { IN_Framework.GetRenderSystem() },
+            memoryPool      { IN_Framework.core.RenderSystem, IN_Framework.core.RenderSystem.CreateHeap(512 * MEGABYTE, DeviceHeapFlags::RenderTarget), 256 * MEGABYTE, 64 * KILOBYTE, IN_Framework.core.GetBlockMemory() },
 
             renderWindow{ std::get<0>(CreateWin32RenderWindow(IN_Framework.GetRenderSystem(), DefaultWindowDesc({ 1920, 1080 }) )) },
 
@@ -261,14 +262,12 @@ public:
 	FKApplication& App;
 
     // counters, timers
-    float                       t = 0.0f;
-
-
-    // Scene Resources
-    ResourceHandle             pointLightShadowMap;
+    float   t = 0.0f;
+    size_t  counter = 0;
 
     // render resources
     MemoryPoolAllocator         memoryPool;
+
     Win32RenderWindow           renderWindow;
 	WorldRender					render;
     GBuffer                     gbuffer;

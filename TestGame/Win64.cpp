@@ -137,8 +137,7 @@ int main(int argc, char* argv[])
     EXITSCOPE(ReleaseEngineMemory(allocator));
 
     FlexKit::FKApplication app{ allocator, max(std::thread::hardware_concurrency(), 1u) - 1 };
-    //FlexKit::FKApplication app{ allocator, 2 };
-    app.GetCore().FrameLock = true;
+    app.GetCore().FrameLock = false;
 
     FK_LOG_INFO("Set initial PlayState state.");
     auto& base = app.PushState<BaseState>(app);
@@ -163,7 +162,7 @@ int main(int argc, char* argv[])
         {
             AddAssetFile("assets\\DemonGirl.gameres");
 
-            StartTestState(app, base, TestScenes::GlobalIllumination);
+            StartTestState(app, base, TestScenes::ShadowTestScene);
         }   break;
         case ApplicationMode::PlaygroundMode:
         {

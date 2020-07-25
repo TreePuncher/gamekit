@@ -11,6 +11,9 @@ namespace FlexKit
         AssetHandle asset = FlexKit::LoadGameAsset(assetID);
         TextureResourceBlob* resource = reinterpret_cast<TextureResourceBlob*>(FlexKit::GetAsset(asset));
 
+        if (!resource)
+            return {};
+
         auto buffer = resource->GetBuffer();
         const auto bufferSize = resource->GetBufferSize();
 
@@ -488,7 +491,7 @@ namespace FlexKit
 
                 DescriptorHeap uavHeap;
                 uavHeap.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
-                uavHeap.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx));
+                uavHeap.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, ctx));
                 uavHeap.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                 uavHeap.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
                 uavHeap.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists));
@@ -563,7 +566,7 @@ namespace FlexKit
                     // iteration 0
                     DescriptorHeap uavHeap2;
                     uavHeap2.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
-                    uavHeap2.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 1);
+                    uavHeap2.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, ctx), 1);
                     uavHeap2.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                     uavHeap2.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
                     uavHeap2.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists));
@@ -575,7 +578,7 @@ namespace FlexKit
                     // iteration 1
                     DescriptorHeap uavHeap3;
                     uavHeap3.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
-                    uavHeap3.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 2);
+                    uavHeap3.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, ctx), 2);
                     uavHeap3.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                     uavHeap3.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
                     uavHeap3.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp1));
@@ -588,7 +591,7 @@ namespace FlexKit
                     // iteration 2
                     DescriptorHeap uavHeap4;
                     uavHeap4.Init2(ctx, resources.renderSystem().Library.RSDefault.GetDescHeap(1), 6, &allocator);
-                    uavHeap4.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, &ctx), 3);
+                    uavHeap4.SetUAV(ctx, 0, resources.WriteUAV(data.feedbackCounters, ctx), 3);
                     uavHeap4.SetUAV(ctx, 1, resources.GetUAVBufferResource(data.feedbackBuffer));
                     uavHeap4.SetUAV(ctx, 2, resources.GetUAVBufferResource(data.feedbackOffsets));
                     uavHeap4.SetUAV(ctx, 3, resources.GetUAVTextureResource(data.feedbackPPLists_Temp2));
@@ -599,8 +602,8 @@ namespace FlexKit
                     ctx.Dispatch({ 128/ 64, 128/ 128, 1 });
 
                     ctx.CopyBufferRegion(
-                        {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters, DRS_Read, &ctx)) ,
-                            resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackOutputFinal, DRS_Read, &ctx)) },
+                        {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters, DRS_Read, ctx)) ,
+                            resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackOutputFinal, DRS_Read, ctx)) },
                         { 0, 0 },
                         {   resources.GetObjectResource(data.readbackBuffer),
                             resources.GetObjectResource(data.readbackBuffer) },
@@ -613,8 +616,8 @@ namespace FlexKit
                 else
                 {
                     ctx.CopyBufferRegion(
-                        {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters,  DRS_Read, &ctx)) ,
-                            resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackBuffer,   DRS_Read, &ctx)) },
+                        {   resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackCounters,  DRS_Read, ctx)) ,
+                            resources.GetObjectResource(resources.ReadUAVBuffer(data.feedbackBuffer,   DRS_Read, ctx)) },
                         { 0, 0 },
                         {   resources.GetObjectResource(data.readbackBuffer),
                             resources.GetObjectResource(data.readbackBuffer) },
@@ -715,9 +718,11 @@ namespace FlexKit
             comparator);
 
         if (res == std::end(mappedAssets) || res->resource != resource)
-            mappedAssets.insert(res, MappedAsset{ resource, textureAsset });
+            mappedAssets.push_back(MappedAsset{ resource, textureAsset });
         else
             res->textureAsset = textureAsset;
+
+        std::sort(std::begin(mappedAssets), std::end(mappedAssets), comparator);
     }
 
 
@@ -738,9 +743,18 @@ namespace FlexKit
             MappedAsset{ resource },
             comparator);
 
+        /*
         return (res != std::end(mappedAssets) && res->GetResourceID() == resource) ?
             std::optional<AssetHandle>{ res->textureAsset } :
             std::optional<AssetHandle>{};
+            */
+
+        if ((res != std::end(mappedAssets) && res->GetResourceID() == resource))
+            return std::optional<AssetHandle>{ res->textureAsset };
+        else
+            __debugbreak();
+
+        return {};
     }
 
 
@@ -925,6 +939,9 @@ namespace FlexKit
             const auto resource         = packedBlock.resource;
             const auto asset            = GetResourceAsset(resource);
 
+            if (!asset)
+                __debugbreak();
+
             const auto deviceResource   = renderSystem.GetDeviceResource(resource);
             const auto resourceState    = renderSystem.GetObjectState(packedBlock.resource);
 
@@ -973,6 +990,7 @@ namespace FlexKit
             renderSystem.SetObjectState(resource, DeviceResourceState::DRS_GENERIC);
             renderSystem.UpdateTextureTileMappings(resource, mappings);
             updatedTextures.push_back(resource);
+            mappings.clear();
         }
 
         // Submit Texture tiling changes
