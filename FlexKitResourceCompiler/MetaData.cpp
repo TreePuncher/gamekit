@@ -940,6 +940,9 @@ namespace FlexKit::ResourceBuilder
 				std::cout << "Animation Event\n";		break;
 			case MetaData::EMETAINFOTYPE::EMI_TEXTURESET:			
 				std::cout << "TexureSet\n";				break;
+            case MetaData::EMETAINFOTYPE::EMI_TEXTURE:
+                std::cout << MetaData->ID << " Texure\n"; break;
+
 			default:
 				break;
 			}
